@@ -38,4 +38,8 @@ gcc_toolchain("host") {
     current_cpu = current_cpu
     current_os = current_os
   }
+
+  # TODO(neva): Remove this after it will be included in upstream
+  # (it's upstreamable).
+  toolchain_args.current_cpu = host_cpu
 }
