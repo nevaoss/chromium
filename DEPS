@@ -4486,6 +4486,13 @@ hooks = [
     'action': ['git', '-C', 'src/v8', 'am',
               '../neva/patches/0012-V8-Disable-Temporal-API-from-build.patch']
   },
+  # Apply 'Remove-dl-linkage-from-rust-libc' patch
+  {
+    'name': 'Remove-dl-linkage-from-rust-libc',
+    'pattern': '.',
+    'action': ['bash', '-c',
+              'src/neva/patches/0013-Remove-dl-linkage-from-rust-libc.bash']
+  },
   #@}
   {
     'name': 'apache_win32',

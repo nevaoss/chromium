@@ -1,0 +1,42 @@
+Subject: [PATCH] [build][webos] Rust: Remove libdl from linked libraries for liblibc_libc.rst
+
+:Release Notes:
+Fix rust-toolchain libc linkage
+
+:Detailed Notes:
+Enabling Rust in Neva lead to the following error during build of rust
+toolchain library for webOS OSE, libc wrapper.
+error: overriding linking modifiers from command line is not supported                                                                                                                                                --> ../../../../../../../../chromium_webos/src/third_party/rust-toolchain/lib/rustlib/src/rust/library/vendor/libc-0.2.177/src/unix/mod.rs:478:9                                                                    |                                                                                                                                                                                                              478 |         extern "C" {}
+
+To avoid this error exclude libdl from linked libs.
+
+:Testing Performed:
+Build PC and webOS/OSE targets successfully
+
+:QA Notes:
+
+:Issues Addressed:
+[NEVA-10931] Check feasibility of enabling Rust for Neva webOS builds
+
+--- mod.rs	2026-01-20 16:17:21.218001584 +0300
++++ mod.rs	2026-01-20 11:50:11.595527389 +0300
+@@ -448,12 +448,13 @@
+             modifiers = "-bundle",
+             cfg(target_feature = "crt-static")
+         )]
+-        #[link(
+-            name = "dl",
+-            kind = "static",
+-            modifiers = "-bundle",
+-            cfg(target_feature = "crt-static")
+-        )]
++// NOTE(neva): Disable because of issue with webOS OSE linkage
++//        #[link(
++//            name = "dl",
++//            kind = "static",
++//            modifiers = "-bundle",
++//            cfg(target_feature = "crt-static")
++//        )]
+         #[link(
+             name = "c",
+             kind = "static",
