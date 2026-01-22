@@ -16,6 +16,7 @@
 
 #include "neva/extensions/browser/extension_tab_util.h"
 
+#include "base/containers/fixed_flat_set.h"
 #include "base/json/json_reader.h"
 #include "components/url_formatter/url_fixer.h"
 #include "content/public/browser/browser_context.h"
@@ -164,12 +165,12 @@ bool ExtensionTabUtil::IsKillURL(const GURL& url) {
   }
 
   // Also disallow a few more hosts which are not covered by the check above.
-  static const char* const kKillHosts[] = {
+  constexpr auto kKillHosts = base::MakeFixedFlatSet<std::string_view>({
       content::kChromeUIBrowserCrashHost,
       content::kChromeUIMemoryExhaustHost,
-  };
+  });
 
-  return base::Contains(kKillHosts, url.host());
+  return kKillHosts.contains(url.host());
 }
 
 base::expected<GURL, std::string> ExtensionTabUtil::PrepareURLForNavigation(
