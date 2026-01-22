@@ -1,6 +1,6 @@
-From cc79b3582c7dd29ed8546b6f9ccec29536b4ba9c Mon Sep 17 00:00:00 2001
-From: yudong2 <yudong2@yudong2-22.04>
-Date: Mon, 7 Apr 2025 15:51:30 +0900
+From 9c444c831d4725298b7c19f6d03a6654f806a834 Mon Sep 17 00:00:00 2001
+From: "donghwan.yu" <donghwan.yu@lge.com>
+Date: Thu, 22 Jan 2026 11:27:16 +0900
 Subject: [PATCH] Make v8 heap constraints configurable
 
 :Release Notes:
@@ -58,7 +58,7 @@ Reviewed-on: http://gpro.lge.com/c/webosose/chromium-v8/+/284058
  7 files changed, 212 insertions(+)
 
 diff --git a/include/v8-isolate.h b/include/v8-isolate.h
-index 299714f07a2..53272cf6a33 100644
+index f929f13a4de..64584eefbbf 100644
 --- a/include/v8-isolate.h
 +++ b/include/v8-isolate.h
 @@ -97,6 +97,36 @@ class V8_EXPORT ResourceConstraints {
@@ -112,10 +112,10 @@ index 299714f07a2..53272cf6a33 100644
  
  /**
 diff --git a/src/api/api.cc b/src/api/api.cc
-index 16e16df9b2a..d71c1c77064 100644
+index 42d6f36b0b1..7f2d038b1ca 100644
 --- a/src/api/api.cc
 +++ b/src/api/api.cc
-@@ -552,6 +552,19 @@ void ResourceConstraints::ConfigureDefaults(uint64_t physical_memory,
+@@ -587,6 +587,19 @@ void ResourceConstraints::ConfigureDefaults(uint64_t physical_memory,
    }
  }
  
@@ -135,7 +135,7 @@ index 16e16df9b2a..d71c1c77064 100644
  #ifdef ENABLE_SLOW_DCHECKS
  namespace api_internal {
  void StackAllocated<true>::VerifyOnStack() const {
-@@ -9971,6 +9984,15 @@ void Isolate::Initialize(Isolate* v8_isolate,
+@@ -10010,6 +10023,15 @@ void Isolate::Initialize(Isolate* v8_isolate,
    }
  
    i_isolate->heap()->ConfigureHeap(params.constraints, cpp_heap);
@@ -152,10 +152,10 @@ index 16e16df9b2a..d71c1c77064 100644
      uintptr_t limit =
          reinterpret_cast<uintptr_t>(params.constraints.stack_limit());
 diff --git a/src/flags/flag-definitions.h b/src/flags/flag-definitions.h
-index 57d0e926647..a7fe44e9970 100644
+index 76701936e8a..5c9545df8ff 100644
 --- a/src/flags/flag-definitions.h
 +++ b/src/flags/flag-definitions.h
-@@ -2623,6 +2623,20 @@ DEFINE_BOOL(
+@@ -2645,6 +2645,20 @@ DEFINE_BOOL(
  DEFINE_BOOL(parallel_reclaim_unmodified_wrappers, true,
              "reclaim wrapper objects in parallel")
  
@@ -173,7 +173,7 @@ index 57d0e926647..a7fe44e9970 100644
 +            "MarkCompact")
 +#endif
 +
- DEFINE_INT(gc_memory_reducer_start_delay_ms, 8000,
+ DEFINE_INT(gc_memory_reducer_start_delay_ms, 30000,
             "Delay before memory reducer start")
  
 diff --git a/src/heap/heap-controller.cc b/src/heap/heap-controller.cc
@@ -233,10 +233,10 @@ index 88864749fc1..f5f6d9a387a 100644
    static double GrowingFactor(Heap* heap, size_t max_heap_size,
                                std::optional<double> gc_speed,
 diff --git a/src/heap/heap.cc b/src/heap/heap.cc
-index 694d300b6b9..2c19b6d319b 100644
+index 40341eb2cc4..3ba0c753266 100644
 --- a/src/heap/heap.cc
 +++ b/src/heap/heap.cc
-@@ -3141,7 +3141,11 @@ void Heap::ShrinkOldGenerationAllocationLimitIfNotConfigured() {
+@@ -3135,7 +3135,11 @@ void Heap::ShrinkOldGenerationAllocationLimitIfNotConfigured() {
      base::MutexGuard guard(old_space()->mutex());
      const size_t minimum_growing_step =
          MemoryController<V8HeapTrait>::MinimumAllocationLimitGrowingStep(
@@ -248,7 +248,7 @@ index 694d300b6b9..2c19b6d319b 100644
      size_t new_old_generation_allocation_limit =
          std::max(OldGenerationConsumedBytes() + minimum_growing_step,
                   static_cast<size_t>(
-@@ -3821,6 +3825,13 @@ bool Heap::HasHighFragmentation() {
+@@ -3859,6 +3863,13 @@ bool Heap::HasHighFragmentation() {
  
    // Fragmentation is high if committed > 2 * used + kSlack.
    // Rewrite the expression to avoid overflow.
@@ -262,7 +262,7 @@ index 694d300b6b9..2c19b6d319b 100644
    return committed - used > used + kSlack;
  }
  
-@@ -5270,6 +5281,64 @@ void Heap::ConfigureHeap(const v8::ResourceConstraints& constraints,
+@@ -5305,6 +5316,64 @@ void Heap::ConfigureHeap(const v8::ResourceConstraints& constraints,
    configured_ = true;
  }
  
@@ -328,10 +328,10 @@ index 694d300b6b9..2c19b6d319b 100644
    size_t first_part =
        std::min(strlen(string), kTraceRingBufferSize - ring_buffer_end_);
 diff --git a/src/heap/heap.h b/src/heap/heap.h
-index a5af504ea13..355f1dd9f5e 100644
+index 6dc4e43a952..bcb90d63986 100644
 --- a/src/heap/heap.h
 +++ b/src/heap/heap.h
-@@ -284,12 +284,28 @@ class Heap final {
+@@ -295,12 +295,28 @@ class Heap final {
        return limit_for_interrupt_.load(std::memory_order_relaxed);
      }
      uint64_t soft_limit() const {
@@ -360,7 +360,7 @@ index a5af504ea13..355f1dd9f5e 100644
      uint64_t UpdateAmount(int64_t delta) {
        const uint64_t amount_before =
            total_.fetch_add(delta, std::memory_order_relaxed);
-@@ -338,6 +354,11 @@ class Heap final {
+@@ -349,6 +365,11 @@ class Heap final {
  
      // Caches the amount of external memory registered at the last MC.
      std::atomic<uint64_t> low_since_mark_compact_{0};
@@ -372,7 +372,7 @@ index a5af504ea13..355f1dd9f5e 100644
    };
  
    struct LimitBounds {
-@@ -753,6 +774,12 @@ class Heap final {
+@@ -763,6 +784,12 @@ class Heap final {
    void RememberUnmappedPage(Address page, bool compacted);
  
    uint64_t external_memory_hard_limit() {
@@ -385,7 +385,7 @@ index a5af504ea13..355f1dd9f5e 100644
      return external_memory_.low_since_mark_compact() +
             max_old_generation_size() / 2;
    }
-@@ -813,6 +840,13 @@ class Heap final {
+@@ -823,6 +850,13 @@ class Heap final {
                       v8::CppHeap* cpp_heap);
    void ConfigureHeapDefault();
  
@@ -399,7 +399,7 @@ index a5af504ea13..355f1dd9f5e 100644
    // Prepares the heap, setting up for deserialization.
    void SetUp(LocalHeap* main_thread_local_heap);
  
-@@ -1763,6 +1797,12 @@ class Heap final {
+@@ -1782,6 +1816,12 @@ class Heap final {
    V8_EXPORT_PRIVATE void Unmark();
    V8_EXPORT_PRIVATE void DeactivateMajorGCInProgressFlag();
  
@@ -412,7 +412,7 @@ index a5af504ea13..355f1dd9f5e 100644
    // Free all LABs in the heap.
    V8_EXPORT_PRIVATE void FreeLinearAllocationAreas();
  
-@@ -2293,6 +2333,12 @@ class Heap final {
+@@ -2333,6 +2373,12 @@ class Heap final {
    size_t maximum_committed_ = 0;
    size_t old_generation_capacity_after_bootstrap_ = 0;
  
@@ -425,7 +425,7 @@ index a5af504ea13..355f1dd9f5e 100644
    // For keeping track of how much data has survived
    // scavenge since last new space expansion.
    size_t survived_since_last_expansion_ = 0;
-@@ -2518,6 +2564,10 @@ class Heap final {
+@@ -2558,6 +2604,10 @@ class Heap final {
    // configured through the API until it is set up.
    bool configured_ = false;
  
@@ -437,5 +437,5 @@ index a5af504ea13..355f1dd9f5e 100644
    GCFlags current_gc_flags_ = GCFlag::kNoFlags;
    // Currently set GC callback flags that are used to pass information between
 -- 
-2.34.1
+2.52.0
 
