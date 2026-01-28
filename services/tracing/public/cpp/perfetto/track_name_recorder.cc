@@ -53,12 +53,15 @@ void FillThreadTrack(const perfetto::ThreadTrack& track, const char* name) {
     desc.mutable_chrome_thread()->set_thread_type(
         static_cast<int32_t>(thread_type));
   }
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_AIX)
+  // TODO(neva): Remove this after webOS supports set_is_sandboxed_tid().
+#if (BUILDFLAG(IS_LINUX) && !BUILDFLAG(IS_WEBOS)) || BUILDFLAG(IS_CHROMEOS) || \
+    BUILDFLAG(IS_AIX)
   if (base::GetCurrentProcId() !=
       base::trace_event::TraceLog::GetInstance()->process_id()) {
     desc.mutable_chrome_thread()->set_is_sandboxed_tid(true);
   }
-#endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_AIX)
+#endif  // (BUILDFLAG(IS_LINUX) && !BUILDFLAG(IS_WEBOS)) ||
+        // BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_AIX)
 
   base::TrackEvent::SetTrackDescriptor(track, std::move(desc));
 }

@@ -14,6 +14,8 @@
 #include "base/metrics/histogram_macros.h"
 #include "base/notimplemented.h"
 #include "base/numerics/checked_math.h"
+// TODO(neva): base/strings/stringprintf.h is required for compilation of this
+// file. Try to contribute to upstream.
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/stringprintf.h"
 #include "base/trace_event/trace_event.h"

@@ -20,7 +20,7 @@
 #include "third_party/blink/renderer/platform/scheduler/public/main_thread_scheduler.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/partitions.h"
 
-#if BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_NEVA_APPRUNTIME)
 
 namespace blink {
 
@@ -211,4 +211,4 @@ void RequestUserLevelMemoryPressureSignal() {
 
 }  // namespace blink
 
-#endif  // BUILDFLAG(IS_ANDROID)
+#endif  // BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_NEVA_APPRUNTIME)

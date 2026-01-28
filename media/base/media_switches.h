@@ -86,6 +86,9 @@ MEDIA_EXPORT extern const char kMinVideoDecoderOutputBufferSize[];
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FREEBSD) || \
     BUILDFLAG(IS_SOLARIS)
 MEDIA_EXPORT extern const char kAlsaInputDevice[];
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+MEDIA_EXPORT extern const char kAlsaInputDeviceBlockList[];
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
 MEDIA_EXPORT extern const char kAlsaOutputDevice[];
 #endif  // BUILDFLAG(IS_LINUX) || ...
 
@@ -456,6 +459,11 @@ MEDIA_EXPORT BASE_DECLARE_FEATURE(kMediaLogToConsole);
 
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kLibvpxUseChromeThreads);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kLibaomUseChromeThreads);
+
+#if defined(USE_WEBOS_CODEC)
+MEDIA_EXPORT BASE_DECLARE_FEATURE(kWebOSVideoDecodeAccelerator);
+MEDIA_EXPORT BASE_DECLARE_FEATURE(kWebOSVideoEncodeAccelerator);
+#endif
 
 #if BUILDFLAG(IS_WIN)
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kD3D12VideoDecoder);

@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Long test page</title>
+</head>
+
+<body>
+<p>Top of the long page</p>
+<button id="closePage" onclick="window.close()">Close page</button>
+<div id="content"></div>
+<p>Bottom of the long page</p>
+</body>
+
+<script>
+document.getElementById("content").style.height = window.innerHeight * 1.5 + "px";
+</script>
+</html>

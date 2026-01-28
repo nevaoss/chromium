@@ -2470,9 +2470,18 @@ StyleRuleMixin* CSSParserImpl::ConsumeMixinRule(CSSParserTokenStream& stream) {
   // a mixin is actually used (in @apply), we clone all the rules and call
   // Clone(), which changes all the parent references to @apply's parent.
   fake_parent_rule->EnsureChildRules();
+  // TODO(neva): Explicitly copy child rules into a
+  // HeapVector<Member<StyleRuleBase>> to avoid template deduction issue.
+#if defined(__GNUC__) && !defined(__clang__)
+  HeapVector<Member<StyleRuleBase>> child_rules;
+  child_rules.AppendVector(*fake_parent_rule->ChildRules());
+  return MakeGarbageCollected<StyleRuleMixin>(name, std::move(*parameters),
+                                              std::move(child_rules));
+#else   // defined(__GNUC__) && !defined(__clang__)
   return MakeGarbageCollected<StyleRuleMixin>(
       name, std::move(*parameters),
       HeapVector{std::move(*fake_parent_rule->ChildRules())});
+#endif  // !(defined(__GNUC__) && !defined(__clang__))
 }
 
 StyleRule* CSSParserImpl::ConsumeDeclarationListForMixins(

@@ -24,8 +24,14 @@ void LogData(const T& data,
   if (DCHECK_IS_ON() && VLOG_IS_ON(1)) {
     base::Value value = (*to_dictionary_value)(data, /*options=*/{});
     std::string message;
+// TODO(neva): Remove this workaround when Neva GCC version upgraded to 12.3+.
+#if defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
+    base::JSONWriter::WriteWithOptions(
+        value, base::JsonOptions::OPTIONS_PRETTY_PRINT, &message);
+#else   // defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
     base::JSONWriter::WriteWithOptions(
         value, base::JSONWriter::OPTIONS_PRETTY_PRINT, &message);
+#endif  // !(defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__))
     DVLOG(1) << "\n" << description << "\n" << message << "\n";
   }
 }

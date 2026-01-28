@@ -32,7 +32,51 @@ class SkiaOutputSurfaceDependency;
 
 class VIZ_SERVICE_EXPORT SkiaOutputDeviceBufferQueue : public SkiaOutputDevice {
  public:
+// TODO(neva): Remove this workaround when Neva GCC version upgraded to 12+.
+#if defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
+  class OverlayData {
+  public:
+    OverlayData() = delete;
+    OverlayData(OverlayData&& other) = delete;
+
+    OverlayData(std::unique_ptr<gpu::OverlayImageRepresentation> representation,
+                std::unique_ptr<gpu::OverlayImageRepresentation::ScopedReadAccess>
+                    scoped_read_access,
+                bool is_root_render_pass)
+        : representation_(std::move(representation)),
+          scoped_read_access_(std::move(scoped_read_access)),
+          is_root_render_pass_(is_root_render_pass) {
+      DCHECK(representation_);
+      DCHECK(scoped_read_access_);
+    }
+
+    ~OverlayData() = default;
+
+    OverlayData& operator=(OverlayData&& other) = delete;
+
+    bool IsInUseByWindowServer() const ;
+    void Ref() const;
+    void Unref() const;
+    void OnReuse() const;
+    void OnContextLost() const;
+    bool unique() const;
+    const gpu::Mailbox& mailbox() const;
+
+    gpu::OverlayImageRepresentation::ScopedReadAccess*
+    scoped_read_access() const;
+
+    bool IsRootRenderPass() const;
+
+  private:
+    const std::unique_ptr<gpu::OverlayImageRepresentation> representation_;
+    mutable std::unique_ptr<gpu::OverlayImageRepresentation::ScopedReadAccess>
+        scoped_read_access_;
+    mutable int ref_ = 1;
+    const bool is_root_render_pass_ = false;
+  };
+#else // !(defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__))
   class OverlayData;
+#endif // defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
 
   SkiaOutputDeviceBufferQueue(
       std::unique_ptr<OutputPresenter> presenter,

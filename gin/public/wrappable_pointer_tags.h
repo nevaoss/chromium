@@ -7,6 +7,12 @@
 
 #include <cstdint>
 
+// NOTE(neva): Required for usage of IS_NEVA_APPRUNTIME build flag.
+///@name IS_NEVA_APPRUNTIME
+///@{
+#include "build/build_config.h"
+///@}
+
 #include "v8-sandbox.h"
 
 namespace gin {
@@ -74,7 +80,36 @@ enum WrappablePointerTag : uint16_t {
   kTextInputControllerBindings,  // content::TextInputControllerBindings
   kWebAXObjectProxy,             // content::WebAXObjectProxy
   kWrappedExceptionHandler,      // extensions::WrappedExceptionHandler
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  kBrowserControlInjection,
+  kBrowserShellCookieManager,
+  kBrowserShellInjection,
+  kBrowserShellIpcEndpoint,
+  kBrowserShellIpcInjection,
+  kBrowserShellLogin,
+  kBrowserShellPageContents,
+  kBrowserShellPageView,
+  kBrowserShellPermissions,
+  kBrowserShellSession,
+  kBrowserShellSiteSettings,
+  kBrowserShellWebRequest,
+  kBrowserShellWindow,
+  kChromeExtensionsInjection,
+  kChromeExtensionsManagerInjection,
+  kCursorInjection,
+  kDialogController,
+  kLaunchPointInjection,
+  kMemoryManagerInjection,
+  kNetworkErrorPageControllerInjection,
+  kPermissionRequest,
+  kSampleInjection,
+  kWebOSServiceBridgeInjection,
+  kWebOSSystemInjection,
+  kWindowInjection,
+  kLastPointerTag = kWindowInjection,
+#else   // BUILDFLAG(IS_NEVA_APPRUNTIME)
   kLastPointerTag = kWrappedExceptionHandler,
+#endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
 };
 
 static_assert(kLastPointerTag <

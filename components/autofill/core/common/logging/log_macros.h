@@ -34,6 +34,13 @@
 
 namespace autofill::internal {
 
+// TODO(neva): Remove this when Neva GCC supports static_assert(false).
+#if defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__)
+// Workaround for compile-time assertions involving dependent types
+template<typename>
+constexpr bool dependent_false = false; // Always false
+#endif  // defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__)
+
 // Traits for targets of LOG_AF(). There are currently specializations for
 // `LogManager*` and `LogBuffer*`. The below is just a placeholder.
 template <typename T>
@@ -49,8 +56,14 @@ struct LoggerTraits {
 
   // Returns true iff logging to should be enabled.
   static bool active(const T& logger) {
+// TODO(neva): Remove this when Neva GCC supports static_assert(false).
+#if defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__)
+    static_assert(
+        dependent_false<T>,
+#else   // defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__)
     static_assert(
         false,
+#endif  // !(defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__))
         "Traits for this logger aren't visible. Are you missing an include of "
         "log_manager.h and/or log_buffer.h?");
     return false;
@@ -59,8 +72,14 @@ struct LoggerTraits {
   // Returns an object that implements the stream insertion operator
   // operator<<().
   static Null get_stream(const T& logger) {
+// TODO(neva): Remove this when Neva GCC supports static_assert(false).
+#if defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__)
+    static_assert(
+        dependent_false<T>,
+#else   // defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__)
     static_assert(
         false,
+#endif  // !(defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__))
         "Traits for this logger aren't visible. Are you missing an include of "
         "log_manager.h and/or log_buffer.h?");
     return {};

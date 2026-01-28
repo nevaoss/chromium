@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Browser Shell VKB events page</title>
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 10px;
+            font-family: Helvetica, sans-serif;
+        }
+
+        div {
+            margin: 1em 0;
+        }
+
+        label {
+            display: block;
+            margin: 0 0 3px;
+        }
+
+        input[type=text] {
+            font-size: 1em;
+            outline: none;
+            width: 296px;
+            padding: 2px;
+        }
+    </style>
+</head>
+
+<body>
+    <script>
+        let main_vindow = shell.shellWindow;
+        main_vindow.on(
+            "vkb-change-state",
+            function (visible) {
+                console.log("vkb-change-state", visible)
+            })
+        main_vindow.on(
+            "vkb-overlap",
+            function (bounds) {
+                console.log("vkb-overlap", bounds)
+            })
+    </script>
+    <div class="wrap">
+        <h1>Browser Shell virtual keyboard events test</h1>
+        <form action=".">
+            <div>
+                <label for="type-text">Text (text)</label>
+                <input type="text" name="type-text" id="type-text">
+            </div>
+            <div style="position: absolute; bottom: 5px">
+                <label for="type-text">Bottom Text Field(text)</label>
+                <input type="text" name="type-text" id="type-text">
+            </div>
+        </form>
+    </div>
+</body>
+
+</html>
+

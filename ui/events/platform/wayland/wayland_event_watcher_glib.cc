@@ -12,10 +12,12 @@ namespace ui {
 
 namespace {
 
+#if !BUILDFLAG(IS_WEBOS)
 // The priorities of the event sources are important to be set correctly so that
 // GTK event source is able to process the events it requires. This uses
 // the same priority as MessagePumpGlib for fd watching.
 constexpr int kPriorityFdWatch = G_PRIORITY_DEFAULT_IDLE - 10;
+#endif  // !BUILDFLAG(IS_WEBOS)
 
 struct GLibWaylandSource : public GSource {
   // Note: The GLibWaylandSource is created and destroyed by GLib. So its
@@ -104,7 +106,9 @@ bool WaylandEventWatcherGlib::StartWatchingFD(int fd) {
     context = g_main_context_default();
   }
   g_source_attach(wayland_source_, context);
+#if !BUILDFLAG(IS_WEBOS)
   g_source_set_priority(wayland_source_, kPriorityFdWatch);
+#endif  // !BUILDFLAG(IS_WEBOS)
 
   started_ = true;
   return true;

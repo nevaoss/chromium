@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Browser Shell Test</title>
+</head>
+<body>
+  <h1>BrowserShell Capture Visible Region test</h1>
+  <script>
+    let mainview = shell.shellWindow.pageView;
+    let view = new PageView();
+    view.setBounds(500,100,400,300);
+    mainview.addChildView(view);
+
+    let displayCapturedImage = function (label_text, base64_data) {
+      let output = document.createElement("div");
+
+      if (base64_data.length == 0) {
+        label_text = label_text + " no data"
+        let label = document.createTextNode(label_text);
+        output.appendChild(label);
+      } else {
+        let label = document.createTextNode(label_text);
+        output.appendChild(label);
+        let img = document.createElement("img");
+        img.src = base64_data;
+        img.width = 200;
+        img.height = 150;
+        output.appendChild(img);
+      }
+
+      document.body.appendChild(output);
+    }
+
+    view.pageContents.on("dom-ready", function () {
+      let details = { format: "png", quality: 50 };
+      view.pageContents.captureVisibleRegion(details, function(base64_data) {
+          displayCapturedImage("PNG", base64_data);
+        details.format = "jpeg";
+        details.output_width = 200;
+        details.output_height = 150;
+        view.pageContents.captureVisibleRegion(details, function(base64_data) {
+          displayCapturedImage("JPEG", base64_data);
+        })
+      })
+    });
+    view.pageContents.loadURL("https://code.visualstudio.com");
+  </script>
+  <noscript>You need to enable JavaScrit to view the full site.</noscript>
+</body>
+</html>

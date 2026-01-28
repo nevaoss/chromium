@@ -18,6 +18,12 @@
 #include "base/system/sys_info.h"
 #endif
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+#include "base/command_line.h"
+#include "base/neva/base_switches.h"
+#include "base/strings/string_number_conversions.h"
+#endif // BUILDFLAG(IS_NEVA_APPRUNTIME)
+
 namespace cc {
 
 // static
@@ -49,6 +55,21 @@ size_t ImageDecodeCacheUtils::GetWorkingSetBytesForImageDecode(
                kImageDecodeMemoryThreshold) {
       decoded_image_working_set_budget = base::MiB(256);
     }
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+    const base::CommandLine& cmd = *base::CommandLine::ForCurrentProcess();
+    if (cmd.HasSwitch(::switches::kDecodedImageWorkingSetBudgetMB)) {
+      int budget_bytes_mb = 0;
+      if (base::StringToInt(cmd.GetSwitchValueASCII(
+                                ::switches::kDecodedImageWorkingSetBudgetMB),
+                            &budget_bytes_mb)) {
+        base::ByteCount budget_bytes = base::MiB(budget_bytes_mb);
+        if (!using_low_memory_policy ||
+            budget_bytes < decoded_image_working_set_budget) {
+          decoded_image_working_set_budget = budget_bytes;
+        }
+      }
+    }
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
   }
 #endif  // !BUILDFLAG(IS_ANDROID)
   return decoded_image_working_set_budget.InBytesUnsigned();

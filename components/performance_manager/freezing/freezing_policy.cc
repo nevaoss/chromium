@@ -810,10 +810,15 @@ void FreezingPolicy::OnLoadingStateChanged(
     switch (loading_state) {
       case PageNode::LoadingState::kLoadingNotStarted:
       case PageNode::LoadingState::kLoadedIdle:
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+      case PageNode::LoadingState::kLoadedBusy:
+#endif
         return false;
       case PageNode::LoadingState::kLoading:
       case PageNode::LoadingState::kLoadingTimedOut:
+#if !BUILDFLAG(IS_NEVA_APPRUNTIME)
       case PageNode::LoadingState::kLoadedBusy:
+#endif
         return true;
     }
   };

@@ -69,6 +69,10 @@ class AudioSourceFetcherImpl
                  const std::string& device_id) override;
   void OnStarted() override;
   void OnStopped() override;
+#if defined(USE_NEVA_SUSPEND_MEDIA_CAPTURE)
+  void OnPaused() override {}
+  void OnResumed() override {}
+#endif
   void OnClosed() override;
   void OnError() override;
   void OnSetVolume(double volume) override;

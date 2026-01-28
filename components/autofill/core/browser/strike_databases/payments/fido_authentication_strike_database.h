@@ -18,8 +18,15 @@ namespace autofill {
 
 struct FidoAuthenticationStrikeDatabaseTraits {
   static constexpr std::string_view kName = "FidoAuthentication";
+  // TODO(neva): Try to contribute it into upstream.
+#if defined(__GNUC__) && !defined(__clang__)
+  static constexpr std::optional<size_t> kMaxStrikeEntities = std::nullopt;
+  static constexpr std::optional<size_t> kMaxStrikeEntitiesAfterCleanup =
+      std::nullopt;
+#else   // defined(__GNUC__) && !defined(__clang__)
   static constexpr std::optional<size_t> kMaxStrikeEntities;
   static constexpr std::optional<size_t> kMaxStrikeEntitiesAfterCleanup;
+#endif  // !(defined(__GNUC__) && !defined(__clang__))
   static constexpr size_t kMaxStrikeLimit = 3;
   static constexpr base::TimeDelta kExpiryTimeDelta = base::Days(183);
   static constexpr bool kUniqueIdRequired = false;

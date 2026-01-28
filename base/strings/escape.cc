@@ -635,8 +635,19 @@ bool ContainsEncodedBytes(std::string_view escaped_text,
 
 std::u16string UnescapeForHTML(std::u16string_view input) {
   struct EscapeToChars {
+    // TODO(neva): Not allowed for GCC 12.4, 13.3, 14.1.
+    // For GCC 11.4, 12.1/2/3, 13.1/2 and 14.2 it is Ok.
+    // The error is: "uninitialized const member in '<struct-name>".
+#if defined(__GNUC__) && !defined(__clang__) && \
+    ((__GNUC__ == 12 && __GNUC_MINOR__ == 4) || \
+     (__GNUC__ == 13 && __GNUC_MINOR__ == 3) || \
+     (__GNUC__ == 14 && __GNUC_MINOR__ == 1))
+    char* ampersand_code;
+    char16_t replacement;
+#else
     const char* ampersand_code;
     const char16_t replacement;
+#endif
   };
   static const auto kEscapeToChars = std::to_array<EscapeToChars>({
       {"&lt;", '<'},

@@ -1,0 +1,18 @@
+{
+    "id": "app.webosservicebridge",
+    "version": "0.0.1",
+    "vendor": "Russia R&D Lab",
+    "type": "web",
+    "main": "index.html",
+    "title": "WebOSServiceBridge testing app",
+    "icon": "icon.png",
+    "iconColor": "#305b6e",
+    "transparent": false,
+    "visible": true,
+    "uiRevision": 2,
+    "trustLevel": "trusted",
+    "class": {
+        "hidden": false
+    },
+    "requiredPermissions": ["all"]
+}

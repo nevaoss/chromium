@@ -358,7 +358,10 @@
 #include "third_party/blink/renderer/core/xml/document_xpath_evaluator.h"
 #include "third_party/blink/renderer/core/xml/document_xslt.h"
 #include "third_party/blink/renderer/core/xml/parser/xml_document_parser.h"
+// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
+#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "third_party/blink/renderer/core/xml/parser/xml_document_parser_rs.h"
+#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "third_party/blink/renderer/core/xml_names.h"
 #include "third_party/blink/renderer/core/xmlns_names.h"
 #include "third_party/blink/renderer/platform/bindings/dom_data_store.h"
@@ -3638,11 +3641,16 @@ DocumentParser* Document::CreateParser() {
                                                     parser_sync_policy_);
   }
   // FIXME: this should probably pass the frame instead
+  // TODO(neva_rust): Remove this workaround once Neva supports Rust build.
+#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   if (RuntimeEnabledFeatures::XMLParsingRustEnabled()) {
     return MakeGarbageCollected<XMLDocumentParserRs>(*this, View());
   } else {
     return MakeGarbageCollected<XMLDocumentParser>(*this, View());
   }
+#else   // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
+  return MakeGarbageCollected<XMLDocumentParser>(*this, View());
+#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 }
 
 bool Document::IsFrameSet() const {

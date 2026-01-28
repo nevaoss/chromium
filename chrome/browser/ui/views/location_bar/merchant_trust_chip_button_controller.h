@@ -22,7 +22,13 @@ class MerchantTrustService;
 // subpage.
 class MerchantTrustChipButtonController : public content::WebContentsObserver {
  public:
+  // TODO(neva): Remove this after Neva GCC supports this.
+#if defined(__GNUC__) && !defined(__clang__)
+  constexpr static const void* const kTmpChipAnimated = nullptr;
+  constexpr static const void* const kChipAnimated = &kTmpChipAnimated;
+#else   // defined(__GNUC__) && !defined(__clang__)
   constexpr static const void* const kChipAnimated = &kChipAnimated;
+#endif  // !(defined(__GNUC__) && !defined(__clang__))
 
   MerchantTrustChipButtonController(OmniboxChipButton* chip_button,
                                     LocationIconView* location_icon_view,

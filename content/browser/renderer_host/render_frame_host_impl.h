@@ -1815,6 +1815,10 @@ class CONTENT_EXPORT RenderFrameHostImpl
   // Returns whether this document is a subframe of a MHTML document.
   bool IsMhtmlSubframe() const;
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  void DropAllPeerConnections(base::OnceClosure cb) override;
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
+
   ReloadType reload_type() { return reload_type_; }
 
   // Notifies the render frame that |frame_tree_node_| has received user

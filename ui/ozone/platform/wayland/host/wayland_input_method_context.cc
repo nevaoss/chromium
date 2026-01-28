@@ -42,6 +42,10 @@
 #include "ui/ozone/platform/wayland/host/wayland_window.h"
 #include "ui/ozone/public/ozone_switches.h"
 
+#if BUILDFLAG(IS_WEBOS)
+#include "ui/ozone/platform/wayland/extensions/webos/host/webos_text_model_wrapper.h"
+#endif  // BUILDFLAG(IS_WEBOS)
+
 #if BUILDFLAG(USE_XKBCOMMON)
 #include "ui/events/ozone/layout/keyboard_layout_engine_manager.h"
 #include "ui/events/ozone/layout/xkb/xkb_keyboard_layout_engine.h"
@@ -272,6 +276,15 @@ WaylandInputMethodContext::~WaylandInputMethodContext() {
 }
 
 void WaylandInputMethodContext::CreateTextInput() {
+  // TODO(neva): On PC/Ubuntu 22.04 we have no support of text-input-v3 yet.
+  // Hence, let's use text-input-v1 by default for now.
+#if BUILDFLAG(IS_NEVA_APPRUNTIME) && !BUILDFLAG(IS_WEBOS)
+  if (connection_->text_input_manager_v1()) {
+    text_input_v1_ = connection_->EnsureTextInputV1();
+    text_input_v1_client_ =
+        std::make_unique<WaylandInputMethodContextV1Client>(this);
+  }
+#else   // BUILDFLAG(IS_NEVA_APPRUNTIME) && !BUILDFLAG(IS_WEBOS)
   // Can be specified as value for --wayland-ime-version to use text-input-v1 or
   // text-input-v3.
   constexpr char kWaylandTextInputVersion1[] = "1";
@@ -302,6 +315,7 @@ void WaylandInputMethodContext::CreateTextInput() {
     text_input_v3_client_ =
         std::make_unique<WaylandInputmethodContextV3Client>(this);
   }
+#endif  // !(BUILDFLAG(IS_NEVA_APPRUNTIME) && !BUILDFLAG(IS_WEBOS))
 }
 
 void WaylandInputMethodContext::Init() {
@@ -341,6 +355,13 @@ void WaylandInputMethodContext::SetTextInputV3ForTesting(
   text_input_v3_->SetClient(text_input_v3_client_.get());
   text_input_v1_ = nullptr;
 }
+
+#if BUILDFLAG(IS_WEBOS)
+void WaylandInputMethodContext::SetTextModelWrapper(
+    WebosTextModelWrapper* webos_text_model_wrapper) {
+  webos_text_model_wrapper_ = webos_text_model_wrapper;
+}
+#endif  // BUILDFLAG(IS_WEBOS)
 
 bool WaylandInputMethodContext::DispatchKeyEvent(const KeyEvent& key_event) {
   if (key_event.type() != EventType::kKeyPressed) {
@@ -397,6 +418,11 @@ void WaylandInputMethodContext::Reset() {
   } else if (text_input_v1_) {
     text_input_v1_->Reset();
   }
+
+#if BUILDFLAG(IS_WEBOS)
+  if (webos_text_model_wrapper_)
+    webos_text_model_wrapper_->Reset();
+#endif  // BUILDFLAG(IS_WEBOS)
 }
 
 void WaylandInputMethodContext::WillUpdateFocus(TextInputClient* old_client,
@@ -603,7 +629,17 @@ void WaylandInputMethodContext::OnPreeditString(
     const std::vector<SpanStyle>& spans,
     const gfx::Range& preedit_cursor) {
   CompositionText composition_text;
+
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  if (base::IsStringUTF8(text)) {
+    composition_text.text = base::UTF8ToUTF16(text);
+    composition_text.selection = gfx::Range(0, composition_text.text.length());
+  } else {
+    composition_text.text = base::ASCIIToUTF16(text);
+  }
+#else   // BUILDFLAG(IS_NEVA_APPRUNTIME)
   composition_text.text = base::UTF8ToUTF16(text);
+#endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
   bool has_composition_style = false;
   for (const auto& span : spans) {
     auto start_offset = OffsetFromUTF8Offset(text, span.index);
@@ -627,6 +663,7 @@ void WaylandInputMethodContext::OnPreeditString(
     composition_text.ime_text_spans.emplace_back(
         ImeTextSpan::Type::kComposition, 0, composition_text.text.length());
   }
+#if !BUILDFLAG(IS_NEVA_APPRUNTIME)
   if (!preedit_cursor.IsValid()) {
     // This is the case if a preceding preedit_cursor event in text-input-v1 was
     // not received or an explicit negative value was requested to hide the
@@ -672,7 +709,7 @@ void WaylandInputMethodContext::OnPreeditString(
     }
     composition_text.selection = gfx::Range(offsets[0], offsets[1]);
   }
-
+#endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
   surrounding_text_tracker_.OnSetCompositionText(composition_text);
   ime_delegate_->OnPreeditChanged(composition_text);
 }
@@ -731,6 +768,9 @@ void WaylandInputMethodContext::OnCursorPosition(int32_t index,
 
 void WaylandInputMethodContext::OnDeleteSurroundingText(int32_t index,
                                                         uint32_t length) {
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  ime_delegate_->OnDeleteRange(index, length);
+#else   // BUILDFLAG(IS_NEVA_APPRUNTIME)
   const auto& [surrounding_text, utf16_offset, selection, unsused_composition] =
       surrounding_text_tracker_.predicted_state();
   DCHECK(selection.IsValid());
@@ -765,6 +805,7 @@ void WaylandInputMethodContext::OnDeleteSurroundingText(int32_t index,
 
   surrounding_text_tracker_.OnExtendSelectionAndDelete(before, after);
   ime_delegate_->OnDeleteSurroundingText(before, after);
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
 }
 
 void WaylandInputMethodContext::OnKeysym(uint32_t keysym,
@@ -877,6 +918,11 @@ void WaylandInputMethodContext::MaybeUpdateActivated(
       text_input_v1_->SetContentType(attributes_.input_type, attributes_.flags,
                                      attributes_.should_do_learning);
     }
+    ///@name IS_NEVA_APPRUNTIME
+    ///@{
+    if (ime_delegate_->SystemKeyboardDisabled())
+      return;
+    ///@}
     if (!skip_virtual_keyboard_update)
       DisplayVirtualKeyboard();
   } else {

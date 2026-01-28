@@ -21,6 +21,9 @@ load("./rust.star", "rust")
 load("./simple.star", "simple")
 load("./windows.star", chromium_windows = "chromium")
 
+# NOTE(neva): Add a starlack file for Yocto build
+load("./yocto.star", "yocto")
+
 def __disable_remote(ctx, step_config):
     gn_logs_data = gn_logs.read(ctx)
     if gn_logs_data.get("use_remoteexec") == "true":
@@ -102,6 +105,12 @@ def init(ctx):
     handlers.update(rust.handlers)
     handlers.update(simple.handlers)
     handlers.update(reproxy.handlers)
+
+    # NOTE(neva): yocto star should be after all other step_config calls
+    # to ensure its platform modifications are applied last.
+    step_config = yocto.step_config(ctx, step_config)
+    filegroups.update(yocto.filegroups(ctx))
+    handlers.update(yocto.handlers)
 
     return module(
         "config",

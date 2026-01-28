@@ -19,12 +19,19 @@ config("compiler") {
     import("//build/config/arm.gni")
     cflags = []
     asmflags = []
+    # Neva: Switching off compiler branch protection feature for ARMv8.0
+    # to successfully build webOS for RP build #2250
+    defines = []
     if (arm_control_flow_integrity == "standard") {
       cflags += [ "-mbranch-protection=standard" ]
       asmflags += [ "-mbranch-protection=standard" ]
     } else if (arm_control_flow_integrity == "pac") {
       cflags += [ "-mbranch-protection=pac-ret" ]
       asmflags += [ "-mbranch-protection=pac-ret" ]
+    # Neva: Switching off compiler branch protection feature for ARMv8.0
+    # to successfully build webOS for RP build #2250
+    } else {
+      defines += [ "NO_ARM_CONTROL_FLOW_INTEGRITY" ]
     }
   }
 }

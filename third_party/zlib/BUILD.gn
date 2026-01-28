@@ -4,6 +4,7 @@
 
 import("//build/config/compiler/compiler.gni")
 import("//build/config/dcheck_always_on.gni")
+import("//neva/neva.gni")
 
 declare_args() {
   # Expose zlib's symbols, used by Node.js to provide zlib APIs for its native
@@ -152,7 +153,13 @@ if (use_arm_neon_optimizations) {
       assert(!use_thin_lto,
              "ThinLTO fails mixing different module-level targets")
       if (current_cpu == "arm64") {
-        cflags_c = [ "-march=armv8-a+aes+crc" ]
+        # NOTE(neva): Provided an ability to disable Advanced Encryption
+        # Standard (AES) features set for ARM in zlib component.
+        if (disable_zlib_arm_aes_cflag) {
+          cflags_c = [ "-march=armv8-a+crc" ]
+        } else {
+          cflags_c = [ "-march=armv8-a+aes+crc" ]
+        }
       } else if (current_cpu == "arm") {
         cflags_c = [ "-march=armv8-a+crc" ]
       } else {

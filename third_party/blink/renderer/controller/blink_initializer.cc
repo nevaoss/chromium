@@ -83,6 +83,10 @@
 #include "third_party/blink/renderer/controller/private_memory_footprint_provider.h"
 #endif
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+#include "third_party/blink/renderer/controller/private_memory_footprint_provider.h"
+#endif
+
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
 #include "third_party/blink/renderer/controller/memory_usage_monitor_posix.h"
 #endif
@@ -309,6 +313,14 @@ void BlinkInitializer::RegisterMemoryWatchers(Platform* platform) {
 #endif
   MemorySaverController::Initialize();
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  // Initialize UserLevelMemoryPressureSignalGenerator so it starts monitoring.
+  if (platform->IsUserLevelMemoryPressureSignalEnabled()) {
+    UserLevelMemoryPressureSignalGenerator::Initialize(platform,
+                                                       main_thread_task_runner);
+  }
+#endif
+
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID) || \
     BUILDFLAG(IS_APPLE) || BUILDFLAG(IS_WIN)
   // Start reporting the highest private memory footprint after the first
@@ -316,7 +328,7 @@ void BlinkInitializer::RegisterMemoryWatchers(Platform* platform) {
   HighestPmfReporter::Initialize(main_thread_task_runner);
 #endif
 
-#if BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_NEVA_APPRUNTIME)
   // Initialize PrivateMemoryFootprintProvider to start providing the value
   // for the browser process.
   PrivateMemoryFootprintProvider::Initialize(main_thread_task_runner);

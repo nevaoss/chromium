@@ -570,6 +570,14 @@ bool GpuInit::InitializeAndStartSandbox(base::CommandLine* command_line,
 
   ResumeGpuWatchdog(watchdog_thread_.get());
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  LOG(INFO) << __func__ << "(): "
+            << "GL is "
+            << gl::GetGLImplementationGLName(gl::GetGLImplementationParts())
+            << ", ANGLE is "
+            << gl::GetGLImplementationANGLEName(gl::GetGLImplementationParts());
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
+
   auto impl = gl::GetGLImplementationParts();
   bool gl_disabled = impl == gl::kGLImplementationDisabled;
 
@@ -1156,6 +1164,12 @@ void GpuInit::InitializeInProcess(base::CommandLine* command_line,
 #endif  // BUILDFLAG(IS_OZONE)
 
   DisableInProcessGpuVulkan(&gpu_feature_info_, &gpu_preferences_);
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  LOG(INFO) << __func__ << "(): " << "GL is "
+            << gl::GetGLImplementationGLName(gl::GetGLImplementationParts())
+            << ", ANGLE is "
+            << gl::GetGLImplementationANGLEName(gl::GetGLImplementationParts());
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
 #endif  // BUILDFLAG(IS_ANDROID)
 
   InitializeDawnProcs();

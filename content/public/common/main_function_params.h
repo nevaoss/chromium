@@ -35,7 +35,7 @@ using CreatedMainPartsClosure = base::OnceCallback<void(BrowserMainParts*)>;
 // Wrapper to the parameter list for the "main" entry points (browser, renderer,
 // plugin) to shield the call sites from the differences between platforms
 // (e.g., POSIX doesn't need to pass any sandbox information).
-struct CONTENT_EXPORT MainFunctionParams {
+struct CBE_CONTENT_EXPORT CONTENT_EXPORT MainFunctionParams {
   explicit MainFunctionParams(const base::CommandLine* cl);
   ~MainFunctionParams();
 

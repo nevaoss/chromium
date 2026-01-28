@@ -1,0 +1,79 @@
+// Copyright 2012 The Chromium Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+// (This file was partially copied from //chrome/common/extensions/api.)
+
+// This features file defines extension APIs implemented under src/chrome.
+// See chrome/common/extensions/api/_features.md to understand this file, as
+// well as feature.h, simple_feature.h, and feature_provider.h.
+//
+// Note that specifying "web_page", "privileged_web_page", or "all" as a context
+// type will require manually updating chrome/renderer/resources/dispatcher.cc.
+
+{
+  "app": {
+    "channel": "stable",
+    "extension_types": ["extension", "legacy_packaged_app"],
+    "contexts": [
+      "privileged_extension",
+      "unprivileged_extension",
+      "content_script",
+      "web_page",
+      "privileged_web_page"
+    ],
+    "disallow_for_service_workers": true,
+    "max_manifest_version": 2,
+    // Any webpage can use the app API.
+    "matches": ["<all_urls>"]
+  },
+  "action": {
+    "dependencies": ["manifest:action"],
+    "contexts": ["privileged_extension"]
+  },
+  "browserAction": {
+    "dependencies": ["manifest:browser_action"],
+    "contexts": ["privileged_extension"]
+  },
+  "cookies": {
+    "dependencies": ["permission:cookies"],
+    "contexts": ["privileged_extension"]
+  },
+  "extension": {
+    "channel": "stable",
+    "extension_types": ["extension", "legacy_packaged_app"],
+    "contexts": ["privileged_extension"]
+  },
+  "extension.inIncognitoContext": {
+    "contexts": [
+      "privileged_extension",
+      "unprivileged_extension",
+      "content_script"
+    ]
+  },
+  "notifications": {
+    "dependencies": ["permission:notifications"],
+    "contexts": ["privileged_extension"]
+  },
+  "pageAction": {
+    "dependencies": ["manifest:page_action"],
+    "contexts": ["privileged_extension"]
+  },
+  "scripting": {
+    "dependencies": ["permission:scripting"],
+    "contexts": ["privileged_extension"]
+  },
+  "tabs": {
+    "channel": "stable",
+    "extension_types": ["extension", "legacy_packaged_app"],
+    "contexts": ["privileged_extension"],
+    "default_parent": true
+  },
+  "webNavigation": {
+    "dependencies": ["permission:webNavigation"],
+    "contexts": ["privileged_extension"]
+  },
+  "windows": {
+    "dependencies": ["api:tabs"],
+    "contexts": ["privileged_extension"]
+  }
+}

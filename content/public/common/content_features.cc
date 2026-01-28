@@ -117,7 +117,10 @@ BASE_FEATURE(kAudioServiceLaunchOnStartup, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Runs the audio service in a separate process.
 BASE_FEATURE(kAudioServiceOutOfProcess,
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+// NOTE(neva): Set kAudioServiceOutOfProcess to false by default for
+// webOS to reduce memory usage.
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) && \
+    !BUILDFLAG(IS_WEBOS)
              base::FEATURE_ENABLED_BY_DEFAULT
 #else
              base::FEATURE_DISABLED_BY_DEFAULT

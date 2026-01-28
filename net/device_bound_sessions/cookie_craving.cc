@@ -118,7 +118,12 @@ base::expected<CookieCraving, SessionError> CookieCraving::Create(
   }
 
   static constexpr auto kPermittedAttributes =
+  // TODO(neva): Try to contribute it into upstream.
+#if defined(__GNUC__) && !defined(__clang__)
+      base::MakeFixedFlatSet<std::string_view>(
+#else   // defined(__GNUC__) && !defined(__clang__)
       base::MakeFixedFlatSet<std::string>(
+#endif  // !(defined(__GNUC__) && !defined(__clang__))
           {"domain", "path", "secure", "httponly", "samesite"});
   if (!parsed_cookie.ForEachAttribute(
           [](std::string_view attribute, std::string_view value) {

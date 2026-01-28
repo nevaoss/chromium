@@ -10,6 +10,8 @@
 #include "media/gpu/h264_rate_control_util.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
+#include <cmath>
+
 namespace media {
 namespace {
 constexpr int kCommonFps = 30;

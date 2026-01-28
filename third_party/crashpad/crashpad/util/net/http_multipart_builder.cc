@@ -16,6 +16,7 @@
 
 #include <string.h>
 #include <sys/types.h>
+#include <cstring>
 
 #include <utility>
 #include <vector>

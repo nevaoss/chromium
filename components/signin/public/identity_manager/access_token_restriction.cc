@@ -24,7 +24,12 @@ const char* const kExtensionsIdentityAPIOAuthConsumerName =
 bool IsUnrestrictedOAuth2Scopes(const std::string& scope) {
   // clang-format off
 
+  // TODO(neva): Remove this workaround when Neva GCC version upgraded to 12+.
+#if defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
+  static const base::NoDestructor<base::flat_set<std::string_view>> scopes{
+#else   // defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
   static const base::NoDestructor<base::flat_set<std::string_view>> scopes(
+#endif  // !(defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__))
     {
       GaiaConstants::kGoogleUserInfoEmail,
       GaiaConstants::kGoogleUserInfoProfile,
@@ -43,7 +48,12 @@ bool IsUnrestrictedOAuth2Scopes(const std::string& scope) {
 
       // Required by cloud policy.
       GaiaConstants::kDeviceManagementServiceOAuth,
+  // TODO(neva): Remove this workaround when Neva GCC version upgraded to 12+.
+#if defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
+  }};
+#else   // defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
   });
+#endif  // !(defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__))
   // clang-format on
 
   return scopes->contains(scope);
@@ -54,7 +64,12 @@ bool IsUnrestrictedOAuth2Scopes(const std::string& scope) {
 // required.
 bool IsUnconsentedSignedInOAuth2Scopes(const std::string& scope) {
   // clang-format off
+  // TODO(neva): Remove this workaround when Neva GCC version upgraded to 12+.
+#if defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
+  static const base::NoDestructor<base::flat_set<std::string_view>> scopes {
+#else   // defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
   static const base::NoDestructor<base::flat_set<std::string_view>> scopes (
+#endif  // !(defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__))
     {
       GaiaConstants::kFCMOAuthScope,
 
@@ -167,7 +182,12 @@ bool IsUnconsentedSignedInOAuth2Scopes(const std::string& scope) {
       GaiaConstants::kTachyonOAuthScope,
 #endif  // BUILDFLAG(IS_CHROMEOS)
       // clang-format on
+  // TODO(neva): Remove this workaround when Neva GCC version upgraded to 12+.
+#if defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
+  }};
+#else   // defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
   });
+#endif  // !(defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__))
 
   std::string plus_address_scope =
       plus_addresses::features::kEnterprisePlusAddressOAuthScope.Get();

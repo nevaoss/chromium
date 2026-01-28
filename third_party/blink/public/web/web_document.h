@@ -95,6 +95,10 @@ class BLINK_EXPORT WebDocument : public WebNode {
   WebSecurityOrigin GetSecurityOrigin() const;
   bool IsSecureContext() const;
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  void GrantLoadLocalResources();
+#endif
+
   WebString Encoding() const;
   WebString ContentLanguage() const;
   WebString GetReferrer() const;

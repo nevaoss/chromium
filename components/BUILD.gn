@@ -18,6 +18,8 @@ import("//components/supervised_user/buildflags.gni")
 import("//extensions/buildflags/buildflags.gni")
 import("//media/media_options.gni")
 import("//net/features.gni")
+# TODO(neva_rust): Remove this workaround once Neva supports Rust build.
+import("//neva/neva.gni")
 import("//pdf/features.gni")
 import("//printing/buildflags/buildflags.gni")
 import("//rlz/buildflags/buildflags.gni")
@@ -409,6 +411,11 @@ test("components_unittests") {
     "//components/webui/flags:unit_tests",
   ]
 
+  # TODO(neva_rust): Remove this workaround when Neva supports Rust build.
+  if (disable_rust_for_neva) {
+    deps -= [ "//components/user_data_importer/utility:unit_tests" ]
+  }
+
   if (enable_supervised_users) {
     deps += [
       "//components/supervised_user/core/browser:unit_tests",
@@ -640,6 +647,11 @@ test("components_unittests") {
       "//components/spellcheck/renderer:unit_tests",
       "//components/user_data_importer/content:unit_tests",
     ]
+
+    # TODO(neva_rust): Remove this workaround when Neva supports Rust build.
+    if (disable_rust_for_neva) {
+      deps -= [ "//components/user_data_importer/content:unit_tests" ]
+    }
 
     if (!is_fuchsia) {  #!iOS and!Fuchsia
       deps += [

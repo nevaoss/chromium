@@ -82,8 +82,15 @@ void WriteCountryNativeNamesInlFile(
       "generate_country_native_names.cc.\n"
       "// Do not edit manually.\n"
       "namespace {\n\n"
+// TODO(neva): Remove this workaround once GCC fully supports constexpr
+// std::string in aggregate initialization (fixed_flat_map).
+#if defined(__GNUC__) && !defined(__clang__)
+      "auto kCountryNativeNames = "
+      "std::map<std::u16string_view, "
+#else   // defined(__GNUC__) && !defined(__clang__)
       "constexpr auto kCountryNativeNames = "
       "base::MakeFixedFlatMap<std::u16string_view, "
+#endif  // !(defined(__GNUC__) && !defined(__clang__))
       "std::string>({\n";
 
   for (const auto& [native_name, country_code] : country_native_names) {

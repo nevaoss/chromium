@@ -2609,6 +2609,18 @@
       ]
     },
     {
+      "id": 9998,
+      "description": "Invalid return value when getting GL_TIMESTAMP on O22",
+      "os": {
+        "type": "linux"
+      },
+      "gl_vendor": "ARM",
+      "gl_renderer": "Mali-G52",
+      "disabled_extensions": [
+        "GL_EXT_disjoint_timer_query"
+      ]
+    },
+    {
       "id": 387,
       "description": "Windows hardware decoding doesn't support a set of legacy AMD GPUs",
       "cr_bugs": [822644, 1187900],

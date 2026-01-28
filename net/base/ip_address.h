@@ -127,8 +127,14 @@ class NET_EXPORT IPAddressBytes {
 
 namespace internal {
 
+// TODO(neva): Remove this workaround when Neva GCC version upgraded to 12+.
+#if defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
+inline bool ParseIPLiteralToBytes(std::string_view ip_literal,
+                                  IPAddressBytes* bytes) {
+#else   // defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
 constexpr bool ParseIPLiteralToBytes(std::string_view ip_literal,
                                      IPAddressBytes* bytes) {
+#endif  // !(defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__))
   // |ip_literal| could be either an IPv4 or an IPv6 literal. If it contains
   // a colon however, it must be an IPv6 address.
   if (ip_literal.find(':') != std::string_view::npos) {
@@ -267,7 +273,12 @@ class NET_EXPORT IPAddress {
   //
   // When parsing fails, the original value of |this| will be overwritten such
   // that |this->empty()| and |!this->IsValid()|.
+  // TODO(neva): Remove this workaround when Neva GCC version upgraded to 12+.
+#if defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
+  [[nodiscard]] bool AssignFromIPLiteral(
+#else   // defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
   [[nodiscard]] constexpr bool AssignFromIPLiteral(
+#endif  // !(defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__))
       std::string_view ip_literal) {
     bool success = internal::ParseIPLiteralToBytes(ip_literal, &ip_address_);
     if (!success) {

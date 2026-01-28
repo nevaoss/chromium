@@ -1,0 +1,44 @@
+// Copyright 2012 The Chromium Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+// (This file was partially copied from //chrome/common/extensions/api.)
+
+[
+  {
+    "namespace": "pageAction",
+    "description": "Use the <code>chrome.pageAction</code> API to put icons in the main Google Chrome toolbar, to the right of the address bar. Page actions represent actions that can be taken on the current page, but that aren't applicable to all pages. Page actions appear grayed out when inactive.",
+    "compiler_options": {
+      "implemented_in": "neva/extensions/browser/api/extension_action/extension_action_api.h"
+    },
+    "functions": [
+      {
+        "name": "show",
+        "type": "function",
+        "description": "Shows the page action. The page action is shown whenever the tab is selected.",
+        "parameters": [
+          {"type": "integer", "name": "tabId", "minimum": 0, "description": "The id of the tab for which you want to modify the page action."}
+        ],
+        "returns_async": {"name": "callback", "parameters": [], "optional": true}
+      },
+      {
+        "name": "setPopup",
+        "type": "function",
+        "description": "Sets the HTML document to be opened as a popup when the user clicks on the page action's icon.",
+        "parameters": [
+          {
+            "name": "details",
+            "type": "object",
+            "properties": {
+              "tabId": {"type": "integer", "minimum": 0, "description": "The id of the tab for which you want to modify the page action."},
+              "popup": {
+                "type": "string",
+                "description": "The relative path to the HTML file to show in a popup. If set to the empty string (<code>''</code>), no popup is shown."
+              }
+            }
+          }
+        ],
+        "returns_async": {"name": "callback", "parameters": [], "optional": true}
+      }
+    ]
+  }
+]

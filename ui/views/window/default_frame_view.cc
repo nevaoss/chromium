@@ -397,7 +397,12 @@ void DefaultFrameView::PaintTitleBar(gfx::Canvas* canvas) {
   rect.set_x(GetMirroredXForRect(title_bounds_));
   canvas->DrawStringRect(
       delegate->GetWindowTitle(),
+// TODO(neva): Remove this workaround when Neva initializes TypographyProvider.
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+      gfx::FontList(),
+#else   // BUILDFLAG(IS_NEVA_APPRUNTIME)
       TypographyProvider::Get().GetWindowTitleFontList(),
+#endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
       GetColorProvider()->GetColor(ui::kColorCustomFrameCaptionForeground),
       rect);
 }
@@ -548,7 +553,12 @@ void DefaultFrameView::LayoutTitleBar() {
   int title_x = show_window_icon ? icon_bounds.right() + kTitleIconOffsetX
                                  : icon_bounds.x();
   int title_height =
+// TODO(neva): Remove this workaround when Neva initializes TypographyProvider.
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+      gfx::FontList().GetHeight();
+#else   // BUILDFLAG(IS_NEVA_APPRUNTIME)
       TypographyProvider::Get().GetWindowTitleFontList().GetHeight();
+#endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
   // We bias the title position so that when the difference between the icon and
   // title heights is odd, the extra pixel of the title is above the vertical
   // midline rather than below.  This compensates for how the icon is already

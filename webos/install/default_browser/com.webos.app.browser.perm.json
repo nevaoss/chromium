@@ -1,0 +1,10 @@
+{
+    "com.webos.notification.client.*": [
+      "notification.operation"
+    ],
+    "com.webos.applicationManager.client.*": [
+      "application.launcher",
+      "application.operation"
+    ]
+
+}

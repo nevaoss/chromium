@@ -107,6 +107,15 @@ class ThemeProvider;
 class TransformRecorder;
 }  // namespace ui
 
+// TODO(neva): Remove when OwnedByClientPassKey() is not in use in
+// neva_app_runtime.
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+namespace neva_app_runtime {
+class WebAppWindow;
+class PageView;
+}  // namespace neva_app_runtime
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
+
 using ui::OSExchangeData;
 
 namespace views {
@@ -338,6 +347,12 @@ class VIEWS_EXPORT View : public ui::LayerDelegate,
     friend class ::exo::ShellSurfaceBase;
     friend class ::eye_dropper::EyeDropperView;
     friend class SubmenuView;
+    // TODO(neva): Remove when OwnedByClientPassKey() is not in use in
+    // neva_app_runtime.
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+    friend class neva_app_runtime::WebAppWindow;
+    friend class neva_app_runtime::PageView;
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
     FRIEND_TEST_ALL_PREFIXES(WebViewUnitTest, CrashedOverlayView);
 
     OwnedByClientPassKey() = default;

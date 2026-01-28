@@ -39,6 +39,23 @@ namespace {
 constexpr base::TimeDelta kFirstMeasurementInterval = base::Minutes(1);
 constexpr base::TimeDelta kDefaultMeasurementInterval = base::Seconds(4);
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+base::TimeDelta MeasurementInterval() {
+  static const base::FeatureParam<base::TimeDelta> kMeasurementInterval{
+      &content::features::kUserLevelMemoryPressureSignal,
+      "measurement_interval", kDefaultMeasurementInterval};
+  return kMeasurementInterval.Get();
+}
+
+// FIXME(neva): Need to check the default value.
+constexpr size_t kMemoryThresholdMB = 738;
+base::ByteCount MemoryThresholdParam() {
+  static const base::FeatureParam<int> kMemoryThresholdParam{
+      &content::features::kUserLevelMemoryPressureSignal, "memory_threshold_mb",
+      kMemoryThresholdMB};
+  return base::MiB(kMemoryThresholdParam.Get());
+}
+#else   // !BUILDFLAG(IS_NEVA_APPRUNTIME)
 // Time interval between measuring total private memory footprint.
 base::TimeDelta MeasurementIntervalFor3GbDevices() {
   static const base::FeatureParam<base::TimeDelta> kMeasurementInterval{
@@ -84,11 +101,20 @@ constexpr base::ByteCount kMemoryThresholdOf6GbDevices = base::MiB(494);
 base::ByteCount MemoryThresholdParamFor6GbDevices() {
   return kMemoryThresholdOf6GbDevices;
 }
+#endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
 
 }  // namespace
 
 // static
 void UserLevelMemoryPressureSignalGenerator::Initialize() {
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  if (features::IsUserLevelMemoryPressureSignalEnabled()) {
+    UserLevelMemoryPressureSignalGenerator::Get().Start(
+        MemoryThresholdParam(), MeasurementInterval(),
+        features::MinUserMemoryPressureInterval());
+    return;
+  }
+#else   // BUILDFLAG(IS_NEVA_APPRUNTIME)
   // The metrics only feature will override the memory pressure signal features
   // on all devices to determine the most suitable memory heuristics. Memory
   // pressure signals will not be sent in the experiment group.
@@ -120,6 +146,7 @@ void UserLevelMemoryPressureSignalGenerator::Initialize() {
   }
 
   // No group defined for >6 GB devices.
+#endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
 }
 
 // static
@@ -173,6 +200,7 @@ void UserLevelMemoryPressureSignalGenerator::CollectMemoryMetrics() {
   for (RenderProcessHost::iterator iter = RenderProcessHost::AllHostsIterator();
        !iter.IsAtEnd(); iter.Advance()) {
     total_process_count++;
+#if !BUILDFLAG(IS_NEVA_APPRUNTIME)
     RenderProcessHost* host = iter.GetCurrentValue();
     if (host && host->IsInitializedAndNotDead() &&
         host->GetProcess().IsValid() &&
@@ -180,6 +208,7 @@ void UserLevelMemoryPressureSignalGenerator::CollectMemoryMetrics() {
             base::android::ChildBindingState::VISIBLE) {
       visible_renderer_count++;
     }
+#endif
   }
 
   latest_metrics_ = UserLevelMemoryPressureMetrics{
@@ -197,6 +226,10 @@ void UserLevelMemoryPressureSignalGenerator::OnTimerFired() {
       GetTotalPrivateFootprintVisibleOrHigherPriorityRenderers();
 
   if (total_pmf > memory_threshold_) {
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+    VLOG(1) << __func__ << " Exceed memory threshold : " << total_pmf
+            << "/" << memory_threshold_;
+#endif
     NotifyMemoryPressure();
     interval = minimum_interval_;
 
@@ -284,11 +317,15 @@ base::ByteCount UserLevelMemoryPressureSignalGenerator::
     if (!process.IsValid())
       continue;
 
+    // TODO(neva) : Need to consider whether to exclude invisible renderer
+    // process.
+#if !BUILDFLAG(IS_NEVA_APPRUNTIME)
     // Ignore renderer processes with invisible or lower priority.
     if (host->GetEffectiveChildBindingState() <
         base::android::ChildBindingState::VISIBLE) {
       continue;
     }
+#endif
 
     // Because of the "hidepid=2" mount option for /proc on Android,
     // the browser process cannot open /proc/{render process pid}/maps and

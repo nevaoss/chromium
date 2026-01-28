@@ -188,6 +188,7 @@ class MEDIA_EXPORT VideoDecoderConfig {
   EncryptionScheme encryption_scheme_ = EncryptionScheme::kUnencrypted;
 
   VideoColorSpace color_space_info_;
+
   std::optional<gfx::HDRMetadata> hdr_metadata_;
 
   // Not using DISALLOW_COPY_AND_ASSIGN here intentionally to allow the compiler

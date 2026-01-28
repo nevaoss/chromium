@@ -183,8 +183,14 @@ std::string GetDebugJSONForUrlKeywordSet(
   }
 
   std::string debug_string;
+// TODO(neva): Remove this workaround when Neva GCC version upgraded to 12.3+.
+#if defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
+  if (!base::JSONWriter::WriteWithOptions(
+          keyword_list, base::JsonOptions::OPTIONS_PRETTY_PRINT,
+#else   // defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
   if (!base::JSONWriter::WriteWithOptions(
           keyword_list, base::JSONWriter::OPTIONS_PRETTY_PRINT,
+#endif  // !(defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__))
           &debug_string)) {
     debug_string = "Error: Could not write keywords list to JSON.";
   }

@@ -42,6 +42,10 @@ class MEDIA_EXPORT AudioInputDelegate {
 
   // Stream control:
   virtual void OnRecordStream() = 0;
+#if defined(USE_NEVA_SUSPEND_MEDIA_CAPTURE)
+  virtual void OnPauseStream() = 0;
+  virtual void OnResumeStream() = 0;
+#endif
   virtual void OnSetVolume(double volume) = 0;
   virtual void OnSetOutputDeviceForAec(
       const std::string& raw_output_device_id) = 0;

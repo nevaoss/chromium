@@ -463,7 +463,8 @@ class AudioWorkletThreadPriorityTest
 
     // TODO(crbug.com/1022888): The worklet thread priority is always NORMAL
     // on OS_LINUX and OS_CHROMEOS regardless of the thread priority setting.
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
+    // NOTE(neva): expected_priority doesn't need to be changed in webOS.
+#if !BUILDFLAG(IS_WEBOS) && (BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS))
     if (expected_priority == base::ThreadType::kRealtimeAudio ||
         expected_priority == base::ThreadType::kDisplayCritical) {
       EXPECT_EQ(actual_priority, base::ThreadType::kDefault);

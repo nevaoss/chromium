@@ -166,6 +166,10 @@ class ExtensionHost : public DeferredStartRenderHost,
   void ExitPictureInPicture() override;
   std::string GetTitleForMediaControls(
       content::WebContents* web_contents) override;
+#if defined(USE_NEVA_CHROME_EXTENSIONS)
+  void ResizeDueToAutoResize(content::WebContents* web_contents,
+                             const gfx::Size& new_size) override {}
+#endif
 
   // ExtensionRegistryObserver:
   void OnExtensionReady(content::BrowserContext* browser_context,

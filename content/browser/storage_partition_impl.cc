@@ -3609,6 +3609,14 @@ void StoragePartitionImpl::GetQuotaSettings(
     return;
   }
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  if (GetContentClient()->browser()->HasQuotaSettings()) {
+    GetContentClient()->browser()->GetQuotaSettings(browser_context_, this,
+                                                    std::move(callback));
+    return;
+  }
+#endif
+
   storage::GetNominalDynamicSettings(
       GetPath(), browser_context_->IsOffTheRecord(),
       storage::GetDefaultDeviceInfoHelper(), std::move(callback));

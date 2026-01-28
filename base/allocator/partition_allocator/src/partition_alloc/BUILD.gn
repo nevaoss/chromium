@@ -97,6 +97,11 @@ config("dependants_extra_warnings") {
     } else {
       cflags += [ "-pedantic" ]
     }
+
+    # TODO(neva): To avoid build errors related to ICECC usage in Neva.
+    if (use_neva_appruntime) {
+      cflags -= [ "-Wunused-macros" ]
+    }
   }
 }
 

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<grit latest_public_release="0" current_release="1">
+  <outputs>
+    <output filename="grit/app_runtime_network_error_resources.h" type="rc_header">
+      <emit emit_type='prepend'></emit>
+    </output>
+    <output filename="network_error_resources.pak" type="data_package" />
+  </outputs>
+  <release seq="1">
+    <includes>
+      <include name="IDR_APP_RUNTIME_NETWORK_ERROR_PAGE" file="app_runtime_network_error_page.html" flattenhtml="true" type="BINDATA" />
+    </includes>
+  </release>
+</grit>

@@ -174,6 +174,14 @@ class CONTENT_EXPORT RendererBlinkPlatformImpl : public BlinkPlatformImpl {
   bool IsWebRtcHWEncodingEnabled() override;
   bool IsWebRtcHWDecodingEnabled() override;
   bool AllowsLoopbackInPeerConnection() override;
+
+#if defined(USE_NEVA_SUSPEND_MEDIA_CAPTURE)
+  void AddSourceToAudioCapturerSourceManager(
+      media::AudioCapturerSource* source) override;
+  void RemoveSourceFromAudioCapturerSourceManager(
+      media::AudioCapturerSource* source) override;
+#endif
+
   blink::WebVideoCaptureImplManager* GetVideoCaptureImplManager() override;
   std::unique_ptr<blink::WebGraphicsContext3DProvider>
   CreateWebGLGraphicsContextProvider(
@@ -255,13 +263,13 @@ class CONTENT_EXPORT RendererBlinkPlatformImpl : public BlinkPlatformImpl {
   base::PlatformThreadId GetIOThreadId() const override;
   scoped_refptr<base::SingleThreadTaskRunner> VideoFrameCompositorTaskRunner()
       override;
-#if BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_NEVA_APPRUNTIME)
   void SetPrivateMemoryFootprint(
       uint64_t private_memory_footprint_bytes) override;
   bool IsUserLevelMemoryPressureSignalEnabled() override;
   std::pair<base::TimeDelta, base::TimeDelta>
   InertAndMinimumIntervalOfUserLevelMemoryPressureSignal() override;
-#endif  // BUILDFLAG(IS_ANDROID)
+#endif  // BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_NEVA_APPRUNTIME)
   void OnV8HeapLastResortGC() override;
 
   // Tells this platform that the renderer is locked to a site (i.e., a scheme

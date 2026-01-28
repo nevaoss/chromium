@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+
+<script>
+    function load() {
+      let text = "Orientation: ";
+
+      if (window.matchMedia('(orientation: portrait)').matches)
+        text += "portrait";
+      else
+        text += "landscape";
+
+      document.getElementById("text").innerText = text;
+    }
+</script>
+
+<body onload = "load();" style="background-color: white">
+  <p id="text" style="font-size: 30px;"></p>
+</body>

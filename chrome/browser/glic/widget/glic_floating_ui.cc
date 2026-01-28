@@ -30,6 +30,9 @@
 #include "ui/views/win/hwnd_util.h"
 #endif  // BUILDFLAG(IS_WIN)
 
+// TODO(neva): Remove this include once upstream is updated.
+#include "chrome/browser/glic/widget/glic_view.h"
+
 namespace glic {
 
 namespace {

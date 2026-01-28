@@ -13,6 +13,10 @@
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/webui_bundled_code_cache_fetcher.h"
 #include "third_party/blink/renderer/platform/weborigin/scheme_registry.h"
 
+#if defined(USE_FILESCHEME_CODECACHE)
+#include "third_party/blink/renderer/platform/runtime_enabled_features.h"
+#endif
+
 namespace blink {
 
 namespace {
@@ -42,7 +46,14 @@ bool ShouldFetchCodeCache(const network::ResourceRequest& request) {
       Platform::Current()->ShouldUseCodeCacheWithHashing(
           WebURL(KURL(request.url)));
   if (!request.url.SchemeIsHTTPOrHTTPS() && !should_use_source_hash) {
+#if defined(USE_FILESCHEME_CODECACHE)
+    if (!request.url.SchemeIsFile() ||
+        !RuntimeEnabledFeatures::LocalResourceCodeCacheEnabled()) {
+      return false;
+    }
+#else
     return false;
+#endif
   }
 
   // Supports script resource requests and shared storage worklet module

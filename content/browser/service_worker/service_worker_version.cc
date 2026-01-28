@@ -70,6 +70,10 @@
 #include "third_party/blink/public/common/storage_key/storage_key.h"
 #include "third_party/blink/public/mojom/service_worker/service_worker.mojom.h"
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+#include "third_party/blink/public/common/neva/neva_blink_features.h"
+#endif
+
 namespace content {
 namespace {
 
@@ -668,8 +672,19 @@ bool ServiceWorkerVersion::OnRequestTermination() {
       // necessarily being kept alive due to an inflight request, and will only
       // send a RequestTermination() once that request settles (which is the
       // intended behavior).
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+      auto idle_delay =
+          base::FeatureList::IsEnabled(
+              blink::features::neva::kSetServiceWorkerIdleDelay)
+              ? blink::features::neva::kServiceWorkerDefaultIdleDelay.Get()
+              : base::Seconds(
+                    blink::mojom::kServiceWorkerDefaultIdleDelayInSeconds);
+
+      endpoint()->SetIdleDelay(idle_delay);
+#else
       endpoint()->SetIdleDelay(
           base::Seconds(blink::mojom::kServiceWorkerDefaultIdleDelayInSeconds));
+#endif
     }
   }
 

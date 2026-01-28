@@ -21,6 +21,10 @@
 #include "ui/ozone/platform/wayland/host/wayland_window_manager.h"
 #include "ui/ozone/platform/wayland/host/xdg_session_manager.h"
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+#include "ui/ozone/platform/wayland/host/wayland_seat_manager.h"
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
+
 class SkBitmap;
 
 struct wl_cursor;
@@ -70,6 +74,11 @@ class ZwpIdleInhibitManager;
 class ZwpPrimarySelectionDeviceManager;
 class ZwpTextInputV1;
 class ZwpTextInputV3;
+
+///@name IS_NEVA_APPRUNTIME
+///@{
+class WaylandExtensions;
+///@}
 
 class WaylandConnection {
  public:
@@ -153,7 +162,11 @@ class WaylandConnection {
 
   WaylandEventSource* event_source() const { return event_source_.get(); }
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  WaylandSeat* seat() const;
+#else   // BUILDFLAG(IS_NEVA_APPRUNTIME)
   WaylandSeat* seat() const { return seat_.get(); }
+#endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
 
   WaylandClipboard* clipboard() const { return clipboard_.get(); }
 
@@ -164,9 +177,13 @@ class WaylandConnection {
   WaylandTabletManager* tablet_manager() const { return tablet_manager_.get(); }
 
   // Returns the cursor position, which may be null.
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  WaylandCursorPosition* wayland_cursor_position() const;
+#else   // BUILDFLAG(IS_NEVA_APPRUNTIME)
   WaylandCursorPosition* wayland_cursor_position() const {
     return cursor_position_.get();
   }
+#endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
 
   WaylandBufferManagerHost* buffer_manager_host() const {
     return buffer_manager_host_.get();
@@ -288,6 +305,11 @@ class WaylandConnection {
   bool ShouldUseOverlayDelegation() const;
 
   wl::SerialTracker& serial_tracker() { return serial_tracker_; }
+
+  ///@name IS_NEVA_APPRUNTIME
+  ///@{
+  WaylandExtensions* extensions() { return extensions_.get(); }
+  ///@}
 
   void DumpState(std::ostream& out) const;
 
@@ -451,6 +473,10 @@ class WaylandConnection {
   std::unique_ptr<WaylandZwpRelativePointerManager>
       zwp_relative_pointer_manager_;
   std::unique_ptr<WaylandZwpPointerGestures> zwp_pointer_gestures_;
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  // Manages multiple Wayland seats.
+  std::unique_ptr<WaylandSeatManager> seat_manager_;
+#endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
   std::unique_ptr<WaylandSeat> seat_;
   std::unique_ptr<WaylandBufferManagerHost> buffer_manager_host_;
   std::unique_ptr<XdgActivation> xdg_activation_;
@@ -458,6 +484,11 @@ class WaylandConnection {
   std::unique_ptr<ZwpIdleInhibitManager> zwp_idle_inhibit_manager_;
   std::unique_ptr<OverlayPrioritizer> overlay_prioritizer_;
   std::unique_ptr<SinglePixelBuffer> single_pixel_buffer_;
+
+  ///@name IS_NEVA_APPRUNTIME
+  ///@{
+  std::unique_ptr<WaylandExtensions> extensions_;
+  ///@}
 
   // Clipboard-related objects. |clipboard_| must be declared after all
   // DeviceManager instances it depends on, otherwise tests may crash with

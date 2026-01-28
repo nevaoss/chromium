@@ -1,0 +1,50 @@
+# Copyright 2019 LG Electronics, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+headers = [
+  "//neva/app_runtime/public/app_runtime_constants.h",
+  "//neva/app_runtime/public/app_runtime_event.h",
+  "//neva/app_runtime/public/app_runtime_export.h",
+  "//neva/app_runtime/public/callback_helper.h",
+  "//neva/app_runtime/public/displayed_notifications_dispatch_callback.h",
+  "//neva/app_runtime/public/notification.h",
+  "//neva/app_runtime/public/notification_platform_bridge.h",
+  "//neva/app_runtime/public/permission_prompt.h",
+  "//neva/app_runtime/public/platform_factory.h",
+  "//neva/app_runtime/public/platform_push_messaging_service.h",
+  "//neva/app_runtime/public/webapp_window_delegate.h",
+  "//neva/app_runtime/public/webview_base_internals.h",
+  "//neva/app_runtime/public/webview_controller_delegate.h",
+  "//neva/app_runtime/public/webview_delegate.h",
+  "//neva/app_runtime/public/webview_info.h",
+  "//neva/app_runtime/webapp_window.h",
+  "//webos/agl/webapp_window_base_agl.h",
+  "//webos/application_installation_handler.h",
+  "//webos/app/webos_content_main_delegate.h",
+  "//webos/app/webos_main.h",
+  "//webos/common/webos_constants.h",
+  "//webos/common/webos_content_client.h",
+  "//webos/common/webos_event.h",
+  "//webos/common/webos_export.h",
+  "//webos/public/runtime.h",
+  "//webos/public/runtime_delegates.h",
+  "//webos/webapp_window_base.h",
+  "//webos/webapp_window_delegate.h",
+  "//webos/webos_platform.h",
+  "//webos/webview_base.h",
+  "//webos/webview_profile.h",
+  "//webos/window_group_configuration.h",
+]

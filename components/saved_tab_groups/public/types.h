@@ -8,6 +8,10 @@
 #include <optional>
 #include <variant>
 
+#if defined(__GNUC__) && !defined(__clang__)
+#include <variant>
+#endif
+
 #include "base/logging.h"
 #include "base/token.h"
 #include "base/uuid.h"

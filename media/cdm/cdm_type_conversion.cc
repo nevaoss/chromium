@@ -92,11 +92,18 @@ cdm::HdcpVersion ToCdmHdcpVersion(HdcpVersion hdcp_version) {
       return cdm::kHdcpVersion2_1;
     case HdcpVersion::kHdcpVersion2_2:
       return cdm::kHdcpVersion2_2;
+#if BUILDFLAG(IS_WEBOS)
+  }
+
+  NOTREACHED();
+  return cdm::kHdcpVersion2_2;
+#else   // BUILDFLAG(IS_WEBOS)
     case HdcpVersion::kHdcpVersion2_3:
       return cdm::kHdcpVersion2_3;
   }
 
   NOTREACHED() << "Unexpected HdcpVersion";
+#endif  // !BUILDFLAG(IS_WEBOS)
 }
 
 cdm::SessionType ToCdmSessionType(CdmSessionType session_type) {
@@ -389,8 +396,10 @@ cdm::VideoCodec ToCdmVideoCodec(VideoCodec codec) {
       return cdm::kCodecH264;
     case VideoCodec::kVP9:
       return cdm::kCodecVp9;
+#if !BUILDFLAG(IS_WEBOS)
     case VideoCodec::kAV1:
       return cdm::kCodecAv1;
+#endif  // !BUILDFLAG(IS_WEBOS)
     default:
       DVLOG(1) << "Unsupported VideoCodec " << codec;
       return cdm::kUnknownVideoCodec;
@@ -416,6 +425,32 @@ VideoCodec ToMediaVideoCodec(cdm::VideoCodec codec) {
 
 cdm::VideoCodecProfile ToCdmVideoCodecProfile(VideoCodecProfile profile) {
   switch (profile) {
+#if BUILDFLAG(IS_WEBOS)
+    case VP8PROFILE_ANY:
+    // TODO(servolk): See crbug.com/592074. We'll need to update this code to
+    // handle different VP9 profiles properly after adding VP9 profiles in
+    // media/cdm/api/content_decryption_module.h in a separate CL.
+    // For now return kProfileNotNeeded to avoid breaking unit tests.
+    case VP9PROFILE_PROFILE0:
+    case VP9PROFILE_PROFILE1:
+    case VP9PROFILE_PROFILE2:
+    case VP9PROFILE_PROFILE3:
+      return cdm::kProfileNotNeeded;
+    case H264PROFILE_BASELINE:
+      return cdm::kH264ProfileBaseline;
+    case H264PROFILE_MAIN:
+      return cdm::kH264ProfileMain;
+    case H264PROFILE_EXTENDED:
+      return cdm::kH264ProfileExtended;
+    case H264PROFILE_HIGH:
+      return cdm::kH264ProfileHigh;
+    case H264PROFILE_HIGH10PROFILE:
+      return cdm::kH264ProfileHigh10;
+    case H264PROFILE_HIGH422PROFILE:
+      return cdm::kH264ProfileHigh422;
+    case H264PROFILE_HIGH444PREDICTIVEPROFILE:
+      return cdm::kH264ProfileHigh444Predictive;
+#else
     case VP8PROFILE_ANY:
       return cdm::kProfileNotNeeded;
     case VP9PROFILE_PROFILE0:
@@ -446,6 +481,7 @@ cdm::VideoCodecProfile ToCdmVideoCodecProfile(VideoCodecProfile profile) {
       return cdm::kAv1ProfileHigh;
     case AV1PROFILE_PROFILE_PRO:
       return cdm::kAv1ProfilePro;
+#endif  // BUILDFLAG(IS_WEBOS)
     default:
       DVLOG(1) << "Unsupported VideoCodecProfile " << profile;
       return cdm::kUnknownVideoCodecProfile;
@@ -500,6 +536,7 @@ cdm::VideoFormat ToCdmVideoFormat(VideoPixelFormat format) {
       return cdm::kYv12;
     case PIXEL_FORMAT_I420:
       return cdm::kI420;
+#if !BUILDFLAG(IS_WEBOS)
     case PIXEL_FORMAT_YUV420P10:
       return cdm::kYUV420P10;
     case PIXEL_FORMAT_YUV422P10:
@@ -512,6 +549,7 @@ cdm::VideoFormat ToCdmVideoFormat(VideoPixelFormat format) {
       return cdm::kYUV422P12;
     case PIXEL_FORMAT_YUV444P12:
       return cdm::kYUV444P12;
+#endif  // !BUILDFLAG(IS_WEBOS)
     default:
       DVLOG(1) << "Unsupported VideoPixelFormat " << format;
       return cdm::kUnknownVideoFormat;
@@ -636,4 +674,28 @@ void ToCdmInputBuffer(const DecoderBuffer& encrypted_buffer,
   }
 }
 
+#if defined(USE_NEVA_CDM)
+cdm::Exception ToCdmExceptionType(cdm::Error error) {
+  switch (error) {
+    case cdm::kNotSupportedError:
+      return cdm::kExceptionNotSupportedError;
+    case cdm::kInvalidStateError:
+      return cdm::kExceptionInvalidStateError;
+    case cdm::kInvalidAccessError:
+      return cdm::kExceptionTypeError;
+    case cdm::kQuotaExceededError:
+      return cdm::kExceptionQuotaExceededError;
+
+    // TODO(jrummell): Remove these once CDM_8 is no longer supported.
+    // https://crbug.com/737296.
+    case cdm::kUnknownError:
+    case cdm::kClientError:
+    case cdm::kOutputError:
+      return cdm::kExceptionNotSupportedError;
+  }
+
+  NOTREACHED() << "Unexpected cdm::Error " << error;
+  return cdm::kExceptionInvalidStateError;
+}
+#endif
 }  // namespace media

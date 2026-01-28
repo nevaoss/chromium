@@ -7,6 +7,11 @@
 
 #include "third_party/blink/public/common/common_export.h"
 
+///@name IS_NEVA_APPRUNTIME
+///@{
+#include "build/build_config.h"
+///@}
+
 namespace blink {
 namespace switches {
 
@@ -15,6 +20,9 @@ namespace switches {
 // All switches in alphabetical order. The switches should be documented
 // alongside the definition of their values in the .cc file.
 BLINK_COMMON_EXPORT extern const char kAllowPreCommitInput[];
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+BLINK_COMMON_EXPORT extern const char kAllowScriptsToCloseWindows[];
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
 BLINK_COMMON_EXPORT extern const char kBlinkSettings[];
 BLINK_COMMON_EXPORT extern const char kDarkModeSettings[];
 BLINK_COMMON_EXPORT extern const char kDataUrlInSvgUseEnabled[];

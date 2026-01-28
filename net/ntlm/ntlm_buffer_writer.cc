@@ -35,7 +35,12 @@ bool NtlmBufferWriter::CanWrite(size_t len) const {
 }
 
 bool NtlmBufferWriter::WriteUInt16(uint16_t value) {
+  // TODO(neva): Try to contribute it into upstream.
+#if defined(__GNUC__) && !defined(__clang__)
+  base::SpanWriter writer(base::span<uint8_t>(buffer_).subspan(cursor_));
+#else   // defined(__GNUC__) && !defined(__clang__)
   base::SpanWriter writer(base::span(buffer_).subspan(cursor_));
+#endif  // !(defined(__GNUC__) && !defined(__clang__))
   if (writer.WriteU16LittleEndian(value)) {
     AdvanceCursor(sizeof(value));
     return true;
@@ -44,7 +49,12 @@ bool NtlmBufferWriter::WriteUInt16(uint16_t value) {
 }
 
 bool NtlmBufferWriter::WriteUInt32(uint32_t value) {
+  // TODO(neva): Try to contribute it into upstream.
+#if defined(__GNUC__) && !defined(__clang__)
+  base::SpanWriter writer(base::span<uint8_t>(buffer_).subspan(cursor_));
+#else   // defined(__GNUC__) && !defined(__clang__)
   base::SpanWriter writer(base::span(buffer_).subspan(cursor_));
+#endif  // !(defined(__GNUC__) && !defined(__clang__))
   if (writer.WriteU32LittleEndian(value)) {
     AdvanceCursor(sizeof(value));
     return true;
@@ -53,7 +63,12 @@ bool NtlmBufferWriter::WriteUInt32(uint32_t value) {
 }
 
 bool NtlmBufferWriter::WriteUInt64(uint64_t value) {
+  // TODO(neva): Try to contribute it into upstream.
+#if defined(__GNUC__) && !defined(__clang__)
+  base::SpanWriter writer(base::span<uint8_t>(buffer_).subspan(cursor_));
+#else   // defined(__GNUC__) && !defined(__clang__)
   base::SpanWriter writer(base::span(buffer_).subspan(cursor_));
+#endif  // !(defined(__GNUC__) && !defined(__clang__))
   if (writer.WriteU64LittleEndian(value)) {
     AdvanceCursor(sizeof(value));
     return true;

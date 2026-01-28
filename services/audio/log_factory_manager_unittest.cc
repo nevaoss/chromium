@@ -35,6 +35,10 @@ class MockAudioLog : public media::mojom::AudioLog {
                     const std::string& device_id));
 
   MOCK_METHOD0(OnStarted, void());
+#if defined(USE_NEVA_SUSPEND_MEDIA_CAPTURE)
+  MOCK_METHOD0(OnPaused, void());
+  MOCK_METHOD0(OnResumed, void());
+#endif
   MOCK_METHOD0(OnStopped, void());
   MOCK_METHOD0(OnClosed, void());
   MOCK_METHOD0(OnError, void());

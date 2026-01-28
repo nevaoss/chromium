@@ -1,0 +1,15 @@
+{
+    "type": "regular",
+    "appId": "com.webos.app.neva.wam.demo.manual",
+    "allowedNames": [
+        "com.webos.app.neva.wam.demo.manual-*"
+    ],
+    "permissions": [
+        {
+            "service": "com.webos.app.neva.wam.demo.manual-*",
+            "outbound": [
+                "*"
+            ]
+        }
+    ]
+}

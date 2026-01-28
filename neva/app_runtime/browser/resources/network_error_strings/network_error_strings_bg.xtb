@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="bg">
+<translation id="1682620957554922882">Свържете се с доставчика на услугата.</translation>
+<translation id="2626799779920242286">Опитайте отново по-късно.</translation>
+<translation id="27461552975087996">Сертификатът на сървъра не е надежден.</translation>
+<translation id="288961708105972332">Срокът на опита за свързване е изтекъл.</translation>
+<translation id="3100161803646972327">Проверете състоянието на мрежата и опитайте отново.</translation>
+<translation id="334286403444714742">Мрежата не е свързана.</translation>
+<translation id="4799446021133992159">НЕ МОЖЕ ДА СЕ ЗАРЕДИ</translation>
+<translation id="4897228579364425832">ПРОВЕРЕТЕ МРЕЖОВАТА ВРЪЗКА</translation>
+<translation id="4922056813564935008">Заявеният адрес не може да бъде намерен.</translation>
+<translation id="4964644330950338878">Името на хоста не съответства на сертификата на сървъра.</translation>
+<translation id="5375809313377772901">Проверете настройките на часа.</translation>
+<translation id="5803768854262525793">REPLACE WITH HOSTNAME</translation>
+<translation id="6061420513894163219">Проверете състоянието на мрежовата връзка.</translation>
+<translation id="6765203878096346794">Връзката към сървъра е нестабилна.</translation>
+<translation id="7402264192054099664">Това може да е временен проблем.</translation>
+<translation id="7570401931535381481">Сертификатът на сървъра е изтекъл или все още не е валиден, тъй като зададеният час на телевизора е различен от текущия час.</translation>
+<translation id="7619490177640280081">Настройка за текущ час</translation>
+<translation id="8138313893556460774">Срокът на операцията е изтекъл.</translation>
+<translation id="8322836013946289105">Файлът или директорията не може да бъде намерен.</translation>
+<translation id="8561467915632687957">Мрежата е нестабилна.</translation>
+</translationbundle>

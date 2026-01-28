@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//neva/neva.gni")
 import("//mojo/public/tools/bindings/mojom.gni")
 
 component("shared_mojom_traits") {
@@ -87,6 +88,11 @@ mojom("mojom") {
   export_class_attribute_blink = "BLINK_PLATFORM_EXPORT"
   export_define_blink = "BLINK_PLATFORM_IMPLEMENTATION=1"
   export_header_blink = "third_party/blink/public/platform/web_common.h"
+
+  enabled_features = []
+  if (use_neva_appruntime) {
+    enabled_features += [ "neva_txt_input_props" ]
+  }
 }
 
 mojom("test_interfaces") {

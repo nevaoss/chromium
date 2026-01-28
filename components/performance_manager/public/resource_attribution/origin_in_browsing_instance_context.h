@@ -44,12 +44,20 @@ class OriginInBrowsingInstanceContext {
   // convenience.
   std::string ToString() const;
 
+  // TODO(neva): Remove this when Neva GCC version upgraded to 12.
+#if defined(__GNUC__) && __GNUC__ < 12 && !defined(__clang__)
+  friend auto operator<=>(const OriginInBrowsingInstanceContext& a,
+                          const OriginInBrowsingInstanceContext& b) = default;
+  friend bool operator==(const OriginInBrowsingInstanceContext& a,
+                         const OriginInBrowsingInstanceContext& b) = default;
+#else   // defined(__GNUC__) && __GNUC__ < 12 && !defined(__clang__)
   constexpr friend auto operator<=>(const OriginInBrowsingInstanceContext& a,
                                     const OriginInBrowsingInstanceContext& b) =
       default;
   constexpr friend bool operator==(const OriginInBrowsingInstanceContext& a,
                                    const OriginInBrowsingInstanceContext& b) =
       default;
+#endif  // defined(__GNUC__) && __GNUC__ < 12 && defined(__clang__)
 
   // Add OriginInBrowsingInstanceContexts to absl hashes.
   template <typename H>

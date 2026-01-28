@@ -528,6 +528,13 @@ gfx::NativeWindow DesktopNativeWidgetAura::GetNativeWindow() const {
   return content_window_;
 }
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+// Getter for Neva NativeEventDelegate.
+NativeEventDelegate* DesktopNativeWidgetAura::GetNativeEventDelegate() const {
+  return nullptr;
+}
+#endif
+
 void DesktopNativeWidgetAura::UpdateWindowTransparency() {
   if (!desktop_window_tree_host_->ShouldUpdateWindowTransparency()) {
     return;

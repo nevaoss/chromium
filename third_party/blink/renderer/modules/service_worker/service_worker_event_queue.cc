@@ -12,6 +12,9 @@
 #include "third_party/blink/public/mojom/service_worker/service_worker_event_status.mojom-blink.h"
 #include "third_party/blink/renderer/platform/wtf/functional.h"
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+#include "third_party/blink/public/common/neva/neva_blink_features.h"
+#endif
 namespace blink {
 
 // static
@@ -51,7 +54,16 @@ ServiceWorkerEventQueue::ServiceWorkerEventQueue(
     const base::TickClock* tick_clock)
     : task_runner_(std::move(task_runner)),
       idle_callback_(std::move(idle_callback)),
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+      tick_clock_(tick_clock) {
+  if (base::FeatureList::IsEnabled(
+          features::neva::kSetServiceWorkerIdleDelay)) {
+    idle_delay_ = features::neva::kServiceWorkerDefaultIdleDelay.Get();
+  }
+}
+#else   // BUILDFLAG(IS_NEVA_APPRUNTIME)
       tick_clock_(tick_clock) {}
+#endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
 
 ServiceWorkerEventQueue::~ServiceWorkerEventQueue() {
   // Abort all callbacks.

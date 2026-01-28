@@ -1,0 +1,54 @@
+From 4b532522e1bbea2a1fda95e363887e1caeef1a5a Mon Sep 17 00:00:00 2001
+From: Ekaterina Kulikova <kate.kulikova@lge.com>
+Date: Fri, 6 Jun 2025 04:15:25 +0900
+Subject: [PATCH] [upstreamable] 138.0.7160.0~1: PDFium: GCC: Explicitely
+ specify span template type in cfde_texteditengine.cpp
+
+:Release Notes:
+Explicitely specified span template type in PDFium's
+cfde_texteditengine.cpp to fix GCC compiler error after rolling
+to 138.0.7160.0~1
+
+:Detailed Notes:
+In the upstream PDFium CL
+https://pdfium-review.googlesource.com/c/pdfium/+/131172, which is
+rolled into Chromium in https://crrev.com/c/6502858, replaced calls to
+pdfium::make_span() with CTAD.
+It caused GCC compiler error:
+../../third_party/pdfium/xfa/fde/cfde_texteditengine.cpp:884:22:
+error: missing template argument list after ‘pdfium::span’; template placeholder not permitted in parameter
+
+Explicitely specified span template type in PDFium's
+cfde_texteditengine.cpp to fix this issue.
+
+:Issues Addressed:
+[NEVA-10380] Upgrade neva-main-rolling up to 7160 BUILD
+---
+ xfa/fde/cfde_texteditengine.cpp | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/xfa/fde/cfde_texteditengine.cpp b/xfa/fde/cfde_texteditengine.cpp
+index 4c8c4d162..98f34e3e3 100644
+--- a/xfa/fde/cfde_texteditengine.cpp
++++ b/xfa/fde/cfde_texteditengine.cpp
+@@ -880,8 +880,15 @@ WideString CFDE_TextEditEngine::Delete(size_t start_idx,
+   length = std::min(length, text_length_ - start_idx);
+   AdjustGap(start_idx + length, 0);
+ 
+-  WideString ret(
+-      WideStringView(pdfium::span(content_).subspan(start_idx, length)));
++  // TODO(neva): Try to contribute it into upstream.
++#if defined(__GNUC__) && !defined(__clang__)
++  WideString ret(WideStringView(
++      pdfium::span<const WideString::CharType>(content_).subspan(start_idx,
++                                                                 length)));
++#else   // defined(__GNUC__) && !defined(__clang__)
++  WideString ret(WideStringView(pdfium::span(content_).subspan(start_idx,
++                                                               length)));
++#endif  // !(defined(__GNUC__) && !defined(__clang__))
+ 
+   if (add_operation == RecordOperation::kInsertRecord) {
+     AddOperationRecord(std::make_unique<DeleteOperation>(this, start_idx, ret));
+-- 
+2.34.1
+

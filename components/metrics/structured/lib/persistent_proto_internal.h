@@ -69,9 +69,17 @@ class PersistentProtoInternal
   // before |proto_| is ready, |proto_| will be purged once it becomes ready.
   void Purge();
 
+  // TODO(neva): Remove this when Neva GCC starts supporting C++23.
+  // constexpr std::unique_ptr supports from C++23.
+#if (__cplusplus < 202202L)
+  bool has_value() const { return proto_ != nullptr; }
+
+  explicit operator bool() const { return has_value(); }
+#else   // (__cplusplus < 202202L)
   constexpr bool has_value() const { return proto_ != nullptr; }
 
   constexpr explicit operator bool() const { return has_value(); }
+#endif  // !(__cplusplus < 202202L)
 
   const base::FilePath& path() { return proto_file_->path(); }
 

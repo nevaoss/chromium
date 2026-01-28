@@ -1,0 +1,86 @@
+From 130b035c9e96f2f0b615cd04ecdd78ac49b65135 Mon Sep 17 00:00:00 2001
+From: "Jose Dapena Paz" <j.dapena@lgepartner.com>
+Date: Thu, 8 Dec 2022 14:32:11 +0900
+Subject: Prevent crash with std::isprint when v8 runtime flag of --trace_serializer is used
+
+:Release Notes:
+Prevent an app crash when v8 runtime flag of --trace_serializer is used
+
+:Detailed Notes:
+Enabling v8 tracing serialization with --trace_serializer can cause
+crashes in the call to std::isprint, which is used to identify if a
+V8 string character can be printed. This is a known issue in GCC.
+A uint16_t is obtained from the stored stream that could actually
+point to a character out of bounds.
+To solve this, std::isprint needs to be fed with a value that can be
+represented as EOF or unsigned char.
+
+:Testing Performed:
+Part A. Preparation
+
+1. Append --js-flags="--trace_serializer" at the last line
+in /etc/systemd/system/scripts/webapp-mgr.sh file.
+--js-flags="--trace_serializer"
+
+2. Append &> /var/log/wam.log to the last line in webapp-mgr.sh
+3. Clear code cache
+$ luna-send -n 1 palm://com.palm.webappmanager/clearBrowsingData '{"types":["codecache"]}'
+
+4. Launch any app like media discovery
+$ luna-send -n 1 -f luna://com.webos.applicationManager/launch '{"id":"com.webos.app.mediadiscovery"}'
+
+Part B. Verification
+The app does not crash on launching. In addition, log output
+shows the serialization log.
+
+$ grep -A 10 "Serializing from" /var/log/wam.log
+[Serializing from0x28962151 <String[79]: ...
+ Encoding heap object: 0x28963c15 <SharedFunctionInfo>
+ Encoding root 19:0x32a8257d <Map[36](SHARED_FUNCTION_INFO_TYPE)>
+
+You can also verify using wam-demo as below:
+1) Put v8 flag under CHROME_FLAGS at run_wam_demo file
+--js-flags="--trace_serializer"
+
+2) Run wam_demo and make sure CLEAR code cache
+Clear Browsing Data (Remove Browsing Data Mask)
+Select 'CODE_CACHE' and Press 'Clear' button
+
+3) Make sure code cache has been removed
+$ ls /var/cache/xdg/wam_demo/Default/Code Cache/js
+
+4) Run any app like 'App7 - YouTube'
+
+5) Check below serialization logs as below
+[Serializing from0x28962151 <String[79]: ...
+ Encoding heap object: 0x28963c15 <SharedFunctionInfo>
+ Encoding root 19:0x32a8257d <Map[36](SHARED_FUNCTION_INFO_TYPE)>
+
+:QA Notes:
+
+:Issues Addressed:
+[NEVA-7401] [RP patch migration] Added webos-js-flags switch to allow append
+
+Change-Id: I766934738c20234c367b1c48a3a78732bdaa47b0
+Originally-Reviewed-on: http://gpro.lge.com/c/webosose/chromium-v8/+/325680
+
+---
+ src/objects/string.cc | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/objects/string.cc b/src/objects/string.cc
+index f349f5b903..2256007858 100644
+--- a/src/objects/string.cc
++++ b/src/objects/string.cc
+@@ -672,7 +672,7 @@ void String::PrintUC16(StringStream* accumulator, int start, int end) {
+       accumulator->Add("\\r");
+     } else if (c == '\\') {
+       accumulator->Add("\\\\");
+-    } else if (!std::isprint(c)) {
++    } else if (!std::isprint(static_cast<char>(c))) {
+       accumulator->Add("\\x%02x", c);
+     } else {
+       accumulator->Put(static_cast<char>(c));
+-- 
+2.25.1
+

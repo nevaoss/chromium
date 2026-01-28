@@ -183,6 +183,8 @@ class PLATFORM_EXPORT ContouredRect {
 
     static float CurvatureForHalfCorner(float half_corner);
 
+    gfx::PointF HullPoint() const;
+
     constexpr gfx::PointF MapPoint(
         const gfx::Vector2dF& normalized_point) const {
       return Center() + gfx::ScaleVector2d(v1(), normalized_point.x()) +

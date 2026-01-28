@@ -97,6 +97,29 @@ bool WaylandPopup::CreateShellPopup() {
   wl_surface_attach(root_surface()->surface(), nullptr, 0, 0);
   root_surface()->Commit(false);
 
+  ///@name IS_NEVA_APPRUNTIME
+  ///@{
+  // NOTE(neva): These comments were moved from deleted shell_object_factory.cc,
+  // see http://mercury.lge.net:8080/c/neva/chromium/+/13527.
+  // FIXME(neva, M93): https://crrev.com/c/2690636 updates the signature,
+  // |bounds| has been dropped
+  // FIXME(neva): below code was intended for webOS which still doesn't provide
+  // popup roles hence need to revise below code along with corresponding
+  // WaylandExtensions API
+  //if (connection->extensions()) {
+  //  auto surface = connection->extensions()->CreateShellSurface(wayland_window);
+  //  if (surface) {
+  //    if (!surface->Initialize(false /* with_top_level */))
+  //      return nullptr;
+  //
+  //    auto popup = connection->extensions()->CreateShellPopup(wayland_window);
+  //    if (popup)
+  //      return popup->Initialize(connection, bounds) ? std::move(popup)
+  //                                                   : nullptr;
+  // }
+  //}
+  ///@}
+
   if (auto xdg_surface = std::make_unique<XdgSurface>(this, connection())) {
     if (xdg_surface->Initialize()) {
       auto xdg_popup = std::make_unique<XdgPopup>(std::move(xdg_surface));

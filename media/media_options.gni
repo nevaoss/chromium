@@ -8,6 +8,8 @@ import("//build/config/chromeos/args.gni")
 import("//build/config/features.gni")
 import("//build/config/ui.gni")
 import("//media/gpu/args.gni")
+# TODO(neva_rust): Remove this workaround once Neva supports Rust build.
+import("//neva/neva.gni")
 import("//testing/libfuzzer/fuzzer_test.gni")
 import("//third_party/libaom/options.gni")
 
@@ -46,7 +48,8 @@ declare_args() {
 
   # Enable usage of Symphonia within the media library. Used experimentally
   # for software decoding. Currently only enabled on linux builds.
-  media_use_symphonia = is_linux
+  # TODO(neva_rust): Remove this when Neva supports Rust language.
+  media_use_symphonia = is_linux && !disable_rust_for_neva
 
   # Enable usage of libvpx within the media library. Used for software based
   # decoding of VP9 and VP8A type content.
@@ -300,7 +303,7 @@ if (is_cast_media_device) {
     "video_decoder",
   ]
   _default_mojo_media_host = "gpu"
-} else if (use_linux_video_acceleration) {
+} else if (use_linux_video_acceleration || use_webos_codec) {
   _default_mojo_media_services = [ "video_decoder" ]
   _default_mojo_media_host = "gpu"
 }

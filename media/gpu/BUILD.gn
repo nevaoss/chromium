@@ -9,6 +9,7 @@ import("//build/config/ui.gni")
 import("//gpu/vulkan/features.gni")
 import("//media/gpu/args.gni")
 import("//media/media_options.gni")
+import("//neva/neva.gni")
 import("//testing/test.gni")
 import("//third_party/libgav1/options.gni")
 import("//tools/generate_stubs/rules.gni")
@@ -335,6 +336,10 @@ component("gpu") {
   if (use_ozone) {
     deps += [ "//ui/ozone" ]
   }
+
+  if (use_webos_codec) {
+    public_deps += [ "//media/gpu/webos" ]
+  }
 }
 
 source_set("common") {
@@ -481,7 +486,7 @@ source_set("command_buffer_helper") {
   ]
 }
 
-if (use_linux_video_acceleration) {
+if (use_linux_video_acceleration || use_webos_codec) {
   source_set("video_frame_mapper") {
     defines = [ "MEDIA_GPU_IMPLEMENTATION" ]
     sources = [ "video_frame_mapper_factory.cc" ]
@@ -519,6 +524,10 @@ if (use_linux_video_acceleration) {
     ]
 
     deps = [ "//media/gpu/chromeos:video_frame_resource" ]
+
+    if (use_webos_codec) {
+      deps -= [ "//media/gpu/chromeos:video_frame_resource" ]
+    }
   }
 }
 

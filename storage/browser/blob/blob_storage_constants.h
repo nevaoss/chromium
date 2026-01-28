@@ -34,6 +34,11 @@ const float kDefaultMaxBlobInMemorySpaceUnderPressureRatio = 0.002f;
 constexpr const char kBlobFileTransportByFileTriggerSwitch[] =
     "blob-transport-by-file-trigger";
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+// Overrides max blob memory in MB
+constexpr const char kMaxBlobMemoryMbSwitch[] = "max-blob-memory-mb";
+#endif
+
 // All sizes are in bytes.
 struct COMPONENT_EXPORT(STORAGE_BROWSER) BlobStorageLimits {
   BlobStorageLimits();

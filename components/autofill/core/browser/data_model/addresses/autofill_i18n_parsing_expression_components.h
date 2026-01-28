@@ -134,8 +134,7 @@ constexpr ExtractPart::~ExtractPart() = default;
 // The lack of a condition is expressed by an empty string.
 class ExtractParts : public AutofillParsingProcess {
  public:
-  // Note that `condition_regex` and `pieces` need to survive the lifetime of
-  // the ExtractParts.
+  // Note that `pieces` need to survive the lifetime of the ExtractParts.
   constexpr ExtractParts(std::string_view condition_regex,
                          base::span<const ExtractPart* const> pieces)
       : condition_regex_(condition_regex), pieces_(pieces) {}

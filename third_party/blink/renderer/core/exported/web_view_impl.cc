@@ -1635,6 +1635,11 @@ void WebView::ApplyWebPreferences(const web_pref::WebPreferences& prefs,
   settings->SetHyperlinkAuditingEnabled(prefs.hyperlink_auditing_enabled);
   settings->SetCookieEnabled(prefs.cookie_enabled);
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  settings->SetDisallowScrollbarsInMainFrame(
+      prefs.disallow_scrollbars_in_main_frame);
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
+
   // By default, allow_universal_access_from_file_urls is set to false and thus
   // we mitigate attacks from local HTML files by not granting file:// URLs
   // universal access. Only test shell will enable this.
@@ -3478,6 +3483,10 @@ void WebViewImpl::UpdateFontRenderingFromRendererPrefs() {
         renderer_preferences_.system_font_family_name));
   }
 #endif  // BUILDFLAG(IS_LINUX)
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  WebFontRenderStyle::SetAllowFakeBoldText(
+      renderer_preferences_.allow_fake_bold_text);
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
 #endif  // BUILDFLAG(IS_WIN)
 #endif  // !BUILDFLAG(IS_MAC)
 }

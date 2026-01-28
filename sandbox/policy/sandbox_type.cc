@@ -12,6 +12,10 @@
 #include "sandbox/policy/mojom/sandbox.mojom.h"
 #include "sandbox/policy/switches.h"
 
+#if defined(USE_NEVA_CDM)
+#include "base/command_line.h"
+#endif
+
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
 #include "media/gpu/buildflags.h"  // nogncheck
 #include "media/media_buildflags.h"  // nogncheck
@@ -89,6 +93,12 @@ bool IsUnsandboxedSandboxType(Sandbox sandbox_type) {
 #if BUILDFLAG(IS_WIN)
   if (sandbox_type == Sandbox::kNoSandboxAndElevatedPrivileges) {
     return true;
+  }
+#endif
+#if defined(USE_NEVA_CDM)
+  if (sandbox_type == Sandbox::kCdm) {
+    return base::CommandLine::ForCurrentProcess()->HasSwitch(
+        sandbox::policy::switches::kNoCdmSandbox);
   }
 #endif
   return false;

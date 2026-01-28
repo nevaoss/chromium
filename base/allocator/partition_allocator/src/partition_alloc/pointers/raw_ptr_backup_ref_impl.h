@@ -27,6 +27,11 @@
 #error "Included under wrong build option"
 #endif
 
+///@name IS_NEVA_APPRUNTIME
+///@{
+#include "base/base_export.h"
+///@}
+
 namespace base::internal {
 
 #if PA_BUILDFLAG(DCHECKS_ARE_ON) || \
@@ -39,7 +44,13 @@ void CheckThatAddressIsntWithinFirstPartitionPage(uintptr_t address);
 // threads modify the same raw_ptr object without synchronization, a data race
 // will occur.
 template <bool AllowDangling = false>
-struct RawPtrBackupRefImpl {
+// TODO(neva): Temporary workaround to fix the linker error. Need to investigate
+// the issue and provide a proper solution.
+// Bug: http://clm.lge.com/issue/browse/NEVA-8898
+///@name IS_NEVA_APPRUNTIME
+///@{
+struct CBE_BASE_EXPORT RawPtrBackupRefImpl {
+  ///@}
   // These are needed for correctness, or else we may end up manipulating
   // ref-count where we shouldn't, thus affecting the BRP's integrity. Unlike
   // the first two, kMustZeroOnDestruct wouldn't be needed if raw_ptr was used

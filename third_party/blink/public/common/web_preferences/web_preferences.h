@@ -333,6 +333,13 @@ struct BLINK_COMMON_EXPORT WebPreferences {
   // TODO(changwan): remove this once we no longer support Android N.
   bool do_not_update_selection_on_mutating_selection_range = false;
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  bool disallow_scrollbars_in_main_frame = false;
+
+  // Defines the cross origin policy.
+  bool x_frame_options_cross_origin_allowed = false;
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
+
   // Defines the current autoplay policy.
   blink::mojom::AutoplayPolicy autoplay_policy =
       blink::mojom::AutoplayPolicy::kDocumentUserActivationRequired;

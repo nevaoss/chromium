@@ -33,10 +33,15 @@ void Freezer::UnfreezePageNode(const PageNode* page_node) {
   base::WeakPtr<content::WebContents> contents = page_node->GetWebContents();
   CHECK(contents);
 
+  // NOTE(neva): The visible page is automatically unfrozen but the
+  // PageLifecycleStateManager::is_set_frozen_called_ value is not changed, so
+  // the further freezing request is ignored
+#if !BUILDFLAG(IS_NEVA_APPRUNTIME)
   // A visible page is automatically unfrozen.
   if (contents->GetVisibility() == content::Visibility::VISIBLE) {
     return;
   }
+#endif
 
   contents->SetPageFrozen(false);
 }

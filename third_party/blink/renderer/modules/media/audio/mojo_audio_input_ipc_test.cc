@@ -63,6 +63,10 @@ class MockStream : public media::mojom::blink::AudioInputStream {
  public:
   MOCK_METHOD0(Record, void());
   MOCK_METHOD1(SetVolume, void(double));
+#if defined(USE_NEVA_SUSPEND_MEDIA_CAPTURE)
+  MOCK_METHOD0(Pause, void());
+  MOCK_METHOD0(Resume, void());
+#endif
 };
 
 class MockAudioProcessorControls

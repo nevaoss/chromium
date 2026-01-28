@@ -1,0 +1,57 @@
+{
+    "exeName":"@@EXENAME@@",
+    "trustLevel":"oem",
+    "type": "privileged",
+    "allowedNames": [
+        "com.webos.app.browser",
+        "com.webos.app.neva.*",
+        "com.webos.chromium.memory.*",
+        "com.palm.chromiumwebprocess.mediaplayer*",
+        "com.webos.media.client.*",
+        "com.palm.chrome.media-*",
+        "com.webos.pipeline.*",
+        "com.webos.rm.client.*",
+        "com.webos.app.enactbrowser*",
+        "com.webos.settingsservice.client*",
+        "com.webos.notification.client.*",
+        "com.webos.avconnector.*",
+        "com.webos.applicationManager.client.*",
+        ""
+    ],
+    "permissions": [
+        {
+            "service":"com.webos.app.browser",
+            "inbound":["*"],
+            "outbound":["*"]
+        },
+        {
+            "service":"com.webos.app.enactbrowser*",
+            "inbound":["*"],
+            "outbound":["*"]
+        },
+        {
+            "service":"com.webos.applicationManager.client.*",
+            "outbound":["com.webos.applicationManager"]
+        },
+        {
+           "service":"com.webos.chromium.memory.*",
+           "inbound":["com.webos.service.memorymanager",
+                      "com.palm.bus"],
+           "outbound":["com.webos.service.memorymanager",
+                       "com.palm.bus"]
+        },
+        {
+            "service":"com.webos.media.client.*",
+            "inbound":["*"],
+            "outbound":["*"]
+        },
+        {
+            "service":"com.webos.notification.client.*",
+            "outbound":["com.webos.notification"]
+        },
+        {
+            "service":"com.webos.settingsservice.client*",
+            "outbound":["com.webos.settingsservice"]
+        }
+    ]
+}

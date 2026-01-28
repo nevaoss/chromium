@@ -141,7 +141,7 @@ class MojoAudioDecoderTest : public ::testing::Test {
   }
 
   std::unique_ptr<AudioDecoder> CreateAudioDecoder() {
-    CHECK_NE(owned_mock_audio_decoder_, nullptr);
+    CHECK_NE(owned_mock_audio_decoder_.get(), nullptr);
     return std::move(owned_mock_audio_decoder_);
   }
 

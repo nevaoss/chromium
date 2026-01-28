@@ -16,6 +16,11 @@
 #include "ui/gfx/geometry/rect.h"
 #include "ui/gfx/native_ui_types.h"
 
+///@name IS_NEVA_APPRUNTIME
+///@{
+#include "ui/platform_window/neva/platform_window_delegate.h"
+///@}
+
 namespace gfx {
 class DisplayColorSpacesRef;
 class Size;
@@ -28,6 +33,11 @@ namespace ui {
 
 class Event;
 struct OwnedWindowAnchor;
+
+///@name IS_NEVA_APPRUNTIME
+///@{
+class LinuxInputMethodContext;
+///@}
 
 enum class PlatformWindowState {
   kUnknown,
@@ -44,7 +54,12 @@ enum class PlatformWindowOcclusionState {
   kHidden,
 };
 
-class COMPONENT_EXPORT(PLATFORM_WINDOW) PlatformWindowDelegate {
+class COMPONENT_EXPORT(PLATFORM_WINDOW) PlatformWindowDelegate
+    ///@name IS_NEVA_APPRUNTIME
+    ///@{
+    : public neva::PlatformWindowDelegate
+    ///@}
+{
  public:
   struct COMPONENT_EXPORT(PLATFORM_WINDOW) BoundsChange {
     BoundsChange() = delete;
@@ -177,6 +192,11 @@ class COMPONENT_EXPORT(PLATFORM_WINDOW) PlatformWindowDelegate {
   // Requests size constraints for the PlatformWindow in DIP.
   virtual std::optional<gfx::Size> GetMinimumSizeForWindow() const;
   virtual std::optional<gfx::Size> GetMaximumSizeForWindow() const;
+
+  ///@name IS_NEVA_APPRUNTIME
+  ///@{
+  virtual LinuxInputMethodContext* GetInputMethodContext();
+  ///@}
 
   virtual bool CanMaximize() const;
   virtual bool CanFullscreen() const;

@@ -85,7 +85,13 @@
 {%- endif %}
 
 {%- if for_blink %}
-#if !BLINK_MOJO_IMPL && !INSIDE_BLINK
+// TODO(neva): Remove this after Neva supports freezing policy
+// on browser_shell.
+//@name IS_NEVA_APPRUNTIME
+//@{
+#include "build/build_config.h"
+//@}
+#if !BLINK_MOJO_IMPL && !INSIDE_BLINK && !BUILDFLAG(IS_NEVA_APPRUNTIME)
 #error "File must only be imported inside blink"
 #endif
 {%- endif %}

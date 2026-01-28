@@ -14,6 +14,12 @@
 #include "base/i18n/number_formatting.h"
 #include "base/no_destructor.h"
 #include "base/rand_util.h"
+// TODO(neva): Required for the usage of base::StringPrintf. Try to contribute
+// to upstream.
+///@name USE_NEVA_APPRUNTIME
+///@{
+#include "base/strings/stringprintf.h"
+///@}
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"

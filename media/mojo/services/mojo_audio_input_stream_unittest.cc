@@ -67,6 +67,10 @@ class MockDelegate : public AudioInputDelegate {
 
   MOCK_METHOD0(GetStreamId, int());
   MOCK_METHOD0(OnRecordStream, void());
+#if defined(USE_NEVA_SUSPEND_MEDIA_CAPTURE)
+  MOCK_METHOD0(OnPauseStream, void());
+  MOCK_METHOD0(OnResumeStream, void());
+#endif
   MOCK_METHOD1(OnSetVolume, void(double));
   MOCK_METHOD1(OnSetOutputDeviceForAec, void(const std::string&));
 };

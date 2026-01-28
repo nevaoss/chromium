@@ -1176,6 +1176,13 @@ void ListValue::Append(Value&& value) & {
   storage_.emplace_back(std::move(value));
 }
 
+// TODO(neva): GCC build fails with "cannot bind rvalue reference to lvalue".
+#if defined(__GNUC__) && !defined(__clang__)
+void ListValue::Append(Value& value) & {
+  storage_.emplace_back(std::move(value));
+}
+#endif  // defined(__GNUC__) && !defined(__clang__)
+
 void ListValue::Append(bool value) & {
   storage_.emplace_back(value);
 }
@@ -1216,6 +1223,13 @@ void ListValue::Append(DictValue&& value) & {
   storage_.emplace_back(std::move(value));
 }
 
+// TODO(neva): GCC build fails with "cannot bind rvalue reference to lvalue".
+#if defined(__GNUC__) && !defined(__clang__)
+void ListValue::Append(DictValue& value) & {
+  storage_.emplace_back(std::move(value));
+}
+#endif  // defined(__GNUC__) && !defined(__clang__)
+
 void ListValue::Append(ListValue&& value) & {
   storage_.emplace_back(std::move(value));
 }
@@ -1224,6 +1238,14 @@ ListValue&& ListValue::Append(Value&& value) && {
   storage_.emplace_back(std::move(value));
   return std::move(*this);
 }
+
+// TODO(neva): GCC build fails with "cannot bind rvalue reference to lvalue".
+#if defined(__GNUC__) && !defined(__clang__)
+ListValue&& ListValue::Append(Value& value) && {
+  storage_.emplace_back(std::move(value));
+  return std::move(*this);
+}
+#endif  // defined(__GNUC__) && !defined(__clang__)
 
 ListValue&& ListValue::Append(bool value) && {
   storage_.emplace_back(value);
@@ -1274,6 +1296,14 @@ ListValue&& ListValue::Append(DictValue&& value) && {
   storage_.emplace_back(std::move(value));
   return std::move(*this);
 }
+
+// TODO(neva): GCC build fails with "cannot bind rvalue reference to lvalue".
+#if defined(__GNUC__) && !defined(__clang__)
+ListValue&& ListValue::Append(DictValue& value) && {
+  storage_.emplace_back(std::move(value));
+  return std::move(*this);
+}
+#endif  // defined(__GNUC__) && !defined(__clang__)
 
 ListValue&& ListValue::Append(ListValue&& value) && {
   storage_.emplace_back(std::move(value));

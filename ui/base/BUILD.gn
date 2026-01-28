@@ -205,6 +205,8 @@ component("base") {
     "ui_base_exports.cc",
     "ui_base_paths.cc",
     "ui_base_paths.h",
+    "ui_base_neva_switches.cc",
+    "ui_base_neva_switches.h",
     "ui_base_switches.h",
     "ui_base_switches_util.cc",
     "ui_base_switches_util.h",

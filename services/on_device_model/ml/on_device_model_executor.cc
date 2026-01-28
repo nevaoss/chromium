@@ -35,9 +35,13 @@
 #include "services/on_device_model/public/mojom/on_device_model.mojom.h"
 #include "services/on_device_model/public/mojom/on_device_model_service.mojom.h"
 
+// NOTE(neva): Disabled xnnpack because it requires ARMv8.4-A (sdot)
+// instructions unsupported by webOS.
+#if !BUILDFLAG(IS_WEBOS)
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX)
 #include "third_party/xnnpack/src/include/xnnpack.h"  // nogncheck
 #endif
+#endif  // !BUILDFLAG(IS_WEBOS)
 
 #if BUILDFLAG(IS_MAC)
 #include "base/apple/foundation_util.h"
@@ -71,6 +75,9 @@ const base::FeatureParam<bool> kAllowFp16{
     &optimization_guide::features::kOptimizationGuideOnDeviceModel,
     "on_device_model_allow_fp16", true};
 
+// NOTE(neva): Disabled xnnpack because it requires ARMv8.4-A (sdot)
+// instructions unsupported by webOS.
+#if !BUILDFLAG(IS_WEBOS)
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX)
 // This is a copy of the XNNPackCacheHeader struct from
 // third_party/tflite/src/tensorflow/lite/delegates/xnnpack/weight_cache.h
@@ -109,6 +116,7 @@ void MaybeDeleteCacheFile(base::File& cache_file) {
   cache_file.SetLength(0);
 }
 #endif  // BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX)
+#endif  // !BUILDFLAG(IS_WEBOS)
 
 // Helper to bind object methods as weak task-posting callback functions.
 template <typename R, typename C, typename... Args>
@@ -772,6 +780,9 @@ LoadModelResult OnDeviceModelExecutor::Init(
   // current build, and if not, truncates it. This is a temporary fix until
   // xnnpack is updated with cb018b2d.
   // TODO(crbug.com/447174993): Remove once xnnpack includes cb018b2d.
+  // NOTE(neva): Disabled xnnpack because it requires ARMv8.4-A (sdot)
+  // instructions unsupported by webOS.
+#if !BUILDFLAG(IS_WEBOS)
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX)
   if (params->backend_type == ml::ModelBackendType::kCpuBackend) {
     MaybeDeleteCacheFile(assets.cache);
@@ -779,6 +790,7 @@ LoadModelResult OnDeviceModelExecutor::Init(
   MaybeDeleteCacheFile(assets.encoder_cache);
   MaybeDeleteCacheFile(assets.adapter_cache);
 #endif  // BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX)
+#endif  // !BUILDFLAG(IS_WEBOS)
 
   // TODO(crbug.com/400998489): Cache files are experimental for now.
   data.cache_file = params->backend_type == ml::ModelBackendType::kCpuBackend &&

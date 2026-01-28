@@ -88,6 +88,14 @@ DatabaseIdentifier DatabaseIdentifier::CreateFromOrigin(const GURL& origin) {
     return DatabaseIdentifier();
   }
 
+#if BUILDFLAG(IS_WEBOS)
+  if (origin.SchemeIsFile()) {
+    return DatabaseIdentifier(std::string(origin.scheme()),
+                              std::string(origin.host()), 0, false /* unique */,
+                              false /* file */);
+  }
+#endif  // BUILDFLAG(IS_WEBOS)
+
   if (origin.SchemeIsFile())
     return UniqueFileIdentifier();
 

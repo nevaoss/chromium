@@ -4938,7 +4938,12 @@ TEST_F(WebViewTest, TextInputFlags) {
   WebTextInputInfo info1 = active_input_method_controller->TextInputInfo();
   EXPECT_EQ(kWebTextInputFlagAutocompleteOff | kWebTextInputFlagAutocorrectOff |
                 kWebTextInputFlagSpellcheckOff |
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+                kWebTextInputFlagAutocapitalizeNone |
+                kWebTextInputFlagSystemKeyboardOn,
+#else
                 kWebTextInputFlagAutocapitalizeNone,
+#endif
             info1.flags);
 
   // (A.2) Verifies autocorrect/autocomplete/spellcheck flags are On and
@@ -4952,7 +4957,12 @@ TEST_F(WebViewTest, TextInputFlags) {
   WebTextInputInfo info2 = active_input_method_controller->TextInputInfo();
   EXPECT_EQ(kWebTextInputFlagAutocompleteOn | kWebTextInputFlagAutocorrectOn |
                 kWebTextInputFlagSpellcheckOn |
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+                kWebTextInputFlagAutocapitalizeSentences |
+                kWebTextInputFlagSystemKeyboardOn,
+#else
                 kWebTextInputFlagAutocapitalizeSentences,
+#endif
             info2.flags);
 
   // (B) <textarea> Verifies the default text input flags are

@@ -36,6 +36,29 @@ class XdgToplevel {
   explicit XdgToplevel(std::unique_ptr<XdgSurface> xdg_surface);
   XdgToplevel(const XdgToplevel&) = delete;
   XdgToplevel& operator=(const XdgToplevel&) = delete;
+#if BUILDFLAG(IS_WEBOS)
+  virtual ~XdgToplevel();
+
+  virtual bool Initialize();
+  virtual void SetMaximized();
+  virtual void UnSetMaximized();
+  virtual void SetFullscreen(WaylandOutput* wayland_output);
+  virtual void UnSetFullscreen();
+  virtual void SetMinimized();
+  virtual void SurfaceMove(WaylandConnection* connection);
+  virtual void SurfaceResize(WaylandConnection* connection, uint32_t hittest);
+  virtual void SetTitle(const std::u16string& title);
+  virtual void AckConfigure(uint32_t serial);
+  virtual bool IsConfigured();
+  virtual void SetWindowGeometry(const gfx::Rect& bounds);
+  virtual void SetMinSize(int32_t width, int32_t height);
+  virtual void SetMaxSize(int32_t width, int32_t height);
+  virtual void SetAppId(const std::string& app_id);
+  virtual void ShowWindowMenu(WaylandConnection* connection, const gfx::Point& point);
+  virtual void SetDecoration(DecorationMode decoration);
+  virtual void SetSystemModal(bool modal);
+  virtual void SetIcon(const gfx::ImageSkia& icon);
+#else   // BUILDFLAG(IS_WEBOS)
   ~XdgToplevel();
 
   bool Initialize();
@@ -57,6 +80,7 @@ class XdgToplevel {
   void SetDecoration(DecorationMode decoration);
   void SetSystemModal(bool modal);
   void SetIcon(const gfx::ImageSkia& icon);
+#endif  // !BUILDFLAG(IS_WEBOS)
 
   struct xdg_surface* xdg_surface() const { return xdg_surface_->wl_object(); }
   struct xdg_toplevel* wl_object() const { return xdg_toplevel_.get(); }

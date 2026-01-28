@@ -1,0 +1,59 @@
+From d8d75002094c7784a4ca969c02b7eb5215a0ebc1 Mon Sep 17 00:00:00 2001
+From: Yunsik Jung <yunsik.jung@lge.com>
+Date: Mon, 21 Apr 2025 16:43:19 +0900
+Subject: [PATCH] 136.0.7081.0~1: GCC: Change 'PERFETTO_HAS_NO_DESTROY()' to 1
+ to fix renderer crash as workaround
+
+:Release Notes:
+Changed 'PERFETTO_HAS_NO_DESTROY()' to 1 to fix renderer crash as
+workaround when GCC is used after rolling to 136.0.7081.0~1.
+
+Detailed Notes:
+In the upstream CL https://crrev.com/c/6375102i, 'MakeNamedTrack'
+in 'tracing_helper.h' is defined and if 'parent' argument is not
+passed, 'perfetto::ThreadTrack::Current()' is used by default.
+
+'perfetto::ThreadTrack::Current()' calls
+'internal::TracingMuxer::Get()' which is 'TracingMuxer::instance_'.
+
+Before 'perfetto::Tracing::Initialize()', 'TracingMuxer::instance_' is
+set via 'TracingMuxerFake::Get()' which is nullptr if
+'PERFETTO_HAS_NO_DESTROY' is 0 and causes crash due to nullptr access.
+
+'PERFETTO_HAS_NO_DESTROY' is 1 when compiler supports 'no_destroy'
+attributes but GCC does not support the 'no_destroy' attribute.
+
+As workaround, to avoid crash by returning non-nullptr,
+'PERFETTO_HAS_NO_DESTROY' is set to 1 although 'no_destroy' is not
+supported.
+
+:Issues Addressed:
+[NEVA-10207] Upgrade neva-main-rolling up to 7081 BUILD
+---
+ include/perfetto/base/compiler.h | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/include/perfetto/base/compiler.h b/include/perfetto/base/compiler.h
+index 4ac876b1f8..e9d9fb2808 100644
+--- a/include/perfetto/base/compiler.h
++++ b/include/perfetto/base/compiler.h
+@@ -132,7 +132,15 @@ extern "C" void __asan_unpoison_memory_region(void const volatile*, size_t);
+ #define PERFETTO_HAS_NO_DESTROY() 1
+ #define PERFETTO_NO_DESTROY __attribute__((no_destroy))
+ #else
+-#define PERFETTO_HAS_NO_DESTROY() 0
++// TODO(neva): Remove Neva workaround when Neva uses Clang or upstream fixes
++// bug which 'perfetto::ThreadTrack::Current()' is invoked before
++// 'perfetto::Tracing::Initialize()'.
++// 'TracingMuxer::instance_' is 'TracingMuxerFake::Get()' before
++// 'perfetto::Tracing::Initialize()' is called.
++// This causes crash in GCC build because 'TracingMuxerFake::Get()' is
++// 'nullptr' because GCC does not support 'no_destroy' attribute.
++// #define PERFETTO_HAS_NO_DESTROY() 0
++#define PERFETTO_HAS_NO_DESTROY() 1
+ #define PERFETTO_NO_DESTROY
+ #endif
+ 
+-- 
+2.45.2
+

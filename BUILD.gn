@@ -38,6 +38,7 @@ import("//tools/ipc_fuzzer/ipc_fuzzer.gni")
 import("//ui/base/ui_features.gni")
 import("//ui/gl/features.gni")
 import("//v8/gni/v8.gni")
+import("//neva/neva.gni")
 
 if (is_android) {
   import("//build/config/android/config.gni")
@@ -84,6 +85,28 @@ if (is_official_build) {
 # `all`, and no tooling should depend directly on this target. Tools should
 # should depend on either an explicit list of targets, or `all`.
 
+if (gn_neva_only) {
+  group("neva_all") {
+    assert(use_neva_appruntime)
+    testonly = true
+
+    deps = [
+      "//neva/wam_demo",
+      "//neva/neva_unittests",
+    ]
+
+    if (is_webos || is_webos_lite) {
+      deps += [
+        "//webos:weboswebruntime",
+        "//webos/install",
+      ]
+    } else {
+      # browser_shell for webOS in //webos/browser_shell:browser_shell_webos
+      # is built by //webos/install.
+      deps += [ "//neva/browser_shell" ]
+    }
+  }
+} else {
 group("gn_all") {
   testonly = true
 
@@ -748,6 +771,23 @@ group("gn_all") {
       if ((is_linux || is_chromeos) && current_toolchain == host_toolchain) {
         deps += [ "//v8:v8_shell" ]
       }
+
+      if (use_neva_appruntime) {
+        deps += [
+          "//neva/wam_demo",
+          "//neva/neva_unittests",
+        ]
+        if (is_webos || is_webos_lite) {
+          deps += [
+            "//webos:weboswebruntime",
+            "//webos/install",
+          ]
+        } else {
+          # browser_shell for webOS in //webos/browser_shell:browser_shell_webos
+          # is built by //webos/install.
+          deps += [ "//neva/browser_shell" ]
+        }
+      }
     }
 
     if ((is_linux && !is_castos) || is_chromeos ||
@@ -848,6 +888,14 @@ group("all_rust") {
   # builders.
   if (!is_ios || !is_asan) {
     deps += [ "//testing/rust_gtest_interop:rust_gtest_interop_unittests" ]
+  }
+
+  # TODO(neva_rust): Remove this when Neva supports rust language.
+  if (disable_rust_for_neva) {
+    deps -= [
+      "//testing/rust_gtest_interop:rust_gtest_interop_unittests",
+      "//third_party/cloud_authenticator/processor",
+    ]
   }
 
   if (!is_cronet_build) {
@@ -1503,7 +1551,7 @@ if (!running_modularize) {
   # TODO(cassew): Add more OS's that don't support x86.
   is_valid_x86_target =
       target_os != "ios" && target_os != "mac" &&
-      (target_os != "linux" || use_libfuzzer || !build_with_chromium)
+      (target_os != "linux" || use_libfuzzer || !build_with_chromium || is_webos)
 
   # Note: v8_target_cpu == arm allows using the V8 arm simulator on x86 for fuzzing.
   assert(
@@ -1617,6 +1665,7 @@ if (is_chromeos && enable_js_type_check) {
     ]
   }
 }
+} # gn_neva_only
 
 if (use_remoteexec && target_os != "chromeos" && rbe_exec_root != "/") {
   # Different nesting levels technically work, but cache hits are basically zero.

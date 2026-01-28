@@ -257,6 +257,15 @@ class CONTENT_EXPORT DelegatedFrameHost
   void SetFrameEvictionStateAndNotifyObservers(
       FrameEvictionState frame_eviction_state);
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  // Aggressive Release Policy implementation
+  void PerformAggressiveReleasePolicy();
+  void ResumeCompsitorDrawing();
+  void SuspendCompositorDrawing();
+
+  base::CancelableOnceClosure compositor_suspending_task_;
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
+
   const viz::FrameSinkId frame_sink_id_;
   const raw_ptr<DelegatedFrameHostClient> client_;
   const bool should_register_frame_sink_id_;
@@ -316,5 +325,4 @@ class CONTENT_EXPORT DelegatedFrameHost
 };
 
 }  // namespace content
-
 #endif  // CONTENT_BROWSER_RENDERER_HOST_DELEGATED_FRAME_HOST_H_

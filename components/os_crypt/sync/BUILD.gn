@@ -6,6 +6,7 @@ import("//build/config/cast.gni")
 import("//build/config/features.gni")
 import("//build/config/ui.gni")
 import("//components/os_crypt/sync/features.gni")
+import("//neva/neva.gni")
 
 component("sync") {
   # New code should use os_crypt async.
@@ -32,6 +33,11 @@ component("sync") {
   ]
   if (is_mac) {
     visibility += [ "//headless:headless_shell_lib" ]
+  }
+
+  # NOTE(neva): Required for base appruntime target.
+  if (use_neva_appruntime) {
+    visibility += [ "//neva/app_runtime:app_runtime" ]
   }
 
   sources = [

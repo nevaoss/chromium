@@ -110,8 +110,14 @@ class ZwpTextInputV3Impl : public ZwpTextInputV3 {
     gfx::Range delete_around_range;
   };
   struct PreeditData {
+// TODO(neva): Remove this when Neva GCC version upgraded to 12.2+
+#if defined(COMPILER_GCC) && __GNUC__ < 12 && !defined(__clang__)
+    PreeditData() = default;
+    PreeditData(std::string text,
+#else   // defined(COMPILER_GCC) && __GNUC__ < 12 && !defined(__clang__)
     constexpr PreeditData() = default;
     constexpr PreeditData(std::string text,
+#endif  // !(defined(COMPILER_GCC) && __GNUC__ < 12 && !defined(__clang__))
                           int32_t cursor_begin,
                           int32_t cursor_end)
         : text(std::move(text)),

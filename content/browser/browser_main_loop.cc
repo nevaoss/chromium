@@ -791,7 +791,7 @@ int BrowserMainLoop::PreCreateThreads() {
   }
 
   InitializeMemoryManagementComponent();
-#if BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_NEVA_APPRUNTIME)
   content::UserLevelMemoryPressureSignalGenerator::Initialize();
 #endif
 

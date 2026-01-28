@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Sensitive Attribute Test</title>
+  </head>
+  <body>
+    <h1>Input field with sensitive Attr</h1>
+    <form>
+      <label>
+      <input type="text" sensitive="true" value="sensitive='true'">
+      <input type="text" sensitive value="sensitive without value">
+      <input type="text" sensitive="false" value="sensitive='false'">
+      <input type="text" sensitive="should_has_no_effect_as_false" value="sensitive='should_has_no_effect_as_false'">
+      <input type="text" value="insensitive">
+    </form>
+  </body>
+</html>

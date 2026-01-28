@@ -6,6 +6,8 @@ import("//build/config/features.gni")
 import("//components/optimization_guide/features.gni")
 import("//services/on_device_model/on_device_model.gni")
 
+import("//neva/neva.gni")
+
 source_set("api") {
   public = [
     "chrome_ml_api.h",
@@ -88,6 +90,11 @@ if (use_blink || (is_ios && build_with_internal_optimization_guide)) {
     }
     if (is_win || is_mac || is_linux) {
       deps += [ "//third_party/xnnpack" ]
+    }
+    # NOTE(neva): Disabled xnnpack because it requires ARMv8.4-A (sdot)
+    # instructions unsupported by webOS.
+    if (is_webos) {
+      deps -= [ "//third_party/xnnpack" ]
     }
     public_deps = [
       ":api",

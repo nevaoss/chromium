@@ -22,16 +22,28 @@ struct DISPLAY_EXPORT DisplayParams {
   std::string description;
 };
 
+// TODO(neva): Remove this workaround when Neva GCC version upgraded to 12+.
+#if defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
+bool operator<(const display::test::DisplayParams& a,
+               const display::test::DisplayParams& b) {
+#else  // defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
 bool constexpr operator<(const display::test::DisplayParams& a,
                          const display::test::DisplayParams& b) {
+#endif // !(defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__))
   return std::tuple(a.resolution.width(), a.resolution.height(), a.dpi.x(),
                     a.dpi.y(), a.description) <
          std::tuple(b.resolution.width(), b.resolution.height(), b.dpi.x(),
                     b.dpi.y(), b.description);
 }
 
+// TODO(neva): Remove this workaround when Neva GCC version upgraded to 12+.
+#if defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
+bool operator==(const display::test::DisplayParams& a,
+                const display::test::DisplayParams& b) {
+#else  // defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
 bool constexpr operator==(const display::test::DisplayParams& a,
                           const display::test::DisplayParams& b) {
+#endif // !(defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__))
   return a.resolution == b.resolution && a.dpi == b.dpi &&
          a.description == b.description;
 }
@@ -58,8 +70,14 @@ class VirtualDisplayUtil {
   virtual void ResetDisplays() = 0;
 
   // Supported Display configurations.
+// TODO(neva): Remove this workaround when Neva GCC version upgraded to 12+.
+#if defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
+  static const DisplayParams k1920x1080;
+  static const DisplayParams k1024x768;
+#else  // defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
   static constexpr DisplayParams k1920x1080 = {gfx::Size(1920, 1080)};
   static constexpr DisplayParams k1024x768 = {gfx::Size(1024, 768)};
+#endif  // !(defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__))
 };
 
 }  // namespace test

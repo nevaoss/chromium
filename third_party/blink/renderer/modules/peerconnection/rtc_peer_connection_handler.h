@@ -223,6 +223,10 @@ class MODULES_EXPORT RTCPeerConnectionHandler {
 
   virtual void OnWebRtcDataChannelLogWrite(const Vector<uint8_t>& output);
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  bool IsOpened() const;
+#endif
+
   // Virtual for testing purposes.
   virtual scoped_refptr<base::SingleThreadTaskRunner> signaling_thread() const;
 

@@ -1,0 +1,93 @@
+<!doctype html>
+<html>
+<head>
+<title>WebSocket and XMLHttpRequest test page</title>
+<style>
+body {
+  background-color: white;
+  color: black;
+}
+
+#log_area {
+  padding: 10px;
+  color: yellow;
+  font-size: 9pt;
+  background-color: rgba(0, 0, 128, 0.8);
+}
+</style>
+</head>
+
+<body>
+  <h2>WebSockets and XMLHttpRequest Header Test</h2>
+  <input type="button" id="RunHTTPRequest" value="RunHTTPRequest" onclick="runHTTPRequest()">
+  <input type="button" id="RunWSRequest" value="RunWSRequest" onclick="runWSRequest()">
+  <input type="button" id="ClearLogs" value="ClearLogs" onclick="clearLogs()">
+  <div id="log_area"></div>
+</body>
+
+<script>
+function clearLogs() {
+  var logArea = document.getElementById('log_area');
+  logArea.innerHTML = 'Cleared';
+}
+
+function log(msg) {
+  var logArea = document.getElementById('log_area');
+  logArea.innerHTML += (msg + '<br/>');
+}
+
+function runHTTPRequest() {
+  log("runHTTPRequest: create");
+  var xhr = new XMLHttpRequest();
+  var host = window.location.hostname;
+  var port = window.location.port;
+  xhr.open('GET', "http://" + host + ":" + port + "/echo");
+
+  xhr.onload = function() {
+    if (this.status == 200) {
+      log("runHTTPRequest: success");
+      log("runHTTPRequest: <pre>" + this.responseText + "</pre>");
+    } else {
+      log("runHTTPRequest: error: code = " + this.status);
+    }
+  };
+
+  xhr.onerror = function() {
+    log("runHTTPRequest: failed");
+    log("runHTTPRequest: " + this.statusText);
+  };
+
+  log("runHTTPRequest: send");
+  xhr.send();
+}
+
+function runWSRequest() {
+  log("runHTTPRequest: create");
+  var host = window.location.hostname;
+  var port = window.location.port;
+  var ws = new WebSocket("ws://" + host + ":" + port + "/ws/echo");
+
+  var msgToSend = "WebSocket out mesage";
+  ws.onopen = function(event) {
+    log("runWSRequest: connected");
+    log("runWSRequest: sent message: [<pre>" + msgToSend + "</pre>]");
+    ws.send(msgToSend);
+  };
+
+  ws.onclose = function(event) {
+    log("runWSRequest: disconnected");
+  };
+
+  ws.onmessage = function(event) {
+    log("runWSRequest: got message: [<pre>" + event.data + "</pre>]");
+    ws.close();
+  };
+
+  ws.onerror = function(event) {
+    log("runWSRequest: error: " + event.data);
+  };
+}
+
+window.onload = log("App loaded");
+</script>
+</html>

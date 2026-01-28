@@ -13,6 +13,11 @@
 #include "base/base_export.h"
 #include "base/memory/raw_ptr.h"
 
+///@name IS_NEVA_APPRUNTIME
+///@{
+#include "build/build_config.h"
+///@}
+
 namespace base::trace_event {
 
 // When heap profiling is enabled, tracing keeps track of the allocation

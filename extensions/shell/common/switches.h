@@ -18,6 +18,7 @@ extern const char kAppShellAllowRoaming[];
 extern const char kAppShellHostWindowSize[];
 extern const char kAppShellPreferredNetwork[];
 #endif
+
 }  // namespace switches
 }  // namespace extensions
 

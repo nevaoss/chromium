@@ -1,0 +1,18 @@
+{
+    "com.webos.app.enactbrowser*": [
+      "application.operation",
+      "application.launcher",
+      "applications",
+      "settings.read",
+      "settings.query",
+      "signals.all"
+    ],
+    "com.webos.app.test.browsershell*": [ "application.operation", "applications" ],
+    "com.webos.notification.client.*": [ "notification.operation" ],
+    "com.webos.settingsservice.client-*": [
+      "application.launcher",
+      "settings.read",
+      "settings.query"
+    ],
+    "com.webos.chromium.memory.*": [ "signals.all", "system", "memorymanager.query" ]
+}

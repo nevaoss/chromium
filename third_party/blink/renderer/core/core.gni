@@ -71,6 +71,7 @@ template("blink_core_sources") {
       "//third_party/blink/renderer/core:all_generators",
       "//third_party/blink/renderer/core:core_common",
     ]
+
     if (defined(invoker.public_deps)) {
       public_deps += invoker.public_deps
     }

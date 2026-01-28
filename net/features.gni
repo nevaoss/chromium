@@ -6,6 +6,7 @@ import("//build/config/chrome_build.gni")
 import("//build/config/cronet/config.gni")
 import("//build/config/features.gni")
 import("//extensions/buildflags/buildflags.gni")
+import("//neva/neva.gni")
 
 declare_args() {
   # Disables support for file URLs.  File URL support requires use of icu.
@@ -72,8 +73,9 @@ declare_args() {
   # The SQL disk cache backend is an experimental feature (crbug.com/422065015).
   # It is enabled only in specific build configurations to avoid increasing the
   # build size.
+  # TODO(neva): Remove this workaround once Neva GCC resolves compiler issue.
   enable_disk_cache_sql_backend =
-      (is_linux && !is_castos) ||
+      (is_linux && !is_castos && !use_neva_appruntime) ||
       (is_android && !is_cast_android && !is_cronet_build) || is_win ||
       is_mac || is_chromeos
 }

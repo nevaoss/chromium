@@ -31,8 +31,16 @@ namespace autofill {
 
 namespace {
 // The list of countries where the fallback parsing is not supported.
+// TODO(neva): Use std::string_view instead, because GCC doesn't allow
+// usage of AddressCountryCode for base::MakeFixedFlatSet(). Try to contribute
+// it to the upstream.
+#if defined(__GNUC__) && !defined(__clang__)
+static constexpr auto countries_not_supporting_fallback_parsing =
+    base::MakeFixedFlatSet<std::string_view>({"IN"});
+#else   // defined(__GNUC__) && !defined(__clang__)
 static constexpr auto countries_not_supporting_fallback_parsing =
     base::MakeFixedFlatSet<AddressCountryCode>({AddressCountryCode("IN")});
+#endif  // !(defined(__GNUC__) && !defined(__clang__))
 }  // namespace
 
 std::string_view VerificationStatusToStringView(VerificationStatus status) {
@@ -501,7 +509,15 @@ void AddressComponent::ParseValueAndAssignSubcomponents() {
   // As a final fallback, parse using the fallback method.
   // In some countries (e.g. India), the parsing cannot be reliably implemented
   // and the fallback method does more harm than good.
+  // TODO(neva): Use std::string_view instead, because GCC doesn't allow
+  // usage of AddressCountryCode for base::MakeFixedFlatSet(). Try to contribute
+  // it to the upstream.
+#if defined(__GNUC__) && !defined(__clang__)
+  if (!countries_not_supporting_fallback_parsing.contains(
+          std::string(GetCountryCode()))) {
+#else   // defined(__GNUC__) && !defined(__clang__)
   if (!countries_not_supporting_fallback_parsing.contains(GetCountryCode())) {
+#endif  // !(defined(__GNUC__) && !defined(__clang__))
     ParseValueAndAssignSubcomponentsByFallbackMethod();
   }
 }

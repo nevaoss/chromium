@@ -34,7 +34,10 @@
 #include "third_party/blink/renderer/core/svg/graphics/svg_image.h"
 #include "third_party/blink/renderer/core/xml/document_xslt.h"
 #include "third_party/blink/renderer/core/xml/parser/xml_document_parser.h"  // for parseAttributes()
+// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
+#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "third_party/blink/renderer/core/xml/parser/xml_document_parser_rs.h"  // for parseAttributesRust()
+#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "third_party/blink/renderer/core/xml/xsl_style_sheet.h"
 #include "third_party/blink/renderer/core/xml/xslt_processor.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
@@ -113,12 +116,17 @@ bool ProcessingInstruction::CheckStyleSheet(String& href, String& charset) {
   // ### support stylesheet included in a fragment of this (or another) document
   // ### make sure this gets called when adding from javascript
   bool attrs_ok;
+  // TODO(neva_rust): Remove this workaround once Neva supports Rust build.
+#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   HashMap<String, String> attrs;
   if (RuntimeEnabledFeatures::XMLParsingRustEnabled()) {
     attrs = ParseAttributesRust(data_, attrs_ok);
   } else {
     attrs = ParseAttributes(data_, attrs_ok);
   }
+#else   // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
+  const HashMap<String, String> attrs = ParseAttributes(data_, attrs_ok);
+#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   if (!attrs_ok)
     return false;
   HashMap<String, String>::const_iterator i = attrs.find("type");

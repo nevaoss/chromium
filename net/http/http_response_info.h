@@ -199,6 +199,11 @@ class NET_EXPORT HttpResponseInfo {
   // in no particular order.
   std::set<std::string> dns_aliases;
 
+#if defined(USE_FILESCHEME_CODECACHE)
+  // For file schemes, the last modified time needed to validate its code cache
+  base::Time file_last_modified_time;
+#endif
+
   // If not null, this indicates the response is stored during a certain browser
   // session. Used for filtering cache access.
   std::optional<int64_t> browser_run_id;

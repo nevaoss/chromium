@@ -39,6 +39,11 @@ class COMPONENT_EXPORT(UI_BASE_IME_LINUX) InputMethodAuraLinux
   bool IsCandidatePopupOpen() const override;
   VirtualKeyboardController* GetVirtualKeyboardController() override;
 
+  ///@name IS_NEVA_APPRUNTIME
+  ///@{
+  LinuxInputMethodContext* GetInputMethodContext() override;
+  ///@}
+
   // Overridden from ui::LinuxInputMethodContextDelegate
   gfx::AcceleratedWidget GetClientWindowKey() const override;
   void OnCommit(const std::u16string& text) override;
@@ -53,6 +58,13 @@ class COMPONENT_EXPORT(UI_BASE_IME_LINUX) InputMethodAuraLinux
       const gfx::Rect& screen_bounds) override;
   void OnInsertImage(const GURL& src) override;
 
+  ///@name IS_NEVA_APPRUNTIME
+  ///@{
+  // Overriden from ui::NevaLinuxInputMethodContextDelegate through
+  // ui::LinuxInputMethodContextDelegate
+  bool SystemKeyboardDisabled() override;
+  ///@}
+
  protected:
   // Overridden from InputMethodBase.
   void OnWillChangeFocusedClient(TextInputClient* focused_before,
@@ -61,6 +73,11 @@ class COMPONENT_EXPORT(UI_BASE_IME_LINUX) InputMethodAuraLinux
                                 TextInputClient* focused) override;
 
  private:
+  ///@name IS_NEVA_APPRUNTIME
+  ///@{
+  friend class InputMethodAuraLinuxNeva;
+  ///@}
+
   // Continues to dispatch the EventType::kKeyPressed event to the client.
   // This needs to be called "before" committing the result string or
   // the composition string.

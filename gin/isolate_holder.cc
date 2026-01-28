@@ -191,6 +191,11 @@ IsolateHolder::getDefaultIsolateParams() {
   params->constraints.ConfigureDefaults(
       base::SysInfo::AmountOfPhysicalMemory().InBytesUnsigned(),
       base::SysInfo::AmountOfVirtualMemory().InBytesUnsigned());
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  // It passes now 0 values as params, but if each user/isolate wants to
+  // configure details for its own, the configured values have to be passed.
+  params->constraints.ConfigureDetails(0, 0, 0, 0);
+#endif
   params->array_buffer_allocator = g_array_buffer_allocator;
   params->allow_atomics_wait = true;
   params->external_references = g_reference_table;

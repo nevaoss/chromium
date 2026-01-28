@@ -282,6 +282,9 @@ static const char* const kSwitchNames[] = {
     switches::kDisableSkiaGraphite,
     switches::kDisableSkiaGraphitePrecompilation,
     switches::kDisableLowEndDeviceMode,
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+    switches::kForceLowEndDeviceMode,
+#endif
     switches::kProfilingAtStart,
     switches::kProfilingFile,
     switches::kProfilingFlush,
@@ -936,6 +939,12 @@ bool GpuProcessHost::Init() {
     // WGL needs to create its own window and pump messages on it.
     options.message_pump_type = base::MessagePumpType::UI;
 #endif
+    ///@name IS_NEVA_APPRUNTIME
+    ///@{
+#if defined(USE_OZONE)
+    options.message_pump_type = gpu_preferences.message_pump_type;
+#endif
+    ///@}
     options.thread_type = base::ThreadType::kDisplayCritical;
     in_process_gpu_thread_->StartWithOptions(std::move(options));
   } else if (!LaunchGpuProcess()) {

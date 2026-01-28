@@ -272,6 +272,11 @@
 #include "content/browser/media/key_system_support_impl.h"
 #endif
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+#include "base/neva/base_switches.h"
+#include "content/public/common/content_neva_switches.h"
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
+
 #if BUILDFLAG(ENABLE_PLUGINS)
 #include "content/browser/renderer_host/plugin_registry_impl.h"
 #endif
@@ -1964,6 +1969,12 @@ bool RenderProcessHostImpl::Init() {
     auto file_data = std::make_unique<ChildProcessLauncherFileData>();
 #if BUILDFLAG(IS_POSIX) && !BUILDFLAG(IS_MAC)
     file_data->files_to_preload = GetV8SnapshotFilesToPreload(*cmd_line);
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+    if (!v8_snapshot_path_.empty()) {
+      file_data->files_to_preload[switches::kV8SnapshotBlobPath] =
+          base::FilePath(FILE_PATH_LITERAL(v8_snapshot_path_));
+    }
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
 #endif
 
     // Spawn the child process asynchronously to avoid blocking the UI thread.
@@ -3000,6 +3011,13 @@ mojom::Renderer* RenderProcessHostImpl::GetRendererInterface() {
   return renderer_interface_.get();
 }
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+void RenderProcessHostImpl::SetV8SnapshotPath(
+    const std::string& v8_snapshot_path) {
+  v8_snapshot_path_ = v8_snapshot_path;
+}
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
+
 blink::mojom::CallStackGenerator*
 RenderProcessHostImpl::GetJavaScriptCallStackGeneratorInterface() {
   if (!javascript_call_stack_generator_interface_.is_bound()) {
@@ -3789,7 +3807,9 @@ void RenderProcessHostImpl::PropagateBrowserCommandLineToRenderer(
       blink::switches::kShowLayoutShiftRegions,
       blink::switches::kShowPaintRects,
       blink::switches::kTouchTextSelectionStrategy,
+#if !BUILDFLAG(IS_NEVA_APPRUNTIME)
       blink::switches::kJavaScriptFlags,
+#endif
       // Please keep these in alphabetical order. Compositor switches here
       // should also be added to
       // chrome/browser/ash/login/chrome_restart_request.cc.
@@ -3831,6 +3851,22 @@ void RenderProcessHostImpl::PropagateBrowserCommandLineToRenderer(
 #endif
 #if BUILDFLAG(IS_OZONE)
       switches::kOzonePlatform,
+#endif
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+    switches::kDisableSupportOopRasterization,
+    switches::kEnableExternalProtocolsHandling,
+    switches::kEnableNotificationForUnsupportedFeatures,
+    switches::kEnableSampleInjection,
+    switches::kForceLowEndDeviceMode,
+    switches::kDecodedImageWorkingSetBudgetMB,
+    switches::kMemPressureGPUCacheSizeReductionFactor,
+    switches::kTileManagerLowMemPolicyBytesLimitReductionFactor,
+    blink::switches::kAllowScriptsToCloseWindows,
+    switches::kEnableAggressiveReleasePolicy,
+#endif
+#if defined(USE_NEVA_SUSPEND_MEDIA_CAPTURE)
+    switches::kDisableSuspendAudioCapture,
+    switches::kDisableSuspendVideoCapture,
 #endif
 #if defined(ENABLE_IPC_FUZZER)
       switches::kIpcDumpDirectory,
@@ -5516,7 +5552,7 @@ void RenderProcessHostImpl::RecordUserMetricsAction(const std::string& action) {
   base::RecordComputedAction(action);
 }
 
-#if BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_NEVA_APPRUNTIME)
 void RenderProcessHostImpl::SetPrivateMemoryFootprint(
     uint64_t private_memory_footprint_bytes) {
   private_memory_footprint_bytes_ = private_memory_footprint_bytes;
@@ -5526,14 +5562,14 @@ void RenderProcessHostImpl::SetPrivateMemoryFootprint(
 void RenderProcessHostImpl::SetPrivateMemoryFootprintForTesting(
     uint64_t private_memory_footprint_bytes) {
   private_memory_footprint_bytes_ = private_memory_footprint_bytes;
-#if !BUILDFLAG(IS_ANDROID)
+#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_NEVA_APPRUNTIME)
   private_memory_footprint_valid_until_ =
       base::TimeTicks::Now() + base::Hours(1);
 #endif
 }
 
 uint64_t RenderProcessHostImpl::GetPrivateMemoryFootprint() {
-#if BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_NEVA_APPRUNTIME)
   return private_memory_footprint_bytes_;
 #else
   // If we don't have a process yet or have died, our memory footprint is 0.
@@ -6155,7 +6191,7 @@ void RenderProcessHostImpl::ProvideSwapFileForRenderer() {
           std::move(allocator)));
 }
 
-#if BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_NEVA_APPRUNTIME)
 
 void RenderProcessHostImpl::NotifyMemoryPressureToRenderer(
     base::MemoryPressureLevel level) {

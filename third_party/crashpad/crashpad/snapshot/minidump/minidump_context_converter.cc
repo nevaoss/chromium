@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "snapshot/minidump/minidump_context_converter.h"
+#include <cstring>
 
 #include <string.h>
 

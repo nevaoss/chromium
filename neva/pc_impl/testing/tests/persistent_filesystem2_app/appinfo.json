@@ -1,0 +1,8 @@
+{
+	"id": "com.lgsvl.app.persistentfilesystem2",
+	"version": "1.0.0",
+	"type": "web",
+	"main": "index.html",
+	"title": "Persistent FileSystem API test webpage",
+	"icon": "icon.png"
+}
