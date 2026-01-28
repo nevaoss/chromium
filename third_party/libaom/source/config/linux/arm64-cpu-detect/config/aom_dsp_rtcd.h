@@ -1631,9 +1631,17 @@ static void setup_rtcd_internal(void)
 
     aom_convolve8_horiz = aom_convolve8_horiz_neon;
     if (flags & HAS_NEON_DOTPROD) aom_convolve8_horiz = aom_convolve8_horiz_neon_dotprod;
+    // TODO(neva): Please remove this after webOS/OSE supports i8mm.
+    // For starfish(32 bit ARM) it is disabled. Currently there is
+    // no usage on webOS. But we need to consider enabling neon_i8mm
+    // for the future platforms such as 64bit starfish build.
     if (flags & HAS_NEON_I8MM) aom_convolve8_horiz = aom_convolve8_horiz_neon_i8mm;
     aom_convolve8_vert = aom_convolve8_vert_neon;
     if (flags & HAS_NEON_DOTPROD) aom_convolve8_vert = aom_convolve8_vert_neon_dotprod;
+    // TODO(neva): Please remove this after webOS/OSE supports i8mm.
+    // For starfish(32 bit ARM) it is disabled. Currently there is
+    // no usage on webOS. But we need to consider enabling neon_i8mm
+    // for the future platforms such as 64bit starfish build.
     if (flags & HAS_NEON_I8MM) aom_convolve8_vert = aom_convolve8_vert_neon_i8mm;
     aom_get_blk_sse_sum = aom_get_blk_sse_sum_neon;
     if (flags & HAS_SVE) aom_get_blk_sse_sum = aom_get_blk_sse_sum_sve;

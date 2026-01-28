@@ -329,7 +329,13 @@ class TRIVIAL_ABI scoped_refptr {
   // implicit conversion is ever removed this operator can also be removed.
   template <typename U>
   friend bool operator==(const scoped_refptr<T>& lhs, const U* rhs) {
+// TODO(neva): Please remove this guard after there is no error to access
+// protected member of ptr_ in Neva.
+#if defined(COMPILER_GCC)
+    return lhs.get() == rhs;
+#else   // defined(COMPILER_GCC)
     return lhs.ptr_ == rhs;
+#endif  // !defined(COMPILER_GCC)
   }
 
   friend bool operator==(const scoped_refptr<T>& lhs, std::nullptr_t null) {

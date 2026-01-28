@@ -15,6 +15,11 @@
 #include "ui/ozone/platform/wayland/host/wayland_tablet_seat.h"
 #include "ui/ozone/platform/wayland/host/wayland_touch.h"
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+#include "ui/ozone/platform/wayland/host/wayland_cursor.h"
+#include "ui/ozone/platform/wayland/host/wayland_cursor_position.h"
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
+
 namespace ui {
 
 namespace {
@@ -77,6 +82,18 @@ bool WaylandSeat::RefreshKeyboard() {
       layout_engine, connection_->event_source());
   return true;
 }
+
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+void WaylandSeat::UpdateCursor() {
+  if (pointer()) {
+    cursor_ = std::make_unique<WaylandCursor>(pointer(), connection_);
+    cursor_position_ = std::make_unique<WaylandCursorPosition>();
+  } else {
+    cursor_.reset();
+    cursor_position_.reset();
+  }
+}
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
 
 // static
 void WaylandSeat::OnCapabilities(void* data,

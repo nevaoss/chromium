@@ -272,6 +272,10 @@ const char kMinVideoDecoderOutputBufferSize[] =
     BUILDFLAG(IS_SOLARIS)
 // The Alsa device to use when opening an audio input stream.
 const char kAlsaInputDevice[] = "alsa-input-device";
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+// List of comma-seperated Alsa devices that should not be used.
+const char kAlsaInputDeviceBlockList[] = "alsa-input-device-block-list";
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
 // The Alsa device to use when opening an audio stream.
 const char kAlsaOutputDevice[] = "alsa-output-device";
 #endif  // BUILDFLAG(IS_LINUX) || ...
@@ -1525,6 +1529,18 @@ BASE_FEATURE(kD3D12VideoEncodeAcceleratorL1T3,
 BASE_FEATURE(kD3D12VideoEncodeAcceleratorSharedHandleCaching,
              base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_WIN)
+
+#if defined(USE_WEBOS_CODEC)
+// Enable VDA based webOS video decoder.
+BASE_FEATURE(kWebOSVideoDecodeAccelerator,
+             "WebOSVideoDecodeAccelerator",
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Enable VEA based webOS video encoder.
+BASE_FEATURE(kWebOSVideoEncodeAccelerator,
+             "WebOSVideoEncodeAccelerator",
+             base::FEATURE_DISABLED_BY_DEFAULT);
+#endif
 
 #if BUILDFLAG(IS_WIN)
 BASE_FEATURE(kD3D12SharedImageEncode, base::FEATURE_DISABLED_BY_DEFAULT);

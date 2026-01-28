@@ -9,6 +9,11 @@
 
 #include "build/build_config.h"
 
+///@name IS_NEVA_APPRUNTIME
+///@{
+#include "content/shell/common/shell_neva_switches.h"
+///@}
+
 namespace switches {
 
 // Makes Content Shell use the given path for its data directory.

@@ -14,6 +14,8 @@ if (is_android) {
   import("//build/config/android/rules.gni")
 }
 
+import("//neva/neva.gni")
+
 # See //content/BUILD.gn for how this works.
 group("browser") {
   if (is_component_build) {
@@ -26,6 +28,11 @@ group("browser") {
 source_set("browser_sources") {
   # External code should depend on via ":browser" above.
   visibility = [ "//content/*" ]
+  # TODO(neva): Dirty workaround to provide visibility to //neva/emulator.
+  # It should be revised and removed.
+  if (use_neva_appruntime) {
+    visibility += [ "//neva/emulator" ]
+  }
   sources = [
     "active_url_message_filter.cc",
     "active_url_message_filter.h",

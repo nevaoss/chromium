@@ -1,0 +1,113 @@
+# Copyright 2019 LG Electronics, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+import("//build/config/locales.gni")
+import("//build_overrides/build.gni")
+import("//neva/app_runtime/app_runtime_locales.gni")
+import("//neva/neva.gni")
+import("//webos/install/paths.gni")
+import("//webos/install/sysbus.gni")
+import("//webos/install/weboswebruntime/common_resources.gni")
+import("//webos/install/weboswebruntime/headers.gni")
+
+copy("weboswebruntime") {
+  sources = weboswebruntime_resources
+
+  outputs = [ "$image_path/$cbe_data_dir/{{source_file_part}}" ]
+
+  deps = [
+    "//neva/app_runtime:app_runtime_resources", # for app_runtime_content.pak
+    "//third_party/icu:icudata",                # for icudtl.dat
+    "//v8:v8",                                  # for snapshot_blob.bin
+    "//webos:webos_resources",                  # for webos_content.pak
+    ":gl",                                      # for libEGL.so and libGLESv2.so
+    ":locales",
+    ":headers",
+    ":pkgconfig",
+  ]
+  if (use_cbe) {
+    deps += [ ":cbe" ]                          # for libcbe.so
+  }
+  if (use_lttng) {
+    deps += [ ":lttng_provider" ]               # for libchromium_lttng_provider.so
+  }
+  if (use_neva_chrome_extensions) {
+    deps += [ ":components_locale_settings" ]
+  }
+}
+
+if (use_lttng) {
+  copy("lttng_provider") {
+    sources = [ "$root_out_dir/liblttng_provider.so" ]
+    outputs = [ "$image_path/$libdir/{{source_file_part}}" ]
+
+    deps = [ "//base/trace_event/neva/lttng:lttng_provider" ]
+  }
+}
+
+if (use_cbe) {
+  copy("cbe") {
+    sources = [ "$root_out_dir/libcbe.so" ]
+    outputs = [ "$image_path/$libdir/{{source_file_part}}" ]
+
+    deps = [ "//neva/cbe:chromium_cbe" ]
+  }
+}
+
+copy("locales") {
+  sources = weboswebruntime_locales
+
+  foreach(locale, app_runtime_locales) {
+    sources += [ "$root_gen_dir/webos/repack/$locale.pak" ]
+  }
+
+
+  outputs = [ "$image_path/$cbe_data_locales_dir/{{source_file_part}}" ]
+  deps = [
+    "//third_party/blink/public/strings",
+    "//webos:resources",
+  ]
+}
+
+copy("components_locale_settings") {
+  sources = []
+  foreach(locale, all_chrome_locales) {
+    sources += [ "${root_gen_dir}/components/strings/components_locale_settings_${locale}.pak" ]
+  }
+
+  outputs = [ "$image_path/$cbe_data_locales_dir/{{source_file_part}}" ]
+  deps = [ "//components/strings:components_locale_settings" ]
+}
+
+copy("gl") {
+  sources = weboswebruntime_gl_resources
+
+  outputs = [ "$image_path/$cbe_data_dir/{{source_file_part}}" ]
+  deps = [
+    "//third_party/angle:libEGL",
+    "//third_party/angle:libGLESv2",
+  ]
+}
+
+copy("headers") {
+  sources = headers
+  outputs = [ "$image_path/$webruntime_includedir/{{source_root_relative_dir}}/{{source_file_part}}" ]
+}
+
+copy("pkgconfig") {
+  sources = [ "//webos/install/weboswebruntime/libcbe.pc" ]
+  outputs = [ "$image_path/$webos_pkgconfigdir/{{source_file_part}}" ]
+}

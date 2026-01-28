@@ -1181,4 +1181,30 @@ void PeerConnectionTracker::AddStandardStats(int lid, base::Value::List value) {
   peer_connection_tracker_host_->AddStandardStats(lid, std::move(value));
 }
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+void PeerConnectionTracker::DropAllConnections(DropAllConnectionsCallback cb) {
+  DCHECK_CALLED_ON_VALID_THREAD(main_thread_);
+  if (!HasOpenConnections())
+    return;
+
+  for (auto& it : peer_connection_local_id_map_) {
+    LOG(INFO) << __PRETTY_FUNCTION__ << " - CloseClientPeerConnection()";
+    it.key->CloseClientPeerConnection();
+  }
+
+  std::move(cb).Run();
+}
+
+bool PeerConnectionTracker::HasOpenConnections() const {
+  DCHECK_CALLED_ON_VALID_THREAD(main_thread_);
+  for (auto& it : peer_connection_local_id_map_) {
+    if (it.key->IsOpened()) {
+      LOG(INFO) << __PRETTY_FUNCTION__ << " :  true";
+      return true;
+    }
+  }
+  return false;
+}
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
+
 }  // namespace blink

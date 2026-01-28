@@ -17,6 +17,10 @@
 #include "skia/ext/skia_memory_dump_provider.h"
 #include "third_party/skia/include/core/SkGraphics.h"
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+#include "content/public/common/content_neva_switches.h"
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
+
 namespace content {
 namespace {
 
@@ -52,6 +56,17 @@ void InitializeSkia() {
       SkGraphics::SetFontCacheLimit(font_cache_limit * kMB);
     }
   }
+
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  const int kKiB = 1024;
+  if (cmd.HasSwitch(switches::kSkiaFontCacheLimitKb)) {
+    if (base::StringToSizeT(
+            cmd.GetSwitchValueASCII(switches::kSkiaFontCacheLimitKb),
+            &font_cache_limit)) {
+      SkGraphics::SetFontCacheLimit(font_cache_limit * kKiB);
+    }
+  }
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
 
   size_t resource_cache_limit;
   if (cmd.HasSwitch(switches::kSkiaResourceCacheLimitMb)) {

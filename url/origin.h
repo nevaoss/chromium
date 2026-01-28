@@ -205,6 +205,10 @@ class COMPONENT_EXPORT(URL) Origin {
                                           std::string host,
                                           uint16_t port);
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  static void SetFileOriginChanged(bool changed);
+#endif
+
   ~Origin();
 
   // For opaque origins, these return ("", "", 0).
@@ -478,6 +482,10 @@ class COMPONENT_EXPORT(URL) Origin {
   // the opaque origin was initially derived (we call this the "precursor"
   // origin).
   SchemeHostPort tuple_;
+
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  static bool file_origin_changed_;
+#endif
 
   // The nonce is used for maintaining identity of an opaque origin. This
   // nonce is preserved when an opaque origin is copied or moved. An Origin

@@ -14,6 +14,11 @@ blink_core_sources("xpath_generated") {
     "xpath_parser.cc",
   ]
   if (is_clang) {
+    # TODO(neva): unsafe-buffers checks are excluded in
+    # build/config/BUILDCONFIG.gn until it will be properly configured in the
+    # upstream. Otherwise many errors occurs on Jenkins (without ICECC).
+    # Temporary include it here to avoid configuration error.
+    configs += [ "//build/config/clang:unsafe_buffers", ]
     configs -= [
       "//build/config/clang:find_bad_constructs",
       "//build/config/clang:unsafe_buffers",

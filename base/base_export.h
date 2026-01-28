@@ -5,6 +5,12 @@
 #ifndef BASE_BASE_EXPORT_H_
 #define BASE_BASE_EXPORT_H_
 
+#if defined(USE_CBE) && !defined(COMPONENT_BUILD)
+#define CBE_BASE_EXPORT __attribute__((visibility("default")))
+#else
+#define CBE_BASE_EXPORT
+#endif
+
 #if defined(COMPONENT_BUILD)
 #if defined(WIN32)
 

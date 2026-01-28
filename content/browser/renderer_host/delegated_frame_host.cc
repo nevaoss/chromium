@@ -108,6 +108,14 @@ void DelegatedFrameHost::WasShown(
     stale_content_layer_->SetShowSolidColorContent();
     stale_content_layer_->SetVisible(false);
   }
+
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  // Aggressive release policy implementation
+  if (base::CommandLine::ForCurrentProcess()->HasSwitch(
+          switches::kEnableAggressiveReleasePolicy)) {
+    ResumeCompsitorDrawing();
+  }
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
 }
 
 void DelegatedFrameHost::RequestSuccessfulPresentationTimeForNextFrame(
@@ -140,6 +148,14 @@ void DelegatedFrameHost::WasHidden(HiddenCause cause) {
     return;
 #endif
   frame_evictor_->SetVisible(false);
+
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  // Aggressive release policy implementation
+  if (base::CommandLine::ForCurrentProcess()->HasSwitch(
+          switches::kEnableAggressiveReleasePolicy)) {
+    PerformAggressiveReleasePolicy();
+  }
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
 }
 
 void DelegatedFrameHost::CopyFromCompositingSurface(
@@ -716,5 +732,35 @@ void DelegatedFrameHost::SetIsFrameSinkIdOwner(bool is_owner) {
                                                      "DelegatedFrameHost");
   }
 }
+
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+void DelegatedFrameHost::PerformAggressiveReleasePolicy() {
+  EvictDelegatedFrame(frame_evictor_->CollectSurfaceIdsForEviction());
+
+  const int kSuspendedCompositorDelayMS = 1000;
+
+  // Suspending compositor's drawing prevents garbage collection
+  // in SurfaceManager. Delay some time to suspend.
+  compositor_suspending_task_.Reset(
+      base::BindOnce(&DelegatedFrameHost::SuspendCompositorDrawing,
+                     weak_factory_.GetWeakPtr()));
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
+      FROM_HERE, compositor_suspending_task_.callback(),
+      base::Milliseconds(kSuspendedCompositorDelayMS));
+}
+
+void DelegatedFrameHost::ResumeCompsitorDrawing() {
+  compositor_suspending_task_.Cancel();
+  if (compositor_) {
+    compositor_->ResumeDrawing();
+  }
+}
+
+void DelegatedFrameHost::SuspendCompositorDrawing() {
+  if (compositor_) {
+    compositor_->SuspendDrawing();
+  }
+}
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
 
 }  // namespace content

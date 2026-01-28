@@ -19,7 +19,18 @@
 #include "net/disk_cache/disk_cache.h"
 #include "url/origin.h"
 
+#if defined(USE_FILESCHEME_CODECACHE)
+#include "third_party/blink/public/common/features.h"
+
+class GURL;
+#endif
 namespace content {
+
+#if defined(USE_FILESCHEME_CODECACHE)
+namespace neva {
+bool IsFileSchemeSupportedForCodeCache(const GURL& url);
+}  // namespace neva
+#endif
 
 // Cache for storing generated code from the renderer on the disk. This cache
 // uses |resource_url| + |origin_lock| as a key for storing the generated code.

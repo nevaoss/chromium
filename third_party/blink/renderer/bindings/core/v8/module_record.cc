@@ -80,12 +80,22 @@ v8::Local<v8::Module> ModuleRecord::Compile(
   constexpr bool kMightGenerateCompileHints = false;
   constexpr bool kCanUseCrowdsourcedCompileHints = false;
   std::tie(compile_options, produce_cache_options, no_cache_reason) =
+#if defined(USE_FILESCHEME_CODECACHE)
+      V8CodeCache::GetCompileOptions(
+          v8_cache_options, params.CacheHandler(),
+          params.GetSourceText().length(), params.SourceLocationType(),
+          params.BaseURL(), params.SourceURL().IsLocalFile(),
+          kMightGenerateCompileHints,
+          kCanUseCrowdsourcedCompileHints,
+          v8_compile_hints::GetMagicCommentMode(execution_context));
+#else   // defined(USE_FILESCHEME_CODECACHE)
       V8CodeCache::GetCompileOptions(
           v8_cache_options, params.CacheHandler(),
           params.GetSourceText().length(), params.SourceLocationType(),
           params.BaseURL(), kMightGenerateCompileHints,
           kCanUseCrowdsourcedCompileHints,
           v8_compile_hints::GetMagicCommentMode(execution_context));
+#endif  // !defined(USE_FILESCHEME_CODECACHE)
 
   if (!V8ScriptRunner::CompileModule(
            isolate, params, text_position, compile_options, no_cache_reason,

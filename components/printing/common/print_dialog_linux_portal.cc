@@ -128,8 +128,12 @@ constexpr char kKeyToken[] = "token";
 
 constexpr int kXdgPortalRequiredVersion = 3;
 
+// TODO(neva): Wrap in BUILDFLAG to fix build error when building chrome target.
+// Try to contribute it into upstream.
+#if BUILDFLAG(ENABLE_OOP_PRINTING_NO_OOP_BASIC_PRINT_DIALOG)
 constexpr char16_t kPrintDialogLinuxPortalDeviceName[] =
     u"PrintDialogLinuxPortal";
+#endif
 
 void WriteDataToPipe(base::ScopedFD fd, std::vector<char> data) {
   base::File file(std::move(fd));

@@ -200,6 +200,10 @@ void SetRuntimeFeaturesFromChromiumFeatures() {
           {wf::EnableBackgroundFetch, raw_ref(features::kBackgroundFetch)},
           {wf::EnableBoundaryEventDispatchTracksNodeRemoval,
            raw_ref(blink::features::kBoundaryEventDispatchTracksNodeRemoval)},
+#if defined(USE_FILESCHEME_CODECACHE)
+          {wf::EnableLocalResourceCodeCache,
+           raw_ref(blink::features::kLocalResourceCodeCache)},
+#endif
           {wf::EnableCompositeBGColorAnimation,
            raw_ref(features::kCompositeBGColorAnimation)},
           {wf::EnableDigitalGoods, raw_ref(features::kDigitalGoodsApi),

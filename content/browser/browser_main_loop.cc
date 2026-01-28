@@ -255,6 +255,11 @@
 #include "mojo/public/cpp/bindings/lib/test_random_mojo_delays.h"
 #endif
 
+// TODO(neva): Remove this if not necessary for user level memory pressure.
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+#include "content/browser/memory_pressure/user_level_memory_pressure_signal_generator.h"
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
+
 // One of the linux specific headers defines this as a macro.
 #ifdef DestroyAll
 #undef DestroyAll
@@ -791,7 +796,7 @@ int BrowserMainLoop::PreCreateThreads() {
   }
 
   InitializeMemoryManagementComponent();
-#if BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_NEVA_APPRUNTIME)
   content::UserLevelMemoryPressureSignalGenerator::Initialize();
 #endif
 

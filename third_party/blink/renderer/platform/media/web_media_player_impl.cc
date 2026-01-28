@@ -3649,9 +3649,12 @@ bool WebMediaPlayerImpl::ShouldPausePlaybackWhenHidden() const {
   }
 
   const bool preserve_audio = HasUnmutedAudio() || audio_source_provider_->IsAudioBeingCaptured();
+
+#if !BUILDFLAG(IS_WEBOS)
   // Audio only stream is allowed to play when in background.
   if (!HasVideo() && preserve_audio)
     return false;
+#endif  // !BUILDFLAG(IS_WEBOS)
 
   // Video PiP is the only exception when background video playback is disabled.
   if (HasVideo() && IsInVideoPictureInPicture()) {

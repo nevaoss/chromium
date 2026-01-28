@@ -1,0 +1,10 @@
+{
+    "id": "com.webos.settingsservice.client",
+    "clientPermissionFiles": [
+        "/usr/share/luna-service2/client-permissions.d/com.webos.settingsservice.client.perm.json"
+    ],
+    "roleFiles": [
+        "/usr/share/luna-service2/roles.d/com.webos.settingsservice.client.role.json"
+    ],
+    "version": "1.0.0"
+}

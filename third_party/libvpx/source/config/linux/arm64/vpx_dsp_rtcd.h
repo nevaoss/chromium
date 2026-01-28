@@ -1175,7 +1175,10 @@ static void setup_rtcd_internal(void)
     vpx_sse = vpx_sse_neon;
     if (flags & HAS_NEON_DOTPROD) vpx_sse = vpx_sse_neon_dotprod;
     vpx_sum_squares_2d_i16 = vpx_sum_squares_2d_i16_neon;
+// TODO(neva): Remove this guard after webOS toolchain supports sve.
+#if !defined(OS_WEBOS)
     if (flags & HAS_SVE) vpx_sum_squares_2d_i16 = vpx_sum_squares_2d_i16_sve;
+#endif  // !defined(OS_WEBOS)
     vpx_variance16x16 = vpx_variance16x16_neon;
     if (flags & HAS_NEON_DOTPROD) vpx_variance16x16 = vpx_variance16x16_neon_dotprod;
     vpx_variance16x32 = vpx_variance16x32_neon;

@@ -272,6 +272,25 @@
 #define BUILDFLAG_INTERNAL_IS_OZONE() (0)
 #endif
 
+#if defined(OS_WEBOS)
+#define BUILDFLAG_INTERNAL_IS_WEBOS() (1)
+#else
+#define BUILDFLAG_INTERNAL_IS_WEBOS() (0)
+#endif
+
+#if defined(USE_NEVA_APPRUNTIME)
+#define BUILDFLAG_INTERNAL_IS_NEVA_APPRUNTIME() (1)
+#else
+#define BUILDFLAG_INTERNAL_IS_NEVA_APPRUNTIME() (0)
+#endif
+
+// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
+#if defined(DISABLE_RUST_FOR_NEVA)
+#define BUILDFLAG_INTERNAL_IS_NEVA_SUPPORT_RUST() (0)
+#else
+#define BUILDFLAG_INTERNAL_IS_NEVA_SUPPORT_RUST() (1)
+#endif
+
 // Compiler detection. Note: clang masquerades as GCC on POSIX and as MSVC on
 // Windows.
 #if defined(__GNUC__)

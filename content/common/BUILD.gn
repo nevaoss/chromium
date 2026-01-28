@@ -8,6 +8,7 @@ import("//content/public/common/zygote/features.gni")
 import("//ipc/features.gni")
 import("//media/media_options.gni")
 import("//mojo/public/tools/bindings/mojom.gni")
+import("//neva/neva.gni")
 import("//sandbox/features.gni")
 import("//testing/libfuzzer/fuzzer_test.gni")
 import("features.gni")
@@ -182,6 +183,14 @@ source_set("common") {
     "webid/identity_url_loader_throttle.h",
   ]
 
+  # TODO(neva): Remove this if not necessary for user level memory pressure.
+  if (use_neva_appruntime) {
+    sources += [
+      "neva/user_level_memory_pressure_signal_features.cc",
+      "neva/user_level_memory_pressure_signal_features.h",
+    ]
+  }
+
   configs += [
     "//content:content_implementation",
     "//build/config:precompiled_headers",
@@ -281,6 +290,10 @@ source_set("common") {
     ":mojo_bindings",
     "//content/public/common:interfaces",
   ]
+
+  if (use_lttng) {
+    deps += [ "//content/common/neva/lttng:lttng" ]
+  }
 
   if (is_posix) {
     sources += [
@@ -429,6 +442,10 @@ mojom("mojo_bindings") {
   # This interface is internal to content.
   visibility = [ "//content/*" ]
 
+  if (use_neva_appruntime) {
+    visibility += [ "//neva/app_runtime" ]
+  }
+
   disable_variants = true
 
   sources = [
@@ -470,6 +487,9 @@ mojom("mojo_bindings") {
   }
   if (is_posix && !is_android) {
     enabled_features += [ "is_non_android_posix" ]
+  }
+  if (use_neva_appruntime) {
+    enabled_features += [ "neva_appruntime" ]
   }
 
   cpp_typemaps = [

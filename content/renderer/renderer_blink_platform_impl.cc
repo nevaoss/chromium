@@ -121,11 +121,14 @@
 #include "content/child/child_process_sandbox_support_impl_win.h"
 #endif
 
+// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
+#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX)
 #include "content/child/font_data/font_data_manager.h"
 #include "skia/ext/font_utils.h"
 #include "third_party/blink/public/web/win/web_font_rendering.h"
 #endif
+#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 
 #if BUILDFLAG(IS_MAC)
 #include "content/child/child_process_sandbox_support_impl_mac.h"
@@ -141,6 +144,11 @@
 #if BUILDFLAG(IS_ANDROID)
 #include "content/common/android/sync_compositor_statics.h"
 #endif
+
+// TODO(neva): Remove this if not necessary for user level memory pressure.
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+#include "content/common/neva/user_level_memory_pressure_signal_features.h"
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
 
 using blink::Platform;
 using blink::WebAudioDevice;
@@ -219,17 +227,24 @@ RendererBlinkPlatformImpl::RendererBlinkPlatformImpl(
     SkFontConfigInterface::SetGlobal(font_loader);
 #endif
 
+// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
+#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX)
     // Create a FontDataManager if it's enabled, and if we're not in a
     // single-process environment. In single process, the SkFontMgr is already
     // installed by browser process code at this point.
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+    if (::features::IsFontDataServiceEnabled() && sandboxEnabled()) {
+#else   // !BUILDFLAG(IS_NEVA_APPRUNTIME)
     if (features::IsFontDataServiceEnabled() && sandboxEnabled()) {
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
       sk_sp<font_data_service::FontDataManager> font_data_manager =
           sk_make_sp<font_data_service::FontDataManager>();
 
       skia::OverrideDefaultSkFontMgr(font_data_manager);
     }
 #endif
+#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   }
 
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_MAC) || \
@@ -696,6 +711,24 @@ bool RendererBlinkPlatformImpl::AllowsLoopbackInPeerConnection() {
       switches::kAllowLoopbackInPeerConnection);
 }
 
+#if defined(USE_NEVA_SUSPEND_MEDIA_CAPTURE)
+void RendererBlinkPlatformImpl::AddSourceToAudioCapturerSourceManager(
+    media::AudioCapturerSource* source) {
+  RenderThreadImpl* render_thread = RenderThreadImpl::current();
+  if (!render_thread)
+    return;
+  render_thread->audio_capturer_source_manager()->AddSource(source);
+}
+
+void RendererBlinkPlatformImpl::RemoveSourceFromAudioCapturerSourceManager(
+    media::AudioCapturerSource* source) {
+  RenderThreadImpl* render_thread = RenderThreadImpl::current();
+  if (!render_thread)
+    return;
+  render_thread->audio_capturer_source_manager()->RemoveSource(source);
+}
+#endif
+
 blink::WebVideoCaptureImplManager*
 RendererBlinkPlatformImpl::GetVideoCaptureImplManager() {
   RenderThreadImpl* thread = RenderThreadImpl::current();
@@ -1158,7 +1191,7 @@ RendererBlinkPlatformImpl::VideoFrameCompositorTaskRunner() {
   return compositor_task_runner;
 }
 
-#if BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_NEVA_APPRUNTIME)
 void RendererBlinkPlatformImpl::SetPrivateMemoryFootprint(
     uint64_t private_memory_footprint_bytes) {
   auto* render_thread = RenderThreadImpl::current();
@@ -1167,10 +1200,14 @@ void RendererBlinkPlatformImpl::SetPrivateMemoryFootprint(
 }
 
 bool RendererBlinkPlatformImpl::IsUserLevelMemoryPressureSignalEnabled() {
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  return features::IsUserLevelMemoryPressureSignalEnabled();
+#else
   return base::SysInfo::Is4GbDevice() || base::SysInfo::Is6GbDevice();
+#endif
 }
 
-#endif  // BUILDFLAG(IS_ANDROID)
+#endif  // BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_NEVA_APPRUNTIME)
 
 void RendererBlinkPlatformImpl::OnV8HeapLastResortGC() {
   // In --single-process mode, the RendererMemoryCoordinatorPolicy does not run.

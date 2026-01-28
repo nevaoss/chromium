@@ -1,0 +1,99 @@
+# Copyright 2022 LG Electronics, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+import("//build/config/features.gni")
+import("//build/config/ui.gni")
+import("//extensions/buildflags/buildflags.gni")
+import("//neva/extensions/common/api/api_sources.gni")
+import("//tools/json_schema_compiler/json_features.gni")
+import("//tools/json_schema_compiler/json_schema_api.gni")
+
+assert(enable_extensions)
+
+################################################################################
+# Public Targets
+
+group("api") {
+  public_deps = [
+    ":generated_api_json_strings",
+    ":generated_api_types",
+  ]
+}
+
+group("extensions_features") {
+  public_deps = [
+    ":api_features",
+    ":manifest_features",
+    ":permission_features",
+  ]
+}
+
+################################################################################
+# Private Targets
+
+generated_json_strings("generated_api_json_strings") {
+  sources = neva_extensions_api_schema_sources +
+            neva_extensions_api_uncompiled_sources
+  configs = [ "//build/config:precompiled_headers" ]
+  bundle_name = "Neva"
+  schema_include_rules = neva_extensions_api_schema_include_rules
+  root_namespace = neva_extensions_api_root_namespace
+  visibility = [ ":api" ]
+}
+
+generated_types("generated_api_types") {
+  sources = neva_extensions_api_schema_sources +
+            neva_extensions_manifest_only_schema_sources
+  configs = [ "//build/config:precompiled_headers" ]
+  schema_include_rules = neva_extensions_api_schema_include_rules
+  root_namespace = neva_extensions_api_root_namespace
+  visibility = [ ":api" ]
+}
+
+json_features("api_features") {
+  feature_type = "APIFeature"
+  method_name = "AddNevaAPIFeatures"
+  sources = [ "_api_features.json" ]
+  visibility = [ ":extensions_features" ]
+}
+
+json_features("permission_features") {
+  feature_type = "PermissionFeature"
+  method_name = "AddNevaPermissionFeatures"
+  sources = [ "_permission_features.json" ]
+  visibility = [ ":extensions_features" ]
+}
+
+json_features("manifest_features") {
+  feature_type = "ManifestFeature"
+  method_name = "AddNevaManifestFeatures"
+  sources = [ "_manifest_features.json" ]
+  visibility = [ ":extensions_features" ]
+}
+
+function_registration("api_registration") {
+  sources = neva_extensions_api_schema_sources +
+            neva_extensions_api_uncompiled_sources
+  impl_dir = "//neva/extensions/browser/api"
+  bundle_name = "Neva"
+  root_namespace = "neva::%(namespace)s"
+
+  deps = [
+    "//extensions/common:mojom",
+    "//skia",
+    "//third_party/abseil-cpp:absl",
+  ]
+}

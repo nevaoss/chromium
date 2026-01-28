@@ -9,6 +9,13 @@
 
 #include "base/memory/raw_ptr.h"
 #include "chrome/browser/ui/views/frame/web_contents_close_handler_delegate.h"
+// TODO(neva): Required by GCC for usage of StatusBubbleViews and
+// WebContentsCloseHandler classes. Try to contribute to upstream.
+///@name IS_NEVA_APPRUNTIME
+///@{
+#include "chrome/browser/ui/views/frame/web_contents_close_handler.h"
+#include "chrome/browser/ui/views/status_bubble_views.h"
+///@}
 #include "chrome/common/buildflags.h"
 #include "ui/base/interaction/element_identifier.h"
 #include "ui/base/metadata/metadata_header_macros.h"

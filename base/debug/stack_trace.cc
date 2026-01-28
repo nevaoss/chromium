@@ -67,7 +67,7 @@ constinit std::optional<size_t> g_stack_scan_max_fp_to_stack_end_gap_bytes{
 // Because the signature size can vary based on the system configuration, use
 // the xpaclri instruction to remove the signature.
 static uintptr_t StripPointerAuthenticationBits(uintptr_t ptr) {
-#if defined(ARCH_CPU_ARM64)
+#if defined(ARCH_CPU_ARM64) && !defined(NO_ARM_CONTROL_FLOW_INTEGRITY)
   // A single Chromium binary currently spans all Arm systems (including those
   // with and without pointer authentication). xpaclri is used here because it's
   // in the HINT space and treated as a no-op on older Arm cores (unlike the

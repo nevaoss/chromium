@@ -457,6 +457,11 @@ vars = {
   # the commit queue can handle CLs rolling wuffs
   # and whatever else without interference from each other.
   'wuffs_revision': 'e3f919ccfe3ef542cfc983a82146070258fb57f8',
+  # TODO(neva_rust): Please remove this workaround after Neva supports rust based CrabbyAvif.
+  # Three lines of non-changing comments so that
+  # the commit queue can handle CLs rolling libavif
+  # and whatever else without interference from each other.
+  'libavif_revision': 'e7b34a1f5e9f7024d08311c7bae156061b889882',
   # Three lines of non-changing comments so that
   # the commit queue can handle CLs rolling crabbyavif
   # and whatever else without interference from each other.
@@ -2346,6 +2351,10 @@ deps = {
 
   'src/third_party/libaom/source/libaom':
     Var('aomedia_git') + '/aom.git' + '@' +  'e3d6ba6e5e9888a7ca69eb114c6eb913275f253c',
+
+  # TODO(neva_rust): Please remove this workaround after Neva supports rust based CrabbyAvif.
+  'src/third_party/libavif/src':
+    Var('chromium_git') + '/external/github.com/AOMediaCodec/libavif.git' + '@' + Var('libavif_revision'),
 
   'src/third_party/crabbyavif/src':
     Var('chromium_git') + '/external/github.com/webmproject/CrabbyAvif.git' + '@' + Var('crabbyavif_revision'),
@@ -4309,6 +4318,170 @@ hooks = [
                 '-s', 'src/build/toolchain/win/rc/linux64/rc.sha1',
     ]
   },
+  #@name IS_NEVA_APPRUNTIME
+  #@{
+  # Apply more accurate trace of heap growing factor
+  {
+    'name': 'Apply_more_accurate_trace_of_heap_growing_factor',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/v8', 'am',
+               '../neva/patches/0002-v8-Trace-heap-growing-factor-more-accurately.patch']
+  },
+  # Apply v8 snapshot report exceptions to console
+  {
+    'name': 'Apply_v8_snapshot_report_exceptions_to_console',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/v8', 'am',
+               '../neva/patches/0003-op-upsable-v8-snapshot-Report-exceptions-to-console-.patch']
+  },
+  # Apply Add LTTng tracepoints support
+  {
+    'name': 'Apply_add_lttng_tracepoints_support',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/v8', 'am',
+               '../neva/patches/0004-Add-LTTng-tracepoints-support.patch']
+  },
+  # Apply Make v8 heap constraints configurable
+  {
+    'name': 'Apply_make_v8_heap_constraints_configurable',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/v8', 'am',
+               '../neva/patches/0005-memory-Make-v8-heap-constraints-configurable.patch']
+  },
+  # Apply 'Prevent-crash-with-std-isprint-usage-in-serialization' patch.
+  {
+    'name': 'Prevent-crash-with-std-isprint-usage-in-serialization',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/v8', 'am',
+              '../neva/patches/0007-Prevent-crash-with-std-isprint-usage-in-serialization.patch']
+  },
+  # Apply 'Restore-GN-use_gold-logic-in-V8' patch
+  {
+    'name': 'Restore-GN-use_gold-logic-in-V8',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/v8', 'am',
+              '../neva/patches/0008-v8-build-Restore-GN-use_gold-logic-in-V8.patch']
+  },
+  # Apply 'Set-using-local-dynamic-for-webOS' patch
+  {
+    'name': 'Set-using-local-dynamic-for-webOS',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/v8', 'am',
+              '../neva/patches/0010-Set-using-local-dynamic-for-webOS.patch']
+  },
+  # Apply 'Refactor neva content decryption module' patch
+  {
+    'name': 'Apply_refactor_neva_content_decryption_module',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/media/cdm/api', 'am',
+               '../../../neva/patches/0001-cdm-Refactor-neva-content-decryption-module.patch']
+  },
+  # Apply 'GCC-suppress-invalid-offsetof-warnings' patch
+  {
+    'name': 'Apply_GCC-suppress-invalid-offsetof-warnings',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/net/third_party/quiche/src', 'am',
+               '../../../../neva/patches/0001-GCC-suppress-invalid-offsetof-warnings.patch']
+  },
+  # Apply Disable SVE for WebOS builds
+  {
+    'name': 'Disable_AOM_SVE_for_webOS',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/third_party/libaom/source/libaom', 'am',
+               '../../../../neva/patches/0001-build-webos-131.0.6740.0-1-Disable-AOM-SVE-for-webOS.patch']
+  },
+  # Apply 'Disable MANGLE_JPEG_NAMES for libjpeg_turbo' patch
+  {
+    'name': 'Apply_Disable-MANGLE_JPEG_NAMES-for-libjpeg_turbo',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/third_party/libjpeg_turbo', 'am',
+              '../../neva/patches/0001-webos-Disable-MANGLE_JPEG_NAMES-for-libjpeg_turbo.patch']
+  },
+  # Apply 'Disable MSAA in Skia to fix SVG rendering' patch
+  {
+    'name': 'Apply_Disable-MSAA-in-Skia-to-fix-SVG-rendering',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/third_party/skia', 'am',
+              '../../neva/patches/0001-Disable-MSAA-in-Skia-to-fix-SVG-rendering.patch']
+  },
+  # Apply 'Add work around code for invalidating glBufferData' patch
+  {
+    'name': 'Apply_Add-work-around-code-for-invalidating-glBufferData',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/third_party/skia', 'am',
+              '../../neva/patches/0001-Add-work-around-code-for-invalidating-glBufferData.patch']
+  },
+  # Support doubly linked timezone path used for webOS.
+  {
+    'name': 'Supported_doubly_linked_timezone_path',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/third_party/icu', 'am',
+               '../../neva/patches/0001-Support-a-doubly-linked-timezone-file-path-use.patch']
+  },
+  # Apply 'Disable Neon DotProduct and I8MM instructions in libyuv' patch
+  {
+    'name': 'Apply_Disable-Neon-DotProduct-and-I8MM-extensions-in-libyuv',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/third_party/libyuv', 'am',
+              '../../neva/patches/0009-build-webos-Disable-Neon-DotProduct-and-I8MM-extensions-in-libyuv.patch']
+  },
+  # Apply 'Disable SME instructions in libyuv' patch
+  {
+    'name': 'Apply_Disable-SME-instructions-in-libyuv',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/third_party/libyuv', 'am',
+              '../../neva/patches/0010-build-webos-Disable-SME-instructions-in-libyuv.patch']
+  },
+  # Apply 'GCC: Do not use std with modff in noise_generator' patch
+  {
+    'name': '0001-GCC-Do-not-use-std-with-modff-in-noise-generator.cc',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/third_party/ink/src', 'am',
+              '../../../neva/patches/0001-GCC-Do-not-use-std-with-modff-in-noise-generator.patch']
+  },
+  # Apply 'GCC: Replace std::fmodf with std::fmod in ink/geometry/internal/modulo.cc' patch
+  {
+    'name': 'GCC-Replace-fmodf-with-fmod-in-ink/geometry/internal/modulo.cc',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/third_party/ink/src', 'am',
+              '../../../neva/patches/0002-136.0.7075.0-1-GCC-Replace-std-fmodf-with-std-fmod-i.patch']
+  },
+  # Apply 'GCC: Explicitly instantiate template classes in ANGLE' patch
+  {
+    'name': '0001-GCC-Explicitly-instantiate-template-classes-in-ANGLE',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/third_party/angle', 'am',
+              '../../neva/patches/0001-GCC-Explicitly-instantiate-template-classes-in-ANGLE.patch']
+  },
+  # Apply 'GCC: Change 'PERFETTO_HAS_NO_DESTROY()' to 1 to fix renderer crash as workaround' patch
+  {
+    'name': 'GCC-Change-PERFETTO_HAS_NO_DESTROY-to-1-to-fix-renderer-crash-as-workaround',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/third_party/perfetto', 'am',
+              '../../neva/patches/0001-136.0.7081.0-1-GCC-Change-PERFETTO_HAS_NO_DESTROY-to.patch']
+  },
+  # Apply 'V8: GCC: Explicitely cast NEON intrinsics in simd.cc' patch
+  {
+    'name': 'V8-GCC-Explicitely-cast-NEON-intrinsics-in-simd.cc',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/v8', 'am',
+               '../neva/patches/0001-webos-V8-GCC-Explicitely-cast-NEON-intrinsics-in-simd.cc.patch']
+  },
+  # Apply 'GCC: Explicitely specify span template type in PDFium' patch
+  {
+    'name': 'GCC-Explicitely-specify-span-template-type-in-PDFium',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/third_party/pdfium', 'am',
+              '../../neva/patches/0001-GCC-Explicitely-specify-span-template-type-in-PDFium.patch']
+  },
+  # Apply 'V8: Rust: Disable Temporal API' patch
+  {
+    'name': 'V8-Rust-Disable-Temporal-API',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/v8', 'am',
+              '../neva/patches/0012-V8-Disable-Temporal-API-from-build.patch']
+  },
+  #@}
   {
     'name': 'apache_win32',
     'pattern': '\\.sha1',

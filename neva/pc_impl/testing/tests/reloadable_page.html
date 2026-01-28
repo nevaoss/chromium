@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Reloadable page</title>
+</head>
+
+<body onload="changeBackgroundColor()" style="background-color: white;">
+  <p style="color:blue; text-align: center; font-size:30px;">This page reloads every 5 seconds.</p>
+
+  <script>
+    function changeBackgroundColor() {
+      const colors = ["#739600","#1F5EA8","#F72C2C","#FA5021", "#FB9F54",
+        "#FFAD00", "#FFEB3B","#55C934","#4CAF58","#1FA895","#1FD2DB","#2196F3",
+        "#61338F","#8F3378","#E91E63","#B32E37"];
+      const rand = Math.floor(Math.random() * colors.length);
+      document.body.style.backgroundColor = colors[rand];
+    }
+    setTimeout(function() { window.location.reload(true); }, 5000);
+  </script>
+
+</body>
+
+</html>

@@ -186,6 +186,10 @@ class CC_EXPORT LayerTreeSettings {
   // the device scale factor.
   bool use_painted_device_scale_factor = false;
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  bool use_aggressive_release_policy = false;
+#endif
+
   // When false, scroll deltas accumulated on the impl thread are rounded to
   // integer values when sent to Blink on commit. This flag should eventually
   // go away and CC should send Blink fractional values:

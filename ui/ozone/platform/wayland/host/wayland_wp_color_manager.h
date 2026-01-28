@@ -121,9 +121,18 @@ class WaylandWpColorManager
       image_description_cache_{64};
 
   // Callbacks for image descriptions that are being created.
+  // TODO(neva): Use std::map instead of base::flat_map since base::flat_map
+  // requires copyable/noexcept-movable values, which is incompatible with
+  // base::OnceCallback on GCC.
+#if defined(__GNUC__) && !defined(__clang__)
+  std::map<ImageDescription,
+           std::vector<WaylandWpImageDescription::CreationCallback>>
+      pending_callbacks_;
+#else   // defined(__GNUC__) && !defined(__clang__)
   base::flat_map<ImageDescription,
                  std::vector<WaylandWpImageDescription::CreationCallback>>
       pending_callbacks_;
+#endif  // !(defined(__GNUC__) && !defined(__clang__))
 
   // Holds the image description objects while their creation is pending.
   base::flat_map<ImageDescription, scoped_refptr<WaylandWpImageDescription>>

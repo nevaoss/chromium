@@ -12,6 +12,11 @@
 #include "ui/ozone/platform/wayland/host/wayland_window.h"
 #include "ui/platform_window/platform_window_init_properties.h"
 
+///@name IS_NEVA_APPRUNTIME
+///@{
+#include "ui/ozone/platform/wayland/host/wayland_extensions.h"
+///@}
+
 namespace ui {
 
 // static
@@ -28,6 +33,15 @@ std::unique_ptr<WaylandWindow> WaylandWindow::Create(
       // toplevel window instead.
       if (auto* parent = connection->window_manager()->GetWindow(
               properties.parent_widget)) {
+        ///@name IS_NEVA_APPRUNTIME
+        ///@{
+        if (connection->extensions()) {
+          window = connection->extensions()->CreateWaylandWindow(delegate,
+                                                                 connection);
+          if (window)
+            break;
+        }
+        ///@}
         window = std::make_unique<WaylandBubble>(delegate, connection, parent);
       } else {
         // TODO(crbug.com/40883130): Make sure bubbles/popups pass a parent
@@ -40,6 +54,15 @@ std::unique_ptr<WaylandWindow> WaylandWindow::Create(
     case PlatformWindowType::kMenu:
       if (auto* parent = connection->window_manager()->GetWindow(
               properties.parent_widget)) {
+        ///@name IS_NEVA_APPRUNTIME
+        ///@{
+        if (connection->extensions()) {
+          window = connection->extensions()->CreateWaylandWindow(delegate,
+                                                                 connection);
+          if (window)
+            break;
+        }
+        ///@}
         window = std::make_unique<WaylandPopup>(delegate, connection, parent);
       } else {
         DLOG(WARNING) << "Failed to determine parent for menu/tooltip window.";
@@ -48,6 +71,16 @@ std::unique_ptr<WaylandWindow> WaylandWindow::Create(
       break;
     case PlatformWindowType::kWindow:
     case PlatformWindowType::kDrag:
+      ///@name IS_NEVA_APPRUNTIME
+      ///@{
+      if (connection->extensions()) {
+        window =
+            connection->extensions()->CreateWaylandWindow(delegate, connection);
+        if (window)
+          break;
+      }
+      ///@}
+
       // TODO(crbug.com/40883130): Figure out what kind of surface we need to
       // create kDrag windows.
       window = std::make_unique<WaylandToplevelWindow>(delegate, connection);

@@ -33,6 +33,10 @@
 #include "ui/native_theme/native_theme.h"
 #include "ui/native_theme/overlay_scrollbar_constants.h"
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+#include "base/neva/base_switches.h"
+#endif
+
 namespace blink {
 
 namespace {
@@ -521,6 +525,12 @@ cc::LayerTreeSettings GenerateLayerTreeSettings(
   settings.decoded_image_working_set_budget_bytes =
       cc::ImageDecodeCacheUtils::GetWorkingSetBytesForImageDecode(
           /*for_renderer=*/true);
+
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  settings.use_aggressive_release_policy =
+      base::CommandLine::ForCurrentProcess()->HasSwitch(
+          ::switches::kEnableAggressiveReleasePolicy);
+#endif
 
   if (using_low_memory_policy) {
     // RGBA_4444 textures are only enabled:

@@ -36,6 +36,10 @@
 #include "third_party/boringssl/src/pki/parsed_certificate.h"
 #include "third_party/boringssl/src/pki/trust_store.h"
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+#include "base/command_line.h"
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
+
 #if BUILDFLAG(IS_CHROMEOS) && BUILDFLAG(IS_CHROMEOS_DEVICE)
 // TODO(crbug.com/40281745): We can remove these weak attributes in M123 or
 // later. Until then, these need to be declared with the weak attribute
@@ -61,6 +65,16 @@ std::array<uint8_t, crypto::obsolete::Sha1::kSize> Sha1ForNSSTrust(
 }
 
 namespace {
+
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+inline constexpr char kDisableEnforceLocalAnchorConstraints[] =
+    "disable-enforce-local-anchor-constraints";
+
+bool IsDisableEnforceLocalAnchorConstraints() {
+  return base::CommandLine::ForCurrentProcess()->HasSwitch(
+      kDisableEnforceLocalAnchorConstraints);
+}
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
 
 struct FreePK11GenericObjects {
   void operator()(PK11GenericObject* x) const {
@@ -467,9 +481,19 @@ bssl::CertificateTrust TrustStoreNSS::GetTrustIgnoringSystemTrust(
           return bssl::CertificateTrust::ForTrustedLeaf();
         case CKT_NSS_TRUSTED_DELEGATOR: {
           DVLOG(1) << "CKT_NSS_TRUSTED_DELEGATOR -> trust anchor";
+          // TODO(neva): Remove this and its runtime flag if Neva can support
+          // EnforceLocalAnchorConstraints by default.
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+          const bool enforce_anchor_constraints =
+              !IsDisableEnforceLocalAnchorConstraints();
+          return bssl::CertificateTrust::ForTrustAnchor()
+              .WithEnforceAnchorConstraints(enforce_anchor_constraints)
+              .WithEnforceAnchorExpiry(enforce_anchor_constraints);
+#else   // BUILDFLAG(IS_NEVA_APPRUNTIME)
           return bssl::CertificateTrust::ForTrustAnchor()
               .WithEnforceAnchorConstraints()
               .WithEnforceAnchorExpiry();
+#endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
         }
         case CKT_NSS_MUST_VERIFY_TRUST:
         case CKT_NSS_VALID_DELEGATOR:
@@ -510,6 +534,20 @@ bssl::CertificateTrust TrustStoreNSS::GetTrustForNSSTrust(
       CERTDB_TERMINAL_RECORD | CERTDB_TRUSTED;
   bool is_trusted_leaf = (trust_flags & kTrustedPeerBits) == kTrustedPeerBits;
 
+  // TODO(neva): Remove this and its runtime flag if Neva can support
+  // EnforceLocalAnchorConstraints by default.
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  const bool enforce_anchor_constraints =
+      !IsDisableEnforceLocalAnchorConstraints();
+  if (is_trusted_ca && is_trusted_leaf) {
+    return bssl::CertificateTrust::ForTrustAnchorOrLeaf()
+        .WithEnforceAnchorConstraints(enforce_anchor_constraints)
+        .WithEnforceAnchorExpiry(enforce_anchor_constraints);
+  } else if (is_trusted_ca) {
+    return bssl::CertificateTrust::ForTrustAnchor()
+        .WithEnforceAnchorConstraints(enforce_anchor_constraints)
+        .WithEnforceAnchorExpiry(enforce_anchor_constraints);
+#else   // BUILDFLAG(IS_NEVA_APPRUNTIME)
   if (is_trusted_ca && is_trusted_leaf) {
     return bssl::CertificateTrust::ForTrustAnchorOrLeaf()
         .WithEnforceAnchorConstraints()
@@ -518,6 +556,7 @@ bssl::CertificateTrust TrustStoreNSS::GetTrustForNSSTrust(
     return bssl::CertificateTrust::ForTrustAnchor()
         .WithEnforceAnchorConstraints()
         .WithEnforceAnchorExpiry();
+#endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
   } else if (is_trusted_leaf) {
     return bssl::CertificateTrust::ForTrustedLeaf();
   }

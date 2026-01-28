@@ -55,6 +55,9 @@ struct BLINK_PLATFORM_EXPORT WebFontRenderStyle {
            use_hinting == a.use_hinting && hint_style == a.hint_style &&
            use_anti_alias == a.use_anti_alias &&
            use_subpixel_rendering == a.use_subpixel_rendering &&
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+           use_fake_bold_text == a.use_fake_bold_text &&
+#endif
            use_subpixel_positioning == a.use_subpixel_positioning;
   }
 
@@ -65,6 +68,10 @@ struct BLINK_PLATFORM_EXPORT WebFontRenderStyle {
   static void SetSubpixelRendering(bool);
   static void SetSubpixelPositioning(bool);
   static void SetSystemFontFamily(const WebString& name);
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  static void SetAllowFakeBoldText(bool);
+  static bool GetAllowFakeBoldText();
+#endif
 
   static WebFontRenderStyle GetDefault();
 
@@ -87,6 +94,10 @@ struct BLINK_PLATFORM_EXPORT WebFontRenderStyle {
   char use_subpixel_rendering = kNoPreference;
   // use subpixel positioning (fractional X positions for glyphs)
   char use_subpixel_positioning = kNoPreference;
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  // use fake bold text
+  char use_fake_bold_text = kNoPreference;
+#endif
 };
 
 }  // namespace blink

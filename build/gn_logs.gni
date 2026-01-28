@@ -52,3 +52,16 @@ if (target_os == "fuchsia") {
 }
 
 build_gn_logs += [ "#### get_concurrent_links.py ####" ] + concurrent_links_logs
+
+# NOTE(neva): Changes for Yocto build support
+declare_args() {
+  yocto_target_sys = "arm-linux-gnueabi"
+}
+declare_args() {
+  yocto_target_cc = "${yocto_target_sys}-gcc"
+  yocto_target_cxx = "${yocto_target_sys}-g++"
+}
+build_gn_logs += [ "#### yocto ####" ]
+build_gn_logs += ["yocto_target_sys=${yocto_target_sys}"]
+build_gn_logs += ["yocto_target_cc=${yocto_target_cc}"]
+build_gn_logs += ["yocto_target_cxx=${yocto_target_cxx}"]

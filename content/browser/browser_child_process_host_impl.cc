@@ -729,7 +729,7 @@ void BrowserChildProcessHostImpl::OnMemoryPressure(
   // Match the existing behavior of only sending the memory pressure level to
   // select process types.
   // TODO(pmonette): Enable for all child processes.
-#if BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_NEVA_APPRUNTIME)
   child_process()->OnMemoryPressure(memory_pressure_level);
 #else
   if (data_.process_type == PROCESS_TYPE_GPU ||

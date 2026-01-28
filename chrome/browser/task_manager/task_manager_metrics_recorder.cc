@@ -43,8 +43,14 @@ void RecordTabSwitchEvent(CategoryRecord record,
 void RecordEndProcessEvent(const base::TimeTicks& start_time,
                            const base::TimeTicks& end_time,
                            size_t end_process_count) {
+// TODO(neva): Remove this workaround when Neva GCC version upgraded to 12+.
+#if defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
+  static std::array<std::string, 5> kEndProcessCountToString = {
+      "First", "Second", "Third", "Fourth", "Fifth"};
+#else   // defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
   constexpr static std::array<std::string, 5> kEndProcessCountToString = {
       "First", "Second", "Third", "Fourth", "Fifth"};
+#endif  // !(defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__))
 
   // Only record the first five end process events per task manager session.
   if (end_process_count > 0 &&

@@ -4,6 +4,7 @@
 
 import("//build/buildflag_header.gni")
 import("//components/cdm/common/playready.gni")
+import("//neva/neva.gni")
 import("//third_party/widevine/cdm/widevine.gni")
 
 buildflag_header("buildflags") {
@@ -44,6 +45,10 @@ static_library("common") {
       "//third_party/widevine/cdm:buildflags",
       "//third_party/widevine/cdm:headers",
     ]
+  }
+
+  if (use_neva_cdm) {
+    deps += [ "//components/cdm/common/neva" ]
   }
 
   if (enable_playready) {

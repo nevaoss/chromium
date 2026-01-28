@@ -1,0 +1,112 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+  <META HTTP-EQUIV="CACHE-CONTROL" CONTENT="NO-CACHE">
+  <META HTTP-EQUIV="Expires" CONTENT="-1">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>Test input application</title>
+</head>
+<SCRIPT type="text/javascript">
+  //initialize page
+  function initPage() {
+    var url = new URL(window.location.href);
+    var x = parseInt(url.searchParams.get("x")) || 0;
+    var w = parseInt(url.searchParams.get("w")) || 1920;
+    var bk = url.searchParams.get("bk") || "orange";
+
+    var input = document.getElementById("input_region");
+    input.style.left = x + "px";
+    input.style.width = w + "px";
+    input.style.background = bk;
+
+    shiftDiv("co_ordinates", x);
+    shiftDiv("result", x);
+
+    window.PalmSystem.setInputRegion(
+        [{ "x": x, "y": 0, "width": w, "height": 1080 }]);
+    window.PalmSystem.setKeyMask(["KeyMaskDefault"]);
+
+    printfResult("InputRegion: " + x + ",0," + w + ",1080");
+    printfResult("keyMask:Numeric");
+    addEventHandlerWithOutSaving(document.body, "keydown", debug_getKeyCode);
+    addEventHandlerWithOutSaving(document.body, "click", debug_getMouse);
+  }
+
+  function shiftDiv(name, x) {
+    var coord = document.getElementById(name);
+    coord.style.left = (parseInt(coord.style.left) + x) + "px";
+  }
+
+  var gnLogLine = 0;
+  function clearResult() {
+    var up_div = document.getElementById("result");
+    up_div.innerHTML = "";
+  }
+
+  function printfResult(log) {
+    if (gnLogLine > 10) {
+      clearResult();
+      gnLogLine = 0;
+    }
+
+    var up_div = document.getElementById("result");
+    var div;
+    div = document.createElement("div");
+    div.innerHTML = log;
+    up_div.appendChild(div);
+
+    console.log(log);
+    gnLogLine++;
+  }
+
+  function addEventHandlerWithOutSaving(obj, eventName, handler) {
+    if (document.attachEvent) {
+      obj.attachEvent("on" + eventName, handler);
+    } else if (document.addEventListener) {
+      obj.addEventListener(eventName, handler, false);
+    }
+  }
+
+  function debug_getMouse(event) {
+    var evt = event || window.event;
+
+    printfResult("Mouse(" + evt.clientX + "," + evt.clientY + ")");
+  }
+
+  function debug_getKeyCode(event) {
+    var keyCode = "";
+    if (window.event) {   // IE
+      keyCode = event.keyCode;
+    } else if (event.which) {   // Netscape/Firefox/Opera
+      keyCode = event.which;
+    }
+
+    printfResult("getKeyCode:" + keyCode);
+
+    return keyCode;
+  }
+
+  function print_Co_Ordinates(e) {
+    x = e.clientX;
+    y = e.clientY;
+    coor = "Coordinates: (" + x + "," + y + ")";
+    document.getElementById("co_ordinates").innerHTML = coor;
+  }
+
+  function clear_Co_Ordinates() {
+    document.getElementById("co_ordinates").innerHTML = "";
+  }
+</SCRIPT>
+
+<body onload="javascript:initPage();">
+  <div style="position:absolute; left:0px; top:0px; width:1920px; height:1080px; opacity:1.0; background-color: orange;" id="input_region"  onmousemove="print_Co_Ordinates(event)" >
+  </div>
+
+  <div style="position:absolute; left:100px; top:200px; background-color: red;" id="co_ordinates">
+  </div>
+
+  <div style="position:absolute; left:100px; top:300px; background-color: red;" id="result">
+  </div>
+
+</body>
+</html>

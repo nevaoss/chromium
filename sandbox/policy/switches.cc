@@ -65,6 +65,11 @@ const char kEnableSandboxLogging[] = "enable-sandbox-logging";
 const char kDisableMetalShaderCache[] = "disable-metal-shader-cache";
 #endif
 
+#if defined(USE_NEVA_CDM)
+// Disables the sandbox for CDM process type
+const char kNoCdmSandbox[] = "no-cdm-sandbox";
+#endif
+
 // Flags spied upon from other layers.
 const char kProcessType[] = "type";
 const char kGpuProcess[] = "gpu-process";

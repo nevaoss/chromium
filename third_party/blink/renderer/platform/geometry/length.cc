@@ -84,7 +84,16 @@ class CalculationValueHandleMap
     // This monotonically increasing handle generation scheme is potentially
     // wasteful of the handle space. Consider reusing empty handles.
     while (map_.Contains(index_))
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+      // Mantissa has only 23bits. So many numbers above 0x1000000(16777216)
+      // cannot be represented properly with accuracy of 32-bit floating point
+      // numbers. This change prevents incorrect conversion of integer to float
+      // for places such as GetFloatValue(). The default behaviour is left for
+      // non-appruntime build.
+      index_ = (index_ + 1) % 0x1000000;
+#else
       index_++;
+#endif
 
     map_.Set(index_, MemberWithCount(calc_value, 1u));
 

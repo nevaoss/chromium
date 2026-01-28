@@ -626,6 +626,13 @@ class BLINK_PLATFORM_EXPORT Platform {
 
   virtual bool RTCSmoothnessAlgorithmEnabled() { return true; }
 
+#if defined(USE_NEVA_SUSPEND_MEDIA_CAPTURE)
+  virtual void AddSourceToAudioCapturerSourceManager(
+      media::AudioCapturerSource* source) {}
+  virtual void RemoveSourceFromAudioCapturerSourceManager(
+      media::AudioCapturerSource* source) {}
+#endif
+
   // WebRTC ----------------------------------------------------------
 
   virtual std::optional<double> GetWebRtcMaxCaptureFrameRate() {
@@ -861,7 +868,7 @@ class BLINK_PLATFORM_EXPORT Platform {
     return false;
   }
 
-#if BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_NEVA_APPRUNTIME)
   // User Level Memory Pressure Signal Generator ------------------
   virtual void SetPrivateMemoryFootprint(
       uint64_t private_memory_footprint_bytes) {}

@@ -190,6 +190,7 @@ PERFETTO_DEFINE_CATEGORIES_IN_NAMESPACE_WITH_ATTRS(
       "NetLog events and metadata. Describes the operation of the //net "
       "network stack, e.g. HTTP requests, TLS, DNS, connections, sockets, "
       "etc."),
+    perfetto::Category("neva"),
     perfetto::Category("offline_pages"),
     perfetto::Category("omnibox"),
     perfetto::Category("oobe"),

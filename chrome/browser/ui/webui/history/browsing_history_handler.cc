@@ -170,7 +170,13 @@ std::pair<std::string, std::string> SetHistoryEntryUrlAndTitle(
     title_to_set.resize(kShortTitleLength);
   }
 
+// TODO(neva): GCC requires explicit use of std::make_pair() instead of
+// std::make_tuple(). Try to contribute to upstream.
+#if defined(__GNUC__) && !defined(__clang__)
+  return std::make_pair(entry.url.spec(), base::UTF16ToUTF8(title_to_set));
+#else   // defined(__GNUC__) && !defined(__clang__)
   return std::make_tuple(entry.url.spec(), base::UTF16ToUTF8(title_to_set));
+#endif  // !(defined(__GNUC__) && !defined(__clang__))
 }
 
 // Helper function to check if entry is present in local database (local-side

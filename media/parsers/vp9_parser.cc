@@ -38,7 +38,18 @@ constexpr size_t kQIndexRange = 256;
 // libva is the only user of high bit depth VP9 formats and only supports
 // 10 bits per component, see https://github.com/01org/libva/issues/137.
 // TODO(mcasas): Add the 12 bit versions of these tables.
+// TODO(neva): Not allowed for GCC 12.4, 13.3, 14.1.
+// For GCC 11.4, 12.1/2/3, 13.1/2 and 14.2 it is Ok.
+// The error is: "non-static const member '<member-name>',
+// cannot use default assignment operator".
+#if defined(__GNUC__) && !defined(__clang__) && \
+    ((__GNUC__ == 12 && __GNUC_MINOR__ == 4) || \
+     (__GNUC__ == 13 && __GNUC_MINOR__ == 3) || \
+     (__GNUC__ == 14 && __GNUC_MINOR__ == 1))
+constexpr auto kDcQLookup = std::to_array<std::array<int16_t, kQIndexRange>>({
+#else
 constexpr auto kDcQLookup = std::to_array<std::array<const int16_t, kQIndexRange>>({
+#endif
     {
         4,    8,    8,    9,    10,   11,   12,   12,  13,   14,   15,   16,
         17,   18,   19,   19,   20,   21,   22,   23,  24,   25,   26,   26,
@@ -89,7 +100,18 @@ constexpr auto kDcQLookup = std::to_array<std::array<const int16_t, kQIndexRange
    }
 });
 
+// TODO(neva): Not allowed for GCC 12.4, 13.3, 14.1.
+// For GCC 11.4, 12.1/2/3, 13.1/2 and 14.2 it is Ok.
+// The error is: "non-static const member '<member-name>',
+// cannot use default assignment operator".
+#if defined(__GNUC__) && !defined(__clang__) && \
+    ((__GNUC__ == 12 && __GNUC_MINOR__ == 4) || \
+     (__GNUC__ == 13 && __GNUC_MINOR__ == 3) || \
+     (__GNUC__ == 14 && __GNUC_MINOR__ == 1))
+constexpr auto kAcQLookup = std::to_array<std::array<int16_t, kQIndexRange>>({
+#else
 constexpr auto kAcQLookup = std::to_array<std::array<const int16_t, kQIndexRange>>({
+#endif
     {
         4,    8,    9,    10,   11,   12,   13,   14,   15,   16,   17,   18,
         19,   20,   21,   22,   23,   24,   25,   26,   27,   28,   29,   30,

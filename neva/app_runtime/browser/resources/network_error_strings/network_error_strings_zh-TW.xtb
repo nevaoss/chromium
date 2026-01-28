@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="zh-TW">
+<translation id="1682620957554922882">請連絡內容提供者。</translation>
+<translation id="2626799779920242286">請稍後再試一次。</translation>
+<translation id="27461552975087996">無法信任伺服器憑證。</translation>
+<translation id="288961708105972332">嘗試連線已逾時。</translation>
+<translation id="3100161803646972327">請檢查網路狀態並再試一次</translation>
+<translation id="334286403444714742">網路未連接。</translation>
+<translation id="4799446021133992159">無法載入</translation>
+<translation id="4897228579364425832">檢查網路連線</translation>
+<translation id="4922056813564935008">找不到所要求的位址。</translation>
+<translation id="4964644330950338878">主機名稱與伺服器憑證不符。</translation>
+<translation id="5375809313377772901">請檢查時間設定。</translation>
+<translation id="5803768854262525793">REPLACE WITH HOSTNAME</translation>
+<translation id="6061420513894163219">請檢查網路連線狀態。</translation>
+<translation id="6765203878096346794">與伺服器的連線不穩定。</translation>
+<translation id="7402264192054099664">這可能是暫時性問題。</translation>
+<translation id="7570401931535381481">伺服器憑證已過期或尚未生效，因為電視上設定的時間與目前時間不同。</translation>
+<translation id="7619490177640280081">目前時間設定</translation>
+<translation id="8138313893556460774">作業已逾時。</translation>
+<translation id="8322836013946289105">找不到檔案或目錄。</translation>
+<translation id="8561467915632687957">網路不穩定。</translation>
+</translationbundle>

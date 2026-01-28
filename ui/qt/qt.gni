@@ -9,8 +9,9 @@ import("//build/config/sysroot.gni")
 # TODO(crbug.com/40260415): Allow QT in MSAN builds once QT is
 # added to the instrumented libraries.
 declare_args() {
-  use_qt5 = use_sysroot && is_linux && !is_castos && !is_msan
-  use_qt6 = use_sysroot && is_linux && !is_castos && !is_msan
+  # TODO(neva): Set to false because Neva environment don't use Qt.
+  use_qt5 = false && use_sysroot && is_linux && !is_castos && !is_msan
+  use_qt6 = false && use_sysroot && is_linux && !is_castos && !is_msan
 }
 
 declare_args() {

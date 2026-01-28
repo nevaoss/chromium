@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"></head><body style="color: black; background-color : white">
+
+<script>
+function errorHandler(e) {
+  console.log('Error: ' + e.message);
+  document.getElementById("filesystem").innerHTML = 'ERROR: ' + e.toString();
+}
+
+function fileRead(fs) {
+  fs.root.getFile('log.txt', {}, function(fileEntry) {
+
+    // Get a File object representing the file,
+    // then use FileReader to read its contents.
+    fileEntry.file(function(file) {
+       var reader = new FileReader();
+
+       reader.onloadend = function(e) {
+         console.log('Read completed.');
+         document.getElementById("fileread").innerHTML = 'Read "' + this.result + '" from log.txt';
+       };
+
+       reader.readAsText(file);
+    }, errorHandler);
+
+  }, errorHandler);
+}
+
+function fileWrite(fs) {
+  fs.root.getFile('log.txt', {create: true}, function(fileEntry) {
+    // Create a FileWriter object for our FileEntry (log.txt).
+    fileEntry.createWriter(function(fileWriter) {
+      var msg = 'PersistentFileSystem2';
+      fileWriter.onwriteend = function(e) {
+        console.log('Write completed.');
+        document.getElementById("filewrite").innerHTML = 'Wrote "' + msg + '" to log.txt';
+        setTimeout(fileRead(fs), 1);
+      };
+
+      fileWriter.onerror = function(e) {
+        console.log('Write failed: ' + e.toString());
+        document.getElementById("filewrite").innerHTML = 'Error in writing to log.txt: ' + e.toString();
+      };
+
+      // Create a new Blob and write it to log.txt.
+      var blob = new Blob([msg], {type: 'text/plain'});
+
+      fileWriter.write(blob);
+    }, errorHandler);
+  }, errorHandler);
+}
+
+function onInitFs(fs) {
+  // Remove existing file
+  fs.root.getFile('log.txt', {create: false}, function(fileEntry) {
+    fileEntry.remove(function() {
+      console.log('File removed.');
+      document.getElementById("fileremove").innerHTML = 'Removed existing file log.txt from filesystem!!!!!!';
+      setTimeout(fileWrite(fs), 1);
+    }, errorHandler);
+  }, function(e) {
+      switch(e.name) {
+        case "NotFoundError":
+          console.log('No existing log.txt file.');
+          document.getElementById("fileremove").innerHTML = 'No existing file log.txt found from filesystem';
+          setTimeout(fileWrite(fs), 1);
+          break;
+        default:
+          errorHandler(e);
+          break;
+      }
+    }
+  );
+}
+
+function createFileSystemAndWriteFile(){
+  if (window.File && window.FileReader && window.FileList && window.Blob && navigator.webkitPersistentStorage) {
+        if ("webkitRequestFileSystem" in window) {
+            var requestedBytes = 5 * 1024 * 1024; // 5 MB
+            navigator.webkitPersistentStorage.requestQuota(requestedBytes, function(grantedBytes) {
+              document.getElementById("quota").innerHTML = 'requestQuota for Persistent Storage; requested: ' + requestedBytes + ' bytes, granted: ' + grantedBytes + "bytes";
+              window.webkitRequestFileSystem(window.PERSISTENT, grantedBytes, onInitFs, errorHandler);
+            }, function(e) {
+                document.getElementById("quota").innerHTML = 'requestQuota for Persistent Storage; requested: ' +requestedBytes + ' bytes, but Error: ' + e + e.message;
+               }
+            )
+        } else {
+            console.log("no webkitRequestFileSystem")
+            document.getElementById("filesystem").innerHTML = 'ERROR: No webkitRequestFileSystem';
+        }
+       }
+}
+</script>
+<button type="button" id="date" onclick="createFileSystemAndWriteFile()">Create persistent filesystem and write file</button>
+<br>
+<p id="quota"></p>
+<p id="fileremove"></p>
+<p id="filewrite"></p>
+<p id="fileread"></p>
+<p id="filesystem"></p>
+</body></html>

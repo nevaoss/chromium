@@ -37,6 +37,8 @@ std::unique_ptr<VideoFrameMapper> VideoFrameMapperFactory::CreateMapper(
     VideoPixelFormat format,
     VideoFrame::StorageType storage_type,
     bool force_linear_buffer_mapper) {
+// webOS doesn't support GBM. So STORAGE_MAPPABLE_SHARED_IMAGE cannot be built.
+#if !defined(USE_WEBOS_CODEC)
   if (storage_type == VideoFrame::STORAGE_MAPPABLE_SHARED_IMAGE) {
     return MappableSIVideoFrameMapper::Create(format);
   }
@@ -44,6 +46,7 @@ std::unique_ptr<VideoFrameMapper> VideoFrameMapperFactory::CreateMapper(
   if (force_linear_buffer_mapper) {
     return GenericDmaBufVideoFrameMapper::Create(format);
   }
+#endif  // !defined(USE_WEBOS_CODEC)
 
 #if BUILDFLAG(USE_VAAPI)
   return VaapiDmaBufVideoFrameMapper::Create(format);

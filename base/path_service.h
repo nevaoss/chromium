@@ -10,6 +10,10 @@
 #include "base/gtest_prod_util.h"
 #include "build/build_config.h"
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+#include "base/neva/neva_paths.h"
+#endif
+
 namespace base {
 
 class FilePath;

@@ -1,0 +1,44 @@
+// Copyright 2021 LG Electronics, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// SPDX-License-Identifier: Apache-2.0
+
+#ifndef UI_AURA_NEVA_AGL_WINDOW_TREE_HOST_AGL_H_
+#define UI_AURA_NEVA_AGL_WINDOW_TREE_HOST_AGL_H_
+
+#include <string>
+
+#include "ui/aura/aura_export.h"
+
+namespace aura {
+namespace neva {
+
+class AURA_EXPORT WindowTreeHostAgl {
+ public:
+  WindowTreeHostAgl() = default;
+  WindowTreeHostAgl(const WindowTreeHostAgl&) = delete;
+  WindowTreeHostAgl& operator=(const WindowTreeHostAgl&) = delete;
+  ~WindowTreeHostAgl() = default;
+
+  virtual void SetAglActivateApp(const std::string& app) {}
+  virtual void SetAglAppId(const std::string& title) {}
+  virtual void SetAglReady() {}
+  virtual void SetAglBackground() {}
+  virtual void SetAglPanel(uint32_t edge) {}
+};
+
+}  // namespace neva
+}  // namespace aura
+
+#endif  // UI_AURA_NEVA_AGL_WINDOW_TREE_HOST_AGL_H_

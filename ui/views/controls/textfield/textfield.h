@@ -462,7 +462,11 @@ class VIEWS_EXPORT Textfield : public View,
 #if BUILDFLAG(IS_MAC)
   bool DeleteRange(const gfx::Range& range) override;
 #else
-  bool DeleteRange(const gfx::Range& range);
+  bool DeleteRange(const gfx::Range& range)
+  ///@name IS_NEVA_APPRUNTIME
+  ///@{
+  override;
+  ///@}
 #endif
   bool GetTextFromRange(const gfx::Range& range,
                         std::u16string* text) const override;

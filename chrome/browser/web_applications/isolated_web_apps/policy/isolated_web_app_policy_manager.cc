@@ -12,6 +12,12 @@
 #include <utility>
 #include <variant>
 
+// TODO(neva): Please remove this if https://crrev.com/c/6074726 is merged.
+///@name IS_NEVA_APPRUNTIME
+///@{
+#include "base/strings/stringprintf.h"
+///@}
+
 #include "base/barrier_callback.h"
 #include "base/barrier_closure.h"
 #include "base/check_deref.h"
@@ -394,7 +400,12 @@ void IsolatedWebAppPolicyManager::DoProcessPolicy(
       continue;
     }
     static_assert(std::ranges::is_sorted(
+// TODO(neva): Remove this guard once GCC supports below.
+#if defined(__GNUC__) && __GNUC__ < 12 && !defined(__clang__)
+        std::array{WebAppManagement::Type::kIwaShimlessRma,
+#else   // defined(__GNUC__) && __GNUC__ < 12 && !defined(__clang__)
         std::vector{WebAppManagement::Type::kIwaShimlessRma,
+#endif  // !(defined(__GNUC__) && __GNUC__ < 12 && !defined(__clang__))
                     // Add further higher priority IWA sources here and make
                     // sure that the `case` statements below are sorted
                     // appropriately...

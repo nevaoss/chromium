@@ -70,6 +70,10 @@ class CONTENT_EXPORT PeerConnectionTrackerHost
   void GetStandardStats();
   void GetCurrentState();
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  void DropAllConnections(base::OnceClosure& cb);
+#endif
+
   void BindReceiver(
       mojo::PendingReceiver<blink::mojom::PeerConnectionTrackerHost>
           pending_receiver);

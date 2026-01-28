@@ -117,7 +117,13 @@ BASE_FEATURE(kWaylandPerSurfaceScale,
 );
 
 // Controls whether Wayland text-input-v3 protocol support is enabled.
+// TODO(neva): Please remove when Neva PC supports Wayland text-input-v3
+// protocol.
+#if !BUILDFLAG(IS_WEBOS)
+BASE_FEATURE(kWaylandTextInputV3, base::FEATURE_DISABLED_BY_DEFAULT);
+#else   // !BUILDFLAG(IS_WEBOS)
 BASE_FEATURE(kWaylandTextInputV3, base::FEATURE_ENABLED_BY_DEFAULT);
+#endif  // BUILDFLAG(IS_WEBOS)
 
 // Controls whether Wayland session management protocol is enabled.
 BASE_FEATURE(kWaylandSessionManagement, base::FEATURE_DISABLED_BY_DEFAULT);

@@ -163,7 +163,10 @@ template <typename T, wtf_size_t inlineCapacity = 0>
 using HeapVector = BasicHeapVector<internal::HeapCollectionType::kDisallowNew,
                                    T,
                                    inlineCapacity>;
+// TODO(neva): Remove this when Neva build environment support below line.
+#if !(defined(__GNUC__) && !defined(__clang__))
 static_assert(IsDisallowNew<HeapVector<int>>);
+#endif
 ASSERT_SIZE(Vector<int>, HeapVector<int>);
 
 // GCed version of Vector for referring to GarbageCollected objects.

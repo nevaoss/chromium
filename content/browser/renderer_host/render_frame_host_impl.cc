@@ -333,6 +333,11 @@
 #include "content/browser/host_zoom_map_impl.h"
 #endif
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+#include "content/public/browser/web_contents.h"
+#include "content/public/browser/web_contents_delegate.h"
+#endif
+
 #if BUILDFLAG(IS_CHROMEOS)
 #include "content/browser/smart_card/smart_card_service.h"
 #endif
@@ -3712,8 +3717,10 @@ void RenderFrameHostImpl::ExecuteJavaScriptMethod(
 void RenderFrameHostImpl::ExecuteJavaScript(const std::u16string& javascript,
                                             JavaScriptResultCallback callback) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
+#if !BUILDFLAG(IS_NEVA_APPRUNTIME)
   CHECK(CanExecuteJavaScript());
   AssertFrameWasCommitted();
+#endif
 
   const bool wants_result = !callback.is_null();
   GetAssociatedLocalFrame()->JavaScriptExecuteRequest(javascript, wants_result,
@@ -9618,6 +9625,12 @@ void RenderFrameHostImpl::SetKeepAliveTimeoutForTesting(
   keep_alive_handle_factory_.set_timeout(timeout);
 }
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+void RenderFrameHostImpl::DropAllPeerConnections(base::OnceClosure cb) {
+  GetPeerConnectionTrackerHost().DropAllConnections(cb);
+}
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
+
 network::mojom::WebSandboxFlags RenderFrameHostImpl::active_sandbox_flags() {
   if (!policy_container_host_) {
     SCOPED_CRASH_KEY_STRING256("Bug455908853", "lifecycle",
@@ -11623,6 +11636,15 @@ CanCommitStatus RenderFrameHostImpl::CanCommitOriginAndUrl(
   // can bypass these rules, such as --disable-web-security or certain Android
   // WebView features like universal access from file URLs.
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  if (origin.scheme() == url::kFileScheme) {
+    blink::RendererPreferences* renderer_prefs =
+        WebContents::FromRenderFrameHost(this)->GetMutableRendererPrefs();
+    if (!renderer_prefs->file_security_origin.empty())
+      return CanCommitStatus::CAN_COMMIT_ORIGIN_AND_URL;
+  }
+#endif
+
   // Renderer-debug URLs can never be committed.
   if (blink::IsRendererDebugURL(url)) {
     LogCanCommitOriginAndUrlFailureReason("is_renderer_debug_url");
@@ -12496,6 +12518,12 @@ void RenderFrameHostImpl::CommitNavigation(
 
   const bool is_first_navigation = !has_committed_any_navigation_;
   has_committed_any_navigation_ = true;
+
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  WebContents* web_contents = WebContents::FromRenderFrameHost(this);
+  if (web_contents->GetDelegate()->GetAllowLocalResourceLoad())
+    commit_params->can_load_local_resources = true;
+#endif
 
   UpdatePermissionsForNavigation(navigation_request);
 

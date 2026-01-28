@@ -44,7 +44,12 @@ struct FeatureParamTraits<std::string> {
   static CacheStorageType ToCacheStorageType(const std::string& value) {
     return CacheStorageType(value);
   }
+// TODO(neva): Remove this workaround when Neva GCC version upgraded to 12+.
+#if defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
+  static std::string FromCacheStorageType(
+#else   // defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
   static constexpr std::string FromCacheStorageType(
+#endif  // !(defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__))
       const CacheStorageType& storage) {
     return *storage;
   }

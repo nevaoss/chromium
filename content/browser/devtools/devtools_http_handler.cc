@@ -536,7 +536,14 @@ std::string DevToolsHttpHandler::GetFrontendURLInternal(
     const std::string& host) {
   std::string frontend_url;
   const std::string git_revision = CHROMIUM_GIT_REVISION;
+// NOTE(neva): Git revision is not zero (see kMissingGitRevision) in case of
+// Neva. But Neva cannot use remote URL for DevTools frontend resources. Used
+// local instead. See http://clm.lge.com/issue/browse/NEVA-10198 for details.
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  if (git_revision == kMissingGitRevision ||
+#else   // !BUILDFLAG(IS_NEVA_APPRUNTIME)
   if (git_revision == kMissingGitRevision &&
+#endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
       delegate_->HasBundledFrontendResources()) {
     frontend_url = "/devtools/inspector.html";
   } else {
@@ -808,6 +815,10 @@ void DevToolsHttpHandler::OnWebSocketRequest(
   if (!thread_)
     return;
 
+// TODO(neva): The below check on allowed origins causes DevTools disconnection.
+// Needs to be revised later.
+// See http://clm.lge.com/issue/browse/NEVA-7987 for details.
+#if !BUILDFLAG(IS_NEVA_APPRUNTIME)
   if (request.headers.count("origin") &&
       !remote_allow_origins_.count(request.headers.at("origin")) &&
       !remote_allow_origins_.count("*")) {
@@ -822,6 +833,7 @@ void DevToolsHttpHandler::OnWebSocketRequest(
     LOG(ERROR) << message;
     return;
   }
+#endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
 
   // If we require user approval, we do not require guid.
   if (mode_ ==

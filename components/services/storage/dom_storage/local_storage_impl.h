@@ -132,6 +132,11 @@ class LocalStorageImpl : public base::trace_event::MemoryDumpProvider,
   void OnGotWriteMetaData(GetUsageCallback callback,
                           StatusOr<DomStorageDatabase::Metadata> all_metadata);
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  void RetrieveStorageUsageForStorageKey(GetUsageCallback callback,
+                                         const blink::StorageKey& storage_key);
+#endif
+
   void GetStatistics(size_t* total_cache_size, size_t* unused_area_count);
   void OnCommitResult(DbStatus status);
 
@@ -177,6 +182,10 @@ class LocalStorageImpl : public base::trace_event::MemoryDumpProvider,
   // this is used by ApplyPolicyUpdates to store which origin
   // to clear based on the provided StoragePolicyUpdate.
   std::set<url::Origin> origins_to_purge_on_shutdown_;
+
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  size_t storage_size_limit_ = 0;
+#endif
 
   mojo::Receiver<mojom::LocalStorageControl> control_receiver_{this};
 

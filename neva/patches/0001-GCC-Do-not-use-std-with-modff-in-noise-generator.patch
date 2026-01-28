@@ -1,0 +1,53 @@
+From 85b22db82afed633ef7cac7bd3ce5ad55b9cdf54 Mon Sep 17 00:00:00 2001
+From: "gyeonghwan.jung" <gyeonghwan.jung@lge.com>
+Date: Fri, 7 Feb 2025 22:41:26 +0900
+Subject: [PATCH] 134.0.6975.0~1: GCC: Don't use 'std::' with modff() in
+ ink/strokes/internal/noise_generator.cc
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+:Release Notes:
+Removed 'std::' from 'std::modff()' in
+ink/strokes/internal/noise_generator.cc to fix GCC build error after
+rolling 134.0.6975.0~1
+
+:Detailed Notes:
+The Ink CL https://github.com/google/ink/pull/76 which was rolled in
+the Chromium CL https://crrev.com/c/6191548 used the modff() method
+with 'std::'.
+
+Since GCC 14+, missing function for float has been added to <cmath>
+https://gcc.gnu.org/gcc-14/changes.html. But Neva's GCC is of version
+11.4, so removed 'std::' in ink/strokes/internal/noise_generator.cc.
+
+Without this patch the build fails with GCC errors:
+../../third_party/ink/src/ink/strokes/internal/noise_generator.cc:69:22
+: error: ‘modff’ is not a member of ‘std’; did you mean ‘modf’?
+
+:Issues Addressed:
+[NEVA-9971] Upgrade neva-main-rolling up to 6975 BUILD
+---
+ ink/strokes/internal/noise_generator.cc | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/ink/strokes/internal/noise_generator.cc b/ink/strokes/internal/noise_generator.cc
+index e6fa2ce..f5192a7 100644
+--- a/ink/strokes/internal/noise_generator.cc
++++ b/ink/strokes/internal/noise_generator.cc
+@@ -66,7 +66,12 @@ void NoiseGenerator::AdvanceInputBy(float advance_by) {
+ 
+     // Set `progress_` equal to its fractional part (i.e. `progress_` mod 1).
+     float unused;
++    // TODO(neva): Remove this workaround when Neva GCC version upgraded to 14+.
++#if defined(__GNUC__) && (__GNUC__ < 14) && !defined(__clang__)
++    progress_ = modff(progress_, &unused);
++#else   // defined(__GNUC__) && (__GNUC__ < 14) && !defined(__clang__)
+     progress_ = std::modff(progress_, &unused);
++#endif  // !(defined(__GNUC__) && (__GNUC__ < 14) && !defined(__clang__))
+   }
+ }
+ 
+-- 
+2.34.1
+

@@ -347,6 +347,11 @@ bool PathProvider(int key, base::FilePath* result) {
         cur = cur.Append(FILE_PATH_LITERAL("resources.pak"));
       }
 #else
+#if defined(USE_CBE)
+      if (!base::PathService::Get(base::DIR_EXE, &cur))
+        return false;
+#endif  // defined(USE_CBE)
+
       // If we're not bundled on mac or Android, resources.pak should be in
       // the "assets" location (e.g. next to the binary, on many platforms).
       if (!base::PathService::Get(base::DIR_ASSETS, &cur)) {
@@ -437,6 +442,10 @@ bool PathProvider(int key, base::FilePath* result) {
                 .Append(FILE_PATH_LITERAL("Chrome"))
                 .Append(FILE_PATH_LITERAL("External Extensions"));
 #else
+#if defined(USE_CBE)
+      if (!base::PathService::Get(base::DIR_EXE, &cur))
+        return false;
+#endif  // defined(USE_CBE)
       if (!base::PathService::Get(base::DIR_MODULE, &cur)) {
         return false;
       }

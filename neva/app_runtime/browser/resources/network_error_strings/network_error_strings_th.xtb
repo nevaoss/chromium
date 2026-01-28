@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="th">
+<translation id="1682620957554922882">โปรดติดต่อผู้ให้บริการเนื้อหา</translation>
+<translation id="2626799779920242286">โปรดลองอีกครั้งในภายหลัง</translation>
+<translation id="27461552975087996">ไม่สามารถเชื่อถือใบรับรองของเซิร์ฟเวอร์</translation>
+<translation id="288961708105972332">หมดเวลาในการพยายามเชื่อมต่อ</translation>
+<translation id="3100161803646972327">โปรดตรวจสอบสถานะเครือข่ายและลองอีกครั้ง</translation>
+<translation id="334286403444714742">ไม่มีการเชื่อมต่อเครือข่าย</translation>
+<translation id="4799446021133992159">ไม่สามารถโหลด</translation>
+<translation id="4897228579364425832">ตรวจสอบการเชื่อมต่อเครือข่าย</translation>
+<translation id="4922056813564935008">ไม่พบที่อยู่ที่ขอ</translation>
+<translation id="4964644330950338878">ชื่อโฮสต์ไม่ตรงกับใบรับรองเซิร์ฟเวอร์</translation>
+<translation id="5375809313377772901">โปรดตรวจสอบการตั้งค่าเวลา</translation>
+<translation id="5803768854262525793">REPLACE WITH HOSTNAME</translation>
+<translation id="6061420513894163219">โปรดตรวจสอบสถานะการเชื่อมต่อเครือข่าย</translation>
+<translation id="6765203878096346794">การเชื่อมต่อกับเซิร์ฟเวอร์ไม่เสถียร</translation>
+<translation id="7402264192054099664">ปัญหานี้อาจเป็นปัญหาชั่วคราว</translation>
+<translation id="7570401931535381481">ใบรับรองของเซิร์ฟเวอร์หมดอายุหรือยังไม่สามารถใช้ได้ เนื่องจากเวลาที่ตั้งไว้ในทีวีต่างจากเวลาปัจจุบัน</translation>
+<translation id="7619490177640280081">การตั้งค่าเวลาปัจจุบัน</translation>
+<translation id="8138313893556460774">การทำงานหมดเวลา</translation>
+<translation id="8322836013946289105">ไม่พบไฟล์หรือไดเรกทอรี</translation>
+<translation id="8561467915632687957">เครือข่ายไม่เสถียร</translation>
+</translationbundle>

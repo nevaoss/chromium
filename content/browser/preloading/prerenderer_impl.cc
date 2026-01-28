@@ -206,7 +206,16 @@ void PrerendererImpl::ProcessCandidatesForPrerender(
         candidate_it, prerender_candidates.end(), [&](const auto& candidate) {
           return PrerenderInfo(candidate.second) != prerender_info;
         });
+// TODO(neva): Remove this workaround when Neva GCC version upgraded to 13.3+.
+#if defined(__GNUC__) &&                                             \
+    ((__GNUC__ < 13) || (__GNUC__ == 13) && (__GNUC_MINOR__ < 3)) && \
+    !defined(__clang__)
+    std::span<std::pair<size_t, blink::mojom::SpeculationCandidatePtr>>
+#else  // defined(__GNUC__) && ((__GNUC__ < 13) || (__GNUC__ == 13) &&
+       // (__GNUC_MINOR__ < 3)) && !defined(__clang__)
     base::span<std::pair<size_t, blink::mojom::SpeculationCandidatePtr>>
+#endif  // !(defined(__GNUC__) && ((__GNUC__ < 13) || (__GNUC__ == 13) &&
+        // (__GNUC_MINOR__ < 3)) && !defined(__clang__))
         UNSAFE_TODO(matching_candidates(candidate_it, equal_candidate_end));
 
     // Decide what started prerenders to cancel.

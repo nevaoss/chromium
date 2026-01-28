@@ -74,6 +74,12 @@ ByteSize SysInfo::AmountOfAvailablePhysicalMemory() {
 }
 
 bool SysInfo::IsLowEndDevice() {
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  if (base::CommandLine::ForCurrentProcess()->HasSwitch(
+          switches::kForceLowEndDeviceMode)) {
+    return true;
+  }
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
   if (base::CommandLine::ForCurrentProcess()->HasSwitch(
           switches::kEnableLowEndDeviceMode)) {
     return true;
@@ -198,6 +204,11 @@ bool DetectLowEndDevice() {
   // Keep in sync with the Android implementation of this function.
   // LINT.IfChange
   CommandLine* command_line = CommandLine::ForCurrentProcess();
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  if (command_line->HasSwitch(switches::kForceLowEndDeviceMode)) {
+    return true;
+  }
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
   if (command_line->HasSwitch(switches::kEnableLowEndDeviceMode)) {
     return true;
   }

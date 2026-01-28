@@ -1,0 +1,59 @@
+# Copyright 2019 LG Electronics, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+import("paths.gni")
+
+template("install_manifest") {
+  copy(target_name) {
+    sources = invoker.sources
+    outputs = [ "$image_path/$webos_sysbus_manifestsdir/{{source_file_part}}" ]
+  }
+}
+
+template("install_client_permissions") {
+  copy(target_name) {
+    sources = invoker.sources
+    outputs = [ "$image_path/$webos_sysbus_permissionsdir/{{source_file_part}}" ]
+  }
+}
+
+template("install_containers") {
+  action(target_name) {
+    containerfile = "$image_path/$webos_sysbus_containersdir/${invoker.app}.container.json"
+    script = "//webos/install/subst.py"
+    sources = invoker.sources
+    outputs = [ containerfile ]
+
+    args = [ "@@EXENAME@@=${invoker.exename}" ] + rebase_path(sources) + [ rebase_path(containerfile) ]
+  }
+}
+
+template("install_preprepared_roles") {
+  copy(target_name) {
+    sources = invoker.sources
+    outputs = [ "$image_path/$webos_sysbus_rolesdir/{{source_file_part}}" ]
+  }
+}
+
+template("install_templated_roles") {
+  action(target_name) {
+    rolefile = "$image_path/$webos_sysbus_rolesdir/${invoker.app}.role.json"
+    script = "//webos/install/subst.py"
+    sources = invoker.sources
+    outputs = [ rolefile ]
+    args = [ "@@EXENAME@@=${invoker.exename}" ] + rebase_path(sources) + [ rebase_path(rolefile) ]
+  }
+}

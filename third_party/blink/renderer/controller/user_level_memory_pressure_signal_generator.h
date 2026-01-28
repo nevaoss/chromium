@@ -18,6 +18,10 @@
 #include "third_party/blink/renderer/platform/timer.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 
+namespace base {
+class TickClock;
+}
+
 namespace blink {
 
 class MainThreadScheduler;

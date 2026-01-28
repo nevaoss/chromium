@@ -1,0 +1,54 @@
+From 18d67f090c975175d83fa084ef1fc983c6cda5e8 Mon Sep 17 00:00:00 2001
+From: Ekaterina Kulikova <kate.kulikova@lge.com>
+Date: Thu, 13 Mar 2025 14:36:20 +0300
+Subject: [PATCH] [upstreamable] ANGLE: GCC: Explicitly instantiate
+ template classes in vk_cache_utils.cpp
+
+:Release Notes:
+Explicitly instantiate template classes in ANGLE to fix GCC compiler
+error after rolling to 135.0.7023.0~1
+
+:Detailed Notes:
+In the upstream ANGLE CL
+https://chromium-review.googlesource.com/c/angle/angle/+/6253675, which
+is rolled into Chromium in https://crrev.com/c/6270179, refactored
+UpdateDescriptorSetsBuilder to avoid storage reallocation by using a
+queue of vectors for mDescriptorBufferInfos, mDescriptorImageInfos,
+and mWriteDescriptorSets, which reduced data copying and minimized
+vkUpdateDescriptorSets calls.
+
+GCC requires explicit instantiation of template classes to ensure that
+the compiler generates the necessary definitions for
+DescriptorInfoAllocator with these types. Without this patch, undefined
+reference errors may occur during linking:
+obj/third_party/angle/src/libANGLE/renderer/vulkan/angle_vulkan_backend/ProgramExecutableVk.o:ProgramExecutableVk.cpp:function rx::(anonymous namespace)::UpdateFullTexturesDescriptorSet(rx::vk::ErrorContext*, rx::ShaderInterfaceVariableInfoMap const&, rx::vk::WriteDescriptorDescs const&, rx::UpdateDescriptorSetsBuilder*, gl::ProgramExecutable const&, std::array<rx::TextureVk*, 96ul> const&, std::vector<gl::BindingPointer<gl::Sampler>, std::allocator<gl::BindingPointer<gl::Sampler> > > const&, VkDescriptorSet_T*): error: undefined reference to 'rx::UpdateDescriptorSetsBuilder::DescriptorInfoAllocator<VkWriteDescriptorSet>::allocate(unsigned int)'
+
+:Issues Addressed:
+[NEVA-10091] Upgrade neva-main-rolling up to 7023 BUILD
+---
+ src/libANGLE/renderer/vulkan/vk_cache_utils.cpp | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/src/libANGLE/renderer/vulkan/vk_cache_utils.cpp b/src/libANGLE/renderer/vulkan/vk_cache_utils.cpp
+index 70f57431f3..1f07ae9e26 100644
+--- a/src/libANGLE/renderer/vulkan/vk_cache_utils.cpp
++++ b/src/libANGLE/renderer/vulkan/vk_cache_utils.cpp
+@@ -7276,6 +7276,15 @@ T *UpdateDescriptorSetsBuilder::DescriptorInfoAllocator<T>::allocate(uint32_t co
+     return &mCurrentVector->front();
+ }
+
++// TODO(neva): GCC requires explicit instantiation of template classes to ensure that the compiler
++// generates the necessary definitions for DescriptorInfoAllocator with these types. Without this,
++// undefined reference errors may occur during linking. Try to contribute to upstream.
++#if defined(__GNUC__) && !defined(__clang__)
++template class UpdateDescriptorSetsBuilder::DescriptorInfoAllocator<VkWriteDescriptorSet>;
++template class UpdateDescriptorSetsBuilder::DescriptorInfoAllocator<VkDescriptorImageInfo>;
++template class UpdateDescriptorSetsBuilder::DescriptorInfoAllocator<VkBufferView>;
++#endif  // defined(__GNUC__) && !defined(__clang__)
++
+ uint32_t UpdateDescriptorSetsBuilder::WriteDescriptorSetAllocator::updateDescriptorSets(
+     VkDevice device) const
+ {
+-- 
+2.34.1
+

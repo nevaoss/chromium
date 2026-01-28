@@ -1,0 +1,90 @@
+# Copyright 2025 LG Electronics, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+import("//v8/gni/v8.gni")
+
+weboswebruntime_resources = [
+  "$root_out_dir/app_runtime_content.pak",
+  "$root_out_dir/icudtl.dat",
+  "$root_out_dir/webos_content.pak"
+]
+
+if (v8_use_external_startup_data) {
+  weboswebruntime_resources += [ "$root_out_dir/snapshot_blob.bin" ]
+}
+
+weboswebruntime_locales = [
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_am.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_ar.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_bg.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_bn.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_ca.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_cs.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_da.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_de.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_el.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_en-GB.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_en-US.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_es-419.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_es.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_et.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_fa.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_ar-XB.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_en-XA.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_fi.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_fil.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_fr.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_gu.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_he.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_hi.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_hr.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_hu.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_id.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_it.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_ja.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_kn.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_ko.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_lt.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_lv.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_ml.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_mr.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_ms.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_nb.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_nl.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_pl.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_pt-BR.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_pt-PT.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_ro.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_ru.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_sk.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_sl.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_sr.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_sv.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_sw.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_ta.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_te.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_th.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_tr.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_uk.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_vi.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_zh-CN.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_zh-TW.pak",
+]
+
+weboswebruntime_gl_resources = [
+  "$root_out_dir/libEGL.so",
+  "$root_out_dir/libGLESv2.so",
+]

@@ -20,6 +20,7 @@ import("//gpu/vulkan/features.gni")
 import("//media/gpu/args.gni")
 import("//media/media_options.gni")
 import("//net/features.gni")
+import("//neva/neva.gni")
 import("//printing/buildflags/buildflags.gni")
 import("//services/device/public/cpp/compute_pressure/buildflags.gni")
 import("//testing/libfuzzer/fuzzer_test.gni")
@@ -2529,12 +2530,23 @@ source_set("browser") {
     "worker_host/worker_script_loader_factory.h",
   ]
 
+  if (use_neva_appruntime) {
+    deps += [ "//neva/app_drm" ]
+  }
+
   if (is_android) {
     sources += [
       "memory_pressure/user_level_memory_pressure_signal_generator.cc",
       "memory_pressure/user_level_memory_pressure_signal_generator.h",
       "renderer_host/input/touch_selection_controller_input_observer.cc",
       "renderer_host/input/touch_selection_controller_input_observer.h",
+    ]
+  }
+
+  if (use_neva_appruntime) {
+    sources += [
+      "memory_pressure/user_level_memory_pressure_signal_generator.cc",
+      "memory_pressure/user_level_memory_pressure_signal_generator.h",
     ]
   }
 
@@ -3612,6 +3624,14 @@ source_set("browser") {
       "renderer_host/delegated_frame_host.h",
     ]
     deps += [ "//ui/compositor" ]
+  }
+
+  if (is_webos) {
+    sources += [
+      "media/session/webos/media_session_webos.cc",
+      "media/session/webos/media_session_webos.h",
+    ]
+    deps += [ "//base/neva/webos" ]
   }
 
   if ((is_linux || is_chromeos) && use_dbus) {

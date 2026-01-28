@@ -98,6 +98,9 @@ bool LocalMediaStreamAudioSource::EnsureSourceIsStarted() {
       static_cast<WebLocalFrame*>(WebFrame::FromCoreFrame(consumer_frame_));
   source_ = Platform::Current()->NewAudioCapturerSource(
       web_frame, media::AudioSourceParameters(device().session_id()));
+#if defined(USE_NEVA_SUSPEND_MEDIA_CAPTURE)
+  Platform::Current()->AddSourceToAudioCapturerSourceManager(source_.get());
+#endif
   source_->Initialize(GetAudioParameters(), this);
   source_->Start();
   return true;
@@ -110,6 +113,10 @@ void LocalMediaStreamAudioSource::EnsureSourceIsStopped() {
     return;
 
   source_->Stop();
+#if defined(USE_NEVA_SUSPEND_MEDIA_CAPTURE)
+  Platform::Current()->RemoveSourceFromAudioCapturerSourceManager(
+      source_.get());
+#endif
   source_ = nullptr;
 
   VLOG(1) << "Stopped local audio input device (session_id="

@@ -4,6 +4,7 @@
 
 import("//build/config/chromeos/ui_mode.gni")
 import("//build/config/compiler/compiler.gni")
+import("//neva/neva.gni")
 if (is_android) {
   # Pull in enable_chrome_android_internal and public_android_sdk
   import("//build/config/android/config.gni")
@@ -48,7 +49,8 @@ group("telemetry_chrome_test") {
     data_deps += [ "//third_party/perfetto/src/trace_processor:trace_processor_shell($default_toolchain)" ]
   }
 
-  if (!is_fuchsia && !is_android && !is_castos && !is_ios) {
+  # NOTE(neva): Exclude //chrome when Neva only needed Build.gn is used.
+  if (!is_fuchsia && !is_android && !is_castos && !is_ios && !gn_neva_only) {
     data_deps += [ "//chrome" ]
   }
 

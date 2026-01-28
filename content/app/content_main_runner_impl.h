@@ -18,6 +18,10 @@
 #include "content/public/common/main_function_params.h"
 #include "mojo/core/embedder/scoped_ipc_support.h"
 
+#if defined(USE_LTTNG)
+#include "base/native_library.h"
+#endif
+
 namespace base {
 class AtExitManager;
 }  // namespace base
@@ -84,6 +88,10 @@ class ContentMainRunnerImpl : public ContentMainRunner {
 
   // Received in Initialize(), handed-off in Run().
   std::optional<ContentMainParams> content_main_params_;
+
+#if defined(USE_LTTNG)
+  base::NativeLibrary lttng_native_library_ = nullptr;
+#endif
 };
 
 }  // namespace content

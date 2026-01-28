@@ -68,6 +68,14 @@ const String& EnsureNonNull(const String& string) {
 
 }  // namespace
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+// static
+std::string& SecurityOrigin::MutableLocalOrigin() {
+  DEFINE_THREAD_SAFE_STATIC_LOCAL(std::string, local_origin, ());
+  return local_origin;
+}
+#endif
+
 bool SecurityOrigin::ShouldUseInnerURL(const KURL& url) {
   // FIXME: Blob URLs don't have inner URLs. Their form is
   // "blob:<inner-origin>/<UUID>", so treating the part after "blob:" as a URL
@@ -152,9 +160,22 @@ scoped_refptr<SecurityOrigin> SecurityOrigin::CreateInternal(const KURL& url) {
   uint16_t port = (url.HasPort() || !url.IsValid() || !url.IsStandard())
                       ? url.Port()
                       : DefaultPortForProtocol(url.Protocol());
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  scoped_refptr<SecurityOrigin> security_origin =
+      base::AdoptRef(new SecurityOrigin(EnsureNonNull(url.Protocol()),
+                                         EnsureNonNull(url.Host().ToString()),
+                                         port));
+  if (security_origin->IsLocal() &&
+      !(security_origin->MutableLocalOrigin().empty()) && !url.IsEmpty() &&
+      security_origin->ToString() != url.GetString()) {
+    security_origin->host_ = security_origin->MutableLocalOrigin().c_str();
+  }
+  return security_origin;
+#else   // BUILDFLAG(IS_NEVA_APPRUNTIME)
   return base::AdoptRef(new SecurityOrigin(EnsureNonNull(url.Protocol()),
                                            EnsureNonNull(url.Host().ToString()),
                                            port));
+#endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
 }
 
 SecurityOrigin::SecurityOrigin(const String& protocol,
@@ -492,7 +513,11 @@ AtomicString SecurityOrigin::ToAtomicString() const {
   if (SerializesAsNull())
     return AtomicString("null");
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  if (protocol_ == "file" && MutableLocalOrigin().empty())
+#else
   if (protocol_ == "file")
+#endif
     return AtomicString("file://");
 
   StringBuilder result;
@@ -501,7 +526,11 @@ AtomicString SecurityOrigin::ToAtomicString() const {
 }
 
 String SecurityOrigin::ToRawString() const {
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  if (protocol_ == "file" && MutableLocalOrigin().empty())
+#else
   if (protocol_ == "file")
+#endif
     return "file://";
 
   StringBuilder result;

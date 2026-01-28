@@ -67,6 +67,11 @@
 #include "third_party/blink/public/platform/web_connection_type.h"
 #include "ui/gfx/native_ui_types.h"
 
+#if defined(USE_NEVA_SUSPEND_MEDIA_CAPTURE)
+// Mix-in for neva
+#include "content/renderer/neva/render_thread_impl.h"
+#endif
+
 namespace blink {
 class WebVideoCaptureImplManager;
 }
@@ -122,6 +127,9 @@ class CONTENT_EXPORT RenderThreadImpl
     : public RenderThread,
       public ChildThreadImpl,
       public mojom::Renderer,
+#if defined(USE_NEVA_SUSPEND_MEDIA_CAPTURE)
+      public neva::RenderThreadImpl<RenderThreadImpl>,
+#endif
       public viz::mojom::CompositingModeWatcher,
       public base::MemoryPressureListener {
  public:
@@ -350,7 +358,7 @@ class CONTENT_EXPORT RenderThreadImpl
     run_loop_start_time_ = run_loop_start_time;
   }
 
-#if BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_NEVA_APPRUNTIME)
   // Provide private memory footprint for browser process.
   void SetPrivateMemoryFootprint(uint64_t private_memory_footprint_bytes);
 #endif
@@ -369,7 +377,7 @@ class CONTENT_EXPORT RenderThreadImpl
   void RecordAction(const base::UserMetricsAction& action) override;
   void RecordComputedAction(const std::string& action) override;
 
-#if BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_NEVA_APPRUNTIME)
   // ChildThreadImpl
   void OnMemoryPressureFromBrowserReceived(
       base::MemoryPressureLevel level) override;

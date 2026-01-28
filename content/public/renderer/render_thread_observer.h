@@ -8,6 +8,11 @@
 #include "content/common/buildflags.h"
 #include "content/common/content_export.h"
 
+///@name IS_NEVA_APPRUNTIME
+///@{
+#include "build/build_config.h"
+///@}
+
 namespace blink {
 class AssociatedInterfaceRegistry;
 }
@@ -33,6 +38,10 @@ class CONTENT_EXPORT RenderThreadObserver {
 
   // Called when the renderer cache of the plugin list has changed.
   virtual void PluginListChanged() {}
+
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  virtual void NetworkStateChanged(bool online) {}
+#endif
 };
 
 }  // namespace content

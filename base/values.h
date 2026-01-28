@@ -153,6 +153,10 @@ class BASE_EXPORT GSL_OWNER ListValue {
 
   // Appends `value` to the end of this list.
   void Append(Value&& value) &;
+  // TODO(neva): GCC build fails with "cannot bind rvalue reference to lvalue".
+#if defined(__GNUC__) && !defined(__clang__)
+  void Append(Value& value) &;
+#endif  // defined(__GNUC__) && !defined(__clang__)
   void Append(bool value) &;
   template <typename T>
   void Append(const T*) & = delete;
@@ -165,6 +169,10 @@ class BASE_EXPORT GSL_OWNER ListValue {
   void Append(std::string&& value) &;
   void Append(BlobStorage&& value) &;
   void Append(DictValue&& value) &;
+  // TODO(neva): GCC build fails with "cannot bind rvalue reference to lvalue".
+#if defined(__GNUC__) && !defined(__clang__)
+  void Append(DictValue& value) &;
+#endif  // defined(__GNUC__) && !defined(__clang__)
   void Append(ListValue&& value) &;
 
   // Rvalue overrides of the `Append` methods, which allow you to construct
@@ -185,6 +193,10 @@ class BASE_EXPORT GSL_OWNER ListValue {
   // no_builder_example.Append(true);
   //
   ListValue&& Append(Value&& value) &&;
+  // TODO(neva): GCC build fails with "cannot bind rvalue reference to lvalue".
+#if defined(__GNUC__) && !defined(__clang__)
+  ListValue&& Append(Value& value) &&;
+#endif  // defined(__GNUC__) && !defined(__clang__)
   ListValue&& Append(bool value) &&;
   template <typename T>
   ListValue&& Append(const T*) && = delete;
@@ -197,6 +209,10 @@ class BASE_EXPORT GSL_OWNER ListValue {
   ListValue&& Append(std::string&& value) &&;
   ListValue&& Append(BlobStorage&& value) &&;
   ListValue&& Append(DictValue&& value) &&;
+  // TODO(neva): GCC build fails with "cannot bind rvalue reference to lvalue".
+#if defined(__GNUC__) && !defined(__clang__)
+  ListValue&& Append(DictValue& value) &&;
+#endif  // defined(__GNUC__) && !defined(__clang__)
   ListValue&& Append(ListValue&& value) &&;
 
   // Inserts `value` before `pos` in this list. Returns an iterator to the
@@ -688,7 +704,7 @@ class BASE_EXPORT GSL_OWNER DictValue {
 //       list.
 class BASE_EXPORT GSL_OWNER Value {
  public:
-  using BlobStorage = BlobStorage;
+  using BlobStorage = base::BlobStorage;
 
   using Dict = DictValue;
   using List = ListValue;

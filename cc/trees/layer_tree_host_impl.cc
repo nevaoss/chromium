@@ -157,6 +157,12 @@
 #include "ui/gfx/geometry/vector2d_f.h"
 #include "ui/gfx/skia_span_util.h"
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+#include "base/command_line.h"
+#include "base/neva/base_switches.h"
+#include "base/strings/string_number_conversions.h"
+#endif
+
 namespace cc {
 namespace {
 
@@ -527,6 +533,9 @@ LayerTreeHostImpl::LayerTreeHostImpl(
       dark_mode_filter_(dark_mode_filter),
       rendering_stats_instrumentation_(rendering_stats_instrumentation),
       micro_benchmark_controller_(this),
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+      low_memory_policy_(cached_managed_memory_policy_),
+#endif
       task_graph_runner_(task_graph_runner),
       id_(id),
       consecutive_frame_with_damage_count_(settings.damaged_frame_limit),
@@ -605,6 +614,21 @@ LayerTreeHostImpl::LayerTreeHostImpl(
   browser_controls_offset_manager_ = BrowserControlsOffsetManager::Create(
       this, settings.top_controls_show_threshold,
       settings.top_controls_hide_threshold);
+
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  base::CommandLine& cmd_line = *base::CommandLine::ForCurrentProcess();
+  if (cmd_line.HasSwitch(
+          ::switches::kTileManagerLowMemPolicyBytesLimitReductionFactor)) {
+    size_t bytes_limit_reduction_factor;
+    if (base::StringToSizeT(
+            cmd_line.GetSwitchValueASCII(
+                ::switches::kTileManagerLowMemPolicyBytesLimitReductionFactor),
+            &bytes_limit_reduction_factor))
+      bytes_limit_reduction_factor_ = bytes_limit_reduction_factor;
+    low_memory_policy_.bytes_limit_when_visible /=
+        bytes_limit_reduction_factor_;
+  }
+#endif
 
   SetDebugState(settings.initial_debug_state);
   compositor_frame_reporting_controller_->SetFrameSorter(&frame_sorter_);
@@ -2444,6 +2468,12 @@ void LayerTreeHostImpl::NotifyAllTileTasksCompleted() {
     // executes (within worker context's cleanup).
     if (image_decode_cache_holder_)
       image_decode_cache_holder_->SetShouldAggressivelyFreeResources(true);
+
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+    if (resource_pool_ && settings_.use_aggressive_release_policy)
+      resource_pool_->InvalidateResources();
+#endif
+
     SetContextVisibility(false);
   }
 }
@@ -2525,6 +2555,10 @@ void LayerTreeHostImpl::SetMemoryPolicyImpl(const ManagedMemoryPolicy& policy) {
 
   ManagedMemoryPolicy old_policy = ActualManagedMemoryPolicy();
   cached_managed_memory_policy_ = policy;
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  low_memory_policy_ = cached_managed_memory_policy_;
+  low_memory_policy_.bytes_limit_when_visible /= bytes_limit_reduction_factor_;
+#endif
   ManagedMemoryPolicy actual_policy = ActualManagedMemoryPolicy();
 
   if (old_policy == actual_policy)
@@ -4436,6 +4470,11 @@ void LayerTreeHostImpl::SetVisible(bool visible) {
   DidVisibilityChange(this, visible_);
 
   if (!settings_.trees_in_viz_in_viz_process) {
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+    if (!visible && settings_.use_aggressive_release_policy) {
+      UpdateTileManagerMemoryPolicy(ManagedMemoryPolicy(0));
+    } else
+#endif
     UpdateTileManagerMemoryPolicy(ActualManagedMemoryPolicy());
   }
 
@@ -4455,6 +4494,11 @@ void LayerTreeHostImpl::SetVisible(bool visible) {
       SetNeedsRedraw(/*animation_only=*/false, /*skip_if_inside_draw=*/false);
     }
   } else if (!settings_.trees_in_viz_in_viz_process) {
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+    if (settings_.use_aggressive_release_policy) {
+      ReleaseTreeResources();
+    } else
+#endif
     EvictAllUIResources();
     // Call PrepareTiles to evict tiles when we become invisible.
     PrepareTiles();

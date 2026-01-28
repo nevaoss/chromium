@@ -4,6 +4,7 @@
 
 import("//media/media_options.gni")
 import("//mojo/public/tools/bindings/mojom.gni")
+import("//neva/neva.gni")
 
 mojom("mojom") {
   generate_java = true
@@ -122,6 +123,10 @@ mojom("mojom") {
 
   if (use_linux_video_acceleration) {
     enabled_features += [ "allow_linux_video_acceleration" ]
+  }
+
+  if (use_neva_suspend_media_capture) {
+    enabled_features += [ "use_neva_suspend_media_capture" ]
   }
 
   # Help select ServiceSandbox for media_service.mojom.

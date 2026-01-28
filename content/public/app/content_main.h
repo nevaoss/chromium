@@ -33,7 +33,7 @@ class ContentMainRunner;
 
 using CreatedMainPartsClosure = base::OnceCallback<void(BrowserMainParts*)>;
 
-struct CONTENT_EXPORT ContentMainParams {
+struct CBE_CONTENT_EXPORT CONTENT_EXPORT ContentMainParams {
   explicit ContentMainParams(ContentMainDelegate* delegate);
   ~ContentMainParams();
 
@@ -109,7 +109,7 @@ CONTENT_EXPORT void SetContentMainDelegate(ContentMainDelegate* delegate);
 // initial setup for every process. The embedder has a chance to customize
 // startup using the ContentMainDelegate interface. The embedder can also pass
 // in null for |delegate| if they don't want to override default startup.
-CONTENT_EXPORT int ContentMain(ContentMainParams params);
+CBE_CONTENT_EXPORT CONTENT_EXPORT int ContentMain(ContentMainParams params);
 #endif
 
 }  // namespace content

@@ -11,6 +11,7 @@ import("//build/toolchain/rbe.gni")
 import("//build/toolchain/siso.gni")
 import("//build/toolchain/toolchain.gni")
 import("//build_overrides/build.gni")
+import("//neva/neva.gni")
 
 # ChromeOS is the only OS for which we support clang modules with a custom
 # sysroot. See http://crbug.com/443587270.
@@ -53,7 +54,8 @@ declare_args() {
   # Indicates if the build should use the Chrome-specific plugins for enforcing
   # coding guidelines, etc. Only used when compiling with Chromium's Clang.
   # Setting this enables all of the functionality of the plugin.
-  clang_use_chrome_plugins = is_clang && current_os != "zos"
+  # TODO(neva): Please remove `is_webos` condition once webOS supports clang build.
+  clang_use_chrome_plugins = is_clang && current_os != "zos" && !is_webos
 
   # Use this instead of clang_use_chrome_plugins to enable just the raw-ptr
   # functionality of the plugin.
@@ -93,7 +95,8 @@ declare_args() {
   #
   # TODO(https://crbug.com/440260716): Enable for Cronet in AOSP once gn2bp
   # supports copy targets.
-  use_clang_modules =
+  # TODO(neva): Disable use_clang_modules to avoid build error.
+  use_clang_modules = false &&
       # Clang modules doesn't work with translation_unit used in codesearch
       # pipeline http://b/436082487.
       !enable_kythe_annotations && is_clang &&

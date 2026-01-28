@@ -4,6 +4,9 @@
 
 import("//build/config/freetype/freetype.gni")
 
+# TODO(neva_rust): Remove this workaround once Neva supports Rust build.
+import("//neva/neva.gni")
+
 assert(enable_freetype)
 
 group("freetype") {
@@ -31,4 +34,9 @@ group("freetype") {
     "//components/services/font:font_service_unittests",
     "//skia",
   ]
+
+  # TODO(neva_rust): Remove this workaround once Neva supports Rust build.
+  if (disable_rust_for_neva) {
+    visibility += [ "//third_party/fontconfig" ]
+  }
 }

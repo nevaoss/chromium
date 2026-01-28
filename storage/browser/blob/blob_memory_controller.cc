@@ -97,6 +97,20 @@ BlobStorageLimits CalculateBlobStorageLimitsImpl(
     limits.max_blob_in_memory_space = static_cast<size_t>(memory_size / 5);
 #endif
   }
+
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  // Override max_blob_in_memory_space via command line argument.
+  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+  size_t runtime_blob_mem_mb = 0;
+  if (command_line->HasSwitch(kMaxBlobMemoryMbSwitch)) {
+    std::string mem_str =
+        command_line->GetSwitchValueASCII(kMaxBlobMemoryMbSwitch);
+    if (base::StringToSizeT(mem_str, &runtime_blob_mem_mb)) {
+      limits.max_blob_in_memory_space = runtime_blob_mem_mb * 1024 * 1024;
+    }
+  }
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
+
   // Devices just on the edge (RAM == 256MB) should not fail because
   // max_blob_in_memory_space turns out smaller than min_page_file_size
   // causing the CHECK below to fail.

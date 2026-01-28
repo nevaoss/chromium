@@ -36,6 +36,10 @@ SANDBOX_POLICY_EXPORT extern const char kEnableSandboxLogging[];
 SANDBOX_POLICY_EXPORT extern const char kDisableMetalShaderCache[];
 #endif
 
+#if defined(USE_NEVA_CDM)
+SANDBOX_POLICY_EXPORT extern const char kNoCdmSandbox[];
+#endif
+
 // Flags spied upon from other layers.
 SANDBOX_POLICY_EXPORT extern const char kProcessType[];
 SANDBOX_POLICY_EXPORT extern const char kGpuProcess[];

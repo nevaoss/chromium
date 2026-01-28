@@ -204,6 +204,9 @@ class CORE_EXPORT WebSettingsImpl final : public WebSettings {
   void SetScaleAllFontsIfNoMetaTextScaleTag(bool) override;
   void SetMediaControlsEnabled(bool) override;
   void SetDoNotUpdateSelectionOnMutatingSelectionRange(bool) override;
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  void SetDisallowScrollbarsInMainFrame(bool) override;
+#endif
   void SetLowPriorityIframesThreshold(WebEffectiveConnectionType) override;
 
   void SetLazyLoadEnabled(bool) override;

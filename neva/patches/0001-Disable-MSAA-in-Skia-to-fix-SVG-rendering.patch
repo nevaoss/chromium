@@ -1,0 +1,59 @@
+From aa3958302672e576e23c1e098970bc008cbf1f44 Mon Sep 17 00:00:00 2001
+From: Ivan Pavlotsky <ivan.pavlotsky@lge.com>
+Date: Mon, 27 Mar 2023 14:59:16 +0300
+Subject: [PATCH] [gpu] Add patch to disable MSAA in Skia
+
+:Release Notes:
+Added Neva patch so MSAA can be disabled in Skia in order to fix SVG rendering
+when GPU rasterization is turned on
+
+:Detailed Notes:
+SVG rendering is broken due to MSAA which turns on by Skia's Ganesh
+(https://chromium.googlesource.com/skia/+/chrome/m49/site/user/api/canvas.md#ganesh)
+when GPU rasterization is enabled.
+The bug occurs on webOS/OSE only for yet unknown reason (most probably because
+of some bug in Mesa).
+
+This patch is a temporary workaround for Skia to disable MSAA on webOS/OSE.
+This will allow us to enable GPU rasterization again.
+
+Should be revised when Neva upgrades to new RP build version with updated
+Mesa.
+
+:Testing Performed:
+1. Run PC, webOS/OSE builds.
+2. Check that builds successfully completed.
+
+:QA Notes:
+
+:Issues Addressed:
+[NEVA-7333] [OSE] Investigate effect of GPU rasterization on content rendering
+---
+ src/gpu/ganesh/gl/GrGLCaps.cpp | 6 +++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/src/gpu/ganesh/gl/GrGLCaps.cpp b/src/gpu/ganesh/gl/GrGLCaps.cpp
+index e269a4c3f5..0f6fa64ed5 100644
+--- a/src/gpu/ganesh/gl/GrGLCaps.cpp
++++ b/src/gpu/ganesh/gl/GrGLCaps.cpp
+@@ -1066,6 +1066,9 @@ void GrGLCaps::initFSAASupport(const GrContextOptions& contextOptions,
+             fMSFBOType = kStandard_MSFBOType;
+         }
+     } else if (GR_IS_GR_GL_ES(ctxInfo.standard())) {
++#if defined(DISABLE_MSAA)
++        fMSFBOType = kNone_MSFBOType;
++#else  // defined(DISABLE_MSAA)
+         // We prefer multisampled-render-to-texture extensions over ES3 MSAA because we've observed
+         // ES3 driver bugs on at least one device with a tiled GPU (N10).
+         if (ctxInfo.hasExtension("GL_EXT_multisampled_render_to_texture")) {
+@@ -1083,6 +1086,7 @@ void GrGLCaps::initFSAASupport(const GrContextOptions& contextOptions,
+         } else if (ctxInfo.hasExtension("GL_APPLE_framebuffer_multisample")) {
+             fMSFBOType = kES_Apple_MSFBOType;
+         }
++#endif  // !defined(DISABLE_MSAA)
+     } else if (GR_IS_GR_WEBGL(ctxInfo.standard())) {
+         // No support in WebGL 1, but there is for 2.0
+         if (ctxInfo.version() >= GR_GL_VER(2,0)) {
+-- 
+2.25.1
+

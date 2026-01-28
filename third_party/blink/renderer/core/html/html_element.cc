@@ -144,9 +144,31 @@ using AttributeChangedFunction =
 using mojom::blink::FormControlType;
 
 struct AttributeTriggers {
+  // TODO(neva): Not allowed for GCC 12.4, 13.3, 14.1.
+  // For GCC 11.4, 12.1/2/3, 13.1/2 and 14.2 it is Ok.
+  // The error is: "non-static const member '<member-name>',
+  // cannot use default assignment operator".
+#if defined(__GNUC__) && !defined(__clang__) && \
+    ((__GNUC__ == 12 && __GNUC_MINOR__ == 4) || \
+     (__GNUC__ == 13 && __GNUC_MINOR__ == 3) || \
+     (__GNUC__ == 14 && __GNUC_MINOR__ == 1))
+  QualifiedName attribute;
+#else
   const QualifiedName& attribute;
+#endif
   WebFeature web_feature;
+  // TODO(neva): Not allowed for GCC 12.4, 13.3, 14.1.
+  // For GCC 11.4, 12.1/2/3, 13.1/2 and 14.2 it is Ok.
+  // The error is: "non-static const member '<member-name>',
+  // cannot use default assignment operator".
+#if defined(__GNUC__) && !defined(__clang__) && \
+    ((__GNUC__ == 12 && __GNUC_MINOR__ == 4) || \
+     (__GNUC__ == 13 && __GNUC_MINOR__ == 3) || \
+     (__GNUC__ == 14 && __GNUC_MINOR__ == 1))
+  AtomicString event;
+#else
   const AtomicString& event;
+#endif
   AttributeChangedFunction function;
 };
 

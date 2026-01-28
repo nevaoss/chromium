@@ -14,6 +14,8 @@ import("//third_party/blink/renderer/config.gni")
 import("//third_party/protobuf/proto_library.gni")
 import("//third_party/webrtc/webrtc.gni")
 
+import("//neva/neva.gni")
+
 if (is_android) {
   import("//build/config/android/rules.gni")
 }
@@ -385,6 +387,11 @@ source_set("headers") {
 
   if (is_mac) {
     sources += [ "sandbox_support/sandbox_support_mac.h" ]
+  }
+
+  # Neva features in blink
+  if (use_neva_appruntime) {
+    sources += [ "neva/neva_blink_features.h"]
   }
 
   # TODO(crbug.com/40031409): Fix code that adds exit-time destructors and

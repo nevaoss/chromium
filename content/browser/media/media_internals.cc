@@ -179,6 +179,10 @@ class MediaInternals::AudioLogImpl : public media::mojom::AudioLog,
   void OnCreated(const media::AudioParameters& params,
                  const std::string& device_id) override;
   void OnStarted() override;
+#if defined(USE_NEVA_SUSPEND_MEDIA_CAPTURE)
+  void OnPaused() override;
+  void OnResumed() override;
+#endif
   void OnStopped() override;
   void OnClosed() override;
   void OnError() override;
@@ -255,6 +259,16 @@ void MediaInternals::AudioLogImpl::OnCreated(
 void MediaInternals::AudioLogImpl::OnStarted() {
   SendSingleStringUpdate(kAudioLogStatusKey, "started");
 }
+
+#if defined(USE_NEVA_SUSPEND_MEDIA_CAPTURE)
+void MediaInternals::AudioLogImpl::OnPaused() {
+  SendSingleStringUpdate(kAudioLogStatusKey, "paused");
+}
+
+void MediaInternals::AudioLogImpl::OnResumed() {
+  SendSingleStringUpdate(kAudioLogStatusKey, "resumed");
+}
+#endif
 
 void MediaInternals::AudioLogImpl::OnStopped() {
   SendSingleStringUpdate(kAudioLogStatusKey, "stopped");

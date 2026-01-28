@@ -1,0 +1,48 @@
+From a68d47a206093d0396ca691dc0220576cec62dc7 Mon Sep 17 00:00:00 2001
+From: DongHwan Yu <donghwan.yu@lge.com>
+Date: Mon, 14 Apr 2025 14:48:05 +0900
+Subject: [PATCH] 136.0.7075.0~1: GCC: Replace std::fmodf with std::fmod in
+ ink/geometry/internal/modulo.cc
+
+:Release Notes:
+Replaced std::fmodf with std::fmod in ink/geometry/internal/modulo.cc
+to fix GCC build error after rolling 136.0.7075.0~1
+
+:Detailed Notes:
+The Ink CL
+https://github.com/google/ink/commit/dd2272233f5509d2cb07cc769d8447c2e630964e
+which was rolled in the Chromium CL https://crrev.com/c/6357997 used
+std::fmodf().
+
+Since GCC 14+, missing functions for float have been added to <cmath>
+https://gcc.gnu.org/gcc-14/changes.html but Neva's GCC version is 11.4.
+
+Without this patch the build fails with GCC errors:
+../../third_party/ink/src/ink/geometry/internal/modulo.cc:25:23: error: 'fmodf' is not a member of 'std'; did you mean 'modf'?
+
+:Issues Addressed:
+[NEVA-10206] Upgrade neva-main-rolling up to 7075 BUILD
+---
+ ink/geometry/internal/modulo.cc | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/ink/geometry/internal/modulo.cc b/ink/geometry/internal/modulo.cc
+index 93eecd8..79bc5e3 100644
+--- a/ink/geometry/internal/modulo.cc
++++ b/ink/geometry/internal/modulo.cc
+@@ -22,7 +22,12 @@ namespace ink::geometry_internal {
+ 
+ float FloatModulo(float a, float b) {
+   ABSL_DCHECK(std::isfinite(b) && b > 0.f);
++// TODO(neva): Remove this when Neva GCC version upgraded to 14+.
++#if defined(__GNUC__) && __GNUC__ < 14 && !defined(__clang__)
++  float result = std::fmod(a, b);
++#else   // defined(__GNUC__) && __GNUC__ < 14 && !defined(__clang__)
+   float result = std::fmodf(a, b);
++#endif  // !(defined(__GNUC__) && __GNUC__ < 14 && !defined(__clang__))
+   // `fmodf` always matches the sign of the first argument, so `fmodf(a, b)`
+   // returns a value in the range (-b, b).  We want [0, b), so wrap negative
+   // values back to positive.
+-- 
+2.45.2
+

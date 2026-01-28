@@ -21,6 +21,13 @@
 #include "ui/ozone/public/platform_session_manager.h"
 #include "ui/ozone/public/platform_user_input_monitor.h"
 
+///@name IS_NEVA_APPRUNTIME
+///@{
+#include <cstring>
+
+#include "base/logging.h"
+///@}
+
 namespace ui {
 
 namespace {
@@ -89,6 +96,12 @@ bool OzonePlatform::InitializeForUI(const InitParams& args) {
   // This is deliberately created after initializing so that the platform can
   // create its own version of DDM.
   DeviceDataManager::CreateInstance();
+
+  ///@name IS_NEVA_APPRUNTIME
+  ///@{
+  LOG(INFO) << "Ozone platform name: '" << GetOzonePlatformName() << "'";
+  ///@}
+
   return true;
 }
 
@@ -118,6 +131,15 @@ bool OzonePlatform::IsInitialized() {
 std::string OzonePlatform::GetPlatformNameForTest() {
   return GetOzonePlatformName();
 }
+
+///@name IS_NEVA_APPRUNTIME
+///@{
+// static
+bool OzonePlatform::IsWayland() {
+  static bool result = std::strcmp(GetOzonePlatformName(), "wayland") == 0;
+  return result;
+}
+///@}
 
 PlatformClipboard* OzonePlatform::GetPlatformClipboard() {
   // Platforms that support system clipboard must override this method.

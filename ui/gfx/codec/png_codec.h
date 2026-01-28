@@ -27,6 +27,11 @@ class Size;
 // things, partially downloaded data.
 class CODEC_EXPORT PNGCodec {
  public:
+  // TODO(neva_rust): Remove this workaround once Neva supports Rust build.
+#if !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
+  static constexpr int DEFAULT_ZLIB_COMPRESSION = 6;
+#endif  // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
+
   enum ColorFormat {
     // 4 bytes per pixel, in RGBA order in memory regardless of endianness.
     // Alpha is unpremultiplied, the same as what PNG uses.

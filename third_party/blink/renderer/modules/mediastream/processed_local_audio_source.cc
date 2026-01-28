@@ -267,6 +267,9 @@ bool ProcessedLocalAudioSource::EnsureSourceIsStarted() {
       processing_layout_.webrtc_processing_settings().automatic_gain_control);
 #endif
   source_ = std::move(new_source);
+#if defined(USE_NEVA_SUSPEND_MEDIA_CAPTURE)
+  Platform::Current()->AddSourceToAudioCapturerSourceManager(source_.get());
+#endif
   source_->Start();
 
   // Register this source with the WebRtcAudioDeviceImpl.
@@ -281,6 +284,10 @@ void ProcessedLocalAudioSource::EnsureSourceIsStopped() {
   if (!source_)
     return;
 
+#if defined(USE_NEVA_SUSPEND_MEDIA_CAPTURE)
+  Platform::Current()->RemoveSourceFromAudioCapturerSourceManager(
+      source_.get());
+#endif
   scoped_refptr<media::AudioCapturerSource> source_to_stop(std::move(source_));
 
   if (dependency_factory_) {

@@ -251,6 +251,15 @@ namespace webid {
 class TestAccountSelectionView;
 }  // namespace webid
 
+// TODO(neva): Remove when WidgetDelegateView and
+// RegisterDeleteCallbackPassKey() is not in use in neva_app_runtime.
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+namespace neva_app_runtime {
+class ShellWindow;
+class WebAppWindow;
+}  // namespace neva_app_runtime
+#endif
+
 namespace views {
 
 namespace test {
@@ -477,6 +486,11 @@ class VIEWS_EXPORT WidgetDelegate {
     friend class ::remoting::MessageBoxCore;
     friend class DefaultWidgetDelegate;
     friend class TableViewFocusTest;
+    // TODO(neva): Remove when RegisterDeleteCallbackPassKey() is not in use in
+    // neva_app_runtime.
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+    friend class neva_app_runtime::WebAppWindow;
+#endif
     FRIEND_TEST_ALL_PREFIXES(FocusManagerTest, AdvanceFocusStaysInWidget);
     FRIEND_TEST_ALL_PREFIXES(NativeWidgetAuraTest,
                              TestPropertiesWhenAddedToLayout);
@@ -980,6 +994,12 @@ class VIEWS_EXPORT WidgetDelegateView : public WidgetDelegate, public View {
   friend class webid::TestAccountSelectionView;
   FRIEND_TEST_ALL_PREFIXES(test::WidgetOwnsNativeWidgetTest,
                            WidgetDelegateView);
+  // TODO(neva): Remove when WidgetDelegateView is not in use in
+  // neva_app_runtime.
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  friend class neva_app_runtime::ShellWindow;
+  friend class neva_app_runtime::WebAppWindow;
+#endif
 
   WidgetDelegateView();
 

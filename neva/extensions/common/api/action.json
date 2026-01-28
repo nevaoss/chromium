@@ -1,0 +1,119 @@
+// Copyright 2017 The Chromium Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+// (This file was partially copied from //chrome/common/extensions/api.)
+
+[
+  {
+    "namespace": "action",
+    "description": "Use the <code>chrome.action</code> API to control the extension's icon in the Google Chrome toolbar.",
+    "compiler_options": {
+      "implemented_in": "neva/extensions/browser/api/extension_action/extension_action_api.h"
+    },
+    "functions": [{
+      "name": "setIcon",
+      "type": "function",
+      "description": "Sets the icon for the action. The icon can be specified either as the path to an image file or as the pixel data from a canvas element, or as dictionary of either one of those. Either the <b>path</b> or the <b>imageData</b> property must be specified.",
+      "parameters": [{
+        "name": "details",
+        "type": "object",
+        "properties": {
+          "imageData": {
+            "choices": [{
+              "$ref": "browserAction.ImageDataType"
+            }, {
+              "type": "object",
+              "additionalProperties": { "type": "any" }
+            }],
+            "optional": true,
+            "description": "Either an ImageData object or a dictionary {size -> ImageData} representing icon to be set. If the icon is specified as a dictionary, the actual image to be used is chosen depending on screen's pixel density. If the number of image pixels that fit into one screen space unit equals <code>scale</code>, then image with size <code>scale</code> * n will be selected, where n is the size of the icon in the UI. At least one image must be specified. Note that 'details.imageData = foo' is equivalent to 'details.imageData = {'16': foo}'"
+          },
+          "path": {
+            "choices": [{
+              "type": "string"
+            }, {
+              "type": "object",
+              "additionalProperties": { "type": "any" }
+            }],
+            "optional": true,
+            "description": "Either a relative image path or a dictionary {size -> relative image path} pointing to icon to be set. If the icon is specified as a dictionary, the actual image to be used is chosen depending on screen's pixel density. If the number of image pixels that fit into one screen space unit equals <code>scale</code>, then image with size <code>scale</code> * n will be selected, where n is the size of the icon in the UI. At least one image must be specified. Note that 'details.path = foo' is equivalent to 'details.path = {'16': foo}'"
+          },
+          "tabId": {
+            "type": "integer",
+            "optional": true,
+            "minimum": 0,
+            "description": "Limits the change to when a particular tab is selected. Automatically resets when the tab is closed."
+          }
+        }
+      }],
+      "returns_async": {
+        "name": "callback",
+        "optional": true,
+        "parameters": []
+      }
+    }, {
+      "name": "setBadgeText",
+      "type": "function",
+      "description": "Sets the badge text for the action. The badge is displayed on top of the icon.",
+      "parameters": [{
+        "name": "details",
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "optional": true,
+            "description": "Any number of characters can be passed, but only about four can fit in the space. If an empty string (<code>''</code>) is passed, the badge text is cleared.  If <code>tabId</code> is specified and <code>text</code> is null, the text for the specified tab is cleared and defaults to the global badge text."
+          },
+          "tabId": {
+            "type": "integer",
+            "optional": true,
+            "minimum": 0,
+            "description": "Limits the change to when a particular tab is selected. Automatically resets when the tab is closed."
+          }
+        }
+      }],
+      "returns_async": {
+        "name": "callback",
+        "parameters": [],
+        "optional": true
+      }
+    }, {
+      "name": "setBadgeBackgroundColor",
+      "type": "function",
+      "description": "Sets the background color for the badge.",
+      "parameters": [{
+        "name": "details",
+        "type": "object",
+        "properties": {
+          "color": {
+            "description": "An array of four integers in the range [0,255] that make up the RGBA color of the badge. For example, opaque red is <code>[255, 0, 0, 255]</code>. Can also be a string with a CSS value, with opaque red being <code>#FF0000</code> or <code>#F00</code>.",
+            "choices": [
+              {"type": "string"},
+              {"$ref": "browserAction.ColorArray"}
+            ]
+          },
+          "tabId": {
+            "type": "integer",
+            "optional": true,
+            "minimum": 0,
+            "description": "Limits the change to when a particular tab is selected. Automatically resets when the tab is closed."
+          }
+        }
+      }],
+      "returns_async": {
+        "name": "callback",
+        "parameters": [],
+        "optional": true
+      }
+    }],
+    "events": [{
+      "name": "onClicked",
+      "type": "function",
+      "description": "Fired when an action icon is clicked.  This event will not fire if the action has a popup.",
+      "parameters": [{
+        "name": "tab",
+        "$ref": "tabs.Tab"
+      }]
+    }]
+  }
+]

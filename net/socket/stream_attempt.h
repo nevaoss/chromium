@@ -20,6 +20,12 @@
 #include "net/log/net_log_with_source.h"
 #include "net/socket/stream_socket_close_reason.h"
 
+// TODO(neva): workarround to use SSLCertRequestInfo with scoped_refptr.
+// scoped_refptr needs full class declaration wit friend declaration.
+#if defined(__GNUC__) && !defined(__clang__)
+#include "net/ssl/ssl_cert_request_info.h"
+#endif
+
 namespace net {
 
 class ClientSocketFactory;

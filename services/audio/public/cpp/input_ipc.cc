@@ -92,6 +92,20 @@ void InputIPC::RecordStream() {
   stream_->Record();
 }
 
+#if defined(USE_NEVA_SUSPEND_MEDIA_CAPTURE)
+void InputIPC::PauseStream() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  DCHECK(stream_.is_bound());
+  stream_->Pause();
+}
+
+void InputIPC::ResumeStream() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  DCHECK(stream_.is_bound());
+  stream_->Resume();
+}
+#endif
+
 void InputIPC::SetVolume(double volume) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   DCHECK(stream_.is_bound());

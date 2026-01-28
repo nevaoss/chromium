@@ -34,12 +34,34 @@
 #include "content/public/browser/browser_child_process_host_iterator.h"
 #include "content/public/browser/child_process_data.h"
 
+// TODO(neva): Remove this if not necessary for user level memory pressure.
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+#include "content/common/neva/user_level_memory_pressure_signal_features.h"
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
+
 namespace content {
 
 namespace {
 constexpr base::TimeDelta kFirstMeasurementInterval = base::Minutes(1);
 constexpr base::TimeDelta kDefaultMeasurementInterval = base::Seconds(4);
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+base::TimeDelta MeasurementInterval() {
+  static const base::FeatureParam<base::TimeDelta> kMeasurementInterval{
+      &content::features::kUserLevelMemoryPressureSignal,
+      "measurement_interval", kDefaultMeasurementInterval};
+  return kMeasurementInterval.Get();
+}
+
+// FIXME(neva): Need to check the default value.
+constexpr size_t kMemoryThresholdMB = 738;
+base::ByteCount MemoryThresholdParam() {
+  static const base::FeatureParam<int> kMemoryThresholdParam{
+      &content::features::kUserLevelMemoryPressureSignal, "memory_threshold_mb",
+      kMemoryThresholdMB};
+  return base::MiB(kMemoryThresholdParam.Get());
+}
+#else   // BUILDFLAG(IS_NEVA_APPRUNTIME)
 constexpr base::TimeDelta kDefaultMinimumInterval = base::Minutes(10);
 
 // The memory threshold: 458 was selected at around the 99th percentile of
@@ -52,10 +74,20 @@ constexpr base::ByteCount kMemoryThresholdOf4GbDevices = base::MiB(458);
 // system memory were 6GB.
 constexpr base::ByteCount kMemoryThresholdOf6GbDevices = base::MiB(494);
 
+#endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
+
 }  // namespace
 
 // static
 void UserLevelMemoryPressureSignalGenerator::Initialize() {
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  if (features::IsUserLevelMemoryPressureSignalEnabled()) {
+    UserLevelMemoryPressureSignalGenerator::Get().Start(
+        MemoryThresholdParam(), MeasurementInterval(),
+        features::MinUserMemoryPressureInterval());
+    return;
+  }
+#else   // BUILDFLAG(IS_NEVA_APPRUNTIME)
   if (base::SysInfo::Is4GbDevice() || base::SysInfo::Is6GbDevice()) {
     auto memory_threshold = base::SysInfo::Is4GbDevice()
                                 ? kMemoryThresholdOf4GbDevices
@@ -63,6 +95,7 @@ void UserLevelMemoryPressureSignalGenerator::Initialize() {
     UserLevelMemoryPressureSignalGenerator::Get().Start(
         memory_threshold, kDefaultMeasurementInterval, kDefaultMinimumInterval);
   }
+#endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
 }
 
 // static
@@ -116,6 +149,7 @@ void UserLevelMemoryPressureSignalGenerator::CollectMemoryMetrics() {
   for (RenderProcessHost::iterator iter = RenderProcessHost::AllHostsIterator();
        !iter.IsAtEnd(); iter.Advance()) {
     total_process_count++;
+#if !BUILDFLAG(IS_NEVA_APPRUNTIME)
     RenderProcessHost* host = iter.GetCurrentValue();
     if (host && host->IsInitializedAndNotDead() &&
         host->GetProcess().IsValid() &&
@@ -123,6 +157,7 @@ void UserLevelMemoryPressureSignalGenerator::CollectMemoryMetrics() {
             base::android::ChildBindingState::VISIBLE) {
       visible_renderer_count++;
     }
+#endif
   }
 
   latest_metrics_ = UserLevelMemoryPressureMetrics{
@@ -142,6 +177,10 @@ void UserLevelMemoryPressureSignalGenerator::OnTimerFired() {
 
   base::MemoryPressureLevel level = base::MEMORY_PRESSURE_LEVEL_NONE;
   if (total_pmf > memory_threshold_) {
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+    VLOG(1) << __func__ << " Exceed memory threshold : " << total_pmf
+            << "/" << memory_threshold_;
+#endif
     level = base::MEMORY_PRESSURE_LEVEL_CRITICAL;
     interval = minimum_interval_;
 
@@ -230,11 +269,15 @@ base::ByteCount UserLevelMemoryPressureSignalGenerator::
     if (!process.IsValid())
       continue;
 
+    // TODO(neva) : Need to consider whether to exclude invisible renderer
+    // process.
+#if !BUILDFLAG(IS_NEVA_APPRUNTIME)
     // Ignore renderer processes with invisible or lower priority.
     if (host->GetEffectiveChildBindingState() <
         base::android::ChildBindingState::VISIBLE) {
       continue;
     }
+#endif
 
     // Because of the "hidepid=2" mount option for /proc on Android,
     // the browser process cannot open /proc/{render process pid}/maps and

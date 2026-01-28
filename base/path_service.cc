@@ -135,6 +135,14 @@ Provider base_provider_posix = {EnvOverridePathProvider, &posix_provider,
                                 true};
 #endif
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+Provider base_provider_neva = {PathProviderNeva, nullptr,
+#ifndef NDEBUG
+                               PATH_NEVA_START, PATH_NEVA_END,
+#endif
+                               true};
+#endif
+
 struct PathData {
   Lock lock;
   PathMap cache;                // Cache mappings from path key to path value.
@@ -155,6 +163,11 @@ struct PathData {
     providers = &base_provider_fuchsia;
 #elif BUILDFLAG(IS_POSIX)
     providers = &base_provider_posix;
+#endif
+
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+    base_provider_neva.next = providers;
+    providers = &base_provider_neva;
 #endif
   }
 };

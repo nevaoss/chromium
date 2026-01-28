@@ -27,7 +27,10 @@ class DisallowNewWrapper final
   template <typename... Args>
   explicit DisallowNewWrapper(Args&&... args)
       : value_(std::forward<Args>(args)...) {
+// TODO(neva): Remove this when Neva build environment support below line.
+#if !(defined(__GNUC__) && !defined(__clang__))
     static_assert(IsDisallowNew<T>, "T needs to be a disallow new type");
+#endif
     static_assert(IsTraceableV<T>, "T needs to be traceable");
   }
 

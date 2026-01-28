@@ -16,7 +16,12 @@ struct IsRequired {
   // This function is not defined and consteval. Therefore, any evaluation will
   // fail and fail at compile time.
   template <typename T>
+// TODO(neva): GCC: Remove this workaround after Neva supports GCC 13.1.
+#if defined(COMPILER_GCC) && (__GNUC__ < 13)
+  constexpr operator T();  // NOLINT
+#else                      // defined(COMPILER_GCC) && (__GNUC__ < 13)
   consteval operator T();  // NOLINT
+#endif                     // !(defined(COMPILER_GCC) && (__GNUC__ < 13))
 };
 
 }  // namespace autofill::internal

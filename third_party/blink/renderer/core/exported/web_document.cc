@@ -78,6 +78,10 @@
 #include "third_party/blink/renderer/platform/wtf/casting.h"
 #include "ui/accessibility/ax_mode.h"
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+#include "third_party/blink/renderer/core/frame/local_dom_window.h"
+#endif
+
 namespace {
 
 static const blink::WebStyleSheetKey GenerateStyleSheetKey() {
@@ -105,6 +109,15 @@ WebSecurityOrigin WebDocument::GetSecurityOrigin() const {
     return WebSecurityOrigin();
   return WebSecurityOrigin(context->GetSecurityOrigin());
 }
+
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+void WebDocument::GrantLoadLocalResources() {
+  if (ConstUnwrap<Document>()) {
+    ConstUnwrap<Document>()->domWindow()->
+        GetMutableSecurityOrigin()->GrantLoadLocalResources();
+  }
+}
+#endif
 
 bool WebDocument::IsSecureContext() const {
   const Document* document = ConstUnwrap<Document>();

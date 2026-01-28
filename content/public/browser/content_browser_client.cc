@@ -55,6 +55,12 @@
 #include "content/public/browser/web_authentication_delegate.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_contents_view_delegate.h"
+// TODO(neva): Required for usage of WebUIController. Try to contribute to
+// upstream.
+///@name IS_NEVA_APPRUNTIME
+///@{
+#include "content/public/browser/web_ui_controller.h"
+///@}
 #include "content/public/browser/webid/identity_request_dialog_controller.h"
 #include "content/public/common/alternative_error_page_override_info.mojom.h"
 #include "content/public/common/content_features.h"
@@ -441,6 +447,15 @@ bool ContentBrowserClient::IsFileAccessAllowed(
   return true;
 }
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+bool ContentBrowserClient::IsFileSchemeNavigationAllowed(
+    const GURL& url,
+    FrameTreeNodeId render_frame_id,
+    bool browser_initiated) {
+  return true;
+}
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
+
 bool ContentBrowserClient::ForceSniffingFileUrlsForHtml() {
   return false;
 }
@@ -765,6 +780,12 @@ bool ContentBrowserClient::CanSendSCTAuditingReport(
     BrowserContext* browser_context) {
   return false;
 }
+
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+bool ContentBrowserClient::HasQuotaSettings() const {
+  return false;
+}
+#endif
 
 GeneratedCodeCacheSettings ContentBrowserClient::GetGeneratedCodeCacheSettings(
     BrowserContext* context) {

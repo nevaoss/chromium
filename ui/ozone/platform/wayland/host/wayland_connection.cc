@@ -46,7 +46,9 @@
 #include "ui/ozone/platform/wayland/host/wayland_cursor_shape.h"
 #include "ui/ozone/platform/wayland/host/wayland_data_device_manager.h"
 #include "ui/ozone/platform/wayland/host/wayland_data_drag_controller.h"
+#if !BUILDFLAG(IS_WEBOS)
 #include "ui/ozone/platform/wayland/host/wayland_drm.h"
+#endif  // !BUILDFLAG(IS_WEBOS)
 #include "ui/ozone/platform/wayland/host/wayland_event_source.h"
 #include "ui/ozone/platform/wayland/host/wayland_input_method_context.h"
 #include "ui/ozone/platform/wayland/host/wayland_keyboard.h"
@@ -71,6 +73,11 @@
 #include "ui/ozone/platform/wayland/host/zwp_text_input_v3.h"
 #include "ui/ozone/public/ozone_switches.h"
 #include "ui/platform_window/common/platform_window_defaults.h"
+
+///@name IS_NEVA_APPRUNTIME
+///@{
+#include "ui/ozone/platform/wayland/host/wayland_extensions.h"
+///@}
 
 namespace ui {
 
@@ -135,7 +142,12 @@ bool MinSupportedKernelForLinuxDrmSyncobj() {
 
 }  // namespace
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+WaylandConnection::WaylandConnection()
+    : seat_manager_(std::make_unique<WaylandSeatManager>()) {}
+#else   // BUILDFLAG(IS_NEVA_APPRUNTIME)
 WaylandConnection::WaylandConnection() = default;
+#endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
 
 WaylandConnection::~WaylandConnection() {
   if (wayland_output_manager() && wayland_output_manager()->wayland_screen()) {
@@ -164,12 +176,16 @@ bool WaylandConnection::Initialize(bool use_threaded_polling) {
                               &WaylandCursorShape::Instantiate);
   RegisterGlobalObjectFactory(WaylandDataDeviceManager::kInterfaceName,
                               &WaylandDataDeviceManager::Instantiate);
+#if !BUILDFLAG(IS_WEBOS)
   RegisterGlobalObjectFactory(WaylandDrm::kInterfaceName,
                               &WaylandDrm::Instantiate);
+#endif  // !BUILDFLAG(IS_WEBOS)
   RegisterGlobalObjectFactory(WaylandOutput::kInterfaceName,
                               &WaylandOutput::Instantiate);
+#if !BUILDFLAG(IS_NEVA_APPRUNTIME)
   RegisterGlobalObjectFactory(WaylandSeat::kInterfaceName,
                               &WaylandSeat::Instantiate);
+#endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
   RegisterGlobalObjectFactory(WaylandShm::kInterfaceName,
                               &WaylandShm::Instantiate);
   RegisterGlobalObjectFactory(WaylandTabletManager::kInterfaceName,
@@ -215,6 +231,13 @@ bool WaylandConnection::Initialize(bool use_threaded_polling) {
     LOG(ERROR) << "Failed to get Wayland registry";
     return false;
   }
+
+  ///@name IS_NEVA_APPRUNTIME
+  ///@{
+  if (!extensions_) {
+    extensions_ = CreateWaylandExtensions(this);
+  }
+  ///@}
 
   // UnitTest doesn't support threaded polling wayland event
   if (UseTestConfigForPlatformWindows()) {
@@ -262,14 +285,23 @@ bool WaylandConnection::Initialize(bool use_threaded_polling) {
     LOG(ERROR) << "No wl_shm object";
     return false;
   }
-  if (!shell_) {
+  if (!shell_
+  ///@name IS_NEVA_APPRUNTIME
+  ///@{
+  && !(extensions_ && extensions_->HasShellObject())
+  ///@}
+  ) {
     LOG(ERROR) << "No Wayland shell found";
     return false;
   }
 
   // When we are running tests with weston in headless mode, the seat is not
   // announced.
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  if (!seat())
+#else  // BUILDFLAG(IS_NEVA_APPRUNTIME)
   if (!seat_)
+#endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
     LOG(WARNING) << "No wl_seat object. The functionality may suffer.";
 
   if (UseTestConfigForPlatformWindows())
@@ -287,27 +319,56 @@ void WaylandConnection::SetShutdownCb(base::OnceCallback<void()> shutdown_cb) {
   event_source()->SetShutdownCb(std::move(shutdown_cb));
 }
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+WaylandSeat* WaylandConnection::seat() const {
+  DCHECK(seat_manager_);
+  if (seat_manager_->GetFirstSeat()) {
+    return seat_manager_->GetFirstSeat();
+  }
+  return nullptr;
+}
+
+WaylandCursorPosition* WaylandConnection::wayland_cursor_position() const {
+  DCHECK(seat_manager_);
+  if (seat_manager_->GetFirstSeat())
+    return seat_manager_->GetFirstSeat()->cursor_position();
+  return nullptr;
+}
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
+
 void WaylandConnection::SetPlatformCursor(wl_cursor* cursor_data,
                                           int buffer_scale) {
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  DCHECK(seat_manager_);
+  seat_manager_->SetCursorPlatformShape(cursor_data, buffer_scale);
+#else   // BUILDFLAG(IS_NEVA_APPRUNTIME)
   if (!cursor_)
     return;
   cursor_->SetPlatformShape(cursor_data, buffer_scale);
+#endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
 }
 
 void WaylandConnection::SetCursorBufferListener(
     WaylandCursorBufferListener* listener) {
+#if !BUILDFLAG(IS_NEVA_APPRUNTIME)
   listener_ = listener;
   if (!cursor_)
     return;
   cursor_->set_listener(listener_);
+#endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
 }
 
 void WaylandConnection::SetCursorBitmap(const std::vector<SkBitmap>& bitmaps,
                                         const gfx::Point& hotspot_in_dips,
                                         int buffer_scale) {
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  DCHECK(seat_manager_);
+  seat_manager_->UpdateCursorBitmap(bitmaps, hotspot_in_dips, buffer_scale);
+#else   // BUILDFLAG(IS_NEVA_APPRUNTIME)
   if (!cursor_)
     return;
   cursor_->UpdateBitmap(bitmaps, hotspot_in_dips, buffer_scale);
+#endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
 }
 
 void WaylandConnection::ResetCursor() {
@@ -360,8 +421,12 @@ void WaylandConnection::Flush() {
 
 void WaylandConnection::UpdateInputDevices() {
   DeviceHotplugEventObserver* observer = DeviceDataManager::GetInstance();
+// NOTE(neva): Restrict usage of Create<InputDevice>Devices() without multi-seat
+// implementation
+#if !BUILDFLAG(IS_NEVA_APPRUNTIME)
   observer->OnMouseDevicesUpdated(CreateMouseDevices());
   observer->OnKeyboardDevicesUpdated(CreateKeyboardDevices());
+#endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
   observer->OnTouchscreenDevicesUpdated(CreateTouchscreenDevices());
   observer->OnDeviceListsComplete();
 }
@@ -412,6 +477,10 @@ ZwpTextInputV3* WaylandConnection::EnsureTextInputV3() {
 
 std::vector<TouchscreenDevice> WaylandConnection::CreateTouchscreenDevices()
     const {
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  DCHECK(seat_manager_);
+  return seat_manager_->CreateTouchscreenDevices();
+#else   // BUILDFLAG(IS_NEVA_APPRUNTIME)
   std::vector<TouchscreenDevice> devices;
   if (const auto* touch = seat_->touch()) {
     // Currently, there's no protocol on wayland to know how many touch points
@@ -423,9 +492,14 @@ std::vector<TouchscreenDevice> WaylandConnection::CreateTouchscreenDevices()
                          /*touch_points=*/10);
   }
   return devices;
+#endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
 }
 
 void WaylandConnection::UpdateCursor() {
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  DCHECK(seat_manager_);
+  seat_manager_->UpdateCursor();
+#else   // BUILDFLAG(IS_NEVA_APPRUNTIME)
   if (auto* pointer = seat_->pointer()) {
     cursor_ = std::make_unique<WaylandCursor>(pointer, this);
     cursor_->set_listener(listener_);
@@ -438,10 +512,15 @@ void WaylandConnection::UpdateCursor() {
   } else {
     ResetCursor();
   }
+#endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
 }
 
 void WaylandConnection::CreateDataObjectsIfReady() {
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  if (data_device_manager_ && seat()) {
+#else   // BUILDFLAG(IS_NEVA_APPRUNTIME)
   if (data_device_manager_ && seat_) {
+#endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
     DCHECK(!data_drag_controller_);
     data_drag_controller_ = std::make_unique<WaylandDataDragController>(
         this, data_device_manager_.get(), event_source(), event_source());
@@ -611,6 +690,12 @@ void WaylandConnection::HandleGlobal(wl_registry* registry,
                                      const char* interface,
                                      uint32_t version) {
   auto factory_it = global_object_factories_.find(interface);
+  ///@name IS_NEVA_APPRUNTIME
+  ///@{
+  if (extensions_->Bind(registry, name, interface, version)) {
+    DVLOG(1) << "Successfully bound to " << interface;
+  } else
+  ///@}
   if (factory_it != global_object_factories_.end()) {
     (*factory_it->second)(this, registry, name, interface, version);
   } else if (!compositor_ &&
@@ -629,6 +714,19 @@ void WaylandConnection::HandleGlobal(wl_registry* registry,
       LOG(ERROR) << "Failed to bind to wl_subcompositor global";
       return;
     }
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  } else if (strcmp(interface, "wl_seat") == 0) {
+    wl::Object<wl_seat> seat =
+        wl::Bind<wl_seat>(registry, name, std::min(
+            version, /*kMaxSeatVersion*/ (uint32_t) 5));
+    if (!seat) {
+      LOG(ERROR) << "Failed to bind to wl_seat global";
+      return;
+    }
+    if (seat_manager_)
+      seat_manager_->AddSeat(this, name, seat.release());
+    CreateDataObjectsIfReady();
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
   } else if (!shell_ && UNSAFE_TODO(strcmp(interface, "xdg_wm_base")) == 0) {
     shell_ = wl::Bind<xdg_wm_base>(registry, name,
                                    std::min(version, kMaxXdgShellVersion));
@@ -701,9 +799,15 @@ void WaylandConnection::HandleGlobal(wl_registry* registry,
     }
     // CreateKeyboard may fail if we do not have keyboard seat capabilities yet.
     // We will create the keyboard when get them in that case.
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+    if (seat_manager_) {
+      seat_manager_->RefreshKeyboard();
+    }
+#else   // BUILDFLAG(IS_NEVA_APPRUNTIME)
     if (seat_) {
       seat_->RefreshKeyboard();
     }
+#endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
   } else if (!keyboard_shortcuts_inhibit_manager_v1_ &&
              UNSAFE_TODO(strcmp(interface,
                                 "zwp_keyboard_shortcuts_inhibit_manager_v1")) ==

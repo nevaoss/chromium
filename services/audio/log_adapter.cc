@@ -26,6 +26,16 @@ void LogAdapter::OnStopped() {
   audio_log_->OnStopped();
 }
 
+#if defined(USE_NEVA_SUSPEND_MEDIA_CAPTURE)
+void LogAdapter::OnPaused() {
+  audio_log_->OnPaused();
+}
+
+void LogAdapter::OnResumed() {
+  audio_log_->OnResumed();
+}
+#endif
+
 void LogAdapter::OnClosed() {
   audio_log_->OnClosed();
 }

@@ -248,6 +248,13 @@ size_t BlinkPlatformImpl::MaxDecodedImageBytes() {
   return base::SysInfo::AmountOfPhysicalMemory().InBytes() / 25;
 #else
   size_t max_decoded_image_byte_limit = kNoDecodedImageByteLimit;
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  // For low end devices, NEVA limits the decoded image size to 3M pixels, like
+  // the Android policy.
+  if (base::SysInfo::IsLowEndDevice()) {
+    max_decoded_image_byte_limit = 3 * kMB * kMaxNumberOfBytesPerPixel;
+  }
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
   base::CommandLine& command_line = *base::CommandLine::ForCurrentProcess();
   if (command_line.HasSwitch(switches::kMaxDecodedImageSizeMb)) {
     if (base::StringToSizeT(

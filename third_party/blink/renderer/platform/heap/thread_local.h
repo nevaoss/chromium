@@ -28,7 +28,7 @@
 
 // The call is still cheaper than multiple calls through WTF/base/pthread*
 // layers.
-#if BUILDFLAG(BLINK_HEAP_INSIDE_SHARED_LIBRARY)
+#if BUILDFLAG(BLINK_HEAP_INSIDE_SHARED_LIBRARY) || defined(USE_CBE)
 #define BLINK_HEAP_HIDE_THREAD_LOCAL_IN_LIBRARY 1
 #else
 #define BLINK_HEAP_HIDE_THREAD_LOCAL_IN_LIBRARY 0

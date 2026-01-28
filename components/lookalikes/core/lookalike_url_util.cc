@@ -175,8 +175,14 @@ constexpr std::string_view kSkeletonsOfPopularKeywordsForCSQ[] = {
 const size_t kMinBrandNameLengthForComboSquatting = 4;
 
 ComboSquattingParams* GetComboSquattingParams() {
+  // TODO(neva): Remove this workaround when Neva GCC version upgraded to 12+.
+#if defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
+  static base::NoDestructor<ComboSquattingParams> params{
+      {kBrandNamesForCSQ, kSkeletonsOfPopularKeywordsForCSQ}};
+#else   // defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
   static base::NoDestructor<ComboSquattingParams> params(
       {kBrandNamesForCSQ, kSkeletonsOfPopularKeywordsForCSQ});
+#endif  // !(defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__))
   return params.get();
 }
 

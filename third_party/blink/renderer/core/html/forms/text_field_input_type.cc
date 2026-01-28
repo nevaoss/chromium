@@ -169,6 +169,16 @@ void TextFieldInputType::SetValue(const String& sanitized_value,
 
   if (need_editor_update)
     GetElement().UpdateView();
+
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  if (selection == TextControlSetValueSelection::kSetSelectionToEnd) {
+    unsigned max = VisibleValue().length();
+    GetElement().SetSelectionRange(max, max);
+  }
+  // See comment below after #else
+  if (!value_changed)
+    return;
+#else
   // The following early-return can't be moved to the beginning of this
   // function. We need to update non-attribute value even if the value is not
   // changed.  For example, <input type=number> has a badInput string, that is
@@ -191,6 +201,7 @@ void TextFieldInputType::SetValue(const String& sanitized_value,
     unsigned max = VisibleValue().length();
     GetElement().SetSelectionRange(max, max);
   }
+#endif
 
   switch (event_behavior) {
     case TextFieldEventBehavior::kDispatchChangeEvent:

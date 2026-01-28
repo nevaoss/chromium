@@ -10,6 +10,7 @@
 import("//build/config/cast.gni")
 import("//build/config/chromeos/ui_mode.gni")
 import("//build/config/v8_target_cpu.gni")
+import("//neva/neva.gni")
 import("//v8/gni/v8.gni")
 
 declare_args() {
@@ -38,8 +39,8 @@ declare_args() {
       (!is_chromeos && !is_android && !is_castos && !is_fuchsia &&
        !(host_toolchain == default_toolchain && is_msan) &&
        !(is_win && host_os != "win") && !(is_mac && host_os != "mac"))
+       && !is_webos && !is_webos_lite
 }
-
 # Apply the secondary abi overrides. Must occur outside of declare_args in
 # order to take effect when include_both_v8_snapshots / use_v8_context_snapshot
 # are set via args.gn.

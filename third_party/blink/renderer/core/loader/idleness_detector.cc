@@ -146,6 +146,13 @@ base::TimeTicks IdlenessDetector::GetNetworkIdleTime() {
 }
 
 void IdlenessDetector::WillProcessTask(base::TimeTicks start_time) {
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  if (local_frame_->GetSettings()) {
+    network_quiet_window_ =
+        base::Seconds(local_frame_->GetSettings()->GetNetworkQuietTimeout());
+  }
+#endif
+
   // If we have idle time and we are network_quiet_window_ seconds past it, emit
   // idle signals.
   if (in_network_2_quiet_period_ && !network_2_quiet_.is_null() &&

@@ -51,6 +51,10 @@
 #include "media/fuchsia/video/fuchsia_video_encode_accelerator.h"
 #endif
 
+#if defined(USE_WEBOS_CODEC)
+#include "media/gpu/webos/webos_video_encode_accelerator.h"
+#endif
+
 namespace media {
 
 namespace {
@@ -158,6 +162,13 @@ std::unique_ptr<VideoEncodeAccelerator> CreateFuchsiaVEA() {
 }
 #endif
 
+#if defined(USE_WEBOS_CODEC)
+std::unique_ptr<VideoEncodeAccelerator> CreateWebOSVEA() {
+  return base::WrapUnique<VideoEncodeAccelerator>(
+      new WebOSVideoEncodeAccelerator());
+}
+#endif
+
 using VEAFactoryFunction =
     base::RepeatingCallback<std::unique_ptr<VideoEncodeAccelerator>()>;
 
@@ -175,6 +186,10 @@ std::vector<VEAFactoryFunction> GetVEAFactoryFunctions(
   if (!vea_factory_functions->empty()) {
     return *vea_factory_functions;
   }
+
+#if defined(USE_WEBOS_CODEC)
+  vea_factory_functions.push_back(base::BindRepeating(&CreateWebOSVEA));
+#endif
 
 #if BUILDFLAG(USE_VAAPI)
   vea_factory_functions->push_back(base::BindRepeating(&CreateVaapiVEA));
@@ -290,7 +305,7 @@ GpuVideoEncodeAcceleratorFactory::GetSupportedProfiles(
       GetSupportedProfilesInternal(gpu_preferences, gpu_workarounds,
                                    gpu_device));
 
-#if BUILDFLAG(USE_V4L2_CODEC)
+#if BUILDFLAG(USE_V4L2_CODEC) || defined(USE_WEBOS_CODEC)
   // V4L2-only: the encoder devices may not be visible at the time the GPU
   // process is starting. If the capabilities vector is empty, try to query the
   // devices again in the hope that they will have appeared in the meantime.

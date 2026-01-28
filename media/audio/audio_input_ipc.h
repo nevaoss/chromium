@@ -67,6 +67,14 @@ class MEDIA_EXPORT AudioInputIPC {
   // Corresponds to a call to AudioInputController::Record() on the server side.
   virtual void RecordStream() = 0;
 
+#if defined(USE_NEVA_SUSPEND_MEDIA_CAPTURE)
+  // Corresponds to a call to AudioInputController::Pause() on the server side.
+  virtual void PauseStream() = 0;
+
+  // Corresponds to a call to AudioInputController::Resume() on the server side.
+  virtual void ResumeStream() = 0;
+#endif
+
   // Sets the volume of the audio stream.
   virtual void SetVolume(double volume) = 0;
 

@@ -89,7 +89,12 @@ class CONTENT_EXPORT IdentityRequestAccount
 
   // The identity provider to which the account belongs to. This is not set in
   // the constructor but instead set later.
+  // TODO(neva): Please remove this guard after Neva GCC supports it.
+#if defined(__GNUC__) && !defined(__clang__)
+  scoped_refptr<IdentityProviderData> identity_provider;
+#else   // defined(__GNUC__) && !defined(__clang__)
   scoped_refptr<IdentityProviderData> identity_provider = nullptr;
+#endif  // !(defined(__GNUC__) && !defined(__clang__))
 
   std::string id;
   // E.g. email or phone number

@@ -27,6 +27,11 @@
 #include "partition_alloc/thread_isolation/thread_isolation.h"
 #endif
 
+///@name IS_NEVA_APPRUNTIME
+///@{
+#include "base/base_export.h"
+///@}
+
 // The feature is not applicable to 32-bit address space.
 #if PA_BUILDFLAG(HAS_64_BIT_POINTERS)
 
@@ -80,7 +85,13 @@ class PA_COMPONENT_EXPORT(PARTITION_ALLOC) PoolOffsetLookup {
 
 // Manages PartitionAlloc address space, which is split into pools.
 // See `glossary.md`.
-class PA_COMPONENT_EXPORT(PARTITION_ALLOC) PartitionAddressSpace {
+// TODO(neva): Temporary workaround to fix the linker error. Need to investigate
+// the issue and provide a proper solution.
+// Bug: http://clm.lge.com/issue/browse/NEVA-8898
+///@name IS_NEVA_APPRUNTIME
+///@{
+class CBE_BASE_EXPORT PA_COMPONENT_EXPORT(PARTITION_ALLOC) PartitionAddressSpace {
+///@}
  public:
   // Represents pool-specific information about a given address.
   struct PoolInfo {

@@ -81,7 +81,7 @@ class COMPONENT_EXPORT(EVDEV) KeyboardEvdev
   void SetCurrentLayoutByName(const std::string& layout_name,
                               base::OnceCallback<void(bool success)> callback);
 
- private:
+ protected:
   void UpdateModifier(int modifier_flag, bool down);
   void RefreshModifiers();
   void UpdateCapsLockLed();

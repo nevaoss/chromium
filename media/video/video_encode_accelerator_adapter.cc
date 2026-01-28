@@ -476,8 +476,10 @@ void VideoEncodeAcceleratorAdapter::InitializeOnAcceleratorThread(
   if (input_buffer_preference_ == InputBufferKind::Any) {
     input_buffer_preference_ = InputBufferKind::GpuMemBuf;
   }
+#if !BUILDFLAG(IS_WEBOS)
   format = PIXEL_FORMAT_NV12;
   storage_type = VideoEncodeAccelerator::Config::StorageType::kGpuMemoryBuffer;
+#endif  // !BUILDFLAG(IS_WEBOS)
 #endif
 
   auto vea_config = SetUpVeaConfig(profile_, options_, format, storage_type,

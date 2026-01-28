@@ -26,6 +26,9 @@ bool ShouldUpdateTextInputState(const ui::mojom::TextInputState& old_state,
   return old_state.node_id != new_state.node_id ||
          old_state.type != new_state.type || old_state.mode != new_state.mode ||
          old_state.flags != new_state.flags ||
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+         old_state.input_panel_rectangle != new_state.input_panel_rectangle ||
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
          old_state.can_compose_inline != new_state.can_compose_inline;
 #elif BUILDFLAG(IS_APPLE)
   return old_state.type != new_state.type ||

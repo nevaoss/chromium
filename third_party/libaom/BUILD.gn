@@ -12,6 +12,8 @@ import("//third_party/libaom/libaom_test_srcs.gni")
 import("//third_party/libaom/options.gni")
 import("//third_party/nasm/nasm_assemble.gni")
 
+import("//neva/neva.gni")
+
 # Sets the architecture name for building libaom.
 if (current_cpu == "x86") {
   cpu_arch_full = "ia32"
@@ -351,7 +353,7 @@ static_library("libaom") {
       ":libaom_intrinsics_neon_dotprod",
       ":libaom_intrinsics_neon_i8mm",
     ]
-    if (!is_win) {
+    if (!is_win && !is_webos) {
       deps += [
         ":libaom_intrinsics_sve",
         ":libaom_intrinsics_sve2",

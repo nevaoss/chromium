@@ -599,6 +599,10 @@ void RenderThreadImpl::Init() {
   }
 
   blink::WebV8Features::InitializeMojoJSAllowedProtectedMemory();
+
+#if defined(USE_NEVA_SUSPEND_MEDIA_CAPTURE)
+  neva::RenderThreadImpl<RenderThreadImpl>::Init();
+#endif
 }
 
 RenderThreadImpl::~RenderThreadImpl() {
@@ -925,20 +929,26 @@ media::GpuVideoAcceleratorFactories* RenderThreadImpl::GetGpuFactories() {
       /*lose_context_when_out_of_memory=*/true);
 
   const bool enable_video_decode_accelerator =
-#if BUILDFLAG(IS_LINUX)
+#if BUILDFLAG(IS_LINUX) && !defined(USE_WEBOS_CODEC)
       base::FeatureList::IsEnabled(media::kAcceleratedVideoDecodeLinux) &&
-#endif  // BUILDFLAG(IS_LINUX)
+#endif  // BUILDFLAG(IS_LINUX) && !defined(USE_WEBOS_CODEC)
+#if defined(USE_WEBOS_CODEC)
+      base::FeatureList::IsEnabled(media::kWebOSVideoDecodeAccelerator) &&
+#endif  // defined(USE_WEBOS_CODEC)
       !cmd_line->HasSwitch(switches::kDisableAcceleratedVideoDecode) &&
       (gpu_channel_host->gpu_feature_info()
            .status_values[gpu::GPU_FEATURE_TYPE_ACCELERATED_VIDEO_DECODE] ==
        gpu::kGpuFeatureStatusEnabled);
 
   const bool enable_video_encode_accelerator =
-#if BUILDFLAG(IS_LINUX)
+#if BUILDFLAG(IS_LINUX) && !defined(USE_WEBOS_CODEC)
       base::FeatureList::IsEnabled(media::kAcceleratedVideoEncodeLinux) &&
-#else
+#else   // BUILDFLAG(IS_LINUX) && !defined(USE_WEBOS_CODEC)
       !cmd_line->HasSwitch(switches::kDisableAcceleratedVideoEncode) &&
-#endif  // BUILDFLAG(IS_LINUX)
+#endif  // !(BUILDFLAG(IS_LINUX) && !defined(USE_WEBOS_CODEC))
+#if defined(USE_WEBOS_CODEC)
+      base::FeatureList::IsEnabled(media::kWebOSVideoEncodeAccelerator) &&
+#endif  // defined(USE_WEBOS_CODEC)
       (gpu_channel_host->gpu_feature_info()
            .status_values[gpu::GPU_FEATURE_TYPE_ACCELERATED_VIDEO_ENCODE] ==
        gpu::kGpuFeatureStatusEnabled);
@@ -1397,6 +1407,13 @@ void RenderThreadImpl::OnNetworkConnectionChanged(
       NetConnectionTypeToWebConnectionType(type), max_bandwidth_mbps);
   if (url_loader_throttle_provider_)
     url_loader_throttle_provider_->SetOnline(online_status);
+
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  // Reverted part of CL http://crrev.com/c/2692032
+  // since NEVA-3272 depends on it
+  for (auto& observer : observers_)
+    observer.NetworkStateChanged(online_status);
+#endif
 }
 
 void RenderThreadImpl::OnNetworkQualityChanged(
@@ -1690,7 +1707,7 @@ RenderThreadImpl::CreateMediaMojoCodecFactory(
 #endif
 }
 
-#if BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_NEVA_APPRUNTIME)
 void RenderThreadImpl::SetPrivateMemoryFootprint(
     uint64_t private_memory_footprint_bytes) {
   GetRendererHost()->SetPrivateMemoryFootprint(private_memory_footprint_bytes);
@@ -1704,6 +1721,27 @@ void RenderThreadImpl::OnMemoryPressureFromBrowserReceived(
   if (!blink_platform_impl_) {
     return;
   }
+
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  // When using a single process, all MemoryPressureListeners are called in the
+  // browser process. Therefore, we don't need to call them again here.
+  if (IsInBrowserProcess()) {
+    return;
+  }
+
+  // blink::RequestUserLevelMemoryPressureSignal() does not call
+  // NotifyMemoryPressure when UserLevelMemoryPressureSignal is disabled.
+  // Therefore, we need to call NotifyMemoryPressure directly when
+  // UserLevelMemoryPressureSignal is disabled.
+  if (!blink_platform_impl_->IsUserLevelMemoryPressureSignalEnabled()) {
+    if (visible_state_ != mojom::RenderProcessVisibleState::kVisible &&
+        level != base::MEMORY_PRESSURE_LEVEL_CRITICAL) {
+      level = base::MEMORY_PRESSURE_LEVEL_CRITICAL;
+    }
+    base::MemoryPressureListener::NotifyMemoryPressure(level);
+    return;
+  }
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
   blink::RequestUserLevelMemoryPressureSignal(level);
 }
 
