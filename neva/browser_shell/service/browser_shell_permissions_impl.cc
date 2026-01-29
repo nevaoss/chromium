@@ -63,29 +63,29 @@ void PermissionsImpl::DecidePermission(mojom::PermissionResult result,
 
   switch (result){
     case mojom::PermissionResult::ACCEPTED:
-      delegate->Accept();
+      delegate->Accept(/*prompt_options=*/std::monostate());
       break;
 
     case mojom::PermissionResult::ACCEPTED_THIS_TIME:
-      delegate->AcceptThisTime();
+      delegate->AcceptThisTime(/*prompt_options=*/std::monostate());
       break;
 
     case mojom::PermissionResult::DENIED:
-      delegate->Deny();
+      delegate->Deny(/*prompt_options=*/std::monostate());
       break;
 
     case mojom::PermissionResult::DISMISSED:
-      delegate->Dismiss();
+      delegate->Dismiss(/*prompt_options=*/std::monostate());
       break;
 
     case mojom::PermissionResult::IGNORED:
-      delegate->Ignore();
+      delegate->Ignore(/*prompt_options=*/std::monostate());
       break;
 
     default:
       LOG(WARNING) << __func__
                    << " Unknown permission decision. Ignore applied.";
-      delegate->Ignore();
+      delegate->Ignore(/*prompt_options=*/std::monostate());
       break;
   }
 }
