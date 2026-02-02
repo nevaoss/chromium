@@ -38,7 +38,10 @@ group("sdk") {
 
   # TODO(neva_rust): Remove this workaround once Neva supports Rust build.
   if (disable_rust_for_neva) {
-    deps -= [ "rust:mojo_rust_system_api" ]
+    deps -= [
+      "rust/bindings",
+      "rust/system",
+     ]
   }
 }
 
