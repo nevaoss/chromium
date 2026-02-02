@@ -152,7 +152,7 @@ void NevaExtensionSystem::InstallUpdate(
 
 void NevaExtensionSystem::PerformActionBasedOnOmahaAttributes(
     const std::string& extension_id,
-    const base::Value::Dict& attributes) {
+    const base::DictValue& attributes) {
   NOTREACHED();
 }
 

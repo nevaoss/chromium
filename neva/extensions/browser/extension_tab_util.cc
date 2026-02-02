@@ -61,13 +61,13 @@ bool HasValidMainFrameProcess(content::WebContents* contents) {
 // TODO(neva): There is no way to distinguish among types (normal, popup, etc.)
 // at the moment, however, the chrome.windows.create only allows to create popup
 // type, so will return as popup type for now.
-base::Value::Dict ExtensionTabUtil::CreateWindowValueForExtension(
+base::DictValue ExtensionTabUtil::CreateWindowValueForExtension(
     int window_id,
     bool focused,
     windows::WindowType type,
     bool always_on_top,
     bool incognito) {
-  base::Value::Dict dict;
+  base::DictValue dict;
   dict.Set("id", window_id);
   dict.Set("alwaysOnTop", always_on_top);
   dict.Set("focused", focused);
@@ -260,7 +260,7 @@ void ExtensionTabUtil::DispatchTabsOnCreated(content::BrowserContext* context,
           ->GetTabHelper()
           ->GetWebContentsFromId(tab_id);
 
-  base::Value::List on_created_args;
+  base::ListValue on_created_args;
   tabs::Tab tab_object;
   tab_object.id = tab_id;
   tab_object.window_id = tab_id;
@@ -290,8 +290,8 @@ void ExtensionTabUtil::DispatchTabsOnActivated(content::BrowserContext* context,
     return;
   }
 
-  base::Value::List on_activated_args;
-  base::Value::Dict details;
+  base::ListValue on_activated_args;
+  base::DictValue details;
   details.Set(tabs_constants::kTabIdKey, static_cast<int>(tab_id));
   details.Set(tabs_constants::kWindowIdKey, static_cast<int>(tab_id));
   on_activated_args.Append(std::move(details));
@@ -313,8 +313,8 @@ void ExtensionTabUtil::DispatchTabsOnUpdated(content::BrowserContext* context,
     return;
   }
 
-  base::Value::Dict details;
-  std::optional<base::Value::Dict> dict = base::JSONReader::ReadDict(
+  base::DictValue details;
+  std::optional<base::DictValue> dict = base::JSONReader::ReadDict(
       change_info, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   if (!dict) {
     LOG(ERROR) << __func__ << " parsing change_info JSON has failed.";
@@ -343,7 +343,7 @@ void ExtensionTabUtil::DispatchTabsOnUpdated(content::BrowserContext* context,
   tab_object.incognito = context->IsOffTheRecord();
   tab_object.highlighted = tab_object.active;
 
-  base::Value::List on_updated_args;
+  base::ListValue on_updated_args;
   on_updated_args.Append(static_cast<int>(tab_id));
   on_updated_args.Append(std::move(details));
   on_updated_args.Append(tab_object.ToValue());
@@ -363,11 +363,11 @@ void ExtensionTabUtil::DispatchTabsOnRemoved(content::BrowserContext* context,
     return;
   }
 
-  base::Value::Dict details;
+  base::DictValue details;
   details.Set(tabs_constants::kWindowIdKey, static_cast<int>(tab_id));
   details.Set(tabs_constants::kIsWindowClosingKey, false);
 
-  base::Value::List on_removed_args;
+  base::ListValue on_removed_args;
   on_removed_args.Append(static_cast<int>(tab_id));
   on_removed_args.Append(std::move(details));
 
@@ -387,7 +387,7 @@ void ExtensionTabUtil::DispatchWindowsOnCreated(
     return;
   }
 
-  base::Value::List args;
+  base::ListValue args;
   args.Append(CreateWindowValueForExtension(tab_id, true));
 
   const std::string event_name = windows::OnCreated::kEventName;
@@ -406,7 +406,7 @@ void ExtensionTabUtil::DispatchWindowsOnFocusChanged(
     return;
   }
 
-  base::Value::List args;
+  base::ListValue args;
   args.Append(static_cast<int>(tab_id));
 
   const std::string event_name = windows::OnFocusChanged::kEventName;
@@ -425,7 +425,7 @@ void ExtensionTabUtil::DispatchWindowsOnRemoved(
     return;
   }
 
-  base::Value::List args;
+  base::ListValue args;
   args.Append(static_cast<int>(tab_id));
 
   const std::string event_name = windows::OnRemoved::kEventName;
