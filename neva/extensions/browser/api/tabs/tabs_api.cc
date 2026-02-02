@@ -95,8 +95,8 @@ bool MatchesBool(const std::optional<bool>& boolean, bool value) {
   return !boolean || *boolean == value;
 }
 
-base::Value::Dict getCurrentTab(content::BrowserContext* browser_context) {
-  base::Value::Dict dict;
+base::DictValue getCurrentTab(content::BrowserContext* browser_context) {
+  base::DictValue dict;
 
   WebContentsMap* web_contents_map = WebContentsMap::GetInstance();
   for (auto& it : *web_contents_map) {
@@ -143,7 +143,7 @@ content::WebContents* GetWebContentsOfCurrentTab(
 // Windows ---------------------------------------------------------------------
 
 ExtensionFunction::ResponseAction WindowsGetCurrentFunction::Run() {
-  base::Value::Dict dict = getCurrentTab(browser_context());
+  base::DictValue dict = getCurrentTab(browser_context());
   if (dict.empty()) {
     return RespondNow(Error("No current window"));
   }
@@ -152,7 +152,7 @@ ExtensionFunction::ResponseAction WindowsGetCurrentFunction::Run() {
 }
 
 ExtensionFunction::ResponseAction WindowsGetLastFocusedFunction::Run() {
-  base::Value::Dict dict = getCurrentTab(browser_context());
+  base::DictValue dict = getCurrentTab(browser_context());
   if (dict.empty()) {
     return RespondNow(Error("No current window"));
   }
@@ -166,7 +166,7 @@ ExtensionFunction::ResponseAction WindowsGetAllFunction::Run() {
   EXTENSION_FUNCTION_VALIDATE(params);
 
   WebContentsMap* web_contents_map = WebContentsMap::GetInstance();
-  base::Value::List window_list;
+  base::ListValue window_list;
 
   for (auto& it : *web_contents_map) {
     content::WebContents* web_contents = it.second;
@@ -317,7 +317,7 @@ ExtensionFunction::ResponseAction TabsQueryFunction::Run() {
   std::string title = params->query_info.title.value_or(std::string());
 
   WebContentsMap* web_contents_map = WebContentsMap::GetInstance();
-  base::Value::List result;
+  base::ListValue result;
 
   for (auto& it : *web_contents_map) {
     content::WebContents* web_contents = it.second;
@@ -386,7 +386,7 @@ ExtensionFunction::ResponseAction TabsGetFunction::Run() {
   tab_object.group_id = -1;
   tab_object.incognito = web_contents->GetBrowserContext()->IsOffTheRecord();
   tab_object.highlighted = tab_object.active;
-  base::Value::Dict result{tab_object.ToValue()};
+  base::DictValue result{tab_object.ToValue()};
   return RespondNow(WithArguments(std::move(result)));
 }
 

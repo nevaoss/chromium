@@ -41,7 +41,7 @@ void AppendI18nTemplateSourceHtml(std::string* output) {
   output->append("</script>");
 }
 
-void AppendJsonJS(const base::Value::Dict& json, std::string* output) {
+void AppendJsonJS(const base::DictValue& json, std::string* output) {
   // Convert the template data to a json string.
   DCHECK(!json.empty()) << "must include json data structure";
 
@@ -53,7 +53,7 @@ void AppendJsonJS(const base::Value::Dict& json, std::string* output) {
   output->append(";");
 }
 
-void AppendJsonHtml(const base::Value::Dict& json, std::string* output) {
+void AppendJsonHtml(const base::DictValue& json, std::string* output) {
   std::string javascript_string;
   AppendJsonJS(json, &javascript_string);
 
@@ -67,7 +67,7 @@ void AppendJsonHtml(const base::Value::Dict& json, std::string* output) {
 }
 
 std::string GetTemplatesHtml(const std::string_view& html_template,
-                             const base::Value::Dict& json,
+                             const base::DictValue& json,
                              int err_code,
                              int viewport_width,
                              int viewport_height) {

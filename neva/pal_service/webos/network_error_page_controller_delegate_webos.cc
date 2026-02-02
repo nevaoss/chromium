@@ -68,7 +68,7 @@ void NetworkErrorPageControllerDelegateWebOS::LaunchNetworkSettings(
   if (target_string.empty())
     return;
 
-  base::Value::Dict params;
+  base::DictValue params;
 #if defined(USE_WEBOS_STARFISH) || defined(USE_WEBOS_SIGNAGE)
   params.Set(kTarget, "general");
   params.Set(kItem, target_string);
@@ -76,7 +76,7 @@ void NetworkErrorPageControllerDelegateWebOS::LaunchNetworkSettings(
   params.Set(kTarget, target_string);
 #endif
 
-  base::Value::Dict resource;
+  base::DictValue resource;
   resource.Set("id", kSettingsApplicationId);
   resource.Set(kParams, std::move(params));
 
