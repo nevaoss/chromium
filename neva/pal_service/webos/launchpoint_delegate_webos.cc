@@ -56,7 +56,7 @@ void LaunchPointDelegateWebOS::AddLaunchPoint(
     return;
   }
 
-  const base::Value::Dict& dict = root->GetDict();
+  const base::DictValue& dict = root->GetDict();
   const std::string* title = dict.FindString("title");
   const std::string* url = dict.FindString("url");
 
@@ -71,7 +71,7 @@ void LaunchPointDelegateWebOS::AddLaunchPoint(
   }
 
   // Write json to call 'addLaunchPoint' luna command.
-  base::Value::Dict value, params;
+  base::DictValue value, params;
   params.Set("target", *url);
   value.Set("id", kEnactBrowserApplicationId);
   value.Set("title", *title);
@@ -103,7 +103,7 @@ void LaunchPointDelegateWebOS::OnAddLaunchPoint(OnceResponse callback,
     return;
   }
 
-  const base::Value::Dict& dict = root->GetDict();
+  const base::DictValue& dict = root->GetDict();
   std::optional<bool> return_value = dict.FindBool("returnValue");
 
   if (return_value.has_value()) {

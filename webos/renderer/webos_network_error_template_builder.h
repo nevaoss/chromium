@@ -28,7 +28,7 @@ namespace webos {
 // string includes the HTML and the javascript code necessary to generate the
 // full page with support for both i18n Templates and JsTemplates.
 std::string GetTemplatesHtml(const std::string_view& html_template,
-                             const base::Value::Dict& json,
+                             const base::DictValue& json,
                              int err_code,
                              int viewport_width,
                              int viewport_height);

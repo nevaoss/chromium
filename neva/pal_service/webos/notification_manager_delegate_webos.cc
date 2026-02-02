@@ -56,7 +56,7 @@ LunaClient::LunaClient() {
 
 void LunaClient::CreateToast(const std::string& app_id,
                              const std::string& msg) {
-  base::Value::Dict value;
+  base::DictValue value;
   value.Set(kSourceId, app_id);
   value.Set(kMessage, msg);
   std::string param;

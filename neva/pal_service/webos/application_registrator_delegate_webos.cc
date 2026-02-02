@@ -91,7 +91,7 @@ void ApplicationRegistratorDelegateWebOS::OnResponse(
     return;
   }
 
-  const base::Value::Dict& root_dict = root->GetDict();
+  const base::DictValue& root_dict = root->GetDict();
   std::optional<bool> return_value = root_dict.FindBool("returnValue");
 
   if (return_value.has_value() && !return_value.value()) {
@@ -119,7 +119,8 @@ void ApplicationRegistratorDelegateWebOS::OnResponse(
 }
 
 bool ApplicationRegistratorDelegateWebOS::ParseRelaunchEvent(
-    const base::Value::Dict& root_dict, std::string* options) {
+    const base::DictValue& root_dict,
+    std::string* options) {
   if (!options)
     return false;
 
@@ -130,13 +131,13 @@ bool ApplicationRegistratorDelegateWebOS::ParseRelaunchEvent(
     return false;
   }
 
-  const base::Value::Dict* params_dict = root_dict.FindDict(kParameters);
+  const base::DictValue* params_dict = root_dict.FindDict(kParameters);
   if (!params_dict) {
     LOG(ERROR) << __func__ << "() parameters field is absent.";
     return false;
   }
 
-  base::Value::Dict detail_dict;
+  base::DictValue detail_dict;
   if (*reason == kIntentService) {
     const std::string* action = params_dict->FindString(kAction);
     if (!action || action->empty())
@@ -154,7 +155,7 @@ bool ApplicationRegistratorDelegateWebOS::ParseRelaunchEvent(
       detail_dict.Set("url", *target_url);
   }
 
-  base::Value::Dict options_dict;
+  base::DictValue options_dict;
   options_dict.Set("detail", std::move(detail_dict));
 
   base::JSONWriter::Write(options_dict, options);

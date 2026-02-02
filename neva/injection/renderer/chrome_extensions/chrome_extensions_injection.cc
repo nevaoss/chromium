@@ -99,7 +99,7 @@ void ChromeExtensionsInjection::OnExtensionsInfo(
     v8::Local<v8::Object> extension_info_object = v8::Object::New(isolate);
     gin::Dictionary extension_info_dict(isolate, extension_info_object);
 
-    const base::Value::Dict* dict = infos[i].GetIfDict();
+    const base::DictValue* dict = infos[i].GetIfDict();
     if (dict) {
       std::string id = *dict->FindString("id");
       std::string name = *dict->FindString("name");

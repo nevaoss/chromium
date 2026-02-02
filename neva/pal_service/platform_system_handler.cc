@@ -146,7 +146,7 @@ PlatformSystemHandler::PlatformSystemHandler(
 PlatformSystemHandler::~PlatformSystemHandler() = default;
 
 std::string PlatformSystemHandler::GetSettingsJSON() const {
-  base::Value::Dict dict;
+  base::DictValue dict;
   auto launch_params(
       base::JSONReader::Read(application_delegate_->GetLaunchParams(),
                              base::JSON_PARSE_CHROMIUM_EXTENSIONS));
