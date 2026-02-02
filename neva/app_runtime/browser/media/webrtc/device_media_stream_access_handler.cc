@@ -92,16 +92,11 @@ void UpdatePageSpecificContentSettings(
     }
   }
 
-  GURL embedding_origin;
-  if (permissions::PermissionsClient::Get()->DoURLsMatchNewTabPage(
-          request.security_origin,
-          web_contents->GetLastCommittedURL().DeprecatedGetOriginAsURL())) {
-    embedding_origin =
-        web_contents->GetLastCommittedURL().DeprecatedGetOriginAsURL();
-  } else {
-    embedding_origin = permissions::PermissionUtil::GetLastCommittedOriginAsURL(
-        render_frame_host->GetMainFrame());
-  }
+  GURL embedding_origin =
+      permissions::PermissionsClient::Get()
+          ->GetEmbeddingOriginOverride(request.security_origin, web_contents)
+          .value_or(permissions::PermissionUtil::GetLastCommittedOriginAsURL(
+              render_frame_host->GetMainFrame()));
 
   content_settings->OnMediaStreamPermissionSet(
       permissions::PermissionUtil::GetCanonicalOrigin(
