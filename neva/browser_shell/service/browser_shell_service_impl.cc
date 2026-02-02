@@ -51,9 +51,9 @@ namespace browser_shell {
 namespace {
 
 std::map<std::string, std::string> GetAPIsFromPageContentParams(
-    const base::Value::Dict& dict) {
+    const base::DictValue& dict) {
   std::map<std::string, std::string> result;
-  const base::Value::List* api = dict.FindList("api");
+  const base::ListValue* api = dict.FindList("api");
   if (!api)
     return result;
 
@@ -65,7 +65,7 @@ std::map<std::string, std::string> GetAPIsFromPageContentParams(
 }
 
 std::string GetStringValueFromDict(
-    const base::Value::Dict& dict,
+    const base::DictValue& dict,
     const std::string& key,
     const std::string& default_value = std::string()) {
   const std::string* value = dict.FindString(key);
@@ -73,7 +73,7 @@ std::string GetStringValueFromDict(
 }
 
 neva_app_runtime::PageContents::Type GetTypeFromDict(
-    const base::Value::Dict& dict) {
+    const base::DictValue& dict) {
   std::string type_str = GetStringValueFromDict(dict, "page-contents-type");
   auto type = neva_app_runtime::PageContents::ConvertStringToType(type_str);
 
@@ -85,7 +85,7 @@ neva_app_runtime::PageContents::Type GetTypeFromDict(
 }
 
 void SetContentParams(neva_app_runtime::PageContents::CreateParams& params,
-                      const base::Value::Dict& dict) {
+                      const base::DictValue& dict) {
   params.injections = GetAPIsFromPageContentParams(dict);
   params.user_agent = GetStringValueFromDict(dict, "user-agent");
   neva_app_runtime::StoragePartitionInfo partition_info =
@@ -186,7 +186,7 @@ void ShellServiceImpl::CreatePageView(
   std::optional<base::Value> val =
       base::JSONReader::Read(json, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   if (val && val->is_dict()) {
-    base::Value::Dict* dict = val->GetDict().FindDict("page-contents-params");
+    base::DictValue* dict = val->GetDict().FindDict("page-contents-params");
     if (dict)
       SetContentParams(content_params, *dict);
   }

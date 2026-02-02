@@ -30,7 +30,7 @@ class AppRuntimeLocalizedError {
   AppRuntimeLocalizedError& operator=(const AppRuntimeLocalizedError&) = delete;
   // Fills |strings| with values to be used to build an error page used
   // on HTTP errors, like 404 or connection reset.
-  static void GetErrorStrings(int error_code, base::Value::Dict& error_strings);
+  static void GetErrorStrings(int error_code, base::DictValue& error_strings);
 };
 
 }  // namespace neva_app_runtime

@@ -223,15 +223,14 @@ void EmulatorDataSource::SetExpectationAsync(const std::string& url,
 }
 
 std::string EmulatorDataSource::PrepareRequestParams(RequestArgs &args) {
-  base::Value::Dict request;
+  base::DictValue request;
   for (auto arg: args) {
     request.Set(arg.name, *arg.value);
   }
   return PrepareRequestParams(request);
 }
 
-std::string EmulatorDataSource::PrepareRequestParams(
-    base::Value::Dict& request) {
+std::string EmulatorDataSource::PrepareRequestParams(base::DictValue& request) {
   std::string params;
   base::JSONWriter::Write(request, &params);
   std::string esc_params;
