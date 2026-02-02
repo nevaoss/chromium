@@ -88,7 +88,8 @@ EmulatorDataSource::EmulatorDataSource()
 
   auto url_loader_factory_params =
       network::mojom::URLLoaderFactoryParams::New();
-  url_loader_factory_params->process_id = network::mojom::kBrowserProcessId;
+  url_loader_factory_params->process_id =
+      network::OriginatingProcess::browser();
   url_loader_factory_params->is_orb_enabled = false;
   url_loader_factory_params->is_trusted = true;
   network_context_remote_->CreateURLLoaderFactory(
