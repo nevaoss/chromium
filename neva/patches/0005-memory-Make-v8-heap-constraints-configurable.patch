@@ -1,4 +1,4 @@
-From 0c822dc43d1794a63556475e40f9d7bde58a5c03 Mon Sep 17 00:00:00 2001
+From 72c720a8f908ab35fe4c7f78d43376ea1148c73d Mon Sep 17 00:00:00 2001
 From: "donghwan.yu" <donghwan.yu@lge.com>
 Date: Thu, 22 Jan 2026 11:27:16 +0900
 Subject: [PATCH] Make v8 heap constraints configurable
@@ -112,10 +112,10 @@ index f929f13a4de..e6bf42ee6fc 100644
  
  /**
 diff --git a/src/api/api.cc b/src/api/api.cc
-index 42d6f36b0b1..93d811cfefa 100644
+index 54aaec7459b..958afe128bc 100644
 --- a/src/api/api.cc
 +++ b/src/api/api.cc
-@@ -587,6 +587,19 @@ void ResourceConstraints::ConfigureDefaults(uint64_t physical_memory,
+@@ -591,6 +591,19 @@ void ResourceConstraints::ConfigureDefaults(uint64_t physical_memory,
    }
  }
  
@@ -135,7 +135,7 @@ index 42d6f36b0b1..93d811cfefa 100644
  #ifdef ENABLE_SLOW_DCHECKS
  namespace api_internal {
  void StackAllocated<true>::VerifyOnStack() const {
-@@ -10010,6 +10023,15 @@ void Isolate::Initialize(Isolate* v8_isolate,
+@@ -10019,6 +10032,15 @@ void Isolate::Initialize(Isolate* v8_isolate,
    }
  
    i_isolate->heap()->ConfigureHeap(params.constraints, cpp_heap);
@@ -152,10 +152,10 @@ index 42d6f36b0b1..93d811cfefa 100644
      uintptr_t limit =
          reinterpret_cast<uintptr_t>(params.constraints.stack_limit());
 diff --git a/src/flags/flag-definitions.h b/src/flags/flag-definitions.h
-index ad8221c4fa1..6690ed2ff30 100644
+index e1c3f03da56..bbc6da684b6 100644
 --- a/src/flags/flag-definitions.h
 +++ b/src/flags/flag-definitions.h
-@@ -2667,6 +2667,20 @@ DEFINE_BOOL(
+@@ -2682,6 +2682,20 @@ DEFINE_BOOL(
  DEFINE_BOOL(parallel_reclaim_unmodified_wrappers, true,
              "reclaim wrapper objects in parallel")
  
@@ -173,8 +173,8 @@ index ad8221c4fa1..6690ed2ff30 100644
 +            "MarkCompact")
 +#endif // defined(USE_NEVA_APPRUNTIME)
 +
- DEFINE_INT(gc_memory_reducer_start_delay_ms, 30000,
-            "Delay before memory reducer start")
+ DEFINE_BOOL(concurrent_marking_high_priority_threads, false,
+             "use high priority threads for concurrent Marking")
  
 diff --git a/src/heap/heap-controller.cc b/src/heap/heap-controller.cc
 index f0232fab72f..f1576a02696 100644
@@ -311,10 +311,10 @@ index 40f020f0564..8e6e07059d6 100644
  
  }  // namespace internal
 diff --git a/src/heap/heap.cc b/src/heap/heap.cc
-index 4b8f37403ba..2b9a142f77e 100644
+index 3408956f140..84175a45c06 100644
 --- a/src/heap/heap.cc
 +++ b/src/heap/heap.cc
-@@ -1499,6 +1499,12 @@ void Heap::HandleExternalMemoryInterrupt() {
+@@ -1498,6 +1498,12 @@ void Heap::HandleExternalMemoryInterrupt() {
  }
  
  uint64_t Heap::external_memory_hard_limit() {
@@ -327,7 +327,7 @@ index 4b8f37403ba..2b9a142f77e 100644
    return limits()->external_memory_low_since_last_gc() +
           limits()->max_old_generation_size() / 2;
  }
-@@ -1508,6 +1514,12 @@ uint64_t Heap::external_memory_limit_for_interrupt() {
+@@ -1507,6 +1513,12 @@ uint64_t Heap::external_memory_limit_for_interrupt() {
  }
  
  uint64_t Heap::external_memory_soft_limit() {
@@ -340,7 +340,7 @@ index 4b8f37403ba..2b9a142f77e 100644
    return limits()->external_memory_low_since_last_gc() +
           kExternalAllocationSoftLimit;
  }
-@@ -3696,6 +3708,13 @@ bool Heap::HasHighFragmentation() {
+@@ -3687,6 +3699,13 @@ bool Heap::HasHighFragmentation() {
  
    // Fragmentation is high if committed > 2 * used + kSlack.
    // Rewrite the expression to avoid overflow.
@@ -354,7 +354,7 @@ index 4b8f37403ba..2b9a142f77e 100644
    return committed - used > used + kSlack;
  }
  
-@@ -5136,6 +5155,64 @@ void Heap::ConfigureHeap(const v8::ResourceConstraints& constraints,
+@@ -5131,6 +5150,64 @@ void Heap::ConfigureHeap(const v8::ResourceConstraints& constraints,
    configured_ = true;
  }
  
@@ -420,10 +420,10 @@ index 4b8f37403ba..2b9a142f77e 100644
    size_t first_part =
        std::min(strlen(string), kTraceRingBufferSize - ring_buffer_end_);
 diff --git a/src/heap/heap.h b/src/heap/heap.h
-index a46a020a02f..fbdffd1e902 100644
+index 3f9d6183266..c1008f6b109 100644
 --- a/src/heap/heap.h
 +++ b/src/heap/heap.h
-@@ -701,6 +701,13 @@ class Heap final {
+@@ -702,6 +702,13 @@ class Heap final {
                       v8::CppHeap* cpp_heap);
    void ConfigureHeapDefault();
  
