@@ -24,7 +24,6 @@ source_set("renderer") {
     "//neva/app_runtime/public/mojom",
     "//neva/browser_shell/service/public/mojom",
     "//neva/injection/public/common:common_sources",
-    "//neva/pal_service",
     "//neva/pal_service/public/mojom",
     "//third_party/blink/public:blink",
   ]

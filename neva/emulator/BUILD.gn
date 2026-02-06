@@ -28,10 +28,12 @@ component("emulator") {
 
   deps = [
     "//base",
-    "//content/public/browser:browser_sources",
+    "//content/public/browser",
     "//net",
+    "//services/cert_verifier/public/mojom",
     "//services/network:network_service",
-    "//services/network/public/cpp"
+    "//services/network/public/cpp",
+    "//services/network/public/mojom"
   ]
 }
 
