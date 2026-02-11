@@ -22,6 +22,8 @@ declare_args() {
   wam_demo_app = "com.webos.app.wam-demo"
   wam_demo_dir = "/usr/palm/applications/$wam_demo_app"
   wam_demo_exe = "$wam_demo_dir/wam_demo"
+  wam_demo_data_dir = "$wam_demo_dir/cbe"
+  wam_demo_data_locales_dir = "$wam_demo_data_dir/neva_locales"
 
   browser_shell_app = "browser-shell"
   browser_shell_dir = "/usr/bin/$browser_shell_app"
