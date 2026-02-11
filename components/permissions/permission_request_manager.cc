@@ -1253,6 +1253,10 @@ void PermissionRequestManager::CurrentRequestsDecided(
         browser_context, request.get(), permission_action));
     PermissionActionsHistory* actions_history =
         PermissionsClient::Get()->GetPermissionActionsHistory(browser_context);
+    if (!actions_history) {
+      LOG(ERROR) << "PermissionActionsHistory this=" << actions_history;
+      continue;
+    }
     if (request->IsEligibleForHeuristicAutoGrant()) {
       if (permission_action == PermissionAction::GRANTED_ONCE) {
         actions_history->RecordTemporaryGrant(
