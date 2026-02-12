@@ -17,12 +17,8 @@ import("//components/safe_browsing/buildflags.gni")
 import("//components/supervised_user/buildflags.gni")
 import("//extensions/buildflags/buildflags.gni")
 import("//media/media_options.gni")
-<<<<<<< HEAD
-import("//net/features.gni")
 # TODO(neva_rust): Remove this workaround once Neva supports Rust build.
 import("//neva/neva.gni")
-=======
->>>>>>> 146.0.7636.0~1
 import("//pdf/features.gni")
 import("//printing/buildflags/buildflags.gni")
 import("//rlz/buildflags/buildflags.gni")
