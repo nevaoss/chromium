@@ -1646,7 +1646,7 @@ prefs when the profile is loaded.  -->
 </histogram>
 
 <histogram name="Signin.ExplicitSigninMigration" enum="ExplicitSigninMigration"
-    expires_after="2026-05-10">
+    expires_after="2026-07-12">
   <owner>droger@chromium.org</owner>
   <owner>rsult@google.com</owner>
   <summary>
@@ -1960,7 +1960,7 @@ prefs when the profile is loaded.  -->
 </histogram>
 
 <histogram name="Signin.IdentityConfirmationSnackbarDecision"
-    enum="IdentityConfirmationSnackbarDecision" expires_after="2026-05-10">
+    enum="IdentityConfirmationSnackbarDecision" expires_after="2026-07-12">
   <owner>jlebel@chromium.org</owner>
   <owner>jood@google.com</owner>
   <owner>treib@chromium.org</owner>
@@ -2288,7 +2288,7 @@ prefs when the profile is loaded.  -->
 </histogram>
 
 <histogram name="Signin.IOSDeviceRestoreSentinelError"
-    enum="SigninIOSDeviceRestoreSentinelError" expires_after="2026-02-22">
+    enum="SigninIOSDeviceRestoreSentinelError" expires_after="2027-01-01">
   <owner>jlebel@chromium.org</owner>
   <owner>chrome-signin-team@google.com</owner>
   <summary>
@@ -2298,7 +2298,7 @@ prefs when the profile is loaded.  -->
 </histogram>
 
 <histogram name="Signin.IOSDeviceRestoreSentinelPathGenerated"
-    enum="BooleanSuccess" expires_after="2026-02-22">
+    enum="BooleanSuccess" expires_after="2027-01-01">
   <owner>jlebel@chromium.org</owner>
   <owner>chrome-signin-team@google.com</owner>
   <summary>
@@ -3146,6 +3146,7 @@ OAuth Multilogin call. -->
   <owner>msarda@chromium.org</owner>
   <owner>chrome-signin-team@google.com</owner>
   <owner>chrome-ds@google.com</owner>
+  <improvement direction="HIGHER_IS_BETTER"/>
   <summary>
     Records that the user signed in to Chrome, and logs the original access
     point associated with this event.
@@ -3491,6 +3492,7 @@ OAuth Multilogin call. -->
   <owner>msarda@chromium.org</owner>
   <owner>chrome-signin-team@google.com</owner>
   <owner>chrome-ds@google.com</owner>
+  <improvement direction="LOWER_IS_BETTER"/>
   <summary>
     Records that the user signed out of Chrome, and logs the original access
     point associated with this event. Note that turning off Sync almost always
@@ -3644,7 +3646,7 @@ kept as long as profile signout is possible -->
 </histogram>
 
 <histogram name="Signin.SyncErrorMessage{SyncErrorReason}"
-    enum="SyncErrorPromptUIAction" expires_after="2026-05-10">
+    enum="SyncErrorPromptUIAction" expires_after="2026-07-12">
   <owner>triploblastic@chromium.org</owner>
   <owner>bsazonov@chromium.org</owner>
   <summary>
@@ -3934,7 +3936,7 @@ should be kept for as long as we store refresh tokens in an SQLite DB. -->
 <!-- LINT.IfChange(WebSignintrackerLatency) -->
 
 <histogram name="Signin.WebSigninTracker.Latency.{Result}" units="ms"
-    expires_after="2026-05-03">
+    expires_after="2026-07-12">
   <owner>mlbipin@google.com</owner>
   <owner>chrome-signin-mobile-team@google.com</owner>
   <summary>

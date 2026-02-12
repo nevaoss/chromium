@@ -309,7 +309,10 @@ ContextualSearchboxHandler::ContextualSearchboxHandler(
                        std::move(controller)),
       get_session_callback_(std::move(get_session_callback)) {
   // This implicitly also initializes the file upload status observer.
-  GetContextualSessionHandle();
+  if (auto* session_handle = GetContextualSessionHandle()) {
+    input_state_model_ =
+        std::make_unique<contextual_search::InputStateModel>(*session_handle);
+  }
 
   auto* browser_window_interface =
       webui::GetBrowserWindowInterface(web_contents_);
@@ -431,7 +434,7 @@ void ContextualSearchboxHandler::AddTabContext(int32_t tab_id,
     return;
   }
 
-  RecordTabClickedMetric(tab);
+  RecordTabAddedMetric(tab, /*is_tab_suggestion_chip=*/delay_upload);
 
   contextual_session_handle->AddTabContext(
       tab_id,
@@ -527,8 +530,9 @@ void ContextualSearchboxHandler::OnUploadTabContextWithDataTokenCreated(
   std::move(callback).Run(true);
 }
 
-void ContextualSearchboxHandler::RecordTabClickedMetric(
-    tabs::TabInterface* const tab) {
+void ContextualSearchboxHandler::RecordTabAddedMetric(
+    tabs::TabInterface* const tab,
+    bool is_tab_suggestion_chip) {
   auto* metrics_recorder = GetMetricsRecorder();
   if (!metrics_recorder) {
     return;
@@ -584,8 +588,8 @@ void ContextualSearchboxHandler::RecordTabClickedMetric(
     }
   }
 
-  metrics_recorder->RecordTabClickedMetrics(has_duplicate_title,
-                                            recency_ranking);
+  metrics_recorder->RecordTabAddedMetrics(has_duplicate_title, recency_ranking,
+                                          is_tab_suggestion_chip);
 }
 
 void ContextualSearchboxHandler::DeleteContext(
@@ -828,8 +832,7 @@ void ContextualSearchboxHandler::OpenUrl(
         std::string query_text;
         net::GetValueForKeyInQuery(url, "q", &query_text);
         lens_search_controller->IssueContextualSearchRequest(
-            lens::LensOverlayInvocationSource::kOmniboxContextualSuggestion,
-            url,
+            lens::LensOverlayInvocationSource::kOmniboxContextualQuery, url,
             query_text.empty()
                 ? AutocompleteMatchType::Type::SEARCH_SUGGEST
                 : AutocompleteMatchType::Type::SEARCH_WHAT_YOU_TYPED,

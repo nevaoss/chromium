@@ -158,7 +158,7 @@ struct CBE_BASE_EXPORT RawPtrBackupRefImpl {
   // Wraps a pointer.
   template <typename T>
   PA_ALWAYS_INLINE static constexpr T* WrapRawPtr(T* ptr) {
-    if (std::is_constant_evaluated()) {
+    if consteval {
       return ptr;
     }
     uintptr_t address = partition_alloc::UntagPtr(UnpoisonPtr(ptr));
@@ -193,7 +193,7 @@ struct CBE_BASE_EXPORT RawPtrBackupRefImpl {
   // Notifies the allocator when a wrapped pointer is being removed or replaced.
   template <typename T>
   PA_ALWAYS_INLINE static constexpr void ReleaseWrappedPtr(T* wrapped_ptr) {
-    if (std::is_constant_evaluated()) {
+    if consteval {
       return;
     }
     uintptr_t address = partition_alloc::UntagPtr(UnpoisonPtr(wrapped_ptr));
@@ -219,7 +219,7 @@ struct CBE_BASE_EXPORT RawPtrBackupRefImpl {
   template <typename T>
   PA_ALWAYS_INLINE static constexpr T* SafelyUnwrapPtrForDereference(
       T* wrapped_ptr) {
-    if (std::is_constant_evaluated()) {
+    if consteval {
       return wrapped_ptr;
     }
 #if PA_BUILDFLAG(DCHECKS_ARE_ON) || \
@@ -242,7 +242,7 @@ struct CBE_BASE_EXPORT RawPtrBackupRefImpl {
   template <typename T>
   PA_ALWAYS_INLINE static constexpr T* SafelyUnwrapPtrForExtraction(
       T* wrapped_ptr) {
-    if (std::is_constant_evaluated()) {
+    if consteval {
       return wrapped_ptr;
     }
     T* unpoisoned_ptr = UnpoisonPtr(wrapped_ptr);
@@ -268,7 +268,7 @@ struct CBE_BASE_EXPORT RawPtrBackupRefImpl {
   template <typename T>
   PA_ALWAYS_INLINE static constexpr T* UnsafelyUnwrapPtrForComparison(
       T* wrapped_ptr) {
-    if (std::is_constant_evaluated()) {
+    if consteval {
       return wrapped_ptr;
     }
     // This may be used for unwrapping an end-of-allocation pointer to be used
@@ -350,7 +350,7 @@ struct CBE_BASE_EXPORT RawPtrBackupRefImpl {
   PA_UNSAFE_BUFFER_USAGE PA_ALWAYS_INLINE static constexpr T*
   Advance(T* wrapped_ptr, Z delta_elems, bool is_in_pointer_modification) {
     // SAFETY: Preconditions enforced by PA_UNSAFE_BUFFER_USAGE.
-    if (std::is_constant_evaluated()) {
+    if consteval {
       return PA_UNSAFE_BUFFERS(wrapped_ptr + delta_elems);
     }
     T* unpoisoned_ptr = UnpoisonPtr(wrapped_ptr);
@@ -380,7 +380,7 @@ struct CBE_BASE_EXPORT RawPtrBackupRefImpl {
           std::enable_if_t<partition_alloc::internal::is_offset_type<Z>, void>>
   PA_UNSAFE_BUFFER_USAGE PA_ALWAYS_INLINE static constexpr T*
   Retreat(T* wrapped_ptr, Z delta_elems, bool is_in_pointer_modification) {
-    if (std::is_constant_evaluated()) {
+    if consteval {
       // SAFETY: Preconditions enforced by PA_UNSAFE_BUFFER_USAGE.
       return PA_UNSAFE_BUFFERS(wrapped_ptr - delta_elems);
     }
@@ -402,14 +402,14 @@ struct CBE_BASE_EXPORT RawPtrBackupRefImpl {
   template <typename T>
   PA_ALWAYS_INLINE static constexpr ptrdiff_t GetDeltaElems(T* wrapped_ptr1,
                                                             T* wrapped_ptr2) {
-    if (std::is_constant_evaluated()) {
+    if consteval {
       return wrapped_ptr1 - wrapped_ptr2;
     }
 
     T* unpoisoned_ptr1 = UnpoisonPtr(wrapped_ptr1);
     T* unpoisoned_ptr2 = UnpoisonPtr(wrapped_ptr2);
 #if PA_BUILDFLAG(ENABLE_POINTER_SUBTRACTION_CHECK)
-    if (std::is_constant_evaluated()) {
+    if consteval {
       return unpoisoned_ptr1 - unpoisoned_ptr2;
     }
     uintptr_t address1 = partition_alloc::UntagPtr(unpoisoned_ptr1);
@@ -433,7 +433,7 @@ struct CBE_BASE_EXPORT RawPtrBackupRefImpl {
   // This method increments the reference count of the allocation slot.
   template <typename T>
   PA_ALWAYS_INLINE static constexpr T* Duplicate(T* wrapped_ptr) {
-    if (std::is_constant_evaluated()) {
+    if consteval {
       return wrapped_ptr;
     }
     return WrapRawPtr(wrapped_ptr);
@@ -449,7 +449,7 @@ struct CBE_BASE_EXPORT RawPtrBackupRefImpl {
   // to create a new raw_ptr<T> from another raw_ptr<T> of a different flavor.
   template <typename T>
   PA_ALWAYS_INLINE static constexpr T* WrapRawPtrForDuplication(T* ptr) {
-    if (std::is_constant_evaluated()) {
+    if consteval {
       return ptr;
     } else {
       return WrapRawPtr(ptr);
@@ -459,7 +459,7 @@ struct CBE_BASE_EXPORT RawPtrBackupRefImpl {
   template <typename T>
   PA_ALWAYS_INLINE static constexpr T* UnsafelyUnwrapPtrForDuplication(
       T* wrapped_ptr) {
-    if (std::is_constant_evaluated()) {
+    if consteval {
       return wrapped_ptr;
     } else {
       return UnpoisonPtr(wrapped_ptr);
@@ -469,7 +469,7 @@ struct CBE_BASE_EXPORT RawPtrBackupRefImpl {
 #if PA_BUILDFLAG(ENABLE_BACKUP_REF_PTR_INSTANCE_TRACER)
   template <typename T>
   static constexpr void Trace(uint64_t owner_id, T* wrapped_ptr) {
-    if (std::is_constant_evaluated()) {
+    if consteval {
       return;
     }
 
@@ -483,7 +483,7 @@ struct CBE_BASE_EXPORT RawPtrBackupRefImpl {
   }
 
   static constexpr void Untrace(uint64_t owner_id) {
-    if (std::is_constant_evaluated()) {
+    if consteval {
       return;
     }
 

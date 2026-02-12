@@ -4,6 +4,7 @@
 
 #include "chrome/browser/web_applications/web_app_registrar.h"
 
+#include <algorithm>
 #include <memory>
 #include <optional>
 #include <string>
@@ -11,7 +12,6 @@
 #include <vector>
 
 #include "ash/constants/web_app_id_constants.h"
-#include "base/containers/contains.h"
 #include "base/containers/flat_set.h"
 #include "base/files/file_path.h"
 #include "base/functional/callback_helpers.h"
@@ -89,11 +89,11 @@ Registry CreateRegistryForTesting(const std::string& base_url, int num_apps) {
         GenerateManifestIdFromStartUrlOnly(start_url);
     GURL scope = start_url.GetWithoutFilename();
     auto web_app = std::make_unique<WebApp>(manifest_id, start_url, scope);
-    web_app->AddSource(WebAppManagement::kSync);
     web_app->SetName("Name" + base::NumberToString(i));
     web_app->SetDisplayMode(DisplayMode::kBrowser);
     web_app->SetUserDisplayMode(mojom::UserDisplayMode::kBrowser);
     web_app->SetInstallState(proto::INSTALLED_WITH_OS_INTEGRATION);
+    web_app->AddSource(WebAppManagement::kSync);
     // Set an OS integration state (with shortcuts) to prevent migration to a
     // partially installed status.
     proto::os_state::WebAppOsIntegration os_state;
@@ -392,11 +392,11 @@ TEST_F(WebAppRegistrarTest, AppsNotLocallyInstalledMetric) {
 
   auto web_app = web_app::test::CreateWebApp(GURL("https://example.com/path"),
                                              WebAppManagement::kSync);
-  web_app->AddSource(WebAppManagement::kSync);
   web_app->SetDisplayMode(DisplayMode::kStandalone);
   web_app->SetUserDisplayMode(mojom::UserDisplayMode::kStandalone);
   web_app->SetName("name");
   web_app->SetInstallState(proto::SUGGESTED_FROM_ANOTHER_DEVICE);
+  web_app->AddSource(WebAppManagement::kSync);
   PopulateRegistryWithApp(std::move(web_app));
   StartWebAppProvider();
 
@@ -472,7 +472,6 @@ TEST_F(WebAppRegistrarTest, GetAppDataFields) {
       DisplayOverride::Create(DisplayMode::kStandalone)};
 
   auto web_app = std::make_unique<WebApp>(manifest_id, start_url, scope);
-  web_app->AddSource(WebAppManagement::kSync);
   web_app->SetName(name);
   web_app->SetDescription(description);
   web_app->SetThemeColor(theme_color);
@@ -480,6 +479,7 @@ TEST_F(WebAppRegistrarTest, GetAppDataFields) {
   web_app->SetUserDisplayMode(user_display_mode);
   web_app->SetDisplayModeOverride(std::move(display_mode_override));
   web_app->SetInstallState(proto::SUGGESTED_FROM_ANOTHER_DEVICE);
+  web_app->AddSource(WebAppManagement::kSync);
   webapps::AppId app_id = web_app->app_id();
 
   PopulateRegistryWithApp(std::move(web_app));
@@ -1059,7 +1059,7 @@ TEST_F(WebAppRegistrarTest,
     if (web_app.app_id() == web_app_in_sync_install_id) {
       web_app_in_sync_install_found = true;
     } else {
-      EXPECT_TRUE(base::Contains(ids, web_app.app_id()));
+      EXPECT_TRUE(std::ranges::contains(ids, web_app.app_id()));
     }
   }
   EXPECT_TRUE(web_app_in_sync_install_found);
@@ -1881,7 +1881,7 @@ TEST_F(WebAppRegistrarAshTest, SourceSupported) {
   EXPECT_EQ(registrar.GetAppScope(uninstalling_id),
             GURL("https://example.com/uninstalling/"));
   EXPECT_TRUE(registrar.GetAppUserDisplayMode(uninstalling_id).has_value());
-  EXPECT_FALSE(base::Contains(registrar.GetAppIds(), uninstalling_id));
+  EXPECT_FALSE(std::ranges::contains(registrar.GetAppIds(), uninstalling_id));
 }
 
 #endif  // BUILDFLAG(IS_CHROMEOS)

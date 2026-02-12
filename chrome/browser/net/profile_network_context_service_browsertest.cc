@@ -12,7 +12,6 @@
 #include <vector>
 
 #include "base/check_op.h"
-#include "base/containers/contains.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
@@ -235,7 +234,7 @@ IN_PROC_BROWSER_TEST_F(ProfileNetworkContextServiceBrowsertest, BrotliEnabled) {
   std::vector<std::string> encodings =
       base::SplitString(*simple_loader_helper.response_body(), ",",
                         base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-  EXPECT_TRUE(base::Contains(encodings, "br"));
+  EXPECT_TRUE(std::ranges::contains(encodings, "br"));
 }
 
 void CheckCacheResetStatus(base::HistogramTester* histograms, bool reset) {
@@ -756,52 +755,6 @@ IN_PROC_BROWSER_TEST_F(ProfileNetworkContextTrustTokensBrowsertest,
   chrome::Reload(browser(), WindowOpenDisposition::CURRENT_TAB);
   EXPECT_TRUE(content::WaitForLoadStop(GetActiveWebContents()));
   EXPECT_EQ(false, EvalJs(GetActiveWebContents(), command));
-}
-
-class ReportingEndpointsPolicyTest : public policy::PolicyTest {
- public:
-  void SetUpInProcessBrowserTestFixture() override {
-    scoped_feature_list_.InitAndEnableFeature(
-        net::features::kReportingApiEnableEnterpriseCookieIssues);
-    policy::PolicyTest::SetUpInProcessBrowserTestFixture();
-  }
-
-  void UpdateReportingEndpointsPolicy(base::Value::Dict dict) {
-    SetPolicy(&policies_, policy::key::kReportingEndpoints,
-              base::Value(std::move(dict)));
-    UpdateProviderPolicy(policies_);
-  }
-
- private:
-  policy::PolicyMap policies_;
-  base::test::ScopedFeatureList scoped_feature_list_;
-};
-
-IN_PROC_BROWSER_TEST_F(ReportingEndpointsPolicyTest,
-                       CheckEnterpriseEndpointsNetworkContextParamsSet) {
-  network::mojom::NetworkContextParams network_context_params;
-  EXPECT_FALSE(
-      network_context_params.enterprise_reporting_endpoints.has_value());
-  UpdateReportingEndpointsPolicy(
-      base::Value::Dict()
-          .Set("endpoint-1", "https://example.com/reports")
-          .Set("endpoint-2", "https://reporting.example/cookie-issues")
-          .Set("endpoint-3", "https://report-collector.example"));
-  ProfileNetworkContextService* profile_network_context_service =
-      ProfileNetworkContextServiceFactory::GetForContext(browser()->profile());
-  base::FilePath empty_relative_partition_path;
-  cert_verifier::mojom::CertVerifierCreationParams
-      cert_verifier_creation_params;
-  profile_network_context_service->ConfigureNetworkContextParams(
-      /*in_memory=*/false, empty_relative_partition_path,
-      &network_context_params, &cert_verifier_creation_params);
-  base::flat_map<std::string, GURL> expected_enterprise_endpoints{
-      {"endpoint-1", GURL("https://example.com/reports")},
-      {"endpoint-2", GURL("https://reporting.example/cookie-issues")},
-      {"endpoint-3", GURL("https://report-collector.example")},
-  };
-  EXPECT_EQ(expected_enterprise_endpoints,
-            network_context_params.enterprise_reporting_endpoints);
 }
 
 // Base class for testing Cache Encryption with policy.

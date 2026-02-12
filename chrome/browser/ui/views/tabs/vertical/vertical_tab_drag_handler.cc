@@ -4,6 +4,7 @@
 
 #include "chrome/browser/ui/views/tabs/vertical/vertical_tab_drag_handler.h"
 
+#include <algorithm>
 #include <memory>
 
 #include "base/check_deref.h"
@@ -168,15 +169,37 @@ void VerticalTabDragHandlerImpl::HandleTabDragOverGroup(
           std::get<const tabs::TabCollection*>(node.GetNodeData()))
           ->GetTabGroup();
   CHECK(tab_group);
-  const int insertion_idx =
-      tab_strip_model_->GetIndexOfTab(tab_group->GetFirstTab());
-  const bool should_insert_before_group =
-      tab_strip_model_->IsGroupCollapsed(tab_group->id());
 
-  tab_strip_model_->MoveSelectedTabsTo(
-      insertion_idx, should_insert_before_group
-                         ? std::nullopt
-                         : std::make_optional(tab_group->id()));
+  const auto& selection_model = tab_strip_model_->selection_model();
+
+  if (std::all_of(selection_model.selected_tabs().begin(),
+                  selection_model.selected_tabs().end(),
+                  [tab_group](const tabs::TabInterface* selected_tab) {
+                    return selected_tab->GetGroup() == tab_group->id();
+                  })) {
+    // Selected tabs are already in the group, so return early.
+    return;
+  }
+
+  int first_tab_in_group =
+      tab_strip_model_->GetIndexOfTab(tab_group->GetFirstTab());
+  int last_tab_in_group =
+      tab_strip_model_->GetIndexOfTab(tab_group->GetLastTab());
+  int first_selected_index =
+      *selection_model.GetListSelectionModel().selected_indices().cbegin();
+
+  if (tab_strip_model_->IsGroupCollapsed(tab_group->id())) {
+    // Selected tabs need to be inserted outside the group if collapsed.
+    int insertion_idx = (first_selected_index < first_tab_in_group)
+                            ? last_tab_in_group
+                            : first_tab_in_group;
+    tab_strip_model_->MoveSelectedTabsTo(insertion_idx, std::nullopt);
+  } else {
+    int insertion_idx = (first_selected_index < first_tab_in_group)
+                            ? first_tab_in_group
+                            : last_tab_in_group;
+    tab_strip_model_->MoveSelectedTabsTo(insertion_idx, tab_group->id());
+  }
 }
 
 void VerticalTabDragHandlerImpl::HandleTabDragOverUnpinnedContainer(
@@ -187,6 +210,11 @@ void VerticalTabDragHandlerImpl::HandleTabDragOverUnpinnedContainer(
 
 TabDragContext* VerticalTabDragHandlerImpl::GetDragContext() {
   return this;
+}
+
+bool VerticalTabDragHandlerImpl::IsViewDragging(const views::View& view) const {
+  return std::ranges::find(dragged_tabs_, &view, &TabCollectionNode::view) !=
+         dragged_tabs_.end();
 }
 
 bool VerticalTabDragHandlerImpl::CanAcceptEvent(const ui::Event& event) {

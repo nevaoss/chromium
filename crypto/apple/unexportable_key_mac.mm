@@ -24,7 +24,6 @@
 #include "base/apple/bridging.h"
 #include "base/apple/foundation_util.h"
 #include "base/apple/scoped_cftyperef.h"
-#include "base/containers/contains.h"
 #include "base/containers/span.h"
 #include "base/containers/to_vector.h"
 #include "base/logging.h"
@@ -45,6 +44,7 @@
 #include "crypto/keypair.h"
 #include "crypto/signature_verifier.h"
 #include "crypto/unexportable_key_metrics.h"
+#include "third_party/abseil-cpp/absl/container/flat_hash_set.h"
 
 using base::apple::CFToNSPtrCast;
 using base::apple::NSToCFPtrCast;
@@ -351,7 +351,8 @@ std::optional<SignatureVerifier::SignatureAlgorithm>
 UnexportableKeyProviderMac::SelectAlgorithm(
     base::span<const SignatureVerifier::SignatureAlgorithm>
         acceptable_algorithms) {
-  return base::Contains(acceptable_algorithms, SignatureVerifier::ECDSA_SHA256)
+  return std::ranges::contains(acceptable_algorithms,
+                               SignatureVerifier::ECDSA_SHA256)
              ? std::make_optional(SignatureVerifier::ECDSA_SHA256)
              : std::nullopt;
 }
@@ -526,25 +527,51 @@ UnexportableKeyProviderMac::GetAllSigningKeysSlowly() {
       });
 }
 
-bool UnexportableKeyProviderMac::DeleteSigningKeySlowly(
-    base::span<const uint8_t> wrapped_key) {
+std::optional<size_t> UnexportableKeyProviderMac::DeleteSigningKeysSlowly(
+    base::span<const base::span<const uint8_t>> wrapped_keys) {
   base::ScopedBlockingCall scoped_blocking_call(FROM_HERE,
                                                 base::BlockingType::WILL_BLOCK);
 
+  // Short-circuit for empty and single-element spans.
+  //
+  // NOTE: While we could also repeatedly call DeleteSigningKeySlowlyImpl() in
+  // the multi-key case, each of these calls would involve an OS call to the
+  // keychain. This is likely less efficient than a single keychain query and
+  // then processing the results in-memory.
+  switch (wrapped_keys.size()) {
+    case 0:
+      return 0;
+    case 1:
+      return DeleteSigningKeySlowlyImpl(wrapped_keys.front());
+  }
+
   ASSIGN_OR_RETURN(
       std::vector<base::apple::ScopedCFTypeRef<CFDictionaryRef>> keys,
-      FindUnexportableKeys(objc_storage_->keychain_access_group_, wrapped_key),
+      FindUnexportableKeys(objc_storage_->keychain_access_group_),
       [](OSStatus status) {
         LogKeychainOperationError(TPMOperation::kKeyDeletion, status);
-        return false;
+        return std::nullopt;
       });
 
   FilterKeysByApplicationTag(
       keys, base::SysNSStringToUTF8(objc_storage_->application_tag_),
       ApplicationTagMatching::kStartsWith);
 
-  return std::ranges::any_of(
-      keys, [](const auto& key) { return DeleteKey(key.get()); });
+  if (keys.empty()) {
+    return 0;
+  }
+
+  // Remove all keys that don't match any of the provided wrapped keys.
+  const absl::flat_hash_set<base::span<const uint8_t>> keys_to_delete(
+      wrapped_keys.begin(), wrapped_keys.end());
+  std::erase_if(keys, [&](const auto& key) {
+    return !keys_to_delete.contains(base::apple::CFDataToSpan(
+        base::apple::GetValueFromDictionary<CFDataRef>(
+            key.get(), kSecAttrApplicationLabel)));
+  });
+
+  return std::ranges::count_if(
+      keys, [&](const auto& key) { return DeleteKey(key.get()); });
 }
 
 std::optional<size_t> UnexportableKeyProviderMac::DeleteAllSigningKeysSlowly() {
@@ -570,6 +597,27 @@ std::optional<size_t> UnexportableKeyProviderMac::DeleteAllSigningKeysSlowly() {
 
   return std::ranges::count_if(
       keys, [&](const auto& key) { return DeleteKey(key.get()); });
+}
+
+std::optional<size_t> UnexportableKeyProviderMac::DeleteSigningKeySlowlyImpl(
+    base::span<const uint8_t> wrapped_key) {
+  base::ScopedBlockingCall scoped_blocking_call(FROM_HERE,
+                                                base::BlockingType::WILL_BLOCK);
+
+  ASSIGN_OR_RETURN(
+      std::vector<base::apple::ScopedCFTypeRef<CFDictionaryRef>> keys,
+      FindUnexportableKeys(objc_storage_->keychain_access_group_, wrapped_key),
+      [](OSStatus status) {
+        LogKeychainOperationError(TPMOperation::kKeyDeletion, status);
+        return std::nullopt;
+      });
+
+  FilterKeysByApplicationTag(
+      keys, base::SysNSStringToUTF8(objc_storage_->application_tag_),
+      ApplicationTagMatching::kStartsWith);
+
+  return std::ranges::count_if(
+      keys, [](const auto& key) { return DeleteKey(key.get()); });
 }
 
 std::unique_ptr<UnexportableKeyProviderMac> GetUnexportableKeyProviderMac(

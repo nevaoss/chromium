@@ -119,9 +119,15 @@ CSSValue* ConsumeSingleAnimationTrigger(CSSParserTokenStream& stream,
           css_parsing_utils::ConsumeIdent<CSSValueID::kNone>(stream)) {
     return value;
   }
-  return css_parsing_utils::ConsumeSpaceSeparatedList(
+  CSSValueList* list = css_parsing_utils::ConsumeSpaceSeparatedList(
       css_parsing_utils::ConsumeSingleAnimationTriggerAttachment, stream,
       context);
+
+  // TODO(crbug.com/474398437): We only support attaching one trigger per
+  // animation. When we support multiple triggers, we should allow lists with
+  // multiple trigger declarations:
+  // https://github.com/w3c/csswg-drafts/issues/12399#issuecomment-3089703026
+  return (list && list->length() == 1) ? list : nullptr;
 }
 
 }  // namespace
@@ -7089,18 +7095,18 @@ const CSSValue* MaskType::CSSValueFromComputedStyleInternal(
   return CSSIdentifierValue::Create(style.MaskType());
 }
 
-const CSSValue* ItemTolerance::ParseSingleValue(CSSParserTokenStream& stream,
+const CSSValue* FlowTolerance::ParseSingleValue(CSSParserTokenStream& stream,
                                                 const CSSParserContext& context,
                                                 CSSParserLocalContext&) const {
-  return css_parsing_utils::ConsumeItemTolerance(stream, context);
+  return css_parsing_utils::ConsumeFlowTolerance(stream, context);
 }
 
-const CSSValue* ItemTolerance::CSSValueFromComputedStyleInternal(
+const CSSValue* FlowTolerance::CSSValueFromComputedStyleInternal(
     const ComputedStyle& style,
     const LayoutObject*,
     bool allow_visited_style,
     CSSValuePhase value_phase) const {
-  return ComputedStyleUtils::ValueForItemTolerance(style.GetItemTolerance(),
+  return ComputedStyleUtils::ValueForFlowTolerance(style.GetFlowTolerance(),
                                                    style);
 }
 
@@ -10037,6 +10043,10 @@ const CSSValue* TextIndent::ParseSingleValue(CSSParserTokenStream& stream,
     }
     break;
   }
+  if (!hanging && !each_line &&
+      RuntimeEnabledFeatures::CssTextIndentAsPrimitiveEnabled()) {
+    return length_percentage;
+  }
   if (!length_percentage) {
     return nullptr;
   }
@@ -10056,10 +10066,14 @@ const CSSValue* TextIndent::CSSValueFromComputedStyleInternal(
     const LayoutObject*,
     bool allow_visited_style,
     CSSValuePhase value_phase) const {
-  CSSValueList* list = CSSValueList::CreateSpaceSeparated();
-  list->Append(*ComputedStyleUtils::ZoomAdjustedPixelValueForLength(
-      style.TextIndent(), style));
+  const CSSValue* length = ComputedStyleUtils::ZoomAdjustedPixelValueForLength(
+      style.TextIndent(), style);
   const TextIndentFlags flags = style.GetTextIndentFlags();
+  if (!flags && RuntimeEnabledFeatures::CssTextIndentAsPrimitiveEnabled()) {
+    return length;
+  }
+  CSSValueList* list = CSSValueList::CreateSpaceSeparated();
+  list->Append(*length);
   if (EnumHasFlags(flags, TextIndentFlags::kHanging)) {
     list->Append(*CSSIdentifierValue::Create(CSSValueID::kHanging));
   }
@@ -10074,15 +10088,21 @@ void TextIndent::ApplyValue(StyleResolverState& state,
                             ValueMode) const {
   Length length_or_percentage_value;
   TextIndentFlags flags = TextIndentFlags::kDefault;
-  for (auto& list_value : To<CSSValueList>(value)) {
-    if (auto* list_primitive_value =
-            DynamicTo<CSSPrimitiveValue>(*list_value)) {
-      length_or_percentage_value = list_primitive_value->ConvertToLength(
-          state.CssToLengthConversionData());
-    } else if (const auto* ident = DynamicTo<CSSIdentifierValue>(*list_value)) {
-      flags |= CssValueIDToPlatformEnum<TextIndentFlags>(ident->GetValueID());
-    } else {
-      NOTREACHED();
+  if (const auto* primitive = DynamicTo<CSSPrimitiveValue>(value)) {
+    length_or_percentage_value =
+        primitive->ConvertToLength(state.CssToLengthConversionData());
+  } else {
+    for (auto& list_value : To<CSSValueList>(value)) {
+      if (auto* list_primitive_value =
+              DynamicTo<CSSPrimitiveValue>(*list_value)) {
+        length_or_percentage_value = list_primitive_value->ConvertToLength(
+            state.CssToLengthConversionData());
+      } else if (const auto* ident =
+                     DynamicTo<CSSIdentifierValue>(*list_value)) {
+        flags |= CssValueIDToPlatformEnum<TextIndentFlags>(ident->GetValueID());
+      } else {
+        NOTREACHED();
+      }
     }
   }
 

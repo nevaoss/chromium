@@ -751,6 +751,9 @@ _CONFIG = [
             'display::ScreenInfo',
             'display::ScreenInfos',
 
+            # html-in-canvas
+            'cc::AllCanvasDrawElementIds',
+
             # Terminal value for display id's used across display <-> Blink.
             'display::kInvalidDisplayId',
 
@@ -1530,6 +1533,15 @@ _CONFIG = [
             'base::DelayedTaskHandle',
             # Temporarily added to generate the value of a crash key.
             'base::NumberToString',
+            'base::subtle::PostDelayedTaskPassKey',
+        ],
+    },
+    {
+        'paths': [
+            'third_party/blink/renderer/core/paint/timing/paint_timing.cc',
+        ],
+        'allowed': [
+            'base::subtle::DelayPolicy',
             'base::subtle::PostDelayedTaskPassKey',
         ],
     },

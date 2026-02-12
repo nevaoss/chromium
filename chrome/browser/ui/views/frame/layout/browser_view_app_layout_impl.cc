@@ -349,7 +349,8 @@ void BrowserViewAppLayoutImpl::CalculateTitlebarLayout(
   }
 }
 
-void BrowserViewAppLayoutImpl::DoPostLayoutVisualAdjustments() {
+void BrowserViewAppLayoutImpl::DoPostLayoutVisualAdjustments(
+    const BrowserLayoutParams&) {
   // Update the window controls overlay.
   if (overlay_rect_ && delegate().IsWindowControlsOverlayEnabled()) {
     delegate().UpdateWindowControlsOverlay(*overlay_rect_);
@@ -366,7 +367,7 @@ void BrowserViewAppLayoutImpl::DoPostLayoutVisualAdjustments() {
     // immersive fullscreen, it is drawn in a way that isn't detected by the
     // DCHECK in Label. As such, disable the DCHECK.
     label.SetSkipSubpixelRenderingOpacityCheck(
-        ImmersiveModeController::From(browser())->IsEnabled());
+        delegate().GetImmersiveModeController()->IsEnabled());
 #elif BUILDFLAG(IS_WIN)
     label.SetSubpixelRenderingEnabled(false);
     label.SetHorizontalAlignment(gfx::ALIGN_LEFT);

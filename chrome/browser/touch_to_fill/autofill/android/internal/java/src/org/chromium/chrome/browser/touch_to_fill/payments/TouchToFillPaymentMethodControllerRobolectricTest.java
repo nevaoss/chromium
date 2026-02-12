@@ -79,6 +79,7 @@ import static org.chromium.chrome.browser.touch_to_fill.payments.TouchToFillPaym
 import static org.chromium.chrome.browser.touch_to_fill.payments.TouchToFillPaymentMethodProperties.BnplSuggestionProperties.ON_BNPL_CLICK_ACTION;
 import static org.chromium.chrome.browser.touch_to_fill.payments.TouchToFillPaymentMethodProperties.BnplSuggestionProperties.PRIMARY_TEXT;
 import static org.chromium.chrome.browser.touch_to_fill.payments.TouchToFillPaymentMethodProperties.BnplSuggestionProperties.SECONDARY_TEXT;
+import static org.chromium.chrome.browser.touch_to_fill.payments.TouchToFillPaymentMethodProperties.BnplTosHeaderProperties.ICON_CONTENT_DESCRIPTION_ID;
 import static org.chromium.chrome.browser.touch_to_fill.payments.TouchToFillPaymentMethodProperties.BnplTosHeaderProperties.ISSUER_IMAGE_DRAWABLE_ID;
 import static org.chromium.chrome.browser.touch_to_fill.payments.TouchToFillPaymentMethodProperties.BnplTosHeaderProperties.ISSUER_TITLE_STRING;
 import static org.chromium.chrome.browser.touch_to_fill.payments.TouchToFillPaymentMethodProperties.ButtonProperties.ON_CLICK_ACTION;
@@ -284,7 +285,9 @@ public class TouchToFillPaymentMethodControllerRobolectricTest {
                     /* programName= */ "Loyalty program",
                     /* programLogo= */ new GURL("https://site.com/icon.png"),
                     /* loyaltyCardNumber= */ "1234",
-                    /* merchantDomains= */ Collections.emptyList());
+                    /* merchantDomains= */ Collections.emptyList(),
+                    /* useDate= */ 0,
+                    /* useCount= */ 0);
 
     private static final LoyaltyCard LOYALTY_CARD_2 =
             new LoyaltyCard(
@@ -293,7 +296,9 @@ public class TouchToFillPaymentMethodControllerRobolectricTest {
                     /* programName= */ "Coffee pro",
                     /* programLogo= */ new GURL("https://coffee.com/logo.png"),
                     /* loyaltyCardNumber= */ "4321",
-                    /* merchantDomains= */ Collections.emptyList());
+                    /* merchantDomains= */ Collections.emptyList(),
+                    /* useDate= */ 0,
+                    /* useCount= */ 0);
 
     private static final AutofillSuggestion VISA_SUGGESTION =
             createCreditCardSuggestion(
@@ -546,7 +551,7 @@ public class TouchToFillPaymentMethodControllerRobolectricTest {
         when(mBottomSheetController.requestShowContent(any(BottomSheetContent.class), anyBoolean()))
                 .thenReturn(true);
         when(mResourceProvider.getBnplIssuerTosDrawableId(anyString(), anyBoolean()))
-                .thenReturn(R.drawable.bnpl_icon_generic);
+                .thenReturn(R.drawable.google_pay);
         when(mResourceProvider.getBnplIssuerDrawableId(anyString(), anyBoolean()))
                 .thenReturn(R.drawable.bnpl_icon_generic);
         mCoordinator = new TouchToFillPaymentMethodCoordinator();
@@ -1858,8 +1863,10 @@ public class TouchToFillPaymentMethodControllerRobolectricTest {
                         mActivity.getString(
                                 R.string.autofill_bnpl_tos_unlinked_title,
                                 BNPL_ISSUER_TOS_DETAIL_AFFIRM.getIssuerName())));
+        assertThat(headerModel.get(0).get(ISSUER_IMAGE_DRAWABLE_ID), is(R.drawable.google_pay));
         assertThat(
-                headerModel.get(0).get(ISSUER_IMAGE_DRAWABLE_ID), is(R.drawable.bnpl_icon_generic));
+                headerModel.get(0).get(ICON_CONTENT_DESCRIPTION_ID),
+                is(R.string.autofill_google_pay_and_affirm_logo_accessible_name));
 
         List<PropertyModel> bnplTosItemModel = getModelsOfType(itemList, BNPL_TOS_TEXT);
         assertThat(bnplTosItemModel.size(), is(3));

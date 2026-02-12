@@ -17,6 +17,10 @@ namespace favicon {
 class LargeIconService;
 }  // namespace favicon
 
+namespace feature_engagement {
+class Tracker;
+}  // namespace feature_engagement
+
 namespace ntp_tiles {
 class MostVisitedSites;
 }  // namespace ntp_tiles
@@ -29,6 +33,7 @@ class ChromeAccountManagerService;
 enum class ContentSuggestionsModuleType;
 @class ContentSuggestionsMetricsRecorder;
 class LargeIconCache;
+@class LayoutGuideCenter;
 @class MostVisitedTilesConfig;
 @protocol NewTabPageActionsDelegate;
 class PrefService;
@@ -82,6 +87,8 @@ class UrlLoadingBrowserAgent;
              largeIconCache:(LargeIconCache*)largeIconCache
      URLLoadingBrowserAgent:(UrlLoadingBrowserAgent*)URLLoadingBrowserAgent
       accountManagerService:(ChromeAccountManagerService*)accountManagerService
+          engagementTracker:(feature_engagement::Tracker*)engagementTracker
+          layoutGuideCenter:(LayoutGuideCenter*)layoutGuideCenter
     NS_DESIGNATED_INITIALIZER;
 
 - (instancetype)init NS_UNAVAILABLE;

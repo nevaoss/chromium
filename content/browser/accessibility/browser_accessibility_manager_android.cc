@@ -7,7 +7,6 @@
 #include <vector>
 
 #include "base/check.h"
-#include "base/containers/contains.h"
 #include "base/i18n/char_iterator.h"
 #include "base/strings/utf_string_conversions.h"
 #include "content/browser/accessibility/browser_accessibility_android.h"
@@ -735,7 +734,7 @@ void BrowserAccessibilityManagerAndroid::ClearNodeInfoCacheForGivenId(
   }
 
   // We do not need to clear a node more than once per atomic update.
-  if (base::Contains(nodes_already_cleared_, unique_id)) {
+  if (nodes_already_cleared_.contains(unique_id)) {
     return;
   }
 

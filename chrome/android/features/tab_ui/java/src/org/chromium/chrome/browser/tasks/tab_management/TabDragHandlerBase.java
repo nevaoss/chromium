@@ -432,7 +432,7 @@ public abstract class TabDragHandlerBase
     }
 
     @Override
-    public @Nullable Boolean handleEscPress() {
+    public Boolean handleEscPress() {
         return cancelDrag() == BackPressResult.SUCCESS;
     }
 
@@ -442,7 +442,15 @@ public abstract class TabDragHandlerBase
         return mDragInProgressSupplier;
     }
 
-    private @BackPressResult int cancelDrag() {
+    protected void onInternalDragStarted() {
+        mDragInProgressSupplier.set(true);
+    }
+
+    protected void onInternalDragEnded() {
+        mDragInProgressSupplier.set(false);
+    }
+
+    protected @BackPressResult int cancelDrag() {
         if (mDragSourceView != null) {
             mDragSourceView.cancelDragAndDrop();
             return BackPressResult.SUCCESS;

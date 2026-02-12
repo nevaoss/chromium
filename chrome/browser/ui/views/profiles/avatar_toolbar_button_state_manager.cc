@@ -1459,13 +1459,13 @@ class PassphraseErrorStateProvider : public SyncErrorBaseStateProvider {
 
 class BookmarksLimitExceededStateProvider : public SyncErrorBaseStateProvider {
  public:
-  explicit BookmarksLimitExceededStateProvider(Profile* profile,
+  explicit BookmarksLimitExceededStateProvider(Browser* browser,
                                                StateObserver* state_observer)
       : SyncErrorBaseStateProvider(
-            profile,
+            browser->profile(),
             state_observer,
-            syncer::SyncService::UserActionableError::kBookmarksLimitExceeded) {
-  }
+            syncer::SyncService::UserActionableError::kBookmarksLimitExceeded),
+        browser_(browser) {}
 
   ~BookmarksLimitExceededStateProvider() override = default;
 
@@ -1474,6 +1474,25 @@ class BookmarksLimitExceededStateProvider : public SyncErrorBaseStateProvider {
     return l10n_util::GetStringUTF16(
         IDS_AVATAR_BUTTON_SYNC_ERROR_BOOKMARKS_LIMIT_EXCEEDED);
   }
+
+  std::optional<base::RepeatingCallback<void(bool)>> GetButtonActionOverride()
+      override {
+    return base::BindRepeating(
+        &BookmarksLimitExceededStateProvider::OpenHelp,
+        // This is safe because `AvatarToolbarButtonStateManager`
+        // owning all the providers owns the callback.
+        base::Unretained(this));
+  }
+
+ private:
+  void OpenHelp(bool) {
+    ShowBookmarksLimitExceededHelp(
+        browser_, SyncServiceFactory::GetForProfile(browser_->profile()),
+        syncer::SyncService::BookmarksLimitExceededHelpClickedSource::
+            kIdentityErrorInfoPill);
+  }
+
+  const raw_ptr<Browser> browser_;
 };
 
 class GenericSyncErrorStateProvider : public SyncErrorBaseStateProvider {
@@ -1988,7 +2007,7 @@ void AvatarToolbarButtonStateManager::CreateStatesAndListeners(
 
     states_[ButtonState::kBookmarksLimitExceeded] =
         std::make_unique<BookmarksLimitExceededStateProvider>(
-            profile, /*state_observer=*/this);
+            browser, /*state_observer=*/this);
 
     if (AccountConsistencyModeManager::IsDiceEnabledForProfile(profile)) {
       states_[ButtonState::kSyncPaused] =

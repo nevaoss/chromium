@@ -11,6 +11,7 @@
 #include "base/memory/raw_ptr.h"
 #include "base/memory/raw_ref.h"
 #include "base/memory/weak_ptr.h"
+#include "base/scoped_observation.h"
 #include "base/timer/timer.h"
 #include "base/uuid.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_composebox_handler.h"
@@ -23,12 +24,14 @@
 #include "chrome/common/webui_url_constants.h"
 #include "components/contextual_search/contextual_search_session_handle.h"
 #include "components/contextual_tasks/public/contextual_task_context.h"
+#include "components/signin/public/identity_manager/identity_manager.h"
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/web_contents_observer.h"
 #include "content/public/browser/web_ui_controller.h"
 #include "content/public/common/url_constants.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/remote.h"
+#include "net/base/backoff_entry.h"
 #include "third_party/lens_server_proto/aim_communication.pb.h"
 #include "ui/base/resource/resource_scale_factor.h"
 #include "ui/webui/mojo_web_ui_controller.h"
@@ -68,7 +71,8 @@ class ContextualTasksUI : public TaskInfoDelegate,
                           public contextual_tasks::mojom::PageHandlerFactory,
                           public composebox::mojom::PageHandlerFactory,
                           public contextual_tasks_internals::mojom::
-                              ContextualTasksInternalsPageHandlerFactory {
+                              ContextualTasksInternalsPageHandlerFactory,
+                          public signin::IdentityManager::Observer {
  public:
   // A WebContentsObserver used to observe navigations or URL changes in the
   // frame being hosted by this WebUI. Top-level navigations are ignored since
@@ -192,6 +196,10 @@ class ContextualTasksUI : public TaskInfoDelegate,
   // hidden.
   void OnLensOverlayStateChanged(bool is_showing);
 
+  // signin::IdentityManager::Observer:
+  void OnRefreshTokenUpdatedForAccount(
+      const CoreAccountInfo& account_info) override;
+
   void SetComposeboxHandlerForTesting(
       std::unique_ptr<ContextualTasksComposeboxHandler> handler) {
     composebox_handler_ = std::move(handler);
@@ -215,10 +223,17 @@ class ContextualTasksUI : public TaskInfoDelegate,
   // Returns whether the active tab context suggestion is showing.
   bool IsActiveTabContextSuggestionShowing() const;
 
+  // Returns whether an OAuth token request is pending to verify behavior in
+  // tests.
+  bool IsAccessTokenRequestPendingForTesting() const {
+    return !!oauth_token_fetcher_;
+  }
+
  private:
   void RequestOAuthToken();
   void OnOAuthTokenReceived(GoogleServiceAuthError error,
                             signin::AccessTokenInfo access_token_info);
+
   // A an observer specifically to watch for the creation of the hosted remote
   // page. This is attached to the WebContents for the WebUI and notifies the
   // WebUI when an inner WebContents is created. The expectation is that there
@@ -265,10 +280,17 @@ class ContextualTasksUI : public TaskInfoDelegate,
   // A timer used to refresh the OAuth token before it expires.
   base::OneShotTimer token_refresh_timer_;
 
+  base::ScopedObservation<signin::IdentityManager,
+                          signin::IdentityManager::Observer>
+      identity_manager_observation_{this};
+
   std::unique_ptr<ContextualTasksComposeboxHandler> composebox_handler_;
   raw_ptr<contextual_tasks::ContextualTasksUiService> ui_service_;
 
   raw_ptr<contextual_tasks::ContextualTasksService> contextual_tasks_service_;
+
+  // Backoff entry used to control the retry logic for the OAuth token request.
+  net::BackoffEntry request_access_token_backoff_;
 
   mojo::Receiver<composebox::mojom::PageHandlerFactory>
       composebox_page_handler_factory_receiver_{this};

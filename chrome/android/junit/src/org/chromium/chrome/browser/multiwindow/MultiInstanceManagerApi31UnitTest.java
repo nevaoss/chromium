@@ -82,6 +82,8 @@ import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.ChromeTabbedActivity;
 import org.chromium.chrome.browser.IntentHandler;
+import org.chromium.chrome.browser.RecentlyClosedEntriesManagerTracker;
+import org.chromium.chrome.browser.RecentlyClosedEntriesManagerTrackerFactory;
 import org.chromium.chrome.browser.app.tabmodel.TabModelOrchestrator;
 import org.chromium.chrome.browser.app.tabwindow.TabWindowManagerSingleton;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
@@ -90,10 +92,8 @@ import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager.AllocatedIdInfo;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager.CloseWindowAppSource;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager.InstanceAllocationType;
-import org.chromium.chrome.browser.multiwindow.MultiInstanceManager.InstanceStateObserver;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager.NewWindowAppSource;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager.PersistedInstanceType;
-import org.chromium.chrome.browser.multiwindow.MultiInstanceManager.SupportedProfileType;
 import org.chromium.chrome.browser.multiwindow.UiUtils.NameWindowDialogSource;
 import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
 import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
@@ -105,6 +105,7 @@ import org.chromium.chrome.browser.tab_group_sync.TabGroupSyncFeaturesJni;
 import org.chromium.chrome.browser.tab_group_sync.TabGroupSyncServiceFactory;
 import org.chromium.chrome.browser.tabmodel.MismatchedIndicesHandler;
 import org.chromium.chrome.browser.tabmodel.NextTabPolicy.NextTabPolicySupplier;
+import org.chromium.chrome.browser.tabmodel.SupportedProfileType;
 import org.chromium.chrome.browser.tabmodel.TabClosingSource;
 import org.chromium.chrome.browser.tabmodel.TabCreatorManager;
 import org.chromium.chrome.browser.tabmodel.TabGroupMetadata;
@@ -146,7 +147,6 @@ import java.util.stream.Collectors;
 @Config(manifest = Config.NONE)
 @EnableFeatures({
     ChromeFeatureList.ROBUST_WINDOW_MANAGEMENT,
-    ChromeFeatureList.INSTANCE_SWITCHER_V2,
     ChromeFeatureList.RECENTLY_CLOSED_TABS_AND_WINDOWS
 })
 @DisableFeatures({
@@ -225,6 +225,7 @@ public class MultiInstanceManagerApi31UnitTest {
     @Mock ChromeTabbedActivity mTabbedActivityTask64;
     @Mock ChromeTabbedActivity mTabbedActivityTask65;
     @Mock ChromeTabbedActivity mTabbedActivityTask66;
+    @Mock RecentlyClosedEntriesManagerTracker mRecentlyClosedTracker;
 
     @Captor private ArgumentCaptor<Runnable> mOnSaveTabListRunnableCaptor;
 
@@ -547,6 +548,7 @@ public class MultiInstanceManagerApi31UnitTest {
         doNothing().when(mMultiInstanceManager).showTargetSelectorDialog(any(), anyInt(), anyInt());
 
         setupActivityForCreateNewWindowIntent(mCurrentActivity);
+        RecentlyClosedEntriesManagerTrackerFactory.setInstanceForTesting(mRecentlyClosedTracker);
     }
 
     @After
@@ -886,11 +888,7 @@ public class MultiInstanceManagerApi31UnitTest {
     }
 
     @Test
-    public void testCloseWindow_InstanceStateObserverInvoked() {
-        // Setup InstanceStateObserver for testing.
-        InstanceStateObserver instanceStateObserver = Mockito.mock(InstanceStateObserver.class);
-        mMultiInstanceManager.addInstanceStateObserver(instanceStateObserver);
-
+    public void testCloseWindow_OnInstanceClosedInvoked() {
         // Setup 3 instances.
         assertEquals(0, allocInstanceIndex(PASSED_ID_INVALID, mActivityTask56));
         assertEquals(1, allocInstanceIndex(PASSED_ID_INVALID, mActivityTask57));
@@ -909,9 +907,9 @@ public class MultiInstanceManagerApi31UnitTest {
         assertEquals(
                 1, mMultiInstanceManager.getInstanceInfo(PersistedInstanceType.INACTIVE).size());
 
-        // Verify InstanceStateObserver is invoked.
+        // Verify #onInstanceClosed is invoked.
         ArgumentCaptor<InstanceInfo> captor = ArgumentCaptor.forClass(InstanceInfo.class);
-        verify(instanceStateObserver).onInstanceClosed(captor.capture(), eq(false));
+        verify(mRecentlyClosedTracker).onInstanceClosed(captor.capture(), eq(false));
 
         // Verify the captured InstanceInfo.
         InstanceInfo closedInstanceInfo = captor.getValue();
@@ -2373,10 +2371,6 @@ public class MultiInstanceManagerApi31UnitTest {
         assertEquals(1, allocInstanceIndex(PASSED_ID_INVALID, mTabbedActivityTask63));
         multiInstanceManager63.initialize(1, TASK_ID_63, SupportedProfileType.MIXED);
 
-        // Setup InstanceStateObserver for testing.
-        InstanceStateObserver instanceStateObserver = Mockito.mock(InstanceStateObserver.class);
-        multiInstanceManager62.addInstanceStateObserver(instanceStateObserver);
-
         // Setup AppTask's for both activities. Clear test AppTask ids that are set during the test
         // manager instantiation so that ids from the current mocked AppTasks are used.
         MultiInstanceManagerApi31.setAppTaskIdsForTesting(null);
@@ -2411,7 +2405,7 @@ public class MultiInstanceManagerApi31UnitTest {
             verify(mTabbedActivityTask62).startActivity(any());
             verify(appTasks.get(1)).finishAndRemoveTask();
             verify(mActivityManager, never()).moveTaskToFront(TASK_ID_63, 0);
-            verify(instanceStateObserver).onInstanceRestored(1);
+            verify(mRecentlyClosedTracker).onInstanceRestored(1);
             histogramWatcher.assertExpected();
         }
     }

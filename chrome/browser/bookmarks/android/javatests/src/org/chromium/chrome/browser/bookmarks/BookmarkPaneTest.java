@@ -63,6 +63,7 @@ public class BookmarkPaneTest {
 
     @Before
     public void setUp() {
+        BookmarkPromoHeader.forcePromoVisibilityForTesting(true);
         mStartingPage = mCtaTestRule.startOnBlankPage();
     }
 
@@ -70,7 +71,9 @@ public class BookmarkPaneTest {
     public void tearDown() {
         ChromeTabbedActivity cta = mCtaTestRule.getActivity();
         runOnUiThreadBlocking(
-                () -> clearBookmarks(cta.getProfileProviderSupplier().get().getOriginalProfile()));
+                () -> {
+                    clearBookmarks(cta.getProfileProviderSupplier().get().getOriginalProfile());
+                });
     }
 
     @Test
@@ -114,8 +117,8 @@ public class BookmarkPaneTest {
         enterBookmarkPane();
 
         // Search for "One" in the history search box.
-        onView(withId(R.id.row_search_text)).perform(click());
-        onView(withId(R.id.row_search_text)).perform(replaceText("One"));
+        BookmarkTestUtil.getSearchBoxViewInteraction().perform(click());
+        BookmarkTestUtil.getSearchBoxViewInteraction().perform(replaceText("One"));
 
         // Verify that "One" is displayed as a match.
         onViewWaiting(allOf(withText("One"), withId(R.id.title))).check(matches(isDisplayed()));
@@ -156,9 +159,11 @@ public class BookmarkPaneTest {
                                 isDescendantOfA(withId(R.id.pane_switcher)),
                                 withContentDescription(containsString("Bookmarks"))))
                 .perform(click());
+        BookmarkTestUtil.waitForBookmarkModelLoaded();
     }
 
     private void clearBookmarks(Profile profile) {
-        BookmarkModel.getForProfile(profile).removeAllUserBookmarks();
+        BookmarkModel model = BookmarkModel.getForProfile(profile);
+        model.finishLoadingBookmarkModel(() -> model.removeAllUserBookmarks());
     }
 }

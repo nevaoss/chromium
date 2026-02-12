@@ -175,8 +175,6 @@ VerticalTabView::VerticalTabView(TabCollectionNode* collection_node)
       collection_node_->RegisterDataChangedCallback(base::BindRepeating(
           &VerticalTabView::OnDataChanged, base::Unretained(this)));
 
-  OnDataChanged();
-
   set_context_menu_controller(this);
 }
 
@@ -203,6 +201,7 @@ void VerticalTabView::UpdateHovered(bool hovered) {
       hover_controller_->Hide(TabStyle::HideHoverStyle::kGradual);
     }
   }
+
   UpdateColors();
   UpdateCloseButtonVisibility();
 }
@@ -325,7 +324,10 @@ void VerticalTabView::OnPaint(gfx::Canvas* canvas) {
     flags.setColor(tab_style_->GetCurrentTabBackgroundColor(
         GetSelectionState(), IsHoverAnimationActive(), GetHoverAnimationValue(),
         IsFrameActive(), GetColorProvider()));
-    canvas->DrawRect(GetContentsBounds(), flags);
+    const float corner_radius =
+        GetLayoutConstant(LayoutConstant::kVerticalTabCornerRadius) -
+        (split_ ? GetInsets().top() / 2.0 : 0.0);
+    canvas->DrawRoundRect(GetContentsBounds(), corner_radius, flags);
   }
 
   views::View::OnPaint(canvas);
@@ -336,6 +338,7 @@ void VerticalTabView::AddedToWidget() {
       GetWidget()->RegisterPaintAsActiveChangedCallback(base::BindRepeating(
           &VerticalTabView::UpdateColors, base::Unretained(this)));
 
+  OnDataChanged();
   // Recompute the hovered state as mouse events are not processed if a view
   // removed from the widget and added.
   if (!split_) {
@@ -345,10 +348,7 @@ void VerticalTabView::AddedToWidget() {
 
 void VerticalTabView::RemovedFromWidget() {
   paint_as_active_subscription_ = {};
-}
-
-void VerticalTabView::OnBoundsChanged(const gfx::Rect& previous_bounds) {
-  SetClipPath(GetPath());
+  UpdateHovered(false);
 }
 
 void VerticalTabView::OnThemeChanged() {
@@ -491,13 +491,12 @@ void VerticalTabView::OnDataChanged() {
   selected_ = tab->IsSelected();
   split_ = tab->IsSplit();
   pinned_ = tab->IsPinned();
-
   tab_data_ = TabRendererData::FromTabInModel(tab_strip_model, index);
 
   icon_->SetData(tab_data_);
   icon_->SetActiveState(tab->IsActivated());
   icon_->SetAttention(TabIcon::AttentionType::kBlockedWebContents,
-                      tab->IsActivated() && tab->IsBlocked());
+                      !tab->IsActivated() && tab->IsBlocked());
 
   title_->SetText(tab_data_.title);
   title_->SetVisible(!pinned_);
@@ -576,7 +575,9 @@ void VerticalTabView::UpdateContrastRatioValues() {
 
 void VerticalTabView::CloseButtonPressed(const ui::Event& event) {
   // TODO(crbug.com/467735166): Log tab closing UMAs.
-  collection_node_->GetController()->CloseTab(GetTabInterface());
+  if (collection_node_) {
+    collection_node_->GetController()->CloseTab(GetTabInterface());
+  }
 }
 
 bool VerticalTabView::IsHoverAnimationActive() const {
@@ -618,8 +619,7 @@ float VerticalTabView::GetHoverOpacity() const {
 
 SkPath VerticalTabView::GetPath() const {
   const SkScalar corner_radius = SkIntToScalar(
-      GetLayoutConstant(LayoutConstant::kVerticalTabCornerRadius) +
-      (split_ ? GetInsets().height() : 0));
+      GetLayoutConstant(LayoutConstant::kVerticalTabCornerRadius));
   return SkPath::RRect(SkRRect::MakeRectXY(gfx::RectToSkRect(GetLocalBounds()),
                                            corner_radius, corner_radius));
 }

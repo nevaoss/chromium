@@ -256,6 +256,10 @@ const base::FeatureParam<base::TimeDelta>
 BASE_FEATURE(kDeviceBoundSessionTerminationEvictBackForwardCache,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+// Whether DevTools Live Edit (Debugger.setScriptSource usage in CDP) is
+// enabled.
+BASE_FEATURE(kDevToolsLiveEdit, base::FEATURE_DISABLED_BY_DEFAULT);
+
 // When enabled, the DevTools Privacy UI is displayed.
 BASE_FEATURE(kDevToolsPrivacyUI, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -1134,6 +1138,10 @@ BASE_FEATURE(kWebAssemblyTrapHandler,
              base::FEATURE_DISABLED_BY_DEFAULT
 #endif
 );
+
+// Enable WebAssembly Core stack switching.
+// https://github.com/WebAssembly/stack-switching
+BASE_FEATURE(kWebAssemblyStackSwitching, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Controls whether the Web Bluetooth API is enabled:
 // https://webbluetoothcg.github.io/web-bluetooth/

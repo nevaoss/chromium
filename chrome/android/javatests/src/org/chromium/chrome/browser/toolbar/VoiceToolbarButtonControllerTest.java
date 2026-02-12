@@ -16,6 +16,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 
+import static org.chromium.base.test.transit.ViewFinder.waitForNoView;
 import static org.chromium.base.test.util.Restriction.RESTRICTION_TYPE_NON_LOW_END_DEVICE;
 import static org.chromium.chrome.browser.url_constants.UrlConstantResolver.getOriginalNativeNtpUrl;
 import static org.chromium.ui.test.util.ViewUtils.onViewWaiting;
@@ -36,6 +37,7 @@ import org.mockito.junit.MockitoRule;
 
 import org.chromium.base.ThreadUtils;
 import org.chromium.base.test.util.Batch;
+import org.chromium.base.test.util.DisabledTest;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.base.test.util.Restriction;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
@@ -109,13 +111,11 @@ public final class VoiceToolbarButtonControllerTest {
     }
 
     private void assertButtonMissingOrNonVoice() {
-        ViewUtils.waitForViewCheckingState(
+        waitForNoView(
                 allOf(
                         withId(R.id.optional_toolbar_button),
-                        isDisplayed(),
                         isEnabled(),
-                        withContentDescription(mButtonString)),
-                ViewUtils.VIEW_GONE | ViewUtils.VIEW_NULL);
+                        withContentDescription(mButtonString)));
     }
 
     @Test
@@ -149,6 +149,7 @@ public final class VoiceToolbarButtonControllerTest {
     @Test
     @MediumTest
     @Restriction(RESTRICTION_TYPE_NON_LOW_END_DEVICE)
+    @DisabledTest(message = "https://crbug.com/475928040")
     public void testVoiceButtonDisabledOnIncognito() {
         // Ensure the button starts visible.
         ViewUtils.waitForVisibleView(

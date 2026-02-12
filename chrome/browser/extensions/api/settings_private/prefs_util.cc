@@ -191,6 +191,8 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_CHROMEOS)
   (*s_allowlist)[autofill::prefs::kAutofillPaymentMethodsMandatoryReauth] =
       settings_api::PrefType::kBoolean;
+  (*s_allowlist)[autofill::prefs::kAutofillAiReauthBeforeViewingSensitiveData] =
+      settings_api::PrefType::kBoolean;
 #endif
   (*s_allowlist)[autofill::prefs::kAutofillPaymentCvcStorage] =
       settings_api::PrefType::kBoolean;
@@ -1540,13 +1542,13 @@ settings_private::SetPrefResult PrefsUtil::SetPref(const std::string& pref_name,
         return settings_private::SetPrefResult::PREF_TYPE_MISMATCH;
       }
 
-      std::string_view string_value = value->GetString();
+      std::string string_value = value->GetString();
       if (IsPrefTypeURL(pref_name)) {
         GURL fixed = url_formatter::FixupURL(string_value);
         if (fixed.is_valid()) {
           string_value = fixed.spec();
         } else {
-          string_value = "";
+          string_value = std::string();
         }
       }
 

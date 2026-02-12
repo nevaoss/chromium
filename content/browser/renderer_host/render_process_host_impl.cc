@@ -21,7 +21,6 @@
 #include "base/clang_profiling_buildflags.h"
 #include "base/command_line.h"
 #include "base/containers/adapters.h"
-#include "base/containers/contains.h"
 #include "base/containers/flat_map.h"
 #include "base/containers/map_util.h"
 #include "base/debug/alias.h"
@@ -787,11 +786,7 @@ class SiteProcessCountTracker : public base::SupportsUserData::Data,
 
       if (process_reuse_policy ==
           ProcessReusePolicy::kReusePrerenderingProcessForMainFrame) {
-        // TODO(crbug.com/434845948): Avoid downcasting to
-        // RenderProcessHostImpl. This policy should not be used with
-        // MockRenderProcessHost.
-        if (!static_cast<RenderProcessHostImpl*>(host)
-                 ->IsOnlyHostingPrerenderedFramesOrEmpty()) {
+        if (!host->IsOnlyHostingPrerenderedFramesOrEmpty()) {
           continue;
         }
       }
@@ -3423,8 +3418,8 @@ bool RenderProcessHostImpl::HostHasNotBeenUsed() {
 }
 
 bool RenderProcessHostImpl::IsSpare() const {
-  return base::Contains(SpareRenderProcessHostManagerImpl::Get().GetSpares(),
-                        this);
+  return std::ranges::contains(
+      SpareRenderProcessHostManagerImpl::Get().GetSpares(), this);
 }
 
 void RenderProcessHostImpl::SetProcessLock(

@@ -37,8 +37,6 @@ static_library("autofill") {
     "one_time_token_service_factory.h",
     "personal_data_manager_factory.cc",
     "personal_data_manager_factory.h",
-    "strike_database_factory.cc",
-    "strike_database_factory.h",
     "subkey_requester_factory.cc",
     "subkey_requester_factory.h",
     "ui/ui_util.cc",
@@ -71,6 +69,7 @@ static_library("autofill") {
     "//chrome/browser/optimization_guide",
     "//chrome/browser/profiles",
     "//chrome/browser/signin",
+    "//chrome/browser/strike_database",
     "//chrome/browser/sync:factories",
     "//chrome/browser/webdata_services",
     "//chrome/common:constants",
@@ -205,7 +204,10 @@ static_library("test_support") {
 source_set("browser_tests") {
   testonly = true
 
-  sources = [ "otp_manager_browsertest.cc" ]
+  sources = [
+    "autofill_event_handler_browsertest.cc",
+    "otp_manager_browsertest.cc",
+  ]
 
   # TODO(crbug.com/449649023) Migrate these tests to PlatformBrowserTests.
   if (!is_android) {

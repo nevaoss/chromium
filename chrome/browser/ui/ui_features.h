@@ -155,12 +155,6 @@ enum class SidePanelRelativeAlignment {
 BASE_DECLARE_FEATURE_PARAM(SidePanelRelativeAlignment,
                            kSidePanelRelativeAlignment);
 
-BASE_DECLARE_FEATURE(kAppBrowserUseNewLayout);
-
-BASE_DECLARE_FEATURE(kPopupBrowserUseNewLayout);
-
-BASE_DECLARE_FEATURE(kTabbedBrowserUseNewLayout);
-
 BASE_DECLARE_FEATURE(kTabDuplicateMetrics);
 
 BASE_DECLARE_FEATURE(kTabGroupsCollapseFreezing);
@@ -359,15 +353,6 @@ BASE_DECLARE_FEATURE(kByDateHistoryInSidePanel);
 
 // Controls whether to use the TabStrip browser api's controller.
 BASE_DECLARE_FEATURE(kTabStripBrowserApi);
-
-// Controls where tab search lives in the browser. By default, the tab search
-// feature lives in the tab strip. The feature moves to the toolbar button if
-// the user is in the US and `kLaunchedTabSearchToolbarButton` is enabled or if
-// `kTabstripComboButton` is enabled and `kTabSearchToolbarButton` is true.
-BASE_DECLARE_FEATURE(kTabstripComboButton);
-BASE_DECLARE_FEATURE(kLaunchedTabSearchToolbarButton);
-
-BASE_DECLARE_FEATURE_PARAM(bool, kTabSearchToolbarButton);
 
 bool HasTabSearchToolbarButton();
 

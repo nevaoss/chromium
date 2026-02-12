@@ -104,12 +104,8 @@ class ExtensionsToolbarContainer : public ToolbarIconContainerView,
   // visibility, reordering views if necessary.
   void UpdatePinnedActions();
 
-  // Updates `extensions_button_` icon given user `site_setting` and whether
-  // `is_restricted_url` in `web_contents`.
-  void UpdateExtensionsButton(
-      extensions::PermissionsManager::UserSiteSetting site_setting,
-      content::WebContents* web_contents,
-      bool is_restricted_url);
+  // Updates `extensions_button_` icon given `web_contents`.
+  void UpdateExtensionsButton(content::WebContents* web_contents);
 
   // Updates the `request_access_button_` given user `site_setting` for the
   // current `web_contents`.
@@ -333,14 +329,6 @@ class ExtensionsToolbarContainer : public ToolbarIconContainerView,
   const raw_ptr<Browser> browser_;
   const raw_ptr<ToolbarActionsModel> model_;
 
-  // Coordinator to show and hide the ExtensionsMenuView.
-  const std::unique_ptr<ExtensionsMenuCoordinator> extensions_menu_coordinator_;
-
-  const raw_ptr<ExtensionsToolbarButton, AcrossTasksDanglingUntriaged>
-      extensions_button_;
-  raw_ptr<ExtensionsRequestAccessButton, DanglingUntriaged>
-      request_access_button_ = nullptr;
-
   DisplayMode display_mode_;
 
   // Controller for showing the toolbar action hover card.
@@ -349,6 +337,14 @@ class ExtensionsToolbarContainer : public ToolbarIconContainerView,
 
   // The view model for this container.
   std::unique_ptr<ExtensionsToolbarViewModel> toolbar_view_model_;
+
+  // Coordinator to show and hide the ExtensionsMenuView.
+  const std::unique_ptr<ExtensionsMenuCoordinator> extensions_menu_coordinator_;
+
+  const raw_ptr<ExtensionsToolbarButton, AcrossTasksDanglingUntriaged>
+      extensions_button_;
+  raw_ptr<ExtensionsRequestAccessButton, DanglingUntriaged>
+      request_access_button_ = nullptr;
 
   // View for every action, does not imply pinned or currently shown.
   ToolbarIcons icons_;

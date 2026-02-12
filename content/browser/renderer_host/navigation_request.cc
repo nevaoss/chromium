@@ -4,6 +4,7 @@
 
 #include "content/browser/renderer_host/navigation_request.h"
 
+#include <algorithm>
 #include <memory>
 #include <optional>
 #include <string>
@@ -14,7 +15,6 @@
 #include "base/auto_reset.h"
 #include "base/check_is_test.h"
 #include "base/command_line.h"
-#include "base/containers/contains.h"
 #include "base/containers/span.h"
 #include "base/debug/alias.h"
 #include "base/debug/crash_logging.h"
@@ -45,6 +45,7 @@
 #include "base/types/pass_key.h"
 #include "build/build_config.h"
 #include "build/buildflag.h"
+#include "components/url_pattern/simple_url_pattern_matcher.h"
 #include "components/viz/host/host_frame_sink_manager.h"
 #include "content/browser/agent_cluster_key.h"
 #include "content/browser/blob_storage/chrome_blob_storage_context.h"
@@ -79,9 +80,11 @@
 #include "content/browser/renderer_host/concurrent_navigations_commit_deferring_condition.h"
 #include "content/browser/renderer_host/cookie_utils.h"
 #include "content/browser/renderer_host/debug_urls.h"
+#include "content/browser/renderer_host/frame_navigation_entry.h"
 #include "content/browser/renderer_host/frame_tree.h"
 #include "content/browser/renderer_host/frame_tree_node.h"
 #include "content/browser/renderer_host/navigation_controller_impl.h"
+#include "content/browser/renderer_host/navigation_entry_impl.h"
 #include "content/browser/renderer_host/navigation_request_info.h"
 #include "content/browser/renderer_host/navigation_state_keep_alive.h"
 #include "content/browser/renderer_host/navigator.h"
@@ -824,8 +827,8 @@ bool IsOptedInFencedFrame(const net::HttpResponseHeaders& http_headers) {
   network::mojom::SupportsLoadingModePtr result =
       network::ParseSupportsLoadingMode(http_headers);
   return !result.is_null() &&
-         base::Contains(result->supported_modes,
-                        network::mojom::LoadingMode::kFencedFrame);
+         std::ranges::contains(result->supported_modes,
+                               network::mojom::LoadingMode::kFencedFrame);
 }
 
 // If there are any "Origin-Trial" headers on the |response|, persist those
@@ -2870,6 +2873,22 @@ void NavigationRequest::BeginNavigationImpl() {
         network::URLLoaderCompletionStatus(net::ERR_ABORTED);
     error_navigation_trigger_ =
         ErrorNavigationTrigger::kCredentialedSubresourceBlocked;
+    OnRequestFailedInternal(completion_status, false /* skip_throttles  */,
+                            std::nullopt /* error_page_content */,
+                            false /* collapse_frame */);
+
+    // DO NOT ADD CODE after this. The previous call to OnRequestFailedInternal
+    // has destroyed the NavigationRequest.
+    return;
+  }
+
+  // Connection Allowlist: check whether navigation to the url is allowed.
+  if (!IsAllowedByConnectionAllowlist()) {
+    // Create a navigation handle so that the correct error code can be set on
+    // it by OnRequestFailedInternal().
+    StartNavigation();
+    auto completion_status =
+        network::URLLoaderCompletionStatus(net::ERR_NETWORK_ACCESS_REVOKED);
     OnRequestFailedInternal(completion_status, false /* skip_throttles  */,
                             std::nullopt /* error_page_content */,
                             false /* collapse_frame */);
@@ -6057,6 +6076,7 @@ void NavigationRequest::OnFailureChecksComplete(
 void NavigationRequest::OnWillProcessResponseChecksComplete(
     NavigationThrottle::ThrottleCheckResult result) {
   DCHECK(result.action() != NavigationThrottle::DEFER);
+  base::WeakPtr<NavigationRequest> this_ptr(weak_factory_.GetWeakPtr());
 
   // If the NavigationThrottles allowed the navigation to continue, have the
   // processing of the response resume in the network stack.
@@ -6124,6 +6144,9 @@ void NavigationRequest::OnWillProcessResponseChecksComplete(
           ssl_info_.has_value() ? ssl_info_->cert_status : 0,
           frame_tree_node_->frame_tree_node_id(),
           from_download_cross_origin_redirect_);
+      if (!this_ptr) {
+        return;
+      }
 
       auto completion_status =
           network::URLLoaderCompletionStatus(net::ERR_ABORTED);
@@ -7252,6 +7275,85 @@ void NavigationRequest::UpdateSiteInfo(
   SetExpectedProcess(post_redirect_process);
 }
 
+bool NavigationRequest::IsAllowedByConnectionAllowlist() {
+  if (!base::FeatureList::IsEnabled(network::features::kConnectionAllowlists)) {
+    return true;
+  }
+
+  // Determine the PolicyContainerPolicies to use based on navigation type.
+  const PolicyContainerPolicies* policies = nullptr;
+
+  // If it is renderer-initiated, initiator_frame_token_ will be set and
+  // connection allowlist should be checked.
+  // TODO(crbug.com/447954811): If it is renderer-initiated and a
+  // history navigation, it is not currently checked.
+  // To be fixed based on the resolution of
+  // https://github.com/WICG/connection-allowlists/issues/4
+  // TODO(crbug.com/475251663) Also, if the resolution is to fail as per
+  // connection allowlist, then the crash in this issue needs to be fixed.
+  if (!initiator_frame_token_ || IsHistory()) {
+    return true;
+  }
+
+  RenderFrameHostImpl* initiator_rfh = RenderFrameHostImpl::FromFrameToken(
+      initiator_process_id_, *initiator_frame_token_);
+
+  // The feature currently does not impact fenced frames.
+  // TODO(crbug.com/447954811): Revisit this if the feature needs to be
+  // enabled and fenced frames need to be supported.
+  if (initiator_rfh && initiator_rfh->IsNestedWithinFencedFrame()) {
+    return true;
+  }
+
+  PolicyContainerHost* initiator_policy_container_host = nullptr;
+  if (initiator_rfh) {
+    // Get policy from the initiator_rfh
+    initiator_policy_container_host = initiator_rfh->policy_container_host();
+  } else {
+    // Get policy from the NavigationStateKeepAlive
+    auto* storage_partition =
+        frame_tree_node_->current_frame_host()->GetStoragePartition();
+    NavigationStateKeepAlive* navigation_state =
+        storage_partition->GetNavigationStateKeepAlive(*initiator_frame_token_);
+    if (navigation_state) {
+      initiator_policy_container_host =
+          navigation_state->policy_container_host();
+    }
+  }
+  if (initiator_policy_container_host) {
+    policies = &initiator_policy_container_host->policies();
+  }
+
+  if (!policies || !policies->connection_allowlists.enforced) {
+    return true;
+  }
+
+  for (const auto& url_string :
+       policies->connection_allowlists.enforced->allowlist) {
+    auto matcher = url_pattern::SimpleUrlPatternMatcher::Create(
+        url_string, /*base_url=*/nullptr);
+    if (!matcher.has_value()) {
+      // TODO(crbug.com/447954811): This case should result in an issue
+      // delivered to the devtools console (and ideally we'd avoid it
+      // entirely by parsing these strings as URL Patterns when initially
+      // parsing the header rather than here when enforcing it).
+      continue;
+    }
+    if (matcher.value()->Match(common_params_->url)) {
+      return true;
+    }
+  }
+
+  // TODO(crbug.com/447954811): If the scheme is local as returned from
+  // `IsURLHandledByNetworkStack(common_params_->url)`, we could theoretically
+  // allow it since it doesn't go to the network and it inherits the policy
+  // of the initiator, but it currently doesn't work as the connection
+  // allowlist is not applied to its subresource fetches because the
+  // CommitDeferringConditions don't get invoked. Fix this.
+
+  return false;
+}
+
 bool NavigationRequest::IsAllowedByCSPDirective(
     const std::vector<network::mojom::ContentSecurityPolicyPtr>& policies,
     network::CSPContext* context,
@@ -7994,6 +8096,7 @@ void NavigationRequest::OnWillProcessResponseProcessed(
   DCHECK_NE(NavigationThrottle::BLOCK_REQUEST, result.action());
   DCHECK_NE(NavigationThrottle::BLOCK_REQUEST_AND_COLLAPSE, result.action());
   DCHECK(processing_navigation_throttle_);
+  base::WeakPtr<NavigationRequest> this_ptr(weak_factory_.GetWeakPtr());
   processing_navigation_throttle_ = false;
   if (result.action() != NavigationThrottle::PROCEED) {
     SetState(CANCELING);
@@ -8003,8 +8106,9 @@ void NavigationRequest::OnWillProcessResponseProcessed(
       std::move(complete_callback_for_testing_).Run(result)) {
     return;
   }
-  OnWillProcessResponseChecksComplete(result);
-
+  if (this_ptr) {
+    OnWillProcessResponseChecksComplete(result);
+  }
   // DO NOT ADD CODE AFTER THIS, as the NavigationRequest might have been
   // deleted by the previous calls.
 }

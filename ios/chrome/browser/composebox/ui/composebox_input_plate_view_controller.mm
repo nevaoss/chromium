@@ -62,7 +62,8 @@ const CGFloat kCarouselHeight = 44.0f;
 /// The height of the AIM mode button.
 const CGFloat kAIMButtonHeight = 36.0f;
 /// The width of the AIM mode button.
-const CGFloat kAIMButtonWidth = 122.0f;
+const CGFloat kAIMButtonDisabledWidth = 108.0f;
+const CGFloat kAIMButtonEnabledWidth = 122.0f;
 /// The spacing for the horizontal buttons stack view.
 const CGFloat kButtonsCompactSpacing = 4.0f;
 const CGFloat kButtonsStackViewSpacing = 6.0f;
@@ -966,7 +967,6 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
   }
 
   UIButtonConfiguration* config = _aimButton.configuration;
-  self.aimButtonWidthConstraint.constant = kAIMButtonWidth;
 
   if (self.AIModeEnabled) {
     config.contentInsets = NSDirectionalEdgeInsetsMake(5, 8, 5, 22);
@@ -976,6 +976,7 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
     _aimButton.layer.borderWidth = 0;
     _aimButton.accessibilityLabel = l10n_util::GetNSString(
         IDS_IOS_COMPOSEBOX_AIM_BUTTON_DISABLE_ACTION_ACCESSIBILITY_LABEL);
+    self.aimButtonWidthConstraint.constant = kAIMButtonEnabledWidth;
   } else {
     config.contentInsets = NSDirectionalEdgeInsetsMake(5, 8, 5, 8);
     config.background.backgroundColor =
@@ -986,6 +987,7 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
         [_theme aimButtonBorderColorWithAIMEnabled:NO].CGColor;
     _aimButton.accessibilityLabel = l10n_util::GetNSString(
         IDS_IOS_COMPOSEBOX_AIM_BUTTON_ENABLE_ACTION_ACCESSIBILITY_LABEL);
+    self.aimButtonWidthConstraint.constant = kAIMButtonDisabledWidth;
   }
 
   _aimButton.configuration = config;
@@ -1141,18 +1143,9 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
       [ExtendedTouchTargetButton buttonWithType:UIButtonTypeSystem];
   sendButton.configuration = buttonConfig;
 
-  __weak ComposeboxTheme* theme = _theme;
+  __weak __typeof(self) weakSelf = self;
   sendButton.configurationUpdateHandler = ^(UIButton* button) {
-    UIButtonConfiguration* updatedConfig = button.configuration;
-    BOOL isHighlighted = button.state == UIControlStateHighlighted;
-    updatedConfig.image = SendButtonImage(isHighlighted, theme);
-    button.configuration = updatedConfig;
-    CGFloat scale = isHighlighted ? 0.95 : 1.0;
-    [UIView animateWithDuration:0.1
-                     animations:^{
-                       button.transform =
-                           CGAffineTransformMakeScale(scale, scale);
-                     }];
+    [weakSelf sendButtonDidUpdateConfiguration];
   };
   sendButton.accessibilityIdentifier =
       kComposeboxSendButtonAccessibilityIdentifier;
@@ -1165,6 +1158,21 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
   AddSizeConstraints(sendButton,
                      CGSizeMake(kSendButtonDimension, kSendButtonDimension));
   return sendButton;
+}
+
+// Called when the configuration of the send button is updated.
+- (void)sendButtonDidUpdateConfiguration {
+  UIButtonConfiguration* updatedConfig = _sendButton.configuration;
+  BOOL isHighlighted = _sendButton.state == UIControlStateHighlighted;
+  updatedConfig.image = SendButtonImage(isHighlighted, _theme);
+  _sendButton.configuration = updatedConfig;
+  CGFloat scale = isHighlighted ? 0.95 : 1.0;
+  __weak UIButton* weakSendButton = _sendButton;
+  [UIView animateWithDuration:0.1
+                   animations:^{
+                     weakSendButton.transform =
+                         CGAffineTransformMakeScale(scale, scale);
+                   }];
 }
 
 /// Returns the microphone button.
@@ -1243,8 +1251,8 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
 
   [_aimButton.heightAnchor constraintEqualToConstant:kAIMButtonHeight].active =
       YES;
-  self.aimButtonWidthConstraint =
-      [_aimButton.widthAnchor constraintEqualToConstant:kAIMButtonWidth];
+  self.aimButtonWidthConstraint = [_aimButton.widthAnchor
+      constraintEqualToConstant:kAIMButtonDisabledWidth];
   self.aimButtonWidthConstraint.active = YES;
 
   // Horizontal stack view for buttons

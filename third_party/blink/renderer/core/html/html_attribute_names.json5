@@ -383,6 +383,8 @@
     "target",
     "text",
     "title",
+    "tooldescription",
+    "toolname",
     "topmargin",
     "translate",
     "truespeed",

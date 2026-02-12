@@ -785,6 +785,11 @@ def main():
 
   global CLANG_REVISION, PACKAGE_VERSION, LLVM_BUILD_DIR, STAMP_FILE, FORCE_HEAD_REVISION_FILE
 
+  # TODO(crbug.com/475255730): Remove in next Clang roll.
+  if args.llvm_force_head_revision:
+    global RELEASE_VERSION
+    RELEASE_VERSION = '23'
+
   if (args.pgo or args.thinlto) and not args.bootstrap:
     print('--pgo/--thinlto requires --bootstrap')
     return 1
@@ -1050,6 +1055,13 @@ def main():
     lit_excludes += [
         # TODO(https://crbug.com/404547503): fix and re-enable
         '^.*Profile-x86_64.*ContinuousSyncMode/online-merging-windows.c$',
+    ]
+  if not sys.platform.startswith('linux'):
+    lit_excludes += [
+        # TODO(https://crbug.com/474402846): fix and re-enable
+        '^Builtins-.*ctor_dtor.c$',
+        '^Builtins-.*dso_handle.cpp$',
+        '^Builtins-i386-windows.*$',
     ]
 
   test_env = os.environ.copy()

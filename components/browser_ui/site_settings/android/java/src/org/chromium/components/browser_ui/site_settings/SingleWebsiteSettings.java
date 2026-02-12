@@ -712,7 +712,10 @@ public class SingleWebsiteSettings extends BaseSiteSettingsFragment
             fragmentArgs.putSerializable(EXTRA_SITE, mSite);
             getSettingsNavigation()
                     .startSettings(
-                            getActivity(), LocationPermissionSubpageSettings.class, fragmentArgs);
+                            getActivity(),
+                            LocationPermissionSubpageSettings.class,
+                            fragmentArgs,
+                            /* addToBackStack= */ true);
         } else if (mWebsiteSettingsObserver != null) {
             mWebsiteSettingsObserver.onLocationPermissionSubpageClicked();
         } else {
@@ -873,14 +876,6 @@ public class SingleWebsiteSettings extends BaseSiteSettingsFragment
                     view -> {
                         if (mWebsiteSettingsObserver != null) {
                             mWebsiteSettingsObserver.onNotificationSubscribeClicked();
-                        }
-
-                        // Reset the requested permission state to false, as the permission has
-                        // been granted and is not longer in request.
-                        mHasRequestedNotificationsPermission = false;
-
-                        if (mSite != null) {
-                            displaySitePermissions();
                         }
                     });
             return;

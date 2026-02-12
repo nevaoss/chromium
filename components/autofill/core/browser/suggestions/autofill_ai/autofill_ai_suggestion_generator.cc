@@ -69,7 +69,7 @@ std::u16string GetEntitySuggestionMainText(
           trigger_attribute.type().entity_type()),
       client.GetAppLocale(), trigger_field.field->format_string());
   if (should_obfuscate_main_text) {
-    main_text = GetObfuscatedValue(main_text);
+    main_text = GetObfuscatedValue(main_text, /*visible_suffix_length=*/4);
   }
   return main_text;
 }
@@ -79,9 +79,9 @@ std::u16string GetEntitySuggestionMainText(
 // Note that an AutofillField may have multiple AttributeTypes of distinct
 // EntityTypes assigned. That is, it may happen that both of the following are
 // true:
-//   base::Contains(assignment.Find(EntityType(kVehicle)),
+//   std::ranges::contains(assignment.Find(EntityType(kVehicle)),
 //                  {field, AttributeType(kVehicleOwner));
-//   base::Contains(assignment.Find(EntityType(kDriversLicense)),
+//   std::ranges::contains(assignment.Find(EntityType(kDriversLicense)),
 //                  {field, AttributeType(kDriversLicenseName));
 class AttributeTypeAssignment {
  public:

@@ -14,17 +14,17 @@ import android.os.Handler;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
+import android.transition.AutoTransition;
+import android.transition.TransitionManager;
 import android.view.Gravity;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewGroup.LayoutParams;
 import android.widget.EditText;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.DimenRes;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.ActionMenuView;
 import androidx.appcompat.widget.Toolbar;
@@ -43,6 +43,7 @@ import org.chromium.base.ui.KeyboardUtils;
 import org.chromium.build.annotations.EnsuresNonNull;
 import org.chromium.build.annotations.Initializer;
 import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.accessibility.settings.ChromeAccessibilitySettingsDelegate;
 import org.chromium.chrome.browser.feedback.HelpAndFeedbackLauncherImpl;
@@ -59,6 +60,7 @@ import org.chromium.components.browser_ui.site_settings.SiteSettings;
 import org.chromium.components.browser_ui.widget.containment.ContainmentItemDecoration;
 import org.chromium.components.browser_ui.widget.displaystyle.UiConfig;
 import org.chromium.components.browser_ui.widget.displaystyle.ViewResizer;
+import org.chromium.components.browser_ui.widget.displaystyle.ViewResizerUtil;
 import org.chromium.components.browser_ui.widget.highlight.ViewHighlighter;
 import org.chromium.components.browser_ui.widget.highlight.ViewHighlighter.HighlightParams;
 import org.chromium.components.browser_ui.widget.highlight.ViewHighlighter.HighlightShape;
@@ -236,13 +238,14 @@ public class SettingsSearchCoordinator implements MultiColumnSettings.Observer {
 
         queryEdit.setText("");
         clearFragment(R.drawable.settings_zero_state, /* addToBackStack= */ false, emptyRunnable());
+        KeyboardUtils.showKeyboard(queryEdit);
     }
 
     private void initializeMultiColumnSearchUi() {
         assert mMultiColumnSettings != null;
         if (mMultiColumnSettings == null) return;
 
-        updateMultiColumnSearchUi();
+        updateSearchUiWidth();
 
         // Determine the search bar visibility.
         View searchBox = mActivity.findViewById(R.id.search_box);
@@ -250,18 +253,20 @@ public class SettingsSearchCoordinator implements MultiColumnSettings.Observer {
                 () -> {
                     searchBox.setVisibility(isShowingMainSettings() ? View.VISIBLE : View.GONE);
                 });
+
+        // Controls search UI visibility in single-column mode.
         mMultiColumnSettings
                 .getSlidingPaneLayout()
                 .addPanelSlideListener(
                         new SlidingPaneLayout.SimplePanelSlideListener() {
                             @Override
                             public void onPanelOpened(View panel) {
-                                searchBox.setVisibility(View.GONE);
+                                showUiInSingleColumn(searchBox, /* show= */ false);
                             }
 
                             @Override
                             public void onPanelClosed(View panel) {
-                                searchBox.setVisibility(View.VISIBLE);
+                                showUiInSingleColumn(searchBox, /* show= */ true);
                             }
                         });
 
@@ -272,10 +277,18 @@ public class SettingsSearchCoordinator implements MultiColumnSettings.Observer {
                         new FragmentManager.FragmentLifecycleCallbacks() {
                             @Override
                             public void onFragmentResumed(FragmentManager fm, Fragment f) {
-                                updateMultiColumnSearchUi();
+                                updateSearchUiWidth();
                             }
                         },
                         false);
+    }
+
+    private void showUiInSingleColumn(View searchBox, boolean show) {
+        if (mUseMultiColumn) return;
+
+        TransitionManager.beginDelayedTransition(
+                (ViewGroup) searchBox.getParent(), new AutoTransition());
+        searchBox.setVisibility(show ? View.VISIBLE : View.GONE);
     }
 
     private boolean isShowingMainSettings() {
@@ -416,6 +429,8 @@ public class SettingsSearchCoordinator implements MultiColumnSettings.Observer {
         if (mUseMultiColumn) {
             int stackCount = getSettingsFragmentManager().getBackStackEntryCount();
             mUpdateFirstVisibleTitle.onResult(stackCount + 1);
+        } else {
+            updateSingleColumnSearchUiWidth();
         }
     }
 
@@ -534,7 +549,7 @@ public class SettingsSearchCoordinator implements MultiColumnSettings.Observer {
     }
 
     // Update search UI width/location when multi-column settings fragment is enabled.
-    private void updateMultiColumnSearchUi() {
+    private void updateSearchUiWidth() {
         assert mMultiColumnSettings != null;
         if (mMultiColumnSettings == null) return;
 
@@ -546,7 +561,7 @@ public class SettingsSearchCoordinator implements MultiColumnSettings.Observer {
             View menuView = getHelpMenuView();
             int detailPaneWidth = mActivity.findViewById(R.id.preferences_detail).getWidth();
             if (detailPaneWidth == 0 || menuView == null) {
-                mHandler.post(this::updateMultiColumnSearchUi);
+                mHandler.post(this::updateSearchUiWidth);
                 return;
             }
             int width = detailPaneWidth - settingsMargin * 2 - menuView.getWidth();
@@ -560,8 +575,7 @@ public class SettingsSearchCoordinator implements MultiColumnSettings.Observer {
 
             showBackIcon = true;
         } else {
-            updateView(searchBox, settingsMargin, settingsMargin, LayoutParams.MATCH_PARENT);
-            updateView(query, settingsMargin, settingsMargin, LayoutParams.MATCH_PARENT);
+            updateSingleColumnSearchUiWidth();
         }
         assumeNonNull(mActivity.getSupportActionBar()).setDisplayHomeAsUpEnabled(showBackIcon);
     }
@@ -574,8 +588,27 @@ public class SettingsSearchCoordinator implements MultiColumnSettings.Observer {
         view.setLayoutParams(lp);
     }
 
+    private void updateSingleColumnSearchUiWidth() {
+        int appBarWidth = mActivity.findViewById(R.id.app_bar_layout).getWidth();
+        View searchBox = mActivity.findViewById(R.id.search_box);
+        View query = mActivity.findViewById(R.id.search_query_container);
+
+        int minWidePadding = getPixelSize(R.dimen.settings_wide_display_min_padding);
+        int padding =
+                ViewResizerUtil.computePaddingForWideDisplay(mActivity, searchBox, minWidePadding);
+        int settingsMargin = padding;
+        if (padding > minWidePadding) settingsMargin += getPixelSize(R.dimen.settings_item_margin);
+
+        int searchBoxWidth = appBarWidth - settingsMargin * 2;
+        int queryWidth = searchBoxWidth - assumeNonNull(getHelpMenuView()).getWidth();
+        updateView(searchBox, settingsMargin, settingsMargin, searchBoxWidth);
+        updateView(query, settingsMargin, settingsMargin, queryWidth);
+    }
+
     /** Show/hide search bar UI. */
     public void showSearchBar(boolean show) {
+        if (!mUseMultiColumn) return;
+
         View searchBox = mActivity.findViewById(R.id.search_box);
         searchBox.setVisibility(show ? View.VISIBLE : View.GONE);
     }
@@ -597,7 +630,7 @@ public class SettingsSearchCoordinator implements MultiColumnSettings.Observer {
         if (useMultiColumn == mUseMultiColumn) {
             // Resizing/rotation could only change the window width. Adjust search bar UI in
             // response to the header/detail pane width.
-            if (mUseMultiColumn) updateMultiColumnSearchUi();
+            updateSearchUiWidth();
             return;
         }
 
@@ -610,7 +643,7 @@ public class SettingsSearchCoordinator implements MultiColumnSettings.Observer {
             mHandler.post(
                     () -> {
                         switchSearchUiLayout();
-                        updateMultiColumnSearchUi();
+                        updateSearchUiWidth();
                     });
         } else {
             assumeNonNull(mBoxUiConfig).updateDisplayStyle();
@@ -822,9 +855,7 @@ public class SettingsSearchCoordinator implements MultiColumnSettings.Observer {
                         new FragmentManager.FragmentLifecycleCallbacks() {
                             @Override
                             public void onFragmentAttached(
-                                    @NonNull FragmentManager fm,
-                                    @NonNull Fragment f,
-                                    @NonNull Context context) {
+                                    FragmentManager fm, Fragment f, Context context) {
                                 mHandler.post(() -> scrollAndHighlightItem(pf, key));
                                 fm.unregisterFragmentLifecycleCallbacks(this);
                             }
@@ -879,7 +910,7 @@ public class SettingsSearchCoordinator implements MultiColumnSettings.Observer {
         listView.addOnChildAttachStateChangeListener(
                 new RecyclerView.OnChildAttachStateChangeListener() {
                     @Override
-                    public void onChildViewAttachedToWindow(@NonNull View view) {
+                    public void onChildViewAttachedToWindow(View view) {
                         // |attach| events for a preference view may be invoked multiple times,
                         // intertwined with |detach| in close succession. We should use the last
                         // event to highlight the corresponding preference view. The listener
@@ -900,13 +931,15 @@ public class SettingsSearchCoordinator implements MultiColumnSettings.Observer {
                     }
 
                     @Override
-                    public void onChildViewDetachedFromWindow(@NonNull View view) {}
+                    public void onChildViewDetachedFromWindow(View view) {}
                 });
         scrollToPref(fragment, key);
     }
 
     private void scrollAndHighlightDynamicPref(PreferenceFragmentCompat fragment, String key) {
         RecyclerView listView = fragment.getListView();
+        if (listView == null) return;
+
         var listAdapter = (PreferencePositionCallback) listView.getAdapter();
         int pos = assumeNonNull(listAdapter).getPreferenceAdapterPosition(key);
         var viewHolder = listView.findViewHolderForAdapterPosition(pos);
@@ -933,17 +966,28 @@ public class SettingsSearchCoordinator implements MultiColumnSettings.Observer {
         listView.addOnScrollListener(
                 new RecyclerView.OnScrollListener() {
                     @Override
-                    public void onScrollStateChanged(
-                            @NonNull RecyclerView recyclerView, int newState) {}
+                    public void onScrollStateChanged(RecyclerView recyclerView, int newState) {}
 
                     @Override
-                    public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                    public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
                         fragment.scrollToPreference(key);
                         if (mTurnOffHighlight != null) {
                             mTurnOffHighlight.run();
                             mTurnOffHighlight = null;
                             listView.removeOnScrollListener(this);
                         }
+                    }
+                });
+        listView.addOnItemTouchListener(
+                new RecyclerView.SimpleOnItemTouchListener() {
+                    @Override
+                    public boolean onInterceptTouchEvent(RecyclerView recyclerView, MotionEvent e) {
+                        if (mTurnOffHighlight != null) {
+                            mTurnOffHighlight.run();
+                            mTurnOffHighlight = null;
+                            listView.removeOnItemTouchListener(this);
+                        }
+                        return false;
                     }
                 });
     }
@@ -967,5 +1011,6 @@ public class SettingsSearchCoordinator implements MultiColumnSettings.Observer {
         if (mIndexData != null) {
             SettingsIndexData.reset();
         }
+        mHandler.removeCallbacksAndMessages(null);
     }
 }

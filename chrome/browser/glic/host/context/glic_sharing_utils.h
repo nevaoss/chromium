@@ -9,11 +9,8 @@
 #include "base/scoped_observation.h"
 #include "build/build_config.h"
 #include "chrome/browser/glic/public/context/glic_sharing_manager.h"
-#include "components/tabs/public/tab_interface.h"
-
-#if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/ui/browser_window/public/browser_collection_observer.h"
-#endif
+#include "components/tabs/public/tab_interface.h"
 
 class BrowserWindowInterface;
 class BrowserCollection;
@@ -98,6 +95,24 @@ class GlicActiveTabForProfileTracker : public BrowserCollectionObserver {
       browser_collection_observation_{this};
 
   raw_ptr<Profile> profile_;
+};
+#else
+// NEEDS_ANDROID_IMPL: this is a temporary stub.
+
+class GlicActiveTabForProfileTracker {
+ public:
+  explicit GlicActiveTabForProfileTracker(Profile* profile);
+  ~GlicActiveTabForProfileTracker();
+
+  base::CallbackListSubscription AddActiveTabChangedCallback(
+      base::RepeatingCallback<void(tabs::TabInterface* tab)> callback) {
+    return active_tab_changed_callback_list_.Add(std::move(callback));
+  }
+  tabs::TabInterface* GetActiveTab() const { return nullptr; }
+
+ private:
+  base::RepeatingCallbackList<void(tabs::TabInterface* tab)>
+      active_tab_changed_callback_list_;
 };
 #endif
 

@@ -131,6 +131,9 @@ class MockPage : public read_anything::mojom::UntrustedPage {
 #else
   MOCK_METHOD(void, OnTtsEngineInstalled, ());
 #endif
+  MOCK_METHOD(void,
+              UpdateContent,
+              (const std::string& title, const std::string& content));
 
   mojo::Receiver<read_anything::mojom::UntrustedPage> receiver_{this};
 };
@@ -556,7 +559,7 @@ IN_PROC_BROWSER_TEST_P(ReadAnythingUntrustedPageHandlerTest,
                        Destructor_LogsLineFocus) {
   base::HistogramTester histogram_tester;
   const read_anything::mojom::LineFocus kLineFocus =
-      read_anything::mojom::LineFocus::kWindow1;
+      read_anything::mojom::LineFocus::kSmallCursorWindow;
   handler_ = CreateHandler();
   handler_->OnLineFocusChanged(kLineFocus);
 
@@ -647,7 +650,7 @@ IN_PROC_BROWSER_TEST_P(ReadAnythingUntrustedPageHandlerTest,
 IN_PROC_BROWSER_TEST_P(ReadAnythingUntrustedPageHandlerTest,
                        OnLineFocusChanged) {
   const read_anything::mojom::LineFocus kLineFocus1 =
-      read_anything::mojom::LineFocus::kWindow1;
+      read_anything::mojom::LineFocus::kSmallCursorWindow;
   const read_anything::mojom::LineFocus kLineFocus2 =
       read_anything::mojom::LineFocus::kOff;
   handler_ = CreateHandler();

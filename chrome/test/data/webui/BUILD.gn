@@ -46,7 +46,6 @@ source_set("browser_tests") {
       "actor_overlay/actor_overlay_browsertest.cc",
       "bookmarks/bookmarks_browsertest.cc",
       "chrome_timeticks_browsertest.cc",
-      "commerce/product_specifications/product_specifications_browsertest.cc",
       "contextual_tasks/contextual_tasks_browsertest.cc",
       "cr_components/cr_components_browsertest.cc",
       "css/css_browsertest.cc",
@@ -138,7 +137,7 @@ source_set("browser_tests") {
     sources += [ "certificate_manager/certificate_manager_browsertest.cc" ]
   }
 
-  if (enable_glic) {
+  if (enable_glic && !is_android) {
     sources += [ "glic/glic_browsertest.cc" ]
     deps += [ "//chrome/browser/glic/test_support" ]
   }
@@ -304,6 +303,12 @@ source_set("browser_tests") {
     deps += [
       "//chrome/browser/ui/toasts",
       "//chrome/browser/ui/webui/signin:signin_utils",
+    ]
+  }
+
+  if (is_mac) {
+    sources += [
+      "unexportable_keys_internals/unexportable_keys_internals_browsertest.cc",
     ]
   }
 }
@@ -545,7 +550,6 @@ generate_grd("build_grd") {
       "access_code_cast:build_grdp",
       "actor_overlay:build_grdp",
       "bookmarks:build_grdp",
-      "commerce/product_specifications:build_grdp",
       "contextual_tasks:build_grdp",
       "cr_components:build_grdp",
       "cr_components/composebox:build_grdp",
@@ -601,7 +605,6 @@ generate_grd("build_grd") {
       "$target_gen_dir/actor_overlay/resources.grdp",
       "$target_gen_dir/webview/resources.grdp",
       "$target_gen_dir/bookmarks/resources.grdp",
-      "$target_gen_dir/commerce/product_specifications/resources.grdp",
       "$target_gen_dir/contextual_tasks/resources.grdp",
       "$target_gen_dir/cr_components/resources.grdp",
       "$target_gen_dir/cr_components/cr_shortcut_input/resources.grdp",
@@ -823,6 +826,12 @@ generate_grd("build_grd") {
   if (enable_compose) {
     deps += [ "compose:build_grdp" ]
     grdp_files += [ "$target_gen_dir/compose/resources.grdp" ]
+  }
+
+  if (is_mac) {
+    deps += [ "unexportable_keys_internals:build_grdp" ]
+    grdp_files +=
+        [ "$target_gen_dir/unexportable_keys_internals/resources.grdp" ]
   }
 
   manifest_files =

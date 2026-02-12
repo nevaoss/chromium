@@ -106,6 +106,7 @@
 #include "net/test/embedded_test_server/embedded_test_server.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/common/widget/constants.h"
+#include "third_party/blink/public/mojom/manifest/display_mode.mojom.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "third_party/skia/include/core/SkRect.h"
 #include "ui/base/hit_test.h"
@@ -490,18 +491,6 @@ IN_PROC_BROWSER_TEST_F(WebAppFrameToolbarBrowserTest, TitleHover) {
       3 / 4;
   int narrow_width = helper()->frame_view()->width() -
                      original_title_area_width + narrow_title_width;
-#if BUILDFLAG(IS_MAC)
-  // The 10% adjustment is done from the window edge in the new layout and
-  // therefore will not affect this test.
-  if (!base::FeatureList::IsEnabled(features::kAppBrowserUseNewLayout)) {
-    // Increase width to allow for title padding.
-    // LINT.IfChange(mac_title_padding_width_fraction)
-    static constexpr double kTitlePaddingWidthFraction = 0.1;
-    // LINT.ThenChange(//chrome/browser/ui/views/frame/browser_frame_view_mac.mm:mac_title_padding_width_fraction)
-    narrow_width =
-        base::ClampCeil(narrow_width / (1 - 2 * kTitlePaddingWidthFraction));
-  }
-#endif
   helper()->root_view()->SetSize(gfx::Size(narrow_width, 1000));
 
   EXPECT_GT(window_title->width(), 0);
@@ -722,8 +711,8 @@ class BorderlessIsolatedWebAppBrowserTest
         uses_borderless
             ? web_app::IsolatedWebAppBuilder(
                   web_app::ManifestBuilder()
-                      .SetDisplayModeOverride(
-                          {blink::mojom::DisplayMode::kBorderless})
+                      .SetDisplayModeOverride({web_app::DisplayOverride::Create(
+                          blink::mojom::DisplayMode::kBorderless)})
                       .AddPermissionsPolicy(
                           network::mojom::PermissionsPolicyFeature::
                               kWindowManagement,

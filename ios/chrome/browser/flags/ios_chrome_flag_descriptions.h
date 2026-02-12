@@ -255,9 +255,6 @@ extern const char kCredentialProviderPasskeyPRFDescription[];
 extern const char kCredentialProviderPerformanceImprovementsName[];
 extern const char kCredentialProviderPerformanceImprovementsDescription[];
 
-extern const char kCredentialProviderSignalAPIName[];
-extern const char kCredentialProviderSignalAPIDescription[];
-
 extern const char kDataSharingDebugLogsName[];
 extern const char kDataSharingDebugLogsDescription[];
 
@@ -351,6 +348,9 @@ extern const char kEnableLensInOmniboxCopiedImageDescription[];
 extern const char kEnableLensOverlayName[];
 extern const char kEnableLensOverlayDescription[];
 
+extern const char kEnableNewStartupFlowName[];
+extern const char kEnableNewStartupFlowDescription[];
+
 extern const char kEnableReadingListAccountStorageName[];
 extern const char kEnableReadingListAccountStorageDescription[];
 
@@ -374,9 +374,6 @@ extern const char kFeedBackgroundRefreshDescription[];
 
 extern const char kFeedSwipeInProductHelpName[];
 extern const char kFeedSwipeInProductHelpDescription[];
-
-extern const char kFeedbackIncludeVariationsName[];
-extern const char kFeedbackIncludeVariationsDescription[];
 
 extern const char kForceStartupSigninPromoName[];
 extern const char kForceStartupSigninPromoDescription[];

@@ -71,12 +71,41 @@
 #include "content/public/browser/web_contents_observer.h"
 #include "content/public/browser/web_ui.h"
 #include "content/public/browser/web_ui_data_source.h"
+#include "google_apis/gaia/gaia_constants.h"
 #include "google_apis/gaia/google_service_auth_error.h"
+#include "net/base/backoff_entry.h"
 #include "third_party/lens_server_proto/aim_communication.pb.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/webui/webui_util.h"
 
 namespace {
+
+constexpr net::BackoffEntry::Policy
+    kIgnoreFirstErrorRequestAccessTokenBackoffPolicy = {
+        // Number of initial errors (in sequence) to ignore before applying
+        // exponential back-off rules.
+        1,
+
+        // Initial delay for exponential back-off in ms.
+        2000,
+
+        // Factor by which the waiting time will be multiplied.
+        2,
+
+        // Fuzzing percentage. ex: 10% will spread requests randomly
+        // between 90%-100% of the calculated time.
+        0.2,  // 20%
+
+        // Maximum amount of time we are willing to delay our request in ms.
+        1000 * 60 * 5,  // 5 minutes.
+
+        // Time to keep an entry from being discarded even when it
+        // has no significant state, -1 to never discard.
+        -1,
+
+        // Don't use initial delay unless the last request was an error.
+        false,
+};
 
 // A method to add eligibility booleans for context menu items that are shown
 // based on AIM eligibility.
@@ -118,6 +147,15 @@ std::string GetEncodedHandshakeMessage() {
   std::vector<uint8_t> serialized_message(size);
   message.SerializeToArray(&serialized_message[0], size);
   return base::Base64Encode(serialized_message);
+}
+
+bool IsPrimaryAccount(Profile* profile, const CoreAccountId& account_id) {
+  auto* identity_manager = IdentityManagerFactory::GetForProfile(profile);
+  if (!identity_manager) {
+    return false;
+  }
+  return identity_manager->GetPrimaryAccountId(signin::ConsentLevel::kSignin) ==
+         account_id;
 }
 
 }  // namespace
@@ -168,7 +206,14 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
       contextual_tasks_service_(
           contextual_tasks::ContextualTasksServiceFactory::GetForProfile(
               Profile::FromBrowserContext(
-                  web_ui->GetWebContents()->GetBrowserContext()))) {
+                  web_ui->GetWebContents()->GetBrowserContext()))),
+      request_access_token_backoff_(
+          &kIgnoreFirstErrorRequestAccessTokenBackoffPolicy) {
+  if (auto* identity_manager =
+          IdentityManagerFactory::GetForProfile(Profile::FromWebUI(web_ui))) {
+    identity_manager_observation_.Observe(identity_manager);
+  }
+
   inner_web_contents_creation_observer_ =
       std::make_unique<InnerFrameCreationObvserver>(
           web_ui->GetWebContents(),
@@ -256,6 +301,9 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
       "composeboxShowOnboardingTooltipSessionImpressionCap",
       contextual_tasks::
           GetContextualTasksShowOnboardingTooltipSessionImpressionCap());
+  source->AddInteger(
+      "composeboxShowOnboardingTooltipImpressionDelay",
+      contextual_tasks::GetContextualTasksOnboardingTooltipImpressionDelay());
   source->AddBoolean(
       "isOnboardingTooltipDismissCountBelowCap",
       Profile::FromWebUI(web_ui)->GetPrefs()->GetInteger(
@@ -284,7 +332,7 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
   source->AddBoolean("composeboxShowLensSearchChip", false);
   source->AddBoolean("composeboxShowRecentTabChip", false);
   source->AddBoolean("composeboxShowSubmit", true);
-  source->AddBoolean("composeboxContextDragAndDropEnabled", false);
+  source->AddBoolean("composeboxContextDragAndDropEnabled", true);
   source->AddBoolean(
       "steadyComposeboxShowVoiceSearch",
       contextual_tasks::GetIsExpandedComposeboxVoiceSearchEnabled());
@@ -400,8 +448,24 @@ void ContextualTasksUI::OnOAuthTokenReceived(
   }
   if (error.state() != GoogleServiceAuthError::NONE) {
     page_->SetOAuthToken("");
+
+    // If this is a transient error, retry with exponential backoff.
+    if (error.IsTransientError()) {
+      request_access_token_backoff_.InformOfRequest(false);
+      base::TimeDelta delay =
+          request_access_token_backoff_.GetTimeUntilRelease();
+      if (delay.is_zero()) {
+        RequestOAuthToken();
+      } else {
+        token_refresh_timer_.Start(
+            FROM_HERE, delay,
+            base::BindOnce(&ContextualTasksUI::RequestOAuthToken,
+                           weak_ptr_factory_.GetWeakPtr()));
+      }
+    }
     return;
   }
+  request_access_token_backoff_.Reset();
   page_->SetOAuthToken(access_token_info.token);
 
   if (!access_token_info.expiration_time.is_null()) {
@@ -409,6 +473,13 @@ void ContextualTasksUI::OnOAuthTokenReceived(
         FROM_HERE, access_token_info.expiration_time - base::Time::Now(),
         base::BindOnce(&ContextualTasksUI::RequestOAuthToken,
                        weak_ptr_factory_.GetWeakPtr()));
+  }
+}
+
+void ContextualTasksUI::OnRefreshTokenUpdatedForAccount(
+    const CoreAccountInfo& account_info) {
+  if (IsPrimaryAccount(Profile::FromWebUI(web_ui()), account_info.account_id)) {
+    RequestOAuthToken();
   }
 }
 

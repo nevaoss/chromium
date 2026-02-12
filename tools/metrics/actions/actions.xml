@@ -450,6 +450,8 @@ should be able to be added at any place in this file.
       summary="For Gemini contextual cue chip feature."/>
   <variant name="_iOSGeminiFullscreenPromoFeature"
       summary="For iOSGeminiFullscreenPromoFeature feature"/>
+  <variant name="_iOSGeminiImageRemix"
+      summary="For iOSGeminiImageRemix IPH feature"/>
   <variant name="_iOSHistoryOnOverflowMenuFeature"
       summary="For iOSHistoryOnOverflowMenuFeature feature"/>
   <variant name="_iOSHomepageCustomizationNewBadge"
@@ -477,6 +479,8 @@ should be able to be added at any place in this file.
       summary="For iOSPasswordPromoDesktop feature"/>
   <variant name="_iOSPaymentPromoDesktop"
       summary="For iOSPaymentPromoDesktop feature"/>
+  <variant name="_iOSPinMostVisitedSiteFeature"
+      summary="For iOSPinMostVisitedSiteFeature feature"/>
   <variant name="_iOSPostDefaultAbandonmentPromo"
       summary="For iOSPostDefaultAbandonmentPromo feature"/>
   <variant name="_iOSPromoAllTabs"
@@ -3803,6 +3807,15 @@ should be able to be added at any place in this file.
   <description>User navigated to the Android in-app history page.</description>
 </action>
 
+<action name="Android.BookmarkPage.CopyLink">
+  <owner>wylieb@google.com</owner>
+  <owner>hocheung@chromium.org</owner>
+  <description>
+    User copied a bookmark link on the native Android bookmark page by clicking
+    &quot;copy link&quot; from the per-row overflow menu (non-selection mode).
+  </description>
+</action>
+
 <action name="Android.BookmarkPage.ReadingList.MarkAsRead">
   <owner>wylieb@google.com</owner>
   <owner>chrome-collections@google.com</owner>
@@ -4560,6 +4573,13 @@ should be able to be added at any place in this file.
   <description>User navigated to the native Android history page.</description>
 </action>
 
+<action name="Android.Hub.PaneSwiped">
+  <owner>madhavpruthi@google.com</owner>
+  <description>
+    The user switched to another pane using swipe gesture in the Hub.
+  </description>
+</action>
+
 <action name="Android.LauncherShortcut.NewIncognitoTab">
   <owner>twellington@chromium.org</owner>
   <description>
@@ -4756,6 +4776,13 @@ should be able to be added at any place in this file.
   <description>
     User tapped 'Name window' on the tab strip context menu to name a Chrome
     window.
+  </description>
+</action>
+
+<action name="Android.TabStripMenu.NewTab">
+  <owner>mklw@google.com</owner>
+  <description>
+    User tapped 'New tab' on the tab strip context menu to open a New tab.
   </description>
 </action>
 
@@ -14006,6 +14033,15 @@ should be able to be added at any place in this file.
   <description>Logged if the FRE is accepted.</description>
 </action>
 
+<action name="Glic.Fre.Accept.Onboarding">
+  <owner>tommasin@chromium.org</owner>
+  <owner>zalmashni@google.com</owner>
+  <description>
+    Logged if the Trust First Onboarding flow is accepted. Only recorded for the
+    Trust First Onboarding flow.
+  </description>
+</action>
+
 <action name="Glic.Fre.CheckAuthBeforeShowSync" not_user_triggered="true">
   <owner>birnie@chromium.org</owner>
   <owner>carlosk@chromium.org</owner>
@@ -14064,6 +14100,15 @@ should be able to be added at any place in this file.
   <description>
     User closed the disabled by admin panel in the FRE by clicking the
     confirmation button.
+  </description>
+</action>
+
+<action name="Glic.Fre.Dismissed.Onboarding">
+  <owner>tommasin@chromium.org</owner>
+  <owner>zalmashni@google.com</owner>
+  <description>
+    Logged if the Trust First Onboarding flow is dismissed before completion.
+    Only recorded for the Trust First Onboarding flow.
   </description>
 </action>
 
@@ -14155,6 +14200,15 @@ should be able to be added at any place in this file.
   <description>
     Logged if the glic FRE is shown. Logged as soon as the widget is visible.
     This occurs before the UI is fully loaded.
+  </description>
+</action>
+
+<action name="Glic.Fre.Shown.Onboarding">
+  <owner>tommasin@chromium.org</owner>
+  <owner>zalmashni@google.com</owner>
+  <description>
+    Logged if the Trust First Onboarding flow is shown. Only recorded for the
+    Trust First Onboarding flow.
   </description>
 </action>
 
@@ -43087,6 +43141,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Signin_Impression_FromDevicesPage" not_user_triggered="true">
+  <obsolete>No longer recorded.</obsolete>
   <owner>gogerald@chromium.org</owner>
   <description>
     Recorded when showing sign in entry in the chrome://devices page.
@@ -43112,6 +43167,7 @@ should be able to be added at any place in this file.
 
 <action name="Signin_Impression_FromGoogleServicesSettings"
     not_user_triggered="true">
+  <obsolete>No longer recorded.</obsolete>
   <owner>bsazonov@chromium.org</owner>
   <owner>jlebel@chromium.org</owner>
   <description>
@@ -43120,6 +43176,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Signin_Impression_FromKaleidoscope">
+  <obsolete>No longer recorded.</obsolete>
   <owner>beccahughes@chromium.org</owner>
   <owner>steimel@chromium.org</owner>
   <owner>media-dev@chromium.org</owner>
@@ -43152,6 +43209,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Signin_Impression_FromNTP" not_user_triggered="true">
+  <obsolete>No longer recorded.</obsolete>
   <owner>gogerald@chromium.org</owner>
   <description>
     Recorded when showing sign in entry in the new tab page.
@@ -43295,6 +43353,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Signin_Impression_FromTabSwitcher" not_user_triggered="true">
+  <obsolete>No longer recorded.</obsolete>
   <owner>bzanotti@chromium.org</owner>
   <description>
     Recorded when showing sign in entry in the tab switcher.
@@ -43927,6 +43986,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Signin_Signin_FromDevicesPage">
+  <obsolete>No longer recorded.</obsolete>
   <owner>gogerald@chromium.org</owner>
   <description>
     Recorded on sign in start from access point
@@ -43972,6 +44032,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Signin_Signin_FromEnterpriseSignoutSheet">
+  <obsolete>No longer recorded.</obsolete>
   <owner>ewannpv@chromium.org</owner>
   <owner>jlebel@chromium.org</owner>
   <description>
@@ -44023,6 +44084,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Signin_Signin_FromGoogleServicesSettings">
+  <obsolete>No longer recorded.</obsolete>
   <owner>bsazonov@chromium.org</owner>
   <owner>jlebel@chromium.org</owner>
   <description>
@@ -44103,6 +44165,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Signin_Signin_FromNTP">
+  <obsolete>Removed 01/2026.</obsolete>
   <owner>gogerald@chromium.org</owner>
   <description>
     Recorded on sign in start from access point
@@ -44152,6 +44215,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Signin_Signin_FromNtpIdentityDisc">
+  <obsolete>No longer recorded.</obsolete>
   <owner>treib@chromium.org</owner>
   <description>
     Recorded on signin start from access point
@@ -44325,6 +44389,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Signin_Signin_FromSupervisedUser">
+  <obsolete>No longer recorded.</obsolete>
   <owner>gogerald@chromium.org</owner>
   <description>
     Recorded on sign in start from access point
@@ -44342,6 +44407,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Signin_Signin_FromTabSwitcher">
+  <obsolete>No longer recorded.</obsolete>
   <owner>bzanotti@chromium.org</owner>
   <description>
     Recorded on sign in start from access point
@@ -49413,6 +49479,9 @@ should be able to be added at any place in this file.
     <variant name=".MoveToGroup"
         summary="Recorded when the 'Move to group' option in the context menu
                  is selected."/>
+    <variant name=".MuteSite"
+        summary="Recorded when the 'Mute site' option in the context menu is
+                 selected."/>
     <variant name=".PinTab"
         summary="Recorded when the 'Pin Tab' option in the context menu is
                  selected."/>
@@ -49422,6 +49491,9 @@ should be able to be added at any place in this file.
     <variant name=".ShareTab"
         summary="Recorded when the 'Share' option in the context menu is
                  selected."/>
+    <variant name=".UnmuteSite"
+        summary="Recorded when the 'Unmute site' option in the context menu
+                 is selected."/>
     <variant name=".UnpinTab"
         summary="Recorded when the 'Unpin Tab' option in the context menu is
                  selected."/>

@@ -421,11 +421,6 @@ const char kCredentialProviderPerformanceImprovementsDescription[] =
     "Enables a series of performance improvements for the Credential Provider "
     "Extension.";
 
-const char kCredentialProviderSignalAPIName[] =
-    "Credential Provider Signal API";
-const char kCredentialProviderSignalAPIDescription[] =
-    "Enables signal API for Passkeys in the Credential Provider Extension.";
-
 const char kDataSharingDebugLogsName[] = "Enable data sharing debug logs";
 const char kDataSharingDebugLogsDescription[] =
     "Enables the data sharing infrastructure to log and save debug messages "
@@ -585,6 +580,10 @@ const char kEnableLensInOmniboxCopiedImageDescription[] =
 const char kEnableLensOverlayName[] = "Enable Lens Overlay";
 const char kEnableLensOverlayDescription[] = "Enables lens overlay UI";
 
+const char kEnableNewStartupFlowName[] = "EnableNewStartupFlow";
+const char kEnableNewStartupFlowDescription[] =
+    "Enables the EnableNewStartupFlow feature.";
+
 const char kEnableReadingListAccountStorageName[] =
     "Enable Reading List Account Storage";
 const char kEnableReadingListAccountStorageDescription[] =
@@ -619,10 +618,6 @@ const char kFeedBackgroundRefreshDescription[] =
 const char kFeedSwipeInProductHelpName[] = "Enable Feed Swipe IPH";
 const char kFeedSwipeInProductHelpDescription[] =
     "Presents an in-product help on the NTP to promote swiping on the Feed";
-
-const char kFeedbackIncludeVariationsName[] = "Feedback include variations";
-const char kFeedbackIncludeVariationsDescription[] =
-    "In Chrome feedback report, include commandline variations.";
 
 const char kForceStartupSigninPromoName[] = "Display the startup sign-in promo";
 const char kForceStartupSigninPromoDescription[] =

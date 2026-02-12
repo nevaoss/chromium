@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import type {LineFocus} from './read_anything_types.js';
+import {LineFocusMovement, LineFocusStyle} from './read_anything_types.js';
 
 export class LineFocusModel {
   // The min y position allowed for the line focus element.
@@ -28,10 +28,13 @@ export class LineFocusModel {
   private defaultWindowHeight_: number = 0;
 
   // The current line focus mode.
-  private currentLineFocus_?: LineFocus;
+  private currentLineFocusStyle_: LineFocusStyle = LineFocusStyle.OFF;
+  private currentLineFocusMovement_: LineFocusMovement =
+      LineFocusMovement.STATIC;
   // The last line focus mode that was used when it was on. Used for toggling on
   // line focus with the last used line focus mode.
-  private lastEnabledLineFocus_?: LineFocus;
+  private lastEnabledLineFocusStyle_: LineFocusStyle =
+      LineFocusStyle.defaultValue();
 
   // The index of the current line in textLineBottoms_ being focused. Null if
   // line focus is moving continuously with the mouse instead of discretely.
@@ -41,6 +44,9 @@ export class LineFocusModel {
 
   // Used for logging line focus session scroll distance.
   private lastScrollTop_: number = 0;
+
+  // Whether line focus caused the latest scroll action.
+  private initiatedScroll_: boolean = false;
 
   getMinY(): number {
     return this.minY_;
@@ -90,20 +96,28 @@ export class LineFocusModel {
     this.defaultWindowHeight_ = height;
   }
 
-  getCurrentLineFocus(): LineFocus|null {
-    return this.currentLineFocus_ || null;
+  getCurrentLineFocusStyle(): LineFocusStyle {
+    return this.currentLineFocusStyle_;
   }
 
-  setCurrentLineFocus(lineFocus: LineFocus): void {
-    this.currentLineFocus_ = lineFocus;
+  setCurrentLineFocusStyle(style: LineFocusStyle): void {
+    this.currentLineFocusStyle_ = style;
   }
 
-  getLastEnabledLineFocus(): LineFocus|null {
-    return this.lastEnabledLineFocus_ || null;
+  getCurrentLineFocusMovement(): LineFocusMovement {
+    return this.currentLineFocusMovement_;
   }
 
-  setLastEnabledLineFocus(lineFocus: LineFocus): void {
-    this.lastEnabledLineFocus_ = lineFocus;
+  setCurrentLineFocusMovement(movement: LineFocusMovement): void {
+    this.currentLineFocusMovement_ = movement;
+  }
+
+  getLastEnabledLineFocusStyle(): LineFocusStyle {
+    return this.lastEnabledLineFocusStyle_;
+  }
+
+  setLastEnabledLineFocusStyle(style: LineFocusStyle): void {
+    this.lastEnabledLineFocusStyle_ = style;
   }
 
   getCurrentLineIndex(): number|null {
@@ -128,5 +142,13 @@ export class LineFocusModel {
 
   setLastScrollTop(top: number): void {
     this.lastScrollTop_ = top;
+  }
+
+  getInitiatedScroll(): boolean {
+    return this.initiatedScroll_;
+  }
+
+  setInitiatedScroll(initiated: boolean) {
+    this.initiatedScroll_ = initiated;
   }
 }
