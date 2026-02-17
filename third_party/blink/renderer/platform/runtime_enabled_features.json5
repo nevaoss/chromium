@@ -6276,22 +6276,14 @@
       // crbug.com/435623334.
       name: "XSLTSpecialTrial",
     },
-<<<<<<< HEAD
-    {
-      // If enabled, the `getDisplayMedia()` family of APIs will ask for NV12
-      // frames, which should trigger a zero-copy path in the tab capture code.
-      name: "ZeroCopyTabCapture",
-    }
     ///@name USE_FILESCHEME_CODECACHE
     ///@{
-    ,{
+    {
       name: "LocalResourceCodeCache",
       public: true,
       status: "experimental",
       base_feature: "none",
     }
     ///@}
-=======
->>>>>>> 146.0.7646.0~1
   ],
 }
