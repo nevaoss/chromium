@@ -237,7 +237,6 @@ blink_python_runner("make_deprecation_info") {
   ]
 }
 
-<<<<<<< HEAD
 # TODO(neva_rust): Remove this workaround when Neva supports Rust build.
 if (!disable_rust_for_neva) {
   rust_static_library("xml_ffi") {
@@ -249,25 +248,11 @@ if (!disable_rust_for_neva) {
     ]
     cxx_bindings = [ crate_root ]
     deps = [
+      "//third_party/blink/renderer/platform/wtf",
       "//third_party/rust/cxx/v1:lib",
       "//third_party/rust/xml/v1:lib",
     ]
   }
-=======
-rust_static_library("xml_ffi") {
-  allow_unsafe = true  # Needed for FFI that underpins the `cxx` crate.
-  crate_root = "xml/parser/xml_ffi.rs"
-  sources = [
-    "xml/parser/entities.rs",
-    crate_root,
-  ]
-  cxx_bindings = [ crate_root ]
-  deps = [
-    "//third_party/blink/renderer/platform/wtf",
-    "//third_party/rust/cxx/v1:lib",
-    "//third_party/rust/xml/v1:lib",
-  ]
->>>>>>> 146.0.7646.0~1
 }
 
 component("core") {
