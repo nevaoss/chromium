@@ -7,10 +7,13 @@ import("//testing/test.gni")
 import("//third_party/protobuf/proto_library.gni")
 
 proto_library("proto") {
+  proto_in_dir = "//"
   sources = [
     "proto/google_rpc_code.proto",
     "proto/legion.proto",
   ]
+
+  deps = [ "//components/optimization_guide/proto:optimization_guide_proto" ]
 }
 
 # Generate serialization helper.
@@ -19,7 +22,11 @@ proto_extras("proto_extras") {
     "proto/google_rpc_code.proto",
     "proto/legion.proto",
   ]
+
   deps = [ ":proto" ]
+  extras_deps = [
+    "//components/optimization_guide/proto:optimization_guide_proto_extras",
+  ]
 }
 
 source_set("features") {
@@ -34,9 +41,6 @@ source_set("legion") {
   assert(!is_android,
          "The target //components/legion is not supported on Android.")
   sources = [
-    "attestation_handler.h",
-    "attestation_handler_impl.cc",
-    "attestation_handler_impl.h",
     "client.cc",
     "client.h",
     "client_impl.cc",
@@ -80,7 +84,6 @@ source_set("legion") {
 source_set("unit_tests") {
   testonly = true
   sources = [
-    "attestation_handler_impl_unittest.cc",
     "client_impl_unittest.cc",
     "secure_channel_impl_unittest.cc",
     "secure_session_async_impl_unittest.cc",

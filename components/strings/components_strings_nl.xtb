@@ -435,14 +435,12 @@ Anders wordt dit geblokkeerd door je privacyinstellingen. Hierdoor werkt de cont
 <translation id="1689333818294560261">Bijnaam</translation>
 <translation id="1692622044604477956">Filmladder en bioscoopagenda</translation>
 <translation id="1697430960030447570"><ph name="BEGIN_BOLD" />Hoe je je gegevens kunt beheren:<ph name="END_BOLD" /> Chrome verwijdert automatisch onderwerpen die ouder zijn dan 4 weken. Als je blijft browsen, kan een onderwerp opnieuw in de lijst verschijnen. Je kunt ook onderwerpen blokkeren waarvan je niet wilt dat de Chrome ze deelt met sites, en advertentieonderwerpen op elk moment uitzetten via de Chrome-instellingen.</translation>
-<translation id="1697808683313379647">Google gebruikt informatie van de betaalpagina en andere relevante gegevens om deze opties aan te bieden.</translation>
 <translation id="1699651774646344471">Je kunt nu adressen uit je Google-account gebruiken</translation>
 <translation id="1700542542921501212">Je kunt <ph name="SEARCH_ENGINE_NAME" /> gebruiken om op internet te zoeken.</translation>
 <translation id="1702815194757674443">ROC 16K</translation>
 <translation id="1703835215927279855">Letter</translation>
 <translation id="1705645336613358172">Gebruik Affirm of Zip om gespreid te betalen</translation>
 <translation id="1706625117072057435">Zoomniveaus</translation>
-<translation id="1706922226983368260">Toegangssleutel • <ph name="PHONE_NAME" /></translation>
 <translation id="1706954506755087368">{1,plural, =1{Deze server kan niet bewijzen dat dit <ph name="DOMAIN" /> is. Het bijbehorende beveiligingscertificaat is zogenaamd van morgen. Dit kan worden veroorzaakt door een verkeerde configuratie of een aanvaller die je verbinding onderschept.}other{Deze server kan niet bewijzen dat dit <ph name="DOMAIN" /> is. Het bijbehorende beveiligingscertificaat is zogenaamd van # dagen in de toekomst. Dit kan worden veroorzaakt door een verkeerde configuratie of een aanvaller die je verbinding onderschept.}}</translation>
 <translation id="1710259589646384581">Besturingssysteem</translation>
 <translation id="1711234383449478798">Genegeerd omdat <ph name="POLICY_NAME" /> niet is ingesteld op <ph name="VALUE" />.</translation>
@@ -1133,6 +1131,7 @@ Anders wordt dit geblokkeerd door je privacyinstellingen. Hierdoor werkt de cont
 <translation id="2794629552137076216">Glas (reliëf)</translation>
 <translation id="2799223571221894425">Opnieuw starten</translation>
 <translation id="2799758406651937857">Herenkleding</translation>
+<translation id="2803320044666896137">Deze beleidswaarde wordt genegeerd omdat de gebruiker niet is aangesloten.</translation>
 <translation id="2807052079800581569">Y-positie van afbeelding</translation>
 <translation id="2808278141522721006">Je kunt Windows Hello aan- of uitzetten in <ph name="SETTINGS" /></translation>
 <translation id="2818338148457093657">Schoonheidsservices en spa's</translation>
@@ -1245,7 +1244,6 @@ Anders wordt dit geblokkeerd door je privacyinstellingen. Hierdoor werkt de cont
 <translation id="299122504639061328">Beheer je standaard zoekmachine en Site Search</translation>
 <translation id="2991571918955627853">Je kunt <ph name="SITE" /> momenteel niet bezoeken, omdat de website HSTS gebruikt. Netwerkfouten en aanvallen zijn doorgaans tijdelijk, dus deze pagina werkt later waarschijnlijk correct.</translation>
 <translation id="2991865971341174470">Laat verifiëren dat jij het bent zodat Chrome je betalingsgegevens kan invullen.</translation>
-<translation id="2995010188916335277">Google gebruikt informatie van de betaalpagina en andere relevante gegevens om deze opties aan te bieden. Ga naar <ph name="IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_FOOTNOTE_HIDE_OPTION_PAYMENT_SETTINGS_LINK_TEXT" /> om opties voor later betalen te verbergen in Automatisch invullen.</translation>
 <translation id="2995121550202354573">Gebruiken voor alle gastprofielen</translation>
 <translation id="2995517112308048736">Bestandsgrootte:</translation>
 <translation id="299990983510665749">Hatchbacks</translation>
@@ -1980,6 +1978,7 @@ Je kunt ook contact opnemen met de site-eigenaar en voorstellen dat die upgradet
 <translation id="4152495263075154876">Voortgangsscherm voor Koop nu, betaal later is gesloten.</translation>
 <translation id="4152670763139331043">{NUM_TABS,plural, =1{1 tabblad}other{# tabbladen}}</translation>
 <translation id="4153446078232988116"><ph name="SITE" /> ondersteunt geen beveiligde verbindingen met HTTPS</translation>
+<translation id="4153858337812834972">Meest recente tabbladen</translation>
 <translation id="4154277373259957087">Chrome verifieert nu of jij het bent voordat een betaalmethode wordt ingevuld. Je kunt dit altijd updaten via <ph name="IDS_AUTOFILL_MANDATORY_REAUTH_CONFIRMATION_SETTINGS_LINK" />.</translation>
 <translation id="415440494507469262">Tabblad toevoegen aan vergelijkingstabel</translation>
 <translation id="4159784952369912983">Paars</translation>
@@ -3516,6 +3515,7 @@ Je kunt ook contact opnemen met de site-eigenaar en voorstellen dat die upgradet
 <translation id="6635900375070654124">een authenticatorapparaat</translation>
 <translation id="6641852376826221947">Je aankoop bevestigen</translation>
 <translation id="6643016212128521049">Wissen</translation>
+<translation id="6644868143085860957">Deze kaart kan niet worden opgeslagen in Google Wallet. Deze is opgeslagen in Chrome op dit apparaat.</translation>
 <translation id="6645291930348198241">Toegang krijgen tot cookies en sitegegevens.</translation>
 <translation id="6645478838938543427">Meldingen over prijsdalingen worden naar <ph name="EMAIL_ADDRESS" /> gestuurd</translation>
 <translation id="6648459603387803038">Je beheerder kan je browserinstellingen op afstand wijzigen. Activiteit op dit apparaat kan ook buiten Chrome worden beheerd.</translation>

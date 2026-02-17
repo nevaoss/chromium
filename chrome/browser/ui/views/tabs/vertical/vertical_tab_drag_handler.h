@@ -35,7 +35,7 @@ class VerticalTabDragHandler {
   virtual void EndDrag(EndDragReason reason) = 0;
 
   // Handles tab strip model updates to reflect a drag over a give tab node.
-  virtual void DraggedTabsOverNode(const TabCollectionNode& node) = 0;
+  virtual void HandleDraggedTabsOverNode(const TabCollectionNode& node) = 0;
 
   // Returns the drag context for this handler.
   virtual TabDragContext* GetDragContext() = 0;
@@ -73,7 +73,7 @@ class VerticalTabDragHandlerImpl : public VerticalTabDragHandler,
   bool ContinueDrag(views::View& event_source_view,
                     const ui::MouseEvent& event) override;
   void EndDrag(EndDragReason reason) override;
-  void DraggedTabsOverNode(const TabCollectionNode& node) override;
+  void HandleDraggedTabsOverNode(const TabCollectionNode& node) override;
   TabDragContext* GetDragContext() override;
   bool IsViewDragging(const views::View& view) const override;
 
@@ -88,9 +88,7 @@ class VerticalTabDragHandlerImpl : public VerticalTabDragHandler,
   content::WebContents* GetContentsForTab(TabSlotView* tab) override;
   bool IsTabDetachable(const TabSlotView* view) const override;
   bool IsTabPinned(const TabSlotView* tab) const override;
-  int GetTabCount() const override;
-  int GetPinnedTabCount() const override;
-  TabGroupHeader* GetTabGroupHeader(
+  TabSlotView* GetTabGroupHeader(
       const tab_groups::TabGroupId& group) const override;
   TabStripModel* GetTabStripModel() override;
   TabDragController* GetDragController() override;
@@ -120,6 +118,7 @@ class VerticalTabDragHandlerImpl : public VerticalTabDragHandler,
 
   // Handlers for drag operations over various node types.
   void HandleTabDragOverTab(const TabCollectionNode& node);
+  void HandleTabDragOverSplit(const TabCollectionNode& node);
   void HandleTabDragOverGroup(const TabCollectionNode& node);
   void HandleTabDragOverUnpinnedContainer(const TabCollectionNode& node);
 

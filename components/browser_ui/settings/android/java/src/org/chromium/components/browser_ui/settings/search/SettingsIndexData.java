@@ -106,6 +106,12 @@ public class SettingsIndexData {
         /** Package path name if the entry is Fragment. Otherwise {@code null}. */
         public final @Nullable String fragment;
 
+        /** Key of the preference/fragment to highlight if it is not the same as {@code key}. */
+        public final @Nullable String highlightKey;
+
+        /** Zero-based index of the view to highlight if preference has multiple child views. */
+        public final int subViewPos;
+
         /**
          * Top-level setting entry where this entry belongs, such as Privacy and security, Payment,
          * Languages.
@@ -128,6 +134,8 @@ public class SettingsIndexData {
                 @Nullable String header,
                 @Nullable String summary,
                 @Nullable String fragment,
+                @Nullable String highlightKey,
+                int subViewPos,
                 Bundle extras,
                 String parentFragment,
                 @Nullable String titleNormalized,
@@ -138,6 +146,8 @@ public class SettingsIndexData {
             this.header = header;
             this.summary = summary;
             this.fragment = fragment;
+            this.highlightKey = highlightKey;
+            this.subViewPos = subViewPos;
             this.extras = extras;
             this.parentFragment = parentFragment;
             mTitleNormalized = titleNormalized;
@@ -155,6 +165,8 @@ public class SettingsIndexData {
             private @Nullable String mHeader;
             private @Nullable String mSummary;
             private @Nullable String mFragment;
+            private @Nullable String mHighlightKey;
+            private int mSubViewPos;
             private Bundle mExtras;
             private final String mParentFragment;
 
@@ -187,6 +199,8 @@ public class SettingsIndexData {
                 mHeader = original.header;
                 mSummary = original.summary;
                 mFragment = original.fragment;
+                mHighlightKey = original.highlightKey;
+                mSubViewPos = original.subViewPos;
                 mExtras = original.extras;
                 mParentFragment = original.parentFragment;
             }
@@ -202,12 +216,23 @@ public class SettingsIndexData {
             }
 
             public Builder setSummary(@Nullable String summary) {
-                mSummary = summary;
+                // Removes tags before storing.
+                mSummary = summary != null ? summary.replaceAll("<[^>]*>", "") : summary;
                 return this;
             }
 
             public Builder setFragment(@Nullable String fragment) {
                 mFragment = fragment;
+                return this;
+            }
+
+            public Builder setHighlightKey(String key) {
+                mHighlightKey = key;
+                return this;
+            }
+
+            public Builder setSubViewPos(int viewPos) {
+                mSubViewPos = viewPos;
                 return this;
             }
 
@@ -232,6 +257,8 @@ public class SettingsIndexData {
                         mHeader,
                         mSummary,
                         mFragment,
+                        mHighlightKey,
+                        mSubViewPos,
                         mExtras,
                         mParentFragment,
                         titleNormalized,
@@ -473,7 +500,8 @@ public class SettingsIndexData {
         if (entry == null) {
             throw new IllegalStateException("Existing ID cannot be found: " + id);
         }
-        String summary = ContextUtils.getApplicationContext().getString(summaryId);
+        String summary =
+                summaryId != 0 ? ContextUtils.getApplicationContext().getString(summaryId) : null;
         updateEntry(id, new Entry.Builder(entry).setSummary(summary).build());
     }
 

@@ -41,9 +41,9 @@ class PageContext;
 // A browser agent responsible for presenting the floaty and managing
 // its protocol handlers.
 class BwgBrowserAgent : public BrowserUserData<BwgBrowserAgent>,
-                        FullscreenControllerObserver,
-                        public TabsDependencyInstaller,
-                        public GeminiTabHelperObserver {
+                        public GeminiTabHelperObserver,
+                        public FullscreenControllerObserver,
+                        public TabsDependencyInstaller {
  public:
   BwgBrowserAgent(const BwgBrowserAgent&) = delete;
   BwgBrowserAgent& operator=(const BwgBrowserAgent&) = delete;
@@ -105,8 +105,12 @@ class BwgBrowserAgent : public BrowserUserData<BwgBrowserAgent>,
   // cleaning up the floaty can be done by resetting the Gemini instance.
   void HideFloatyIfInvoked();
 
-  // Show Gemini floaty. Used to re-show an invoked Gemini floaty.
+  // Show Gemini floaty. Used to re-show an invoked Gemini floaty with the
+  // `last_view_state_`.
   void ShowFloatyIfInvoked();
+
+  // Collapses floaty if invoked.
+  void CollapseFloatyIfInvoked();
 
  private:
   explicit BwgBrowserAgent(Browser* browser);
@@ -166,11 +170,19 @@ class BwgBrowserAgent : public BrowserUserData<BwgBrowserAgent>,
                                  CGFloat progress) override;
   void FullscreenWillAnimate(FullscreenController* controller,
                              FullscreenAnimator* animator) override;
+  void FullscreenDidAnimate(FullscreenController* controller,
+                            FullscreenAnimatorStyle style) override;
+  void FullscreenEnabledStateChanged(FullscreenController* controller,
+                                     bool enabled) override;
   void FullscreenControllerWillShutDown(
       FullscreenController* controller) override;
 
   // Returns true if the user has completed the FRE.
   bool HasCompletedFirstRun();
+
+  // Returns the floaty offset from a FullscreenController.
+  CGFloat GetFloatyOffsetFromFullscreenController(
+      FullscreenController* controller);
 
   // The gateway for bridging internal protocols.
   __strong id<BWGGatewayProtocol> bwg_gateway_ = nullptr;
@@ -208,6 +220,11 @@ class BwgBrowserAgent : public BrowserUserData<BwgBrowserAgent>,
   // Whether the floaty is temporarily hidden. Used to hide the floaty without
   // triggering logic related to ending floaty persistence.
   bool is_floaty_temporarily_hidden_ = false;
+
+  // Records when the floaty was last hidden. Prevents the floaty from
+  // reappearing too soon, particularly after a `HideFloatyIfInvoked()` call
+  // during parent/child view transitions.
+  base::TimeTicks floaty_hidden_timestamp_;
 
   // Weak pointer factory.
   base::WeakPtrFactory<BwgBrowserAgent> weak_factory_{this};

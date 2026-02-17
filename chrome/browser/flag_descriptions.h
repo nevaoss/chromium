@@ -575,13 +575,6 @@ inline constexpr char kClearInstanceInfoWhenClosedIntentionallyDescription[] =
     "When enabled, permanently cleanup and remove the browser instance when a "
     "window is explicitly closed by the user (eg: via the Close button).";
 
-inline constexpr char kPermissionPromiseLifetimeModulationName[] =
-    "PermissionPromiseLifetimeModulation";
-inline constexpr char kPermissionPromiseLifetimeModulationDescription[] =
-    "Modulates the lifetime of a permission promise based on the prompt's UI "
-    "treatment. When the prompt is non-prominent, the promise settlement is "
-    "expedited to synchronize with the request manager state.";
-
 inline constexpr char kEnableBenchmarkingName[] = "Enable benchmarking";
 inline constexpr char kEnableBenchmarkingDescription[] =
     "Sets all features to a fixed state; that is, disables randomization for "
@@ -1977,10 +1970,6 @@ inline constexpr char kEnableWebAppPredictableAppUpdatingDescription[] =
     "Enables PWA updates to be more predictable by considering changes in icon "
     "urls specified in the manifest";
 
-inline constexpr char kEnableZeroCopyTabCaptureName[] = "Zero-copy tab capture";
-inline constexpr char kEnableZeroCopyTabCaptureDescription[] =
-    "Enable zero-copy content tab for getDisplayMedia() APIs.";
-
 inline constexpr char kExcludePipFromScreenCaptureName[] =
     "Exclude Picture-in-Picture windows from screen capture";
 inline constexpr char kExcludePipFromScreenCaptureDescription[] =
@@ -2216,12 +2205,6 @@ inline constexpr char kAckCopyOutputRequestEarlyForViewTransitionDescription[] =
     "If enabled, send acks for CopyOutputRequest completion immediately to "
     "unblock navigation for ViewTransitions while CopyOutputRequests are in "
     "progress. This is a fast-path for ViewTransitions.";
-
-inline constexpr char kFluentOverlayScrollbarsName[] =
-    "Fluent Overlay scrollbars.";
-inline constexpr char kFluentOverlayScrollbarsDescription[] =
-    "Stylizes scrollbars with Microsoft Fluent design and makes them overlay "
-    "over the web's content.";
 
 inline constexpr char kFillOnAccountSelectName[] =
     "Fill passwords on account selection";
@@ -2846,19 +2829,6 @@ inline constexpr char kNewEtc1EncoderDescription[] =
     "Enables the new ETC1 encoder implementation for tab and back/forward "
     "thumbnails.";
 
-inline constexpr char kNotebookLmAppPreinstallName[] = "NotebookLM app preload";
-inline constexpr char kNotebookLmAppPreinstallDescription[] =
-    "Preloads the NotebookLM app.";
-
-inline constexpr char kNotebookLmAppShelfPinName[] = "NotebookLM app shelf pin";
-inline constexpr char kNotebookLmAppShelfPinDescription[] =
-    "Pins the NotebookLM app preload to the shelf";
-
-inline constexpr char kNotebookLmAppShelfPinResetName[] =
-    "NotebookLM app shelf pin reset";
-inline constexpr char kNotebookLmAppShelfPinResetDescription[] =
-    "Clears state relating to pinning the NotebookLM app preload to the shelf";
-
 inline constexpr char kNotificationSchedulerName[] = "Notification scheduler";
 inline constexpr char kNotificationSchedulerDescription[] =
     "Enable notification scheduler feature.";
@@ -3287,8 +3257,7 @@ inline constexpr char kOriginKeyedProcessesByDefaultDescription[] =
 
 inline constexpr char kOverlayScrollbarsName[] = "Overlay Scrollbars";
 inline constexpr char kOverlayScrollbarsDescription[] =
-    "Enable the experimental overlay scrollbars implementation. You must also "
-    "enable threaded compositing to have the scrollbars animate.";
+    "Adjust scrollbar style to overlay web content and fade out.";
 
 inline constexpr char kOverlayScrollbarsFlashWhenMouseEnterName[] =
     "Flash Overlay Scrollbars When Mouse Enter";
@@ -3416,10 +3385,11 @@ inline constexpr char kPasswordManagerShowSuggestionsOnAutofocusDescription[] =
     "click on the already focused field if the field was autofocused on "
     "the page load.";
 
-inline constexpr char kPasswordManualFallbackAvailableName[] =
-    "Password manual fallback";
-inline constexpr char kPasswordManualFallbackAvailableDescription[] =
-    "Enables triggering password suggestions through the context menu";
+inline constexpr char kPasswordUploadUiUpdateName[] =
+    "Password Upload UI Update";
+inline constexpr char kPasswordUploadUiUpdateDescription[] =
+    "Adds new entry points for uploading passwords to account storage and "
+    "updates existing ones.";
 
 inline constexpr char kDeduplicateNativePaymentAppsName[] =
     "Enables de-duplication of Payment Request native payment apps";
@@ -3835,6 +3805,20 @@ inline constexpr char kTestThirdPartyCookiePhaseoutName[] =
 inline constexpr char kTestThirdPartyCookiePhaseoutDescription[] =
     "Enable to test third-party cookie phaseout. "
     "Learn more: https://goo.gle/3pcd-flags";
+
+inline constexpr char kTabstripComboButtonFlagId[] = "tabstrip-combo-button";
+inline constexpr char kTabstripComboButtonName[] = "Tabstrip Combo Button";
+inline constexpr char kTabstripComboButtonDescription[] =
+    "Combines tab search and the new tab button into a single combo button. "
+    "Might require tab search toolbar flag to be disabled to take effect in "
+    "specific regions.";
+
+inline constexpr char kLaunchedTabSearchToolbarName[] =
+    "Tab Search Toolbar Button";
+inline constexpr char kLaunchedTabSearchToolbarDescription[] =
+    "Enables tab search button to be in toolbar area. "
+    "Might require enabling the tab strip combo button configuration to also "
+    "match to toolbar in specific regions.";
 
 inline constexpr char kSidePanelRelativeAlignmentName[] =
     "Side Panel Relative Alignment";
@@ -4792,12 +4776,6 @@ inline constexpr char kAndroidAudioDeviceListenerDescription[] =
     "Enables listening to audio device list change events, allowing web apps "
     "to react to audio devices being connected and disconnected.";
 
-inline constexpr char kAndroidAutofillUpdateContextForWebContentsName[] =
-    "Android Autofill updates context for WebContents";
-inline constexpr char kAndroidAutofillUpdateContextForWebContentsDescription[] =
-    "When enabled, the Autofill provider is updated whenever the context of "
-    "the WebContents changes.";
-
 inline constexpr char kAndroidAutoMintedTWAName[] = "Auto-minted TWA";
 inline constexpr char kAndroidAutoMintedTWADescription[] =
     "Installs Web apps locally as an auto-minted Trusted Web Activity-based "
@@ -5245,6 +5223,12 @@ inline constexpr char
         "Management "
         "API to 3P password managers if 3P mode autofill is on.";
 
+inline constexpr char kDefaultBrowserPromoEntryPointName[] =
+    "DefaultBrowserPromoEntryPoint";
+inline constexpr char kDefaultBrowserPromoEntryPointDescription[] =
+    "Shows the default browser promo menu item in Settings, and depending on "
+    "the params, in App Menu.";
+
 inline constexpr char kDeprecatedExternalPickerFunctionName[] =
     "Use deprecated External Picker method";
 inline constexpr char kDeprecatedExternalPickerFunctionDescription[] =
@@ -5303,6 +5287,11 @@ inline constexpr char kEducationalTipDefaultBrowserPromoCardDescription[] =
 inline constexpr char kEducationalTipModuleName[] = "Educational Tip Module";
 inline constexpr char kEducationalTipModuleDescription[] =
     "Show educational tip module on magic stack in clank";
+
+inline constexpr char kEnableAndroidSidePanelName[] =
+    "Enable Android Side Panel";
+inline constexpr char kEnableAndroidSidePanelDescription[] =
+    "Enable the side panel container on Android.";
 
 inline constexpr char kEnableCommandLineOnNonRootedName[] =
     "Enable command line on non-rooted devices";
@@ -5405,10 +5394,6 @@ inline constexpr char kHomeModulePrefRefactorName[] =
 inline constexpr char kHomeModulePrefRefactorDescription[] =
     "Use UserPrefs for home module customization settings (for the "
     "NTP).";
-
-inline constexpr char kHubBackButtonName[] = "Hub back button";
-inline constexpr char kHubBackButtonDescription[] =
-    "Enables a back button on the hub for large screen devices.";
 
 inline constexpr char kMagicStackAndroidName[] = "Magic Stack Android";
 inline constexpr char kMagicStackAndroidDescription[] =
@@ -5642,6 +5627,10 @@ inline constexpr char kShowTabListAnimationsName[] =
     "Show Tab List Animations (Android XR)";
 inline constexpr char kShowTabListAnimationsDescription[] =
     "Shows animations for each tab on the tab switcher on Android XR.";
+
+inline constexpr char kSigninLevelUpButtonName[] = "Signin Level Up Button";
+inline constexpr char kSigninLevelUpButtonDescription[] =
+    "Replaces signed out avatar with signin button on Android.";
 
 inline constexpr char kSiteIsolationForPasswordSitesName[] =
     "Site Isolation For Password Sites";
@@ -7159,11 +7148,6 @@ inline constexpr char kEventBasedLogUploadDescription[] =
     "(e.g. crashes) occur on the device. The feature is guarded by "
     "LogUploadEnabled policy.";
 
-inline constexpr char kExcludeDisplayInMirrorModeName[] =
-    "Enable feature to exclude a display in mirror mode.";
-inline constexpr char kExcludeDisplayInMirrorModeDescription[] =
-    "Show toggles in Display Settings to exclude a display in mirror mode.";
-
 inline constexpr char kExoGamepadVibrationName[] =
     "Gamepad Vibration for Exo Clients";
 inline constexpr char kExoGamepadVibrationDescription[] =
@@ -7438,9 +7422,6 @@ inline constexpr char kLockScreenNotificationName[] =
     "Lock screen notification";
 inline constexpr char kLockScreenNotificationDescription[] =
     "Enable notifications on the lock screen.";
-
-inline constexpr char kMahiName[] = "Mahi feature";
-inline constexpr char kMahiDescription[] = "Enable Mahi feature on ChromeOS.";
 
 inline constexpr char kMahiDebuggingName[] = "Mahi Debugging";
 inline constexpr char kMahiDebuggingDescription[] =
@@ -8051,7 +8032,6 @@ inline constexpr char kPulseaudioLoopbackForScreenShareName[] =
 inline constexpr char kPulseaudioLoopbackForScreenShareDescription[] =
     "Enable system audio sharing when screen sharing on Linux with pulseaudio.";
 
-
 inline constexpr char kWaylandPerWindowScalingName[] =
     "Wayland per-window scaling";
 inline constexpr char kWaylandPerWindowScalingDescription[] =
@@ -8228,7 +8208,6 @@ inline constexpr char kAutofillCreditCardUploadDescription[] =
 inline constexpr char kElasticOverscrollName[] = "Elastic Overscroll";
 inline constexpr char kElasticOverscrollDescription[] =
     "Enables Elastic Overscrolling on touchscreens and precision touchpads.";
-
 
 inline constexpr char kUIDebugToolsName[] = "Debugging tools for UI";
 inline constexpr char kUIDebugToolsDescription[] =

@@ -45,6 +45,7 @@
 #include "ui/views/border.h"
 #include "ui/views/controls/button/button.h"
 #include "ui/views/controls/focus_ring.h"
+#include "ui/views/controls/highlight_path_generator.h"
 #include "ui/views/controls/label.h"
 #include "ui/views/layout/delegating_layout_manager.h"
 #include "ui/views/layout/proposed_layout.h"
@@ -63,6 +64,7 @@ constexpr int kIconDesignWidth = 16;
 constexpr int kTitleMinWidth = 10;
 constexpr int kHorizontalInset = 7;
 constexpr int kDefaultPadding = 4;
+constexpr int kFocusRingInset = 4;
 
 class VerticalTabTitle : public views::Label {
   METADATA_HEADER(VerticalTabTitle, views::Label)
@@ -161,8 +163,14 @@ VerticalTabView::VerticalTabView(TabCollectionNode* collection_node)
   // hover.
   SetNotifyEnterExitOnChild(true);
 
+  // TODO(crbug.com/476156783): Change to ACCESSIBLE_ONLY.
   SetFocusBehavior(FocusBehavior::ALWAYS);
   views::FocusRing::Install(this);
+
+  views::HighlightPathGenerator::Install(
+      this, std::make_unique<views::RoundRectHighlightPathGenerator>(
+                gfx::Insets(kFocusRingInset),
+                GetLayoutConstant(LayoutConstant::kVerticalTabCornerRadius)));
 
   GetViewAccessibility().SetRole(ax::mojom::Role::kTab);
   GetViewAccessibility().SetName(
@@ -204,12 +212,6 @@ void VerticalTabView::UpdateHovered(bool hovered) {
 
   UpdateColors();
   UpdateCloseButtonVisibility();
-}
-
-void VerticalTabView::OnTabDragOver() {
-  auto* controller = collection_node_->GetController();
-  CHECK(controller);
-  controller->GetDragHandler().DraggedTabsOverNode(*collection_node_);
 }
 
 bool VerticalTabView::OnKeyPressed(const ui::KeyEvent& event) {
@@ -257,6 +259,9 @@ bool VerticalTabView::OnMousePressed(const ui::MouseEvent& event) {
 }
 
 void VerticalTabView::OnMouseReleased(const ui::MouseEvent& event) {
+  if (!collection_node_) {
+    return;
+  }
   auto* controller = collection_node_->GetController();
   base::WeakPtr<VerticalTabView> self = weak_ptr_factory_.GetWeakPtr();
   if (event.IsOnlyMiddleMouseButton()) {
@@ -324,10 +329,7 @@ void VerticalTabView::OnPaint(gfx::Canvas* canvas) {
     flags.setColor(tab_style_->GetCurrentTabBackgroundColor(
         GetSelectionState(), IsHoverAnimationActive(), GetHoverAnimationValue(),
         IsFrameActive(), GetColorProvider()));
-    const float corner_radius =
-        GetLayoutConstant(LayoutConstant::kVerticalTabCornerRadius) -
-        (split_ ? GetInsets().top() / 2.0 : 0.0);
-    canvas->DrawRoundRect(GetContentsBounds(), corner_radius, flags);
+    canvas->DrawRect(GetContentsBounds(), flags);
   }
 
   views::View::OnPaint(canvas);
@@ -349,6 +351,10 @@ void VerticalTabView::AddedToWidget() {
 void VerticalTabView::RemovedFromWidget() {
   paint_as_active_subscription_ = {};
   UpdateHovered(false);
+}
+
+void VerticalTabView::OnBoundsChanged(const gfx::Rect& previous_bounds) {
+  SetClipPath(GetPath());
 }
 
 void VerticalTabView::OnThemeChanged() {
@@ -497,6 +503,8 @@ void VerticalTabView::OnDataChanged() {
   icon_->SetActiveState(tab->IsActivated());
   icon_->SetAttention(TabIcon::AttentionType::kBlockedWebContents,
                       !tab->IsActivated() && tab->IsBlocked());
+  icon_->SetAttention(TabIcon::AttentionType::kTabWantsAttentionStatus,
+                      tab_data_.needs_attention);
 
   title_->SetText(tab_data_.title);
   title_->SetVisible(!pinned_);
@@ -619,7 +627,8 @@ float VerticalTabView::GetHoverOpacity() const {
 
 SkPath VerticalTabView::GetPath() const {
   const SkScalar corner_radius = SkIntToScalar(
-      GetLayoutConstant(LayoutConstant::kVerticalTabCornerRadius));
+      GetLayoutConstant(LayoutConstant::kVerticalTabCornerRadius) +
+      (split_ ? GetInsets().height() : 0));
   return SkPath::RRect(SkRRect::MakeRectXY(gfx::RectToSkRect(GetLocalBounds()),
                                            corner_radius, corner_radius));
 }

@@ -146,6 +146,7 @@ void MaybeOutputReason(std::string* out, std::string_view message) {
     case AutofillAiAction::kIphForOptIn:
     case AutofillAiAction::kLogToMqls:
     case AutofillAiAction::kOptIn:
+    case AutofillAiAction::kEnableOrDisable:
     case AutofillAiAction::kServerClassificationModel:
     case AutofillAiAction::kUseCachedServerClassificationModelResults:
     case AutofillAiAction::kImportToWallet:
@@ -188,6 +189,8 @@ void MaybeOutputReason(std::string* out, std::string_view message) {
     case AutofillAiAction::kLogToMqls:
     case AutofillAiAction::kOptIn:
       return true;
+    case AutofillAiAction::kEnableOrDisable:
+      return is_enabled(features::kAutofillAiAvailableByDefault);
   }
   NOTREACHED();
 }
@@ -195,8 +198,7 @@ void MaybeOutputReason(std::string* out, std::string_view message) {
 // Checks whether all requirements related to syncing state is met.
 [[nodiscard]] bool SatisfiesSyncingRequirements(
     AutofillAiAction action,
-    const syncer::SyncService* sync_service,
-    std::string* debug_message) {
+    const syncer::SyncService* sync_service) {
   switch (action) {
     case AutofillAiAction::kImportToWallet:
       return sync_service &&
@@ -214,6 +216,7 @@ void MaybeOutputReason(std::string* out, std::string_view message) {
     case AutofillAiAction::kListEntityInstancesInSettings:
     case AutofillAiAction::kLogToMqls:
     case AutofillAiAction::kOptIn:
+    case AutofillAiAction::kEnableOrDisable:
       return true;
   }
   NOTREACHED();
@@ -280,6 +283,7 @@ void MaybeOutputReason(std::string* out, std::string_view message) {
     case AutofillAiAction::kListEntityInstancesInSettings:
     case AutofillAiAction::kLogToMqls:
     case AutofillAiAction::kOptIn:
+    case AutofillAiAction::kEnableOrDisable:
       return true;
   }
   NOTREACHED();
@@ -348,6 +352,7 @@ void MaybeOutputReason(std::string* out, std::string_view message) {
       // The IPH should only show if the user has not opted in yet.
       return policy_pref_enabled && !autofill_ai_available;
     case AutofillAiAction::kOptIn:
+    case AutofillAiAction::kEnableOrDisable:
       if (!policy_pref_enabled) {
         MaybeOutputReason(debug_message, "Enterprise policy is not enabled.");
       }
@@ -383,50 +388,15 @@ void MaybeOutputReason(std::string* out, std::string_view message) {
 
   // All other states (sign-in and sync including their paused/error states)
   // are sufficient for us to validate the user's account information.
-  const bool result = [&]() {
-    if (identity_manager
-            ->FindExtendedAccountInfo(identity_manager->GetPrimaryAccountInfo(
-                signin::ConsentLevel::kSignin))
-            .capabilities.can_use_model_execution_features() ==
-        signin::Tribool::kTrue) {
-      return true;
-    }
-    switch (action) {
-      case AutofillAiAction::kAddLocalEntityInstanceInSettings:
-      case AutofillAiAction::kCrowdsourcingVote:
-      case AutofillAiAction::kEditAndDeleteEntityInstanceInSettings:
-      case AutofillAiAction::kFilling:
-      case AutofillAiAction::kImport:
-      case AutofillAiAction::kIphForOptIn:
-      case AutofillAiAction::kListEntityInstancesInSettings:
-      case AutofillAiAction::kOptIn:
-      case AutofillAiAction::kImportToWallet:
-        return base::FeatureList::IsEnabled(
-            features::kAutofillAiIgnoreCapabilityCheck);
-      case AutofillAiAction::kLogToMqls:
-      case AutofillAiAction::kServerClassificationModel:
-      case AutofillAiAction::kUseCachedServerClassificationModelResults:
-        return base::FeatureList::IsEnabled(
-            features::kAutofillAiIgnoreCapabilityCheck);
-    }
-    NOTREACHED();
-  }();
-
-  if (!result) {
-    MaybeOutputReason(debug_message,
-                      "User cannot use model execution features.");
-  }
-  return result;
+  return true;
 }
 
 // Checks whether miscellaneous "other" requirements (OTR, app-locale, Geo-IP)
 // are satisfied.
 [[nodiscard]] bool SatisfiesMiscellaneousRequirements(
-    FeatureCheck is_enabled,
     bool is_off_the_record,
     bool has_entity_data_saved,
     const GeoIpCountryCode& country_code,
-    std::string_view app_locale,
     AutofillAiAction action,
     std::string* debug_message) {
   // Off-the-record.
@@ -439,6 +409,7 @@ void MaybeOutputReason(std::string* out, std::string_view message) {
     case AutofillAiAction::kListEntityInstancesInSettings:
     case AutofillAiAction::kLogToMqls:
     case AutofillAiAction::kOptIn:
+    case AutofillAiAction::kEnableOrDisable:
     case AutofillAiAction::kImportToWallet:
     case AutofillAiAction::kServerClassificationModel: {
       if (is_off_the_record) {
@@ -468,21 +439,11 @@ void MaybeOutputReason(std::string* out, std::string_view message) {
     case AutofillAiAction::kListEntityInstancesInSettings:
     case AutofillAiAction::kLogToMqls:
     case AutofillAiAction::kOptIn:
+    case AutofillAiAction::kEnableOrDisable:
     case AutofillAiAction::kServerClassificationModel:
     case AutofillAiAction::kFilling:
     case AutofillAiAction::kUseCachedServerClassificationModelResults:
       break;
-  }
-
-  // App-locale.
-  if (app_locale != "en-US" &&
-      !base::FeatureList::IsEnabled(features::kAutofillAiIgnoreLocale)) {
-    // If the user changes their app-locale, the feature might stop working,
-    // but the data should not disappear.
-    if (!(IsRelevantForDataTransparency(action) && has_entity_data_saved)) {
-      MaybeOutputReason(debug_message, "Unsupported locale.");
-      return false;
-    }
   }
 
   // If the user changes their GeoIp, the feature might stop working, but the
@@ -537,8 +498,7 @@ bool MayPerformAutofillAiAction(const AutofillClient& client,
     return false;
   }
 
-  if (!SatisfiesSyncingRequirements(action, client.GetSyncService(),
-                                    debug_message)) {
+  if (!SatisfiesSyncingRequirements(action, client.GetSyncService())) {
     return false;
   }
 
@@ -548,9 +508,8 @@ bool MayPerformAutofillAiAction(const AutofillClient& client,
   }
 
   return SatisfiesMiscellaneousRequirements(
-      feature_check, client.IsOffTheRecord(), has_entity_data_saved,
-      client.GetVariationConfigCountryCode(), client.GetAppLocale(), action,
-      debug_message);
+      client.IsOffTheRecord(), has_entity_data_saved,
+      client.GetVariationConfigCountryCode(), action, debug_message);
 }
 
 bool GetAutofillAiOptInStatus(const AutofillClient& client) {

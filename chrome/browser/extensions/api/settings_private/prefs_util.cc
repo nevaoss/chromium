@@ -161,6 +161,13 @@ bool IsSettingReadOnly(const std::string& pref_name) {
     return true;
   }
 #endif
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_CHROMEOS)
+  // Can be changed only from C++ after successful re-auth.
+  if (pref_name ==
+      password_manager::prefs::kBiometricAuthenticationBeforeFilling) {
+    return true;
+  }
+#endif
   return false;
 }
 
@@ -1146,10 +1153,14 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
       settings_api::PrefType::kBoolean;
   (*s_allowlist)[::prefs::kHardwareAccelerationModeEnabled] =
       settings_api::PrefType::kBoolean;
-#if BUILDFLAG(IS_WIN) && BUILDFLAG(GOOGLE_CHROME_BRANDING)
+#if BUILDFLAG(IS_WIN)
+  (*s_allowlist)[::prefs::kForegroundLaunchOnLogin] =
+      settings_api::PrefType::kBoolean;
+#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
   (*s_allowlist)[::prefs::kFeatureNotificationsEnabled] =
       settings_api::PrefType::kBoolean;
-#endif  // BUILDFLAG(IS_WIN) && BUILDFLAG(GOOGLE_CHROME_BRANDING)
+#endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
+#endif  // BUILDFLAG(IS_WIN)
 
   // Import data
   (*s_allowlist)[::prefs::kImportDialogAutofillFormData] =

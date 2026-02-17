@@ -1409,6 +1409,33 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Memory.DumpProvider.Count" units="objects"
+    expires_after="2026-06-28">
+  <owner>joenotcharles@google.com</owner>
+  <owner>chrome-catan@google.com</owner>
+  <summary>
+    The total number of MemoryDumpProvider instances that are queued during a
+    memory dump. Logged whenever a memory dump starts.
+
+    Variants of this metric are also logged for each type of MemoryDumpProvider,
+    with the provider name as a suffix.
+  </summary>
+</histogram>
+
+<histogram name="Memory.DumpProvider.Count.{Name}" units="objects"
+    expires_after="2026-06-28">
+  <owner>joenotcharles@google.com</owner>
+  <owner>chrome-catan@google.com</owner>
+  <summary>
+    The number of instances of MemoryDumpProvider {Name} that are queued during
+    a memory dump. Logged whenever a memory dump starts.
+
+    An unsuffixed variant of this metric is also logged, covering all types of
+    MemoryDumpProvider.
+  </summary>
+  <token key="Name" variants="MemoryDumpProviderName"/>
+</histogram>
+
 <histogram name="Memory.DumpProvider.FinalStatus"
     enum="MemoryDumpProviderStatus" expires_after="2026-06-28">
   <owner>joenotcharles@google.com</owner>
@@ -1445,7 +1472,7 @@ chromium-metrics-reviews@google.com.
   <token key="Name" variants="MemoryDumpProviderName"/>
 </histogram>
 
-<histogram name="Memory.DumpProvider.FollowingProviders2" units="objects"
+<histogram name="Memory.DumpProvider.FollowingProviders3" units="objects"
     expires_after="2026-06-28">
   <owner>joenotcharles@google.com</owner>
   <owner>chrome-catan@google.com</owner>
@@ -1459,7 +1486,7 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Memory.DumpProvider.FollowingProviders2.{Name}"
+<histogram name="Memory.DumpProvider.FollowingProviders3.{Name}"
     units="objects" expires_after="2026-06-28">
   <owner>joenotcharles@google.com</owner>
   <owner>chrome-catan@google.com</owner>
@@ -1575,7 +1602,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Memory.Experimental.Browser2.Custom{ProcessMemoryAllocatorCustom2}"
-    units="bytes" expires_after="2026-05-17">
+    units="bytes" expires_after="2026-07-19">
   <owner>sashamcintosh@chromium.org</owner>
   <owner>chromeos-gfx@chromium.org</owner>
   <owner>erikchen@chromium.org</owner>
@@ -1623,7 +1650,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Memory.Experimental.Browser2{ProcessMemoryAllocator2}"
-    units="MB" expires_after="2026-05-17">
+    units="MB" expires_after="2026-07-19">
   <owner>erikchen@chromium.org</owner>
   <owner>ssid@chromium.org</owner>
   <owner>lizeb@chromium.org</owner>
@@ -1686,7 +1713,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Memory.Experimental.Extension2{ProcessMemoryAllocator2}"
-    units="MB" expires_after="2026-05-17">
+    units="MB" expires_after="2026-07-19">
   <owner>erikchen@chromium.org</owner>
   <owner>ssid@chromium.org</owner>
   <owner>lizeb@chromium.org</owner>
@@ -1844,7 +1871,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Memory.Experimental.NetworkService2{ProcessMemoryAllocator2}"
-    units="MiB" expires_after="2026-05-17">
+    units="MiB" expires_after="2026-07-19">
   <owner>mmenke@chromium.org</owner>
   <owner>morlovich@chromium.org</owner>
   <owner>erikchen@chromium.org</owner>

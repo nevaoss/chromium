@@ -358,9 +358,6 @@ void BrowserFrameViewMac::WindowControlsOverlayEnabledChanged() {
 
 gfx::Size BrowserFrameViewMac::GetMinimumSize() const {
   gfx::Size client_size = browser_widget()->client_view()->GetMinimumSize();
-  if (GetBrowserView()->browser()->is_type_normal()) {
-    client_size.SetToMax(GetBrowserView()->tab_strip_view()->GetMinimumSize());
-  }
 
   // macOS apps generally don't allow their windows to get shorter than a
   // certain height, which empirically seems to be related to their *minimum*
@@ -401,6 +398,7 @@ BrowserFrameViewMac::GetCaptionButtonBounds() const {
     return result;
   }
 
+  // LINT.IfChange(MacTabStripInsets)
   // These are empirically determined; feel free to change them if they're
   // not precise.
   if (@available(macOS 26, *)) {
@@ -410,6 +408,7 @@ BrowserFrameViewMac::GetCaptionButtonBounds() const {
     result.bounds = gfx::RectF(20, 11, 54, 16);
     result.margins = gfx::OutsetsF::VH(11, 20);
   }
+  // LINT.ThenChange(//chrome/browser/ui/views/frame/immersive_mode_controller_mac.mm:MacTabStripInsets)
 
   // Mirror for when caption buttons are on the "wrong" side.
   if (!CaptionButtonsOnLeadingEdge()) {
@@ -418,26 +417,6 @@ BrowserFrameViewMac::GetCaptionButtonBounds() const {
 
   return result;
 }
-
-// LINT.IfChange(MacTabStripInsets)
-gfx::Insets BrowserFrameViewMac::GetCaptionButtonInsets(
-    int visual_overlap) const {
-  const gfx::Rect bounds = GetCaptionButtonBounds().ToEnclosingRect();
-  int caption_button_inset =
-      CaptionButtonsOnLeadingEdge() ? bounds.right() : width() - bounds.x();
-
-  // Subtract out the overlap, if any.
-  caption_button_inset = std::max(0, caption_button_inset - visual_overlap);
-
-  // Which side the inset goes on depends on which side the caption buttons are
-  // on.
-  if (CaptionButtonsOnLeadingEdge()) {
-    return gfx::Insets::TLBR(0, caption_button_inset, 0, 0);
-  } else {
-    return gfx::Insets::TLBR(0, 0, 0, caption_button_inset);
-  }
-}
-// LINT.ThenChange(//chrome/browser/ui/views/frame/immersive_mode_controller_mac.mm:MacTabStripInsets)
 
 ///////////////////////////////////////////////////////////////////////////////
 // BrowserFrameViewMac, protected:
@@ -469,19 +448,6 @@ void BrowserFrameViewMac::Layout(PassKey) {
 
 ///////////////////////////////////////////////////////////////////////////////
 // BrowserFrameViewMac, private:
-
-gfx::Rect BrowserFrameViewMac::GetCenteredTitleBounds(
-    gfx::Rect frame,
-    gfx::Rect available_space,
-    int preferred_title_width) {
-  // Center in container.
-  frame.ClampToCenteredSize(gfx::Size(preferred_title_width, frame.height()));
-
-  // Make it fit in available space.
-  frame.AdjustToFit(available_space);
-
-  return frame;
-}
 
 void BrowserFrameViewMac::PaintThemedFrame(gfx::Canvas* canvas) {
   // On macOS the origin of the BrowserFrameViewMac is (0,0) so no

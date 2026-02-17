@@ -1596,6 +1596,15 @@ Se la policy è impostata su 1, indica che i gruppi di schede non possono essere
 <translation id="2144236546337326489">Consenti l'attivazione della continuazione di attività Phone Hub</translation>
 <translation id="2145735238144543545">Certificati client richiesti</translation>
 <translation id="2146103669166779785">Colore esadecimale che verrà utilizzato per generare e applicare un tema al browser.</translation>
+<translation id="2146539033119095550">Questa policy consente di impostare un elenco di pattern URL che specificano le origini di primo livello per le quali il partizionamento dello spazio di archiviazione di terze parti (partizionamento dello spazio di archiviazione di iframe multiorigine) deve essere disattivato.
+
+Se questa policy non viene configurata o se un'origine di primo livello non corrisponde a uno dei pattern URL, viene applicata <ph name="DEFAULT_THIRD_PARTY_STORAGE_PARTITIONING_SETTING_POLICY_NAME" />.
+
+Per informazioni dettagliate sui pattern validi, visita la pagina https://chromeenterprise.google/policies/url-patterns. Tieni presente che i pattern elencati qui vengono considerati come origini, non URL, quindi non dovresti specificare un percorso.
+
+Visita la pagina https://developers.google.com/privacy-sandbox/cookies/storage-partitioning per informazioni dettagliate sul partizionamento dello spazio di archiviazione di terze parti.
+
+Questa opzione è stata rimossa in Chrome 145 e al suo posto si consiglia di utilizzare il metodo requestStorageAccess: https://developer.mozilla.org/en-US/docs/Web/API/Document/requestStorageAccess. Puoi lasciare un feedback all'indirizzo https://crbug.com/425248669.</translation>
 <translation id="2148733583160916305">Consenti l'API WebPrinting su questi siti</translation>
 <translation id="2148769554831004951">Forza l'attivazione di WebSQL.</translation>
 <translation id="214901426630414675">Limita la modalità di stampa fronte/retro</translation>
@@ -2468,11 +2477,6 @@ Se la policy viene impostata su 2 - "Disattivata", l'integrazione del Google Dev
 <translation id="2707733461906745082">Separazione profilo</translation>
 <translation id="2707873794476722903">Navigazione sicura è attiva in modalità standard.</translation>
 <translation id="2709516037105925701">Compilazione automatica</translation>
-<translation id="2713265653152900248">La configurazione della policy consente di accedere in modalità Incognito agli URL elencati, sotto forma di eccezioni a <ph name="INCOGNITO_MODE_URL_BLOCKLIST_POLICY_NAME" />. Ad esempio, se imposti <ph name="INCOGNITO_MODE_URL_BLOCKLIST_POLICY_NAME" /> su *, tutte le richieste in modalità Incognito verranno bloccate e puoi utilizzare questa policy per consentire l'accesso a un elenco limitato di URL. Utilizzala per aprire le eccezioni di alcuni schemi, sottodomini di altri domini, porte o percorsi specifici utilizzando il formato specificato all'indirizzo (https://support.google.com/chrome/a?p=url_blocklist_filter_format). La policy <ph name="INCOGNITO_MODE_URL_ALLOWLIST_POLICY_NAME" /> ha la precedenza su <ph name="INCOGNITO_MODE_URL_BLOCKLIST_POLICY_NAME" />. Per questa policy è possibile definire al massimo 1000 voci.
-
-Se la policy non viene configurata, non sono consentite eccezioni a <ph name="INCOGNITO_MODE_URL_BLOCKLIST_POLICY_NAME" />.
-
-Questa policy influisce solo sulla modalità Incognito. Per consentire gli URL per tutti i profili utente, utilizza la policy <ph name="URL_ALLOWLIST_POLICY_NAME" />.</translation>
 <translation id="2713913573196284609">Questo valore è obsoleto a partire dalla versione M121. Nella versione M121 e successive, i valori verranno trattati come EnabledBelowThreshold.</translation>
 <translation id="2713977837384407666">Invia sempre le metriche a Google</translation>
 <translation id="2714359695399346815">Se la policy viene impostata su Attivata o se non viene configurata, viene consentito l'utilizzo di server STUN, permettendo ai client remoti di rilevare e collegarsi a questo computer anche se sono separati da un firewall.
@@ -3330,6 +3334,8 @@ Se la policy <ph name="NTPCARDSVISIBLE" /> è disattivata, la scheda di Outlook 
       Se la policy viene impostata su Disattivata, i dispositivi registrati non segnalano informazioni relative alla sessione kiosk.</translation>
 <translation id="3303770131697159224">Impostazione predefinita dell'autorizzazione per la gestione delle finestre</translation>
 <translation id="3303911765031636277">Policy di configurazione per il connettore OnFileAttached di Chrome Enterprise</translation>
+<translation id="3305586786770047829">Quando questa policy viene impostata su 0 o non viene configurata, la policy <ph name="PROXY_OVERRIDE_RULES_POLICY_NAME" /> verrà applicata solo all'ambito utente per gli utenti affiliati.
+Quando questa policy viene impostata su 1, la policy <ph name="PROXY_OVERRIDE_RULES_POLICY_NAME" /> verrà applicata all'ambito utente, anche se l'utente non è affiliato.</translation>
 <translation id="3307744348419745296">Non consentire la sincronizzazione delle configurazioni di reti Wi-Fi tra i dispositivi <ph name="PRODUCT_OS_NAME" /> e un telefono Android connesso</translation>
 <translation id="3308724602356134956">Se imposti la policy, <ph name="PRODUCT_OS_NAME" />
 
@@ -3445,6 +3451,15 @@ Se viene disattivata, la funzionalità di scrittura predittiva sulla tastiera fi
 <translation id="33993310248354034">Consente di rilevare entità di testo normale nelle pagine web.</translation>
 <translation id="3399859571630358395">Viene forzata la disattivazione della funzionalità Accoppiamento rapido (accoppiamento rapido tramite Bluetooth)</translation>
 <translation id="3404681701763345449">Attiva integrazione di <ph name="GOOGLE_CALENDAR_NAME" />.</translation>
+<translation id="3405276853140830214">Questa policy consente di stabilire se il partizionamento dello spazio di archiviazione di terze parti è consentito per impostazione predefinita.
+
+Se la policy viene impostata su 1 - AllowPartitioning o se non viene configurata, il partizionamento dello spazio di archiviazione di terze parti è consentito per impostazione predefinita. È possibile eseguire l'override di questa impostazione predefinita per origini di primo livello specifiche in altri modi.
+
+Se la policy viene impostata su 2 - BlockPartitioning, il partizionamento dello spazio di archiviazione di terze parti viene disattivato per tutti i contesti.
+
+Utilizza <ph name="THIRD_PARTY_STORAGE_PARTITIONING_BLOCKED_FOR_ORIGINS_POLICY_NAME" /> per disattivare il partizionamento dello spazio di archiviazione di terze parti per origini di primo livello specifiche. Visita la pagina https://developers.google.com/privacy-sandbox/cookies/storage-partitioning per informazioni dettagliate sul partizionamento dello spazio di archiviazione di terze parti.
+
+Questa opzione è stata rimossa in Chrome 145 e al suo posto si consiglia di utilizzare il metodo requestStorageAccess: https://developer.mozilla.org/en-US/docs/Web/API/Document/requestStorageAccess. Puoi lasciare un feedback all'indirizzo https://crbug.com/425248669.</translation>
 <translation id="3405361833556012520">Questa policy si applica solo al traffico del browser; il Play Store, la navigazione web delle app per Android e altro traffico generato dagli utenti, ad esempio il traffico delle VM Linux o i processi di stampa, continueranno a rispettare le limitazioni imposte dalla VPN sempre attiva. Questa policy viene applicata in modo forzato solo quando la VPN non è connessa e solo per il traffico generato dal browser degli utenti. Anche se questa policy viene applicata in modo forzato, il traffico generato dal sistema può anche ignorare la VPN sempre attiva per eseguire attività come il recupero delle policy e la sincronizzazione dell'orologio di sistema.
 
 Utilizza questa policy per aprire le eccezioni di alcuni schemi, sottodomini di altri domini, porte o percorsi specifici utilizzando il formato specificato all'indirizzo https://support.google.com/chrome/a?p=url_blocklist_filter_format. Il filtro più specifico consente di determinare se un URL è bloccato o consentito.
@@ -5232,6 +5247,20 @@ Vecchio comportamento precedente: in "beforeunload", la chiamata di "event.preve
 <translation id="46321462262887935">Imposta i tasti della fila superiore come tasti funzione, ma consenti la modifica da parte degli utenti</translation>
 <translation id="4632343302005518762">Consenti a <ph name="PRODUCT_FRAME_NAME" /> di gestire i tipi di contenuti elencati</translation>
 <translation id="4636354638176939375">Disattiva la creazione di utenti supervisionati</translation>
+<translation id="4637701328641064644">Questa policy consente di stabilire se gli URL dei BLOB vengono partizionati durante il recupero e la navigazione.
+Se questa policy viene impostata su Attivata o se non viene configurata, gli URL dei BLOB verranno partizionati.
+Se questa policy viene impostata su Disattivata, gli URL dei BLOB non verranno partizionati.
+
+Se devi usare la policy, invia una segnalazione di bug all'indirizzo
+<ph name="BUG_URL" />
+spiegando il tuo caso d'uso. La policy sarà valida fino alla versione 146 di
+<ph name="PRODUCT_NAME" />, dopodiché
+la vecchia implementazione verrà rimossa.
+
+NOTA: le modifiche apportate a questa policy verranno applicate soltanto ai processi del renderer appena avviati mentre il browser è in esecuzione.
+
+Visita la pagina https://developers.google.com/privacy-sandbox/cookies/storage-partitioning
+per informazioni dettagliate sul partizionamento dello spazio di archiviazione di terze parti.</translation>
 <translation id="46383668315040154">Consente di specificare il canale di rilascio su cui deve essere bloccato questo dispositivo.
 
 L'impostazione di <ph name="CHROME_OS_RELEASE_CHANNEL_POLICY_NAME" /> ha effetto solo se <ph name="CHROME_OS_RELEASE_CHANNEL_DELEGATED_POLICY_NAME" /> è impostato su False.</translation>
@@ -6631,15 +6660,6 @@ Questa policy non impedisce agli utenti di salvare file su <ph name="GOOGLE_DRIV
 
 Se la policy viene impostata su false, non è consentito utilizzare gli identificatori di contenuti protetti.</translation>
 <translation id="5492713303272131731">Tutti gli altri processi possono essere pianificati sullo stesso core della CPU quando il processo di rendering è in esecuzione.</translation>
-<translation id="5494322570831642650">Consente di specificare se l'utente può aprire o meno le pagine in modalità di navigazione in incognito in <ph name="PRODUCT_NAME" />.
-
-      Se viene selezionata l'opzione "Enabled" o se la policy non viene impostata, è possibile aprire le pagine in modalità di navigazione in incognito.
-
-      Se viene selezionata l'opzione "Disabled", non è possibile aprire le pagine in modalità di navigazione in incognito.
-
-      Se viene selezionata l'opzione "Forced", è possibile aprire le pagine SOLTANTO in modalità di navigazione in incognito. Tieni presente che l'opzione "Forced" non funziona per Android-on-Chrome.
-
-      Nota: su iOS, se la policy viene modificata durante una sessione, avrà effetto solamente al riavvio.</translation>
 <translation id="549471902631700911">Disattiva la ricezione di sondaggi di Navigazione sicura</translation>
 <translation id="549625769649876757">La configurazione della policy consente di impostare un elenco di pattern URL che specificano i siti autorizzati ad accedere alla localizzazione dell'utente ad alta precisione senza dover prima richiedere l'autorizzazione dell'utente per questo scopo.
 
@@ -8890,9 +8910,6 @@ Se viene impostata su False o se non viene configurata, il layout non è disponi
 <translation id="6866755486434471318">Consenti a <ph name="PEPPER_NAME" /> di usare immagini condivise per la decodifica video.</translation>
 <translation id="6878757724611298427">Consenti agli utenti di utilizzare app per Android su dispositivi non affiliati</translation>
 <translation id="6881447940489194100">Hash SHA-256 esadecimale codificato dei dati.</translation>
-<translation id="688149562204519323">Se la policy <ph name="INCOGNITO_MODE_URL_BLOCKLIST_POLICY_NAME" /> viene configurata, le pagine web con URL vietati non vengono caricate in modalità Incognito. Gli amministratori possono specificare l'elenco di pattern URL da bloccare. Se la policy non viene configurata, non viene bloccato nessun URL in modalità Incognito. Nella policy <ph name="INCOGNITO_MODE_URL_ALLOWLIST_POLICY_NAME" /> è possibile definire fino a 1000 eccezioni. Scopri come formattare un pattern URL (https://support.google.com/chrome/a?p=url_blocklist_filter_format).
-
-Questa policy influisce solo sulla modalità Incognito. Per bloccare gli URL per tutti i profili utente, utilizza la policy <ph name="URL_BLOCKLIST_POLICY_NAME" />.</translation>
 <translation id="68818134518270542">La configurazione della policy consente di specificare le app che gli utenti possono attivare come app per scrivere note nella schermata di blocco di <ph name="PRODUCT_OS_NAME" />.
 
       Se l'app preferita si trova nella schermata di blocco, sullo schermo viene visualizzato un elemento UI per l'avvio di tale app. Quando viene avviata, l'app può creare una finestra sopra la schermata di blocco e creare note in questo contesto. L'app può importare le note create nella sessione dell'utente principale quando la sessione è sbloccata. Nella schermata di blocco sono supportate solo le app per scrivere note di <ph name="PRODUCT_NAME" />.
@@ -8960,6 +8977,25 @@ Se la policy <ph name="DEVICE_POWER_BATTERY_CHARGING_OPTIMIZATION_POLICY_NAME" /
 Se la policy viene impostata su Disabled o se non viene configurata, verrà applicato il comportamento predefinito di blocco di queste richieste.</translation>
 <translation id="6915524162137327111">Visualizzazione delle etichette di gestione per 30 secondi</translation>
 <translation id="6919205861950516688">Non consentire Organizza schede.</translation>
+<translation id="6920791385071265136">Consente di stabilire se le estensioni rimosse a causa di violazioni non correlate a malware possono comunque essere installate forzatamente in ambienti a bassa affidabilità.
+
+Puoi trovare ulteriori informazioni sulle violazioni non correlate a malware e sulle rimozioni qui: https://developer.chrome.com/docs/webstore/review-process#warning
+
+Una volta che la violazione non correlata a malware sarà risolta, l'estensione rimarrà attiva e non potrà essere disattivata o rimossa.
+
+Su <ph name="MS_WIN_NAME" />, questa policy non è disponibile per le istanze aggiunte a un dominio <ph name="MS_AD_NAME" /> o a <ph name="MS_AAD_NAME" /> oppure registrate in "<ph name="CHROME_BROWSER_CLOUD_MANAGEMENT_NAME" />".
+
+Su <ph name="MAC_OS_NAME" />, questa policy non è disponibile per le istanze gestite tramite MDM, aggiunte a un dominio tramite MCX o registrate in "<ph name="CHROME_BROWSER_CLOUD_MANAGEMENT_NAME" />".
+
+Le estensioni con installazione forzata con violazioni non correlate a malware rimarranno attive in queste istanze.
+
+Al momento, un'estensione con installazione forzata con violazioni non correlate a malware rimane installata e attiva in Chrome.
+
+Se la policy viene impostata su Attivata, le estensioni con installazione forzata si comportano allo stesso modo (ovvero rimangono attive) indipendentemente dalle violazioni non correlate a malware.
+
+Se la policy viene impostata su Disattivata o se non viene configurata, le estensioni con installazione forzata con violazioni non correlate a malware verranno disattivate.
+
+Questa policy è stata rimossa nella versione M145. A partire da questa versione, le estensioni con installazione forzata con violazioni non correlate a malware verranno disattivate in ambienti a bassa affidabilità.</translation>
 <translation id="692096803256767290">Esegui il rollback del sistema operativo alla versione target</translation>
 <translation id="6921241119085515674">Consenti il flusso <ph name="CLOUD_UPLOAD_NAME" /> per <ph name="MICROSOFT_ONE_DRIVE_NAME" /> e <ph name="MICROSOFT_365_NAME" /></translation>
 <translation id="6921544339867564740">Consenti ai dispositivi di eseguire macchine virtuali su ChromeOS</translation>
@@ -10050,21 +10086,6 @@ Se la policy non viene configurata, <ph name="DEFAULT_WEB_PRINTING_SETTING_POLIC
 I pattern URL non devono essere in conflitto con <ph name="WEB_PRINTING_BLOCKED_FOR_URLS_POLICY_NAME" />. Nessuna policy ha la precedenza se un URL presenta corrispondenze con entrambe.
 
 Per informazioni dettagliate sui pattern URL validi, visita la pagina https://chromeenterprise.google/policies/url-patterns. <ph name="WILDCARD_VALUE" /> non è un valore accettato per questa policy.</translation>
-<translation id="7615612213075471065">Questa policy consente di controllare il reporting di <ph name="PRODUCT_NAME" /> relativo alle visite ai domini SaaS e ai trasferimenti dei contenuti per un browser gestito.
-
-Se la policy viene configurata, gli URL corrispondenti ai domini SaaS verranno utilizzati per generare il report e caricarlo. Gli URL senza corrispondenza verranno ignorati.
-
-Se la policy non viene configurata o se viene impostata su un elenco vuoto, non verrà generato alcun report.
-
-Per le sequenze corrispondenti viene usato un formato simile a quello utilizzato per la policy "<ph name="URL_BLOCKLIST_POLICY_NAME" />", documentati all'indirizzo https://support.google.com/chrome/a?p=url_blocklist_filter_format. Con alcune eccezioni riportate di seguito:
-
- * L'host dell'URL deve corrispondere al nome host o essere un sottodominio del nome host di uno dei domini dell'elenco dei siti SaaS.
-
- * Il percorso dell'URL deve iniziare con il percorso della voce dell'elenco dei siti SaaS corrispondenti.
-
- * Lo schema, la porta e la query dell'URL vengono ignorati durante il processo di corrispondenza.
-
-Questo valore della policy viene compilato dall'infrastruttura della policy per il cloud e gli amministratori non possono impostarlo direttamente.</translation>
 <translation id="7616631530432070402">Le suite di crittografia 3DES saranno attivate in TLS</translation>
 <translation id="761788785484453836">Richiedi l'isolamento dei siti per tutti i siti web</translation>
 <translation id="7620869951155758729">Questa norma consente di specificare la configurazione utilizzata per generare e verificare il codice di accesso genitori.
@@ -11572,23 +11593,6 @@ Questa policy viene sempre applicata per <ph name="PRODUCT_OS_NAME" />.</transla
 <translation id="8631437968147930597">L'elenco delle app per scrivere note consentite nella schermata di blocco di <ph name="PRODUCT_OS_NAME" /></translation>
 <translation id="8633550872001751090">Consenti l'inclusione dei dati di <ph name="PRODUCT_NAME" /> nei backup</translation>
 <translation id="8634062512783775032">Usa <ph name="AES_KL_NAME" /> come algoritmo di crittografia per la crittografia dello spazio di archiviazione degli utenti, se è supportata</translation>
-<translation id="8635783478441936474">Questa policy consente di controllare il reporting di <ph name="PRODUCT_NAME" /> relativo alle visite ai domini SaaS e ai trasferimenti dei contenuti per un profilo gestito.
-
-Se la policy viene configurata, gli URL corrispondenti ai domini SaaS verranno utilizzati per generare il report e caricarlo. Gli URL senza corrispondenza verranno ignorati.
-
-Se la policy non viene configurata o se viene impostata su un elenco vuoto, non verrà generato alcun report.
-
-Per le sequenze corrispondenti viene usato un formato simile a quello utilizzato per la policy "<ph name="URL_BLOCKLIST_POLICY_NAME" />", documentati all'indirizzo https://support.google.com/chrome/a?p=url_blocklist_filter_format. Con alcune eccezioni riportate di seguito:
-
- * L'host dell'URL deve corrispondere al nome host o essere un sottodominio del nome host di uno dei domini dell'elenco dei siti SaaS.
-
- * Il percorso dell'URL deve iniziare con il percorso della voce dell'elenco dei siti SaaS corrispondenti.
-
- * Lo schema, la porta e la query dell'URL vengono ignorati durante il processo di corrispondenza.
-
-Questa policy può essere impostata soltanto come policy per gli utenti cloud.
-
-Questo valore della policy viene compilato dall'infrastruttura della policy per il cloud e gli amministratori non possono impostarlo direttamente.</translation>
 <translation id="8637566476051166626">Porte di rete esplicitamente consentite</translation>
 <translation id="8643838501942693770">Consente i cookie di terze parti, ma l'utente può modificare questa impostazione</translation>
 <translation id="864611373241249369">Dopo la disattivazione di <ph name="LACROS_NAME" /> tentiamo di eseguire la migrazione di tutti i dati.</translation>

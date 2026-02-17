@@ -23,7 +23,7 @@
 #include "mojo/public/cpp/base/proto_wrapper_passkeys.h"
 #include "url/origin.h"
 
-#if !BUILDFLAG(IS_ANDROID)
+#if !BUILDFLAG(IS_ANDROID)  // NEEDS_ANDROID_IMPL
 #include "chrome/browser/actor/actor_keyed_service.h"
 #include "chrome/browser/glic/media/glic_media_integration.h"
 #endif
@@ -217,8 +217,7 @@ void FetchPageContext(
   page_content_annotations::FetchPageContext(
       *web_contents, options, std::move(progress_listener),
       base::BindOnce(
-          &HandleFetchPageResult, tab->GetWeakPtr(),
-          CreateTabData(web_contents),
+          &HandleFetchPageResult, tab->GetWeakPtr(), CreateTabData(tab),
           web_contents->GetPrimaryMainFrame()->GetLastCommittedOrigin(),
           std::move(media_root_node), std::move(callback),
           std::move(journal_entry)));

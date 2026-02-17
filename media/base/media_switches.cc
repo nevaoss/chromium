@@ -934,6 +934,10 @@ const base::FeatureParam<bool>
 // and the OS Content Decryption Module (CDM).
 BASE_FEATURE(kHardwareSecureDecryptionAv1, base::FEATURE_DISABLED_BY_DEFAULT);
 
+// Enables hardware secure VP9 decoding if supported by the hardware
+// and the OS Content Decryption Module (CDM).
+BASE_FEATURE(kHardwareSecureDecryptionVp9, base::FEATURE_DISABLED_BY_DEFAULT);
+
 #if BUILDFLAG(IS_WIN)
 // Enables showing permission indicator in the omnibox when a site is allowed or
 // denied to to use protected content IDs to play protected content.
@@ -1398,10 +1402,6 @@ BASE_FEATURE(kAudioFocusDuckFlash,
              base::FEATURE_DISABLED_BY_DEFAULT
 #endif
 );
-
-// Enables an optimization where audio input stream read confirmations are
-// written to shared memory instead of being sent through socket messages.
-BASE_FEATURE(kAudioInputConfirmReadsViaShmem, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables the internal Media Session logic without enabling the Media Session
 // service.

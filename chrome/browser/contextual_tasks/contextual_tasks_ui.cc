@@ -80,33 +80,6 @@
 
 namespace {
 
-constexpr net::BackoffEntry::Policy
-    kIgnoreFirstErrorRequestAccessTokenBackoffPolicy = {
-        // Number of initial errors (in sequence) to ignore before applying
-        // exponential back-off rules.
-        1,
-
-        // Initial delay for exponential back-off in ms.
-        2000,
-
-        // Factor by which the waiting time will be multiplied.
-        2,
-
-        // Fuzzing percentage. ex: 10% will spread requests randomly
-        // between 90%-100% of the calculated time.
-        0.2,  // 20%
-
-        // Maximum amount of time we are willing to delay our request in ms.
-        1000 * 60 * 5,  // 5 minutes.
-
-        // Time to keep an entry from being discarded even when it
-        // has no significant state, -1 to never discard.
-        -1,
-
-        // Don't use initial delay unless the last request was an error.
-        false,
-};
-
 // A method to add eligibility booleans for context menu items that are shown
 // based on AIM eligibility.
 void AddContextMenuItemEligibilityLoadTimeData(content::WebUIDataSource* source,
@@ -147,15 +120,6 @@ std::string GetEncodedHandshakeMessage() {
   std::vector<uint8_t> serialized_message(size);
   message.SerializeToArray(&serialized_message[0], size);
   return base::Base64Encode(serialized_message);
-}
-
-bool IsPrimaryAccount(Profile* profile, const CoreAccountId& account_id) {
-  auto* identity_manager = IdentityManagerFactory::GetForProfile(profile);
-  if (!identity_manager) {
-    return false;
-  }
-  return identity_manager->GetPrimaryAccountId(signin::ConsentLevel::kSignin) ==
-         account_id;
 }
 
 }  // namespace
@@ -206,14 +170,7 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
       contextual_tasks_service_(
           contextual_tasks::ContextualTasksServiceFactory::GetForProfile(
               Profile::FromBrowserContext(
-                  web_ui->GetWebContents()->GetBrowserContext()))),
-      request_access_token_backoff_(
-          &kIgnoreFirstErrorRequestAccessTokenBackoffPolicy) {
-  if (auto* identity_manager =
-          IdentityManagerFactory::GetForProfile(Profile::FromWebUI(web_ui))) {
-    identity_manager_observation_.Observe(identity_manager);
-  }
-
+                  web_ui->GetWebContents()->GetBrowserContext()))) {
   inner_web_contents_creation_observer_ =
       std::make_unique<InnerFrameCreationObvserver>(
           web_ui->GetWebContents(),
@@ -385,6 +342,7 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
 
   Profile* profile = Profile::FromWebUI(web_ui);
   AddZeroStateStrings(source, profile);
+  contextual_tasks_service_observation_.Observe(contextual_tasks_service_);
 }
 
 ContextualTasksUI::~ContextualTasksUI() = default;
@@ -401,91 +359,23 @@ void ContextualTasksUI::CreatePageHandler(
   page_handler_ = std::make_unique<ContextualTasksPageHandler>(
       std::move(page_handler), this, ui_service_, contextual_tasks_service_);
 
-  // Request the initial OAuth token to be used by the embedded page.
-  RequestOAuthToken();
-}
-
-void ContextualTasksUI::RequestOAuthToken() {
-  token_refresh_timer_.Stop();
-
-  auto* profile = Profile::FromWebUI(web_ui());
-  auto* identity_manager = IdentityManagerFactory::GetForProfile(profile);
-  if (!identity_manager ||
-      !identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSignin)) {
-    if (page_) {
-      page_->SetOAuthToken("");
-      return;
-    }
-    return;
-  }
-
-  // TODO(crbug.com/461596823): Currently just grabs the primary account, but
-  // should use the web identity when available. Additionally, the account
-  // should be grabbed once, and used until this WebUI is closed.
-  // TODO(crbug.com/462138963): Add error handling for when the account
-  // identities fail.
-  auto account =
-      identity_manager->GetPrimaryAccountInfo(signin::ConsentLevel::kSignin);
-
-  // A previous fetcher for the same owner will be automatically cancelled.
-  oauth_token_fetcher_ = identity_manager->CreateAccessTokenFetcherForAccount(
-      account.account_id, signin::OAuthConsumerId::kContextualTasks,
-      base::BindOnce(&ContextualTasksUI::OnOAuthTokenReceived,
-                     base::Unretained(this)),
-      signin::AccessTokenFetcher::Mode::kWaitUntilRefreshTokenAvailable);
-}
-
-void ContextualTasksUI::OnOAuthTokenReceived(
-    GoogleServiceAuthError error,
-    signin::AccessTokenInfo access_token_info) {
-  base::UmaHistogramEnumeration("ContextualTasks.WebUI.OAuthError",
-                                error.state(),
-                                GoogleServiceAuthError::NUM_STATES);
-
-  oauth_token_fetcher_.reset();
-  if (!page_) {
-    return;
-  }
-  if (error.state() != GoogleServiceAuthError::NONE) {
-    page_->SetOAuthToken("");
-
-    // If this is a transient error, retry with exponential backoff.
-    if (error.IsTransientError()) {
-      request_access_token_backoff_.InformOfRequest(false);
-      base::TimeDelta delay =
-          request_access_token_backoff_.GetTimeUntilRelease();
-      if (delay.is_zero()) {
-        RequestOAuthToken();
-      } else {
-        token_refresh_timer_.Start(
-            FROM_HERE, delay,
-            base::BindOnce(&ContextualTasksUI::RequestOAuthToken,
-                           weak_ptr_factory_.GetWeakPtr()));
-      }
-    }
-    return;
-  }
-  request_access_token_backoff_.Reset();
-  page_->SetOAuthToken(access_token_info.token);
-
-  if (!access_token_info.expiration_time.is_null()) {
-    token_refresh_timer_.Start(
-        FROM_HERE, access_token_info.expiration_time - base::Time::Now(),
-        base::BindOnce(&ContextualTasksUI::RequestOAuthToken,
-                       weak_ptr_factory_.GetWeakPtr()));
-  }
 }
 
 void ContextualTasksUI::OnRefreshTokenUpdatedForAccount(
-    const CoreAccountInfo& account_info) {
-  if (IsPrimaryAccount(Profile::FromWebUI(web_ui()), account_info.account_id)) {
-    RequestOAuthToken();
-  }
-}
+    const CoreAccountInfo& account_info) {}
 
 void ContextualTasksUI::OnZeroStateChange(bool is_zero_state) {
   if (page_) {
     page_->OnZeroStateChange(is_zero_state);
+  }
+}
+
+void ContextualTasksUI::OnTaskUpdated(
+    const contextual_tasks::ContextualTask& task,
+    contextual_tasks::ContextualTasksService::TriggerSource source) {
+  if (task_id_ && task_id_.value() == task.GetTaskId()) {
+    // Update the auto suggested tab chip if needed.
+    OnActiveTabContextStatusChanged();
   }
 }
 
@@ -640,7 +530,8 @@ ContextualTasksUI::GetOrCreateContextualSessionHandle() {
     if (contextual_search_service) {
       auto session_handle = contextual_search_service->CreateSession(
           ntp_composebox::CreateQueryControllerConfigParams(),
-          contextual_search::ContextualSearchSource::kContextualTasks);
+          contextual_search::ContextualSearchSource::kContextualTasks,
+          lens::LensOverlayInvocationSource::kContextualTasksComposebox);
       // TODO(crbug.com/469875164): Determine what to do with the return value
       // of this call, or move this call to a different location.
       session_handle->CheckSearchContentSharingSettings(
@@ -765,7 +656,7 @@ void ContextualTasksUI::DisableActiveTabContextSuggestion() {
   auto* active_task_context_provider =
       browser->GetFeatures().contextual_tasks_active_task_context_provider();
   if (active_task_context_provider) {
-    active_task_context_provider->OnSidePanelStateUpdated();
+    active_task_context_provider->RefreshContext();
   }
 }
 
@@ -947,6 +838,7 @@ void ContextualTasksUI::FrameNavObserver::DidFinishNavigation(
                                task_info_delegate_->GetWebUIWebContents(),
                                new_task_id,
                                task_info_delegate_->IsShownInTab());
+    task_info_delegate_->OnTaskChanged();
     return;
   }
 
@@ -1033,6 +925,7 @@ void ContextualTasksUI::FrameNavObserver::DidFinishNavigation(
                                task_info_delegate_->GetWebUIWebContents(),
                                task_info_delegate_->GetTaskId().value(),
                                task_info_delegate_->IsShownInTab());
+    task_info_delegate_->OnTaskChanged();
   }
 }
 
@@ -1098,6 +991,10 @@ void ContextualTasksUI::CreatePageHandler(
           std::move(receiver), std::move(page));
 }
 
+void ContextualTasksUI::OnTaskChanged() {
+  composebox_handler_->OnTaskChanged();
+}
+
 // static
 base::RefCountedMemory* ContextualTasksUI::GetFaviconResourceBytes(
     ui::ResourceScaleFactor scale_factor) {
@@ -1113,5 +1010,4 @@ base::RefCountedMemory* ContextualTasksUI::GetFaviconResourceBytes(
           IDR_NTP_FAVICON, scale_factor));
 #endif
 }
-
 WEB_UI_CONTROLLER_TYPE_IMPL(ContextualTasksUI)

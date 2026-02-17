@@ -1558,6 +1558,15 @@ Als je het beleid instelt op 1, kunnen tabbladgroepen niet worden gedeeld.</tran
 <translation id="2144236546337326489">Toestaan dat Telefoonhub-taakvoortzetting wordt aangezet</translation>
 <translation id="2145735238144543545">Vereiste clientcertificaten</translation>
 <translation id="2146103669166779785">Hexadecimale kleur waarmee een thema voor de browser wordt samengesteld en toegepast.</translation>
+<translation id="2146539033119095550">Met dit beleid kun je een lijst met URL-patronen instellen van oorsprongen op het hoogste niveau waarvoor partitionering van opslag door derden (partitionering van cross-origin iframe-opslag) moet worden uitgezet.
+
+Als je dit beleid niet instelt of als de oorsprong op het hoogste niveau niet overeenkomt met een van de URL-patronen, wordt <ph name="DEFAULT_THIRD_PARTY_STORAGE_PARTITIONING_SETTING_POLICY_NAME" /> toegepast.
+
+Ga naar https://chromeenterprise.google/policies/url-patterns voor gedetailleerde informatie over geldige patronen. Patronen die je hier vermeldt, worden behandeld als oorsprongen, niet als URL's. Voer dus geen pad in.
+
+Ga naar https://developers.google.com/privacy-sandbox/cookies/storage-partitioning voor meer informatie over partitionering van opslag door derden.
+
+Dit is verwijderd in Chrome 145. We raden je aan in plaats daarvan de methode requestStorageAccess te gebruiken: https://developer.mozilla.org/en-US/docs/Web/API/Document/requestStorageAccess. Je kunt feedback geven op https://crbug.com/425248669.</translation>
 <translation id="2148733583160916305">WebPrinting API toestaan op deze sites</translation>
 <translation id="2148769554831004951">Afdwingen dat WebSQL wordt aangezet.</translation>
 <translation id="214901426630414675">Afdrukken in duplexmodus beperken</translation>
@@ -2156,6 +2165,21 @@ Dit beleid is alleen van toepassing op nieuwe verbindingspogingen en maakt besta
       Houd er rekening mee dat voor een correcte werking van deze functie extra componenten vereist zijn die niet beschikbaar zijn buiten de Google-netwerkomgeving.</translation>
 <translation id="2536525645274582300">De gebruiker beslist of Locatieservices van Google moeten worden aangezet</translation>
 <translation id="2536717624356629471">Geluiden in Focusmodus aanzetten voor ChromeOS</translation>
+<translation id="2543785467842238592">Dit beleid beheert de <ph name="PRODUCT_NAME" />-rapportage van bezoeken aan SaaS-domeinen en contentoverdrachten voor een beheerde browser.
+
+Als je het beleid instelt, worden de URL's die overeenkomen met SaaS-domeinen gebruikt om een rapport te genereren. Niet-overeenkomende URL's worden genegeerd.
+
+Als je het beleid niet instelt of instelt op een lege lijst, wordt er geen rapport gegenereerd.
+
+De overeenkomende patronen gebruiken een vergelijkbare indeling als die voor het beleid <ph name="URL_BLOCKLIST_POLICY_NAME" /> (deze staan op https://support.google.com/chrome/a?p=url_blocklist_filter_format). Met een paar uitzonderingen hieronder:
+
+* De URL-host moet overeenkomen met de hostnaam of een subdomein zijn van de hostnaam van een van de domeinen in de lijst met SaaS-sites.
+
+ * Het URL-pad moet beginnen met het pad uit de overeenkomende vermelding in de lijst met SaaS-sites.
+
+ * Het URL-schema, de poort en de query worden genegeerd tijdens het zoeken naar overeenkomsten.
+
+Deze beleidswaarde wordt ingevuld door de infrastructuur voor cloudbeleid en beheerders kunnen deze niet rechtstreeks instellen.</translation>
 <translation id="254653220329944566">Zet cloudrapportage voor <ph name="PRODUCT_NAME" /> aan</translation>
 <translation id="2547854230073316008">Als je het beleid instelt, worden de resolutie en schaalfactor voor elk scherm ingesteld. De instellingen voor externe schermen worden toegepast op aangesloten schermen. (Het beleid wordt niet toegepast als een scherm de opgegeven resolutie of schaal niet ondersteunt.)
 
@@ -2420,11 +2444,6 @@ Als je het beleid instelt op 2 (Uitgezet), staat het de integratie van het Googl
 <translation id="2707733461906745082">Profielscheiding</translation>
 <translation id="2707873794476722903">Safe Browsing is actief in de standaardmodus.</translation>
 <translation id="2709516037105925701">Automatisch invullen</translation>
-<translation id="2713265653152900248">Als je het beleid instelt, wordt toegang geboden tot de vermelde URL's in de incognitomodus, als uitzonderingen op <ph name="INCOGNITO_MODE_URL_BLOCKLIST_POLICY_NAME" />. Als je <ph name="INCOGNITO_MODE_URL_BLOCKLIST_POLICY_NAME" /> bijvoorbeeld instelt op *, worden alle verzoeken in de incognitomodus geblokkeerd. Je kunt dit beleid gebruiken om toegang tot een beperkte lijst met URL's toe te staan. Gebruik dit beleid om uitzonderingen op te geven voor bepaalde schema's, subdomeinen van andere domeinen, poorten of specifieke paden met de indeling die wordt gespecificeerd op (https://support.google.com/chrome/a?p=url_blocklist_filter_format). Het beleid <ph name="INCOGNITO_MODE_URL_ALLOWLIST_POLICY_NAME" /> heeft voorrang op <ph name="INCOGNITO_MODE_URL_BLOCKLIST_POLICY_NAME" />. Dit beleid is beperkt tot 1000 items.
-
-Als je het beleid niet instelt, zijn er geen uitzonderingen toegestaan op <ph name="INCOGNITO_MODE_URL_BLOCKLIST_POLICY_NAME" />.
-
-Dit beleid is alleen van invloed op de incognitomodus. Als je URL's wilt toestaan voor alle gebruikersprofielen, gebruik je het beleid <ph name="URL_ALLOWLIST_POLICY_NAME" />.</translation>
 <translation id="2713913573196284609">Deze waarde is beëindigd vanaf M121. In M121 en daarna worden waarden behandeld als EnabledBelowThreshold.</translation>
 <translation id="2713977837384407666">Altijd statistieken naar Google sturen</translation>
 <translation id="2714359695399346815">Als je dit beleid toepast of niet instelt, kun je STUN-servers gebruiken, zodat externe clients dit apparaat kunnen zien en er verbinding mee kunnen maken, zelfs door een firewall.
@@ -3261,6 +3280,8 @@ Als <ph name="NTPCARDSVISIBLE" /> niet wordt toegepast, wordt de kaart Outlook n
       Als je het beleid niet toepast, rapporteren ingeschreven apparaten geen informatie over kiosksessies.</translation>
 <translation id="3303770131697159224">Standaardinstelling voor het recht voor vensterbeheer</translation>
 <translation id="3303911765031636277">Configuratiebeleid voor de Chrome Enterprise-connector OnFileAttached</translation>
+<translation id="3305586786770047829">Als je dit beleid instelt op 0 of niet instelt, wordt het beleid <ph name="PROXY_OVERRIDE_RULES_POLICY_NAME" /> alleen toegepast op gebruikersniveau voor aangesloten gebruikers.
+Als je dit beleid instelt op 1, wordt het beleid <ph name="PROXY_OVERRIDE_RULES_POLICY_NAME" /> toegepast op gebruikersniveau, ook als die gebruiker niet is aangesloten.</translation>
 <translation id="3307744348419745296">Niet toestaan dat wifi-netwerkconfiguraties worden gesynchroniseerd tussen <ph name="PRODUCT_OS_NAME" />-apparaten en een gekoppelde Android-telefoon</translation>
 <translation id="3308724602356134956">Als je het beleid instelt, downloadt en gebruikt <ph name="PRODUCT_OS_NAME" /> de door jou ingestelde achtergrondafbeelding voor de achtergrond van het bureaublad van de gebruiker en het inlogscherm. Gebruikers kunnen de afbeelding niet wijzigen. Specificeer de URL (die toegankelijk moet zijn zonder verificatie) waar <ph name="PRODUCT_OS_NAME" /> de achtergrondafbeelding kan downloaden, evenals een cryptografische hash (in jpeg-indeling met een bestandsgrootte van maximaal 16 MB) om de integriteit daarvan te verifiëren.
 
@@ -3372,6 +3393,15 @@ Als je dit beleid niet toepast, is de functie voor voorspellend schrijven op het
 <translation id="33993310248354034">Detectie van entiteiten in platte tekst op webpagina's toestaan.</translation>
 <translation id="3399859571630358395">Snel koppelen (snelle bluetooth-koppeling) geforceerd uitzetten.</translation>
 <translation id="3404681701763345449"><ph name="GOOGLE_CALENDAR_NAME" />-integratie aanzetten.</translation>
+<translation id="3405276853140830214">Met dit beleid bepaal je of partitionering van opslag door derden standaard is toegestaan.
+
+Als je dit beleid instelt op 1 - AllowPartitioning of niet instelt, is partitionering van opslag door derden standaard toegestaan. Deze standaardinstelling kan op andere manieren worden overschreven voor specifieke oorsprongen op het hoogste niveau.
+
+Als je dit beleid instelt op 2 - BlockPartitioning, wordt partitionering van opslag door derden uitgezet voor alle contexten.
+
+Gebruik <ph name="THIRD_PARTY_STORAGE_PARTITIONING_BLOCKED_FOR_ORIGINS_POLICY_NAME" /> om partitionering van opslag door derden uit te zetten voor specifieke oorsprongen op het hoogste niveau. Ga naar https://developers.google.com/privacy-sandbox/cookies/storage-partitioning voor meer informatie over partitionering van opslag door derden.
+
+Dit is verwijderd in Chrome 145. We raden je aan in plaats daarvan de methode requestStorageAccess te gebruiken: https://developer.mozilla.org/en-US/docs/Web/API/Document/requestStorageAccess. Je kunt feedback geven op https://crbug.com/425248669.</translation>
 <translation id="3405361833556012520">Dit beleid is alleen van toepassing op browserverkeer: de Play Store, webnavigatie in Android-apps en ander gebruikersverkeer (zoals Linux VM-verkeer of afdruktaken) voldoen nog steeds aan de beperkingen die worden opgelegd door het Always-on VPN. Dit beleid wordt alleen afgedwongen als het VPN niet is verbonden en alleen voor browserverkeer van gebruikers. Als dit beleid wordt afgedwongen, kan systeemverkeer het Always-on VPN ook overslaan om taken uit te voeren zoals beleid ophalen en de systeemklok synchroniseren.
 
 Gebruik dit beleid om uitzonderingen voor bepaalde schema's, subdomeinen van andere domeinen, poorten of specifieke paden te openen met de indeling die wordt gespecificeerd op https://support.google.com/chrome/a?p=url_blocklist_filter_format. Het meest specifieke filter bepaalt of een URL wordt geblokkeerd of toegestaan.
@@ -3963,7 +3993,7 @@ Als je het beleid instelt op 2, wordt voorkomen dat geïsoleerde web-app-oorspro
           Als je dit beleid instelt, kunnen gebruikers het niet wijzigen of overschrijven.
 
           Als dit beleid niet is ingesteld, staat dicteren in eerste instantie uit op het inlogscherm. De gebruiker kan deze functie op elk gewenst moment aanzetten.</translation>
-<translation id="3811407842708673996">Als je dit beleid toepast of niet instelt, kunnen gebruikers het menu-item voor regio doorzoeken van <ph name="GOOGLE_LENS_PRODUCT_NAME" /> in het contextmenu zien en gebruiken. Als je dit beleid niet toepast, kunnen gebruikers het menu-item voor regio doorzoeken van <ph name="GOOGLE_LENS_PRODUCT_NAME" /> niet zien in het contextmenu als regio doorzoeken voor <ph name="GOOGLE_LENS_PRODUCT_NAME" /> wordt ondersteund.
+<translation id="3811407842708673996">Als je dit beleid toepast of niet instelt, kunnen gebruikers het menu-item 'regio doorzoeken' van <ph name="GOOGLE_LENS_PRODUCT_NAME" /> in het contextmenu zien en gebruiken. Als je dit beleid niet toepast, kunnen gebruikers het menu-item 'regio doorzoeken' van <ph name="GOOGLE_LENS_PRODUCT_NAME" /> niet zien in het contextmenu als doorzoeken van een regio voor <ph name="GOOGLE_LENS_PRODUCT_NAME" /> wordt ondersteund.
 Vanaf <ph name="PRODUCT_NAME" /> 147 wordt dit beleid beëindigd. IT-beheerders kunnen <ph name="SEARCH_CONTENT_SHARING_SETTINGS_POLICY_NAME" /> gebruiken om deze functie in de toekomst te beheren.</translation>
 <translation id="3811562426301733860">Advertenties toestaan op alle sites</translation>
 <translation id="3816312845600780067">Sneltoets voor automatisch inloggen aanzetten</translation>
@@ -5144,6 +5174,15 @@ Oud en verouderd gedrag: Als 'event.preventDefault()' wordt aangeroepen in 'befo
 <translation id="46321462262887935">Toetsen op de bovenste rij gebruiken als functietoetsen, maar de gebruiker toestaan dit te wijzigen</translation>
 <translation id="4632343302005518762"><ph name="PRODUCT_FRAME_NAME" /> toestaan de vermelde soorten content te verwerken.</translation>
 <translation id="4636354638176939375">Gebruikers met beperkte rechten maken uitzetten</translation>
+<translation id="4637701328641064644">Met dit beleid bepaal je of blob-URL's worden gepartitioneerd tijdens ophalen en navigeren.
+Als je dit beleid toepast of niet instelt, worden blob-URL's gepartitioneerd.
+Als je dit beleid niet toepast, worden blob-URL's niet gepartitioneerd.
+
+Als je het beleid moet gebruiken, dien je een bug in op <ph name="BUG_URL" /> waarin je je use case uitlegt. Volgens de planning wordt het beleid voortgezet tot en met versie 146 van <ph name="PRODUCT_NAME" />, waarna de oude implementatie wordt verwijderd.
+
+OPMERKING: Wijzigingen in dit beleid worden alleen weergegeven in recent gestarte weergaveprocessen terwijl de browser actief is.
+
+Ga naar https://developers.google.com/privacy-sandbox/cookies/storage-partitioning voor meer informatie over partitionering van opslag door derden.</translation>
 <translation id="46383668315040154">Geeft het releasekanaal aan waarmee dit apparaat moet worden vergrendeld.
 
 Het instellen van <ph name="CHROME_OS_RELEASE_CHANNEL_POLICY_NAME" /> heeft alleen effect als je <ph name="CHROME_OS_RELEASE_CHANNEL_DELEGATED_POLICY_NAME" /> hebt ingesteld op False.</translation>
@@ -5378,7 +5417,7 @@ Dit beleid heeft geen invloed op <ph name="GOOGLE_AI_MODE_PRODUCT_NAME" /> op he
 
 Dit beleid wordt genegeerd als <ph name="GOOGLE_SEARCH_PRODUCT_NAME" /> niet de standaard zoekmachine van gebruikers is, omdat de functie dan uitstaat.
 
-Dit beleid is onafhankelijk van het beleid <ph name="AI_MODE_SETTINGS_POLICY_NAME" />. Het beleid <ph name="AI_MODE_SETTINGS_POLICY_NAME" /> bepaalt alleen startpunten in de omnibox of het zoekvak op de pagina Nieuw tabblad, terwijl dit beleid context delen via het zijvenster of tabbladen beheert.
+Dit beleid is onafhankelijk van het beleid <ph name="AI_MODE_SETTINGS_POLICY_NAME" />. Het beleid <ph name="AI_MODE_SETTINGS_POLICY_NAME" /> bepaalt alleen startpunten in de omnibox of het zoekvak op de pagina Nieuw tabblad, terwijl dit beleid het delen van context via het zijvenster of tabbladen beheert.
 
 Dit beleid beheert ook niet de integratie van <ph name="GOOGLE_GEMINI_PRODUCT_NAME" />. Deze kan worden uitgezet door <ph name="GEMINI_SETTINGS_POLICY_NAME" />.
 
@@ -6510,15 +6549,6 @@ Dit beleid voorkomt niet dat gebruikers bestanden opslaan in <ph name="GOOGLE_DR
 
 Als je het beleid instelt op Onwaar, mogen ID's voor beschermde content niet worden gebruikt.</translation>
 <translation id="5492713303272131731">Alle andere processen kunnen op dezelfde CPU-kern worden gepland wanneer het renderproces erop wordt uitgevoerd.</translation>
-<translation id="5494322570831642650">Specificeert of de gebruiker pagina's mag openen in de incognitomodus in <ph name="PRODUCT_NAME" />.
-
-      Als dit beleid wordt toegepast of niet is ingesteld, kunnen pagina's worden geopend in de incognitomodus.
-
-      Als dit beleid niet wordt toegepast, kunnen pagina's niet worden geopend in de incognitomodus.
-
-      Als dit beleid wordt afgedwongen, kunnen pagina's UITSLUITEND worden geopend in de incognitomodus. De optie Afgedwongen werkt niet voor Android in Chrome.
-
-Opmerking: Als iOS wordt gebruikt en het beleid wordt aangepast tijdens een sessie, treedt de aanpassing pas in werking na een herstart.</translation>
 <translation id="549471902631700911">Ontvangst van Safe Browsing-enquêtes uitzetten</translation>
 <translation id="549625769649876757">Als je het beleid instelt, kun je een lijst met URL-patronen instellen voor sites die toegang tot de geolocatie met hoge nauwkeurigheid van de gebruiker hebben zonder de gebruiker eerst om toestemming te vragen.
 
@@ -8712,9 +8742,6 @@ Als het beleid is ingesteld op False of niet is ingesteld, is de indeling niet b
 <translation id="6866755486434471318">Toestaan dat <ph name="PEPPER_NAME" /> gedeelde afbeeldingen gebruikt voor videodecodering.</translation>
 <translation id="6878757724611298427">Gebruikers toestaan Android-apps te gebruiken op niet-aangesloten apparaten</translation>
 <translation id="6881447940489194100">Hexadecimale gecodeerde SHA-256-hash van de gegevens.</translation>
-<translation id="688149562204519323">Als je het beleid <ph name="INCOGNITO_MODE_URL_BLOCKLIST_POLICY_NAME" /> instelt, worden webpagina's met verboden URL's niet geladen in de incognitomodus. Beheerders kunnen de lijst verstrekken met URL-patronen die moeten worden geblokkeerd. Als je dit beleid niet instelt, worden er geen URL's geblokkeerd in de incognitomodus. Er kunnen maximaal 1000 uitzonderingen worden gedefinieerd in <ph name="INCOGNITO_MODE_URL_ALLOWLIST_POLICY_NAME" />. Bekijk hoe je een URL-patroon opmaakt (https://support.google.com/chrome/a?p=url_blocklist_filter_format).
-
-Dit beleid is alleen van toepassing op de incognitomodus. Als je URL's wilt blokkeren voor alle gebruikersprofielen, gebruik je het beleid <ph name="URL_BLOCKLIST_POLICY_NAME" />.</translation>
 <translation id="68818134518270542">Als je het beleid instelt, geef je de apps op die gebruikers beschikbaar kunnen maken als notitie-app op het vergrendelscherm van <ph name="PRODUCT_OS_NAME" />.
 
       Als de voorkeurs-app op het vergrendelscherm staat, wordt er een UI-element voor het starten van de gewenste notitie-app op het scherm getoond. Als de app wordt gestart, kan deze een venster bovenop het vergrendelscherm maken en notities maken in deze context. De app kan gemaakte notities importeren naar de primaire gebruikerssessie als de sessie ontgrendeld is. Alleen notitie-apps voor <ph name="PRODUCT_NAME" /> worden ondersteund op het vergrendelscherm.
@@ -9066,6 +9093,23 @@ In <ph name="MAC_OS_NAME" /> is dit beleid alleen beschikbaar voor instanties di
 <translation id="70681795425744184">Niet toestaan dat CRD WebAuthn API-verzoeken uitvoert die afkomstig zijn van een externe host.</translation>
 <translation id="7070525176564511548">Het wachtwoord moet elke week (168 uur) worden opgegeven</translation>
 <translation id="7072208053150563108">Wijzigingsfrequentie van computerwachtwoord</translation>
+<translation id="7072438666478490567">Dit beleid beheert de <ph name="PRODUCT_NAME" />-rapportage van bezoeken aan SaaS-domeinen en contentoverdrachten voor een beheerd profiel.
+
+Als je het beleid instelt, worden de URL's die overeenkomen met SaaS-domeinen gebruikt om een rapport te genereren. Niet-overeenkomende URL's worden genegeerd.
+
+Als je het beleid niet instelt of instelt op een lege lijst, wordt er geen rapport gegenereerd.
+
+De overeenkomende patronen gebruiken een vergelijkbare indeling als die voor het beleid <ph name="URL_BLOCKLIST_POLICY_NAME" /> (deze staan op https://support.google.com/chrome/a?p=url_blocklist_filter_format). Met een paar uitzonderingen hieronder:
+
+* De URL-host moet overeenkomen met de hostnaam of een subdomein zijn van de hostnaam van een van de domeinen in de lijst met SaaS-sites.
+
+ * Het URL-pad moet beginnen met het pad uit de overeenkomende vermelding in de lijst met SaaS-sites.
+
+ * Het URL-schema, de poort en de query worden genegeerd tijdens het zoeken naar overeenkomsten.
+
+Dit beleid kan alleen worden ingesteld als cloudgebruikersbeleid.
+
+Deze beleidswaarde wordt ingevuld door de infrastructuur voor cloudbeleid en beheerders kunnen deze niet rechtstreeks instellen.</translation>
 <translation id="7072567600438630966">Toestaan dat Phone Hub wordt aangezet.</translation>
 <translation id="7074437930865599190">Hoofdversie van tekenreeks voor User-agent vastzetten op 99</translation>
 <translation id="7075847434649667522">Door de gebruiker toegevoegde TLS-certificaten van truststores van het platform gebruiken voor serververificatie</translation>
@@ -9855,21 +9899,6 @@ Als je het beleid niet instelt, is <ph name="DEFAULT_WEB_PRINTING_SETTING_POLICY
 URL-patronen mogen geen conflict vormen met <ph name="WEB_PRINTING_BLOCKED_FOR_URLS_POLICY_NAME" />. Geen van beide beleidsregels krijgt voorrang als een URL met beide overeenkomt.
 
 Ga naar https://chromeenterprise.google/policies/url-patterns voor gedetailleerde informatie over geldige URL-patronen. <ph name="WILDCARD_VALUE" /> is geen geaccepteerde waarde voor dit beleid.</translation>
-<translation id="7615612213075471065">Dit beleid beheert de <ph name="PRODUCT_NAME" />-rapportage van bezoeken aan SaaS-domeinen en contentoverdrachten voor een beheerde browser.
-
-Als je het beleid instelt, worden de URL's die overeenkomen met SaaS-domeinen gebruikt om een rapport te genereren en worden ze geüpload. Niet-overeenkomende URL's worden genegeerd.
-
-Als je het beleid niet instelt of instelt op een lege lijst, wordt er geen rapport gegenereerd.
-
-De overeenkomende patronen gebruiken een vergelijkbare indeling als die voor het beleid <ph name="URL_BLOCKLIST_POLICY_NAME" /> (deze staan op https://support.google.com/chrome/a?p=url_blocklist_filter_format). Met een paar uitzonderingen hieronder:
-
-* De URL-host moet overeenkomen met de hostnaam of een subdomein zijn van de hostnaam van een van de domeinen in de lijst met SaaS-sites.
-
- * Het URL-pad moet beginnen met het pad uit de overeenkomende vermelding in de lijst met SaaS-sites.
-
- * Het URL-schema, de poort en de query worden genegeerd tijdens het zoeken naar overeenkomsten.
-
-Deze beleidswaarde wordt ingevuld door de infrastructuur voor cloudbeleid en beheerders kunnen deze niet rechtstreeks instellen.</translation>
 <translation id="7616631530432070402">3DES cipher suites worden aangezet in TLS</translation>
 <translation id="761788785484453836">Site-isolatie vereisen voor alle websites</translation>
 <translation id="7620869951155758729">Dit beleid specificeert de configuratie die wordt gebruikt om de toegangscode voor ouders te genereren en te verifiëren.
@@ -11357,23 +11386,6 @@ Dit beleid is altijd van kracht voor <ph name="PRODUCT_OS_NAME" />.</translation
 <translation id="8631437968147930597">De lijst met notitie-apps die zijn toegestaan op het <ph name="PRODUCT_OS_NAME" />-vergrendelscherm</translation>
 <translation id="8633550872001751090">Toestaan dat <ph name="PRODUCT_NAME" />-gegevens in back-ups worden opgenomen</translation>
 <translation id="8634062512783775032"><ph name="AES_KL_NAME" /> gebruiken als het versleutelingsalgoritme voor versleuteling van gebruikersopslag (als dit wordt ondersteund)</translation>
-<translation id="8635783478441936474">Dit beleid beheert de <ph name="PRODUCT_NAME" />-rapportage van bezoeken aan SaaS-domeinen en contentoverdrachten voor een beheerd profiel.
-
-Als je het beleid instelt, worden de URL's die overeenkomen met SaaS-domeinen gebruikt om een rapport te genereren en worden ze geüpload. Niet-overeenkomende URL's worden genegeerd.
-
-Als je het beleid niet instelt of instelt op een lege lijst, wordt er geen rapport gegenereerd.
-
-De overeenkomende patronen gebruiken een vergelijkbare indeling als die voor het beleid <ph name="URL_BLOCKLIST_POLICY_NAME" /> (deze staan op https://support.google.com/chrome/a?p=url_blocklist_filter_format). Met een paar uitzonderingen hieronder:
-
-* De URL-host moet overeenkomen met de hostnaam of een subdomein zijn van de hostnaam van een van de domeinen in de lijst met SaaS-sites.
-
- * Het URL-pad moet beginnen met het pad uit de overeenkomende vermelding in de lijst met SaaS-sites.
-
- * Het URL-schema, de poort en de query worden genegeerd tijdens het zoeken naar overeenkomsten.
-
-Dit beleid kan alleen worden ingesteld als cloudgebruikersbeleid.
-
-Deze beleidswaarde wordt ingevuld door de infrastructuur voor cloudbeleid en beheerders kunnen deze niet rechtstreeks instellen.</translation>
 <translation id="8637566476051166626">Expliciet toegestane netwerkpoorten</translation>
 <translation id="8643838501942693770">Cookies van derden toestaan, maar toestaan dat gebruikers deze instelling wijzigen</translation>
 <translation id="864611373241249369">Nadat <ph name="LACROS_NAME" /> is uitgezet, proberen we alle gegevens te migreren.</translation>

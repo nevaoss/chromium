@@ -16,6 +16,8 @@ import org.chromium.chrome.browser.tabmodel.TabCreatorManager;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.tabmodel.TabPersistencePolicy;
 import org.chromium.chrome.browser.tabmodel.TabPersistentStore;
+import org.chromium.chrome.browser.tabmodel.TabPersistentStoreImpl;
+import org.chromium.chrome.browser.tabwindow.TabWindowManager;
 
 /**
  * Factory class for creating instances of {@link TabPersistentStore}.
@@ -25,6 +27,37 @@ import org.chromium.chrome.browser.tabmodel.TabPersistentStore;
  */
 @NullMarked
 public class TabPersistentStoreFactory {
+    /**
+     * Builds an authoritative {@link TabPersistentStore}.
+     *
+     * <p>This store acts as the source of truth for tab state. It directly manages reading from and
+     * writing to the disk for the associated {@link TabModelSelector}.
+     *
+     * @param clientTag The client tag used to record metrics for this specific store instance.
+     * @param tabPersistencePolicy The {@link TabPersistencePolicy} to use for the window.
+     * @param tabModelSelector The selector to observe and manage persistence for.
+     * @param tabCreatorManager Used to create new tabs during state restoration.
+     * @param tabWindowManager Used to coordinate tab state across multiple windows.
+     * @param cipherFactory Used for encrypting and decrypting tab state files.
+     * @param recordLegacyTabCountMetrics Whether to record legacy metrics regarding tab counts.
+     */
+    public static TabPersistentStore buildAuthoritativeStore(
+            String clientTag,
+            TabPersistencePolicy tabPersistencePolicy,
+            TabModelSelector tabModelSelector,
+            TabCreatorManager tabCreatorManager,
+            TabWindowManager tabWindowManager,
+            CipherFactory cipherFactory,
+            boolean recordLegacyTabCountMetrics) {
+        return new TabPersistentStoreImpl(
+                clientTag,
+                tabPersistencePolicy,
+                tabModelSelector,
+                tabCreatorManager,
+                tabWindowManager,
+                cipherFactory,
+                recordLegacyTabCountMetrics);
+    }
 
     /**
      * Builds a shadow {@link TabPersistentStore} for validation against an authoritative store.
@@ -43,7 +76,8 @@ public class TabPersistentStoreFactory {
      *     truth.
      * @param windowTag The unique identifier for the window instance.
      * @param cipherFactory The cipher factory to use for encryption to the store.
-     * @param recordMetrics Whether to record metrics for the shadow store;
+     * @param orchestratorTag A tag representing the type of tab model orchestrator this validator
+     *     is for.
      */
     public static @Nullable TabPersistentStore buildShadowStore(
             Profile profile,
@@ -53,8 +87,8 @@ public class TabPersistentStoreFactory {
             TabPersistencePolicy tabPersistencePolicy,
             TabPersistentStore authoritativeStore,
             String windowTag,
-            CipherFactory cipherFactory,
-            boolean recordMetrics) {
+            @Nullable CipherFactory cipherFactory,
+            String orchestratorTag) {
         TabCreatorManager shadowTabCreatorManager =
                 incognito -> incognito ? incognitoShadowTabCreator : regularShadowTabCreator;
 
@@ -67,7 +101,7 @@ public class TabPersistentStoreFactory {
                 windowTag,
                 cipherFactory,
                 regularShadowTabCreator,
-                recordMetrics);
+                orchestratorTag);
     }
 
     /**
@@ -85,7 +119,8 @@ public class TabPersistentStoreFactory {
      * @param authoritativeStore The primary {@link TabPersistentStore} that acts as the source of
      *     truth.
      * @param windowTag The unique identifier for the window instance.
-     * @param recordMetrics Whether to record metrics for the shadow store;
+     * @param orchestratorTag A tag representing the type of tab model orchestrator this validator
+     *     is for.
      */
     public static @Nullable TabPersistentStore buildNonOtrShadowStore(
             Profile profile,
@@ -94,7 +129,7 @@ public class TabPersistentStoreFactory {
             TabPersistencePolicy tabPersistencePolicy,
             TabPersistentStore authoritativeStore,
             String windowTag,
-            boolean recordMetrics) {
+            String orchestratorTag) {
         TabCreatorManager shadowTabCreatorManager =
                 incognito -> {
                     assert !incognito;
@@ -110,7 +145,7 @@ public class TabPersistentStoreFactory {
                 windowTag,
                 /* cipherFactory= */ null,
                 regularShadowTabCreator,
-                recordMetrics);
+                orchestratorTag);
     }
 
     private static @Nullable TabPersistentStore buildShadowStoreInternal(
@@ -122,7 +157,7 @@ public class TabPersistentStoreFactory {
             String windowTag,
             @Nullable CipherFactory cipherFactory,
             AccumulatingTabCreator regularShadowTabCreator,
-            boolean recordMetrics) {
+            String orchestratorTag) {
         if (!TabStateStorageFlagHelper.isTabStorageEnabled()) return null;
         assert !profile.isOffTheRecord();
 
@@ -143,7 +178,7 @@ public class TabPersistentStoreFactory {
                 shadowTabPersistentStore,
                 selector.getModel(/* incognito= */ false),
                 regularShadowTabCreator,
-                recordMetrics);
+                orchestratorTag);
         return shadowTabPersistentStore;
     }
 }

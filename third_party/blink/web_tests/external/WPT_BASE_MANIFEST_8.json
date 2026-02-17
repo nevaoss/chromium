@@ -467,6 +467,34 @@
          {}
         ]
        ],
+       "float-dynamic-change-1.html": [
+        "3730445977d39014819ece61c8bab9af6ca8c407",
+        [
+         null,
+         {}
+        ]
+       ],
+       "float-dynamic-change-2.html": [
+        "4e36e1b97070478ca9f56dcc5232b7635b4e9d01",
+        [
+         null,
+         {}
+        ]
+       ],
+       "float-dynamic-change-3.html": [
+        "974c2762b085406fdc9fe4bfeb6d515e57302aff",
+        [
+         null,
+         {}
+        ]
+       ],
+       "float-dynamic-change-4.html": [
+        "5560d27725cda0f383e310961b4c1d5ad533e285",
+        [
+         null,
+         {}
+        ]
+       ],
        "float-rewind-parallel-flow-1-crash.html": [
         "79d90b89b6523ccb64502d1b43b6b0a054148cd1",
         [
@@ -850,6 +878,13 @@
      ],
      "position-try-display-none-hang-crash.html": [
       "f2354dcbdeec7728a9c3f13cff0a0e7bab0c22b2",
+      [
+       null,
+       {}
+      ]
+     ],
+     "position-try-fallbacks-crash.html": [
+      "3aee734317a21edc799d26de54bbd67c29bf8f20",
       [
        null,
        {}
@@ -5294,22 +5329,6 @@
       ]
      ]
     },
-    "css-scoping": {
-     "chrome-1492368-crash.html": [
-      "04d48ef21532405548b80e23c482e848b3fc1ef6",
-      [
-       null,
-       {}
-      ]
-     ],
-     "shadow-reassign-dynamic-005-crash.html": [
-      "9e4f002cfec32cab44a4fe3b879a072f64a025bf",
-      [
-       null,
-       {}
-      ]
-     ]
-    },
     "css-scroll-anchoring": {
      "fresh-table-col-crash.html": [
       "dc5b2b43f3d76fae72e8ef31b6ed54069820906a",
@@ -5361,6 +5380,22 @@
     "css-scrollbars": {
      "invalid-needs-layout-crash.html": [
       "0b0ae427897894f9f38a7ce9d88256e860b0d5ea",
+      [
+       null,
+       {}
+      ]
+     ]
+    },
+    "css-shadow": {
+     "chrome-1492368-crash.html": [
+      "04d48ef21532405548b80e23c482e848b3fc1ef6",
+      [
+       null,
+       {}
+      ]
+     ],
+     "shadow-reassign-dynamic-005-crash.html": [
+      "9e4f002cfec32cab44a4fe3b879a072f64a025bf",
       [
        null,
        {}
@@ -16233,76 +16268,6 @@
        {}
       ]
      ],
-     "cgrsor-image-png-017-manual.html": [
-      "03b6d6f4144b5e208cfa503228054d8db6594d1a",
-      [
-       null,
-       {}
-      ]
-     ],
-     "cgrsor-image-png-019-manual.html": [
-      "86a33f7e1d135a9f8919cf862958002b26e3efa9",
-      [
-       null,
-       {}
-      ]
-     ],
-     "cgrsor-image-png-023-manual.html": [
-      "397244e45e06b27432b07aed8119f27fede2696e",
-      [
-       null,
-       {}
-      ]
-     ],
-     "cgrsor-image-png-024-manual.html": [
-      "986cd8c455bf5e8d1ba64d7f67a478e37b87d987",
-      [
-       null,
-       {}
-      ]
-     ],
-     "cgrsor-image-png-025-manual.html": [
-      "b584da62e1c7f3b77df63cf2fece7a3933c202d5",
-      [
-       null,
-       {}
-      ]
-     ],
-     "cgrsor-image-png-027-manual.html": [
-      "febbad5316557db00c57ac68cd6773a42975517c",
-      [
-       null,
-       {}
-      ]
-     ],
-     "cgrsor-image-png-028-manual.html": [
-      "e572419dd3f00fb08ac7f1aac71725e0d211002c",
-      [
-       null,
-       {}
-      ]
-     ],
-     "cgrsor-image-png-036-manual.html": [
-      "4dabbe3c33fef457ea25367d7d0f3c06e73f787b",
-      [
-       null,
-       {}
-      ]
-     ],
-     "cgrsor-image-png-040-manual.html": [
-      "49473b31057bbe037c9e381a1cab990ff88024a6",
-      [
-       null,
-       {}
-      ]
-     ],
-     "cgrsor-image-png-042-manual.html": [
-      "e88ed4e23cdc48e12d3edf90a924ebcaa37789dc",
-      [
-       null,
-       {}
-      ]
-     ],
      "cursor-001-manual.html": [
       "6f46a6bb2a8aae66a5d8f60f75ab90e206cb013c",
       [
@@ -16779,8 +16744,22 @@
        {}
       ]
      ],
+     "cursor-image-png-017-manual.html": [
+      "03b6d6f4144b5e208cfa503228054d8db6594d1a",
+      [
+       null,
+       {}
+      ]
+     ],
      "cursor-image-png-018.html": [
       "b7190aadfa0efa715ac290c8e4da5e49d9af7ebf",
+      [
+       null,
+       {}
+      ]
+     ],
+     "cursor-image-png-019-manual.html": [
+      "86a33f7e1d135a9f8919cf862958002b26e3efa9",
       [
        null,
        {}
@@ -16807,8 +16786,43 @@
        {}
       ]
      ],
+     "cursor-image-png-023-manual.html": [
+      "397244e45e06b27432b07aed8119f27fede2696e",
+      [
+       null,
+       {}
+      ]
+     ],
+     "cursor-image-png-024-manual.html": [
+      "986cd8c455bf5e8d1ba64d7f67a478e37b87d987",
+      [
+       null,
+       {}
+      ]
+     ],
+     "cursor-image-png-025-manual.html": [
+      "b584da62e1c7f3b77df63cf2fece7a3933c202d5",
+      [
+       null,
+       {}
+      ]
+     ],
      "cursor-image-png-026-manual.html": [
       "e9b68de4d88d653482ebffb6efdd0c3a53e3c8c8",
+      [
+       null,
+       {}
+      ]
+     ],
+     "cursor-image-png-027-manual.html": [
+      "febbad5316557db00c57ac68cd6773a42975517c",
+      [
+       null,
+       {}
+      ]
+     ],
+     "cursor-image-png-028-manual.html": [
+      "e572419dd3f00fb08ac7f1aac71725e0d211002c",
       [
        null,
        {}
@@ -16863,6 +16877,13 @@
        {}
       ]
      ],
+     "cursor-image-png-036-manual.html": [
+      "4dabbe3c33fef457ea25367d7d0f3c06e73f787b",
+      [
+       null,
+       {}
+      ]
+     ],
      "cursor-image-png-037-manual.html": [
       "dd744992019b60494878d9327e1e4ff9b4b28fb9",
       [
@@ -16884,8 +16905,22 @@
        {}
       ]
      ],
+     "cursor-image-png-040-manual.html": [
+      "49473b31057bbe037c9e381a1cab990ff88024a6",
+      [
+       null,
+       {}
+      ]
+     ],
      "cursor-image-png-041-manual.html": [
       "d817844d0610d6df1b0c61d29d6b3a7afb83bd89",
+      [
+       null,
+       {}
+      ]
+     ],
+     "cursor-image-png-042-manual.html": [
+      "e88ed4e23cdc48e12d3edf90a924ebcaa37789dc",
       [
        null,
        {}
@@ -78674,7 +78709,7 @@
       ]
      ],
      "position-visibility-no-overflow-scroll-002.html": [
-      "16768203eafd7bdfb03c5b55e50a8c475fdcb292",
+      "5fb0819e7d4fc34ea1a5f5dfc287a534d24d3fba",
       [
        null,
        [
@@ -79157,7 +79192,7 @@
       ]
      ],
      "animation-name-in-nested-shadow.html": [
-      "84dab9621c17a489163dec4fb0797d49692d93ab",
+      "1a3aca96267731fa9962f9dbc74f79a670a6cd98",
       [
        null,
        [
@@ -79170,7 +79205,7 @@
       ]
      ],
      "animation-name-in-shadow-part-inner-match.html": [
-      "54deb0c53e3dc78380191e419505d6df76350d15",
+      "9181aaf1f0cfbf89d13be75c03fbbc341dce8228",
       [
        null,
        [
@@ -79183,7 +79218,7 @@
       ]
      ],
      "animation-name-in-shadow-part-outer-match.html": [
-      "bb12ab6ad066d72b0ee69e62a80b35506971fa39",
+      "0125af3d7fae93ee7aada140c8bd8e884e6f7960",
       [
        null,
        [
@@ -79196,7 +79231,7 @@
       ]
      ],
      "animation-name-in-shadow-part.html": [
-      "d8bc028e667282ba63a20fcaca68e2c15343e727",
+      "87169d54a21928b6048821416faeb7aaa12d066b",
       [
        null,
        [
@@ -118010,7 +118045,7 @@
      ],
      "counter-style-at-rule": {
       "access-from-shadow-dom.html": [
-       "94ec03722b80615fa0b1e1089d24c0e472e3cd17",
+       "f7f8b37d86b9d5002227c296d1abb8ecb62b5ec6",
        [
         null,
         [
@@ -118270,7 +118305,7 @@
        ]
       ],
       "fallbacks-in-shadow-dom.html": [
-       "d51f70bc31c011fe9853755715a710837090a700",
+       "10e0f4e0ccba329b5e49042f0d5ae877af319a00",
        [
         null,
         [
@@ -118296,7 +118331,7 @@
        ]
       ],
       "override-in-shadow-dom.html": [
-       "62064eb6fe86cf356794cfab36d52ca322781d0c",
+       "9020b8ba5c5550691c66316e9498f84d4cc675ac",
        [
         null,
         [
@@ -118335,7 +118370,7 @@
        ]
       ],
       "shadow-dom-part.html": [
-       "cc43eee8eff3888f874feb2f818d08faaafdab9e",
+       "c2e8ae88ede60a70b6a467d817d5ac5848293884",
        [
         null,
         [
@@ -140270,7 +140305,7 @@
        ]
       ],
       "grid-gap-decorations-016.html": [
-       "a0618e44b56b3621c6d0730a83837792f3b59c21",
+       "595e517fbee4f000f47e7b5b7311fba53f731d6f",
        [
         null,
         [
@@ -140283,7 +140318,7 @@
        ]
       ],
       "grid-gap-decorations-017.html": [
-       "be0f7fc27515b3d35cde376fd99e6b6c87cfdeb4",
+       "28329e4ddb544e0e48817f0841e5e51d414b2246",
        [
         null,
         [
@@ -140296,7 +140331,7 @@
        ]
       ],
       "grid-gap-decorations-018.html": [
-       "dc5e2e38e0b2207388c7c7456758fda49935fb88",
+       "6df78c1fdf2041dfbc796bcf7f9de95b0e27fdbb",
        [
         null,
         [
@@ -140309,7 +140344,7 @@
        ]
       ],
       "grid-gap-decorations-019.html": [
-       "637e0467a80116bac40b7270d69e0f0aae214129",
+       "d7c997327452d9a7ee6b1337cadd5dc62d9fe138",
        [
         null,
         [
@@ -140387,7 +140422,7 @@
        ]
       ],
       "grid-gap-decorations-025.html": [
-       "fc48f15f5c27d591a0b417355156b1a66f5c31a8",
+       "b3f6bc8b696321741f92f0b9fb01ff9f11d79850",
        [
         null,
         [
@@ -140478,7 +140513,7 @@
        ]
       ],
       "grid-gap-decorations-033.html": [
-       "47ef35cc3688b2fcd2329558b1d0a27880983b38",
+       "cdc3dd692c3f5d28362d2bdcab0dbb0651db79a1",
        [
         null,
         [
@@ -140634,7 +140669,7 @@
        ]
       ],
       "grid-gap-decorations-048.html": [
-       "0943502fcf53dcd1959e00f6c37e57d0066787c8",
+       "236ed1dba2d6c1d1e24603784e83a2c292588667",
        [
         null,
         [
@@ -140647,7 +140682,7 @@
        ]
       ],
       "grid-gap-decorations-049.html": [
-       "7eeeb0341d9247c71e15a4c738819c44f083833a",
+       "1438ba1348e7b48b7da3d0039e3c26fec7e1a4db",
        [
         null,
         [
@@ -140660,7 +140695,7 @@
        ]
       ],
       "grid-gap-decorations-050.html": [
-       "93b160bdc115db4e234c0018eb3c4aa2551768bb",
+       "4fde03f9407e3ff5498d82d165b0bbc8354796d0",
        [
         null,
         [
@@ -140673,7 +140708,7 @@
        ]
       ],
       "grid-gap-decorations-051.html": [
-       "9197ffd1dacdca43ffbf829aa31dbe10679c5e48",
+       "2c211febd6c371cd232ed017aad4d01b8f595313",
        [
         null,
         [
@@ -150152,7 +150187,7 @@
          ]
         ],
         "column-reverse-dense-packing-multi-span-006.html": [
-         "6bc173cce71a32136c233101a25334f60561ccad",
+         "7f9ab766dc5f53d198c461298ed91a0f8b48d6a8",
          [
           null,
           [
@@ -150244,7 +150279,7 @@
           ]
          ],
          "column-dense-packing-007.html": [
-          "c35f968efab878af5f147c0a015270b51ade201f",
+          "cb8e9a7dcb9bed566f03dde6093e3c66d04aba82",
           [
            null,
            [
@@ -150257,7 +150292,7 @@
           ]
          ],
          "column-dense-packing-008.html": [
-          "1a738435093a4ebb9abfaffb84f15deb8fc81807",
+          "5c6be679909d6e1c1190132f2275419e6623d95e",
           [
            null,
            [
@@ -150374,7 +150409,7 @@
           ]
          ],
          "column-dense-packing-multi-span-010.html": [
-          "63c5e251704158cb86cec2bd3e94419f54632e00",
+          "73f68b7e1d9846f88ecd736e9fa4755f1668aea6",
           [
            null,
            [
@@ -150387,7 +150422,7 @@
           ]
          ],
          "column-dense-packing-multi-span-011.html": [
-          "44725dc0fcb0d63994db87a9d01deaffebdb7430",
+          "7112e90bc5d6878d08c05a5b58a99f6b07f62ea0",
           [
            null,
            [
@@ -150400,7 +150435,7 @@
           ]
          ],
          "column-dense-packing-multi-span-012.html": [
-          "1139a89a8b2c459b7e6f224e0808e5cde2f70f6c",
+          "a0cefe4619067d039f0385ca903e21358af31ff9",
           [
            null,
            [
@@ -150923,7 +150958,7 @@
          ]
         ],
         "row-reverse-dense-packing-002.html": [
-         "f31937c3ab28cf264b4c17f83494ebd4af9fe295",
+         "f54199b73dd4760db459ae7f3a4a165e72a305b2",
          [
           null,
           [
@@ -200788,1360 +200823,6 @@
       ]
      ]
     },
-    "css-scoping": {
-     "css-scoping-shadow-assigned-node-with-before-after.html": [
-      "b926540ae94034ce1acadad02fc3cf4cb7d20580",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "css-scoping-shadow-assigned-node-with-rules.html": [
-      "e981eae0557bdf98101c474cd7ae5ffe031d16b3",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "css-scoping-shadow-host-functional-rule.html": [
-      "13f9a67ed8c006a010d11e9ad71815832da2a31b",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "css-scoping-shadow-host-namespace.html": [
-      "46dffc8de38a52a6448e2e7692e6af0d7be1177d",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "css-scoping-shadow-host-rule.html": [
-      "ef70b9017cdf3d8a5ca04b5da57f491d9b8dffb5",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "css-scoping-shadow-host-with-before-after.html": [
-      "c32d8a9e87855b1131851c7e423b3da5de71d916",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "css-scoping-shadow-invisible-slot.html": [
-      "be9f308fc40a9107c708aa15facf8d2c455f288a",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "css-scoping-shadow-nested-slot-display-override.html": [
-      "f194e469f05845e9ee4e362541971aeeaceff1ce",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "css-scoping-shadow-root-hides-children.html": [
-      "bc526059dcafa63267a9a4abbcf4e120ea738374",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "css-scoping-shadow-slot-display-override.html": [
-      "9338a25be6fe21089f359da72b8fe118ac593bdc",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "css-scoping-shadow-slot-fallback.html": [
-      "6cf1b5bafc549b5f27de0868a14fcaa749a08dba",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "css-scoping-shadow-slot-style.html": [
-      "e3f37c33c848d45133717e79ed333afd52219493",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "css-scoping-shadow-slot.html": [
-      "2b588d622e12dff9f146150b25edae0e76b31356",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "css-scoping-shadow-slotted-nested.html": [
-      "5f930e2e8777e7c4bb84aa19789e54b588122214",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "css-scoping-shadow-slotted-rule.html": [
-      "9771c5d1dfb6d9139ecd76f7db3c0363b2c5d0c9",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "css-scoping-shadow-with-outside-rules.html": [
-      "c725752cba54234c632d385d2ca1d9b0547da3f6",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "css-scoping-shadow-with-rules-no-style-leak.html": [
-      "e4d1d15b7be7c20dff2d6fe66d86161e885c82c9",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "css-scoping-shadow-with-rules.html": [
-      "3338ecbf72f028cdb657bacc2a176ebd2658333b",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "has-slotted-001.html": [
-      "4e3de3f6adbdfc20fa6a441d23b90d3e9f28c7ea",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "has-slotted-002.html": [
-      "729f105719b98ac791cf1f7ba9ceae88f38a4b4e",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "has-slotted-003.html": [
-      "d13911e96b76f524e9d934a3a3d13e24360111b7",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "has-slotted-flattened-001.html": [
-      "cd6436a7145064db3555b5d316f81a191a0db614",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "has-slotted-flattened-002.html": [
-      "84e4c63953ed739f7a7d7cbdb619aebaec59dbb0",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "has-slotted-flattened-003.html": [
-      "e16abd7be8917ae368c5e93b0b316cd33bfa78fa",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "has-slotted-flattened-004.html": [
-      "365aad154dc746c922adce568972025e1f8430b2",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "has-slotted-functional-001.tentative.html": [
-      "9a9563287631b6544b9009b16200791424d5d868",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "has-slotted-functional-002.tentative.html": [
-      "a67f788f78563382862dc722782ca186010b6c30",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "has-slotted-functional-003.tentative.html": [
-      "9565b1594c3ed71094f7cf826653f6c06f486a1d",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "has-slotted-functional-004.tentative.html": [
-      "2d980e10051eb5a654771a9069eeb74f7f4f5890",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "has-slotted-functional-005.tentative.html": [
-      "3de7c16f287cb6fc5681362f7def0252981bde24",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "has-slotted-functional-006.tentative.html": [
-      "aea5c6b2a141fd297859635509bd976772cd1908",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "has-slotted-functional-007.tentative.html": [
-      "d7e015056300ca81a5a38c2020c59332f9258d6c",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "has-slotted-functional-flattened-001.tentative.html": [
-      "f14bdbc776d639a5f52c9d69bf25882d601da876",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "has-slotted-functional-flattened-002.tentative.html": [
-      "ff13ac70963c4fac875ba0202185d7320253b6ec",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "has-slotted-functional-flattened-003.tentative.html": [
-      "bca81b971de20dd8e5174052623ad2da21ad11fc",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "has-slotted-functional-flattened-004.tentative.html": [
-      "7b299d25baa36f23d6311ac1fd5981a50f9d6a5b",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "has-slotted-functional-flattened-005.tentative.html": [
-      "7fccf604d8bcbf0f3452c3e8c79f2da24122b9b0",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "has-slotted-functional-flattened-006.tentative.html": [
-      "fd3dda69bc8a70300437ace996362431019d8329",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "host-context-specificity-001.html": [
-      "694087f56b76cae0a3ccf5015cc25902a1dad8cf",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "host-context-specificity-002.html": [
-      "3d4d3e5b245950f15ec126909393ff5e8b3edcb8",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "host-context-specificity-003.html": [
-      "7abf8847c95ed04fae77b8601457909ecd72742e",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "host-defined.html": [
-      "563bc52e527927030270658c4c965d51045edcbb",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "host-descendant-001.html": [
-      "423beaf055b9f482dd299c055721a405df1d5d77",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "host-descendant-002.html": [
-      "6660d4a40c6244e675bb0b0dfddac86d36034fe9",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "host-descendant-003.html": [
-      "eb2cc7d343e1c382f693f93ec3de6557dfd8d5ff",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "host-has-001.tentative.html": [
-      "79c89874c63af3b2fa14ed64e0711b006a8032dc",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "host-has-002.tentative.html": [
-      "33a705672aeb07fdaae71eb7fac583396f20d450",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "host-has-003.tentative.html": [
-      "58f1482564b0b29afd2a1c5dea7a7640d6b74a72",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "host-has-internal-001.html": [
-      "c2082de0ac306be835d1913e4b011b5503eac186",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "host-has-internal-002.html": [
-      "217ed9596c411a6d20b2cda5d972728a8e4da8eb",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "host-has-internal-003.html": [
-      "9c0a724834596d29f397a5434a83b5bbba658d46",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "host-has-internal-004.html": [
-      "fe51186f59f88bdfcf5ed8641938b7491024bfda",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "host-is-001.html": [
-      "16d0dd76691362ee963e386a2fd238783c096243",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "host-is-002.html": [
-      "408dde2987690b715e454504030499d68baa12a1",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "host-is-003.html": [
-      "b1958c00ea2a2d40d6ae8f757e250861132a63fb",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "host-is-004.html": [
-      "5d12a5b5a77e4b2f4d9964d48141ec05c444a52a",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "host-is-005.html": [
-      "1e2209abda828d785ecf561e307f3bd26391ca7c",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "host-is-006.html": [
-      "fca86d0184babd62cdce0cd332887972262d8e54",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "host-multiple-001.html": [
-      "c8833c4b5b7abb52a6c336ea6b6f24e546cfed62",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "host-multiple-002.html": [
-      "c3f76a5091861a79ed18fda1a6b845d5385d03d6",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "host-multiple-003.html": [
-      "97774b5bedf323b43359b06aa8017f440ed77a44",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "host-multiple-004.html": [
-      "65a605a922ed2fa58045a59c6ae899034e07ab2e",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "host-multiple-005.html": [
-      "d834954f3b3fd29fff1749b0b33755d83980004b",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "host-nested-001.html": [
-      "f8e412cc00565c5b20416bee5b88e0cc95ddc6d8",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "host-not-001.html": [
-      "a5cfcbd8ea7709be52ab2317ce916a620675e1be",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "host-slotted-001.html": [
-      "f05b7c729f31a7225809f6166ea0d65be8fa0314",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "host-specificity-002.html": [
-      "3132d3a3455241347d6fe421f3434c361e424493",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "host-specificity-003.html": [
-      "54a22599d8f83f612d7fc9ff91abfe650114c6e2",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "host-specificity.html": [
-      "3ef61d4135fe7dbf846feb82540ca1a213ce7987",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "host-with-default-namespace-001.html": [
-      "dcd51f8119f4bbaed2f97bf3b4dcee9fa8f0fc7c",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "reslot-text-inheritance.html": [
-      "43711c83bd160825caf1d89c7599f3df1ae64508",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-text.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "scoped-reference-animation-001.html": [
-      "891bda52a39b42322cf15cb01727f9cad58cf026",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/scoped-reference-animation-ref.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "scoped-reference-animation-002.html": [
-      "d5c25f06c0aa73269615ec9bf2b6399729ea261a",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/scoped-reference-animation-ref.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "shadow-assign-dynamic-001.html": [
-      "b9a0d1a2991c071bb3654995f93c4ac7ff495aee",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "shadow-at-import.html": [
-      "1adf516311f3a7ae470308e8698f3165b5fa6ca5",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "shadow-directionality-001.tentative.html": [
-      "7070d2a1d9a856fa9a00fa590f5f582df0a29ac9",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "shadow-directionality-002.tentative.html": [
-      "6aba12436a6780ce5afde675388506f7f82c29a8",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "shadow-disabled-sheet-001.html": [
-      "275ac47a613adb26c408912160a339b8a71c9c9c",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "shadow-fallback-dynamic-001.html": [
-      "9a5672eb63a902d08f309f96ba659b615cceeda9",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "shadow-fallback-dynamic-002.html": [
-      "f65d0c7a2129d685429cef4b754a720816af6b22",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "shadow-fallback-dynamic-003.html": [
-      "a30e8fed7d257ceedc249c24b249fab69d85c19d",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "shadow-fallback-dynamic-004.html": [
-      "29e407573a31ba87da8419121431b661612c68ca",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "shadow-fallback-dynamic-005.html": [
-      "1d84907e5fc0deb164bd38ab6b9979977a003fc6",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "shadow-host-with-before-after.html": [
-      "87e1554f154d82c6252e752caa830954c119310c",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "shadow-link-rel-stylesheet-no-style-leak.html": [
-      "8ca69ccd1b287ad36283405c8ca95742ad08299e",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "shadow-link-rel-stylesheet.html": [
-      "d67929a1adbd42b807500685c6a36a9e61e22fed",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "shadow-reassign-dynamic-001.html": [
-      "e8fe49ac96ff1694565bd82213c07f7204f0bb1c",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "shadow-reassign-dynamic-002.html": [
-      "7874e2e13987246c1160c419967aba9db32bbf63",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "shadow-reassign-dynamic-004.html": [
-      "6c2beadc36a5007f26affa4ad4cceb39f6849d8e",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "shadow-reassign-dynamic-006.html": [
-      "ace701eea93f5b098505266c23420e6644aa9fb2",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/shadow-reassign-dynamic-006-ref.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "shadow-root-insert-into-document.html": [
-      "a3b89be389a780dd53a1b53224810ecb4866c287",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "slotted-details-content.html": [
-      "005098bd2544a6db184b225e7d061d2610784bad",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/slotted-details-content-ref.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "slotted-file-selector-button.html": [
-      "7b11deda3e1c5aa5272c27ca128346278dd1aadf",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/slotted-file-selector-button-ref.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "slotted-has-001.html": [
-      "dcb11ec32eaea0b9982f8d5bc6b4a6cad7c41fad",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "slotted-has-002.html": [
-      "5e709a969619b3b48f62231c4ac30209388dc8a5",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "slotted-has-003.html": [
-      "548f2c5d421d673367abc89c9289d756cf463016",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "slotted-has-004.html": [
-      "7e76b1b6de62920eb863a7fb114de6ba6c160b78",
-      [
-       null,
-       [
-        [
-         "/css/reference/ref-filled-green-100px-square-only.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "slotted-placeholder.html": [
-      "a3d607afb8e78e8c340b2d4c6ec86a5f4fc12190",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/slotted-placeholder-ref.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "slotted-specificity-002.html": [
-      "ca2b9ab14c429a855e37823ce76b20f0e0b65921",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "slotted-specificity.html": [
-      "d049182db65ae9b0339c33c429ac4beb92dc39a1",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "slotted-with-pseudo-element.html": [
-      "f2b33ae49474ff6594acd2052d400d781d4101af",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/slotted-with-pseudo-element-ref.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "stylesheet-title-001.html": [
-      "a91fca8ce132770b6d031fe9a3abacf8d40a66f6",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "svg-id-ref-001.html": [
-      "81deb379f8fb20c1ecbca97ba248842333a5a3b5",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ],
-     "whitespace-crash-001.html": [
-      "d3b4a8a4ad21962d8277a8ab1ecd9e9ffb1675d4",
-      [
-       null,
-       [
-        [
-         "/css/css-scoping/reference/green-box.html",
-         "=="
-        ]
-       ],
-       {}
-      ]
-     ]
-    },
     "css-scroll-anchoring": {
      "nested-overflow-subtree-layout-vertical.html": [
       "5b176a2042e7607f740e94faa445ec301c8e88d8",
@@ -202996,92 +201677,1448 @@
       ]
      ]
     },
-    "css-shadow-parts": {
-     "animation-part.html": [
-      "333785fe6284871ff18358fefcb15e74bedee108",
+    "css-shadow": {
+     "css-scoping-shadow-assigned-node-with-before-after.html": [
+      "3d5ca4decf853c54bc7028bc56f6dd391833fe23",
       [
        null,
        [
         [
-         "/css/css-shadow-parts/animation-part-ref.html",
+         "/css/css-shadow/reference/green-box.html",
          "=="
         ]
        ],
        {}
       ]
      ],
-     "exportparts-different-scope.html": [
-      "94fce0d3ad57fe71b2fdcd368633fd875b3c7de9",
+     "css-scoping-shadow-assigned-node-with-rules.html": [
+      "6c9a7c5f4780092c692da485c12d21a226b63949",
       [
        null,
        [
         [
-         "/css/css-shadow-parts/exportparts-different-scope-ref.html",
+         "/css/css-shadow/reference/green-box.html",
          "=="
         ]
        ],
        {}
       ]
      ],
-     "exportparts-layered.html": [
-      "b9593cbaf894f0b66036844e417861010ec76090",
+     "css-scoping-shadow-host-functional-rule.html": [
+      "311161cbe051ad76211a93a5d7edd630e270bb53",
       [
        null,
        [
         [
-         "/css/css-shadow-parts/exportparts-layered.ref.html",
+         "/css/css-shadow/reference/green-box.html",
          "=="
         ]
        ],
        {}
       ]
      ],
-     "interaction-with-nested-pseudo-class.html": [
-      "1061e4b0e3501535d2bebf741e4986a2a6779c1a",
+     "css-scoping-shadow-host-namespace.html": [
+      "033f51b3f2a1bf6a0ef6c26453b210c8d73a3800",
       [
        null,
        [
         [
-         "/css/css-shadow-parts/interaction-with-nested-pseudo-class-ref.html",
+         "/css/css-shadow/reference/green-box.html",
          "=="
         ]
        ],
        {}
       ]
      ],
-     "interaction-with-placeholder.html": [
-      "a064789f06111bf5ce791650207bcee195d346ab",
+     "css-scoping-shadow-host-rule.html": [
+      "1f711737bae4b102c55d991f2c25046b367ed688",
       [
        null,
        [
         [
-         "/css/css-shadow-parts/interaction-with-placeholder-ref.html",
+         "/css/css-shadow/reference/green-box.html",
          "=="
         ]
        ],
        {}
       ]
      ],
-     "part-after-combinator-invalidation.html": [
-      "76beabe8855fad7344690e1388fb2251abf23033",
+     "css-scoping-shadow-host-with-before-after.html": [
+      "7289405455af85cabae90930c9e923903db9940a",
       [
        null,
        [
         [
-         "/css/css-shadow-parts/part-after-combinator-invalidation-ref.html",
+         "/css/css-shadow/reference/green-box.html",
          "=="
         ]
        ],
        {}
       ]
      ],
-     "part-nested-pseudo.html": [
-      "f1753de7752840cd2841cb8002c10ac08038cf18",
+     "css-scoping-shadow-invisible-slot.html": [
+      "9c3fb4fd2d76de01afae8218387cdf312be1956e",
       [
        null,
        [
         [
-         "/css/css-shadow-parts/part-nested-pseudo-ref.html",
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "css-scoping-shadow-nested-slot-display-override.html": [
+      "21159d5087723b12060da36c7367ddad4043a2af",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "css-scoping-shadow-root-hides-children.html": [
+      "4343d157c34975c0f43af8b5b6512aad6391993c",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "css-scoping-shadow-slot-display-override.html": [
+      "31a02edab48142cbba90860efe3b46047253c09c",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "css-scoping-shadow-slot-fallback.html": [
+      "d5f581d87602433c87e9cadf9e899e1f0cfd4a9a",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "css-scoping-shadow-slot-style.html": [
+      "6f598fa68293d8b5e9cfd4f33efbb8c56b46aefb",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "css-scoping-shadow-slot.html": [
+      "863fd767746fe857fb281f767ca5a08217f8e648",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "css-scoping-shadow-slotted-nested.html": [
+      "072bab7d79145852dfec43db9f4c18779d6d0617",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "css-scoping-shadow-slotted-rule.html": [
+      "186dec05b2a85901307aac1c3a21542227386a8d",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "css-scoping-shadow-with-outside-rules.html": [
+      "8123e9e5f2369cd2388d1f712bb1365e2e01fc71",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "css-scoping-shadow-with-rules-no-style-leak.html": [
+      "7e19ee381e83996f9967f7a63e3a2c1d7943da30",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "css-scoping-shadow-with-rules.html": [
+      "bfdfeb3aa865ea4e3c10c92b747bada05e376d5b",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "has-slotted-001.html": [
+      "4e3de3f6adbdfc20fa6a441d23b90d3e9f28c7ea",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "has-slotted-002.html": [
+      "729f105719b98ac791cf1f7ba9ceae88f38a4b4e",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "has-slotted-003.html": [
+      "d13911e96b76f524e9d934a3a3d13e24360111b7",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "has-slotted-flattened-001.html": [
+      "cd6436a7145064db3555b5d316f81a191a0db614",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "has-slotted-flattened-002.html": [
+      "84e4c63953ed739f7a7d7cbdb619aebaec59dbb0",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "has-slotted-flattened-003.html": [
+      "e16abd7be8917ae368c5e93b0b316cd33bfa78fa",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "has-slotted-flattened-004.html": [
+      "365aad154dc746c922adce568972025e1f8430b2",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "has-slotted-functional-001.tentative.html": [
+      "9a9563287631b6544b9009b16200791424d5d868",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "has-slotted-functional-002.tentative.html": [
+      "a67f788f78563382862dc722782ca186010b6c30",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "has-slotted-functional-003.tentative.html": [
+      "9565b1594c3ed71094f7cf826653f6c06f486a1d",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "has-slotted-functional-004.tentative.html": [
+      "2d980e10051eb5a654771a9069eeb74f7f4f5890",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "has-slotted-functional-005.tentative.html": [
+      "3de7c16f287cb6fc5681362f7def0252981bde24",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "has-slotted-functional-006.tentative.html": [
+      "aea5c6b2a141fd297859635509bd976772cd1908",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "has-slotted-functional-007.tentative.html": [
+      "d7e015056300ca81a5a38c2020c59332f9258d6c",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "has-slotted-functional-flattened-001.tentative.html": [
+      "f14bdbc776d639a5f52c9d69bf25882d601da876",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "has-slotted-functional-flattened-002.tentative.html": [
+      "ff13ac70963c4fac875ba0202185d7320253b6ec",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "has-slotted-functional-flattened-003.tentative.html": [
+      "bca81b971de20dd8e5174052623ad2da21ad11fc",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "has-slotted-functional-flattened-004.tentative.html": [
+      "7b299d25baa36f23d6311ac1fd5981a50f9d6a5b",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "has-slotted-functional-flattened-005.tentative.html": [
+      "7fccf604d8bcbf0f3452c3e8c79f2da24122b9b0",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "has-slotted-functional-flattened-006.tentative.html": [
+      "fd3dda69bc8a70300437ace996362431019d8329",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "host-context-specificity-001.html": [
+      "8c89bb67855ffa27f044fbb0e68b6a64871b9b2e",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "host-context-specificity-002.html": [
+      "23f91ed7ea904e567db781d7894a2ad9e6cdefee",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "host-context-specificity-003.html": [
+      "94ba218dbad30282cab6ffadb44d675a3062848d",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "host-defined.html": [
+      "563bc52e527927030270658c4c965d51045edcbb",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "host-descendant-001.html": [
+      "03ea12391d0a465d39d1b76beac07dab7348fc4f",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "host-descendant-002.html": [
+      "22d901045c1d023e99b00a09f69a48ba79c669e7",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "host-descendant-003.html": [
+      "eb2cc7d343e1c382f693f93ec3de6557dfd8d5ff",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "host-has-001.tentative.html": [
+      "018a228cce75f651c62fe813ab4ba06244bf0f1e",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "host-has-002.tentative.html": [
+      "f0cb77a7a727dac0155741259c7511bd702fd3a6",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "host-has-003.tentative.html": [
+      "502e454270b45505ad2207cee0af64a91132affc",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "host-has-internal-001.html": [
+      "78a028dfd8d1c24e8550a397c5938de1da1336ef",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "host-has-internal-002.html": [
+      "05e3b631ed0357ed0ffa4b390c279675bf005209",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "host-has-internal-003.html": [
+      "fcb440de1db6914792b7100964a20b22f6ae3b8b",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "host-has-internal-004.html": [
+      "61f673021960fdeb7c158124c377a32691aefec5",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "host-is-001.html": [
+      "16d0dd76691362ee963e386a2fd238783c096243",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "host-is-002.html": [
+      "408dde2987690b715e454504030499d68baa12a1",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "host-is-003.html": [
+      "b1958c00ea2a2d40d6ae8f757e250861132a63fb",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "host-is-004.html": [
+      "5d12a5b5a77e4b2f4d9964d48141ec05c444a52a",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "host-is-005.html": [
+      "1e2209abda828d785ecf561e307f3bd26391ca7c",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "host-is-006.html": [
+      "fca86d0184babd62cdce0cd332887972262d8e54",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "host-multiple-001.html": [
+      "91df48cc4a9239b73bcb4937729ca141cd9fb871",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "host-multiple-002.html": [
+      "c3f76a5091861a79ed18fda1a6b845d5385d03d6",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "host-multiple-003.html": [
+      "97774b5bedf323b43359b06aa8017f440ed77a44",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "host-multiple-004.html": [
+      "65a605a922ed2fa58045a59c6ae899034e07ab2e",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "host-multiple-005.html": [
+      "d834954f3b3fd29fff1749b0b33755d83980004b",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "host-nested-001.html": [
+      "42cb0a4c8fb2bec1a69ae6d7d4d0f7aa26b8d46a",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "host-not-001.html": [
+      "a5cfcbd8ea7709be52ab2317ce916a620675e1be",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "host-slotted-001.html": [
+      "285b526cb6b8529f4a0a214c0766744cb96cf658",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "host-specificity-002.html": [
+      "c16b2fb1574f741a9756c98d26ed8ba408f1f23e",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "host-specificity-003.html": [
+      "5e1673f823288d13ea8371771f14894fe1bfa300",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "host-specificity.html": [
+      "11745fe564af8516d0c52b8ae5aed8bbf3150817",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "host-with-default-namespace-001.html": [
+      "20f948d3391c974bc153f0bb2f4ca1010d657315",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "part": {
+      "animation-part.html": [
+       "333785fe6284871ff18358fefcb15e74bedee108",
+       [
+        null,
+        [
+         [
+          "/css/css-shadow/part/animation-part-ref.html",
+          "=="
+         ]
+        ],
+        {}
+       ]
+      ],
+      "exportparts-different-scope.html": [
+       "a487a052de3ae194773892457052ef8c1ad560cd",
+       [
+        null,
+        [
+         [
+          "/css/css-shadow/part/exportparts-different-scope-ref.html",
+          "=="
+         ]
+        ],
+        {}
+       ]
+      ],
+      "exportparts-layered.html": [
+       "9d6d12a4b4f495e72e235005382b5e5917ed4279",
+       [
+        null,
+        [
+         [
+          "/css/css-shadow/part/exportparts-layered.ref.html",
+          "=="
+         ]
+        ],
+        {}
+       ]
+      ],
+      "interaction-with-nested-pseudo-class.html": [
+       "55066d3a19136010d1450a0c1a44c541eb06bb38",
+       [
+        null,
+        [
+         [
+          "/css/css-shadow/part/interaction-with-nested-pseudo-class-ref.html",
+          "=="
+         ]
+        ],
+        {
+         "testdriver": true
+        }
+       ]
+      ],
+      "interaction-with-placeholder.html": [
+       "54dc046a5677cdabf7c61cb208c3d78e685a2ae5",
+       [
+        null,
+        [
+         [
+          "/css/css-shadow/part/interaction-with-placeholder-ref.html",
+          "=="
+         ]
+        ],
+        {}
+       ]
+      ],
+      "part-after-combinator-invalidation.html": [
+       "1ef9fbb674d7ac03a7b6881bf997d5893a768107",
+       [
+        null,
+        [
+         [
+          "/css/css-shadow/part/part-after-combinator-invalidation-ref.html",
+          "=="
+         ]
+        ],
+        {}
+       ]
+      ],
+      "part-nested-pseudo.html": [
+       "94339cf7bb748bed160ae18ef3f1c4f313dfa506",
+       [
+        null,
+        [
+         [
+          "/css/css-shadow/part/part-nested-pseudo-ref.html",
+          "=="
+         ]
+        ],
+        {}
+       ]
+      ]
+     },
+     "reslot-text-inheritance.html": [
+      "c23a1e7650a4d0e4caefdf5b4e25a83902776da7",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-text.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "scoped-reference-animation-001.html": [
+      "baf08b48564a6b0e370e19aefc2faaf6e9c6fdbb",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/scoped-reference-animation-ref.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "scoped-reference-animation-002.html": [
+      "11c05157f27708fabea17604e5028b6f06b24362",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/scoped-reference-animation-ref.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "shadow-assign-dynamic-001.html": [
+      "3d38bdd8eec8d2e1acb1715c1bc476be3ad185bb",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "shadow-at-import.html": [
+      "1adf516311f3a7ae470308e8698f3165b5fa6ca5",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "shadow-directionality-001.tentative.html": [
+      "7070d2a1d9a856fa9a00fa590f5f582df0a29ac9",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "shadow-directionality-002.tentative.html": [
+      "6aba12436a6780ce5afde675388506f7f82c29a8",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "shadow-disabled-sheet-001.html": [
+      "d4d4e9dcfa215cd98ba9ed346ba59ef205d12105",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "shadow-fallback-dynamic-001.html": [
+      "dfb8e325ff1a45a11af7890181355bfa90c147b8",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "shadow-fallback-dynamic-002.html": [
+      "26bb07b2e2d8a0b2d8c0aa489ccb530bbc5d590c",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "shadow-fallback-dynamic-003.html": [
+      "cbf14810f9adf78a0f66d9919648971abfa5b8d6",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "shadow-fallback-dynamic-004.html": [
+      "4ef619627221d6d22622cf08dab415e600694e5e",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "shadow-fallback-dynamic-005.html": [
+      "743f62d75c80a01c2355328ec327a04ada59f4c2",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "shadow-host-with-before-after.html": [
+      "f46f92caeb4fabcfa4e1e765fb8cbb39cd0570ed",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "shadow-link-rel-stylesheet-no-style-leak.html": [
+      "dfdc2c49b0567ced865a3c7040f4c50f72e3413d",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "shadow-link-rel-stylesheet.html": [
+      "d67929a1adbd42b807500685c6a36a9e61e22fed",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "shadow-reassign-dynamic-001.html": [
+      "c358b1fac7d87000c75852acb6ce5f5979f3ffad",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "shadow-reassign-dynamic-002.html": [
+      "b12fddc0d3cb305cdc646a57e7a549d38c624186",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "shadow-reassign-dynamic-004.html": [
+      "144ad3b8628cc19a62786c1f607cd44bb7a51463",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "shadow-reassign-dynamic-006.html": [
+      "d2e298949177f88267702a6c01a5b8348b32c580",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/shadow-reassign-dynamic-006-ref.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "shadow-root-insert-into-document.html": [
+      "9327d31b879174786fb8376f0f4dfd6330d75428",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "slotted-details-content.html": [
+      "93d42a137162faa7a7cd89d78e5eeaf2d8aec82d",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/slotted-details-content-ref.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "slotted-file-selector-button.html": [
+      "5d00fe031e72ebf757a34ed4259f5f10b3242eb1",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/slotted-file-selector-button-ref.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "slotted-has-001.html": [
+      "dcb11ec32eaea0b9982f8d5bc6b4a6cad7c41fad",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "slotted-has-002.html": [
+      "5e709a969619b3b48f62231c4ac30209388dc8a5",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "slotted-has-003.html": [
+      "548f2c5d421d673367abc89c9289d756cf463016",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "slotted-has-004.html": [
+      "7e76b1b6de62920eb863a7fb114de6ba6c160b78",
+      [
+       null,
+       [
+        [
+         "/css/reference/ref-filled-green-100px-square-only.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "slotted-placeholder.html": [
+      "85bb6403699c6198555310e69588db5225078e68",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/slotted-placeholder-ref.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "slotted-specificity-002.html": [
+      "29c3b2c1881ebdf28bc52cba6a8903e8e262812e",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "slotted-specificity.html": [
+      "b46da37759399cab7d40bfe9408027354a61f932",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "slotted-with-pseudo-element.html": [
+      "4e0cab54ffa8d6264d31f3da6bf20b9b324e2dbf",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/slotted-with-pseudo-element-ref.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "stylesheet-title-001.html": [
+      "a91fca8ce132770b6d031fe9a3abacf8d40a66f6",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "svg-id-ref-001.html": [
+      "d97f94a6d58efc9f68a723f52e474eb01e63a765",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ],
+     "whitespace-crash-001.html": [
+      "c0454c9328840c0c2307cc8b08c5e072da3d1367",
+      [
+       null,
+       [
+        [
+         "/css/css-shadow/reference/green-box.html",
          "=="
         ]
        ],
@@ -225579,6 +225616,58 @@
         [
          [
           "/css/css-text/text-indent/reference/text-indent-caret-hanging-001-ref.html",
+          "=="
+         ]
+        ],
+        {}
+       ]
+      ],
+      "text-indent-dynamic-each-line-001.html": [
+       "2d833e56f690ab5af73b9173e140a11849648058",
+       [
+        null,
+        [
+         [
+          "/css/css-text/text-indent/reference/text-indent-each-line-001-ref.html",
+          "=="
+         ]
+        ],
+        {}
+       ]
+      ],
+      "text-indent-dynamic-each-line-002.html": [
+       "ae0cc2d467371ce051b99c0d7193a07172b943b7",
+       [
+        null,
+        [
+         [
+          "/css/css-text/text-indent/reference/text-indent-each-line-001-ref.html",
+          "=="
+         ]
+        ],
+        {}
+       ]
+      ],
+      "text-indent-dynamic-hanging-001.html": [
+       "190a530f5ca10a1de4a87ec7d4aa898e2768acee",
+       [
+        null,
+        [
+         [
+          "/css/css-text/text-indent/reference/text-indent-hanging-001-ref.html",
+          "=="
+         ]
+        ],
+        {}
+       ]
+      ],
+      "text-indent-dynamic-hanging-002.html": [
+       "9d34416ccf287289e900432758dd27d73d5378ba",
+       [
+        null,
+        [
+         [
+          "/css/css-text/text-indent/reference/text-indent-hanging-001-ref.html",
           "=="
          ]
         ],
@@ -358567,7 +358656,7 @@
       []
      ],
      "WEB_FEATURES.yml": [
-      "3e7390dffc08961086cd4a1e11495a96e29abc9f",
+      "d6ee4de6f11740bcce5ca2c2c3fc78620608f4c8",
       []
      ],
      "all-prop-001-ref.html": [
@@ -358689,7 +358778,7 @@
       []
      ],
      "WEB_FEATURES.yml": [
-      "c73249b9a31038d8b1cdba492cba1ad7b4c02863",
+      "1b2ab1b44c6d128f86765a2571b3d264812d1882",
       []
      ],
      "a98rgb-003-ref.html": [
@@ -372264,6 +372353,10 @@
       "f47a402357b6ccbff2fa27ca39bb0df491e87a10",
       []
      ],
+     "WEB_FEATURES.yml": [
+      "7b0bde642f90c8baae6e74ec0a43f0dfffa3e87f",
+      []
+     ],
      "agnostic": {
       "gap-decorations-001-ref.html": [
        "a7314fc7dca1545dacd710c261c7594117a3894a",
@@ -374457,7 +374550,7 @@
           []
          ],
          "column-dense-packing-008-ref.html": [
-          "b52aee53be14fddebac30823ee6c6e98755d55b7",
+          "2961d346d2e252f280992b802368cf3fa9762133",
           []
          ],
          "column-dense-packing-multi-span-001-ref.html": [
@@ -374783,16 +374876,6 @@
         ],
         "row-order-property-auto-placement-005-ref.html": [
          "7a0ca2beced766cc911e8d4d2e202bab69907645",
-         []
-        ]
-       },
-       "parsing": {
-        "flow-tolerance-computed-expected.txt": [
-         "1dcfe36e37f3cf7b3da10e9f37810292c15c624e",
-         []
-        ],
-        "flow-tolerance-valid-expected.txt": [
-         "2063f5e6fb05a14b8bc07b7aefaf011ec861d559",
          []
         ]
        },
@@ -375398,6 +375481,12 @@
       "a037967e493fa5eba3914db3c8f38914ee1d8729",
       []
      ],
+     "parsing": {
+      "WEB_FEATURES.yml": [
+       "0395082cd4fe66c12cceb42cfb64aca5f849a69a",
+       []
+      ]
+     },
      "reference": {
       "anonymous-grid-items-001-ref.html": [
        "20302c2f1aa48e45b0698ed42bca866cf8f6a58e",
@@ -378199,7 +378288,7 @@
       []
      ],
      "WEB_FEATURES.yml": [
-      "ed620521718918ec0c3ebfac58faef8baa7dbe1f",
+      "6233a26e097587ed74b36b7f1bfb70656e510ca7",
       []
      ],
      "add-inline-child-after-marker-001-ref.html": [
@@ -384213,7 +384302,7 @@
       []
      ],
      "WEB_FEATURES.yml": [
-      "81de977de2ed9831e42b6f27f1c9851b5f1f8f5e",
+      "ae2b721874e33d597689cc0873cfb11e358bd7f7",
       []
      ],
      "active-selection-051-ref.html": [
@@ -385575,120 +385664,6 @@
       ]
      }
     },
-    "css-scoping": {
-     "META.yml": [
-      "826341652122a40956ccc74288e23f952f1f40e8",
-      []
-     ],
-     "OWNERS": [
-      "53463b38f4154029f9fadf7c337119f9828f57b4",
-      []
-     ],
-     "WEB_FEATURES.yml": [
-      "4fcf1578cd46c2b3e8f027bbf4d220ca11fc2f60",
-      []
-     ],
-     "font-face-001-expected.txt": [
-      "0ccc20dfb3a8a07be48e528279d05f1c944ce5df",
-      []
-     ],
-     "font-face-005-expected.txt": [
-      "e808174513245057d6da71845dfb8de3bd1affc3",
-      []
-     ],
-     "font-face-007-expected.txt": [
-      "610662c85551e0c1e187ad7c5d65c0607aec1a67",
-      []
-     ],
-     "font-face-008-expected.txt": [
-      "5d3bb44987acc21a806ff36a030eede932aedb23",
-      []
-     ],
-     "font-face-009-expected.txt": [
-      "a446b39f4cba898e1c14f7c62b74456acba91901",
-      []
-     ],
-     "has-slotted-functional-changing-001.tentative-expected.txt": [
-      "491d6e747559ea92977f6f67467f7b93a25f9268",
-      []
-     ],
-     "has-slotted-functional-changing-002.tentative-expected.txt": [
-      "805e5333690d7e48ed1b12dff763a549a535fa89",
-      []
-     ],
-     "has-slotted-functional-changing-003.tentative-expected.txt": [
-      "0687500ebb2e267d851d6671f72c77b13e77f505",
-      []
-     ],
-     "has-slotted-functional-changing-004.tentative-expected.txt": [
-      "805e5333690d7e48ed1b12dff763a549a535fa89",
-      []
-     ],
-     "has-slotted-query-selector-expected.txt": [
-      "33440d6d0171a4b2245e18a1690fd1672afa2161",
-      []
-     ],
-     "keyframes-002-expected.txt": [
-      "765775c5d7c5011c6d148252d1d8e0e6dca8c756",
-      []
-     ],
-     "keyframes-004-expected.txt": [
-      "40cde489aee19661e3efceb23363341a0c61de85",
-      []
-     ],
-     "keyframes-005-expected.txt": [
-      "6aa1d8b3d3c01fb02ed95e5f55b3d2304317e213",
-      []
-     ],
-     "reference": {
-      "green-box.html": [
-       "24b5e0d5f53d8fab39a2d1699f77ccef417ef6b6",
-       []
-      ],
-      "green-text.html": [
-       "95736b4484dc020f02000fc327ae87494f491d48",
-       []
-      ]
-     },
-     "resources": {
-      "host-green-box.css": [
-       "a77b3fdc6432ea324e1601b99e901611d76098b0",
-       []
-      ]
-     },
-     "scoped-reference-animation-ref.html": [
-      "9f407eb690e0fb3d033afba0817082f84e30b783",
-      []
-     ],
-     "shadow-reassign-dynamic-006-ref.html": [
-      "60a6282457f17663be1317392b579f5369277048",
-      []
-     ],
-     "slotted-details-content-ref.html": [
-      "f99ca29497753a9b2799845d7fd150ea83fdf831",
-      []
-     ],
-     "slotted-file-selector-button-ref.html": [
-      "284033716d3b3e493b4c78512a58ce117b617bb0",
-      []
-     ],
-     "slotted-parsing-expected.txt": [
-      "180f9b3b9cf1207b5a7b42c0fe03a035b49c7337",
-      []
-     ],
-     "slotted-placeholder-ref.html": [
-      "f99c0385d061766b49d55e7703bf596fe69d6ec2",
-      []
-     ],
-     "slotted-text-with-flex-ref.html": [
-      "055dd72b235494d03663913b2fbf6083629670ef",
-      []
-     ],
-     "slotted-with-pseudo-element-ref.html": [
-      "d452d489a4aba9cab85debe4f1c8361bf3b430bb",
-      []
-     ]
-    },
     "css-scroll-anchoring": {
      "DIR_METADATA": [
       "5e354710d3b40f776065d9eadb2feb229fb8a225",
@@ -386137,57 +386112,167 @@
       []
      ]
     },
-    "css-shadow-parts": {
+    "css-shadow": {
      "META.yml": [
-      "6cce42664a64778f548edb53ec86ae61531812f0",
+      "06bf5d06260c4e4f39cd1146192cbf512656d4d3",
+      []
+     ],
+     "OWNERS": [
+      "53463b38f4154029f9fadf7c337119f9828f57b4",
       []
      ],
      "WEB_FEATURES.yml": [
-      "e9fb6df46fa691b302664c9b92051c83cdb656f0",
+      "4fcf1578cd46c2b3e8f027bbf4d220ca11fc2f60",
       []
      ],
-     "animation-part-ref.html": [
-      "c0c8ff040c9d70abb569f058842c99902ff9e2bd",
+     "font-face-001-expected.txt": [
+      "0ccc20dfb3a8a07be48e528279d05f1c944ce5df",
       []
      ],
-     "exportparts-different-scope-ref.html": [
-      "d497566c45ce000be904315c221458380d7b965e",
+     "font-face-005-expected.txt": [
+      "e808174513245057d6da71845dfb8de3bd1affc3",
       []
      ],
-     "exportparts-layered.ref.html": [
-      "1be4a7eb325c9211b67c1ab08f13e4d58fdb2510",
+     "font-face-007-expected.txt": [
+      "610662c85551e0c1e187ad7c5d65c0607aec1a67",
       []
      ],
-     "idlharness-expected.txt": [
-      "13da667e9abfb069d4e8902e3ed7c39dadc9153c",
+     "font-face-008-expected.txt": [
+      "5d3bb44987acc21a806ff36a030eede932aedb23",
       []
      ],
-     "interaction-with-nested-pseudo-class-ref.html": [
-      "e3b99d43a69e6ff44899e6512237978883df06cf",
+     "font-face-009-expected.txt": [
+      "a446b39f4cba898e1c14f7c62b74456acba91901",
       []
      ],
-     "interaction-with-placeholder-ref.html": [
-      "11943c229a0ea76893039b1306bb38402c71f6ad",
+     "has-slotted-functional-changing-001.tentative-expected.txt": [
+      "491d6e747559ea92977f6f67467f7b93a25f9268",
       []
      ],
-     "part-after-combinator-invalidation-ref.html": [
-      "d6db0d0e4c4461a7f7f873f2f243d830b82f1afb",
+     "has-slotted-functional-changing-002.tentative-expected.txt": [
+      "805e5333690d7e48ed1b12dff763a549a535fa89",
       []
      ],
-     "part-nested-pseudo-ref.html": [
-      "8eee65a27045ae97d10ed22050126d94fa69ed9b",
+     "has-slotted-functional-changing-003.tentative-expected.txt": [
+      "0687500ebb2e267d851d6671f72c77b13e77f505",
       []
      ],
-     "pseudo-classes-after-part-expected.txt": [
-      "9e89ee7e601fa9ffbbe0fb53502feab3826225ed",
+     "has-slotted-functional-changing-004.tentative-expected.txt": [
+      "805e5333690d7e48ed1b12dff763a549a535fa89",
       []
      ],
-     "support": {
-      "shadow-helper.js": [
-       "94accd6b1f9b095fda0079f7b86b866d88ffee01",
+     "has-slotted-query-selector-expected.txt": [
+      "33440d6d0171a4b2245e18a1690fd1672afa2161",
+      []
+     ],
+     "keyframes-002-expected.txt": [
+      "765775c5d7c5011c6d148252d1d8e0e6dca8c756",
+      []
+     ],
+     "keyframes-004-expected.txt": [
+      "40cde489aee19661e3efceb23363341a0c61de85",
+      []
+     ],
+     "keyframes-005-expected.txt": [
+      "6aa1d8b3d3c01fb02ed95e5f55b3d2304317e213",
+      []
+     ],
+     "part": {
+      "META.yml": [
+       "b1cc74ad45668c5b11b481f322cbeaf1fba96afe",
+       []
+      ],
+      "WEB_FEATURES.yml": [
+       "e9fb6df46fa691b302664c9b92051c83cdb656f0",
+       []
+      ],
+      "animation-part-ref.html": [
+       "c0c8ff040c9d70abb569f058842c99902ff9e2bd",
+       []
+      ],
+      "exportparts-different-scope-ref.html": [
+       "d497566c45ce000be904315c221458380d7b965e",
+       []
+      ],
+      "exportparts-layered.ref.html": [
+       "1be4a7eb325c9211b67c1ab08f13e4d58fdb2510",
+       []
+      ],
+      "interaction-with-nested-pseudo-class-ref.html": [
+       "e3b99d43a69e6ff44899e6512237978883df06cf",
+       []
+      ],
+      "interaction-with-placeholder-ref.html": [
+       "36942387db9eb398b79c20007f8b10506edceec6",
+       []
+      ],
+      "part-after-combinator-invalidation-ref.html": [
+       "d6db0d0e4c4461a7f7f873f2f243d830b82f1afb",
+       []
+      ],
+      "part-nested-pseudo-ref.html": [
+       "8eee65a27045ae97d10ed22050126d94fa69ed9b",
+       []
+      ],
+      "pseudo-classes-after-part-expected.txt": [
+       "9e89ee7e601fa9ffbbe0fb53502feab3826225ed",
+       []
+      ],
+      "support": {
+       "shadow-helper.js": [
+        "94accd6b1f9b095fda0079f7b86b866d88ffee01",
+        []
+       ]
+      }
+     },
+     "reference": {
+      "green-box.html": [
+       "24b5e0d5f53d8fab39a2d1699f77ccef417ef6b6",
+       []
+      ],
+      "green-text.html": [
+       "95736b4484dc020f02000fc327ae87494f491d48",
        []
       ]
-     }
+     },
+     "resources": {
+      "host-green-box.css": [
+       "a77b3fdc6432ea324e1601b99e901611d76098b0",
+       []
+      ]
+     },
+     "scoped-reference-animation-ref.html": [
+      "9f407eb690e0fb3d033afba0817082f84e30b783",
+      []
+     ],
+     "shadow-reassign-dynamic-006-ref.html": [
+      "60a6282457f17663be1317392b579f5369277048",
+      []
+     ],
+     "slotted-details-content-ref.html": [
+      "f99ca29497753a9b2799845d7fd150ea83fdf831",
+      []
+     ],
+     "slotted-file-selector-button-ref.html": [
+      "284033716d3b3e493b4c78512a58ce117b617bb0",
+      []
+     ],
+     "slotted-parsing-expected.txt": [
+      "180f9b3b9cf1207b5a7b42c0fe03a035b49c7337",
+      []
+     ],
+     "slotted-placeholder-ref.html": [
+      "f99c0385d061766b49d55e7703bf596fe69d6ec2",
+      []
+     ],
+     "slotted-text-with-flex-ref.html": [
+      "055dd72b235494d03663913b2fbf6083629670ef",
+      []
+     ],
+     "slotted-with-pseudo-element-ref.html": [
+      "d452d489a4aba9cab85debe4f1c8361bf3b430bb",
+      []
+     ]
     },
     "css-shapes": {
      "DIR_METADATA": [
@@ -388408,14 +388493,6 @@
       "hyphen-limit-chars-interpolation-expected.txt": [
        "c9b7a6a3abf65c6ce391dacdc3bb7add1d623340",
        []
-      ],
-      "text-indent-composition-expected.txt": [
-       "4c51f2a04c251b2312fc94bec4d97a18c629ecb6",
-       []
-      ],
-      "text-indent-interpolation-expected.txt": [
-       "f35bb41e89ff7101ede5200663e3edba9e74cccc",
-       []
       ]
      },
      "bidi": {
@@ -388493,6 +388570,10 @@
       }
      },
      "hanging-punctuation": {
+      "WEB_FEATURES.yml": [
+       "a44f701d1c0bbd6201d864c0ef8350222b9def5a",
+       []
+      ],
       "reference": {
        "hanging-punctuation-allow-end-001-ref.xht": [
         "48be1d980687d319bbdeedea9f3a9ac78e69a367",
@@ -390270,7 +390351,7 @@
      },
      "parsing": {
       "WEB_FEATURES.yml": [
-       "b7e9b3f11c6c5537f509465375154fd6cf169bfc",
+       "8fb4e7a600ebbf8ff8b9a2663826be197020192f",
        []
       ],
       "hanging-punctuation-valid-expected.txt": [
@@ -391086,8 +391167,16 @@
         "b65dd17ef503f6e85b3e69b172c67d6e0b2e0e8a",
         []
        ],
+       "text-indent-each-line-001-ref.html": [
+        "bd35f367b487370e3fa28a18d32663afe786bded",
+        []
+       ],
        "text-indent-each-line-hanging-ref.html": [
         "3357d7d8f5fb766b613b092839f331f3654053b0",
+        []
+       ],
+       "text-indent-hanging-001-ref.html": [
+        "97993151c81781572826d6aec3ef06b3e5449364",
         []
        ],
        "text-indent-length-001-ref.html": [
@@ -395281,7 +395370,7 @@
       []
      ],
      "WEB_FEATURES.yml": [
-      "7aa16b654d2ad3e3bab0d4d73ce4bfd716b2b3c1",
+      "8c5861cdadfc55f29d8360094484e1e42df6beb3",
       []
      ],
      "animations": {
@@ -395633,47 +395722,9 @@
       }
      },
      "the-stylepropertymap": {
-      "computed": {
-       "get-expected.txt": [
-        "051098f10a2d4b1962488ef96f19929e391891ce",
-        []
-       ]
-      },
-      "declared": {
-       "clear-expected.txt": [
-        "467bc7dbf6d89a4736f1364422f4f2a2adacb0e2",
-        []
-       ],
-       "declared.tentative-expected.txt": [
-        "31d774e305d12cd55c9af1647e2ffdf13208db4f",
-        []
-       ],
-       "get-expected.txt": [
-        "58cb50efbb9a19c563c856ef88b291ed2fc0be1f",
-        []
-       ],
-       "get-shorthand-expected.txt": [
-        "b9271ed1d6a26ca0230100009b2212a997b2e2c3",
-        []
-       ]
-      },
-      "inline": {
-       "clear-expected.txt": [
-        "3dd33098128d32dbbbbe6142b6d8ed369471ac10",
-        []
-       ],
-       "get-expected.txt": [
-        "0b2a4eccd936899dc60bcd5a79c19e0661d5bbac",
-        []
-       ],
-       "get-shorthand-expected.txt": [
-        "8aaeba5871a0b19d6e399d311773cdae6771feee",
-        []
-       ]
-      },
       "properties": {
        "WEB_FEATURES.yml": [
-        "6e44899542d34a6641f2b14ff0b071e9db684746",
+        "7aab0807fbcae764872f74f6e5a071a920d11f9b",
         []
        ],
        "accent-color-expected.txt": [
@@ -395685,7 +395736,7 @@
         []
        ],
        "all-expected.txt": [
-        "fdced9ff4afb7b138c3af978c55c13b4ce5df331",
+        "fe6cb6e9c6196ef8b099e6175c2148b0eba65e64",
         []
        ],
        "anchor-scope-expected.txt": [
@@ -395745,11 +395796,11 @@
         []
        ],
        "clip-path-expected.txt": [
-        "00a1df47c427a6f160f16be1cf2ef60791cf4056",
+        "f43aaf5919b3412981fe16414e84b36668fa0137",
         []
        ],
        "container-name-expected.txt": [
-        "1f83aaf5faa87e1866460b4a82bac4f598633a6c",
+        "c272ee2f0649e3de02444927fdbf92b8f0f74428",
         []
        ],
        "dominant-baseline-expected.txt": [
@@ -395761,7 +395812,7 @@
         []
        ],
        "fill-expected.txt": [
-        "fe9c3e5abb02f43df295123e942a29e4138dbee0",
+        "4c33a2996c4f902565567976e748cbc514c79e36",
         []
        ],
        "fill-opacity-expected.txt": [
@@ -395785,7 +395836,7 @@
         []
        ],
        "font-palette-expected.txt": [
-        "11a371ef955591d1e725b84193a0fe446f6e8895",
+        "48d67a59debd6a5c5172216a9d897a6bd42a058c",
         []
        ],
        "font-presentation-expected.txt": [
@@ -395841,7 +395892,7 @@
         []
        ],
        "list-style-type-expected.txt": [
-        "a88dfe45f1e20e09391d0643e07dbf635169a996",
+        "b35fd3e427c7f36cf163f96859dc39bb011bd74c",
         []
        ],
        "logical-expected.txt": [
@@ -395881,7 +395932,7 @@
         []
        ],
        "overflow-wrap-expected.txt": [
-        "51f05fc29c4c33e05cad8a8b59ab44f518f185bb",
+        "f6f17990b9470987e30b3ecba6d80ab2432fe7b5",
         []
        ],
        "padding-expected.txt": [
@@ -395947,11 +395998,11 @@
         []
        ],
        "stroke-expected.txt": [
-        "ff36b7a70281fe2982227f899f24ee24ebb7a1ad",
+        "61944fa2f06c0cdda4ce9d09cce8c39c3d74901a",
         []
        ],
        "stroke-linejoin-expected.txt": [
-        "b70d2c14e081eb25666cffce50fc5288aedd29da",
+        "cec5c36ffcd30764d8072cafaecfbdcb18bfe151",
         []
        ],
        "stroke-miterlimit-expected.txt": [
@@ -395967,7 +396018,7 @@
         []
        ],
        "text-combine-upright-expected.txt": [
-        "55ea45fcfbc7460095d67aaae19d326f78538436",
+        "a066e3953e924ba7c5072a5cc66de6effdaf447e",
         []
        ],
        "text-decoration-skip-expected.txt": [
@@ -395975,7 +396026,7 @@
         []
        ],
        "text-overflow-expected.txt": [
-        "65900d570b7084f12e9a26bcada7ed8cc207c620",
+        "ad6b32664e3f746a2e93d728072a735e4c70cb60",
         []
        ],
        "text-size-adjust-expected.txt": [
@@ -395987,7 +396038,7 @@
         []
        ],
        "transition-expected.txt": [
-        "f492287471809cb1ae4c3f1a1a4c8a0ebe93406f",
+        "e494c416bbc24898441e6619339e66125dea2a57",
         []
        ],
        "white-space-expected.txt": [
@@ -396003,7 +396054,7 @@
         []
        ],
        "word-wrap-expected.txt": [
-        "9c873f5520858b797620b0b2cb9f476fc61f80b1",
+        "1d7d63dc3c60e45b12b61e826284ee14c12e4214",
         []
        ]
       }
@@ -396023,7 +396074,7 @@
       []
      ],
      "WEB_FEATURES.yml": [
-      "cb90a6a5daf9f8e16aa62f63c57ecbe6812ecb4f",
+      "0adec1177498f94b197073a5051e9d4755495d9f",
       []
      ],
      "accent-color-checkbox-checked-001-notref.html": [
@@ -397771,7 +397822,7 @@
       ]
      },
      "random-computed.tentative-expected.txt": [
-      "752675ffa077f69d9a9029a77fe098db5fa5bbdc",
+      "9624bf3e6037012da375937b99c0e5b807c49a02",
       []
      ],
      "reference": {
@@ -402709,7 +402760,7 @@
       []
      ],
      "WEB_FEATURES.yml": [
-      "f717ef1666bd39affe833526e630bcad69e31809",
+      "f3cb37337290029e9b6510ed0cf4386095989883",
       []
      ],
      "add-background-attachment-fixed-during-smooth-scroll-ref.html": [
@@ -404585,7 +404636,7 @@
       []
      ],
      "WEB_FEATURES.yml": [
-      "cde2cdd954a42a1ccee5199f72b80fd2b28479fb",
+      "200fcd75c235f672420ddaaf55bf27611c006218",
       []
      ],
      "attribute-selectors": {
@@ -404806,7 +404857,7 @@
      },
      "invalidation": {
       "WEB_FEATURES.yml": [
-       "4ce547d3910bb93516870baa93e78b94311b36cb",
+       "11e428632479c291877b60520fb814536514808b",
        []
       ],
       "any-link-attribute-removal-ref.html": [
@@ -423540,7 +423591,7 @@
      ],
      "render-blocking": {
       "WEB_FEATURES.yml": [
-       "36ab4f3010306b90fc1f47133087e94a3a0d445f",
+       "142ece4b8f7cee427c7702918f481427a4e9f99c",
        []
       ],
       "support": {
@@ -427482,6 +427533,10 @@
         "6d79efc3846c8e427627e9d95af5699ca7096197",
         []
        ],
+       "WEB_FEATURES.yml": [
+        "cbf89b6559380f913cd9888cec35ff01206c8ed1",
+        []
+       ],
        "dir-type-ref.html": [
         "710b39ceca58425f3b6756e7e1312ad774bb6bbe",
         []
@@ -428697,7 +428752,7 @@
         []
        ],
        "WEB_FEATURES.yml": [
-        "bf1043d383670edffbf2fcd15b8e2c5dc7ca057d",
+        "7a3cbb4d50cdbb24cf6552cf67d5821b662b4fcd",
         []
        ],
        "all": [
@@ -431958,7 +432013,7 @@
        []
       ],
       "WEB_FEATURES.yml": [
-       "c1175ff23c5d322f7dec1a7794ffafa5b95f6db6",
+       "eb6938c56b1a1f59c988d601168c7b5922fb5f39",
        []
       ],
       "light-dismiss-event-ordering-expected.txt": [
@@ -433595,7 +433650,7 @@
       },
       "pseudo-classes": {
        "WEB_FEATURES.yml": [
-        "9452b07fad7a8e8ac550e0a939402d8e3a0cb785",
+        "9cc01a8c542e62c9b65a71fe064b31f6b9e1d195",
         []
        ],
        "checked-indeterminate.window-expected.txt": [
@@ -435316,6 +435371,10 @@
       "DIR_METADATA": [
        "3ebd4ca7994eabac158da14f99c3454780e943a7",
        []
+      ],
+      "WEB_FEATURES.yml": [
+       "57552efe8cc2c1ea65d161520c627a36e8cb76cc",
+       []
       ]
      },
      "atob": {
@@ -435964,10 +436023,14 @@
      },
      "user-prompts": {
       "WEB_FEATURES.yml": [
-       "340d3d597cf8fbcf01f5e6d4757063868c29fb3f",
+       "b3e176c1f478e3368c93a95287e10e1c8ec30294",
        []
       ],
       "cannot-show-simple-dialogs": {
+       "WEB_FEATURES.yml": [
+        "340d3d597cf8fbcf01f5e6d4757063868c29fb3f",
+        []
+       ],
        "support": {
         "confirm.html": [
          "80b2c61b396b41c54cb0a4878d3976afeb648080",
@@ -439163,7 +439226,7 @@
     }
    },
    "lint.ignore": [
-    "6d12f2b94bc98d40c9f016a063e5d42d9f0632b0",
+    "345dc51f8a31a94259b716a7648b021d0112a4a7",
     []
    ],
    "loading": {
@@ -441758,6 +441821,12 @@
      ]
     }
    },
+   "mediacapture-region": {
+    "WEB_FEATURES.yml": [
+     "2816b3ff1981cc0f8f6a9446b4ec6e46d2e672bd",
+     []
+    ]
+   },
    "mediacapture-streams": {
     "DIR_METADATA": [
      "433a390634c6a8e750aaae8e8888c16adb296b1d",
@@ -441824,7 +441893,7 @@
      []
     ],
     "WEB_FEATURES.yml": [
-     "a47daa01b167edf03c099d8259463d490a57a303",
+     "a7dda2930db274ab356fdaca3f4c35c820985ff4",
      []
     ],
     "enumerateDevices-with-navigation.https-expected.txt": [
@@ -442878,7 +442947,7 @@
      []
     ],
     "WEB_FEATURES.yml": [
-     "68f2559b1242e8aada17f1f9436fe83a7558cb84",
+     "5d99b76ec1f4611582909b630abbc932b873c9d9",
      []
     ],
     "common.js": [
@@ -444690,7 +444759,7 @@
      []
     ],
     "WEB_FEATURES.yml": [
-     "3954338844f40d3b78ee47be61109e9433fda904",
+     "d8c0fc1977d5f55f1bee8cf8a907f9938cf62fd0",
      []
     ],
     "avoid-prefetching-on-text-plain-inner.html": [
@@ -445049,6 +445118,12 @@
       ]
      }
     }
+   },
+   "print": {
+    "WEB_FEATURES.yml": [
+     "f353e08625fc9428307600c40f8cbb1c0b1d4fb0",
+     []
+    ]
    },
    "private-aggregation": {
     "DIR_METADATA": [
@@ -447719,7 +447794,7 @@
       []
      ],
      "webxr-test.js": [
-      "9226b4807700db71855adcd944cb076b6939b91f",
+      "d03ae043ed7bf97244b0af56b01e35175f54d7b9",
       []
      ],
      "webxr-test.js.headers": [
@@ -451785,6 +451860,18 @@
        "5c43d245d8a9474f7af4e75ebce9a0a54543cfb0",
        []
       ],
+      "dom-mutation-expected.txt": [
+       "18517fc591c590a1433598b496bb1e8731c06f40",
+       []
+      ],
+      "label-descendant-expected.txt": [
+       "35770335c5bbcb49b4882e37bda45bf59a940e6b",
+       []
+      ],
+      "label-for-expected.txt": [
+       "a621d0fe4f50a624e9bcba3cbd93e8b47273f055",
+       []
+      ],
       "resources": {
        "property-reflection-helper.js": [
         "46daa4e10be1ed5459ff4331abaa1bbb8a099697",
@@ -453313,7 +453400,207 @@
        "8f27533ed175e9e0f397049c37bfaebb20dc3081",
        []
       ]
-     }
+     },
+     "restriction-audio-setSinkId-with-invalid-sinkId.https.tentative.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-audio-setSinkId.https.tentative.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-background-fetch.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-background-sync.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-battery-status.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-bluetooth.tentative.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-broadcast-channel.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-dedicated-worker.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-encrypted-media-unsupported-config.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-encrypted-media.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-focus.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-idle-detection.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-local-file-system-access.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-media-auto-play-attribute.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-media-camera.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-media-capabilities-decoding-info.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-media-capabilities-encoding-info.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-media-device-info.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-media-microphone.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-media-play.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-message-boxes.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-midi-sysex.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-midi.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-notification.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-presentation-request.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-prompt-by-before-unload.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-push.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-request-picture-in-picture.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-screen-capture.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-screen-orientation-lock.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-sensor-accelerometer.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-sensor-ambient-light-sensor.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-sensor-gyroscope.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-sensor-magnetometer.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-service-worker-unregister.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-service-worker-update.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-speech-synthesis.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-storage-persist.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-wake-lock.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-web-hid.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-web-locks.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-web-nfc.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-web-serial.tentative.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-web-share.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-web-usb.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-web-xr-immersive-vr-session.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-web-xr-inline-session.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-window-move.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-window-open.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ],
+     "restriction-window-resize.https.html.ini": [
+      "03c8743cdc1d84222cd45a451274c2a8286ef27f",
+      []
+     ]
     },
     "prerender-until-script": {
      "resources": {
@@ -459677,7 +459964,7 @@
       []
      ],
      "textIndent-expected.txt": [
-      "dc93ec2f3371238404ed523d0b1e82957f01c1a2",
+      "ce7e88b728c3ce310fc148c292b4c394c1e80b92",
       []
      ],
      "toggle-animated-iframe-visibility-ref.html": [
@@ -463840,11 +464127,11 @@
      []
     ],
     "script-transform-generateKeyFrame.js": [
-     "bf8b7535ba9e0c9292ddcb90d7efaf27d149756b",
+     "575c8998c669c7a03b600ee632398e108b399ffb",
      []
     ],
     "script-transform-sendKeyFrameRequest.js": [
-     "990b43d2e5fe1cb3e70d2e0908047c29e5004caf",
+     "5d4b4272743819106605c2f7d5897e2d049158a1",
      []
     ],
     "script-transform-worker.js": [
@@ -467032,7 +467319,7 @@
      []
     ],
     "WEB_FEATURES.yml": [
-     "ded72bde0aa2a823885a8575047bf02edbcf5ef3",
+     "b3ca30f37a87f195889bcfae6be88eae93ba0b7d",
      []
     ],
     "Worker-creation-happens-in-parallel.https-expected.txt": [
@@ -527280,7 +527567,7 @@
       ]
      ],
      "position-try-tree-scoped.html": [
-      "b1cec4e4ef2d7b19b5696b315d7da753b099a90c",
+      "0403aabb8e7f1b74e91e55408cef3e51d3683b71",
       [
        null,
        {}
@@ -531775,7 +532062,7 @@
        ]
       ],
       "container-name-tree-scoped.html": [
-       "48e5ab03f4ee6d9260e3011ec3e81ad7633d22d0",
+       "7497398a28493756f5f31e5a020d9d5f2af669eb",
        [
         null,
         {}
@@ -537977,28 +538264,28 @@
        ]
       ],
       "gap-decorations-color-neutral-keyframe-002.html": [
-       "f8f2187f82ec476e0180278c68a39f057290d761",
+       "ffda5ad4631c1c690e81d2614fe18857960bed8e",
        [
         null,
         {}
        ]
       ],
       "gap-decorations-color-neutral-keyframe-003.html": [
-       "b3fc2b0cc17feba713a2e849cbfd805277b4d4dd",
+       "84c998ce47f11f54fb4d60951e9835a24b91688c",
        [
         null,
         {}
        ]
       ],
       "gap-decorations-color-neutral-keyframe-004.html": [
-       "be0a7a95d92ddb6272f583c3942f8f7677f15506",
+       "cc82045963b5548a4663eaecad1daf17832b8f9d",
        [
         null,
         {}
        ]
       ],
       "gap-decorations-color-neutral-keyframe-005.html": [
-       "3da6668e3098a1a85e34f332c4e2670c6e7fbd57",
+       "16a1cadcea26a01f11b7ca3162ecd4c89c87ae92",
        [
         null,
         {}
@@ -538026,35 +538313,35 @@
        ]
       ],
       "gap-decorations-width-neutral-keyframe-002.html": [
-       "e1260a5c48edb3edef506c5361c0a6750168e604",
+       "1fcb37b64cf9be0a5687db946e3edb55f13589eb",
        [
         null,
         {}
        ]
       ],
       "gap-decorations-width-neutral-keyframe-003.html": [
-       "33e00d24a0770bde4d5f12a14da5666754c4ec15",
+       "8f187a635cf157d386549e045ff4ebbc7502caed",
        [
         null,
         {}
        ]
       ],
       "gap-decorations-width-neutral-keyframe-004.html": [
-       "5453b09ff35adff0ec1207573e62bff211ba3938",
+       "4786f90885a9b2ae851cf0a8ce80a9db469ba3e1",
        [
         null,
         {}
        ]
       ],
       "gap-decorations-width-neutral-keyframe-005.html": [
-       "2ba2972c357a6aab84803c2c64093c19efb605cb",
+       "c2658f59eeecbf1d819cbb33ab54c3f265ca012f",
        [
         null,
         {}
        ]
       ],
       "row-rule-color-interpolation.html": [
-       "b3db6e143d7654d99441caa5b5347dc4f55db9f3",
+       "f30f23e424d61700d543753564ace9ba4feba5bb",
        [
         null,
         {}
@@ -538082,21 +538369,21 @@
        ]
       ],
       "rule-color-interpolation-conversion-002.html": [
-       "79ac71ec72e99aa258499f5c9d3e3f1ad446a88b",
+       "a645e13a27b1fe72d150415c65c546566652c3ef",
        [
         null,
         {}
        ]
       ],
       "rule-color-interpolation-multiple-values-001.html": [
-       "6c2b04cb6463b956746e78346ebcf58da3e1e66b",
+       "af79d987a30466079a885c67eb8a986baa8577c9",
        [
         null,
         {}
        ]
       ],
       "rule-color-interpolation-repeaters-001.html": [
-       "0c810227342c6e7d4062c20aeab84339e5946efb",
+       "56dbfed56529464aa18fe751d07cffe9d9a908be",
        [
         null,
         {}
@@ -538110,28 +538397,28 @@
        ]
       ],
       "rule-width-interpolation-conversion-002.html": [
-       "7481fc6fe0c9c12b78a3556e27d9c025283083d5",
+       "347fbaeb072dc0fb46b7a83985e6542908f7cfa7",
        [
         null,
         {}
        ]
       ],
       "rule-width-interpolation-multiple-values-001.html": [
-       "f57307a10f6a7f20439e9ae1290b0d6615a35eff",
+       "2e8fde391b1bfd1eb2ebe059a11a9adcafd067ed",
        [
         null,
         {}
        ]
       ],
       "rule-width-interpolation-multiple-values-002.html": [
-       "f57307a10f6a7f20439e9ae1290b0d6615a35eff",
+       "2e8fde391b1bfd1eb2ebe059a11a9adcafd067ed",
        [
         null,
         {}
        ]
       ],
       "rule-width-interpolation-repeaters.html": [
-       "40bb557649fbafe7967a9e02bd996aab78117798",
+       "858487ead936466d244b6321b4cf382a6ac69e89",
        [
         null,
         {}
@@ -538156,28 +538443,28 @@
        ]
       ],
       "gap-decorations-col-rule-width.html": [
-       "aee180522d77c7be1a3d5d885bd4815648e7826b",
+       "8e950dc5cf9e3ebe13188976552be723e30aaafd",
        [
         null,
         {}
        ]
       ],
       "gap-decorations-color-computed.html": [
-       "fbc3c3f4c976b344d48a9bd927547214f072e3ab",
+       "ef29eb19d8ce14a239a0922d8e602607e98ba90d",
        [
         null,
         {}
        ]
       ],
       "gap-decorations-color-invalid.html": [
-       "5a0128e2303ebaef9469330ddfdb290ebeeff912",
+       "80719928e384ff5927e598fa13524349b3256fd5",
        [
         null,
         {}
        ]
       ],
       "gap-decorations-color-valid.html": [
-       "f4cc0156e3f432d6193c1041d65077295496f1c3",
+       "e7376116591b82fc5129bd6c3ac663d95c074195",
        [
         null,
         {}
@@ -538198,7 +538485,7 @@
        ]
       ],
       "gap-decorations-rule-shorthand-from-longhands.tentative.html": [
-       "ed7c9a317e66984cd3420470819a3de75749c8c2",
+       "7f471954ed94544e08534e15e296ebfd6cae63c7",
        [
         null,
         {}
@@ -538226,49 +538513,49 @@
        ]
       ],
       "gap-decorations-rule-shorthand.html": [
-       "c6c2a3751673a8b1d63bd5442922ffd71c5e2384",
+       "93caf6fca9315d9fffa6084dd6a469fc725cc33a",
        [
         null,
         {}
        ]
       ],
       "gap-decorations-style-computed.html": [
-       "8c78bf618e3226609ad451e27ff97816b6b73cf6",
+       "47230b7531315faba70aff07fb8564d9a1947e1a",
        [
         null,
         {}
        ]
       ],
       "gap-decorations-style-invalid.html": [
-       "48ac0680338de220caaa23eae06fbbffdabab634",
+       "bfff201b0ba09669c1ad84bf0050079ae48648c1",
        [
         null,
         {}
        ]
       ],
       "gap-decorations-style-valid.html": [
-       "1eb259a82bce43751f6d511f33134a924f5b2aab",
+       "075c16e85af240c0536cdfe7e0f3960e0cd279b8",
        [
         null,
         {}
        ]
       ],
       "gap-decorations-width-computed.html": [
-       "299cbe0f3bbd8bc495912e59f6866b19513da914",
+       "667b2e602dc63d157570155507658961d54eb302",
        [
         null,
         {}
        ]
       ],
       "gap-decorations-width-invalid.html": [
-       "025d52636266b1961cd5c0295a552eb612cf6455",
+       "1c247fa721c61a5a547f8f285355611c7ea301bb",
        [
         null,
         {}
        ]
       ],
       "gap-decorations-width-valid.html": [
-       "bd42d8356234cd51968877986b1927c7af301a12",
+       "896e4e0b9ff738eaaa2792c9fa7b7692c4cf2806",
        [
         null,
         {}
@@ -545023,28 +545310,28 @@
       ]
      ],
      "function-shadow-animations.html": [
-      "c0acebbaebb5c27f03084c65b6b37dc837db3efa",
+      "4462df57aa4fe5d74461ec7794495ff3a5e70a95",
       [
        null,
        {}
       ]
      ],
      "function-shadow-cache.html": [
-      "300eebf622d0cdc1f30e84437ef7dd89f546df15",
+      "b3e96e21cfdd0182569ed93b6b8f9f3347d14bf7",
       [
        null,
        {}
       ]
      ],
      "function-shadow-container.html": [
-      "ee01897aea4c75c9460fe14b20b05755de9b712c",
+      "f8d307db320229eab357b06855c6c0d7c2f70eb0",
       [
        null,
        {}
       ]
      ],
      "function-shadow.html": [
-      "b9db932b29bd994be73932976a11ae654570f9d2",
+      "c43e4712767221960147872d5d7a5237def9a277",
       [
        null,
        {}
@@ -545170,7 +545457,7 @@
       ]
      ],
      "mixin-shadow-dom.html": [
-      "8ad93f240be86a6b958d9693ddaeff19eb70cef3",
+      "f6738e10b2d444b6cfee021b0128fa9b3b04a69a",
       [
        null,
        {}
@@ -545630,7 +545917,7 @@
        ]
       ],
       "column-rule-color-invalid.html": [
-       "da8dba0a73c9c7829766cd2fad39bfa79fbc6c40",
+       "d40b361145060ba1c221cd9769d247a0c4a910c5",
        [
         null,
         {}
@@ -547685,7 +547972,7 @@
       ]
      ],
      "backdrop-tree-abiding-slotted.html": [
-      "057b484e2629e1617c44e8bf24555f9d22b9f564",
+      "b15ad8fb946321e5af9275d059cbcf2ac628a67a",
       [
        null,
        {}
@@ -549638,349 +549925,6 @@
       ]
      ]
     },
-    "css-scoping": {
-     "css-scoping-shadow-dynamic-remove-style-detached.html": [
-      "c8c9eadc8723c700cd8f230a0fca88ab84aa912f",
-      [
-       null,
-       {}
-      ]
-     ],
-     "font-face-001.html": [
-      "4496786449f7fa63f7c437ea2ae43cf7df3b7525",
-      [
-       null,
-       {}
-      ]
-     ],
-     "font-face-002.html": [
-      "3a20d0b808892db1f4dea21936bcd50e11f3df8f",
-      [
-       null,
-       {}
-      ]
-     ],
-     "font-face-003.html": [
-      "4e8d8ff482d49e0ccfaf441f0d70829a3261269a",
-      [
-       null,
-       {}
-      ]
-     ],
-     "font-face-004.html": [
-      "f68e70994fc2af078e92fa221374cd72da133f2e",
-      [
-       null,
-       {}
-      ]
-     ],
-     "font-face-005.html": [
-      "de102f253e60f3fc2e62e68a3fa3c574a56b5d7c",
-      [
-       null,
-       {}
-      ]
-     ],
-     "font-face-006.html": [
-      "e72d4ec2aa72a84d3394cea05295da8de7e9b1ad",
-      [
-       null,
-       {}
-      ]
-     ],
-     "font-face-007.html": [
-      "c644a5498673b5bea3a013cae049f3db49f6ae25",
-      [
-       null,
-       {}
-      ]
-     ],
-     "font-face-008.html": [
-      "52c7869f9f8d48a3a093d20f74dd7e66805f6373",
-      [
-       null,
-       {}
-      ]
-     ],
-     "font-face-009.html": [
-      "4e08162dcdbacb5f92a9c998e91e29d35f07d539",
-      [
-       null,
-       {}
-      ]
-     ],
-     "has-slotted-changing-001.html": [
-      "5c6cce72bb7ccd9cd9b78a76bd83e4b61083adc5",
-      [
-       null,
-       {
-        "testdriver": true
-       }
-      ]
-     ],
-     "has-slotted-changing-002.html": [
-      "98c15f30c8f0968316331af9cad7521d3e02adb9",
-      [
-       null,
-       {
-        "testdriver": true
-       }
-      ]
-     ],
-     "has-slotted-functional-changing-001.tentative.html": [
-      "858a8e5abb75902048c3a343df71eed296c3b975",
-      [
-       null,
-       {
-        "testdriver": true
-       }
-      ]
-     ],
-     "has-slotted-functional-changing-002.tentative.html": [
-      "76b726a0a4fcc26bab56cf60803b263c042466c2",
-      [
-       null,
-       {
-        "testdriver": true
-       }
-      ]
-     ],
-     "has-slotted-functional-changing-003.tentative.html": [
-      "0b1d710d770d300fca10483e9840de2c6aedd398",
-      [
-       null,
-       {
-        "testdriver": true
-       }
-      ]
-     ],
-     "has-slotted-functional-changing-004.tentative.html": [
-      "f4fd54f3d487af230764b596298833af29ee3ee1",
-      [
-       null,
-       {
-        "testdriver": true
-       }
-      ]
-     ],
-     "has-slotted-manual-assignment.html": [
-      "02be3861ead826914737aad9deabb3bad43eb416",
-      [
-       null,
-       {}
-      ]
-     ],
-     "has-slotted-query-selector.html": [
-      "88da744a67bab436dcbda3b1c4545d45d1b5848c",
-      [
-       null,
-       {}
-      ]
-     ],
-     "host-context-parsing.html": [
-      "56055ece63733e8c58c6add661566572356d67aa",
-      [
-       null,
-       {}
-      ]
-     ],
-     "host-descendant-invalidation.html": [
-      "61ed4bbfc704d94efb29527db8239ee1563c9802",
-      [
-       null,
-       {}
-      ]
-     ],
-     "host-dom-001.html": [
-      "fff0112b1e7d616e7f86e2356a6983e0444c4235",
-      [
-       null,
-       {}
-      ]
-     ],
-     "host-functional-descendant-invalidation.html": [
-      "b9f1329a95d2f145a6990dc87a568f75cfd73caa",
-      [
-       null,
-       {}
-      ]
-     ],
-     "host-in-host-context-selector.html": [
-      "5976b8b5cc4a34fd5bb0f3c3915167fe6e4ed08a",
-      [
-       null,
-       {}
-      ]
-     ],
-     "host-in-host-selector.html": [
-      "2379d170b8f9611c07e381edc3bc8a042754e71f",
-      [
-       null,
-       {}
-      ]
-     ],
-     "host-is-featureless.html": [
-      "fcbff34ac1a8eb34ba4ed12b90448bbf14b10b15",
-      [
-       null,
-       {}
-      ]
-     ],
-     "host-parsing.html": [
-      "139433af483a94a43c70a7f429a221f759d0c8a7",
-      [
-       null,
-       {}
-      ]
-     ],
-     "keyframes-001.html": [
-      "56f0f32dcf901ec53b6465e756f25b466e4f2f7f",
-      [
-       null,
-       {}
-      ]
-     ],
-     "keyframes-002.html": [
-      "347adcb0f525e95b27e09d9101e53adc76595875",
-      [
-       null,
-       {}
-      ]
-     ],
-     "keyframes-003.html": [
-      "2e1d799bd0d04d25a2e8391142cac48f268eeed6",
-      [
-       null,
-       {}
-      ]
-     ],
-     "keyframes-004.html": [
-      "2dee8c2e64083d517c3a5c7c13a543c09c32a60e",
-      [
-       null,
-       {}
-      ]
-     ],
-     "keyframes-005.html": [
-      "d9026d2f6aa7042ada567f866e64ab4366157843",
-      [
-       null,
-       {}
-      ]
-     ],
-     "keyframes-006.html": [
-      "79c39a14ac18ed455ee8868158001e5cb77a2c65",
-      [
-       null,
-       {}
-      ]
-     ],
-     "scope-pseudo-in-shadow.html": [
-      "ca8720d975f1cc2db82342989f88aceb3a5e6818",
-      [
-       null,
-       {}
-      ]
-     ],
-     "shadow-cascade-order-001.html": [
-      "59b71b0ee105bba69d68d8535832538f01a39e07",
-      [
-       null,
-       {}
-      ]
-     ],
-     "shadow-host-removal-invalidation.html": [
-      "6daa635fa623a42a9900a946280a6f997a737ada",
-      [
-       null,
-       {}
-      ]
-     ],
-     "shadow-host-style-sharing.html": [
-      "ba6b8ebd3b453d0677e07c4176873f70c5232eb2",
-      [
-       null,
-       {}
-      ]
-     ],
-     "shadow-multiple-links.html": [
-      "d1c4fd9eb7ed7595d5f30b01777b4f1c15f242ba",
-      [
-       null,
-       {}
-      ]
-     ],
-     "shadow-reassign-dynamic-003.html": [
-      "bc6392176eb58acff55b740fbd4e9f6321982d91",
-      [
-       null,
-       {}
-      ]
-     ],
-     "shadow-shared-style-cache-001.html": [
-      "e80b4d1c42aaa2337715b7a70260ddc3f3e36812",
-      [
-       null,
-       {}
-      ]
-     ],
-     "slot-non-html-display-value.html": [
-      "2f56254a7d8995550e3d6f96de83e1584c045ed2",
-      [
-       null,
-       {}
-      ]
-     ],
-     "slotted-invalidation.html": [
-      "f8471062e1d0b222e5b3a165f35e6252f990a1c2",
-      [
-       null,
-       {}
-      ]
-     ],
-     "slotted-link.html": [
-      "c06c96143ba0d478940fb54208d241adb4f6ee8b",
-      [
-       null,
-       {}
-      ]
-     ],
-     "slotted-matches.html": [
-      "1a582fe98d3d6bbd13a66869af151d614cdb1165",
-      [
-       null,
-       {}
-      ]
-     ],
-     "slotted-nested.html": [
-      "c7139fea4c280585197db5bd432931bcf53c2e53",
-      [
-       null,
-       {}
-      ]
-     ],
-     "slotted-parsing.html": [
-      "8a5851c598e9155e9824849b061f2ecc35db8494",
-      [
-       null,
-       {}
-      ]
-     ],
-     "slotted-slot.html": [
-      "1f4aa75ae60ec5ee5f6863aace8678584e4e6934",
-      [
-       null,
-       {}
-      ]
-     ],
-     "stylesheet-title-002.html": [
-      "2843ada3eead2526e80797e9634841a0a12fa94f",
-      [
-       null,
-       {}
-      ]
-     ]
-    },
     "css-scroll-anchoring": {
      "abspos-containing-block-outside-scroller.html": [
       "76a4952383e2a99a704b8527b664f0ca506fb3eb",
@@ -551774,184 +551718,79 @@
       ]
      ]
     },
-    "css-shadow-parts": {
-     "all-hosts.html": [
-      "218535dcbab541a9c277b0c9dccec7c335093c09",
+    "css-shadow": {
+     "css-scoping-shadow-dynamic-remove-style-detached.html": [
+      "f89002ad079a9a2c364d3ce7d6fde779aabc21e1",
       [
        null,
        {}
       ]
      ],
-     "both-part-and-exportparts.html": [
-      "6cd945c6c0770a7c70e9a56252b646ad41a26052",
+     "font-face-001.html": [
+      "d58276c8b7793156c2a40f73a2fae628089898e0",
       [
        null,
        {}
       ]
      ],
-     "chaining-invalid-selector.html": [
-      "cb34a7b4609cac7162b480f26f8ff4abc373191b",
+     "font-face-002.html": [
+      "b7743d487022690f69a8032b83f0f840beaea73b",
       [
        null,
        {}
       ]
      ],
-     "complex-matching.html": [
-      "f8f063d850fcaa8b405f25e8b8eeee93c9664941",
+     "font-face-003.html": [
+      "6edbf451f78ab2a1e63547689408f2d7a2324ab7",
       [
        null,
        {}
       ]
      ],
-     "complex-non-matching.html": [
-      "6e5bc69c5d2378d6a9a93e76e5cb84e18566737a",
+     "font-face-004.html": [
+      "bcd7d2d5cdb538a93404d6ad22d912702929d1f2",
       [
        null,
        {}
       ]
      ],
-     "different-host.html": [
-      "7fe9744af9584c07ffff6c408574002896e8c134",
+     "font-face-005.html": [
+      "351caec58e957895b1add520f53e3f74bf293cbf",
       [
        null,
        {}
       ]
      ],
-     "double-forward.html": [
-      "d23ec775fff830bd3ed2668ec2dc7ab184a6dc37",
+     "font-face-006.html": [
+      "90b48b15ab210f6021dd199da55dc1b19580d7fe",
       [
        null,
        {}
       ]
      ],
-     "exportparts-multiple.html": [
-      "a6773a8fb654564c4f124541652d2d9413c511cc",
+     "font-face-007.html": [
+      "d59885844cf99470d6e0449ec21486150475853a",
       [
        null,
        {}
       ]
      ],
-     "grouping-with-checked.html": [
-      "e7620b6f932b8d145dea9917784d35018f373491",
+     "font-face-008.html": [
+      "9fa18aa8d578b0ca67f89b54b9ab17c81c634c83",
       [
        null,
        {}
       ]
      ],
-     "grouping-with-disabled.html": [
-      "8e479e66911b708190937ce36a846b904cdb4f79",
+     "font-face-009.html": [
+      "b53d17e44c2aaa0a277fdc41c40bf554985900b5",
       [
        null,
        {}
       ]
      ],
-     "host-part-001.html": [
-      "9004141534f134d85590df3372f83838668a72e7",
-      [
-       null,
-       {}
-      ]
-     ],
-     "host-part-002.html": [
-      "d508cd9002412b9cc39fce7eeec51c35e1a2d91c",
-      [
-       null,
-       {}
-      ]
-     ],
-     "host-part-003.html": [
-      "7aac235a043b6c92425e7b8f57c2837a2503e97f",
-      [
-       null,
-       {}
-      ]
-     ],
-     "host-part-nesting.html": [
-      "c0dc8e20eee9ab3fda124ef99cb7623146b8a321",
-      [
-       null,
-       {}
-      ]
-     ],
-     "host-stylesheet.html": [
-      "2e65c4b1b57bd9959c68e85e11b442c67f2c5a42",
-      [
-       null,
-       {}
-      ]
-     ],
-     "idlharness.html": [
-      "182943ac69de04b409e91b4005fb378cac36f9e2",
-      [
-       null,
-       {}
-      ]
-     ],
-     "inner-host.html": [
-      "2dfd4b0510a758c73bf8ac8291088d39077578d7",
-      [
-       null,
-       {}
-      ]
-     ],
-     "interaction-with-pseudo-elements.html": [
-      "776ab2eb69dc77927c213a7fd99dd116376cf710",
-      [
-       null,
-       {}
-      ]
-     ],
-     "invalidation-change-exportparts-forward.html": [
-      "1e319deb633cdb765ea4613eb7c2b8c6dd0e615a",
-      [
-       null,
-       {}
-      ]
-     ],
-     "invalidation-change-part-name-forward.html": [
-      "f8da6d1f543fcfdcfe9c191d5564c9c07af930f3",
-      [
-       null,
-       {}
-      ]
-     ],
-     "invalidation-change-part-name-idl-domtokenlist.html": [
-      "2f9fffb86eacb088365fc592e31c58238e8321dc",
-      [
-       null,
-       {}
-      ]
-     ],
-     "invalidation-change-part-name-idl-setter.html": [
-      "0ed46f53bc75916b7ee9b83c4d1c84f9451e76f5",
-      [
-       null,
-       {}
-      ]
-     ],
-     "invalidation-change-part-name.html": [
-      "47630d956f9bf3053ec3ed8a2d04223bdd8720a9",
-      [
-       null,
-       {}
-      ]
-     ],
-     "invalidation-complex-selector-forward.html": [
-      "7c732b9bdf12467a40b64ebf8a02a10f249a900b",
-      [
-       null,
-       {}
-      ]
-     ],
-     "invalidation-complex-selector.html": [
-      "5b1fd800790c4e14ec8fbc34bd24eb6c2eb31ab0",
-      [
-       null,
-       {}
-      ]
-     ],
-     "invalidation-part-pseudo.html": [
-      "66df33a4b7019768d29ea64fda7265d63d9436fc",
+     "has-slotted-changing-001.html": [
+      "5c6cce72bb7ccd9cd9b78a76bd83e4b61083adc5",
       [
        null,
        {
@@ -551959,113 +551798,561 @@
        }
       ]
      ],
-     "multiple-parts.html": [
-      "de02a26e164d283e4f05a0d8eba0f6b98c778700",
+     "has-slotted-changing-002.html": [
+      "98c15f30c8f0968316331af9cad7521d3e02adb9",
+      [
+       null,
+       {
+        "testdriver": true
+       }
+      ]
+     ],
+     "has-slotted-functional-changing-001.tentative.html": [
+      "858a8e5abb75902048c3a343df71eed296c3b975",
+      [
+       null,
+       {
+        "testdriver": true
+       }
+      ]
+     ],
+     "has-slotted-functional-changing-002.tentative.html": [
+      "76b726a0a4fcc26bab56cf60803b263c042466c2",
+      [
+       null,
+       {
+        "testdriver": true
+       }
+      ]
+     ],
+     "has-slotted-functional-changing-003.tentative.html": [
+      "0b1d710d770d300fca10483e9840de2c6aedd398",
+      [
+       null,
+       {
+        "testdriver": true
+       }
+      ]
+     ],
+     "has-slotted-functional-changing-004.tentative.html": [
+      "f4fd54f3d487af230764b596298833af29ee3ee1",
+      [
+       null,
+       {
+        "testdriver": true
+       }
+      ]
+     ],
+     "has-slotted-manual-assignment.html": [
+      "02be3861ead826914737aad9deabb3bad43eb416",
       [
        null,
        {}
       ]
      ],
-     "multiple-scopes.html": [
-      "2d92126baa3c0eea7e53ff3cbe3f8bb307e608b8",
+     "has-slotted-query-selector.html": [
+      "88da744a67bab436dcbda3b1c4545d45d1b5848c",
       [
        null,
        {}
       ]
      ],
-     "part-mutation-pseudo.html": [
-      "d0e0072d51e6521ab6b4daba9dfe0ce674970297",
+     "host-context-parsing.html": [
+      "83650c68631bdbde5bf343d6dcab427983a0e805",
       [
        null,
        {}
       ]
      ],
-     "part-name-idl.html": [
-      "fc3282a6e944950548eeda66a78d453ec1a552f3",
+     "host-descendant-invalidation.html": [
+      "3b95c2395d4b7a8a8c7027c5939058688d6646f2",
       [
        null,
        {}
       ]
      ],
-     "precedence-part-vs-part.html": [
-      "9905cf8b5e46b51dc21326dc31f8c2bc6d7a39b6",
+     "host-dom-001.html": [
+      "927d0e421180331c2a4920d38dcfaebd68b7a64f",
       [
        null,
        {}
       ]
      ],
-     "pseudo-classes-after-part.html": [
-      "873df771398760905725ecccc650fb3843a7dbe8",
+     "host-functional-descendant-invalidation.html": [
+      "8269ce1a98a5af4a1fdf68a0775131f72b3661f8",
       [
        null,
        {}
       ]
      ],
-     "pseudo-elements-after-part.html": [
-      "010e75e07e4ceff7f24a6a3b28208fa7de51512c",
+     "host-in-host-context-selector.html": [
+      "426f9673622616be5bd90210eb2b4a144369fb63",
       [
        null,
        {}
       ]
      ],
-     "serialization.html": [
-      "50ad3df53a33a3c3ae24d4130356619c8d02d182",
+     "host-in-host-selector.html": [
+      "0ae7c759e6fd16349044e90ff76ab16f5d9c4a08",
       [
        null,
        {}
       ]
      ],
-     "simple-forward-shorthand.html": [
-      "0142967dfdb707a376b86e5347465117033cda01",
+     "host-is-featureless.html": [
+      "543e78fc8e41c86786f7eed7a322ea227f34d1e3",
       [
        null,
        {}
       ]
      ],
-     "simple-forward.html": [
-      "a1a19aee4ede175f7e862318105f4625144b6e42",
+     "host-parsing.html": [
+      "ef7f19a1549a587c74cee81997326b5115aaac3a",
       [
        null,
        {}
       ]
      ],
-     "simple-important-important.html": [
-      "43ec1bbae346e03e2e28209409f24a91273c5bdd",
+     "idlharness.html": [
+      "4efaf31ce0adc31d38e60384e113a5034dbfbdbc",
       [
        null,
        {}
       ]
      ],
-     "simple-important-inline.html": [
-      "61b83dd4be7f4ff19236e5b6568424191382de80",
+     "keyframes-001.html": [
+      "d01f763d47d1b30c3025f72955126707708a438d",
       [
        null,
        {}
       ]
      ],
-     "simple-important.html": [
-      "e3240bd3905f86cfa37dbc72af14dc95eb40d84e",
+     "keyframes-002.html": [
+      "d34d600d78dd1bdb8daa6b4a1a6e52cc6df77f68",
       [
        null,
        {}
       ]
      ],
-     "simple-inline.html": [
-      "f2c3638d1e9cc66dcc8051a00f778bc95cb33129",
+     "keyframes-003.html": [
+      "ace5f23081c3d5f71ba3435712aa2b91ef3da259",
       [
        null,
        {}
       ]
      ],
-     "simple.html": [
-      "a7f17d9670b137995b0dfc6f43221e16b988376d",
+     "keyframes-004.html": [
+      "158a18a9699bc76a74fde50d779ea3786817b370",
       [
        null,
        {}
       ]
      ],
-     "style-sharing.html": [
-      "4af1260b5e992af7816cdbe96056495a9ad7e216",
+     "keyframes-005.html": [
+      "1537d5724e0121c93795d82ce25429a57366822e",
+      [
+       null,
+       {}
+      ]
+     ],
+     "keyframes-006.html": [
+      "46d089546a9f0e7c7c4f1335e22432b59fa0c478",
+      [
+       null,
+       {}
+      ]
+     ],
+     "part": {
+      "all-hosts.html": [
+       "fe1bc92107491b46b7c1f215064c37ca3e3a867b",
+       [
+        null,
+        {}
+       ]
+      ],
+      "both-part-and-exportparts.html": [
+       "6cd945c6c0770a7c70e9a56252b646ad41a26052",
+       [
+        null,
+        {}
+       ]
+      ],
+      "chaining-invalid-selector.html": [
+       "d030cd8d844e9c2bcc5be2508e0e302cf192283c",
+       [
+        null,
+        {}
+       ]
+      ],
+      "complex-matching.html": [
+       "a09a3180bddd3ef0f544dd701f3e701a9c195c84",
+       [
+        null,
+        {}
+       ]
+      ],
+      "complex-non-matching.html": [
+       "77740e511d093ea096a4ef43e2849f1b725d8e3a",
+       [
+        null,
+        {}
+       ]
+      ],
+      "different-host.html": [
+       "4382dca5feaaecdf462c8ff5e15a5252e348527d",
+       [
+        null,
+        {}
+       ]
+      ],
+      "double-forward.html": [
+       "37b7ce8dd50adfec41d58d585d07797f51c4c148",
+       [
+        null,
+        {}
+       ]
+      ],
+      "exportparts-multiple.html": [
+       "a0d9dc646191c63bb9ba37255adab064ea0b81df",
+       [
+        null,
+        {}
+       ]
+      ],
+      "grouping-with-checked.html": [
+       "bc555d66385e8b7da12086c745fd18c1e5ee13ae",
+       [
+        null,
+        {}
+       ]
+      ],
+      "grouping-with-disabled.html": [
+       "b01b0797bcf2b61b4cbe716688f8efcffa2ee2ed",
+       [
+        null,
+        {}
+       ]
+      ],
+      "host-part-001.html": [
+       "5ab7a58e32097943fd0bbced48636ab6415104d8",
+       [
+        null,
+        {}
+       ]
+      ],
+      "host-part-002.html": [
+       "965b7c263e590e6f780daca98827c9a9f347a66d",
+       [
+        null,
+        {}
+       ]
+      ],
+      "host-part-003.html": [
+       "675b21f4537e239d92303bd9c533a47f9cee9264",
+       [
+        null,
+        {}
+       ]
+      ],
+      "host-part-nesting.html": [
+       "e2723b10d01ddf3b88035dcb7f16e148cba2f93b",
+       [
+        null,
+        {}
+       ]
+      ],
+      "host-stylesheet.html": [
+       "477c75d1d8687ac4f16329025f671854bb24d773",
+       [
+        null,
+        {}
+       ]
+      ],
+      "inner-host.html": [
+       "a4f290f119bc4c31ba3ddd888a59bc88d85ad8c9",
+       [
+        null,
+        {}
+       ]
+      ],
+      "interaction-with-pseudo-elements.html": [
+       "95a36a6d5ac7804b1df19ae80e6c505a5b721665",
+       [
+        null,
+        {}
+       ]
+      ],
+      "invalidation-change-exportparts-forward.html": [
+       "180c735bf561278742b695978238f8286eafafe6",
+       [
+        null,
+        {}
+       ]
+      ],
+      "invalidation-change-part-name-forward.html": [
+       "5dffb72aab0ad5e2b722f3f116fef762ec6ec2f4",
+       [
+        null,
+        {}
+       ]
+      ],
+      "invalidation-change-part-name-idl-domtokenlist.html": [
+       "2caed9097847a1ec1513cb56112111b8b3cef3c2",
+       [
+        null,
+        {}
+       ]
+      ],
+      "invalidation-change-part-name-idl-setter.html": [
+       "c9dc594087575ec82565da6911140f7858110183",
+       [
+        null,
+        {}
+       ]
+      ],
+      "invalidation-change-part-name.html": [
+       "abcb2d54562176a0bf8cac3cba16d54e259eb4ab",
+       [
+        null,
+        {}
+       ]
+      ],
+      "invalidation-complex-selector-forward.html": [
+       "a9d7982499a8fb3a50bc4a18fe267220fa2ab7b5",
+       [
+        null,
+        {}
+       ]
+      ],
+      "invalidation-complex-selector.html": [
+       "ab1f10a2583a6b1075342488f322e7723e4fdfbf",
+       [
+        null,
+        {}
+       ]
+      ],
+      "invalidation-part-pseudo.html": [
+       "eaf2d955ea634f22d248f85d778ff20401358c2b",
+       [
+        null,
+        {
+         "testdriver": true
+        }
+       ]
+      ],
+      "multiple-parts.html": [
+       "cdbaafe412a4dd7f0281bc2fe616fd9800d0ead8",
+       [
+        null,
+        {}
+       ]
+      ],
+      "multiple-scopes.html": [
+       "41ffbcf9a37b261204469059d32018cfe397b782",
+       [
+        null,
+        {}
+       ]
+      ],
+      "part-mutation-pseudo.html": [
+       "67085ee2d67c86cdb77dd5f5bb1211302c7b49a6",
+       [
+        null,
+        {}
+       ]
+      ],
+      "part-name-idl.html": [
+       "d1a2f421b17085ef609e6a0fdfe0cb0c7cd11683",
+       [
+        null,
+        {}
+       ]
+      ],
+      "precedence-part-vs-part.html": [
+       "5a4fbfe75bc67675490bf59a6562b7a6eaa575d2",
+       [
+        null,
+        {}
+       ]
+      ],
+      "pseudo-classes-after-part.html": [
+       "4ccfeadd3a3829e4f06a0996a5fdeffbe010aaa5",
+       [
+        null,
+        {}
+       ]
+      ],
+      "pseudo-elements-after-part.html": [
+       "d51a239e509057e3ddca0d741f0ac2cbe445ff43",
+       [
+        null,
+        {}
+       ]
+      ],
+      "serialization.html": [
+       "1c9b1eaa0e3c3be5f66a3b20a69efb3500193fd0",
+       [
+        null,
+        {}
+       ]
+      ],
+      "simple-forward-shorthand.html": [
+       "05c027e7674f8d2fd8f1077af3bbdf01ddeda8a5",
+       [
+        null,
+        {}
+       ]
+      ],
+      "simple-forward.html": [
+       "45c9d51b34e09adcfd2928804cc9d5af152e0692",
+       [
+        null,
+        {}
+       ]
+      ],
+      "simple-important-important.html": [
+       "82ad48b1960fc6180615049e3efcf220654a0571",
+       [
+        null,
+        {}
+       ]
+      ],
+      "simple-important-inline.html": [
+       "1cebc014225ff4018533f75aba2dcb1f77916fe6",
+       [
+        null,
+        {}
+       ]
+      ],
+      "simple-important.html": [
+       "cb99113e2b32eead8231a07fe82c77d947234599",
+       [
+        null,
+        {}
+       ]
+      ],
+      "simple-inline.html": [
+       "0e6211e5672d90fb814057a027f411e84b0f6956",
+       [
+        null,
+        {}
+       ]
+      ],
+      "simple.html": [
+       "1b4ab10f77665d4c82c8dab9530b6eadd2ec194c",
+       [
+        null,
+        {}
+       ]
+      ],
+      "style-sharing.html": [
+       "f4549afc55ccd1522f2ae7f30b0748e5ccaa7d21",
+       [
+        null,
+        {}
+       ]
+      ]
+     },
+     "scope-pseudo-in-shadow.html": [
+      "5c2733af7630eeb21ddff481d596f4cb896cdc53",
+      [
+       null,
+       {}
+      ]
+     ],
+     "shadow-cascade-order-001.html": [
+      "0347952b532d6fd8c9c9100f7c3c4fc3a48d9842",
+      [
+       null,
+       {}
+      ]
+     ],
+     "shadow-host-removal-invalidation.html": [
+      "6707c91682fd891f460cec5a0b207aadaa92697a",
+      [
+       null,
+       {}
+      ]
+     ],
+     "shadow-host-style-sharing.html": [
+      "79bc41aa1746232665d8cf5c36d142694ba1f279",
+      [
+       null,
+       {}
+      ]
+     ],
+     "shadow-multiple-links.html": [
+      "71b9ea9433487f893253eac21d62f5f9955cc852",
+      [
+       null,
+       {}
+      ]
+     ],
+     "shadow-reassign-dynamic-003.html": [
+      "30318e9f1b55b4a6d9762829b08d716262120af1",
+      [
+       null,
+       {}
+      ]
+     ],
+     "shadow-shared-style-cache-001.html": [
+      "15eeda66e111c9cfcf90d3d651fbaeadab37958d",
+      [
+       null,
+       {}
+      ]
+     ],
+     "slot-non-html-display-value.html": [
+      "c49ef8b8b48cb223cf0d9f34695bd9926f656f99",
+      [
+       null,
+       {}
+      ]
+     ],
+     "slotted-invalidation.html": [
+      "feff45c609649e9fa9696ef603bf45987d66d1b3",
+      [
+       null,
+       {}
+      ]
+     ],
+     "slotted-link.html": [
+      "46d0e8e0a987c58073c1ab30aede55d1e23e285d",
+      [
+       null,
+       {}
+      ]
+     ],
+     "slotted-matches.html": [
+      "e3789fa11f0e17091d778a0b3d2c8b6fbfd601cb",
+      [
+       null,
+       {}
+      ]
+     ],
+     "slotted-nested.html": [
+      "04e1e71a26537364b71bfad1a8934ff7f726ac88",
+      [
+       null,
+       {}
+      ]
+     ],
+     "slotted-parsing.html": [
+      "6c1bf524ef00820cb56590ac304b9500fc42e009",
+      [
+       null,
+       {}
+      ]
+     ],
+     "slotted-slot.html": [
+      "926ce3f5b0b4610a5b89a6b2d45ea6356e1ee8dd",
+      [
+       null,
+       {}
+      ]
+     ],
+     "stylesheet-title-002.html": [
+      "2843ada3eead2526e80797e9634841a0a12fa94f",
       [
        null,
        {}
@@ -561004,7 +561291,7 @@
         ]
        ],
        "column-rule-width.html": [
-        "8f09d1cb45aa55c8677810a5911160609514372e",
+        "c8d1e1d58b0e8775a3ee8deb083e0ab5cdc5b1ca",
         [
          null,
          {}
@@ -564122,7 +564409,7 @@
       ]
      ],
      "random-computed.tentative.html": [
-      "8e162bd06c8d8346030f338c8a290b8495274028",
+      "03a11de328bbf78382687e32fd9b731dbe9b9ccf",
       [
        null,
        {
@@ -564257,7 +564544,7 @@
       ]
      ],
      "signs-abs-invalid.html": [
-      "ccb94c21c232ebdc547f818bbbb5c4cd8935ace4",
+      "f0e88adb517b8dc1fa38c594aa39594a3e760ff4",
       [
        null,
        {}
@@ -567687,7 +567974,7 @@
       ]
      ],
      "selectorText-modification-restyle-002.html": [
-      "a6b37c2cf0a62228f9bac52eea3f21cbed46db10",
+      "51b1c2a3480d9c3327fa4a04ec00ed373e778454",
       [
        null,
        {}
@@ -568712,6 +568999,13 @@
        {
         "timeout": "long"
        }
+      ]
+     ],
+     "scroll-behavior-smooth-after-hiding-iframe.html": [
+      "e4f805ae931dc86f509392d259ecd443db037574",
+      [
+       null,
+       {}
       ]
      ],
      "scroll-behavior-smooth-navigation.html": [
@@ -571860,7 +572154,7 @@
       ]
      ],
      "is-specificity-shadow.html": [
-      "af039955eb7c4fa1dff8bfa425775184a911a671",
+      "b97509ddb561c5cc18a7255024cc0834303d8c4d",
       [
        null,
        {}
@@ -571902,7 +572196,7 @@
       ]
      ],
      "is-where-shadow.html": [
-      "1b25bb63f168a5da7ba3a9d9b871ebda9c9c032e",
+      "3116bd7040b209fc8b03e9b6d3c8a58f732a6892",
       [
        null,
        {}
@@ -572156,7 +572450,7 @@
        ]
       ],
       "parse-slotted.html": [
-       "47fafdf2b35d6f55098ed7464fea39d25d956694",
+       "bcc4bc2cb72c04379a364f35d9e24d9e5cc4a8ed",
        [
         null,
         {}
@@ -637079,7 +637373,7 @@
          ]
         ],
         "order-in-new-document-navigation.html": [
-         "d2c44511d3a3a175ceb09298302baec088ddbf76",
+         "21df2d96f836d78df9393f0e194275dc54a36a06",
          [
           null,
           {}
@@ -709553,7 +709847,7 @@
      ]
     ],
     "creation.html": [
-     "b025a3ad6ce9d13e2344d47b0d485cff70d379a7",
+     "925c452e17d29ed6e78fefb03a64567a850aaa77",
      [
       null,
       {}
@@ -709567,7 +709861,7 @@
      ]
     ],
     "ended.html": [
-     "845fbcbaa6e798daeb64f3c6cc69e8b6cc1edff6",
+     "f53d07d796aeeab6c2a217f0be30bc6a57b27b28",
      [
       null,
       {}
@@ -742596,15 +742890,22 @@
        {}
       ]
      ],
+     "timeline-scope-all.html": [
+      "cc44652776ccf0083df92fc5fe737b6ce4ca1ede",
+      [
+       null,
+       {}
+      ]
+     ],
      "timeline-scope-computed.html": [
-      "1096a9aa136eec6efe8b9f2cb30205bcc8683073",
+      "e97e8b37c17b95483c5f327609a405282af1ba45",
       [
        null,
        {}
       ]
      ],
      "timeline-scope-parsing.html": [
-      "ff6fcb7e5a5560baf81e147c92e4f1b2fe21e6d4",
+      "b62ca2b308296b03cd017f5a02ceae2d0e02bdc4",
       [
        null,
        {}
@@ -749526,7 +749827,7 @@
        ]
       ],
       "dom-mutation.html": [
-       "91a94158ccf4da6a77cbfe006477225b10d26a52",
+       "12735bed701c58efe13e63ec49645ed9c314ea48",
        [
         null,
         {
@@ -749535,7 +749836,7 @@
        ]
       ],
       "form.html": [
-       "5ab144b05ed130409a09c116fcceecfc57cfaab5",
+       "c2607f37fb6035e9a3c12b01a2cfe41a88ab5849",
        [
         null,
         {
@@ -749553,7 +749854,7 @@
        ]
       ],
       "label-descendant.html": [
-       "e6316175828b1cd213b5d49c1bb85b4a625542bf",
+       "f3555077bb6fae2d8062d4311337675d15902f10",
        [
         null,
         {
@@ -749562,7 +749863,7 @@
        ]
       ],
       "label-for.html": [
-       "05bb3511af46110bc0b156f0cef59c8bd746e386",
+       "2d85b234edfbcfcbdc8cfce141bc956eb376be67",
        [
         null,
         {
@@ -879534,9 +879835,9 @@
       ]
      ]
     },
-    "css-scoping": {
+    "css-shadow": {
      "slotted-text-with-flex.html": [
-      "9f83e54c215bc4a881b45b4a1515d1defea9e816",
+      "aa98c31373664039cc5817f325e98fe9bee10f79",
       [
        null,
        {}

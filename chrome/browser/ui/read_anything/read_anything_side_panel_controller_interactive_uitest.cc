@@ -451,7 +451,7 @@ IN_PROC_BROWSER_TEST_F(ReadAnythingOmniboxTest,
       // Move to the eighth tab and close the seventh tab, ignoring the chip for
       // the sixth time, so the omnibox should now show as icon only.
       SelectTab(kTabStripElementId, 1), MockDwellTime(kTab7), CloseTab(kTab7),
-      WaitForPageActionChipNotVisible(), WaitForPageActionIconVisible());
+      WaitForPageActionIconVisible());
 }
 
 IN_PROC_BROWSER_TEST_F(ReadAnythingOmniboxTest,

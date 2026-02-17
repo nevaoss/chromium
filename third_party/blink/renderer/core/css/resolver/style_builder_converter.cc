@@ -95,6 +95,7 @@
 #include "third_party/blink/renderer/core/style/style_border_shape.h"
 #include "third_party/blink/renderer/core/style/style_overflow_clip_margin.h"
 #include "third_party/blink/renderer/core/style/style_svg_resource.h"
+#include "third_party/blink/renderer/core/style/style_timeline_scope.h"
 #include "third_party/blink/renderer/core/style/style_view_transition_group.h"
 #include "third_party/blink/renderer/core/style/superellipse.h"
 #include "third_party/blink/renderer/core/style/text_overflow_data.h"
@@ -3907,19 +3908,23 @@ Vector<AtomicString> StyleBuilderConverter::ConvertViewTimelineName(
   return ConvertNoneOrCustomIdentListUnscoped(state, value);
 }
 
-Vector<AtomicString> StyleBuilderConverter::ConvertTimelineScope(
+StyleTimelineScope StyleBuilderConverter::ConvertTimelineScope(
     StyleResolverState& state,
     const CSSValue& value) {
-  if (value.IsIdentifierValue()) {
-    DCHECK_EQ(CSSValueID::kNone, To<CSSIdentifierValue>(value).GetValueID());
-    return {};
+  using Type = StyleTimelineScope::Type;
+  if (auto* ident = DynamicTo<CSSIdentifierValue>(value)) {
+    if (ident->GetValueID() == CSSValueID::kNone) {
+      return StyleTimelineScope(Type::kNone, /*names=*/{});
+    }
+    DCHECK_EQ(CSSValueID::kAll, To<CSSIdentifierValue>(value).GetValueID());
+    return StyleTimelineScope(Type::kAll, /*names=*/{});
   }
   DCHECK(value.IsBaseValueList());
   Vector<AtomicString> names;
   for (const Member<const CSSValue>& item : To<CSSValueList>(value)) {
     names.push_back(ConvertCustomIdentUnscoped(state, *item));
   }
-  return names;
+  return StyleTimelineScope(Type::kNames, std::move(names));
 }
 
 PositionArea StyleBuilderConverter::ConvertPositionArea(
@@ -4170,43 +4175,51 @@ PositionTryFallback StyleBuilderConverter::ConvertSinglePositionTryFallback(
 FitText StyleBuilderConverter::ConvertFitText(StyleResolverState& state,
                                               const CSSValue& value) {
   const auto& list = To<CSSValueList>(value);
-  const auto target_id = To<CSSIdentifierValue>(list.Item(0)).GetValueID();
-  FitTextTarget target = target_id == CSSValueID::kNone ? FitTextTarget::kNone
-                         : target_id == CSSValueID::kPerLine
-                             ? FitTextTarget::kPerLine
-                             : FitTextTarget::kConsistent;
-  std::optional<FitTextMethod> method;
+
+  const auto type_id = To<CSSIdentifierValue>(list.Item(0)).GetValueID();
+  FitTextType type = FitTextType::kNone;
+  if (type_id == CSSValueID::kNone) {
+    // It's the default value. Do nothing.
+  } else if (type_id == CSSValueID::kGrow) {
+    type = FitTextType::kGrow;
+  } else {
+    // If this DCHECK fails, This function and ConsumeFitText() are
+    // inconsistent.
+    DCHECK_EQ(type_id, CSSValueID::kShrink);
+    type = FitTextType::kShrink;
+  }
   wtf_size_t next_index = 1;
-  if (list.length() > next_index && list.Item(next_index).IsIdentifierValue()) {
-    const auto method_id =
-        To<CSSIdentifierValue>(list.Item(next_index)).GetValueID();
-    switch (method_id) {
-      case CSSValueID::kScale:
-        method.emplace(FitTextMethod::kScale);
-        break;
-      case CSSValueID::kFontSize:
-        method.emplace(FitTextMethod::kFontSize);
-        break;
-      case CSSValueID::kScaleInline:
-        method.emplace(FitTextMethod::kScaleInline);
-        break;
-      case CSSValueID::kLetterSpacing:
-        method.emplace(FitTextMethod::kLetterSpacing);
-        break;
-      default:
-        NOTREACHED();
+
+  FitTextTarget target = FitTextTarget::kConsistent;
+  if (next_index < list.length()) {
+    if (const auto* target_value =
+            DynamicTo<CSSIdentifierValue>(list.Item(next_index))) {
+      const auto target_id = target_value->GetValueID();
+      if (target_id == CSSValueID::kConsistent) {
+        // It's the default value. Do nothing.
+      } else if (target_id == CSSValueID::kPerLine) {
+        target = FitTextTarget::kPerLine;
+      } else {
+        // If this DCHECK fails, This function and ConsumeFitText() are
+        // inconsistent.
+        DCHECK_EQ(target_id, CSSValueID::kPerLineAll);
+        target = FitTextTarget::kPerLineAll;
+      }
+      ++next_index;
+    }
+  }
+
+  std::optional<double> limit;
+  if (list.length() > next_index) {
+    if (const auto* limit_value =
+            DynamicTo<CSSPrimitiveValue>(list.Item(next_index))) {
+      limit.emplace(limit_value->ComputePercentage<float>(
+                        state.CssToLengthConversionData()) /
+                    100);
     }
     ++next_index;
   }
-  std::optional<float> size_limit;
-  if (list.length() > next_index) {
-    FontDescription::Size parent_size(FontSizeFunctions::InitialKeywordSize(),
-                                      std::numeric_limits<float>::max(), true);
-    size_limit.emplace(ComputeFontSize(
-        state.CssToLengthConversionData(),
-        To<CSSPrimitiveValue>(list.Item(next_index)), parent_size));
-  }
-  return FitText(target, method, size_limit);
+  return FitText(type, target, limit);
 }
 
 TextOverflowData StyleBuilderConverter::ConvertTextOverflow(

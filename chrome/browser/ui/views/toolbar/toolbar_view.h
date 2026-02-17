@@ -46,7 +46,7 @@ class BatterySaverButton;
 class BrowserAppMenuButton;
 class Browser;
 class ExtensionsToolbarButton;
-class ExtensionsToolbarContainer;
+class ExtensionsToolbarDesktop;
 class HomeButton;
 class IntentChipButton;
 class ExtensionsToolbarCoordinator;
@@ -83,6 +83,7 @@ class ToolbarView : public views::AccessiblePaneView,
                 // bar, used for popups.
     kCustomTab  // Custom tab bar, used in PWAs when a location
                 // needs to be displayed.
+                // TODO(crbug.com/474406675): Rename to WebApp or TabbedPWA.
   };
 
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kToolbarElementId);
@@ -138,13 +139,13 @@ class ToolbarView : public views::AccessiblePaneView,
   // Accessors.
   Browser* browser() const { return browser_; }
   views::Button* GetChromeLabsButton() const;
-  ExtensionsToolbarContainer* extensions_container() const {
+  ExtensionsToolbarDesktop* extensions_container() const {
     return extensions_container_;
   }
   ToolbarButton* forward_button() const { return forward_; }
   ExtensionsToolbarButton* GetExtensionsButton() const;
   ReloadButton* reload_button() const { return reload_; }
-  LocationBarView* location_bar() const { return location_bar_; }
+  LocationBarView* location_bar() const { return location_bar_view_; }
   CustomTabBarView* custom_tab_bar() { return custom_tab_bar_; }
   BatterySaverButton* battery_saver_button() const {
     return battery_saver_button_;
@@ -224,7 +225,7 @@ class ToolbarView : public views::AccessiblePaneView,
       AppMenuIconController::TypeAndSeverity type_and_severity) override;
 
   // ToolbarButtonProvider:
-  ExtensionsToolbarContainer* GetExtensionsToolbarContainer() override;
+  ExtensionsToolbarDesktop* GetExtensionsToolbarDesktop() override;
   PinnedToolbarActionsContainer* GetPinnedToolbarActionsContainer() override;
   gfx::Size GetToolbarButtonSize() const override;
   views::View* GetDefaultExtensionDialogAnchorView() override;
@@ -279,8 +280,9 @@ class ToolbarView : public views::AccessiblePaneView,
   raw_ptr<HomeButton> home_ = nullptr;
   raw_ptr<SplitTabsToolbarButton> split_tabs_ = nullptr;
   raw_ptr<CustomTabBarView> custom_tab_bar_ = nullptr;
-  raw_ptr<LocationBarView> location_bar_ = nullptr;
-  raw_ptr<ExtensionsToolbarContainer> extensions_container_ = nullptr;
+  raw_ptr<LocationBarView> location_bar_view_ = nullptr;
+  raw_ptr<LocationBar> location_bar_ = nullptr;
+  raw_ptr<ExtensionsToolbarDesktop> extensions_container_ = nullptr;
   raw_ptr<views::View> toolbar_divider_ = nullptr;
   raw_ptr<BatterySaverButton> battery_saver_button_ = nullptr;
   raw_ptr<PerformanceInterventionButton> performance_intervention_button_ =

@@ -72,6 +72,14 @@ class DeviceSwitcherResultDispatcher;
 // moment, the configuration and the display history of the bubble, etc.
 - (void)presentHomeCustomizationTipBubble;
 
+// Optionally presents a help bubble associated with the NTP customization
+// menu's entrypoint, including background customization. The eligibility can
+// depend on the UI hierarchy at the moment, the configuration and the display
+// history of the bubble, etc. Unlike other bubbles, this bubble should be
+// controlled by the Feature Engagement Tracker externally to this class. This
+// class does not check the FET for this bubble.
+- (void)presentHomeBackgroundCustomizationTipBubble;
+
 // Optionally presents a help bubble to let the user know that they can change
 // the default mode (Desktop/Mobile) of the websites. The eligibility can depend
 // on the UI hierarchy at the moment, the configuration and the display history
@@ -112,6 +120,10 @@ class DeviceSwitcherResultDispatcher;
 // Optionally presents a bubble informing the user that they can use the
 // identity disc on the New Tab page to switch accounts.
 - (void)presentSwitchAccountsWithNTPAccountParticleDiscBubble;
+
+// Optionally presents a bubble informing the user that they can pin a custom
+// site to the most visited tiles.
+- (void)presentPinSiteToMostVisitedTilesBubble;
 
 // Optionally presents a gesture IPH associated with the pull-to-refresh
 // feature. The eligibility can depend on the UI hierarchy at the moment, the

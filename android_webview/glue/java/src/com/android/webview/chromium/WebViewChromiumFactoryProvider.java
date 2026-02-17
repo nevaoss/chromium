@@ -55,7 +55,6 @@ import org.chromium.android_webview.common.CommandLineUtil;
 import org.chromium.android_webview.common.DeveloperModeUtils;
 import org.chromium.android_webview.common.FlagOverrideHelper;
 import org.chromium.android_webview.common.Lifetime;
-import org.chromium.android_webview.common.PlatformServiceBridge;
 import org.chromium.android_webview.common.ProductionSupportedFlagList;
 import org.chromium.android_webview.common.SafeModeController;
 import org.chromium.android_webview.common.WebViewCachedFlags;
@@ -601,12 +600,23 @@ public class WebViewChromiumFactoryProvider implements WebViewFactoryProvider {
                             dataDirectoryBasePath, cacheDirectoryBasePath, dataDirectorySuffix);
                 }
 
+                boolean enableSystemTracing =
+                        WebViewCachedFlags.get()
+                                .isCachedFeatureEnabled(
+                                        TracingServiceFeatures.ENABLE_PERFETTO_SYSTEM_TRACING);
                 if (WebViewCachedFlags.get()
+                        .isCachedFeatureEnabled(AwFeatures.WEBVIEW_DISABLE_PERFETTO_INIT)) {
+                    AwBrowserProcess.disablePerfettoInitDuringBrowserMain();
+                } else if (WebViewCachedFlags.get()
                         .isCachedFeatureEnabled(AwFeatures.WEBVIEW_EARLY_PERFETTO_INIT)) {
-                    AwBrowserProcess.initPerfetto(
-                            WebViewCachedFlags.get()
-                                    .isCachedFeatureEnabled(
-                                            TracingServiceFeatures.ENABLE_PERFETTO_SYSTEM_TRACING));
+                    AwBrowserProcess.disablePerfettoInitDuringBrowserMain();
+                    AwBrowserProcess.initPerfetto(enableSystemTracing);
+                } else if (WebViewCachedFlags.get()
+                        .isCachedFeatureEnabled(AwFeatures.WEBVIEW_BACKGROUND_PERFETTO_INIT)) {
+                    AwBrowserProcess.disablePerfettoInitDuringBrowserMain();
+                    PostTask.postTask(
+                            TaskTraits.BEST_EFFORT,
+                            () -> AwBrowserProcess.initPerfetto(enableSystemTracing));
                 }
 
                 try (DualTraceEvent e2 =
@@ -667,11 +677,6 @@ public class WebViewChromiumFactoryProvider implements WebViewFactoryProvider {
 
             if (WebViewCachedFlags.get()
                     .isCachedFeatureEnabled(AwFeatures.WEBVIEW_MOVE_WORK_TO_PROVIDER_INIT)) {
-                PostTask.postTask(
-                        TaskTraits.USER_VISIBLE,
-                        () -> {
-                            PlatformServiceBridge.getInstance();
-                        });
                 mAwInit.runNonUiThreadCapableStartupTasks();
             }
 
@@ -729,14 +734,28 @@ public class WebViewChromiumFactoryProvider implements WebViewFactoryProvider {
         }
     }
 
+    // The startup tasks are setup to run based on the following logic:
+    // 1. The AndroidX preference is checked first,
+    // 2. If it's not set, the manifest metadata is checked,
+    // 3. Then the commandline switch is checked,
+    // 4. Finally, the feature flag is checked.
     private void setupStartupTaskExperiments(AndroidXProcessGlobalConfig androidXConfig) {
         switch (androidXConfig.getUiThreadStartupMode()) {
             case ProcessGlobalConfigConstants.UI_THREAD_STARTUP_MODE_DEFAULT:
-                setStartupTaskExperimentValues(
-                        shouldEnableStartupTasksExperiment(),
-                        shouldEnableStartupTasksExperimentP2(),
-                        shouldEnableStartupTasksYieldToNativeExperiment());
-                return;
+                {
+                    if (ManifestMetadataUtil.shouldForceSyncBrowserStartup()) {
+                        setStartupTaskExperimentValues(
+                                /* enablePhase1= */ false,
+                                /* enablePhase2= */ false,
+                                /* enableYieldToNative= */ false);
+                    } else {
+                        setStartupTaskExperimentValues(
+                                shouldEnableStartupTasksExperiment(),
+                                shouldEnableStartupTasksExperimentP2(),
+                                shouldEnableStartupTasksYieldToNativeExperiment());
+                    }
+                    return;
+                }
             case ProcessGlobalConfigConstants.UI_THREAD_STARTUP_MODE_SYNC:
                 setStartupTaskExperimentValues(
                         /* enablePhase1= */ false,

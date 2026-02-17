@@ -103,12 +103,6 @@ inline constexpr char kAutofillPaymentCardBenefits[] =
 // Boolean that is true if Autofill is enabled and allowed to save profile data.
 // Do not get/set the value of this pref directly. Use provided getter/setter.
 inline constexpr char kAutofillProfileEnabled[] = "autofill.profile_enabled";
-// To simplify the rollout of `kAutofillDeduplicateAccountAddresses`,
-// deduplication can be run a second time per milestone for users enrolled in
-// the experiment. This pref tracks whether deduplication was run a second time.
-// TODO(crbug.com/357074792): Remove after the rollout finished.
-inline constexpr char kAutofillRanExtraDeduplication[] =
-    "autofill.ran_extra_deduplication";
 // The opt-ins for Sync Transport features for each client.
 inline constexpr char kAutofillSyncTransportOptIn[] =
     "autofill.sync_transport_opt_ins";
@@ -184,20 +178,24 @@ inline constexpr char
 // the setup on each device requires steps outside the browser. Enabling this
 // pref on a device without a proper provider may yield a surprising absence of
 // filling.
-inline constexpr char kAutofillUsingVirtualViewStructure[] =
+inline constexpr char kAutofillUsingPlatformAutofill[] =
     "autofill.using_virtual_view_structure";
 // Boolean set by the `ThirdPartyPasswordManagersAllowed` policy. Defaults to
-// true which allows users to set the `kAutofillUsingVirtualViewStructure` pref.
+// true which allows users to set the `kAutofillUsingPlatformAutofill` pref.
 // If set to false, user can only use the built-in password manager.
 inline constexpr char kAutofillThirdPartyPasswordManagersAllowed[] =
     "autofill.third_party_password_managers_allowed";
+// String storing the active autofill service when the user last decided to use
+// the virtual view structure for autofilling. Defaults to an empty string. The
+// empty string means no autofill service was selected and default built-in
+// Autofill should be used.
+inline constexpr char kAutofillThirdPartyPackageUsedForPlatformAutofill[] =
+    "autofill.third_party_package_used_for_platform_autofill";
 inline constexpr char kFacilitatedPaymentsEwallet[] =
     "facilitated_payments.ewallet";
 inline constexpr char kFacilitatedPaymentsPix[] = "facilitated_payments.pix";
 inline constexpr char kFacilitatedPaymentsPixAccountLinking[] =
     "facilitated_payments.pix_account_linking_enabled";
-inline constexpr char kFacilitatedPaymentsPixAccountLinkingDeprecated[] =
-    "facilitated_payments.pix_account_linking";
 inline constexpr char kFacilitatedPaymentsA2AEnabled[] =
     "facilitated_payments.a2a_enabled";
 // Whether the user has seen the A2A flow at least once.

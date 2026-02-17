@@ -162,6 +162,7 @@
 <translation id="1554477036522844996">Dirisha Jipya</translation>
 <translation id="1558391695376153246">Funga vichupo fiche</translation>
 <translation id="1565371473877914088">Kichupo Fiche Kipya</translation>
+<translation id="1567960978791353852">Onyesha Hali ya Kusoma</translation>
 <translation id="1571780780926010134">Vichupo vya faragha</translation>
 <translation id="1580715474678097352">Endelea kulindwa dhidi ya tovuti hatari</translation>
 <translation id="1580783302095112590">Barua imetumwa.</translation>
@@ -291,6 +292,7 @@
 <translation id="2015722694326466240">Ili uone manenosiri, ni lazima kwanza uweke namba ya siri kwenye kifaa chako.</translation>
 <translation id="201759455285471444">Panua kikundi cha vichupo.</translation>
 <translation id="202070562065520783">Nifafanulie hili</translation>
+<translation id="2023713324775943812">Fikia Hali ya Kusoma kwenye sehemu ya anwani inapopatikana</translation>
 <translation id="2044394949148788042">Fungua gridi ya kichupo</translation>
 <translation id="2044681667265133332">Akaunti ya <ph name="USER_EMAIL" /> inasimamiwa na <ph name="HOSTED_DOMAIN" />, inayoweza kuangalia baadhi ya maelezo. <ph name="BEGIN_LINK" />Pata maelezo zaidi<ph name="END_LINK" /></translation>
 <translation id="20485545164632846">kipengee kipya</translation>
@@ -360,6 +362,7 @@
 <translation id="2271452184061378400">Vikundi vya vichupo vyako huhifadhiwa hapa</translation>
 <translation id="2273327106802955778">Menyu zaidi</translation>
 <translation id="2287614783861766820">{count,plural, =1{Anwani hii itafutwa kwenye kifaa hiki.}other{Anwani hizi zitafutwa kwenye kifaa hiki.}}</translation>
+<translation id="2295236662082735391">Bonyeza kwa muda mrefu picha kwenye wavuti ili uihariri ukitumia Gemini</translation>
 <translation id="2297989278479054870">Baada ya kuondoka kwenye akaunti, alamisho, manenosiri na zaidi kwenye Akaunti yako ya Google yataondolewa kwenye kifaa chako.</translation>
 <translation id="2299218006564889602">Manenosiri yako husimbwa kwa njia fiche kwenye kifaa chako kabla hayajahifadhiwa kwenye Kidhibiti cha Manenosiri cha Google.</translation>
 <translation id="2306265833370324042">Onyesha maelezo ya <ph name="SEARCH_ENGINE_NAME" /></translation>
@@ -481,6 +484,7 @@
 <translation id="2761788987260570878">Piga picha ya utafutaji wako</translation>
 <translation id="2761898608071930085">Tumia Akaunti Nyingine</translation>
 <translation id="2762000892062317888">sasa hivi tu</translation>
+<translation id="2766178952536179189">{COUNT,plural, =1{Weka hadi picha 1}other{Weka hadi picha {COUNT}}}</translation>
 <translation id="2772667768515195373">Unaweza kutumia anwani zilizohifadhiwa kwenye bidhaa zote za Google. Anwani hii imehifadhiwa kwenye Akaunti yako ya Google, <ph name="USER_EMAIL" />.</translation>
 <translation id="2773344962924806829">Arifa za barua pepe</translation>
 <translation id="2781331604911854368">Imewashwa</translation>
@@ -601,6 +605,7 @@
 <translation id="3245744387817103524">Imeshindwa kuhifadhi mabadiliko uliyofanya.</translation>
 <translation id="3254806613790954367">Kichupo ulichofungua mwisho kwenye vifaa vyako vyote</translation>
 <translation id="325717987950204592">Gusa "Usalama na Faragha"</translation>
+<translation id="3265736395246760288">Ingia katika akaunti haraka kwenye kifaa chochote ulichosawazisha.</translation>
 <translation id="3272527697863656322">Ghairi</translation>
 <translation id="3273510436356991673">Weka mapendeleo kwenye skrini yako ya kwanza</translation>
 <translation id="3277021493514034324">Anwani ya tovuti imenakiliwa</translation>
@@ -703,6 +708,7 @@
 <translation id="368329460027487650">Umeondoka kwenye akaunti. Hufungua chaguo za kuingia katika akaunti.</translation>
 <translation id="3695446226812920698">Pata maelezo</translation>
 <translation id="3700134753671613714">Ingia katika akaunti ili upate alamisho kwenye vifaa vyako vyote.</translation>
+<translation id="3701167022068948696">Rekebisha sasa</translation>
 <translation id="3708944822379815019">{COUNT,plural, =1{Nenosiri {COUNT} limehifadhiwa kwenye kifaa hiki pekee. Ili ulitumie kwenye vifaa vingine, lihifadhi kwenye Akaunti yako ya Google, {EMAIL}.}other{Manenosiri {COUNT} yamehifadhiwa kwenye kifaa hiki pekee. Ili uyatumie kwenye vifaa vyako vingine, yahifadhi kwenye Akaunti yako ya Google, {EMAIL}.}}</translation>
 <translation id="3709621342136814217">Chagua fonti yako, ukubwa wa maandishi na zaidi hapa</translation>
 <translation id="371230970611282515">Hutabiri na kukuonya kuhusu matukio hatari yanapotendeka.</translation>
@@ -749,6 +755,7 @@
 <translation id="3888863481921783344">Hii itatumika kukuonyesha watu unaoweza kuwaalika kwenye tukio lako.</translation>
 <translation id="3891414008432200754">Bei</translation>
 <translation id="3892144330757387737">Utapata historia yako hapa</translation>
+<translation id="3893858854379998374">Ili uhifadhi alamisho kwenye akaunti yako, futa alamisho zako ambazo hazitumiki</translation>
 <translation id="3897092660631435901">Menyu</translation>
 <translation id="3904270275864974753">Kubadilisha utepe</translation>
 <translation id="3909222758573607742">Hifadhi manenosiri na vipengee vingine kwenye akaunti</translation>
@@ -866,6 +873,7 @@
 <translation id="4302061870579014542">Weka nafasi</translation>
 <translation id="4304713468139749426">Kidhibiti cha Manenosiri</translation>
 <translation id="4309403553630140242">Gusa mara mbili ili upate maelezo zaidi</translation>
+<translation id="4310738531374808763">Badilisha upendavyo ukurasa wako wa kwanza</translation>
 <translation id="4320848494125124980">Majuzi</translation>
 <translation id="4322394346347055525">Funga Vichupo Vingine</translation>
 <translation id="4324735664183300693">Ruhusu kupokea arifa</translation>
@@ -1352,6 +1360,7 @@ Lazima Handoff iwashwe pia katika sehemu ya Jumla ya Mipangilio, na lazima vifaa
 <translation id="605721222689873409">MK</translation>
 <translation id="6058415747854995776">Rekodi Video</translation>
 <translation id="6059830886158432458">Dhibiti hadithi na shughuli zako hapa</translation>
+<translation id="6063802271331271857">Boresha picha</translation>
 <translation id="6066301408025741299">Gusa ili kughairi.</translation>
 <translation id="6074656473835429958">Pokea arifa</translation>
 <translation id="607620096698446287">Imeshindwa kupakia <ph name="FILENAME" /> (<ph name="FILESIZE" />)</translation>
@@ -1703,6 +1712,7 @@ Lazima Handoff iwashwe pia katika sehemu ya Jumla ya Mipangilio, na lazima vifaa
 <translation id="7328162502911382168">(<ph name="COUNT" />)</translation>
 <translation id="7336264872878993241">Faili imepakuliwa asilimia <ph name="PERCENT" /></translation>
 <translation id="7345061034321640811">Huruhusiwi kupakia</translation>
+<translation id="7347998088283246662">Pakia manenosiri, historia, alamisho na zaidi</translation>
 <translation id="7352651011704765696">Hitilafu fulani imetokea</translation>
 <translation id="7364796246159120393">Chagua Faili</translation>
 <translation id="736564850024123010">Badilisha nafasi ya sehemu ya anwani ili uitumie upendavyo.</translation>
@@ -1870,6 +1880,7 @@ Lazima Handoff iwashwe pia katika sehemu ya Jumla ya Mipangilio, na lazima vifaa
 <translation id="7899199123054742721">Wekea alama kuwa hujasoma zote</translation>
 <translation id="7911190106180361398">Shirika lako halikuruhusu kusawazisha kila kitu.</translation>
 <translation id="7918999344502274923">Ficha maelezo ya <ph name="SEARCH_ENGINE_NAME" /></translation>
+<translation id="7921559948846049514">Chagua mandhari, rangi au zaidi ya mandharinyuma yako</translation>
 <translation id="792357691529995513">Hakuna hitilafu iliyopatikana</translation>
 <translation id="7925108652071887026">Data ya kujaza otomatiki</translation>
 <translation id="7926975587469166629">Jina la kuwakilisha kadi</translation>
@@ -2227,6 +2238,7 @@ Lazima Handoff iwashwe pia katika sehemu ya Jumla ya Mipangilio, na lazima vifaa
 <translation id="914781932147356857">Wekea zote alama…</translation>
 <translation id="9148126808321036104">Ingia tena</translation>
 <translation id="9149866541089851383">Badilisha...</translation>
+<translation id="9152637745605628097">Chagua mandhari, rangi au upakie picha</translation>
 <translation id="9159628751968616911">Tuma ukurasa wa wavuti</translation>
 <translation id="9162432979321511934">Washa Kipengele cha Kujaza Manenosiri Kiotomatiki</translation>
 <translation id="9165320910061267720">Ili upate arifa za kushuka kwa bei, utahitaji kuwasha arifa kwenye mipangilio yako ya iOS.</translation>

@@ -481,8 +481,6 @@ static_library("browser") {
     "enterprise/reporting/legacy_tech/legacy_tech_report_policy_handler.h",
     "enterprise/reporting/legacy_tech/legacy_tech_service.cc",
     "enterprise/reporting/legacy_tech/legacy_tech_service.h",
-    "enterprise/reporting/legacy_tech/legacy_tech_url_matcher.cc",
-    "enterprise/reporting/legacy_tech/legacy_tech_url_matcher.h",
     "enterprise/reporting/prefs.cc",
     "enterprise/reporting/prefs.h",
     "enterprise/reporting/profile_report_generator_delegate_base.cc",
@@ -839,8 +837,6 @@ static_library("browser") {
     "page_content_annotations/page_content_annotations_web_contents_observer.cc",
     "page_content_annotations/page_content_extraction_service.cc",
     "page_content_annotations/page_content_extraction_service_factory.cc",
-    "page_content_annotations/page_content_screenshot_service.cc",
-    "page_content_annotations/page_content_screenshot_service.h",
     "page_content_annotations/page_content_screenshot_service_factory.cc",
     "page_content_annotations/page_content_screenshot_service_factory.h",
     "page_image_service/image_service_factory.cc",
@@ -1271,8 +1267,6 @@ static_library("browser") {
     "renderer_preferences_util.h",
     "resource_coordinator/resource_coordinator_parts.cc",
     "resource_coordinator/resource_coordinator_parts.h",
-    "resource_coordinator/session_restore_policy.cc",
-    "resource_coordinator/session_restore_policy.h",
     "resource_coordinator/tab_helper.cc",
     "resource_coordinator/tab_helper.h",
     "resource_coordinator/tab_load_tracker.cc",
@@ -1455,6 +1449,8 @@ static_library("browser") {
     "supervised_user/chrome_supervised_user_web_content_handler_base.h",
     "supervised_user/classify_url_navigation_throttle.cc",
     "supervised_user/classify_url_navigation_throttle.h",
+    "supervised_user/family_link_settings_service_factory.cc",
+    "supervised_user/family_link_settings_service_factory.h",
     "supervised_user/metrics_service_accessor_delegate.cc",
     "supervised_user/metrics_service_accessor_delegate.h",
     "supervised_user/supervised_user_browser_utils.cc",
@@ -1469,8 +1465,6 @@ static_library("browser") {
     "supervised_user/supervised_user_navigation_observer.h",
     "supervised_user/supervised_user_service_factory.cc",
     "supervised_user/supervised_user_service_factory.h",
-    "supervised_user/supervised_user_settings_service_factory.cc",
-    "supervised_user/supervised_user_settings_service_factory.h",
     "supervised_user/supervised_user_url_filtering_service_factory.cc",
     "supervised_user/supervised_user_url_filtering_service_factory.h",
     "tab_contents/navigation_metrics_recorder.cc",
@@ -2262,6 +2256,7 @@ static_library("browser") {
     "//components/origin_trials:common",
     "//components/os_crypt/async/browser",
     "//components/os_crypt/sync",
+    "//components/page_content_annotations/content",
     "//components/page_content_annotations/core",
     "//components/page_image_service",
     "//components/page_info/core:proto",
@@ -2606,6 +2601,7 @@ static_library("browser") {
 
   if (!is_android) {
     deps += [
+      "//chrome/browser/accessibility_annotator",
       "//chrome/browser/contextual_tasks:ui_impl",
       "//chrome/browser/legion",
       "//chrome/browser/startup",
@@ -3599,6 +3595,7 @@ static_library("browser") {
 
     deps += [
       # TODO(crbug.com/413572035): Remove once c/b/tab_android* sources get modularized.
+      "//chrome/browser/glic/common",
       "//chrome/browser/ui/android/tab_model",
       "//chrome/browser/ui/android/tab_model:impl",
     ]
@@ -3627,6 +3624,7 @@ static_library("browser") {
 
       # TODO(crbug.com/413572035): Remove once c/b/tab_android* sources get modularized.
       "//chrome/browser/ui/android/tab_model:impl",
+      "//chrome/browser/glic/common",
 
       "//chrome/browser/ui/webui/notifications_internals:impl",
 
@@ -4735,10 +4733,6 @@ static_library("browser") {
         "screen_ai/screen_ai_downloader_non_chromeos.h",
         "signin/force_signin_verifier.cc",
         "signin/force_signin_verifier.h",
-        "signin/signin_manager.cc",
-        "signin/signin_manager.h",
-        "signin/signin_manager_factory.cc",
-        "signin/signin_manager_factory.h",
       ]
 
       deps += [
@@ -6283,6 +6277,12 @@ static_library("browser") {
     }
   }
 
+  if (enable_glic) {
+    if (is_win || is_mac || is_linux || is_chromeos) {
+      deps += [ "//chrome/browser/skills" ]
+    }
+  }
+
   if (enable_background_mode) {
     deps += [
       "//chrome/browser/background/extensions",
@@ -6814,6 +6814,8 @@ static_library("browser") {
       "//chrome/browser/enterprise/connectors/device_trust/common",
       "//chrome/browser/enterprise/connectors/device_trust/signals",
       "//chrome/browser/enterprise/connectors/device_trust/signals/decorators/common",
+      "//chrome/browser/ui/webui/skills",
+      "//chrome/browser/ui/webui/skills:mojo_bindings",
       "//components/device_signals/core/browser",
       "//components/device_signals/core/common",
       "//components/enterprise/core",
@@ -8224,10 +8226,6 @@ static_library("browser") {
       "sessions/session_service_lookup.h",
       "sessions/session_service_utils.cc",
       "sessions/session_service_utils.h",
-      "sessions/tab_loader.cc",
-      "sessions/tab_loader.h",
-      "sessions/tab_loader_delegate.cc",
-      "sessions/tab_loader_delegate.h",
     ]
     deps += [
       "//chrome/browser/ui/webui/tab_strip_internals",
@@ -8236,8 +8234,10 @@ static_library("browser") {
     ]
 
     # TODO(crbug.com/427204855): Remove this circular include once
-    # "chrome/browser/sessions/tab_restore_service_factory.h" is
-    # fully componentized.
+    # "chrome/browser/sessions/tab_restore_service_factory.h",
+    # "chrome/browser/sessions/session_service_factory.h", and
+    # "chrome/browser/sessions/session_service_base.h"
+    # are fully componentized.
     allow_circular_includes_from +=
         [ "//chrome/browser/ui/webui/tab_strip_internals:impl" ]
   }
@@ -8735,8 +8735,10 @@ static_library("browser_generated_files") {
     ]
   }
   if (is_win || is_mac || is_linux || is_chromeos) {
-    public_deps +=
-        [ "//ui/webui/resources/cr_components/help_bubble:mojo_bindings" ]
+    public_deps += [
+      "//chrome/browser/ui/webui/skills:mojo_bindings",
+      "//ui/webui/resources/cr_components/help_bubble:mojo_bindings",
+    ]
   }
   if (safe_browsing_mode == 1) {
     public_deps += [ "//chrome/browser/ui/webui/reset_password:mojo_bindings" ]
@@ -9155,8 +9157,6 @@ static_library("test_support") {
       "sessions/session_service_base_test_helper.h",
       "sessions/session_service_test_helper.cc",
       "sessions/session_service_test_helper.h",
-      "sessions/tab_loader_tester.cc",
-      "sessions/tab_loader_tester.h",
       "sessions/tab_restore_service_load_waiter.cc",
       "sessions/tab_restore_service_load_waiter.h",
       "speech/fake_speech_recognition_service.cc",

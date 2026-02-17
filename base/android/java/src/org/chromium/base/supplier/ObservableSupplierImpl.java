@@ -31,7 +31,7 @@ public class ObservableSupplierImpl<T extends @Nullable Object>
         extends BaseObservableSupplierImpl<T>
         implements Supplier<T>,
                 SettableNullableObservableSupplier<T>,
-                SettableObservableSupplier<T>,
+                SettableMonotonicObservableSupplier<T>,
                 SettableNonNullObservableSupplier<T> {
     protected final ThreadChecker mThreadChecker = new ThreadChecker();
     protected @Nullable ObserverList<Callback<T>> mObservers = new ObserverList<>();
@@ -88,13 +88,18 @@ public class ObservableSupplierImpl<T extends @Nullable Object>
 
     @Override
     public void set(T object) {
-        assert mObservers != null; // Check not destroyed.
-        mThreadChecker.assertOnValidThread();
-        assert object != null || !Boolean.FALSE.equals(mAllowSetToNull)
-                : "set(null) called on a non-nullable supplier";
-        T prevValue = mObject;
-        mObject = object;
-        callObservers(prevValue);
+        // Sometimes ObservableSupplierImpl::set is linked directly to an event that does not get
+        // destroyed, so it's easier to ignore set() after destroy() than to have callers have to
+        // track the state. It can also be hard to ensure queued callbacks that call set() are
+        // cancelled, so again, just ignore after destroy().
+        if (mObservers != null) {
+            mThreadChecker.assertOnValidThread();
+            assert object != null || !Boolean.FALSE.equals(mAllowSetToNull)
+                    : "set(null) called on a non-nullable supplier";
+            T prevValue = mObject;
+            mObject = object;
+            callObservers(prevValue);
+        }
     }
 
     @Override

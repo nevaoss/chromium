@@ -49,13 +49,11 @@ class VerticalTabGroupView
 
   // TabCollectionAnimatingLayoutManager::Delegate:
   bool IsViewDragging(const views::View& child_view) const override;
-
-  void OnDataChanged();
+  void OnAnimationEnded() override;
 
   bool IsCollapsed() const;
 
-  // Handler when a tab that is not in the group is dragged over this.
-  void OnTabDragOver();
+  const TabCollectionNode* collection_node() const { return collection_node_; }
 
   VerticalTabGroupHeaderView* group_header_for_testing() {
     return group_header_;
@@ -65,10 +63,12 @@ class VerticalTabGroupView
   // VerticalDraggedTabsContainer:
   VerticalTabDragHandler& GetDragHandler() override;
   const VerticalTabDragHandler& GetDragHandler() const override;
+  views::ScrollView* GetScrollViewForContainer() const override;
   void UpdateLayoutForDrag() override;
   void HandleTabDragInContainer(const gfx::Point point_in_container) override;
 
   void ResetCollectionNode();
+  void OnDataChanged();
   void UpdateChildVisibilityForCollapseState(bool collapsed);
 
   raw_ptr<TabCollectionNode> collection_node_ = nullptr;

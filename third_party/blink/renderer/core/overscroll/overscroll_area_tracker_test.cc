@@ -5,12 +5,14 @@
 #include "third_party/blink/renderer/core/overscroll/overscroll_area_tracker.h"
 
 #include "base/test/scoped_feature_list.h"
+#include "third_party/blink/public/mojom/scroll/scroll_enums.mojom-blink.h"
 #include "third_party/blink/renderer/core/css/selector_checker.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/indexed_pseudo_element.h"
 #include "third_party/blink/renderer/core/frame/local_frame_view.h"
 #include "third_party/blink/renderer/core/frame/visual_viewport.h"
 #include "third_party/blink/renderer/core/html/html_body_element.h"
+#include "third_party/blink/renderer/core/layout/layout_box.h"
 #include "third_party/blink/renderer/core/layout/layout_object.h"
 #include "third_party/blink/renderer/core/style/computed_style.h"
 #include "third_party/blink/renderer/core/testing/dummy_page_holder.h"
@@ -598,21 +600,28 @@ TEST_F(OverscrollAreaTrackerPageTest, OverscrollPropertyTrees) {
 TEST_F(OverscrollAreaTrackerPageTest, OverscrollPseudoElementStyles) {
   GetDocument().body()->SetInnerHTMLWithoutTrustedTypes(R"HTML(
     <style>
-      #scroller {
+      .scroller {
         overflow: auto;
       }
+      .smooth {
+        scroll-behavior: smooth;
+      }
     </style>
-    <div id="scroller" overscrollcontainer>
+    <div id="scroller1" class="scroller" overscrollcontainer>
       <div id="foo"></div>
     </div>
+    <div id="scroller2" class="smooth scroller" overscrollcontainer>
+      <div id="bar"></div>
+    </div>
     <button command="toggle-overscroll" commandfor="foo"></button>
+    <button command="toggle-overscroll" commandfor="bar"></button>
   )HTML");
 
   UpdateAllLifecyclePhasesForTest();
 
-  Element* scroller = GetElementById("scroller");
+  Element* scroller1 = GetElementById("scroller1");
   PseudoElement* overscroll_parent_foo =
-      scroller->GetOverscrollAreaParentPseudoElements()->at(0);
+      scroller1->GetOverscrollAreaParentPseudoElements()->at(0);
 
   ASSERT_TRUE(overscroll_parent_foo);
 
@@ -623,19 +632,15 @@ TEST_F(OverscrollAreaTrackerPageTest, OverscrollPseudoElementStyles) {
             overscroll_parent_foo->GetComputedStyle()->OverflowY());
   EXPECT_EQ(EScrollbarWidth::kNone,
             overscroll_parent_foo->GetComputedStyle()->ScrollbarWidth());
+  EXPECT_EQ(mojom::ScrollBehavior::kAuto,
+            overscroll_parent_foo->GetComputedStyle()->GetScrollBehavior());
 
-  // Computed style of the overscroll area parent pseudo-elements
-  EXPECT_EQ(EOverflow::kAuto,
-            overscroll_parent_foo->GetComputedStyle()->OverflowX());
-  EXPECT_EQ(EOverflow::kAuto,
-            overscroll_parent_foo->GetComputedStyle()->OverflowY());
-  EXPECT_EQ(EScrollbarWidth::kNone,
-            overscroll_parent_foo->GetComputedStyle()->ScrollbarWidth());
-
-  // Only UA selectors can match these pseudo-elements,
-  // backface-visibility should be unchanged.
-  EXPECT_EQ(EBackfaceVisibility::kVisible,
-            overscroll_parent_foo->GetComputedStyle()->BackfaceVisibility());
+  // Computed scroll-behavior inherits scroll-behavior from the scroller.
+  Element* scroller2 = GetElementById("scroller2");
+  PseudoElement* overscroll_parent_bar =
+      scroller2->GetOverscrollAreaParentPseudoElements()->at(0);
+  EXPECT_EQ(mojom::ScrollBehavior::kSmooth,
+            overscroll_parent_bar->GetComputedStyle()->GetScrollBehavior());
 }
 
 TEST_F(OverscrollAreaTrackerPageTest, OverscrollContainerWithElement) {
@@ -669,6 +674,50 @@ TEST_F(OverscrollAreaTrackerPageTest, OverscrollContainerWithElement) {
   EXPECT_EQ(overscroll_area_parent->GetLayoutObject()->Parent(),
             container->GetLayoutObject());
   EXPECT_EQ(content->GetLayoutObject()->Parent(), container->GetLayoutObject());
+}
+
+TEST_F(OverscrollAreaTrackerPageTest, OverscrollContainerNegativeScroll) {
+  GetDocument().body()->SetInnerHTMLWithoutTrustedTypes(R"HTML(
+    <style>
+      #container {
+        width: 200px;
+        height: 200px;
+      }
+      #largeoverscrollarea {
+        width: 300%;
+        height: 300%;
+        /* Overscrolls by 100% / 200px on all sides. */
+        left: -100%;
+        top: -100%;
+      }
+    </style>
+    <div id="container" overscrollcontainer>
+      <div id="largeoverscrollarea"></div>
+      <div id="content"></div>
+    </div>
+    <button id=button command="toggle-overscroll"
+        commandfor="largeoverscrollarea"></button>
+  )HTML");
+
+  UpdateAllLifecyclePhasesForTest();
+
+  Element* container = GetElementById("container");
+  ASSERT_TRUE(container);
+  PseudoElement* overscroll_area_parent =
+      container->GetOverscrollAreaParentPseudoElements()->at(0);
+  Element* content = GetElementById("content");
+  ASSERT_TRUE(overscroll_area_parent);
+  ASSERT_TRUE(content);
+
+  PaintLayerScrollableArea* overscrollable_area =
+      overscroll_area_parent->GetLayoutBox()->GetScrollableArea();
+
+  // We should be able to overscroll in any direction.
+  ASSERT_TRUE(overscrollable_area);
+  ASSERT_EQ(overscrollable_area->MinimumScrollOffset().x(), -200);
+  ASSERT_EQ(overscrollable_area->MinimumScrollOffset().y(), -200);
+  ASSERT_EQ(overscrollable_area->MaximumScrollOffset().x(), 200);
+  ASSERT_EQ(overscrollable_area->MaximumScrollOffset().y(), 200);
 }
 
 }  // namespace blink

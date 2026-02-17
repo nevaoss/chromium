@@ -931,8 +931,8 @@ static_library("ui") {
       "//chrome/browser/ui/android/tab_model",
       "//chrome/browser/ui/android/tab_model:impl",
       "//chrome/browser/ui/android/toolbar:jni_headers",
-      "//chrome/browser/ui/autofill:autofill_ai_string_utils",
-      "//chrome/browser/ui/autofill:autofill_ai_string_utils_impl",
+      "//chrome/browser/ui/autofill:autofill_ai_ui_utils",
+      "//chrome/browser/ui/autofill:autofill_ai_ui_utils_impl",
       "//chrome/browser/ui/exclusive_access",
       "//chrome/browser/ui/fast_checkout",
       "//chrome/browser/ui/fast_checkout:impl",
@@ -3811,12 +3811,12 @@ static_library("ui") {
       "views/extensions/extensions_request_access_hover_card_coordinator.h",
       "views/extensions/extensions_toolbar_button.cc",
       "views/extensions/extensions_toolbar_button.h",
-      "views/extensions/extensions_toolbar_container.cc",
-      "views/extensions/extensions_toolbar_container.h",
-      "views/extensions/extensions_toolbar_container_view_controller.cc",
-      "views/extensions/extensions_toolbar_container_view_controller.h",
       "views/extensions/extensions_toolbar_coordinator.cc",
       "views/extensions/extensions_toolbar_coordinator.h",
+      "views/extensions/extensions_toolbar_desktop.cc",
+      "views/extensions/extensions_toolbar_desktop.h",
+      "views/extensions/extensions_toolbar_desktop_view_controller.cc",
+      "views/extensions/extensions_toolbar_desktop_view_controller.h",
       "views/extensions/security_dialog_tracker.cc",
       "views/extensions/security_dialog_tracker.h",
       "views/extensions/windows_utils_views.cc",
@@ -5705,7 +5705,10 @@ if (!is_android) {
 static_library("test_support") {
   testonly = true
 
-  sources = []
+  sources = [
+    "browser_window/test/mock_browser_window_interface.cc",
+    "browser_window/test/mock_browser_window_interface.h",
+  ]
   public_deps = [ ":ui" ]
 
   deps = [
@@ -5714,6 +5717,7 @@ static_library("test_support") {
     "//chrome/browser/devtools",
     "//chrome/browser/profiles:profile",
     "//chrome/browser/ui/autofill/payments:test_support",
+    "//chrome/browser/ui/browser_window",
     "//chrome/browser/ui/toolbar:test_support",
     "//components/omnibox/browser",
     "//components/password_manager/core/browser",
@@ -5791,8 +5795,6 @@ static_library("test_support") {
     ]
   } else {
     sources += [
-      "browser_window/test/mock_browser_window_interface.cc",
-      "browser_window/test/mock_browser_window_interface.h",
       "test/popup_test_base.cc",
       "test/popup_test_base.h",
       "test/test_confirm_bubble_model.cc",
@@ -5802,7 +5804,6 @@ static_library("test_support") {
       "webui/settings/saved_info_handler_test_api.h",
     ]
     deps += [
-      "//chrome/browser/ui/browser_window",
       "//chrome/browser/ui/content_settings:test_support",
       "//chrome/browser/ui/passwords:test_support_ui",
       "//chrome/browser/ui/views/toolbar",

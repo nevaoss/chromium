@@ -67,10 +67,16 @@ bool HasNonDefaultInstallationMode(Profile* profile,
 }
 #endif  // BUILDFLAG(ENABLE_EXTENSIONS)
 
-MachineLevelUserCloudPolicyManager* GetMachineCloudPolicyManager() {
+MachineLevelUserCloudPolicyManager* GetMachineCloudPolicyManagerIfConnected() {
 #if !BUILDFLAG(IS_CHROMEOS)
-  return g_browser_process->browser_policy_connector()
-      ->machine_level_user_cloud_policy_manager();
+  MachineLevelUserCloudPolicyManager* manager =
+      g_browser_process->browser_policy_connector()
+          ->machine_level_user_cloud_policy_manager();
+  if (manager && manager->core()->client() &&
+      manager->core()->extension_install_service()) {
+    return manager;
+  }
+  return nullptr;
 #else
   return nullptr;
 #endif  // !BUILDFLAG(IS_CHROMEOS)
@@ -83,6 +89,10 @@ ExtensionInstallPolicyServiceImpl::ExtensionInstallPolicyServiceImpl(
     : profile_(profile) {
   CHECK(base::FeatureList::IsEnabled(
       features::kEnableExtensionInstallPolicyFetching));
+  if (auto* policy_service =
+          profile_->GetProfilePolicyConnector()->policy_service()) {
+    policy_service->AddObserver(POLICY_DOMAIN_EXTENSION_INSTALL, this);
+  }
   pref_change_registrar_.Init(profile_->GetPrefs());
   pref_change_registrar_.Add(
       extensions::pref_names::kExtensionInstallCloudPolicyChecksEnabled,
@@ -92,20 +102,8 @@ ExtensionInstallPolicyServiceImpl::ExtensionInstallPolicyServiceImpl(
   OnPolicyChecksEnabledChanged();
 }
 
-ExtensionInstallPolicyServiceImpl::~ExtensionInstallPolicyServiceImpl() {
-  CloudPolicyManager* user_level = profile_->GetCloudPolicyManager();
-  if (user_level && user_level->core()->client()) {
-    user_level->core()->client()->RemovePolicyTypeToFetch(
-        {dm_protocol::kChromeExtensionInstallUserCloudPolicyType, this});
-  }
-  MachineLevelUserCloudPolicyManager* machine_level =
-      GetMachineCloudPolicyManager();
-  if (machine_level && machine_level->core()->client()) {
-    machine_level->core()->client()->RemovePolicyTypeToFetch(
-        {dm_protocol::kChromeExtensionInstallMachineLevelCloudPolicyType,
-         this});
-  }
-}
+ExtensionInstallPolicyServiceImpl::~ExtensionInstallPolicyServiceImpl() =
+    default;
 
 void ExtensionInstallPolicyServiceImpl::CanInstallExtension(
     const ExtensionIdAndVersion& extension_id_and_version,
@@ -129,19 +127,12 @@ void ExtensionInstallPolicyServiceImpl::CanInstallExtension(
   }
 
   CloudPolicyManager* user_cloud_policy_manager =
-      profile_->GetCloudPolicyManager();
+      GetUserCloudPolicyManagerIfConnected();
   MachineLevelUserCloudPolicyManager* machine_cloud_policy_manager =
-      GetMachineCloudPolicyManager();
+      GetMachineCloudPolicyManagerIfConnected();
 
-  size_t callback_count = 0;
-  if (user_cloud_policy_manager &&
-      user_cloud_policy_manager->core()->extension_install_service()) {
-    ++callback_count;
-  }
-  if (machine_cloud_policy_manager &&
-      machine_cloud_policy_manager->core()->extension_install_service()) {
-    ++callback_count;
-  }
+  size_t callback_count = (user_cloud_policy_manager ? 1 : 0) +
+                          (machine_cloud_policy_manager ? 1 : 0);
   if (callback_count == 0) {
     std::move(callback).Run(true);
     return;
@@ -166,8 +157,7 @@ void ExtensionInstallPolicyServiceImpl::CanInstallExtension(
               },
               std::move(callback)));
 
-  if (user_cloud_policy_manager &&
-      user_cloud_policy_manager->core()->extension_install_service()) {
+  if (user_cloud_policy_manager) {
     user_cloud_policy_manager->core()
         ->extension_install_service()
         ->FetchExtensionInstallPolicy(
@@ -175,8 +165,7 @@ void ExtensionInstallPolicyServiceImpl::CanInstallExtension(
             extension_id_and_version, PolicyFetchReason::kExtensionInstall,
             barrier_callback);
   }
-  if (machine_cloud_policy_manager &&
-      machine_cloud_policy_manager->core()->extension_install_service()) {
+  if (machine_cloud_policy_manager) {
     machine_cloud_policy_manager->core()
         ->extension_install_service()
         ->FetchExtensionInstallPolicy(
@@ -237,6 +226,47 @@ std::optional<bool> ExtensionInstallPolicyServiceImpl::IsExtensionAllowed(
 #endif  // !BUILDFLAG(ENABLE_EXTENSIONS)
 }
 
+void ExtensionInstallPolicyServiceImpl::AddObserver(
+    ExtensionInstallPolicyService::Observer* observer) {
+  observers_.AddObserver(observer);
+}
+
+void ExtensionInstallPolicyServiceImpl::RemoveObserver(
+    ExtensionInstallPolicyService::Observer* observer) {
+  observers_.RemoveObserver(observer);
+}
+
+void ExtensionInstallPolicyServiceImpl::OnPolicyUpdated(
+    const PolicyNamespace& ns,
+    const PolicyMap& previous,
+    const PolicyMap& current) {
+  NotifyExtensionInstallPolicyUpdated();
+}
+
+void ExtensionInstallPolicyServiceImpl::Shutdown() {
+  if (auto* policy_service =
+          profile_->GetProfilePolicyConnector()->policy_service()) {
+    policy_service->RemoveObserver(POLICY_DOMAIN_EXTENSION_INSTALL, this);
+  }
+  if (auto* user_cloud_policy_manager =
+          GetUserCloudPolicyManagerIfConnected()) {
+    user_cloud_policy_manager->core()->client()->RemovePolicyTypeToFetch(
+        {dm_protocol::kChromeExtensionInstallUserCloudPolicyType, this});
+  }
+  if (auto* machine_cloud_policy_manager =
+          GetMachineCloudPolicyManagerIfConnected()) {
+    machine_cloud_policy_manager->core()->client()->RemovePolicyTypeToFetch(
+        {dm_protocol::kChromeExtensionInstallMachineLevelCloudPolicyType,
+         this});
+  }
+}
+
+void ExtensionInstallPolicyServiceImpl::NotifyExtensionInstallPolicyUpdated() {
+  for (auto& observer : observers_) {
+    observer.OnExtensionInstallPolicyUpdated();
+  }
+}
+
 std::set<ExtensionIdAndVersion>
 ExtensionInstallPolicyServiceImpl::GetExtensions() {
   extensions::ExtensionRegistry* extension_registry =
@@ -245,16 +275,30 @@ ExtensionInstallPolicyServiceImpl::GetExtensions() {
     return {};
   }
   std::set<ExtensionIdAndVersion> extensions;
+  std::string webstore_update_url =
+      extension_urls::GetWebstoreUpdateUrl().spec();
   // Include all installed extensions, even if they're already disabled.
   extensions::ExtensionSet installed_extensions =
       extension_registry->GenerateInstalledExtensionsSet();
   for (const auto& extension : installed_extensions) {
-    extensions.insert(ExtensionIdAndVersion{
-        .extension_id = extension->id(),
-        .extension_version = extension->version().GetString(),
-    });
+    if (!extension->from_webstore()) {
+      // Only check webstore extensions.
+      continue;
+    }
+    extensions.insert({extension->id(), extension->VersionString()});
   }
   return extensions;
+}
+
+CloudPolicyManager*
+ExtensionInstallPolicyServiceImpl::GetUserCloudPolicyManagerIfConnected()
+    const {
+  CloudPolicyManager* manager = profile_->GetCloudPolicyManager();
+  if (manager && manager->core()->client() &&
+      manager->core()->extension_install_service()) {
+    return manager;
+  }
+  return nullptr;
 }
 
 void ExtensionInstallPolicyServiceImpl::OnPolicyChecksEnabledChanged() {
@@ -265,28 +309,29 @@ void ExtensionInstallPolicyServiceImpl::OnPolicyChecksEnabledChanged() {
 
   bool enabled = profile_->GetPrefs()->GetBoolean(
       extensions::pref_names::kExtensionInstallCloudPolicyChecksEnabled);
-  CloudPolicyManager* user_level = profile_->GetCloudPolicyManager();
-  MachineLevelUserCloudPolicyManager* machine_level =
-      GetMachineCloudPolicyManager();
+  CloudPolicyManager* user_cloud_policy_manager =
+      GetUserCloudPolicyManagerIfConnected();
+  MachineLevelUserCloudPolicyManager* machine_cloud_policy_manager =
+      GetMachineCloudPolicyManagerIfConnected();
   if (enabled) {
     // Add to CloudPolicyClient::types_to_fetch_ in both clients.
-    if (user_level && user_level->core()->client()) {
-      user_level->core()->client()->AddPolicyTypeToFetch(
+    if (user_cloud_policy_manager) {
+      user_cloud_policy_manager->core()->client()->AddPolicyTypeToFetch(
           {dm_protocol::kChromeExtensionInstallUserCloudPolicyType, this});
     }
-    if (machine_level && machine_level->core()->client()) {
-      machine_level->core()->client()->AddPolicyTypeToFetch(
+    if (machine_cloud_policy_manager) {
+      machine_cloud_policy_manager->core()->client()->AddPolicyTypeToFetch(
           {dm_protocol::kChromeExtensionInstallMachineLevelCloudPolicyType,
            this});
     }
   } else {
     // Remove from CloudPolicyClient::types_to_fetch_ in both clients.
-    if (user_level && user_level->core()->client()) {
-      user_level->core()->client()->RemovePolicyTypeToFetch(
+    if (user_cloud_policy_manager) {
+      user_cloud_policy_manager->core()->client()->RemovePolicyTypeToFetch(
           {dm_protocol::kChromeExtensionInstallUserCloudPolicyType, this});
     }
-    if (machine_level && machine_level->core()->client()) {
-      machine_level->core()->client()->RemovePolicyTypeToFetch(
+    if (machine_cloud_policy_manager) {
+      machine_cloud_policy_manager->core()->client()->RemovePolicyTypeToFetch(
           {dm_protocol::kChromeExtensionInstallMachineLevelCloudPolicyType,
            this});
     }

@@ -17,6 +17,7 @@
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/lens/lens_search_controller.h"
 #include "chrome/browser/ui/tabs/public/tab_features.h"
+#include "chrome/browser/ui/tabs/tab_list_interface.h"
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/ui_test_utils.h"
@@ -29,6 +30,7 @@
 #include "components/signin/public/identity_manager/identity_manager.h"
 #include "components/signin/public/identity_manager/identity_test_environment.h"
 #include "components/signin/public/identity_manager/identity_test_utils.h"
+#include "components/tabs/public/tab_interface.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
 #include "content/public/test/test_web_ui.h"
@@ -41,7 +43,6 @@
 namespace {
 
 const char kTestEmail[] = "test@example.com";
-const char kTestToken[] = "test_token";
 
 using testing::_;
 using testing::Invoke;
@@ -142,7 +143,8 @@ class ContextualTasksUIBrowserTest : public InProcessBrowserTest {
         kTestEmail, signin::ConsentLevel::kSignin);
 
     // Setup TestWebUI.
-    auto* web_contents = browser()->tab_strip_model()->GetActiveWebContents();
+    content::WebContents* web_contents =
+        TabListInterface::From(browser())->GetActiveTab()->GetContents();
     test_web_ui_ = std::make_unique<content::TestWebUI>();
     test_web_ui_->set_web_contents(web_contents);
 
@@ -167,157 +169,7 @@ class ContextualTasksUIBrowserTest : public InProcessBrowserTest {
   base::CallbackListSubscription create_services_subscription_;
 };
 
-// Verify that the OAuth token is requested and sent when the page handler is
-// created.
-IN_PROC_BROWSER_TEST_F(ContextualTasksUIBrowserTest, RequestOAuthTokenManual) {
-  testing::NiceMock<MockContextualTasksPage> mock_page;
-  base::RunLoop run_loop;
 
-  // Verify that the token is set in the mocked page.
-  EXPECT_CALL(mock_page, SetOAuthToken(_))
-      .WillOnce([&run_loop](const std::string& token) {
-        EXPECT_EQ(kTestToken, token);
-        run_loop.Quit();
-      });
-
-  // Create the PageHandler to mimic the Mojo call from the renderer, but allows
-  // the test to mock remote directly.
-  mojo::PendingReceiver<contextual_tasks::mojom::PageHandler> handler_receiver;
-  controller_->CreatePageHandler(mock_page.BindAndGetRemote(),
-                                 std::move(handler_receiver));
-
-  //  Wait for the token request to be made.
-  identity_test_env_->WaitForAccessTokenRequestIfNecessaryAndRespondWithToken(
-      kTestToken, base::Time::Now() + base::Days(10));
-
-  // Verify that the token is set in the mocked page.
-  run_loop.Run();
-}
-
-// Verify that the OAuth token is refreshed after it expires.
-IN_PROC_BROWSER_TEST_F(ContextualTasksUIBrowserTest,
-                       RequestOAuthTokenRefreshes) {
-  testing::NiceMock<MockContextualTasksPage> mock_page;
-  base::RunLoop run_loop;
-
-  // Expect SetOAuthToken to be called twice.
-  EXPECT_CALL(mock_page, SetOAuthToken(_))
-      .WillOnce([&](const std::string& token) {
-        EXPECT_EQ(kTestToken, token);
-        // Enable auto-issue for the next request. This will cause the token
-        // next token to be issued as "account_token".
-        identity_test_env_->SetAutomaticIssueOfAccessTokens(true);
-      })
-      .WillOnce([&](const std::string& token) {
-        // Verify that the token is refreshed. It should be different from the
-        // first token.
-        EXPECT_NE(kTestToken, token);
-        run_loop.Quit();
-      });
-
-  mojo::PendingReceiver<contextual_tasks::mojom::PageHandler> handler_receiver;
-  controller_->CreatePageHandler(mock_page.BindAndGetRemote(),
-                                 std::move(handler_receiver));
-
-  // Respond to the first request with a short expiration.
-  base::Time expiration = base::Time::Now() + base::Seconds(1);
-  identity_test_env_->WaitForAccessTokenRequestIfNecessaryAndRespondWithToken(
-      kTestToken, expiration);
-
-  run_loop.Run();
-}
-
-IN_PROC_BROWSER_TEST_F(ContextualTasksUIBrowserTest,
-                       RequestOAuthTokenRefreshesOnRefreshTokenUpdate) {
-  // Setup
-  testing::NiceMock<MockContextualTasksPage> mock_page;
-  mojo::PendingReceiver<contextual_tasks::mojom::PageHandler> handler_receiver;
-  controller_->CreatePageHandler(mock_page.BindAndGetRemote(),
-                                 std::move(handler_receiver));
-
-  // Respond to the first request.
-  identity_test_env_->WaitForAccessTokenRequestIfNecessaryAndRespondWithToken(
-      kTestToken, base::Time::Now() + base::Days(10));
-
-  // Wait for the page to receive the initial token.
-  base::RunLoop run_loop;
-  EXPECT_CALL(mock_page, SetOAuthToken(kTestToken))
-      .WillOnce(testing::InvokeWithoutArgs(&run_loop, &base::RunLoop::Quit));
-  run_loop.Run();
-
-  // Trigger refresh token update.
-  CoreAccountId account_id =
-      identity_test_env_->identity_manager()->GetPrimaryAccountId(
-          signin::ConsentLevel::kSignin);
-  signin::SetRefreshTokenForAccount(identity_test_env_->identity_manager(),
-                                    account_id, "updated_refresh_token");
-
-  // Pass a different token to the second request.
-  identity_test_env_->WaitForAccessTokenRequestIfNecessaryAndRespondWithToken(
-      "new_token", base::Time::Now() + base::Days(10));
-
-  // Verify for the page receives the new token.
-  base::RunLoop run_loop2;
-  EXPECT_CALL(mock_page, SetOAuthToken("new_token"))
-      .WillOnce(testing::InvokeWithoutArgs(&run_loop2, &base::RunLoop::Quit));
-  run_loop2.Run();
-}
-
-// Verify that the OAuth token is retried when the request fails.
-IN_PROC_BROWSER_TEST_F(ContextualTasksUIBrowserTest,
-                       RequestOAuthTokenRetriesOnFailure) {
-  testing::NiceMock<MockContextualTasksPage> mock_page;
-  base::RunLoop run_loop;
-
-  // The first request is set to fail (below), so SetOAuthToken("") is called.
-  EXPECT_CALL(mock_page, SetOAuthToken("")).Times(1);
-
-  // The second request succeeds, so SetOAuthToken(kTestToken) is called.
-  EXPECT_CALL(mock_page, SetOAuthToken(kTestToken))
-      .WillOnce(testing::InvokeWithoutArgs(&run_loop, &base::RunLoop::Quit));
-
-  mojo::PendingReceiver<contextual_tasks::mojom::PageHandler> handler_receiver;
-  controller_->CreatePageHandler(mock_page.BindAndGetRemote(),
-                                 std::move(handler_receiver));
-
-  // Initial request -> Fail it.
-  identity_test_env_->WaitForAccessTokenRequestIfNecessaryAndRespondWithError(
-      GoogleServiceAuthError(GoogleServiceAuthError::CONNECTION_FAILED));
-
-  // Wait for retry. The first retry should be immediate (or very fast) due
-  // to the backoff policy ignoring the first error.
-  identity_test_env_->WaitForAccessTokenRequestIfNecessaryAndRespondWithToken(
-      kTestToken, base::Time::Now() + base::Days(10));
-
-  run_loop.Run();
-}
-
-IN_PROC_BROWSER_TEST_F(ContextualTasksUIBrowserTest,
-                       RequestOAuthTokenDoesNotRetryOnPersistentFailure) {
-  testing::NiceMock<MockContextualTasksPage> mock_page;
-  base::RunLoop run_loop;
-
-  // The first request is set to fail (below), so SetOAuthToken("") is called.
-  EXPECT_CALL(mock_page, SetOAuthToken(""))
-      .WillOnce(testing::InvokeWithoutArgs(&run_loop, &base::RunLoop::Quit));
-
-  // The retry request should NOT happen.
-  EXPECT_CALL(mock_page, SetOAuthToken(kTestToken)).Times(0);
-
-  mojo::PendingReceiver<contextual_tasks::mojom::PageHandler> handler_receiver;
-  controller_->CreatePageHandler(mock_page.BindAndGetRemote(),
-                                 std::move(handler_receiver));
-
-  // Initial request -> Fail it with a persistent error.
-  identity_test_env_->WaitForAccessTokenRequestIfNecessaryAndRespondWithError(
-      GoogleServiceAuthError(GoogleServiceAuthError::INVALID_GAIA_CREDENTIALS));
-
-  // Wait for the error handling to complete (SetOAuthToken("") called).
-  run_loop.Run();
-
-  // Verify that no new request is pending.
-  EXPECT_FALSE(controller_->IsAccessTokenRequestPendingForTesting());
-}
 
 IN_PROC_BROWSER_TEST_F(ContextualTasksUIBrowserTest,
                        OnSidePanelStateChanged_InTab) {

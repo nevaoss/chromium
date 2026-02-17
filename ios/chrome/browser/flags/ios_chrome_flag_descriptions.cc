@@ -765,6 +765,10 @@ const char kIOSEnableRealtimeEventReportingDescription[] =
     "When enabled, realtime events will be reported to the user's "
     "organization.";
 
+const char kIOSExpandedSetupListName[] = "Expanded Setup List";
+const char kIOSExpandedSetupListDescription[] =
+    "Enables a feature that adds new items in the Setup List.";
+
 const char kIOSExpandedTipsName[] = "Expanded Tips Notifications";
 const char kIOSExpandedTipsDescription[] =
     "Enables a feature that adds several new Tips Notifications that can be "
@@ -801,11 +805,6 @@ const char kIOSOmniboxAimShortcutName[] = "Enable the omnibox aim shortcut";
 const char kIOSOmniboxAimShortcutDescription[] =
     "When enabled, an aim shortcut entrypoint will be displayed when the "
     "omnibox is on edit mode.";
-
-const char kIOSOneTapMiniMapRemoveSectionBreaksName[] =
-    "Remove section break for address detection.";
-const char kIOSOneTapMiniMapRemoveSectionBreaksDescription[] =
-    "Replace section break by spaces when detecting addresses.";
 
 const char kIOSOneTapMiniMapRestrictionsName[] =
     "Revalidate detected addresses for one tap Mini Map.";
@@ -1360,23 +1359,10 @@ const char kRcapsDynamicProfileCountryDescription[] =
     "When enabled, Chrome updates the country associated with "
     "the profile on open";
 
-const char kReaderModeName[] = "Enables Reader Mode";
-const char kReaderModeDescription[] =
-    "Enables Reader Mode UI and entry points.";
-
-const char kReaderModeNewCssName[] = "Reader mode new CSS on iOS";
-const char kReaderModeNewCssDescription[] =
-    "Enables the new CSS for Reader mode on iOS.";
-
 const char kReaderModeOmniboxEntrypointInUSName[] =
     "Reader Mode Omnibox Entrypoint In US";
 const char kReaderModeOmniboxEntrypointInUSDescription[] =
     "Enables the omnibox entrypoint for Reader Mode for users in the US.";
-
-const char kReaderModeOmniboxEntrypointName[] =
-    "Reader Mode Omnibox Entrypoint";
-const char kReaderModeOmniboxEntrypointDescription[] =
-    "Enables an entrypoint in the Omnibox for Reader Mode.";
 
 const char kReaderModeOptimizationGuideEligibilityName[] =
     "Enables Reader Mode Optimization Guide Eligibility";
@@ -1396,10 +1382,6 @@ const char kReaderModeReadabilityHeuristicDescription[] =
 const char kReaderModeSupportNewFontsName[] = "Reader Mode support new fonts";
 const char kReaderModeSupportNewFontsDescription[] =
     "Enables new accessible font options in Reader Mode.";
-
-const char kReaderModeTranslationName[] = "Enables Reader Mode Translation";
-const char kReaderModeTranslationDescription[] =
-    "Enables translation of web pages in Reader Mode.";
 
 const char kReaderModeTranslationWithInfobarName[] =
     "Enables Reader Mode Translation Settings";
@@ -1614,6 +1596,10 @@ const char kVariationsSeedCorpusName[] = "Variations seed corpus";
 const char kVariationsSeedCorpusDescription[] =
     "The value of the 'corpus' parameter in the variations seed request. "
     "If unspecified, the 'corpus' parameter is omitted from the request.";
+
+const char kViewCertificateInformationName[] = "View Certificate Information";
+const char kViewCertificateInformationDescription[] =
+    "Enables viewing detailed certificate information in Page Info.";
 
 const char kWaitThresholdMillisecondsForCapabilitiesApiName[] =
     "Maximum wait time (in seconds) for a response from the Account "

@@ -1778,6 +1778,9 @@
       <message name="IDS_IOS_CONTENT_SUGGESTIONS_PIN_SITE_FORM_URL" desc="The label of the 'URL' field of form for the user to edit an existing pinned site">
         URL
       </message>
+      <message name="IDS_IOS_CONTENT_SUGGESTIONS_PIN_SITE_IN_PRODUCT_HELP" desc="In-product help that points at the first most visited tile in content suggestions to educate the user that they could long tap on the tile to pin this site">
+        Tap and hold to pin your favorite sites
+      </message>
       <message name="IDS_IOS_CONTENT_SUGGESTIONS_PIN_SITE_SNACKBAR_ADDED_AND_PINNED" desc="The notification displayed at the bottom of the screen after the user has pinned a site through the 'Add site' button">
         Site added and pinned
       </message>
@@ -7346,6 +7349,15 @@ Handoff must also be enabled in the General section of Settings, and your device
       <message name="IDS_IOS_SYNC_ENTER_PASSPHRASE_TITLE" desc="Title for the dialog where the user enters the passphrase.">
         Enter passphrase
       </message>
+      <message name="IDS_IOS_SYNC_ERROR_BOOKMARKS_LIMIT_EXCEEDED_BUTTON" desc="The button label to display when the user has too many bookmarks to sync.">
+        Learn more
+      </message>
+      <message name="IDS_IOS_SYNC_ERROR_BOOKMARKS_LIMIT_EXCEEDED_MESSAGE" desc="The error message to display when the user has too many bookmarks to sync.">
+        To save bookmarks in your account, delete your unused bookmarks
+      </message>
+      <message name="IDS_IOS_SYNC_ERROR_BOOKMARKS_LIMIT_EXCEEDED_TITLE" desc="The error title to display when the user has too many bookmarks to sync.">
+        Some bookmarks aren't saved
+      </message>
       <message name="IDS_IOS_SYNC_ERROR_DESCRIPTION" desc="The error message to display when a generic error prevents sync from starting.">
         Sync isn't working.
       </message>
@@ -7704,6 +7716,9 @@ Handoff must also be enabled in the General section of Settings, and your device
       </message>
       <message name="IDS_IOS_TAB_STRIP_TAB_GROUP_EXPAND" desc="The accessibility label for expanding a collapsed tab group. [iOS only]">
         Expand tab group.
+      </message>
+      <message name="IDS_IOS_TAB_SWITCHER_CLOSE_ALL_ACTION_BUTTON" desc="Text of the Close All button in the Tab Switcher overflow menu. [iOS only]">
+        Close All
       </message>
       <message name="IDS_IOS_TAB_SWITCHER_CLOSE_GROUP" desc="The accessibility label for the closing of a selected tab group. [iOS only]">
         Close group.

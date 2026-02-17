@@ -657,8 +657,10 @@ TEST_F(IdentityDialogControllerTest,
 
   // Set up ActorLoginRequest to make ShouldShowFedCmUi returns false.
   GURL idp_url("https://idp.example");
+  url::Origin idp_origin = url::Origin::Create(idp_url);
   IdentityDialogController::SetActorLoginRequest(
-      web_contents()->GetPrimaryPage(), idp_url, kAccountId, base::DoNothing());
+      web_contents()->GetPrimaryPage(), idp_origin, kAccountId,
+      base::DoNothing());
 
   std::vector<IdentityRequestAccountPtr> accounts = CreateAccount();
   accounts[0]->idp_claimed_login_state =
@@ -688,6 +690,7 @@ TEST_F(IdentityDialogControllerTest,
       std::make_unique<MockAccountSelectionView>());
 
   GURL idp_url("https://idp.example");
+  url::Origin idp_origin = url::Origin::Create(idp_url);
   std::string account_id = "account_id123";
 
   // Case 1: Account is missing.
@@ -696,7 +699,7 @@ TEST_F(IdentityDialogControllerTest,
     EXPECT_CALL(token_callback, Run(false)).Times(1);
 
     IdentityDialogController::SetActorLoginRequest(
-        web_contents()->GetPrimaryPage(), idp_url, account_id,
+        web_contents()->GetPrimaryPage(), idp_origin, account_id,
         token_callback.Get());
 
     // Create an account with different ID.
@@ -721,7 +724,7 @@ TEST_F(IdentityDialogControllerTest,
     EXPECT_CALL(token_callback, Run(false)).Times(1);
 
     IdentityDialogController::SetActorLoginRequest(
-        web_contents()->GetPrimaryPage(), idp_url, account_id,
+        web_contents()->GetPrimaryPage(), idp_origin, account_id,
         token_callback.Get());
 
     std::vector<IdentityRequestAccountPtr> accounts = CreateAccount();
@@ -745,6 +748,44 @@ TEST_F(IdentityDialogControllerTest,
         /*dismiss_callback=*/base::DoNothing(),
         /*accounts_displayed_callback=*/base::DoNothing()));
   }
+}
+
+TEST_F(IdentityDialogControllerTest, OnFlowCompleted) {
+  std::unique_ptr<IdentityDialogController> controller =
+      std::make_unique<IdentityDialogController>(web_contents());
+
+  GURL idp_url("https://idp.example");
+  url::Origin idp_origin = url::Origin::Create(idp_url);
+  std::string account_id = "account_id123";
+
+  // Test success.
+  {
+    base::MockCallback<OnFederatedTokenReceivedCallback> token_callback;
+    EXPECT_CALL(token_callback, Run(true)).Times(1);
+
+    IdentityDialogController::SetActorLoginRequest(
+        web_contents()->GetPrimaryPage(), idp_origin, account_id,
+        token_callback.Get());
+
+    controller->OnFlowCompleted(true);
+  }
+
+  // Test failure.
+  {
+    base::MockCallback<OnFederatedTokenReceivedCallback> token_callback;
+    EXPECT_CALL(token_callback, Run(false)).Times(1);
+
+    IdentityDialogController::SetActorLoginRequest(
+        web_contents()->GetPrimaryPage(), idp_origin, account_id,
+        token_callback.Get());
+
+    controller->OnFlowCompleted(false);
+  }
+
+  // Test that it does not crash if there is no actor login request.
+  IdentityDialogController::UnsetActorLoginRequest(
+      web_contents()->GetPrimaryPage());
+  controller->OnFlowCompleted(true);
 }
 
 class IdentityDialogControllerTestWithOptimizationDisabled

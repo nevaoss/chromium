@@ -435,14 +435,12 @@ Usipoiruhusu, itazuiwa na mipangilio yako ya faragha. Hali hii itaruhusu maudhui
 <translation id="1689333818294560261">Jina la kuwakilisha</translation>
 <translation id="1692622044604477956">Orodha za Filamu na Ratiba za Maonyesho ya Ukumbini</translation>
 <translation id="1697430960030447570"><ph name="BEGIN_BOLD" />Jinsi unavyoweza kudhibiti data yako:<ph name="END_BOLD" /> Chrome hufuta kiotomatiki mada zilizohifadhiwa kwenye orodha kwa zaidi ya wiki 4. Kadiri unavyoendelea kuvinjari, mada inaweza kuonekana tena kwenye orodha. Pia, unaweza kuzuia mada ambazo hutaki Chrome ishiriki na tovuti na kuzima mada za matangazo wakati wowote kwenye mipangilio ya Chrome.</translation>
-<translation id="1697808683313379647">Google hutumia maelezo kutoka kwenye ukurasa wa kulipa na data nyingine inayofaa ili kutoa chaguo hizi.</translation>
 <translation id="1699651774646344471">Sasa unaweza kutumia anwani zilizo kwenye Akaunti yako ya Google</translation>
 <translation id="1700542542921501212">Unaweza kutumia <ph name="SEARCH_ENGINE_NAME" /> ili kutafuta kwenye wavuti.</translation>
 <translation id="1702815194757674443">ROC 16K</translation>
 <translation id="1703835215927279855">Barua</translation>
 <translation id="1705645336613358172">Tumia Affirm au Zip ili ulipie taratibu</translation>
 <translation id="1706625117072057435">Viwango vya kukuza</translation>
-<translation id="1706922226983368260">Ufunguo wa siri • "<ph name="PHONE_NAME" />"</translation>
 <translation id="1706954506755087368">{1,plural, =1{Seva hii haikuweza kuthibitisha kuwa ni <ph name="DOMAIN" />; cheti chake cha usalama kitakwisha muda kuanzia kesho. Hii inaweza kusababishwa na usanidi usiofaa au mvamizi kuingilia muunganisho wako.}other{Seva hii haikuweza kuthibitisha kuwa ni <ph name="DOMAIN" />; cheti chake cha usalama kitakwisha muda kuanzia siku # zijazo. Hii inaweza kusababishwa na usanidi usiofaa au mvamizi kuingilia muunganisho wako.}}</translation>
 <translation id="1710259589646384581">OS</translation>
 <translation id="1711234383449478798">Imepuuzwa kwa sababu <ph name="POLICY_NAME" /> haijawekwa kuwa <ph name="VALUE" />.</translation>
@@ -1246,7 +1244,6 @@ Usipoiruhusu, itazuiwa na mipangilio yako ya faragha. Hali hii itaruhusu maudhui
 <translation id="299122504639061328">Dhibiti mtambo wako chaguomsingi wa kutafuta na utafutaji kwenye tovuti</translation>
 <translation id="2991571918955627853">Huwezi kutembelea <ph name="SITE" /> sasa hivi kwa sababu tovuti inatumia HSTS. Hitilafu na uvamizi wa mtandao kwa kawaida huwa vya muda, kwa hivyo huenda ukurasa huu ukafanya kazi baadaye.</translation>
 <translation id="2991865971341174470">Thibitisha kuwa ni wewe ili Chrome iweze kujaza maelezo yako ya malipo.</translation>
-<translation id="2995010188916335277">Google hutumia maelezo kutoka kwenye ukurasa wa kulipa na data nyingine inayofaa ili kutoa chaguo hizi. Ili ufiche chaguo za kulipa baadaye kwenye kipengele cha kujaza kiotomatiki, nenda kwenye <ph name="IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_FOOTNOTE_HIDE_OPTION_PAYMENT_SETTINGS_LINK_TEXT" />.</translation>
 <translation id="2995121550202354573">Tumia kwenye wasifu wote wa Wageni</translation>
 <translation id="2995517112308048736">Ukubwa wa faili:</translation>
 <translation id="299990983510665749">Gari aina ya Hatchback</translation>
@@ -1987,6 +1984,7 @@ Usipoiruhusu, itazuiwa na mipangilio yako ya faragha. Hali hii itaruhusu maudhui
 <translation id="4152495263075154876">Skrini ya kufuatilia mbinu ya Nunua Sasa, Lipa Baadaye imefungwa.</translation>
 <translation id="4152670763139331043">{NUM_TABS,plural, =1{Kichupo 1}other{Vichupo #}}</translation>
 <translation id="4153446078232988116"><ph name="SITE" /> haitumii muunganisho salama kupitia HTTPS</translation>
+<translation id="4153858337812834972">Vichupo vya majuzi</translation>
 <translation id="4154277373259957087">Sasa Chrome itathibitisha kuwa ni wewe kabla ya kujaza njia za kulipa. Sasa unaweza kusasisha ruhusa hii wakati wowote kwenye <ph name="IDS_AUTOFILL_MANDATORY_REAUTH_CONFIRMATION_SETTINGS_LINK" />.</translation>
 <translation id="415440494507469262">Weka Kichupo kwenye Jedwali la Ulinganishaji</translation>
 <translation id="4159784952369912983">Zambarau</translation>

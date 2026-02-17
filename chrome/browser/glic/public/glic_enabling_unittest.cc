@@ -8,6 +8,9 @@
 #include "base/test/scoped_feature_list.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/glic/glic_pref_names.h"
+#include "chrome/browser/glic/host/glic.mojom.h"
+#include "chrome/browser/glic/host/glic_features.mojom-features.h"
+#include "chrome/browser/glic/host/glic_features.mojom.h"
 #include "chrome/browser/glic/test_support/glic_test_util.h"
 #include "chrome/browser/global_features.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
@@ -88,6 +91,12 @@ TEST_F(GlicEnablingTest, GlicFeatureNotEnabledTest) {
   EXPECT_EQ(GlicGlobalEnabling(delegate_).IsEnabledByFlags(), false);
 }
 
+TEST_F(GlicEnablingTest, TabStripComboButtonFeatureNotEnabledTest) {
+  // Turn tab strip combo button feature flag off
+  scoped_feature_list_.Reset();
+  scoped_feature_list_.InitWithFeatures({}, {features::kTabstripComboButton});
+  EXPECT_EQ(GlicGlobalEnabling(delegate_).IsEnabledByFlags(), false);
+}
 
 TEST_F(GlicEnablingTest, CountryFilteringNotEnabled) {
   base::test::ScopedFeatureList features;
@@ -284,8 +293,11 @@ class GlicEnablingTrustFirstOnboardingTest
  public:
   void SetUp() override {
     GlicEnablingProfileReadyStateTestBase::SetUp();
-    scoped_feature_list_.InitAndEnableFeature(
-        features::kGlicTrustFirstOnboarding);
+    scoped_feature_list_.InitWithFeatures(
+        /*enabled_features=*/
+        {features::kGlicTrustFirstOnboarding, features::kGlicMultiInstance,
+         mojom::features::kGlicMultiTab, features::kGlicMultitabUnderlines},
+        /*disabled_features=*/{});
   }
 
  private:
@@ -329,8 +341,12 @@ class GlicEnablingAnyFreModeTest : public GlicEnablingProfileReadyStateTestBase,
   void SetUp() override {
     GlicEnablingProfileReadyStateTestBase::SetUp();
     if (GetParam()) {
-      scoped_feature_list_.InitAndEnableFeature(
-          features::kGlicTrustFirstOnboarding);
+      scoped_feature_list_.InitWithFeatures(
+          /*enabled_features=*/{features::kGlicTrustFirstOnboarding,
+                                features::kGlicMultiInstance,
+                                mojom::features::kGlicMultiTab,
+                                features::kGlicMultitabUnderlines},
+          /*disabled_features=*/{});
     } else {
       scoped_feature_list_.InitAndDisableFeature(
           features::kGlicTrustFirstOnboarding);

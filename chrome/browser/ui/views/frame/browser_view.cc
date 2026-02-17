@@ -132,7 +132,7 @@
 #include "chrome/browser/ui/views/exclusive_access_bubble_views.h"
 #include "chrome/browser/ui/views/exclusive_access_bubble_views_context.h"
 #include "chrome/browser/ui/views/extensions/extension_keybinding_registry_views.h"
-#include "chrome/browser/ui/views/extensions/extensions_toolbar_container.h"
+#include "chrome/browser/ui/views/extensions/extensions_toolbar_desktop.h"
 #include "chrome/browser/ui/views/eye_dropper/eye_dropper.h"
 #include "chrome/browser/ui/views/find_bar_host.h"
 #include "chrome/browser/ui/views/frame/app_menu_button.h"
@@ -141,6 +141,7 @@
 #include "chrome/browser/ui/views/frame/contents_container_view.h"
 #include "chrome/browser/ui/views/frame/contents_layout_manager.h"
 #include "chrome/browser/ui/views/frame/contents_separator.h"
+#include "chrome/browser/ui/views/frame/custom_floating_corner.h"
 #include "chrome/browser/ui/views/frame/horizontal_tab_strip_region_view.h"
 #include "chrome/browser/ui/views/frame/layout/browser_view_layout.h"
 #include "chrome/browser/ui/views/frame/layout/browser_view_layout_delegate_impl.h"
@@ -966,6 +967,12 @@ BrowserView::BrowserView(Browser* browser)
 
     vertical_tab_strip_region_view_ =
         AddChildView(std::move(vertical_tab_strip_container));
+
+    vertical_tabs_strip_bottom_corner_ =
+        AddChildView(std::make_unique<CustomFloatingCorner>(
+            *this, CustomFloatingCorner::CornerOrientation::kBottomLeading,
+            views::ShapeContextTokens::kContentSeparatorRadius,
+            CustomFloatingCorner::FrameColor()));
   }
 
   if (tabs::IsProjectsPanelFeatureEnabled()) {
@@ -1073,6 +1080,7 @@ BrowserView::~BrowserView() {
   window_scrim_view_ = nullptr;
   contents_container_ = nullptr;
   vertical_tab_strip_region_view_ = nullptr;
+  vertical_tabs_strip_bottom_corner_ = nullptr;
   projects_panel_container_ = nullptr;
   toolbar_height_side_panel_ = nullptr;
   contents_height_side_panel_ = nullptr;
@@ -1166,7 +1174,9 @@ ClientFrameElementInfo BrowserView::GetFrameElementInfo() const {
   info.tabstrip_preferred_height =
       horizontal_tab_strip_region_view_ && ShouldDrawTabStrip() &&
               !ShouldDrawVerticalTabStrip()
-          ? horizontal_tab_strip_region_view_->GetPreferredSize().height()
+          ? horizontal_tab_strip_region_view_->GetTabStripView()
+                ->GetPreferredSize()
+                .height()
           : 0;
   if (toolbar_ && ShouldDrawVerticalTabStrip()) {
     info.toolbar_minimum_height = toolbar_->GetMinimumSize().height();
@@ -2308,8 +2318,8 @@ void BrowserView::FocusToolbar() {
 }
 
 ExtensionsContainer* BrowserView::GetExtensionsContainer() {
-  ExtensionsToolbarContainer* container =
-      toolbar_button_provider_->GetExtensionsToolbarContainer();
+  ExtensionsToolbarDesktop* container =
+      toolbar_button_provider_->GetExtensionsToolbarDesktop();
   return container ? container->GetToolbarViewModel() : nullptr;
 }
 
@@ -3070,7 +3080,7 @@ bool BrowserView::IsToolbarShowing() const {
 bool BrowserView::IsLocationBarVisible() const {
   return browser_->SupportsWindowFeature(
              Browser::WindowFeature::kFeatureLocationBar) &&
-         GetLocationBarView()->GetVisible();
+         GetLocationBar()->IsVisible();
 }
 
 void BrowserView::ShowUpdateChromeDialog() {
@@ -3937,11 +3947,8 @@ std::u16string BrowserView::GetAccessibleTabLabel(int index,
   }
 
   // Tab has a pending permission request.
-  if (toolbar_ && toolbar_->location_bar() &&
-      toolbar_->location_bar()->GetChipController() &&
-      toolbar_->location_bar()
-          ->GetChipController()
-          ->IsPermissionPromptChipVisible()) {
+  if (GetLocationBar() && GetLocationBar()->GetChipController() &&
+      GetLocationBar()->GetChipController()->IsPermissionPromptChipVisible()) {
     return l10n_util::GetStringFUTF16(
         IDS_TAB_AX_LABEL_PERMISSION_REQUESTED_FORMAT, title);
   }
@@ -4885,7 +4892,11 @@ int BrowserView::NonClientHitTest(const gfx::Point& point) {
   // The top container while in immersive fullscreen on macOS lives in another
   // Widget (OverlayWidgetMac). This means that BrowserView does not need to
   // consult BrowserViewLayout::NonClientHitTest() to calculate the hit test.
-  if (ImmersiveModeController::From(browser())->IsEnabled()) {
+  //
+  // Note that this can occasionally be hit during teardown, so check if the
+  // controller still exists.
+  if (auto* controller = ImmersiveModeController::From(browser());
+      controller && controller->IsEnabled()) {
     // Handle hits on the overlay widget when it is hovering overtop of the
     // content view.
     gfx::Point screen_point(point);
@@ -5258,6 +5269,8 @@ void BrowserView::AddedToWidget() {
   layout_views.horizontal_tab_strip_region_view =
       horizontal_tab_strip_region_view_;
   layout_views.vertical_tab_strip_region_view = vertical_tab_strip_region_view_;
+  layout_views.vertical_tab_strip_bottom_corner =
+      vertical_tabs_strip_bottom_corner_;
   layout_views.projects_panel_container = projects_panel_container_;
   layout_views.toolbar = toolbar_;
   layout_views.infobar_container = infobar_container_;

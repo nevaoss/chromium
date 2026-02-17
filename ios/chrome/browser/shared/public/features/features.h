@@ -595,6 +595,18 @@ extern const char kIOSReactivationNotificationsOrderParam[];
 // Returns whether `kIOSReactivationNotifications` is enabled.
 bool IsIOSReactivationNotificationsEnabled();
 
+// Variations of expanded Setup List.
+extern const char kIOSExpandedSetupListVariationParam[];
+extern const char kIOSExpandedSetupListVariationParamSafariImport[];
+extern const char kIOSExpandedSetupListVariationParamBackgroundCustomization[];
+extern const char kIOSExpandedSetupListVariationParamAllExceptCPE[];
+extern const char kIOSExpandedSetupListVariationParamAll[];
+
+// Feature flag to add new items in the Setup List.
+BASE_DECLARE_FEATURE(kIOSExpandedSetupList);
+
+bool IsIOSExpandedSetupListEnabled();
+
 // Feature flag to enable Expanded Tips.
 BASE_DECLARE_FEATURE(kIOSExpandedTips);
 
@@ -706,9 +718,6 @@ bool ShouldCancelTouchesInViewForIPH();
 // Returns true if the IPH gesture recognition improvements are enabled.
 bool IsIPHGestureRecognitionImprovementEnabled();
 
-// Feature flag to remove section breaks when detecting addresses.
-BASE_DECLARE_FEATURE(kIOSOneTapMiniMapRemoveSectionsBreaks);
-
 // Feature flags for enhanced One Tap Minimap experiment
 // The main feature that controls of these restrictions. Different parameters
 // control the different available restrictions.
@@ -781,6 +790,9 @@ BASE_DECLARE_FEATURE(kBestOfAppFRE);
 // Whether the feature to highlight the app's features during the FRE is
 // enabled.
 bool IsBestOfAppFREEnabled();
+
+// All currently enabled `KBestOfAppFRE` feature variants.
+std::vector<std::string> GetBestOfAppFREActiveVariants();
 
 // Whether the Guided Tour variant of `kBestOfAppFRE` is enabled.
 bool IsBestOfAppGuidedTourEnabled();

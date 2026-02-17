@@ -155,6 +155,7 @@ void PaintManager::SetSize(const gfx::Size& new_size, float device_scale) {
 
     view_size_changed_waiting_for_paint_ = true;
     previous_frame_.reset();
+    flush_pending_ = false;
     aggregator_.InvalidateRect(gfx::Rect(new_size));
     EnsureCallbackPending();
   } else {
@@ -383,7 +384,8 @@ void PaintManager::DoPaint() {
 
     // Blank the buffer area because Skia might read it during compositing.
     SkPaint paint;
-    paint.setColor(SK_ColorWHITE);
+    paint.setColor(SK_ColorTRANSPARENT);
+    paint.setBlendMode(SkBlendMode::kSrc);
     surface_->getCanvas()->drawRect(SkRect::Make(bottom_buffer_area), paint);
     surface_->getCanvas()->drawRect(SkRect::Make(right_buffer_area), paint);
 

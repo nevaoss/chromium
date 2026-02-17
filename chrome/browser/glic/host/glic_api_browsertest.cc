@@ -231,7 +231,6 @@ class GlicApiTest : public NonInteractiveGlicApiTest, public WithTestParams {
         /*enabled_features=*/
         {
             {features::kGlicScrollTo, {}},
-            {features::kGlicClosedCaptioning, {}},
             {features::kGlicApiActivationGating, {}},
             {mojom::features::kGlicMultiTab, {}},
             {features::kGlicWebActuationSetting, {}},
@@ -315,7 +314,7 @@ class GlicApiTestWithOneTab : public GlicApiTest {
       : GlicApiTest(base::FieldTrialParams(), config) {
     scoped_feature_list_.InitWithFeatures(
         /*enabled_features=*/
-        {features::kGlicClosedCaptioning},
+        {},
         /*disabled_features=*/
         {features::kGlicDefaultTabContextSetting});
   }
@@ -1631,7 +1630,11 @@ class GlicOnboardingApiTest : public GlicApiTestWithOneTab {
   GlicOnboardingApiTest()
       : GlicApiTestWithOneTab({.fre_status = prefs::FreStatus::kNotStarted}) {
     feature_list_.InitWithFeaturesAndParameters(
-        {{features::kGlicTrustFirstOnboarding, {}}}, {/*disabled_features=*/});
+        {{features::kGlicTrustFirstOnboarding, {}},
+         {features::kGlicMultiInstance, {}},
+         {mojom::features::kGlicMultiTab, {}},
+         {features::kGlicMultitabUnderlines, {}}},
+        {/*disabled_features=*/});
   }
 
   void SetUpOnMainThread() override {
@@ -3364,10 +3367,16 @@ class GlicGetHostCapabilityApiTest : public GlicApiTestWithOneTab {
       enabled_features.push_back(
           {features::kGlicTrustFirstOnboarding,
            {{features::kGlicTrustFirstOnboardingArmParam.name, "1"}}});
+      enabled_features.push_back({features::kGlicMultiInstance, {}});
+      enabled_features.push_back({mojom::features::kGlicMultiTab, {}});
+      enabled_features.push_back({features::kGlicMultitabUnderlines, {}});
     } else if (GetParam().trust_first_onboarding_arm2) {
       enabled_features.push_back(
           {features::kGlicTrustFirstOnboarding,
            {{features::kGlicTrustFirstOnboardingArmParam.name, "2"}}});
+      enabled_features.push_back({features::kGlicMultiInstance, {}});
+      enabled_features.push_back({mojom::features::kGlicMultiTab, {}});
+      enabled_features.push_back({features::kGlicMultitabUnderlines, {}});
     } else {
       disabled_features.push_back(features::kGlicTrustFirstOnboarding);
     }

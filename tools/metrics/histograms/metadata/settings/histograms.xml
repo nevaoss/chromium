@@ -715,7 +715,7 @@ Regular profiles start at bucket 1. Incognito profiles count towards the origina
 
 <histogram name="Settings.SafetyCheck.UnusedSitePermissionsModuleInteractions"
     enum="SafetyCheckUnusedSitePermissionsModuleInteractions"
-    expires_after="2026-05-17">
+    expires_after="2026-07-19">
   <owner>sideyilmaz@chromium.org</owner>
   <owner>msramek@chromium.org</owner>
   <summary>
@@ -1350,6 +1350,17 @@ Regular profiles start at bucket 1. Incognito profiles count towards the origina
   </summary>
   <token key="ModuleType" variants="SafetyHubDashboardModuleType"/>
   <token key="LifecycleEvent" variants="SafetyHubLifecycleEvent"/>
+</histogram>
+
+<histogram name="Settings.SearchEngines.GoogleIconMismatches" enum="Boolean"
+    expires_after="2027-01-15">
+  <owner>alsan@chromium.org</owner>
+  <owner>chrome-desktop-ui-waterloo@google.com</owner>
+  <summary>
+    Records the number of times a Google Search icon was loaded for a non-Google
+    search engine on the settings page. The boolean value indicates whether the
+    search engine is the current default.
+  </summary>
 </histogram>
 
 <histogram name="Settings.SearchEngines.Interactions"

@@ -435,14 +435,12 @@ Jika tidak, ini akan diblokir oleh setelan privasi Anda. Ini akan memungkinkan k
 <translation id="1689333818294560261">Nama panggilan</translation>
 <translation id="1692622044604477956">Daftar Film &amp; Jadwal Bioskop</translation>
 <translation id="1697430960030447570"><ph name="BEGIN_BOLD" />Cara untuk mengelola data Anda:<ph name="END_BOLD" /> Chrome otomatis menghapus topik yang tersimpan lebih dari 4 minggu. Saat Anda menjelajah, suatu topik mungkin muncul kembali di daftar. Anda juga dapat memblokir topik dari Chrome yang tidak ingin Anda bagikan ke situs dan menonaktifkan topik iklan kapan saja di setelan Chrome.</translation>
-<translation id="1697808683313379647">Google menggunakan informasi dari halaman checkout dan data relevan lainnya untuk menawarkan opsi ini.</translation>
 <translation id="1699651774646344471">Anda sekarang dapat menggunakan alamat dari Akun Google Anda</translation>
 <translation id="1700542542921501212">Anda dapat menggunakan <ph name="SEARCH_ENGINE_NAME" /> untuk menelusuri web.</translation>
 <translation id="1702815194757674443">ROC 16K</translation>
 <translation id="1703835215927279855">Letter</translation>
 <translation id="1705645336613358172">Gunakan Affirm atau Zip untuk membayar dengan cicilan</translation>
 <translation id="1706625117072057435">Tingkat perbesar/perkecil</translation>
-<translation id="1706922226983368260">Kunci sandi • "<ph name="PHONE_NAME" />"</translation>
 <translation id="1706954506755087368">{1,plural, =1{Server ini tidak dapat membuktikan bahwa ini adalah <ph name="DOMAIN" />; sertifikat keamanannya sepertinya dari esok hari. Hal ini mungkin disebabkan oleh kesalahan konfigurasi, atau ada penyerang yang memintas koneksi internet Anda.}other{Server ini tidak dapat membuktikan bahwa ini adalah <ph name="DOMAIN" />; sertifikat keamanannya sepertinya dari # hari mendatang. Hal ini mungkin disebabkan oleh kesalahan konfigurasi, atau ada penyerang yang memintas koneksi internet Anda.}}</translation>
 <translation id="1710259589646384581">OS</translation>
 <translation id="1711234383449478798">Diabaikan karena <ph name="POLICY_NAME" /> tidak disetel ke <ph name="VALUE" />.</translation>
@@ -1004,7 +1002,7 @@ disusupi oleh penyerang. Hanya buka <ph name="BEGIN_LINK" />situs yang tidak ama
 <translation id="257136025287118539">Administrator memindahkan file Anda ke <ph name="CLOUD_PROVIDER" />. Anda dapat mengubah file ini setelah proses upload selesai.</translation>
 <translation id="2571488850200220306">Untuk membantu memastikan keamanan, admin juga dapat melihat OS, versi browser, dan software yang diinstal di perangkat</translation>
 <translation id="2573170131138724450">Televisi</translation>
-<translation id="257674075312929031">Grup</translation>
+<translation id="257674075312929031">Grupkan</translation>
 <translation id="2577522251608256362">Kawasan</translation>
 <translation id="2580031090587209073">Opsi berbagi</translation>
 <translation id="258027838577899739">Hapus semua dari histori</translation>
@@ -1134,6 +1132,7 @@ disusupi oleh penyerang. Hanya buka <ph name="BEGIN_LINK" />situs yang tidak ama
 <translation id="2794629552137076216">Kaca (Permukaan)</translation>
 <translation id="2799223571221894425">Luncurkan Ulang</translation>
 <translation id="2799758406651937857">Pakaian Pria</translation>
+<translation id="2803320044666896137">Nilai kebijakan ini diabaikan karena pengguna tidak terafiliasi.</translation>
 <translation id="2807052079800581569">Posisi image Y</translation>
 <translation id="2808278141522721006">Anda dapat mengaktifkan atau menonaktifkan Windows Hello di <ph name="SETTINGS" /></translation>
 <translation id="2818338148457093657">Layanan Kecantikan &amp; Spa</translation>
@@ -1153,6 +1152,7 @@ disusupi oleh penyerang. Hanya buka <ph name="BEGIN_LINK" />situs yang tidak ama
 <translation id="2859383374160668142">Anda dapat melihat penurunan harga untuk produk yang Anda pantau kapan saja.</translation>
 <translation id="2859806420264540918">Situs ini menampilkan iklan yang mengganggu atau menyesatkan.</translation>
 <translation id="28618371182701850">Kendaraan Listrik &amp; Plug-In</translation>
+<translation id="2873317327342476681">Game Dino, ketuk dino atau tekan spasi untuk bermain</translation>
 <translation id="287387905105155974">Balon bantuan</translation>
 <translation id="28761159517501904">Film</translation>
 <translation id="2876489322757410363">Keluar dari mode Samaran untuk membayar melalui aplikasi eksternal. Lanjutkan?</translation>
@@ -1245,7 +1245,6 @@ disusupi oleh penyerang. Hanya buka <ph name="BEGIN_LINK" />situs yang tidak ama
 <translation id="299122504639061328">Kelola mesin telusur dan penelusuran situs default Anda</translation>
 <translation id="2991571918955627853">Anda tidak dapat mengunjungi <ph name="SITE" /> sekarang karena situs menggunakan HSTS. Error jaringan dan serangan biasanya bersifat sementara, sehingga halaman ini mungkin akan berfungsi nanti.</translation>
 <translation id="2991865971341174470">Verifikasi diri Anda agar Chrome dapat mengisi info pembayaran.</translation>
-<translation id="2995010188916335277">Google menggunakan informasi dari halaman checkout dan data relevan lainnya untuk menawarkan opsi ini. Untuk menyembunyikan opsi bayar nanti di pengisian otomatis, buka <ph name="IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_FOOTNOTE_HIDE_OPTION_PAYMENT_SETTINGS_LINK_TEXT" />.</translation>
 <translation id="2995121550202354573">Gunakan untuk semua Profil tamu</translation>
 <translation id="2995517112308048736">Ukuran file:</translation>
 <translation id="299990983510665749">Hatchback</translation>
@@ -1508,6 +1507,7 @@ disusupi oleh penyerang. Hanya buka <ph name="BEGIN_LINK" />situs yang tidak ama
 <translation id="3415471717466570460">Penelusuran Anda, kecocokan terbaik, dan konten halamannya dikirim ke Google dan dapat dilihat oleh petugas peninjau untuk meningkatkan kualitas fitur ini. Fitur ini bersifat eksperimental dan tidak selalu benar.</translation>
 <translation id="3422248202833853650">Coba program lain yang ada untuk mengosongkan memori.</translation>
 <translation id="3422472998109090673"><ph name="HOST_NAME" /> saat ini tidak dapat dijangkau.</translation>
+<translation id="3422794267539320056">Ketuk dinosaurus atau tekan spasi untuk bermain</translation>
 <translation id="3423742043356668186">Ditentukan sistem</translation>
 <translation id="3427342743765426898">&amp;Ulangi Pengeditan</translation>
 <translation id="342781501876943858">Chromium menyarankan untuk menyetel ulang sandi jika Anda juga menggunakannya di situs lain.</translation>
@@ -1984,6 +1984,7 @@ disusupi oleh penyerang. Hanya buka <ph name="BEGIN_LINK" />situs yang tidak ama
 <translation id="4152495263075154876">Layar progres Beli Sekarang Bayar Nanti ditutup.</translation>
 <translation id="4152670763139331043">{NUM_TABS,plural, =1{1 tab}other{# tab}}</translation>
 <translation id="4153446078232988116"><ph name="SITE" /> tidak mendukung koneksi aman dengan HTTPS</translation>
+<translation id="4153858337812834972">Tab terbaru</translation>
 <translation id="4154277373259957087">Chrome kini akan memverifikasi diri Anda sebelum mengisi metode pembayaran. Anda dapat memperbaruinya kapan saja di <ph name="IDS_AUTOFILL_MANDATORY_REAUTH_CONFIRMATION_SETTINGS_LINK" />.</translation>
 <translation id="415440494507469262">Tambahkan Tab ke Tabel Perbandingan</translation>
 <translation id="4159784952369912983">Ungu</translation>
@@ -3521,6 +3522,7 @@ disusupi oleh penyerang. Hanya buka <ph name="BEGIN_LINK" />situs yang tidak ama
 <translation id="6635900375070654124">perangkat pengautentikasi</translation>
 <translation id="6641852376826221947">Konfirmasi pembelian Anda</translation>
 <translation id="6643016212128521049">Hapus</translation>
+<translation id="6644868143085860957">Kartu ini tidak dapat disimpan di Google Wallet. Namun, kartu akan disimpan ke Chrome di perangkat ini.</translation>
 <translation id="6645291930348198241">Mengakses cookie dan data situs.</translation>
 <translation id="6645478838938543427">Notifikasi diskon akan dikirim ke <ph name="EMAIL_ADDRESS" /></translation>
 <translation id="6648459603387803038">Administrator dapat mengubah penyiapan browser Anda dari jarak jauh. Aktivitas di perangkat ini juga dapat dikelola di luar Chrome.</translation>

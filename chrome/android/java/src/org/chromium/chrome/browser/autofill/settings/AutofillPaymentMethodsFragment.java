@@ -27,7 +27,7 @@ import org.chromium.base.ApiCompatibilityUtils;
 import org.chromium.base.Callback;
 import org.chromium.base.DeviceInfo;
 import org.chromium.base.metrics.RecordHistogram;
-import org.chromium.base.supplier.ObservableSupplier;
+import org.chromium.base.supplier.MonotonicObservableSupplier;
 import org.chromium.base.supplier.ObservableSupplierImpl;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
@@ -132,7 +132,7 @@ public class AutofillPaymentMethodsFragment extends ChromeBaseSettingsFragment
     }
 
     @Override
-    public ObservableSupplier<String> getPageTitle() {
+    public MonotonicObservableSupplier<String> getPageTitle() {
         return mPageTitle;
     }
 
@@ -200,7 +200,8 @@ public class AutofillPaymentMethodsFragment extends ChromeBaseSettingsFragment
                                 getPreferenceManager().getContext(),
                                 AutofillOptionsFragment.class,
                                 AutofillOptionsFragment.createRequiredArgs(
-                                        AutofillOptionsReferrer.PAYMENT_METHODS_FRAGMENT));
+                                        AutofillOptionsReferrer.PAYMENT_METHODS_FRAGMENT),
+                                /* addToBackStack= */ true);
                     });
             getPreferenceScreen().addPreference(disabled_settings_info_pref);
         }
@@ -685,7 +686,10 @@ public class AutofillPaymentMethodsFragment extends ChromeBaseSettingsFragment
         SettingsNavigation settingsNavigation =
                 SettingsNavigationFactory.createSettingsNavigation();
         settingsNavigation.startSettings(
-                getActivity(), AutofillLocalCardEditor.class, preference.getExtras());
+                getActivity(),
+                AutofillLocalCardEditor.class,
+                preference.getExtras(),
+                /* addToBackStack= */ true);
     }
 
     /**
@@ -777,7 +781,8 @@ public class AutofillPaymentMethodsFragment extends ChromeBaseSettingsFragment
         settingsNavigation.startSettings(
                 getActivity(),
                 NonCardPaymentMethodsManagementFragment.class,
-                /* fragmentArgs= */ null);
+                /* fragmentArgs= */ null,
+                /* addToBackStack= */ true);
         return true;
     }
 

@@ -31,11 +31,13 @@ DEFINE_OWNED_UI_CLASS_PROPERTY_KEY(gfx::Rect, kPreviousCollectionBounds)
 
 TabCollectionAnimatingLayoutManager::TabCollectionAnimatingLayoutManager(
     std::unique_ptr<LayoutManagerBase> target_layout_manager,
-    Delegate* delegate)
+    Delegate* delegate,
+    AnimationAxis animation_axis)
     : target_layout_manager_(
           CHECK_DEREF(AddOwnedLayout(std::move(target_layout_manager)))),
       animation_(this),
-      delegate_(delegate) {
+      delegate_(delegate),
+      animation_axis_(animation_axis) {
   // TODO(crbug.com/459824840): Determine the appropriate animation duration.
   // Currently set to match the duration of TabContainerImpl.
   animation_.SetSlideDuration(
@@ -87,6 +89,9 @@ void TabCollectionAnimatingLayoutManager::AnimationEnded(
   // Clear any View-specific metadata and state no longer needed once the most
   // recent animation has finished.
   ClearViewAnimationMetadata();
+  if (delegate_) {
+    delegate_->OnAnimationEnded();
+  }
 }
 
 views::ProposedLayout
@@ -117,6 +122,7 @@ void TabCollectionAnimatingLayoutManager::LayoutImpl() {
     starting_layout_ = target_layout_;
     ApplyLayout(target_layout_);
     RemoveNonAnimatingPendingDeleteViews();
+    ClearViewAnimationMetadata();
   }
 }
 
@@ -140,10 +146,9 @@ void TabCollectionAnimatingLayoutManager::RecalculateTarget() {
     return;
   }
 
-  // If this is the first layout and we are not animating, just snap to target.
   // Animating horizontal bounds is not supported and layout should immediately
   // snap to target for horizontal bounds changes.
-  if ((target_layout_.child_layouts.empty() && !animation_.is_animating()) ||
+  if (!current_layout_.host_size.IsEmpty() &&
       (current_layout_.host_size.width() != new_target.host_size.width())) {
     target_layout_ = new_target;
     current_layout_ = new_target;
@@ -200,16 +205,15 @@ void TabCollectionAnimatingLayoutManager::AnimateAndDestroyChildView(
   InvalidateHost(/*mark_layouts_changed=*/true);
 }
 
-std::unique_ptr<views::View>
-TabCollectionAnimatingLayoutManager::RemoveChildViewForReparenting(
-    views::View* child_view) {
-  DCHECK(base::Contains(host_view()->children(), child_view));
-  if (delegate_ && !delegate_->IsViewDragging(*child_view)) {
-    child_view->SetProperty(kPreviousCollectionBounds,
-                            child_view->GetBoundsInScreen());
+void TabCollectionAnimatingLayoutManager::AnimateAndReparentView(
+    std::unique_ptr<views::View> view_to_reparent,
+    const gfx::Rect& previous_bounds_in_screen) {
+  auto* child_view = host_view()->AddChildView(std::move(view_to_reparent));
+  if (!delegate_ || !delegate_->IsViewDragging(*child_view)) {
     child_view->SetPaintToLayer();
+    child_view->SetProperty(kPreviousCollectionBounds,
+                            previous_bounds_in_screen);
   }
-  return host_view()->RemoveChildViewT(child_view);
 }
 
 views::ProposedLayout TabCollectionAnimatingLayoutManager::InterpolateLayout(
@@ -240,11 +244,10 @@ views::ProposedLayout TabCollectionAnimatingLayoutManager::InterpolateLayout(
           gfx::Tween::RectValueBetween(value, it->second, target_child.bounds);
       // Snap visibility to target.
       interpolated_child.visible = target_child.visible;
-    } else {
+    } else if (!delegate_ ||
+               !delegate_->IsViewDragging(*target_child.child_view)) {
       // Added child.
       // Animate-in new Views from empty bounds.
-      // TODO(crbug.com/459824840): We may want to snap new children to target
-      // bounds in the case of a tab drag-and-drop.
       gfx::Rect* previous_container_bounds =
           target_child.child_view->GetProperty(kPreviousCollectionBounds);
       if (previous_container_bounds) {
@@ -254,10 +257,16 @@ views::ProposedLayout TabCollectionAnimatingLayoutManager::InterpolateLayout(
             value, initial_bounds, target_child.bounds);
       } else {
         gfx::Rect initial_bounds = target_child.bounds;
-        initial_bounds.set_height(0);
+        if (animation_axis_ == AnimationAxis::kVertical) {
+          initial_bounds.set_height(0);
+        } else {
+          initial_bounds.set_width(0);
+        }
         interpolated_child.bounds = gfx::Tween::RectValueBetween(
             value, initial_bounds, target_child.bounds);
       }
+    } else {
+      // Snap new children to target bounds in the case of drag-and-drop.
     }
     result.child_layouts.push_back(interpolated_child);
   }
@@ -282,7 +291,11 @@ views::ProposedLayout TabCollectionAnimatingLayoutManager::InterpolateLayout(
       // `RemoveNonAnimatingPendingDeleteViews()`.
       views::ChildLayout interpolated_child = start_child;
       gfx::Rect target_bounds = start_child.bounds;
-      target_bounds.set_height(0);
+      if (animation_axis_ == AnimationAxis::kVertical) {
+        target_bounds.set_height(0);
+      } else {
+        target_bounds.set_width(0);
+      }
       interpolated_child.bounds = gfx::Tween::RectValueBetween(
           value, start_child.bounds, target_bounds);
       result.child_layouts.push_back(interpolated_child);
@@ -332,7 +345,9 @@ void TabCollectionAnimatingLayoutManager::
 
 void TabCollectionAnimatingLayoutManager::ClearViewAnimationMetadata() {
   for (views::View* child_view : host_view()->children()) {
-    child_view->DestroyLayer();
-    child_view->ClearProperty(kPreviousCollectionBounds);
+    if (child_view->GetProperty(kPreviousCollectionBounds)) {
+      child_view->DestroyLayer();
+      child_view->ClearProperty(kPreviousCollectionBounds);
+    }
   }
 }

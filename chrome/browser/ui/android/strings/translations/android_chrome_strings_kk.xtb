@@ -1098,7 +1098,6 @@ Google аккаунтының шолу тарихы басқа Google қызме
 <translation id="5765780083710877561">Сипаттама:</translation>
 <translation id="5776970333778123608">Маңызы жоқ деректер</translation>
 <translation id="5793665092639000975"><ph name="SPACE_USED" /> / <ph name="SPACE_AVAILABLE" /> жад көлемі қолданылуда</translation>
-<translation id="5795872532621730126">Іздеу және шолу</translation>
 <translation id="5797949256525811424">Тақырып бөгелді</translation>
 <translation id="580893287573699959">Сізді қызықтыратын тақырыптар мен сайттарды басқару</translation>
 <translation id="5809361687334836369">{HOURS,plural, =1{# сағат бұрын}other{# сағат бұрын}}</translation>
@@ -1415,7 +1414,6 @@ Google аккаунтының шолу тарихы басқа Google қызме
 <translation id="6937524809504266803">Жекелендіру және байланыстыру</translation>
 <translation id="6937876069006524083">Лақап ат (міндетті емес)</translation>
 <translation id="6942665639005891494">"Параметрлер" мәзірі опциясын пайдаланып, әдепкі жүктеп алу орнын кез келген уақытта өзгертіңіз</translation>
-<translation id="694267552845942083">Қазір синхрондау параметрлерін реттеп жатырсыз. Синхрондау функциясын қосу үшін экранның төменгі жағындағы "Растау" түймесін түртіңіз. Жоғары қарай өту</translation>
 <translation id="6945221475159498467">Таңдау</translation>
 <translation id="6955535239952325894">Бұл параметр басқарылатын браузерлерде өшірілген.</translation>
 <translation id="6963766334940102469">Бетбелгілерді жою</translation>
@@ -1641,6 +1639,7 @@ Google аккаунтының шолу тарихы басқа Google қызме
 <translation id="784652447248278262">Қазіргі терезе</translation>
 <translation id="784934925303690534">Уақыт ауқымы</translation>
 <translation id="7851858861565204677">Басқа құрылғылар</translation>
+<translation id="78527117619130387">Бекітілген қойындыны жабу: ^W пернесін қайта басыңыз.</translation>
 <translation id="7853202427316060426">Әрекет</translation>
 <translation id="7859988229622350291">Ешқашан аудармау</translation>
 <translation id="7866213166286285359">Беттерді осы жерде аударыңыз.</translation>
@@ -1654,6 +1653,7 @@ Google аккаунтының шолу тарихы басқа Google қызме
 <translation id="7919123827536834358">Осы тілдерді автоматты түрде аудару</translation>
 <translation id="7921782882718083488">Осы беттің қысқаша сипаттамасын жасау</translation>
 <translation id="7926975587469166629">Картаның қысқа аты</translation>
+<translation id="7927073875790626822">XR</translation>
 <translation id="7929587383660661825">Chrome хабарландыруларды теріс пайдаланатын немесе сіз жақында кірмеген сайттардың рұқсаттарын автоматты түрде өшіреді</translation>
 <translation id="7934668619883965330">Файлды жүктеп алу мүмкін емес. Файл форматына қолдау көрсетілмейді.</translation>
 <translation id="7942131818088350342"><ph name="PRODUCT_NAME" /> ескірген.</translation>
@@ -1934,7 +1934,6 @@ Google аккаунтының шолу тарихы басқа Google қызме
 <translation id="9073805459138993880"><ph name="TAB_TITLE" />, бөлісудің көп рет таңдалған қойындысы</translation>
 <translation id="9074739597929991885">Bluetooth</translation>
 <translation id="9081543426177426948">Кірген сайттарыңыз инкогнито режимінде сақталмайды</translation>
-<translation id="9086302186042011942">Синхрондау</translation>
 <translation id="9086455579313502267">Желіге кіру мүмкін емес</translation>
 <translation id="9093915805850895575">Chrome терезесінде ашу</translation>
 <translation id="909756639352028172">Барынша жекелендірілген мүмкіндіктерге қол жеткізу үшін интернет пен қолданбаларды пайдалану тарихына және байланысқан Google қызметтеріне Chrome-ды қосыңыз.</translation>

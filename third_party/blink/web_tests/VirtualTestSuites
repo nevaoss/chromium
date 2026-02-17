@@ -38,7 +38,7 @@
       "fullscreen"
     ],
     "args": [
-      "--enable-features=OverlayScrollbar,FluentOverlayScrollbar",
+      "--enable-features=OverlayScrollbar",
       "--enable-threaded-compositing",
       "--enable-prefer-compositing-to-lcd-text",
       "--enable-overscroll-notifications",
@@ -174,7 +174,7 @@
     "args": [
       "--enable-blink-features=CanvasDrawElementInSubtree"
     ],
-    "expires": "Jan 15, 2026"
+    "expires": "Jul 15, 2026"
   },
   {
     "prefix": "content-extraction",
@@ -610,29 +610,6 @@
       "--blink-settings=preferredColorScheme=0,forceDarkModeEnabled=true"
     ],
     "expires": "Jul 1, 2026"
-  },
-  {
-    "prefix": "data-url-mime-type-parameter-preservation",
-    "owners": [
-      "helmut@januschka.com",
-      "nidhijaju@chromium.org"
-    ],
-    "platforms": [
-      "Linux",
-      "Mac",
-      "Win"
-    ],
-    "bases": [
-      "external/wpt/fetch/data-urls/processing.any.html",
-      "external/wpt/fetch/data-urls/processing.any.worker.html",
-      "external/wpt/fetch/data-urls/processing.any.sharedworker.html",
-      "external/wpt/fetch/data-urls/processing.any.serviceworker.html"
-    ],
-    "exclusive_tests": "ALL",
-    "args": [
-      "--enable-features=DataUrlMimeTypeParameterPreservation"
-    ],
-    "expires": "Dec 1, 2026"
   },
   {
     "prefix": "dbsc-enabled",
@@ -1319,6 +1296,7 @@
     "expires": "Jul 14, 2025"
   },
   "RasterInducingScroll disabled due to crbug.com/349939555",
+  "TODO(crbug.com/398193016): Merge this suite into virtual/overlay-scrollbar",
   {
     "prefix": "fluent-overlay-scrollbar",
     "platforms": [
@@ -1332,7 +1310,7 @@
       "virtual/overlay-scrollbar/overlay-scrollbar-smoke-test.html"
     ],
     "args": [
-      "--enable-features=FluentOverlayScrollbar",
+      "--enable-features=OverlayScrollbar",
       "--enable-threaded-compositing",
       "--disable-features=RasterInducingScroll"
     ],
@@ -2271,7 +2249,7 @@
     ],
     "bases": [],
     "args": [
-      "--disable-features=OverlayScrollbar,FluentOverlayScrollbar"
+      "--disable-features=OverlayScrollbar"
     ],
     "expires": "never",
     "owners": [
@@ -2505,7 +2483,7 @@
       "external/wpt/css/css-ui/pointer-events-no-scrollbars-002.html"
     ],
     "args": [
-      "--enable-features=OverlayScrollbar,FluentOverlayScrollbar"
+      "--enable-features=OverlayScrollbar"
     ],
     "expires": "never",
     "owners": [
@@ -4706,6 +4684,7 @@
       "external/wpt/css/css-view-transitions",
       "external/wpt/css/css-overflow/scroll-markers-updated-by-programmatic-scroll.html",
       "external/wpt/css/cssom-view/overflow-hidden-smooth-scroll-crash.html",
+      "external/wpt/css/cssom-view/scroll-behavior-smooth-after-hiding-iframe.html",
       "external/wpt/feature-policy/experimental-features",
       "external/wpt/fetch/compression-dictionary/dictionary-fetch-with-link-element.tentative.https.html",
       "external/wpt/fetch/compression-dictionary/dictionary-fetch-with-link-header.tentative.https.html",

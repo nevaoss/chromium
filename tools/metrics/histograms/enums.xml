@@ -9204,6 +9204,7 @@ from previous Chrome versions.
   <int value="-1760146324" label="CellularAllowPerNetworkRoaming:disabled"/>
   <int value="-1759769801" label="PasswordEditDialogWithDetails:enabled"/>
   <int value="-1759403147" label="MinorModeSupport:disabled"/>
+  <int value="-1759023284" label="kUserMediaScreenCapturing:disabled"/>
   <int value="-1758987651" label="ModifierSplit:disabled"/>
   <int value="-1758468685" label="DownloadHomeV2:disabled"/>
   <int value="-1758074393" label="BorealisWebUIInstaller:disabled"/>
@@ -10791,6 +10792,7 @@ from previous Chrome versions.
   <int value="-1216570731" label="OfflineHome:enabled"/>
   <int value="-1215746151" label="ForestFeature:enabled"/>
   <int value="-1215340781" label="CrOSSystemVoiceIsolationOption:enabled"/>
+  <int value="-1215167587" label="EnableAndroidSidePanel:disabled"/>
   <int value="-1215163628"
       label="AccessibilityUnserializeOptimizations:disabled"/>
   <int value="-1214870820" label="EnableNewStyleLauncher:enabled"/>
@@ -10856,6 +10858,7 @@ from previous Chrome versions.
   <int value="-1187546444" label="MuteNotificationSnoozeAction:enabled"/>
   <int value="-1187251500" label="OmniboxPedalsBatch2NonEnglish:disabled"/>
   <int value="-1186760297" label="ForceSpectreVariant2Mitigation:disabled"/>
+  <int value="-1186638833" label="SigninLevelUpButton:enabled"/>
   <int value="-1185833629" label="AppCollectionFolderRefresh:enabled"/>
   <int value="-1185656634" label="FileSystemProviderContentCache:enabled"/>
   <int value="-1185477291" label="ImeDecoderWithSandbox:enabled"/>
@@ -11685,6 +11688,7 @@ from previous Chrome versions.
   <int value="-902227224" label="MlRelevanceScoring:disabled"/>
   <int value="-902125579" label="ImmersiveUiMode:disabled"/>
   <int value="-901418755" label="TrafficCountersForWiFiTesting:enabled"/>
+  <int value="-901386731" label="EnableAndroidSidePanel:enabled"/>
   <int value="-900976825" label="AndroidSpellcheckFullApiBlink:disabled"/>
   <int value="-900871741" label="DesktopPWAsNotificationIconAndTitle:disabled"/>
   <int value="-899969457" label="ReadAloudBackgroundPlayback:disabled"/>
@@ -11999,6 +12003,7 @@ from previous Chrome versions.
   <int value="-791778534" label="LauncherQueryHighlighting:enabled"/>
   <int value="-791730714" label="NotebookLmAppPreinstall:disabled"/>
   <int value="-791590673" label="bookmarks-tree-view:enabled"/>
+  <int value="-791528799" label="PasswordUploadUiUpdate:enabled"/>
   <int value="-790900615" label="NtpShoppingTasksModule:disabled"/>
   <int value="-790764083" label="CCTResetTimeoutEnabled:disabled"/>
   <int value="-790544721"
@@ -12207,6 +12212,7 @@ from previous Chrome versions.
   <int value="-722635250" label="ChromeRefresh2023NTB:disabled"/>
   <int value="-722474177" label="browser-side-navigation:disabled"/>
   <int value="-722172419" label="SystemChinesePhysicalTyping:disabled"/>
+  <int value="-721759124" label="DefaultBrowserPromoEntryPoint:disabled"/>
   <int value="-721757044" label="TabbedBrowserUseNewLayout:enabled"/>
   <int value="-721685663" label="WebViewMixedContentAutoupgrades:enabled"/>
   <int value="-721649087" label="HighEfficiencyModeAvailable:enabled"/>
@@ -13024,6 +13030,7 @@ from previous Chrome versions.
   <int value="-437937965" label="AccessibilityShakeToLocate:disabled"/>
   <int value="-437292646" label="DeferBeginMainFrameDuringLoading:enabled"/>
   <int value="-436799973" label="FederatedService:enabled"/>
+  <int value="-436652388" label="SigninLevelUpButton:disabled"/>
   <int value="-436470115" label="TouchpadAndWheelScrollLatching:enabled"/>
   <int value="-435914745" label="ClipboardContentSetting:disabled"/>
   <int value="-435636565" label="EnableLensPing:disabled"/>
@@ -13378,6 +13385,7 @@ from previous Chrome versions.
   <int value="-308785012"
       label="QuickIntensiveWakeUpThrottlingAfterLoading:enabled"/>
   <int value="-308671262" label="ShareCustomActionsInCCT:disabled"/>
+  <int value="-308473334" label="PasswordUploadUiUpdate:disabled"/>
   <int value="-308107781" label="OmniboxCacheSuggestionResources:disabled"/>
   <int value="-307260007" label="ExtensionsCheckup:disabled"/>
   <int value="-306935714" label="lite-video-force-override-decision"/>
@@ -14978,6 +14986,7 @@ from previous Chrome versions.
   <int value="248485874" label="FieldClassificationModelCaching:disabled"/>
   <int value="249465446" label="UseRealColorSpaceForAndroidVideo:enabled"/>
   <int value="249727337" label="EnableTranslationAPI:enabled"/>
+  <int value="250236604" label="kUserMediaScreenCapturing:enabled"/>
   <int value="250297614" label="EnableExclusiveAccessManager:enabled"/>
   <int value="250855010" label="WebAssemblyBaseline:disabled"/>
   <int value="250890200" label="OmniboxZpsSuggestionLimit:enabled"/>
@@ -19014,6 +19023,7 @@ from previous Chrome versions.
   <int value="1635755615" label="ScanAppMultiPageScan:disabled"/>
   <int value="1635986352" label="ContextMenuSearchWithGoogleLens:enabled"/>
   <int value="1636029982" label="enable-benchmarking"/>
+  <int value="1636641236" label="DefaultBrowserPromoEntryPoint:enabled"/>
   <int value="1636721063"
       label="AutofillLocalCardMigrationShowFeedback:enabled"/>
   <int value="1636962093" label="disable-material-design-ntp"/>
@@ -26734,21 +26744,6 @@ Called by update_net_error_codes.py.-->
   <int value="34" label="HEVC ScreenExtended"/>
   <int value="35" label="HEVC ScalableRext"/>
   <int value="36" label="HEVC HighThroughputScreenExtended"/>
-  <int value="37" label="VVC Main10"/>
-  <int value="38" label="VVC Main12"/>
-  <int value="39" label="VVC Main12 Intra"/>
-  <int value="40" label="VVC Multi-layer Main10"/>
-  <int value="41" label="VVC Main10 444"/>
-  <int value="42" label="VVC Main12 444"/>
-  <int value="43" label="VVC Main16 444"/>
-  <int value="44" label="VVC Main12 444 Intra"/>
-  <int value="45" label="VVC Main16 444 Intra"/>
-  <int value="46" label="VVC Multi-layer Main10 444"/>
-  <int value="47" label="VVC Main10 Still-picture"/>
-  <int value="48" label="VVC Main12 Still-picture"/>
-  <int value="49" label="VVC Main10 444 Still-picture"/>
-  <int value="50" label="VVC Main12 444 Still-picture"/>
-  <int value="51" label="VVC Main16 444 Still-picture"/>
 </enum>
 
 <!-- LINT.ThenChange(//gpu/config/gpu_info.h:VideoCodecProfile, //media/base/video_codecs.h:VideoCodecProfile) -->

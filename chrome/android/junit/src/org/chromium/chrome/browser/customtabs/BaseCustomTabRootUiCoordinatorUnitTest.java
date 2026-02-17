@@ -37,11 +37,11 @@ import org.chromium.base.CallbackUtils;
 import org.chromium.base.FakeTimeTestRule;
 import org.chromium.base.TimeUtils;
 import org.chromium.base.UnownedUserDataHost;
-import org.chromium.base.supplier.ObservableSupplier;
+import org.chromium.base.supplier.MonotonicObservableSupplier;
 import org.chromium.base.supplier.ObservableSupplierImpl;
 import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.OneshotSupplier;
-import org.chromium.base.supplier.SettableObservableSupplier;
+import org.chromium.base.supplier.SettableMonotonicObservableSupplier;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.Batch;
 import org.chromium.base.test.util.Features.DisableFeatures;
@@ -112,11 +112,11 @@ public final class BaseCustomTabRootUiCoordinatorUnitTest {
 
     @Rule public FakeTimeTestRule mFakeTimeTestRule = new FakeTimeTestRule();
 
-    @Mock private ObservableSupplier<ShareDelegate> mShareDelegateSupplier;
+    @Mock private MonotonicObservableSupplier<ShareDelegate> mShareDelegateSupplier;
     @Mock private CustomTabActivityTabProvider mCustomTabProvider;
-    @Mock private ObservableSupplier<BookmarkModel> mBookmarkModelSupplier;
-    @Mock private ObservableSupplier<TabBookmarker> mTabBookmarkerSupplier;
-    @Mock private ObservableSupplier<TabModelSelector> mTabModelSelectorSupplier;
+    @Mock private MonotonicObservableSupplier<BookmarkModel> mBookmarkModelSupplier;
+    @Mock private MonotonicObservableSupplier<TabBookmarker> mTabBookmarkerSupplier;
+    @Mock private MonotonicObservableSupplier<TabModelSelector> mTabModelSelectorSupplier;
 
     @Mock private ObservableSupplierImpl<EphemeralTabCoordinator> mEphemeralTabCoordinatorSupplier;
     @Mock private BrowserControlsManager mBrowserControlsManager;
@@ -130,16 +130,15 @@ public final class BaseCustomTabRootUiCoordinatorUnitTest {
     @Mock private ActivityLifecycleDispatcher mActivityLifecycleDispatcher;
     @Mock private MenuOrKeyboardActionController mMenuOrKeyboardActionController;
     @Mock private Supplier<Integer> mActivityThemeColorSupplier;
-    @Mock private ObservableSupplier<ModalDialogManager> mModalDialogManagerSupplier;
+    @Mock private MonotonicObservableSupplier<ModalDialogManager> mModalDialogManagerSupplier;
     @Mock private AppMenuBlocker mAppMenuBlocker;
     @Mock private BooleanSupplier mSupportsAppMenuSupplier;
     @Mock private BooleanSupplier mSupportsFindInPage;
     @Mock private Supplier<TabCreatorManager> mTabCreatorManagerSupplier;
     @Mock private FullscreenManager mFullscreenManager;
-    @Mock private ObservableSupplier<CompositorViewHolder> mCompositorViewHolderSupplier;
+    @Mock private MonotonicObservableSupplier<CompositorViewHolder> mCompositorViewHolderSupplier;
     @Mock private Supplier<TabContentManager> mTabContentManagerSupplier;
     @Mock private Supplier<SnackbarManager> mSnackbarManagerSupplier;
-    @Mock private ObservableSupplierImpl<EdgeToEdgeController> mEdgeToEdgeControllerSupplier;
     @Mock private Supplier<Boolean> mIsInOverviewModeSupplier;
     @Mock private AppMenuDelegate mAppMenuDelegate;
     @Mock private StatusBarColorProvider mStatusBarColorProvider;
@@ -161,9 +160,11 @@ public final class BaseCustomTabRootUiCoordinatorUnitTest {
     @Mock private IdentityManager mIdentityManager;
     @Mock private Supplier<BrowserServicesThemeColorProvider> mBrowserServicesColorProviderSupplier;
 
+    private final SettableMonotonicObservableSupplier<EdgeToEdgeController>
+            mEdgeToEdgeControllerSupplier = ObservableSuppliers.createMonotonic();
     private final ActivityTabProvider mActivityTabProvider = new ActivityTabProvider();
     private ObservableSupplierImpl<Profile> mProfileSupplier;
-    private final SettableObservableSupplier<LayoutManagerImpl> mLayoutManagerSupplier =
+    private final SettableMonotonicObservableSupplier<LayoutManagerImpl> mLayoutManagerSupplier =
             ObservableSuppliers.createMonotonic();
     private AppCompatActivity mActivity;
     private BaseCustomTabRootUiCoordinator mBaseCustomTabRootUiCoordinator;

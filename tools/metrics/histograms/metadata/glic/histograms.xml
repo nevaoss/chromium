@@ -106,7 +106,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Glic.Api.RequestCounts.Error" enum="GlicHostApiRequestType"
-    expires_after="2026-05-17">
+    expires_after="2026-07-19">
   <owner>carlosk@chromium.org</owner>
   <owner>harringtond@chromium.org</owner>
   <owner>birnie@google.com</owner>
@@ -114,7 +114,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Glic.Api.RequestCounts.Hidden" enum="GlicHostApiRequestType"
-    expires_after="2026-05-17">
+    expires_after="2026-07-19">
   <owner>carlosk@chromium.org</owner>
   <owner>harringtond@chromium.org</owner>
   <owner>birnie@google.com</owner>
@@ -125,7 +125,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Glic.Api.RequestCounts.Received" enum="GlicHostApiRequestType"
-    expires_after="2026-05-17">
+    expires_after="2026-07-19">
   <owner>carlosk@chromium.org</owner>
   <owner>harringtond@chromium.org</owner>
   <owner>birnie@google.com</owner>
@@ -1086,6 +1086,16 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Glic.Instance.TabUnpinTrigger" enum="GlicUnpinTrigger"
+    expires_after="2026-07-15">
+  <owner>sanaakbani@google.com</owner>
+  <owner>birnie@google.com</owner>
+  <summary>
+    Records the trigger responsible for unpinning a tab from a Glic Instance.
+    Recorded each time a tab is unpinned.
+  </summary>
+</histogram>
+
 <histogram name="Glic.Instance.TimeBetweenSessions.{Range}" units="ms"
     expires_after="2026-10-27">
   <owner>birnie@google.com</owner>
@@ -1450,6 +1460,14 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Glic.PageContextFetcher.GetScreenshotError"
+    enum="CopyFromSurfaceError" expires_after="2026-09-15">
+  <owner>bokan@google.com</owner>
+  <owner>dtapuska@google.com</owner>
+  <owner>chrome-synapse-team@google.com</owner>
+  <summary>Recorded when a page gets screenshot error from Viz.</summary>
+</histogram>
+
 <histogram name="Glic.PageContextFetcher.Total" units="ms"
     expires_after="2026-01-15">
   <owner>carlosk@chromium.org</owner>
@@ -1783,7 +1801,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Glic.Response.TabsPinnedForSharingCount" units="tabs"
-    expires_after="2026-05-17">
+    expires_after="2026-07-19">
   <owner>wry@chromium.org</owner>
   <owner>carlosk@chromium.org</owner>
   <owner>mcrouse@chromium.org</owner>
@@ -1888,7 +1906,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Glic.Session.InputSubmit.BrowserActiveState"
-    enum="GlicBrowserActiveState" expires_after="2026-05-17">
+    enum="GlicBrowserActiveState" expires_after="2026-07-19">
   <owner>harringtond@chromium.org</owner>
   <owner>carlosk@chromium.org</owner>
   <summary>
@@ -1908,7 +1926,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Glic.Session.Open.BrowserActiveState"
-    enum="GlicBrowserActiveState" expires_after="2026-05-17">
+    enum="GlicBrowserActiveState" expires_after="2026-07-19">
   <owner>harringtond@chromium.org</owner>
   <owner>carlosk@chromium.org</owner>
   <summary>
@@ -1938,7 +1956,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Glic.Session.ResponseStart.BrowserActiveState"
-    enum="GlicBrowserActiveState" expires_after="2026-05-17">
+    enum="GlicBrowserActiveState" expires_after="2026-07-19">
   <owner>harringtond@chromium.org</owner>
   <owner>carlosk@chromium.org</owner>
   <summary>

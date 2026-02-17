@@ -111,7 +111,7 @@ void ChromeBrowserFieldTrials::RegisterFeatureOverrides(
   // On Linux/Desktop platform variants, such as ozone/wayland, some features
   // might need to be disabled as per OzonePlatform's runtime properties.
   // OzonePlatform selection and initialization, in turn, depend on Chrome flags
-  // processing, namely 'ozone-platform-hint', so do it here.
+  // processing, namely 'ozone-platform', so do it here.
   //
   // TODO(nickdiego): Move it back to
   // ChromeMainDelegate::PostEarlyInitialization.
@@ -159,6 +159,9 @@ void ChromeBrowserFieldTrials::RegisterFeatureOverrides(
   // Enable V8 optimizations for high-end Android Desktop devices.
   // TODO(crbug.com/425860368): Remove when the feature is stable.
   feature_overrides.EnableFeature(features::kV8AndroidDesktopHighEndConfig);
+  // TODO(crbug.com/438369690): Remove when we enable DevTools frontend for all
+  // clank users.
+  feature_overrides.EnableFeature(features::kAndroidDevToolsFrontend);
   // TODO(crbug.com/430304112): Remove when rollout is complete to all form
   // factors.
   feature_overrides.EnableFeature(
@@ -206,13 +209,6 @@ void ChromeBrowserFieldTrials::RegisterFeatureOverrides(
   // TODO(crbug.com/427242080): Remove when tablet rollout is complete.
   feature_overrides.EnableFeature(
       chrome::android::kAndroidPinnedTabsTabletTabStrip);
-
-  // Three flags are required for the bookmarks bar feature.
-  // TODO(crbug.com/430059235): Remove once feature is launched to 100% on all
-  // form factors.
-  feature_overrides.EnableFeature(chrome::android::kAndroidBookmarkBar);
-  feature_overrides.EnableFeature(chrome::android::kAndroidAppearanceSettings);
-  feature_overrides.EnableFeature(chrome::android::kTopControlsRefactor);
 
   // Enable ANGLE/Vulkan features.
   // TODO (crbug.com//376280554): Enable these features with runtime checks

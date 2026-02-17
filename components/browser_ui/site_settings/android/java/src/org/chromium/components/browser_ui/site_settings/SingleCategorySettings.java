@@ -47,9 +47,9 @@ import androidx.recyclerview.widget.RecyclerView;
 import org.chromium.base.ContextUtils;
 import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.base.metrics.RecordUserAction;
-import org.chromium.base.supplier.ObservableSupplier;
+import org.chromium.base.supplier.MonotonicObservableSupplier;
 import org.chromium.base.supplier.ObservableSuppliers;
-import org.chromium.base.supplier.SettableObservableSupplier;
+import org.chromium.base.supplier.SettableMonotonicObservableSupplier;
 import org.chromium.build.annotations.MonotonicNonNull;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
@@ -203,7 +203,7 @@ public class SingleCategorySettings extends BaseSiteSettingsFragment
 
     private @Nullable Set<String> mSelectedDomains;
 
-    private final SettableObservableSupplier<String> mPageTitle =
+    private final SettableMonotonicObservableSupplier<String> mPageTitle =
             ObservableSuppliers.createMonotonic();
     private @MonotonicNonNull SearchViewProvider.Observer mSearchViewObserver;
 
@@ -571,7 +571,7 @@ public class SingleCategorySettings extends BaseSiteSettingsFragment
     }
 
     @Override
-    public ObservableSupplier<String> getPageTitle() {
+    public MonotonicObservableSupplier<String> getPageTitle() {
         return mPageTitle;
     }
 
@@ -2023,8 +2023,10 @@ public class SingleCategorySettings extends BaseSiteSettingsFragment
         if (mSearchViewObserver != null) mSearchViewObserver.onUpdated(false);
     }
 
-    // TODO(crbug.com/444470792): Determine what pieces of logic are dynamic and need handling.
+    // A collection of many categories, and only one of them is chosen for display.
+    // Do not index this. The enclosing fragment should decide what to index.
+    // TODO(crbug.com/444470792): Consider having the enclosing fragment manually
+    //     add the title/summary resource of each category it includes.
     public static final BaseSearchIndexProvider SEARCH_INDEX_DATA_PROVIDER =
-            new BaseSearchIndexProvider(
-                    SingleCategorySettings.class.getName(), R.xml.website_preferences);
+            new BaseSearchIndexProvider(SingleCategorySettings.class.getName(), 0);
 }

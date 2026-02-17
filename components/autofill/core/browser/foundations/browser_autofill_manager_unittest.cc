@@ -1966,6 +1966,52 @@ TEST_F(BrowserAutofillManagerTest, WebauthnSignInWithAnotherDeviceSuggestion) {
 }
 
 TEST_F(BrowserAutofillManagerTest,
+       WebauthnSignInWithAnotherDeviceSuggestionInAutocomplete) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitWithFeatures(
+      /*enabled_features=*/
+      {
+          autofill::features::kAutofillAndPasswordsInSameSurface,
+          password_manager::features::
+              kAutofillReintroduceHybridPasskeyDropdownItem,
+      },
+      /*disabled_features=*/{});
+
+  FormData form = CreateTestAddressFormData();
+  form.set_fields({CreateTestFormField(
+      "Some Field", "somefield", "", FormControlType::kInputText, "webauthn")});
+  FormsSeen({form});
+
+  ON_CALL(password_delegate(), GetWebauthnSignInWithAnotherDeviceSuggestion)
+      .WillByDefault(
+          Return(Suggestion(SuggestionType::kWebauthnSignInWithAnotherDevice)));
+  std::vector<Suggestion> suggestions = {
+      Suggestion(u"one", SuggestionType::kAutocompleteEntry),
+      Suggestion(u"two", SuggestionType::kAutocompleteEntry)};
+
+  // Mock returning some single field fill `suggestions`.
+  EXPECT_CALL(merchant_promo_code_manager(), OnGetSingleFieldSuggestions)
+      .WillRepeatedly([&](const FormStructure& form, const FormFieldData& field,
+                          const AutofillField& autofill_field,
+                          const AutofillClient& client,
+                          SingleFieldFillRouter::OnSuggestionsReturnedCallback&
+                              on_suggestions_returned) {
+        std::move(on_suggestions_returned).Run(field.global_id(), suggestions);
+        return true;
+      });
+  OnAskForValuesToFill(
+      form, form.fields()[0],
+      AutofillSuggestionTriggerSource::kFormControlElementClicked);
+
+  EXPECT_EQ(external_delegate()->trigger_source(),
+            AutofillSuggestionTriggerSource::kFormControlElementClicked);
+  external_delegate()->CheckSuggestions(
+      form.fields()[0].global_id(),
+      {suggestions[0], suggestions[1], Suggestion(SuggestionType::kSeparator),
+       Suggestion(SuggestionType::kWebauthnSignInWithAnotherDevice)});
+}
+
+TEST_F(BrowserAutofillManagerTest,
        WebauthnSignInWithAnotherDeviceSuggestion_FlagDisabled) {
   base::test::ScopedFeatureList feature_list;
   feature_list.InitWithFeatures(
@@ -2328,17 +2374,21 @@ class BrowserAutofillManagerTestValuables : public BrowserAutofillManagerTest {
             web_data_service_helper_->autofill_webdata_service(),
             autofill_client().GetPrefs(),
             /*image_fetcher=*/nullptr));
-    web_data_service_helper_->WaitUntilIdle();
+    WaitUntilWebDataServiceHelperIdle();
   }
 
   void SetLoyaltyCards(const std::vector<LoyaltyCard>& loyalty_cards) {
     valuables_table_.get()->SetLoyaltyCards(loyalty_cards);
     test_api(valuables_data()).LoadLoyaltyCards();
-    web_data_service_helper_->WaitUntilIdle();
+    WaitUntilWebDataServiceHelperIdle();
   }
 
   ValuablesDataManager& valuables_data() {
     return *autofill_client().GetValuablesDataManager();
+  }
+
+  void WaitUntilWebDataServiceHelperIdle() const {
+    web_data_service_helper_->WaitUntilIdle();
   }
 
  private:
@@ -2596,6 +2646,25 @@ TEST_F(
       autofill_metrics::AutofillEmailOrLoyaltyCardAcceptanceMetricValue::
           kLoyaltyCardSelected,
       1);
+}
+
+// Test that we correctly update the used loyalty card.
+TEST_F(BrowserAutofillManagerTestValuables,
+       LogAndRecordLoyaltyCardFill_UpdateLoyaltyCard) {
+  FormData form =
+      test::GetFormData({.fields = {{.role = LOYALTY_MEMBERSHIP_ID}}});
+  FormsSeen({form});
+  LoyaltyCard loyalty_card = test::CreateLoyaltyCard();
+  SetLoyaltyCards({loyalty_card});
+
+  autofill_manager().LogAndRecordLoyaltyCardFill(loyalty_card, form.global_id(),
+                                                 form.fields()[0].global_id());
+  WaitUntilWebDataServiceHelperIdle();
+  test_api(valuables_data()).LoadLoyaltyCards();
+  WaitUntilWebDataServiceHelperIdle();
+
+  EXPECT_EQ(ValuableMetadata(loyalty_card.id(), base::Time::Now(), 1),
+            valuables_data().GetLoyaltyCards()[0].metadata());
 }
 
 class BrowserAutofillManagerTestForMetadataCardSuggestions
@@ -4832,7 +4901,8 @@ TEST_F(BrowserAutofillManagerWithLogEventsTest,
   // Query autofill server for the field type prediction.
   test_api(autofill_manager())
       .OnLoadedServerPredictions(base::Base64Encode(response_string),
-                                 test::GetEncodedSignatures(*form_structure));
+                                 test::GetEncodedSignatures(*form_structure),
+                                 {form});
   std::vector<FieldType> types{NAME_FIRST, ADDRESS_HOME_LINE1,
                                ADDRESS_HOME_CITY, ADDRESS_HOME_STATE,
                                ADDRESS_HOME_ZIP};
@@ -4935,7 +5005,8 @@ TEST_F(BrowserAutofillManagerWithLogEventsTest,
   // Query autofill server for the field type prediction.
   test_api(autofill_manager())
       .OnLoadedServerPredictions(base::Base64Encode(response_string),
-                                 test::GetEncodedSignatures(*form_structure));
+                                 test::GetEncodedSignatures(*form_structure),
+                                 {form});
   std::vector<FieldType> overall_types{NAME_FULL, ADDRESS_HOME_LINE1,
                                        ADDRESS_HOME_LINE2, ADDRESS_HOME_CITY};
   for (size_t i = 0; i < server_types.size(); ++i) {
@@ -5338,7 +5409,7 @@ TEST_F(BrowserAutofillManagerTest, OnLoadedServerPredictionsFromApi) {
   base::HistogramTester histogram_tester;
   test_api(autofill_manager())
       .OnLoadedServerPredictions(base::Base64Encode(response_string),
-                                 signatures);
+                                 signatures, {form, form2});
 
   // Verify whether the relevant histograms were updated.
   histogram_tester.ExpectBucketCount("Autofill.ServerQueryResponse",
@@ -5403,7 +5474,7 @@ TEST_F(BrowserAutofillManagerTest, OnLoadedServerPredictions_ResetManager) {
   base::HistogramTester histogram_tester;
   test_api(autofill_manager())
       .OnLoadedServerPredictions(base::Base64Encode(response_string),
-                                 signatures);
+                                 signatures, {form});
 
   // Verify that FormStructure::ParseQueryResponse was NOT called.
   histogram_tester.ExpectTotalCount("Autofill.ServerQueryResponse", 0);
@@ -5460,7 +5531,8 @@ TEST_F(BrowserAutofillManagerTest, DetermineHeuristicsWithOverallPrediction) {
   base::HistogramTester histogram_tester;
   test_api(autofill_manager())
       .OnLoadedServerPredictions(base::Base64Encode(response_string),
-                                 test::GetEncodedSignatures(*form_structure));
+                                 test::GetEncodedSignatures(*form_structure),
+                                 {form});
   // Verify that FormStructure::ParseQueryResponse was called (here and below).
   histogram_tester.ExpectBucketCount("Autofill.ServerQueryResponse",
                                      AutofillMetrics::QUERY_RESPONSE_RECEIVED,
@@ -7669,7 +7741,8 @@ class BrowserAutofillManagerTest_MockAutofillAi
 
     test_api(autofill_manager())
         .OnLoadedServerPredictions(base::Base64Encode(server_response),
-                                   test::GetEncodedSignatures(*form_structure));
+                                   test::GetEncodedSignatures(*form_structure),
+                                   {form});
     return form.global_id();
   }
 

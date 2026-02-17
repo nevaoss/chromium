@@ -8,12 +8,14 @@
 #include "chrome/browser/ui/views/tabs/vertical/tab_collection_animating_layout_manager.h"
 #include "chrome/browser/ui/views/tabs/vertical/tab_collection_node.h"
 #include "chrome/browser/ui/views/tabs/vertical/vertical_dragged_tabs_container.h"
+#include "chrome/browser/ui/views/tabs/vertical/vertical_split_tab_view.h"
 #include "chrome/browser/ui/views/tabs/vertical/vertical_tab_drag_handler.h"
 #include "chrome/browser/ui/views/tabs/vertical/vertical_tab_group_view.h"
 #include "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_controller.h"
 #include "chrome/browser/ui/views/tabs/vertical/vertical_tab_view.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/gfx/geometry/rect.h"
+#include "ui/views/controls/scroll_view.h"
 #include "ui/views/layout/delegating_layout_manager.h"
 #include "ui/views/layout/layout_types.h"
 #include "ui/views/layout/proposed_layout.h"
@@ -35,8 +37,8 @@ VerticalUnpinnedTabContainerView::VerticalUnpinnedTabContainerView(
   collection_node->set_remove_child_from_node(base::BindRepeating(
       &TabCollectionAnimatingLayoutManager::AnimateAndDestroyChildView,
       base::Unretained(&layout_manager_.get())));
-  collection_node->set_detach_child_from_node(base::BindRepeating(
-      &TabCollectionAnimatingLayoutManager::RemoveChildViewForReparenting,
+  collection_node->set_attach_child_to_node(base::BindRepeating(
+      &TabCollectionAnimatingLayoutManager::AnimateAndReparentView,
       base::Unretained(&layout_manager_.get())));
 
   node_destroyed_subscription_ = collection_node_->RegisterWillDestroyCallback(
@@ -118,6 +120,12 @@ const VerticalTabDragHandler& VerticalUnpinnedTabContainerView::GetDragHandler()
   return collection_node_->GetController()->GetDragHandler();
 }
 
+views::ScrollView* VerticalUnpinnedTabContainerView::GetScrollViewForContainer()
+    const {
+  return views::ScrollView::GetScrollViewForContents(
+      const_cast<VerticalUnpinnedTabContainerView*>(this));
+}
+
 void VerticalUnpinnedTabContainerView::UpdateLayoutForDrag() {
   layout_manager_->ResetToTargetLayout();
 }
@@ -127,19 +135,18 @@ void VerticalUnpinnedTabContainerView::HandleTabDragInContainer(
   const views::ProposedLayout& target_layout = layout_manager_->target_layout();
   views::View* view_at_point =
       GetViewAtPoint(target_layout, point_in_container);
+  const TabCollectionNode* node = collection_node_;
   if (auto* tab_view = views::AsViewClass<VerticalTabView>(view_at_point)) {
-    tab_view->OnTabDragOver();
+    node = tab_view->collection_node();
   } else if (auto* group_view =
                  views::AsViewClass<VerticalTabGroupView>(view_at_point)) {
-    group_view->OnTabDragOver();
-  } else if (point_in_container.y() >= target_layout.host_size.height()) {
-    // If the drag exceeds the bounds all the children, then let the drag
-    // handler determine where to put the dragged tab(s) relative to this node.
-    GetDragHandler().DraggedTabsOverNode(*collection_node_);
-    // TODO(crbug.com/439963720): Consider having a maximum drag coordinate that
-    // will cause the dragged tabs to detach. For now, the dragged tab will
-    // remain attached as long as it falls in the bounds of this container.
+    node = group_view->collection_node();
+  } else if (auto* split_tab_view =
+                 views::AsViewClass<VerticalSplitTabView>(view_at_point)) {
+    node = split_tab_view->collection_node();
   }
+  CHECK(node);
+  GetDragHandler().HandleDraggedTabsOverNode(*node);
 }
 
 BEGIN_METADATA(VerticalUnpinnedTabContainerView)

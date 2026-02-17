@@ -142,10 +142,6 @@ class ContextualSearchboxHandler
       const std::optional<contextual_search::FileUploadErrorType>& error_type)
       override;
 
-  // SearchboxHandler:
-  std::string AutocompleteIconToResourceName(
-      const gfx::VectorIcon& icon) const override;
-
   // TabStripModelObserver:
   void OnTabStripModelChanged(
       TabStripModel* tab_strip_model,
@@ -164,10 +160,6 @@ class ContextualSearchboxHandler
       WindowOpenDisposition disposition,
       omnibox::ChromeAimEntryPoint aim_entry_point,
       std::map<std::string, std::string> additional_params);
-
-  // Returns the invocation source associated with the searchbox implementation.
-  virtual std::optional<lens::LensOverlayInvocationSource> GetInvocationSource()
-      const = 0;
 
   FRIEND_TEST_ALL_PREFIXES(ContextualSearchboxHandlerBrowserTest,
                            CreateTabPreviewEncodingOptions_NotScaled);

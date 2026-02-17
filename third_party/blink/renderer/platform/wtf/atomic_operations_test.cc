@@ -31,7 +31,7 @@ void TestCopyImpl(CopyMethod copy) {
   // Check buffer was copied correctly
   EXPECT_EQ(src, target_span.subspan(sizeof(size_t), buffer_size));
   // Check nothing after the buffer was changed
-  v = *reinterpret_cast<size_t*>(target_span.last(sizeof(size_t)).data());
+  base::byte_span_from_ref(v).copy_from(target_span.last(sizeof(size_t)));
   EXPECT_EQ(0u, v);
 }
 
@@ -135,7 +135,7 @@ void TestAtomicMemzero() {
   static const std::array<unsigned char, buffer_size> for_comparison = {};
   EXPECT_EQ(span.subspan(sizeof(size_t), buffer_size), for_comparison);
   // Check nothing after the buffer was changed
-  v = *reinterpret_cast<size_t*>(span.last(sizeof(size_t)).data());
+  base::byte_span_from_ref(v).copy_from(span.last(sizeof(size_t)));
   EXPECT_EQ(~size_t{0}, v);
 }
 

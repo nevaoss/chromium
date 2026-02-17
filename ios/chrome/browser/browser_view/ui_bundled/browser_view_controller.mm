@@ -319,9 +319,6 @@ const CGFloat kMultilineOmniboxAnimationDuration = 0.3f;
 // Command handler for find in page commands.
 @property(nonatomic, weak) id<FindInPageCommands> findInPageCommandsHandler;
 
-// Command handler for Gemini commands.
-@property(nonatomic, weak) id<BWGCommands> geminiHandler;
-
 // The FullscreenController.
 @property(nonatomic, assign) FullscreenController* fullscreenController;
 
@@ -1137,7 +1134,7 @@ const CGFloat kMultilineOmniboxAnimationDuration = 0.3f;
                               if (completion) {
                                 completion();
                               }
-                              [strongSelf showGeminiFloatyIfInvoked];
+                              [strongSelf.geminiHandler showFloatyIfInvoked];
                             }];
 }
 
@@ -1207,11 +1204,8 @@ const CGFloat kMultilineOmniboxAnimationDuration = 0.3f;
   // would be changed back to `kVisible` afterwards. Fix the bug and update the
   // visibility state.
 
-  __weak BrowserViewController* weakSelf = self;
+  [self.geminiHandler hideFloatyIfInvoked];
   void (^superCall)() = ^{
-    if (weakSelf) {
-      [weakSelf.geminiHandler hideFloatyIfInvoked];
-    }
     [super presentViewController:viewControllerToPresent
                         animated:flag
                       completion:finalCompletionHandler];
@@ -1684,18 +1678,6 @@ const CGFloat kMultilineOmniboxAnimationDuration = 0.3f;
       }];
 }
 
-// Helper method for dismissal block when attempting to show the Gemini floaty
-// if invoked.
-- (void)showGeminiFloatyIfInvoked {
-  // The dispatcher may not be fully connected during shutdown, so selectors may
-  // be unrecognized.
-  if (![self.geminiHandler respondsToSelector:@selector(showFloatyIfInvoked)]) {
-    return;
-  }
-
-  [self.geminiHandler showFloatyIfInvoked];
-}
-
 #pragma mark - Private Methods: UI Configuration, update and Layout
 
 // Starts or stops broadcasting the toolbar UI and main content UI depending on
@@ -1753,15 +1735,18 @@ const CGFloat kMultilineOmniboxAnimationDuration = 0.3f;
     if (isPrimaryToolbar && !CanShowTabStrip(self)) {
       self.primaryToolbarOffsetConstraint.constant = yOrigin;
     }
-    CGRect frame = [header.view frame];
-    frame.origin.y = yOrigin;
-    [header.view setFrame:frame];
-    if (header.behaviour != Overlap) {
-      height += CGRectGetHeight(frame);
-    }
 
     if (header.view == self.tabStripView) {
+      self.tabStripTopConstraint.constant = yOrigin;
       [self setNeedsStatusBarAppearanceUpdate];
+    } else {
+      CGRect frame = [header.view frame];
+      frame.origin.y = yOrigin;
+      [header.view setFrame:frame];
+    }
+
+    if (header.behaviour != Overlap) {
+      height += CGRectGetHeight(header.view.frame);
     }
   }
 }

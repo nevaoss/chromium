@@ -2733,8 +2733,8 @@ Called by update_use_counter_feature_enum.py.-->
   <int value="2399" label="ReadableStreamConstructor"/>
   <int value="2400" label="WritableStreamConstructor"/>
   <int value="2401" label="TransformStreamConstructor"/>
-  <int value="2402" label="NegativeBackgroundSize"/>
-  <int value="2403" label="NegativeMaskSize"/>
+  <int value="2402" label="OBSOLETE_NegativeBackgroundSize"/>
+  <int value="2403" label="OBSOLETE_NegativeMaskSize"/>
   <int value="2404" label="ClientHintsRtt_DEPRECATED"/>
   <int value="2405" label="ClientHintsDownlink_DEPRECATED"/>
   <int value="2406" label="ClientHintsEct_DEPRECATED"/>
@@ -8172,8 +8172,8 @@ Called by update_use_counter_css.py.-->
   <int value="853" label="rule-style"/>
   <int value="854" label="caret-shape"/>
   <int value="855" label="row-rule"/>
-  <int value="856" label="text-grow"/>
-  <int value="857" label="text-shrink"/>
+  <int value="856" label="text-grow (obsolete)"/>
+  <int value="857" label="text-shrink (obsolete)"/>
   <int value="858" label="rule"/>
   <int value="859" label="origin-trial-test-shorthand (obsolete)"/>
   <int value="860" label="corner-top-shape"/>
@@ -8240,6 +8240,7 @@ Called by update_use_counter_css.py.-->
   <int value="921" label="timeline-trigger-entry-range"/>
   <int value="922" label="timeline-trigger-active-range"/>
   <int value="923" label="grid-lanes-pack"/>
+  <int value="924" label="text-fit"/>
 </enum>
 
 <!-- LINT.ThenChange(//third_party/blink/public/mojom/use_counter/metrics/css_property_id.mojom:CSSSampleId) -->
@@ -8654,7 +8655,7 @@ Called by update_use_counter_feature_enum.py.-->
   <int value="278" label="Profiler"/>
   <int value="279" label="AsyncIterableStreams"/>
   <int value="280" label="ContainerScrollStateQueries"/>
-  <int value="281" label="DRAFT_ScopedViewTransitions"/>
+  <int value="281" label="ViewTransitionsElementScoped"/>
   <int value="282" label="AttributionReporting"/>
   <int value="283" label="CookieStore"/>
   <int value="284" label="Fencedframe"/>

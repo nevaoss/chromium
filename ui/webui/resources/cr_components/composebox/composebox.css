@@ -545,7 +545,7 @@ search-animated-glow {
 
 :host([searchbox-next-enabled][searchbox-layout-mode="Compact"]) {
   --expanded-border-radius: var(--cr-composebox-expanded-border-radius, 30px);
-  --input-bottom-spacing: 10px;
+  --input-bottom-spacing: 16px;
 }
 
 :host([searchbox-next-enabled][searchbox-layout-mode="Compact"]) #iconContainer {
@@ -571,7 +571,7 @@ search-animated-glow {
 }
 
 :host([searchbox-next-enabled][searchbox-layout-mode="Compact"]) #context {
-  margin-top: -48px;
+  margin-top: var(--cr-composebox-context-margin-top, -48px);
 }
 
 :host([expanding_][show-dropdown_][searchbox-next-enabled][searchbox-layout-mode="Compact"]) cr-composebox-dropdown {

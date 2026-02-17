@@ -30,6 +30,7 @@
 #import "ios/chrome/browser/composebox/ui/composebox_metrics_recorder.h"
 #import "ios/chrome/browser/composebox/ui/composebox_snackbar_presenter.h"
 #import "ios/chrome/browser/composebox/ui/composebox_ui_constants.h"
+#import "ios/chrome/browser/omnibox/ui/omnibox_text_input.h"
 #import "ios/chrome/browser/omnibox/ui/text_field_view_containing.h"
 #import "ios/chrome/browser/shared/public/features/features.h"
 #import "ios/chrome/browser/shared/ui/elements/extended_touch_target_button.h"
@@ -50,7 +51,7 @@ NSString* const kItemCellReuseIdentifier = @"ComposeboxInputItemCell";
 NSString* const kMainSectionIdentifier = @"MainSection";
 
 /// The corner radius for the input plate container.
-const CGFloat kInputPlateCornerRadius = 30.0f;
+const CGFloat kInputPlateCornerRadius = 24.0f;
 /// The shadow opacity for the input plate container.
 const float kInputPlateShadowOpacity = 0.2f;
 /// The shadow radius for the input plate container.
@@ -70,7 +71,7 @@ const CGFloat kButtonsStackViewSpacing = 6.0f;
 /// The spacing between the Lens and Voice buttons.
 const CGFloat kShortcutsSpacing = 16.0f;
 /// The spacing for the main vertical input plate stack view.
-const CGFloat kInputPlateStackViewSpacing = 10.0f;
+const CGFloat kInputPlateStackViewSpacing = 6.0f;
 /// The default vertical padding for the input plate. When the text view is the
 /// top most element the padding must be 0. Otherwise, it won't extend to the
 /// top edge when scrolling (crbug.com/464259064).
@@ -80,10 +81,21 @@ const CGFloat kInputPlateStackViewExpandedWithAttachmentsTopPadding = 10.0f;
 /// The bottom padding with the expanded input plate when AIM is available.
 const CGFloat kInputPlateStackViewExpandedBottomPadding = 10.0f;
 /// The horizontal padding for the input plate stack view.
-const CGFloat kInputPlateStackViewHorizontalPadding = 2.0f;
+const NSDirectionalEdgeInsets kInputPlateStackViewPadding = {.leading = 4.0f,
+                                                             .trailing = 2.0f};
 /// The side padding for the input plate stack view content (e.g. omnibox,
 /// toolbar).
-const CGFloat kInputPlateSidePadding = 8.0f;
+const NSDirectionalEdgeInsets kInputPlatePadding = {.leading = 8.0,
+                                                    .trailing = 5.0};
+
+/// The padding of the toolbar and carousel elements.
+///
+/// Note: While padding is offset to visually align the clear button's visual
+/// bounding box, all other UI elements maintain symmetrical centering.
+const UIEdgeInsets kToolbarPadding = {.left = kInputPlatePadding.leading,
+                                      .right = kInputPlatePadding.leading};
+const UIEdgeInsets kCarouselPadding = kToolbarPadding;
+
 /// The font size for the AIM mode button title.
 const CGFloat kAIMButtonFontSize = 14.0f;
 /// The point size for the symbols in the AIM mode button.
@@ -249,7 +261,7 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
 
   // --- Bottom Input Area ---
 
-  // Input plate container
+  // Input plate container.
   [self setupInputPlateContainerView];
   AddSameConstraints(_inputPlateContainerView, self.view);
 
@@ -260,6 +272,7 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
   _plusButton = [self createPlusButton];
   _sendButton = [self createSendButton];
   _aimButton = [self createAIMButton];
+  [self setupAIMButtonSizeConstraints];
   _imageGenerationButton = [self createImageGenerationButton];
   [self updatePlusButtonItems];
   [self setupCarouselContainer];
@@ -281,8 +294,7 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
   AddSameConstraintsToSidesWithInsets(
       _inputPlateStackView, _inputPlateInternalContainerView,
       (LayoutSides::kLeading | LayoutSides::kTrailing),
-      NSDirectionalEdgeInsetsMake(0, kInputPlateStackViewHorizontalPadding, 0,
-                                  kInputPlateStackViewHorizontalPadding));
+      kInputPlateStackViewPadding);
 
   [self updateInputPlateStackViewAnimated:NO];
 
@@ -342,7 +354,7 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
   _editView.translatesAutoresizingMaskIntoConstraints = NO;
   _editView.minimumHeight = kOmniboxMinHeight;
   _editView.accessibilityIdentifier = kComposeboxAccessibilityIdentifier;
-  [_omniboxContainer addSubview:editView];
+  [_omniboxContainer addSubview:_editView];
   [NSLayoutConstraint activateConstraints:@[
     [_editView.leadingAnchor
         constraintEqualToAnchor:_omniboxContainer.layoutMarginsGuide
@@ -468,18 +480,18 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
                    completion:nil];
 }
 
-/// Whether `view` is visible in `self.view` hierarchy.
-- (BOOL)isVisibleInHierarchy:(UIView*)view {
+/// Whether `view` is hidden in `self.view` hierarchy either intrinsically or
+/// indirectly by one of its superviews.
+- (BOOL)isHiddenInHierarchy:(UIView*)view {
   UIView* controllingVisibility = view;
   do {
     if (controllingVisibility.hidden) {
-      return NO;
-    }
-    if (controllingVisibility == self.view) {
       return YES;
     }
+
     controllingVisibility = controllingVisibility.superview;
-  } while (controllingVisibility);
+  } while (controllingVisibility && controllingVisibility != self.view);
+
   return NO;
 }
 
@@ -492,7 +504,7 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
     return;
   }
   // If hidden indirectly by a superview, early return without animation.
-  if (![self isVisibleInHierarchy:button]) {
+  if ([self isHiddenInHierarchy:button]) {
     return;
   }
   button.alpha = 0;
@@ -699,35 +711,15 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
 
 - (UIDropProposal*)dropInteraction:(UIDropInteraction*)interaction
                   sessionDidUpdate:(id<UIDropSession>)session {
-  if (session.items.count > _remainingAttachmentCapacity) {
-    return
-        [[UIDropProposal alloc] initWithDropOperation:UIDropOperationForbidden];
-  }
-
-  BOOL willAllowPDFDrop = [self willAllowPDFDrop:session];
-
-  // TODO(crbug.com/473569401): Introduce drag and drop for images.
-  BOOL dropWillBeAllowed = willAllowPDFDrop;
-
   return [[UIDropProposal alloc]
-      initWithDropOperation:dropWillBeAllowed ? UIDropOperationCopy
-                                              : UIDropOperationForbidden];
+      initWithDropOperation:[self isDropAllowed:session]
+                                ? UIDropOperationCopy
+                                : UIDropOperationForbidden];
 }
 
 - (void)dropInteraction:(UIDropInteraction*)interaction
             performDrop:(id<UIDropSession>)session {
-  // Drop each eligible dragged item into the Composebox.
-  for (UIDragItem* item in session.items) {
-    if ([self willAllowPDFDrop:session] &&
-        [item.itemProvider
-            hasItemConformingToTypeIdentifier:UTTypePDF.identifier]) {
-      [self performDropForPDF:item.itemProvider];
-    }
-    // TODO(crbug.com/473569401): Introduce `else-if` to enable drag and drop
-    // for images.
-  }
-  // Drop complete.
-  _dragSessionWithinInputPlate = NO;
+  [self performDrop:session];
 }
 
 - (void)dropInteraction:(UIDropInteraction*)interaction
@@ -737,23 +729,7 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
 
 - (void)dropInteraction:(UIDropInteraction*)interaction
           sessionDidEnd:(id<UIDropSession>)session {
-  CHECK(self.delegate);
-
-  if (!_dragSessionWithinInputPlate) {
-    return;
-  }
-
-  if (session.items.count > _remainingAttachmentCapacity) {
-    [self.delegate didFailToAttachDueToAttachmentLimit:self];
-    return;
-  }
-
-  if (_imageGenerationEnabled &&
-      ![session.items.firstObject.itemProvider
-          hasItemConformingToTypeIdentifier:UTTypeImage.identifier]) {
-    [self.delegate didFailToAttachDueToAttachmentLimit:self];
-    return;
-  }
+  [self dropSessionDidEnd:session];
 }
 
 #pragma mark - UICollectionViewDelegateFlowLayout
@@ -1050,11 +1026,15 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
   [button setImage:image forState:UIControlStateNormal];
   button.translatesAutoresizingMaskIntoConstraints = NO;
 
-  [button.widthAnchor constraintEqualToConstant:kGenericButtonWidth].active =
-      YES;
-  [button.heightAnchor
-      constraintGreaterThanOrEqualToConstant:kGenericButtonHeight]
-      .active = YES;
+  NSLayoutConstraint* widthConstraint =
+      [button.widthAnchor constraintEqualToConstant:kGenericButtonWidth];
+  widthConstraint.active = YES;
+  widthConstraint.priority = UILayoutPriorityRequired - 1;
+  NSLayoutConstraint* heightConstraint = [button.heightAnchor
+      constraintGreaterThanOrEqualToConstant:kGenericButtonHeight];
+  heightConstraint.active = YES;
+  heightConstraint.priority = UILayoutPriorityRequired - 1;
+
   button.tintColor = [UIColor colorNamed:kTextPrimaryColor];
   return button;
 }
@@ -1101,6 +1081,16 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
   button.configuration = config;
 
   return button;
+}
+
+- (void)setupAIMButtonSizeConstraints {
+  self.aimButtonWidthConstraint = [_aimButton.widthAnchor
+      constraintEqualToConstant:kAIMButtonDisabledWidth];
+
+  [NSLayoutConstraint activateConstraints:@[
+    [_aimButton.heightAnchor constraintEqualToConstant:kAIMButtonHeight],
+    self.aimButtonWidthConstraint
+  ]];
 }
 
 /// Creates the plus button that contains the menu.
@@ -1249,12 +1239,6 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
 - (UIView*)createToolbarView {
   [self updateAIMButtonAppearance];
 
-  [_aimButton.heightAnchor constraintEqualToConstant:kAIMButtonHeight].active =
-      YES;
-  self.aimButtonWidthConstraint = [_aimButton.widthAnchor
-      constraintEqualToConstant:kAIMButtonDisabledWidth];
-  self.aimButtonWidthConstraint.active = YES;
-
   // Horizontal stack view for buttons
   UIView* spacerView = [[UIView alloc] init];
   [spacerView setContentHuggingPriority:UILayoutPriorityFittingSizeLevel
@@ -1274,8 +1258,7 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
         constraintEqualToConstant:kButtonStackViewDimension]
   ]];
   buttonsStackView.layoutMarginsRelativeArrangement = YES;
-  buttonsStackView.layoutMargins =
-      UIEdgeInsetsMake(0, kInputPlateSidePadding, 0, kInputPlateSidePadding);
+  buttonsStackView.layoutMargins = kToolbarPadding;
   return buttonsStackView;
 }
 
@@ -1295,6 +1278,8 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
                 [weakSelf.delegate
                     composeboxViewControllerDidTapGalleryButton:weakSelf];
               }];
+  galleryAction.accessibilityIdentifier =
+      kComposeboxGalleryActionAccessibilityIdentifier;
   UIAction* cameraAction = [UIAction
       actionWithTitle:l10n_util::GetNSString(IDS_IOS_COMPOSEBOX_CAMERA_ACTION)
                 image:DefaultSymbolWithPointSize(kSystemCameraSymbol,
@@ -1304,6 +1289,8 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
                 [weakSelf.delegate
                     composeboxViewControllerDidTapCameraButton:weakSelf];
               }];
+  cameraAction.accessibilityIdentifier =
+      kComposeboxCameraActionAccessibilityIdentifier;
 
   UIAction* fileAction = [UIAction
       actionWithTitle:l10n_util::GetNSString(IDS_IOS_COMPOSEBOX_FILES_ACTION)
@@ -1314,6 +1301,8 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
                 [weakSelf.delegate
                     composeboxViewControllerDidTapFileButton:weakSelf];
               }];
+  fileAction.accessibilityIdentifier =
+      kComposeboxAttachFileActionAccessibilityIdentifier;
 
   UIAction* attachCurrentTabAction =
       [UIAction actionWithTitle:l10n_util::GetNSString(
@@ -1326,6 +1315,8 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
                         handler:^(UIAction* action) {
                           [weakSelf.mutator attachCurrentTabContent];
                         }];
+  attachCurrentTabAction.accessibilityIdentifier =
+      kComposeboxAttachCurrentTabActionAccessibilityIdentifier;
 
   UIAction* selectTabsAction = [UIAction
       actionWithTitle:l10n_util::GetNSString(
@@ -1336,6 +1327,8 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
               handler:^(UIAction* action) {
                 [weakSelf handleAttachTabs];
               }];
+  selectTabsAction.accessibilityIdentifier =
+      kComposeboxSelectTabsActionAccessibilityIdentifier;
 
   UIAction* aimAction = [UIAction
       actionWithTitle:l10n_util::GetNSString(IDS_IOS_COMPOSEBOX_AIM_ACTION)
@@ -1361,7 +1354,7 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
                           [weakSelf handleImageGenTappedFromToolMenu];
                         }];
   createImageAction.accessibilityIdentifier =
-      kComposeboxCreateImageActionAccessibilityIdentifier;
+      kComposeboxImageGenerationActionAccessibilityIdentifier;
 
   if (_imageGenerationEnabled) {
     [createImageAction setState:UIMenuElementStateOn];
@@ -1465,8 +1458,7 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
   // The outer view has minimal padding to allow the carousel space for multiple
   // attachments when they overflow. This ensures that there's still some
   // padding when the carousel is scrolled to either end.
-  _carouselView.contentInset =
-      UIEdgeInsetsMake(0, kInputPlateSidePadding, 0, kInputPlateSidePadding);
+  _carouselView.contentInset = kCarouselPadding;
   _carouselView.showsHorizontalScrollIndicator = NO;
 
   _carouselContainer = [[UIView alloc] init];
@@ -1532,6 +1524,9 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
                      _inputPlateContainerView);
 
   [self updateDepthShadowAppearance];
+
+  // TODO(crbug.com/475834813): Add a glow effect when dragging an item
+  // over the composebox.
   [_inputPlateContainerView
       addInteraction:[[UIDropInteraction alloc] initWithDelegate:self]];
   [self.view addSubview:_inputPlateContainerView];
@@ -1572,8 +1567,8 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
     _bottomPaddingConstraint.constant = -kInputPlateStackViewVerticalPadding;
     _inputPlateStackView.layoutMarginsRelativeArrangement = YES;
     // Ensure we do not lose the margins on the sides when in compact mode.
-    _inputPlateStackView.layoutMargins =
-        UIEdgeInsetsMake(0, kInputPlateSidePadding, 0, kInputPlateSidePadding);
+    _inputPlateStackView.layoutMargins = UIEdgeInsetsMake(
+        0, kInputPlatePadding.leading, 0, kInputPlatePadding.trailing);
     // Margins are applied on the input plate, remove the margins on the
     // omnibox.
     _omniboxContainer.directionalLayoutMargins = NSDirectionalEdgeInsetsZero;
@@ -1589,8 +1584,7 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
     _inputPlateInternalContainerView.layer.cornerRadius =
         kInputPlateCornerRadius;
     _inputPlateStackView.layoutMarginsRelativeArrangement = NO;
-    _omniboxContainer.directionalLayoutMargins = NSDirectionalEdgeInsetsMake(
-        0, kInputPlateSidePadding, 0, kInputPlateSidePadding);
+    _omniboxContainer.directionalLayoutMargins = kInputPlatePadding;
   }
   [self updateInputPlateStackViewTopConstraint];
 }
@@ -1693,15 +1687,63 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
   return button;
 }
 
+- (void)dropSessionDidEnd:(id<UIDropSession>)session {
+  CHECK(self.delegate);
+
+  if (!_dragSessionWithinInputPlate) {
+    return;
+  }
+
+  if ([self isDropAllowed:session]) {
+    return;
+  }
+
+  // Drop to attach was not allowed because the set of items dropped was not
+  // valid.
+  [self.delegate didFailToAttachDueToIneligibleAttachments:self];
+}
+
+/// Returns whether a drop action will be allowed for a given drop session.
+- (BOOL)isDropAllowed:(id<UIDropSession>)session {
+  if (session.items.count > _remainingAttachmentCapacity) {
+    // Text drops are always allowed even if the attachment capacity is reached.
+    return [self willAllowTextDrop:session];
+  }
+
+  BOOL willAllowPDFDrop = [self willAllowPDFDrop:session];
+  BOOL willAllowImageDrop = [self willAllowImageDrop:session];
+  BOOL willAllowTextDrop = [self willAllowTextDrop:session];
+
+  return willAllowPDFDrop || willAllowImageDrop || willAllowTextDrop;
+}
+
+/// Returns whether a text drop will be allowed.
+- (BOOL)willAllowTextDrop:(id<UIDropSession>)session {
+  return
+      [session hasItemsConformingToTypeIdentifiers:@[ UTTypeText.identifier ]];
+}
+
+/// Returns whether an image drop will be allowed based on the Composebox mode,
+/// whether a drag and drop action is allowed, and whether there is an image in
+/// the drop session.
+- (BOOL)willAllowImageDrop:(id<UIDropSession>)session {
+  if (_galleryActionsDisabled || _galleryActionsHidden) {
+    return NO;
+  }
+
+  if (![session
+          hasItemsConformingToTypeIdentifiers:@[ UTTypeImage.identifier ]]) {
+    return NO;
+  }
+
+  return YES;
+}
+
 /// Returns whether a PDF drop will be allowed based on the Composebox mode,
 /// whether a drag and drop action is allowed, and whether there is a PDF in the
 /// drop session.
 - (BOOL)willAllowPDFDrop:(id<UIDropSession>)session {
-  if (_attachFileActionsDisabled) {
-    return NO;
-  }
-
-  if (_attachFileActionsHidden) {
+  if (_attachFileActionsDisabled || _attachFileActionsHidden) {
     return NO;
   }
 
@@ -1711,6 +1753,54 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
   }
 
   return YES;
+}
+
+/// Performs a drop action for a given drop session.
+- (void)performDrop:(id<UIDropSession>)session {
+  // Drop each eligible dragged item into the Composebox.
+  for (UIDragItem* item in session.items) {
+    if ([self willAllowPDFDrop:session] &&
+        [item.itemProvider
+            hasItemConformingToTypeIdentifier:UTTypePDF.identifier]) {
+      [self performDropForPDF:item.itemProvider];
+    } else if ([self willAllowImageDrop:session] &&
+               [item.itemProvider
+                   hasItemConformingToTypeIdentifier:UTTypeImage.identifier]) {
+      [self performDropForImage:item.itemProvider];
+    } else if ([self willAllowTextDrop:session] &&
+               [item.itemProvider
+                   hasItemConformingToTypeIdentifier:UTTypeText.identifier]) {
+      [self performDropForText:item.itemProvider];
+    }
+  }
+  // Drop complete.
+  _dragSessionWithinInputPlate = NO;
+}
+
+/// Performs a drop for dragged text from a given `itemProvider`.
+- (void)performDropForText:(NSItemProvider*)itemProvider {
+  CHECK([itemProvider hasItemConformingToTypeIdentifier:UTTypeText.identifier]);
+
+  __weak __typeof(self) weakSelf = self;
+  [itemProvider loadObjectOfClass:[NSString class]
+                completionHandler:^(NSString* text, NSError* error) {
+                  [weakSelf handleTextDrop:text error:error];
+                }];
+}
+
+/// Performs a drop for a dragged image file from a given `itemProvider`.
+- (void)performDropForImage:(NSItemProvider*)itemProvider {
+  CHECK(self.mutator);
+  CHECK(
+      [itemProvider hasItemConformingToTypeIdentifier:UTTypeImage.identifier]);
+
+  // TODO(crbug.com/475203545): Prevent duplicate items being added. The file
+  // picker and the drag-and-drop interfaces have different schemes for
+  // generating asset IDs. They should be common, in order to prevent the same
+  // file being added several times. This should be updated so that asset IDs
+  // generated during drag-and-drop match for the same image being dropped.
+  [self.mutator processImageItemProvider:itemProvider
+                                 assetID:[NSUUID UUID].UUIDString];
 }
 
 /// Performs a drop for a dragged PDF file from a given `itemProvider`.
@@ -1725,6 +1815,23 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
                             }];
 }
 
+- (void)handleTextDrop:(NSString*)text error:(NSError*)error {
+  CHECK(self.mutator);
+
+  if (!text) {
+    return;
+  }
+
+  if (error) {
+    return;
+  }
+
+  __weak __typeof(self) weakSelf = self;
+  dispatch_async(dispatch_get_main_queue(), ^{
+    [weakSelf.mutator processText:text];
+  });
+}
+
 /// Helper for `-performDropForPDF`. Handles a drop action for a PDF file.
 - (void)handlePDFDrop:(NSURL*)url error:(NSError*)error {
   CHECK(self.mutator);
@@ -1732,6 +1839,7 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
   if (!url) {
     return;
   }
+
   if (error) {
     return;
   }
@@ -1758,7 +1866,6 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
   }
 
   __weak __typeof(self) weakSelf = self;
-
   dispatch_async(dispatch_get_main_queue(), ^{
     [weakSelf.mutator processPDFFileURL:pdfURL];
   });

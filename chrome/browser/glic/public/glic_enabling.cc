@@ -257,27 +257,20 @@ GlicEnabling::ProfileEnablement GlicEnabling::EnablementForProfile(
     // fallback to can_use_model_execution_features().
     signin::Tribool capability_value =
         primary_account.capabilities.can_use_model_execution_features();
-#if !BUILDFLAG(IS_ANDROID)  // TODO: Re-enable after crrev.com/c/7281467
     if (base::FeatureList::IsEnabled(
             switches::kGlicEligibilitySeparateAccountCapability) &&
         (CanUseGeminiInChrome(primary_account.capabilities) !=
          signin::Tribool::kUnknown)) {
       capability_value = CanUseGeminiInChrome(primary_account.capabilities);
     }
-#endif
     result.primary_account_not_capable =
         (capability_value != signin::Tribool::kTrue);
 
     // If the feature is overridden by a field trial, and the user's eligibility
     // is known and different for the two capabilities, add them to a synthetic
     // trial.
-    base::FieldTrial* field_trial =
-#if BUILDFLAG(IS_ANDROID)
-        nullptr;
-#else  // TODO: Re-enable after crrev.com/c/7281467
-        base::FeatureList::GetFieldTrial(
-            switches::kGlicEligibilitySeparateAccountCapability);
-#endif
+    base::FieldTrial* field_trial = base::FeatureList::GetFieldTrial(
+        switches::kGlicEligibilitySeparateAccountCapability);
     if (field_trial &&
         (CanUseGeminiInChrome(primary_account.capabilities) !=
          signin::Tribool::kUnknown) &&
@@ -436,8 +429,7 @@ mojom::ProfileReadyState GlicEnabling::GetProfileReadyState(Profile* profile) {
     return mojom::ProfileReadyState::kIneligible;
   }
 
-  if (enablement.not_consented &&
-      !base::FeatureList::IsEnabled(features::kGlicTrustFirstOnboarding)) {
+  if (enablement.not_consented && !IsTrustFirstOnboardingEnabled()) {
     return mojom::ProfileReadyState::kIneligible;
   }
 
@@ -479,6 +471,11 @@ void GlicEnabling::OnGlicSettingsPolicyChanged() {
 bool GlicEnabling::IsUnifiedFreEnabled(Profile* profile) {
   return IsMultiInstanceEnabled() &&
          base::FeatureList::IsEnabled(features::kGlicUnifiedFreScreen);
+}
+
+bool GlicEnabling::IsTrustFirstOnboardingEnabled() {
+  return IsMultiInstanceEnabled() &&
+         base::FeatureList::IsEnabled(features::kGlicTrustFirstOnboarding);
 }
 
 bool GlicEnabling::IsMultiInstanceEnabledByFlags() {

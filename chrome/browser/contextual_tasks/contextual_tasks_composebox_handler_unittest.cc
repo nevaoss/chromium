@@ -4,7 +4,6 @@
 
 #include "chrome/browser/contextual_tasks/contextual_tasks_composebox_handler.h"
 
-
 #include <memory>
 #include <utility>
 #include <vector>
@@ -25,6 +24,7 @@
 #include "chrome/browser/ui/contextual_search/tab_contextualization_controller.h"
 #include "chrome/browser/ui/lens/lens_search_controller.h"
 #include "chrome/browser/ui/tabs/public/tab_features.h"
+#include "chrome/browser/ui/tabs/tab_list_interface.h"
 #include "chrome/browser/ui/webui/searchbox/searchbox_test_utils.h"
 #include "chrome/browser/ui/webui/webui_embedding_context.h"
 #include "chrome/test/base/browser_with_test_window_test.h"
@@ -79,7 +79,8 @@ class LocalContextualSearchboxHandlerTestHarness
   void SetUp() override {
     BrowserWithTestWindowTest::SetUp();
     AddTab(browser(), GURL(url::kAboutBlankURL));
-    web_contents_ = browser()->tab_strip_model()->GetActiveWebContents();
+    web_contents_ =
+        TabListInterface::From(browser())->GetActiveTab()->GetContents();
   }
 
  protected:
@@ -203,7 +204,8 @@ class ContextualTasksComposeboxHandlerTest
     contextual_session_handle->CheckSearchContentSharingSettings(
         profile()->GetPrefs());
     session_handle_ =
-        service_->GetSession(contextual_session_handle->session_id());
+        service_->GetSession(contextual_session_handle->session_id(),
+                             /*invocation_source=*/std::nullopt);
     ContextualSearchWebContentsHelper::GetOrCreateForWebContents(web_contents())
         ->SetTaskSession(std::nullopt, std::move(contextual_session_handle));
 
@@ -236,7 +238,7 @@ class ContextualTasksComposeboxHandlerTest
 
     // Setup MockTabContextualizationController
     tabs::TabInterface* active_tab =
-        browser()->tab_strip_model()->GetActiveTab();
+        TabListInterface::From(browser())->GetActiveTab();
     // Clear existing controller to avoid UserData collision
     active_tab->GetTabFeatures()->SetTabContextualizationControllerForTesting(
         nullptr);
@@ -303,7 +305,7 @@ TEST_F(ContextualTasksComposeboxHandlerTest, SubmitQuery) {
 TEST_F(ContextualTasksComposeboxHandlerTest, CreateAndSendQueryMessage) {
   std::string kQuery = "direct query";
   EXPECT_CALL(*mock_ui_, GetTaskId())
-      .WillOnce(testing::ReturnRefOfCopy(std::optional<base::Uuid>()));
+      .WillRepeatedly(testing::ReturnRefOfCopy(std::optional<base::Uuid>()));
   EXPECT_CALL(*mock_controller_, CreateClientToAimRequest(testing::_))
       .WillOnce([&kQuery](std::unique_ptr<
                           contextual_search::ContextualSearchContextController::
@@ -323,7 +325,8 @@ TEST_F(ContextualTasksComposeboxHandlerTest,
   std::string kQuery = "recontextualize query";
   base::Uuid task_id = base::Uuid::GenerateRandomV4();
   EXPECT_CALL(*mock_ui_, GetTaskId())
-      .WillOnce(testing::ReturnRefOfCopy(std::optional<base::Uuid>(task_id)));
+      .WillRepeatedly(
+          testing::ReturnRefOfCopy(std::optional<base::Uuid>(task_id)));
 
   // Setup context with expired tab.
   contextual_tasks::ContextualTask task(task_id);
@@ -332,7 +335,8 @@ TEST_F(ContextualTasksComposeboxHandlerTest,
   // The default title for about:blank is "about:blank".
   std::string kTitle = "about:blank";
 
-  contextual_tasks::UrlResource resource(kUrl);
+  contextual_tasks::UrlResource resource(
+      kUrl, contextual_tasks::ResourceType::kWebpage);
   resource.title = kTitle;
   resource.tab_id = session_id;
   task.AddUrlResource(resource);
@@ -409,7 +413,8 @@ TEST_F(ContextualTasksComposeboxHandlerTest,
   std::string kQuery = "recontextualize query";
   base::Uuid task_id = base::Uuid::GenerateRandomV4();
   EXPECT_CALL(*mock_ui_, GetTaskId())
-      .WillOnce(testing::ReturnRefOfCopy(std::optional<base::Uuid>(task_id)));
+      .WillRepeatedly(
+          testing::ReturnRefOfCopy(std::optional<base::Uuid>(task_id)));
 
   // Setup context with uploaded tab (not expired).
   contextual_tasks::ContextualTask task(task_id);
@@ -417,7 +422,8 @@ TEST_F(ContextualTasksComposeboxHandlerTest,
   GURL kUrl("about:blank");
   std::string kTitle = "about:blank";
 
-  contextual_tasks::UrlResource resource(kUrl);
+  contextual_tasks::UrlResource resource(
+      kUrl, contextual_tasks::ResourceType::kWebpage);
   resource.title = kTitle;
   resource.tab_id = session_id;
   task.AddUrlResource(resource);
@@ -502,12 +508,14 @@ TEST_F(ContextualTasksComposeboxHandlerTest,
   std::string kQuery = "valid tab query";
   base::Uuid task_id = base::Uuid::GenerateRandomV4();
   EXPECT_CALL(*mock_ui_, GetTaskId())
-      .WillOnce(testing::ReturnRefOfCopy(std::optional<base::Uuid>(task_id)));
+      .WillRepeatedly(
+          testing::ReturnRefOfCopy(std::optional<base::Uuid>(task_id)));
 
   // Setup context with uploaded tab
   contextual_tasks::ContextualTask task(task_id);
   SessionID session_id = sessions::SessionTabHelper::IdForTab(web_contents());
-  contextual_tasks::UrlResource resource(GURL("about:blank"));
+  contextual_tasks::UrlResource resource(
+      GURL("about:blank"), contextual_tasks::ResourceType::kWebpage);
   resource.title = "about:blank";
   resource.tab_id = session_id;
   task.AddUrlResource(resource);
@@ -597,12 +605,14 @@ TEST_F(ContextualTasksComposeboxHandlerTest,
   std::string kQuery = "query with unrelated active tab";
   base::Uuid task_id = base::Uuid::GenerateRandomV4();
   EXPECT_CALL(*mock_ui_, GetTaskId())
-      .WillOnce(testing::ReturnRefOfCopy(std::optional<base::Uuid>(task_id)));
+      .WillRepeatedly(
+          testing::ReturnRefOfCopy(std::optional<base::Uuid>(task_id)));
 
   // Setup context with NO tabs (or just not the active one).
   contextual_tasks::ContextualTask task(task_id);
   // Add a resource that is NOT the active tab.
-  contextual_tasks::UrlResource resource(GURL("http://example.com"));
+  contextual_tasks::UrlResource resource(
+      GURL("http://example.com"), contextual_tasks::ResourceType::kWebpage);
   resource.tab_id = SessionID::NewUnique();  // Random ID
   task.AddUrlResource(resource);
 
@@ -647,7 +657,8 @@ TEST_F(ContextualTasksComposeboxHandlerTest,
   std::string kQuery = "query with url mismatch";
   base::Uuid task_id = base::Uuid::GenerateRandomV4();
   EXPECT_CALL(*mock_ui_, GetTaskId())
-      .WillOnce(testing::ReturnRefOfCopy(std::optional<base::Uuid>(task_id)));
+      .WillRepeatedly(
+          testing::ReturnRefOfCopy(std::optional<base::Uuid>(task_id)));
 
   // Setup context with matching SessionID but mismatching URL.
   // Active tab is at about:blank. Resource is at http://example.com.
@@ -656,7 +667,8 @@ TEST_F(ContextualTasksComposeboxHandlerTest,
   GURL kUrl("http://example.com");
   std::u16string kTitle = u"Example Title";
 
-  contextual_tasks::UrlResource resource(kUrl);
+  contextual_tasks::UrlResource resource(
+      kUrl, contextual_tasks::ResourceType::kWebpage);
   resource.title = base::UTF16ToUTF8(kTitle);
   resource.tab_id = session_id;
   task.AddUrlResource(resource);
@@ -702,7 +714,8 @@ TEST_F(ContextualTasksComposeboxHandlerTest,
   std::string kQuery = "recontextualize query";
   base::Uuid task_id = base::Uuid::GenerateRandomV4();
   EXPECT_CALL(*mock_ui_, GetTaskId())
-      .WillOnce(testing::ReturnRefOfCopy(std::optional<base::Uuid>(task_id)));
+      .WillRepeatedly(
+          testing::ReturnRefOfCopy(std::optional<base::Uuid>(task_id)));
 
   // Setup context with uploaded tab.
   contextual_tasks::ContextualTask task(task_id);
@@ -710,7 +723,8 @@ TEST_F(ContextualTasksComposeboxHandlerTest,
   GURL kUrl("about:blank");
   std::string kTitle = "about:blank";
 
-  contextual_tasks::UrlResource resource(kUrl);
+  contextual_tasks::UrlResource resource(
+      kUrl, contextual_tasks::ResourceType::kWebpage);
   resource.title = kTitle;
   resource.tab_id = session_id;
   task.AddUrlResource(resource);
@@ -792,19 +806,22 @@ TEST_F(ContextualTasksComposeboxHandlerTest,
   base::RunLoop().RunUntilIdle();
 }
 
-TEST_F(ContextualTasksComposeboxHandlerTest,
-       CreateAndSendQueryMessage_NoRecontextualizationIfScreenshotUnchanged_SkBitmap) {
+TEST_F(
+    ContextualTasksComposeboxHandlerTest,
+    CreateAndSendQueryMessage_NoRecontextualizationIfScreenshotUnchanged_SkBitmap) {
   ASSERT_NE(mock_contextual_tasks_service_ptr_, nullptr)
       << "Mock controller is NULL!";
   std::string kQuery = "valid tab query";
   base::Uuid task_id = base::Uuid::GenerateRandomV4();
   EXPECT_CALL(*mock_ui_, GetTaskId())
-      .WillOnce(testing::ReturnRefOfCopy(std::optional<base::Uuid>(task_id)));
+      .WillRepeatedly(
+          testing::ReturnRefOfCopy(std::optional<base::Uuid>(task_id)));
 
   // Setup context with uploaded tab
   contextual_tasks::ContextualTask task(task_id);
   SessionID session_id = sessions::SessionTabHelper::IdForTab(web_contents());
-  contextual_tasks::UrlResource resource(GURL("about:blank"));
+  contextual_tasks::UrlResource resource(
+      GURL("about:blank"), contextual_tasks::ResourceType::kWebpage);
   resource.title = "about:blank";
   resource.tab_id = session_id;
   task.AddUrlResource(resource);
@@ -992,7 +1009,8 @@ TEST_F(ContextualTasksComposeboxHandlerTest, AddTabContext_Delayed) {
   std::string kQuery = "delayed tab query";
   base::Uuid task_id = base::Uuid::GenerateRandomV4();
   EXPECT_CALL(*mock_ui_, GetTaskId())
-      .WillOnce(testing::ReturnRefOfCopy(std::optional<base::Uuid>(task_id)));
+      .WillRepeatedly(
+          testing::ReturnRefOfCopy(std::optional<base::Uuid>(task_id)));
 
   // Setup context.
   contextual_tasks::ContextualTask task(task_id);
@@ -1033,7 +1051,8 @@ TEST_F(ContextualTasksComposeboxHandlerTest, AddTabContext_Delayed) {
   // We need to mock the tab handle resolution. Since we can't easily mock
   // TabHandle::Get() for arbitrary IDs in this test harness without more setup,
   // we will use the active tab's ID which IS set up.
-  tabs::TabInterface* active_tab = browser()->tab_strip_model()->GetActiveTab();
+  tabs::TabInterface* active_tab =
+      TabListInterface::From(browser())->GetActiveTab();
   int32_t active_tab_id = active_tab->GetHandle().raw_value();
 
   // Reset and try again with active tab ID.
@@ -1078,7 +1097,8 @@ TEST_F(ContextualTasksComposeboxHandlerTest, DeleteContext_Delayed) {
   std::string kQuery = "delete context query";
   base::Uuid task_id = base::Uuid::GenerateRandomV4();
   EXPECT_CALL(*mock_ui_, GetTaskId())
-      .WillOnce(testing::ReturnRefOfCopy(std::optional<base::Uuid>(task_id)));
+      .WillRepeatedly(
+          testing::ReturnRefOfCopy(std::optional<base::Uuid>(task_id)));
 
   // Setup context.
   contextual_tasks::ContextualTask task(task_id);
@@ -1103,7 +1123,8 @@ TEST_F(ContextualTasksComposeboxHandlerTest, DeleteContext_Delayed) {
                   callback) { std::move(callback).Run(std::move(context)); });
 
   // 1. Add delayed tab context.
-  tabs::TabInterface* active_tab = browser()->tab_strip_model()->GetActiveTab();
+  tabs::TabInterface* active_tab =
+      TabListInterface::From(browser())->GetActiveTab();
   int32_t active_tab_id = active_tab->GetHandle().raw_value();
   std::optional<base::UnguessableToken> token_opt;
   base::MockCallback<ContextualSearchboxHandler::AddTabContextCallback>

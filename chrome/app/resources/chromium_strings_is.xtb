@@ -534,6 +534,9 @@ Sumir eiginleikar kunna að verða óaðgengilegir. Tilgreindu aðra prófílam�
 <translation id="6901631050894301805">Stilltu Chromium sem sjálfgefinn vafra og festu hann við forritastikuna</translation>
 <translation id="6909503629704372277">&amp;Stjórna Chromium-prófílum</translation>
 <translation id="6934579572334859869">Spyrja Myndaleit um þessa mynd</translation>
+<translation id="6948031725951063910">Þú náðir hámarksfjölda bókamerkja í Chromium (<ph name="BOOKMARK_LIMIT" />) svo að sum bókamerkin þín hafa ekki verið vistuð á Google-reikningnum þínum enn sem komið er.
+
+Ekki er hægt að vista ný bókamerki á reikningnum þínum fyrr en þú eyðir einhverjum. Ef þú skráir þig út núna verður óvistuðum bókamerkjum eytt.</translation>
 <translation id="6964305034639999644">Opna tengil í &amp;huliðsglugga í Chromium</translation>
 <translation id="6965382102122355670">Í lagi</translation>
 <translation id="6978145336957848883">Léleg aðgangsorð eru þau sem auðvelt er að giska á. Leyfðu Chromium <ph name="BEGIN_LINK" />að búa til traust aðgangsorð fyrir þig og muna þau<ph name="END_LINK" />.</translation>
@@ -635,6 +638,7 @@ Chromium getur ekki endurheimt stillingarnar þínar.</translation>
 <translation id="8118331347066725040">Senda ábendingu vegna leitar með Linsu</translation>
 <translation id="8133124826068723441">ChromiumOS gat ekki samstillt gögnin þín vegna þess að samstilling er ekki í boði fyrir lénið þitt.</translation>
 <translation id="813913629614996137">Frumstillir...</translation>
+<translation id="8164014945047474187">Viðbótarþjónustuskilmálar Chromium</translation>
 <translation id="81770708095080097">Þessi skrá er hættuleg og þess vegna útilokaði Chromium hana.</translation>
 <translation id="8177472873527554730">Ekki tókst að finna efni á síðu</translation>
 <translation id="8200109504272824693">Sláðu inn aðgangsorðið þitt til að nota og vista Chromium-gögn á reikningnum þínum, <ph name="USER_EMAIL" /></translation>
@@ -702,6 +706,7 @@ Chromium getur ekki endurheimt stillingarnar þínar.</translation>
 <translation id="8880203542552872219">Ef svo er skaltu breyta vistaða aðgangsorðinu í Chromium í nýja aðgangsorðið.</translation>
 <translation id="8891709362986793894">Fyrirtækið þitt krefst þess að þú skráir þig inn í Chromium</translation>
 <translation id="8907580949721785412">Chromium er að reyna að sýna aðgangsorð. Sláðu inn Windows-aðgangsorðið þitt til að heimila þetta.</translation>
+<translation id="8932992523185907506">Chromium er ekki lengur sjálfgefni vafrinn þinn. Gera Chromium að sjálfgefnum vafra?</translation>
 <translation id="8941642502866065432">Ekki var hægt að uppfæra Chromium</translation>
 <translation id="897581876605952338">Lógó Chromium Enterprise</translation>
 <translation id="8981150672034878610">Gat ekki ræst Chromium þar sem eitthvað fór úrskeiðis við að opna prófílinn þinn Prófaðu að endurræsa Chromium.</translation>

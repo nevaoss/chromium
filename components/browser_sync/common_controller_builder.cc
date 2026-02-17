@@ -63,6 +63,7 @@
 #include "components/sharing_message/sharing_message_bridge.h"
 #include "components/sharing_message/sharing_message_data_type_controller.h"
 #include "components/signin/public/base/signin_switches.h"
+#include "components/skills/features.h"
 #include "components/skills/public/skills_service.h"
 #include "components/sync/base/data_type.h"
 #include "components/sync/base/features.h"
@@ -87,8 +88,8 @@
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(ENABLE_SUPERVISED_USERS)
-#include "components/supervised_user/core/browser/supervised_user_settings_data_type_controller.h"
-#include "components/supervised_user/core/browser/supervised_user_settings_service.h"
+#include "components/supervised_user/core/browser/family_link_settings_data_type_controller.h"
+#include "components/supervised_user/core/browser/family_link_settings_service.h"
 #endif  // BUILDFLAG(ENABLE_SUPERVISED_USER)
 
 namespace browser_sync {
@@ -374,10 +375,9 @@ void CommonControllerBuilder::SetSharingMessageBridge(
 }
 
 #if BUILDFLAG(ENABLE_SUPERVISED_USERS)
-void CommonControllerBuilder::SetSupervisedUserSettingsService(
-    supervised_user::SupervisedUserSettingsService*
-        supervised_user_settings_service) {
-  supervised_user_settings_service_.Set(supervised_user_settings_service);
+void CommonControllerBuilder::SetFamilyLinkSettingsService(
+    supervised_user::FamilyLinkSettingsService* family_link_settings_service) {
+  family_link_settings_service_.Set(family_link_settings_service);
 }
 #endif  // BUILDFLAG(ENABLE_SUPERVISED_USERS)
 
@@ -947,7 +947,7 @@ CommonControllerBuilder::Build(syncer::DataTypeSet disabled_types,
 
 #if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
   if (!disabled_types.Has(syncer::SKILL) &&
-      base::FeatureList::IsEnabled(syncer::kSyncSkill)) {
+      base::FeatureList::IsEnabled(features::kSkillsEnabled)) {
     // TODO(rushans): In CL #4, register the type, i.e. instantiate
     // the DataTypeController. There is more than one way to go about it,
     // but one option is:
@@ -992,11 +992,11 @@ CommonControllerBuilder::Build(syncer::DataTypeSet disabled_types,
 #endif
 
 #if BUILDFLAG(ENABLE_SUPERVISED_USERS)
-  if (supervised_user_settings_service_.value()) {
+  if (family_link_settings_service_.value()) {
     controllers.push_back(
-        std::make_unique<SupervisedUserSettingsDataTypeController>(
+        std::make_unique<FamilyLinkSettingsDataTypeController>(
             dump_stack, data_type_store_service_.value()->GetStoreFactory(),
-            supervised_user_settings_service_.value()->AsWeakPtr(),
+            family_link_settings_service_.value()->AsWeakPtr(),
             pref_service_.value()));
   }
 #endif  // BUILDFLAG(ENABLE_SUPERVISED_USERS)

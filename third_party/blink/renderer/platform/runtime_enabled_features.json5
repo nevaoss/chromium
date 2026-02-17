@@ -671,6 +671,7 @@
     {
       name: "AutofillEvent",
       status: "experimental",
+      public: true,
     },
     {
       name: "AutomationControlled",
@@ -920,16 +921,6 @@
     {
       name: "CanvasHDR",
       status: "experimental",
-    },
-    {
-      // crbug.com/450531794.
-      name: "CanvasTextSwitchFrameOnFinalize",
-      status: "stable",
-    },
-    {
-      // crbug.com/450531794.
-      name: "CanvasTextTexImage2DFix",
-      status: "stable",
     },
     {
       // Canvas2D API for specifying HDR tone mapping behavior.
@@ -1370,10 +1361,6 @@
       status: "stable",
     },
     {
-      name: "CSSColorContrast",
-      status: "experimental",
-    },
-    {
       name: "CSSColorTypedOM",
       status: "experimental",
     },
@@ -1751,7 +1738,7 @@
     {
       // crbug.com/434361099
       name: "CssTextIndent",
-      status: "test",
+      status: "experimental",
     },
     {
       name: "CssTextIndentAsPrimitive",
@@ -1771,6 +1758,13 @@
     {
       // https://issues.chromium.org/41297237: CSS `text-transform: full-width` value
       name: "CSSTextTransformFullWidth",
+      status: "experimental",
+    },
+    {
+      // Support for the 'all' keyword of the 'timeline-scope' property.
+      //
+      // https://drafts.csswg.org/scroll-animations-1/#timeline-scope
+      name: "CSSTimelineScopeAll",
       status: "experimental",
     },
     {
@@ -2909,12 +2903,6 @@
       name: "HTMLCommandForScrollCommands",
       status: "experimental",
     },
-    // Adds support for the 'request-close' command.
-    // https://open-ui.org/components/invokers.explainer/
-    {
-      name: "HTMLCommandRequestClose",
-      status: "stable",
-    },
     {
       name: "HTMLElementScrollParent",
       status: "experimental",
@@ -3189,6 +3177,11 @@
     {
       name: "LayoutMergeAnonymousFix",
       depends_on: ["DisableDocumentBeingDestroyed"],
+      status: "stable",
+    },
+    {
+      name: "LayoutReinsertOnInFlowStateChange",
+      depends_on: ["LayoutMergeAnonymousFix", "DisableDocumentBeingDestroyed"],
       status: "stable",
     },
     {
@@ -5619,6 +5612,7 @@
       name: "UserMediaElement",
       status: "experimental",
       origin_trial_feature_name: "UserMediaElement",
+      public: true,
       origin_trial_os: ["win", "mac", "linux", "fuchsia", "chromeos", "android"],
       base_feature_status: "enabled",
       copied_from_base_feature_if: "overridden",
@@ -5844,18 +5838,10 @@
       name: "WebAuthenticationChallengeUrl",
       status: "experimental",
     },
-    // https://w3c.github.io/webauthn/#dom-clientcapability-conditionalcreate
-    {
-      name: "WebAuthenticationConditionalCreate",
-      status: "test",
-      base_feature: "none",
-      public: true,
-    },
     // Prototyping https://github.com/w3c/webauthn/issues/2228
     {
       name: "WebAuthenticationImmediateGet",
-      origin_trial_feature_name: "WebAuthenticationImmediateGet",
-      origin_trial_os: ["win", "mac", "linux", "chromeos"],
+      status: "experimental",
       base_feature: "none",
       public: true,
     },
@@ -6290,6 +6276,7 @@
       // crbug.com/435623334.
       name: "XSLTSpecialTrial",
     },
+<<<<<<< HEAD
     {
       // If enabled, the `getDisplayMedia()` family of APIs will ask for NV12
       // frames, which should trigger a zero-copy path in the tab capture code.
@@ -6304,5 +6291,7 @@
       base_feature: "none",
     }
     ///@}
+=======
+>>>>>>> 146.0.7646.0~1
   ],
 }

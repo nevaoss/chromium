@@ -91,11 +91,11 @@ class ComposeboxHandler : public composebox::mojom::PageHandler,
   // Returns true if there is a suggested tab context chip in the compose box.
   bool has_suggested_tab_context() const { return has_suggested_tab_context_; }
 
- protected:
-  // ContextualSearchboxHandler:
-  std::optional<lens::LensOverlayInvocationSource> GetInvocationSource()
-      const override;
+  // SearchboxHandler:
+  std::string AutocompleteIconToResourceName(
+      const gfx::VectorIcon& icon) const override;
 
+ protected:
   ComposeboxHandler(
       mojo::PendingReceiver<composebox::mojom::PageHandler> pending_handler,
       mojo::PendingRemote<composebox::mojom::Page> pending_page,

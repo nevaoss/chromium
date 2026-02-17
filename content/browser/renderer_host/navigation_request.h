@@ -1721,6 +1721,14 @@ class CONTENT_EXPORT NavigationRequest
   // kInitialWebUISyncNavStartToCommit flag is disabled).
   bool IsInitialWebUINavigation();
 
+  void set_remove_extra_headers_on_cross_origin_redirect(bool value) {
+    remove_extra_headers_on_cross_origin_redirect_ = value;
+  }
+
+  bool remove_extra_headers_on_cross_origin_redirect() const {
+    return remove_extra_headers_on_cross_origin_redirect_;
+  }
+
  private:
   friend class NavigationRequestTest;
   FRIEND_TEST_ALL_PREFIXES(NavigationRequestTest, SanitizeRedirectsForCommit);
@@ -1805,10 +1813,13 @@ class CONTENT_EXPORT NavigationRequest
   // kOriginKeyedProcessesByDefault is enabled.
   bool IsIsolationImplied();
 
+  // This function computes the AgentClusterKey that must be passed to the
+  // renderer process for commit.
+  void DetermineAgentClusterKeyForCommit();
+
   // The Origin-Agent-Cluster end result is determined early in the lifecycle of
   // a NavigationRequest, but used late. In particular, we want to trigger use
   // counters and console warnings once navigation has committed.
-  void DetermineOriginAgentClusterEndResult();
   void ProcessOriginAgentClusterEndResult();
 
   void PopulateDocumentTokenForCrossDocumentNavigation();
@@ -3426,6 +3437,10 @@ class CONTENT_EXPORT NavigationRequest
   // stored in the DocumentAssociatedData at commit. Only used for
   // cross-document navigations.
   std::optional<base::UnguessableToken> network_restrictions_id_;
+
+  // If true, any extra headers provided will be removed on a cross-origin
+  // redirect.
+  bool remove_extra_headers_on_cross_origin_redirect_ = false;
 
   base::WeakPtrFactory<NavigationRequest> weak_factory_{this};
 };

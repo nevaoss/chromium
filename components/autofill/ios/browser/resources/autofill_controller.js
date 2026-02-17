@@ -176,7 +176,7 @@ function extractUnownedFields(restrictUnownedFieldsToFormlessCheckout) {
  */
 function extractForms(restrictUnownedFieldsToFormlessCheckout) {
   const forms = extractNewForms(restrictUnownedFieldsToFormlessCheckout);
-  return __gCrWeb.stringify(forms);
+  return fillUtil.stringify(forms);
 }
 
 /**
@@ -348,7 +348,7 @@ function fillForm(data, forceFillFieldID) {
     }
   }
 
-  return __gCrWeb.stringify(filledElements);
+  return fillUtil.stringify(filledElements);
 }
 
 /**
@@ -418,7 +418,7 @@ function clearAutofilledFields(formUniqueID, fieldUniqueID) {
       clearedElements.push(fillUtil.getUniqueID(element));
     }
   }
-  return __gCrWeb.stringify(clearedElements);
+  return fillUtil.stringify(clearedElements);
 }
 
 /**
@@ -561,7 +561,10 @@ function fillFormField(data, field) {
     }
 
     filled = fillUtil.setInputElementValue(sanitizedValue, field);
-    field.isAutofilled = true;
+    // If kAutofillUndoIos is enabled, avoid showing the Clear/Undo button.
+    if (!window.gCrWebPlaceholderAutofillUndo) {
+      field.isAutofilled = true;
+    }
   } else if (inferenceUtil.isSelectElement(field)) {
     filled = fillUtil.setInputElementValue(data['value'], field);
   } else if (inferenceUtil.isCheckableElement(field)) {

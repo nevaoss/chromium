@@ -93,6 +93,9 @@ def _run_license_generation():
   cronet_utils.run(["python3", _GENERATE_LICENSE_SCRIPT_PATH])
 
 
+def _is_trybot():
+  return os.environ.get('SWARMING_BOT_ID',
+                        '').startswith('luci-chrome-try-')
 def _run_gn2bp(desc_files: Set[tempfile.NamedTemporaryFile],
                skip_build_scripts: bool, delete_temporary_files: bool,
                channel: str) -> int:
@@ -155,16 +158,19 @@ def _gen_extras_bp(import_channel: str):
           GN2BP_MODULE_PREFIX=f'{import_channel}_cronet_'))
 
 
-def _gen_androidtest_xml():
+def _gen_androidtest_xml(import_channel: str):
   """Generate AndroidTest.xml, required to run test in Android."""
+  module_prefix = f'{import_channel}_cronet_'
   androidtest_xml_template_path = os.path.join(REPOSITORY_ROOT, 'components',
                                                'cronet', 'gn2bp', 'templates',
                                                'AndroidTest.xml.template')
   androidtest_xml_template_contents = cronet_utils.read_file(
       androidtest_xml_template_path)
   androidtest_xml_path = os.path.join(REPOSITORY_ROOT, 'AndroidTest.xml')
-  cronet_utils.write_file(androidtest_xml_path,
-                          androidtest_xml_template_contents)
+  cronet_utils.write_file(
+      androidtest_xml_path,
+      string.Template(androidtest_xml_template_contents).substitute(
+          GN2BP_MODULE_PREFIX=module_prefix))
 
 def _gen_boringssl(import_channel: str):
   """Generate boringssl Android build files."""
@@ -488,11 +494,13 @@ def main():
     args.channel = _pick_target_channel_for_bot_environment()
     print(f'Automatic selection logic has chosen `{args.channel}` track')
 
-    # When importing to the 'stable' channel from a bot environment, we must verify that
+    # When importing to the 'stable' channel from a CI environment, we must verify that
     # the current Chromium checkout is on a stable release branch. This safeguards
     # against mistakenly importing non-release branches, particularly when the
     # channel is dynamically determined.
-    if args.channel == 'stable':
+    # On a trybot, it's fine to not verify the latest release as the trybot
+    # does not have permission to auto-submit unlike CI bots.
+    if args.channel == 'stable' and not _is_trybot():
       _verify_latest_stable_or_exit(args.stamp)
 
   if args.channel not in ['tot', 'stable']:
@@ -533,7 +541,7 @@ def main():
                channel=args.channel)
     _gen_boringssl(args.channel)
     _gen_extras_bp(args.channel)
-    _gen_androidtest_xml()
+    _gen_androidtest_xml(args.channel)
 
     if not args.skip_copybara:
       _run_copybara_to_aosp(

@@ -177,7 +177,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="DevTools.Freestyler.QueryLength" units="count"
-    expires_after="2026-05-17">
+    expires_after="2026-07-19">
   <owner>ergunsh@google.com</owner>
   <owner>alexrudenko@google.com</owner>
   <component>1633102</component>
@@ -523,6 +523,25 @@ chromium-metrics-reviews@google.com.
   <component>1456922</component>
   <summary>
     Recorded when a recording is started or finished in the Recorder panel.
+  </summary>
+</histogram>
+
+<histogram name="DevTools.RemoteDebugging.ConnectionPermission"
+    enum="DevToolsRemoteDebuggingConnectionPermission"
+    expires_after="2027-01-01">
+  <owner>alexrudenko@google.com</owner>
+  <owner>hablich@google.com</owner>
+  <summary>
+    Records user's choice on the remote debugging connection dialog.
+  </summary>
+</histogram>
+
+<histogram name="DevTools.RemoteDebugging.ServerAction"
+    enum="DevToolsRemoteDebuggingServerAction" expires_after="2027-01-01">
+  <owner>alexrudenko@google.com</owner>
+  <owner>hablich@google.com</owner>
+  <summary>
+    Actions taken on the remote debugging server on chrome://inspect.
   </summary>
 </histogram>
 

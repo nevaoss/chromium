@@ -14,7 +14,7 @@
 <translation id="1070377999570795893">電腦中的其他程式新增了一個擴充功能，可能會使 Chrome 的運作方式發生變更。
 
 <ph name="EXTENSION_NAME" /></translation>
-<translation id="1086486568852410168">透過 Google 智慧鏡頭搜尋</translation>
+<translation id="1086486568852410168">用 Google 智慧鏡頭搜尋</translation>
 <translation id="1088300314857992706"><ph name="USER_EMAIL_ADDRESS" /> 先前使用的是 Chrome</translation>
 <translation id="110877069173485804">這是你專屬的 Chrome</translation>
 <translation id="1125124144982679672">誰在使用 Chrome？</translation>
@@ -426,6 +426,7 @@ Google Chrome 無法復原你的設定。</translation>
 <translation id="5690427481109656848">Google LLC</translation>
 <translation id="569897634095159764">無法連線至網際網路。Proxy 伺服器需要驗證。</translation>
 <translation id="5709557627224531708">將 Chrome 設為預設瀏覽器</translation>
+<translation id="5719246646468301581">Google Chrome 和 ChromeOS 的《附加服務條款》</translation>
 <translation id="5719324992913248873">這個動作會：
           <ph name="LINE_BREAKS" />
            • 重設部分 Chrome 設定和 Chrome 快速鍵
@@ -506,6 +507,7 @@ Google Chrome 無法復原你的設定。</translation>
 <translation id="6326175484149238433">從 Chrome 中移除</translation>
 <translation id="6327105987658262776">沒有可用的更新。</translation>
 <translation id="6334815226785304306">將 Google Chrome 設為預設瀏覽器，並固定到工作列</translation>
+<translation id="63540178978900677">Chrome 不再是預設瀏覽器。將 Chrome 設為預設瀏覽器？</translation>
 <translation id="6360449101159168105">當這個分頁處於閒置狀態時，系統會釋出記憶體，加快 Chrome 的運作速度。你可以選擇一律不讓這個網站進入閒置狀態。</translation>
 <translation id="6388799252195623474">幫幫我</translation>
 <translation id="6412673304250309937">可使用儲存在 Chrome 中的不安全網站清單檢查網址。如果有網站試圖竊取你的密碼，或當你下載有害檔案時，Chrome 可能也會將網址 (包括部分網頁內容) 傳送至安全瀏覽功能。</translation>
@@ -576,7 +578,7 @@ Google Chrome 無法復原你的設定。</translation>
 <translation id="7071827361006050863">Chrome 即將刪除瀏覽資料</translation>
 <translation id="7085332316435785646">選擇是否要包含 Chrome 歷史記錄，取得更貼近個人需求的 Google 服務體驗</translation>
 <translation id="7088681679121566888">Chrome 目前是最新版本</translation>
-<translation id="7096221564931416126">選取要使用 Google 智慧鏡頭搜尋的文字或圖片</translation>
+<translation id="7096221564931416126">選取要用 Google 智慧鏡頭搜尋的文字/圖片</translation>
 <translation id="7098166902387133879">Google Chrome 正在使用你的麥克風。</translation>
 <translation id="7099479769133613710">重新啟動以更新 Chrome OS(&amp;C)</translation>
 <translation id="7106741999175697885">工作管理員 - Google Chrome</translation>
@@ -616,7 +618,7 @@ Google Chrome 無法復原你的設定。</translation>
 <translation id="7572537927358445944">已關閉 • Chrome 無法驗證這個擴充功能的來源</translation>
 <translation id="7583399374488819119"><ph name="COMPANY_NAME" /> 安裝程式</translation>
 <translation id="7596160425942761210">隨時在訊息、文件和其他應用程式中點選連結，都能使用 Chrome 開啟</translation>
-<translation id="7602868996817972616">向 Google 詢問與本頁相關的資訊</translation>
+<translation id="7602868996817972616">問問 Google 這個網頁的內容</translation>
 <translation id="760353356052806707">電腦中的其他程式新增了一個應用程式，可能會使 Chrome 的運作方式發生變更。
 
 <ph name="EXTENSION_NAME" /></translation>
@@ -707,6 +709,9 @@ Google Chrome 無法復原你的設定。</translation>
 <translation id="8418845734693287262">你的帳戶登入詳細資料尚未更新，因此 Chrome OS 無法同步處理你的資料。</translation>
 <translation id="842386925677997438">Chrome 安全工具</translation>
 <translation id="8425765582779547329">為確保家長監護設定可以進一步守護你的上網安全，請登入 Chrome</translation>
+<translation id="842852285618875960">已達到 Google Chrome 的書籤數量上限 (<ph name="BOOKMARK_LIMIT" /> 個)，因此部分書籤尚未儲存到 Google 帳戶。
+
+請先刪除一些書籤，才能將新書籤儲存到帳戶。如果現在登出，系統會刪除未儲存的書籤。</translation>
 <translation id="8433638294851456451">如要將號碼從這裡傳送到 Android 手機，請在這兩部裝置上登入 Chrome。</translation>
 <translation id="8496177819998570653">Google 密碼管理工具(&amp;A)</translation>
 <translation id="8498858610309223613">Google Chrome 剛才套用了特殊的安全性更新。請立即重新啟動，系統會恢復你原先開啟的分頁。</translation>

@@ -1608,6 +1608,15 @@ Si estableces la política con el valor "1", indica que no se pueden compartir l
 <translation id="2144236546337326489">Permitir que se habilite la continuación de tareas en Phone Hub</translation>
 <translation id="2145735238144543545">Certificados de cliente obligatorios</translation>
 <translation id="2146103669166779785">El código hexadecimal de color que se usará para generar un esquema y aplicarlo en el navegador.</translation>
+<translation id="2146539033119095550">Esta política te permite establecer una lista de patrones de URL que especifiquen los orígenes de nivel superior para los que se debe inhabilitar la partición de almacenamiento de terceros (partición de almacenamiento de iframe de origen cruzado).
+
+Si no estableces esta política o si un origen de nivel superior no coincide con uno de los patrones de URL, se aplicará <ph name="DEFAULT_THIRD_PARTY_STORAGE_PARTITIONING_SETTING_POLICY_NAME" />.
+
+Para obtener información detallada sobre los patrones válidos, consulta https://chromeenterprise.google/policies/url-patterns. Ten en cuenta que los patrones que incluyas aquí se tratarán como orígenes, no como URLs, por lo que no debes especificar una ruta de acceso.
+
+Para obtener información detallada sobre la partición de almacenamiento de terceros, consulta https://developers.google.com/privacy-sandbox/cookies/storage-partitioning.
+
+Se quitó en Chrome 145 y, en su lugar, se recomienda usar el método requestStorageAccess: https://developer.mozilla.org/en-US/docs/Web/API/Document/requestStorageAccess. Puedes enviar comentarios en https://crbug.com/425248669.</translation>
 <translation id="2148733583160916305">Permitir la API de WebPrinting en estos sitios</translation>
 <translation id="2148769554831004951">Habilitar WebSQL de manera automática</translation>
 <translation id="214901426630414675">Restringir el modo de impresión doble</translation>
@@ -2533,11 +2542,6 @@ Si estableces la política en 2 - "Inhabilitada", no se permitirá la integraci�
 <translation id="2707733461906745082">Separación de perfiles</translation>
 <translation id="2707873794476722903">Se activó la Navegación segura en el modo estándar.</translation>
 <translation id="2709516037105925701">Autocompletar</translation>
-<translation id="2713265653152900248">Si estableces la política, se permitirá el acceso a las URLs de la lista en el modo Incógnito, como excepciones a <ph name="INCOGNITO_MODE_URL_BLOCKLIST_POLICY_NAME" />. Por ejemplo, si estableces <ph name="INCOGNITO_MODE_URL_BLOCKLIST_POLICY_NAME" /> en *, se bloquearán todas las solicitudes en el modo Incógnito. Puedes usar esta política para permitir el acceso a una lista limitada de URLs y abrir excepciones a determinados esquemas, subdominios de otros dominios, puertos o rutas de acceso específicas con el formato especificado en ( https://support.google.com/chrome/a?p=url_blocklist_filter_format). La política <ph name="INCOGNITO_MODE_URL_ALLOWLIST_POLICY_NAME" /> tiene prioridad sobre <ph name="INCOGNITO_MODE_URL_BLOCKLIST_POLICY_NAME" />. Esta política se limitará a 1,000 entradas.
-
-Si no estableces la política, no se permitirán excepciones a la política <ph name="INCOGNITO_MODE_URL_BLOCKLIST_POLICY_NAME" />.
-
-Esta política solo afecta el modo Incógnito. Para permitir las URLs en todos los perfiles de usuario, usa la política <ph name="URL_ALLOWLIST_POLICY_NAME" />.</translation>
 <translation id="2713913573196284609">Este valor deja de estar disponible a partir de M121. A partir de M121, los valores se tratarán como EnabledBelowThreshold.</translation>
 <translation id="2713977837384407666">Enviar siempre las métricas a Google</translation>
 <translation id="2714359695399346815">Si habilitas la política o no la estableces, se permitirá el uso de servidores STUN, lo que posibilitará que los clientes remotos descubran este equipo y se conecten con él aunque haya un firewall.
@@ -3403,6 +3407,8 @@ Si inhabilitas <ph name="NTPCARDSVISIBLE" />, no se mostrará la tarjeta de Outl
       Si inhabilitas la política, los dispositivos inscritos no informarán sobre la sesión de kiosco.</translation>
 <translation id="3303770131697159224">Configuración predeterminada del permiso de Administración de ventanas</translation>
 <translation id="3303911765031636277">Política de configuración para el Conector de Chrome Enterprise OnFileAttached</translation>
+<translation id="3305586786770047829">Si estableces esta política en 0 o no la estableces, la política <ph name="PROXY_OVERRIDE_RULES_POLICY_NAME" /> solo se aplicará en el permiso del usuario para los usuarios afiliados.
+Cuando esta política se establezca en 1, se aplicará la política <ph name="PROXY_OVERRIDE_RULES_POLICY_NAME" /> en el permiso del usuario, incluso si no está afiliado.</translation>
 <translation id="3307744348419745296">No permitir que se sincronicen los ajustes de la red Wi-Fi entre dispositivos <ph name="PRODUCT_OS_NAME" /> y un teléfono Android conectado</translation>
 <translation id="3308724602356134956">Si estableces la política, <ph name="PRODUCT_OS_NAME" />
 
@@ -3518,6 +3524,15 @@ Si la inhabilitas, no se permitirá la escritura predictiva en el teclado físic
 <translation id="33993310248354034">Permitir la detección de entidades de texto sin formato en páginas web</translation>
 <translation id="3399859571630358395">Inhabilitar de manera automática la Vinculación rápida (vinculación rápida por Bluetooth)</translation>
 <translation id="3404681701763345449">Habilitar la integración de <ph name="GOOGLE_CALENDAR_NAME" /></translation>
+<translation id="3405276853140830214">Esta política controla si se permite la partición de almacenamiento de terceros de forma predeterminada.
+
+Si estableces esta política como 1 (AllowPartitioning) o no la estableces, se permitirá la partición de almacenamiento de terceros de forma predeterminada. Este valor predeterminado se puede anular para orígenes de nivel superior específicos por otros medios.
+
+Si estableces esta política como 2 (BlockPartitioning), se inhabilitará la partición de almacenamiento de terceros para todos los contextos.
+
+Usa <ph name="THIRD_PARTY_STORAGE_PARTITIONING_BLOCKED_FOR_ORIGINS_POLICY_NAME" /> para inhabilitar la partición de almacenamiento de terceros para orígenes de nivel superior específicos. Para obtener información detallada sobre la partición de almacenamiento de terceros, consulta https://developers.google.com/privacy-sandbox/cookies/storage-partitioning.
+
+Se quitó en Chrome 145 y, en su lugar, se recomienda usar el método requestStorageAccess: https://developer.mozilla.org/en-US/docs/Web/API/Document/requestStorageAccess. Puedes enviar comentarios en https://crbug.com/425248669.</translation>
 <translation id="3405361833556012520">Esta política solo se aplica al tráfico de navegadores. Play Store, la navegación web de apps para Android y otro tráfico de usuarios, como los trabajos de impresión y el tráfico de VM de Linux, respetan las restricciones impuestas por la VPN siempre activada. Esta política solo se aplicará de manera forzosa cuando la VPN no esté conectada y solo para el tráfico del navegador del usuario. Mientras se aplique esta política, el tráfico del sistema también puede omitir la VPN siempre activada para realizar tareas como la recuperación de políticas y la sincronización del reloj del sistema.
 
 Usa esta política para abrir excepciones a determinados esquemas, subdominios de otros dominios, puertos o rutas de acceso específicas con el formato especificado en https://support.google.com/chrome/a?p=url_blocklist_filter_format. El filtro más específico determinará si una URL está en la lista de elementos bloqueados o permitidos.
@@ -4127,7 +4142,7 @@ Si estableces la política en 2, los orígenes de apps web aisladas no podrán u
           Si la estableces, los usuarios no podrán cambiarla ni anularla.
 
           Si no la estableces, el dictado estará inicialmente inhabilitado en la pantalla de acceso, pero el usuario podrá habilitarlo en cualquier momento.</translation>
-<translation id="3811407842708673996">Si no estableces la política o la habilitas, los usuarios podrán ver y usar el elemento del menú de la búsqueda parcial de <ph name="GOOGLE_LENS_PRODUCT_NAME" /> en el menú contextual. Si la inhabilitas, los usuarios no verán el elemento del menú de la búsqueda parcial de <ph name="GOOGLE_LENS_PRODUCT_NAME" /> (si la búsqueda parcial de <ph name="GOOGLE_LENS_PRODUCT_NAME" /> es compatible).
+<translation id="3811407842708673996">Si no estableces la política o la habilitas, los usuarios podrán ver y usar el elemento del menú de búsqueda parcial de <ph name="GOOGLE_LENS_PRODUCT_NAME" /> en el menú contextual. Si la inhabilitas, los usuarios no verán el elemento del menú de búsqueda parcial de <ph name="GOOGLE_LENS_PRODUCT_NAME" /> (si la búsqueda parcial de <ph name="GOOGLE_LENS_PRODUCT_NAME" /> es compatible).
 A partir de <ph name="PRODUCT_NAME" /> 147, esta política dejará de estar disponible. Los administradores de TI pueden usar <ph name="SEARCH_CONTENT_SHARING_SETTINGS_POLICY_NAME" /> para controlar esta función en el futuro.</translation>
 <translation id="3811562426301733860">Permitir anuncios en todos los sitios</translation>
 <translation id="3816312845600780067">Habilitar combinación de teclas para acceso directo de rescate para el acceso automático</translation>
@@ -5341,6 +5356,21 @@ Comportamiento anterior y heredado: en “beforeunload”, la llamada a “event
 <translation id="46321462262887935">Tratar las teclas de la fila superior como teclas de función, pero permitir que el usuario las modifique</translation>
 <translation id="4632343302005518762">Permitir que <ph name="PRODUCT_FRAME_NAME" /> gestione los tipos de contenido que figuran en la lista</translation>
 <translation id="4636354638176939375">Inhabilitar la creación de usuarios supervisados</translation>
+<translation id="4637701328641064644">Esta política controla si las URLs de BLOB se particionan durante la recuperación y la navegación.
+Si habilitas esta política o no la estableces, se particionarán las URLs de BLOB.
+Si la inhabilitas, las URLs de BLOB no se particionarán.
+
+Si tienes que utilizar la política, informa un error en
+<ph name="BUG_URL" />
+en el que expliques tu caso de uso. La política está programada para
+ofrecerse a través de la versión 146 de <ph name="PRODUCT_NAME" />,
+después de lo cual se quitará la implementación anterior.
+
+NOTA: Solo los procesos del renderizado recién iniciados reflejarán los cambios de esta
+política mientras se esté ejecutando el navegador.
+
+Para obtener información detallada sobre la partición de almacenamiento de terceros, consulta
+https://developers.google.com/privacy-sandbox/cookies/storage-partitioning.</translation>
 <translation id="46383668315040154">Especifica el canal de versiones al que debe asociarse de forma exclusiva este dispositivo.
 
 <ph name="CHROME_OS_RELEASE_CHANNEL_POLICY_NAME" /> solo tiene efecto si estableces <ph name="CHROME_OS_RELEASE_CHANNEL_DELEGATED_POLICY_NAME" /> como falsa.</translation>
@@ -5595,7 +5625,7 @@ Esta política se ignorará cuando <ph name="GOOGLE_SEARCH_PRODUCT_NAME" /> no s
 
 Esta política es independiente de la política <ph name="AI_MODE_SETTINGS_POLICY_NAME" />. La política <ph name="AI_MODE_SETTINGS_POLICY_NAME" /> solo controla los puntos de entrada en el cuadro de búsqueda del cuadro multifunción o de la NTP, mientras que esta política controla el uso compartido de contexto a través del panel lateral o las pestañas.
 
-Esta política tampoco controla la integración de <ph name="GOOGLE_GEMINI_PRODUCT_NAME" />, que puede inhabilitarla la política <ph name="GEMINI_SETTINGS_POLICY_NAME" />.
+Esta política tampoco controla la integración de <ph name="GOOGLE_GEMINI_PRODUCT_NAME" />, que la política <ph name="GEMINI_SETTINGS_POLICY_NAME" /> puede inhabilitar.
 
 Si no estableces esta política, su comportamiento se determina según la política <ph name="GEN_AI_DEFAULT_SETTINGS_POLICY_NAME" />.
 
@@ -6779,15 +6809,6 @@ Esta política no impide que los usuarios guarden archivos en <ph name="GOOGLE_D
 
 Si estableces la política como falsa, no se podrán usar los identificadores de contenido protegido.</translation>
 <translation id="5492713303272131731">Todos los demás procesos se pueden programar en el mismo núcleo de CPU cuando el proceso de renderización se ejecuta en él.</translation>
-<translation id="5494322570831642650">Especifica si el usuario puede abrir páginas en modo Incógnito en <ph name="PRODUCT_NAME" />.
-
-      Si seleccionas "Enabled" (habilitada) o no estableces la política, se permitirá abrir páginas en modo Incógnito.
-
-      Si seleccionas "Disabled" (inhabilitada), no se permitirá abrir páginas en modo Incógnito.
-
-      Si seleccionas "Forced" (forzada), las páginas se abrirán SOLO en modo Incógnito. Ten en cuenta que la opción "Forced" no funciona para Android-on-Chrome
-
-      Nota: en iOS, si la política cambia durante una sesión, solo tendrá efecto en el reinicio.</translation>
 <translation id="549471902631700911">Inhabilitar la recepción de encuestas de Navegación segura</translation>
 <translation id="549625769649876757">Si estableces la política, podrás especificar una lista de patrones de URL que indiquen los sitios que pueden acceder a la ubicación geográfica de alta precisión del usuario sin tener que solicitar primero su permiso para hacerlo.
 
@@ -9118,9 +9139,6 @@ Si la estableces como falsa o no la estableces, el diseño no estará disponible
 <translation id="6866755486434471318">Permitir que <ph name="PEPPER_NAME" /> use las imágenes compartidas para la decodificación de videos</translation>
 <translation id="6878757724611298427">Permitir que los usuarios utilicen apps para Android en dispositivos no afiliados</translation>
 <translation id="6881447940489194100">Hash SHA-256 con codificación hexadecimal de los datos.</translation>
-<translation id="688149562204519323">Si estableces la política <ph name="INCOGNITO_MODE_URL_BLOCKLIST_POLICY_NAME" />, se detendrá la carga de las páginas web que tengan URLs prohibidas en el modo Incógnito. Los administradores pueden especificar la lista de patrones de URL que se bloquearán. Si no la estableces, no se bloqueará ninguna URL en el modo Incógnito. Se pueden definir hasta 1,000 excepciones en <ph name="INCOGNITO_MODE_URL_ALLOWLIST_POLICY_NAME" />. Consulta cómo darle formato a un patrón de URL ( https://support.google.com/chrome/a?p=url_blocklist_filter_format ).
-
-Esta política solo afecta el modo Incógnito. Para bloquear las URLs en todos los perfiles de usuario, usa la política <ph name="URL_BLOCKLIST_POLICY_NAME" />.</translation>
 <translation id="68818134518270542">Si estableces la política, se especificarán las apps que los usuarios pueden activar para tomar notas en la pantalla de bloqueo de <ph name="PRODUCT_OS_NAME" />.
 
       Si la app preferida se habilita en la pantalla de bloqueo, aparecerá un elemento de IU para ejecutar la app preferida para tomar notas. Cuando se ejecute, la app podrá crear una ventana en la parte superior de la pantalla de bloqueo para tomar notas en este contexto. La app podrá importar las notas creadas a la sesión del usuario principal cuando la sesión se desbloquee. La pantalla de bloqueo solo admite apps para tomar notas de <ph name="PRODUCT_NAME" />.
@@ -9191,6 +9209,25 @@ Si inhabilitas la política o no la estableces, se aplicará
 el comportamiento predeterminado para bloquear esas solicitudes.</translation>
 <translation id="6915524162137327111">Mostrar etiquetas de administración durante 30 s</translation>
 <translation id="6919205861950516688">No permitir el Organizador de pestañas.</translation>
+<translation id="6920791385071265136">Controla si las extensiones que se quitan debido a infracciones que no son de software malicioso aún se pueden instalar de forma forzosa en entornos de baja confianza.
+
+Obtén más información sobre las infracciones que no son de software malicioso y las eliminaciones aquí: https://developer.chrome.com/docs/webstore/review-process#warning
+
+Una vez que se resuelva la infracción que no es de software malicioso, la extensión permanecerá habilitada y no se podrá inhabilitar ni quitar.
+
+En <ph name="MS_WIN_NAME" />, esta política solo está disponible en instancias que están vinculadas a un dominio de <ph name="MS_AD_NAME" />, vinculadas a <ph name="MS_AAD_NAME" /> o inscritas en <ph name="CHROME_BROWSER_CLOUD_MANAGEMENT_NAME" />.
+
+En <ph name="MAC_OS_NAME" />, esta política solo está disponible en instancias administradas con MDM, vinculadas a un dominio a través de MCX o inscritas en <ph name="CHROME_BROWSER_CLOUD_MANAGEMENT_NAME" />.
+
+Las extensiones instaladas de manera forzosa con incumplimientos que no sean de software malicioso permanecerán habilitadas en estos casos.
+
+Actualmente, una extensión instalada de manera automática con infracciones que no son de software malicioso permanece instalada y habilitada en Chrome.
+
+Si habilitas la política, las extensiones instaladas de forma forzosa se comportarán de la misma manera (es decir, permanecerán habilitadas) independientemente de las infracciones que no sean de software malicioso.
+
+Si inhabilitas la política o no la estableces, se inhabilitarán las extensiones instaladas de forma forzosa que tengan infracciones que no sean de software malicioso.
+
+En la versión M145, se quitó esta política. A partir de esa versión, se inhabilitarán las extensiones instaladas de manera forzosa con incumplimientos que no sean de malware en entornos de baja confianza.</translation>
 <translation id="692096803256767290">Revertir el SO a la versión de destino</translation>
 <translation id="6921241119085515674">Permitir el flujo de <ph name="CLOUD_UPLOAD_NAME" /> para <ph name="MICROSOFT_ONE_DRIVE_NAME" /> y <ph name="MICROSOFT_365_NAME" /></translation>
 <translation id="6921544339867564740">Permitir que los dispositivos ejecuten máquinas virtuales en ChromeOS</translation>
@@ -10313,21 +10350,6 @@ Si no estableces la política, se aplicará <ph name="DEFAULT_WEB_PRINTING_SETTI
 Los patrones de URL no deben entrar en conflicto con <ph name="WEB_PRINTING_BLOCKED_FOR_URLS_POLICY_NAME" />. Si una URL se ajusta a ambas políticas, no prevalece ninguna de las dos.
 
 Para obtener información detallada sobre los patrones de URL válidos, consulta https://chromeenterprise.google/policies/url-patterns. <ph name="WILDCARD_VALUE" /> no es un valor aceptado para esta política.</translation>
-<translation id="7615612213075471065">Esta política controla los informes de <ph name="PRODUCT_NAME" /> sobre las visitas a dominios SaaS y las transferencias de contenido para un navegador administrado.
-
-Si estableces la política, se usarán las URLs que coincidan con los dominios SaaS para generar el informe y subirlo. Se ignorarán las URLs que no coincidan.
-
-Si no estableces la política o la estableces como una lista vacía, no se generará ningún informe.
-
-Los patrones de coincidencia usan un formato similar a los de la política "<ph name="URL_BLOCKLIST_POLICY_NAME" />", que se documentan en https://support.google.com/chrome/a?p=url_blocklist_filter_format. Hay algunas excepciones, que se indican a continuación:
-
- * El host de la URL debe coincidir con el nombre de host o ser un subdominio del nombre de host de uno de los dominios de la lista de sitios SaaS.
-
- * La ruta de URL debe comenzar con la ruta de acceso de la entrada de la lista de sitios SaaS coincidentes.
-
- * El esquema, el puerto y la consulta de URL se ignoran durante el proceso de coincidencia.
-
-La infraestructura de políticas de la nube completa este valor de política y los administradores no pueden establecerlo directamente.</translation>
 <translation id="7616631530432070402">Se habilitarán los conjuntos de algoritmos de cifrado 3DES en TLS</translation>
 <translation id="761788785484453836">Solicitar el aislamiento de sitios para todos los sitios web</translation>
 <translation id="7620869951155758729">Esta política especifica la configuración que se usa para generar y verificar el código de acceso parental.
@@ -11882,23 +11904,6 @@ Esta política siempre será válida para <ph name="PRODUCT_OS_NAME" />.</transl
 <translation id="8631437968147930597">Lista de apps para tomar notas permitidas en la pantalla de bloqueo de <ph name="PRODUCT_OS_NAME" /></translation>
 <translation id="8633550872001751090">Permitir que se incluyan de los datos de <ph name="PRODUCT_NAME" /> en las copias de seguridad</translation>
 <translation id="8634062512783775032">Usar <ph name="AES_KL_NAME" /> como el algoritmo de encriptación para la encriptación del almacenamiento de datos del usuario (en caso de ser compatible)</translation>
-<translation id="8635783478441936474">Esta política controla los informes de <ph name="PRODUCT_NAME" /> sobre las visitas a dominios SaaS y las transferencias de contenido para un perfil administrado.
-
-Si estableces la política, se usarán las URLs que coincidan con los dominios SaaS para generar el informe y subirlo. Se ignorarán las URLs que no coincidan.
-
-Si no estableces la política o la estableces como una lista vacía, no se generará ningún informe.
-
-Los patrones de coincidencia usan un formato similar a los de la política "<ph name="URL_BLOCKLIST_POLICY_NAME" />", que se documentan en https://support.google.com/chrome/a?p=url_blocklist_filter_format. Hay algunas excepciones, que se indican a continuación:
-
- * El host de la URL debe coincidir con el nombre de host o ser un subdominio del nombre de host de uno de los dominios de la lista de sitios SaaS.
-
- * La ruta de URL debe comenzar con la ruta de acceso de la entrada de la lista de sitios SaaS coincidentes.
-
- * El esquema, el puerto y la consulta de URL se ignoran durante el proceso de coincidencia.
-
-Esta política solo se puede establecer como política del usuario en la nube.
-
-La infraestructura de políticas de la nube completa este valor de política y los administradores no pueden establecerlo directamente.</translation>
 <translation id="8637566476051166626">Puertos de red habilitados de forma explícita</translation>
 <translation id="8643838501942693770">Permite las cookies de terceros, pero también que el usuario cambie esta configuración</translation>
 <translation id="864611373241249369">Después de inhabilitar <ph name="LACROS_NAME" />, intentaremos migrar todos los datos.</translation>

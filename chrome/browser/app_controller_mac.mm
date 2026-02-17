@@ -1069,12 +1069,13 @@ class AppControllerNativeThemeObserver : public ui::NativeThemeObserver {
     return;
 
   if (browser->is_type_normal()) {
-    _tabMenuBridge = std::make_unique<TabMenuBridge>(
-        browser->tab_strip_model(),
-        [[NSApp mainMenu] itemWithTag:IDC_TAB_MENU]);
-    _tabMenuBridge->BuildMenu();
-  } else {
-    _tabMenuBridge.reset();
+    if (!_tabMenuBridge) {
+      _tabMenuBridge = std::make_unique<TabMenuBridge>(
+          [[NSApp mainMenu] itemWithTag:IDC_TAB_MENU]);
+    }
+    _tabMenuBridge->SetTabStripModel(browser->tab_strip_model());
+  } else if (_tabMenuBridge) {
+    _tabMenuBridge->SetTabStripModel(nullptr);
   }
 
   Profile* profile = browser->profile();
@@ -2386,7 +2387,10 @@ void OpenUrlsInBrowserWithProfile(const std::vector<GURL>& urls,
     profile = ProfileManager::MaybeForceOffTheRecordMode(
         profile->GetOriginalProfile());
   }
-  Browser* browser = chrome::FindLastActiveWithProfile(profile);
+  // Use FindTabbedBrowser to ensure URLs open in a normal tabbed browser
+  // window, not in PWA/app windows which cannot accept new tabs.
+  Browser* browser =
+      chrome::FindTabbedBrowser(profile, /*match_original_profiles=*/false);
   int startupIndex = TabStripModel::kNoTab;
   content::WebContents* startupContent = nullptr;
   if (browser && browser->tab_strip_model()->count() == 1) {

@@ -10,6 +10,7 @@
 #include "chrome/browser/actor/actor_policy_checker.h"
 #include "chrome/browser/preloading/preloading_features.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/webui/settings/on_device_ai_settings_handler.h"
 #include "chrome/common/chrome_features.h"
@@ -26,6 +27,8 @@
 #include "components/prefs/pref_service.h"
 #include "components/privacy_sandbox/privacy_sandbox_features.h"
 #include "components/safe_browsing/core/common/features.h"
+#include "components/signin/public/identity_manager/account_capabilities_test_mutator.h"
+#include "components/signin/public/identity_manager/identity_test_utils.h"
 #include "content/public/common/content_features.h"
 #include "content/public/test/browser_test.h"
 #include "crypto/crypto_buildflags.h"
@@ -69,7 +72,6 @@ class SettingsBrowserTest : public WebUIMochaBrowserTest {
         /*disabled_features=*/
         {
 #if BUILDFLAG(ENABLE_GLIC)
-            features::kGlicClosedCaptioning,
             features::kGlicDefaultTabContextSetting
 #endif
         });
@@ -522,23 +524,6 @@ IN_PROC_BROWSER_TEST_F(SettingsGlicSubpageLocationToggleLearnMoreTest,
           "runMochaSuite('GlicSubpage LocationToggleLearnMoreEnabled')");
 }
 
-class SettingsGlicSubageClosedCaptionsToggleTest : public SettingsBrowserTest {
- public:
-  SettingsGlicSubageClosedCaptionsToggleTest() {
-    scoped_feature_list_.InitWithFeatures({features::kGlicClosedCaptioning},
-                                          /*disabled_features=*/{});
-  }
-
- private:
-  base::test::ScopedFeatureList scoped_feature_list_;
-};
-
-IN_PROC_BROWSER_TEST_F(SettingsGlicSubageClosedCaptionsToggleTest,
-                       SettingsGlicSubageClosedCaptionsToggleEnabled) {
-  RunTest("settings/glic_subpage_test.js",
-          "runMochaSuite('GlicSubpage ClosedCaptionsToggleEnabled')");
-}
-
 class SettingsGlicSubpageKeepSidepanelOpenOnNewTabsToggleTest
     : public SettingsBrowserTest {
  public:
@@ -598,6 +583,22 @@ class SettingsGlicSubPageTestBase : public SettingsBrowserTest {
   }
 };
 
+class SettingsGlicSubPageClosedCaptionsToggleTest
+    : public SettingsGlicSubPageTestBase {};
+
+IN_PROC_BROWSER_TEST_F(SettingsGlicSubPageClosedCaptionsToggleTest,
+                       ToggleHiddenForUserWithoutAccountCapability) {
+  RunTest("settings/glic_subpage_test.js",
+          "runMochaSuite('GlicSubpage ClosedCaptionsToggleHidden')");
+}
+
+IN_PROC_BROWSER_TEST_F(SettingsGlicSubPageClosedCaptionsToggleTest,
+                       ToggleVisibleForUserWithAccountCapability) {
+  SigninAndEnableAccountCapability();
+  RunTest("settings/glic_subpage_test.js",
+          "runMochaSuite('GlicSubpage ClosedCaptionsToggleVisible')");
+}
+
 class SettingsGlicSubPageMicrophoneToggleTest
     : public SettingsGlicSubPageTestBase {};
 
@@ -614,19 +615,31 @@ IN_PROC_BROWSER_TEST_F(SettingsGlicSubPageMicrophoneToggleTest,
           "runMochaSuite('GlicSubpage MicrophoneToggleVisible')");
 }
 
-class SettingsGlicSubPageWebActuationToggleTest : public SettingsBrowserTest {
+class SettingsGlicSubPageWebActuationToggleTestBase
+    : public SettingsGlicSubPageTestBase {
+ protected:
+  void SetUserTier(int32_t tier) {
+    GetProfile()->GetPrefs()->SetInteger(
+        subscription_eligibility::prefs::kAiSubscriptionTier, tier);
+  }
+};
+
+class SettingsGlicSubPageWebActuationToggleTest
+    : public SettingsGlicSubPageWebActuationToggleTestBase {
  public:
   SettingsGlicSubPageWebActuationToggleTest() {
-    scoped_feature_list_.InitWithFeatures({features::kGlicWebActuationSetting},
-                                          /*disabled_features=*/{});
+    scoped_feature_list_.InitWithFeaturesAndParameters(
+        {{features::kGlicWebActuationSetting, {}},
+         {features::kGlicActor,
+          {{features::kGlicActorPolicyControlExemption.name, "true"}}}},
+        /*disabled_features=*/{});
   }
+
   void SetUpOnMainThread() override {
     SettingsBrowserTest::SetUpOnMainThread();
+    SigninAndEnableAccountCapability();
     GetProfile()->GetPrefs()->SetBoolean(
         glic::prefs::kGlicUserEnabledActuationOnWeb, false);
-    actor::ActorKeyedService::Get(browser()->profile())
-        ->GetPolicyChecker()
-        .set_act_on_web_for_testing(true);
   }
 
  private:
@@ -646,7 +659,7 @@ IN_PROC_BROWSER_TEST_F(SettingsGlicSubPageWebActuationToggleTest,
 }
 
 class SettingsGlicSubPageWebActuationAllowedTierToggleTest
-    : public SettingsBrowserTest {
+    : public SettingsGlicSubPageWebActuationToggleTestBase {
  public:
   SettingsGlicSubPageWebActuationAllowedTierToggleTest() {
     // Set the allowed tiers to "100" and "200"
@@ -658,32 +671,34 @@ class SettingsGlicSubPageWebActuationAllowedTierToggleTest
         {});
   }
 
-  void SetUserTier(int32_t tier) {
-    GetProfile()->GetPrefs()->SetInteger(
-        subscription_eligibility::prefs::kAiSubscriptionTier, tier);
-  }
-
  private:
   base::test::ScopedFeatureList scoped_feature_list_;
 };
 
 IN_PROC_BROWSER_TEST_F(SettingsGlicSubPageWebActuationAllowedTierToggleTest,
-                       ToggleVisibleForAllowedTier) {
+                       ToggleHiddenForUserWithoutAccountCapability) {
   SetUserTier(100);
-  RunTest(
-      "settings/glic_subpage_test.js",
-      "runMochaSuite('GlicSubpage WebActuationToggleVisibleForAllowedTier')");
+  RunTest("settings/glic_subpage_test.js",
+          "runMochaSuite('GlicSubpage WebActuationToggleHidden')");
+}
+
+IN_PROC_BROWSER_TEST_F(SettingsGlicSubPageWebActuationAllowedTierToggleTest,
+                       ToggleVisibleForAllowedTier) {
+  SigninAndEnableAccountCapability();
+  SetUserTier(100);
+  RunTest("settings/glic_subpage_test.js",
+          "runMochaSuite('GlicSubpage WebActuationToggleVisible')");
 }
 
 IN_PROC_BROWSER_TEST_F(SettingsGlicSubPageWebActuationAllowedTierToggleTest,
                        ToggleHiddenForDisallowedTier) {
+  SigninAndEnableAccountCapability();
   SetUserTier(999);
   GetProfile()->GetPrefs()->SetBoolean(
       glic::prefs::kGlicUserEnabledActuationOnWeb, true);
 
-  RunTest(
-      "settings/glic_subpage_test.js",
-      "runMochaSuite('GlicSubpage WebActuationToggleHiddenForDisallowedTier')");
+  RunTest("settings/glic_subpage_test.js",
+          "runMochaSuite('GlicSubpage WebActuationToggleHidden')");
 }
 
 class SettingsGlicSubageDataProtectionTest : public SettingsBrowserTest {

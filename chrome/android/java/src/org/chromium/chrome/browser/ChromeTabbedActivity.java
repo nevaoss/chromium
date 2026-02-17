@@ -64,14 +64,14 @@ import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.base.metrics.RecordUserAction;
 import org.chromium.base.shared_preferences.SharedPreferencesManager;
 import org.chromium.base.supplier.LazyOneshotSupplier;
+import org.chromium.base.supplier.MonotonicObservableSupplier;
 import org.chromium.base.supplier.NonNullObservableSupplier;
-import org.chromium.base.supplier.ObservableSupplier;
 import org.chromium.base.supplier.ObservableSupplierImpl;
 import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.OneShotCallback;
 import org.chromium.base.supplier.OneshotSupplier;
 import org.chromium.base.supplier.OneshotSupplierImpl;
-import org.chromium.base.supplier.SettableObservableSupplier;
+import org.chromium.base.supplier.SettableMonotonicObservableSupplier;
 import org.chromium.base.supplier.SupplierUtils;
 import org.chromium.base.task.PostTask;
 import org.chromium.base.task.TaskTraits;
@@ -129,7 +129,6 @@ import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
 import org.chromium.chrome.browser.feed.FeedSurfaceTracker;
 import org.chromium.chrome.browser.feed.FeedUma;
 import org.chromium.chrome.browser.feedback.OmniboxFeedbackSource;
-import org.chromium.chrome.browser.firstrun.FirstRunSignInProcessor;
 import org.chromium.chrome.browser.flags.ActivityType;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.flags.ChromeSwitches;
@@ -318,8 +317,7 @@ import org.chromium.chrome.browser.url_constants.UrlConstantResolver;
 import org.chromium.chrome.browser.url_constants.UrlConstantResolverFactory;
 import org.chromium.chrome.browser.usage_stats.UsageStatsService;
 import org.chromium.chrome.browser.util.ChromeAccessibilityUtil;
-import org.chromium.chrome.browser.xr.scenecore.XrSceneCoreSessionInitializerImpl;
-import org.chromium.chrome.browser.xr.scenecore.XrSceneCoreSessionManagerImpl;
+import org.chromium.chrome.browser.xr.scenecore.XrModule;
 import org.chromium.components.browser_ui.accessibility.AccessibilityFeatureMap;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController;
 import org.chromium.components.browser_ui.share.ShareParams;
@@ -469,7 +467,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
     // Supplier for a dependency to inform about the type of intent used to launch Chrome.
     private final OneshotSupplierImpl<ToolbarIntentMetadata> mIntentMetadataOneshotSupplier =
             new OneshotSupplierImpl<>();
-    private final SettableObservableSupplier<StartupPaintPreviewHelper>
+    private final SettableMonotonicObservableSupplier<StartupPaintPreviewHelper>
             mStartupPaintPreviewHelperSupplier = ObservableSuppliers.createMonotonic();
     private final OneshotSupplierImpl<LayoutStateProvider> mLayoutStateProviderSupplier =
             new OneshotSupplierImpl<>();
@@ -480,8 +478,8 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
     private final OneshotSupplierImpl<HubManager> mHubManagerSupplier = new OneshotSupplierImpl<>();
     private final OneshotSupplierImpl<ModuleRegistry> mModuleRegistrySupplier =
             new OneshotSupplierImpl<>();
-    private final ObservableSupplierImpl<TopInsetProvider> mTopInsetProviderSupplier =
-            new ObservableSupplierImpl<>();
+    private final SettableMonotonicObservableSupplier<TopInsetProvider> mTopInsetProviderSupplier =
+            ObservableSuppliers.createMonotonic();
     private final IncognitoTabHost mIncognitoTabHost =
             new IncognitoTabHost() {
                 @Override
@@ -598,7 +596,8 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
     private NextTabPolicySupplier mNextTabPolicySupplier;
     private HubProvider mHubProvider;
     private Runnable mCleanUpHubOverviewColorObserver;
-    private @Nullable SettableObservableSupplier<TabModelStartupInfo> mTabModelStartupInfoSupplier;
+    private @Nullable SettableMonotonicObservableSupplier<TabModelStartupInfo>
+            mTabModelStartupInfoSupplier;
     private CallbackController mCallbackController = new CallbackController();
     private TabbedModeTabDelegateFactory mTabDelegateFactory;
     private ReadingListBackPressHandler mReadingListBackPressHandler;
@@ -809,15 +808,18 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
             mTabModelOrchestrator.onNativeLibraryReady(getTabContentManager());
 
             mTabModelNotificationDotManager.initWithNative(mTabModelSelector);
-            TabModel currentTabModel = mTabModelSelector.getCurrentModel();
             initializeChromeAndroidTask(
-                    BrowserWindowType.NORMAL, currentTabModel, mMultiInstanceManager);
+                    BrowserWindowType.NORMAL,
+                    mTabModelSelector,
+                    mSupportedProfileType,
+                    mMultiInstanceManager);
 
             // For saving non-incognito tab closures for Recent Tabs.
             mHistoricalTabModelObserver =
                     new HistoricalTabModelObserver(mTabModelSelector.getTabGroupModelFilter(false));
             mHistoricalTabModelObserver.addSecondaryTabModelSupplier(
-                    ArchivedTabModelOrchestrator.getForProfile(currentTabModel.getProfile())
+                    ArchivedTabModelOrchestrator.getForProfile(
+                                    mTabModelSelector.getCurrentModel().getProfile())
                             ::getTabModel);
 
             // Defer creation of this helper so it triggers after TabGroupModelFilter observers.
@@ -945,12 +947,6 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
         RecordUserAction.record("MobileTopToolbarNewTabButton");
 
         RecordUserAction.record("MobileNewTabOpened");
-    }
-
-    private void refreshSignIn() {
-        try (TraceEvent e = TraceEvent.scoped("ChromeTabbedActivity.refreshSignIn")) {
-            FirstRunSignInProcessor.openSyncSettingsIfScheduled(this);
-        }
     }
 
     private HubLayoutDependencyHolder createHubLayoutDependencyHolder() {
@@ -1122,12 +1118,12 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                 .onAvailable(manager -> mHubManagerSupplier.set(manager));
     }
 
-    private @NonNull ObservableSupplier<Integer> initHubOverviewColorSupplier() {
+    private @NonNull MonotonicObservableSupplier<Integer> initHubOverviewColorSupplier() {
         ObservableSupplierImpl<Integer> overviewColorSupplier =
                 new ObservableSupplierImpl<>(Color.TRANSPARENT);
         mHubManagerSupplier.onAvailable(
                 (hubManager) -> {
-                    ObservableSupplier<Integer> hubOverviewColorSupplier =
+                    MonotonicObservableSupplier<Integer> hubOverviewColorSupplier =
                             hubManager.getHubOverviewColorSupplier();
                     Callback<Integer> hubOverviewColorObserver = overviewColorSupplier::set;
                     hubOverviewColorSupplier.addObserver(hubOverviewColorObserver);
@@ -1410,8 +1406,6 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
             }
 
             // All this initialization can be expensive so it's split into multiple tasks.
-            PostTask.postTask(
-                    TaskTraits.UI_DEFAULT, mCallbackController.makeCancelable(this::refreshSignIn));
             PostTask.postTask(
                     TaskTraits.UI_DEFAULT,
                     mCallbackController.makeCancelable(this::initializeToolbarManager));
@@ -3160,7 +3154,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
 
             @NonNull
             @Override
-            public ObservableSupplier<Profile> getProfileSupplier() {
+            public MonotonicObservableSupplier<Profile> getProfileSupplier() {
                 return mTabModelProfileSupplier;
             }
 
@@ -4888,8 +4882,9 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
 
     private void maybeInitializeXrSceneCoreSession() {
         if (DeviceInfo.isXr()) {
+            assert XrModule.isInstalled() : "XR module must be installed on XR devices. ";
             mXrSceneCoreSessionInitializer =
-                    new XrSceneCoreSessionInitializerImpl(
+                    XrModule.getImpl().getXrSceneCoreSessionInitializer(
                             getLifecycleDispatcher(), mXrSceneCoreSessionManagerSupplier.get());
             mXrSceneCoreSessionInitializer.initialize(INITIAL_XR_FULL_SPACE_MODE);
         }
@@ -4901,7 +4896,8 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
         XrSceneCoreSessionManager xrSceneCoreSessionManager = null;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             if (DeviceInfo.isXr()) {
-                xrSceneCoreSessionManager = new XrSceneCoreSessionManagerImpl(this);
+                assert XrModule.isInstalled() : "XR module must be installed on XR devices. ";
+                xrSceneCoreSessionManager = XrModule.getImpl().getXrSceneCoreSessionManager(this);
                 xrSceneCoreSessionManager
                         .getXrSpaceModeObservableSupplier()
                         .addSyncObserver(mOnXrSpaceModeChanged);
@@ -4910,7 +4906,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
         return xrSceneCoreSessionManager;
     }
 
-    private @Nullable ObservableSupplier<Boolean> getXrSpaceModeObservableSupplier() {
+    private @Nullable MonotonicObservableSupplier<Boolean> getXrSpaceModeObservableSupplier() {
         var xrSceneCoreSessionManager = mXrSceneCoreSessionManagerSupplier.get();
         return xrSceneCoreSessionManager != null
                 ? xrSceneCoreSessionManager.getXrSpaceModeObservableSupplier()

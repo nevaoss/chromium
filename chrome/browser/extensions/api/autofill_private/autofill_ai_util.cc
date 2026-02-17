@@ -6,6 +6,7 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include "base/containers/flat_set.h"
@@ -59,13 +60,15 @@ using autofill::EntityTypeName;
 //    `api::autofill_private::EntityInstanceWithLabels` to the output.
 void EntityInstanceToPrivateApiEntityInstanceWithLabels(
     base::span<const EntityInstance*> entity_instances,
-    const std::string& app_locale,
+    std::string_view app_locale,
+    bool obfuscate_sensitive_types,
     std::vector<autofill_private::EntityInstanceWithLabels>& output) {
   // Step 1#, get all available labels for `entity_instances`.
   const std::vector<autofill::EntityLabel> labels_for_entities =
       autofill::GetLabelsForEntities(entity_instances,
                                      /*attribute_types_to_ignore=*/{},
                                      /*only_disambiguating_types=*/false,
+                                     /*obfuscate_sensitive_types=*/obfuscate_sensitive_types,
                                      app_locale);
 
   // Step 2#
@@ -128,7 +131,7 @@ AttributeTypeDataTypeToPrivateApiAttributeTypeDataType(
 
 std::optional<EntityInstance> PrivateApiEntityInstanceToEntityInstance(
     const autofill_private::EntityInstance& private_api_entity_instance,
-    const std::string& app_locale) {
+    std::string_view app_locale) {
   base::flat_set<AttributeInstance, AttributeInstance::CompareByType>
       attribute_instances;
   for (const autofill_private::AttributeInstance&
@@ -206,7 +209,7 @@ std::optional<EntityInstance> PrivateApiEntityInstanceToEntityInstance(
 
 autofill_private::EntityInstance EntityInstanceToPrivateApiEntityInstance(
     const EntityInstance& entity_instance,
-    const std::string& app_locale) {
+    std::string_view app_locale) {
   std::vector<autofill_private::AttributeInstance>
       private_api_attribute_instances;
   bool should_authenticate_to_view = false;
@@ -279,7 +282,8 @@ autofill_private::EntityInstance EntityInstanceToPrivateApiEntityInstance(
 std::vector<autofill_private::EntityInstanceWithLabels>
 EntityInstancesToPrivateApiEntityInstancesWithLabels(
     base::span<const EntityInstance> entity_instances,
-    const std::string& app_locale) {
+    bool obfuscate_sensitive_types,
+    std::string_view app_locale) {
   // Entity labels should be generated based on other entities of the same
   // type. This is because the disambiguation values of attributes are only
   // relevant inside a specific entity type.
@@ -290,14 +294,14 @@ EntityInstancesToPrivateApiEntityInstancesWithLabels(
   std::vector<autofill_private::EntityInstanceWithLabels> response;
   response.reserve(entity_instances.size());
   for (auto& [entity_type, entities] : entities_per_type) {
-    EntityInstanceToPrivateApiEntityInstanceWithLabels(entities, app_locale,
-                                                       response);
+    EntityInstanceToPrivateApiEntityInstanceWithLabels(
+        entities, app_locale, obfuscate_sensitive_types, response);
   }
   return response;
 }
 
 api::autofill_private::EntityType EntityTypeToPrivateApiEntityType(
-    const EntityType& entity_type,
+    EntityType entity_type,
     bool supports_wallet_storage) {
   autofill_private::EntityType api_type;
   api_type.type_name = std::to_underlying(entity_type.name());

@@ -20,12 +20,16 @@
 namespace autofill::prefs {
 
 namespace {
-// To simplify the rollout of AutofillSilentlyRemoveQuasiDuplicates,
-// deduplication can be run a second time per milestone for users enrolled in
-// the experiment. This pref tracks whether deduplication was run a second time.
-// TODO(crbug.com/325450676): Remove after the rollout finished.
-constexpr char kAutofillRanQuasiDuplicateExtraDeduplication[] =
-    "autofill.ran_quasi_duplicate_extra_deduplication";
+
+// Deprecated pref names. Kept around to clear them, until they are removed one
+// year later.
+#if BUILDFLAG(IS_ANDROID)
+inline constexpr char kFacilitatedPaymentsPixAccountLinkingDeprecated[] =
+    "facilitated_payments.pix_account_linking";
+#endif
+constexpr char kAutofillRanExtraDeduplication[] =
+    "autofill.ran_extra_deduplication";
+
 }  // namespace
 
 void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
@@ -93,7 +97,6 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
   registry->RegisterDictionaryPref(kAutofillMetadataUploadEvents);
   registry->RegisterTimePref(kAutofillUploadEventsLastResetTimestamp, {});
   registry->RegisterDictionaryPref(kAutofillSyncTransportOptIn);
-  registry->RegisterBooleanPref(kAutofillRanExtraDeduplication, false);
 #if BUILDFLAG(IS_ANDROID)
   // Automotive devices require stricter data protection for user privacy, so
   // mandatory reauth for autofill payment methods should always be enabled.
@@ -113,20 +116,12 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
   registry->RegisterBooleanPref(kAutofillPaymentMethodsMandatoryReauth, true);
 #endif
 
-  // Deprecated prefs registered for migration.
-  registry->RegisterBooleanPref(kAutofillEnabledDeprecated, true);
-  registry->RegisterStringPref(kAutofillAblationSeedPref, "");
-  registry->RegisterBooleanPref(kAutofillRanQuasiDuplicateExtraDeduplication,
-                                false);
 #if BUILDFLAG(IS_ANDROID)
-  registry->RegisterBooleanPref(kFacilitatedPaymentsPixAccountLinkingDeprecated,
-                                /*default_value=*/true);
-#endif  // BUILDFLAG(IS_ANDROID)
-
-#if BUILDFLAG(IS_ANDROID)
-  registry->RegisterBooleanPref(kAutofillUsingVirtualViewStructure, false);
+  registry->RegisterBooleanPref(kAutofillUsingPlatformAutofill, false);
   registry->RegisterBooleanPref(kAutofillThirdPartyPasswordManagersAllowed,
                                 true);
+  registry->RegisterStringPref(
+      kAutofillThirdPartyPackageUsedForPlatformAutofill, "");
   registry->RegisterBooleanPref(
       kFacilitatedPaymentsEwallet, /*default_value=*/true,
       user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
@@ -168,19 +163,27 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
     registry->RegisterIntegerPref(kAutofillSilentUpdatesToHomeAddress, 0);
     registry->RegisterIntegerPref(kAutofillSilentUpdatesToWorkAddress, 0);
   }
+
+  // Deprecated prefs registered for migration.
+  registry->RegisterBooleanPref(kAutofillEnabledDeprecated, true);
+  registry->RegisterStringPref(kAutofillAblationSeedPref, "");
+#if BUILDFLAG(IS_ANDROID)
+  registry->RegisterBooleanPref(kFacilitatedPaymentsPixAccountLinkingDeprecated,
+                                /*default_value=*/true);
+#endif  // BUILDFLAG(IS_ANDROID)
+  registry->RegisterBooleanPref(kAutofillRanExtraDeduplication, false);
+  // Don't add new prefs here. Add them before any deprecated prefs instead.
 }
 
 void MigrateDeprecatedAutofillPrefs(PrefService* pref_service) {
-  // Added 07/2024 (moved from profile pref to local state)
-  pref_service->ClearPref(kAutofillAblationSeedPref);
-  // Added 10/2024
-  pref_service->ClearPref(kAutofillRanQuasiDuplicateExtraDeduplication);
   // Added 03/2025
   pref_service->ClearPref(kAutofillEnabledDeprecated);
 #if BUILDFLAG(IS_ANDROID)
   // Added 08/2025
   pref_service->ClearPref(kFacilitatedPaymentsPixAccountLinkingDeprecated);
 #endif  // BUILDFLAG(IS_ANDROID)
+  // Added 01/2026
+  pref_service->ClearPref(kAutofillRanExtraDeduplication);
 }
 
 void RegisterLocalStatePrefs(PrefRegistrySimple* registry) {

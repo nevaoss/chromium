@@ -358,6 +358,9 @@ are declared in tools/grit/grit_args.gni.
         <part file="printing_strings.grdp" />
       </if>
 
+      <!-- Skills specific strings -->
+      <part file="skills_strings.grdp" />
+
       <!-- Strings that are only used when VR devices are supported -->
       <if expr="enable_vr">
         <part file="vr_strings.grdp" />
@@ -10647,6 +10650,44 @@ Keep your key file in a safe place. You will need it to create new versions of y
         </message>
         <message name="IDS_IOS_DESKTOP_LENS_PROMO_NOTIFICATION_BODY" desc="The body for the iOS desktop Lens promo notification.">
           Shop, translate, and identify what you see with your camera.
+        </message>
+      </if>
+
+      <!--Desktop to iOS Price Tracking promo strings-->
+      <if expr="not is_android">
+        <message name="IDS_IOS_DESKTOP_PRICE_TRACKING_PROMO_BUBBLE_DESCRIPTION_REMINDER" desc="The description for the iOS desktop Price Tracking promo bubble with a reminder button.">
+          Keep up with all your price drops on the go
+        </message>
+        <message name="IDS_IOS_DESKTOP_PRICE_TRACKING_PROMO_BUBBLE_TITLE_QR" desc="The title for the iOS desktop Price Tracking promo bubble with a QR Code.">
+          Get price tracking alerts on your phone
+        </message>
+        <message name="IDS_IOS_DESKTOP_PRICE_TRACKING_PROMO_BUBBLE_TITLE_REMINDER" desc="The title for the iOS desktop Price Tracking promo bubble with a reminder button.">
+          Get price tracking alerts on your <ph name="DEVICE_TYPE">$1<ex>iPhone</ex></ph>
+        </message>
+        <message name="IDS_IOS_DESKTOP_PRICE_TRACKING_PROMO_NOTIFICATION_BODY" desc="The body for the iOS desktop Price Tracking promo notification.">
+          Keep up with all your price drops on the go
+        </message>
+        <message name="IDS_IOS_DESKTOP_PRICE_TRACKING_PROMO_NOTIFICATION_TITLE" desc="The title for the iOS desktop Price Tracking promo notification.">
+          Enable price tracking alerts
+        </message>
+      </if>
+
+      <!--Desktop to iOS Tab Groups promo strings-->
+      <if expr="not is_android">
+        <message name="IDS_IOS_DESKTOP_TAB_GROUPS_PROMO_BUBBLE_DESCRIPTION_REMINDER" desc="The description for the iOS desktop Tab Groups promo bubble with a reminder button.">
+          You can pick up where you left off or create new tab groups on the go
+        </message>
+        <message name="IDS_IOS_DESKTOP_TAB_GROUPS_PROMO_BUBBLE_TITLE_QR" desc="The title for the iOS desktop Tab Groups promo bubble with a QR Code.">
+          Use your tab groups on your phone
+        </message>
+        <message name="IDS_IOS_DESKTOP_TAB_GROUPS_PROMO_BUBBLE_TITLE_REMINDER" desc="The title for the iOS desktop Tab Groups promo bubble with a reminder button.">
+          Use your tab groups on your <ph name="DEVICE_TYPE">$1<ex>iPhone</ex></ph>
+        </message>
+        <message name="IDS_IOS_DESKTOP_TAB_GROUPS_PROMO_NOTIFICATION_BODY" desc="The body for the iOS desktop Tab Groups promo notification.">
+          You can pick up where you left off or create new tab groups on the go
+        </message>
+        <message name="IDS_IOS_DESKTOP_TAB_GROUPS_PROMO_NOTIFICATION_TITLE" desc="The title for the iOS desktop Tab Groups promo notification.">
+          Reminder: Your tab groups
         </message>
       </if>
 

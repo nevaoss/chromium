@@ -1210,7 +1210,8 @@ void PermissionRequestManager::CurrentRequestsDecided(
 
   if (ShouldRecordUmaForCurrentPrompt()) {
     PermissionUmaUtil::PermissionPromptResolved(
-        requests_, browser_context, permission_action, time_to_decision,
+        requests_, browser_context, permission_action,
+        requests_[0]->prompt_options(), time_to_decision,
         DetermineCurrentRequestUIDisposition(),
         DetermineCurrentRequestUIDispositionReasonForUMA(),
         view_ ? std::optional(view_->GetPromptVariants()) : std::nullopt,
@@ -1242,7 +1243,7 @@ void PermissionRequestManager::CurrentRequestsDecided(
             ? base::TimeDelta::Max()
             : base::Time::Now() - current_request_first_display_time_;
     PermissionsClient::Get()->OnPromptResolved(
-        request.get(), permission_action,
+        request.get(), permission_action, request->prompt_options(),
         DetermineCurrentRequestUIDisposition(),
         DetermineCurrentRequestUIDispositionReasonForUMA(), quiet_ui_reason,
         time_since_shown, current_request_pepc_prompt_position_,

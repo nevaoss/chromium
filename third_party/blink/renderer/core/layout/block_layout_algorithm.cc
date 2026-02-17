@@ -655,10 +655,13 @@ const LayoutResult* BlockLayoutAlgorithm::LayoutInlineChild(
     const InlineNode& node) {
   ParagraphScale paragraph_scale;
   if (RuntimeEnabledFeatures::CssFitWidthTextEnabled()) {
+    const FitText& fit_text = Style().TextFit();
     const bool grow_consistent =
-        Style().TextGrow().Target() == FitTextTarget::kConsistent;
+        fit_text.Type() == FitTextType::kGrow &&
+        fit_text.Target() == FitTextTarget::kConsistent;
     const bool shrink_consistent =
-        Style().TextShrink().Target() == FitTextTarget::kConsistent;
+        fit_text.Type() == FitTextType::kShrink &&
+        fit_text.Target() == FitTextTarget::kConsistent;
     if (grow_consistent || shrink_consistent) {
       // Compute the paragraph scaling factor with a cloned
       // BlockLayoutAlgorithm.
@@ -3476,7 +3479,6 @@ ConstraintSpace BlockLayoutAlgorithm::CreateConstraintSpaceForChild(
     }
     builder.SetLineClampData(line_clamp_data_.data);
     builder.SetLineClampEndMarginStrut(line_clamp_data_.end_margin_strut);
-    builder.SetLineClampEndPadding(Padding().block_end);
     builder.SetShouldTextBoxTrimInsideWhenLineClamp(
         line_clamp_data_.data.IsLineClampContext() &&
         (constraint_space.ShouldTextBoxTrimInsideWhenLineClamp() ||

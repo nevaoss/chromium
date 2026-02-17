@@ -586,6 +586,31 @@ chromium-metrics-reviews@google.com.
   </token>
 </histogram>
 
+<histogram name="InitialWebUI.Toolbar.RenderProcessGone"
+    enum="TerminationStatus" expires_after="2026-07-05">
+  <owner>leimy@chromium.org</owner>
+  <owner>chrome-webium-product-eng@google.com</owner>
+  <summary>
+    Records the status when the Web UI Toolbar render process is terminated.
+
+    This is recorded every time when `WebUIToolbarWebView` receives
+    `PrimaryMainFrameRenderProcessGone()` signal, and when the status is not a
+    normal termination (i.e. every status except
+    `TERMINATION_STATUS_NORMAL_TERMINATION` and
+    `TERMINATION_STATUS_STILL_RUNNING`).
+  </summary>
+</histogram>
+
+<histogram name="InitialWebUI.Toolbar.RenderProcessGoneExceedingRecoveryLimit"
+    enum="Boolean" expires_after="2026-07-05">
+  <owner>leimy@chromium.org</owner>
+  <owner>chrome-webium-product-eng@google.com</owner>
+  <summary>
+    Record the number of times that the Web UI Toolbar render process is
+    terminated abnormmaly and it exceeds the recovery limit.
+  </summary>
+</histogram>
+
 <histogram name="ListMenuUtils.SetupCallbacksRecursively.Duration"
     units="microseconds" expires_after="2026-10-01">
   <owner>jhimawan@google.com</owner>
@@ -749,7 +774,7 @@ features through Chrome Labs. -->
 </histogram>
 
 <histogram name="Views.InvalidatesDuringLayout" units="count"
-    expires_after="2026-05-17">
+    expires_after="2026-07-19">
   <owner>dpranke@chromium.org</owner>
   <owner>elainechien@chromium.org</owner>
   <owner>kylixrd@chromium.org</owner>
@@ -791,7 +816,7 @@ features through Chrome Labs. -->
 
 <histogram
     name="Views.{Process}.NumColorProvidersInitializedDuringOnNativeThemeUpdated"
-    units="providers" expires_after="2026-05-17">
+    units="providers" expires_after="2026-07-19">
   <owner>pkasting@chromium.org</owner>
   <owner>tluk@chromium.org</owner>
   <owner>skau@chromium.org</owner>
@@ -856,7 +881,7 @@ features through Chrome Labs. -->
 </histogram>
 
 <histogram name="WebUI.CreatedForUrl" enum="WebUIUrlHashes"
-    expires_after="2026-05-17">
+    expires_after="2026-07-19">
   <owner>dpapad@chromium.org</owner>
   <owner>chrome-webui@google.com</owner>
   <summary>URLs for which Chrome creates WebUIControllers.</summary>

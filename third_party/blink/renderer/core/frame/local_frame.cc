@@ -266,15 +266,16 @@ namespace blink {
 namespace {
 
 #if BUILDFLAG(IS_ANDROID)
-std::vector<gfx::Range> ExtractMisspellingRangesFromDocumentMarkerVector(
-    const DocumentMarkerVector& markers) {
-  std::vector<gfx::Range> ranges;
+blink::DocumentMarkerVector ExtractSpellingMarkersFromDocumentMarkerVector(
+    const blink::DocumentMarkerVector& markers) {
+  blink::DocumentMarkerVector spelling_markers;
   for (auto& marker : markers) {
-    if (marker->GetType() == DocumentMarker::MarkerType::kSpelling) {
-      ranges.emplace_back(marker->StartOffset(), marker->EndOffset());
+    if (marker->GetType() == DocumentMarker::MarkerType::kSpelling ||
+        marker->GetType() == DocumentMarker::MarkerType::kGrammar) {
+      spelling_markers.push_back(marker);
     }
   }
-  return ranges;
+  return spelling_markers;
 }
 #endif  // BUILDFLAG(IS_ANDROID)
 
@@ -820,6 +821,9 @@ bool LocalFrame::DetachImpl(FrameDetachType type) {
   frame_visibility_observers_.clear();
 
   not_restored_reasons_.reset();
+  microtasks_pauser_.reset();
+  prescient_networking_.reset();
+  link_preview_triggerer_.reset();
 
   DCHECK(!view_->IsAttached());
   Client()->WillBeDetached();
@@ -4292,7 +4296,7 @@ void LocalFrame::PerformSpellCheck() {
                              Position::LastPositionInNode(*container_node));
   GetSpellChecker().GetSpellCheckRequester().RequestCheckingFor(
       range,
-      ExtractMisspellingRangesFromDocumentMarkerVector(
+      ExtractSpellingMarkersFromDocumentMarkerVector(
           GetDocument()->Markers().Markers()),
       /*request_num=*/0, /*should_force_refresh=*/false);
 }

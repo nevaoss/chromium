@@ -1522,6 +1522,15 @@ Attribution Reporting API 已淘汰，因此這項政策也已在 <ph name="PROD
 <translation id="2144236546337326489">允許啟用 Phone Hub 工作接續</translation>
 <translation id="2145735238144543545">必須提供用戶端憑證</translation>
 <translation id="2146103669166779785">系統會根據這個十六進位顏色產生主題，並套用至瀏覽器。</translation>
+<translation id="2146539033119095550">你可以透過這項政策設定網址模式清單，指定哪些頂層來源應停用第三方儲存空間分區 (跨來源 iframe 儲存空間分區)。
+
+如果未設定這項政策，或是頂層來源不符合其中一個網址模式，系統就會套用 <ph name="DEFAULT_THIRD_PARTY_STORAGE_PARTITIONING_SETTING_POLICY_NAME" />。
+
+如要進一步瞭解有效的網址模式，請參閱 https://chromeenterprise.google/policies/url-patterns。請注意，系統會將你在這裡列出的模式視為來源而非網址，因此請勿指定路徑。
+
+如要進一步瞭解第三方儲存空間分區，請參閱 https://developers.google.com/privacy-sandbox/cookies/storage-partitioning。
+
+這項政策已於 Chrome 145 中移除，建議改用 requestStorageAccess 方法：https://developer.mozilla.org/en-US/docs/Web/API/Document/requestStorageAccess。如要提供意見，請前往 https://crbug.com/425248669。</translation>
 <translation id="2148733583160916305">允許這些網站使用 WebPrinting API</translation>
 <translation id="2148769554831004951">強制將 WebSQL 啟用。</translation>
 <translation id="214901426630414675">限制使用雙面列印模式</translation>
@@ -2373,11 +2382,6 @@ Attribution Reporting API 已淘汰，因此這項政策也已在 <ph name="PROD
 <translation id="2707733461906745082">設定檔區隔</translation>
 <translation id="2707873794476722903">已啟用標準模式中的安全瀏覽功能。</translation>
 <translation id="2709516037105925701">自動填入</translation>
-<translation id="2713265653152900248">如果設定這項政策，使用者可在無痕模式下存取許可清單中的網址，這些網址是 <ph name="INCOGNITO_MODE_URL_BLOCKLIST_POLICY_NAME" /> 的例外項目。舉例來說，將 <ph name="INCOGNITO_MODE_URL_BLOCKLIST_POLICY_NAME" /> 設為「*」，系統會封鎖無痕模式下的所有要求。你可以透過這項政策允許使用者存取有限的特定網址。請使用 https://support.google.com/chrome/a?p=url_blocklist_filter_format 頁面中指定的格式，透過這項政策將特定網路協定、其他網域的子網域、通訊埠或特定路徑設為例外項目。<ph name="INCOGNITO_MODE_URL_ALLOWLIST_POLICY_NAME" /> 政策的優先順序高於 <ph name="INCOGNITO_MODE_URL_BLOCKLIST_POLICY_NAME" />。這項政策最多只能輸入 1,000 個項目。
-
-如果未設定這項政策，<ph name="INCOGNITO_MODE_URL_BLOCKLIST_POLICY_NAME" /> 就不會有例外項目。
-
-這項政策只會影響無痕模式。如要允許所有使用者設定檔存取這些網址，請使用 <ph name="URL_ALLOWLIST_POLICY_NAME" /> 政策。</translation>
 <translation id="2713913573196284609">這個值已於 M121 淘汰。在 M121 和更高版本中，系統會將值視為 EnabledBelowThreshold。</translation>
 <translation id="2713977837384407666">一律傳送指標資料給 Google</translation>
 <translation id="2714359695399346815">如果將這項政策設為啟用或不設定，即可使用 STUN 伺服器，這樣即使遠端用戶端受到防火牆阻隔，也能偵測到這部裝置並建立連線。
@@ -3193,6 +3197,7 @@ Microsoft Outlook 資訊卡需要額外的管理員設定。想進一步瞭解�
       如果將這項政策設為停用，已註冊的裝置不會回報資訊站工作階段相關資訊。</translation>
 <translation id="3303770131697159224">預設視窗管理權限設定</translation>
 <translation id="3303911765031636277">OnFileAttached Chrome Enterprise Connector 的配置政策</translation>
+<translation id="3305586786770047829">如果將這項政策設為 0 或未設定，系統只會在關聯使用者的使用者範圍套用 <ph name="PROXY_OVERRIDE_RULES_POLICY_NAME" /> 政策。如果將這項政策設為 1，就算使用者受其他網域管理，系統仍會在使用者範圍套用 <ph name="PROXY_OVERRIDE_RULES_POLICY_NAME" /> 政策。</translation>
 <translation id="3307744348419745296">不允許 Wi-Fi 網路設定在 <ph name="PRODUCT_OS_NAME" /> 裝置和已連結的 Android 手機間保持同步</translation>
 <translation id="3308724602356134956">如果設定這項政策，<ph name="PRODUCT_OS_NAME" />會下載並使用你為使用者的桌面和登入畫面背景所設定的桌面圖片，且使用者無法變更這項設定。請指定 <ph name="PRODUCT_OS_NAME" />可從中下載桌面圖片的網址，以及用於驗證下載內容完整性的加密編譯雜湊值 (請指定無須驗證即可存取的網址，且圖片必須為 JPEG 格式，檔案大小上限為 16 MB)。
 
@@ -3304,6 +3309,11 @@ Microsoft Outlook 資訊卡需要額外的管理員設定。想進一步瞭解�
 <translation id="33993310248354034">允許偵測網頁上的純文字實體。</translation>
 <translation id="3399859571630358395">強制停用快速配對功能 (快速藍牙配對)。</translation>
 <translation id="3404681701763345449">啟用 <ph name="GOOGLE_CALENDAR_NAME" />整合。</translation>
+<translation id="3405276853140830214">這項政策可控管是否預設允許使用第三方儲存空間分區。如果將這項政策設為 1 - AllowPartitioning 或不設定，系統預設會允許使用第三方儲存空間分區。但特定頂層來源可能會透過其他方式覆寫這項預設值。如果將這項政策設為 2 - BlockPartitioning，系統會為所有情境停用第三方儲存空間分區。
+
+你可以使用 <ph name="THIRD_PARTY_STORAGE_PARTITIONING_BLOCKED_FOR_ORIGINS_POLICY_NAME" /> 停用特定頂層來源的第三方儲存空間分區。如要進一步瞭解第三方儲存空間分區，請參閱 https://developers.google.com/privacy-sandbox/cookies/storage-partitioning。
+
+這項政策已於 Chrome 145 中移除，建議改用 requestStorageAccess 方法：https://developer.mozilla.org/en-US/docs/Web/API/Document/requestStorageAccess。如要提供意見，請前往 https://crbug.com/425248669。</translation>
 <translation id="3405361833556012520">這項政策僅適用於瀏覽器流量。Play 商店、Android 應用程式網頁瀏覽和其他使用者流量 (例如 Linux VM 流量或列印工作) 仍會適用「永久連線 VPN」所設定的限制。這項政策只會在未連上 VPN 的情況強制執行，而且只適用於使用者的瀏覽器流量。這項政策強制執行時，系統流量也可以略過「永久連線 VPN」，執行擷取政策和同步處理系統時鐘等工作。
 
 請使用 https://support.google.com/chrome/a?p=url_blocklist_filter_format 網頁中指定的格式，透過這項政策將特定的網路協定、其他網域的子網域、通訊埠或特定路徑設為例外。如要判定是否封鎖某個網址，系統會以條件最精確的篩選器做為判定依據。
@@ -5047,6 +5057,14 @@ ServiceWorkerAutoPreload 功能會在開始執行 ServiceWorker 啟動程序時�
 <translation id="46321462262887935">將最上排按鍵設為功能鍵，但允許使用者變更</translation>
 <translation id="4632343302005518762">允許 <ph name="PRODUCT_FRAME_NAME" /> 處理下列內容類型</translation>
 <translation id="4636354638176939375">停用受監管使用者的建立功能</translation>
+<translation id="4637701328641064644">這項政策可控管系統是否在擷取及瀏覽期間分割 Blob 網址。
+如果將這項政策設為啟用或不設定，系統將會分割 Blob 網址。
+如果將這項政策設為停用，系統就不會分割 Blob 網址。
+
+如須使用這項政策，請前往 <ph name="BUG_URL" /> 回報錯誤並說明用途。這項政策預計透過 <ph name="PRODUCT_NAME" /> 146 版提供，屆時我們將移除舊的實作方式。注意：在瀏覽器執行期間，只有新啟動的轉譯器程序會套用這項政策的變更。
+
+如要進一步瞭解第三方儲存空間分區，請參閱
+https://developers.google.com/privacy-sandbox/cookies/storage-partitioning。</translation>
 <translation id="46383668315040154">指定這部裝置固定使用的發布版本。
 
 只有將 <ph name="CHROME_OS_RELEASE_CHANNEL_DELEGATED_POLICY_NAME" /> 設為 False，<ph name="CHROME_OS_RELEASE_CHANNEL_POLICY_NAME" /> 設定才會生效。</translation>
@@ -6390,15 +6408,6 @@ Protected Audience API 已淘汰，因此這項政策也已在 <ph name="PRODUCT
 
 如果將這項政策設為 False，系統就不允許使用受保護內容 ID。</translation>
 <translation id="5492713303272131731">轉譯器程序在核心執行時，其他所有程序都能安排在同一個 CPU 核心上執行。</translation>
-<translation id="5494322570831642650">指定使用者是否可在 <ph name="PRODUCT_NAME" /> 中以無痕模式開啟網頁。
-
-      如果將這項政策設為「Enabled」或不予設定，使用者能夠以無痕模式開啟網頁。
-
-      如果設為「Disabled」，使用者將無法以無痕模式開啟網頁。
-
-      如果設為「Forced」，使用者只能以無痕模式開啟網頁。請注意，「Forced」選項不適用於 Chrome Android 版。
-
-      注意：在 iOS 上，如果政策在工作階段期間發生變更，那麼只有在裝置重新啟動後才會生效。</translation>
 <translation id="549471902631700911">停用接收安全瀏覽問卷調查功能</translation>
 <translation id="549625769649876757">設定這項政策後，你可以使用網址模式清單，指定哪些網站可存取使用者的高精確度地理位置資訊，不必先要求使用者授權。
 
@@ -8559,9 +8568,6 @@ Origin-Agent-Cluster HTTP 標頭會控制文件要在 origin-keyed 代理程式�
 <translation id="6866755486434471318">允許 <ph name="PEPPER_NAME" /> 使用分享的圖片解碼影片。</translation>
 <translation id="6878757724611298427">允許使用者在無關聯的裝置上使用 Android 應用程式</translation>
 <translation id="6881447940489194100">資料的十六進位編碼 SHA-256 雜湊。</translation>
-<translation id="688149562204519323">如果設定 <ph name="INCOGNITO_MODE_URL_BLOCKLIST_POLICY_NAME" /> 政策，系統會停止在無痕模式下載入遭禁止網址的網頁。管理員可以指定要封鎖的網址模式清單。如果未設定，系統就不會在無痕模式下封鎖任何網址。<ph name="INCOGNITO_MODE_URL_ALLOWLIST_POLICY_NAME" /> 中最多可定義 1000 個例外網址。請前往 https://support.google.com/chrome/a?p=url_blocklist_filter_format，瞭解如何設定網址模式的格式。
-
-這項政策只會影響無痕模式。如要禁止所有使用者設定檔存取這些網址，請使用 <ph name="URL_BLOCKLIST_POLICY_NAME" /> 政策。</translation>
 <translation id="68818134518270542">你可以透過這項政策指定應用程式，允許使用者在 <ph name="PRODUCT_OS_NAME" />螢幕鎖定畫面上以筆記應用程式的形式開啟。
 
       如果偏好的筆記應用程式已在螢幕鎖定畫面上，用來啟動該應用程式的 UI 元素就會顯示在畫面上。應用程式啟動後，將可在螢幕鎖定畫面的上方建立視窗，並在螢幕鎖定的情況下建立筆記。應用程式可在工作階段解鎖後，將已建立的筆記匯入主要使用者的工作階段。螢幕鎖定畫面上僅支援 <ph name="PRODUCT_NAME" /> 筆記應用程式。
@@ -8625,6 +8631,25 @@ Origin-Agent-Cluster HTTP 標頭會控制文件要在 origin-keyed 代理程式�
 如果將這項政策設為停用或不設定，系統將套用封鎖這類要求的預設行為。</translation>
 <translation id="6915524162137327111">顯示管理標籤 30 秒</translation>
 <translation id="6919205861950516688">不允許使用分頁整理工具。</translation>
+<translation id="6920791385071265136">如有因違反非惡意軟體規定而遭下架的擴充功能，指定是否仍可將這類功能強制安裝在低信任環境中。
+
+如要進一步瞭解非惡意軟體違規情況和下架原因，請前往 https://developer.chrome.com/docs/webstore/review-process#warning。
+
+解決非惡意軟體違規問題後，擴充功能會保持啟用狀態，無法停用或移除。
+
+如果 <ph name="MS_WIN_NAME" /> 上的執行個體加入 <ph name="MS_AD_NAME" /> 網域或 <ph name="MS_AAD_NAME" />，或者註冊 <ph name="CHROME_BROWSER_CLOUD_MANAGEMENT_NAME" />，就無法使用這項政策。
+
+如果 <ph name="MAC_OS_NAME" /> 上的執行個體是透過行動裝置管理 (MDM) 軟體受管理、透過 MCX 加入網域，或者註冊 <ph name="CHROME_BROWSER_CLOUD_MANAGEMENT_NAME" />，就無法使用這項政策。在這些情況下，違反非惡意軟體規定的強制安裝擴充功能仍會保持啟用狀態。
+
+目前，違反非惡意軟體規定的強制安裝擴充功能，仍會安裝在 Chrome 中並保持啟用狀態。
+
+如果將這項政策設為啟用，無論是否違反非惡意軟體相關規定，強制安裝的擴充功能都會保持啟用狀態。
+
+如果將這項政策設為停用或不設定，系統會停用違反非惡意軟體規定的強制安裝擴充功能。
+
+這項政策已從　M145 版中移除。
+
+      從該版本起，違反非惡意軟體規定的強制安裝擴充功能在低信任環境中會設為停用。</translation>
 <translation id="692096803256767290">將 OS 復原至目標版本</translation>
 <translation id="6921241119085515674">允許 <ph name="MICROSOFT_ONE_DRIVE_NAME" /> 和 <ph name="MICROSOFT_365_NAME" /> 的<ph name="CLOUD_UPLOAD_NAME" />資料流</translation>
 <translation id="6921544339867564740">允許裝置在 Chrome OS 上執行虛擬機器</translation>
@@ -9658,21 +9683,6 @@ Gemini 啟動功能僅支援部分國家/地區和語言。設定這項政策無
 網址模式不得與 <ph name="WEB_PRINTING_BLOCKED_FOR_URLS_POLICY_NAME" /> 政策衝突。如果網址同時符合兩項政策，系統不會優先採用任何一項政策。
 
 如要進一步瞭解有效的網址模式，請參閱 https://chromeenterprise.google/policies/url-patterns。<ph name="WILDCARD_VALUE" /> 不是這項政策許可的值。</translation>
-<translation id="7615612213075471065">這項政策會針對受管理瀏覽器，控管 <ph name="PRODUCT_NAME" /> SaaS 網域造訪和內容傳輸的報表功能。
-
-設定這項政策後，只要是符合 SaaS 網域的網址，就可用來產生報表並加以上傳，系統會忽略不符合的網址。
-
-如果不設定這項政策或設為空白清單，就不會產生任何報表。
-
-比對模式與「<ph name="URL_BLOCKLIST_POLICY_NAME" />」政策使用的格式類似，請參考以下頁面說明：https://support.google.com/chrome/a?p=url_blocklist_filter_format。但有以下幾項例外情況：
-
- * 網址主機必須與 SaaS 網站清單中某個網域的主機名稱相符，或是該主機名稱的子網域。
-
- * 網址路徑的開頭必須是相符 SaaS 網站清單項目的路徑。
-
- * 比對時會忽略網址結構定義、通訊埠和查詢。
-
-這項政策值是由雲端政策基礎架構填入，管理員無法直接設定。</translation>
 <translation id="7616631530432070402">傳輸層安全標準 (TLS) 中將啟用 3DES 加密套件</translation>
 <translation id="761788785484453836">要求啟用所有網站的網站隔離功能</translation>
 <translation id="7620869951155758729">這項政策可讓你指定用來產生及驗證家長存取碼的設定。請一律使用 |current_config| 來產生存取碼，而且只有在無法透過 |future_config| 驗證存取碼時，才能使用這項設定進行驗證。
@@ -11129,21 +11139,6 @@ Gemini 啟動功能僅支援部分國家/地區和語言。設定這項政策無
 <translation id="8631437968147930597"><ph name="PRODUCT_OS_NAME" />螢幕鎖定畫面上允許的筆記應用程式清單</translation>
 <translation id="8633550872001751090">允許將 <ph name="PRODUCT_NAME" /> 資料納入備份內容</translation>
 <translation id="8634062512783775032">採用 <ph name="AES_KL_NAME" /> 做為加密使用者儲存空間的加密演算法 (如果支援)</translation>
-<translation id="8635783478441936474">這項政策會針對受管理設定檔，控管 <ph name="PRODUCT_NAME" /> SaaS 網域造訪和內容傳輸的報表功能。
-
-設定這項政策後，只要是符合 SaaS 網域的網址，就可用來產生報表並加以上傳，系統會忽略不符合的網址。
-
-如果不設定這項政策或設為空白清單，就不會產生任何報表。
-
-比對模式與「<ph name="URL_BLOCKLIST_POLICY_NAME" />」政策使用的格式類似，請參考以下頁面說明：https://support.google.com/chrome/a?p=url_blocklist_filter_format。但有以下幾項例外情況：
-
- * 網址主機必須與 SaaS 網站清單中某個網域的主機名稱相符，或是該主機名稱的子網域。
-
- * 網址路徑的開頭必須是相符 SaaS 網站清單項目的路徑。
-
- * 比對時會忽略網址結構定義、通訊埠和查詢。
-
-這項政策只能設為雲端使用者政策。這項政策值是由雲端政策基礎架構填入，管理員無法直接設定。</translation>
 <translation id="8637566476051166626">明確允許的網路通訊埠</translation>
 <translation id="8643838501942693770">允許第三方 Cookie，但使用者可以變更這項設定</translation>
 <translation id="864611373241249369"><ph name="LACROS_NAME" /> 停用後，系統會嘗試遷移所有資料。</translation>

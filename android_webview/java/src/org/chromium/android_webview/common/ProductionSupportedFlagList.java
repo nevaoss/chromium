@@ -259,6 +259,10 @@ public final class ProductionSupportedFlagList {
                 AutofillFeatures.AUTOFILL_ENABLE_EXPIRATION_DATE_IMPROVEMENTS,
                 "Enables various improvements to handling expiration dates."),
         Flag.baseFeature(
+                AutofillFeatures.AUTOFILL_ENABLE_SKIPPING_UNRECOGNIZED_ATTRIBUTE,
+                "Allows autofill to ignore suppressing predicitons on fields with"
+                        + " autocomplete=unrecognized."),
+        Flag.baseFeature(
                 AutofillFeatures.AUTOFILL_ENABLE_SUPPORT_FOR_PARSING_WITH_SHARED_LABELS,
                 "Splits Autofill labels among consecutive fields for better heuristic"
                         + " predictions."),
@@ -272,9 +276,6 @@ public final class ProductionSupportedFlagList {
                 AutofillFeatures.AUTOFILL_DISALLOW_MORE_HYPHEN_LIKE_LABELS,
                 "Disallows labels that only contain em dashes, minuses, fullwidth hyphens and other"
                         + " special characters."),
-        Flag.baseFeature(
-                AutofillFeatures.AUTOFILL_IGNORE_CHECKABLE_ELEMENTS,
-                "Does not extract checkboxes and radio buttons"),
         Flag.baseFeature(
                 AutofillFeatures.AUTOFILL_MOVE_SMALL_FORM_LOGIC_TO_CLIENT,
                 "Moves the small form handling from Autofill server to client."),
@@ -302,6 +303,10 @@ public final class ProductionSupportedFlagList {
                 "When enabled, Autofill will send the structural form signature and low-precision"
                     + " hashes of form and field metadata, and evaluate the accuracy of returned"
                     + " experimental predictions."),
+        Flag.baseFeature(
+                AutofillFeatures.AUTOFILL_SERVER_QUERY_PREDICTIONS_EARLY,
+                "When enabled, Autofill enables querying the server for predictions before the form"
+                        + " has been parsed locally."),
         Flag.baseFeature(
                 AutofillFeatures.AUTOFILL_SUPPORT_LAST_NAME_PREFIX,
                 "When enabled, Autofill uses a custom name hierarchy for parsing last names."),
@@ -388,6 +393,10 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(
                 AwFeatures.WEBVIEW_REDUCE_UA_ANDROID_VERSION_DEVICE_MODEL,
                 "Enables reduce webview user-agent android version and device model."),
+        Flag.baseFeature(
+                AwFeatures.WEBVIEW_RENDERER_KEEP_ALIVE,
+                "Keeps the renderer process alive after the last WebView is destroyed to "
+                        + "allow for reuse."),
         Flag.baseFeature(
                 BlinkFeatures.REDUCE_USER_AGENT_MINOR_VERSION,
                 "Enables reduce webview user-agent minor version."),
@@ -924,7 +933,9 @@ public final class ProductionSupportedFlagList {
                     + " - caches any chromium startup exception and rethrows it if startup is"
                     + " retried without a restart.\n"
                     + " Note: WebViewUseStartupTasksLogicP2 and kWebViewStartupTasksYieldToNative"
-                    + " also enable the same behaviour as this flag."),
+                    + " also enable the same behaviour as this flag. Additionally, developer"
+                    + " preferences via the AndroidX API or manifest metadata supersedes this"
+                    + " flag."),
         Flag.baseFeature(
                 BlinkFeatures.ASYNC_SET_COOKIE,
                 "When enabled, the communication between renderer and network service is "
@@ -968,6 +979,9 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(
                 AwFeatures.WEBVIEW_CONNECT_TO_COMPONENT_PROVIDER_IN_BACKGROUND,
                 "Connect to the non-embedded components provider from a background thread."),
+        Flag.baseFeature(
+                AwFeatures.WEBVIEW_ENABLE_API_CALL_USER_ACTIONS,
+                "Enables recording user actions for API calls."),
         Flag.baseFeature("PrefetchUseContentRefactor"),
         Flag.baseFeature("LowPriorityAsyncScriptExecution"),
         Flag.baseFeature("WebViewPrefetchHighestPrefetchPriority"),
@@ -980,7 +994,9 @@ public final class ProductionSupportedFlagList {
                     + " which also starts browser processes asynchronously, when starting webview"
                     + " asynchronously.\n"
                     + " Note: This also enables the same behaviour as WebViewUseStartupTasksLogic"
-                    + " and WebViewStartupTasksYieldToNative with minor differences."),
+                    + " and WebViewStartupTasksYieldToNative with minor differences. Additionally,"
+                    + " developer preferences via the AndroidX API or manifest metadata supersedes"
+                    + " this flag."),
         Flag.baseFeature("ServiceWorkerAutoPreload"),
         Flag.baseFeature(GpuFeatures.WEB_GPU_USE_SPIRV14, "Use WebGPU's SPIR-V 1.4"),
         Flag.commandLine(
@@ -988,7 +1004,9 @@ public final class ProductionSupportedFlagList {
                 "Enables running native startup tasks asynchronously if WebView startup is"
                     + " asynchronous.\n"
                     + " Note: This also enables the same behaviour as WebViewUseStartupTasksLogic"
-                    + " and WebViewUseStartupTasksLogicP2, with minor additions."),
+                    + " and WebViewUseStartupTasksLogicP2, with minor additions. Additionally,"
+                    + " developer preferences via the AndroidX API or manifest metadata supersedes"
+                    + " this flag."),
         Flag.commandLine(
                 AwSwitches.WEBVIEW_STARTUP_TASKS_PLUS_MULTI_PROCESS,
                 "Enables running native startup tasks asynchronously if WebView startup is"
@@ -1035,9 +1053,6 @@ public final class ProductionSupportedFlagList {
                 BaseFeatures.USE_SHARED_REBIND_SERVICE_CONNECTION,
                 "Use a shared service connection to apply service group importance changes."),
         Flag.baseFeature(
-                AwFeatures.WEBVIEW_USE_RENDERING_HEURISTIC,
-                "Apply smoothing Skia options when WebView detects it's running on a TV device."),
-        Flag.baseFeature(
                 UiBaseFeatures.SEND_EMPTY_GESTURE_SCROLL_UPDATE,
                 "Send GestureScrollUpdates together with TouchMoves, including empty GSUs for 0"
                         + " delta moves."),
@@ -1047,8 +1062,26 @@ public final class ProductionSupportedFlagList {
                     + " startups: After enabling this flag, applications must be started and then"
                     + " restarted for tracing to apply."),
         Flag.baseFeature(
+                AwFeatures.WEBVIEW_DISABLE_PERFETTO_INIT,
+                "Disables Perfetto initialization if enabled. "
+                        + "When enabled, the "
+                        + AwFeatures.WEBVIEW_EARLY_PERFETTO_INIT
+                        + " and "
+                        + AwFeatures.WEBVIEW_BACKGROUND_PERFETTO_INIT
+                        + " are both ignored. "
+                        + "After enabling this flag, applications must be started and then "
+                        + "restarted for tracing to apply."),
+        Flag.baseFeature(
                 AwFeatures.WEBVIEW_EARLY_PERFETTO_INIT,
                 "Initializes Perfetto as early as possible, right after native library load. "
+                        + "After enabling this flag, applications must be started and then "
+                        + "restarted for tracing to apply."),
+        Flag.baseFeature(
+                AwFeatures.WEBVIEW_BACKGROUND_PERFETTO_INIT,
+                "Initializes Perfetto on a background thread once native library has been loaded. "
+                        + "This flag is ignored if "
+                        + AwFeatures.WEBVIEW_EARLY_PERFETTO_INIT
+                        + " is enabled."
                         + "After enabling this flag, applications must be started and then "
                         + "restarted for tracing to apply."),
         Flag.baseFeature(
@@ -1152,6 +1185,10 @@ public final class ProductionSupportedFlagList {
                 "Reduces the size of the LevelDB cache to reduce memory usage at no expected speed"
                         + " cost"),
         Flag.baseFeature(
+                "IDBDatabaseExternalMemoryAccounting",
+                "Report external memory held by IndexedDB connections, so it's taken into account"
+                        + " in GC heuristics."),
+        Flag.baseFeature(
                 "VariationsStickyPersistence",
                 "Controls how prefs are written and persisted for tracking sticky study activation."
                     + " Note: The actual behavior is controlled by a feature param, but disabling"
@@ -1159,11 +1196,6 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(
                 BlinkFeatures.TEXT_SCALE_META_TAG,
                 "When enabled, <meta name=\"text-scale\" content=\"scale\"> takes effect"),
-        Flag.baseFeature(
-                CcFeatures.DROP_METRICS_FROM_NON_PRODUCED_FRAMES_ONLY_IF_THEY_HAD_NO_DAMAGE,
-                "Whether LayerTreeHostImpl::DidNotProduceFrame() should only drop event metrics"
-                        + " from frames that weren't produced due to no damage (but preserve event"
-                        + " metrics from frames that weren't produced for other reasons)."),
         // Add new commandline switches and features above. The final entry should have a
         // trailing comma for cleaner diffs.
 
@@ -1195,5 +1227,9 @@ public final class ProductionSupportedFlagList {
                         + " at 60Hz on 120Hz devices."),
         Flag.baseFeature("JobPriorityBoosting"),
         Flag.baseFeature("IsolatesPriorityUseProcessPriority"),
+        Flag.baseFeature(
+                "UseLockFreeX509Verification",
+                "Enables lock-free certificate verification codepath."),
+        Flag.baseFeature(CcFeatures.REPORT_UKM, "Validate performance of UKM reporting."),
     };
 }

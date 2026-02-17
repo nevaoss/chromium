@@ -300,6 +300,11 @@ extern const base::FeatureParam<int>
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+// Add new entry points for uploading passwords to account storage and update
+// existing ones.
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE(kPasswordUploadUiUpdate);
+
 // Experimenting with changing the secondary CTA for FRE and new profile
 // creation.
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
@@ -356,6 +361,13 @@ BASE_DECLARE_FEATURE(kRollbackDiceMigration);
 // users with multiple profiles).
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kShowProfilePickerToAllUsersExperiment);
+
+#if BUILDFLAG(IS_ANDROID)
+// Experiment replacing signed out avatar with signin button on Android, see
+// crbug.com/475816843.
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE(kSigninLevelUpButton);
+#endif  // BUILDFLAG(IS_ANDROID)
 
 // Feature to control the experiment for max count of showing contextual sign-in
 // promos and UNO bubble reprompt.

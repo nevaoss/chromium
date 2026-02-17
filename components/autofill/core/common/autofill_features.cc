@@ -173,11 +173,6 @@ BASE_FEATURE(kAutofillAiFillingSurvey, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAutofillAiIdentityAndTravelPrefs,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
-// If enabled, no account-level capabilities are checked to determine whether
-// a user is eligible for AutofillAI.
-BASE_FEATURE(kAutofillAiIgnoreCapabilityCheck,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 // If enabled, no GeoIp requirements are imposed for AutofillAi.
 // Note that this feature can be modified as follows (all assuming that
 // `kAutofillAiIgnoreGeoIp` is enabled):
@@ -204,14 +199,6 @@ BASE_FEATURE_PARAM(std::string,
                    &kAutofillAiIgnoreGeoIp,
                    "autofill_ai_geo_ip_blocklist",
                    "");
-
-// If enabled, no locale requirements are imposed for AutofillAi.
-BASE_FEATURE(kAutofillAiIgnoreLocale, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// If enabled, the existence of address or payments data is not required to show
-// the Iph bubble for AutofillAi.
-BASE_FEATURE(kAutofillAiIgnoreWhetherUserHasAddressOrPaymentsDataForIph,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // If enabled, Autofill AI does not depend on Autofill for addresses being
 // enabled.
@@ -314,13 +301,6 @@ BASE_FEATURE_PARAM(bool,
 BASE_FEATURE(kAutofillAiSetSyncablePrefFromAccountPref,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-// If enabled, votes for prefix and suffix lengths of identification number
-// fields are uploaded. For example, if there's a passport with number CX1235987
-// on file, <input type=text value=CX12> uploads a format string "4".
-// TODO(crbug.com/429704303): Clean up when launched.
-BASE_FEATURE(kAutofillAiVoteForFormatStringsForAffixes,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 // If enabled, votes for the format of flight number fields are uploaded. For
 // example, if there is a flight number "LH89" on file, a submitted value of
 // "89" on a field with type `FLIGHT_RESERVATION_FLIGHT_NUMBER` uploads "N".
@@ -407,12 +387,6 @@ BASE_FEATURE(kAutofillBetterLocalHeuristicPlaceholderSupport,
 // Same as `kAutofillAddressUserPerceptionSurvey` but for credit card forms.
 BASE_FEATURE(kAutofillCreditCardUserPerceptionSurvey,
              base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Feature flag controlling the deduplication of GAS addresses. When disabled
-// GAS addresses will never be deleted as part of the deduplication flow.
-// TODO(crbug.com/357074792): Remove when launched.
-BASE_FEATURE(kAutofillDeduplicateAccountAddresses,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_ANDROID)
 // If enabled, other apps can open the Autofill Options in Chrome.
@@ -608,6 +582,11 @@ BASE_FEATURE(kAutofillEnableSecurityTouchEventFilteringAndroid,
              base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_ANDROID)
 
+// Kill switch: If enabled, `AutofillField` may not suppress suggestions on
+// field that has autocomplete=unrecognized attribute.
+BASE_FEATURE(kAutofillEnableSkippingUnrecognizedAttribute,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 // When enabled, chrome will support home and work addresses from account.
 // TODO: crbug.com/354706653 - Clean up when launched.
 BASE_FEATURE(kAutofillEnableSupportForHomeAndWork,
@@ -693,7 +672,7 @@ BASE_FEATURE(kAutofillGreekRegexes, base::FEATURE_ENABLED_BY_DEFAULT);
 // - autofill::FormControlType::kInputCheckbox
 // - autofill::FormControlType::kInputRadio
 BASE_FEATURE(kAutofillIgnoreCheckableElements,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 // LINT.ThenChange(//components/autofill/ios/form_util/resources/autofill_form_features.ts:autofill_ignore_checkable_elements)
 
 // When enabled, address field swapping suggestions will not include a
@@ -707,24 +686,6 @@ BASE_FEATURE(kAutofillImproveAddressFieldSwapping,
 // relevant.
 // TODO(crbug.com/380273791): Cleanup when launched.
 BASE_FEATURE(kAutofillImprovedLabels, base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Controls whether main text should also be improved or not.
-// TODO(crbug.com/380273791): Clean up when launched.
-BASE_FEATURE_PARAM(bool,
-                   kAutofillImprovedLabelsParamWithoutMainTextChangesParam,
-                   &kAutofillImprovedLabels,
-                   "autofill_improved_labels_without_main_text_changes",
-                   false);
-
-// Controls whether differentiating labels should be shown before or after the
-// improved labels.
-// TODO(crbug.com/380273791): Clean up when launched.
-BASE_FEATURE_PARAM(
-    bool,
-    kAutofillImprovedLabelsParamWithDifferentiatingLabelsInFrontParam,
-    &kAutofillImprovedLabels,
-    "autofill_improved_labels_with_differentiating_labels_in_front",
-    false);
 
 // TODO(crbug.com/346507576): Remove once the experiment is over.
 // When enabled, makes autocomplete label sensitive.
@@ -877,6 +838,12 @@ BASE_FEATURE(kAutofillReplaceFormElementObserver,
 BASE_FEATURE(kAutofillServerExperimentalSignatures,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+// TODO(crbug.com/470949499) - Clean-up after feature lands at 100% Stable.
+// Enables querying the server for predictions before the form has been parsed
+// locally.
+BASE_FEATURE(kAutofillServerQueryPredictionsEarly,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Enables uploading of more data to the Autofill server to use for computing
 // signatures: go/autofill-signatures-more-data.
 BASE_FEATURE(kAutofillServerUploadMoreData, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -928,6 +895,11 @@ BASE_FEATURE(kAutofillSupportSplitZipCode, base::FEATURE_DISABLED_BY_DEFAULT);
 // If enabled, Autofill Services can query whether Chrome provides forms as
 // virtual view structures to third party providers.
 BASE_FEATURE(kAutofillThirdPartyModeContentProvider,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
+// If enabled, stores the last used Autofill Service in a pref. This allows to
+// restore the user's preference to use platform Autofill on restart.
+BASE_FEATURE(kAutofillThirdPartyModeRestoredOnStart,
              base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_ANDROID)
 
@@ -990,10 +962,6 @@ BASE_FEATURE(kAutofillUseStructuralSignatureInsteadOfSecondary,
 // experiments.
 BASE_FEATURE(kFieldClassificationModelCaching,
              base::FEATURE_DISABLED_BY_DEFAULT);
-
-// If enabled, Autofill will retrieve one-time passwords from Gmail.
-// TODO(crbug.com/452607505): Clean up when launched.
-BASE_FEATURE(kGmailOtpRetrievalService, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // When enabled, a HaTS survey is shown after the user visited "Contact info"
 // settings page.

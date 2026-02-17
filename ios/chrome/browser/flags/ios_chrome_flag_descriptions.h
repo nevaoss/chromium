@@ -468,6 +468,9 @@ extern const char kIOSEnableCloudProfileReportingDescription[];
 extern const char kIOSEnableRealtimeEventReportingName[];
 extern const char kIOSEnableRealtimeEventReportingDescription[];
 
+extern const char kIOSExpandedSetupListName[];
+extern const char kIOSExpandedSetupListDescription[];
+
 extern const char kIOSExpandedTipsName[];
 extern const char kIOSExpandedTipsDescription[];
 
@@ -488,9 +491,6 @@ extern const char kIOSOmniboxAimServerEligibilityDescription[];
 
 extern const char kIOSOmniboxAimShortcutName[];
 extern const char kIOSOmniboxAimShortcutDescription[];
-
-extern const char kIOSOneTapMiniMapRemoveSectionBreaksName[];
-extern const char kIOSOneTapMiniMapRemoveSectionBreaksDescription[];
 
 extern const char kIOSOneTapMiniMapRestrictionsName[];
 extern const char kIOSOneTapMiniMapRestrictionsDescription[];
@@ -819,17 +819,8 @@ extern const char kProvisionalNotificationAlertDescription[];
 extern const char kRcapsDynamicProfileCountryName[];
 extern const char kRcapsDynamicProfileCountryDescription[];
 
-extern const char kReaderModeName[];
-extern const char kReaderModeDescription[];
-
-extern const char kReaderModeNewCssName[];
-extern const char kReaderModeNewCssDescription[];
-
 extern const char kReaderModeOmniboxEntrypointInUSName[];
 extern const char kReaderModeOmniboxEntrypointInUSDescription[];
-
-extern const char kReaderModeOmniboxEntrypointName[];
-extern const char kReaderModeOmniboxEntrypointDescription[];
 
 extern const char kReaderModeOptimizationGuideEligibilityName[];
 extern const char kReaderModeOptimizationGuideEligibilityDescription[];
@@ -842,9 +833,6 @@ extern const char kReaderModeReadabilityHeuristicDescription[];
 
 extern const char kReaderModeSupportNewFontsName[];
 extern const char kReaderModeSupportNewFontsDescription[];
-
-extern const char kReaderModeTranslationName[];
-extern const char kReaderModeTranslationDescription[];
 
 extern const char kReaderModeTranslationWithInfobarName[];
 extern const char kReaderModeTranslationWithInfobarDescription[];
@@ -972,6 +960,9 @@ extern const char kUseFeedEligibilityServiceDescription[];
 
 extern const char kVariationsSeedCorpusName[];
 extern const char kVariationsSeedCorpusDescription[];
+
+extern const char kViewCertificateInformationName[];
+extern const char kViewCertificateInformationDescription[];
 
 extern const char kWaitThresholdMillisecondsForCapabilitiesApiName[];
 extern const char kWaitThresholdMillisecondsForCapabilitiesApiDescription[];

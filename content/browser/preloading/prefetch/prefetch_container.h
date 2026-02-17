@@ -298,7 +298,16 @@ class CONTENT_EXPORT PrefetchContainer {
   // Adds a the new URL to |redirect_chain_|.
   void AddRedirectHop(const net::RedirectInfo& redirect_info);
 
-  void UpdateResourceRequest(const net::RedirectInfo& redirect_info);
+  // Returns a tuple of `PrefetchUpdateHeadersParams`s that indicates the header
+  // modification upon redirect, to be passed to `UpdateResourceRequest()` and
+  // `URLLoader::FollowRedirect()`, respectively.
+  // TODO(crbug.com/467177773): Ideally these two should be equal, but currently
+  // we are incrementally adding headers to the latter.
+  std::tuple<PrefetchUpdateHeadersParams, PrefetchUpdateHeadersParams>
+  PrepareUpdateHeaders(const GURL& url) const;
+  // Performs the actual modification to `resource_request_` upon redirect.
+  void UpdateResourceRequest(const net::RedirectInfo& redirect_info,
+                             PrefetchUpdateHeadersParams params);
 
   // The length of the redirect chain for this prefetch.
   size_t GetRedirectChainSize() const { return redirect_chain_.size(); }
@@ -600,7 +609,7 @@ class CONTENT_EXPORT PrefetchContainer {
       network::ResourceRequest& resource_request);
   // Adds client hints headers to a request bound for |origin|.
   void AddClientHintsHeaders(const url::Origin& origin,
-                             net::HttpRequestHeaders* request_headers);
+                             net::HttpRequestHeaders* request_headers) const;
   // Adds X-Client-Data request header to a request.
   void AddXClientDataHeader(network::ResourceRequest& request);
 
@@ -618,6 +627,11 @@ class CONTENT_EXPORT PrefetchContainer {
 
   // Returns "Sec-Purpose" header value for a prefetch request to `request_url`.
   const char* GetSecPurposeHeaderValue(const GURL& request_url) const;
+
+  // Adds Speculation Rules Tags headers for a prefetch request to `request_url`
+  // to `headers`.
+  void AddSpeculationTagsHeader(const GURL& request_url,
+                                net::HttpRequestHeaders& headers) const;
 
   // Called when a prefetch request could not be started because of eligibility
   // reasons. Should only be called for the initial prefetch request and not

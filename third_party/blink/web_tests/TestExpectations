@@ -54,11 +54,15 @@ external/wpt/infrastructure/reftest/reftest_timeout.html [ Timeout ]
 wpt_internal/infrastructure/fail-before-timeout.html [ Timeout ]
 
 # Short-lived expectations for --enable-blink-features=AIPageContentBuildOnLoadForTesting
-# Will be removed in follow-up CL with the fixes.
-# DCHECK failed: !GetDocument().InvalidationDisallowed().
-virtual/content-extraction/fast/dom/HTMLObjectElement/update-data.html [ Crash Timeout ]
-# DCHECK failed: object.GetDocument().Lifecycle().GetState() >= DocumentLifecycle::kLayoutClean. ComputeVisibleBoundingBox only works when layout is complete
-virtual/content-extraction/compositing/iframes/content-visibility-hidden-frame.html [ Crash Timeout ]
+# Subpixel rendering issue on Mac only caused by activating display locks.
+crbug.com/475504307 [ Mac ] html/details_summary/details-replace-text.html [ Failure Pass ]
+# APC auto‑build forces lifecycle updates during DOMContentLoaded; this exposes a pending/error
+# mask-image timing bug where invalid masks are treated as transparent instead of ignored, causing
+# the masked element to disappear.
+crbug.com/475537047 external/wpt/css/css-masking/mask-image/bad-mask-image-svg-3.html [ Failure Pass ]
+# APC auto-build hits a CHECK when view-transition root offsets push geometry
+# above the viewport during DOMContentLoaded.
+crbug.com/474330989 wpt_internal/view-transition/browser-controls-root-offset-new.html [ Crash Pass ]
 
 # Reftest failure related to off-main-thread interaction (imperceptible AA differences)
 crbug.com/395909730 virtual/off-main-thread-css-paint/http/tests/csspaint/paint2d-zoom.html [ Failure ]  # Reftest image failure
@@ -819,58 +823,47 @@ crbug.com/825270 external/wpt/payment-request/delegate-request.https.sub.html [ 
 crbug.com/626703 external/wpt/payment-method-basic-card/steps_for_selecting_the_payment_handler.html [ Timeout ]
 crbug.com/626703 external/wpt/payment-method-basic-card/apply_the_modifiers.html [ Timeout ]
 
-# Existing Secure Payment Confirmation failures on desktop that do not directly relate to the implementation of Browers Bound Keys.
-crbug.com/464896028 [ Mac ] external/wpt/secure-payment-confirmation/authentication-accepted-bbk-created.https.html [ Failure ]
-crbug.com/464896028 [ Win ] external/wpt/secure-payment-confirmation/authentication-accepted-bbk-created.https.html [ Failure ]
-crbug.com/464896028 [ Mac ] external/wpt/secure-payment-confirmation/authentication-accepted-bbk-reused.https.html [ Failure ]
-crbug.com/464896028 [ Win ] external/wpt/secure-payment-confirmation/authentication-accepted-bbk-reused.https.html [ Failure ]
-crbug.com/464896028 [ Mac ] external/wpt/secure-payment-confirmation/authentication-auth-another-way.https.html [ Failure Timeout ]
-crbug.com/464896028 [ Win ] external/wpt/secure-payment-confirmation/authentication-auth-another-way.https.html [ Failure Timeout ]
-crbug.com/464896028 [ Mac ] external/wpt/secure-payment-confirmation/authentication-rejected.https.html [ Failure Timeout ]
-crbug.com/464896028 [ Win ] external/wpt/secure-payment-confirmation/authentication-rejected.https.html [ Failure Timeout ]
-crbug.com/464896028 [ Mac ] external/wpt/secure-payment-confirmation/enrollment-bbk.https.html [ Failure ]
-crbug.com/464896028 [ Win ] external/wpt/secure-payment-confirmation/enrollment-bbk.https.html [ Failure ]
-crbug.com/464896028 [ Win ] external/wpt/secure-payment-confirmation/authentication-invalid-icon.https.html [ Failure ]
-crbug.com/464896028 [ Mac ] external/wpt/secure-payment-confirmation/authentication-invalid-icon.https.html [ Failure ]
-crbug.com/464896028 [ Mac ] external/wpt/secure-payment-confirmation/authentication-optout.https.html [ Failure ]
-crbug.com/464896028 [ Win ] external/wpt/secure-payment-confirmation/authentication-optout.https.html [ Failure ]
-crbug.com/464896028 [ Mac ] external/wpt/secure-payment-confirmation/authentication-icon-data-url.https.html [ Failure ]
-crbug.com/464896028 [ Win ] external/wpt/secure-payment-confirmation/authentication-icon-data-url.https.html [ Failure ]
-crbug.com/464896028 [ Mac ] external/wpt/secure-payment-confirmation/authentication-in-iframe.sub.https.html [ Failure ]
-crbug.com/464896028 [ Win ] external/wpt/secure-payment-confirmation/authentication-in-iframe.sub.https.html [ Failure ]
+# Flakey Secure Payment Confirmation tests.
+crbug.com/464896028 external/wpt/secure-payment-confirmation/authentication-accepted-bbk-created.https.html [ Failure Pass Skip ]
+crbug.com/464896028 external/wpt/secure-payment-confirmation/authentication-accepted-bbk-reused.https.html [ Failure Pass Skip ]
+crbug.com/464896028 external/wpt/secure-payment-confirmation/authentication-auth-another-way.https.html [ Failure Pass Skip ]
+crbug.com/464896028 external/wpt/secure-payment-confirmation/authentication-cannot-bypass-spc.https.html [ Failure Pass Skip ]
+crbug.com/464896028 external/wpt/secure-payment-confirmation/authentication-cross-origin.sub.https.html [ Failure Pass Skip ]
+crbug.com/464896028 external/wpt/secure-payment-confirmation/authentication-icon-data-url.https.html [ Failure Pass Skip ]
+crbug.com/464896028 external/wpt/secure-payment-confirmation/authentication-in-iframe.sub.https.html [ Failure Pass Skip ]
+crbug.com/464896028 external/wpt/secure-payment-confirmation/authentication-invalid-icon.https.html [ Failure Pass Skip ]
+crbug.com/464896028 external/wpt/secure-payment-confirmation/authentication-invalid-payment-entity-logo.https.html [ Failure Pass Skip ]
+crbug.com/464896028 external/wpt/secure-payment-confirmation/authentication-optout.https.html [ Failure Pass Skip ]
+crbug.com/464896028 external/wpt/secure-payment-confirmation/authentication-requires-user-activation.https.html [ Failure Pass Skip ]
+crbug.com/464896028 external/wpt/secure-payment-confirmation/authentication-rejected.https.html [ Failure Pass Skip ]
+crbug.com/464896028 external/wpt/secure-payment-confirmation/enrollment.https.html [ Failure Pass Skip ]
+crbug.com/464896028 external/wpt/secure-payment-confirmation/enrollment-bbk.https.html [ Failure Pass Skip ]
+crbug.com/464896028 external/wpt/secure-payment-confirmation/enrollment-bbk-per-passkey.https.html [ Failure Pass Skip ]
+crbug.com/464896028 external/wpt/secure-payment-confirmation/enrollment-in-iframe.sub.https.html [ Failure Pass Skip ]
 
 # Secure Payment Confirmation Browser Bound Keys do not work on platforms without TPMs and TPMs are not available yet on the bots that run these tests.
+# Currently all of the commented out tests are flakey even if they're passing so they are grouped under the bug above until they can be fixed properly.
 crbug.com/464896028 [ Win ] external/wpt/secure-payment-confirmation/authentication-accepted-bbk-per-passkey.https.html [ Failure ]
-crbug.com/464896028 [ Win ] external/wpt/secure-payment-confirmation/authentication-cannot-bypass-spc.https.html [ Failure ]
-crbug.com/464896028 [ Win ] external/wpt/secure-payment-confirmation/authentication-invalid-payment-entity-logo.https.html [ Failure ]
-crbug.com/464896028 [ Win ] external/wpt/secure-payment-confirmation/enrollment-bbk-per-passkey.https.html [ Failure ]
+# crbug.com/464896028 [ Win ] external/wpt/secure-payment-confirmation/authentication-cannot-bypass-spc.https.html [ Failure ]
+# crbug.com/464896028 [ Win ] external/wpt/secure-payment-confirmation/authentication-invalid-payment-entity-logo.https.html [ Failure ]
+# crbug.com/464896028 [ Win ] external/wpt/secure-payment-confirmation/enrollment-bbk-per-passkey.https.html [ Failure ]
 
 # Secure Payment Confirmation Browser Bound Keys is not supported on Linux.
-crbug.com/465137981 [ Linux ] external/wpt/secure-payment-confirmation/authentication-accepted-bbk-created.https.html [ Failure ]
-crbug.com/465137981 [ Linux ] external/wpt/secure-payment-confirmation/authentication-accepted-bbk-reused.https.html [ Failure ]
-crbug.com/465137981 [ Linux ] external/wpt/secure-payment-confirmation/authentication-auth-another-way.https.html [ Timeout ]
-crbug.com/465137981 [ Linux ] external/wpt/secure-payment-confirmation/authentication-rejected.https.html [ Timeout ]
-crbug.com/465137981 [ Linux ] external/wpt/secure-payment-confirmation/enrollment-bbk.https.html [ Failure ]
+# Currently all of the commented out tests are flakey even if they're passing so they are grouped under the bug above until they can be fixed properly.
+# crbug.com/465137981 [ Linux ] external/wpt/secure-payment-confirmation/authentication-accepted-bbk-created.https.html [ Failure ]
+# crbug.com/465137981 [ Linux ] external/wpt/secure-payment-confirmation/authentication-accepted-bbk-reused.https.html [ Failure ]
+# crbug.com/465137981 [ Linux ] external/wpt/secure-payment-confirmation/authentication-auth-another-way.https.html [ Timeout ]
+# crbug.com/465137981 [ Linux ] external/wpt/secure-payment-confirmation/authentication-rejected.https.html [ Timeout ]
+# crbug.com/465137981 [ Linux ] external/wpt/secure-payment-confirmation/enrollment-bbk.https.html [ Failure ]
 
 # Feature Policy changes same-origin allowpaymentrequest behaviour, tests need updating
 crbug.com/718155 payments/payment-request-in-iframe.html [ Failure ]
 crbug.com/718155 payments/payment-request-in-iframe-nested-not-allowed.html [ Failure ]
 
 crbug.com/338124116 external/wpt/payment-request/payment-request-hasenrolledinstrument-method.tentative.https.html [ Failure Pass ]
+
 # Expect to fail. The test is applicable only when DigitalGoods flag is disabled.
 crbug.com/1080870 http/tests/payments/payment-request-app-store-billing-mandatory-total.html [ Failure ]
-
-# TODO(crbug.com/359319433) Those tests are flaky on Mac
-crbug.com/359319433 [ Mac ] external/wpt/secure-payment-confirmation/enrollment-in-iframe.sub.https.html [ Failure Pass Skip ]
-crbug.com/436163716 [ Win ] external/wpt/secure-payment-confirmation/enrollment-in-iframe.sub.https.html [ Crash Failure Timeout ]
-
-# TODO(crbug.com/453989940): This test requires the window to be focused, which appears to be flaky on Mac.
-# It also fails flakily because "Chrome only supports one internal authenticator per environment".
-crbug.com/453989940 [ Mac ] external/wpt/secure-payment-confirmation/authentication-invalid-payment-entity-logo.https.html [ Failure Pass ]
-
-crbug.com/359319433 external/wpt/secure-payment-confirmation/enrollment.https.html [ Failure Pass Skip ]
-# Gardener 2025-08-13 this test produces output that changes with each Chrome version
-crbug.com/359319433 external/wpt/secure-payment-confirmation/authentication-requires-user-activation.https.html [ Failure Pass ]
 
 ### ====== Payments related tests end =======
 
@@ -1448,22 +1441,26 @@ crbug.com/1269580 external/wpt/css/css-conditional/at-supports-namespace-002.htm
 
 crbug.com/1475378 external/wpt/css/css-color/currentcolor-004.html [ Failure ]
 
-# css-scoping
-crbug.com/369883705 external/wpt/css/css-scoping/has-slotted-flattened-004.html [ Failure ]
-crbug.com/369883705 external/wpt/css/css-scoping/has-slotted-functional-001.tentative.html [ Failure ]
-crbug.com/369883705 external/wpt/css/css-scoping/has-slotted-functional-004.tentative.html [ Failure ]
-crbug.com/369883705 external/wpt/css/css-scoping/has-slotted-functional-006.tentative.html [ Failure ]
-crbug.com/369883705 external/wpt/css/css-scoping/has-slotted-functional-007.tentative.html [ Failure ]
-crbug.com/369883705 external/wpt/css/css-scoping/has-slotted-functional-flattened-001.tentative.html [ Failure ]
-crbug.com/369883705 external/wpt/css/css-scoping/has-slotted-functional-flattened-004.tentative.html [ Failure ]
-crbug.com/369883705 external/wpt/css/css-scoping/has-slotted-functional-flattened-006.tentative.html [ Failure ]
-crbug.com/393395931 external/wpt/css/css-scoping/slotted-has-001.html [ Failure ]
-crbug.com/393395931 external/wpt/css/css-scoping/slotted-has-002.html [ Failure ]
-crbug.com/393395931 external/wpt/css/css-scoping/slotted-has-003.html [ Failure ]
-crbug.com/393395931 external/wpt/css/css-scoping/slotted-has-004.html [ Failure ]
-
-# css-shadow-parts
-crbug.com/448972968 external/wpt/css/css-shadow-parts/exportparts-layered.html [ Failure ]
+# css-shadow
+crbug.com/369883705 external/wpt/css/css-shadow/has-slotted-flattened-004.html [ Failure ]
+crbug.com/369883705 external/wpt/css/css-shadow/has-slotted-functional-001.tentative.html [ Failure ]
+crbug.com/369883705 external/wpt/css/css-shadow/has-slotted-functional-004.tentative.html [ Failure ]
+crbug.com/369883705 external/wpt/css/css-shadow/has-slotted-functional-006.tentative.html [ Failure ]
+crbug.com/369883705 external/wpt/css/css-shadow/has-slotted-functional-007.tentative.html [ Failure ]
+crbug.com/369883705 external/wpt/css/css-shadow/has-slotted-functional-flattened-001.tentative.html [ Failure ]
+crbug.com/369883705 external/wpt/css/css-shadow/has-slotted-functional-flattened-004.tentative.html [ Failure ]
+crbug.com/369883705 external/wpt/css/css-shadow/has-slotted-functional-flattened-006.tentative.html [ Failure ]
+crbug.com/359703395 external/wpt/css/css-shadow/host-has-001.tentative.html [ Failure ]
+crbug.com/359703395 external/wpt/css/css-shadow/host-has-002.tentative.html [ Failure ]
+crbug.com/359703395 external/wpt/css/css-shadow/host-has-003.tentative.html [ Failure ]
+crbug.com/626703 external/wpt/css/css-shadow/part/animation-part.html [ Failure ]
+crbug.com/448972968 external/wpt/css/css-shadow/part/exportparts-layered.html [ Failure ]
+crbug.com/381910338 external/wpt/css/css-shadow/slotted-details-content.html [ Failure ]
+crbug.com/381910338 external/wpt/css/css-shadow/slotted-file-selector-button.html [ Failure ]
+crbug.com/393395931 external/wpt/css/css-shadow/slotted-has-001.html [ Failure ]
+crbug.com/393395931 external/wpt/css/css-shadow/slotted-has-002.html [ Failure ]
+crbug.com/393395931 external/wpt/css/css-shadow/slotted-has-003.html [ Failure ]
+crbug.com/393395931 external/wpt/css/css-shadow/slotted-has-004.html [ Failure ]
 
 # css-will-change
 crbug.com/403372462 external/wpt/css/css-will-change/will-change-stacking-context-z-index-4.html [ Failure ]
@@ -2970,6 +2967,7 @@ crbug.com/440811029 [ Win ] external/wpt/bluetooth/bidi/server/getPrimaryService
 crbug.com/475042067 external/wpt/webrtc-encoded-transform/idlharness.https.window.html?include=(SFrameDecrypterStream|SFrameEncrypterStream|SFrameSenderTransform|SFrameReceiverTransform|SFrameTransform.\*) [ Failure ]
 
 # ====== New tests from wpt-importer added here ======
+crbug.com/476224460 [ Android ] external/wpt/webdriver/tests/classic/get_element_text/get.py [ Timeout ]
 crbug.com/475335843 [ Win ] external/wpt/html/semantics/the-button-element/command-and-commandfor/on-dialog-invalid-behavior.html [ Pass Timeout ]
 crbug.com/474480404 [ Win ] external/wpt/bluetooth/bidi/characteristic/getDescriptors/gen-descriptor-get-same-object.https.window.html [ Failure Pass Timeout ]
 crbug.com/474955261 [ Win ] external/wpt/geolocation/enabled-by-permission-policy-attribute-redirect-on-load.https.sub.html [ Pass Timeout ]
@@ -2987,8 +2985,6 @@ crbug.com/473562220 virtual/scalefactor200/external/wpt/css/filter-effects/svg-f
 crbug.com/473562220 virtual/scalefactor200/external/wpt/css/filter-effects/svg-filter-primitive-units-user-space.html [ Failure ]
 crbug.com/471016766 [ Mac ] external/wpt/webaudio/the-audio-api/the-mediastreamaudiosourcenode-interface/mediastreamaudiosourcenode-from-context-with-different-rate.https.html [ Pass Timeout ]
 crbug.com/471016766 [ Win ] external/wpt/webaudio/the-audio-api/the-mediastreamaudiosourcenode-interface/mediastreamaudiosourcenode-from-context-with-different-rate.https.html [ Pass Timeout ]
-crbug.com/470897147 external/wpt/svg/styling/css-var-on-length-attributes-02.svg [ Failure ]
-crbug.com/470897147 external/wpt/svg/styling/css-var-on-length-attributes-04.svg [ Failure ]
 [ Mac ] external/wpt/html/browsers/history/the-location-interface/location-ancestor-origins.sub.html [ Pass Timeout ]
 crbug.com/469618144 external/wpt/webdriver/tests/bidi/emulation/set_touch_override/contexts.py [ Crash Failure Timeout ]
 crbug.com/469618144 external/wpt/webdriver/tests/bidi/emulation/set_touch_override/global.py [ Failure ]
@@ -3846,8 +3842,6 @@ crbug.com/381945825 [ Mac13 ] external/wpt/webaudio/the-audio-api/the-channelmer
 crbug.com/381945825 [ Mac13 ] external/wpt/webaudio/the-audio-api/the-convolvernode-interface/active-processing.https.html [ Crash ]
 crbug.com/381945825 [ Mac13 ] external/wpt/webaudio/the-audio-api/the-mediaelementaudiosourcenode-interface/cors-check.https.html [ Crash ]
 crbug.com/381945825 [ Mac13 ] external/wpt/webaudio/the-audio-api/the-mediaelementaudiosourcenode-interface/no-cors.https.html [ Crash ]
-crbug.com/381910338 external/wpt/css/css-scoping/slotted-details-content.html [ Failure ]
-crbug.com/381910338 external/wpt/css/css-scoping/slotted-file-selector-button.html [ Failure ]
 external/wpt/streams/readable-byte-streams/patched-global.any.* [ Crash ]
 crbug.com/381937281 external/wpt/webrtc/simulcast/getStats.https.html [ Skip Timeout ]
 crbug.com/381129856 [ Mac13 ] external/wpt/shadow-dom/focus/focus-pseudo-on-shadow-host-1.html [ Failure ]
@@ -4066,9 +4060,6 @@ crbug.com/359696068 [ Win11 ] virtual/threaded/external/wpt/css/css-view-transit
 crbug.com/359696068 [ Win11-arm64 ] virtual/threaded/external/wpt/css/css-view-transitions/nested/normal-goes-up.tentative.html [ Failure ]
 crbug.com/359696068 [ Win11 ] virtual/view-transition-wide-gamut/external/wpt/css/css-view-transitions/nested/contain-direct.tentative.html [ Failure ]
 crbug.com/359696068 [ Win11-arm64 ] virtual/view-transition-wide-gamut/external/wpt/css/css-view-transitions/nested/contain-direct.tentative.html [ Failure ]
-crbug.com/359703395 external/wpt/css/css-scoping/host-has-001.tentative.html [ Failure ]
-crbug.com/359703395 external/wpt/css/css-scoping/host-has-002.tentative.html [ Failure ]
-crbug.com/359703395 external/wpt/css/css-scoping/host-has-003.tentative.html [ Failure ]
 crbug.com/359717181 [ Win11 ] external/wpt/webrtc-encoded-transform/script-audio-transform.https.html [ Timeout ]
 crbug.com/358437652 external/wpt/dom/events/scrolling/wheel-event-transactions-basic.html?include=scroll-over-scrollable-child [ Timeout ]
 crbug.com/358437652 external/wpt/dom/events/scrolling/wheel-event-transactions-basic.html?include=target-basic [ Timeout ]
@@ -4285,7 +4276,6 @@ crbug.com/626703 external/wpt/css/css-text/white-space/text-wrap-balance-float-0
 crbug.com/626703 external/wpt/css/css-text/white-space/text-wrap-balance-float-004.html [ Failure ]
 crbug.com/626703 external/wpt/css/css-text/white-space/text-wrap-balance-float-005.html [ Failure ]
 crbug.com/626703 [ Win11 ] external/wpt/fetch/orb/tentative/known-mime-type.sub.any.html [ Failure Timeout ]
-crbug.com/626703 external/wpt/css/css-shadow-parts/animation-part.html [ Failure ]
 crbug.com/626703 [ Win10.20h2 ] external/wpt/css/css-fonts/font-display/font-display-feature-policy-02.tentative.html [ Failure ]
 crbug.com/626703 [ Win ] external/wpt/fetch/api/redirect/redirect-keepalive.any.html [ Skip Timeout ]
 crbug.com/626703 [ Win11 ] external/wpt/fetch/metadata/generated/element-meta-refresh.https.optional.sub.html [ Timeout ]
@@ -6432,9 +6422,6 @@ crbug.com/1222097 external/wpt/uievents/order-of-events/mouse-events/mouseover-o
 crbug.com/1223601 [ Linux ] fast/scrolling/autoscroll-latch-clicked-node-if-parent-unscrollable.html [ Failure Pass ]
 crbug.com/1223601 [ Linux ] fast/scrolling/reset-scroll-in-onscroll.html [ Failure Pass ]
 
-# https://crbug.com/475195978: Will be rebaselined after landing https://crrev.com/c/7276997
-crbug.com/475195978 http/tests/inspector-protocol/issues/sab-creation-issue.js [ Failure Pass ]
-crbug.com/475195978 http/tests/inspector-protocol/issues/sab-postMessage-issue.js [ Failure Pass ]
 
 # Sheriff 2021-07-12
 crbug.com/1228432 [ Linux ] external/wpt/video-rvfc/request-video-frame-callback-before-xr-session.https.html [ Pass Timeout ]
@@ -9818,3 +9805,10 @@ crbug.com/407750386 http/tests/devtools/elements/styles-4/style-update-during-se
 
 # Gardener 2026-01-13
 crbug.com/475366073 [ Win11-arm64 ] virtual/xslt-enabled/http/tests/xsl/xslt/xslt-transform-with-javascript-disabled-quirk.html [ Failure ]
+
+# linux-blink-leak-rel failure
+crbug.com/476257809 [ Linux ] external/wpt/fedcm/fedcm-storage-access-api-autogrant.tentative.https.sub.html [ Failure Pass Skip ]
+
+# Gardener 2026-01-16
+crbug.com/476320947 [ Linux ] external/wpt/webdriver/tests/bidi/script/get_realms/context.py [ Failure Pass ]
+crbug.com/476320947 [ Linux ] external/wpt/webdriver/tests/bidi/script/get_realms/sandbox.py [ Failure Pass ]

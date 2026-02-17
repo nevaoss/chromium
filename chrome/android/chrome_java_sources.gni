@@ -649,7 +649,6 @@ chrome_java_sources = [
   "java/src/org/chromium/chrome/browser/firstrun/FirstRunPage.java",
   "java/src/org/chromium/chrome/browser/firstrun/FirstRunPageDelegate.java",
   "java/src/org/chromium/chrome/browser/firstrun/FirstRunPagerAdapter.java",
-  "java/src/org/chromium/chrome/browser/firstrun/FirstRunSignInProcessor.java",
   "java/src/org/chromium/chrome/browser/firstrun/FirstRunUtils.java",
   "java/src/org/chromium/chrome/browser/firstrun/ForcedSigninProcessor.java",
   "java/src/org/chromium/chrome/browser/firstrun/FreIntentCreator.java",
@@ -1239,6 +1238,7 @@ chrome_java_sources = [
   "java/src/org/chromium/chrome/browser/usage_stats/UsageStatsService.java",
   "java/src/org/chromium/chrome/browser/usage_stats/WebsiteEvent.java",
   "java/src/org/chromium/chrome/browser/webapps/ActivateWebApkActivity.java",
+  "java/src/org/chromium/chrome/browser/webapps/AppInstallMenuHandler.java",
   "java/src/org/chromium/chrome/browser/webapps/ChromeWebApkHost.java",
   "java/src/org/chromium/chrome/browser/webapps/GooglePlayWebApkInstallDelegate.java",
   "java/src/org/chromium/chrome/browser/webapps/PwaRestorePromoUtils.java",
@@ -1278,8 +1278,6 @@ chrome_java_sources = [
   "java/src/org/chromium/chrome/browser/webapps/WebappLauncherActivity.java",
   "java/src/org/chromium/chrome/browser/webapps/WebappRegistry.java",
   "java/src/org/chromium/chrome/browser/webshare/ShareServiceImplementationFactory.java",
-  "java/src/org/chromium/chrome/browser/xr/scenecore/XrSceneCoreSessionInitializerImpl.java",
-  "java/src/org/chromium/chrome/browser/xr/scenecore/XrSceneCoreSessionManagerImpl.java",
 ]
 
 if (enable_screen_capture) {

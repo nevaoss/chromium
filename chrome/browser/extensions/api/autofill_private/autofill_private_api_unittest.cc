@@ -212,8 +212,7 @@ class AutofillPrivateApiUnitTest : public extensions::ExtensionApiTest {
              {{wallet::kWalletablePassDetectionCountryAllowlist.name, "US"}}},
         },
         /*disabled_features=*/
-        {autofill::features::kAutofillAiIgnoreLocale,
-         autofill::features::kAutofillAiNationalIdCard,
+        {autofill::features::kAutofillAiNationalIdCard,
          autofill::features::kAutofillAiKnownTravelerNumber,
          autofill::features::kAutofillAiRedressNumber});
   }
@@ -413,33 +412,6 @@ IN_PROC_BROWSER_TEST_F(AutofillPrivateApiUnitTest, SetAutofillAiOptIn) {
   EXPECT_TRUE(RunAutofillSubtest("verifyUserOptedOutOfAutofillAi"));
 }
 
-// Tests that the scenario where the user becomes ineligible and then tries
-// opting into Autofill AI behaves as expected.
-IN_PROC_BROWSER_TEST_F(AutofillPrivateApiUnitTest,
-                       SetAutofillAiOptIn_SwitchEligibility) {
-  autofill_client()->set_entity_data_manager(
-      autofill::AutofillEntityDataManagerFactory::GetForProfile(profile()));
-  autofill_client()->SetUpPrefsAndIdentityForAutofillAi();
-
-  ASSERT_TRUE(autofill::MayPerformAutofillAiAction(
-      *autofill_client(), autofill::AutofillAiAction::kOptIn));
-  EXPECT_TRUE(autofill::SetAutofillAiOptInStatus(
-      *autofill_client(), autofill::AutofillAiOptInStatus::kOptedIn));
-
-  // Verify that we can opt out of Autofill AI while eligible.
-  ASSERT_TRUE(RunAutofillSubtest("optOutOfAutofillAi"));
-  EXPECT_TRUE(RunAutofillSubtest("verifyUserOptedOutOfAutofillAi"));
-
-  // Become ineligible.
-  autofill_client()->set_app_locale("de-DE");
-  ASSERT_FALSE(autofill::MayPerformAutofillAiAction(
-      *autofill_client(), autofill::AutofillAiAction::kOptIn));
-
-  // Verify that we cannot opt into Autofill AI anymore.
-  ASSERT_TRUE(RunAutofillSubtest("optIntoAutofillAi"));
-  EXPECT_TRUE(RunAutofillSubtest("verifyUserOptedOutOfAutofillAi"));
-}
-
 IN_PROC_BROWSER_TEST_F(AutofillPrivateApiUnitTest,
                        GetAllWritableEntityTypes_DoesNotIncludeReadOnlyTypes) {
   ASSERT_TRUE(RunAutofillSubtest("getWritableEntityTypes"));
@@ -613,6 +585,23 @@ INSTANTIATE_TEST_SUITE_P(
                              : "AuthenticationRequired_PreOff_") +
              std::string(std::get<1>(info.param) ? "FeatureOn" : "FeatureOff");
     });
+
+class AutofillPrivateApiObfuscationUnitTest
+    : public AutofillPrivateApiUnitTest {
+ public:
+  AutofillPrivateApiObfuscationUnitTest() = default;
+
+ private:
+  base::test::ScopedFeatureList feature_list_{
+      autofill::features::kAutofillAiReauthRequired};
+};
+
+IN_PROC_BROWSER_TEST_F(AutofillPrivateApiObfuscationUnitTest,
+                       ObfuscatedLabels) {
+  autofill::prefs::SetAutofillAiReauthBeforeFillingEnabled(
+      profile()->GetPrefs(), true);
+  ASSERT_TRUE(RunAutofillSubtest("testExpectedObfuscatedLabelsAreGenerated"));
+}
 #endif  // BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || || BUILDFLAG(IS_ANDROID) ||
         // BUILDFLAG(IS_CHROMEOS)
 

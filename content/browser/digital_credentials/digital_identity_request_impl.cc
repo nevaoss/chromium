@@ -16,9 +16,10 @@
 #include "base/functional/callback.h"
 #include "base/json/json_reader.h"
 #include "base/location.h"
+#include "base/metrics/field_trial_params.h"
 #include "base/metrics/histogram_functions.h"
+#include "base/trace_event/trace_event.h"
 #include "base/values.h"
-#include "content/browser/renderer_host/render_frame_host_impl.h"
 #include "content/browser/webid/delegation/sd_jwt.h"
 #include "content/browser/webid/flags.h"
 #include "content/public/browser/browser_thread.h"
@@ -27,6 +28,8 @@
 #include "content/public/browser/digital_identity_provider.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/web_contents.h"
+#include "content/public/common/content_client.h"
+#include "content/public/common/content_features.h"
 #include "content/public/common/content_switches.h"
 #include "third_party/blink/public/mojom/webid/digital_identity_request.mojom-forward.h"
 #include "third_party/re2/src/re2/re2.h"
@@ -470,6 +473,8 @@ void DigitalIdentityRequestImpl::Get(
     std::vector<blink::mojom::DigitalCredentialGetRequestPtr>
         digital_credential_requests,
     GetCallback callback) {
+  TRACE_EVENT("content.digitalcredentials", "DigitalIdentityRequestImpl::Get",
+              "size", digital_credential_requests.size());
   if (!webid::IsDigitalCredentialsEnabled()) {
     std::move(callback).Run(RequestDigitalIdentityStatus::kError,
                             /*protocol=*/std::nullopt, /*token=*/std::nullopt);
@@ -491,13 +496,6 @@ void DigitalIdentityRequestImpl::Get(
   }
 
   callback_ = std::move(callback);
-
-  if (!render_frame_host().HasTransientUserActivation()) {
-    CompleteRequestWithError(
-        RequestStatusForMetrics::kErrorNoTransientUserActivation);
-    return;
-  }
-
   if (digital_credential_requests.empty()) {
     CompleteRequestWithError(RequestStatusForMetrics::kErrorNoRequests);
     return;
@@ -589,12 +587,6 @@ void DigitalIdentityRequestImpl::Create(
   }
 
   callback_ = std::move(callback);
-
-  if (!render_frame_host().HasTransientUserActivation()) {
-    CompleteRequestWithError(
-        RequestStatusForMetrics::kErrorNoTransientUserActivation);
-    return;
-  }
 
   if (digital_credential_requests.empty()) {
     CompleteRequestWithError(RequestStatusForMetrics::kErrorNoRequests);

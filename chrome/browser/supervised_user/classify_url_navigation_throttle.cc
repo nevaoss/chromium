@@ -16,7 +16,6 @@
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
-#include "chrome/browser/signin/signin_manager.h"
 #include "chrome/browser/supervised_user/child_accounts/child_account_service_factory.h"
 #include "chrome/browser/supervised_user/supervised_user_browser_utils.h"
 #include "chrome/browser/supervised_user/supervised_user_navigation_observer.h"
@@ -189,7 +188,7 @@ void ClassifyUrlNavigationThrottle::ScheduleInterstitial(
 void ClassifyUrlNavigationThrottle::ShowInterstitial(
     SupervisedUserURLFilter::Result result) {
   SupervisedUserNavigationObserver::OnRequestBlocked(
-      navigation_handle()->GetWebContents(), result.url, result.reason,
+      navigation_handle()->GetWebContents(), result,
       navigation_handle()->GetNavigationId(),
       navigation_handle()->GetFrameTreeNodeId(),
       base::BindRepeating(&ClassifyUrlNavigationThrottle::OnInterstitialResult,

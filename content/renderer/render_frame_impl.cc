@@ -147,6 +147,7 @@
 #include "services/tracing/public/cpp/perfetto/track_name_recorder.h"
 #include "services/viz/public/cpp/gpu/context_provider_command_buffer.h"
 #include "third_party/abseil-cpp/absl/container/flat_hash_map.h"
+#include "third_party/abseil-cpp/absl/container/flat_hash_set.h"
 #include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
 #include "third_party/blink/public/common/chrome_debug_urls.h"
 #include "third_party/blink/public/common/context_menu_data/context_menu_data.h"
@@ -249,7 +250,6 @@
 #include "url/origin.h"
 #include "url/url_constants.h"
 #include "url/url_util.h"
-#include "third_party/abseil-cpp/absl/container/flat_hash_set.h"
 #include "v8/include/v8-isolate.h"
 #include "v8/include/v8-local-handle.h"
 #include "v8/include/v8-microtask-queue.h"
@@ -1009,9 +1009,27 @@ void FillMiscNavigationParams(
         blink::mojom::FetchCacheMode::kDefault;
   }
 
-  navigation_params->origin_agent_cluster = commit_params.origin_agent_cluster;
-  navigation_params->origin_agent_cluster_left_as_default =
-      commit_params.origin_agent_cluster_left_as_default;
+  // Pass the AgentClusterKey for the navigation.
+  if (commit_params.agent_cluster_key->is_site_key()) {
+    navigation_params->agent_cluster_key = blink::WebAgentClusterKey(
+        WebURL(commit_params.agent_cluster_key->get_site_key()));
+  } else {
+    CHECK(commit_params.agent_cluster_key->is_origin_key());
+    std::optional<blink::WebCrossOriginIsolationKey> cross_origin_isolation_key;
+    if (commit_params.agent_cluster_key->get_origin_key()->isolation_key) {
+      cross_origin_isolation_key = blink::WebCrossOriginIsolationKey(
+          blink::WebSecurityOrigin(
+              commit_params.agent_cluster_key->get_origin_key()
+                  ->isolation_key->common_origin),
+          commit_params.agent_cluster_key->get_origin_key()
+              ->isolation_key->mode);
+    }
+    navigation_params->agent_cluster_key =
+        blink::WebAgentClusterKey(blink::WebOriginKeyedAgentClusterKey(
+            blink::WebSecurityOrigin(
+                commit_params.agent_cluster_key->get_origin_key()->origin),
+            cross_origin_isolation_key));
+  }
 
   navigation_params->reduced_accept_language =
       WebString::FromASCII(commit_params.reduced_accept_language);
@@ -4038,8 +4056,9 @@ void RenderFrameImpl::DidCommitDocumentReplacementNavigation(
 void RenderFrameImpl::DidClearWindowObject() {
   TRACE_EVENT("navigation", "RenderFrameImpl::DidClearWindowObject",
               perfetto::Flow::FromPointer(this));
-  if (enabled_bindings_.Has(BindingsPolicyValue::kWebUi)) {
-    WebUIExtension::Install(frame_);
+  if (enabled_bindings_.Has(BindingsPolicyValue::kWebUi) ||
+      enabled_bindings_.Has(BindingsPolicyValue::kWebUiHistograms)) {
+    WebUIExtension::Install(frame_, enabled_bindings_);
   }
 
   const base::CommandLine& command_line =

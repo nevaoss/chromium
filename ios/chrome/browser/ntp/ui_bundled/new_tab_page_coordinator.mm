@@ -95,6 +95,8 @@
 #import "ios/chrome/browser/omnibox/model/placeholder_service/placeholder_service_factory.h"
 #import "ios/chrome/browser/overscroll_actions/ui_bundled/overscroll_actions_controller.h"
 #import "ios/chrome/browser/policy/model/policy_util.h"
+#import "ios/chrome/browser/safari_data_import/coordinator/safari_data_import_child_coordinator_delegate.h"
+#import "ios/chrome/browser/safari_data_import/coordinator/safari_data_import_export_coordinator.h"
 #import "ios/chrome/browser/search_engines/model/template_url_service_factory.h"
 #import "ios/chrome/browser/shared/coordinator/layout_guide/layout_guide_util.h"
 #import "ios/chrome/browser/shared/coordinator/scene/scene_state.h"
@@ -165,12 +167,14 @@
                                      NewTabPageDelegate,
                                      NewTabPageHeaderCommands,
                                      NewTabPageActionsDelegate,
+                                     NewTabPageViewControllerDelegate,
                                      OverscrollActionsControllerDelegate,
                                      ProfileStateObserver,
                                      SceneStateObserver,
                                      TabGridStateObserver,
                                      FamilyLinkUserCapabilitiesObserving,
-                                     NewTabPageShortcutsHandler> {
+                                     NewTabPageShortcutsHandler,
+                                     SafariDataImportChildCoordinatorDelegate> {
   // Observes changes in the IdentityManager.
   std::unique_ptr<signin::IdentityManagerObserverBridge>
       _identityObserverBridge;
@@ -288,6 +292,8 @@
   SigninCoordinator* _signinCoordinator;
   // Logo mediator to display the doodle on the NTP.
   SearchEngineLogoMediator* _searchEngineLogoMediator;
+  // The Safari data import used by the content suggestions.
+  SafariDataImportExportCoordinator* _safariDataImportExportCoordinator;
 }
 
 // Synthesize NewTabPageConfiguring properties.
@@ -464,6 +470,9 @@
 
   [_customizationCoordinator stop];
   _customizationCoordinator = nil;
+
+  [_safariDataImportExportCoordinator stop];
+  _safariDataImportExportCoordinator = nil;
 
   [_fakeboxLensIconBubblePresenter dismissAnimated:NO];
 
@@ -665,6 +674,9 @@
   id<NewTabPageComponentFactoryProtocol> componentFactory =
       self.componentFactory;
   self.NTPViewController = [componentFactory NTPViewController];
+  self.NTPViewController.engagementTracker =
+      feature_engagement::TrackerFactory::GetForProfile(self.profile);
+  self.NTPViewController.delegate = self;
   self.NTPViewController.incognitoDisabled =
       IsIncognitoModeDisabled(self.prefService);
   self.headerViewController =
@@ -1060,6 +1072,19 @@
 
   [self openCustomizationMenuAtPage:CustomizationMenuPage::kMagicStack
                            animated:NO];
+}
+
+- (void)openMainCustomizationMenu {
+  [self openCustomizationMenuAtPage:CustomizationMenuPage::kMain animated:YES];
+}
+
+- (void)openSafariDataImport {
+  _safariDataImportExportCoordinator =
+      [[SafariDataImportExportCoordinator alloc]
+          initWithBaseViewController:self.NTPViewController
+                             browser:self.browser];
+  _safariDataImportExportCoordinator.delegate = self;
+  [_safariDataImportExportCoordinator start];
 }
 
 #pragma mark - FeedSignInPromoDelegate
@@ -1876,6 +1901,42 @@
 
 - (void)willExitTabGrid {
   // Do nothing.
+}
+
+#pragma mark - SafariDataImportChildCoordinatorDelegate
+
+- (void)safariDataImportCoordinatorWillDismissWorkflow:
+    (SafariDataImportExportCoordinator*)coordinator {
+  // Return early if the Safari import is not presented to avoid dismissing
+  // another view controller.
+  if (!_safariDataImportExportCoordinator) {
+    return;
+  }
+  [_safariDataImportExportCoordinator stop];
+  _safariDataImportExportCoordinator = nil;
+}
+
+#pragma mark - NewTabPageViewControllerDelegate
+
+- (void)showCustomizationMenuForUserEducationFromNewTabPageViewController:
+    (NewTabPageViewController*)newTabPageViewController {
+  if (_customizationCoordinator) {
+    // Make sure to alert the coordinator that user education is active, so it
+    // can alert the Feature Engagement Tracker on dismissal.
+    _customizationCoordinator.openedForUserEducation = YES;
+    return;
+  }
+
+  // Hide the 'new' badge for the current session after being tapped.
+  [self.headerViewController hideBadgeOnCustomizationMenu];
+
+  [self.NTPMetricsRecorder recordHomeCustomizationMenuOpenedFromEntrypoint:
+                               HomeCustomizationEntrypoint::kPromo];
+
+  [self openCustomizationMenuAtPage:CustomizationMenuPage::kMain animated:YES];
+  // Make sure to alert the coordinator that user education is active, so it can
+  // alert the Feature Engagement Tracker on dismissal.
+  _customizationCoordinator.openedForUserEducation = YES;
 }
 
 @end

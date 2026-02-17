@@ -55,7 +55,7 @@ class VerticalTabView : public views::View,
   void StepLoadingAnimation(const base::TimeDelta& elapsed_time);
   void UpdateHovered(bool hovered);
 
-  void OnTabDragOver();
+  const TabCollectionNode* collection_node() const { return collection_node_; }
   const TabStyle* tab_style() { return tab_style_; }
   const TabRendererData& tab_data() const { return tab_data_; }
   TabCloseButton* close_button_for_testing() { return close_button_; }
@@ -74,6 +74,7 @@ class VerticalTabView : public views::View,
   void OnPaint(gfx::Canvas* canvas) override;
   void AddedToWidget() override;
   void RemovedFromWidget() override;
+  void OnBoundsChanged(const gfx::Rect& previous_bounds) override;
   void OnThemeChanged() override;
 
   struct TabChildConfig {
