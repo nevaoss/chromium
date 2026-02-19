@@ -526,13 +526,14 @@ void FillUploadField(AutofillUploadContents::Field* field,
 
 // Creates the structure of signatures that would be encoded by
 // `EncodeUploadRequest()` and `EncodeAutofillPageQueryRequest()`
-// and consumed by `ParseServerPredictionsQueryResponse()` and
-// `ProcessServerPredictionsQueryResponse()`.
+// and consumed by `ParseServerPredictionsFromQueryResponse()`.
 //
 // Perhaps a neater way would be to move this to TestFormStructure.
 std::vector<FormSignature> GetEncodedSignatures(const FormStructure& form);
 std::vector<FormSignature> GetEncodedSignatures(
     const std::vector<raw_ref<FormStructure>>& forms);
+std::vector<FormSignature> GetEncodedSignatures(
+    base::span<const FormData> forms);
 
 std::vector<FormSignature> GetEncodedAlternativeSignatures(
     const FormStructure& form);

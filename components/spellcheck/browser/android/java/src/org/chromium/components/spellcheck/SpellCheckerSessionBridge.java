@@ -18,6 +18,7 @@ import android.view.textservice.TextInfo;
 import android.view.textservice.TextServicesManager;
 
 import org.jni_zero.CalledByNative;
+import org.jni_zero.JniType;
 import org.jni_zero.NativeMethods;
 
 import org.chromium.base.ContextUtils;
@@ -105,17 +106,27 @@ public class SpellCheckerSessionBridge implements SpellCheckerSessionListener {
      * @param spellingMarkers the existing spelling markers present in the given text.
      */
     @CalledByNative
-    private void requestTextCheck(String text, SpellingMarker[] spellingMarkers) {
+    private void requestTextCheck(
+            String text,
+            @JniType("std::vector<spellcheck::SpellingMarker>") SpellingMarker[] spellingMarkers) {
         // SpellCheckerSession thinks that any word ending with a period is a typo.
         // We trim the period off before sending the text for spellchecking in order to avoid
         // unnecessary red underlines when the user ends a sentence with a period.
         // Filed as an Android bug here: https://code.google.com/p/android/issues/detail?id=183294
+        if (text == null) {
+            return;
+        }
         if (text.endsWith(".")) {
             text = text.substring(0, text.length() - 1);
         }
-
+        if (text.length() == 0) {
+            return;
+        }
         SpannableString spannable = new SpannableString(text);
         for (SpellingMarker marker : spellingMarkers) {
+            if (marker.start() > text.length() - 1 || marker.end() > text.length()) {
+                continue;
+            }
             spannable.setSpan(
                     new SuggestionSpan(
                             ContextUtils.getApplicationContext(),
@@ -124,7 +135,7 @@ public class SpellCheckerSessionBridge implements SpellCheckerSessionListener {
                                     ? SuggestionSpan.FLAG_GRAMMAR_ERROR
                                     : SuggestionSpan.FLAG_MISSPELLED),
                     marker.start(),
-                    Math.min(marker.end(), text.length()),
+                    marker.end(),
                     Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
 

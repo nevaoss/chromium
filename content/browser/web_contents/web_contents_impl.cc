@@ -3134,8 +3134,6 @@ void WebContentsImpl::SetPrimaryPageImportance(
   base::android::ScopedServiceBindingBatch scoped_service_binding_batch;
 
   if (base::FeatureList::IsEnabled(features::kSubframeImportance)) {
-    CHECK(
-        base::FeatureList::IsEnabled(features::kSubframePriorityContribution));
     if (subframe_importance != primary_subframe_importance_) {
       primary_subframe_importance_ = subframe_importance;
       ApplyPrimaryPageSubframeImportance();
@@ -3795,9 +3793,6 @@ const blink::web_pref::WebPreferences WebContentsImpl::ComputeWebPreferences(
   prefs.strict_mixed_content_checking =
       command_line.HasSwitch(switches::kEnableStrictMixedContentChecking);
 
-  prefs.strict_powerful_feature_restrictions = command_line.HasSwitch(
-      switches::kEnableStrictPowerfulFeatureRestrictions);
-
   const std::string blockable_mixed_content_group =
       base::FieldTrialList::FindFullName("BlockableMixedContent");
   prefs.strictly_block_blockable_mixed_content =
@@ -4083,16 +4078,6 @@ void WebContentsImpl::OnVibrate(RenderFrameHostImpl* rfh) {
   OPTIONAL_TRACE_EVENT1("content", "WebContentsImpl::OnVibrate",
                         "render_frame_host", rfh);
   observers_.NotifyObservers(&WebContentsObserver::VibrationRequested);
-}
-
-std::optional<network::ParsedPermissionsPolicy>
-WebContentsImpl::GetPermissionsPolicyForIsolatedWebApp(
-    RenderFrameHostImpl* source) {
-  WebExposedIsolationInfo weii =
-      source->GetSiteInstance()->GetWebExposedIsolationInfo();
-  CHECK(weii.is_isolated_application());
-  return GetContentClient()->browser()->GetPermissionsPolicyForIsolatedWebApp(
-      this, weii.origin());
 }
 
 void WebContentsImpl::Stop() {
@@ -4598,6 +4583,16 @@ bool WebContentsImpl::PreHandleGestureEvent(
     const blink::WebGestureEvent& event) {
   OPTIONAL_TRACE_EVENT0(TRACE_DISABLED_BY_DEFAULT("content.verbose"),
                         "WebContentsImpl::PreHandleGestureEvent");
+  if (ignore_zoom_gestures_) {
+    if (blink::WebInputEvent::IsPinchGestureEventType(event.GetType()) ||
+        (event.GetType() == blink::WebInputEvent::Type::kGestureDoubleTap)) {
+      return true;
+    }
+  }
+
+  // TODO(crbug.com/475836809)
+  // Remove this delegate method. It exposes Blink types to the embedder. Since
+  // zoom blocking is now handled natively, we should audit remaining consumers.
   return delegate_ && delegate_->PreHandleGestureEvent(this, event);
 }
 
@@ -6975,6 +6970,10 @@ void WebContentsImpl::SetPageScale(float scale_factor) {
                         "scale_factor", scale_factor);
   GetPrimaryMainFrame()->GetAssociatedLocalMainFrame()->SetScaleFactor(
       scale_factor);
+}
+
+void WebContentsImpl::SetIgnoreZoomGestures(bool ignore) {
+  ignore_zoom_gestures_ = ignore;
 }
 
 gfx::Size WebContentsImpl::GetPreferredSize() {

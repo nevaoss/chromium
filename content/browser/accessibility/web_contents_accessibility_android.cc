@@ -499,7 +499,7 @@ ScopedJavaLocalRef<jobject> ToJavaFloatRangesMap(
       env, text_style_map,
       &Java_AccessibilityNodeInfoUtils_setTextAttributeRangesMapFloatValue,
       base::BindRepeating(
-          [](float value) { return static_cast<jfloat>(value); }),
+          [](float value) { return static_cast<float>(value); }),
       ranges_count);
 }
 
@@ -622,7 +622,7 @@ WebContentsAccessibilityAndroid::WebContentsAccessibilityAndroid(
 WebContentsAccessibilityAndroid::WebContentsAccessibilityAndroid(
     JNIEnv* env,
     const JavaRef<jobject>& obj,
-    jlong ax_tree_update_ptr,
+    int64_t ax_tree_update_ptr,
     const JavaRef<jobject>& jaccessibility_node_info_builder)
     : java_ref_(env, obj),
       java_anib_ref_(env, jaccessibility_node_info_builder),
@@ -1189,8 +1189,8 @@ bool WebContentsAccessibilityAndroid::OnHoverEvent(
 }
 
 bool WebContentsAccessibilityAndroid::OnHoverEventNoRenderer(JNIEnv* env,
-                                                             jfloat x,
-                                                             jfloat y) {
+                                                             float x,
+                                                             float y) {
   gfx::PointF point = gfx::PointF(x, y);
   if (BrowserAccessibilityManagerAndroid* root_manager =
           GetRootBrowserAccessibilityManager()) {
@@ -2899,16 +2899,16 @@ WebContentsAccessibilityAndroid::GetLabeledByNodeIdsForTesting(
   return base::android::ToJavaIntArray(env, node->GetLabelledByAndroidIds());
 }
 
-static jlong JNI_WebContentsAccessibilityImpl_InitWithAXTree(
+static int64_t JNI_WebContentsAccessibilityImpl_InitWithAXTree(
     JNIEnv* env,
     const JavaRef<jobject>& obj,
-    jlong ax_tree_update_ptr,
+    int64_t ax_tree_update_ptr,
     const JavaRef<jobject>& jaccessibility_node_info_builder) {
   return reinterpret_cast<intptr_t>(new WebContentsAccessibilityAndroid(
       env, obj, ax_tree_update_ptr, jaccessibility_node_info_builder));
 }
 
-static jlong JNI_WebContentsAccessibilityImpl_Init(
+static int64_t JNI_WebContentsAccessibilityImpl_Init(
     JNIEnv* env,
     const JavaRef<jobject>& obj,
     const JavaRef<jobject>& jweb_contents,
@@ -2920,7 +2920,7 @@ static jlong JNI_WebContentsAccessibilityImpl_Init(
       env, obj, web_contents, jaccessibility_node_info_builder));
 }
 
-static jlong JNI_WebContentsAccessibilityImpl_InitForAssistData(
+static int64_t JNI_WebContentsAccessibilityImpl_InitForAssistData(
     JNIEnv* env,
     const JavaRef<jobject>& obj,
     const JavaRef<jobject>& jweb_contents,

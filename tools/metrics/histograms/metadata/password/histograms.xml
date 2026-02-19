@@ -630,6 +630,52 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="PasswordManager.ActorLogin.TimeFromAttemptToSuccess"
+    units="ms" expires_after="2026-07-05">
+  <owner>fiorellab@google.com</owner>
+  <owner>ioanap@chromium.org</owner>
+  <owner>chrome-password-manager-metrics-alerts@google.com</owner>
+  <summary>
+    Records the time elapsed between the creation of an Actor Login attempt and
+    the successful submission of the login form. Recorded when the login is
+    detected as successful.
+  </summary>
+</histogram>
+
+<histogram name="PasswordManager.ActorLogin.TimeToPasswordFilled" units="ms"
+    expires_after="2026-07-05">
+  <owner>fiorellab@google.com</owner>
+  <owner>ioanap@chromium.org</owner>
+  <owner>chrome-password-manager-metrics-alerts@google.com</owner>
+  <summary>
+    Records the time elapsed between the ActorLogin attempt start and the
+    successful filling of the password field.
+  </summary>
+</histogram>
+
+<histogram name="PasswordManager.ActorLogin.TimeToUsernameAndPasswordFilled"
+    units="ms" expires_after="2026-07-05">
+  <owner>fiorellab@google.com</owner>
+  <owner>ioanap@chromium.org</owner>
+  <owner>chrome-password-manager-metrics-alerts@google.com</owner>
+  <summary>
+    Records the time elapsed between the ActorLogin attempt start and the moment
+    when both username and password fields have been successfully filled. This
+    records the time of the later of the two filling events.
+  </summary>
+</histogram>
+
+<histogram name="PasswordManager.ActorLogin.TimeToUsernameFilled" units="ms"
+    expires_after="2026-07-05">
+  <owner>fiorellab@google.com</owner>
+  <owner>ioanap@chromium.org</owner>
+  <owner>chrome-password-manager-metrics-alerts@google.com</owner>
+  <summary>
+    Records the time elapsed between the ActorLogin attempt start and the
+    successful filling of the username field.
+  </summary>
+</histogram>
+
 <histogram name="PasswordManager.AddCredentialFromSettings.UserAction2"
     enum="AddCredentialFromSettingsUserInteractions" expires_after="2027-01-25">
   <owner>vidhanj@google.com</owner>
@@ -2990,7 +3036,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="PasswordManager.PasswordManagementBubble.UserAction"
-    enum="PasswordManagementBubbleInteractions" expires_after="2026-03-01">
+    enum="PasswordManagementBubbleInteractions" expires_after="2026-10-01">
   <owner>mamir@chromium.org</owner>
   <owner>rgod@google.com</owner>
   <summary>
@@ -4269,6 +4315,16 @@ useful for Chirp alerts (go/crca-alerts). -->
   </summary>
 </histogram>
 
+<histogram name="PasswordManager.UserActionTriggerThatRetrievedPasskeySecret"
+    enum="TrustedVaultUserActionTrigger" expires_after="2026-07-12">
+  <owner>izuzic@google.com</owner>
+  <owner>chrome-webauthn@google.com</owner>
+  <summary>
+    Tracks the trigger of the Magic Arch challenge initiated to obtain the
+    passkey secret. Recorded when the challenge is completed.
+  </summary>
+</histogram>
+
 <histogram name="PasswordManager.UsernameDetectionMethod"
     enum="UsernameDetectionMethod" expires_after="2026-03-22">
   <owner>kazinova@google.com</owner>
@@ -4467,7 +4523,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 
 <histogram
     name="PasswordManager.{Store}PasswordNotes.CountCredentialsWithNonEmptyNotes2"
-    units="count" expires_after="2026-03-01">
+    units="count" expires_after="2027-03-01">
   <owner>derinel@google.com</owner>
   <owner>mamir@chromium.org</owner>
   <summary>
@@ -4478,7 +4534,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="PasswordManager.{Store}PasswordNotes.CountNotesPerCredential3"
-    units="count" expires_after="2026-03-01">
+    units="count" expires_after="2027-03-01">
   <owner>derinel@google.com</owner>
   <owner>mamir@chromium.org</owner>
   <summary>

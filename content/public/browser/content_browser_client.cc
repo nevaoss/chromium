@@ -195,7 +195,7 @@ bool ContentBrowserClient::
         BrowserContext* browser_context,
         const GURL& site_instance_original_url) {
   DCHECK(browser_context);
-  return true;
+  return false;
 }
 
 bool ContentBrowserClient::ShouldAllowProcessPerSiteForMultipleMainFrames(
@@ -329,11 +329,11 @@ size_t ContentBrowserClient::GetProcessCountToIgnoreForLimit() {
   return 0;
 }
 
-std::optional<network::ParsedPermissionsPolicy>
+std::optional<std::vector<blink::mojom::IsolatedAppPermissionPolicyEntryPtr>>
 ContentBrowserClient::GetPermissionsPolicyForIsolatedWebApp(
-    WebContents* web_contents,
-    const url::Origin& app_origin) {
-  return network::ParsedPermissionsPolicy();
+    BrowserContext* browser_context,
+    const url::Origin& iwa_origin) {
+  return std::nullopt;
 }
 
 bool ContentBrowserClient::ShouldTryToUseExistingProcessHost(

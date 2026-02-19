@@ -1995,6 +1995,10 @@ are declared in tools/grit/grit_args.gni.
                desc="The local download was blocked and redirected to cloud storage">
         Your organization blocked the local download of this file.
       </message>
+      <message name="IDS_DOWNLOAD_INTERRUPTED_STATUS_LOCAL_DOWNLOAD_BLOCKED_DOWNLOAD_UI"
+               desc="The local download was blocked and redirected to cloud storage due to security policy.">
+        Local download blocked
+      </message>
       <message name="IDS_DOWNLOAD_INTERRUPTED_DESCRIPTION_BLOCKED"
                desc="Download page message: The download was blocked due to security policy on this machine.">
         Security settings on your computer blocked this file.
@@ -10425,6 +10429,9 @@ Keep your key file in a safe place. You will need it to create new versions of y
           <message name="IDS_TAB_GROUPS_TITLE" desc="In Title Case: The title for the tab groups container in the projects panel.">
             Tab Groups
           </message>
+          <message name="IDS_RECENT_CHATS_TITLE" desc="In Title Case: The title for the recent chats container in the projects panel.">
+            Recent Chats
+          </message>
         </then>
         <else>
           <message name="IDS_VIEW_PROJECTS_PANEL" desc="The tooltip for the button in the top container that shows the projects panel.">
@@ -10435,6 +10442,9 @@ Keep your key file in a safe place. You will need it to create new versions of y
           </message>
           <message name="IDS_TAB_GROUPS_TITLE" desc="The title for the tab groups container in the projects panel.">
             Tab groups
+          </message>
+          <message name="IDS_RECENT_CHATS_TITLE" desc="In Title Case: The title for the recent chats container in the projects panel.">
+            Recent chats
           </message>
         </else>
       </if>
@@ -10976,39 +10986,18 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_TAB_AUDIO_MUTING_PROMO" desc="Text shown on the promotional UI appearing next to the tab alert indicator.">
         Click the speaker icon to mute this tab
       </message>
-      <if expr="use_titlecase">
-        <message name="IDS_BATTERY_SAVER_MODE_PROMO_TITLE" desc="In Title Case: The title for the battery saver mode in-product promo bubble.">
-          Energy Saver Turned On
-        </message>
-      </if>
-      <if expr="not use_titlecase">
-        <message name="IDS_BATTERY_SAVER_MODE_PROMO_TITLE" desc="The title for the battery saver mode in-product promo bubble.">
-          Energy Saver turned on
-        </message>
-      </if>
-      <if expr="use_titlecase">
-        <message name="IDS_BATTERY_SAVER_MODE_PROMO_TEXT" desc="The text shown for the battery saver mode in-product promo bubble.">
-          This extends battery power by limiting background activity and visual effects like smooth scrolling.
-        </message>
-      </if>
-      <if expr="not use_titlecase">
-        <message name="IDS_BATTERY_SAVER_MODE_PROMO_TEXT" desc="The text shown for the battery saver mode in-product promo bubble.">
-          This extends battery power by limiting background activity and visual effects like smooth scrolling
-        </message>
-      </if>
+      <message name="IDS_BATTERY_SAVER_MODE_PROMO_TITLE" desc="The title for the battery saver mode in-product promo bubble.">
+        Energy Saver turned on
+      </message>
+      <message name="IDS_BATTERY_SAVER_MODE_PROMO_TEXT" desc="The text shown for the battery saver mode in-product promo bubble.">
+        This extends battery power by limiting background activity and visual effects like smooth scrolling
+      </message>
       <message name="IDS_BATTERY_SAVER_MODE_PROMO_ACTION_TEXT" desc="The custom action button text for the battery saver mode in-product promo bubble.">
         Settings
       </message>
-      <if expr="use_titlecase">
-        <message name="IDS_MEMORY_SAVER_MODE_PROMO_TEXT" desc="The text shown for the high efficiency mode in-product promo bubble">
-          Memory Saver frees up memory from inactive tabs so it can be used by active tabs and other apps.
-        </message>
-      </if>
-      <if expr="not use_titlecase">
-        <message name="IDS_MEMORY_SAVER_MODE_PROMO_TEXT" desc="The text shown for the high efficiency mode in-product promo bubble">
-          Memory Saver frees up memory from inactive tabs so it can be used by active tabs and other apps
-        </message>
-      </if>
+      <message name="IDS_MEMORY_SAVER_MODE_PROMO_TEXT" desc="The text shown for the high efficiency mode in-product promo bubble">
+        Memory Saver frees up memory from inactive tabs so it can be used by active tabs and other apps
+      </message>
       <if expr="use_titlecase">
         <message name="IDS_MEMORY_SAVER_MODE_PROMO_ACTION_TEXT" desc="In Title Case: The custom action button text for the high efficiency mode in-product promo bubble">
           Turn On
@@ -11019,16 +11008,9 @@ Keep your key file in a safe place. You will need it to create new versions of y
           Turn on
         </message>
       </if>
-      <if expr="use_titlecase">
-        <message name="IDS_DISCARD_RING_PROMO_TITLE" desc="In Title Case: The title for the discard ring in-product promo bubble.">
-          Inactive Tabs Get a New Look
-        </message>
-      </if>
-      <if expr="not use_titlecase">
-        <message name="IDS_DISCARD_RING_PROMO_TITLE" desc="The title for the discard ring in-product promo bubble.">
-          Inactive tabs get a new look
-        </message>
-      </if>
+      <message name="IDS_DISCARD_RING_PROMO_TITLE" desc="The title for the discard ring in-product promo bubble.">
+        Inactive tabs get a new look
+      </message>
       <message name="IDS_DISCARD_RING_PROMO_TEXT" desc="The text shown for the discard ring in-product promo bubble.">
         See when tabs are inactive at a glance. You can turn off this new look in settings anytime.
       </message>
@@ -19968,11 +19950,26 @@ Please help our engineers fix this problem. Tell us what happened right before y
       <message name="IDS_UPDATER_FILTER_CHIP_UPDATER_SCOPE" desc="Text displayed in a filter chip showing the selected updater scopes.">
         Updater Scope: <ph name="OUTCOMES">$1<ex>Per-system updater, Per-user updater</ex></ph>
       </message>
+      <message name="IDS_UPDATER_INACTIVE_VERSIONS_LABEL" desc="A label for a list of inactive versions of the Chrome Updater. Multiple Chrome Updater versions may be present on a users machine but only one may be active at a time.">
+        Inactive Versions:
+      </message>
+      <message name="IDS_UPDATER_INSTALL_PATH_LABEL" desc="A label for a filesystem path indicating where the Chrome Updater is installed on a user's system.">
+        Install Path:
+      </message>
       <message name="IDS_UPDATER_INSTALL_SUMMARY" desc="Summary of an event in which software was installed, including the version.">
         Installed version <ph name="VERSION">$1<ex>1.2.3.4</ex></ph>
       </message>
       <message name="IDS_UPDATER_INTERNAL" desc="Label used to indicate that a logged Chrome Updater event pertains to the updater itself and not an app managed by the updater (e.g. Google Chrome).">
         Internal
+      </message>
+      <message name="IDS_UPDATER_LAST_CHECKED_LABEL" desc="A label for a timestamp indicating the last time the Chrome Updater checked for an update.">
+        Last Update Check:
+      </message>
+      <message name="IDS_UPDATER_LAST_STARTED_LABEL" desc="A label for a timestamp indicating the last time the Chrome Updater performed its periodic tasks.">
+        Last Periodic Task Run:
+      </message>
+      <message name="IDS_UPDATER_NEVER" desc="Text indicating that that an action has never happened. For instance, this is used in place of a timestamp to indicate that an instance of the Chrome Updater has never checked for any updates.">
+        Never
       </message>
       <message name="IDS_UPDATER_NEXT_VERSION" desc="Label indicating the version of a software installation that the Chrome Updater tried to update to.">
         Next version: <ph name="VERSION">$1<ex>1.2.3.4</ex></ph>
@@ -20036,6 +20033,9 @@ Please help our engineers fix this problem. Tell us what happened right before y
       </message>
       <message name="IDS_UPDATER_UPDATER_VERSION" desc="Label indicating the version of the updater itself.">
         Updater version: <ph name="VERSION">$1<ex>1.2.3.4</ex></ph>
+      </message>
+      <message name="IDS_UPDATER_VERSION_LABEL" desc="A label for the version of the updater.">
+        Version:
       </message>
       <message name="IDS_UPDATER_UPDATE_ERROR" desc="Summary of an update event that failed.">
         Update operation failed

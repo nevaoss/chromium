@@ -4,7 +4,9 @@
 
 #include "chrome/browser/ui/tab_helpers.h"
 
+#include <cstdint>
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include "base/command_line.h"
@@ -44,6 +46,7 @@
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
 #include "chrome/browser/optimization_guide/optimization_guide_web_contents_observer.h"
+#include "chrome/browser/page_content_annotations/multi_source_page_context_fetcher.h"
 #include "chrome/browser/page_content_annotations/page_content_annotations_service_factory.h"
 #include "chrome/browser/page_content_annotations/page_content_annotations_web_contents_observer.h"
 #include "chrome/browser/page_info/about_this_site_tab_helper.h"
@@ -161,10 +164,10 @@
 #include "chrome/browser/android/persisted_tab_data/language_persisted_tab_data_android.h"
 #include "chrome/browser/android/persisted_tab_data/sensitivity_persisted_tab_data_android.h"
 #include "chrome/browser/android/policy/policy_auditor_bridge.h"
+#include "chrome/browser/android/tab_android.h"
 #include "chrome/browser/banners/android/chrome_app_banner_manager_android.h"
 #include "chrome/browser/content_settings/request_desktop_site_web_contents_observer_android.h"
 #include "chrome/browser/facilitated_payments/ui/chrome_facilitated_payments_client.h"
-#include "chrome/browser/fast_checkout/fast_checkout_tab_helper.h"
 #include "chrome/browser/flags/android/chrome_feature_list.h"
 #include "chrome/browser/loader/from_gws_navigation_and_keep_alive_request_tab_helper.h"
 #include "chrome/browser/net/http_auth_cache_status.h"
@@ -283,6 +286,17 @@ namespace {
 
 const char kTabContentsAttachedTabHelpersUserDataKey[] =
     "TabContentsAttachedTabHelpers";
+
+std::optional<int64_t> GetPageContentAnnotationsTabId(
+    content::WebContents* web_contents) {
+#if BUILDFLAG(IS_ANDROID)
+  if (TabAndroid* tab = TabAndroid::FromWebContents(web_contents)) {
+    return tab->GetAndroidId();
+  }
+#endif
+  // TODO(crbug.com/440643544): Implement a usable tab ID for other platforms.
+  return std::nullopt;
+}
 
 }  // namespace
 
@@ -457,7 +471,10 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents) {
           PageContentAnnotationsServiceFactory::GetForProfile(profile);
   if (page_content_annotations_service) {
     page_content_annotations::PageContentAnnotationsWebContentsObserver::
-        CreateForWebContents(web_contents);
+        CreateForWebContents(
+            web_contents,
+            base::BindRepeating(&page_content_annotations::FetchPageContext),
+            base::BindRepeating(&GetPageContentAnnotationsTabId));
 
 #if BUILDFLAG(IS_ANDROID)
     // If enabled, save sensitivity data for each non-incognito android tab.
@@ -608,7 +625,6 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents) {
                           *web_contents));
   }
   ContextMenuHelper::CreateForWebContents(web_contents);
-  FastCheckoutTabHelper::CreateForWebContents(web_contents);
 
   if (base::FeatureList::IsEnabled(
           page_load_metrics::features::kBeaconLeakageLogging)) {

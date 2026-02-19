@@ -4,6 +4,7 @@
 
 package org.chromium.chrome.browser.keyboard_accessory;
 
+import static org.chromium.build.NullUtil.assumeNonNull;
 import static org.chromium.chrome.browser.keyboard_accessory.ManualFillingProperties.FIELD_BOUNDS;
 import static org.chromium.chrome.browser.keyboard_accessory.ManualFillingProperties.IS_CREDENTIAL_FIELD_OR_HAS_AUTOFILL_SUGGESTIONS;
 import static org.chromium.chrome.browser.keyboard_accessory.ManualFillingProperties.IS_FULLSCREEN;
@@ -536,7 +537,14 @@ class ManualFillingMediator
             // KEYBOARD_EXTENSION_STATE.
             return;
         } else if (property == FIELD_BOUNDS) {
-            // Do nothing. FIELD_BOUNDS is used when keyboard accessory style is modified.
+            // For password fields, the accessory is shown before the FIELD_BOUNDS property is set.
+            // Re-triggering the style and space update here ensures that FIELD_BOUNDS are used to
+            // adjust the screen position once they become available. Ideally, this call should not
+            // be necessary.
+            if (ChromeFeatureList.isEnabled(
+                    ChromeFeatureList.AUTOFILL_ANDROID_KEYBOARD_ACCESSORY_DYNAMIC_POSITIONING)) {
+                updateStyleAndControlSpaceForState(mModel.get(KEYBOARD_EXTENSION_STATE));
+            }
             return;
         }
         throw new IllegalArgumentException("Unhandled property: " + property);
@@ -679,9 +687,7 @@ class ManualFillingMediator
             mAccessorySheet.hide();
             // The compositor should relayout the view when the sheet is hidden. This is necessary
             // to trigger events that rely on the relayout (like toggling the overview button):
-            Supplier<CompositorViewHolder> compositorViewHolderSupplier =
-                    mActivity.getCompositorViewHolderSupplier();
-            var compositorViewHolder = compositorViewHolderSupplier.get();
+            var compositorViewHolder = mActivity.getCompositorViewHolderSupplier().get();
             if (compositorViewHolder != null) {
                 // The CompositorViewHolder is null when the activity is in the process of being
                 // destroyed which also renders relayouting pointless.
@@ -835,7 +841,7 @@ class ManualFillingMediator
 
     private @NotchPosition int getNotchPositionForDynamicPositioning() {
         CompositorViewHolder compositorViewHolder =
-                mActivity.getCompositorViewHolderSupplier().get();
+                assumeNonNull(mActivity.getCompositorViewHolderSupplier().get());
         RectF viewport = new RectF();
         compositorViewHolder.getVisibleViewport(viewport);
 

@@ -928,33 +928,6 @@ class MockTouchToFillDelegate : public TouchToFillDelegate {
               (override));
 };
 
-class MockFastCheckoutDelegate : public FastCheckoutDelegate {
- public:
-  static std::unique_ptr<MockFastCheckoutDelegate> Create() {
-    auto delegate = std::make_unique<NiceMock<MockFastCheckoutDelegate>>();
-    ON_CALL(*delegate, IsShowingFastCheckoutUI()).WillByDefault(Return(false));
-    return delegate;
-  }
-
-  MockFastCheckoutDelegate() = default;
-  MockFastCheckoutDelegate(const MockFastCheckoutDelegate&) = delete;
-  MockFastCheckoutDelegate& operator=(const MockFastCheckoutDelegate&) = delete;
-  ~MockFastCheckoutDelegate() override = default;
-
-  MOCK_METHOD(bool,
-              TryToShowFastCheckout,
-              (const FormData&,
-               const FormFieldData&,
-               base::WeakPtr<AutofillManager>),
-              (override));
-  MOCK_METHOD(bool,
-              IntendsToShowFastCheckout,
-              (AutofillManager&, FormGlobalId, FieldGlobalId, const FormData&),
-              (const, override));
-  MOCK_METHOD(bool, IsShowingFastCheckoutUI, (), (const, override));
-  MOCK_METHOD(void, HideFastCheckout, (bool), (override));
-};
-
 class MockAutofillDriver : public TestAutofillDriver {
  public:
   using TestAutofillDriver::TestAutofillDriver;
@@ -1012,7 +985,6 @@ class TestBrowserAutofillManager : public autofill::TestBrowserAutofillManager {
   explicit TestBrowserAutofillManager(AutofillDriver* driver)
       : autofill::TestBrowserAutofillManager(driver) {
     set_touch_to_fill_delegate(MockTouchToFillDelegate::Create(this));
-    set_fast_checkout_delegate(MockFastCheckoutDelegate::Create());
     test_api(*this).SetExternalDelegate(
         std::make_unique<TestAutofillExternalDelegate>(this));
     test_api(*this).set_credit_card_access_manager(
@@ -1460,11 +1432,6 @@ class BrowserAutofillManagerTest
   MockTouchToFillDelegate& touch_to_fill_delegate() {
     return *static_cast<MockTouchToFillDelegate*>(
         autofill_manager().touch_to_fill_delegate());
-  }
-
-  MockFastCheckoutDelegate& fast_checkout_delegate() {
-    return *static_cast<MockFastCheckoutDelegate*>(
-        autofill_manager().fast_checkout_delegate());
   }
 
   MockCreditCardAccessManager& cc_access_manager() {
@@ -5436,50 +5403,6 @@ TEST_F(BrowserAutofillManagerTest, OnLoadedServerPredictionsFromApi) {
               ElementsAre(ADDRESS_HOME_ZIP));
 }
 
-// Test that OnLoadedServerPredictions does not call ParseQueryResponse if the
-// BrowserAutofillManager has been reset between the time the query was sent and
-// the response received.
-TEST_F(BrowserAutofillManagerTest, OnLoadedServerPredictions_ResetManager) {
-  // Set up our form data.
-  FormData form = CreateTestAddressFormData();
-
-  // Simulate having seen this form on page load.
-  // |form_structure| will be owned by |autofill_manager()|.
-  auto form_structure = std::make_unique<FormStructure>(form);
-  const RegexPredictions regex_predictions = DetermineRegexTypes(
-      GeoIpCountryCode(""), LanguageCode(""), form_structure->ToFormData(),
-      nullptr, /*ignore_small_forms=*/true);
-  regex_predictions.ApplyTo(form_structure->fields());
-  form_structure->RationalizeAndAssignSections(GeoIpCountryCode(""),
-                                               LanguageCode(""), nullptr);
-  std::vector<FormSignature> signatures =
-      test::GetEncodedSignatures(*form_structure);
-  test_api(autofill_manager()).AddSeenFormStructure(std::move(form_structure));
-
-  AutofillQueryResponse response;
-  auto* form_suggestion = response.add_form_suggestions();
-  form_suggestion->add_field_suggestions()->add_predictions()->set_type(3);
-  for (int i = 0; i < 7; ++i) {
-    form_suggestion->add_field_suggestions()->add_predictions()->set_type(0);
-  }
-  form_suggestion->add_field_suggestions()->add_predictions()->set_type(3);
-  form_suggestion->add_field_suggestions()->add_predictions()->set_type(2);
-  form_suggestion->add_field_suggestions()->add_predictions()->set_type(61);
-
-  std::string response_string;
-  ASSERT_TRUE(response.SerializeToString(&response_string));
-  // Reset the manager (such as during a navigation).
-  autofill_client().GetAutofillDriverFactory().Reset(autofill_driver());
-
-  base::HistogramTester histogram_tester;
-  test_api(autofill_manager())
-      .OnLoadedServerPredictions(base::Base64Encode(response_string),
-                                 signatures, {form});
-
-  // Verify that FormStructure::ParseQueryResponse was NOT called.
-  histogram_tester.ExpectTotalCount("Autofill.ServerQueryResponse", 0);
-}
-
 // Test that when server predictions disagree with the heuristic ones, the
 // overall types and sections would be set based on the server one.
 TEST_F(BrowserAutofillManagerTest, DetermineHeuristicsWithOverallPrediction) {
@@ -7415,19 +7338,14 @@ TEST_F(BrowserAutofillManagerTest, HideAutofillSuggestionsAndOtherPopups) {
               HideAutofillSuggestions(SuggestionHidingReason::kRendererEvent));
   EXPECT_CALL(autofill_client(), HideAutofillFieldIph);
   EXPECT_CALL(touch_to_fill_delegate(), HideTouchToFill);
-  EXPECT_CALL(fast_checkout_delegate(),
-              HideFastCheckout(/*allow_further_runs=*/false));
   autofill_manager().OnHidePopup();
 }
 
-// Tests that only Autofill popup is hidden on editing end, but not TTF or FC.
+// Tests that only Autofill popup is hidden on editing end, but not TTF.
 TEST_F(BrowserAutofillManagerTest, OnDidEndTextFieldEditing) {
   EXPECT_CALL(autofill_client(),
               HideAutofillSuggestions(SuggestionHidingReason::kEndEditing));
   EXPECT_CALL(touch_to_fill_delegate(), HideTouchToFill).Times(0);
-  EXPECT_CALL(fast_checkout_delegate(),
-              HideFastCheckout(/*allow_further_runs=*/false))
-      .Times(0);
   autofill_manager().OnDidEndTextFieldEditing();
 }
 

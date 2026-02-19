@@ -183,7 +183,6 @@ chromium-metrics-reviews@google.com.
     <variant name="OnContextUploadCompleted"/>
     <variant name="OnContextUploadStarted"/>
     <variant name="OnModeChange"/>
-    <variant name="OnModelChanged"/>
     <variant name="OnReaction"/>
     <variant name="OnRecordUseCounter"/>
     <variant name="OnResponseRated"/>
@@ -1344,20 +1343,6 @@ chromium-metrics-reviews@google.com.
         summary="Other cause (infra) for stopping the response"/>
     <variant name=".UnknownCause" summary="Unspecified stop reason"/>
   </token>
-</histogram>
-
-<histogram name="Glic.Modal.DeepScanAccessPoint" enum="DeepScanAccessPoint"
-    expires_after="2026-03-01">
-  <owner>birnie@google.com</owner>
-  <owner>dewittj@google.com</owner>
-  <summary>
-    Recorded each time a Glic modal is created as a result of an Enterprise
-    Connector deep scan trigger originating from
-    ContentAnalysisDelegate::CreateForWebContents. The specific access point
-    that triggered the scan is recorded. See the DeepScanAccessPoint enum in
-    glic/enums.xml for possible values, corresponding to
-    safe_browsing::DeepScanAccessPoint.
-  </summary>
 </histogram>
 
 <histogram name="Glic.OsEntrypoint.Settings.Shortcut" enum="BooleanEnabled"

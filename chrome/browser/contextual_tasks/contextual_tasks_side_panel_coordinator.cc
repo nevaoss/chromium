@@ -278,19 +278,23 @@ void ContextualTasksSidePanelCoordinator::Show(bool transition_from_tab) {
   MaybeCreateCachedWebContents();
   UpdateWebContentsForActiveTab();
 
-  if (transition_from_tab) {
-    views::View* content =
-        BrowserElementsViews::From(browser_window_)
-            ->RetrieveView(kActiveContentsWebViewRetrievalId);
-    gfx::Rect content_bounds_in_browser_coordinates =
-        content->ConvertRectToWidget(content->GetContentsBounds());
-    side_panel_ui_->ShowFrom(
-        SidePanelEntry::Key(SidePanelEntry::Id::kContextualTasks),
-        content_bounds_in_browser_coordinates);
-  } else {
-    side_panel_ui_->Show(
-        SidePanelEntry::Key(SidePanelEntry::Id::kContextualTasks));
+  // Only show the side panel if it's closed.
+  if (!IsSidePanelOpenForContextualTask()) {
+    if (transition_from_tab) {
+      views::View* content =
+          BrowserElementsViews::From(browser_window_)
+              ->RetrieveView(kActiveContentsWebViewRetrievalId);
+      gfx::Rect content_bounds_in_browser_coordinates =
+          content->ConvertRectToWidget(content->GetContentsBounds());
+      side_panel_ui_->ShowFrom(
+          SidePanelEntry::Key(SidePanelEntry::Id::kContextualTasks),
+          content_bounds_in_browser_coordinates);
+    } else {
+      side_panel_ui_->Show(
+          SidePanelEntry::Key(SidePanelEntry::Id::kContextualTasks));
+    }
   }
+
   UpdateOpenState(/*is_open=*/true);
   UpdateContextualTaskUI();
   ObserveWebContentsOnActiveTab();
@@ -436,9 +440,6 @@ void ContextualTasksSidePanelCoordinator::OnTaskChanged(
   UpdateContextualSearchWebContentsHelperForTask(
       contextual_search_service_, browser_window_, contextual_tasks_service_,
       this, web_contents, new_task_id);
-
-  // Updates the automated chip if needed.
-  UpdateContextualTaskUI();
 }
 
 contextual_search::ContextualSearchSessionHandle*

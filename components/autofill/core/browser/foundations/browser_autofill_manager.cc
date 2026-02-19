@@ -32,6 +32,7 @@
 #include "base/containers/adapters.h"
 #include "base/containers/extend.h"
 #include "base/containers/flat_map.h"
+#include "base/containers/map_util.h"
 #include "base/containers/span.h"
 #include "base/containers/to_vector.h"
 #include "base/debug/crash_logging.h"
@@ -1281,6 +1282,7 @@ void BrowserAutofillManager::OnSuggestionDataFetched(
                         std::vector<SuggestionGenerator::SuggestionData>>(
           suggestion_data);
 
+  // Clear some of the suggestions based on the ablation study.
   if (autofill_field &&
       !all_suggestion_data[SuggestionDataSource::kAddress].empty() &&
       EvaluateAblationStudy(*autofill_field, FillingProduct::kAddress,
@@ -1292,6 +1294,29 @@ void BrowserAutofillManager::OnSuggestionDataFetched(
       EvaluateAblationStudy(*autofill_field, FillingProduct::kCreditCard,
                             /*has_suggestions=*/true)) {
     all_suggestion_data[SuggestionDataSource::kCreditCard].clear();
+  }
+
+  // Clear some of the suggestions based on priorities:
+  // 1. Find the highest priority suggestion data source S that returned data.
+  // 2. Keep only data from sources that are mergeable with S, discard the rest.
+  std::optional<SuggestionDataSource> highest_priority_source;
+  const DenseSet<SuggestionDataSource>* supported_mergeable_sources;
+  for (SuggestionDataSource source :
+       SuggestionGenerator::kOrderedPrioritizedSources) {
+    if (all_suggestion_data[source].empty()) {
+      continue;
+    }
+    if (!highest_priority_source.has_value()) {
+      highest_priority_source = source;
+      supported_mergeable_sources =
+          base::FindOrNull(SuggestionGenerator::kSupportedMerges,
+                           highest_priority_source.value());
+      continue;
+    }
+    if (!supported_mergeable_sources ||
+        !supported_mergeable_sources->contains(source)) {
+      all_suggestion_data[source].clear();
+    }
   }
 
   for (const std::unique_ptr<SuggestionGenerator>& suggestion_generator :
@@ -1486,25 +1511,6 @@ void BrowserAutofillManager::GenerateSuggestionsAndMaybeShowUIPhase3(
     return;
   }
 
-  const bool form_element_was_clicked =
-      trigger_source ==
-      AutofillSuggestionTriggerSource::kFormControlElementClicked;
-
-  // Try to show Fast Checkout.
-  if (fast_checkout_delegate_ &&
-      (fast_checkout_delegate_->IsShowingFastCheckoutUI() ||
-       (form_element_was_clicked &&
-        fast_checkout_delegate_->TryToShowFastCheckout(form, field,
-                                                       GetWeakPtr())))) {
-    // The Fast Checkout surface is shown, so abort showing regular Autofill
-    // UI. Now the flow is controlled by the `FastCheckoutClient` instead of
-    // `external_delegate_`.
-    // In principle, TTF and Fast Checkout triggering surfaces are different
-    // and the two screens should never coincide.
-    std::move(callback).Run(/*show_suggestions=*/false, std::move(suggestions));
-    return;
-  }
-
   // Only offer plus address suggestions together with address suggestions if
   // these exist. Otherwise, plus address suggestions will be generated and
   // shown alongside single field form fill suggestions. Plus address
@@ -1550,7 +1556,8 @@ void BrowserAutofillManager::GenerateSuggestionsAndMaybeShowUIPhase3(
       });
   if (touch_to_fill_delegate_ &&
       (touch_to_fill_delegate_->IsShowingTouchToFill() ||
-       (form_element_was_clicked &&
+       (trigger_source ==
+            AutofillSuggestionTriggerSource::kFormControlElementClicked &&
         !has_address_suggestions_on_email_or_loyalty_card_field &&
         touch_to_fill_delegate_->TryToShowTouchToFill(form, field)))) {
     std::move(callback).Run(/*show_suggestions=*/false, std::move(suggestions));
@@ -2005,7 +2012,6 @@ void BrowserAutofillManager::FillOrPreviewCreditCardForm(
             /*suppress_if_ac_unrecognized=*/!client().IsTabInActorMode());
       case AutofillTriggerSource::kScanCreditCard:
       case AutofillTriggerSource::kDevtools:
-      case AutofillTriggerSource::kFastCheckout:
       case AutofillTriggerSource::kCreditCardSaveAndFill:
         return false;
       case AutofillTriggerSource::kFormsSeen:
@@ -2391,9 +2397,6 @@ void BrowserAutofillManager::OnHidePopupImpl() {
   client().GetSingleFieldFillRouter().CancelPendingQueries();
   client().HideAutofillSuggestions(SuggestionHidingReason::kRendererEvent);
   client().HideAutofillFieldIph();
-  if (fast_checkout_delegate_) {
-    fast_checkout_delegate_->HideFastCheckout(/*allow_further_runs=*/false);
-  }
   if (touch_to_fill_delegate_) {
     touch_to_fill_delegate_->HideTouchToFill();
   }
@@ -2718,7 +2721,6 @@ const gfx::Image& BrowserAutofillManager::GetCardImage(
 //   - `weak_ptr_factory_`
 // - No need to reset or recreate:
 //   - external_delegate_
-//   - fast_checkout_delegate_
 void BrowserAutofillManager::Reset() {
   // Process log events and record into UKM when the FormStructure is destroyed.
   ForEachCachedForm([this](const FormStructure& form_structure) {
@@ -3547,26 +3549,6 @@ void BrowserAutofillManager::LogEventCountsUMAMetric(
   UMA_HISTOGRAM_COUNTS_10000("Autofill.LogEvent.AblationEvent",
                              num_ablation_event);
   UMA_HISTOGRAM_COUNTS_10000("Autofill.LogEvent.All", total_num_log_events);
-}
-
-void BrowserAutofillManager::SetFastCheckoutRunId(
-    FieldTypeGroup field_type_group,
-    int64_t run_id) {
-  switch (FieldTypeGroupToFormType(field_type_group)) {
-    case FormType::kAddressForm:
-      metrics_->address_form_event_logger.SetFastCheckoutRunId(run_id);
-      return;
-    case FormType::kCreditCardForm:
-    case FormType::kStandaloneCvcForm:
-      metrics_->credit_card_form_event_logger.SetFastCheckoutRunId(run_id);
-      break;
-    case FormType::kLoyaltyCardForm:
-    case FormType::kPasswordForm:
-    case FormType::kOneTimePasswordForm:
-    case FormType::kUnknownFormType:
-      // FastCheckout only supports address and credit card forms.
-      NOTREACHED();
-  }
 }
 
 void BrowserAutofillManager::InitializeSuggestionGenerators(

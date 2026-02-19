@@ -8,6 +8,7 @@
 #include <variant>
 
 #include "base/callback_list.h"
+#include "base/containers/adapters.h"
 #include "base/functional/bind.h"
 #include "base/notimplemented.h"
 #include "chrome/browser/ui/browser_actions.h"
@@ -36,6 +37,7 @@
 #include "components/tabs/public/tab_interface.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/color/color_id.h"
+#include "ui/compositor/layer.h"
 #include "ui/gfx/animation/animation.h"
 #include "ui/views/background.h"
 #include "ui/views/controls/resize_area.h"
@@ -59,6 +61,11 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
     : tab_strip_model_(browser_view->browser()->GetTabStripModel()),
       state_controller_(state_controller),
       resize_animation_(this) {
+  // For z-ordering purposes this needs to be on a layer.
+  SetPaintToLayer();
+  // Because corners may be transparent, this must be set to false.
+  layer()->SetFillsBoundsOpaquely(false);
+
   flex_layout_ = SetLayoutManager(std::make_unique<views::FlexLayout>());
   flex_layout_->SetOrientation(views::LayoutOrientation::kVertical)
       .SetCollapseMargins(true)
@@ -95,7 +102,7 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
                              0));
   OnCollapsedStateChanged(state_controller_);
   collapsed_state_changed_subscription_ =
-      state_controller_->RegisterOnStateChanged(base::BindRepeating(
+      state_controller_->RegisterOnCollapseChanged(base::BindRepeating(
           &VerticalTabStripRegionView::OnCollapsedStateChanged,
           base::Unretained(this)));
 
@@ -320,13 +327,29 @@ void VerticalTabStripRegionView::AnimationProgressed(
 
 bool VerticalTabStripRegionView::IsPositionInWindowCaption(
     const gfx::Point& point) {
-  gfx::Point point_in_target = point;
-  views::View::ConvertPointToTarget(this, top_button_container_,
-                                    &point_in_target);
-  if (top_button_container_->HitTestPoint(point_in_target)) {
-    return top_button_container_->IsPositionInWindowCaption(point_in_target);
+  // Check the resize area first, it should always take precedence over other
+  // children regardless of order.
+  if (IsHitInView(resize_area_, point)) {
+    return false;
   }
-  return false;
+
+  for (views::View* child : children()) {
+    if (!child->GetVisible()) {
+      continue;
+    }
+    gfx::Point point_in_child = point;
+    views::View::ConvertPointToTarget(this, child, &point_in_child);
+    if (child->HitTestPoint(point_in_child)) {
+      if (child == top_button_container_) {
+        return top_button_container_->IsPositionInWindowCaption(point_in_child);
+      }
+      if (child == tab_strip_view_) {
+        return tab_strip_view_->IsPositionInWindowCaption(point_in_child);
+      }
+      return false;
+    }
+  }
+  return true;
 }
 
 void VerticalTabStripRegionView::CreateTabStripController(
@@ -406,16 +429,33 @@ void VerticalTabStripRegionView::OnCollapsedStateChanged(
       state_controller_->IsCollapsed()
           ? LayoutConstant::kVerticalTabStripCollapsedPadding
           : LayoutConstant::kVerticalTabStripUncollapsedPadding);
-  top_button_separator_->SetProperty(
-      views::kMarginsKey, gfx::Insets::VH(kRegionVerticalPadding, padding));
-  top_button_container_->SetProperty(
-      views::kMarginsKey,
-      gfx::Insets::TLBR(0, padding, kRegionVerticalPadding, padding));
+  // The TopContainer handles the padding distance to the separator so that we
+  // can control how far it is in the various states.
+  top_button_separator_->SetProperty(views::kMarginsKey,
+                                     gfx::Insets::VH(0, padding));
+  if (state_controller->IsCollapsed()) {
+    // If the VT Strip is collapsed, then we need exactly |padding| on the top,
+    // left, and right.
+    top_button_container_->SetProperty(
+        views::kMarginsKey,
+        gfx::Insets::TLBR(padding, padding, kRegionVerticalPadding, padding));
+  } else {
+    // If the VT Strip is not collapsed, then we want to align the heights of
+    // the TopContainer w/ the the height of the toolbar. Both of these
+    // components start at the top of the window. We keep no vertical padding so
+    // that the separator can lay adjacent to it.
+    top_button_container_->SetProperty(views::kMarginsKey,
+                                       gfx::Insets::VH(0, padding));
+  }
+
   bottom_button_container_->SetProperty(
       views::kMarginsKey,
       gfx::Insets::TLBR(kRegionVerticalPadding, padding, 0, padding));
 
-  flex_layout_->SetInteriorMargin(gfx::Insets::VH(padding, 0));
+  flex_layout_->SetInteriorMargin(gfx::Insets::TLBR(
+      0, 0,
+      GetLayoutConstant(LayoutConstant::kVerticalTabStripUncollapsedPadding),
+      0));
 
   if (tab_strip_view_) {
     tab_strip_view_->SetCollapsedState(state_controller->IsCollapsed());

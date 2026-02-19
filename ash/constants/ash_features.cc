@@ -467,9 +467,6 @@ BASE_FEATURE(kCrostiniGpuSupport, base::FEATURE_DISABLED_BY_DEFAULT);
 // Force enable recreating the LXD DB at LXD launch.
 BASE_FEATURE(kCrostiniResetLxdDb, base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Enables experimental UI creating and managing multiple Crostini containers.
-BASE_FEATURE(kCrostiniMultiContainer, base::FEATURE_DISABLED_BY_DEFAULT);
-
 // Enables or disables Crostini Qt application IME support.
 BASE_FEATURE(kCrostiniQtImeSupport, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -596,10 +593,6 @@ BASE_FEATURE(kEnableBrightnessControlInSettings,
 BASE_FEATURE(kEnableExternalKeyboardsInDiagnostics,
              "EnableExternalKeyboardsInDiagnosticsApp",
              base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Enables setting the device hostname.
-// TODO(crbug.com/466903206): Remove this.
-BASE_FEATURE(kEnableHostnameSetting, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables OAuth support when printing via the IPP protocol.
 BASE_FEATURE(kEnableOAuthIpp, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -1277,9 +1270,6 @@ BASE_FEATURE(kManagedLocalPinAndPassword, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables policy management for USB printers.
 BASE_FEATURE(kManagedUsbPrinters, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Enables Mahi on PDF contents in the Media App.
-BASE_FEATURE(kMediaAppPdfMahi, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables Mantis on image contents in the Media App
 BASE_FEATURE(kMediaAppImageMantis, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -2813,10 +2803,6 @@ bool IsHideShelfControlsInTabletModeEnabled() {
 
 bool IsHybridChargerNotificationsEnabled() {
   return base::FeatureList::IsEnabled(kHybridChargerNotifications);
-}
-
-bool IsHostnameSettingEnabled() {
-  return base::FeatureList::IsEnabled(kEnableHostnameSetting);
 }
 
 bool IsInstantHotspotRebrandEnabled() {

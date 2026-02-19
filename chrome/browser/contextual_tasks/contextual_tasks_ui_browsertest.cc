@@ -63,7 +63,8 @@ class MockContextualTasksPage : public contextual_tasks::mojom::Page {
   MOCK_METHOD(void, OnHandshakeComplete, (), (override));
   MOCK_METHOD(void,
               OnContextUpdated,
-              (std::vector<contextual_tasks::mojom::TabPtr>),
+              (std::vector<contextual_tasks::mojom::TabPtr>,
+               std::vector<contextual_tasks::mojom::UploadedFilePtr>),
               (override));
   MOCK_METHOD(void, HideInput, (), (override));
   MOCK_METHOD(void, RestoreInput, (), (override));
@@ -292,6 +293,8 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksUIBrowserTest,
   testing::NiceMock<MockContextualTasksPage> mock_page;
 
   mojo::PendingReceiver<contextual_tasks::mojom::PageHandler> handler_receiver;
+  // The initial call to CreatePageHandler should call OnLensOverlayStateChanged.
+  EXPECT_CALL(mock_page, OnLensOverlayStateChanged(false));
   controller_->CreatePageHandler(mock_page.BindAndGetRemote(),
                                  std::move(handler_receiver));
 

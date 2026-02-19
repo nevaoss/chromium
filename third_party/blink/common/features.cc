@@ -1921,12 +1921,17 @@ BASE_FEATURE_PARAM(base::TimeDelta,
                    "hover_dwell_time",
                    base::Milliseconds(10));
 BASE_FEATURE(kPreloadingEagerViewportHeuristics,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+#if BUILDFLAG(IS_ANDROID)
+             base::FEATURE_ENABLED_BY_DEFAULT
+#else
+             base::FEATURE_DISABLED_BY_DEFAULT
+#endif
+);
 BASE_FEATURE_PARAM(base::TimeDelta,
                    kPreloadingEagerViewportHeuristicsPresentTime,
                    &kPreloadingEagerViewportHeuristics,
                    "viewport_present_time",
-                   base::Milliseconds(100));
+                   base::Milliseconds(50));
 
 BASE_FEATURE(kPreloadingHeuristicsMLModel, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE_PARAM(int,
@@ -2267,6 +2272,14 @@ BASE_FEATURE_PARAM(bool,
                    kServiceWorkerSyntheticResponseReportInconsistentHeader,
                    &kServiceWorkerSyntheticResponse,
                    "report_inconsistent_header",
+                   false);
+
+// If true, the synthetic response uses the didcated data pipe reader which
+// skips unnecessary buffering on memory to transfer the response body.
+BASE_FEATURE_PARAM(bool,
+                   kServiceWorkerSyntheticResponseSkipUnnecessaryBuffering,
+                   &kServiceWorkerSyntheticResponse,
+                   "skip_unnecessary_buffering",
                    false);
 
 // If true, the browser enables synthetic response with the dry run mode. With

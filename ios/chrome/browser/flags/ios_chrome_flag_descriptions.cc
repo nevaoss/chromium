@@ -283,12 +283,6 @@ const char kCacheIdentityListInChromeDescription[] =
 const char kChromeNextIaName[] = "ChromeNextIa";
 const char kChromeNextIaDescription[] = "Enables the chrome_next_ia feature.";
 
-const char kChromeStartupParametersAsyncName[] =
-    "Enable the async chrome startup";
-const char kChromeStartupParametersAsyncDescription[] =
-    "When enabled the async version of the chrome startup method is used. This "
-    "method is used to parse the startup parameters.";
-
 const char kCloseOtherTabsName[] = "CloseOtherTabs";
 const char kCloseOtherTabsDescription[] = "Enables the CloseOtherTabs feature.";
 
@@ -306,6 +300,12 @@ const char kComposeboxAIMNudgeName[] = "ComposeboxAIMNudge";
 const char kComposeboxAIMNudgeDescription[] =
     "Enables the AIM nudge button in the composebox, tapping on the button "
     "enables AIM. This is conditionned by AIM availability.";
+
+const char kComposeboxAdditionalAdvancedToolsName[] =
+    "Enable additional advanced tools in composebox";
+extern const char kComposeboxAdditionalAdvancedToolsDescription[] =
+    "When enabled, the additional tools in the input plate are shown, such as "
+    "canvas and the model picker";
 
 const char kComposeboxAttachmentsTypedStateName[] =
     "Enable contextual suggestions for typed state";
@@ -392,10 +392,6 @@ const char kContentNotificationProvisionalIgnoreConditionsDescription[] =
 const char kContentPushNotificationsName[] = "Content Push Notifications";
 const char kContentPushNotificationsDescription[] =
     "Enables the content push notifications.";
-
-const char kContextualPanelName[] = "Contextual Panel";
-const char kContextualPanelDescription[] =
-    "Enables the contextual panel feature.";
 
 const char kCredentialProviderExtensionPromoName[] =
     "Enable the Credential Provider Extension promo.";
@@ -1635,12 +1631,6 @@ const char kWebPageTextZoomIPadDescription[] =
 const char kWelcomeBackName[] = "Enable Welcome Back screen";
 const char kWelcomeBackDescription[] =
     "When enabled, returning users will see the Welcome Back screen.";
-
-const char kYoutubeIncognitoName[] =
-    "Enable the opening of links from Youtube incognito in Chrome incognito";
-const char kYoutubeIncognitoDescription[] =
-    "When enabled, the links from Youtube incognito will be opened in Chrome "
-    "incognito.";
 
 const char kZeroStateSuggestionsName[] = "Enable Zero-State Suggestions";
 const char kZeroStateSuggestionsDescription[] =

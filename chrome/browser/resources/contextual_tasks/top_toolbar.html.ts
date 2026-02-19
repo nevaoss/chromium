@@ -25,7 +25,7 @@ export function getHtml(this: TopToolbarElement) {
   </div>
   <div class="top-toolbar-action-buttons">
     <contextual-tasks-favicon-group id="sources"
-        .urls="${this.attachedTabs.map(t => t.url.url)}"
+        .urls="${this.attachedTabs.map(t => t.url)}"
         title="Sources" @click="${this.onSourcesClick_}"
         ?hidden="${!this.shouldShowSourcesMenuButton_()}">
     </contextual-tasks-favicon-group>
@@ -44,7 +44,8 @@ export function getHtml(this: TopToolbarElement) {
     </cr-icon-button>
   </div>
   <cr-lazy-render-lit id="sourcesMenu" .template="${() => html`
-    <contextual-tasks-sources-menu .attachedTabs="${this.attachedTabs}">
+    <contextual-tasks-sources-menu .attachedTabs="${this.attachedTabs}"
+      .attachedFiles="${this.attachedFiles}">
     </contextual-tasks-sources-menu>`}">
   </cr-lazy-render-lit>
   <cr-lazy-render-lit id="menu" .template="${() => html`

@@ -1309,13 +1309,11 @@
     // spanning-item
 
     // column-rule-visibility-items
-    // none
     // all
     "around",
     "between",
 
     // row-rule-visibility-items
-    // none
     // all
     // around
     // between
@@ -1827,6 +1825,9 @@
     "supports",
     // @import scope()
     "scope",
+
+    // contrast-color()
+    "contrast-color",
 
     // initial-letter
     "drop",

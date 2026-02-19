@@ -174,8 +174,8 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
   inner_web_contents_creation_observer_ =
       std::make_unique<InnerFrameCreationObvserver>(
           web_ui->GetWebContents(),
-          base::BindOnce(&ContextualTasksUI::OnInnerWebContentsCreated,
-                         weak_ptr_factory_.GetWeakPtr()));
+          base::BindRepeating(&ContextualTasksUI::OnInnerWebContentsCreated,
+                              weak_ptr_factory_.GetWeakPtr()));
   content::WebUIDataSource* source = content::WebUIDataSource::CreateAndAdd(
       web_ui->GetWebContents()->GetBrowserContext(),
       chrome::kChromeUIContextualTasksHost);
@@ -200,6 +200,8 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
       {"help", IDS_CONTEXTUAL_TASKS_MENU_HELP},
       {"sourcesMenuTitle", IDS_CONTEXTUAL_TASKS_SOURCES_MENU_TITLE},
       {"sourcesMenuTabsHeader", IDS_CONTEXTUAL_TASKS_SOURCES_MENU_TABS_HEADER},
+      {"sourcesMenuFilesHeader",
+       IDS_CONTEXTUAL_TASKS_SOURCES_MENU_FILES_HEADER},
       {"title", IDS_CONTEXTUAL_TASKS_AI_MODE_TITLE},
       /* composeDeepSearchPlaceholder and
        * composeCreateImagePlaceholder are defined by searchbox_handler.cc.
@@ -208,6 +210,8 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
       {"onboardingTitle", IDS_CONTEXTUAL_TASKS_FIRST_RUN_EXPERIENCE_TITLE},
       {"onboardingBody", IDS_CONTEXTUAL_TASKS_FIRST_RUN_EXPERIENCE_DESCRIPTION},
       {"onboardingLink", IDS_CONTEXTUAL_TASKS_FIRST_RUN_EXPERIENCE_LEARN_MORE},
+      {"onboardingAcceptButton",
+       IDS_CONTEXTUAL_TASKS_FIRST_RUN_EXPERIENCE_ACCEPT_BUTTON},
       {"permissionError", IDS_NEW_TAB_VOICE_PERMISSION_ERROR},
       {"listening", IDS_NEW_TAB_VOICE_LISTENING},
   };
@@ -359,6 +363,13 @@ void ContextualTasksUI::CreatePageHandler(
   page_handler_ = std::make_unique<ContextualTasksPageHandler>(
       std::move(page_handler), this, ui_service_, contextual_tasks_service_);
 
+  // Determine if the Lens overlay is showing when the page is created.
+  if (auto* browser = GetBrowser()) {
+    if (auto* controller = LensSearchController::FromTabWebContents(
+            browser->GetTabStripModel()->GetActiveWebContents())) {
+      OnLensOverlayStateChanged(controller->IsShowingUI());
+    }
+  }
 }
 
 void ContextualTasksUI::OnRefreshTokenUpdatedForAccount(
@@ -565,11 +576,9 @@ void ContextualTasksUI::PostMessageToWebview(
 
 void ContextualTasksUI::OnInnerWebContentsCreated(
     content::WebContents* inner_contents) {
-  // This should only ever happen once per WebUI.
-  CHECK(!nav_observer_);
+  // This can be called multiple times if the page is reloaded.
   nav_observer_ = std::make_unique<FrameNavObserver>(
       inner_contents, ui_service_, contextual_tasks_service_, this);
-  inner_web_contents_creation_observer_.reset();
   embedded_web_contents_ = inner_contents->GetWeakPtr();
 }
 
@@ -661,9 +670,14 @@ void ContextualTasksUI::DisableActiveTabContextSuggestion() {
 }
 
 void ContextualTasksUI::OnLensOverlayStateChanged(bool is_showing) {
+  is_lens_overlay_showing_ = is_showing;
   if (page_) {
     page_->OnLensOverlayStateChanged(is_showing);
   }
+}
+
+bool ContextualTasksUI::IsLensOverlayShowing() const {
+  return is_lens_overlay_showing_;
 }
 
 void ContextualTasksUI::OnActiveTabContextStatusChanged() {
@@ -834,6 +848,7 @@ void ContextualTasksUI::FrameNavObserver::DidFinishNavigation(
     task_info_delegate_->SetThreadTurnId(std::nullopt);
     task_info_delegate_->SetThreadTitle(std::nullopt);
 
+    task_info_delegate_->PrepareForTaskChange();
     ui_service_->OnTaskChanged(task_info_delegate_->GetBrowser(),
                                task_info_delegate_->GetWebUIWebContents(),
                                new_task_id,
@@ -921,6 +936,7 @@ void ContextualTasksUI::FrameNavObserver::DidFinishNavigation(
   task_info_delegate_->SetThreadTurnId(mstk);
 
   if (task_changed) {
+    task_info_delegate_->PrepareForTaskChange();
     ui_service_->OnTaskChanged(task_info_delegate_->GetBrowser(),
                                task_info_delegate_->GetWebUIWebContents(),
                                task_info_delegate_->GetTaskId().value(),
@@ -952,7 +968,7 @@ bool ContextualTasksUI::IsZeroState(
 
 ContextualTasksUI::InnerFrameCreationObvserver::InnerFrameCreationObvserver(
     content::WebContents* web_contents,
-    base::OnceCallback<void(content::WebContents*)> callback)
+    base::RepeatingCallback<void(content::WebContents*)> callback)
     : content::WebContentsObserver(web_contents),
       callback_(std::move(callback)) {}
 
@@ -962,7 +978,7 @@ ContextualTasksUI::InnerFrameCreationObvserver::~InnerFrameCreationObvserver() =
 void ContextualTasksUI::InnerFrameCreationObvserver::InnerWebContentsCreated(
     content::WebContents* inner_web_contents) {
   CHECK(callback_);
-  std::move(callback_).Run(inner_web_contents);
+  callback_.Run(inner_web_contents);
 }
 
 void ContextualTasksUI::BindInterface(
@@ -991,8 +1007,16 @@ void ContextualTasksUI::CreatePageHandler(
           std::move(receiver), std::move(page));
 }
 
+void ContextualTasksUI::PrepareForTaskChange() {
+  composebox_handler_->ResetInputStateModel();
+}
+
 void ContextualTasksUI::OnTaskChanged() {
   composebox_handler_->OnTaskChanged();
+  if (!IsShownInTab()) {
+    // Update the suggested tab chip.
+    OnActiveTabContextStatusChanged();
+  }
 }
 
 // static

@@ -44,7 +44,6 @@
 
 #if BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/ui/autofill/autofill_snackbar_controller_impl.h"
-#include "components/autofill/core/browser/integrators/fast_checkout/fast_checkout_client.h"
 #else  // BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/actor/actor_task.h"  // nogncheck
 #include "chrome/browser/ui/autofill/autofill_field_promo_controller.h"
@@ -158,7 +157,6 @@ class ChromeAutofillClient : public ContentAutofillClient,
   translate::TranslateDriver* GetTranslateDriver() final;
   GeoIpCountryCode GetVariationConfigCountryCode() const final;
   profile_metrics::BrowserProfileType GetProfileType() const final;
-  FastCheckoutClient* GetFastCheckoutClient() final;
   void ShowAutofillSettings(SuggestionType suggestion_type) final;
   void ConfirmSaveAddressProfile(
       const AutofillProfile& profile,
@@ -217,8 +215,8 @@ class ChromeAutofillClient : public ContentAutofillClient,
   AutofillMessageController* GetAutofillMessageController();
 #endif
   FormInteractionsFlowId GetCurrentFormInteractionsFlowId() final;
-  std::unique_ptr<device_reauth::DeviceAuthenticator> GetDeviceAuthenticator()
-      final;
+  std::unique_ptr<device_reauth::DeviceAuthenticator> GetDeviceAuthenticator(
+      std::string histogram) final;
   bool ShowAutofillFieldIphForFeature(const FormFieldData& field,
                                       AutofillClient::IphFeature feature) final;
   void HideAutofillFieldIph() final;
@@ -337,7 +335,6 @@ class ChromeAutofillClient : public ContentAutofillClient,
       autofill_ai_save_update_entity_flow_manager_;
   std::unique_ptr<SaveUpdateAddressProfileFlowManager>
       save_update_address_profile_flow_manager_;
-  std::unique_ptr<FastCheckoutClient> fast_checkout_client_;
   std::unique_ptr<AutofillSnackbarControllerImpl>
       autofill_snackbar_controller_impl_;
 #else   // BUILDFLAG(IS_ANDROID)

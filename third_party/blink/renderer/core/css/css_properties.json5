@@ -250,7 +250,14 @@
         // Field is stored as an enum and has a initial/getter/setter/resetter.
         // If include_paths is empty, we would also generate the corresponding
         // enum definition in ComputedStyleConstants.h.
+        // "keyword" properties are required to be parsed in
+        // CSSParserFastPaths.
+        // Use "keyword_custom" if a custom ParseSingleValue implementation is
+        // necessary.
         "keyword",
+        // Same as "keyword" except the implementation is allowed to implement a
+        // custom ParseSingleValue. See Cursor and RubyPosition.
+        "keyword_custom",
         // Field can take on any subset of values from a list of keywords.
         "multi_keyword",
         // Semantically equivalent to keyword, but the type is represented as a
@@ -2254,7 +2261,7 @@
     },
     {
       name: "border-bottom-style",
-      property_methods: ["ParseSingleValue", "CSSValueFromComputedStyleInternal"],
+      property_methods: ["CSSValueFromComputedStyleInternal"],
       field_group: "box",
       field_template: "keyword",
       keywords: [
@@ -2409,7 +2416,7 @@
     },
     {
       name: "border-left-style",
-      property_methods: ["ParseSingleValue", "CSSValueFromComputedStyleInternal"],
+      property_methods: ["CSSValueFromComputedStyleInternal"],
       field_group: "box",
       field_template: "keyword",
       keywords: [
@@ -2483,7 +2490,7 @@
     },
     {
       name: "border-right-style",
-      property_methods: ["ParseSingleValue", "CSSValueFromComputedStyleInternal"],
+      property_methods: ["CSSValueFromComputedStyleInternal"],
       field_group: "box",
       field_template: "keyword",
       keywords: [
@@ -2601,7 +2608,7 @@
     },
     {
       name: "border-top-style",
-      property_methods: ["ParseSingleValue", "CSSValueFromComputedStyleInternal"],
+      property_methods: ["CSSValueFromComputedStyleInternal"],
       field_group: "box",
       field_template: "keyword",
       keywords: [
@@ -3158,7 +3165,7 @@
       field_group: "inherited",
       inherited: true,
       independent: true,
-      field_template: "keyword",
+      field_template: "keyword_custom",
       keywords: [
         "auto", "default", "none", "context-menu", "help", "pointer",
         "progress", "wait", "cell", "crosshair", "text", "vertical-text",
@@ -4944,7 +4951,7 @@
     },
     {
       name: "content-visibility",
-      property_methods: ["ParseSingleValue", "CSSValueFromComputedStyleInternal"],
+      property_methods: ["CSSValueFromComputedStyleInternal"],
       field_template: "keyword",
       keywords: ["visible", "auto", "hidden"],
       default_value: "visible",
@@ -6749,7 +6756,7 @@
       inherited: false,
       field_group: "*",
       field_template: "keyword",
-      keywords: ["all", "around", "between", "none"],
+      keywords: ["all", "around", "between"],
       default_value: "all",
       type_name: "RuleVisibilityItems",
       typedom_types: ["Keyword"],
@@ -6762,7 +6769,7 @@
       inherited: false,
       field_group: "*",
       field_template: "keyword",
-      keywords: ["all", "around", "between", "none"],
+      keywords: ["all", "around", "between"],
       default_value: "all",
       type_name: "RuleVisibilityItems",
       typedom_types: ["Keyword"],
@@ -6803,7 +6810,7 @@
     },
     {
       name: "column-span",
-      property_methods: ["ParseSingleValue", "CSSValueFromComputedStyleInternal"],
+      property_methods: ["CSSValueFromComputedStyleInternal"],
       field_group: "*",
       field_template: "keyword",
       keywords: ["none", "all"],
@@ -7168,7 +7175,7 @@
       property_methods: ["ParseSingleValue", "CSSValueFromComputedStyleInternal"],
       inherited: true,
       field_group: "*",
-      field_template: "keyword",
+      field_template: "keyword_custom",
       keywords: ["over", "under"],
       default_value: "over",
       type_name: "RubyPosition",

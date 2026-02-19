@@ -308,6 +308,7 @@ static_library("ui") {
     "//chrome/browser/omnibox",
     "//chrome/browser/optimization_guide",
     "//chrome/browser/page_content_annotations",
+    "//chrome/browser/page_content_annotations:fetcher",
     "//chrome/browser/page_info",
     "//chrome/browser/permissions",
     "//chrome/browser/picture_in_picture",
@@ -862,10 +863,6 @@ static_library("ui") {
       "android/exclusive_access/exclusive_access_context_android.h",
       "android/exclusive_access/exclusive_access_manager_android.cc",
       "android/exclusive_access/exclusive_access_manager_android.h",
-      "android/fast_checkout/fast_checkout_view_impl.cc",
-      "android/fast_checkout/fast_checkout_view_impl.h",
-      "android/fast_checkout/ui_view_android_utils.cc",
-      "android/fast_checkout/ui_view_android_utils.h",
       "android/infobars/autofill_save_card_infobar.cc",
       "android/infobars/autofill_save_card_infobar.h",
       "android/infobars/infobar_container_android.cc",
@@ -917,7 +914,6 @@ static_library("ui") {
       "//chrome/browser/android/webapk:webapk_sources",
       "//chrome/browser/autofill/android:jni_headers",
       "//chrome/browser/facilitated_payments",
-      "//chrome/browser/fast_checkout",
       "//chrome/browser/flags:flags_android",
       "//chrome/browser/image_decoder",
       "//chrome/browser/keyboard_accessory/android:public",
@@ -934,8 +930,6 @@ static_library("ui") {
       "//chrome/browser/ui/autofill:autofill_ai_ui_utils",
       "//chrome/browser/ui/autofill:autofill_ai_ui_utils_impl",
       "//chrome/browser/ui/exclusive_access",
-      "//chrome/browser/ui/fast_checkout",
-      "//chrome/browser/ui/fast_checkout:impl",
       "//chrome/browser/ui/plus_addresses",
       "//chrome/browser/ui/plus_addresses:impl",
       "//chrome/browser/ui/webui/notifications_internals",
@@ -3017,6 +3011,7 @@ static_library("ui") {
       "//chrome/browser/ui/webui/signin:profile",
       "//chrome/browser/ui/webui/signin:profile_impl",
       "//chrome/browser/ui/webui/updater:mojo_bindings",
+      "//chrome/browser/updater",
       "//chrome/updater:browser_sources",
       "//components/capture_mode",
       "//components/country_codes",
@@ -4929,7 +4924,12 @@ static_library("ui") {
     }
 
     if (is_chromeos) {
-      sources += [ "views/status_icons/status_tray_chromeos.cc" ]
+      sources += [
+        "views/status_icons/status_icon_chromeos.cc",
+        "views/status_icons/status_icon_chromeos.h",
+        "views/status_icons/status_tray_chromeos.cc",
+        "views/status_icons/status_tray_chromeos.h",
+      ]
 
       deps += [
         "//chromeos/ash/experiences/arc/intent_helper:arc_intent_helper_constants",

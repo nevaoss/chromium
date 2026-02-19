@@ -168,45 +168,6 @@ bool IsContextualPanelForceShowEntrypointEnabled() {
   return base::FeatureList::IsEnabled(kContextualPanelForceShowEntrypoint);
 }
 
-BASE_FEATURE(kContextualPanel, base::FEATURE_ENABLED_BY_DEFAULT);
-
-bool IsContextualPanelEnabled() {
-  return base::FeatureList::IsEnabled(kContextualPanel);
-}
-
-constexpr base::FeatureParam<int> kLargeContextualPanelEntrypointDelayInSeconds{
-    &kContextualPanel,
-    /*name=*/"large-entrypoint-delay-seconds", /*default_value=*/2};
-
-int LargeContextualPanelEntrypointDelayInSeconds() {
-  return kLargeContextualPanelEntrypointDelayInSeconds.Get();
-}
-
-constexpr base::FeatureParam<int>
-    kLargeContextualPanelEntrypointDisplayedInSeconds{
-        &kContextualPanel,
-        /*name=*/"large-entrypoint-displayed-seconds", /*default_value=*/4};
-
-int LargeContextualPanelEntrypointDisplayedInSeconds() {
-  return kLargeContextualPanelEntrypointDisplayedInSeconds.Get();
-}
-
-constexpr base::FeatureParam<bool> kContextualPanelEntrypointHighlightDuringIPH{
-    &kContextualPanel,
-    /*name=*/"entrypoint-highlight-iph", /*default_value=*/true};
-
-bool ShouldHighlightContextualPanelEntrypointDuringIPH() {
-  return kContextualPanelEntrypointHighlightDuringIPH.Get();
-}
-
-constexpr base::FeatureParam<bool> kContextualPanelEntrypointRichIPH{
-    &kContextualPanel,
-    /*name=*/"entrypoint-rich-iph", /*default_value=*/true};
-
-bool ShouldShowRichContextualPanelEntrypointIPH() {
-  return kContextualPanelEntrypointRichIPH.Get();
-}
-
 BASE_FEATURE(kNonModalDefaultBrowserPromoImpressionLimit,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -552,44 +513,6 @@ BASE_FEATURE(kSeparateProfilesForManagedAccountsForceMigration,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kOmahaResyncTimerOnForeground, base::FEATURE_ENABLED_BY_DEFAULT);
-
-BASE_FEATURE(kChromeStartupParametersAsync, base::FEATURE_ENABLED_BY_DEFAULT);
-
-BASE_FEATURE(kYoutubeIncognito, base::FEATURE_ENABLED_BY_DEFAULT);
-
-const char kYoutubeIncognitoTargetApps[] = "youtube-incognito-target-apps";
-
-const char kYoutubeIncognitoTargetAppsAllowlisted[] = "allow-listed";
-const char kYoutubeIncognitoTargetAppsFirstParty[] = "first-party";
-const char kYoutubeIncognitoTargetAppsAll[] = "all";
-
-const char kYoutubeIncognitoErrorHandlingWithoutIncognitoInterstitialParam[] =
-    "youtube-incognito-error-handling-without-incognito-interstitial";
-
-bool IsYoutubeIncognitoTargetAllowListedEnabled() {
-  std::string target_apps = base::GetFieldTrialParamByFeatureAsString(
-      kYoutubeIncognito, kYoutubeIncognitoTargetApps, "");
-  return target_apps == kYoutubeIncognitoTargetAppsAllowlisted ||
-         target_apps == "";
-}
-
-bool IsYoutubeIncognitoTargetFirstPartyEnabled() {
-  std::string target_apps = base::GetFieldTrialParamByFeatureAsString(
-      kYoutubeIncognito, kYoutubeIncognitoTargetApps, "");
-  return target_apps == kYoutubeIncognitoTargetAppsFirstParty;
-}
-
-bool IsYoutubeIncognitoTargetAllEnabled() {
-  std::string target_apps = base::GetFieldTrialParamByFeatureAsString(
-      kYoutubeIncognito, kYoutubeIncognitoTargetApps, "");
-  return target_apps == kYoutubeIncognitoTargetAppsAll;
-}
-
-bool IsYoutubeIncognitoErrorHandlingWithoutIncognitoInterstitialEnabled() {
-  return base::GetFieldTrialParamByFeatureAsBool(
-      kYoutubeIncognito,
-      kYoutubeIncognitoErrorHandlingWithoutIncognitoInterstitialParam, false);
-}
 
 BASE_FEATURE(kIOSReactivationNotifications, base::FEATURE_DISABLED_BY_DEFAULT);
 

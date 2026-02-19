@@ -128,12 +128,13 @@ void VerticalDraggedTabsContainer::OnViewBoundsChanged(
       base::to_address(host_view_), last_drag_point_in_screen_));
 }
 
+// TODO(crbug.com/476084253): Animate selected dragged tabs into the container.
 void VerticalDraggedTabsContainer::InitializeDragState(
     TabDragTarget::DragController& controller) {
   // Move each dragged tab to the origin position. Transformations will be used
   // to render them during the drag.
   for (TabSlotView* slot_view : controller.GetSessionData().attached_views()) {
-    auto* tab_view = VerticalTabDragHandler::ViewFromTabSlot(slot_view);
+    auto* tab_view = GetDragHandler().ViewFromTabSlot(slot_view);
     CHECK(tab_view);
     if (tab_view->parent() == base::to_address(host_view_)) {
       dragging_views_.insert(tab_view);
@@ -144,12 +145,14 @@ void VerticalDraggedTabsContainer::InitializeDragState(
 void VerticalDraggedTabsContainer::ResetDragState() {
   for (auto view : dragging_views_) {
     view->SetTransform(gfx::Transform());
-    view->SetClipPath(view->clip_path());
   }
   UpdateLayoutForDrag();
   dragging_views_.clear();
 }
 
+// TODO(crbug.com/476084253): Support laying out with multiple dragged tabs.
+// Currently, all selected tabs are stacked on each other, but still block out
+// the space at their expected tab slot.
 void VerticalDraggedTabsContainer::UpdateDraggingViewTransforms(
     const gfx::Point& point_in_container) {
   int drag_clamp_min_y = GetMinYForDragToClamp();
@@ -160,9 +163,6 @@ void VerticalDraggedTabsContainer::UpdateDraggingViewTransforms(
     transform.Translate(
         0, GetYForDraggedTab(*tab_view, point_in_container, drag_clamp_min_y));
     tab_view->SetTransform(transform);
-    // Applying a transformation for the first time destroys the clip mask
-    // layer. Reapply the clip path in case.
-    tab_view->SetClipPath(tab_view->clip_path());
   }
 }
 

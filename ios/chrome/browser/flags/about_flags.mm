@@ -603,32 +603,6 @@ const FeatureEntry::FeatureVariation kUrlScoringModelVariations[] = {
     {"Full model", nullptr, 0, "3380197"},
 };
 
-// Contextual Panel flag variations.
-const FeatureEntry::FeatureParam kContextualPanelRichIPHArms[] = {
-    {"entrypoint-highlight-iph", "true"},
-    {"entrypoint-rich-iph", "true"},
-};
-const FeatureEntry::FeatureParam kContextualPanelSmallIPHArm[] = {
-    {"entrypoint-highlight-iph", "false"},
-    {"entrypoint-rich-iph", "false"},
-};
-const FeatureEntry::FeatureParam
-    kContextualPanelSmallIPHWithBlueHighlightArm[] = {
-        {"entrypoint-highlight-iph", "true"},
-        {"entrypoint-rich-iph", "false"},
-};
-
-const FeatureEntry::FeatureVariation kContextualPanelEntrypointArmVariations[] =
-    {
-        {"- Rich IPH", kContextualPanelRichIPHArms,
-         std::size(kContextualPanelRichIPHArms), nullptr},
-        {"- Small IPH, no blue highlight", kContextualPanelSmallIPHArm,
-         std::size(kContextualPanelSmallIPHArm), nullptr},
-        {"- Small IPH with blue highlight",
-         kContextualPanelSmallIPHWithBlueHighlightArm,
-         std::size(kContextualPanelSmallIPHWithBlueHighlightArm), nullptr},
-};
-
 const FeatureEntry::FeatureParam kPriceTrackingPromoForceShowArm[] = {
     {segmentation_platform::features::kEphemeralCardRankerForceShowCardParam,
      segmentation_platform::kPriceTrackingNotificationPromo},
@@ -953,35 +927,6 @@ const FeatureEntry::FeatureVariation kUpdatedFirstRunSequenceVariations[] = {
     {" - DB promo first and remove sign in & sync",
      kUpdatedFirstRunSequenceArm3, std::size(kUpdatedFirstRunSequenceArm3),
      nullptr}};
-
-const FeatureEntry::FeatureParam
-    kYoutubeIncognitoErrorHandlingWithoutIncognitoInterstitial[] = {
-        {kYoutubeIncognitoErrorHandlingWithoutIncognitoInterstitialParam,
-         "true"},
-};
-
-const FeatureEntry::FeatureParam kYoutubeIncognitoTargetAllowListed[] = {
-    {kYoutubeIncognitoTargetApps, kYoutubeIncognitoTargetAppsAllowlisted},
-};
-const FeatureEntry::FeatureParam kYoutubeIncognitoTargetFirstParty[] = {
-    {kYoutubeIncognitoTargetApps, kYoutubeIncognitoTargetAppsFirstParty},
-};
-const FeatureEntry::FeatureParam kYoutubeIncognitoTargetAll[] = {
-    {kYoutubeIncognitoTargetApps, kYoutubeIncognitoTargetAppsAll},
-};
-
-const FeatureEntry::FeatureVariation kYoutubeIncognitoVariations[] = {
-    {"Error handling without Incognito Interstitial",
-     kYoutubeIncognitoErrorHandlingWithoutIncognitoInterstitial,
-     std::size(kYoutubeIncognitoErrorHandlingWithoutIncognitoInterstitial),
-     nullptr},
-    {"Enable for listed apps", kYoutubeIncognitoTargetAllowListed,
-     std::size(kYoutubeIncognitoTargetAllowListed), nullptr},
-    {"Enable for first party apps", kYoutubeIncognitoTargetFirstParty,
-     std::size(kYoutubeIncognitoTargetFirstParty), nullptr},
-    {"Enable for all apps", kYoutubeIncognitoTargetAll,
-     std::size(kYoutubeIncognitoTargetAll), nullptr},
-};
 
 const FeatureEntry::FeatureParam kSlowFullscreenTransitionSpeed[] = {
     {kFullscreenTransitionSpeedParam, "0"}};
@@ -1841,11 +1786,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
     {"https-upgrades-ios", flag_descriptions::kHttpsUpgradesName,
      flag_descriptions::kHttpsUpgradesDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(security_interstitials::features::kHttpsUpgrades)},
-    {"contextual-panel", flag_descriptions::kContextualPanelName,
-     flag_descriptions::kContextualPanelDescription, flags_ui::kOsIos,
-     FEATURE_WITH_PARAMS_VALUE_TYPE(kContextualPanel,
-                                    kContextualPanelEntrypointArmVariations,
-                                    "ContextualPanel")},
     {"reader-mode-omnibox-entrypoint-in-us",
      flag_descriptions::kReaderModeOmniboxEntrypointInUSName,
      flag_descriptions::kReaderModeOmniboxEntrypointInUSDescription,
@@ -2059,15 +1999,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kLensUnaryApisWithHttpTransportEnabledDescription,
      flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kLensUnaryApisWithHttpTransportEnabled)},
-    {"ios-chrome-startup-parameters-async",
-     flag_descriptions::kChromeStartupParametersAsyncName,
-     flag_descriptions::kChromeStartupParametersAsyncDescription,
-     flags_ui::kOsIos, FEATURE_VALUE_TYPE(kChromeStartupParametersAsync)},
-    {"ios-youtube-incognito", flag_descriptions::kYoutubeIncognitoName,
-     flag_descriptions::kYoutubeIncognitoDescription, flags_ui::kOsIos,
-     FEATURE_WITH_PARAMS_VALUE_TYPE(kYoutubeIncognito,
-                                    kYoutubeIncognitoVariations,
-                                    "YoutubeIncognito")},
     {"lens-overlay-disable-iph-pan-gesture",
      flag_descriptions::kLensOverlayDisableIPHPanGestureName,
      flag_descriptions::kLensOverlayDisableIPHPanGestureDescription,
@@ -2676,6 +2607,10 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kWebPageReportedImagesSheetName,
      flag_descriptions::kWebPageReportedImagesSheetDescription,
      flags_ui::kOsIos, FEATURE_VALUE_TYPE(kWebPageReportedImagesSheet)},
+    {"composebox-additional-advanced-tools",
+     flag_descriptions::kComposeboxAdditionalAdvancedToolsName,
+     flag_descriptions::kComposeboxAdditionalAdvancedToolsDescription,
+     flags_ui::kOsIos, FEATURE_VALUE_TYPE(kComposeboxAdditionalAdvancedTools)},
     {"composebox-close-button-top-align",
      flag_descriptions::kComposeboxCloseButtonTopAlignName,
      flag_descriptions::kComposeboxCloseButtonTopAlignDescription,

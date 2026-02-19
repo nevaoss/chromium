@@ -263,6 +263,7 @@
   E_CPONLY(kColorNewTabPageActionChipTextTitle) \
   E_CPONLY(kColorNewTabPageActionChipDeepSearchIcon) \
   E_CPONLY(kColorNewTabPageThreadsRailBackground) \
+  E_CPONLY(kColorNewTabPageThreadsRailIconButton) \
   E_CPONLY(kColorNewTabPageChipBackground) \
   E_CPONLY(kColorNewTabPageChipForeground) \
   E_CPONLY(kColorComposeboxBackground) \
@@ -661,6 +662,24 @@
   E_CPONLY(kColorReadAnythingPreviousReadAloudHighlightLowContrast) \
   E_CPONLY(kColorReadAnythingPreviousReadAloudHighlightSepiaLight) \
   E_CPONLY(kColorReadAnythingPreviousReadAloudHighlightSepiaDark) \
+  E_CPONLY(kColorReadAnythingAudioPlayerBackground) \
+  E_CPONLY(kColorReadAnythingAudioPlayerBackgroundBlue) \
+  E_CPONLY(kColorReadAnythingAudioPlayerBackgroundDark) \
+  E_CPONLY(kColorReadAnythingAudioPlayerBackgroundLight) \
+  E_CPONLY(kColorReadAnythingAudioPlayerBackgroundYellow) \
+  E_CPONLY(kColorReadAnythingAudioPlayerBackgroundHighContrast) \
+  E_CPONLY(kColorReadAnythingAudioPlayerBackgroundLowContrast) \
+  E_CPONLY(kColorReadAnythingAudioPlayerBackgroundSepiaLight) \
+  E_CPONLY(kColorReadAnythingAudioPlayerBackgroundSepiaDark) \
+  E_CPONLY(kColorReadAnythingAudioPlayerIcon) \
+  E_CPONLY(kColorReadAnythingAudioPlayerIconBlue) \
+  E_CPONLY(kColorReadAnythingAudioPlayerIconDark) \
+  E_CPONLY(kColorReadAnythingAudioPlayerIconLight) \
+  E_CPONLY(kColorReadAnythingAudioPlayerIconYellow) \
+  E_CPONLY(kColorReadAnythingAudioPlayerIconHighContrast) \
+  E_CPONLY(kColorReadAnythingAudioPlayerIconLowContrast) \
+  E_CPONLY(kColorReadAnythingAudioPlayerIconSepiaLight) \
+  E_CPONLY(kColorReadAnythingAudioPlayerIconSepiaDark) \
   /* Realbox colors. */ \
   E_CPONLY(kColorSearchboxAnswerIconBackground) \
   E_CPONLY(kColorSearchboxAnswerIconForeground) \

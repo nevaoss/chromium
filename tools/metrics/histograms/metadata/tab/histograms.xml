@@ -133,6 +133,11 @@ chromium-metrics-reviews@google.com.
   <variant name="Regular" summary="The regular tab model selector."/>
 </variants>
 
+<variants name="TabStripMode">
+  <variant name=".HorizontalTabStrip"/>
+  <variant name=".VerticalTabStrip"/>
+</variants>
+
 <histogram name="Discarding.AttemptFastKillForDiscardResult"
     enum="AttemptFastKillForDiscardResult" expires_after="2026-06-28">
   <owner>kawasin@google.com</owner>
@@ -228,7 +233,7 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Discarding.DiscardPageOnUIThreadOutcome"
+<histogram name="Discarding.DiscardPageOnUIThreadOutcome2"
     enum="DiscardPageOnUIThreadOutcome" expires_after="2026-05-24">
   <owner>fdoray@chromium.org</owner>
   <owner>joenotcharles@google.com</owner>
@@ -636,7 +641,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Tab.RendererTermination.AliveRenderersCount" units="renderers"
-    expires_after="2026-03-01">
+    expires_after="2027-01-19">
   <owner>justincohen@chromium.org</owner>
   <owner>bling-fundamentals@google.com</owner>
   <summary>
@@ -3026,6 +3031,17 @@ chromium-metrics-reviews@google.com.
   <token key="BatteryState" variants="BatteryState"/>
 </histogram>
 
+<histogram name="Tabs.TabCount{TabStripMode}" units="tabs"
+    expires_after="2026-07-16">
+  <owner>agale@chromium.org</owner>
+  <owner>top-chrome-desktop-ui@google.com</owner>
+  <summary>
+    Counts the number of tabs across each window, reported every 5 minutes.
+    Desktop only.
+  </summary>
+  <token key="TabStripMode" variants="TabStripMode"/>
+</histogram>
+
 <histogram name="Tabs.TabOffsetOfSwitch{TabOffsetOfSwitchComponentList}"
     units="units" expires_after="M85">
   <owner>yusufo@chromium.org</owner>
@@ -3916,7 +3932,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="TabStrip.Tab.HotkeyClosedCount" units="tabs"
-    expires_after="2026-03-01">
+    expires_after="2026-09-01">
   <owner>atharvmaan@chromium.org</owner>
   <owner>top-chrome-desktop-ui@google.com</owner>
   <summary>

@@ -213,6 +213,9 @@
     <message name="IDS_AUTOFILL_SAVE_CVC_PROMPT_EXPLANATION_UPLOAD_IOS" desc="Explanation text for the Autofill save CVC prompt that offers to upload CVC to the Sync server for existing server cards. This prompt is shown if a CVC is detected for an existing server card on form submission on IOS devices.">
       For faster checkout, save this CVC in your account, <ph name="ACCOUNT_EMAIL">$1<ex>youraccount@email.com</ex></ph>
     </message>
+    <message name="IDS_AUTOFILL_SAVE_CVC_TO_WALLET_PROMPT_EXPLANATION_UPLOAD_IOS" desc="Explanation text for the Autofill save CVC prompt that offers to upload CVC to the Sync server for existing server cards. This prompt is shown if a CVC is detected for an existing server card on form submission on IOS devices. The wording specifically references Google Wallet instead of Google Account.">
+      For faster checkout, save this CVC in Google Wallet (<ph name="ACCOUNT_EMAIL">$1<ex>youraccount@email.com</ex></ph>)
+    </message>
     <message name="IDS_AUTOFILL_SAVE_CVC_PROMPT_EXPLANATION_LOCAL_SAVE_IOS" desc="Explanation text for the Autofill save CVC prompt that offers to save CVC to this device for existing local cards. This prompt is shown if a CVC is detected for an existing local card on form submission on IOS devices.">
       For faster checkout, save this CVC on your device
     </message>
@@ -982,10 +985,10 @@
   <message name="IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_PAYMENT_OPTION_CHECKOUT_AMOUNT_TOO_HIGH" desc="Text for the payment option button in the BNPL select provider screen, explaining that the checkout amount is too high for the BNPL issuer to support.">
       Purchase must be under <ph name="CHECKOUT_AMOUNT_MAXIMUM">$1<ex>$10,000.00</ex></ph>
   </message>
-  <message name="IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_AI_FOOTNOTE" desc="A note explaining that Google will collect data from the checkout page to determine the checkout amount.">
+  <message name="IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_AI_FOOTNOTE" desc="A note explaining that Google will collect data from the checkout page to determine the checkout amount." translateable="false">
       Page content from the checkout page is shared with Google to offer these options. To hide pay later options in autofill, go to <ph name="IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_FOOTNOTE_HIDE_OPTION_PAYMENT_SETTINGS_LINK_TEXT">$1<ex>payment settings</ex></ph>.
   </message>
-  <message name="IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_FOOTNOTE_FOR_AI_AMOUNT_EXTRACTION_NOTE" desc="A note explaining that Google will collect data from the checkout page to determine the checkout amount.">
+  <message name="IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_FOOTNOTE_FOR_AI_AMOUNT_EXTRACTION_NOTE" desc="A note explaining that Google will collect data from the checkout page to determine the checkout amount." translateable="false">
       Page content from the checkout page is shared with Google to offer these options.
   </message>
   <message name="IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_FOOTNOTE_HIDE_OPTION" desc="Text shown in the footnote of the BNPL select provider screen, instructing users how to hide the pay later options.">
@@ -1647,8 +1650,14 @@
   <message name="IDS_AUTOFILL_SAVE_IBAN_CONFIRMATION_FAILURE_DESCRIPTION_TEXT" desc="Description text for confirmation shown after upload save IBAN attempt was failed and and it was not uploaded to the server.">
     This IBAN couldn't be saved in your Google Account. It's saved to Chrome on this device instead. Chrome will ask you again the next time you use this IBAN.
   </message>
+  <message name="IDS_AUTOFILL_SAVE_IBAN_TO_WALLET_CONFIRMATION_FAILURE_DESCRIPTION_TEXT" desc="Description text for confirmation shown after upload save IBAN to Google Wallet attempt was failed and and it was not uploaded to the server.">
+     This IBAN couldn't be saved in Google Wallet. It's saved to Chrome on this device instead. Chrome will ask you again the next time you use this IBAN.
+  </message>
   <message name="IDS_AUTOFILL_SAVE_IBAN_CONFIRMATION_FAILURE_HIT_MAX_STRIKE_DESCRIPTION_TEXT" desc="Description text for confirmation shown after upload save IBAN attempt was failed and and it was not uploaded to the server. Other than that, the number of offer-to-upload has hit the max strike.">
     This IBAN couldn't be saved in your Google Account. It's saved to Chrome on this device instead.
+  </message>
+  <message name="IDS_AUTOFILL_SAVE_IBAN_TO_WALLET_CONFIRMATION_FAILURE_HIT_MAX_STRIKE_DESCRIPTION_TEXT" desc="Description text for confirmation shown after upload save IBAN to Google Wallet attempt was failed and and it was not uploaded to the server. Other than that, the number of offer-to-upload has hit the max strike.">
+    This IBAN couldn't be saved in Google Wallet. It's saved to Chrome on this device instead.
   </message>
   <message name="IDS_AUTOFILL_VIRTUAL_CARD_ENROLL_CONFIRMATION_SUCCESS_DESCRIPTION_TEXT" desc="Description text for confirmation shown after virtual card enrollment is successful.">
     You can now use a virtual card to check out more securely with autofill.

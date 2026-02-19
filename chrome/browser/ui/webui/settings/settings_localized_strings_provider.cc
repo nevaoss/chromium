@@ -784,11 +784,10 @@ bool ShouldShowWebActuationToggle(Profile* profile) {
     }
   }
 
-  // If no specific tiers are populated, show the toggle only if the user
-  // has explicitly modified the preference before.
+  // Show the toggle if the user has explicitly modified the preference before.
   const PrefService::Preference* pref = profile->GetPrefs()->FindPreference(
       glic::prefs::kGlicUserEnabledActuationOnWeb);
-  if (allowed_tiers.empty() && pref && !pref->IsDefaultValue()) {
+  if (pref && !pref->IsDefaultValue()) {
     return true;
   }
 
@@ -835,6 +834,10 @@ void AddGlicStrings(content::WebUIDataSource* html_source, Profile* profile) {
       {"glicNavigationShortcut", IDS_SETTINGS_GLIC_NAVIGATION_SHORTCUT},
       {"glicNavigationShortcutSublabel",
        IDS_SETTINGS_GLIC_NAVIGATION_SHORTCUT_SUBLABEL},
+      {"glicKeyboardShortcutLearnMoreAriaLabel",
+       IDS_SETTINGS_GLIC_KEYBOARD_SHORTCUT_LEARN_MORE_ARIA_LABEL},
+      {"glicNavigationShortcutLearnMoreAriaLabel",
+       IDS_SETTINGS_GLIC_NAVIGATION_SHORTCUT_LEARN_MORE_ARIA_LABEL},
       {"glicClosedCaptionsToggle", IDS_SETTINGS_GLIC_CLOSED_CAPTIONING},
       {"glicClosedCaptionsToggleSublabel",
        IDS_SETTINGS_GLIC_CLOSED_CAPTIONING_SUBLABEL},
@@ -1570,10 +1573,6 @@ void AddAutofillStrings(content::WebUIDataSource* html_source,
        IDS_SETTINGS_AUTOFILL_AI_AUTHENTICATION_TOGGLE_SUBTITLE},
       {"autofillAiPageTitle", IDS_SETTINGS_AUTOFILL_AI_PAGE_TITLE},
       {"autofillAiDescription", IDS_SETTINGS_AUTOFILL_AI_DESCRIPTION},
-      {"autofillAiDescriptionFeatureOn",
-       IDS_SETTINGS_AUTOFILL_AI_DESCRIPTION_FEATURE_ON},
-      {"autofillAiDescriptionFeatureOff",
-       IDS_SETTINGS_AUTOFILL_AI_DESCRIPTION_FEATURE_OFF},
       {"autofillAiToggleSubLabel", IDS_SETTINGS_AUTOFILL_AI_TOGGLE_SUB_LABEL},
       {"autofillAiWhenOnSavedInfo",
        IDS_SETTINGS_AUTOFILL_AI_WHEN_ON_SAVED_INFO},
@@ -1607,6 +1606,8 @@ void AddAutofillStrings(content::WebUIDataSource* html_source,
        IDS_SETTINGS_AUTOFILL_AI_ADD_OR_EDIT_DIALOG_DATE_VALIDATION_ERROR},
       {"autofillAiAddOrEditDialogValidationError",
        IDS_SETTINGS_AUTOFILL_AI_ADD_OR_EDIT_DIALOG_VALIDATION_ERROR},
+      {"autofillAiAddOrEditDialogRequiredFieldError",
+       IDS_AUTOFILL_AI_ADD_OR_EDIT_DIALOG_REQUIRED_FIELD_ERROR},
       {"autofillAiSubpageSublabelLoggingManagedDisabled",
        IDS_SETTINGS_AUTOFILL_AI_ENTERPRISE_LOGGING_MANAGED_DISABLED},
       {"autofillPayOverTimeSettingsLabel", IDS_AUTOFILL_BNPL_SETTINGS_LABEL},

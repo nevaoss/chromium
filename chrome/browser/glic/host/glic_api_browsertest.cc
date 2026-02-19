@@ -12,6 +12,7 @@
 #include <string_view>
 #include <utility>
 
+#include "base/callback_list.h"
 #include "base/command_line.h"
 #include "base/containers/to_vector.h"
 #include "base/feature_list.h"
@@ -34,7 +35,9 @@
 #include "base/values.h"
 #include "base/version_info/version_info.h"
 #include "build/build_config.h"
+#include "chrome/browser/actor/actor_keyed_service.h"
 #include "chrome/browser/actor/actor_policy_checker.h"
+#include "chrome/browser/actor/actor_task.h"
 #include "chrome/browser/background/glic/glic_launcher_configuration.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/contextual_cueing/contextual_cueing_features.h"
@@ -74,6 +77,7 @@
 #include "chrome/browser/ui/browser_navigator.h"
 #include "chrome/browser/ui/chrome_pages.h"
 #include "chrome/browser/ui/passwords/ui_utils.h"
+#include "chrome/common/actor_webui.mojom.h"
 #include "chrome/common/channel_info.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/common/chrome_switches.h"
@@ -229,18 +233,18 @@ class GlicApiTest : public NonInteractiveGlicApiTest, public WithTestParams {
                                   std::forward<Args>(args)...) {
     features_.InitWithFeaturesAndParameters(
         /*enabled_features=*/
-        {
-            {features::kGlicScrollTo, {}},
-            {features::kGlicApiActivationGating, {}},
-            {mojom::features::kGlicMultiTab, {}},
-            {features::kGlicWebActuationSetting, {}},
-            {features::kGlicCaptureRegion, {}},
-            {features::kGlicPopupWindowsEnabled, {}},
-            {features::kGlicUserStatusCheck,
-             {{features::kGlicUserStatusRefreshApi.name, "true"},
-              {features::kGlicUserStatusThrottleInterval.name, "2s"}}},
-            {features::kGlicOpenPasswordManagerSettingsPageApi, {}},
-        },
+        {{features::kGlicScrollTo, {}},
+         {features::kGlicApiActivationGating, {}},
+         {mojom::features::kGlicMultiTab, {}},
+         {features::kGlicWebActuationSetting, {}},
+         {features::kGlicCaptureRegion, {}},
+         {features::kGlicPopupWindowsEnabled, {}},
+         {features::kGlicUserStatusCheck,
+          {{features::kGlicUserStatusRefreshApi.name, "true"},
+           {features::kGlicUserStatusThrottleInterval.name, "2s"}}},
+         {features::kGlicOpenPasswordManagerSettingsPageApi, {}},
+         {features::kGlicActor,
+          {{features::kGlicActorPolicyControlExemption.name, "true"}}}},
         /*disabled_features=*/
         {
             features::kGlicWarming,
@@ -569,7 +573,8 @@ class GlicApiTestWithGeminiActOnWebPolicy : public GlicApiTestWithOneTab {
         features::kGlicActor,
         {{features::kGlicActorEnterprisePrefDefault.name,
           features::kGlicActorEnterprisePrefDefault.GetName(
-              features::GlicActorEnterprisePrefDefault::kDisabledByDefault)}});
+              features::GlicActorEnterprisePrefDefault::kDisabledByDefault)},
+         {features::kGlicActorPolicyControlExemption.name, "false"}});
   }
   ~GlicApiTestWithGeminiActOnWebPolicy() override = default;
 
@@ -1070,6 +1075,59 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testCreateTabInBackground) {
       InProcessBrowserTest::browser()->tab_strip_model()->GetActiveTab();
   ASSERT_THAT(active_tab->GetContents()->GetURL().spec(),
               testing::EndsWith("#foreground"));
+}
+
+// Tests that the response to a user confirmation dialog is correctly ordered
+// w.r.t. other Glic API calls. See b/465690937 and associated CLs for details.
+IN_PROC_BROWSER_TEST_P(GlicApiTest, testDialogResponseCallOrder) {
+  auto* actor_service = actor::ActorKeyedService::Get(browser()->profile());
+  ASSERT_TRUE(actor_service);
+
+  RunTestSequence(OpenGlic(GlicInstrumentMode::kHostAndContents),
+                  CheckTabCount(1));
+
+  base::test::TestFuture<actor::TaskId> task_created;
+  base::CallbackListSubscription subscription =
+      actor_service->AddTaskStateChangedCallback(base::BindLambdaForTesting(
+          [&](actor::TaskId task_id, actor::ActorTask::State state) {
+            if (state == actor::ActorTask::State::kCreated) {
+              task_created.SetValue(task_id);
+            }
+          }));
+
+  // Client side subscribes to the observable returned from
+  // selectUserConfirmationDialogRequestHandler and it creates an actor task.
+  ExecuteJsTest();
+
+  // Wait for the task to be created. Put it in an interrupted state.
+  actor::ActorTask* task = actor_service->GetTask(task_created.Get());
+  ASSERT_TRUE(task);
+
+  // TODO(bokan): This shouldn't be necessary but the task is kCreated state
+  // from which we cannot interrupt.
+  task->SetState(actor::ActorTask::State::kReflecting);
+
+  task->Interrupt();
+  ASSERT_EQ(task->GetState(), actor::ActorTask::State::kWaitingOnUser);
+
+  // Request a user dialog to show and record the state of the task when the
+  // response from it is received.
+  base::test::TestFuture<actor::ActorTask::State>
+      state_when_dialog_response_received;
+  GetHost()->RequestToShowUserConfirmationDialog(
+      task->id(), url::Origin(), /*for_blocklisted_origin=*/false,
+      base::BindLambdaForTesting(
+          [&](actor::webui::mojom::UserConfirmationDialogResponsePtr) {
+            state_when_dialog_response_received.SetValue(task->GetState());
+          }));
+
+  // The client side will respond to the dialog then uninterrupt the task.
+  // Ensure the dialog response is received before the task has been
+  // uninterrupted.
+  ContinueJsTest();
+
+  EXPECT_EQ(state_when_dialog_response_received.Get(),
+            actor::ActorTask::State::kWaitingOnUser);
 }
 
 IN_PROC_BROWSER_TEST_P(GlicApiTest, testCreateTabByClickingOnLink) {
@@ -2098,6 +2156,7 @@ IN_PROC_BROWSER_TEST_P(GlicApiTestWithOneTab, testGetDisplayMedia) {
 
 IN_PROC_BROWSER_TEST_P(GlicApiTestWithOneTab, testJournal) {
   ExecuteJsTest();
+  histogram_tester->ExpectTotalCount("Glic.Actor.JournalEvent.async_event", 1);
 }
 
 // TODO(crbug.com/438812885): This is flaky.

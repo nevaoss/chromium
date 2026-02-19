@@ -98,7 +98,9 @@ BASE_FEATURE(kOnDeviceHeadProviderIncognito,
 BASE_FEATURE(kOnDeviceHeadProviderNonIncognito,
              "OmniboxOnDeviceHeadProviderNonIncognito",
              ENABLED);
-BASE_FEATURE(kOnDeviceTailModel, "OmniboxOnDeviceTailModel", DISABLED);
+BASE_FEATURE(kOnDeviceTailModel,
+             "OmniboxOnDeviceTailModel",
+             enable_if(IS_ANDROID || IS_IOS));
 BASE_FEATURE(kOnDeviceTailEnableEnglishModel,
              "OmniboxOnDeviceTailEnableEnglishModel",
              ENABLED);
@@ -352,7 +354,7 @@ BASE_FEATURE(kOmniboxImprovementForLFF, DISABLED);
 BASE_FEATURE(kUrlBarWithoutLigatures, ENABLED);
 
 namespace android {
-static jlong JNI_OmniboxFeatureMap_GetNativeMap(JNIEnv* env) {
+static int64_t JNI_OmniboxFeatureMap_GetNativeMap(JNIEnv* env) {
   static const base::Feature* const kFeaturesExposedToJava[] = {
       &kDiagnostics,
       &kAnimateSuggestionsListAppearance,
@@ -372,7 +374,7 @@ static jlong JNI_OmniboxFeatureMap_GetNativeMap(JNIEnv* env) {
       &kRemoveSearchReadyOmnibox};
   static base::NoDestructor<base::android::FeatureMap> kFeatureMap(
       kFeaturesExposedToJava);
-  return reinterpret_cast<jlong>(kFeatureMap.get());
+  return reinterpret_cast<int64_t>(kFeatureMap.get());
 }
 }  // namespace android
 #endif  // BUILDFLAG(IS_ANDROID)

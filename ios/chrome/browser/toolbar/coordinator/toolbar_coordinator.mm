@@ -19,7 +19,6 @@
 #import "ios/chrome/browser/orchestrator/ui_bundled/omnibox_focus_orchestrator_parity.h"
 #import "ios/chrome/browser/overlays/model/public/overlay_presentation_context.h"
 #import "ios/chrome/browser/prerender/model/prerender_browser_agent.h"
-#import "ios/chrome/browser/segmentation_platform/model/segmentation_platform_service_factory.h"
 #import "ios/chrome/browser/shared/model/application_context/application_context.h"
 #import "ios/chrome/browser/shared/model/browser/browser.h"
 #import "ios/chrome/browser/shared/model/profile/profile_ios.h"
@@ -30,6 +29,7 @@
 #import "ios/chrome/browser/shared/public/commands/find_in_page_commands.h"
 #import "ios/chrome/browser/shared/public/commands/guided_tour_commands.h"
 #import "ios/chrome/browser/shared/public/commands/help_commands.h"
+#import "ios/chrome/browser/shared/public/commands/page_action_menu_entry_point_commands.h"
 #import "ios/chrome/browser/shared/public/commands/popup_menu_commands.h"
 #import "ios/chrome/browser/shared/public/commands/scene_commands.h"
 #import "ios/chrome/browser/shared/public/commands/text_zoom_commands.h"
@@ -64,6 +64,7 @@ constexpr CGFloat kLocationBarCompactBottomPadding = 10.0;
 
 @interface ToolbarCoordinator () <GuidedTourCommands,
                                   LocationBarCoordinatorHeightDelegate,
+                                  PageActionMenuEntryPointCommands,
                                   PrimaryToolbarViewControllerDelegate,
                                   ToolbarCommands,
                                   ToolbarMediatorDelegate>
@@ -155,6 +156,12 @@ constexpr CGFloat kLocationBarCompactBottomPadding = 10.0;
       startDispatchingToTarget:self
                    forProtocol:@protocol(FakeboxFocuser)];
 
+  if (IsChromeNextIaEnabled()) {
+    [browser->GetCommandDispatcher()
+        startDispatchingToTarget:self
+                     forProtocol:@protocol(PageActionMenuEntryPointCommands)];
+  }
+
   if (IsBestOfAppGuidedTourEnabled()) {
     [self.browser->GetCommandDispatcher()
         startDispatchingToTarget:self
@@ -168,19 +175,10 @@ constexpr CGFloat kLocationBarCompactBottomPadding = 10.0;
     self.popupPresenterDelegate = self.drsViewController;
   }
 
-  segmentation_platform::DeviceSwitcherResultDispatcher* deviceSwitcherResult =
-      nullptr;
-  if (!browser->GetProfile()->IsOffTheRecord()) {
-    deviceSwitcherResult =
-        segmentation_platform::SegmentationPlatformServiceFactory::
-            GetDispatcherForProfile(browser->GetProfile());
-  }
   self.legacyToolbarMediator = [[LegacyToolbarMediator alloc]
       initWithWebStateList:browser->GetWebStateList()
                isIncognito:browser->GetProfile()->IsOffTheRecord()];
   self.legacyToolbarMediator.delegate = self;
-  self.legacyToolbarMediator.deviceSwitcherResultDispatcher =
-      deviceSwitcherResult;
 
   self.locationBarCoordinator =
       [[LocationBarCoordinator alloc] initWithBrowser:browser];
@@ -259,7 +257,6 @@ constexpr CGFloat kLocationBarCompactBottomPadding = 10.0;
   [self.legacyToolbarMediator disconnect];
   self.legacyToolbarMediator.omniboxConsumer = nil;
   self.legacyToolbarMediator.delegate = nil;
-  self.legacyToolbarMediator.deviceSwitcherResultDispatcher = nullptr;
   self.legacyToolbarMediator = nil;
 
   [self.browser->GetCommandDispatcher() stopDispatchingToTarget:self];
@@ -766,19 +763,48 @@ constexpr CGFloat kLocationBarCompactBottomPadding = 10.0;
   }
 }
 
+#pragma mark - PageActionMenuEntryPointCommands
+
+- (void)toggleEntryPointHighlight:(BOOL)highlight {
+  CHECK(IsChromeNextIaEnabled());
+  // TODO(crbug.com/472279443): implement this.
+  NOTREACHED();
+}
+
 #pragma mark - ToolbarCommands
 
 - (void)triggerToolbarSlideInAnimation {
+  if (IsChromeNextIaEnabled()) {
+    [_topToolbarViewController triggerToolbarSlideInAnimation];
+    [_bottomToolbarViewController triggerToolbarSlideInAnimation];
+    return;
+  }
   for (id<ToolbarCommands> coordinator in self.coordinators) {
     [coordinator triggerToolbarSlideInAnimation];
   }
 }
 
 - (void)indicateLensOverlayVisible:(BOOL)lensOverlayVisible {
+  if (IsChromeNextIaEnabled()) {
+    // TODO(crbug.com/472279443): Implement this.
+    NOTREACHED();
+  }
+
   [self.locationBarCoordinator setLensOverlayVisible:lensOverlayVisible];
 
   for (id<ToolbarCommands> coordinator in self.coordinators) {
     [coordinator indicateLensOverlayVisible:lensOverlayVisible];
+  }
+}
+
+- (void)focusLocationBarForVoiceOver {
+  if (IsChromeNextIaEnabled()) {
+    [_topToolbarViewController focusLocationBarForVoiceOver];
+    [_bottomToolbarViewController focusLocationBarForVoiceOver];
+  } else {
+    id<OmniboxCommands> omniboxHandler = HandlerForProtocol(
+        self.browser->GetCommandDispatcher(), OmniboxCommands);
+    [omniboxHandler focusOmniboxForVoiceOver];
   }
 }
 

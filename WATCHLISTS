@@ -89,6 +89,8 @@
                   'AccessibilitySettings' \
                   'PageZoom' \
                   '|components/browser_ui/accessibility/android/' \
+                  '|ui/accessibility/android/java/src/org/chromium/ui/accessibility/' \
+                  '|ui/accessibility/android/' \
     },
     'android_accessibility_web': {
       'filepath': 'WebContentsAccessibility' \
@@ -3072,7 +3074,6 @@
     'ios_widget_kit': ['rkgibson+watch@chromium.org'],
     'ipcz': ['andreaorru+watch@chromium.org'],
     'isolated_web_apps_apis': ['greengrape@google.com',
-                               'rmcelrath+watch@chromium.org',
                                'simonha@google.com'],
     'isolated_web_apps_core': ['greengrape@google.com',
                                'rmcelrath+watch@chromium.org',

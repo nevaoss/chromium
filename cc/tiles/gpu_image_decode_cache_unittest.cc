@@ -33,7 +33,6 @@
 #include "cc/test/transfer_cache_test_helper.h"
 #include "cc/tiles/raster_dark_mode_filter.h"
 #include "components/viz/test/test_context_provider.h"
-#include "components/viz/test/test_gles2_interface.h"
 #include "components/viz/test/test_raster_interface.h"
 #include "gpu/command_buffer/common/command_buffer_id.h"
 #include "gpu/command_buffer/common/constants.h"
@@ -59,24 +58,14 @@ using testing::StrictMock;
 namespace cc {
 namespace {
 
-class FakeGPUImageDecodeTestGLES2Interface : public viz::TestGLES2Interface,
-                                             public viz::TestContextSupport {
+class FakeGPUImageDecodeTestRasterInterface : public viz::TestRasterInterface,
+                                              public viz::TestContextSupport {
  public:
-  explicit FakeGPUImageDecodeTestGLES2Interface(
+  explicit FakeGPUImageDecodeTestRasterInterface(
       TransferCacheTestHelper* transfer_cache_helper)
-      : extension_string_(
-            "GL_EXT_texture_format_BGRA8888 GL_OES_rgb8_rgba8 "
-            "GL_OES_texture_npot GL_EXT_texture_rg "
-            "GL_OES_texture_half_float GL_OES_texture_half_float_linear "
-            "GL_EXT_texture_norm16"),
-        transfer_cache_helper_(transfer_cache_helper) {}
+      : transfer_cache_helper_(transfer_cache_helper) {}
 
-  ~FakeGPUImageDecodeTestGLES2Interface() override {
-    // All textures / framebuffers / renderbuffers should be cleaned up.
-    EXPECT_EQ(0u, NumTextures());
-    EXPECT_EQ(0u, NumFramebuffers());
-    EXPECT_EQ(0u, NumRenderbuffers());
-  }
+  ~FakeGPUImageDecodeTestRasterInterface() override = default;
 
   base::span<uint8_t> MapTransferCacheEntry(uint32_t serialized_size) override {
     mapped_entry_size_ = serialized_size;
@@ -115,44 +104,7 @@ class FakeGPUImageDecodeTestGLES2Interface : public viz::TestGLES2Interface,
     return std::make_pair(static_cast<TransferCacheEntryType>(type), id);
   }
 
-  // viz::TestGLES2Interface:
-  const GLubyte* GetString(GLenum name) override {
-    switch (name) {
-      case GL_EXTENSIONS:
-        return reinterpret_cast<const GLubyte*>(extension_string_.c_str());
-      case GL_VERSION:
-        return reinterpret_cast<const GLubyte*>("4.0 Null GL");
-      case GL_SHADING_LANGUAGE_VERSION:
-        return reinterpret_cast<const GLubyte*>("4.20.8 Null GLSL");
-      case GL_VENDOR:
-        return reinterpret_cast<const GLubyte*>("Null Vendor");
-      case GL_RENDERER:
-        return reinterpret_cast<const GLubyte*>("The Null (Non-)Renderer");
-    }
-    return nullptr;
-  }
-  void GetIntegerv(GLenum name, GLint* params) override {
-    switch (name) {
-      case GL_MAX_TEXTURE_IMAGE_UNITS:
-        *params = 8;
-        return;
-      case GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS:
-        *params = 8;
-        return;
-      case GL_MAX_RENDERBUFFER_SIZE:
-        *params = 2048;
-        return;
-      case GL_MAX_VERTEX_ATTRIBS:
-        *params = 8;
-        return;
-      default:
-        break;
-    }
-    TestGLES2Interface::GetIntegerv(name, params);
-  }
-
  private:
-  const std::string extension_string_;
   raw_ptr<TransferCacheTestHelper> transfer_cache_helper_;
   size_t mapped_entry_size_ = 0;
   std::unique_ptr<uint8_t, base::AlignedFreeDeleter> mapped_entry_;
@@ -162,13 +114,12 @@ class GPUImageDecodeTestMockContextProvider : public viz::TestContextProvider {
  public:
   static scoped_refptr<GPUImageDecodeTestMockContextProvider> Create(
       TransferCacheTestHelper* transfer_cache_helper) {
-    auto support = std::make_unique<FakeGPUImageDecodeTestGLES2Interface>(
+    auto support = std::make_unique<FakeGPUImageDecodeTestRasterInterface>(
         transfer_cache_helper);
-    auto gl = std::make_unique<FakeGPUImageDecodeTestGLES2Interface>(
+    auto raster = std::make_unique<FakeGPUImageDecodeTestRasterInterface>(
         transfer_cache_helper);
-    auto raster = std::make_unique<viz::TestRasterInterface>();
-    return new GPUImageDecodeTestMockContextProvider(
-        std::move(support), std::move(gl), std::move(raster));
+    return new GPUImageDecodeTestMockContextProvider(std::move(support),
+                                                     std::move(raster));
   }
 
   void SetContextCapabilitiesOverride(std::optional<gpu::Capabilities> caps) {
@@ -182,23 +133,13 @@ class GPUImageDecodeTestMockContextProvider : public viz::TestContextProvider {
     return viz::TestContextProvider::ContextCapabilities();
   }
 
-  gpu::raster::RasterInterface* RasterInterface() override {
-    return raster_interface_gles_.get();
-  }
-
  private:
   ~GPUImageDecodeTestMockContextProvider() override = default;
   GPUImageDecodeTestMockContextProvider(
       std::unique_ptr<viz::TestContextSupport> support,
-      std::unique_ptr<viz::TestGLES2Interface> gl,
-      std::unique_ptr<gpu::raster::RasterInterface> raster)
-      : TestContextProvider(std::move(support),
-                            std::move(gl),
-                            nullptr /* sii */,
-                            true),
-        raster_interface_gles_(std::move(raster)) {}
+      std::unique_ptr<viz::TestRasterInterface> raster)
+      : TestContextProvider(std::move(support), std::move(raster), true) {}
 
-  std::unique_ptr<gpu::raster::RasterInterface> raster_interface_gles_;
   std::optional<gpu::Capabilities> capabilities_override_;
 };
 
@@ -417,7 +358,7 @@ class GpuImageDecodeCacheTest
     cache->DrawWithImageFinished(draw_image, decoded_draw_image);
   }
 
-  GPUImageDecodeTestMockContextProvider* context_provider() {
+  viz::TestContextProvider* context_provider() {
     return context_provider_.get();
   }
 

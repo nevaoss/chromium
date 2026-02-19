@@ -40,6 +40,7 @@ import org.chromium.base.supplier.MonotonicObservableSupplier;
 import org.chromium.base.supplier.NonNullObservableSupplier;
 import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.OneshotSupplier;
+import org.chromium.base.supplier.SettableMonotonicObservableSupplier;
 import org.chromium.base.supplier.SettableNonNullObservableSupplier;
 import org.chromium.base.task.PostTask;
 import org.chromium.base.task.TaskTraits;
@@ -95,6 +96,7 @@ import org.chromium.components.browser_ui.styles.ChromeColors;
 import org.chromium.components.browser_ui.widget.animation.CancelAwareAnimatorListener;
 import org.chromium.components.browser_ui.widget.gesture.BackPressHandler;
 import org.chromium.components.embedder_support.util.UrlUtilities;
+import org.chromium.components.omnibox.AutocompleteInput;
 import org.chromium.components.omnibox.AutocompleteMatch;
 import org.chromium.components.omnibox.AutocompleteRequestType;
 import org.chromium.components.omnibox.OmniboxFeatures;
@@ -240,7 +242,7 @@ class LocationBarMediator
     private @Nullable SearchEngineUtils mSearchEngineUtils;
     private @Nullable AddToHomescreenCoordinator mAddToHomescreenCoordinatorForTesting;
     private final Supplier<@Nullable ModalDialogManager> mModalDialogManagerSupplier;
-    private final MonotonicObservableSupplier<@AutocompleteRequestType Integer>
+    private final SettableMonotonicObservableSupplier<@AutocompleteRequestType Integer>
             mAutocompleteRequestTypeSupplier;
     private final FuseboxCoordinator mFuseboxCoordinator;
     private final boolean mPersistEditingState;
@@ -271,7 +273,7 @@ class LocationBarMediator
             MonotonicObservableSupplier<TabModelSelector> tabModelSelectorSupplier,
             @Nullable BrowserControlsStateProvider browserControlsStateProvider,
             Supplier<@Nullable ModalDialogManager> modalDialogManagerSupplier,
-            MonotonicObservableSupplier<@AutocompleteRequestType Integer>
+            SettableMonotonicObservableSupplier<@AutocompleteRequestType Integer>
                     autocompleteRequestTypeSupplier,
             @Nullable PageZoomIndicatorCoordinator pageZoomIndicatorCoordinator,
             FuseboxCoordinator fuseboxCoordinator,
@@ -1012,8 +1014,12 @@ class LocationBarMediator
         //
         // This call is permitted to happen before anyone else is activated, and
         // must be called before everyone else cleans up.
-        var fuseboxSession = mUrlHasFocus ? new FuseboxSessionState() : null;
-        mAutocompleteCoordinator.setSessionState(fuseboxSession);
+        if (hasFocus) {
+            var input = getAutocompleteInputForCurrentTab();
+            mAutocompleteCoordinator.beginInput(input);
+        } else {
+            mAutocompleteCoordinator.endInput();
+        }
 
         for (UrlFocusChangeListener listener : mUrlFocusChangeListeners) {
             listener.onUrlFocusChange(hasFocus);
@@ -1055,6 +1061,23 @@ class LocationBarMediator
                     });
             mUrlFocusChangeAnimator.start();
         }
+    }
+
+    /**
+     * Creates and initializes a new {@link AutocompleteInput} instance with the current page's
+     * context.
+     *
+     * @return A new {@link AutocompleteInput} instance.
+     */
+    private AutocompleteInput getAutocompleteInputForCurrentTab() {
+        // Maybe restore persisted state; create a new one otherwise.
+        var state = LocationBarState.from(mLocationBarDataProvider.getTab());
+        var input = state != null ? state.autocompleteInput : new AutocompleteInput();
+        input.setPageClassification(mLocationBarDataProvider.getPageClassification(false));
+        input.setRequestType(mAutocompleteRequestTypeSupplier.get());
+        input.setPageUrl(mLocationBarDataProvider.getCurrentGurl());
+        input.setPageTitle(mLocationBarDataProvider.getTitle());
+        return input;
     }
 
     /* package */ void setShouldShowMicButtonWhenUnfocusedForPhone(boolean shouldShow) {
@@ -1726,12 +1749,16 @@ class LocationBarMediator
 
     @VisibleForTesting
     /* package */ static class LocationBarState implements UserData {
-        public String userText = "";
+        // TODO(crbug.com/475620206): consolidate this to AutocompleteInput and remove.
+        // For some bizarre reason the session restoration gets canceled as we're
+        // seeing notification of UrlBar focus lost, which incorrectly suppresses
+        // resumption of editing session, making the LocationBar currently propagate
+        // invalid state information to listening components (url is de-facto focused,
+        // while the LBM tells it is not).
+        // Once that issue is addressed, it should be possible to fully remove this
+        // and replace with AutocompleteInput.
+        public final AutocompleteInput autocompleteInput = new AutocompleteInput();
         public boolean isUrlBarFocused;
-        // On Android, we don't need to persist the cursor position since it is provided in
-        // selectionStart or selectionEnd when no text is selected.
-        public int selectionStart;
-        public int selectionEnd;
 
         static @Nullable LocationBarState from(@Nullable Tab tab) {
             if (tab == null || tab.isDestroyed()) {
@@ -1747,7 +1774,10 @@ class LocationBarMediator
     }
 
     private boolean isLocationBarStateValid(@Nullable LocationBarState state) {
-        return mIsTablet && state != null && state.isUrlBarFocused && !state.userText.isEmpty();
+        return mIsTablet
+                && state != null
+                && state.isUrlBarFocused
+                && state.autocompleteInput != null;
     }
 
     @Override
@@ -1756,12 +1786,12 @@ class LocationBarMediator
         if (previousTab != null) {
             LocationBarState previousState = LocationBarState.from(previousTab);
             if (previousState != null) {
-                previousState.userText = mUrlCoordinator.getTextWithoutAutocomplete();
+                // No need to apply text, as AutocompleteInput readily tracks that.
                 previousState.isUrlBarFocused = isUrlBarFocused();
 
                 if (mPersistEditingState) {
-                    previousState.selectionStart = mUrlCoordinator.getSelectionStart();
-                    previousState.selectionEnd = mUrlCoordinator.getSelectionEnd();
+                    previousState.autocompleteInput.setSelection(
+                            mUrlCoordinator.getSelectionStart(), mUrlCoordinator.getSelectionEnd());
                 }
             }
         }
@@ -1774,12 +1804,15 @@ class LocationBarMediator
             clearOmniboxFocus();
             setUrlBarFocus(
                     true,
-                    currentState.userText,
+                    currentState.autocompleteInput.getUserText(),
                     OmniboxFocusReason.LOCATION_BAR_STATE_RESTORATION,
                     AutocompleteRequestType.SEARCH);
             if (mPersistEditingState) {
+                mAutocompleteRequestTypeSupplier.set(
+                        currentState.autocompleteInput.getRequestType());
                 mUrlCoordinator.setSelection(
-                        currentState.selectionStart, currentState.selectionEnd);
+                        currentState.autocompleteInput.getSelectionStart(),
+                        currentState.autocompleteInput.getSelectionEnd());
             }
         }
 
@@ -1892,24 +1925,6 @@ class LocationBarMediator
     }
 
     @Override
-    public void performSearchQuery(String query, List<String> searchParams) {
-        if (TextUtils.isEmpty(query)) return;
-
-        TemplateUrlService templateUrlService = mTemplateUrlServiceSupplier.get();
-        assert templateUrlService != null;
-        String queryUrl = templateUrlService.getUrlForSearchQuery(query, searchParams);
-
-        if (!TextUtils.isEmpty(queryUrl)) {
-            loadUrl(
-                    new OmniboxLoadUrlParams.Builder(queryUrl, PageTransition.GENERATED)
-                            .setOpenInNewTab(false)
-                            .build());
-        } else {
-            setSearchQuery(query);
-        }
-    }
-
-    @Override
     public @Nullable VoiceRecognitionHandler getVoiceRecognitionHandler() {
         return mVoiceRecognitionHandler;
     }
@@ -1969,14 +1984,17 @@ class LocationBarMediator
         // autocomplete text will be updated but the visible text will not.
         setUrlBarFocus(
                 /* shouldBeFocused= */ true,
-                /* pastedText= */ null,
+                /* pastedText= */ query,
                 OmniboxFocusReason.SEARCH_QUERY,
                 AutocompleteRequestType.SEARCH);
         setUrlBarText(
                 UrlBarData.forNonUrlText(query),
                 UrlBar.ScrollType.NO_SCROLL,
                 SelectionState.SELECT_ALL);
-        mAutocompleteCoordinator.startAutocompleteForQuery(query);
+        var input = getAutocompleteInputForCurrentTab();
+        input.setUserText(query);
+        mAutocompleteCoordinator.endInput();
+        mAutocompleteCoordinator.beginInput(input);
         mUrlCoordinator.setKeyboardVisibility(true, false);
     }
 

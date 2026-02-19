@@ -41,7 +41,6 @@
 #include "components/autofill/core/browser/field_types.h"
 #include "components/autofill/core/browser/foundations/test_autofill_manager_waiter.h"
 #include "components/autofill/core/browser/foundations/test_browser_autofill_manager.h"
-#include "components/autofill/core/browser/integrators/fast_checkout/mock_fast_checkout_client.h"
 #include "components/autofill/core/browser/integrators/password_form_classification.h"
 #include "components/autofill/core/browser/payments/payments_autofill_client.h"
 #include "components/autofill/core/browser/test_utils/autofill_test_utils.h"
@@ -72,7 +71,6 @@
 #include "url/gurl.h"
 
 #if BUILDFLAG(IS_ANDROID)
-#include "chrome/browser/fast_checkout/fast_checkout_client_impl.h"
 #include "chrome/browser/ui/android/autofill/autofill_cvc_save_message_delegate.h"
 #include "chrome/browser/ui/android/autofill/autofill_save_card_bottom_sheet_bridge.h"
 #include "chrome/browser/ui/android/autofill/autofill_save_card_delegate_android.h"
@@ -121,9 +119,7 @@ class MockSaveCardBubbleController : public SaveCardBubbleControllerImpl {
       (override));
   MOCK_METHOD(void, HideSaveCardBubble, (), (override));
 };
-#endif
 
-#if !BUILDFLAG(IS_ANDROID)
 class MockAutofillFieldPromoController : public AutofillFieldPromoController {
  public:
   ~MockAutofillFieldPromoController() override = default;
@@ -140,6 +136,8 @@ class TestChromeAutofillClient : public ChromeAutofillClient {
   explicit TestChromeAutofillClient(content::WebContents* web_contents)
       : ChromeAutofillClient(web_contents) {}
   ~TestChromeAutofillClient() override = default;
+
+  void ResetContents() { Observe(nullptr); }
 };
 
 class ChromeAutofillClientTest : public ChromeRenderViewHostTestHarness {
@@ -150,10 +148,6 @@ class ChromeAutofillClientTest : public ChromeRenderViewHostTestHarness {
 
   void SetUp() override {
     ChromeRenderViewHostTestHarness::SetUp();
-    // Enable MSBB by default. If MSBB has been explicitly turned off, Fast
-    // Checkout is not supported.
-    profile()->GetPrefs()->SetBoolean(
-        unified_consent::prefs::kUrlKeyedAnonymizedDataCollectionEnabled, true);
     // Creates the AutofillDriver and AutofillManager.
     NavigateAndCommit(GURL("about:blank"));
 
@@ -399,6 +393,18 @@ TEST_F(ChromeAutofillClientTest,
   PlusAddressServiceFactory::GetForBrowserContext(
       web_contents()->GetBrowserContext());
   EXPECT_EQ(client()->GetPlusAddressDelegate(), nullptr);
+}
+
+// Ensure that, when web contents are destroyed, `GetStrikeDatabase` will
+// return nullptr.
+TEST_F(ChromeAutofillClientTest, GetStrikeDatabase_NoWebContents) {
+  TestChromeAutofillClient autofill_client =
+      TestChromeAutofillClient(web_contents());
+  ASSERT_TRUE(autofill_client.GetStrikeDatabase());
+  autofill_client.ResetContents();
+
+  ASSERT_FALSE(autofill_client.web_contents());
+  EXPECT_FALSE(autofill_client.GetStrikeDatabase());
 }
 
 #if !BUILDFLAG(IS_ANDROID)

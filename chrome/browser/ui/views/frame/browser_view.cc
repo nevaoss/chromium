@@ -968,7 +968,12 @@ BrowserView::BrowserView(Browser* browser)
     vertical_tab_strip_region_view_ =
         AddChildView(std::move(vertical_tab_strip_container));
 
-    vertical_tabs_strip_bottom_corner_ =
+    vertical_tab_strip_top_corner_ =
+        AddChildView(std::make_unique<CustomFloatingCorner>(
+            *this, CustomFloatingCorner::CornerOrientation::kTopLeading,
+            views::ShapeContextTokens::kContentSeparatorRadius,
+            CustomFloatingCorner::FrameColor()));
+    vertical_tab_strip_bottom_corner_ =
         AddChildView(std::make_unique<CustomFloatingCorner>(
             *this, CustomFloatingCorner::CornerOrientation::kBottomLeading,
             views::ShapeContextTokens::kContentSeparatorRadius,
@@ -977,7 +982,7 @@ BrowserView::BrowserView(Browser* browser)
 
   if (tabs::IsProjectsPanelFeatureEnabled()) {
     auto projects_panel_container = std::make_unique<ProjectsPanelView>(
-        browser_->GetActions()->root_action_item());
+        browser_->GetActions()->root_action_item(), browser_->profile());
 
     projects_panel_container_ =
         AddChildView(std::move(projects_panel_container));
@@ -1016,8 +1021,8 @@ BrowserView::BrowserView(Browser* browser)
 
   if (vertical_tab_strip_state_controller) {
     vertical_tab_subscription_ =
-        vertical_tab_strip_state_controller->RegisterOnStateChanged(
-            base::BindRepeating(&BrowserView::OnVerticalTabStripStateChanged,
+        vertical_tab_strip_state_controller->RegisterOnModeChanged(
+            base::BindRepeating(&BrowserView::OnVerticalTabStripModeChanged,
                                 base::Unretained(this)));
   }
 
@@ -1080,7 +1085,8 @@ BrowserView::~BrowserView() {
   window_scrim_view_ = nullptr;
   contents_container_ = nullptr;
   vertical_tab_strip_region_view_ = nullptr;
-  vertical_tabs_strip_bottom_corner_ = nullptr;
+  vertical_tab_strip_top_corner_ = nullptr;
+  vertical_tab_strip_bottom_corner_ = nullptr;
   projects_panel_container_ = nullptr;
   toolbar_height_side_panel_ = nullptr;
   contents_height_side_panel_ = nullptr;
@@ -1455,7 +1461,7 @@ bool BrowserView::IsInSplitView() const {
   return multi_contents_view_->IsInSplitView();
 }
 
-void BrowserView::OnVerticalTabStripStateChanged(
+void BrowserView::OnVerticalTabStripModeChanged(
     tabs::VerticalTabStripStateController* controller) {
   UpdateTabSearchBubbleHost();
   InvalidateLayout();
@@ -5270,7 +5276,8 @@ void BrowserView::AddedToWidget() {
       horizontal_tab_strip_region_view_;
   layout_views.vertical_tab_strip_region_view = vertical_tab_strip_region_view_;
   layout_views.vertical_tab_strip_bottom_corner =
-      vertical_tabs_strip_bottom_corner_;
+      vertical_tab_strip_bottom_corner_;
+  layout_views.vertical_tab_strip_top_corner = vertical_tab_strip_top_corner_;
   layout_views.projects_panel_container = projects_panel_container_;
   layout_views.toolbar = toolbar_;
   layout_views.infobar_container = infobar_container_;

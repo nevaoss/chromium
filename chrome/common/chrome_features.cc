@@ -35,14 +35,16 @@ const base::FeatureParam<base::TimeDelta>
 BASE_FEATURE(kAppSpecificNotifications, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kDisableBoostPriority, base::FEATURE_DISABLED_BY_DEFAULT);
-static constexpr base::FeatureParam<DisableBoostPriorityMode>::Option
+static constexpr base::FeatureParam<DisableBoostPriorityExemption>::Option
     kDisableBoostPriorityOptions[] = {
-        {DisableBoostPriorityMode::kAfterLoading, "AfterLoading"},
-        {DisableBoostPriorityMode::kAtStartup, "AtStartup"}};
-constinit const base::FeatureParam<DisableBoostPriorityMode>
-    kDisableBoostPriorityMode{&kDisableBoostPriority, "mode",
-                              DisableBoostPriorityMode::kAtStartup,
-                              &kDisableBoostPriorityOptions};
+        {DisableBoostPriorityExemption::kBrowserNetwork, "BrowserNetwork"},
+        {DisableBoostPriorityExemption::kGpuBrowserNetwork,
+         "GpuBrowserNetwork"}};
+constinit const base::FeatureParam<DisableBoostPriorityExemption>
+    kDisableBoostPriorityExemption{
+        &kDisableBoostPriority, "exempt_processes",
+        DisableBoostPriorityExemption::kGpuBrowserNetwork,
+        &kDisableBoostPriorityOptions};
 #endif  // BUILDFLAG(IS_WIN)
 
 #if BUILDFLAG(IS_MAC)
@@ -288,8 +290,8 @@ BASE_FEATURE(kGlicActorUiTabIndicatorSpinnerIgnoreReducedMotion,
 // and other elements.
 BASE_FEATURE(kActorUiThemed, base::FEATURE_ENABLED_BY_DEFAULT);
 
-// If enabled, hides handoff button when the client is in control.
-BASE_FEATURE(kGlicHandoffButtonHiddenClientControl,
+// If enabled, post tasks in the window controller to fix re-entrancy crash.
+BASE_FEATURE(kGlicActorPostTaskUiUpdateEnabled,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 // If enabled, shows handoff button in immersive mode.
@@ -1855,6 +1857,11 @@ const base::FeatureParam<base::TimeDelta>
     kWebUIReloadButtonCrashRecoverResetInterval{
         &kWebUIReloadButton, "WebUIReloadButtonCrashRecoverResetInterval",
         base::Seconds(10)};
+// When enabled, initial WebUI renderers that become unresponsive will be
+// restarted without showing the hung renderer dialog.
+// See crbug.com/475397687.
+const base::FeatureParam<bool> kWebUIReloadButtonRestartUnresponsive{
+    &kWebUIReloadButton, "WebUIReloadButtonRestartUnresponsive", false};
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 // Enables the User-Agent override fix for SearchPrefetch. This will work only

@@ -127,6 +127,7 @@ class ContextualTasksUI
   BrowserWindowInterface* GetBrowser() override;
   content::WebContents* GetWebUIWebContents() override;
   void OnZeroStateChange(bool is_zero_state) override;
+  void PrepareForTaskChange() override;
   void OnTaskChanged() override;
 
   // ContextualTaskService::Observer impl:
@@ -198,6 +199,8 @@ class ContextualTasksUI
   // hidden.
   void OnLensOverlayStateChanged(bool is_showing);
 
+  virtual bool IsLensOverlayShowing() const;
+
   // signin::IdentityManager::Observer:
   void OnRefreshTokenUpdatedForAccount(
       const CoreAccountInfo& account_info) override;
@@ -234,14 +237,14 @@ class ContextualTasksUI
    public:
     explicit InnerFrameCreationObvserver(
         content::WebContents* web_contents,
-        base::OnceCallback<void(content::WebContents*)> callback);
+        base::RepeatingCallback<void(content::WebContents*)> callback);
     ~InnerFrameCreationObvserver() override;
 
     void InnerWebContentsCreated(
         content::WebContents* inner_web_contents) override;
 
    private:
-    base::OnceCallback<void(content::WebContents*)> callback_;
+    base::RepeatingCallback<void(content::WebContents*)> callback_;
   };
 
   // A notification that the WebContents hosting the WebUI has created an inner
@@ -323,6 +326,7 @@ class ContextualTasksUI
   };
   WebUIState previous_web_ui_state_ = WebUIState::kUnknown;
   bool was_ai_page_ = false;
+  bool is_lens_overlay_showing_ = false;
 
   // Scoped observation for contextual_tasks_service_.
   base::ScopedObservation<contextual_tasks::ContextualTasksService,

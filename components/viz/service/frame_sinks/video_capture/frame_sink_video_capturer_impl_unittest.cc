@@ -2261,7 +2261,7 @@ TEST_P(FrameSinkVideoCapturerTest, BufferFormatPreferencePassedToGpuFramePool) {
     return;
   }
 
-  // GpuMemoryBufferVideoFramePool only kicks in for the
+  // MappableSharedImageVideoFramePool only kicks in for the
   // kPreferMappableSharedImage and kPreferSharedImageWithNativeHandle formats.
   if (buffer_format_preference_ == mojom::BufferFormatPreference::kDefault) {
     return;
@@ -2269,8 +2269,9 @@ TEST_P(FrameSinkVideoCapturerTest, BufferFormatPreferencePassedToGpuFramePool) {
 
   NiceMock<MockConsumer> consumer;
   StartCapture(&consumer);
-  EXPECT_EQ(capturer_->gpu_frame_pool_buffer_format_for_testing(),
-            buffer_format_preference_);
+  EXPECT_EQ(
+      capturer_->mappable_si_frame_pool_buffer_format_preference_for_testing(),
+      buffer_format_preference_);
   StopCapture();
 }
 

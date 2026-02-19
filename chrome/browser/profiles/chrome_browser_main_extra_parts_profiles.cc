@@ -297,7 +297,6 @@
 #include "chrome/browser/autofill/android/android_sms_otp_backend_factory.h"
 #include "chrome/browser/auxiliary_search/auxiliary_search_provider.h"
 #include "chrome/browser/commerce/merchant_viewer/merchant_viewer_data_manager_factory.h"
-#include "chrome/browser/fast_checkout/fast_checkout_capabilities_fetcher_factory.h"
 #include "chrome/browser/flags/android/chrome_feature_list.h"
 #include "chrome/browser/media/android/cdm/media_drm_origin_id_manager_factory.h"
 #include "chrome/browser/privacy_sandbox/privacy_sandbox_activity_types_factory.h"
@@ -574,6 +573,7 @@
 #include "chrome/browser/safe_browsing/chrome_ping_manager_factory.h"
 #include "chrome/browser/safe_browsing/client_side_detection_intelligent_scan_delegate_factory.h"
 #include "chrome/browser/safe_browsing/client_side_detection_service_factory.h"
+#include "chrome/browser/safe_browsing/gemini_antiscam_protection/gemini_antiscam_protection_service_factory.h"
 #include "chrome/browser/safe_browsing/notification_content_detection/notification_content_detection_service_factory.h"
 #include "chrome/browser/safe_browsing/notification_telemetry/notification_telemetry_service_factory.h"
 #include "chrome/browser/safe_browsing/safe_browsing_metrics_collector_factory.h"
@@ -940,9 +940,6 @@ void ChromeBrowserMainExtraPartsProfiles::
   // Makes manual testing possible.
   FakeSmartCardDeviceServiceFactory::GetInstance();
 #endif
-#if BUILDFLAG(IS_ANDROID)
-  FastCheckoutCapabilitiesFetcherFactory::GetInstance();
-#endif
   FaviconServiceFactory::GetInstance();
   feature_engagement::TrackerFactory::GetInstance();
   FederatedIdentityApiPermissionContextFactory::GetInstance();
@@ -1271,6 +1268,7 @@ void ChromeBrowserMainExtraPartsProfiles::
   safe_browsing::ClientSideDetectionServiceFactory::GetInstance();
   safe_browsing::ClientSideDetectionIntelligentScanDelegateFactory::
       GetInstance();
+  safe_browsing::GeminiAntiscamProtectionServiceFactory::GetInstance();
 #endif
 #if BUILDFLAG(FULL_SAFE_BROWSING)
   safe_browsing::CloudBinaryUploadServiceFactory::GetInstance();

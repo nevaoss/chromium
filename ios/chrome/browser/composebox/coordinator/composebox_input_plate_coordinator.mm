@@ -29,6 +29,7 @@
 #import "ios/chrome/browser/composebox/ui/composebox_input_plate_view_controller_delegate.h"
 #import "ios/chrome/browser/composebox/ui/composebox_metrics_recorder.h"
 #import "ios/chrome/browser/composebox/ui/composebox_snackbar_presenter.h"
+#import "ios/chrome/browser/drag_and_drop/model/drag_item_util.h"
 #import "ios/chrome/browser/favicon/model/ios_chrome_favicon_loader_factory.h"
 #import "ios/chrome/browser/feature_engagement/model/tracker_factory.h"
 #import "ios/chrome/browser/intelligence/persist_tab_context/model/persist_tab_context_browser_agent.h"
@@ -43,6 +44,9 @@
 #import "ios/chrome/browser/search_engines/model/template_url_service_factory.h"
 #import "ios/chrome/browser/shared/coordinator/layout_guide/layout_guide_util.h"
 #import "ios/chrome/browser/shared/model/application_context/application_context.h"
+#import "ios/chrome/browser/shared/model/browser/browser.h"
+#import "ios/chrome/browser/shared/model/browser/browser_list.h"
+#import "ios/chrome/browser/shared/model/browser/browser_list_factory.h"
 #import "ios/chrome/browser/shared/model/profile/profile_ios.h"
 #import "ios/chrome/browser/shared/model/web_state_list/web_state_list.h"
 #import "ios/chrome/browser/shared/public/commands/browser_coordinator_commands.h"
@@ -54,6 +58,7 @@
 #import "ios/chrome/browser/shared/ui/util/layout_guide_names.h"
 #import "ios/chrome/browser/shared/ui/util/util_swift.h"
 #import "ios/chrome/browser/signin/model/identity_manager_factory.h"
+#import "ios/chrome/browser/tab_switcher/ui_bundled/tab_utils.h"
 #import "ios/chrome/browser/url_loading/model/url_loading_browser_agent.h"
 #import "ios/chrome/browser/url_loading/model/url_loading_params.h"
 #import "ios/chrome/browser/url_loading/model/url_loading_util.h"
@@ -148,6 +153,8 @@ const CGFloat kSnackbarBottomMargin = 10;
   query_controller_config_params->enable_multi_context_input_flow = true;
   query_controller_config_params->enable_viewport_images = true;
   query_controller_config_params
+      ->use_separate_request_ids_for_multi_context_viewport_images = false;
+  query_controller_config_params
       ->prioritize_suggestions_for_the_first_attached_document = true;
 
   _contextualService =
@@ -182,7 +189,6 @@ const CGFloat kSnackbarBottomMargin = 10;
   _mediator.metricsRecorder = _metricsRecorder;
 
   _viewController.mutator = _mediator;
-  _voiceSearchController.dispatcher = _mediator;
 
   _locationBar = std::make_unique<WebLocationBarImpl>(self);
   _locationBar->SetURLLoader(self);
@@ -229,7 +235,6 @@ const CGFloat kSnackbarBottomMargin = 10;
   _picker = nil;
   [_voiceSearchController dismissMicPermissionHelp];
   [_voiceSearchController disconnect];
-  _voiceSearchController.dispatcher = nil;
   _voiceSearchController = nil;
   [_mediator disconnect];
   _mediator = nil;
@@ -407,6 +412,51 @@ const CGFloat kSnackbarBottomMargin = 10;
   NOTREACHED();
 }
 
+- (BOOL)tabExistsOnCurrentProfile:(TabInfo*)tabInfo {
+  if (self.profile != tabInfo.profile) {
+    return NO;
+  }
+
+  BrowserList* browserList = BrowserListFactory::GetForProfile(tabInfo.profile);
+  WebStateSearchCriteria tabSearchCriteria = WebStateSearchCriteria{
+      .identifier = tabInfo.tabID,
+      .pinned_state = WebStateSearchCriteria::PinnedState::kAny,
+  };
+
+  return GetBrowserForTabWithCriteria(browserList, tabSearchCriteria,
+                                      /*is_otr_tab*/ _theme.incognito);
+}
+
+- (web::WebState*)webStateForTabOnCurrentProfile:(TabInfo*)tabInfo {
+  if (self.profile != tabInfo.profile) {
+    return nullptr;
+  }
+
+  BrowserList* browserList = BrowserListFactory::GetForProfile(tabInfo.profile);
+
+  WebStateSearchCriteria tabSearchCriteria = WebStateSearchCriteria{
+      .identifier = tabInfo.tabID,
+      .pinned_state = WebStateSearchCriteria::PinnedState::kAny,
+  };
+
+  Browser* browser =
+      GetBrowserForTabWithCriteria(browserList, tabSearchCriteria,
+                                   /*is_otr_tab*/ _theme.incognito);
+
+  if (!browser) {
+    return nullptr;
+  }
+
+  WebStateList* webStateList = browser->GetWebStateList();
+  int tabIndex = GetWebStateIndex(webStateList, tabSearchCriteria);
+
+  if (tabIndex == WebStateList::kInvalidIndex) {
+    return nullptr;
+  }
+
+  return webStateList->GetWebStateAt(tabIndex);
+}
+
 #pragma mark - PHPickerViewControllerDelegate
 
 - (void)picker:(PHPickerViewController*)picker
@@ -561,9 +611,9 @@ const CGFloat kSnackbarBottomMargin = 10;
 
 /// Dismisses the composebox via a command to the browser coordinator.
 - (void)dismissComposebox {
-  id<BrowserCoordinatorCommands> commands = HandlerForProtocol(
+  id<BrowserCoordinatorCommands> browserCoordinatorHandler = HandlerForProtocol(
       self.browser->GetCommandDispatcher(), BrowserCoordinatorCommands);
-  [commands hideComposeboxImmediately:NO];
+  [browserCoordinatorHandler hideComposebox];
 }
 
 /// Displays a snackbar error indicating the maximum number of attachments has

@@ -21,6 +21,7 @@
 #include "third_party/blink/renderer/core/css/css_color.h"
 #include "third_party/blink/renderer/core/css/css_color_mix_value.h"
 #include "third_party/blink/renderer/core/css/css_content_distribution_value.h"
+#include "third_party/blink/renderer/core/css/css_contrast_color_value.h"
 #include "third_party/blink/renderer/core/css/css_counter_value.h"
 #include "third_party/blink/renderer/core/css/css_crossfade_value.h"
 #include "third_party/blink/renderer/core/css/css_custom_ident_value.h"
@@ -123,7 +124,7 @@ using cssvalue::CSSFontVariationValue;
 namespace css_parsing_utils {
 namespace {
 
-const char kTwoDashes[] = "--";
+constexpr char kTwoDashes[] = "--";
 constexpr size_t kMaxLanguageOverrideLength = 4;
 
 bool IsLeftOrRightKeyword(CSSValueID id) {
@@ -1749,7 +1750,7 @@ CSSCustomIdentValue* ConsumeDashedIdent(CSSParserTokenStream& stream,
   // requirement of <dashed-ident>.
   // https://github.com/w3c/csswg-drafts/issues/12206
   if (stream.Peek().GetType() == kIdentToken &&
-      !stream.Peek().Value().ToString().StartsWith(kTwoDashes)) {
+      !stream.Peek().Value().starts_with(kTwoDashes)) {
     return nullptr;
   }
   return ConsumeCustomIdent(stream, context, local_context);
@@ -2044,10 +2045,8 @@ bool IsAllowedValueInParserContext(
   return true;
 }
 
-}  // namespace
-
 // https://www.w3.org/TR/css-color-5/#color-mix
-static CSSValue* ConsumeColorMixFunction(
+CSSValue* ConsumeColorMixFunction(
     CSSParserTokenStream& stream,
     const CSSParserContext& context,
     CSSParserLocalContext& local_context,
@@ -2147,9 +2146,35 @@ static CSSValue* ConsumeColorMixFunction(
   return result;
 }
 
-static bool ParseHexColor(CSSParserTokenStream& stream,
-                          Color& result,
-                          bool accept_quirky_colors) {
+// https://www.w3.org/TR/css-color-5/#contrast-color
+CSSValue* ConsumeContrastColorFunction(
+    CSSParserTokenStream& stream,
+    const CSSParserContext& context,
+    CSSParserLocalContext& local_context,
+    const ColorParserContext& color_parser_context) {
+  CHECK(RuntimeEnabledFeatures::CSSContrastColorEnabled());
+  DCHECK_EQ(stream.Peek().FunctionId(), CSSValueID::kContrastColor);
+
+  CSSParserTokenStream::RestoringBlockGuard guard(stream);
+  stream.ConsumeWhitespace();
+
+  CSSValue* color = ConsumeColorInternal(stream, context, local_context,
+                                         /*accept_quirky_colors=*/false,
+                                         color_parser_context);
+
+  if (!color || !stream.AtEnd()) {
+    return nullptr;
+  }
+
+  guard.Release();
+  stream.ConsumeWhitespace();
+
+  return MakeGarbageCollected<cssvalue::CSSContrastColorValue>(color);
+}
+
+bool ParseHexColor(CSSParserTokenStream& stream,
+                   Color& result,
+                   bool accept_quirky_colors) {
   const CSSParserToken& token = stream.Peek();
   if (token.GetType() == kHashToken) {
     if (!Color::ParseHexColor(token.Value(), result)) {
@@ -2166,7 +2191,7 @@ static bool ParseHexColor(CSSParserTokenStream& stream,
         color = String::Format("%d", static_cast<int>(token.NumericValue()));
       } else {  // e.g. 0001FF
         color = StrCat({String::Number(static_cast<int>(token.NumericValue())),
-                        token.Value().ToString()});
+                        token.Value()});
       }
       while (color.length() < 6) {
         color = StrCat({"0", color});
@@ -2187,8 +2212,6 @@ static bool ParseHexColor(CSSParserTokenStream& stream,
   stream.ConsumeIncludingWhitespace();
   return true;
 }
-
-namespace {
 
 bool SystemAccentColorAllowed(const CSSParserContext& context) {
   if (!RuntimeEnabledFeatures::CSSAccentColorKeywordEnabled()) {
@@ -2218,6 +2241,12 @@ CSSValue* ConsumeColorInternal(CSSParserTokenStream& stream,
     CSSValue* color = ConsumeColorMixFunction(stream, context, local_context,
                                               color_parser_context);
     return color;
+  }
+
+  if (RuntimeEnabledFeatures::CSSContrastColorEnabled() &&
+      stream.Peek().FunctionId() == CSSValueID::kContrastColor) {
+    return ConsumeContrastColorFunction(stream, context, local_context,
+                                        color_parser_context);
   }
 
   CSSValueID id = stream.Peek().Id();
@@ -4144,7 +4173,7 @@ bool IsDashedIdent(const CSSParserToken& token) {
     return false;
   }
   DCHECK(!IsCSSWideKeyword(token.Value()));
-  return token.Value().ToString().StartsWith(kTwoDashes);
+  return token.Value().starts_with(kTwoDashes);
 }
 
 CSSValue* ConsumeCSSWideKeyword(CSSParserTokenStream& stream) {
@@ -9271,7 +9300,7 @@ CSSValue* ConsumeDashedIdentOrTactic(CSSParserTokenStream& stream,
     }
     if (context.Mode() == kUASheetMode && !dashed_ident) {
       if (stream.Peek().GetType() == kIdentToken &&
-          stream.Peek().Value().ToString().StartsWith("-internal-")) {
+          stream.Peek().Value().starts_with("-internal-")) {
         dashed_ident = ConsumeCustomIdent(stream, context, local_context);
         continue;
       }

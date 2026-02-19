@@ -334,16 +334,6 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="GPU.ANGLE.Buffer11CPUMemoryMB" units="MB"
-    expires_after="2020-05-10">
-  <owner>cwallez@chromium.org</owner>
-  <summary>
-    The sum of the size of the CPU-side memory allocations of Buffer11's copies
-    (vs. GPU memory allocations). These allocations are used when modifying the
-    buffer data on the CPU or when transfering to GPU memory via DMA.
-  </summary>
-</histogram>
-
 <histogram name="GPU.ANGLE.D3D11CreateDeviceError" enum="Hresult"
     expires_after="2025-02-10">
   <owner>geofflang@google.com</owner>
@@ -935,7 +925,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="GPU.FenceSyncRelease.GraphValidation.ForceReleaseNamespace"
-    enum="CommandBufferNamespace" expires_after="2026-01-18">
+    enum="CommandBufferNamespace" expires_after="2027-01-18">
   <owner>vasilyt@chromium.org</owner>
   <owner>sunnyps@chromium.org</owner>
   <owner>yzshen@chromium.org</owner>
@@ -947,7 +937,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="GPU.FenceSyncRelease.{TaskGraphValidationType}.Cause"
-    enum="ReleaseCause" expires_after="2026-01-18">
+    enum="ReleaseCause" expires_after="2027-01-18">
   <owner>vasilyt@chromium.org</owner>
   <owner>sunnyps@chromium.org</owner>
   <owner>yzshen@chromium.org</owner>

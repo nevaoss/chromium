@@ -354,6 +354,10 @@
 #include "chrome/browser/enterprise/platform_auth/platform_auth_features.h"
 #endif
 
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+#include "chrome/browser/enterprise/reporting/reporting_features.h"
+#endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+
 #if BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
 #include "components/unexportable_keys/features.h"  // nogncheck
 #endif
@@ -1662,8 +1666,10 @@ const FeatureEntry::FeatureParam
         {"ShowContextMenuTabPreviews", "true"},
 };
 const FeatureEntry::FeatureParam kShowToolsAndModels[] = {
-    {"ShowContextMenu", "true"},     {"ShowToolsAndModels", "true"},
-    {"ShowComposeboxZps", "true"},   {"ShowComposeboxTypedSuggest", "true"},
+    {"ShowContextMenu", "true"},
+    {"ShowToolsAndModels", "true"},
+    {"ShowComposeboxZps", "true"},
+    {"ShowComposeboxTypedSuggest", "true"},
 };
 const FeatureEntry::FeatureParam kShowCanvasAndModelPicker[] = {
     {"ShowContextMenu", "true"},   {"ShowToolsAndModels", "true"},
@@ -1680,7 +1686,6 @@ const FeatureEntry::FeatureParam kComposeboxNext[] = {
     {"CloseComposeboxByEscape", "false"},
     {"CloseComposeboxByClickOutside", "false"},
     {"ContextMenuEnableMultiTabSelection", "true"},
-    {"EnableThreadsRail", "true"},
 };
 const FeatureEntry::FeatureParam kComposeboxNextSingleContext[] = {
     {"MaxNumFiles", "1"},
@@ -1692,14 +1697,13 @@ const FeatureEntry::FeatureParam kComposeboxNextSingleContext[] = {
     {"ShowRecentTabChip", "true"},
     {"CloseComposeboxByEscape", "false"},
     {"CloseComposeboxByClickOutside", "false"},
-    {"EnableThreadsRail", "true"},
 };
 const FeatureEntry::FeatureParam kComposeboxNextSingleContextForRealboxNext[] =
     {
         {"MaxNumFiles", "1"},           {"ShowContextMenu", "true"},
         {"ShowComposeboxZps", "true"},  {"ShowComposeboxTypedSuggest", "true"},
         {"ShowToolsAndModels", "true"}, {"ShowRecentTabChip", "true"},
-        {"ShowSubmit", "true"},         {"EnableThreadsRail", "true"},
+        {"ShowSubmit", "true"},
 };
 const FeatureEntry::FeatureParam kComposeboxNextForRealboxNext[] = {
     {"ShowContextMenu", "true"},
@@ -1710,7 +1714,19 @@ const FeatureEntry::FeatureParam kComposeboxNextForRealboxNext[] = {
     {"ContextMenuEnableMultiTabSelection", "true"},
     {"ShowSubmit", "true"},
     {"EnableEphemeralContextMenuDescription", "true"},
+};
+const FeatureEntry::FeatureParam kComposeboxNextWithCanvasAndModelPicker[] = {
+    {"ShowContextMenu", "true"},
+    {"ShowComposeboxZps", "true"},
+    {"ShowComposeboxTypedSuggest", "true"},
+    {"ShowToolsAndModels", "true"},
+    {"ShowRecentTabChip", "true"},
+    {"ContextMenuEnableMultiTabSelection", "true"},
+    {"ShowSubmit", "true"},
+    {"EnableEphemeralContextMenuDescription", "true"},
     {"EnableThreadsRail", "true"},
+    {"ShowCanvas", "true"},
+    {"ShowModelPicker", "true"},
 };
 
 const FeatureEntry::FeatureVariation kNtpComposeboxVariations[] = {
@@ -1738,6 +1754,9 @@ const FeatureEntry::FeatureVariation kNtpComposeboxVariations[] = {
     {"- Next Experience Single Context for Realbox Next",
      kComposeboxNextSingleContextForRealboxNext,
      std::size(kComposeboxNextSingleContextForRealboxNext), nullptr},
+    {"- Next Experience with Canvas and Model Picker",
+     kComposeboxNextWithCanvasAndModelPicker,
+     std::size(kComposeboxNextWithCanvasAndModelPicker), nullptr},
 };
 
 const FeatureEntry::FeatureParam kShowNextRealboxTallBottomContext[] = {
@@ -1823,11 +1842,24 @@ const FeatureEntry::FeatureParam kNtpNextShowSimplificationUIWithDeepDive[] = {
     {"NtpNextShowDeepDiveSuggestionsParam", "true"},
     {"NtpNextSuggestionsFromNewSearchSuggestionsEndpointParam", "false"},
 };
+
+const FeatureEntry::FeatureParam
+    kNtpNextShowChipsUIWithChromeNtpActionClient[] = {
+        {"NtpNextShowDeepDiveSuggestionsParam", "true"},
+        {"NtpNextSuggestionsFromNewSearchSuggestionsEndpointParam", "true"},
+};
+
+const FeatureEntry::FeatureParam
+    kNtpNextShowSimplificationUIWithChromeNtpActionClient[] = {
+        {"NtpNextShowSimplificationUIParam", "true"},
+        {"NtpNextShowDeepDiveSuggestionsParam", "true"},
+        {"NtpNextSuggestionsFromNewSearchSuggestionsEndpointParam", "true"},
+};
+
 const FeatureEntry::FeatureParam kNtpNextShowSimplificationUIWithDismissal[] = {
     {"NtpNextShowSimplificationUIParam", "true"},
     {"NtpNextShowDeepDiveSuggestionsParam", "true"},
     {"NtpNextSuggestionsFromNewSearchSuggestionsEndpointParam", "true"},
-    {"NtpNextClientSensitivityCheckParam", "true"},
     {"NtpNextShowDismissalUIParam", "true"},
 };
 
@@ -1840,18 +1872,24 @@ const FeatureEntry::FeatureVariation kNtpNextVariations[] = {
      std::size(kNtpNextShowSimplificationUI), nullptr},
     {"- Show Row UI With Deep Dive", kNtpNextShowSimplificationUIWithDeepDive,
      std::size(kNtpNextShowSimplificationUIWithDeepDive), nullptr},
+    {"- Show Chips UI with a New Suggestions Client.",
+     kNtpNextShowChipsUIWithChromeNtpActionClient,
+     std::size(kNtpNextShowChipsUIWithChromeNtpActionClient), nullptr},
+    {"- Show Row UI with a New Suggestions Client.",
+     kNtpNextShowSimplificationUIWithChromeNtpActionClient,
+     std::size(kNtpNextShowSimplificationUIWithChromeNtpActionClient), nullptr},
     {"- Show Dismissal UI", kNtpNextShowSimplificationUIWithDismissal,
      std::size(kNtpNextShowSimplificationUIWithDismissal), nullptr},
 };
 
-const FeatureEntry::FeatureParam
-    kNtpFeatureOptimizationModuleRemovalDefault[] = {
+const FeatureEntry::FeatureParam kNtpFeatureOptimizationModuleRemovalDefault[] =
+    {
         {"ModuleMinStalenessUpdateTimeInterval", "24h"},
         {"StaleModulesCountThreshold", "14"},
 };
 
-const FeatureEntry::FeatureParam
-    kNtpFeatureOptimizationModuleRemovalTesting[] = {
+const FeatureEntry::FeatureParam kNtpFeatureOptimizationModuleRemovalTesting[] =
+    {
         {"ModuleMinStalenessUpdateTimeInterval", "1s"},
         {"StaleModulesCountThreshold", "2"},
 };
@@ -1859,11 +1897,11 @@ const FeatureEntry::FeatureParam
 const FeatureEntry::FeatureVariation
     kNtpFeatureOptimizationModuleRemovalVariations[] = {
         {"- Default Auto-Removal Timing",
-        kNtpFeatureOptimizationModuleRemovalDefault,
-        std::size(kNtpFeatureOptimizationModuleRemovalDefault), nullptr},
+         kNtpFeatureOptimizationModuleRemovalDefault,
+         std::size(kNtpFeatureOptimizationModuleRemovalDefault), nullptr},
         {"- Auto-Removal Timing for Testing",
-        kNtpFeatureOptimizationModuleRemovalTesting,
-        std::size(kNtpFeatureOptimizationModuleRemovalTesting), nullptr},
+         kNtpFeatureOptimizationModuleRemovalTesting,
+         std::size(kNtpFeatureOptimizationModuleRemovalTesting), nullptr},
 };
 
 const FeatureEntry::FeatureParam
@@ -1881,11 +1919,11 @@ const FeatureEntry::FeatureParam
 const FeatureEntry::FeatureVariation
     kNtpFeatureOptimizationShortcutsRemovalVariations[] = {
         {"- Default Auto-Removal Timing",
-        kNtpFeatureOptimizationShortcutsRemovalDefault,
-        std::size(kNtpFeatureOptimizationShortcutsRemovalDefault), nullptr},
+         kNtpFeatureOptimizationShortcutsRemovalDefault,
+         std::size(kNtpFeatureOptimizationShortcutsRemovalDefault), nullptr},
         {"- Auto-Removal Timing for Testing",
-        kNtpFeatureOptimizationShortcutsRemovalTesting,
-        std::size(kNtpFeatureOptimizationShortcutsRemovalTesting), nullptr},
+         kNtpFeatureOptimizationShortcutsRemovalTesting,
+         std::size(kNtpFeatureOptimizationShortcutsRemovalTesting), nullptr},
 };
 
 #endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_MAC) ||
@@ -4887,8 +4925,7 @@ const FeatureEntry::FeatureParam
         {"open_adjacently", "false"}};
 const FeatureEntry::FeatureVariation
     kRobustWindowManagementExperimentalVariations[] = {
-        {"Open Fullscreen",
-         kRobustWindowManagementExperimentalOpenAdjacently,
+        {"Open Fullscreen", kRobustWindowManagementExperimentalOpenAdjacently,
          std::size(kRobustWindowManagementExperimentalOpenAdjacently),
          nullptr}};
 
@@ -5860,6 +5897,9 @@ const FeatureEntry kFeatureEntries[] = {
     {"enable-vulkan", flag_descriptions::kEnableVulkanName,
      flag_descriptions::kEnableVulkanDescription, kOsLinux | kOsAndroid,
      FEATURE_VALUE_TYPE(features::kVulkan)},
+    {"force-enable-webgpu-interop", flag_descriptions::kWebGpuInteropName,
+     flag_descriptions::kkWebGpuInteropDescription, kOsLinux,
+     FEATURE_VALUE_TYPE(features::kForceEnableWebGpuInterop)},
     {"default-angle-vulkan", flag_descriptions::kDefaultAngleVulkanName,
      flag_descriptions::kDefaultAngleVulkanDescription, kOsLinux | kOsAndroid,
      FEATURE_VALUE_TYPE(features::kDefaultANGLEVulkan)},
@@ -5962,9 +6002,6 @@ const FeatureEntry kFeatureEntries[] = {
     {"crostini-containerless", flag_descriptions::kCrostiniContainerlessName,
      flag_descriptions::kCrostiniContainerlessDescription, kOsCrOS,
      FEATURE_VALUE_TYPE(ash::features::kCrostiniContainerless)},
-    {"crostini-multi-container", flag_descriptions::kCrostiniMultiContainerName,
-     flag_descriptions::kCrostiniMultiContainerDescription, kOsCrOS,
-     FEATURE_VALUE_TYPE(ash::features::kCrostiniMultiContainer)},
     {"crostini-qt-ime-support", flag_descriptions::kCrostiniQtImeSupportName,
      flag_descriptions::kCrostiniQtImeSupportDescription, kOsCrOS,
      FEATURE_VALUE_TYPE(ash::features::kCrostiniQtImeSupport)},
@@ -6593,6 +6630,11 @@ const FeatureEntry kFeatureEntries[] = {
      kOsAndroid,
      FEATURE_VALUE_TYPE(
          features::kAccessibilityManageBroadcastReceiverOnBackground)},
+    {"enable-accessibility-handle-occluding-views",
+     flag_descriptions::kAccessibilityHandleOccludingViewsName,
+     flag_descriptions::kAccessibilityHandleOccludingViewsDescription,
+     kOsAndroid,
+     FEATURE_VALUE_TYPE(features::kAccessibilityHandleOccludingViews)},
     {"enable-smart-zoom", flag_descriptions::kSmartZoomName,
      flag_descriptions::kSmartZoomDescription, kOsAndroid,
      FEATURE_VALUE_TYPE(features::kSmartZoom)},
@@ -6994,13 +7036,6 @@ const FeatureEntry kFeatureEntries[] = {
     {"disable-instance-limit", flag_descriptions::kDisableInstanceLimitName,
      flag_descriptions::kDisableInstanceLimitDescription, kOsAndroid,
      FEATURE_VALUE_TYPE(chrome::android::kDisableInstanceLimit)},
-
-    {"clear-instance-info-when-closed-intentionally",
-     flag_descriptions::kClearInstanceInfoWhenClosedIntentionallyName,
-     flag_descriptions::kClearInstanceInfoWhenClosedIntentionallyDescription,
-     kOsAndroid,
-     FEATURE_VALUE_TYPE(
-         chrome::android::kClearInstanceInfoWhenClosedIntentionally)},
 
     {"change-unfocused-priority",
      flag_descriptions::kChangeUnfocusedPriorityName,
@@ -8813,7 +8848,6 @@ const FeatureEntry kFeatureEntries[] = {
      FEATURE_VALUE_TYPE(ash::features::kGesturePropertiesDBusService)},
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
-
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
     {"enable-network-service-sandbox",
      flag_descriptions::kEnableNetworkServiceSandboxName,
@@ -8977,9 +9011,6 @@ const FeatureEntry kFeatureEntries[] = {
      kOsCrOS,
      FEATURE_VALUE_TYPE(
          ash::features::kHelpAppOpensInsteadOfReleaseNotesNotification)},
-    {"media-app-pdf-mahi", flag_descriptions::kMediaAppPdfMahiName,
-     flag_descriptions::kMediaAppPdfMahiDescription, kOsCrOS,
-     FEATURE_VALUE_TYPE(ash::features::kMediaAppPdfMahi)},
     {"on-device-app-controls", flag_descriptions::kOnDeviceAppControlsName,
      flag_descriptions::kOnDeviceAppControlsDescription, kOsCrOS,
      FEATURE_VALUE_TYPE(ash::features::kForceOnDeviceAppControlsForAllRegions)},
@@ -13483,6 +13514,21 @@ const FeatureEntry kFeatureEntries[] = {
     {"signin-level-up-button", flag_descriptions::kSigninLevelUpButtonName,
      flag_descriptions::kSigninLevelUpButtonDescription, kOsAndroid,
      FEATURE_VALUE_TYPE(switches::kSigninLevelUpButton)},
+#endif
+
+#if BUILDFLAG(IS_ANDROID)
+    {"always-draw-composited-toolbar-hairline",
+     flag_descriptions::kAlwaysDrawCompositedToolbarHairlineName,
+     flag_descriptions::kAlwaysDrawCompositedToolbarHairlineDescription,
+     kOsAndroid,
+     FEATURE_VALUE_TYPE(chrome::android::kAlwaysDrawCompositedToolbarHairline)},
+#endif
+
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+    {"saas-usage-reporting", flag_descriptions::kSaasUsageReportingName,
+     flag_descriptions::kSaasUsageReportingDescription,
+     kOsLinux | kOsMac | kOsWin,
+     FEATURE_VALUE_TYPE(enterprise_reporting::kSaasUsageReporting)},
 #endif
 
     // Add new entries above this line.

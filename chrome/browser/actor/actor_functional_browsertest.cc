@@ -263,9 +263,13 @@ class ActorFunctionalBrowserTest : public glic::test::InteractiveGlicTest {
   static constexpr base::TimeDelta kLongWaitTime = base::Minutes(2);
 
   ActorFunctionalBrowserTest() {
-    scoped_feature_list_.InitWithFeatures(
-        /*enabled_features=*/{features::kGlicMultiInstance,
-                              actor::kActorBindCreatedTabToTask},
+    scoped_feature_list_.InitWithFeaturesAndParameters(
+        /*enabled_features=*/{{features::kGlicMultiInstance, {}},
+                              {actor::kActorBindCreatedTabToTask, {}},
+                              {features::kGlicActor,
+                               {{features::kGlicActorPolicyControlExemption
+                                     .name,
+                                 "true"}}}},
         /*disabled_features=*/{});
   }
   ~ActorFunctionalBrowserTest() override = default;
@@ -273,7 +277,6 @@ class ActorFunctionalBrowserTest : public glic::test::InteractiveGlicTest {
  protected:
   void SetUpOnMainThread() override {
     glic::test::InteractiveGlicTest::SetUpOnMainThread();
-    actor_keyed_service()->GetPolicyChecker().set_act_on_web_for_testing(true);
     // TODO(crbug.com/461825458): Add support for kAttached window mode in test.
     RunTestSequence(OpenGlic());
   }
@@ -1269,6 +1272,33 @@ IN_PROC_BROWSER_TEST_P(ActorFunctionalBrowserTestCreateActorTab,
                   ->GetTask(task_id.value())
                   ->GetTabs()
                   .contains(new_tab_handler.value()));
+}
+
+IN_PROC_BROWSER_TEST_P(ActorFunctionalBrowserTestCreateActorTab,
+                       CreateActorTabWithInvalidTask) {
+  // Navigate the current tab to the initiator URL.
+  ASSERT_TRUE(content::NavigateToURL(web_contents(), GetInitiatorTabUrl()));
+  ASSERT_EQ(browser()->tab_strip_model()->count(), 1u);
+  SessionID initiator_window_id = browser()->session_id();
+  tabs::TabHandle initiator_tab = active_tab()->GetHandle();
+
+  base::expected<TaskId, std::string> task_id = CreateTask();
+  ASSERT_TRUE(task_id.has_value()) << task_id.error();
+
+  TaskId invalid_task_id = actor::TaskId(task_id.value().value() + 100);
+
+  // Create a new tab with an invalid task id.
+  base::expected<tabs::TabHandle, std::string> new_tab_handler =
+      CreateActorTab(invalid_task_id, /*open_in_background=*/false,
+                     base::ToString(initiator_tab.raw_value()),
+                     base::ToString(initiator_window_id.id()));
+
+  // CreateActorTab should have returned an error;
+  EXPECT_FALSE(new_tab_handler.has_value());
+
+  // Verify it is bound to the task.
+  EXPECT_TRUE(
+      actor_keyed_service()->GetTask(task_id.value())->GetTabs().empty());
 }
 
 INSTANTIATE_TEST_SUITE_P(

@@ -6,10 +6,10 @@
 #define CHROME_BROWSER_PAGE_CONTENT_ANNOTATIONS_PAGE_CONTENT_ANNOTATIONS_ANNOTATE_PAGE_CONTENT_REQUEST_H_
 
 #include "base/memory/raw_ptr.h"
-#include "chrome/browser/page_content_annotations/multi_source_page_context_fetcher.h"
 #include "chrome/browser/page_content_annotations/page_content_extraction_types.h"
 #include "components/content_extraction/content/browser/inner_text.h"
 #include "components/optimization_guide/content/browser/page_content_proto_provider.h"
+#include "components/page_content_annotations/content/page_context_fetcher.h"
 #include "content/public/browser/web_contents.h"
 #include "pdf/buildflags.h"
 #include "third_party/blink/public/mojom/content_extraction/ai_page_content.mojom.h"
@@ -20,21 +20,29 @@ class PageContextEligibility;
 
 namespace page_content_annotations {
 
+using FetchPageContextCallback =
+    base::RepeatingCallback<void(content::WebContents&,
+                                 const FetchPageContextOptions&,
+                                 std::unique_ptr<FetchPageProgressListener>,
+                                 FetchPageContextResultCallback)>;
+
+using GetTabIdCallback =
+    base::RepeatingCallback<std::optional<int64_t>(content::WebContents*)>;
+
 // Class for deciding when a page is ready for getting page content, and
 // extracts page content.
 class AnnotatedPageContentRequest {
  public:
-  using FetchPageContextCallback =
-      base::RepeatingCallback<void(content::WebContents&,
-                                   const FetchPageContextOptions&,
-                                   std::unique_ptr<FetchPageProgressListener>,
-                                   FetchPageContextResultCallback)>;
-
   static std::unique_ptr<AnnotatedPageContentRequest> Create(
-      content::WebContents* web_contents);
+      content::WebContents* web_contents,
+      FetchPageContextCallback fetch_page_context_callback,
+      GetTabIdCallback get_tab_id_callback);
 
-  AnnotatedPageContentRequest(content::WebContents* web_contents,
-                              blink::mojom::AIPageContentOptionsPtr request);
+  AnnotatedPageContentRequest(
+      content::WebContents* web_contents,
+      blink::mojom::AIPageContentOptionsPtr request,
+      FetchPageContextCallback fetch_page_context_callback,
+      GetTabIdCallback get_tab_id_callback);
 
   AnnotatedPageContentRequest(const AnnotatedPageContentRequest&) = delete;
   AnnotatedPageContentRequest& operator=(const AnnotatedPageContentRequest&) =
@@ -54,8 +62,6 @@ class AnnotatedPageContentRequest {
   // Returns the cached APC for `page` and whether it is eligible for
   // server upload. Will return nullopt if not available.
   std::optional<ExtractedPageContentResult> GetCachedContentAndEligibility();
-
-  void SetFetchPageContextCallbackForTesting(FetchPageContextCallback callback);
 
  private:
   void ResetForNewNavigation();
@@ -115,6 +121,7 @@ class AnnotatedPageContentRequest {
   std::optional<ExtractedPageContentResult> cached_content_;
 
   FetchPageContextCallback fetch_page_context_callback_;
+  GetTabIdCallback get_tab_id_callback_;
 
   base::WeakPtrFactory<AnnotatedPageContentRequest> weak_factory_{this};
 };

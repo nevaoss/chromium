@@ -165,6 +165,11 @@ public abstract class ChromeFeatureList {
             "AdaptiveButtonInTopToolbarCustomizationV2";
     public static final String ADAPTIVE_BUTTON_IN_TOP_TOOLBAR_PAGE_SUMMARY =
             "AdaptiveButtonInTopToolbarPageSummary";
+    // Don't clean up this flag yet, BCIV is launched, so this needs to be enabled by
+    // default, but some render tests need to disable this so that the hairline isn't
+    // included in the screenshot. See https://crbug.com/394842006 for more details.
+    public static final String ALWAYS_DRAW_COMPOSITED_TOOLBAR_HAIRLINE =
+            "AlwaysDrawCompositedToolbarHairline";
     public static final String ANDROID_ANIMATED_PROGRESS_BAR_IN_BROWSER =
             "AndroidAnimatedProgressBarInBrowser";
     public static final String ANDROID_APPEARANCE_SETTINGS = "AndroidAppearanceSettings";
@@ -356,8 +361,6 @@ public abstract class ChromeFeatureList {
     public static final String CLAMP_AUTOMOTIVE_SCALING = "ClampAutomotiveScaling";
     public static final String CLANK_STARTUP_LATENCY_INJECTION = "ClankStartupLatencyInjection";
     public static final String CLANK_WHATS_NEW = "ClankWhatsNew";
-    public static final String CLEAR_INSTANCE_INFO_WHEN_CLOSED_INTENTIONALLY =
-            "ClearInstanceInfoWhenClosedIntentionally";
     public static final String CLEAR_INTENT_WHEN_RECREATED = "ClearIntentWhenRecreated";
     public static final String COMMAND_LINE_ON_NON_ROOTED = "CommandLineOnNonRooted";
     public static final String COMMERCE_MERCHANT_VIEWER = "CommerceMerchantViewer";
@@ -674,6 +677,7 @@ public abstract class ChromeFeatureList {
             "TrustedWebActivityContactsDelegation";
     public static final String UMA_SESSION_CORRECTNESS_FIXES = "UmaSessionCorrectnessFixes";
     public static final String UNO_PHASE_2_FOLLOW_UP = "UnoPhase2FollowUp";
+    public static final String UNPARCEL_INTENT_FILE_DESCRIPTORS = "UnparcelIntentFileDescriptors";
     public static final String UPDATE_COMPOSTIROR_FOR_SURFACE_CONTROL =
             "UpdateCompositorForSurfaceControl";
     public static final String USE_ACTIVITY_MANAGER_FOR_TAB_ACTIVATION =
@@ -986,7 +990,7 @@ public abstract class ChromeFeatureList {
     public static final CachedFlag sNewTabPageCustomizationToolbarButton =
             newCachedFlag(NEW_TAB_PAGE_CUSTOMIZATION_TOOLBAR_BUTTON, false);
     public static final CachedFlag sNewTabPageCustomizationV2 =
-            newCachedFlag(NEW_TAB_PAGE_CUSTOMIZATION_V2, false);
+            newCachedFlag(NEW_TAB_PAGE_CUSTOMIZATION_V2, false, true);
     public static final CachedFlag sNotificationTrampoline =
             newCachedFlag(NOTIFICATION_TRAMPOLINE, false);
     public static final CachedFlag sPCctMinimumHeight = newCachedFlag(PCCT_MINIMUM_HEIGHT, true);
@@ -1089,6 +1093,8 @@ public abstract class ChromeFeatureList {
                     TOUCH_TO_SEARCH_CALLOUT,
                     /* defaultValue= */ false,
                     /* defaultValueInTests= */ true);
+    public static final CachedFlag sUnparcelIntentFileDescriptors =
+            newCachedFlag(UNPARCEL_INTENT_FILE_DESCRIPTORS, /* defaultValue= */ true);
     public static final CachedFlag sUseActivityManagerForTabActivation =
             newCachedFlag(USE_ACTIVITY_MANAGER_FOR_TAB_ACTIVATION, true);
     public static final CachedFlag sUseChimeAndroidSdk =
@@ -1251,6 +1257,7 @@ public abstract class ChromeFeatureList {
                     sTopControlsRefactor,
                     sTopControlsRefactorV2,
                     sTouchToSearchCallout,
+                    sUnparcelIntentFileDescriptors,
                     sUseActivityManagerForTabActivation,
                     sUseChimeAndroidSdk,
                     sUseInitialNetworkStateAtStartup,
@@ -1276,6 +1283,8 @@ public abstract class ChromeFeatureList {
     // keep-sorted start group_prefixes=["public static final MutableFlagWithSafeDefault"]
     public static final MutableFlagWithSafeDefault sAdaptiveButtonInTopToolbarCustomizationV2 =
             newMutableFlagWithSafeDefault(ADAPTIVE_BUTTON_IN_TOP_TOOLBAR_CUSTOMIZATION_V2, false);
+    public static final MutableFlagWithSafeDefault sAlwaysDrawCompositedToolbarHairline =
+            newMutableFlagWithSafeDefault(ALWAYS_DRAW_COMPOSITED_TOOLBAR_HAIRLINE, true);
     public static final MutableFlagWithSafeDefault sAndroidAppearanceSettings =
             newMutableFlagWithSafeDefault(ANDROID_APPEARANCE_SETTINGS, false);
     public static final MutableFlagWithSafeDefault sAndroidBookmarkBar =

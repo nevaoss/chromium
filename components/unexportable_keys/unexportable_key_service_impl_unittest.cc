@@ -322,6 +322,28 @@ TEST_F(UnexportableKeyServiceImplTest,
 
 #if BUILDFLAG(IS_MAC)
 TEST_F(UnexportableKeyServiceImplTest,
+       FromWrappedKeyReturnsTheSameIdWhenExistsWithTaggedConfig) {
+  ResetService(/*config=*/{.application_tag = "TagA"});
+
+  base::test::TestFuture<ServiceErrorOr<UnexportableKeyId>> generate_future;
+  service().GenerateSigningKeySlowlyAsync(kAcceptableAlgorithms, kTaskPriority,
+                                          generate_future.GetCallback());
+  RunBackgroundTasks();
+  ASSERT_OK_AND_ASSIGN(UnexportableKeyId key_id, generate_future.Get());
+
+  ASSERT_OK_AND_ASSIGN(std::vector<uint8_t> wrapped_key,
+                       service().GetWrappedKey(key_id));
+
+  base::test::TestFuture<ServiceErrorOr<UnexportableKeyId>> from_wrapped_future;
+  service().FromWrappedSigningKeySlowlyAsync(wrapped_key, kTaskPriority,
+                                             from_wrapped_future.GetCallback());
+  // `service()` should return the result immediately.
+  EXPECT_TRUE(from_wrapped_future.IsReady());
+  // Key IDs should be the same.
+  EXPECT_EQ(key_id, from_wrapped_future.Get());
+}
+
+TEST_F(UnexportableKeyServiceImplTest,
        FromWrappedSigningKeySelectsCorrectKeyWithTag) {
   // Re-initialize the service with a specific application tag.
   ResetService(/*config=*/{.application_tag = "TagA"});

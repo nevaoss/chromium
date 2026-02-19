@@ -172,9 +172,6 @@ extern const char kCacheIdentityListInChromeDescription[];
 extern const char kChromeNextIaName[];
 extern const char kChromeNextIaDescription[];
 
-extern const char kChromeStartupParametersAsyncName[];
-extern const char kChromeStartupParametersAsyncDescription[];
-
 extern const char kCloseOtherTabsName[];
 extern const char kCloseOtherTabsDescription[];
 
@@ -186,6 +183,9 @@ extern const char kComposeboxAIMDisabledDescription[];
 
 extern const char kComposeboxAIMNudgeName[];
 extern const char kComposeboxAIMNudgeDescription[];
+
+extern const char kComposeboxAdditionalAdvancedToolsName[];
+extern const char kComposeboxAdditionalAdvancedToolsDescription[];
 
 extern const char kComposeboxAttachmentsTypedStateName[];
 extern const char kComposeboxAttachmentsTypedStateDescription[];
@@ -239,9 +239,6 @@ extern const char kContentNotificationProvisionalIgnoreConditionsDescription[];
 
 extern const char kContentPushNotificationsName[];
 extern const char kContentPushNotificationsDescription[];
-
-extern const char kContextualPanelName[];
-extern const char kContextualPanelDescription[];
 
 extern const char kCredentialProviderExtensionPromoName[];
 extern const char kCredentialProviderExtensionPromoDescription[];
@@ -984,9 +981,6 @@ extern const char kWebPageTextZoomIPadDescription[];
 
 extern const char kWelcomeBackName[];
 extern const char kWelcomeBackDescription[];
-
-extern const char kYoutubeIncognitoName[];
-extern const char kYoutubeIncognitoDescription[];
 
 extern const char kZeroStateSuggestionsName[];
 extern const char kZeroStateSuggestionsDescription[];

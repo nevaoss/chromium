@@ -27,10 +27,17 @@ namespace unexportable_keys {
 
 namespace {
 
+// Returns the application tag from the config on Mac if the provider supports
+// stateful unexportable keys. Otherwise, returns an empty string.
 std::string_view GetApplicationTag(
     const crypto::UnexportableKeyProvider::Config& config) {
 #if BUILDFLAG(IS_MAC)
-  return config.application_tag;
+  if (UnexportableKeyServiceImpl::IsStatefulUnexportableKeyProviderSupported(
+          config)) {
+    return config.application_tag;
+  }
+
+  return "";
 #else
   return "";
 #endif  // BUILDFLAG(IS_MAC)

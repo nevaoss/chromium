@@ -5,6 +5,7 @@
 import("//build/config/gclient_args.gni")
 import("//build/config/ozone.gni")
 import("//chrome/common/features.gni")
+import("//components/guest_view/buildflags/buildflags.gni")
 import("//mojo/public/tools/bindings/mojom.gni")
 
 assert(enable_glic || enable_glic_android)
@@ -68,7 +69,6 @@ source_set("glic") {
       "browser_ui/scoped_glic_button_indicator.h",
       "fre/glic_fre_ui.h",
       "host/context/glic_focused_tab_manager.h",
-      "public/glic_keyed_service.h",
       "widget/glic_window_controller.h",
     ]
 
@@ -356,7 +356,6 @@ source_set("impl") {
       "//chrome/browser/lens/region_search",
       "//chrome/browser/themes",
       "//chrome/browser/ui/views/tabs/glic",
-      "//components/guest_view/browser",
       "//components/password_manager/core/browser/actor_login:common",
       "//extensions/browser",
     ]
@@ -376,6 +375,10 @@ source_set("impl") {
     ]
   } else {  # is_android
     deps += [ ":actor_types_for_migration" ]
+  }
+
+  if (enable_guest_view) {
+    deps += [ "//components/guest_view/browser" ]
   }
 
   if (is_mac) {
@@ -426,6 +429,7 @@ source_set("unit_tests") {
   if (!is_android) {
     sources += [
       "glic_metrics_unittest.cc",
+      "host/context/glic_delegating_sharing_manager_unittest.cc",
       "host/context/glic_pin_candidate_comparator_unittest.cc",
       "host/context/glic_screenshot_capturer_unittest.cc",
       "host/context/glic_tab_data_unittest.cc",

@@ -2794,7 +2794,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.InputStream.TotalRead.SizeKB" units="KB"
-    expires_after="2026-03-01">
+    expires_after="2026-06-01">
   <owner>peconn@chromium.org</owner>
   <owner>webview-team@google.com</owner>
   <summary>
@@ -5167,7 +5167,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.RequestDesktopSite.SubDomainSettingChanged"
-    enum="Boolean" expires_after="2026-03-02">
+    enum="Boolean" expires_after="2026-07-05">
   <owner>shuyng@google.com</owner>
   <owner>twellington@chromium.org</owner>
   <summary>
@@ -5200,7 +5200,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Android.RequestDesktopSite.UserSwitchToDesktop.DomainSettingAdded"
-    enum="Boolean" expires_after="2026-03-02">
+    enum="Boolean" expires_after="2026-07-05">
   <owner>shuyng@google.com</owner>
   <owner>twellington@chromium.org</owner>
   <summary>
@@ -5213,7 +5213,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Android.RequestDesktopSite.UserSwitchToDesktop.SubDomainSettingAdded"
-    enum="Boolean" expires_after="2026-03-02">
+    enum="Boolean" expires_after="2026-07-05">
   <owner>shuyng@google.com</owner>
   <owner>twellington@chromium.org</owner>
   <summary>
@@ -7565,7 +7565,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.WebView.LoadUrl.FailureScheme" enum="WebViewUrlScheme"
-    expires_after="2026-03-01">
+    expires_after="2026-06-01">
   <owner>peconn@chromium.org</owner>
   <owner>src/android_webview/OWNERS</owner>
   <summary>
@@ -7600,7 +7600,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.WebView.LoadUrl.Success" enum="BooleanSuccess"
-    expires_after="2026-03-01">
+    expires_after="2026-06-01">
   <owner>peconn@chromium.org</owner>
   <owner>src/android_webview/OWNERS</owner>
   <summary>
@@ -8235,30 +8235,6 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Android.WebView.RendererKeepAlive.Event"
-    enum="WebViewRendererKeepAliveEvent" expires_after="2027-01-11">
-  <owner>ziadyoussef@chromium.org</owner>
-  <owner>src/android_webview/OWNERS</owner>
-  <summary>
-    Records the fate of a renderer process that was kept alive pending reuse.
-    Recorded when a renderer enters the pending reuse state, when it is reused
-    by a new WebView, or when the keep-alive timer expires. This metric is only
-    recorded if the WebViewRendererKeepAlive feature is enabled.
-  </summary>
-</histogram>
-
-<histogram name="Android.WebView.RendererKeepAlive.TimeToReuse" units="ms"
-    expires_after="2027-01-11">
-  <owner>ziadyoussef@chromium.org</owner>
-  <owner>src/android_webview/OWNERS</owner>
-  <summary>
-    Records the time elapsed from when a renderer process entered the pending
-    reuse state until it was reused by a new WebView. Only recorded if the
-    process was reused before the keep-alive timer expired. This metric is only
-    recorded if the WebViewRendererKeepAlive feature is enabled.
-  </summary>
-</histogram>
-
 <histogram name="Android.WebView.RendererLibraryPrefetchMode"
     enum="RendererLibraryPrefetchMode" expires_after="2026-03-01">
   <owner>ashleynewson@chromium.org</owner>
@@ -8503,7 +8479,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.WebView.ShouldInterceptRequest.DidOverride"
-    enum="WebViewShouldInterceptRequestOverridden" expires_after="2026-03-01">
+    enum="WebViewShouldInterceptRequestOverridden" expires_after="2026-06-01">
   <owner>peconn@chromium.org</owner>
   <owner>src/android_webview/OWNERS</owner>
   <summary>
@@ -8563,7 +8539,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.WebView.ShouldInterceptRequest.IsRequestSkipped"
-    enum="Boolean" expires_after="2026-03-01">
+    enum="Boolean" expires_after="2026-06-01">
   <owner>peconn@chromium.org</owner>
   <owner>src/android_webview/OWNERS</owner>
   <summary>
@@ -9034,6 +9010,24 @@ chromium-metrics-reviews@google.com.
     Recorded once during WebView process global startup.
 
     Only recorded on Android WebView.
+  </summary>
+</histogram>
+
+<histogram name="Android.WebView.Startup.LockRetryResult"
+    enum="LockRetryResult" expires_after="2026-06-01">
+  <owner>torne@chromium.org</owner>
+  <owner>src/android_webview/OWNERS</owner>
+  <summary>
+    Recorded after successfully acquiring the WebView data dir lock based on the
+    number of retry attempts and whether we saw an OverlappingFileLockException.
+
+    This is not recorded when we run out of retries and fail to acquire the lock
+    because this case throws an exception - we don't complete startup and so
+    would never actually store and upload the metric value.
+
+    This does not record the exact number of retries, just a few buckets - we're
+    primarily interested in whether OverlappingFileLockException is involved and
+    whether retrying provides any value at all.
   </summary>
 </histogram>
 

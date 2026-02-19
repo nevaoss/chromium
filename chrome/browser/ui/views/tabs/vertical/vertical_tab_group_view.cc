@@ -181,9 +181,18 @@ void VerticalTabGroupView::ToggleCollapsedState(
 
 views::Widget* VerticalTabGroupView::ShowGroupEditorBubble(
     bool stop_context_menu_propagation) {
+  auto* controller =
+      collection_node_ ? collection_node_->GetController() : nullptr;
+  bool is_tab_strip_collapsed = controller && controller->IsCollapsed();
+  // When the tab strip is collapsed, anchor to the group header, otherwise
+  // anchor to the editor bubble button.
+  views::View* anchor_view =
+      is_tab_strip_collapsed
+          ? static_cast<views::View*>(group_header_)
+          : static_cast<views::View*>(group_header_->editor_bubble_button());
   return collection_node_->GetController()->ShowGroupEditorBubble(
-      GetTabGroupFromNode(collection_node_)->id(),
-      group_header_->editor_bubble_button(), stop_context_menu_propagation);
+      GetTabGroupFromNode(collection_node_)->id(), anchor_view,
+      stop_context_menu_propagation);
 }
 
 bool VerticalTabGroupView::IsViewDragging(const views::View& child_view) const {
@@ -225,6 +234,10 @@ void VerticalTabGroupView::OnDataChanged() {
 
 void VerticalTabGroupView::UpdateChildVisibilityForCollapseState(
     bool collapsed) {
+  // Collection node may not exist at this point during browser shutdown.
+  if (!collection_node_) {
+    return;
+  }
   group_line_->SetVisible(!collapsed);
   for (auto* child : collection_node_->GetDirectChildren()) {
     child->SetVisible(!collapsed);

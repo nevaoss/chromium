@@ -107,7 +107,6 @@ class AutofillSuggestionDelegate;
 enum class AutofillTriggerSource;
 class IdentityCredentialDelegate;
 class EntityDataManager;
-class FastCheckoutClient;
 class FieldClassificationModelHandler;
 enum class FillingProduct;
 class FormDataImporter;
@@ -461,9 +460,6 @@ class AutofillClient {
   // Returns the profile type of the session.
   virtual profile_metrics::BrowserProfileType GetProfileType() const;
 
-  // Gets a FastCheckoutClient instance (can be null for unsupported platforms).
-  virtual FastCheckoutClient* GetFastCheckoutClient();
-
   // Causes the Autofill settings UI to be shown.
   virtual void ShowAutofillSettings(SuggestionType suggestion_type) = 0;
 
@@ -641,6 +637,11 @@ class AutofillClient {
   // platform is not supported.
   virtual std::unique_ptr<device_reauth::DeviceAuthenticator>
   GetDeviceAuthenticator();
+
+  // Same as `GetDeviceAuthenticator()` but also logs authentication results to
+  // `histogram`.
+  virtual std::unique_ptr<device_reauth::DeviceAuthenticator>
+  GetDeviceAuthenticator(std::string histogram);
 
   // Attaches the IPH for `feature` to the `field`, on
   // platforms that it. If another IPH has been shown for the tab, the IPH is

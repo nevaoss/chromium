@@ -4,6 +4,7 @@
 
 #include "chrome/browser/ui/views/tabs/vertical/vertical_tab_view.h"
 
+#include <optional>
 #include <string>
 
 #include "base/functional/callback_helpers.h"
@@ -214,6 +215,17 @@ void VerticalTabView::UpdateHovered(bool hovered) {
   UpdateCloseButtonVisibility();
 }
 
+std::optional<SkColor> VerticalTabView::GetBackgroundColor() {
+  if (active_ || IsHoverAnimationActive() ||
+      GetThemeProvider()->GetDisplayProperty(
+          ThemeProperties::SHOULD_FILL_BACKGROUND_TAB_COLOR)) {
+    return tab_style_->GetCurrentTabBackgroundColor(
+        GetSelectionState(), IsHoverAnimationActive(), GetHoverAnimationValue(),
+        IsFrameActive(), GetColorProvider());
+  }
+  return std::nullopt;
+}
+
 bool VerticalTabView::OnKeyPressed(const ui::KeyEvent& event) {
   if (event.key_code() == ui::VKEY_RETURN && selected_) {
     collection_node_->GetController()->SelectTab(GetTabInterface(),
@@ -317,18 +329,13 @@ bool VerticalTabView::OnMouseDragged(const ui::MouseEvent& event) {
 }
 
 void VerticalTabView::OnPaint(gfx::Canvas* canvas) {
-  // TODO(crbug.com/465540287): Handle the theme's custom images for the toolbar
-  // area/frame background. Also consider using views::Background to draw the
-  // background if that is compatible with how we handle custom images, so that
-  // we no longer have to override OnPaint.
-  if (active_ || IsHoverAnimationActive() ||
-      GetThemeProvider()->GetDisplayProperty(
-          ThemeProperties::SHOULD_FILL_BACKGROUND_TAB_COLOR)) {
+  std::optional<SkColor> background_color = GetBackgroundColor();
+  // Split pinned tabs have a merged background that is rendered in
+  // `VerticalSplitTabView`.
+  if (background_color.has_value() && !(pinned_ && split_)) {
     cc::PaintFlags flags;
     flags.setAntiAlias(true);
-    flags.setColor(tab_style_->GetCurrentTabBackgroundColor(
-        GetSelectionState(), IsHoverAnimationActive(), GetHoverAnimationValue(),
-        IsFrameActive(), GetColorProvider()));
+    flags.setColor(background_color.value());
     canvas->DrawRect(GetContentsBounds(), flags);
   }
 
@@ -354,6 +361,8 @@ void VerticalTabView::RemovedFromWidget() {
 }
 
 void VerticalTabView::OnBoundsChanged(const gfx::Rect& previous_bounds) {
+  collapsed_ = width() < VerticalTabStripRegionView::kCollapsedWidth;
+
   SetClipPath(GetPath());
 }
 
@@ -400,8 +409,7 @@ views::ProposedLayout VerticalTabView::CalculateProposedLayout(
   gfx::Rect bounds_remaining = gfx::Rect(0, 0, width, height);
   bounds_remaining.Inset(gfx::Insets::VH(0, kHorizontalInset));
 
-  const bool is_centered =
-      width < VerticalTabStripRegionView::kCollapsedWidth || pinned_;
+  const bool is_centered = collapsed_ || pinned_;
 
   int placed_children = 0;
   for (const auto& child : tab_children_configs_) {
@@ -555,7 +563,7 @@ void VerticalTabView::UpdateAlertIndicatorVisibility() {
 }
 
 void VerticalTabView::UpdateCloseButtonVisibility() {
-  close_button_->SetVisible((active_ || hovered_) && !pinned_);
+  close_button_->SetVisible((active_ || (!collapsed_ && hovered_)) && !pinned_);
 }
 
 void VerticalTabView::UpdateColors() {

@@ -48,15 +48,16 @@ BASE_DECLARE_FEATURE(kAppSpecificNotifications);
 // primitives.
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kDisableBoostPriority);
-enum class DisableBoostPriorityMode {
-  // In renderer processes: wait until after the first load completes before
-  // disabling the boost. In all other processes, disable boost at startup.
-  kAfterLoading,
-  // Priority boosting is disabled for all processes at startup.
-  kAtStartup,
+enum class DisableBoostPriorityExemption {
+  // Priority boosting is disabled for all processes except Browser and Network.
+  kBrowserNetwork,
+  // Priority boosting is disabled for all processes except GPU, Browser, and
+  // Network.
+  kGpuBrowserNetwork,
 };
 COMPONENT_EXPORT(CHROME_FEATURES)
-BASE_DECLARE_FEATURE_PARAM(DisableBoostPriorityMode, kDisableBoostPriorityMode);
+BASE_DECLARE_FEATURE_PARAM(DisableBoostPriorityExemption,
+                           kDisableBoostPriorityExemption);
 #endif  // BUILDFLAG(IS_WIN)
 
 #if BUILDFLAG(IS_MAC)
@@ -222,7 +223,7 @@ BASE_DECLARE_FEATURE(kGlicActorUiTabIndicatorSpinnerIgnoreReducedMotion);
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kActorUiThemed);
 COMPONENT_EXPORT(CHROME_FEATURES)
-BASE_DECLARE_FEATURE(kGlicHandoffButtonHiddenClientControl);
+BASE_DECLARE_FEATURE(kGlicActorPostTaskUiUpdateEnabled);
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kGlicHandoffButtonShowInImmersiveMode);
 COMPONENT_EXPORT(CHROME_FEATURES)
@@ -1377,6 +1378,8 @@ extern const base::FeatureParam<int> kWebUIReloadButtonMaxCrashRecoveryTimes;
 COMPONENT_EXPORT(CHROME_FEATURES)
 extern const base::FeatureParam<base::TimeDelta>
     kWebUIReloadButtonCrashRecoverResetInterval;
+COMPONENT_EXPORT(CHROME_FEATURES)
+extern const base::FeatureParam<bool> kWebUIReloadButtonRestartUnresponsive;
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 COMPONENT_EXPORT(CHROME_FEATURES)

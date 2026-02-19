@@ -42,7 +42,7 @@ void MaybeSet(UkmEvent& event,
 bool ShouldRecordUkm() {
   // We only need to generate this random number once while the current process
   // is running.
-  static const int random_value_per_session = base::RandInt(0, 99);
+  static const int random_value_per_session = base::RandIntInclusive(0, 99);
 
   const int kSamplingRate =
       base::FeatureList::IsEnabled(
@@ -916,8 +916,7 @@ void FormInteractionsUkmLogger::LogKeyMetrics(
     bool edited_autofilled_field,
     bool suggestion_filled,
     const FormInteractionCounts& form_interaction_counts,
-    const FormInteractionsFlowId& flow_id,
-    std::optional<int64_t> fast_checkout_run_id) {
+    const FormInteractionsFlowId& flow_id) {
   if (!CanLog(ukm_source_id)) {
     return;
   }
@@ -930,9 +929,6 @@ void FormInteractionsUkmLogger::LogKeyMetrics(
       .SetFormElementUserModifications(
           form_interaction_counts.form_element_user_modifications)
       .SetFlowId(flow_id.value());
-  if (fast_checkout_run_id) {
-    builder.SetFastCheckoutRunId(fast_checkout_run_id.value());
-  }
   if (suggestions_shown) {
     builder.SetFillingAcceptance(suggestion_filled);
   }

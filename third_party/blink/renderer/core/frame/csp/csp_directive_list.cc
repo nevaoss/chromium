@@ -48,7 +48,7 @@ using network::mojom::ContentSecurityPolicyType;
 namespace {
 
 String GetRawDirectiveForMessage(
-    const HashMap<CSPDirectiveName, String> raw_directives,
+    const HashMap<CSPDirectiveName, String>& raw_directives,
     CSPDirectiveName directive_name) {
   return StrCat({ContentSecurityPolicy::GetDirectiveName(directive_name), " ",
                  raw_directives.at(directive_name)});
@@ -961,7 +961,8 @@ bool CSPDirectiveListShouldDisableWasmEval(
               "following Content Security policy directive because ",
               infix,
               " an allowed source of script in the following Content Security "
-              "Policy directive: "});
+              "Policy directive: \"",
+              raw_directive, "\"."});
   return true;
 }
 

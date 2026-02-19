@@ -173,6 +173,13 @@ ContextualTasksUiService::ContextualTasksUiService(
 
 ContextualTasksUiService::~ContextualTasksUiService() = default;
 
+void ContextualTasksUiService::Shutdown() {
+  weak_ptr_factory_.InvalidateWeakPtrs();
+  access_token_fetcher_.reset();
+  token_refresh_timer_.Stop();
+  identity_manager_ = nullptr;
+}
+
 void ContextualTasksUiService::OnNavigationToAiPageIntercepted(
     const GURL& url,
     base::WeakPtr<tabs::TabInterface> source_tab,
@@ -390,12 +397,14 @@ void ContextualTasksUiService::OnThreadLinkClicked(
   const int current_index = tab_strip_model->GetIndexOfTab(tab.get());
 
   // Open the linked page in a tab directly after this one.
-  tab_strip_model->InsertWebContentsAt(
-      current_index + 1, std::move(new_contents), AddTabTypes::ADD_ACTIVE,
-      tab->GetGroup());
-
-  CHECK(new_contents_ptr == tab_strip_model->GetActiveWebContents());
+  // To prevent side panel to close and reopen again, add the new tab, associate
+  // with task and then activate it.
+  tab_strip_model->InsertWebContentsAt(current_index + 1,
+                                       std::move(new_contents),
+                                       AddTabTypes::ADD_NONE, tab->GetGroup());
   AssociateWebContentsToTask(new_contents_ptr, task_id);
+  tab_strip_model->ActivateTabAt(current_index + 1);
+  CHECK(new_contents_ptr == tab_strip_model->GetActiveWebContents());
 
   // Do not open side panel if kOpenSidePanelOnLinkClicked is not set.
   if (!kOpenSidePanelOnLinkClicked.Get()) {

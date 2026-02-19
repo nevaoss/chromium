@@ -48,6 +48,7 @@ import org.chromium.chrome.browser.toolbar.extensions.ExtensionActionButtonPrope
 import org.chromium.chrome.browser.ui.browser_window.ChromeAndroidTask;
 import org.chromium.chrome.browser.ui.extensions.ExtensionActionContextMenuBridge;
 import org.chromium.chrome.browser.ui.extensions.ExtensionActionContextMenuBridgeJni;
+import org.chromium.chrome.browser.ui.extensions.ExtensionsToolbarBridge;
 import org.chromium.chrome.browser.ui.extensions.FakeExtensionActionsBridge;
 import org.chromium.chrome.browser.ui.extensions.FakeExtensionActionsBridgeRule;
 import org.chromium.content_public.browser.WebContents;
@@ -79,7 +80,9 @@ public class ExtensionActionListMediatorTest {
     @Mock private WindowAndroid mWindowAndroid;
     @Mock private WebContents mWebContents;
     @Mock private ExtensionActionContextMenuBridge.Native mActionContextMenuBridgeJniMock;
+    @Mock private ExtensionsToolbarBridge mExtensionsToolbarBridge;
     @Mock private MenuModelBridge mMenuModelBridge;
+    @Mock private ExtensionActionListContainer mContainer;
 
     @Captor private ArgumentCaptor<ListMenuHost.PopupMenuShownListener> mPopupListenerCaptor;
 
@@ -100,7 +103,6 @@ public class ExtensionActionListMediatorTest {
 
         // Mock AndroidChromeTask.
         when(mTask.getOrCreateNativeBrowserWindowPtr()).thenReturn(BROWSER_WINDOW_POINTER);
-        when(mTask.getProfile()).thenReturn(mProfile);
 
         // Mock {@link ExtensionActionsBridge}.
         ExtensionActionContextMenuBridgeJni.setInstanceForTesting(mActionContextMenuBridgeJniMock);
@@ -121,7 +123,13 @@ public class ExtensionActionListMediatorTest {
         mModels = new ModelList();
         mMediator =
                 new ExtensionActionListMediator(
-                        context, mWindowAndroid, mModels, mTask, mCurrentTabSupplier);
+                        context,
+                        mWindowAndroid,
+                        mModels,
+                        mTask,
+                        mCurrentTabSupplier,
+                        mContainer,
+                        mExtensionsToolbarBridge);
 
         // Wait for the main thread to settle.
         shadowOf(Looper.getMainLooper()).idle();

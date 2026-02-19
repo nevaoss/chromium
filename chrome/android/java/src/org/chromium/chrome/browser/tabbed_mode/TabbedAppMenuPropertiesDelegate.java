@@ -23,7 +23,7 @@ import androidx.core.graphics.drawable.DrawableCompat;
 
 import org.chromium.base.CallbackController;
 import org.chromium.base.DeviceInfo;
-import org.chromium.base.supplier.MonotonicObservableSupplier;
+import org.chromium.base.supplier.NullableObservableSupplier;
 import org.chromium.base.supplier.OneshotSupplier;
 import org.chromium.build.annotations.Contract;
 import org.chromium.build.annotations.NullMarked;
@@ -146,7 +146,7 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
             View decorView,
             AppMenuDelegate appMenuDelegate,
             OneshotSupplier<LayoutStateProvider> layoutStateProvider,
-            MonotonicObservableSupplier<BookmarkModel> bookmarkModelSupplier,
+            NullableObservableSupplier<BookmarkModel> bookmarkModelSupplier,
             WebFeedSnackbarController.FeedLauncher feedLauncher,
             ModalDialogManager modalDialogManager,
             SnackbarManager snackbarManager,
@@ -424,6 +424,12 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
         if (shouldShowContentFilterHelpCenterMenuItem(currentTab)) {
             maybeAddDividerLine(modelList, R.id.menu_item_content_filter_divider_line_id);
             modelList.add(buildContentFilterHelpCenterMenuItem(currentTab));
+        }
+
+        // Default browser promo menu item (entry point).
+        if (shouldShowDefaultBrowserPromo()) {
+            maybeAddDividerLine(modelList, R.id.divider_line_id);
+            modelList.add(buildDefaultBrowserPromoItem());
         }
     }
 
@@ -1084,6 +1090,21 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
                             shouldShowIconBeforeItem() ? R.drawable.summarize_auto : 0));
         }
         return null;
+    }
+
+    private boolean shouldShowDefaultBrowserPromo() {
+        return ChromeFeatureList.sDefaultBrowserPromoEntryPoint.isEnabled()
+                && ChromeFeatureList.sDefaultBrowserPromoEntryPointShowAppMenu.getValue();
+    }
+
+    private MVCListAdapter.ListItem buildDefaultBrowserPromoItem() {
+        assert shouldShowDefaultBrowserPromo();
+        return new MVCListAdapter.ListItem(
+                AppMenuHandler.AppMenuItemType.STANDARD,
+                buildModelForStandardMenuItem(
+                        R.id.default_browser_promo_menu_id,
+                        R.string.make_chrome_default,
+                        shouldShowIconBeforeItem() ? R.drawable.ic_chrome : 0));
     }
 
     /**

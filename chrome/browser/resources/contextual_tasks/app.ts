@@ -11,12 +11,10 @@ import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {CrLitElement} from 'chrome://resources/lit/v3_0/lit.rollup.js';
 import type {PropertyValues} from 'chrome://resources/lit/v3_0/lit.rollup.js';
 import type {Uuid} from 'chrome://resources/mojo/mojo/public/mojom/base/uuid.mojom-webui.js';
-import type {Url} from 'chrome://resources/mojo/url/mojom/url.mojom-webui.js';
 
 import {getCss} from './app.css.js';
 import {getHtml} from './app.html.js';
 import type {ContextualTasksComposeboxElement} from './composebox.js';
-import type {Tab} from './contextual_tasks.mojom-webui.js';
 import type {BrowserProxy} from './contextual_tasks_browser_proxy.js';
 import {BrowserProxyImpl} from './contextual_tasks_browser_proxy.js';
 import {PostMessageHandler} from './post_message_handler.js';
@@ -108,7 +106,6 @@ export class ContextualTasksAppElement extends CrLitElement {
         reflect: true,
       },
       threadTitle_: {type: String},
-      contextTabs_: {type: Array},
       darkMode_: {
         type: Boolean,
         reflect: true,
@@ -136,7 +133,6 @@ export class ContextualTasksAppElement extends CrLitElement {
   protected accessor darkMode_: boolean = loadTimeData.getBoolean('darkMode');
   private pendingUrl_: string = '';
   protected accessor threadTitle_: string = '';
-  protected accessor contextTabs_: Tab[] = [];
   protected accessor isInBasicMode_: boolean = false;
   protected accessor isErrorPageVisible_: boolean = false;
   protected accessor isZeroState_: boolean = false;
@@ -164,7 +160,7 @@ export class ContextualTasksAppElement extends CrLitElement {
     chrome.metricsPrivate.recordBoolean(
         'ContextualTasks.WebUI.UserAction.OpenNewThread', true);
     const {url} = await this.browserProxy_.handler.getThreadUrl();
-    this.$.threadFrame.src = url.url;
+    this.$.threadFrame.src = url;
     this.$.composebox.startExpandAnimation();
     this.$.composebox.clearInputAndFocus();
   }
@@ -192,9 +188,6 @@ export class ContextualTasksAppElement extends CrLitElement {
           this.postMessageToWebview.bind(this)),
       callbackRouter.onHandshakeComplete.addListener(
           this.onHandshakeComplete.bind(this)),
-      callbackRouter.onContextUpdated.addListener((tabs: Tab[]) => {
-        this.contextTabs_ = tabs;
-      }),
 
       // TODO(crbug.com/474359572): Rename this to be more descriptive of what
       // it actually does.
@@ -237,12 +230,12 @@ export class ContextualTasksAppElement extends CrLitElement {
           await this.browserProxy_.handler.getUrlForTask({value: taskUuid});
       this.browserProxy_.handler.setTaskId({value: taskUuid});
 
-      const aiPageParams = new URLSearchParams(new URL(url.url).search);
+      const aiPageParams = new URLSearchParams(new URL(url).search);
       this.browserProxy_.handler.setThreadTitle(aiPageParams.get('q') || '');
-      threadUrl = url.url;
+      threadUrl = url;
     } else {
       const {url} = await this.browserProxy_.handler.getThreadUrl();
-      threadUrl = url.url;
+      threadUrl = url;
       this.$.composebox.clearInputAndFocus();
     }
 
@@ -259,8 +252,8 @@ export class ContextualTasksAppElement extends CrLitElement {
     }
 
     // Check if the initial render should be zero state.
-    const {isZeroState} = await this.browserProxy_.handler.isZeroState(
-        {url: threadUrlAsUrl.href} as Url);
+    const {isZeroState} =
+        await this.browserProxy_.handler.isZeroState(threadUrlAsUrl.href);
     this.isZeroState_ = isZeroState;
 
     // The thread URL is considered pending (not loaded immediately in the

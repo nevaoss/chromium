@@ -163,7 +163,6 @@
 #include "chrome/browser/android/preferences/autofill/settings_navigation_helper.h"
 #include "chrome/browser/android/tab_android.h"
 #include "chrome/browser/autofill/android/android_sms_otp_backend_factory.h"
-#include "chrome/browser/fast_checkout/fast_checkout_client_impl.h"
 #include "chrome/browser/flags/android/chrome_feature_list.h"
 #include "chrome/browser/signin/android/signin_bridge.h"
 #include "chrome/browser/ui/android/autofill/autofill_ai_save_update_entity_flow_manager.h"
@@ -667,6 +666,10 @@ ChromeAutofillClient::GetPaymentsAutofillClient() {
 }
 
 strike_database::StrikeDatabase* ChromeAutofillClient::GetStrikeDatabase() {
+  if (!web_contents()) {
+    return nullptr;
+  }
+
   Profile* profile =
       Profile::FromBrowserContext(web_contents()->GetBrowserContext());
   // No need to return a StrikeDatabase in incognito mode. It is primarily
@@ -748,14 +751,6 @@ profile_metrics::BrowserProfileType ChromeAutofillClient::GetProfileType()
   // |kRegular| when it does not exist.
   return profile ? profile_metrics::GetBrowserProfileType(profile)
                  : profile_metrics::BrowserProfileType::kRegular;
-}
-
-FastCheckoutClient* ChromeAutofillClient::GetFastCheckoutClient() {
-#if BUILDFLAG(IS_ANDROID)
-  return fast_checkout_client_.get();
-#else
-  return nullptr;
-#endif
 }
 
 void ChromeAutofillClient::ShowAutofillSettings(
@@ -1162,11 +1157,11 @@ ChromeAutofillClient::GetCurrentFormInteractionsFlowId() {
 }
 
 std::unique_ptr<device_reauth::DeviceAuthenticator>
-ChromeAutofillClient::GetDeviceAuthenticator() {
+ChromeAutofillClient::GetDeviceAuthenticator(std::string histogram) {
 #if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || \
     BUILDFLAG(IS_CHROMEOS)
   device_reauth::DeviceAuthParams params(
-      base::Seconds(60), device_reauth::DeviceAuthSource::kAutofill);
+      base::Seconds(60), device_reauth::DeviceAuthSource::kAutofill, std::move(histogram));
 
   return ChromeDeviceAuthenticatorFactory::GetForProfile(
       Profile::FromBrowserContext(web_contents()->GetBrowserContext()),
@@ -1254,7 +1249,6 @@ ChromeAutofillClient::ChromeAutofillClient(content::WebContents* web_contents)
   save_update_address_profile_flow_manager_ =
       std::make_unique<SaveUpdateAddressProfileFlowManager>(
           this, GetAutofillMessageController());
-  fast_checkout_client_ = std::make_unique<FastCheckoutClientImpl>(this);
 #else
   // TODO(crbug.com/469428128) Enable on android once crrev.com/c/7298488 lands.
   if (actor::ActorKeyedService* actor_service =

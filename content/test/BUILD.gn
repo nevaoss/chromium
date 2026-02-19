@@ -9,6 +9,7 @@ import("//build/config/compiler/compiler.gni")
 import("//build/config/features.gni")
 import("//build/config/ui.gni")
 import("//build/nocompile.gni")
+import("//components/guest_view/buildflags/buildflags.gni")
 import("//components/viz/common/debugger/viz_debugger.gni")
 import("//content/common/features.gni")
 import("//content/public/common/features.gni")
@@ -1619,6 +1620,7 @@ test("content_browsertests") {
     "../browser/keyboard_lock_browsertest.h",
     "../browser/largest_contentful_paint_browsertests.cc",
     "../browser/loader/background_resource_fetch_browsertests.cc",
+    "../browser/loader/connection_allowlist_browsertest.cc",
     "../browser/loader/cors_file_origin_browsertest.cc",
     "../browser/loader/cors_origin_pattern_setter_browsertest.cc",
     "../browser/loader/cors_preflight_cache_browsertest.cc",
@@ -2879,6 +2881,7 @@ test("content_unittests") {
     "../browser/renderer_host/input/stylus_text_selector_unittest.cc",
     "../browser/renderer_host/input/touch_emulator_impl_unittest.cc",
     "../browser/renderer_host/input/web_input_event_util_unittest.cc",
+    "../browser/renderer_host/isolated_web_app_permissions_policy_unittest.cc",
     "../browser/renderer_host/isolated_web_app_throttle_unittest.cc",
     "../browser/renderer_host/media/audio_input_device_manager_unittest.cc",
     "../browser/renderer_host/media/audio_input_stream_handle_unittest.cc",
@@ -2969,6 +2972,7 @@ test("content_unittests") {
     "../browser/service_worker/service_worker_registry_unittest.cc",
     "../browser/service_worker/service_worker_script_loader_factory_unittest.cc",
     "../browser/service_worker/service_worker_single_script_update_checker_unittest.cc",
+    "../browser/service_worker/service_worker_synthetic_response_data_pipe_connector_unittest.cc",
     "../browser/service_worker/service_worker_updated_script_loader_unittest.cc",
     "../browser/service_worker/service_worker_version_unittest.cc",
     "../browser/shareable_file_reference_unittest.cc",
@@ -3216,7 +3220,6 @@ test("content_unittests") {
       "../browser/renderer_host/renderer_sandboxed_process_launcher_delegate_unittest.cc",
       "../browser/service_host/utility_sandbox_delegate_unittest.cc",
       "../browser/speech/tts_win_utils_unittest.cc",
-      "../renderer/media/win/overlay_state_observer_impl_unittest.cc",
     ]
   }
 

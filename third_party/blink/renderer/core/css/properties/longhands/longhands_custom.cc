@@ -1427,13 +1427,6 @@ const CSSValue* BorderBottomRightRadius::CSSValueFromComputedStyleInternal(
       style.BorderBottomRightRadius(), style);
 }
 
-const CSSValue* BorderBottomStyle::ParseSingleValue(
-    CSSParserTokenStream& stream,
-    const CSSParserContext& context,
-    CSSParserLocalContext&) const {
-  return css_parsing_utils::ParseBorderStyleSide(stream, context);
-}
-
 const CSSValue* BorderBottomStyle::CSSValueFromComputedStyleInternal(
     const ComputedStyle& style,
     const LayoutObject*,
@@ -1728,13 +1721,6 @@ bool BorderLeftColor::IsAffectedByCurrentColor(
          style.BorderLeftColor().DependsOnCurrentColor();
 }
 
-const CSSValue* BorderLeftStyle::ParseSingleValue(
-    CSSParserTokenStream& stream,
-    const CSSParserContext& context,
-    CSSParserLocalContext&) const {
-  return css_parsing_utils::ParseBorderStyleSide(stream, context);
-}
-
 const CSSValue* BorderLeftStyle::CSSValueFromComputedStyleInternal(
     const ComputedStyle& style,
     const LayoutObject*,
@@ -1833,13 +1819,6 @@ bool BorderRightColor::IsAffectedByCurrentColor(
     const ComputedStyle& style) const {
   return style.BorderRightWidth() &&
          style.BorderRightColor().DependsOnCurrentColor();
-}
-
-const CSSValue* BorderRightStyle::ParseSingleValue(
-    CSSParserTokenStream& stream,
-    const CSSParserContext& context,
-    CSSParserLocalContext&) const {
-  return css_parsing_utils::ParseBorderStyleSide(stream, context);
 }
 
 const CSSValue* BorderRightStyle::CSSValueFromComputedStyleInternal(
@@ -1990,13 +1969,6 @@ const CSSValue* BorderTopRightRadius::CSSValueFromComputedStyleInternal(
     CSSValuePhase value_phase) const {
   return ComputedStyleUtils::ValueForBorderRadiusCorner(
       style.BorderTopRightRadius(), style);
-}
-
-const CSSValue* BorderTopStyle::ParseSingleValue(
-    CSSParserTokenStream& stream,
-    const CSSParserContext& context,
-    CSSParserLocalContext&) const {
-  return css_parsing_utils::ParseBorderStyleSide(stream, context);
 }
 
 const CSSValue* BorderTopStyle::CSSValueFromComputedStyleInternal(
@@ -2989,14 +2961,6 @@ const CSSValue* RowRuleWidth::CSSValueFromComputedStyleInternal(
     CSSValuePhase value_phase) const {
   return ComputedStyleUtils::ValueForGapDecorationWidthDataList(
       style.RowRuleWidth(), style, value_phase);
-}
-
-const CSSValue* ColumnSpan::ParseSingleValue(
-    CSSParserTokenStream& stream,
-    const CSSParserContext& context,
-    CSSParserLocalContext& local_context) const {
-  return css_parsing_utils::ConsumeIdent<CSSValueID::kAll, CSSValueID::kNone>(
-      stream);
 }
 
 const CSSValue* ColumnSpan::CSSValueFromComputedStyleInternal(
@@ -9979,14 +9943,6 @@ const CSSValue* ContentVisibility::CSSValueFromComputedStyleInternal(
     bool allow_visited_style,
     CSSValuePhase value_phase) const {
   return CSSIdentifierValue::Create(style.ContentVisibility());
-}
-
-const CSSValue* ContentVisibility::ParseSingleValue(
-    CSSParserTokenStream& stream,
-    const CSSParserContext& context,
-    CSSParserLocalContext& local_context) const {
-  return css_parsing_utils::ConsumeIdent<
-      CSSValueID::kVisible, CSSValueID::kAuto, CSSValueID::kHidden>(stream);
 }
 
 const CSSValue* TabSize::ParseSingleValue(

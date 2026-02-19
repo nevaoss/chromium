@@ -4,8 +4,6 @@
 
 #include "gpu/ipc/common/capabilities_mojom_traits.h"
 
-#include "ui/gfx/buffer_types.h"
-
 namespace mojo {
 
 // static
@@ -36,15 +34,112 @@ bool StructTraits<gpu::mojom::CapabilitiesDataView, gpu::Capabilities>::Read(
   out->context_supports_distance_field_text =
       data.context_supports_distance_field_text();
   out->using_vulkan_context = data.using_vulkan_context();
-  out->gpu_memory_buffer_formats =
-      gfx::GpuMemoryBufferFormatSet::FromEnumBitmask(
-          data.gpu_memory_buffer_formats());
+  std::vector<viz::SharedImageFormat> mappable_formats;
+  if (!data.ReadMappableFormats(&mappable_formats)) {
+    return false;
+  }
+  out->mappable_formats =
+      base::MakeFlatSet<viz::SharedImageFormat>(mappable_formats);
 
   if (!data.ReadDrmFormatsAndModifiers(&out->drm_formats_and_modifiers)) {
     return false;
   }
   out->drm_device_id = data.drm_device_id();
 
+  return true;
+}
+
+// static
+bool StructTraits<gpu::mojom::ShaderPrecisionDataView,
+                  gpu::GLCapabilities::ShaderPrecision>::
+    Read(gpu::mojom::ShaderPrecisionDataView data,
+         gpu::GLCapabilities::ShaderPrecision* out) {
+  out->min_range = data.min_range();
+  out->max_range = data.max_range();
+  out->precision = data.precision();
+  return true;
+}
+
+// static
+bool StructTraits<gpu::mojom::PerStagePrecisionsDataView,
+                  gpu::GLCapabilities::PerStagePrecisions>::
+    Read(gpu::mojom::PerStagePrecisionsDataView data,
+         gpu::GLCapabilities::PerStagePrecisions* out) {
+  return data.ReadLowInt(&out->low_int) &&
+         data.ReadMediumInt(&out->medium_int) &&
+         data.ReadHighInt(&out->high_int) &&
+         data.ReadLowFloat(&out->low_float) &&
+         data.ReadMediumFloat(&out->medium_float) &&
+         data.ReadHighFloat(&out->high_float);
+}
+
+// static
+bool StructTraits<gpu::mojom::GLCapabilitiesDataView, gpu::GLCapabilities>::
+    Read(gpu::mojom::GLCapabilitiesDataView data, gpu::GLCapabilities* out) {
+  if (!data.ReadVertexShaderPrecisions(&out->vertex_shader_precisions) ||
+      !data.ReadFragmentShaderPrecisions(&out->fragment_shader_precisions)) {
+    return false;
+  }
+  out->major_version = data.major_version();
+  out->minor_version = data.minor_version();
+  out->max_combined_texture_image_units =
+      data.max_combined_texture_image_units();
+  out->max_cube_map_texture_size = data.max_cube_map_texture_size();
+  out->max_fragment_uniform_vectors = data.max_fragment_uniform_vectors();
+  out->max_renderbuffer_size = data.max_renderbuffer_size();
+  out->max_texture_image_units = data.max_texture_image_units();
+  out->max_varying_vectors = data.max_varying_vectors();
+  out->max_vertex_attribs = data.max_vertex_attribs();
+  out->max_vertex_texture_image_units = data.max_vertex_texture_image_units();
+  out->max_vertex_uniform_vectors = data.max_vertex_uniform_vectors();
+  out->max_viewport_width = data.max_viewport_width();
+  out->max_viewport_height = data.max_viewport_height();
+  out->num_compressed_texture_formats = data.num_compressed_texture_formats();
+  out->num_shader_binary_formats = data.num_shader_binary_formats();
+  out->max_3d_texture_size = data.max_3d_texture_size();
+  out->max_array_texture_layers = data.max_array_texture_layers();
+  out->max_color_attachments = data.max_color_attachments();
+  out->max_combined_fragment_uniform_components =
+      data.max_combined_fragment_uniform_components();
+  out->max_combined_uniform_blocks = data.max_combined_uniform_blocks();
+  out->max_combined_vertex_uniform_components =
+      data.max_combined_vertex_uniform_components();
+  out->max_draw_buffers = data.max_draw_buffers();
+  out->max_element_index = data.max_element_index();
+  out->max_elements_indices = data.max_elements_indices();
+  out->max_elements_vertices = data.max_elements_vertices();
+  out->max_fragment_input_components = data.max_fragment_input_components();
+  out->max_fragment_uniform_blocks = data.max_fragment_uniform_blocks();
+  out->max_fragment_uniform_components = data.max_fragment_uniform_components();
+  out->max_program_texel_offset = data.max_program_texel_offset();
+  out->max_samples = data.max_samples();
+  out->max_server_wait_timeout = data.max_server_wait_timeout();
+  out->max_texture_lod_bias = data.max_texture_lod_bias();
+  out->max_transform_feedback_interleaved_components =
+      data.max_transform_feedback_interleaved_components();
+  out->max_transform_feedback_separate_attribs =
+      data.max_transform_feedback_separate_attribs();
+  out->max_transform_feedback_separate_components =
+      data.max_transform_feedback_separate_components();
+  out->max_uniform_block_size = data.max_uniform_block_size();
+  out->max_uniform_buffer_bindings = data.max_uniform_buffer_bindings();
+  out->max_atomic_counter_buffer_bindings =
+      data.max_atomic_counter_buffer_bindings();
+  out->max_shader_storage_buffer_bindings =
+      data.max_shader_storage_buffer_bindings();
+  out->shader_storage_buffer_offset_alignment =
+      data.shader_storage_buffer_offset_alignment();
+  out->max_varying_components = data.max_varying_components();
+  out->max_vertex_output_components = data.max_vertex_output_components();
+  out->max_vertex_uniform_blocks = data.max_vertex_uniform_blocks();
+  out->max_vertex_uniform_components = data.max_vertex_uniform_components();
+  out->min_program_texel_offset = data.min_program_texel_offset();
+  out->num_program_binary_formats = data.num_program_binary_formats();
+  out->uniform_buffer_offset_alignment = data.uniform_buffer_offset_alignment();
+  out->occlusion_query_boolean = data.occlusion_query_boolean();
+  out->timer_queries = data.timer_queries();
+  out->max_texture_size = data.max_texture_size();
+  out->sync_query = data.sync_query();
   return true;
 }
 

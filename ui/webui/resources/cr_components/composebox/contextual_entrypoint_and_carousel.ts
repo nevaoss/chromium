@@ -4,6 +4,7 @@
 
 import './composebox_tool_chip.js';
 import './context_menu_entrypoint.js';
+import './contextual_entrypoint_button.js';
 import './composebox_lens_search.js';
 import './file_carousel.js';
 import './file_thumbnail.js';
@@ -27,6 +28,7 @@ import type {ComposeboxFile, ContextualUpload} from './common.js';
 import {recordContextAdditionMethod, TabUploadOrigin} from './common.js';
 import {FileUploadErrorType, FileUploadStatus} from './composebox_query.mojom-webui.js';
 import {type ContextMenuEntrypointElement, GlifAnimationState} from './context_menu_entrypoint.js';
+import type {ContextualEntrypointButtonElement} from './contextual_entrypoint_button.js';
 import {getCss} from './contextual_entrypoint_and_carousel.css.js';
 import {getHtml} from './contextual_entrypoint_and_carousel.html.js';
 import type {ComposeboxFileCarouselElement} from './file_carousel.js';
@@ -44,7 +46,8 @@ export interface ContextualEntrypointAndCarouselElement {
   $: {
     fileInput: HTMLInputElement,
     fileUploadButton: CrIconButtonElement,
-    contextEntrypoint: ContextMenuEntrypointElement,
+    contextEntrypoint: ContextMenuEntrypointElement|
+    ContextualEntrypointButtonElement,
     carousel: ComposeboxFileCarouselElement,
     imageInput: HTMLInputElement,
     imageUploadButton: CrIconButtonElement,
@@ -162,6 +165,8 @@ export class ContextualEntrypointAndCarouselElement extends I18nMixinLit
         type: Boolean,
         reflect: true,
       },
+      showCanvas: {type: Boolean},
+      showModelPicker: {type: Boolean},
     };
   }
 
@@ -176,6 +181,8 @@ export class ContextualEntrypointAndCarouselElement extends I18nMixinLit
   accessor contextMenuGlifAnimationState: GlifAnimationState =
       GlifAnimationState.INELIGIBLE;
   accessor inComposebox: boolean = false;
+  accessor showCanvas: boolean = false;
+  accessor showModelPicker: boolean = false;
   accessor isOmniboxInCompactMode_: boolean = false;
 
   protected accessor attachmentFileTypes_: string =

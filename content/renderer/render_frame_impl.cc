@@ -2721,8 +2721,17 @@ void RenderFrameImpl::CommitNavigation(
       .total_lifecycle_events_processing_time_on_commit =
       total_lifecycle_events_processing_time_on_commit;
 
-  if (frame_->IsOutermostMainFrame() && permissions_policy) {
-    navigation_params->permissions_policy_override = permissions_policy;
+  if (frame_->IsOutermostMainFrame() &&
+      commit_params->isolated_app_policy.has_value()) {
+    navigation_params->isolated_app_policy = base::ToVector(
+        commit_params->isolated_app_policy.value(), [](const auto& ptr) {
+          return blink::IsolatedAppPermissionPolicyEntry{
+              .feature = WebString::FromUTF8(ptr->feature),
+              .allowed_origins =
+                  base::ToVector(ptr->allowed_origins, [](const auto& origin) {
+                    return WebString::FromUTF8(origin);
+                  })};
+        });
   }
 
   if (IsForInitialWebUI() && base::FeatureList::IsEnabled(
@@ -5643,9 +5652,12 @@ void RenderFrameImpl::BeginNavigation(
   // BeforeUnload event destroyed this frame.
   base::WeakPtr<RenderFrameImpl> weak_self = weak_factory_.GetWeakPtr();
 
+  base::TimeTicks before_unload_dialog_opened_time;
+  base::TimeTicks before_unload_dialog_closed_time;
   base::TimeTicks renderer_before_unload_start = base::TimeTicks::Now();
-  if (!frame_->DispatchBeforeUnloadEvent(info->navigation_type ==
-                                         blink::kWebNavigationTypeReload) ||
+  if (!frame_->DispatchBeforeUnloadEvent(
+          info->navigation_type == blink::kWebNavigationTypeReload,
+          before_unload_dialog_opened_time, before_unload_dialog_closed_time) ||
       !weak_self) {
     return;
   }
@@ -5729,7 +5741,8 @@ void RenderFrameImpl::BeginNavigation(
   auto do_begin_navigation = base::BindOnce(
       &RenderFrameImpl::BeginNavigationInternal, base::Unretained(this),
       std::move(info), is_history_navigation_in_new_child_frame,
-      renderer_before_unload_start, renderer_before_unload_end);
+      renderer_before_unload_start, renderer_before_unload_end,
+      before_unload_dialog_opened_time, before_unload_dialog_closed_time);
   client_navigation_throttler_.DispatchOrScheduleNavigation(
       std::move(do_begin_navigation));
 }
@@ -6147,7 +6160,9 @@ void RenderFrameImpl::BeginNavigationInternal(
     std::unique_ptr<blink::WebNavigationInfo> info,
     bool is_history_navigation_in_new_child_frame,
     base::TimeTicks renderer_before_unload_start,
-    base::TimeTicks renderer_before_unload_end) {
+    base::TimeTicks renderer_before_unload_end,
+    base::TimeTicks before_unload_dialog_opened,
+    base::TimeTicks before_unload_dialog_closed) {
   // Provisional frames shouldn't initiate navigations.
   CHECK(!GetWebFrame()->IsProvisional());
 
@@ -6267,7 +6282,8 @@ void RenderFrameImpl::BeginNavigationInternal(
               ? info->url_request.TrustTokenParams()->Clone()
               : nullptr,
           info->impression, renderer_before_unload_start,
-          renderer_before_unload_end, initiator_activation_and_ad_status,
+          renderer_before_unload_end, before_unload_dialog_opened,
+          before_unload_dialog_closed, initiator_activation_and_ad_status,
           info->is_container_initiated, info->storage_access_api_status,
           info->has_rel_opener);
 

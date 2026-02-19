@@ -1626,6 +1626,9 @@ void RegisterLocalState(PrefRegistrySimple* registry) {
   registry->RegisterBooleanPref(prefs::kSilentPrintingEnabled, false);
 #endif  // !BUILDFLAG(IS_ANDROID)
 
+  registry->RegisterListPref(
+      prefs::kManagedLocalNetworkAccessIpAddressSpaceOverrides);
+
   // This is intentionally last.
   RegisterLocalStatePrefsForMigration(registry);
 }
@@ -2336,12 +2339,6 @@ void MigrateObsoleteProfilePrefs(PrefService* profile_prefs,
 #if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CHROMEOS)
   MigrateDefaultBrowserLastDeclinedPref(profile_prefs);
 #endif
-
-#if !BUILDFLAG(IS_ANDROID)
-  // Added 01/2025.
-  password_manager::features_util::MigrateDefaultProfileStorePref(
-      profile_prefs);
-#endif  // !BUILDFLAG(IS_ANDROID)
 
   // Added 01/2025.
   profile_prefs->ClearPref(kCompactModeEnabled);

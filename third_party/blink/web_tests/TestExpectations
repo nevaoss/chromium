@@ -856,6 +856,8 @@ crbug.com/464896028 [ Win ] external/wpt/secure-payment-confirmation/authenticat
 # crbug.com/465137981 [ Linux ] external/wpt/secure-payment-confirmation/authentication-rejected.https.html [ Timeout ]
 # crbug.com/465137981 [ Linux ] external/wpt/secure-payment-confirmation/enrollment-bbk.https.html [ Failure ]
 
+crbug.com/477314267 [ Win ] external/wpt/secure-payment-confirmation/authentication-accepted.https.html [ Failure Pass ]
+
 # Feature Policy changes same-origin allowpaymentrequest behaviour, tests need updating
 crbug.com/718155 payments/payment-request-in-iframe.html [ Failure ]
 crbug.com/718155 payments/payment-request-in-iframe-nested-not-allowed.html [ Failure ]
@@ -866,6 +868,10 @@ crbug.com/338124116 external/wpt/payment-request/payment-request-hasenrolledinst
 crbug.com/1080870 http/tests/payments/payment-request-app-store-billing-mandatory-total.html [ Failure ]
 
 ### ====== Payments related tests end =======
+
+### ====== HTML-in-Canvas
+crbug.com/477575513 wpt_internal/html/canvas/drawElementImage/css-backdrop-filter-and-mask.html [ Failure ]
+crbug.com/477575513 wpt_internal/html/canvas/drawElementImage/nested-webgl-canvas.html [ Failure ]
 
 # WPT speculative-parsing tests failing
 crbug.com/1144176 external/wpt/html/syntax/speculative-parsing/generated/document-write/link-rel-alternate-stylesheet.tentative.sub.html [ Crash Failure ]
@@ -1607,8 +1613,6 @@ crbug.com/350730710 inspector-protocol/css/css-get-position-try.js [ Failure Ski
 
 # Will be re-enabled and rebaselined once we remove the '--enable-file-cookies' flag.
 crbug.com/470482 fast/cookies/local-file-can-set-cookies.html [ Crash Failure Pass Timeout ]
-
-crbug.com/411164 [ Win ] http/tests/security/powerfulFeatureRestrictions/serviceworker-on-insecure-origin.html [ Pass ]
 
 crbug.com/404887281 [ Mac ] css3/viewport-percentage-lengths/viewport-percentage-vertical-align.html [ Failure ]
 
@@ -2967,6 +2971,14 @@ crbug.com/440811029 [ Win ] external/wpt/bluetooth/bidi/server/getPrimaryService
 crbug.com/475042067 external/wpt/webrtc-encoded-transform/idlharness.https.window.html?include=(SFrameDecrypterStream|SFrameEncrypterStream|SFrameSenderTransform|SFrameReceiverTransform|SFrameTransform.\*) [ Failure ]
 
 # ====== New tests from wpt-importer added here ======
+crbug.com/477334584 external/wpt/webdriver/tests/classic/external/global_privacy_control/get.py [ Failure ]
+crbug.com/477334584 external/wpt/webdriver/tests/classic/external/global_privacy_control/set.py [ Failure ]
+crbug.com/477312398 external/wpt/css/css-text/text-autospace/text-autospace-preformatted-001.html [ Failure ]
+crbug.com/477312424 external/wpt/webdriver/tests/bidi/external/emulation/set_client_hints_override/client_hints.py [ Failure ]
+crbug.com/477312424 external/wpt/webdriver/tests/bidi/external/emulation/set_client_hints_override/contexts.py [ Failure ]
+crbug.com/477312424 external/wpt/webdriver/tests/bidi/external/emulation/set_client_hints_override/global.py [ Failure ]
+crbug.com/477312424 external/wpt/webdriver/tests/bidi/external/emulation/set_client_hints_override/invalid.py [ Failure ]
+crbug.com/477312424 external/wpt/webdriver/tests/bidi/external/emulation/set_client_hints_override/user_contexts.py [ Failure ]
 crbug.com/476224460 [ Android ] external/wpt/webdriver/tests/classic/get_element_text/get.py [ Timeout ]
 crbug.com/475335843 [ Win ] external/wpt/html/semantics/the-button-element/command-and-commandfor/on-dialog-invalid-behavior.html [ Pass Timeout ]
 crbug.com/474480404 [ Win ] external/wpt/bluetooth/bidi/characteristic/getDescriptors/gen-descriptor-get-same-object.https.window.html [ Failure Pass Timeout ]
@@ -4353,7 +4365,6 @@ crbug.com/626703 external/wpt/mathml/presentation-markup/scripts/stretchy-mover-
 crbug.com/626703 external/wpt/mathml/presentation-markup/scripts/stretchy-mover-3.html [ Failure ]
 crbug.com/626703 external/wpt/mathml/presentation-markup/scripts/stretchy-munderover-1e.html [ Failure ]
 crbug.com/626703 external/wpt/mathml/presentation-markup/scripts/stretchy-munderover-2g.html [ Failure ]
-crbug.com/626703 [ Linux ] external/wpt/mathml/relations/css-styling/mozilla-393760-2.xml [ Failure ]
 crbug.com/626703 external/wpt/mathml/relations/css-styling/table-width-3.html [ Failure ]
 crbug.com/626703 external/wpt/preload/preload-nonce.sub.html [ Timeout ]
 crbug.com/626703 [ Mac13 ] virtual/fenced-frame-mparch/external/wpt/fenced-frame/default-enabled-features-attribute-disallow.https.html [ Timeout ]
@@ -9798,10 +9809,6 @@ crbug.com/474155097 [ Linux ] virtual/xslt-disabled/external/wpt/xml/xslt/large-
 crbug.com/475047610 [ Debug Linux ] external/wpt/webdriver/tests/bidi/input/perform_actions/pointer_mouse.py [ Failure ]
 crbug.com/475126745 [ Debug Linux ] external/wpt/mathml/presentation-markup/scripts/underover-stretchy-003.html [ Failure ]
 crbug.com/465849685 [ Debug Linux ] media/media-playback-while-not-visible-permission-policy-cant-play-if-hidden.html [ Failure Pass ]
-
-crbug.com/407750386 http/tests/devtools/elements/edit/edit-after-model-changed.js [ Failure Pass ]
-crbug.com/407750386 http/tests/devtools/elements/styles-2/metrics-box-sizing.js [ Failure Pass ]
-crbug.com/407750386 http/tests/devtools/elements/styles-4/style-update-during-selector-edit.js [ Failure Pass ]
 
 # Gardener 2026-01-13
 crbug.com/475366073 [ Win11-arm64 ] virtual/xslt-enabled/http/tests/xsl/xslt/xslt-transform-with-javascript-disabled-quirk.html [ Failure ]

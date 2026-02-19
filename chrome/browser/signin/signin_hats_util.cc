@@ -7,7 +7,6 @@
 #include <optional>
 #include <string>
 
-#include "base/containers/flat_map.h"
 #include "base/containers/map_util.h"
 #include "base/feature_list.h"
 #include "base/no_destructor.h"
@@ -31,6 +30,7 @@
 #include "components/signin/public/base/signin_metrics.h"
 #include "components/signin/public/base/signin_switches.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
+#include "third_party/abseil-cpp/absl/container/flat_hash_map.h"
 
 #if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/profiles/profile_window.h"
@@ -49,16 +49,14 @@ constexpr char kDismissedSigninBubbleType[] =
 constexpr char kIdentityState[] = "Sign-in Status";
 
 // Launches a HaTS survey for the profile associated with `browser`.
-void LaunchSigninHatsSurveyForBrowser(const std::string& trigger,
-                                      Browser* browser) {
+void LaunchHatsSurveyForBrowser(const std::string& trigger, Browser* browser) {
   if (!browser) {
     return;
   }
-  signin::LaunchSigninHatsSurveyForProfile(trigger, browser->GetProfile());
+  signin::LaunchHatsSurveyForProfile(trigger, browser->GetProfile());
 }
 
-std::string GetDismissedSigninBubbleType(
-    signin_metrics::AccessPoint access_point) {
+std::string GetDismissedBubbleType(signin_metrics::AccessPoint access_point) {
   switch (access_point) {
     case signin_metrics::AccessPoint::kAddressBubble:
       return "Address Bubble";
@@ -73,11 +71,10 @@ std::string GetDismissedSigninBubbleType(
   }
 }
 
-SurveyStringData GetSigninSurveyStringData(
-    const std::string& trigger,
-    Profile* profile,
-    std::optional<signin_metrics::AccessPoint>
-        access_point_for_data_type_promo) {
+SurveyStringData GetSurveyStringData(const std::string& trigger,
+                                     Profile* profile,
+                                     std::optional<signin_metrics::AccessPoint>
+                                         access_point_for_data_type_promo) {
   SurveyStringData data;
   data.emplace(
       kChannel,
@@ -89,7 +86,7 @@ SurveyStringData GetSigninSurveyStringData(
     CHECK(access_point_for_data_type_promo.has_value());
     data.emplace(
         kDismissedSigninBubbleType,
-        GetDismissedSigninBubbleType(access_point_for_data_type_promo.value()));
+        GetDismissedBubbleType(access_point_for_data_type_promo.value()));
   }
 
   // For bucketing, report "5+" if the number of profiles is larger than 5.
@@ -116,16 +113,9 @@ SurveyStringData GetSigninSurveyStringData(
   return data;
 }
 
-#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
-
-}  // namespace
-
-namespace signin {
-
-bool IsFeatureEnabledForSigninHatsTrigger(const std::string& trigger) {
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+bool IsFeatureEnabledForHatsTrigger(const std::string& trigger) {
   static const base::NoDestructor<
-      base::flat_map<std::string_view, const base::Feature*>>
+      absl::flat_hash_map<std::string_view, const base::Feature*>>
       kChromeIdentityHatsTriggerFeatureMap({
           {kHatsSurveyTriggerIdentityAddressBubbleSignin,
            &switches::kChromeIdentitySurveyAddressBubbleSignin},
@@ -156,20 +146,23 @@ bool IsFeatureEnabledForSigninHatsTrigger(const std::string& trigger) {
           base::FindPtrOrNull(*kChromeIdentityHatsTriggerFeatureMap, trigger)) {
     return base::FeatureList::IsEnabled(*feature);
   }
-#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
-
-  // No matching feature for the given trigger, or the current platform does not
-  // support signin surveys.
+  // No matching feature for the given trigger.
   return false;
 }
 
-void LaunchSigninHatsSurveyForProfile(const std::string& trigger,
-                                      Profile* profile,
-                                      bool defer_if_no_browser,
-                                      std::optional<signin_metrics::AccessPoint>
-                                          access_point_for_data_type_promo) {
+#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+
+}  // namespace
+
+namespace signin {
+
+void LaunchHatsSurveyForProfile(const std::string& trigger,
+                                Profile* profile,
+                                bool defer_if_no_browser,
+                                std::optional<signin_metrics::AccessPoint>
+                                    access_point_for_data_type_promo) {
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
-  if (!profile || !IsFeatureEnabledForSigninHatsTrigger(trigger)) {
+  if (!profile || !IsFeatureEnabledForHatsTrigger(trigger)) {
     return;
   }
 
@@ -182,7 +175,7 @@ void LaunchSigninHatsSurveyForProfile(const std::string& trigger,
       // TODO(crbug.com/427971911): Fix test crashes due to the dangling
       // pointer.
       new profiles::BrowserAddedForProfileObserver(
-          profile, base::BindOnce(&LaunchSigninHatsSurveyForBrowser, trigger));
+          profile, base::BindOnce(&LaunchHatsSurveyForBrowser, trigger));
     }
     return;
   }
@@ -199,8 +192,7 @@ void LaunchSigninHatsSurveyForProfile(const std::string& trigger,
       switches::kChromeIdentitySurveyLaunchWithDelayDuration.Get()
           .InMilliseconds(),
       /*product_specific_bits_data=*/{},
-      GetSigninSurveyStringData(trigger, profile,
-                                access_point_for_data_type_promo));
+      GetSurveyStringData(trigger, profile, access_point_for_data_type_promo));
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 }
 

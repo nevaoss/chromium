@@ -16,13 +16,13 @@
 #import "ios/chrome/browser/shared/public/features/features.h"
 #import "ios/chrome/browser/shared/ui/elements/extended_touch_target_button.h"
 #import "ios/chrome/browser/shared/ui/symbols/symbols.h"
+#import "ios/chrome/browser/shared/ui/util/color_palette/tab_group_color_palette.h"
 #import "ios/chrome/browser/shared/ui/util/uikit_ui_util.h"
 #import "ios/chrome/browser/tab_switcher/ui_bundled/tab_grid/grid/grid_constants.h"
 #import "ios/chrome/browser/tab_switcher/ui_bundled/tab_grid/grid/group_grid_cell_dot_view.h"
 #import "ios/chrome/browser/tab_switcher/ui_bundled/tab_grid/tab_groups/group_tab_view.h"
 #import "ios/chrome/browser/tab_switcher/ui_bundled/tab_grid/tab_groups/tab_group_snapshots_view.h"
 #import "ios/chrome/browser/tab_switcher/ui_bundled/tab_snapshot_and_favicon.h"
-#import "ios/chrome/browser/tab_switcher/util/tab_group_color_palette.h"
 #import "ios/chrome/common/ui/colors/semantic_color_names.h"
 #import "ios/chrome/common/ui/util/constraints_ui_util.h"
 #import "ios/chrome/grit/ios_strings.h"
@@ -337,10 +337,7 @@ const CGFloat kTopBarLargeInset = 20;
 }
 
 - (void)setGroupColor:(UIColor*)groupColor {
-  // The group has the wrong theme when created, this ensures the groupColor is
-  // retrieved using the current theme.
-  _groupColor =
-      [groupColor resolvedColorWithTraitCollection:self.traitCollection];
+  _groupColor = groupColor;
 
   if (!IsTabGroupColorOnSurfaceEnabled()) {
     // Apply the default coloring to each surfaces.

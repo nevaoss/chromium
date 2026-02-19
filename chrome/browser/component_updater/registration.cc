@@ -16,6 +16,7 @@
 #include "chrome/browser/buildflags.h"
 #include "chrome/browser/component_updater/afp_blocked_domain_list_component_remover.h"
 #include "chrome/browser/component_updater/app_provisioning_component_installer.h"
+#include "chrome/browser/component_updater/captcha_provider_component_installer.h"
 #include "chrome/browser/component_updater/chrome_origin_trials_component_installer.h"
 #include "chrome/browser/component_updater/commerce_heuristics_component_installer.h"
 #include "chrome/browser/component_updater/cookie_readiness_list_component_remover.h"
@@ -32,7 +33,6 @@
 #include "chrome/browser/component_updater/probabilistic_reveal_token_component_remover.h"
 #include "chrome/browser/component_updater/ssl_error_assistant_component_installer.h"
 #include "chrome/browser/component_updater/subresource_filter_component_installer.h"
-#include "chrome/browser/component_updater/tpcd_metadata_component_installer.h"
 #include "chrome/browser/component_updater/trust_token_key_commitments_component_installer.h"
 #include "chrome/browser/history_embeddings/history_embeddings_utils.h"
 #include "chrome/common/buildflags.h"
@@ -225,8 +225,6 @@ void RegisterComponentsForUpdate() {
 
   RegisterCommerceHeuristicsComponent(cus);
 
-  RegisterTpcdMetadataComponent(cus);
-
   RegisterPlusAddressBlocklistComponent(cus);
 
 #if BUILDFLAG(ENABLE_ON_DEVICE_TRANSLATION)
@@ -239,21 +237,16 @@ void RegisterComponentsForUpdate() {
 #endif  // BUILDFLAG(ENABLE_ON_DEVICE_TRANSLATION)
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
-    BUILDFLAG(IS_CHROMEOS)
+    BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID)
   RegisterAmountExtractionHeuristicRegexesComponent(cus);
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) ||
-        // BUILDFLAG(IS_CHROMEOS)
-
-#if BUILDFLAG(IS_ANDROID)
-  if (base::FeatureList::IsEnabled(
-          autofill::features::kAutofillEnableAmountExtractionTesting)) {
-    RegisterAmountExtractionHeuristicRegexesComponent(cus);
-  }
-#endif  // BUIDLFLAG(IS_ANDROID)
+        // BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
   RegisterWasmTtsEngineComponent(cus, g_browser_process->local_state());
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+
+  RegisterCaptchaProviderComponent(cus);
 }
 
 }  // namespace component_updater

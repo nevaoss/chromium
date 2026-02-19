@@ -10,6 +10,7 @@
 #include "base/command_line.h"
 #include "base/files/file_path.h"
 #include "base/files/scoped_temp_dir.h"
+#include "base/functional/callback_helpers.h"
 #include "base/memory/raw_ptr.h"
 #include "base/run_loop.h"
 #include "base/strings/utf_string_conversions.h"
@@ -76,6 +77,14 @@ GenerateMockRelatedSearchExtractorResults(
   }
 
   return results;
+}
+
+// Generates a unique id for tab's WebContents that's sufficient for test
+// purposes.
+// TODO(crbug.com/440643544): Update if/when a usable tab ID is implemented in
+// production for all platforms.
+std::optional<int64_t> MakeTabId(content::WebContents* web_contents) {
+  return reinterpret_cast<int64_t>(web_contents);
 }
 
 }  // namespace
@@ -210,7 +219,10 @@ class PageContentAnnotationsWebContentsObserverTest
         history::TestHistoryDatabaseParamsForPath(temp_dir_.GetPath())));
 
     PageContentAnnotationsWebContentsObserver::CreateForWebContents(
-        web_contents());
+        web_contents(),
+        // Passing DoNothing() since fetching the page context is not required
+        // in the tests below.
+        base::DoNothing(), base::BindRepeating(&MakeTabId));
   }
 
   void TearDown() override {

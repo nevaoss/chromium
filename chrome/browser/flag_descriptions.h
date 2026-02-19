@@ -569,12 +569,6 @@ inline constexpr char kDisplayEdgeToEdgeFullscreenDescription[] =
     "Enable Display Edge to Edge Fullscreen when Chrome on Android is running "
     "in a windowing mode.";
 
-inline constexpr char kClearInstanceInfoWhenClosedIntentionallyName[] =
-    "Clear Instance Info When Closed Intentionally";
-inline constexpr char kClearInstanceInfoWhenClosedIntentionallyDescription[] =
-    "When enabled, permanently cleanup and remove the browser instance when a "
-    "window is explicitly closed by the user (eg: via the Close button).";
-
 inline constexpr char kEnableBenchmarkingName[] = "Enable benchmarking";
 inline constexpr char kEnableBenchmarkingDescription[] =
     "Sets all features to a fixed state; that is, disables randomization for "
@@ -3847,6 +3841,11 @@ inline constexpr char kDynamicSearchUpdateAnimationDescription[] =
     "animations are preempted. Shortened animation durations configurable "
     "(unit: milliseconds).";
 
+inline constexpr char kSaasUsageReportingName[] = "Saas Usage Reporting";
+inline constexpr char kSaasUsageReportingDescription[] =
+    "Enable reporting of SaaS usage. This feature only takes effect if a "
+    "related enterprise policy is also configured by an administrator.";
+
 inline constexpr char kSecurePaymentConfirmationBrowserBoundKeysName[] =
     "Secure Payment Confirmation Browser Bound Key";
 inline constexpr char kSecurePaymentConfirmationBrowserBoundKeysDescription[] =
@@ -4561,6 +4560,10 @@ inline constexpr char kEnableVulkanName[] = "Vulkan";
 inline constexpr char kEnableVulkanDescription[] =
     "Use vulkan as the graphics backend.";
 
+inline constexpr char kWebGpuInteropName[] = "Force enable WebGPU interop";
+inline constexpr char kkWebGpuInteropDescription[] =
+    "Force enable the WebGPU on vulan via GL compositing interop.";
+
 inline constexpr char kDefaultAngleVulkanName[] = "Default ANGLE Vulkan";
 inline constexpr char kDefaultAngleVulkanDescription[] =
     "Use the Vulkan backend for ANGLE by default.";
@@ -4726,6 +4729,12 @@ inline constexpr char
         "When enabled, registering and un-registering the broadcast "
         "receiver will be on the background thread.";
 
+inline constexpr char kAccessibilityHandleOccludingViewsName[] =
+    "Handle occluding views";
+inline constexpr char kAccessibilityHandleOccludingViewsDescription[] =
+    "When enabled, handle occluding views belonging to overlayed "
+    "browser's UI.";
+
 inline constexpr char kAccessibilityPopulateSupplementalDescriptionApiName[] =
     "Accessibility populate supplemental description";
 inline constexpr char
@@ -4763,6 +4772,11 @@ inline constexpr char kAdaptiveButtonInTopToolbarPageSummaryName[] =
 inline constexpr char kAdaptiveButtonInTopToolbarPageSummaryDescription[] =
     "Enables a summary button in the top toolbar. Must be selected in "
     "Settings > Toolbar Shortcut.";
+
+inline constexpr char kAlwaysDrawCompositedToolbarHairlineName[] =
+    "Always Draw Composited Toolbar Hairline";
+inline constexpr char kAlwaysDrawCompositedToolbarHairlineDescription[] =
+    "If enabled, the toolbar hairline's composited layer will remain visible.";
 
 inline constexpr char kAndroidAnimatedProgressBarInBrowserName[] =
     "Animate composited progress bar with browser frames.";
@@ -6806,11 +6820,6 @@ inline constexpr char kCrostiniContainerlessName[] =
 inline constexpr char kCrostiniContainerlessDescription[] =
     "Experimental support for Crostini without LXD containers (aka Baguette)";
 
-inline constexpr char kCrostiniMultiContainerName[] =
-    "Allow multiple Crostini containers";
-inline constexpr char kCrostiniMultiContainerDescription[] =
-    "Experimental UI for creating and managing multiple Crostini containers";
-
 inline constexpr char kCrostiniQtImeSupportName[] =
     "Crostini IME support for Qt applications";
 inline constexpr char kCrostiniQtImeSupportDescription[] =
@@ -7435,10 +7444,6 @@ inline constexpr char kMahiSummarizeSelectedName[] =
     "Mahi summarize selected text";
 inline constexpr char kMahiSummarizeSelectedDescription[] =
     "Enable Mahi to summarize the selected text";
-
-inline constexpr char kMediaAppPdfMahiName[] = "Mahi feature on Media App PDF";
-inline constexpr char kMediaAppPdfMahiDescription[] =
-    "Enable Mahi feature on PDF files in Gallery app.";
 
 inline constexpr char kMicrophoneMuteSwitchDeviceName[] =
     "Microphone Mute Switch Device";

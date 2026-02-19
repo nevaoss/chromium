@@ -3627,16 +3627,31 @@ DocumentParser* Document::CreateParser() {
                                                     parser_sync_policy_);
   }
 
+<<<<<<< HEAD
   // TODO(neva_rust): Remove this workaround once Neva supports Rust build.
 #if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
+=======
+  data_->using_rust_xml_parser_ = false;
+
+>>>>>>> 146.0.7649.0~1
   // Use the Rust XML parser for situations like XMLHttpRequests and
   // JS DOMParser, where no dom_window_ is available.
-  if (!GetFrame() && RuntimeEnabledFeatures::XMLRustForNonXsltEnabled()) {
-    return MakeGarbageCollected<XMLDocumentParserRs>(*this, View());
+  if (!GetFrame()) {
+    // Measure this for now only in non-frame = non-XSLT situations, so that
+    // when we compare the UMA metrics of Rust vs. non-Rust for
+    // XMLRustForNonXsltEnabled(), we're looking at roughly the same type and
+    // length of documents on average.
+    data_->xml_parser_start_time_ = base::TimeTicks::Now();
+
+    if (RuntimeEnabledFeatures::XMLRustForNonXsltEnabled()) {
+      data_->using_rust_xml_parser_ = true;
+      return MakeGarbageCollected<XMLDocumentParserRs>(*this, View());
+    }
   }
 
   // FIXME: this should probably pass the frame instead
   if (RuntimeEnabledFeatures::XMLParsingRustEnabled()) {
+    data_->using_rust_xml_parser_ = true;
     return MakeGarbageCollected<XMLDocumentParserRs>(*this, View());
   } else {
     return MakeGarbageCollected<XMLDocumentParser>(*this, View());
@@ -4500,9 +4515,12 @@ void RecordBeforeUnloadUse(Document::BeforeUnloadUse metric) {
 
 }  // namespace
 
-bool Document::DispatchBeforeUnloadEvent(ChromeClient* chrome_client,
-                                         bool is_reload,
-                                         bool& did_allow_navigation) {
+bool Document::DispatchBeforeUnloadEvent(
+    ChromeClient* chrome_client,
+    bool is_reload,
+    bool& did_allow_navigation,
+    base::TimeTicks& out_before_unload_dialog_opened_time,
+    base::TimeTicks& out_before_unload_dialog_closed_time) {
   TRACE_EVENT("blink", "Document::DispatchBeforeUnloadEvent",
               perfetto::Flow::FromPointer(this));
   if (!dom_window_)
@@ -4593,17 +4611,17 @@ bool Document::DispatchBeforeUnloadEvent(ChromeClient* chrome_client,
 
   String text = before_unload_event.returnValue();
   RecordBeforeUnloadUse(BeforeUnloadUse::kShowDialog);
-  const base::TimeTicks beforeunload_confirmpanel_start =
-      base::TimeTicks::Now();
+  out_before_unload_dialog_opened_time = base::TimeTicks::Now();
   did_allow_navigation =
       chrome_client->OpenBeforeUnloadConfirmPanel(text, GetFrame(), is_reload);
-  const base::TimeTicks beforeunload_confirmpanel_end = base::TimeTicks::Now();
+  out_before_unload_dialog_closed_time = base::TimeTicks::Now();
   if (did_allow_navigation) {
     // Only record when a navigation occurs, since we want to understand
     // the impact of the before unload dialog on overall input to navigation.
     DEPRECATED_UMA_HISTOGRAM_MEDIUM_TIMES(
         "DocumentEventTiming.BeforeUnloadDialogDuration.ByNavigation",
-        beforeunload_confirmpanel_end - beforeunload_confirmpanel_start);
+        out_before_unload_dialog_closed_time -
+            out_before_unload_dialog_opened_time);
     return true;
   }
 
@@ -8029,6 +8047,19 @@ void Document::FinishedParsing() {
 
   ScriptableDocumentParser* parser = GetScriptableDocumentParser();
   well_formed_ = parser && parser->WellFormed();
+
+  // XML parsing performance metrics.
+  if (data_->xml_parser_start_time_) {
+    base::TimeDelta parse_time =
+        base::TimeTicks::Now() - *data_->xml_parser_start_time_;
+    const char* histogram_name =
+        data_->using_rust_xml_parser_
+            ? "Blink.XMLParsing.NonXsltXmlParsingTime.Rust"
+            : "Blink.XMLParsing.NonXsltXmlParsingTime.Libxml2";
+    base::UmaHistogramCustomTimes(histogram_name, parse_time,
+                                  base::Milliseconds(1), base::Seconds(2), 100);
+    data_->xml_parser_start_time_.reset();
+  }
 
   if (LocalFrame* frame = GetFrame()) {
     // Guarantee at least one call to the client specifying a title. (If

@@ -3523,7 +3523,7 @@ public class StripLayoutHelper
         TabRemover tabRemover = mTabGroupModelFilter.getTabModel().getTabRemover();
         if (ChromeFeatureList.isEnabled(ChromeFeatureList.TAB_STRIP_CLOSE_REFACTOR_ANDROID)) {
             int nextIndex = getNextIndexAfterClose(Collections.singleton(tab));
-            paramsBuilder.recommendedNextTab(mModel.getTabAtChecked(nextIndex));
+            paramsBuilder.recommendedNextTab(mModel.getTabAt(nextIndex));
             tabRemover.closeTabs(paramsBuilder.build(), /* allowDialog= */ true, listener);
         } else {
             tabRemover.prepareCloseTabs(
@@ -4544,6 +4544,7 @@ public class StripLayoutHelper
     private void pushPropertiesToPlaceholder(StripLayoutTab placeholderTab, @Nullable Tab tab) {
         if (tab == null) return;
         placeholderTab.setTabId(tab.getId());
+        placeholderTab.setMediaState(tab.getMediaState());
         mTabDelegate.setIsTabPlaceholder(placeholderTab, false);
         setAccessibilityDescription(placeholderTab, tab);
     }

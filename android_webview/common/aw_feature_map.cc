@@ -39,12 +39,10 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &sensitive_content::features::kSensitiveContent,
     &features::kWebViewAddQuicHints,
     &features::kWebViewBackForwardCache,
-    &features::kWebViewBackgroundPerfettoInit,
     &features::kWebViewBypassProvisionalCookieManager,
     &features::kWebViewCacheBoundaryInterfaceMethods,
     &features::kWebViewCacheSizeLimitDerivedFromAppCacheQuota,
     &features::kWebViewConnectToComponentProviderInBackground,
-    &features::kWebViewDisablePerfettoInit,
     &features::kWebViewEarlyPerfettoInit,
     &features::kWebViewEarlyStartupTracing,
     &features::kWebViewEnableApiCallUserActions,
@@ -62,7 +60,6 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &features::kWebViewReduceUAAndroidVersionDeviceModel,
     &features::kWebViewReducedSeedExpiration,
     &features::kWebViewReducedSeedRequestPeriod,
-    &features::kWebViewRendererKeepAlive,
     &features::kWebViewSkipInterceptsForPrefetch,
     &features::kWebViewStartupTasksYieldToNative,
     &features::kWebViewStopBrowserStartupInIsMultiProcessEnabled,
@@ -84,8 +81,8 @@ base::android::FeatureMap* GetFeatureMap() {
   return kFeatureMap.get();
 }
 
-static jlong JNI_AwFeatureMap_GetNativeMap(JNIEnv* env) {
-  return reinterpret_cast<jlong>(GetFeatureMap());
+static int64_t JNI_AwFeatureMap_GetNativeMap(JNIEnv* env) {
+  return reinterpret_cast<int64_t>(GetFeatureMap());
 }
 
 }  // namespace android_webview

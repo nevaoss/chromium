@@ -14,10 +14,12 @@
 #include "build/branding_buildflags.h"
 #include "build/build_config.h"
 #include "chrome/browser/browser_process.h"
+#include "chrome/browser/local_network_access/ip_address_space_overrides_prefs_observer.h"
 #include "chrome/browser/media/audio_process_ml_model_forwarder.h"
 #include "chrome/browser/optimization_guide/model_execution/optimization_guide_global_state.h"
 #include "chrome/browser/permissions/system/platform_handle.h"
 #include "chrome/browser/safe_browsing/application_advanced_protection_status_detector.h"
+#include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/common/chrome_features.h"
 #include "components/application_locale_storage/application_locale_storage.h"
 #include "components/safe_browsing/core/common/features.h"
@@ -53,7 +55,6 @@
 
 #if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/startup/startup_launch_manager.h"
-#include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(ENABLE_DEVICE_BOUND_SESSIONS)
@@ -130,12 +131,14 @@ void GlobalFeatures::PostBrowserProcessInit() {
         g_browser_process->profile_manager());
   }
 #endif  // BUILDFLAG(ENABLE_DEVICE_BOUND_SESSIONS)
+
+  ip_address_space_overrides_prefs_observer_ = std::make_unique<
+      local_network_access::IPAddressSpaceOverridesPrefsObserver>(
+      g_browser_process->local_state());
 }
 
 void GlobalFeatures::PreBrowserProcessInitCore() {
-#if !BUILDFLAG(IS_ANDROID)
   global_browser_collection_ = std::make_unique<GlobalBrowserCollection>();
-#endif  // !BUILDFLAG(IS_ANDROID)
 }
 
 void GlobalFeatures::PostBrowserProcessInitCore() {
@@ -208,9 +211,7 @@ void GlobalFeatures::PostMainMessageLoopRun() {
 }
 
 void GlobalFeatures::PostDestroyThreads() {
-#if !BUILDFLAG(IS_ANDROID)
   global_browser_collection_.reset();
-#endif  // !BUILDFLAG(IS_ANDROID)
 }
 
 std::unique_ptr<system_permission_settings::PlatformHandle>

@@ -394,10 +394,6 @@ public final class ProductionSupportedFlagList {
                 AwFeatures.WEBVIEW_REDUCE_UA_ANDROID_VERSION_DEVICE_MODEL,
                 "Enables reduce webview user-agent android version and device model."),
         Flag.baseFeature(
-                AwFeatures.WEBVIEW_RENDERER_KEEP_ALIVE,
-                "Keeps the renderer process alive after the last WebView is destroyed to "
-                        + "allow for reuse."),
-        Flag.baseFeature(
                 BlinkFeatures.REDUCE_USER_AGENT_MINOR_VERSION,
                 "Enables reduce webview user-agent minor version."),
         Flag.baseFeature(
@@ -797,6 +793,9 @@ public final class ProductionSupportedFlagList {
                 "Enable conformance to the new HTML specification for CSS zoom."),
         Flag.baseFeature("UseContextSnapshot"),
         Flag.baseFeature(
+                "SpareRendererUseWarmupConnection",
+                "Allow spare renderer to use warmed up child process connection"),
+        Flag.baseFeature(
                 CcFeatures.WAIT_FOR_LATE_SCROLL_EVENTS,
                 "While scrolling, attempts to wait for late arriving input events before"
                         + " rendering."),
@@ -856,8 +855,6 @@ public final class ProductionSupportedFlagList {
                 "Ignore duplicate navigations, keeping the older navigations instead."),
         Flag.baseFeature("OverrideAPIKey"),
         Flag.baseFeature("CacheStylusSettings", "Cache stylus related settings."),
-        Flag.baseFeature(
-                "AsyncFastCheckout", "When enabled, run FastCheckoutTabHelper asynchronously."),
         Flag.baseFeature("Prerender2FallbackPrefetchSpecRules"),
         Flag.baseFeature(
                 "LCPTimingPredictorPrerender2",
@@ -1062,26 +1059,8 @@ public final class ProductionSupportedFlagList {
                     + " startups: After enabling this flag, applications must be started and then"
                     + " restarted for tracing to apply."),
         Flag.baseFeature(
-                AwFeatures.WEBVIEW_DISABLE_PERFETTO_INIT,
-                "Disables Perfetto initialization if enabled. "
-                        + "When enabled, the "
-                        + AwFeatures.WEBVIEW_EARLY_PERFETTO_INIT
-                        + " and "
-                        + AwFeatures.WEBVIEW_BACKGROUND_PERFETTO_INIT
-                        + " are both ignored. "
-                        + "After enabling this flag, applications must be started and then "
-                        + "restarted for tracing to apply."),
-        Flag.baseFeature(
                 AwFeatures.WEBVIEW_EARLY_PERFETTO_INIT,
                 "Initializes Perfetto as early as possible, right after native library load. "
-                        + "After enabling this flag, applications must be started and then "
-                        + "restarted for tracing to apply."),
-        Flag.baseFeature(
-                AwFeatures.WEBVIEW_BACKGROUND_PERFETTO_INIT,
-                "Initializes Perfetto on a background thread once native library has been loaded. "
-                        + "This flag is ignored if "
-                        + AwFeatures.WEBVIEW_EARLY_PERFETTO_INIT
-                        + " is enabled."
                         + "After enabling this flag, applications must be started and then "
                         + "restarted for tracing to apply."),
         Flag.baseFeature(
@@ -1196,6 +1175,9 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(
                 BlinkFeatures.TEXT_SCALE_META_TAG,
                 "When enabled, <meta name=\"text-scale\" content=\"scale\"> takes effect"),
+        Flag.baseFeature(
+                AwFeatures.WEBVIEW_CONTENT_RESTRICTION_SUPPORT,
+                "Enables content restriction support in WebView."),
         // Add new commandline switches and features above. The final entry should have a
         // trailing comma for cleaner diffs.
 
@@ -1231,5 +1213,9 @@ public final class ProductionSupportedFlagList {
                 "UseLockFreeX509Verification",
                 "Enables lock-free certificate verification codepath."),
         Flag.baseFeature(CcFeatures.REPORT_UKM, "Validate performance of UKM reporting."),
+        Flag.baseFeature(
+                AwFeatures.WEBVIEW_WEB_PERFORMANCE_METRICS_REPORTING,
+                "Enables Web Performance Metrics to be reported using"
+                        + " AwWebPerformanceMetricsObserver"),
     };
 }

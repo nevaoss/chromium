@@ -354,12 +354,12 @@ BASE_FEATURE(kVizDirectCompositorThreadIpcNonRoot,
 BASE_FEATURE(kVizDirectCompositorThreadIpcFrameSinkManager,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+// Switches the message pump to base::MessagePumpType::IO on the Viz thread.
+BASE_FEATURE(kVizWithIoMessagePump, base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Null Hypothesis test for viz. This will be used in an meta experiment to
 // judge finch variation.
 BASE_FEATURE(kVizNullHypothesis, base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Treat frame rates of 72hz as if they were 90Hz for buffer sizing purposes.
-BASE_FEATURE(kUse90HzSwapChainCountFor72fps, base::FEATURE_ENABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_CHROMEOS)
 // Allows the display to seamlessly adjust the refresh rate in order to match
@@ -406,6 +406,10 @@ bool IsVizDirectCompositorThreadIpcNonRootEnabled() {
 bool IsVizDirectCompositorThreadIpcFrameSinkManagerEnabled() {
   return base::FeatureList::IsEnabled(
       kVizDirectCompositorThreadIpcFrameSinkManager);
+}
+
+bool IsVizWithIoMessagePumpEnabled() {
+  return base::FeatureList::IsEnabled(kVizWithIoMessagePump);
 }
 
 bool IsUsingVizFrameSubmissionForWebView() {
@@ -460,10 +464,6 @@ bool ShouldOnBeginFrameThrottleVideo() {
 bool ShouldAckOnSurfaceActivationWhenInteractive() {
   return base::FeatureList::IsEnabled(
       features::kAckOnSurfaceActivationWhenInteractive);
-}
-
-bool Use90HzSwapChainCountFor72fps() {
-  return base::FeatureList::IsEnabled(kUse90HzSwapChainCountFor72fps);
 }
 
 std::optional<uint64_t>

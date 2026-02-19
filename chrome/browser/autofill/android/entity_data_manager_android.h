@@ -10,6 +10,7 @@
 #include "base/memory/raw_ref.h"
 #include "components/autofill/core/browser/data_manager/autofill_ai/entity_data_manager.h"
 #include "components/autofill/core/browser/data_model/autofill_ai/entity_instance.h"
+#include "third_party/jni_zero/jni_zero.h"
 
 namespace autofill {
 
@@ -29,6 +30,20 @@ class EntityDataManagerAndroid {
 
   // Removes the entity instance represented by `guid`.
   void RemoveEntityInstance(JNIEnv* env, const std::string& guid);
+
+  base::android::ScopedJavaLocalRef<jobject> GetEntityInstance(
+      const std::string& guid);
+
+  // Add or replace an `EntityInstance` depending on whether it already exists
+  // or not.
+  void AddOrUpdateEntityInstance(JNIEnv* env,
+                                 const jni_zero::JavaRef<jobject>& jEntity);
+
+  // Gets information about all entities to be displayed in the management
+  // service. For each entity, returns an instance of
+  // `EntityInstanceWithLabels.java`;
+  base::android::ScopedJavaLocalRef<jobjectArray> GetEntitiesWithLabels(
+      JNIEnv* env);
 
  private:
   ~EntityDataManagerAndroid();

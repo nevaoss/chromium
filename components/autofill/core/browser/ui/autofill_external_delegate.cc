@@ -367,9 +367,12 @@ void AutofillExternalDelegate::AttemptToDisplayAutofillSuggestions(
     OnAutofillAvailabilityEvent(
         mojom::AutofillSuggestionAvailability::kNoSuggestions);
     // No suggestions, any popup currently showing is obsolete.
-    manager_->client().HideAutofillSuggestions(
-        SuggestionHidingReason::kNoSuggestions);
-    return;
+    if (!base::FeatureList::IsEnabled(
+            features::kAutofillAndroidKeyboardAccessoryDynamicPositioning)) {
+      manager_->client().HideAutofillSuggestions(
+          SuggestionHidingReason::kNoSuggestions);
+      return;
+    }
   }
 
   if (!query_field_.is_focusable() || !manager_->driver().CanShowAutofillUi()) {
@@ -824,6 +827,7 @@ void AutofillExternalDelegate::DidAcceptSuggestion(
                   CHECK_DEREF(manager_->client().GetPrefs()))) {
             MaybeAuthenticateBeforeFilling(
                 l10n_util::GetStringUTF16(IDS_AUTOFILL_AI_FILLING_REAUTH),
+                "Autofill.Ai.ReauthToFill",
                 base::BindOnce(
                     [](base::WeakPtr<BrowserAutofillManager> manager,
                        mojom::ActionPersistence action_persistence,
@@ -1436,13 +1440,14 @@ void AutofillExternalDelegate::DidAcceptPaymentsSuggestion(
 
 void AutofillExternalDelegate::MaybeAuthenticateBeforeFilling(
     const std::u16string& reauth_message,
+    std::string histogram,
     base::OnceClosure callback) {
   if (authenticator_) {
     authenticator_->Cancel();
     authenticator_.reset();
   }
   std::unique_ptr<device_reauth::DeviceAuthenticator> authenticator =
-      manager_->client().GetDeviceAuthenticator();
+      manager_->client().GetDeviceAuthenticator(std::move(histogram));
 
   if (!authenticator ||
       !authenticator->CanAuthenticateWithBiometricOrScreenLock()) {
