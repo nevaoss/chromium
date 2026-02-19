@@ -3627,13 +3627,10 @@ DocumentParser* Document::CreateParser() {
                                                     parser_sync_policy_);
   }
 
-<<<<<<< HEAD
   // TODO(neva_rust): Remove this workaround once Neva supports Rust build.
 #if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-=======
   data_->using_rust_xml_parser_ = false;
 
->>>>>>> 146.0.7649.0~1
   // Use the Rust XML parser for situations like XMLHttpRequests and
   // JS DOMParser, where no dom_window_ is available.
   if (!GetFrame()) {

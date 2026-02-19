@@ -475,11 +475,7 @@ void VideoEncodeAcceleratorAdapter::InitializeOnAcceleratorThread(
   if (input_buffer_preference_ == InputBufferKind::Any) {
     input_buffer_preference_ = InputBufferKind::GpuMemBuf;
   }
-<<<<<<< HEAD
 #if !BUILDFLAG(IS_WEBOS)
-  format = PIXEL_FORMAT_NV12;
-=======
->>>>>>> 146.0.7649.0~1
   storage_type = VideoEncodeAccelerator::Config::StorageType::kGpuMemoryBuffer;
 #endif  // !BUILDFLAG(IS_WEBOS)
 #endif

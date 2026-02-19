@@ -199,7 +199,9 @@ class MEDIA_EXPORT VideoEncodeAcceleratorAdapter
 
   VideoEncodeAccelerator::Config::EncoderType required_encoder_type_ =
       VideoEncodeAccelerator::Config::EncoderType::kHardware;
-#if BUILDFLAG(IS_FUCHSIA)
+  // NOTE(neva): In webOS we don't have support to convert from NV12 to
+  // I420 with LibYUV image processor.
+#if BUILDFLAG(IS_FUCHSIA) || BUILDFLAG(IS_WEBOS)
   // TODO(crbug.com/40241991): Fuchsia only supports I420 for now.
   static constexpr VideoPixelFormat kDefaultPixelFormat = PIXEL_FORMAT_I420;
 #else
