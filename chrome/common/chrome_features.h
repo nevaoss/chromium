@@ -359,7 +359,7 @@ BASE_DECLARE_FEATURE(kGlicTrustFirstOnboarding);
 COMPONENT_EXPORT(CHROME_FEATURES)
 extern const base::FeatureParam<int> kGlicTrustFirstOnboardingArmParam;
 
-#if BUILDFLAG(ENABLE_GLIC) || BUILDFLAG(ENABLE_GLIC_ANDROID)
+#if BUILDFLAG(ENABLE_GLIC)
 // Controls whether the Glic feature is enabled.
 // IMPORTANT: this feature should never be expired! It is used as the main
 // kill-switch for Glic and can be used in the future to handle unsupported
@@ -673,6 +673,8 @@ BASE_DECLARE_FEATURE(kGlicButtonPressedState);
 
 COMPONENT_EXPORT(CHROME_FEATURES)
 extern const base::FeatureParam<bool> kGlicButtonContainerBackground;
+COMPONENT_EXPORT(CHROME_FEATURES)
+extern const base::FeatureParam<bool> kGlicButtonPressedForceSolidIcon;
 
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kGlicLiveModeOnlyGlow);
@@ -745,6 +747,11 @@ extern const base::FeatureParam<base::TimeDelta>
 COMPONENT_EXPORT(CHROME_FEATURES)
 extern const base::FeatureParam<base::TimeDelta>
     kGlicMetricsSessionStartTimeout;
+
+COMPONENT_EXPORT(CHROME_FEATURES)
+BASE_DECLARE_FEATURE(kGlicGuestUrlPresets);
+COMPONENT_EXPORT(CHROME_FEATURES)
+extern const base::FeatureParam<int> kGlicGuestUrlPresetType;
 
 #if !BUILDFLAG(IS_ANDROID)
 COMPONENT_EXPORT(CHROME_FEATURES)
@@ -1328,8 +1335,6 @@ BASE_DECLARE_FEATURE(kWebAppUpgradeToDatabaseVersion6);
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kWebium);
 COMPONENT_EXPORT(CHROME_FEATURES)
-BASE_DECLARE_FEATURE(kInitialWebUI);
-COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kInitialWebUIMetrics);
 // TODO(crbug.com/444358999): after the experiment to collect metrics, either
 // remove this reload button web UI or extend it to include more top-chrome
@@ -1346,6 +1351,10 @@ extern const base::FeatureParam<bool> kWebUIReloadButtonRestartUnresponsive;
 COMPONENT_EXPORT(CHROME_FEATURES)
 extern const base::FeatureParam<base::TimeDelta>
     kWebUIReloadButtonRestartUnresponsiveRenderersTimeout;
+COMPONENT_EXPORT(CHROME_FEATURES)
+BASE_DECLARE_FEATURE(kWebUISplitTabsButton);
+COMPONENT_EXPORT(CHROME_FEATURES)
+BASE_DECLARE_FEATURE(kWebUILocationBar);
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 COMPONENT_EXPORT(CHROME_FEATURES)

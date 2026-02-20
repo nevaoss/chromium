@@ -65,6 +65,7 @@ class VerticalTabView : public views::View,
 
   TabCloseButton* close_button_for_testing() { return close_button_; }
   bool collapsed_for_testing() { return collapsed_; }
+  SkPath GetPath() const;
 
  private:
   // views::View
@@ -117,6 +118,8 @@ class VerticalTabView : public views::View,
 
   void OnDataChanged();
 
+  void UpdateTitle();
+
   void UpdateBorder();
 
   void UpdateAlertIndicatorVisibility();
@@ -130,8 +133,6 @@ class VerticalTabView : public views::View,
   bool IsHoverAnimationActive() const;
   double GetHoverAnimationValue() const;
   float GetHoverOpacity() const;
-
-  SkPath GetPath() const;
 
   bool IsFrameActive() const;
   TabStyle::TabSelectionState GetSelectionState() const;

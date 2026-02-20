@@ -193,6 +193,8 @@ import org.chromium.chrome.browser.ntp.NewTabPageUtils;
 import org.chromium.chrome.browser.ntp_customization.NtpCustomizationCoordinator;
 import org.chromium.chrome.browser.ntp_customization.NtpCustomizationCoordinatorFactory;
 import org.chromium.chrome.browser.ntp_customization.NtpCustomizationMetricsUtils;
+import org.chromium.chrome.browser.ntp_customization.NtpCustomizationUtils;
+import org.chromium.chrome.browser.ntp_customization.policy.NtpCustomizationPolicyManager;
 import org.chromium.chrome.browser.ntp_customization.theme.daily_refresh.NtpThemeDailyRefreshManager;
 import org.chromium.chrome.browser.offlinepages.OfflinePageUtils;
 import org.chromium.chrome.browser.omnibox.OmniboxFocusReason;
@@ -3461,7 +3463,8 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                 getSnackbarManager(),
                 mRootUiCoordinator.getIncognitoReauthControllerSupplier(),
                 mRootUiCoordinator.getReadAloudControllerSupplier(),
-                mRootUiCoordinator.getPageZoomManager());
+                mRootUiCoordinator.getPageZoomManager(),
+                mRootUiCoordinator.getOpenInAppMenuItemProvider());
     }
 
     private TabDelegateFactory getTabDelegateFactory() {
@@ -3607,9 +3610,12 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
         if (isColdStart()) {
             NtpCustomizationMetricsUtils.recordNtpThemeType();
             NtpCustomizationMetricsUtils.recordMvtUserEngagement();
+            if (ChromeFeatureList.sNewTabPageCustomizationV2.isEnabled()) {
+                NtpCustomizationPolicyManager.getInstance().onDeferredStartup();
+            }
         }
 
-        if (ChromeFeatureList.sNewTabPageCustomizationV2.isEnabled()) {
+        if (NtpCustomizationUtils.isNtpThemeCustomizationEnabled()) {
             NtpThemeDailyRefreshManager.getInstance()
                     .maybeSaveDailyRefreshAndReset(
                             ((TabbedRootUiCoordinator) mRootUiCoordinator)

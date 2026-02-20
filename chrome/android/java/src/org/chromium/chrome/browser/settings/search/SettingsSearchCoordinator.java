@@ -14,8 +14,11 @@ import android.os.Handler;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
-import android.transition.AutoTransition;
+import android.transition.ChangeBounds;
+import android.transition.Fade;
+import android.transition.Transition;
 import android.transition.TransitionManager;
+import android.transition.TransitionSet;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -236,8 +239,14 @@ public class SettingsSearchCoordinator implements MultiColumnSettings.Observer {
         if (queryEdit.getText().toString().isEmpty()) return;
 
         queryEdit.setText("");
+        updateClearTextButton(queryEdit.getText());
         clearFragment(R.drawable.settings_zero_state, /* addToBackStack= */ false, emptyRunnable());
         KeyboardUtils.showKeyboard(queryEdit);
+    }
+
+    private void updateClearTextButton(CharSequence query) {
+        int visibility = TextUtils.isEmpty(query.toString()) ? View.INVISIBLE : View.VISIBLE;
+        mActivity.findViewById(R.id.clear_text).setVisibility(visibility);
     }
 
     private void initializeMultiColumnSearchUi() {
@@ -297,8 +306,13 @@ public class SettingsSearchCoordinator implements MultiColumnSettings.Observer {
     }
 
     private void showUiInSingleColumn(View searchBox, boolean show) {
-        TransitionManager.beginDelayedTransition(
-                (ViewGroup) searchBox.getParent(), new AutoTransition());
+        Transition transition =
+                new TransitionSet()
+                        .addTransition(new Fade(show ? Fade.IN : Fade.OUT))
+                        .addTransition(new ChangeBounds())
+                        .setOrdering(TransitionSet.ORDERING_TOGETHER);
+        var parentView = (ViewGroup) mActivity.findViewById(R.id.settings_activity);
+        TransitionManager.beginDelayedTransition(parentView, transition);
         searchBox.setVisibility(show ? View.VISIBLE : View.GONE);
     }
 
@@ -742,6 +756,7 @@ public class SettingsSearchCoordinator implements MultiColumnSettings.Observer {
 
                     @Override
                     public void afterTextChanged(Editable s) {
+                        updateClearTextButton(s);
                         onQueryUpdated(s.toString().trim());
                     }
                 });
@@ -1005,7 +1020,8 @@ public class SettingsSearchCoordinator implements MultiColumnSettings.Observer {
     private void scrollToPref(PreferenceFragmentCompat fragment, String key) {
         RecyclerView listView = fragment.getListView();
         // OnScrollListener#onScrolled is always invoked after the recycler view layout pass
-        // is completed. Use this timing to scroll the preference.
+        // is completed. Use this timing to scroll the preference. The listener is only meant
+        // to run once to scroll to the preference, and then be removed.
         listView.addOnScrollListener(
                 new RecyclerView.OnScrollListener() {
                     @Override
@@ -1014,11 +1030,7 @@ public class SettingsSearchCoordinator implements MultiColumnSettings.Observer {
                     @Override
                     public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
                         fragment.scrollToPreference(key);
-                        if (mTurnOffHighlight != null) {
-                            mTurnOffHighlight.run();
-                            mTurnOffHighlight = null;
-                            listView.removeOnScrollListener(this);
-                        }
+                        listView.removeOnScrollListener(this);
                     }
                 });
         listView.addOnItemTouchListener(

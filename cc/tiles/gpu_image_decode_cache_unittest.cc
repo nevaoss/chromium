@@ -110,39 +110,6 @@ class FakeGPUImageDecodeTestRasterInterface : public viz::TestRasterInterface,
   std::unique_ptr<uint8_t, base::AlignedFreeDeleter> mapped_entry_;
 };
 
-class GPUImageDecodeTestMockContextProvider : public viz::TestContextProvider {
- public:
-  static scoped_refptr<GPUImageDecodeTestMockContextProvider> Create(
-      TransferCacheTestHelper* transfer_cache_helper) {
-    auto support = std::make_unique<FakeGPUImageDecodeTestRasterInterface>(
-        transfer_cache_helper);
-    auto raster = std::make_unique<FakeGPUImageDecodeTestRasterInterface>(
-        transfer_cache_helper);
-    return new GPUImageDecodeTestMockContextProvider(std::move(support),
-                                                     std::move(raster));
-  }
-
-  void SetContextCapabilitiesOverride(std::optional<gpu::Capabilities> caps) {
-    capabilities_override_ = caps;
-  }
-
-  const gpu::Capabilities& ContextCapabilities() const override {
-    if (capabilities_override_.has_value())
-      return *capabilities_override_;
-
-    return viz::TestContextProvider::ContextCapabilities();
-  }
-
- private:
-  ~GPUImageDecodeTestMockContextProvider() override = default;
-  GPUImageDecodeTestMockContextProvider(
-      std::unique_ptr<viz::TestContextSupport> support,
-      std::unique_ptr<viz::TestRasterInterface> raster)
-      : TestContextProvider(std::move(support), std::move(raster), true) {}
-
-  std::optional<gpu::Capabilities> capabilities_override_;
-};
-
 class FakeRasterDarkModeFilter : public RasterDarkModeFilter {
  public:
   FakeRasterDarkModeFilter() {
@@ -189,9 +156,14 @@ class GpuImageDecodeCacheTest
       ASSERT_TRUE(command_line != nullptr);
       command_line->AppendSwitch(switches::kEnableClippedImageScaling);
     }
-    context_provider_ =
-        GPUImageDecodeTestMockContextProvider::Create(&transfer_cache_helper_);
-    context_provider_->BindToCurrentSequence();
+    std::unique_ptr<viz::TestContextSupport> support =
+        std::make_unique<FakeGPUImageDecodeTestRasterInterface>(
+            &transfer_cache_helper_);
+    std::unique_ptr<viz::TestRasterInterface> raster_interface =
+        std::make_unique<FakeGPUImageDecodeTestRasterInterface>(
+            &transfer_cache_helper_);
+    context_provider_ = viz::TestContextProvider::CreateWorker(
+        std::move(support), std::move(raster_interface));
     {
       viz::RasterContextProvider::ScopedRasterContextLock context_lock(
           context_provider_.get());
@@ -471,7 +443,7 @@ class GpuImageDecodeCacheTest
   // The order of these members is important because |context_provider_| depends
   // on |transfer_cache_helper_|.
   TransferCacheTestHelper transfer_cache_helper_;
-  scoped_refptr<GPUImageDecodeTestMockContextProvider> context_provider_;
+  scoped_refptr<viz::TestContextProvider> context_provider_;
 
   // Only used when |do_yuv_decode_| is true.
   SkYUVAPixmapInfo::DataType yuv_data_type_ =
@@ -3567,10 +3539,7 @@ TEST_P(GpuImageDecodeCacheTest, HighBitDepthYUVDecoding) {
 
   // Test that decoding to R16 works when supported.
   {
-    auto r16_caps = original_caps;
-    r16_caps.texture_norm16 = true;
-    r16_caps.texture_half_float_linear = true;
-    context_provider_->SetContextCapabilitiesOverride(r16_caps);
+    context_provider_->UnboundTestRasterInterface()->set_texture_norm16(true);
     auto r16_cache = CreateCache();
     const uint32_t client_id = r16_cache->GenerateClientId();
 
@@ -3607,10 +3576,9 @@ TEST_P(GpuImageDecodeCacheTest, HighBitDepthYUVDecoding) {
 
   // Test that decoding to half-float works when supported.
   {
-    auto f16_caps = original_caps;
-    f16_caps.texture_norm16 = false;
-    f16_caps.texture_half_float_linear = true;
-    context_provider_->SetContextCapabilitiesOverride(f16_caps);
+    context_provider_->UnboundTestRasterInterface()->set_texture_norm16(false);
+    context_provider_->UnboundTestRasterInterface()
+        ->set_texture_half_float_linear(true);
     auto f16_cache = CreateCache();
     const uint32_t client_id = f16_cache->GenerateClientId();
 
@@ -3647,10 +3615,9 @@ TEST_P(GpuImageDecodeCacheTest, HighBitDepthYUVDecoding) {
 
   // Verify YUV16 is unsupported when neither R16 or half-float are available.
   {
-    auto no_yuv16_caps = original_caps;
-    no_yuv16_caps.texture_norm16 = false;
-    no_yuv16_caps.texture_half_float_linear = false;
-    context_provider_->SetContextCapabilitiesOverride(no_yuv16_caps);
+    context_provider_->UnboundTestRasterInterface()->set_texture_norm16(false);
+    context_provider_->UnboundTestRasterInterface()
+        ->set_texture_half_float_linear(false);
     auto no_yuv16_cache = CreateCache();
     const uint32_t client_id = no_yuv16_cache->GenerateClientId();
 

@@ -14,6 +14,7 @@
 #import "base/strings/string_number_conversions.h"
 #import "base/strings/sys_string_conversions.h"
 #import "base/strings/utf_string_conversions.h"
+#import "base/types/optional_ref.h"
 #import "base/values.h"
 #import "components/autofill/core/browser/autofill_field.h"
 #import "components/autofill/core/common/autocomplete_parsing_util.h"
@@ -23,6 +24,7 @@
 #import "components/autofill/core/common/form_data.h"
 #import "components/autofill/core/common/form_field_data.h"
 #import "components/autofill/core/common/signatures.h"
+#import "components/autofill/ios/common/features.h"
 #import "components/autofill/ios/common/javascript_feature_util.h"
 #import "ios/web/public/js_messaging/web_frames_manager.h"
 #import "ios/web/public/navigation/navigation_item.h"
@@ -118,10 +120,10 @@ std::optional<base::UnguessableToken> DeserializeJavaScriptFrameId(
 
 std::optional<std::vector<FormData>> ExtractFormsData(
     NSString* forms_json,
-    bool filtered,
-    const std::u16string& form_name,
+    base::optional_ref<const std::u16string> form_name_filter,
     const GURL& main_frame_url,
     const url::Origin& frame_origin,
+    const GURL& form_frame_url,
     const FieldDataManager& field_data_manager,
     const std::string& frame_id,
     LocalFrameToken host_frame) {
@@ -137,7 +139,7 @@ std::optional<std::vector<FormData>> ExtractFormsData(
 
   // Iterate through all the extracted forms and copy the data from JSON into
   // BrowserAutofillManager structures.
-  const base::Value::List& form_list = forms_value->GetList();
+  const base::ListValue& form_list = forms_value->GetList();
   std::vector<FormData> forms_data;
   forms_data.reserve(form_list.size());
   for (const auto& form_value : form_list) {
@@ -147,8 +149,8 @@ std::optional<std::vector<FormData>> ExtractFormsData(
     }
 
     if (base::expected<FormData, ExtractFormDataFailure> form = ExtractFormData(
-            *form_dict, filtered, form_name, main_frame_url, frame_origin,
-            field_data_manager, frame_id, host_frame);
+            *form_dict, form_name_filter, main_frame_url, frame_origin,
+            form_frame_url, field_data_manager, frame_id, host_frame);
         form.has_value()) {
       forms_data.push_back(std::move(form).value());
     }
@@ -157,11 +159,11 @@ std::optional<std::vector<FormData>> ExtractFormsData(
 }
 
 base::expected<FormData, ExtractFormDataFailure> ExtractFormData(
-    const base::Value::Dict& form,
-    bool filtered,
-    const std::u16string& form_name,
+    const base::DictValue& form,
+    base::optional_ref<const std::u16string> form_name_filter,
     const GURL& main_frame_url,
     const url::Origin& form_frame_origin,
+    const GURL& form_frame_url,
     const FieldDataManager& field_data_manager,
     const std::string& frame_id,
     LocalFrameToken host_frame) {
@@ -172,7 +174,7 @@ base::expected<FormData, ExtractFormDataFailure> ExtractFormData(
     return base::unexpected(ExtractFormDataFailure::kMissingName);
   }
   form_data.set_name(base::UTF8ToUTF16(*name));
-  if (filtered && form_name != form_data.name()) {
+  if (form_name_filter && *form_name_filter != form_data.name()) {
     return base::unexpected(ExtractFormDataFailure::kFilteredNameMismatch);
   }
 
@@ -185,6 +187,9 @@ base::expected<FormData, ExtractFormDataFailure> ExtractFormData(
 
   // Use GURL object to verify origin of host frame URL.
   form_data.set_url(GURL(origin));
+  if (base::FeatureList::IsEnabled(kAutofillExtractFullUrlOnIOs)) {
+    form_data.set_full_url(StripAuth(form_frame_url));
+  }
   if (!form_frame_origin.IsSameOriginWith(form_data.url())) {
     return base::unexpected(ExtractFormDataFailure::kOriginMismatch);
   }
@@ -248,7 +253,7 @@ base::expected<FormData, ExtractFormDataFailure> ExtractFormData(
 
   if (include_frame_metadata) {
     // Child frame tokens, optional.
-    if (const base::Value::List* child_frames_list =
+    if (const base::ListValue* child_frames_list =
             form.FindList("child_frames")) {
       std::vector<FrameTokenWithPredecessor> child_frames;
       for (const auto& frame_dict : *child_frames_list) {
@@ -263,7 +268,7 @@ base::expected<FormData, ExtractFormDataFailure> ExtractFormData(
   }
 
   // Field list (mandatory) is extracted.
-  const base::Value::List* fields_list = form.FindList("fields");
+  const base::ListValue* fields_list = form.FindList("fields");
   if (!fields_list) {
     return base::unexpected(ExtractFormDataFailure::kMissingFields);
   }
@@ -300,7 +305,7 @@ base::expected<FormData, ExtractFormDataFailure> ExtractFormData(
   return form_data;
 }
 
-bool ExtractFormFieldData(const base::Value::Dict& field,
+bool ExtractFormFieldData(const base::DictValue& field,
                           const FieldDataManager& field_data_manager,
                           FormFieldData* field_data) {
   const std::string* name;
@@ -396,8 +401,8 @@ bool ExtractFormFieldData(const base::Value::Dict& field,
   // TODO(crbug.com/40391162): Extract |text_direction|.
 
   // Load option values where present.
-  const base::Value::List* option_values = field.FindList("option_values");
-  const base::Value::List* option_texts = field.FindList("option_texts");
+  const base::ListValue* option_values = field.FindList("option_values");
+  const base::ListValue* option_texts = field.FindList("option_texts");
   if (option_values && option_texts) {
     if (option_values->size() != option_texts->size()) {
       return false;
@@ -428,7 +433,7 @@ bool ExtractFormFieldData(const base::Value::Dict& field,
 }
 
 bool ExtractRemoteFrameToken(
-    const base::Value::Dict& frame_data,
+    const base::DictValue& frame_data,
     FrameTokenWithPredecessor* token_with_predecessor) {
   const std::string* frame_id = frame_data.FindString("token");
   if (!frame_id) {
@@ -472,7 +477,7 @@ JavaScriptResultCallback CreateBoolCallback(
 }
 
 void ExecuteJavaScriptFunction(const std::string& name,
-                               const base::Value::List& parameters,
+                               const base::ListValue& parameters,
                                web::WebFrame* frame,
                                JavaScriptResultCallback callback) {
   __block JavaScriptResultCallback cb = std::move(callback);

@@ -45,6 +45,8 @@ class VerticalTabStripStateController : public SessionServiceBaseObserver,
       const VerticalTabStripStateController&) = delete;
   ~VerticalTabStripStateController() override;
 
+  static const VerticalTabStripStateController* From(
+      const BrowserWindowInterface* browser_window);
   static VerticalTabStripStateController* From(
       BrowserWindowInterface* browser_window);
 
@@ -82,10 +84,6 @@ class VerticalTabStripStateController : public SessionServiceBaseObserver,
   // Update the Collapse Button's Action Item (kActionToggleCollapseVertical)
   // based on the Vertical Tab Strip's Collapse State.
   void UpdateCollapseActionItem();
-
-  // Update the Bottom Container's Action Items (kActionNewTab and
-  // kActionTabGroupsMenu) based on the Vertical Tab Strip's enabled state.
-  void UpdateBottomContainerActionItems();
 
   // SessionServiceBase::SessionServiceBaseObserver:
   void OnDestroying(SessionServiceBase* service) override;

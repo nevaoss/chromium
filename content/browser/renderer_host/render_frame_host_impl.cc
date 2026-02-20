@@ -519,7 +519,7 @@ class ScopedCommitStateResetter {
   bool disabled_ = false;
 };
 
-void GrantFileAccess(int child_id,
+void GrantFileAccess(ChildProcessId child_id,
                      const std::vector<base::FilePath>& file_paths) {
   ChildProcessSecurityPolicyImpl* policy =
       ChildProcessSecurityPolicyImpl::GetInstance();
@@ -1167,7 +1167,7 @@ std::vector<GURL> GetTargetUrlsOfBoostRenderProcessForLoading() {
     return {};
   }
 
-  base::Value::List* entries = json_value->GetIfList();
+  base::ListValue* entries = json_value->GetIfList();
   if (!entries) {
     return {};
   }
@@ -3770,7 +3770,7 @@ void RenderFrameHostImpl::AddMessageToConsole(
 void RenderFrameHostImpl::ExecuteJavaScriptMethod(
     const std::u16string& object_name,
     const std::u16string& method_name,
-    base::Value::List arguments,
+    base::ListValue arguments,
     JavaScriptResultCallback callback) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   CHECK(CanExecuteJavaScript());
@@ -13725,12 +13725,12 @@ RenderFrameHostImpl* RenderFrameHostImpl::GetOutermostMainFrame() {
 bool RenderFrameHostImpl::CanAccessFilesOfPageState(
     const blink::PageState& state) {
   return ChildProcessSecurityPolicyImpl::GetInstance()->CanReadAllFiles(
-      GetProcess()->GetDeprecatedID(), state.GetReferencedFiles());
+      GetProcess()->GetID(), state.GetReferencedFiles());
 }
 
 void RenderFrameHostImpl::GrantFileAccessFromPageState(
     const blink::PageState& state) {
-  GrantFileAccess(GetProcess()->GetDeprecatedID(), state.GetReferencedFiles());
+  GrantFileAccess(GetProcess()->GetID(), state.GetReferencedFiles());
 }
 
 void RenderFrameHostImpl::SetHasPendingLifecycleStateUpdate(
@@ -13753,7 +13753,7 @@ void RenderFrameHostImpl::SetHasPendingLifecycleStateUpdate(
 
 void RenderFrameHostImpl::GrantFileAccessFromResourceRequestBody(
     const network::ResourceRequestBody& body) {
-  GrantFileAccess(GetProcess()->GetDeprecatedID(), body.GetReferencedFiles());
+  GrantFileAccess(GetProcess()->GetID(), body.GetReferencedFiles());
 }
 
 void RenderFrameHostImpl::UpdatePermissionsForNavigation(
@@ -16513,7 +16513,7 @@ void RenderFrameHostImpl::MaybeGenerateCrashReport(
   }
 
   // Construct the crash report.
-  base::Value::Dict body;
+  base::DictValue body;
   if (base::FeatureList::IsEnabled(
           blink::features::kCrashReportingAPIMoreContextData)) {
     body.Set("is_top_level", IsOutermostMainFrame() ? true : false);
@@ -16525,7 +16525,7 @@ void RenderFrameHostImpl::MaybeGenerateCrashReport(
   // Read the key/value data from the document associated data shared memory
   // buffer that the renderer may have written to; parse it as JSON, and add it
   // to the crash report.
-  base::Value::Dict crash_report_api_body = ReadCrashReportAPIBody();
+  base::DictValue crash_report_api_body = ReadCrashReportAPIBody();
   body.Set("crash_report_api", std::move(crash_report_api_body));
 
   if (!reason.empty()) {
@@ -16558,8 +16558,8 @@ void RenderFrameHostImpl::MaybeGenerateCrashReport(
       std::move(body));
 }
 
-base::Value::Dict RenderFrameHostImpl::ReadCrashReportAPIBody() {
-  base::Value::Dict crash_report_api_body;
+base::DictValue RenderFrameHostImpl::ReadCrashReportAPIBody() {
+  base::DictValue crash_report_api_body;
   if (!document_associated_data_->crash_report_storage_region().IsValid()) {
     return crash_report_api_body;
   }
@@ -16695,10 +16695,8 @@ void RenderFrameHostImpl::SendCommitNavigation(
 
   // PDF processes should not need to access cookies or storage, so do not set
   // up those interfaces for them.
-  // TODO(crbug.com/40205612): Remove the kill switch for this check.
   bool should_block_storage_access_for_pdf =
-      GetSiteInstance()->GetSiteInfo().is_pdf() &&
-      base::FeatureList::IsEnabled(features::kPdfEnforcements);
+      GetSiteInstance()->GetSiteInfo().is_pdf();
 
   // Make sure the origin of the isolation info and origin to commit match,
   // otherwise the cookie manager will crash. Sending the cookie manager here

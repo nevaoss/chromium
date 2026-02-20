@@ -312,7 +312,7 @@ void SetRuntimeFeaturesFromChromiumFeatures() {
            raw_ref(device::features::kWebXRIncubations)},
           {wf::EnableWebXRLayers, raw_ref(device::features::kWebXRLayers)},
           {wf::EnableWebXRPlaneDetection,
-           raw_ref(device::features::kWebXRIncubations)},
+           raw_ref(device::features::kWebXRPlaneDetection)},
           {wf::EnableWebXRPoseMotionData,
            raw_ref(device::features::kWebXRIncubations)},
           {wf::EnableWebXRSpecParity,

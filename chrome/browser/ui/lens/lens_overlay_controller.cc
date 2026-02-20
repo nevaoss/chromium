@@ -187,7 +187,7 @@ std::vector<std::string> JSONArrayToVector(const std::string& json_array) {
     return {};
   }
 
-  base::Value::List* entries = json_value->GetIfList();
+  base::ListValue* entries = json_value->GetIfList();
   if (!entries) {
     return {};
   }
@@ -2375,7 +2375,7 @@ void LensOverlayController::ShowPreselectionBubble() {
     // Setup the preselection widget.
     preselection_widget_ = views::BubbleDialogDelegateView::CreateBubble(
         std::make_unique<lens::LensPreselectionBubble>(
-            weak_factory_.GetWeakPtr(), preselection_widget_anchor_,
+            tab_->GetHandle(), preselection_widget_anchor_,
             net::NetworkChangeNotifier::IsOffline(),
             /*exit_clicked_callback=*/
             base::BindRepeating(

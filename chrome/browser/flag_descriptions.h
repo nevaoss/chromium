@@ -296,6 +296,13 @@ inline constexpr char kBundledSecuritySettingsDescription[] =
     "standard bundle which should simplify the security settings page and also "
     "help simplify the user's decision.";
 
+inline constexpr char kBundledSecuritySettingsSecureDnsV2Name[] =
+    "Bundled Security Settings Secure Dns V2";
+inline constexpr char kBundledSecuritySettingsSecureDnsV2Description[] =
+    "Enables Secure DNS V2 setting in the bundles on the "
+    "chrome://settings/security page. The setting will move from the advanced "
+    "section to the bundled section.";
+
 inline constexpr char kCanvasDrawElementName[] = "HTML-in-Canvas";
 inline constexpr char kCanvasDrawElementDescription[] =
     "Enables the Canvas 2D drawElement API and the WebGL texElement2D API for "
@@ -1210,7 +1217,9 @@ inline constexpr char kDsePreload2OnPressDescription[] =
 inline constexpr char kHttpCacheCustomBackendName[] =
     "Use custom disk cache backend for HTTP Cache";
 inline constexpr char kHttpCacheCustomBackendDescription[] =
-    "Enables the experimental disk cache backend for HTTP Cache";
+    "Enables the experimental disk cache backend for HTTP Cache. This flag is "
+    "overridden by the CacheEncryptionEnabled enterprise policy on supported "
+    "platforms.";
 
 inline constexpr char kHttpCacheNoVarySearchName[] =
     "No Vary Search in Disk Cache";
@@ -1408,6 +1417,10 @@ inline constexpr char kGlicForceG1StatusForMultiInstanceName[] =
 inline constexpr char kGlicForceG1StatusForMultiInstanceDescription[] =
     "Overrides actual AI subscription tier by forcing G1 status, specifically "
     "for multi-instance enablement. Intended for testing only.";
+inline constexpr char kGlicGuestUrlPresetsName[] = "Glic guest URL presets";
+inline constexpr char kGlicGuestUrlPresetsDescription[] =
+    "Overrides the Bluebird environment URL used for Glic with user-configured "
+    "values. Intended for manual testing only.";
 
 inline constexpr char kContextualSearchWithCredentialsForDebugName[] =
     "Contextual Search within credentials for debug";
@@ -6100,33 +6113,11 @@ inline constexpr char kNtpMicrosoftAuthenticationModuleName[] =
 inline constexpr char kNtpMicrosoftAuthenticationModuleDescription[] =
     "Shows the Microsoft Authentication Module on the New Tab Page.";
 
-inline constexpr char kNtpMostRelevantTabResumptionModuleName[] =
-    "NTP Most Relevant Tab Resumption Module";
-inline constexpr char kNtpMostRelevantTabResumptionModuleDescription[] =
-    "Shows the Most Relevant Tab Resumption Module on the New Tab Page.";
-
-inline constexpr char kNtpMostRelevantTabResumptionModuleFallbackToHostName[] =
-    "NTP Most Relevant Tab Resumption Module uses fallback to host for favicon";
-inline constexpr char
-    kNtpMostRelevantTabResumptionModuleFallbackToHostDescription[] =
-        "Shows the host fallback icon instead of server fallback on Most "
-        "Relevant "
-        "Tab Resumption Module on the New Tab Page.";
-
 inline constexpr char kNtpMiddleSlotPromoDismissalName[] =
     "NTP Middle Slot Promo Dismissal";
 inline constexpr char kNtpMiddleSlotPromoDismissalDescription[] =
     "Allows middle slot promo to be dismissed from New Tab Page until "
     "new promo message is populated.";
-
-inline constexpr char kNtpMobilePromoName[] = "NTP Mobile Promo";
-inline constexpr char kNtpMobilePromoDescription[] =
-    "Shows a promo for installing on mobile to the New Tab Page.";
-
-inline constexpr char kForceNtpMobilePromoName[] = "Force NTP Mobile Promo";
-inline constexpr char kForceNtpMobilePromoDescription[] =
-    "Forces a promo for installing on mobile to the New Tab Page to show "
-    "without preconditions.";
 
 inline constexpr char kNtpModulesDragAndDropName[] =
     "NTP Modules Drag and Drop";
@@ -8038,11 +8029,6 @@ inline constexpr char kPulseaudioLoopbackForScreenShareName[] =
 inline constexpr char kPulseaudioLoopbackForScreenShareDescription[] =
     "Enable system audio sharing when screen sharing on Linux with pulseaudio.";
 
-inline constexpr char kWaylandPerWindowScalingName[] =
-    "Wayland per-window scaling";
-inline constexpr char kWaylandPerWindowScalingDescription[] =
-    "Enable Wayland's per-window scaling experimental support.";
-
 inline constexpr char kWaylandSessionManagementName[] =
     "Wayland session management";
 inline constexpr char kWaylandSessionManagementDescription[] =
@@ -8199,6 +8185,10 @@ inline constexpr char kWebXrInternalsName[] = "WebXR Internals Debugging Page";
 inline constexpr char kWebXrInternalsDescription[] =
     "Enables the webxr-internals developer page which can be used to help "
     "debug issues with the WebXR Device API.";
+
+inline constexpr char kWebXrPlaneDetectionName[] = "WebXR Plane Detection";
+inline constexpr char kWebXrPlaneDetectionDescription[] =
+    "Enables access to the WebXR plane-detection feature.";
 
 inline constexpr char kOpenXrSpatialEntitiesName[] = "OpenXR Spatial Entities";
 inline constexpr char kOpenXrSpatialEntitiesDescription[] =

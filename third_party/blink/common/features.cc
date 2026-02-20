@@ -1878,6 +1878,10 @@ BASE_FEATURE_PARAM(int,
                    "DedicatedWorkerStartDelayInMs",
                    0);
 
+// Fix for https://crbug.com/454354290.
+BASE_FEATURE(kUpdatedDeviceMemoryLimitsFor2026,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 BASE_FEATURE(kUseAncestorRenderFrameForWorker,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -2121,22 +2125,22 @@ BASE_FEATURE_PARAM(bool,
                    false);
 
 BASE_FEATURE(kRestrictSpellingAndGrammarHighlights,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE_PARAM(bool,
                    kRestrictSpellingAndGrammarHighlightsChangedContents,
                    &kRestrictSpellingAndGrammarHighlights,
                    "RestrictSpellingAndGrammarHighlightsChangedContents",
-                   false);
+                   true);
 BASE_FEATURE_PARAM(bool,
                    kRestrictSpellingAndGrammarHighlightsChangedEnablement,
                    &kRestrictSpellingAndGrammarHighlights,
                    "RestrictSpellingAndGrammarHighlightsChangedEnablement",
-                   false);
+                   true);
 BASE_FEATURE_PARAM(bool,
                    kRestrictSpellingAndGrammarHighlightsChangedSelection,
                    &kRestrictSpellingAndGrammarHighlights,
                    "RestrictSpellingAndGrammarHighlightsChangedSelection",
-                   false);
+                   true);
 
 // https://html.spec.whatwg.org/multipage/system-state.html#safelisted-scheme
 BASE_FEATURE(kSafelistPaytoToRegisterProtocolHandler,
@@ -2528,6 +2532,14 @@ BASE_FEATURE(kWebAppBorderless, base::FEATURE_DISABLED_BY_DEFAULT);
 // more information:
 // https://github.com/WICG/manifest-incubations/blob/gh-pages/scope_extensions-explainer.md
 BASE_FEATURE(kWebAppEnableScopeExtensionsBySite,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+// This controls whether scope extensions work for isolated web apps which
+// use same concepts as pwa
+// https://github.com/WICG/manifest-incubations/blob/gh-pages/scope_extensions-explainer.md
+// Note that for Isolated Web Apps it is not possible to capture link
+// navigations without scope extensions.
+BASE_FEATURE(kWebAppEnableScopeExtensionsForIsolatedWebApps,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Controls parsing and usage of localized fields in web app manifests.

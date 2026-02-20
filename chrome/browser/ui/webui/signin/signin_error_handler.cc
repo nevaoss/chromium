@@ -9,18 +9,13 @@
 #include "chrome/browser/signin/signin_ui_util.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
-#include "chrome/browser/ui/profiles/profile_picker.h"
 #include "chrome/browser/ui/signin/signin_view_controller.h"
 #include "chrome/browser/ui/webui/signin/signin_utils.h"
 #include "content/public/browser/web_ui.h"
 #include "url/gurl.h"
 
-SigninErrorHandler::SigninErrorHandler(Browser* browser,
-                                       bool from_profile_picker)
-    : browser_(browser), from_profile_picker_(from_profile_picker) {
-  // |browser_| must not be null when this dialog is presented from the
-  // profile picker.
-  DCHECK(browser_ || from_profile_picker_);
+SigninErrorHandler::SigninErrorHandler(Browser* browser) : browser_(browser) {
+  DCHECK(browser_);
   browser_collection_observation_.Observe(
       GlobalBrowserCollection::GetInstance());
 }
@@ -41,11 +36,9 @@ void SigninErrorHandler::RegisterMessages() {
       "switchToExistingProfile",
       base::BindRepeating(&SigninErrorHandler::HandleSwitchToExistingProfile,
                           base::Unretained(this)));
-  if (!from_profile_picker_) {
-    web_ui()->RegisterMessageCallback(
-        "learnMore", base::BindRepeating(&SigninErrorHandler::HandleLearnMore,
-                                         base::Unretained(this)));
-  }
+  web_ui()->RegisterMessageCallback(
+      "learnMore", base::BindRepeating(&SigninErrorHandler::HandleLearnMore,
+                                       base::Unretained(this)));
   web_ui()->RegisterMessageCallback(
       "initializedWithSize",
       base::BindRepeating(&SigninErrorHandler::HandleInitializedWithSize,
@@ -53,7 +46,7 @@ void SigninErrorHandler::RegisterMessages() {
 }
 
 void SigninErrorHandler::HandleSwitchToExistingProfile(
-    const base::Value::List& args) {
+    const base::ListValue& args) {
   if (duplicate_profile_path_.empty()) {
     return;
   }
@@ -70,13 +63,11 @@ void SigninErrorHandler::HandleSwitchToExistingProfile(
   profiles::SwitchToProfile(path_switching_to, false);
 }
 
-void SigninErrorHandler::HandleConfirm(const base::Value::List& args) {
+void SigninErrorHandler::HandleConfirm(const base::ListValue& args) {
   CloseDialog();
 }
 
-void SigninErrorHandler::HandleLearnMore(const base::Value::List& args) {
-  // "Learn more" only shown when from_profile_picker_=false
-  DCHECK(!from_profile_picker_);
+void SigninErrorHandler::HandleLearnMore(const base::ListValue& args) {
   if (!browser_) {
     return;
   }
@@ -85,7 +76,7 @@ void SigninErrorHandler::HandleLearnMore(const base::Value::List& args) {
 }
 
 void SigninErrorHandler::HandleInitializedWithSize(
-    const base::Value::List& args) {
+    const base::ListValue& args) {
   AllowJavascript();
   if (duplicate_profile_path_.empty()) {
     FireWebUIListener("switch-button-unavailable");

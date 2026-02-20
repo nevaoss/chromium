@@ -8,7 +8,7 @@ import("//chrome/common/features.gni")
 import("//components/guest_view/buildflags/buildflags.gni")
 import("//mojo/public/tools/bindings/mojom.gni")
 
-assert(enable_glic || enable_glic_android)
+assert(enable_glic)
 
 # TODO(b/430371855): This target should eventually become Glic's public target,
 # to be imported from external BUILD files. The "impl" source set below would
@@ -305,6 +305,7 @@ source_set("impl") {
     "//chrome/browser/glic/actor",
     "//chrome/browser/glic/common",
     "//chrome/browser/glic/fre",
+    "//chrome/browser/glic/media",
     "//chrome/browser/glic/shared",
     "//chrome/browser/lifetime:termination_notification",
     "//chrome/browser/media/webrtc",
@@ -353,9 +354,9 @@ source_set("impl") {
       "//chrome/browser/actor/ui",
       "//chrome/browser/background/glic",
       "//chrome/browser/glic/browser_ui",
-      "//chrome/browser/glic/media",
       "//chrome/browser/lens/region_search",
       "//chrome/browser/skills",
+      "//chrome/browser/skills:public",
       "//chrome/browser/themes",
       "//chrome/browser/ui/views/tabs/glic",
       "//components/password_manager/core/browser/actor_login:common",
@@ -517,7 +518,10 @@ source_set("browser_tests") {
       "widget/application_hotkey_delegate_browsertest.cc",
     ]
   }
-  deps = [ "//chrome/browser/glic/common:browser_tests" ]
+  deps = [
+    "//chrome/browser/glic/common:browser_tests",
+    "//chrome/browser/ui/tabs:tab_list_interface",
+  ]
   if (!is_android) {
     deps += [
       ":glic",

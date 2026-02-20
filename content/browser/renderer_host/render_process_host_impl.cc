@@ -3450,14 +3450,6 @@ void RenderProcessHostImpl::NotifyRendererOfLockedStateUpdate() {
   if (process_lock.is_invalid())
     return;
 
-  // Check if the process is cross_origin isolated based on the
-  // WebExposedIsolationLevel and the AgentClusterKey.
-  bool is_cross_origin_isolated = process_lock.GetWebExposedIsolationLevel() >=
-                                  WebExposedIsolationLevel::kIsolated;
-  is_cross_origin_isolated |=
-      process_lock.agent_cluster_key().IsCrossOriginIsolated();
-  GetRendererInterface()->SetIsCrossOriginIsolated(is_cross_origin_isolated);
-
   GetRendererInterface()->SetIsIsolatedContext(IsIsolatedContext(this));
 
   GetRendererInterface()->SetIsWebSecurityDisabled(
@@ -4027,7 +4019,8 @@ bool RenderProcessHostImpl::ShutdownRequested() {
 bool RenderProcessHostImpl::FastShutdownIfPossible(size_t page_count,
                                                    bool skip_unload_handlers,
                                                    bool ignore_workers,
-                                                   bool ignore_keep_alive) {
+                                                   bool ignore_keep_alive,
+                                                   bool ignore_pending_reuse) {
   base::UmaHistogramBoolean(
       "BrowserRenderProcessHost.FastShutdownIfPossible.Total", true);
   // Do not shut down the process if there are active or pending views other
@@ -4097,7 +4090,7 @@ bool RenderProcessHostImpl::FastShutdownIfPossible(size_t page_count,
     return false;
   }
 
-  if (pending_reuse_ref_count_ != 0) {
+  if (!ignore_pending_reuse && pending_reuse_ref_count_ != 0) {
     LogDelayReasonForFastShutdown(DelayShutdownReason::kPendingReuse);
     return false;
   }

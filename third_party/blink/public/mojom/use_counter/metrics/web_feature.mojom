@@ -898,9 +898,9 @@ enum WebFeature {
   kAudioListenerSetPosition = 1366,
   kAudioListenerSetOrientation = 1367,
   kIntersectionObserver_Constructor = 1368,
-  kDurableStoragePersist = 1369,
-  kDurableStoragePersisted = 1370,
-  kDurableStorageEstimate = 1371,
+  kPersistentStoragePersist = 1369,
+  kPersistentStoragePersisted = 1370,
+  kPersistentStorageEstimate = 1371,
   kOBSOLETE_CSSDeepCombinatorAndShadow = 1375,
   kOpacityWithPreserve3DQuirk = 1376,
   kCSSSelectorPseudoReadOnly = 1377,
@@ -5092,6 +5092,9 @@ enum WebFeature {
   kImageElementTimingNotImageOrVideoNode = 5776,
   kXSLPIInSVGImage = 5777,
   kXSLPIInSVGStandaloneDoc = 5778,
+  kAudioContextAsyncStateTransitions = 5779,
+  kAudioContextAsyncTransitionToRunningStateRead = 5780,
+  kAudioContextAsyncTransitionToSuspendedStateRead = 5781,
 
   // Add new features immediately above this line. Don't change assigned
   // numbers of any item, and don't reuse removed slots. Also don't add extra

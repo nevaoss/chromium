@@ -53,6 +53,7 @@
 #include "chrome/browser/glic/host/guest_util.h"
 #include "chrome/browser/glic/host/host.h"
 #include "chrome/browser/glic/host/page_metadata_manager.h"
+#include "chrome/browser/glic/media/glic_media_link_helper.h"
 #include "chrome/browser/glic/public/context/glic_sharing_manager.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/glic/public/glic_keyed_service.h"
@@ -68,6 +69,7 @@
 #include "chrome/browser/profiles/profile_attributes_storage.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
+#include "chrome/browser/skills/skills_ui_tab_controller_interface.h"
 #include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_navigator_params.h"
 #include "chrome/browser/ui/browser_window/public/browser_collection_observer.h"
@@ -115,7 +117,6 @@
 #if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/glic/glic_hotkey.h"
 #include "chrome/browser/glic/host/context/glic_focused_browser_manager.h"
-#include "chrome/browser/glic/media/glic_media_link_helper.h"
 #include "chrome/browser/skills/skills_service_factory.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/tabs/tab_model.h"
@@ -692,7 +693,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
         receiver_(this, std::move(receiver)),
         annotation_manager_(
             std::make_unique<GlicAnnotationManager>(glic_service_))
-#if !BUILDFLAG(IS_ANDROID)  // NEEDS_ANDROID_IMPL
+#if !BUILDFLAG(IS_ANDROID)  // NEEDS_ANDROID_IMPL: needs actor service
         ,
         journal_handler_(profile_)
 #endif
@@ -1029,7 +1030,6 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
                  bool open_in_background,
                  const std::optional<int32_t> window_id,
                  CreateTabCallback callback) override {
-#if !BUILDFLAG(IS_ANDROID)  // NEEDS_ANDROID_IMPL
     if (base::FeatureList::IsEnabled(media::kMediaLinkHelpers)) {
       if (auto* tab = sharing_manager().GetFocusedTabData().focus()) {
         const bool replaced =
@@ -1042,7 +1042,6 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
         }
       }
     }
-#endif
     host().instance_delegate().CreateTab(url, open_in_background, window_id,
                                          std::move(callback));
   }
@@ -1326,14 +1325,27 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
 // NEEDS_ANDROID_IMPL: (crbug.com/477622144) Remove desktop-only restrictions
 // from Skills backend.
 #if !BUILDFLAG(IS_ANDROID)
+    auto scoped_callback =
+        mojo::WrapCallbackWithDefaultInvokeIfNotRun(std::move(callback), false);
+
     if (!base::FeatureList::IsEnabled(features::kSkillsEnabled)) {
       receiver_.ReportBadMessage(
           "CreateSkill cannot be called without Skills enabled.");
       return;
     }
-    // TODO(crbug.com/471796872): Add the actual implementation.
-    NOTIMPLEMENTED();
-    std::move(callback).Run(true);
+    const auto& ftd = sharing_manager().GetFocusedTabData();
+    tabs::TabInterface* tab = ftd.focus();
+    if (!tab) {
+      return;
+    }
+    if (auto* controller = skills::SkillsUiTabControllerInterface::From(tab)) {
+      // Pass empty strings for id, name, and icon.
+      skills::Skill skill(/*id=*/"",
+                          /*name=*/"",
+                          /*icon=*/"", request->prompt);
+      controller->ShowDialog(skill);
+      std::move(scoped_callback).Run(true);
+    }
 #else
     receiver_.ReportBadMessage("CreateSkill isn't supported on Android.");
 #endif  //  !BUILDFLAG(IS_ANDROID)
@@ -1597,7 +1609,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
                           int32_t task_id,
                           const std::string& event,
                           const std::string& details) override {
-#if !BUILDFLAG(IS_ANDROID)  // NEEDS_ANDROID_IMPL
+#if !BUILDFLAG(IS_ANDROID)  // NEEDS_ANDROID_IMPL: needs actor service
     journal_handler_.LogBeginAsyncEvent(event_async_id, task_id, event,
                                         details);
 #endif
@@ -1605,7 +1617,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
 
   void LogEndAsyncEvent(uint64_t event_async_id,
                         const std::string& details) override {
-#if !BUILDFLAG(IS_ANDROID)  // NEEDS_ANDROID_IMPL
+#if !BUILDFLAG(IS_ANDROID)  // NEEDS_ANDROID_IMPL: needs actor service
     journal_handler_.LogEndAsyncEvent(event_async_id, details);
 #endif
   }
@@ -1613,39 +1625,39 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
   void LogInstantEvent(int32_t task_id,
                        const std::string& event,
                        const std::string& details) override {
-#if !BUILDFLAG(IS_ANDROID)  // NEEDS_ANDROID_IMPL
+#if !BUILDFLAG(IS_ANDROID)  // NEEDS_ANDROID_IMPL: needs actor service
     journal_handler_.LogInstantEvent(task_id, event, details);
 #endif
   }
 
   void JournalClear() override {
-#if !BUILDFLAG(IS_ANDROID)  // NEEDS_ANDROID_IMPL
+#if !BUILDFLAG(IS_ANDROID)  // NEEDS_ANDROID_IMPL: needs actor service
     journal_handler_.Clear();
 #endif
   }
 
   void JournalSnapshot(bool clear_journal,
                        JournalSnapshotCallback callback) override {
-#if !BUILDFLAG(IS_ANDROID)  // NEEDS_ANDROID_IMPL
+#if !BUILDFLAG(IS_ANDROID)  // NEEDS_ANDROID_IMPL: needs actor service
     journal_handler_.Snapshot(clear_journal, std::move(callback));
 #endif
   }
 
   void JournalStart(uint64_t max_bytes, bool capture_screenshots) override {
-#if !BUILDFLAG(IS_ANDROID)  // NEEDS_ANDROID_IMPL
+#if !BUILDFLAG(IS_ANDROID)  // NEEDS_ANDROID_IMPL: needs actor service
     journal_handler_.Start(max_bytes, capture_screenshots);
 #endif
   }
 
   void JournalStop() override {
-#if !BUILDFLAG(IS_ANDROID)  // NEEDS_ANDROID_IMPL
+#if !BUILDFLAG(IS_ANDROID)  // NEEDS_ANDROID_IMPL: needs actor service
     journal_handler_.Stop();
 #endif
   }
 
   void JournalRecordFeedback(bool positive,
                              const std::string& reason) override {
-#if !BUILDFLAG(IS_ANDROID)  // NEEDS_ANDROID_IMPL
+#if !BUILDFLAG(IS_ANDROID)  // NEEDS_ANDROID_IMPL: needs actor service
     journal_handler_.RecordFeedback(positive, reason);
 #endif
   }

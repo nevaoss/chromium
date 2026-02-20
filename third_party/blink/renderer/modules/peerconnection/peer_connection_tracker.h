@@ -320,7 +320,7 @@ class MODULES_EXPORT PeerConnectionTracker
                                 const String& callback_type,
                                 const String& value);
 
-  void AddStandardStats(int lid, base::Value::List value);
+  void AddStandardStats(int lid, base::ListValue value);
 
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
   // Called when the browser requests all connections to be dropped.

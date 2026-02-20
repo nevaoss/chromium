@@ -313,6 +313,7 @@ chromium-metrics-reviews@google.com.
   <variant name="DownloadCleanup" summary="DownloadCleanup"/>
   <variant name="DownloadLater" summary="DownloadLater"/>
   <variant name="DownloadService" summary="DownloadService"/>
+  <variant name="DwaUpload" summary="DwaUpload"/>
   <variant name="ExploreSitesRefresh" summary="ExploreSitesRefresh"/>
   <variant name="FeedRefresh" summary="FeedRefresh"/>
   <variant name="FeedV2Refresh" summary="FeedV2Refresh"/>
@@ -326,9 +327,13 @@ chromium-metrics-reviews@google.com.
   <variant name="Omaha" summary="Omaha"/>
   <variant name="PeriodicBackgroundSyncChromeWakeup"
       summary="PeriodicBackgroundSyncChromeWakeup"/>
+  <variant name="PumaUpload" summary="PumaUpload"/>
   <variant name="QueryTile" summary="QueryTile"/>
   <variant name="SafetyHub" summary="SafetyHub"/>
+  <variant name="StructuredMetricsUpload" summary="StructuredMetricsUpload"/>
   <variant name="Test" summary="Test"/>
+  <variant name="UkmUpload" summary="UkmUpload"/>
+  <variant name="UmaUpload" summary="UmaUpload"/>
   <variant name="WebApkUpdate" summary="WebApkUpdate"/>
   <variant name="WebviewComponentUpdate" summary="WebviewComponentUpdate"/>
   <variant name="WebviewMinidumpUploading" summary="WebviewMinidumpUploading"/>
@@ -8245,6 +8250,30 @@ chromium-metrics-reviews@google.com.
   <summary>
     On Android V and above, this histogram logs how long it takes to check the
     state of the registerResourcePaths flag once per startup during startup.
+  </summary>
+</histogram>
+
+<histogram name="Android.WebView.RendererKeepAlive.Event"
+    enum="WebViewRendererKeepAliveEvent" expires_after="2027-01-11">
+  <owner>ziadyoussef@chromium.org</owner>
+  <owner>src/android_webview/OWNERS</owner>
+  <summary>
+    Records the fate of a renderer process that was kept alive pending reuse.
+    Recorded when a renderer enters the pending reuse state, when it is reused
+    by a new WebView, or when the keep-alive timer expires. This metric is only
+    recorded if the WebViewRendererKeepAlive feature is enabled.
+  </summary>
+</histogram>
+
+<histogram name="Android.WebView.RendererKeepAlive.TimeToReuse" units="ms"
+    expires_after="2027-01-11">
+  <owner>ziadyoussef@chromium.org</owner>
+  <owner>src/android_webview/OWNERS</owner>
+  <summary>
+    Records the time elapsed from when a renderer process entered the pending
+    reuse state until it was reused by a new WebView. Only recorded if the
+    process was reused before the keep-alive timer expired. This metric is only
+    recorded if the WebViewRendererKeepAlive feature is enabled.
   </summary>
 </histogram>
 

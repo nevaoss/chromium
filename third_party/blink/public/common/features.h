@@ -1382,6 +1382,8 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kDedicatedWorkerAblationStudyEnabled);
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(int,
                                                kDedicatedWorkerStartDelayInMs);
 
+BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kUpdatedDeviceMemoryLimitsFor2026);
+
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kUseAncestorRenderFrameForWorker);
 
 // Whether first-party to third-party different-bucket same-origin post messages
@@ -1881,6 +1883,8 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kWebRtcPqcForDtls);
 // TODO(crbug.com/466441366): Stop accepting 'borderless'.
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kWebAppBorderless);
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kWebAppEnableScopeExtensionsBySite);
+BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(
+    kWebAppEnableScopeExtensionsForIsolatedWebApps);
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kWebAppManifestLocalization);
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kWebAppManifestLockScreen);
 

@@ -21,6 +21,7 @@
 #include "components/content_settings/core/browser/host_content_settings_map.h"
 #include "components/content_settings/core/common/content_settings_pattern.h"
 #include "components/content_settings/core/common/content_settings_types.h"
+#include "components/content_settings/core/common/content_settings_utils.h"
 #include "components/content_settings/core/common/features.h"
 #include "components/permissions/constants.h"
 #include "components/permissions/permission_decision.h"
@@ -213,11 +214,7 @@ TEST_F(PermissionUmaUtilTest, ScopedRevocationReporter) {
       ContentSettingsPattern::FromURLNoWildcard(host);
   ContentSettingsPattern host_containing_wildcards_pattern =
       ContentSettingsPattern::FromString("https://[*.]example.com/");
-  ContentSettingsType type =
-      base::FeatureList::IsEnabled(
-          content_settings::features::kApproximateGeolocationPermission)
-          ? ContentSettingsType::GEOLOCATION_WITH_OPTIONS
-          : ContentSettingsType::GEOLOCATION;
+  ContentSettingsType type = content_settings::GeolocationContentSettingsType();
   PermissionSourceUI source_ui = PermissionSourceUI::SITE_SETTINGS;
 
   // Allow->Block triggers a revocation.
@@ -321,54 +318,6 @@ TEST_F(PermissionUmaUtilTest, CrowdDenyVersionTest) {
       "Permissions.CrowdDeny.PreloadData.VersionAtAbuseCheckTime", 1, 1);
 }
 
-// Test that the appropriate UMA metrics have been recorded when the DSE is
-// disabled.
-TEST_F(PermissionUmaUtilTest, MetricsAreRecordedWhenAutoDSEPermissionReverted) {
-  const std::string kTransitionHistogramPrefix =
-      "Permissions.DSE.AutoPermissionRevertTransition.";
-
-  constexpr struct {
-    ContentSetting backed_up_setting;
-    ContentSetting effective_setting;
-    ContentSetting end_state_setting;
-    permissions::AutoDSEPermissionRevertTransition expected_transition;
-  } kTests[] = {
-      // Expected valid combinations.
-      {CONTENT_SETTING_ASK, CONTENT_SETTING_ALLOW, CONTENT_SETTING_ASK,
-       permissions::AutoDSEPermissionRevertTransition::NO_DECISION_ASK},
-      {CONTENT_SETTING_ALLOW, CONTENT_SETTING_ALLOW, CONTENT_SETTING_ALLOW,
-       permissions::AutoDSEPermissionRevertTransition::PRESERVE_ALLOW},
-      {CONTENT_SETTING_BLOCK, CONTENT_SETTING_ALLOW, CONTENT_SETTING_ASK,
-       permissions::AutoDSEPermissionRevertTransition::CONFLICT_ASK},
-      {CONTENT_SETTING_ASK, CONTENT_SETTING_BLOCK, CONTENT_SETTING_BLOCK,
-       permissions::AutoDSEPermissionRevertTransition::PRESERVE_BLOCK_ASK},
-      {CONTENT_SETTING_ALLOW, CONTENT_SETTING_BLOCK, CONTENT_SETTING_BLOCK,
-       permissions::AutoDSEPermissionRevertTransition::PRESERVE_BLOCK_ALLOW},
-      {CONTENT_SETTING_BLOCK, CONTENT_SETTING_BLOCK, CONTENT_SETTING_BLOCK,
-       permissions::AutoDSEPermissionRevertTransition::PRESERVE_BLOCK_BLOCK},
-  };
-
-  // We test every combination of test case for notifications and geolocation to
-  // basically test the entire possible transition space.
-  for (const auto& test : kTests) {
-    for (const auto type : {ContentSettingsType::NOTIFICATIONS,
-                            ContentSettingsType::GEOLOCATION}) {
-      const std::string type_string = type == ContentSettingsType::NOTIFICATIONS
-                                          ? "Notifications"
-                                          : "Geolocation";
-      base::HistogramTester histograms;
-      PermissionUmaUtil::RecordAutoDSEPermissionReverted(
-          type, test.backed_up_setting, test.effective_setting,
-          test.end_state_setting);
-
-      // Test that the expected samples are recorded in histograms.
-      histograms.ExpectBucketCount(kTransitionHistogramPrefix + type_string,
-                                   test.expected_transition, 1);
-      histograms.ExpectTotalCount(kTransitionHistogramPrefix + type_string, 1);
-    }
-  }
-}
-
 TEST_F(PermissionsDelegationUmaUtilTest, UsageAndPromptInTopLevelFrame) {
   base::HistogramTester histograms;
   auto* main_frame = primary_main_frame();
@@ -378,7 +327,7 @@ TEST_F(PermissionsDelegationUmaUtilTest, UsageAndPromptInTopLevelFrame) {
              CreateRequest(RequestType::kGeolocation, kTopLevelUrl));
 
   PermissionUmaUtil::RecordPermissionsUsageSourceAndPolicyConfiguration(
-      ContentSettingsType::GEOLOCATION, main_frame);
+      content_settings::GeolocationContentSettingsType(), main_frame);
   EXPECT_THAT(histograms.GetAllSamples(kGeolocationUsageHistogramName),
               testing::ElementsAre(base::Bucket(0, 1)));
 
@@ -581,7 +530,8 @@ TEST_F(PermissionUmaUtilTest, RecordPermissionRegrantForUnusedSites) {
   const GURL origin = GURL("https://example1.com:443");
   content::TestBrowserContext browser_context;
   base::HistogramTester histograms;
-  ContentSettingsType content_type = ContentSettingsType::GEOLOCATION;
+  ContentSettingsType content_type =
+      content_settings::GeolocationContentSettingsType();
   std::string permission_string =
       PermissionUtil::GetPermissionString(content_type);
   base::SimpleTestClock clock;
@@ -600,9 +550,9 @@ TEST_F(PermissionUmaUtilTest, RecordPermissionRegrantForUnusedSites) {
   histograms.ExpectTotalCount(prefix + "Prompt.All", 0);
 
   // Create a revoked permission.
-  auto dict = base::Value::Dict().Set(
+  auto dict = base::DictValue().Set(
       permissions::kRevokedKey,
-      base::Value::List().Append(static_cast<int32_t>(content_type)));
+      base::ListValue().Append(static_cast<int32_t>(content_type)));
   // Set expiration to five days before the clean-up threshold to mimic that the
   // permission was revoked five days ago.
   base::Time past(now - base::Days(5));
@@ -650,7 +600,8 @@ TEST_F(PermissionUmaUtilTest, GetDaysSinceUnusedSitePermissionRevocation) {
       PermissionsClient::Get()->GetSettingsMap(&browser_context);
 
   const GURL url = GURL("https://example1.com:443");
-  const ContentSettingsType type = ContentSettingsType::GEOLOCATION;
+  const ContentSettingsType type =
+      content_settings::GeolocationContentSettingsType();
   content_settings::ContentSettingConstraints constraint(clock.Now());
   constraint.set_track_last_visit_for_autoexpiration(true);
 
@@ -660,7 +611,7 @@ TEST_F(PermissionUmaUtilTest, GetDaysSinceUnusedSitePermissionRevocation) {
   // since revocation.
   days_since_revocation =
       PermissionUmaUtil::GetDaysSinceUnusedSitePermissionRevocation(
-          url, ContentSettingsType::GEOLOCATION, now, hcsm);
+          url, content_settings::GeolocationContentSettingsType(), now, hcsm);
   ASSERT_FALSE(days_since_revocation.has_value());
 
   hcsm->SetContentSettingDefaultScope(
@@ -674,9 +625,10 @@ TEST_F(PermissionUmaUtilTest, GetDaysSinceUnusedSitePermissionRevocation) {
   content_settings::ContentSettingConstraints expiration_constraint(
       clock.Now());
   expiration_constraint.set_lifetime(base::Days(30));
-  auto dict = base::Value::Dict().Set(
-      permissions::kRevokedKey, base::Value::List().Append(static_cast<int32_t>(
-                                    ContentSettingsType::GEOLOCATION)));
+  auto dict = base::DictValue().Set(
+      permissions::kRevokedKey,
+      base::ListValue().Append(static_cast<int32_t>(
+          content_settings::GeolocationContentSettingsType())));
   hcsm->SetWebsiteSettingCustomScope(
       ContentSettingsPattern::FromURLNoWildcard(url),
       ContentSettingsPattern::Wildcard(),
@@ -686,7 +638,8 @@ TEST_F(PermissionUmaUtilTest, GetDaysSinceUnusedSitePermissionRevocation) {
 
   days_since_revocation =
       PermissionUmaUtil::GetDaysSinceUnusedSitePermissionRevocation(
-          url, ContentSettingsType::GEOLOCATION, clock.Now(), hcsm);
+          url, content_settings::GeolocationContentSettingsType(), clock.Now(),
+          hcsm);
   ASSERT_TRUE(days_since_revocation.has_value());
   EXPECT_EQ(days_since_revocation.value(), 0u);
 
@@ -696,7 +649,8 @@ TEST_F(PermissionUmaUtilTest, GetDaysSinceUnusedSitePermissionRevocation) {
 
   days_since_revocation =
       PermissionUmaUtil::GetDaysSinceUnusedSitePermissionRevocation(
-          url, ContentSettingsType::GEOLOCATION, clock.Now(), hcsm);
+          url, content_settings::GeolocationContentSettingsType(), clock.Now(),
+          hcsm);
   ASSERT_TRUE(days_since_revocation.has_value());
   EXPECT_EQ(days_since_revocation.value(), 5u);
 }
@@ -798,7 +752,7 @@ TEST_F(PermissionsDelegationUmaUtilTest, SameOriginFrame) {
              CreateRequest(RequestType::kGeolocation, kSameOriginFrameUrl));
 
   PermissionUmaUtil::RecordPermissionsUsageSourceAndPolicyConfiguration(
-      ContentSettingsType::GEOLOCATION, child_frame);
+      content_settings::GeolocationContentSettingsType(), child_frame);
   EXPECT_THAT(histograms.GetAllSamples(kGeolocationUsageHistogramName),
               testing::ElementsAre(base::Bucket(0, 1)));
   histograms.ExpectTotalCount(kGeolocationPermissionsPolicyUsageHistogramName,
@@ -856,14 +810,14 @@ INSTANTIATE_TEST_SUITE_P(
     PermissionsDelegationUmaUtilTest,
     testing::Values(
         PermissionsDelegationTestConfig{
-            ContentSettingsType::GEOLOCATION, PermissionAction::GRANTED,
+            ContentSettingsType::MEDIASTREAM_MIC, PermissionAction::GRANTED,
             /*feature_overriden=*/std::nullopt,
             /*matches_all_origins=*/true,
             /*origins=*/{},
             PermissionHeaderPolicyForUMA::FEATURE_ALLOWLIST_IS_WILDCARD},
 
         PermissionsDelegationTestConfig{
-            ContentSettingsType::GEOLOCATION,
+            ContentSettingsType::MEDIASTREAM_MIC,
             PermissionAction::GRANTED,
             /*feature_overriden=*/std::nullopt,
             /*matches_all_origins=*/false,
@@ -872,14 +826,14 @@ INSTANTIATE_TEST_SUITE_P(
                 FEATURE_ALLOWLIST_EXPLICITLY_MATCHES_ORIGIN},
 
         PermissionsDelegationTestConfig{
-            ContentSettingsType::GEOLOCATION, PermissionAction::GRANTED,
+            ContentSettingsType::MEDIASTREAM_MIC, PermissionAction::GRANTED,
             /*feature_overriden=*/std::nullopt,
             /*matches_all_origins=*/false,
             /*origins=*/{},
             PermissionHeaderPolicyForUMA::HEADER_NOT_PRESENT_OR_INVALID},
 
         PermissionsDelegationTestConfig{
-            ContentSettingsType::GEOLOCATION,
+            ContentSettingsType::MEDIASTREAM_MIC,
             PermissionAction::GRANTED,
             std::make_optional<network::mojom::PermissionsPolicyFeature>(
                 network::mojom::PermissionsPolicyFeature::kCamera),
@@ -888,7 +842,7 @@ INSTANTIATE_TEST_SUITE_P(
             PermissionHeaderPolicyForUMA::FEATURE_NOT_PRESENT},
 
         PermissionsDelegationTestConfig{
-            ContentSettingsType::GEOLOCATION,
+            ContentSettingsType::MEDIASTREAM_MIC,
             PermissionAction::GRANTED,
             /*feature_overriden=*/std::nullopt,
             /*matches_all_origins=*/false,
@@ -1008,14 +962,14 @@ INSTANTIATE_TEST_SUITE_P(
     CrossFramePermissionsDelegationUmaUtilTest,
     testing::Values(
         PermissionsDelegationTestConfig{
-            ContentSettingsType::GEOLOCATION, PermissionAction::GRANTED,
+            ContentSettingsType::MEDIASTREAM_MIC, PermissionAction::GRANTED,
             /*feature_overriden=*/std::nullopt,
             /*matches_all_origins=*/true,
             /*origins=*/{},
             PermissionHeaderPolicyForUMA::FEATURE_ALLOWLIST_IS_WILDCARD},
 
         PermissionsDelegationTestConfig{
-            ContentSettingsType::GEOLOCATION,
+            ContentSettingsType::MEDIASTREAM_MIC,
             PermissionAction::DENIED,
             /*feature_overriden=*/std::nullopt,
             /*matches_all_origins=*/false,
@@ -1025,14 +979,14 @@ INSTANTIATE_TEST_SUITE_P(
                 FEATURE_ALLOWLIST_EXPLICITLY_MATCHES_ORIGIN},
 
         PermissionsDelegationTestConfig{
-            ContentSettingsType::GEOLOCATION, PermissionAction::GRANTED,
+            ContentSettingsType::MEDIASTREAM_MIC, PermissionAction::GRANTED,
             /*feature_overriden=*/std::nullopt,
             /*matches_all_origins=*/false,
             /*origins=*/{},
             PermissionHeaderPolicyForUMA::HEADER_NOT_PRESENT_OR_INVALID},
 
         PermissionsDelegationTestConfig{
-            ContentSettingsType::GEOLOCATION,
+            ContentSettingsType::MEDIASTREAM_MIC,
             PermissionAction::GRANTED,
             std::make_optional<network::mojom::PermissionsPolicyFeature>(
                 network::mojom::PermissionsPolicyFeature::kCamera),
@@ -1041,7 +995,7 @@ INSTANTIATE_TEST_SUITE_P(
             PermissionHeaderPolicyForUMA::FEATURE_NOT_PRESENT},
 
         PermissionsDelegationTestConfig{
-            ContentSettingsType::GEOLOCATION,
+            ContentSettingsType::MEDIASTREAM_MIC,
             PermissionAction::DENIED,
             /*feature_overriden=*/std::nullopt,
             /*matches_all_origins=*/false,

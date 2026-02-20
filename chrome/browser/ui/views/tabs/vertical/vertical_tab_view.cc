@@ -8,6 +8,8 @@
 #include <string>
 
 #include "base/functional/callback_helpers.h"
+#include "base/metrics/user_metrics.h"
+#include "base/metrics/user_metrics_action.h"
 #include "base/notimplemented.h"
 #include "base/strings/utf_string_conversions.h"
 #include "chrome/browser/themes/theme_properties.h"
@@ -15,6 +17,8 @@
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/layout_constants.h"
+#include "chrome/browser/ui/tab_contents/core_tab_helper.h"
+#include "chrome/browser/ui/tabs/alert/tab_alert.h"
 #include "chrome/browser/ui/tabs/alert/tab_alert_controller.h"
 #include "chrome/browser/ui/tabs/tab_muted_utils.h"
 #include "chrome/browser/ui/tabs/tab_renderer_data.h"
@@ -30,10 +34,12 @@
 #include "chrome/browser/ui/views/tabs/vertical/vertical_tab_drag_handler.h"
 #include "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_controller.h"
 #include "chrome/common/buildflags.h"
+#include "chrome/grit/generated_resources.h"
 #include "components/tabs/public/tab_interface.h"
 #include "third_party/skia/include/core/SkPathBuilder.h"
 #include "third_party/skia/include/core/SkRRect.h"
 #include "ui/accessibility/ax_enums.mojom-shared.h"
+#include "ui/base/l10n/l10n_util.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/base/theme_provider.h"
 #include "ui/gfx/favicon_size.h"
@@ -65,7 +71,21 @@ constexpr int kIconDesignWidth = 16;
 constexpr int kTitleMinWidth = 10;
 constexpr int kHorizontalInset = 7;
 constexpr int kDefaultPadding = 4;
-constexpr int kFocusRingInset = 4;
+constexpr int kFocusRingInset = -2.0f;
+
+class VerticalTabHighlightPathGenerator : public views::HighlightPathGenerator {
+ public:
+  explicit VerticalTabHighlightPathGenerator(VerticalTabView* tab_view)
+      : tab_view_(tab_view) {}
+
+  // views::HighlightPathGenerator:
+  SkPath GetHighlightPath(const views::View* view) override {
+    return tab_view_->GetPath();
+  }
+
+ private:
+  raw_ptr<VerticalTabView> tab_view_;
+};
 
 class VerticalTabTitle : public views::Label {
   METADATA_HEADER(VerticalTabTitle, views::Label)
@@ -167,11 +187,12 @@ VerticalTabView::VerticalTabView(TabCollectionNode* collection_node)
   // TODO(crbug.com/476156783): Change to ACCESSIBLE_ONLY.
   SetFocusBehavior(FocusBehavior::ALWAYS);
   views::FocusRing::Install(this);
+  auto* focus_ring = views::FocusRing::Get(this);
+  focus_ring->SetHaloInset(kFocusRingInset);
+  focus_ring->SetOutsetFocusRingDisabled(true);
 
   views::HighlightPathGenerator::Install(
-      this, std::make_unique<views::RoundRectHighlightPathGenerator>(
-                gfx::Insets(kFocusRingInset),
-                GetLayoutConstant(LayoutConstant::kVerticalTabCornerRadius)));
+      this, std::make_unique<VerticalTabHighlightPathGenerator>(this));
 
   GetViewAccessibility().SetRole(ax::mojom::Role::kTab);
   GetViewAccessibility().SetName(
@@ -514,7 +535,7 @@ void VerticalTabView::OnDataChanged() {
   icon_->SetAttention(TabIcon::AttentionType::kTabWantsAttentionStatus,
                       tab_data_.needs_attention);
 
-  title_->SetText(tab_data_.title);
+  UpdateTitle();
   title_->SetVisible(!pinned_);
 
   alert_indicator_->TransitionToAlertState(
@@ -525,6 +546,18 @@ void VerticalTabView::OnDataChanged() {
 
   UpdateColors();
   InvalidateLayout();
+}
+
+void VerticalTabView::UpdateTitle() {
+  std::u16string title = tab_data_.title;
+  if (title.empty() && !tab_data_.should_render_empty_title) {
+    title = icon_->GetShowingLoadingAnimation()
+                ? l10n_util::GetStringUTF16(IDS_TAB_LOADING_TITLE)
+                : CoreTabHelper::GetDefaultTitle();
+  } else {
+    title = Browser::FormatTitleForDisplay(title);
+  }
+  title_->SetText(title);
 }
 
 void VerticalTabView::UpdateBorder() {
@@ -590,7 +623,29 @@ void VerticalTabView::UpdateContrastRatioValues() {
 }
 
 void VerticalTabView::CloseButtonPressed(const ui::Event& event) {
-  // TODO(crbug.com/467735166): Log tab closing UMAs.
+  CHECK(alert_indicator_);
+  if (!alert_indicator_->GetVisible()) {
+    base::RecordAction(base::UserMetricsAction("CloseTab_NoAlertIndicator"));
+  } else {
+    std::optional<tabs::TabAlert> alert_state =
+        tabs::TabAlertController::GetAlertStateToShow(tab_data_.alert_state);
+    if (alert_state.value() == tabs::TabAlert::kAudioPlaying) {
+      base::RecordAction(base::UserMetricsAction("CloseTab_AudioIndicator"));
+    } else if (alert_state.value() == tabs::TabAlert::kAudioRecording ||
+               alert_state.value() == tabs::TabAlert::kVideoRecording ||
+               alert_state.value() == tabs::TabAlert::kMediaRecording) {
+      base::RecordAction(
+          base::UserMetricsAction("CloseTab_RecordingIndicator"));
+    }
+  }
+
+  if (split_) {
+    auto* split_view = views::AsViewClass<VerticalSplitTabView>(parent());
+    base::RecordAction(base::UserMetricsAction(this == split_view->children()[0]
+                                                   ? "CloseTab_StartTabInSplit"
+                                                   : "CloseTab_EndTabInSplit"));
+  }
+
   if (collection_node_) {
     collection_node_->GetController()->CloseTab(GetTabInterface());
   }

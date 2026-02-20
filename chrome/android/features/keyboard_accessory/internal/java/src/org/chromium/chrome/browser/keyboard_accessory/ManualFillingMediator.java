@@ -35,8 +35,8 @@ import org.chromium.base.Callback;
 import org.chromium.base.TraceEvent;
 import org.chromium.base.supplier.MonotonicObservableSupplier;
 import org.chromium.base.supplier.NonNullObservableSupplier;
-import org.chromium.base.supplier.ObservableSupplierImpl;
 import org.chromium.base.supplier.ObservableSuppliers;
+import org.chromium.base.supplier.SettableMonotonicObservableSupplier;
 import org.chromium.base.supplier.SettableNonNullObservableSupplier;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.app.ChromeActivity;
@@ -116,8 +116,8 @@ class ManualFillingMediator
     private final PropertyModel mModel = ManualFillingProperties.createFillingModel();
     private WindowAndroid mWindowAndroid;
     private NonNullObservableSupplier<ViewportInsets> mApplicationViewportInsetTracker;
-    private final ObservableSupplierImpl<Integer> mBottomInsetSupplier =
-            new ObservableSupplierImpl<>();
+    private final SettableNonNullObservableSupplier<Integer> mBottomInsetSupplier =
+            ObservableSuppliers.createNonNull(0);
     private final ManualFillingStateCache mStateCache = new ManualFillingStateCache();
     private final HashSet<Tab> mObservedTabs = new HashSet<>();
     private KeyboardAccessoryCoordinator mKeyboardAccessory;
@@ -134,10 +134,10 @@ class ManualFillingMediator
     private final SettableNonNullObservableSupplier<Boolean> mBackPressChangedSupplier =
             ObservableSuppliers.createNonNull(false);
 
-    private final ObservableSupplierImpl<KeyboardAccessoryVisualStateProvider>
-            mKeyboardAccessoryVisualStateSupplier = new ObservableSupplierImpl<>();
-    private final ObservableSupplierImpl<AccessorySheetVisualStateProvider>
-            mAccessorySheetVisualStateSupplier = new ObservableSupplierImpl<>();
+    private final SettableMonotonicObservableSupplier<KeyboardAccessoryVisualStateProvider>
+            mKeyboardAccessoryVisualStateSupplier = ObservableSuppliers.createMonotonic();
+    private final SettableMonotonicObservableSupplier<AccessorySheetVisualStateProvider>
+            mAccessorySheetVisualStateSupplier = ObservableSuppliers.createMonotonic();
     private @Nullable BrowserControlsManager mControlsManager;
 
     private final TabObserver mTabObserver =
@@ -199,11 +199,6 @@ class ManualFillingMediator
                     mModel.set(SUPPRESSED_BY_BOTTOM_SHEET, newState != SheetState.HIDDEN);
                 }
             };
-
-    /** Default constructor */
-    ManualFillingMediator() {
-        mBottomInsetSupplier.set(0);
-    }
 
     void initialize(
             KeyboardAccessoryCoordinator keyboardAccessory,
@@ -280,7 +275,7 @@ class ManualFillingMediator
                                 || is(FLOATING_SHEET)));
     }
 
-    MonotonicObservableSupplier<Integer> getBottomInsetSupplier() {
+    NonNullObservableSupplier<Integer> getBottomInsetSupplier() {
         return mBottomInsetSupplier;
     }
 
@@ -1055,10 +1050,6 @@ class ManualFillingMediator
 
         int minimumVerticalSpacePx = Math.round(density * MINIMAL_AVAILABLE_VERTICAL_SPACE);
 
-        // TODO(crbug.com/40285164): google-java-format did not introduce '{}'s as expected in the
-        // if
-        // construct below (see crbug.com/1505284 for failure). Investigate why and fix it or file a
-        // corresponding bug.
         if (visibleViewportHeightPx >= minimumVerticalSpacePx) {
             return; // Sheet height needs no adjustment!
         }

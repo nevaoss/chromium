@@ -38,6 +38,7 @@
 #include "chrome/browser/ui/tabs/tab_group_model.h"
 #include "chrome/browser/ui/tabs/tab_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
+#include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/tab_strip_region_view.h"
@@ -47,6 +48,7 @@
 #include "chrome/browser/ui/views/tabs/tab.h"
 #include "chrome/browser/ui/views/tabs/tab_slot_view.h"
 #include "chrome/browser/ui/views/tabs/window_finder.h"
+#include "chrome/browser/ui/waap/initial_webui_window_metrics_manager.h"
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
 #include "chrome/browser/ui/web_applications/web_app_launch_utils.h"
 #include "chrome/browser/ui/web_applications/web_app_tabbed_utils.h"
@@ -2493,6 +2495,13 @@ Browser* TabDragController::CreateBrowserForDrag(TabDragContext* source,
                 /* user_gesture=*/true)
           : from_browser->create_params();
 
+  if (auto* controller =
+          tabs::VerticalTabStripStateController::From(from_browser)) {
+    create_params.vertical_tab_strip_collapsed = controller->IsCollapsed();
+    create_params.vertical_tab_strip_uncollapsed_width =
+        controller->GetUncollapsedWidth();
+  }
+
   // Web app windows have their own initial size independent of the source
   // browser window.
   if (!open_as_web_app) {
@@ -2526,7 +2535,12 @@ Browser* TabDragController::CreateBrowserForDrag(TabDragContext* source,
   // the previous window.
   create_params.user_title = std::string();
 
+  base::TimeTicks now = base::TimeTicks::Now();
   Browser* browser = Browser::Create(create_params);
+  if (auto* manager = InitialWebUIWindowMetricsManager::From(browser)) {
+    manager->SetWindowCreationInfo(
+        waap::NewWindowCreationSource::kDragToNewWindow, now);
+  }
   is_dragging_new_browser_ = true;
   BrowserView::GetBrowserViewForBrowser(browser)
       ->GetWidget()

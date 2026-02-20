@@ -51,15 +51,9 @@ class TestContextProvider
   static scoped_refptr<TestContextProvider> CreateWorker();
   static scoped_refptr<TestContextProvider> CreateWorker(
       std::unique_ptr<TestContextSupport> support);
-
-  explicit TestContextProvider(std::unique_ptr<TestContextSupport> support,
-                               std::unique_ptr<TestRasterInterface> raster,
-                               bool support_locking);
-  explicit TestContextProvider(
+  static scoped_refptr<TestContextProvider> CreateWorker(
       std::unique_ptr<TestContextSupport> support,
-      std::unique_ptr<TestGLES2Interface> gl,
-      scoped_refptr<gpu::TestSharedImageInterface> sii,
-      bool support_locking);
+      std::unique_ptr<TestRasterInterface> raster);
 
   TestContextProvider(const TestContextProvider&) = delete;
   TestContextProvider& operator=(const TestContextProvider&) = delete;
@@ -100,9 +94,16 @@ class TestContextProvider
 
  protected:
   friend class base::RefCountedThreadSafe<TestContextProvider>;
+  TestContextProvider(std::unique_ptr<TestContextSupport> support,
+                      std::unique_ptr<TestRasterInterface> raster,
+                      bool support_locking);
   ~TestContextProvider() override;
 
  private:
+  TestContextProvider(std::unique_ptr<TestContextSupport> support,
+                      std::unique_ptr<TestGLES2Interface> gl,
+                      bool support_locking);
+
   void OnLostContext();
   void CheckValidThreadOrLockAcquired() const {
 #if DCHECK_IS_ON()

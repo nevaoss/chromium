@@ -465,7 +465,7 @@ public class FeedSurfaceCoordinator
         mIsNewTabPageCustomizationEnabled = ChromeFeatureList.sNewTabPageCustomization.isEnabled();
         mIsNewTabPageCustomizationV2Enabled =
                 mIsNewTabPageCustomizationEnabled
-                        && ChromeFeatureList.sNewTabPageCustomizationV2.isEnabled();
+                        && NtpCustomizationUtils.isNtpThemeCustomizationEnabled();
         mDefaultBackgroundColor =
                 ContextCompat.getColor(mActivity, R.color.home_surface_background_color);
 
@@ -485,7 +485,7 @@ public class FeedSurfaceCoordinator
         mRecyclerView = setUpView();
         FeedStreamViewResizer.createAndAttach(mActivity, mRecyclerView, mUiConfig);
 
-        mIsNtpCustomizationV2Enabled = ChromeFeatureList.sNewTabPageCustomizationV2.isEnabled();
+        mIsNtpCustomizationV2Enabled = NtpCustomizationUtils.isNtpThemeCustomizationEnabled();
         if (mIsNewTabPageCustomizationV2Enabled) {
             mNtpBackgroundImageCoordinator =
                     new NtpBackgroundImageCoordinator(
@@ -1246,22 +1246,6 @@ public class FeedSurfaceCoordinator
         return mSectionHeaderModel;
     }
 
-    /**
-     * @return The {@link View} for this class.
-     */
-    // TODO(crbug.com/352735671): Remove after uno phase 2 follow-up launch.
-    @Deprecated
-    View getSigninPromoView() {
-        assert !ChromeFeatureList.isEnabled(ChromeFeatureList.UNO_PHASE_2_FOLLOW_UP);
-        if (mSigninPromoView == null) {
-            LayoutInflater inflater = LayoutInflater.from(mRootView.getContext());
-            mSigninPromoView =
-                    inflater.inflate(
-                            R.layout.sync_promo_view_content_suggestions, mRootView, false);
-        }
-        return mSigninPromoView;
-    }
-
     /** Update header views in the Feed. */
     void updateHeaderViews(@Nullable View signinPromoView) {
         if (!mMediator.hasStreams()) return;
@@ -1462,7 +1446,7 @@ public class FeedSurfaceCoordinator
     }
 
     @Override
-    public MonotonicObservableSupplier<Integer> getRestoringStateSupplier() {
+    public NonNullObservableSupplier<Integer> getRestoringStateSupplier() {
         return mMediator.getRestoringStateSupplier();
     }
 
@@ -1503,6 +1487,10 @@ public class FeedSurfaceCoordinator
     public void setBackgroundImageCoordinatorForTesting(
             NtpBackgroundImageCoordinator backgroundImageCoordinator) {
         mNtpBackgroundImageCoordinator = backgroundImageCoordinator;
+    }
+
+    public @Nullable NtpBackgroundImageCoordinator getNtpBackgroundImageCoordinatorForTesting() {
+        return mNtpBackgroundImageCoordinator;
     }
 
     @Nullable ImageButton getNtpCustomizationButtonForTesting() {

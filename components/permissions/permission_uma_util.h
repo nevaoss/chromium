@@ -16,7 +16,7 @@
 #include "base/version.h"
 #include "components/content_settings/core/browser/host_content_settings_map.h"
 #include "components/content_settings/core/common/content_settings_types.h"
-#include "components/passage_embeddings/passage_embeddings_types.h"
+#include "components/passage_embeddings/core/passage_embeddings_types.h"
 #include "components/permissions/permission_request_enums.h"
 #include "components/permissions/prediction_service/permission_ui_selector.h"
 #include "components/permissions/request_type.h"
@@ -289,6 +289,7 @@ enum class PermissionPromptDisposition {
 // The reason why the permission prompt disposition was used. Enum used in UKMs,
 // do not re-order or change values. Deprecated items should only be commented
 // out.
+// LINT.IfChange(PermissionPromptDispositionReason)
 enum class PermissionPromptDispositionReason {
   // Disposition was selected in prefs.
   USER_PREFERENCE_IN_SETTINGS = 0,
@@ -308,6 +309,7 @@ enum class PermissionPromptDispositionReason {
   // Permission Prediction Model.
   ON_DEVICE_PREDICTION_MODEL = 4,
 };
+// LINT.ThenChange(//tools/metrics/histograms/enums.xml:PermissionPromptDispositionReason)
 
 enum class AdaptiveTriggers {
   // None of the adaptive triggers were met. Currently this means two or less
@@ -432,37 +434,6 @@ enum class PermissionAutoRevocationHistory {
 
   // Permission has been automatically revoked.
   PREVIOUSLY_AUTO_REVOKED = 0x01,
-};
-
-// This enum backs up the `AutoDSEPermissionRevertTransition` histogram enum.
-// Never reuse values and mirror any updates to it.
-// Describes the transition that has occurred for the setting of a DSE origin
-// when DSE autogrant becomes disabled.
-enum class AutoDSEPermissionRevertTransition {
-  // The user has not previously made any decision so it results in an `ASK` end
-  // state.
-  NO_DECISION_ASK = 0,
-  // The user has decided to `ALLOW` the origin before it was the DSE origin and
-  // has not reverted this decision.
-  PRESERVE_ALLOW = 1,
-  // The user has previously `BLOCKED` the origin but has allowed it after it
-  // became the DSE origin. Resolve the conflict by setting it to `ASK` so the
-  // user will make a decision again.
-  CONFLICT_ASK = 2,
-  // The user has blocked the DSE origin and has not made a previous decision
-  // before the origin became the DSE origin.
-  PRESERVE_BLOCK_ASK = 3,
-  // The user has blocked the DSE origin and has `ALLOWED` it before it became
-  // the DSE origin, preserve the latest decision.
-  PRESERVE_BLOCK_ALLOW = 4,
-  // The user has blocked the DSE origin and has `BLOCKED` it before it became
-  // the DSE origin as well.
-  PRESERVE_BLOCK_BLOCK = 5,
-  // There has been an invalid transition.
-  INVALID_END_STATE = 6,
-
-  // Always keep at the end.
-  kMaxValue = INVALID_END_STATE,
 };
 
 // This enum backs up the
@@ -762,12 +733,6 @@ class PermissionUmaUtil {
 
   static void RecordTimeElapsedBetweenGrantAndRevoke(ContentSettingsType type,
                                                      base::TimeDelta delta);
-
-  static void RecordAutoDSEPermissionReverted(
-      ContentSettingsType permission_type,
-      ContentSetting backed_up_setting,
-      ContentSetting effective_setting,
-      ContentSetting end_state_setting);
 
   static void RecordDSEEffectiveSetting(ContentSettingsType permission_type,
                                         ContentSetting setting);

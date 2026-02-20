@@ -77,6 +77,6 @@ public class EnhancedSafeBrowsingPromoCoordinator
 
     @Override
     public @DrawableRes int getCardImageCompletedResId() {
-        return R.drawable.enhanced_safe_browsing_promo_completed_logo;
+        return R.drawable.setup_list_completed_background_wavy_circle;
     }
 }

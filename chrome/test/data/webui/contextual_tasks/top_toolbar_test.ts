@@ -124,7 +124,7 @@ suite('TopToolbarTest', () => {
     // "Tabs". We expect only 1 header since we only have one type of item
     // (tabs) and the "Tabs" header should be hidden.
     const headers = sourcesMenuElement.shadowRoot.querySelectorAll('.header');
-    assertEquals(2, headers.length);
+    assertEquals(1, headers.length);
 
     // Click the first tab item.
     const tabButton = sourcesMenuElement.shadowRoot.querySelector<HTMLElement>(
@@ -160,7 +160,7 @@ suite('TopToolbarTest', () => {
 
     // Expected headers: title, tab and files header
     const headers = sourcesMenuElement.shadowRoot.querySelectorAll('.header');
-    assertEquals(2, headers.length);
+    assertEquals(1, headers.length);
 
     // Click the first file item.
     const fileButton = sourcesMenuElement.shadowRoot.querySelector<HTMLElement>(
@@ -194,7 +194,7 @@ suite('TopToolbarTest', () => {
     assertTrue(crActionMenu.open);
 
     const headers = sourcesMenuElement.shadowRoot.querySelectorAll('.header');
-    assertEquals(2, headers.length);
+    assertEquals(1, headers.length);
 
     // Click the first image item.
     const imageButton =
@@ -306,12 +306,12 @@ suite('TopToolbarTest', () => {
     ];
     await microtasksFinished();
 
-    const faviconItems =
-        sourcesButton.shadowRoot.querySelectorAll('.favicon-item');
+    const faviconItems = sourcesButton.shadowRoot.querySelectorAll(
+        '.favicon-item:not(#more-items)');
     assertEquals(faviconItems.length, 3);
     const moreItems =
-        sourcesButton.shadowRoot.querySelector<HTMLElement>('.more-items');
+        sourcesButton.shadowRoot.querySelector<HTMLElement>('#more-items');
     assertTrue(!!moreItems);
-    assertEquals(moreItems.textContent, '+1');
+    assertEquals(moreItems.innerText, '+1');
   });
 });

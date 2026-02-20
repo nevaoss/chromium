@@ -253,20 +253,6 @@ public class LocationBarCoordinator
                                     mOmniboxDropdownEmbedderImpl.recalculateOmniboxAlignment();
                                     updateBottomContainerPosition();
                                 }));
-        mOmniboxDropdownEmbedderImpl =
-                new OmniboxSuggestionsDropdownEmbedderImpl(
-                        mWindowAndroid,
-                        autocompleteAnchorView,
-                        mLocationBarLayout,
-                        uiOverrides.isForcedPhoneStyleOmnibox(),
-                        baseChromeLayout,
-                        () ->
-                                mBrowserControlsStateProvider == null
-                                        ? ControlsPosition.TOP
-                                        : mBrowserControlsStateProvider.getControlsPosition(),
-                        mDeferredIMEWindowInsetApplicationCallback::getCurrentKeyboardHeight,
-                        bottomWindowPaddingSupplier,
-                        locationBarDataProvider);
 
         mUrlBar = mLocationBarLayout.findViewById(R.id.url_bar);
         final boolean isIncognito =
@@ -286,9 +272,29 @@ public class LocationBarCoordinator
                         templateUrlServiceSupplier,
                         autocompleteRequestTypeSupplier,
                         snackbarManager);
+        NonNullObservableSupplier<Integer> fuseboxStateSupplier;
         if (OmniboxFeatures.sOmniboxMultimodalInput.isEnabled()) {
-            mFuseboxCoordinator.getFuseboxStateSupplier().addObserver(this::onCompactModeChange);
+            fuseboxStateSupplier = mFuseboxCoordinator.getFuseboxStateSupplier();
+            fuseboxStateSupplier.addObserver(this::onFuseboxStateChange);
+        } else {
+            fuseboxStateSupplier = ObservableSuppliers.createNonNull(FuseboxState.DISABLED);
         }
+
+        mOmniboxDropdownEmbedderImpl =
+                new OmniboxSuggestionsDropdownEmbedderImpl(
+                        mWindowAndroid,
+                        autocompleteAnchorView,
+                        mLocationBarLayout,
+                        uiOverrides.isForcedPhoneStyleOmnibox(),
+                        baseChromeLayout,
+                        () ->
+                                mBrowserControlsStateProvider == null
+                                        ? ControlsPosition.TOP
+                                        : mBrowserControlsStateProvider.getControlsPosition(),
+                        mDeferredIMEWindowInsetApplicationCallback::getCurrentKeyboardHeight,
+                        bottomWindowPaddingSupplier,
+                        locationBarDataProvider,
+                        fuseboxStateSupplier);
 
         mPageZoomIndicatorCoordinator =
                 pageZoomManager != null
@@ -869,7 +875,7 @@ public class LocationBarCoordinator
         mLocationBarMediator.updateButtonVisibility();
     }
 
-    private void onCompactModeChange(@FuseboxState int state) {
+    private void onFuseboxStateChange(@FuseboxState int state) {
         if (!mUrlCoordinator.hasFocus()) return;
         View addButton = mLocationBarLayout.findViewById(R.id.location_bar_attachments_add);
         if (addButton == null) return;
@@ -1088,6 +1094,10 @@ public class LocationBarCoordinator
     public NonNullObservableSupplier<@AutocompleteRequestType Integer>
             getAutocompleteRequestTypeSupplier() {
         return mLocationBarMediator.getAutocompleteRequestTypeSupplier();
+    }
+
+    public NonNullObservableSupplier<@FuseboxState Integer> getFuseboxStateSupplier() {
+        return mFuseboxCoordinator.getFuseboxStateSupplier();
     }
 
     @Override

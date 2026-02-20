@@ -50,6 +50,7 @@
 #include "chrome/browser/ui/tabs/tab_strip_user_gesture_details.h"
 #include "chrome/browser/ui/tabs/tab_utils.h"
 #include "chrome/browser/ui/ui_features.h"
+#include "chrome/browser/ui/views/frame/browser_frame_view.h"
 #include "chrome/browser/ui/views/frame/browser_widget.h"
 #include "chrome/browser/ui/views/tabs/tab.h"
 #include "chrome/browser/ui/views/tabs/tab_context_menu_controller.h"
@@ -67,12 +68,12 @@
 #include "components/saved_tab_groups/public/features.h"
 #include "components/saved_tab_groups/public/saved_tab_group.h"
 #include "components/saved_tab_groups/public/tab_group_sync_service.h"
+#include "components/split_tabs/split_tab_id.h"
+#include "components/split_tabs/split_tab_visual_data.h"
 #include "components/tab_groups/tab_group_color.h"
 #include "components/tab_groups/tab_group_id.h"
 #include "components/tab_groups/tab_group_visual_data.h"
 #include "components/tabs/public/split_tab_data.h"
-#include "components/tabs/public/split_tab_id.h"
-#include "components/tabs/public/split_tab_visual_data.h"
 #include "components/tabs/public/tab_group.h"
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/navigation_controller.h"
@@ -222,15 +223,6 @@ ui::ListSelectionModel BrowserTabStripController::GetSelectionModel() const {
 
 int BrowserTabStripController::GetCount() const {
   return model_->count();
-}
-
-bool BrowserTabStripController::CanShowModalUI() const {
-  return model_->CanShowModalUI();
-}
-
-std::unique_ptr<ScopedTabStripModalUI>
-BrowserTabStripController::ShowModalUI() {
-  return model_->ShowModalUI();
 }
 
 bool BrowserTabStripController::IsValidIndex(int index) const {

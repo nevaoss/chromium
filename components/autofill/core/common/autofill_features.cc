@@ -12,7 +12,6 @@ namespace {
 constexpr bool IS_AUTOFILL_AI_PLATFORM = BUILDFLAG(IS_CHROMEOS) ||
                                          BUILDFLAG(IS_LINUX) ||
                                          BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN);
-constexpr bool IS_WALLET_PASSES_SUPPORTED_PLATFORM = !BUILDFLAG(IS_IOS);
 }  // namespace
 
 // If enabled, we start forwarding submissions with source
@@ -166,13 +165,6 @@ BASE_FEATURE(kAutofillAiDedupeEntities, base::FEATURE_DISABLED_BY_DEFAULT);
 // to be accepted.
 BASE_FEATURE(kAutofillAiFillingSurvey, base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Kill switch: If enabled, MayPerformAutofillAiAction() also depends on two
-// prefs that enable/disable filling and import of identity-related and
-// travel-related entities.
-// TODO(crbug.com/450060416): Remove after M144 branch point (2025-01-12).
-BASE_FEATURE(kAutofillAiIdentityAndTravelPrefs,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 // If enabled, no GeoIp requirements are imposed for AutofillAi.
 // Note that this feature can be modified as follows (all assuming that
 // `kAutofillAiIgnoreGeoIp` is enabled):
@@ -204,12 +196,6 @@ BASE_FEATURE_PARAM(std::string,
 // enabled.
 BASE_FEATURE(kAutofillAiIgnoresWhetherAddressPrefIsEnabled,
              base::FEATURE_DISABLED_BY_DEFAULT);
-
-// If enabled, this makes the autofill classification logic prefer the
-// AutofillAi predictions sent via the server response over local heuristic
-// predictions.
-BASE_FEATURE(kAutofillAiPreferModelResponseOverHeuristics,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // If enabled, AutofillAi requires re-auth when filling/viewing sensitive
 // fields. As part of this feature sensitive fields are also obfuscated during
@@ -495,9 +481,7 @@ BASE_FEATURE_PARAM(int,
 // suggestions.
 // TODO(crbug.com/416664590): Remove once launched.
 BASE_FEATURE(kAutofillEnableEmailOrLoyaltyCardsFilling,
-             IS_WALLET_PASSES_SUPPORTED_PLATFORM
-                 ? base::FEATURE_ENABLED_BY_DEFAULT
-                 : base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables a couple of improvements to credit card expiration date handling:
 // - The autocomplete attribute values are rationalized with format strings
@@ -557,9 +541,7 @@ BASE_FEATURE(kAutofillEnableLabelPrecedenceForTurkishAddresses,
 // When enabled, Autofill will help users fill in loyalty card details.
 // TODO(crbug.com/395831853): Remove once launched.
 BASE_FEATURE(kAutofillEnableLoyaltyCardsFilling,
-             IS_WALLET_PASSES_SUPPORTED_PLATFORM
-                 ? base::FEATURE_ENABLED_BY_DEFAULT
-                 : base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // When enabled, Autofill will help users fill in non-affiliated loyalty cards
 // on loyalty card only fields.

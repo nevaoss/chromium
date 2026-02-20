@@ -145,6 +145,10 @@ const base::FeatureParam<bool> kEnableProtectedPageError(
     "EnableProtectedPageError",
     true);
 
+const base::FeatureParam<bool> kEnableGhostLoader(&kContextualTasks,
+                                                  "EnableGhostLoader",
+                                                  true);
+
 const base::FeatureParam<std::string> kContextualTasksOnboardingTooltipHelpUrl(
     &kContextualTasksShowOnboardingTooltip,
     "ContextualTasksOnboardingTooltipHelpUrl",
@@ -155,6 +159,12 @@ const base::FeatureParam<int>
         &kContextualTasksShowOnboardingTooltip,
         "ContextualTasksShowOnboardingTooltipSessionImpressionCap",
         1);
+
+const base::FeatureParam<int>
+    kContextualTasksInactiveSidePanelKeepInCacheMinutes(
+        &kContextualTasks,
+        "ContextualTasksInactiveSidePanelKeepInCacheMinutes",
+        1440);
 
 const base::FeatureParam<int> kContextualTasksOnboardingTooltipDismissedCap(
     &kContextualTasksShowOnboardingTooltip,
@@ -189,6 +199,13 @@ int GetContextualTasksOnboardingTooltipImpressionDelay() {
   return kContextualTasksOnboardingTooltipImpressionDelay.Get();
 }
 
+int ContextualTasksInactiveSidePanelKeepInCacheMinutes() {
+  if (!base::FeatureList::IsEnabled(kContextualTasks)) {
+    return 0;
+  }
+  return kContextualTasksInactiveSidePanelKeepInCacheMinutes.Get();
+}
+
 bool GetIsExpandedComposeboxVoiceSearchEnabled() {
   return kEnableExpandedComposeboxVoiceSearch.Get();
 }
@@ -203,6 +220,10 @@ bool GetAutoSubmitVoiceSearchQuery() {
 
 bool GetIsProtectedPageErrorEnabled() {
   return kEnableProtectedPageError.Get();
+}
+
+bool GetIsGhostLoaderEnabled() {
+  return kEnableGhostLoader.Get();
 }
 
 bool ShouldForceGscInTabMode() {

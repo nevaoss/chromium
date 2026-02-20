@@ -25,6 +25,7 @@
 #include "base/trace_event/trace_event.h"
 #include "base/types/id_type.h"
 #include "base/types/optional_ref.h"
+#include "base/types/pass_key.h"
 #include "chrome/browser/actor/actor_features.h"
 #include "chrome/browser/actor/actor_keyed_service.h"
 #include "chrome/browser/actor/actor_metrics.h"
@@ -59,6 +60,7 @@
 #include "components/password_manager/core/browser/features/password_features.h"
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/navigation_handle.h"
+#include "content/public/browser/navigation_throttle.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_contents_observer.h"
@@ -137,15 +139,14 @@ ToolDelegate::CredentialWithPermission::operator=(CredentialWithPermission&&) =
 ToolDelegate::CredentialWithPermission::~CredentialWithPermission() = default;
 
 ExecutionEngine::ExecutionEngine(Profile* profile)
-    : profile_(profile),
-      journal_(ActorKeyedService::Get(profile)->GetJournal().GetSafeRef()),
-      ui_event_dispatcher_(ui::NewUiEventDispatcher(
-          ActorKeyedService::Get(profile)->GetActorUiStateManager())) {
-  TRACE_EVENT0("actor", "ExecutionEngine::ExecutionEngine");
-  CHECK(profile_);
-}
+    : ExecutionEngine(
+          base::PassKey<ExecutionEngine>(),
+          profile,
+          ui::NewUiEventDispatcher(
+              ActorKeyedService::Get(profile)->GetActorUiStateManager())) {}
 
 ExecutionEngine::ExecutionEngine(
+    base::PassKey<ExecutionEngine>,
     Profile* profile,
     std::unique_ptr<ui::UiEventDispatcher> ui_event_dispatcher)
     : profile_(profile),
@@ -158,8 +159,9 @@ ExecutionEngine::ExecutionEngine(
 std::unique_ptr<ExecutionEngine> ExecutionEngine::CreateForTesting(
     Profile* profile,
     std::unique_ptr<ui::UiEventDispatcher> ui_event_dispatcher) {
-  return base::WrapUnique<ExecutionEngine>(
-      new ExecutionEngine(profile, std::move(ui_event_dispatcher)));
+  return std::make_unique<ExecutionEngine>(base::PassKey<ExecutionEngine>(),
+                                           profile,
+                                           std::move(ui_event_dispatcher));
 }
 
 ExecutionEngine::~ExecutionEngine() {
@@ -224,11 +226,12 @@ std::string ExecutionEngine::StateToString(State state) {
   }
 }
 
-bool ExecutionEngine::ShouldDeferNavigation(
+content::NavigationThrottle::ThrottleAction
+ExecutionEngine::ShouldDeferNavigation(
     content::NavigationHandle& navigation_handle,
     ExecutionEngine::NavigationDecisionCallback callback) {
   if (!IsNavigationGatingEnabled()) {
-    return false;
+    return content::NavigationThrottle::PROCEED;
   }
 
   CHECK(navigation_handle.GetNavigatingFrameType() ==
@@ -252,15 +255,12 @@ bool ExecutionEngine::ShouldDeferNavigation(
       LogNavigationGating(
           /*initiator_origin=*/navigation_handle.GetInitiatorOrigin(),
           navigation_handle.GetURL(), /*applied_gate=*/false);
-      return false;
+      return content::NavigationThrottle::PROCEED;
     case GatingDecision::kBlockByStaticList:
-      base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-          FROM_HERE,
-          base::BindOnce(std::move(callback), /*may_continue=*/false));
       LogNavigationGating(
           /*initiator_origin=*/navigation_handle.GetInitiatorOrigin(),
           navigation_handle.GetURL(), /*applied_gate=*/true);
-      return true;
+      return content::NavigationThrottle::CANCEL_AND_IGNORE;
     case GatingDecision::kNeedsAsyncCheck: {
       bool skip_prompt = navigation_handle.IsInPrerenderedMainFrame();
       base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
@@ -269,7 +269,7 @@ bool ExecutionEngine::ShouldDeferNavigation(
                          GetWeakPtr(), navigation_handle.GetInitiatorOrigin(),
                          navigation_handle.GetURL(), skip_prompt,
                          std::move(callback)));
-      return true;
+      return content::NavigationThrottle::DEFER;
     }
   }
 

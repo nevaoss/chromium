@@ -627,9 +627,9 @@ void CanvasResourceProviderSharedImage::WillDrawUnaccelerated() {
   EnsureWriteAccess();
 }
 
-void CanvasResourceProviderSharedImage::PrepareForWebGPUDummyMailbox() {
-  if (resource_) {
-    resource_->PrepareForWebGPUDummyMailbox();
+void CanvasResourceProviderSharedImageNon2D::PrepareForWebGPUDummyMailbox() {
+  if (resource()) {
+    resource()->PrepareForWebGPUDummyMailbox();
   }
 }
 
@@ -681,7 +681,7 @@ bool CanvasResourceProviderSharedImage::WritePixels(
   return true;
 }
 
-bool CanvasResourceProviderSharedImage::OverwriteImage(
+bool CanvasResourceProviderSharedImageNon2D::OverwriteImage(
     const scoped_refptr<gpu::ClientSharedImage>& shared_image,
     const gfx::Rect& copy_rect,
     const gpu::SyncToken& ready_sync_token,
@@ -1029,15 +1029,16 @@ sk_sp<SkSurface> CanvasResourceProviderSharedImage::CreateSkSurface() const {
 }
 
 // For WebGpu RecyclableCanvasResource.
-void CanvasResourceProviderSharedImage::OnAcquireRecyclableCanvasResource() {
+void CanvasResourceProviderSharedImageNon2D::
+    OnAcquireRecyclableCanvasResource() {
   EnsureWriteAccess();
 }
-void CanvasResourceProviderSharedImage::OnDestroyRecyclableCanvasResource(
+void CanvasResourceProviderSharedImageNon2D::OnDestroyRecyclableCanvasResource(
     const gpu::SyncToken& sync_token) {
   // RecyclableCanvasResource should be the only one that holds onto
   // |resource_|.
-  DCHECK(resource_->HasOneRef());
-  resource_->WaitSyncToken(sync_token);
+  DCHECK(resource()->HasOneRef());
+  resource()->WaitSyncToken(sync_token);
 }
 
 void CanvasResourceProviderSharedImage::OnFlushForImage(
@@ -1292,7 +1293,7 @@ std::unique_ptr<T> CanvasResourceProvider::CreateSharedImageProviderBase(
   return nullptr;
 }
 
-std::unique_ptr<CanvasResourceProviderSharedImage>
+std::unique_ptr<CanvasResourceProviderSharedImageNon2D>
 CanvasResourceProvider::CreateWebGPUImageProvider(
     gfx::Size size,
     viz::SharedImageFormat format,
@@ -1305,11 +1306,11 @@ CanvasResourceProvider::CreateWebGPUImageProvider(
   // between VideoFrames/canvas and WebGPU, e.g.:
   // * Import from VideoFrames into WebGPU via CreateExternalTexture() (the
   //   WebGPU textures will then be read by clients)
-  // * Export from WebGPU into canvas via
-  //   GpuCanvasContext::CopyTextureToResourceProvider() (the export happens via
-  //   the WebGPU interface)
+  // * Export from WebGPU into a static bitmap image via
+  //   GpuCanvasContext::{PaintRenderingResultsToSnapshot, GetImage}() (the
+  //   export happens via the WebGPU interface)
   // Hence, both WEBGPU_READ and WEBGPU_WRITE usage are needed here.
-  return CreateSharedImageProvider(
+  return CreateSharedImageProviderNon2D(
       size, format, alpha_type, color_space,
       CanvasResourceProvider::ShouldInitialize::kNo,
       std::move(context_provider_wrapper), RasterMode::kGPU,

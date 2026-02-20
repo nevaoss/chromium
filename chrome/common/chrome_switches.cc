@@ -966,11 +966,9 @@ const char kEnableNewAppMenuIcon[] = "enable-new-app-menu-icon";
 // Causes the browser to launch directly in guest mode.
 const char kGuest[] = "guest";
 
-// Forces the NTP mobile promo to appear without any preconditions.
-const char kForceNtpMobilePromo[] = "force-ntp-mobile-promo";
 #endif
 
-#if BUILDFLAG(ENABLE_GLIC) || BUILDFLAG(ENABLE_GLIC_ANDROID)
+#if BUILDFLAG(ENABLE_GLIC)
 // Overrides the glic guest URL.
 const char kGlicGuestURL[] = "glic-guest-url";
 const char kGlicAlwaysOpenFre[] = "glic-always-open-fre";
@@ -1006,6 +1004,13 @@ const char kGlicResetMultiInstanceEnabledByTier[] =
 // Override actual AI subscription tier by forcing G1 status, specifically for
 // multi-instance enablement. Intended for manual testing only.
 const char kGlicForceG1StatusForMultiInstance[] = "glic-force-g1-for-mi";
+
+// Configure preset guest URLs for manual testing. These are saved to profile
+// prefs and can be selected to override the default glic guest URL through
+// corresponding entries in chrome://flags.
+const char kGlicGuestUrlPresetAutopush[] = "glic-guest-url-preset-autopush";
+const char kGlicGuestUrlPresetPreprod[] = "glic-guest-url-preset-preprod";
+const char kGlicGuestUrlPresetProd[] = "glic-guest-url-preset-prod";
 #endif
 
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)

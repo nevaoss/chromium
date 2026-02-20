@@ -136,6 +136,7 @@
 #include "chrome/browser/ui/views/eye_dropper/eye_dropper.h"
 #include "chrome/browser/ui/views/find_bar_host.h"
 #include "chrome/browser/ui/views/frame/app_menu_button.h"
+#include "chrome/browser/ui/views/frame/browser_frame_view.h"
 #include "chrome/browser/ui/views/frame/browser_native_widget.h"
 #include "chrome/browser/ui/views/frame/browser_widget.h"
 #include "chrome/browser/ui/views/frame/contents_container_view.h"
@@ -213,7 +214,7 @@
 #include "chrome/browser/ui/views/user_education/browser_user_education_service.h"
 #include "chrome/browser/ui/views/web_apps/frame_toolbar/web_app_frame_toolbar_view.h"
 #include "chrome/browser/ui/waap/initial_web_ui_manager.h"
-#include "chrome/browser/ui/waap/waap_utils.h"
+#include "chrome/browser/ui/waap/initial_webui_window_metrics_manager.h"
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
 #include "chrome/browser/ui/webui/top_chrome/webui_contents_preload_manager.h"
 #include "chrome/browser/ui/window_sizer/window_sizer.h"
@@ -5364,16 +5365,10 @@ void BrowserView::RemovedFromWidget() {
 }
 
 void BrowserView::PaintChildren(const views::PaintInfo& paint_info) {
-  static bool did_first_presentation = false;
-  if (!did_first_presentation) {
-    did_first_presentation = true;
-    if (waap::IsInitialWebUIMetricsLoggingEnabled() && GetWidget()) {
-      GetWidget()
-          ->GetCompositor()
-          ->RequestSuccessfulPresentationTimeForNextFrame(
-              base::BindOnce(&BrowserView::OnFirstPresentation,
-                             weak_ptr_factory_.GetWeakPtr()));
-    }
+  if (waap::IsInitialWebUIMetricsLoggingEnabled() && GetWidget()) {
+    GetWidget()->GetCompositor()->RequestSuccessfulPresentationTimeForNextFrame(
+        base::BindOnce(&BrowserView::OnFirstPresentation,
+                       weak_ptr_factory_.GetWeakPtr()));
   }
 
   views::ClientView::PaintChildren(paint_info);
@@ -6321,8 +6316,10 @@ void BrowserView::UpdateFullscreenAllowedFromPolicy(
 
 void BrowserView::OnFirstPresentation(
     const viz::FrameTimingDetails& frame_timing_details) {
-  waap::RecordBrowserWindowFirstPresentation(
-      GetProfile(), frame_timing_details.presentation_feedback.timestamp);
+  if (auto* manager = InitialWebUIWindowMetricsManager::From(browser_)) {
+    manager->OnBrowserWindowFirstPresentation(
+        frame_timing_details.presentation_feedback.timestamp);
+  }
 }
 
 #if BUILDFLAG(ENTERPRISE_SCREENSHOT_PROTECTION)

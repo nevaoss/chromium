@@ -435,7 +435,7 @@ class IsolatedWebAppUpdateManagerUpdateTest
     return provider().iwa_update_manager().AsDebugValue();
   }
 
-  base::Value::List UpdateDiscoveryLog() {
+  base::ListValue UpdateDiscoveryLog() {
     return debug_log()
         .GetDict()
         .FindDict("task_queue")
@@ -443,7 +443,7 @@ class IsolatedWebAppUpdateManagerUpdateTest
         ->Clone();
   }
 
-  base::Value::List UpdateDiscoveryTasks() {
+  base::ListValue UpdateDiscoveryTasks() {
     return debug_log()
         .GetDict()
         .FindDict("task_queue")
@@ -451,7 +451,7 @@ class IsolatedWebAppUpdateManagerUpdateTest
         ->Clone();
   }
 
-  base::Value::List UpdateApplyLog() {
+  base::ListValue UpdateApplyLog() {
     return debug_log()
         .GetDict()
         .FindDict("task_queue")
@@ -459,7 +459,7 @@ class IsolatedWebAppUpdateManagerUpdateTest
         ->Clone();
   }
 
-  base::Value::List UpdateApplyTasks() {
+  base::ListValue UpdateApplyTasks() {
     return debug_log()
         .GetDict()
         .FindDict("task_queue")
@@ -467,7 +467,7 @@ class IsolatedWebAppUpdateManagerUpdateTest
         ->Clone();
   }
 
-  base::Value::List UpdateApplyWaiters() {
+  base::ListValue UpdateApplyWaiters() {
     return debug_log().GetDict().FindList("update_apply_waiters")->Clone();
   }
 };
@@ -1297,7 +1297,7 @@ class IsolatedWebAppUpdateManagerUpdateApplyOnStartupTest
 
   std::unique_ptr<WebApp> CreateIsolatedWebApp(const GURL& start_url,
                                                IsolationData isolation_data) {
-    webapps::ManifestId manifest_id = start_url.Resolve("/");
+    webapps::ManifestId manifest_id = webapps::ManifestId(start_url.Resolve("/"));
     GURL scope = start_url.Resolve("/");
     auto web_app = std::make_unique<WebApp>(manifest_id, start_url, scope);
     web_app->SetName("iwa name");

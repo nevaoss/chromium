@@ -166,7 +166,9 @@ class PLATFORM_EXPORT CanvasResourceProvider
       gpu::SharedImageUsageSet shared_image_usage_flags,
       Delegate* delegate = nullptr);
 
-  static std::unique_ptr<CanvasResourceProviderSharedImage>
+  // Used for WebGPU-specific CanvasResourceProviders. Not for usage with
+  // Canvas2D.
+  static std::unique_ptr<CanvasResourceProviderSharedImageNon2D>
   CreateWebGPUImageProvider(
       gfx::Size size,
       viz::SharedImageFormat format,
@@ -480,20 +482,6 @@ class PLATFORM_EXPORT CanvasResourceProviderSharedImage
   // via raster or the compositor) waits on this token.
   void EndExternalWrite(const gpu::SyncToken& external_write_sync_token);
 
-  // For WebGpu RecyclableCanvasResource.
-  void OnAcquireRecyclableCanvasResource();
-  void OnDestroyRecyclableCanvasResource(const gpu::SyncToken& sync_token);
-
-  // Overwrites the current image (either completely or partially) with the
-  // passed-in SharedImage. Waits on `ready_sync_token` before copying; pass
-  // SyncToken() if no sync is required. Synthesizes a new sync token in
-  // `completion_sync_token` which will satisfy after the image copy completes.
-  // In practice, this API can be used to replace a resource with the contents
-  // of an AcceleratedStaticBitmapImage or with a WebGPUMailboxTexture.
-  bool OverwriteImage(const scoped_refptr<gpu::ClientSharedImage>& shared_image,
-                      const gfx::Rect& copy_rect,
-                      const gpu::SyncToken& ready_sync_token,
-                      gpu::SyncToken& completion_sync_token);
   void ClearUnusedResources() { unused_resources_.clear(); }
   void OnResourceRefReturned(
       scoped_refptr<CanvasResourceSharedImage>&& resource);
@@ -560,16 +548,20 @@ class PLATFORM_EXPORT CanvasResourceProviderSharedImage
   // by this provider.
   void WillDrawUnaccelerated();
 
-  // This is a workaround to ensure WaitSyncToken() is still called even when
-  // copying is effectively skipped due to a dummy WebGPU texture.
-  void PrepareForWebGPUDummyMailbox();
-
   scoped_refptr<CanvasResource> ProduceCanvasResource() {
     return ProduceCanvasResource(FlushReason::kOther);
   }
 
   // WebGraphicsContext3DProvider::DestructionObserver implementation.
   void OnContextDestroyed() override;
+
+ protected:
+  CanvasResourceSharedImage* resource() {
+    return static_cast<CanvasResourceSharedImage*>(resource_.get());
+  }
+  void EnsureWriteAccess();
+  void EndWriteAccess();
+  std::unique_ptr<gpu::RasterScopedAccess> WillDrawInternal();
 
  private:
   CanvasImageProvider* GetOrCreateCanvasImageProvider();
@@ -600,17 +592,11 @@ class PLATFORM_EXPORT CanvasResourceProviderSharedImage
       scoped_refptr<CanvasResourceSharedImage>&& resource);
   scoped_refptr<CanvasResourceSharedImage> NewOrRecycledResource();
   bool IsResourceUsable(CanvasResourceSharedImage* resource);
-  CanvasResourceSharedImage* resource() {
-    return static_cast<CanvasResourceSharedImage*>(resource_.get());
-  }
   const CanvasResourceSharedImage* resource() const {
     return static_cast<const CanvasResourceSharedImage*>(resource_.get());
   }
   bool ShouldReplaceTargetBuffer(
       PaintImage::ContentId content_id = PaintImage::kInvalidContentId);
-  void EnsureWriteAccess();
-  void EndWriteAccess();
-  std::unique_ptr<gpu::RasterScopedAccess> WillDrawInternal();
 
   void RecycleResource(scoped_refptr<CanvasResourceSharedImage>&& resource);
   void MaybePostUnusedResourcesReclaimTask();
@@ -673,6 +659,25 @@ class PLATFORM_EXPORT CanvasResourceProviderSharedImageNon2D
       gpu::SharedImageUsageSet shared_image_usage_flags,
       Delegate*);
   ~CanvasResourceProviderSharedImageNon2D() override = default;
+
+  // For WebGpu RecyclableCanvasResource.
+  void OnAcquireRecyclableCanvasResource();
+  void OnDestroyRecyclableCanvasResource(const gpu::SyncToken& sync_token);
+
+  // This is a workaround to ensure WaitSyncToken() is still called even when
+  // copying is effectively skipped due to a dummy WebGPU texture.
+  void PrepareForWebGPUDummyMailbox();
+
+  // Overwrites the current image (either completely or partially) with the
+  // passed-in SharedImage. Waits on `ready_sync_token` before copying; pass
+  // SyncToken() if no sync is required. Synthesizes a new sync token in
+  // `completion_sync_token` which will satisfy after the image copy completes.
+  // In practice, this API can be used to replace a resource with the contents
+  // of an AcceleratedStaticBitmapImage or with a WebGPUMailboxTexture.
+  bool OverwriteImage(const scoped_refptr<gpu::ClientSharedImage>& shared_image,
+                      const gfx::Rect& copy_rect,
+                      const gpu::SyncToken& ready_sync_token,
+                      gpu::SyncToken& completion_sync_token);
 };
 
 }  // namespace blink

@@ -1043,7 +1043,26 @@ chromium-metrics-reviews@google.com.
     operations. Recorded when there is an error while communicating with the DB
     for any data type that uses the DataTypeStore. This metric should be used
     together with Sync.DataType[Run|Start]Failures2 to figure out the root cause
-    of the data type failure.
+    of the data type failure. In case of an IOError,
+    `Sync.DataTypeStoreBackendError.{Operation}.IOError` is also recorded.
+  </summary>
+  <token key="Operation">
+    <variant name="DeleteData"/>
+    <variant name="GetStoreVersion"/>
+    <variant name="Init"/>
+    <variant name="ReadAllRecords"/>
+    <variant name="ReadRecords"/>
+    <variant name="WriteModifications"/>
+  </token>
+</histogram>
+
+<histogram name="Sync.DataTypeStoreBackendError.{Operation}.IOError"
+    enum="PlatformFileError" expires_after="2026-08-31">
+  <owner>treib@chromium.org</owner>
+  <owner>mtatarski@google.com</owner>
+  <summary>
+    Records the base::File::Error code for DataTypeStore {Operation} operations
+    when the LevelDB status is IOError.
   </summary>
   <token key="Operation">
     <variant name="DeleteData"/>
@@ -1170,6 +1189,19 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram
+    name="Sync.DeviceStatistics.Outcome.NonPrimaryAccount.NumberOfAdditionalClientsWithHistoryOptIn"
+    units="clients" expires_after="2026-06-30">
+  <owner>treib@chromium.org</owner>
+  <owner>src/components/sync/OWNERS</owner>
+  <summary>
+    Device statistics: Records the number of additional syncing clients (i.e.
+    not counting this client) of a non-primary account which are opted in to
+    history sync. Recorded at most once per day (30 seconds after profile
+    initialization) for every non-primary account.
+  </summary>
+</histogram>
+
+<histogram
     name="Sync.DeviceStatistics.Outcome.NonPrimaryAccount.PlatformOfAdditionalClient"
     enum="SyncDeviceStatisticsPlatform" expires_after="2026-06-30">
   <owner>treib@chromium.org</owner>
@@ -1194,6 +1226,17 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Sync.DeviceStatistics.Outcome.PrimaryAccount.HistoryOptIn"
+    enum="SyncDeviceStatisticsOutcome" expires_after="2026-06-30">
+  <owner>treib@chromium.org</owner>
+  <owner>src/components/sync/OWNERS</owner>
+  <summary>
+    Device statistics: Records the history opt-in status of the primary account,
+    across this device and any other signed-in-to-Chrome devices. Recorded at
+    most once per day (30 seconds after profile initialization).
+  </summary>
+</histogram>
+
 <histogram
     name="Sync.DeviceStatistics.Outcome.PrimaryAccount.NumberOfAdditionalClients"
     units="clients" expires_after="2026-06-30">
@@ -1203,6 +1246,19 @@ chromium-metrics-reviews@google.com.
     Device statistics: Records the number of additional syncing clients (i.e.
     not counting this client) of the primary account. Recorded at most once per
     day (30 seconds after profile initialization).
+  </summary>
+</histogram>
+
+<histogram
+    name="Sync.DeviceStatistics.Outcome.PrimaryAccount.NumberOfAdditionalClientsWithHistoryOptIn"
+    units="clients" expires_after="2026-06-30">
+  <owner>treib@chromium.org</owner>
+  <owner>src/components/sync/OWNERS</owner>
+  <summary>
+    Device statistics: Records the number of additional syncing clients (i.e.
+    not counting this client) of the primary account which are opted in to
+    history sync. Recorded at most once per day (30 seconds after profile
+    initialization).
   </summary>
 </histogram>
 

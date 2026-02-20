@@ -138,6 +138,7 @@ if (is_android) {
       "//chrome/browser/ntp_customization:java",
       "//chrome/browser/omaha/android:java",
       "//chrome/browser/omaha/android:update_proto_java",
+      "//chrome/browser/open_in_app/android:java",
       "//chrome/browser/optimization_guide/android:java",
       "//chrome/browser/page_image_service/android:java",
       "//chrome/browser/page_load_metrics:java",
@@ -1257,7 +1258,6 @@ if (is_android) {
       "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/pinned_tabs_strip/PinnedTabStripMediatorTest.java",
       "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/pinned_tabs_strip/PinnedTabStripViewBinderTest.java",
       "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/tab_bottom_sheet/TabBottomSheetCoordinatorTest.java",
-      "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/tab_bottom_sheet/TabBottomSheetManagerTest.java",
       "//chrome/android/features/tab_ui/junit/src/org/chromium/chrome/browser/tasks/tab_management/ArchivedTabsCardViewBinderUnitTest.java",
       "//chrome/android/features/tab_ui/junit/src/org/chromium/chrome/browser/tasks/tab_management/ArchivedTabsDialogCoordinatorUnitTest.java",
       "//chrome/android/features/tab_ui/junit/src/org/chromium/chrome/browser/tasks/tab_management/ArchivedTabsMessageServiceUnitTest.java",
@@ -1304,6 +1304,7 @@ if (is_android) {
       "//chrome/android:chrome_java",
       "//chrome/browser/settings:search_java",
       "//chrome/browser/tab_group_suggestion:java",
+      "//chrome/test/android:chrome_java_transit",
     ]
   }
 

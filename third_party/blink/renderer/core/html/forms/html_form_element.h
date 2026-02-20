@@ -159,7 +159,20 @@ class CORE_EXPORT HTMLFormElement final : public HTMLElement {
   void UseCountPropertyAccess(v8::Local<v8::Name>&,
                               const v8::PropertyCallbackInfo<v8::Value>&);
 
+  bool MatchesToolFormActivePseudoClass() {
+    // TODO(crbug.com/475992364): Implement correct matching state.
+    //
+    // Additionally:
+    //
+    //   PseudoStateChanged(CSSSelector::kPseudoToolFormActive);
+    //
+    // must be invoked appropriately when the state changes.
+    return false;
+  }
+
  private:
+  friend class HTMLFormMcpToolTest;
+
   InsertionNotificationRequest InsertedInto(ContainerNode&) override;
   void RemovedFrom(ContainerNode&) override;
   void FinishParsingChildren() override;
@@ -238,8 +251,9 @@ class CORE_EXPORT HTMLFormElement final : public HTMLElement {
 
   base::OnceClosure cancel_last_submission_;
 
-  class HTMLFormMcpTool final : public GarbageCollected<HTMLFormMcpTool>,
-                                public DeclarativeWebMCPTool {
+  class CORE_EXPORT HTMLFormMcpTool final
+      : public GarbageCollected<HTMLFormMcpTool>,
+        public DeclarativeWebMCPTool {
    public:
     HTMLFormMcpTool() = delete;
     HTMLFormMcpTool(const HTMLFormMcpTool&) = delete;
@@ -254,7 +268,15 @@ class CORE_EXPORT HTMLFormElement final : public HTMLElement {
     }
     String ComputeInputSchema() override;
     void ExecuteTool(String input_arguments,
-                     base::OnceCallback<void(String)> done_callback) override;
+                     base::OnceCallback<void(
+                         base::expected<String, WebDocument::ScriptToolError>)>
+                         done_callback) override;
+    // Fill form controls with data as provided by `input_arguments`.
+    //
+    // If 'true' is returned, then all specified tool parameters (form controls)
+    // were filled successfully. Otherwise, the state of all form controls
+    // are left unchanged.
+    bool FillFormControls(const String& input_arguments);
     String ToolName() const { return tool_name_; }
     String ToolDescription() const { return tool_description_; }
     bool IsValidTool() const { return !tool_name_.IsNull(); }

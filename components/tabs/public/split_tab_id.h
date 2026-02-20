@@ -5,13 +5,12 @@
 #ifndef COMPONENTS_TABS_PUBLIC_SPLIT_TAB_ID_H_
 #define COMPONENTS_TABS_PUBLIC_SPLIT_TAB_ID_H_
 
-#include <ostream>
-
+// Actual definition of these classes is being moved.
+#include "components/split_tabs/split_tab_id.h"
 #include "components/tab_groups/token_id.h"
 
 namespace split_tabs {
-
-class SplitTabId : public tab_groups::TokenId<SplitTabId> {};
+class SplitTabId;
 
 // For use in std::unordered_map.
 using SplitTabIdHash = tab_groups::TokenIdHash<SplitTabId>;

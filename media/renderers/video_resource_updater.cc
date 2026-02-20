@@ -227,7 +227,7 @@ viz::SharedImageFormat VideoPixelFormatToMultiPlanarSharedImageFormat(
   using Subsampling = viz::SharedImageFormat::Subsampling;
   using ChannelFormat = viz::SharedImageFormat::ChannelFormat;
   // Supports VideoPixelFormats based on data from
-  // Media.GpuMemoryBufferVideoFramePool.UnsupportedFormat UMA which ends up
+  // Media.MappableSharedImageVideoFramePool.UnsupportedFormat UMA which ends up
   // going through VideoResourceUpdater for software pixel upload.
   switch (input_format) {
     case PIXEL_FORMAT_I420:
@@ -950,11 +950,9 @@ bool VideoResourceUpdater::WriteRGBPixelsToTexture(
     // PCVR writes to origin, so offset upload pixels by start since
     // we upload frames in coded size and pass on the visible rect to
     // the compositor. Note: It'd save a few bytes not to do this...
-    auto* dest_ptr =
-        upload_pixels_[0]
-            .subspan(video_frame->visible_rect().y() * bytes_per_row +
-                     video_frame->visible_rect().x() * sizeof(uint32_t))
-            .data();
+    auto dest_span = upload_pixels_[0].subspan(
+        video_frame->visible_rect().y() * bytes_per_row +
+        video_frame->visible_rect().x() * sizeof(uint32_t));
     // Alpha can be premul for videos that can be delegated/overlaid.
     bool premultiply_alpha =
         hardware_resource->shared_image()->alpha_type() == kPremul_SkAlphaType
@@ -962,7 +960,7 @@ bool VideoResourceUpdater::WriteRGBPixelsToTexture(
             : false;
 
     PaintCanvasVideoRenderer::ConvertVideoFrameToRGBPixels(
-        video_frame.get(), dest_ptr, bytes_per_row,
+        video_frame.get(), dest_span, bytes_per_row,
         resource_format == viz::SinglePlaneFormat::kRGBA_F16
             ? kRGBA_F16_SkColorType
             : kN32_SkColorType,
@@ -1074,10 +1072,10 @@ bool VideoResourceUpdater::WriteYUVPixelsForAllPlanesToTexture(
         int max_value = 1 << bits_per_channel;
         // Use 1.0/max_value to be consistent with multiplanar shared images
         // which create TextureDrawQuads and don't take in a multiplier, offset.
-        // This is consistent with GpuMemoryBufferVideoFramePool as well which
-        // performs libyuv conversion for converting I420 to buffer. This is
-        // sub-optimal but okay as it is only used for 16-bit float formats with
-        // slower software pixel upload path here.
+        // This is consistent with MappableSharedImageVideoFramePool as well
+        // which performs libyuv conversion for converting I420 to buffer. This
+        // is sub-optimal but okay as it is only used for 16-bit float formats
+        // with slower software pixel upload path here.
         float libyuv_multiplier = 1.f / max_value;
         libyuv::HalfFloatPlane(
             reinterpret_cast<const uint16_t*>(

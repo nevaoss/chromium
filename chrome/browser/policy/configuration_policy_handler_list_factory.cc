@@ -67,6 +67,7 @@
 #include "components/content_settings/core/browser/cookie_settings_policy_handler.h"
 #include "components/content_settings/core/common/pref_names.h"
 #include "components/contextual_search/pref_names.h"
+#include "components/contextual_search/search_content_sharing_policy_handler.h"
 #include "components/custom_handlers/pref_names.h"
 #include "components/domain_reliability/domain_reliability_prefs.h"
 #include "components/embedder_support/pref_names.h"
@@ -157,7 +158,6 @@
 #include "chrome/browser/policy/managed_account_policy_handler.h"
 #include "chrome/browser/web_applications/policy/web_app_settings_policy_handler.h"
 #include "chrome/browser/web_applications/policy/web_app_user_install_policy_handler.h"
-#include "components/contextual_search/search_content_sharing_policy_handler.h"
 #include "components/headless/policy/headless_mode_policy_handler.h"
 #include "components/lens/lens_overlay_permission_utils.h"
 #include "components/media_router/common/pref_names.h"
@@ -272,10 +272,10 @@
 #include "components/safe_browsing/content/common/file_type_policies_prefs.h"
 #endif
 
-#if BUILDFLAG(ENABLE_GLIC) || BUILDFLAG(ENABLE_GLIC_ANDROID)
+#if BUILDFLAG(ENABLE_GLIC)
 #include "chrome/browser/glic/gemini_act_on_web_settings_policy_handler.h"
 #include "chrome/browser/glic/glic_pref_names.h"
-#endif  // BUILDFLAG(ENABLE_GLIC) || BUILDFLAG(ENABLE_GLIC_ANDROID)
+#endif  // BUILDFLAG(ENABLE_GLIC)
 
 namespace policy {
 namespace {
@@ -477,9 +477,6 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
   { key::kIsolateOriginsAndroid,
     prefs::kIsolateOrigins,
     base::Value::Type::STRING },
-  { key::kLensCameraAssistedSearchEnabled,
-    lens::kLensCameraAssistedSearchEnabled,
-    base::Value::Type::BOOLEAN },
   { key::kNTPContentSuggestionsEnabled,
     feed::prefs::kEnableSnippets,
     base::Value::Type::BOOLEAN },
@@ -760,6 +757,11 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
     base::Value::Type::BOOLEAN },
 #endif  // BUILDFLAG(IS_CHROMEOS)
 #endif  // BUILDFLAG(ENABLE_PDF)
+#if BUILDFLAG(ENABLE_PDF_SAVE_TO_DRIVE)
+  { key::kRestrictPdfSaveToGoogleDriveAccountsToPattern,
+    prefs::kRestrictPdfSaveToGoogleDriveAccountsToPattern,
+    base::Value::Type::STRING },
+#endif  // BUILDFLAG(ENABLE_PDF_SAVE_TO_DRIVE)
   { key::kPolicyRefreshRate,
     policy_prefs::kUserPolicyRefreshRate,
     base::Value::Type::INTEGER },
@@ -2442,11 +2444,11 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
   { key::kAIModeSettings,
     omnibox::kAIModeSettings,
     base::Value::Type::INTEGER },
-#if BUILDFLAG(ENABLE_GLIC) || BUILDFLAG(ENABLE_GLIC_ANDROID)
+#if BUILDFLAG(ENABLE_GLIC)
   { key::kGeminiActOnWebSettings,
     glic::prefs::kGlicActuationOnWeb,
     base::Value::Type::INTEGER },
-#endif  // BUILDFLAG(ENABLE_GLIC) || BUILDFLAG(ENABLE_GLIC_ANDROID)
+#endif  // BUILDFLAG(ENABLE_GLIC)
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
   { key::kEnableProxyOverrideRulesForAllUsers,
     proxy_config::prefs::kEnableProxyOverrideRulesForAllUsers,
@@ -3500,6 +3502,14 @@ std::unique_ptr<ConfigurationPolicyHandlerList> BuildHandlerList(
       std::make_unique<contextual_search::SearchContentSharingPolicyHandler>(
           prefs::kLensRegionSearchEnabled,
           /* convert_policy_value_to_enabled_boolean= */ true)));
+#else
+  handlers->AddHandler(std::make_unique<policy::SimpleDeprecatingPolicyHandler>(
+      std::make_unique<SimplePolicyHandler>(
+          key::kLensCameraAssistedSearchEnabled,
+          lens::kLensCameraAssistedSearchEnabled, base::Value::Type::BOOLEAN),
+      std::make_unique<contextual_search::SearchContentSharingPolicyHandler>(
+          lens::kLensCameraAssistedSearchEnabled,
+          /* convert_policy_value_to_enabled_boolean= */ true)));
 #endif  // !BUILDFLAG(IS_ANDROID)
   gen_ai_default_policies.emplace_back(
       key::kAIModeSettings, omnibox::kAIModeSettings,
@@ -3515,7 +3525,7 @@ std::unique_ptr<ConfigurationPolicyHandlerList> BuildHandlerList(
   handlers->AddHandler(std::make_unique<GenAiDefaultSettingsPolicyHandler>(
       std::vector<GenAiDefaultSettingsPolicyHandler::GenAiPolicyDetails>(
           gen_ai_default_policies)));
-#if BUILDFLAG(ENABLE_GLIC) || BUILDFLAG(ENABLE_GLIC_ANDROID)
+#if BUILDFLAG(ENABLE_GLIC)
   handlers->AddHandler(std::make_unique<GeminiActOnWebSettingsPolicyHandler>(
       std::make_unique<GenAiDefaultSettingsPolicyHandler>(
           std::move(gen_ai_default_policies))));
@@ -3525,7 +3535,7 @@ std::unique_ptr<ConfigurationPolicyHandlerList> BuildHandlerList(
   handlers->AddHandler(std::make_unique<URLSchemeListPolicyHandler>(
       key::kGeminiActOnWebBlockedForURLs,
       glic::prefs::kGlicActuationOnWebBlockedForURLs));
-#endif  // BUILDFLAG(ENABLE_GLIC) || BUILDFLAG(ENABLE_GLIC_ANDROID)
+#endif  // BUILDFLAG(ENABLE_GLIC)
 
   handlers->AddHandler(std::make_unique<CloudUserOnlyPolicyChecker>(
       std::make_unique<SimplePolicyHandler>(

@@ -83,6 +83,7 @@
 #include "chrome/browser/ui/views/toolbar/toolbar_controller.h"
 #include "chrome/browser/ui/views/toolbar/webui_toolbar_web_view.h"
 #include "chrome/browser/ui/views/zoom/zoom_view_controller.h"
+#include "chrome/browser/ui/waap/initial_webui_window_metrics_manager.h"
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
 #include "chrome/browser/web_applications/link_capturing_features.h"
 #include "chrome/common/chrome_features.h"
@@ -313,12 +314,15 @@ void ToolbarView::Init() {
       BackForwardButton::Direction::kForward,
       base::BindRepeating(callback, browser_, IDC_FORWARD), browser_));
 
-  if (features::IsWebUIReloadButtonEnabled()) {
+  if (features::IsWebUIToolbarEnabled()) {
     toolbar_webview_ = AddChildView(std::make_unique<WebUIToolbarWebView>(
         browser_, browser_->command_controller()));
-  } else {
+  }
+
+  if (!features::IsWebUIReloadButtonEnabled()) {
     reload_ = AddChildView(std::make_unique<ReloadButton>(
-        browser_->GetProfile(), browser_->command_controller()));
+        browser_->profile(), browser_->command_controller(),
+        InitialWebUIWindowMetricsManager::From(browser_)));
   }
   home_ = AddChildView(std::move(home));
   std::unique_ptr<SplitTabsToolbarButton> split =

@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "base/containers/flat_map.h"
+#include "base/containers/flat_set.h"
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
 #include "base/types/expected.h"
@@ -21,6 +22,10 @@
 namespace signin {
 class IdentityManager;
 }  // namespace signin
+
+namespace sync_pb {
+class SyncEntity;
+}  // namespace sync_pb
 
 class PrefRegistrySimple;
 class PrefService;
@@ -104,7 +109,30 @@ class DeviceStatisticsTracker {
   };
   // LINT.ThenChange(//tools/metrics/histograms/metadata/sync/enums.xml:SyncDeviceStatisticsPlatform)
 
+  // LINT.IfChange(SyncDeviceStatisticsHistoryOptInSummary)
+  // These values are persisted to logs. Entries should not be renumbered and
+  // numeric values should never be reused.
+  enum class HistoryOptInSummary {
+    kThisDeviceYesOtherDevicesNA = 0,
+    kThisDeviceNoOtherDevicesNA = 1,
+    kThisDeviceYesOtherDevicesYes = 2,
+    kThisDeviceYesOtherDevicesNo = 3,
+    kThisDeviceNoOtherDevicesYes = 4,
+    kThisDeviceNoOtherDevicesNo = 5,
+    kMaxValue = kThisDeviceNoOtherDevicesNo
+  };
+  // LINT.ThenChange(//tools/metrics/histograms/metadata/sync/enums.xml:SyncDeviceStatisticsHistoryOptInSummary)
+
  private:
+  struct DeviceData {
+    DeviceData(Platform platform, bool history_opt_in)
+        : platform(platform), history_opt_in(history_opt_in) {}
+    ~DeviceData() = default;
+
+    const Platform platform;
+    const bool history_opt_in;
+  };
+
   void RequestDoneForGaiaId(const GaiaId& gaia);
   void AllRequestsDone();
 
@@ -112,6 +140,13 @@ class DeviceStatisticsTracker {
 
   RequestsCompletedSuccess GetOverallSuccess() const;
   AccountsHaveOtherDevicesSummary GetOverallOutcome() const;
+  HistoryOptInSummary GetHistoryOptInSummary(
+      size_t other_devices,
+      size_t other_devices_with_history_opt_in) const;
+
+  std::vector<DeviceData> DeduplicateEntities(
+      const std::vector<sync_pb::SyncEntity>& entities,
+      const base::flat_set<std::string>& current_device_cache_guids);
 
   const raw_ptr<PrefService> pref_service_;
   const raw_ptr<signin::IdentityManager> identity_manager_;
@@ -120,10 +155,14 @@ class DeviceStatisticsTracker {
 
   const RequestFactory request_factory_;
 
-  const std::vector<std::string> current_device_cache_guids_;
+  const base::flat_set<std::string> current_device_cache_guids_;
 
-  // Cached on construction, to later verify it hasn't changed.
+  // Cached on construction, to later verify it hasn't changed. May be empty.
   const CoreAccountInfo primary_account_;
+
+  // Whether the primary account is opted in to history (on this device).
+  // Populated when the corresponding request completes.
+  bool primary_account_history_opt_in_ = false;
 
   base::OnceClosure callback_;
 
@@ -136,7 +175,7 @@ class DeviceStatisticsTracker {
   // Results. This will have exactly one entry for every request that completed,
   // successfully or not. On success, the value is the list of all valid other
   // devices (which may be empty).
-  base::flat_map<GaiaId, base::expected<std::vector<Platform>, RequestFailed>>
+  base::flat_map<GaiaId, base::expected<std::vector<DeviceData>, RequestFailed>>
       other_devices_by_gaia_;
 };
 

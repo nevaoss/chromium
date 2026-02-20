@@ -36,6 +36,7 @@
 #include "components/google/core/common/google_util.h"
 #include "components/lens/contextual_input.h"
 #include "components/omnibox/browser/vector_icons.h"
+#include "components/omnibox/composebox/contextual_search_mojom_traits.h"
 #include "components/sessions/content/session_tab_helper.h"
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/navigation_handle.h"
@@ -314,6 +315,10 @@ ContextualSearchboxHandler::ContextualSearchboxHandler(
         service ? service->GetSearchboxConfig() : nullptr;
     input_state_model_ = std::make_unique<contextual_search::InputStateModel>(
         *session_handle, config_ptr ? *config_ptr : omnibox::SearchboxConfig());
+
+    input_state_subscription_ = input_state_model_->subscribe(
+        base::BindRepeating(&ContextualSearchboxHandler::OnInputStateChanged,
+                            weak_ptr_factory_.GetWeakPtr()));
   }
 
   auto* browser_window_interface =
@@ -485,6 +490,28 @@ void ContextualSearchboxHandler::UploadSnapshotTabContextIfPresent() {
   UploadTabContext(context_token, std::move(page_content_data));
 }
 
+void ContextualSearchboxHandler::SetActiveToolMode(omnibox::ToolMode tool) {
+  if (!input_state_model_) {
+    return;
+  }
+  input_state_model_->setActiveTool(tool);
+}
+
+void ContextualSearchboxHandler::SetActiveModelMode(omnibox::ModelMode model) {
+  if (!input_state_model_) {
+    return;
+  }
+  input_state_model_->setActiveModel(model);
+}
+
+void ContextualSearchboxHandler::OnInputStateChanged(
+    const contextual_search::InputState& state) {
+  if (!IsRemoteBound()) {
+    return;
+  }
+  page_->OnInputStateChanged(contextual_search::ToMojom(state));
+}
+
 void ContextualSearchboxHandler::UploadTabContextWithData(
     int32_t tab_id,
     std::optional<int64_t> context_id,
@@ -649,6 +676,13 @@ void ContextualSearchboxHandler::ComputeAndOpenQueryUrl(
   if (contextual_session_handle) {
     // Upload the cached tab context if it exists.
     UploadSnapshotTabContextIfPresent();
+
+    if (input_state_model_) {
+      for (auto const& [key, val] :
+           input_state_model_->GetAdditionalQueryParams()) {
+        additional_params[key] = val;
+      }
+    }
 
     auto search_url_request_info =
         std::make_unique<contextual_search::ContextualSearchContextController::

@@ -87,8 +87,8 @@ struct AppActionRemoveInstallSource {
   explicit AppActionRemoveInstallSource(WebAppManagement::Type source)
       : source(source) {}
 
-  base::Value::Dict GetDebugValue() const {
-    return base::Value::Dict()
+  base::DictValue GetDebugValue() const {
+    return base::DictValue()
         .Set("type", "AppActionRemoveInstallSource")
         .Set("source", base::ToString(source));
   }
@@ -101,9 +101,9 @@ struct AppActionInstall {
   explicit AppActionInstall(IsolatedWebAppExternalInstallOptions options)
       : options(std::move(options)) {}
 
-  base::Value::Dict GetDebugValue() const {
-    base::Value::Dict debug_value =
-        base::Value::Dict()
+  base::DictValue GetDebugValue() const {
+    base::DictValue debug_value =
+        base::DictValue()
             .Set("type", "AppActionInstall")
             .Set("update_manifest_url",
                  options.update_manifest_url().possibly_invalid_spec())
@@ -257,7 +257,7 @@ void IsolatedWebAppPolicyManager::Start(base::OnceClosure on_started_callback) {
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
   auto debug_log =
-      base::Value::Dict()
+      base::DictValue()
           .Set("start_time",
                base::TimeFormatFriendlyDateAndTime(base::Time::Now()))
           .Set("info", "IsolatedWebAppPolicyManager::Start()");
@@ -283,7 +283,7 @@ void IsolatedWebAppPolicyManager::SetProvider(base::PassKey<WebAppProvider>,
 
 base::Value IsolatedWebAppPolicyManager::GetDebugValue() const {
   return base::Value(
-      base::Value::Dict()
+      base::DictValue()
           .Set("policy_is_being_processed",
                policy_is_being_processed_
                    ? base::Value(current_process_log_.Clone())
@@ -294,7 +294,7 @@ base::Value IsolatedWebAppPolicyManager::GetDebugValue() const {
 
 void IsolatedWebAppPolicyManager::ProcessPolicy() {
   CHECK(provider_);
-  base::Value::Dict process_log;
+  base::DictValue process_log;
   process_log.Set("start_time",
                   base::TimeFormatFriendlyDateAndTime(base::Time::Now()));
 
@@ -345,9 +345,8 @@ void IsolatedWebAppPolicyManager::CleanupAndProcessPolicyOnSessionStart() {
   }
 }
 
-void IsolatedWebAppPolicyManager::DoProcessPolicy(
-    AllAppsLock& lock,
-    base::Value::Dict& debug_info) {
+void IsolatedWebAppPolicyManager::DoProcessPolicy(AllAppsLock& lock,
+                                                  base::DictValue& debug_info) {
 #if BUILDFLAG(IS_CHROMEOS)
   MaybeRecordFirstPolicyProcessingDelay(profile_);
 #endif  // BUILDFLAG(IS_CHROMEOS)
@@ -474,7 +473,7 @@ void IsolatedWebAppPolicyManager::DoProcessPolicy(
   debug_info.Set(
       "app_actions", base::ToValueList(app_actions, [](const auto& entry) {
         const auto& [web_bundle_id, app_action] = entry;
-        return base::Value::Dict()
+        return base::DictValue()
             .Set("web_bundle_id", base::ToString(web_bundle_id))
             .Set("action",
                  std::visit(
@@ -621,7 +620,7 @@ void IsolatedWebAppPolicyManager::MaybeStartNextInstallTask() {
 
 void IsolatedWebAppPolicyManager::OnPolicyProcessed() {
   process_logs_.AppendCompletedStep(
-      std::exchange(current_process_log_, base::Value::Dict()));
+      std::exchange(current_process_log_, base::DictValue()));
 
   policy_is_being_processed_ = false;
 
@@ -658,7 +657,7 @@ IsolatedWebAppPolicyManager::ProcessLogs::ProcessLogs() = default;
 IsolatedWebAppPolicyManager::ProcessLogs::~ProcessLogs() = default;
 
 void IsolatedWebAppPolicyManager::ProcessLogs::AppendCompletedStep(
-    base::Value::Dict log) {
+    base::DictValue log) {
   log.Set("end_time", base::TimeFormatFriendlyDateAndTime(base::Time::Now()));
 
   // Keep only the most recent `kMaxEntries`.
@@ -669,7 +668,7 @@ void IsolatedWebAppPolicyManager::ProcessLogs::AppendCompletedStep(
 }
 
 base::Value IsolatedWebAppPolicyManager::ProcessLogs::ToDebugValue() const {
-  return base::Value(base::ToValueList(logs_, &base::Value::Dict::Clone));
+  return base::Value(base::ToValueList(logs_, &base::DictValue::Clone));
 }
 
 }  // namespace web_app

@@ -424,8 +424,7 @@ bool ManifestParser::Parse() {
     }
   }
 
-  if (base::FeatureList::IsEnabled(blink::features::kWebAppBorderless) ||
-      base::FeatureList::IsEnabled(blink::features::kUnframedIwa)) {
+  if (base::FeatureList::IsEnabled(blink::features::kWebAppBorderless)) {
     manifest_->borderless_url_patterns =
         ParseUrlPatterns(root_object.get(), "borderless_url_patterns");
   }
@@ -463,8 +462,10 @@ bool ManifestParser::Parse() {
                       WebFeature::kWebAppManifestProtocolHandlers);
   }
 
-  if (!(execution_context_ && execution_context_->IsIsolatedContext())) {
-    // TODO(crbug.com/383094092): Scope Extensions for IWAs are not defined yet.
+  bool is_iwa = execution_context_ && execution_context_->IsIsolatedContext();
+  if (!is_iwa ||
+      base::FeatureList::IsEnabled(
+          blink::features::kWebAppEnableScopeExtensionsForIsolatedWebApps)) {
     manifest_->scope_extensions = ParseScopeExtensions(root_object.get());
     if (!manifest_->scope_extensions.empty()) {
       UseCounter::Count(execution_context_,
@@ -2404,7 +2405,7 @@ ManifestParser::ParseIsolatedAppPermissions(const JSONObject* object) {
       "Error with permissions_policy manifest field: ");
   network::ParsedPermissionsPolicy parsed_policy =
       PermissionsPolicyParser::ParsePolicyFromNode(
-          policy, SecurityOrigin::Create(manifest_url_), logger,
+          policy, *SecurityOrigin::Create(manifest_url_), logger,
           execution_context_);
 
   Vector<network::ParsedPermissionsPolicyDeclaration> out;

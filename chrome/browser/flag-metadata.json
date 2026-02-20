@@ -1290,6 +1290,14 @@
       "expiry_milestone": 148
   },
   {
+    "name": "bundled-security-settings-secure-dns-v2",
+    "owners": [
+      "awado@google.com",
+      "jacastro@chromium.org",
+      "chrome-counter-abuse-alerts@google.com"],
+      "expiry_milestone": 150
+  },
+  {
     "name": "bwg-precise-location",
     "owners": [
       "joemerramos@google.com",
@@ -1746,7 +1754,7 @@
   {
     "name": "content-notification-provisional-ignore-conditions",
     "owners": [ "tinazwang@google.com", "chrome-sherlock@google.com"],
-    "expiry_milestone": 135
+    "expiry_milestone": 155
   },
   {
     "name": "content-push-notifications",
@@ -4815,11 +4823,6 @@
     "expiry_milestone": -1
   },
   {
-    "name": "force-ntp-mobile-promo",
-    "owners": [ "rkgibson@google.com", "bling-mony-pod@google.com", "pauladedeji@google.com" ],
-    "expiry_milestone": 136
-  },
-  {
     "name": "force-off-text-autosizing",
     "owners": [ "dgrogan@chromium.org", "pdr@chromium.org", "layout-dev@chromium.org" ],
     "expiry_milestone": 155
@@ -5161,6 +5164,14 @@
   {
     "name": "glic-fre-pre-warming",
     "owners": [ "carlosk@chromium.org", "vollick@chromium.org", "//chrome/browser/glic/OWNERS" ],
+    "expiry_milestone": 150
+  },
+  {
+    "name": "glic-guest-url-presets",
+    "owners": [
+      "cuianthony@google.com",
+      "//chrome/browser/glic/OWNERS"
+    ],
     "expiry_milestone": 150
   },
   {
@@ -5542,11 +5553,7 @@
     ],
     "expiry_milestone": 125
   },
-  {
-    "name": "hub-slide-animation",
-    "owners": [ "madhavpruthi@google.com", "ckitagawa@chromium.org" ],
-    "expiry_milestone": 146
-  },
+
   {
     "name": "hybrid-charger-notifications",
     "owners": [
@@ -6749,11 +6756,6 @@
     "expiry_milestone": 111
   },
   {
-    "name": "ntp-mobile-promo",
-    "owners": [ "rkgibson@google.com", "bling-mony-pod@google.com", "pauladedeji@google.com" ],
-    "expiry_milestone": 136
-  },
-  {
     "name": "ntp-module-sign-in-requirement",
     "owners": [ "rtatum@google.com", "tiborg@chromium.org", "chrome-desktop-ntp@google.com" ],
     "expiry_milestone": 145
@@ -6762,16 +6764,6 @@
     "name": "ntp-modules-drag-and-drop",
     "owners": [ "pauladedeji@chromium.org", "mahmadi@chromium.org", "tiborg@chromium.org" ],
     "expiry_milestone": 108
-  },
-  {
-    "name": "ntp-most-relevant-tab-resumption-module",
-    "owners": [ "mfacey@chromium.org", "romanarora@chromium.org" ],
-    "expiry_milestone": 140
-  },
-  {
-    "name": "ntp-most-relevant-tab-resumption-module-fallback-to-host",
-    "owners": [ "mfacey@chromium.org", "romanarora@chromium.org" ],
-    "expiry_milestone": 140
   },
   {
     "name": "ntp-next-features",
@@ -9595,11 +9587,6 @@
     "expiry_milestone": 130
   },
   {
-    "name": "wayland-per-window-scaling",
-    "owners": [ "nickdiego@igalia.com", "fangzhoug@chromium.org", "thomasanderson@chromium.org"],
-    "expiry_milestone": 138
-  },
-  {
     "name": "wayland-session-management",
     "owners": [ "nickdiego@igalia.com", "fangzhoug@chromium.org", "thomasanderson@chromium.org"],
     "expiry_milestone": 150
@@ -9831,6 +9818,11 @@
   },
   {
     "name": "webxr-internals",
+    "owners": [ "//components/webxr/OWNERS", "xr-dev@chromium.org" ],
+    "expiry_milestone": 154
+  },
+  {
+    "name": "webxr-plane-detection",
     "owners": [ "//components/webxr/OWNERS", "xr-dev@chromium.org" ],
     "expiry_milestone": 154
   },

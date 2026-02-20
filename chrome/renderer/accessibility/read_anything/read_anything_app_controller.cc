@@ -716,13 +716,11 @@ void ReadAnythingAppController::OnActiveAXTreeIDChanged(
   model_.set_requires_distillation(false);
   model_.set_page_finished_loading(false);
 
-  // TODO(crbug.com/459144990): Handle showLoading scenario for readability
-  // path.
+  ExecuteJavaScript("chrome.readingMode.showLoading();");
+
   if (features::IsReadAnythingWithReadabilityEnabled()) {
     return;
   }
-
-  ExecuteJavaScript("chrome.readingMode.showLoading();");
 
   // After the active tree has changed, start a timer for logging distillation
   // success or failures. Logging this via a timer reduces duplicate
@@ -1086,8 +1084,8 @@ void ReadAnythingAppController::OnSettingsRestoredFromPrefs(
     bool images_enabled,
     read_anything::mojom::Colors color,
     double speech_rate,
-    base::Value::Dict voices,
-    base::Value::List languages_enabled_in_pref,
+    base::DictValue voices,
+    base::ListValue languages_enabled_in_pref,
     read_anything::mojom::HighlightGranularity granularity,
     read_anything::mojom::LineFocus line_focus) {
   read_aloud_model_.OnSettingsRestoredFromPrefs(

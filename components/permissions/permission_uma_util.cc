@@ -580,39 +580,6 @@ int ConvertCrowdDenyVersionToInt(const std::optional<base::Version>& version) {
   return short_version;
 }
 
-AutoDSEPermissionRevertTransition GetAutoDSEPermissionRevertedTransition(
-    ContentSetting backed_up_setting,
-    ContentSetting effective_setting,
-    ContentSetting end_state_setting) {
-  if (backed_up_setting == CONTENT_SETTING_ASK &&
-      effective_setting == CONTENT_SETTING_ALLOW &&
-      end_state_setting == CONTENT_SETTING_ASK) {
-    return AutoDSEPermissionRevertTransition::NO_DECISION_ASK;
-  } else if (backed_up_setting == CONTENT_SETTING_ALLOW &&
-             effective_setting == CONTENT_SETTING_ALLOW &&
-             end_state_setting == CONTENT_SETTING_ALLOW) {
-    return AutoDSEPermissionRevertTransition::PRESERVE_ALLOW;
-  } else if (backed_up_setting == CONTENT_SETTING_BLOCK &&
-             effective_setting == CONTENT_SETTING_ALLOW &&
-             end_state_setting == CONTENT_SETTING_ASK) {
-    return AutoDSEPermissionRevertTransition::CONFLICT_ASK;
-  } else if (backed_up_setting == CONTENT_SETTING_ASK &&
-             effective_setting == CONTENT_SETTING_BLOCK &&
-             end_state_setting == CONTENT_SETTING_BLOCK) {
-    return AutoDSEPermissionRevertTransition::PRESERVE_BLOCK_ASK;
-  } else if (backed_up_setting == CONTENT_SETTING_ALLOW &&
-             effective_setting == CONTENT_SETTING_BLOCK &&
-             end_state_setting == CONTENT_SETTING_BLOCK) {
-    return AutoDSEPermissionRevertTransition::PRESERVE_BLOCK_ALLOW;
-  } else if (backed_up_setting == CONTENT_SETTING_BLOCK &&
-             effective_setting == CONTENT_SETTING_BLOCK &&
-             end_state_setting == CONTENT_SETTING_BLOCK) {
-    return AutoDSEPermissionRevertTransition::PRESERVE_BLOCK_BLOCK;
-  } else {
-    return AutoDSEPermissionRevertTransition::INVALID_END_STATE;
-  }
-}
-
 void RecordTopLevelPermissionsHeaderPolicy(
     ContentSettingsType content_settings_type,
     const std::string& histogram,
@@ -1701,22 +1668,6 @@ void PermissionUmaUtil::RecordTimeElapsedBetweenGrantAndRevoke(
 }
 
 // static
-void PermissionUmaUtil::RecordAutoDSEPermissionReverted(
-    ContentSettingsType permission_type,
-    ContentSetting backed_up_setting,
-    ContentSetting effective_setting,
-    ContentSetting end_state_setting) {
-  std::string permission_string =
-      GetPermissionRequestString(PermissionUtil::GetUmaValueForRequestType(
-          ContentSettingsTypeToRequestType(permission_type)));
-  auto transition = GetAutoDSEPermissionRevertedTransition(
-      backed_up_setting, effective_setting, end_state_setting);
-  base::UmaHistogramEnumeration(
-      "Permissions.DSE.AutoPermissionRevertTransition." + permission_string,
-      transition);
-}
-
-// static
 void PermissionUmaUtil::RecordDSEEffectiveSetting(
     ContentSettingsType permission_type,
     ContentSetting setting) {
@@ -2256,7 +2207,7 @@ PermissionUmaUtil::GetDaysSinceUnusedSitePermissionRevocation(
   if (!stored_value.is_dict()) {
     return std::nullopt;
   }
-  base::Value::List* permission_type_list =
+  base::ListValue* permission_type_list =
       stored_value.GetDict().FindList(permissions::kRevokedKey);
   if (!permission_type_list) {
     return std::nullopt;

@@ -248,7 +248,6 @@ bool IsValidChromeSigninReason(const GURL& url) {
       signin::GetSigninReasonForEmbeddedPromoURL(url);
 
   switch (reason) {
-    case signin_metrics::Reason::kForcedSigninPrimaryAccount:
     case signin_metrics::Reason::kReauthentication:
       // Used by the profile picker.
       return true;
@@ -284,12 +283,12 @@ InlineLoginUI::InlineLoginUI(content::WebUI* web_ui) : WebDialogUI(web_ui) {
   web_ui->AddMessageHandler(
       std::make_unique<ash::InlineLoginHandlerImpl>(base::BindRepeating(
           &WebDialogUIBase::CloseDialog, weak_factory_.GetWeakPtr(),
-          base::Value::List() /* args */)));
+          base::ListValue() /* args */)));
   if (profile->IsChild()) {
     web_ui->AddMessageHandler(
         std::make_unique<ash::EduCoexistenceLoginHandler>(base::BindRepeating(
             &WebDialogUIBase::CloseDialog, weak_factory_.GetWeakPtr(),
-            base::Value::List() /* args */)));
+            base::ListValue() /* args */)));
   }
 
 #else

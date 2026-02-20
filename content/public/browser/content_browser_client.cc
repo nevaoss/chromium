@@ -233,10 +233,6 @@ bool ContentBrowserClient::ShouldLockProcessToSite(
   return true;
 }
 
-bool ContentBrowserClient::ShouldEnforceNewCanCommitUrlChecks() {
-  return true;
-}
-
 bool ContentBrowserClient::DoesWebUIUrlRequireProcessLock(const GURL& url) {
   return true;
 }
@@ -1244,8 +1240,8 @@ ContentBrowserClient::GetNetworkContextsParentDirectory() {
   return {};
 }
 
-base::Value::Dict ContentBrowserClient::GetNetLogConstants() {
-  return base::Value::Dict();
+base::DictValue ContentBrowserClient::GetNetLogConstants() {
+  return base::DictValue();
 }
 
 #if BUILDFLAG(IS_ANDROID)

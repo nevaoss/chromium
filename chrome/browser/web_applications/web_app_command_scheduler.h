@@ -15,9 +15,11 @@
 #include "chrome/browser/web_applications/commands/internal/callback_command.h"
 #include "chrome/browser/web_applications/isolated_web_apps/commands/isolated_web_app_apply_update_command.h"
 #include "chrome/browser/web_applications/os_integration/os_integration_sub_manager.h"
+#include "chrome/browser/web_applications/scheduler/apply_manifest_migration_result.h"
 #include "chrome/browser/web_applications/scheduler/apply_pending_manifest_update_result.h"
 #include "chrome/browser/web_applications/scheduler/fetch_install_info_from_install_url_result.h"
 #include "chrome/browser/web_applications/scheduler/fetch_installability_for_chrome_management_result.h"
+#include "chrome/browser/web_applications/scheduler/manifest_silent_update_result.h"
 #include "chrome/browser/web_applications/ui_manager/update_dialog_types.h"
 #include "chrome/browser/web_applications/web_app_command_manager.h"
 #include "chrome/browser/web_applications/web_app_filter.h"
@@ -86,7 +88,6 @@ struct IsolatedWebAppUpdatePrepareAndStoreCommandSuccess;
 struct SynchronizeOsOptions;
 struct WebAppIconDiagnosticResult;
 struct WebAppInstallInfo;
-struct ManifestSilentUpdateCompletionInfo;
 enum class FetchManifestAndUpdateResult;
 
 #if BUILDFLAG(IS_CHROMEOS)
@@ -236,8 +237,6 @@ class WebAppCommandScheduler {
       ManifestUpdateCheckCompletedCallback callback,
       const base::Location& location = FROM_HERE);
 
-  using ManifestSilentUpdateCompletedCallback = base::OnceCallback<void(
-      ManifestSilentUpdateCompletionInfo completion_info)>;
   // A newer version of `ScheduleManifestUpdateCheck` that uses a more
   // predictable app updating algorithm. This will eventually replace the
   // original.
@@ -245,7 +244,7 @@ class WebAppCommandScheduler {
   void ScheduleManifestSilentUpdate(
       content::WebContents& contents,
       std::optional<base::Time> previous_time_for_silent_icon_update,
-      ManifestSilentUpdateCompletedCallback callback,
+      ManifestSilentUpdateCallback callback,
       const base::Location& location = FROM_HERE);
 
   // Applies any stored pending update metadata to the web app, updating its
@@ -525,7 +524,7 @@ class WebAppCommandScheduler {
   template <typename LockType, typename ReturnType>
   using CallbackCommand =
       base::OnceCallback<ReturnType(LockType& lock,
-                                    base::Value::Dict& debug_value)>;
+                                    base::DictValue& debug_value)>;
   // `ScheduleCallback*` methods provide convenient way to do operations
   // on the WebAppProvider system that don't require any async work, but still
   // have all of the safety guarantees of commands. All require a:
@@ -719,6 +718,16 @@ class WebAppCommandScheduler {
   // migration info for all apps.
   virtual void ScheduleResolveWebAppPendingMigrationInfo(
       base::OnceClosure callback,
+      const base::Location& location = FROM_HERE);
+
+  // Schedules the command to finish an app migration by removing the source app
+  // and fully installing the migrated app.
+  void ApplyManifestMigration(
+      const webapps::AppId& source_app_id,
+      const webapps::AppId& destination_app_id,
+      std::unique_ptr<ScopedKeepAlive> keep_alive,
+      std::unique_ptr<ScopedProfileKeepAlive> profile_keep_alive,
+      ApplyManifestMigrationResultCallback callback,
       const base::Location& location = FROM_HERE);
 
   // TODO(crbug.com/40215411): expose all commands for web app

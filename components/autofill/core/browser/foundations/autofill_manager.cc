@@ -34,6 +34,7 @@
 #include "components/autofill/core/browser/logging/log_manager.h"
 #include "components/autofill/core/browser/metrics/form_interactions_ukm_logger.h"
 #include "components/autofill/core/browser/metrics/quality_metrics.h"
+#include "components/autofill/core/browser/suggestions/suggestion_util.h"
 #include "components/autofill/core/common/autofill_constants.h"
 #include "components/autofill/core/common/autofill_data_validation.h"
 #include "components/autofill/core/common/autofill_debug_features.h"
@@ -115,9 +116,10 @@ bool NeedsReparse(const FormData& live_form, const FormStructure& cached_form) {
              });
 }
 
-bool IsCreditCardFormForSignaturePurposes(const FormStructure& form_structure,
-                                          bool suppress_if_ac_unrecognized) {
-  return form_structure.GetFormTypes(suppress_if_ac_unrecognized) ==
+bool IsCreditCardFormForSignaturePurposes(
+    const FormStructure& form_structure,
+    AutocompleteUnrecognizedBehavior ac_unrecognized_behavior) {
+  return form_structure.GetFormTypes(ac_unrecognized_behavior) ==
          DenseSet<FormType>{FormType::kCreditCardForm};
 }
 
@@ -856,9 +858,12 @@ void AutofillManager::PopulateCacheForQueryResponse(
 
   // Add the forms to the cache if their signature was part of the query
   // and if they do not already exist in the cache. Forms may already exist
-  // if local parsing finished before the server predictions arrived.
+  // if local parsing finishes before the server predictions arrived or due
+  // to a previous request. Already existing forms are overridden if the
+  // incoming form has a higher version.
   for (const FormData& form : forms) {
-    if (FindCachedFormById(form.global_id())) {
+    const FormStructure* form_structure = FindCachedFormById(form.global_id());
+    if (form_structure && form_structure->version() > form.version()) {
       continue;
     }
 
@@ -1052,9 +1057,8 @@ void AutofillManager::UpdateFormCache(
       }
       if (preserve_signatures ||
           IsCreditCardFormForSignaturePurposes(
-              *cached_form_structure,
-              /*suppress_if_ac_unrecognized=*/!client().IsTabInActorMode())) {
-        // Not updating signatures of credit card forms is legacy behaviour. We
+              *cached_form_structure, GetAcUnrecognizedBehavior(client()))) {
+        // Not updating signatures of credit card forms is legacy behavior. We
         // believe that the signatures are kept stable for voting purposes.
         // Credit card forms are those which contain only credit card fields.
         // TODO(crbug.com/431754194): Investigate making the behavior consistent
@@ -1072,9 +1076,8 @@ void AutofillManager::UpdateFormCache(
 
       if (!preserve_signatures &&
           !IsCreditCardFormForSignaturePurposes(
-              *cached_form_structure,
-              /*suppress_if_ac_unrecognized=*/!client().IsTabInActorMode())) {
-        // Not updating signatures of credit card forms is legacy behaviour. We
+              *cached_form_structure, GetAcUnrecognizedBehavior(client()))) {
+        // Not updating signatures of credit card forms is legacy behavior. We
         // believe that the signatures are kept stable for voting purposes.
         // Credit card forms are those which contain only credit card fields.
         // TODO(crbug.com/431754194): Investigate making the behavior consistent

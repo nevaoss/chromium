@@ -50,6 +50,7 @@ import org.chromium.chrome.browser.multiwindow.MultiWindowModeStateDispatcher;
 import org.chromium.chrome.browser.multiwindow.MultiWindowUtils;
 import org.chromium.chrome.browser.offlinepages.OfflinePageUtils;
 import org.chromium.chrome.browser.omaha.UpdateMenuItemHelper;
+import org.chromium.chrome.browser.open_in_app.OpenInAppMenuItemProvider;
 import org.chromium.chrome.browser.pdf.PdfPage;
 import org.chromium.chrome.browser.preferences.Pref;
 import org.chromium.chrome.browser.profiles.Profile;
@@ -152,7 +153,8 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
             SnackbarManager snackbarManager,
             OneshotSupplier<IncognitoReauthController> incognitoReauthControllerOneshotSupplier,
             Supplier<ReadAloudController> readAloudControllerSupplier,
-            PageZoomManager pageZoomManager) {
+            PageZoomManager pageZoomManager,
+            @Nullable OpenInAppMenuItemProvider openInAppMenuItemProvider) {
         super(
                 context,
                 activityTabProvider,
@@ -162,7 +164,8 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
                 decorView,
                 layoutStateProvider,
                 bookmarkModelSupplier,
-                readAloudControllerSupplier);
+                readAloudControllerSupplier,
+                openInAppMenuItemProvider);
         mAppMenuDelegate = appMenuDelegate;
         mFeedLauncher = feedLauncher;
         mModalDialogManager = modalDialogManager;
@@ -228,7 +231,12 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
             iconModels.add(buildForwardActionModel(currentTab));
             iconModels.add(buildBookmarkActionModel(currentTab));
             iconModels.add(buildDownloadActionModel(currentTab));
-            iconModels.add(buildPageInfoModel(currentTab));
+            if (ChromeFeatureList.isEnabled(ChromeFeatureList.GLIC)) {
+                iconModels.add(buildGlicActionModel(currentTab));
+            } else {
+                iconModels.add(buildPageInfoModel(currentTab));
+            }
+
             iconModels.add(buildReloadModel(currentTab));
 
             modelList.add(
@@ -343,6 +351,10 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
         MVCListAdapter.ListItem aiItem = maybeBuildAiMenuItem(currentTab);
         if (aiItem != null) modelList.add(aiItem);
 
+        // Glic
+        MVCListAdapter.ListItem openGlicItem = maybeBuildOpenGlicItem(currentTab);
+        if (openGlicItem != null) modelList.add(openGlicItem);
+
         // Find in page
         if (shouldShowFindInPageItem(currentTab)) modelList.add(buildFindInPageItem(currentTab));
 
@@ -369,6 +381,11 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
                 isNativePage, isFileScheme, isContentScheme, isIncognitoShowing(), url)) {
             assert currentTab != null;
             modelList.add(buildAddToHomescreenListItem(currentTab, shouldShowIconBeforeItem()));
+        }
+
+        // Open in App
+        if (shouldShowOpenInAppItem()) {
+            modelList.add(buildOpenInAppItem());
         }
 
         // RDS
@@ -1105,6 +1122,25 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
                         R.id.default_browser_promo_menu_id,
                         R.string.make_chrome_default,
                         shouldShowIconBeforeItem() ? R.drawable.ic_chrome : 0));
+    }
+
+    private MVCListAdapter.@Nullable ListItem maybeBuildOpenGlicItem(@Nullable Tab currentTab) {
+        if (currentTab == null
+                || currentTab.getWebContents() == null
+                || !ChromeFeatureList.isEnabled(ChromeFeatureList.GLIC)) {
+            return null;
+        }
+
+        // TODO(crbug.com/475592540): Add CPA logic to conditionally show Glic Button
+        if (currentTab.isNativePage()) {
+            return new MVCListAdapter.ListItem(
+                    AppMenuHandler.AppMenuItemType.STANDARD,
+                    buildModelForStandardMenuItem(
+                            R.id.glic_menu_id,
+                            R.string.glic_button_entrypoint_ask_gemini_label,
+                            shouldShowIconBeforeItem() ? R.drawable.ic_spark_24dp : 0));
+        }
+        return null;
     }
 
     /**

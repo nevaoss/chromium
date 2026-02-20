@@ -78,7 +78,7 @@
 #include "chrome/browser/sharing/click_to_call/click_to_call_utils.h"
 #include "chrome/browser/sharing_hub/sharing_hub_features.h"
 #include "chrome/browser/spellchecker/spellcheck_service.h"
-#include "chrome/browser/supervised_user/supervised_user_service_factory.h"
+#include "chrome/browser/supervised_user/supervised_user_url_filtering_service_factory.h"
 #include "chrome/browser/sync/send_tab_to_self_sync_service_factory.h"
 #include "chrome/browser/translate/chrome_translate_client.h"
 #include "chrome/browser/translate/translate_service.h"
@@ -178,8 +178,7 @@
 #include "components/spellcheck/spellcheck_buildflags.h"
 #include "components/strings/grit/components_strings.h"
 #include "components/supervised_user/core/browser/supervised_user_preferences.h"
-#include "components/supervised_user/core/browser/supervised_user_service.h"
-#include "components/supervised_user/core/browser/supervised_user_url_filter.h"
+#include "components/supervised_user/core/browser/supervised_user_url_filtering_service.h"
 #include "components/translate/core/browser/translate_download_manager.h"
 #include "components/translate/core/browser/translate_manager.h"
 #include "components/translate/core/browser/translate_prefs.h"
@@ -331,8 +330,8 @@
 #include "chrome/browser/ui/settings_window_manager_chromeos.h"
 #include "chrome/browser/ui/webui/ash/system_web_dialog/system_web_dialog_delegate.h"
 #include "chromeos/ash/experiences/system_web_apps/types/system_web_app_delegate.h"
-#include "chromeos/crosapi/mojom/clipboard_history.mojom.h"
 #include "chromeos/ui/clipboard_history/clipboard_history_submenu_model.h"
+#include "chromeos/ui/clipboard_history/clipboard_history_types.h"
 #include "chromeos/ui/clipboard_history/clipboard_history_util.h"
 #include "ui/aura/window.h"
 #endif
@@ -2617,8 +2616,7 @@ void RenderViewContextMenu::AppendOtherEditableItems() {
   // pointer in the callback.
   submenu_model_ = chromeos::clipboard_history::ClipboardHistorySubmenuModel::
       CreateClipboardHistorySubmenuModel(
-          crosapi::mojom::ClipboardHistoryControllerShowSource::
-              kRenderViewContextSubmenu,
+          chromeos::clipboard_history::ShowSource::kRenderViewContextSubmenu,
           base::BindRepeating(&RenderViewContextMenu::ShowClipboardHistoryMenu,
                               base::Unretained(this)));
   menu_model_.AddSubMenuWithStringId(IDC_CONTENT_PASTE_FROM_CLIPBOARD,
@@ -2709,8 +2707,6 @@ void RenderViewContextMenu::AppendProtocolHandlerSubMenu() {
       l10n_util::GetStringUTF16(IDS_CONTENT_CONTEXT_OPENLINKWITH),
       &protocol_handler_submenu_model_);
 }
-
-
 
 void RenderViewContextMenu::AppendSharingItems() {
   size_t items_initial = menu_model_.GetItemCount();
@@ -3822,7 +3818,6 @@ bool RenderViewContextMenu::IsViewSourceEnabled() const {
     return false;
   }
 
-
   // Disallow ViewSource if DevTools are disabled.
   if (!IsDevCommandEnabled(IDC_CONTENT_CONTEXT_INSPECTELEMENT)) {
     return false;
@@ -3885,16 +3880,16 @@ bool RenderViewContextMenu::IsSaveLinkAsEnabled() const {
   Profile* const profile = Profile::FromBrowserContext(browser_context_);
   CHECK(profile);
   if (profile->IsChild()) {
-    supervised_user::SupervisedUserService* supervised_user_service =
-        SupervisedUserServiceFactory::GetForProfile(profile);
-    supervised_user::SupervisedUserURLFilter* url_filter =
-        supervised_user_service->GetURLFilter();
+    supervised_user::SupervisedUserUrlFilteringService* url_filtering_service =
+        supervised_user::SupervisedUserUrlFilteringServiceFactory::
+            GetForProfile(profile);
     // Use the URL filter's synchronous call to check if a site has been
     // manually blocked for the user. This does not filter websites that are
     // blocked by SafeSites API for having mature content. The mature content
     // filter requires an async call. This call is made if the user selects
     // "Save link as" and blocks the download.
-    if (!url_filter->GetFilteringBehavior(params_.link_url).IsAllowed()) {
+    if (!url_filtering_service->GetFilteringBehavior(params_.link_url)
+             .IsAllowed()) {
       return false;
     }
   }
@@ -4284,15 +4279,14 @@ void RenderViewContextMenu::CheckSupervisedUserURLFilterAndSaveLinkAs() {
   Profile* const profile = Profile::FromBrowserContext(browser_context_);
   CHECK(profile);
   if (profile->IsChild()) {
-    supervised_user::SupervisedUserService* supervised_user_service =
-        SupervisedUserServiceFactory::GetForProfile(profile);
-    supervised_user::SupervisedUserURLFilter* url_filter =
-        supervised_user_service->GetURLFilter();
-    url_filter->GetFilteringBehaviorWithAsyncChecks(
-        params_.link_url,
-        base::BindOnce(&RenderViewContextMenu::OnSupervisedUserURLFilterChecked,
-                       weak_pointer_factory_.GetWeakPtr()),
-        /* skip_manual_parent_filter= */ false);
+    supervised_user::SupervisedUserUrlFilteringServiceFactory::GetForProfile(
+        profile)
+        ->GetFilteringBehavior(
+            params_.link_url,
+            /*skip_manual_parent_filter=*/false,
+            base::BindOnce(
+                &RenderViewContextMenu::OnSupervisedUserURLFilterChecked,
+                weak_pointer_factory_.GetWeakPtr()));
     return;
   }
   ExecSaveLinkAs();
@@ -5015,8 +5009,7 @@ void RenderViewContextMenu::ShowClipboardHistoryMenu(int event_flags) {
 
   ash::ClipboardHistoryController::Get()->ShowMenu(
       gfx::Rect(anchor_point_in_screen, gfx::Size()), source_type,
-      crosapi::mojom::ClipboardHistoryControllerShowSource::
-          kRenderViewContextMenu);
+      chromeos::clipboard_history::ShowSource::kRenderViewContextMenu);
 }
 #endif  // BUILDFLAG(IS_CHROMEOS)
 

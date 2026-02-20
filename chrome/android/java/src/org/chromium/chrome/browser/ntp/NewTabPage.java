@@ -241,7 +241,7 @@ public class NewTabPage
 
         private final View mView;
         private Animator mAnimator;
-        private MonotonicObservableSupplier<Integer> mRestoringState;
+        private NonNullObservableSupplier<Integer> mRestoringState;
         private boolean mAnimatorStarted;
         private final Handler mHandler = new Handler();
         final Callback<Integer> mOnScrollStateChanged =
@@ -269,7 +269,7 @@ public class NewTabPage
                 };
 
         public NtpSmoothTransitionDelegate(
-                View view, MonotonicObservableSupplier<Integer> restoringState) {
+                View view, NonNullObservableSupplier<Integer> restoringState) {
             mView = view;
             mAnimator = buildSmoothTransition(view);
             mRestoringState = restoringState;
@@ -434,7 +434,12 @@ public class NewTabPage
                     focusReason = OmniboxFocusReason.NTP_AI_MODE;
                 }
 
-                mOmniboxStub.setUrlBarFocus(true, pastedText, focusReason, requestType);
+                mOmniboxStub.setUrlBarFocus(
+                        /* shouldBeFocused= */ true,
+                        pastedText,
+                        /* selectText= */ false,
+                        focusReason,
+                        requestType);
             }
         }
 
@@ -1036,6 +1041,15 @@ public class NewTabPage
      */
     public void getSearchBoxBounds(Rect bounds, Point translation) {
         mNewTabPageLayout.getSearchBoxBounds(bounds, translation, getView());
+    }
+
+    /**
+     * Get the vertical inset applied to the search box bounds.
+     *
+     * @return The vertical inset in pixels.
+     */
+    public int getSearchBoxBoundsVerticalInset() {
+        return mNewTabPageLayout.getSearchBoxBoundsVerticalInset();
     }
 
     /**

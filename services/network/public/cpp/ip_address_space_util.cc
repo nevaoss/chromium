@@ -337,7 +337,7 @@ std::string_view LocalNetworkAccessResultToStringPiece(
     case mojom::LocalNetworkAccessResult::kRetryDueToCache:
       return "retryDueToCache";
   }
-  // In case enum value gets corrupted going accross process boundaries.
+  // In case enum value gets corrupted.
   return "unknown";
 }
 
@@ -353,7 +353,7 @@ std::string_view TransportTypeToStringPiece(
     case mojom::TransportType::kCachedFromProxy:
       return "cachedFromProxy";
   }
-  // In case enum value gets corrupted going accross process boundaries.
+  // In case enum value gets corrupted.
   return "unknown";
 }
 
@@ -368,7 +368,7 @@ std::string_view IPAddressSpaceToStringPiece(IPAddressSpace space) {
     case IPAddressSpace::kLoopback:
       return "loopback";
   }
-  // In case enum value gets corrupted going accross process boundaries.
+  // In case enum value gets corrupted.
   return "unknown";
 }
 
@@ -481,7 +481,11 @@ std::optional<mojom::IPAddressSpace> GetAddressSpaceFromUrl(const GURL& url) {
   }
 
   if (url.DomainIs("localhost")) {
-    return mojom::IPAddressSpace::kLoopback;
+    // Check IP address space mapping for 127.0.0.1, on the off chance that
+    // there is an override remapping this to something else.
+    net::IPEndPoint endpoint(net::IPAddress::IPv4Localhost(),
+                             url.EffectiveIntPort());
+    return IPEndPointToIPAddressSpace(endpoint);
   }
 
   net::IPAddress address;

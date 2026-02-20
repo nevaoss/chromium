@@ -281,17 +281,25 @@ class SingleClientGetUnsyncedTypesTest : public SyncTest {
 #endif  // !BUILDFLAG(IS_ANDROID)
   }
 
+  // Unsynced data is only valid with sync transport.
+  SyncTest::SetupSyncMode GetSetupSyncMode() const override {
+    return SetupSyncMode::kSyncTransportOnly;
+  }
+
  private:
   base::test::ScopedFeatureList feature_list_;
 };
 
 IN_PROC_BROWSER_TEST_F(SingleClientGetUnsyncedTypesTest,
                        ShouldGetTypesWithUnsyncedDataFromSyncService) {
-  // Sign in.
-  ASSERT_TRUE(SetupClients());
-  ASSERT_TRUE(GetClient(0)->SignInPrimaryAccount());
+  ASSERT_TRUE(SetupSync());
 
 #if !BUILDFLAG(IS_ANDROID)
+  // Note: Depending on the state of feature flags (specifically
+  // kReplaceSyncPromosWithSignInPromos), Bookmarks may or may not be considered
+  // selected by default.
+  GetSyncService(0)->GetUserSettings()->SetSelectedType(
+      syncer::UserSelectableType::kBookmarks, true);
   // Enable account storage for bookmarks.
   SigninPrefs prefs(*GetProfile(0)->GetPrefs());
   const GaiaId gaia_id = GetSyncService(0)->GetSyncAccountInfoForPrefs().gaia;
@@ -300,8 +308,7 @@ IN_PROC_BROWSER_TEST_F(SingleClientGetUnsyncedTypesTest,
 #endif  // !BUILDFLAG(IS_ANDROID)
 
   ASSERT_TRUE(GetClient(0)->AwaitSyncTransportActive());
-  ASSERT_TRUE(
-      GetSyncService(0)->GetActiveDataTypes().HasAll({syncer::BOOKMARKS}));
+  ASSERT_TRUE(GetSyncService(0)->GetActiveDataTypes().Has(syncer::BOOKMARKS));
 
   // BOOKMARKS has no unsynced data.
   EXPECT_FALSE(GetClient(0)
@@ -342,9 +349,7 @@ IN_PROC_BROWSER_TEST_F(SingleClientGetUnsyncedTypesTest,
 // on Android.
 #if !BUILDFLAG(IS_ANDROID)
 IN_PROC_BROWSER_TEST_F(SingleClientGetUnsyncedTypesTest, HttpError) {
-  // Sign in.
-  ASSERT_TRUE(SetupClients());
-  ASSERT_TRUE(GetClient(0)->SignInPrimaryAccount());
+  ASSERT_TRUE(SetupSync());
 
   ASSERT_TRUE(GetClient(0)->AwaitSyncTransportActive());
   ASSERT_TRUE(GetSyncService(0)->GetActiveDataTypes().Has(syncer::THEMES));
@@ -387,9 +392,7 @@ IN_PROC_BROWSER_TEST_F(SingleClientGetUnsyncedTypesTest, HttpError) {
 IN_PROC_BROWSER_TEST_F(SingleClientGetUnsyncedTypesTest, SignInPendingState) {
   base::HistogramTester histograms;
 
-  // Sign in.
-  ASSERT_TRUE(SetupClients());
-  ASSERT_TRUE(GetClient(0)->SignInPrimaryAccount());
+  ASSERT_TRUE(SetupSync());
 
   ASSERT_TRUE(GetClient(0)->AwaitSyncTransportActive());
   ASSERT_TRUE(GetSyncService(0)->GetActiveDataTypes().Has(syncer::THEMES));
@@ -433,7 +436,6 @@ IN_PROC_BROWSER_TEST_F(SingleClientGetUnsyncedTypesTest, SignInPendingState) {
 
 // Android doesn't currently support PRE_ tests, see crbug.com/1117345.
 #if !BUILDFLAG(IS_ANDROID)
-// TODO(crbug.com/353425612): Modernize SingleClientFeatureToTransportSyncTest.
 class SingleClientFeatureToTransportSyncTest : public SyncTest {
  public:
   SingleClientFeatureToTransportSyncTest() : SyncTest(SINGLE_CLIENT) {
@@ -475,6 +477,10 @@ class SingleClientFeatureToTransportSyncTest : public SyncTest {
 
     reading_list_helper::WaitForReadingListModelLoaded(reading_list_model());
     return true;
+  }
+
+  SyncTest::SetupSyncMode GetSetupSyncMode() const override {
+    return SetupSyncMode::kSyncTheFeature;
   }
 
   reading_list::DualReadingListModel* reading_list_model() {
@@ -584,10 +590,16 @@ IN_PROC_BROWSER_TEST_F(SingleClientFeatureToTransportSyncTest,
 }
 #endif  // !BUILDFLAG(IS_ANDROID)
 
-// TODO(crbug.com/353425612): Modernize SingleClientPolicySyncTest.
-class SingleClientPolicySyncTest : public SyncTest {
+class SingleClientPolicySyncTest
+    : public SyncTest,
+      public testing::WithParamInterface<SyncTest::SetupSyncMode> {
  public:
-  SingleClientPolicySyncTest() : SyncTest(SINGLE_CLIENT) {}
+  SingleClientPolicySyncTest() : SyncTest(SINGLE_CLIENT) {
+    if (GetSetupSyncMode() == SetupSyncMode::kSyncTransportOnly) {
+      scoped_feature_list_.InitAndEnableFeature(
+          syncer::kReplaceSyncPromosWithSignInPromos);
+    }
+  }
   ~SingleClientPolicySyncTest() override = default;
 
   void SetUpInProcessBrowserTestFixture() override {
@@ -599,16 +611,26 @@ class SingleClientPolicySyncTest : public SyncTest {
         &policy_provider_);
   }
 
+  SyncTest::SetupSyncMode GetSetupSyncMode() const override {
+    return GetParam();
+  }
+
   testing::NiceMock<policy::MockConfigurationPolicyProvider>*
   policy_provider() {
     return &policy_provider_;
   }
 
  private:
+  base::test::ScopedFeatureList scoped_feature_list_;
   testing::NiceMock<policy::MockConfigurationPolicyProvider> policy_provider_;
 };
 
-IN_PROC_BROWSER_TEST_F(SingleClientPolicySyncTest,
+INSTANTIATE_TEST_SUITE_P(,
+                         SingleClientPolicySyncTest,
+                         GetSyncTestModes(),
+                         testing::PrintToStringParamName());
+
+IN_PROC_BROWSER_TEST_P(SingleClientPolicySyncTest,
                        AppliesSyncTypesListDisabledPolicyImmediately) {
   ASSERT_TRUE(SetupSync());
 
@@ -617,7 +639,7 @@ IN_PROC_BROWSER_TEST_F(SingleClientPolicySyncTest,
   ASSERT_TRUE(
       GetSyncService(0)->GetActiveDataTypes().Has(syncer::DataType::BOOKMARKS));
 
-  base::Value::List disabled_types;
+  base::ListValue disabled_types;
   disabled_types.Append("bookmarks");
   policy::PolicyMap policies;
   policies.Set(policy::key::kSyncTypesListDisabled,
@@ -649,11 +671,16 @@ IN_PROC_BROWSER_TEST_F(SingleClientPolicySyncTest,
 // Regression test for crbug.com/415728693.
 // EnterSyncPausedStateForPrimaryAccount() is not supported on Android.
 #if !BUILDFLAG(IS_ANDROID)
-IN_PROC_BROWSER_TEST_F(SingleClientPolicySyncTest,
+IN_PROC_BROWSER_TEST_P(SingleClientPolicySyncTest,
                        ApplySyncDisabledPolicyWhileSyncPaused) {
   ASSERT_TRUE(SetupSync());
 
-  GetClient(0)->EnterSyncPausedStateForPrimaryAccount();
+  if (GetSetupSyncMode() == SetupSyncMode::kSyncTheFeature) {
+    GetClient(0)->EnterSyncPausedStateForPrimaryAccount();
+  } else {
+    GetClient(0)->EnterSignInPendingStateForPrimaryAccount();
+  }
+
   ASSERT_EQ(GetSyncService(0)->GetTransportState(),
             syncer::SyncService::TransportState::PAUSED);
   ASSERT_EQ(syncer::GetUploadToGoogleState(GetSyncService(0),

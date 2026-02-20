@@ -1164,11 +1164,18 @@ interface CharacterData : Node
     setter data
 interface Clipboard : EventTarget
     attribute @@toStringTag
+    getter onclipboardchange
     method constructor
     method read
     method readText
     method write
     method writeText
+    setter onclipboardchange
+interface ClipboardChangeEvent : Event
+    attribute @@toStringTag
+    getter changeId
+    getter types
+    method constructor
 interface ClipboardEvent : Event
     attribute @@toStringTag
     getter clipboardData
@@ -11286,6 +11293,7 @@ namespace GPUTextureUsage
     attribute RENDER_ATTACHMENT
     attribute STORAGE_BINDING
     attribute TEXTURE_BINDING
+    attribute TRANSIENT_ATTACHMENT
 namespace Temporal
     attribute @@toStringTag
     attribute Now

@@ -735,7 +735,7 @@ public abstract class ChromeFeatureList {
             newCachedFlag(
                     ANDROID_PROGRESS_BAR_VISUAL_UPDATE,
                     /* defaultValue= */ false,
-                    /* defaultValueInTests= */ true);
+                    /* defaultValueInTests= */ false);
     public static final CachedFlag sAndroidSettingsContainment =
             newCachedFlag(
                     ANDROID_SETTINGS_CONTAINMENT,
@@ -1334,6 +1334,8 @@ public abstract class ChromeFeatureList {
             newMutableFlagWithSafeDefault(ANDROID_NO_VISIBLE_HINT_FOR_DIFFERENT_TLD, true);
     public static final MutableFlagWithSafeDefault sOmniboxAutofocusOnIncognitoNtp =
             newMutableFlagWithSafeDefault(OMNIBOX_AUTOFOCUS_ON_INCOGNITO_NTP, false);
+    public static final MutableFlagWithSafeDefault sRecentlyClosedTabsAndWindows =
+            newMutableFlagWithSafeDefault(RECENTLY_CLOSED_TABS_AND_WINDOWS, false);
     public static final MutableFlagWithSafeDefault sRecordIncognitoNtpTimeToFirstNavigationMetric =
             newMutableFlagWithSafeDefault(
                     RECORD_INCOGNITO_NTP_TIME_TO_FIRST_NAVIGATION_METRIC, true);
@@ -1847,6 +1849,9 @@ public abstract class ChromeFeatureList {
             sAndroidTabHighlighting.newBooleanParam("force_ctrl_click", false);
     public static final MutableBooleanParamWithSafeDefault sAndroidTabHighlightingForceShiftClick =
             sAndroidTabHighlighting.newBooleanParam("force_shift_click", false);
+
+    public static final MutableBooleanParamWithSafeDefault sTabBottomSheetDontShowFusebox =
+            sTabBottomSheet.newBooleanParam("dont_show_fusebox", false);
 
     public static final MutableBooleanParamWithSafeDefault sRobustWindowManagementBulkClose =
             sRobustWindowManagement.newBooleanParam("bulk_close", false);

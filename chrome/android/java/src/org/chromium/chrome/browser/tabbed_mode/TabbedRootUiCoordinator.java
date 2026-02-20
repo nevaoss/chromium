@@ -133,6 +133,8 @@ import org.chromium.chrome.browser.ntp_customization.theme.NtpSyncedThemeManager
 import org.chromium.chrome.browser.offlinepages.indicator.OfflineIndicatorControllerV2;
 import org.chromium.chrome.browser.offlinepages.indicator.OfflineIndicatorInProductHelpController;
 import org.chromium.chrome.browser.omnibox.UrlFocusChangeListener;
+import org.chromium.chrome.browser.open_in_app.OpenInAppUtils;
+import org.chromium.chrome.browser.open_in_app.TabbedOpenInAppEntryPoint;
 import org.chromium.chrome.browser.pdf.PdfPageIphController;
 import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
 import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
@@ -311,6 +313,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
     private @Nullable NtpSyncedThemeManager mNtpSyncedThemeManager;
     private final @NonNull CrossDeviceSettingImporter mCrossDeviceSettingImporter;
     private @Nullable SidePanelContainerCoordinator mSidePanelContainerCoordinator;
+    private final @Nullable MonotonicObservableSupplier<Boolean> mXrSpaceModeObservableSupplier;
 
     // Activity tab observer that updates the current tab used by various UI components.
     private class RootUiTabObserver extends ActivityTabTabObserver {
@@ -630,6 +633,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                 (inactivityTracker) -> {
                     inactivityTracker.addObserver(mInactivityObserver);
                 });
+        mXrSpaceModeObservableSupplier = xrSpaceModeObservableSupplier;
 
         mCrossDeviceSettingImporter =
                 new CrossDeviceSettingImporter(
@@ -915,6 +919,11 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                         mActivity,
                         getScrimManager(),
                         mActivity.findViewById(R.id.loading_fullscreen_container));
+
+        if (OpenInAppUtils.isOpenInAppAvailable()) {
+            mOpenInAppEntryPoint =
+                    new TabbedOpenInAppEntryPoint(mActivityTabProvider.asObservable());
+        }
     }
 
     @Override
@@ -1029,10 +1038,14 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         new OneShotCallback<>(mProfileSupplier, this::initCollaborationDelegatesOnProfile);
 
         if (BookmarkBarUtils.isDeviceBookmarkBarCompatible(mActivity)) {
-            BookmarkBarUtils.recordStartUpMetrics(mActivity, mProfileSupplier.get());
+            BookmarkBarUtils.recordStartUpMetrics(
+                    mActivity, mProfileSupplier.get(), mXrSpaceModeObservableSupplier);
             mBookmarkBarVisibilityProvider =
                     new BookmarkBarVisibilityProvider(
-                            mActivity, mActivityLifecycleDispatcher, mProfileSupplier);
+                            mActivity,
+                            mActivityLifecycleDispatcher,
+                            mProfileSupplier,
+                            mXrSpaceModeObservableSupplier);
             mBookmarkBarVisibilityObserver =
                     new BookmarkBarVisibilityObserver() {
                         @Override
@@ -1391,7 +1404,8 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                             profile,
                             mAppMenuCoordinator.getAppMenuHandler(),
                             mToolbarManager.getMenuButtonView(),
-                            mBookmarkModelSupplier.get());
+                            mBookmarkModelSupplier.get(),
+                            mXrSpaceModeObservableSupplier);
         }
     }
 
@@ -1610,13 +1624,17 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
             mTabBottomSheetManager =
                     new TabBottomSheetManager(
                             mActivity,
-                            mProfileSupplier.get(),
+                            mProfileSupplier,
                             mWindowAndroid,
                             getBottomSheetController());
             mTabBottomSheetSimpleManager =
                     new TabBottomSheetSimpleManager(
                             mActivity,
                             mTabModelSelectorSupplier.get().getModel(/* incognito= */ false),
+                            mProfileSupplier,
+                            mWindowAndroid,
+                            mActivityLifecycleDispatcher,
+                            mSnackbarManagerSupplier.get(),
                             mTabBottomSheetManager);
         }
     }
@@ -2027,7 +2045,8 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
 
     @Override
     public boolean getBookmarkBarVisibility() {
-        return BookmarkBarUtils.isBookmarkBarVisible(mActivity, mProfileSupplier.get());
+        return BookmarkBarUtils.isBookmarkBarVisible(
+                mActivity, mProfileSupplier.get(), mXrSpaceModeObservableSupplier);
     }
 
     public int getBookmarkBarHeight() {

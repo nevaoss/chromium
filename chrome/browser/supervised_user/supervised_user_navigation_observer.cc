@@ -22,6 +22,7 @@
 #include "chrome/browser/supervised_user/classify_url_navigation_throttle.h"
 #include "chrome/browser/supervised_user/supervised_user_browser_utils.h"
 #include "chrome/browser/supervised_user/supervised_user_service_factory.h"
+#include "chrome/browser/supervised_user/supervised_user_url_filtering_service_factory.h"
 #include "chrome/browser/tab_contents/tab_util.h"
 #include "components/favicon/core/large_icon_service.h"
 #include "components/google/core/common/google_util.h"
@@ -33,6 +34,7 @@
 #include "components/supervised_user/core/browser/supervised_user_interstitial.h"
 #include "components/supervised_user/core/browser/supervised_user_service.h"
 #include "components/supervised_user/core/browser/supervised_user_url_filter.h"
+#include "components/supervised_user/core/browser/supervised_user_url_filtering_service.h"
 #include "components/supervised_user/core/browser/web_content_handler.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/navigation_controller.h"
@@ -77,6 +79,15 @@ std::unique_ptr<supervised_user::WebContentHandler> CreateWebContentHandler(
       web_contents, frame_id, navigation_id);
 #endif
 }
+
+static constexpr supervised_user::WebFilterMetricsOptions
+    kWebFilterMetricsOptionsForNavigationObserver = {
+        .filtering_context =
+            supervised_user::FilteringContext::kNavigationObserver};
+static constexpr supervised_user::WebFilterMetricsOptions
+    kWebFilterMetricsOptionsForFamilyLinkSettingsUpdated = {
+        .filtering_context =
+            supervised_user::FilteringContext::kFamilyLinkSettingsUpdated};
 
 }  // namespace
 
@@ -172,15 +183,12 @@ void SupervisedUserNavigationObserver::DidFinishNavigation(
     bool skip_manual_parent_filter =
         supervised_user::ShouldContentSkipParentAllowlistFiltering(
             web_contents());
-    supervised_user_service()
-        ->GetURLFilter()
-        ->GetFilteringBehaviorWithAsyncChecks(
-            web_contents()->GetLastCommittedURL(),
-            base::BindOnce(
-                &SupervisedUserNavigationObserver::URLFilterCheckCallback,
-                weak_ptr_factory_.GetWeakPtr(), process_id, routing_id),
-            skip_manual_parent_filter,
-            supervised_user::FilteringContext::kNavigationObserver);
+    supervised_user_url_filtering_service()->GetFilteringBehavior(
+        web_contents()->GetLastCommittedURL(), skip_manual_parent_filter,
+        base::BindOnce(
+            &SupervisedUserNavigationObserver::URLFilterCheckCallback,
+            weak_ptr_factory_.GetWeakPtr(), process_id, routing_id),
+        kWebFilterMetricsOptionsForNavigationObserver);
   }
 }
 
@@ -253,16 +261,13 @@ void SupervisedUserNavigationObserver::OnURLFilterChanged() {
   bool skip_manual_parent_filter =
       supervised_user::ShouldContentSkipParentAllowlistFiltering(
           web_contents());
-  supervised_user_service()
-      ->GetURLFilter()
-      ->GetFilteringBehaviorWithAsyncChecks(
-          web_contents()->GetLastCommittedURL(),
-          base::BindOnce(
-              &SupervisedUserNavigationObserver::URLFilterCheckCallback,
-              weak_ptr_factory_.GetWeakPtr(), main_frame_process_id,
-              routing_id),
-          skip_manual_parent_filter,
-          supervised_user::FilteringContext::kFamilyLinkSettingsUpdated);
+
+  supervised_user_url_filtering_service()->GetFilteringBehavior(
+      web_contents()->GetLastCommittedURL(), skip_manual_parent_filter,
+      base::BindOnce(&SupervisedUserNavigationObserver::URLFilterCheckCallback,
+                     weak_ptr_factory_.GetWeakPtr(), main_frame_process_id,
+                     routing_id),
+      kWebFilterMetricsOptionsForFamilyLinkSettingsUpdated);
 
   MaybeUpdateRequestedHosts();
 
@@ -440,17 +445,14 @@ void SupervisedUserNavigationObserver::FilterRenderFrame(
     return;
   }
 
-  const GURL& last_committed_url = render_frame_host->GetLastCommittedURL();
-  supervised_user_service()
-      ->GetURLFilter()
-      ->GetFilteringBehaviorForSubFrameWithAsyncChecks(
-          last_committed_url, web_contents()->GetLastCommittedURL(),
-          base::BindOnce(
-              &SupervisedUserNavigationObserver::URLFilterCheckCallback,
-              weak_ptr_factory_.GetWeakPtr(),
-              render_frame_host->GetProcess()->GetDeprecatedID(),
-              render_frame_host->GetRoutingID()),
-          supervised_user::FilteringContext::kNavigationObserver);
+  supervised_user_url_filtering_service()->GetFilteringBehaviorForSubFrame(
+      /*url=*/render_frame_host->GetLastCommittedURL(),
+      /*main_frame_url=*/web_contents()->GetLastCommittedURL(),
+      base::BindOnce(&SupervisedUserNavigationObserver::URLFilterCheckCallback,
+                     weak_ptr_factory_.GetWeakPtr(),
+                     render_frame_host->GetProcess()->GetDeprecatedID(),
+                     render_frame_host->GetRoutingID()),
+      kWebFilterMetricsOptionsForNavigationObserver);
 }
 
 void SupervisedUserNavigationObserver::GoBack() {
@@ -526,7 +528,7 @@ void SupervisedUserNavigationObserver::RequestCreated(
 void SupervisedUserNavigationObserver::MaybeUpdateRequestedHosts() {
   for (auto iter = requested_hosts_.begin(); iter != requested_hosts_.end();) {
     supervised_user::SupervisedUserURLFilter::Result result =
-        supervised_user_service()->GetURLFilter()->GetFilteringBehavior(
+        supervised_user_url_filtering_service()->GetFilteringBehavior(
             GURL(*iter));
 
     if (result.IsFromManualList() && result.IsAllowed()) {
@@ -546,6 +548,14 @@ supervised_user::SupervisedUserService*
 SupervisedUserNavigationObserver::supervised_user_service() const {
   return SupervisedUserServiceFactory::GetForProfile(
       Profile::FromBrowserContext(web_contents()->GetBrowserContext()));
+}
+
+supervised_user::SupervisedUserUrlFilteringService*
+SupervisedUserNavigationObserver::supervised_user_url_filtering_service()
+    const {
+  return supervised_user::SupervisedUserUrlFilteringServiceFactory::
+      GetForProfile(
+          Profile::FromBrowserContext(web_contents()->GetBrowserContext()));
 }
 
 WEB_CONTENTS_USER_DATA_KEY_IMPL(SupervisedUserNavigationObserver);

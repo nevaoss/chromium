@@ -93,6 +93,11 @@ public class ExtensionsToolbarBridge implements Destroyable {
                 .executeUserAction(mNativeExtensionsToolbarBridge, actionId, source);
     }
 
+    public void movePinnedAction(String actionId, int targetIndex) {
+        ExtensionsToolbarBridgeJni.get()
+                .movePinnedAction(mNativeExtensionsToolbarBridge, actionId, targetIndex);
+    }
+
     @CalledByNative
     public void triggerPopup(@JniType("std::string") String actionId, long nativeHostPtr) {
         // {@link mDelegate} should be set in {@code ExtensionActionListMediator}'s constructor.
@@ -136,6 +141,13 @@ public class ExtensionsToolbarBridge implements Destroyable {
         }
     }
 
+    @CalledByNative
+    public void onActiveWebContentsChanged() {
+        for (Observer observer : mObservers) {
+            observer.onActiveWebContentsChanged();
+        }
+    }
+
     public interface Observer {
         // Called after all actions are added to the model.
         void onActionsInitialized();
@@ -151,6 +163,9 @@ public class ExtensionsToolbarBridge implements Destroyable {
 
         // Called when the pinned actions in the model are changed.
         void onPinnedActionsChanged();
+
+        // Called when the active web contents changes due to e.g. navigation or tab change.
+        void onActiveWebContentsChanged();
     }
 
     public interface Delegate {
@@ -185,5 +200,10 @@ public class ExtensionsToolbarBridge implements Destroyable {
                 long nativeExtensionsToolbarBridge,
                 @JniType("std::string") String actionId,
                 @JniType("ToolbarActionViewModel::InvocationSource") int source);
+
+        void movePinnedAction(
+                long nativeExtensionsToolbarBridge,
+                @JniType("std::string") String actionId,
+                int targetIndex);
     }
 }

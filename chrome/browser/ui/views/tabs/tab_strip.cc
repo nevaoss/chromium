@@ -41,6 +41,7 @@
 #include "base/types/to_address.h"
 #include "build/build_config.h"
 #include "chrome/browser/defaults.h"
+#include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/themes/theme_properties.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
@@ -81,10 +82,10 @@
 #include "chrome/grit/generated_resources.h"
 #include "chrome/grit/theme_resources.h"
 #include "components/crash/core/common/crash_key.h"
+#include "components/split_tabs/split_tab_id.h"
 #include "components/tab_groups/tab_group_color.h"
 #include "components/tab_groups/tab_group_id.h"
 #include "components/tab_groups/tab_group_visual_data.h"
-#include "components/tabs/public/split_tab_id.h"
 #include "content/public/browser/web_contents.h"
 #include "ui/base/dragdrop/drag_drop_types.h"
 #include "ui/base/dragdrop/mojom/drag_drop_types.mojom.h"
@@ -1551,6 +1552,10 @@ std::optional<int> TabStrip::GetModelIndexOf(const TabSlotView* view) const {
 }
 
 int TabStrip::GetTabCount() const {
+  if (!tab_container_) {
+    return 0;
+  }
+
   return tab_container_->GetTabCount();
 }
 
@@ -1857,16 +1862,6 @@ bool TabStrip::IsTabSelected(const TabSlotView* tab) const {
   std::optional<int> model_index = GetModelIndexOf(tab);
   return model_index.has_value() &&
          controller_->IsTabSelected(model_index.value());
-}
-
-bool TabStrip::IsTabPinned(const TabSlotView* tab) const {
-  std::optional<int> model_index = GetModelIndexOf(tab);
-  return model_index.has_value() &&
-         controller_->IsTabPinned(model_index.value());
-}
-
-bool TabStrip::IsTabFirst(const TabSlotView* tab) const {
-  return GetModelIndexOf(tab) == 0;
 }
 
 bool TabStrip::IsFocusInTabs() const {

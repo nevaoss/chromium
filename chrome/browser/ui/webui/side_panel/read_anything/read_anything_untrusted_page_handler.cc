@@ -369,7 +369,7 @@ ReadAnythingUntrustedPageHandler::ReadAnythingUntrustedPageHandler(
                 prefs->GetDouble(
                     prefs::kAccessibilityReadAnythingHighlightGranularity))
           : read_anything::mojom::HighlightGranularity::kDefaultValue;
-  base::Value::Dict voices = base::Value::Dict();
+  base::DictValue voices = base::DictValue();
   if (features::IsReadAnythingReadAloudEnabled()) {
     voices = prefs->GetDict(prefs::kAccessibilityReadAnythingVoiceName).Clone();
   }
@@ -394,7 +394,7 @@ ReadAnythingUntrustedPageHandler::ReadAnythingUntrustedPageHandler(
       features::IsReadAnythingReadAloudEnabled()
           ? prefs->GetList(prefs::kAccessibilityReadAnythingLanguagesEnabled)
                 .Clone()
-          : base::Value::List(),
+          : base::ListValue(),
       highlight_granularity, line_focus);
 
   // Get user's default language to check for compatible fonts.
@@ -1074,8 +1074,7 @@ void ReadAnythingUntrustedPageHandler::OnDistillationStatus(
       last_open_trigger_.value() == ReadAnythingOpenTrigger::kOmniboxChip) {
     last_open_trigger_.reset();
     base::UmaHistogramEnumeration(
-        "Accessibility.ReadAnything.DistillationStatusAfterOmnibox", status,
-        read_anything::mojom::DistillationStatus::kMaxValue);
+        "Accessibility.ReadAnything.DistillationStatusAfterOmnibox", status);
     base::UmaHistogramCustomCounts(
         "Accessibility.ReadAnything.WordsDistilledAfterOmnibox", word_count, 1,
         kMaxWordsDistilled, kWordsDistilledBuckets);
@@ -1278,6 +1277,9 @@ void ReadAnythingUntrustedPageHandler::RequestDomDistillerDistillation(
   if (!url.SchemeIsHTTPOrHTTPS()) {
     VLOG(1) << kReadAnythingPrefix << ": URL is not HTTP/HTTPS, skipping for "
             << url.spec();
+    // Call UpdateContent with empty values so status can be updated from show
+    // loading to no content.
+    page_->UpdateContent("", "");
     return;
   }
 

@@ -32,7 +32,6 @@ namespace {
 constexpr char kOpenid4vpProtocol[] = "openid4vp";
 constexpr char kOpenid4vpSignedProtocol[] = "openid4vp-v1-signed";
 constexpr char kOpenid4vpUnsignedProtocol[] = "openid4vp-v1-unsigned";
-constexpr char kPreviewProtocol[] = "preview";
 
 using base::Value;
 using base::ValueView;
@@ -248,33 +247,13 @@ base::Value GenerateGetPhoneNumberOpenid4VpRequest() {
   return ParseJsonAndCheck(kJson);
 }
 
-base::Value GenerateOnlyAgePreviewRequest() {
-  constexpr char kJson[] = R"({
-    "selector": {
-      "format": [
-        "mdoc"
-      ],
-      "doctype": "org.iso.18013.5.1.mDL",
-      "fields": [
-        {
-          "namespace": "org.iso.18013.5.1",
-          "name": "age_over_21",
-          "intentToRetain": false
-        }
-      ]
-    },
-    "nonce": "vvm3Q1VN1tXybccprmZhbZFIjBGSB4VNMuqQfD4Uiko=",
-    "readerPublicKey": "BMK9ink7wCHIKXxxWQy-S6TLN4jo1ab7NBlC-lSvqqMUmgMSadLa9PYYDocWitOmafZqWmZc5lQvdCZQx5mTNvs="
-  })";
 
-  return ParseJsonAndCheck(kJson);
-}
 
 // Does depth-first traversal of nested dicts rooted at `root`. Returns first
 // matching base::Value with key `find_key`.
 base::Value* FindValueWithKey(base::Value& root, const std::string& find_key) {
   if (root.is_list()) {
-    base::Value::List& list = root.GetList();
+    base::ListValue& list = root.GetList();
     for (base::Value& list_item : list) {
       if (base::Value* out = FindValueWithKey(list_item, find_key)) {
         return out;
@@ -284,7 +263,7 @@ base::Value* FindValueWithKey(base::Value& root, const std::string& find_key) {
   }
 
   if (root.is_dict()) {
-    base::Value::Dict& dict = root.GetDict();
+    base::DictValue& dict = root.GetDict();
     for (auto it : dict) {
       if (it.first == find_key) {
         return &it.second;
@@ -307,7 +286,7 @@ bool IsNonEmptyList(const base::Value* value) {
 }
 
 // Removes `find_key` if present from `dict`. Ignores nested base::Value::Dicts.
-void RemoveDictKey(base::Value::Dict& dict, const std::string& find_key) {
+void RemoveDictKey(base::DictValue& dict, const std::string& find_key) {
   for (auto it = dict.begin(); it != dict.end(); ++it) {
     if (it->first == find_key) {
       dict.erase(it);
@@ -336,17 +315,6 @@ bool SetDCQLPathItem(base::Value& to_modify,
   }
   paths->GetList().resize(1);
   paths->GetList().Append(field_name_value);
-  return true;
-}
-
-// Used to modify a Preview on the fly.
-bool SetFieldNameValue(base::Value& to_modify,
-                       const std::string& field_name_value) {
-  base::Value* fields = FindValueWithKey(to_modify, "fields");
-  if (HasNoListElements(fields)) {
-    return false;
-  }
-  fields->GetList().front().GetDict().Set("name", field_name_value);
   return true;
 }
 
@@ -465,7 +433,7 @@ TEST_F(
   base::Value* paths = FindValueWithKey(request, "path");
   ASSERT_TRUE(IsNonEmptyList(paths));
 
-  base::Value::List& path_list = paths->GetList();
+  base::ListValue& path_list = paths->GetList();
   path_list.Append(path_list.front().Clone());
 
   EXPECT_EQ(ComputeInterstitialType(kOpenid4vpProtocol, std::move(request)),
@@ -572,7 +540,7 @@ TEST_F(
       FindValueWithKey(request, "input_descriptors");
   ASSERT_TRUE(IsNonEmptyList(input_descriptors));
 
-  base::Value::List& input_descriptor_list = input_descriptors->GetList();
+  base::ListValue& input_descriptor_list = input_descriptors->GetList();
   input_descriptor_list.Append(input_descriptor_list.front().Clone());
 
   EXPECT_EQ(ComputeInterstitialType(kOpenid4vpProtocol, std::move(request)),
@@ -588,7 +556,7 @@ TEST_F(
       FindValueWithKey(request, "input_descriptors");
   ASSERT_TRUE(IsNonEmptyList(input_descriptors));
 
-  base::Value::List& input_descriptor_list = input_descriptors->GetList();
+  base::ListValue& input_descriptor_list = input_descriptors->GetList();
   ASSERT_TRUE(input_descriptor_list.front().is_dict());
   input_descriptor_list.front().GetDict().Set("id", "not_mdl");
 
@@ -607,44 +575,7 @@ TEST_F(
             InterstitialType::kLowRisk);
 }
 
-TEST_F(DigitalIdentityRequestImplInterstitialTest,
-       PreviewProtocol_ComputeInterstitialType_OnlyAgeOver) {
-  EXPECT_EQ(ComputeInterstitialType(kPreviewProtocol,
-                                    GenerateOnlyAgePreviewRequest()),
-            std::nullopt);
-}
 
-TEST_F(DigitalIdentityRequestImplInterstitialTest,
-       PreviewProtocol_ComputeInterstitialType_OnlyAgeInYears) {
-  base::Value request = GenerateOnlyAgePreviewRequest();
-  ASSERT_TRUE(SetFieldNameValue(request, "age_in_years"));
-  EXPECT_EQ(ComputeInterstitialType(kPreviewProtocol, std::move(request)),
-            std::nullopt);
-}
-
-TEST_F(DigitalIdentityRequestImplInterstitialTest,
-       PreviewProtocol_ComputeInterstitialType_OnlyAgeBirthYear) {
-  base::Value request = GenerateOnlyAgePreviewRequest();
-  ASSERT_TRUE(SetFieldNameValue(request, "age_birth_year"));
-  EXPECT_EQ(ComputeInterstitialType(kPreviewProtocol, std::move(request)),
-            std::nullopt);
-}
-
-TEST_F(DigitalIdentityRequestImplInterstitialTest,
-       PreviewProtocol_ComputeInterstitialType_OnlyBirthDate) {
-  base::Value request = GenerateOnlyAgePreviewRequest();
-  ASSERT_TRUE(SetFieldNameValue(request, "birth_date"));
-  EXPECT_EQ(ComputeInterstitialType(kPreviewProtocol, std::move(request)),
-            std::nullopt);
-}
-
-TEST_F(DigitalIdentityRequestImplInterstitialTest,
-       PreviewProtocol_ComputeInterstitialType_GivenName) {
-  base::Value request = GenerateOnlyAgePreviewRequest();
-  ASSERT_TRUE(SetFieldNameValue(request, "given_name"));
-  EXPECT_EQ(ComputeInterstitialType(kPreviewProtocol, std::move(request)),
-            InterstitialType::kLowRisk);
-}
 
 TEST_F(DigitalIdentityRequestImplInterstitialTest,
        Openid4VpProtocolDCQL_ComputeInterstitialType_OnlyAgeOver) {
@@ -720,55 +651,7 @@ TEST_F(DigitalIdentityRequestImplInterstitialTest,
             InterstitialType::kLowRisk);
 }
 
-TEST_F(DigitalIdentityRequestImplInterstitialTest,
-       Openid4VpAndPreviewProtocol_ComputeInterstitialType_AgeOver) {
-  base::Value openid4vp_request = GenerateOnlyAgeOpenid4VpRequestWithDCQL();
-  base::Value preview_request = GenerateOnlyAgePreviewRequest();
 
-  DigitalCredentialGetRequestPtr request1 = DigitalCredentialGetRequest::New();
-  request1->protocol = kOpenid4vpProtocol;
-  request1->data = std::move(openid4vp_request);
-
-  DigitalCredentialGetRequestPtr request2 = DigitalCredentialGetRequest::New();
-  request2->protocol = kPreviewProtocol;
-  request2->data = std::move(preview_request);
-
-  std::vector<DigitalCredentialGetRequestPtr> requests;
-  requests.emplace_back(std::move(request1));
-  requests.emplace_back(std::move(request2));
-
-  auto provider = std::make_unique<TestDigitalIdentityProviderWithCustomRisk>(
-      /*are_origins_low_risk=*/false);
-  EXPECT_EQ(DigitalIdentityRequestImpl::ComputeInterstitialType(
-                *main_rfh(), provider.get(), std::move(requests)),
-            std::nullopt);
-}
-
-TEST_F(
-    DigitalIdentityRequestImplInterstitialTest,
-    Openid4VpAndPreviewProtocol_ComputeInterstitialType_AgeOverAndGivenName) {
-  base::Value openid4vp_request = GenerateOnlyAgeOpenid4VpRequestWithDCQL();
-  base::Value preview_request = GenerateOnlyAgePreviewRequest();
-  ASSERT_TRUE(SetFieldNameValue(preview_request, "given_name"));
-
-  DigitalCredentialGetRequestPtr request1 = DigitalCredentialGetRequest::New();
-  request1->protocol = kOpenid4vpProtocol;
-  request1->data = std::move(openid4vp_request);
-
-  DigitalCredentialGetRequestPtr request2 = DigitalCredentialGetRequest::New();
-  request2->protocol = kPreviewProtocol;
-  request2->data = std::move(preview_request);
-
-  std::vector<DigitalCredentialGetRequestPtr> requests;
-  requests.emplace_back(std::move(request1));
-  requests.emplace_back(std::move(request2));
-
-  auto provider = std::make_unique<TestDigitalIdentityProviderWithCustomRisk>(
-      /*are_origins_low_risk=*/false);
-  EXPECT_EQ(DigitalIdentityRequestImpl::ComputeInterstitialType(
-                *main_rfh(), provider.get(), std::move(requests)),
-            InterstitialType::kLowRisk);
-}
 
 TEST_F(DigitalIdentityRequestImplInterstitialTest,
        Openid4VpProtocolDCQL_ComputeInterstitialType_MalformedRequest) {
@@ -886,14 +769,14 @@ TEST_F(DigitalIdentityRequestImplWithCreationEnabledTest,
   DigitalCredentialCreateRequestPtr digital_credential_request1 =
       DigitalCredentialCreateRequest::New();
   digital_credential_request1->protocol = "protocol1";
-  base::Value::Dict request1_data;
+  base::DictValue request1_data;
   request1_data.Set("data", "request data 1");
   digital_credential_request1->data = base::Value(std::move(request1_data));
 
   DigitalCredentialCreateRequestPtr digital_credential_request2 =
       DigitalCredentialCreateRequest::New();
   digital_credential_request2->protocol = "protocol2";
-  base::Value::Dict request2_data;
+  base::DictValue request2_data;
   request2_data.Set("data", "request data 2");
   digital_credential_request2->data = base::Value(std::move(request2_data));
 
@@ -917,7 +800,7 @@ TEST_F(DigitalIdentityRequestImplWithCreationEnabledTest,
   DigitalCredentialCreateRequestPtr digital_credential_request =
       DigitalCredentialCreateRequest::New();
   digital_credential_request->protocol = kProtocol;
-  base::Value::Dict request_data;
+  base::DictValue request_data;
   request_data.Set("data", "request data");
   digital_credential_request->data = base::Value(std::move(request_data));
 
@@ -939,7 +822,7 @@ TEST_F(DigitalIdentityRequestImplWithCreationEnabledTest,
   DigitalCredentialCreateRequestPtr digital_credential_request =
       DigitalCredentialCreateRequest::New();
   digital_credential_request->protocol = kProtocol;
-  base::Value::Dict request_data;
+  base::DictValue request_data;
   request_data.Set("data", "request data");
   digital_credential_request->data = base::Value(std::move(request_data));
 
@@ -1028,7 +911,7 @@ TEST_F(DigitalIdentityRequestImplTest, ShouldGetWithProperFormatting) {
   DigitalCredentialGetRequestPtr digital_credential_request =
       DigitalCredentialGetRequest::New();
   digital_credential_request->protocol = kProtocol;
-  base::Value::Dict request_data;
+  base::DictValue request_data;
   request_data.Set("data", "request data");
   digital_credential_request->data = base::Value(std::move(request_data));
 
@@ -1060,7 +943,7 @@ TEST_F(DigitalIdentityRequestImplTest, ShouldGetAndReturnProtocolInRequest) {
   DigitalCredentialGetRequestPtr digital_credential_request =
       DigitalCredentialGetRequest::New();
   digital_credential_request->protocol = kProtocol;
-  base::Value::Dict request_data;
+  base::DictValue request_data;
   request_data.Set("data", "request data");
   digital_credential_request->data = base::Value(std::move(request_data));
 
@@ -1102,7 +985,7 @@ TEST_F(DigitalIdentityRequestImplTest, ShouldGetAndReturnProtocolInResponse) {
   DigitalCredentialGetRequestPtr digital_credential_request =
       DigitalCredentialGetRequest::New();
   digital_credential_request->protocol = kProtocolInRequest;
-  base::Value::Dict request_data;
+  base::DictValue request_data;
   request_data.Set("data", "request data");
   digital_credential_request->data = base::Value(std::move(request_data));
 
@@ -1143,13 +1026,13 @@ TEST_F(DigitalIdentityRequestImplTest,
 
   DigitalCredentialGetRequestPtr request1 = DigitalCredentialGetRequest::New();
   request1->protocol = "protocol1";
-  base::Value::Dict request1_data;
+  base::DictValue request1_data;
   request1_data.Set("data", "request1 data");
   request1->data = base::Value(std::move(request1_data));
 
   DigitalCredentialGetRequestPtr request2 = DigitalCredentialGetRequest::New();
   request2->protocol = "protocol2";
-  base::Value::Dict request2_data;
+  base::DictValue request2_data;
   request2_data.Set("data", "request2 data");
   request2->data = base::Value(std::move(request2_data));
 
@@ -1190,13 +1073,13 @@ TEST_F(DigitalIdentityRequestImplTest,
 
   DigitalCredentialGetRequestPtr request1 = DigitalCredentialGetRequest::New();
   request1->protocol = "protocol1";
-  base::Value::Dict request1_data;
+  base::DictValue request1_data;
   request1_data.Set("data", "request1 data");
   request1->data = base::Value(std::move(request1_data));
 
   DigitalCredentialGetRequestPtr request2 = DigitalCredentialGetRequest::New();
   request2->protocol = "protocol2";
-  base::Value::Dict request2_data;
+  base::DictValue request2_data;
   request2_data.Set("data", "request2 data");
   request2->data = base::Value(std::move(request2_data));
 

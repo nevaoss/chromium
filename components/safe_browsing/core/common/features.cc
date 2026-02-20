@@ -57,6 +57,9 @@ constexpr base::FeatureParam<int>
 
 BASE_FEATURE(kBundledSecuritySettings, base::FEATURE_DISABLED_BY_DEFAULT);
 
+BASE_FEATURE(kBundledSecuritySettingsSecureDnsV2,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE(kClientSideDetectionClipboardCopyApi,
              base::FEATURE_DISABLED_BY_DEFAULT);
 constexpr base::FeatureParam<double> kCsdClipboardCopyApiHCAcceptanceRate{
@@ -388,7 +391,7 @@ BASE_FEATURE(kVisualFeaturesSizes, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Returns the list of the experimental features that are enabled or disabled,
 // as part of currently running Safe Browsing experiments.
-base::Value::List GetFeatureStatusList() {
+base::ListValue GetFeatureStatusList() {
   // List of Safe Browsing feature that should be listed on
   // chrome://safe-browsing. Features should be listed in alphabetical order.
   const base::Feature* kExperimentalFeatures[] = {
@@ -421,7 +424,7 @@ base::Value::List GetFeatureStatusList() {
       // keep-sorted end
   };
 
-  base::Value::List param_list;
+  base::ListValue param_list;
   for (const base::Feature* feature : kExperimentalFeatures) {
     param_list.Append(feature->name);
     if (base::FeatureList::IsEnabled(*feature)) {

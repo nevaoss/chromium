@@ -2150,6 +2150,12 @@ public class ToolbarManager
         }
 
         @Override
+        public int getSearchBoxBoundsVerticalInset() {
+            NewTabPage ntp = getNewTabPageForCurrentTab();
+            return ntp != null ? ntp.getSearchBoxBoundsVerticalInset() : 0;
+        }
+
+        @Override
         public void setSearchBoxAlpha(float alpha) {
             assert getNewTabPageForCurrentTab() != null;
             getNewTabPageForCurrentTab().setSearchBoxAlpha(alpha);
@@ -3032,7 +3038,12 @@ public class ToolbarManager
         boolean wasFocused = mLocationBar.getOmniboxStub().isUrlBarFocused();
         mLocationBar
                 .getOmniboxStub()
-                .setUrlBarFocus(focused, text, reason, AutocompleteRequestType.SEARCH);
+                .setUrlBarFocus(
+                        focused,
+                        text,
+                        /* selectText= */ false,
+                        reason,
+                        AutocompleteRequestType.SEARCH);
         if (wasFocused && focused) {
             mLocationBar.selectAll();
         }

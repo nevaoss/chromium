@@ -5223,12 +5223,12 @@ TEST_F(HttpStreamPoolAttemptManagerTest, AlternativeSerivcesDisabled) {
       .set_enable_alternative_services(false)
       .RequestStream(pool());
   base::RunLoop on_complete_loop;
-  // Make sure that QUIC was never attempted.
+  // Make sure that QUIC was never attempted and the result sets aborted.
   requester.associated_attempt_manager()->SetOnCompleteCallbackForTesting(
       base::BindLambdaForTesting([&]() {
-        EXPECT_FALSE(requester.associated_attempt_manager()
-                         ->GetQuicAttemptResultForTesting()
-                         .has_value());
+        EXPECT_THAT(requester.associated_attempt_manager()
+                        ->GetQuicAttemptResultForTesting(),
+                    Optional(IsError(ERR_ABORTED)));
         on_complete_loop.Quit();
       }));
   requester.WaitForResult();
@@ -6298,7 +6298,7 @@ TEST_F(HttpStreamPoolAttemptManagerTest, GetInfoAsValue) {
 
   requester_b.RequestStream(pool());
 
-  base::Value::Dict info = pool().GetInfoAsValue();
+  base::DictValue info = pool().GetInfoAsValue();
   EXPECT_THAT(info.FindInt("idle_socket_count"), Optional(1));
   EXPECT_THAT(info.FindInt("connecting_socket_count"), Optional(1));
   EXPECT_THAT(info.FindInt("max_socket_count"),
@@ -6306,16 +6306,16 @@ TEST_F(HttpStreamPoolAttemptManagerTest, GetInfoAsValue) {
   EXPECT_THAT(info.FindInt("max_sockets_per_group"),
               Optional(pool().max_stream_sockets_per_group()));
 
-  base::Value::Dict* groups_info = info.FindDict("groups");
+  base::DictValue* groups_info = info.FindDict("groups");
   ASSERT_TRUE(groups_info);
 
-  base::Value::Dict* info_a =
+  base::DictValue* info_a =
       groups_info->FindDict(requester_a.GetStreamKey().ToString());
   ASSERT_TRUE(info_a);
   EXPECT_THAT(info_a->FindInt("active_socket_count"), Optional(1));
   EXPECT_THAT(info_a->FindInt("idle_socket_count"), Optional(1));
 
-  base::Value::Dict* info_b =
+  base::DictValue* info_b =
       groups_info->FindDict(requester_b.GetStreamKey().ToString());
   ASSERT_TRUE(info_b);
   EXPECT_THAT(info_b->FindInt("active_socket_count"), Optional(1));

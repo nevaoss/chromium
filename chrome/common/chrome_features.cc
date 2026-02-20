@@ -477,7 +477,7 @@ BASE_FEATURE(kGlicTrustFirstOnboarding, base::FEATURE_DISABLED_BY_DEFAULT);
 
 const base::FeatureParam<int> kGlicTrustFirstOnboardingArmParam{
     &kGlicTrustFirstOnboarding, "arm", 1 /* kStartChat */};
-#if BUILDFLAG(ENABLE_GLIC) || BUILDFLAG(ENABLE_GLIC_ANDROID)
+#if BUILDFLAG(ENABLE_GLIC)
 // Controls whether the Glic feature is enabled.
 // IMPORTANT: this feature should never be expired! It is used as the main
 // kill-switch for Glic and can be used in the future to handle unsupported
@@ -928,6 +928,8 @@ BASE_FEATURE(kGlicButtonPressedState, base::FEATURE_DISABLED_BY_DEFAULT);
 
 const base::FeatureParam<bool> kGlicButtonContainerBackground{
     &kGlicButtonPressedState, "glic-button-container-background", false};
+const base::FeatureParam<bool> kGlicButtonPressedForceSolidIcon{
+    &kGlicButtonPressedState, "glic-button-pressed-force-solid-icon", false};
 
 BASE_FEATURE(kGlicShareImage, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicShareImageEnterprise, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -995,6 +997,9 @@ BASE_FEATURE_PARAM(base::TimeDelta,
 
 BASE_FEATURE(kGlicDisableUnderlineAnimations,
              base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGlicGuestUrlPresets, base::FEATURE_DISABLED_BY_DEFAULT);
+const base::FeatureParam<int> kGlicGuestUrlPresetType{
+    &kGlicGuestUrlPresets, "glic-guest-url-preset-type", 0};
 
 BASE_FEATURE(kActorFormFillingServiceEnableAddress,
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -1787,10 +1792,6 @@ BASE_FEATURE(kWebAppUpgradeToDatabaseVersion6,
 #if !BUILDFLAG(IS_ANDROID)
 BASE_FEATURE(kWebium, base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Enables rendering the top chrome in WebUI. This is a central flag to enable
-// the WebUI implementation of top chrome. Individual features will be
-// additionally gated by this flag.
-BASE_FEATURE(kInitialWebUI, base::FEATURE_DISABLED_BY_DEFAULT);
 // Enables logging InitialWebUI-related metrics. The metrics are not necessary
 // comes from WebUI but can also come from the C++ version of them.
 // Defaults to enabled to also collect metrics for the C++ group.
@@ -1800,6 +1801,9 @@ BASE_FEATURE(kInitialWebUIMetrics, base::FEATURE_ENABLED_BY_DEFAULT);
 // chrome://webui-toolbar.top-chrome will be loaded as the content.
 // crbug.com/444358999
 BASE_FEATURE(kWebUIReloadButton, base::FEATURE_DISABLED_BY_DEFAULT);
+// Switches location bar over to a WebUI implementation.
+// See crbug.com/470042732
+BASE_FEATURE(kWebUILocationBar, base::FEATURE_DISABLED_BY_DEFAULT);
 // The following feature params control the crash recovery behavior of the Web
 // UI reload button. If the renderer crashes, we will try to recover it by
 // reloading the contents until the number of crashes reaches
@@ -1824,6 +1828,10 @@ const base::FeatureParam<base::TimeDelta>
         &kWebUIReloadButton,
         "WebUIReloadButtonRestartUnresponsiveRenderersTimeout",
         base::Seconds(15)};
+// When enabled, the split tabs button will be replaced with WebUI loaded from
+// chrome://webui-toolbar.top-chrome.
+// crbug.com/470039098
+BASE_FEATURE(kWebUISplitTabsButton, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 // Enables the User-Agent override fix for SearchPrefetch. This will work only

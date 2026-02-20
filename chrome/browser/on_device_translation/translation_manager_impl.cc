@@ -11,7 +11,6 @@
 #include "chrome/browser/on_device_translation/component_manager.h"
 #include "chrome/browser/on_device_translation/service_controller.h"
 #include "chrome/browser/on_device_translation/service_controller_manager.h"
-#include "chrome/browser/on_device_translation/translation_manager_util.h"
 #include "components/component_updater/component_updater_service.h"
 #include "components/content_settings/core/browser/host_content_settings_map.h"
 #include "components/content_settings/core/common/content_settings.h"
@@ -22,6 +21,7 @@
 #include "components/on_device_translation/metrics.h"
 #include "components/on_device_translation/public/language_pack.h"
 #include "components/on_device_translation/public/pref_names.h"
+#include "components/on_device_translation/translation_manager_util.h"
 #include "components/on_device_translation/translator.h"
 #include "components/permissions/permissions_client.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
@@ -212,11 +212,11 @@ void TranslationManagerImpl::SetInitializedTranslation(
 
   // Initialize a dictionary to store data, if none exists.
   if (!initialized_translations_value.is_dict()) {
-    initialized_translations_value = base::Value(base::Value::Dict());
+    initialized_translations_value = base::Value(base::DictValue());
   }
 
   // Update or initialize the list of targets for the source language.
-  base::Value::List* target_languages_list =
+  base::ListValue* target_languages_list =
       initialized_translations_value.GetDict().EnsureList(source_language);
   if (!target_languages_list->contains(target_language)) {
     target_languages_list->Append(target_language);

@@ -264,6 +264,11 @@ void ReaderModeTabHelper::ReaderModeContentDidLoadData(
   // remove the precautionary timeout.
   reader_mode_blur_timer_.Stop();
 
+  if (!active_) {
+    return;
+  }
+  metrics_helper_.RecordDataLoadCompleted();
+
   reader_mode_web_state_content_loaded_ = true;
   for (auto& observer : observers_) {
     observer.ReaderModeWebStateDidLoadContent(this,
@@ -391,6 +396,7 @@ void ReaderModeTabHelper::PageDistillationCompleted(
       // Load the Reader mode content in the Reader mode content WebState.
       NSData* content_data = [NSData dataWithBytes:html.data()
                                             length:html.length()];
+      metrics_helper_.RecordDataLoadTriggered();
       ReaderModeContentTabHelper::FromWebState(reader_mode_web_state_.get())
           ->LoadContent(page_url, content_data);
     } else {
@@ -489,17 +495,23 @@ void ReaderModeTabHelper::DestroyReaderModeContent(
   // to creating new ones attached to the original web page.
   RemoveTranslateInfobarIfExists(web_state_.get());
 
-  // Display translation badge if a translation was applied before or
-  // during Reading Mode activation for active tabs.
   switch (reason) {
-    case ReaderModeDeactivationReason::kNavigationDeactivated:
+    case ReaderModeDeactivationReason::kNavigationDeactivated: {
+      // Do not apply Reading Mode translation to user navigations. In the case
+      // where the navigation URL is the same as the Reading Mode URL this will
+      // reset the translation to the default state.
+      break;
+    }
     case ReaderModeDeactivationReason::kUserDeactivated: {
+      // Display translation badge if a translation was applied before or
+      // during Reading Mode activation.
       ChromeIOSTranslateClient* translate_client =
           ChromeIOSTranslateClient::FromWebState(web_state_.get());
       ApplyLanguageSettingsFromClient(translate_client);
       break;
     }
     case ReaderModeDeactivationReason::kDistillationFailureDeactivated: {
+      // Keep the settings the same as the original page.
       ApplyLanguageSettingsFromSource();
       break;
     }

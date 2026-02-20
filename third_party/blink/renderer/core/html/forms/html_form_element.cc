@@ -148,19 +148,35 @@ bool HTMLFormElement::IsValidWebMCPForm() const {
 
 void HTMLFormElement::HTMLFormMcpTool::ExecuteTool(
     String input_arguments,
-    base::OnceCallback<void(String)> done_callback) {
-  auto fail = [&done_callback]() {
-    // Failure is represented by a null string.
-    return std::move(done_callback).Run(g_null_atom);
-  };
+    base::OnceCallback<void(
+        base::expected<String, WebDocument::ScriptToolError>)> done_callback) {
+  if (!FillFormControls(input_arguments)) {
+    return std::move(done_callback)
+        .Run(base::unexpected(
+            WebDocument::ScriptToolError::kInvalidInputArguments));
+  }
+
+  // Success. Now we can either submit the form or focus the submit button.
+  // TODO(masonf): Fire the submit event and set the return value for the
+  // callback based on preventDefault vs not.
+  form_->ScheduleFormSubmission(/*event*/ nullptr, /*submit_button*/ nullptr);
+
+  // Return a null string to indicate that a navigation has been triggered.
+  std::move(done_callback).Run(base::ok(String()));
+}
+
+bool HTMLFormElement::HTMLFormMcpTool::FillFormControls(
+    const String& input_arguments) {
   std::unique_ptr<JSONValue> json = ParseJSON(input_arguments);
   if (!json) {
-    return fail();
+    return false;
   }
+
   std::unique_ptr<JSONObject> json_obj = JSONObject::From(std::move(json));
   if (!json_obj) {
-    return fail();
+    return false;
   }
+
   HeapHashMap<String, Member<HTMLFormControlElement>> controls_map;
   for (ListedElement* element : form_->ListedElements()) {
     if (auto* form_control = DynamicTo<HTMLFormControlElement>(element)) {
@@ -171,27 +187,32 @@ void HTMLFormElement::HTMLFormMcpTool::ExecuteTool(
       }
     }
   }
-  // Now loop through what we got, and attempt to match it up.
+
+  // For each entry in `json_obj`, we find the corresponding form control
+  // and queue up a pending action that may lead to a FillWebMCPData() call.
+  //
+  // If any error occurs, all pending actions are dropped, and the form control
+  // states remain unchanged.
+  HeapVector<std::pair<Member<HTMLFormControlElement>, JSONValue*>>
+      controls_to_fill;
+
   for (wtf_size_t i = 0; i < json_obj->size(); ++i) {
     JSONObject::Entry entry = json_obj->at(i);
     const String parameter_name = String(entry.first);
-    blink::JSONValue& contents = *entry.second;
+    blink::JSONValue* contents = entry.second;
     auto it = controls_map.find(parameter_name);
     if (it == controls_map.end()) {
-      LOG(ERROR) << "Can't find a control with name " << parameter_name;
-      return fail();
+      return false;
     }
-    if (!it->value->FillWebMCPData(contents)) {
-      return fail();
-    }
+    // TODO(crbug.com/475992364): Maybe validate the data here.
+    controls_to_fill.push_back(std::make_pair(it->value, contents));
   }
 
-  // Success. Now we can either submit the form or focus the submit button.
-  // form_->ScheduleFormSubmission(/*event*/ nullptr, /*submit_button*/
-  // nullptr);
+  for (const auto& [form_control, json_value] : controls_to_fill) {
+    form_control->FillWebMCPData(*json_value);
+  }
 
-  std::move(done_callback)
-      .Run("The form was filled. The user now needs to submit it.");
+  return true;
 }
 
 String HTMLFormElement::HTMLFormMcpTool::ComputeInputSchema() {
@@ -230,7 +251,7 @@ void HTMLFormElement::HTMLFormMcpTool::Trace(Visitor* visitor) const {
 }
 
 // This gets called when a <form> is added or removed from the document, or
-// when `tool-name` or `tool-description` attributes are added, removed, or
+// when `toolname` or `tooldescription` attributes are added, removed, or
 // changed.
 // Cases:
 //  - just had last attribute added, already connected
@@ -245,7 +266,7 @@ void HTMLFormElement::UpdateMcpDefinitionsIfNeeded() {
   if (!RuntimeEnabledFeatures::WebMCPEnabled()) {
     return;
   }
-  // The `<form>` must have *both* the `tool-name` and `tool-description`
+  // The `<form>` must have *both* the `toolname` and `tooldescription`
   // attributes, and the form must be document-connected, to qualify for
   // declarative WebMCP inclusion.
   String name = FastGetAttribute(html_names::kToolnameAttr);

@@ -2368,7 +2368,7 @@ Called by update_net_error_codes.py.-->
       label="Protected media identifier setting (Android/ChromeOS only)"/>
   <int value="22" label="App banner setting (Android only)"/>
   <int value="23" label="Site engagement setting"/>
-  <int value="24" label="Durable storage setting"/>
+  <int value="24" label="Persistent storage setting"/>
   <int value="25" label="Key generation setting [removed]"/>
   <int value="26" label="Bluetooth guard setting"/>
   <int value="27" label="Background sync setting"/>
@@ -10679,6 +10679,7 @@ from previous Chrome versions.
   <int value="-1265374554" label="CctSignInPrompt:disabled"/>
   <int value="-1264634670" label="HideTabOnTabSwitcher:disabled"/>
   <int value="-1262730949" label="EnableDspHotword:enabled"/>
+  <int value="-1262577267" label="GlicGuestUrlPresets:enabled"/>
   <int value="-1262303946" label="SubresourceRedirectPreviews:disabled"/>
   <int value="-1262302650" label="StorageBuckets:disabled"/>
   <int value="-1262152606" label="disable-lock-screen-apps"/>
@@ -13150,6 +13151,7 @@ from previous Chrome versions.
   <int value="-403649153" label="WebViewBrotliSupport:disabled"/>
   <int value="-403473326" label="VCLightIntensity:disabled"/>
   <int value="-402485105" label="PlatformKeysChangesWave1:disabled"/>
+  <int value="-402255536" label="GlicGuestUrlPresets:disabled"/>
   <int value="-402038055"
       label="OmniboxUIExperimentBlueTitlesAndGrayUrlsOnPageSuggestions:enabled"/>
   <int value="-401170566"
@@ -16464,6 +16466,7 @@ from previous Chrome versions.
   <int value="735180038"
       label="AccessibilitySelectToSpeakHoverTextImprovements:disabled"/>
   <int value="735393448" label="InsertKeyToggleMode:disabled"/>
+  <int value="736402508" label="BundledSecuritySettingsSecureDnsV2:enabled"/>
   <int value="736740751"
       label="OmniboxFocusTriggersWebAndSRPZeroSuggest:disabled"/>
   <int value="736911267" label="ExperimentalCrostiniUI:disabled"/>
@@ -18577,6 +18580,7 @@ from previous Chrome versions.
   <int value="1460266536" label="PulseaudioLoopbackForScreenShare:disabled"/>
   <int value="1460521025"
       label="GlobalCacheListForGatingNotificationProtections:enabled"/>
+  <int value="1460523245" label="BundledSecuritySettingsSecureDnsV2:disabled"/>
   <int value="1460747747" label="GdiTextPrinting:enabled"/>
   <int value="1460958818" label="NTPForeignSessionsSuggestions:enabled"/>
   <int value="1461581256" label="MovablePartialScreenshot:enabled"/>
@@ -22659,6 +22663,8 @@ Called by update_net_error_codes.py.-->
   <int value="1" label="PREVIOUSLY_AUTO_REVOKED"/>
 </enum>
 
+<!-- LINT.IfChange(PermissionPromptDispositionReason) -->
+
 <enum name="PermissionPromptDispositionReason">
   <int value="0" label="User preference in settings"/>
   <int value="1" label="Safe Browsing verdict"/>
@@ -22666,6 +22672,8 @@ Called by update_net_error_codes.py.-->
   <int value="3" label="Default fallback"/>
   <int value="4" label="On-Device prediction model"/>
 </enum>
+
+<!-- LINT.ThenChange(//components/permissions/permission_uma_util.h:PermissionPromptDispositionReason) -->
 
 <!-- LINT.IfChange(PermissionRequestType) -->
 
@@ -22728,7 +22736,7 @@ Called by update_net_error_codes.py.-->
   <int value="4" label="PERMISSION_GEOLOCATION"/>
   <int value="5" label="PERMISSION_PROTECTED_MEDIA_IDENTIFIER"/>
   <int value="6" label="PERMISSION_MIDI"/>
-  <int value="7" label="PERMISSION_DURABLE_STORAGE"/>
+  <int value="7" label="PERMISSION_PERSISTENT_STORAGE"/>
   <int value="8" label="PERMISSION_AUDIO_CAPTURE"/>
   <int value="9" label="PERMISSION_VIDEO_CAPTURE"/>
   <int value="10" label="PERMISSION_BACKGROUND_SYNC"/>

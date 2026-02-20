@@ -1573,7 +1573,7 @@ void NetworkContext::QueueReport(
     const GURL& url,
     const std::optional<base::UnguessableToken>& reporting_source,
     const net::NetworkAnonymizationKey& network_anonymization_key,
-    base::Value::Dict body) {
+    base::DictValue body) {
   QueueReportInternal(type, group, url, reporting_source,
                       network_anonymization_key, std::move(body),
                       net::ReportingTargetType::kDeveloper);
@@ -1582,7 +1582,7 @@ void NetworkContext::QueueReport(
 void NetworkContext::QueueEnterpriseReport(const std::string& type,
                                            const std::string& group,
                                            const GURL& url,
-                                           base::Value::Dict body) {
+                                           base::DictValue body) {
   // Enterprise reports don't use a |reporting_source| or
   // |network_anonymization_key|. Enterprise endpoints are profile-bound and not
   // document-bound like web developer endpoints.
@@ -1597,7 +1597,7 @@ void NetworkContext::QueueReportInternal(
     const GURL& url,
     const std::optional<base::UnguessableToken>& reporting_source,
     const net::NetworkAnonymizationKey& network_anonymization_key,
-    base::Value::Dict body,
+    base::DictValue body,
     net::ReportingTargetType target_type) {
 #if BUILDFLAG(ENABLE_REPORTING)
   // If |reporting_source| is provided, it must not be empty.
@@ -2238,7 +2238,7 @@ void NetworkContext::IsHSTSActiveForHost(const std::string& host,
 
 void NetworkContext::GetHSTSState(const std::string& domain,
                                   GetHSTSStateCallback callback) {
-  base::Value::Dict result;
+  base::DictValue result;
 
   if (base::IsStringASCII(domain)) {
     net::TransportSecurityState* transport_security_state =
