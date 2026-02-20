@@ -1560,14 +1560,17 @@ typedef NS_ENUM(NSInteger, DragEntrySide) {
     [snapshot moveItemWithIdentifier:item
             beforeItemWithIdentifier:nextItemIdentifier];
   } else {
-    NSInteger section = [self.diffableDataSource
-        indexForSectionIdentifier:kGridOpenTabsSectionIdentifier];
-    NSIndexPath* lastIndexPath =
-        [NSIndexPath indexPathForItem:[self numberOfTabs] - 1
-                            inSection:section];
-    GridItemIdentifier* lastItem =
-        [self.diffableDataSource itemIdentifierForIndexPath:lastIndexPath];
-    if (lastItem == item) {
+    NSArray<GridItemIdentifier*>* items = [snapshot
+        itemIdentifiersInSectionWithIdentifier:kGridOpenTabsSectionIdentifier];
+    GridItemIdentifier* lastItem = items.lastObject;
+    if ([lastItem isEqual:item]) {
+      return;
+    }
+
+    // If there is no last item (empty section), append the item.
+    if (!lastItem) {
+      [snapshot appendItemsWithIdentifiers:@[ item ]
+                 intoSectionWithIdentifier:kGridOpenTabsSectionIdentifier];
       return;
     }
 
@@ -1833,7 +1836,7 @@ typedef NS_ENUM(NSInteger, DragEntrySide) {
   cell.activityLabelData =
       [self.gridProvider activityLabelDataForItem:groupItemIdentifier];
 
-  if (IsTabGridDragAndDropEnabled()) {
+  if (IsTabGridDragAndDropEnabled() && _highlightedGroupIndexPath) {
     NSUInteger newGroupIndexPath = _highlightedGroupIndexPath.item;
     if (_isNewGroupShiftingToDifferentFinalIndexPath &&
         _isGroupBeingCreatedFromDragAndDrop) {

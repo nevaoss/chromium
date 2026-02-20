@@ -251,6 +251,18 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(int,
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kLessAggressiveParkableString);
 
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kCombineNewWindowIPCs);
+
+// Controls whether blink main thread rendering updates are forced while
+// compositor-thread animations are running, for the purpose of keeeping
+// IntersectionObserver and anchor positioning correctly up to date.
+BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kCompositedAnimationsForceMainFrames);
+BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
+    bool,
+    kForceMainFramesForIntersectionObserver);
+BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
+    bool,
+    kForceMainFramesForAnchorTransform);
+
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kConsumeCodeCacheOffThread);
 
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kContentCaptureConstantStreaming);
@@ -650,6 +662,10 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kForceHighPerformanceGPUForWebGL);
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kForceOffTextAutosizing);
 
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kFrameMetadataObserver);
+
+// If enabled, shared workers will be frozen when all their clients are in the
+// back/forward cache.
+BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kFreezeSharedWorker);
 
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(
     kFrequencyCappingForLargeStickyAdDetection);
@@ -1600,29 +1616,11 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kResamplingInputEvents);
 // feature param.
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kResamplingScrollEvents);
 
-// This experiment evaluates various restrictions on the application of
-// spelling/grammar highlights to prevent user dictionary leaks.
-// For more see:
+// This bypasses restrictions on selection sources and allows the spelling and
+// grammar checks to proceed for testing purposes.
 // https://explainers-by-googlers.github.io/user-dictionary-leaks/
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kRestrictSpellingAndGrammarHighlights);
-
-// If true, this disables spelling/grammar highlights performed on script
-// edit (requiring user input to invoke).
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
-    bool,
-    kRestrictSpellingAndGrammarHighlightsChangedContents);
-
-// If true, this disables spelling/grammar highlights performed on script
-// enablement (requiring contents or selection change).
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
-    bool,
-    kRestrictSpellingAndGrammarHighlightsChangedEnablement);
-
-// If true, this disables spelling/grammar highlights performed on script
-// focus (requiring user gesture to invoke).
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
-    bool,
-    kRestrictSpellingAndGrammarHighlightsChangedSelection);
+BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(
+    kUnrestrictSpellingAndGrammarForTesting);
 
 // Aggregated flag for the restriction on HTTP Link headers on subresource
 // responses. See crbug.com/417529151 for details.
@@ -1875,6 +1873,10 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kWebRtcUseCaptureBeginTimestamp);
 // Feature to make WebRtcAudioSink use TimestampAligner to align absolute
 // capture timestamps. This is disabled by default.
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kWebRtcAudioSinkUseTimestampAligner);
+
+// Enables the use of specific thread types (kPresentation for video,
+// kInteractive for audio processing) for media tasks.
+BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kWebRtcUseMediaThreadTypes);
 
 // This feature enables using Post-Quantum Crypto(PQC) for DTLS to improve
 // WebRTC's security.

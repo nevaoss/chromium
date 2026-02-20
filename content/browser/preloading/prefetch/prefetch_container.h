@@ -27,10 +27,6 @@ namespace base {
 class OneShotTimer;
 }  // namespace base
 
-namespace network::mojom {
-class CookieManager;
-}  // namespace network::mojom
-
 namespace url {
 class Origin;
 }  // namespace url
@@ -47,7 +43,6 @@ class PrefetchServingHandle;
 class PrefetchServingPageMetricsContainer;
 class PrefetchSingleRedirectHop;
 class PrefetchStreamingURLLoader;
-class ProxyLookupClientImpl;
 enum class PrefetchPotentialCandidateServingResult;
 enum class PrefetchProbeResult;
 enum class PrefetchServableState;
@@ -250,11 +245,6 @@ class CONTENT_EXPORT PrefetchContainer {
   }
   void MakeResourceRequest();
 
-  // Updates |referrer_| after a redirect.
-  void UpdateReferrer(
-      const GURL& new_referrer_url,
-      const network::mojom::ReferrerPolicy& new_referrer_policy);
-
   // Equivalent to `request().no_vary_search_hint()`.
   // Exposed for `PrefetchMatchResolver`.
   const std::optional<net::HttpNoVarySearchData>& GetNoVarySearchHint() const;
@@ -282,12 +272,6 @@ class CONTENT_EXPORT PrefetchContainer {
   LoadState GetLoadState() const;
 
   const PrefetchRequest& request() const { return *request_; }
-
-  // Controls ownership of the |ProxyLookupClientImpl| used during the
-  // eligibility check.
-  void TakeProxyLookupClient(
-      std::unique_ptr<ProxyLookupClientImpl> proxy_lookup_client);
-  std::unique_ptr<ProxyLookupClientImpl> ReleaseProxyLookupClient();
 
   // Called when it is added to `PrefetchService::owned_prefetches_`.
   void OnAddedToPrefetchService();
@@ -327,9 +311,9 @@ class CONTENT_EXPORT PrefetchContainer {
   bool IsCrossSiteContaminated() const { return is_cross_site_contaminated_; }
   void MarkCrossSiteContaminated();
 
-  // Allows for |PrefetchCookieListener|s to be reigsitered for
+  // Allows for |PrefetchCookieListener|s to be registered for
   // `GetCurrentSingleRedirectHopToPrefetch()`.
-  void RegisterCookieListener(network::mojom::CookieManager* cookie_manager);
+  void RegisterCookieListener();
   void PauseAllCookieListeners();
   void ResumeAllCookieListeners();
 
@@ -689,9 +673,6 @@ class CONTENT_EXPORT PrefetchContainer {
   PrefetchServiceWorkerState service_worker_state_ =
       PrefetchServiceWorkerState::kAllowed;
 
-  // The referrer to use for the request. This is updated through redirects.
-  blink::mojom::Referrer referrer_;
-
   // Information about the current prefetch request. Updated when a redirect is
   // encountered, whether or not the direct can be processed by the same URL
   // loader or requires the instantiation of a new loader.
@@ -716,10 +697,6 @@ class CONTENT_EXPORT PrefetchContainer {
 
   // The current status of the prefetch.
   LoadState load_state_ = LoadState::kNotStarted;
-
-  // Looks up the proxy settings in the default network context all URLs in
-  // |redirect_chain_|.
-  std::unique_ptr<ProxyLookupClientImpl> proxy_lookup_client_;
 
   // Whether this prefetch is a decoy or not. If the prefetch is a decoy then
   // any prefetched resources will not be served.

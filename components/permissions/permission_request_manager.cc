@@ -100,6 +100,18 @@ constexpr char kDisruptiveNotificationBehaviorEnforcementMessage[] =
     "Chrome is blocking notification permission requests on this site because "
     "the site exhibits behaviors that may be disruptive to users.";
 
+const char kGestureGatedNotificationMessage[] =
+    "The Notification permission request was suppressed and shown as a quiet "
+    "prompt because it was requested without a user gesture. Users are more "
+    "likely to grant permissions when requested in context. See "
+    "https://crbug.com/479151408 for more details.";
+
+const char kGestureGatedGeolocationMessage[] =
+    "The Geolocation permission request was suppressed and shown as a quiet "
+    "prompt because it was requested without a user gesture. Users are more "
+    "likely to grant permissions when requested in context. See "
+    "https://crbug.com/479151408 for more details.";
+
 namespace {
 
 // In case of multiple permission requests that use chip UI, a newly added
@@ -937,8 +949,7 @@ PermissionRequestManager::GetPromptBubbleViewBoundsInScreen() const {
 }
 
 PermissionRequestManager::PermissionRequestManager(
-    content::WebContents* web_contents,
-    tabs::TabInterface* tab_interface)
+    content::WebContents* web_contents)
     : content::WebContentsObserver(web_contents),
       content::WebContentsUserData<PermissionRequestManager>(*web_contents),
       view_factory_(base::BindRepeating(&PermissionPrompt::Create)),
@@ -946,6 +957,13 @@ PermissionRequestManager::PermissionRequestManager(
       permission_ui_selectors_(
           PermissionsClient::Get()->CreatePermissionUiSelectors(
               web_contents->GetBrowserContext())) {
+  // Only register TabInterface observers on desktop to support Split View.
+  tabs::TabInterface* tab_interface =
+#if BUILDFLAG(IS_ANDROID)
+      nullptr;
+#else
+      tabs::TabInterface::MaybeGetFromContents(web_contents);
+#endif  // BUILDFLAG(IS_ANDROID)
   if (tab_interface) {
     tab_is_active_ = tab_interface->IsActivated();
     // Tab helpers are attached before a tab is attached to the tab strip.
@@ -957,12 +975,6 @@ PermissionRequestManager::PermissionRequestManager(
     tab_is_active_ =
         web_contents->GetVisibility() != content::Visibility::HIDDEN;
   }
-}
-
-PermissionRequestManager::PermissionRequestManager(
-    content::WebContents* web_contents)
-    : PermissionRequestManager(web_contents, nullptr) {
-  ;
 }
 
 void PermissionRequestManager::DequeueRequestIfNeeded() {
@@ -1015,6 +1027,37 @@ void PermissionRequestManager::DequeueRequestIfNeeded() {
     for (auto& request : request_list) {
       if (HasActiveSourceFrameOrDisallowActivationOtherwise(request.get())) {
         validated_requests_.push_back(request->GetWeakPtr());
+      }
+    }
+  }
+
+  // If the "PermissionsGestureGatedPrompts" feature is enabled, we ensure that
+  // specific permission requests (currently Notifications and Geolocation) are
+  // accompanied by a valid user gesture. If the user gesture is lacking we mute
+  // the request.
+  if (base::FeatureList::IsEnabled(
+          permissions::features::kPermissionsGestureGatedPrompts)) {
+    if (auto request = requests_.front().get()) {
+      // We explicitly don't mute requests initiated by an embedded permission
+      // element (e.g., the <permission> HTML tag). This is because interaction
+      // with such an element constitutes a specific, high-intent user signal
+      // that justifies showing the prompt.
+      if (!requests_.front()->IsEmbeddedPermissionElementInitiated() &&
+          request->GetGestureType() ==
+              PermissionRequestGestureType::NO_GESTURE) {
+        if ((request->request_type() == RequestType::kNotifications &&
+             permissions::feature_params::
+                 kPermissionsGestureGatedPromptsMuteNotifications.Get()) ||
+            (request->request_type() == RequestType::kGeolocation &&
+             permissions::feature_params::
+                 kPermissionsGestureGatedPromptsMuteGeolocation.Get())) {
+          current_request_ui_to_use_ =
+              PermissionUiSelector::Decision::UseQuietUi(
+                  QuietUiReason::kTriggeredDueToLackOfGesture,
+                  PermissionUiSelector::Decision::ShowNoWarning());
+          ShowPrompt();
+          return;
+        }
       }
     }
   }
@@ -1135,6 +1178,14 @@ void PermissionRequestManager::ShowPrompt() {
         case QuietUiReason::kTriggeredDueToDisruptiveBehavior:
           LogWarningToConsole(
               kDisruptiveNotificationBehaviorEnforcementMessage);
+          break;
+        case QuietUiReason::kTriggeredDueToLackOfGesture:
+          if (requests_[0]->request_type() == RequestType::kNotifications) {
+            LogWarningToConsole(kGestureGatedNotificationMessage);
+          } else if (requests_[0]->request_type() ==
+                     RequestType::kGeolocation) {
+            LogWarningToConsole(kGestureGatedGeolocationMessage);
+          }
           break;
       }
       base::RecordAction(base::UserMetricsAction(
@@ -1307,6 +1358,8 @@ void PermissionRequestManager::CurrentRequestsDecided(
     ContentSettingsType content_settings_type =
         request->GetContentSettingsType();
     if (content_settings_type == ContentSettingsType::GEOLOCATION ||
+        content_settings_type ==
+            ContentSettingsType::GEOLOCATION_WITH_OPTIONS ||
         content_settings_type == ContentSettingsType::MEDIASTREAM_CAMERA ||
         content_settings_type == ContentSettingsType::MEDIASTREAM_MIC) {
       if (permission_action == PermissionAction::GRANTED_ONCE) {
@@ -1527,6 +1580,7 @@ bool PermissionRequestManager::ShouldDropCurrentRequestIfCannotShowQuietly()
       case QuietUiReason::kServicePredictedVeryUnlikelyGrant:
       case QuietUiReason::kOnDevicePredictedVeryUnlikelyGrant:
       case QuietUiReason::kTriggeredByCrowdDeny:
+      case QuietUiReason::kTriggeredDueToLackOfGesture:
         return false;
       case QuietUiReason::kTriggeredDueToAbusiveRequests:
       case QuietUiReason::kTriggeredDueToAbusiveContent:
@@ -1707,6 +1761,8 @@ PermissionRequestManager::DetermineCurrentRequestUIDispositionReasonForUMA() {
       return PermissionPromptDispositionReason::PREDICTION_SERVICE;
     case QuietUiReason::kOnDevicePredictedVeryUnlikelyGrant:
       return PermissionPromptDispositionReason::ON_DEVICE_PREDICTION_MODEL;
+    case QuietUiReason::kTriggeredDueToLackOfGesture:
+      return PermissionPromptDispositionReason::LACK_OF_GESTURE;
   }
 }
 

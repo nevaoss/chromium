@@ -333,6 +333,7 @@
 <translation id="2184272387334793084">Accedi per avere a disposizione le password e altri dati su tutti i tuoi dispositivi</translation>
 <translation id="2186206192313702726">Google Lens</translation>
 <translation id="2188993354115194873">Tocca <ph name="BEGIN_BOLD" />Salva nei download<ph name="END_BOLD" /></translation>
+<translation id="2191406283620379491">Si è verificato un problema. Aggiorna la versione di iOS.</translation>
 <translation id="219283042927675668">Schede nel gruppo</translation>
 <translation id="2194856509914051091">Aspetti da considerare</translation>
 <translation id="2196428379625389579">Cerca sul web</translation>
@@ -579,6 +580,7 @@
 <translation id="3143515551205905069">Annulla sincronizzazione</translation>
 <translation id="3144126448740580210">FINE</translation>
 <translation id="3148052723910099040">Griglia schede normali</translation>
+<translation id="3148237711805373460">Vai</translation>
 <translation id="3157387275655328056">Aggiungi all'elenco di lettura</translation>
 <translation id="315778507796115851">Cronologia</translation>
 <translation id="31652791196570636">Chiudi</translation>
@@ -1020,6 +1022,7 @@
 <translation id="483689884442613745">Salva…</translation>
 <translation id="4840495572919996524">I preferiti, la cronologia, le password e altre impostazioni non verranno più sincronizzati con il tuo Account Google.</translation>
 <translation id="484280513275854557">Il tuo account è stato disconnesso; i dati di navigazione sono stati eliminati</translation>
+<translation id="484462545196658690">Automatico</translation>
 <translation id="4850886885716139402">Visualizza</translation>
 <translation id="4854068532375923088">Consenti a "Gemini" di usare la fotocamera</translation>
 <translation id="4860895144060829044">Chiama</translation>
@@ -1521,6 +1524,7 @@ La funzione Handoff deve anche essere attivata nella sezione Generali di Imposta
 <translation id="6556866813142980365">Ripeti</translation>
 <translation id="6559301491397835130">{count,plural, =1{Preferito salvato in "{title}", solo su questo dispositivo.}other{Preferiti salvati in "{title}", solo su questo dispositivo.}}</translation>
 <translation id="656065428026159829">Mostra altri</translation>
+<translation id="6565899972286925956">Crea ciò che vuoi</translation>
 <translation id="6571070086367343653">Modifica carta di credito</translation>
 <translation id="6574092468346088891">Attiva le notifiche del controllo di sicurezza</translation>
 <translation id="6579867704846662339">Puoi scegliere di aprire gli URL in arrivo da altre app in incognito.</translation>
@@ -1631,6 +1635,7 @@ La funzione Handoff deve anche essere attivata nella sezione Generali di Imposta
 <translation id="6930799952781667037">Tocca per passare a questa lingua.</translation>
 <translation id="693761253105515415">Imposta un passcode</translation>
 <translation id="6945221475159498467">Seleziona</translation>
+<translation id="6946722113367118030">Faccina che pensa</translation>
 <translation id="6950522403736391608">Nascoste</translation>
 <translation id="6962809930976936328">Chiedi informazioni a Gemini</translation>
 <translation id="6964300328304469089">Selezione attuale: <ph name="NAME" />, <ph name="EMAIL" />. Scegli un account.</translation>
@@ -1899,6 +1904,7 @@ La funzione Handoff deve anche essere attivata nella sezione Generali di Imposta
 <translation id="7958575506592576831">Info sicurezza pagina</translation>
 <translation id="7961015016161918242">Mai</translation>
 <translation id="7971136598759319605">Attivo 1 giorno fa</translation>
+<translation id="7972837668077967426">Canvas</translation>
 <translation id="7975036700432177008">Prova</translation>
 <translation id="797588153137233716">Menu → Cronologia → Elimina dati di navigazione</translation>
 <translation id="7977451675950311423">Ricevi un avviso se utilizzi una password che è stata compromessa a causa di una violazione dei dati.</translation>
@@ -1972,6 +1978,7 @@ La funzione Handoff deve anche essere attivata nella sezione Generali di Imposta
 <translation id="8205564605687841303">Annulla</translation>
 <translation id="8206354486702514201">Questa impostazione è stata applicata dall'amministratore.</translation>
 <translation id="8209050860603202033">Apri immagine</translation>
+<translation id="8209237163365258530">Modelli di Gemini <ph name="VERSION_NUMBER" /></translation>
 <translation id="8211030355252954494">Hai ricevuto password per <ph name="WEBSITE" /></translation>
 <translation id="8211406090763984747">La connessione è sicura</translation>
 <translation id="8214293972734702249">Scheda fissata: <ph name="TAB_TITLE" /></translation>

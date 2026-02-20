@@ -333,6 +333,7 @@
 <translation id="2184272387334793084">Skráðu þig inn til að sækja aðgangsorðin og fleira í öllum tækjunum þínum</translation>
 <translation id="2186206192313702726">Google linsa</translation>
 <translation id="2188993354115194873">Ýttu á <ph name="BEGIN_BOLD" />Vista í niðurhal<ph name="END_BOLD" /></translation>
+<translation id="2191406283620379491">Eitthvað fór mjög úrskeiðis. Uppfærðu iOS-útgáfuna þína.</translation>
 <translation id="219283042927675668">Flipar í hóp</translation>
 <translation id="2194856509914051091">Atriði til að hafa í huga</translation>
 <translation id="2196428379625389579">Leita á netinu</translation>
@@ -579,6 +580,7 @@
 <translation id="3143515551205905069">Hætta við samstillingu</translation>
 <translation id="3144126448740580210">LOKIÐ</translation>
 <translation id="3148052723910099040">Töfluyfirlit yfir venjulega flipa</translation>
+<translation id="3148237711805373460">Fara þangað</translation>
 <translation id="3157387275655328056">Bæta við leslista</translation>
 <translation id="315778507796115851">Ferill</translation>
 <translation id="31652791196570636">Hunsa</translation>
@@ -1020,6 +1022,7 @@
 <translation id="483689884442613745">Vista…</translation>
 <translation id="4840495572919996524">Bókamerkin þín, ferillinn, aðgangsorðin og fleira verða ekki lengur samstillt við Google reikninginn þinn.</translation>
 <translation id="484280513275854557">Þú skráðist út; vefskoðunargögnum var eytt</translation>
+<translation id="484462545196658690">Sjálfvirkt</translation>
 <translation id="4850886885716139402">Yfirlit</translation>
 <translation id="4854068532375923088">Leyfa „Gemini“ að nota myndavélina</translation>
 <translation id="4860895144060829044">Hringja</translation>
@@ -1521,6 +1524,7 @@ Einnig þarf að vera kveikt á Handoff í hlutanum General í Settings og tæki
 <translation id="6556866813142980365">Endurgera</translation>
 <translation id="6559301491397835130">{count,plural, =1{Bókamerki vistað í „{title}“. Það er aðeins vistað í þessu tæki.}one{Bókamerki vistað í „{title}“. Þau eru aðeins vistuð í þessu tæki.}other{Bókamerki vistuð í „{title}“. Þau eru aðeins vistuð í þessu tæki.}}</translation>
 <translation id="656065428026159829">Sjá meira</translation>
+<translation id="6565899972286925956">Skapaðu hvað sem er</translation>
 <translation id="6571070086367343653">Breyta kortaupplýsingum</translation>
 <translation id="6574092468346088891">Kveiktu á tilkynningum öryggisathugunar</translation>
 <translation id="6579867704846662339">Þú getur valið að opna mótteknar vefslóðir frá öðrum forritum í huliðsstillingu.</translation>
@@ -1631,6 +1635,7 @@ Einnig þarf að vera kveikt á Handoff í hlutanum General í Settings og tæki
 <translation id="6930799952781667037">Ýttu til að skipta yfir í þetta tungumál.</translation>
 <translation id="693761253105515415">Veldu aðgangskóða</translation>
 <translation id="6945221475159498467">Velja</translation>
+<translation id="6946722113367118030">Hugsar</translation>
 <translation id="6950522403736391608">Falið</translation>
 <translation id="6962809930976936328">Fáðu innsýn með Gemini</translation>
 <translation id="6964300328304469089">Núverandi val: <ph name="NAME" />, <ph name="EMAIL" /> Veldu reikning.</translation>
@@ -1899,6 +1904,7 @@ Einnig þarf að vera kveikt á Handoff í hlutanum General í Settings og tæki
 <translation id="7958575506592576831">Öryggisupplýsingar síðu</translation>
 <translation id="7961015016161918242">Aldrei</translation>
 <translation id="7971136598759319605">Virkt fyrir 1 degi</translation>
+<translation id="7972837668077967426">Strigi</translation>
 <translation id="7975036700432177008">Prófa</translation>
 <translation id="797588153137233716">Valmynd → Ferill → Eyða vefskoðunargögnum</translation>
 <translation id="7977451675950311423">Varar þig við ef þú notar aðgangsorð í hættu vegna öryggisbrots.</translation>
@@ -1972,6 +1978,7 @@ Einnig þarf að vera kveikt á Handoff í hlutanum General í Settings og tæki
 <translation id="8205564605687841303">Hætta við</translation>
 <translation id="8206354486702514201">Stjórnandi valdi þessa stillingu.</translation>
 <translation id="8209050860603202033">Opna mynd</translation>
+<translation id="8209237163365258530">Gemini <ph name="VERSION_NUMBER" /> líkön</translation>
 <translation id="8211030355252954494">Þér hafa borist aðgangsorð fyrir <ph name="WEBSITE" /></translation>
 <translation id="8211406090763984747">Tengingin er örugg</translation>
 <translation id="8214293972734702249">Fest, <ph name="TAB_TITLE" /></translation>

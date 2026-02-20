@@ -82,6 +82,13 @@ class NET_EXPORT_PRIVATE SqlEntryImpl final
   void SetEntryInMemoryData(uint8_t data) override;
   void SetLastUsedTimeForTest(base::Time time) override;
 
+  net::IOBuffer* read_cache_buffer_for_test() const {
+    return read_cache_buffer_.get();
+  }
+  int64_t read_cache_buffer_offset_for_test() const {
+    return read_cache_buffer_offset_;
+  }
+
   // Returns the cache key of the entry.
   const CacheEntryKey& cache_key() const { return key_; }
 
@@ -121,6 +128,9 @@ class NET_EXPORT_PRIVATE SqlEntryImpl final
                        CompletionOnceCallback callback,
                        bool sparse_reading);
 
+  // Flushes the write buffer to the backend.
+  void FlushBuffer();
+
   base::WeakPtr<SqlBackendImpl> backend_;
 
   // The key for this cache entry.
@@ -156,6 +166,19 @@ class NET_EXPORT_PRIVATE SqlEntryImpl final
 
   // True if this entry has been marked for deletion.
   bool doomed_ = false;
+
+  // Buffers data for stream 1 writes.
+  std::vector<scoped_refptr<net::IOBuffer>> write_buffers_;
+  // The total size of data in `write_buffers_`.
+  int write_buffer_size_ = 0;
+  // The start offset of the data in `write_buffers_`. -1 indicates that the
+  // buffer is empty/invalid.
+  int64_t write_buffer_offset_ = -1;
+
+  // A buffer containing data read beyond the requested range.
+  scoped_refptr<net::IOBuffer> read_cache_buffer_;
+  // The offset within the entry's body where `read_cache_buffer_` starts.
+  int64_t read_cache_buffer_offset_ = -1;
 
   base::WeakPtrFactory<SqlEntryImpl> weak_factory_{this};
 };

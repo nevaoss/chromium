@@ -779,6 +779,7 @@ class Browser : public TabStripModelObserver,
   // BrowserWindowInterface overrides:
   Profile* GetProfile() override;
   const Profile* GetProfile() const override;
+  bool IsDeleteScheduled() const override;
   void OpenGURL(const GURL& gurl, WindowOpenDisposition disposition) override;
   content::WebContents* OpenURL(
       const content::OpenURLParams& params,
@@ -839,11 +840,6 @@ class Browser : public TabStripModelObserver,
   // requesting the browser close via BrowserWindow::Close(), which happens
   // async and allows graceful teardown of the tab strip and associated data.
   void SynchronouslyDestroyBrowser();
-
-#if BUILDFLAG(IS_CHROMEOS)
-  bool IsLockedForOnTask();
-  void SetLockedForOnTask(bool locked);
-#endif
 
 #if BUILDFLAG(IS_OZONE)
   const std::optional<ui::PlatformSessionWindowData>& platform_session_data()
@@ -1078,6 +1074,7 @@ class Browser : public TabStripModelObserver,
   void OnActiveTabChanged(content::WebContents* old_contents,
                           content::WebContents* new_contents,
                           int index,
+                          bool tab_removed_for_deletion,
                           int reason);
   void OnTabMoved(int from_index, int to_index);
   void OnTabReplacedAt(content::WebContents* old_contents,
@@ -1351,14 +1348,6 @@ class Browser : public TabStripModelObserver,
 
   // If true, immediately updates the UI when scheduled.
   bool update_ui_immediately_for_testing_ = false;
-
-#if BUILDFLAG(IS_CHROMEOS)
-  // OnTask is a ChromeOS feature that is not related to web browsers, but
-  // happens to be implemented using code in //chrome/browser. The feature,
-  // when enabled, disables certain functionality that a web browser would
-  // never typically disable.
-  bool on_task_locked_ = false;
-#endif
 
   const base::ElapsedTimer creation_timer_;
 

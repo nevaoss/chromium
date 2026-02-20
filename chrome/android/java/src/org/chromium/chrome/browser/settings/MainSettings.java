@@ -69,6 +69,7 @@ import org.chromium.chrome.browser.sync.settings.SyncSettingsUtils;
 import org.chromium.chrome.browser.toolbar.settings.AddressBarPreference;
 import org.chromium.chrome.browser.toolbar.settings.AddressBarSettingsFragment;
 import org.chromium.chrome.browser.tracing.settings.DeveloperSettings;
+import org.chromium.chrome.browser.ui.default_browser_promo.DefaultBrowserPromoUtils;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.chrome.browser.ui.settings_promo_card.SettingsPromoCardPreference;
 import org.chromium.chrome.browser.ui.signin.SignOutCoordinator;
@@ -137,7 +138,7 @@ public class MainSettings extends ChromeBaseSettingsFragment
 
     // Tag for Fragment backstack entry loading the search results into the display fragment.
     // Popping the entry means we are transitioning from result -> search state.
-    public static final String FRAGMENT_TAG_RESULT = "enter_result_settings";
+    public static final String RESULT_BACKSTACK = "enter_result_settings";
 
     public interface Observer {
         /** Called when a preference item is selected. */
@@ -510,7 +511,20 @@ public class MainSettings extends ChromeBaseSettingsFragment
         }
 
         if (shouldShowDefaultBrowserSetting()) {
-            addPreferenceIfAbsent(PREF_DEFAULT_BROWSER);
+            Preference pref = addPreferenceIfAbsent(PREF_DEFAULT_BROWSER);
+
+            pref.setOnPreferenceClickListener(
+                    preference -> {
+                        // We decided not to show the Role Model Dialog at all when the menu item in
+                        // Settings is clicked.
+                        DefaultBrowserPromoUtils.getInstance()
+                                .onMenuItemClick(
+                                        getActivity(),
+                                        /* windowAndroid= */ null,
+                                        DefaultBrowserPromoUtils.DefaultBrowserPromoEntryPoint
+                                                .SETTINGS);
+                        return true;
+                    });
         } else {
             removePreferenceIfPresent(PREF_DEFAULT_BROWSER);
         }
@@ -685,7 +699,7 @@ public class MainSettings extends ChromeBaseSettingsFragment
             // Open an external activity. Keep the state as is.
             return false;
         } else if (key.equals(PREF_MANAGE_SYNC)) {
-            openManageSyncPref(context, profile, true, FRAGMENT_TAG_RESULT);
+            openManageSyncPref(context, profile, true, RESULT_BACKSTACK);
             return true;
         } else if (key.equals(PREF_NOTIFICATIONS)) {
             Intent intent = new Intent();

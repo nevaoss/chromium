@@ -259,6 +259,7 @@
 #include "third_party/blink/renderer/core/svg/svg_svg_element.h"
 #include "third_party/blink/renderer/core/svg/svg_use_element.h"
 #include "third_party/blink/renderer/core/svg_names.h"
+#include "third_party/blink/renderer/core/timing/soft_navigation_heuristics.h"
 #include "third_party/blink/renderer/core/trustedtypes/trusted_types_util.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition_pseudo_element_base.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition_supplement.h"
@@ -1143,6 +1144,11 @@ Node* Element::Clone(Document& factory,
       cloned_shadow_root.SetAvailableToElementInternals(
           shadow_root->IsAvailableToElementInternals());
 
+      // 6.6 Set copy's shadow root's keep custom element registry null to
+      // node's shadow root's keep custom element registry null.
+      cloned_shadow_root.SetKeepCustomElementRegistryNull(
+          shadow_root->ShouldKeepCustomElementRegistryNull());
+
       // 6.6 If the clone children flag is set, then for each child child of
       // node’s shadow root, in tree order: append the result of cloning child
       // with document and the clone children flag set, to copy’s shadow root.
@@ -1188,7 +1194,8 @@ Element& Element::CloneWithChildren(
 
 Element& Element::CloneWithoutChildren() const {
   NodeCloningData data;
-  return CloneWithoutChildren(data, /*registry*/ nullptr);
+  auto* registry = CustomElementRegistry::DefaultRegistry(GetDocument());
+  return CloneWithoutChildren(data, registry);
 }
 
 Element& Element::CloneWithoutChildren(NodeCloningData& data,
@@ -3826,6 +3833,7 @@ void Element::AttributeChanged(const AttributeModificationParams& params) {
     }
     ClassAttributeChanged(params.new_value);
     UpdateClassList(params.old_value, params.new_value);
+    SoftNavigationHeuristics::ModifiedAttribute(this, name);
   } else if (name == html_names::kNameAttr) {
     SetHasName(!params.new_value.IsNull());
   } else if (HasTagName(html_names::kATag) && name == html_names::kHrefAttr) {
@@ -3890,6 +3898,7 @@ void Element::AttributeChanged(const AttributeModificationParams& params) {
         return;
       }
       StyleAttributeChanged(params.new_value, params.reason);
+      SoftNavigationHeuristics::ModifiedAttribute(this, name);
     } else if (IsPresentationAttribute(name)) {
       if (name == html_names::kAnchorAttr) {
         if (RuntimeEnabledFeatures::HTMLAnchorAttributeEnabled()) {
@@ -4322,6 +4331,22 @@ Node::InsertionNotificationRequest Element::InsertedInto(
     }
   }
 
+  // Clean up the unnecessary explicitly set custom element registry
+  // in element rare data set in RemovedFrom.
+  if (RuntimeEnabledFeatures::ScopedCustomElementRegistryEnabled()) {
+    if (ElementRareDataVector* rare_data = RareData()) {
+      if (rare_data->HasCustomElementRegistrySet() &&
+          insertion_point.IsInTreeScope()) {
+        auto* registry = rare_data->GetCustomElementRegistry();
+        if (registry && registry->IsGlobalRegistry() &&
+            registry ==
+                insertion_point.GetTreeScope().customElementRegistry()) {
+          rare_data->ClearCustomElementRegistry();
+        }
+      }
+    }
+  }
+
   return kInsertionDone;
 }
 
@@ -4472,6 +4497,18 @@ void Element::RemovedFrom(ContainerNode& insertion_point) {
 
     DCHECK(!data->HasPseudoElements() ||
            GetDocument().StatePreservingAtomicMoveInProgress());
+  }
+
+  // Make sure the element's custom element registry is explicitly set
+  // before moved.
+  if (RuntimeEnabledFeatures::ScopedCustomElementRegistryEnabled()) {
+    EnsureRareData();
+    ElementRareDataVector* data = RareData();
+    if (!data->HasCustomElementRegistrySet() &&
+        insertion_point.IsInTreeScope()) {
+      data_ = data->SetCustomElementRegistry(
+          insertion_point.GetTreeScope().customElementRegistry());
+    }
   }
 
   if (auto* const frame = document.GetFrame()) {
@@ -7445,6 +7482,12 @@ bool Element::AttachDeclarativeShadowRoot(
   // 10.8.7. Set declarative shadow host element's shadow host's "available
   // to element internals" to true.
   shadow_root.SetAvailableToElementInternals(true);
+  // 10.8.8. If templateStartTag has a shadowrootcustomelementregistry
+  // attribute, then set shadow's keep custom element registry null to true.
+  if (RuntimeEnabledFeatures::ScopedCustomElementRegistryEnabled() &&
+      waiting_for_scoped_registry) {
+    shadow_root.SetKeepCustomElementRegistryNull(true);
+  }
   // 10.8.NEW. Process shadowrootadoptedstylesheets attribute.
   if (RuntimeEnabledFeatures::DeclarativeCSSModulesEnabled()) {
     shadow_root.ProcessAdoptedStylesheetAttribute(adopted_stylesheets);
@@ -8563,6 +8606,24 @@ bool Element::IsAutofocusable() const {
   // https://svgwg.org/svg2-draft/struct.html#autofocusattribute
   return (IsHTMLElement() || IsSVGElement()) &&
          FastHasAttribute(html_names::kAutofocusAttr);
+}
+
+FocusgroupFlags Element::NativeArrowKeyAxes() const {
+  // Focusable scrollable containers use arrow keys for scrolling. Check each
+  // axis independently since a container may only scroll in one direction.
+  if (IsFocusable()) {
+    if (const ComputedStyle* style = GetComputedStyle()) {
+      FocusgroupFlags axes = FocusgroupFlags::kNone;
+      if (style->ScrollsOverflowX()) {
+        axes |= FocusgroupFlags::kInline;
+      }
+      if (style->ScrollsOverflowY()) {
+        axes |= FocusgroupFlags::kBlock;
+      }
+      return axes;
+    }
+  }
+  return FocusgroupFlags::kNone;
 }
 
 // This is used by FrameSelection to denote when the active-state of the page
@@ -12416,6 +12477,7 @@ void Element::InvalidateStyleAttribute(
                           style_change_reason::kInlineCSSStyleMutated));
   GetDocument().GetStyleEngine().AttributeChangedForElement(
       html_names::kStyleAttr, *this);
+  SoftNavigationHeuristics::ModifiedAttribute(this, html_names::kStyleAttr);
 }
 
 void Element::UpdateTransitionPseudoElements(

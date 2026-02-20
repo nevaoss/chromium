@@ -16,6 +16,7 @@
 #include "chrome/browser/ui/views/tabs/tab_context_menu_controller.h"
 #include "chrome/common/buildflags.h"
 #include "components/tabs/public/tab_interface.h"
+#include "third_party/abseil-cpp/absl/container/flat_hash_map.h"
 #include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/gfx/canvas.h"
 #include "ui/views/context_menu_controller.h"
@@ -69,6 +70,7 @@ class VerticalTabView : public views::View,
 
  private:
   // views::View
+  void Layout(PassKey) override;
   bool OnKeyPressed(const ui::KeyEvent& event) override;
   bool OnKeyReleased(const ui::KeyEvent& event) override;
   bool OnMousePressed(const ui::MouseEvent& event) override;
@@ -77,6 +79,7 @@ class VerticalTabView : public views::View,
   void OnMouseEntered(const ui::MouseEvent& event) override;
   void OnMouseExited(const ui::MouseEvent& event) override;
   bool OnMouseDragged(const ui::MouseEvent& event) override;
+  void OnGestureEvent(ui::GestureEvent* event) override;
   void OnPaint(gfx::Canvas* canvas) override;
   void AddedToWidget() override;
   void RemovedFromWidget() override;
@@ -94,6 +97,9 @@ class VerticalTabView : public views::View,
   gfx::Rect GetChildBounds(const gfx::Rect& container,
                            const TabChildConfig& config,
                            const bool center) const;
+
+  // Calculates the visibilities of child views based on various states.
+  absl::flat_hash_map<views::View*, bool> CalculateChildVisibilities() const;
 
   // views::LayoutDelegate
   views::ProposedLayout CalculateProposedLayout(
@@ -119,12 +125,7 @@ class VerticalTabView : public views::View,
   void OnDataChanged();
 
   void UpdateTitle();
-
   void UpdateBorder();
-
-  void UpdateAlertIndicatorVisibility();
-  void UpdateCloseButtonVisibility();
-
   void UpdateColors();
   void UpdateContrastRatioValues();
 

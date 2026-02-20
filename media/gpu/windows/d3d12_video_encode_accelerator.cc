@@ -861,19 +861,12 @@ void D3D12VideoEncodeAccelerator::DoEncodeTask(
     input_texture = CreateResourceForSharedMemoryVideoFrame(*frame);
   } else if (frame->HasSharedImage()) {
     input_texture = input_frame.resolved_resource;
-  } else {
-    return NotifyError({EncoderStatus::Codes::kInvalidInputFrame,
-                        "Unsupported frame storage type for encoding"});
-  }
-  if (!input_texture) {
-    return NotifyError({EncoderStatus::Codes::kInvalidInputFrame,
-                        "Failed to create input_texture"});
-  }
 
-  // TODO(crbug.com/382316466): This CPU-side wait is a temporary solution. The
-  // plan is to replace this with proper GPU-side synchronization (for example,
-  // making the D3D12 VP/encoder command queue wait on the shared fence).
-  if (source_texture_fence_) {
+    // TODO(crbug.com/382316466): This CPU-side wait is a temporary solution.
+    // The plan is to replace this with proper GPU-side synchronization (for
+    // example, making the D3D12 VP/encoder command queue wait on the shared
+    // fence).
+    CHECK(source_texture_fence_);
     CHECK(input_frame.source_texture_fence_value.has_value());
     auto fence = base::MakeRefCounted<D3D12Fence>(
         source_texture_fence_->GetD3D12Fence());
@@ -882,6 +875,13 @@ void D3D12VideoEncodeAccelerator::DoEncodeTask(
       return NotifyError({EncoderStatus::Codes::kSystemAPICallError,
                           "Failed to wait shared fence on CPU side"});
     }
+  } else {
+    return NotifyError({EncoderStatus::Codes::kInvalidInputFrame,
+                        "Unsupported frame storage type for encoding"});
+  }
+  if (!input_texture) {
+    return NotifyError({EncoderStatus::Codes::kInvalidInputFrame,
+                        "Failed to create input_texture"});
   }
 
   auto result_or_error =

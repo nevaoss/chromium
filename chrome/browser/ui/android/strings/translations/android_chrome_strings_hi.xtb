@@ -41,6 +41,7 @@
 <translation id="1150263420752757504"><ph name="APP_NAME" />, Chrome में खुलेगा. जारी रखने का मतलब है कि आप <ph name="BEGIN_LINK1" />Google की सेवा की शर्तों<ph name="END_LINK1" /> के साथ-साथ <ph name="BEGIN_LINK2" />Google Chrome और ChromeOS की सेवा की अन्य शर्तों<ph name="END_LINK2" /> से सहमत हैं.</translation>
 <translation id="1154555449933432029">आपने Google Password Manager में कोई पासवर्ड सेव नहीं किया है.</translation>
 <translation id="115483310321669804"><ph name="PASSWORD" /> पासवर्ड डालें</translation>
+<translation id="1161065531352634524">टैब और इतिहास सिंक करें</translation>
 <translation id="1165109137568919258">कोई फ़ोटो लें या अपनी फ़ोटो गैलरी से कोई इमेज जोड़ें, ताकि उसके बारे में खोजा जा सके</translation>
 <translation id="1173894706177603556">नाम बदलें</translation>
 <translation id="1174479719160874822">स्क्रीन छोटी होने पर Chrome, मोबाइल साइट का अनुरोध करेगा</translation>
@@ -126,6 +127,7 @@ Chrome के अनुभव को बेहतर बनाने के ल�
 <translation id="147982357559798527">बदला गया</translation>
 <translation id="1480287803138246127">ऐसा हो सकता है कि आपको Chrome पर ब्राउज़िंग के इतिहास का कुछ डेटा न दिखे. पूरा इतिहास देखने के लिए, Chrome का पूरा इतिहास खोलें.</translation>
 <translation id="1493287004536771723">आप <ph name="SITE_NAME" /> को फ़ॉलो कर रहे हैं</translation>
+<translation id="1495677929897281669">टैब पर वापस जाएं</translation>
 <translation id="1496514951988037011">उपयोगकर्ता नाम</translation>
 <translation id="1501480321619201731">ग्रुप मिटाएं</translation>
 <translation id="1506061864768559482">सर्च इंजन</translation>
@@ -981,6 +983,7 @@ Chrome के अनुभव को बेहतर बनाने के ल�
 <translation id="5210286577605176222">सीधे पिछले टैब पर जाएं</translation>
 <translation id="5210365745912300556">टैब बंद करें</translation>
 <translation id="5212800876504289412">इस बदलाव को लागू करने के लिए, Chrome को रीस्टार्ट करें. रीस्टार्ट करने पर, टैब अपने-आप खुल जाते हैं.</translation>
+<translation id="5213114823401215820">बंद किया गया ग्रुप फिर से खोलें</translation>
 <translation id="5215957675041756913">अपना डेटा और खाता कंट्रोल करें</translation>
 <translation id="5218324087477576825">कार्ड नंबर डालना ज़रूरी है</translation>
 <translation id="5221437554987713282"><ph name="PERMISSION_1" />, <ph name="PERMISSION_2" />, और अन्य अनुमतियां <ph name="SEPARATOR" /> Chrome ने इस साइट के लिए ये अनुमतियां हटा दी हैं, क्योंकि आपने हाल ही में इसका इस्तेमाल नहीं किया है</translation>
@@ -1436,6 +1439,7 @@ Chrome के अनुभव को बेहतर बनाने के ल�
 <translation id="7020741890149022655">रीडिंग लिस्ट में जोड़ें <ph name="BEGIN_NEW" />नया<ph name="END_NEW" /></translation>
 <translation id="7022756207310403729">ब्राउज़र में खोलें</translation>
 <translation id="7029809446516969842">पासवर्ड</translation>
+<translation id="7037994709569287156">Chrome को डिफ़ॉल्ट ब्राउज़र बनाएं</translation>
 <translation id="7053256416619638731">इस डिवाइस में सेव किए गए अपने पासवर्ड बेहतर बनाएं</translation>
 <translation id="7053983685419859001">ब्लॉक करें</translation>
 <translation id="7054588988317389591">क्या आप इमेज की जानकारी पाना चाहते हैं?</translation>
@@ -1568,6 +1572,7 @@ Chrome के अनुभव को बेहतर बनाने के ल�
 <translation id="7523960634226602883">Google Lens के ज़रिए अपने कैमरे और फ़ोटो की मदद से खोजें</translation>
 <translation id="7525248386620136756"><ph name="TAB_GROUPS_AND_TABS_PART" /> को बंद और सेव किया गया</translation>
 <translation id="7545347190366646170">ऐसे लोग जिनके पास ग्रुप का ऐक्सेस है</translation>
+<translation id="7553482318994371148">बंद किए गए टैब फिर से खोलें</translation>
 <translation id="7554643625247105821">Chrome के वर्शन की जांच नहीं की जा सकी</translation>
 <translation id="7557508262441527045">साइन आउट किया जा चुका है</translation>
 <translation id="7573665567024262965">अपने डिफ़ॉल्ट ऐप्लिकेशन चुनें</translation>
@@ -1801,6 +1806,7 @@ Chrome के अनुभव को बेहतर बनाने के ल�
 <translation id="8458413889418591446">विज़िट की गई साइटों को तेज़ी से ऐक्सेस करने के लिए, अपने टैब और इतिहास को सिंक करें</translation>
 <translation id="84594714173170813">अपने Google खाते में, Chrome के डेटा का इस्तेमाल जारी रखें</translation>
 <translation id="8460448946170646641">निजता और सुरक्षा से जुड़े मुख्य कंट्रोल देखें</translation>
+<translation id="8460932807646981183">सर्च इंजन और साइट खोज को मैनेज करें</translation>
 <translation id="8473863474539038330">पते वगैरह</translation>
 <translation id="847433688444405067">सभी डिवाइसों पर ब्राउज़ करें</translation>
 <translation id="8477178913400731244">डेटा मिटाएं</translation>
@@ -1887,6 +1893,7 @@ Chrome के अनुभव को बेहतर बनाने के ल�
 <translation id="8856931513242997049">बंद स्थिति में, सूचना की अनुमति का फ़्लो</translation>
 <translation id="8863714995118816041"><ph name="SITE_NAME" /> को फिर से अनुमतियां दी गईं</translation>
 <translation id="8865415417596392024">आपके खाते में मौजूद, Chrome का डेटा</translation>
+<translation id="8872506776304248286">ऐप्लिकेशन में खोलें</translation>
 <translation id="8890668505403261809">अपने गुप्त टैब खोजें</translation>
 <translation id="8894890673032951011"><ph name="TAB_TITLE" />, चुना गया ऐसा गुप्त टैब जिसका कॉन्टेंट रिकॉर्ड किया जा रहा है</translation>
 <translation id="8898822736010347272">आपने जिन पेजों को विज़िट किया है उनमें से कुछ के यूआरएल, सिस्टम की सीमित जानकारी, और पेज का कुछ कॉन्टेंट Google को भेजा जाता है. ऐसा इसलिए, ताकि नए खतरों का पता लगाया जा सके और वेब पर सबको सुरक्षित रखा जा सके.</translation>

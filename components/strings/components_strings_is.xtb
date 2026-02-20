@@ -278,6 +278,7 @@ Ef þú gerir það ekki loka persónuverndarstillingar þínar á þennan aðga
 <translation id="142559998533702194">Ekki tókst að hlaða upp</translation>
 <translation id="1426410128494586442">Já</translation>
 <translation id="1427192966110103169">Heimasundlaugar, sánur og heilsulindir</translation>
+<translation id="142740183218637661">Chrome-vafrinn er að reyna að birta viðkvæmar upplýsingar</translation>
 <translation id="1428146450423315676">Staflari 7</translation>
 <translation id="142858679511221695">Notandi í skýi</translation>
 <translation id="1429080515485835353">Sjálflímandi filma</translation>
@@ -371,6 +372,7 @@ Ef þú gerir það ekki loka persónuverndarstillingar þínar á þennan aðga
 <translation id="1581080074034554886">CVC</translation>
 <translation id="1583429793053364125">Eitthvað fór úrskeiðis við að birta þessa vefsíðu.</translation>
 <translation id="1584492003828271317">Hvort auglýsing sem birtist þér þegar þú skoðar vefsvæði er sérsniðin eða ekki veltur á þessari stillingu, auglýsingatillögum vefsvæða, fótsporastillingum og hvort vefsvæðið sem þú ert að skoða sérsníðir auglýsingar</translation>
+<translation id="1585306568496579337">Viðbótin „<ph name="EXTENSION_NAME" />“ vill opna <ph name="PROTOCOL" /> tengla í gegnum <ph name="HANDLER_HOSTNAME" /></translation>
 <translation id="1586541204584340881">Hvaða viðbætur þú hefur sett upp</translation>
 <translation id="1588438908519853928">Venjuleg</translation>
 <translation id="159103247796286390">Endurnefna töflu</translation>
@@ -419,6 +421,7 @@ Ef þú gerir það ekki loka persónuverndarstillingar þínar á þennan aðga
 <translation id="1652862280638399816">Til að nota Aðgangsorðastjórnun með macOS Keychain skaltu endurræsa Chromium og veita Keychain aðgang. Fliparnir þínir opnast aftur eftir endurræsingu.</translation>
 <translation id="1652887625750064647">Besta samsvörun samkvæmt gervigreind</translation>
 <translation id="1653465303147789530">Greiða með <ph name="PAYMENT_METHOD" /> án þess að skipta um forrit</translation>
+<translation id="1655159794885649984">Ekki er heimilt að draga efni á þessu vefsvæði</translation>
 <translation id="1656024727720460136">Chrome einfaldaði þessa síðu svo það yrði auðveldara að lesa hana. Chrome sótti upprunalegu síðuna um örugga tengingu.</translation>
 <translation id="1656489000284462475">Afhending</translation>
 <translation id="1658111267661135323">Sjónvarp og myndskeið</translation>
@@ -428,6 +431,7 @@ Ef þú gerir það ekki loka persónuverndarstillingar þínar á þennan aðga
 <translation id="1663943134801823270">Spjöld og heimilisföng eru úr Chrome. Þú getur haft umsjón með þeim í <ph name="BEGIN_LINK" />stillingunum<ph name="END_LINK" />.</translation>
 <translation id="1664389769577564606">Flexo Photopolymer</translation>
 <translation id="166624440456221306">Eyða samanburðartöflu</translation>
+<translation id="1667730174533834274">staðfesta hver þú ert áður en þú breytir stillingum</translation>
 <translation id="1668071460721346172">Fá tölvupóst</translation>
 <translation id="1674504678466460478"><ph name="SOURCE_LANGUAGE" /> &gt; <ph name="TARGET_LANGUAGE" /></translation>
 <translation id="1682696192498422849">Skammhlið fyrst</translation>
@@ -1643,6 +1647,7 @@ Ef þú gerir það ekki loka persónuverndarstillingar þínar á þennan aðga
 <translation id="3615309852743236517">Hand- og fótsnyrtingar</translation>
 <translation id="3620034424637552643">Oft notað fyrir leiðarlýsingar, heimsendingar og fleira</translation>
 <translation id="3620239073311576716">Einkennisbúningar og vinnuföt</translation>
+<translation id="3620865353340165509">Ekki var hægt að vista þetta kort í Google-veski. Í staðinn var það vistað í Chrome í þessu tæki. Chrome spyr þig aftur næst þegar þú notar þetta IBAN-númer.</translation>
 <translation id="3621401353678567613">Kveiktu á tilkynningum í stillingunum til að fá tilkynningar um verðlækkanir á vörum sem þú fylgist með.</translation>
 <translation id="362276910939193118">Sýna feril í heild</translation>
 <translation id="3623041590998910684">Veittu Chrome aðgang að myndavélinni þinni í <ph name="LINK" /> til að geta notað hana.</translation>
@@ -1674,6 +1679,7 @@ Ef þú gerir það ekki loka persónuverndarstillingar þínar á þennan aðga
 <translation id="365641980390710834">Hversdagsklæðnaður</translation>
 <translation id="3658742229777143148">Endurskoðun</translation>
 <translation id="3659521826520353662">Hvaða vefsvæði sem stjórnandi hefur skilgreint eru opnuð og hvenær: <ph name="ALLOWLISTED_WEBSITES" /></translation>
+<translation id="3662040827609932717">Þetta IBAN-númer er vistað í Google-veski þannig að þú getur notað það í Google-þjónustum.</translation>
 <translation id="3664479564786885722">Leita að fleiri valkostum annarra verslana sem selja þessa vöru.</translation>
 <translation id="3664782872746246217">Leitarorð:</translation>
 <translation id="3665806835792525231"><ph name="BEGIN_LINK1" />Nánar<ph name="LINK_END1" /></translation>
@@ -1728,6 +1734,7 @@ Ef þú gerir það ekki loka persónuverndarstillingar þínar á þennan aðga
 <translation id="3727309136762649052">Nafnrými</translation>
 <translation id="3727850735097852673">Til að nota Google-aðgangsorðastjórnun með macOS Keychain skaltu endurræsa Chrome og veita Keychain aðgang. Fliparnir þínir opnast aftur eftir endurræsingu.</translation>
 <translation id="3728173127485570463">Chrome-vafri krefst ekki lengur fingrafars frá þér til að fylla aðgangsorð út sjálfvirkt</translation>
+<translation id="3736564442532774454">Chrome-vafrinn er að reyna að fylla út viðkvæmar upplýsingar í <ph name="APP_NAME" />.</translation>
 <translation id="3738166223076830879">Vafranum er stjórnað af kerfisstjóranum þínum.</translation>
 <translation id="3739842843727261045">Þumall upp sendir ábendingu um að þér líki við þessar niðurstöður</translation>
 <translation id="3740447166056383374">Yfirferðar er krafist fyrir afritun</translation>
@@ -1924,6 +1931,7 @@ Ef þú gerir það ekki loka persónuverndarstillingar þínar á þennan aðga
 <translation id="4061573458783426621">Ekki hægt að vista skönnun á OneDrive</translation>
 <translation id="4063063121357725926">Leyfðu Google að hjálpa þér að finna afslætti fyrir körfurnar þínar</translation>
 <translation id="406358100705415968">Hlífðarbúnaður fyrir vinnuöryggi</translation>
+<translation id="4065429683324339709">Google Chrome vill staðfesta að þetta sért þú áður en þú breytir stillingum</translation>
 <translation id="4065659219963895623">Veitingastaðir</translation>
 <translation id="4067774859633143413">Til að loka öllum skjánum og sjá niðurhal skaltu halda |<ph name="ACCELERATOR" />| inni</translation>
 <translation id="4067947977115446013">Bæta gildu heimilisfangi við</translation>
@@ -2235,6 +2243,7 @@ Ef þú gerir það ekki loka persónuverndarstillingar þínar á þennan aðga
 <translation id="4528888973346221791">Upplýsingar um vinnuprófíl (svo sem notandanafnið þitt)</translation>
 <translation id="4530347922939905757">SMS-skilaboð</translation>
 <translation id="4531477351494678589">Númer sýndarkorts:</translation>
+<translation id="4534145890176164066">Chromium skilur eyðublöð betur og er fljótari að fylla þau út sjálfkrafa fyrir þig</translation>
 <translation id="4535523368173457420">Þessar leitarvélar eru vinsælar á þínu svæði og birtast í handahófskenndri röð</translation>
 <translation id="4535602490975885745">Ekki hægt að vista mynd í OneDrive</translation>
 <translation id="4539931187424170595">{NUM_YEARS,plural, =1{Búinn til fyrir 1 ári}one{Búinn til fyrir {NUM_YEARS} ári}other{Búinn til fyrir {NUM_YEARS} árum}}</translation>
@@ -2446,6 +2455,7 @@ Ef þú gerir það ekki loka persónuverndarstillingar þínar á þennan aðga
 <translation id="4882314601499260499">Engar notendareglur í notkun. Til að bæta við notendareglum þarf fyrirtækið að <ph name="LINK_BEGIN" />staðfesta lénið þitt<ph name="LINK_END" />.</translation>
 <translation id="4885030148564729407">Brúðkaupsferðir og rómantískar helgarferðir</translation>
 <translation id="4885256590493466218">Greiddu með <ph name="CARD_DETAIL" /> þegar þú gengur frá kaupunum</translation>
+<translation id="4886565443854420066">Chrome-vafrinn vill staðfesta að þetta sért þú áður en þú breytir stillingum</translation>
 <translation id="4887406273302438710">Verndaðu aðgangsorð með Windows Hello</translation>
 <translation id="4891425819480327855"><ph name="CLEAR_BROWSING_DATA_FOCUSED_FRIENDLY_MATCH_TEXT" />, ýttu á dálkalykilinn og síðan á Enter til að eyða vafraferli, fótsporum, skyndiminni og fleiru í stillingum Chrome</translation>
 <translation id="4892518386797173871">Aftari</translation>
@@ -2710,7 +2720,6 @@ Ef þú gerir það ekki loka persónuverndarstillingar þínar á þennan aðga
 <translation id="5307166000025436103">Í lagi</translation>
 <translation id="5308380583665731573">Tengjast</translation>
 <translation id="5308689395849655368">Slökkt er á tilkynningum um hrun.</translation>
-<translation id="5309562313526658209">Fletta</translation>
 <translation id="5314967030527622926">Bæklingagerð</translation>
 <translation id="5316812925700871227">Snúa rangsælis</translation>
 <translation id="5317780077021120954">Vista</translation>
@@ -2790,6 +2799,7 @@ Ef þú gerir það ekki loka persónuverndarstillingar þínar á þennan aðga
             <ph name="LIST_ITEM" />Fótspor og vefvæðagögn
             <ph name="LIST_ITEM" />Upplýsingar sem eru færðar inn í eyðublöð
           <ph name="END_LIST" /></translation>
+<translation id="5434803328547504573">Vistaðu þetta CVC-númer í Google-veski (<ph name="ACCOUNT_EMAIL" />) til að flýta fyrir greiðslu</translation>
 <translation id="5436307623797390637">Forrit í tæki</translation>
 <translation id="5443468954631487277">Öfug röð, snýr upp</translation>
 <translation id="5447235695608032700">Leyfa <ph name="SITE" /> að nota upplýsingar sem það hefur vistað um þig</translation>
@@ -2888,6 +2898,7 @@ Ef þú gerir það ekki loka persónuverndarstillingar þínar á þennan aðga
 <translation id="5578606540385219379">Þjónustuaðilar</translation>
 <translation id="5580958916614886209">Athugaðu mánuð gildistímans og reyndu aftur</translation>
 <translation id="5583442610070676234">Fleiri aðgerðir fyrir samanburðartöflu <ph name="COMPARE_SET_NAME" /></translation>
+<translation id="55841966151154662">Ekki var hægt að vista þetta kort í Google-veski. Í staðinn var það vistað í Chrome í þessu tæki.</translation>
 <translation id="558420943003240152">Stjórna aðgangsorðum og aðgangslyklum…</translation>
 <translation id="5586446728396275693">Engin vistuð vistföng</translation>
 <translation id="5586831831248371458">Leita á <ph name="KEYWORD_SUFFIX" /></translation>
@@ -2920,6 +2931,7 @@ Ef þú gerir það ekki loka persónuverndarstillingar þínar á þennan aðga
 <translation id="563324245173044180">Lokað á villandi efni.</translation>
 <translation id="563371367637259496">Farsímakerfi</translation>
 <translation id="5635478143789726479">Skilmálar seljanda</translation>
+<translation id="5640474731385449758">Viðbótin „<ph name="EXTENSION_NAME" />“ vill opna <ph name="PROTOCOL" /> tengla í <ph name="ORIGIN" /> í gegnum <ph name="HANDLER_HOSTNAME" /></translation>
 <translation id="5642362243427711530"><ph name="FIRST_STRING" />. <ph name="SECOND_STRING" /></translation>
 <translation id="5642411781689336699">Hljómtæki og íhlutir</translation>
 <translation id="5644090287519800334">X-færsla myndar á hlið 1</translation>
@@ -3062,6 +3074,7 @@ Ef þú gerir það ekki loka persónuverndarstillingar þínar á þennan aðga
 <translation id="5890248301649767931">Vista leiðréttingarnúmer?</translation>
 <translation id="5895138241574237353">Endurræsa</translation>
 <translation id="5895187275912066135">Gefið út</translation>
+<translation id="5895694128043506580">Google Chrome er að reyna að birta viðkvæmar upplýsingar</translation>
 <translation id="5898767305816764989">Hnappurinn „Þumall upp“, ýttu á Enter til að senda inn þau viðbrögð að þér líki við „<ph name="THUMBS_UP_SUGGESTION_BUTTON_FOCUSED_FRIENDLY_MATCH_TEXT" />“</translation>
 <translation id="5901630391730855834">Gulur</translation>
 <translation id="5903264686717710770">Titill:</translation>
@@ -3187,6 +3200,7 @@ Ef þú gerir það ekki loka persónuverndarstillingar þínar á þennan aðga
 <translation id="6085149458302186532">Merkimiðar (litaðir)</translation>
 <translation id="6087312102907839798">Tengdar leitir</translation>
 <translation id="6089505343295765444">Flipar sem þú eyðir úr Chrome ferlinum koma samt fram í samanburðartöflum</translation>
+<translation id="6091115085465716987">Google Wallet lógóið</translation>
 <translation id="6091691259076781835">Vistaðu þetta CVC-númer í tækinu þínu til að flýta fyrir greiðslu</translation>
 <translation id="6093599771645355227">Gulur 1</translation>
 <translation id="6093795393556121384">Kortið er staðfest</translation>
@@ -3503,6 +3517,7 @@ Ef þú gerir það ekki loka persónuverndarstillingar þínar á þennan aðga
 <translation id="6569060085658103619">Þú ert að skoða viðbótarsíðu</translation>
 <translation id="6571992525120410251">Spyrðu <ph name="ENGINE_NAME" /> að hverju sem er</translation>
 <translation id="6573200754375280815">Tvö göt hægra megin</translation>
+<translation id="6573973523249076555">Google Chrome er að reyna að fylla út viðkvæmar upplýsingar í <ph name="APP_NAME" />.</translation>
 <translation id="6575408526598156416">Vista á reikningi</translation>
 <translation id="6577792494180292262">Áhættufjárfestingar</translation>
 <translation id="6578434528542148658">Ógilt kenni viðbótar.</translation>
@@ -3626,6 +3641,7 @@ Ef þú gerir það ekki loka persónuverndarstillingar þínar á þennan aðga
 <translation id="6779290995699117286">Stjórnandinn þinn er með aðgang að upplýsingum um prófíl, vafra og tæki. Viðkomandi getur séð:</translation>
 <translation id="6779348349813025131">Google-aðgangsorðastjórnun þarf aðgang að MacOS Keychain</translation>
 <translation id="6780449997190414928">Yfirleitt tengistu þessu vefsvæði á öruggan hátt en Chrome gat ekki notað örugga tengingu í þetta sinn. Árásaraðili gæti verið að reyna að hlera eða breyta nettengingunni þinni. <ph name="LEARN_MORE" /></translation>
+<translation id="6783857615096909676">Leyfa <ph name="HANDLER_HOSTNAME" /> alltaf að opna <ph name="PROTOCOL" />-tengla</translation>
 <translation id="6785990323398321538">Þú getur skipt um leitarvél hvenær sem er í stillingum Chrome.</translation>
 <translation id="6786145470008421571">Umslag: 16 x 23 cm</translation>
 <translation id="6786747875388722282">Viðbætur</translation>
@@ -3801,6 +3817,7 @@ Ef þú gerir það ekki loka persónuverndarstillingar þínar á þennan aðga
 <translation id="7057567173736333354">Lýstu myndinni</translation>
 <translation id="7058163556978339998"><ph name="BROWSER" /> staðfesti að <ph name="ISSUER" /> gaf út vottorð þessa vefsvæðis.</translation>
 <translation id="7058774143982824355">Þáttunarþjónusta CSV-aðgangsorða</translation>
+<translation id="7062344833049251424">Til að greiða hraðar næst skaltu vista kortið og heimilisfang greiðanda í Google-veski</translation>
 <translation id="706295145388601875">Bættu við og hafðu umsjón með vefslóðum í stillingum Chrome</translation>
 <translation id="7063157783216323487">Grænn 2</translation>
 <translation id="7064443976734085921">Litlir bílar</translation>
@@ -4075,6 +4092,7 @@ Ef þú gerir það ekki loka persónuverndarstillingar þínar á þennan aðga
 <translation id="7473891865547856676">Nei, takk</translation>
 <translation id="7481312909269577407">Áfram</translation>
 <translation id="7481603210197454575">Umslag: ítalskt</translation>
+<translation id="7482823403440483089">Ítarleg sjálfvirk útfylling</translation>
 <translation id="7483482939016730822">Skólavörur og búnaður fyrir kennslustofur</translation>
 <translation id="7483863401933039889"><ph name="CHROME_TIP" />, ýttu á dálkalykilinn og síðan á Enter til að hunsa ábendingu Chrome.</translation>
 <translation id="7485085230273446323">Viðskipti og iðnaður</translation>
@@ -4269,6 +4287,7 @@ Ef þú gerir það ekki loka persónuverndarstillingar þínar á þennan aðga
 <translation id="7754587126786572336">Chrome-flipum og forritum verður lokað þegar uppfærslan hefst</translation>
 <translation id="7755287808199759310">Foreldri þitt getur opnað fyrir þetta</translation>
 <translation id="7755624218968747854">Aðalrúlla</translation>
+<translation id="7756441544371887150">Fylla þessar kortaupplýsingar sjálfkrafa út þegar gengið er frá kaupum í Chrome og kortið er vistað í Google-veski</translation>
 <translation id="7758069387465995638">Hugsanlega lokaði eldveggur eða vírusvörn fyrir þessa tengingu.</translation>
 <translation id="7759147511335618829">Stjórn og endurforritun MIDI-tækja</translation>
 <translation id="7759809451544302770">Valfrjálst</translation>
@@ -4324,6 +4343,7 @@ Ef þú gerir það ekki loka persónuverndarstillingar þínar á þennan aðga
 <translation id="7855695075675558090"><ph name="TOTAL_LABEL" /> <ph name="CURRENCY_CODE" /> <ph name="FORMATTED_TOTAL_AMOUNT" /></translation>
 <translation id="7860345425589240791">Sláðu inn nýjan gildistíma og CVC-númerið á <ph name="SIDE_OF_CARD" /></translation>
 <translation id="7862185352068345852">Viltu fara af vefsvæðinu?</translation>
+<translation id="7862306158978555061">sýna viðkvæmar upplýsingar</translation>
 <translation id="7865448901209910068">Mesti hraði</translation>
 <translation id="7865482168955081228">Villuskjár „Kauptu núna, borgaðu síðar“, lokaður.</translation>
 <translation id="7870281855125116701">Afsláttur fannst</translation>
@@ -4709,6 +4729,7 @@ Ef þú gerir það ekki loka persónuverndarstillingar þínar á þennan aðga
 <translation id="8488350697529856933">Gildir um</translation>
 <translation id="8490137692873530638">Staflari 10</translation>
 <translation id="8493948351860045254">Losa um pláss</translation>
+<translation id="8498870489552322848">fylla út viðkvæmar upplýsingar í <ph name="APP_NAME" /></translation>
 <translation id="8498891568109133222">Það tók <ph name="HOST_NAME" /> of langan tíma að svara.</translation>
 <translation id="8502023382441452707">Afmæli og nafnadagar</translation>
 <translation id="8503559462189395349">Aðgangsorð í Chrome</translation>
@@ -4912,6 +4933,7 @@ Ef þú gerir það ekki loka persónuverndarstillingar þínar á þennan aðga
 <translation id="883848425547221593">Önnur bókamerki</translation>
 <translation id="8842351563145134519">Listi yfir greiðslumáta sem hægt er að færa inn við snertingu opinn í hálfri hæð.</translation>
 <translation id="884264119367021077">Sendingarheimilisfang</translation>
+<translation id="8843516219908676469">Chromium skilur eyðublöð betur og er fljótari að fylla þau út sjálfkrafa fyrir þig</translation>
 <translation id="8849032795302265570">Stjórnaðu því auðveldlega hvernig starfsmenn þínir skoða vefinn</translation>
 <translation id="8849231003559822746">130 x 180 mm</translation>
 <translation id="884923133447025588">Engin afturköllunarleið fannst.</translation>
@@ -5189,6 +5211,7 @@ Ef þú gerir það ekki loka persónuverndarstillingar þínar á þennan aðga
 <translation id="975560348586398090">{COUNT,plural, =0{Ekkert}=1{Eitt atriði}one{# atriði}other{# atriði}}</translation>
 <translation id="976522784004777030">5 x 8 to.</translation>
 <translation id="977502174772294970">Brúðkaup</translation>
+<translation id="978750072783101994">Fylla þessar kortaupplýsingar sjálfkrafa út þegar gengið er frá kaupum í Chromium og kortið er vistað í Google-veski</translation>
 <translation id="979107176848483472">Vafranum þínum og prófílnum er stjórnað af <ph name="DOMAIN" /></translation>
 <translation id="979189555234810423">Sýningar og ráðstefnur</translation>
 <translation id="979503328401807348">Gagnlegri auglýsingar</translation>

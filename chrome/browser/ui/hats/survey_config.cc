@@ -89,6 +89,9 @@ constexpr char kHatsSurveyTriggerDownloadWarningPageHeed[] =
 constexpr char kHatsSurveyTriggerDownloadWarningPageIgnore[] =
     "download-warning-page-ignore";
 constexpr char kHatsSurveyTriggerHistoryEmbeddings[] = "history-embeddings";
+constexpr char kHatsSurveyTriggerHistoryPageExperiment[] =
+    "history-page-experiment";
+constexpr char kHatsSurveyTriggerHistoryPageControl[] = "history-page-control";
 constexpr char kHatsSurveyTriggerIdentityAddressBubbleSignin[] =
     "identity-address-bubble-signin";
 constexpr char kHatsSurveyTriggerIdentityDiceWebSigninAccepted[] =
@@ -97,6 +100,8 @@ constexpr char kHatsSurveyTriggerIdentityDiceWebSigninDeclined[] =
     "identity-dice-web-signin-declined";
 constexpr char kHatsSurveyTriggerIdentityFirstRunSignin[] =
     "identity-first-run-signin";
+constexpr char kHatsSurveyTriggerIdentityFirstRunCompleted[] =
+    "identity-first-run-completed";
 constexpr char kHatsSurveyTriggerIdentityPasswordBubbleSignin[] =
     "identity-password-bubble-signin";
 constexpr char kHatsSurveyTriggerIdentityProfileMenuDismissed[] =
@@ -133,6 +138,7 @@ constexpr char kHatsSurveyTriggerPerformanceControlsPPM[] = "performance-ppm";
 constexpr char kHatsSurveyTriggerPrivacyGuide[] = "privacy-guide";
 constexpr char kHatsSurveyTriggerRedWarning[] = "red-warning";
 constexpr char kHatsSurveyTriggerSettings[] = "settings";
+constexpr char kHatsSurveyTriggerSEHijacking[] = "search-engine-hijacking";
 constexpr char kHatsSurveyTriggerSettingsPrivacy[] = "settings-privacy";
 constexpr char kHatsSurveyTriggerSettingsSecurity[] = "settings-security-v2";
 constexpr char kHatsSurveyTriggerTrustSafetyPrivacySettings[] =
@@ -325,6 +331,24 @@ std::vector<hats::SurveyConfig> GetAllSurveyConfigs() {
   survey_configs.emplace_back(
       &features::kHappinessTrackingSurveysForDesktopPrivacyGuide,
       kHatsSurveyTriggerPrivacyGuide);
+
+  // History page surveys.
+  survey_configs.emplace_back(
+      &features::kHappinessTrackingSurveysForDesktopHistoryPageExperiment,
+      kHatsSurveyTriggerHistoryPageExperiment,
+      /*presupplied_trigger_id=*/
+      features::
+          kHappinessTrackingSurveysForDesktopHistoryPageExperimentTriggerId
+              .Get());
+  survey_configs.emplace_back(
+      &features::kHappinessTrackingSurveysForDesktopHistoryPageControl,
+      kHatsSurveyTriggerHistoryPageControl, /*presupplied_trigger_id=*/
+      features::kHappinessTrackingSurveysForDesktopHistoryPageControlTriggerId
+          .Get());
+
+  survey_configs.emplace_back(
+      &features::kHappinessTrackingSurveysForDesktopSEHijacking,
+      kHatsSurveyTriggerSEHijacking, "e4BYNZZ5u0ugnJ3q1cK0Q9A3oP6L");
 
   // NTP modules survey.
   survey_configs.emplace_back(
@@ -627,6 +651,18 @@ std::vector<hats::SurveyConfig> GetAllSurveyConfigs() {
       kHatsSurveyTriggerIdentitySwitchProfileFromProfilePicker,
       "b5zoUGRaf0ugnJ3q1cK0RaxK8yrp", std::vector<std::string>{},
       identity_string_psd_fields);
+
+  survey_configs.emplace_back(
+      &switches::kBeforeFirstRunDesktopRefreshSurvey,
+      kHatsSurveyTriggerIdentityFirstRunCompleted,
+      "XhHJ3uboj0ugnJ3q1cK0S6RQC7u7",
+      /*product_specific_bits_data_fields=*/std::vector<std::string>{},
+      /*product_specific_string_data_fields=*/
+      std::vector<std::string>{"Channel"},
+      // TODO(crbug.com/477193830): Add UMA integration.
+      /*log_responses_to_uma=*/false,
+      /*log_responses_to_ukm=*/false,
+      hats::SurveyConfig::ProfileAgeRequirement::kAnyAge);
 
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 

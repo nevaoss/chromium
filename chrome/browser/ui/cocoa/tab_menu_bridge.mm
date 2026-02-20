@@ -25,6 +25,7 @@
 #include "ui/base/models/image_model.h"
 #include "ui/gfx/image/image_skia.h"
 #include "ui/gfx/image/image_skia_util_mac.h"
+#include "ui/gfx/mac/menu_text_elider_mac.h"
 
 using MenuItemCallback = base::RepeatingCallback<void(NSMenuItem*)>;
 
@@ -52,10 +53,11 @@ void UpdateItemForWebContents(NSMenuItem* item,
       emoji = u"\U0001F50A";
     }
 
-    item.title =
-        l10n_util::GetNSStringF(title_id, tab_ui_helper->GetTitle(), emoji);
+    item.title = l10n_util::GetNSStringF(
+        title_id, gfx::ElideMenuItemTitle(tab_ui_helper->GetTitle()), emoji);
   } else {
-    item.title = base::SysUTF16ToNSString(tab_ui_helper->GetTitle());
+    item.title = base::SysUTF16ToNSString(
+        gfx::ElideMenuItemTitle(tab_ui_helper->GetTitle()));
   }
 
   if (base::FeatureList::IsEnabled(features::kShowTabGroupsMacSystemMenu)) {
@@ -182,7 +184,7 @@ void TabMenuBridge::SetTabStripModel(TabStripModel* model) {
 }
 
 void TabMenuBridge::SetForceRebuildMenuForTesting(bool force) {
-  force_rebuild_menu_for_testing_ = force;
+  force_rebuild_menu_ = force;
 }
 
 NSMutableArray* TabMenuBridge::DynamicMenuItems() {
@@ -254,7 +256,7 @@ void TabMenuBridge::OnTabStripModelChanged(
   DCHECK(tab_strip_model);
   DCHECK_EQ(tab_strip_model, model_);
 
-  if (!force_rebuild_menu_for_testing_ && ![menu_listener_ isMenuOpen]) {
+  if (!force_rebuild_menu_ && ![menu_listener_ isMenuOpen]) {
     [menu_listener_ setRebuildMenu:YES];
     return;
   }
@@ -283,7 +285,7 @@ void TabMenuBridge::OnTabChangedAt(tabs::TabInterface* tab,
     return;
   }
 
-  if (!force_rebuild_menu_for_testing_ && ![menu_listener_ isMenuOpen]) {
+  if (!force_rebuild_menu_ && ![menu_listener_ isMenuOpen]) {
     [menu_listener_ setRebuildMenu:YES];
     return;
   }
@@ -312,7 +314,7 @@ void TabMenuBridge::OnTabChangedAt(tabs::TabInterface* tab,
 
 // If a tab group is changed, update group indicator for each tab.
 void TabMenuBridge::OnTabGroupChanged(const TabGroupChange& change) {
-  if (!force_rebuild_menu_for_testing_ && ![menu_listener_ isMenuOpen]) {
+  if (!force_rebuild_menu_ && ![menu_listener_ isMenuOpen]) {
     [menu_listener_ setRebuildMenu:YES];
     return;
   }
@@ -331,7 +333,7 @@ void TabMenuBridge::TabGroupedStateChanged(
   DCHECK(tab_strip_model);
   DCHECK_EQ(tab_strip_model, model_);
 
-  if (!force_rebuild_menu_for_testing_ && ![menu_listener_ isMenuOpen]) {
+  if (!force_rebuild_menu_ && ![menu_listener_ isMenuOpen]) {
     [menu_listener_ setRebuildMenu:YES];
     return;
   }

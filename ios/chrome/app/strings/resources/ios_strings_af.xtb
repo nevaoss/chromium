@@ -333,6 +333,7 @@
 <translation id="2184272387334793084">Meld aan om jou wagwoorde en meer op al jou toestelle te kry</translation>
 <translation id="2186206192313702726">Google Lens</translation>
 <translation id="2188993354115194873">Tik op <ph name="BEGIN_BOLD" />Stoor in Aflaaie<ph name="END_BOLD" /></translation>
+<translation id="2191406283620379491">Iets het erg skeefgeloop. Dateer asseblief jou iOS-weergawe op.</translation>
 <translation id="219283042927675668">Oortjies in groep</translation>
 <translation id="2194856509914051091">Dinge om in ag te neem</translation>
 <translation id="2196428379625389579">Soek op web</translation>
@@ -579,6 +580,7 @@
 <translation id="3143515551205905069">Kanselleer sinkronisering</translation>
 <translation id="3144126448740580210">KLAAR</translation>
 <translation id="3148052723910099040">Gewone Oortjierooster</translation>
+<translation id="3148237711805373460">Neem my daarheen</translation>
 <translation id="3157387275655328056">Voeg by leeslys</translation>
 <translation id="315778507796115851">Geskiedenis</translation>
 <translation id="31652791196570636">Maak toe</translation>
@@ -1020,6 +1022,7 @@
 <translation id="483689884442613745">Stoor …</translation>
 <translation id="4840495572919996524">Jou boekmerke, geskiedenis, wagwoorde en meer sal nie meer met jou Google-rekening gesinkroniseer word nie.</translation>
 <translation id="484280513275854557">Jy is uitgeteken; blaaierdata is uitgevee</translation>
+<translation id="484462545196658690">Outo</translation>
 <translation id="4850886885716139402">Bekyk</translation>
 <translation id="4854068532375923088">Laat “Gemini” toe om jou kamera te gebruik</translation>
 <translation id="4860895144060829044">Bel</translation>
@@ -1521,6 +1524,7 @@ Oorgee moet ook in die Algemene afdeling van Instellings geaktiveer word, en jou
 <translation id="6556866813142980365">Herdoen</translation>
 <translation id="6559301491397835130">{count,plural, =1{Boekmerk is gestoor na “{title}”. Dit word net op hierdie toestel gestoor.}other{Boekmerk is gestoor na “{title}”. Dit word net op hierdie toestel gestoor.}}</translation>
 <translation id="656065428026159829">Sien meer</translation>
+<translation id="6565899972286925956">Skep enigiets</translation>
 <translation id="6571070086367343653">Wysig kredietkaart</translation>
 <translation id="6574092468346088891">Skakel kennisgewings vir Veiligheidskontrole aan</translation>
 <translation id="6579867704846662339">Jy kan kies om inkomende URL’e van ander apps af in Incognito oop te maak.</translation>
@@ -1631,6 +1635,7 @@ Oorgee moet ook in die Algemene afdeling van Instellings geaktiveer word, en jou
 <translation id="6930799952781667037">Tik om na hierdie taal te verander.</translation>
 <translation id="693761253105515415">Stel ’n wagkode</translation>
 <translation id="6945221475159498467">Kies</translation>
+<translation id="6946722113367118030">Dink</translation>
 <translation id="6950522403736391608">Versteek</translation>
 <translation id="6962809930976936328">Kry insigte met Gemini</translation>
 <translation id="6964300328304469089"><ph name="NAME" />, <ph name="EMAIL" /> is tans gekies. Kies ’n rekening.</translation>
@@ -1899,6 +1904,7 @@ Oorgee moet ook in die Algemene afdeling van Instellings geaktiveer word, en jou
 <translation id="7958575506592576831">Bladsy se sekuriteitsinligting</translation>
 <translation id="7961015016161918242">Nooit</translation>
 <translation id="7971136598759319605">1 dag gelede aktief</translation>
+<translation id="7972837668077967426">Skilderdoek</translation>
 <translation id="7975036700432177008">Probeer</translation>
 <translation id="797588153137233716">Kieslys → Geskiedenis → Vee blaaierdata uit</translation>
 <translation id="7977451675950311423">Waarsku jou as jy ’n wagwoord gebruik wat in ’n dataskending gekompromitteer is.</translation>
@@ -1972,6 +1978,7 @@ Oorgee moet ook in die Algemene afdeling van Instellings geaktiveer word, en jou
 <translation id="8205564605687841303">Kanselleer</translation>
 <translation id="8206354486702514201">Hierdie instelling word deur jou administrateur afgedwing.</translation>
 <translation id="8209050860603202033">Maak prent oop</translation>
+<translation id="8209237163365258530">Gemini <ph name="VERSION_NUMBER" />-modelle</translation>
 <translation id="8211030355252954494">Jy het wagwoorde ontvang vir <ph name="WEBSITE" /></translation>
 <translation id="8211406090763984747">Verbinding is veilig</translation>
 <translation id="8214293972734702249">Vasgespeld, <ph name="TAB_TITLE" /></translation>

@@ -369,8 +369,16 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksSidePanelCoordinatorInteractiveUiTest,
       }));
 }
 
+// TODO(crbug.com/478095504): Flakily fails on ASan/LSan
+#if defined(ADDRESS_SANITIZER) || defined(LEAK_SANITIZER)
+#define MAYBE_SidePanelOpenByTransferWebContentsFromTab \
+  DISABLED_SidePanelOpenByTransferWebContentsFromTab
+#else
+#define MAYBE_SidePanelOpenByTransferWebContentsFromTab \
+  SidePanelOpenByTransferWebContentsFromTab
+#endif
 IN_PROC_BROWSER_TEST_F(ContextualTasksSidePanelCoordinatorInteractiveUiTest,
-                       SidePanelOpenByTransferWebContentsFromTab) {
+                       MAYBE_SidePanelOpenByTransferWebContentsFromTab) {
   SetUpTasks();
   // Add tab4 with contextual task side panel tab.
   TabStripModel* tab_strip_model = browser()->tab_strip_model();
@@ -408,8 +416,7 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksSidePanelCoordinatorInteractiveUiTest,
         // Transfer the WebContents from tab 4 to the side panel.
         std::unique_ptr<content::WebContents> contextual_task_contents =
             tab_strip_model->DetachWebContentsAtForInsertion(
-                detach_index,
-                TabStripModelChange::RemoveReason::kInsertedIntoSidePanel);
+                detach_index, TabRemovedReason::kInsertedIntoSidePanel);
         tab_web_contents = contextual_task_contents.get();
 
         coordinator->TransferWebContentsFromTab(
@@ -479,8 +486,7 @@ IN_PROC_BROWSER_TEST_F(
         // Transfer the WebContents from tab 4 to the side panel.
         std::unique_ptr<content::WebContents> contextual_task_contents =
             tab_strip_model->DetachWebContentsAtForInsertion(
-                detach_index,
-                TabStripModelChange::RemoveReason::kInsertedIntoSidePanel);
+                detach_index, TabRemovedReason::kInsertedIntoSidePanel);
         tab_web_contents = contextual_task_contents.get();
 
         coordinator->TransferWebContentsFromTab(
@@ -704,12 +710,13 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksSidePanelCoordinatorInteractiveUiTest,
       }),
       WaitForShow(kContextualTasksSidePanelWebViewElementId), Do([&]() {
         // Switch to tab 1 ->task 2.
-        browser()->tab_strip_model()->ActivateTabAt(1);
+        TabListInterface* tab_list = TabListInterface::From(browser());
+        tab_list->ActivateTab(tab_list->GetTab(1)->GetHandle());
         content::WebContents* web_contents =
             coordinator->GetActiveWebContents();
         EXPECT_NE(nullptr, coordinator->GetActiveWebContents());
         // Switch to tab 0 -> task 1.
-        browser()->tab_strip_model()->ActivateTabAt(0);
+        tab_list->ActivateTab(tab_list->GetTab(0)->GetHandle());
         EXPECT_NE(nullptr, coordinator->GetActiveWebContents());
         // Update timestamp of task 2 side panel WebContents to simulate
         // expiration.
@@ -720,11 +727,11 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksSidePanelCoordinatorInteractiveUiTest,
                           100);
         // Switch to tab 2 -> task 1. This should trigger logic to clean up the
         // side panel WebContents of task 2.
-        browser()->tab_strip_model()->ActivateTabAt(2);
+        tab_list->ActivateTab(tab_list->GetTab(2)->GetHandle());
         EXPECT_NE(nullptr, coordinator->GetActiveWebContents());
         // Switch to tab 1, verify the side panel WebContents is no longer
         // there.
-        browser()->tab_strip_model()->ActivateTabAt(1);
+        tab_list->ActivateTab(tab_list->GetTab(1)->GetHandle());
         EXPECT_EQ(nullptr, coordinator->GetActiveWebContents());
       }));
 }
@@ -829,7 +836,7 @@ class TabScopedContextualTasksSidePanelCoordinatorInteractiveUiTest
  public:
   TabScopedContextualTasksSidePanelCoordinatorInteractiveUiTest() {
     scoped_feature_list_.InitAndEnableFeatureWithParameters(
-        kContextualTasks, {{"TaskScopedSidePanel", "false"}});
+        kContextualTasks, {{"ContextualTasksTaskScopedSidePanel", "false"}});
   }
   ~TabScopedContextualTasksSidePanelCoordinatorInteractiveUiTest() override =
       default;

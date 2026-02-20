@@ -51,7 +51,6 @@ export class ContextualEntrypointButtonElement extends
       // =========================================================================
       // Public properties
       // =========================================================================
-      inputsDisabled: {type: Boolean},
       fileNum: {type: Number},
       showContextMenuDescription: {type: Boolean},
       hasImageFiles: {
@@ -74,7 +73,6 @@ export class ContextualEntrypointButtonElement extends
     };
   }
 
-  accessor inputsDisabled: boolean = false;
   accessor fileNum: number = 0;
   accessor showContextMenuDescription: boolean = false;
   accessor hasImageFiles: boolean = false;
@@ -100,7 +98,11 @@ export class ContextualEntrypointButtonElement extends
   }
 
   closeMenu() {
-    this.$.menu.close();
+    const menu =
+        this.shadowRoot.querySelector<ContextualActionMenuElement>('#menu');
+    if (menu) {
+      menu.close();
+    }
   }
 
   protected onEntrypointClick_(e: Event) {
@@ -141,6 +143,13 @@ export class ContextualEntrypointButtonElement extends
     assert(entrypoint);
     entrypoint?.classList.add('menu-open');
     this.$.menu.showAt(entrypoint);
+  }
+
+  protected hasAllowedInputs_(): boolean {
+    return !!this.inputState &&
+        (this.inputState.allowedModels.length > 0 ||
+         this.inputState.allowedTools.length > 0 ||
+         this.inputState.allowedInputTypes.length > 0);
   }
 }
 

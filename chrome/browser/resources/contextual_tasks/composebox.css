@@ -14,6 +14,7 @@
   --aim-header-height: 66px;
   --cancel-button-inline-end: 16px;
   --cancel-button-top: 12px;
+  --composebox-border-radius: 24px;
   --composebox-collapsed-height: 90px;
   --composebox-margin-bottom: 30px;
   --composebox-start-indent: 15px;
@@ -88,7 +89,7 @@
 #composebox {
   --composebox-thumbnail-img-chip-size: 44px;
   --composebox-width: calc(100% - 30px); /* 15px on each side */
-  --expanded-border-radius: 24px;
+  --expanded-border-radius: var(--composebox-border-radius);
   --input-bottom-spacing: 16px;
   --inset-start-indent_: 15px;
   --text-input-left-spacing: 24px;
@@ -96,14 +97,16 @@
   --composebox-context-menu-entrypoint-button-color: var(--color-composebox-voice-lens-button);
 
   box-shadow: none;
+  box-sizing: border-box;
   display: block;
   inset-inline-start: var(--inset-start-indent_);
   max-width: var(--composebox-max-width);
   position: relative;
+  /* Fast out (start), slow in (end) box shadow transition. */
+  transition: box-shadow 600ms cubic-bezier(0.4, 0.0, 0.2, 1);
   /* 100% - (right indent + left indent), up to max width. */
   width: calc(100% - (15px + var(--inset-start-indent_)));
-  border: 1px solid var(--color-composebox-input-plate-outline);
-  box-sizing: border-box;
+  z-index: 1;
 }
 
 :host([is-side-panel]) #composebox {
@@ -112,6 +115,34 @@
   min-width: 200px;
   /* 15px on each side -> 30px. */
   width: calc(100% - 30px);
+}
+
+:host(:not([is-zero-state])) #composebox::before {
+  background: var(--search-background-color);
+  border-radius: var(--composebox-border-radius);
+  content: '';
+  display: block;
+  /* Expand past the bottom of the composebox.
+   * Requires parent to have overflow hidden.
+   */
+  height: 40vh;
+  position: absolute;
+  width: 100%;
+  z-index: 0;
+}
+
+/* Add border in ::after instead of '#composebox' so it
+ * is on top of ::before.
+ */
+#composebox::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--color-composebox-input-plate-outline);
+  border-radius: var(--composebox-border-radius);
+  box-sizing: border-box;
+  pointer-events: none;
+  z-index: 2;
 }
 
 /* TODO(crbug.com/466201452): Check this relayout logic
@@ -132,7 +163,7 @@
      */
     --composebox-start-indent: 101px;
   }
-  #composebox {
+  :host(:not([is-zero-state])) #composebox {
     --inset-start-indent_: var(--composebox-start-indent);
   }
 }
@@ -155,22 +186,9 @@
     --composebox-start-indent: max(285px, calc(50% - 570px));
   }
 
-  #composebox {
+  :host(:not([is-zero-state])) #composebox {
     --inset-start-indent_: var(--composebox-start-indent);
   }
-}
-
-:host(:not([is-zero-state])) #composebox::before {
-  background: var(--search-background-color);
-  border-radius: 24px;
-  content: '';
-  display: block;
-  /* Expand past the bottom of the composebox.
-   * Requires parent to have overflow hidden.
-   */
-  height: 40vh;
-  position: absolute;
-  width: 100%;
 }
 
 #composebox::part(thumbnail) {
@@ -361,10 +379,6 @@
   transition-delay: 0ms;
 }
 
-#composebox::part(label) {
-  display: none;
-}
-
 #composebox::part(dropdown) {
   --cr-composebox-match-height: 54px;
 
@@ -433,11 +447,123 @@
  transition: background-color 400ms ease-in-out;
 }
 
-#composebox {
- /* Fast out (start), slow in (end) box shadow transition. */
- transition: box-shadow 600ms cubic-bezier(0.4, 0.0, 0.2, 1);
-}
-
 #composebox[in-voice-search-mode_] {
  box-shadow: 2px 17px 18px -10px rgba(0, 0, 0, 0.05);
+}
+
+:host([is-zero-state]) #coBrSuggestionsContainer {
+  --cr-composebox-match-match-padding-bottom: 0px;
+  --color-searchbox-results-background-hovered: transparent;
+  --color-searchbox-results-background-selected: transparent;
+  --match-border-size: 2px;
+
+  align-items: flex-start;
+  background-color: var(--search-background-color);
+  justify-content: flex-start;
+  margin-top: 16px;
+  padding-inline-end: 8px;
+  padding-inline-start: 8px;
+  /* Do not set width since we are using padding + fitting children content. */
+}
+
+:host([is-zero-state][is-side-panel]) #coBrSuggestionsContainer  {
+  margin-bottom: 24px;
+  margin-top: 24px;
+  /* Becomes 44px from the 28px ending padding in child. */
+  padding-inline-end: 16px;
+  padding-inline-start: 16px;
+}
+
+
+:host([is-zero-state]) #coBrSuggestionsContainer::part(match-focus-indicator) {
+  /* 'Important' is used to override all higher-specificity
+   * dynamic focusIndicator modifications.
+   */
+  display: none !important;
+}
+
+:host([is-zero-state]) #coBrSuggestionsContainer::part(match-container) {
+  align-items: center;
+  border-radius: 8px;
+  box-sizing: border-box;
+  /* With bottom padding of host = 44px. */
+  height: 43px;
+  padding: 0 0 1px 0;
+  /* With right padding from dropdow (parent),
+   * and 8px right padding of this container's wrapper (:host),
+   * it is 44px.
+   */
+  padding-inline-end: 20px;
+  width: calc(100% - 8px);
+}
+
+:host([is-zero-state]) #coBrSuggestionsContainer::part(match-wrapper) {
+  width: 100%;
+}
+
+:host([is-zero-state][is-side-panel]) #coBrSuggestionsContainer::part(match-container) {
+  /* With bottom padding of host = 56px. */
+  height: 55px;
+}
+
+:host([is-loading_]) #coBrSuggestionsContainer::part(match-container) {
+  pointer-events: none;
+}
+
+:host([is-zero-state]) #coBrSuggestionsContainer::part(match-container):hover {
+  background-color: var(
+      --color-composebox-zero-state-suggestions-background-hovered,
+      rgba(247, 248, 250, 1));
+}
+
+@media (forced-colors: active) {
+  :host {
+    --color-searchbox-results-icon-focused-outline: Highlight;
+    --select-color_: Highlight;
+  }
+}
+
+:host([is-zero-state]) #coBrSuggestionsContainer::part(match-icon-container) {
+  height: 24px;
+  padding-inline-end: 8px;
+  padding-inline-start: 8px;
+  width: 24px;
+}
+
+:host([is-zero-state][is-side-panel])
+    #coBrSuggestionsContainer::part(match-icon-container) {
+  padding-inline-end: 12px;
+  padding-inline-start: 16px;
+}
+
+:host([is-zero-state]) #coBrSuggestionsContainer::part(match-icon) {
+  background-color: var(--color-composebox-font-dark);
+  height: 20px;
+  margin: 2px;
+  width: 20px;
+}
+
+:host([is-zero-state]) #coBrSuggestionsContainer::part(match-text-container) {
+  border-radius: 4px;
+  color: var(--color-composebox-font-dark);
+  font-family: inherit;
+  font-size: 16px;
+  letter-spacing: 1%;
+  inset-inline-start: 12px;
+  width: 100%;
+}
+
+/* 'loading-bar-color-change' must be defined in child component
+ * the animation modifies.
+ */
+:host([is-zero-state][is-loading_]) #coBrSuggestionsContainer::part(match-text-container) {
+  animation: 2s loading-bar-color-change calc(0.1s * var(--loading-bar-animation-delay))
+      infinite;
+  background-color: var(--color-composebox-loading-start);
+}
+
+:host(:not([is-side-panel])[is-zero-state])
+    #coBrSuggestionsContainer::part(match-text-container) {
+  inset-inline-start: 8px;
+  width: calc(100% - 8px);
 }

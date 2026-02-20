@@ -320,6 +320,7 @@
 #include "ash/webui/system_apps/public/system_web_app_type.h"
 #include "chrome/browser/ash/arc/arc_util.h"
 #include "chrome/browser/ash/arc/intent_helper/arc_intent_helper_mojo_ash.h"
+#include "chrome/browser/ash/boca/on_task/on_task_locked_controller.h"
 #include "chrome/browser/ash/input_method/editor_mediator.h"
 #include "chrome/browser/chromeos/arc/open_with_menu.h"
 #include "chrome/browser/chromeos/arc/start_smart_selection_action_menu.h"
@@ -342,8 +343,8 @@
 #include "chrome/browser/ui/toasts/toast_controller.h"
 #include "chrome/browser/ui/toasts/toast_features.h"
 #include "chrome/browser/ui/webui/webui_embedding_context.h"
+#include "components/split_tabs/split_tab_id.h"
 #include "components/tabs/public/split_tab_data.h"
-#include "components/tabs/public/split_tab_id.h"
 #include "components/tabs/public/tab_interface.h"
 #include "ui/base/page_transition_types.h"
 #endif
@@ -860,6 +861,15 @@ bool IsGlicWindow(const RenderViewContextMenu* menu,
   }
 #endif  // BUILDFLAG(ENABLE_GLIC)
   return false;
+}
+
+bool IsPrintPreviewContent(const GURL& current_url) {
+#if BUILDFLAG(ENABLE_PRINT_PREVIEW)
+  return printing::PrintPreviewDialogController::IsPrintPreviewContentURL(
+      current_url);
+#else
+  return false;
+#endif
 }
 
 }  // namespace
@@ -1788,7 +1798,8 @@ void RenderViewContextMenu::AppendLinkItems() {
 
 #if !BUILDFLAG(IS_ANDROID)
     if (base::FeatureList::IsEnabled(blink::features::kLinkPreview) &&
-        !is_link_to_iwa) {
+        !is_link_to_iwa &&
+        !extensions::WebViewGuest::FromRenderFrameHost(GetRenderFrameHost())) {
       menu_model_.AddItemWithStringId(IDC_CONTENT_CONTEXT_OPENLINKPREVIEW,
                                       IDS_CONTENT_CONTEXT_OPENLINKPREVIEW);
       // We don't show in-production-help for ChromeOS for now because we should
@@ -2499,10 +2510,10 @@ void RenderViewContextMenu::AppendSearchProvider() {
     // When the Lens text selection entrypoint flag is enabled, checking for the
     // availability of Lens requires the browser, so hide the menu item if the
     // flag is enabled and there is no browser (e.g. when selecting in the side
-    // panel).
+    // panel). However, show the menu item in print preview.
     if (!lens::features::
             IsLensOverlayTextSelectionContextMenuEntrypointEnabled() ||
-        GetBrowser()) {
+        GetBrowser() || IsPrintPreviewContent(current_url_)) {
       menu_model_.AddItem(
           IDC_CONTENT_CONTEXT_SEARCHWEBFOR,
           l10n_util::GetStringFUTF16(IDS_CONTENT_CONTEXT_SEARCHWEBFOR,
@@ -2833,7 +2844,8 @@ bool RenderViewContextMenu::IsCommandIdEnabled(int id) const {
     should_disable_command_for_locked_fullscreen_or_on_task = true;
   }
 #if BUILDFLAG(IS_CHROMEOS)
-  if (browser && browser->IsLockedForOnTask()) {
+  if (browser && ash::boca::OnTaskLockedController::From(browser)
+                     ->is_locked_for_on_task()) {
     bool is_page_nav_command =
         (id == IDC_BACK) || (id == IDC_FORWARD) || (id == IDC_RELOAD);
     bool is_allowed_content_context_command =
@@ -4293,7 +4305,7 @@ void RenderViewContextMenu::CheckSupervisedUserURLFilterAndSaveLinkAs() {
 }
 
 void RenderViewContextMenu::OnSupervisedUserURLFilterChecked(
-    supervised_user::SupervisedUserURLFilter::Result result) {
+    supervised_user::WebFilteringResult result) {
   if (result.IsAllowed()) {
     ExecSaveLinkAs();
   }

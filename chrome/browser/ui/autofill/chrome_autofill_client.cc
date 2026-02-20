@@ -868,12 +868,16 @@ void ChromeAutofillClient::ShowPlusAddressEmailOverrideNotification(
       AutofillSnackbarType::kPlusAddressEmailOverride,
       std::move(email_override_undo_callback));
 #else
-  Browser* const browser = chrome::FindBrowserWithTab(web_contents());
-  if (!browser) {
+  tabs::TabInterface* tab = GetTabInterface();
+  if (!tab) {
     return;
   }
-  if (ToastController* const controller =
-          browser->browser_window_features()->toast_controller()) {
+  BrowserWindowInterface* window_interface = tab->GetBrowserWindowInterface();
+  if (!window_interface) {
+    return;
+  }
+  if (ToastController* controller =
+          window_interface->GetFeatures().toast_controller()) {
     ToastParams params(ToastId::kPlusAddressOverride);
     params.menu_model = std::make_unique<plus_addresses::PlusAddressMenuModel>(
         base::UTF8ToUTF16(
@@ -910,7 +914,8 @@ ChromeAutofillClient::GetSessionIdForCurrentAutofillSuggestions() const {
 void ChromeAutofillClient::UpdateAutofillSuggestions(
     const std::vector<Suggestion>& suggestions,
     FillingProduct main_filling_product,
-    AutofillSuggestionTriggerSource trigger_source) {
+    AutofillSuggestionTriggerSource trigger_source,
+    AutofillSuggestionsIgnoreFocusLoss ignore_focus_loss) {
   const std::optional<SuggestionUiSessionId> session_id =
       GetSessionIdForCurrentAutofillSuggestions();
   if (!session_id) {
@@ -929,7 +934,8 @@ void ChromeAutofillClient::UpdateAutofillSuggestions(
   // Calling show will reuse the existing view automatically.
   suggestion_controller_->Show(
       *session_id, suggestions, trigger_source,
-      ShouldAutofillPopupAutoselectFirstSuggestion(trigger_source));
+      ShouldAutofillPopupAutoselectFirstSuggestion(trigger_source),
+      ignore_focus_loss);
 }
 
 void ChromeAutofillClient::HideAutofillSuggestions(
@@ -1144,7 +1150,8 @@ ChromeAutofillClient::GetDeviceAuthenticator(std::string histogram) {
 #if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || \
     BUILDFLAG(IS_CHROMEOS)
   device_reauth::DeviceAuthParams params(
-      base::Seconds(60), device_reauth::DeviceAuthSource::kAutofill, std::move(histogram));
+      base::Seconds(60), device_reauth::DeviceAuthSource::kAutofill,
+      std::move(histogram));
 
   return ChromeDeviceAuthenticatorFactory::GetForProfile(
       Profile::FromBrowserContext(web_contents()->GetBrowserContext()),
@@ -1208,7 +1215,6 @@ void ChromeAutofillClient::NotifyIphFeatureUsed(
 
 ChromeAutofillClient::ChromeAutofillClient(content::WebContents* web_contents)
     : ContentAutofillClient(web_contents),
-      content::WebContentsObserver(web_contents),
       ablation_study_(g_browser_process->local_state()),
       identity_credential_delegate_(web_contents),
       otp_field_detector_(std::make_unique<OtpFieldDetector>(this)),
@@ -1256,9 +1262,14 @@ Profile* ChromeAutofillClient::GetProfile() const {
   return Profile::FromBrowserContext(web_contents()->GetBrowserContext());
 }
 
+tabs::TabInterface* ChromeAutofillClient::GetTabInterface() {
+  // Autofill is (currently) instantiated also in non-tab contexts - therefore
+  // use the `MaybeGet` function.
+  return tabs::TabInterface::MaybeGetFromContents(web_contents());
+}
+
 void ChromeAutofillClient::ShowEmailVerifiedToast() {
-  tabs::TabInterface* tab_interface =
-      tabs::TabInterface::GetFromContents(web_contents());
+  tabs::TabInterface* tab_interface = GetTabInterface();
   if (!tab_interface) {
     return;
   }
@@ -1270,9 +1281,8 @@ void ChromeAutofillClient::ShowEmailVerifiedToast() {
   if (!window_interface) {
     return;
   }
-  ToastController* toast_controller =
-      window_interface->GetFeatures().toast_controller();
-  if (toast_controller) {
+  if (ToastController* toast_controller =
+          window_interface->GetFeatures().toast_controller()) {
     toast_controller->MaybeShowToast(ToastParams(ToastId::kEmailVerified));
   }
 #endif
@@ -1297,7 +1307,8 @@ void ChromeAutofillClient::ShowAutofillSuggestionsImpl(
 
   suggestion_controller_->Show(
       session_id, open_args.suggestions, open_args.trigger_source,
-      ShouldAutofillPopupAutoselectFirstSuggestion(open_args.trigger_source));
+      ShouldAutofillPopupAutoselectFirstSuggestion(open_args.trigger_source),
+      AutofillSuggestionsIgnoreFocusLoss(false));
 
   // When testing, try to keep popup open when the reason to hide is one of:
   // - An external browser frame resize that is extraneous to our testing goals.
@@ -1400,20 +1411,28 @@ ChromeAutofillClient::GetMqlsUploadService() {
 void ChromeAutofillClient::ShowEntityImportBubble(
     EntityInstance new_entity,
     std::optional<EntityInstance> old_entity,
-    EntityImportPromptResultCallback prompt_closed_callback) {
+    bool save_is_synchronous,
+    EntityImportPromptResultCallback prompt_result_callback) {
 #if BUILDFLAG(IS_ANDROID)
   autofill_ai_save_update_entity_flow_manager_->OfferSave(
-      new_entity, std::move(old_entity), std::move(prompt_closed_callback));
+      new_entity, std::move(old_entity), std::move(prompt_result_callback));
 #else
   if (auto* controller = AutofillAiImportDataController::GetOrCreate(
-          &*web_contents(), GetAppLocale())) {
+          web_contents(), GetAppLocale())) {
     controller->ShowPrompt(std::move(new_entity), std::move(old_entity),
-                           std::move(prompt_closed_callback));
+                           /*close_on_accept=*/save_is_synchronous,
+                           std::move(prompt_result_callback));
   } else {
-    std::move(prompt_closed_callback)
-        .Run(AutofillClient::AutofillAiBubbleClosedReason::kUnknown);
+    std::move(prompt_result_callback)
+        .Run(AutofillClient::AutofillAiBubbleResult::kUnknown);
   }
 #endif  // BUILDFLAG(IS_ANDROID)
+}
+
+void ChromeAutofillClient::CloseEntityImportBubble() {
+#if !BUILDFLAG(IS_ANDROID)
+  AutofillAiImportDataController::Hide(CHECK_DEREF(web_contents()));
+#endif  // !BUILDFLAG(IS_ANDROID)
 }
 
 #if !BUILDFLAG(IS_ANDROID)
@@ -1448,8 +1467,7 @@ void ChromeAutofillClient::OnActorTaskStateChange(
     return;
   }
 
-  const tabs::TabInterface* tab_interface =
-      tabs::TabInterface::MaybeGetFromContents(web_contents());
+  const tabs::TabInterface* tab_interface = GetTabInterface();
   if (tab_interface && !task->HasTab(tab_interface->GetHandle())) {
     // The status update is for an actor that isn't interacting with this tab.
     // The value of `is_actor_mode_` shouldn't be updated.

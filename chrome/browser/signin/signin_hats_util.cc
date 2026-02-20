@@ -11,6 +11,7 @@
 #include "base/containers/fixed_flat_set.h"
 #include "base/containers/map_util.h"
 #include "base/feature_list.h"
+#include "base/functional/callback.h"
 #include "base/no_destructor.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/version.h"
@@ -136,41 +137,58 @@ bool IsLocaleAllowedForSurvey() {
 // Surveys are gated by both a feature flag and locale eligibility.
 // However, if the feature flag is overridden (e.g., by Finch or command-line),
 // the locale check is bypassed to allow server-side control.
+//
+// The given survey might still be suppressed if it has a conflicting feature
+// enabled (used to coordinate surveys associated with similar Chrome triggers).
 bool IsSurveyEnabledForHatsTrigger(const std::string& trigger) {
   static const base::NoDestructor<
       absl::flat_hash_map<std::string_view, const base::Feature*>>
-      kChromeIdentityHatsTriggerFeatureMap({
-          {kHatsSurveyTriggerIdentityAddressBubbleSignin,
-           &switches::kChromeIdentitySurveyAddressBubbleSignin},
-          {kHatsSurveyTriggerIdentityDiceWebSigninAccepted,
-           &switches::kChromeIdentitySurveyDiceWebSigninAccepted},
-          {kHatsSurveyTriggerIdentityDiceWebSigninDeclined,
-           &switches::kChromeIdentitySurveyDiceWebSigninDeclined},
-          {kHatsSurveyTriggerIdentityFirstRunSignin,
-           &switches::kChromeIdentitySurveyFirstRunSignin},
-          {kHatsSurveyTriggerIdentityPasswordBubbleSignin,
-           &switches::kChromeIdentitySurveyPasswordBubbleSignin},
-          {kHatsSurveyTriggerIdentityProfileMenuDismissed,
-           &switches::kChromeIdentitySurveyProfileMenuDismissed},
-          {kHatsSurveyTriggerIdentityProfileMenuSignin,
-           &switches::kChromeIdentitySurveyProfileMenuSignin},
-          {kHatsSurveyTriggerIdentityProfilePickerAddProfileSignin,
-           &switches::kChromeIdentitySurveyProfilePickerAddProfileSignin},
-          {kHatsSurveyTriggerIdentitySigninInterceptProfileSeparation,
-           &switches::kChromeIdentitySurveySigninInterceptProfileSeparation},
-          {kHatsSurveyTriggerIdentitySigninPromoBubbleDismissed,
-           &switches::kChromeIdentitySurveySigninPromoBubbleDismissed},
-          {kHatsSurveyTriggerIdentitySwitchProfileFromProfileMenu,
-           &switches::kChromeIdentitySurveySwitchProfileFromProfileMenu},
-          {kHatsSurveyTriggerIdentitySwitchProfileFromProfilePicker,
-           &switches::kChromeIdentitySurveySwitchProfileFromProfilePicker},
-      });
+      kHatsTriggerFeatureMap(
+          {{kHatsSurveyTriggerIdentityAddressBubbleSignin,
+            &switches::kChromeIdentitySurveyAddressBubbleSignin},
+           {kHatsSurveyTriggerIdentityDiceWebSigninAccepted,
+            &switches::kChromeIdentitySurveyDiceWebSigninAccepted},
+           {kHatsSurveyTriggerIdentityDiceWebSigninDeclined,
+            &switches::kChromeIdentitySurveyDiceWebSigninDeclined},
+           {kHatsSurveyTriggerIdentityFirstRunSignin,
+            &switches::kChromeIdentitySurveyFirstRunSignin},
+           {kHatsSurveyTriggerIdentityPasswordBubbleSignin,
+            &switches::kChromeIdentitySurveyPasswordBubbleSignin},
+           {kHatsSurveyTriggerIdentityProfileMenuDismissed,
+            &switches::kChromeIdentitySurveyProfileMenuDismissed},
+           {kHatsSurveyTriggerIdentityProfileMenuSignin,
+            &switches::kChromeIdentitySurveyProfileMenuSignin},
+           {kHatsSurveyTriggerIdentityProfilePickerAddProfileSignin,
+            &switches::kChromeIdentitySurveyProfilePickerAddProfileSignin},
+           {kHatsSurveyTriggerIdentitySigninInterceptProfileSeparation,
+            &switches::kChromeIdentitySurveySigninInterceptProfileSeparation},
+           {kHatsSurveyTriggerIdentitySigninPromoBubbleDismissed,
+            &switches::kChromeIdentitySurveySigninPromoBubbleDismissed},
+           {kHatsSurveyTriggerIdentitySwitchProfileFromProfileMenu,
+            &switches::kChromeIdentitySurveySwitchProfileFromProfileMenu},
+           {kHatsSurveyTriggerIdentitySwitchProfileFromProfilePicker,
+            &switches::kChromeIdentitySurveySwitchProfileFromProfilePicker},
+           {kHatsSurveyTriggerIdentityFirstRunCompleted,
+            &switches::kBeforeFirstRunDesktopRefreshSurvey}});
+  // Map of HaTS features that are conflicting with each other. Keys are
+  // features that are suppressed if the corresponding value feature is
+  // enabled.
+  static const base::NoDestructor<
+      absl::flat_hash_map<const base::Feature*, const base::Feature*>>
+      kConflictingFeaturesMap(
+          {{&switches::kChromeIdentitySurveyFirstRunSignin,
+            &switches::kBeforeFirstRunDesktopRefreshSurvey}});
 
-  const auto* feature =
-      base::FindPtrOrNull(*kChromeIdentityHatsTriggerFeatureMap, trigger);
+  const auto* feature = base::FindPtrOrNull(*kHatsTriggerFeatureMap, trigger);
 
   if (!feature) {
     // No matching feature for the given trigger.
+    return false;
+  }
+
+  if (kConflictingFeaturesMap->contains(feature) &&
+      base::FeatureList::IsEnabled(*kConflictingFeaturesMap->at(feature))) {
+    // If the feature has a conflicting feature, suppress the survey.
     return false;
   }
 
@@ -189,15 +207,14 @@ bool IsSurveyEnabledForHatsTrigger(const std::string& trigger) {
 
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 
-}  // namespace
-
-namespace signin {
-
-void LaunchHatsSurveyForProfile(const std::string& trigger,
-                                Profile* profile,
-                                bool defer_if_no_browser,
-                                std::optional<signin_metrics::AccessPoint>
-                                    access_point_for_data_type_promo) {
+// Attempts to launch the survey, whose SurveyStringData is provided at the last
+// possible moment by `data_factory`. This avoids unnecessary work in case the
+// survey can't be launched anyway.
+void LaunchHatsSurveyForProfileInternal(
+    const std::string& trigger,
+    Profile* profile,
+    bool defer_if_no_browser,
+    base::OnceCallback<SurveyStringData()> data_factory) {
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
   if (!profile || !IsSurveyEnabledForHatsTrigger(trigger)) {
     return;
@@ -228,9 +245,38 @@ void LaunchHatsSurveyForProfile(const std::string& trigger,
       trigger,
       switches::kChromeIdentitySurveyLaunchWithDelayDuration.Get()
           .InMilliseconds(),
-      /*product_specific_bits_data=*/{},
-      GetSurveyStringData(trigger, profile, access_point_for_data_type_promo));
+      /*product_specific_bits_data=*/{}, std::move(data_factory).Run());
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+}
+
+}  // namespace
+
+namespace signin {
+
+void LaunchHatsSurveyForProfile(const std::string& trigger,
+                                Profile* profile,
+                                bool defer_if_no_browser,
+                                std::optional<signin_metrics::AccessPoint>
+                                    access_point_for_data_type_promo) {
+  LaunchHatsSurveyForProfileInternal(
+      trigger, profile, defer_if_no_browser,
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+      base::BindOnce(&GetSurveyStringData, trigger, profile,
+                     access_point_for_data_type_promo)
+#else
+      base::BindOnce([]() { return SurveyStringData(); })
+#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+  );
+}
+
+void LaunchHatsSurveyForProfile(const std::string& trigger,
+                                Profile* profile,
+                                bool defer_if_no_browser,
+                                SurveyStringData data) {
+  LaunchHatsSurveyForProfileInternal(
+      trigger, profile, defer_if_no_browser,
+      base::BindOnce([](SurveyStringData data) { return data; },
+                     std::move(data)));
 }
 
 }  // namespace signin

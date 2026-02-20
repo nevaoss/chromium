@@ -1096,6 +1096,7 @@ int SqlBackendImpl::WriteEntryData(
     scoped_refptr<net::IOBuffer> buffer,
     int buf_len,
     bool truncate,
+    bool copy_buffer_for_optimistic_write,
     CompletionOnceCallback callback) {
   if (res_id_or_error->data.has_value() &&
       std::holds_alternative<SqlPersistentStore::Error>(
@@ -1114,7 +1115,7 @@ int SqlBackendImpl::WriteEntryData(
                             can_execute_optimistic_write);
   if (can_execute_optimistic_write) {
     optimistic_write_buffer_total_size_ += buf_len;
-    if (buffer) {
+    if (buffer && copy_buffer_for_optimistic_write) {
       // Note: `buffer` can be nullptr.
       buffer = base::MakeRefCounted<net::VectorIOBuffer>(
           buffer->first(static_cast<size_t>(buf_len)));
@@ -1271,25 +1272,26 @@ int SqlBackendImpl::ReadEntryData(
     int buf_len,
     int64_t body_end,
     bool sparse_reading,
-    CompletionOnceCallback callback) {
-  auto sync_result_receiver =
-      base::MakeRefCounted<SyncResultReceiver<int>>(std::move(callback));
+    SqlPersistentStore::ReadResultOrErrorCallback callback) {
+  auto sync_result_receiver = base::MakeRefCounted<
+      SyncResultReceiver<SqlPersistentStore::ReadResultOrError>>(
+      std::move(callback));
   exclusive_operation_coordinator_.PostOrRunNormalOperation(
       key,
       base::BindOnce(
           &SqlBackendImpl::HandleReadEntryDataOperation,
           weak_factory_.GetWeakPtr(), key, res_id_or_error, offset,
           std::move(buffer), buf_len, body_end, sparse_reading,
-          base::BindOnce(
-              [](CompletionOnceCallback callback,
-                 SqlPersistentStore::IntOrError result) {
-                std::move(callback).Run(result.value_or(net::ERR_FAILED));
-              },
-              WrapCallbackWithAbortError<int>(
-                  sync_result_receiver->GetCallback(), net::ERR_ABORTED))));
+          WrapCallbackWithAbortError<SqlPersistentStore::ReadResultOrError>(
+              sync_result_receiver->GetCallback(),
+              base::unexpected(SqlPersistentStore::Error::kAborted))));
 
   auto sync_result = sync_result_receiver->FinishSyncCall();
-  return sync_result ? std::move(*sync_result) : net::ERR_IO_PENDING;
+  if (sync_result) {
+    return sync_result->has_value() ? (*sync_result)->read_bytes
+                                    : net::ERR_FAILED;
+  }
+  return net::ERR_IO_PENDING;
 }
 
 void SqlBackendImpl::HandleReadEntryDataOperation(
@@ -1300,7 +1302,7 @@ void SqlBackendImpl::HandleReadEntryDataOperation(
     int buf_len,
     int64_t body_end,
     bool sparse_reading,
-    SqlPersistentStore::IntOrErrorCallback callback,
+    SqlPersistentStore::ReadResultOrErrorCallback callback,
     std::unique_ptr<ExclusiveOperationCoordinator::OperationHandle> handle) {
   const auto optional_res_id = GetResId(res_id_or_error);
   if (!optional_res_id) {
@@ -1308,7 +1310,7 @@ void SqlBackendImpl::HandleReadEntryDataOperation(
     // creation or optimistic write.
     const auto optional_error = GetError(res_id_or_error);
     CHECK(optional_error.has_value());
-    std::move(callback).Run(net::ERR_FAILED);
+    std::move(callback).Run(base::unexpected(*optional_error));
     return;
   }
   store_->ReadEntryData(
@@ -1491,6 +1493,11 @@ void SqlBackendImpl::HandleTriggerEvictionOperation(
 
 void SqlBackendImpl::EnableStrictCorruptionCheckForTesting() {
   store_->EnableStrictCorruptionCheckForTesting();  // IN-TEST
+}
+
+void SqlBackendImpl::ReportWriteBufferChange(int delta) {
+  write_buffer_total_size_ += delta;
+  CHECK_GE(write_buffer_total_size_, 0);
 }
 
 SqlBackendImpl::InFlightEntryModification::InFlightEntryModification(

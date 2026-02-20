@@ -267,10 +267,13 @@ export class ActionChipsElement extends CrLitElement {
   }
 
   protected getChipSubtitle_(chip: ActionChip): string {
-    const prefix = this.showDashSimplifiedUI_(chip) ? ' - ' : '';
-    const subtitle = (this.isDeepDiveChip_(chip) && chip.subtitle === '') ?
-        chip.title :
+    const subtitle = (this.showSimplifiedUI_ &&
+                      (chip.type === ChipType.kImage ||
+                       chip.type === ChipType.kDeepSearch) &&
+                      chip.suggestion) ?
+        chip.suggestion :
         chip.subtitle;
+    const prefix = (subtitle && this.showDashSimplifiedUI_(chip)) ? ' - ' : '';
     return `${prefix}${subtitle}`;
   }
 

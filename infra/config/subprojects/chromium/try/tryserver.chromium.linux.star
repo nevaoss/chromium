@@ -1033,6 +1033,15 @@ try_.builder(
     ),
 )
 
+try_.builder(
+    name = "linux-treesinviz-disabled-rel",
+    mirrors = [
+        "ci/linux-treesinviz-disabled-rel",
+    ],
+    gn_args = "ci/linux-treesinviz-disabled-rel",
+    contact_team_email = "chrome-gpu-team@google.com",
+)
+
 gpu.try_.optional_tests_builder(
     name = "linux_optional_gpu_tests_rel",
     branch_selector = branches.selector.LINUX_BRANCHES,
@@ -1179,7 +1188,7 @@ try_.builder(
     contact_team_email = "chops-security-core@google.com",
     tryjob = try_.job(
         location_filters = [
-            "regex:.*/README\\.chromium",
+            cq.location_filter(path_regexp = r".*/README\.(chromium|angle|pdfium|crashpad|skia|swarming|v8|webrtc|google|libaom)"),
         ],
     ),
 )

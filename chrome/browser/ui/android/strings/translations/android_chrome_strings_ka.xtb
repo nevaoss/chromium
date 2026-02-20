@@ -41,6 +41,7 @@
 <translation id="1150263420752757504"><ph name="APP_NAME" /> გაიხსნება Chrome-ში. გაგრძელებით ეთანხმებით <ph name="BEGIN_LINK1" />Google-ის მომსახურების პირობებს<ph name="END_LINK1" />, ასევე, <ph name="BEGIN_LINK2" />Google Chrome-ისა და ChromeOS-ის მომსახურების დამატებით პირობებს<ph name="END_LINK2" />.</translation>
 <translation id="1154555449933432029">Google პაროლების მმართველში არ გაქვთ შენახული პაროლები.</translation>
 <translation id="115483310321669804">პაროლის <ph name="PASSWORD" /> გამოყენება</translation>
+<translation id="1161065531352634524">ჩანართებისა და ისტორიის სინქრონიზაცია</translation>
 <translation id="1165109137568919258">მოსაძიებლად გადაიღეთ ფოტო ან დაამატეთ სურათი თქვენი ფოტოგალერეიდან</translation>
 <translation id="1173894706177603556">სახელის შეცვლა</translation>
 <translation id="1174479719160874822">Chrome მოითხოვს მობილურ საიტს, როცა ეკრანი ვიწროა</translation>
@@ -126,6 +127,7 @@
 <translation id="147982357559798527">შეიცვალა</translation>
 <translation id="1480287803138246127">თქვენი ისტორიის ნაწილი, შესაძლოა, აქ არ გამოჩნდეს. Chrome-ის მთლიანი ისტორიის სანახავად გახსენით Chrome-ის სრული ისტორია.</translation>
 <translation id="1493287004536771723">თქვენ თვალს ადევნებთ <ph name="SITE_NAME" />-ს</translation>
+<translation id="1495677929897281669">ჩანართზე დაბრუნება</translation>
 <translation id="1496514951988037011">მომხმარებლის სახელი</translation>
 <translation id="1501480321619201731">ჯგუფის წაშლა</translation>
 <translation id="1506061864768559482">საძიებო სისტემა</translation>
@@ -155,6 +157,7 @@
 <translation id="164269334534774161">თქვენ ამ გვერდის ხაზგარეშე ასლს ნახულობთ, რომლის შექმნის თარიღია: <ph name="CREATION_TIME" /></translation>
 <translation id="1644574205037202324">ისტორია</translation>
 <translation id="1645262572857218659"><ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" />-ით შესვლა</translation>
+<translation id="1650979352027263879">თქვენი იერსახის პარამეტრები ამოიშალა</translation>
 <translation id="1671236975893690980">ჩამოტვირთვა მოლოდინის რეჟიმშია…</translation>
 <translation id="1672586136351118594">აღარ გამოჩნდეს</translation>
 <translation id="1680919990519905526">ყიდვა Google Lens-ით <ph name="BEGIN_NEW" />სიახლე<ph name="END_NEW" /></translation>
@@ -423,6 +426,7 @@
 <translation id="2854916915045135148">ხანგრძლივად შეეხეთ ინკოგნიტო რეჟიმზე გადასართველად</translation>
 <translation id="2860954141821109167">დარწმუნდით, რომ ამ მოწყობილობაზე ჩართულია ტელეფონის აპი</translation>
 <translation id="2861923151411510142">Chrome-ის ზოგიერთი ფუნქცია აღარ იქნება ხელმისაწვდომი</translation>
+<translation id="286473047976978798">გამოიყენებთ თქვენი იერსახის პარამეტრებს?</translation>
 <translation id="2869416538780777323">{OTHER_TAB_COUNT,plural, =1{<ph name="URL" /> და 1 სხვა ჩანართი}other{<ph name="URL" /> და <ph name="TAB_COUNT_MANY" /> სხვა ჩანართი}}</translation>
 <translation id="2869430948265924908">ამ მანქანაში თქვენი სენსიტიური კონტენტი რომ დაიცვათ, მანქანის პროფილის ჩაკეტვის მეთოდი უნდა შექმნათ.  აღნიშნული შეგიძლიათ PIN-კოდის, კოდის ან პაროლის საშუალებით.</translation>
 <translation id="2870560284913253234">საიტი</translation>
@@ -981,6 +985,7 @@
 <translation id="5210286577605176222">წინა ჩანართზე გადასვლა</translation>
 <translation id="5210365745912300556">ჩანართის დახურვა</translation>
 <translation id="5212800876504289412">გადატვირთეთ Chrome, რომ დაასრულოთ ეს ცვლილება. გადატვირთვისას ჩანართები ავტომატურად იხსნება.</translation>
+<translation id="5213114823401215820">დახურული ჯგუფის ხელახლა გახსნა</translation>
 <translation id="5215957675041756913">თქვენი მონაცემებისა და ანგარიშის მართვა</translation>
 <translation id="5218324087477576825">ბარათის ნომერი (სავალდებულოა)</translation>
 <translation id="5221437554987713282"><ph name="PERMISSION_1" />, <ph name="PERMISSION_2" /> და კიდევ <ph name="SEPARATOR" /> Chrome-მა ამოშალა ეს ნებართვები, რადგან თქვენ ბოლო დროს ეს საიტი არ მოგინახულებიათ</translation>
@@ -1369,6 +1374,7 @@
 <translation id="6811034713472274749">გვერდი მზად არის სანახავად</translation>
 <translation id="6813359536773993594">{FILE_COUNT,plural, =1{სურათები, სიაშია 1 სურათი}other{სურათები, სიაშია # სურათი}}</translation>
 <translation id="6813446258015311409">Chrome-ში შესვლა, გახსნილია.</translation>
+<translation id="6815692190508268848">გამოყენებულია თქვენი იერსახის პარამეტრები</translation>
 <translation id="6817747507826986771">სწრაფად გააზიარეთ ეს გვერდი. ამ მალსახმობის რედაქტირებისთვის შეეხეთ ხანგრძლივად.</translation>
 <translation id="6820686453637990663">CVC</translation>
 <translation id="6820942662346226299">Google პაროლების მმართველის განახლება დაიხურა</translation>
@@ -1436,6 +1442,7 @@
 <translation id="7020741890149022655">საკითხავ სიაში დამატება <ph name="BEGIN_NEW" />სიახლე<ph name="END_NEW" /></translation>
 <translation id="7022756207310403729">ბრაუზერში გახსნა</translation>
 <translation id="7029809446516969842">პაროლები</translation>
+<translation id="7037994709569287156">Chrome-ის ნაგულისხმევად დაყენება</translation>
 <translation id="7053256416619638731">გააძლიერეთ თქვენი პაროლები ამ მოწყობილობაში</translation>
 <translation id="7053983685419859001">დაბლოკვა</translation>
 <translation id="7054588988317389591">გსურთ სურათების აღწერილობების მიღება?</translation>
@@ -1568,6 +1575,7 @@
 <translation id="7523960634226602883">მოიძიეთ კონტენტი თქვენი კამერით, Google Lens-ის მეშვეობით</translation>
 <translation id="7525248386620136756"><ph name="TAB_GROUPS_AND_TABS_PART" /> დახურული და შენახულია</translation>
 <translation id="7545347190366646170">ხალხი წვდომით</translation>
+<translation id="7553482318994371148">დახურული ჩანართების ხელახლა გახსნა</translation>
 <translation id="7554643625247105821">Chrome-ის ვერსიის შემოწმება შეუძლებელია</translation>
 <translation id="7557508262441527045">გამოსული</translation>
 <translation id="7573665567024262965">აირჩიეთ ნაგულისხმევი აპები</translation>
@@ -1801,6 +1809,7 @@
 <translation id="8458413889418591446">მონახულებულ საიტებს სწრაფად რომ დაუბრუნდეთ, დაასინქრონეთ ისტორია და ჩანართები</translation>
 <translation id="84594714173170813">გააგრძელეთ Chrome-ის მონაცემების გამოყენება თქვენს Google ანგარიშში</translation>
 <translation id="8460448946170646641">გადახედეთ კონფიდენციალურობისა და უსაფრთხოების მართვის საკვანძო საშუალებებს</translation>
+<translation id="8460932807646981183">საძიებო სისტემებისა და Site Search-ის მართვა</translation>
 <translation id="8473863474539038330">მისამართები და სხვა</translation>
 <translation id="847433688444405067">დაათვალიერეთ ყველა მოწყობილობაზე</translation>
 <translation id="8477178913400731244">მონაცემების წაშლა</translation>
@@ -1887,6 +1896,7 @@
 <translation id="8856931513242997049">შეტყობინების ნებართვის ნაკადი დახურულია</translation>
 <translation id="8863714995118816041">ნებართვების ხელახლა დაიშვა <ph name="SITE_NAME" />-ისთვის</translation>
 <translation id="8865415417596392024">თქვენს ანგარიშში შენახული Chrome მონაცემები</translation>
+<translation id="8872506776304248286">აპში გახსნა</translation>
 <translation id="8890668505403261809">მოიძიეთ ინკოგნიტო ჩანართებში</translation>
 <translation id="8894890673032951011"><ph name="TAB_TITLE" />, არჩეულია ინკოგნიტო ჩანართი, რომელშიც მიმდინარეობს ჩაწერა</translation>
 <translation id="8898822736010347272">Google-ს გაუგზავნის თქვენ მიერ მონახულებული ზოგიერთი გვერდის URL-ებს, სისტემის შეზღუდულ ინფორმაციასა და გვერდების გარკვეულ კონტენტს ვების ყველა მომხმარებლისთვის ახალი საფრთხეების აღმოსაჩენად და დასაბლოკად.</translation>

@@ -55,6 +55,7 @@ import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.incognito.IncognitoUtils;
 import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
+import org.chromium.chrome.browser.multiwindow.MultiInstanceManager.CloseWindowAppSource;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceState.MultiInstanceStateObserver;
 import org.chromium.chrome.browser.multiwindow.UiUtils.NameWindowDialogSource;
 import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
@@ -246,6 +247,96 @@ class MultiInstanceManagerApi31 extends MultiInstanceManagerImpl
     }
 
     @Override
+    public void moveTabsToWindow(
+            int destWindowId,
+            List<Tab> tabs,
+            int destTabIndex,
+            int destGroupTabId,
+            @NewWindowAppSource int source) {
+        if (tabs.isEmpty()) return;
+
+        // Move tabs to a new window if a valid |destWindowId| is not specified.
+        if (destWindowId == INVALID_WINDOW_ID) {
+            assert destTabIndex == TabList.INVALID_TAB_INDEX
+                            && destGroupTabId == TabList.INVALID_TAB_INDEX
+                    : "Unexpected destTabIndex and destGroupTabId detected with request to move"
+                            + " tabs to a new window.";
+            moveTabsToNewWindow(tabs, source);
+            return;
+        }
+
+        // If |destGroupTabId| is valid, move tabs to the tab group containing this tab in the
+        // destination window. Avoid creating a new window if the destination window is not found.
+        if (destGroupTabId != TabList.INVALID_TAB_INDEX) {
+            assert destTabIndex == TabList.INVALID_TAB_INDEX
+                    : "Unexpected destTabIndex detected with request to move tabs to a tab group in"
+                            + " the destination window.";
+            moveTabsToWindowAndMergeToDest(destWindowId, tabs, destGroupTabId);
+            return;
+        }
+
+        // Move tabs to the specified window. If a destination window for the specified
+        // |destWindowId| is not found, create a new window to move the tabs to.
+        moveTabsToWindow(destWindowId, tabs, destTabIndex, source);
+    }
+
+    private void moveTabsToNewWindow(List<Tab> tabs, @NewWindowAppSource int source) {
+        boolean openAdjacently =
+                !mActivity.isInMultiWindowMode() && MultiWindowUtils.shouldOpenInAdjacentWindow();
+        moveToNewWindowIfPossible(
+                () ->
+                        moveAndReparentTabsToNewWindow(
+                                tabs,
+                                INVALID_WINDOW_ID,
+                                /* preferNew= */ true,
+                                openAdjacently,
+                                /* addTrustedIntentExtras= */ true,
+                                source),
+                source);
+    }
+
+    private void moveTabsToWindowAndMergeToDest(
+            int destWindowId, List<Tab> tabs, int destGroupTabId) {
+        Activity targetActivity = getActivityById(destWindowId);
+        if (BuildConfig.ENABLE_ASSERTS) {
+            for (Tab tab : tabs) {
+                assert tab.getTabGroupId() == null : "Tab should not be part of a group.";
+            }
+        }
+        if (targetActivity != null) {
+            reparentTabsToRunningActivityAndMergeToDest(
+                    (ChromeTabbedActivity) targetActivity, tabs, destGroupTabId);
+        } else {
+            assert false : "Target activity is null";
+        }
+    }
+
+    private void moveTabsToWindow(
+            int destWindowId, List<Tab> tabs, int destTabIndex, @NewWindowAppSource int source) {
+        Activity targetActivity = getActivityById(destWindowId);
+        if (targetActivity != null) {
+            reparentTabsToRunningActivity(
+                    (ChromeTabbedActivity) targetActivity, tabs, destTabIndex);
+        } else {
+            TabModelSelector selector =
+                    TabWindowManagerSingleton.getInstance()
+                            .getTabModelSelectorById(getCurrentInstanceId());
+            // If the source Chrome instance still has tabs (including incognito), allow
+            // launching the new window adjacently. Otherwise, skip
+            // FLAG_ACTIVITY_LAUNCH_ADJACENT to avoid a black screen caused by the source
+            // window closing before the new one launches.
+            boolean openAdjacently = assumeNonNull(selector).getTotalTabCount() > 1;
+            moveAndReparentTabsToNewWindow(
+                    tabs,
+                    destWindowId,
+                    /* preferNew= */ false,
+                    openAdjacently,
+                    /* addTrustedIntentExtras= */ true,
+                    source);
+        }
+    }
+
+    @Override
     public void moveTabsToOtherWindow(List<Tab> tabs, @NewWindowAppSource int source) {
         // Check the number of instances that the tab/s is able to move into.
         int instanceCount =
@@ -395,42 +486,7 @@ class MultiInstanceManagerApi31 extends MultiInstanceManagerImpl
     @Override
     public void moveTabsToWindow(
             InstanceInfo info, List<Tab> tabs, int tabAtIndex, @NewWindowAppSource int source) {
-        Activity targetActivity = getActivityById(info.instanceId);
-        if (targetActivity != null) {
-            reparentTabsToRunningActivity((ChromeTabbedActivity) targetActivity, tabs, tabAtIndex);
-        } else {
-            TabModelSelector selector =
-                    TabWindowManagerSingleton.getInstance()
-                            .getTabModelSelectorById(getCurrentInstanceId());
-            // If the source Chrome instance still has tabs (including incognito), allow
-            // launching the new window adjacently. Otherwise, skip
-            // FLAG_ACTIVITY_LAUNCH_ADJACENT to avoid a black screen caused by the source
-            // window closing before the new one launches.
-            boolean openAdjacently = assumeNonNull(selector).getTotalTabCount() > 1;
-            moveAndReparentTabsToNewWindow(
-                    tabs,
-                    info.instanceId,
-                    /* preferNew= */ false,
-                    openAdjacently,
-                    /* addTrustedIntentExtras= */ true,
-                    source);
-        }
-    }
-
-    @Override
-    public void moveTabsToWindowAndMergeToDest(InstanceInfo info, List<Tab> tabs, int destTabId) {
-        Activity targetActivity = getActivityById(info.instanceId);
-        if (BuildConfig.ENABLE_ASSERTS) {
-            for (Tab tab : tabs) {
-                assert tab.getTabGroupId() == null : "Tab should not be part of a group.";
-            }
-        }
-        if (targetActivity != null) {
-            reparentTabsToRunningActivityAndMergeToDest(
-                    (ChromeTabbedActivity) targetActivity, tabs, destTabId);
-        } else {
-            assert false : "Target activity is null";
-        }
+        moveTabsToWindow(info.instanceId, tabs, tabAtIndex, source);
     }
 
     @Override
@@ -655,7 +711,6 @@ class MultiInstanceManagerApi31 extends MultiInstanceManagerImpl
         removeInvalidInstanceData();
         List<InstanceInfo> result = new ArrayList<>();
         SparseBooleanArray visibleTasks = MultiWindowUtils.getVisibleTasks();
-        int currentItemPos = -1;
         for (int i : getPersistedInstanceIds(persistedInstanceType)) {
             @InstanceInfo.Type int type = InstanceInfo.Type.OTHER;
             Activity a = getActivityById(i);
@@ -675,7 +730,6 @@ class MultiInstanceManagerApi31 extends MultiInstanceManagerImpl
                 assert persistedTaskId == activityTaskId : error;
                 if (a == mActivity) {
                     type = InstanceInfo.Type.CURRENT;
-                    currentItemPos = result.size();
                 } else if (isRunningInAdjacentWindow(visibleTasks, a)) {
                     type = InstanceInfo.Type.ADJACENT;
                 }
@@ -706,26 +760,8 @@ class MultiInstanceManagerApi31 extends MultiInstanceManagerImpl
                             MultiInstancePersistentStore.readIncognitoTabCount(i),
                             MultiInstancePersistentStore.readIncognitoSelected(i),
                             lastAccessedTime,
+                            MultiInstancePersistentStore.readClosureTime(i),
                             MultiInstancePersistentStore.readMarkedForDeletion(i)));
-        }
-
-        // Sort instances by recency of last access, for reasonable display on relevant UI surfaces.
-        // It is possible that |currentItemPos| is invalid if this method is invoked early
-        // during app startup or when the current activity is being / already destroyed. A non-null
-        // current instance will be added at the first position after sorting the other instances by
-        // recency of last access; this is to ensure that the current instance is always the first
-        // in the list because order of persistence of lastAccessedTime for activities
-        // simultaneously undergoing an activity lifecycle change is not guaranteed to be
-        // consistent. Such sorting is particularly important only for display on the UI, and
-        // arbitrary ordering of other instances with similar last access times (controlled mostly
-        // by activity lifecycle management by the OS) is assumed to be acceptable for other cases.
-        InstanceInfo currentInstance = null;
-        if (currentItemPos > 0 && currentItemPos < result.size()) {
-            currentInstance = result.remove(currentItemPos);
-        }
-        result.sort((info1, info2) -> Long.compare(info2.lastAccessedTime, info1.lastAccessedTime));
-        if (currentInstance != null) {
-            result.add(0, currentInstance);
         }
         return result;
     }
@@ -999,6 +1035,8 @@ class MultiInstanceManagerApi31 extends MultiInstanceManagerImpl
         mInstanceId = instanceId;
         MultiInstancePersistentStore.writeTaskId(instanceId, taskId);
         MultiInstancePersistentStore.writeProfileType(instanceId, profileType);
+        MultiInstancePersistentStore.writeMarkedForDeletion(
+                instanceId, /* markedForDeletion= */ false);
         installTabModelObserver();
         recordInstanceCountHistogram();
         recordActivityCountHistogram();
@@ -1387,7 +1425,7 @@ class MultiInstanceManagerApi31 extends MultiInstanceManagerImpl
     @Override
     public void closeWindows(List<Integer> instanceIds, @CloseWindowAppSource int source) {
         for (int instanceId : instanceIds) {
-            boolean shouldPermanentlyDelete = !isUserInitiatedClosure(source);
+            boolean shouldPermanentlyDelete = shouldPermanentlyDeleteWindow(source, instanceId);
             if (shouldPermanentlyDelete) {
                 removeInstanceInfo(instanceId, source);
                 TabModelSelector selector =
@@ -1416,7 +1454,7 @@ class MultiInstanceManagerApi31 extends MultiInstanceManagerImpl
             } else {
                 MultiInstancePersistentStore.writeMarkedForDeletion(
                         instanceId, /* markedForDeletion= */ true);
-                MultiInstancePersistentStore.writeLastAccessedTime(instanceId);
+                MultiInstancePersistentStore.writeClosureTime(instanceId);
                 MultiInstancePersistentStore.removeTaskId(instanceId);
             }
             Activity activity = getActivityById(instanceId);
@@ -1463,6 +1501,7 @@ class MultiInstanceManagerApi31 extends MultiInstanceManagerImpl
                         MultiInstancePersistentStore.readIncognitoTabCount(instanceId),
                         MultiInstancePersistentStore.readIncognitoSelected(instanceId),
                         MultiInstancePersistentStore.readLastAccessedTime(instanceId),
+                        MultiInstancePersistentStore.readClosureTime(instanceId),
                         !isPermanentDeletion);
 
         RecentlyClosedEntriesManagerTrackerFactory.getInstance()
@@ -1470,19 +1509,24 @@ class MultiInstanceManagerApi31 extends MultiInstanceManagerImpl
     }
 
     /**
-     * Returns whether a window closure is initiated by the user, it usually means that the instance
-     * closure is a "soft closure" and should be preserved for later restoration via surfaces (like
-     * Recent Tabs) or keyboard shortcuts.
+     * Returns whether a window should be permanently deleted. If the closure is initiated by the
+     * user, it usually means that the instance closure is a "soft closure" and should be preserved
+     * for later restoration via surfaces (like Recent Tabs) or keyboard shortcuts. Instances with
+     * zero normal tab counts(e.g. incognito windows) should never be preserved for restoration.
      *
      * <p>A soft closure means the window's {@link InstanceInfo} and {@link TabModel} data are
      * persisted, even though the {@link Activity} and Android task will be removed via {@link
      * Activity#finishAndRemoveTask()}.
      *
      * @param source The window closure source, from {@link CloseWindowAppSource}.
+     * @param instanceId The ID of the instance being acted on.
      */
-    private boolean isUserInitiatedClosure(@CloseWindowAppSource int source) {
-        return source == CloseWindowAppSource.WINDOW_MANAGER
-                && UiUtils.isRecentlyClosedTabsAndWindowsEnabled();
+    private boolean shouldPermanentlyDeleteWindow(
+            @CloseWindowAppSource int source, int instanceId) {
+        if (!UiUtils.isRecentlyClosedTabsAndWindowsEnabled()) return true;
+
+        return MultiInstancePersistentStore.readNormalTabCount(instanceId) == 0
+                || source != CloseWindowAppSource.WINDOW_MANAGER;
     }
 
     @VisibleForTesting
@@ -1565,16 +1609,29 @@ class MultiInstanceManagerApi31 extends MultiInstanceManagerImpl
         if (mTabModelObserver != null) mTabModelObserver.destroy();
         // This handles a case where an instance is deleted within Chrome but not through
         // Window manager UI, and the task is removed by system. See https://crbug.com/1241719.
-        // A point of activity destruction should be recorded as last access of the instance for a
-        // more accurate ordering of inactive instances displayed on surfaces like the instance
-        // switcher dialog and Recent Tabs.
         removeInvalidInstanceData();
 
-        MultiInstancePersistentStore.writeLastAccessedTime(mInstanceId);
+        // Activity#isFinishing() is true in case of explicit user intent, for eg. task swipe up
+        // from Android Recents or app trigger, for eg. programmatically invoking #finish() on the
+        // activity. When the activity gets destroyed by the system in the background while keeping
+        // its task alive, we don't want such closure to be reflected on Recent Tabs because an
+        // instance with a live task is still considered active. Therefore, we will notify Recent
+        // Tabs of activity destruction only if the activity is finishing, with the caveat that a
+        // subsequent task kill will also not be reflected as an instance closure until the Recent
+        // Tabs page is reopened.
+        if (UiUtils.isRecentlyClosedTabsAndWindowsEnabled()) {
+            int normalTabCount = MultiInstancePersistentStore.readNormalTabCount(mInstanceId);
+            boolean isPermanentDeletion = normalTabCount == 0;
 
-        // Notify Recent Tabs page that the instance is closing.
-        int normalTabCount = MultiInstancePersistentStore.readNormalTabCount(mInstanceId);
-        notifyInstanceClosed(mInstanceId, /* isPermanentDeletion= */ normalTabCount == 0);
+            if (!isPermanentDeletion) {
+                MultiInstancePersistentStore.writeClosureTime(mInstanceId);
+            }
+
+            if (mActivity.isFinishing()) {
+                // Notify Recent Tabs page that the instance is closing.
+                notifyInstanceClosed(mInstanceId, isPermanentDeletion);
+            }
+        }
 
         if (mInstanceId != INVALID_WINDOW_ID) {
             ApplicationStatus.unregisterActivityStateListener(this);
@@ -1605,18 +1662,19 @@ class MultiInstanceManagerApi31 extends MultiInstanceManagerImpl
     @Override
     public void onTopResumedActivityChanged(boolean isTopResumedActivity) {
         super.onTopResumedActivityChanged(isTopResumedActivity);
-        MultiInstancePersistentStore.writeLastAccessedTime(mInstanceId);
+        if (isTopResumedActivity) {
+            MultiInstancePersistentStore.writeLastAccessedTime(mInstanceId);
+        }
     }
 
     @Override
     public void onStopWithNative() {
         super.onStopWithNative();
-        // We persist last accessed time when the activity is stopped as a fallback for when
-        // #onDestroy() is not called for a finishing activity. Ideally, point of activity
-        // destruction needs to be recorded as an additional case of last access of the instance so
-        // that surfaces like Recent Tabs and the instance switcher dialog can display a more
-        // accurate list of inactive instances sorted by their last accessed time.
-        MultiInstancePersistentStore.writeLastAccessedTime(mInstanceId);
+        // We persist last closed time when the activity is stopped as a fallback for when
+        // #onDestroy() is not called for a finishing activity.
+        if (UiUtils.isRecentlyClosedTabsAndWindowsEnabled()) {
+            MultiInstancePersistentStore.writeClosureTime(mInstanceId);
+        }
     }
 
     @Override
@@ -1626,11 +1684,14 @@ class MultiInstanceManagerApi31 extends MultiInstanceManagerImpl
         if (newState != ActivityState.RESUMED && newState != ActivityState.STOPPED) return;
 
         int windowingMode =
-                AppHeaderUtils.getWindowingMode(
-                        mActivity,
+                MultiWindowMetricsUtils.getWindowingMode(
+                        activity,
                         AppHeaderUtils.isAppInDesktopWindow(
                                 mDesktopWindowStateManagerSupplier.get()));
-        AppHeaderUtils.recordWindowingMode(windowingMode, newState == ActivityState.RESUMED);
+        MultiWindowMetricsUtils.recordWindowingMode(
+                windowingMode,
+                TabWindowManagerSingleton.getInstance().getIdForWindow(activity),
+                newState == ActivityState.RESUMED);
 
         SharedPreferencesManager prefs = ChromeSharedPreferences.getInstance();
         // Check the max instance count in a day for every state update if needed.
@@ -1709,22 +1770,6 @@ class MultiInstanceManagerApi31 extends MultiInstanceManagerImpl
                     "Android.MultiInstance.TotalDuration", current - startTime);
             prefs.writeLong(ChromePreferenceKeys.MULTI_INSTANCE_START_TIME, 0);
         }
-    }
-
-    @Override
-    public void moveTabsToNewWindow(List<Tab> tabs, @NewWindowAppSource int source) {
-        boolean openAdjacently =
-                !mActivity.isInMultiWindowMode() && MultiWindowUtils.shouldOpenInAdjacentWindow();
-        moveToNewWindowIfPossible(
-                () ->
-                        moveAndReparentTabsToNewWindow(
-                                tabs,
-                                INVALID_WINDOW_ID,
-                                /* preferNew= */ true,
-                                openAdjacently,
-                                /* addTrustedIntentExtras= */ true,
-                                source),
-                source);
     }
 
     @Override

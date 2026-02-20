@@ -8,21 +8,21 @@
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
 #include "base/memory/raw_ptr.h"
+#include "base/memory/weak_ptr.h"
 #include "base/no_destructor.h"
 #include "base/path_service.h"
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
 #include "build/build_config.h"
-#include "chrome/browser/browser_process.h"
-#include "chrome/browser/component_updater/translate_kit_component_installer.h"
-#include "chrome/browser/component_updater/translate_kit_language_pack_component_installer.h"
 #include "components/component_updater/component_updater_paths.h"
 #include "components/component_updater/component_updater_service.h"
 #include "components/on_device_translation/features.h"
+#include "components/on_device_translation/installer.h"
 #include "components/on_device_translation/public/language_pack.h"
 #include "components/on_device_translation/public/mojom/on_device_translation_service.mojom.h"
 #include "components/on_device_translation/public/paths.h"
 #include "components/on_device_translation/public/pref_names.h"
+#include "components/prefs/pref_service.h"
 
 #if BUILDFLAG(IS_WIN)
 #include "base/strings/utf_string_conversions.h"
@@ -33,19 +33,6 @@ namespace {
 
 const char kTranslateKitPackagePaths[] = "translate-kit-packages";
 
-base::FilePath GetFilePathFromGlobalPrefs(std::string_view pref_name) {
-  PrefService* global_prefs = g_browser_process->local_state();
-  CHECK(global_prefs);
-  base::FilePath path_in_pref = global_prefs->GetFilePath(pref_name);
-  return path_in_pref;
-}
-
-bool GetBooleanFromGlobalPrefs(std::string_view pref_name) {
-  PrefService* global_prefs = g_browser_process->local_state();
-  CHECK(global_prefs);
-  return global_prefs->GetBoolean(pref_name);
-}
-
 // The implementation of ComponentManager.
 class ComponentManagerImpl : public ComponentManager {
  public:
@@ -53,39 +40,26 @@ class ComponentManagerImpl : public ComponentManager {
   ComponentManagerImpl& operator=(const ComponentManagerImpl&) = delete;
 
   void RegisterTranslateKitComponentImpl() override {
-    // Registers the TranslateKit component.
-    component_updater::RegisterTranslateKitComponent(
-        g_browser_process->component_updater(),
-        g_browser_process->local_state(),
-        /*force_install=*/true,
-        /*registered_callback=*/
-        base::BindOnce(
-            &component_updater::TranslateKitComponentInstallerPolicy::
-                UpdateComponentOnDemand,
-            base::Unretained(g_browser_process->component_updater())),
-        base::DoNothing());
+    OnDeviceTranslationInstaller::GetInstance()->Init(base::DoNothing());
   }
 
   void RegisterTranslateKitLanguagePackComponent(
       LanguagePackKey language_pack) override {
-    // Registers the TranslateKit language pack component.
-    component_updater::RegisterTranslateKitLanguagePackComponent(
-        g_browser_process->component_updater(),
-        g_browser_process->local_state(), language_pack,
-        base::BindOnce(&component_updater::
-                           TranslateKitLanguagePackComponentInstallerPolicy::
-                               UpdateComponentOnDemand,
-                       base::Unretained(g_browser_process->component_updater()),
-                       language_pack),
-        base::RepeatingClosure());
+    if (!OnDeviceTranslationInstaller::GetInstance()->IsInit()) {
+      OnDeviceTranslationInstaller::GetInstance()->Init(base::BindRepeating(
+          &ComponentManagerImpl::RegisterTranslateKitLanguagePackComponent,
+          weak_ptr_factory_.GetWeakPtr(), language_pack));
+      return;
+    }
+    OnDeviceTranslationInstaller::GetInstance()->InstallLanguagePack(
+        language_pack);
   }
 
   void UninstallTranslateKitLanguagePackComponent(
       LanguagePackKey language_pack) override {
     // Uninstalls the TranslateKit language pack component.
-    component_updater::UninstallTranslateKitLanguagePackComponent(
-        g_browser_process->component_updater(),
-        g_browser_process->local_state(), language_pack);
+    OnDeviceTranslationInstaller::GetInstance()->UnInstallLanguagePack(
+        language_pack);
   }
 
   base::FilePath GetTranslateKitComponentPathImpl() override {
@@ -101,6 +75,7 @@ class ComponentManagerImpl : public ComponentManager {
   friend base::NoDestructor<ComponentManagerImpl>;
   ComponentManagerImpl() = default;
   ~ComponentManagerImpl() override = default;
+  base::WeakPtrFactory<ComponentManagerImpl> weak_ptr_factory_{this};
 };
 
 }  // namespace
@@ -143,34 +118,12 @@ bool ComponentManager::RegisterTranslateKitComponent() {
 
 // static
 std::set<LanguagePackKey> ComponentManager::GetRegisteredLanguagePacks() {
-  std::set<LanguagePackKey> registered_pack_keys;
-  for (const auto& it : kLanguagePackComponentConfigMap) {
-    if (GetBooleanFromGlobalPrefs(GetRegisteredFlagPrefName(*it.second))) {
-      registered_pack_keys.insert(it.first);
-    }
-  }
-  return registered_pack_keys;
+  return OnDeviceTranslationInstaller::GetInstance()->RegisteredLanguagePacks();
 }
 
 // static
 std::set<LanguagePackKey> ComponentManager::GetInstalledLanguagePacks() {
-  std::set<LanguagePackKey> installed_pack_keys;
-  for (const auto& it : kLanguagePackComponentConfigMap) {
-    if (!GetFilePathFromGlobalPrefs(GetComponentPathPrefName(*it.second))
-             .empty()) {
-      installed_pack_keys.insert(it.first);
-    }
-  }
-  return installed_pack_keys;
-}
-
-// static
-base::FilePath ComponentManager::GetTranslateKitLibraryPath() {
-  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
-  if (command_line->HasSwitch(kTranslateKitBinaryPath)) {
-    return command_line->GetSwitchValuePath(kTranslateKitBinaryPath);
-  }
-  return GetFilePathFromGlobalPrefs(prefs::kTranslateKitBinaryPath);
+  return OnDeviceTranslationInstaller::GetInstance()->InstalledLanguagePacks();
 }
 
 // static
@@ -204,7 +157,8 @@ void ComponentManager::GetLanguagePackInfo(
 
   for (const auto& it : kLanguagePackComponentConfigMap) {
     auto file_path =
-        GetFilePathFromGlobalPrefs(GetComponentPathPrefName(*it.second));
+        OnDeviceTranslationInstaller::GetInstance()->GetLanguagePackPath(
+            it.first);
     if (!file_path.empty()) {
       packages.push_back(mojom::OnDeviceTranslationLanguagePackage::New(
           std::string(ToLanguageCode(it.second->language1)),

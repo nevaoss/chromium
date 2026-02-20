@@ -123,7 +123,7 @@ public class StatusBarColorController
     private boolean mIsOmniboxFocused;
     private boolean mAreSuggestionsScrolled;
 
-    private @ColorInt int mScrimColor = ScrimProperties.INVALID_COLOR;
+    private @ColorInt int mScrimColor = Color.TRANSPARENT;
 
     private boolean mShouldUpdateStatusBarColorForNtp;
     private @ColorInt int mStatusIndicatorColor;
@@ -436,7 +436,7 @@ public class StatusBarColorController
      *
      * @param scrimColor The scrim color int.
      */
-    public void setScrimColor(@ColorInt int scrimColor) {
+    public void onScrimColorChanged(@ColorInt int scrimColor) {
         mScrimColor = scrimColor;
         updateStatusBarColor();
     }
@@ -486,7 +486,7 @@ public class StatusBarColorController
                 mEdgeToEdgeSystemBarColorHelper,
                 mActivity,
                 statusBarColor,
-                mForceLightIconColorForNtp && isStandardNtp());
+                mForceLightIconColorForNtp && isStandardNtp() && !mIsOmniboxFocused);
     }
 
     /**

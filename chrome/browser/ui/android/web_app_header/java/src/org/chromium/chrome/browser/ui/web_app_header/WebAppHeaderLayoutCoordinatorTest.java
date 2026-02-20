@@ -41,9 +41,9 @@ import org.robolectric.annotation.Config;
 import org.robolectric.shadows.ShadowLooper;
 
 import org.chromium.base.Callback;
-import org.chromium.base.supplier.ObservableSupplierImpl;
 import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.OneshotSupplierImpl;
+import org.chromium.base.supplier.SettableNonNullObservableSupplier;
 import org.chromium.base.supplier.SettableNullableObservableSupplier;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.Features.EnableFeatures;
@@ -118,7 +118,7 @@ public class WebAppHeaderLayoutCoordinatorTest {
     private ViewGroup mContentView;
     private ViewStub mViewStub;
     private SettableNullableObservableSupplier<Tab> mTabSupplier;
-    private ObservableSupplierImpl<Boolean> mScrimVisibilitySupplier;
+    private SettableNonNullObservableSupplier<Boolean> mScrimVisibilitySupplier;
     private AppHeaderState mAppHeaderState;
     private ShadowLooper mShadowLooper;
     private OneshotSupplierImpl<AppMenuCoordinator> mAppMenuSupplier;
@@ -130,7 +130,7 @@ public class WebAppHeaderLayoutCoordinatorTest {
         when(mIntentDataProvider.getActivityType()).thenReturn(ActivityType.WEB_APK);
         setupDisplayMode(DisplayMode.STANDALONE);
 
-        mScrimVisibilitySupplier = new ObservableSupplierImpl<>();
+        mScrimVisibilitySupplier = ObservableSuppliers.createNonNull(false);
         when(mScrimManager.getScrimVisibilitySupplier()).thenReturn(mScrimVisibilitySupplier);
 
         mTabSupplier = ObservableSuppliers.createNullable();
@@ -556,7 +556,6 @@ public class WebAppHeaderLayoutCoordinatorTest {
     }
 
     @Test
-    @EnableFeatures(ChromeFeatureList.ANDROID_WEB_APP_MENU_BUTTON)
     public void testMinUiMinimizeWindow_ControlsDoNotFit_HideControls_MenuButtonVisible() {
         when(mIntentDataProvider.getActivityType()).thenReturn(ActivityType.TRUSTED_WEB_ACTIVITY);
         setupDesktopWindowing(/* isInDesktopWindow= */ true);
@@ -582,7 +581,6 @@ public class WebAppHeaderLayoutCoordinatorTest {
     }
 
     @Test
-    @EnableFeatures(ChromeFeatureList.ANDROID_WEB_APP_MENU_BUTTON)
     public void testMinUiMaximizeWindow_ControlsFit_ShowControls_MenuButtonVisible() {
         when(mIntentDataProvider.getActivityType()).thenReturn(ActivityType.TRUSTED_WEB_ACTIVITY);
         // Emulate minimized window with added Menu button.
@@ -611,7 +609,6 @@ public class WebAppHeaderLayoutCoordinatorTest {
     }
 
     @Test
-    @EnableFeatures(ChromeFeatureList.ANDROID_WEB_APP_MENU_BUTTON)
     public void testMinUiWindow_ShowControls_MenuButtonVisible() {
         when(mIntentDataProvider.getActivityType()).thenReturn(ActivityType.TRUSTED_WEB_ACTIVITY);
         setupDesktopWindowing(/* isInDesktopWindow= */ true);

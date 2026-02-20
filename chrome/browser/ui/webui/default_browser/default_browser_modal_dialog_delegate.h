@@ -5,6 +5,7 @@
 #ifndef CHROME_BROWSER_UI_WEBUI_DEFAULT_BROWSER_DEFAULT_BROWSER_MODAL_DIALOG_DELEGATE_H_
 #define CHROME_BROWSER_UI_WEBUI_DEFAULT_BROWSER_DEFAULT_BROWSER_MODAL_DIALOG_DELEGATE_H_
 
+#include "ui/base/interaction/element_identifier.h"
 #include "ui/gfx/native_ui_types.h"
 #include "ui/web_dialogs/web_dialog_delegate.h"
 
@@ -18,11 +19,18 @@ namespace default_browser {
 // behavior.
 class DefaultBrowserModalDialog : public ui::WebDialogDelegate {
  public:
+  DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kDefaultBrowserModalDialogId);
+
   // Shows the modal dialog. This is triggered by the DefaultBrowserManager when
   // the STARTUP_MODAL entrypoint is selected.
-  static void Show(Profile* profile, gfx::NativeView parent);
+  // The modal have two variants, one with the Windows Settings illustration and
+  // the other without it. When `use_settings_illustration` is true, the modal
+  // will display the Windows Settings illustration.
+  static void Show(Profile* profile,
+                   gfx::NativeView parent,
+                   bool use_settings_illustration);
 
-  DefaultBrowserModalDialog();
+  explicit DefaultBrowserModalDialog(bool use_settings_illustration);
   ~DefaultBrowserModalDialog() override;
 
   DefaultBrowserModalDialog(const DefaultBrowserModalDialog&) = delete;

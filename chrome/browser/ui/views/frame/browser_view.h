@@ -104,6 +104,12 @@ namespace gfx {
 class AnimationRunner;
 }  // namespace gfx
 
+#if BUILDFLAG(ENABLE_GLIC)
+namespace glic {
+class GlicButton;
+}  // namespace glic
+#endif  // BUILDFLAG(ENABLE_GLIC)
+
 namespace tabs {
 class VerticalTabStripStateController;
 }  // namespace tabs
@@ -326,6 +332,10 @@ class BrowserView : public BrowserWindow,
   base::WeakPtr<BrowserView> GetAsWeakPtr() {
     return weak_ptr_factory_.GetWeakPtr();
   }
+
+#if BUILDFLAG(ENABLE_GLIC)
+  glic::GlicButton* GetGlicButton();
+#endif  // BUILDFLAG(ENABLE_GLIC)
 
   // Accessor for the BrowserView's TabSearchBubbleHost instance.
   TabSearchBubbleHost* GetTabSearchBubbleHost();
@@ -568,7 +578,6 @@ class BrowserView : public BrowserWindow,
   void SetDevToolsScrimVisibility(bool visible) override;
   void ResetToolbarTabState(content::WebContents* contents) override;
   void FocusToolbar() override;
-  ExtensionsContainer* GetExtensionsContainer() override;
   void ToolbarSizeChanged(bool is_animating) override;
   void TabDraggingStatusChanged(bool is_dragging) override;
   void LinkOpeningFromGesture(WindowOpenDisposition disposition) override;
@@ -626,9 +635,6 @@ class BrowserView : public BrowserWindow,
   void StartPartialTranslate(const std::string& source_language,
                              const std::string& target_language,
                              const std::u16string& text_selection) override;
-  void ShowOneClickSigninConfirmation(
-      const std::u16string& email,
-      base::OnceCallback<void(bool)> confirmed_callback) override;
   DownloadBubbleUIController* GetDownloadBubbleUIController() override;
   void ConfirmBrowserCloseWithPendingDownloads(
       int download_count,
@@ -873,7 +879,7 @@ class BrowserView : public BrowserWindow,
 
 #if BUILDFLAG(IS_CHROMEOS)
   // This is used only for SWA/PWA scenario.
-  void OnLockedForOnTaskUpdated();
+  void OnLockedForOnTaskUpdated(bool locked_for_on_task);
 
   bool IsLockedFullscreen() const;
 #endif
@@ -1451,6 +1457,8 @@ class BrowserView : public BrowserWindow,
   base::CallbackListSubscription vertical_tab_subscription_;
 
   base::CallbackListSubscription projects_panel_subscription_;
+
+  base::CallbackListSubscription on_locked_task_subscription_;
 
   // Bitmask of current combination of reparenting states, e.g. immersive and
   // ChromeOS tablet modes.

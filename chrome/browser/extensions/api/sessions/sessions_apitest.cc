@@ -23,6 +23,7 @@
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/extensions/api/sessions/sessions_api.h"
 #include "chrome/browser/extensions/api/tabs/tabs_api.h"
+#include "chrome/browser/extensions/browser_extension_window_controller.h"
 #include "chrome/browser/extensions/extension_apitest.h"
 #include "chrome/browser/extensions/extension_browsertest.h"
 #include "chrome/browser/extensions/extension_tab_util.h"
@@ -57,11 +58,6 @@
 
 #if BUILDFLAG(IS_CHROMEOS)
 #include "ash/constants/ash_switches.h"
-#endif
-
-#if BUILDFLAG(ENABLE_EXTENSIONS)
-#include "chrome/test/base/test_browser_window.h"
-#include "chrome/test/base/ui_test_utils.h"
 #endif
 
 static_assert(BUILDFLAG(ENABLE_EXTENSIONS_CORE));
@@ -306,9 +302,6 @@ IN_PROC_BROWSER_TEST_F(ExtensionSessionsTest, GetDevicesListEmpty) {
   EXPECT_TRUE(devices.empty());
 }
 
-#if BUILDFLAG(ENABLE_EXTENSIONS)
-// TODO(crbug.com/405219627): Support window restore on desktop Android. Also,
-// this test depends on the tabs (window) API.
 IN_PROC_BROWSER_TEST_F(ExtensionSessionsTest, RestoreForeignSessionWindow) {
   CreateSessionModels();
 
@@ -333,7 +326,6 @@ IN_PROC_BROWSER_TEST_F(ExtensionSessionsTest, RestoreForeignSessionWindow) {
   }
   EXPECT_EQ(restored_id, api_test_utils::GetInteger(window, "id"));
 }
-#endif  // BUILDFLAG(ENABLE_EXTENSIONS)
 
 IN_PROC_BROWSER_TEST_F(ExtensionSessionsTest, RestoreForeignSessionInvalidId) {
   CreateSessionModels();
@@ -356,25 +348,22 @@ IN_PROC_BROWSER_TEST_F(ExtensionSessionsTest, RestoreInIncognito) {
       << error;
 }
 
-#if BUILDFLAG(ENABLE_EXTENSIONS)
-// TODO(crbug.com/405219627): Port to desktop Android when Android has support
-// for HasEditableTabstrip. See BrowserExtensionWindowController.
 IN_PROC_BROWSER_TEST_F(ExtensionSessionsTest, RestoreNonEditableTabstrip) {
   CreateSessionModels();
 
-  // Set up a browser with a non-editable tabstrip, simulating one in the midst
-  // of a tab dragging session.
-  Browser* non_editable_browser =
-      Browser::Create(Browser::CreateParams(GetProfile(), true));
-  non_editable_browser->window()->DisableTabStripEditingForTesting();
+  // Set up the browser with a non-editable tabstrip, simulating one in the
+  // midst of a tab dragging session.
+  auto* window_controller =
+      BrowserExtensionWindowController::From(browser_window_interface());
+  window_controller->disable_tab_strip_editing_for_test();
 
-  EXPECT_TRUE(base::MatchPattern(
-      utils::RunFunctionAndReturnError(
-          CreateFunction<SessionsRestoreFunction>(true).get(), "[\"1\"]",
-          non_editable_browser->profile()),
-      ExtensionTabUtil::kTabStripNotEditableError));
+  std::string error = utils::RunFunctionAndReturnError(
+      CreateFunction<SessionsRestoreFunction>(true).get(), "[\"1\"]",
+      GetProfile());
+  EXPECT_TRUE(
+      base::MatchPattern(error, ExtensionTabUtil::kTabStripNotEditableError))
+      << error;
 }
-#endif  // BUILDFLAG(ENABLE_EXTENSIONS)
 
 IN_PROC_BROWSER_TEST_F(ExtensionSessionsTest, GetRecentlyClosedIncognito) {
   base::ListValue sessions(

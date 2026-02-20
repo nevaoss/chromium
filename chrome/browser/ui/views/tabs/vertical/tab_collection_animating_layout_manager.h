@@ -28,6 +28,22 @@ class TabCollectionAnimatingLayoutManager : public views::LayoutManagerBase,
   // animate-out transitions.
   enum class AnimationAxis { kVertical, kHorizontal };
 
+  // Represents how animations should progress along the animation axis.
+  enum class AnimationDirection { kStartToEnd, kEndToStart };
+
+  // Holds source layout information for views moved between TabCollectionNodes.
+  // This is used for the initial layout and animation in the destination
+  // collection, after which it is discarded and the view follows the layout
+  // rules of its destination layout manager.
+  struct SourceLayoutInfo {
+    // Optional override for the axis along which the moved view should animate.
+    // If unset host parameters will be used instead.
+    std::optional<AnimationAxis> animation_axis;
+
+    // The direction the moved view should animate.
+    AnimationDirection animation_direction = AnimationDirection::kEndToStart;
+  };
+
   class Delegate {
    public:
     virtual bool IsViewDragging(const views::View& child_view) const;
@@ -49,6 +65,7 @@ class TabCollectionAnimatingLayoutManager : public views::LayoutManagerBase,
   ~TabCollectionAnimatingLayoutManager() override;
 
   // LayoutManagerBase:
+  bool OnViewRemoved(views::View* host, views::View* view) override;
   gfx::Size GetPreferredSize(const views::View* host) const override;
   gfx::Size GetPreferredSize(
       const views::View* host,
@@ -60,6 +77,12 @@ class TabCollectionAnimatingLayoutManager : public views::LayoutManagerBase,
   // gfx::AnimationDelegate:
   void AnimationProgressed(const gfx::Animation* animation) override;
   void AnimationEnded(const gfx::Animation* animation) override;
+
+  // Used by clients to directly set `SourceLayoutInfo` on `view_to_reparent`
+  // before it is added to its destination container.
+  static void SetSourceLayoutInfo(
+      views::View* view_to_reparent,
+      std::unique_ptr<SourceLayoutInfo> source_layout_info);
 
   // Snaps the container to the target layout.
   void ResetToTargetLayout();
@@ -112,6 +135,9 @@ class TabCollectionAnimatingLayoutManager : public views::LayoutManagerBase,
   // `animation_` has ended.
   void ClearViewAnimationMetadata();
 
+  // Clears any metadata specific to the animating layout manager from `view`.
+  void ClearViewAnimationMetadataForView(views::View* view);
+
   // The layout manager that defines the goal state.
   const raw_ref<LayoutManagerBase> target_layout_manager_;
 
@@ -123,11 +149,12 @@ class TabCollectionAnimatingLayoutManager : public views::LayoutManagerBase,
   views::ProposedLayout target_layout_;    // Goal state.
   views::ProposedLayout current_layout_;   // Current interpolated state.
 
-  // Precomputed sets and maps for starting and target layouts for fast
-  // lookup. Updated in `SetStartingLayout()` and `SetTargetLayout()`.
-  using StartViewBoundsMap = base::flat_map<raw_ptr<views::View>, gfx::Rect>;
-  StartViewBoundsMap start_view_bounds_map_;
-  base::flat_set<raw_ptr<views::View>> target_view_set_;
+  // Precomputed maps for starting and target layouts for fast lookup. Updated
+  // in `SetStartingLayout()` and `SetTargetLayout()`.
+  using ChildViewLayoutMap =
+      base::flat_map<raw_ptr<const views::View>, views::ChildLayout>;
+  ChildViewLayoutMap start_view_layout_map_;
+  ChildViewLayoutMap target_view_layout_map_;
 
   // Where in the animation the last layout recalculation happened.
   double starting_offset_ = 0.0;

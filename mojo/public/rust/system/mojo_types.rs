@@ -21,10 +21,7 @@ use std::fmt;
 use std::ptr;
 
 chromium::import! {
-  // FOR_RELEASE: everything brought in from mojo_ffi should be pub(crate) at
-  // most. We don't want any of these types exposed outside of
-  // mojo/public/rust/system.
-  pub "//mojo/public/rust:mojo_ffi";
+  "//mojo/public/rust/system:mojo_ffi";
 }
 
 use mojo_ffi::types;
@@ -217,7 +214,10 @@ pub enum WaitResult {
 }
 
 /// Implementing the Handle trait means we can access the native integer-based
-/// MojoHandle underneath.
+/// MojoHandle underneath, and convert the type to and from UntypedHandle.
+///
+/// The conversion functions are not implemented using From/Into because they
+/// should always be done explicitly, with caution.
 ///
 /// FOR_RELEASE: Revisit if we want to limit the visibility of Handle.
 /// In particular: while mostly we want the underlying get_native_handle to be
@@ -239,10 +239,21 @@ pub enum WaitResult {
 /// * (FOR_RELEASE: Fill out the other Rust handle types!)
 ///
 /// All Rust handles implement the Handle trait.
-pub trait Handle {
+pub trait Handle: Sized {
     /// Returns the native handle that the structure implementing this trait is
     /// wrapped around.
     fn get_native_handle(&self) -> types::MojoHandle;
+
+    /// Downcast this handle into an untyped handle. It's the user's
+    /// responsibility to remember what kind of handle it is. Does not run the
+    /// destructor for Self, since that would close the handle.
+    fn into_untyped(self) -> UntypedHandle {
+        let ret = UntypedHandle { mojo_handle: self.get_native_handle() };
+        std::mem::forget(self);
+        ret
+    }
+
+    fn from_untyped(untyped: UntypedHandle) -> Self;
 
     // FOR_RELEASE: Implement query_signals_state.
 
@@ -269,6 +280,7 @@ pub trait Trappable: Handle {}
 /// public Rust API should have to ever touch a handle that could possibly be
 /// invalid.
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct UntypedHandle {
     // FOR_RELEASE: Let's use NonZeroU32 here and move enforcement of "is this
     // handle valid or not" outside of UntypedHandle (instead this type should
@@ -279,6 +291,10 @@ pub struct UntypedHandle {
 impl Handle for UntypedHandle {
     fn get_native_handle(&self) -> types::MojoHandle {
         self.mojo_handle
+    }
+
+    fn from_untyped(untyped: UntypedHandle) -> Self {
+        untyped
     }
 }
 
@@ -333,14 +349,7 @@ impl UntypedHandle {
     /// Get a mutable pointer to a slice of wrapped `MojoHandle`s. See "Safety
     /// note for all *_ptr functions" above.
     pub fn slice_as_mut_ptr(handles: &mut [Self]) -> *mut types::MojoHandle {
-        // Passing nothing must be done explicitly:
-        // https://davidben.net/2024/01/15/empty-slices.html
-        if handles.is_empty() {
-            return ptr::null_mut();
-        }
-        // `Self` is a repr(transparent) wrapper for `MojoHandle`, so the
-        // pointer cast is sound.
-        handles.as_mut_ptr() as *mut _
+        Self::slice_as_ptr(handles) as *mut _
     }
 }
 

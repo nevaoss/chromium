@@ -4,17 +4,22 @@
 
 #include "chrome/browser/ui/views/frame/horizontal_tab_strip_region_view.h"
 
+#include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/single_thread_task_runner.h"
 #include "build/build_config.h"
+#include "build/buildflag.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/themes/theme_properties.h"
+#include "chrome/browser/ui/actions/chrome_action_id.h"
+#include "chrome/browser/ui/browser_actions.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/frame/window_frame_util.h"
 #include "chrome/browser/ui/layout_constants.h"
+#include "chrome/browser/ui/tab_search_feature.h"
 #include "chrome/browser/ui/tabs/features.h"
 #include "chrome/browser/ui/tabs/tab_menu_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
@@ -37,6 +42,7 @@
 #include "chrome/browser/ui/views/tabs/tab_style_views.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
+#include "chrome/common/buildflags.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/commerce/core/commerce_feature_list.h"
@@ -55,6 +61,7 @@
 #include "ui/gfx/geometry/insets.h"
 #include "ui/gfx/geometry/point.h"
 #include "ui/views/accessible_pane_view.h"
+#include "ui/views/actions/action_view_controller.h"
 #include "ui/views/border.h"
 #include "ui/views/cascading_property.h"
 #include "ui/views/controls/button/image_button.h"
@@ -64,6 +71,10 @@
 #include "ui/views/view.h"
 #include "ui/views/view_class_properties.h"
 #include "ui/views/view_utils.h"
+
+#if BUILDFLAG(ENABLE_GLIC)
+#include "chrome/browser/ui/views/tabs/glic/glic_button.h"
+#endif  // BUILDFLAG(ENABLE_GLIC)
 
 namespace {
 
@@ -190,7 +201,8 @@ HorizontalTabStripRegionView::HorizontalTabStripRegionView(
           tabs::GetTabSearchPosition(profile_) ==
           tabs::TabSearchPosition::kLeadingHorizontalTabstrip),
       tab_search_position_metrics_logger_(
-          std::make_unique<TabSearchPositionMetricsLogger>(profile_)) {
+          std::make_unique<TabSearchPositionMetricsLogger>(profile_)),
+      action_view_controller_(std::make_unique<views::ActionViewController>()) {
   views::SetCascadingColorProviderColor(
       this, views::kCascadingBackgroundColor,
       kColorTabBackgroundInactiveFrameInactive);
@@ -203,6 +215,23 @@ HorizontalTabStripRegionView::HorizontalTabStripRegionView(
 
   tab_strip_ = AddChildView(CreateTabStrip(browser_view));
   BrowserWindowInterface* const browser = browser_view->browser();
+
+  if (base::FeatureList::IsEnabled(features::kTabGroupsFocusing)) {
+    unfocus_button_ = AddChildView(std::make_unique<TabStripControlButton>(
+        browser, views::Button::PressedCallback(), vector_icons::kArrowBackIcon,
+        Edge::kNone, Edge::kNone));
+
+    actions::ActionItem* const unfocus_action =
+        actions::ActionManager::Get().FindAction(
+            kActionUnfocusTabGroup, browser->GetActions()->root_action_item());
+    CHECK(unfocus_action);
+    action_view_controller_->CreateActionViewRelationship(
+        unfocus_button_.get(), unfocus_action->GetAsWeakPtr());
+
+    unfocus_button_->SetVisible(false);
+    unfocus_button_->SetProperty(views::kCrossAxisAlignmentKey,
+                                 views::LayoutAlignment::kCenter);
+  }
 
   // Add and configure the TabSearchContainer, TabStripComboButton, and
   // ProductSpecificationsButton.
@@ -317,6 +346,9 @@ HorizontalTabStripRegionView::~HorizontalTabStripRegionView() {
   if (new_tab_button_) {
     RemoveChildViewT(std::exchange(new_tab_button_, nullptr));
   }
+  if (unfocus_button_) {
+    RemoveChildViewT(std::exchange(unfocus_button_, nullptr));
+  }
   if (tab_search_container_) {
     RemoveChildViewT(std::exchange(tab_search_container_, nullptr));
   }
@@ -377,6 +409,10 @@ views::View::Views HorizontalTabStripRegionView::GetChildrenInZOrder() {
 
   if (new_tab_button_) {
     children.emplace_back(new_tab_button_.get());
+  }
+
+  if (unfocus_button_) {
+    children.emplace_back(unfocus_button_.get());
   }
 
   if (tab_search_container_) {
@@ -451,6 +487,17 @@ void HorizontalTabStripRegionView::Layout(PassKey) {
     // set the bounds.
     button_to_paint_to_layer->SetBoundsRect(button_new_bounds);
   }
+
+  if (unfocus_button_ && unfocus_button_->GetVisible()) {
+    gfx::Size button_size = unfocus_button_->GetPreferredSize();
+    int x = tab_strip_->bounds().x() +
+            TabStyle::Get()->GetBottomCornerRadius() -
+            GetLayoutConstant(LayoutConstant::kTabStripPadding) -
+            button_size.width();
+    gfx::Point button_new_position = gfx::Point(x, 0);
+    gfx::Rect button_new_bounds = gfx::Rect(button_new_position, button_size);
+    unfocus_button_->SetBoundsRect(button_new_bounds);
+  }
 }
 
 bool HorizontalTabStripRegionView::CanDrop(const OSExchangeData& data) {
@@ -518,6 +565,12 @@ views::View* HorizontalTabStripRegionView::GetDefaultFocusableChild() {
                          : AccessiblePaneView::GetDefaultFocusableChild();
 }
 
+#if BUILDFLAG(ENABLE_GLIC)
+glic::GlicButton* HorizontalTabStripRegionView::GetGlicButton() {
+  return tab_strip_action_container_->GetGlicButton();
+}
+#endif  // BUILDFLAG(ENABLE_GLIC)
+
 void HorizontalTabStripRegionView::InitializeTabStrip() {
   if (tab_strip_set_) {
     return;
@@ -539,7 +592,7 @@ bool HorizontalTabStripRegionView::IsTabStripEditable() const {
   return tab_strip_->IsTabStripEditable();
 }
 
-void HorizontalTabStripRegionView::DisableTabStripEditingForTesting() const {
+void HorizontalTabStripRegionView::DisableTabStripEditingForTesting() {
   tab_strip_->DisableTabStripEditingForTesting();  // IN-TEST
 }
 
@@ -581,6 +634,19 @@ views::View* HorizontalTabStripRegionView::GetTabAnchorViewAt(int tab_index) {
 views::View* HorizontalTabStripRegionView::GetTabGroupAnchorView(
     const tab_groups::TabGroupId& group) {
   return tab_strip_->group_header(group);
+}
+
+void HorizontalTabStripRegionView::OnTabGroupFocusChanged(
+    std::optional<tab_groups::TabGroupId> new_focused_group_id,
+    std::optional<tab_groups::TabGroupId> old_focused_group_id) {
+  CHECK(unfocus_button_);
+  unfocus_button_->SetVisible(new_focused_group_id.has_value());
+  if (old_focused_group_id.has_value() != new_focused_group_id.has_value()) {
+    UpdateTabStripMargin();
+  }
+  tab_strip_->OnTabGroupFocusChanged(new_focused_group_id,
+                                     old_focused_group_id);
+  InvalidateLayout();
 }
 
 TabDragContext* HorizontalTabStripRegionView::GetDragContext() {
@@ -644,6 +710,9 @@ void HorizontalTabStripRegionView::UpdateButtonBorders() {
   if (new_tab_button_) {
     UpdateBorderInsetsIfNeeded(new_tab_button_, border_insets);
   }
+  if (unfocus_button_) {
+    UpdateBorderInsetsIfNeeded(unfocus_button_, border_insets);
+  }
   if (tab_search_container_) {
     UpdateBorderInsetsIfNeeded(tab_search_container_->tab_search_button(),
                                border_insets);
@@ -705,6 +774,13 @@ void HorizontalTabStripRegionView::UpdateTabStripMargin() {
         GetLayoutConstant(LayoutConstant::kTabStripPadding) +
         GetLayoutConstant(LayoutConstant::kTabStripPadding) -
         TabStyle::Get()->GetBottomCornerRadius();
+  } else if (unfocus_button_ && unfocus_button_->GetVisible()) {
+    unfocus_button_->SetPaintToLayer();
+    unfocus_button_->layer()->SetFillsBoundsOpaquely(false);
+    unfocus_button_->SetProperty(views::kViewIgnoredByLayoutKey, true);
+
+    tab_strip_left_margin = unfocus_button_->GetPreferredSize().width() +
+                            GetLayoutConstant(LayoutConstant::kTabStripPadding);
   }
 
   UpdateButtonBorders();

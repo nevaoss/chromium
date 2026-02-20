@@ -125,14 +125,6 @@ PlusAddressCreationDialogWithNoticeTest.ShowNoticeAndCancel
 *PopupViewViewsBrowsertest*
 *PopupViewViewsPlusAddressSuggestionBrowsertest*
 PriceTrackingBubbleDialogViewBrowserTest.*
-PrivacySandboxPSNoticeDialogViewBrowserTest.*
-PrivacySandboxDialogViewBrowserTest.*
-PrivacySandboxDialogViewAdsApiUxEnhancementBrowserTest.*
-PrivacySandboxDialogViewAdsApiUxEnhancementsLearnMoreBrowserTest.*
-PrivacySandboxDialogViewPrivacyPolicyBrowserTest.*
-PrivacySandboxDialogViewAdsApiUxEnhancementPrivacyPolicyBrowserTest.*
-PrivacySandboxNoticeBubbleBrowserTest.*
-PrivacySandboxSettingsTopicsInteractiveTest.*
 ProfileMenuViewPixelTest.*
 ProfilePickerSigninToolbarUIPixelTest.*
 ProfilePickerUIPixelTest.*
@@ -152,6 +144,7 @@ SearchEngineChoiceUIPixelTest.*
 SecurePaymentConfirmationDialogViewTest.InvokeUi_*
 *SendTabToSelfBubbleTest.*
 SessionCrashedBubbleViewTest.*
+SettingsOverriddenExplicitChoiceDialogBrowserTest.*
 *SharedPasswordsNotificationBubbleInteractiveUiTest.*
 SharedTabGroupInteractiveUiTest.SharedTabGroupIn*
 SingleBookmarkUploadDialogPixelTest.InvokeUi

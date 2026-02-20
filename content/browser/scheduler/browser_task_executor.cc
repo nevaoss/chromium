@@ -216,8 +216,9 @@ void BrowserTaskExecutor::ResetForTesting() {
 
 // static
 void BrowserTaskExecutor::Shutdown() {
-  if (!g_browser_task_executor)
+  if (!g_browser_task_executor) {
     return;
+  }
 
   DCHECK(Get()->browser_ui_thread_scheduler_);
   // We don't delete |g_browser_task_executor| because other threads may
@@ -302,8 +303,8 @@ std::unique_ptr<BrowserProcessIOThread> BrowserTaskExecutor::CreateIOThread() {
   // display tasks, or use |kInteractive| for experiments.
   options.thread_type =
       base::FeatureList::IsEnabled(features::kIOThreadInteractiveThreadType)
-          ? base::ThreadType::kInteractive
-          : base::ThreadType::kDisplayCritical;
+          ? base::ThreadType::kAudioProcessing
+          : base::ThreadType::kPresentation;
   if (!io_thread->StartWithOptions(std::move(options)))
     LOG(FATAL) << "Failed to start BrowserThread:IO";
   return io_thread;

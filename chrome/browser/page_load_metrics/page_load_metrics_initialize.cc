@@ -27,7 +27,6 @@
 #include "chrome/browser/page_load_metrics/observers/javascript_frameworks_ukm_observer.h"
 #include "chrome/browser/page_load_metrics/observers/lcp_critical_path_predictor_page_load_metrics_observer.h"
 #include "chrome/browser/page_load_metrics/observers/loading_predictor_page_load_metrics_observer.h"
-#include "chrome/browser/page_load_metrics/observers/local_network_requests_page_load_metrics_observer.h"
 #include "chrome/browser/page_load_metrics/observers/multi_tab_loading_page_load_metrics_observer.h"
 #include "chrome/browser/page_load_metrics/observers/new_tab_page_initiated_page_load_metrics_observer.h"
 #include "chrome/browser/page_load_metrics/observers/new_tab_page_page_load_metrics_observer.h"
@@ -36,7 +35,6 @@
 #include "chrome/browser/page_load_metrics/observers/page_anchors_metrics_observer.h"
 #include "chrome/browser/page_load_metrics/observers/prefetch_page_load_metrics_observer.h"
 #include "chrome/browser/page_load_metrics/observers/preload_serving_metrics_page_load_metrics_observer.h"
-#include "chrome/browser/page_load_metrics/observers/preview_page_load_metrics_observer.h"
 #include "chrome/browser/page_load_metrics/observers/protocol_page_load_metrics_observer.h"
 #include "chrome/browser/page_load_metrics/observers/scheme_page_load_metrics_observer.h"
 #include "chrome/browser/page_load_metrics/observers/security_state_page_load_metrics_observer.h"
@@ -261,10 +259,7 @@ void PageLoadMetricsEmbedder::RegisterObservers(
           std::make_unique<LcpCriticalPathPredictorPageLoadMetricsObserver>());
     }
     tracker->AddObserver(
-        std::make_unique<LocalNetworkRequestsPageLoadMetricsObserver>());
-    tracker->AddObserver(
         std::make_unique<TabStripPageLoadMetricsObserver>(web_contents()));
-    tracker->AddObserver(std::make_unique<PreviewPageLoadMetricsObserver>());
     tracker->AddObserver(std::make_unique<BookmarkBarMetricsObserver>());
     tracker->AddObserver(
         std::make_unique<NewTabPageInitiatedPageLoadMetricsObserver>());

@@ -34,6 +34,9 @@ mojom::ActionResultPtr OnToolExecuted(
       case blink::WebDocument::ScriptToolError::kInvalidInputArguments:
         return MakeResult(
             mojom::ActionResultCode::kScriptToolInvalidInputArguments);
+      case blink::WebDocument::ScriptToolError::kMissingRequiredSubmitButton:
+        return MakeResult(
+            mojom::ActionResultCode::kScriptToolMissingRequiredSubmitButton);
       case blink::WebDocument::ScriptToolError::kToolInvocationFailed:
         return MakeResult(mojom::ActionResultCode::kScriptToolInvocationFailed);
     }
@@ -44,7 +47,9 @@ mojom::ActionResultPtr OnToolExecuted(
   auto script_tool_response = mojom::ScriptToolResponse::New();
   script_tool_response->name = name;
   script_tool_response->input_arguments = input_arguments;
-  script_tool_response->result = response->Utf8();
+  if (!response->IsEmpty()) {
+    script_tool_response->result = response->Utf8();
+  }
   result->script_tool_response = std::move(script_tool_response);
 
   return result;
@@ -78,6 +83,10 @@ void ScriptTool::Execute(ToolFinishedCallback callback) {
 std::string ScriptTool::DebugString() const {
   return absl::StrFormat("ScriptTool[tool_name(%s);input_arguments(%s)]",
                          action_->name, action_->input_arguments);
+}
+
+mojom::ActionResultPtr ScriptTool::Validate() {
+  return MakeOkResult();
 }
 
 }  // namespace actor

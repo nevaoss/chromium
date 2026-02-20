@@ -333,6 +333,7 @@
 <translation id="2184272387334793084">سجِّل الدخول للوصول إلى كلمات المرور والإعدادات الأخرى على جميع أجهزتك</translation>
 <translation id="2186206192313702726">‏عدسة Google</translation>
 <translation id="2188993354115194873">‏انقر على <ph name="BEGIN_BOLD" />الحفظ في عمليات التنزيل (Save to Downloads)<ph name="END_BOLD" /></translation>
+<translation id="2191406283620379491">‏حدث خطأ. يُرجى تحديث إصدار iOS.</translation>
 <translation id="219283042927675668">علامات التبويب في المجموعة</translation>
 <translation id="2194856509914051091">ملاحظات مهمّة</translation>
 <translation id="2196428379625389579">البحث على الويب</translation>
@@ -579,6 +580,7 @@
 <translation id="3143515551205905069">إلغاء المزامنة</translation>
 <translation id="3144126448740580210">تم</translation>
 <translation id="3148052723910099040">شبكة علامات التبويب العادية</translation>
+<translation id="3148237711805373460">الانتقال إلى الإعدادات</translation>
 <translation id="3157387275655328056">الإضافة إلى قائمة القراءة</translation>
 <translation id="315778507796115851">السجلّ</translation>
 <translation id="31652791196570636">إغلاق</translation>
@@ -1020,6 +1022,7 @@
 <translation id="483689884442613745">حفظ…</translation>
 <translation id="4840495572919996524">‏لن تتم مزامنة الإشارات المرجعية والسجلّ وكلمات المرور وغيرها مع حسابك على Google بعد الآن.</translation>
 <translation id="484280513275854557">تم تسجيل خروجك من الحساب وحذف بيانات التصفُّح</translation>
+<translation id="484462545196658690">تلقائي</translation>
 <translation id="4850886885716139402">عرض</translation>
 <translation id="4854068532375923088">‏السماح لـ Gemini باستخدام الكاميرا</translation>
 <translation id="4860895144060829044">اتصال</translation>
@@ -1224,7 +1227,7 @@
 <translation id="5578795271662203820">البحث في <ph name="SEARCH_ENGINE" /> عن هذه الصورة</translation>
 <translation id="5579012242779565775">إخفاء "قائمة القراءة"</translation>
 <translation id="5581786858144165447">‏طرح سؤال في "وضع AI"</translation>
-<translation id="5585019845078534178">بطاقات</translation>
+<translation id="5585019845078534178">البطاقات</translation>
 <translation id="5591526871732898147">‏الصورة المرفقة {index}</translation>
 <translation id="5595485650161345191">تعديل العنوان</translation>
 <translation id="559567008082979829">يمكنك ضبط عمليات التنزيل بحيث يتم حذفها بعد شهر واحد.</translation>
@@ -1519,6 +1522,7 @@
 <translation id="6556866813142980365">إعادة</translation>
 <translation id="6559301491397835130">{count,plural, =1{تم حفظ الإشارة المرجعية في "{title}" على هذا الجهاز فقط.}zero{تم حفظ الإشارات المرجعية في "{title}" على هذا الجهاز فقط.}two{تم حفظ الإشارتَين المرجعيتَين في "{title}" على هذا الجهاز فقط.}few{تم حفظ الإشارات المرجعية في "{title}" على هذا الجهاز فقط.}many{تم حفظ الإشارات المرجعية في "{title}" على هذا الجهاز فقط.}other{تم حفظ الإشارات المرجعية في "{title}" على هذا الجهاز فقط.}}</translation>
 <translation id="656065428026159829">عرض المزيد</translation>
+<translation id="6565899972286925956">إنشاء أي محتوى</translation>
 <translation id="6571070086367343653">تعديل بطاقة الائتمان</translation>
 <translation id="6574092468346088891">تفعيل إشعارات ميزة "التحقّق من الأمان"</translation>
 <translation id="6579867704846662339">‏يمكنك اختيار فتح عناوين URL الواردة من تطبيقات أخرى في "وضع التصفّح المتخفي".</translation>
@@ -1629,6 +1633,7 @@
 <translation id="6930799952781667037">انقر للتغيير إلى هذه اللغة.</translation>
 <translation id="693761253105515415">يُرجى ضبط رمز مرور</translation>
 <translation id="6945221475159498467">تحديد</translation>
+<translation id="6946722113367118030">تفكير</translation>
 <translation id="6950522403736391608">مخفي</translation>
 <translation id="6962809930976936328">‏عرض أهم النقاط باستخدام Gemini</translation>
 <translation id="6964300328304469089">الحساب الذي تم اختياره حاليًا هو "<ph name="NAME" />" ‏(<ph name="EMAIL" />). اختَر حسابًا.</translation>
@@ -1897,6 +1902,7 @@
 <translation id="7958575506592576831">معلومات أمان الصفحة</translation>
 <translation id="7961015016161918242">مطلقًا</translation>
 <translation id="7971136598759319605">نشط قبل يوم واحد</translation>
+<translation id="7972837668077967426">Canvas</translation>
 <translation id="7975036700432177008">تجربة</translation>
 <translation id="797588153137233716">"القائمة" ← "السجلّ" ← "حذف بيانات التصفّح"</translation>
 <translation id="7977451675950311423">ستتلقّى تحذيرًا إذا كنت تستخدم كلمة مرور تم اختراقها في عملية اختراق للبيانات.</translation>
@@ -1970,6 +1976,7 @@
 <translation id="8205564605687841303">إلغاء</translation>
 <translation id="8206354486702514201">تم فرض هذا الإعداد بواسطة المشرف.</translation>
 <translation id="8209050860603202033">فتح الصورة</translation>
+<translation id="8209237163365258530">‏نماذج <ph name="VERSION_NUMBER" /> Gemini</translation>
 <translation id="8211030355252954494">لقد تلقّيت كلمات مرور للموقع الإلكتروني <ph name="WEBSITE" />.</translation>
 <translation id="8211406090763984747">الاتصال بهذا الموقع الإلكتروني آمن
 </translation>

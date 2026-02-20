@@ -45,7 +45,7 @@ class IOSWebContentHandlerImplTest : public PlatformTest {
     return web_content_handler_.get();
   }
 
-  supervised_user::SupervisedUserURLFilter& url_filter() { return filter_; }
+  supervised_user::FamilyLinkUrlFilter& url_filter() { return filter_; }
 
   base::HistogramTester histogram_tester_;
   id mock_parent_access_commands_handler_;
@@ -55,10 +55,13 @@ class IOSWebContentHandlerImplTest : public PlatformTest {
   web::WebTaskEnvironment task_environment_;
   TestingPrefServiceSimple pref_service_;
   base::test::ScopedFeatureList feature_list_;
+  supervised_user::FamilyLinkSettingsService family_link_settings_service_;
 
   // Filter with no checker client, as it will be only used in offline manner.
-  supervised_user::SupervisedUserURLFilter filter_ =
-      supervised_user::SupervisedUserURLFilter(
+  // Conversely, the settings service is used uninitialized too.
+  supervised_user::FamilyLinkUrlFilter filter_ =
+      supervised_user::FamilyLinkUrlFilter(
+          family_link_settings_service_,
           pref_service_,
           std::make_unique<supervised_user::FakeURLFilterDelegate>(),
           /*url_checker_client=*/nullptr);
@@ -85,7 +88,7 @@ TEST_F(IOSWebContentHandlerImplTest, HideParentAccessBottomsheet) {
                                   completion:[OCMArg any]]);
   OCMExpect([mock_parent_access_commands_handler_ hideParentAccessBottomSheet]);
 
-  supervised_user::SupervisedUserURLFilter::Result result;
+  supervised_user::WebFilteringResult result;
   result.url = GURL("https://www.example.com");
   result.behavior = supervised_user::FilteringBehavior::kBlock;
   result.reason = supervised_user::FilteringBehaviorReason::DEFAULT;

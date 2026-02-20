@@ -42,12 +42,12 @@ class AutofillAiImportDataControllerImpl
   // AutofillAiImportDataController:
   void ShowPrompt(EntityInstance new_entity,
                   std::optional<EntityInstance> old_entity,
+                  bool close_on_accept,
                   AutofillClient::EntityImportPromptResultCallback
-                      prompt_closed_callback) override;
+                      prompt_result_callback) override;
   void OnSaveButtonClicked() override;
   base::optional_ref<const EntityInstance> GetAutofillAiData() const override;
-  void OnBubbleClosed(
-      AutofillClient::AutofillAiBubbleClosedReason closed_reason) override;
+  void OnBubbleClosed(AutofillClient::AutofillAiBubbleResult result) override;
   base::WeakPtr<AutofillAiImportDataController> GetWeakPtr() override;
   std::u16string GetDialogTitle() const override;
   std::u16string GetPrimaryAccountEmail() const override;
@@ -58,6 +58,7 @@ class AutofillAiImportDataControllerImpl
       const override;
   bool IsSavePrompt() const override;
   int GetTitleImagesResourceId() const override;
+  bool CloseOnAccept() const override;
 
   // BubbleControllerBase:
   void OnBubbleDiscarded() override;
@@ -82,14 +83,6 @@ class AutofillAiImportDataControllerImpl
   friend class content::WebContentsUserData<AutofillAiImportDataControllerImpl>;
   friend class AutofillAiImportDataControllerImplTest;
 
-  // Configures the controller's state for the Autofill AI data
-  // save/update/migrate prompt. `new_entity` is the data detected on the page,
-  // `old_entity` is the existing data to be updated (if any), and
-  // `prompt_closed_callback` is the callback to run upon user decision.
-  void SetupPrompt(
-      EntityInstance new_entity,
-      std::optional<EntityInstance> old_entity,
-      AutofillClient::EntityImportPromptResultCallback prompt_closed_callback);
 
   // The browser's locale when the object was instantiated.
   const std::string app_locale_;
@@ -104,13 +97,15 @@ class AutofillAiImportDataControllerImpl
 
   // Callback to notify the data provider about the user decision for the save
   // or update prompt.
-  AutofillClient::EntityImportPromptResultCallback prompt_closed_callback_;
+  AutofillClient::EntityImportPromptResultCallback prompt_result_callback_;
 
   // Whether the bubble should be re-shown when the current web_contents becomes
   // visible. This is true when the user has clicked a link in the bubble that
   // leads to a navigation. In situations like this the bubble is closed,
   // focusing back on the tab should re-open it.
   bool reopen_bubble_when_web_contents_becomes_visible_ = false;
+
+  bool close_on_accept_ = true;
 
   base::WeakPtrFactory<AutofillAiImportDataControllerImpl> weak_ptr_factory_{
       this};

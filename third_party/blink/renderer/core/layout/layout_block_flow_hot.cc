@@ -47,8 +47,9 @@ bool LayoutBlockFlow::CreatesNewFormattingContext() const {
   if (IsRenderedLegend())
     return true;
 
-  if (ShouldBeConsideredAsReplaced())
+  if (IsSemiReplaced()) {
     return true;
+  }
 
   return false;
 }

@@ -333,6 +333,7 @@
 <translation id="2184272387334793084">登入帳戶即可在任何裝置上存取自己的密碼及其他設定</translation>
 <translation id="2186206192313702726">Google 智慧鏡頭</translation>
 <translation id="2188993354115194873">輕觸「儲存到下載項目」<ph name="BEGIN_BOLD" /><ph name="END_BOLD" /></translation>
+<translation id="2191406283620379491">發生嚴重錯誤，請更新 iOS 版本。</translation>
 <translation id="219283042927675668">群組中的分頁</translation>
 <translation id="2194856509914051091">注意事項</translation>
 <translation id="2196428379625389579">在網路上搜尋</translation>
@@ -579,6 +580,7 @@
 <translation id="3143515551205905069">取消同步處理</translation>
 <translation id="3144126448740580210">完成</translation>
 <translation id="3148052723910099040">一般分頁方格</translation>
+<translation id="3148237711805373460">立即前往</translation>
 <translation id="3157387275655328056">加入閱讀清單</translation>
 <translation id="315778507796115851">記錄</translation>
 <translation id="31652791196570636">關閉</translation>
@@ -1020,6 +1022,7 @@
 <translation id="483689884442613745">儲存…</translation>
 <translation id="4840495572919996524">你的書籤、歷史記錄、密碼等資料將停止同步到你的 Google 帳戶。</translation>
 <translation id="484280513275854557">系統已將你登出並刪除瀏覽資料</translation>
+<translation id="484462545196658690">自動</translation>
 <translation id="4850886885716139402">檢視</translation>
 <translation id="4854068532375923088">允許「Gemini」使用相機</translation>
 <translation id="4860895144060829044">撥號</translation>
@@ -1521,6 +1524,7 @@
 <translation id="6556866813142980365">重做</translation>
 <translation id="6559301491397835130">{count,plural, =1{這個書籤已儲存到「{title}」。系統只會將這項資料儲存在這部裝置。}other{這些書籤已儲存到「{title}」。系統只會將這些資料儲存在這部裝置。}}</translation>
 <translation id="656065428026159829">顯示更多</translation>
+<translation id="6565899972286925956">創作任何內容</translation>
 <translation id="6571070086367343653">編輯信用卡</translation>
 <translation id="6574092468346088891">開啟安全檢查通知</translation>
 <translation id="6579867704846662339">你可以選擇以無痕模式開啟其他應用程式傳入的網址。</translation>
@@ -1631,6 +1635,7 @@
 <translation id="6930799952781667037">輕觸即可變更為這個語言。</translation>
 <translation id="693761253105515415">請設定螢幕解鎖密碼</translation>
 <translation id="6945221475159498467">選取</translation>
+<translation id="6946722113367118030">思考</translation>
 <translation id="6950522403736391608">隱藏</translation>
 <translation id="6962809930976936328">使用 Gemini 取得洞察資訊</translation>
 <translation id="6964300328304469089">目前已選取<ph name="NAME" />，<ph name="EMAIL" />。請選擇帳戶。</translation>
@@ -1899,6 +1904,7 @@
 <translation id="7958575506592576831">網頁安全性資訊</translation>
 <translation id="7961015016161918242">一律不要</translation>
 <translation id="7971136598759319605">上次使用時間：1 天前</translation>
+<translation id="7972837668077967426">Canvas</translation>
 <translation id="7975036700432177008">試用</translation>
 <translation id="797588153137233716">「選單」→「歷史記錄」→「刪除瀏覽資料」</translation>
 <translation id="7977451675950311423">如果你使用的密碼因資料侵害事件而外洩，系統會顯示警告訊息。</translation>
@@ -1972,6 +1978,7 @@
 <translation id="8205564605687841303">取消</translation>
 <translation id="8206354486702514201">這項設定由管理員執行。</translation>
 <translation id="8209050860603202033">開啟圖片</translation>
+<translation id="8209237163365258530">Gemini <ph name="VERSION_NUMBER" /> 模型</translation>
 <translation id="8211030355252954494">你收到「<ph name="WEBSITE" />」的密碼</translation>
 <translation id="8211406090763984747">已建立安全連線</translation>
 <translation id="8214293972734702249">「<ph name="TAB_TITLE" />」已固定</translation>

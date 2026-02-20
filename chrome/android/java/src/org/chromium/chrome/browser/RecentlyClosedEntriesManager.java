@@ -12,6 +12,7 @@ import org.chromium.base.Callback;
 import org.chromium.base.ResettersForTesting;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
+import org.chromium.chrome.browser.incognito.IncognitoUtils;
 import org.chromium.chrome.browser.multiwindow.InstanceInfo;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager.CloseWindowAppSource;
@@ -30,6 +31,7 @@ import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -243,6 +245,20 @@ public class RecentlyClosedEntriesManager {
             mRecentlyClosedEntries.add(0, window);
         }
 
+        // Remove the excess entry from the list, and clean up the storage.
+        int size = mRecentlyClosedEntries.size();
+        if (size > RECENTLY_CLOSED_MAX_ENTRY_COUNT_WITH_WINDOW) {
+            RecentlyClosedEntry excessEntry = mRecentlyClosedEntries.remove(size - 1);
+            if (excessEntry instanceof SessionRecentlyClosedEntry) {
+                mRecentlyClosedTabManager.clearLeastRecentlyUsedClosedEntries(/* numToRemove= */ 1);
+            } else if (excessEntry instanceof RecentlyClosedWindow excessWindow) {
+                mMultiInstanceManager.closeWindows(
+                        Collections.singletonList(excessWindow.getInstanceId()),
+                        CloseWindowAppSource.RECENT_TABS);
+            }
+        }
+        assert mRecentlyClosedEntries.size() <= RECENTLY_CLOSED_MAX_ENTRY_COUNT_WITH_WINDOW;
+
         if (mEntriesUpdatedCallback != null) {
             mEntriesUpdatedCallback.onResult(mRecentlyClosedEntries);
         }
@@ -285,7 +301,11 @@ public class RecentlyClosedEntriesManager {
     }
 
     private List<InstanceInfo> getAllInactiveInstances() {
-        return mMultiInstanceManager.getInstanceInfo(PersistedInstanceType.INACTIVE);
+        var instanceType = PersistedInstanceType.INACTIVE;
+        if (IncognitoUtils.shouldOpenIncognitoAsWindow()) {
+            instanceType |= PersistedInstanceType.REGULAR;
+        }
+        return mMultiInstanceManager.getInstanceInfo(instanceType);
     }
 
     private void getRecentlyClosedTabsAndWindows(
@@ -376,8 +396,10 @@ public class RecentlyClosedEntriesManager {
             mMultiInstanceManager.closeWindows(
                     instanceIdsToClose, CloseWindowAppSource.RECENT_TABS);
         }
-        mRecentlyClosedTabManager.clearLeastRecentlyUsedClosedEntries(
-                /* numToRemove= */ sessionEntrySize - sessionEntryCount);
+        if (sessionEntryCount < sessionEntrySize) {
+            mRecentlyClosedTabManager.clearLeastRecentlyUsedClosedEntries(
+                    /* numToRemove= */ sessionEntrySize - sessionEntryCount);
+        }
     }
 
     private List<RecentlyClosedWindow> getRecentlyClosedWindows() {
@@ -385,15 +407,22 @@ public class RecentlyClosedEntriesManager {
         List<RecentlyClosedWindow> recentlyClosedWindows = new ArrayList<>();
 
         for (InstanceInfo info : instanceInfoList) {
+            // Use lastAccessedTime as the closure time if a valid closureTime is not available.
+            long closureTime = info.closureTime > 0 ? info.closureTime : info.lastAccessedTime;
+            assert closureTime > 0 : "Expected a valid window closure time.";
             recentlyClosedWindows.add(
                     new RecentlyClosedWindow(
-                            info.lastAccessedTime,
+                            closureTime,
                             info.instanceId,
                             info.url,
                             info.customTitle,
                             info.title,
                             info.tabCount));
         }
+
+        recentlyClosedWindows.sort(
+                (window1, window2) ->
+                        Long.compare(window2.getDate().getTime(), window1.getDate().getTime()));
         return recentlyClosedWindows;
     }
 

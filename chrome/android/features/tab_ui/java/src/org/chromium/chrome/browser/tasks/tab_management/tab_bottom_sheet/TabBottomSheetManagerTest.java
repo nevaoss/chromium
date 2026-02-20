@@ -18,7 +18,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import org.chromium.base.Callback;
-import org.chromium.base.CallbackUtils;
 import org.chromium.base.ThreadUtils;
 import org.chromium.base.supplier.MonotonicObservableSupplier;
 import org.chromium.base.test.util.Batch;
@@ -40,6 +39,8 @@ public class TabBottomSheetManagerTest {
     @Rule
     public FreshCtaTransitTestRule mActivityTestRule =
             ChromeTransitTestRules.freshChromeTabbedActivityRule();
+
+    private static final int REQUEST_ID = 0;
 
     private ChromeTabbedActivity mActivity;
     private MonotonicObservableSupplier<Profile> mProfileSupplier;
@@ -95,14 +96,19 @@ public class TabBottomSheetManagerTest {
     @After
     public void tearDown() {
         if (mManager != null) {
-            mManager.destroy();
+            ThreadUtils.runOnUiThreadBlocking(() -> mManager.destroy());
         }
     }
 
     private void createManager() {
         mManager =
                 new TabBottomSheetManager(
-                        mActivity, mProfileSupplier, mWindowAndroid, mBottomSheetController);
+                        mActivity,
+                        mProfileSupplier,
+                        mWindowAndroid,
+                        mActivity.getLifecycleDispatcher(),
+                        mActivity.getSnackbarManager(),
+                        mBottomSheetController);
     }
 
     @Test
@@ -112,7 +118,9 @@ public class TabBottomSheetManagerTest {
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
                     mManager.tryToShowBottomSheet(
-                            mToolbar, mFusebox, CallbackUtils.emptyCallback());
+                            REQUEST_ID,
+                            /* shouldShowToolbar= */ true,
+                            /* shouldShowFusebox= */ true);
                 });
         assertNull(mManager.getTabBottomSheetCoordinatorForTesting());
     }

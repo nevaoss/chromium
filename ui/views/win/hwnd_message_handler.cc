@@ -673,10 +673,16 @@ std::vector<HWND> HWNDMessageHandler::GetOwnedWindows() {
 
 void HWNDMessageHandler::SetDwmFrameExtension(DwmFrameState state) {
   if (!delegate_->HasFrame() && !is_translucent_) {
-    MARGINS m = {0, 0, 0, 0};
+    gfx::Insets insets;
     if (state == DwmFrameState::kOn && !IsMaximized()) {
-      m = {0, 0, 1, 0};
+      insets.set_top(1);
     }
+    // Avoid redundant cross-process DWM calls when the margins haven't changed.
+    if (last_dwm_frame_insets_ == insets) {
+      return;
+    }
+    last_dwm_frame_insets_ = insets;
+    MARGINS m = {insets.left(), insets.right(), insets.top(), insets.bottom()};
     DwmExtendFrameIntoClientArea(hwnd(), &m);
   }
 }
@@ -1922,12 +1928,7 @@ void HWNDMessageHandler::OnDestroy() {
   delegate_->HandleDestroying();
   // If the window going away is a fullscreen window then remove its references
   // from the full screen window map.
-  auto& map = fullscreen_monitor_map_.Get();
-  const auto i = std::ranges::find(
-      map, this, &FullscreenWindowMonitorMap::value_type::second);
-  if (i != map.end()) {
-    map.erase(i);
-  }
+  RemoveCurrentWindowFromFullscreenMonitorMap();
 
   if (auto& ax_platform = ui::AXPlatform::GetInstance();
       ax_platform.HasServicedUiaClients()) {
@@ -1962,6 +1963,10 @@ void HWNDMessageHandler::OnDisplayChange(UINT bits_per_pixel,
   // updates of the global ScreenWin DisplayInfos state. See
   // https://crbug.com/1413940 for more info.
   display::win::GetScreenWin()->UpdateDisplayInfosIfNeeded();
+
+  // Update `fullscreen_monitor_map_`, as the user may have disconnected a
+  // monitor, causing the HMONITOR handle to become invalid.
+  UpdateFullscreenMonitorMap();
 
   base::WeakPtr<HWNDMessageHandler> ref(msg_handler_weak_factory_.GetWeakPtr());
   delegate_->HandleDisplayChange();
@@ -2947,6 +2952,11 @@ void HWNDMessageHandler::OnSysCommand(UINT notification_code,
   // Handle SC_KEYMENU, which means that the user has pressed the ALT
   // key and released it, so we should focus the menu bar.
   if ((notification_code & sc_mask) == SC_KEYMENU && point.x() == 0) {
+    // When pointer lock is active, suppress Alt key menu activation to prevent
+    // the window from losing focus and releasing the pointer lock.
+    if (mouse_locked_) {
+      return;
+    }
     int modifiers = ui::EF_NONE;
     if (ui::win::IsShiftPressed()) {
       modifiers |= ui::EF_SHIFT_DOWN;
@@ -3693,6 +3703,11 @@ void HWNDMessageHandler::UpdateDwmFrame() {
 
   gfx::Insets insets;
   if (delegate_->GetDwmFrameInsetsInPixels(&insets)) {
+    // Avoid redundant cross-process DWM calls when the margins haven't changed.
+    if (last_dwm_frame_insets_ == insets) {
+      return;
+    }
+    last_dwm_frame_insets_ = insets;
     MARGINS margins = {insets.left(), insets.right(), insets.top(),
                        insets.bottom()};
     DwmExtendFrameIntoClientArea(hwnd(), &margins);
@@ -3878,6 +3893,25 @@ POINT HWNDMessageHandler::GetCursorPos() const {
   ::GetCursorPos(&cursor_pos);
 
   return cursor_pos;
+}
+
+void HWNDMessageHandler::RemoveCurrentWindowFromFullscreenMonitorMap() {
+  auto& map = fullscreen_monitor_map_.Get();
+  const auto i = std::ranges::find(
+      map, this, &FullscreenWindowMonitorMap::value_type::second);
+  if (i != map.end()) {
+    map.erase(i);
+  }
+}
+
+void HWNDMessageHandler::UpdateFullscreenMonitorMap() {
+  HMONITOR hmonitor = MonitorFromWindow(hwnd(), MONITOR_DEFAULTTONULL);
+  if (!hmonitor) {
+    // A null `hmonitor` indicates that the monitor where the current window
+    // resides has been disconnected. Remove the HMONITOR corresponding to the
+    // current window.
+    RemoveCurrentWindowFromFullscreenMonitorMap();
+  }
 }
 
 // static

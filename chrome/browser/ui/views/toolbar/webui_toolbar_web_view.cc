@@ -5,10 +5,12 @@
 #include "chrome/browser/ui/views/toolbar/webui_toolbar_web_view.h"
 
 #include "base/functional/bind.h"
+#include "base/location.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/notimplemented.h"
 #include "base/numerics/safe_conversions.h"
 #include "base/task/sequenced_task_runner.h"
+#include "base/time/default_tick_clock.h"
 #include "base/time/time.h"
 #include "chrome/browser/page_load_metrics/page_load_metrics_initialize.h"
 #include "chrome/browser/profiles/profile.h"
@@ -19,6 +21,7 @@
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/view_ids.h"
 #include "chrome/browser/ui/waap/initial_web_ui_manager.h"
+#include "chrome/browser/ui/waap/initial_webui_window_metrics_manager.h"
 #include "chrome/browser/ui/webui/webui_embedding_context.h"
 #include "chrome/browser/ui/webui/webui_toolbar/webui_toolbar_ui.h"
 #include "chrome/common/chrome_features.h"
@@ -41,6 +44,7 @@
 #include "ui/gfx/geometry/size.h"
 #include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/controls/webview/webview.h"
+#include "ui/views/focus/focus_manager.h"
 #include "ui/views/layout/fill_layout.h"
 #include "ui/views/view.h"
 #include "ui/views/view_class_properties.h"
@@ -79,6 +83,23 @@ class WebUIToolbarInternalWebView : public views::WebView {
     views::WebView::RendererUnresponsive(source, render_widget_host,
                                          std::move(hang_monitor_restarter));
   }
+
+  void OnFocus() override {
+    // The default OnFocus() implementation calls WebContents::Focus(), which
+    // restores focus to the last focused element. If the focus was
+    // never established, WebContents::Focus() will focus the <body>, which
+    // doesn't show a focus ring.
+    views::WebView::OnFocus();
+
+    // For a programmatic focus (kDirectFocusChange), focuses the first
+    // focusable element in the HTML document by calling
+    // WebContents::FocusThroughTabTraversal().
+    if (GetFocusManager()->focus_change_reason() ==
+            views::FocusManager::FocusChangeReason::kDirectFocusChange &&
+        IsWebContentsAlive()) {
+      web_contents()->FocusThroughTabTraversal(/*reverse=*/false);
+    }
+  }
 };
 
 BEGIN_METADATA(WebUIToolbarInternalWebView)
@@ -89,7 +110,14 @@ END_METADATA
 WebUIToolbarWebView::WebUIToolbarWebView(
     BrowserWindowInterface* browser,
     chrome::BrowserCommandController* controller)
-    : browser_(browser), controller_(controller), reload_control_(this) {
+    : browser_(browser),
+      controller_(controller),
+      reload_control_(this),
+      clock_(base::DefaultTickClock::GetInstance()) {
+  if (auto* manager = InitialWebUIWindowMetricsManager::From(browser_)) {
+    manager->OnReloadButtonCreated();
+  }
+
   SetLayoutManager(std::make_unique<views::FillLayout>());
 
   auto web_view =
@@ -99,8 +127,6 @@ WebUIToolbarWebView::WebUIToolbarWebView(
   // PLM has to be initialized before loading the URL.
   InitializePageLoadMetricsForWebContents(web_contents);
 
-  const int size = GetLayoutConstant(LayoutConstant::kToolbarButtonHeight);
-  web_view->SetPreferredSize(gfx::Size(size, size));
   web_contents->SetPageBaseBackgroundColor(SK_ColorTRANSPARENT);
   web_contents->SetIgnoreZoomGestures(true);
   web_view->SetID(VIEW_ID_RELOAD_BUTTON);
@@ -128,6 +154,20 @@ void WebUIToolbarWebView::AddedToWidget() {
   web_view_->LoadInitialURL(GURL(chrome::kChromeUIWebUIToolbarURL));
   GetWebUIToolbarUI()->SetDelegate(this);
   reload_control_.Init();
+}
+
+gfx::Size WebUIToolbarWebView::CalculatePreferredSize(
+    const views::SizeBounds& available_size) const {
+  int button_count = 0;
+  button_count += features::IsWebUIReloadButtonEnabled();
+
+  const int size = GetLayoutConstant(LayoutConstant::kToolbarButtonHeight);
+  int width = button_count * size;
+  if (button_count > 0) {
+    width += (button_count - 1) *
+             GetLayoutConstant(LayoutConstant::kToolbarIconDefaultMargin);
+  }
+  return gfx::Size(width, size);
 }
 
 void WebUIToolbarWebView::HandleContextMenu(
@@ -183,12 +223,15 @@ void WebUIToolbarWebView::PrimaryMainFrameRenderProcessGone(
     return;
   }
 
+  did_recover_from_previous_termination_ = false;
+
   // Reset the crash count if when the reset interval is reached.
-  if (base::TimeTicks::Now() - last_crash_time_ >=
+  if (clock_->NowTicks() - last_crash_time_ >=
       features::kWebUIReloadButtonCrashRecoverResetInterval.Get()) {
     crash_count_ = 0;
   }
-  last_crash_time_ = base::TimeTicks::Now();
+
+  last_crash_time_ = clock_->NowTicks();
 
   if (++crash_count_ <=
       base::checked_cast<uint32_t>(
@@ -198,19 +241,28 @@ void WebUIToolbarWebView::PrimaryMainFrameRenderProcessGone(
 
     // PostTask to avoid re-entrancy into RenderProcessHost during its death.
     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE, base::BindOnce(&WebUIToolbarWebView::ReloadWebContents,
-                                  weak_ptr_factory_.GetWeakPtr()));
+        FROM_HERE,
+        base::BindOnce(
+            &WebUIToolbarWebView::RecoverFromRendererCrashOrUnresponsiveness,
+            weak_ptr_factory_.GetWeakPtr()));
   } else {
     // TODO(crbug.com/474228715): if the crash_count exceeds the threshold, we
-    // should consider fall back to the C++ view or start a periodic attempt to
-    // recover.
+    // should consider fall back to the C++ view.
     base::UmaHistogramBoolean(
         kHistogramToolbarRenderProcessGoneExceedingRecoveryLimit, true);
+    base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
+        FROM_HERE,
+        base::BindOnce(
+            &WebUIToolbarWebView::RecoverFromRendererCrashOrUnresponsiveness,
+            weak_ptr_factory_.GetWeakPtr()),
+        features::kWebUIReloadButtonCrashRecoverRetryInterval.Get());
   }
 }
 
-void WebUIToolbarWebView::ReloadWebContents() {
+void WebUIToolbarWebView::RecoverFromRendererCrashOrUnresponsiveness() {
   CHECK(web_view_);
+  CHECK(!did_recover_from_previous_termination_);
+  did_recover_from_previous_termination_ = true;
   web_view_->web_contents()->GetController().Reload(content::ReloadType::NORMAL,
                                                     /*check_for_repost=*/false);
 }
@@ -225,6 +277,10 @@ void WebUIToolbarWebView::SetDidFirstNonEmptyPaintCallbackForTesting(
     return;
   }
   did_first_non_empty_paint_callback_ = std::move(callback);
+}
+
+void WebUIToolbarWebView::SetTickClockForTesting(const base::TickClock* clock) {
+  clock_ = clock;
 }
 
 WebUIToolbarUI* WebUIToolbarWebView::GetWebUIToolbarUI() {

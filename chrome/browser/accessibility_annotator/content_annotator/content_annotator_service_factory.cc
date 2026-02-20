@@ -5,9 +5,9 @@
 #include "chrome/browser/accessibility_annotator/content_annotator/content_annotator_service_factory.h"
 
 #include "base/feature_list.h"
-#include "chrome/browser/accessibility_annotator/accessibility_annotator_features.h"
-#include "chrome/browser/accessibility_annotator/content_annotator/content_annotator_service.h"
 #include "chrome/browser/profiles/profile.h"
+#include "components/accessibility_annotator/content/content_annotator/content_annotator_service.h"
+#include "components/accessibility_annotator/core/public/accessibility_annotator_features.h"
 
 namespace accessibility_annotator {
 
@@ -39,8 +39,7 @@ ContentAnnotatorServiceFactory::BuildServiceInstanceForBrowserContext(
   if (!base::FeatureList::IsEnabled(kContentAnnotator)) {
     return nullptr;
   }
-  return std::make_unique<ContentAnnotatorService>(
-      Profile::FromBrowserContext(context));
+  return std::make_unique<ContentAnnotatorService>();
 }
 
 bool ContentAnnotatorServiceFactory::ServiceIsCreatedWithBrowserContext()

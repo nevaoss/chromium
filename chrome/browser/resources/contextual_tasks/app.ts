@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 import './composebox.js';
+import './error_dialog.js';
 import './error_page.js';
 import './ghost_loader.js';
 import './top_toolbar.js';
@@ -20,6 +21,12 @@ import type {BrowserProxy} from './contextual_tasks_browser_proxy.js';
 import {BrowserProxyImpl} from './contextual_tasks_browser_proxy.js';
 import {PostMessageHandler} from './post_message_handler.js';
 
+declare global {
+  interface HTMLElementEventMap {
+    'newwindow': chrome.webviewTag.NewWindowEvent;
+  }
+}
+
 type ChromeEventFunctionType<T> =
     T extends ChromeEvent<infer ListenerType>? ListenerType : never;
 
@@ -33,6 +40,7 @@ export interface ContextualTasksAppElement {
     composebox: ContextualTasksComposeboxElement,
     composeboxHeaderWrapper: HTMLElement,
     composeboxHeader: HTMLElement,
+    flexCenterContainer: HTMLElement,
   };
 }
 
@@ -124,15 +132,23 @@ export class ContextualTasksAppElement extends CrLitElement {
       isAiPage_: {type: Boolean, reflect: true},
       isLensOverlayShowing_: {type: Boolean},
       isGhostLoaderVisible_: {type: Boolean, reflect: true},
+      isErrorDialogVisible_: {type: Boolean},
+      enableNativeZeroStateSuggestions: {
+        type: Boolean,
+        reflect: true,
+      },
     };
   }
 
+  accessor enableNativeZeroStateSuggestions: boolean =
+      loadTimeData.getBoolean('enableNativeZeroStateSuggestions');
   private browserProxy_: BrowserProxy = BrowserProxyImpl.getInstance();
   protected accessor isAiPage_: boolean = true;
   protected accessor isLensOverlayShowing_: boolean = false;
   // Indicates if in tab mode. Most start in a tab.
   protected accessor isShownInTab_: boolean = true;
   protected accessor darkMode_: boolean = loadTimeData.getBoolean('darkMode');
+  protected accessor isErrorDialogVisible_: boolean = false;
   private pendingUrl_: string = '';
   protected accessor threadTitle_: string = '';
   protected accessor isInBasicMode_: boolean = false;
@@ -378,6 +394,14 @@ export class ContextualTasksAppElement extends CrLitElement {
           urls: ['<all_urls>'],
         },
         ['blocking']);
+
+    // Allow downloading files. This is necessary since aim can generate images
+    // for download.
+    this.$.threadFrame.addEventListener('permissionrequest', (e: any) => {
+      if (e.permission === 'download') {
+        e.request.allow();
+      }
+    });
 
     // Sets the user agent to the default user agent + the contextual tasks
     // custom suffix.

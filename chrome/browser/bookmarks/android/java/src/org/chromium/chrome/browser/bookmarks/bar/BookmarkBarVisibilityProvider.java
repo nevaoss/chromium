@@ -15,6 +15,7 @@ import org.chromium.base.ContextUtils;
 import org.chromium.base.DeviceInfo;
 import org.chromium.base.ObserverList;
 import org.chromium.base.supplier.MonotonicObservableSupplier;
+import org.chromium.base.supplier.NonNullObservableSupplier;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.bookmarks.R;
@@ -64,7 +65,7 @@ public class BookmarkBarVisibilityProvider {
     private final MonotonicObservableSupplier<Profile> mProfileSupplier;
     private final Callback<Profile> mProfileSupplierObserver;
     private final ObserverList<BookmarkBarVisibilityObserver> mObservers;
-    private final @Nullable MonotonicObservableSupplier<Boolean> mXrSpaceModeObservableSupplier;
+    private final NonNullObservableSupplier<Boolean> mXrSpaceModeObservableSupplier;
     private final Callback<Boolean> mXrSpaceModeObserver = this::processXrSpaceModeChange;
 
     private @Nullable PrefChangeRegistrar mPrefChangeRegistrar;
@@ -82,7 +83,7 @@ public class BookmarkBarVisibilityProvider {
             @NonNull Activity activity,
             @NonNull ActivityLifecycleDispatcher activityLifecycleDispatcher,
             @NonNull MonotonicObservableSupplier<Profile> profileSupplier,
-            @Nullable MonotonicObservableSupplier<Boolean> xrSpaceModeObservableSupplier) {
+            NonNullObservableSupplier<Boolean> xrSpaceModeObservableSupplier) {
         mActivity = activity;
         mActivityLifecycleDispatcher = activityLifecycleDispatcher;
         mProfileSupplier = profileSupplier;
@@ -96,9 +97,7 @@ public class BookmarkBarVisibilityProvider {
         mProfileSupplierObserver = this::processProfileChange;
         mProfileSupplier.addObserver(mProfileSupplierObserver);
 
-        if (mXrSpaceModeObservableSupplier != null) {
-            mXrSpaceModeObservableSupplier.addObserver(mXrSpaceModeObserver);
-        }
+        mXrSpaceModeObservableSupplier.addObserver(mXrSpaceModeObserver);
 
         // On tablets we use local device prefs.
         if (!DeviceInfo.isDesktop()) {
@@ -138,9 +137,7 @@ public class BookmarkBarVisibilityProvider {
     public void destroy() {
         mActivityLifecycleDispatcher.unregister(mConfigurationChangedListener);
         mProfileSupplier.removeObserver(mProfileSupplierObserver);
-        if (mXrSpaceModeObservableSupplier != null) {
-            mXrSpaceModeObservableSupplier.removeObserver(mXrSpaceModeObserver);
-        }
+        mXrSpaceModeObservableSupplier.removeObserver(mXrSpaceModeObserver);
         destroyPrefChangeRegistrar();
         destroySharedPrefListener();
         mObservers.clear();
@@ -149,7 +146,7 @@ public class BookmarkBarVisibilityProvider {
     private void notifyVisibilityChange() {
         boolean visibility =
                 BookmarkBarUtils.isBookmarkBarVisible(
-                        mActivity, mProfileSupplier.get(), mXrSpaceModeObservableSupplier);
+                        mActivity, mProfileSupplier.get(), mXrSpaceModeObservableSupplier.get());
         for (BookmarkBarVisibilityObserver observer : mObservers) {
             observer.onVisibilityChanged(visibility);
         }
@@ -173,16 +170,14 @@ public class BookmarkBarVisibilityProvider {
         notifyVisibilityChange();
     }
 
-    private void processProfileChange(@Nullable Profile profile) {
+    private void processProfileChange(Profile profile) {
         // On a profile change, we may have either received a profile for the first time, or we
         // have received a new profile, in which case we want to destroy the previous pref change
         // registrar and create a new one.
         destroyPrefChangeRegistrar();
 
-        if (profile != null) {
-            mPrefChangeRegistrar = PrefServiceUtil.createFor(profile);
-            mPrefChangeRegistrar.addObserver(Pref.SHOW_BOOKMARK_BAR, this::processPrefChange);
-        }
+        mPrefChangeRegistrar = PrefServiceUtil.createFor(profile);
+        mPrefChangeRegistrar.addObserver(Pref.SHOW_BOOKMARK_BAR, this::processPrefChange);
 
         // Profile changes can also result in visibility changes (e.g. different setting prefs).
         notifyVisibilityChange();

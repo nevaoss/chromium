@@ -111,6 +111,7 @@
 #include "third_party/blink/public/web/web_searchable_form_data.h"
 #include "third_party/blink/public/web/web_security_policy.h"
 #include "third_party/blink/public/web/web_settings.h"
+#include "third_party/blink/public/web/web_spelling_marker.h"
 #include "third_party/blink/public/web/web_text_check_client.h"
 #include "third_party/blink/public/web/web_text_checking_completion.h"
 #include "third_party/blink/public/web/web_text_checking_result.h"
@@ -338,8 +339,8 @@ class WebFrameTest : public PageTestBase {
     // which is needed for Javascript URL security checks to work properly in
     // tests below.
     url::AddStandardScheme("chrome", url::SCHEME_WITH_HOST);
-    feature_list_.InitAndDisableFeature(
-        blink::features::kRestrictSpellingAndGrammarHighlights);
+    feature_list_.InitAndEnableFeature(
+        blink::features::kUnrestrictSpellingAndGrammarForTesting);
   }
 
   ~WebFrameTest() override {
@@ -6983,7 +6984,7 @@ class TextCheckClient : public WebTextCheckClient {
   bool IsSpellCheckingEnabled() const override { return true; }
   void RequestCheckingOfText(
       const WebString&,
-      const std::vector<WebTextCheckClient::WebSpellingMarker>&,
+      const std::vector<WebSpellingMarker>&,
       WebTextCheckClient::ShouldForceRefreshTextCheckService,
       std::unique_ptr<WebTextCheckingCompletion> completion) override {
     ++number_of_times_checked_;
@@ -7130,7 +7131,7 @@ class StubbornTextCheckClient : public WebTextCheckClient {
   bool IsSpellCheckingEnabled() const override { return true; }
   void RequestCheckingOfText(
       const WebString&,
-      const std::vector<WebTextCheckClient::WebSpellingMarker>&,
+      const std::vector<WebSpellingMarker>&,
       WebTextCheckClient::ShouldForceRefreshTextCheckService,
       std::unique_ptr<WebTextCheckingCompletion> completion) override {
     completion_ = std::move(completion);

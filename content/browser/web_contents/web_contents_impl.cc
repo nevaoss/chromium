@@ -72,7 +72,6 @@
 #include "content/browser/browser_plugin/browser_plugin_embedder.h"
 #include "content/browser/browser_plugin/browser_plugin_guest.h"
 #include "content/browser/btm/btm_bounce_detector.h"
-#include "content/browser/btm/btm_navigation_flow_detector.h"
 #include "content/browser/child_process_security_policy_impl.h"
 #include "content/browser/closewatcher/close_listener_manager.h"
 #include "content/browser/compositor/surface_utils.h"
@@ -4249,7 +4248,6 @@ void WebContentsImpl::Init(const WebContents::CreateParams& params,
 
   RedirectChainDetector::CreateForWebContents(this);
   BtmWebContentsObserver::MaybeCreateForWebContents(this);
-  BtmNavigationFlowDetector::CreateForWebContents(this);
   RedirectHeuristicTabHelper::CreateForWebContents(this);
   OpenerHeuristicTabHelper::CreateForWebContents(this);
 
@@ -5554,8 +5552,7 @@ FrameTree* WebContentsImpl::CreateNewWindow(
             ? NavigationController::UA_OVERRIDE_TRUE
             : NavigationController::UA_OVERRIDE_FALSE;
     load_params->download_policy = params.download_policy;
-    load_params->initiator_activation_and_ad_status =
-        params.initiator_activation_and_ad_status;
+    load_params->started_by_ad = params.started_by_ad;
 
     if (delegate_ && !is_guest &&
         !delegate_->ShouldResumeRequestsForCreatedWindow()) {

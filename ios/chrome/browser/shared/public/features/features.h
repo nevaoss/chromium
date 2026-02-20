@@ -449,6 +449,15 @@ bool IsIOSKeyboardAccessoryDefaultViewEnabled();
 // enabled.
 bool IsIOSKeyboardAccessoryTwoBubbleEnabled();
 
+// Name of the parameter for kIOSKeyboardAccessoryTwoBubble to use a keyboard
+// icon.
+inline constexpr char kIOSKeyboardAccessoryTwoBubbleKeyboardIconParamName[] =
+    "use_keyboard_icon";
+
+// Feature param for kIOSKeyboardAccessoryTwoBubble to use a keyboard icon.
+BASE_DECLARE_FEATURE_PARAM(bool,
+                           kIOSKeyboardAccessoryTwoBubbleKeyboardIconParam);
+
 // Kill switch for disabling the navigations when the application is in
 // foreground inactive state after opening an external app.
 BASE_DECLARE_FEATURE(kInactiveNavigationAfterAppLaunchKillSwitch);
@@ -459,10 +468,6 @@ bool IsPinnedTabsEnabled();
 
 // Feature flag for caching the ios module ranker.
 BASE_DECLARE_FEATURE(kSegmentationPlatformIosModuleRankerCaching);
-
-// Flag to not keep a strong reference to the spotlight index, as a tentative
-// memory improvement measure.
-BASE_DECLARE_FEATURE(kSpotlightNeverRetainIndex);
 
 // Feature flag to enable app background refresh.
 // Use IsAppBackgroundRefreshEnabled() instead of this constant directly.
@@ -810,12 +815,6 @@ BASE_DECLARE_FEATURE(kMultilineBrowserOmnibox);
 // Returns true if the MultilineBrowserOmnibox feature is enabled.
 bool IsMultilineBrowserOmniboxEnabled();
 
-// Feature flag for settings controls auto open remote tab groups.
-BASE_DECLARE_FEATURE(kIOSAutoOpenRemoteTabGroupsSettings);
-
-// Whether the kIOSAutoOpenRemoteTabGroupsSettings feature is enabled.
-bool IsAutoOpenRemoteTabGroupsSettingsFeatureEnabled();
-
 // Enables the DisableKeyboardAccessory feature.
 BASE_DECLARE_FEATURE(kDisableKeyboardAccessory);
 
@@ -851,6 +850,12 @@ BASE_DECLARE_FEATURE(kTabGroupColorOnSurface);
 
 // Returns true if the TabGroupColorOnSurface feature is enabled.
 bool IsTabGroupColorOnSurfaceEnabled();
+
+// Enables the OmniboxCrashFixKillSwitch feature.
+BASE_DECLARE_FEATURE(kOmniboxCrashFixKillSwitch);
+
+// Returns true if the OmniboxCrashFixKillSwitch feature is enabled.
+bool IsOmniboxCrashFixKillSwitchEnabled();
 
 // Enables the AIMEligibilityServiceStartWithProfile feature.
 BASE_DECLARE_FEATURE(kAIMEligibilityServiceStartWithProfile);
@@ -911,5 +916,14 @@ BASE_DECLARE_FEATURE(kEnableNewStartupFlow);
 
 // Returns true if the EnableNewStartupFlow feature is enabled.
 bool IsEnableNewStartupFlowEnabled();
+
+// Updates EnableNewStartupFlow NSUserDefaults key if the value was changed.
+void SaveEnableNewStartupFlowForNextStart();
+
+// Flags for Share Ablation study.
+BASE_DECLARE_FEATURE(kDisableShareButton);
+BASE_DECLARE_FEATURE(kShareInOmniboxLongPress);
+BASE_DECLARE_FEATURE(kShareInOverflowMenu);
+BASE_DECLARE_FEATURE(kShareInVerbatimMatch);
 
 #endif  // IOS_CHROME_BROWSER_SHARED_PUBLIC_FEATURES_FEATURES_H_

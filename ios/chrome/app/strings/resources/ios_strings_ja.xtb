@@ -333,6 +333,7 @@
 <translation id="2184272387334793084">ログインすると、保存済みのパスワードなどをすべてのデバイスで使用できるようになります</translation>
 <translation id="2186206192313702726">Google レンズ</translation>
 <translation id="2188993354115194873">[<ph name="BEGIN_BOLD" />"ダウンロード” に保存<ph name="END_BOLD" />] をタップします</translation>
+<translation id="2191406283620379491">エラーが発生しました。iOS のバージョンを更新してください。</translation>
 <translation id="219283042927675668">グループ内のタブ</translation>
 <translation id="2194856509914051091">留意事項</translation>
 <translation id="2196428379625389579">ウェブで検索</translation>
@@ -579,6 +580,7 @@
 <translation id="3143515551205905069">同期をキャンセル</translation>
 <translation id="3144126448740580210">完了</translation>
 <translation id="3148052723910099040">通常のタブのグリッド</translation>
+<translation id="3148237711805373460">移動する</translation>
 <translation id="3157387275655328056">リーディング リストに追加</translation>
 <translation id="315778507796115851">履歴</translation>
 <translation id="31652791196570636">閉じる</translation>
@@ -1020,6 +1022,7 @@
 <translation id="483689884442613745">保存…</translation>
 <translation id="4840495572919996524">ブックマーク、履歴、パスワードなどの設定は Google アカウントと同期されなくなります。</translation>
 <translation id="484280513275854557">ログアウトして閲覧データを削除しました</translation>
+<translation id="484462545196658690">自動</translation>
 <translation id="4850886885716139402">表示</translation>
 <translation id="4854068532375923088">「Gemini」にカメラの使用を許可する</translation>
 <translation id="4860895144060829044">通話</translation>
@@ -1521,6 +1524,7 @@
 <translation id="6556866813142980365">やり直す</translation>
 <translation id="6559301491397835130">{count,plural, =1{ブックマークを「{title}」に保存しました。保存されるのはこのデバイスのみに限られます。}other{ブックマークを「{title}」に保存しました。保存されるのはこのデバイスのみに限られます。}}</translation>
 <translation id="656065428026159829">もっと見る</translation>
+<translation id="6565899972286925956">あらゆるものを作成できます</translation>
 <translation id="6571070086367343653">クレジットカードの編集</translation>
 <translation id="6574092468346088891">安全チェックの通知をオンにする</translation>
 <translation id="6579867704846662339">他のアプリで受け取った URL をシークレット モードで開くよう選択できます。</translation>
@@ -1631,6 +1635,7 @@
 <translation id="6930799952781667037">タップしてこの言語を変更できます。</translation>
 <translation id="693761253105515415">パスコードの設定</translation>
 <translation id="6945221475159498467">選択</translation>
+<translation id="6946722113367118030">考えている</translation>
 <translation id="6950522403736391608">非表示</translation>
 <translation id="6962809930976936328">Gemini で分析情報を取得</translation>
 <translation id="6964300328304469089"><ph name="NAME" />、<ph name="EMAIL" /> が現在選択されています。アカウントを選択してください。</translation>
@@ -1899,6 +1904,7 @@
 <translation id="7958575506592576831">ページのセキュリティ情報</translation>
 <translation id="7961015016161918242">使用しない</translation>
 <translation id="7971136598759319605">最終同期: 1 日前</translation>
+<translation id="7972837668077967426">Canvas</translation>
 <translation id="7975036700432177008">試す</translation>
 <translation id="797588153137233716">[メニュー] → [履歴] → [閲覧履歴データを削除]</translation>
 <translation id="7977451675950311423">データ侵害で流出したパスワードを使用すると警告します。</translation>
@@ -1972,6 +1978,7 @@
 <translation id="8205564605687841303">キャンセル</translation>
 <translation id="8206354486702514201">この設定は管理者によって制御されています。</translation>
 <translation id="8209050860603202033">画像を開く</translation>
+<translation id="8209237163365258530">Gemini <ph name="VERSION_NUMBER" /> モデル</translation>
 <translation id="8211030355252954494"><ph name="WEBSITE" /> のパスワードを受信しました</translation>
 <translation id="8211406090763984747">この接続は保護されています</translation>
 <translation id="8214293972734702249">固定しました、<ph name="TAB_TITLE" /></translation>

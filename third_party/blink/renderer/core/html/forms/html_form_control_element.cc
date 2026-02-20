@@ -55,7 +55,10 @@
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_fetcher.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
+#include "third_party/blink/renderer/platform/wtf/text/atomic_string.h"
+#include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 #include "third_party/blink/renderer/platform/wtf/vector.h"
+#include "third_party/blink/renderer/platform/wtf/wtf_size_t.h"
 
 namespace blink {
 
@@ -214,6 +217,10 @@ void HTMLFormControlElement::SetAutofillState(WebAutofillState autofill_state) {
   PseudoStateChanged(CSSSelector::kPseudoAutofillPreviewed);
 }
 
+bool HTMLFormControlElement::MatchesToolSubmitActivePseudoClass() const {
+  return Form() && Form()->IsActiveToolSubmitButton(this);
+}
+
 bool HTMLFormControlElement::IsAutocompleteEmailUrlOrPassword() const {
   DEFINE_STATIC_LOCAL(HashSet<AtomicString>, values,
                       ({AtomicString("username"), AtomicString("new-password"),
@@ -365,9 +372,52 @@ String HTMLFormControlElement::GetWebMCPParameterName() const {
   // Eventually add more logic here to use the label, tool-param-name, etc.
   return name;
 }
+
+std::unique_ptr<JSONObject> HTMLFormControlElement::GetWebMCPParameterSchema()
+    const {
+  return nullptr;
+}
+
 void HTMLFormControlElement::FillWebMCPData(JSONValue& data) {
   CHECK(RuntimeEnabledFeatures::WebMCPEnabled());
   NOTREACHED();
+}
+
+String HTMLFormControlElement::GetWebMCPParameterDescription() {
+  // Prefer 'toolparamdescription' when present.
+  if (String description =
+          FastGetAttribute(html_names::kToolparamdescriptionAttr);
+      !description.empty()) {
+    return description;
+  }
+
+  // Absent a 'toolparamdescription' attribute, use concatenated label text.
+  //
+  // TODO(crbug.com/475972617): Is this too expensive? The `labels()` function
+  // lazily creates a cached collection that may not be commonly created.
+  if (LiveNodeList* list = labels()) {
+    StringBuilder builder;
+
+    for (wtf_size_t i = 0; i < list->length(); ++i) {
+      Element* label = list->item(i);
+      if (i != 0) {
+        builder.Append("; ");
+      }
+      builder.Append(label->textContent());
+    }
+
+    if (!builder.empty()) {
+      return builder.ReleaseString();
+    }
+  }
+
+  // Last resort: aria-description.
+  if (String description = FastGetAttribute(html_names::kAriaDescriptionAttr);
+      !description.empty()) {
+    return description;
+  }
+
+  return g_null_atom;
 }
 
 bool HTMLFormControlElement::IsValidElement() {

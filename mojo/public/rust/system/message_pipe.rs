@@ -8,7 +8,19 @@ use std::ffi::c_void;
 use std::ptr;
 
 chromium::import! {
-  pub "//mojo/public/rust:mojo_ffi";
+  "//mojo/public/rust/system:mojo_ffi";
+}
+
+bitflags::bitflags! {
+    #[derive(Clone, Copy, Default)]
+    pub struct GetMessageDataFlags: u32 {
+        /// If set, this read ignores handles; it doesn't read or write the handle-related
+        /// arguments and doesn't fail if handles have already been extracted.
+        /// FOR_RELEASE(https://crbug.com/458796903): It'd be nicer to access
+        /// MOJO_GET_MESSAGE_DATA_FLAG_IGNORE_HANDLES  here, but the bindings we
+        /// have right now don't export that. We should change that.
+        const IGNORE_HANDLES = 1 << 0;
+    }
 }
 
 /// An object representing a Mojo message that can be (or has been) sent through
@@ -25,6 +37,7 @@ chromium::import! {
 /// an incoming message without calling `new`). It might be nicer for it to be
 /// in a different file though if we can get the visibility to work out.
 pub struct RawMojoMessage {
+    // Invariant: this handle is valid and exclusively owned by the RawMojoMessage object
     message_handle: MojoMessageHandle,
     // This member is equivalent to `impl !Sync`, which is currently unstable
     _phantom_unsync: std::marker::PhantomData<std::cell::Cell<()>>,
@@ -34,12 +47,15 @@ pub struct RawMojoMessage {
 /// to clean it up. Note that sending a message does not and should not drop it.
 impl Drop for RawMojoMessage {
     fn drop(&mut self) {
-        let result: MojoResult = mojo_ffi::MojoDestroyMessage(self.message_handle).into();
+        // SAFETY: The handle is still alive because we're in the middle of dropping it
+        let result: MojoResult =
+            unsafe { mojo_ffi::MojoDestroyMessage(self.message_handle).into() };
         debug_assert!(result == MojoResult::Okay);
     }
 }
 
 impl RawMojoMessage {
+    /// Construct an empty RawMojoMessage
     pub fn new() -> Self {
         let mut message_handle: MojoMessageHandle = 0;
         // SAFETY: MojoCreateMessage allows the first argument to be null.
@@ -48,6 +64,15 @@ impl RawMojoMessage {
             unsafe { mojo_ffi::MojoCreateMessage(std::ptr::null(), &mut message_handle as *mut _) }
                 .into();
         assert_eq!(MojoResult::Okay, result);
+        // We just got this handle from Mojo so we know it's valid.
+        Self::new_unchecked(message_handle)
+    }
+
+    /// Construct a RawMojoMessage from an existing handle, without checking
+    /// whether that handle is valid. Not technically unsafe, but passing an
+    /// invalid handle breaks the `RawMojoMessage`'s invariants which may
+    /// cause API calls to fail.
+    fn new_unchecked(message_handle: MojoMessageHandle) -> Self {
         RawMojoMessage { message_handle, _phantom_unsync: std::marker::PhantomData }
     }
 
@@ -160,12 +185,152 @@ impl RawMojoMessage {
         self.append_data(&[], handles)
     }
 
+    /// Helper function for the `read_data` and `read_bytes`. Wraps the given
+    /// buffer in a slice of the appropriate length with the same lifetime as
+    /// `self`.
+    ///
+    /// SAFETY: The arguments must have been filled in by a call to
+    /// `MojoGetMessage` using the `self.message_handle`.
+    unsafe fn wrap_slice<'a>(&'a self, buffer: *mut c_void, num_bytes: u32) -> &'a [u8] {
+        if num_bytes > 0 {
+            assert_ne!(buffer, ptr::null_mut());
+            // Will not panic if usize has at least 32 bits, which is true for Chromium
+            // targets
+            let buffer_size: usize = num_bytes.try_into().unwrap();
+            // SAFETY: `buffer` and `buffer_size` were obtained by calling
+            // `MojoGetMessageData`, so we trust that they are valid, aligned,
+            // readable, etc.
+            // The buffer is readable as long as the message is alive, and the type of this
+            // function ensures that the lifetime of the resulting reference is the
+            // same as &self.
+            // `cast()` between `*const c_void` and `*const u8`
+            // is safe (e.g. wrt alignment, allowed bit patterns, etc.).
+            let buffer_slice = unsafe { std::slice::from_raw_parts(buffer.cast(), buffer_size) };
+            buffer_slice
+        } else {
+            &[]
+        }
+    }
+
+    /// Retrieve the payload, if present, and attached handles from this message
+    /// object.
+    ///
+    /// Because this function transfers ownership of the handles to the caller,
+    /// it may only be called ONCE per message object. Any further calls will
+    /// return MOJO_RESULT_NOT_FOUND.
+    ///
+    /// If you need to read only the payload, use `read_bytes` instead,
+    /// which does not have this restriction and does not prevent `read_data`
+    /// function from being called later.
+    ///
+    /// FOR_RELEASE: See if we can avoid returning a MojoResult here by handling
+    /// error cases internally (i.e. panicking)
+    pub fn read_data(&self) -> Result<(&[u8], Vec<UntypedHandle>), MojoResult> {
+        let mut buffer: *mut c_void = ptr::null_mut();
+        let mut num_bytes: u32 = 0;
+        let mut num_handles: u32 = 0;
+        // SAFETY: `options` may always be null, and `handles` may be null because
+        // `*num_handles` is 0.
+        let result_prelim = MojoResult::from_code(unsafe {
+            mojo_ffi::MojoGetMessageData(
+                self.message_handle,
+                ptr::null(), // Options pointer
+                &mut buffer as *mut _,
+                &mut num_bytes as *mut _,
+                ptr::null_mut(), // Handles pointer
+                &mut num_handles as *mut _,
+            )
+        });
+        // ResourceExhausted indicates that there are still handles attached, which is
+        // expected because we didn't yet provide memory to copy them to.
+        if result_prelim != MojoResult::Okay && result_prelim != MojoResult::ResourceExhausted {
+            return Err(result_prelim);
+        }
+
+        // Copy the handles from the message into a vector. This prevents further
+        // reads of the handles.
+        let mut handles: Vec<UntypedHandle> = Vec::with_capacity(num_handles as usize);
+        if num_handles > 0 {
+            // SAFETY: The options pointer may be null. `handles` has enough
+            // capacity to hold `num_handles` handles, and its pointer is valid.
+            let result = MojoResult::from_code(unsafe {
+                mojo_ffi::MojoGetMessageData(
+                    self.message_handle,
+                    ptr::null(), // Options pointer
+                    &mut buffer as *mut _,
+                    &mut num_bytes as *mut _,
+                    handles.as_mut_ptr() as *mut _,
+                    &mut num_handles as *mut _,
+                )
+            });
+
+            // SAFETY: The capacity is exactly `num_handles`, and `MojoGetMessageData`
+            // just initialized that many elements.
+            unsafe { handles.set_len(num_handles as usize) };
+
+            if result != MojoResult::Okay {
+                return Err(result);
+            }
+        }
+
+        // SAFETY: `buffer` and `num_bytes` were filled in by
+        // `MojoGetMessageData(self.message_handle, ...)`
+        let data = unsafe { self.wrap_slice(buffer, num_bytes) };
+
+        Ok((data, handles))
+    }
+
+    /// Read just the bytes of this message's payload, ignoring any attached
+    /// handles.
+    ///
+    /// FOR_RELEASE: See if we can avoid returning a MojoResult here by handling
+    /// error cases internally (i.e. panicking)
+    pub fn read_bytes(&self) -> Result<&[u8], MojoResult> {
+        let mut buffer: *mut c_void = ptr::null_mut();
+        let mut num_bytes: u32 = 0;
+        let options =
+            mojo_ffi::MojoGetMessageDataOptions::new(GetMessageDataFlags::IGNORE_HANDLES.bits());
+
+        // SAFETY: `num_handles` and `handles` may be null because we're passing the
+        // IGNORE_HANDLES flag.
+        let result_prelim = MojoResult::from_code(unsafe {
+            mojo_ffi::MojoGetMessageData(
+                self.message_handle,
+                options.as_ptr(),
+                &mut buffer as *mut _,
+                &mut num_bytes as *mut _,
+                ptr::null_mut(), // Handles pointer
+                ptr::null_mut(), // Num_handles pointer
+            )
+        });
+        if result_prelim != MojoResult::Okay {
+            return Err(result_prelim);
+        }
+
+        // SAFETY: `buffer` and `num_bytes` were filled in by
+        // `MojoGetMessageData(self.message_handle, ...)`
+        let data = unsafe { self.wrap_slice(buffer, num_bytes) };
+
+        Ok(data)
+    }
+
     /// Tell the underlying mojo system that this message was malformed, which
     /// will trigger the error handler which was set up during mojo
     /// initialization. Typically this will result in the process that
     /// created the message being terminated.
-    pub fn report_bad_message(&self) {
-        todo!()
+    ///
+    /// Note that reporting a bad message does not stop the _current_ process
+    /// from running. However, you should almost always abort whatever you're
+    /// doing, rather than try to continue processing the known-bad message.
+    /// To make it harder to forget to do so, this function will always return
+    /// an error result so the compiler will warn if you try to treat it like a
+    /// panic and ignore its return value.
+    pub fn report_bad_message(&self, error_msg: &str) -> Result<(), ()> {
+        // Ignore the MojoResult; this can only fail if the message_handle is invalid,
+        // and we guarantee that it's valid as part of this type.
+        // SAFETY: We guarantee that our contained handle is alive.
+        let _ = unsafe { mojo_ffi::MojoNotifyBadMessage(self.message_handle, error_msg) };
+        Err(())
     }
 }
 
@@ -178,6 +343,10 @@ impl Handle for MessageEndpoint {
     /// Returns the native handle wrapped by this structure.
     fn get_native_handle(&self) -> MojoHandle {
         self.handle.get_native_handle()
+    }
+
+    fn from_untyped(handle: UntypedHandle) -> Self {
+        Self { handle }
     }
 }
 
@@ -196,18 +365,7 @@ bitflags::bitflags! {
 }
 
 impl MessageEndpoint {
-    /// Read the next message from the endpoint. Messages in Mojo
-    /// are some set of bytes plus a bunch of handles, so we
-    /// return both a vector of bytes and a vector of untyped handles.
-    ///
-    /// Because the handles are untyped, it is up to the user of this
-    /// library to know what type the handle actually is and to use
-    /// from_untyped in order to convert the handle to the correct type.
-    ///
-    /// // FOR_RELEASE: In the v1 version of the Mojo code, we should ensure
-    /// this is enforced by typing stronger than UntypedHandle (perhaps by
-    /// having the Mojo bindings generator handle this when deriving code
-    /// from a Mojom interface?).
+    /// Create a new pair of endpoints corresponding to a new mojo message pipe.
     pub fn create_pipe() -> Result<(MessageEndpoint, MessageEndpoint), MojoResult> {
         let mut handle0 = UntypedHandle::invalid();
         let mut handle1 = UntypedHandle::invalid();
@@ -229,7 +387,9 @@ impl MessageEndpoint {
         }
     }
 
-    pub fn read(&self) -> Result<(Vec<u8>, Vec<UntypedHandle>), MojoResult> {
+    /// Read the next message from the endpoint, if one exists.
+    /// FOR_RELEASE: Catalogue the possible MojoResults here.
+    pub fn read(&self) -> Result<RawMojoMessage, MojoResult> {
         // Read the message, yielding a message object we can copy data from.
         let message_handle: mojo_ffi::types::MojoMessageHandle = {
             let mut h = 0;
@@ -247,67 +407,8 @@ impl MessageEndpoint {
             }
         };
 
-        let mut buffer: *mut c_void = ptr::null_mut();
-        let mut num_bytes: u32 = 0;
-        let mut num_handles: u32 = 0;
-        // SAFETY: We just read a message into `message_handle` above.
-        // We've just initialized buffer and num_bytes, so they're safe to
-        // be written to by MojoGetMessageData.
-        // The null_mut and 0 num_handles indicates no handles will be received.
-        let result_prelim = MojoResult::from_code(unsafe {
-            mojo_ffi::MojoGetMessageData(
-                message_handle,
-                ptr::null(),
-                &mut buffer as *mut _,
-                &mut num_bytes as *mut _,
-                ptr::null_mut(),
-                &mut num_handles as *mut _,
-            )
-        });
-        if result_prelim != MojoResult::Okay {
-            return Err(result_prelim);
-        }
-
-        let mut handles: Vec<UntypedHandle> = Vec::with_capacity(num_handles as usize);
-        if num_handles > 0 {
-            // SAFETY: This requires passing various mutable values (a buffer,
-            // a num_bytes, etc) to the underlying C function, so the message data
-            // can be written to the specified location.
-            let result = MojoResult::from_code(unsafe {
-                mojo_ffi::MojoGetMessageData(
-                    message_handle,
-                    ptr::null(),
-                    &mut buffer as *mut _,
-                    &mut num_bytes as *mut _,
-                    UntypedHandle::slice_as_mut_ptr(&mut handles),
-                    &mut num_handles as *mut _,
-                )
-            });
-            if result != MojoResult::Okay {
-                return Err(result);
-            }
-        }
-
-        let data: Vec<u8> = if num_bytes > 0 {
-            assert_ne!(buffer, ptr::null_mut());
-            // Will not panic if usize has at least 32 bits, which is true for Chromium
-            // targets
-            let buffer_size: usize = num_bytes.try_into().unwrap();
-            // SAFETY: Depending on `MojoGetMessageData` to return
-            // `buffer` and `buffer_size` that points to a readable slice of
-            // memory.  The slice lifetime is until the end of this scope, so
-            // shorter than the lifetime of `message_handle`.
-            // `cast()` between `*const c_void` and `*const u8` is safe
-            // (e.g. wrt alignment, allowed bit patterns, etc.).
-            let buffer_slice = unsafe { std::slice::from_raw_parts(buffer.cast(), buffer_size) };
-            buffer_slice.to_vec()
-        } else {
-            Vec::new()
-        };
-
-        mojo_ffi::MojoDestroyMessage(message_handle);
-
-        Ok((data, handles))
+        // We got this handle from MojoReadMessage so we know it's valid.
+        Ok(RawMojoMessage::new_unchecked(message_handle))
     }
 
     /// Write the given message to the pipe, sending it to the other side.
@@ -338,12 +439,14 @@ impl MessageEndpoint {
 
         // Send the message. This transfers ownership of the message_handle
         // object to the receiving process.
-        let write_message_options = mojo_ffi::MojoWriteMessageOptions::new(0);
-        let result = MojoResult::from_code(mojo_ffi::MojoWriteMessage(
-            self.handle.get_native_handle(),
-            msg.message_handle,
-            write_message_options.as_ptr(),
-        ));
+        // SAFETY: All handles are alive; the options ptr may be null.
+        let result = MojoResult::from_code(unsafe {
+            mojo_ffi::MojoWriteMessage(
+                self.handle.get_native_handle(),
+                msg.message_handle,
+                std::ptr::null(), // Options ptr
+            )
+        });
 
         // This message was sent, so ownership of the handle has been transferred to the
         // recipient.

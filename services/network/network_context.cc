@@ -125,6 +125,7 @@
 #include "services/network/network_service_network_delegate.h"
 #include "services/network/network_service_proxy_delegate.h"
 #include "services/network/oblivious_http_request_handler.h"
+#include "services/network/pervasive_resources/shared_resource_checker.h"
 #include "services/network/prefetch_cache.h"
 #include "services/network/prefetch_matching_url_loader_factory.h"
 #include "services/network/prefetch_url_loader_client.h"
@@ -152,7 +153,6 @@
 #include "services/network/shared_dictionary/shared_dictionary_constants.h"
 #include "services/network/shared_dictionary/shared_dictionary_manager.h"
 #include "services/network/shared_dictionary/shared_dictionary_storage.h"
-#include "services/network/shared_resource_checker.h"
 #include "services/network/ssl_config_service_mojo.h"
 #include "services/network/throttling/network_conditions.h"
 #include "services/network/throttling/throttling_controller.h"
@@ -608,7 +608,7 @@ bool GetFullDataFilePath(
 // processes.
 mojom::URLLoaderFactoryParamsPtr CreateURLLoaderFactoryParamsForPrefetch() {
   auto params = mojom::URLLoaderFactoryParams::New();
-  params->process_id = mojom::kBrowserProcessId;
+  params->process_id = OriginatingProcess::browser();
   // We want to be able to use TrustedParams to set the IsolationInfo for each
   // prefetch separately, so make it trusted.
   // TODO(crbug.com/342445996): Maybe stop using TrustedParams and lock this
@@ -1042,7 +1042,7 @@ void NetworkContext::CreateURLLoaderFactoryForCertNetFetcher(
   // TODO(crbug.com/40695068): investigate changing these params.
   auto url_loader_factory_params = mojom::URLLoaderFactoryParams::New();
   url_loader_factory_params->is_trusted = true;
-  url_loader_factory_params->process_id = mojom::kBrowserProcessId;
+  url_loader_factory_params->process_id = OriginatingProcess::browser();
   url_loader_factory_params->automatically_assign_isolation_info = true;
   url_loader_factory_params->is_orb_enabled = false;
   if (url_request_context()->bound_network() !=
@@ -1078,7 +1078,7 @@ void NetworkContext::CreateURLLoaderFactory(
   scoped_refptr<ResourceSchedulerClient> resource_scheduler_client =
       base::MakeRefCounted<ResourceSchedulerClient>(
           ResourceScheduler::ClientId::Create(),
-          IsBrowserInitiated(params->process_id == mojom::kBrowserProcessId),
+          IsBrowserInitiated(params->process_id.is_browser()),
           resource_scheduler_.get(),
           url_request_context_->network_quality_estimator());
   CreateURLLoaderFactory(std::move(receiver), std::move(params),
@@ -1304,11 +1304,11 @@ void NetworkContext::Remove(WebTransport* transport) {
   }
 }
 
-void NetworkContext::LoaderCreated(uint32_t process_id) {
+void NetworkContext::LoaderCreated(const OriginatingProcess& process_id) {
   loader_count_per_process_[process_id] += 1;
 }
 
-void NetworkContext::LoaderDestroyed(uint32_t process_id) {
+void NetworkContext::LoaderDestroyed(const OriginatingProcess& process_id) {
   auto it = loader_count_per_process_.find(process_id);
   CHECK(it != loader_count_per_process_.end());
   it->second -= 1;
@@ -1317,7 +1317,7 @@ void NetworkContext::LoaderDestroyed(uint32_t process_id) {
   }
 }
 
-bool NetworkContext::CanCreateLoader(uint32_t process_id) {
+bool NetworkContext::CanCreateLoader(const OriginatingProcess& process_id) {
   auto it = loader_count_per_process_.find(process_id);
   uint32_t count = (it == loader_count_per_process_.end() ? 0 : it->second);
   return count < max_loaders_per_process_;
@@ -1970,7 +1970,7 @@ void NetworkContext::CreateWebSocket(
     net::StorageAccessApiStatus storage_access_api_status,
     const net::IsolationInfo& isolation_info,
     std::vector<mojom::HttpHeaderPtr> additional_headers,
-    int32_t process_id,
+    const network::OriginatingProcess& process_id,
     const url::Origin& origin,
     network::mojom::ClientSecurityStatePtr client_security_state,
     uint32_t options,
@@ -1986,7 +1986,7 @@ void NetworkContext::CreateWebSocket(
     websocket_factory_ = std::make_unique<WebSocketFactory>(this);
   }
 
-  DCHECK_GE(process_id, 0);
+  DCHECK(process_id);
 
   websocket_factory_->CreateWebSocket(
       url, requested_protocols, site_for_cookies, storage_access_api_status,
@@ -3097,6 +3097,8 @@ URLRequestContextOwner NetworkContext::MakeURLRequestContext(
 
   if (params_->device_bound_sessions_enabled) {
     builder.set_has_device_bound_session_service(true);
+    builder.set_device_bound_sessions_restricted_sites(
+        params_->device_bound_sessions_restricted_sites);
 
 #if BUILDFLAG(ENABLE_DEVICE_BOUND_SESSIONS)
     if (params_->bound_sessions_unexportable_key_service.is_valid()) {
@@ -3406,7 +3408,7 @@ void NetworkContext::CreateTrustedUrlLoaderFactoryForNetworkService(
         url_loader_factory_pending_receiver) {
   auto url_loader_factory_params = mojom::URLLoaderFactoryParams::New();
   url_loader_factory_params->is_trusted = true;
-  url_loader_factory_params->process_id = network::mojom::kBrowserProcessId;
+  url_loader_factory_params->process_id = OriginatingProcess::browser();
   CreateURLLoaderFactory(std::move(url_loader_factory_pending_receiver),
                          std::move(url_loader_factory_params));
 }

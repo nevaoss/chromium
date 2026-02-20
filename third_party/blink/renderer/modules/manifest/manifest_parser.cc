@@ -275,9 +275,7 @@ String ResolveRelativePathnamePattern(const KURL& base_url, String pathname) {
     if (slash_index != kNotFound) {
       // Extract the base_url path up to and including the last slash. Append
       // the relative pathname to it.
-      base_path.Truncate(slash_index + 1);
-      base_path = StrCat({base_path, pathname});
-      return base_path;
+      return StrCat({StringView(base_path, 0, slash_index + 1), pathname});
     }
   }
   return pathname;
@@ -498,19 +496,14 @@ bool ManifestParser::Parse() {
     manifest_->migrate_to = ParseMigrateTo(root_object.get());
   }
 
-  std::optional<RGBA32> theme_color = ParseThemeColor(root_object.get());
-  manifest_->has_theme_color = theme_color.has_value();
-  if (manifest_->has_theme_color) {
-    manifest_->theme_color = *theme_color;
+  manifest_->theme_color = ParseThemeColor(root_object.get());
+  if (manifest_->theme_color.has_value()) {
     UseCounter::Count(execution_context_,
                       WebFeature::kWebAppManifestThemeColor);
   }
 
-  std::optional<RGBA32> background_color =
-      ParseBackgroundColor(root_object.get());
-  manifest_->has_background_color = background_color.has_value();
-  if (manifest_->has_background_color) {
-    manifest_->background_color = *background_color;
+  manifest_->background_color = ParseBackgroundColor(root_object.get());
+  if (manifest_->background_color.has_value()) {
     UseCounter::Count(execution_context_,
                       WebFeature::kWebAppManifestBackgroundColor);
   }
@@ -1089,9 +1082,8 @@ ManifestParser::ParseIconPurpose(const JSONObject* icon) {
     return purposes;
   }
 
-  Vector<String> keywords;
-  purpose_str.value().Split(/*separator=*/" ", /*allow_empty_entries=*/false,
-                            keywords);
+  Vector<StringView> keywords =
+      StringView(purpose_str.value()).SplitSkippingEmpty(' ');
 
   // "any" is the default if there are no other keywords.
   if (keywords.empty()) {
@@ -1100,7 +1092,7 @@ ManifestParser::ParseIconPurpose(const JSONObject* icon) {
   }
 
   bool unrecognised_purpose = false;
-  for (auto& keyword : keywords) {
+  for (auto keyword : keywords) {
     keyword = keyword.StripWhiteSpace();
     if (keyword.empty()) {
       continue;

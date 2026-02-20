@@ -33,6 +33,8 @@ class DistilledPagePrefsAndroid {
   void SetUserPrefFontScaling(JNIEnv* env, float scaling);
   void SetDefaultFontScaling(JNIEnv* env, float scaling);
   float GetFontScaling(JNIEnv* env);
+  void SetLinksEnabled(JNIEnv* env, bool enabled);
+  bool GetLinksEnabled(JNIEnv* env);
 
   void AddObserver(JNIEnv* env, int64_t obs);
   void RemoveObserver(JNIEnv* env, int64_t obs);
@@ -52,6 +54,7 @@ class DistilledPagePrefsObserverAndroid : public DistilledPagePrefs::Observer {
   void OnChangeTheme(mojom::Theme new_theme,
                      ThemeSettingsUpdateSource source) override;
   void OnChangeFontScaling(float scaling) override;
+  void OnChangeLinksEnabled(bool enabled) override;
 
   virtual void DestroyObserverAndroid(JNIEnv* env);
 

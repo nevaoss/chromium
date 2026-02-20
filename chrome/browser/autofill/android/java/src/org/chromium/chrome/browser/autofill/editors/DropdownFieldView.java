@@ -5,12 +5,12 @@
 package org.chromium.chrome.browser.autofill.editors;
 
 import static org.chromium.build.NullUtil.assumeNonNull;
-import static org.chromium.chrome.browser.autofill.editors.EditorProperties.FieldProperties.ERROR_MESSAGE;
-import static org.chromium.chrome.browser.autofill.editors.EditorProperties.FieldProperties.FOCUSED;
-import static org.chromium.chrome.browser.autofill.editors.EditorProperties.FieldProperties.IS_REQUIRED;
-import static org.chromium.chrome.browser.autofill.editors.EditorProperties.getDropdownKeyByValue;
-import static org.chromium.chrome.browser.autofill.editors.EditorProperties.getDropdownValueByKey;
-import static org.chromium.chrome.browser.autofill.editors.EditorProperties.setDropdownKey;
+import static org.chromium.chrome.browser.autofill.editors.EditorComponentsProperties.FieldProperties.ERROR_MESSAGE;
+import static org.chromium.chrome.browser.autofill.editors.EditorComponentsProperties.FieldProperties.FOCUSED;
+import static org.chromium.chrome.browser.autofill.editors.EditorComponentsProperties.FieldProperties.IS_REQUIRED;
+import static org.chromium.chrome.browser.autofill.editors.EditorComponentsProperties.getDropdownKeyByValue;
+import static org.chromium.chrome.browser.autofill.editors.EditorComponentsProperties.getDropdownValueByKey;
+import static org.chromium.chrome.browser.autofill.editors.EditorComponentsProperties.setDropdownKey;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -123,7 +123,7 @@ class DropdownFieldView implements FieldView {
     }
 
     void setLabel(String label, boolean isRequired) {
-        mLabel.setText(isRequired ? label + EditorDialogView.REQUIRED_FIELD_INDICATOR : label);
+        mLabel.setText(isRequired ? label + FieldView.REQUIRED_FIELD_INDICATOR : label);
     }
 
     void setDropdownValues(List<String> values, @Nullable String hint) {

@@ -20,6 +20,7 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/user_education/browser_user_education_interface.h"
+#include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/interaction/browser_elements_views.h"
 #include "chrome/browser/ui/views/tabs/glic/glic_actor_constants.h"
 #include "chrome/browser/ui/views/tabs/tab_strip_control_button.h"
@@ -256,6 +257,7 @@ GlicButton::GlicButton(BrowserWindowInterface* browser_window_interface,
                           gfx::VectorIcon::EmptyIcon(),
                           /*show_close_button=*/true),
       menu_model_(CreateMenuModel()),
+      browser_window_interface_(browser_window_interface),
       profile_(browser_window_interface ? browser_window_interface->GetProfile()
                                         : nullptr),
       hovered_callback_(std::move(hovered_callback)),
@@ -316,8 +318,10 @@ GlicButton* GlicButton::FromBrowser(BrowserWindowInterface* browser) {
   if (!browser) {
     return nullptr;
   }
-  return BrowserElementsViews::From(browser)->GetViewAs<glic::GlicButton>(
-      kGlicButtonElementId);
+
+  BrowserView* browser_view = BrowserView::GetBrowserViewForBrowser(browser);
+  CHECK(browser_view);
+  return browser_view->GetGlicButton();
 }
 
 void GlicButton::SetNudgeLabel(std::string label) {
@@ -343,8 +347,7 @@ void GlicButton::Expand() {
   SetWidthState(WidthState::kNormal);
 
   // If the label should not show, no further animation is needed.
-  if (base::FeatureList::IsEnabled(features::kGlicActorUiTaskNudgeUiFix) &&
-      !ShouldShowLabel()) {
+  if (!ShouldShowLabel()) {
     return;
   }
 
@@ -507,6 +510,16 @@ void GlicButton::AddedToWidget() {
   normal_width_ = PreferredSize().width();
   start_width_ = normal_width_;
   end_width_ = normal_width_;
+
+  window_did_become_active_subscription_ =
+      browser_window_interface_->RegisterDidBecomeActive(base::BindRepeating(
+          &GlicButton::OnBrowserWindowDidBecomeActive, base::Unretained(this)));
+  window_did_become_inactive_subscription_ =
+      browser_window_interface_->RegisterDidBecomeInactive(
+          base::BindRepeating(&GlicButton::OnBrowserWindowDidBecomeInactive,
+                              base::Unretained(this)));
+
+  UpdateInkdropHoverColor(browser_window_interface_->IsActive());
 }
 
 void GlicButton::SetDropToAttachIndicator(bool indicate) {
@@ -679,6 +692,7 @@ bool GlicButton::IsHighlightVisible() const {
 
 void GlicButton::ShowNudge() {
   WidthState old_width_state = width_state_;
+  collapsed_before_nudge_shown_ = width_state_ == WidthState::kCollapsed;
   // Don't restart the animation if already nudging.
   if (width_state_ == WidthState::kNudge) {
     return;
@@ -717,10 +731,17 @@ void GlicButton::ShowNudge() {
 
 void GlicButton::HideNudge() {
   WidthState old_width_state = width_state_;
-  // Only animate if transitioning from kNudge to kNormal.
+  // Only animate if transitioning from kNudge to kNormal or kCollapsed.
   if (width_state_ != WidthState::kNudge) {
     return;
   }
+  // If the label was previously collapsed, return to the collapsed state.
+  if (base::FeatureList::IsEnabled(features::kGlicActorUiGlobalTaskIndicator) &&
+      collapsed_before_nudge_shown_) {
+    Collapse();
+    return;
+  }
+  // If the button wasn't collapsed, it must be transitioning back to kNormal.
   SetWidthState(WidthState::kNormal);
 
   if (!EntrypointVariationsEnabled()) {
@@ -795,6 +816,12 @@ int GlicButton::CalculateExpandedWidth() {
     // If transitioning from empty label to nudge label, make sure the label
     // margin is included.
     new_width += kLabelRightMargin;
+  }
+  if (base::FeatureList::IsEnabled(features::kGlicActorUiGlobalTaskIndicator) &&
+      last_width_state_ == WidthState::kCollapsed) {
+    // Add extra margin if the label was previously collapsed, as the old_width
+    // is smaller.
+    new_width += kCloseButtonMargin;
   }
   return new_width;
 }
@@ -875,7 +902,10 @@ bool GlicButton::IsAnimatingTextVisibility() const {
 }
 
 bool GlicButton::IsHidingNudge() const {
-  return width_state_ == WidthState::kNormal &&
+  return (width_state_ == WidthState::kNormal ||
+          (base::FeatureList::IsEnabled(
+               features::kGlicActorUiGlobalTaskIndicator) &&
+           width_state_ == WidthState::kCollapsed)) &&
          last_width_state_ == WidthState::kNudge;
 }
 
@@ -904,6 +934,29 @@ void GlicButton::SetSplitButtonCornerStyling() {
 void GlicButton::ResetSplitButtonCornerStyling() {
   SetLeftRightCornerRadii(TabStripNudgeButton::GetCornerRadius(),
                           TabStripNudgeButton::GetCornerRadius());
+}
+
+void GlicButton::RemovedFromWidget() {
+  window_did_become_active_subscription_ = {};
+  window_did_become_inactive_subscription_ = {};
+  TabStripNudgeButton::RemovedFromWidget();
+}
+
+void GlicButton::OnBrowserWindowDidBecomeActive(BrowserWindowInterface* bwi) {
+  UpdateInkdropHoverColor(true);
+}
+
+void GlicButton::OnBrowserWindowDidBecomeInactive(BrowserWindowInterface* bwi) {
+  UpdateInkdropHoverColor(false);
+}
+
+void GlicButton::UpdateInkdropHoverColor(bool is_frame_active) {
+  if (base::FeatureList::IsEnabled(features::kGlicActorUiGlobalTaskIndicator)) {
+    SetInkdropHoverColorId(is_frame_active
+                               ? kColorTabBackgroundInactiveHoverFrameActive
+                               : kColorTabBackgroundInactiveHoverFrameInactive);
+    UpdateColors();
+  }
 }
 
 BEGIN_METADATA(GlicButton)

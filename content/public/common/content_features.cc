@@ -1250,7 +1250,6 @@ BASE_FEATURE(kAccessibilityExtendedSelection,
 // When this feature is enabled, the InputConnection will request
 // formatted text from the TextInputState.
 BASE_FEATURE(kAccessibilityImeGetFormattedText,
-             "AccessibilityImeGetFormattedText",
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // When enabled, WINDOW_CONTENT_CHANGED events will be sent for each
@@ -1266,7 +1265,14 @@ BASE_FEATURE(kAccessibilityImproveLiveRegionAnnounce,
 // particular this will be used to determine whether or not a node is clickable
 // or not.
 BASE_FEATURE(kAccessibilityRequestLayoutBasedActions,
-             "AccessibilityRequestLayoutBasedActions",
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+// When this feature is enabled, the accessibility tree will be requested to
+// signal content changed events next to a boolean value that will determine if
+// this event should cause a nodes's children to be rerendered if there've been
+// structural changes.
+BASE_FEATURE(kAccessibilityRequestScopedContentChangedEvents,
+             "AccessibilityRequestScopedContentChangedEvents",
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // When enabled, supports atomic announcements, meaning that when

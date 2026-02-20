@@ -8,6 +8,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
@@ -94,8 +95,8 @@ public class RecentlyClosedEntriesManagerUnitTest {
         int numSessionEntries = 5;
         int numWindowEntries = 5;
         int totalEntries = numSessionEntries + numWindowEntries;
-        createRecentlyClosedWindows(numSessionEntries);
-        createSessionRecentlyClosedEntries(numWindowEntries);
+        createRecentlyClosedWindows(numWindowEntries);
+        createSessionRecentlyClosedEntries(numSessionEntries);
 
         // This method should merge both lists into a single, timestamp-sorted list.
         mRecentlyClosedEntriesManager.updateRecentlyClosedEntries();
@@ -450,7 +451,8 @@ public class RecentlyClosedEntriesManagerUnitTest {
                         /* tabCount= */ 0,
                         /* incognitoTabCount= */ 0,
                         /* isIncognitoSelected= */ false,
-                        /* lastAccessedTime= */ 3,
+                        /* lastAccessedTime= */ 1,
+                        /* closureTime= */ 3,
                         /* markedForDeletion= */ true));
         when(mMultiInstanceManager.getInstanceInfo(PersistedInstanceType.INACTIVE))
                 .thenReturn(instanceInfoList);
@@ -478,7 +480,8 @@ public class RecentlyClosedEntriesManagerUnitTest {
                         /* tabCount= */ 0,
                         /* incognitoTabCount= */ 0,
                         /* isIncognitoSelected= */ false,
-                        /* lastAccessedTime= */ 2,
+                        /* lastAccessedTime= */ 1,
+                        /* closureTime= */ 2,
                         /* markedForDeletion= */ true));
         when(mMultiInstanceManager.getInstanceInfo(PersistedInstanceType.INACTIVE))
                 .thenReturn(instanceInfoList);
@@ -507,7 +510,8 @@ public class RecentlyClosedEntriesManagerUnitTest {
                         /* tabCount= */ 0,
                         /* incognitoTabCount= */ 0,
                         /* isIncognitoSelected= */ false,
-                        /* lastAccessedTime= */ 3,
+                        /* lastAccessedTime= */ 1,
+                        /* closureTime= */ 3,
                         /* markedForDeletion= */ true));
         when(mMultiInstanceManager.getInstanceInfo(PersistedInstanceType.INACTIVE))
                 .thenReturn(instanceInfoList);
@@ -538,7 +542,8 @@ public class RecentlyClosedEntriesManagerUnitTest {
                         /* tabCount= */ 0,
                         /* incognitoTabCount= */ 0,
                         /* isIncognitoSelected= */ false,
-                        /* lastAccessedTime= */ 3,
+                        /* lastAccessedTime= */ 1,
+                        /* closureTime= */ 3,
                         /* markedForDeletion= */ true));
         when(mMultiInstanceManager.getInstanceInfo(PersistedInstanceType.INACTIVE))
                 .thenReturn(instanceInfoList);
@@ -657,6 +662,70 @@ public class RecentlyClosedEntriesManagerUnitTest {
         entries = mRecentlyClosedEntriesManager.getRecentlyClosedEntries();
         assertEquals(2, entries.size());
         assertEquals(olderWindow, entries.get(0));
+        assertEquals(callbackCount + 1, mEntriesUpdatedCallbackHelper.getCallCount());
+    }
+
+    @Test
+    public void testOnWindowClosed_ExceedsMaxEntries_ClearWindowStorage() {
+        int size = 25;
+        createRecentlyClosedWindows(/* numOfWindows= */ 25);
+        mRecentlyClosedEntriesManager.updateRecentlyClosedEntries();
+        List<RecentlyClosedEntry> entries =
+                mRecentlyClosedEntriesManager.getRecentlyClosedEntries();
+
+        assertEquals(size, entries.size());
+        RecentlyClosedWindow newWindow =
+                new RecentlyClosedWindow(
+                        /* timestamp= */ 10,
+                        /* instanceId= */ 1,
+                        /* url= */ "url",
+                        /* title= */ "title",
+                        /* activeTabTitle= */ "tab title",
+                        /* tabCount= */ 1);
+        int callbackCount = mEntriesUpdatedCallbackHelper.getCallCount();
+
+        // Verify the excess window entry is cleaned up from storage.
+        mRecentlyClosedEntriesManager.onWindowClosed(newWindow, /* isPermanentDeletion= */ false);
+        ArgumentCaptor<List<Integer>> listCaptor = ArgumentCaptor.forClass(List.class);
+        verify(mMultiInstanceManager)
+                .closeWindows(listCaptor.capture(), eq(CloseWindowAppSource.RECENT_TABS));
+        assertEquals(1, listCaptor.getValue().size());
+        verify(mRecentlyClosedTabManager, never()).clearLeastRecentlyUsedClosedEntries(anyInt());
+
+        entries = mRecentlyClosedEntriesManager.getRecentlyClosedEntries();
+        assertEquals(25, entries.size());
+        assertEquals(newWindow, entries.get(0));
+        assertEquals(callbackCount + 1, mEntriesUpdatedCallbackHelper.getCallCount());
+    }
+
+    @Test
+    public void testOnWindowClosed_ExceedsMaxEntries_ClearSessionEntryStorage() {
+        int size = 25;
+        createRecentlyClosedWindows(/* numOfWindows= */ 15);
+        createSessionRecentlyClosedEntries(/* numOfEntries= */ 10);
+        mRecentlyClosedEntriesManager.updateRecentlyClosedEntries();
+        List<RecentlyClosedEntry> entries =
+                mRecentlyClosedEntriesManager.getRecentlyClosedEntries();
+
+        assertEquals(size, entries.size());
+        RecentlyClosedWindow newWindow =
+                new RecentlyClosedWindow(
+                        /* timestamp= */ 10,
+                        /* instanceId= */ 1,
+                        /* url= */ "url",
+                        /* title= */ "title",
+                        /* activeTabTitle= */ "tab title",
+                        /* tabCount= */ 1);
+        int callbackCount = mEntriesUpdatedCallbackHelper.getCallCount();
+
+        // Verify the excess session entry is cleaned up from storage.
+        mRecentlyClosedEntriesManager.onWindowClosed(newWindow, /* isPermanentDeletion= */ false);
+        verify(mMultiInstanceManager, never()).closeWindows(any(), anyInt());
+        verify(mRecentlyClosedTabManager).clearLeastRecentlyUsedClosedEntries(eq(1));
+
+        entries = mRecentlyClosedEntriesManager.getRecentlyClosedEntries();
+        assertEquals(25, entries.size());
+        assertEquals(newWindow, entries.get(0));
         assertEquals(callbackCount + 1, mEntriesUpdatedCallbackHelper.getCallCount());
     }
 
@@ -791,6 +860,112 @@ public class RecentlyClosedEntriesManagerUnitTest {
         assertTrue(entries.get(2) instanceof RecentlyClosedWindow);
     }
 
+    @Test
+    public void testUpdateRecentlyClosedEntries_InstanceInfoListIsNotSorted() {
+        when(mRecentlyClosedTabManager.getRecentlyClosedEntries(anyInt())).thenReturn(null);
+        List<InstanceInfo> instanceInfoList = new ArrayList<>();
+        instanceInfoList.add(
+                new InstanceInfo(
+                        /* instanceId= */ 2,
+                        /* taskId= */ -1,
+                        InstanceInfo.Type.OTHER,
+                        /* url= */ "",
+                        /* title= */ "",
+                        /* customTitle= */ null,
+                        /* tabCount= */ 0,
+                        /* incognitoTabCount= */ 0,
+                        /* isIncognitoSelected= */ false,
+                        /* lastAccessedTime= */ 1,
+                        /* closureTime= */ 2,
+                        /* markedForDeletion= */ true));
+        instanceInfoList.add(
+                new InstanceInfo(
+                        /* instanceId= */ 1,
+                        /* taskId= */ -1,
+                        InstanceInfo.Type.OTHER,
+                        /* url= */ "",
+                        /* title= */ "",
+                        /* customTitle= */ null,
+                        /* tabCount= */ 0,
+                        /* incognitoTabCount= */ 0,
+                        /* isIncognitoSelected= */ false,
+                        /* lastAccessedTime= */ 1,
+                        /* closureTime= */ 3,
+                        /* markedForDeletion= */ true));
+        when(mMultiInstanceManager.getInstanceInfo(PersistedInstanceType.INACTIVE))
+                .thenReturn(instanceInfoList);
+
+        mRecentlyClosedEntriesManager.updateRecentlyClosedEntries();
+
+        List<RecentlyClosedEntry> entries =
+                mRecentlyClosedEntriesManager.getRecentlyClosedEntries();
+
+        assertEquals(2, entries.size());
+        assertTrue(
+                "Window entries are not sorted by most recent closure time.",
+                entries.get(0).getDate().getTime() > entries.get(1).getDate().getTime());
+    }
+
+    @Test
+    public void testUpdateRecentlyClosedEntries_InstanceClosureTimeUnavailable() {
+        when(mRecentlyClosedTabManager.getRecentlyClosedEntries(anyInt())).thenReturn(null);
+        List<InstanceInfo> instanceInfoList = new ArrayList<>();
+        instanceInfoList.add(
+                new InstanceInfo(
+                        /* instanceId= */ 2,
+                        /* taskId= */ -1,
+                        InstanceInfo.Type.OTHER,
+                        /* url= */ "",
+                        /* title= */ "",
+                        /* customTitle= */ null,
+                        /* tabCount= */ 0,
+                        /* incognitoTabCount= */ 0,
+                        /* isIncognitoSelected= */ false,
+                        /* lastAccessedTime= */ 2,
+                        /* closureTime= */ 0,
+                        /* markedForDeletion= */ true));
+        instanceInfoList.add(
+                new InstanceInfo(
+                        /* instanceId= */ 1,
+                        /* taskId= */ -1,
+                        InstanceInfo.Type.OTHER,
+                        /* url= */ "",
+                        /* title= */ "",
+                        /* customTitle= */ null,
+                        /* tabCount= */ 0,
+                        /* incognitoTabCount= */ 0,
+                        /* isIncognitoSelected= */ false,
+                        /* lastAccessedTime= */ 1,
+                        /* closureTime= */ 3,
+                        /* markedForDeletion= */ true));
+        instanceInfoList.add(
+                new InstanceInfo(
+                        /* instanceId= */ 2,
+                        /* taskId= */ -1,
+                        InstanceInfo.Type.OTHER,
+                        /* url= */ "",
+                        /* title= */ "",
+                        /* customTitle= */ null,
+                        /* tabCount= */ 0,
+                        /* incognitoTabCount= */ 0,
+                        /* isIncognitoSelected= */ false,
+                        /* lastAccessedTime= */ 1,
+                        /* closureTime= */ 1,
+                        /* markedForDeletion= */ true));
+        when(mMultiInstanceManager.getInstanceInfo(PersistedInstanceType.INACTIVE))
+                .thenReturn(instanceInfoList);
+
+        mRecentlyClosedEntriesManager.updateRecentlyClosedEntries();
+
+        List<RecentlyClosedEntry> entries =
+                mRecentlyClosedEntriesManager.getRecentlyClosedEntries();
+
+        assertEquals(3, entries.size());
+        assertEquals(3, entries.get(0).getDate().getTime());
+        assertEquals(2, entries.get(1).getDate().getTime());
+        assertEquals(1, entries.get(2).getDate().getTime());
+    }
+
     /**
      * Creates a list of synthetic {@code SessionRecentlyClosedEntry} objects for testing purposes.
      *
@@ -829,7 +1004,7 @@ public class RecentlyClosedEntriesManagerUnitTest {
      */
     private void createRecentlyClosedWindows(int numOfWindows) {
         List<InstanceInfo> instanceInfoList = new ArrayList<>();
-        int lastAccessedTime = 2;
+        int closureTime = 2;
         int instanceId = 2;
         for (int i = 0; i < numOfWindows; i++) {
             InstanceInfo instanceInfo =
@@ -843,13 +1018,13 @@ public class RecentlyClosedEntriesManagerUnitTest {
                             /* tabCount= */ 0,
                             /* incognitoTabCount= */ 0,
                             /* isIncognitoSelected= */ false,
-                            lastAccessedTime,
+                            /* lastAccessedTime= */ closureTime - 1,
+                            closureTime,
                             /* markedForDeletion= */ true);
             instanceInfoList.add(0, instanceInfo);
             instanceId += 2;
-            lastAccessedTime += 2;
+            closureTime += 2;
         }
-        when(mMultiInstanceManager.getInstanceInfo(PersistedInstanceType.INACTIVE))
-                .thenReturn(instanceInfoList);
+        when(mMultiInstanceManager.getInstanceInfo(anyInt())).thenReturn(instanceInfoList);
     }
 }

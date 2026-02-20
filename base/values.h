@@ -703,11 +703,6 @@ class BASE_EXPORT GSL_OWNER Value {
  public:
   using BlobStorage = base::BlobStorage;
 
-  // These aliases exist for migration; do not use them.
-  // TODO(https://crbug.com/478100525): Remove.
-  using Dict = DictValue;
-  using List = ListValue;
-
   enum class Type : unsigned char {
     NONE = 0,
     BOOLEAN,
@@ -776,10 +771,10 @@ class BASE_EXPORT GSL_OWNER Value {
   explicit Value(BlobStorage&& value) noexcept;
 
   // Constructor for `Value::Type::DICT`.
-  explicit Value(Dict&& value) noexcept;
+  explicit Value(DictValue&& value) noexcept;
 
   // Constructor for `Value::Type::LIST`.
-  explicit Value(List&& value) noexcept;
+  explicit Value(ListValue&& value) noexcept;
 
   ~Value();
 
@@ -812,10 +807,10 @@ class BASE_EXPORT GSL_OWNER Value {
   std::string* GetIfString();
   const BlobStorage* GetIfBlob() const;
   BlobStorage* GetIfBlob();
-  const Dict* GetIfDict() const;
-  Dict* GetIfDict();
-  const List* GetIfList() const;
-  List* GetIfList();
+  const DictValue* GetIfDict() const;
+  DictValue* GetIfDict();
+  const ListValue* GetIfList() const;
+  ListValue* GetIfList();
 
   // Similar to the `GetIf...()` variants above, but fails with a `CHECK()` on a
   // type mismatch. `bool`, `int`, and `double` are returned by value; blobs,
@@ -829,10 +824,10 @@ class BASE_EXPORT GSL_OWNER Value {
   std::string& GetString() LIFETIME_BOUND;
   const BlobStorage& GetBlob() const LIFETIME_BOUND;
   BlobStorage& GetBlob() LIFETIME_BOUND;
-  const Dict& GetDict() const LIFETIME_BOUND;
-  Dict& GetDict() LIFETIME_BOUND;
-  const List& GetList() const LIFETIME_BOUND;
-  List& GetList() LIFETIME_BOUND;
+  const DictValue& GetDict() const LIFETIME_BOUND;
+  DictValue& GetDict() LIFETIME_BOUND;
+  const ListValue& GetList() const LIFETIME_BOUND;
+  ListValue& GetList() LIFETIME_BOUND;
 
   // Transfers ownership of the underlying value. Similarly to `Get...()`
   // variants above, fails with a `CHECK()` on a type mismatch. After
@@ -841,8 +836,8 @@ class BASE_EXPORT GSL_OWNER Value {
   // potential use-after-move mistakes.
   std::string TakeString() &&;
   BlobStorage TakeBlob() &&;
-  Dict TakeDict() &&;
-  List TakeList() &&;
+  DictValue TakeDict() &&;
+  ListValue TakeList() &&;
   // Note: Do not add more types. See the file-level comment above for why.
 
   // Comparison operators so that Values can easily be used with standard
@@ -951,8 +946,8 @@ class BASE_EXPORT GSL_OWNER Value {
                DoubleStorage,
                std::string,
                BlobStorage,
-               Dict,
-               List>
+               DictValue,
+               ListValue>
       data_;
 };
 

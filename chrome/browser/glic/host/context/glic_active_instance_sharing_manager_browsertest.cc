@@ -42,7 +42,8 @@ class GlicActiveInstanceSharingManagerBrowserTest
   base::test::ScopedFeatureList scoped_feature_list_;
 };
 
-#if !BUILDFLAG(IS_LINUX) && !BUILDFLAG(IS_CHROMEOS)
+// (crbug.com/479963426): Test is highly flakey on win-rel cq builder.
+#if !BUILDFLAG(IS_LINUX) && !BUILDFLAG(IS_CHROMEOS) && !BUILDFLAG(IS_WIN)
 IN_PROC_BROWSER_TEST_F(GlicActiveInstanceSharingManagerBrowserTest,
                        DelegatesToActiveInstance) {
   browser_activator().SetMode(BrowserActivator::Mode::kManual);
@@ -137,7 +138,8 @@ class GlicActiveInstanceSharingManagerProfileStateTest
     std::vector<base::test::FeatureRef> enabled_features = {
         features::kGlic, features::kGlicMultiInstance,
         mojom::features::kGlicMultiTab, features::kGlicMultitabUnderlines};
-    std::vector<base::test::FeatureRef> disabled_features;
+    std::vector<base::test::FeatureRef> disabled_features = {
+        features::kGlicTrustFirstOnboarding};
 
     if (IsUnifiedFreEnabled()) {
       enabled_features.push_back(features::kGlicUnifiedFreScreen);

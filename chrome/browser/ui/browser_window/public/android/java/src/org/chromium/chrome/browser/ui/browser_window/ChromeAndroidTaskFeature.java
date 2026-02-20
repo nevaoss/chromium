@@ -7,6 +7,7 @@ package org.chromium.chrome.browser.ui.browser_window;
 import android.graphics.Rect;
 
 import org.chromium.build.annotations.NullMarked;
+import org.chromium.chrome.browser.tabmodel.TabModel;
 
 /** Represents a Chrome feature whose lifecycle should be in sync with {@link ChromeAndroidTask}. */
 @NullMarked
@@ -32,12 +33,7 @@ public interface ChromeAndroidTaskFeature {
      * @see ChromeAndroidTask#destroy()
      * @see ChromeAndroidTaskTracker#remove(int)
      */
-    // TODO(crbug.com/475200706): Remove default once interfaces are migrated.
-    default void onFeatureRemoved() {}
-
-    // TODO(crbug.com/475200706): Remove once interfaces are migrated.
-    @Deprecated
-    default void onTaskRemoved() {}
+    void onFeatureRemoved();
 
     /**
      * Called by a {@link ChromeAndroidTask} when the Task (window) bounds are changed.
@@ -52,4 +48,12 @@ public interface ChromeAndroidTaskFeature {
      * @param hasFocus True if the Task has focus.
      */
     void onTaskFocusChanged(boolean hasFocus);
+
+    /**
+     * Called when the selected {@link TabModel} changes. This is also invoked when the feature is
+     * added to a {@link ChromeAndroidTask}.
+     *
+     * @param tabModel The selected {@link TabModel}.
+     */
+    default void onTabModelSelected(TabModel tabModel) {}
 }

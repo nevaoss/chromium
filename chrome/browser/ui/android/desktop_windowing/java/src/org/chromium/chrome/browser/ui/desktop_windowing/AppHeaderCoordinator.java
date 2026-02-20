@@ -35,8 +35,9 @@ import org.chromium.chrome.browser.browser_controls.BrowserStateBrowserControlsV
 import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
 import org.chromium.chrome.browser.lifecycle.SaveInstanceStateObserver;
 import org.chromium.chrome.browser.lifecycle.TopResumedActivityChangedObserver;
+import org.chromium.chrome.browser.multiwindow.MultiWindowMetricsUtils;
+import org.chromium.chrome.browser.multiwindow.MultiWindowMetricsUtils.WindowingMode;
 import org.chromium.chrome.browser.ui.desktop_windowing.AppHeaderUtils.DesktopWindowHeuristicResult;
-import org.chromium.chrome.browser.ui.desktop_windowing.AppHeaderUtils.WindowingMode;
 import org.chromium.chrome.browser.ui.edge_to_edge.EdgeToEdgeUtils;
 import org.chromium.components.browser_ui.desktop_windowing.AppHeaderState;
 import org.chromium.components.browser_ui.desktop_windowing.DesktopWindowStateManager;
@@ -48,6 +49,7 @@ import org.chromium.ui.util.ColorUtils;
 import org.chromium.ui.util.TokenHolder;
 
 import java.util.List;
+import java.util.function.Supplier;
 
 /**
  * Class coordinating the business logic to draw into app header in desktop windowing mode, ranging
@@ -91,6 +93,7 @@ public class AppHeaderCoordinator
     private @WindowingMode int mWindowingMode = WindowingMode.UNKNOWN;
     private int mKeyboardInset;
     private int mNavBarInset;
+    private @Nullable final Supplier<Integer> mWindowIdSupplier;
 
     /**
      * Instantiate the coordinator to handle drawing the tab strip into the captionBar area.
@@ -110,6 +113,7 @@ public class AppHeaderCoordinator
      *     information for restoration after a device reboot or app update.
      * @param edgeToEdgeStateProvider The {@link EdgeToEdgeStateProvider} to determine the
      *     edge-to-edge state.
+     * @param windowIdSupplier The supplier for the window ID of the current activity.
      */
     public AppHeaderCoordinator(
             Activity activity,
@@ -119,7 +123,8 @@ public class AppHeaderCoordinator
             ActivityLifecycleDispatcher activityLifecycleDispatcher,
             @Nullable Bundle savedInstanceState,
             @Nullable PersistableBundle persistentState,
-            EdgeToEdgeStateProvider edgeToEdgeStateProvider) {
+            EdgeToEdgeStateProvider edgeToEdgeStateProvider,
+            @Nullable Supplier<Integer> windowIdSupplier) {
         mActivity = activity;
         mEdgeToEdgeStateProvider = edgeToEdgeStateProvider;
         mRootView = rootView;
@@ -127,6 +132,7 @@ public class AppHeaderCoordinator
         mInsetObserver = insetObserver;
         mInsetsController = assertNonNull(mRootView.getWindowInsetsController());
         mActivityLifecycleDispatcher = activityLifecycleDispatcher;
+        mWindowIdSupplier = windowIdSupplier;
         mActivityLifecycleDispatcher.register(this);
         // Whether the app started in an unfocused desktop window, so that relevant UI state can be
         // restored.
@@ -248,18 +254,21 @@ public class AppHeaderCoordinator
                 : "Attempt to read the insets too early.";
         if (mInsetObserver.getLastRawWindowInsets().hasInsets()) {
             int prevWindowingMode = mWindowingMode;
-            mWindowingMode = AppHeaderUtils.getWindowingMode(mActivity, isInDesktopWindow);
+            mWindowingMode = MultiWindowMetricsUtils.getWindowingMode(mActivity, isInDesktopWindow);
             if (prevWindowingMode != mWindowingMode) {
+                int windowId = mWindowIdSupplier != null ? mWindowIdSupplier.get() : -1;
                 // Record this histogram every time the windowing mode changes.
                 RecordHistogram.recordEnumeratedHistogram(
                         "Android.MultiWindowMode.Configuration",
                         mWindowingMode,
                         WindowingMode.NUM_ENTRIES);
                 // Record windowing mode changes if not going from/to UNKNOWN.
-                if (prevWindowingMode != AppHeaderUtils.WindowingMode.UNKNOWN
-                        && mWindowingMode != AppHeaderUtils.WindowingMode.UNKNOWN) {
-                    AppHeaderUtils.recordWindowingMode(prevWindowingMode, /* isStarted= */ false);
-                    AppHeaderUtils.recordWindowingMode(mWindowingMode, /* isStarted= */ true);
+                if (prevWindowingMode != WindowingMode.UNKNOWN
+                        && mWindowingMode != WindowingMode.UNKNOWN) {
+                    MultiWindowMetricsUtils.recordWindowingMode(
+                            prevWindowingMode, windowId, /* isStarted= */ false);
+                    MultiWindowMetricsUtils.recordWindowingMode(
+                            mWindowingMode, windowId, /* isStarted= */ true);
                 }
             }
         }

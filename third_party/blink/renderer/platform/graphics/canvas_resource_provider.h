@@ -213,11 +213,6 @@ class PLATFORM_EXPORT CanvasResourceProvider
   std::optional<cc::PaintRecord> FlushCanvas(FlushReason = FlushReason::kOther);
   virtual ScopedRasterTimer CreateScopedRasterTimer();
 
-  // TODO(crbug.com/371227617): Trim callsites of this method to those that
-  // actually need to pass this info to Skia APIs and then eliminate the
-  // method/this class holding `info_` by inlining creation of SkImageInfo at
-  // those callsites.
-  const SkImageInfo& GetSkImageInfo() const { return info_; }
   SkSurfaceProps GetSkSurfaceProps() const;
   viz::SharedImageFormat GetSharedImageFormat() const override {
     return format_;
@@ -228,6 +223,14 @@ class PLATFORM_EXPORT CanvasResourceProvider
   virtual base::ByteSize EstimatedSizeInBytes() const {
     return base::ByteSize(format_.EstimatedSizeInBytes(size_));
   }
+
+  // This is supported only by CanvasResourceProviderSharedImageNon2D.
+  scoped_refptr<StaticBitmapImage> DoExternalDrawAndSnapshot(
+      base::FunctionRef<void(MemoryManagedPaintCanvas&)> draw_callback,
+      ImageOrientation orientation) override {
+    NOTREACHED();
+  }
+
   uint32_t ContentUniqueID() const;
 
   virtual bool WritePixels(const SkImageInfo& orig_info,
@@ -296,8 +299,6 @@ class PLATFORM_EXPORT CanvasResourceProvider
 
   void OnMemoryDump(base::trace_event::ProcessMemoryDump*) override;
 
-  HighEntropyCanvasOpType GetRecorderHighEntropyCanvasOpTypes() const;
-
   void ReleaseLockedImages();
 
   void EnsureSkiaCanvas();
@@ -335,9 +336,6 @@ class PLATFORM_EXPORT CanvasResourceProvider
   // callsites.
   void ClearAtCreation();
 
-  // Note that `info_` should be const, but the relevant SkImageInfo
-  // constructors do not exist.
-  SkImageInfo info_;
   gfx::Size size_;
   viz::SharedImageFormat format_;
   SkAlphaType alpha_type_;
@@ -388,11 +386,6 @@ class PLATFORM_EXPORT Canvas2DResourceProviderBitmap
   scoped_refptr<StaticBitmapImage> Snapshot(
       ImageOrientation = ImageOrientationEnum::kDefault) override;
 
-  scoped_refptr<StaticBitmapImage> DoExternalDrawAndSnapshot(
-      base::FunctionRef<void(MemoryManagedPaintCanvas&)> draw_callback,
-      ImageOrientation orientation) override {
-    NOTREACHED();
-  }
   void RasterRecord(cc::PaintRecord last_recording) override;
   bool WritePixels(const SkImageInfo& orig_info,
                    const void* pixels,
@@ -515,14 +508,6 @@ class PLATFORM_EXPORT CanvasResourceProviderSharedImage
 
   bool IsValid() const override;
 
-  // ExternalCanvasDrawHelper() is used by clients that require the invocation
-  // of WillDrawIfNeeded() before obtaining a canvas and drawing on it.
-  void ExternalCanvasDrawHelper(
-      base::FunctionRef<void(MemoryManagedPaintCanvas&)> draw_callback);
-
-  scoped_refptr<StaticBitmapImage> DoExternalDrawAndSnapshot(
-      base::FunctionRef<void(MemoryManagedPaintCanvas&)> draw_callback,
-      ImageOrientation orientation) final;
   void RasterRecord(cc::PaintRecord last_recording) override;
   sk_sp<SkSurface> CreateSkSurface() const override;
   void OnFlushForImage(cc::PaintImage::ContentId content_id);
@@ -562,6 +547,8 @@ class PLATFORM_EXPORT CanvasResourceProviderSharedImage
   void EnsureWriteAccess();
   void EndWriteAccess();
   std::unique_ptr<gpu::RasterScopedAccess> WillDrawInternal();
+
+  scoped_refptr<StaticBitmapImage> cached_snapshot_;
 
  private:
   CanvasImageProvider* GetOrCreateCanvasImageProvider();
@@ -635,7 +622,6 @@ class PLATFORM_EXPORT CanvasResourceProviderSharedImage
 
   // The resource that is currently being used by this provider.
   scoped_refptr<CanvasResourceSharedImage> resource_;
-  scoped_refptr<StaticBitmapImage> cached_snapshot_;
   cc::PaintImage::ContentId cached_content_id_ =
       cc::PaintImage::kInvalidContentId;
 
@@ -659,6 +645,15 @@ class PLATFORM_EXPORT CanvasResourceProviderSharedImageNon2D
       gpu::SharedImageUsageSet shared_image_usage_flags,
       Delegate*);
   ~CanvasResourceProviderSharedImageNon2D() override = default;
+
+  // Drops the cached snapshot (if any) and invokes `draw_callback` on this
+  // instance's canvas.
+  void ExternalCanvasDrawHelper(
+      base::FunctionRef<void(MemoryManagedPaintCanvas&)> draw_callback);
+
+  scoped_refptr<StaticBitmapImage> DoExternalDrawAndSnapshot(
+      base::FunctionRef<void(MemoryManagedPaintCanvas&)> draw_callback,
+      ImageOrientation orientation) final;
 
   // For WebGpu RecyclableCanvasResource.
   void OnAcquireRecyclableCanvasResource();

@@ -135,6 +135,7 @@
 #include "content/browser/renderer_host/frame_tree_node.h"
 #include "content/browser/renderer_host/input/input_injector_impl.h"
 #include "content/browser/renderer_host/ipc_utils.h"
+#include "content/browser/renderer_host/local_network_access_util.h"
 #include "content/browser/renderer_host/media/peer_connection_tracker_host.h"
 #include "content/browser/renderer_host/navigation_controller_impl.h"
 #include "content/browser/renderer_host/navigation_entry_impl.h"
@@ -143,7 +144,6 @@
 #include "content/browser/renderer_host/navigation_state_keep_alive.h"
 #include "content/browser/renderer_host/navigator.h"
 #include "content/browser/renderer_host/page_delegate.h"
-#include "content/browser/renderer_host/private_network_access_util.h"
 #include "content/browser/renderer_host/randomized_confidence_utils.h"
 #include "content/browser/renderer_host/render_frame_host_delegate.h"
 #include "content/browser/renderer_host/render_frame_host_owner.h"
@@ -180,6 +180,7 @@
 #include "content/browser/worker_host/dedicated_worker_host.h"
 #include "content/browser/worker_host/dedicated_worker_host_factory_impl.h"
 #include "content/browser/worker_host/dedicated_worker_hosts_for_document.h"
+#include "content/browser/worker_host/shared_worker_service_impl.h"
 #include "content/common/associated_interfaces.mojom.h"
 #include "content/common/content_navigation_policy.h"
 #include "content/common/debug_utils.h"
@@ -217,6 +218,7 @@
 #include "content/public/browser/web_ui_url_loader_factory.h"
 #include "content/public/common/alternative_error_page_override_info.mojom.h"
 #include "content/public/common/bindings_policy.h"
+#include "content/public/common/child_process_id_util.h"
 #include "content/public/common/content_client.h"
 #include "content/public/common/content_features.h"
 #include "content/public/common/content_switches.h"
@@ -2185,6 +2187,8 @@ class PendingNavigation {
   mojo::PendingAssociatedRemote<mojom::NavigationClient> navigation_client_;
   mojo::PendingReceiver<mojom::NavigationRendererCancellationListener>
       renderer_cancellation_listener_;
+  mojo::PendingReceiver<blink::mojom::NavigationResumeDeferredCommitListener>
+      deferred_commit_resume_listener_;
 
   PendingNavigation(
       blink::mojom::CommonNavigationParamsPtr common_params,
@@ -2193,6 +2197,9 @@ class PendingNavigation {
       mojo::PendingAssociatedRemote<mojom::NavigationClient> navigation_client,
       mojo::PendingReceiver<mojom::NavigationRendererCancellationListener>
           renderer_cancellation_listener,
+      mojo::PendingReceiver<
+          blink::mojom::NavigationResumeDeferredCommitListener>
+          deferred_commit_resume_listener,
       RenderFrameHostImpl* initiator_frame);
 };
 
@@ -2203,13 +2210,17 @@ PendingNavigation::PendingNavigation(
     mojo::PendingAssociatedRemote<mojom::NavigationClient> navigation_client,
     mojo::PendingReceiver<mojom::NavigationRendererCancellationListener>
         renderer_cancellation_listener,
+    mojo::PendingReceiver<blink::mojom::NavigationResumeDeferredCommitListener>
+        deferred_commit_resume_listener,
     RenderFrameHostImpl* initiator_frame)
     : common_params_(std::move(common_params)),
       begin_navigation_params_(std::move(begin_navigation_params)),
       blob_url_loader_factory_(std::move(blob_url_loader_factory)),
       navigation_client_(std::move(navigation_client)),
       renderer_cancellation_listener_(
-          std::move(renderer_cancellation_listener)) {
+          std::move(renderer_cancellation_listener)),
+      deferred_commit_resume_listener_(
+          std::move(deferred_commit_resume_listener)) {
   if (initiator_frame) {
     initiator_frame->IssueKeepAliveHandle(
         opener_keep_alive_handle_.BindNewPipeAndPassReceiver());
@@ -4306,9 +4317,9 @@ void RenderFrameHostImpl::InitializePrivateNetworkRequestPolicy() {
     return;
   }
 
-  private_network_request_policy_ = DerivePrivateNetworkRequestPolicy(
+  private_network_request_policy_ = DeriveLocalNetworkAccessRequestPolicy(
       policy_container_host_->policies(),
-      PrivateNetworkRequestContext::kSubresource);
+      LocalNetworkAccessRequestContext::kSubresource);
 }
 
 void RenderFrameHostImpl::RenderProcessGone(
@@ -4803,7 +4814,8 @@ void RenderFrameHostImpl::Init() {
         std::move(pending_navigation->blob_url_loader_factory_),
         std::move(pending_navigation->navigation_client_),
         EnsurePrefetchedSignedExchangeCache(), initiator_process_id,
-        std::move(pending_navigation->renderer_cancellation_listener_));
+        std::move(pending_navigation->renderer_cancellation_listener_),
+        std::move(pending_navigation->deferred_commit_resume_listener_));
     // DO NOT ADD CODE after this, as `this` might be deleted if an early
     // RenderFrameHost swap was performed when starting the navigation above.
   }
@@ -5215,7 +5227,7 @@ void RenderFrameHostImpl::DidNavigate(
   // Sets whether the last navigation has user gesture/transient activation or
   // not.
   last_committed_common_params_has_user_gesture_ =
-      navigation_request->common_params().has_user_gesture;
+      navigation_request->common_params().has_possibly_filtered_user_gesture;
 
   // Sets whether the last cross-document navigation was initiated from the
   // browser (e.g. typing on the location bar) or from the renderer while having
@@ -5223,10 +5235,7 @@ void RenderFrameHostImpl::DidNavigate(
   if (!was_within_same_document) {
     last_cross_document_navigation_started_by_user_ =
         !navigation_request->IsRendererInitiated() ||
-        (navigation_request->begin_params()
-             .initiator_activation_and_ad_status !=
-         blink::mojom::NavigationInitiatorActivationAndAdStatus::
-             kDidNotStartWithTransientActivation);
+        navigation_request->StartedWithTransientActivation();
   }
 
   // Navigations that activate an existing bfcached or prerendered document do
@@ -5637,28 +5646,31 @@ void RenderFrameHostImpl::SetOriginDependentStateOfNewFrame(
 
   // Apply private network request policy according to our new origin.
   // TODO(crbug.com/452389539): Centralize these policy overrides.
-  switch (
-      GetContentClient()->browser()->ShouldOverridePrivateNetworkRequestPolicy(
-          GetBrowserContext(), new_frame_origin)) {
-    case ContentBrowserClient::PrivateNetworkRequestPolicyOverride::kForceAllow:
+  switch (GetContentClient()
+              ->browser()
+              ->ShouldOverrideLocalNetworkAccessRequestPolicy(
+                  GetBrowserContext(), new_frame_origin)) {
+    case ContentBrowserClient::LocalNetworkAccessRequestPolicyOverride::
+        kForceAllow:
       private_network_request_policy_ =
           network::mojom::PrivateNetworkRequestPolicy::kAllow;
       break;
-    case ContentBrowserClient::PrivateNetworkRequestPolicyOverride::
+    case ContentBrowserClient::LocalNetworkAccessRequestPolicyOverride::
         kBlockInsteadOfWarn:
       private_network_request_policy_ =
-          OverrideToBlockInsteadOfWarn(DerivePrivateNetworkRequestPolicy(
+          OverrideToBlockInsteadOfWarn(DeriveLocalNetworkAccessRequestPolicy(
               policy_container_host_->policies(),
-              PrivateNetworkRequestContext::kSubresource));
+              LocalNetworkAccessRequestContext::kSubresource));
       break;
-    case ContentBrowserClient::PrivateNetworkRequestPolicyOverride::
+    case ContentBrowserClient::LocalNetworkAccessRequestPolicyOverride::
         kWarnInsteadOfBlock:
       private_network_request_policy_ =
-          OverrideToWarnInsteadOfBlock(DerivePrivateNetworkRequestPolicy(
+          OverrideToWarnInsteadOfBlock(DeriveLocalNetworkAccessRequestPolicy(
               policy_container_host_->policies(),
-              PrivateNetworkRequestContext::kSubresource));
+              LocalNetworkAccessRequestContext::kSubresource));
       break;
-    case ContentBrowserClient::PrivateNetworkRequestPolicyOverride::kDefault:
+    case ContentBrowserClient::LocalNetworkAccessRequestPolicyOverride::
+        kDefault:
       break;
   }
 
@@ -9774,7 +9786,7 @@ void RenderFrameHostImpl::OpenURL(blink::mojom::OpenURLParamsPtr params) {
     blink::NavigationDownloadPolicy download_policy;
 
     MaybeRecordAdClickMainFrameNavigationMetrics(
-        /*initiator_frame=*/this, params->initiator_activation_and_ad_status);
+        /*initiator_frame=*/this, params->user_gesture, params->started_by_ad);
 
     target_frame->frame_tree_node()->navigator().NavigateFromFrameProxy(
         target_frame, validated_params_url,
@@ -9785,9 +9797,8 @@ void RenderFrameHostImpl::OpenURL(blink::mojom::OpenURLParamsPtr params) {
         "GET",
         /*post_body=*/nullptr, params->extra_headers,
         /*blob_url_loader_factory=*/nullptr,
-        network::mojom::SourceLocation::New(), /*has_user_gesture=*/false,
-        params->is_form_submission, params->impression,
-        params->initiator_activation_and_ad_status,
+        network::mojom::SourceLocation::New(), params->user_gesture,
+        params->is_form_submission, params->impression, params->started_by_ad,
         params->actual_navigation_start,
         /*navigation_start_time=*/base::TimeTicks::Now(),
         /*is_embedder_initiated_fenced_frame_navigation=*/false,
@@ -9809,7 +9820,7 @@ void RenderFrameHostImpl::OpenURL(blink::mojom::OpenURLParamsPtr params) {
     if (params->disposition != WindowOpenDisposition::CURRENT_TAB ||
         IsOutermostMainFrame()) {
       MaybeRecordAdClickMainFrameNavigationMetrics(
-          initiator_frame, params->initiator_activation_and_ad_status);
+          initiator_frame, params->user_gesture, params->started_by_ad);
     }
   }
 
@@ -10093,7 +10104,8 @@ void RenderFrameHostImpl::CreateNewWindow(
   transient_allow_popup_.Deactivate();
 
   MaybeRecordAdClickMainFrameNavigationMetrics(
-      /*initiator_frame=*/this, params->initiator_activation_and_ad_status);
+      /*initiator_frame=*/this, params->started_with_transient_activation,
+      params->started_by_ad);
 
   if (is_new_browsing_instance || !new_frame_tree) {
     // Opener suppressed, Javascript access disabled, or delegate did not
@@ -10588,10 +10600,8 @@ void RenderFrameHostImpl::MaybeSendFencedFrameAutomaticReportingBeacon(
   // It is safe to check both values at once. If one is not properly set, it
   // will always be set to a false negative and not a false positive, so there
   // is no way for that to cause an accidental beacon to be sent.
-  if (navigation_request.GetNavigationInitiatorActivationAndAdStatus() ==
-          blink::mojom::NavigationInitiatorActivationAndAdStatus::
-              kDidNotStartWithTransientActivation &&
-      !navigation_request.common_params().has_user_gesture) {
+  if (!navigation_request.StartedWithTransientActivation() &&
+      !navigation_request.common_params().has_possibly_filtered_user_gesture) {
     RecordAutomaticBeaconOutcome(
         blink::AutomaticBeaconOutcome::kNoUserActivation);
     return;
@@ -11251,7 +11261,9 @@ void RenderFrameHostImpl::BeginNavigation(
     mojo::PendingRemote<blink::mojom::NavigationStateKeepAliveHandle>
         initiator_navigation_state_keep_alive_handle,
     mojo::PendingReceiver<mojom::NavigationRendererCancellationListener>
-        renderer_cancellation_listener) {
+        renderer_cancellation_listener,
+    mojo::PendingReceiver<blink::mojom::NavigationResumeDeferredCommitListener>
+        deferred_commit_resume_listener) {
   TRACE_EVENT("navigation", "RenderFrameHostImpl::BeginNavigation",
               ChromeTrackEvent::kRenderFrameHost, this, "url",
               unvalidated_common_params->url.possibly_invalid_spec());
@@ -11403,14 +11415,16 @@ void RenderFrameHostImpl::BeginNavigation(
     pending_navigate_ = std::make_unique<PendingNavigation>(
         std::move(validated_common_params), std::move(begin_params),
         std::move(blob_url_loader_factory), std::move(navigation_client),
-        std::move(renderer_cancellation_listener), initiator_frame);
+        std::move(renderer_cancellation_listener),
+        std::move(deferred_commit_resume_listener), initiator_frame);
     return;
   }
 
   if (begin_params->initiator_frame_token) {
     if (IsOutermostMainFrame()) {
       MaybeRecordAdClickMainFrameNavigationMetrics(
-          initiator_frame, begin_params->initiator_activation_and_ad_status);
+          initiator_frame, begin_params->started_with_transient_activation,
+          begin_params->started_by_ad);
     }
   }
 
@@ -11426,7 +11440,8 @@ void RenderFrameHostImpl::BeginNavigation(
       frame_tree_node(), std::move(validated_common_params),
       std::move(begin_params), std::move(blob_url_loader_factory),
       std::move(navigation_client), EnsurePrefetchedSignedExchangeCache(),
-      initiator_process_id, std::move(renderer_cancellation_listener));
+      initiator_process_id, std::move(renderer_cancellation_listener),
+      std::move(deferred_commit_resume_listener));
 }
 
 void RenderFrameHostImpl::SubresourceResponseStarted(
@@ -11609,6 +11624,13 @@ void RenderFrameHostImpl::HandleAXLocationChanges(
     ui::AXLocationAndScrollUpdates changes,
     uint32_t reset_token,
     mojo::ReportBadMessageCallback report_bad_message_callback) {
+  if (!render_accessibility_) {
+    // This message arrived from `RenderAccessibilityHost` posting a task to the
+    // UI thread but our mojo connection has been reset. An example of where
+    // this occurs is `SwapOuterDelegateFrame`.
+    return;
+  }
+
   if (tree_id != GetAXTreeID()) {
     // The message has arrived after the frame has navigated which means its
     // changes are no longer relevant and can be discarded.
@@ -13893,7 +13915,8 @@ bool RenderFrameHostImpl::CreateNetworkServiceDefaultFactoryAndObserve(
     StoragePartition* storage_partition = GetStoragePartition();
     network::mojom::URLLoaderFactoryParamsPtr monitoring_factory_params =
         network::mojom::URLLoaderFactoryParams::New();
-    monitoring_factory_params->process_id = GetProcess()->GetDeprecatedID();
+    monitoring_factory_params->process_id =
+        ToOriginatingProcess(GetProcess()->GetID());
     monitoring_factory_params->debug_tag = "RFHI - monitoring_factory_params";
 
     // This factory should never be used to issue actual requests (i.e. it
@@ -14541,8 +14564,8 @@ void RenderFrameHostImpl::CreateWebSocketConnector(
     mojo::PendingReceiver<blink::mojom::WebSocketConnector> receiver) {
   mojo::MakeSelfOwnedReceiver(
       std::make_unique<WebSocketConnectorImpl>(
-          GetProcess()->GetDeprecatedID(), routing_id_, last_committed_origin_,
-          isolation_info_, BuildClientSecurityState()),
+          GlobalRenderFrameHostId(GetProcess()->GetID(), routing_id_),
+          last_committed_origin_, isolation_info_, BuildClientSecurityState()),
       std::move(receiver));
 }
 
@@ -15187,11 +15210,11 @@ RenderFrameHostImpl::BuildClientSecurityStateForWorkers() const {
       policy_container_host_->policies().allow_non_secure_local_network_access;
 
   client_security_state->private_network_request_policy =
-      DerivePrivateNetworkRequestPolicy(
+      DeriveLocalNetworkAccessRequestPolicy(
           client_security_state->ip_address_space,
           client_security_state->is_web_secure_context,
           allow_non_secure_local_network_access,
-          PrivateNetworkRequestContext::kWorker);
+          LocalNetworkAccessRequestContext::kWorker);
 
   return client_security_state;
 }
@@ -16108,14 +16131,8 @@ bool RenderFrameHostImpl::DidCommitNavigationInternal(
   auto navigation_ukm_builder =
       navigation_request->GetNavigationTimelineUkmBuilder();
 
-  // We are only interested in the `caused_by_ad` status for same-document
-  // scenarios and for cross-document subframe scenarios.
-  //
-  // TODO(crbug.com/375523824): Plumb through the ad status for cross-document
-  // subframe navigation. It might suffice to only check the frame's
-  // pre-navigation ad status instead of the JavaScript stack.
-  bool caused_by_ad =
-      same_document_params ? same_document_params->caused_by_ad : false;
+  bool caused_by_ad = same_document_params ? same_document_params->caused_by_ad
+                                           : navigation_request->StartedByAd();
 
   // TODO(crbug.com/40150370): Do not pass |params| to DidNavigate().
   NavigationRequest* raw_navigation_request = navigation_request.get();
@@ -17973,8 +17990,9 @@ void RenderFrameHostImpl::
   SCOPED_CRASH_KEY_BOOL("VerifyDidCommit", "suh_renderer",
                         params.should_update_history);
 
-  SCOPED_CRASH_KEY_BOOL("VerifyDidCommit", "gesture",
-                        request->common_params().has_user_gesture);
+  SCOPED_CRASH_KEY_BOOL(
+      "VerifyDidCommit", "gesture",
+      request->common_params().has_possibly_filtered_user_gesture);
 
   SCOPED_CRASH_KEY_BOOL("VerifyDidCommit", "replace",
                         should_replace_current_entry);
@@ -18787,6 +18805,21 @@ void RenderFrameHostImpl::SetLifecycleState(LifecycleStateImpl new_state) {
     }
   }
 
+  if (base::FeatureList::IsEnabled(blink::features::kFreezeSharedWorker)) {
+    // Notify the SharedWorkerService to potentially freeze or resume
+    // SharedWorkers associated with this frame.
+    if ((old_state == LifecycleStateImpl::kActive &&
+         new_state == LifecycleStateImpl::kInBackForwardCache) ||
+        (old_state == LifecycleStateImpl::kInBackForwardCache &&
+         new_state == LifecycleStateImpl::kActive)) {
+      SharedWorkerServiceImpl* service = static_cast<SharedWorkerServiceImpl*>(
+          GetStoragePartition()->GetSharedWorkerService());
+      if (service) {
+        service->OnClientStateChanged(this);
+      }
+    }
+  }
+
   if (!ShouldBoostRenderProcessForLoading(lifecycle_state_,
                                           frame_tree_->is_prerendering())) {
     MaybeResetBoostRenderProcessForLoading();
@@ -18846,7 +18879,7 @@ void RenderFrameHostImpl::BindReportingObserver(
 mojo::PendingRemote<network::mojom::URLLoaderNetworkServiceObserver>
 RenderFrameHostImpl::CreateURLLoaderNetworkObserver() {
   return GetStoragePartition()->CreateURLLoaderNetworkObserverForFrame(
-      GetProcess()->GetDeprecatedID(), GetRoutingID());
+      content::GlobalRenderFrameHostId(GetProcess()->GetID(), GetRoutingID()));
 }
 
 PeerConnectionTrackerHost& RenderFrameHostImpl::GetPeerConnectionTrackerHost() {

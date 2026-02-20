@@ -7,68 +7,36 @@ import 'chrome://skills/skills_dialog_app.js';
 import type {CrButtonElement} from 'chrome://resources/cr_elements/cr_button/cr_button.js';
 import type {CrInputElement} from 'chrome://resources/cr_elements/cr_input/cr_input.js';
 import type {CrTextareaElement} from 'chrome://resources/cr_elements/cr_textarea/cr_textarea.js';
-import type {Skill} from 'chrome://skills/skill.mojom-webui.js';
-import type {PageHandlerInterface} from 'chrome://skills/skills.mojom-webui.js';
 import type {SkillsDialogAppElement} from 'chrome://skills/skills_dialog_app.js';
-import {SkillsDialogBrowserProxyImpl} from 'chrome://skills/skills_dialog_browser_proxy.js';
-import {assertEquals} from 'chrome://webui-test/chai_assert.js';
-import {TestBrowserProxy} from 'chrome://webui-test/test_browser_proxy.js';
+import {SkillsDialogBrowserProxy} from 'chrome://skills/skills_dialog_browser_proxy.js';
+import {assertEquals, assertTrue} from 'chrome://webui-test/chai_assert.js';
 
-// TODO(marissashen): Move to own file.
-class TestPageHandler extends TestBrowserProxy implements PageHandlerInterface {
-  constructor() {
-    super([
-      'submitSkill',
-      'closeDialog',
-    ]);
-  }
-
-  submitSkill(skill: Skill) {
-    this.methodCalled('submitSkill', skill);
-  }
-
-  closeDialog() {
-    this.methodCalled('closeDialog');
-  }
-}
-
-class TestSkillsDialogBrowserProxy {
-  handler: TestPageHandler;
-
-  constructor() {
-    this.handler = new TestPageHandler();
-  }
-}
+import type {TestDialogHandler} from './test_skills_dialog_browser_proxy.js';
+import {TestSkillsDialogBrowserProxy} from './test_skills_dialog_browser_proxy.js';
 
 suite('SkillsDialogAppPage', function() {
   let skillsDialogApp: SkillsDialogAppElement;
   let browserProxy: TestSkillsDialogBrowserProxy;
-  let pageHandler: TestPageHandler;
+  let dialogHandler: TestDialogHandler;
 
   setup(function() {
     browserProxy = new TestSkillsDialogBrowserProxy();
-    SkillsDialogBrowserProxyImpl.setInstance(browserProxy);
-    pageHandler = browserProxy.handler;
+    SkillsDialogBrowserProxy.setInstance(browserProxy);
+    dialogHandler = browserProxy.handler;
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
     skillsDialogApp = document.createElement('skills-dialog-app');
     document.body.appendChild(skillsDialogApp);
   });
 
   test('SkillsDialogAppLoads', function() {
-    assertEquals(
-        'Add Skill',
-        skillsDialogApp.shadowRoot.querySelector('h1')!.textContent);
+    assertEquals('Add Skill', skillsDialogApp.$['header']!.textContent);
   });
 
   test('SaveButtonDisabledStates', async function() {
-    const saveButton =
-        skillsDialogApp.shadowRoot.querySelector<CrButtonElement>(
-            '#save-button')!;
-    const nameInput =
-        skillsDialogApp.shadowRoot.querySelector<CrInputElement>('#name-text')!;
+    const saveButton = skillsDialogApp.$['saveButton'] as CrButtonElement;
+    const nameInput = skillsDialogApp.$['nameText'] as CrInputElement;
     const instructionsInput =
-        skillsDialogApp.shadowRoot.querySelector<CrTextareaElement>(
-            '#instructions-text')!;
+        skillsDialogApp.$['instructionsText'] as CrTextareaElement;
 
     // 1. Initial state: disabled.
     assertEquals(true, saveButton.disabled);
@@ -96,14 +64,10 @@ suite('SkillsDialogAppPage', function() {
   });
 
   test('SaveButtonSubmitsSkill', async function() {
-    const saveButton =
-        skillsDialogApp.shadowRoot.querySelector<CrButtonElement>(
-            '#save-button')!;
-    const nameInput =
-        skillsDialogApp.shadowRoot.querySelector<CrInputElement>('#name-text')!;
+    const saveButton = skillsDialogApp.$['saveButton'] as CrButtonElement;
+    const nameInput = skillsDialogApp.$['nameText'] as CrInputElement;
     const instructionsInput =
-        skillsDialogApp.shadowRoot.querySelector<CrTextareaElement>(
-            '#instructions-text')!;
+        skillsDialogApp.$['instructionsText'] as CrTextareaElement;
 
     // Populate the fields to enable the save button.
     const testName = 'test skill';
@@ -119,8 +83,78 @@ suite('SkillsDialogAppPage', function() {
 
     // Click the save button and verify the proxy call.
     saveButton.click();
-    const submittedSkill = await pageHandler.whenCalled('submitSkill');
+    const submittedSkill = await dialogHandler.whenCalled('submitSkill');
     assertEquals(testName, submittedSkill.name);
     assertEquals(testPrompt, submittedSkill.prompt);
+  });
+
+  test('EmojiTriggerOpensPicker', async function() {
+    const emojiTrigger =
+        skillsDialogApp.shadowRoot.querySelector<HTMLInputElement>(
+            '.emoji-trigger')!;
+
+    emojiTrigger.click();
+
+    await dialogHandler.whenCalled('showEmojiPicker');
+  });
+
+  test('EmojiInputUpdatesStateAndSanitizes', async function() {
+    const emojiTrigger =
+        skillsDialogApp.shadowRoot.querySelector<HTMLInputElement>(
+            '.emoji-trigger')!;
+
+    emojiTrigger.value = '⚡🐶';
+    emojiTrigger.dispatchEvent(new InputEvent('input'));
+
+    await skillsDialogApp.updateComplete;
+
+    assertEquals('🐶', emojiTrigger.value);
+
+    const saveButton = skillsDialogApp.$['saveButton'] as CrButtonElement;
+
+    const nameInput = skillsDialogApp.$['nameText'] as CrInputElement;
+    const instructionsInput =
+        skillsDialogApp.$['instructionsText'] as CrTextareaElement;
+
+    nameInput.value = 'name';
+    nameInput.dispatchEvent(
+        new CustomEvent('value-changed', {detail: {value: 'name'}}));
+    instructionsInput.value = 'prompt';
+    instructionsInput.dispatchEvent(
+        new CustomEvent('value-changed', {detail: {value: 'prompt'}}));
+
+    await skillsDialogApp.updateComplete;
+
+    saveButton.click();
+    const submittedSkill = await dialogHandler.whenCalled('submitSkill');
+    assertEquals('🐶', submittedSkill.icon);
+  });
+
+  test('EmojiInputHandlesEmpty', async function() {
+    const emojiTrigger =
+        skillsDialogApp.shadowRoot.querySelector<HTMLInputElement>(
+            '.emoji-trigger')!;
+
+    emojiTrigger.value = '';
+    emojiTrigger.dispatchEvent(new InputEvent('input'));
+
+    await skillsDialogApp.updateComplete;
+
+    assertEquals('⚡', emojiTrigger.value);
+  });
+
+  test('EmojiPreventsManualTyping', function() {
+    const emojiTrigger =
+        skillsDialogApp.shadowRoot.querySelector<HTMLInputElement>(
+            '.emoji-trigger')!;
+
+    const letterEvent = new KeyboardEvent('keydown', {
+      key: 'a',
+      cancelable: true,
+      bubbles: true,
+      composed: true,
+    });
+    emojiTrigger.dispatchEvent(letterEvent);
+    assertTrue(letterEvent.defaultPrevented, 'Should prevent regular keys');
   });
 });

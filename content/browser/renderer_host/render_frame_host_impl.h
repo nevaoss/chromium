@@ -3667,7 +3667,10 @@ class CONTENT_EXPORT RenderFrameHostImpl
       mojo::PendingRemote<blink::mojom::NavigationStateKeepAliveHandle>
           initiator_navigation_state_keep_alive_handle,
       mojo::PendingReceiver<mojom::NavigationRendererCancellationListener>
-          renderer_cancellation_listener) override;
+          renderer_cancellation_listener,
+      mojo::PendingReceiver<
+          blink::mojom::NavigationResumeDeferredCommitListener>
+          deferred_commit_resume_listener) override;
   void SubresourceResponseStarted(const url::SchemeHostPort& final_response_url,
                                   net::CertStatus cert_status) override;
   void ResourceLoadComplete(

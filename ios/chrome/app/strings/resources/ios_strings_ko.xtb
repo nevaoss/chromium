@@ -333,6 +333,7 @@
 <translation id="2184272387334793084">모든 기기에서 비밀번호 등을 가져오려면 Chrome에 로그인하세요.</translation>
 <translation id="2186206192313702726">Google 렌즈</translation>
 <translation id="2188993354115194873"><ph name="BEGIN_BOLD" />다운로드에 저장<ph name="END_BOLD" />을 탭합니다.</translation>
+<translation id="2191406283620379491">문제가 발생했습니다. iOS 버전을 업데이트하세요.</translation>
 <translation id="219283042927675668">그룹에 포함된 탭</translation>
 <translation id="2194856509914051091">고려사항</translation>
 <translation id="2196428379625389579">웹에서 검색</translation>
@@ -579,6 +580,7 @@
 <translation id="3143515551205905069">동기화 취소</translation>
 <translation id="3144126448740580210">완료</translation>
 <translation id="3148052723910099040">일반 탭 그리드</translation>
+<translation id="3148237711805373460">이동하기</translation>
 <translation id="3157387275655328056">읽기 목록에 추가</translation>
 <translation id="315778507796115851">기록</translation>
 <translation id="31652791196570636">닫기</translation>
@@ -1020,6 +1022,7 @@
 <translation id="483689884442613745">저장…</translation>
 <translation id="4840495572919996524">북마크, 방문 기록, 비밀번호 등이 더 이상 Google 계정과 동기화되지 않습니다.</translation>
 <translation id="484280513275854557">로그아웃되고 인터넷 사용 기록이 삭제되었습니다</translation>
+<translation id="484462545196658690">자동</translation>
 <translation id="4850886885716139402">보기</translation>
 <translation id="4854068532375923088">'Gemini'가 카메라를 사용하도록 허용</translation>
 <translation id="4860895144060829044">전화걸기</translation>
@@ -1521,6 +1524,7 @@ Handoff는 설정의 일반 섹션에서도 사용 설정할 수 있으며, 이�
 <translation id="6556866813142980365">다시실행</translation>
 <translation id="6559301491397835130">{count,plural, =1{"{title}"에 북마크가 저장되었습니다. 이 기기에만 저장됩니다.}other{"{title}"에 북마크가 저장되었습니다. 이 기기에만 저장됩니다.}}</translation>
 <translation id="656065428026159829">더보기</translation>
+<translation id="6565899972286925956">무엇이든 만들어 보세요</translation>
 <translation id="6571070086367343653">신용카드 수정</translation>
 <translation id="6574092468346088891">안전 확인 알림 사용 설정</translation>
 <translation id="6579867704846662339">시크릿 모드에서 다른 앱의 수신 URL을 열도록 선택할 수 있습니다</translation>
@@ -1631,6 +1635,7 @@ Handoff는 설정의 일반 섹션에서도 사용 설정할 수 있으며, 이�
 <translation id="6930799952781667037">이 언어로 변경하려면 탭하세요.</translation>
 <translation id="693761253105515415">비밀번호 설정</translation>
 <translation id="6945221475159498467">선택</translation>
+<translation id="6946722113367118030">생각 중</translation>
 <translation id="6950522403736391608">숨김</translation>
 <translation id="6962809930976936328">Gemini로 유용한 정보 확인하기</translation>
 <translation id="6964300328304469089">현재 <ph name="NAME" />님(<ph name="EMAIL" />)이 선택되었습니다. 계정을 선택하세요.</translation>
@@ -1899,6 +1904,7 @@ Handoff는 설정의 일반 섹션에서도 사용 설정할 수 있으며, 이�
 <translation id="7958575506592576831">페이지 보안 정보</translation>
 <translation id="7961015016161918242">사용하지 않음</translation>
 <translation id="7971136598759319605">1일 전 동기화됨</translation>
+<translation id="7972837668077967426">캔버스</translation>
 <translation id="7975036700432177008">사용해 보기</translation>
 <translation id="797588153137233716">메뉴 → 방문 기록 → 인터넷 사용 기록 삭제</translation>
 <translation id="7977451675950311423">정보 유출로 인해 유출된 비밀번호를 사용하면 경고를 보냅니다.</translation>
@@ -1972,6 +1978,7 @@ Handoff는 설정의 일반 섹션에서도 사용 설정할 수 있으며, 이�
 <translation id="8205564605687841303">취소</translation>
 <translation id="8206354486702514201">이 설정은 관리자가 강제로 설정해 놓았습니다.</translation>
 <translation id="8209050860603202033">이미지 열기</translation>
+<translation id="8209237163365258530">Gemini <ph name="VERSION_NUMBER" /> 모델</translation>
 <translation id="8211030355252954494"><ph name="WEBSITE" />의 비밀번호를 받았습니다</translation>
 <translation id="8211406090763984747">이 연결은 안전합니다.</translation>
 <translation id="8214293972734702249">고정됨, <ph name="TAB_TITLE" /></translation>

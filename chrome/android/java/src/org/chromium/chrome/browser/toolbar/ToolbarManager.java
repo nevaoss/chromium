@@ -116,6 +116,7 @@ import org.chromium.chrome.browser.omnibox.LocationBar;
 import org.chromium.chrome.browser.omnibox.LocationBarCoordinator;
 import org.chromium.chrome.browser.omnibox.LocationBarEmbedderUiOverrides;
 import org.chromium.chrome.browser.omnibox.NewTabPageDelegate;
+import org.chromium.chrome.browser.omnibox.OmniboxChipManager;
 import org.chromium.chrome.browser.omnibox.OmniboxFocusReason;
 import org.chromium.chrome.browser.omnibox.OmniboxStub;
 import org.chromium.chrome.browser.omnibox.OverrideUrlLoadingDelegateImpl;
@@ -343,7 +344,7 @@ public class ToolbarManager
     private MenuButtonCoordinator mMenuButtonCoordinator;
     private MenuButtonCoordinator mOverviewModeMenuButtonCoordinator;
     private HomepageManager.@Nullable HomepageStateListener mHomepageStateListener;
-    private final Supplier<ModalDialogManager> mModalDialogManagerSupplier;
+    private final Supplier<@Nullable ModalDialogManager> mModalDialogManagerSupplier;
     private final StatusBarColorController mStatusBarColorController;
     private final ActivityLifecycleDispatcher mActivityLifecycleDispatcher;
     private final BottomSheetController mBottomSheetController;
@@ -440,9 +441,9 @@ public class ToolbarManager
     private int mIncognitoNtpViewIdForA11y = View.NO_ID;
     private @Nullable OverscrollGlowCoordinator mOverscrollGlowCoordinator;
     private final NewTabPageDelegate mNtpDelegate;
-    private final MonotonicObservableSupplier<Profile> mProfileSupplier;
+    private final NullableObservableSupplier<Profile> mProfileSupplier;
     private final Callback<Boolean> mOnXrSpaceModeChanged = this::onXrSpaceModeChanged;
-    private final @Nullable MonotonicObservableSupplier<Boolean> mXrSpaceModeObservableSupplier;
+    private final NonNullObservableSupplier<Boolean> mXrSpaceModeObservableSupplier;
     private final SettableNonNullObservableSupplier<Float>
             mNtpSearchBoxTransitionPercentageSupplier = ObservableSuppliers.createNonNull(0f);
 
@@ -760,6 +761,8 @@ public class ToolbarManager
      * @param initializeWithIncognitoColors Whether the toolbar should be initialized with incognito
      * @param backPressManager The {@link BackPressManager} handling back press gesture.
      * @param desktopWindowStateManager The {@link DesktopWindowStateManager} instance.
+     * @param lockTopControlsTokenJar {@link TokenHolder} from TopControlsLockCoordinator, used to
+     *     ensure control lock state does not change.
      * @param multiInstanceManager The {@link MultiInstanceManager} used to move tabs to new
      *     windows.
      * @param tabBookmarkerSupplier Supplier of {@link TabBookmarker} for bookmarking a given tab.
@@ -769,6 +772,7 @@ public class ToolbarManager
      * @param xrSpaceModeObservableSupplier Supplies current XR space mode status. True for XR full
      *     space mode, false otherwise.
      * @param pageZoomManager The {@link PageZoomManager} used to manage the page zoom.
+     * @param omniboxChipManager The {@link OmniboxChipManager} to show chips in the omnibox.
      */
     public ToolbarManager(
             AppCompatActivity activity,
@@ -799,7 +803,7 @@ public class ToolbarManager
             WindowAndroid windowAndroid,
             OneshotSupplier<ChromeAndroidTask> chromeAndroidTaskSupplier,
             Supplier<Boolean> isInOverviewModeSupplier,
-            Supplier<ModalDialogManager> modalDialogManagerSupplier,
+            Supplier<@Nullable ModalDialogManager> modalDialogManagerSupplier,
             StatusBarColorController statusBarColorController,
             AppMenuDelegate appMenuDelegate,
             ActivityLifecycleDispatcher activityLifecycleDispatcher,
@@ -814,14 +818,16 @@ public class ToolbarManager
             @Nullable BackPressManager backPressManager,
             MonotonicObservableSupplier<ReadAloudController> readAloudControllerSupplier,
             @Nullable DesktopWindowStateManager desktopWindowStateManager,
+            @Nullable TokenHolder lockTopControlsTokenJar,
             @Nullable MultiInstanceManager multiInstanceManager,
             MonotonicObservableSupplier<TabBookmarker> tabBookmarkerSupplier,
             @Nullable VisibilityDelegate menuButtonVisibilityDelegate,
             TopControlsStacker topControlsStacker,
             MonotonicObservableSupplier<TopInsetProvider> topInsetProviderSupplier,
-            @Nullable MonotonicObservableSupplier<Boolean> xrSpaceModeObservableSupplier,
+            NonNullObservableSupplier<Boolean> xrSpaceModeObservableSupplier,
             PageZoomManager pageZoomManager,
-            SnackbarManager snackbarManager) {
+            SnackbarManager snackbarManager,
+            @Nullable OmniboxChipManager omniboxChipManager) {
         TraceEvent.begin("ToolbarManager.ToolbarManager");
         mActivity = activity;
         mWindowAndroid = windowAndroid;
@@ -1079,7 +1085,8 @@ public class ToolbarManager
                                 this::onHomeButtonMenuClick,
                                 HomepagePolicyManager::isHomepageLocationManaged,
                                 mBottomSheetController,
-                                this::onHomePageButtonClick);
+                                this::onHomePageButtonClick,
+                                mWindowAndroid);
             }
         }
 
@@ -1178,7 +1185,8 @@ public class ToolbarManager
                         mToolbarLayout.getTabStripHeightFromResource(),
                         mTopControlsStacker,
                         mBrowserControlsSizer,
-                        mControlContainer);
+                        mControlContainer,
+                        lockTopControlsTokenJar);
         mToolbar =
                 createTopToolbarCoordinator(
                         controlContainer,
@@ -1249,7 +1257,7 @@ public class ToolbarManager
                             mLocationBarModel,
                             mActionModeController.getActionModeCallback(),
                             windowAndroid,
-                            mActivityTabProvider,
+                            mActivityTabProvider.asObservable(),
                             modalDialogManagerSupplier,
                             shareDelegateSupplier,
                             mIncognitoStateProvider,
@@ -1285,7 +1293,8 @@ public class ToolbarManager
                             TabFavicon::getBitmap,
                             multiInstanceManager,
                             snackbarManager,
-                            bottomContainerView);
+                            bottomContainerView,
+                            omniboxChipManager);
             mToolbarLayout.setLocationBarCoordinator(locationBarCoordinator);
             mToolbarLayout.setBrowserControlsVisibilityDelegate(mControlsVisibilityDelegate);
             mToolbarLayout.setBrowserControlsStateProvider(mBrowserControlsSizer);
@@ -1778,9 +1787,7 @@ public class ToolbarManager
         initializeToolbarPositionController();
 
         mXrSpaceModeObservableSupplier = xrSpaceModeObservableSupplier;
-        if (mXrSpaceModeObservableSupplier != null) {
-            mXrSpaceModeObservableSupplier.addSyncObserver(mOnXrSpaceModeChanged);
-        }
+        mXrSpaceModeObservableSupplier.addSyncObserver(mOnXrSpaceModeChanged);
 
         mControlContainer
                 .getToolbarResourceAdapter()
@@ -2747,9 +2754,7 @@ public class ToolbarManager
 
         mWindowAndroid.setProgressBarConfigProvider(null);
 
-        if (mXrSpaceModeObservableSupplier != null) {
-            mXrSpaceModeObservableSupplier.removeObserver(mOnXrSpaceModeChanged);
-        }
+        mXrSpaceModeObservableSupplier.removeObserver(mOnXrSpaceModeChanged);
     }
 
     /** Called when the orientation of the activity has changed. */
@@ -3217,10 +3222,7 @@ public class ToolbarManager
     private void checkIfNtpShowingWithNoPendingLoad() {
         boolean isNtpUrl = UrlUtilities.isNtpUrl(mLocationBarModel.getCurrentGurl());
         if (isNtpUrl && getNewTabPageForCurrentTab() != null) {
-            assumeNonNull(mTemplateUrlService);
-            boolean searchEngineHasLogo = mTemplateUrlService.doesDefaultSearchEngineHaveLogo();
-            mIsNtpWithFakeboxShowingSupplier.set(
-                    NewTabPage.isInSingleUrlBarMode(mIsTablet, searchEngineHasLogo));
+            mIsNtpWithFakeboxShowingSupplier.set(NewTabPage.isInSingleUrlBarMode(mIsTablet));
         } else {
             mIsNtpWithFakeboxShowingSupplier.set(false);
             maybeShowBottomToolbarIph();

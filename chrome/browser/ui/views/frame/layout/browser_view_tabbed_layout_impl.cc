@@ -29,6 +29,7 @@
 #include "chrome/browser/ui/views/tabs/projects/projects_panel_view.h"
 #include "ui/gfx/geometry/outsets.h"
 #include "ui/gfx/geometry/size.h"
+#include "ui/views/controls/separator.h"
 
 #if BUILDFLAG(IS_MAC)
 #include "chrome/browser/ui/fullscreen_util_mac.h"
@@ -43,7 +44,11 @@ constexpr int kLoadingBarOffset =
     kLoadingBarHeight - views::Separator::kThickness;
 
 // Minimum area next to caption buttons to use as a grab handle.
-constexpr int kVerticalTabsGrabHandleSize = 54;
+constexpr int kVerticalTabsGrabHandleSize = 40;
+
+// Maximum portion of the window a "size-restricted" contents-height side panel
+// can take up. This is not the only limit on side panel size.
+constexpr float kMaxContentsHeightSidePanelFraction = 2.f / 3.f;
 
 // Increases the leading or trailing exclusion padding to `minimum`.
 void IncreasePaddingToMinimum(BrowserLayoutParams& params, int minimum) {
@@ -131,7 +136,16 @@ BrowserViewTabbedLayoutImpl::GetMinimumTabStripSize(
     }
     case TabStripType::kVertical: {
       auto result = views().vertical_tab_strip_region_view->GetMinimumSize();
-      if (!delegate().IsVerticalTabStripCollapsed()) {
+      if (GetVerticalTabStripCollapsedState() ==
+          VerticalTabStripCollapsedState::kCollapsed) {
+        // With a collapsed tabstrip, the tabstrip sits below the leading
+        // exclusion. Add this additional height so that it's accounted for in
+        // minimum size computations.
+        result.set_height(
+            result.height() +
+            base::ClampCeil(
+                params.leading_exclusion.ContentWithPadding().height()));
+      } else {
         result.set_width(std::max(
             result.width(),
             base::ClampCeil(
@@ -148,6 +162,189 @@ BrowserViewTabbedLayoutImpl::GetMinimumTabStripSize(
     case TabStripType::kNone:
       return std::make_pair(gfx::Size(), gfx::Size());
   }
+}
+
+BrowserViewTabbedLayoutImpl::HorizontalLayout
+BrowserViewTabbedLayoutImpl::CalculateHorizontalLayout(
+    BrowserLayoutParams& params) const {
+  HorizontalLayout layout;
+  const auto tab_strip_type = GetTabStripType();
+
+  // Start with some preliminary values.
+  layout.force_top_container_to_top =
+      tab_strip_type != TabStripType::kHorizontal;
+  layout.min_content_width = kContentsContainerMinimumWidth;
+
+  // Get information about the vertical tabstrip, if present.
+  const int toolbar_minimum_width = views().toolbar->GetMinimumSize().width();
+  int min_vertical_tab_strip_width = 0;
+  int preferred_vertical_tab_strip_width = 0;
+  if (tab_strip_type == TabStripType::kVertical) {
+    const auto* const vertical_tab_strip =
+        views().vertical_tab_strip_region_view.get();
+    preferred_vertical_tab_strip_width =
+        vertical_tab_strip->GetPreferredSize().width();
+    layout.vertical_tab_strip_collapsed_state =
+        GetVerticalTabStripCollapsedState();
+    if (layout.vertical_tab_strip_collapsed_state ==
+        VerticalTabStripCollapsedState::kCollapsed) {
+      // Collapsed tab strip always gets its preferred size.
+      min_vertical_tab_strip_width = preferred_vertical_tab_strip_width;
+    } else {
+      // Minimum size is bounded from below by size of leading exclusion area.
+      if (layout.vertical_tab_strip_collapsed_state ==
+          VerticalTabStripCollapsedState::kExpanded) {
+        min_vertical_tab_strip_width = std::max(
+            vertical_tab_strip->GetMinimumSize().width(),
+            base::ClampCeil(
+                params.leading_exclusion.ContentWithPadding().width()));
+      }
+
+      // Figure out the maximum size of the vertical tabstrip that can still
+      // accommodate the toolbar.
+      //
+      // Subtract everything that must go to the right of the vertical tabstrip
+      // from the available width.
+      const int remainder =
+          params.visual_client_area.width() - toolbar_minimum_width -
+          base::ClampCeil(
+              params.trailing_exclusion.ContentWithPadding().width());
+      preferred_vertical_tab_strip_width =
+          std::max(min_vertical_tab_strip_width,
+                   std::min(remainder, preferred_vertical_tab_strip_width));
+    }
+
+    // Account for grab handle.
+    IncreasePaddingToMinimum(params, GetMinimumGrabHandlePadding());
+  }
+
+  // Get information about the toolbar-height side panel, if present.
+  int min_toolbar_height_side_panel_width = 0;
+  int preferred_toolbar_height_side_panel_width = 0;
+  if (const auto* const panel = views().toolbar_height_side_panel.get();
+      IsParentedToAndVisible(panel, views().browser_view)) {
+    min_toolbar_height_side_panel_width = panel->GetMinimumSize().width();
+    preferred_toolbar_height_side_panel_width = std::max(
+        min_toolbar_height_side_panel_width, panel->GetPreferredSize().width());
+    layout.side_panel_padding =
+        GetLayoutConstant(LayoutConstant::kToolbarHeightSidePanelInset);
+
+    // See if the toolbar-height side panel can fit next to the toolbar. If not,
+    // it is forced into content height.
+    if (!layout.force_top_container_to_top) {
+      const int remainder = params.visual_client_area.width() -
+                            (toolbar_minimum_width + layout.side_panel_padding);
+      layout.force_top_container_to_top =
+          remainder < min_toolbar_height_side_panel_width;
+    }
+  }
+
+  // Get information about the content-height side panel, if present.
+  int min_content_height_side_panel_width = 0;
+  int preferred_content_height_side_panel_width = 0;
+  if (const auto* const panel = views().contents_height_side_panel.get();
+      IsParentedToAndVisible(panel, views().browser_view)) {
+    min_content_height_side_panel_width = panel->GetMinimumSize().width();
+    preferred_content_height_side_panel_width = std::max(
+        min_content_height_side_panel_width, panel->GetPreferredSize().width());
+
+    // Some panels impose a second limit on size.
+    if (panel->ShouldRestrictMaxWidth()) {
+      preferred_content_height_side_panel_width =
+          std::min(preferred_content_height_side_panel_width,
+                   base::ClampFloor(params.visual_client_area.width() *
+                                    kMaxContentsHeightSidePanelFraction));
+    }
+
+    // Side panel implies a separator, which means we have to give a little
+    // more room for the contents.
+    layout.min_content_width += views::Separator::kThickness;
+  }
+
+  // When both side panels are present, one is animating in and the other is
+  // animating out. Give precedence to the toolbar-height panel.
+  const bool use_toolbar_height = preferred_toolbar_height_side_panel_width > 0;
+
+  // Start with the minimum values for each element.
+  layout.vertical_tab_strip_width = min_vertical_tab_strip_width;
+  layout.toolbar_height_side_panel_width = min_toolbar_height_side_panel_width;
+  layout.content_height_side_panel_width = min_content_height_side_panel_width;
+
+  // Determine how much space is left to allocate.
+  int remaining = params.visual_client_area.width() - layout.min_content_width -
+                  layout.side_panel_padding - min_vertical_tab_strip_width -
+                  (use_toolbar_height ? min_toolbar_height_side_panel_width
+                                      : min_content_height_side_panel_width);
+
+  // Keep the width of the tabstrip stable when possible; allocate as much space
+  // as possible to it (up to its maximum).
+  if (remaining > 0) {
+    const int vertical_tab_strip_flex_amount =
+        std::min(remaining, preferred_vertical_tab_strip_width -
+                                min_vertical_tab_strip_width);
+    layout.vertical_tab_strip_width += vertical_tab_strip_flex_amount;
+    remaining -= vertical_tab_strip_flex_amount;
+  }
+
+  // Side panels won't both be fully present at the same time, so allocate the
+  // rest of the remainder to both.
+  if (remaining > 0) {
+    const int toolbar_height_flex_amount =
+        std::min(remaining, preferred_toolbar_height_side_panel_width -
+                                min_toolbar_height_side_panel_width);
+    layout.toolbar_height_side_panel_width += toolbar_height_flex_amount;
+    const int content_height_flex_amount =
+        std::min(remaining, preferred_content_height_side_panel_width -
+                                min_content_height_side_panel_width);
+    layout.content_height_side_panel_width += content_height_flex_amount;
+  }
+
+  return layout;
+}
+
+BrowserViewTabbedLayoutImpl::VerticalTabStripAnimation
+BrowserViewTabbedLayoutImpl::CalculateVerticalTabStripAnimation(
+    const BrowserLayoutParams& params) const {
+  static constexpr double kFirstBreakpoint = 0.25;
+  static constexpr double kSecondBreakpoint = 0.75;
+  int leading_exclusion_height =
+      GetCollapsedVerticalTabStripRelativeTop(params);
+  VerticalTabStripAnimation animation;
+  // Only need to do additional animation if animating downward.
+  if (leading_exclusion_height == 0) {
+    return animation;
+  }
+  const auto animation_percent =
+      views().vertical_tab_strip_region_view->GetCollapseAnimationPercent();
+  if (animation_percent.has_value()) {
+    if (animation_percent > kSecondBreakpoint) {
+      const double amount =
+          (*animation_percent - kSecondBreakpoint) / (1 - kSecondBreakpoint);
+      animation.top_outside_corner_percent = amount;
+    } else {
+      animation.top_outside_corner_percent = 0.0;
+      animation.top_inside_corner_percent =
+          1.0 - *animation_percent / kSecondBreakpoint;
+      if (animation_percent < kFirstBreakpoint) {
+        animation.top_offset = leading_exclusion_height;
+      } else {
+        animation.top_offset = base::ClampRound(
+            leading_exclusion_height *
+            (1.0 - (*animation_percent - kFirstBreakpoint) /
+                       (kSecondBreakpoint - kFirstBreakpoint)));
+      }
+    }
+  } else if (delegate().IsVerticalTabStripCollapsed()) {
+    animation.top_inside_corner_percent = 1.0;
+    animation.top_outside_corner_percent = 0.0;
+    animation.top_offset = leading_exclusion_height;
+  }
+  return animation;
+}
+
+int BrowserViewTabbedLayoutImpl::GetMinimumGrabHandlePadding() const {
+  return kVerticalTabsGrabHandleSize -
+         GetLayoutInsets(LayoutInset::TOOLBAR_INTERIOR_MARGIN).right();
 }
 
 gfx::Size BrowserViewTabbedLayoutImpl::GetMinimumMainAreaSize(
@@ -199,6 +396,22 @@ bool BrowserViewTabbedLayoutImpl::ShadowOverlayVisible() const {
   return views().toolbar_height_side_panel->GetVisible();
 }
 
+BrowserViewTabbedLayoutImpl::VerticalTabStripCollapsedState
+BrowserViewTabbedLayoutImpl::GetVerticalTabStripCollapsedState() const {
+  if (!views().vertical_tab_strip_region_view) {
+    return VerticalTabStripCollapsedState::kExpanded;
+  }
+  const auto percent =
+      views().vertical_tab_strip_region_view->GetCollapseAnimationPercent();
+  const bool is_collapsed = delegate().IsVerticalTabStripCollapsed();
+  if (is_collapsed) {
+    return percent ? VerticalTabStripCollapsedState::kCollapsing
+                   : VerticalTabStripCollapsedState::kCollapsed;
+  }
+  return percent ? VerticalTabStripCollapsedState::kExpanding
+                 : VerticalTabStripCollapsedState::kExpanded;
+}
+
 int BrowserViewTabbedLayoutImpl::GetCollapsedVerticalTabStripRelativeTop(
     const BrowserLayoutParams& params) const {
   // When the top container isn't in the browser view, the exclusion won't apply
@@ -235,7 +448,7 @@ gfx::Size BrowserViewTabbedLayoutImpl::GetMinimumSize(
   const auto [vertical_tabstrip_size, horizontal_tabstrip_size] =
       GetMinimumTabStripSize(params);
   if (!vertical_tabstrip_size.IsEmpty()) {
-    IncreasePaddingToMinimum(params, kVerticalTabsGrabHandleSize);
+    IncreasePaddingToMinimum(params, GetMinimumGrabHandlePadding());
   }
   params.InsetHorizontal(vertical_tabstrip_size.width(), /*leading=*/true);
   const gfx::Size toolbar_height_side_panel_size =
@@ -288,6 +501,7 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
   BrowserLayoutParams params = browser_params;
   bool needs_exclusion = true;
   const TabStripType tab_strip_type = GetTabStripType();
+  HorizontalLayout horizontal_layout = CalculateHorizontalLayout(params);
 
   if (tab_strip_type == TabStripType::kWebUi) {
     // When the WebUI tab strip is present, it does not paint over the caption
@@ -334,40 +548,30 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
 
   // Lay out vertical tab strip if visible.
   int collapsed_vertical_tab_strip_adjustment = 0;
-  bool vertical_tabstrip_collapsed = false;
+  VerticalTabStripAnimation vertical_tab_strip_animation;
   if (IsParentedTo(views().vertical_tab_strip_region_view,
                    views().browser_view)) {
     gfx::Rect vertical_tab_strip_bounds;
     if (tab_strip_type == TabStripType::kVertical) {
-      int vertical_tab_strip_relative_top = 0;
-      int vertical_tab_strip_width =
-          views().vertical_tab_strip_region_view->GetPreferredSize().width();
-      vertical_tabstrip_collapsed = delegate().IsVerticalTabStripCollapsed();
-      if (vertical_tabstrip_collapsed) {
-        // Collapsed tabstrip sits underneath caption buttons when present.
-        vertical_tab_strip_relative_top =
-            GetCollapsedVerticalTabStripRelativeTop(params);
+      vertical_tab_strip_animation = CalculateVerticalTabStripAnimation(params);
+      if (vertical_tab_strip_animation.top_offset > 0) {
         collapsed_vertical_tab_strip_adjustment =
-            vertical_tab_strip_relative_top > 0 ? vertical_tab_strip_width : 0;
-      } else {
-        // Un-collapsed tabstrip must be at least as wide as the caption
-        // buttons, if present.
-        const int leading_exclusion_width = base::ClampCeil(
-            params.leading_exclusion.ContentWithPadding().width());
-        vertical_tab_strip_width =
-            std::max(vertical_tab_strip_width, leading_exclusion_width);
+            horizontal_layout.vertical_tab_strip_width;
       }
-      vertical_tab_strip_bounds = gfx::Rect(
-          params.visual_client_area.x(),
-          params.visual_client_area.y() + vertical_tab_strip_relative_top,
-          vertical_tab_strip_width,
-          params.visual_client_area.height() - vertical_tab_strip_relative_top);
+      vertical_tab_strip_bounds =
+          gfx::Rect(params.visual_client_area.x(),
+                    params.visual_client_area.y() +
+                        vertical_tab_strip_animation.top_offset,
+                    horizontal_layout.vertical_tab_strip_width,
+                    params.visual_client_area.height() -
+                        vertical_tab_strip_animation.top_offset);
       // In vertical tabs mode, extra space is allocated next to the top element
       // to serve as a grab handle, on whatever side the caption buttons are.
       if (delegate().GetBrowserWindowState() != WindowState::kFullscreen) {
-        IncreasePaddingToMinimum(params, kVerticalTabsGrabHandleSize);
+        IncreasePaddingToMinimum(params, GetMinimumGrabHandlePadding());
       }
-      params.InsetHorizontal(vertical_tab_strip_width, /*leading=*/true);
+      params.InsetHorizontal(horizontal_layout.vertical_tab_strip_width,
+                             /*leading=*/true);
     }
     layout.AddChild(views().vertical_tab_strip_region_view,
                     vertical_tab_strip_bounds,
@@ -378,11 +582,16 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
   if (IsParentedTo(views().vertical_tab_strip_top_corner,
                    views().browser_view)) {
     gfx::Rect corner_bounds;
-    const bool top_corner_visible = tab_strip_type == TabStripType::kVertical &&
-                                    !vertical_tabstrip_collapsed;
+    const bool top_corner_visible =
+        vertical_tab_strip_animation.top_outside_corner_percent > 0.0;
+
+    // The top corner is drawn when the tabstrip goes all the way to the top.
     if (top_corner_visible) {
-      const auto preferred =
+      auto preferred =
           views().vertical_tab_strip_top_corner->GetPreferredSize();
+      preferred.set_width(base::ClampCeil(
+          preferred.width() *
+          vertical_tab_strip_animation.top_outside_corner_percent));
       corner_bounds = gfx::Rect(params.visual_client_area.origin(), preferred);
     }
     layout.AddChild(views().vertical_tab_strip_top_corner, corner_bounds,
@@ -424,17 +633,7 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
 
   // When the tabstrip isn't at the top or in constrained widths, the top
   // container is laid out before all side panels.
-  const int min_width_for_toolbar_and_toolbar_height_size_panel =
-      (views().toolbar_height_side_panel &&
-               views().toolbar_height_side_panel->GetVisible()
-           ? views().toolbar_height_side_panel->GetMinimumSize().width()
-           : 0) +
-      views().toolbar->GetMinimumSize().width();
-  const bool layout_top_container_before_side_panels =
-      tab_strip_type != TabStripType::kHorizontal ||
-      params.visual_client_area.width() <
-          min_width_for_toolbar_and_toolbar_height_size_panel;
-  if (layout_top_container_before_side_panels &&
+  if (horizontal_layout.force_top_container_to_top &&
       IsParentedTo(views().top_container, views().browser_view)) {
     auto& top_container_layout =
         layout.AddChild(views().top_container, gfx::Rect());
@@ -464,47 +663,29 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
     }
   }
 
-  // Figure out whether the toolbar-height side panel should show and by how
-  // much.
-  const bool has_toolbar_height_side_panel = IsParentedToAndVisible(
-      views().toolbar_height_side_panel, views().browser_view);
-
   // Lay out the main area background.
   if (IsParentedTo(views().main_background_region, views().browser_view)) {
     layout.AddChild(views().main_background_region, params.visual_client_area,
-                    has_toolbar_height_side_panel);
+                    horizontal_layout.has_toolbar_height_side_panel());
   }
-
-  // The insets for main region and its containing views when the
-  // toolbar_height_side_panel is visible.
-  const int container_inset_padding =
-      GetLayoutConstant(LayoutConstant::kToolbarHeightSidePanelInset);
 
   // Lay out toolbar-height side panel.
   bool toolbar_height_side_panel_leading = false;
   const double toolbar_height_side_panel_reveal_amount =
-      has_toolbar_height_side_panel
+      horizontal_layout.has_toolbar_height_side_panel()
           ? views().toolbar_height_side_panel->GetAnimationValue()
           : 0.0;
-  if (IsParentedToAndVisible(views().toolbar_height_side_panel,
-                             views().browser_view)) {
+  const bool pad_toolbar_height_side_panel_top =
+      tab_strip_type != TabStripType::kVertical ||
+      delegate().GetImmersiveModeController()->IsEnabled();
+  if (horizontal_layout.has_toolbar_height_side_panel()) {
     const SidePanel* const toolbar_height_side_panel =
         views().toolbar_height_side_panel;
     toolbar_height_side_panel_leading =
         toolbar_height_side_panel->IsRightAligned() == base::i18n::IsRTL();
 
-    // Side panel needs to fit next to the other stuff in the browser, but it
-    // always gets at least its minimum width.
-    int target_width = toolbar_height_side_panel->GetPreferredSize().width();
-    target_width =
-        std::min(target_width,
-                 params.visual_client_area.width() -
-                     (GetMinimumMainAreaSize(BrowserLayoutParams()).width() +
-                      container_inset_padding));
-    target_width = std::max(
-        target_width, toolbar_height_side_panel->GetMinimumSize().width());
-
     // Not all of the width may be visible on the screen.
+    const int target_width = horizontal_layout.toolbar_height_side_panel_width;
     const int visible_width = base::ClampFloor(
         target_width * toolbar_height_side_panel_reveal_amount);
 
@@ -512,10 +693,10 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
     // to separate it from the horizontal tab strip. SidePanel draws the top on
     // top of the top content separator and some units of the toolbar by
     // default, which is not needed for the toolbar height side panel.
-    const int top =
-        params.visual_client_area.y() +
-        (tab_strip_type == TabStripType::kVertical ? 0
-                                                   : container_inset_padding);
+    const int top = params.visual_client_area.y() +
+                    (pad_toolbar_height_side_panel_top
+                         ? horizontal_layout.side_panel_padding
+                         : 0);
     gfx::Rect toolbar_height_bounds(
         toolbar_height_side_panel_leading
             ? params.visual_client_area.x() - (target_width - visible_width)
@@ -523,6 +704,7 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
         top, target_width, params.visual_client_area.bottom() - top);
     layout.AddChild(views().toolbar_height_side_panel, toolbar_height_bounds);
 
+    // Lay out the animating contents.
     if (IsParentedToAndVisible(views().side_panel_animation_content,
                                views().browser_view)) {
       gfx::Rect toolbar_height_side_panel_final_bounds(
@@ -546,11 +728,11 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
   if (show_shadow_overlay) {
     // As the toolbar height side panel animates in, the main panel shrinks and
     // moves over to accommodate the panel.
-    const int scaled_main_area_padding = base::ClampRound(
-        toolbar_height_side_panel_reveal_amount * container_inset_padding);
+    const int scaled_main_area_padding =
+        base::ClampRound(toolbar_height_side_panel_reveal_amount *
+                         horizontal_layout.side_panel_padding);
     params.Inset(gfx::Insets::TLBR(
-        tab_strip_type == TabStripType::kVertical ? 0
-                                                  : scaled_main_area_padding,
+        pad_toolbar_height_side_panel_top ? scaled_main_area_padding : 0,
         toolbar_height_side_panel_leading ? 0 : scaled_main_area_padding,
         scaled_main_area_padding,
         toolbar_height_side_panel_leading ? scaled_main_area_padding : 0));
@@ -563,7 +745,7 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
   // Lay out top container. The top container is laid out after the
   // toolbar-height side panel with a horizontal tabstrip if the browser is wide
   // enough.
-  if (!layout_top_container_before_side_panels &&
+  if (!horizontal_layout.force_top_container_to_top &&
       IsParentedTo(views().top_container, views().browser_view)) {
     auto& top_container_layout =
         layout.AddChild(views().top_container, gfx::Rect());
@@ -601,7 +783,6 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
   bool show_leading_separator = false;
   bool show_trailing_separator = false;
   bool contents_height_side_panel_leading = false;
-  int min_contents_width = kContentsContainerMinimumWidth;
 
   // The contents-height side panel is adjusted for the presence of a top
   // container separator in the browser view.
@@ -615,53 +796,28 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
   if (IsParentedTo(views().contents_height_side_panel, views().browser_view)) {
     const SidePanel* const contents_height_side_panel =
         views().contents_height_side_panel;
-    int contents_height_side_panel_width = 0;
-    int contents_height_side_panel_visible_width = 0;
     const bool is_right_aligned = contents_height_side_panel->IsRightAligned();
     contents_height_side_panel_leading =
         is_right_aligned == base::i18n::IsRTL();
-    if (contents_height_side_panel->GetVisible()) {
-      // Side panel implies a separator, which means we have to give a little
-      // more room for the contents.
-      min_contents_width += views::Separator::kThickness;
+    if (horizontal_layout.has_content_height_side_panel()) {
       show_leading_separator = contents_height_side_panel_leading;
       show_trailing_separator = !contents_height_side_panel_leading;
-
-      // Maximum width is the lesser of preferred width and the largest width
-      // that doesn't shrink the contents pane past its own minimum size.
-      const int min_width =
-          contents_height_side_panel->GetMinimumSize().width();
-      const int preferred_width =
-          contents_height_side_panel->GetPreferredSize().width();
-      int max_width =
-          std::min(preferred_width,
-                   params.visual_client_area.width() - min_contents_width);
-      if (contents_height_side_panel->ShouldRestrictMaxWidth()) {
-        max_width =
-            std::min(max_width, params.visual_client_area.width() * 2 / 3);
-      }
-
-      // Side panel always gets at least its minimum width.
-      contents_height_side_panel_width = std::max(min_width, max_width);
-      contents_height_side_panel_visible_width =
-          base::ClampFloor(contents_height_side_panel_width *
-                           contents_height_side_panel->GetAnimationValue());
     }
+
+    const int target_width = horizontal_layout.content_height_side_panel_width;
+    const int visible_width = base::ClampFloor(
+        target_width * contents_height_side_panel->GetAnimationValue());
 
     // Side panel slides in from the edge of the main container.
     const gfx::Rect contents_height_side_panel_bounds(
         contents_height_side_panel_leading
-            ? params.visual_client_area.x() -
-                  (contents_height_side_panel_width -
-                   contents_height_side_panel_visible_width)
-            : params.visual_client_area.right() -
-                  contents_height_side_panel_visible_width,
-        contents_height_side_panel_top, contents_height_side_panel_width,
+            ? params.visual_client_area.x() - (target_width - visible_width)
+            : params.visual_client_area.right() - visible_width,
+        contents_height_side_panel_top, target_width,
         params.visual_client_area.bottom() - contents_height_side_panel_top);
     layout.AddChild(views().contents_height_side_panel,
                     contents_height_side_panel_bounds);
-    params.InsetHorizontal(contents_height_side_panel_visible_width,
-                           contents_height_side_panel_leading);
+    params.InsetHorizontal(visible_width, contents_height_side_panel_leading);
   }
 
   // Show separators in multi-contents view. Note that the multi-contents
@@ -670,6 +826,16 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
       show_leading_separator);
   views().multi_contents_view->SetShouldShowTrailingSeparator(
       show_trailing_separator);
+
+  // Top separator is unnecessary when already in the shadow box; this is
+  // especially obvious in split view, where turning the separator off provides
+  // the required top padding.
+  const bool suppress_top_separator =
+      horizontal_layout.has_toolbar_height_side_panel() &&
+      horizontal_layout.force_top_container_to_top;
+  views().multi_contents_view->SetShouldShowTopSeparator(
+      !suppress_top_separator &&
+      GetTopSeparatorType() == TopSeparatorType::kMultiContents);
 
   // Lay out contents container. The contents container contains the multi-
   // contents view when multi-contents are enabled. The checks here are to
@@ -684,8 +850,8 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
   // slides under the side panel.
   int content_left = params.visual_client_area.x();
   int content_right = params.visual_client_area.right();
-  if (const int deficit =
-          min_contents_width - params.visual_client_area.width();
+  if (const int deficit = horizontal_layout.min_content_width -
+                          params.visual_client_area.width();
       deficit > 0) {
     // Expand the contents by the deficit on the side with the side panel.
     params.InsetHorizontal(-deficit, contents_height_side_panel_leading);
@@ -710,27 +876,26 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
         views().vertical_tab_strip_region_view, views().browser_view);
     CHECK(tabstrip_bounds);
 
-    // Calculate the toolbar height adjacent to the tabstrip. This will be zero
-    // if the toolbar is in e.g. an immersive mode overlay, or is not aligned
-    // with the tabstrip (which can happen in collapsed mode with leading
-    // caption buttons).
-    const int toolbar_height =
-        toolbar_bounds
-            ? std::max(0, toolbar_bounds->bottom() - tabstrip_bounds->y())
-            : 0;
-    views().vertical_tab_strip_region_view->SetToolbarHeightForLayout(
-        toolbar_height);
+    int toolbar_height = 0;
+    int caption_button_width = 0;
 
     // If the toolbar is not in the browser, then the exclusion isn't either.
-    const int exclusion_width =
-        toolbar_bounds
-            ? std::max(0, base::ClampCeil(browser_params.leading_exclusion
-                                              .ContentWithPadding()
-                                              .width()) -
-                              tabstrip_bounds->x())
-            : 0;
-    views().vertical_tab_strip_region_view->SetExclusionWidthForLayout(
-        exclusion_width);
+    if (toolbar_bounds) {
+      // Calculate the toolbar height adjacent to the tabstrip. This will be
+      // zero if the toolbar is in e.g. an immersive mode overlay, or is not
+      // aligned with the tabstrip (which can happen in collapsed mode with
+      // leading caption buttons).
+      toolbar_height = toolbar_bounds->bottom() - tabstrip_bounds->y();
+
+      caption_button_width =
+          base::ClampCeil(browser_params.leading_exclusion.content.width()) -
+          tabstrip_bounds->x();
+    }
+
+    views().vertical_tab_strip_region_view->SetToolbarHeightForLayout(
+        std::max(0, toolbar_height));
+    views().vertical_tab_strip_region_view->SetCaptionButtonWidthForLayout(
+        std::max(0, caption_button_width));
   }
 
   return layout;
@@ -828,10 +993,6 @@ gfx::Rect BrowserViewTabbedLayoutImpl::CalculateTopContainerLayout(
                     top_separator_type == TopSeparatorType::kLoadingBar);
   }
 
-  // Maybe show the separator in the multi-contents view.
-  views().multi_contents_view->SetShouldShowTopSeparator(
-      top_separator_type == TopSeparatorType::kMultiContents);
-
   // Maybe show the separator in the top container.
   if (IsParentedTo(views().top_container_separator, views().top_container)) {
     gfx::Rect separator_bounds;
@@ -870,7 +1031,8 @@ void BrowserViewTabbedLayoutImpl::ConfigureTopContainerBackground(
   if (delegate().GetBrowserWindowState() == WindowState::kNormal) {
     corners.upper_trailing = background->GetWindowCorner(/*upper=*/true);
     const bool vertical_tab_strip_reaches_top =
-        !delegate().IsVerticalTabStripCollapsed() ||
+        GetVerticalTabStripCollapsedState() !=
+            VerticalTabStripCollapsedState::kCollapsed ||
         params.leading_exclusion.IsEmpty();
     if (!vertical_tab_strip_reaches_top) {
       corners.upper_leading = background->GetWindowCorner(/*upper=*/true);
@@ -883,22 +1045,20 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
     const BrowserLayoutParams& params) {
   const auto tab_strip_type = GetTabStripType();
   const auto window_state = delegate().GetBrowserWindowState();
-  bool vertical_tab_strip_reaches_top = false;
 
   // Set vertical tabstrip corners.
   if (tab_strip_type == TabStripType::kVertical) {
     // Vertical tabstrip goes all the way to the top of the window if it is not
     // collapsed or there are no caption buttons on the leading edge.
-    vertical_tab_strip_reaches_top =
-        !delegate().IsVerticalTabStripCollapsed() ||
-        params.leading_exclusion.IsEmpty();
+    const VerticalTabStripAnimation animation =
+        CalculateVerticalTabStripAnimation(params);
     auto* const vertical_tabs_background =
         static_cast<CustomCornersBackground*>(
             views().vertical_tab_strip_region_view->background());
     CustomCornersBackground::Corners vertical_tabs_corners;
     // Ensure that corners of the window remain rounded.
     if (window_state == WindowState::kNormal) {
-      if (vertical_tab_strip_reaches_top) {
+      if (animation.top_offset == 0) {
         vertical_tabs_corners.upper_leading =
             vertical_tabs_background->GetWindowCorner(/*upper=*/true);
       }
@@ -907,8 +1067,7 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
     }
     // When the vertical tabs are below the toolbar but next to the bookmarks
     // bar, draw a curved corner.
-    if (!vertical_tab_strip_reaches_top &&
-        window_state != WindowState::kFullscreen) {
+    if (animation.top_inside_corner_percent > 0.0) {
       const auto* const toolbar_height_side_panel =
           views().toolbar_height_side_panel.get();
       const bool has_leading_side_panel =
@@ -918,6 +1077,9 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
       if (delegate().IsBookmarkBarVisible() || has_leading_side_panel) {
         vertical_tabs_corners.upper_trailing.type =
             CustomCornersBackground::CornerType::kRoundedWithBackground;
+        vertical_tabs_corners.upper_trailing.radius =
+            base::ClampRound(vertical_tabs_background->default_radius() *
+                             animation.top_inside_corner_percent);
       }
     }
     vertical_tabs_background->SetCorners(vertical_tabs_corners);

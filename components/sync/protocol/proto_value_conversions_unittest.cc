@@ -26,6 +26,7 @@
 #include "components/sync/protocol/entity_specifics.pb.h"
 #include "components/sync/protocol/extension_setting_specifics.pb.h"
 #include "components/sync/protocol/extension_specifics.pb.h"
+#include "components/sync/protocol/gemini_thread_specifics.pb.h"
 #include "components/sync/protocol/managed_user_setting_specifics.pb.h"
 #include "components/sync/protocol/nigori_specifics.pb.h"
 #include "components/sync/protocol/os_preference_specifics.pb.h"
@@ -68,7 +69,7 @@ using testing::Not;
 
 DEFINE_SPECIFICS_TO_VALUE_TEST(encrypted)
 
-static_assert(60 == syncer::GetNumDataTypes(),
+static_assert(61 == syncer::GetNumDataTypes(),
               "When adding a new field, add a DEFINE_SPECIFICS_TO_VALUE_TEST "
               "for your field below, and optionally a test for the specific "
               "conversions.");
@@ -133,6 +134,7 @@ DEFINE_SPECIFICS_TO_VALUE_TEST(shared_comment)
 DEFINE_SPECIFICS_TO_VALUE_TEST(ai_thread)
 DEFINE_SPECIFICS_TO_VALUE_TEST(contextual_task)
 DEFINE_SPECIFICS_TO_VALUE_TEST(skill)
+DEFINE_SPECIFICS_TO_VALUE_TEST(gemini_thread)
 
 TEST(ProtoValueConversionsTest, AutofillWalletSpecificsToValue) {
   sync_pb::AutofillWalletSpecifics specifics;
@@ -393,6 +395,20 @@ TEST(ProtoValueConversionsTest, CompareSpecificsData) {
   EXPECT_TRUE((*data_list)[1].GetDict().FindString("url"));
   EXPECT_STREQ("https://www.bar.com",
                (*data_list)[1].GetDict().FindString("url")->c_str());
+}
+
+TEST(ProtoValueConversionsTest, GeminiThreadSpecificsToValue) {
+  sync_pb::GeminiThreadSpecifics gemini_specifics;
+  gemini_specifics.set_conversation_id("my_id");
+  gemini_specifics.set_title("my_title");
+
+  base::DictValue value =
+      GeminiThreadSpecificsToValue(gemini_specifics).TakeDict();
+  EXPECT_FALSE(value.empty());
+  EXPECT_THAT(value.FindString("conversation_id"),
+              ::testing::Pointee(testing::Eq("my_id")));
+  EXPECT_THAT(value.FindString("title"),
+              ::testing::Pointee(testing::Eq("my_title")));
 }
 
 }  // namespace

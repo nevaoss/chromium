@@ -333,6 +333,7 @@
 <translation id="2184272387334793084">கடவுச்சொற்கள் மற்றும் பலவற்றை உங்கள் சாதனங்கள் அனைத்திலும் பெற உள்நுழையுங்கள்</translation>
 <translation id="2186206192313702726">Google Lens</translation>
 <translation id="2188993354115194873"><ph name="BEGIN_BOLD" />பதிவிறக்கங்களில் சேமி<ph name="END_BOLD" /> என்பதைத் தட்டவும்</translation>
+<translation id="2191406283620379491">ஏதோ தவறாகிவிட்டது. உங்கள் iOS பதிப்பைப் புதுப்பிக்கவும்.</translation>
 <translation id="219283042927675668">குழுவில் உள்ள பக்கங்கள்</translation>
 <translation id="2194856509914051091">கருத்தில்கொள்ள வேண்டியவை</translation>
 <translation id="2196428379625389579">இணையத்தில் தேடுங்கள்</translation>
@@ -369,6 +370,7 @@
 <translation id="2306265833370324042"><ph name="SEARCH_ENGINE_NAME" /> விவரங்களைக் காட்டும்</translation>
 <translation id="2309265394777270359">பக்கத்தை மூடு</translation>
 <translation id="2311077293164383652">இடம் மாறாத பக்கத்தை மூடு</translation>
+<translation id="2313392466694008052">Gemini மூலம் படத்தை எடிட் செய்தல்</translation>
 <translation id="2316129865977710310">வேண்டாம், நன்றி</translation>
 <translation id="2320166752086256636">கீபோர்டை மறை</translation>
 <translation id="2321086116217818302">கடவுச்சொற்கள் தயாராகின்றன…</translation>
@@ -520,6 +522,7 @@
 <translation id="288655811176831528">தாவலை மூடு</translation>
 <translation id="2888631381369839306">விலைக் கண்காணிப்பு அறிவிப்புகள் இயக்கப்பட்டுள்ளன</translation>
 <translation id="2893168226686371498">இயல்புநிலை உலாவி</translation>
+<translation id="2893791155497534382">கடவுச்சொற்களையும் பிற செயல்பாடுகளையும் அவற்றின் நிர்வாக அமைப்புகளில் நீக்கலாம்</translation>
 <translation id="2894757982205307093">குழுவில் புதிய தாவல்</translation>
 <translation id="2902312830803030883">மேலும் செயல்கள்</translation>
 <translation id="2904788871580817212">திறந்துள்ள பக்கத்தில் தயாரிப்பின் விலை குறைந்துள்ளது. <ph name="DOMAIN" /> தளத்தில் <ph name="PRODUCT_NAME" />, <ph name="PREVIOUS_PRICE" /> இல் இருந்து <ph name="PRICE" />க்குக் குறைந்துள்ளது</translation>
@@ -579,6 +582,7 @@
 <translation id="3143515551205905069">ஒத்திசைவை ரத்துசெய்</translation>
 <translation id="3144126448740580210">முடிந்தது</translation>
 <translation id="3148052723910099040">வழக்கமான பக்கக் கட்டம்</translation>
+<translation id="3148237711805373460">அங்கு செல்</translation>
 <translation id="3157387275655328056">வாசிப்புப் பட்டியலில் சேர்</translation>
 <translation id="315778507796115851">பதிவு</translation>
 <translation id="31652791196570636">மூடுக</translation>
@@ -1020,6 +1024,7 @@
 <translation id="483689884442613745">சேமி…</translation>
 <translation id="4840495572919996524">உங்கள் புக்மார்க்குகள், வரலாறு, கடவுச்சொற்கள் மற்றும் பிற அமைப்புகள் இனி உங்கள் Google கணக்குடன் ஒத்திசைக்கப்படாது.</translation>
 <translation id="484280513275854557">நீங்கள் வெளியேற்றப்பட்டீர்கள்; உலாவிய தரவு நீக்கப்பட்டது</translation>
+<translation id="484462545196658690">தானியங்கு</translation>
 <translation id="4850886885716139402">காட்சி</translation>
 <translation id="4854068532375923088">உங்கள் கேமராவை “Gemini” பயன்படுத்த அனுமதியுங்கள்</translation>
 <translation id="4860895144060829044">அழை</translation>
@@ -1295,6 +1300,7 @@
 <translation id="5768870767339201169">விட்ட இடத்திலிருந்து தொடங்குங்கள்</translation>
 <translation id="5779117921996157216">{count,plural, =1{உங்கள் பாதுகாப்பிற்கு ஆபத்தை ஏற்படுத்தக்கூடிய, களவாடப்பட்ட கடவுச்சொல் {count} உள்ளது. பாதுகாப்பாக இருக்க அதை இப்போதே மாற்றுங்கள்.}other{உங்கள் பாதுகாப்பிற்கு ஆபத்தை ஏற்படுத்தக்கூடிய, களவாடப்பட்ட கடவுச்சொற்கள் {count} உள்ளன. பாதுகாப்பாக இருக்க அவற்றை இப்போதே மாற்றுங்கள்.}}</translation>
 <translation id="5791632441210678828">பின்தொடரும் ஊட்டத்தின் தலைப்புகளை வரிசைப்படுத்துவதற்கான பட்டன்.</translation>
+<translation id="5799263916847593256">இதுவரையிலான விலைகளைப் பார்க்க திறக்கவும்</translation>
 <translation id="5803566855766646066">இந்தப் புதிய கார்டை நிராகரிக்க வேண்டுமா?</translation>
 <translation id="5804241973901381774">அனுமதிகள்</translation>
 <translation id="58081802114142635">உங்கள் செயல்பாடுகள் Google AIயை மேம்படுத்தும்</translation>
@@ -1521,6 +1527,7 @@
 <translation id="6556866813142980365">மீண்டும் செய்</translation>
 <translation id="6559301491397835130">{count,plural, =1{"{title}" ஃபோல்டரில் புக்மார்க் சேமிக்கப்பட்டது. இது இந்தச் சாதனத்தில் மட்டுமே சேமிக்கப்பட்டுள்ளது.}other{"{title}" ஃபோல்டரில் புக்மார்க்குகள் சேமிக்கப்பட்டன. இவை இந்தச் சாதனத்தில் மட்டுமே சேமிக்கப்பட்டுள்ளன.}}</translation>
 <translation id="656065428026159829">மேலும் காட்டு</translation>
+<translation id="6565899972286925956">எதையும் உருவாக்குங்கள்</translation>
 <translation id="6571070086367343653">கடன் அட்டையைத் திருத்துக</translation>
 <translation id="6574092468346088891">பாதுகாப்புச் சரிபார்ப்பிற்கான அறிவிப்புகளை இயக்குங்கள்</translation>
 <translation id="6579867704846662339">வேறொரு ஆப்ஸில் இருந்து வரும் URLகளை மறைநிலைப் பயன்முறையில் திறக்கலாம்.</translation>
@@ -1631,11 +1638,13 @@
 <translation id="6930799952781667037">இந்த மொழிக்கு மாற்ற தட்டவும்.</translation>
 <translation id="693761253105515415">கடவுக்குறியீட்டை அமையுங்கள்</translation>
 <translation id="6945221475159498467">தேர்ந்தெடு</translation>
+<translation id="6946722113367118030">யோசிக்கும் ஈமோஜி</translation>
 <translation id="6950522403736391608">மறைக்கப்பட்டுள்ளவை</translation>
 <translation id="6962809930976936328">Gemini மூலம் புள்ளிவிவரங்களைப் பெறுங்கள்</translation>
 <translation id="6964300328304469089">தற்போது தேர்ந்தெடுக்கப்பட்டுள்ளது: <ph name="NAME" />, <ph name="EMAIL" />. கணக்கைத் தேர்வுசெய்யும்.</translation>
 <translation id="6964760285928603117">குழுவிலிருந்து அகற்று</translation>
 <translation id="6965382102122355670">சரி</translation>
+<translation id="6967355534157677591">Pro மூலம் படத்தை உருவாக்கு</translation>
 <translation id="6973630695168034713">ஃபோல்டர்கள்</translation>
 <translation id="6979158407327259162">Google Drive</translation>
 <translation id="6979737339423435258">இதுவரை அனைத்தும்</translation>
@@ -1899,6 +1908,7 @@
 <translation id="7958575506592576831">பக்கப் பாதுகாப்புத் தகவல்</translation>
 <translation id="7961015016161918242">எப்போதும் இல்லை</translation>
 <translation id="7971136598759319605">கடைசியாக 1 நாளுக்கு முன் பயன்படுத்தியுள்ளார்</translation>
+<translation id="7972837668077967426">Canvas</translation>
 <translation id="7975036700432177008">முயற்சிக்கவும்</translation>
 <translation id="797588153137233716">மெனு → செயல்பாடுகள் → பிரவுசிங் தரவை நீக்கு</translation>
 <translation id="7977451675950311423">தரவு மீறலில் பாதிக்கப்பட்டுள்ள கடவுச்சொல்லை நீங்கள் பயன்படுத்தினால் உங்களை எச்சரிக்கும்.</translation>
@@ -1972,6 +1982,7 @@
 <translation id="8205564605687841303">ரத்துசெய்</translation>
 <translation id="8206354486702514201">இந்த அமைப்பு உங்கள் நிர்வாகியால் செயலாக்கப்பட்டுள்ளது.</translation>
 <translation id="8209050860603202033">படத்தைத் திற</translation>
+<translation id="8209237163365258530">Gemini <ph name="VERSION_NUMBER" /> மாடல்கள்</translation>
 <translation id="8211030355252954494"><ph name="WEBSITE" /> தளத்திற்கான கடவுச்சொற்களைப் பெற்றுள்ளீர்கள்</translation>
 <translation id="8211406090763984747">இணைப்பு பாதுகாப்பானது</translation>
 <translation id="8214293972734702249">பின் செய்யப்பட்டது, <ph name="TAB_TITLE" /></translation>

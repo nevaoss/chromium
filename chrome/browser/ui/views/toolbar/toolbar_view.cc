@@ -42,6 +42,7 @@
 #include "chrome/browser/ui/intent_picker_tab_helper.h"
 #include "chrome/browser/ui/layout_constants.h"
 #include "chrome/browser/ui/omnibox/omnibox_view.h"
+#include "chrome/browser/ui/tab_search_feature.h"
 #include "chrome/browser/ui/tabs/public/tab_features.h"
 #include "chrome/browser/ui/tabs/tab_strip_prefs.h"
 #include "chrome/browser/ui/toolbar/chrome_labs/chrome_labs_prefs.h"
@@ -122,6 +123,7 @@
 #include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/background.h"
 #include "ui/views/cascading_property.h"
+#include "ui/views/controls/separator.h"
 #include "ui/views/layout/fill_layout.h"
 #include "ui/views/layout/flex_layout.h"
 #include "ui/views/layout/proposed_layout.h"
@@ -283,8 +285,6 @@ void ToolbarView::Init() {
   };
 
   PrefService* const prefs = browser_->profile()->GetPrefs();
-  std::unique_ptr<HomeButton> home = std::make_unique<HomeButton>(
-      browser_, base::BindRepeating(callback, browser_, IDC_HOME));
 
   std::unique_ptr<ExtensionsToolbarDesktop> extensions_container;
   std::unique_ptr<views::View> toolbar_divider;
@@ -324,7 +324,10 @@ void ToolbarView::Init() {
         browser_->profile(), browser_->command_controller(),
         InitialWebUIWindowMetricsManager::From(browser_)));
   }
-  home_ = AddChildView(std::move(home));
+  if (!features::IsWebUIHomeButtonEnabled()) {
+    home_ = AddChildView(std::make_unique<HomeButton>(
+        browser_, base::BindRepeating(callback, browser_, IDC_HOME)));
+  }
   std::unique_ptr<SplitTabsToolbarButton> split =
       std::make_unique<SplitTabsToolbarButton>(browser_);
   split_tabs_ = AddChildView(std::move(split));
@@ -467,7 +470,9 @@ void ToolbarView::Init() {
       base::BindRepeating(&ToolbarView::OnShowHomeButtonChanged,
                           base::Unretained(this)));
 
-  home_->SetVisible(show_home_button_.GetValue());
+  if (home_) {
+    home_->SetVisible(show_home_button_.GetValue());
+  }
 
   InitLayout();
 
@@ -506,7 +511,7 @@ void ToolbarView::Update(WebContents* tab) {
   }
 
   if (ReloadControl* reload_control = GetReloadButton(); reload_control) {
-    reload_control->SetMenuEnabled(
+    reload_control->SetDevToolsStatus(
         chrome::IsDebuggerAttachedToCurrentTab(browser_));
   }
 }
@@ -603,20 +608,40 @@ void ToolbarView::ShowIntentPickerBubble(
   // shown/highlighted.
   if (highlighted_button || IsMigratedClickToCallBubble(bubble_type)) {
     IntentPickerBubbleView::ShowBubble(
-        location_bar(), highlighted_button, bubble_type, GetWebContents(),
+        location_bar_view(), highlighted_button, bubble_type, GetWebContents(),
         std::move(app_info), show_stay_in_chrome, show_remember_selection,
         initiating_origin, std::move(callback));
   }
 }
 
 void ToolbarView::ShowBookmarkBubble(const GURL& url, bool already_bookmarked) {
-  views::View* const anchor_view = location_bar();
+  views::View* const anchor_view = location_bar_view();
   views::Button* const bookmark_star_icon =
       GetPageActionView(kActionBookmarkThisTab);
   CHECK(bookmark_star_icon);
   BookmarkBubbleView::ShowBubble(anchor_view, GetWebContents(),
                                  bookmark_star_icon, browser_, url,
                                  already_bookmarked);
+}
+
+bool ToolbarView::IsPositionInWindowCaption(
+    const gfx::Point& test_point) const {
+  // Only points above the centerline are considered candidates for the caption
+  // area.
+  if (test_point.y() > GetLocalBounds().CenterPoint().y()) {
+    return false;
+  }
+
+  // Check each visible child to see if the point is in the child.
+  for (auto& child : children()) {
+    if (child->GetVisible() && !views::IsViewClass<views::Separator>(child) &&
+        child->bounds().Contains(test_point)) {
+      return false;
+    }
+  }
+
+  // If it's not in a child, the point is in the caption area.
+  return true;
 }
 
 views::Button* ToolbarView::GetChromeLabsButton() const {
@@ -663,9 +688,11 @@ void ToolbarView::EnabledStateChangedForCommand(int id, bool enabled) {
   DCHECK(display_mode_ == DisplayMode::kNormal);
   const std::array<views::Button*, 5> kButtons{back_, forward_, reload_, home_,
                                                avatar_};
-  auto* button = *std::ranges::find(kButtons, id, &views::Button::tag);
-  DCHECK(button);
-  button->SetEnabled(enabled);
+  auto it = std::ranges::find_if(
+      kButtons, [id](views::Button* b) { return b && b->tag() == id; });
+  if (it != kButtons.end()) {
+    (*it)->SetEnabled(enabled);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -731,6 +758,13 @@ gfx::Size ToolbarView::GetMinimumSize() const {
                                         back_->GetMinimumSize().height()) +
                                layout_manager_->interior_margin().height();
         size.SetToMin({size.width(), max_height});
+      }
+      // Overflow button must be part of minimum size calculation.
+      if (browser_->is_type_normal() && !overflow_button_->GetVisible()) {
+        const int default_margin =
+            GetLayoutConstant(LayoutConstant::kToolbarIconDefaultMargin);
+        size.Enlarge(
+            default_margin + overflow_button_->GetMinimumSize().width(), 0);
       }
   }
   size.set_height(size.height() * size_animation_.GetCurrentValue());
@@ -994,7 +1028,7 @@ views::View* ToolbarView::GetDefaultExtensionDialogAnchorView() {
 
 PageActionIconView* ToolbarView::GetPageActionIconView(
     PageActionIconType type) {
-  return location_bar()->page_action_icon_controller()->GetIconView(type);
+  return location_bar_view()->page_action_icon_controller()->GetIconView(type);
 }
 
 IconLabelBubbleView* ToolbarView::GetPageActionView(
@@ -1005,7 +1039,7 @@ IconLabelBubbleView* ToolbarView::GetPageActionView(
   }
   const auto& properties = provider.GetProperties(action_id);
   if (IsPageActionMigrated(properties.type)) {
-    return location_bar()->page_action_container()->GetPageActionView(
+    return location_bar_view()->page_action_container()->GetPageActionView(
         action_id);
   }
   return GetPageActionIconView(properties.type);
@@ -1098,7 +1132,7 @@ ReloadControl* ToolbarView::GetReloadButton() {
 }
 
 IntentChipButton* ToolbarView::GetIntentChipButton() {
-  return location_bar()->intent_chip();
+  return location_bar_view()->intent_chip();
 }
 
 ToolbarButton* ToolbarView::GetDownloadButton() {
@@ -1155,7 +1189,9 @@ void ToolbarView::OnShowForwardButtonChanged() {
 }
 
 void ToolbarView::OnShowHomeButtonChanged() {
-  home_->SetVisible(show_home_button_.GetValue());
+  if (home_) {
+    home_->SetVisible(show_home_button_.GetValue());
+  }
 }
 
 void ToolbarView::OnTouchUiChanged() {

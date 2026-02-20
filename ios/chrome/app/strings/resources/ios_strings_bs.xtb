@@ -333,6 +333,7 @@
 <translation id="2184272387334793084">Prijavite se da dobijete lozinke i još mnogo toga na svim svojim uređajima</translation>
 <translation id="2186206192313702726">Google Objektiv</translation>
 <translation id="2188993354115194873">Dodirnite <ph name="BEGIN_BOLD" />Sačuvaj u preuzimanja<ph name="END_BOLD" /></translation>
+<translation id="2191406283620379491">Nešto stvarno nije uredu. Ažurirajte verziju iOS-a.</translation>
 <translation id="219283042927675668">Kartice u grupi</translation>
 <translation id="2194856509914051091">Stvari za razmatranje</translation>
 <translation id="2196428379625389579">Pretražite na webu</translation>
@@ -579,6 +580,7 @@
 <translation id="3143515551205905069">Otkaži sinhronizaciju</translation>
 <translation id="3144126448740580210">GOTOVO</translation>
 <translation id="3148052723910099040">Mreža običnih kartica</translation>
+<translation id="3148237711805373460">Odvedi me tamo</translation>
 <translation id="3157387275655328056">Dodaj na Listu za čitanje</translation>
 <translation id="315778507796115851">Historija</translation>
 <translation id="31652791196570636">Odbaci</translation>
@@ -1020,6 +1022,7 @@
 <translation id="483689884442613745">Pohranjivanje…</translation>
 <translation id="4840495572919996524">Vaše oznake, historija, lozinke i drugi podaci neće se više sinhronizirati s vašim Google računom.</translation>
 <translation id="484280513275854557">Odjavili ste se; podaci o pregledanju su izbrisani</translation>
+<translation id="484462545196658690">Automatski</translation>
 <translation id="4850886885716139402">Prikaz</translation>
 <translation id="4854068532375923088">Dozvolite Geminiju da koristi kameru</translation>
 <translation id="4860895144060829044">Pozovi</translation>
@@ -1521,6 +1524,7 @@ Također, Handoff mora biti omogućen u odjeljku Opće u Postavkama, a vaši ure
 <translation id="6556866813142980365">Ponovi</translation>
 <translation id="6559301491397835130">{count,plural, =1{Oznaka je sačuvana na lokaciju "{title}". Sačuvana je samo na ovom uređaju.}one{Oznake su sačuvane na lokaciju "{title}". Sačuvane su samo na ovom uređaju.}few{Oznake su sačuvane na lokaciju "{title}". Sačuvane su samo na ovom uređaju.}other{Oznake su sačuvane na lokaciju "{title}". Sačuvane su samo na ovom uređaju.}}</translation>
 <translation id="656065428026159829">Prikaži više</translation>
+<translation id="6565899972286925956">Kreirajte bilo šta</translation>
 <translation id="6571070086367343653">Uređivanje kreditne kartice</translation>
 <translation id="6574092468346088891">Uključite obavještenja za sigurnosnu provjeru</translation>
 <translation id="6579867704846662339">Možete odabrati otvaranje dolaznih URL-ova iz drugih aplikacija u anonimnom načinu rada.</translation>
@@ -1631,6 +1635,7 @@ Također, Handoff mora biti omogućen u odjeljku Opće u Postavkama, a vaši ure
 <translation id="6930799952781667037">Dodirnite da promijenite na ovaj jezik.</translation>
 <translation id="693761253105515415">Postavite šifru</translation>
 <translation id="6945221475159498467">Odaberi</translation>
+<translation id="6946722113367118030">Razmišljanje</translation>
 <translation id="6950522403736391608">Sakriveno</translation>
 <translation id="6962809930976936328">Dobijajte uvide putem Geminija</translation>
 <translation id="6964300328304469089">Trenutno je odabrano: <ph name="NAME" />, <ph name="EMAIL" />. Odabir računa.</translation>
@@ -1899,6 +1904,7 @@ Također, Handoff mora biti omogućen u odjeljku Opće u Postavkama, a vaši ure
 <translation id="7958575506592576831">Informacije o sigurnosti stranice</translation>
 <translation id="7961015016161918242">Nikada</translation>
 <translation id="7971136598759319605">Aktivan prije 1 dan</translation>
+<translation id="7972837668077967426">Platno</translation>
 <translation id="7975036700432177008">Isprobajte</translation>
 <translation id="797588153137233716">Meni → Historija → Izbriši podatke pregledanja</translation>
 <translation id="7977451675950311423">Upozorava vas ako koristite lozinku ugroženu narušavanjem podataka.</translation>
@@ -1972,6 +1978,7 @@ Također, Handoff mora biti omogućen u odjeljku Opće u Postavkama, a vaši ure
 <translation id="8205564605687841303">Otkaži</translation>
 <translation id="8206354486702514201">Ovu postavku je nametnuo vaš administrator.</translation>
 <translation id="8209050860603202033">Otvori sliku</translation>
+<translation id="8209237163365258530">Modeli Geminija <ph name="VERSION_NUMBER" /></translation>
 <translation id="8211030355252954494">Dobili ste lozinke za web lokaciju <ph name="WEBSITE" /></translation>
 <translation id="8211406090763984747">Veza je sigurna</translation>
 <translation id="8214293972734702249">Zakačeno, <ph name="TAB_TITLE" /></translation>

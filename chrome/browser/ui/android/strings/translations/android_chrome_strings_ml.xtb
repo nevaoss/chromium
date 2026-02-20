@@ -41,6 +41,7 @@
 <translation id="1150263420752757504"><ph name="APP_NAME" />, Chrome-ൽ തുറക്കും. തുടരുന്നതിലൂടെ, നിങ്ങൾ <ph name="BEGIN_LINK1" />Google സേവന നിബന്ധനകളും<ph name="END_LINK1" /> <ph name="BEGIN_LINK2" />Google Chrome, ChromeOS അധിക സേവന നിബന്ധനകളും<ph name="END_LINK2" /> അംഗീകരിക്കുന്നു.</translation>
 <translation id="1154555449933432029">Google Password Manager-ൽ നിങ്ങൾ പാസ്‌വേഡുകൾ സംരക്ഷിച്ചിട്ടില്ല.</translation>
 <translation id="115483310321669804"><ph name="PASSWORD" /> എന്ന പാസ്‌വേഡ് ഉപയോഗിക്കുക</translation>
+<translation id="1161065531352634524">ടാബുകളും ചരിത്രവും സമന്വയിപ്പിക്കുക</translation>
 <translation id="1165109137568919258">തിരയാൻ ഒരു ഫോട്ടോ എടുക്കുക അല്ലെങ്കിൽ നിങ്ങളുടെ ഫോട്ടോ ഗാലറിയിൽ നിന്ന് ഒരു ചിത്രം ചേർക്കുക</translation>
 <translation id="1173894706177603556">പേരുമാറ്റുക</translation>
 <translation id="1174479719160874822">സ്‌ക്രീൻ ഇടുങ്ങിയിരിക്കുമ്പോൾ Chrome മൊബൈൽ സൈറ്റ് അഭ്യർത്ഥിക്കും</translation>
@@ -126,6 +127,7 @@
 <translation id="147982357559798527">മാറ്റി</translation>
 <translation id="1480287803138246127">നിങ്ങളുടെ ചരിത്രത്തിൽ ചിലത് ഇവിടെ ദൃശ്യമായേക്കില്ല. നിങ്ങളുടെ എല്ലാ Chrome ചരിത്രവും കാണാൻ, മുഴുവൻ Chrome ചരിത്രവും തുറക്കുക.</translation>
 <translation id="1493287004536771723"><ph name="SITE_NAME" /> എന്നതിനെ നിങ്ങൾ പിന്തുടരുന്നു</translation>
+<translation id="1495677929897281669">ടാബിലേക്ക് മടങ്ങുക</translation>
 <translation id="1496514951988037011">ഉപയോക്തൃനാമം</translation>
 <translation id="1501480321619201731">ഗ്രൂപ്പ് ഇല്ലാതാക്കൂ</translation>
 <translation id="1506061864768559482">തിരയൽ യന്ത്രം</translation>
@@ -981,6 +983,7 @@
 <translation id="5210286577605176222">മുമ്പത്തെ ടാബിലേക്ക് പോകുക</translation>
 <translation id="5210365745912300556">ടാബ് അടയ്ക്കൂക</translation>
 <translation id="5212800876504289412">ഈ മാറ്റം പൂർത്തിയാക്കാൻ, Chrome റീസ്റ്റാർട്ട് ചെയ്യുക. നിങ്ങൾ റീസ്റ്റാർട്ട് ചെയ്യുമ്പോൾ ടാബുകൾ സ്വയമേവ വീണ്ടും തുറക്കും.</translation>
+<translation id="5213114823401215820">അടച്ച ഗ്രൂപ്പ് വീണ്ടും തുറക്കുക</translation>
 <translation id="5215957675041756913">നിങ്ങളുടെ ഡാറ്റയും അക്കൗണ്ടും നിയന്ത്രിക്കുക</translation>
 <translation id="5218324087477576825">കാർഡ് നമ്പർ, ആവശ്യമാണ്</translation>
 <translation id="5221437554987713282"><ph name="PERMISSION_1" />, <ph name="PERMISSION_2" /> എന്നിവയും മറ്റും <ph name="SEPARATOR" /> നിങ്ങൾ അടുത്തിടെ സന്ദർശിച്ചിട്ടില്ലാത്തതിനാൽ Chrome ഈ അനുമതികൾ നീക്കം ചെയ്തു</translation>
@@ -1436,6 +1439,7 @@
 <translation id="7020741890149022655">വായനാ ലിസ്റ്റിൽ ചേർക്കൂ <ph name="BEGIN_NEW" />പുതിയത്<ph name="END_NEW" /></translation>
 <translation id="7022756207310403729">ബ്രൗസറിൽ തുറക്കുക</translation>
 <translation id="7029809446516969842">പാസ്‌വേഡുകള്‍</translation>
+<translation id="7037994709569287156">Chrome ഡിഫോൾട്ടാക്കുക</translation>
 <translation id="7053256416619638731">ഈ ഉപകരണത്തിലെ നിങ്ങളുടെ പാസ്‌വേഡുകൾ ശക്തിപ്പെടുത്തുക</translation>
 <translation id="7053983685419859001">തടയുക</translation>
 <translation id="7054588988317389591">ചിത്ര വിവരണങ്ങൾ നേടണോ?</translation>
@@ -1568,6 +1572,7 @@
 <translation id="7523960634226602883">Google Lens ഉപയോഗിച്ച് ക്യാമറയുടെ സഹായത്തോടെ തിരയുക</translation>
 <translation id="7525248386620136756"><ph name="TAB_GROUPS_AND_TABS_PART" /> അടയ്‌ക്കുകയും സംരക്ഷിക്കുകയും ചെയ്‌തു</translation>
 <translation id="7545347190366646170">ആക്‌സസ് ഉള്ള ആളുകൾ</translation>
+<translation id="7553482318994371148">അടച്ച ടാബുകൾ വീണ്ടും തുറക്കുക</translation>
 <translation id="7554643625247105821">Chrome പതിപ്പ് പരിശോധിക്കാനാകുന്നില്ല</translation>
 <translation id="7557508262441527045">സൈൻ ഔട്ട് ചെയ്‌തു</translation>
 <translation id="7573665567024262965">നിങ്ങളുടെ ഡിഫോൾട്ട് ആപ്പുകൾ തിരഞ്ഞെടുക്കുക</translation>
@@ -1801,6 +1806,7 @@
 <translation id="8458413889418591446">നിങ്ങൾ സന്ദർശിച്ച സൈറ്റുകളിലേക്ക് വേഗത്തിൽ മടങ്ങാൻ, ചരിത്രവും ടാബുകളും സമന്വയിപ്പിക്കുക</translation>
 <translation id="84594714173170813">നിങ്ങളുടെ Google അക്കൗണ്ടിലെ Chrome ഡാറ്റ ഉപയോഗിക്കുന്നത് തുടരുക</translation>
 <translation id="8460448946170646641">പ്രധാന സ്വകാര്യതാ, സുരക്ഷാ നിയന്ത്രണങ്ങൾ അവലോകനം ചെയ്യുക</translation>
+<translation id="8460932807646981183">തിരയൽ യന്ത്രങ്ങളും സൈറ്റ് തിരയലും മാനേജ് ചെയ്യുക</translation>
 <translation id="8473863474539038330">വിലാസങ്ങളും മറ്റും</translation>
 <translation id="847433688444405067">ഉപകരണങ്ങളിലുടനീളം ബ്രൗസ് ചെയ്യൂ</translation>
 <translation id="8477178913400731244">ഡാറ്റ ഇല്ലാതാക്കുക</translation>
@@ -1887,6 +1893,7 @@
 <translation id="8856931513242997049">അറിയിപ്പ് അനുമതി ഫ്ലോ അടച്ചിരിക്കുന്നു</translation>
 <translation id="8863714995118816041"><ph name="SITE_NAME" /> -ന് വീണ്ടും അനുമതികൾ നൽകി</translation>
 <translation id="8865415417596392024">നിങ്ങളുടെ അക്കൗണ്ടിലെ Chrome ഡാറ്റ</translation>
+<translation id="8872506776304248286">ആപ്പിൽ തുറക്കുക</translation>
 <translation id="8890668505403261809">നിങ്ങളുടെ അദൃശ്യ ടാബുകൾ തിരയുക</translation>
 <translation id="8894890673032951011"><ph name="TAB_TITLE" />, തിരഞ്ഞെടുത്ത, മീഡിയ റെക്കോർഡ് ചെയ്യുന്ന അദൃശ്യ ടാബ്</translation>
 <translation id="8898822736010347272">വെബിലെ പുതിയ ഭീഷണികൾ കണ്ടെത്തി എല്ലാവരെയും പരിരക്ഷിക്കാൻ സഹായിക്കുന്നതിന് നിങ്ങൾ സന്ദർശിക്കുന്ന ചില പേജുകളുടെ URL-കൾ, പരിമിത സിസ്‌റ്റം വിവരങ്ങൾ, ചില പേജുകളുടെ ഉള്ളടക്കം എന്നിവ Google-ലേക്ക് അയയ്ക്കുന്നു.</translation>

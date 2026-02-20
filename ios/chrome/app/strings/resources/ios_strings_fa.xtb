@@ -333,6 +333,7 @@
 <translation id="2184272387334793084">به سیستم وارد شوید تا گذرواژه‌ها و موارد دیگر را در همه دستگاه‌هایتان دریافت کنید</translation>
 <translation id="2186206192313702726">‏لنز Google</translation>
 <translation id="2188993354115194873">‏روی <ph name="BEGIN_BOLD" />Save to Downloads (ذخیره در بارگیری‌ها)<ph name="END_BOLD" /> تک‌ضرب بزنید</translation>
+<translation id="2191406283620379491">‏مشکلی جدی پیش آمد. لطفاً نسخه iOS را به‌روز کنید.</translation>
 <translation id="219283042927675668">برگه‌های موجود در گروه</translation>
 <translation id="2194856509914051091">مواردی که باید درنظر داشت</translation>
 <translation id="2196428379625389579">جستجو در وب</translation>
@@ -579,6 +580,7 @@
 <translation id="3143515551205905069">لغو همگام‌سازی</translation>
 <translation id="3144126448740580210">تمام</translation>
 <translation id="3148052723910099040">جدول زبانه معمول</translation>
+<translation id="3148237711805373460">به آنجا هدایت شوم</translation>
 <translation id="3157387275655328056">افزودن به فهرست خواندن</translation>
 <translation id="315778507796115851">سابقه</translation>
 <translation id="31652791196570636">بستن</translation>
@@ -1020,6 +1022,7 @@
 <translation id="483689884442613745">ذخیره…</translation>
 <translation id="4840495572919996524">‏نشانک‌ها، سابقه، گذرواژه‌ها و سایر موارد، دیگر با حساب Google شما همگام‌سازی نمی‌شود.</translation>
 <translation id="484280513275854557">از سیستم خارج شدید؛ داده‌های مرور حذف شد</translation>
+<translation id="484462545196658690">خودکار</translation>
 <translation id="4850886885716139402">نما</translation>
 <translation id="4854068532375923088">‏به «Gemini» اجازه دهید از دوربینتان استفاده کند.</translation>
 <translation id="4860895144060829044">تماس</translation>
@@ -1521,6 +1524,7 @@ Handoff باید در بخش عمومی تنظیمات نیز فعال شود و
 <translation id="6556866813142980365">ازنو انجام دادن</translation>
 <translation id="6559301491397835130">{count,plural, =1{نشانک در «{title}» ذخیره شد. این نشانک فقط در این دستگاه ذخیره می‌شود.}one{نشانک‌ها در «{title}» ذخیره شد. این نشانک‌ها فقط در این دستگاه ذخیره می‌شود.}other{نشانک‌ها در «{title}» ذخیره شد. این نشانک‌ها فقط در این دستگاه ذخیره می‌شود.}}</translation>
 <translation id="656065428026159829">بیشتر دیدن</translation>
+<translation id="6565899972286925956">هرچه می‌خواهید خلق کنید</translation>
 <translation id="6571070086367343653">ویرایش کارت اعتباری</translation>
 <translation id="6574092468346088891">اعلان‌های «بررسی ایمنی» را روشن کنید</translation>
 <translation id="6579867704846662339">می‌توانید انتخاب کنید که نشانی‌های وب ورودی از برنامه‌های دیگر در «حالت ناشناس» باز شود.</translation>
@@ -1631,6 +1635,7 @@ Handoff باید در بخش عمومی تنظیمات نیز فعال شود و
 <translation id="6930799952781667037">برای تغییر به این زبان، تک‌ضرب بزنید.</translation>
 <translation id="693761253105515415">تنظیم کردن گذرنویسه</translation>
 <translation id="6945221475159498467">انتخاب</translation>
+<translation id="6946722113367118030">درحال فکر کردن</translation>
 <translation id="6950522403736391608">پنهان</translation>
 <translation id="6962809930976936328">‏دریافت بینش با Gemini</translation>
 <translation id="6964300328304469089">درحال‌حاضر <ph name="EMAIL" />، <ph name="NAME" /> انتخاب شده است. حسابی انتخاب کنید.</translation>
@@ -1899,6 +1904,7 @@ Handoff باید در بخش عمومی تنظیمات نیز فعال شود و
 <translation id="7958575506592576831">اطلاعات امنیتی صفحه</translation>
 <translation id="7961015016161918242">هرگز</translation>
 <translation id="7971136598759319605">آخرین فعالیت: ۱ روز قبل</translation>
+<translation id="7972837668077967426">Canvas</translation>
 <translation id="7975036700432177008">امتحان کنید</translation>
 <translation id="797588153137233716">منو ← سابقه ← حذف داده‌های مرور</translation>
 <translation id="7977451675950311423">اگر از گذرواژه‌ای استفاده کنید که در سرقت اطلاعات شبکه لو رفته باشد، به شما هشدار می‌دهد.</translation>
@@ -1972,6 +1978,7 @@ Handoff باید در بخش عمومی تنظیمات نیز فعال شود و
 <translation id="8205564605687841303">لغو</translation>
 <translation id="8206354486702514201">این تنظیم توسط سرپرست شما اعمال شده است.</translation>
 <translation id="8209050860603202033">باز کردن تصویر</translation>
+<translation id="8209237163365258530">‏مدل‌های <ph name="VERSION_NUMBER" /> Gemini</translation>
 <translation id="8211030355252954494">چند گذرواژه برای <ph name="WEBSITE" /> دریافت کردید</translation>
 <translation id="8211406090763984747">اتصال ایمن است</translation>
 <translation id="8214293972734702249">سنجاق‌شده، <ph name="TAB_TITLE" /></translation>
@@ -2171,7 +2178,7 @@ Handoff باید در بخش عمومی تنظیمات نیز فعال شود و
 <translation id="8893208530912252670">ویدیو</translation>
 <translation id="8898822736010347272">‏نشانی‌های وب بعضی از صفحه‌هایی که بازدید می‌کنید، اطلاعات محدودی از سیستم، و برخی از محتوای صفحه را به Google ارسال می‌کند تا به کشف تهدیدهای جدید و محافظت از همه افراد در وب کمک کند.</translation>
 <translation id="8900845556227858314">برنامه مرورگر</translation>
-<translation id="890565330728586731">برگشت</translation>
+<translation id="890565330728586731">برگشتن</translation>
 <translation id="8907722425137681851">پیدا کردن در صفحه…</translation>
 <translation id="8909135823018751308">هم‌رسانی…</translation>
 <translation id="8909459547399237818">«مدیر گذرواژه» را انتخاب کنید، سپس روی «افزودن ابزاره» تک‌ضرب بزنید</translation>

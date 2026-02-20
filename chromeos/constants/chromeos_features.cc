@@ -26,6 +26,10 @@ BASE_FEATURE(kCachedLocationProvider, base::FEATURE_DISABLED_BY_DEFAULT);
 // Enables cloud game features.
 BASE_FEATURE(kCloudGamingDevice, base::FEATURE_DISABLED_BY_DEFAULT);
 
+// Enables Chrome to add custom icons into status tray.
+BASE_FEATURE(kSupportCustomIconsInStatusArea,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Enables MPS to push payload to chrome devices.
 BASE_FEATURE(kAlmanacLauncherPayload, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -45,9 +49,6 @@ BASE_FEATURE(kDataControlsFileAccessDefaultDeny,
 
 // Enables data migration.
 BASE_FEATURE(kDataMigration, base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Disables blur on various system surfaces.
-BASE_FEATURE(kDisableSystemBlur, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Disables translation services of the Quick Answers V2.
 BASE_FEATURE(kDisableQuickAnswersV2Translation,
@@ -275,6 +276,9 @@ BASE_FEATURE(kSystemFeaturesDisableListHidden,
 // Controls whether Vids is preinstalled.
 BASE_FEATURE(kVidsAppPreinstall, base::FEATURE_ENABLED_BY_DEFAULT);
 
+// Controls whether Vids is preinstalled for consumers.
+BASE_FEATURE(kVidsAppConsumerPreinstall, base::FEATURE_DISABLED_BY_DEFAULT);
+
 bool IsBatteryBadgeIconEnabled() {
   return base::FeatureList::IsEnabled(kBatteryBadgeIcon);
 }
@@ -449,14 +453,7 @@ bool IsRoundedWindowsEnabled() {
 
 bool IsSystemBlurEnabled() {
   constexpr base::ByteCount kMinimumMemoryThreshold = base::GiB(4);  // 4GB
-  bool disable_blur =
-      base::SysInfo::AmountOfPhysicalMemory() <= kMinimumMemoryThreshold;
-  if (std::optional<bool> force_disable =
-          base::FeatureList::GetStateIfOverridden(kDisableSystemBlur)) {
-    disable_blur = force_disable.value();
-  }
-
-  return !disable_blur;
+  return base::SysInfo::AmountOfPhysicalMemory() > kMinimumMemoryThreshold;
 }
 
 bool IsFeatureManagementHistoryEmbeddingEnabled() {

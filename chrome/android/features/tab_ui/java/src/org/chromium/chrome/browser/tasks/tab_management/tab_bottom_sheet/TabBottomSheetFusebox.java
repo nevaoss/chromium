@@ -11,7 +11,7 @@ import android.view.View;
 import org.chromium.base.Callback;
 import org.chromium.base.CallbackUtils;
 import org.chromium.base.supplier.MonotonicObservableSupplier;
-import org.chromium.base.supplier.ObservableSupplierImpl;
+import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
@@ -74,7 +74,7 @@ public class TabBottomSheetFusebox {
                         mDataProvider,
                         /* actionModeCallback */ null,
                         windowAndroid,
-                        /* activityTabSupplier= */ () -> null,
+                        /* activityTabSupplier= */ ObservableSuppliers.alwaysNull(),
                         windowAndroid::getModalDialogManager,
                         /* shareDelegateSupplier= */ null,
                         /* incognitoStateProvider= */ null,
@@ -94,8 +94,8 @@ public class TabBottomSheetFusebox {
                         /* browserControlsVisibilityDelegate= */ null,
                         /* backPressManager= */ null,
                         /* omniboxSuggestionsDropdownScrollListener= */ null,
-                        /* tabModelSelectorSupplier= */ new ObservableSupplierImpl<>(),
-                        /* topInsetProviderSupplier= */ new ObservableSupplierImpl<>(),
+                        /* tabModelSelectorSupplier= */ ObservableSuppliers.alwaysNull(),
+                        /* topInsetProviderSupplier= */ ObservableSuppliers.alwaysNull(),
                         new LocationBarEmbedder() {},
                         uiOverrides,
                         controlContainer,
@@ -107,7 +107,8 @@ public class TabBottomSheetFusebox {
                         /* tabFaviconFunction= */ (tab) -> null,
                         /* multiInstanceManager= */ null,
                         snackbarManager,
-                        bottomContainer);
+                        bottomContainer,
+                        /* omniboxChipManager= */ null);
         mLocationBarCoordinator.setUrlBarFocusable(true);
         mLocationBarCoordinator.onFinishNativeInitialization();
     }

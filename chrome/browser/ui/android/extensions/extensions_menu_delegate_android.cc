@@ -37,8 +37,7 @@ ExtensionsMenuDelegateAndroid::CreateActionViewModel(
                                                        nullptr));
 }
 
-void ExtensionsMenuDelegateAndroid::OnActiveWebContentsChanged(
-    content::WebContents* web_contents) {
+void ExtensionsMenuDelegateAndroid::OnPageNavigation() {
   // TODO(crbug.com/473213114)
 }
 
@@ -47,15 +46,18 @@ void ExtensionsMenuDelegateAndroid::OnActionAdded(
     int index) {
   // TODO(crbug.com/473213114)
 }
+
 void ExtensionsMenuDelegateAndroid::OnActionRemoved(
     const ToolbarActionsModel::ActionId& action_id,
     int index) {
   // TODO(crbug.com/473213114)
 }
 
-void ExtensionsMenuDelegateAndroid::OnActionUpdated() {
+void ExtensionsMenuDelegateAndroid::OnActionUpdated(
+    const ToolbarActionsModel::ActionId& action_id) {
   // TODO(crbug.com/473213114)
 }
+
 void ExtensionsMenuDelegateAndroid::OnActionsInitialized() {
   // TODO(crbug.com/473213114)
 }

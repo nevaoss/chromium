@@ -36,7 +36,7 @@ BASE_FEATURE(kAutofillAcrossIframesIosThrottling,
 // a xframe form. Only effective when Autofill is enabled across iframes
 // (kAutofillAcrossIframesIos).
 BASE_FEATURE(kAutofillAcrossIframesIosTriggerFormExtraction,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Kill switch: If enabled, `ChromeAutofillClient` may enter the actor mode,
 // changing how the UI, parsing and the server predictions work. For more
@@ -52,6 +52,11 @@ BASE_FEATURE(kAutofillActorRewriteCreditCardTriggerField,
 // active on the tab in question. This also suppresses silent updates and
 // saving to Autocomplete.
 BASE_FEATURE(kAutofillActorSuppressImport, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Controls whether to improve the building number regex.
+// TODO(crbug.com/376084078): Cleanup when launched.
+BASE_FEATURE(kAutofillAddressImproveBuildingNumberRegex,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Kill switch: If enabled, NameFieldParser will parse 'Last name, First name'
 // sequence.
@@ -288,6 +293,9 @@ BASE_FEATURE(kAutofillAiVoteForFormatStringsForFlightNumbers,
 // Wallet.
 BASE_FEATURE(kAutofillAiWalletFlightReservation,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+// If enabled, AutofillAi supports private passes entities from Google Wallet.
+BASE_FEATURE(kAutofillAiWalletPrivatePasses, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // If enabled, AutofillAi supports vehicle registration entities from Google
 // Wallet.
@@ -659,11 +667,6 @@ BASE_FEATURE(kAutofillIgnoreCheckableElements,
 BASE_FEATURE(kAutofillImproveAddressFieldSwapping,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-// When enabled, the autofill suggestion labels are more descriptive and
-// relevant.
-// TODO(crbug.com/380273791): Cleanup when launched.
-BASE_FEATURE(kAutofillImprovedLabels, base::FEATURE_DISABLED_BY_DEFAULT);
-
 // TODO(crbug.com/346507576): Remove once the experiment is over.
 // When enabled, makes autocomplete label sensitive.
 BASE_FEATURE(kAutofillLabelSensitiveAutocomplete,
@@ -729,6 +732,11 @@ BASE_FEATURE_PARAM(int,
 // When Enabled Autofill server will stop applying small form rule and Chrome
 // will take care of this logic.
 BASE_FEATURE(kAutofillMoveSmallFormLogicToClient,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+// If enabled, more patterns are added to the PHONE_COUNTRY_CODE regex.
+// TODO(crbug.com/479503511): Remove once launched.
+BASE_FEATURE(kAutofillNewRegexForPhoneCountryCode,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // If enabled, the new suggestion generation logic is used.
@@ -850,13 +858,6 @@ BASE_FEATURE(kAutofillSupportLastNamePrefix, base::FEATURE_DISABLED_BY_DEFAULT);
 // Enables using a custom address model for Japan, overriding the legacy one.
 BASE_FEATURE(kAutofillSupportPhoneticNameForJP,
              base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Kill switch: If true, FormFieldData::IsFocusable will allow returning false
-// for fields with role="presentation" html attribute.
-// TODO(crbug.com/444754999): Clean up after confirming this is safe after M143
-// release.
-BASE_FEATURE(kAutofillSupportPresentationRole,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables splitting two-part zip codes into two fields while filling and
 // importing split zip codes from two adjacent fields.
@@ -1006,6 +1007,11 @@ BASE_FEATURE(kPlusAddressUserDidChooseEmailOverPlusAddressSurvey,
 // TODO: crbug.com/348139343 - Move back to components/plus_addresses.
 BASE_FEATURE(kPlusAddressUserDidChoosePlusAddressOverEmailSurvey,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Kill switch: if enabled, suggestions are shown for fields with unrecognized
+// autocomplete attribute if they are already autofilled.
+BASE_FEATURE(kShowSugesstionsOnAlreadyAutofilledUnrecognized,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // When enabled, the address add/edit editor in the payments request would be
 // removed and instead, the address editor from the settings will be used.

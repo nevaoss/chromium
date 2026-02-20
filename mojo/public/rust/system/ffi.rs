@@ -6,7 +6,7 @@
 #![allow(non_snake_case)]
 
 chromium::import! {
-  pub "//mojo/public/rust:mojo_c_system_bindings" as raw_ffi;
+  pub "//mojo/public/rust/system:mojo_c_system_bindings" as raw_ffi;
 }
 
 pub mod types {
@@ -17,16 +17,11 @@ pub mod types {
     pub use raw_ffi::MojoAddTriggerFlags;
     pub use raw_ffi::MojoAppendMessageDataFlags;
     pub use raw_ffi::MojoArmTrapFlags;
-    pub use raw_ffi::MojoBeginReadDataFlags;
-    pub use raw_ffi::MojoBeginWriteDataFlags;
-    pub use raw_ffi::MojoCreateDataPipeFlags;
     pub use raw_ffi::MojoCreateMessageFlags;
     pub use raw_ffi::MojoCreateMessagePipeFlags;
     pub use raw_ffi::MojoCreateSharedBufferFlags;
     pub use raw_ffi::MojoCreateTrapFlags;
     pub use raw_ffi::MojoDuplicateBufferHandleFlags;
-    pub use raw_ffi::MojoEndReadDataFlags;
-    pub use raw_ffi::MojoEndWriteDataFlags;
     pub use raw_ffi::MojoGetBufferInfoFlags;
     pub use raw_ffi::MojoGetMessageDataFlags;
     pub use raw_ffi::MojoHandle;
@@ -34,62 +29,71 @@ pub mod types {
     pub use raw_ffi::MojoHandleSignalsState;
     pub use raw_ffi::MojoMapBufferFlags;
     pub use raw_ffi::MojoMessageHandle;
-    pub use raw_ffi::MojoReadDataFlags;
     pub use raw_ffi::MojoReadMessageFlags;
     pub use raw_ffi::MojoRemoveTriggerFlags;
     pub use raw_ffi::MojoTimeTicks;
     pub use raw_ffi::MojoTrapEventFlags;
     pub use raw_ffi::MojoTrapEventHandler;
     pub use raw_ffi::MojoTriggerCondition;
-    pub use raw_ffi::MojoWriteDataFlags;
     pub use raw_ffi::MojoWriteMessageFlags;
     pub type MojoResultCode = raw_ffi::MojoResult;
 }
 
-// SAFETY: The `num_bytes` argument to this function must not be null.
-// Additionally the `data` argument must have at least `num_bytes` of
-// valid memory. Additionally, for thread safety, one must have exclusive
-// access to `data_pipe_producer_handle`.
-pub use raw_ffi::MojoWriteData;
-
-// SAFETY: The `num_bytes` argument to this function must not be null.
-pub use raw_ffi::MojoReadData;
+// FOR_RELEASE: Several functions have safety requirements that all handles are
+// either alive or invalid (in which case the function will (safely) error out),
+// all pointer are aligned, etc.
+// Several functions also take a useless options struct. We should consider
+// providing more direct wrappers that make use of the types and invariants we
+// define elsewhere. These could:
+// - Describe the function's behavior at higher levels (the current comments
+//   tend to be in terms of pointers and nullness and out-parameters)
+// - Remove unneeded option arguments
+// - Provide invariants (e.g. handles are alive as long as we have them)
+// - Detail the set of possible MojoResults
+// - Prune the set of possible MojoResults using invariants
 
 // SAFETY: The handle ptr is allowed to be null so long as the number of handles
 // is 0. The option and buffer pointers are always allowed to be null.
 pub use raw_ffi::MojoAppendMessageData;
 
-// FOR_RELEASE: These safe wrappers are good for users, but they prevent
-// rust-analyzer from seeing the comments on the original C function, which are
-// very useful :/
+// SAFETY: All handles must be alive or invalid.
+pub use raw_ffi::MojoWriteMessage;
 
-// Safe wrapper around MojoDestroyMessage
-pub fn MojoDestroyMessage(message: raw_ffi::MojoMessageHandle) -> raw_ffi::MojoResult {
-    // SAFETY: This function is safe to call (but bindgen doesn't know that)
-    // If any arguments are invalid, that will be reflected in the result.
-    unsafe { raw_ffi::MojoDestroyMessage(message) }
-}
+// SAFETY: The message handle must be alive or invalid.
+pub use raw_ffi::MojoDestroyMessage;
 
-// Safe wrapper around MojoWriteMessage
-pub fn MojoWriteMessage(
-    message_pipe_handle: types::MojoHandle,
+/// Convenience wrapper around MojoNotifyBadMessage.
+/// SAFETY: The message handle must be alive or invalid.
+pub unsafe fn MojoNotifyBadMessage(
     message: types::MojoMessageHandle,
-    options: *const raw_ffi::MojoWriteMessageOptions,
+    error_msg: &str,
 ) -> raw_ffi::MojoResult {
-    // SAFETY: This function is safe to call (but bindgen doesn't know that)
-    // If any arguments are invalid, that will be reflected in the result.
-    // In particular, `options` is explicitly allowed to be null.
-    unsafe { raw_ffi::MojoWriteMessage(message_pipe_handle, message, options) }
+    // SAFETY: The option pointer may be null. The string parts were constructed
+    // from an &str, and will not be retained by C code after the function returns.
+    unsafe {
+        raw_ffi::MojoNotifyBadMessage(
+            message,
+            error_msg.as_ptr() as *const ::std::os::raw::c_char,
+            error_msg.len().try_into().unwrap(), // u32 is smaller than usize on chromium platforms
+            std::ptr::null(),
+        )
+    }
 }
+
+// SAFETY: The `buffer` and `num_bytes` arguments must not be null.
+// The `options` and `num_handles` arguments may be null.
+// The `handles` argument may be null only if `num_handles` is null or
+// `*num_handles` is 0.
+// If `handles` is non-null and `*num_handles` > 0, `handles` must point to a
+// valid buffer with capacity to hold at least `*num_handles` handles.
+pub use raw_ffi::MojoGetMessageData;
 
 pub use raw_ffi::MojoAddTrigger;
 pub use raw_ffi::MojoArmTrap;
 pub use raw_ffi::MojoClose;
-pub use raw_ffi::MojoCreateDataPipe;
 pub use raw_ffi::MojoCreateMessage;
 pub use raw_ffi::MojoCreateMessagePipe;
 pub use raw_ffi::MojoCreateTrap;
-pub use raw_ffi::MojoGetMessageData;
 pub use raw_ffi::MojoGetTimeTicksNow;
 pub use raw_ffi::MojoHandleSignalsState as SignalsState;
 pub use raw_ffi::MojoQueryHandleSignalsState;
@@ -155,35 +159,8 @@ macro_rules! declare_mojo_options {
 declare_mojo_options!(MojoAppendMessageDataOptions, flags: types::MojoAppendMessageDataFlags);
 declare_mojo_options!(MojoCreateMessagePipeOptions, flags: types::MojoCreateMessagePipeFlags);
 declare_mojo_options!(MojoWriteMessageOptions, flags: types::MojoWriteMessageFlags);
-
-declare_mojo_options!(MojoReadDataOptions, flags: types::MojoReadDataFlags);
-
-declare_mojo_options!(MojoWriteDataOptions, flags: types::MojoWriteDataFlags);
-
-declare_mojo_options!(
-    MojoCreateDataPipeOptions,
-    flags: types::MojoCreateDataPipeFlags,
-    element_num_bytes: u32,
-    capacity_num_bytes: u32
-);
-
-declare_mojo_options!(
-  MojoCreateTrapOptions,
-  flags: types::MojoCreateTrapFlags
-);
-
-declare_mojo_options!(
-  MojoAddTriggerOptions,
-  flags: types::MojoAddTriggerFlags
-);
-
-declare_mojo_options!(
-  MojoRemoveTriggerOptions,
-  flags: types::MojoRemoveTriggerFlags
-);
-
-declare_mojo_options!(
-  MojoArmTrapOptions,
-  flags: types::MojoArmTrapFlags
-
-);
+declare_mojo_options!(MojoCreateTrapOptions, flags: types::MojoCreateTrapFlags);
+declare_mojo_options!(MojoAddTriggerOptions,flags: types::MojoAddTriggerFlags);
+declare_mojo_options!(MojoRemoveTriggerOptions, flags: types::MojoRemoveTriggerFlags);
+declare_mojo_options!(MojoArmTrapOptions, flags: types::MojoArmTrapFlags);
+declare_mojo_options!(MojoGetMessageDataOptions, flags: types::MojoGetMessageDataFlags);

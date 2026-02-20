@@ -333,6 +333,7 @@
 <translation id="2184272387334793084">Нууц үг болон бусад зүйлээ бүх төхөөрөмж дээрээ авахын тулд нэвтэрнэ үү</translation>
 <translation id="2186206192313702726">Google Lens</translation>
 <translation id="2188993354115194873"><ph name="BEGIN_BOLD" />Татаж авсан файлд хадгалах<ph name="END_BOLD" /> дээр товшино уу</translation>
+<translation id="2191406283620379491">Ямар нэг ноцтой алдаа гарлаа. iOS хувилбараа шинэчилнэ үү.</translation>
 <translation id="219283042927675668">Бүлэг дэх табууд</translation>
 <translation id="2194856509914051091">Анхаарч үзэх зүйлс</translation>
 <translation id="2196428379625389579">Веб дээрээс хайх</translation>
@@ -579,6 +580,7 @@
 <translation id="3143515551205905069">Синкийг цуцлах</translation>
 <translation id="3144126448740580210">ДУУССАН</translation>
 <translation id="3148052723910099040">Энгийн табын хүснэгт</translation>
+<translation id="3148237711805373460">Намайг тийшээ аваач</translation>
 <translation id="3157387275655328056">Унших жагсаалтад нэмэх</translation>
 <translation id="315778507796115851">Түүх</translation>
 <translation id="31652791196570636">Хаах</translation>
@@ -1020,6 +1022,7 @@
 <translation id="483689884442613745">Хадгалах…</translation>
 <translation id="4840495572919996524">Таны хавчуурга, түүх, нууц үг болон бусад зүйлийг таны Google Бүртгэлд цаашид синк хийхгүй.</translation>
 <translation id="484280513275854557">Таныг гаргасан; интернэтээр үзсэн өгөгдлийг устгасан</translation>
+<translation id="484462545196658690">Автомат</translation>
 <translation id="4850886885716139402">Харах</translation>
 <translation id="4854068532375923088">“Gemini”-д камерыг тань ашиглахыг зөвшөөрөх</translation>
 <translation id="4860895144060829044">Дуудлага</translation>
@@ -1521,6 +1524,7 @@ Handoff-ыг Тохиргооны ерөнхий хэсэгт идэвхижүү
 <translation id="6556866813142980365">Дахин хийх</translation>
 <translation id="6559301491397835130">{count,plural, =1{Хавчуургыг "{title}"-д хадгалсан. Үүнийг зөвхөн энэ төхөөрөмжид хадгалсан.}other{Хавчуургуудыг "{title}"-д хадгалсан. Тэдгээрийг зөвхөн энэ төхөөрөмжид хадгалсан.}}</translation>
 <translation id="656065428026159829">Дэлгэрэнгүй үзэх</translation>
+<translation id="6565899972286925956">Хүссэн зүйлээ үүсгээрэй</translation>
 <translation id="6571070086367343653">Зээлийн картыг засварлах</translation>
 <translation id="6574092468346088891">Аюулгүй байдлын шалгалтын мэдэгдлийг асаах</translation>
 <translation id="6579867704846662339">Та Нууцлалын горимд бусад аппаас ирж буй URL-уудыг нээхээр сонгож болно.</translation>
@@ -1631,6 +1635,7 @@ Handoff-ыг Тохиргооны ерөнхий хэсэгт идэвхижүү
 <translation id="6930799952781667037">Энэ хэл рүү өөрчлөхийн тулд товшино уу.</translation>
 <translation id="693761253105515415">Нууц код тохируулна уу</translation>
 <translation id="6945221475159498467">Сонгох</translation>
+<translation id="6946722113367118030">Бодож буй</translation>
 <translation id="6950522403736391608">Нуусан</translation>
 <translation id="6962809930976936328">Gemini-р ойлголт авах</translation>
 <translation id="6964300328304469089">Одоогоор <ph name="NAME" />, <ph name="EMAIL" />-г сонгосон. Бүртгэл сонгоно уу.</translation>
@@ -1899,6 +1904,7 @@ Handoff-ыг Тохиргооны ерөнхий хэсэгт идэвхижүү
 <translation id="7958575506592576831">Хуудасны аюулгүй байдлын мэдээлэл</translation>
 <translation id="7961015016161918242">Хэзээ ч</translation>
 <translation id="7971136598759319605">1 өдрийн өмнө идэвхтэй</translation>
+<translation id="7972837668077967426">Зотон</translation>
 <translation id="7975036700432177008">Туршиж үзэх</translation>
 <translation id="797588153137233716">Цэс → Түүх → Интернэтээр үзсэн өгөгдлийг устгах</translation>
 <translation id="7977451675950311423">Таныг өгөгдлийн зөрчилд алдагдсан нууц үгийг ашигласан тохиолдолд танд сануулна.</translation>
@@ -1972,6 +1978,7 @@ Handoff-ыг Тохиргооны ерөнхий хэсэгт идэвхижүү
 <translation id="8205564605687841303">Цуцлах</translation>
 <translation id="8206354486702514201">Энэ тохиргоог таны админаас идэвхжүүлсэн байна.</translation>
 <translation id="8209050860603202033">Зургийг нээх</translation>
+<translation id="8209237163365258530">Gemini <ph name="VERSION_NUMBER" />-н загварууд</translation>
 <translation id="8211030355252954494">Та <ph name="WEBSITE" />-н нууц үгнүүдийг хүлээн авсан</translation>
 <translation id="8211406090763984747">Холболт аюулгүй байна</translation>
 <translation id="8214293972734702249">Бэхэлсэн, <ph name="TAB_TITLE" /></translation>

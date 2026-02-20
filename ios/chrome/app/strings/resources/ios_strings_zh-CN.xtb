@@ -333,6 +333,7 @@
 <translation id="2184272387334793084">登录后即可将密码等信息同步到您的所有设备上</translation>
 <translation id="2186206192313702726">Google 智能镜头</translation>
 <translation id="2188993354115194873">点按<ph name="BEGIN_BOLD" />保存为下载内容<ph name="END_BOLD" /></translation>
+<translation id="2191406283620379491">出了点问题。请更新您的 iOS 版本。</translation>
 <translation id="219283042927675668">分组内的标签页</translation>
 <translation id="2194856509914051091">注意事项</translation>
 <translation id="2196428379625389579">在网络上搜索</translation>
@@ -579,6 +580,7 @@
 <translation id="3143515551205905069">取消同步</translation>
 <translation id="3144126448740580210">完成</translation>
 <translation id="3148052723910099040">常规标签页网格</translation>
+<translation id="3148237711805373460">立即前往</translation>
 <translation id="3157387275655328056">添加到阅读清单</translation>
 <translation id="315778507796115851">历史记录</translation>
 <translation id="31652791196570636">关闭</translation>
@@ -1020,6 +1022,7 @@
 <translation id="483689884442613745">保存…</translation>
 <translation id="4840495572919996524">您的书签、历史记录、密码和其他信息将不再同步到您的 Google 账号中。</translation>
 <translation id="484280513275854557">您已退出账号；浏览数据已被删除</translation>
+<translation id="484462545196658690">自动</translation>
 <translation id="4850886885716139402">查看</translation>
 <translation id="4854068532375923088">允许“Gemini”使用摄像头</translation>
 <translation id="4860895144060829044">致电</translation>
@@ -1521,6 +1524,7 @@
 <translation id="6556866813142980365">重做</translation>
 <translation id="6559301491397835130">{count,plural, =1{书签已保存到“{title}”，而且只保存在此设备上。}other{这些书签已保存到“{title}”，而且只保存在此设备上。}}</translation>
 <translation id="656065428026159829">查看更多</translation>
+<translation id="6565899972286925956">尽情创作</translation>
 <translation id="6571070086367343653">修改信用卡</translation>
 <translation id="6574092468346088891">开启安全检查通知</translation>
 <translation id="6579867704846662339">您可选择在无痕模式下打开来自其他应用的传入网址。</translation>
@@ -1631,6 +1635,7 @@
 <translation id="6930799952781667037">点按此行即可更改为对应的语言。</translation>
 <translation id="693761253105515415">设置密码</translation>
 <translation id="6945221475159498467">选择</translation>
+<translation id="6946722113367118030">做思考状</translation>
 <translation id="6950522403736391608">已隐藏</translation>
 <translation id="6962809930976936328">利用 Gemini 获取数据洞见</translation>
 <translation id="6964300328304469089">目前选择的是：<ph name="NAME" />，<ph name="EMAIL" />。请选择一个账号。</translation>
@@ -1899,6 +1904,7 @@
 <translation id="7958575506592576831">网页安全信息</translation>
 <translation id="7961015016161918242">一律不</translation>
 <translation id="7971136598759319605">1 天前曾有活动</translation>
+<translation id="7972837668077967426">Canvas</translation>
 <translation id="7975036700432177008">试用</translation>
 <translation id="797588153137233716">菜单 → 历史记录 → 删除浏览数据</translation>
 <translation id="7977451675950311423">若您使用的密码遭遇了数据泄露，向您发出警告。</translation>
@@ -1972,6 +1978,7 @@
 <translation id="8205564605687841303">取消</translation>
 <translation id="8206354486702514201">此设置是由您的管理员执行的。</translation>
 <translation id="8209050860603202033">打开图片</translation>
+<translation id="8209237163365258530">Gemini <ph name="VERSION_NUMBER" /> 模型</translation>
 <translation id="8211030355252954494">您收到了多个用于登录 <ph name="WEBSITE" /> 的密码</translation>
 <translation id="8211406090763984747">连接是安全的</translation>
 <translation id="8214293972734702249">已固定 <ph name="TAB_TITLE" /></translation>

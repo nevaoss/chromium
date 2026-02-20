@@ -62,6 +62,16 @@ bool IsAvatarSyncPromoFeatureEnabled();
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 base::TimeDelta GetAvatarSyncPromoFeatureMinimumCookeAgeParam();
 
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+// A HaTS survey flag for the survey to gather user feedback before any changes
+// to the FRE as part of Chrome Desktop FRE Refresh project.
+//
+// NOTE: Only signed-in (excluding enterprise) users are eligible for this
+// survey.
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE(kBeforeFirstRunDesktopRefreshSurvey);
+#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+
 #if BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kBoundSessionCredentialsKillSwitch);
@@ -412,6 +422,9 @@ BASE_DECLARE_FEATURE(kShowProfilePickerToAllUsersExperiment);
 // crbug.com/475816843.
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kSigninLevelUpButton);
+
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE(kSigninManagerSeedingFix);
 #endif  // BUILDFLAG(IS_ANDROID)
 
 // Feature to control the experiment for max count of showing contextual sign-in

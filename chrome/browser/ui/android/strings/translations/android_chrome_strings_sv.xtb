@@ -41,6 +41,7 @@
 <translation id="1150263420752757504"><ph name="APP_NAME" /> öppnas i Chrome. Genom att fortsätta godkänner du <ph name="BEGIN_LINK1" />Googles användarvillkor<ph name="END_LINK1" /> och <ph name="BEGIN_LINK2" />de ytterligare användarvillkoren för Google Chrome och ChromeOS<ph name="END_LINK2" />.</translation>
 <translation id="1154555449933432029">Du har inga sparade lösenord i Google Lösenordshantering.</translation>
 <translation id="115483310321669804">Använd lösenordet <ph name="PASSWORD" /></translation>
+<translation id="1161065531352634524">Synkronisera flikar och historik</translation>
 <translation id="1165109137568919258">Ta ett foto eller lägg till en bild från fotogalleriet för att söka</translation>
 <translation id="1173894706177603556">Ändra namn</translation>
 <translation id="1174479719160874822">Chrome begär den mobila webbplatsen när skärmen är smal</translation>
@@ -126,6 +127,7 @@ Du hittar fler inställningar som använder data för att förbättra Chrome-upp
 <translation id="147982357559798527">Ändrade</translation>
 <translation id="1480287803138246127">En del av din historik kanske inte visas här. Öppna fullständig Chrome-historik om du vill se all Chrome-historik.</translation>
 <translation id="1493287004536771723">Du följer <ph name="SITE_NAME" /></translation>
+<translation id="1495677929897281669">Tillbaka till flik</translation>
 <translation id="1496514951988037011">användarnamn</translation>
 <translation id="1501480321619201731">Ta bort grupp</translation>
 <translation id="1506061864768559482">Sökmotor</translation>
@@ -982,6 +984,7 @@ Det kan finnas andra former av webbhistorik i Google-kontot på <ph name="BEGIN_
 <translation id="5210286577605176222">Hoppa till föregående flik</translation>
 <translation id="5210365745912300556">Stäng flik</translation>
 <translation id="5212800876504289412">Starta om Chrome för att slutföra ändringen. Flikarna öppnas automatiskt när du startar om.</translation>
+<translation id="5213114823401215820">Öppna stängd grupp igen</translation>
 <translation id="5215957675041756913">Styra din data och ditt konto</translation>
 <translation id="5218324087477576825">Kortnummer, obligatoriskt</translation>
 <translation id="5221437554987713282"><ph name="PERMISSION_1" />, <ph name="PERMISSION_2" /> med flera <ph name="SEPARATOR" /> Chrome har tagit bort dessa behörigheter eftersom du inte har besökt webbplatsen nyligen</translation>
@@ -1437,6 +1440,7 @@ Vissa webbplatser kan till exempel svara på begäran genom att visa annonser so
 <translation id="7020741890149022655">Lägg till i läslistan <ph name="BEGIN_NEW" />Ny<ph name="END_NEW" /></translation>
 <translation id="7022756207310403729">Öppna i webbläsaren</translation>
 <translation id="7029809446516969842">Lösenord</translation>
+<translation id="7037994709569287156">Ange Chrome som standard</translation>
 <translation id="7053256416619638731">Gör dina lösenord starkare på den här enheten</translation>
 <translation id="7053983685419859001">Blockera</translation>
 <translation id="7054588988317389591">Vill du få bildbeskrivningar?</translation>
@@ -1569,6 +1573,7 @@ Om du vill ändra den här inställningen <ph name="BEGIN_LINK" />raderar du Chr
 <translation id="7523960634226602883">Sök med kameran med hjälp av Google Lens</translation>
 <translation id="7525248386620136756"><ph name="TAB_GROUPS_AND_TABS_PART" /> har stängts och sparats</translation>
 <translation id="7545347190366646170">Personer med åtkomst</translation>
+<translation id="7553482318994371148">Öppna stängda flikar igen</translation>
 <translation id="7554643625247105821">Det går inte att kontrollera Chrome-versionen</translation>
 <translation id="7557508262441527045">Utloggad</translation>
 <translation id="7573665567024262965">Välj standardappar</translation>
@@ -1802,6 +1807,7 @@ Om du vill ändra den här inställningen <ph name="BEGIN_LINK" />raderar du Chr
 <translation id="8458413889418591446">Synkronisera flikar och historik för att snabbt återgå till webbplatser du har besökt</translation>
 <translation id="84594714173170813">Fortsätt använda Chrome-data i Google-kontot</translation>
 <translation id="8460448946170646641">Granska viktiga säkerhets- och integritetskontroller</translation>
+<translation id="8460932807646981183">Hantera sökmotorer och webbplatssökning</translation>
 <translation id="8473863474539038330">Adresser och annat</translation>
 <translation id="847433688444405067">Bläddra bland enheter</translation>
 <translation id="8477178913400731244">Ta bort data</translation>
@@ -1888,6 +1894,7 @@ Om du vill ändra den här inställningen <ph name="BEGIN_LINK" />raderar du Chr
 <translation id="8856931513242997049">Behörighetsflödet för aviseringar har stängts</translation>
 <translation id="8863714995118816041">Behörigheter har tillåtits igen för <ph name="SITE_NAME" /></translation>
 <translation id="8865415417596392024">Chrome-data i ditt konto</translation>
+<translation id="8872506776304248286">Öppna i appen</translation>
 <translation id="8890668505403261809">Sök bland inkognitoflikar</translation>
 <translation id="8894890673032951011"><ph name="TAB_TITLE" />, vald inkognitoflik som spelas in</translation>
 <translation id="8898822736010347272">Skickar webbadresser till vissa sidor som du besöker, vissa systemuppgifter och visst sidinnehåll till Google för att upptäcka och blockera nya hot och skydda alla användare på internet.</translation>

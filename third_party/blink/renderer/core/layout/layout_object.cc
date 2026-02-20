@@ -1650,17 +1650,7 @@ void LayoutObject::MarkParentForSpannerOrOutOfFlowPositionedChange() {
   //
   // Note that this isn't necessary if we're dealing with a column spanner here,
   // but in order to keep things simple, we'll make no difference.
-  bool is_atomic_inline_level = false;
-  if (RuntimeEnabledFeatures::SkipSetNeedsCollectInlinesEnabled()) {
-    if (auto* block_flow = DynamicTo<LayoutBlockFlow>(object)) {
-      if (block_flow->IsAtomicInlineLevel()) {
-        is_atomic_inline_level = true;
-      }
-    }
-  }
-  if (!is_atomic_inline_level) {
-    object->SetNeedsCollectInlines();
-  }
+  object->SetNeedsCollectInlines();
 
   const LayoutBlock* containing_block = ContainingBlock();
   while (object != containing_block) {
@@ -1878,13 +1868,13 @@ bool LayoutObject::ComputeIsFixedContainer(const ComputedStyle& style) const {
   }
 
   // https://www.w3.org/TR/css-transforms-1/#containing-block-for-all-descendants
-
   // For transform-style specifically, we want to consider the computed
   // value rather than the used value.
   if (style.HasTransformRelatedProperty() ||
       style.TransformStyle3D() == ETransformStyle3D::kPreserve3d) {
-    if (!IsInline() || IsAtomicInlineLevel())
+    if (IsBox()) {
       return true;
+    }
   }
   // https://www.w3.org/TR/css-contain-1/#containment-layout
   if (IsEligibleForPaintOrLayoutContainment() &&
@@ -2681,9 +2671,7 @@ const ComputedStyle& LayoutObject::SlowEffectiveStyle(
     case StyleVariant::kStandard:
       return StyleRef();
     case StyleVariant::kFirstLine:
-      if (IsInline() && IsAtomicInlineLevel())
-        return StyleRef();
-      return FirstLineStyleRef();
+      return IsAtomicInline() ? StyleRef() : FirstLineStyleRef();
     case StyleVariant::kStandardEllipsis:
       // The ellipsis is styled according to the line style.
       // https://www.w3.org/TR/css-overflow-3/#ellipsing-details

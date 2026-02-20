@@ -76,7 +76,7 @@
 <translation id="1273416271143914096">{count,plural, =1{סיסמה אחת ({count})}one{{count} סיסמאות}two{{count} סיסמאות}other{{count} סיסמאות}}</translation>
 <translation id="1275718070701477396">נבחר</translation>
 <translation id="1279024913354609713">אין אישור</translation>
-<translation id="1285320974508926690">אל תתרגמו את האתר הזה</translation>
+<translation id="1285320974508926690">לא לתרגם את האתר הזה</translation>
 <translation id="1287229685519872919">‏נתוני Google Workspace</translation>
 <translation id="1291506870746876680">ההרשאות לאתר <ph name="BEGIN_BOLD" /><ph name="SITE_NAME" /><ph name="END_BOLD" /> יאופסו לאחר היציאה ממנו.</translation>
 <translation id="1293556467332435079">קבצים</translation>
@@ -333,6 +333,7 @@
 <translation id="2184272387334793084">כדאי להיכנס לחשבון כדי שהסיסמאות ונתונים נוספים יופיעו בכל המכשירים שלך</translation>
 <translation id="2186206192313702726">Google Lens</translation>
 <translation id="2188993354115194873">לוחצים על <ph name="BEGIN_BOLD" />שמירה ב"הורדות"<ph name="END_BOLD" /></translation>
+<translation id="2191406283620379491">‏משהו רציני השתבש. צריך לעדכן את גרסת ה-iOS.</translation>
 <translation id="219283042927675668">כרטיסיות בקבוצה</translation>
 <translation id="2194856509914051091">מה כדאי לקחת בחשבון</translation>
 <translation id="2196428379625389579">חיפוש באינטרנט</translation>
@@ -579,6 +580,7 @@
 <translation id="3143515551205905069">ביטול סנכרון</translation>
 <translation id="3144126448740580210">סיום</translation>
 <translation id="3148052723910099040">תצוגה רגילה של כרטיסיות</translation>
+<translation id="3148237711805373460">קחו אותי לשם</translation>
 <translation id="3157387275655328056">הוספה לרשימת הקריאה</translation>
 <translation id="315778507796115851">היסטוריה</translation>
 <translation id="31652791196570636">סגירה</translation>
@@ -1020,6 +1022,7 @@
 <translation id="483689884442613745">שמירה…</translation>
 <translation id="4840495572919996524">‏הסימניות, ההיסטוריה, הסיסמאות ונתונים אחרים שלך כבר לא יסונכרנו עם חשבון Google.</translation>
 <translation id="484280513275854557">המערכת הוציאה אותך מהחשבון ונתוני הגלישה נמחקו</translation>
+<translation id="484462545196658690">אוטומטי</translation>
 <translation id="4850886885716139402">הצגה</translation>
 <translation id="4854068532375923088">‏מתן הרשאה ל-"Gemini" להשתמש במצלמה</translation>
 <translation id="4860895144060829044">תרימו טלפון</translation>
@@ -1521,6 +1524,7 @@
 <translation id="6556866813142980365">ביצוע מחדש</translation>
 <translation id="6559301491397835130">{count,plural, =1{הסימנייה נשמרה בתיקייה ’{title}‘. היא שמורה רק במכשיר הזה.}one{הסימניות נשמרו בתיקייה ’{title}‘. הן שמורות רק במכשיר הזה.}two{הסימניות נשמרו בתיקייה ’{title}‘. הן שמורות רק במכשיר הזה.}other{הסימניות נשמרו בתיקייה ’{title}‘. הן שמורות רק במכשיר הזה.}}</translation>
 <translation id="656065428026159829">אפשרויות נוספות</translation>
+<translation id="6565899972286925956">אפשר ליצור כל דבר</translation>
 <translation id="6571070086367343653">ערוך כרטיס אשראי</translation>
 <translation id="6574092468346088891">הפעלת ההתראות של בדיקת האבטחה</translation>
 <translation id="6579867704846662339">‏אפשר לפתוח כתובות URL נכנסות מאפליקציות אחרות במצב פרטי.</translation>
@@ -1631,6 +1635,7 @@
 <translation id="6930799952781667037">יש ללחוץ כדי לעבור לשפה הזו.</translation>
 <translation id="693761253105515415">עליך להגדיר קוד גישה</translation>
 <translation id="6945221475159498467">בחירה</translation>
+<translation id="6946722113367118030">הרהור</translation>
 <translation id="6950522403736391608">מוסתרים</translation>
 <translation id="6962809930976936328">‏תובנות מ-Gemini</translation>
 <translation id="6964300328304469089">החשבון הנוכחי: <ph name="NAME" />, <ph name="EMAIL" />. עליך לבחור חשבון.</translation>
@@ -1899,6 +1904,7 @@
 <translation id="7958575506592576831">פרטי אבטחת הדף</translation>
 <translation id="7961015016161918242">אף פעם</translation>
 <translation id="7971136598759319605">פעילות אחרונה: לפני יום אחד</translation>
+<translation id="7972837668077967426">לוח הציור</translation>
 <translation id="7975036700432177008">נסה</translation>
 <translation id="797588153137233716">תפריט ← היסטוריה ← מחיקת נתוני הגלישה</translation>
 <translation id="7977451675950311423">מקבלים אזהרה אם משתמשים בסיסמה שנחשפה בפרצה באבטחת מידע.</translation>

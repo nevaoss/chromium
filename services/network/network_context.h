@@ -383,7 +383,7 @@ class COMPONENT_EXPORT(NETWORK_SERVICE) NetworkContext
       net::StorageAccessApiStatus storage_access_api_status,
       const net::IsolationInfo& isolation_info,
       std::vector<mojom::HttpHeaderPtr> additional_headers,
-      int32_t process_id,
+      const network::OriginatingProcess& process_id,
       const url::Origin& origin,
       network::mojom::ClientSecurityStatePtr client_security_state,
       uint32_t options,
@@ -598,9 +598,9 @@ class COMPONENT_EXPORT(NETWORK_SERVICE) NetworkContext
 
   // The following methods are used to track the number of requests per process
   // and ensure it doesn't go over a reasonable limit.
-  void LoaderCreated(uint32_t process_id);
-  void LoaderDestroyed(uint32_t process_id);
-  bool CanCreateLoader(uint32_t process_id);
+  void LoaderCreated(const OriginatingProcess& process_id);
+  void LoaderDestroyed(const OriginatingProcess& process_id);
+  bool CanCreateLoader(const OriginatingProcess& process_id);
 
   void set_max_loaders_per_process_for_testing(uint32_t count) {
     max_loaders_per_process_ = count;
@@ -920,7 +920,7 @@ class COMPONENT_EXPORT(NETWORK_SERVICE) NetworkContext
       web_transports_;
 
   // A count of outstanding requests per initiating process.
-  std::map<uint32_t, uint32_t> loader_count_per_process_;
+  std::map<OriginatingProcess, uint32_t> loader_count_per_process_;
 
   static constexpr uint32_t kMaxOutstandingRequestsPerProcess = 2700;
   uint32_t max_loaders_per_process_ = kMaxOutstandingRequestsPerProcess;
@@ -1077,9 +1077,9 @@ class COMPONENT_EXPORT(NETWORK_SERVICE) NetworkContext
   // Manager for device bound sessions.
   std::unique_ptr<DeviceBoundSessionManager> device_bound_session_manager_;
 
-  // Used only when network::features::kCacheSharingForPervasiveScripts is
+  // Used only when network::features::kCacheSharingForPervasiveResources is
   // enabled to determine if a given request is for a well-known
-  // pervasive script.
+  // pervasive resource.
   // See https://chromestatus.com/feature/5202380930678784
   // This needs to be ordered after cookie_manager_ as it maintains a reference
   // to the cookie settings object from cookie_manager_.

@@ -23,7 +23,7 @@ chromium-metrics-reviews@google.com.
 <histograms>
 
 <histogram name="DevTools.ActionTaken" enum="DevToolsAction"
-    expires_after="2026-05-24">
+    expires_after="2026-07-26">
   <owner>yangguo@google.com</owner>
   <owner>bmeurer@google.com</owner>
   <summary>Specified DevTools action has been taken.</summary>
@@ -48,7 +48,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="DevTools.CDPCommandFrom{ClientType}" enum="CDPCommands"
-    expires_after="2026-05-24">
+    expires_after="2026-07-26">
   <owner>wolfi@google.com</owner>
   <owner>danilsomsikov@google.com</owner>
   <owner>yangguo@google.com</owner>
@@ -118,19 +118,8 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="DevTools.DevToolsDebuggingUserDataDirStatus"
-    enum="DevToolsDebuggingUserDataDirStatus" expires_after="2026-03-08">
-  <owner>wfh@chromium.org</owner>
-  <owner>src/chrome/browser/devtools/OWNERS</owner>
-  <summary>
-    Records the status of remote debugging (either via port or pipe) and whether
-    or not a default user data dir is in use if debugging has been requested.
-    This is recorded once during browser startup for non-Android devices.
-  </summary>
-</histogram>
-
 <histogram name="DevTools.ExperimentDisabled" enum="DevtoolsExperiments"
-    expires_after="2026-05-24">
+    expires_after="2026-07-26">
   <owner>yangguo@google.com</owner>
   <owner>changhaohan@google.com</owner>
   <summary>
@@ -148,7 +137,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="DevTools.ExperimentEnabled" enum="DevtoolsExperiments"
-    expires_after="2026-05-24">
+    expires_after="2026-07-26">
   <owner>yangguo@google.com</owner>
   <owner>changhaohan@google.com</owner>
   <summary>
@@ -157,7 +146,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="DevTools.ExperimentEnabledAtLaunch" enum="DevtoolsExperiments"
-    expires_after="2026-05-24">
+    expires_after="2026-07-26">
   <owner>yangguo@google.com</owner>
   <owner>changhaohan@google.com</owner>
   <summary>
@@ -228,13 +217,33 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="DevTools.Insights.TeaserChunkToEndMedium" units="ms"
+    expires_after="2027-01-26">
+  <owner>wolfi@google.com</owner>
+  <owner>alexrudenko@google.com</owner>
+  <summary>
+    Measures the time from first character generated to full response for
+    console insights teasers (maximum 3 minutes).
+  </summary>
+</histogram>
+
 <histogram name="DevTools.Insights.TeaserFirstChunkGenerationTime" units="ms"
     expires_after="2026-11-10">
   <owner>wolfi@google.com</owner>
   <owner>alexrudenko@google.com</owner>
   <summary>
     Measures the time it takes to generate the first chunk of a console insight
-    teaser.
+    teaser (maximum 10 seconds).
+  </summary>
+</histogram>
+
+<histogram name="DevTools.Insights.TeaserFirstChunkGenerationTimeMedium"
+    units="ms" expires_after="2027-01-26">
+  <owner>wolfi@google.com</owner>
+  <owner>alexrudenko@google.com</owner>
+  <summary>
+    Measures the time it takes to generate the first chunk of a console insight
+    teaser (maximum 3 minutes).
   </summary>
 </histogram>
 
@@ -243,7 +252,18 @@ chromium-metrics-reviews@google.com.
   <owner>wolfi@google.com</owner>
   <owner>alexrudenko@google.com</owner>
   <summary>
-    Measures the time it takes to generate a console insight teaser.
+    Measures the time it takes to generate a console insight teaser (maximum 10
+    seconds).
+  </summary>
+</histogram>
+
+<histogram name="DevTools.Insights.TeaserGenerationTimeMedium" units="ms"
+    expires_after="2027-01-26">
+  <owner>wolfi@google.com</owner>
+  <owner>alexrudenko@google.com</owner>
+  <summary>
+    Measures the time it takes to generate a console insight teaser (maximum 3
+    minutes).
   </summary>
 </histogram>
 
@@ -398,7 +418,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="DevTools.PanelShown" enum="DevToolsPanel"
-    expires_after="2026-05-24">
+    expires_after="2026-07-26">
   <owner>yangguo@google.com</owner>
   <owner>bmeurer@google.com</owner>
   <summary>Specified DevTools panel was shown.</summary>

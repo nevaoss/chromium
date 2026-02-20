@@ -2281,9 +2281,22 @@ static bool IsSVGObjectWithWidthAndHeight(const LayoutObject& layout_object) {
           IsA<SVGRectElement>(layout_object.GetNode()));
 }
 
-gfx::SizeF ComputedStyleUtils::UsedBoxSize(const LayoutObject& layout_object) {
-  if (layout_object.IsSVGChild() &&
-      IsSVGObjectWithWidthAndHeight(layout_object)) {
+// https://drafts.csswg.org/cssom/#resolved-value
+//
+// For 'width' and 'height':
+//
+// If the property applies to the element or pseudo-element and the resolved
+// value of the display property is not none or contents, then the resolved
+// value is the used value. Otherwise the resolved value is the computed value
+// (https://drafts.csswg.org/css-cascade-4/#computed-value).
+//
+// (Note that the computed value exists even when the property does not apply.)
+std::optional<gfx::SizeF> ComputedStyleUtils::UsedBoxSize(
+    const LayoutObject& layout_object) {
+  if (layout_object.IsSVGChild()) {
+    if (!IsSVGObjectWithWidthAndHeight(layout_object)) {
+      return std::nullopt;
+    }
     auto* viewport_container =
         DynamicTo<LayoutSVGViewportContainer>(layout_object);
     gfx::SizeF size =
@@ -2297,13 +2310,12 @@ gfx::SizeF ComputedStyleUtils::UsedBoxSize(const LayoutObject& layout_object) {
     size.Scale(layout_object.StyleRef().EffectiveZoom());
     return size;
   }
-  if (!layout_object.IsBox()) {
-    return gfx::SizeF();
+  if (const auto* box = DynamicTo<LayoutBox>(layout_object)) {
+    return gfx::SizeF(box->StyleRef().BoxSizing() == EBoxSizing::kBorderBox
+                          ? box->PhysicalBorderBoxRect().size
+                          : box->ComputedCSSContentBoxRect().size);
   }
-  const auto& box = To<LayoutBox>(layout_object);
-  return gfx::SizeF(box.StyleRef().BoxSizing() == EBoxSizing::kBorderBox
-                        ? box.PhysicalBorderBoxRect().size
-                        : box.ComputedCSSContentBoxRect().size);
+  return std::nullopt;
 }
 
 CSSValue* ComputedStyleUtils::RenderTextDecorationFlagsToCSSValue(
@@ -4019,34 +4031,6 @@ CSSValue* ComputedStyleUtils::ValueForWebkitColumnBreakInside(
   }
 }
 
-// https://drafts.csswg.org/cssom/#resolved-value
-//
-// For 'width' and 'height':
-//
-// If the property applies to the element or pseudo-element and the resolved
-// value of the display property is not none or contents, then the resolved
-// value is the used value. Otherwise the resolved value is the computed value
-// (https://drafts.csswg.org/css-cascade-4/#computed-value).
-//
-// (Note that the computed value exists even when the property does not apply.)
-bool ComputedStyleUtils::WidthOrHeightShouldReturnUsedValue(
-    const LayoutObject* object) {
-  // The display property is 'none'.
-  if (!object) {
-    return false;
-  }
-  // Non-root SVG objects return the resolved value except <image>,
-  // <rect> and <foreignObject> which return the used value.
-  if (object->IsSVGChild()) {
-    return IsSVGObjectWithWidthAndHeight(*object);
-  }
-  // According to
-  // http://www.w3.org/TR/CSS2/visudet.html#the-width-property and
-  // http://www.w3.org/TR/CSS2/visudet.html#the-height-property, the "width" or
-  // "height" property does not apply to non-atomic inline elements.
-  return object->IsAtomicInlineLevel() || !object->IsInline();
-}
-
 CSSValueList* ComputedStyleUtils::ValuesForShorthandProperty(
     const StylePropertyShorthand& shorthand,
     const ComputedStyle& style,
@@ -5228,14 +5212,8 @@ CSSValueList* ComputedStyleUtils::ValuesForGridLanesShorthand(
       shorthand.properties()[0]->CSSValueFromComputedStyle(
           style, layout_object, allow_visited_style, value_phase);
   DCHECK(template_area_values);
-  // Note: `shorthand.properties()[1]` is intentionally not used here because it
-  // always refers to `grid-template-columns`.
-  // Instead, we use `GetCSSPropertyGridTemplateColumns()` or
-  // `GetCSSPropertyGridTemplateRows()` depending on the `grid-lanes-direction`,
-  // since `grid-template-rows` is not listed in the `grid-lanes` shorthand
-  // property.
   const CSSValue* grid_lanes_direction_values =
-      shorthand.properties()[2]->CSSValueFromComputedStyle(
+      shorthand.properties()[3]->CSSValueFromComputedStyle(
           style, layout_object, allow_visited_style, value_phase);
   DCHECK(grid_lanes_direction_values);
   const CSSValue* grid_lanes_template_tracks_values =
@@ -5243,9 +5221,9 @@ CSSValueList* ComputedStyleUtils::ValuesForGridLanesShorthand(
           grid_lanes_direction_values) ||
               CSSOMUtils::IsGridLanesColumnDirectionValue(
                   grid_lanes_direction_values)
-          ? GetCSSPropertyGridTemplateColumns().CSSValueFromComputedStyle(
+          ? shorthand.properties()[1]->CSSValueFromComputedStyle(
                 style, layout_object, allow_visited_style, value_phase)
-          : GetCSSPropertyGridTemplateRows().CSSValueFromComputedStyle(
+          : shorthand.properties()[2]->CSSValueFromComputedStyle(
                 style, layout_object, allow_visited_style, value_phase);
   DCHECK(grid_lanes_template_tracks_values);
 

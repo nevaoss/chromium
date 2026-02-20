@@ -30,6 +30,7 @@
 #include "ui/base/mojom/window_show_state.mojom-forward.h"
 #include "ui/base/win/window_event_target.h"
 #include "ui/events/event.h"
+#include "ui/gfx/geometry/insets.h"
 #include "ui/gfx/geometry/point.h"
 #include "ui/gfx/geometry/rect.h"
 #include "ui/gfx/geometry/size.h"
@@ -43,7 +44,6 @@
 
 namespace gfx {
 class ImageSkia;
-class Insets;
 }  // namespace gfx
 
 namespace ui {
@@ -224,6 +224,10 @@ class VIEWS_EXPORT HWNDMessageHandler : public gfx::WindowImpl,
 
   virtual void set_using_wm_input(bool using_wm_input);
   virtual bool using_wm_input() const;
+
+  // Sets/gets whether the mouse is locked (pointer lock is active).
+  void set_mouse_locked(bool mouse_locked) { mouse_locked_ = mouse_locked; }
+  bool mouse_locked() const { return mouse_locked_; }
 
  protected:
   HWNDMessageHandler(HWNDMessageHandlerDelegate* delegate,
@@ -634,8 +638,17 @@ class VIEWS_EXPORT HWNDMessageHandler : public gfx::WindowImpl,
   // refers to the edge of the window being sized.
   void SizeWindowToAspectRatio(UINT param, gfx::Rect* rect);
 
-  // Get the cursor position, which may be mocked if running a test
+  // Get the cursor position, which may be mocked if running a test.
   POINT GetCursorPos() const;
+
+  // Remove the current window's reference from `fullscreen_monitor_map_`.
+  void RemoveCurrentWindowFromFullscreenMonitorMap();
+
+  // Update `fullscreen_monitor_map_` to remove the invalid HMONITOR handle
+  // corresponding to the current window handle. This is called when the
+  // WM_DISPLAYCHANGE message is received (i.e., when the display configuration
+  // changes).
+  void UpdateFullscreenMonitorMap();
 
   raw_ptr<HWNDMessageHandlerDelegate> delegate_;
 
@@ -828,8 +841,17 @@ class VIEWS_EXPORT HWNDMessageHandler : public gfx::WindowImpl,
   // the first message after frame type changes.
   bool needs_dwm_frame_clear_ = true;
 
+  // Tracks the last DWM frame insets sent via DwmExtendFrameIntoClientArea.
+  // Used to avoid redundant cross-process DWM calls when the margins haven't
+  // changed.
+  std::optional<gfx::Insets> last_dwm_frame_insets_;
+
   // True if is handling mouse WM_INPUT messages.
   bool using_wm_input_ = false;
+
+  // True if the mouse is locked (pointer lock is active). This is used to
+  // suppress system key events (like Alt) that would steal focus.
+  bool mouse_locked_ = false;
 
   // True if we're displaying the system menu on the title bar. If we are,
   // then we want to ignore right mouse clicks instead of bringing up a

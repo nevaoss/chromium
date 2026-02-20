@@ -196,6 +196,10 @@ class CORE_EXPORT LayoutBox : public LayoutBoxModelObject {
   explicit LayoutBox(ContainerNode*);
   void Trace(Visitor*) const override;
 
+  // Just use `LayoutObject::IsInline` instead.
+  bool IsAtomicInline() const = delete;
+  bool IsNonAtomicInline() const = delete;
+
   PaintLayerType LayerTypeRequired() const override;
 
   bool BackgroundIsKnownToBeOpaqueInRect(
@@ -855,7 +859,10 @@ class CORE_EXPORT LayoutBox : public LayoutBoxModelObject {
     NOT_DESTROYED();
     return true;
   }
-  bool ShouldBeConsideredAsReplaced() const;
+
+  // Returns true if this object is a form-control element (excluding
+  // <fieldset>) or a fallback image.
+  bool IsSemiReplaced() const;
 
   // Return true if this block establishes a fragmentation context root (e.g. a
   // multicol container).
@@ -1232,6 +1239,16 @@ class CORE_EXPORT LayoutBox : public LayoutBoxModelObject {
 
  protected:
   ~LayoutBox() override;
+
+  bool IsEligibleForPaintOrLayoutContainment() const override {
+    NOT_DESTROYED();
+    return true;
+  }
+
+  bool IsEligibleForSizeContainment() const override {
+    NOT_DESTROYED();
+    return true;
+  }
 
   virtual OverflowClipAxes ComputeOverflowClipAxes() const;
 

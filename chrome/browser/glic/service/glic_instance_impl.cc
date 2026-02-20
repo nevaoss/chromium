@@ -41,6 +41,7 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/browser/ui/tabs/public/tab_features.h"
+#include "chrome/browser/ui/tabs/tab_list_interface.h"
 #include "chrome/browser/ui/user_education/browser_user_education_interface.h"
 #include "chrome/common/actor_webui.mojom.h"
 #include "chrome/common/chrome_features.h"
@@ -64,11 +65,11 @@
 #include "chrome/browser/glic/widget/glic_inactive_side_panel_ui_android.h"
 #include "chrome/browser/glic/widget/glic_side_panel_ui_android.h"
 #else
+#include "chrome/browser/glic/common/local_hotkey_manager.h"
 #include "chrome/browser/glic/host/context/glic_focused_tab_manager.h"
 #include "chrome/browser/glic/widget/glic_floating_ui.h"
 #include "chrome/browser/glic/widget/glic_inactive_side_panel_ui.h"
 #include "chrome/browser/glic/widget/glic_side_panel_ui.h"
-#include "chrome/browser/glic/widget/local_hotkey_manager.h"
 #include "chrome/browser/ui/browser_list.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #endif
@@ -107,8 +108,7 @@ EmbedderKey CreateSidePanelEmbedderKey(tabs::TabInterface* tab) {
 }
 
 bool IsTrustFirstOnboardingPending(Profile* profile) {
-  return GlicEnabling::IsTrustFirstOnboardingEnabled() &&
-         !GlicEnabling::HasConsentedForProfile(profile);
+  return GlicEnabling::IsTrustFirstOnboardingEnabledForProfile(profile);
 }
 }  // namespace
 
@@ -343,7 +343,7 @@ void GlicInstanceImpl::Close(EmbedderKey key, const CloseOptions& options) {
   if (!embedder) {
     return;
   }
-  if (GlicEnabling::IsTrustFirstOnboardingEnabled()) {
+  if (GlicEnabling::IsTrustFirstOnboardingEnabledForProfile(profile_)) {
     service_->metrics()->OnTrustFirstOnboardingDismissed();
   }
   instance_metrics_.OnClose();
@@ -354,8 +354,7 @@ bool GlicInstanceImpl::Toggle(ShowOptions&& options,
                               bool prevent_close,
                               glic::mojom::InvocationSource source,
                               std::optional<std::string> prompt_suggestion) {
-  if (GlicEnabling::IsTrustFirstOnboardingEnabled() &&
-      !service_->enabling().HasConsentedForProfile(profile_)) {
+  if (GlicEnabling::IsTrustFirstOnboardingEnabledForProfile(profile_)) {
     service_->metrics()->OnTrustFirstOnboardingShown();
   }
 
@@ -699,7 +698,8 @@ void GlicInstanceImpl::OnBrowserActivated(BrowserWindowInterface* browser) {
   if (!ShouldDoAutomaticActivation()) {
     return;
   }
-  tabs::TabInterface* active_tab = GetActiveTabInterface(browser);
+  tabs::TabInterface* active_tab =
+      TabListInterface::From(browser)->GetActiveTab();
   if (!active_tab) {
     return;
   }

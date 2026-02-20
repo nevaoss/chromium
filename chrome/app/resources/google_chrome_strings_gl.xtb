@@ -28,6 +28,7 @@
 <translation id="1158134713295836892">Gemini en Chrome</translation>
 <translation id="1184145431117212167">Produciuse un erro durante a instalación porque a versión de Windows non é compatible.</translation>
 <translation id="1194807384646768652">Chrome bloqueou esta descarga porque este tipo de ficheiro non se descarga con frecuencia e pode ser perigoso</translation>
+<translation id="1197860368385086056">A próxima vez que abras Chrome no teu dispositivo (<ph name="DEVICE_TYPE" />), verás unha solicitude para activar as alertas de seguimento de prezos.</translation>
 <translation id="1203500561924088507">Grazas por levar a cabo a instalación. Para utilizar <ph name="BUNDLE_NAME" />, debes reiniciar o navegador.</translation>
 <translation id="1278833599417554002">Reiniciar para actualizar &amp;Chrome</translation>
 <translation id="1290883685122687410">Produciuse un erro durante a configuración: <ph name="METAINSTALLER_EXIT_CODE" />. <ph name="WINDOWS_ERROR" /></translation>
@@ -48,7 +49,6 @@
 <translation id="146866447420868597">Queres iniciar sesión en Chrome?</translation>
 <translation id="1476347941828409626">&amp;Xestionar perfís de Chrome</translation>
 <translation id="1492280395845991349">Reiniciar para completar a actualización de Chrome</translation>
-<translation id="1496875977627931224">Ola, <ph name="USER_NAME" />:<ph name="LINE_BREAK" />En que pensas hoxe?</translation>
 <translation id="1497802159252041924">Erro de instalación: <ph name="INSTALL_ERROR" /></translation>
 <translation id="1507198376417198979">Personaliza o teu novo perfil de Chrome</translation>
 <translation id="1518627427551567882">Esta páxina está protexida</translation>
@@ -176,7 +176,6 @@
 <translation id="2857540653560290388">Iniciando Chrome…</translation>
 <translation id="286025080868315611">Descubre por que Chrome bloquea algunhas descargas</translation>
 <translation id="2861074815332034794">Actualizando Chrome (<ph name="PROGRESS_PERCENT" />)</translation>
-<translation id="2871893339301912279">Iniciaches sesión en Chrome.</translation>
 <translation id="2875053229394024379">Cando inicias sesión en Chrome coa túa Conta de Google, podes usar o teu perfil de Chrome con Gemini. <ph name="BEGIN_LINK" />Descubre como iniciar sesión en Chrome<ph name="END_LINK" /></translation>
 <translation id="2876628302275096482">Máis información sobre <ph name="BEGIN_LINK" />como protexe Chrome a privacidade dos teus datos<ph name="END_LINK" /></translation>
 <translation id="2885378588091291677">Xestor de tarefas</translation>
@@ -287,7 +286,6 @@
 <translation id="4022972681110646219">Traducir pantalla</translation>
 <translation id="4023601594785368013">Idioma orixinal: <ph name="LANGUAGE" /></translation>
 <translation id="4035053306113201399">É necesario reiniciar Chrome OS para aplicar a actualización.</translation>
-<translation id="4039097928859803404">Mostrar sempre atallos do modo IA</translation>
 <translation id="4050175100176540509">A última versión conta con melloras de seguranza importantes e novas funcións.</translation>
 <translation id="4053720452172726777">Personaliza e controla Google Chrome</translation>
 <translation id="408393047846373801">Para poder acceder aos teus contrasinais e moito máis en todos os teus dispositivos, inicia sesión en Chrome. Despois de iniciar sesión, este contrasinal gardarase na túa Conta de Google.</translation>
@@ -331,7 +329,6 @@
 <translation id="4459234553906210702">A medición dos anuncios permite que os sitios que visites lle soliciten a Chrome información que lles axude a medir o rendemento dos seus anuncios. Ademais, restrinxe o seguimento en varios sitios, dado que se transfire a menor cantidade posible de información entre eles.</translation>
 <translation id="4493028449971051158">Produciuse un erro de inicio do sistema: Executa o instalador como persoa administradora.</translation>
 <translation id="4501471624619070934">Produciuse un erro durante a instalación porque o acceso está restrinxido neste país.</translation>
-<translation id="4567424176335768812">Iniciaches sesión como <ph name="USER_EMAIL_ADDRESS" />. Agora podes acceder aos teus marcadores, historial e outras configuracións en todos os dispositivos en que iniciaches sesión.</translation>
 <translation id="4571503333518166079">Ir á configuración de notificacións de Chrome</translation>
 <translation id="4592634244097223647">Pregúntalle a Google acerca desta imaxe</translation>
 <translation id="459622048091363950">Unha vez que Chrome teña acceso, os sitios web poderán solicitalo tamén.</translation>
@@ -383,7 +380,6 @@
 <translation id="5139423532931106058">Personalizar o teu perfil de Chrome</translation>
 <translation id="5163087008893166964">Dámosche a benvida a Chrome. Abriuse unha nova ventá do navegador</translation>
 <translation id="5166439563123238795">Chrome necesita permiso para facer un seguimento das mans</translation>
-<translation id="5167819546851111585">En que pensas hoxe?</translation>
 <translation id="5169778651486082413">Usa os teus contrasinais con Chrome no teléfono</translation>
 <translation id="5170938038195470297">Non se pode utilizar o teu perfil porque pertence a unha versión máis recente de Google Chrome.
 
@@ -403,6 +399,7 @@
 <translation id="5334309298019785904">Chrome OS non puido sincronizar os teus datos porque a función de sincronización non está dispoñible para o teu dominio.</translation>
 <translation id="5334487786912937552">Chrome necesita permiso de acceso ao almacenamento para descargar ficheiros</translation>
 <translation id="5337648990166757586">Opcional: Axuda a mellorar as funcións e o rendemento de Chrome OS enviando automaticamente datos de uso e diagnóstico a Google.</translation>
+<translation id="5346059693449184483">En que pensas?</translation>
 <translation id="5346389065299425353">Engade varias pestanas, ficheiros e ferramentas para afondar na busca</translation>
 <translation id="5353252989841766347">Exportar contrasinais de Chrome</translation>
 <translation id="5368118228313795342">Código adicional: <ph name="EXTRA_CODE" />.</translation>
@@ -512,6 +509,7 @@ Google Chrome non pode recuperar a túa configuración.</translation>
 <translation id="6321592572353357376">A extensión \"<ph name="EXTENSION_NAME" />\" quere que inicies sesión en Chrome</translation>
 <translation id="6326175484149238433">Eliminar de Chrome</translation>
 <translation id="6327105987658262776">Non hai ningunha actualización dispoñible.</translation>
+<translation id="6333195756043503664">Abrir Chrome cando se inicie o ordenador</translation>
 <translation id="6334815226785304306">Definir Google Chrome como o navegador predeterminado e fixalo na barra de tarefas</translation>
 <translation id="63540178978900677">Chrome xa non é o teu navegador predeterminado. Queres que Chrome sexa o navegador predeterminado?</translation>
 <translation id="6360449101159168105">Mentres esta pestana estaba inactiva, liberouse memoria para que Chrome siga funcionando rápido. Podes optar por excluír este sitio para que nunca estea inactivo.</translation>
@@ -621,6 +619,7 @@ Google Chrome non pode recuperar a túa configuración.</translation>
 <translation id="7515191208480168435">Podes fixar Google Lens para acceder facilmente</translation>
 <translation id="7535429826459677826">Google Chrome Dev</translation>
 <translation id="7543146567111253230">Para poder acceder a este marcador, entre outras cousas, en todos os teus dispositivos, inicia sesión en Chrome</translation>
+<translation id="756134248912568991">A próxima vez que abras Chrome no teu dispositivo (<ph name="DEVICE_TYPE" />), verás unha solicitude para usar os grupos de pestanas.</translation>
 <translation id="756809126120519699">Borráronse os datos de Chrome</translation>
 <translation id="7572537927358445944">Desactivado • Chrome non pode verificar de onde procede esta extensión</translation>
 <translation id="7583399374488819119">Instalador de <ph name="COMPANY_NAME" /></translation>
@@ -665,7 +664,6 @@ Google Chrome non pode recuperar a túa configuración.</translation>
 <translation id="7869620795354551924">Para poder usar os contrasinais gardados, escanea o código QR, descarga Chrome para iOS e inicia sesión na túa Conta de Google</translation>
 <translation id="7872446069773932638">Descargando… Tempo restante: <ph name="SECONDS" /> s</translation>
 <translation id="7886087451482920026">Selecciona o texto con Google Lens</translation>
-<translation id="7887929410013642057">Mostrar sempre atallos do modo IA</translation>
 <translation id="7890208801193284374">Se compartes un ordenador, os teus amigos e familiares poderán navegar por separado e configurar Chrome como prefiran.</translation>
 <translation id="7896673875602241923">Anteriormente, alguén iniciou sesión como <ph name="ACCOUNT_EMAIL_LAST" /> en Chrome neste ordenador. Crea un novo usuario de Chrome para manter a túa información por separado.</translation>
 <translation id="7904985524660297937">Proba Gemini en Google Chrome</translation>
@@ -695,6 +693,7 @@ Google Chrome non pode recuperar a túa configuración.</translation>
 <translation id="8162006532256575008">Usar Chrome sen ningunha conta</translation>
 <translation id="8177472873527554730">Non se puido atopar contido na páxina</translation>
 <translation id="8221491193165283816">Adoitas bloquear as notificacións. Para permitir que este sitio che envíe notificacións, fai clic aquí.</translation>
+<translation id="8223142476690844338">Ola, <ph name="USER_NAME" />! En que pensas?</translation>
 <translation id="8255190535488645436">Google Chrome está utilizando a túa cámara e micrófono.</translation>
 <translation id="8267953129876836456">Chrome atopou algunhas recomendacións de seguranza para que as revises</translation>
 <translation id="8286862437124483331">Google Chrome está tentando mostrar contrasinais. Escribe o teu contrasinal de Windows para permitir esta acción.</translation>
@@ -756,7 +755,6 @@ Non poderás gardar máis ata que elimines uns cantos. Se pechas a sesión agora
 <translation id="8821043148920470810">Se queres recibir actualizacións de Google Chrome no futuro, debes instalar Windows 10 ou unha versión posterior. Este ordenador ten instalado Windows 7.</translation>
 <translation id="8823341990149967727">Chrome está desactualizado</translation>
 <translation id="8834965163890861871">Google Chrome está tentando editar os contrasinais. Escribe o teu contrasinal de Windows para permitir esta acción.</translation>
-<translation id="8843516219908676469">Chrome entenderá mellor o contido dos formularios e poderá completalos automaticamente máis rápido</translation>
 <translation id="8851180723659088381">{NUM_EXTENSIONS,plural, =1{Chrome recomenda que a quites}other{Chrome recomenda que as quites}}</translation>
 <translation id="8862326446509486874">Non tes os dereitos apropiados para efectuar a instalación a nivel do sistema. Tenta volver executar o instalador como administrador.</translation>
 <translation id="8865415417596392024">Datos de Chrome na túa conta</translation>

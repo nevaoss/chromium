@@ -62,6 +62,16 @@
 #include "chrome/browser/ui/tabs/tab_style.h"
 #include "chrome/browser/ui/views/tabs/glic/glic_and_actor_buttons_container.h"
 #include "chrome/grit/branded_strings.h"
+#if !BUILDFLAG(IS_ANDROID)
+#include "base/feature_list.h"
+#include "base/types/expected.h"
+#include "chrome/browser/contextual_cueing/contextual_cueing_features.h"
+#include "chrome/browser/legion/private_ai_service.h"
+#include "chrome/browser/legion/private_ai_service_factory.h"
+#include "components/legion/client.h"
+#include "components/legion/features.h"
+#include "components/legion/legion_common.h"
+#endif  // !BUILDFLAG(IS_ANDROID)
 #endif  // BUILDFLAG(ENABLE_GLIC)
 namespace {
 
@@ -79,6 +89,32 @@ constexpr int kOutsideBorderAroundGlicButtons = 11;
 constexpr int kLargeSpaceBetweenSeparatorRight = 8;
 constexpr int kLargeSpaceBetweenSeparatorLeft = 2;
 #endif  // !BUILDFLAG(IS_MAC)
+#if !BUILDFLAG(IS_ANDROID)
+void PrewarmLegionSession(Profile* profile) {
+  if (!profile) {
+    return;
+  }
+  if (base::FeatureList::IsEnabled(legion::kLegion) &&
+      base::FeatureList::IsEnabled(
+          contextual_cueing::kZeroStateSuggestionsUseLegion)) {
+    legion::PrivateAiService* private_ai_service =
+        legion::PrivateAiServiceFactory::GetForProfile(profile);
+    if (private_ai_service) {
+      legion::Client* client = private_ai_service->GetClient();
+      if (client) {
+        // Prewarm the session.
+        client->EstablishSession(
+            base::BindOnce([](base::expected<void, legion::ErrorCode> result) {
+              if (!result.has_value()) {
+                LOG(ERROR) << "Failed to prewarm Legion session: "
+                           << static_cast<int>(result.error());
+              }
+            }));
+      }
+    }
+  }
+}
+#endif  // !BUILDFLAG(IS_ANDROID)
 #endif  // BUILDFLAG(ENABLE_GLIC)
 
 using TaskIconAnimationMode = glic::GlicActorTaskIcon::AnimationMode;
@@ -564,6 +600,9 @@ void TabStripActionContainer::OnGlicButtonDismissed() {
 
 void TabStripActionContainer::OnGlicButtonHovered() {
   Profile* const profile = browser_window_interface_->GetProfile();
+#if !BUILDFLAG(IS_ANDROID)
+  PrewarmLegionSession(profile);
+#endif  // !BUILDFLAG(IS_ANDROID)
   glic::GlicKeyedService* glic_service =
       glic::GlicKeyedServiceFactory::GetGlicKeyedService(profile);
   if (auto* instance =
@@ -718,7 +757,7 @@ void TabStripActionContainer::ShowGlicActorTaskIcon() {
           glic_actor_task_icon_, this,
           TabStripNudgeAnimationSession::AnimationSessionType::kShow,
           base::BindOnce(&TabStripActionContainer::OnAnimationSessionEnded,
-                         base::Unretained(this)),
+                         weak_factory_.GetWeakPtr()),
           /*is_opacity_animated=*/false);
       animation_session_->Start();
     } else {
@@ -736,6 +775,37 @@ void TabStripActionContainer::HideGlicActorTaskIcon() {
   CHECK(glic_button_);
   CHECK(glic_actor_task_icon_);
 
+  // If feature is enabled, try to animate first.
+  if (base::FeatureList::IsEnabled(features::kGlicActorUiGlobalTaskIndicator)) {
+    // If it's already hidden, do nothing.
+    if (!glic_actor_task_icon_->GetVisible()) {
+      return;
+    }
+    glic_actor_task_icon_->SetIsShowingNudge(false);
+    glic_actor_task_icon_->SetAnimationMode(TaskIconAnimationMode::kEntry);
+    if (browser_window_interface_->GetTabStripModel()->CanShowModalUI()) {
+      scoped_tab_strip_modal_ui_ =
+          browser_window_interface_->GetTabStripModel()->ShowModalUI();
+
+      animation_session_ = std::make_unique<TabStripNudgeAnimationSession>(
+          glic_actor_task_icon_, this,
+          TabStripNudgeAnimationSession::AnimationSessionType::kHide,
+          base::BindOnce(&TabStripActionContainer::OnAnimationSessionEnded,
+                         weak_factory_.GetWeakPtr()),
+          /*is_opacity_animated=*/false);
+      animation_session_->Start();
+      return;
+    }
+  }
+  // If animation isn't possible, snap hide immediately.
+  FinalizeHideGlicActorTaskIcon();
+#else
+  NOTREACHED();
+#endif  // BUILDFLAG(ENABLE_GLIC)
+}
+
+void TabStripActionContainer::FinalizeHideGlicActorTaskIcon() {
+  // 1. Reset Nudge State
   if (glic_actor_task_icon_->GetIsShowingNudge()) {
     if (animation_session_ &&
         animation_session_->button() == glic_actor_task_icon_) {
@@ -744,13 +814,17 @@ void TabStripActionContainer::HideGlicActorTaskIcon() {
     glic_actor_task_icon_->SetIsShowingNudge(false);
     // Once we hide the nudge we want to bring the glic button default label
     // back.
-    // TODO(mjenn): Remove  when GlicActorUiGlobalTaskIndicator is launched.
-    glic_button_->Expand();
+    // TODO(mjenn): Remove when GlicActorUiGlobalTaskIndicator is launched.
+    if (!base::FeatureList::IsEnabled(
+            features::kGlicActorUiGlobalTaskIndicator)) {
+      glic_button_->Expand();
+    }
   }
   glic_actor_task_icon_->SetVisible(false);
   glic_actor_task_icon_->SetTaskIconToDefault();
   glic_button_ = AddChildView(std::move(glic_button_));
   glic_actor_button_container_->SetVisible(false);
+
   if (base::FeatureList::IsEnabled(features::kGlicActorUiGlobalTaskIndicator)) {
     glic_button_->Expand();
     glic_button_->ResetSplitButtonCornerStyling();
@@ -762,9 +836,6 @@ void TabStripActionContainer::HideGlicActorTaskIcon() {
   // Re-add the separator so it's ordered after the GlicButton.
   separator_ = AddChildView(std::move(separator_));
 #endif  // !BUILDFLAG(IS_MAC)
-#else
-  NOTREACHED();
-#endif  // BUILDFLAG(ENABLE_GLIC)
 }
 
 bool TabStripActionContainer::GetIsShowingGlicActorTaskIconNudge() {
@@ -999,19 +1070,26 @@ void TabStripActionContainer::OnAnimationSessionEnded() {
   // animation modes:
   // 1. kEntry: The icon animating into existence.
   // 2. kNudge: The label expanding/collapsing.
-  if (animation_session_->button() == glic_actor_task_icon_) {
+  if (animation_session_ &&
+      animation_session_->button() == glic_actor_task_icon_) {
     const bool is_show =
         animation_session_->session_type() ==
         TabStripNudgeAnimationSession::AnimationSessionType::kShow;
+    // Case 1: Entry Animation Finished -> Switch to Nudge Mode
     if (is_show && glic_actor_task_icon_->GetAnimationMode() ==
                        TaskIconAnimationMode::kEntry) {
       glic_actor_task_icon_->SetAnimationMode(TaskIconAnimationMode::kNudge);
       should_reset_modal_ui = true;
     } else if (!is_show && glic_actor_task_icon_->GetAnimationMode() ==
                                TaskIconAnimationMode::kNudge) {
-      // Reset button now that visual animation is done.
+      // Case 2: Nudge Collapse Finished -> Reset Text
       glic_actor_task_icon_->SetIsShowingNudge(false);
       glic_actor_task_icon_->SetTaskIconToDefault();
+    } else if (!is_show && glic_actor_task_icon_->GetAnimationMode() ==
+                               TaskIconAnimationMode::kEntry) {
+      // Case 3: Exit Animation Finished (Hide + kEntry) -> Run Cleanup
+      FinalizeHideGlicActorTaskIcon();
+      should_reset_modal_ui = true;
     }
   }
 #endif

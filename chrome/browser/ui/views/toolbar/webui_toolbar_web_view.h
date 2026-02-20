@@ -47,6 +47,8 @@ class WebUIToolbarWebView
 
   // views::View:
   void AddedToWidget() override;
+  gfx::Size CalculatePreferredSize(
+      const views::SizeBounds& available_size) const override;
 
   // content::WebContentsObserver:
   void DidFirstVisuallyNonEmptyPaint() override;
@@ -54,6 +56,7 @@ class WebUIToolbarWebView
       base::TerminationStatus status) override;
 
   void SetDidFirstNonEmptyPaintCallbackForTesting(base::OnceClosure callback);
+  void SetTickClockForTesting(const base::TickClock* clock);
   views::WebView* GetWebViewForTesting() { return web_view_; }
 
  private:
@@ -61,9 +64,8 @@ class WebUIToolbarWebView
 
   void InitializeWebView();
 
-  // Reloads the WebUI toolbar. Used for recovering from crashes or
-  // unresponsiveness.
-  void ReloadWebContents();
+  // Reloads the WebUI toolbar to from crashes or unresponsiveness.
+  void RecoverFromRendererCrashOrUnresponsiveness();
 
   chrome::BrowserCommandController* controller() { return controller_; }
   WebUIToolbarUI* GetWebUIToolbarUI();
@@ -72,10 +74,12 @@ class WebUIToolbarWebView
   const raw_ptr<BrowserWindowInterface> browser_;
   const raw_ptr<chrome::BrowserCommandController> controller_;
   WebUIReloadControl reload_control_;
+  raw_ptr<const base::TickClock> clock_;
   base::OnceClosure did_first_non_empty_paint_callback_;
   bool has_finished_first_non_empty_paint_ = false;
   uint32_t crash_count_ = 0;
   base::TimeTicks last_crash_time_;
+  bool did_recover_from_previous_termination_ = false;
 
   base::WeakPtrFactory<WebUIToolbarWebView> weak_ptr_factory_{this};
 };

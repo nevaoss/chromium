@@ -20,7 +20,7 @@ source_set("eg2_tests") {
     "//ios/chrome/browser/omnibox/eg_tests:eg_test_support+eg2",
     "//ios/chrome/browser/passwords/model:eg_test_support+eg2",
     "//ios/chrome/browser/passwords/model/metrics",
-    "//ios/chrome/browser/passwords/ui_bundled:constants",
+    "//ios/chrome/browser/passwords/password_suggestion/public",
     "//ios/chrome/browser/settings/ui_bundled/password:eg_test_support",
     "//ios/chrome/browser/settings/ui_bundled/password:eg_test_support+eg2",
     "//ios/chrome/browser/settings/ui_bundled/password:password_constants",
@@ -56,10 +56,6 @@ source_set("eg_app_support+eg2") {
     "//ios/chrome/common/ui/reauthentication:mock_reauthentication_module",
     "//ios/chrome/test/app:test_support",
   ]
-
-  # TODO(crbug.com/40031409): Fix code that adds exit-time destructors and
-  # enable the diagnostic by removing this line.
-  configs += [ "//build/config/compiler:no_exit_time_destructors" ]
 }
 
 source_set("eg_test_support+eg2") {

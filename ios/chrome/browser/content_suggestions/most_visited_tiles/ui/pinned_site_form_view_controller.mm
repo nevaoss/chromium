@@ -7,6 +7,8 @@
 #import "base/apple/foundation_util.h"
 #import "base/check_op.h"
 #import "base/strings/sys_string_conversions.h"
+#import "ios/chrome/browser/content_suggestions/most_visited_tiles/public/metrics.h"
+#import "ios/chrome/browser/content_suggestions/most_visited_tiles/public/pinned_site_action.h"
 #import "ios/chrome/browser/content_suggestions/most_visited_tiles/ui/most_visited_item.h"
 #import "ios/chrome/browser/content_suggestions/most_visited_tiles/ui/most_visited_tiles_pinned_site_mutator.h"
 #import "ios/chrome/browser/shared/ui/table_view/cells/table_view_attributed_string_header_footer_item.h"
@@ -52,6 +54,8 @@ BOOL IsInputValid(NSString* input) {
   /// Current input values.
   NSString* _name;
   NSString* _URL;
+  /// URL validation result.
+  BOOL _urlValidationFailed;
 }
 
 - (instancetype)initWithAction:(PinnedSiteAction)action
@@ -89,7 +93,7 @@ BOOL IsInputValid(NSString* input) {
   self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc]
       initWithBarButtonSystemItem:UIBarButtonSystemItemCancel
                            target:self
-                           action:@selector(dismissModal)];
+                           action:@selector(onCancel)];
   self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc]
       initWithTitle:l10n_util::GetNSString(doneButtonTextId)
               style:UIBarButtonItemStyleDone
@@ -102,26 +106,58 @@ BOOL IsInputValid(NSString* input) {
   [self updateApplyButtonState];
 }
 
+#pragma mark - UIAdaptivePresentationControllerDelegate
+
+- (void)presentationControllerDidDismiss:
+    (UIPresentationController*)presentationController {
+  RecordPinnedSiteFormUserAction(
+      _action, _urlValidationFailed
+                   ? MostVisitedPinSiteFormUserAction::kDismissAfterFailure
+                   : MostVisitedPinSiteFormUserAction::kDismissImmediately);
+}
+
 #pragma mark - UITableViewDelegate
 
 - (UIView*)tableView:(UITableView*)tableView
     viewForFooterInSection:(NSInteger)section {
-  if (_action == PinnedSiteAction::kCreate) {
+  NSMutableAttributedString* attributedString;
+  if (_urlValidationFailed) {
+    NSDictionary* attributes = @{
+      NSFontAttributeName :
+          [UIFont preferredFontForTextStyle:UIFontTextStyleFootnote],
+      NSForegroundColorAttributeName : [UIColor colorNamed:kRedColor]
+    };
+    attributedString = [[NSMutableAttributedString alloc]
+        initWithString:
+            l10n_util::GetNSString(
+                IDS_IOS_CONTENT_SUGGESTIONS_PIN_SITE_FORM_URL_VALIDATION_FAILED)
+            attributes:attributes];
+  }
+  if (_action == PinnedSiteAction::kModify) {
+    NSDictionary* attributes = @{
+      NSFontAttributeName :
+          [UIFont preferredFontForTextStyle:UIFontTextStyleFootnote],
+      NSForegroundColorAttributeName : [UIColor colorNamed:kTextSecondaryColor]
+    };
+    NSMutableAttributedString* disclaimer = [[NSMutableAttributedString alloc]
+        initWithString:l10n_util::GetNSString(
+                           IDS_IOS_CONTENT_SUGGESTIONS_PIN_SITE_FORM_FOOTER)
+            attributes:attributes];
+    if (attributedString) {
+      [attributedString appendAttributedString:[[NSAttributedString alloc]
+                                                   initWithString:@"\n"]];
+      [attributedString appendAttributedString:disclaimer];
+    } else if (disclaimer) {
+      attributedString = disclaimer;
+    }
+  }
+  if (!attributedString) {
     return nil;
   }
   TableViewAttributedStringHeaderFooterView* footer =
       DequeueTableViewHeaderFooter<TableViewAttributedStringHeaderFooterView>(
           tableView);
-  NSDictionary* attributes = @{
-    NSFontAttributeName :
-        [UIFont preferredFontForTextStyle:UIFontTextStyleFootnote],
-    NSForegroundColorAttributeName : [UIColor colorNamed:kTextSecondaryColor]
-  };
-  NSMutableAttributedString* attributedText = [[NSMutableAttributedString alloc]
-      initWithString:l10n_util::GetNSString(
-                         IDS_IOS_CONTENT_SUGGESTIONS_PIN_SITE_FORM_FOOTER)
-          attributes:attributes];
-  [footer setAttributedString:attributedText];
+  [footer setAttributedString:attributedString];
   return footer;
 }
 
@@ -156,6 +192,9 @@ BOOL IsInputValid(NSString* input) {
   TableViewTextEditCell* cell =
       DequeueTableViewCell<TableViewTextEditCell>(self.tableView);
   cell.textField.enabled = YES;
+  [cell.textField removeTarget:self
+                        action:nil
+              forControlEvents:UIControlEventEditingChanged];
   cell.selectionStyle = UITableViewCellSelectionStyleNone;
   cell.identifyingIconButton.hidden = YES;
   switch (static_cast<ItemIdentifier>(identifier.integerValue)) {
@@ -205,10 +244,26 @@ BOOL IsInputValid(NSString* input) {
       break;
   }
   if (success) {
+    RecordPinnedSiteFormUserAction(
+        _action, _urlValidationFailed
+                     ? MostVisitedPinSiteFormUserAction::kApplyAfterFailure
+                     : MostVisitedPinSiteFormUserAction::kApplyImmediately);
     [self dismissModal];
   } else {
-    /// TODO(crbug.com/474064813): Show reason.
+    _urlValidationFailed = YES;
+    NSDiffableDataSourceSnapshot* snapshot = [_dataSource snapshot];
+    [snapshot reloadSectionsWithIdentifiers:@[ @(kSection) ]];
+    [_dataSource applySnapshot:snapshot animatingDifferences:NO];
   }
+}
+
+/// Handles the tap on the "Cancel" button or swiping down.
+- (void)onCancel {
+  RecordPinnedSiteFormUserAction(
+      _action, _urlValidationFailed
+                   ? MostVisitedPinSiteFormUserAction::kDismissAfterFailure
+                   : MostVisitedPinSiteFormUserAction::kDismissImmediately);
+  [self dismissModal];
 }
 
 /// Enables or disables the top-right button that applies the changes. The

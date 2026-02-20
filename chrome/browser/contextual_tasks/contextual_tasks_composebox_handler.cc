@@ -147,7 +147,7 @@ constexpr float kByteChangeTolerancePercent = 0.01;
 }  // namespace
 
 ContextualTasksComposeboxHandler::ContextualTasksComposeboxHandler(
-    ContextualTasksUI* ui_controller,
+    contextual_tasks::ContextualTasksUIInterface* web_ui_interface,
     Profile* profile,
     content::WebContents* web_contents,
     mojo::PendingReceiver<composebox::mojom::PageHandler> pending_handler,
@@ -166,7 +166,7 @@ ContextualTasksComposeboxHandler::ContextualTasksComposeboxHandler(
                                                              web_contents,
                                                              this)),
           std::move(get_session_callback)),
-      web_ui_controller_(ui_controller),
+      web_ui_interface_(web_ui_interface),
       contextual_tasks_service_(
           contextual_tasks::ContextualTasksServiceFactory::GetForProfile(
               profile)) {
@@ -181,6 +181,18 @@ ContextualTasksComposeboxHandler::ContextualTasksComposeboxHandler(
 
 ContextualTasksComposeboxHandler::~ContextualTasksComposeboxHandler() = default;
 
+void ContextualTasksComposeboxHandler::MarkContextUploadFinished(
+    const base::UnguessableToken& token) {
+  pending_context_uploads_.erase(token);
+  MaybeSendPendingQuery();
+}
+
+void ContextualTasksComposeboxHandler::MarkDelayedTabUploadFinished(
+    const int32_t tab_id) {
+  pending_delayed_tab_ids_.erase(tab_id);
+  MaybeSendPendingQuery();
+}
+
 void ContextualTasksComposeboxHandler::OnFileUploadStatusChanged(
     const base::UnguessableToken& file_token,
     lens::MimeType mime_type,
@@ -188,10 +200,19 @@ void ContextualTasksComposeboxHandler::OnFileUploadStatusChanged(
     const std::optional<contextual_search::FileUploadErrorType>& error_type) {
   ContextualSearchboxHandler::OnFileUploadStatusChanged(
       file_token, mime_type, file_upload_status, error_type);
-
   // Associate tab with task.
-  if (file_upload_status ==
-      contextual_search::FileUploadStatus::kUploadSuccessful) {
+
+  using FileUploadStatus = contextual_search::FileUploadStatus;
+  bool is_terminal_upload_status =
+      file_upload_status == FileUploadStatus::kUploadSuccessful ||
+      file_upload_status == FileUploadStatus::kUploadFailed ||
+      file_upload_status == FileUploadStatus::kUploadExpired ||
+      file_upload_status == FileUploadStatus::kValidationFailed;
+
+  if (is_terminal_upload_status) {
+    MarkContextUploadFinished(file_token);
+  }
+  if (file_upload_status == FileUploadStatus::kUploadSuccessful) {
     auto* contextual_session_handle = GetContextualSessionHandle();
     if (!contextual_session_handle) {
       return;
@@ -199,11 +220,12 @@ void ContextualTasksComposeboxHandler::OnFileUploadStatusChanged(
 
     const contextual_search::FileInfo* file_info =
         contextual_session_handle->GetController()->GetFileInfo(file_token);
+
     if (!file_info || !file_info->tab_session_id.has_value()) {
       return;
     }
 
-    auto task_id = web_ui_controller_->GetTaskId();
+    auto task_id = web_ui_interface_->GetTaskId();
     if (task_id.has_value() && contextual_tasks_service_) {
       contextual_tasks_service_->AssociateTabWithTask(
           task_id.value(), file_info->tab_session_id.value());
@@ -225,15 +247,20 @@ void ContextualTasksComposeboxHandler::SubmitQuery(
 
 void ContextualTasksComposeboxHandler::CreateAndSendQueryMessage(
     const std::string& query) {
-  bool was_overlay_open_on_submit = web_ui_controller_->IsLensOverlayShowing();
+  bool was_overlay_open_on_submit = web_ui_interface_->IsLensOverlayShowing();
+
+  // Retrieve the overlay token before closing the overlay, as the controller
+  // might be destroyed or reset during closure.
+  std::optional<base::UnguessableToken> overlay_token = GetLensOverlayToken();
+
   // Every time a query is submitted, close the Lens overlay if it's open.
   CloseLensOverlay(
       lens::LensOverlayDismissalSource::kContextualTasksQuerySubmitted);
-  std::optional<base::Uuid> task_id = web_ui_controller_->GetTaskId();
+  std::optional<base::Uuid> task_id = web_ui_interface_->GetTaskId();
   auto* contextual_tasks_service = GetContextualTasksService();
   if (!task_id.has_value() || !contextual_tasks_service ||
       was_overlay_open_on_submit) {
-    ContinueCreateAndSendQueryMessage(query, task_id);
+    ContinueCreateAndSendQueryMessage(query, task_id, overlay_token);
     return;
   }
 
@@ -241,7 +268,7 @@ void ContextualTasksComposeboxHandler::CreateAndSendQueryMessage(
   // and fetching the active tab later may result in unexpected behavior.
   tabs::TabHandle active_tab_handle;
   auto* browser_window_interface = webui::GetBrowserWindowInterface(
-      web_ui_controller_->GetWebUIWebContents());
+      web_ui_interface_->GetWebUIWebContents());
   if (browser_window_interface) {
     TabListInterface* tab_list =
         TabListInterface::From(browser_window_interface);
@@ -283,47 +310,62 @@ void ContextualTasksComposeboxHandler::OnContextRetrieved(
     tabs::TabHandle active_tab_handle,
     std::optional<base::Uuid> original_task_id,
     std::unique_ptr<contextual_tasks::ContextualTaskContext> context) {
-  if (!context || web_ui_controller_->GetTaskId() != original_task_id) {
-    ContinueCreateAndSendQueryMessage(query, original_task_id);
+  if (!context || web_ui_interface_->GetTaskId() != original_task_id) {
+    ContinueCreateAndSendQueryMessage(query, original_task_id,
+                                      /*overlay_token=*/std::nullopt);
     return;
   }
   tabs::TabInterface* active_tab = active_tab_handle.Get();
   std::vector<tabs::TabInterface*> tabs_to_update =
       GetTabsToUpdate(*context, active_tab);
 
+  // Use a barrier closure to wait for all tabs to be processed +
+  // run upload callback callback once finished one time.
+  // OnSingleTabProcessed runs per tab finishing uploading.
+  // We make sure we do not create closures unless there
+  // are tabs to be updated. Otherwise, the closure will
+  // run immediately due to number of usages expected
+  // being based on tabs_to_update.size().
   if (tabs_to_update.empty()) {
-    ContinueCreateAndSendQueryMessage(query, original_task_id);
+    ContinueCreateAndSendQueryMessage(query, original_task_id,
+                                      /*overlay_token=*/std::nullopt);
     return;
   }
-
-  // Use a barrier closure to wait for all tabs to be processed.
-  // The callback will be invoked once for each tab.
-  base::RepeatingClosure barrier_closure = base::BarrierClosure(
+  base::RepeatingClosure create_and_send_query_closure = base::BarrierClosure(
       tabs_to_update.size(),
       base::BindOnce(
           &ContextualTasksComposeboxHandler::ContinueCreateAndSendQueryMessage,
-          weak_factory_.GetWeakPtr(), query, original_task_id));
+          weak_factory_.GetWeakPtr(), query, original_task_id,
+          /*overlay_token=*/std::nullopt));
 
+  int32_t tab_id;
   for (tabs::TabInterface* tab : tabs_to_update) {
+    // -1 is filler value since tabs that do not exist will not be added
+    // to the delayed_tabs set. OnSingleTabProcessed will remove -1 from the
+    // set, but because it is a set, it is allowed even if -1 is not in the set.
+    tab_id = tab ? tab->GetHandle().raw_value() : -1;
+    // This adjusts the delayed tab counter once finished uploading.
+    base::RepeatingClosure single_tab_upload_callback = base::BindRepeating(
+        &ContextualTasksComposeboxHandler::OnSingleTabProcessed,
+        weak_factory_.GetWeakPtr(), create_and_send_query_closure, tab_id);
     if (!tab) {
-      barrier_closure.Run();
+      single_tab_upload_callback.Run();
       continue;
     }
 
     tabs::TabFeatures* tab_features = tab->GetTabFeatures();
     if (!tab_features) {
-      barrier_closure.Run();
+      single_tab_upload_callback.Run();
       continue;
     }
 
     lens::TabContextualizationController* controller =
         tab_features->tab_contextualization_controller();
     if (!controller) {
-      barrier_closure.Run();
+      single_tab_upload_callback.Run();
       continue;
     }
 
-    int32_t tab_id = tab->GetHandle().raw_value();
     controller->GetPageContext(base::BindOnce(
         &ContextualTasksComposeboxHandler::OnTabContextualizationFetched,
         weak_factory_.GetWeakPtr(),
@@ -332,30 +374,30 @@ void ContextualTasksComposeboxHandler::OnContextRetrieved(
         // variables are held by value, and all complex objects have explicit
         // copy constructors.
         std::make_unique<contextual_tasks::ContextualTaskContext>(*context),
-        barrier_closure, original_task_id, tab_id));
+        single_tab_upload_callback, original_task_id, tab_id));
   }
 }
 
 void ContextualTasksComposeboxHandler::OnTabContextualizationFetched(
     std::unique_ptr<contextual_tasks::ContextualTaskContext> context,
-    base::RepeatingClosure barrier_closure,
+    base::RepeatingClosure single_tab_upload_callback,
     std::optional<base::Uuid> original_task_id,
     int32_t tab_id,
     std::unique_ptr<lens::ContextualInputData> page_content_data) {
   if (!page_content_data) {
-    barrier_closure.Run();
+    single_tab_upload_callback.Run();
     return;
   }
 
-  if (web_ui_controller_->GetTaskId() != original_task_id) {
-    barrier_closure.Run();
+  if (web_ui_interface_->GetTaskId() != original_task_id) {
+    single_tab_upload_callback.Run();
     return;
   }
 
   if (contextual_tasks::GetIsProtectedPageErrorEnabled() &&
       !page_content_data->is_page_context_eligible.value_or(false)) {
-    web_ui_controller_->OnPageContextEligibilityChecked(false);
-    barrier_closure.Run();
+    web_ui_interface_->OnPageContextEligibilityChecked(false);
+    single_tab_upload_callback.Run();
     return;
   }
 
@@ -365,30 +407,26 @@ void ContextualTasksComposeboxHandler::OnTabContextualizationFetched(
   }
 
   if (!ShouldUploadTabContext(maybe_context_id, *page_content_data)) {
-    barrier_closure.Run();
+    single_tab_upload_callback.Run();
     return;
   }
 
-  UploadTabContextWithData(
-      tab_id, maybe_context_id, std::move(page_content_data),
-      base::BindOnce(&ContextualTasksComposeboxHandler::OnTabContextReuploadStarted,
-                     weak_factory_.GetWeakPtr(), barrier_closure,
-                     original_task_id));
-}
-
-void ContextualTasksComposeboxHandler::OnTabContextReuploadStarted(
-    base::RepeatingClosure barrier_closure,
-    std::optional<base::Uuid> original_task_id,
-    bool upload_started) {
-  if (web_ui_controller_->GetTaskId() != original_task_id) {
-    barrier_closure.Run();
-    return;
-  }
-  barrier_closure.Run();
+  UploadTabContextWithData(tab_id, maybe_context_id,
+                           std::move(page_content_data),
+                           base::IgnoreArgs<bool>(single_tab_upload_callback));
 }
 
 void ContextualTasksComposeboxHandler::OnTaskChanged() {
-  delayed_tabs_.clear();
+  ClearFiles();
+}
+
+void ContextualTasksComposeboxHandler::AddFileContextFromBrowser(
+    searchbox::mojom::SelectedFileInfoPtr file_info,
+    AddFileContextCallback callback) {
+  base::UnguessableToken token = base::UnguessableToken::Create();
+  ContextualSearchboxHandler::page_->AddFileContext(token,
+                                                    std::move(file_info));
+  std::move(callback).Run(token);
 }
 
 std::vector<tabs::TabInterface*>
@@ -404,8 +442,15 @@ ContextualTasksComposeboxHandler::GetTabsToUpdate(
     tabs::TabHandle handle = tabs::TabHandle(tab_id);
     if (tabs::TabInterface* tab = handle.Get()) {
       tabs_to_update.insert(tab);
+    } else {
+      // Remove invalid delayed tabs from pending set.
+      MarkDelayedTabUploadFinished(tab_id);
     }
   }
+  // We remove delayed tabs since if the submission of the query fails, or we
+  // swap tasks mid-submission context upload, we do not want tabs that failed
+  // to upload to remain and be uploaded in the next query unless the user
+  // re-adds them.
   delayed_tabs_.clear();
 
   // TODO(crbug.com/468430623): Support updating multiple tabs.
@@ -427,6 +472,12 @@ ContextualTasksComposeboxHandler::GetTabsToUpdate(
                             active_tab->GetContents()->GetLastCommittedURL(),
                             active_tab_session_id)) {
     tabs_to_update.insert(active_tab);
+    int32_t active_tab_id = active_tab->GetHandle().raw_value();
+
+    // Since `pending_delayed_tab_ids_` is a set,
+    // we do not have to worry about duplicate active tab
+    // ID insertion.
+    pending_delayed_tab_ids_.insert(active_tab_id);
   }
 
   return std::vector<tabs::TabInterface*>(tabs_to_update.begin(),
@@ -630,8 +681,9 @@ ContextualTasksComposeboxHandler::GetMatchingAttachment(
 
 void ContextualTasksComposeboxHandler::ContinueCreateAndSendQueryMessage(
     std::string query,
-    std::optional<base::Uuid> original_task_id) {
-  if (web_ui_controller_->GetTaskId() != original_task_id) {
+    std::optional<base::Uuid> original_task_id,
+    std::optional<base::UnguessableToken> overlay_token) {
+  if (web_ui_interface_->GetTaskId() != original_task_id) {
     return;
   }
   // Create a client to aim message and send it to the page.
@@ -649,7 +701,7 @@ void ContextualTasksComposeboxHandler::ContinueCreateAndSendQueryMessage(
         lens::QueryPayload::QUERY_TEXT_SOURCE_KEYBOARD_INPUT;
     create_client_to_aim_request_info->query_start_time = base::Time::Now();
 
-    omnibox::ToolMode tool_mode = GetAimToolMode();
+    omnibox::ToolMode tool_mode = GetInputState().active_tool;
     create_client_to_aim_request_info->deep_search_selected =
         tool_mode == omnibox::ToolMode::TOOL_MODE_DEEP_SEARCH;
     create_client_to_aim_request_info->create_images_selected =
@@ -666,17 +718,38 @@ void ContextualTasksComposeboxHandler::ContinueCreateAndSendQueryMessage(
           active_tab_context_turn_metadata);
     }
 
-    create_client_to_aim_request_info->file_tokens = GetUploadedContextTokens();
+    base::flat_set<base::UnguessableToken> file_tokens(
+        session_handle->GetUploadedContextTokens());
+    if (overlay_token) {
+      file_tokens.insert(*overlay_token);
+      // When an overlay token is present, it implies a recent Lens Overlay
+      // interaction, such as a region search. Setting this flag forces the
+      // inclusion of that interaction's data in the request. This is required
+      // to support immediate postmessage-based follow-up queries after the
+      // initial search URL loads, allowing the user to ask follow-up questions
+      // about the same region without re-selecting it.
+      create_client_to_aim_request_info
+          ->force_include_latest_interaction_request_data = true;
+    }
+    create_client_to_aim_request_info->file_tokens =
+        std::move(file_tokens).extract();
+
     lens::ClientToAimMessage client_to_page_message =
         session_handle->CreateClientToAimRequest(
             std::move(create_client_to_aim_request_info));
-    web_ui_controller_->PostMessageToWebview(client_to_page_message);
+
+    // Delay submission if context still uploading.
+    if (IsAnyContextUploading()) {
+      pending_message_ = std::move(client_to_page_message);
+      return;
+    }
+    // Otherwise, submit request to server side.
+    web_ui_interface_->PostMessageToWebview(client_to_page_message);
   }
 }
 
 void ContextualTasksComposeboxHandler::HandleFileUpload(bool is_image) {
-  content::WebContents* web_contents =
-      web_ui_controller_->GetWebUIWebContents();
+  content::WebContents* web_contents = web_ui_interface_->GetWebUIWebContents();
   gfx::NativeWindow parent_window = web_contents->GetTopLevelNativeWindow();
 
   if (!file_dialog_) {
@@ -743,12 +816,29 @@ void ContextualTasksComposeboxHandler::OnFileRead(
                  base::DoNothing());
 }
 
+bool ContextualTasksComposeboxHandler::IsAnyContextUploading() {
+  return GetNumContextUploading() > 0 || GetNumTabsDelayed() > 0;
+}
+
+bool ContextualTasksComposeboxHandler::HasPendingQueryForTesting() const {
+  return !!pending_message_;
+}
+
+uint16_t ContextualTasksComposeboxHandler::GetNumTabsDelayed() const {
+  return static_cast<uint16_t>(pending_delayed_tab_ids_.size());
+}
+
+uint16_t ContextualTasksComposeboxHandler::GetNumContextUploading() const {
+  return static_cast<uint16_t>(pending_context_uploads_.size());
+}
+
 void ContextualTasksComposeboxHandler::AddFileContext(
     searchbox::mojom::SelectedFileInfoPtr file_info,
     mojo_base::BigBuffer file_bytes,
     AddFileContextCallback callback) {
   if (auto* session_handle = GetContextualSessionHandle()) {
     auto token = session_handle->CreateContextToken();
+    pending_context_uploads_.insert(token);
     std::string mime_type = file_info->mime_type;
   ContextualSearchboxHandler::page_->AddFileContext(token,
                                                     std::move(file_info));
@@ -769,7 +859,7 @@ void ContextualTasksComposeboxHandler::AddTabContext(
   // The delay_upload flag is used to indicate that the tab was auto-added
   // via the composebox. In the contextual-tasks case, added tabs should be
   // contextualized as late as possible so that the viewport and APC are
-  // as recent as possible, put the tab in delayed_tabs_ instead of using the
+  // as recent as possible, put the tab in `delayed_tabs_` instead of using the
   // superclass method that contextualizes immediately and caches the tab
   // context for uploading in UploadSnapshotTabContextIfPresent.
   if (delay_upload) {
@@ -781,15 +871,25 @@ void ContextualTasksComposeboxHandler::AddTabContext(
       RecordTabAddedMetric(tab, /*is_tab_suggestion_chip=*/true);
     }
 
-    // Create a new token for the tab and add it to the delayed_tabs_ map.
+    // Create a new token for the tab and add it to the `delayed_tabs_` map.
+    // Do not use session handle's CreateContextToken() since the tab context
+    // is not being uploaded yet.
     base::UnguessableToken token = base::UnguessableToken::Create();
     delayed_tabs_[token] = tab_id;
+    pending_delayed_tab_ids_.insert(tab_id);
     std::move(callback).Run(token);
     return;
   }
+  auto* contextual_session_handle = GetContextualSessionHandle();
+  if (!contextual_session_handle) {
+    std::move(callback).Run(std::nullopt);
+    return;
+  }
+  auto token = contextual_session_handle->CreateContextToken();
 
-  ContextualSearchboxHandler::AddTabContext(tab_id, delay_upload,
-                                            std::move(callback));
+  pending_context_uploads_.insert(token);
+
+  ContinueAddTabContext(tab_id, delay_upload, token, std::move(callback));
 }
 
 void ContextualTasksComposeboxHandler::ClearFiles() {
@@ -797,12 +897,13 @@ void ContextualTasksComposeboxHandler::ClearFiles() {
   ComposeboxHandler::ClearFiles();
   // Clear any delayed tabs.
   delayed_tabs_.clear();
+
+  pending_delayed_tab_ids_.clear();
+  pending_context_uploads_.clear();
+  pending_message_ = std::nullopt;
 }
 
 void ContextualTasksComposeboxHandler::HandleLensButtonClick() {
-  if (!contextual_tasks::GetEnableLensInContextualTasks()) {
-    return;
-  }
   if (auto* controller = GetLensSearchController()) {
     controller->SetThumbnailCreatedCallback(base::BindRepeating(
         &ContextualTasksComposeboxHandler::OnLensThumbnailCreated,
@@ -828,31 +929,24 @@ void ContextualTasksComposeboxHandler::OnLensThumbnailCreated(
         contextual_search::FileUploadStatus::kUploadExpired, std::nullopt);
   }
 
-  // Also add the file context to the backend controller to ensure it is
-  // uploaded.
-  std::string_view data_view(thumbnail_data);
-  size_t comma_pos = data_view.find(',');
-  if (comma_pos != std::string_view::npos) {
-    std::string_view base64_data = data_view.substr(comma_pos + 1);
-    std::string decoded_data;
-    if (base::Base64Decode(base64_data, &decoded_data)) {
-      std::vector<uint8_t> data_vector(decoded_data.begin(),
-                                       decoded_data.end());
-      AddFileContext(
-          std::move(file_info), mojo_base::BigBuffer(data_vector),
-          base::BindOnce(
-              &ContextualTasksComposeboxHandler::OnVisualSelectionAdded,
-              weak_factory_.GetWeakPtr()));
-    }
-  }
+  // Lens will handle the creation of the interaction request needed for this
+  // context. Add the visual selection to the composebox UI.
+  AddFileContextFromBrowser(
+      std::move(file_info),
+      base::BindOnce(&ContextualTasksComposeboxHandler::OnVisualSelectionAdded,
+                     weak_factory_.GetWeakPtr()));
 }
 
+// Only runs for non-delayed context. DeleteContext here runs
+// ComposeboxHandler::DeleteContext.
 void ContextualTasksComposeboxHandler::OnVisualSelectionAdded(
     const base::UnguessableToken& token) {
+  // Remove old visual selection if it exists.
   if (visual_selection_token_.has_value()) {
-    ComposeboxHandler::DeleteContext(visual_selection_token_.value(),
-                                     /*from_automatic_chip=*/false);
+    DeleteContext(visual_selection_token_.value(),
+                  /*from_automatic_chip=*/false);
   }
+  // Replace the visual selection token with the new one.
   visual_selection_token_ = token;
 }
 
@@ -870,10 +964,18 @@ void ContextualTasksComposeboxHandler::DeleteContext(
     }
   }
 
-  bool was_delayed = delayed_tabs_.erase(file_token);
+  auto it = delayed_tabs_.find(file_token);
+  bool was_delayed = it != delayed_tabs_.end();
+  if (was_delayed) {                           // Delayed tab:
+    MarkDelayedTabUploadFinished(it->second);  // tab id.
+    delayed_tabs_.erase(it);
+  } else {  // File/normal context:
+    ComposeboxHandler::DeleteContext(file_token, from_automatic_chip);
+    MarkContextUploadFinished(file_token);
+  }
 
   if (from_automatic_chip) {
-    web_ui_controller_->DisableActiveTabContextSuggestion();
+    web_ui_interface_->DisableActiveTabContextSuggestion();
   }
 
   // Clear the visual selection token if it matches the deleted token.
@@ -888,10 +990,7 @@ void ContextualTasksComposeboxHandler::DeleteContext(
       }
     }
   }
-
-  if (!was_delayed) {
-    ComposeboxHandler::DeleteContext(file_token, from_automatic_chip);
-  } else {
+  if (was_delayed) {
     OnFileUploadStatusChanged(
         file_token, lens::MimeType::kUnknown,
         contextual_search::FileUploadStatus::kUploadExpired, std::nullopt);
@@ -901,7 +1000,7 @@ void ContextualTasksComposeboxHandler::DeleteContext(
   // context.
   if (associated_tab_id.has_value()) {
     auto* browser_window_interface = webui::GetBrowserWindowInterface(
-        web_ui_controller_->GetWebUIWebContents());
+        web_ui_interface_->GetWebUIWebContents());
     auto* active_task_context_provider =
         browser_window_interface
             ? browser_window_interface->GetFeatures()
@@ -922,7 +1021,7 @@ void ContextualTasksComposeboxHandler::CloseLensOverlay(
 
 LensSearchController*
 ContextualTasksComposeboxHandler::GetLensSearchController() const {
-  auto* browser = web_ui_controller_->GetBrowser();
+  auto* browser = web_ui_interface_->GetBrowser();
   if (!browser) {
     return nullptr;
   }
@@ -935,6 +1034,23 @@ ContextualTasksComposeboxHandler::GetLensSearchController() const {
   return nullptr;
 }
 
+std::optional<base::UnguessableToken>
+ContextualTasksComposeboxHandler::GetLensOverlayToken() {
+  if (auto* controller = GetLensSearchController()) {
+    // If there is no region selection, then do not return the overlay token.
+    // This is needed to prevent the token from being used in the client to aim
+    // request when a new overlay was opened and no region was selected.
+    if (!controller->lens_overlay_controller()->HasRegionSelection()) {
+      return std::nullopt;
+    }
+
+    if (auto* router = controller->query_router()) {
+      return router->overlay_tab_context_file_token();
+    }
+  }
+  return std::nullopt;
+}
+
 std::optional<int64_t>
 ContextualTasksComposeboxHandler::GetActiveTabContextId() {
   auto* contextual_session_handle = GetContextualSessionHandle();
@@ -943,7 +1059,7 @@ ContextualTasksComposeboxHandler::GetActiveTabContextId() {
   }
 
   auto* browser_window_interface = webui::GetBrowserWindowInterface(
-      web_ui_controller_->GetWebUIWebContents());
+      web_ui_interface_->GetWebUIWebContents());
   if (!browser_window_interface) {
     return std::nullopt;
   }
@@ -973,4 +1089,22 @@ ContextualTasksComposeboxHandler::GetActiveTabContextId() {
     }
   }
   return std::nullopt;
+}
+
+void ContextualTasksComposeboxHandler::MaybeSendPendingQuery() {
+  if (pending_message_.has_value() && !IsAnyContextUploading()) {
+    web_ui_interface_->PostMessageToWebview(*pending_message_);
+    pending_message_.reset();
+  }
+}
+
+void ContextualTasksComposeboxHandler::OnSingleTabProcessed(
+    base::RepeatingClosure barrier_closure,
+    int32_t tab_id) {
+  // Delayed tab finished uploading. Does not require
+  // `MarkDelayedTabUploadFinished` since barrier closure will call
+  // `MaybeSendPendingQuery` (what `MarkDelayedTabUploadFinished` does).
+  pending_delayed_tab_ids_.erase(tab_id);
+
+  barrier_closure.Run();
 }

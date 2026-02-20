@@ -107,6 +107,7 @@ constexpr char kRequestFilterUrlsKey[] = "urls";
 constexpr char kRequestFilterTypesKey[] = "types";
 constexpr char kRequestFilterTabIdKey[] = "tabId";
 constexpr char kRequestFilterWindowIdKey[] = "windowId";
+constexpr char kRequestFilterOptionsKey[] = "_options";
 
 const char kListenerSubEventNameKey[] = "sub_event_name";
 const char kListenerFilterKey[] = "filter";
@@ -292,7 +293,6 @@ void SendOnMessageEventOnUI(
   // process. We use a filter here so that only event listeners for a particular
   // <webview> will fire.
   if (is_web_view_guest) {
-    event_filtering_info->has_instance_id = true;
     event_filtering_info->instance_id = web_view_instance_id;
     histogram_value = events::WEB_VIEW_INTERNAL_ON_MESSAGE;
     event_name = kEventMessage;
@@ -890,6 +890,12 @@ bool WebRequestEventRouter::RequestFilter::InitFromValue(
     } else if (dict_item.first == kRequestFilterWindowIdKey &&
                dict_item.second.is_int()) {
       window_id = dict_item.second.GetInt();
+    } else if (dict_item.first == kRequestFilterOptionsKey) {
+      // The renderer-side bindings inject an "_options" key into the
+      // filter to pass along some extra information (like `extraInfo` and
+      // `webViewInstanceId`). We ignore it here, as it's not a part of the
+      // RequestFilter.
+      continue;
     } else {
       return false;
     }

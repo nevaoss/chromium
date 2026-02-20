@@ -82,6 +82,7 @@
 #include "chrome/common/actor_webui.mojom.h"
 #include "chrome/common/channel_info.h"
 #include "chrome/common/chrome_features.h"
+#include "chrome/common/webui_url_constants.h"
 #include "components/autofill/core/browser/integrators/glic/actor_form_filling_types.h"
 #include "components/content_settings/core/common/content_settings_types.h"
 #include "components/feature_engagement/public/event_constants.h"
@@ -155,6 +156,8 @@ constexpr mojom::Platform kPlatform = mojom::Platform::kWindows;
 constexpr mojom::Platform kPlatform = mojom::Platform::kLinux;
 #elif BUILDFLAG(IS_CHROMEOS)
 constexpr mojom::Platform kPlatform = mojom::Platform::kChromeOS;
+#elif BUILDFLAG(IS_ANDROID)
+constexpr mojom::Platform kPlatform = mojom::Platform::kAndroid;
 #else
 constexpr mojom::Platform kPlatform = mojom::Platform::kUnknown;
 #endif
@@ -943,7 +946,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
     if (GlicEnabling::IsMultiInstanceEnabled()) {
       state->host_capabilities.push_back(mojom::HostCapability::kMultiInstance);
     }
-    if (GlicEnabling::IsTrustFirstOnboardingEnabled()) {
+    if (GlicEnabling::IsTrustFirstOnboardingEnabledForProfile(profile_)) {
       int arm = features::kGlicTrustFirstOnboardingArmParam.Get();
       if (arm == 1) {
         state->host_capabilities.push_back(
@@ -985,7 +988,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
         base::FeatureList::IsEnabled(
             features::kGlicOpenPasswordManagerSettingsPageApi);
     state->enable_trust_first_onboarding =
-        GlicEnabling::IsTrustFirstOnboardingEnabled();
+        GlicEnabling::IsTrustFirstOnboardingEnabledForProfile(profile_);
     state->onboarding_completed =
         GlicEnabling::HasConsentedForProfile(profile_);
 // NEEDS_ANDROID_IMPL: (crbug.com/477622144) Remove desktop-only restrictions
@@ -1369,6 +1372,25 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
 #endif  //  !BUILDFLAG(IS_ANDROID)
   }
 
+  void ShowManageSkillsUi() override {
+// NEEDS_ANDROID_IMPL: (crbug.com/477622144) Remove desktop-only restrictions
+// from Skills backend.
+#if !BUILDFLAG(IS_ANDROID)
+    if (!base::FeatureList::IsEnabled(features::kSkillsEnabled)) {
+      receiver_.ReportBadMessage(
+          "ShowManageSkillsUi cannot be called without Skills enabled.");
+      return;
+    }
+    NavigateParams params(profile_, GURL(chrome::kChromeUISkillsURL),
+                          ui::PAGE_TRANSITION_AUTO_TOPLEVEL);
+    params.disposition = WindowOpenDisposition::SINGLETON_TAB;
+    Navigate(&params);
+#else
+    receiver_.ReportBadMessage(
+        "ShowManageSkillsUi isn't supported on Android.");
+#endif  //  !BUILDFLAG(IS_ANDROID)
+  }
+
   void GetSkill(const std::string& id, GetSkillCallback callback) override {
 // NEEDS_ANDROID_IMPL: (crbug.com/477622144) Remove desktop-only restrictions
 // from Skills backend.
@@ -1420,7 +1442,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
 
   void CaptureRegion(
       mojo::PendingRemote<mojom::CaptureRegionObserver> observer) override {
-#if !BUILDFLAG(IS_ANDROID)  // NEEDS_ANDROID_IMPL
+#if !BUILDFLAG(IS_ANDROID)  // NEEDS_ANDROID_IMPL: CaptureRegion
     content::WebContents* web_contents = nullptr;
     const FocusedTabData& focus = sharing_manager().GetFocusedTabData();
     // Prioritize the focused tab, but fall back to the unfocused tab if one is
@@ -2002,6 +2024,12 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
                                                           std::move(receiver));
   }
 
+  void NotifyContextualSkillPreviewsChanged(
+      std::vector<mojom::SkillPreviewPtr> contextual_skill_previews) override {
+    web_client_->NotifyContextualSkillPreviewsChanged(
+        std::move(contextual_skill_previews));
+  }
+
 // NEEDS_ANDROID_IMPL: (crbug.com/477622144) Remove desktop-only restrictions
 // from Skills backend.
 #if !BUILDFLAG(IS_ANDROID)
@@ -2475,9 +2503,9 @@ void GlicPageHandler::GetInternalsDataPayload(
   payload->enablement = BuildProfileEnablement(browser_context_);
 
   mojom::ConfigInfoPtr config = mojom::ConfigInfo::New();
-  config->guest_url = GetGuestURL();
-  config->fre_guest_url =
-      GetFreURL(Profile::FromBrowserContext(browser_context_));
+  Profile* profile = Profile::FromBrowserContext(browser_context_);
+  config->guest_url = GetGuestURL(profile);
+  config->fre_guest_url = GetFreURL(profile);
   payload->config = std::move(config);
 
   std::move(callback).Run(std::move(payload));

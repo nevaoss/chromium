@@ -74,7 +74,7 @@ class VizCompositorThread : public base::Thread {
 
 std::unique_ptr<VizCompositorThreadType> CreateAndStartCompositorThread(
     base::TaskObserver* task_observer) {
-  const base::ThreadType thread_type = base::ThreadType::kDisplayCritical;
+  const base::ThreadType thread_type = base::ThreadType::kPresentation;
 #if BUILDFLAG(IS_ANDROID)
   auto thread = std::make_unique<VizCompositorThread>(thread_type);
   thread->Start();
@@ -139,7 +139,7 @@ VizCompositorThreadRunnerImpl::VizCompositorThreadRunnerImpl() {
   if (base::FeatureList::IsEnabled(
           base::features::kBoostCompositorThreadsPriorityWhenIdle)) {
     scenario_priority_boost_.emplace(
-        base::ThreadType::kInteractive, base::BindRepeating([]() {
+        base::ThreadType::kAudioProcessing, base::BindRepeating([]() {
           return performance_scenarios::CurrentScenariosMatch(
               performance_scenarios::ScenarioScope::kGlobal,
               performance_scenarios::kDefaultIdleScenarios);

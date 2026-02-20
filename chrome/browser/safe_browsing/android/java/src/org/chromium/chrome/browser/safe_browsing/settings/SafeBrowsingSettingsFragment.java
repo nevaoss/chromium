@@ -174,8 +174,9 @@ public class SafeBrowsingSettingsFragment extends SafeBrowsingSettingsFragmentBa
             if (newState == SafeBrowsingState.ENHANCED_PROTECTION) {
                 ChromeSharedPreferences.getInstance()
                         .writeBoolean(
-                                ChromePreferenceKeys
-                                        .SETUP_LIST_ENHANCED_SAFE_BROWSING_PROMO_COMPLETED,
+                                ChromePreferenceKeys.SETUP_LIST_COMPLETED_KEY_PREFIX.createKey(
+                                        String.valueOf(
+                                                12 /* ModuleType.ENHANCED_SAFE_BROWSING_PROMO */)),
                                 true);
             }
         }
@@ -309,9 +310,8 @@ public class SafeBrowsingSettingsFragment extends SafeBrowsingSettingsFragmentBa
         return AnimationType.PROPERTY;
     }
 
-    // TODO(crbug.com/444470792): Determine what pieces of logic are dynamic and need handling. If
-    // it's only the summary, it could be worth explicitly defining it in the XML.
     public static final ChromeBaseSearchIndexProvider SEARCH_INDEX_DATA_PROVIDER =
             new ChromeBaseSearchIndexProvider(
-                    SafeBrowsingSettingsFragment.class.getName(), R.xml.safe_browsing_preferences);
+                    SafeBrowsingSettingsFragment.class.getName(),
+                    ChromeBaseSearchIndexProvider.INDEX_OPT_OUT);
 }

@@ -25,6 +25,8 @@ import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.theme.ThemeColorProvider;
 import org.chromium.components.browser_ui.desktop_windowing.DesktopWindowStateManager;
+import org.chromium.components.security_state.ConnectionMaliciousContentStatus;
+import org.chromium.components.security_state.ConnectionSecurityLevel;
 
 /** Unit tests for {@link DocumentPictureInPictureHeaderCoordinator}. */
 @RunWith(BaseRobolectricTestRunner.class)
@@ -33,6 +35,7 @@ public class DocumentPictureInPictureHeaderCoordinatorUnitTest {
 
     @Mock private DesktopWindowStateManager mDesktopWindowStateManager;
     @Mock private ThemeColorProvider mThemeColorProvider;
+    @Mock private DocumentPictureInPictureHeaderDelegate mDelegate;
 
     private ActivityController<Activity> mActivityController;
     private Activity mActivity;
@@ -55,7 +58,13 @@ public class DocumentPictureInPictureHeaderCoordinatorUnitTest {
     public void testCreation() {
         mCoordinator =
                 new DocumentPictureInPictureHeaderCoordinator(
-                        mView, mDesktopWindowStateManager, mThemeColorProvider);
+                        mView,
+                        mDesktopWindowStateManager,
+                        mThemeColorProvider,
+                        mDelegate,
+                        /* isBackToTabShown= */ true,
+                        ConnectionSecurityLevel.SECURE,
+                        ConnectionMaliciousContentStatus.NONE);
 
         verify(mDesktopWindowStateManager).addObserver(any());
     }
@@ -64,10 +73,18 @@ public class DocumentPictureInPictureHeaderCoordinatorUnitTest {
     public void testDestroy() {
         mCoordinator =
                 new DocumentPictureInPictureHeaderCoordinator(
-                        mView, mDesktopWindowStateManager, mThemeColorProvider);
+                        mView,
+                        mDesktopWindowStateManager,
+                        mThemeColorProvider,
+                        mDelegate,
+                        /* isBackToTabShown= */ true,
+                        ConnectionSecurityLevel.SECURE,
+                        ConnectionMaliciousContentStatus.NONE);
         mCoordinator.destroy();
 
         verify(mDesktopWindowStateManager).removeObserver(any());
         verify(mThemeColorProvider).removeThemeColorObserver(any());
+        verify(mThemeColorProvider).removeTintObserver(any());
     }
+
 }

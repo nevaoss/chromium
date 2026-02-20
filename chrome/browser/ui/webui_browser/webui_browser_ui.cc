@@ -111,7 +111,6 @@ WebUIBrowserUI::WebUIBrowserUI(content::WebUI* web_ui)
 
   SearchboxHandler::SetupWebUIDataSource(source, Profile::FromWebUI(web_ui));
   source->AddBoolean("composeboxContextDragAndDropEnabled", false);
-  source->AddBoolean("expandedSearchboxShowVoiceSearch", false);
 
   // TODO(crbug.com/445510209): Uncomment after installing WebUIOmniboxHandler.
   // source->AddBoolean("reportMetrics", true);
@@ -217,7 +216,7 @@ void WebUIBrowserUI::CreatePageHandler(
     mojo::PendingRemote<extensions_bar::mojom::Page> page,
     mojo::PendingReceiver<extensions_bar::mojom::PageHandler> receiver) {
   static_cast<WebUIBrowserExtensionsContainer*>(
-      browser_window()->GetExtensionsContainer())
+      ExtensionsContainer::From(*browser()))
       ->Bind(std::move(page), std::move(receiver));
 }
 

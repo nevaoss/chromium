@@ -39,11 +39,15 @@ static constexpr base::FeatureParam<DisableBoostPriorityExemption>::Option
     kDisableBoostPriorityOptions[] = {
         {DisableBoostPriorityExemption::kBrowserNetwork, "BrowserNetwork"},
         {DisableBoostPriorityExemption::kGpuBrowserNetwork,
-         "GpuBrowserNetwork"}};
+         "GpuBrowserNetwork"},
+        {DisableBoostPriorityExemption::kLoadingBrowserNetwork,
+         "LoadingBrowserNetwork"},
+        {DisableBoostPriorityExemption::kForegroundBrowserNetwork,
+         "ForegroundBrowserNetwork"}};
 constinit const base::FeatureParam<DisableBoostPriorityExemption>
     kDisableBoostPriorityExemption{
         &kDisableBoostPriority, "exempt_processes",
-        DisableBoostPriorityExemption::kGpuBrowserNetwork,
+        DisableBoostPriorityExemption::kForegroundBrowserNetwork,
         &kDisableBoostPriorityOptions};
 #endif  // BUILDFLAG(IS_WIN)
 
@@ -274,10 +278,6 @@ const base::FeatureParam<base::TimeDelta> kGlicActorClickDelay{
 
 // Controls whether the Actor UI components are enabled.
 BASE_FEATURE(kGlicActorUi, base::FEATURE_ENABLED_BY_DEFAULT);
-// Controls whether the new icon UI is enabled.
-BASE_FEATURE(kGlicActorUiTaskIconV2, base::FEATURE_ENABLED_BY_DEFAULT);
-// Controls whether the task nudge UI fixes are enabled.
-BASE_FEATURE(kGlicActorUiTaskNudgeUiFix, base::FEATURE_ENABLED_BY_DEFAULT);
 // Controls whether the global task indicator and related features are enabled.
 BASE_FEATURE(kGlicActorUiGlobalTaskIndicator, base::FEATURE_ENABLED_BY_DEFAULT);
 // Controls whether we ignore users preference of reduced motion enabled and
@@ -308,6 +308,11 @@ BASE_FEATURE(kGlicHandoffButtonHideWhenOmniboxPopupOpened,
 
 // If enabled, the magic cursor in the actor overlay is shown.
 BASE_FEATURE(kGlicActorUiOverlayMagicCursor, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// If enabled, the actor splits up the validation and execution portion of
+// invoking a tool.
+BASE_FEATURE(kGlicActorSplitValidateAndExecute,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 const char kGlicActorUiTaskIconName[] = "glic-actor-ui-task-icon";
 const char kGlicActorUiOverlayName[] = "glic-actor-ui-overlay";
@@ -410,7 +415,7 @@ const base::FeatureParam<base::TimeDelta> kGlicActorTypeToolEnterDelay{
     &kGlicActor, "glic-actor-type-tool-enter-delay", base::Milliseconds(600)};
 
 constexpr base::FeatureParam<std::string> kGlicActorEligibleTiers{
-    &kGlicActor, "glic-actor-eligible-tiers", ""};
+    &kGlicActor, "glic-actor-eligible-tiers", "1,2"};
 
 constexpr base::FeatureParam<GlicActorEnterprisePrefDefault>::Option
     kGlicActorEnterprisePrefDefaultOptions[] = {
@@ -471,6 +476,11 @@ BASE_FEATURE(kGlicLocaleFiltering, base::FEATURE_DISABLED_BY_DEFAULT);
 // Controls whether the Glic FRE dialog is displayed in the same window as the
 // main app.
 BASE_FEATURE(kGlicUnifiedFreScreen, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Controls the bugfix where the unified FRE synchronizes cookies to the wrong
+// storage partition.
+BASE_FEATURE(kGlicUseMainPartitionForUnifiedFre,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Controls the Glic Trust First Onboarding experience.
 BASE_FEATURE(kGlicTrustFirstOnboarding, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -1058,6 +1068,32 @@ const base::FeatureParam<base::TimeDelta>
         &kHappinessTrackingSurveysForDesktopPrivacyGuide, "settings-time",
         base::Seconds(20)};
 
+// Enables or disables the Happiness Tracking System for Desktop History Page in
+// the Experiment group.
+BASE_FEATURE(kHappinessTrackingSurveysForDesktopHistoryPageExperiment,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+const base::FeatureParam<base::TimeDelta>
+    kHappinessTrackingSurveysForDesktopHistoryPageExperimentTime{
+        &kHappinessTrackingSurveysForDesktopHistoryPageExperiment,
+        "history-page-time", base::Seconds(5)};
+const base::FeatureParam<std::string>
+    kHappinessTrackingSurveysForDesktopHistoryPageExperimentTriggerId{
+        &kHappinessTrackingSurveysForDesktopHistoryPageExperiment,
+        "history-page-experiment-trigger-id", "eNwB9x81L0ugnJ3q1cK0SZPphQ3o"};
+
+// Enables or disables the Happiness Tracking System for Desktop History Page in
+// the Control group.
+BASE_FEATURE(kHappinessTrackingSurveysForDesktopHistoryPageControl,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+const base::FeatureParam<base::TimeDelta>
+    kHappinessTrackingSurveysForDesktopHistoryPageControlTime{
+        &kHappinessTrackingSurveysForDesktopHistoryPageControl,
+        "history-page-time", base::Seconds(5)};
+const base::FeatureParam<std::string>
+    kHappinessTrackingSurveysForDesktopHistoryPageControlTriggerId{
+        &kHappinessTrackingSurveysForDesktopHistoryPageControl,
+        "history-page-control-trigger-id", "LkMGyZ9zz0ugnJ3q1cK0RXMjZsdD"};
+
 // Enables or disables the Happiness Tracking System for Desktop Chrome
 // Settings.
 BASE_FEATURE(kHappinessTrackingSurveysForDesktopSettings,
@@ -1114,6 +1150,9 @@ const base::FeatureParam<base::TimeDelta>
         &kHappinessTrackingSurveysForDesktopWhatsNew, "whats-new-time",
         base::Seconds(20)};
 
+// Enables or disables the Happiness Tracking System for SE Hijacking.
+BASE_FEATURE(kHappinessTrackingSurveysForDesktopSEHijacking,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 // Enables or disables the Happiness Tracking System for Chrome security page.
 BASE_FEATURE(kHappinessTrackingSurveysForSecurityPage,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -1554,7 +1593,14 @@ BASE_FEATURE(kProcessPerSiteSkipEnterpriseUsers,
 // engine. Has no effect if "ProcessPerSiteUpToMainFrameThreshold" is disabled.
 // Note: The "ProcessPerSiteUpToMainFrameThreshold" feature is defined in
 // //content.
-BASE_FEATURE(kProcessPerSiteForDSE, base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kProcessPerSiteForDSE,
+#if BUILDFLAG(IS_ANDROID)
+             base::FEATURE_DISABLED_BY_DEFAULT
+#else
+             base::FEATURE_ENABLED_BY_DEFAULT
+#endif
+);
 
 // Consider the default search engine (DSE) warmup page as a search results page
 // (SRP), for the purpose of applying the "process per site for DSE SRP" policy
@@ -1791,7 +1837,6 @@ BASE_FEATURE(kWebAppUpgradeToDatabaseVersion6,
 
 #if !BUILDFLAG(IS_ANDROID)
 BASE_FEATURE(kWebium, base::FEATURE_DISABLED_BY_DEFAULT);
-
 // Enables logging InitialWebUI-related metrics. The metrics are not necessary
 // comes from WebUI but can also come from the C++ version of them.
 // Defaults to enabled to also collect metrics for the C++ group.
@@ -1808,14 +1853,32 @@ BASE_FEATURE(kWebUILocationBar, base::FEATURE_DISABLED_BY_DEFAULT);
 // UI reload button. If the renderer crashes, we will try to recover it by
 // reloading the contents until the number of crashes reaches
 // `kWebUIReloadButtonMaxCrashRecoveryTimes`. If the maximum number of crash
-// counts is reached, no recovery will be attempted. The counter will reset if
+// counts is reached, no recovery will be attempted until
+// `WebUIReloadButtonCrashRecoverRetryInterval` later. The counter will reset if
 // there is no crash within `WebUIReloadButtonCrashRecoverResetInterval`.
+// Here is an example with the default settings.
+// - 00:00 renderer crashes
+// - 00:00 recovery is triggered
+// - 00:05 renderer crashes
+// - 00:05 recovery is triggered
+// - 00:16 renderer crashes
+// - 00:16 recovery is triggered, as it has been >= 10s and the counter is reset
+// - 00:17 renderer crashes
+// - 00:17 recovery is triggered
+// - 00:18 renderer crashes
+// - 01:18 recovery is triggered, it's not immediate because the it exceeds the
+//         max recovery times, but it will retry after 1 minute
 const base::FeatureParam<int> kWebUIReloadButtonMaxCrashRecoveryTimes{
     &kWebUIReloadButton, "WebUIReloadButtonMaxCrashRecoveryTimes", 3};
 const base::FeatureParam<base::TimeDelta>
     kWebUIReloadButtonCrashRecoverResetInterval{
         &kWebUIReloadButton, "WebUIReloadButtonCrashRecoverResetInterval",
         base::Seconds(10)};
+const base::FeatureParam<base::TimeDelta>
+    kWebUIReloadButtonCrashRecoverRetryInterval{
+        &kWebUIReloadButton, "WebUIReloadButtonCrashRecoverRetryInterval",
+        base::Minutes(1)};
+
 // When enabled, initial WebUI renderers that become unresponsive will be
 // restarted without showing the hung renderer dialog.
 // `WebUIReloadButtonRestartUnresponsiveRenderersTimeout` controls the timeout
@@ -1823,6 +1886,10 @@ const base::FeatureParam<base::TimeDelta>
 // See crbug.com/475397687.
 const base::FeatureParam<bool> kWebUIReloadButtonRestartUnresponsive{
     &kWebUIReloadButton, "WebUIReloadButtonRestartUnresponsive", false};
+// When this is enabled, the `BrowserView` will not show until the reload button
+// has finished loading.
+const base::FeatureParam<bool> kWebUIReloadButtonDeferBrowserViewShow{
+    &kWebUIReloadButton, "WebUIReloadButtonDeferBrowserViewShow", true};
 const base::FeatureParam<base::TimeDelta>
     kWebUIReloadButtonRestartUnresponsiveRenderersTimeout{
         &kWebUIReloadButton,
@@ -1832,6 +1899,10 @@ const base::FeatureParam<base::TimeDelta>
 // chrome://webui-toolbar.top-chrome.
 // crbug.com/470039098
 BASE_FEATURE(kWebUISplitTabsButton, base::FEATURE_DISABLED_BY_DEFAULT);
+// When enabled, the home button will be replaced with WebUI loaded from
+// chrome://webui-toolbar.top-chrome.
+// crbug.com/470039765
+BASE_FEATURE(kWebUIHomeButton, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 // Enables the User-Agent override fix for SearchPrefetch. This will work only

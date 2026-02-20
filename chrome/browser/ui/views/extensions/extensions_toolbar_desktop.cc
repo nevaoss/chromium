@@ -96,6 +96,8 @@ ExtensionsToolbarDesktop::ExtensionsToolbarDesktop(Browser* browser,
           std::make_unique<ToolbarActionHoverCardController>(this)),
       toolbar_view_model_(
           std::make_unique<ExtensionsToolbarViewModel>(this, browser, model_)),
+      scoped_toolbar_view_model_user_data_(browser->GetUnownedUserDataHost(),
+                                           *toolbar_view_model_),
       extensions_menu_coordinator_(
           base::FeatureList::IsEnabled(
               extensions_features::kExtensionsMenuAccessControl)
@@ -233,7 +235,7 @@ ExtensionsToolbarDesktop::~ExtensionsToolbarDesktop() {
 }
 
 void ExtensionsToolbarDesktop::UpdateExtensionsButton(
-    content::WebContents* web_contents) {
+    content::WebContents& web_contents) {
   // Extensions button state can only change when feature is enabled.
   if (!base::FeatureList::IsEnabled(
           extensions_features::kExtensionsMenuAccessControl)) {
@@ -246,9 +248,13 @@ void ExtensionsToolbarDesktop::UpdateExtensionsButton(
 }
 
 void ExtensionsToolbarDesktop::UpdateRequestAccessButton(
-    content::WebContents* web_contents) {
-  CHECK(base::FeatureList::IsEnabled(
-      extensions_features::kExtensionsMenuAccessControl));
+    content::WebContents& web_contents) {
+  // Extensions request access button can only be updated when feature is
+  // enabled.
+  if (!base::FeatureList::IsEnabled(
+          extensions_features::kExtensionsMenuAccessControl)) {
+    return;
+  }
 
   // Button is never visible when actions cannot be show in toolbar.
   if (!model_->CanShowActionsInToolbar(*browser_)) {
@@ -264,7 +270,7 @@ void ExtensionsToolbarDesktop::UpdateRequestAccessButton(
   }
 
   ExtensionsToolbarViewModel::RequestAccessButtonParams button_params =
-      toolbar_view_model_->GetRequestAccessButtonParams(web_contents);
+      toolbar_view_model_->GetRequestAccessButtonParams(&web_contents);
 
   request_access_button_->Update(button_params);
 
@@ -711,6 +717,13 @@ void ExtensionsToolbarDesktop::OnPinnedActionsChanged() {
 }
 
 void ExtensionsToolbarDesktop::OnActiveWebContentsChanged() {
+  // TODO(evasu): Call MaybeShowIPH() here instead of calling it directly
+  // from TabStripModelObserver methods in
+  // ExtensionsToolbarDesktopViewController (OnTabStripModelChanged and
+  // OnTabChangedAt). This leverages the existing TabListInterfaceObserver
+  // implementation in ExtensionsToolbarViewModel, which already notifies
+  // ExtensionsToolbarDesktop of active web contents changes.
+
   UpdateAllIcons();
 }
 
@@ -720,6 +733,19 @@ void ExtensionsToolbarDesktop::HideActivePopup() {
   }
   DCHECK(!popup_owner_);
   UpdateContainerVisibilityAfterAnimation();
+}
+
+void ExtensionsToolbarDesktop::OnRequestAccessButtonParamsChanged(
+    content::WebContents* web_contents) {
+  if (!web_contents) {
+    return;
+  }
+
+  UpdateRequestAccessButton(*web_contents);
+}
+
+void ExtensionsToolbarDesktop::OnToolbarControlStateUpdated() {
+  UpdateControlsVisibility();
 }
 
 bool ExtensionsToolbarDesktop::CloseOverflowMenuIfOpen() {
@@ -933,8 +959,12 @@ void ExtensionsToolbarDesktop::UpdateContainerVisibilityAfterAnimation() {
 
 void ExtensionsToolbarDesktop::OnMenuOpening() {
   content::WebContents* web_contents = GetCurrentWebContents();
+  if (!web_contents) {
+    return;
+  }
+
   // Record IPH usage, which should only be shown when any extension has access.
-  if (toolbar_view_model_->GetButtonState(web_contents) ==
+  if (toolbar_view_model_->GetButtonState(*web_contents) ==
       ExtensionsToolbarViewModel::ExtensionsToolbarButtonState::
           kAnyExtensionHasAccess) {
     BrowserUserEducationInterface::From(browser_)
@@ -997,8 +1027,8 @@ void ExtensionsToolbarDesktop::UpdateControlsVisibility() {
     return;
   }
 
-  UpdateExtensionsButton(web_contents);
-  UpdateRequestAccessButton(web_contents);
+  UpdateExtensionsButton(*web_contents);
+  UpdateRequestAccessButton(*web_contents);
 }
 
 void ExtensionsToolbarDesktop::CloseSidePanelButtonPressed() {

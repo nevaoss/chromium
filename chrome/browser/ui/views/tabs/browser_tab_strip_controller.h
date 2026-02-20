@@ -114,9 +114,6 @@ class BrowserTabStripController : public TabStripController,
       const tab_groups::TabGroupId& group_id) const override;
   std::u16string GetAccessibleTabName(const Tab* tab) const override;
   BrowserWindowInterface* GetBrowserWindowInterface() override;
-#if BUILDFLAG(IS_CHROMEOS)
-  bool IsLockedForOnTask() override;
-#endif
 
   // Test-specific methods.
   void CloseContextMenuForTesting();
@@ -144,8 +141,8 @@ class BrowserTabStripController : public TabStripController,
                               int index) override;
   void OnSplitTabChanged(const SplitTabChange& change) override;
   void OnTabGroupFocusChanged(
-      std::optional<tab_groups::TabGroupId> new_group_id,
-      std::optional<tab_groups::TabGroupId> old_group_id) override;
+      std::optional<tab_groups::TabGroupId> new_focused_group_id,
+      std::optional<tab_groups::TabGroupId> old_focused_group_id) override;
 
   BrowserFrameView* GetFrameView();
   const BrowserFrameView* GetFrameView() const;

@@ -40,7 +40,6 @@
 #include "components/autofill/core/browser/ui/payments/card_unmask_prompt_options.h"
 #include "components/signin/public/identity_manager/account_info.h"
 #include "content/public/browser/visibility.h"
-#include "content/public/browser/web_contents_observer.h"
 
 #if BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/ui/autofill/autofill_snackbar_controller_impl.h"
@@ -51,6 +50,10 @@
 
 namespace optimization_guide {
 class RemoteModelExecutor;
+}
+
+namespace tabs {
+class TabInterface;
 }
 
 namespace autofill {
@@ -87,8 +90,7 @@ enum class SuggestionType;
 // tests derive from it. Member functions should be final unless they need to be
 // mocked or overridden in subclasses and you have verified that they are not
 // called, directly or indirectly, from the constructor.
-class ChromeAutofillClient : public ContentAutofillClient,
-                             public content::WebContentsObserver {
+class ChromeAutofillClient : public ContentAutofillClient {
  public:
   // Creates a new ChromeAutofillClient for the given `web_contents` if no
   // ContentAutofillClient is associated with the `web_contents` yet. Otherwise,
@@ -178,7 +180,8 @@ class ChromeAutofillClient : public ContentAutofillClient,
   void UpdateAutofillSuggestions(
       const std::vector<Suggestion>& suggestions,
       FillingProduct main_filling_product,
-      AutofillSuggestionTriggerSource trigger_source) final;
+      AutofillSuggestionTriggerSource trigger_source,
+      AutofillSuggestionsIgnoreFocusLoss ignore_focus_loss) final;
   void HideAutofillSuggestions(SuggestionHidingReason reason) final;
   void TriggerUserPerceptionOfAutofillSurvey(
       FillingProduct filling_product,
@@ -233,7 +236,9 @@ class ChromeAutofillClient : public ContentAutofillClient,
   void ShowEntityImportBubble(
       EntityInstance new_entity,
       std::optional<EntityInstance> old_entity,
-      EntityImportPromptResultCallback prompt_closed_callback) override;
+      bool save_is_synchronous,
+      EntityImportPromptResultCallback prompt_result_callback) override;
+  void CloseEntityImportBubble() override;
   void ShowEmailVerifiedToast() final;
 
   // TODO(crbug.com/407666146): Create a test API.
@@ -284,6 +289,7 @@ class ChromeAutofillClient : public ContentAutofillClient,
 
  private:
   Profile* GetProfile() const;
+  tabs::TabInterface* GetTabInterface();
   bool SupportsConsentlessExecution(const url::Origin& origin);
   void ShowAutofillSuggestionsImpl(
       SuggestionUiSessionId session_id,

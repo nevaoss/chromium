@@ -50,7 +50,7 @@ namespace {
 
 // Checks if the field is focusable and empty.
 bool IsFieldFocusableAndEmpty(const AutofillField& field) {
-  return field.IsFocusable() && SanitizedFieldIsEmpty(field.value());
+  return field.is_focusable() && SanitizedFieldIsEmpty(field.value());
 }
 
 // The form is considered correctly filled if all autofilled fields were not
@@ -197,8 +197,6 @@ TouchToFillDelegateAndroidImpl::DryRunForCreditCard(const AutofillField& field,
   // Fetch all complete valid credit cards on file.
   // Complete = contains number, expiration date and name on card.
   // Valid = unexpired with valid number format.
-  // TODO(crbug.com/40227496): `*field` must contain the updated field
-  // information.
   std::vector<CreditCard> cards_to_suggest = GetTouchToFillCardsToSuggest(
       manager_->client(), field, field.Type().GetCreditCardType());
   return cards_to_suggest.empty()

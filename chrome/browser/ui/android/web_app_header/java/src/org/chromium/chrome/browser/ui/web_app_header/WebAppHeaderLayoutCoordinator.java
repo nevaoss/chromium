@@ -182,7 +182,7 @@ public class WebAppHeaderLayoutCoordinator extends EmptyTabObserver
         buttonState.darkBadgeIcon = R.drawable.badge_update_dark;
         buttonState.lightBadgeIcon = R.drawable.badge_update_light;
         buttonState.adaptiveBadgeIcon = R.drawable.badge_update;
-        mMenuButtonStateSupplier = ObservableSuppliers.of(buttonState);
+        mMenuButtonStateSupplier = ObservableSuppliers.createNonNull(buttonState);
 
         mClientPackageName = clientPackageName;
 
@@ -386,7 +386,7 @@ public class WebAppHeaderLayoutCoordinator extends EmptyTabObserver
                         mHistoryDelegate,
                         /* isWebApp= */ true);
 
-        if (mIsTWA && ChromeFeatureList.sAndroidWebAppMenuButton.isEnabled()) {
+        if (mIsTWA) {
             mMenuButtonContainer = mView.findViewById(R.id.web_app_menu_button_wrapper);
             mMenuButtonContainer.setVisibility(View.VISIBLE);
 

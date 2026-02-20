@@ -6,13 +6,14 @@
 
 #include <variant>
 
+#include "base/notreached.h"
 #include "chrome/browser/ui/views/autofill/autofill_bubble_utils.h"
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
 #include "chrome/browser/ui/wallet/walletable_pass_save_bubble_controller.h"
 #include "chrome/grit/browser_resources.h"
 #include "components/strings/grit/components_strings.h"
 #include "components/vector_icons/vector_icons.h"
-#include "components/wallet/core/browser/data_models/walletable_pass.h"
+#include "components/wallet/core/browser/data_models/wallet_pass.h"
 #include "third_party/abseil-cpp/absl/functional/overload.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
@@ -79,20 +80,24 @@ WalletablePassSaveBubbleView::~WalletablePassSaveBubbleView() = default;
 
 std::unique_ptr<views::BoxLayoutView>
 WalletablePassSaveBubbleView::GetAttributesView() {
-  return std::visit(absl::Overload(
-                        [&](const LoyaltyCard& loyalty_card) {
-                          return GetLoyaltyCardAttributesView(loyalty_card);
-                        },
-                        [&](const EventPass& event_pass) {
-                          return GetEventPassAttributesView(event_pass);
-                        },
-                        [&](const TransitTicket& transit_ticket) {
-                          return GetTransitTicketAttributesView(transit_ticket);
-                        },
-                        [&](const BoardingPass& boarding_pass) {
-                          return GetBoardingPassAttributesView(boarding_pass);
-                        }),
-                    controller_->pass().pass_data);
+  return std::visit(
+      absl::Overload(
+          [&](const LoyaltyCard& loyalty_card) {
+            return GetLoyaltyCardAttributesView(loyalty_card);
+          },
+          [&](const EventPass& event_pass) {
+            return GetEventPassAttributesView(event_pass);
+          },
+          [&](const TransitTicket& transit_ticket) {
+            return GetTransitTicketAttributesView(transit_ticket);
+          },
+          [&](const BoardingPass& boarding_pass) {
+            return GetBoardingPassAttributesView(boarding_pass);
+          },
+          [&](const auto&) -> std::unique_ptr<views::BoxLayoutView> {
+            NOTREACHED();
+          }),
+      controller_->pass().pass_data);
 }
 
 std::unique_ptr<views::BoxLayoutView>
@@ -266,9 +271,10 @@ int WalletablePassSaveBubbleView::GetDialogTitleResourceId() const {
           [](const TransitTicket& transit_ticket) {
             return IDS_WALLET_WALLETABLE_PASS_SAVE_TRANSPORT_TICKET_DIALOG_TITLE;
           },
-          [](const BoardingPass& boarding_pass) -> int {
+          [](const BoardingPass& boarding_pass) {
             return IDS_WALLET_WALLETABLE_PASS_SAVE_BOARDING_PASS_DIALOG_TITLE;
-          }),
+          },
+          [](const auto&) -> int { NOTREACHED(); }),
       controller_->pass().pass_data);
 }
 
@@ -285,7 +291,8 @@ int WalletablePassSaveBubbleView::GetHeaderImageResourceId() const {
                         },
                         [](const BoardingPass& boarding_pass) {
                           return IDR_WALLET_PASS_SAVE_BOARDING_PASS_LOTTIE;
-                        }),
+                        },
+                        [](const auto&) -> int { NOTREACHED(); }),
                     controller_->pass().pass_data);
 }
 

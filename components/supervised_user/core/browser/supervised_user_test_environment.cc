@@ -13,10 +13,11 @@
 #include "components/prefs/pref_notifier_impl.h"
 #include "components/prefs/pref_service.h"
 #include "components/safe_search_api/fake_url_checker_client.h"
+#include "components/safe_search_api/url_checker_client.h"
+#include "components/supervised_user/core/browser/family_link_url_filter.h"
 #include "components/supervised_user/core/browser/supervised_user_metrics_service.h"
 #include "components/supervised_user/core/browser/supervised_user_pref_store.h"
 #include "components/supervised_user/core/browser/supervised_user_synthetic_field_trial_service_delegate.h"
-#include "components/supervised_user/core/browser/supervised_user_url_filter.h"
 #include "components/supervised_user/core/browser/supervised_user_url_filtering_service.h"
 #include "components/supervised_user/core/common/supervised_user_constants.h"
 #include "components/supervised_user/test_support/supervised_user_url_filter_test_utils.h"
@@ -208,9 +209,6 @@ SupervisedUserTestEnvironment::SupervisedUserTestEnvironment(
   }
 #endif  // BUILDFLAG(IS_ANDROID)
 
-  std::unique_ptr<safe_search_api::FakeURLCheckerClient> client =
-      std::make_unique<safe_search_api::FakeURLCheckerClient>();
-  url_checker_client_ = client.get();
   pref_store_environment_.ConfigureInitialValues(initial_state);
   service_ = std::make_unique<SupervisedUserService>(
       identity_test_env_.identity_manager(),
@@ -218,14 +216,17 @@ SupervisedUserTestEnvironment::SupervisedUserTestEnvironment(
           &test_url_loader_factory_),
       *pref_store_environment_.pref_service(),
       *pref_store_environment_.settings_service(), &sync_service_,
-      std::make_unique<SupervisedUserURLFilter>(
+      std::make_unique<FamilyLinkUrlFilter>(
+          *pref_store_environment_.settings_service(),
           *pref_store_environment_.pref_service(),
-          std::make_unique<FakeURLFilterDelegate>(), std::move(client)),
+          std::make_unique<FakeURLFilterDelegate>(),
+          std::make_unique<UrlCheckerClientWrapper>(
+              family_link_url_checker_client_)),
       std::make_unique<FakePlatformDelegate>(),
       pref_store_environment_.device_parental_controls());
 
-  url_filtering_service_ = std::make_unique<SupervisedUserUrlFilteringService>(
-      *service_.get(), *pref_store_environment_.settings_service());
+  url_filtering_service_ =
+      std::make_unique<SupervisedUserUrlFilteringService>(*service_.get());
   metrics_service_ = std::make_unique<SupervisedUserMetricsService>(
       pref_store_environment_.pref_service(), *service_.get(),
       *url_filtering_service_.get(),
@@ -312,7 +313,7 @@ void SupervisedUserTestEnvironment::SetManualFilterForUrl(
                   family_link_settings_service);
 }
 
-SupervisedUserURLFilter* SupervisedUserTestEnvironment::url_filter() const {
+FamilyLinkUrlFilter* SupervisedUserTestEnvironment::url_filter() const {
   return service()->GetURLFilter();
 }
 SupervisedUserService* SupervisedUserTestEnvironment::service() const {
@@ -331,9 +332,9 @@ SupervisedUserTestEnvironment::pref_service_syncable() {
       pref_service());
 }
 
-safe_search_api::FakeURLCheckerClient*
-SupervisedUserTestEnvironment::url_checker_client() {
-  return url_checker_client_.get();
+MockUrlCheckerClient&
+SupervisedUserTestEnvironment::family_link_url_checker_client() {
+  return family_link_url_checker_client_;
 }
 
 DeviceParentalControlsTestImpl&

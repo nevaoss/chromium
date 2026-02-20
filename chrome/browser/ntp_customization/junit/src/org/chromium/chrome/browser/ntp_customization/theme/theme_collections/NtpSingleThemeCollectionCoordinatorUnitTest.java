@@ -24,7 +24,6 @@ import android.content.Context;
 import android.content.res.Configuration;
 import android.view.ContextThemeWrapper;
 import android.view.View;
-import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.recyclerview.widget.GridLayoutManager;
@@ -66,7 +65,6 @@ public class NtpSingleThemeCollectionCoordinatorUnitTest {
     private static final GURL TEST_COLLECTION_URL = JUnitTestGURLs.URL_1;
     private static final String TEST_COLLECTION_TITLE = "Test Collection";
     private static final int TEST_COLLECTION_HASH_1 = 123; // Mock hash value for testing
-    private static final String TEST_COLLECTION_TITLE_NEW = "Test Collection New";
     private static final String NEW_TEST_COLLECTION_ID = "New Test Collection Id";
     private static final String NEW_TEST_COLLECTION_TITLE = "New Test Collection";
     private static final int TEST_COLLECTION_HASH_2 = 456; // Mock hash value for testing
@@ -151,13 +149,6 @@ public class NtpSingleThemeCollectionCoordinatorUnitTest {
     }
 
     @Test
-    public void testLearnMoreButton() {
-        View learnMoreButton = mBottomSheetView.findViewById(R.id.learn_more_button);
-        assertNotNull(learnMoreButton);
-        assertTrue(learnMoreButton.hasOnClickListeners());
-    }
-
-    @Test
     public void testBuildRecyclerView() {
         RecyclerView recyclerView =
                 mBottomSheetView.findViewById(R.id.single_theme_collection_recycler_view);
@@ -177,18 +168,15 @@ public class NtpSingleThemeCollectionCoordinatorUnitTest {
         ComponentCallbacks componentCallbacks = mComponentCallbacksCaptor.getValue();
 
         View backButton = mBottomSheetView.findViewById(R.id.back_button);
-        ImageView learnMoreButton = mBottomSheetView.findViewById(R.id.learn_more_button);
         NtpThemeCollectionsAdapter adapter = mCoordinator.getNtpThemeCollectionsAdapterForTesting();
         NtpThemeCollectionsAdapter adapterSpy = spy(adapter);
         mCoordinator.setNtpThemeCollectionsAdapterForTesting(adapterSpy);
 
         assertTrue(backButton.hasOnClickListeners());
-        assertTrue(learnMoreButton.hasOnClickListeners());
 
         mCoordinator.destroy();
 
         assertFalse(backButton.hasOnClickListeners());
-        assertFalse(learnMoreButton.hasOnClickListeners());
         verify(adapterSpy).clearOnClickListeners();
         verify(mContextSpy).unregisterComponentCallbacks(eq(componentCallbacks));
     }
@@ -336,6 +324,10 @@ public class NtpSingleThemeCollectionCoordinatorUnitTest {
 
     @Test
     public void testHandleDailyRefreshClick() {
+        NtpThemeCollectionsAdapter adapter = mCoordinator.getNtpThemeCollectionsAdapterForTesting();
+        NtpThemeCollectionsAdapter adapterSpy = spy(adapter);
+        mCoordinator.setNtpThemeCollectionsAdapterForTesting(adapterSpy);
+
         MaterialSwitchWithText dailyUpdateSwitch =
                 mBottomSheetView.findViewById(R.id.daily_update_switch_button);
 
@@ -343,6 +335,7 @@ public class NtpSingleThemeCollectionCoordinatorUnitTest {
         dailyUpdateSwitch.setChecked(true);
         verify(mNtpThemeCollectionManager).setThemeCollectionDailyRefreshed(TEST_COLLECTION_ID);
         verify(mOnDailyUpdateCancelledCallback, never()).run();
+        verify(adapterSpy).cancelLoadingState();
 
         // Case 2: Toggle OFF.
         dailyUpdateSwitch.setChecked(false);

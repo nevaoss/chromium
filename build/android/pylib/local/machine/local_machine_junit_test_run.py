@@ -74,6 +74,8 @@ class LocalMachineJunitTestRun(test_run.TestRun):
     ret = []
     for test_filter in self._test_instance.test_filters:
       ret += ['--gtest-filter', test_filter]
+    for test_filter_file in self._test_instance.test_filter_files:
+      ret += ['--test-launcher-filter-file', test_filter_file]
 
     if self._test_instance.package_filter:
       ret += ['--package-filter', self._test_instance.package_filter]
@@ -92,9 +94,7 @@ class LocalMachineJunitTestRun(test_run.TestRun):
                  'android_resource_apk=%s\n' % resource_apk)
       props = [
           'application = android.app.Application',
-          # TODO(https://crbug.com/450954710): Turn this on.
-          #'sdk = 29,36',
-          'sdk = 29',
+          'sdk = 29,36',
           ('shadows = org.chromium.testing.local.'
            'CustomShadowApplicationPackageManager'),
       ]
@@ -104,6 +104,12 @@ class LocalMachineJunitTestRun(test_run.TestRun):
   def _CreateJvmArgsList(self, for_listing=False, allow_debugging=True):
     # Creates a list of jvm_args (robolectric, code coverage, etc...)
     jvm_args = [
+        # JDK 17+ requires explicit opens for Robolectric reflection on
+        # internal fields:
+        # https://docs.oracle.com/en/java/javase/17/migrate/migrating-jdk-8-later-jdk-releases.html
+        '--add-opens=java.base/java.io=ALL-UNNAMED',
+        '--add-opens=java.base/java.lang=ALL-UNNAMED',
+        '--add-opens=java.base/java.util=ALL-UNNAMED',
         # Disable warning about mockito/bytebuddy dynamically adding an agent.
         '-XX:+EnableDynamicAgentLoading',
         '-Drobolectric.dependency.dir=%s' %
@@ -228,7 +234,7 @@ class LocalMachineJunitTestRun(test_run.TestRun):
       # 3 seconds per method.
       num_classes = len(test_group.methods_by_class)
       num_tests = sum(len(x) for x in test_group.methods_by_class.values())
-      timeout = 30 + 5 * num_classes + num_tests * 3
+      timeout = 60 + 10 * num_classes + num_tests * 5
     return _Job(shard_id=shard_id,
                 cmd=cmd,
                 timeout=timeout,

@@ -229,6 +229,7 @@ class BLINK_EXPORT WebDocument : public WebNode {
   enum class ScriptToolError {
     kInvalidToolName,
     kInvalidInputArguments,
+    kMissingRequiredSubmitButton,
     kToolInvocationFailed
   };
   using ScriptToolExecutedCallback =
@@ -236,6 +237,13 @@ class BLINK_EXPORT WebDocument : public WebNode {
   void ExecuteScriptTool(const WebString& name,
                          const WebString& input_arguments,
                          ScriptToolExecutedCallback tool_executed_cb);
+
+  // Provides the result of a script tool execution initiated on an old
+  // Document.
+  using CrossDocumentScriptToolResultCallback =
+      base::OnceCallback<void(WebString)>;
+  void GetCrossDocumentScriptToolResult(
+      CrossDocumentScriptToolResultCallback result_callback);
 
   // Dispatches an autofill event on the document with the given field data.
   // This is called by the autofill agent before filling form fields.

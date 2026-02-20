@@ -39,11 +39,7 @@ class InterceptorMockNavigationHandle : public MockNavigationHandle {
   explicit InterceptorMockNavigationHandle(WebContents* web_contents)
       : MockNavigationHandle(web_contents) {}
 
-  blink::mojom::NavigationInitiatorActivationAndAdStatus
-  GetNavigationInitiatorActivationAndAdStatus() override {
-    return blink::mojom::NavigationInitiatorActivationAndAdStatus::
-        kStartedWithTransientActivationFromNonAd;
-  }
+  bool StartedWithTransientActivation() override { return true; }
 };
 
 class MockFederatedAuthRequest : public RequestService {
@@ -69,6 +65,7 @@ class MockFederatedAuthRequest : public RequestService {
   MOCK_METHOD(void,
               ResolveTokenRequest,
               (const std::optional<std::string>& account_id,
+               const std::optional<GURL>& redirect_to,
                base::Value token,
                ResolveTokenRequestCallback callback),
               (override));

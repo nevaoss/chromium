@@ -40,6 +40,12 @@ constexpr auto kBlockedMimeTypes = base::MakeFixedFlatSet<std::string_view>({
 // static
 void ActorNavigationThrottle::MaybeCreateAndAdd(
     content::NavigationThrottleRegistry& registry) {
+#if BUILDFLAG(IS_ANDROID)
+  if (!base::FeatureList::IsEnabled(kActorEnableAndroid)) {
+    return;
+  }
+#endif
+
   content::NavigationHandle& navigation_handle = registry.GetNavigationHandle();
 
   if (!navigation_handle.IsInPrimaryMainFrame() &&
@@ -89,7 +95,7 @@ ActorNavigationThrottle::ActorNavigationThrottle(
     const ActorTask& task)
     : content::NavigationThrottle(registry),
       task_id_(task.id()),
-      execution_engine_(task.GetExecutionEngine()->GetWeakPtr()) {}
+      execution_engine_(task.GetExecutionEngine().GetWeakPtr()) {}
 
 ActorNavigationThrottle::~ActorNavigationThrottle() = default;
 
@@ -214,13 +220,11 @@ ActorNavigationThrottle::WillStartOrRedirectRequest(bool is_redirection) {
                                        : "Check navigation safety")
           .Build());
 
-  ActorKeyedService::Get(GetProfile())
-      ->GetPolicyChecker()
-      .MayActOnUrl(
-          navigation_url, /*allow_insecure_http=*/true, GetProfile(), journal,
-          task_id_,
-          base::BindOnce(&ActorNavigationThrottle::OnMayActOnUrlResult,
-                         weak_factory_.GetWeakPtr(), std::move(journal_entry)));
+  ::actor::MayActOnUrl(
+      navigation_url, /*allow_insecure_http=*/true, GetProfile(), journal,
+      task_id_, ActorKeyedService::Get(GetProfile())->GetPolicyChecker(),
+      base::BindOnce(&ActorNavigationThrottle::OnMayActOnUrlResult,
+                     weak_factory_.GetWeakPtr(), std::move(journal_entry)));
 
   return content::NavigationThrottle::DEFER;
 }
