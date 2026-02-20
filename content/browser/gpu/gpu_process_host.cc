@@ -931,17 +931,13 @@ bool GpuProcessHost::Init() {
     // WGL needs to create its own window and pump messages on it.
     options.message_pump_type = base::MessagePumpType::UI;
 #endif
-<<<<<<< HEAD
     ///@name IS_NEVA_APPRUNTIME
     ///@{
 #if defined(USE_OZONE)
     options.message_pump_type = gpu_preferences.message_pump_type;
 #endif
     ///@}
-    options.thread_type = base::ThreadType::kDisplayCritical;
-=======
     options.thread_type = base::ThreadType::kPresentation;
->>>>>>> 146.0.7664.0~1
     in_process_gpu_thread_->StartWithOptions(std::move(options));
   } else if (!LaunchGpuProcess()) {
     return false;
