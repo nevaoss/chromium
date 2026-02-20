@@ -1,7 +1,7 @@
 // Copyright 2025 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-import {CaptureRegionErrorReason, HostCapability, MetricUserInputReactionType, PanelStateKind, ResponseStopCause, ScrollToErrorReason, WebClientMode} from '/glic/glic_api/glic_api.js';
+import {CaptureRegionErrorReason, HostCapability, MetricUserInputReactionType, PanelStateKind, Platform, ResponseStopCause, ScrollToErrorReason, WebClientMode} from '/glic/glic_api/glic_api.js';
 import type {CancelActionsResult, CaptureRegionResult, FocusedTabData, GetPinCandidatesOptions, GlicBrowserHost, OpenPanelInfo, PageMetadata, PanelOpeningData, ScrollToError, TabData, UserConfirmationDialogRequest, UserProfileInfo, ZeroStateSuggestionsV2} from '/glic/glic_api/glic_api.js';
 
 import {ApiTestError, ApiTestFixtureBase, assertDefined, assertEquals, assertFalse, assertNotEquals, assertRejects, assertTrue, assertUndefined, checkDefined, mapObservable, observeSequence, readStream, runUntil, sleep, testMain, waitFor, WebClient} from './browser_test_base.js';
@@ -972,25 +972,33 @@ class ApiTests extends ApiTestFixtureBase {
 
   async testGetUserProfileInfo() {
     assertDefined(this.host.getUserProfileInfo);
+    assertDefined(this.host.getPlatform);
     const profileInfo = await this.host.getUserProfileInfo();
+    const platform = await this.host.getPlatform();
 
     assertEquals('Glic Testing', profileInfo.displayName);
     assertEquals('glic-test@example.com', profileInfo.email);
     assertEquals('Glic', profileInfo.givenName);
     assertEquals(false, profileInfo.isManaged!);
-    assertTrue((profileInfo.localProfileName?.length ?? 0) > 0);
-    // Can be 'Your Chrome' or 'Your Chromium'.
-    assertEquals('Your C', profileInfo.localProfileName?.substring(0, 6));
+    if (platform !== Platform.CHROME_OS) {
+      assertTrue((profileInfo.localProfileName?.length ?? 0) > 0);
+      // Can be 'Your Chrome' or 'Your Chromium'.
+      assertEquals('Your C', profileInfo.localProfileName?.substring(0, 6));
+    }
   }
 
   async testGetUserProfileInfoDoesNotDeferWhenInactive() {
     assertDefined(this.host.getUserProfileInfo);
     assertDefined(this.host.closePanel);
+    assertDefined(this.host.getPlatform);
     await this.closePanelAndWaitUntilInactive();
     const profileInfo: UserProfileInfo = await this.host.getUserProfileInfo();
+    const platform = await this.host.getPlatform();
     assertEquals('glic-test@example.com', profileInfo.email);
-    // Can be 'Your Chrome' or 'Your Chromium'.
-    assertEquals('Your C', profileInfo.localProfileName?.substring(0, 6));
+    if (platform !== Platform.CHROME_OS) {
+      // Can be 'Your Chrome' or 'Your Chromium'.
+      assertEquals('Your C', profileInfo.localProfileName?.substring(0, 6));
+    }
   }
 
   async testRefreshSignInCookies() {
@@ -1001,13 +1009,17 @@ class ApiTests extends ApiTestFixtureBase {
 
   async testSignInPauseState() {
     assertDefined(this.host.getUserProfileInfo);
+    assertDefined(this.host.getPlatform);
     const profileInfo = await this.host.getUserProfileInfo();
+    const platform = await this.host.getPlatform();
 
     assertEquals('Glic Testing', profileInfo.displayName);
     assertEquals('glic-test@example.com', profileInfo.email);
     assertEquals('Glic', profileInfo.givenName);
     assertEquals(false, profileInfo.isManaged!);
-    assertTrue((profileInfo.localProfileName?.length ?? 0) > 0);
+    if (platform !== Platform.CHROME_OS) {
+      assertTrue((profileInfo.localProfileName?.length ?? 0) > 0);
+    }
   }
 
   async testSetContextAccessIndicator() {
@@ -2698,6 +2710,35 @@ class ApiTestWithoutOpen extends ApiTestFixtureBase {
     await assertRejects(this.host.getContextFromTab(tabId, {}), {
       withErrorMessage: 'GetContextFromTab not allowed while backgrounded',
     });
+  }
+
+  async testGetSkillSuccess() {
+    assertDefined(this.host.getSkillPreviews);
+    assertDefined(this.host.getSkill);
+    const skillPreviewsSequence =
+        observeSequence(this.host.getSkillPreviews());
+    const skills = await skillPreviewsSequence.waitFor(s => s.length === 2);
+    const targetSkill = skills.find(s => s.name === 'test_skill_1');
+    assertDefined(targetSkill);
+    const actualSkill = await this.host.getSkill(targetSkill.id);
+    assertDefined(actualSkill);
+    assertEquals(actualSkill.preview.id, targetSkill.id);
+    assertEquals(actualSkill.preview.name, 'test_skill_1');
+    assertEquals(actualSkill.preview.icon, 'test_icon_1');
+    assertEquals(actualSkill.prompt, 'test_prompt_1');
+  }
+
+  async testGetSkillPreviewsSuccess() {
+    assertDefined(this.host.getSkillPreviews);
+    const skillPreviewsSequence =
+        observeSequence(this.host.getSkillPreviews());
+    const skills = await skillPreviewsSequence.waitFor(s => s.length === 2);
+    const skill1 = skills.find(s => s.name === 'test_skill_1');
+    assertDefined(skill1);
+    assertEquals('test_icon_1', skill1.icon);
+    const skill2 = skills.find(s => s.name === 'test_skill_2');
+    assertDefined(skill2);
+    assertEquals('test_icon_2', skill2.icon);
   }
 }
 

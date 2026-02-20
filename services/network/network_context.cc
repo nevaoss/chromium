@@ -47,6 +47,7 @@
 #include "build/chromecast_buildflags.h"
 #include "components/cookie_config/cookie_store_util.h"
 #include "components/domain_reliability/monitor.h"
+#include "components/enterprise/buildflags/buildflags.h"
 #include "components/network_session_configurator/browser/network_session_configurator.h"
 #include "components/network_session_configurator/common/network_switches.h"
 #include "components/os_crypt/async/common/encryptor.h"
@@ -319,6 +320,9 @@ void CookieOSCryptAsyncDelegate::InitCallback(
     mojo::Remote<network::mojom::CookieEncryptionProvider> lifetime,
     os_crypt_async::Encryptor encryptor) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  // The Encryptor is moved between sequences here. Verify that it's only moved
+  // once.
+  CHECK(!instance_.has_value());
   instance_.emplace(std::move(encryptor));
   is_initialized_ = true;
   callbacks_.Notify();
@@ -2031,13 +2035,27 @@ void NetworkContext::ResolveHost(
     const net::NetworkAnonymizationKey& network_anonymization_key,
     mojom::ResolveHostParametersPtr optional_parameters,
     mojo::PendingRemote<mojom::ResolveHostClient> response_client) {
-  // Dns request is disallowed if network access is disabled for the nonce.
-  if (network_anonymization_key.GetNonce().has_value() &&
+  // Dns request is disallowed if network access is disabled for the partition
+  // nonce or the network_restrictions_id.
+  // TODO(crbug.com/447954811): For Connection Allowlist DNS lookups, define a
+  // less-strict mechanism that matches against the host portion of the URL.
+  GURL url = host->is_host_port_pair()
+                 ? url::SchemeHostPort(url::kHttpsScheme,
+                                       host->get_host_port_pair().host(),
+                                       host->get_host_port_pair().port())
+                       .GetURL()
+                 : host->get_scheme_host_port().GetURL();
+  bool is_network_disallowed_for_nonce =
+      network_anonymization_key.GetNonce().has_value() &&
       !IsNetworkForNonceAndUrlAllowed(
-          /*nonce=*/network_anonymization_key.GetNonce().value(),
-          /*url=*/host->is_host_port_pair()
-              ? GURL(host->get_host_port_pair().ToString())
-              : host->get_scheme_host_port().GetURL())) {
+          network_anonymization_key.GetNonce().value(), url);
+  bool is_network_disallowed_for_restrictions_id =
+      (optional_parameters &&
+       optional_parameters->network_restrictions_id.has_value() &&
+       !IsNetworkForNonceAndUrlAllowed(
+           optional_parameters->network_restrictions_id.value(), url));
+  if (is_network_disallowed_for_nonce ||
+      is_network_disallowed_for_restrictions_id) {
     mojo::Remote<mojom::ResolveHostClient> remote_response_client(
         std::move(response_client));
     remote_response_client->OnComplete(
@@ -2823,23 +2841,22 @@ URLRequestContextOwner NetworkContext::MakeURLRequestContext(
             params_->file_paths->no_vary_search_directory->path();
       }
       cache_params.type = network_session_configurator::ChooseCacheType();
-#if BUILDFLAG(IS_WIN)
-      // For enterprise users, we always use simple backend when encryption is
-      // enabled.
-      if (params_->enable_encrypted_http_cache) {
-        cache_params.type =
-            net::URLRequestContextBuilder::HttpCacheParams::DISK_SIMPLE;
-      }
-#endif
+
       if (params_->http_cache_file_operations_factory) {
         cache_params.file_operations_factory =
             base::MakeRefCounted<MojoBackendFileOperationsFactory>(
                 std::move(params_->http_cache_file_operations_factory));
       }
 
-      // For enterprise users, we wrap `BackendFileOperations` to intercept file
-      // I/O with encryption ops.
       if (params_->enable_encrypted_http_cache) {
+#if BUILDFLAG(ENTERPRISE_CACHE_ENCRYPTION)
+        // For enterprise users, we always use simple backend when encryption is
+        // enabled.
+        cache_params.type =
+            net::URLRequestContextBuilder::HttpCacheParams::DISK_SIMPLE;
+
+        // We wrap `BackendFileOperations` to intercept file I/O with encryption
+        // ops.
         if (!cache_params.file_operations_factory) {
           // Since it's the fallback later anyways, explicitly created here to
           // wrap.
@@ -2849,6 +2866,9 @@ URLRequestContextOwner NetworkContext::MakeURLRequestContext(
         cache_params.file_operations_factory = base::MakeRefCounted<
             enterprise_encryption::EncryptedBackendFileOperationsFactory>(
             std::move(cache_params.file_operations_factory));
+#else
+        NOTREACHED();
+#endif  // BUILDFLAG(ENTERPRISE_CACHE_ENCRYPTION)
       }
     }
     cache_params.reset_cache = params_->reset_http_cache_backend;
@@ -3676,7 +3696,5 @@ void NetworkContext::InitializePrefetchURLLoaderFactory() {
   CreateURLLoaderFactory(std::move(pending_receiver),
                          CreateURLLoaderFactoryParamsForPrefetch());
 }
-
-
 
 }  // namespace network

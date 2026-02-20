@@ -64,7 +64,8 @@ class MockContextualTasksPage : public contextual_tasks::mojom::Page {
   MOCK_METHOD(void,
               OnContextUpdated,
               (std::vector<contextual_tasks::mojom::TabPtr>,
-               std::vector<contextual_tasks::mojom::UploadedFilePtr>),
+               std::vector<contextual_tasks::mojom::UploadedFilePtr>,
+               std::vector<contextual_tasks::mojom::ImagePtr>),
               (override));
   MOCK_METHOD(void, HideInput, (), (override));
   MOCK_METHOD(void, RestoreInput, (), (override));
@@ -94,7 +95,8 @@ class MockLensSearchController : public LensSearchController {
 
   MOCK_METHOD(void,
               OpenLensOverlay,
-              (lens::LensOverlayInvocationSource invocation_source),
+              (lens::LensOverlayInvocationSource invocation_source,
+               bool should_show_csb),
               (override));
 };
 
@@ -256,7 +258,8 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksLensBrowserTest, HandleLensButtonClick) {
             auto mock = std::make_unique<MockLensSearchController>(&tab);
             EXPECT_CALL(*mock,
                         OpenLensOverlay(lens::LensOverlayInvocationSource::
-                                            kContextualTasksComposebox))
+                                            kContextualTasksComposebox,
+                                        true))
                 .Times(1);
             return std::unique_ptr<LensSearchController>(std::move(mock));
           }));

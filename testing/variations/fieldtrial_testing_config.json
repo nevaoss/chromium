@@ -2736,10 +2736,7 @@
                 {
                     "name": "Enabled",
                     "enable_features": [
-                        "AutofillEnableEmailOrLoyaltyCardsFilling",
-                        "AutofillEnableLoyaltyCardsFilling",
-                        "IPH_AutofillEnableLoyaltyCards",
-                        "SyncAutofillLoyaltyCard"
+                        "AutofillEnableNonAffiliatedLoyaltyCardsFilling"
                     ]
                 }
             ]
@@ -2946,27 +2943,6 @@
                     "name": "Enabled",
                     "enable_features": [
                         "AutofillUseINAddressModel"
-                    ]
-                }
-            ]
-        }
-    ],
-    "AutofillIgnoreCheckableElements": [
-        {
-            "platforms": [
-                "android",
-                "android_webview",
-                "chromeos",
-                "ios",
-                "linux",
-                "mac",
-                "windows"
-            ],
-            "experiments": [
-                {
-                    "name": "Enabled",
-                    "enable_features": [
-                        "AutofillIgnoreCheckableElements"
                     ]
                 }
             ]
@@ -3655,27 +3631,6 @@
                     "name": "Enabled",
                     "enable_features": [
                         "AvoidDoubleMultiwindowChanges"
-                    ]
-                }
-            ]
-        }
-    ],
-    "AvoidDuplicateDelayBeginFrame": [
-        {
-            "platforms": [
-                "android",
-                "android_webview",
-                "chromeos",
-                "ios",
-                "linux",
-                "mac",
-                "windows"
-            ],
-            "experiments": [
-                {
-                    "name": "Enabled",
-                    "enable_features": [
-                        "AvoidDuplicateDelayBeginFrame"
                     ]
                 }
             ]
@@ -11952,14 +11907,14 @@
             "platforms": [
                 "mac",
                 "windows",
-                "linux"
+                "linux",
+                "chromeos"
             ],
             "experiments": [
                 {
-                    "name": "Enabled_20251023",
+                    "name": "Enabled_20260106",
                     "enable_features": [
-                        "GlicShareImage",
-                        "SvgFallBackToContainerSize"
+                        "GlicShareImage"
                     ]
                 }
             ]
@@ -12193,6 +12148,24 @@
                     "enable_features": [
                         "LensCameraAssistedSearch",
                         "LensOnQuickActionSearchWidget"
+                    ]
+                }
+            ]
+        }
+    ],
+    "GpuPersistentCache": [
+        {
+            "platforms": [
+                "android",
+                "chromeos",
+                "mac",
+                "windows"
+            ],
+            "experiments": [
+                {
+                    "name": "Enabled",
+                    "enable_features": [
+                        "GpuPersistentCache"
                     ]
                 }
             ]
@@ -14355,6 +14328,23 @@
             ]
         }
     ],
+    "IOSReaderModeTriggerHeuristic": [
+        {
+            "platforms": [
+                "ios"
+            ],
+            "experiments": [
+                {
+                    "name": "Enabled",
+                    "enable_features": [
+                        "EnableReadabilityHeuristic",
+                        "EnableReaderModeOptimizationGuideEligibility",
+                        "ReaderModeUseReadability"
+                    ]
+                }
+            ]
+        }
+    ],
     "IOSReaderModeWithTranslateSettings": [
         {
             "platforms": [
@@ -14365,21 +14355,6 @@
                     "name": "Enabled",
                     "enable_features": [
                         "EnableReaderModeTranslationWithInfobar"
-                    ]
-                }
-            ]
-        }
-    ],
-    "IOSSafariImportWorkflow": [
-        {
-            "platforms": [
-                "ios"
-            ],
-            "experiments": [
-                {
-                    "name": "Enabled",
-                    "disable_features": [
-                        "ImportPasswordsFromSafari"
                     ]
                 }
             ]
@@ -17108,6 +17083,22 @@
                     "name": "Enabled",
                     "enable_features": [
                         "NoPreReadMainDllStartup"
+                    ]
+                }
+            ]
+        }
+    ],
+    "NoSelectionMenuCaching": [
+        {
+            "platforms": [
+                "android",
+                "android_webview"
+            ],
+            "experiments": [
+                {
+                    "name": "Enabled",
+                    "enable_features": [
+                        "NoSelectionMenuCaching"
                     ]
                 }
             ]
@@ -25941,7 +25932,8 @@
                 {
                     "name": "Enabled",
                     "enable_features": [
-                        "ThrottleMainFrameTo60Hz"
+                        "ThrottleMainFrameTo60Hz",
+                        "UrgentMainFrameForInput"
                     ]
                 }
             ]
@@ -25956,8 +25948,7 @@
                 {
                     "name": "Enabled",
                     "enable_features": [
-                        "ThrottleMainFrameTo60HzWebView",
-                        "UrgentMainFrameForInput"
+                        "ThrottleMainFrameTo60HzWebView"
                     ]
                 }
             ]
@@ -27141,6 +27132,43 @@
             ]
         }
     ],
+    "V8NoTrimDescriptorArray": [
+        {
+            "platforms": [
+                "android",
+                "android_webview",
+                "chromeos",
+                "linux",
+                "mac",
+                "windows"
+            ],
+            "experiments": [
+                {
+                    "name": "NoTrimWithStack",
+                    "enable_features": [
+                        "V8Flag_trim_descriptor_arrays_in_gc"
+                    ],
+                    "disable_features": [
+                        "V8Flag_trim_descriptor_arrays_in_gc_with_stack"
+                    ]
+                },
+                {
+                    "name": "NoTrim",
+                    "disable_features": [
+                        "V8Flag_trim_descriptor_arrays_in_gc",
+                        "V8Flag_trim_descriptor_arrays_in_gc_with_stack"
+                    ]
+                },
+                {
+                    "name": "Default",
+                    "enable_features": [
+                        "V8Flag_trim_descriptor_arrays_in_gc",
+                        "V8Flag_trim_descriptor_arrays_in_gc_with_stack"
+                    ]
+                }
+            ]
+        }
+    ],
     "V8ParserAblation": [
         {
             "platforms": [
@@ -27536,7 +27564,7 @@
                 {
                     "name": "Enabled",
                     "enable_features": [
-                        "kVisitedLinksOn404"
+                        "VisitedLinksOn404"
                     ]
                 }
             ]
@@ -27598,7 +27626,7 @@
             ]
         }
     ],
-    "VizDirectCompositorThreadIpcWindows": [
+    "VizWithIoMessagePump": [
         {
             "platforms": [
                 "windows"
@@ -27610,37 +27638,7 @@
                         "VizDirectCompositorThreadIpcFrameSinkManager"
                     ],
                     "disable_features": [
-                        "VizDirectCompositorThreadIpcNonRoot"
-                    ]
-                },
-                {
-                    "name": "EnabledNonRoot",
-                    "enable_features": [
-                        "VizDirectCompositorThreadIpcNonRoot"
-                    ],
-                    "disable_features": [
-                        "VizDirectCompositorThreadIpcFrameSinkManager"
-                    ]
-                },
-                {
-                    "name": "Control",
-                    "disable_features": [
-                        "VizDirectCompositorThreadIpcFrameSinkManager",
-                        "VizDirectCompositorThreadIpcNonRoot"
-                    ]
-                }
-            ]
-        }
-    ],
-    "VizWithIoMessagePump": [
-        {
-            "platforms": [
-                "windows"
-            ],
-            "experiments": [
-                {
-                    "name": "Enabled",
-                    "enable_features": [
+                        "VizDirectCompositorThreadIpcNonRoot",
                         "VizWithIoMessagePump"
                     ]
                 }

@@ -320,6 +320,7 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
         _inputPlateContainerView.layer.cornerRadius;
   }
   [self updateCarouselFade];
+  [self updatePreferredContentSize];
 }
 
 - (void)viewWillAppear:(BOOL)animated {
@@ -1581,18 +1582,31 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
 - (void)updateInputPlateStackViewAnimated:(BOOL)animated {
   if (!animated) {
     [self updateInputPlateStackViewContent];
+    [self updatePreferredContentSize];
     return;
   }
 
+  __weak __typeof(self) weakSelf = self;
   [UIView animateWithDuration:kCompactModeAnimationDuration
-                        delay:0
-                      options:UIViewAnimationCurveEaseInOut
-                   animations:^{
-                     [self updateInputPlateStackViewContent];
-                     [self.inputPlateStackView layoutIfNeeded];
-                     [self.view layoutIfNeeded];
-                   }
-                   completion:nil];
+      delay:0
+      options:UIViewAnimationCurveEaseInOut
+      animations:^{
+        [self updateInputPlateStackViewContent];
+        [self.inputPlateStackView layoutIfNeeded];
+        [self.view layoutIfNeeded];
+      }
+      completion:^(BOOL complete) {
+        if (complete) {
+          [weakSelf updatePreferredContentSize];
+        }
+      }];
+}
+
+// Updates the preferred content size based on the input plate content height.
+- (void)updatePreferredContentSize {
+  CGFloat inputHeight = [self inputHeight];
+  self.preferredContentSize =
+      CGSizeMake(self.view.bounds.size.width, inputHeight);
 }
 
 /// Generates a banana icon image to be used in the UI.

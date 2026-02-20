@@ -164,13 +164,6 @@ const char kAutofillEnableWalletBrandingDescription[] =
     "When enabled, certain strings and logos referencing Google Account, "
     "Google Payments, and Google Pay will instead reference Google Wallet.";
 
-const char kAutofillLocalSaveCardBottomSheetName[] =
-    "Enable save card bottomsheet for local save";
-const char kAutofillLocalSaveCardBottomSheetDescription[] =
-    "When enabled, save card bottomsheet will be shown to save the card "
-    "locally when the user has not previously rejected the offer to save the "
-    "card.";
-
 const char kAutofillManualTestingDataName[] = "Autofill manual testing data";
 const char kAutofillManualTestingDataDescription[] =
     "When set, imports the addresses and cards specified on startup. WARNING: "
@@ -192,13 +185,6 @@ const char kAutofillPaymentsSheetV2Description[] =
 const char kAutofillPruneSuggestionsName[] = "Autofill Prune Suggestions";
 const char kAutofillPruneSuggestionsDescription[] =
     "Further limits the number of suggestions in the Autofill dropdown.";
-
-const char kAutofillSaveCardBottomSheetName[] =
-    "Enable save card bottomsheet for upload save";
-const char kAutofillSaveCardBottomSheetDescription[] =
-    "When enabled, save card bottomsheet will be shown to save the card to the "
-    "server when the user has not previously rejected the offer to save the "
-    "card, and both a valid expiry date and cardholder name are present.";
 
 const char kAutofillShowManualFillForVirtualCardsName[] =
     "Show Manual Fill for Virtual Cards";
@@ -862,10 +848,6 @@ const char kIdentityConfirmationSnackbarName[] =
     "Identity Confirmation Snackbar";
 const char kIdentityConfirmationSnackbarDescription[] =
     "When enabled, the identity confirmation snackbar will show on startup.";
-
-const char kImportPasswordsFromSafariName[] = "Import Passwords From Safari";
-const char kImportPasswordsFromSafariDescription[] =
-    "When enabled, allows users to import passwords from Safari.";
 
 const char kInProductHelpDemoModeName[] = "In-Product Help Demo Mode";
 const char kInProductHelpDemoModeDescription[] =

@@ -6140,9 +6140,6 @@ are declared in tools/grit/grit_args.gni.
         <message name="IDS_EXTENSIONS_REQUEST_ACCESS_BUTTON_TOOLTIP_SINGLE_EXTENSION" desc="The tooltip text of the request access button that appears on the toolbar when an extension requests access to the site">
           Click to allow "<ph name="EXTENSIONS_REQUESTING_ACCESS">$1<ex>Extension A</ex></ph>" on <ph name="ORIGIN">$2<ex>google.com</ex></ph>
         </message>
-        <message name="IDS_EXTENSIONS_REQUEST_ACCESS_BUTTON_TOOLTIP_MULTIPLE_EXTENSIONS" desc="The tooltip text of the request access button that appears on the toolbar when an extension requests access to the site">
-          Click to allow on <ph name="ORIGIN">$1<ex>google.com</ex></ph>:
-        </message>
         <message name="IDS_EXTENSIONS_TOOLBAR_ACTION_HOVER_CARD_TITLE_HAS_ACCESS" desc="The title in the card that shows up on mouse hover of a toolbar action when extension has access to the current site.">
           Allowed to read &amp; change
         </message>
@@ -6603,6 +6600,9 @@ Keep your key file in a safe place. You will need it to create new versions of y
 
       <!-- Extensions Menu bubble -->
       <if expr="enable_extensions_core">
+        <message name="IDS_EXTENSIONS_REQUEST_ACCESS_BUTTON_TOOLTIP_MULTIPLE_EXTENSIONS" desc="The tooltip text of the request access button that appears on the toolbar when an extension requests access to the site">
+          Click to allow on <ph name="ORIGIN">$1<ex>google.com</ex></ph>:
+        </message>
         <message name="IDS_EXTENSIONS_MENU_TITLE" desc="Title of the Extensions Menu" formatter_data="android_java">
           Extensions
         </message>
@@ -19899,6 +19899,9 @@ Please help our engineers fix this problem. Tell us what happened right before y
       <message name="IDS_UPDATER_ERROR_DETAILS" desc="Details of an error encountered by the updater, including numeric category, code, and extra code values.">
         Error: Category: <ph name="CATEGORY">$1<ex>1</ex></ph>, Code: <ph name="CODE">$2<ex>2</ex></ph>, Extra Code: <ph name="EXTRA_CODE">$3<ex>0</ex></ph>
       </message>
+      <message name="IDS_UPDATER_EVENT_LIST_TITLE" desc="Title for a section of the chrome://updater page which displays an event log detailing the activity of Chrome's updater on a user's system.">
+        Event History
+      </message>
       <message name="IDS_UPDATER_EVENT_TYPE" desc="Label for a filter category allowing the user to filter logs by the type of event.">
         Event Type
       </message>
@@ -19968,6 +19971,9 @@ Please help our engineers fix this problem. Tell us what happened right before y
       <message name="IDS_UPDATER_LAST_STARTED_LABEL" desc="A label for a timestamp indicating the last time the Chrome Updater performed its periodic tasks.">
         Last Periodic Task Run:
       </message>
+      <message name="IDS_UPDATER_NO_UPDATER_FOUND" desc="A message indicating that Chrome's updater does not appear to be installed on the user's machine.">
+        No updater installations could be found.
+      </message>
       <message name="IDS_UPDATER_NEVER" desc="Text indicating that that an action has never happened. For instance, this is used in place of a timestamp to indicate that an instance of the Chrome Updater has never checked for any updates.">
         Never
       </message>
@@ -19992,6 +19998,9 @@ Please help our engineers fix this problem. Tell us what happened right before y
       <message name="IDS_UPDATER_OUTCOME_UNKNOWN" desc="Summary of an event carried out by the Chrome Updater where the outcome is unknown.">
         Operation completed with unknown outcome
       </message>
+      <message name="IDS_UPDATER_PAGE_TITLE" desc="Title of the chrome://updater page, which displays information about the state and history of the Chrome updater installation on the users machine.">
+        Updater
+      </message>
       <message name="IDS_UPDATER_PARSE_ERROR_EVENTS" desc="Message indicating that one or more events could not be parsed and are hidden from the Chrome Updater event log.">
         {NUM_EVENTS, plural, =1 {1 event could not be parsed and is not shown} other {# events could not be parsed and are not shown}}
       </message>
@@ -20007,6 +20016,9 @@ Please help our engineers fix this problem. Tell us what happened right before y
       <message name="IDS_UPDATER_QUALIFICATION_SUCCEEDED" desc="Summary of an event in which the Chrome Updater's self-check succeeded, indicating that the program is working as intended and should manage updates for Chrome">
         Self test succeeded
       </message>
+      <message name="IDS_UPDATER_QUERY_FAILED" desc="An error message indicating that Chrome's updater's state could not be queried.">
+        Failed to query the updater state.
+      </message>
       <message name="IDS_UPDATER_REMOVE_FILTER" desc="Accessibility label for the button that removes a specific filter chip.">
         Remove filter
       </message>
@@ -20021,6 +20033,9 @@ Please help our engineers fix this problem. Tell us what happened right before y
       </message>
       <message name="IDS_UPDATER_START_DATE" desc="Label for the start date input field.">
         Start Date:
+      </message>
+      <message name="IDS_UPDATER_STATE_TITLE" desc="Title for a section of the chrome://updater page which displays information about the current state of the instances of Chrome's updater on the user's system.">
+        Status
       </message>
       <message name="IDS_UPDATER_UNDATED_EVENTS" desc="Message indicating that the timestamp of one or more events was not able to determined. Events without timestamps can't be displayed in the Chrome Updater event log.">
         {NUM_EVENTS, plural, =1 {1 event could not be dated and is not shown} other {# events could not be dated and are not shown}}

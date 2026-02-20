@@ -763,6 +763,7 @@ prefs when the profile is loaded.  -->
     {AndroidGetAccountsTypes}
   </summary>
   <token key="AndroidGetAccountsTypes">
+    <variant name="" summary="Using any API"/>
     <variant name="_AccountManager" summary="Using Android AccountManager API"/>
     <variant name="_GoogleAuthClient" summary="Using GoogleAuthClient API"/>
     <variant name="_GoogleAuthUtil" summary="Using GoogleAuthUtil API"/>
@@ -3319,17 +3320,6 @@ OAuth Multilogin call. -->
     enabled, this also records the place where the browser sign-in would take
     place, if the feature was disabled. See also the enum `GaiaIntegrationState`
     description.
-  </summary>
-</histogram>
-
-<histogram name="Signin.SigninManager.SigninAccessPoint"
-    enum="SigninAccessPoint" expires_after="2026-06-07">
-  <owner>droger@chromium.org</owner>
-  <owner>chrome-signin-team@google.com</owner>
-  <summary>
-    Records the access point used by the `SigninManager` when setting the
-    primary account. This is a subset of the histogram Signin.SignIn.Completed,
-    exclusively for the case when the primary account is set by `SigninManager`.
   </summary>
 </histogram>
 

@@ -5,6 +5,7 @@
 import './icons.html.js';
 import '//resources/cr_elements/cr_action_menu/cr_action_menu.js';
 import '//resources/cr_elements/cr_icon/cr_icon.js';
+import '//resources/cr_elements/cr_auto_img/cr_auto_img.js';
 import 'chrome://resources/cr_components/composebox/icons.html.js';
 
 import {assert} from '//resources/js/assert.js';
@@ -12,7 +13,7 @@ import type {CrActionMenuElement} from 'chrome://resources/cr_elements/cr_action
 import {getFaviconForPageURL} from 'chrome://resources/js/icon.js';
 import {CrLitElement} from 'chrome://resources/lit/v3_0/lit.rollup.js';
 
-import type {Tab, UploadedFile} from './contextual_tasks.mojom-webui.js';
+import type {Image, Tab, UploadedFile} from './contextual_tasks.mojom-webui.js';
 import type {BrowserProxy} from './contextual_tasks_browser_proxy.js';
 import {BrowserProxyImpl} from './contextual_tasks_browser_proxy.js';
 import {getCss} from './sources_menu.css.js';
@@ -41,11 +42,12 @@ export class SourcesMenuElement extends CrLitElement {
     return {
       attachedTabs: {type: Array},
       attachedFiles: {type: Array},
+      attachedImages: {type: Array},
     };
   }
-
   accessor attachedTabs: Tab[] = [];
   accessor attachedFiles: UploadedFile[] = [];
+  accessor attachedImages: Image[] = [];
   private browserProxy_: BrowserProxy = BrowserProxyImpl.getInstance();
 
   showAt(target: HTMLElement) {
@@ -81,6 +83,14 @@ export class SourcesMenuElement extends CrLitElement {
     this.browserProxy_.handler.onFileClickedFromSourcesMenu(file.url);
   }
 
+  protected onImageClick_(e: Event) {
+    this.close();
+    const index = Number((e.currentTarget as HTMLElement).dataset['index']);
+    const image = this.attachedImages[index];
+    assert(image);
+    this.browserProxy_.handler.onImageClickedFromSourcesMenu(image.url);
+  }
+
   protected faviconUrl_(tab: Tab): string {
     return getFaviconForPageURL(tab.url, false);
   }
@@ -93,9 +103,22 @@ export class SourcesMenuElement extends CrLitElement {
     }
   }
 
-  protected shouldShowFileDivider_(): boolean {
-    // TODO(crbug.com/467166272): Update condition for images.
-    return this.attachedTabs.length > 0 && this.attachedFiles.length > 0;
+  // Divider before the images section.
+  // Not shown if no images or images is first section.
+  protected shouldShowDividerBeforeImagesSection_(): boolean {
+    const hasElementsAbove = this.attachedTabs.length > 0;
+    const hasElementsBelow = this.attachedImages.length > 0;
+    return hasElementsAbove && hasElementsBelow;
+  }
+
+  // Divider before the files section.
+  // Shown if files is second section after images/tabs.
+  // Not shown if no files or files is first section
+  protected shouldShowFileDividerBeforeTabsSection_(): boolean {
+    const hasElementsAbove =
+        this.attachedTabs.length > 0 || this.attachedImages.length > 0;
+    const hasElementsBelow = this.attachedFiles.length > 0;
+    return hasElementsAbove && hasElementsBelow;
   }
 }
 

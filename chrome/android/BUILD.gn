@@ -418,6 +418,7 @@ if (_is_default_toolchain) {
       "//chrome/browser/notifications/chime/android:java",
       "//chrome/browser/ntp_customization:java",
       "//chrome/browser/omaha/android:java",
+      "//chrome/browser/open_in_app/android:java",
       "//chrome/browser/optimization_guide/android:java",
       "//chrome/browser/page_content_annotations:java",
       "//chrome/browser/page_image_service/android:java",
@@ -999,10 +1000,12 @@ if (_is_default_toolchain) {
       "//components/resources/android/permissions_resource_id.h",
       "//components/resources/android/sms_resource_id.h",
       "//components/resources/android/webxr_resource_id.h",
+      "$root_gen_dir/build/branding_buildflags.h",
       "$root_gen_dir/device/vr/buildflags/buildflags.h",
     ]
 
     deps = [
+      "//build:branding_buildflags",
       "//chrome/browser/page_info:page_info_buildflags",
       "//components/password_manager/core/browser:password_manager_buildflags",
       "//device/vr/buildflags",

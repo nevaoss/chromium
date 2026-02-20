@@ -40,6 +40,9 @@ export declare interface GlicHostRegistry {
 
 /** Additional context object. */
 export declare interface AdditionalContext {
+  /** Where the additional context came from */
+  source?: AdditionalContextSource;
+
   /** User facing name of the context.  Eg. the filename, or full url */
   name?: string;
 
@@ -2591,6 +2594,8 @@ export enum InvocationSource {
   SHARED_IMAGE = 13,
   // From the handoff button.
   HANDOFF_BUTTON = 14,
+  // From invoking skills.
+  SKILLS = 15,
 }
 
 ///////////////////////////////////////////////
@@ -2622,6 +2627,13 @@ export enum WebUseCounter {
   SUBMIT_PROMPT_WITH_AUTO_MODE = 1,
   TASK_INTERRUPTED_FOR_USER_CONFIRMATION = 2,
   TASK_INTERRUPTED_FOR_USER_CLARIFICATION = 3,
+}
+
+///////////////////////////////////////////////
+// WARNING - GENERATED FROM MOJOM, DO NOT EDIT.
+export enum AdditionalContextSource {
+  SHARE_CONTEXT_MENU = 0,
+  REGION_SELECTION = 1,
 }
 
 ///////////////////////////////////////////////

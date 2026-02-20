@@ -339,7 +339,8 @@ class AutofillExternalDelegateTest : public testing::Test,
             autofill_client().GetSyncService(),
             webdata_helper_.autofill_webdata_service(),
             /*history_service=*/nullptr,
-            /*strike_database=*/nullptr));
+            /*strike_database=*/nullptr,
+            /*variation_country_code=*/GeoIpCountryCode("US")));
     CreateAutofillDriver();
   }
 
@@ -548,10 +549,9 @@ TEST_F(AutofillExternalDelegateTest, GetMainFillingProduct) {
             FillingProduct::kAutocomplete);
 
   // Show only datalist suggestion in the popup.
-  OnSuggestionsReturned(
-      queried_field().global_id(),
-      {test::CreateAutofillSuggestion(SuggestionType::kDatalistEntry,
-                                      u"datalist")});
+  OnSuggestionsReturned(queried_field().global_id(),
+                        {test::CreateAutofillSuggestion(
+                            SuggestionType::kDatalistEntry, u"datalist")});
   EXPECT_EQ(external_delegate().GetMainFillingProduct(),
             FillingProduct::kDataList);
 
@@ -766,8 +766,7 @@ TEST_F(AutofillExternalDelegateTest,
 // Test that `BnplManager::OnSuggestionsShown` will be called if the
 // suggestion list contains a credit card entry.
 TEST_F(AutofillExternalDelegateTest, BnplSuggestionsShownWithCreditCardEntry) {
-  EXPECT_CALL(*autofill_manager().GetPaymentsBnplManager(), OnSuggestionsShown)
-      .Times(1);
+  EXPECT_CALL(*autofill_manager().GetPaymentsBnplManager(), OnSuggestionsShown);
 
   const std::vector<Suggestion> suggestions = {
       test::CreateAutofillSuggestion(SuggestionType::kCreditCardEntry),
@@ -1351,7 +1350,7 @@ TEST_F(AutofillExternalDelegateTest, AcceptSuggestion_TriggerSource) {
   IssueOnQuery(AutofillSuggestionTriggerSource::kFormControlElementClicked);
   auto expected_source =
 #if BUILDFLAG(IS_ANDROID)
-      AutofillTriggerSource::kKeyboardAccessory;
+      AutofillTriggerSource::kKeyboardAccessoryOrBottomSheet;
 #else
       AutofillTriggerSource::kPopup;
 #endif
@@ -1393,16 +1392,16 @@ TEST_F(AutofillExternalDelegateTest, FillAutofillAiFillsFullForm) {
   Suggestion fill_suggestion(SuggestionType::kFillAutofillAi);
   fill_suggestion.payload = Suggestion::AutofillAiPayload(passport.guid());
 
-  EXPECT_CALL(autofill_manager(),
-              FillOrPreviewForm(mojom::ActionPersistence::kPreview,
-                                HasQueriedFormId(), IsQueriedFieldId(), _,
-                                AutofillTriggerSource::kAutofillAi));
+  EXPECT_CALL(
+      autofill_manager(),
+      FillOrPreviewForm(mojom::ActionPersistence::kPreview, HasQueriedFormId(),
+                        IsQueriedFieldId(), _, AutofillTriggerSource::kPopup));
   external_delegate().DidSelectSuggestion(fill_suggestion);
 
-  EXPECT_CALL(autofill_manager(),
-              FillOrPreviewForm(mojom::ActionPersistence::kFill,
-                                HasQueriedFormId(), IsQueriedFieldId(), _,
-                                AutofillTriggerSource::kAutofillAi));
+  EXPECT_CALL(
+      autofill_manager(),
+      FillOrPreviewForm(mojom::ActionPersistence::kFill, HasQueriedFormId(),
+                        IsQueriedFieldId(), _, AutofillTriggerSource::kPopup));
   external_delegate().DidAcceptSuggestion(fill_suggestion, {});
 }
 
@@ -1435,13 +1434,58 @@ TEST_F(AutofillExternalDelegateTest, AutofillAiReauthFlow_ReauthAccepted) {
               GetDeviceAuthenticator("Autofill.Ai.ReauthToFill"))
       .WillOnce(Return(std::move(authenticator)));
 
-  EXPECT_CALL(autofill_manager(),
-              FillOrPreviewForm(mojom::ActionPersistence::kFill,
-                                HasQueriedFormId(), IsQueriedFieldId(), _,
-                                AutofillTriggerSource::kAutofillAi));
+  EXPECT_CALL(
+      autofill_manager(),
+      FillOrPreviewForm(mojom::ActionPersistence::kFill, HasQueriedFormId(),
+                        IsQueriedFieldId(), _, AutofillTriggerSource::kPopup));
 
   Suggestion fill_suggestion(SuggestionType::kFillAutofillAi);
   fill_suggestion.payload = Suggestion::AutofillAiPayload(vehicle.guid());
+  external_delegate().DidAcceptSuggestion(fill_suggestion, {});
+}
+
+// Tests that the re-authentication message contains the origin host when
+// accepting a `kFillAutofillAi` suggestion that requires re-authentication.
+// Note however that the messaged passed to Android is empty since the
+// platform does not allow it to begin with.
+TEST_F(AutofillExternalDelegateTest, AutofillAiReauthFlow_ReauthMessage) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitWithFeatures({features::kAutofillAiWithDataSchema,
+                                        features::kAutofillAiReauthRequired},
+                                       {});
+  autofill_client().GetPrefs()->SetBoolean(
+      prefs::kAutofillAiReauthBeforeViewingSensitiveData, true);
+
+  EntityInstance passport = test::GetPassportEntityInstanceWithRandomGuid();
+  autofill_client().GetEntityDataManager()->AddOrUpdateEntityInstance(passport);
+  webdata_helper().WaitUntilIdle();
+
+  const GURL kUrl = GURL("https://acoolwebsite.test");
+  // Create form with a passport number, which triggers obfuscation and thus
+  // re-auth.
+  IssueOnQuery({.fields = {{.role = PASSPORT_NUMBER,
+                            .origin = url::Origin::Create(kUrl)}}});
+
+  auto authenticator =
+      std::make_unique<device_reauth::MockDeviceAuthenticator>();
+  EXPECT_CALL(*authenticator, CanAuthenticateWithBiometricOrScreenLock)
+      .WillOnce(Return(true));
+
+  std::u16string expected_message;
+#if !BUILDFLAG(IS_ANDROID)
+  expected_message = l10n_util::GetStringFUTF16(IDS_AUTOFILL_AI_FILLING_REAUTH,
+                                                base::UTF8ToUTF16(kUrl.host()));
+#endif
+  EXPECT_CALL(*authenticator, AuthenticateWithMessage(expected_message, _))
+      .WillOnce(RunOnceCallback<1>(true));
+
+  EXPECT_CALL(autofill_client(), GetDeviceAuthenticator)
+      .WillOnce(Return(std::move(authenticator)));
+
+  EXPECT_CALL(autofill_manager(), FillOrPreviewForm);
+
+  Suggestion fill_suggestion(SuggestionType::kFillAutofillAi);
+  fill_suggestion.payload = Suggestion::AutofillAiPayload(passport.guid());
   external_delegate().DidAcceptSuggestion(fill_suggestion, {});
 }
 
@@ -1496,10 +1540,10 @@ TEST_F(AutofillExternalDelegateTest, AutofillAiReauthFlow_NoAuthenticator) {
   EXPECT_CALL(autofill_client(),
               GetDeviceAuthenticator("Autofill.Ai.ReauthToFill"))
       .WillOnce(Return(::testing::ByMove(nullptr)));
-  EXPECT_CALL(autofill_manager(),
-              FillOrPreviewForm(mojom::ActionPersistence::kFill,
-                                HasQueriedFormId(), IsQueriedFieldId(), _,
-                                AutofillTriggerSource::kAutofillAi));
+  EXPECT_CALL(
+      autofill_manager(),
+      FillOrPreviewForm(mojom::ActionPersistence::kFill, HasQueriedFormId(),
+                        IsQueriedFieldId(), _, AutofillTriggerSource::kPopup));
 
   Suggestion fill_suggestion(SuggestionType::kFillAutofillAi);
   fill_suggestion.payload = Suggestion::AutofillAiPayload(vehicle.guid());
@@ -1523,10 +1567,10 @@ TEST_F(AutofillExternalDelegateTest, AutofillAiReauthFlow_FlagOff) {
   EXPECT_CALL(autofill_client(),
               GetDeviceAuthenticator("Autofill.Ai.ReauthToFill"))
       .Times(0);
-  EXPECT_CALL(autofill_manager(),
-              FillOrPreviewForm(mojom::ActionPersistence::kFill,
-                                HasQueriedFormId(), IsQueriedFieldId(), _,
-                                AutofillTriggerSource::kAutofillAi));
+  EXPECT_CALL(
+      autofill_manager(),
+      FillOrPreviewForm(mojom::ActionPersistence::kFill, HasQueriedFormId(),
+                        IsQueriedFieldId(), _, AutofillTriggerSource::kPopup));
 
   Suggestion fill_suggestion(SuggestionType::kFillAutofillAi);
   fill_suggestion.payload = Suggestion::AutofillAiPayload(vehicle.guid());
@@ -1554,10 +1598,10 @@ TEST_F(AutofillExternalDelegateTest,
   EXPECT_CALL(autofill_client(),
               GetDeviceAuthenticator("Autofill.Ai.ReauthToFill"))
       .Times(0);
-  EXPECT_CALL(autofill_manager(),
-              FillOrPreviewForm(mojom::ActionPersistence::kFill,
-                                HasQueriedFormId(), IsQueriedFieldId(), _,
-                                AutofillTriggerSource::kAutofillAi));
+  EXPECT_CALL(
+      autofill_manager(),
+      FillOrPreviewForm(mojom::ActionPersistence::kFill, HasQueriedFormId(),
+                        IsQueriedFieldId(), _, AutofillTriggerSource::kPopup));
 
   Suggestion fill_suggestion(SuggestionType::kFillAutofillAi);
   fill_suggestion.payload = Suggestion::AutofillAiPayload(vehicle.guid());
@@ -1584,7 +1628,7 @@ TEST_F(AutofillExternalDelegateTest, AcceptedOtpSuggestion) {
   // `kKeyboardAccessory`, depending on the platform.
   auto expected_source =
 #if BUILDFLAG(IS_ANDROID)
-      AutofillTriggerSource::kKeyboardAccessory;
+      AutofillTriggerSource::kKeyboardAccessoryOrBottomSheet;
 #else
       AutofillTriggerSource::kPopup;
 #endif

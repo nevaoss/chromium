@@ -866,8 +866,6 @@ GetTipsNotificationsAlternativeStringVersion() {
               TipsNotificationsAlternativeStringVersion::kDefault)));
 }
 
-BASE_FEATURE(kImportPasswordsFromSafari, base::FEATURE_ENABLED_BY_DEFAULT);
-
 BASE_FEATURE(kIOSSyncedSetUp, base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool IsSyncedSetUpEnabled() {
@@ -940,6 +938,9 @@ bool ShouldShowKeyboardAccessoryFeatures() {
 BASE_FEATURE(kLocationBarBadgeMigration, base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool IsLocationBarBadgeMigrationEnabled() {
+  if (IsChromeNextIaEnabled()) {
+    return true;
+  }
   return base::FeatureList::IsEnabled(kLocationBarBadgeMigration);
 }
 

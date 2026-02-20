@@ -3513,6 +3513,17 @@ RenderFrameHostImpl::GetPendingIsolationInfoForSubresources() {
   return config.isolation_info();
 }
 
+std::optional<base::UnguessableToken>
+RenderFrameHostImpl::GetNetworkRestrictionsID() {
+  // TODO(crbug.com/447954811): Consider refactoring this method after
+  // RenderDocument launches, because we may not need to consider pending
+  // navigations anymore.
+  auto config =
+      SubresourceLoaderFactoriesConfig::ForPendingOrLastCommittedNavigation(
+          *this);
+  return config.network_restrictions_id();
+}
+
 void RenderFrameHostImpl::GetCanonicalUrl(
     base::OnceCallback<void(const std::optional<GURL>&)> callback) {
   if (IsRenderFrameLive()) {
@@ -10986,17 +10997,6 @@ void RenderFrameHostImpl::CalculateUntrustedNetworkStatus() {
   }
 }
 
-std::optional<base::UnguessableToken>
-RenderFrameHostImpl::GetNetworkRestrictionsID() {
-  // TODO(crbug.com/447954811): Consider refactoring this method after
-  // RenderDocument launches, because we may not need to consider pending
-  // navigations anymore.
-  auto config =
-      SubresourceLoaderFactoriesConfig::ForPendingOrLastCommittedNavigation(
-          *this);
-  return config.network_restrictions_id();
-}
-
 RenderFrameHostImpl* RenderFrameHostImpl::GetBeforeUnloadInitiator() {
   for (RenderFrameHostImpl* frame = this; frame; frame = frame->GetParent()) {
     if (frame->is_waiting_for_beforeunload_completion_) {
@@ -17076,7 +17076,9 @@ void RenderFrameHostImpl::SendBeforeUnload(
           return;
         }
 
-        if (impl->frame_tree_node()) {
+        if (impl->frame_tree_node() &&
+            !before_unload_dialog_opened_time.is_null() &&
+            !before_unload_dialog_closed_time.is_null()) {
           if (NavigationRequest* navigation_request =
                   impl->frame_tree_node()->navigation_request()) {
             navigation_request->set_beforeunload_phase2_dialog_opened_time(

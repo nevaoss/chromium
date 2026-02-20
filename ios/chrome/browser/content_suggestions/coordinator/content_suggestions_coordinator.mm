@@ -741,6 +741,8 @@ using segmentation_platform::TipIdentifier;
 }
 
 - (void)didTapDefaultBrowserPromo {
+  [_magicStackRankingModel logMagicStackEngagementForType:
+                               ContentSuggestionsModuleType::kDefaultBrowser];
   DefaultBrowserMagicStackIosVariationType variation =
       GetDefaultBrowserMagicStackIosVariation();
 
@@ -1263,6 +1265,9 @@ using segmentation_platform::TipIdentifier;
       break;
     case SetUpListItemType::kBackgroundCustomization:
       [self.delegate openMainCustomizationMenu];
+      [HandlerForProtocol(self.browser->GetCommandDispatcher(), HelpCommands)
+          presentInProductHelpWithType:InProductHelpType::
+                                           kHomeBackgroundCustomization];
   }
 }
 

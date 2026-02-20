@@ -38,12 +38,17 @@ enum class Utf8ConversionMode : uint8_t {
 
 // A string like object that wraps either an 8bit or 16bit byte sequence
 // and keeps track of the length and the type, it does NOT own the bytes.
+// This class is like std::string_view for blink::String.
 //
 // Since StringView does not own the bytes creating a StringView from a String,
-// then calling clear() on the String will result in a use-after-free. Asserts
-// in ~StringView attempt to enforce this for most common cases.
+// then replacing a StringImpl object in the String will result in a
+// use-after-free. Asserts in ~StringView attempt to enforce this for most
+// common cases.
 //
-// See base/strings/string_piece.h for more details.
+// See https://abseil.io/tips/1 for more details.
+//
+// Unlike `std::string_view`, pass-by-value is not recommended because a
+// `blink::StringView` instance consists of three words.
 class WTF_EXPORT StringView {
   DISALLOW_NEW();
 
@@ -316,6 +321,16 @@ class WTF_EXPORT StringView {
   // blink::String::Substring(). This behavior does not match to
   // `StringView(*this, offset, len)`.
   StringView substr(wtf_size_t offset, wtf_size_t len = kNotFound) const;
+
+  // Removes the first `len` characters from this view by advancing the start
+  // address and reducing the `length()`.
+  // If `len` is greater than `length()`, this function crashes.
+  void remove_prefix(wtf_size_t len);
+
+  // Removes the last `len` characters from this view by reducing the
+  // `length()`.
+  // If `len` is greater than `length()`, this function crashes.
+  void remove_suffix(wtf_size_t len);
 
   // Returns a substring removing leading and trailing white spaces.
   // This function removes spaces, \n, \t, \r, \f, \v, and unicode spaces such

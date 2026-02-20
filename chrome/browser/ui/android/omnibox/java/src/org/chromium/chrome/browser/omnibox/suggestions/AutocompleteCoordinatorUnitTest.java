@@ -26,7 +26,8 @@ import org.mockito.junit.MockitoRule;
 
 import org.chromium.base.Callback;
 import org.chromium.base.supplier.MonotonicObservableSupplier;
-import org.chromium.base.supplier.ObservableSupplierImpl;
+import org.chromium.base.supplier.ObservableSuppliers;
+import org.chromium.base.supplier.SettableNonNullObservableSupplier;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider.ControlsPosition;
 import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
@@ -39,6 +40,7 @@ import org.chromium.chrome.browser.omnibox.test.R;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.share.ShareDelegate;
 import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.ui.edge_to_edge.TopInsetProvider;
 import org.chromium.components.omnibox.AutocompleteRequestType;
 import org.chromium.components.omnibox.action.OmniboxActionDelegate;
 import org.chromium.ui.base.WindowAndroid;
@@ -53,11 +55,11 @@ public class AutocompleteCoordinatorUnitTest {
 
     private Context mContext;
     private AutocompleteCoordinator mAutocompleteCoordinator;
-    private final ObservableSupplierImpl<@ControlsPosition Integer> mControlsPositionSupplier =
-            new ObservableSupplierImpl<>(ControlsPosition.TOP);
-    private final ObservableSupplierImpl<@AutocompleteRequestType Integer>
+    private final SettableNonNullObservableSupplier<@ControlsPosition Integer>
+            mControlsPositionSupplier = ObservableSuppliers.createNonNull(ControlsPosition.TOP);
+    private final SettableNonNullObservableSupplier<@AutocompleteRequestType Integer>
             mAutocompleteRequestTypeSupplier =
-                    new ObservableSupplierImpl<>(AutocompleteRequestType.SEARCH);
+                    ObservableSuppliers.createNonNull(AutocompleteRequestType.SEARCH);
 
     @Mock private AutocompleteDelegate mAutocompleteDelegate;
     @Mock private OmniboxSuggestionsDropdownEmbedder mDropdownEmbedder;
@@ -76,6 +78,7 @@ public class AutocompleteCoordinatorUnitTest {
     @Mock private FuseboxCoordinator mFuseboxCoordinator;
     @Mock private OmniboxSuggestionsContainer mSuggestionsContainer;
     @Mock private ViewGroup mParentView;
+    @Mock private TopInsetProvider mTopInsetProvider;
 
     @Before
     public void setUp() {
@@ -105,6 +108,7 @@ public class AutocompleteCoordinatorUnitTest {
                         mShareDelegateSupplier,
                         mLocationBarDataProvider,
                         mProfileObservableSupplier,
+                        ObservableSuppliers.of(mTopInsetProvider),
                         mBringToForegroundCallback,
                         mBookmarkState,
                         mOmniboxActionDelegate,

@@ -66,6 +66,9 @@ BASE_FEATURE(kFocusTriggersWebAndSRPZeroSuggest,
              "OmniboxFocusTriggersWebAndSRPZeroSuggest",
              ENABLED);
 
+// Enables on-clobber suggestions on iOS.
+BASE_FEATURE(kOnClobberSuggestIOS, ENABLED);
+
 // If enabled, suggestion group headers in the Omnibox popup will be hidden
 // (e.g. in order to minimize visual clutter in the zero-prefix state).
 BASE_FEATURE(kHideSuggestionGroupHeaders,
@@ -324,6 +327,9 @@ BASE_FEATURE(kComposeboxUsesChromeComposeClient, ENABLED);
 
 // Controls whether or not contextual composebox should display suggestions.
 BASE_FEATURE(kComposeboxAttachmentsTypedState, DISABLED);
+
+// Enables passthrough params to be sent to the AIM eligibility service.
+BASE_FEATURE(kAimUrlInterceptPassthrough, DISABLED);
 
 #if BUILDFLAG(IS_ANDROID)
 // Accelerates time from cold start to focused Omnibox on low-end devices,

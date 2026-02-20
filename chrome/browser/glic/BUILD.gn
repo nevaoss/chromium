@@ -338,6 +338,7 @@ source_set("impl") {
     "//components/prefs",
     "//components/sessions",
     "//components/skills:features",
+    "//components/skills/public",
     "//components/variations/service",
     "//components/webui/chrome_urls",
     "//third_party/metrics_proto",
@@ -354,6 +355,7 @@ source_set("impl") {
       "//chrome/browser/glic/browser_ui",
       "//chrome/browser/glic/media",
       "//chrome/browser/lens/region_search",
+      "//chrome/browser/skills",
       "//chrome/browser/themes",
       "//chrome/browser/ui/views/tabs/glic",
       "//components/password_manager/core/browser/actor_login:common",
@@ -379,6 +381,10 @@ source_set("impl") {
 
   if (enable_guest_view) {
     deps += [ "//components/guest_view/browser" ]
+
+    if (!enable_extensions_core) {
+      deps += [ "//components/guest_view/browser/slim_web_view" ]
+    }
   }
 
   if (is_mac) {
@@ -489,17 +495,19 @@ source_set("unit_tests") {
   }
 }
 
-if (!is_android) {
-  source_set("browser_tests") {
-    testonly = true
-    defines = [ "HAS_OUT_OF_PROC_TEST_RUNNER" ]
-    sources = [
+source_set("browser_tests") {
+  testonly = true
+  defines = [ "HAS_OUT_OF_PROC_TEST_RUNNER" ]
+  sources = []
+  if (!is_android) {
+    sources += [
       "glic_browsertest.cc",
       "glic_metrics_browsertest.cc",
       "glic_net_log_browsertest.cc",
       "glic_policy_browsertest.cc",
       "glic_profile_manager_browsertest.cc",
       "glic_user_status_browsertest.cc",
+      "host/context/glic_active_instance_sharing_manager_browsertest.cc",
       "host/context/glic_pinned_tab_manager_browsertest.cc",
       "host/context/glic_tab_data_browsertest.cc",
       "host/glic_api_browsertest.cc",
@@ -508,7 +516,10 @@ if (!is_android) {
       "service/glic_instance_coordinator_browsertest.cc",
       "widget/application_hotkey_delegate_browsertest.cc",
     ]
-    deps = [
+  }
+  deps = [ "//chrome/browser/glic/common:browser_tests" ]
+  if (!is_android) {
+    deps += [
       ":glic",
       ":impl",
       "//base/test:test_support",
@@ -522,12 +533,14 @@ if (!is_android) {
       "//chrome/browser/background/glic",
       "//chrome/browser/contextual_cueing:test_support",
       "//chrome/browser/extensions",
+      "//chrome/browser/glic/common",
       "//chrome/browser/glic/common:browser_tests",
       "//chrome/browser/glic/fre:browser_tests",
       "//chrome/browser/glic/test_support",
       "//chrome/browser/permissions:test_support",
       "//chrome/browser/policy:test_support",
       "//chrome/browser/prefs",
+      "//chrome/browser/skills",
       "//chrome/browser/subscription_eligibility",
       "//chrome/browser/ui",
       "//chrome/browser/ui:ui_features",
@@ -537,6 +550,8 @@ if (!is_android) {
       "//chrome/common:constants",
       "//chrome/test:test_support",
       "//chrome/test:test_support_ui",
+      "//components/skills:features",
+      "//components/skills/public",
       "//components/tabs:test_support",
       "//components/variations/service",
       "//content/test:browsertest_support",
@@ -547,20 +562,24 @@ if (!is_android) {
       "//ui/base:ozone_buildflags",
       "//ui/events:test_support",
     ]
-    if (is_chromeos) {
-      deps += [ "//components/account_id:test_support" ]
-    }
-    if (use_ozone) {
-      deps += [ "//ui/ozone" ]
-    }
-
-    data_deps = [ "//chrome/test/data/webui/glic:generate_test_files" ]
-
-    # TODO(crbug.com/432285114): Fix code that adds exit-time destructors and
-    # enable the diagnostic by removing this line.
-    configs += [ "//build/config/compiler:no_exit_time_destructors" ]
+  }
+  if (is_chromeos) {
+    deps += [ "//components/account_id:test_support" ]
+  }
+  if (use_ozone) {
+    deps += [ "//ui/ozone" ]
   }
 
+  if (!is_android) {
+    data_deps = [ "//chrome/test/data/webui/glic:generate_test_files" ]
+  }
+
+  # TODO(crbug.com/432285114): Fix code that adds exit-time destructors and
+  # enable the diagnostic by removing this line.
+  configs += [ "//build/config/compiler:no_exit_time_destructors" ]
+}
+
+if (!is_android) {
   source_set("interactive_ui_tests") {
     testonly = true
     defines = [ "HAS_OUT_OF_PROC_TEST_RUNNER" ]

@@ -4,6 +4,8 @@
 
 #include "components/permissions/android/android_permission_util.h"
 
+#include <variant>
+
 #include "base/android/jni_array.h"
 #include "base/auto_reset.h"
 #include "base/metrics/histogram_functions.h"
@@ -216,9 +218,10 @@ base::AutoReset<bool> EnableSystemLocationSettingForTesting() {
                                true);
 }
 
-void ResolvePermissionRequestInternal(content::WebContents* web_contents,
-                                      ContentSettingsType content_settings_type,
-                                      ContentSetting setting) {
+namespace internal {
+
+void ResolveNotificationsPermissionRequest(content::WebContents* web_contents,
+                                           ContentSetting setting) {
   if (!web_contents) {
     return;
   }
@@ -231,13 +234,13 @@ void ResolvePermissionRequestInternal(content::WebContents* web_contents,
   if (permission_request_manager->IsRequestInProgress() &&
       permission_request_manager->Requests().size() > 0 &&
       permission_request_manager->Requests()[0]->GetContentSettingsType() ==
-          content_settings_type) {
+          ContentSettingsType::NOTIFICATIONS) {
     if (setting == CONTENT_SETTING_ALLOW) {
       if (!permission_request_manager->ShouldCurrentRequestUseQuietUI()) {
         base::UmaHistogramBoolean("Permissions.ClapperLoud.PageInfo.Subscribed",
                                   true);
       }
-      permission_request_manager->Accept();
+      permission_request_manager->Accept(/*prompt_options=*/std::monostate());
     } else if (setting == CONTENT_SETTING_BLOCK) {
       // There are multiple ways to deny the permission request. This histogram
       // will track the number of times the user denied the permission request
@@ -246,7 +249,7 @@ void ResolvePermissionRequestInternal(content::WebContents* web_contents,
         base::UmaHistogramBoolean("Permissions.ClapperLoud.PageInfo.Closed",
                                   true);
       }
-      permission_request_manager->Deny();
+      permission_request_manager->Deny(/*prompt_options=*/std::monostate());
     } else if (setting == CONTENT_SETTING_DEFAULT) {
       if (!permission_request_manager->ShouldCurrentRequestUseQuietUI()) {
         base::UmaHistogramBoolean("Permissions.ClapperLoud.PageInfo.Reset",
@@ -256,7 +259,7 @@ void ResolvePermissionRequestInternal(content::WebContents* web_contents,
       // all previously decided permissions are reset by setting them to
       // DEFAULT. There is no a default action or a state for permission
       // requests, so we need to explicitly dismiss the request.
-      permission_request_manager->Dismiss();
+      permission_request_manager->Dismiss(/*prompt_options=*/std::monostate());
     } else {
       // Currently, only ALLOW and BLOCK are supported. In case other actions
       // are added in the future, this should be updated.
@@ -265,9 +268,7 @@ void ResolvePermissionRequestInternal(content::WebContents* web_contents,
   }
 }
 
-void DismissPermissionRequestInternal(
-    content::WebContents* web_contents,
-    ContentSettingsType content_settings_type) {
+void DismissNotificationsPermissionRequest(content::WebContents* web_contents) {
   if (!web_contents) {
     return;
   }
@@ -280,10 +281,12 @@ void DismissPermissionRequestInternal(
   if (permission_request_manager->IsRequestInProgress() &&
       permission_request_manager->Requests().size() > 0 &&
       permission_request_manager->Requests()[0]->GetContentSettingsType() ==
-          content_settings_type) {
-    permission_request_manager->Dismiss();
+          ContentSettingsType::NOTIFICATIONS) {
+    permission_request_manager->Dismiss(/*prompt_options=*/std::monostate());
   }
 }
+
+}  // namespace internal
 
 }  // namespace permissions
 
@@ -293,27 +296,23 @@ void DismissPermissionRequestInternal(
 // we still need to dismiss the permission request as Chrome doesn't have the
 // Android OS level permission and hence the permission request is no longer
 // valid.
-static void JNI_PermissionUtil_DismissPermissionRequest(
+static void JNI_PermissionUtil_DismissNotificationsPermissionRequest(
     JNIEnv* env,
-    const base::android::JavaRef<jobject>& jweb_contents,
-    int32_t content_settings_type) {
+    const base::android::JavaRef<jobject>& jweb_contents) {
   content::WebContents* web_contents =
       content::WebContents::FromJavaWebContents(jweb_contents);
-  permissions::DismissPermissionRequestInternal(
-      web_contents, static_cast<ContentSettingsType>(content_settings_type));
+  permissions::internal::DismissNotificationsPermissionRequest(web_contents);
 }
 
-static void JNI_PermissionUtil_ResolvePermissionRequest(
+static void JNI_PermissionUtil_ResolveNotificationsPermissionRequest(
     JNIEnv* env,
     const base::android::JavaRef<jobject>& jweb_contents,
-    int32_t content_settings_type,
     int32_t content_setting) {
   content::WebContents* web_contents =
       content::WebContents::FromJavaWebContents(jweb_contents);
   ContentSetting setting = static_cast<ContentSetting>(content_setting);
-  permissions::ResolvePermissionRequestInternal(
-      web_contents, static_cast<ContentSettingsType>(content_settings_type),
-      setting);
+  permissions::internal::ResolveNotificationsPermissionRequest(web_contents,
+                                                               setting);
 }
 // TODO(crbug.com/463333225): Clean this provisional function name up if
 // Clapper is launched or removed.
@@ -337,7 +336,7 @@ static void JNI_PermissionUtil_NotifyQuietIconDismissed(
     if (prompt && prompt->GetPromptDisposition() ==
                       permissions::PermissionPromptDisposition::
                           LOCATION_BAR_LEFT_CLAPPER_QUIET_ICON) {
-      permission_request_manager->Ignore();
+      permission_request_manager->Ignore(/*prompt_options=*/std::monostate());
     }
   }
 }

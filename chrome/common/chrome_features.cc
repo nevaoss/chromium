@@ -926,6 +926,9 @@ BASE_FEATURE(kGlicUseToolbarHeightSidePanel, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicButtonPressedState, base::FEATURE_DISABLED_BY_DEFAULT);
 
+const base::FeatureParam<bool> kGlicButtonContainerBackground{
+    &kGlicButtonPressedState, "glic-button-container-background", false};
+
 BASE_FEATURE(kGlicShareImage, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicShareImageEnterprise, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -1277,54 +1280,6 @@ BASE_FEATURE(kIsolatedWebAppManagedGuestSessionInstall,
 // session.
 BASE_FEATURE(kIsolatedWebAppBundleCache, base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_CHROMEOS)
-
-// When enabled, allows other features to use the k-Anonymity Service.
-BASE_FEATURE(kKAnonymityService, base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Origin to use for requests to the k-Anonymity Auth server to get trust
-// tokens.
-constexpr base::FeatureParam<std::string> kKAnonymityServiceAuthServer{
-    &kKAnonymityService, "KAnonymityServiceAuthServer",
-    "https://chromekanonymityauth-pa.googleapis.com/"};
-
-// Origin to use as a relay for OHTTP requests to the k-Anonymity Join server.
-constexpr base::FeatureParam<std::string> kKAnonymityServiceJoinRelayServer{
-    &kKAnonymityService, "KAnonymityServiceJoinRelayServer",
-    "https://google-ohttp-relay-join.fastly-edge.com/"};
-
-// Origin to use to notify the k-Anonymity Join server of group membership.
-constexpr base::FeatureParam<std::string> kKAnonymityServiceJoinServer{
-    &kKAnonymityService, "KAnonymityServiceJoinServer",
-    "https://chromekanonymity-pa.googleapis.com/"};
-
-// Minimum amount of time allowed between notifying the Join server of
-// membership in a distinct group.
-constexpr base::FeatureParam<base::TimeDelta> kKAnonymityServiceJoinInterval{
-    &kKAnonymityService, "KAnonymityServiceJoinInterval", base::Days(1)};
-
-// Origin to use as a relay for OHTTP requests to the k-Anonymity Query server.
-constexpr base::FeatureParam<std::string> kKAnonymityServiceQueryRelayServer{
-    &kKAnonymityService, "KAnonymityServiceQueryRelayServer",
-    "https://google-ohttp-relay-query.fastly-edge.com/"};
-
-// Origin to use to request k-anonymity status from the k-Anonymity Query
-// server.
-constexpr base::FeatureParam<std::string> kKAnonymityServiceQueryServer{
-    &kKAnonymityService, "KAnonymityServiceQueryServer",
-    "https://chromekanonymityquery-pa.googleapis.com/"};
-
-// Minimum amount of time allowed between requesting k-anonymity status from the
-// Query server for a distinct group.
-constexpr base::FeatureParam<base::TimeDelta> kKAnonymityServiceQueryInterval{
-    &kKAnonymityService, "KAnonymityServiceQueryInterval", base::Days(1)};
-
-// When enabled, the k-Anonymity Service will send requests to the Join and
-// Query k-anonymity servers.
-BASE_FEATURE(kKAnonymityServiceOHTTPRequests, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// When enabled, the k-Anonymity Service can use a persistent storage to cache
-// public keys.
-BASE_FEATURE(kKAnonymityServiceStorage, base::FEATURE_ENABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_LINUX) && !BUILDFLAG(IS_CHROMEOS)
 BASE_FEATURE(kLinuxLowMemoryMonitor, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -1859,9 +1814,16 @@ const base::FeatureParam<base::TimeDelta>
         base::Seconds(10)};
 // When enabled, initial WebUI renderers that become unresponsive will be
 // restarted without showing the hung renderer dialog.
+// `WebUIReloadButtonRestartUnresponsiveRenderersTimeout` controls the timeout
+// for unresponsive renderers.
 // See crbug.com/475397687.
 const base::FeatureParam<bool> kWebUIReloadButtonRestartUnresponsive{
     &kWebUIReloadButton, "WebUIReloadButtonRestartUnresponsive", false};
+const base::FeatureParam<base::TimeDelta>
+    kWebUIReloadButtonRestartUnresponsiveRenderersTimeout{
+        &kWebUIReloadButton,
+        "WebUIReloadButtonRestartUnresponsiveRenderersTimeout",
+        base::Seconds(15)};
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 // Enables the User-Agent override fix for SearchPrefetch. This will work only

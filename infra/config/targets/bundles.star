@@ -2606,6 +2606,18 @@ targets.bundle(
 )
 
 targets.bundle(
+    name = "cronet_python_unittest",
+    targets = ["cronet_python_unittests"],
+    per_test_modifications = {
+        "cronet_python_unittests": targets.per_test_modification(
+            remove_mixins = [
+                "16-x64-emulator",
+            ],
+        ),
+    },
+)
+
+targets.bundle(
     name = "cronet_rel_isolated_scripts",
     targets = [
         "cronet_resource_sizes",
@@ -2894,6 +2906,7 @@ targets.bundle(
     name = "fieldtrial_browser_tests_mac",
     targets = [
         "accessibility_unittests_no_field_trial",
+        "browser_tests_no_field_trial",
         "components_browsertests_no_field_trial",
         "content_browsertests_no_field_trial",
         "interactive_ui_tests_no_field_trial",
@@ -2902,6 +2915,12 @@ targets.bundle(
     per_test_modifications = {
         "accessibility_unittests_no_field_trial": targets.mixin(
             ci_only = True,
+        ),
+        "browser_tests_no_field_trial": targets.mixin(
+            ci_only = True,
+            swarming = targets.swarming(
+                shards = 10,
+            ),
         ),
         "components_browsertests_no_field_trial": targets.mixin(
             ci_only = True,

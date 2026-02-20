@@ -193,8 +193,8 @@ final class ChromeAndroidTaskImpl
      * Contains all {@link ChromeAndroidTaskFeature}s associated with this {@link
      * ChromeAndroidTask}.
      */
-    private final Map<Class<? extends ChromeAndroidTaskFeature>, ChromeAndroidTaskFeature>
-            mFeatures = new ArrayMap<>();
+    private final Map<ChromeAndroidTaskFeatureKey, ChromeAndroidTaskFeature> mFeatures =
+            new ArrayMap<>();
 
     /**
      * All {@link ActivityScopedObjects} instances associated with this Task.
@@ -454,17 +454,23 @@ final class ChromeAndroidTaskImpl
 
     @Override
     public <T extends ChromeAndroidTaskFeature> void addFeature(
-            Class<T> featureClazz, Supplier<@Nullable T> featureSupplier) {
+            ChromeAndroidTaskFeatureKey featureKey, Supplier<@Nullable T> featureSupplier) {
         ThreadUtils.assertOnUiThread();
         assertPendingCreateOrIdle();
 
-        if (mFeatures.containsKey(featureClazz)) {
+        if (mFeatures.containsKey(featureKey)) {
             return;
+        }
+
+        // TODO(crbug.com/475200706): Support regular + OTR for mobile.
+        if (featureKey.mProfile != null && !featureKey.mProfile.equals(mInitialProfile)) {
+            throw new IllegalArgumentException(
+                    "Feature is profile-scoped but the profile doesn't match the task's profile.");
         }
 
         var feature = featureSupplier.get();
         if (feature != null) {
-            mFeatures.put(featureClazz, feature);
+            mFeatures.put(featureKey, feature);
             feature.onAddedToTask();
         }
     }
@@ -857,6 +863,8 @@ final class ChromeAndroidTaskImpl
             maybeSetStateIdle(actions);
         }
 
+        // TODO(crbug.com/475200706): Also dispatch when the selected tab model changes this allows
+        // features to react to either the task or window being backgrounded accordingly.
         for (var feature : mFeatures.values()) {
             feature.onTaskFocusChanged(isTopResumedActivity);
         }
@@ -881,9 +889,9 @@ final class ChromeAndroidTaskImpl
 
     @Override
     public @Nullable ChromeAndroidTaskFeature getFeatureForTesting(
-            Class<? extends ChromeAndroidTaskFeature> featureClazz) {
+            ChromeAndroidTaskFeatureKey featureKey) {
         ThreadUtils.assertOnUiThread();
-        return mFeatures.get(featureClazz);
+        return mFeatures.get(featureKey);
     }
 
     @Override
@@ -1119,6 +1127,8 @@ final class ChromeAndroidTaskImpl
     }
 
     private void destroyFeatures() {
+        // TODO(crbug.com/475200706): Destroy profile-scoped features earlier if the associated
+        // profile is destroyed.
         for (var feature : mFeatures.values()) {
             feature.onTaskRemoved();
         }

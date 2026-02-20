@@ -26,6 +26,7 @@
 #include "components/signin/public/identity_manager/identity_manager.h"
 #include "components/signin/public/identity_manager/identity_test_utils.h"
 #include "components/sync/test/test_sync_service.h"
+#include "google_apis/gaia/google_service_auth_error.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -100,7 +101,8 @@ class AutofillAiPermissionUtilsTest : public ::testing::Test {
         client().GetPrefs(), client().GetIdentityManager(),
         client().GetSyncService(), webdata_helper_.autofill_webdata_service(),
         /*history_service=*/nullptr,
-        /*strike_database=*/nullptr));
+        /*strike_database=*/nullptr,
+        /*variation_country_code=*/GeoIpCountryCode("US")));
     client().SetUpPrefsAndIdentityForAutofillAi();
     client().set_sync_service(&sync_service_);
   }
@@ -308,11 +310,47 @@ TEST_P(AutofillAiMayPerformActionTest,
 TEST_P(AutofillAiMayPerformActionTest, SignedOut) {
   AddEntity();
   client().identity_test_environment().ClearPrimaryAccount();
+  std::string debug_message;
   const bool is_allowed =
       GetParam() == AutofillAiAction::kEditAndDeleteEntityInstanceInSettings ||
       GetParam() == AutofillAiAction::kListEntityInstancesInSettings;
-  EXPECT_EQ(MayPerformAutofillAiAction(client(), GetParam()), is_allowed);
+
+  EXPECT_EQ(MayPerformAutofillAiAction(client(), GetParam(), std::nullopt,
+                                       &debug_message),
+            is_allowed);
+
+  if (!is_allowed) {
+    EXPECT_EQ(debug_message, "User not signed into Chrome.");
+  }
 }
+
+TEST_P(AutofillAiMayPerformActionTest, SignInPending) {
+  AddEntity();
+  CoreAccountInfo account =
+      client().identity_test_environment().MakePrimaryAccountAvailable(
+          "test@example.com", signin::ConsentLevel::kSignin);
+
+  client()
+      .identity_test_environment()
+      .UpdatePersistentErrorOfRefreshTokenForAccount(
+          account.account_id,
+          GoogleServiceAuthError(
+              GoogleServiceAuthError::INVALID_GAIA_CREDENTIALS));
+
+  std::string debug_message;
+  const bool is_allowed =
+      GetParam() == AutofillAiAction::kEditAndDeleteEntityInstanceInSettings ||
+      GetParam() == AutofillAiAction::kListEntityInstancesInSettings;
+
+  EXPECT_EQ(MayPerformAutofillAiAction(client(), GetParam(), std::nullopt,
+                                       &debug_message),
+            is_allowed);
+
+  if (!is_allowed) {
+    EXPECT_EQ(debug_message, "User's sign-in is in a persistent error state.");
+  }
+}
+
 #endif  // !BUILDFLAG(IS_CHROMEOS)
 
 // Tests that the check whether a client can use model execution features is

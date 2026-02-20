@@ -445,6 +445,8 @@ source_set("extensions") {
     "sync/extension_sync_service_factory.h",
     "sync/extension_sync_util.cc",
     "sync/extension_sync_util.h",
+    "sync/features.cc",
+    "sync/features.h",
     "sync/sync_bundle.cc",
     "sync/sync_bundle.h",
     "system_display/display_info_provider.h",
@@ -538,6 +540,7 @@ source_set("extensions") {
     "//chrome/browser/ui/autofill",
     "//chrome/browser/ui/browser_window",
     "//chrome/browser/ui/browser_window:create_browser_window",
+    "//chrome/browser/ui/dialogs",
     "//chrome/browser/ui/extensions",
     "//chrome/browser/ui/prefs",
     "//chrome/browser/ui/safety_hub",
@@ -588,12 +591,12 @@ source_set("extensions") {
     "//components/vector_icons",
     "//content/public/browser",
     "//extensions/browser",
+    "//extensions/browser:keepalive",
     "//extensions/browser/api/storage:settings_namespace",
     "//extensions/browser/api/storage:settings_observer",
     "//extensions/browser/api/virtual_keyboard_private:virtual_keyboard_delegate",
     "//extensions/browser/forced_extensions",
     "//extensions/browser/updater",
-    "//extensions/browser/updater:keepalive",
     "//extensions/common",
     "//extensions/strings",
     "//google_apis/common:request_util",
@@ -678,6 +681,13 @@ source_set("extensions") {
     if (is_posix) {
       sources += [ "api/messaging/launch_context_posix.cc" ]
     }
+  }
+
+  if (enable_guest_view) {
+    deps += [
+      "//components/guest_view/browser",
+      "//components/guest_view/common:mojom",
+    ]
   }
 
   if (enable_extensions) {
@@ -985,7 +995,6 @@ source_set("extensions") {
       "//components/favicon/content",
       "//components/feedback",
       "//components/gcm_driver",
-      "//components/guest_view/common:mojom",
       "//components/history/core/browser",
       "//components/history/core/common",
       "//components/javascript_dialogs",
@@ -1548,10 +1557,6 @@ source_set("extensions") {
     }
   }  # if (enable_extensions)
 
-  if (enable_guest_view) {
-    deps += [ "//components/guest_view/browser" ]
-  }
-
   if (enable_platform_apps) {
     sources += [
       "api/tabs/app_base_window.cc",
@@ -1707,9 +1712,9 @@ source_set("chrome_extensions_browser_client") {
     "//components/proxy_config",
     "//components/sessions",
     "//components/update_client",
+    "//extensions/browser:keepalive",
     "//extensions/browser/api/content_settings",
     "//extensions/browser/updater",
-    "//extensions/browser/updater:keepalive",
   ]
 
   if (enable_desktop_android_extensions) {

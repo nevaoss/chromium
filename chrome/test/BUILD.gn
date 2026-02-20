@@ -1840,10 +1840,7 @@ source_set("platform_browser_tests") {
       ]
     }
     if (enable_guest_view) {
-      deps += [
-        "//components/guest_view/browser",
-        "//components/guest_view/browser:test_support",
-      ]
+      deps += [ "//components/guest_view/browser" ]
     }
     if (!is_android || enable_desktop_android_extensions) {
       sources +=
@@ -1965,6 +1962,7 @@ if (is_android) {
       "//chrome/browser/content_settings:content_settings_factory",
       "//chrome/browser/enterprise/data_controls",
       "//chrome/browser/flags:flags_android",
+      "//chrome/browser/glic:browser_tests",
       "//chrome/browser/history",
       "//chrome/browser/keyboard_accessory/android:public",
       "//chrome/browser/metrics:test_support",
@@ -3406,7 +3404,6 @@ if (!is_android) {
       "../browser/infobars/infobars_browsertest.cc",
       "../browser/interest_group/interest_group_permissions_browsertest.cc",
       "../browser/invalidation/profile_invalidation_provider_factory_browsertest.cc",
-      "../browser/k_anonymity_service/k_anonymity_service_client_browsertest.cc",
       "../browser/l10n_util_browsertest.cc",
       "../browser/language_detection/language_detection_model_service_browsertest.cc",
       "../browser/launch_time_navigation_signal/launch_time_navigation_signal_browsertest.cc",
@@ -3804,6 +3801,8 @@ if (!is_android) {
       "../browser/ui/views/tabs/fake_base_tab_strip_controller.cc",
       "../browser/ui/views/tabs/fake_base_tab_strip_controller.h",
       "../browser/ui/views/tabs/recent_activity_bubble_dialog_view_browsertest.cc",
+      "../browser/ui/views/tabs/tab_search_button_browsertest.cc",
+      "../browser/ui/views/tabs/tab_search_container_browsertest.cc",
       "../browser/ui/views/tabs/tab_strip_action_container_browsertest.cc",
       "../browser/ui/views/tabs/tab_strip_browsertest.cc",
       "../browser/ui/views/user_education/browser_help_bubble_browsertest.cc",
@@ -4195,6 +4194,7 @@ if (!is_android) {
         "../browser/ui/views/tab_search_bubble_ui_browsertest.cc",
         "../browser/ui/views/web_apps/web_app_integration_browsertest_win.cc",
       ]
+      sources -= [ "../browser/ui/views/tabs/tab_search_button_browsertest.cc" ]
 
       # encrypted_media_browsertest uses Windows Media Foundation APIs.
       libs = [
@@ -6547,10 +6547,6 @@ test("unit_tests") {
     "../browser/history/history_tab_helper_unittest.cc",
     "../browser/history_clusters/history_clusters_tab_helper_unittest.cc",
     "../browser/idle/idle_detection_permission_context_unittest.cc",
-    "../browser/k_anonymity_service/k_anonymity_service_client_unittest.cc",
-    "../browser/k_anonymity_service/k_anonymity_service_storage_unittest.cc",
-    "../browser/k_anonymity_service/k_anonymity_trust_token_getter_unittest.cc",
-    "../browser/k_anonymity_service/remote_trust_token_query_answerer_unittest.cc",
     "../browser/language/language_model_manager_factory_unittest.cc",
     "../browser/language/url_language_histogram_factory_unittest.cc",
     "../browser/loader/from_gws_navigation_and_keep_alive_request_observer_unittest.cc",
@@ -8436,6 +8432,7 @@ test("unit_tests") {
       "../browser/webauthn/enclave_manager_unittest.cc",
       "../browser/webauthn/passkey_unlock_manager_unittest.cc",
       "../browser/webauthn/password_credential_ui_controller_unittest.cc",
+      "../browser/webauthn/ui_readiness_barrier_unittest.cc",
       "../renderer/accessibility/phrase_segmentation/dependency_parser_model_unittest.cc",
       "../renderer/accessibility/phrase_segmentation/dependency_tree_unittest.cc",
       "../renderer/accessibility/phrase_segmentation/phrase_segmenter_unittest.cc",
@@ -8906,7 +8903,7 @@ test("unit_tests") {
 
   if (!is_android) {
     deps += [
-      "//chrome/browser/accessibility_annotator:unit_tests",
+      "//chrome/browser/accessibility_annotator/content_annotator:unit_tests",
       "//chrome/browser/ui/contextual_search:unit_tests",
       "//chrome/browser/ui/search",
       "//chrome/browser/ui/views/location_bar",
@@ -10723,6 +10720,7 @@ test("unit_tests") {
       "../browser/ui/views/tabs/tab_group_views_unittest.cc",
       "../browser/ui/views/tabs/tab_hover_card_bubble_view_unittest.cc",
       "../browser/ui/views/tabs/tab_hover_card_controller_unittest.cc",
+      "../browser/ui/views/tabs/tab_search_container_unittest.cc",
       "../browser/ui/views/tabs/tab_strip_control_button_unittest.cc",
       "../browser/ui/views/tabs/tab_strip_layout_unittest.cc",
       "../browser/ui/views/tabs/tab_strip_nudge_button_unittest.cc",
@@ -11985,7 +11983,7 @@ if (!is_android && !is_chromeos_device) {
         "../browser/ui/views/user_education/impl/browser_feature_promo_preconditions_interactive_uitest.cc",
         "../browser/ui/views/user_education/product_messaging_controller_interactive_uitest.cc",
         "../browser/ui/views/user_education/tutorial_interactive_uitest.cc",
-        "../browser/webauthn/webauthn_immediate_mediation_interactive_uitest.cc",
+        "../browser/webauthn/webauthn_immediate_get_interactive_uitest.cc",
         "interaction/interaction_sequence_interactive_uitest.cc",
         "interaction/interaction_test_util_browser_interactive_uitest.cc",
         "interaction/interaction_test_util_interactive_uitest.cc",

@@ -40,12 +40,14 @@ KNOWN_TYP_TEST_RUNNERS = {
     'run_mini_installer_tests.py',
     'run_webui_resources_tools_tests.py',
     'test_suite_all.py',  # //tools/grit:grit_python_unittests
+    'run_gn2bp_unittest.py',
 }
 
 KNOWN_TYP_VPYTHON3_TEST_RUNNERS = {
     'monochrome_python_tests.py',
     'run_polymer_tools_tests.py',
     'test_suite_all.py',  # //tools/grit:grit_python_unittests
+    'run_gn2bp_unittest.py',
 }
 
 # pylint: disable=super-with-arguments
@@ -58,7 +60,6 @@ class BareScriptTestAdapter(common.BaseIsolatedScriptArgsAdapter):
     # Arguments that are ignored, but added here because it's easier to ignore
     # them than to update bot configs to not pass them.
     common.add_emulator_args(self._parser)
-    self._parser.add_argument('--coverage-dir', type=str, help='Unused')
     self._parser.add_argument('--use-persistent-shell',
                               action='store_true',
                               help='Unused')
@@ -109,6 +110,9 @@ class TypUnittestAdapter(common.BaseIsolatedScriptArgsAdapter):
 
   def __init__(self):
     super(TypUnittestAdapter, self).__init__()
+    # TODO(crbug.com/474036604): Remove this line once
+    # https://crrev.com/c/7507923 has landed.
+    self._parser.add_argument('--coverage-dir', type=str, help='Unused')
     self._temp_filter_file = None
 
   # Overriding parent implementation.

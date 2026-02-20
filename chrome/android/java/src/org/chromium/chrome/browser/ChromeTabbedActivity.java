@@ -67,12 +67,12 @@ import org.chromium.base.shared_preferences.SharedPreferencesManager;
 import org.chromium.base.supplier.LazyOneshotSupplier;
 import org.chromium.base.supplier.MonotonicObservableSupplier;
 import org.chromium.base.supplier.NonNullObservableSupplier;
-import org.chromium.base.supplier.ObservableSupplierImpl;
 import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.OneShotCallback;
 import org.chromium.base.supplier.OneshotSupplier;
 import org.chromium.base.supplier.OneshotSupplierImpl;
 import org.chromium.base.supplier.SettableMonotonicObservableSupplier;
+import org.chromium.base.supplier.SettableNonNullObservableSupplier;
 import org.chromium.base.supplier.SupplierUtils;
 import org.chromium.base.task.PostTask;
 import org.chromium.base.task.TaskTraits;
@@ -1138,12 +1138,12 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                 .onAvailable(manager -> mHubManagerSupplier.set(manager));
     }
 
-    private @NonNull MonotonicObservableSupplier<Integer> initHubOverviewColorSupplier() {
-        ObservableSupplierImpl<Integer> overviewColorSupplier =
-                new ObservableSupplierImpl<>(Color.TRANSPARENT);
+    private NonNullObservableSupplier<Integer> initHubOverviewColorSupplier() {
+        SettableNonNullObservableSupplier<Integer> overviewColorSupplier =
+                ObservableSuppliers.createNonNull(Color.TRANSPARENT);
         mHubManagerSupplier.onAvailable(
                 (hubManager) -> {
-                    MonotonicObservableSupplier<Integer> hubOverviewColorSupplier =
+                    NonNullObservableSupplier<Integer> hubOverviewColorSupplier =
                             hubManager.getHubOverviewColorSupplier();
                     Callback<Integer> hubOverviewColorObserver = overviewColorSupplier::set;
                     hubOverviewColorSupplier.addObserver(hubOverviewColorObserver);
@@ -1791,8 +1791,9 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
             TabGroupModelFilter filter) {
         Runnable openTabGroupRunnable =
                 () -> {
-                    PaneManager paneManager =
-                            mHubProvider.getHubManagerSupplier().get().getPaneManager();
+                    HubManager hubManager = mHubProvider.getHubManagerSupplier().get();
+                    assumeNonNull(hubManager);
+                    PaneManager paneManager = hubManager.getPaneManager();
                     TabSwitcherPaneBase tabSwitcherPaneBase =
                             (TabSwitcherPaneBase) paneManager.getDefaultPane();
                     TabSwitcherUtils.openTabGroupDialog(
@@ -1802,8 +1803,9 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                                     .getTabGroupSyncController(),
                             filter,
                             (rootId) -> {
-                                if (paneManager.getFocusedPaneSupplier().get().getPaneId()
-                                        != PaneId.TAB_SWITCHER) {
+                                Pane curPane =
+                                        assumeNonNull(paneManager.getFocusedPaneSupplier().get());
+                                if (curPane.getPaneId() != PaneId.TAB_SWITCHER) {
                                     paneManager.focusPane(PaneId.TAB_SWITCHER);
                                 }
                                 tabSwitcherPaneBase.requestOpenTabGroupDialog(rootId);

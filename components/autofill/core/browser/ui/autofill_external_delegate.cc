@@ -128,7 +128,7 @@ AutofillTriggerSource TriggerSourceFromSuggestionTriggerSource(
     case AutofillSuggestionTriggerSource::kPlusAddressUpdatedInBrowserProcess:
       // On Android, no popup exists. Instead, the keyboard accessory is used.
 #if BUILDFLAG(IS_ANDROID)
-      return AutofillTriggerSource::kKeyboardAccessory;
+      return AutofillTriggerSource::kKeyboardAccessoryOrBottomSheet;
 #else
       return AutofillTriggerSource::kPopup;
 #endif  // BUILDFLAG(IS_ANDROID)
@@ -622,7 +622,7 @@ void AutofillExternalDelegate::DidSelectSuggestion(
           manager_->FillOrPreviewForm(mojom::ActionPersistence::kPreview,
                                       query_form_, query_field_.global_id(),
                                       entity.as_ptr(),
-                                      AutofillTriggerSource::kAutofillAi);
+                                      AutofillTriggerSource::kPopup);
         }
       }
       break;
@@ -825,9 +825,15 @@ void AutofillExternalDelegate::DidAcceptSuggestion(
                       entity->type()),
                   manager_->client().GetAppLocale(),
                   CHECK_DEREF(manager_->client().GetPrefs()))) {
+            std::u16string message;
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_CHROMEOS)
+            const std::u16string origin =
+                base::UTF8ToUTF16(autofill_field->origin().host());
+            message = l10n_util::GetStringFUTF16(IDS_AUTOFILL_AI_FILLING_REAUTH,
+                                                 origin);
+#endif  // BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_CHROMEOS)
             MaybeAuthenticateBeforeFilling(
-                l10n_util::GetStringUTF16(IDS_AUTOFILL_AI_FILLING_REAUTH),
-                "Autofill.Ai.ReauthToFill",
+                message, "Autofill.Ai.ReauthToFill",
                 base::BindOnce(
                     [](base::WeakPtr<BrowserAutofillManager> manager,
                        mojom::ActionPersistence action_persistence,
@@ -849,12 +855,12 @@ void AutofillExternalDelegate::DidAcceptSuggestion(
                     manager_->GetBrowserAutofillManagerWeakPtr(),
                     mojom::ActionPersistence::kFill, query_form_,
                     query_field_.global_id(), payload.guid,
-                    AutofillTriggerSource::kAutofillAi));
+                    AutofillTriggerSource::kPopup));
           } else {
             manager_->FillOrPreviewForm(mojom::ActionPersistence::kFill,
                                         query_form_, query_field_.global_id(),
                                         entity.as_ptr(),
-                                        AutofillTriggerSource::kAutofillAi);
+                                        AutofillTriggerSource::kPopup);
           }
         }
       }

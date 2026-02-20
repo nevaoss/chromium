@@ -48,8 +48,6 @@ generate_allowlist_from_histograms_file("webui_name_variants") {
 static_library("ui") {
   sources = [
     "accelerator_utils.h",
-    "browser_dialogs.cc",
-    "browser_dialogs.h",
     "browser_navigator.h",
     "browser_navigator_params.cc",
     "browser_navigator_params_utils.cc",
@@ -249,6 +247,7 @@ static_library("ui") {
     "//chrome/browser/media/webrtc",
     "//chrome/browser/search",
     "//chrome/browser/task_manager",
+    "//chrome/browser/ui/dialogs",
     "//chrome/browser/ui/tabs:tab_enums",
     "//chrome/browser/ui/webui/omnibox/aim_eligibility",
     "//chrome/browser/ui/webui/omnibox/aim_eligibility:mojo_bindings",
@@ -1473,6 +1472,7 @@ static_library("ui") {
       "//chrome/browser/ui/web_applications:launch_utils",
       "//chrome/browser/ui/webui/access_code_cast",
       "//chrome/browser/ui/webui/access_code_cast:impl",
+      "//chrome/browser/ui/webui/default_browser:default_browser_modal",
       "//chrome/browser/ui/webui/omnibox_popup/mojom",
       "//chrome/browser/usb",
       "//chrome/browser/webauthn:local_credential_management",
