@@ -185,6 +185,7 @@ test("components_unittests") {
 
   deps = [
     "//base",
+    "//components/activity_reporter:unit_tests",
     "//components/affiliations/core/browser:unit_tests",
     "//components/aggregation_service:unit_tests",
     "//components/apdu:unit_tests",
@@ -308,7 +309,6 @@ test("components_unittests") {
     "//components/policy/core/common:unit_tests",
     "//components/policy/test_support:unittests",
     "//components/power_bookmarks/core:unit_tests",
-    "//components/power_bookmarks/storage:unit_tests",
     "//components/power_metrics:unit_tests",
     "//components/prefs:unit_tests",
     "//components/privacy_sandbox:unit_tests",
@@ -326,6 +326,7 @@ test("components_unittests") {
     "//components/reporting/metrics:unit_tests",
     "//components/reporting/storage:unit_tests",
     "//components/reporting/util:unit_tests",
+    "//components/resources:unit_tests",
     "//components/safe_browsing/core/browser:intelligent_scan_delegate_unittest",
     "//components/safe_browsing/core/browser:referring_app_info_unittest",
     "//components/safe_browsing/core/browser:safe_browsing_hats_delegate_unittest",
@@ -774,6 +775,10 @@ test("components_unittests") {
       "//components/web_modal:unit_tests",
       "//components/zoom:unit_tests",
     ]
+  }
+
+  if (!is_android && !is_ios && !is_fuchsia && !is_castos) {
+    deps += [ "//components/passage_embeddings/content:unit_tests" ]
   }
 
   if (enable_guest_contents) {
@@ -1433,6 +1438,7 @@ if (is_android) {
       "//components/collaboration:junit",
       "//components/commerce/core/android:junit_tests",
       "//components/content_capture/android/junit:components_content_capture_junit_tests",
+      "//components/contextual_search:junit",
       "//components/crash/android:junit",
       "//components/credential_management/android:junit_tests",
       "//components/data_sharing/internal:data_sharing_junit_tests",

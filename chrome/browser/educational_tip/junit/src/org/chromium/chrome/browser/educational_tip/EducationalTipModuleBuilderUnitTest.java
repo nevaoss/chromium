@@ -10,6 +10,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -26,8 +27,7 @@ import org.mockito.junit.MockitoRule;
 import org.robolectric.annotation.Config;
 
 import org.chromium.base.Callback;
-import org.chromium.base.supplier.MonotonicObservableSupplier;
-import org.chromium.base.supplier.ObservableSupplierImpl;
+import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
@@ -38,7 +38,6 @@ import org.chromium.chrome.browser.magic_stack.ModuleDelegate.ModuleType;
 import org.chromium.chrome.browser.magic_stack.ModuleProvider;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.setup_list.SetupListManager;
-import org.chromium.chrome.browser.setup_list.SetupListModuleUtils;
 import org.chromium.chrome.browser.signin.services.IdentityServicesProvider;
 import org.chromium.chrome.browser.tabmodel.TabGroupModelFilter;
 import org.chromium.chrome.browser.tabmodel.TabModel;
@@ -50,8 +49,6 @@ import org.chromium.components.segmentation_platform.InputContext;
 import org.chromium.components.signin.identitymanager.ConsentLevel;
 import org.chromium.components.signin.identitymanager.IdentityManager;
 import org.chromium.ui.shadows.ShadowAppCompatResources;
-
-import java.util.List;
 
 /** Test relating to {@link EducationalTipModuleBuilder} */
 @RunWith(BaseRobolectricTestRunner.class)
@@ -76,15 +73,15 @@ public class EducationalTipModuleBuilderUnitTest {
     @Mock private IdentityManager mIdentityManagerMock;
     @Mock private SetupListManager mSetupListManager;
 
-    private MonotonicObservableSupplier<Profile> mProfileSupplier;
     private EducationalTipModuleBuilder mModuleBuilder;
 
     @Before
     public void setUp() {
         SetupListManager.setInstanceForTesting(mSetupListManager);
         when(mSetupListManager.isSetupListActive()).thenReturn(false);
-        mProfileSupplier = new ObservableSupplierImpl(mProfile);
-        when(mActionDelegate.getProfileSupplier()).thenReturn(mProfileSupplier);
+        when(mSetupListManager.getManualRank(anyInt())).thenReturn(null);
+        when(mActionDelegate.getProfileSupplier())
+                .thenReturn(ObservableSuppliers.createNonNull(mProfile));
         when(mProfile.getOriginalProfile()).thenReturn(mProfile);
         DefaultBrowserPromoUtils.setInstanceForTesting(mMockDefaultBrowserPromoUtils);
         TrackerFactory.setTrackerForTests(mTracker);
@@ -112,33 +109,15 @@ public class EducationalTipModuleBuilderUnitTest {
 
     @Test
     @SmallTest
-    @DisableFeatures({ChromeFeatureList.EDUCATIONAL_TIP_MODULE})
-    public void testBuildEducationalTipModule_NotEligible() {
-        assertFalse(ChromeFeatureList.sEducationalTipModule.isEnabled());
-
-        assertFalse(mModuleBuilder.build(mModuleDelegate, mBuildCallback));
-        verify(mBuildCallback, never()).onResult(any(ModuleProvider.class));
-    }
-
-    @Test
-    @SmallTest
-    @EnableFeatures({
-        ChromeFeatureList.EDUCATIONAL_TIP_MODULE,
-        ChromeFeatureList.SEGMENTATION_PLATFORM_EPHEMERAL_CARD_RANKER
-    })
+    @EnableFeatures({ChromeFeatureList.SEGMENTATION_PLATFORM_EPHEMERAL_CARD_RANKER})
     public void testBuildEducationalTipModule_Eligible() {
-        assertTrue(ChromeFeatureList.sEducationalTipModule.isEnabled());
-
         assertTrue(mModuleBuilder.build(mModuleDelegate, mBuildCallback));
         verify(mBuildCallback).onResult(any(ModuleProvider.class));
     }
 
     @Test
     @SmallTest
-    @EnableFeatures({
-        ChromeFeatureList.EDUCATIONAL_TIP_MODULE,
-        ChromeFeatureList.SEGMENTATION_PLATFORM_EPHEMERAL_CARD_RANKER
-    })
+    @EnableFeatures({ChromeFeatureList.SEGMENTATION_PLATFORM_EPHEMERAL_CARD_RANKER})
     @DisableFeatures({ChromeFeatureList.EDUCATIONAL_TIP_DEFAULT_BROWSER_PROMO_CARD})
     public void testBuildEducationalTipDefaultBrowserModule_NotEligible() {
         EducationalTipModuleBuilder moduleBuilderForDefaultBrowser =
@@ -151,7 +130,6 @@ public class EducationalTipModuleBuilderUnitTest {
     @Test
     @SmallTest
     @EnableFeatures({
-        ChromeFeatureList.EDUCATIONAL_TIP_MODULE,
         ChromeFeatureList.SEGMENTATION_PLATFORM_EPHEMERAL_CARD_RANKER,
     })
     public void testBuildEducationalTipTabGroupSyncModule_Eligible() {
@@ -164,10 +142,7 @@ public class EducationalTipModuleBuilderUnitTest {
 
     @Test
     @SmallTest
-    @EnableFeatures({
-        ChromeFeatureList.EDUCATIONAL_TIP_MODULE,
-        ChromeFeatureList.SEGMENTATION_PLATFORM_EPHEMERAL_CARD_RANKER
-    })
+    @EnableFeatures({ChromeFeatureList.SEGMENTATION_PLATFORM_EPHEMERAL_CARD_RANKER})
     public void testCreateInputContext() {
         EducationalTipModuleBuilder moduleBuilderForDefaultBrowserPromo =
                 new EducationalTipModuleBuilder(ModuleType.DEFAULT_BROWSER_PROMO, mActionDelegate);
@@ -200,15 +175,12 @@ public class EducationalTipModuleBuilderUnitTest {
     @SmallTest
     public void testGetManualRank_ReturnsRankForSetupListModuleWhenActive() {
         when(mSetupListManager.isSetupListActive()).thenReturn(true);
-
-        List<Integer> rankedModules =
-                List.of(
-                        ModuleType.ADDRESS_BAR_PLACEMENT_PROMO,
-                        ModuleType.ENHANCED_SAFE_BROWSING_PROMO,
-                        ModuleType.SIGN_IN_PROMO,
-                        ModuleType.SAVE_PASSWORDS_PROMO,
-                        ModuleType.PASSWORD_CHECKUP_PROMO);
-        SetupListModuleUtils.setRankedModuleTypesForTesting(rankedModules);
+        when(mSetupListManager.getManualRank(ModuleType.ADDRESS_BAR_PLACEMENT_PROMO)).thenReturn(0);
+        when(mSetupListManager.getManualRank(ModuleType.ENHANCED_SAFE_BROWSING_PROMO))
+                .thenReturn(1);
+        when(mSetupListManager.getManualRank(ModuleType.SIGN_IN_PROMO)).thenReturn(2);
+        when(mSetupListManager.getManualRank(ModuleType.SAVE_PASSWORDS_PROMO)).thenReturn(3);
+        when(mSetupListManager.getManualRank(ModuleType.PASSWORD_CHECKUP_PROMO)).thenReturn(4);
 
         EducationalTipModuleBuilder builder1 =
                 new EducationalTipModuleBuilder(
@@ -256,8 +228,6 @@ public class EducationalTipModuleBuilderUnitTest {
     @Test
     @SmallTest
     public void testGetManualRank_ReturnsEmptyWhenSetupListInactive() {
-        when(mSetupListManager.isSetupListActive()).thenReturn(false);
-
         EducationalTipModuleBuilder builder =
                 new EducationalTipModuleBuilder(
                         ModuleType.ENHANCED_SAFE_BROWSING_PROMO, mActionDelegate);

@@ -333,6 +333,7 @@
 <translation id="2184272387334793084">Zaloguj się, aby mieć dostęp do haseł oraz innych ustawień i danych na wszystkich swoich urządzeniach</translation>
 <translation id="2186206192313702726">Obiektyw Google</translation>
 <translation id="2188993354115194873">Kliknij <ph name="BEGIN_BOLD" />Zachowaj w pobranych<ph name="END_BOLD" /></translation>
+<translation id="2191406283620379491">Coś poszło nie tak. Zaktualizuj wersję iOS.</translation>
 <translation id="219283042927675668">Karty w grupie</translation>
 <translation id="2194856509914051091">Istotne kwestie</translation>
 <translation id="2196428379625389579">Wyszukaj w internecie</translation>
@@ -579,6 +580,7 @@
 <translation id="3143515551205905069">Anuluj synchronizację</translation>
 <translation id="3144126448740580210">GOTOWE</translation>
 <translation id="3148052723910099040">Siatka zwykłych kart</translation>
+<translation id="3148237711805373460">Otwórz</translation>
 <translation id="3157387275655328056">Dodaj do listy Do przeczytania</translation>
 <translation id="315778507796115851">Historia</translation>
 <translation id="31652791196570636">Zamknij</translation>
@@ -1020,6 +1022,7 @@
 <translation id="483689884442613745">Zapisz…</translation>
 <translation id="4840495572919996524">Twoje zakładki, historia, hasła i inne ustawienia przestaną być synchronizowane z Twoim kontem Google.</translation>
 <translation id="484280513275854557">Nastąpiło wylogowanie, a dane przeglądania zostały usunięte</translation>
+<translation id="484462545196658690">Automatycznie</translation>
 <translation id="4850886885716139402">Wyświetl</translation>
 <translation id="4854068532375923088">Zezwól „Gemini” na korzystanie z aparatu</translation>
 <translation id="4860895144060829044">Zadzwoń</translation>
@@ -1521,6 +1524,7 @@ Funkcja Handoff musi być też włączona w sekcji Ogólne w Ustawieniach, a urz
 <translation id="6556866813142980365">Ponów</translation>
 <translation id="6559301491397835130">{count,plural, =1{Zakładka została zapisana w folderze „{title}” tylko na tym urządzeniu.}few{Zakładki zostały zapisane w folderze „{title}” tylko na tym urządzeniu.}many{Zakładki zostały zapisane w folderze „{title}” tylko na tym urządzeniu.}other{Zakładki zostały zapisane w folderze „{title}” tylko na tym urządzeniu.}}</translation>
 <translation id="656065428026159829">Pokaż więcej</translation>
+<translation id="6565899972286925956">Stwórz, co tylko chcesz</translation>
 <translation id="6571070086367343653">Edytuj kartę kredytową</translation>
 <translation id="6574092468346088891">Włącz powiadomienia dotyczące kontroli zabezpieczeń</translation>
 <translation id="6579867704846662339">Przychodzące adresy URL z innych aplikacji możesz otwierać w trybie incognito.</translation>
@@ -1631,6 +1635,7 @@ Funkcja Handoff musi być też włączona w sekcji Ogólne w Ustawieniach, a urz
 <translation id="6930799952781667037">Kliknij, by zmienić na ten język.</translation>
 <translation id="693761253105515415">Ustaw kod dostępu</translation>
 <translation id="6945221475159498467">Wybierz</translation>
+<translation id="6946722113367118030">Myślenie</translation>
 <translation id="6950522403736391608">Ukryte</translation>
 <translation id="6962809930976936328">Uzyskuj statystyki dzięki Gemini</translation>
 <translation id="6964300328304469089"><ph name="NAME" />, obecnie wybrano <ph name="EMAIL" />. Wybierz konto.</translation>
@@ -1899,6 +1904,7 @@ Funkcja Handoff musi być też włączona w sekcji Ogólne w Ustawieniach, a urz
 <translation id="7958575506592576831">Informacje o bezpieczeństwie strony</translation>
 <translation id="7961015016161918242">Nigdy</translation>
 <translation id="7971136598759319605">Aktywność 1 dzień temu</translation>
+<translation id="7972837668077967426">Canvas</translation>
 <translation id="7975036700432177008">Wypróbuj</translation>
 <translation id="797588153137233716">Menu → Historia → Usuń dane przeglądania</translation>
 <translation id="7977451675950311423">Ostrzega, jeśli użyjesz hasła, które zostało przejęte w wyniku naruszenia bezpieczeństwa danych.</translation>
@@ -1972,6 +1978,7 @@ Funkcja Handoff musi być też włączona w sekcji Ogólne w Ustawieniach, a urz
 <translation id="8205564605687841303">Anuluj</translation>
 <translation id="8206354486702514201">O tym ustawieniu decyduje administrator.</translation>
 <translation id="8209050860603202033">Otwórz grafikę</translation>
+<translation id="8209237163365258530">Modele Gemini <ph name="VERSION_NUMBER" /></translation>
 <translation id="8211030355252954494">Ktoś przesłał Ci hasła do strony <ph name="WEBSITE" /></translation>
 <translation id="8211406090763984747">Połączenie jest bezpieczne</translation>
 <translation id="8214293972734702249">Przypięta: <ph name="TAB_TITLE" /></translation>

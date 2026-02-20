@@ -3252,7 +3252,7 @@ void NetworkHandler::NavigationRequestWillBeSent(
       current_wall_time, std::move(initiator), redirect_emitted_extra_info,
       std::move(redirect_response),
       std::string(Network::ResourceTypeEnum::Document), std::move(frame_token),
-      common_params.has_user_gesture);
+      common_params.has_possibly_filtered_user_gesture);
 }
 
 void NetworkHandler::FencedFrameReportRequestSent(
@@ -3796,6 +3796,13 @@ void NetworkHandler::GetResponseBodyForInterception(
 void NetworkHandler::BodyDataReceived(const String& request_id,
                                       const String& body,
                                       bool is_base64_encoded) {
+  network::mojom::DurableMessageCollector* collector =
+      root_session_->MaybeGetDurableMessageCollector();
+  if (collector) {
+    // When Durable Message is enabled, we don't need to store the body data
+    // in the NetworkHandler, to avoid doubling the memory usage.
+    return;
+  }
   received_body_data_[request_id] = {body, is_base64_encoded};
 }
 

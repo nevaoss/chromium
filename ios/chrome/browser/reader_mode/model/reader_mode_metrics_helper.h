@@ -55,6 +55,12 @@ class ReaderModeMetricsHelper
   // Records that the last event, showing the Reading Mode UI, has completed.
   void RecordReaderShown();
 
+  // Records the translation state transition between the original and Reading
+  // Mode web page.
+  void RecordTranslationState(
+      const ReaderModeTranslationState& original_page,
+      const ReaderModeTranslationState& reader_mode_page);
+
   // Records the last state of Reading Mode events.
   void Flush(ReaderModeDeactivationReason reason);
 
@@ -64,6 +70,7 @@ class ReaderModeMetricsHelper
       dom_distiller::mojom::Theme theme,
       dom_distiller::ThemeSettingsUpdateSource source) override;
   void OnChangeFontScaling(float scaling) override;
+  void OnChangeLinksEnabled(bool enabled) override;
 
  private:
   // Records the distillation time for the web page and its result if the

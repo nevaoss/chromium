@@ -9372,18 +9372,19 @@ class RenderFrameHostImplConnectionAllowlistBrowserTest
  private:
   bool InterceptURLRequest(URLLoaderInterceptor::RequestParams* params) {
     const std::string path = std::string(params->url_request.url.path());
-    if (path == "/title1.html") {
+    if (path == "/connection_allowlist_response_origin.html") {
       std::string headers = "HTTP/1.1 200 OK\nContent-Type: text/html\n";
       // The special value is `(response-origin)` which is a keyword.
       base::StrAppend(&headers, {"Connection-Allowlist: (response-origin)\n"});
-      std::string body = "<html>This is title1.html</html>";
+      std::string body =
+          "<html>This is connection_allowlist_response_origin.html</html>";
       URLLoaderInterceptor::WriteResponse(headers, body, params->client.get());
       return true;
     }
-    if (path == "/title3.html") {
+    if (path == "/connection_allowlist_empty.html") {
       std::string headers = "HTTP/1.1 200 OK\nContent-Type: text/html\n";
       base::StrAppend(&headers, {"Connection-Allowlist: ()\n"});
-      std::string body = "<html>This is title3.html</html>";
+      std::string body = "<html>This is connection_allowlist_empty.html</html>";
       URLLoaderInterceptor::WriteResponse(headers, body, params->client.get());
       return true;
     }
@@ -9403,7 +9404,8 @@ class RenderFrameHostImplConnectionAllowlistBrowserTest
 
 IN_PROC_BROWSER_TEST_F(RenderFrameHostImplConnectionAllowlistBrowserTest,
                        ConnectionAllowlist) {
-  GURL url(embedded_test_server()->GetURL("/title1.html"));
+  GURL url(embedded_test_server()->GetURL(
+      "/connection_allowlist_response_origin.html"));
   EXPECT_TRUE(NavigateToURL(shell(), url));
 
   std::optional<base::UnguessableToken> first_network_restrictions_id =
@@ -9455,10 +9457,11 @@ IN_PROC_BROWSER_TEST_F(RenderFrameHostImplConnectionAllowlistBrowserTest,
   // urls should succeed.
   // Navigate to a same-origin URL. This should be allowed.
   // New document title1 also has the same connection allowlist policy.
-  GURL same_origin_url(embedded_test_server()->GetURL("a.com", "/title1.html"));
+  GURL same_origin_url(embedded_test_server()->GetURL(
+      "a.com", "/connection_allowlist_response_origin.html"));
   EXPECT_TRUE(NavigateToURL(shell(), same_origin_url));
-  GURL cross_origin_url(
-      embedded_test_server()->GetURL("b.com", "/title1.html"));
+  GURL cross_origin_url(embedded_test_server()->GetURL(
+      "b.com", "/connection_allowlist_response_origin.html"));
   EXPECT_TRUE(NavigateToURL(shell(), cross_origin_url));
 
   // Navigate back to the original document to apply the connection allowlist.
@@ -9494,7 +9497,8 @@ IN_PROC_BROWSER_TEST_F(RenderFrameHostImplConnectionAllowlistBrowserTest,
   EXPECT_TRUE(iframe->IsRenderFrameLive());
 
   // Renderer-initiated navigation in iframe to same-origin should succeed.
-  GURL same_origin_url(embedded_test_server()->GetURL("a.com", "/title1.html"));
+  GURL same_origin_url(embedded_test_server()->GetURL(
+      "a.com", "/connection_allowlist_response_origin.html"));
   EXPECT_TRUE(
       NavigateToURLFromRenderer(iframe->frame_tree_node(), same_origin_url));
 
@@ -9517,7 +9521,8 @@ IN_PROC_BROWSER_TEST_F(RenderFrameHostImplConnectionAllowlistBrowserTest,
 
 IN_PROC_BROWSER_TEST_F(RenderFrameHostImplConnectionAllowlistBrowserTest,
                        EmptyIframeInjectedScriptFetch) {
-  GURL main_url = embedded_test_server()->GetURL("/title1.html");
+  GURL main_url = embedded_test_server()->GetURL(
+      "/connection_allowlist_response_origin.html");
   EXPECT_TRUE(NavigateToURL(shell(), main_url));
 
   RenderFrameHostImpl* main_rfh = web_contents()->GetPrimaryMainFrame();
@@ -9587,16 +9592,19 @@ IN_PROC_BROWSER_TEST_F(RenderFrameHostImplConnectionAllowlistBrowserTest,
 IN_PROC_BROWSER_TEST_F(RenderFrameHostImplConnectionAllowlistBrowserTest,
                        AboutBlankIframeInheritsConnectionAllowlist) {
   // 1. Navigate top-level frame to a page with connection allowlists.
-  // title1.html has Connection-Allowlist: (response-origin)
-  GURL main_url = embedded_test_server()->GetURL("/title1.html");
+  // connection_allowlist_response_origin.html has Connection-Allowlist:
+  // (response-origin)
+  GURL main_url = embedded_test_server()->GetURL(
+      "/connection_allowlist_response_origin.html");
   EXPECT_TRUE(NavigateToURL(shell(), main_url));
 
   RenderFrameHostImpl* main_rfh = web_contents()->GetPrimaryMainFrame();
 
   // 2. Create an iframe and point its src to a page with a different value of
   // connection allowlist.
-  // title3.html has Connection-Allowlist: ()
-  GURL iframe_url = embedded_test_server()->GetURL("/title3.html");
+  // connection_allowlist_empty.html has Connection-Allowlist: ()
+  GURL iframe_url =
+      embedded_test_server()->GetURL("/connection_allowlist_empty.html");
   EXPECT_TRUE(
       ExecJs(main_rfh, JsReplace("let child = document.createElement('iframe');"
                                  "child.id = 'test_iframe';"
@@ -9609,8 +9617,8 @@ IN_PROC_BROWSER_TEST_F(RenderFrameHostImplConnectionAllowlistBrowserTest,
   RenderFrameHostImpl* iframe = main_rfh->child_at(0)->current_frame_host();
   EXPECT_TRUE(iframe->IsRenderFrameLive());
 
-  // In title3.html, same-origin fetch should fail because the allowlist is
-  // empty.
+  // In connection_allowlist_empty.html, same-origin fetch should fail because
+  // the allowlist is empty.
   GURL fetch_url(embedded_test_server()->GetURL("/cors-ok.txt"));
   std::string fetch_resource = JsReplace(
       "(async () => {"
@@ -9629,7 +9637,7 @@ IN_PROC_BROWSER_TEST_F(RenderFrameHostImplConnectionAllowlistBrowserTest,
   iframe = main_rfh->child_at(0)->current_frame_host();
 
   // In about:blank, same-origin fetch should succeed as it inherits
-  // (response-origin) from title1.html.
+  // (response-origin) from connection_allowlist_response_origin.html.
   EXPECT_EQ(200, EvalJs(iframe, fetch_resource));
 
   // Cross-origin fetch should still fail.
@@ -9644,7 +9652,7 @@ IN_PROC_BROWSER_TEST_F(RenderFrameHostImplConnectionAllowlistBrowserTest,
 
 IN_PROC_BROWSER_TEST_F(RenderFrameHostImplConnectionAllowlistBrowserTest,
                        ConnectionAllowlistEmpty) {
-  GURL url(embedded_test_server()->GetURL("/title3.html"));
+  GURL url(embedded_test_server()->GetURL("/connection_allowlist_empty.html"));
   EXPECT_TRUE(NavigateToURL(shell(), url));
 
   std::optional<base::UnguessableToken> main_network_restrictions_id =
@@ -9831,8 +9839,8 @@ IN_PROC_BROWSER_TEST_F(RenderFrameHostImplConnectionAllowlistBrowserTest,
                        ConnectionAllowlistBrowserBackAllowed) {
   GURL allowlist_url(
       embedded_test_server()->GetURL("a.com", "/connection_allowlist.html"));
-  GURL cross_origin_url(
-      embedded_test_server()->GetURL("b.com", "/title1.html"));
+  GURL cross_origin_url(embedded_test_server()->GetURL(
+      "b.com", "/connection_allowlist_response_origin.html"));
 
   // 1. Navigate to a.com with Connection-Allowlist.
   EXPECT_TRUE(NavigateToURL(shell(), allowlist_url));
@@ -9853,15 +9861,17 @@ IN_PROC_BROWSER_TEST_F(RenderFrameHostImplConnectionAllowlistBrowserTest,
 }
 
 IN_PROC_BROWSER_TEST_F(RenderFrameHostImplConnectionAllowlistBrowserTest,
-                       ConnectionAllowlistHistoryBackDisallowed) {
+                       ConnectionAllowlistHistoryBackAllowedBFCache) {
   GURL allowlist_url(
       embedded_test_server()->GetURL("a.com", "/connection_allowlist.html"));
-  GURL cross_origin_url(
-      embedded_test_server()->GetURL("b.com", "/title1.html"));
+  GURL cross_origin_url(embedded_test_server()->GetURL(
+      "b.com", "/connection_allowlist_response_origin.html"));
 
   // 1. Navigate to a.com with Connection-Allowlist.
   EXPECT_TRUE(NavigateToURL(shell(), allowlist_url));
   EXPECT_EQ(allowlist_url, web_contents()->GetLastCommittedURL());
+  RenderFrameHostImpl* rfh_a =
+      web_contents()->GetPrimaryFrameTree().root()->current_frame_host();
 
   // 2. Navigate to b.com (cross-origin). This will be allowed since
   // it is browser initiated.
@@ -9870,16 +9880,63 @@ IN_PROC_BROWSER_TEST_F(RenderFrameHostImplConnectionAllowlistBrowserTest,
 
   EXPECT_EQ(2, web_contents()->GetController().GetEntryCount());
 
-  // 3. Now invoke history.back(). This should be disallowed
-  // because the connection allowlist restricts cross-origin
-  // navigations depending on the issue resolution:
-  //  https://github.com/WICG/connection-allowlists/issues/4
-  // TODO(crbug.com/447954811): Currently it is allowed. See TODO in
-  // NavigationRequest::IsAllowedByConnectionAllowlist().
+  bool is_in_bfcache = rfh_a->IsInBackForwardCache();
+
+  // 3. Now invoke history.back(). This should be allowed since it will be
+  // served from the BFCache.
   TestNavigationObserver navigation_observer(web_contents());
   EXPECT_TRUE(ExecJs(web_contents(), "history.back();"));
   navigation_observer.Wait();
-  EXPECT_TRUE(navigation_observer.last_navigation_succeeded());
+  EXPECT_EQ(is_in_bfcache, navigation_observer.last_navigation_succeeded());
+
+  if (!is_in_bfcache) {
+    return;
+  }
+
+  // 4. The document loaded from BFCache should restore its own connection
+  // allowlist. Fetch a cross-origin resource. It should be disallowed.
+  GURL d_url = embedded_test_server()->GetURL("d.com", "/cors-ok.txt");
+  std::string cross_origin_fetch_resource = JsReplace(
+      "(async () => {"
+      "  let resp = (await fetch($1, { mode: 'cors', credential: 'omit'}));"
+      "  return resp.status; })();",
+      d_url);
+  ASSERT_FALSE(ExecJs(web_contents()->GetPrimaryMainFrame(),
+                      cross_origin_fetch_resource));
+}
+
+IN_PROC_BROWSER_TEST_F(RenderFrameHostImplConnectionAllowlistBrowserTest,
+                       ConnectionAllowlistHistoryBackDisallowedNoBFCache) {
+  GURL allowlist_url(
+      embedded_test_server()->GetURL("a.com", "/connection_allowlist.html"));
+  GURL cross_origin_url(embedded_test_server()->GetURL(
+      "b.com", "/connection_allowlist_response_origin.html"));
+
+  // 1. Navigate to a.com with Connection-Allowlist.
+  EXPECT_TRUE(NavigateToURL(shell(), allowlist_url));
+  EXPECT_EQ(allowlist_url, web_contents()->GetLastCommittedURL());
+  RenderFrameHostImpl* rfh_a =
+      web_contents()->GetPrimaryFrameTree().root()->current_frame_host();
+  RenderFrameDeletedObserver delete_observer_rfh_a(rfh_a);
+
+  // 2. Navigate to b.com (cross-origin). This will be allowed since
+  // it is browser initiated.
+  EXPECT_TRUE(NavigateToURL(shell(), cross_origin_url));
+  EXPECT_EQ(cross_origin_url, web_contents()->GetLastCommittedURL());
+
+  EXPECT_EQ(2, web_contents()->GetController().GetEntryCount());
+
+  // 3. Now clear the BFCache and invoke history.back(). This should be
+  // disallowed because the connection allowlist restricts cross-origin
+  // navigations.
+  // https://github.com/WICG/connection-allowlists/issues/4
+  web_contents()->GetController().GetBackForwardCache().Flush();
+  delete_observer_rfh_a.WaitUntilDeleted();
+
+  TestNavigationObserver navigation_observer(web_contents());
+  EXPECT_TRUE(ExecJs(web_contents(), "history.back();"));
+  navigation_observer.Wait();
+  EXPECT_FALSE(navigation_observer.last_navigation_succeeded());
   EXPECT_EQ(allowlist_url, web_contents()->GetLastCommittedURL());
 }
 

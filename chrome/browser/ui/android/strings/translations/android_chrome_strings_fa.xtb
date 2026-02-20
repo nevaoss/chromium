@@ -41,6 +41,7 @@
 <translation id="1150263420752757504">‏<ph name="APP_NAME" /> در Chrome باز می‌شود. درصورت ادامه دادن، با <ph name="BEGIN_LINK1" />شرایط خدمات Google<ph name="END_LINK1" /> و <ph name="BEGIN_LINK2" />شرایط خدمات تکمیلی Google Chrome و ChromeOS<ph name="END_LINK2" /> موافقت می‌کنید.</translation>
 <translation id="1154555449933432029">‏هیچ گذرواژه‌ای در «مدیر گذرواژه Google» ذخیره نکرده‌اید.</translation>
 <translation id="115483310321669804">استفاده از گذرواژه <ph name="PASSWORD" /></translation>
+<translation id="1161065531352634524">همگام‌سازی زبانه‌ها و سابقه</translation>
 <translation id="1165109137568919258">برای جستجو، عکسی بگیرید یا تصویری از گالری عکس خود اضافه کنید</translation>
 <translation id="1173894706177603556">تغییر نام</translation>
 <translation id="1174479719160874822">‏وقتی صفحه‌نمایش باریک باشد، Chrome سایت ویژه تلفن همراه را درخواست خواهد کرد</translation>
@@ -126,6 +127,7 @@
 <translation id="147982357559798527">تغییر کرده است</translation>
 <translation id="1480287803138246127">‏ممکن است بخشی از سابقه شما اینجا نمایش داده نشود. برای دیدن کل سابقه Chrome، آن را به‌صورت کامل باز کنید.</translation>
 <translation id="1493287004536771723"><ph name="SITE_NAME" /> را دنبال می‌کنید</translation>
+<translation id="1495677929897281669">برگشتن به برگه</translation>
 <translation id="1496514951988037011">نام کاربری</translation>
 <translation id="1501480321619201731">حذف گروه</translation>
 <translation id="1506061864768559482">موتور جستجو</translation>
@@ -981,6 +983,7 @@
 <translation id="5210286577605176222">رفتن به برگه قبلی</translation>
 <translation id="5210365745912300556">بستن زبانه</translation>
 <translation id="5212800876504289412">‏برای تکمیل این تغییر، Chrome را بازراه‌اندازی کنید. پس‌از بازراه‌اندازی، زبانه‌ها به‌طور خودکار دوباره باز می‌شوند.</translation>
+<translation id="5213114823401215820">باز کردن مجدد گروه بسته‌شده</translation>
 <translation id="5215957675041756913">کنترل داده‌ها و حساب</translation>
 <translation id="5218324087477576825">شماره کارت الزامی است</translation>
 <translation id="5221437554987713282">‏<ph name="PERMISSION_1" />، <ph name="PERMISSION_2" />، و اجازه‌های دیگر <ph name="SEPARATOR" /> Chrome این اجازه‌ها را برداشت زیرا اخیراً بازدیدی نداشته‌اید</translation>
@@ -1436,6 +1439,7 @@
 <translation id="7020741890149022655">افزودن به فهرست خواندن <ph name="BEGIN_NEW" />جدید<ph name="END_NEW" /></translation>
 <translation id="7022756207310403729">بازکردن در مرورگر</translation>
 <translation id="7029809446516969842">گذرواژه‌ها</translation>
+<translation id="7037994709569287156">‏‫Chrome را مرورگر پیش‌فرض کنید</translation>
 <translation id="7053256416619638731">گذرواژه‌های این دستگاه را تقویت کنید</translation>
 <translation id="7053983685419859001">مسدود کردن</translation>
 <translation id="7054588988317389591">توضیحات تصویر دریافت شود؟</translation>
@@ -1568,6 +1572,7 @@
 <translation id="7523960634226602883">‏جستجو با دوربین ازطریق «لنز Google»</translation>
 <translation id="7525248386620136756">‫<ph name="TAB_GROUPS_AND_TABS_PART" /> بسته و ذخیره شد</translation>
 <translation id="7545347190366646170">افرادی که دسترسی دارند</translation>
+<translation id="7553482318994371148">باز کردن مجدد زبنه‌های بسته‌شده</translation>
 <translation id="7554643625247105821">‏بررسی نسخه Chrome امکان‌پذیر نیست</translation>
 <translation id="7557508262441527045">از سیستم خارج شدید</translation>
 <translation id="7573665567024262965">برنامه‌های پیش‌فرض را انتخاب کنید</translation>
@@ -1801,6 +1806,7 @@
 <translation id="8458413889418591446">برای برگشتن سریع به سایت‌هایی که بازدید کرده‌اید، سابقه و زبانه‌ها را همگام‌سازی کنید</translation>
 <translation id="84594714173170813">‏همچنان از داده‌های Chrome ذخیره‌شده در «حساب Google» خود استفاده کنید</translation>
 <translation id="8460448946170646641">مرور کنترل‌های اصلی امنیت و حریم خصوصی</translation>
+<translation id="8460932807646981183">مدیریت موتورهای جستجو و جستجوی سایت</translation>
 <translation id="8473863474539038330">نشانی‌ها و موارد دیگر</translation>
 <translation id="847433688444405067">پیمایش بین دستگاه‌ها</translation>
 <translation id="8477178913400731244">حذف داده‌ها</translation>
@@ -1887,6 +1893,7 @@
 <translation id="8856931513242997049">جریان اجازه اعلان بسته شد</translation>
 <translation id="8863714995118816041">اجازه‌ها دوباره به <ph name="SITE_NAME" /> اعطا شد</translation>
 <translation id="8865415417596392024">‏داده‌های Chrome در حساب شما</translation>
+<translation id="8872506776304248286">باز کردن در برنامه</translation>
 <translation id="8890668505403261809">جستجوی زبانه‌های ناشناس</translation>
 <translation id="8894890673032951011">‫<ph name="TAB_TITLE" />، زبانه ناشناس ضبط انتخابی</translation>
 <translation id="8898822736010347272">‏نشانی‌های وب بعضی از صفحه‌هایی که بازدید می‌کنید، اطلاعات محدودی از سیستم، و برخی از محتوای صفحه را به Google ارسال می‌کند تا به کشف تهدیدهای جدید و محافظت از همه افراد در وب کمک کند.</translation>

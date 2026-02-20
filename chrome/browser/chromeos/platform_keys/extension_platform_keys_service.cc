@@ -25,6 +25,7 @@
 #include "chrome/browser/chromeos/platform_keys/extension_key_permissions_service.h"
 #include "chrome/browser/chromeos/platform_keys/extension_key_permissions_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chromeos/ash/components/platform_keys/keystore_types.h"
 #include "chromeos/ash/components/platform_keys/platform_keys.h"
 #include "chromeos/constants/chromeos_features.h"
 #include "chromeos/crosapi/cpp/keystore_service_util.h"
@@ -42,6 +43,8 @@
 #include "mojo/public/cpp/bindings/remote.h"
 #include "net/cert/x509_certificate.h"
 
+using chromeos::KeystoreKeyAttributeType;
+using chromeos::KeystoreSigningScheme;
 using content::BrowserThread;
 using crosapi::keystore_service_util::MakeEcdsaKeystoreAlgorithm;
 using crosapi::keystore_service_util::MakeRsaOaepKeystoreAlgorithm;
@@ -50,10 +53,8 @@ using crosapi::mojom::KeystoreAlgorithmPtr;
 using crosapi::mojom::KeystoreBinaryResult;
 using crosapi::mojom::KeystoreBinaryResultPtr;
 using crosapi::mojom::KeystoreError;
-using crosapi::mojom::KeystoreKeyAttributeType;
 using crosapi::mojom::KeystoreSelectClientCertificatesResult;
 using crosapi::mojom::KeystoreSelectClientCertificatesResultPtr;
-using crosapi::mojom::KeystoreSigningScheme;
 using crosapi::mojom::KeystoreType;
 
 namespace chromeos {
@@ -536,18 +537,14 @@ class ExtensionPlatformKeysService::SignTask : public Task {
   // Starts the actual signing operation and afterwards passes the signature (or
   // error) to |callback_|.
   void Sign() {
-    // TODO(crbug.com/40489779): This can be simplified when mojo supports
-    // optional enums.
-    bool is_keystore_provided = false;
-    KeystoreType keystore = KeystoreType::kUser;
+    std::optional<KeystoreType> keystore;
     if (token_id_.has_value()) {
-      is_keystore_provided = true;
       keystore = KeystoreTypeFromTokenId(token_id_.value());
     }
 
     service_->keystore_service_->Sign(
-        is_keystore_provided, keystore, public_key_spki_der_, signing_scheme_,
-        data_, base::BindOnce(&SignTask::DidSign, weak_factory_.GetWeakPtr()));
+        keystore, public_key_spki_der_, signing_scheme_, data_,
+        base::BindOnce(&SignTask::DidSign, weak_factory_.GetWeakPtr()));
   }
 
   void DidSign(KeystoreBinaryResultPtr result) {

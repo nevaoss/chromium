@@ -20,6 +20,7 @@ source_set("sync_integration_tests_impl") {
     ":sync_integration_test_support",
     "//chrome/browser/autofill",
     "//chrome/browser/history",
+    "//chrome/browser/metrics:test_support",
     "//chrome/browser/password_manager/factories",
     "//chrome/browser/plus_addresses",
     "//chrome/browser/prefs",
@@ -217,6 +218,17 @@ source_set("sync_integration_tests_impl") {
     if (!is_chromeos) {
       sources += [
         "select_type_and_migrate_local_data_items_when_active_sync_test.cc",
+      ]
+    }
+
+    # TODO(crbug.com/478187672): Fix flakiness and enable on ASan.
+    if (is_linux && is_asan) {
+      sources -= [
+        "web_apps/two_client_web_apps_integration_test.cc",
+        "web_apps/two_client_web_apps_integration_test_base.cc",
+        "web_apps/two_client_web_apps_integration_test_base.h",
+        "web_apps/two_client_web_apps_integration_test_mac_win_linux.cc",
+        "web_apps/two_client_web_apps_integration_test_win_linux.cc",
       ]
     }
 
@@ -553,7 +565,7 @@ source_set("sync_integration_test_support") {
     deps += [
       "//chrome/browser/apps/app_service",
       "//chrome/browser/themes",
-      "//chrome/browser/ui/webui/signin:login",
+      "//chrome/browser/ui/webui/signin:login_ui_service",
       "//chrome/browser/ui/webui/signin:test_support_ui",
       "//chrome/browser/web_applications:web_applications_test_support",
       "//chrome/browser/webauthn",

@@ -138,6 +138,10 @@ class FakeChromeRenderFrame : public chrome::mojom::ChromeRenderFrame {
       const TaskId& task_id,
       bool supports_paint_stability) override {}
   void CancelTool(const TaskId& task_id) override {}
+  void GetCrossDocumentScriptToolResult(
+      GetCrossDocumentScriptToolResultCallback callback) override {
+    std::move(callback).Run("");
+  }
 
  private:
   void Bind(mojo::ScopedInterfaceEndpointHandle handle) {
@@ -223,15 +227,16 @@ class ExecutionEngineTest : public ChromeRenderViewHostTestHarness {
     task_mock_ui_event_dispatcher_ =
         static_cast<ui::MockUiEventDispatcher*>(task_ui_event_dispatcher.get());
 
-    auto execution_engine = ExecutionEngine::CreateForTesting(
-        profile(), std::move(ui_event_dispatcher));
-    auto raw_execution_engine = execution_engine.get();
-    task_ = std::make_unique<ActorTask>(profile(), std::move(execution_engine),
-                                        std::move(task_ui_event_dispatcher),
-                                        /*options=*/nullptr,
-                                        mock_actor_task_delegate_.GetWeakPtr());
-    task_->SetIdForTesting(0);
-    raw_execution_engine->SetOwner(task_.get());
+    ScopedExecutionEngineFactory scoped_execution_engine_factory(
+        base::BindLambdaForTesting([&](actor::ActorTask& task) {
+          CHECK(ui_event_dispatcher);
+          return actor::ExecutionEngine::CreateForTesting(
+              task, std::move(ui_event_dispatcher));
+        }));
+
+    task_ = ActorTask::CreateForTesting(
+        profile(), TaskId(0), std::move(task_ui_event_dispatcher),
+        /*options=*/nullptr, mock_actor_task_delegate_.GetWeakPtr());
 
     for (auto& mock :
          {mock_ui_event_dispatcher_, task_mock_ui_event_dispatcher_}) {
@@ -448,7 +453,7 @@ TEST_F(ExecutionEngineTest, CrossOriginNavigationBeforeAction) {
   ActResultFuture result;
   base::test::TestFuture<void> start_future;
   ExecutionEngineStateWaiter state_waiter(start_future.GetCallback(),
-                                          *task_->GetExecutionEngine(),
+                                          task_->GetExecutionEngine(),
                                           ExecutionEngine::State::kStartAction);
   std::unique_ptr<ToolRequest> action =
       MakeClickCallback(kFakeContentNodeId).Run();
@@ -483,7 +488,7 @@ TEST_F(ExecutionEngineTest, CancelOngoingAction) {
   // Wait for the tool to be invoked, but don't complete it.
   EXPECT_TRUE(on_invoke_future.Wait());
 
-  task_->GetExecutionEngine()->CancelOngoingActions(
+  task_->GetExecutionEngine().CancelOngoingActions(
       mojom::ActionResultCode::kTaskWentAway);
 
   // The cancellation should destroy the tool.
@@ -882,7 +887,7 @@ TEST_F(ExecutionEngineTest,
   ASSERT_TRUE(actor_service);
 
   // Prepare the data to be sent.
-  ExecutionEngine* execution_engine = task_->GetExecutionEngine();
+  ExecutionEngine& execution_engine = task_->GetExecutionEngine();
   std::vector<autofill::ActorFormFillingRequest> test_requests;
   test_requests.emplace_back().requested_data =
       optimization_guide::proto::FormFillingRequest_RequestedData_ADDRESS;
@@ -896,8 +901,8 @@ TEST_F(ExecutionEngineTest,
       .WillOnce(testing::SaveArg<1>(&received_requests));
 
   // Call the method under test on the ExecutionEngine.
-  execution_engine->RequestToShowAutofillSuggestions(test_requests,
-                                                     base::DoNothing());
+  execution_engine.RequestToShowAutofillSuggestions(test_requests,
+                                                    base::DoNothing());
 
   // The vector of requests broadcast by the service should match what we sent.
   ASSERT_EQ(received_requests.size(), 1u);
@@ -941,7 +946,7 @@ TEST_F(ExecutionEngineNavigationGatingTest,
   content::MockNavigationHandle navigation_handle(kDestinationUrl, main_rfh());
   navigation_handle.set_initiator_origin(kInitiatorOrigin);
 
-  EXPECT_EQ(task_->GetExecutionEngine()->ShouldDeferNavigation(
+  EXPECT_EQ(task_->GetExecutionEngine().ShouldDeferNavigation(
                 navigation_handle, base::NullCallback()),
             content::NavigationThrottle::PROCEED);
 
@@ -978,7 +983,7 @@ TEST_F(ExecutionEngineNavigationGatingTest,
   content::MockNavigationHandle navigation_handle(kDestinationUrl, main_rfh());
   navigation_handle.set_initiator_origin(kInitiatorOrigin);
 
-  EXPECT_EQ(task_->GetExecutionEngine()->ShouldDeferNavigation(
+  EXPECT_EQ(task_->GetExecutionEngine().ShouldDeferNavigation(
                 navigation_handle, base::NullCallback()),
             content::NavigationThrottle::CANCEL_AND_IGNORE);
 

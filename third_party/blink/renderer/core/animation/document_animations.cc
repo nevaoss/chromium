@@ -223,7 +223,7 @@ void DocumentAnimations::UpdateAnimations(
     document_->View()->ScheduleAnimation();
   }
 
-  UpdateCompositorAnimationTriggers();
+  UpdateCompositorAnimationTriggers(paint_artifact_compositor);
 
   document_->GetWorkletAnimationController().UpdateAnimationStates();
   document_->GetFrame()->ScheduleNextServiceForPostLayoutSnapshotClients();
@@ -323,6 +323,7 @@ void DocumentAnimations::Trace(Visitor* visitor) const {
   visitor->Trace(timelines_);
   visitor->Trace(triggers_);
   visitor->Trace(triggered_animations_);
+  visitor->Trace(global_deferred_timelines_);
 }
 
 void DocumentAnimations::GetAnimationsTargetingTreeScope(
@@ -413,14 +414,15 @@ void DocumentAnimations::AddAnimationTrigger(AnimationTrigger& trigger) {
   triggers_.insert(&trigger);
 }
 
-void DocumentAnimations::UpdateCompositorAnimationTriggers() {
+void DocumentAnimations::UpdateCompositorAnimationTriggers(
+    const PaintArtifactCompositor* paint_artifact_compositor) {
   if (!RuntimeEnabledFeatures::AnimationTriggerEnabled() ||
       !Platform::Current()->IsThreadedAnimationEnabled()) {
     return;
   }
 
   for (AnimationTrigger* trigger : triggers_) {
-    trigger->UpdateCompositorTrigger();
+    trigger->UpdateCompositorTrigger(paint_artifact_compositor);
   }
 }
 

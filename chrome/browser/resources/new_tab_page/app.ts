@@ -333,10 +333,6 @@ export class AppElement extends AppElementBase {
        * Whether to show the AIM threads rail when composebox is open.
        */
       enableThreadsRail_: {type: Boolean},
-
-      /* Whether to show the model picker in the contextual action menu. */
-      showModelPicker_: {type: Boolean},
-      showCanvas_: {type: Boolean},
     };
   }
 
@@ -419,8 +415,13 @@ export class AppElement extends AppElementBase {
   protected accessor searchboxInputFocused_: boolean = false;
   protected accessor composeboxInputFocused_: boolean = false;
   protected accessor showScrim_: boolean = false;
+  private reducedMotionPreferred_: boolean =
+      WindowProxy.getInstance()
+          .matchMedia('(prefers-reduced-motion: reduce)')
+          .matches;
   protected accessor contextMenuGlifAnimationState_: GlifAnimationState =
-      this.ntpNextFeaturesEnabled_ && this.isActionChipsVisible_ ?
+      !this.reducedMotionPreferred_ && this.ntpNextFeaturesEnabled_ &&
+          this.isActionChipsVisible_ ?
       GlifAnimationState.SPINNER_ONLY :
       GlifAnimationState.INELIGIBLE;
   protected accessor undoAutoRemovalCallback_: (() => void)|null = null;
@@ -431,10 +432,6 @@ export class AppElement extends AppElementBase {
       loadTimeData.getBoolean('composeboxShowContextMenuDescription');
   protected accessor enableThreadsRail_: boolean =
       loadTimeData.getBoolean('enableThreadsRail');
-  protected accessor showModelPicker_: boolean =
-      loadTimeData.getBoolean('showModelPicker');
-  protected accessor showCanvas_: boolean =
-      loadTimeData.getBoolean('showCanvas');
 
   private callbackRouter_: PageCallbackRouter;
   private pageHandler_: PageHandlerRemote;
@@ -1449,6 +1446,10 @@ export class AppElement extends AppElementBase {
   protected onActionChipsRetrievalStateChanged_(
       e: CustomEvent<{state: ActionChipsRetrievalState}>) {
     const state = e.detail.state;
+    if (this.reducedMotionPreferred_) {
+      // The animation should not be started.
+      return;
+    }
     // Mapping of ActionChipsRetrievalState => GlifAnimationState:
     // REQUESTED => SPINNER_ONLY
     // UPDATED => STARTED (or FINISHED if cr_context_menu_entrypoint sets it)

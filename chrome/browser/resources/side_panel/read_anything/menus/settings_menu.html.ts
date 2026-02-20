@@ -11,7 +11,7 @@ export function getHtml(this: SettingsMenuElement) {
   // clang-format off
   return html`
 <cr-lazy-render-lit id="lazyMenu" .template='${() => html`
-  <cr-action-menu id="settings-menu-dialog" non-modal>
+  <cr-action-menu id="settings-menu-dialog" @close="${this.close}" non-modal>
     ${this.options_.map((item, index) => html`
       <button class="menu-row dropdown-item ${item.className || ''}"
           id="${item.id}"
@@ -39,7 +39,6 @@ export function getHtml(this: SettingsMenuElement) {
               data-index="${index}">
             </cr-toggle>
         ` : html`
-            <!-- TODO(crbug.com/473611756): Fix direction in RTL -->
             <cr-icon class="end-icon" icon="cr:chevron-right"></cr-icon>
         `}
       </button>

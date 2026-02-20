@@ -140,6 +140,7 @@
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/contents_web_view.h"
 #include "chrome/browser/ui/views/frame/multi_contents_view.h"
+#include "chrome/browser/ui/views/side_panel/side_panel_ui.h"
 #include "chrome/browser/ui/views/status_bubble_views.h"
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
 #include "chrome/browser/ui/webui/signin/login_ui_service.h"
@@ -189,10 +190,10 @@
 #include "components/sessions/content/session_tab_helper.h"
 #include "components/sessions/core/session_types.h"
 #include "components/sessions/core/tab_restore_service.h"
+#include "components/split_tabs/split_tab_id.h"
+#include "components/split_tabs/split_tab_visual_data.h"
 #include "components/startup_metric_utils/browser/startup_metric_utils.h"
 #include "components/tabs/public/split_tab_data.h"
-#include "components/tabs/public/split_tab_id.h"
-#include "components/tabs/public/split_tab_visual_data.h"
 #include "components/tabs/public/tab_collection.h"
 #include "components/tabs/public/tab_group.h"
 #include "components/tabs/public/tab_interface.h"
@@ -1090,6 +1091,10 @@ const Profile* Browser::GetProfile() const {
   return profile();
 }
 
+bool Browser::IsDeleteScheduled() const {
+  return is_delete_scheduled_;
+}
+
 void Browser::OpenGURL(const GURL& gurl, WindowOpenDisposition disposition) {
   OpenURL(content::OpenURLParams(gurl, content::Referrer(), disposition,
                                  ui::PAGE_TRANSITION_LINK,
@@ -1282,17 +1287,6 @@ void Browser::DidBecomeInactive() {
     did_become_inactive_callback_list_.Notify(this);
   }
 }
-
-#if BUILDFLAG(IS_CHROMEOS)
-bool Browser::IsLockedForOnTask() {
-  return on_task_locked_;
-}
-
-void Browser::SetLockedForOnTask(bool locked) {
-  on_task_locked_ = locked;
-  GetBrowserView().OnLockedForOnTaskUpdated();
-}
-#endif
 
 void Browser::OnWindowClosing() {
   // There may be situations where async tasks, such as
@@ -1590,8 +1584,7 @@ void Browser::OnTabStripModelChanged(TabStripModel* tab_strip_model,
     }
     case TabStripModelChange::kRemoved: {
       for (const auto& contents : change.GetRemove()->contents) {
-        if (contents.remove_reason ==
-            TabStripModelChange::RemoveReason::kDeleted) {
+        if (contents.remove_reason == TabRemovedReason::kDeleted) {
           OnTabClosing(contents.contents);
         }
         OnTabDetached(contents.contents,
@@ -1631,6 +1624,9 @@ void Browser::OnTabStripModelChanged(TabStripModel* tab_strip_model,
       selection.new_model.active().has_value()
           ? static_cast<int>(selection.new_model.active().value())
           : TabStripModel::kNoTab,
+      (change.type() == TabStripModelChange::kRemoved) &&
+          (change.GetRemove()->contents[0].remove_reason ==
+           TabRemovedReason::kDeleted),
       selection.reason);
 }
 
@@ -3112,6 +3108,7 @@ void Browser::OnTabDeactivated(WebContents* contents) {
 void Browser::OnActiveTabChanged(WebContents* old_contents,
                                  WebContents* new_contents,
                                  int index,
+                                 bool tab_removed_for_deletion,
                                  int reason) {
   TRACE_EVENT0("ui", "Browser::OnActiveTabChanged");
 // Mac correctly sets the initial background color of new tabs to the theme
@@ -3140,6 +3137,14 @@ void Browser::OnActiveTabChanged(WebContents* old_contents,
 #endif
 
   base::RecordAction(UserMetricsAction("ActiveTabChanged"));
+
+  if (!(reason & CHANGE_REASON_REPLACED) && !tab_strip_model_->closing_all()) {
+    SidePanelUI* side_panel_ui = browser_window_features()->side_panel_ui();
+    if (side_panel_ui) {
+      side_panel_ui->OnActiveTabChanged(old_contents, new_contents,
+                                        tab_removed_for_deletion);
+    }
+  }
 
   // Update the bookmark state, since the BrowserWindow may query it during
   // OnActiveTabChanged() below.

@@ -27,6 +27,7 @@
 <translation id="1158134713295836892">Chrome मधील Gemini</translation>
 <translation id="1184145431117212167">तुमच्या Windows च्या आवृत्तीला सपोर्ट नसल्यामुळे इंस्टॉलेशन करता आले नाही.</translation>
 <translation id="1194807384646768652">फाइल प्रकार सामान्यतः डाउनलोड केला जात नसल्याने Chrome ने हे डाउनलोड ब्लॉक केले आहे आणि तो धोकादायक असू शकतो</translation>
+<translation id="1197860368385086056">तुम्ही पुढील वेळी तुमच्या <ph name="DEVICE_TYPE" /> वर Chrome उघडाल, तेव्हा तुम्हाला किमतीचा माग ठेवण्याशी संबंधित अलर्ट सुरू करण्यासाठी प्रॉम्प्ट दिसेल.</translation>
 <translation id="1203500561924088507">इंस्टॉल केल्याबद्दल धन्यवाद. तुम्ही <ph name="BUNDLE_NAME" /> वापरण्यापूर्वी तुमचा ब्राउझर रीस्टार्ट करणे आवश्यक आहे.</translation>
 <translation id="1278833599417554002">&amp;Chrome अपडेट करण्यासाठी पुन्हा लाँच करा</translation>
 <translation id="1290883685122687410">सेटअप एरर: <ph name="METAINSTALLER_EXIT_CODE" />. <ph name="WINDOWS_ERROR" /></translation>
@@ -47,7 +48,6 @@
 <translation id="146866447420868597">Chrome मध्ये साइन इन करायचे आहे का?</translation>
 <translation id="1476347941828409626">&amp;Chrome प्रोफाइल व्यवस्थापित करा</translation>
 <translation id="1492280395845991349">Chrome अपडेट पूर्ण करण्यासाठी पुन्हा लाँच करा</translation>
-<translation id="1496875977627931224">हॅलो <ph name="USER_NAME" />,<ph name="LINE_BREAK" />आज तुमच्या मनात काय आहे?</translation>
 <translation id="1497802159252041924">इंस्टॉलसंबंधित एरर: <ph name="INSTALL_ERROR" /></translation>
 <translation id="1507198376417198979">तुमची नवीन Chrome प्रोफाइल कस्टमाइझ करा</translation>
 <translation id="1518627427551567882">हे पेज सुरक्षित आहे</translation>
@@ -174,7 +174,6 @@
 <translation id="2857540653560290388">Chrome लाँच करत आहे...</translation>
 <translation id="286025080868315611">Chrome काही डाउनलोड ब्लॉक का करते हे जाणून घ्या</translation>
 <translation id="2861074815332034794">Chrome अपडेट करत आहे (<ph name="PROGRESS_PERCENT" />)</translation>
-<translation id="2871893339301912279">तुम्ही Chrome मध्‍ये साइन इन केले आहे!</translation>
 <translation id="2875053229394024379">तुम्ही तुमचे Google खाते वापरून Chrome मध्ये साइन इन करता, तेव्हा तुम्ही Gemini सह तुमची Chrome प्रोफाइल वापरू शकता. <ph name="BEGIN_LINK" />Chrome मध्ये साइन इन कसे करावे हे जाणून घ्या<ph name="END_LINK" /></translation>
 <translation id="2876628302275096482"><ph name="BEGIN_LINK" />Chrome तुमचा डेटा खाजगी कसा ठेवते<ph name="END_LINK" /> याविषयी अधिक जाणून घ्या</translation>
 <translation id="2885378588091291677">टास्क मॅनेजर</translation>
@@ -285,7 +284,6 @@
 <translation id="4022972681110646219">स्क्रीनचे भाषांतर करा</translation>
 <translation id="4023601594785368013">मूळ भाषा: <ph name="LANGUAGE" /></translation>
 <translation id="4035053306113201399">अपडेट लागू करण्यासाठी ChromeOS रीस्टार्ट करणे आवश्यक आहे.</translation>
-<translation id="4039097928859803404">AI मोड शॉर्टकट नेहमी दाखवा</translation>
 <translation id="4050175100176540509">नवीनतम आवृत्तीमध्‍ये महत्त्वाच्या सुरक्षितता सुधारणा आणि नवीन वैशिष्ट्ये उपलब्‍ध आहेत.</translation>
 <translation id="4053720452172726777">Google Chrome कस्टमाइझ करा आणि नियंत्रित करा</translation>
 <translation id="408393047846373801">तुमच्या सर्व डिव्हाइसवर तुमचे पासवर्ड आणि आणखी बरेच काही मिळवण्यासाठी, Chrome मध्ये साइन इन करा. तुम्ही साइन इन केल्यावर हा पासवर्ड तुमच्या Google खाते मध्ये सेव्ह केला जाईल.</translation>
@@ -329,7 +327,6 @@
 <translation id="4459234553906210702">जाहिरात मापन हे तुम्ही भेट देत असलेल्या साइटना Chrome कडे माहितीची विनंती करण्यास अनुमती देते, जे साइटला तिच्या जाहिरातींचा परफॉर्मन्स मोजण्यात मदत करते. जाहिरात मापन हे साइटदरम्यान शक्य तितकी कमी माहिती ट्रान्सफर करून क्रॉस-साइट ट्रॅकिंग प्रतिबंधित करते.</translation>
 <translation id="4493028449971051158">स्टार्टअप एरर: कृपया अ‍ॅडमिनिस्ट्रेटर म्हणून इंस्टॉलर रन करा.</translation>
 <translation id="4501471624619070934">या देशामध्ये अ‍ॅक्सेस प्रतिबंधित असल्यामुळे इंस्टॉलेशन अयशस्वी झाले.</translation>
-<translation id="4567424176335768812">तुम्ही <ph name="USER_EMAIL_ADDRESS" /> म्हणून साइन इन केले आहे. आता तुम्ही तुमच्या सर्व साइन इन केलेल्या डिव्हाइसवरील तुमच्या बुकमार्क, इतिहास आणि अन्य सेटिंग्ज ॲक्सेस करू शकता.</translation>
 <translation id="4571503333518166079">Chrome सूचना सेटिंग्जवर जा</translation>
 <translation id="4592634244097223647">Google ला इमेजविषयी माहिती विचारा</translation>
 <translation id="459622048091363950">एकदा का Chrome ला ॲक्सेस मिळाला की, वेबसाइट तुम्हाला ॲक्सेससाठी विचारतील.</translation>
@@ -381,7 +378,6 @@
 <translation id="5139423532931106058">तुमची Chrome प्रोफाइल कस्टमाइझ करा</translation>
 <translation id="5163087008893166964">Chrome मध्ये स्वागत आहे; नवीन ब्राउझर विंडो उघडली</translation>
 <translation id="5166439563123238795">Chrome ला तुमचे हात ट्रॅक करण्याच्या परवानगीची आवश्यकता आहे</translation>
-<translation id="5167819546851111585">आज तुमच्या मनात काय आहे?</translation>
 <translation id="5169778651486082413">तुमच्या फोनवर Chrome सह तुमचे पासवर्ड वापरा</translation>
 <translation id="5170938038195470297">तुमचे प्रोफाइल वापरले जाणे शक्य नाही कारण ते Google Chrome च्या नवीनतम आवृत्तीमधील आहे.
 काही वैशिष्‍ट्ये अनुपलब्ध असू शकतात. कृपया एक भिन्न प्रोफाइल डिरेक्टरी नमूद करा किंवा Google Chrome ची नवीनतम आवृत्ती वापरा.</translation>
@@ -400,6 +396,7 @@
 <translation id="5334309298019785904">तुमच्या डोमेनसाठी सिंक करणे उपलब्ध नसल्यामुळे, ChromeOS ला तुमचा डेटा सिंक करता आला नाही.</translation>
 <translation id="5334487786912937552">Chrome ला फाइल डाउनलोड करण्यासाठी स्टोरेज ॲक्सेस करण्याची परवानगी आवश्यक आहे.</translation>
 <translation id="5337648990166757586">पर्यायी: Google ला निदान आणि वापर डेटा आपोआप पाठवून, ChromeOS च्या वैशिष्‍ट्यांमध्ये व परफॉर्मन्समध्ये सुधारणा करण्यात मदत करा.</translation>
+<translation id="5346059693449184483">तुमच्या मनात काय आहे?</translation>
 <translation id="5346389065299425353">एकाहून अधिक टॅब, फाइल आणि टूल जोडून आणखी सखोलपणे शोध घ्या</translation>
 <translation id="5353252989841766347">Chrome मधून पासवर्ड एक्सपोर्ट करा</translation>
 <translation id="5368118228313795342">अतिरिक्त कोड: <ph name="EXTRA_CODE" />.</translation>
@@ -509,6 +506,7 @@ Google Chrome तुमची सेटिंग्ज पुन्हा मि
 <translation id="6321592572353357376">"<ph name="EXTENSION_NAME" />" या एक्स्टेंशनसाठी तुम्हाला Chrome मध्ये साइन इन करावे लागेल</translation>
 <translation id="6326175484149238433">Chrome मधून काढून टाका</translation>
 <translation id="6327105987658262776">कोणतेही अपडेट उपलब्ध नाही.</translation>
+<translation id="6333195756043503664">माझा काँप्युटर सुरू झाल्यावर Chrome उघडा</translation>
 <translation id="6334815226785304306">Google Chrome ला डीफॉल्ट ब्राउझर बनवा आणि टास्कबारवर पिन करा</translation>
 <translation id="63540178978900677">Chrome आता तुमचा डीफॉल्ट ब्राउझर नाही. Chrome ला डीफॉल्ट ब्राउझर बनवायचे आहे का?</translation>
 <translation id="6360449101159168105">हा टॅब इनॅक्टिव्ह असताना, Chrome ला जलद ठेवण्यासाठी मेमरी मोकळी करण्यात आली होती. ही साइट इनॅक्टिव्ह राहण्यापासून नेहमी वगळली जावी असे तुम्ही निवडू शकता.</translation>
@@ -618,6 +616,7 @@ Google Chrome तुमची सेटिंग्ज पुन्हा मि
 <translation id="7515191208480168435">सोप्या अ‍ॅक्सेससाठी तुम्ही Google Lens पिन करू शकता</translation>
 <translation id="7535429826459677826">Google Chrome डेव्हलपर</translation>
 <translation id="7543146567111253230">तुमच्या सर्व डिव्हाइसवर हा बुकमार्क आणि आणखी बरेच काही मिळवण्यासाठी, Chrome मध्ये साइन इन करा</translation>
+<translation id="756134248912568991">तुम्ही पुढील वेळी तुमच्या <ph name="DEVICE_TYPE" /> वर Chrome उघडल्यावर, तुम्हाला टॅब गट वापरण्यासाठी प्रॉम्प्ट दिसेल.</translation>
 <translation id="756809126120519699">Chrome डेटा साफ केला</translation>
 <translation id="7572537927358445944">बंद आहे • हे एक्स्टेंशन कुठून आले त्याची Chrome ला पडताळणी करता आली नाही</translation>
 <translation id="7583399374488819119"><ph name="COMPANY_NAME" /> इंस्टॉलर</translation>
@@ -662,7 +661,6 @@ Google Chrome तुमची सेटिंग्ज पुन्हा मि
 <translation id="7869620795354551924">तुमचे सेव्ह केलेले पासवर्ड वापरण्यासाठी, QR कोड फॉलो करा, iOS साठी Chrome डाउनलोड करा आणि तुमच्या Google खाते मध्ये साइन इन करा</translation>
 <translation id="7872446069773932638">डाउनलोड करत आहे... <ph name="SECONDS" /> सेकंद शिल्लक आहे(आहेत)</translation>
 <translation id="7886087451482920026">Google Lens वापरून मजकूर निवडा</translation>
-<translation id="7887929410013642057">AI मोड शॉर्टकट नेहमी दाखवा</translation>
 <translation id="7890208801193284374">तुम्ही कॉंप्युटर शेअर केल्यास, मित्र आणि कुटुंब स्वतंत्रपणे ब्राउझ करू शकतात आणि त्यांना पाहिजे तसे Chrome सेट अप करू शकतात.</translation>
 <translation id="7896673875602241923">कोणीतरी यापूर्वी <ph name="ACCOUNT_EMAIL_LAST" /> म्हणून या संंगणकावरील Chrome मध्ये साइन इन केले आहे. कृपया तुमची माहिती स्वतंत्र ठेवण्यासाठी एक नवीन Chrome वापरकर्ता तयार करा.</translation>
 <translation id="7904985524660297937">Google Chrome मधील Gemini वापरून पहा</translation>
@@ -692,6 +690,7 @@ Google Chrome तुमची सेटिंग्ज पुन्हा मि
 <translation id="8162006532256575008">खाते शिवाय Chrome वापरा</translation>
 <translation id="8177472873527554730">पेजमध्ये आशय शोधू शकत नाही</translation>
 <translation id="8221491193165283816">तुम्ही सहसा सूचना ब्लॉक करता. या साइटला तुम्हाला सूचित करू देण्यासाठी, येथे क्लिक करा.</translation>
+<translation id="8223142476690844338">हॅलो <ph name="USER_NAME" />, तुमच्या मनात काय आहे?</translation>
 <translation id="8255190535488645436">Google Chrome तुमचा कॅमेरा आणि मायक्रोफोन वापरत आहे.</translation>
 <translation id="8267953129876836456">Chrome ला तुम्ही पुनरावलोकन करणे आवश्यक आहे अशा काही सुरक्षा शिफारशी आढळल्या आहेत</translation>
 <translation id="8286862437124483331">Google Chrome पासवर्ड दर्शविण्‍याचा प्रयत्‍न करत आहे. यास अनुमती देण्‍यासाठी तुमचा Windows पासवर्ड टाइप करा.</translation>
@@ -753,7 +752,6 @@ Google Chrome तुमची सेटिंग्ज पुन्हा मि
 <translation id="8821043148920470810">भविष्यातील Google Chrome अपडेट मिळवण्यासाठी, तुमच्याकडे Windows 10 किंवा त्यापुढील आवृत्ती असणे आवश्यक आहे. हा कॉंप्युटर Windows 7 वापरत आहे.</translation>
 <translation id="8823341990149967727">Chrome कालबाह्य आहे</translation>
 <translation id="8834965163890861871">Google Chrome पासवर्ड संपादित करण्याचा प्रयत्‍न करत आहे. हे करू देण्यासाठी तुमचा Windows पासवर्ड टाइप करा.</translation>
-<translation id="8843516219908676469">Chrome हे फॉर्म आणखी चांगल्या पद्धतीने समजू शकते आणि ते तुमच्यासाठी अधिक जलद ऑटोफिल करू शकते</translation>
 <translation id="8851180723659088381">{NUM_EXTENSIONS,plural, =1{तुम्ही ते काढून टाकावे अशी Chrome शिफारस करते}other{तुम्ही ती काढून टाकावीत अशी Chrome शिफारस करते}}</translation>
 <translation id="8862326446509486874">तुमच्याकडे सिस्टीम स्तरावरील इंस्टॉलसाठी योग्य अधिकार नाहीत. अ‍ॅडमिनिस्ट्रेटर म्हणून पुन्हा इंस्टॉलर चालवण्याचा प्रयत्न करा.</translation>
 <translation id="8865415417596392024">तुमच्या खात्यामधील Chrome डेटा</translation>

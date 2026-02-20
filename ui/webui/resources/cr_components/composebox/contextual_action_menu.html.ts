@@ -11,7 +11,7 @@ export function getHtml(this: ContextualActionMenuElement) {
   return html`<!--_html_template_start_-->
   <cr-action-menu id="menu" role-description="${this.i18n('menu')}"
       @close="${this.onMenuClose_}">
-    ${this.tabSuggestions?.length > 0 ? html`
+    ${this.tabSuggestions?.length > 0 && this.browserTabAllowed_ ? html`
       <h4 id="tabHeader">${this.i18n('addTab')}</h4>
       ${this.tabSuggestions.map((tab, index) => html`
         <div class="suggestion-container">
@@ -71,6 +71,7 @@ export function getHtml(this: ContextualActionMenuElement) {
           data-model="${mode}"
           @click="${this.onModelClick_}"
           ?disabled="${this.isModelDisabled_(mode)}">
+        <cr-icon icon="${model.icon}"></cr-icon>
         <span>${this.i18n(model.id)}</span>
         ${this.isModelActive_(mode) ? html`
           <cr-icon class="multi-tab-icon"

@@ -199,7 +199,9 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Mobile.ContextMenu.{EntryPoint}.Actions" enum="IOSMenuAction"
-    expires_after="2026-07-05">
+    expires_after="never">
+<!-- expires-never: part of vital metric ChromeSearch.Actions -->
+
   <owner>gambard@chromium.org</owner>
   <owner>bling-team@chromium.org</owner>
   <summary>
@@ -1077,7 +1079,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="MobileFre.Progress.{MobileFreEntryType}"
-    enum="MobileFreProgress" expires_after="2026-05-24">
+    enum="MobileFreProgress" expires_after="2026-07-26">
   <owner>bsazonov@chromium.org</owner>
   <owner>samarchehade@google.com</owner>
   <owner>chrome-signin-team@google.com</owner>
@@ -1132,24 +1134,6 @@ chromium-metrics-reviews@google.com.
     Android: Count of page loads started by intents from external apps. In M87
     the reporting of this histogram was updated to exclude intents sent from
     Chrome itself.
-  </summary>
-</histogram>
-
-<histogram name="MobileOmnibox.PressedClipboardSuggestionAge" units="ms"
-    expires_after="2026-07-01">
-  <owner>gangwu@chromium.org</owner>
-  <owner>ender@google.com</owner>
-  <owner>jdonnelly@chromium.org</owner>
-  <owner>mpearson@chromium.org</owner>
-  <summary>
-    When a user presses an omnibox suggestion based on the content of the
-    clipboard, this histograms records how long ago Chrome detected a change in
-    the clipboard.
-
-    Intended to be compared to Omnibox.ClipboardSuggestionShownAge.
-
-    If Chrome never detected a change to the clipboard, no clipboard suggestion
-    is shown, meaning this histogram will never be emitted to.
   </summary>
 </histogram>
 

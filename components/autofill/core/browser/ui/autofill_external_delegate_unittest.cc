@@ -224,7 +224,8 @@ class MockAutofillClient : public TestAutofillClient {
               UpdateAutofillSuggestions,
               (const std::vector<Suggestion>&,
                FillingProduct,
-               AutofillSuggestionTriggerSource),
+               AutofillSuggestionTriggerSource,
+               AutofillSuggestionsIgnoreFocusLoss),
               (override));
   MOCK_METHOD(base::span<const Suggestion>,
               GetAutofillSuggestions,
@@ -1412,17 +1413,27 @@ TEST_F(AutofillExternalDelegateTest, FillAutofillAiFillsFullForm) {
 // filled upon success.
 TEST_F(AutofillExternalDelegateTest, AutofillAiReauthFlow_ReauthAccepted) {
   base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitWithFeatures({features::kAutofillAiWithDataSchema,
-                                        features::kAutofillAiReauthRequired},
-                                       {});
+  scoped_feature_list.InitWithFeatures(
+      {features::kAutofillAiWithDataSchema, features::kAutofillAiReauthRequired,
+       features::kAutofillAiWalletPrivatePasses},
+      {});
   autofill_client().GetPrefs()->SetBoolean(
       prefs::kAutofillAiReauthBeforeViewingSensitiveData, true);
 
-  EntityInstance vehicle = test::GetVehicleEntityInstanceWithRandomGuid();
-  autofill_client().GetEntityDataManager()->AddOrUpdateEntityInstance(vehicle);
+  EntityInstance passport = test::GetPassportEntityInstanceWithRandomGuid();
+  autofill_client().GetEntityDataManager()->AddOrUpdateEntityInstance(passport);
   webdata_helper().WaitUntilIdle();
-  // Create form with a VIN, which triggers obfuscation and thus re-auth.
-  IssueOnQuery({.fields = {{.role = VEHICLE_VIN}}});
+  // Create form with a passport number, which triggers obfuscation and thus
+  // re-auth.
+  IssueOnQuery({.fields = {{.role = PASSPORT_NUMBER}}});
+
+  Suggestion fill_suggestion(SuggestionType::kFillAutofillAi);
+  fill_suggestion.payload = Suggestion::AutofillAiPayload(passport.guid());
+  std::vector<Suggestion> all_suggestions = {
+      fill_suggestion, Suggestion(SuggestionType::kFillAutofillAi)};
+  OnSuggestionsReturned(queried_field().global_id(), all_suggestions);
+  ON_CALL(autofill_client(), GetAutofillSuggestions)
+      .WillByDefault(Return(all_suggestions));
 
   auto authenticator =
       std::make_unique<device_reauth::MockDeviceAuthenticator>();
@@ -1430,17 +1441,30 @@ TEST_F(AutofillExternalDelegateTest, AutofillAiReauthFlow_ReauthAccepted) {
       .WillOnce(Return(true));
   EXPECT_CALL(*authenticator, AuthenticateWithMessage)
       .WillOnce(RunOnceCallback<1>(true));
-  EXPECT_CALL(autofill_client(),
-              GetDeviceAuthenticator("Autofill.Ai.ReauthToFill"))
-      .WillOnce(Return(std::move(authenticator)));
 
-  EXPECT_CALL(
-      autofill_manager(),
-      FillOrPreviewForm(mojom::ActionPersistence::kFill, HasQueriedFormId(),
-                        IsQueriedFieldId(), _, DefaultTriggerSource()));
+  {
+    InSequence s;
+    auto is_loading =
+        Field(&Suggestion::is_loading, Suggestion::IsLoading(true));
+    auto is_deactivated =
+        AllOf(Field(&Suggestion::acceptability,
+                    Suggestion::Acceptability::kUnacceptable),
+              Field(&Suggestion::is_loading, Suggestion::IsLoading(false)));
+    EXPECT_CALL(
+        autofill_client(),
+        UpdateAutofillSuggestions(_, FillingProduct::kAutofillAi,
+                                  kDefaultSuggestionTriggerSource,
+                                  AutofillSuggestionsIgnoreFocusLoss(true)));
+    EXPECT_CALL(autofill_client(),
+                GetDeviceAuthenticator("Autofill.Ai.ReauthToFill"))
+        .WillOnce(Return(std::move(authenticator)));
 
-  Suggestion fill_suggestion(SuggestionType::kFillAutofillAi);
-  fill_suggestion.payload = Suggestion::AutofillAiPayload(vehicle.guid());
+    EXPECT_CALL(
+        autofill_manager(),
+        FillOrPreviewForm(mojom::ActionPersistence::kFill, HasQueriedFormId(),
+                          IsQueriedFieldId(), _, DefaultTriggerSource()));
+  }
+
   external_delegate().DidAcceptSuggestion(fill_suggestion, {});
 }
 
@@ -1499,11 +1523,12 @@ TEST_F(AutofillExternalDelegateTest, AutofillAiReauthFlow_ReauthRejected) {
   autofill_client().GetPrefs()->SetBoolean(
       prefs::kAutofillAiReauthBeforeViewingSensitiveData, true);
 
-  EntityInstance vehicle = test::GetVehicleEntityInstanceWithRandomGuid();
-  autofill_client().GetEntityDataManager()->AddOrUpdateEntityInstance(vehicle);
+  EntityInstance passport = test::GetPassportEntityInstanceWithRandomGuid();
+  autofill_client().GetEntityDataManager()->AddOrUpdateEntityInstance(passport);
   webdata_helper().WaitUntilIdle();
-  // Create form with a VIN, which triggers obfuscation and thus re-auth.
-  IssueOnQuery({.fields = {{.role = VEHICLE_VIN}}});
+  // Create form with a passport number, which triggers obfuscation and thus
+  // re-auth.
+  IssueOnQuery({.fields = {{.role = PASSPORT_NUMBER}}});
 
   auto authenticator =
       std::make_unique<device_reauth::MockDeviceAuthenticator>();
@@ -1517,7 +1542,7 @@ TEST_F(AutofillExternalDelegateTest, AutofillAiReauthFlow_ReauthRejected) {
   EXPECT_CALL(autofill_manager(), FillOrPreviewForm).Times(0);
 
   Suggestion fill_suggestion(SuggestionType::kFillAutofillAi);
-  fill_suggestion.payload = Suggestion::AutofillAiPayload(vehicle.guid());
+  fill_suggestion.payload = Suggestion::AutofillAiPayload(passport.guid());
   external_delegate().DidAcceptSuggestion(fill_suggestion, {});
 }
 
@@ -1531,11 +1556,12 @@ TEST_F(AutofillExternalDelegateTest, AutofillAiReauthFlow_NoAuthenticator) {
   autofill_client().GetPrefs()->SetBoolean(
       prefs::kAutofillAiReauthBeforeViewingSensitiveData, true);
 
-  EntityInstance vehicle = test::GetVehicleEntityInstanceWithRandomGuid();
-  autofill_client().GetEntityDataManager()->AddOrUpdateEntityInstance(vehicle);
+  EntityInstance passport = test::GetPassportEntityInstanceWithRandomGuid();
+  autofill_client().GetEntityDataManager()->AddOrUpdateEntityInstance(passport);
   webdata_helper().WaitUntilIdle();
-  // Create form with a VIN, which triggers obfuscation and thus re-auth.
-  IssueOnQuery({.fields = {{.role = VEHICLE_VIN}}});
+  // Create form with a passport number, which triggers obfuscation and thus
+  // re-auth.
+  IssueOnQuery({.fields = {{.role = PASSPORT_NUMBER}}});
 
   EXPECT_CALL(autofill_client(),
               GetDeviceAuthenticator("Autofill.Ai.ReauthToFill"))
@@ -1546,7 +1572,7 @@ TEST_F(AutofillExternalDelegateTest, AutofillAiReauthFlow_NoAuthenticator) {
                         IsQueriedFieldId(), _, DefaultTriggerSource()));
 
   Suggestion fill_suggestion(SuggestionType::kFillAutofillAi);
-  fill_suggestion.payload = Suggestion::AutofillAiPayload(vehicle.guid());
+  fill_suggestion.payload = Suggestion::AutofillAiPayload(passport.guid());
   external_delegate().DidAcceptSuggestion(fill_suggestion, {});
 }
 
@@ -1558,11 +1584,12 @@ TEST_F(AutofillExternalDelegateTest, AutofillAiReauthFlow_FlagOff) {
   autofill_client().GetPrefs()->SetBoolean(
       prefs::kAutofillAiReauthBeforeViewingSensitiveData, true);
 
-  EntityInstance vehicle = test::GetVehicleEntityInstanceWithRandomGuid();
-  autofill_client().GetEntityDataManager()->AddOrUpdateEntityInstance(vehicle);
+  EntityInstance passport = test::GetPassportEntityInstanceWithRandomGuid();
+  autofill_client().GetEntityDataManager()->AddOrUpdateEntityInstance(passport);
   webdata_helper().WaitUntilIdle();
-  // Create form with a VIN, which triggers obfuscation and thus re-auth.
-  IssueOnQuery({.fields = {{.role = VEHICLE_VIN}}});
+  // Create form with a passport number, which triggers obfuscation and thus
+  // re-auth.
+  IssueOnQuery({.fields = {{.role = PASSPORT_NUMBER}}});
 
   EXPECT_CALL(autofill_client(),
               GetDeviceAuthenticator("Autofill.Ai.ReauthToFill"))
@@ -1573,7 +1600,7 @@ TEST_F(AutofillExternalDelegateTest, AutofillAiReauthFlow_FlagOff) {
                         IsQueriedFieldId(), _, DefaultTriggerSource()));
 
   Suggestion fill_suggestion(SuggestionType::kFillAutofillAi);
-  fill_suggestion.payload = Suggestion::AutofillAiPayload(vehicle.guid());
+  fill_suggestion.payload = Suggestion::AutofillAiPayload(passport.guid());
   external_delegate().DidAcceptSuggestion(fill_suggestion, {});
 }
 
@@ -1589,11 +1616,12 @@ TEST_F(AutofillExternalDelegateTest,
   autofill_client().GetPrefs()->SetBoolean(
       prefs::kAutofillAiReauthBeforeViewingSensitiveData, false);
 
-  EntityInstance vehicle = test::GetVehicleEntityInstanceWithRandomGuid();
-  autofill_client().GetEntityDataManager()->AddOrUpdateEntityInstance(vehicle);
+  EntityInstance passport = test::GetPassportEntityInstanceWithRandomGuid();
+  autofill_client().GetEntityDataManager()->AddOrUpdateEntityInstance(passport);
   webdata_helper().WaitUntilIdle();
-  // Create form with a VIN, which triggers obfuscation and thus re-auth.
-  IssueOnQuery({.fields = {{.role = VEHICLE_VIN}}});
+  // Create form with a passport number, which triggers obfuscation and thus
+  // re-auth.
+  IssueOnQuery({.fields = {{.role = PASSPORT_NUMBER}}});
 
   EXPECT_CALL(autofill_client(),
               GetDeviceAuthenticator("Autofill.Ai.ReauthToFill"))
@@ -1604,7 +1632,7 @@ TEST_F(AutofillExternalDelegateTest,
                         IsQueriedFieldId(), _, DefaultTriggerSource()));
 
   Suggestion fill_suggestion(SuggestionType::kFillAutofillAi);
-  fill_suggestion.payload = Suggestion::AutofillAiPayload(vehicle.guid());
+  fill_suggestion.payload = Suggestion::AutofillAiPayload(passport.guid());
   external_delegate().DidAcceptSuggestion(fill_suggestion, {});
 }
 #endif
@@ -1651,13 +1679,6 @@ class AutofillExternalDelegatePlusAddressTest
     return static_cast<MockAutofillPlusAddressDelegate&>(
         *autofill_client().GetPlusAddressDelegate());
   }
-
-  const std::vector<Suggestion>& suggestions() const { return suggestions_; }
-
- private:
-  // The currently shown suggestions. Kept as a member since
-  // `GetAutofillSuggestions` returns a span.
-  std::vector<Suggestion> suggestions_;
 };
 
 // Mock out an existing plus address autofill suggestion, and ensure that
@@ -1861,7 +1882,7 @@ TEST_F(AutofillExternalDelegateTest,
                         Field(&AutofillClient::PopupOpenArgs::anchor_type,
                               PopupAnchorType::kCaret)),
                   _));
-  MockAutofillComposeDelegate compose_delegate;
+  NiceMock<MockAutofillComposeDelegate> compose_delegate;
   ON_CALL(autofill_client(), GetComposeDelegate)
       .WillByDefault(Return(&compose_delegate));
   ON_CALL(compose_delegate, ShouldAnchorNudgeOnCaret)
@@ -1901,7 +1922,7 @@ TEST_F(
       ShowAutofillSuggestions(
           Field(&AutofillClient::PopupOpenArgs::element_bounds, field_bounds),
           _));
-  MockAutofillComposeDelegate compose_delegate;
+  NiceMock<MockAutofillComposeDelegate> compose_delegate;
   ON_CALL(autofill_client(), GetComposeDelegate)
       .WillByDefault(Return(&compose_delegate));
   ON_CALL(compose_delegate, ShouldAnchorNudgeOnCaret)
@@ -1940,7 +1961,7 @@ TEST_F(
       ShowAutofillSuggestions(
           Field(&AutofillClient::PopupOpenArgs::element_bounds, field_bounds),
           _));
-  MockAutofillComposeDelegate compose_delegate;
+  NiceMock<MockAutofillComposeDelegate> compose_delegate;
   ON_CALL(autofill_client(), GetComposeDelegate)
       .WillByDefault(Return(&compose_delegate));
   ON_CALL(compose_delegate, ShouldAnchorNudgeOnCaret)
@@ -1969,7 +1990,7 @@ TEST_F(
                         Field(&AutofillClient::PopupOpenArgs::anchor_type,
                               default_anchor_type)),
                   _));
-  MockAutofillComposeDelegate compose_delegate;
+  NiceMock<MockAutofillComposeDelegate> compose_delegate;
   ON_CALL(autofill_client(), GetComposeDelegate)
       .WillByDefault(Return(&compose_delegate));
   ON_CALL(compose_delegate, ShouldAnchorNudgeOnCaret)
@@ -1983,7 +2004,7 @@ TEST_F(
 // Tests that accepting a Compose suggestion returns a callback that, when run,
 // fills the trigger field.
 TEST_F(AutofillExternalDelegateTest, ExternalDelegateOpensComposeAndFills) {
-  MockAutofillComposeDelegate compose_delegate;
+  NiceMock<MockAutofillComposeDelegate> compose_delegate;
   ON_CALL(autofill_client(), GetComposeDelegate)
       .WillByDefault(Return(&compose_delegate));
 
@@ -2012,7 +2033,7 @@ TEST_F(AutofillExternalDelegateTest, ExternalDelegateOpensComposeAndFills) {
 
 TEST_F(AutofillExternalDelegateTest,
        Compose_AcceptDisable_CallsComposeDelegate) {
-  MockAutofillComposeDelegate compose_delegate;
+  NiceMock<MockAutofillComposeDelegate> compose_delegate;
   ON_CALL(autofill_client(), GetComposeDelegate)
       .WillByDefault(Return(&compose_delegate));
 
@@ -2028,7 +2049,7 @@ TEST_F(AutofillExternalDelegateTest,
 
 TEST_F(AutofillExternalDelegateTest,
        Compose_AcceptGoToSettings_CallsComposeDelegate) {
-  MockAutofillComposeDelegate compose_delegate;
+  NiceMock<MockAutofillComposeDelegate> compose_delegate;
   ON_CALL(autofill_client(), GetComposeDelegate)
       .WillByDefault(Return(&compose_delegate));
 
@@ -2090,7 +2111,7 @@ TEST_F(AutofillExternalDelegateTest, SaveAndFillMetrics_SuggestionAccepted) {
 
 TEST_F(AutofillExternalDelegateTest,
        Compose_AcceptNeverShowOnThisWebsiteAgain_CallsComposeDelegate) {
-  MockAutofillComposeDelegate compose_delegate;
+  NiceMock<MockAutofillComposeDelegate> compose_delegate;
   ON_CALL(autofill_client(), GetComposeDelegate)
       .WillByDefault(Return(&compose_delegate));
 
@@ -2537,10 +2558,11 @@ TEST_F(AutofillExternalDelegateTest, UpdateSuggestions) {
   {
     InSequence s;
     EXPECT_CALL(autofill_client(), ShowAutofillSuggestions);
-    EXPECT_CALL(autofill_client(),
-                UpdateAutofillSuggestions(
-                    suggestions2, FillingProduct::kAutocomplete,
-                    AutofillSuggestionTriggerSource::kUnspecified));
+    EXPECT_CALL(
+        autofill_client(),
+        UpdateAutofillSuggestions(suggestions2, FillingProduct::kAutocomplete,
+                                  AutofillSuggestionTriggerSource::kUnspecified,
+                                  AutofillSuggestionsIgnoreFocusLoss(false)));
   }
 
   OnSuggestionsReturned(queried_field().global_id(), suggestions1);

@@ -20,9 +20,9 @@
 #include "components/keyed_service/core/keyed_service.h"
 #include "components/prefs/pref_change_registrar.h"
 #include "components/supervised_user/core/browser/device_parental_controls.h"
+#include "components/supervised_user/core/browser/family_link_url_filter.h"
 #include "components/supervised_user/core/browser/remote_web_approvals_manager.h"
 #include "components/supervised_user/core/browser/supervised_user_preferences.h"
-#include "components/supervised_user/core/browser/supervised_user_url_filter.h"
 #include "components/supervised_user/core/common/supervised_user_constants.h"
 #include "components/supervised_user/core/common/supervised_users.h"
 #include "google_apis/gaia/gaia_id.h"
@@ -30,7 +30,6 @@
 
 class PrefService;
 class SupervisedUserServiceObserver;
-class SupervisedUserServiceFactory;
 
 namespace signin {
 class IdentityManager;
@@ -39,6 +38,10 @@ class IdentityManager;
 namespace syncer {
 class SyncService;
 }  // namespace syncer
+
+namespace version_info {
+enum class Channel;
+}  // namespace version_info
 
 namespace supervised_user {
 class FamilyLinkSettingsService;
@@ -114,7 +117,7 @@ class SupervisedUserService : public KeyedService {
   // Returns the URL filter for filtering navigations and classifying sites in
   // the history view. Both this method and the returned filter may only be used
   // on the UI thread.
-  SupervisedUserURLFilter* GetURLFilter() const;
+  FamilyLinkUrlFilter* GetURLFilter() const;
 
   std::optional<Custodian> GetCustodian() const;
   std::optional<Custodian> GetSecondCustodian() const;
@@ -143,7 +146,7 @@ class SupervisedUserService : public KeyedService {
       PrefService& user_prefs,
       FamilyLinkSettingsService& settings_service,
       syncer::SyncService* sync_service,
-      std::unique_ptr<SupervisedUserURLFilter> url_filter,
+      std::unique_ptr<FamilyLinkUrlFilter> url_filter,
       std::unique_ptr<SupervisedUserService::PlatformDelegate>
           platform_delegate,
       const DeviceParentalControls& device_parental_controls);
@@ -195,7 +198,7 @@ class SupervisedUserService : public KeyedService {
 
   scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory_;
 
-  std::unique_ptr<SupervisedUserURLFilter> url_filter_;
+  std::unique_ptr<FamilyLinkUrlFilter> url_filter_;
 
   std::unique_ptr<PlatformDelegate> platform_delegate_;
 

@@ -72,7 +72,10 @@
 #include "chrome/browser/policy/profile_policy_connector.h"
 #include "chrome/browser/resource_coordinator/lifecycle_unit_state.mojom.h"
 #include "chrome/browser/resource_coordinator/tab_lifecycle_unit_external.h"
+#include "chrome/browser/signin/chrome_signin_client_factory.h"
+#include "chrome/browser/signin/chrome_signin_client_test_util.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
+#include "chrome/browser/signin/identity_test_environment_profile_adaptor.h"
 #include "chrome/browser/skills/skills_service_factory.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_navigator.h"
@@ -93,6 +96,7 @@
 #include "components/policy/core/common/mock_configuration_policy_provider.h"
 #include "components/policy/policy_constants.h"
 #include "components/prefs/pref_service.h"
+#include "components/signin/public/identity_manager/account_capabilities_test_mutator.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
 #include "components/signin/public/identity_manager/identity_test_utils.h"
 #include "components/skills/features.h"
@@ -592,16 +596,35 @@ class GlicApiTestWithGeminiActOnWebPolicy : public GlicApiTestWithOneTab {
         &policy_provider_);
   }
 
+  void SetUpBrowserContextKeyedServices(
+      content::BrowserContext* context) override {
+    IdentityTestEnvironmentProfileAdaptor::
+        SetIdentityTestEnvironmentFactoriesOnBrowserContext(context);
+    ChromeSigninClientFactory::GetInstance()->SetTestingFactory(
+        context, base::BindRepeating(&BuildChromeSigninClientWithURLLoader,
+                                     &test_url_loader_factory_));
+
+    GlicApiTestWithOneTab::SetUpBrowserContextKeyedServices(context);
+  }
+
   void SetUpOnMainThread() override {
     GlicApiTestWithOneTab::SetUpOnMainThread();
+
+    adaptor_ =
+        std::make_unique<IdentityTestEnvironmentProfileAdaptor>(GetProfile());
+    identity_test_env_ = adaptor_->identity_test_env();
+    identity_test_env_->SetTestURLLoaderFactory(&test_url_loader_factory_);
+    identity_manager_ = IdentityManagerFactory::GetForProfile(GetProfile());
+    SimulatePrimaryAccountChangedSignIn("foo@bar.com", "");
+
     policy_provider_.SetupPolicyServiceForPolicyUpdates(
         browser()->profile()->GetProfilePolicyConnector()->policy_service());
-    actor::ActorKeyedService::Get(browser()->profile())
-        ->GetPolicyChecker()
-        .set_account_eligible_for_actuation_for_testing(true);
   }
 
   void TearDownOnMainThread() override {
+    identity_manager_ = nullptr;
+    identity_test_env_ = nullptr;
+    adaptor_.reset();
     policy_provider_.SetupPolicyServiceForPolicyUpdates(nullptr);
     GlicApiTestWithOneTab::TearDownOnMainThread();
   }
@@ -617,6 +640,32 @@ class GlicApiTestWithGeminiActOnWebPolicy : public GlicApiTestWithOneTab {
   }
 
  private:
+  // `email` must be non-empty. Empty `host_domain` simulates a consumer
+  // account.
+  void SimulatePrimaryAccountChangedSignIn(std::string_view email,
+                                           std::string_view host_domain) {
+    identity_test_env_->SetAutomaticIssueOfAccessTokens(true);
+
+    AccountInfo account_info = identity_test_env_->MakePrimaryAccountAvailable(
+        std::string(email), signin::ConsentLevel::kSignin);
+
+    AccountCapabilitiesTestMutator mutator(&account_info.capabilities);
+    mutator.set_can_use_model_execution_features(true);
+    mutator.set_is_subject_to_enterprise_features(!host_domain.empty());
+
+    identity_test_env_->UpdateAccountInfoForAccount(account_info);
+    identity_test_env_->SimulateSuccessfulFetchOfAccountInfo(
+        account_info.account_id, account_info.email, account_info.gaia,
+        std::string(host_domain), base::StrCat({"full_name-", email}),
+        base::StrCat({"given_name-", email}), base::StrCat({"local-", email}),
+        base::StrCat({"full_name-", email}));
+  }
+
+  std::unique_ptr<IdentityTestEnvironmentProfileAdaptor> adaptor_;
+  network::TestURLLoaderFactory test_url_loader_factory_;
+  raw_ptr<signin::IdentityManager> identity_manager_;
+  raw_ptr<signin::IdentityTestEnvironment> identity_test_env_;
+
   ::testing::NiceMock<policy::MockConfigurationPolicyProvider> policy_provider_;
   base::test::ScopedFeatureList scoped_feature_list_;
 };
@@ -1637,8 +1686,9 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testIsBrowserOpen) {
 
   // Open a new incognito tab so that Chrome doesn't exit, and close the first
   // browser.
-  CreateIncognitoBrowser();
-  CloseBrowserAsynchronously(browser());
+  // Open a new incognito tab so that Chrome doesn't exit, and close the first
+  // browser.
+  CloseMainBrowserWithIncognitoKeepAlive();
 
   ContinueJsTest();
 }
@@ -1977,13 +2027,12 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testGetFocusedTabStateV2BrowserClosed) {
   browser_activator().SetMode(BrowserActivator::Mode::kFirst);
   // Note: ideally this test would only open Glic after the main browser is
   // closed. This however crashes in `DeprecatedOpenGlicWindow()`.
-  TrackFloatingGlicInstance();
+  TrackOnlyGlicInstance();
   RunTestSequence(OpenGlicFloatingWindow(GlicInstrumentMode::kHostAndContents));
 
   // Open a new incognito window first so that Chrome doesn't exit, then close
   // the first browser window.
-  CreateIncognitoBrowser();
-  CloseBrowserAsynchronously(browser());
+  CloseMainBrowserWithIncognitoKeepAlive();
 
   ExecuteJsTest({.wait_for_guest = false});
 }
@@ -3249,8 +3298,7 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testCaptureRegionNoFocus) {
   // The JS test has now detached the Glic window if in multi-instance mode and
   // is waiting. Now we can close the browser to create a "no tab" state.
   // Open a new incognito window so that Chrome doesn't exit.
-  CreateIncognitoBrowser();
-  CloseBrowserAsynchronously(browser());
+  CloseMainBrowserWithIncognitoKeepAlive();
 
   ContinueJsTest();
 }
@@ -3406,7 +3454,12 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testPanelWillOpenBeforeClientReady) {
 
 class GlicGetHostCapabilityApiTest : public GlicApiTestWithOneTab {
  public:
-  GlicGetHostCapabilityApiTest() {
+  GlicGetHostCapabilityApiTest()
+      : GlicApiTestWithOneTab(
+            {.fre_status = (GetParam().trust_first_onboarding_arm1 ||
+                            GetParam().trust_first_onboarding_arm2)
+                               ? prefs::FreStatus::kNotStarted
+                               : prefs::FreStatus::kCompleted}) {
     std::vector<base::test::FeatureRefAndParams> enabled_features;
     std::vector<base::test::FeatureRef> disabled_features;
 
@@ -3761,6 +3814,44 @@ IN_PROC_BROWSER_TEST_P(GlicApiTestWithSkills, testGetSkillPreviewsSuccess) {
   SkillsService()->AddSkill(/*name=*/"test_skill_2", /*icon=*/"test_icon_2",
                             /*prompt=*/"test_prompt_2");
   ExecuteJsTest();
+}
+
+IN_PROC_BROWSER_TEST_P(GlicApiTestWithSkills, testShowManageSkillsUi) {
+  ExecuteJsTest();
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    tabs::TabInterface* tab =
+        InProcessBrowserTest::browser()->tab_strip_model()->GetActiveTab();
+    return tab &&
+           base::StartsWith(tab->GetContents()->GetLastCommittedURL().spec(),
+                            chrome::kChromeUISkillsURL);
+  }));
+}
+
+IN_PROC_BROWSER_TEST_P(GlicApiTestWithSkills,
+                       testSendingContextualSkillsToGlic) {
+  SkillsService()->AddSkill(/*name=*/"user_skill_1", /*icon=*/"user_icon_1",
+                            /*prompt=*/"test_prompt_1");
+  SkillsService()->AddSkill(/*name=*/"user_skill_2", /*icon=*/"user_icon_2",
+                            /*prompt=*/"user_prompt_2");
+
+  ExecuteJsTest();
+
+  std::vector<mojom::SkillPreviewPtr> skills_batch_1;
+  skills_batch_1.push_back(mojom::SkillPreview::New(
+      "contextual_skill_id_1", "contextual_skill_1", "contextual_skill_icon_1",
+      mojom::SkillSource::kFirstParty));
+  skills_batch_1.push_back(mojom::SkillPreview::New(
+      "contextual_skill_id_2", "contextual_skill_2", "contextual_skill_icon_2",
+      mojom::SkillSource::kFirstParty));
+  GetHost()->NotifyContextualSkillsChanged(std::move(skills_batch_1));
+  ContinueJsTest();
+
+  std::vector<mojom::SkillPreviewPtr> skills_batch_2;
+  skills_batch_2.push_back(mojom::SkillPreview::New(
+      "contextual_skill_id_3", "contextual_skill_3", "contextual_skill_icon_3",
+      mojom::SkillSource::kFirstParty));
+  GetHost()->NotifyContextualSkillsChanged(std::move(skills_batch_2));
+  ContinueJsTest();
 }
 
 INSTANTIATE_TEST_SUITE_P(

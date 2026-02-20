@@ -100,18 +100,6 @@ BASE_FEATURE(kSideBySide, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kSideBySideLinkMenuNewBadge, base::FEATURE_ENABLED_BY_DEFAULT);
 
-constexpr base::FeatureParam<SidePanelRelativeAlignment>::Option
-    kSidePanelRelativeAlignmentOptions[] = {
-        {SidePanelRelativeAlignment::kShowPanelsOnSameSide, "same"},
-        {SidePanelRelativeAlignment::kShowPanelsOnOppositeSides, "opposite"}};
-
-BASE_FEATURE_ENUM_PARAM(SidePanelRelativeAlignment,
-                        kSidePanelRelativeAlignment,
-                        &kToolbarHeightSidePanel,
-                        "side_panel_relative_alignment",
-                        SidePanelRelativeAlignment::kShowPanelsOnOppositeSides,
-                        &kSidePanelRelativeAlignmentOptions);
-
 BASE_FEATURE(kTabDuplicateMetrics, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables tabs to be frozen when collapsed.
@@ -500,32 +488,6 @@ BASE_FEATURE_PARAM(bool,
                    "tab_search_toolbar_button",
                    true);
 
-static std::string GetCountryCode() {
-  if (!g_browser_process || !g_browser_process->variations_service()) {
-    return std::string();
-  }
-  std::string country_code =
-      g_browser_process->variations_service()->GetStoredPermanentCountry();
-  if (country_code.empty()) {
-    country_code = g_browser_process->variations_service()->GetLatestCountry();
-  }
-  return country_code;
-}
-
-bool HasTabSearchToolbarButton() {
-  static const bool is_tab_search_moving = [] {
-    if (GetCountryCode() == "us" &&
-        base::FeatureList::IsEnabled(
-            features::kLaunchedTabSearchToolbarButton)) {
-      return true;
-    }
-    return base::FeatureList::IsEnabled(features::kTabstripComboButton) &&
-           features::kTabSearchToolbarButton.Get();
-  }();
-
-  return is_tab_search_moving;
-}
-
 BASE_FEATURE(kNonMilestoneUpdateToast, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kBookmarkTabGroupConversion, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -556,6 +518,11 @@ bool IsWebUIReloadButtonEnabled() {
          base::FeatureList::IsEnabled(features::kWebUIReloadButton);
 }
 
+bool IsWebUIHomeButtonEnabled() {
+  return base::FeatureList::IsEnabled(features::kInitialWebUI) &&
+         base::FeatureList::IsEnabled(features::kWebUIHomeButton);
+}
+
 bool IsWebUISplitTabsButtonEnabled() {
   return base::FeatureList::IsEnabled(features::kInitialWebUI) &&
          base::FeatureList::IsEnabled(features::kWebUISplitTabsButton);
@@ -568,7 +535,7 @@ bool IsWebUILocationBarEnabled() {
 
 bool IsWebUIToolbarEnabled() {
   return IsWebUIReloadButtonEnabled() || IsWebUISplitTabsButtonEnabled() ||
-         IsWebUILocationBarEnabled();
+         IsWebUIHomeButtonEnabled() || IsWebUILocationBarEnabled();
 }
 #endif  // !BUILDFLAG(IS_ANDROID)
 
@@ -585,6 +552,12 @@ bool IsAndroidAnimatedProgressBarInBrowserEnabled() {
 BASE_FEATURE(kWhatsNewDesktopRefresh, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kTabGroupsFocusing, base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE_PARAM(bool,
+                   kTabGroupsFocusingPinnedTabs,
+                   &kTabGroupsFocusing,
+                   "tab_groups_focusing_pinned_tabs",
+                   false);
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 BASE_FEATURE(kUpdaterUI, base::FEATURE_DISABLED_BY_DEFAULT);

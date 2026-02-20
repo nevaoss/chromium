@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import type {AdditionalContext, AnnotatedPageData, CancelActionsResult, CaptureRegionErrorReason, CaptureRegionResult, ChromeVersion, ConversationInfo, CreateActorTabOptions, CreateSkillRequest, CreateTabOptions, DraggableArea, FocusedTabData, GetPinCandidatesOptions, GlicBrowserHost, GlicBrowserHostJournal, GlicBrowserHostMetrics, GlicHostRegistry, GlicWebClient, Journal, NavigationConfirmationRequest, Observable, ObservableValue, OnResponseStoppedDetails, OpenPanelInfo, OpenSettingsOptions, PageMetadata, PanelOpeningData, PanelState, PdfDocumentData, PinCandidate, PinTabsOptions, Platform, ResizeWindowOptions, ResumeActorTaskResult, Screenshot, ScrollToParams, SelectAutofillSuggestionsDialogRequest, SelectCredentialDialogRequest, Skill, SkillPreview, SkillSource, TabContextOptions, TabContextResult, TabData, TaskOptions, UnpinTabsOptions, UpdateSkillRequest, UserConfirmationDialogRequest, UserProfileInfo, ViewChangedNotification, ViewChangeRequest, WebClientMode, ZeroStateSuggestions, ZeroStateSuggestionsOptions, ZeroStateSuggestionsV2} from '../../glic_api/glic_api.js';
+import type {AdditionalContext, AnnotatedPageData, CancelActionsResult, CaptureRegionErrorReason, CaptureRegionResult, ChromeVersion, ConversationInfo, CreateActorTabOptions, CreateSkillRequest, CreateTabOptions, DraggableArea, FocusedTabData, GetPinCandidatesOptions, GlicBrowserHost, GlicBrowserHostJournal, GlicBrowserHostMetrics, GlicHostRegistry, GlicWebClient, Journal, NavigationConfirmationRequest, Observable, ObservableValue, OnResponseStoppedDetails, OpenPanelInfo, OpenSettingsOptions, PageMetadata, PanelOpeningData, PanelState, PdfDocumentData, PinCandidate, PinTabsOptions, Platform, ResizeWindowOptions, ResumeActorTaskResult, Screenshot, ScrollToParams, SelectAutofillSuggestionsDialogRequest, SelectCredentialDialogRequest, Skill, SkillPreview, TabContextOptions, TabContextResult, TabData, TaskOptions, UnpinTabsOptions, UpdateSkillRequest, UserConfirmationDialogRequest, UserProfileInfo, ViewChangedNotification, ViewChangeRequest, WebClientMode, ZeroStateSuggestions, ZeroStateSuggestionsOptions, ZeroStateSuggestionsV2} from '../../glic_api/glic_api.js';
 import {ActorTaskPauseReason, ActorTaskState, ActorTaskStopReason, HostCapability} from '../../glic_api/glic_api.js';
 import {ObservableValue as ObservableValueImpl, Subject} from '../../observable.js';
 
@@ -57,6 +57,7 @@ type WebClientMessageHandlerInterface = {
 class WebClientMessageHandler implements WebClientMessageHandlerInterface {
   private cachedPinnedTabs: TabData[]|undefined = undefined;
   private cachedSkillPreviews: SkillPreview[] = [];
+  private cachedContextualSkillPreviews: SkillPreview[] = [];
   private cachedSkillPrompts = new Map<string, string>();
 
   constructor(
@@ -211,7 +212,14 @@ class WebClientMessageHandler implements WebClientMessageHandlerInterface {
   }): void {
     this.cachedSkillPrompts.clear();
     this.cachedSkillPreviews = payload.skillPreviews;
-    this.host.skillPreviews.assignAndSignal(this.cachedSkillPreviews);
+    this.host.skillPreviews.assignAndSignal(this.combineSkillPreviews());
+  }
+
+  glicWebClientNotifyContextualSkillPreviewsChanged(payload: {
+    contextualSkillPreviews: SkillPreview[],
+  }): void {
+    this.cachedContextualSkillPreviews = payload.contextualSkillPreviews;
+    this.host.skillPreviews.assignAndSignal(this.combineSkillPreviews());
   }
 
   glicWebClientNotifySkillPreviewChanged(payload: {skillPreview: SkillPreview}):
@@ -235,7 +243,7 @@ class WebClientMessageHandler implements WebClientMessageHandlerInterface {
     }
 
     // Signal the change to the host.
-    this.host.skillPreviews.assignAndSignal(this.cachedSkillPreviews);
+    this.host.skillPreviews.assignAndSignal(this.combineSkillPreviews());
   }
 
   glicWebClientNotifySkillDeleted(payload: {
@@ -252,7 +260,7 @@ class WebClientMessageHandler implements WebClientMessageHandlerInterface {
         ...this.cachedSkillPreviews.slice(index + 1),
       ];
     }
-    this.host.skillPreviews.assignAndSignal(this.cachedSkillPreviews);
+    this.host.skillPreviews.assignAndSignal(this.combineSkillPreviews());
   }
 
   glicWebClientNotifySkillToInvokeChanged(payload: {skill: Skill}): void {
@@ -499,6 +507,10 @@ class WebClientMessageHandler implements WebClientMessageHandlerInterface {
       this.cachedSkillPrompts.set(preview.id, skill.prompt);
     }
   }
+
+  combineSkillPreviews() {
+    return [...this.cachedContextualSkillPreviews, ...this.cachedSkillPreviews];
+  }
 }
 
 class GlicBrowserHostImpl implements GlicBrowserHost {
@@ -647,17 +659,10 @@ class GlicBrowserHostImpl implements GlicBrowserHost {
       this.getModelQualityClientId = undefined;
     }
 
-    if (state.enableSkills) {
-      if (state.skillPreviews) {
-        this.skillPreviews.assignAndSignal(
-            state.skillPreviews.map(s => ({
-                                      ...s,
-                                      source: s.source as number as SkillSource,
-                                    })));
-      }
-    } else {
+    if (!state.enableSkills) {
       this.createSkill = undefined;
       this.updateSkill = undefined;
+      this.showManageSkillsUi = undefined;
       this.getSkill = undefined;
     }
 
@@ -1187,6 +1192,10 @@ class GlicBrowserHostImpl implements GlicBrowserHost {
     if (!result.modalOpened) {
       throw new Error('updateSkill: failed to open dialog');
     }
+  }
+
+  showManageSkillsUi?(): void {
+    this.sender.requestNoResponse('glicBrowserShowManageSkillsUi', undefined);
   }
 
   async getSkill?(id: string): Promise<Skill> {

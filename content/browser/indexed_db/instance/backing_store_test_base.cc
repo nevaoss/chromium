@@ -7,6 +7,7 @@
 #include "base/test/bind.h"
 #include "base/test/gmock_expected_support.h"
 #include "base/uuid.h"
+#include "content/browser/indexed_db/instance/backing_store_util.h"
 #include "mojo/public/cpp/bindings/self_owned_receiver.h"
 #include "storage/browser/test/fake_blob.h"
 
@@ -44,8 +45,7 @@ class FakeFileSystemAccessTransferToken
 namespace content::indexed_db {
 
 BackingStoreTestBase::BackingStoreTestBase(bool use_sqlite)
-    : sqlite_override_(
-          BucketContext::OverrideShouldUseSqliteForTesting(use_sqlite)) {}
+    : use_sqlite_(use_sqlite) {}
 
 BackingStoreTestBase::~BackingStoreTestBase() = default;
 
@@ -73,6 +73,13 @@ void BackingStoreTestBase::SetUp() {
 }
 
 void BackingStoreTestBase::CreateFactoryAndBackingStore() {
+  bucket_context_ = CreateBucketContext(use_sqlite_, temp_dir_.GetPath());
+  backing_store_ = bucket_context_->backing_store();
+}
+
+std::unique_ptr<BucketContext> BackingStoreTestBase::CreateBucketContext(
+    bool use_sqlite,
+    const base::FilePath& data_path) {
   const blink::StorageKey storage_key =
       blink::StorageKey::CreateFromStringForTesting("http://localhost:81");
   auto bucket_info = storage::BucketInfo();
@@ -88,14 +95,13 @@ void BackingStoreTestBase::CreateFactoryAndBackingStore() {
   file_system_access_context_->Clone(
       fsa_context.InitWithNewPipeAndPassReceiver());
 
-  bucket_context_ = std::make_unique<BucketContext>(
-      bucket_info, temp_dir_.GetPath(), BucketContext::Delegate(),
-      quota_manager_proxy_, std::move(blob_storage_context),
-      std::move(fsa_context));
+  auto bucket_context = std::make_unique<BucketContext>(
+      bucket_info, data_path, BucketContext::Delegate(), quota_manager_proxy_,
+      std::move(blob_storage_context), std::move(fsa_context));
+  bucket_context->SetShouldUseSqliteForTesting(use_sqlite);
   std::tie(std::ignore, std::ignore, data_loss_info_) =
-      bucket_context_->InitBackingStore(/*create_if_missing=*/true);
-
-  backing_store_ = bucket_context_->backing_store();
+      bucket_context->InitBackingStore(/*create_if_missing=*/true);
+  return bucket_context;
 }
 
 void BackingStoreTestBase::UpdateDatabaseVersion(
@@ -161,6 +167,20 @@ std::vector<PartitionedLock> BackingStoreTestBase::CreateDummyLock() {
       base::BindLambdaForTesting([&loop]() { loop.Quit(); }));
   loop.Run();
   return std::move(locks_receiver.locks);
+}
+
+void BackingStoreTestBase::CreateObjectStore(BackingStore::Database& db) {
+  std::unique_ptr<BackingStore::Transaction> transaction =
+      CreateAndBeginTransaction(
+          db, blink::mojom::IDBTransactionMode::VersionChange);
+
+  EXPECT_TRUE(transaction
+                  ->CreateObjectStore(kObjectStoreId1, u"object_store_name",
+                                      IndexedDBKeyPath(u"object_store_key"),
+                                      /*auto_increment=*/true)
+                  .ok());
+  EXPECT_TRUE(transaction->SetDatabaseVersion(1).ok());
+  CommitTransactionAndVerify(*transaction);
 }
 
 void BackingStoreTestBase::DestroyFactoryAndBackingStore() {
@@ -251,6 +271,43 @@ IndexedDBExternalObject BackingStoreTestBase::CreateFileSystemAccessHandle() {
       remote.InitWithNewPipeAndPassReceiver());
   IndexedDBExternalObject info(std::move(remote));
   return info;
+}
+
+void BackingStoreTestBase::MigrateAndVerifyBackingStore() {
+  // Only test migrating from LevelDB to SQLite.
+  ASSERT_FALSE(use_sqlite_);
+
+  // Snapshot source databases BEFORE migration, since MigrateBackingStore is
+  // destructive.
+  std::map<std::u16string, base::DictValue> original_snapshots;
+  auto original_names_and_versions =
+      backing_store()->GetDatabaseNamesAndVersions();
+  if (original_names_and_versions.has_value()) {
+    for (const auto& name_and_version : *original_names_and_versions) {
+      ASSERT_OK_AND_ASSIGN(
+          auto original_db,
+          backing_store()->CreateOrOpenDatabase(name_and_version->name));
+      ASSERT_OK_AND_ASSIGN(base::DictValue snapshot,
+                           SnapshotDatabase(*original_db));
+      original_snapshots[name_and_version->name] = std::move(snapshot);
+    }
+  }
+
+  base::ScopedTempDir other_dir;
+  ASSERT_TRUE(other_dir.CreateUniqueTempDir());
+  std::unique_ptr<BucketContext> other_bucket_context =
+      CreateBucketContext(/*use_sqlite=*/true, other_dir.GetPath());
+  MigrateBackingStore(*backing_store(), *other_bucket_context->backing_store());
+
+  for (const auto& [name, snapshot] : original_snapshots) {
+    ASSERT_OK_AND_ASSIGN(
+        auto other_db,
+        other_bucket_context->backing_store()->CreateOrOpenDatabase(name));
+
+    ASSERT_OK_AND_ASSIGN(base::DictValue other_snapshot,
+                         SnapshotDatabase(*other_db));
+    EXPECT_EQ(snapshot, other_snapshot);
+  }
 }
 
 // This just checks the data that survive getting stored and recalled, e.g.

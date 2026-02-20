@@ -323,7 +323,7 @@
     'swarming': {
       'dimensions': {
         'cpu': 'x86-64',
-        'gpu': None,
+        'gpu': 'none',
         'os': 'Ubuntu-22.04',
         'pool': 'chromium.tests.gpu',
       },
@@ -445,6 +445,17 @@
         'gpu': '8086:64a0',
         'os': 'Windows-11',
         'pool': 'chromium.tests.gpu.experimental',
+      },
+    },
+  },
+  'gpu_win_gce_stable': {
+    'fail_if_unused': False,
+    'swarming': {
+      'dimensions': {
+        'cpu': 'x86-64',
+        'gpu': 'none',
+        'os': 'Windows-10-19045',
+        'pool': 'chromium.tests.gpu',
       },
     },
   },

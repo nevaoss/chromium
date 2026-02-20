@@ -304,6 +304,7 @@ import org.chromium.chrome.browser.ui.IncognitoRestoreAppLaunchDrawBlockerFactor
 import org.chromium.chrome.browser.ui.RootUiCoordinator;
 import org.chromium.chrome.browser.ui.appmenu.AppMenuPropertiesDelegate;
 import org.chromium.chrome.browser.ui.browser_window.BrowserWindowType;
+import org.chromium.chrome.browser.ui.default_browser_promo.DefaultBrowserPromoUtils;
 import org.chromium.chrome.browser.ui.desktop_windowing.AppHeaderUtils;
 import org.chromium.chrome.browser.ui.edge_to_edge.EdgeToEdgeUtils;
 import org.chromium.chrome.browser.ui.edge_to_edge.TopInsetProvider;
@@ -1231,11 +1232,14 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
 
     private Pane createHistoryPane() {
         return new HistoryPane(
+                getProfileProviderSupplier(),
                 adaptOnOverviewColorAlphaChange(),
+                getWindowAndroid(),
                 this,
                 getSnackbarManager(),
-                getProfileProviderSupplier(),
                 mRootUiCoordinator::getBottomSheetController,
+                getModalDialogManagerSupplier(),
+                getActivityResultTracker(),
                 getCurrentTabModel().getCurrentTabSupplier());
     }
 
@@ -2729,7 +2733,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                         // for both the widget and the launcher shortcut here.
                         Toast.makeText(
                                         ChromeTabbedActivity.this,
-                                        R.string.quick_action_search_widget_message_no_incognito,
+                                        R.string.incognito_not_available_message,
                                         Toast.LENGTH_LONG)
                                 .show();
                     } else {
@@ -3169,12 +3173,9 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                         getModalDialogManagerSupplier());
         moduleRegistry.registerModule(ModuleType.SAFETY_HUB, safetyHubMagicStackBuilder);
 
-        if (ChromeFeatureList.sEducationalTipModule.isEnabled()) {
-            // Fetch and register the appropriate collection of educational tip or setup list
-            // modules.
-            HomeTipsModulesProvider.registerTipModules(
-                    createEducationTipModuleActionDelegate(), moduleRegistry);
-        }
+        // Fetch and register the appropriate collection of educational tip or setup list modules.
+        HomeTipsModulesProvider.registerTipModules(
+                createEducationTipModuleActionDelegate(), moduleRegistry);
 
         // The AuxiliarySearchControllerFactory#setIsTablet() must be called before using the
         // builder which checks AuxiliarySearchControllerFactory#isEnabled().
@@ -4013,7 +4014,8 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                             this,
                             mRootUiCoordinator.getBottomSheetController(),
                             profileSupplier,
-                            NtpCustomizationCoordinator.BottomSheetType.MAIN)
+                            NtpCustomizationCoordinator.BottomSheetType.MAIN,
+                            getWindowAndroid())
                     .showBottomSheet();
             NtpCustomizationMetricsUtils.recordOpenBottomSheetEntry(
                     NtpCustomizationCoordinator.EntryPointType.MAIN_MENU);
@@ -4037,6 +4039,14 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                 caretDialog.show();
             }
 
+        } else if (id == R.id.default_browser_promo_menu_id) {
+            // This menu item is not visible if Chrome is already set as default.
+            DefaultBrowserPromoUtils.getInstance()
+                    .onMenuItemClick(
+                            this,
+                            getWindowAndroid(),
+                            DefaultBrowserPromoUtils.DefaultBrowserPromoEntryPoint.APP_MENU);
+            RecordUserAction.record("MobileMenuDefaultBrowserPromo");
         } else {
             return super.onMenuOrKeyboardAction(id, fromMenu, triggeringMotion);
         }
@@ -4534,12 +4544,14 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
             mGroupSuggestionsPromotionCoordinator = null;
         }
 
-        var xrSceneCoreSessionManager = mXrSceneCoreSessionManagerSupplier.get();
-        if (xrSceneCoreSessionManager != null) {
-            xrSceneCoreSessionManager
-                    .getXrSpaceModeObservableSupplier()
-                    .removeObserver(mOnXrSpaceModeChanged);
-            xrSceneCoreSessionManager.destroy();
+        if (mXrSceneCoreSessionManagerSupplier.hasValue()) {
+            var xrSceneCoreSessionManager = mXrSceneCoreSessionManagerSupplier.get();
+            if (xrSceneCoreSessionManager != null) {
+                xrSceneCoreSessionManager
+                        .getXrSpaceModeObservableSupplier()
+                        .removeObserver(mOnXrSpaceModeChanged);
+                xrSceneCoreSessionManager.destroy();
+            }
         }
 
         if (mXrSceneCoreSessionInitializer != null) {
@@ -4957,13 +4969,14 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
         return xrSceneCoreSessionManager;
     }
 
-    private @Nullable MonotonicObservableSupplier<Boolean> getXrSpaceModeObservableSupplier() {
+    private NonNullObservableSupplier<Boolean> getXrSpaceModeObservableSupplier() {
         var xrSceneCoreSessionManager = mXrSceneCoreSessionManagerSupplier.get();
         return xrSceneCoreSessionManager != null
                 ? xrSceneCoreSessionManager.getXrSpaceModeObservableSupplier()
-                : null;
+                : ObservableSuppliers.alwaysFalse();
     }
 
+    @Override
     public @SupportedProfileType int getSupportedProfileType() {
         return mSupportedProfileType;
     }

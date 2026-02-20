@@ -437,6 +437,8 @@ void SearchboxHandler::SetupWebUIDataSource(content::WebUIDataSource* source,
       profile->GetPrefs()->GetInteger(
           prefs::kNtpComposeButtonShownCountPrefName) <
           composebox_config.entry_point().num_page_load_animations());
+  source->AddBoolean("contextualMenuShowModelPicker",
+                     ntp_composebox::kShowModelPicker.Get());
 }
 
 std::string SearchboxHandler::AutocompleteIconToResourceName(
@@ -889,7 +891,8 @@ void SearchboxHandler::QueryAutocomplete(const std::u16string& input,
           controller_->client()->GetLensOverlaySuggestInputs()) {
     // Don't set lens params if in "Create Image" mode. This prevents the
     // contextual client from being used in this tool mode.
-    if (GetAimToolMode() != omnibox::ToolMode::TOOL_MODE_IMAGE_GEN_UPLOAD) {
+    if (GetInputState().active_tool !=
+        omnibox::ToolMode::TOOL_MODE_IMAGE_GEN_UPLOAD) {
       autocomplete_input.set_lens_overlay_suggest_inputs(*suggest_inputs);
     }
   }
@@ -903,7 +906,7 @@ void SearchboxHandler::QueryAutocomplete(const std::u16string& input,
     }
   }
 
-  autocomplete_input.set_aim_tool_mode(GetAimToolMode());
+  autocomplete_input.set_input_state(GetInputState());
 
   edit_model()->SetAutocompleteInput(autocomplete_input);
   omnibox_controller()->StartAutocomplete(autocomplete_input);
@@ -1071,6 +1074,10 @@ void SearchboxHandler::GetRecentTabs(GetRecentTabsCallback callback) {
   std::move(callback).Run({});
 }
 
+void SearchboxHandler::GetInputState(GetInputStateCallback callback) {
+  std::move(callback).Run({});
+}
+
 void SearchboxHandler::OnResultChanged(AutocompleteController* controller,
                                        bool default_match_changed) {
   page_->AutocompleteResultChanged(CreateAutocompleteResult(
@@ -1128,8 +1135,8 @@ const AutocompleteMatch* SearchboxHandler::GetMatchWithUrl(
   return &match;
 }
 
-omnibox::ToolMode SearchboxHandler::GetAimToolMode() const {
-  return omnibox::ToolMode::TOOL_MODE_UNSPECIFIED;
+omnibox::InputState SearchboxHandler::GetInputState() const {
+  return omnibox::InputState();
 }
 
 OmniboxController* SearchboxHandler::omnibox_controller() const {

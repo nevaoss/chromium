@@ -31,6 +31,19 @@ namespace content::indexed_db {
 CONTENT_EXPORT StatusOr<base::DictValue> SnapshotDatabase(
     BackingStore::Database& db);
 
+// Writes all contents from `source` into `target`. Theoretically this could
+// work for any two backing stores, but practically it only works from LevelDB
+// to SQLite, and any other combination currently has unimplemented portions.
+//
+// This operation is potentially destructive on `source`, as `target` will take
+// (and move) its standalone files.
+//
+// No PartitionedLockManager-level locks are taken on either backing store, and
+// it's up to the caller to ensure there will be no other simultaneous
+// operations.
+CONTENT_EXPORT void MigrateBackingStore(BackingStore& source,
+                                        BackingStore& target);
+
 }  // namespace content::indexed_db
 
 #endif  // CONTENT_BROWSER_INDEXED_DB_INSTANCE_BACKING_STORE_UTIL_H_

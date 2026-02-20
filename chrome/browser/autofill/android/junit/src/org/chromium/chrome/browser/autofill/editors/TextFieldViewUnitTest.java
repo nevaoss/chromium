@@ -11,11 +11,11 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-import static org.chromium.chrome.browser.autofill.editors.EditorProperties.FieldProperties.IS_REQUIRED;
-import static org.chromium.chrome.browser.autofill.editors.EditorProperties.FieldProperties.LABEL;
-import static org.chromium.chrome.browser.autofill.editors.EditorProperties.FieldProperties.VALIDATOR;
-import static org.chromium.chrome.browser.autofill.editors.EditorProperties.FieldProperties.VALUE;
-import static org.chromium.chrome.browser.autofill.editors.EditorProperties.TextFieldProperties.TEXT_ALL_KEYS;
+import static org.chromium.chrome.browser.autofill.editors.EditorComponentsProperties.FieldProperties.IS_REQUIRED;
+import static org.chromium.chrome.browser.autofill.editors.EditorComponentsProperties.FieldProperties.LABEL;
+import static org.chromium.chrome.browser.autofill.editors.EditorComponentsProperties.FieldProperties.VALIDATOR;
+import static org.chromium.chrome.browser.autofill.editors.EditorComponentsProperties.FieldProperties.VALUE;
+import static org.chromium.chrome.browser.autofill.editors.EditorComponentsProperties.TextFieldProperties.TEXT_ALL_KEYS;
 
 import android.app.Activity;
 import android.text.Editable;
@@ -68,7 +68,7 @@ public final class TextFieldViewUnitTest {
         TextFieldView field = new TextFieldView(mActivity, model);
         mContentView.addView(field);
         PropertyModelChangeProcessor.create(
-                model, field, EditorDialogViewBinder::bindTextFieldView);
+                model, field, EditorComponentsViewBinder::bindTextFieldView);
         return field;
     }
 
@@ -373,8 +373,7 @@ public final class TextFieldViewUnitTest {
                 mActivity.getString(
                         R.string.autofill_address_edit_dialog_required_field_content_description,
                         FIELD_LABEL));
-        assertTrue(
-                inputLayout.getHint().toString().contains(TextFieldView.REQUIRED_FIELD_INDICATOR));
+        assertTrue(inputLayout.getHint().toString().contains(FieldView.REQUIRED_FIELD_INDICATOR));
     }
 
     /**
@@ -398,7 +397,6 @@ public final class TextFieldViewUnitTest {
                 mActivity.getString(
                         R.string.autofill_address_edit_dialog_required_field_content_description,
                         FIELD_LABEL));
-        assertFalse(
-                inputLayout.getHint().toString().contains(TextFieldView.REQUIRED_FIELD_INDICATOR));
+        assertFalse(inputLayout.getHint().toString().contains(FieldView.REQUIRED_FIELD_INDICATOR));
     }
 }

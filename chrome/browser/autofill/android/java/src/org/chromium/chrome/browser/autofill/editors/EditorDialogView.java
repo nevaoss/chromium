@@ -36,6 +36,7 @@ import android.widget.RelativeLayout.LayoutParams;
 import android.widget.Spinner;
 import android.widget.TextView;
 
+import androidx.annotation.StringRes;
 import androidx.annotation.VisibleForTesting;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.view.MarginLayoutParamsCompat;
@@ -45,7 +46,7 @@ import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.autofill.R;
-import org.chromium.chrome.browser.autofill.editors.EditorProperties.EditorItem;
+import org.chromium.chrome.browser.autofill.editors.EditorComponentsProperties.EditorItem;
 import org.chromium.chrome.browser.feedback.HelpAndFeedbackLauncherFactory;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.profiles.Profile;
@@ -80,9 +81,6 @@ public class EditorDialogView extends AlwaysDismissedDialog
         implements OnClickListener,
                 DialogInterface.OnShowListener,
                 DialogInterface.OnDismissListener {
-    /** The indicator for input fields that are required. */
-    public static final String REQUIRED_FIELD_INDICATOR = "*";
-
     /** Duration of the animation to show the UI to full height. */
     private static final int DIALOG_ENTER_ANIMATION_MS = 300;
 
@@ -117,7 +115,7 @@ public class EditorDialogView extends AlwaysDismissedDialog
 
     private @Nullable String mDeleteConfirmationTitle;
     private @Nullable CharSequence mDeleteConfirmationText;
-    private @Nullable String mDeleteConfirmationPrimaryButtonText;
+    private @StringRes int mDeleteConfirmationPrimaryButtonText;
 
     private @Nullable Runnable mDeleteRunnable;
     private @Nullable Runnable mDoneRunnable;
@@ -210,7 +208,7 @@ public class EditorDialogView extends AlwaysDismissedDialog
     }
 
     public void setDeleteConfirmationPrimaryButtonText(
-            @Nullable String deleteConfirmationPrimaryButtonText) {
+            @StringRes int deleteConfirmationPrimaryButtonText) {
         mDeleteConfirmationPrimaryButtonText = deleteConfirmationPrimaryButtonText;
     }
 
@@ -300,7 +298,7 @@ public class EditorDialogView extends AlwaysDismissedDialog
                     if (item.getItemId() == R.id.delete_menu_id) {
                         if (mDeleteConfirmationTitle != null
                                 && mDeleteConfirmationText != null
-                                && mDeleteConfirmationPrimaryButtonText != null) {
+                                && mDeleteConfirmationPrimaryButtonText != 0) {
                             handleDeleteWithConfirmation(
                                     mDeleteConfirmationTitle,
                                     mDeleteConfirmationText,
@@ -512,7 +510,7 @@ public class EditorDialogView extends AlwaysDismissedDialog
                             PropertyModelChangeProcessor.create(
                                     editorItem.model,
                                     dropdownView,
-                                    EditorDialogViewBinder::bindDropdownFieldView));
+                                    EditorComponentsViewBinder::bindDropdownFieldView));
                     mFieldViews.add(dropdownView);
                     mDropdownFields.add(dropdownView.getDropdown());
                     childView = dropdownView.getLayout();
@@ -525,7 +523,7 @@ public class EditorDialogView extends AlwaysDismissedDialog
                             PropertyModelChangeProcessor.create(
                                     editorItem.model,
                                     inputLayout,
-                                    EditorDialogViewBinder::bindTextFieldView));
+                                    EditorComponentsViewBinder::bindTextFieldView));
                     mFieldViews.add(inputLayout);
                     mEditableTextFields.add(inputLayout.getEditText());
                     childView = inputLayout;
@@ -541,7 +539,7 @@ public class EditorDialogView extends AlwaysDismissedDialog
                     PropertyModelChangeProcessor.create(
                             editorItem.model,
                             textLayout,
-                            EditorDialogViewBinder::bindNonEditableTextView);
+                            EditorComponentsViewBinder::bindNonEditableTextView);
                     childView = textLayout;
                     break;
                 }
@@ -552,7 +550,9 @@ public class EditorDialogView extends AlwaysDismissedDialog
                                     .inflate(R.layout.autofill_editor_dialog_notice, null);
                     TextView textView = noticeLayout.findViewById(R.id.notice);
                     PropertyModelChangeProcessor.create(
-                            editorItem.model, textView, EditorDialogViewBinder::bindNoticeTextView);
+                            editorItem.model,
+                            textView,
+                            EditorComponentsViewBinder::bindNoticeTextView);
                     childView = noticeLayout;
                     break;
                 }
@@ -661,7 +661,9 @@ public class EditorDialogView extends AlwaysDismissedDialog
     }
 
     private void handleDeleteWithConfirmation(
-            String confirmationTitle, CharSequence confirmationText, String primaryButtonText) {
+            String confirmationTitle,
+            CharSequence confirmationText,
+            @StringRes int primaryButtonTextId) {
         LayoutInflater inflater = LayoutInflater.from(getContext());
         View body = inflater.inflate(R.layout.confirmation_dialog_view, null);
         TextView titleView = body.findViewById(R.id.confirmation_dialog_title);
@@ -686,7 +688,7 @@ public class EditorDialogView extends AlwaysDismissedDialog
                                     }
                                 })
                         .setPositiveButton(
-                                primaryButtonText,
+                                primaryButtonTextId,
                                 (dialog, which) -> {
                                     recordDeletionHistogram(true);
                                     handleDelete();

@@ -43,7 +43,7 @@ namespace {
 class MockContextualTasksUiService : public ContextualTasksUiService {
  public:
   explicit MockContextualTasksUiService(ContextualTasksService* controller)
-      : ContextualTasksUiService(nullptr, controller, nullptr) {}
+      : ContextualTasksUiService(nullptr, controller, nullptr, nullptr) {}
   ~MockContextualTasksUiService() override = default;
 
   MOCK_METHOD(GURL,
@@ -104,6 +104,12 @@ class MockSidePanelUI : public SidePanelUI {
   MOCK_METHOD(base::CallbackListSubscription,
               RegisterSidePanelShown,
               (SidePanelEntry::PanelType type, ShownCallback callback),
+              (override));
+  MOCK_METHOD(void,
+              OnActiveTabChanged,
+              (content::WebContents * old_contents,
+               content::WebContents* new_contents,
+               bool tab_removed_for_deletion),
               (override));
   MOCK_METHOD(content::WebContents*,
               GetWebContentsForTest,

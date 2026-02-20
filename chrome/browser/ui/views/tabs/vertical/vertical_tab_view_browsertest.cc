@@ -87,7 +87,7 @@ class NewTabTitleObserver : public TabStripModelObserver {
       TabCollectionNode* tab_node =
           root_node_->children()[1]->children()[content.index].get();
       VerticalTabView* tab_view =
-          views::AsViewClass<VerticalTabView>(tab_node->get_view_for_testing());
+          views::AsViewClass<VerticalTabView>(tab_node->view());
       views::Label* title = views::AsViewClass<views::Label>(
           tab_view->GetViewByElementId(kVerticalTabTitleElementId));
       views::PropertyChangedCallback callback =
@@ -108,7 +108,12 @@ class NewTabTitleObserver : public TabStripModelObserver {
 };
 
 class VerticalTabViewTest
-    : public VerticalTabsBrowserTestMixin<InProcessBrowserTest> {};
+    : public VerticalTabsBrowserTestMixin<InProcessBrowserTest> {
+ public:
+  void WaitForLayout(views::View* view) {
+    ASSERT_TRUE(base::test::RunUntil([&]() { return !view->needs_layout(); }));
+  }
+};
 
 IN_PROC_BROWSER_TEST_F(VerticalTabViewTest, IconDataChanged) {
   ASSERT_TRUE(embedded_test_server()->Start());
@@ -223,6 +228,9 @@ IN_PROC_BROWSER_TEST_F(VerticalTabViewTest, TitleLoading) {
 }
 
 IN_PROC_BROWSER_TEST_F(VerticalTabViewTest, AlertIndicatorDataChanged) {
+  TabCollectionNode* tab_node = unpinned_collection_node()->children()[0].get();
+  VerticalTabView* tab_view =
+      views::AsViewClass<VerticalTabView>(tab_node->view());
   auto* alert_indicator =
       BrowserElementsViews::From(browser())->GetViewAs<AlertIndicatorButton>(
           kTabAlertIndicatorButtonElementId);
@@ -240,6 +248,7 @@ IN_PROC_BROWSER_TEST_F(VerticalTabViewTest, AlertIndicatorDataChanged) {
   web_contents->SetAudioMuted(false);
   tab_strip_model()->NotifyTabChanged(tab_strip_model()->GetActiveTab(),
                                       TabChangeType::kAll);
+  WaitForLayout(tab_view);
   EXPECT_TRUE(alert_indicator->GetVisible());
   EXPECT_EQ(tabs::TabAlert::kAudioPlaying,
             alert_indicator->alert_state_for_testing());
@@ -250,7 +259,7 @@ IN_PROC_BROWSER_TEST_F(VerticalTabViewTest, AlertIndicatorDataChanged) {
   web_contents->SetAudioMuted(true);
   tab_strip_model()->NotifyTabChanged(tab_strip_model()->GetActiveTab(),
                                       TabChangeType::kAll);
-  EXPECT_TRUE(alert_indicator->GetVisible());
+  WaitForLayout(tab_view);
   EXPECT_EQ(tabs::TabAlert::kAudioMuting,
             alert_indicator->alert_state_for_testing());
   EXPECT_EQ(tabs::TabAlert::kAudioMuting,
@@ -267,6 +276,7 @@ IN_PROC_BROWSER_TEST_F(VerticalTabViewTest, AlertIndicatorDataChanged) {
   recently_audible_helper->FireRecentlyAudibleTimerForTesting();
   tab_strip_model()->NotifyTabChanged(tab_strip_model()->GetActiveTab(),
                                       TabChangeType::kAll);
+  WaitForLayout(tab_view);
   EXPECT_TRUE(alert_indicator->GetVisible());
   EXPECT_EQ(std::nullopt, alert_indicator->alert_state_for_testing());
   EXPECT_EQ(tabs::TabAlert::kAudioMuting,
@@ -276,6 +286,9 @@ IN_PROC_BROWSER_TEST_F(VerticalTabViewTest, AlertIndicatorDataChanged) {
 // This test doesn't need the EnableTabMuting feature flag because it directly
 // calls NotifyClick() on the button controller.
 IN_PROC_BROWSER_TEST_F(VerticalTabViewTest, AlertIndicatorMute) {
+  TabCollectionNode* tab_node = unpinned_collection_node()->children()[0].get();
+  VerticalTabView* tab_view =
+      views::AsViewClass<VerticalTabView>(tab_node->view());
   auto* alert_indicator =
       BrowserElementsViews::From(browser())->GetViewAs<AlertIndicatorButton>(
           kTabAlertIndicatorButtonElementId);
@@ -287,6 +300,7 @@ IN_PROC_BROWSER_TEST_F(VerticalTabViewTest, AlertIndicatorMute) {
                                       TabChangeType::kAll);
 
   // Audio should be playing initially.
+  WaitForLayout(tab_view);
   ASSERT_TRUE(alert_indicator->GetVisible());
   ASSERT_EQ(tabs::TabAlert::kAudioPlaying,
             alert_indicator->alert_state_for_testing());
@@ -294,6 +308,7 @@ IN_PROC_BROWSER_TEST_F(VerticalTabViewTest, AlertIndicatorMute) {
 
   // After clicking the alert indicator, audio should be muted.
   alert_indicator->button_controller()->NotifyClick();
+  WaitForLayout(tab_view);
   EXPECT_TRUE(alert_indicator->GetVisible());
   EXPECT_EQ(tabs::TabAlert::kAudioMuting,
             alert_indicator->alert_state_for_testing());
@@ -301,6 +316,7 @@ IN_PROC_BROWSER_TEST_F(VerticalTabViewTest, AlertIndicatorMute) {
 
   // After clicking the alert indicator again, audio should no longer be muted.
   alert_indicator->button_controller()->NotifyClick();
+  WaitForLayout(tab_view);
   EXPECT_TRUE(alert_indicator->GetVisible());
   EXPECT_EQ(tabs::TabAlert::kAudioPlaying,
             alert_indicator->alert_state_for_testing());
@@ -311,7 +327,8 @@ IN_PROC_BROWSER_TEST_F(VerticalTabViewTest, CloseButtonDataChanged) {
   // The initial tab is the first child of the unpinned collection which is the
   // second child of the root node.
   TabCollectionNode* tab_node = unpinned_collection_node()->children()[0].get();
-  VerticalTabView* tab_view = static_cast<VerticalTabView*>(tab_node->view());
+  VerticalTabView* tab_view =
+      views::AsViewClass<VerticalTabView>(tab_node->view());
   TabCloseButton* close_button = tab_view->close_button_for_testing();
 
   // Expect the close button to be showing initially.
@@ -329,10 +346,12 @@ IN_PROC_BROWSER_TEST_F(VerticalTabViewTest, CloseButtonDataChanged) {
 
   // After the mouse enters the tab, the close button should be showing.
   event_generator.MoveMouseTo(tab_view->GetBoundsInScreen().CenterPoint());
+  WaitForLayout(tab_view);
   EXPECT_TRUE(close_button->GetVisible());
 
   // After the mouse exits the tab, the close button should be hidden.
   event_generator.MoveMouseTo(gfx::Point());
+  WaitForLayout(tab_view);
   EXPECT_FALSE(close_button->GetVisible());
 
   // Collapse the tab strip.
@@ -343,6 +362,7 @@ IN_PROC_BROWSER_TEST_F(VerticalTabViewTest, CloseButtonDataChanged) {
   // After the mouse enters the tab, the close button should still be hidden
   // since the tab is not active.
   event_generator.MoveMouseTo(tab_view->GetBoundsInScreen().CenterPoint());
+  WaitForLayout(tab_view);
   EXPECT_FALSE(close_button->GetVisible());
 }
 
@@ -352,7 +372,8 @@ IN_PROC_BROWSER_TEST_F(VerticalTabViewTest, CloseButtonPressed) {
 
   // The second tab is the second child of the unpinned collection.
   TabCollectionNode* tab_node = unpinned_collection_node()->children()[1].get();
-  VerticalTabView* tab_view = static_cast<VerticalTabView*>(tab_node->view());
+  VerticalTabView* tab_view =
+      views::AsViewClass<VerticalTabView>(tab_node->view());
   TabCloseButton* close_button = tab_view->close_button_for_testing();
   ASSERT_TRUE(close_button->GetVisible());
 
@@ -369,7 +390,7 @@ IN_PROC_BROWSER_TEST_F(VerticalTabViewTest, PinnedTabsHideCloseButton) {
 
   // The initial tab is the first child of the pinned collection.
   TabCollectionNode* tab_node = pinned_collection_node()->children()[0].get();
-  VerticalTabView* tab = static_cast<VerticalTabView*>(tab_node->view());
+  VerticalTabView* tab = views::AsViewClass<VerticalTabView>(tab_node->view());
 
   // The favicon should be visible but the close button is not.
   EXPECT_TRUE(tab->GetViewByElementId(kTabIconElementId)->GetVisible());
@@ -381,7 +402,7 @@ IN_PROC_BROWSER_TEST_F(VerticalTabViewTest, PinnedTabsRenderBorder) {
   AppendPinnedTab();
 
   // The initial tab is the first child of the pinned collection.
-  VerticalTabView* pinned_tab = static_cast<VerticalTabView*>(
+  VerticalTabView* pinned_tab = views::AsViewClass<VerticalTabView>(
       pinned_collection_node()->children()[0].get()->view());
 
   EXPECT_TRUE(pinned_tab->GetBorder());
@@ -394,7 +415,7 @@ IN_PROC_BROWSER_TEST_F(VerticalTabViewTest, PinnedTabsRenderBorder) {
 
   // The first child of the unpinned collection is the tab that has been
   // unpinned.
-  VerticalTabView* unpinned_tab = static_cast<VerticalTabView*>(
+  VerticalTabView* unpinned_tab = views::AsViewClass<VerticalTabView>(
       unpinned_collection_node()->children()[0].get()->view());
 
   EXPECT_FALSE(unpinned_tab->GetBorder());
@@ -406,8 +427,9 @@ IN_PROC_BROWSER_TEST_F(VerticalTabViewTest, LogsTabCloseMetrics) {
   AppendTab();
   TabCollectionNode* tab_node = unpinned_collection_node()->GetNodeForHandle(
       tab_strip_model()->GetActiveTab()->GetHandle());
-  TabCloseButton* close_button = static_cast<VerticalTabView*>(tab_node->view())
-                                     ->close_button_for_testing();
+  TabCloseButton* close_button =
+      views::AsViewClass<VerticalTabView>(tab_node->view())
+          ->close_button_for_testing();
   ASSERT_TRUE(close_button->GetVisible());
 
   close_button->button_controller()->NotifyClick();
@@ -426,8 +448,9 @@ IN_PROC_BROWSER_TEST_F(VerticalTabViewTest,
 
   TabCollectionNode* tab_node = unpinned_collection_node()->GetNodeForHandle(
       tab_strip_model()->GetActiveTab()->GetHandle());
-  TabCloseButton* close_button = static_cast<VerticalTabView*>(tab_node->view())
-                                     ->close_button_for_testing();
+  TabCloseButton* close_button =
+      views::AsViewClass<VerticalTabView>(tab_node->view())
+          ->close_button_for_testing();
   ASSERT_TRUE(close_button->GetVisible());
 
   close_button->button_controller()->NotifyClick();
@@ -459,8 +482,9 @@ IN_PROC_BROWSER_TEST_F(VerticalTabViewTest,
 
   TabCollectionNode* tab_node = unpinned_collection_node()->GetNodeForHandle(
       tab_strip_model()->GetActiveTab()->GetHandle());
-  TabCloseButton* close_button = static_cast<VerticalTabView*>(tab_node->view())
-                                     ->close_button_for_testing();
+  TabCloseButton* close_button =
+      views::AsViewClass<VerticalTabView>(tab_node->view())
+          ->close_button_for_testing();
   ASSERT_TRUE(close_button->GetVisible());
 
   close_button->button_controller()->NotifyClick();
@@ -475,10 +499,11 @@ IN_PROC_BROWSER_TEST_F(VerticalTabViewTest, LogsTabCloseMetrics_SplitView) {
   AppendSplitTab();
   TabCollectionNode* tab_node =
       unpinned_collection_node()
-          ->GetChildNodeOfType(RootTabCollectionNode::Type::SPLIT)
+          ->GetChildNodeOfType(TabCollectionNode::Type::SPLIT)
           ->GetNodeForHandle(tab_strip_model()->GetActiveTab()->GetHandle());
-  TabCloseButton* close_button = static_cast<VerticalTabView*>(tab_node->view())
-                                     ->close_button_for_testing();
+  TabCloseButton* close_button =
+      views::AsViewClass<VerticalTabView>(tab_node->view())
+          ->close_button_for_testing();
   ASSERT_TRUE(close_button->GetVisible());
 
   close_button->button_controller()->NotifyClick();
@@ -490,13 +515,14 @@ IN_PROC_BROWSER_TEST_F(VerticalTabViewTest, LogsTabCloseMetrics_SplitView) {
 
   AppendSplitTab();
   tab_node = unpinned_collection_node()
-                 ->GetChildNodeOfType(RootTabCollectionNode::Type::SPLIT)
+                 ->GetChildNodeOfType(TabCollectionNode::Type::SPLIT)
                  ->GetNodeForHandle(
                      tab_strip_model()
                          ->GetTabAtIndex(tab_strip_model()->active_index() + 1)
                          ->GetHandle());
-  close_button = static_cast<VerticalTabView*>(tab_node->view())
+  close_button = views::AsViewClass<VerticalTabView>(tab_node->view())
                      ->close_button_for_testing();
+  WaitForLayout(tab_node->view());
   ASSERT_TRUE(close_button->GetVisible());
 
   close_button->button_controller()->NotifyClick();

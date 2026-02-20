@@ -553,7 +553,9 @@ targets.bundle(
     },
 )
 
-# Android desktop tests that run on a Linux host.
+# Android desktop tests that run on a Linux host. These are necessary for now
+# as some junit tests are behind desktop GN args, e.g. gated on
+# enable_extensions_core.
 targets.bundle(
     name = "android_desktop_junit_tests",
     targets = [
@@ -568,7 +570,7 @@ targets.bundle(
     per_test_modifications = {
         "chrome_junit_tests": targets.mixin(
             swarming = targets.swarming(
-                shards = 5,
+                shards = 10,
             ),
         ),
     },
@@ -1814,7 +1816,6 @@ targets.bundle(
         "base_junit_tests",
         "build_junit_tests",
         "chrome_java_test_pagecontroller_junit_tests",
-        "chrome_junit_tests",
         "components_junit_tests",
         "content_junit_tests",
         "device_junit_tests",
@@ -1881,24 +1882,6 @@ targets.bundle(
                 "pie-x86-emulator",
                 "10-x86-emulator",
                 "16-x64-emulator",
-            ],
-        ),
-        "chrome_junit_tests": targets.per_test_modification(
-            remove_mixins = [
-                "chromium_pixel_2_q",
-                "emulator-4-cores",
-                "nougat-x86-emulator",
-                "oreo-x86-emulator",
-                "pie-x86-emulator",
-                "10-x86-emulator",
-                "16-x64-emulator",
-            ],
-            mixins = [
-                targets.mixin(
-                    swarming = targets.swarming(
-                        shards = 5,
-                    ),
-                ),
             ],
         ),
         "components_junit_tests": targets.per_test_modification(
@@ -2601,6 +2584,18 @@ targets.bundle(
             swarming = targets.swarming(
                 shards = 4,
             ),
+        ),
+    },
+)
+
+targets.bundle(
+    name = "cronet_python_unittest",
+    targets = ["cronet_python_unittests"],
+    per_test_modifications = {
+        "cronet_python_unittests": targets.per_test_modification(
+            remove_mixins = [
+                "16-x64-emulator",
+            ],
         ),
     },
 )
@@ -6808,6 +6803,77 @@ targets.bundle(
     name = "test_traffic_annotation_auditor_script",
     targets = [
         "test_traffic_annotation_auditor",
+    ],
+)
+
+targets.bundle(
+    name = "trees_in_viz_disabled_tests",
+    targets = [
+        "cc_unittests",
+        "viz_unittests",
+        "blink_web_tests",
+        "content_browsertests",
+        "browser_tests",
+    ],
+    per_test_modifications = {
+        "cc_unittests": targets.mixin(
+            args = ["--disable-features=TreesInViz"],
+        ),
+        "viz_unittests": targets.mixin(
+            args = ["--disable-features=TreesInViz"],
+        ),
+        "blink_web_tests": targets.mixin(
+            args = ["--additional-driver-flag=--disable-features=TreesInViz"],
+        ),
+        "content_browsertests": targets.mixin(
+            args = ["--disable-features=TreesInViz"],
+        ),
+        "browser_tests": targets.mixin(
+            args = ["--disable-features=TreesInViz"],
+        ),
+    },
+)
+
+targets.bundle(
+    name = "trees_in_viz_enabled_tests",
+    targets = [
+        "cc_unittests",
+        "viz_unittests",
+        "blink_web_tests",
+        "content_browsertests",
+        "browser_tests",
+    ],
+    per_test_modifications = {
+        "cc_unittests": targets.mixin(
+            args = ["--enable-features=TreesInViz"],
+        ),
+        "viz_unittests": targets.mixin(
+            args = ["--enable-features=TreesInViz"],
+        ),
+        "blink_web_tests": targets.mixin(
+            args = ["--additional-driver-flag=--enable-features=TreesInViz"],
+        ),
+        "content_browsertests": targets.mixin(
+            args = ["--enable-features=TreesInViz"],
+        ),
+        "browser_tests": targets.mixin(
+            args = ["--enable-features=TreesInViz"],
+        ),
+    },
+)
+
+targets.bundle(
+    name = "trees_in_viz_enabled_tests_android",
+    targets = [
+        "cc_unittests",
+        "viz_unittests",
+        "content_browsertests",
+        "android_browsertests",
+    ],
+    mixins = [
+        targets.mixin(
+            args = ["--enable-features=TreesInViz"],
+        ),
     ],
 )
 

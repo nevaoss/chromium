@@ -94,7 +94,7 @@ BASE_FEATURE(kOptimizationGuideModelExecution,
 // Whether to use the on device model service in optimization guide.
 BASE_FEATURE(kOptimizationGuideOnDeviceModel,
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
-    BUILDFLAG(IS_CHROMEOS)
+    BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID)
              base::FEATURE_ENABLED_BY_DEFAULT);
 #else
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -146,6 +146,9 @@ const base::FeatureParam<std::string> kPerformanceClassListForImageInput{
 const base::FeatureParam<std::string> kPerformanceClassListForAudioInput{
     &kOnDeviceModelPerformanceParams,
     "compatible_on_device_performance_classes_audio_input", "5,6"};
+
+BASE_FEATURE(kOnDeviceModelBackgroundDownload,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kOptimizationGuideIconView, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -502,6 +505,19 @@ bool IsFreeDiskSpaceTooLowForOnDeviceModelInstall(
              kOptimizationGuideOnDeviceModel,
              "on_device_model_free_space_mb_required_to_retain",
              base::GiB(5).InMiB())) >= free_disk_space_bytes;
+}
+
+base::ByteCount GetDiskSpaceRequiredForBackgroundOnDeviceModelInstall() {
+  return base::MiB(base::GetFieldTrialParamByFeatureAsInt(
+      features::kOnDeviceModelBackgroundDownload,
+      "on_device_model_free_space_mb_required_to_background_install",
+      base::GiB(50).InMiB()));
+}
+
+bool IsFreeDiskSpaceSufficientForBackgroundOnDeviceModelInstall(
+    base::ByteCount free_disk_space_bytes) {
+  return GetDiskSpaceRequiredForBackgroundOnDeviceModelInstall() <=
+         free_disk_space_bytes;
 }
 
 bool GetOnDeviceModelRetractUnsafeContent() {

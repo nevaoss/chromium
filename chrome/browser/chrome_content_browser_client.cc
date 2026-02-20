@@ -127,6 +127,7 @@
 #include "chrome/browser/preloading/prefetch/no_state_prefetch/no_state_prefetch_manager_factory.h"
 #include "chrome/browser/preloading/prefetch/prefetch_service/chrome_prefetch_service_delegate.h"
 #include "chrome/browser/preloading/prefetch/search_prefetch/field_trial_settings.h"
+#include "chrome/browser/preloading/prefetch/search_prefetch/search_prefetch_keep_alive_request_tracker.h"
 #include "chrome/browser/preloading/prefetch/search_prefetch/search_prefetch_url_loader.h"
 #include "chrome/browser/preloading/prefetch/search_prefetch/search_prefetch_url_loader_interceptor.h"
 #include "chrome/browser/preloading/preloading_features.h"
@@ -173,6 +174,7 @@
 #include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/login/http_auth_coordinator.h"
 #include "chrome/browser/ui/prefs/pref_watcher.h"
+#include "chrome/browser/ui/startup/google_chrome_scheme_util.h"
 #include "chrome/browser/ui/tab_contents/chrome_web_contents_view_delegate.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/webid/identity_dialog_controller.h"
@@ -240,6 +242,7 @@
 #include "components/error_page/common/error_page_switches.h"
 #include "components/error_page/common/localized_error.h"
 #include "components/google/core/common/google_switches.h"
+#include "components/google/core/common/google_util.h"
 #include "components/guest_view/buildflags/buildflags.h"
 #include "components/heap_profiling/in_process/heap_profiler_controller.h"
 #include "components/keep_alive_registry/keep_alive_types.h"
@@ -631,6 +634,8 @@
 #include "extensions/browser/guest_view/web_view/web_view_renderer_state.h"
 #endif
 
+#elif BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/android/guest_view/chrome_content_browser_client_guest_view_part.h"
 #endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
@@ -802,8 +807,12 @@ GURL ReplaceURLHostAndPath(const GURL& url,
 bool HandleNewTabPageLocationOverride(
     GURL* url,
     content::BrowserContext* browser_context) {
-  if (!url->SchemeIs(content::kChromeUIScheme) ||
-      url->GetHost() != chrome::kChromeUINewTabHost) {
+  if (!(url->SchemeIs(content::kChromeUIScheme) ||
+        url->SchemeIs(content::kChromeNativeScheme))) {
+    return false;
+  }
+
+  if (url->GetHost() != chrome::kChromeUINewTabHost) {
     return false;
   }
 
@@ -1399,6 +1408,11 @@ ChromeContentBrowserClient::ChromeContentBrowserClient() {
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
   extra_parts_.push_back(
       std::make_unique<ChromeContentBrowserClientExtensionsPart>());
+#elif BUILDFLAG(IS_ANDROID)
+  if (base::FeatureList::IsEnabled(features::kGlic)) {
+    extra_parts_.push_back(
+        std::make_unique<android::ChromeContentBrowserClientGuestViewPart>());
+  }
 #endif
 
 #if !BUILDFLAG(IS_ANDROID)
@@ -1496,6 +1510,8 @@ void ChromeContentBrowserClient::RegisterProfilePrefs(
       prefs::kAccessControlAllowMethodsInCORSPreflightSpecConformant, true);
   registry->RegisterBooleanPref(prefs::kDataUrlInSvgUseEnabled, false);
   registry->RegisterBooleanPref(prefs::kPartitionedBlobUrlUsage, true);
+
+  registry->RegisterBooleanPref(policy::policy_prefs::kXSLTEnabled, false);
 
   registry->RegisterBooleanPref(
       policy::policy_prefs::kCSSCustomStateDeprecatedSyntaxEnabled,
@@ -1624,7 +1640,7 @@ void ChromeContentBrowserClient::MaybeProxyNetworkBoundRequest(
   // the hijacked remote to this.
   network::mojom::URLLoaderFactoryParamsPtr params =
       network::mojom::URLLoaderFactoryParams::New();
-  params->process_id = network::mojom::kBrowserProcessId;
+  params->process_id = network::OriginatingProcess::browser();
   params->is_trusted = true;
   params->isolation_info = isolation_info;
   // Disable CORS wrapping, this is already handled by the caller.
@@ -2788,6 +2804,14 @@ void ChromeContentBrowserClient::AppendExtraCommandLineSwitches(
 
       if (prefs->GetBoolean(prefs::kDataUrlInSvgUseEnabled)) {
         command_line->AppendSwitch(blink::switches::kDataUrlInSvgUseEnabled);
+      }
+
+      if (prefs->FindPreference(policy::policy_prefs::kXSLTEnabled)
+              ->IsManaged()) {
+        command_line->AppendSwitchASCII(
+            blink::switches::kXSLTEnabledPolicy,
+            prefs->GetBoolean(policy::policy_prefs::kXSLTEnabled) ? "true"
+                                                                  : "false");
       }
 
       if (!prefs->GetBoolean(prefs::kPartitionedBlobUrlUsage)) {
@@ -6886,6 +6910,30 @@ bool ChromeContentBrowserClient::HandleExternalProtocol(
     mojo::PendingRemote<network::mojom::URLLoaderFactory>* out_factory) {
   CHECK(content::BrowserThread::CurrentlyOn(content::BrowserThread::UI));
 
+#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || \
+    BUILDFLAG(IS_WIN)
+  // Handle the google-chrome:// scheme (and chromium://).
+  // If the scheme is present, we strip it and navigate to the inner URL.
+  // This avoids launching a new browser instance via the OS handler.
+  if (std::optional<GURL> new_url =
+          startup::ExtractGoogleChromeSchemeInnerUrl(url)) {
+    if (startup::ValidateUrl(*new_url)) {
+      auto* web_contents = web_contents_getter.Run();
+      if (web_contents) {
+        content::OpenURLParams params(
+            *new_url,
+            content::Referrer(web_contents->GetLastCommittedURL(),
+                              network::mojom::ReferrerPolicy::kDefault),
+            WindowOpenDisposition::NEW_FOREGROUND_TAB, page_transition,
+            /*is_renderer_initiated=*/false);
+        params.initiator_origin = initiating_origin;
+        web_contents->OpenURL(params, /*navigation_handle_callback=*/{});
+        return true;
+      }
+    }
+  }
+#endif
+
 #if !BUILDFLAG(IS_ANDROID)
   content::WebContents* web_contents = web_contents_getter.Run();
   if (web_contents && IsActorActingOnWebContents(web_contents)) {
@@ -7718,14 +7766,14 @@ void ChromeContentBrowserClient::
         // BUILDFLAG(IS_CHROMEOS)
 }
 
-content::ContentBrowserClient::PrivateNetworkRequestPolicyOverride
-ChromeContentBrowserClient::ShouldOverridePrivateNetworkRequestPolicy(
+content::ContentBrowserClient::LocalNetworkAccessRequestPolicyOverride
+ChromeContentBrowserClient::ShouldOverrideLocalNetworkAccessRequestPolicy(
     content::BrowserContext* browser_context,
     const url::Origin& origin) {
 #if BUILDFLAG(IS_ANDROID)
   if (base::android::device_info::is_automotive()) {
-    return content::ContentBrowserClient::PrivateNetworkRequestPolicyOverride::
-        kBlockInsteadOfWarn;
+    return content::ContentBrowserClient::
+        LocalNetworkAccessRequestPolicyOverride::kBlockInsteadOfWarn;
   }
 #endif
 
@@ -7733,12 +7781,12 @@ ChromeContentBrowserClient::ShouldOverridePrivateNetworkRequestPolicy(
 
   if (profile->GetPrefs()->GetBoolean(
           prefs::kManagedLocalNetworkAccessRestrictionsTemporaryOptOut)) {
-    return content::ContentBrowserClient::PrivateNetworkRequestPolicyOverride::
-        kWarnInsteadOfBlock;
+    return content::ContentBrowserClient::
+        LocalNetworkAccessRequestPolicyOverride::kWarnInsteadOfBlock;
   }
 
-  return content::ContentBrowserClient::PrivateNetworkRequestPolicyOverride::
-      kDefault;
+  return content::ContentBrowserClient::
+      LocalNetworkAccessRequestPolicyOverride::kDefault;
 }
 
 bool ChromeContentBrowserClient::IsJitDisabledForSite(
@@ -8778,14 +8826,30 @@ bool ChromeContentBrowserClient::ShouldPrioritizeForBackForwardCache(
       ->IsSearchResultsPageFromDefaultSearchProvider(url);
 }
 
-std::unique_ptr<content::KeepAliveRequestTracker>
+std::vector<std::unique_ptr<content::KeepAliveRequestTracker>>
 ChromeContentBrowserClient::MaybeCreateKeepAliveRequestTracker(
     const network::ResourceRequest& request,
     std::optional<ukm::SourceId> ukm_source_id,
     content::KeepAliveRequestTracker::IsContextDetachedCallback
         is_context_detached_callback) {
-  return ChromeKeepAliveRequestTracker::MaybeCreateKeepAliveRequestTracker(
-      request, ukm_source_id, std::move(is_context_detached_callback));
+  // Do not need to track non-keepalive requests.
+  if (!request.keepalive || !request.keepalive_token.has_value()) {
+    return {};
+  }
+  std::vector<std::unique_ptr<content::KeepAliveRequestTracker>> trackers;
+  std::unique_ptr<ChromeKeepAliveRequestTracker> chrome_tracker =
+      ChromeKeepAliveRequestTracker::MaybeCreateKeepAliveRequestTracker(
+          request, ukm_source_id, is_context_detached_callback);
+  if (chrome_tracker) {
+    trackers.push_back(std::move(chrome_tracker));
+  }
+  std::unique_ptr<SearchPrefetchKeepAliveRequestTracker> search_tracker =
+      SearchPrefetchKeepAliveRequestTracker::MaybeCreateKeepAliveRequestTracker(
+          request);
+  if (search_tracker) {
+    trackers.push_back(std::move(search_tracker));
+  }
+  return trackers;
 }
 
 std::optional<std::vector<std::u16string>>
@@ -8902,4 +8966,27 @@ std::string ChromeContentBrowserClient::GetDnsTxtResolverUrlPrefix() {
   static constexpr char kGoogleDnsResolverUrl[] =
       "https://dns.google/resolve?type=txt&do=1&name=";
   return kGoogleDnsResolverUrl;
+}
+
+bool ChromeContentBrowserClient::ShouldAllowPrefetchRedirection(
+    content::BrowserContext& browser_context,
+    const GURL& url,
+    const std::string& embedder_histogram_suffix) {
+  // TODO(crbug.com/413259638): Use the constant in `preloading_utils` once it
+  // is created, currently this is set to be the same constant in
+  // c/b/p/b_p/bookmarkbar_preload_pipeline.cc.
+  // This function is only interested in specific triggers. The related triggers
+  // don't generate parameters to be identified by search results providers, so
+  // the triggering search related urls is avoided. See crbug.com/40282403 for
+  // more details.
+  if (embedder_histogram_suffix != "BookmarkBar") {
+    return true;
+  }
+  auto* profile = Profile::FromBrowserContext(&browser_context);
+  TemplateURLService* template_url_service =
+      TemplateURLServiceFactory::GetForProfile(profile);
+  return !((template_url_service &&
+            template_url_service->IsSearchResultsPageFromDefaultSearchProvider(
+                url)) ||
+           google_util::IsGoogleSearchUrl(url));
 }

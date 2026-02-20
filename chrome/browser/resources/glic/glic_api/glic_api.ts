@@ -808,6 +808,11 @@ export declare interface GlicBrowserHost {
   updateSkill?(request: UpdateSkillRequest): Promise<void>;
 
   /**
+   * Requests that the browser open skill management UI.
+   */
+  showManageSkillsUi?(): void;
+
+  /**
    * Gets a skill by id. The web client should use this method to get the
    * full skill details including the prompt for display or run in the UI.
    * The promise will fail if the skill is not found.
@@ -2373,6 +2378,9 @@ export enum CreateTaskErrorReason {
   UNKNOWN = 0,
   // The host does not support the actor task system.
   TASK_SYSTEM_UNAVAILABLE = 1,
+  // The host already has an existing task in progress. The client must stop it
+  // before requesting a new task.
+  EXISTING_ACTIVE_TASK = 2,
 }
 
 ///////////////////////////////////////////////
@@ -2440,6 +2448,7 @@ export enum Platform {
   WINDOWS = 2,
   LINUX = 3,
   CHROME_OS = 4,
+  ANDROID = 5,
 }
 
 ///////////////////////////////////////////////

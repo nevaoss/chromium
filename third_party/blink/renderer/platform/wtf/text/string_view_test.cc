@@ -720,6 +720,19 @@ TEST(StringViewTest, StartsWith) {
   EXPECT_FALSE(StringView("foobar").starts_with(u"bar"));
 }
 
+TEST(StringViewTest, StartsWithChar) {
+  EXPECT_FALSE(StringView().starts_with(0));
+  EXPECT_FALSE(StringView("").starts_with(0));
+  EXPECT_TRUE(StringView("foo").starts_with('f'));
+  EXPECT_FALSE(StringView("foo").starts_with(0x6666));  // 'f' == 0x66
+  EXPECT_FALSE(StringView("foo").starts_with('o'));
+  EXPECT_TRUE(StringView(u"foo").starts_with('f'));
+  EXPECT_FALSE(StringView(u"foo").starts_with('o'));
+  EXPECT_TRUE(StringView(u"\u25A0").starts_with(uchar::kBlackSquare));
+  EXPECT_FALSE(StringView(u"\u25A0").starts_with(
+      static_cast<LChar>(uchar::kBlackSquare)));
+}
+
 TEST(StringViewTest, EndsWith) {
   EXPECT_TRUE(StringView().ends_with(""));
   EXPECT_TRUE(StringView().ends_with(StringView()));
@@ -731,6 +744,19 @@ TEST(StringViewTest, EndsWith) {
   EXPECT_TRUE(StringView(u"foo").ends_with("foo"));
   EXPECT_TRUE(StringView("foobar").ends_with(u"bar"));
   EXPECT_FALSE(StringView("foobar").ends_with(u"foo"));
+}
+
+TEST(StringViewTest, EndsWithChar) {
+  EXPECT_FALSE(StringView().ends_with(0));
+  EXPECT_FALSE(StringView("").ends_with(0));
+  EXPECT_TRUE(StringView("foo").ends_with('o'));
+  EXPECT_FALSE(StringView("foo").ends_with(0x6f6f));  // 'o' == 0x6f
+  EXPECT_FALSE(StringView("foo").ends_with('f'));
+  EXPECT_TRUE(StringView(u"foo").ends_with('o'));
+  EXPECT_FALSE(StringView(u"foo").ends_with('f'));
+  EXPECT_TRUE(StringView(u"fo\u25A0").ends_with(uchar::kBlackSquare));
+  EXPECT_FALSE(StringView(u"fo\u25A0")
+                   .ends_with(static_cast<LChar>(uchar::kBlackSquare)));
 }
 
 TEST(StringViewTest, Substr) {

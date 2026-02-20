@@ -481,6 +481,11 @@ For more settings that use data to improve your Chrome experience, go to <ph nam
         You can choose your search engine
       </message>
 
+      <!-- Manage search engines and site search -->
+      <message name="IDS_MANAGE_SEARCH_ENGINES_AND_SITE_SEARCH" desc="Title shown in the menu item that takes the user to 'Manage search engines and site search' in Settings.">
+        Manage search engines and site search
+      </message>
+
       <!-- Address bar settings -->
       <message name="IDS_ADDRESS_BAR_SETTINGS" desc="Title for Address Bar settings. [CHAR_LIMIT=32]">
         Address bar
@@ -3898,6 +3903,15 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       <message name="IDS_NTP_MANAGE_FEED" desc="Menu item to manage feed settings from the feed header overflow menu.">
         Manage
       </message>
+      <message name="IDS_SYNCED_SET_UP_SNACKBAR_ASK_TO_APPLY" desc="The message text for the snackbar that prompts the user to apply their settings from another device. (Applies settings from another device when the 'apply' button is clicked.)">
+      Apply your appearance preferences?
+      </message>
+      <message name="IDS_SYNCED_SET_UP_SNACKBAR_APPLIED_CONFIRMATION" desc="Message in a snackbar confirming that settings from another device were applied (an undo button is available).">
+        Applied your appearance preferences
+      </message>
+      <message name="IDS_SYNCED_SET_UP_SNACKBAR_REMOVED_CONFIRMATION" desc="The message text for the snackbar shown after preferences have been removed (a redo button is available).">
+        Removed your appearance preferences
+      </message>
       <message name="IDS_CORMORANT_CREATOR_CONTENT_UNAVAILABLE_ERROR_TITLE" desc="Creator page error title when the creator has no content available.">
         Nothing to show yet
       </message>
@@ -4801,6 +4815,11 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       </message>
       <message name="IDS_LOCATION_BAR_PAINT_PREVIEW_PAGE_STATUS" desc="An indication in the location bar that the page the user is viewing is a paint preview of the original page. [CHAR_LIMIT=10]">
         Preview
+      </message>
+
+      <!-- Open in app -->
+      <message name="IDS_OPEN_IN_APP" desc="Chip displayed in the omnibox or item displayed in the app menu that opens the current page in the relevant app. [CHAR_LIMIT=32]">
+        Open in app
       </message>
 
       <!-- Voice search -->
@@ -6078,9 +6097,6 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       <message name="IDS_ACCESSIBILITY_QUICK_ACTION_SEARCH_WIDGET_START_DINO_GAME" desc="Content description for the Dino button on the Quick Action Search Widget.">
         Start Dino Game
       </message>
-      <message name="IDS_QUICK_ACTION_SEARCH_WIDGET_MESSAGE_NO_INCOGNITO" desc="Toast message shown when the user tries to open Incognito tab which is disabled on the device.">
-        Incognito is not available on this device
-      </message>
       <message name="IDS_QUICK_ACTION_SEARCH_WIDGET_MESSAGE_NO_VOICE_SEARCH" desc="Toast message shown when the user tries to use Voice Search which is disabled on the device.">
         Voice search is not available on this device
       </message>
@@ -6102,6 +6118,11 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       <!-- Launcher Shortcuts -->
       <message name="IDS_DISABLED_INCOGNITO_LAUNCHER_SHORTCUT_MESSAGE" desc="Text for a toast displayed prompting the user to remove the disabled 'New Incognito tab' app shortcut and recreate it.">
         Remove and recreate this shortcut
+      </message>
+
+      <!-- Incognito Disabled -->
+      <message name="IDS_INCOGNITO_NOT_AVAILABLE_MESSAGE" desc="Toast message shown when the user tries to open Incognito tab or window which is disabled on the device.">
+        Incognito is not available on this device
       </message>
 
       <!-- SendTabToSelf -->
@@ -7504,6 +7525,11 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
        <!-- Automatic Picture-in-Picture Permission Prompt -->
       <message name="IDS_AUTO_PICTURE_IN_PICTURE_PROMPT_TITLE" desc="Title for the auto-picture-in-picture permission prompt. The placeholder is the website's origin.">
         <ph name="URL">%1$s<ex>example.com</ex></ph> wants to enter picture-in-picture automatically
+      </message>
+
+      <!-- Document Picture-in-Picture -->
+      <message name="IDS_DOCUMENT_PICTURE_IN_PICTURE_BACK_TO_TAB" desc="Content description for the back to tab button in the document picture-in-picture window header.">
+        Back to tab
       </message>
     </messages>
   </release>

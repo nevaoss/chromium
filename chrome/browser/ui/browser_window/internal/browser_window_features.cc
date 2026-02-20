@@ -28,7 +28,7 @@
 #include "chrome/browser/media/router/media_router_feature.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/sessions/session_service_factory.h"
-#include "chrome/browser/skills/skills_ui_controller.h"
+#include "chrome/browser/skills/skills_ui_window_controller.h"
 #include "chrome/browser/tab_group_sync/tab_group_sync_service_factory.h"
 #include "chrome/browser/ui/bookmarks/bookmark_bar_controller.h"
 #include "chrome/browser/ui/breadcrumb_manager_browser_agent.h"
@@ -60,6 +60,7 @@
 #include "chrome/browser/ui/promos/ios_promo_controller.h"
 #include "chrome/browser/ui/signin/signin_view_controller.h"
 #include "chrome/browser/ui/sync/browser_synced_window_delegate.h"
+#include "chrome/browser/ui/tab_search_feature.h"
 #include "chrome/browser/ui/tabs/features.h"
 #include "chrome/browser/ui/tabs/glic_nudge_controller.h"
 #include "chrome/browser/ui/tabs/organization/tab_declutter_controller.h"
@@ -165,6 +166,10 @@
 #include "chrome/browser/ui/views/frame/windows_taskbar_icon_updater.h"
 #endif
 
+#if BUILDFLAG(IS_CHROMEOS)
+#include "chrome/browser/ash/boca/on_task/on_task_locked_controller.h"
+#endif
+
 #if !BUILDFLAG(IS_CHROMEOS)
 #include "chrome/browser/download/bubble/download_bubble_ui_controller.h"
 #include "chrome/browser/download/bubble/download_display_controller.h"
@@ -213,6 +218,14 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
   // This is used only for the controllers which will be created on demand
   // later.
   browser_ = browser;
+
+  // `InitialWebUIWindowMetricsManager` depends on Browser (for Profile) and
+  // must be initialized before BrowserView creation because it is used by
+  // various views which are created during BrowserView::Init.
+  if (waap::IsInitialWebUIMetricsLoggingEnabled()) {
+    initial_webui_window_metrics_manager_ =
+        std::make_unique<InitialWebUIWindowMetricsManager>(browser);
+  }
 
   searchbox_context_data_ = std::make_unique<SearchboxContextData>();
 
@@ -439,6 +452,12 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
               *browser, browser);
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 
+#if BUILDFLAG(IS_CHROMEOS)
+  on_task_locked_controller_ =
+      GetUserDataFactory().CreateInstance<ash::boca::OnTaskLockedController>(
+          *browser, browser);
+#endif  // BUILDFLAG(IS_CHROMEOS)
+
   // Initialize embedder features last.
   embedder_browser_window_features_ =
       GetUserDataFactory().CreateInstance<EmbedderBrowserWindowFeatures>(
@@ -446,11 +465,6 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
 }
 
 void BrowserWindowFeatures::InitPostWindowConstruction(Browser* browser) {
-  if (waap::IsInitialWebUIMetricsLoggingEnabled()) {
-    initial_webui_window_metrics_manager_ =
-        std::make_unique<InitialWebUIWindowMetricsManager>(browser);
-  }
-
   desktop_browser_window_capabilities_ =
       GetUserDataFactory().CreateInstance<DesktopBrowserWindowCapabilities>(
           *browser, browser, browser->window(),
@@ -852,8 +866,8 @@ void BrowserWindowFeatures::InitPostBrowserViewConstruction(
   omnibox_popup_closer_ =
       std::make_unique<omnibox::OmniboxPopupCloser>(browser_view);
 
-  skills_ui_controller_ =
-      std::make_unique<skills::SkillsUiController>(browser_);
+  skills_ui_window_controller_ =
+      std::make_unique<skills::SkillsUiWindowController>(browser_);
 
   // Initialize post-BrowserView-dependent embedder features last.
   embedder_browser_window_features_->InitPostBrowserViewConstruction(
@@ -933,7 +947,6 @@ void BrowserWindowFeatures::TearDownPreBrowserWindowDestruction() {
   data_protection_ui_controller_.reset();
 
   desktop_browser_window_capabilities_.reset();
-  initial_webui_window_metrics_manager_.reset();
   signin_view_controller_->TearDownPreBrowserWindowDestruction();
 
   // Destroy fullscreen control host before exclusive access manager.
@@ -979,7 +992,7 @@ void BrowserWindowFeatures::TearDownPreBrowserWindowDestruction() {
 
   ai_mode_page_action_controller_.reset();
 
-  skills_ui_controller_.reset();
+  skills_ui_window_controller_.reset();
 }
 
 SidePanelUI* BrowserWindowFeatures::side_panel_ui() {

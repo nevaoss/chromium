@@ -9,6 +9,8 @@ import android.view.View;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.chrome.browser.theme.ThemeColorProvider;
 import org.chromium.components.browser_ui.desktop_windowing.DesktopWindowStateManager;
+import org.chromium.components.security_state.ConnectionMaliciousContentStatus;
+import org.chromium.components.security_state.ConnectionSecurityLevel;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.ui.modelutil.PropertyModelChangeProcessor;
 
@@ -34,13 +36,23 @@ public class DocumentPictureInPictureHeaderCoordinator {
     public DocumentPictureInPictureHeaderCoordinator(
             View view,
             DesktopWindowStateManager desktopWindowStateManager,
-            ThemeColorProvider themeColorProvider) {
+            ThemeColorProvider themeColorProvider,
+            DocumentPictureInPictureHeaderDelegate delegate,
+            boolean isBackToTabShown,
+            @ConnectionSecurityLevel int securityLevel,
+            @ConnectionMaliciousContentStatus int maliciousContentStatus) {
         PropertyModel model =
                 new PropertyModel.Builder(DocumentPictureInPictureHeaderProperties.ALL_KEYS)
                         .build();
         mMediator =
                 new DocumentPictureInPictureHeaderMediator(
-                        model, desktopWindowStateManager, themeColorProvider);
+                        model,
+                        desktopWindowStateManager,
+                        themeColorProvider,
+                        delegate,
+                        isBackToTabShown,
+                        securityLevel,
+                        maliciousContentStatus);
         mPropertyModelChangeProcessor =
                 PropertyModelChangeProcessor.create(
                         model, view, DocumentPictureInPictureHeaderViewBinder::bind);

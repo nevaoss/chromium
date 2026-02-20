@@ -713,13 +713,14 @@ chromium-metrics-reviews@google.com.
   <int value="61" label="InvalidDownloadedTrustedIconForPendingUpdate"/>
   <int value="62" label="MissingWasIgnoredForPendingUpdate"/>
   <int value="63" label="InvalidParsedTrustedIcons"/>
-  <int value="64" label="InvalidBorderlessUrlPatterns"/>
+  <int value="64" label="(Obsolete) InvalidBorderlessUrlPatterns"/>
   <int value="65" label="InvalidInstalledBy"/>
   <int value="66" label="InvalidWebAppUnvalidatedMigrationSource"/>
   <int value="67" label="InvalidPendingMigrationInfo"/>
   <int value="68" label="InvalidWebAppValidatedMigrationSource"/>
   <int value="69" label="InvalidDisplayOverrideUrlPatterns"/>
   <int value="70" label="StartUrlNotInScope"/>
+  <int value="71" label="MigratedFromManifestIdInvalid"/>
 </enum>
 
 <!-- LINT.ThenChange(/chrome/browser/web_applications/web_app_database_serialization.h:ProtoParseResult) -->

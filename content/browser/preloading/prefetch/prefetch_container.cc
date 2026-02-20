@@ -278,7 +278,6 @@ PrefetchContainer::PrefetchContainer(
     base::PassKey<PrefetchContainer>,
     std::unique_ptr<const PrefetchRequest> request)
     : request_(std::move(request)),
-      referrer_(request_->initial_referrer()),
       request_id_(base::UnguessableToken::Create().ToString()) {
   CHECK(request_);
 
@@ -571,18 +570,6 @@ PrefetchStatus PrefetchContainer::GetPrefetchStatus() const {
   return prefetch_status_.value();
 }
 
-void PrefetchContainer::TakeProxyLookupClient(
-    std::unique_ptr<ProxyLookupClientImpl> proxy_lookup_client) {
-  DCHECK(!proxy_lookup_client_);
-  proxy_lookup_client_ = std::move(proxy_lookup_client);
-}
-
-std::unique_ptr<ProxyLookupClientImpl>
-PrefetchContainer::ReleaseProxyLookupClient() {
-  DCHECK(proxy_lookup_client_);
-  return std::move(proxy_lookup_client_);
-}
-
 PrefetchNetworkContext*
 PrefetchContainer::GetOrCreateNetworkContextForCurrentPrefetch() {
   bool is_isolated_network_context_required =
@@ -729,6 +716,10 @@ void PrefetchContainer::OnEligibilityCheckComplete(
   TRACE_EVENT("loading", "PrefetchContainer::OnEligibilityCheckComplete",
               request_->preload_pipeline_info().GetFlow());
 
+  if (IsDecoy()) {
+    eligibility = PreloadingEligibility::kEligible;
+  }
+
   request().preload_pipeline_info().SetPrefetchEligibility(eligibility);
   for (auto& preload_pipeline_info : inherited_preload_pipeline_infos_) {
     preload_pipeline_info->SetPrefetchEligibility(eligibility);
@@ -741,6 +732,9 @@ void PrefetchContainer::OnEligibilityCheckComplete(
     // prefetched.
     if (is_eligible) {
       SetLoadState(LoadState::kEligible);
+      if (!IsDecoy()) {
+        SetPrefetchStatus(PrefetchStatus::kPrefetchNotStarted);
+      }
     } else {
       SetLoadState(LoadState::kFailedIneligible);
       PrefetchStatus new_prefetch_status =
@@ -776,6 +770,16 @@ void PrefetchContainer::OnEligibilityCheckComplete(
     // This case is for any URLs from redirects.
     if (!is_eligible) {
       SetPrefetchStatus(PrefetchStatus::kPrefetchFailedIneligibleRedirect);
+    }
+  }
+
+  if (is_eligible && !IsDecoy()) {
+    // Registers a cookie listener for this prefetch if it is using an isolated
+    // network context. If the cookies in the default partition associated with
+    // this URL change after this point, then the prefetched resources should
+    // not be served.
+    if (IsIsolatedNetworkContextRequiredForCurrentPrefetch()) {
+      RegisterCookieListener();
     }
   }
 }
@@ -917,8 +921,10 @@ void PrefetchContainer::UpdateResourceRequest(
       resource_request_->trusted_params->isolation_info.CreateForRedirect(
           url::Origin::Create(resource_request_->url));
 
-  // TODO(jbroman): This somewhat duplicates |referrer_|. Revisit usage of that
-  // (and related data members) to see if they can/should use this data instead.
+  // Update the ResourceRequest's referrer in case a redirect requires a change
+  // in network context and a new request needs to be started. For
+  // `FollowRedirect()` cases, referrer etc. are updated similarly on the
+  // network service.
   resource_request_->referrer = GURL(redirect_info.new_referrer);
   resource_request_->referrer_policy = redirect_info.new_referrer_policy;
 
@@ -977,12 +983,14 @@ void PrefetchContainer::AddXClientDataHeader(
   }
 }
 
-void PrefetchContainer::RegisterCookieListener(
-    network::mojom::CookieManager* cookie_manager) {
+void PrefetchContainer::RegisterCookieListener() {
   PrefetchSingleRedirectHop& this_prefetch =
       GetCurrentSingleRedirectHopToPrefetch();
   this_prefetch.cookie_listener_ = PrefetchCookieListener::MakeAndRegister(
-      this_prefetch.url_, cookie_manager);
+      this_prefetch.url_, request()
+                              .browser_context()
+                              ->GetDefaultStoragePartition()
+                              ->GetCookieManagerForBrowserProcess());
 }
 
 void PrefetchContainer::PauseAllCookieListeners() {
@@ -1617,7 +1625,8 @@ void PrefetchContainer::MakeResourceRequest() {
 
   auto resource_request = CreateResourceRequestForNavigation(
       net::HttpRequestHeaders::kGetMethod, url,
-      network::mojom::RequestDestination::kDocument, referrer_, isolation_info,
+      network::mojom::RequestDestination::kDocument,
+      request().initial_referrer(), isolation_info,
       std::move(devtools_observer_remote), priority, is_main_frame);
 
   // Note: Even without LOAD_DISABLE_CACHE, a cross-site prefetch uses a
@@ -1631,37 +1640,67 @@ void PrefetchContainer::MakeResourceRequest() {
     resource_request->load_flags |= net::LOAD_DISABLE_CACHE;
   }
 
+  // ------------------------------------------------------------------------
+  // Request headers. Headers should be applied in the following order, and the
+  // latter (if any) should override the former.
+  // [1] `request().additional_headers()`
+  // [2] Chromium's default headers
+  // [3] WebContents overrides (`MaybeApplyOverrideForUserAgentHeader()`)
+  // [4] DevTools overrides (implemented in `AddClientHintsHeaders()`)
+
+  // ------------------------------------------------------------------------
+  // [1] Additional headers:
   AddAwAdditionalHeaders(resource_request->headers,
                          request().additional_headers());
 
+  // ------------------------------------------------------------------------
+  // [2] `Accept`, `Upgrade-Insecure-Requests` and `Purpose`:
   CHECK(request().browser_context());
   resource_request->headers.SetHeader(
       net::HttpRequestHeaders::kAccept,
       FrameAcceptHeaderValue(/*allow_sxg_responses=*/true,
                              request().browser_context()));
+
+  resource_request->headers.SetHeader("Upgrade-Insecure-Requests", "1");
+
   if (!base::FeatureList::IsEnabled(
           blink::features::kRemovePurposeHeaderForPrefetch)) {
     resource_request->headers.SetHeader(blink::kPurposeHeaderName,
                                         blink::kSecPurposePrefetchHeaderValue);
   }
+
+  // ------------------------------------------------------------------------
+  // [2] `Sec-Purpose`:
   resource_request->headers.SetHeader(blink::kSecPurposeHeaderName,
                                       GetSecPurposeHeaderValue(url));
-  resource_request->headers.SetHeader("Upgrade-Insecure-Requests", "1");
 
+  // ------------------------------------------------------------------------
+  // [2] `Sec-Speculation-Tags`:
   AddSpeculationTagsHeader(url, resource_request->headers);
 
+  // ------------------------------------------------------------------------
+  // [2] `X-Client-Data`:
+  if (request().should_append_variations_header()) {
+    AddXClientDataHeader(*resource_request.get());
+  }
+
+  // TODO(crbug.com/444065296): The following headers are an initial guess.
+  // Validate them against the actual navigation's header.
+
+  // ------------------------------------------------------------------------
+  // [3] `User-Agent` override:
+  MaybeApplyOverrideForUserAgentHeader(*resource_request);
+
+  // ------------------------------------------------------------------------
+  // [2] Client Hints:
+  // [4] DevTools overrides (Client Hints, `User-Agent`, `Accept`):
+  AddClientHintsHeaders(origin, &resource_request->headers);
+
+  // ------------------------------------------------------------------------
   // There are sometimes other headers that are set during navigation.  These
   // aren't yet supported for prefetch, including browsing topics.
 
   resource_request->devtools_request_id = RequestId();
-
-  // TODO(crbug.com/444065296): These are an initial guess. Validate them
-  // against the actual navigation's header.
-  MaybeApplyOverrideForUserAgentHeader(*resource_request);
-  AddClientHintsHeaders(origin, &resource_request->headers);
-  if (request().should_append_variations_header()) {
-    AddXClientDataHeader(*resource_request.get());
-  }
 
   // `URLLoaderNetworkServiceObserver`
   // (`resource_request->trusted_params->url_loader_network_observer`) is NOT
@@ -1678,13 +1717,6 @@ void PrefetchContainer::MakeResourceRequest() {
   CHECK(!resource_request->skip_service_worker);
 
   resource_request_ = std::move(resource_request);
-}
-
-void PrefetchContainer::UpdateReferrer(
-    const GURL& new_referrer_url,
-    const network::mojom::ReferrerPolicy& new_referrer_policy) {
-  referrer_.url = new_referrer_url;
-  referrer_.policy = new_referrer_policy;
 }
 
 const PrefetchKey& PrefetchContainer::key() const {

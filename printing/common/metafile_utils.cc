@@ -86,6 +86,16 @@ sk_sp<SkPicture> GetEmptyPicture() {
   return rec.finishRecordingAsPicture();
 }
 
+void AppendCheckedStateIfTrue(const ui::AXNode* ax_node,
+                              SkPDF::StructureElementNode* tag) {
+  // Handle checked state (default "off").
+  if (ax_node->data().GetCheckedState() == ax::mojom::CheckedState::kTrue) {
+    tag->fAttributes.appendName(chrome_pdf::kPDFPrintFieldAttributeOwner,
+                                chrome_pdf::kPDFPrintFieldCheckedAttribute,
+                                chrome_pdf::kPDFCheckedOnAttribute);
+  }
+}
+
 void AppendFormFieldDescFromAccessibleName(const ui::AXNode* ax_node,
                                            SkPDF::StructureElementNode* tag) {
   auto name_from = ax_node->GetNameFrom();
@@ -97,15 +107,12 @@ void AppendFormFieldDescFromAccessibleName(const ui::AXNode* ax_node,
   } else if (name_from == ax::mojom::NameFrom::kAttribute ||
              name_from == ax::mojom::NameFrom::kTitle ||
              name_from == ax::mojom::NameFrom::kCssAltText) {
-    // `appendTextString` does not copy, it only saves a `const char*`.
-    // The ax_node->data() is expected to persist, as part of the AXTree,
-    // until that value is read in `SkDocument::Close()`.
     const std::string& name_ref =
         ax_node->data().GetStringAttribute(ax::mojom::StringAttribute::kName);
     if (!name_ref.empty()) {
       tag->fAttributes.appendTextString(
           chrome_pdf::kPDFPrintFieldAttributeOwner,
-          chrome_pdf::kPDFPrintFieldDescAttribute, name_ref.c_str());
+          chrome_pdf::kPDFPrintFieldDescAttribute, SkString(name_ref));
     }
   }
 }
@@ -239,47 +246,57 @@ bool RecursiveBuildStructureTree(const ui::AXNode* ax_node,
       tag->fTypeString = chrome_pdf::kPDFStructureTypeNonStruct;
       valid = true;
       break;
-    case ax::mojom::Role::kCheckBox: {
+    case ax::mojom::Role::kCheckBox:
+    case ax::mojom::Role::kSwitch:
       tag->fTypeString = chrome_pdf::kPDFStructureTypeForm;
       tag->fAttributes.appendName(chrome_pdf::kPDFPrintFieldAttributeOwner,
                                   chrome_pdf::kPDFPrintFieldRoleAttribute,
                                   chrome_pdf::kPDFRoleCheckBoxAttribute);
 
-      // The default value of the "checked" attribute is "Off". All other
-      // CheckedStates options do not clearly apply to PDF.
-      if (ax_node->data().GetCheckedState() == ax::mojom::CheckedState::kTrue) {
-        tag->fAttributes.appendName(chrome_pdf::kPDFPrintFieldAttributeOwner,
-                                    chrome_pdf::kPDFPrintFieldCheckedAttribute,
-                                    chrome_pdf::kPDFCheckedOnAttribute);
-      }
+      AppendCheckedStateIfTrue(ax_node, tag);
 
-      // Add Desc attribute from accessible name.
       AppendFormFieldDescFromAccessibleName(ax_node, tag);
 
       // In case someone is printing to PDF a web page that is 100% checkboxes
       // (no kStaticText nodes), the PDF should still be tagged.
       valid = true;
       break;
-    }
-    case ax::mojom::Role::kRadioButton: {
+    case ax::mojom::Role::kRadioButton:
       tag->fTypeString = chrome_pdf::kPDFStructureTypeForm;
       tag->fAttributes.appendName(chrome_pdf::kPDFPrintFieldAttributeOwner,
                                   chrome_pdf::kPDFPrintFieldRoleAttribute,
                                   chrome_pdf::kPDFRoleRadioButtonAttribute);
 
-      // Handle checked state (default "off").
-      if (ax_node->data().GetCheckedState() == ax::mojom::CheckedState::kTrue) {
-        tag->fAttributes.appendName(chrome_pdf::kPDFPrintFieldAttributeOwner,
-                                    chrome_pdf::kPDFPrintFieldCheckedAttribute,
-                                    chrome_pdf::kPDFCheckedOnAttribute);
-      }
+      AppendCheckedStateIfTrue(ax_node, tag);
 
-      // Add Desc attribute from accessible name.
       AppendFormFieldDescFromAccessibleName(ax_node, tag);
 
       valid = true;
       break;
-    }
+    case ax::mojom::Role::kToggleButton:
+      // Toggle button has pressed state (aria-pressed) mapped to checked.
+      tag->fTypeString = chrome_pdf::kPDFStructureTypeForm;
+      tag->fAttributes.appendName(chrome_pdf::kPDFPrintFieldAttributeOwner,
+                                  chrome_pdf::kPDFPrintFieldRoleAttribute,
+                                  chrome_pdf::kPDFRolePushButtonAttribute);
+
+      AppendCheckedStateIfTrue(ax_node, tag);
+
+      AppendFormFieldDescFromAccessibleName(ax_node, tag);
+
+      valid = true;
+      break;
+    case ax::mojom::Role::kButton:
+    case ax::mojom::Role::kPopUpButton:
+      tag->fTypeString = chrome_pdf::kPDFStructureTypeForm;
+      tag->fAttributes.appendName(chrome_pdf::kPDFPrintFieldAttributeOwner,
+                                  chrome_pdf::kPDFPrintFieldRoleAttribute,
+                                  chrome_pdf::kPDFRolePushButtonAttribute);
+
+      AppendFormFieldDescFromAccessibleName(ax_node, tag);
+
+      valid = true;
+      break;
     default:
       tag->fTypeString = chrome_pdf::kPDFStructureTypeNonStruct;
       break;
@@ -338,7 +355,7 @@ namespace printing {
 sk_sp<SkDocument> MakePdfDocument(
     std::string_view creator,
     std::string_view title,
-    ui::AXTree* tree,
+    const ui::AXTreeUpdate& accessibility_tree,
     mojom::GenerateDocumentOutline generate_document_outline,
     SkWStream* stream) {
   SkPDF::Metadata metadata;
@@ -351,12 +368,15 @@ sk_sp<SkDocument> MakePdfDocument(
   metadata.fRasterDPI = 300.0f;
 
   SkPDF::StructureElementNode tag_root = {};
-  if (tree && RecursiveBuildStructureTree(tree->root(), &tag_root)) {
-    metadata.fStructureElementTreeRoot = &tag_root;
-    metadata.fOutline =
-        generate_document_outline == mojom::GenerateDocumentOutline::kNone
-            ? SkPDF::Metadata::Outline::None
-            : SkPDF::Metadata::Outline::StructureElementHeaders;
+  if (!accessibility_tree.nodes.empty()) {
+    ui::AXTree tree(accessibility_tree);
+    if (RecursiveBuildStructureTree(tree.root(), &tag_root)) {
+      metadata.fStructureElementTreeRoot = &tag_root;
+      metadata.fOutline =
+          generate_document_outline == mojom::GenerateDocumentOutline::kNone
+              ? SkPDF::Metadata::Outline::None
+              : SkPDF::Metadata::Outline::StructureElementHeaders;
+    }
   }
 
   return SkPDF::MakeDocument(stream, metadata);

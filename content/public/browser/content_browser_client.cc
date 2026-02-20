@@ -1622,11 +1622,11 @@ void ContentBrowserClient::GrantAdditionalRequestPrivilegesToWorkerProcess(
     int child_id,
     const GURL& script_url) {}
 
-ContentBrowserClient::PrivateNetworkRequestPolicyOverride
-ContentBrowserClient::ShouldOverridePrivateNetworkRequestPolicy(
+ContentBrowserClient::LocalNetworkAccessRequestPolicyOverride
+ContentBrowserClient::ShouldOverrideLocalNetworkAccessRequestPolicy(
     BrowserContext* browser_context,
     const url::Origin& origin) {
-  return PrivateNetworkRequestPolicyOverride::kDefault;
+  return LocalNetworkAccessRequestPolicyOverride::kDefault;
 }
 
 bool ContentBrowserClient::IsJitDisabledForSite(BrowserContext* browser_context,
@@ -1982,13 +1982,13 @@ bool ContentBrowserClient::IsRendererProcessPriorityEnabled() {
   return true;
 }
 
-std::unique_ptr<KeepAliveRequestTracker>
+std::vector<std::unique_ptr<KeepAliveRequestTracker>>
 ContentBrowserClient::MaybeCreateKeepAliveRequestTracker(
     const network::ResourceRequest& request,
     std::optional<ukm::SourceId> ukm_source_id,
     KeepAliveRequestTracker::IsContextDetachedCallback
         is_context_detached_callback) {
-  return nullptr;
+  return {};
 }
 
 std::optional<std::vector<std::u16string>>
@@ -2032,6 +2032,18 @@ std::optional<bool> ContentBrowserClient::GetOverrideValueForStaticStorageQuota(
 }
 std::string ContentBrowserClient::GetDnsTxtResolverUrlPrefix() {
   return std::string();
+}
+
+bool ContentBrowserClient::ShouldAllowPrefetchRedirection(
+    content::BrowserContext& browser_context,
+    const GURL& url,
+    const std::string& embedder_histogram_suffix) {
+  return true;
+}
+
+bool ContentBrowserClient::OriginSupportsConcreteCrossOriginIsolation(
+    const url::Origin& origin) {
+  return true;
 }
 
 }  // namespace content

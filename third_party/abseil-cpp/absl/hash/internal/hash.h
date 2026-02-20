@@ -104,7 +104,10 @@
 #define ABSL_HASH_INTERNAL_CRC32_U32 _mm_crc32_u32
 #define ABSL_HASH_INTERNAL_CRC32_U8 _mm_crc32_u8
 
-#elif defined(_MSC_VER) && !defined(__clang__) && defined(__AVX__)
+// 32-bit builds with AVX do not have _mm_crc32_u64, so the _M_X64 condition is
+// necessary.
+#elif defined(_MSC_VER) && !defined(__clang__) && defined(__AVX__) && \
+    defined(_M_X64)
 
 // MSVC AVX (/arch:AVX) implies SSE 4.2.
 #include <intrin.h>
@@ -1130,6 +1133,11 @@ inline uint64_t CombineContiguousImpl(
   }
   return CombineLargeContiguousImplOn32BitLengthGt8(state, first, len);
 }
+
+// TODO: crbug.com/475029685 - Remove this #undef once Abseil has fixed the
+// policy about inline functions with different implementations based on
+// target CPU flags since this risks ODR violations (see bug).
+#undef ABSL_HASH_INTERNAL_HAS_CRC32
 
 #ifdef ABSL_HASH_INTERNAL_HAS_CRC32
 inline uint64_t CombineContiguousImpl(

@@ -975,7 +975,7 @@ targets.mixin(
     swarming = targets.swarming(
         dimensions = {
             "cpu": "x86-64",
-            "gpu": None,
+            "gpu": "none",
             "os": "Ubuntu-22.04",
             "pool": "chromium.tests.gpu",
         },
@@ -1097,6 +1097,18 @@ targets.mixin(
             "device_os": "UP1A.231005.007",
             "device_os_type": "user",
             "os": "Android",
+            "pool": "chromium.tests.gpu",
+        },
+    ),
+)
+
+targets.mixin(
+    name = "gpu_win_gce_stable",
+    swarming = targets.swarming(
+        dimensions = {
+            "cpu": "x86-64",
+            "gpu": "none",
+            "os": "Windows-10-19045",
             "pool": "chromium.tests.gpu",
         },
     ),
@@ -2446,6 +2458,8 @@ targets.mixin(
     ),
 )
 
+# TODO(crbug.com/479147014): Remove this mixin once all uses have switched to
+# gpu_win_gce_stable.
 targets.mixin(
     name = "win10_gce_gpu_pool",
     swarming = targets.swarming(

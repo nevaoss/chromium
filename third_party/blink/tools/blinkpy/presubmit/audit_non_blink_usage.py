@@ -688,6 +688,7 @@ _CONFIG = [
             'cc::EventListenerClass',
             'cc::EventListenerProperties',
             'cc::HitTestOpaqueness',
+            'cc::WebVitalMetricType',
             'cc::HORIZONTAL',
             'cc::THUMB',
             'cc::TRACK_BUTTONS_TICKMARKS',
@@ -695,6 +696,7 @@ _CONFIG = [
 
             # Animation
             "cc::PropertyChangeForcesCommitCriteria",
+            "cc::Animation",
             "cc::AnimationHost",
             "cc::AnimationIdProvider",
             "cc::AnimationTrigger",
@@ -1796,10 +1798,8 @@ _CONFIG = [
         ],
         # This class needs access to various GPU-related functionality.
         'allowed': [
-            'gfx::BufferFormat',
             'gpu::ENABLE_WEBGL_TIMER_QUERY_EXTENSIONS',
             'gpu::IsFormatSupportedForSIWithNativeBuffer',
-            'viz::SinglePlaneSharedImageFormatToBufferFormat',
         ],
     },
     {
@@ -2950,6 +2950,15 @@ _CONFIG = [
         ],
         'allowed':
         ['base::test::RunUntil', 'base::test::ScopedRunLoopTimeout'],
+    },
+    {
+        'paths': [
+            'third_party/blink/renderer/core/frame/fullscreen_controller.h',
+            'third_party/blink/renderer/core/frame/web_frame_widget_impl.cc',
+            'third_party/blink/renderer/core/frame/web_frame_widget_impl.h',
+            'third_party/blink/renderer/core/page/pointer_lock_controller.h',
+        ],
+        'allowed': ['cc::ScopedRequestHighFramerate']
     }
 ]
 

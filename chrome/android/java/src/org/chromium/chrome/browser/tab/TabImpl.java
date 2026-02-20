@@ -93,6 +93,7 @@ import org.chromium.components.security_state.ConnectionSecurityLevel;
 import org.chromium.components.security_state.SecurityStateModel;
 import org.chromium.components.sensitive_content.SensitiveContentClient;
 import org.chromium.components.sensitive_content.SensitiveContentFeatures;
+import org.chromium.components.tabs.DetachReason;
 import org.chromium.components.url_formatter.UrlFormatter;
 import org.chromium.components.user_prefs.UserPrefs;
 import org.chromium.content_public.browser.ChildProcessImportance;
@@ -514,7 +515,7 @@ class TabImpl implements Tab {
             // tab is not held by another tab model. For unclear reasons, removeTab() doesn't
             // always get invoked on the previous tab model before the tab is attached to the new
             // tab model (at least in tests).
-            mCurrentTabSupplier = null;
+            clearCurrentTabSupplier(DetachReason.INSERT_INTO_OTHER_WINDOW);
         }
 
         // Notify the event to observers only when we do the reparenting task, not when we simply
@@ -1509,11 +1510,9 @@ class TabImpl implements Tab {
 
             boolean needsInitWebContents = true;
             boolean createWebContents = webContents == null;
-            // TODO(crbug.com/448420873): For HeadlessTabModel we might not have a WindowAndroid.
-            // For archived tabs, we don't want to create a WebContents. Archived and headless tab
-            // models are not associated with BrowserWindowInterface so this shouldn't be an issue
-            // for now. In future we should reconsider whether these tab models should even hold a
-            // TabImpl vs some kind of light weight tab representation.
+            // Headless tab model will not have a WindowAndroid and for archived tabs, we don't want
+            // to create a WebContents. Archived and headless tab models are not associated with
+            // BrowserWindowInterface so this shouldn't be an issue for now.
             mInitializedWithWindowAndroid = mWindowAndroid != null;
             if (ChromeFeatureList.sLoadAllTabsAtStartup.isEnabled()
                     && mInitializedWithWindowAndroid
@@ -1536,6 +1535,7 @@ class TabImpl implements Tab {
                             WebContentsFactory.createWebContents(
                                     mProfile, initiallyHidden, initializeRenderer);
                 }
+                assert webContents != null;
             } else {
                 // If there is a frozen WebContents state or a pending lazy load, don't create a new
                 // WebContents. Restoring will be done when showing the tab in the foreground.
@@ -2818,7 +2818,9 @@ class TabImpl implements Tab {
 
     private void switchUserAgentIfNeeded() {
         if (calculateUserAgentOverrideOption(null) == UserAgentOverrideOption.INHERIT
-                || getWebContents() == null) {
+                || getWebContents() == null
+                || isClosing()
+                || isDestroyed()) {
             return;
         }
         boolean usingDesktopUserAgent =
@@ -2951,19 +2953,15 @@ class TabImpl implements Tab {
     }
 
     @Override
-    public void onRemovedFromTabModel(LookAheadObservableSupplier<Tab> currentTabSupplier) {
+    public void onRemovedFromTabModel(
+            LookAheadObservableSupplier<Tab> currentTabSupplier, @DetachReason int detachReason) {
         // Usually mCurrentTabSupplier should equal currentTabSupplier when it's removed from the
         // TabModel. However, during reparenting it appears there are situations where the tab is
         // not removed from the original TabModel before being added to the new TabModel. In these
         // cases, mCurrentTabSupplier will be null as a result of the logic in updateAttachment().
         assert mCurrentTabSupplier == null || mCurrentTabSupplier == currentTabSupplier;
 
-        if (mCurrentTabSupplier != null) {
-            mCurrentTabSupplier.removeObserver(mActiveTabObserver);
-            mCurrentTabSupplier.removeLookAheadObserver(mActiveTabLookAheadObserver);
-        }
-
-        mCurrentTabSupplier = null;
+        clearCurrentTabSupplier(detachReason);
         mSelectionStateSupplier = null;
         mWasLastActive = null;
     }
@@ -2997,6 +2995,16 @@ class TabImpl implements Tab {
                 .closeTabs(
                         TabClosureParams.closeTab(tab).allowUndo(false).build(),
                         /* allowDialog= */ false);
+    }
+
+    private void clearCurrentTabSupplier(@DetachReason int detachReason) {
+        if (mCurrentTabSupplier == null) return;
+        if (mNativeTabAndroid != 0) {
+            TabImplJni.get().sendWillDetachUpdate(mNativeTabAndroid, detachReason);
+        }
+        mCurrentTabSupplier.removeObserver(mActiveTabObserver);
+        mCurrentTabSupplier.removeLookAheadObserver(mActiveTabLookAheadObserver);
+        mCurrentTabSupplier = null;
     }
 
     void setNativePtrForTesting(long nativePtr) {
@@ -3063,6 +3071,8 @@ class TabImpl implements Tab {
         void sendWillDeactivateUpdate(long nativeTabAndroid);
 
         void sendDidInsertUpdate(long nativeTabAndroid);
+
+        void sendWillDetachUpdate(long nativeTabAndroid, @DetachReason int detachReason);
     }
 
     @VisibleForTesting

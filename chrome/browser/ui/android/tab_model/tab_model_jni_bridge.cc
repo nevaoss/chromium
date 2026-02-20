@@ -71,6 +71,9 @@ using tab_groups::TabGroupVisualData;
 
 namespace {
 
+// Represents INVALID_COLOR_ID from TabGroupColorUtils.java.
+constexpr int kInvalidTabGroupColorId = -1;
+
 // Returns a vector of TabAndroid* from a container (e.g. a std::set or a
 // std::vector) of TabHandle.
 template <typename Container>
@@ -104,13 +107,12 @@ TabModelJniBridge::TabModelJniBridge(JNIEnv* env,
                                      const jni_zero::JavaRef<jobject>& jobj,
                                      Profile* profile,
                                      ActivityType activity_type,
-                                     bool is_archived_tab_model)
-    : TabModel(profile, activity_type),
-      java_object_(env, jobj),
-      is_archived_tab_model_(is_archived_tab_model) {
+                                     TabModelType tab_model_type)
+    : TabModel(profile, activity_type, tab_model_type),
+      java_object_(env, jobj) {
   // The archived tab model isn't tracked in native, except to comply with clear
   // browsing data.
-  if (is_archived_tab_model_) {
+  if (GetTabModelType() == TabModelType::kArchived) {
     TabModelList::SetArchivedTabModel(this);
   } else {
     TabModelList::AddTabModel(this);
@@ -432,7 +434,7 @@ void TabModelJniBridge::RemoveObserver(TabModelObserver* observer) {
 }
 
 void TabModelJniBridge::BroadcastSessionRestoreComplete(JNIEnv* env) {
-  if (!is_archived_tab_model_) {
+  if (GetTabModelType() != TabModelType::kArchived) {
     TabModel::BroadcastSessionRestoreComplete();
   }
 }
@@ -641,21 +643,23 @@ std::optional<TabGroupVisualData> TabModelJniBridge::GetTabGroupVisualData(
   JNIEnv* env = AttachCurrentThread();
   ScopedJavaLocalRef<jobject> jobj = java_object_.get(env);
 
-  // The JNI method returns nullopt on failure.
-  const std::optional<std::u16string> title =
+  const std::u16string title =
       Java_TabModelJniBridge_getTabGroupTitle(env, jobj, group_id.token());
-  if (!title) {
-    return std::nullopt;
-  }
   const int color =
       Java_TabModelJniBridge_getTabGroupColor(env, jobj, group_id.token());
 
-  // The cast is safe because the enum values are synced across C++ and Java.
-  const TabGroupColorId color_id = static_cast<TabGroupColorId>(color);
+  if (title.empty() && color == kInvalidTabGroupColorId) {
+    return std::nullopt;
+  }
+
   const bool collapsed =
       Java_TabModelJniBridge_getTabGroupCollapsed(env, jobj, group_id.token());
-  TabGroupVisualData visual_data(title.value(), color_id, collapsed);
-  return visual_data;
+
+  const TabGroupColorId color_id = (color == kInvalidTabGroupColorId)
+                                       ? tab_groups::TabGroupColorId::kGrey
+                                       : static_cast<TabGroupColorId>(color);
+
+  return TabGroupVisualData(title, color_id, collapsed);
 }
 
 gfx::Range TabModelJniBridge::GetTabGroupTabIndices(
@@ -703,7 +707,15 @@ std::optional<tab_groups::TabGroupId> TabModelJniBridge::AddTabsToGroup(
     const std::set<tabs::TabHandle>& tabs) {
   std::optional<base::Token> requested_group_id =
       tab_groups::TabGroupId::ToOptionalToken(group_id);
-  std::vector<TabAndroid*> tabs_to_add = GetAllTabsFromHandles(tabs);
+
+  // Order the tabs by index to ensure consistency with desktop.
+  std::vector<TabAndroid*> tabs_to_add;
+  tabs_to_add.reserve(tabs.size());
+  for (tabs::TabInterface* tab : GetAllTabs()) {
+    if (tabs.contains(tab->GetHandle())) {
+      tabs_to_add.push_back(static_cast<TabAndroid*>(tab));
+    }
+  }
 
   JNIEnv* env = AttachCurrentThread();
   ScopedJavaLocalRef<jobject> jobj = java_object_.get(env);
@@ -811,7 +823,7 @@ TabModelJniBridge::~TabModelJniBridge() {
     observer_bridge_->NotifyShutdown();
   }
 
-  if (is_archived_tab_model_) {
+  if (GetTabModelType() == TabModelType::kArchived) {
     TabModelList::SetArchivedTabModel(nullptr);
   } else {
     TabModelList::RemoveTabModel(this);
@@ -822,10 +834,10 @@ static int64_t JNI_TabModelJniBridge_Init(JNIEnv* env,
                                           const JavaRef<jobject>& obj,
                                           Profile* profile,
                                           int32_t j_activity_type,
-                                          unsigned char is_archived_tab_model) {
+                                          jint j_tab_model_type) {
   TabModel* tab_model = new TabModelJniBridge(
       env, obj, profile, static_cast<ActivityType>(j_activity_type),
-      is_archived_tab_model);
+      static_cast<TabModel::TabModelType>(j_tab_model_type));
   return reinterpret_cast<intptr_t>(tab_model);
 }
 

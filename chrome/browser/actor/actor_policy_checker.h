@@ -5,6 +5,7 @@
 #ifndef CHROME_BROWSER_ACTOR_ACTOR_POLICY_CHECKER_H_
 #define CHROME_BROWSER_ACTOR_ACTOR_POLICY_CHECKER_H_
 
+#include "base/functional/callback_forward.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/safe_ref.h"
 #include "base/memory/weak_ptr.h"
@@ -25,29 +26,30 @@
 #endif
 
 class GURL;
-class Profile;
 
 namespace signin {
 class PrimaryAccountChangeEvent;
 }  // namespace signin
 
-namespace tabs {
-class TabInterface;
-}
-
 namespace actor {
 
-class ActorKeyedService;
 class AggregatedJournal;
-class OriginChecker;
 
-// The central hub for checking various policies that determine whether Actor is
-// enabled for the profile, or is Actor allowed to act on a given tab or URL.
-class ActorPolicyChecker : public signin::IdentityManager::Observer,
+// The Glic implementation of an Actor EnterprisePolicyChecker, used to
+// determine the act on web capability enabling state. This class blends various
+// signals from account, preferences, managed policies, etc. to make a
+// determination.
+class ActorPolicyChecker : public EnterprisePolicyChecker,
+                           public signin::IdentityManager::Observer,
                            public subscription_eligibility::
                                SubscriptionEligibilityService::Observer {
  public:
-  explicit ActorPolicyChecker(ActorKeyedService& service);
+  // Callback to run whenever the can_act_on_web_ value changes.
+  using CanActOnWebChangedCallback =
+      base::RepeatingCallback<void(bool /*can_act_on_web*/)>;
+  explicit ActorPolicyChecker(Profile& profile,
+                              CanActOnWebChangedCallback change_callback,
+                              AggregatedJournal& journal);
   ActorPolicyChecker(const ActorPolicyChecker&) = delete;
   ActorPolicyChecker& operator=(const ActorPolicyChecker&) = delete;
   ~ActorPolicyChecker() override;
@@ -63,32 +65,11 @@ class ActorPolicyChecker : public signin::IdentityManager::Observer,
   // `subscription_eligibility::SubscriptionEligibilityService::Observer`:
   void OnAiSubscriptionTierUpdated(int32_t new_subscription_tier) override;
 
-  // See site_policy.h.
-  void MayActOnTab(const tabs::TabInterface& tab,
-                   AggregatedJournal& journal,
-                   TaskId task_id,
-                   const OriginChecker& origin_checker,
-                   DecisionCallbackWithReason callback);
-  void MayActOnUrl(const GURL& url,
-                   bool allow_insecure_http,
-                   Profile* profile,
-                   AggregatedJournal& journal,
-                   TaskId task_id,
-                   DecisionCallbackWithReason callback);
-
-  // Allows the test to bypass the enterprise account eligibility checking
-  // completely. Does NOT bypass the policy checks for management.
-  void set_account_eligible_for_actuation_for_testing(bool enabled) {
-    account_eligible_for_actuation_for_testing_ = enabled;
-  }
-
 #if BUILDFLAG(ENABLE_GLIC)
   // Allows tests to synchronize on allow/blocklist updates.
   base::CallbackListSubscription AddUrlListsUpdateObserverForTesting(
       base::RepeatingClosure callback);
 #endif  // BUILDFLAG(ENABLE_GLIC)
-
-  bool CanActOnWeb() const;
 
   enum class CannotActReason {
     kNone,
@@ -105,8 +86,9 @@ class ActorPolicyChecker : public signin::IdentityManager::Observer,
   // debugging) where useful.
   CannotActReason CannotActOnWebReason() const;
 
-  EnterprisePolicyBlockReason EvaluateEnterprisePolicyForUrl(
-      const GURL& url) const;
+  // EnterprisePolicyChecker interface
+  bool CanActOnWeb() const override;
+  EnterprisePolicyBlockReason Evaluate(const GURL& url) const override;
 
  private:
   void OnPrefOrAccountChanged();
@@ -120,15 +102,16 @@ class ActorPolicyChecker : public signin::IdentityManager::Observer,
 
   std::pair<CanActOutcome, CannotActReason> ComputeActOnWebCapability();
 
-  // Owns `this`.
-  base::raw_ref<ActorKeyedService> service_;
+  // This class must be transitively owned by Proile ancannot outlive it.
+  raw_ptr<Profile> profile_;
+
+  // Client callback to run whenever the can_act_on_web_ value changes.
+  CanActOnWebChangedCallback change_callback_;
 
   PrefChangeRegistrar pref_change_registrar_;
 
   CanActOutcome can_act_on_web_ = CanActOutcome::kYes;
   CannotActReason cannot_act_on_web_reason_;
-
-  bool account_eligible_for_actuation_for_testing_ = false;
 
 #if BUILDFLAG(ENABLE_GLIC)
   // Stores enterprise allowlist/blocklist policies for specific URLs.

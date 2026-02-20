@@ -85,7 +85,8 @@ base::DictValue GetServiceEndpointRequestAsValue(
 }
 
 // Converts a NextProtoSet containing allowed ALPNs to a value usable in NetLog
-// events - currently a std::string, though could make it a Value::List instead.
+// events - currently a std::string, though could make it a base::ListValue
+// instead.
 std::string AllowedAlpnsToValue(const NextProtoSet& allowed_alpns) {
   std::string list;
   for (const auto proto : allowed_alpns) {
@@ -281,11 +282,6 @@ void HttpStreamPool::AttemptManager::RequestStream(Job* job) {
 }
 
 void HttpStreamPool::AttemptManager::Preconnect(Job* job) {
-  // JobController should check active streams before starting a preconnect
-  // Job unless the Job is AltSvc QUIC preconnect.
-  CHECK(job->type() == JobType::kAltSvcQuicPreconnect ||
-        group_->ActiveStreamSocketCount() < job->num_streams());
-
   TRACE_EVENT("net.stream", "Job::Preconnect", job->flow());
   TRACE_EVENT_INSTANT("net.stream", "AttemptManager::Preconnect", track_,
                       NetLogWithSourceToFlow(job->request_net_log()));
@@ -590,8 +586,9 @@ void HttpStreamPool::AttemptManager::CancelJobs(
 
 void HttpStreamPool::AttemptManager::CompleteQuicAttempt(
     int result,
-    base::optional_ref<NetErrorDetails> net_error_details) {
-  if (quic_attempt_result_.has_value()) {
+    base::optional_ref<NetErrorDetails> net_error_details,
+    bool overwrite_old_result) {
+  if (quic_attempt_result_.has_value() && !overwrite_old_result) {
     CHECK(!quic_attempt_);
     CHECK_NE(result, OK)
         << "QUIC attempt should not be completed with OK more than once";
@@ -791,8 +788,13 @@ void HttpStreamPool::AttemptManager::OnTcpBasedAttemptComplete(
             spdy_session_key(), std::move(handle), net_log(),
             MultiplexedSessionCreationInitiator::kUnknown, &spdy_session,
             std::nullopt, SpdySessionInitiator::kHttpStreamPoolAttemptManager);
+    // Treat SpdySession creation failure as a fatal error, since the creation
+    // failure indicates that the socket doesn't have acceptable transport
+    // security or ALPS. The passed socket is already closed on failure.
     if (create_result != OK) {
-      HandleTcpBasedAttemptFailure(std::move(tcp_based_attempt), create_result);
+      DCHECK_NE(create_result, ERR_IO_PENDING);
+      tcp_based_attempt.reset();
+      HandleFinalError(create_result);
       return;
     }
 
@@ -811,9 +813,7 @@ void HttpStreamPool::AttemptManager::OnTcpBasedAttemptComplete(
     return;
   }
 
-  // We will create an active stream so +1 to the current active stream count.
-  ProcessPreconnectsAfterAttemptComplete(rv,
-                                         group_->ActiveStreamSocketCount() + 1);
+  ProcessPreconnectsAfterTcpAttemptComplete(rv);
 
   // If there is no request job, put the stream as an idle stream and try to
   // process pending requests in the group/pool.
@@ -1036,7 +1036,16 @@ void HttpStreamPool::AttemptManager::StartInternal(Job* job) {
       break;
     case JobType::kPreconnect:
     case JobType::kAltSvcQuicPreconnect:
-      preconnect_jobs_.emplace(job);
+      auto [it, inserted] = preconnect_jobs_.emplace(job);
+      CHECK(inserted);
+      if (job->type() == JobType::kPreconnect) {
+        const size_t active_stream_count =
+            group_->HandedOutStreamSocketCount() +
+            group_->IdleStreamSocketCount();
+        CHECK_GT(job->num_streams(), active_stream_count);
+        const size_t remaining = job->num_streams() - active_stream_count;
+        job->SetPreconnectTcpAttemptRemaining(remaining);
+      }
       break;
   }
 
@@ -1181,7 +1190,8 @@ void HttpStreamPool::AttemptManager::ProcessServiceEndpointChanges() {
         "Net.HttpStreamPool.ExistingQuicSessionFoundTime",
         base::TimeTicks::Now() - dns_resolution_start_time_);
 
-    CompleteQuicAttempt(OK);
+    CompleteQuicAttempt(OK, /*net_error_details=*/std::nullopt,
+                        /*overwrite_old_result=*/true);
     HandleQuicSessionReady(quic_session,
                            StreamSocketCloseReason::kUsingExistingQuicSession);
 
@@ -1530,8 +1540,8 @@ HttpStreamPool::AttemptManager::CanAttemptConnection() const {
     return CanAttemptResult::kUdpSucceeded;
   }
 
-  const size_t required_attempt_count = std::max(
-      request_jobs_.size(), CalculateRequiredTcpBasedAttemptForPreconnect());
+  const size_t required_attempt_count =
+      std::max(request_jobs_.size(), CalculateMaxPreconnectCount());
   if (required_attempt_count <= NonSlowTcpBasedAttemptCount()) {
     return CanAttemptResult::kNoPendingJob;
   }
@@ -1598,28 +1608,9 @@ bool HttpStreamPool::AttemptManager::ShouldThrottleAttemptForSpdy() const {
 size_t HttpStreamPool::AttemptManager::CalculateMaxPreconnectCount() const {
   size_t num_streams = 0;
   for (const auto& job : preconnect_jobs_) {
-    num_streams = std::max(num_streams, job->num_streams());
+    num_streams = std::max(num_streams, job->NumRequiredTcpAttempts());
   }
   return num_streams;
-}
-
-size_t
-HttpStreamPool::AttemptManager::CalculateRequiredTcpBasedAttemptForPreconnect()
-    const {
-  const size_t max_preconnect_count = CalculateMaxPreconnectCount();
-  // Required preconnect count is treated as zero when the maximum preconnect
-  // count is less than or equals to the active non-slow stream socket count.
-  // This behavior is for compatibility with the non-HEv3 code path. See
-  // TransportClientSocketPool::RequestSockets().
-  // TODO(crbug.com/457478038): Update this logic when we migrate to the new
-  // Attempt class.
-  size_t active_non_slow_count = group_->HandedOutStreamSocketCount() +
-                                 group_->IdleStreamSocketCount() +
-                                 NonSlowTcpBasedAttemptCount();
-  if (max_preconnect_count <= active_non_slow_count) {
-    return 0;
-  }
-  return max_preconnect_count;
 }
 
 std::optional<QuicEndpoint>
@@ -1733,14 +1724,18 @@ void HttpStreamPool::AttemptManager::NotifyPreconnectsComplete(int rv) {
   MaybeCompleteLater();
 }
 
-void HttpStreamPool::AttemptManager::ProcessPreconnectsAfterAttemptComplete(
-    int rv,
-    size_t active_stream_count) {
+void HttpStreamPool::AttemptManager::ProcessPreconnectsAfterTcpAttemptComplete(
+    int rv) {
   for (auto preconnect_it = preconnect_jobs_.begin();
        preconnect_it != preconnect_jobs_.end();) {
     auto current_it = preconnect_it;
     ++preconnect_it;
-    if ((*current_it)->num_streams() <= active_stream_count) {
+    Job* job = current_it->get();
+    if (job->type() == JobType::kAltSvcQuicPreconnect) {
+      continue;
+    }
+    job->OnPreconnectTcpAttemptComplete();
+    if (job->IsPreconnectTcpAttemptComplete()) {
       // Since jobs complete asynchronously, this cannot modify `next`.
       NotifyJobOfPreconnectComplete(current_it, rv);
     }
@@ -2061,9 +2056,7 @@ void HttpStreamPool::AttemptManager::HandleTcpBasedAttemptFailure(
     return;
   }
 
-  // We already removed `tcp_based_attempt` from `tcp_based_attempt_slots_` so
-  // the active stream count is up-to-date.
-  ProcessPreconnectsAfterAttemptComplete(rv, group_->ActiveStreamSocketCount());
+  ProcessPreconnectsAfterTcpAttemptComplete(rv);
 
   if (is_shutting_down()) {
     // `this` has already failed and is notifying jobs to the failure.

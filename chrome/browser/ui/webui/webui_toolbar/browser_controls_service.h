@@ -37,8 +37,6 @@ class BrowserControlsService
   BrowserControlsService(
       mojo::PendingReceiver<browser_controls_api::mojom::BrowserControlsService>
           service,
-      mojo::PendingRemote<browser_controls_api::mojom::BrowserControlsObserver>
-          observer,
       content::WebContents* web_contents,
       CommandUpdater* command_updater,
       BrowserControlsServiceDelegate* delegate);
@@ -52,8 +50,14 @@ class BrowserControlsService
       browser_controls_api::mojom::DevToolsState state);
   void OnNavigationStatusChanged(
       browser_controls_api::mojom::NavigationState state);
+  void OnContextMenuStateChanged(
+      browser_controls_api::mojom::ContextMenuType menu_type,
+      browser_controls_api::mojom::ContextMenuState state);
 
   // browser_controls_api::mojom::BrowserControlsService:
+  void AddObserver(
+      mojo::PendingRemote<browser_controls_api::mojom::BrowserControlsObserver>
+          observer) override;
   void ReloadFromClick(
       bool bypass_cache,
       const std::vector<browser_controls_api::mojom::ClickDispositionFlag>&

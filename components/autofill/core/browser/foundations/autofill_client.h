@@ -184,8 +184,8 @@ class AutofillClient {
   // prompt related to AutofillAi saving, updating, or migrating.
   // These values are persisted to logs. Entries should not be renumbered and
   // numeric values should never be reused.
-  enum class AutofillAiBubbleClosedReason {
-    // Bubble closed reason not specified.
+  enum class AutofillAiBubbleResult {
+    // Bubble result not specified.
     kUnknown = 0,
     // The user explicitly accepted the bubble.
     kAccepted = 1,
@@ -233,7 +233,7 @@ class AutofillClient {
   };
 
   using EntityImportPromptResultCallback =
-      base::OnceCallback<void(AutofillAiBubbleClosedReason close_reason)>;
+      base::OnceCallback<void(AutofillAiBubbleResult result)>;
 
   // The types of prompts that AutofillAi can show to the user after a form
   // submission. The values are ordered by decreasing priority of being shown
@@ -524,7 +524,8 @@ class AutofillClient {
   virtual void UpdateAutofillSuggestions(
       const std::vector<Suggestion>& suggestions,
       FillingProduct main_filling_product,
-      AutofillSuggestionTriggerSource trigger_source);
+      AutofillSuggestionTriggerSource trigger_source,
+      AutofillSuggestionsIgnoreFocusLoss ignore_focus_loss);
 
   // Hides the Autofill suggestions UI if it is currently showing.
   virtual void HideAutofillSuggestions(SuggestionHidingReason reason) = 0;
@@ -680,10 +681,17 @@ class AutofillClient {
   // Shows a bubble asking whether the user wants to save or update Autofill AI
   // data. `old_entity` is present in the update cases. It is used to give users
   // a better understanding of what was updated.
+  // `save_is_synchronous` indicates whether accepting the prompt requires a
+  // (notably) asynchronous operation. The UI can use this information to decide
+  // whether to close the prompt upon acceptance.
   virtual void ShowEntityImportBubble(
       EntityInstance new_entity,
       std::optional<EntityInstance> old_entity,
-      EntityImportPromptResultCallback prompt_closed_callback);
+      bool save_is_synchronous,
+      EntityImportPromptResultCallback prompt_result_callback);
+
+  // Hides the Autofill AI import bubble if it is currently showing.
+  virtual void CloseEntityImportBubble();
 
   virtual void ShowEmailVerifiedToast();
 

@@ -163,6 +163,7 @@ class NET_EXPORT_PRIVATE SqlBackendImpl final : public Backend {
                      scoped_refptr<net::IOBuffer> buffer,
                      int buf_len,
                      bool truncate,
+                     bool copy_buffer_for_optimistic_write,
                      CompletionOnceCallback callback);
 
   // Reads data from an entry's body (stream 1). The operation is scheduled via
@@ -177,7 +178,7 @@ class NET_EXPORT_PRIVATE SqlBackendImpl final : public Backend {
                     int buf_len,
                     int64_t body_end,
                     bool sparse_reading,
-                    CompletionOnceCallback callback);
+                    SqlPersistentStore::ReadResultOrErrorCallback callback);
 
   // Finds the available contiguous range of data for a given entry. The
   // operation is scheduled via the `ExclusiveOperationCoordinator` to ensure
@@ -216,6 +217,11 @@ class NET_EXPORT_PRIVATE SqlBackendImpl final : public Backend {
   // easily identify problematic inputs if the process fails fast, rather than
   // silently recovering.
   void EnableStrictCorruptionCheckForTesting();
+
+  // Reports a change in the total size of write buffers.
+  void ReportWriteBufferChange(int delta);
+
+  int64_t GetWriteBufferTotalSize() const { return write_buffer_total_size_; }
 
   // Returns the current size of the `in_flight_entry_modifications_` map.
   // This is for testing purposes only.
@@ -443,7 +449,7 @@ class NET_EXPORT_PRIVATE SqlBackendImpl final : public Backend {
       int buf_len,
       int64_t body_end,
       bool sparse_reading,
-      SqlPersistentStore::IntOrErrorCallback callback,
+      SqlPersistentStore::ReadResultOrErrorCallback callback,
       std::unique_ptr<ExclusiveOperationCoordinator::OperationHandle> handle);
 
   // Handles the backend logic for `GetEntryAvailableRange()`. This method is
@@ -543,6 +549,9 @@ class NET_EXPORT_PRIVATE SqlBackendImpl final : public Backend {
   // performed as long as this value does not exceed
   // `kSqlDiskCacheOptimisticWriteBufferSize`.
   int64_t optimistic_write_buffer_total_size_ = 0;
+
+  // The total size of write buffers across all entries.
+  int64_t write_buffer_total_size_ = 0;
 
   // Weak pointer factory for this class.
   base::WeakPtrFactory<SqlBackendImpl> weak_factory_{this};

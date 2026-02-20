@@ -333,6 +333,7 @@
 <translation id="2184272387334793084">Conectează-te pentru a-ți accesa parolele și alte date de pe toate dispozitivele</translation>
 <translation id="2186206192313702726">Google Lens</translation>
 <translation id="2188993354115194873">Atinge <ph name="BEGIN_BOLD" />Salvează în descărcări<ph name="END_BOLD" />.</translation>
+<translation id="2191406283620379491">A apărut o eroare gravă. Actualizează versiunea iOS.</translation>
 <translation id="219283042927675668">File în grup</translation>
 <translation id="2194856509914051091">De reținut</translation>
 <translation id="2196428379625389579">Caută pe web</translation>
@@ -579,6 +580,7 @@
 <translation id="3143515551205905069">Anulează sincronizarea</translation>
 <translation id="3144126448740580210">TERMINAT</translation>
 <translation id="3148052723910099040">Grila de file obișnuite</translation>
+<translation id="3148237711805373460">Accesează</translation>
 <translation id="3157387275655328056">Adaugă în lista de lectură</translation>
 <translation id="315778507796115851">Istoric</translation>
 <translation id="31652791196570636">Închide</translation>
@@ -1020,6 +1022,7 @@
 <translation id="483689884442613745">Salvează…</translation>
 <translation id="4840495572919996524">Marcajele, istoricul, parolele și alte setări nu vor mai fi sincronizate cu Contul Google.</translation>
 <translation id="484280513275854557">Te-ai deconectat și datele de navigare au fost șterse</translation>
+<translation id="484462545196658690">Automat</translation>
 <translation id="4850886885716139402">Afișează</translation>
 <translation id="4854068532375923088">Permite ca Gemini să utilizeze camera</translation>
 <translation id="4860895144060829044">Apelează</translation>
@@ -1521,6 +1524,7 @@ Trebuie să activezi Handoff în secțiunea General din Setări, iar dispozitive
 <translation id="6556866813142980365">Repetă</translation>
 <translation id="6559301491397835130">{count,plural, =1{Marcajul s-a salvat în {title}. Se salvează numai pe acest dispozitiv.}few{Marcajele s-au salvat în {title}. Ele se salvează numai pe acest dispozitiv.}other{Marcajele s-au salvat în {title}. Ele se salvează numai pe acest dispozitiv.}}</translation>
 <translation id="656065428026159829">Vezi mai multe</translation>
+<translation id="6565899972286925956">Creează orice</translation>
 <translation id="6571070086367343653">Editează cardul de credit</translation>
 <translation id="6574092468346088891">Activează notificările pentru Verificarea de siguranță</translation>
 <translation id="6579867704846662339">Poți alege să deschizi adresele URL de la alte aplicații în modul incognito.</translation>
@@ -1631,6 +1635,7 @@ Trebuie să activezi Handoff în secțiunea General din Setări, iar dispozitive
 <translation id="6930799952781667037">Atinge ca să schimbi limba.</translation>
 <translation id="693761253105515415">Setează o parolă</translation>
 <translation id="6945221475159498467">Selectează</translation>
+<translation id="6946722113367118030">Se gândește</translation>
 <translation id="6950522403736391608">Ascuns</translation>
 <translation id="6962809930976936328">Obține informații cu Gemini</translation>
 <translation id="6964300328304469089">Ai selectat: <ph name="NAME" />, <ph name="EMAIL" />. Alege un cont.</translation>
@@ -1899,6 +1904,7 @@ Trebuie să activezi Handoff în secțiunea General din Setări, iar dispozitive
 <translation id="7958575506592576831">Informații privind securitatea paginii</translation>
 <translation id="7961015016161918242">Niciodată</translation>
 <translation id="7971136598759319605">Activ acum o zi</translation>
+<translation id="7972837668077967426">Canvas</translation>
 <translation id="7975036700432177008">Încercați</translation>
 <translation id="797588153137233716">Meniu → Istoric → Șterge datele de navigare</translation>
 <translation id="7977451675950311423">Te avertizează dacă folosești o parolă care a fost compromisă printr-o încălcare a securității datelor.</translation>
@@ -1972,6 +1978,7 @@ Trebuie să activezi Handoff în secțiunea General din Setări, iar dispozitive
 <translation id="8205564605687841303">Anulează</translation>
 <translation id="8206354486702514201">Această setare este impusă de administratorul dvs.</translation>
 <translation id="8209050860603202033">Deschideți imaginea</translation>
+<translation id="8209237163365258530">Modelele Gemini <ph name="VERSION_NUMBER" /></translation>
 <translation id="8211030355252954494">Ai primit parole pentru <ph name="WEBSITE" /></translation>
 <translation id="8211406090763984747">Conexiunea este securizată</translation>
 <translation id="8214293972734702249">Fixată, <ph name="TAB_TITLE" /></translation>

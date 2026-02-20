@@ -83,6 +83,7 @@ extern NSString* const kTextSparkSymbol;
 extern NSString* const kIncognitoCircleFillSymbol;
 extern NSString* const kPlusCircleFillSymbol;
 extern NSString* const kPDFFillSymbol;
+extern NSString* const kLineThreeSparkSymbol;
 
 // Use custom symbol for camera because the default video icon in iOS should
 // always represent “Apple Facetime”.
@@ -274,6 +275,7 @@ extern NSString* const kFolderBadgePlusSymbol;
 extern NSString* const kCartSymbol;
 extern NSString* const kArrowUTurnForwardSymbol;
 extern NSString* const kArrowUTurnForwardCircleFillSymbol;
+extern NSString* const kArrowUTurnBackwardSymbol;
 extern NSString* const kIPhoneAndArrowForwardSymbol;
 extern NSString* const kPersonPlusSymbol;
 extern NSString* const kArrowUpTrashSymbol;

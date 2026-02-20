@@ -9,6 +9,7 @@
 #include <memory>
 #include <utility>
 
+#include "base/command_line.h"
 #include "base/memory/raw_ptr.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/scoped_feature_list.h"
@@ -39,6 +40,8 @@
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 #include "ui/base/models/list_selection_model.h"
+#include "ui/base/pointer/touch_ui_controller.h"
+#include "ui/base/ui_base_switches.h"
 #include "ui/base/unowned_user_data/unowned_user_data_host.h"
 #include "ui/gfx/color_palette.h"
 #include "ui/gfx/color_utils.h"
@@ -515,30 +518,6 @@ TEST_F(TabTest, CloseButtonFocus) {
   EXPECT_NE(tab_close_button,
             tab_close_button->GetFocusManager()->GetFocusedView());
 }
-
-#if BUILDFLAG(IS_CHROMEOS)
-TEST_F(TabTest, CloseButtonHiddenWhenLockedForOnTask) {
-  const auto tab_slot_controller = std::make_unique<FakeTabSlotController>();
-  tab_slot_controller->SetLockedForOnTask(true);
-  const std::unique_ptr<views::Widget> widget =
-      CreateTestWidget(views::Widget::InitParams::CLIENT_OWNS_WIDGET);
-  Tab* const tab = widget->SetContentsView(
-      std::make_unique<Tab>(tabs::TabHandle(1), tab_slot_controller.get()));
-  TabCloseButton* const tab_close_button = GetCloseButton(tab);
-  EXPECT_FALSE(tab_close_button->GetVisible());
-}
-
-TEST_F(TabTest, CloseButtonShownWhenNotLockedForOnTask) {
-  const auto tab_slot_controller = std::make_unique<FakeTabSlotController>();
-  tab_slot_controller->SetLockedForOnTask(false);
-  const std::unique_ptr<views::Widget> widget =
-      CreateTestWidget(views::Widget::InitParams::CLIENT_OWNS_WIDGET);
-  Tab* const tab = widget->SetContentsView(
-      std::make_unique<Tab>(tabs::TabHandle(1), tab_slot_controller.get()));
-  TabCloseButton* const tab_close_button = GetCloseButton(tab);
-  EXPECT_TRUE(tab_close_button->GetVisible());
-}
-#endif
 
 // Tests expected changes to the ThrobberView state when the WebContents loading
 // state changes or the animation timer (usually in BrowserView) triggers.
@@ -1048,4 +1027,19 @@ TEST_F(TabTest, HideContentsWhenVeryNarrow) {
   EXPECT_FALSE(tab->showing_icon());
   EXPECT_FALSE(tab->showing_alert_indicator());
   EXPECT_FALSE(tab->showing_close_button());
+}
+
+TEST_F(TabTest, TabCloseButtonSizeInTouchMode) {
+  ui::TouchUiController::TouchUiScoperForTesting scoper(true);
+
+  auto controller = std::make_unique<FakeTabSlotController>();
+  std::unique_ptr<views::Widget> widget =
+      CreateTestWidget(views::Widget::InitParams::CLIENT_OWNS_WIDGET);
+  Tab* tab = widget->SetContentsView(
+      std::make_unique<Tab>(tabs::TabHandle(1), controller.get()));
+  tab->SizeToPreferredSize();
+
+  TabCloseButton* button = GetCloseButton(tab);
+  EXPECT_EQ(24, GetLayoutConstant(LayoutConstant::kTabCloseButtonSize));
+  EXPECT_EQ(gfx::Size(36, 36), button->GetPreferredSize());
 }

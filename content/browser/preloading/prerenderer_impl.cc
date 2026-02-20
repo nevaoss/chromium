@@ -257,9 +257,9 @@ void PrerendererImpl::ProcessCandidatesForPrerender(
   }
 
   std::vector<std::pair<GURL, PreloadingType>> to_be_cancelled_prerender_list;
-  for (auto ftn_id : removed_prerender_rules) {
+  for (PrerenderHostId id : removed_prerender_rules) {
     if (PrerenderHost* prerender_host =
-            registry_->FindNonReservedHostById(ftn_id)) {
+            registry_->FindNonReservedHostById(id)) {
       to_be_cancelled_prerender_list.emplace_back(
           prerender_host->GetInitialUrl(),
           ConvertSpeculationActionToPreloadingType(
@@ -422,7 +422,9 @@ bool PrerendererImpl::MaybePrerender(
                              candidate->eagerness,
                              SpeculationRulesTags(candidate->tags)),
       Referrer{*candidate->referrer}, no_vary_search_hint, &rfhi,
-      web_contents->GetWeakPtr(), ui::PAGE_TRANSITION_LINK,
+      web_contents->GetWeakPtr(),
+      candidate->form_submission ? ui::PAGE_TRANSITION_FORM_SUBMIT
+                                 : ui::PAGE_TRANSITION_LINK,
       should_warm_up_compositor,
       /*should_prepare_paint_tree=*/false, candidate->action,
       /*url_match_predicate=*/{},

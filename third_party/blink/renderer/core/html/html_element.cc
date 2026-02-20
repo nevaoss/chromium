@@ -3385,6 +3385,14 @@ bool HTMLElement::IsInteractiveContent() const {
   return false;
 }
 
+FocusgroupFlags HTMLElement::NativeArrowKeyAxes() const {
+  // Contenteditable uses arrow keys for cursor movement in both axes.
+  if (isContentEditableForBinding()) {
+    return FocusgroupFlags::kInline | FocusgroupFlags::kBlock;
+  }
+  return Element::NativeArrowKeyAxes();
+}
+
 void HTMLElement::DefaultEventHandler(Event& event) {
   auto* keyboard_event = DynamicTo<KeyboardEvent>(event);
 
@@ -3980,6 +3988,18 @@ void HTMLElement::OnRoleAttrChanged(const AttributeModificationParams& params) {
   } else if (EqualIgnoringASCIICase(params.new_value, "treeitem")) {
     UseCounter::Count(GetDocument(), WebFeature::kRoleAttributeTreeitem);
   }
+}
+
+bool HTMLElement::IsRenderedInTopLayer() const {
+  if (FastHasAttribute(html_names::kPopoverAttr) && popoverOpen()) {
+    return true;
+  }
+  if (auto* dialog = DynamicTo<HTMLDialogElement>(this)) {
+    if (dialog->IsModal()) {
+      return true;
+    }
+  }
+  return false;
 }
 
 }  // namespace blink

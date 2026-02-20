@@ -2849,7 +2849,7 @@ class CONTENT_EXPORT ContentBrowserClient {
       int child_id,
       const GURL& script_url);
 
-  enum class PrivateNetworkRequestPolicyOverride {
+  enum class LocalNetworkAccessRequestPolicyOverride {
     kForceAllow,
     kBlockInsteadOfWarn,
     kWarnInsteadOfBlock,
@@ -2864,9 +2864,9 @@ class CONTENT_EXPORT ContentBrowserClient {
   //
   // |browser_context| must not be nullptr. Caller retains ownership.
   // |origin| is the origin of a navigation ready to commit.
-  virtual PrivateNetworkRequestPolicyOverride
-  ShouldOverridePrivateNetworkRequestPolicy(BrowserContext* browser_context,
-                                            const url::Origin& origin);
+  virtual LocalNetworkAccessRequestPolicyOverride
+  ShouldOverrideLocalNetworkAccessRequestPolicy(BrowserContext* browser_context,
+                                                const url::Origin& origin);
 
   // Whether the JIT should be disabled for the given |browser_context| and
   // |site_url|. Pass an empty GURL for |site_url| to get the default JIT policy
@@ -3307,14 +3307,14 @@ class CONTENT_EXPORT ContentBrowserClient {
   // mirroring, etc). Defaults to returning true.
   virtual bool IsRendererProcessPriorityEnabled();
 
-  // Returns a `KeepAliveRequestTracker` instance if `request` is eligible to
-  // be tracked.
+  // Returns a list of `KeepAliveRequestTracker` instances if `request` is
+  // eligible to be tracked, or returns an empty list otherwise.
   //
   // `ukm_source_id` is the UKM ID to associate with the events logged by the
   // returned tracker.
   // `is_context_detached_callback` tells if the context of `request` is
   // detached at the time running the callback.
-  virtual std::unique_ptr<KeepAliveRequestTracker>
+  virtual std::vector<std::unique_ptr<KeepAliveRequestTracker>>
   MaybeCreateKeepAliveRequestTracker(
       const network::ResourceRequest& request,
       std::optional<ukm::SourceId> ukm_source_id,
@@ -3392,6 +3392,25 @@ class CONTENT_EXPORT ContentBrowserClient {
   // returned data must be JSON in the the format described here:
   // https://developers.google.com/speed/public-dns/docs/doh/json
   virtual std::string GetDnsTxtResolverUrlPrefix();
+
+  // Returns true if the given redirected destination url `url` of the given
+  // `browser_context` should be allowed for prefetch redirect.
+  // `embedder_histogram_suffix` is used to determine whether this is a trigger
+  // of interest.
+  // TODO(crbug.com/479250358): Figure out a better way for identifying the
+  // trigger. The parameter `embedder_histogram_suffix` corresponds to
+  // `PrefetchBrowserInitiatorInfo::embedder_histogram_suffix_`.
+  virtual bool ShouldAllowPrefetchRedirection(
+      content::BrowserContext& browser_context,
+      const GURL& url,
+      const std::string& embedder_histogram_suffix);
+
+  // Returns whether to enable concrete cross-origin isolation, which gives
+  // access to cross-origin isolated APIs. If this return false, logical
+  // cross-origin isolation will be applied instead, which applies web-visible
+  // restrictions but does not give access to cross-origin isolated APIs.
+  virtual bool OriginSupportsConcreteCrossOriginIsolation(
+      const url::Origin& origin);
 };
 
 }  // namespace content

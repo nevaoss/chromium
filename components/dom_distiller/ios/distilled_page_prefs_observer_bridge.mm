@@ -5,8 +5,11 @@
 #import "components/dom_distiller/ios/distilled_page_prefs_observer_bridge.h"
 
 DistilledPagePrefsObserverBridge::DistilledPagePrefsObserverBridge(
-    id<DistilledPagePrefsObserving> observer)
-    : observer_(observer) {}
+    id<DistilledPagePrefsObserving> observer,
+    dom_distiller::DistilledPagePrefs* distilled_page_prefs)
+    : observer_(observer) {
+  observation_.Observe(distilled_page_prefs);
+}
 
 DistilledPagePrefsObserverBridge::~DistilledPagePrefsObserverBridge() = default;
 
@@ -23,4 +26,8 @@ void DistilledPagePrefsObserverBridge::OnChangeTheme(
 
 void DistilledPagePrefsObserverBridge::OnChangeFontScaling(float scaling) {
   [observer_ onChangeFontScaling:scaling];
+}
+
+void DistilledPagePrefsObserverBridge::OnChangeLinksEnabled(bool enabled) {
+  [observer_ onChangeLinksEnabled:enabled];
 }

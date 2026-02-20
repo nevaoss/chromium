@@ -12,6 +12,7 @@
 #include "base/observer_list.h"
 #include "chrome/browser/ui/read_anything/read_anything_enums.h"
 #include "chrome/browser/ui/read_anything/read_anything_lifecycle_observer.h"
+#include "chrome/browser/ui/read_anything/read_anything_omnibox_controller.h"
 #include "chrome/browser/ui/read_anything/read_anything_side_panel_controller.h"
 #include "chrome/browser/ui/views/side_panel/side_panel_entry_key.h"
 #include "chrome/browser/ui/views/side_panel/side_panel_enums.h"
@@ -28,6 +29,7 @@
 
 class ReadAnythingController;
 class ReadAnythingImmersiveOverlayView;
+class ReadAnythingService;
 
 // A helper class to observe a specific WebContents, so the ReadAnything
 // Controller can observe multiple WebContents. Event callbacks are configured
@@ -126,7 +128,7 @@ class ReadAnythingController {
   void CloseImmersiveUI(bool closed_by_tab_switch = false);
 
   // Toggles the Immersive Reading Mode UI.
-  void ToggleImmersiveUI(ReadAnythingOpenTrigger trigger);
+  void ToggleUI(ReadAnythingOpenTrigger trigger);
 
   // Toggles between the Immersive Reading Mode UI and the Side Panel UI.
   void TogglePresentation();
@@ -171,6 +173,10 @@ class ReadAnythingController {
   // state.
   void RecreateWebUIWrapper();
 
+  // Artitficially sets the time when the user entered a page for testing the
+  // omnibox entry point.
+  void SetDwellTimeForTesting(base::TimeTicks test_time);
+
  private:
   // Called when the tab will detach.
   void TabWillDetach(tabs::TabInterface* tab,
@@ -182,6 +188,7 @@ class ReadAnythingController {
 
   std::unique_ptr<WebContentsObserverInstance> main_page_observer_;
   std::unique_ptr<WebContentsObserverInstance> ra_web_ui_observer_;
+  std::unique_ptr<ReadAnythingOmniboxController> omnibox_controller_;
 
   // Callback for when main_page_observer_ receives a PrimaryPageChanged event.
   void OnMainPagePrimaryPageChanged();
@@ -250,6 +257,8 @@ class ReadAnythingController {
   base::ScopedClosureRunner main_contents_capturer_handle_;
 
   raw_ptr<ReadAnythingImmersiveOverlayView> active_overlay_view_ = nullptr;
+
+  raw_ptr<ReadAnythingService> active_service_ = nullptr;
 
   base::WeakPtrFactory<ReadAnythingController> weak_factory_{this};
 };

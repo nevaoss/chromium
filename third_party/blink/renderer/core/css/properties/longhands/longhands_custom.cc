@@ -5113,6 +5113,14 @@ const CSSValue* FieldSizing::CSSValueFromComputedStyleInternal(
   return CSSIdentifierValue::Create(style.FieldSizing());
 }
 
+const CSSValue* FrameSizing::CSSValueFromComputedStyleInternal(
+    const ComputedStyle& style,
+    const LayoutObject*,
+    bool allow_visited_style,
+    CSSValuePhase value_phase) const {
+  return CSSIdentifierValue::Create(style.FrameSizing());
+}
+
 void InternalVisitedColor::ApplyInitial(StyleResolverState& state) const {
   ComputedStyleBuilder& builder = state.StyleBuilder();
   builder.SetInternalVisitedColor(builder.InitialColorForColorScheme());
@@ -5513,10 +5521,11 @@ const CSSValue* Height::CSSValueFromComputedStyleInternal(
     const LayoutObject* layout_object,
     bool allow_visited_style,
     CSSValuePhase value_phase) const {
-  if (value_phase == CSSValuePhase::kResolvedValue &&
-      ComputedStyleUtils::WidthOrHeightShouldReturnUsedValue(layout_object)) {
-    return ZoomAdjustedPixelValue(
-        ComputedStyleUtils::UsedBoxSize(*layout_object).height(), style);
+  if (value_phase == CSSValuePhase::kResolvedValue && layout_object) {
+    if (std::optional<gfx::SizeF> used_size =
+            ComputedStyleUtils::UsedBoxSize(*layout_object)) {
+      return ZoomAdjustedPixelValue(used_size->height(), style);
+    }
   }
   return ComputedStyleUtils::ZoomAdjustedPixelValueForLength(style.Height(),
                                                              style);
@@ -5630,6 +5639,14 @@ const CSSValue* ImageOrientation::CSSValueFromComputedStyleInternal(
                                ? CSSValueID::kFromImage
                                : CSSValueID::kNone;
   return CSSIdentifierValue::Create(value);
+}
+
+const CSSValue* ImageAnimation::CSSValueFromComputedStyleInternal(
+    const ComputedStyle& style,
+    const LayoutObject*,
+    bool allow_visited_style,
+    CSSValuePhase value_phase) const {
+  return CSSIdentifierValue::Create(style.ImageAnimation());
 }
 
 const CSSValue* ImageRendering::CSSValueFromComputedStyleInternal(
@@ -9617,7 +9634,7 @@ const CSSValue* Size::ParseSingleValue(
   }
 
   CSSValue* page_size = ConsumePageSize(stream);
-  CSSValue* orientation =
+  CSSIdentifierValue* orientation =
       css_parsing_utils::ConsumeIdent<CSSValueID::kPortrait,
                                       CSSValueID::kLandscape>(stream);
   if (!page_size) {
@@ -9630,7 +9647,8 @@ const CSSValue* Size::ParseSingleValue(
   if (page_size) {
     result->Append(*page_size);
   }
-  if (orientation) {
+  if (orientation &&
+      (!page_size || orientation->GetValueID() != CSSValueID::kPortrait)) {
     result->Append(*orientation);
   }
   return result;
@@ -12496,10 +12514,11 @@ const CSSValue* Width::CSSValueFromComputedStyleInternal(
     const LayoutObject* layout_object,
     bool allow_visited_style,
     CSSValuePhase value_phase) const {
-  if (value_phase == CSSValuePhase::kResolvedValue &&
-      ComputedStyleUtils::WidthOrHeightShouldReturnUsedValue(layout_object)) {
-    return ZoomAdjustedPixelValue(
-        ComputedStyleUtils::UsedBoxSize(*layout_object).width(), style);
+  if (value_phase == CSSValuePhase::kResolvedValue && layout_object) {
+    if (std::optional<gfx::SizeF> used_size =
+            ComputedStyleUtils::UsedBoxSize(*layout_object)) {
+      return ZoomAdjustedPixelValue(used_size->width(), style);
+    }
   }
   return ComputedStyleUtils::ZoomAdjustedPixelValueForLength(style.Width(),
                                                              style);

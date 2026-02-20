@@ -288,7 +288,7 @@
     ChromeAccountManagerService* accountManagerService =
         ChromeAccountManagerServiceFactory::GetForProfile(self.profile);
     BOOL identityValid =
-        accountManagerService->IsValidIdentity(self.selectedIdentity);
+        accountManagerService->IsValidIdentity(self.selectedIdentity.gaiaId);
     BOOL identityEqual = self.selectedIdentity.gaiaId == *gaiaID;
     if (identityValid && identityEqual) {
       [self.delegate
@@ -371,6 +371,13 @@
 - (void)accountPickerSelectionScreenCoordinatorOpenAddAccount:
     (AccountPickerSelectionScreenCoordinator*)coordinator {
   [self openAddAccountCoordinator];
+}
+
+- (void)accountPickerSelectionScreenCoordinatorWantsToBeStopped:
+    (AccountPickerSelectionScreenCoordinator*)coordinator {
+  CHECK_EQ(coordinator, _accountPickerSelectionScreenCoordinator,
+           base::NotFatalUntil::M151);
+  [self.delegate accountPickerCoordinatorCancel:self];
 }
 
 #pragma mark - AccountPickerConfirmationScreenCoordinatorDelegate

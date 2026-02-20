@@ -41,6 +41,8 @@ import org.chromium.components.browser_ui.bottomsheet.BottomSheetObserver;
 import org.chromium.components.browser_ui.bottomsheet.EmptyBottomSheetObserver;
 import org.chromium.components.prefs.PrefService;
 import org.chromium.components.user_prefs.UserPrefs;
+import org.chromium.ui.base.DeviceFormFactor;
+import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.modelutil.PropertyModel;
 
 import java.util.ArrayList;
@@ -77,6 +79,7 @@ public class NtpCustomizationMediator {
     private final Supplier<@Nullable Profile> mProfileSupplier;
     private final @Nullable PropertyModel mContainerPropertyModel;
     private final boolean mNtpCustomizationForMvtFeatureEnabled;
+    private final WindowAndroid mWindowAndroid;
     private @Nullable Profile mProfile;
     private @Nullable Integer mCurrentBottomSheet;
     private boolean mShouldRecreate;
@@ -89,15 +92,17 @@ public class NtpCustomizationMediator {
             NtpCustomizationBottomSheetContent bottomSheetContent,
             PropertyModel viewFlipperPropertyModel,
             @Nullable PropertyModel containerPropertyModel,
-            Supplier<@Nullable Profile> profileSupplier) {
+            Supplier<@Nullable Profile> profileSupplier,
+            WindowAndroid windowAndroid) {
         mBottomSheetController = bottomSheetController;
         mBottomSheetContent = bottomSheetContent;
         mViewFlipperPropertyModel = viewFlipperPropertyModel;
         mContainerPropertyModel = containerPropertyModel;
         mProfileSupplier = profileSupplier;
+        mWindowAndroid = windowAndroid;
         mViewFlipperMap = new HashMap<>();
         mTypeToListenersMap = new HashMap<>();
-        mListContent = buildListContent();
+        mListContent = buildListContent(context);
         mNtpCustomizationForMvtFeatureEnabled =
                 ChromeFeatureList.sNewTabPageCustomizationForMvt.isEnabled();
 
@@ -296,7 +301,7 @@ public class NtpCustomizationMediator {
      * Feed" list item only if the feed section exists in the new tab page.
      */
     @VisibleForTesting
-    List<Integer> buildListContent() {
+    List<Integer> buildListContent(Context context) {
         Profile profile = mProfileSupplier.get();
         if (profile == null) {
             return List.of(NTP_CARDS);
@@ -311,16 +316,26 @@ public class NtpCustomizationMediator {
         if (FeedFeatures.isFeedEnabled(mProfile)) {
             content.add(FEED);
         }
+
         if (NtpCustomizationUtils.isNtpThemeCustomizationEnabled()) {
-            content.add(THEME);
+            boolean isTablet = DeviceFormFactor.isNonMultiDisplayContextOnTablet(context);
+            if (isTablet
+                    || NtpCustomizationUtils.canEnableEdgeToEdgeForCustomizedTheme(
+                            mWindowAndroid, isTablet)) {
+                content.add(THEME);
+            }
         }
         return content;
     }
 
     /** Clears maps */
     void destroy() {
+        if (mContainerPropertyModel != null) {
+            mContainerPropertyModel.set(LIST_CONTAINER_VIEW_DELEGATE, null);
+        }
         mViewFlipperMap.clear();
         mTypeToListenersMap.clear();
+        mListContent.clear();
     }
 
     /**

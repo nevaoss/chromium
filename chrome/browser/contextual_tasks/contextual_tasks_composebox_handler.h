@@ -24,7 +24,6 @@
 #include "ui/webui/resources/cr_components/composebox/composebox.mojom.h"
 
 class Profile;
-class ContextualTasksUI;
 class LensSearchController;
 
 namespace tabs {
@@ -34,6 +33,7 @@ class TabInterface;
 namespace contextual_tasks {
 struct ContextualTaskContext;
 class ContextualTasksService;
+class ContextualTasksUIInterface;
 struct UrlAttachment;
 }  // namespace contextual_tasks
 
@@ -50,7 +50,7 @@ class ContextualTasksComposeboxHandler : public ComposeboxHandler,
  public:
   friend class ContextualTasksComposeboxHandlerTest;
   ContextualTasksComposeboxHandler(
-      ContextualTasksUI* ui_controller,
+      contextual_tasks::ContextualTasksUIInterface* web_ui_interface,
       Profile* profile,
       content::WebContents* web_contents,
       mojo::PendingReceiver<composebox::mojom::PageHandler> pending_handler,
@@ -79,7 +79,12 @@ class ContextualTasksComposeboxHandler : public ComposeboxHandler,
 
   void OnTaskChanged();
 
+  void AddFileContextFromBrowser(
+      searchbox::mojom::SelectedFileInfoPtr file_info,
+      AddFileContextCallback callback);
+
   // ContextualSearchboxHandler:
+
   void OnFileUploadStatusChanged(
       const base::UnguessableToken& file_token,
       lens::MimeType mime_type,
@@ -103,10 +108,28 @@ class ContextualTasksComposeboxHandler : public ComposeboxHandler,
   void FileSelectionCanceled() override;
   void OnFileRead(std::unique_ptr<FileData> file_data);
 
+  // Helper to check if any context tokens are currently uploading.
+  bool IsAnyContextUploading();
+
+  // Helper to check if there is a stashed query not submitted to AIM yet.
+  bool HasPendingQueryForTesting() const;
+
+  uint16_t GetNumTabsDelayed() const;
+  uint16_t GetNumContextUploading() const;
+
  protected:
   virtual contextual_tasks::ContextualTasksService* GetContextualTasksService();
+  virtual std::optional<base::UnguessableToken> GetLensOverlayToken();
 
  private:
+  // Called when a non-delayed context upload (file or tab) has finished.
+  // Potentially submits query if no other context is uploading.
+  void MarkContextUploadFinished(const base::UnguessableToken& token);
+
+  // Called when a delayed context upload (tab) has finished.
+  // Potentially submits query if no other context is uploading.
+  void MarkDelayedTabUploadFinished(const int32_t tab_id);
+
   // Called when the context is retrieved from the context service, for
   // determining which tabs need to be re-uploaded before query submission via
   // CreateAndSendQueryMessage.
@@ -123,10 +146,14 @@ class ContextualTasksComposeboxHandler : public ComposeboxHandler,
                                    bool upload_started);
 
   // Called when all tabs have been re-uploaded, to continue query
-  // submission.
+  // submission. `overlay_token` is the token of the initial objects request for
+  // the Lens overlay / CSB, used in the ClientToAimRequest. It needs to be
+  // passed at this point as by the time this function is called the Lens
+  // overlay might have been closed.
   void ContinueCreateAndSendQueryMessage(
       std::string query,
-      std::optional<base::Uuid> original_task_id);
+      std::optional<base::Uuid> original_task_id,
+      std::optional<base::UnguessableToken> overlay_token);
 
   // Returns the tabs that need to be re-uploaded before query submission based
   // on the tabs present in the context.
@@ -168,7 +195,14 @@ class ContextualTasksComposeboxHandler : public ComposeboxHandler,
   // Returns the context ID for the active tab, if any.
   std::optional<int64_t> GetActiveTabContextId();
 
-  raw_ptr<ContextualTasksUI> web_ui_controller_;
+  raw_ptr<contextual_tasks::ContextualTasksUIInterface> web_ui_interface_;
+  // Cleanup once a single tab finishes uploading.
+  void OnSingleTabProcessed(base::RepeatingClosure barrier_closure,
+                            int32_t tab_id);
+
+  // Helper to send the pending query if all uploads are complete.
+  void MaybeSendPendingQuery();
+
   // The context controller for the current profile. The profile will outlive
   // this class.
   raw_ptr<contextual_tasks::ContextualTasksService> contextual_tasks_service_;
@@ -177,6 +211,21 @@ class ContextualTasksComposeboxHandler : public ComposeboxHandler,
   // These tabs will be contextualized and added to the context after user
   // submits the query in the composebox.
   std::map<base::UnguessableToken, int32_t> delayed_tabs_;
+
+  // The message to be sent to the webview once uploads are complete.
+  std::optional<lens::ClientToAimMessage> pending_message_;
+
+  // Set of tabs still delayed. Is set of tab id's, while `delayed_tabs_`
+  // is map of token to tab id. We do not always have access to file token
+  // (for example, active tab), so we need this separate set to track
+  // which tabs are still delayed based on tab ids. `delayed_tabs_`
+  // is also cleared when tabs are moved into `tabs_to_update`
+  // (queue to be uploaded), but the tabs in this set remain for longer,
+  // until the callback after uploading is called.
+  std::set<int32_t> pending_delayed_tab_ids_;
+
+  // Includes normal tabs and files still uploading, but not delayed tabs.
+  std::set<base::UnguessableToken> pending_context_uploads_;
 
   std::optional<base::UnguessableToken> visual_selection_token_;
   base::WeakPtrFactory<ContextualTasksComposeboxHandler> weak_factory_{this};

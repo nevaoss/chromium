@@ -6,7 +6,6 @@ package org.chromium.chrome.browser.ntp_customization.theme.theme_collections;
 
 import static org.chromium.chrome.browser.ntp_customization.NtpCustomizationCoordinator.BottomSheetType.SINGLE_THEME_COLLECTION;
 import static org.chromium.chrome.browser.ntp_customization.NtpCustomizationCoordinator.BottomSheetType.THEME_COLLECTIONS;
-import static org.chromium.chrome.browser.ntp_customization.NtpCustomizationUtils.launchUriActivity;
 import static org.chromium.chrome.browser.ntp_customization.theme.theme_collections.NtpThemeCollectionsAdapter.ThemeCollectionsItemType.SINGLE_THEME_COLLECTION_ITEM;
 
 import android.content.ComponentCallbacks;
@@ -14,7 +13,6 @@ import android.content.Context;
 import android.content.res.Configuration;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.recyclerview.widget.GridLayoutManager;
@@ -37,16 +35,12 @@ import java.util.List;
  */
 @NullMarked
 public class NtpSingleThemeCollectionCoordinator {
-    // TODO(crbug.com/423579377): Update the url for learn more button.
-    private static final String LEARN_MORE_CLICK_URL =
-            "https://support.google.com/chrome/?p=new_tab";
     private static final int RECYCLE_VIEW_SPAN_COUNT = 3;
 
     private final List<CollectionImage> mThemeCollectionImageList = new ArrayList<>();
     private final Context mContext;
     private final View mNtpSingleThemeCollectionBottomSheetView;
     private final View mBackButton;
-    private final ImageView mLearnMoreButton;
     private final TextView mTitle;
     private final MaterialSwitchWithText mDailyRefreshSwitchButton;
     private final RecyclerView mSingleThemeCollectionBottomSheetRecyclerView;
@@ -110,7 +104,7 @@ public class NtpSingleThemeCollectionCoordinator {
                 context.getResources()
                                 .getDimensionPixelSize(
                                         R.dimen
-                                                .ntp_customization_theme_collection_list_item_padding_horizontal)
+                                                .ntp_customization_theme_collection_list_item_margin_horizontal)
                         * 2;
 
         mNtpSingleThemeCollectionBottomSheetView =
@@ -128,11 +122,6 @@ public class NtpSingleThemeCollectionCoordinator {
         mBackButton = mNtpSingleThemeCollectionBottomSheetView.findViewById(R.id.back_button);
         mBackButton.setOnClickListener(
                 v -> mBottomSheetDelegate.showBottomSheet(THEME_COLLECTIONS));
-
-        // Manage the learn more button in the theme collections bottom sheet.
-        mLearnMoreButton =
-                mNtpSingleThemeCollectionBottomSheetView.findViewById(R.id.learn_more_button);
-        mLearnMoreButton.setOnClickListener(this::handleLearnMoreClick);
 
         // Update the title of the bottom sheet.
         mTitle = mNtpSingleThemeCollectionBottomSheetView.findViewById(R.id.bottom_sheet_title);
@@ -185,7 +174,6 @@ public class NtpSingleThemeCollectionCoordinator {
         }
 
         mBackButton.setOnClickListener(null);
-        mLearnMoreButton.setOnClickListener(null);
 
         if (mNtpThemeCollectionsAdapter != null) {
             mNtpThemeCollectionsAdapter.clearOnClickListeners();
@@ -263,16 +251,15 @@ public class NtpSingleThemeCollectionCoordinator {
         }
     }
 
-    private void handleLearnMoreClick(View view) {
-        launchUriActivity(view.getContext(), LEARN_MORE_CLICK_URL);
-    }
-
     /** Handles clicks on the daily refresh switch. */
     private void handleDailyRefreshClick(View view, Boolean isChecked) {
         mIsDailyRefreshEnabled = isChecked;
         mDailyRefreshThemeCollectionHash = mThemeCollectionHash;
         if (isChecked) {
             mNtpThemeCollectionManager.setThemeCollectionDailyRefreshed(mThemeCollectionId);
+            if (mNtpThemeCollectionsAdapter != null) {
+                mNtpThemeCollectionsAdapter.cancelLoadingState();
+            }
         } else {
             // If unchecked, resets to the default background by invoking the callback.
             mOnDailyRefreshCancelledCallback.run();

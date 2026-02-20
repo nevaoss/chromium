@@ -130,7 +130,7 @@ class EventServiceListSizeMatcher
     }
     const base::ListValue* services = e.event_args[0].GetIfList();
     if (!services) {
-      *listener << "event's service list argument is not a Value::List";
+      *listener << "event's service list argument is not a base::ListValue";
       return false;
     }
     *listener << "number of services is " << services->size();
@@ -273,7 +273,7 @@ TEST_F(MDnsAPIDiscoveryTest, ServiceListenersAddedAndRemoved) {
   extensions::EventListenerMap::ListenerList listeners;
 
   extensions::EventListenerInfo listener_info(
-      kEventFilterServiceTypeKey, kExtId, GURL(), browser_context());
+      kEventFilterServiceTypeKey, kExtId, GURL(), nullptr, browser_context());
 
   EXPECT_CALL(*mdns_api_, GetEventListeners())
       .WillRepeatedly(ReturnRef(listeners));

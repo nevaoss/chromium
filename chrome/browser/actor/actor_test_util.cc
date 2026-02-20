@@ -680,4 +680,25 @@ void ExecutionEngineStateWaiter::OnStateChanged(
   }
 }
 
+ScopedExecutionEngineFactory::ScopedExecutionEngineFactory(
+    ExecutionEngine::FactoryFunction factory) {
+  CHECK(ExecutionEngine::GetFactoryFunctionForTesting().is_null());
+  ExecutionEngine::GetFactoryFunctionForTesting() = factory;
+}
+
+ScopedExecutionEngineFactory::~ScopedExecutionEngineFactory() {
+  ExecutionEngine::GetFactoryFunctionForTesting().Reset();
+}
+
+MockPolicyChecker::MockPolicyChecker(EnterprisePolicyBlockReason reason)
+    : reason_(reason) {}
+MockPolicyChecker::~MockPolicyChecker() = default;
+
+bool MockPolicyChecker::CanActOnWeb() const {
+  return true;
+}
+EnterprisePolicyBlockReason MockPolicyChecker::Evaluate(const GURL& url) const {
+  return reason_;
+}
+
 }  // namespace actor

@@ -21,6 +21,7 @@
 #include "components/content_settings/core/common/content_settings_utils.h"
 #include "components/prefs/pref_service.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
+#include "components/supervised_user/core/browser/family_link_url_filter.h"
 #include "components/supervised_user/core/browser/fetcher_config.h"
 #include "components/supervised_user/core/browser/proto/kidsmanagement_messages.pb.h"
 #include "components/supervised_user/core/browser/proto_fetcher.h"
@@ -28,7 +29,6 @@
 #include "components/supervised_user/core/browser/supervised_user_preferences.h"
 #include "components/supervised_user/core/browser/supervised_user_service.h"
 #include "components/supervised_user/core/browser/supervised_user_service_observer.h"
-#include "components/supervised_user/core/browser/supervised_user_url_filter.h"
 #include "components/supervised_user/core/common/pref_names.h"
 #include "components/supervised_user/core/common/supervised_user_constants.h"
 #include "components/supervised_user/test_support/testutil_proto_fetcher.h"
@@ -147,8 +147,7 @@ bool IsUrlConfigured(
     const SupervisedUserUrlFilteringService& url_filtering_service,
     const GURL& url,
     FilteringBehavior expected_filtering_behavior) {
-  SupervisedUserURLFilter::Result result =
-      url_filtering_service.GetFilteringBehavior(url);
+  WebFilteringResult result = url_filtering_service.GetFilteringBehavior(url);
 
   if (!result.IsFromManualList()) {
     // The change that arrived doesn't have the manual mode for requested url
@@ -197,7 +196,7 @@ bool UrlFiltersAreEmpty(const FamilyLinkSettingsState::Services& services) {
   return services.supervised_user_service->GetURLFilter()
              ->GetFilteringStatistics()
              .GetManagedSiteList() ==
-         SupervisedUserURLFilter::ManagedSiteList::kEmpty;
+         FamilyLinkUrlFilter::ManagedSiteList::kEmpty;
 }
 
 bool ToggleHasExpectedValue(const FamilyLinkSettingsState::Services& services,

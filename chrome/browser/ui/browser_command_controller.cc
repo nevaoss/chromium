@@ -25,12 +25,10 @@
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/commerce/browser_utils.h"
 #include "chrome/browser/defaults.h"
-#if !BUILDFLAG(IS_ANDROID)
-#include "chrome/browser/devtools/devtools_policy_dialog.h"
-#endif
 #include "chrome/browser/devtools/devtools_window.h"
 #include "chrome/browser/devtools/features.h"
 #include "chrome/browser/feedback/public/feedback_source.h"
+#include "chrome/browser/feedback/show_feedback_page.h"
 #include "chrome/browser/lifetime/application_lifetime.h"
 #include "chrome/browser/prefs/incognito_mode_prefs.h"
 #include "chrome/browser/profiles/profile.h"
@@ -121,6 +119,10 @@
 #include "ui/base/window_open_disposition.h"
 #include "ui/events/keycodes/keyboard_codes.h"
 
+#if !BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/devtools/devtools_policy_dialog.h"
+#endif
+
 #if BUILDFLAG(IS_MAC)
 #include "chrome/browser/ui/browser_commands_mac.h"
 #endif
@@ -131,6 +133,7 @@
 #endif
 
 #if BUILDFLAG(IS_CHROMEOS)
+#include "chrome/browser/ash/boca/on_task/on_task_locked_controller.h"
 #include "chrome/browser/platform_util.h"
 #include "chrome/browser/ui/ash/multi_user/multi_user_context_menu.h"
 #include "chrome/browser/ui/browser_commands_chromeos.h"
@@ -464,7 +467,8 @@ void BrowserCommandController::FindBarVisibilityChanged() {
   // with OnTask.
   bool should_block_command_update = is_locked_fullscreen_;
 #if BUILDFLAG(IS_CHROMEOS)
-  if (browser_->IsLockedForOnTask()) {
+  if (ash::boca::OnTaskLockedController::From(browser_)
+          ->is_locked_for_on_task()) {
     should_block_command_update = false;
   }
 #endif
@@ -589,7 +593,13 @@ bool BrowserCommandController::ExecuteCommandWithDisposition(
     case IDC_TOGGLE_VERTICAL_TABS:
       ToggleVerticalTabs(browser_);
       break;
-
+    case IDC_VERTICAL_TABS_SEND_FEEDBACK:
+      chrome::ShowFeedbackPage(browser_, feedback::kFeedbackSourceVerticalTabs,
+                               /*description_template=*/"",
+                               /*description_placeholder_text=*/"",
+                               /*category_tag=*/"vertical_tabs",
+                               /*extra_diagnostics=*/"");
+      break;
     // Window management commands
     case IDC_NEW_WINDOW:
       NewWindow(browser_);
@@ -1192,6 +1202,9 @@ bool BrowserCommandController::ExecuteCommandWithDisposition(
     case IDC_ADD_NEW_TAB_RECENT_GROUP:
       AddNewTabToRecentGroup(browser_);
       break;
+    case IDC_UNFOCUS_TAB_GROUP:
+      UnfocusTabGroup(browser_);
+      break;
     case IDC_WINDOW_CLOSE_TABS_TO_RIGHT:
       CloseTabsToRight(browser_);
       break;
@@ -1389,7 +1402,8 @@ bool BrowserCommandController::UpdateCommandEnabled(int id, bool state) {
   // with OnTask.
   bool should_block_command_update = is_locked_fullscreen_;
 #if BUILDFLAG(IS_CHROMEOS)
-  if (browser_->IsLockedForOnTask()) {
+  if (ash::boca::OnTaskLockedController::From(browser_)
+          ->is_locked_for_on_task()) {
     should_block_command_update = false;
   }
 #endif
@@ -1473,6 +1487,7 @@ void BrowserCommandController::InitCommandState() {
   command_updater_.UpdateCommandEnabled(IDC_CREATE_NEW_TAB_GROUP_TOP_LEVEL,
                                         true);
   command_updater_.UpdateCommandEnabled(IDC_ADD_NEW_TAB_RECENT_GROUP, true);
+  command_updater_.UpdateCommandEnabled(IDC_UNFOCUS_TAB_GROUP, true);
 
   // Omnibox commands
   command_updater_.UpdateCommandEnabled(IDC_SHOW_FULL_URLS, true);
@@ -1494,6 +1509,7 @@ void BrowserCommandController::InitCommandState() {
   command_updater_.UpdateCommandEnabled(IDC_ORGANIZE_TABS, true);
   command_updater_.UpdateCommandEnabled(IDC_DECLUTTER_TABS, true);
   command_updater_.UpdateCommandEnabled(IDC_TOGGLE_VERTICAL_TABS, true);
+  command_updater_.UpdateCommandEnabled(IDC_VERTICAL_TABS_SEND_FEEDBACK, true);
 #if BUILDFLAG(IS_CHROMEOS)
   command_updater_.UpdateCommandEnabled(IDC_TOGGLE_MULTITASK_MENU, true);
   command_updater_.UpdateCommandEnabled(IDC_MINIMIZE_WINDOW, true);
@@ -1845,7 +1861,8 @@ void BrowserCommandController::UpdateCommandsForTabState() {
   // OnTask.
   bool skip_all_command_updates = is_locked_fullscreen_;
 #if BUILDFLAG(IS_CHROMEOS)
-  if (browser_->IsLockedForOnTask()) {
+  if (ash::boca::OnTaskLockedController::From(browser_)
+          ->is_locked_for_on_task()) {
     skip_all_command_updates = false;
   }
 #endif  // BUILDFLAG(IS_CHROMEOS)
@@ -2184,7 +2201,8 @@ void BrowserCommandController::UpdateCommandsForLockedFullscreenMode() {
     // Enable commands that allow users to switch between tabs and find content
     // within a webpage if the webapp is locked for OnTask
     // (only relevant for non-web browser scenarios).
-    if (browser_->IsLockedForOnTask()) {
+    if (ash::boca::OnTaskLockedController::From(browser_)
+            ->is_locked_for_on_task()) {
       bool supports_tabs = browser_->SupportsWindowFeature(
           Browser::WindowFeature::kFeatureTabStrip);
       command_updater_.UpdateCommandEnabled(IDC_SELECT_NEXT_TAB, supports_tabs);
@@ -2242,7 +2260,8 @@ void BrowserCommandController::UpdateReloadStopState(bool is_loading,
   // with OnTask.
   bool should_skip_command_updates = is_locked_fullscreen_;
 #if BUILDFLAG(IS_CHROMEOS)
-  if (browser_->IsLockedForOnTask()) {
+  if (ash::boca::OnTaskLockedController::From(browser_)
+          ->is_locked_for_on_task()) {
     should_skip_command_updates = false;
   }
 #endif

@@ -208,6 +208,8 @@ std::string GetOpcodeAction(EvalResult action) {
       return "fakeSuccess";
     case FAKE_ACCESS_DENIED:
       return "fakeDenied";
+    case RETURN_CONST:
+      return "returnConst";
   }
   NOTREACHED();
 }
@@ -275,7 +277,15 @@ std::string GetPolicyOpcode(const PolicyOpcode* opcode, bool continuation) {
     } break;
     case OP_ACTION:
       opcode->GetArgument(0, &args[0]);
-      condition += GetOpcodeAction(static_cast<EvalResult>(args[0]));
+      EvalResult result;
+      result = static_cast<EvalResult>(args[0]);
+      condition += GetOpcodeAction(result);
+      if (result == RETURN_CONST) {
+        uintptr_t constant;
+        opcode->GetArgument(1, &constant);
+        condition +=
+            base::StringPrintf(" %p", reinterpret_cast<void*>(constant));
+      }
       break;
     default:
       DCHECK(false) << "Unknown Opcode";

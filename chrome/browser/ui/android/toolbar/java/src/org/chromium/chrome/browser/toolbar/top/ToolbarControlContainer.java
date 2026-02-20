@@ -34,7 +34,6 @@ import org.chromium.base.ObserverList;
 import org.chromium.base.TraceEvent;
 import org.chromium.base.library_loader.LibraryLoader;
 import org.chromium.base.metrics.RecordHistogram;
-import org.chromium.base.supplier.MonotonicObservableSupplier;
 import org.chromium.base.supplier.NonNullObservableSupplier;
 import org.chromium.base.supplier.NullableObservableSupplier;
 import org.chromium.base.supplier.OneshotSupplier;
@@ -109,7 +108,7 @@ public class ToolbarControlContainer extends OptimizedFrameLayout
     private final ObserverList<TouchEventObserver> mTouchEventObservers = new ObserverList<>();
     private final Callback<Boolean> mOnXrSpaceModeChanged = this::onXrSpaceModeChanged;
     private final Callback<Resource> mOnResourceCaptureCallback = this::onToolbarCaptureUpdated;
-    private @Nullable MonotonicObservableSupplier<Boolean> mXrSpaceModeObservableSupplier;
+    private @Nullable NonNullObservableSupplier<Boolean> mXrSpaceModeObservableSupplier;
     private @Nullable SettableNonNullObservableSupplier<Integer> mHeightChangedSupplier;
     private ToolbarDataProvider mToolbarDataProvider;
 
@@ -841,17 +840,15 @@ public class ToolbarControlContainer extends OptimizedFrameLayout
         }
 
         public void onPageLoadStopped() {
-            if (ChromeFeatureList.sBrowserControlsInViz.isEnabled()) {
-                // With capture suppression, we don't capture after navigating. Instead, we schedule
-                // a capture to happen when the controls become unlocked. With BCIV, there is no
-                // surface sync, so it's more likely to scroll before the capture is complete. To
-                // fix this, we capture after page load finishes. This is late enough in navigation
-                // to not delay other important tasks on the main thread, and early enough so we
-                // have a capture available before the controls are unlocked.
-                mNeedCaptureAfterPageLoad = true;
-                onResourceRequested();
-                mNeedCaptureAfterPageLoad = false;
-            }
+            // With capture suppression, we don't capture after navigating. Instead, we schedule
+            // a capture to happen when the controls become unlocked. With BCIV, there is no
+            // surface sync, so it's more likely to scroll before the capture is complete. To
+            // fix this, we capture after page load finishes. This is late enough in navigation
+            // to not delay other important tasks on the main thread, and early enough so we
+            // have a capture available before the controls are unlocked.
+            mNeedCaptureAfterPageLoad = true;
+            onResourceRequested();
+            mNeedCaptureAfterPageLoad = false;
         }
 
         private boolean shouldSampleStaleCaptureHistogram() {
@@ -1040,8 +1037,8 @@ public class ToolbarControlContainer extends OptimizedFrameLayout
     }
 
     public void setXrSpaceModeObservableSupplierMaybe(
-            @Nullable MonotonicObservableSupplier<Boolean> xrSpaceModeObservableSupplier) {
-        if (mXrSpaceModeObservableSupplier == null && xrSpaceModeObservableSupplier != null) {
+            NonNullObservableSupplier<Boolean> xrSpaceModeObservableSupplier) {
+        if (mXrSpaceModeObservableSupplier == null) {
             mXrSpaceModeObservableSupplier = xrSpaceModeObservableSupplier;
             mXrSpaceModeObservableSupplier.addSyncObserver(mOnXrSpaceModeChanged);
         }

@@ -18,7 +18,7 @@
 #include "components/signin/public/identity_manager/identity_manager.h"
 #include "components/signin/public/identity_manager/primary_account_access_token_fetcher.h"
 #include "components/version_info/version_info.h"
-#include "components/wallet/core/browser/data_models/walletable_pass.h"
+#include "components/wallet/core/browser/data_models/wallet_pass.h"
 #include "components/wallet/core/common/wallet_features.h"
 #include "google_apis/gaia/google_service_auth_error.h"
 #include "net/http/http_request_headers.h"
@@ -86,7 +86,33 @@ std::string BuildTransitTicketRequest(const TransitTicket& ticket) {
   return std::string();
 }
 
-std::string BuildSavePassRequest(const WalletablePass& pass) {
+std::string BuildPassportRequest(const Passport& passport) {
+  // TODO(crbug.com/478783796): Implement Passport request building.
+  return std::string();
+}
+
+std::string BuildDriverLicenseRequest(const DriverLicense& license) {
+  // TODO(crbug.com/478783796): Implement DriverLicense request building.
+  return std::string();
+}
+
+std::string BuildNationalIdentityCardRequest(const NationalIdentityCard& card) {
+  // TODO(crbug.com/478783796): Implement NationalIdentityCard request building.
+  return std::string();
+}
+
+std::string BuildKTNRequest(const KTN& ktn) {
+  // TODO(crbug.com/478783796): Implement KTN request building.
+  return std::string();
+}
+
+std::string BuildRedressNumberRequest(const RedressNumber& number) {
+  // TODO(crbug.com/478783796): Implement RedressNumber request building.
+  return std::string();
+}
+
+std::string BuildSavePassRequest(const WalletPass& pass) {
+  // TODO(crbug.com/468916773): Remove non private passes for now.
   return std::visit(
       absl::Overload{
           [](const LoyaltyCard& card) { return BuildLoyaltyCardRequest(card); },
@@ -96,6 +122,19 @@ std::string BuildSavePassRequest(const WalletablePass& pass) {
           },
           [](const TransitTicket& ticket) {
             return BuildTransitTicketRequest(ticket);
+          },
+          [](const Passport& passport) {
+            return BuildPassportRequest(passport);
+          },
+          [](const DriverLicense& license) {
+            return BuildDriverLicenseRequest(license);
+          },
+          [](const NationalIdentityCard& card) {
+            return BuildNationalIdentityCardRequest(card);
+          },
+          [](const KTN& ktn) { return BuildKTNRequest(ktn); },
+          [](const RedressNumber& number) {
+            return BuildRedressNumberRequest(number);
           }},
       pass.pass_data);
 }
@@ -109,7 +148,7 @@ WalletHttpClientImpl::WalletHttpClientImpl(
 
 WalletHttpClientImpl::~WalletHttpClientImpl() = default;
 
-void WalletHttpClientImpl::SavePass(const WalletablePass& pass,
+void WalletHttpClientImpl::SavePass(const WalletPass& pass,
                                     SavePassCallback callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   SendRequest(

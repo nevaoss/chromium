@@ -79,6 +79,11 @@ base::TimeDelta GetAvatarSyncPromoFeatureMinimumCookeAgeParam() {
 #endif
 }
 
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+BASE_FEATURE(kBeforeFirstRunDesktopRefreshSurvey,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+
 #if BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
 // Allows to disable the bound session credentials code in case of emergency.
 BASE_FEATURE(kBoundSessionCredentialsKillSwitch,
@@ -470,6 +475,8 @@ BASE_FEATURE(kShowProfilePickerToAllUsersExperiment,
 
 #if BUILDFLAG(IS_ANDROID)
 BASE_FEATURE(kSigninLevelUpButton, base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kSigninManagerSeedingFix, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_ANDROID)
 
 BASE_FEATURE(kSigninPromoLimitsExperiment, base::FEATURE_DISABLED_BY_DEFAULT);

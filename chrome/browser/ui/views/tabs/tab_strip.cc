@@ -124,6 +124,10 @@
 #include "ui/aura/window.h"
 #endif
 
+#if BUILDFLAG(IS_CHROMEOS)
+#include "chrome/browser/ash/boca/on_task/on_task_locked_controller.h"
+#endif
+
 namespace {
 
 ui::mojom::DragEventSource EventSourceFromEvent(const ui::LocatedEvent& event) {
@@ -431,8 +435,11 @@ class TabStrip::TabDragContextImpl : public TabDragContext,
              GetIndexOf(view) == 0);
   }
 
-  TabSlotView* GetTabGroupHeader(
-      const tab_groups::TabGroupId& group) const override {
+  TabSlotView* GetTabGroupHeader(const tab_groups::TabGroupId& group) override {
+    return std::as_const(*this).GetTabGroupHeader(group);
+  }
+
+  TabSlotView* GetTabGroupHeader(const tab_groups::TabGroupId& group) const {
     return tab_strip_->group_header(group);
   }
 
@@ -1402,7 +1409,8 @@ void TabStrip::OnGroupClosed(const tab_groups::TabGroupId& group) {
 }
 
 void TabStrip::OnTabGroupFocusChanged(
-    std::optional<tab_groups::TabGroupId> new_focused_group) {
+    std::optional<tab_groups::TabGroupId> new_focused_group,
+    std::optional<tab_groups::TabGroupId> old_focused_group) {
   // The TabStripLayoutHelper will query the controller for the focused group
   // and update the visibility of tabs and group headers. Calling
   // AnimateToIdealBounds() will trigger the animation to the new bounds.
@@ -1893,7 +1901,8 @@ void TabStrip::MaybeStartDrag(TabSlotView* source,
   // Block drag operation if the web app is locked for OnTask. This prevents the
   // window from moving along with the tab when in locked fullsceeen mode. Only
   // relevant for non-web browser scenarios.
-  if (IsLockedForOnTask()) {
+  if (ash::boca::OnTaskLockedController::From(GetBrowserWindowInterface())
+          ->is_locked_for_on_task()) {
     return;
   }
 #endif
@@ -2104,12 +2113,6 @@ Browser* TabStrip::GetBrowser() {
 BrowserWindowInterface* TabStrip::GetBrowserWindowInterface() {
   return controller_->GetBrowserWindowInterface();
 }
-
-#if BUILDFLAG(IS_CHROMEOS)
-bool TabStrip::IsLockedForOnTask() {
-  return controller_->IsLockedForOnTask();
-}
-#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 // TabStrip, views::View overrides:

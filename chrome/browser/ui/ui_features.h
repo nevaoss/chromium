@@ -148,15 +148,6 @@ BASE_DECLARE_FEATURE(kSideBySide);
 
 BASE_DECLARE_FEATURE(kSideBySideLinkMenuNewBadge);
 
-enum class SidePanelRelativeAlignment {
-  // Shows the toolbar and content height side panels on the same side.
-  kShowPanelsOnSameSide,
-  // Shows the toolbar and content height side panels on opposite sides.
-  kShowPanelsOnOppositeSides,
-};
-BASE_DECLARE_FEATURE_PARAM(SidePanelRelativeAlignment,
-                           kSidePanelRelativeAlignment);
-
 BASE_DECLARE_FEATURE(kTabDuplicateMetrics);
 
 BASE_DECLARE_FEATURE(kTabGroupsCollapseFreezing);
@@ -365,8 +356,6 @@ BASE_DECLARE_FEATURE(kLaunchedTabSearchToolbarButton);
 
 BASE_DECLARE_FEATURE_PARAM(bool, kTabSearchToolbarButton);
 
-bool HasTabSearchToolbarButton();
-
 #if !BUILDFLAG(IS_ANDROID)
 // Controls whether to add new tabs to active tab group or to the end of the
 // tab strip.
@@ -375,6 +364,8 @@ BASE_DECLARE_FEATURE(kNewTabAddsToActiveGroup);
 bool IsNewTabAddsToActiveGroupEnabled();
 
 bool IsWebUIReloadButtonEnabled();
+
+bool IsWebUIHomeButtonEnabled();
 
 bool IsWebUISplitTabsButtonEnabled();
 
@@ -401,6 +392,7 @@ bool IsAndroidAnimatedProgressBarInBrowserEnabled();
 BASE_DECLARE_FEATURE(kWhatsNewDesktopRefresh);
 
 BASE_DECLARE_FEATURE(kTabGroupsFocusing);
+BASE_DECLARE_FEATURE_PARAM(bool, kTabGroupsFocusingPinnedTabs);
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 BASE_DECLARE_FEATURE(kUpdaterUI);

@@ -41,11 +41,11 @@ BASE_FEATURE(kAddWarningShownTSToClientSafeBrowsingReport,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kAutoRevokeSuspiciousNotification,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 constexpr base::FeatureParam<int>
     kAutoRevokeSuspiciousNotificationLookBackPeriod{
         &kAutoRevokeSuspiciousNotification, "LookBackPeriod",
-        /*default_value=*/1};
+        /*default_value=*/7};
 constexpr base::FeatureParam<double>
     kAutoRevokeSuspiciousNotificationEngagementScoreCutOff{
         &kAutoRevokeSuspiciousNotification, "MaxEngagementScore",
@@ -53,7 +53,7 @@ constexpr base::FeatureParam<double>
 constexpr base::FeatureParam<int>
     kAutoRevokeSuspiciousNotificationMinNotificationCount{
         &kAutoRevokeSuspiciousNotification, "MinNotificationCount",
-        /*default_value=*/2};
+        /*default_value=*/9};
 
 BASE_FEATURE(kBundledSecuritySettings, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -128,7 +128,7 @@ BASE_FEATURE(kClientSideDetectionSamplePing, base::FEATURE_ENABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_ANDROID)
 BASE_FEATURE(kClientSideDetectionSendIntelligentScanInfoAndroid,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 #endif
 
 BASE_FEATURE(kClientSideDetectionSendLlamaForcedTriggerInfo,
@@ -148,14 +148,11 @@ BASE_FEATURE(kClientSideDetectionShowLlamaScamVerdictWarning,
 
 #if BUILDFLAG(IS_ANDROID)
 BASE_FEATURE(kClientSideDetectionShowScamVerdictWarningAndroid,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 #endif
 
 BASE_FEATURE(kClientSideDetectionSkipErrorPage,
              base::FEATURE_DISABLED_BY_DEFAULT);
-
-BASE_FEATURE(kClientSideDetectionVibrationApi,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kConditionalImageResize, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -211,7 +208,6 @@ BASE_FEATURE(kEnterpriseRealTimeUrlCheckNewUrl,
 BASE_FEATURE(kEsbAsASyncedSetting, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kExtendedReportingRemovePrefDependency,
-             "ExtendedReportingRemovePrefDependency",
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kExtensionTelemetryConfiguration,
@@ -233,7 +229,13 @@ BASE_FEATURE(kExternalAppRedirectTelemetry,
              "SafeBrowsingExternalAppRedirectTelemetry",
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kGeminiAntiscamProtectionForMetricsCollection, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGeminiAntiscamProtectionForMetricsCollection,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+constexpr base::FeatureParam<double>
+    kGeminiAntiscamProtectionMinScamScoreLogPageContent{
+        &kGeminiAntiscamProtectionForMetricsCollection,
+        "GeminiAntiscamProtectionMinScamScoreLogPageContent",
+        /*default_value=*/0.5};
 
 BASE_FEATURE(kGlobalCacheListForGatingNotificationProtections,
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -374,6 +376,9 @@ constexpr base::FeatureParam<bool>
         &kShowWarningsForSuspiciousNotifications,
         "ShowWarningsForSuspiciousNotificationsShouldSwapButtons",
         /*default_value=*/false};
+
+BASE_FEATURE(kSkipImageClassificationScoringForNonPageLoadTriggers,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kSuspiciousSiteTriggerQuotaFeature,
              "SafeBrowsingSuspiciousSiteTriggerQuota",

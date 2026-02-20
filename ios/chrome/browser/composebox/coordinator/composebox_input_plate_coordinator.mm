@@ -22,7 +22,9 @@
 #import "ios/chrome/browser/composebox/coordinator/composebox_mode_holder.h"
 #import "ios/chrome/browser/composebox/coordinator/composebox_omnibox_client.h"
 #import "ios/chrome/browser/composebox/coordinator/composebox_tab_picker_coordinator.h"
+#import "ios/chrome/browser/composebox/debugger/composebox_debugger_logger.h"
 #import "ios/chrome/browser/composebox/model/ios_contextual_search_service_factory.h"
+#import "ios/chrome/browser/composebox/public/composebox_model_option.h"
 #import "ios/chrome/browser/composebox/public/composebox_theme.h"
 #import "ios/chrome/browser/composebox/public/features.h"
 #import "ios/chrome/browser/composebox/ui/composebox_input_plate_view_controller.h"
@@ -150,10 +152,7 @@ const CGFloat kSnackbarBottomMargin = 10;
   auto query_controller_config_params = std::make_unique<
       contextual_search::ContextualSearchContextController::ConfigParams>();
   query_controller_config_params->send_lns_surface = false;
-  query_controller_config_params->enable_multi_context_input_flow = true;
   query_controller_config_params->enable_viewport_images = true;
-  query_controller_config_params
-      ->use_separate_request_ids_for_multi_context_viewport_images = false;
   query_controller_config_params
       ->prioritize_suggestions_for_the_first_attached_document = true;
 
@@ -182,13 +181,15 @@ const CGFloat kSnackbarBottomMargin = 10;
                 aimEligibilityService:IOSChromeAimEligibilityServiceFactory::
                                           GetForProfile(self.profile)
                           prefService:self.profile->GetPrefs()];
-
+  _mediator.debugLogger = self.debugLogger;
   _mediator.URLLoader = _URLLoader;
   _mediator.consumer = _viewController;
   _mediator.delegate = self;
   _mediator.metricsRecorder = _metricsRecorder;
 
   _viewController.mutator = _mediator;
+  // Mediator is the voice search delegate to load queries in composebox.
+  _voiceSearchController.delegate = _mediator;
 
   _locationBar = std::make_unique<WebLocationBarImpl>(self);
   _locationBar->SetURLLoader(self);
@@ -370,6 +371,12 @@ const CGFloat kSnackbarBottomMargin = 10;
   [self showComposeboxTabPicker];
 }
 
+- (void)composeboxViewController:
+            (ComposeboxInputPlateViewController*)viewController
+       didAttemptDragAndDropType:(ComposeboxDragAndDropType)type {
+  [_metricsRecorder recordDragAndDropAttempt:type];
+}
+
 - (void)composeboxViewControllerDidTapAIMButton:
             (ComposeboxInputPlateViewController*)viewController
                                activationSource:
@@ -397,12 +404,22 @@ const CGFloat kSnackbarBottomMargin = 10;
   [_omniboxCoordinator acceptInput];
 }
 
+- (void)composeboxViewControllerDidTapCanvasButton:
+    (ComposeboxInputPlateViewController*)composeboxViewController {
+  if (_modeHolder.mode == ComposeboxMode::kCanvas) {
+    _modeHolder.mode = ComposeboxMode::kRegularSearch;
+  } else {
+    _modeHolder.mode = ComposeboxMode::kCanvas;
+  }
+}
+
 - (void)didFailToAttachDueToIneligibleAttachments:
     (ComposeboxInputPlateViewController*)composeboxViewController {
   CHECK_EQ(_viewController, composeboxViewController);
   switch (_modeHolder.mode) {
     case ComposeboxMode::kRegularSearch:
     case ComposeboxMode::kAIM:
+    case ComposeboxMode::kCanvas:
       [self showMaxAttachmentSnackbarError];
       return;
     case ComposeboxMode::kImageGeneration:
@@ -578,6 +595,7 @@ const CGFloat kSnackbarBottomMargin = 10;
       initWithBaseViewController:_viewController
                          browser:self.browser
                            theme:_theme];
+  _tabPickerCoordinator.debugLogger = self.debugLogger;
   _tabPickerCoordinator.delegate = _mediator;
   _tabPickerCoordinator.composeboxTabPickerHandler = self;
   [_tabPickerCoordinator start];

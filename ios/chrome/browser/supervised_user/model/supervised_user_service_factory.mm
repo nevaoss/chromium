@@ -9,8 +9,8 @@
 #import "components/prefs/pref_service.h"
 #import "components/supervised_user/core/browser/device_parental_controls.h"
 #import "components/supervised_user/core/browser/family_link_settings_service.h"
+#import "components/supervised_user/core/browser/family_link_url_filter.h"
 #import "components/supervised_user/core/browser/kids_chrome_management_url_checker_client.h"
-#import "components/supervised_user/core/browser/supervised_user_url_filter.h"
 #import "components/variations/service/variations_service.h"
 #import "ios/chrome/browser/first_run/model/first_run.h"
 #import "ios/chrome/browser/shared/model/application_context/application_context.h"
@@ -26,7 +26,7 @@ namespace {
 
 // Implementation of the supervised user filter delegate interface.
 class FilterDelegateImpl
-    : public supervised_user::SupervisedUserURLFilter::Delegate {
+    : public supervised_user::FamilyLinkUrlFilter::Delegate {
  public:
   bool SupportsWebstoreURL(const GURL& url) const override { return false; }
 };
@@ -63,14 +63,16 @@ SupervisedUserServiceFactory::BuildServiceInstanceFor(
       IdentityManagerFactory::GetForProfile(profile);
   scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory =
       profile->GetSharedURLLoaderFactory();
-  return std::make_unique<supervised_user::SupervisedUserService>(
-      identity_manager, url_loader_factory, CHECK_DEREF(profile->GetPrefs()),
+  supervised_user::FamilyLinkSettingsService& family_link_settings_service =
       CHECK_DEREF(
           supervised_user::FamilyLinkSettingsServiceFactory::GetForProfile(
-              profile)),
+              profile));
+  return std::make_unique<supervised_user::SupervisedUserService>(
+      identity_manager, url_loader_factory, CHECK_DEREF(profile->GetPrefs()),
+      family_link_settings_service,
       &CHECK_DEREF(SyncServiceFactory::GetForProfile(profile)),
-      std::make_unique<supervised_user::SupervisedUserURLFilter>(
-          CHECK_DEREF(profile->GetPrefs()),
+      std::make_unique<supervised_user::FamilyLinkUrlFilter>(
+          family_link_settings_service, CHECK_DEREF(profile->GetPrefs()),
           std::make_unique<FilterDelegateImpl>(),
           std::make_unique<
               supervised_user::KidsChromeManagementURLCheckerClient>(

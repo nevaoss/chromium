@@ -91,11 +91,12 @@ void TreeScopeAdopter::MoveTreeToNewScope(Node& root) const {
     // element registry then set inclusiveDescendant's custom element registry
     // to document's effective global custom element registry.
     if (RuntimeEnabledFeatures::ScopedCustomElementRegistryEnabled()) {
-      auto* registry = element->customElementRegistry();
-      if (registry && registry->IsGlobalRegistry() &&
-          registry != new_document.EffectiveGlobalCustomElementRegistry()) {
-        element->SetCustomElementRegistry(
-            new_document.EffectiveGlobalCustomElementRegistry());
+      if (will_move_to_new_document) {
+        auto* registry = element->customElementRegistry();
+        if (!registry || registry->IsGlobalRegistry()) {
+          element->SetCustomElementRegistry(
+              new_document.EffectiveGlobalCustomElementRegistry());
+        }
       }
     }
 
@@ -134,7 +135,9 @@ void TreeScopeAdopter::MoveShadowTreeToNewDocument(
   // global custom element registry.
   auto* shadow_root_registry = shadow_root.customElementRegistry();
   if (RuntimeEnabledFeatures::ScopedCustomElementRegistryEnabled() &&
-      shadow_root_registry && shadow_root_registry->IsGlobalRegistry()) {
+      ((!shadow_root_registry &&
+        !shadow_root.ShouldKeepCustomElementRegistryNull()) ||
+       (shadow_root_registry && shadow_root_registry->IsGlobalRegistry()))) {
     shadow_root_registry = new_document.EffectiveGlobalCustomElementRegistry();
     shadow_root.SetCustomElementRegistry(shadow_root_registry);
   }

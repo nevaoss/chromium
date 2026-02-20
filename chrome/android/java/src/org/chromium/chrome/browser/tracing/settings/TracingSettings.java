@@ -66,7 +66,7 @@ public class TracingSettings extends ChromeBaseSettingsFragment
     private static final String MSG_SHARE_TRACE = "Share trace";
 
     private final NonNullObservableSupplier<String> mPageTitle =
-            ObservableSuppliers.of(MSG_TRACING_TITLE);
+            ObservableSuppliers.createNonNull(MSG_TRACING_TITLE);
 
     @VisibleForTesting
     static final String MSG_NOTIFICATIONS_DISABLED =
@@ -318,7 +318,6 @@ public class TracingSettings extends ChromeBaseSettingsFragment
         return AnimationType.PROPERTY;
     }
 
-    // TODO(crbug.com/444470792): Determine what pieces of logic are dynamic and need handling.
     public static final ChromeBaseSearchIndexProvider SEARCH_INDEX_DATA_PROVIDER =
             new ChromeBaseSearchIndexProvider(
                     TracingSettings.class.getName(), R.xml.tracing_preferences);

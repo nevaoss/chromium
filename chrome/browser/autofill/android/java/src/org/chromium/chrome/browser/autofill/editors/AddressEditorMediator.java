@@ -5,40 +5,40 @@
 package org.chromium.chrome.browser.autofill.editors;
 
 import static org.chromium.build.NullUtil.assumeNonNull;
+import static org.chromium.chrome.browser.autofill.editors.EditorComponentsProperties.DropdownFieldProperties.DROPDOWN_ALL_KEYS;
+import static org.chromium.chrome.browser.autofill.editors.EditorComponentsProperties.DropdownFieldProperties.DROPDOWN_CALLBACK;
+import static org.chromium.chrome.browser.autofill.editors.EditorComponentsProperties.DropdownFieldProperties.DROPDOWN_KEY_VALUE_LIST;
+import static org.chromium.chrome.browser.autofill.editors.EditorComponentsProperties.FieldProperties.IS_REQUIRED;
+import static org.chromium.chrome.browser.autofill.editors.EditorComponentsProperties.FieldProperties.LABEL;
+import static org.chromium.chrome.browser.autofill.editors.EditorComponentsProperties.FieldProperties.VALIDATOR;
+import static org.chromium.chrome.browser.autofill.editors.EditorComponentsProperties.FieldProperties.VALUE;
+import static org.chromium.chrome.browser.autofill.editors.EditorComponentsProperties.NonEditableTextProperties.CLICK_RUNNABLE;
+import static org.chromium.chrome.browser.autofill.editors.EditorComponentsProperties.NonEditableTextProperties.CONTENT_DESCRIPTION;
+import static org.chromium.chrome.browser.autofill.editors.EditorComponentsProperties.NonEditableTextProperties.ICON;
+import static org.chromium.chrome.browser.autofill.editors.EditorComponentsProperties.NonEditableTextProperties.NON_EDITABLE_TEXT_ALL_KEYS;
+import static org.chromium.chrome.browser.autofill.editors.EditorComponentsProperties.NonEditableTextProperties.PRIMARY_TEXT;
+import static org.chromium.chrome.browser.autofill.editors.EditorComponentsProperties.NoticeProperties.IMPORTANT_FOR_ACCESSIBILITY;
+import static org.chromium.chrome.browser.autofill.editors.EditorComponentsProperties.NoticeProperties.NOTICE_ALL_KEYS;
+import static org.chromium.chrome.browser.autofill.editors.EditorComponentsProperties.NoticeProperties.NOTICE_TEXT;
+import static org.chromium.chrome.browser.autofill.editors.EditorComponentsProperties.TextFieldProperties.TEXT_ALL_KEYS;
+import static org.chromium.chrome.browser.autofill.editors.EditorComponentsProperties.TextFieldProperties.TEXT_FIELD_TYPE;
+import static org.chromium.chrome.browser.autofill.editors.EditorComponentsProperties.TextFieldProperties.TEXT_FORMATTER;
 import static org.chromium.chrome.browser.autofill.editors.EditorProperties.ALLOW_DELETE;
 import static org.chromium.chrome.browser.autofill.editors.EditorProperties.ALL_KEYS;
 import static org.chromium.chrome.browser.autofill.editors.EditorProperties.CANCEL_RUNNABLE;
 import static org.chromium.chrome.browser.autofill.editors.EditorProperties.CUSTOM_DONE_BUTTON_TEXT;
-import static org.chromium.chrome.browser.autofill.editors.EditorProperties.DELETE_CONFIRMATION_PRIMARY_BUTTON_TEXT;
+import static org.chromium.chrome.browser.autofill.editors.EditorProperties.DELETE_CONFIRMATION_PRIMARY_BUTTON_TEXT_ID;
 import static org.chromium.chrome.browser.autofill.editors.EditorProperties.DELETE_CONFIRMATION_TEXT;
 import static org.chromium.chrome.browser.autofill.editors.EditorProperties.DELETE_CONFIRMATION_TITLE;
 import static org.chromium.chrome.browser.autofill.editors.EditorProperties.DELETE_RUNNABLE;
 import static org.chromium.chrome.browser.autofill.editors.EditorProperties.DONE_RUNNABLE;
-import static org.chromium.chrome.browser.autofill.editors.EditorProperties.DropdownFieldProperties.DROPDOWN_ALL_KEYS;
-import static org.chromium.chrome.browser.autofill.editors.EditorProperties.DropdownFieldProperties.DROPDOWN_CALLBACK;
-import static org.chromium.chrome.browser.autofill.editors.EditorProperties.DropdownFieldProperties.DROPDOWN_KEY_VALUE_LIST;
 import static org.chromium.chrome.browser.autofill.editors.EditorProperties.EDITOR_FIELDS;
 import static org.chromium.chrome.browser.autofill.editors.EditorProperties.EDITOR_TITLE;
-import static org.chromium.chrome.browser.autofill.editors.EditorProperties.FieldProperties.IS_REQUIRED;
-import static org.chromium.chrome.browser.autofill.editors.EditorProperties.FieldProperties.LABEL;
-import static org.chromium.chrome.browser.autofill.editors.EditorProperties.FieldProperties.VALIDATOR;
-import static org.chromium.chrome.browser.autofill.editors.EditorProperties.FieldProperties.VALUE;
 import static org.chromium.chrome.browser.autofill.editors.EditorProperties.ItemType.DROPDOWN;
 import static org.chromium.chrome.browser.autofill.editors.EditorProperties.ItemType.NON_EDITABLE_TEXT;
 import static org.chromium.chrome.browser.autofill.editors.EditorProperties.ItemType.NOTICE;
 import static org.chromium.chrome.browser.autofill.editors.EditorProperties.ItemType.TEXT_INPUT;
-import static org.chromium.chrome.browser.autofill.editors.EditorProperties.NonEditableTextProperties.CLICK_RUNNABLE;
-import static org.chromium.chrome.browser.autofill.editors.EditorProperties.NonEditableTextProperties.CONTENT_DESCRIPTION;
-import static org.chromium.chrome.browser.autofill.editors.EditorProperties.NonEditableTextProperties.ICON;
-import static org.chromium.chrome.browser.autofill.editors.EditorProperties.NonEditableTextProperties.NON_EDITABLE_TEXT_ALL_KEYS;
-import static org.chromium.chrome.browser.autofill.editors.EditorProperties.NonEditableTextProperties.PRIMARY_TEXT;
-import static org.chromium.chrome.browser.autofill.editors.EditorProperties.NoticeProperties.IMPORTANT_FOR_ACCESSIBILITY;
-import static org.chromium.chrome.browser.autofill.editors.EditorProperties.NoticeProperties.NOTICE_ALL_KEYS;
-import static org.chromium.chrome.browser.autofill.editors.EditorProperties.NoticeProperties.NOTICE_TEXT;
 import static org.chromium.chrome.browser.autofill.editors.EditorProperties.SHOW_BUTTONS;
-import static org.chromium.chrome.browser.autofill.editors.EditorProperties.TextFieldProperties.TEXT_ALL_KEYS;
-import static org.chromium.chrome.browser.autofill.editors.EditorProperties.TextFieldProperties.TEXT_FIELD_TYPE;
-import static org.chromium.chrome.browser.autofill.editors.EditorProperties.TextFieldProperties.TEXT_FORMATTER;
 import static org.chromium.chrome.browser.autofill.editors.EditorProperties.VALIDATE_ON_SHOW;
 import static org.chromium.chrome.browser.autofill.editors.EditorProperties.VISIBLE;
 import static org.chromium.chrome.browser.autofill.editors.EditorProperties.scrollToFieldWithErrorMessage;
@@ -48,6 +48,8 @@ import android.content.Context;
 import android.text.TextUtils;
 import android.text.style.ClickableSpan;
 import android.view.View;
+
+import androidx.annotation.StringRes;
 
 import org.chromium.base.Callback;
 import org.chromium.build.annotations.NullMarked;
@@ -60,7 +62,7 @@ import org.chromium.chrome.browser.autofill.PhoneNumberUtil;
 import org.chromium.chrome.browser.autofill.R;
 import org.chromium.chrome.browser.autofill.SaveUpdateAddressProfilePromptMode;
 import org.chromium.chrome.browser.autofill.editors.AddressEditorCoordinator.Delegate;
-import org.chromium.chrome.browser.autofill.editors.EditorProperties.EditorItem;
+import org.chromium.chrome.browser.autofill.editors.EditorComponentsProperties.EditorItem;
 import org.chromium.components.autofill.AutofillAddressEditorUiInfo;
 import org.chromium.components.autofill.AutofillAddressUiComponent;
 import org.chromium.components.autofill.AutofillProfile;
@@ -214,7 +216,7 @@ class AddressEditorMediator {
                         .with(DELETE_CONFIRMATION_TITLE, getDeleteConfirmationTitle())
                         .with(DELETE_CONFIRMATION_TEXT, getDeleteConfirmationText())
                         .with(
-                                DELETE_CONFIRMATION_PRIMARY_BUTTON_TEXT,
+                                DELETE_CONFIRMATION_PRIMARY_BUTTON_TEXT_ID,
                                 getDeleteConfirmationPrimaryButtonText())
                         .with(EDITOR_FIELDS, setEditorFields())
                         .with(DONE_RUNNABLE, this::onCommitChanges)
@@ -393,7 +395,7 @@ class AddressEditorMediator {
             descriptionModelBuilder
                     .with(PRIMARY_TEXT, mProfileToEdit.getInfo(FieldType.NAME_FULL))
                     .with(
-                            EditorProperties.NonEditableTextProperties.SECONDARY_TEXT,
+                            EditorComponentsProperties.NonEditableTextProperties.SECONDARY_TEXT,
                             mProfileToEdit.getInfo(FieldType.EMAIL_ADDRESS));
         } else {
             descriptionModelBuilder.with(
@@ -579,11 +581,11 @@ class AddressEditorMediator {
         return mContext.getString(R.string.autofill_delete_local_address_record_type_notice);
     }
 
-    private String getDeleteConfirmationPrimaryButtonText() {
+    private @StringRes int getDeleteConfirmationPrimaryButtonText() {
         if (isNonEditableProfile()) {
-            return mContext.getString(R.string.autofill_remove_suggestion_button);
+            return R.string.autofill_remove_suggestion_button;
         }
-        return mContext.getString(R.string.autofill_delete_suggestion_button);
+        return R.string.autofill_delete_suggestion_button;
     }
 
     private @Nullable String getRecordTypeNoticeText() {

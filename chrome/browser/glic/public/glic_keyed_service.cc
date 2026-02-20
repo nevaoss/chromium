@@ -19,8 +19,8 @@
 #include "base/time/time.h"
 #include "base/types/expected.h"
 #include "chrome/browser/actor/actor_keyed_service.h"
+#include "chrome/browser/actor/actor_proto_conversion.h"
 #include "chrome/browser/actor/actor_task_metadata.h"
-#include "chrome/browser/actor/browser_action_util.h"
 #include "chrome/browser/actor/tools/tool_request.h"
 #include "chrome/browser/actor/ui/actor_ui_state_manager_interface.h"
 #include "chrome/browser/contextual_cueing/contextual_cueing_service.h"
@@ -53,6 +53,7 @@
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/ui/browser_navigator.h"
 #include "chrome/browser/ui/browser_navigator_params.h"
+#include "chrome/browser/ui/tabs/tab_list_interface.h"
 #include "chrome/common/actor/action_result.h"
 #include "chrome/common/actor/journal_details_builder.h"
 #include "chrome/common/chrome_features.h"
@@ -145,6 +146,26 @@ std::unique_ptr<GlicSharingManager> CreateSharingManager(
       static_cast<GlicInstanceCoordinatorImpl*>(window_controller));
 }
 
+void SetupGuestUrlPresetPrefs(Profile* profile) {
+  auto* command_line = base::CommandLine::ForCurrentProcess();
+  if (command_line->HasSwitch(::switches::kGlicGuestUrlPresetAutopush)) {
+    profile->GetPrefs()->SetString(
+        prefs::kGlicGuestUrlPresetAutopush,
+        command_line->GetSwitchValueASCII(
+            ::switches::kGlicGuestUrlPresetAutopush));
+  }
+  if (command_line->HasSwitch(::switches::kGlicGuestUrlPresetPreprod)) {
+    profile->GetPrefs()->SetString(prefs::kGlicGuestUrlPresetPreprod,
+                                   command_line->GetSwitchValueASCII(
+                                       ::switches::kGlicGuestUrlPresetPreprod));
+  }
+  if (command_line->HasSwitch(::switches::kGlicGuestUrlPresetProd)) {
+    profile->GetPrefs()->SetString(
+        prefs::kGlicGuestUrlPresetProd,
+        command_line->GetSwitchValueASCII(::switches::kGlicGuestUrlPresetProd));
+  }
+}
+
 }  // namespace
 
 GlicKeyedService::GlicKeyedService(
@@ -170,7 +191,7 @@ GlicKeyedService::GlicKeyedService(
                                             &window_controller(),
                                             metrics_.get(),
                                             enabling_.get())),
-#if !BUILDFLAG(IS_ANDROID)
+#if !BUILDFLAG(IS_ANDROID)  // NEEDS_ANDROID_IMPL: CaptureRegion
       region_capture_controller_(
           std::make_unique<GlicRegionCaptureController>()),
 #endif
@@ -231,6 +252,10 @@ GlicKeyedService::GlicKeyedService(
         prefs::kGlicCompletedFre,
         static_cast<int>(prefs::FreStatus::kCompleted));
   }
+
+  // Sets up prefs storing manually configured glic guest URLs. Intended for
+  // manual testing only.
+  SetupGuestUrlPresetPrefs(profile_);
 
   // This is only used by automation for tests.
   glic_profile_manager->MaybeAutoOpenGlicPanel();
@@ -801,7 +826,7 @@ GlicInstance* GlicKeyedService::GetInstanceForTab(tabs::TabInterface* tab) {
 GlicInstance* GlicKeyedService::GetInstanceForActiveTab(
     BrowserWindowInterface* bwi) {
   return window_controller().GetInstanceForTab(
-      bwi ? glic::GetActiveTabInterface(bwi) : nullptr);
+      bwi ? TabListInterface::From(bwi)->GetActiveTab() : nullptr);
 }
 
 void GlicKeyedService::SendAdditionalContext(

@@ -25,8 +25,8 @@ namespace {
                      "process.";
 
 static ThreadType kAllThreadTypes[] = {
-    ThreadType::kRealtimeAudio, ThreadType::kDisplayCritical,
-    ThreadType::kDefault, ThreadType::kBackground};
+    ThreadType::kRealtimeAudio, ThreadType::kPresentation, ThreadType::kDefault,
+    ThreadType::kBackground};
 
 static_assert(static_cast<int>(ThreadType::kBackground) == 0,
               "kBackground isn't lowest");
@@ -156,14 +156,14 @@ TEST_F(ScopedThreadPriorityTest, BoostableTest) {
   TestPriorityResultingFromBoost(ThreadType::kBackground, ThreadType::kUtility);
   TestPriorityResultingFromBoost(ThreadType::kBackground, ThreadType::kDefault);
   TestPriorityResultingFromBoost(ThreadType::kBackground,
-                                 ThreadType::kDisplayCritical);
+                                 ThreadType::kPresentation);
 
   TestPriorityResultingFromBoost(ThreadType::kUtility, ThreadType::kDefault);
   TestPriorityResultingFromBoost(ThreadType::kUtility,
-                                 ThreadType::kDisplayCritical);
+                                 ThreadType::kPresentation);
 
   TestPriorityResultingFromBoost(ThreadType::kDefault,
-                                 ThreadType::kDisplayCritical);
+                                 ThreadType::kPresentation);
 }
 
 TEST_F(ScopedThreadPriorityDeathTest, NoRealTime) {
@@ -263,14 +263,14 @@ TEST_F(ScopedThreadPriorityTest, TaskMonitoringBoost) {
     // A `TaskMonitoringScopedBoostPriority` object with a callback that always
     // returns true.
     TaskMonitoringScopedBoostPriority scoped_boost_priority(
-        ThreadType::kInteractive, BindRepeating([]() { return true; }));
+        ThreadType::kAudioProcessing, BindRepeating([]() { return true; }));
     // Not boosted before `WillProcessTask` is called.
     ASSERT_EQ(ThreadType::kDefault,
               PlatformThread::GetCurrentEffectiveThreadTypeForTest());
 
     // After `WillProcessTask` is called, the thread priority should be boosted.
     scoped_boost_priority.WillProcessTask(PendingTask(), false);
-    ASSERT_EQ(ThreadType::kInteractive,
+    ASSERT_EQ(ThreadType::kAudioProcessing,
               PlatformThread::GetCurrentEffectiveThreadTypeForTest());
   }
 

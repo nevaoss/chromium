@@ -333,6 +333,7 @@
 <translation id="2184272387334793084">Accede para obtener tus contraseñas y más en todos tus dispositivos</translation>
 <translation id="2186206192313702726">Google Lens</translation>
 <translation id="2188993354115194873">Presiona <ph name="BEGIN_BOLD" />Guardar en Descargas<ph name="END_BOLD" /></translation>
+<translation id="2191406283620379491">Se produjo un error grave. Actualiza tu versión de iOS.</translation>
 <translation id="219283042927675668">Pestañas en el grupo</translation>
 <translation id="2194856509914051091">Aspectos para tener en cuenta</translation>
 <translation id="2196428379625389579">Buscar en la Web</translation>
@@ -579,6 +580,7 @@
 <translation id="3143515551205905069">Cancelar sincronización</translation>
 <translation id="3144126448740580210">LISTO</translation>
 <translation id="3148052723910099040">Cuadrícula de pestañas regulares</translation>
+<translation id="3148237711805373460">Ir ahora</translation>
 <translation id="3157387275655328056">Agregar a la Lista de lectura</translation>
 <translation id="315778507796115851">Historial</translation>
 <translation id="31652791196570636">Descartar</translation>
@@ -1020,6 +1022,7 @@
 <translation id="483689884442613745">Guardar…</translation>
 <translation id="4840495572919996524">Ya no se sincronizarán los favoritos, el historial, las contraseñas ni otras opciones de configuración con tu Cuenta de Google.</translation>
 <translation id="484280513275854557">Saliste de tu cuenta; se borraron los datos de navegación</translation>
+<translation id="484462545196658690">Automático</translation>
 <translation id="4850886885716139402">Ver</translation>
 <translation id="4854068532375923088">Permite que “Gemini” use tu cámara</translation>
 <translation id="4860895144060829044">Llamar</translation>
@@ -1521,6 +1524,7 @@ Handoff también debe estar habilitado en la sección General de la configuraci�
 <translation id="6556866813142980365">Rehacer</translation>
 <translation id="6559301491397835130">{count,plural, =1{El favorito se guardó en "{title}". Solo se guarda en este dispositivo.}other{Los favoritos se guardaron en "{title}". Solo se guardan en este dispositivo.}}</translation>
 <translation id="656065428026159829">Ver más</translation>
+<translation id="6565899972286925956">Crea lo que quieras</translation>
 <translation id="6571070086367343653">Editar tarjeta de crédito</translation>
 <translation id="6574092468346088891">Activar las notificaciones de la Verificación de seguridad</translation>
 <translation id="6579867704846662339">Puedes abrir las URLs entrantes de otras apps en el modo Incógnito.</translation>
@@ -1631,6 +1635,7 @@ Handoff también debe estar habilitado en la sección General de la configuraci�
 <translation id="6930799952781667037">Presiona aquí para cambiar a este idioma.</translation>
 <translation id="693761253105515415">Establece una contraseña</translation>
 <translation id="6945221475159498467">Seleccionar</translation>
+<translation id="6946722113367118030">Pensando</translation>
 <translation id="6950522403736391608">Ocultos</translation>
 <translation id="6962809930976936328">Obtén estadísticas con Gemini</translation>
 <translation id="6964300328304469089">Selección actual: <ph name="NAME" />, <ph name="EMAIL" />. Elige una cuenta.</translation>
@@ -1899,6 +1904,7 @@ Handoff también debe estar habilitado en la sección General de la configuraci�
 <translation id="7958575506592576831">Información de seguridad de la página</translation>
 <translation id="7961015016161918242">Nunca</translation>
 <translation id="7971136598759319605">Activo hace 1 día</translation>
+<translation id="7972837668077967426">Canvas</translation>
 <translation id="7975036700432177008">Probar</translation>
 <translation id="797588153137233716">Menú → Historial → Borrar datos de navegación</translation>
 <translation id="7977451675950311423">Te advierte si usas una contraseña que fue hackeada en una violación de la seguridad de los datos.</translation>
@@ -1972,6 +1978,7 @@ Handoff también debe estar habilitado en la sección General de la configuraci�
 <translation id="8205564605687841303">Cancelar</translation>
 <translation id="8206354486702514201">El administrador controla esta configuración.</translation>
 <translation id="8209050860603202033">Abrir imagen</translation>
+<translation id="8209237163365258530">Modelos de Gemini <ph name="VERSION_NUMBER" /></translation>
 <translation id="8211030355252954494">Recibiste contraseñas de <ph name="WEBSITE" /></translation>
 <translation id="8211406090763984747">La conexión es segura</translation>
 <translation id="8214293972734702249">Se fijó <ph name="TAB_TITLE" /></translation>

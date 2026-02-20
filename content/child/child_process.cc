@@ -130,11 +130,11 @@ ChildProcess::ChildProcess(base::ThreadType io_thread_type,
 #if BUILDFLAG(IS_ANDROID)
   // TODO(reveman): Remove this in favor of setting it explicitly for each type
   // of process.
-  thread_options.thread_type = base::ThreadType::kDisplayCritical;
+  thread_options.thread_type = base::ThreadType::kPresentation;
 #endif
 
   if (base::FeatureList::IsEnabled(features::kIOThreadInteractiveThreadType)) {
-    thread_options.thread_type = base::ThreadType::kInteractive;
+    thread_options.thread_type = base::ThreadType::kAudioProcessing;
   }
 
   // If the NetworkServiceTaskScheduler feature is enabled and this is the main
@@ -152,7 +152,7 @@ ChildProcess::ChildProcess(base::ThreadType io_thread_type,
 
   scenario_priority_boost_ =
       std::make_unique<base::TaskMonitoringScopedBoostPriority>(
-          base::ThreadType::kInteractive,
+          base::ThreadType::kAudioProcessing,
           base::BindRepeating(&ChildProcess::ShouldBoostIOThreadPriority,
                               base::Unretained(this)));
   if (base::FeatureList::IsEnabled(
@@ -227,7 +227,7 @@ void ChildProcess::SetIOThreadType(base::ThreadType thread_type) {
   if (SandboxedProcessThreadTypeHandler* sandboxed_process_thread_type_handler =
           SandboxedProcessThreadTypeHandler::Get()) {
     sandboxed_process_thread_type_handler->HandleThreadTypeChange(
-        io_thread_->GetThreadId(), base::ThreadType::kDisplayCritical);
+        io_thread_->GetThreadId(), base::ThreadType::kPresentation);
   }
 }
 #endif

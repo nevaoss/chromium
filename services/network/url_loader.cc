@@ -91,6 +91,7 @@
 #include "services/network/devtools_durable_msg_writer.h"
 #include "services/network/file_opener_for_upload.h"
 #include "services/network/orb/orb_impl.h"
+#include "services/network/pervasive_resources/shared_resource_checker.h"
 #include "services/network/public/cpp/client_hints.h"
 #include "services/network/public/cpp/constants.h"
 #include "services/network/public/cpp/cors/cors.h"
@@ -123,7 +124,6 @@
 #include "services/network/shared_dictionary/shared_dictionary_access_checker.h"
 #include "services/network/shared_dictionary/shared_dictionary_manager.h"
 #include "services/network/shared_dictionary/shared_dictionary_storage.h"
-#include "services/network/shared_resource_checker.h"
 #include "services/network/shared_storage/shared_storage_request_helper.h"
 #include "services/network/slop_bucket.h"
 #include "services/network/ssl_private_key_proxy.h"
@@ -613,9 +613,10 @@ void URLLoader::OpenFilesForUpload(const ResourceRequest& request) {
     return;
   }
   url_request_->LogBlockedBy("Opening Files");
+  // TODO(crbug.com/379869738): Remove GetUnsafeValue.
   file_opener_for_upload_ = std::make_unique<FileOpenerForUpload>(
-      std::move(paths), url_request_->url(), factory_params_->process_id,
-      network_context_client_,
+      std::move(paths), url_request_->url(),
+      factory_params_->process_id.GetUnsafeValue(), network_context_client_,
       base::BindOnce(&URLLoader::SetUpUpload, base::Unretained(this), request));
   file_opener_for_upload_->Start();
 }
@@ -1829,7 +1830,8 @@ net::UploadProgress URLLoader::GetUploadProgress() const {
 }
 
 int32_t URLLoader::GetProcessId() const {
-  return factory_params_->process_id;
+  // TODO(crbug.com/379869738): Remove GetUnsafeValue.
+  return factory_params_->process_id.GetUnsafeValue();
 }
 
 uint32_t URLLoader::GetResourceType() const {

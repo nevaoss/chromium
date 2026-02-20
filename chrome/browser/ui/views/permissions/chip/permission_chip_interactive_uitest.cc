@@ -169,7 +169,7 @@ class PermissionChipInteractiveUITest : public InProcessBrowserTest {
   LocationBarView* GetLocationBarView() {
     BrowserView* browser_view =
         BrowserView::GetBrowserViewForBrowser(browser());
-    return browser_view->toolbar()->location_bar();
+    return browser_view->toolbar()->location_bar_view();
   }
 
   PermissionChipView* GetChip() {
@@ -179,9 +179,9 @@ class PermissionChipInteractiveUITest : public InProcessBrowserTest {
   ChipController* GetChipController() {
     BrowserView* browser_view =
         BrowserView::GetBrowserViewForBrowser(browser());
-    LocationBarView* lbv = browser_view->toolbar()->location_bar();
+    LocationBar* lb = browser_view->toolbar()->location_bar();
 
-    return lbv->GetChipController();
+    return lb->GetChipController();
   }
 
   void ClickOnChip(PermissionChipView* chip) {
@@ -494,7 +494,7 @@ class PageInfoChangedWithin1mUmaTest : public PermissionChipInteractiveUITest {
   void OpenPageInfoBubble(Browser* browser) {
     BrowserView* browser_view = BrowserView::GetBrowserViewForBrowser(browser);
     LocationIconView* location_icon_view =
-        browser_view->toolbar()->location_bar()->location_icon_view();
+        browser_view->toolbar()->location_bar_view()->location_icon_view();
     ASSERT_TRUE(location_icon_view);
     ui::test::TestEvent event;
     location_icon_view->ShowBubble(event);
@@ -1421,7 +1421,19 @@ IN_PROC_BROWSER_TEST_F(QuietChipFailFastInteractiveTest,
   }
 }
 
-IN_PROC_BROWSER_TEST_F(PermissionChipInteractiveUITest,
+class PermissionChipGestureGatedDisabledInteractiveUITest
+    : public PermissionChipInteractiveUITest {
+ public:
+  PermissionChipGestureGatedDisabledInteractiveUITest() {
+    scoped_feature_list_.InitAndDisableFeature(
+        permissions::features::kPermissionsGestureGatedPrompts);
+  }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
+
+IN_PROC_BROWSER_TEST_F(PermissionChipGestureGatedDisabledInteractiveUITest,
                        PermissionChipWithAndWithoutUserGesture) {
   ASSERT_TRUE(embedded_test_server()->Start());
   const GURL url(embedded_test_server()->GetURL("/title1.html"));

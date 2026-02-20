@@ -45,6 +45,7 @@
 #include "chrome/browser/accessibility/soda_installer_impl.h"
 #include "chrome/browser/battery/battery_metrics.h"
 #include "chrome/browser/browser_process_platform_part.h"
+#include "chrome/browser/buildflags.h"
 #include "chrome/browser/chrome_browser_main.h"
 #include "chrome/browser/chrome_content_browser_client.h"
 #include "chrome/browser/component_updater/chrome_component_updater_configurator.h"
@@ -89,6 +90,7 @@
 #include "chrome/browser/status_icons/status_tray.h"
 #include "chrome/browser/ui/dialogs/browser_dialogs.h"
 #include "chrome/browser/update_client/chrome_update_query_params_delegate.h"
+#include "chrome/browser/updater/updater.h"
 #include "chrome/common/buildflags.h"
 #include "chrome/common/channel_info.h"
 #include "chrome/common/chrome_constants.h"
@@ -134,6 +136,7 @@
 #include "components/supervised_user/core/browser/device_parental_controls_noop_impl.h"
 #include "components/translate/core/browser/translate_download_manager.h"
 #include "components/ukm/ukm_service.h"
+#include "components/update_client/net/network_chromium.h"
 #include "components/update_client/update_query_params.h"
 #include "components/variations/service/variations_service.h"
 #include "components/web_resource/web_resource_pref_names.h"
@@ -164,6 +167,7 @@
 #include "base/win/windows_version.h"
 #include "chrome/browser/browser_features.h"
 #include "chrome/browser/os_crypt/app_bound_encryption_provider_win.h"
+#include "chrome/installer/util/install_util.h"
 #include "components/app_launch_prefetch/app_launch_prefetch.h"
 #include "components/os_crypt/async/browser/dpapi_key_provider.h"
 #elif BUILDFLAG(IS_MAC)
@@ -173,6 +177,7 @@
 
 #if BUILDFLAG(IS_CHROMEOS)
 #include "chrome/browser/media_galleries/media_file_system_registry.h"
+#include "components/password_manager/core/common/password_manager_pref_names.h"
 #include "components/soda/soda_installer_impl_chromeos.h"
 #else
 #include "ui/message_center/message_center.h"
@@ -1236,6 +1241,8 @@ void BrowserProcessImpl::RegisterPrefs(PrefRegistrySimple* registry) {
 #if BUILDFLAG(IS_CHROMEOS)
   registry->RegisterStringPref(prefs::kOwnerLocale, std::string());
   registry->RegisterStringPref(prefs::kHardwareKeyboardLayout, std::string());
+  registry->RegisterBooleanPref(
+      password_manager::prefs::kPinAuthenticationAvailableOnChromeOS, false);
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
   registry->RegisterBooleanPref(metrics::prefs::kMetricsReportingEnabled,
@@ -1317,7 +1324,22 @@ void BrowserProcessImpl::StartAutoupdateTimer() {
 activity_reporter::ActivityReporter* BrowserProcessImpl::activity_reporter() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!activity_reporter_) {
-    activity_reporter_ = activity_reporter::CreateActivityReporter();
+    activity_reporter_ = activity_reporter::CreateActivityReporter(
+        base::BindRepeating(
+            [](PrefService* pref_service) { return pref_service; },
+            local_state()),
+        base::MakeRefCounted<update_client::NetworkFetcherChromiumFactory>(
+            system_network_context_manager()->GetSharedURLLoaderFactory(),
+            // Never send cookies for activity reports.
+            base::BindRepeating([](const GURL& url) { return false; })),
+        base::BindRepeating(&chrome::GetChannel),
+        base::BindRepeating(&updater::SetActive),
+#if BUILDFLAG(IS_WIN)
+        InstallUtil::IsPerUserInstall()
+#else
+        false
+#endif
+    );
   }
   return activity_reporter_.get();
 }

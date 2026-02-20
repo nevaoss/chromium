@@ -66,6 +66,7 @@ import org.chromium.chrome.browser.toolbar.top.ToolbarUtils;
 import org.chromium.chrome.browser.ui.appmenu.AppMenuDelegate;
 import org.chromium.chrome.browser.ui.appmenu.AppMenuHandler;
 import org.chromium.chrome.browser.ui.appmenu.AppMenuItemProperties;
+import org.chromium.chrome.browser.ui.default_browser_promo.DefaultBrowserPromoUtils;
 import org.chromium.chrome.browser.ui.extensions.ExtensionUi;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.chrome.browser.ui.native_page.NativePage;
@@ -1110,18 +1111,25 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
     }
 
     private boolean shouldShowDefaultBrowserPromo() {
-        return ChromeFeatureList.sDefaultBrowserPromoEntryPoint.isEnabled()
+        return DefaultBrowserPromoUtils.getInstance().shouldShowAppMenuItemEntryPoint()
                 && ChromeFeatureList.sDefaultBrowserPromoEntryPointShowAppMenu.getValue();
     }
 
     private MVCListAdapter.ListItem buildDefaultBrowserPromoItem() {
         assert shouldShowDefaultBrowserPromo();
-        return new MVCListAdapter.ListItem(
-                AppMenuHandler.AppMenuItemType.STANDARD,
+        PropertyModel model =
                 buildModelForStandardMenuItem(
-                        R.id.default_browser_promo_menu_id,
-                        R.string.make_chrome_default,
-                        shouldShowIconBeforeItem() ? R.drawable.ic_chrome : 0));
+                        R.id.default_browser_promo_menu_id, R.string.make_chrome_default, 0);
+
+        // Make the Chrome logo environment specific (Canary logo for Canary, etc.).
+        model.set(
+                AppMenuItemProperties.ICON,
+                AppCompatResources.getDrawable(mContext, R.mipmap.app_icon));
+
+        // Disable the grey default tint for this particular icon.
+        model.set(AppMenuItemProperties.ICON_NO_TINT, true);
+
+        return new MVCListAdapter.ListItem(AppMenuHandler.AppMenuItemType.STANDARD, model);
     }
 
     private MVCListAdapter.@Nullable ListItem maybeBuildOpenGlicItem(@Nullable Tab currentTab) {

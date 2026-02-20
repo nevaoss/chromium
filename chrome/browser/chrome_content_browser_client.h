@@ -958,7 +958,8 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
   void GrantAdditionalRequestPrivilegesToWorkerProcess(
       int child_id,
       const GURL& script_url) override;
-  PrivateNetworkRequestPolicyOverride ShouldOverridePrivateNetworkRequestPolicy(
+  LocalNetworkAccessRequestPolicyOverride
+  ShouldOverrideLocalNetworkAccessRequestPolicy(
       content::BrowserContext* browser_context,
       const url::Origin& origin) override;
   bool IsJitDisabledForSite(content::BrowserContext* browser_context,
@@ -1178,7 +1179,7 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
       content::BrowserContext* browser_context,
       const GURL& url) override;
 
-  std::unique_ptr<content::KeepAliveRequestTracker>
+  std::vector<std::unique_ptr<content::KeepAliveRequestTracker>>
   MaybeCreateKeepAliveRequestTracker(
       const network::ResourceRequest& request,
       std::optional<ukm::SourceId> ukm_source_id,
@@ -1202,6 +1203,11 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
       content::BrowserContext* browser_context) override;
 
   std::string GetDnsTxtResolverUrlPrefix() override;
+
+  bool ShouldAllowPrefetchRedirection(
+      content::BrowserContext& browser_context,
+      const GURL& url,
+      const std::string& embedder_histogram_suffix) override;
 
  protected:
   static bool HandleWebUI(GURL* url, content::BrowserContext* browser_context);

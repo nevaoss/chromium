@@ -130,7 +130,7 @@
 #include "third_party/blink/renderer/core/style_property_shorthand.h"
 #include "third_party/blink/renderer/core/svg/svg_element.h"
 #include "third_party/blink/renderer/core/svg/svg_svg_element.h"
-#include "third_party/blink/renderer/core/view_transition/view_transition_pseudo_element_base.h"
+#include "third_party/blink/renderer/core/view_transition/view_transition_transition_element.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
@@ -2521,8 +2521,8 @@ void StyleResolver::CollectPseudoRulesForElement(
         element.GetPseudoElement(kPseudoIdViewTransition);
     if (view_transition_element) {
       auto* view_transition_group_element =
-          view_transition_element->GetPseudoElement(
-              kPseudoIdViewTransitionGroup, pseudo_argument);
+          To<ViewTransitionTransitionElement>(*view_transition_element)
+              .FindViewTransitionGroupPseudoElement(pseudo_argument);
       if (view_transition_group_element) {
         style_request.pseudo_ident_list =
             To<ViewTransitionPseudoElementBase>(*view_transition_group_element)
@@ -3358,6 +3358,7 @@ void StyleResolver::PropagateStyleToViewport() {
                    TextDirection::kLtr);
   }
 
+  // TODO(crbug.com/429459566): Add propagation of image-animation property.
   // Background
   {
     const ComputedStyle* background_style = document_element_style;

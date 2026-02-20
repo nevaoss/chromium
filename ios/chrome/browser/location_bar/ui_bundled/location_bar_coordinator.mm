@@ -220,7 +220,7 @@ const size_t kMaxURLDisplayChars = 32 * 1024;
       self.browser->GetCommandDispatcher());
   self.viewController.pageActionMenuHandler = HandlerForProtocol(
       self.browser->GetCommandDispatcher(), PageActionMenuCommands);
-  self.viewController.BWGHandler =
+  self.viewController.geminiHandler =
       HandlerForProtocol(self.browser->GetCommandDispatcher(), BWGCommands);
   _tracker = feature_engagement::TrackerFactory::GetForProfile(self.profile);
   self.viewController.tracker = _tracker;
@@ -461,6 +461,7 @@ const size_t kMaxURLDisplayChars = 32 * 1024;
   self.incognitoBadgeMediator = nil;
   self.incognitoBadgeViewController = nil;
 
+  self.viewController.geminiHandler = nil;
   self.viewController = nil;
   [self.mediator disconnect];
   self.mediator.templateURLService = nil;
@@ -745,7 +746,9 @@ const size_t kMaxURLDisplayChars = 32 * 1024;
 #pragma mark - LocationBarSteadyViewConsumer
 
 - (void)updateLocationText:(NSString*)text clipTail:(BOOL)clipTail {
-  [self.omniboxCoordinator updateOmniboxState];
+  if (IsOmniboxCrashFixKillSwitchEnabled()) {
+    [self.omniboxCoordinator updateOmniboxState];
+  }
   [self.viewController updateLocationText:text clipTail:clipTail];
   [self.viewController updateForNTP:NO];
   [self.mediator locationUpdated];

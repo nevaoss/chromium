@@ -22,6 +22,7 @@ class MockAutofillAiImportDataController
               ShowPrompt,
               (EntityInstance,
                std::optional<EntityInstance>,
+               bool,
                AutofillClient::EntityImportPromptResultCallback),
               (override));
   MOCK_METHOD(base::optional_ref<const EntityInstance>,
@@ -40,9 +41,10 @@ class MockAutofillAiImportDataController
   MOCK_METHOD(bool, IsSavePrompt, (), (const override));
   MOCK_METHOD(void, OnGoToWalletLinkClicked, (), (override));
   MOCK_METHOD((int), GetTitleImagesResourceId, (), (const override));
+  MOCK_METHOD(bool, CloseOnAccept, (), (const override));
   MOCK_METHOD(void,
               OnBubbleClosed,
-              (AutofillClient::AutofillAiBubbleClosedReason),
+              (AutofillClient::AutofillAiBubbleResult),
               (override));
   base::WeakPtr<AutofillAiImportDataController> GetWeakPtr() override {
     return weak_ptr_factory_.GetWeakPtr();

@@ -34,6 +34,7 @@
   --ntp-protected-icon-background-color: transparent;
   --ntp-protected-icon-background-color-hovered: rgba(255, 255, 255, .1);
   --ntp-scrim-opacity_: 1;
+  --threads-rail-width: 76px;
   --threads-rail-focus-outline-color: var(--color-new-tab-page-focus-ring);
 }
 
@@ -88,6 +89,11 @@ cr-most-visited {
       var(--color-new-tab-page-add-shortcut-background);
   --add-shortcut-foreground-color:
       var(--color-new-tab-page-add-shortcut-foreground);
+  --cr-menu-shadow: var(--ntp-menu-shadow);
+  --most-visited-focus-shadow: var(--ntp-focus-shadow);
+  --most-visited-text-color:
+      var(--color-new-tab-page-most-visited-foreground);
+  --most-visited-text-shadow: var(--ntp-theme-text-shadow);
 }
 
 :host([show-background-image_]) {
@@ -148,6 +154,18 @@ cr-most-visited {
   z-index: 1;
 }
 
+/*
+ * Below 900px, the threads rail will shift the main content aside.
+ * This happens in conjunction with the realbox width change as well,
+ * when the total width reaches 824px + 76px (realbox + rail).
+ */
+@media (max-width: 900px) {
+  #content[ntp-threads-rail-open] {
+    margin-inline-start: var(--threads-rail-width);
+    width: calc(100% - var(--threads-rail-width));
+  }
+}
+
 :host([show-composebox_]) #content {
   z-index: unset;
 }
@@ -197,13 +215,6 @@ cr-searchbox[shown] {
   visibility: visible;
 }
 
-cr-most-visited {
-  --cr-menu-shadow: var(--ntp-menu-shadow);
-  --most-visited-focus-shadow: var(--ntp-focus-shadow);
-  --most-visited-text-color:
-      var(--color-new-tab-page-most-visited-foreground);
-  --most-visited-text-shadow: var(--ntp-theme-text-shadow);
-}
 
 /* ~ because the dom-if results in a template between the middle-slot-promo
    and ntp-modules. */
@@ -234,7 +245,6 @@ ntp-middle-slot-promo:not([hidden]) ~ #modules {
 
 #backgroundImageAttribution:hover {
   background-color: var(--ntp-protected-icon-background-color-hovered);
-  background: rgba(var(--google-grey-900-rgb), .1);
 }
 
 :host-context([dir='ltr']) #backgroundImageAttribution {

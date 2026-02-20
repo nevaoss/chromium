@@ -736,7 +736,7 @@ VISIT_PROTO_FIELDS(
 }
 
 VISIT_PROTO_FIELDS(const sync_pb::EntitySpecifics& proto) {
-  static_assert(60 == GetNumDataTypes(),
+  static_assert(61 == GetNumDataTypes(),
                 "When adding a new protocol type, you will likely need to add "
                 "it here as well.");
   VISIT(encrypted);
@@ -801,6 +801,7 @@ VISIT_PROTO_FIELDS(const sync_pb::EntitySpecifics& proto) {
   VISIT(ai_thread);
   VISIT(contextual_task);
   VISIT(skill);
+  VISIT(gemini_thread);
 }
 
 VISIT_PROTO_FIELDS(const sync_pb::ExtensionSettingSpecifics& proto) {
@@ -1928,6 +1929,7 @@ VISIT_PROTO_FIELDS(const sync_pb::WebAppSpecifics& proto) {
   VISIT(relative_manifest_id);
   VISIT_ENUM(user_display_mode_cros);
   VISIT_REP(trusted_icons);
+  VISIT(migrated_from_manifest_id);
 }
 
 VISIT_PROTO_FIELDS(const sync_pb::WifiConfigurationSpecifics::
@@ -2194,6 +2196,11 @@ VISIT_PROTO_FIELDS(const sync_pb::SkillSpecifics& proto) {
 
 VISIT_PROTO_FIELDS(const sync_pb::SimpleSkill& proto) {
   VISIT(prompt);
+}
+
+VISIT_PROTO_FIELDS(const sync_pb::GeminiThreadSpecifics& proto) {
+  VISIT(conversation_id);
+  VISIT(title);
 }
 
 VISIT_PROTO_FIELDS(const sync_pb::AiThreadSpecifics& proto) {

@@ -7,15 +7,15 @@
 //! message.
 
 chromium::import! {
-    "//mojo/public/rust:mojo_rust_system_api";
+    "//mojo/public/rust/system";
     "//mojo/public/rust/sequences:sequences";
 }
 
-use mojo_rust_system_api::message_pipe::{MessageEndpoint, RawMojoMessage};
-use mojo_rust_system_api::mojo_types::{HandleSignals, MojoResult, UntypedHandle};
-use mojo_rust_system_api::raw_trap::TriggerCondition;
-use mojo_rust_system_api::trap::{ArmingPolicyForBlockingEvents, Trap, TrapError, TrapEvent};
 use sequences::SequencedTaskRunnerHandle;
+use system::message_pipe::{MessageEndpoint, RawMojoMessage};
+use system::mojo_types::{HandleSignals, MojoResult};
+use system::raw_trap::TriggerCondition;
+use system::trap::{ArmingPolicyForBlockingEvents, Trap, TrapError, TrapEvent};
 
 // TODO(crbug.com/477584253): Replace std::sync with std::nonpoison if there are
 // any non-sequenced versions remaining.
@@ -90,12 +90,12 @@ impl ResponseSender {
 /// 2. A (weak) reference to the endpoint in question, so the handler can send a
 ///    response if it wishes.
 pub trait MessagePipeWatcherHandler:
-    FnMut((Vec<u8>, Vec<UntypedHandle>), ResponseSender) + Send + 'static
+    FnMut(RawMojoMessage, ResponseSender) + Send + 'static
 {
 }
 
 impl<T> MessagePipeWatcherHandler for T where
-    T: FnMut((Vec<u8>, Vec<UntypedHandle>), ResponseSender) + Send + 'static
+    T: FnMut(RawMojoMessage, ResponseSender) + Send + 'static
 {
 }
 

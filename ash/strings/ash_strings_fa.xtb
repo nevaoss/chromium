@@ -342,7 +342,6 @@
 <translation id="2201071101391734388">عکس اخیر <ph name="INDEX" /> از <ph name="TOTAL_COUNT" />.</translation>
 <translation id="2201687081523799384">‏جمع کردن Google Tasks</translation>
 <translation id="2208323208084708176">حالت میز کار یکپارچه</translation>
-<translation id="2210311543574621570">‏وقتی‌که Ctrl و V را فشار دهید و نگه دارید، بریده‌دان را خواهید دید. برای خاموش کردن این میان‌بر می‌توانید «پرچم‌گذاری» ‎#clipboard-history-longpress را در chrome://flags غیرفعال کنید.</translation>
 <translation id="2215920961700443347">به اینترنت متصل نیستید. به اینترنت متصل شوید و دوباره امتحان کنید.</translation>
 <translation id="2222841058024245321">میز کار ۷</translation>
 <translation id="2223384056430485343">در صفحهٔ دونیمه</translation>
@@ -1540,7 +1539,7 @@
 <translation id="6068258534237496331">کنترل‌های تماس تصویری</translation>
 <translation id="6073451960410192870">توقف ضبط</translation>
 <translation id="6074087755403037157">کانال بتا</translation>
-<translation id="6075098173600599596">تغییر دادن بزرگ و کوچک بودن حروف</translation>
+<translation id="6075098173600599596">تغییر دادن بزرگ‌نویسی</translation>
 <translation id="6091929401758362855">فهرست پخش: <ph name="PLAYLIST_TITLE" /></translation>
 <translation id="6093867385179428431">توسط سرپرست غیرفعال شده است</translation>
 <translation id="6095008505822982596">سرعت گفتار</translation>

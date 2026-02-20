@@ -326,10 +326,13 @@ void LayoutBlockFlow::RemoveChild(LayoutObject* old_child) {
       // We removed a LayoutBR from `this`. If this still contains LayoutTexts,
       // we move them to the next anonymous block. Then, remove `this` from the
       // parent.
-      if (auto* next_anonymous = To<LayoutBlockFlow>(NextSibling())) {
-        CHECK(next_anonymous->IsAnonymous());
-        MoveAllChildrenTo(next_anonymous, next_anonymous->FirstChild(),
-                          /* full_remove_insert */ true);
+      if (auto* next_block_flow = To<LayoutBlockFlow>(NextSibling())) {
+        // `next_block_flow` might be a non-anonymous block-flow for InsertHTML
+        // TestRendering.
+        if (next_block_flow->IsAnonymous()) {
+          MoveAllChildrenTo(next_block_flow, next_block_flow->FirstChild(),
+                            /* full_remove_insert */ true);
+        }
       }
     }
     if (!FirstChild()) {
@@ -604,7 +607,6 @@ void LayoutBlockFlow::MakeChildrenNonInline(LayoutObject* insertion_point) {
   // This means that we cannot coalesce inlines before |insertionPoint| with
   // inlines following |insertionPoint|, because the new child is going to be
   // inserted in between the inlines, splitting them.
-  DCHECK(!IsInline() || IsAtomicInlineLevel());
   DCHECK(!insertion_point || insertion_point->Parent() == this);
 
   SetChildrenInline(false);
@@ -835,7 +837,7 @@ PositionWithAffinity LayoutBlockFlow::PositionForPoint(
   DCHECK_GE(GetDocument().Lifecycle().GetState(),
             DocumentLifecycle::kPrePaintClean);
 
-  if (IsAtomicInlineLevel()) {
+  if (IsInline()) {
     PositionWithAffinity position =
         PositionForPointIfOutsideAtomicInlineLevel(point);
     if (!position.IsNull())

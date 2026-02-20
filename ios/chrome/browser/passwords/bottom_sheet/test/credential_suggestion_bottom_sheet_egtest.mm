@@ -8,7 +8,6 @@
 #import "base/strings/sys_string_conversions.h"
 #import "base/test/ios/wait_util.h"
 #import "base/time/time.h"
-#import "components/password_manager/core/browser/features/password_features.h"
 #import "components/password_manager/core/common/password_manager_features.h"
 #import "components/password_manager/ios/features.h"
 #import "components/url_formatter/elide_url.h"
@@ -21,7 +20,7 @@
 #import "ios/chrome/browser/passwords/bottom_sheet/test/credential_suggestion_bottom_sheet_app_interface.h"
 #import "ios/chrome/browser/passwords/model/metrics/ios_password_manager_metrics.h"
 #import "ios/chrome/browser/passwords/model/password_manager_app_interface.h"
-#import "ios/chrome/browser/passwords/ui_bundled/password_constants.h"
+#import "ios/chrome/browser/passwords/password_suggestion/public/password_suggestion_constants.h"
 #import "ios/chrome/browser/settings/ui_bundled/password/password_details/password_details_table_view_constants.h"
 #import "ios/chrome/browser/settings/ui_bundled/password/password_manager_egtest_utils.h"
 #import "ios/chrome/browser/settings/ui_bundled/password/password_settings_app_interface.h"
@@ -239,13 +238,6 @@ void LongPressElementOnceVisible(id<GREYMatcher> matcher) {
 - (AppLaunchConfiguration)appConfigurationForTestCase {
   AppLaunchConfiguration config;
   config.relaunch_policy = NoForceRelaunchAndResetState;
-
-  if ([self isRunningTest:@selector(testUseBackupPassword)] ||
-      [self isRunningTest:@selector
-            (testAvailableContextMenuItemsForBackupPassword)]) {
-    config.features_enabled.push_back(
-        password_manager::features::kIOSFillRecoveryPassword);
-  }
 
   if ([self isRunningTest:@selector
             (testOpenCredentialBottomSheetUsePasswordOnConditionalLogin)]) {

@@ -15,6 +15,7 @@
 #include "chrome/browser/ui/autofill/autofill_ai/entity_attribute_update_details.h"
 #include "chrome/browser/ui/views/accessibility/theme_tracking_non_accessible_image_view.h"
 #include "chrome/browser/ui/views/autofill/autofill_bubble_utils.h"
+#include "chrome/browser/ui/views/autofill/payments/dialog_view_ids.h"
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
 #include "chrome/grit/theme_resources.h"
 #include "components/autofill/core/browser/data_model/autofill_ai/entity_instance.h"
@@ -39,6 +40,7 @@
 #include "ui/views/controls/image_view.h"
 #include "ui/views/controls/label.h"
 #include "ui/views/controls/styled_label.h"
+#include "ui/views/controls/throbber.h"
 #include "ui/views/layout/box_layout.h"
 #include "ui/views/layout/box_layout_view.h"
 #include "ui/views/layout/flex_layout_view.h"
@@ -50,25 +52,25 @@ namespace autofill {
 
 namespace {
 
-AutofillClient::AutofillAiBubbleClosedReason
-GetAutofillAiBubbleClosedReasonFromWidget(const views::Widget* widget) {
+AutofillClient::AutofillAiBubbleResult GetAutofillAiBubbleResultFromWidget(
+    const views::Widget* widget) {
   DCHECK(widget);
   if (!widget->IsClosed()) {
-    return AutofillClient::AutofillAiBubbleClosedReason::kUnknown;
+    return AutofillClient::AutofillAiBubbleResult::kUnknown;
   }
 
   switch (widget->closed_reason()) {
     case views::Widget::ClosedReason::kUnspecified:
-      return AutofillClient::AutofillAiBubbleClosedReason::kNotInteracted;
+      return AutofillClient::AutofillAiBubbleResult::kNotInteracted;
     case views::Widget::ClosedReason::kEscKeyPressed:
     case views::Widget::ClosedReason::kCloseButtonClicked:
-      return AutofillClient::AutofillAiBubbleClosedReason::kClosed;
+      return AutofillClient::AutofillAiBubbleResult::kClosed;
     case views::Widget::ClosedReason::kLostFocus:
-      return AutofillClient::AutofillAiBubbleClosedReason::kLostFocus;
+      return AutofillClient::AutofillAiBubbleResult::kLostFocus;
     case views::Widget::ClosedReason::kAcceptButtonClicked:
-      return AutofillClient::AutofillAiBubbleClosedReason::kAccepted;
+      return AutofillClient::AutofillAiBubbleResult::kAccepted;
     case views::Widget::ClosedReason::kCancelButtonClicked:
-      return AutofillClient::AutofillAiBubbleClosedReason::kCancelled;
+      return AutofillClient::AutofillAiBubbleResult::kCancelled;
   }
 }
 
@@ -124,10 +126,21 @@ AutofillAiImportDataBubbleView::AutofillAiImportDataBubbleView(
           IDS_AUTOFILL_PREDICTION_IMPROVEMENTS_SAVE_DIALOG_NO_THANKS_BUTTON));
   DialogDelegate::SetButtonLabel(ui::mojom::DialogButton::kOk,
                                  controller_->GetDialogPrimaryButtonText());
-  SetAcceptCallback(
-      base::BindOnce(&AutofillAiImportDataBubbleView::OnDialogAccepted,
-                     base::Unretained(this)));
+  SetAcceptCallbackWithClose(
+      base::BindRepeating(&AutofillAiImportDataBubbleView::OnDialogAccepted,
+                          base::Unretained(this)));
   SetShowCloseButton(true);
+
+  loading_progress_row_ = AddChildView(
+      views::Builder<views::BoxLayoutView>()
+          .SetOrientation(views::BoxLayout::Orientation::kHorizontal)
+          .SetMainAxisAlignment(views::BoxLayout::MainAxisAlignment::kEnd)
+          .SetVisible(false)
+          .SetInsideBorderInsets(gfx::Insets::TLBR(40, 0, 0, 40))
+          .AddChildren(views::Builder<views::Throbber>().CopyAddressTo(
+              &loading_throbber_))
+          .Build());
+  loading_throbber_->SetID(DialogViewId::LOADING_THROBBER);
 }
 
 AutofillAiImportDataBubbleView::~AutofillAiImportDataBubbleView() = default;
@@ -206,7 +219,7 @@ void AutofillAiImportDataBubbleView::Hide() {
   CloseBubble();
   if (controller_) {
     controller_->OnBubbleClosed(
-        GetAutofillAiBubbleClosedReasonFromWidget(GetWidget()));
+        GetAutofillAiBubbleResultFromWidget(GetWidget()));
   }
   controller_ = nullptr;
 }
@@ -233,15 +246,28 @@ void AutofillAiImportDataBubbleView::WindowClosing() {
   CloseBubble();
   if (controller_) {
     controller_->OnBubbleClosed(
-        GetAutofillAiBubbleClosedReasonFromWidget(GetWidget()));
+        GetAutofillAiBubbleResultFromWidget(GetWidget()));
   }
   controller_ = nullptr;
 }
 
-void AutofillAiImportDataBubbleView::OnDialogAccepted() const {
-  if (controller_) {
-    controller_->OnSaveButtonClicked();
+bool AutofillAiImportDataBubbleView::OnDialogAccepted() {
+  if (!controller_) {
+    return true;
   }
+  controller_->OnSaveButtonClicked();
+  if (controller_->CloseOnAccept()) {
+    return true;
+  }
+
+  SetButtons(static_cast<int>(ui::mojom::DialogButton::kNone));
+  loading_progress_row_->SetVisible(true);
+  loading_throbber_->Start();
+  loading_throbber_->GetViewAccessibility().AnnounceText(
+      l10n_util::GetStringUTF16(
+          IDS_AUTOFILL_AI_WALLET_UPLOAD_THROBBER_ACCESSIBLE_NAME));
+  DialogModelChanged();
+  return false;
 }
 
 BEGIN_METADATA(AutofillAiImportDataBubbleView)

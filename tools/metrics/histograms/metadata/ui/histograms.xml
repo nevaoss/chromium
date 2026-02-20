@@ -185,7 +185,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="ContextMenu.LensSupportStatus" enum="LensSupportStatus"
-    expires_after="2026-05-24">
+    expires_after="2026-07-26">
   <owner>benwgold@google.com</owner>
   <owner>lens-chrome@google.com</owner>
   <summary>
@@ -198,6 +198,8 @@ chromium-metrics-reviews@google.com.
 <histogram name="ContextMenu.SelectedOptionAndroid{Type}"
     enum="ContextMenuOptionAndroid" expires_after="never">
 <!-- expires-never: part of top-line metric (internal: go/chrome-browser-nsm) -->
+
+<!-- expires-never: part of vital metric ChromeSearch.Actions -->
 
   <owner>twellington@chromium.org</owner>
   <owner>clank-app-team@google.com</owner>
@@ -214,7 +216,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="ContextMenu.SelectedOptionDesktop{ContextMenuTypeDesktop}"
-    enum="ContextMenuOptionDesktop" expires_after="2026-05-24">
+    enum="ContextMenuOptionDesktop" expires_after="2026-07-26">
   <owner>avi@chromium.org</owner>
   <owner>mpearson@chromium.org</owner>
   <summary>
@@ -291,7 +293,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="DefaultBrowser.InfoBar.UserInteraction"
-    enum="DefaultBrowserInfoBarUserInteraction" expires_after="2026-05-24">
+    enum="DefaultBrowserInfoBarUserInteraction" expires_after="2026-07-26">
   <owner>pmonette@chromium.org</owner>
   <owner>robliao@chromium.org</owner>
   <summary>
@@ -660,6 +662,19 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="InitialWebUI.View.Creation" enum="InitialWebUIView"
+    expires_after="2026-07-05">
+  <owner>mych@chromium.org</owner>
+  <owner>chrome-waap-eng@google.com</owner>
+  <summary>
+    Records the counts of key Initial WebUI views when they are created in the
+    constructor. Use this to normalize other metrics.
+
+    This is only recorded for desktop platforms when the InitialWebUIMetrics is
+    enabled.
+  </summary>
+</histogram>
+
 <histogram name="ListMenuUtils.SetupCallbacksRecursively.Duration"
     units="microseconds" expires_after="2026-10-01">
   <owner>jhimawan@google.com</owner>
@@ -709,7 +724,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="RenderTextHarfBuzz.ShapeRunsFallback" enum="ShapeRunFallback"
-    expires_after="2026-05-24">
+    expires_after="2026-07-26">
   <owner>dayeung@chromium.org</owner>
   <owner>etienneb@chromium.org</owner>
   <summary>
@@ -742,7 +757,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="RenderViewContextMenu.Shown" enum="RenderViewContextMenuItem"
-    expires_after="2026-05-24">
+    expires_after="2026-07-26">
   <owner>avi@chromium.org</owner>
   <owner>edwardjung@chromium.org</owner>
   <owner>mpearson@chromium.org</owner>
@@ -752,6 +767,8 @@ chromium-metrics-reviews@google.com.
 <histogram name="RenderViewContextMenu.Used" enum="RenderViewContextMenuItem"
     expires_after="never">
 <!-- expires-never: part of top-line metric (internal: go/chrome-browser-nsm) -->
+
+<!-- expires-never: part of vital metric ChromeSearch.Actions -->
 
   <owner>avi@chromium.org</owner>
   <owner>mpearson@chromium.org</owner>
@@ -1062,7 +1079,7 @@ features through Chrome Labs. -->
 </histogram>
 
 <histogram name="WebUITabStrip.LoadCompletedTime" units="ms"
-    expires_after="2026-05-17">
+    expires_after="2026-07-26">
   <owner>robliao@chromium.org</owner>
   <owner>tluk@chromium.org</owner>
   <summary>
@@ -1099,7 +1116,7 @@ features through Chrome Labs. -->
 </histogram>
 
 <histogram name="WebUITabStrip.OpenDuration" units="ms"
-    expires_after="2026-05-17">
+    expires_after="2026-07-26">
   <owner>robliao@chromium.org</owner>
   <owner>tluk@chromium.org</owner>
   <summary>

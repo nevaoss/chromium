@@ -12,6 +12,7 @@
 #import "base/memory/raw_ptr.h"
 #import "base/time/time.h"
 #import "base/types/expected.h"
+#import "components/prefs/pref_change_registrar.h"
 #import "ios/chrome/browser/fullscreen/ui_bundled/fullscreen_controller.h"
 #import "ios/chrome/browser/fullscreen/ui_bundled/fullscreen_controller_observer.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_tab_helper_observer.h"
@@ -29,7 +30,7 @@ class PageContext;
 }  // namespace optimization_guide::proto
 
 @class BWGLinkOpeningHandler;
-@class BWGPageStateChangeHandler;
+@class GeminiPageStateChangeHandler;
 @class BWGSessionHandler;
 @class GeminiCameraHandler;
 @class GeminiPageContext;
@@ -125,6 +126,7 @@ class BwgBrowserAgent : public BrowserUserData<BwgBrowserAgent>,
  private:
   explicit BwgBrowserAgent(Browser* browser);
   friend class BrowserUserData<BwgBrowserAgent>;
+  friend class BwgBrowserAgentTest;
 
   // Starts the Gemini session (prepares context and shows overlay).
   void PresentFloaty(UIViewController* base_view_controller,
@@ -184,6 +186,10 @@ class BwgBrowserAgent : public BrowserUserData<BwgBrowserAgent>,
                             FullscreenAnimatorStyle style) override;
   void FullscreenControllerWillShutDown(
       FullscreenController* controller) override;
+  void FullscreenViewportInsetRangeChanged(
+      FullscreenController* controller,
+      UIEdgeInsets min_viewport_insets,
+      UIEdgeInsets max_viewport_insets) override;
 
   // Returns true if the user has completed the FRE.
   bool HasCompletedFirstRun();
@@ -199,7 +205,8 @@ class BwgBrowserAgent : public BrowserUserData<BwgBrowserAgent>,
   __strong BWGLinkOpeningHandler* bwg_link_opening_handler_ = nullptr;
 
   // Handler for PageState changes.
-  __strong BWGPageStateChangeHandler* bwg_page_state_change_handler_ = nullptr;
+  __strong GeminiPageStateChangeHandler* gemini_page_state_change_handler_ =
+      nullptr;
 
   // Handler for the BWG sessions.
   __strong BWGSessionHandler* bwg_session_handler_ = nullptr;
@@ -244,6 +251,16 @@ class BwgBrowserAgent : public BrowserUserData<BwgBrowserAgent>,
   // `HideFloatyIfInvoked()` call during parent/child view
   // transitions.
   base::TimeTicks floaty_hidden_timestamp_;
+
+  // Tracks the elapsed time a floaty is minimized until it's expanded. If the
+  // floaty is expanded, the time is reset to null.
+  base::TimeTicks elapsed_minimized_floaty_time_;
+
+  // Registrar for pref changes.
+  PrefChangeRegistrar pref_change_registrar_;
+
+  // Called when the page content sharing preference changes.
+  void OnPageContentPrefChanged();
 
   // Weak pointer factory.
   base::WeakPtrFactory<BwgBrowserAgent> weak_factory_{this};

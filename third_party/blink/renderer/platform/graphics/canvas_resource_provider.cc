@@ -48,7 +48,6 @@
 #include "third_party/blink/public/platform/web_graphics_shared_image_interface_provider.h"
 #include "third_party/blink/renderer/platform/graphics/accelerated_static_bitmap_image.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_deferred_paint_record.h"
-#include "third_party/blink/renderer/platform/graphics/canvas_high_entropy_op_type.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource.h"
 #include "third_party/blink/renderer/platform/graphics/gpu/shared_gpu_context.h"
 #include "third_party/blink/renderer/platform/graphics/memory_managed_paint_canvas.h"
@@ -67,8 +66,6 @@
 #include "third_party/skia/include/gpu/ganesh/gl/GrGLTypes.h"
 
 namespace blink {
-
-BASE_FEATURE(kSkipRedundantWillDraw, base::FEATURE_ENABLED_BY_DEFAULT);
 
 class FlushForImageListener {
   // With deferred rendering it's possible for a drawImage operation on a canvas
@@ -159,7 +156,9 @@ scoped_refptr<StaticBitmapImage> Canvas2DResourceProviderBitmap::Snapshot(
 sk_sp<SkSurface> Canvas2DResourceProviderBitmap::CreateSkSurface() const {
   TRACE_EVENT0("blink", "Canvas2DResourceProviderBitmap::CreateSkSurface");
 
-  const auto info = GetSkImageInfo().makeAlphaType(kPremul_SkAlphaType);
+  const auto info = SkImageInfo::Make(
+      size_.width(), size_.height(), viz::ToClosestSkColorType(format_),
+      kPremul_SkAlphaType, color_space_.ToSkColorSpace());
   const auto props = GetSkSurfaceProps();
   return SkSurfaces::Raster(info, &props);
 }
@@ -737,16 +736,6 @@ CanvasResourceProviderSharedImage::ProduceCanvasResource(FlushReason reason) {
       return nullptr;
     }
 
-    // Getting the high entropy canvas operations should be done before
-    // flushing the canvas as flushing discards the recording (including the
-    // associated HighEntropyCanvasOpTypes).
-    HighEntropyCanvasOpType high_entropy_canvas_op_types =
-        GetRecorderHighEntropyCanvasOpTypes();
-    if (ShouldPropagateHighEntropyCanvasOpTypes(high_entropy_canvas_op_types,
-                                                IsAccelerated())) {
-      output_resource->SetHighEntropyCanvasOpTypes(
-          high_entropy_canvas_op_types);
-    }
     FlushCanvas(reason);
 
     // Note that the resource *must* be a CanvasResourceSharedImage as this
@@ -761,28 +750,14 @@ CanvasResourceProviderSharedImage::ProduceCanvasResource(FlushReason reason) {
     return nullptr;
   }
 
-  // Getting the high entropy canvas operations should be done before
-  // flushing the canvas as flushing discards the recording (including the
-  // associated HighEntropyCanvasOpTypes).
-  HighEntropyCanvasOpType high_entropy_canvas_op_types =
-      GetRecorderHighEntropyCanvasOpTypes();
+  // We are about to give the caller read access to this resource (and its
+  // backing SharedImage). Hence, we must make sure that the SI is updated to
+  // reflect the ops made in the current write access (if any) and give up any
+  // such write access.
   FlushCanvas(reason);
-  // Its important to end read access and ref the resource before the WillDraw
-  // call below. Since it relies on resource ref-count to trigger
-  // copy-on-write and asserts that we only have write access when the
-  // provider has the only ref to the resource, to ensure there are no other
-  // readers.
   EndWriteAccess();
-  if (!resource_) {
-    return nullptr;
-  }
-  scoped_refptr<CanvasResource> resource = resource_;
 
-  if (ShouldPropagateHighEntropyCanvasOpTypes(high_entropy_canvas_op_types,
-                                              IsAccelerated())) {
-    resource->SetHighEntropyCanvasOpTypes(high_entropy_canvas_op_types);
-  }
-  return resource;
+  return resource_;
 }
 
 bool CanvasResourceProviderSharedImage::IsSoftwareSharedImageGpuChannelLost()
@@ -872,26 +847,14 @@ CanvasResourceProviderSharedImage::GetSharedImageUsageFlags() const {
   return shared_image_usage_flags_;
 }
 
-void CanvasResourceProviderSharedImage::ExternalCanvasDrawHelper(
+void CanvasResourceProviderSharedImageNon2D::ExternalCanvasDrawHelper(
     base::FunctionRef<void(MemoryManagedPaintCanvas&)> draw_callback) {
-  if (base::FeatureList::IsEnabled(blink::kSkipRedundantWillDraw)) {
-    cached_snapshot_.reset();
-    draw_callback(Canvas());
-  } else {
-    // TODO(crbug.com/40183122): Video frames don't work without this
-    // conditional WillDraw(), but we are getting memory leak on CreatePattern
-    // with it. There should be a better way to solve this.
-    if (cached_snapshot_ && !IsGpuContextLost()) {
-      auto access = WillDrawInternal();
-      EnsureWriteAccess();
-      draw_callback(Canvas());
-      resource()->EndAccess(std::move(access));
-    }
-  }
+  cached_snapshot_.reset();
+  draw_callback(Canvas());
 }
 
 scoped_refptr<StaticBitmapImage>
-CanvasResourceProviderSharedImage::DoExternalDrawAndSnapshot(
+CanvasResourceProviderSharedImageNon2D::DoExternalDrawAndSnapshot(
     base::FunctionRef<void(MemoryManagedPaintCanvas&)> draw_callback,
     ImageOrientation orientation) {
   ExternalCanvasDrawHelper(draw_callback);
@@ -913,19 +876,9 @@ scoped_refptr<StaticBitmapImage> CanvasResourceProviderSharedImage::Snapshot(
   }
 
   if (!cached_snapshot_) {
-    // Getting the high entropy canvas operations should be done before
-    // flushing the canvas as flushing discards the recording (including the
-    // associated HighEntropyCanvasOpTypes).
-    HighEntropyCanvasOpType high_entropy_canvas_op_types =
-        GetRecorderHighEntropyCanvasOpTypes();
     FlushCanvas(FlushReason::kOther);
     EndWriteAccess();
     cached_snapshot_ = resource_->Bitmap();
-    if (ShouldPropagateHighEntropyCanvasOpTypes(high_entropy_canvas_op_types,
-                                                IsAccelerated())) {
-      cached_snapshot_->SetHighEntropyCanvasOpTypes(
-          high_entropy_canvas_op_types);
-    }
 
     // We'll record its content_id to be used by the FlushForImageListener.
     // This will be needed in WillDrawInternal, but we are doing it now, as we
@@ -1007,7 +960,10 @@ sk_sp<SkSurface> CanvasResourceProviderSharedImage::CreateSkSurface() const {
   TRACE_EVENT0("blink", "CanvasResourceProviderSharedImage::CreateSkSurface");
   if (is_software_) {
     const auto props = GetSkSurfaceProps();
-    return SkSurfaces::Raster(GetSkImageInfo(), &props);
+    const auto info = SkImageInfo::Make(
+        size_.width(), size_.height(), viz::ToClosestSkColorType(format_),
+        alpha_type_, color_space_.ToSkColorSpace());
+    return SkSurfaces::Raster(info, &props);
   }
 
   if (IsGpuContextLost() || !resource_) {
@@ -1435,11 +1391,6 @@ CanvasResourceProvider::CanvasResourceProvider(
     const gfx::ColorSpace& color_space,
     Delegate* delegate)
     : type_(type),
-      info_(SkImageInfo::Make(size.width(),
-                              size.height(),
-                              viz::ToClosestSkColorType(format),
-                              alpha_type,
-                              color_space.ToSkColorSpace())),
       size_(size),
       format_(format),
       alpha_type_(alpha_type),
@@ -1596,12 +1547,6 @@ CanvasResourceProvider::UnacceleratedSnapshot(ImageOrientation orientation) {
   if (!IsValid())
     return nullptr;
 
-  // Getting the high entropy canvas operations should be done before
-  // flushing the canvas as flushing discards the recording (including the
-  // associated HighEntropyCanvasOpTypes).
-  HighEntropyCanvasOpType high_entropy_canvas_op_types =
-      GetRecorderHighEntropyCanvasOpTypes();
-
   FlushCanvas();
 
   cc::PaintImage paint_image;
@@ -1627,14 +1572,8 @@ CanvasResourceProvider::UnacceleratedSnapshot(ImageOrientation orientation) {
   }
 
   DCHECK(!paint_image.IsTextureBacked());
-  scoped_refptr<UnacceleratedStaticBitmapImage> snapshot =
-      UnacceleratedStaticBitmapImage::Create(std::move(paint_image),
-                                             orientation);
-  if (ShouldPropagateHighEntropyCanvasOpTypes(high_entropy_canvas_op_types,
-                                              IsAccelerated())) {
-    snapshot->SetHighEntropyCanvasOpTypes(high_entropy_canvas_op_types);
-  }
-  return snapshot;
+  return UnacceleratedStaticBitmapImage::Create(std::move(paint_image),
+                                                orientation);
 }
 
 gpu::raster::RasterInterface*
@@ -1762,10 +1701,11 @@ void CanvasResourceProvider::ClearAtCreation() {
   // printing operations. See crbug.com/1003114
   DCHECK(IsValid());
   MemoryManagedPaintRecorder recorder(Size(), this);
-  if (info_.alphaType() == kOpaque_SkAlphaType)
+  if (alpha_type_ == kOpaque_SkAlphaType) {
     recorder.getRecordingCanvas().clear(SkColors::kBlack);
-  else
+  } else {
     recorder.getRecordingCanvas().clear(SkColors::kTransparent);
+  }
 
   RasterRecord(recorder.ReleaseMainRecording());
 }
@@ -1832,11 +1772,6 @@ void CanvasResourceProviderSharedImage::DisableLineDrawingAsPathsIfNecessary() {
           gpu::kGpuFeatureStatusEnabled) {
     recorder_->DisableLineDrawingAsPaths();
   }
-}
-
-HighEntropyCanvasOpType
-CanvasResourceProvider::GetRecorderHighEntropyCanvasOpTypes() const {
-  return recorder_->getRecordingCanvas().HighEntropyCanvasOpTypes();
 }
 
 std::unique_ptr<CanvasResourceProvider>

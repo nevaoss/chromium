@@ -121,7 +121,7 @@ public class FeedSurfaceCoordinator
     private final FeedSurfaceDelegate mDelegate;
     private final BottomSheetController mBottomSheetController;
     private final WindowAndroid mWindowAndroid;
-    private final Supplier<ShareDelegate> mShareSupplier;
+    private final Supplier<@Nullable ShareDelegate> mShareSupplier;
     private final Handler mHandler;
     private final boolean mOverScrollDisabled;
     private final ObserverList<SurfaceCoordinator.Observer> mObservers = new ObserverList<>();
@@ -429,7 +429,7 @@ public class FeedSurfaceCoordinator
             FeedSurfaceDelegate delegate,
             Profile profile,
             BottomSheetController bottomSheetController,
-            Supplier<ShareDelegate> shareDelegateSupplier,
+            Supplier<@Nullable ShareDelegate> shareDelegateSupplier,
             @Nullable ScrollableContainerDelegate externalScrollableContainerDelegate,
             @NewTabPageLaunchOrigin int launchOrigin,
             PrivacyPreferencesManagerImpl privacyPreferencesManager,
@@ -769,7 +769,8 @@ public class FeedSurfaceCoordinator
                         mActivity,
                         mBottomSheetController,
                         () -> mProfile,
-                        NtpCustomizationCoordinator.BottomSheetType.MAIN)
+                        NtpCustomizationCoordinator.BottomSheetType.MAIN,
+                        mWindowAndroid)
                 .showBottomSheet();
         NtpCustomizationMetricsUtils.recordOpenBottomSheetEntry(
                 NtpCustomizationCoordinator.EntryPointType.NEW_TAB_PAGE);

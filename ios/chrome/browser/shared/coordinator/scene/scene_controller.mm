@@ -52,11 +52,9 @@
 #import "ios/chrome/app/profile/profile_state.h"
 #import "ios/chrome/app/profile/profile_state_observer.h"
 #import "ios/chrome/app/tests_hook.h"
-#import "ios/chrome/browser/ai_prototyping/coordinator/ai_prototyping_coordinator.h"
 #import "ios/chrome/browser/app_store_rating/model/app_store_rating_scene_agent.h"
 #import "ios/chrome/browser/app_store_rating/model/features.h"
 #import "ios/chrome/browser/appearance/ui_bundled/appearance_customization.h"
-#import "ios/chrome/browser/assistant/coordinator/assistant_sheet_coordinator.h"
 #import "ios/chrome/browser/authentication/signin/fullscreen_promo/model/fullscreen_signin_promo_scene_agent.h"
 #import "ios/chrome/browser/authentication/ui_bundled/change_profile/change_profile_authentication_continuation.h"
 #import "ios/chrome/browser/authentication/ui_bundled/change_profile/change_profile_load_url.h"
@@ -83,10 +81,6 @@
 #import "ios/chrome/browser/feature_engagement/model/tracker_factory.h"
 #import "ios/chrome/browser/first_run/model/first_run.h"
 #import "ios/chrome/browser/geolocation/model/geolocation_manager.h"
-#import "ios/chrome/browser/history/ui_bundled/history_coordinator.h"
-#import "ios/chrome/browser/history/ui_bundled/history_coordinator_delegate.h"
-#import "ios/chrome/browser/incognito_interstitial/ui_bundled/incognito_interstitial_coordinator.h"
-#import "ios/chrome/browser/incognito_interstitial/ui_bundled/incognito_interstitial_coordinator_delegate.h"
 #import "ios/chrome/browser/incognito_reauth/ui_bundled/incognito_reauth_scene_agent.h"
 #import "ios/chrome/browser/infobars/model/infobar_manager_impl.h"
 #import "ios/chrome/browser/intelligence/bwg/coordinator/gemini_promo_scene_agent.h"
@@ -129,6 +123,7 @@
 #import "ios/chrome/browser/shared/coordinator/layout_guide/layout_guide_scene_agent.h"
 #import "ios/chrome/browser/shared/coordinator/scene/scene_controller+OTRProfileDeletion.h"
 #import "ios/chrome/browser/shared/coordinator/scene/scene_ui_provider.h"
+#import "ios/chrome/browser/shared/coordinator/scene/state/incognito_state.h"
 #import "ios/chrome/browser/shared/coordinator/scene/url_context.h"
 #import "ios/chrome/browser/shared/model/application_context/application_context.h"
 #import "ios/chrome/browser/shared/model/browser/browser.h"
@@ -193,8 +188,6 @@
 #import "ios/chrome/browser/whats_new/coordinator/promo/whats_new_scene_agent.h"
 #import "ios/chrome/browser/widget_kit/model/features.h"
 #import "ios/chrome/browser/window_activities/model/window_activity_helpers.h"
-#import "ios/chrome/browser/youtube_incognito/coordinator/youtube_incognito_coordinator.h"
-#import "ios/chrome/browser/youtube_incognito/coordinator/youtube_incognito_coordinator_delegate.h"
 #import "ios/chrome/common/app_group/app_group_constants.h"
 #import "ios/chrome/common/ui/reauthentication/reauthentication_module.h"
 #import "ios/chrome/grit/ios_strings.h"
@@ -375,13 +368,10 @@ void OnListFamilyMembersResponse(
 // TODO(crbug.com/429354805): Add method comments(!)
 
 @interface SceneController () <AuthenticationServiceObserving,
-                               HistoryCoordinatorDelegate,
-                               IncognitoInterstitialCoordinatorDelegate,
                                ProfileStateObserver,
                                SceneUIProvider,
                                SceneURLLoadingServiceDelegate,
-                               TabGridCoordinatorDelegate,
-                               YoutubeIncognitoCoordinatorDelegate> {
+                               TabGridCoordinatorDelegate> {
   std::unique_ptr<WebStateListObserverBridge> _webStateListForwardingObserver;
   std::unique_ptr<
       base::ScopedObservation<WebStateList, WebStateListObserverBridge>>
@@ -414,12 +404,6 @@ void OnListFamilyMembersResponse(
       _authServiceObserverBridge;
   BOOL _handleExternalIntentsInProgress;
 }
-
-// Coordinator for displaying history.
-@property(nonatomic, strong) HistoryCoordinator* historyCoordinator;
-
-// Coordinator for the AI prototyping menu.
-@property(nonatomic, strong) AIPrototypingCoordinator* AIPrototypingCoordinator;
 
 // Coordinates the creation of PDF screenshots with the window's content.
 @property(nonatomic, strong) ScreenshotDelegate* screenshotDelegate;
@@ -462,26 +446,11 @@ void OnListFamilyMembersResponse(
 // Manages the browser lifecycle.
 @property(nonatomic, strong) BrowserLifecycleManager* browserLifecycleManager;
 
-// The coordinator used to present the Incognito interstitial on Incognito
-// third-party intents. Created in
-// `showIncognitoInterstitialWithUrlLoadParams:dismissOmnibox:completion:`
-// and destroyed in
-// `closePresentedViews`.
-@property(nonatomic, strong)
-    IncognitoInterstitialCoordinator* incognitoInterstitialCoordinator;
-
 // YES if the Settings view is being dismissed.
 @property(nonatomic, assign) BOOL dismissingSettings;
 
 // The state of the scene controlled by this object.
 @property(nonatomic, weak, readonly) SceneState* sceneState;
-
-@property(nonatomic, strong)
-    YoutubeIncognitoCoordinator* youtubeIncognitoCoordinator;
-
-// The coordinator for the Assistant Sheet.
-@property(nonatomic, strong)
-    AssistantSheetCoordinator* assistantSheetCoordinator;
 
 // The profile of the current scene.
 @property(nonatomic, readonly) ProfileIOS* profile;
@@ -1059,22 +1028,6 @@ void OnListFamilyMembersResponse(
   [self.mainCoordinator showPasswordCheckupPageForReferrer:referrer];
 }
 
-// Shows the Incognito interstitial on top of `activeViewController`.
-// Assumes the Incognito interstitial coordinator is currently not instantiated.
-// Runs `completion` once the Incognito interstitial is presented.
-- (void)showIncognitoInterstitialWithUrlLoadParams:
-    (const UrlLoadParams&)urlLoadParams {
-  DCHECK(self.incognitoInterstitialCoordinator == nil);
-  self.incognitoInterstitialCoordinator =
-      [[IncognitoInterstitialCoordinator alloc]
-          initWithBaseViewController:self.activeViewController
-                             browser:self.currentInterface.browser];
-  self.incognitoInterstitialCoordinator.delegate = self;
-  self.incognitoInterstitialCoordinator.tabOpener = self;
-  self.incognitoInterstitialCoordinator.urlLoadParams = urlLoadParams;
-  [self.incognitoInterstitialCoordinator start];
-}
-
 // A sink for profileState:didTransitionFromInitStage: and
 // sceneState:transitionedToActivationLevel: events.
 //
@@ -1184,7 +1137,8 @@ void OnListFamilyMembersResponse(
   ProfileIOS* profile = self.profile;
 
   _mainCoordinator =
-      [[SceneCoordinator alloc] initWithSceneCommandsEndpoint:self];
+      [[SceneCoordinator alloc] initWithSceneCommandsEndpoint:self
+                                                    tabOpener:self];
   _mainCoordinator.delegate = self;
 
   self.browserLifecycleManager =
@@ -1241,7 +1195,7 @@ void OnListFamilyMembersResponse(
   // no incognito tabs open (e.g. the tab switcher was active and user closed
   // the last tab), then instead show the regular UI.
 
-  if (self.sceneState.incognitoContentVisible &&
+  if (self.sceneState.incognitoState.incognitoContentVisible &&
       !self.incognitoInterface.browser->GetWebStateList()->empty()) {
     return ApplicationMode::INCOGNITO;
   }
@@ -1341,20 +1295,13 @@ void OnListFamilyMembersResponse(
 
 - (void)teardownUI {
   // The UI should be stopped before the models they observe are stopped.
-  [self.historyCoordinator stop];
-  self.historyCoordinator = nil;
-
   // Force close the settings if open. This gives Settings the opportunity to
   // unregister observers and destroy C++ objects before the application is
   // shut down without depending on non-deterministic call to -dealloc.
   [self.mainCoordinator stopSettingsAnimated:NO completion:nil];
-  [self.mainCoordinator stopPasswordCheckupCoordinator];
 
   [_mainCoordinator stop];
   _mainCoordinator = nil;
-
-  [self.assistantSheetCoordinator stop];
-  self.assistantSheetCoordinator = nil;
 
   _incognitoWebStateObserver.reset();
   _mainWebStateObserver.reset();
@@ -1580,19 +1527,6 @@ void OnListFamilyMembersResponse(
   return identityManager->HasPrimaryAccount(signin::ConsentLevel::kSignin);
 }
 
-- (void)showYoutubeIncognitoWithUrlLoadParams:
-    (const UrlLoadParams&)urlLoadParams {
-  self.youtubeIncognitoCoordinator = [[YoutubeIncognitoCoordinator alloc]
-      initWithBaseViewController:self.activeViewController
-                         browser:self.currentInterface.browser];
-  self.youtubeIncognitoCoordinator.delegate = self;
-  self.youtubeIncognitoCoordinator.tabOpener = self;
-  self.youtubeIncognitoCoordinator.urlLoadParams = urlLoadParams;
-  self.youtubeIncognitoCoordinator.incognitoDisabled =
-      [self isIncognitoDisabled];
-  [self.youtubeIncognitoCoordinator start];
-}
-
 - (void)handleModalsDismissalWithMode:(ApplicationModeForTabOpening)targetMode
                         urlLoadParams:(const UrlLoadParams&)urlLoadParams
                            completion:(ProceduralBlock)completion {
@@ -1608,7 +1542,8 @@ void OnListFamilyMembersResponse(
   BOOL incognitoDisabled = [self isIncognitoDisabled];
 
   if ([self canShowIncognitoInterstitialForTargetMode:targetMode]) {
-    [self showIncognitoInterstitialWithUrlLoadParams:urlLoadParams];
+    [self.mainCoordinator
+        showIncognitoInterstitialWithUrlLoadParams:urlLoadParams];
     completion();
   } else {
     if (incognitoDisabled &&
@@ -1617,7 +1552,8 @@ void OnListFamilyMembersResponse(
       [self openSelectedTabInMode:ApplicationModeForTabOpening::NORMAL
                 withUrlLoadParams:params
                        completion:completion];
-      [self showYoutubeIncognitoWithUrlLoadParams:urlLoadParams];
+      [self.mainCoordinator
+          showYoutubeIncognitoWithUrlLoadParams:urlLoadParams];
     } else {
       ApplicationModeForTabOpening tabOpeningMode =
           (targetMode == ApplicationModeForTabOpening::APP_SWITCHER_INCOGNITO)
@@ -1627,7 +1563,8 @@ void OnListFamilyMembersResponse(
                 withUrlLoadParams:urlLoadParams
                        completion:completion];
       if (targetMode == ApplicationModeForTabOpening::APP_SWITCHER_INCOGNITO) {
-        [self showYoutubeIncognitoWithUrlLoadParams:urlLoadParams];
+        [self.mainCoordinator
+            showYoutubeIncognitoWithUrlLoadParams:urlLoadParams];
       }
     }
   }
@@ -1792,15 +1729,7 @@ void OnListFamilyMembersResponse(
 }
 
 - (void)showHistory {
-  CHECK(!self.currentInterface.incognito)
-      << "Current interface is incognito and should NOT show history. Call "
-         "this on regular interface.";
-  self.historyCoordinator = [[HistoryCoordinator alloc]
-      initWithBaseViewController:self.currentInterface.viewController
-                         browser:self.mainInterface.browser];
-  self.historyCoordinator.loadStrategy = UrlLoadStrategy::NORMAL;
-  self.historyCoordinator.delegate = self;
-  [self.historyCoordinator start];
+  [self.mainCoordinator showHistory];
 }
 
 - (void)closePresentedViewsAndOpenURL:(OpenNewTabCommand*)command {
@@ -2127,7 +2056,8 @@ using UserFeedbackDataCallback =
 }
 
 - (void)setIncognitoContentVisible:(BOOL)incognitoContentVisible {
-  self.sceneState.incognitoContentVisible = incognitoContentVisible;
+  self.sceneState.incognitoState.incognitoContentVisible =
+      incognitoContentVisible;
 }
 
 - (void)startVoiceSearch {
@@ -2237,25 +2167,11 @@ using UserFeedbackDataCallback =
 }
 
 - (void)openAIMenu {
-  DCHECK(self.currentInterface.browser);
-  self.AIPrototypingCoordinator = [[AIPrototypingCoordinator alloc]
-      initWithBaseViewController:self.currentInterface.viewController
-                         browser:self.currentInterface.browser];
-
-  // Since this is only for internal prototyping, the coordinator remains active
-  // once it's been started.
-  [self.AIPrototypingCoordinator start];
+  [self.mainCoordinator openAIMenu];
 }
 
 - (void)showAssistant {
-  if (!IsAssistantSheetEnabled()) {
-    return;
-  }
-  self.assistantSheetCoordinator = [[AssistantSheetCoordinator alloc]
-      initWithBaseViewController:self.currentInterface.viewController
-                         browser:self.currentInterface.browser];
-  self.assistantSheetCoordinator.mode = AssistantSheetModeGemini;
-  [self.assistantSheetCoordinator start];
+  [self.mainCoordinator showAssistant];
 }
 
 - (void)displaySafariDataImportFromEntryPoint:
@@ -3331,16 +3247,14 @@ using UserFeedbackDataCallback =
 - (void)closePresentedViews:(BOOL)animated
                  completion:(ProceduralBlock)completion {
   // If the Incognito interstitial is active, stop it.
-  [self.incognitoInterstitialCoordinator stop];
-  self.incognitoInterstitialCoordinator = nil;
+  [self.mainCoordinator stopIncognitoInterstitialCoordinator];
+  [self.mainCoordinator stopYoutubeIncognitoCoordinator];
 
   // If History is active, stop it.
-  [self.historyCoordinator stop];
-  self.historyCoordinator = nil;
+  [self.mainCoordinator stopHistoryCoordinator];
 
   // If Assistant Sheet is active, stop it.
-  [self.assistantSheetCoordinator stop];
-  self.assistantSheetCoordinator = nil;
+  [self.mainCoordinator stopAssistantSheetCoordinator];
 
   // If the Safari data import workflow is active, stop it.
   [self.mainCoordinator stopSafariDataImportCoordinator];
@@ -3513,24 +3427,6 @@ using UserFeedbackDataCallback =
          targetMode == ApplicationModeForTabOpening::APP_SWITCHER_UNDETERMINED;
 }
 
-#pragma mark - IncognitoInterstitialCoordinatorDelegate
-
-- (void)shouldStopIncognitoInterstitial:
-    (IncognitoInterstitialCoordinator*)incognitoInterstitial {
-  DCHECK(incognitoInterstitial == self.incognitoInterstitialCoordinator);
-  [self closePresentedViews:YES completion:nil];
-}
-
-#pragma mark - YoutubeIncognitoCoordinatorDelegate
-
-- (void)shouldStopYoutubeIncognitoCoordinator:
-    (YoutubeIncognitoCoordinator*)youtubeIncognitoCoordinator {
-  DCHECK(youtubeIncognitoCoordinator == self.youtubeIncognitoCoordinator);
-  [self.youtubeIncognitoCoordinator stop];
-  self.youtubeIncognitoCoordinator = nil;
-  [self closePresentedViews];
-}
-
 #pragma mark - Helpers for web state list events
 
 // Called when the last incognito tab was closed.
@@ -3694,23 +3590,6 @@ using UserFeedbackDataCallback =
 
 - (UIViewController*)activeViewController {
   return self.mainCoordinator.activeViewController;
-}
-
-#pragma mark - HistoryCoordinatorDelegate
-
-- (void)closeHistoryWithCompletion:(ProceduralBlock)completion {
-  __weak __typeof(self) weakSelf = self;
-  [self.historyCoordinator dismissWithCompletion:^{
-    if (completion) {
-      completion();
-    }
-    [weakSelf.historyCoordinator stop];
-    weakSelf.historyCoordinator = nil;
-  }];
-}
-
-- (void)closeHistory {
-  [self closeHistoryWithCompletion:nil];
 }
 
 #pragma mark - AuthenticationServiceObserving

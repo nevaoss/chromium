@@ -17,6 +17,7 @@
 #include "base/memory/raw_ptr.h"
 #include "base/time/time.h"
 #include "components/lens/proto/server/lens_overlay_response.pb.h"
+#include "components/omnibox/common/input_state.h"
 #include "components/search_engines/search_engine_type.h"
 #include "components/search_engines/search_terms_data.h"
 #include "components/search_engines/template_url_data.h"
@@ -232,8 +233,9 @@ class TemplateURLRef {
     std::optional<lens::proto::LensOverlaySuggestInputs>
         lens_overlay_suggest_inputs;
 
-    // The tool mode to be sent in query parameters in the suggest requests.
-    omnibox::ToolMode aim_tool_mode = omnibox::ToolMode::TOOL_MODE_UNSPECIFIED;
+    // Input state. This is specifically the contextual state, with regards to
+    // the tools and models that may be selected.
+    omnibox::InputState input_state;
 
     // Which omnibox the user used to type the prefix.
     metrics::OmniboxEventProto::PageClassification page_classification =
@@ -838,12 +840,17 @@ class TemplateURL {
   TemplateURLData::ActiveStatus is_active() const { return data().is_active; }
   void set_is_active(TemplateURLData::ActiveStatus active_status);
 
-  int starter_pack_id() const { return data().starter_pack_id; }
+  template_url_starter_pack_data::StarterPackId starter_pack_id() const {
+    return static_cast<template_url_starter_pack_data::StarterPackId>(
+        data().starter_pack_id);
+  }
   // Some starter packs are considered 'ask a question' kind of starter packs.
   // This can be used to condition UI text or a11y strings.
   bool is_ask_starter_pack() const {
-    return starter_pack_id() == template_url_starter_pack_data::kGemini ||
-           starter_pack_id() == template_url_starter_pack_data::kAiMode;
+    return starter_pack_id() ==
+               template_url_starter_pack_data::StarterPackId::kGemini ||
+           starter_pack_id() ==
+               template_url_starter_pack_data::StarterPackId::kAiMode;
   }
 
   const std::vector<TemplateURLRef>& url_refs() const { return url_refs_; }

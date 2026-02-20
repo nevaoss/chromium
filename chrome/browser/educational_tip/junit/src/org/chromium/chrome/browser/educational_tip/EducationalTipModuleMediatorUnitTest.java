@@ -4,7 +4,7 @@
 
 package org.chromium.chrome.browser.educational_tip;
 
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -27,14 +27,14 @@ import org.mockito.junit.MockitoRule;
 import org.robolectric.annotation.Config;
 
 import org.chromium.base.shared_preferences.SharedPreferencesManager;
-import org.chromium.base.supplier.ObservableSupplierImpl;
+import org.chromium.base.supplier.ObservableSuppliers;
+import org.chromium.base.supplier.SettableMonotonicObservableSupplier;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.magic_stack.ModuleDelegate;
 import org.chromium.chrome.browser.magic_stack.ModuleDelegate.ModuleType;
-import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
 import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.setup_list.SetupListManager;
@@ -57,7 +57,7 @@ import org.chromium.ui.shadows.ShadowAppCompatResources;
 public class EducationalTipModuleMediatorUnitTest {
     @Rule public MockitoRule mMockitoRule = MockitoJUnit.rule();
 
-    @Mock private PropertyModel mModel;
+    private PropertyModel mModel;
     @Mock private ModuleDelegate mModuleDelegate;
     @Mock private EducationTipModuleActionDelegate mActionDelegate;
     @Mock private Profile mProfile;
@@ -73,7 +73,7 @@ public class EducationalTipModuleMediatorUnitTest {
     private ArgumentCaptor<DefaultBrowserPromoTriggerStateListener>
             mDefaultBrowserPromoTriggerStateListener;
 
-    ObservableSupplierImpl<Profile> mProfileSupplier;
+    SettableMonotonicObservableSupplier<Profile> mProfileSupplier;
     private Context mContext;
     private @ModuleType int mDefaultModuleTypeForTesting;
     private EducationalTipModuleMediator mEducationalTipModuleMediator;
@@ -85,14 +85,11 @@ public class EducationalTipModuleMediatorUnitTest {
         mDefaultModuleTypeForTesting = ModuleType.DEFAULT_BROWSER_PROMO;
         TrackerFactory.setTrackerForTests(mTracker);
         mPrefsManager = ChromeSharedPreferences.getInstance();
-        mPrefsManager.removeKey(
-                ChromePreferenceKeys.SETUP_LIST_ENHANCED_SAFE_BROWSING_PROMO_COMPLETED);
-        mPrefsManager.removeKey(ChromePreferenceKeys.SETUP_LIST_ADDRESS_BAR_PROMO_COMPLETED);
         DefaultBrowserPromoUtils.setInstanceForTesting(mMockDefaultBrowserPromoUtils);
         SetupListManager.setInstanceForTesting(mSetupListManager);
 
         // Setup for History sync promo
-        mProfileSupplier = new ObservableSupplierImpl<>();
+        mProfileSupplier = ObservableSuppliers.createMonotonic();
         mProfileSupplier.set(mProfile);
         when(mProfile.getOriginalProfile()).thenReturn(mProfile);
         when(mActionDelegate.getProfileSupplier()).thenReturn(mProfileSupplier);
@@ -100,6 +97,7 @@ public class EducationalTipModuleMediatorUnitTest {
         when(mIdentityServicesProvider.getIdentityManager(mProfile)).thenReturn(mIdentityManager);
         SyncServiceFactory.setInstanceForTesting(mSyncService);
 
+        mModel = new PropertyModel.Builder(EducationalTipModuleProperties.ALL_KEYS).build();
         mEducationalTipModuleMediator =
                 new EducationalTipModuleMediator(
                         mDefaultModuleTypeForTesting,
@@ -111,10 +109,7 @@ public class EducationalTipModuleMediatorUnitTest {
 
     @Test
     @SmallTest
-    @EnableFeatures({ChromeFeatureList.EDUCATIONAL_TIP_MODULE})
     public void testShowModule() {
-        assertTrue(ChromeFeatureList.sEducationalTipModule.isEnabled());
-
         // Test showing default browser promo card.
         testShowModuleImpl(
                 ModuleType.DEFAULT_BROWSER_PROMO,
@@ -160,10 +155,7 @@ public class EducationalTipModuleMediatorUnitTest {
 
     @Test
     @SmallTest
-    @EnableFeatures({
-        ChromeFeatureList.EDUCATIONAL_TIP_MODULE,
-        ChromeFeatureList.ANDROID_SETUP_LIST
-    })
+    @EnableFeatures({ChromeFeatureList.ANDROID_SETUP_LIST})
     public void testShowSetupList_EnhancedSafeBrowsingPromo() {
         // Test showing enhance safe browsing promo card.
         testShowModuleImpl(
@@ -175,10 +167,7 @@ public class EducationalTipModuleMediatorUnitTest {
 
     @Test
     @SmallTest
-    @EnableFeatures({
-        ChromeFeatureList.EDUCATIONAL_TIP_MODULE,
-        ChromeFeatureList.ANDROID_SETUP_LIST
-    })
+    @EnableFeatures({ChromeFeatureList.ANDROID_SETUP_LIST})
     public void testShowSetupList_AddressBarPlacementPromo() {
         // Test showing address bar placement promo card.
         testShowModuleImpl(
@@ -190,10 +179,7 @@ public class EducationalTipModuleMediatorUnitTest {
 
     @Test
     @SmallTest
-    @EnableFeatures({
-        ChromeFeatureList.EDUCATIONAL_TIP_MODULE,
-        ChromeFeatureList.ANDROID_SETUP_LIST
-    })
+    @EnableFeatures({ChromeFeatureList.ANDROID_SETUP_LIST})
     public void testShowSetupList_SignInPromo() {
         // Test showing sign in promo card.
         testShowModuleImpl(
@@ -205,10 +191,7 @@ public class EducationalTipModuleMediatorUnitTest {
 
     @Test
     @SmallTest
-    @EnableFeatures({
-        ChromeFeatureList.EDUCATIONAL_TIP_MODULE,
-        ChromeFeatureList.ANDROID_SETUP_LIST
-    })
+    @EnableFeatures({ChromeFeatureList.ANDROID_SETUP_LIST})
     public void testShowSetupList_SavePasswordsPromo() {
         // Test showing save passwords promo card.
         testShowModuleImpl(
@@ -220,10 +203,7 @@ public class EducationalTipModuleMediatorUnitTest {
 
     @Test
     @SmallTest
-    @EnableFeatures({
-        ChromeFeatureList.EDUCATIONAL_TIP_MODULE,
-        ChromeFeatureList.ANDROID_SETUP_LIST
-    })
+    @EnableFeatures({ChromeFeatureList.ANDROID_SETUP_LIST})
     public void testShowSetupList_PasswordCheckupPromo() {
         // Test showing password checkup promo card.
         testShowModuleImpl(
@@ -235,11 +215,12 @@ public class EducationalTipModuleMediatorUnitTest {
 
     @Test
     @SmallTest
-    @EnableFeatures(ChromeFeatureList.EDUCATIONAL_TIP_MODULE)
     public void testShowSetupList_Completed() {
         when(mSetupListManager.isSetupListActive()).thenReturn(true);
-        mPrefsManager.writeBoolean(
-                ChromePreferenceKeys.SETUP_LIST_ENHANCED_SAFE_BROWSING_PROMO_COMPLETED, true);
+        when(mSetupListManager.isSetupListModule(ModuleType.ENHANCED_SAFE_BROWSING_PROMO))
+                .thenReturn(true);
+        when(mSetupListManager.isModuleCompleted(ModuleType.ENHANCED_SAFE_BROWSING_PROMO))
+                .thenReturn(true);
 
         testShowModuleImpl(
                 ModuleType.ENHANCED_SAFE_BROWSING_PROMO,
@@ -251,11 +232,12 @@ public class EducationalTipModuleMediatorUnitTest {
 
     @Test
     @SmallTest
-    @EnableFeatures(ChromeFeatureList.EDUCATIONAL_TIP_MODULE)
     public void testShowSetupList_NotCompleted() {
         when(mSetupListManager.isSetupListActive()).thenReturn(true);
-        mPrefsManager.writeBoolean(
-                ChromePreferenceKeys.SETUP_LIST_ENHANCED_SAFE_BROWSING_PROMO_COMPLETED, false);
+        when(mSetupListManager.isSetupListModule(ModuleType.ENHANCED_SAFE_BROWSING_PROMO))
+                .thenReturn(true);
+        when(mSetupListManager.isModuleCompleted(ModuleType.ENHANCED_SAFE_BROWSING_PROMO))
+                .thenReturn(false);
 
         testShowModuleImpl(
                 ModuleType.ENHANCED_SAFE_BROWSING_PROMO,
@@ -267,7 +249,6 @@ public class EducationalTipModuleMediatorUnitTest {
 
     @Test
     @SmallTest
-    @EnableFeatures(ChromeFeatureList.EDUCATIONAL_TIP_MODULE)
     public void testShowModule_NonSetupList_IsCompletedNull() {
         when(mSetupListManager.isSetupListActive()).thenReturn(true);
         // ModuleType.TAB_GROUP_PROMO is not a Setup List module.
@@ -280,9 +261,7 @@ public class EducationalTipModuleMediatorUnitTest {
 
     @Test
     @SmallTest
-    @EnableFeatures({ChromeFeatureList.EDUCATIONAL_TIP_MODULE})
     public void testOnViewCreated_DefaultBrowserPromo_TrackerInitialized_ShouldDisplay() {
-        assertTrue(ChromeFeatureList.sEducationalTipModule.isEnabled());
         when(mTracker.isInitialized()).thenReturn(true);
         when(mTracker.shouldTriggerHelpUi(FeatureConstants.DEFAULT_BROWSER_PROMO_MAGIC_STACK))
                 .thenReturn(true);
@@ -298,9 +277,7 @@ public class EducationalTipModuleMediatorUnitTest {
 
     @Test
     @SmallTest
-    @EnableFeatures({ChromeFeatureList.EDUCATIONAL_TIP_MODULE})
     public void testOnViewCreated_DefaultBrowserPromo_TrackerInitialized_ShouldNotDisplay() {
-        assertTrue(ChromeFeatureList.sEducationalTipModule.isEnabled());
         when(mTracker.isInitialized()).thenReturn(true);
         when(mTracker.shouldTriggerHelpUi(FeatureConstants.DEFAULT_BROWSER_PROMO_MAGIC_STACK))
                 .thenReturn(false);
@@ -313,9 +290,7 @@ public class EducationalTipModuleMediatorUnitTest {
 
     @Test
     @SmallTest
-    @EnableFeatures({ChromeFeatureList.EDUCATIONAL_TIP_MODULE})
     public void testOnViewCreated_DefaultBrowserPromo_TrackerNotInitialized() {
-        assertTrue(ChromeFeatureList.sEducationalTipModule.isEnabled());
         when(mTracker.isInitialized()).thenReturn(false);
 
         mEducationalTipModuleMediator.showModule();
@@ -330,9 +305,7 @@ public class EducationalTipModuleMediatorUnitTest {
 
     @Test
     @SmallTest
-    @EnableFeatures({ChromeFeatureList.EDUCATIONAL_TIP_MODULE})
     public void testOnViewCreated_OtherPromoType() {
-        assertTrue(ChromeFeatureList.sEducationalTipModule.isEnabled());
         mEducationalTipModuleMediator.setModuleTypeForTesting(ModuleType.TAB_GROUP_PROMO);
 
         mEducationalTipModuleMediator.showModule();
@@ -343,9 +316,7 @@ public class EducationalTipModuleMediatorUnitTest {
 
     @Test
     @SmallTest
-    @EnableFeatures({ChromeFeatureList.EDUCATIONAL_TIP_MODULE})
     public void testRemoveModule() {
-        assertTrue(ChromeFeatureList.sEducationalTipModule.isEnabled());
         mEducationalTipModuleMediator.setModuleTypeForTesting(ModuleType.DEFAULT_BROWSER_PROMO);
         mEducationalTipModuleMediator.showModule();
         verify(mMockDefaultBrowserPromoUtils)
@@ -362,15 +333,15 @@ public class EducationalTipModuleMediatorUnitTest {
         mEducationalTipModuleMediator.setModuleTypeForTesting(moduleType);
         mEducationalTipModuleMediator.showModule();
 
-        verify(mModel)
-                .set(
-                        EducationalTipModuleProperties.MODULE_CONTENT_TITLE_STRING,
-                        mContext.getString(titleId));
-        verify(mModel)
-                .set(
-                        EducationalTipModuleProperties.MODULE_CONTENT_DESCRIPTION_STRING,
-                        mContext.getString(descriptionId));
-        verify(mModel).set(EducationalTipModuleProperties.MODULE_CONTENT_IMAGE, imageResource);
+        assertEquals(
+                mContext.getString(titleId),
+                mModel.get(EducationalTipModuleProperties.MODULE_CONTENT_TITLE_STRING));
+        assertEquals(
+                mContext.getString(descriptionId),
+                mModel.get(EducationalTipModuleProperties.MODULE_CONTENT_DESCRIPTION_STRING));
+        assertEquals(
+                imageResource, mModel.get(EducationalTipModuleProperties.MODULE_CONTENT_IMAGE));
+
         verify(mModuleDelegate).onDataReady(moduleType, mModel);
         verify(mModuleDelegate, never()).onDataFetchFailed(moduleType);
     }
@@ -384,16 +355,18 @@ public class EducationalTipModuleMediatorUnitTest {
         mEducationalTipModuleMediator.setModuleTypeForTesting(moduleType);
         mEducationalTipModuleMediator.showModule();
 
-        verify(mModel)
-                .set(
-                        EducationalTipModuleProperties.MODULE_CONTENT_TITLE_STRING,
-                        mContext.getString(titleId));
-        verify(mModel)
-                .set(
-                        EducationalTipModuleProperties.MODULE_CONTENT_DESCRIPTION_STRING,
-                        mContext.getString(descriptionId));
-        verify(mModel).set(EducationalTipModuleProperties.MODULE_CONTENT_IMAGE, imageResource);
-        verify(mModel).set(EducationalTipModuleProperties.MARK_COMPLETED, isCompleted);
+        assertEquals(
+                mContext.getString(titleId),
+                mModel.get(EducationalTipModuleProperties.MODULE_CONTENT_TITLE_STRING));
+        assertEquals(
+                mContext.getString(descriptionId),
+                mModel.get(EducationalTipModuleProperties.MODULE_CONTENT_DESCRIPTION_STRING));
+        assertEquals(
+                imageResource, mModel.get(EducationalTipModuleProperties.MODULE_CONTENT_IMAGE));
+        assertEquals(
+                isCompleted,
+                mModel.get(EducationalTipModuleProperties.MARK_COMPLETED).booleanValue());
+
         verify(mModuleDelegate).onDataReady(moduleType, mModel);
         verify(mModuleDelegate, never()).onDataFetchFailed(moduleType);
     }

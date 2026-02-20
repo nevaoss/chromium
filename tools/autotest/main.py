@@ -42,26 +42,31 @@ import shutil
 
 from enum import Enum
 from pathlib import Path
+from opentelemetry import trace
 
 # Don't write pyc files to the src tree, which show up in version control
 # in some environments.
 sys.dont_write_bytecode = True
 
-USE_PYTHON_3 = f'This script will only run under python3.'
+DEBUG: bool = False
 
-SRC_DIR = Path(__file__).parent.parent.parent.resolve()
+SRC_DIR: Path = Path(__file__).parent.parent.parent.resolve()
 sys.path.append(str(SRC_DIR / 'build'))
 import gn_helpers
 
 sys.path.append(str(SRC_DIR / 'build' / 'android'))
 from pylib import constants
 
-DEPOT_TOOLS_DIR = SRC_DIR / 'third_party' / 'depot_tools'
-DEBUG = False
+DEPOT_TOOLS_DIR: Path = SRC_DIR / 'third_party' / 'depot_tools'
+
+sys.path.append(str(DEPOT_TOOLS_DIR / 'infra_lib'))
+import telemetry
+
+tracer = telemetry.get_tracer(__name__)
 
 # Some test suites use suffixes that would also match non-test-suite targets.
 # Those test suites should be manually added here.
-_TEST_TARGET_ALLOWLIST = [
+_TEST_TARGET_ALLOWLIST: list[str] = [
 
     # The tests below this line were output from the ripgrep command just below:
     '//ash:ash_pixeltests',
@@ -165,14 +170,14 @@ rg '^(instrumentation_test_runner|test)\("([^"]*)' -o -g'BUILD.gn' -r'$2' -N \
 rg '^source_set\("([^"]*)' -o -g'BUILD.gn' -r'$1' -N | \
   rg '(_browsertests|_perftests|_wpr_tests|_unittests)$'
 """
-_TEST_TARGET_SUFFIXES = ('_browsertests', '_perftests', '_wpr_tests',
+_TEST_TARGET_SUFFIXES: list[str] = ('_browsertests', '_perftests', '_wpr_tests',
     '_unittests')
 
-_PREF_MAPPING_FILE_PATTERN = re.escape(
+_PREF_MAPPING_FILE_PATTERN: str = re.escape(
     str(Path('components') / 'policy' / 'test' / 'data' / 'pref_mapping') +
     r'/') + r'.*\.json'
 
-TEST_FILE_NAME_REGEX = re.compile(
+TEST_FILE_NAME_REGEX: re.Pattern[str] = re.compile(
     r'(.*Test\.java)' +
     r'|(.*_[a-z]*test(?:_win|_mac|_linux|_chromeos|_android)?\.(cc|mm))' +
     r'|(' + _PREF_MAPPING_FILE_PATTERN + r')')
@@ -180,11 +185,11 @@ TEST_FILE_NAME_REGEX = re.compile(
 # Some tests don't directly include gtest.h and instead include it via gmock.h
 # or a test_utils.h file, so make sure these cases are captured. Also include
 # files that use <...> for #includes instead of quotes.
-GTEST_INCLUDE_REGEX = re.compile(
+GTEST_INCLUDE_REGEX: re.Pattern[str] = re.compile(
     r'#include.*(gtest|gmock|_test_utils|browser_test)\.h("|>)')
 
 
-def ExitWithMessage(*args):
+def ExitWithMessage(*args: list[str]):
   print(*args, file=sys.stderr)
   sys.exit(1)
 
@@ -195,8 +200,72 @@ class TestValidity(Enum):
   VALID_TEST = 2  # Matches test file regex and includes gtest files.
 
 
-def CodeSearchFiles(query_args):
-  lines = RunCommand([
+# ------------------------------------------------------------------------------
+# Telemetry tracks attributes declared in main, build, and run phases.
+# Note: Telemetry only applies to Googlers only
+# For details, see: go/autotest-telemetry
+# ------------------------------------------------------------------------------
+
+
+def RecordMainAttributes(targets: list[str], filter: str, used_cache: bool,
+                         out_dir: str):
+  """Records main attributes to the current span.
+
+  Attributes recorded:
+      * main.is_gemini_cli: Indicates if the process is running via the Gemini CLI.
+      * main.targets: The list of targets selected for build/run.
+      * main.filter: The filter string generated from user input.
+      * gn.target_cache_used: Whether the target search utilized the cache.
+      * build.out_dir: The directory path for compiled artifacts.
+  """
+  span = trace.get_current_span()
+  if not span.is_recording():
+    return
+
+  is_gemini_cli = True if os.getenv("GEMINI_CLI") else False
+
+  span.set_attribute('main.is_gemini_cli', is_gemini_cli)
+  span.set_attribute('main.targets', str(targets))
+  span.set_attribute('main.filter', filter)
+  span.set_attribute('gn.target_used_cache', used_cache)
+  span.set_attribute('build.out_dir', out_dir)
+
+
+def RecordBuildAttributes(is_retry: str, is_successful: bool):
+  """Records build execution state attributes to the current span.
+
+  Attributes recorded:
+      * build.is_retry: Indicates if this build is a retry attempt.
+      * build.is_successful: Indicates return code of subprocess run
+  """
+  span = trace.get_current_span()
+  if not span.is_recording():
+    return
+
+  span.set_attribute('build.is_retry', is_retry)
+  span.set_attribute('build.is_successful', is_successful)
+
+
+def RecordRunAttributes(cmd: list[str], is_successful: bool):
+  """Records attributes related to the command execution.
+
+  Attributes recorded:
+      * run.bin: The specific binary name extracted from the full command path.
+      * run.is_successful: Indicates return code of subprocess run
+  """
+  span = trace.get_current_span()
+  if not span.is_recording():
+    return
+
+  run_bin = os.path.basename(cmd[0])
+  span.set_attribute('run.bin', run_bin)
+  span.set_attribute('run.is_successful', is_successful)
+  if not is_successful:
+    span.set_status(trace.StatusCode.ERROR)
+
+
+def CodeSearchFiles(query_args: list[str]) -> list[str]:
+  lines: list[str] = RunCommand([
       'cs',
       '-l',
       # Give the local path to the file, if the file exists.
@@ -207,15 +276,15 @@ def CodeSearchFiles(query_args):
   return [l.strip() for l in lines if l.strip()]
 
 
-def FindRemoteCandidates(target):
+def FindRemoteCandidates(target: str) -> tuple[list[str], list[str]]:
   """Find files using a remote code search utility, if installed."""
   if not shutil.which('cs'):
-    return []
-  results = CodeSearchFiles([f'file:{target}'])
-  exact = set()
-  close = set()
+    return [], []
+  results: list[str] = CodeSearchFiles([f'file:{target}'])
+  exact: set[str] = set()
+  close: set[str] = set()
   for filename in results:
-    file_validity = IsTestFile(filename)
+    file_validity: TestValidity = IsTestFile(filename)
     if file_validity is TestValidity.VALID_TEST:
       exact.add(filename)
     elif file_validity is TestValidity.MAYBE_A_TEST:
@@ -223,7 +292,7 @@ def FindRemoteCandidates(target):
   return list(exact), list(close)
 
 
-def IsTestFile(file_path):
+def IsTestFile(file_path: str) -> TestValidity:
   if not TEST_FILE_NAME_REGEX.match(file_path):
     return TestValidity.NOT_A_TEST
   if file_path.endswith('.cc') or file_path.endswith('.mm'):
@@ -243,29 +312,34 @@ def IsTestFile(file_path):
 class CommandError(Exception):
   """Exception thrown when a subcommand fails."""
 
-  def __init__(self, command, return_code, output=None):
+  def __init__(self,
+               command: list[str],
+               return_code: int,
+               output: str | None = None) -> None:
     Exception.__init__(self)
     self.command = command
     self.return_code = return_code
     self.output = output
 
-  def __str__(self):
-    message = (f'\n***\nERROR: Error while running command {self.command}'
-               f'.\nExit status: {self.return_code}\n')
+  def __str__(self) -> str:
+    message: str = (f'\n***\nERROR: Error while running command {self.command}'
+                    f'.\nExit status: {self.return_code}\n')
     if self.output:
       message += f'Output:\n{self.output}\n'
     message += '***'
     return message
 
 
-def StreamCommandOrExit(cmd, **kwargs):
-  try:
-    subprocess.check_call(cmd, **kwargs)
-  except subprocess.CalledProcessError as e:
+@tracer.start_as_current_span('chromium.tools.autotest.run_target')
+def StreamCommandOrExit(cmd: list[str], **kwargs: int) -> None:
+  result: subprocess.CompletedProcess[str] = subprocess.run(cmd, check=False, **kwargs)
+  is_successful: bool = result.returncode == 0
+  RecordRunAttributes(cmd, is_successful)
+  if not is_successful:
     sys.exit(1)
 
 
-def RunCommand(cmd, **kwargs):
+def RunCommand(cmd: list[str], **kwargs: int) -> str:
   try:
     # Set an encoding to convert the binary output to a string.
     return subprocess.check_output(cmd,
@@ -275,15 +349,21 @@ def RunCommand(cmd, **kwargs):
     raise CommandError(e.cmd, e.returncode, e.output) from None
 
 
-def BuildTestTargets(out_dir, targets, dry_run, quiet):
+@tracer.start_as_current_span('chromium.tools.autotest.build')
+def BuildTestTargets(out_dir: str, targets: list[str], dry_run: bool,
+                     quiet: bool, is_retry: bool) -> bool:
   """Builds the specified targets with ninja"""
-  cmd = gn_helpers.CreateBuildCommand(out_dir) + targets
+  cmd: list[str] = gn_helpers.CreateBuildCommand(out_dir) + targets
   print('Building: ' + shlex.join(cmd))
   if (dry_run):
     return True
-  completed_process = subprocess.run(cmd,
+
+  completed_process: subprocess.CompletedProcess[str] = subprocess.run(cmd,
                                      capture_output=quiet,
                                      encoding='utf-8')
+
+  RecordBuildAttributes(is_retry, completed_process.returncode == 0)
+
   if completed_process.returncode != 0:
     if quiet:
       before, _, after = completed_process.stdout.partition('stderr:')
@@ -297,12 +377,13 @@ def BuildTestTargets(out_dir, targets, dry_run, quiet):
   return True
 
 
-def RecursiveMatchFilename(folder, filename):
-  current_dir = os.path.split(folder)[-1]
+def RecursiveMatchFilename(folder: str,
+                         filename: str) -> tuple[list[str], list[str]]:
+  current_dir: str = os.path.split(folder)[-1]
   if current_dir.startswith('out') or current_dir.startswith('.'):
-    return [[], []]
-  exact = []
-  close = []
+    return ([], [])
+  exact: list[str] = []
+  close: list[str] = []
   try:
     with os.scandir(folder) as it:
       for entry in it:
@@ -310,7 +391,7 @@ def RecursiveMatchFilename(folder, filename):
           continue
         if (entry.is_file() and filename in entry.path
             and not os.path.basename(entry.path).startswith('.')):
-          file_validity = IsTestFile(entry.path)
+          file_validity: TestValidity = IsTestFile(entry.path)
           if file_validity is TestValidity.VALID_TEST:
             exact.append(entry.path)
           elif file_validity is TestValidity.MAYBE_A_TEST:
@@ -320,27 +401,28 @@ def RecursiveMatchFilename(folder, filename):
           # directory, leading to exceptions being thrown. We can just catch and
           # ignore these exceptions like we would ignore symlinks.
           try:
-            matches = RecursiveMatchFilename(entry.path, filename)
+            matches: tuple[list[str], list[str]] = RecursiveMatchFilename(
+                entry.path, filename)
             exact += matches[0]
             close += matches[1]
-          except FileNotFoundError as e:
+          except FileNotFoundError:
             if DEBUG:
               print(f'Failed to scan directory "{entry}" - junction?')
             pass
   except PermissionError:
     print(f'Permission error while scanning {folder}')
 
-  return [exact, close]
+  return (exact, close)
 
 
-def FindTestFilesInDirectory(directory):
-  test_files = []
+def FindTestFilesInDirectory(directory: str) -> list[str]:
+  test_files: list[str] = []
   if DEBUG:
     print('Test files:')
   for root, _, files in os.walk(directory):
     for f in files:
-      path = os.path.join(root, f)
-      file_validity = IsTestFile(path)
+      path: str = os.path.join(root, f)
+      file_validity: TestValidity = IsTestFile(path)
       if file_validity is TestValidity.VALID_TEST:
         if DEBUG:
           print(path)
@@ -350,11 +432,12 @@ def FindTestFilesInDirectory(directory):
   return test_files
 
 
-def SearchForTestsByName(terms, quiet, remote_search):
+def SearchForTestsByName(terms: list[str], quiet: bool,
+                         remote_search: bool) -> tuple[list[str], str]:
 
-  def GetPatternForTerm(term):
-    ANY = '.' if not remote_search else r'[\s\S]'
-    slash_parts = term.split('/')
+  def GetPatternForTerm(term: str) -> str:
+    ANY: str = '.' if not remote_search else r'[\s\S]'
+    slash_parts: list[str] = term.split('/')
     # These are the formats, for now, just ignore the prefix and suffix here.
     # Prefix/Test.Name/Suffix  -> \bTest\b.*\bName\b
     # Test.Name/Suffix         -> \bTest\b.*\bName\b
@@ -365,7 +448,7 @@ def SearchForTestsByName(terms, quiet, remote_search):
       dot_parts = slash_parts[1].split('.')
     return f'{ANY}*'.join(r'\b' + re.escape(p) + r'\b' for p in dot_parts)
 
-  def GetFilterForTerm(term):
+  def GetFilterForTerm(term: str) -> str:
     # If the user supplied a '/', assume they've included the full test name.
     if '/' in term:
       return term
@@ -375,22 +458,32 @@ def SearchForTestsByName(terms, quiet, remote_search):
     # Otherwise run any parameterized tests with this prefix.
     return f'{term}:{term}/*'
 
-  pattern = '|'.join(f'({GetPatternForTerm(t)})' for t in terms)
+  pattern: str = '|'.join(f'({GetPatternForTerm(t)})' for t in terms)
 
   # find files containing the tests.
   if not remote_search:
     # Use ripgrep.
     files = [
         f for f in RunCommand([
-            'rg', '-l', '--multiline', '--multiline-dotall', '-t', 'cpp', '-t',
-            'java', '-t', 'objcpp', pattern, SRC_DIR
+            'rg',
+            '-l',
+            '--multiline',
+            '--multiline-dotall',
+            '-t',
+            'cpp',
+            '-t',
+            'java',
+            '-t',
+            'objcpp',
+            pattern,
+            str(SRC_DIR),
         ]).splitlines()
     ]
   else:
     # Use code search.
     files = CodeSearchFiles(['pcre:true', pattern])
   files = [f for f in files if IsTestFile(f) != TestValidity.NOT_A_TEST]
-  gtest_filter = ':'.join(GetFilterForTerm(t) for t in terms)
+  gtest_filter: str = ':'.join(GetFilterForTerm(t) for t in terms)
 
   if files and not quiet:
     print('Found tests in files:')
@@ -398,12 +491,15 @@ def SearchForTestsByName(terms, quiet, remote_search):
   return files, gtest_filter
 
 
-def IsProbablyFile(name):
+def IsProbablyFile(name: str) -> bool:
   '''Returns whether the name is likely a test file name, path, or directory path.'''
-  return TEST_FILE_NAME_REGEX.match(name) or os.path.exists(name)
+  return bool(TEST_FILE_NAME_REGEX.match(name)) or os.path.exists(name)
 
 
-def FindMatchingTestFiles(target, remote_search=False, path_index=None):
+def FindMatchingTestFiles(
+    target: str,
+    remote_search: bool = False,
+    path_index: int | None = None) -> list[str]:
   # Return early if there's an exact file match.
   if os.path.isfile(target):
     if test_file := _FindTestForFile(target):
@@ -411,7 +507,7 @@ def FindMatchingTestFiles(target, remote_search=False, path_index=None):
     ExitWithMessage(f"{target} doesn't look like a test file")
   # If this is a directory, return all the test files it contains.
   if os.path.isdir(target):
-    files = FindTestFilesInDirectory(target)
+    files: list[str] = FindTestFilesInDirectory(target)
     if not files:
       ExitWithMessage('No tests found in directory')
     return files
@@ -429,9 +525,9 @@ def FindMatchingTestFiles(target, remote_search=False, path_index=None):
     exact, close = FindRemoteCandidates(target)
     if not exact and not close:
       print('Failed to find remote candidates; searching recursively')
-      exact, close = RecursiveMatchFilename(SRC_DIR, target)
+      exact, close = RecursiveMatchFilename(str(SRC_DIR), target)
   else:
-    exact, close = RecursiveMatchFilename(SRC_DIR, target)
+    exact, close = RecursiveMatchFilename(str(SRC_DIR), target)
 
   if DEBUG:
     if exact:
@@ -443,7 +539,7 @@ def FindMatchingTestFiles(target, remote_search=False, path_index=None):
 
   if len(exact) >= 1:
     # Given "Foo", don't ask to disambiguate ModFoo.java vs Foo.java.
-    more_exact = [
+    more_exact: list[str] = [
         p for p in exact if os.path.basename(p) in (target, f'{target}.java')
     ]
     if len(more_exact) == 1:
@@ -463,11 +559,11 @@ def FindMatchingTestFiles(target, remote_search=False, path_index=None):
   return test_files
 
 
-def _FindTestForFile(target: os.PathLike) -> str | None:
+def _FindTestForFile(target: os.PathLike[str]) -> str | None:
   root, ext = os.path.splitext(target)
   # If the target is a C++ implementation file, try to guess the test file.
   # Candidates should be ordered most to least promising.
-  test_candidates = [target]
+  test_candidates: list[str] = [target]
   if ext == '.h':
     # `*_unittest.{cc,mm}` are both possible.
     test_candidates.append(f'{root}_unittest.cc')
@@ -475,34 +571,34 @@ def _FindTestForFile(target: os.PathLike) -> str | None:
   elif ext == '.cc' or ext == '.mm':
     test_candidates.append(f'{root}_unittest{ext}')
   else:
-    return target
+    return str(target)
 
-  maybe_valid = []
+  maybe_valid: list[str] = []
   for candidate in test_candidates:
     if not os.path.isfile(candidate):
       continue
-    validity = IsTestFile(candidate)
+    validity: TestValidity = IsTestFile(str(candidate))
     if validity is TestValidity.VALID_TEST:
-      return candidate
+      return str(candidate)
     elif validity is TestValidity.MAYBE_A_TEST:
-      maybe_valid.append(candidate)
+      maybe_valid.append(str(candidate))
   return maybe_valid[0] if maybe_valid else None
 
 
-def _ChooseByIndex(msg, options):
+def _ChooseByIndex(msg: str, options: list[str]) -> str:
   while True:
-    user_input = input(msg)
+    user_input: str = input(msg)
     try:
       return options[int(user_input)]
     except (ValueError, IndexError):
       msg = 'Invalid index. Try again: '
 
 
-def HaveUserPickFile(paths):
+def HaveUserPickFile(paths: list[str]) -> str:
   paths = sorted(paths, key=lambda p: (len(p), p))[:20]
-  path_list = '\n'.join(f'{i}. {t}' for i, t in enumerate(paths))
+  path_list: str = '\n'.join(f'{i}. {t}' for i, t in enumerate(paths))
 
-  msg = f"""\
+  msg: str = f"""\
 Found multiple paths with that name.
 Hint: Avoid this in subsequent runs using --path-index=$INDEX, or --run-all.
 
@@ -512,11 +608,11 @@ Pick the path that you want by its index: """
   return _ChooseByIndex(msg, paths)
 
 
-def HaveUserPickTarget(paths, targets):
+def HaveUserPickTarget(paths: list[str], targets: list[str]) -> str:
   targets = targets[:20]
-  target_list = '\n'.join(f'{i}. {t}' for i, t in enumerate(targets))
+  target_list: str = '\n'.join(f'{i}. {t}' for i, t in enumerate(targets))
 
-  msg = f"""\
+  msg: str = f"""\
 Path(s) belong to multiple test targets.
 Hint: Avoid this in subsequent runs using --target-index=$INDEX, or --run-all.
 
@@ -529,43 +625,48 @@ Pick a target by its index: """
 # A persistent cache to avoid running gn on repeated runs of autotest.
 class TargetCache:
 
-  def __init__(self, out_dir):
+  def __init__(self, out_dir: str) -> None:
     self.out_dir = out_dir
-    self.path = os.path.join(out_dir, 'autotest_cache')
-    self.gold_mtime = self.GetBuildNinjaMtime()
-    self.cache = {}
+    self.path: str = os.path.join(out_dir, 'autotest_cache')
+    self.gold_mtime: float = self.GetBuildNinjaMtime()
+    self.cache: dict[str, list[str]] = {}
+
+    if not os.path.exists(self.path):
+      return
+
     try:
-      mtime, cache = json.load(open(self.path, 'r'))
+      with open(self.path, 'r') as f:
+        mtime, cache = json.load(f)
       if mtime == self.gold_mtime:
         self.cache = cache
-    except Exception:
+    except (json.JSONDecodeError, ValueError, OSError):
       pass
 
-  def Save(self):
+  def Save(self) -> None:
     with open(self.path, 'w') as f:
       json.dump([self.gold_mtime, self.cache], f)
 
-  def Find(self, test_paths):
-    key = ' '.join(test_paths)
+  def Find(self, test_paths: list[str]) -> list[str] | None:
+    key: str = ' '.join(test_paths)
     return self.cache.get(key, None)
 
-  def Store(self, test_paths, test_targets):
-    key = ' '.join(test_paths)
+  def Store(self, test_paths: list[str], test_targets: list[str]) -> None:
+    key: str = ' '.join(test_paths)
     self.cache[key] = test_targets
 
-  def GetBuildNinjaMtime(self):
+  def GetBuildNinjaMtime(self) -> float:
     return os.path.getmtime(os.path.join(self.out_dir, 'build.ninja'))
 
-  def IsStillValid(self):
+  def IsStillValid(self) -> bool:
     return self.GetBuildNinjaMtime() == self.gold_mtime
 
 
-def _TestTargetsFromGnRefs(targets):
+def _TestTargetsFromGnRefs(targets: list[str]) -> list[str]:
   # Prevent repeated targets.
-  all_test_targets = set()
+  all_test_targets: set[str] = set()
 
   # Find "standard" targets (e.g., GTests).
-  standard_targets = [t for t in targets if '__' not in t]
+  standard_targets: list[str] = [t for t in targets if '__' not in t]
   standard_targets = [
       t for t in standard_targets
       if t.endswith(_TEST_TARGET_SUFFIXES) or t in _TEST_TARGET_ALLOWLIST
@@ -585,31 +686,32 @@ def _TestTargetsFromGnRefs(targets):
   return sorted(list(all_test_targets))
 
 
-def _ParseRefsOutput(output):
-  targets = output.splitlines()
+def _ParseRefsOutput(output: str) -> list[str]:
+  targets: list[str] = output.splitlines()
   # Filter out any warnings messages. E.g. those about unused GN args.
   # https://crbug.com/444024516
   targets = [t for t in targets if t.startswith('//')]
   return targets
 
 
-def FindTestTargets(target_cache, out_dir, paths, args):
-  run_all = args.run_all or args.run_changed
-  target_index = args.target_index
+def FindTestTargets(target_cache: TargetCache, out_dir: str, paths: list[str],
+                    args: argparse.Namespace) -> tuple[list[str], bool]:
+  run_all: bool = args.run_all or args.run_changed
+  target_index: int | None = args.target_index
 
   # Normalize paths, so they can be cached.
   paths = [os.path.realpath(p) for p in paths]
-  test_targets = target_cache.Find(paths)
-  used_cache = True
+  test_targets: list[str] | None = target_cache.Find(paths)
+  used_cache: bool = True
   if not test_targets:
     used_cache = False
 
     # Use gn refs to recursively find all targets that depend on |path|, filter
     # internal gn targets, and match against well-known test suffixes, falling
     # back to a list of known test targets if that fails.
-    gn_path = os.path.join(DEPOT_TOOLS_DIR, 'gn.py')
+    gn_path: str = os.path.join(str(DEPOT_TOOLS_DIR), 'gn.py')
 
-    cmd = [
+    cmd: list[str] = [
         sys.executable,
         gn_path,
         'refs',
@@ -618,7 +720,7 @@ def FindTestTargets(target_cache, out_dir, paths, args):
         '--relation=source',
         '--relation=input',
     ] + paths
-    targets = _ParseRefsOutput(RunCommand(cmd))
+    targets: list[str] = _ParseRefsOutput(RunCommand(cmd))
     test_targets = _TestTargetsFromGnRefs(targets)
 
     # If no targets were identified as tests by looking at their names, ask GN
@@ -649,20 +751,21 @@ def FindTestTargets(target_cache, out_dir, paths, args):
       test_targets = [HaveUserPickTarget(paths, test_targets)]
 
   # Remove the // prefix to turn GN label into ninja target.
-  test_targets = [t[2:] for t in test_targets]
+  test_targets_gn: list[str] = [t[2:] for t in test_targets]
 
-  return (test_targets, used_cache)
+  return (test_targets_gn, used_cache)
 
 
-def RunTestTargets(out_dir, targets, gtest_filter, pref_mapping_filter,
-                   extra_args, dry_run, no_try_android_wrappers,
-                   no_fast_local_dev):
+def RunTestTargets(out_dir: str, targets: list[str], gtest_filter: str,
+                   pref_mapping_filter: str | None, extra_args: list[str],
+                   dry_run: bool, no_try_android_wrappers: bool,
+                   no_fast_local_dev: bool) -> None:
 
   for target in targets:
-    target_binary = target.split(':')[1]
+    target_binary: str = target.split(':')[1]
 
     # Look for the Android wrapper script first.
-    path = os.path.join(out_dir, 'bin', f'run_{target_binary}')
+    path: str = os.path.join(out_dir, 'bin', f'run_{target_binary}')
     if no_try_android_wrappers or not os.path.isfile(path):
       # If the wrapper is not found or disabled use the Desktop target
       # which is an executable.
@@ -671,7 +774,7 @@ def RunTestTargets(out_dir, targets, gtest_filter, pref_mapping_filter,
       # Usually want this flag when developing locally.
       extra_args = extra_args + ['--fast-local-dev']
 
-    cmd = [path, f'--gtest_filter={gtest_filter}']
+    cmd: list[str] = [path, f'--gtest_filter={gtest_filter}']
     if pref_mapping_filter:
       cmd.append(f'--test_policy_to_pref_mappings_filter={pref_mapping_filter}')
     cmd.extend(extra_args)
@@ -681,8 +784,8 @@ def RunTestTargets(out_dir, targets, gtest_filter, pref_mapping_filter,
       StreamCommandOrExit(cmd)
 
 
-def BuildCppTestFilter(filenames, line):
-  make_filter_command = [
+def BuildCppTestFilter(filenames: list[str], line: int | None) -> str:
+  make_filter_command: list[str | Path] = [
       sys.executable, SRC_DIR / 'tools' / 'make_gtest_filter.py'
   ]
   if line:
@@ -693,26 +796,29 @@ def BuildCppTestFilter(filenames, line):
   return RunCommand(make_filter_command).strip()
 
 
-def BuildJavaTestFilter(filenames):
+def BuildJavaTestFilter(filenames: list[str]) -> str:
   return ':'.join('*.{}*'.format(os.path.splitext(os.path.basename(f))[0])
                   for f in filenames)
 
 
-_PREF_MAPPING_GTEST_FILTER = '*PolicyPrefsTest.PolicyToPrefsMapping*'
+_PREF_MAPPING_GTEST_FILTER: str = '*PolicyPrefsTest.PolicyToPrefsMapping*'
 
-_PREF_MAPPING_FILE_REGEX = re.compile(_PREF_MAPPING_FILE_PATTERN)
+_PREF_MAPPING_FILE_REGEX: re.Pattern[str] = re.compile(
+    _PREF_MAPPING_FILE_PATTERN)
 
-SPECIAL_TEST_FILTERS = [(_PREF_MAPPING_FILE_REGEX, _PREF_MAPPING_GTEST_FILTER)]
+SPECIAL_TEST_FILTERS: list[tuple[re.Pattern[str], str]] = [
+    (_PREF_MAPPING_FILE_REGEX, _PREF_MAPPING_GTEST_FILTER)
+]
 
 
-def BuildTestFilter(filenames, line):
-  java_files = [f for f in filenames if f.endswith('.java')]
+def BuildTestFilter(filenames: list[str], line: int | None) -> str:
+  java_files: list[str] = [f for f in filenames if f.endswith('.java')]
   # TODO(crbug.com/434009870): Support EarlGrey tests, which don't use
   # Googletest's macros or pascal case naming convention.
-  cc_files = [
+  cc_files: list[str] = [
       f for f in filenames if f.endswith('.cc') or f.endswith('_unittest.mm')
   ]
-  filters = []
+  filters: list[str] = []
   if java_files:
     filters.append(BuildJavaTestFilter(java_files))
   if cc_files:
@@ -724,33 +830,38 @@ def BuildTestFilter(filenames, line):
   return ':'.join(filters)
 
 
-def BuildPrefMappingTestFilter(filenames):
-  mapping_files = [f for f in filenames if _PREF_MAPPING_FILE_REGEX.match(f)]
+def BuildPrefMappingTestFilter(filenames: list[str]) -> str | None:
+  mapping_files: list[str] = [
+      f for f in filenames if _PREF_MAPPING_FILE_REGEX.match(f)
+  ]
   if not mapping_files:
     return None
-  names_without_extension = [Path(f).stem for f in mapping_files]
+  names_without_extension: list[str] = [Path(f).stem for f in mapping_files]
   return ':'.join(names_without_extension)
 
 
-def GetChangedTestFiles():
+def GetChangedTestFiles() -> list[str]:
   # Find both committed and uncommitted changes.
-  merge_base_command = ['git', 'merge-base', 'origin/main', 'HEAD']
-  merge_base = RunCommand(merge_base_command).strip()
-  git_command = [
+  merge_base_command: list[str] = ['git', 'merge-base', 'origin/main', 'HEAD']
+  merge_base: str = RunCommand(merge_base_command).strip()
+  git_command: list[str] = [
       'git', 'diff', '--name-only', '--diff-filter=ACMRT', merge_base
   ]
-  changed_files = RunCommand(git_command).splitlines()
+  changed_files: list[str] = RunCommand(git_command).splitlines()
 
-  test_files = []
+  test_files: list[str] = []
   for f in changed_files:
     if IsTestFile(f) is TestValidity.VALID_TEST:
       test_files.append(f)
   return test_files
 
 
+@tracer.start_as_current_span('chromium.tools.autotest.main')
 def main():
-  parser = argparse.ArgumentParser(
-      prog='tools/autotest.py', description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
+  parser: argparse.ArgumentParser = argparse.ArgumentParser(
+      prog='tools/autotest.py',
+      description=__doc__,
+      formatter_class=argparse.RawTextHelpFormatter)
   parser.add_argument('--out-dir',
                       '--out_dir',
                       '--output-directory',
@@ -832,19 +943,19 @@ def main():
 
   if not os.path.isdir(out_dir):
     parser.error(f'OUT_DIR "{out_dir}" does not exist.')
-  target_cache = TargetCache(out_dir)
+  target_cache: TargetCache = TargetCache(out_dir)
 
   if not args.run_changed and not args.files and not args.name:
     parser.error('Specify a file to test or use --run-changed')
 
   # Cog is almost unusable with local search, so turn on remote_search.
-  use_remote_search = args.remote_search
+  use_remote_search: bool = args.remote_search
   if not use_remote_search and SRC_DIR.parts[:3] == ('/', 'google', 'cog'):
     if DEBUG:
       print('Detected cog, turning on remote-search.')
     use_remote_search = True
 
-  gtest_filter = args.gtest_filter
+  gtest_filter: str | None = args.gtest_filter
 
   # Don't try to search if rg is not installed, and use the old behavior.
   if not use_remote_search and not shutil.which('rg'):
@@ -872,7 +983,7 @@ def main():
     # Remove duplicates.
     files_to_test = list(set(files_to_test))
 
-  filenames = []
+  filenames: list[str] = []
   for file in files_to_test:
     filenames.extend(
         FindMatchingTestFiles(file, use_remote_search, args.path_index))
@@ -888,12 +999,13 @@ def main():
   if not gtest_filter:
     ExitWithMessage('Failed to derive a gtest filter')
 
-  pref_mapping_filter = args.test_policy_to_pref_mappings_filter
+  pref_mapping_filter: str | None = args.test_policy_to_pref_mappings_filter
   if not pref_mapping_filter:
     pref_mapping_filter = BuildPrefMappingTestFilter(filenames)
 
   assert targets
-  build_ok = BuildTestTargets(out_dir, targets, args.dry_run, args.quiet)
+
+  build_ok: bool = BuildTestTargets(out_dir, targets, args.dry_run, args.quiet, False)
 
   # If we used the target cache, it's possible we chose the wrong target because
   # a gn file was changed. The build step above will check for gn modifications
@@ -906,7 +1018,10 @@ def main():
       # Note that this can happen, for example, if you rename a test target.
       print('gn config was changed, trying to build again', file=sys.stderr)
       targets = new_targets
-      build_ok = BuildTestTargets(out_dir, targets, args.dry_run, args.quiet)
+      build_ok: bool = BuildTestTargets(out_dir, targets, args.dry_run, args.quiet,
+                                  True)
+
+  RecordMainAttributes(targets, gtest_filter, used_cache, out_dir)
 
   if not build_ok: sys.exit(1)
 
@@ -916,4 +1031,6 @@ def main():
 
 
 if __name__ == '__main__':
+  telemetry.initialize('chromium.tools.autotest')
+
   sys.exit(main())

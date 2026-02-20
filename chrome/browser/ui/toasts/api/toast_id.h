@@ -6,6 +6,7 @@
 #define CHROME_BROWSER_UI_TOASTS_API_TOAST_ID_H_
 
 #include <string>
+#include <string_view>
 
 // Each toast is supposed to have its own unique toast id and corresponding
 // string name. New additions to ToastId enum should also be added to
@@ -45,13 +46,14 @@ enum class ToastId {
   kEnhancedBundledSecuritySettings = 23,
   kSkillSaved = 24,
   kSkillDeleted = 25,
-  kMaxValue = kSkillDeleted,
+  kSavedAutofillAiEntityToWallet = 26,
+  kMaxValue = kSavedAutofillAiEntityToWallet,
 };
 // LINT.ThenChange(/tools/metrics/histograms/metadata/toasts/enums.xml:ToastId)
 
 // Returns the string equivalent name persisted to logs for `toast_id`.
 // New additions should also be added to
 // tools/metrics/histograms/metadata/toasts/histograms.xml
-std::string GetToastName(ToastId toast_id);
+std::string_view GetToastName(ToastId toast_id);
 
 #endif  // CHROME_BROWSER_UI_TOASTS_API_TOAST_ID_H_

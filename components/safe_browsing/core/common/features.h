@@ -154,10 +154,6 @@ BASE_DECLARE_FEATURE(kClientSideDetectionShowScamVerdictWarningAndroid);
 
 BASE_DECLARE_FEATURE(kClientSideDetectionSkipErrorPage);
 
-// Expand CSPP beyond phishing and trigger when vibration API is called on the
-// web page.
-BASE_DECLARE_FEATURE(kClientSideDetectionVibrationApi);
-
 // Set a RESIZE_BEST preference for image resizing algorithm in Client Side
 // Detection renderer processes for both image classification and image
 // embedding. This experiment is done to see if the resizing algorithm
@@ -243,6 +239,9 @@ BASE_DECLARE_FEATURE(kExternalAppRedirectTelemetry);
 
 // Enables querying server-side Gemini model for scam detection.
 BASE_DECLARE_FEATURE(kGeminiAntiscamProtectionForMetricsCollection);
+// The minimum scam score required to log page content to MQLS.
+extern const base::FeatureParam<double>
+    kGeminiAntiscamProtectionMinScamScoreLogPageContent;
 
 // Replace the high confidence allowlist check gating notification warnings with
 // a check of the global cache list specific to safe notification sites.
@@ -415,6 +414,10 @@ extern const base::FeatureParam<int>
 // the buttons should be swapped where "Unsubscribe" is the secondary button.
 extern const base::FeatureParam<bool>
     kShowWarningsForSuspiciousNotificationsShouldSwapButtons;
+
+// Controls whether to skip image classification scoring for non-page load
+// triggers.
+BASE_DECLARE_FEATURE(kSkipImageClassificationScoringForNonPageLoadTriggers);
 
 // Controls the daily quota for the suspicious site trigger.
 BASE_DECLARE_FEATURE(kSuspiciousSiteTriggerQuotaFeature);

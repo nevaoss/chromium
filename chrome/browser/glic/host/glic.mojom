@@ -247,7 +247,6 @@ interface PageHandler {
 
 // @generate glic_api
 // Reason for failure while acting.
-// LINT.IfChange(PerformActionsErrorReason)
 [Stable, Extensible]
 enum PerformActionsErrorReason {
   [Default] kUnknown = 0,
@@ -258,20 +257,19 @@ enum PerformActionsErrorReason {
   [MinVersion=2] kMissingTaskId = 2,
 };
 
-// LINT.ThenChange(//tools/metrics/histograms/metadata/glic/enums.xml:PerformActionsErrorReason)
-
 // @generate glic_api
 // Reason for failure when creating an actor task.
-// LINT.IfChange(CreateTaskErrorReason)
 [Stable, Extensible]
 enum CreateTaskErrorReason {
   [Default] kUnknown = 0,
 
   // The host does not support the actor task system.
   kTaskSystemUnavailable = 1,
-};
 
-// LINT.ThenChange(//tools/metrics/histograms/metadata/glic/enums.xml:CreateTaskErrorReason)
+  // The host already has an existing task in progress. The client must stop it
+  // before requesting a new task.
+  [MinVersion=1] kExistingActiveTask = 2,
+};
 
 // @generate glic_api
 // The state of an actor task.
@@ -374,6 +372,7 @@ enum Platform {
   kWindows = 2,
   kLinux = 3,
   kChromeOS = 4,
+  kAndroid = 5,
 };
 
 // The result of `WebClientCreated()`. Contains information that needs to be
@@ -443,8 +442,6 @@ struct WebClientInitialState {
   bool onboarding_completed;
   // Whether the skills feature is enabled.
   bool enable_skills;
-  // The initial list of skill previews.
-  array<SkillPreview> skill_previews;
 };
 
 // Options for getting tab context.
@@ -588,6 +585,7 @@ struct SuggestionContent {
 
 // @generate glic_api
 // Enum to specify the source of the Skill.
+// LINT.IfChange(SkillSource)
 [Stable, Extensible]
 enum SkillSource {
   [Default] kUnknown = 0,
@@ -596,7 +594,9 @@ enum SkillSource {
   // Skill created by an end-user.
   kUserCreated = 2,
 };
+// LINT.ThenChange(//depot/chromium/components/skills/public/skill.mojom:SkillSource, //depot/chromium/components/skills/public/skill.h:SkillSource)
 
+// LINT.IfChange(Skill)
 // A single skill preview.
 struct SkillPreview {
   // The unique identifier of the skill which is an UUID.
@@ -616,6 +616,7 @@ struct Skill {
   // The prompt of the skill.
   string prompt;
 };
+// LINT.ThenChange(//depot/chromium/components/skills/public/skill.mojom:Skill, //depot/chromium/components/skills/public/skill.h:Skill)
 
 // Request to create a skill.
 struct CreateSkillRequest {
@@ -838,6 +839,9 @@ interface WebClientHandler {
   // boolean indicating whether the modal dialog was opened successfully.
   // TODO(crbug.com/471796872): Add the actual c++ implementation.
   UpdateSkill(UpdateSkillRequest request) => (bool modal_opened);
+
+  // Requests that the browser show skill management UI.
+  ShowManageSkillsUi();
 
   // Gets a skill by its id. Returns null if the skill does not exist.
   GetSkill(string id) => (Skill? skill);
@@ -1450,6 +1454,9 @@ interface WebClient {
 
   // Notify that a skill preview has changed.
   NotifySkillPreviewChanged(SkillPreview skill_preview);
+
+  // Notify that the contextual skills previews have changed.
+  NotifyContextualSkillPreviewsChanged(array<SkillPreview> skill_previews);
 
   // Notify that the skills previews have changed.
   NotifySkillPreviewsChanged(array<SkillPreview> skill_previews);

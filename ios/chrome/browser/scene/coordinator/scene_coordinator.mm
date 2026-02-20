@@ -11,9 +11,12 @@
 #import "components/autofill/core/browser/data_model/payments/credit_card.h"
 #import "components/password_manager/core/browser/ui/credential_ui_entry.h"
 #import "ios/chrome/app/application_delegate/app_state.h"
+#import "ios/chrome/app/application_delegate/tab_opening.h"
 #import "ios/chrome/app/deferred_initialization_runner.h"
 #import "ios/chrome/app/deferred_initialization_task_names.h"
 #import "ios/chrome/app/profile/profile_state.h"
+#import "ios/chrome/browser/ai_prototyping/coordinator/ai_prototyping_coordinator.h"
+#import "ios/chrome/browser/assistant/coordinator/assistant_sheet_coordinator.h"
 #import "ios/chrome/browser/authentication/account_menu/coordinator/account_menu_coordinator.h"
 #import "ios/chrome/browser/authentication/account_menu/coordinator/account_menu_coordinator_delegate.h"
 #import "ios/chrome/browser/authentication/account_menu/public/account_menu_constants.h"
@@ -23,6 +26,10 @@
 #import "ios/chrome/browser/authentication/ui_bundled/signin/signin_utils.h"
 #import "ios/chrome/browser/default_browser/model/utils.h"
 #import "ios/chrome/browser/feature_engagement/model/tracker_factory.h"
+#import "ios/chrome/browser/history/ui_bundled/history_coordinator.h"
+#import "ios/chrome/browser/incognito_interstitial/ui_bundled/incognito_interstitial_coordinator.h"
+#import "ios/chrome/browser/incognito_interstitial/ui_bundled/incognito_interstitial_coordinator_delegate.h"
+#import "ios/chrome/browser/policy/model/policy_util.h"
 #import "ios/chrome/browser/policy/model/policy_watcher_browser_agent.h"
 #import "ios/chrome/browser/policy/model/policy_watcher_browser_agent_observer_bridge.h"
 #import "ios/chrome/browser/safari_data_import/coordinator/safari_data_import_main_coordinator.h"
@@ -35,17 +42,21 @@
 #import "ios/chrome/browser/shared/model/browser/browser_provider.h"
 #import "ios/chrome/browser/shared/model/browser/browser_provider_interface.h"
 #import "ios/chrome/browser/shared/model/profile/profile_ios.h"
+#import "ios/chrome/browser/shared/model/profile/profile_ios_util.h"
 #import "ios/chrome/browser/shared/public/commands/browser_coordinator_commands.h"
 #import "ios/chrome/browser/shared/public/commands/command_dispatcher.h"
 #import "ios/chrome/browser/shared/public/commands/policy_change_commands.h"
 #import "ios/chrome/browser/shared/public/commands/scene_commands.h"
 #import "ios/chrome/browser/shared/public/commands/settings_commands.h"
 #import "ios/chrome/browser/shared/public/commands/show_signin_command.h"
+#import "ios/chrome/browser/shared/public/features/features.h"
 #import "ios/chrome/browser/signin/model/authentication_service.h"
 #import "ios/chrome/browser/signin/model/authentication_service_factory.h"
 #import "ios/chrome/browser/tab_switcher/ui_bundled/tab_grid/tab_grid_coordinator.h"
 #import "ios/chrome/browser/url_loading/model/url_loading_browser_agent.h"
 #import "ios/chrome/browser/url_loading/model/url_loading_params.h"
+#import "ios/chrome/browser/youtube_incognito/coordinator/youtube_incognito_coordinator.h"
+#import "ios/chrome/browser/youtube_incognito/coordinator/youtube_incognito_coordinator_delegate.h"
 
 namespace {
 
@@ -63,10 +74,13 @@ void RecordIfNeededSigninFullscreenPromoEvent(
 }  // namespace
 
 @interface SceneCoordinator () <AccountMenuCoordinatorDelegate,
+                                HistoryCoordinatorDelegate,
+                                IncognitoInterstitialCoordinatorDelegate,
                                 PasswordCheckupCoordinatorDelegate,
                                 PolicyWatcherBrowserAgentObserving,
                                 SafariDataImportMainCoordinatorDelegate,
-                                SettingsNavigationControllerDelegate>
+                                SettingsNavigationControllerDelegate,
+                                YoutubeIncognitoCoordinatorDelegate>
 
 // The SceneState for this scene.
 @property(nonatomic, readonly) SceneState* sceneState;
@@ -81,6 +95,7 @@ void RecordIfNeededSigninFullscreenPromoEvent(
 
 @implementation SceneCoordinator {
   id<SceneCommands> _sceneCommandsEndpoint;
+  id<TabOpening> _tabOpener;
   base::WeakPtr<Browser> _inactiveBrowser;
   base::WeakPtr<Browser> _regularBrowser;
   // Coordinator for the Tab Grid
@@ -93,6 +108,16 @@ void RecordIfNeededSigninFullscreenPromoEvent(
   SafariDataImportMainCoordinator* _safariDataImportCoordinator;
   // Coordinator for display of the Password Checkup.
   PasswordCheckupCoordinator* _passwordCheckupCoordinator;
+  // Coordinator for displaying history.
+  HistoryCoordinator* _historyCoordinator;
+  // Coordinator for the Youtube Incognito interstitial.
+  YoutubeIncognitoCoordinator* _youtubeIncognitoCoordinator;
+  // Coordinator for the Incognito interstitial.
+  IncognitoInterstitialCoordinator* _incognitoInterstitialCoordinator;
+  // Coordinator for the AI prototyping menu.
+  AIPrototypingCoordinator* _AIPrototypingCoordinator;
+  // The coordinator for the Assistant Sheet.
+  AssistantSheetCoordinator* _assistantSheetCoordinator;
   // Observer for PolicyWatcherBrowserAgent.
   std::unique_ptr<PolicyWatcherBrowserAgentObserverBridge>
       _policyWatcherObserverBridge;
@@ -103,9 +128,11 @@ void RecordIfNeededSigninFullscreenPromoEvent(
 }
 
 - (instancetype)initWithSceneCommandsEndpoint:
-    (id<SceneCommands>)sceneCommandsEndpoint {
+                    (id<SceneCommands>)sceneCommandsEndpoint
+                                    tabOpener:(id<TabOpening>)tabOpener {
   if ((self = [super init])) {
     _sceneCommandsEndpoint = sceneCommandsEndpoint;
+    _tabOpener = tabOpener;
   }
   return self;
 }
@@ -141,7 +168,13 @@ void RecordIfNeededSigninFullscreenPromoEvent(
   [self stopSigninCoordinatorWithCompletionAnimated:NO];
   [self stopSafariDataImportCoordinator];
   [self stopPasswordCheckupCoordinator];
+  [self stopHistoryCoordinator];
+  [self stopYoutubeIncognitoCoordinator];
+  [self stopIncognitoInterstitialCoordinator];
   [self stopSettingsAnimated:NO completion:nil];
+  [_AIPrototypingCoordinator stop];
+  _AIPrototypingCoordinator = nil;
+  [self stopAssistantSheetCoordinator];
   [_tabGridCoordinator stop];
 }
 
@@ -510,6 +543,87 @@ void RecordIfNeededSigninFullscreenPromoEvent(
       presentViewController:self.settingsNavigationController
                    animated:YES
                  completion:nil];
+}
+
+- (void)openAIMenu {
+  DCHECK(self.currentBrowser);
+  _AIPrototypingCoordinator = [[AIPrototypingCoordinator alloc]
+      initWithBaseViewController:self.activeViewController
+                         browser:self.currentBrowser];
+
+  // Since this is only for internal prototyping, the coordinator remains active
+  // once it's been started.
+  [_AIPrototypingCoordinator start];
+}
+
+- (void)showAssistant {
+  if (!IsAssistantSheetEnabled()) {
+    return;
+  }
+  _assistantSheetCoordinator = [[AssistantSheetCoordinator alloc]
+      initWithBaseViewController:self.activeViewController
+                         browser:self.currentBrowser];
+  _assistantSheetCoordinator.mode = AssistantSheetModeGemini;
+  [_assistantSheetCoordinator start];
+}
+
+- (void)showYoutubeIncognitoWithUrlLoadParams:
+    (const UrlLoadParams&)URLLoadParams {
+  _youtubeIncognitoCoordinator = [[YoutubeIncognitoCoordinator alloc]
+      initWithBaseViewController:self.activeViewController
+                         browser:self.currentBrowser];
+  _youtubeIncognitoCoordinator.delegate = self;
+  _youtubeIncognitoCoordinator.tabOpener = _tabOpener;
+  _youtubeIncognitoCoordinator.urlLoadParams = URLLoadParams;
+  _youtubeIncognitoCoordinator.incognitoDisabled =
+      [self isIncognitoModeDisabled];
+  [_youtubeIncognitoCoordinator start];
+}
+
+- (void)stopYoutubeIncognitoCoordinator {
+  [_youtubeIncognitoCoordinator stop];
+  _youtubeIncognitoCoordinator.delegate = nil;
+  _youtubeIncognitoCoordinator = nil;
+}
+
+- (void)showIncognitoInterstitialWithUrlLoadParams:
+    (const UrlLoadParams&)URLLoadParams {
+  DCHECK(_incognitoInterstitialCoordinator == nil);
+  _incognitoInterstitialCoordinator = [[IncognitoInterstitialCoordinator alloc]
+      initWithBaseViewController:self.activeViewController
+                         browser:self.currentBrowser];
+  _incognitoInterstitialCoordinator.delegate = self;
+  _incognitoInterstitialCoordinator.tabOpener = _tabOpener;
+  _incognitoInterstitialCoordinator.urlLoadParams = URLLoadParams;
+  [_incognitoInterstitialCoordinator start];
+}
+
+- (void)stopIncognitoInterstitialCoordinator {
+  [_incognitoInterstitialCoordinator stop];
+  _incognitoInterstitialCoordinator = nil;
+}
+
+- (void)stopAssistantSheetCoordinator {
+  [_assistantSheetCoordinator stop];
+  _assistantSheetCoordinator = nil;
+}
+
+- (void)stopHistoryCoordinator {
+  [_historyCoordinator stop];
+  _historyCoordinator.delegate = nil;
+  _historyCoordinator = nil;
+}
+
+- (void)showHistory {
+  CHECK(!self.currentBrowser->GetProfile()->IsOffTheRecord())
+      << "Current interface is incognito and should NOT show history. Call "
+         "this on regular interface.";
+  _historyCoordinator = [[HistoryCoordinator alloc]
+      initWithBaseViewController:self.activeViewController
+                         browser:_regularBrowser.get()];
+  _historyCoordinator.loadStrategy = UrlLoadStrategy::NORMAL;
+  _historyCoordinator.delegate = self;
+  [_historyCoordinator start];
 }
 
 #pragma mark - SettingsCommands
@@ -918,12 +1032,50 @@ void RecordIfNeededSigninFullscreenPromoEvent(
   [self stopSafariDataImportCoordinator];
 }
 
+#pragma mark - IncognitoInterstitialCoordinatorDelegate
+
+- (void)shouldStopIncognitoInterstitial:
+    (IncognitoInterstitialCoordinator*)incognitoInterstitial {
+  DCHECK(incognitoInterstitial == _incognitoInterstitialCoordinator);
+  [self stopIncognitoInterstitialCoordinator];
+  id<SceneCommands> sceneHandler = HandlerForProtocol(
+      _regularBrowser->GetCommandDispatcher(), SceneCommands);
+  [sceneHandler closePresentedViews];
+}
+
+#pragma mark - YoutubeIncognitoCoordinatorDelegate
+
+- (void)shouldStopYoutubeIncognitoCoordinator:
+    (YoutubeIncognitoCoordinator*)youtubeIncognitoCoordinator {
+  DCHECK(youtubeIncognitoCoordinator == _youtubeIncognitoCoordinator);
+  [self stopYoutubeIncognitoCoordinator];
+  id<SceneCommands> sceneHandler = HandlerForProtocol(
+      _regularBrowser->GetCommandDispatcher(), SceneCommands);
+  [sceneHandler closePresentedViews];
+}
+
 #pragma mark - PasswordCheckupCoordinatorDelegate
 
 - (void)passwordCheckupCoordinatorDidRemove:
     (PasswordCheckupCoordinator*)coordinator {
   CHECK_EQ(_passwordCheckupCoordinator, coordinator);
   [self stopPasswordCheckupCoordinator];
+}
+
+#pragma mark - HistoryCoordinatorDelegate
+
+- (void)closeHistoryWithCompletion:(ProceduralBlock)completion {
+  __weak __typeof(self) weakSelf = self;
+  [_historyCoordinator dismissWithCompletion:^{
+    if (completion) {
+      completion();
+    }
+    [weakSelf stopHistoryCoordinator];
+  }];
+}
+
+- (void)closeHistory {
+  [self closeHistoryWithCompletion:nil];
 }
 
 #pragma mark - PasswordManagerReauthenticationDelegate
@@ -949,6 +1101,11 @@ void RecordIfNeededSigninFullscreenPromoEvent(
 }
 
 #pragma mark - Private
+
+// Returns YES if incognito mode is disabled.
+- (BOOL)isIncognitoModeDisabled {
+  return IsIncognitoModeDisabled(_regularBrowser->GetProfile()->GetPrefs());
+}
 
 // Stops the account menu coordinator.
 - (void)stopAccountMenu {

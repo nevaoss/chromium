@@ -476,6 +476,20 @@ NET_EXPORT BASE_DECLARE_FEATURE_PARAM(
 // quota, and has associated signing caching for refreshes.
 NET_EXPORT BASE_DECLARE_FEATURE(kDeviceBoundSessionSigningQuotaAndCaching);
 
+// This feature controls whether DBSC is allowed to register sessions on
+// a certain list of sites, as specified in
+// `device_bound_sessions_restricted_sites` in the
+// `NetworkContextParams`.
+NET_EXPORT BASE_DECLARE_FEATURE(kDeviceBoundSessionsForRestrictedSites);
+
+// This feature controls whether we add a query param to registration on
+// restricted sites.
+NET_EXPORT BASE_DECLARE_FEATURE(
+    kDeviceBoundSessionsForRestrictedSitesExperimentId);
+NET_EXPORT BASE_DECLARE_FEATURE_PARAM(
+    std::string,
+    kDeviceBoundSessionsForRestrictedSitesExperimentIdParam);
+
 // Enables more checks when creating a SpdySession for proxy. These checks are
 // already applied to non-proxy SpdySession creations.
 // TODO(crbug.com/343519247): Remove this once we are sure that these checks are
@@ -545,6 +559,14 @@ NET_EXPORT BASE_DECLARE_FEATURE_PARAM(bool, kSqlDiskCacheSynchronousOff);
 NET_EXPORT BASE_DECLARE_FEATURE_PARAM(int, kSqlDiskCacheShardCount);
 // Loads the in-memory index on initialization.
 NET_EXPORT BASE_DECLARE_FEATURE_PARAM(bool, kSqlDiskCacheLoadIndexOnInit);
+// The maximum size of the write buffer for all entries.
+NET_EXPORT BASE_DECLARE_FEATURE_PARAM(int,
+                                      kSqlDiskCacheMaxWriteBufferTotalSize);
+// The maximum size of the write buffer for a single entry.
+NET_EXPORT BASE_DECLARE_FEATURE_PARAM(int,
+                                      kSqlDiskCacheMaxWriteBufferSizePerEntry);
+// The maximum size of the read buffer for all entries.
+NET_EXPORT BASE_DECLARE_FEATURE_PARAM(int, kSqlDiskCacheMaxReadBufferTotalSize);
 #endif  // ENABLE_DISK_CACHE_SQL_BACKEND
 
 // If enabled, ignore Strict-Transport-Security for [*.]localhost hosts.

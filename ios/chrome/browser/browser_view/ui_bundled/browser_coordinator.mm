@@ -164,10 +164,10 @@
 #import "ios/chrome/browser/passwords/bottom_sheet/coordinator/credential_suggestion_bottom_sheet_coordinator.h"
 #import "ios/chrome/browser/passwords/bottom_sheet/coordinator/passkey_creation_bottom_sheet_coordinator.h"
 #import "ios/chrome/browser/passwords/model/password_controller_delegate.h"
+#import "ios/chrome/browser/passwords/password_suggestion/coordinator/password_suggestion_coordinator.h"
 #import "ios/chrome/browser/passwords/ui_bundled/password_breach_coordinator.h"
 #import "ios/chrome/browser/passwords/ui_bundled/password_protection_coordinator.h"
 #import "ios/chrome/browser/passwords/ui_bundled/password_protection_coordinator_delegate.h"
-#import "ios/chrome/browser/passwords/ui_bundled/password_suggestion_coordinator.h"
 #import "ios/chrome/browser/phone_number/ui_bundled/add_contacts_coordinator.h"
 #import "ios/chrome/browser/phone_number/ui_bundled/country_code_picker_coordinator.h"
 #import "ios/chrome/browser/plus_addresses/coordinator/plus_address_bottom_sheet_coordinator.h"
@@ -2234,8 +2234,6 @@ const char kChromeAppStoreUrl[] =
                              browser:self.browser
                               params:params
                             delegate:self];
-  self.credentialSuggestionBottomSheetCoordinator.settingsHandler =
-      HandlerForProtocol(self.dispatcher, SettingsCommands);
   self.credentialSuggestionBottomSheetCoordinator
       .browserCoordinatorCommandsHandler =
       HandlerForProtocol(self.dispatcher, BrowserCoordinatorCommands);
@@ -2420,8 +2418,17 @@ const char kChromeAppStoreUrl[] =
   [_passkeyCreationBottomSheetCoordinator start];
 }
 
-- (void)showPasskeySuggestionBottomSheet:(const std::string&)requestId {
-  // TODO(crbug.com/460485496) : Add implementation.
+- (void)showPasskeySuggestionBottomSheet:(const std::string&)requestID {
+  self.credentialSuggestionBottomSheetCoordinator =
+      [[CredentialSuggestionBottomSheetCoordinator alloc]
+          initWithBaseViewController:self.viewController
+                             browser:self.browser
+                           requestID:requestID
+                            delegate:self];
+  self.credentialSuggestionBottomSheetCoordinator
+      .browserCoordinatorCommandsHandler =
+      HandlerForProtocol(self.dispatcher, BrowserCoordinatorCommands);
+  [self.credentialSuggestionBottomSheetCoordinator start];
 }
 
 #pragma mark - BrowserCoordinatorCommands
@@ -3316,22 +3323,6 @@ const char kChromeAppStoreUrl[] =
   _BWGCoordinator = nil;
 }
 
-// TODO(crbug.com/476145805): Move function to BWGTabHelper.
-- (void)updateFloatyVisibilityForWebState:(web::WebState*)webState {
-  BwgService* BWGService = BwgServiceFactory::GetForProfile(self.profile);
-  BwgBrowserAgent* geminiBrowserAgent =
-      BwgBrowserAgent::FromBrowser(self.browser);
-  if (!IsGeminiCopresenceEnabled() || !BWGService || !geminiBrowserAgent) {
-    return;
-  }
-
-  if (BWGService->IsBwgAvailableForWebState(webState)) {
-    geminiBrowserAgent->ShowFloatyIfInvoked(/*animated=*/YES);
-  } else {
-    geminiBrowserAgent->HideFloatyIfInvoked(/*animated=*/YES);
-  }
-}
-
 - (void)updateFloatyWithTraitCollection:(UITraitCollection*)traitCollection {
   BwgBrowserAgent* geminiBrowserAgent =
       BwgBrowserAgent::FromBrowser(self.browser);
@@ -3389,10 +3380,17 @@ const char kChromeAppStoreUrl[] =
   geminiBrowserAgent->HideFloatyIfInvoked(animated);
 }
 
-- (void)showFloatyIfInvokedAnimated:(BOOL)animated {
+- (void)updateFloatyVisibilityIfEligibleAnimated:(BOOL)animated {
   BwgBrowserAgent* geminiBrowserAgent =
       BwgBrowserAgent::FromBrowser(self.browser);
-  if (!IsGeminiCopresenceEnabled() || !geminiBrowserAgent) {
+  BwgService* geminiService = BwgServiceFactory::GetForProfile(self.profile);
+  if (!IsGeminiCopresenceEnabled() || !geminiBrowserAgent || !geminiService) {
+    return;
+  }
+
+  // Don't show the floaty if the page is ineligible.
+  if (!geminiService->IsBwgAvailableForWebState(self.activeWebState)) {
+    geminiBrowserAgent->HideFloatyIfInvoked(animated);
     return;
   }
 
@@ -4210,6 +4208,11 @@ const char kChromeAppStoreUrl[] =
 #pragma mark - SyncPresenterCommands
 
 - (void)showPrimaryAccountReauth {
+  [self showPrimaryAccountReauthWithDismissalCompletion:nil];
+}
+
+- (void)showPrimaryAccountReauthWithDismissalCompletion:
+    (SyncPresenterCompletionCallback)completion {
   if (_signinCoordinator.viewWillPersist) {
     return;
   }
@@ -4234,6 +4237,10 @@ const char kChromeAppStoreUrl[] =
       ^(SigninCoordinator* coordinator, SigninCoordinatorResult result,
         id<SystemIdentity> identity) {
         [weakSelf signinCoordinatorCompletionWithCoordinator:coordinator];
+
+        if (completion) {
+          completion();
+        }
       };
   [_signinCoordinator start];
 }
@@ -4255,14 +4262,25 @@ const char kChromeAppStoreUrl[] =
 }
 
 - (void)showTrustedVaultReauthForFetchKeysWithTrigger:
-    (trusted_vault::TrustedVaultUserActionTriggerForUMA)trigger {
+            (trusted_vault::TrustedVaultUserActionTriggerForUMA)trigger
+                                           completion:
+                                               (SyncPresenterCompletionCallback)
+                                                   completion {
+  // TODO(crbug.com/464228247): Implement calling `completion` once the UI is
+  // dismissed.
   [self showTrustedVaultReauthWithTrigger:trigger
                                    intent:
                                        SigninTrustedVaultDialogIntentFetchKeys];
 }
 
-- (void)showTrustedVaultReauthForDegradedRecoverabilityWithTrigger:
-    (trusted_vault::TrustedVaultUserActionTriggerForUMA)trigger {
+- (void)
+    showTrustedVaultReauthForDegradedRecoverabilityWithTrigger:
+        (trusted_vault::TrustedVaultUserActionTriggerForUMA)trigger
+                                                    completion:
+                                                        (SyncPresenterCompletionCallback)
+                                                            completion {
+  // TODO(crbug.com/464228247): Implement calling `completion` once the UI is
+  // dismissed.
   SigninTrustedVaultDialogIntent intent =
       SigninTrustedVaultDialogIntentDegradedRecoverability;
   [self showTrustedVaultReauthWithTrigger:trigger intent:intent];
@@ -4663,6 +4681,10 @@ const char kChromeAppStoreUrl[] =
 
 - (BOOL)isNTPScrolledToTopForBubblePresenter:(BubblePresenter*)bubblePresenter {
   return [self.NTPCoordinator isScrolledToTop];
+}
+
+- (void)scrollNTPToTopForBubblePresenter:(BubblePresenter*)bubblePresenter {
+  [self.NTPCoordinator scrollToTop];
 }
 
 - (BOOL)isOverscrollActionsSupportedForBubblePresenter:
