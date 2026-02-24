@@ -45,7 +45,6 @@ import org.chromium.chrome.browser.layouts.LayoutManager;
 import org.chromium.chrome.browser.layouts.LayoutStateProvider;
 import org.chromium.chrome.browser.layouts.LayoutType;
 import org.chromium.chrome.browser.omnibox.LocationBar;
-import org.chromium.chrome.browser.omnibox.OmniboxFocusReason;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabObscuringHandler;
@@ -65,6 +64,7 @@ import org.chromium.chrome.browser.toolbar.menu_button.MenuButton;
 import org.chromium.chrome.browser.toolbar.menu_button.MenuButtonCoordinator;
 import org.chromium.chrome.browser.toolbar.optional_button.ButtonDataProvider;
 import org.chromium.chrome.browser.toolbar.reload_button.ReloadButtonCoordinator;
+import org.chromium.chrome.browser.toolbar.signin_button.SigninButtonCoordinator;
 import org.chromium.chrome.browser.toolbar.top.NavigationPopup.HistoryDelegate;
 import org.chromium.chrome.browser.toolbar.top.tab_strip.TabStripTransitionCoordinator;
 import org.chromium.chrome.browser.toolbar.top.tab_strip.TabStripTransitionCoordinator.TabStripTransitionDelegate;
@@ -75,6 +75,8 @@ import org.chromium.components.browser_ui.desktop_windowing.DesktopWindowStateMa
 import org.chromium.components.browser_ui.widget.ClipDrawableProgressBar.DrawingInfo;
 import org.chromium.components.feature_engagement.Tracker;
 import org.chromium.components.omnibox.AutocompleteRequestType;
+import org.chromium.components.omnibox.OmniboxFocusReason;
+import org.chromium.components.signin.SigninFeatureMap;
 import org.chromium.ui.resources.ResourceManager;
 import org.chromium.ui.util.TokenHolder;
 
@@ -106,6 +108,8 @@ public class TopToolbarCoordinator implements Toolbar, TopControlLayer {
     private final SettableMonotonicObservableSupplier<Tracker> mTrackerSupplier;
 
     private OptionalBrowsingModeButtonController mOptionalButtonController;
+
+    private @Nullable SigninButtonCoordinator mSigninButtonCoordinator;
 
     private final MenuButtonCoordinator mMenuButtonCoordinator;
     private @Nullable ReloadButtonCoordinator mReloadButtonCoordinator;
@@ -219,7 +223,8 @@ public class TopToolbarCoordinator implements Toolbar, TopControlLayer {
             @Nullable HomeButtonDisplay homeButtonDisplay,
             TopControlsStacker topControlsStacker,
             BrowserControlsVisibilityManager browserControlsVisibilityManager,
-            Supplier<Integer> incognitoWindowCountSupplier) {
+            Supplier<Integer> incognitoWindowCountSupplier,
+            MonotonicObservableSupplier<Profile> profileSupplier) {
         mToolbarLayout = toolbarLayout;
         mMenuButtonCoordinator = browsingModeMenuButtonCoordinator;
         mControlContainer = controlContainer;
@@ -230,6 +235,11 @@ public class TopToolbarCoordinator implements Toolbar, TopControlLayer {
                         userEducationHelper,
                         mToolbarLayout,
                         () -> toolbarDataProvider.getTab());
+
+        if (SigninFeatureMap.sSigninLevelUpButton.isEnabled()) {
+            mSigninButtonCoordinator =
+                    new SigninButtonCoordinator(toolbarLayout.getContext(), profileSupplier);
+        }
         mResourceManagerSupplier = resourceManagerSupplier;
         mTabCountSupplier = tabCountSupplier;
         mToolbarColorObserverManager = new ToolbarColorObserverManager();
@@ -517,6 +527,11 @@ public class TopToolbarCoordinator implements Toolbar, TopControlLayer {
         if (mOptionalButtonController != null) {
             mOptionalButtonController.destroy();
             mOptionalButtonController = null;
+        }
+
+        if (mSigninButtonCoordinator != null) {
+            mSigninButtonCoordinator.destroy();
+            mSigninButtonCoordinator = null;
         }
 
         if (mReloadButtonCoordinator != null) {
@@ -1023,7 +1038,8 @@ public class TopToolbarCoordinator implements Toolbar, TopControlLayer {
         // is fully scrolled off.
         // TODO(crbug.com/448641122): Let hairline layer owns the adjustment logic.
         int hairlineAdjustment = 0;
-        if (mBrowserControls.isVisibilityForced() && mIsHairlineVisible) {
+        if (mBrowserControls.getBrowserVisibilityDelegate().get() == BrowserControlsState.HIDDEN
+                && mIsHairlineVisible) {
             hairlineAdjustment = -mControlContainer.getToolbarHairlineHeight();
         }
 

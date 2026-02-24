@@ -26,7 +26,6 @@
 #include "chrome/browser/ui/tabs/tab_strip_prefs.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
-#include "chrome/browser/ui/views/commerce/product_specifications_button.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/tab_search_bubble_host.h"
 #include "chrome/browser/ui/views/tabs/browser_tab_strip_controller.h"
@@ -233,17 +232,14 @@ HorizontalTabStripRegionView::HorizontalTabStripRegionView(
                                  views::LayoutAlignment::kCenter);
   }
 
-  // Add and configure the TabSearchContainer, TabStripComboButton, and
-  // ProductSpecificationsButton.
+  // Add and configure the TabSearchContainer and TabStripComboButton.
   std::unique_ptr<TabSearchContainer> tab_search_container;
   std::unique_ptr<TabStripActionContainer> tab_strip_action_container;
-  std::unique_ptr<ProductSpecificationsButton> product_specifications_button;
   if (browser &&
       (browser->GetType() == BrowserWindowInterface::Type::TYPE_NORMAL)) {
     if (features::HasTabSearchToolbarButton()) {
       tab_strip_action_container = std::make_unique<TabStripActionContainer>(
-          browser, browser->GetFeatures().tab_declutter_controller(),
-          browser->GetFeatures().glic_nudge_controller());
+          browser, browser->GetFeatures().glic_nudge_controller());
 
       tab_strip_action_container->SetProperty(views::kCrossAxisAlignmentKey,
                                               views::LayoutAlignment::kStart);
@@ -252,17 +248,6 @@ HorizontalTabStripRegionView::HorizontalTabStripRegionView(
           render_tab_search_before_tab_strip_, this, tab_strip_);
       tab_search_container->SetProperty(views::kCrossAxisAlignmentKey,
                                         views::LayoutAlignment::kCenter);
-
-      if (base::FeatureList::IsEnabled(commerce::kProductSpecifications)) {
-        product_specifications_button =
-            std::make_unique<ProductSpecificationsButton>(
-                browser,
-                commerce::ProductSpecificationsEntryPointController::From(
-                    browser),
-                render_tab_search_before_tab_strip_, this);
-        product_specifications_button->SetProperty(
-            views::kCrossAxisAlignmentKey, views::LayoutAlignment::kCenter);
-      }
     }
   }
 
@@ -275,16 +260,6 @@ HorizontalTabStripRegionView::HorizontalTabStripRegionView(
     // Inset between the tabsearch and tabstrip should be reduced to account for
     // extra spacing.
     tab_search_container_->SetProperty(views::kViewIgnoredByLayoutKey, true);
-
-    if (product_specifications_button) {
-      product_specifications_button->SetPaintToLayer();
-      product_specifications_button->layer()->SetFillsBoundsOpaquely(false);
-
-      product_specifications_button_ =
-          AddChildView(std::move(product_specifications_button));
-      product_specifications_button_->SetProperty(
-          views::kViewIgnoredByLayoutKey, true);
-    }
   }
 
   // Allow the |tab_strip_| to grow into the free space available in
@@ -321,10 +296,6 @@ HorizontalTabStripRegionView::HorizontalTabStripRegionView(
   SetProperty(views::kElementIdentifierKey, kTabStripRegionElementId);
 
   if (browser && tab_search_container && !render_tab_search_before_tab_strip_) {
-    if (product_specifications_button) {
-      product_specifications_button_ =
-          AddChildView(std::move(product_specifications_button));
-    }
     tab_search_container_ = AddChildView(std::move(tab_search_container));
     tab_search_container_->SetProperty(
         views::kMarginsKey,
@@ -352,9 +323,6 @@ HorizontalTabStripRegionView::~HorizontalTabStripRegionView() {
   if (tab_search_container_) {
     RemoveChildViewT(std::exchange(tab_search_container_, nullptr));
   }
-  if (product_specifications_button_) {
-    RemoveChildViewT(std::exchange(product_specifications_button_, nullptr));
-  }
 }
 
 bool HorizontalTabStripRegionView::IsPositionInWindowCaption(
@@ -365,11 +333,6 @@ bool HorizontalTabStripRegionView::IsPositionInWindowCaption(
 
   if (render_tab_search_before_tab_strip_ && tab_search_container_ &&
       IsHitInView(tab_search_container_, point)) {
-    return false;
-  }
-
-  if (render_tab_search_before_tab_strip_ && product_specifications_button_ &&
-      IsHitInView(product_specifications_button_, point)) {
     return false;
   }
 
@@ -419,10 +382,6 @@ views::View::Views HorizontalTabStripRegionView::GetChildrenInZOrder() {
     children.emplace_back(tab_search_container_.get());
   }
 
-  if (product_specifications_button_) {
-    children.emplace_back(product_specifications_button_.get());
-  }
-
   if (tab_strip_action_container_) {
     children.emplace_back(tab_strip_action_container_.get());
   }
@@ -449,22 +408,6 @@ void HorizontalTabStripRegionView::Layout(PassKey) {
   }
 
   LayoutSuperclass<views::AccessiblePaneView>(this);
-
-  if (tab_search_container_before_tab_strip) {
-    // Manually adjust x-axis position of the UI components. Currently the
-    // components are `tab_search_container_` and
-    // `product_specifications_button` if it's available.
-    if (product_specifications_button_) {
-      AdjustViewBoundsRect(product_specifications_button_, 0);
-    }
-
-    int product_specifications_button_width =
-        product_specifications_button_
-            ? product_specifications_button_->GetPreferredSize().width()
-            : 0;
-    AdjustViewBoundsRect(tab_search_container_,
-                         product_specifications_button_width);
-  }
 
   views::View* button_to_paint_to_layer = new_tab_button_;
 
@@ -598,14 +541,6 @@ void HorizontalTabStripRegionView::DisableTabStripEditingForTesting() {
 
 bool HorizontalTabStripRegionView::IsTabStripCloseable() const {
   return tab_strip_->IsTabStripCloseable();
-}
-
-bool HorizontalTabStripRegionView::IsAnimating() const {
-  return tab_strip_->IsAnimatingInTabStrip();
-}
-
-void HorizontalTabStripRegionView::StopAnimating() {
-  return tab_strip_->StopAnimating();
 }
 
 void HorizontalTabStripRegionView::UpdateLoadingAnimations(
@@ -754,23 +689,10 @@ void HorizontalTabStripRegionView::UpdateTabStripMargin() {
     // The `tab_search_container_` is being laid out manually.
     CHECK(tab_search_container_->GetProperty(views::kViewIgnoredByLayoutKey));
 
-    // When tab search container shows before tab strip, add a margin to the
-    // tab_strip_ to leave the correct amount of space for UI
-    // components showing before tab strip. Currently the components are
-    // `tab_search_container_` and `product_specifications_button` if it's
-    // available.
-    int product_specifications_button_width =
-        product_specifications_button_
-            ? product_specifications_button_->GetPreferredSize().width()
-            : 0;
-    tab_strip_left_margin = tab_search_container_->GetPreferredSize().width() +
-                            product_specifications_button_width;
-
     // The TabSearchContainer should be 6 pixels from the left and the tabstrip
     // should have 6 px of padding between it and the tab_search button (not
     // including the corner radius).
     tab_strip_left_margin =
-        tab_strip_left_margin.value() +
         GetLayoutConstant(LayoutConstant::kTabStripPadding) +
         GetLayoutConstant(LayoutConstant::kTabStripPadding) -
         TabStyle::Get()->GetBottomCornerRadius();

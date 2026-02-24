@@ -63,6 +63,7 @@
 <translation id="1223498995510244364">要約</translation>
 <translation id="1227113644794103810">アクティブでないタブ</translation>
 <translation id="1231733316453485619">同期を ON にしますか？</translation>
+<translation id="1238794841176717085">このページを共有</translation>
 <translation id="1253032109800629289">[価格トラッキングの通知を受け取る] を表示しない</translation>
 <translation id="1254424942107648268">前を検索</translation>
 <translation id="1258491128795710625">最新情報</translation>
@@ -197,6 +198,7 @@
 <translation id="169048873465870056">タブとグループを削除しますか？</translation>
 <translation id="1698090540708020240">パスワードをインポート…</translation>
 <translation id="1700629756560807968"><ph name="NUMBER_OF_SELECTED_BOOKMARKS" />件選択しました</translation>
+<translation id="1702583479431863204">サイトの固定を解除しました</translation>
 <translation id="1709916727352927457">パスキーの削除</translation>
 <translation id="1715515772563243997"><ph name="SITE" /> を信頼できる場合は、保存済みのパスワードを使用してログインできます。</translation>
 <translation id="1718835860248848330">過去 1 時間</translation>
@@ -370,6 +372,7 @@
 <translation id="2306265833370324042"><ph name="SEARCH_ENGINE_NAME" /> の詳細を表示</translation>
 <translation id="2309265394777270359">タブを閉じる</translation>
 <translation id="2311077293164383652">固定タブを閉じる</translation>
+<translation id="2313392466694008052">Gemini を使用して画像を編集</translation>
 <translation id="2316129865977710310">今はしない</translation>
 <translation id="2320166752086256636">キーボードを非表示</translation>
 <translation id="2321086116217818302">パスワードを準備しています…</translation>
@@ -521,6 +524,7 @@
 <translation id="288655811176831528">タブを閉じる</translation>
 <translation id="2888631381369839306">価格トラッキングの通知がオンになりました</translation>
 <translation id="2893168226686371498">既定のブラウザ</translation>
+<translation id="2893791155497534382">パスワードとその他のアクティビティは管理設定で削除できます</translation>
 <translation id="2894757982205307093">グループにタブを追加</translation>
 <translation id="2902312830803030883">その他の操作</translation>
 <translation id="2904788871580817212">開いているタブの値下げ情報、<ph name="PREVIOUS_PRICE" /> から <ph name="PRICE" />、<ph name="PRODUCT_NAME" />、<ph name="DOMAIN" /></translation>
@@ -845,6 +849,7 @@
 <translation id="4181841719683918333">言語</translation>
 <translation id="4183350924949589798">セキュリティを強化しますか？</translation>
 <translation id="4184063163998877398">{count,plural, =1{脆弱なパスワード: {count} 件}other{脆弱なパスワード: {count} 件}}</translation>
+<translation id="4196758674971560031">作成したタブグループはタブグループ セクションに保存され、お使いのすべてのデバイスに反映されます。</translation>
 <translation id="4197456013861852807">{count,plural, =1{{count} 件のアイテムがこのデバイスのみに保存されます。他のデバイスで使用するには、Google アカウント（{email}）に保存してください。}other{{count} 件のアイテムがこのデバイスのみに保存されます。他のデバイスで使用するには、Google アカウント（{email}）に保存してください。}}</translation>
 <translation id="4207873326995387292">ブラウザ情報</translation>
 <translation id="421070604241073551">オンにすると、データが Google アカウントに保存されます。オフにすると、データはこのデバイスのみに保存されます。</translation>
@@ -1298,6 +1303,7 @@
 <translation id="5768870767339201169">中断したところから再開</translation>
 <translation id="5779117921996157216">{count,plural, =1{不正使用されたパスワード {count} 件: セキュリティが危険にさらされる可能性があります。安全を確保するため、今すぐ修正してください。}other{不正使用されたパスワード {count} 件: セキュリティが危険にさらされる可能性があります。安全を確保するため、今すぐ修正してください。}}</translation>
 <translation id="5791632441210678828">フォロー中のフィードの並べ替えボタン</translation>
+<translation id="5799263916847593256">開くと価格の推移を確認できます。</translation>
 <translation id="5803566855766646066">この新しいカードを破棄してもよろしいですか？</translation>
 <translation id="5804241973901381774">権限</translation>
 <translation id="58081802114142635">Google AI を改善するため、ユーザーのアクティビティが使用されます</translation>
@@ -1372,7 +1378,6 @@
 <translation id="607620096698446287"><ph name="FILENAME" />（<ph name="FILESIZE" />）をアップロードできませんでした</translation>
 <translation id="6076618233738284461">サイトを固定</translation>
 <translation id="6077126322656614846">カメラへのアクセスが許可されています</translation>
-<translation id="607730456154980869">知りたいことがすぐにわかる、Gemini in Chrome</translation>
 <translation id="6078236141387574983">シートの高さを再調整する</translation>
 <translation id="6084848228346514841">タブを選択</translation>
 <translation id="6089212833343035912">Google パスワード マネージャーの PIN</translation>
@@ -1505,6 +1510,7 @@
 <translation id="6494931198667773526">終了</translation>
 <translation id="6503077044568424649">よくアクセスするページ</translation>
 <translation id="6503763061813913607">安全チェックの通知</translation>
+<translation id="6504541289630702018">パソコンのタブグループに簡単にアクセス</translation>
 <translation id="6505334220040167806">タブグループを閉じる。</translation>
 <translation id="6506996418997555004">「<ph name="GROUP_NAME" />」タブグループを共有</translation>
 <translation id="6507973708545996744">ログインすると、どのデバイスでもリーディング リストを利用できます。</translation>
@@ -1641,6 +1647,7 @@
 <translation id="6964300328304469089"><ph name="NAME" />、<ph name="EMAIL" /> が現在選択されています。アカウントを選択してください。</translation>
 <translation id="6964760285928603117">グループから削除</translation>
 <translation id="6965382102122355670">OK</translation>
+<translation id="6967355534157677591">画像を作成（Pro）</translation>
 <translation id="6973630695168034713">フォルダ</translation>
 <translation id="6979158407327259162">Google ドライブ</translation>
 <translation id="6979737339423435258">全期間</translation>
@@ -1939,7 +1946,6 @@
 <translation id="8059533439631660104">セクションを折りたたみます。</translation>
 <translation id="8061584726507121204">履歴</translation>
 <translation id="8064946459644399612">新しいタブページの設定を適用しました</translation>
-<translation id="8069168488983557089">トピックの理解に役立つ重要なポイントや分析情報を入手できます</translation>
 <translation id="8069394452933076548">最近使用していないタブを無効なタブセクションにいつ移動するかを選択します。</translation>
 <translation id="8073670137947914548">ダウンロードが完了しました</translation>
 <translation id="8076492880354921740">タブ</translation>
@@ -2135,6 +2141,7 @@
 <translation id="8730621377337864115">完了</translation>
 <translation id="8731268612289859741">セキュリティ コード</translation>
 <translation id="87371078663613140">メニューバーのオプションを確認します</translation>
+<translation id="8739546376441802490">固定されたサイトはすでに存在します</translation>
 <translation id="8741627442233023406">{count,plural, =1{タブを確認…}other{すべてのタブを確認…}}</translation>
 <translation id="8741995161408053644">Google アカウントでの他の形式の閲覧履歴が <ph name="BEGIN_LINK" />history.google.com<ph name="END_LINK" /> に残ることがあります。</translation>
 <translation id="874599634440689554">リンクを作成</translation>

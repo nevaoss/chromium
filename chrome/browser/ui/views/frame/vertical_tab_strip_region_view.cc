@@ -89,6 +89,10 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
   bottom_button_container_ =
       AddChildView(std::make_unique<VerticalTabStripBottomContainer>(
           state_controller_, root_action_item));
+  bottom_button_container_->SetProperty(
+      views::kFlexBehaviorKey,
+      views::FlexSpecification(views::MinimumFlexSizeRule::kPreferred,
+                               views::MaximumFlexSizeRule::kUnbounded));
 
   gemini_button_ = AddChildView(std::make_unique<views::View>());
 
@@ -249,16 +253,14 @@ void VerticalTabStripRegionView::DisableTabStripEditingForTesting() {
 }
 
 bool VerticalTabStripRegionView::IsTabStripCloseable() const {
-  return !drag_handler_ ||
-         !drag_handler_->GetDragContext()->GetDragController();
-}
-
-bool VerticalTabStripRegionView::IsAnimating() const {
-  return false;
-}
-
-void VerticalTabStripRegionView::StopAnimating() {
-  // Do nothing.
+  if (!drag_handler_) {
+    return true;
+  }
+  if (auto* drag_controller =
+          drag_handler_->GetDragContext()->GetDragController()) {
+    return drag_controller->IsMovingLastTab();
+  }
+  return true;
 }
 
 void VerticalTabStripRegionView::UpdateLoadingAnimations(
@@ -462,7 +464,7 @@ views::View* VerticalTabStripRegionView::SetTabStripView(
   tab_strip_view_->SetProperty(
       views::kFlexBehaviorKey,
       views::FlexSpecification(views::MinimumFlexSizeRule::kScaleToMinimum,
-                               views::MaximumFlexSizeRule::kUnbounded));
+                               views::MaximumFlexSizeRule::kPreferred));
   tab_strip_view_->SetProperty(
       views::kMarginsKey,
       gfx::Insets::VH(

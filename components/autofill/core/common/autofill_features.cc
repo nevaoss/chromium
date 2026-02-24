@@ -369,6 +369,11 @@ BASE_FEATURE(kAutofillAndroidKeyboardAccessoryDynamicPositioning,
 BASE_FEATURE(kAutofillBetterLocalHeuristicPlaceholderSupport,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+// If enabled, our `FormEventLogger` will start emitting events for fields
+// annotated with an unrecognized HTML "autocomplete" attribute.
+BASE_FEATURE(kAutofillConsiderAutocompleteUnrecognizedFieldsInMetrics,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Same as `kAutofillAddressUserPerceptionSurvey` but for credit card forms.
 BASE_FEATURE(kAutofillCreditCardUserPerceptionSurvey,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -576,7 +581,12 @@ BASE_FEATURE(kAutofillEnableSupportForHomeAndWork,
 // When enabled, chrome will support name and email address profile.
 // TODO(crbug.com/356845298): Clean up when launched.
 BASE_FEATURE(kAutofillEnableSupportForNameAndEmail,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+#if BUILDFLAG(IS_IOS)
+             base::FEATURE_DISABLED_BY_DEFAULT
+#else  // Desktop and Android
+             base::FEATURE_ENABLED_BY_DEFAULT
+#endif
+);
 
 // The number of times after which, a never accepted `kAccountNameEmail`
 // suggestion will result in the `kAccountNameEmail` profile being deleted.
@@ -852,6 +862,12 @@ BASE_FEATURE(kAutofillSmsOtpCrowdsourcing, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAutofillStructuredFieldsDisableAddressLines,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+// Enables parsing of fields that combine postal code and city in France,
+// e.g. a single field containing "75008 Paris".
+// TODO(crbug.com/465119085): Clean up when launched.
+BASE_FEATURE(kAutofillSupportCombinedZipAndCityFR,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Enables using custom name model with last name prefixes support.
 BASE_FEATURE(kAutofillSupportLastNamePrefix, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -927,6 +943,11 @@ BASE_FEATURE(kAutofillUseNegativePatternForAllAttributes,
 // For Queries still only the secondary (alternative) signature is used.
 // TODO(crbug.com/431737839): Clean up when roll out finishes successfully.
 BASE_FEATURE(kAutofillUseStructuralSignatureInsteadOfSecondary,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
+// Kill switch for a race-condition fix to make it a safer merge.
+// TODO(crbug.com/474706752): Clean up after M146 branchpoint (Feb 10 2026).
+BASE_FEATURE(kAutofillWebDataBackendImplRaceConditionFix,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 // When enabled, the field classification model uses runtime caching to not run
@@ -1012,6 +1033,12 @@ BASE_FEATURE(kPlusAddressUserDidChoosePlusAddressOverEmailSurvey,
 // autocomplete attribute if they are already autofilled.
 BASE_FEATURE(kShowSugesstionsOnAlreadyAutofilledUnrecognized,
              base::FEATURE_ENABLED_BY_DEFAULT);
+
+// When enabled, "Manage information" menu item for enhanced autofill will
+// redirect user either to "/travel" or "/identityDocs" pages instead of
+// "/yourSavedInfo" always.
+BASE_FEATURE(kSuggestionManageButtonSplitForEnhancedAutofill,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // When enabled, the address add/edit editor in the payments request would be
 // removed and instead, the address editor from the settings will be used.

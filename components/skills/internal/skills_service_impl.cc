@@ -17,6 +17,7 @@
 #include "components/sync/base/report_unrecoverable_error.h"
 #include "components/sync/model/client_tag_based_data_type_processor.h"
 #include "components/sync/model/data_type_controller_delegate.h"
+#include "components/sync/protocol/skill_specifics.pb.h"
 
 namespace skills {
 
@@ -61,6 +62,7 @@ void SkillsServiceImpl::NotifySkillChanged(std::string_view skill_id,
 const Skill* SkillsServiceImpl::AddSkill(const std::string& name,
                                          const std::string& icon,
                                          const std::string& prompt) {
+  // TODO(crbug.com/471795213): verify that the service is ready to use.
   CHECK(is_initialized_);
 
   auto skill = std::make_unique<Skill>(
@@ -105,6 +107,12 @@ const Skill* SkillsServiceImpl::UpdateSkill(std::string_view skill_id,
     return nullptr;
   }
 
+  // First party skills are not owned by the user. They cannot be updated.
+  // Instead, the user should copy the skill content, so that the new, copied
+  // skill is user created, then update the copied skill.
+  CHECK_EQ(skill->source, sync_pb::SkillSource::SKILL_SOURCE_USER_CREATED)
+      << "Skill does not belong to the user. Cannot update skill.";
+
   UpdateSkillImpl(skill, name, icon, prompt,
                   /*update_time=*/base::Time::Now(), UpdateSource::kLocal);
   return skill;
@@ -148,17 +156,26 @@ void SkillsServiceImpl::LoadInitialSkills(
   skills_ = std::move(initial_skills);
   SortSkills();
 
-  // TODO(crbug.com/471795213): consider using tracking metadata to determine if
-  // the initialization is complete.
   is_initialized_ = true;
 
   for (Observer& observer : observers_) {
     observer.OnInitialized();
+    observer.OnStatusChanged();
   }
 }
 
 bool SkillsServiceImpl::IsInitialized() const {
   return is_initialized_;
+}
+
+SkillsService::ServiceStatus SkillsServiceImpl::GetServiceStatus() const {
+  if (!is_initialized_) {
+    return ServiceStatus::kNotInitialized;
+  }
+  if (!sync_bridge_->change_processor()->IsTrackingMetadata()) {
+    return ServiceStatus::kInitializedWaitingForSyncReady;
+  }
+  return ServiceStatus::kReady;
 }
 
 void SkillsServiceImpl::SortSkills() {
@@ -186,6 +203,12 @@ SkillsServiceImpl::GetControllerDelegate() {
   return nullptr;
 }
 
+void SkillsServiceImpl::SyncStatusChanged() {
+  for (Observer& observer : observers_) {
+    observer.OnStatusChanged();
+  }
+}
+
 const Skill* SkillsServiceImpl::AddSkillImpl(std::unique_ptr<Skill> skill,
                                              UpdateSource update_source) {
   // Added skill must not exist in the service.
@@ -207,8 +230,10 @@ void SkillsServiceImpl::FetchDiscoverySkills() {
 
 void SkillsServiceImpl::Handle1pSkillsMap(
     std::unique_ptr<SkillsMap> skills_map) {
+  first_party_skills_map_ = std::move(skills_map);
+
   for (Observer& observer : observers_) {
-    observer.OnDiscoverySkillsUpdated(std::move(skills_map));
+    observer.OnDiscoverySkillsUpdated(first_party_skills_map_.get());
   }
 }
 
@@ -223,12 +248,6 @@ void SkillsServiceImpl::UpdateSkillImpl(Skill* skill,
                                         base::Time update_time,
                                         UpdateSource update_source) {
   CHECK(skill);
-
-  // First party skills are not owned by the user. They cannot be updated.
-  // Instead, the user should copy the skill content, so that the new, copied
-  // skill is user created, then update the copied skill.
-  CHECK(skill->source == SkillSource::kUserCreated)
-      << "Skill does not belong to the user. Cannot update skill.";
 
   // Update the existing skill.
   bool is_changed = false;

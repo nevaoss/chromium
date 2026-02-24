@@ -268,7 +268,11 @@ BASE_FEATURE(kForcedAppRelaunchOnPlaceholderUpdate,
 BASE_FEATURE(kGeoLanguage, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Controls whether the actor component of Glic is enabled.
+#if BUILDFLAG(IS_ANDROID)
+BASE_FEATURE(kGlicActor, base::FEATURE_DISABLED_BY_DEFAULT);
+#else
 BASE_FEATURE(kGlicActor, base::FEATURE_ENABLED_BY_DEFAULT);
+#endif
 
 const base::FeatureParam<base::TimeDelta> kGlicActorPageToolTimeout{
     &kGlicActor, "glic-actor-page-tool-timeout", base::Seconds(30)};
@@ -1582,7 +1586,7 @@ BASE_FEATURE(kSitePerProcess,
 // The default behavior to opt devtools users out of
 // kProcessPerSiteUpToMainFrameThreshold.
 BASE_FEATURE(kProcessPerSiteSkipDevtoolsUsers,
-             base::FEATURE_ENABLED_BY_DEFAULT);
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // The default behavior to opt enterprise users out of
 // kProcessPerSiteUpToMainFrameThreshold.
@@ -1957,6 +1961,6 @@ BASE_FEATURE(kDisableShortcutsEnableDiy, base::FEATURE_ENABLED_BY_DEFAULT);
 // A feature to enabled updating policy and default management installed PWAs to
 // happen silently without prompting an updating dialog.
 BASE_FEATURE(kSilentPolicyAndDefaultAppUpdating,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 }  // namespace features

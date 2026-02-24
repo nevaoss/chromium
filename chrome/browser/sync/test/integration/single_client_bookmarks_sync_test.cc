@@ -181,22 +181,16 @@ class BookmarksDataTypeErrorChecker : public SingleClientStatusChangeChecker {
   }
 };
 
-class SingleClientBookmarksSyncTest
+class SingleClientParameterizedBookmarksSyncTestBase
     : public SyncTest,
       public testing::WithParamInterface<SyncTest::SetupSyncMode> {
  public:
-  SingleClientBookmarksSyncTest() : SyncTest(SINGLE_CLIENT) {
+  SingleClientParameterizedBookmarksSyncTestBase() : SyncTest(SINGLE_CLIENT) {
     if (GetSetupSyncMode() == SetupSyncMode::kSyncTransportOnly) {
       feature_overrides_.InitAndEnableFeature(
           syncer::kReplaceSyncPromosWithSignInPromos);
     }
   }
-
-  SingleClientBookmarksSyncTest(const SingleClientBookmarksSyncTest&) = delete;
-  SingleClientBookmarksSyncTest& operator=(
-      const SingleClientBookmarksSyncTest&) = delete;
-
-  ~SingleClientBookmarksSyncTest() override = default;
 
   SyncTest::SetupSyncMode GetSetupSyncMode() const override {
     return GetParam();
@@ -209,6 +203,22 @@ class SingleClientBookmarksSyncTest
                : StoreType::kLocalOrSyncableStore;
   }
 
+ private:
+  base::test::ScopedFeatureList feature_overrides_;
+};
+
+class SingleClientBookmarksSyncTest
+    : public SingleClientParameterizedBookmarksSyncTestBase {
+ public:
+  SingleClientBookmarksSyncTest() = default;
+
+  SingleClientBookmarksSyncTest(const SingleClientBookmarksSyncTest&) = delete;
+  SingleClientBookmarksSyncTest& operator=(
+      const SingleClientBookmarksSyncTest&) = delete;
+
+  ~SingleClientBookmarksSyncTest() override = default;
+
+ protected:
   sync_bookmarks::BookmarkSyncService* GetBookmarkSyncService() const {
     return GetSetupSyncMode() == SetupSyncMode::kSyncTransportOnly
                ? AccountBookmarkSyncServiceFactory::GetForProfile(
@@ -216,9 +226,6 @@ class SingleClientBookmarksSyncTest
                : LocalOrSyncableBookmarkSyncServiceFactory::GetForProfile(
                      GetProfile(kSingleProfileIndex));
   }
-
- private:
-  base::test::ScopedFeatureList feature_overrides_;
 };
 
 INSTANTIATE_TEST_SUITE_P(,
@@ -2094,10 +2101,9 @@ IN_PROC_BROWSER_TEST_P(
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 class SingleClientBookmarksSyncTestWithEnabledReuploadBookmarks
-    : public SyncTest {
+    : public SingleClientParameterizedBookmarksSyncTestBase {
  public:
-  SingleClientBookmarksSyncTestWithEnabledReuploadBookmarks()
-      : SyncTest(SINGLE_CLIENT) {
+  SingleClientBookmarksSyncTestWithEnabledReuploadBookmarks() {
     features_override_.InitAndEnableFeature(switches::kSyncReuploadBookmarks);
   }
 
@@ -2105,7 +2111,13 @@ class SingleClientBookmarksSyncTestWithEnabledReuploadBookmarks
   base::test::ScopedFeatureList features_override_;
 };
 
-IN_PROC_BROWSER_TEST_F(
+INSTANTIATE_TEST_SUITE_P(
+    ,
+    SingleClientBookmarksSyncTestWithEnabledReuploadBookmarks,
+    GetSyncTestModes(),
+    testing::PrintToStringParamName());
+
+IN_PROC_BROWSER_TEST_P(
     SingleClientBookmarksSyncTestWithEnabledReuploadBookmarks,
     ShouldReuploadBookmarkAfterInitialMerge) {
   ASSERT_TRUE(SetupClients());
@@ -2129,7 +2141,7 @@ IN_PROC_BROWSER_TEST_F(
                   .Wait());
 }
 
-IN_PROC_BROWSER_TEST_F(
+IN_PROC_BROWSER_TEST_P(
     SingleClientBookmarksSyncTestWithEnabledReuploadBookmarks,
     ShouldReuploadBookmarkWithFaviconOnInitialMerge) {
   const GURL kIconUrl("http://www.google.com/favicon.ico");
@@ -2165,7 +2177,8 @@ IN_PROC_BROWSER_TEST_F(
   // been reuploaded.
   ASSERT_TRUE(BookmarkModelMatchesFakeServerChecker(
                   GetBookmarkModel(kSingleProfileIndex),
-                  GetSyncService(kSingleProfileIndex), GetFakeServer())
+                  GetSyncService(kSingleProfileIndex), GetFakeServer(),
+                  GetStoreType())
                   .Wait());
   const std::vector<sync_pb::SyncEntity> server_bookmarks =
       GetFakeServer()->GetSyncEntitiesByDataType(syncer::BOOKMARKS);
@@ -2179,7 +2192,7 @@ IN_PROC_BROWSER_TEST_F(
                    "Sync.BookmarkEntityReuploadNeeded.OnInitialMerge", true));
 }
 
-IN_PROC_BROWSER_TEST_F(
+IN_PROC_BROWSER_TEST_P(
     SingleClientBookmarksSyncTestWithEnabledReuploadBookmarks,
     ShouldReuploadUniquePositionOnIncrementalChange) {
   ASSERT_TRUE(SetupSync());
@@ -2216,10 +2229,11 @@ IN_PROC_BROWSER_TEST_F(
               Contains(Not(HasUniquePosition())).Times(2));
 
   // Add another folder to initiate commit to the server.
-  AddFolder(kSingleProfileIndex, u"Folder 2");
+  AddFolder(kSingleProfileIndex, u"Folder 2", GetStoreType());
   ASSERT_TRUE(BookmarkModelMatchesFakeServerChecker(
                   GetBookmarkModel(kSingleProfileIndex),
-                  GetSyncService(kSingleProfileIndex), GetFakeServer())
+                  GetSyncService(kSingleProfileIndex), GetFakeServer(),
+                  GetStoreType())
                   .Wait());
 
   // All elements must have unique_position now.
@@ -2227,11 +2241,13 @@ IN_PROC_BROWSER_TEST_F(
               Contains(HasUniquePosition()).Times(3));
 }
 
+// Android doesn't currently support PRE_ tests, see crbug.com/40200835 or
+// crbug.com/40145099.
+#if !BUILDFLAG(IS_ANDROID)
 class SingleClientBookmarksSyncTestWithDisabledReuploadBookmarks
-    : public SyncTest {
+    : public SingleClientParameterizedBookmarksSyncTestBase {
  public:
-  SingleClientBookmarksSyncTestWithDisabledReuploadBookmarks()
-      : SyncTest(SINGLE_CLIENT) {
+  SingleClientBookmarksSyncTestWithDisabledReuploadBookmarks() {
     features_override_.InitAndDisableFeature(switches::kSyncReuploadBookmarks);
   }
 
@@ -2239,10 +2255,13 @@ class SingleClientBookmarksSyncTestWithDisabledReuploadBookmarks
   base::test::ScopedFeatureList features_override_;
 };
 
-// Android doesn't currently support PRE_ tests, see crbug.com/40200835 or
-// crbug.com/40145099.
-#if !BUILDFLAG(IS_ANDROID)
-IN_PROC_BROWSER_TEST_F(
+INSTANTIATE_TEST_SUITE_P(
+    ,
+    SingleClientBookmarksSyncTestWithDisabledReuploadBookmarks,
+    GetSyncTestModes(),
+    testing::PrintToStringParamName());
+
+IN_PROC_BROWSER_TEST_P(
     SingleClientBookmarksSyncTestWithDisabledReuploadBookmarks,
     PRE_ShouldNotReploadUponFaviconLoad) {
   fake_server::EntityBuilderFactory entity_builder_factory;
@@ -2265,7 +2284,7 @@ IN_PROC_BROWSER_TEST_F(
           .Wait());
 }
 
-IN_PROC_BROWSER_TEST_F(
+IN_PROC_BROWSER_TEST_P(
     SingleClientBookmarksSyncTestWithDisabledReuploadBookmarks,
     ShouldNotReploadUponFaviconLoad) {
   const GURL url = GURL("http://www.foo.com");
@@ -2294,13 +2313,11 @@ IN_PROC_BROWSER_TEST_F(
                    "Sync.DataTypeEntityChange.BOOKMARK",
                    syncer::DataTypeEntityChange::kLocalUpdate));
 }
-#endif  // !BUILDFLAG(IS_ANDROID)
 
 class SingleClientBookmarksSyncTestWithEnabledReuploadPreexistingBookmarks
-    : public SyncTest {
+    : public SingleClientParameterizedBookmarksSyncTestBase {
  public:
-  SingleClientBookmarksSyncTestWithEnabledReuploadPreexistingBookmarks()
-      : SyncTest(SINGLE_CLIENT) {
+  SingleClientBookmarksSyncTestWithEnabledReuploadPreexistingBookmarks() {
     features_override_.InitWithFeatureState(switches::kSyncReuploadBookmarks,
                                             !content::IsPreTest());
   }
@@ -2309,11 +2326,15 @@ class SingleClientBookmarksSyncTestWithEnabledReuploadPreexistingBookmarks
   base::test::ScopedFeatureList features_override_;
 };
 
-// Android doesn't currently support PRE_ tests, see crbug.com/1117345.
-#if !BUILDFLAG(IS_ANDROID)
+INSTANTIATE_TEST_SUITE_P(
+    ,
+    SingleClientBookmarksSyncTestWithEnabledReuploadPreexistingBookmarks,
+    GetSyncTestModes(),
+    testing::PrintToStringParamName());
+
 // Initiate reupload after restart when the feature toggle has been just enabled
 // (before restart the entity is in synced state).
-IN_PROC_BROWSER_TEST_F(
+IN_PROC_BROWSER_TEST_P(
     SingleClientBookmarksSyncTestWithEnabledReuploadPreexistingBookmarks,
     PRE_ShouldReuploadForOldClients) {
   ASSERT_TRUE(SetupSync());
@@ -2333,7 +2354,7 @@ IN_PROC_BROWSER_TEST_F(
                   .Wait());
 }
 
-IN_PROC_BROWSER_TEST_F(
+IN_PROC_BROWSER_TEST_P(
     SingleClientBookmarksSyncTestWithEnabledReuploadPreexistingBookmarks,
     ShouldReuploadForOldClients) {
   // This test checks that the legacy bookmark which was stored locally will
@@ -2373,7 +2394,8 @@ IN_PROC_BROWSER_TEST_F(
           .Wait());
   EXPECT_TRUE(BookmarkModelMatchesFakeServerChecker(
                   GetBookmarkModel(kSingleProfileIndex),
-                  GetSyncService(kSingleProfileIndex), GetFakeServer())
+                  GetSyncService(kSingleProfileIndex), GetFakeServer(),
+                  GetStoreType())
                   .Wait());
   EXPECT_TRUE(GetFakeServer()
                   ->GetSyncEntitiesByDataType(syncer::BOOKMARKS)
@@ -2391,10 +2413,9 @@ IN_PROC_BROWSER_TEST_F(
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 class SingleClientBookmarksSyncTestWithEnabledClientTagHashMigration
-    : public SyncTest {
+    : public SingleClientParameterizedBookmarksSyncTestBase {
  public:
-  SingleClientBookmarksSyncTestWithEnabledClientTagHashMigration()
-      : SyncTest(SINGLE_CLIENT) {
+  SingleClientBookmarksSyncTestWithEnabledClientTagHashMigration() {
     features_override_.InitAndEnableFeature(
         switches::kSyncMigrateBookmarksWithoutClientTagHash);
   }
@@ -2403,7 +2424,13 @@ class SingleClientBookmarksSyncTestWithEnabledClientTagHashMigration
   base::test::ScopedFeatureList features_override_;
 };
 
-IN_PROC_BROWSER_TEST_F(
+INSTANTIATE_TEST_SUITE_P(
+    ,
+    SingleClientBookmarksSyncTestWithEnabledClientTagHashMigration,
+    GetSyncTestModes(),
+    testing::PrintToStringParamName());
+
+IN_PROC_BROWSER_TEST_P(
     SingleClientBookmarksSyncTestWithEnabledClientTagHashMigration,
     MigratePreExistingBookmarks) {
   const base::Uuid kOriginalFolder1Uuid = base::Uuid::GenerateRandomV4();
@@ -2463,7 +2490,7 @@ IN_PROC_BROWSER_TEST_F(
 
   ASSERT_TRUE(SetupSync());
   ASSERT_THAT(
-      GetBookmarkBarNode(kSingleProfileIndex)->children(),
+      GetBookmarkBarNode(kSingleProfileIndex, GetStoreType())->children(),
       ElementsAre(
           IsFolder(
               u"Folder1",
@@ -2735,6 +2762,11 @@ class SingleClientBookmarksWithAccountStorageSyncTest : public SyncTest {
 
   ~SingleClientBookmarksWithAccountStorageSyncTest() override = default;
 
+  // Bookmarks account storage is only supported with sync-transport-only.
+  SyncTest::SetupSyncMode GetSetupSyncMode() const override {
+    return SetupSyncMode::kSyncTransportOnly;
+  }
+
  private:
   base::test::ScopedFeatureList features_override_{
       switches::kSyncEnableBookmarksInTransportMode};
@@ -2764,7 +2796,7 @@ IN_PROC_BROWSER_TEST_F(SingleClientBookmarksWithAccountStorageSyncTest,
 
   // Setup a primary account, but don't actually enable Sync-the-feature (so
   // that Sync will start in transport mode).
-  ASSERT_TRUE(SetupSyncWithMode(SetupSyncMode::kSyncTransportOnly));
+  ASSERT_TRUE(SetupSync());
   // Note: Depending on the state of feature flags (specifically
   // kReplaceSyncPromosWithSignInPromos), Bookmarks may or may not be considered
   // selected by default.
@@ -2828,7 +2860,7 @@ IN_PROC_BROWSER_TEST_F(SingleClientBookmarksWithAccountStorageSyncTest,
 
   // Setup a primary account, but don't actually enable Sync-the-feature (so
   // that Sync will start in transport mode).
-  ASSERT_TRUE(SetupSyncWithMode(SetupSyncMode::kSyncTransportOnly));
+  ASSERT_TRUE(SetupSync());
   // Note: Depending on the state of feature flags (specifically
   // kReplaceSyncPromosWithSignInPromos), Bookmarks may or may not be considered
   // selected by default.
@@ -2906,7 +2938,7 @@ IN_PROC_BROWSER_TEST_F(SingleClientBookmarksWithAccountStorageSyncTest,
 
   // Setup a primary account, but don't actually enable Sync-the-feature (so
   // that Sync will start in transport mode).
-  ASSERT_TRUE(SetupSyncWithMode(SetupSyncMode::kSyncTransportOnly));
+  ASSERT_TRUE(SetupSync());
   // Note: Depending on the state of feature flags (specifically
   // kReplaceSyncPromosWithSignInPromos), Bookmarks may or may not be considered
   // selected by default.
@@ -2975,7 +3007,7 @@ IN_PROC_BROWSER_TEST_F(SingleClientBookmarksWithAccountStorageSyncTest,
 
   // Setup a primary account, but don't actually enable Sync-the-feature (so
   // that Sync will start in transport mode).
-  ASSERT_TRUE(SetupSyncWithMode(SetupSyncMode::kSyncTransportOnly));
+  ASSERT_TRUE(SetupSync());
   // Note: Depending on the state of feature flags (specifically
   // kReplaceSyncPromosWithSignInPromos), Bookmarks may or may not be considered
   // selected by default.
@@ -3033,7 +3065,7 @@ IN_PROC_BROWSER_TEST_F(SingleClientBookmarksWithAccountStorageSyncTest,
 
   // Setup a primary account, but don't actually enable Sync-the-feature (so
   // that Sync will start in transport mode).
-  ASSERT_TRUE(SetupSyncWithMode(SetupSyncMode::kSyncTransportOnly));
+  ASSERT_TRUE(SetupSync());
   // Note: Depending on the state of feature flags (specifically
   // kReplaceSyncPromosWithSignInPromos), Bookmarks may or may not be considered
   // selected by default.
@@ -3092,7 +3124,7 @@ IN_PROC_BROWSER_TEST_F(SingleClientBookmarksWithAccountStorageSyncTest,
 
   // Setup a primary account, but don't actually enable Sync-the-feature (so
   // that Sync will start in transport mode).
-  ASSERT_TRUE(SetupSyncWithMode(SetupSyncMode::kSyncTransportOnly));
+  ASSERT_TRUE(SetupSync());
   // Note: Depending on the state of feature flags (specifically
   // kReplaceSyncPromosWithSignInPromos), Bookmarks may or may not be considered
   // selected by default.
@@ -3171,7 +3203,7 @@ IN_PROC_BROWSER_TEST_F(SingleClientBookmarksWithAccountStorageSyncTest,
       ->SetLocalBookmarksLimitForTesting(2);
   // Setup a primary account, but don't actually enable Sync-the-feature (so
   // that Sync will start in transport mode).
-  ASSERT_TRUE(SetupSyncWithMode(SetupSyncMode::kSyncTransportOnly));
+  ASSERT_TRUE(SetupSync());
   // Note: Depending on the state of feature flags (specifically
   // kReplaceSyncPromosWithSignInPromos), Bookmarks may or may not be considered
   // selected by default.
@@ -3231,6 +3263,12 @@ class
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
   }
 
+  // The value doesn't matter, since the tests use SetupSyncWithMode(..) to
+  // explicitly pick Sync-the-feature or Sync-the-transport.
+  SyncTest::SetupSyncMode GetSetupSyncMode() const override {
+    return SetupSyncMode::kSyncTheFeature;
+  }
+
  private:
   base::test::ScopedFeatureList features_override_;
 };
@@ -3256,7 +3294,7 @@ IN_PROC_BROWSER_TEST_F(
   AddFolder(kSingleProfileIndex, /*parent=*/model->bookmark_bar_node(),
             /*index=*/1, kTitle2);
 
-  ASSERT_TRUE(SetupSync());
+  ASSERT_TRUE(SetupSyncWithMode(SetupSyncMode::kSyncTheFeature));
   ASSERT_TRUE(bookmarks_helper::ServerBookmarksEqualityChecker(
                   {{kTitle1, /*url=*/GURL()}, {kTitle2, /*url=*/GURL()}},
                   /*cryptographer=*/nullptr)
@@ -3336,6 +3374,12 @@ class SingleClientBookmarksSyncTestWithEnabledMigrateSyncingUserToSignedIn
     }
   }
 
+  // The value doesn't matter, since the tests use SetupSyncWithMode(..) to
+  // explicitly pick Sync-the-feature or Sync-the-transport.
+  SyncTest::SetupSyncMode GetSetupSyncMode() const override {
+    return SetupSyncMode::kSyncTheFeature;
+  }
+
   const std::u16string kTestTitle = u"Test Title";
 
  private:
@@ -3398,7 +3442,7 @@ IN_PROC_BROWSER_TEST_F(
 
   AddURL(kSingleProfileIndex, bookmark_bar, 3, kEmailTitle, kEmailUrl);
 
-  ASSERT_TRUE(SetupSync());
+  ASSERT_TRUE(SetupSyncWithMode(SetupSyncMode::kSyncTheFeature));
   ASSERT_TRUE(bookmarks_helper::ServerBookmarksEqualityChecker(
                   {{kSocialTitle, GURL()},
                    {kTwitterTitle, kTwitterUrl},
@@ -3569,7 +3613,7 @@ IN_PROC_BROWSER_TEST_F(
   AddFolder(kSingleProfileIndex, kTestTitle);
 
   // Setup sync, wait for its completion, and make sure changes were synced.
-  ASSERT_TRUE(SetupSync());
+  ASSERT_TRUE(SetupSyncWithMode(SetupSyncMode::kSyncTheFeature));
   ASSERT_TRUE(BookmarkModelMatchesFakeServerChecker(
                   GetBookmarkModel(kSingleProfileIndex),
                   GetSyncService(kSingleProfileIndex), GetFakeServer())

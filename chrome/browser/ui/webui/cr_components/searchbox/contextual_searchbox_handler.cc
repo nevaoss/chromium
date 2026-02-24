@@ -310,21 +310,7 @@ ContextualSearchboxHandler::ContextualSearchboxHandler(
                        web_contents,
                        std::move(controller)),
       get_session_callback_(std::move(get_session_callback)) {
-  // This implicitly also initializes the file upload status observer.
-  if (auto* session_handle = GetContextualSessionHandle()) {
-    auto* service = AimEligibilityServiceFactory::GetForProfile(profile);
-    const omnibox::SearchboxConfig* config_ptr =
-        service ? service->GetSearchboxConfig() : nullptr;
-    input_state_model_ = std::make_unique<contextual_search::InputStateModel>(
-        *session_handle, config_ptr ? *config_ptr : omnibox::SearchboxConfig());
-    if (profile) {
-      input_state_model_->SetPrefService(profile->GetPrefs());
-    }
-    input_state_subscription_ = input_state_model_->subscribe(
-        base::BindRepeating(&ContextualSearchboxHandler::OnInputStateChanged,
-                            weak_ptr_factory_.GetWeakPtr()));
-    input_state_model_->Initialize();
-  }
+  InitializeInputStateModel();
 
   auto* browser_window_interface =
       webui::GetBrowserWindowInterface(web_contents_);
@@ -444,11 +430,9 @@ void ContextualSearchboxHandler::AddFileContextFromBrowser(
   }
 }
 
-void ContextualSearchboxHandler::ContinueAddTabContext(
-    int32_t tab_id,
-    bool delay_upload,
-    base::UnguessableToken context_token,
-    AddTabContextCallback callback) {
+void ContextualSearchboxHandler::AddTabContext(int32_t tab_id,
+                                               bool delay_upload,
+                                               AddTabContextCallback callback) {
   auto* contextual_session_handle = GetContextualSessionHandle();
   if (!contextual_session_handle) {
     std::move(callback).Run(std::nullopt);
@@ -466,6 +450,7 @@ void ContextualSearchboxHandler::ContinueAddTabContext(
 
   RecordTabAddedMetric(tab, /*is_tab_suggestion_chip=*/delay_upload);
 
+  auto context_token = contextual_session_handle->CreateContextToken();
   lens::TabContextualizationController* tab_contextualization_controller =
       tab->GetTabFeatures()->tab_contextualization_controller();
   tab_contextualization_controller->GetPageContext(base::BindOnce(
@@ -473,19 +458,6 @@ void ContextualSearchboxHandler::ContinueAddTabContext(
       weak_ptr_factory_.GetWeakPtr(), delay_upload, context_token));
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE, base::BindOnce(std::move(callback), context_token));
-}
-
-void ContextualSearchboxHandler::AddTabContext(int32_t tab_id,
-                                               bool delay_upload,
-                                               AddTabContextCallback callback) {
-  auto* contextual_session_handle = GetContextualSessionHandle();
-  if (!contextual_session_handle) {
-    std::move(callback).Run(std::nullopt);
-    return;
-  }
-  auto context_token = contextual_session_handle->CreateContextToken();
-  ContinueAddTabContext(tab_id, delay_upload, context_token,
-                        std::move(callback));
 }
 
 std::vector<base::UnguessableToken>
@@ -513,6 +485,9 @@ void ContextualSearchboxHandler::SetActiveToolMode(omnibox::ToolMode tool) {
   if (!input_state_model_) {
     return;
   }
+  if (auto* metrics_recorder = GetMetricsRecorder()) {
+    metrics_recorder->RecordToolMode(tool);
+  }
   input_state_model_->setActiveTool(tool);
 }
 
@@ -520,14 +495,21 @@ void ContextualSearchboxHandler::SetActiveModelMode(omnibox::ModelMode model) {
   if (!input_state_model_) {
     return;
   }
+  if (auto* metrics_recorder = GetMetricsRecorder()) {
+    metrics_recorder->RecordModelMode(model);
+  }
   input_state_model_->setActiveModel(model);
+}
+
+void ContextualSearchboxHandler::InitializeInputStateModelForDebugging() {
+  InitializeInputStateModel();
 }
 
 void ContextualSearchboxHandler::GetInputState(GetInputStateCallback callback) {
   if (input_state_) {
-    std::move(callback).Run(contextual_search::ToMojom(*input_state_));
+    std::move(callback).Run(*input_state_);
   } else {
-    std::move(callback).Run(nullptr);
+    std::move(callback).Run(std::nullopt);
   }
 }
 
@@ -537,7 +519,25 @@ void ContextualSearchboxHandler::OnInputStateChanged(
   if (!IsRemoteBound()) {
     return;
   }
-  page_->OnInputStateChanged(contextual_search::ToMojom(state));
+  page_->OnInputStateChanged(state);
+}
+
+void ContextualSearchboxHandler::InitializeInputStateModel() {
+  // This implicitly also initializes the file upload status observer.
+  if (auto* session_handle = GetContextualSessionHandle()) {
+    auto* service = AimEligibilityServiceFactory::GetForProfile(profile_);
+    const omnibox::SearchboxConfig* config_ptr =
+        service ? service->GetSearchboxConfig() : nullptr;
+    input_state_model_ = std::make_unique<contextual_search::InputStateModel>(
+        *session_handle, config_ptr ? *config_ptr : omnibox::SearchboxConfig());
+    if (profile_) {
+      input_state_model_->SetPrefService(profile_->GetPrefs());
+    }
+    input_state_subscription_ = input_state_model_->subscribe(
+        base::BindRepeating(&ContextualSearchboxHandler::OnInputStateChanged,
+                            weak_ptr_factory_.GetWeakPtr()));
+    input_state_model_->Initialize();
+  }
 }
 
 void ContextualSearchboxHandler::UploadTabContextWithData(

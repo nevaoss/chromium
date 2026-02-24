@@ -430,7 +430,8 @@ std::unique_ptr<CanonicalCookie> CanonicalCookie::Create(
   }
 
   if (parsed_cookie.Name() == "") {
-    is_cookie_prefix_valid = !HasHiddenPrefixName(parsed_cookie.Value());
+    is_cookie_prefix_valid =
+        !cookie_util::HasHiddenPrefixName(parsed_cookie.Value());
   }
 
   if (!is_cookie_prefix_valid) {
@@ -717,7 +718,7 @@ std::unique_ptr<CanonicalCookie> CanonicalCookie::CreateSanitizedCookie(
         net::CookieInclusionStatus::ExclusionReason::EXCLUDE_INVALID_PREFIX);
   }
 
-  if (name == "" && HasHiddenPrefixName(value)) {
+  if (name == "" && cookie_util::HasHiddenPrefixName(value)) {
     status->AddExclusionReason(
         net::CookieInclusionStatus::ExclusionReason::EXCLUDE_INVALID_PREFIX);
   }
@@ -1074,23 +1075,29 @@ CanonicalCookie::IsCanonicalForFromStorage() const {
   }
 
   CookiePrefix prefix = cookie_util::GetCookiePrefix(Name());
-  switch (prefix) {
-    case COOKIE_PREFIX_HOST:
-      if (!SecureAttribute() || Path() != "/" || Domain().empty() ||
-          Domain()[0] == '.') {
+  // Validate prefix attributes. Pass nullopt for URL since we're loading from
+  // storage and don't have the original URL. When URL is nullopt,
+  // IsCookiePrefixValid uses normalized domain semantics (non-empty, no leading
+  // dot for __Host-).
+  if (!cookie_util::IsCookiePrefixValid(prefix, /*url=*/std::nullopt,
+                                        SecureAttribute(), IsHttpOnly(),
+                                        Domain(), Path())) {
+    switch (prefix) {
+      case COOKIE_PREFIX_HOST:
         return Fail(CanonicalizationFailure::kInvalidHostPrefix);
-      }
-      break;
-    case COOKIE_PREFIX_SECURE:
-      if (!SecureAttribute()) {
+      case COOKIE_PREFIX_SECURE:
         return Fail(CanonicalizationFailure::kInvalidSecurePrefix);
-      }
-      break;
-    default:
-      break;
+      case COOKIE_PREFIX_HTTP:
+        return Fail(CanonicalizationFailure::kInvalidHttpPrefix);
+      case COOKIE_PREFIX_HOSTHTTP:
+        return Fail(CanonicalizationFailure::kInvalidHostHttpPrefix);
+      case COOKIE_PREFIX_NONE:
+      case COOKIE_PREFIX_LAST:
+        break;
+    }
   }
 
-  if (Name() == "" && HasHiddenPrefixName(Value())) {
+  if (Name() == "" && cookie_util::HasHiddenPrefixName(Value())) {
     return Fail(CanonicalizationFailure::kEmptyNameWithHiddenPrefix);
   }
 
@@ -1203,32 +1210,6 @@ int CanonicalCookie::GetAndAdjustPortForTrustworthyUrls(
 }
 
 // static
-bool CanonicalCookie::HasHiddenPrefixName(std::string_view cookie_value) {
-  // Skip BWS as defined by HTTPSEM as SP or HTAB (0x20 or 0x9).
-  std::string_view value_without_BWS =
-      base::TrimString(cookie_value, " \t", base::TRIM_LEADING);
-
-  const std::string_view host_prefix = "__Host-";
-
-  // Compare the value to the host_prefix.
-  if (base::StartsWith(value_without_BWS, host_prefix,
-                       base::CompareCase::INSENSITIVE_ASCII)) {
-    // This value contains a hidden prefix name.
-    return true;
-  }
-
-  // Do a similar check for the secure prefix
-  const std::string_view secure_prefix = "__Secure-";
-
-  if (base::StartsWith(value_without_BWS, secure_prefix,
-                       base::CompareCase::INSENSITIVE_ASCII)) {
-    return true;
-  }
-
-  return false;
-}
-
-// static
 CanonicalCookie::CanonicalizationResult CanonicalCookie::Pass() {
   return CanonicalizationResult(base::PassKey<CanonicalCookie>(), std::nullopt);
 }
@@ -1289,6 +1270,10 @@ std::ostream& operator<<(std::ostream& os,
         return "kInvalidHostPrefix";
       case CanonicalCookie::CanonicalizationFailure::kInvalidSecurePrefix:
         return "kInvalidSecurePrefix";
+      case CanonicalCookie::CanonicalizationFailure::kInvalidHttpPrefix:
+        return "kInvalidHttpPrefix";
+      case CanonicalCookie::CanonicalizationFailure::kInvalidHostHttpPrefix:
+        return "kInvalidHostHttpPrefix";
       case CanonicalCookie::CanonicalizationFailure::kEmptyNameWithHiddenPrefix:
         return "kEmptyNameWithHiddenPrefix";
       case CanonicalCookie::CanonicalizationFailure::kPartitionedInsecure:

@@ -529,7 +529,7 @@
       "external/wpt/css/css-ui/text-overflow-string-003.html",
       "external/wpt/css/css-ui/text-overflow-string-004.html",
       "external/wpt/css/css-ui/text-overflow-string-005.html",
-      "external/wpt/css/css-ui/text-overflow-string-006.tentative.html",
+      "external/wpt/css/css-ui/text-overflow-string-006.html",
       "fast/deprecated-flexbox/dynamically-change-line-clamp.html",
       "fast/deprecated-flexbox/line-clamp-crash.html",
       "fast/deprecated-flexbox/line-clamp-removed-dynamically.html",
@@ -2646,6 +2646,25 @@
     "expires": "Jul 3, 2025"
   },
   {
+    "prefix": "prerender-by-form-submission",
+    "platforms": [
+      "Linux",
+      "Mac",
+      "Win"
+    ],
+    "bases": [
+      "external/wpt/speculation-rules/prerender/activation-by-form-submission.https.html"
+    ],
+    "exclusive_tests": "ALL",
+    "args": [
+      "--enable-blink-features=PrerenderActivationByFormSubmission"
+    ],
+    "owners": [
+      "robertlin@chromium.org"
+    ],
+    "expires": "Jul 1, 2026"
+  },
+  {
     "prefix": "prerender2-fallback-prefetch-spec-rules",
     "platforms": [
       "Linux",
@@ -2751,37 +2770,6 @@
       "--disable-features=DeprecateUnload"
     ],
     "expires": "never"
-  },
-  {
-    "prefix": "relax-dom-valid-names-disabled",
-    "owners": [
-      "jarhar@chromium.org"
-    ],
-    "platforms": [
-      "Linux"
-    ],
-    "bases": [
-      "external/wpt/acid/acid3/numbered-tests.html",
-      "external/wpt/dom/nodes/DOMImplementation-createDocument.html",
-      "external/wpt/dom/nodes/DOMImplementation-createDocumentType.html",
-      "external/wpt/dom/nodes/Document-createElement.html",
-      "external/wpt/dom/nodes/Document-createElementNS.html",
-      "external/wpt/dom/nodes/attributes.html",
-      "external/wpt/html/dom/elements/global-attributes/dataset-set.html",
-      "fast/dom/dataset-xhtml.xhtml",
-      "fast/dom/dataset.html",
-      "fast/dom/name-validity-usecounter.html",
-      "fast/dom/DOMImplementation/createDocument-namespace-err.html",
-      "fast/dom/DOMImplementation/createDocumentType-err.html",
-      "fast/dom/Document/createAttributeNS-namespace-err.html",
-      "fast/dom/Document/createElement-invalid-names.html",
-      "fast/dom/Document/createElementNS-namespace-err.html",
-      "fast/dom/Element/setAttributeNS-namespace-err.html"
-    ],
-    "args": [
-      "--disable-features=RelaxDOMValidNames"
-    ],
-    "expires": "Feb 1, 2026"
   },
   {
     "prefix": "renderer-side-content-decoding",
@@ -2961,7 +2949,7 @@
     ]
   },
   {
-    "prefix": "scoped-custom-element-registry",
+    "prefix": "scoped-custom-element-registry-disabled",
     "owners": [
       "masonf@chromium.org",
       "tgivens@microsoft.com",
@@ -2976,7 +2964,7 @@
       "custom-elements/"
     ],
     "args": [
-      "--enable-blink-features=ScopedCustomElementRegistry"
+      "--disable-blink-features=ScopedCustomElementRegistry"
     ],
     "expires": "Jun 1, 2026"
   },
@@ -4373,6 +4361,7 @@
       "external/wpt/html/browsers/browsing-the-web/back-forward-cache/eligibility/shared-worker.html",
       "wpt_internal/shared-worker/back-forward-cache/shared-worker-client-postmessage-transferred-port.window.js",
       "wpt_internal/shared-worker/back-forward-cache/shared-worker-client-postmessage.window.js",
+      "wpt_internal/shared-worker/back-forward-cache/shared-worker-extended-lifetime.window.js",
       "wpt_internal/shared-worker/back-forward-cache/shared-worker-freeze.window.js"
     ],
     "exclusive_tests": "ALL",

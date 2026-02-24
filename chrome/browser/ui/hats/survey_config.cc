@@ -123,14 +123,6 @@ constexpr char kHatsSurveyTriggerNtpModules[] = "ntp-modules";
 constexpr char kHatsSurveyTriggerNextPanel[] = "next-panel";
 constexpr char kHatsSurveyTriggerNtpPhotosModuleOptOut[] =
     "ntp-photos-module-opt-out";
-constexpr char kHatsSurveyTriggerPasswordChangeCanceled[] =
-    "password-change-canceled";
-constexpr char kHatsSurveyTriggerPasswordChangeDelayed[] =
-    "password-change-delayed";
-constexpr char kHatsSurveyTriggerPasswordChangeError[] =
-    "password-change-error";
-constexpr char kHatsSurveyTriggerPasswordChangeSuccess[] =
-    "password-change-success";
 constexpr char kHatsSurveyTriggerPerformanceControlsPPM[] = "performance-ppm";
 // The permission prompt trigger permits configuring multiple triggers
 // simultaneously. Each trigger increments a counter at the end -->
@@ -175,7 +167,10 @@ constexpr char kHatsSurveyTriggerWallpaperSearch[] = "wallpaper-search";
 constexpr char kHatsSurveyTriggerAndroidStartupSurvey[] = "startup_survey";
 constexpr char kHatsSurveyTriggerSigninFirstRun[] = "signin-first-run";
 constexpr char kHatsSurveyTriggerSigninWeb[] = "signin-web";
-constexpr char kHatsSurveyTriggerSigninNtpAvatar[] = "signin-ntp-avatar";
+constexpr char kHatsSurveyTriggerSigninNtpSigninButton[] =
+    "signin-ntp-signin-button";
+constexpr char kHatsSurveyTriggerSigninNtpAccountAvatarTap[] =
+    "signin-ntp-account-avatar-tap";
 constexpr char kHatsSurveyTriggerSigninNtpPromo[] = "signin-ntp-promo";
 constexpr char kHatsSurveyTriggerSigninBookmarkPromo[] =
     "signin-bookmark-promo";
@@ -659,8 +654,7 @@ std::vector<hats::SurveyConfig> GetAllSurveyConfigs() {
       /*product_specific_bits_data_fields=*/std::vector<std::string>{},
       /*product_specific_string_data_fields=*/
       std::vector<std::string>{"Channel"},
-      // TODO(crbug.com/477193830): Add UMA integration.
-      /*log_responses_to_uma=*/false,
+      /*log_responses_to_uma=*/true,
       /*log_responses_to_ukm=*/false,
       hats::SurveyConfig::ProfileAgeRequirement::kAnyAge);
 
@@ -784,65 +778,6 @@ std::vector<hats::SurveyConfig> GetAllSurveyConfigs() {
       /*presupplied_trigger_id=*/std::nullopt, std::vector<std::string>{},
       std::vector<std::string>{"ID that's tied to your Google Lens session"});
 
-  // Automated password change surveys.
-  survey_configs.emplace_back(
-      &password_manager::features::kImprovedPasswordChangeService,
-      kHatsSurveyTriggerPasswordChangeSuccess,
-      password_manager::features::kPasswordChangeSuccessSurveyTriggerId.Get(),
-      /*product_specific_bits_data_fields=*/
-      std::vector<std::string>{password_manager::features_util::
-                                   kPasswordChangeSuggestedPasswordsAdoption,
-                               password_manager::features_util::
-                                   kPasswordChangeBlockingChallengeDetected},
-      /*product_specific_string_data_fields=*/
-      std::vector<std::string>{
-          password_manager::features_util::
-              kPasswordChangeBreachedPasswordsCount,
-          password_manager::features_util::kPasswordChangeSavedPasswordsCount,
-          password_manager::features_util::kPasswordChangeRuntime});
-  survey_configs.emplace_back(
-      &password_manager::features::kImprovedPasswordChangeService,
-      kHatsSurveyTriggerPasswordChangeError,
-      password_manager::features::kPasswordChangeErrorSurveyTriggerId.Get(),
-      /*product_specific_bits_data_fields=*/
-      std::vector<std::string>{password_manager::features_util::
-                                   kPasswordChangeSuggestedPasswordsAdoption,
-                               password_manager::features_util::
-                                   kPasswordChangeBlockingChallengeDetected},
-      /*product_specific_string_data_fields=*/
-      std::vector<std::string>{
-          password_manager::features_util::
-              kPasswordChangeBreachedPasswordsCount,
-          password_manager::features_util::kPasswordChangeSavedPasswordsCount,
-          password_manager::features_util::kPasswordChangeRuntime});
-  survey_configs.emplace_back(
-      &password_manager::features::kImprovedPasswordChangeService,
-      kHatsSurveyTriggerPasswordChangeCanceled,
-      password_manager::features::kPasswordChangeCanceledSurveyTriggerId.Get(),
-      /*product_specific_bits_data_fields=*/
-      std::vector<std::string>{password_manager::features_util::
-                                   kPasswordChangeSuggestedPasswordsAdoption,
-                               password_manager::features_util::
-                                   kPasswordChangeBlockingChallengeDetected},
-      /*product_specific_string_data_fields=*/
-      std::vector<std::string>{
-          password_manager::features_util::
-              kPasswordChangeBreachedPasswordsCount,
-          password_manager::features_util::kPasswordChangeSavedPasswordsCount,
-          password_manager::features_util::kPasswordChangeRuntime});
-  survey_configs.emplace_back(
-      &password_manager::features::kImprovedPasswordChangeService,
-      kHatsSurveyTriggerPasswordChangeDelayed,
-      password_manager::features::kPasswordChangeDelayedSurveyTriggerId.Get(),
-      /*product_specific_bits_data_fields=*/
-      std::vector<std::string>{password_manager::features_util::
-                                   kPasswordChangeSuggestedPasswordsAdoption},
-      /*product_specific_string_data_fields=*/
-      std::vector<std::string>{
-          password_manager::features_util::
-              kPasswordChangeBreachedPasswordsCount,
-          password_manager::features_util::kPasswordChangeSavedPasswordsCount});
-
 #else  // BUILDFLAG(IS_ANDROID)
   survey_configs.emplace_back(&chrome::android::kChromeSurveyNextAndroid,
                               kHatsSurveyTriggerAndroidStartupSurvey);
@@ -856,10 +791,14 @@ std::vector<hats::SurveyConfig> GetAllSurveyConfigs() {
   survey_configs.emplace_back(
       &switches::kChromeAndroidIdentitySurveyWeb, kHatsSurveyTriggerSigninWeb,
       std::nullopt, std::vector<std::string>{}, signin_string_psd_fields);
-  survey_configs.emplace_back(&switches::kChromeAndroidIdentitySurveyNtpAvatar,
-                              kHatsSurveyTriggerSigninNtpAvatar, std::nullopt,
-                              std::vector<std::string>{},
-                              signin_string_psd_fields);
+  survey_configs.emplace_back(
+      &switches::kChromeAndroidIdentitySurveyNtpSigninButton,
+      kHatsSurveyTriggerSigninNtpSigninButton, std::nullopt,
+      std::vector<std::string>{}, signin_string_psd_fields);
+  survey_configs.emplace_back(
+      &switches::kChromeAndroidIdentitySurveyNtpAccountAvatarTap,
+      kHatsSurveyTriggerSigninNtpAccountAvatarTap, std::nullopt,
+      std::vector<std::string>{}, signin_string_psd_fields);
   survey_configs.emplace_back(&switches::kChromeAndroidIdentitySurveyNtpPromo,
                               kHatsSurveyTriggerSigninNtpPromo, std::nullopt,
                               std::vector<std::string>{},

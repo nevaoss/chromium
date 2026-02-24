@@ -29,6 +29,7 @@ import org.chromium.base.task.AsyncTask;
 import org.chromium.build.annotations.EnsuresNonNullIf;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
+import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
 import org.chromium.chrome.browser.omnibox.R;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxAttachmentRecyclerViewAdapter.FuseboxAttachmentType;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxState;
@@ -44,9 +45,11 @@ import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.chrome.browser.ui.theme.BrandedColorScheme;
 import org.chromium.components.browser_ui.styles.ChromeColors;
 import org.chromium.components.browser_ui.util.ChromeItemPickerExtras;
+import org.chromium.components.feature_engagement.Tracker;
 import org.chromium.components.omnibox.AutocompleteInput;
 import org.chromium.components.omnibox.AutocompleteRequestType;
 import org.chromium.components.omnibox.OmniboxFeatures;
+import org.chromium.components.omnibox.OmniboxFocusReason;
 import org.chromium.ui.base.Clipboard;
 import org.chromium.ui.base.MimeTypeUtils;
 import org.chromium.ui.base.WindowAndroid;
@@ -136,10 +139,14 @@ public class FuseboxMediator {
                 () -> activateAiMode(AiModeActivationSource.TOOL_MENU));
         mModel.set(FuseboxProperties.POPUP_CREATE_IMAGE_CLICKED, this::activateImageGeneration);
         mModel.set(FuseboxProperties.POPUP_TAB_PICKER_CLICKED, this::onTabPickerClicked);
-
         mModel.set(
                 FuseboxProperties.POPUP_FILE_BUTTON_VISIBLE,
                 mComposeboxQueryControllerBridge.isPdfUploadEligible());
+        mModel.set(
+                FuseboxProperties.POPUP_CREATE_IMAGE_BUTTON_VISIBLE,
+                mComposeboxQueryControllerBridge.isCreateImagesEligible()
+                        && (OmniboxFeatures.sShowImageGenerationButtonInIncognito.getValue()
+                                || !profile.isIncognitoBranded()));
 
         mModelList.addObserver(mListObserver);
         onAttachmentsChanged();
@@ -163,14 +170,12 @@ public class FuseboxMediator {
      */
     /* package */ void beginInput(AutocompleteInput input) {
         setAutocompleteInput(input);
-        setAutocompleteRequestTypeChangeable(true);
         setToolbarVisible(true);
     }
 
     /** Called when the user stops interacting with the Omnibox. */
     /* package */ void endInput() {
         mModelList.clear();
-        setAutocompleteRequestTypeChangeable(false);
         setToolbarVisible(false);
         setAutocompleteInput(null);
     }
@@ -180,7 +185,14 @@ public class FuseboxMediator {
             mInput.getRequestTypeSupplier().removeObserver(mOnAutocompleteRequestTypeChanged);
         }
         mInput = input;
+
         if (mInput != null) {
+            // TODO(crbug.com/481365131): there must be a better way to do that.
+            if (mInput.getRequestType() == AutocompleteRequestType.AI_MODE
+                    && mInput.getFocusReason() == OmniboxFocusReason.NTP_AI_MODE) {
+                activateAiMode(AiModeActivationSource.NTP_BUTTON);
+            }
+
             mInput.getRequestTypeSupplier()
                     .addSyncObserverAndCallIfNonNull(mOnAutocompleteRequestTypeChanged);
         }
@@ -280,10 +292,6 @@ public class FuseboxMediator {
                         && mInput.getRequestType() == AutocompleteRequestType.SEARCH);
     }
 
-    public void setAutocompleteRequestTypeChangeable(boolean isChangeable) {
-        mModel.set(FuseboxProperties.AUTOCOMPLETE_REQUEST_TYPE_CHANGEABLE, isChangeable);
-    }
-
     /**
      * @param url The search URL to get the AIM analog of.
      * @param callback The callback to run with the URL for the AIM service.
@@ -311,7 +319,9 @@ public class FuseboxMediator {
                     Clipboard.getInstance().hasImage());
             mPopup.show();
         }
-        FuseboxMetrics.notifyAttachmentsPopupToggled(!mPopup.isShowing(), mModel);
+
+        Tracker tracker = TrackerFactory.getTrackerForProfile(mProfile);
+        FuseboxMetrics.notifyAttachmentsPopupToggled(!mPopup.isShowing(), mModel, tracker);
     }
 
     private void updateModelForCurrentTab() {

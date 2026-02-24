@@ -23,6 +23,7 @@
 #include "chrome/browser/actor/actor_tab_data.h"
 #include "chrome/browser/actor/actor_task.h"
 #include "chrome/browser/actor/actor_test_util.h"
+#include "chrome/browser/actor/enterprise_policy_checker.h"
 #include "chrome/browser/actor/safety_list_manager.h"
 #include "chrome/browser/actor/shared_types.h"
 #include "chrome/browser/actor/tool_request_variant.h"
@@ -205,11 +206,7 @@ class ExecutionEngineTest : public ChromeRenderViewHostTestHarness {
  public:
   ExecutionEngineTest()
       : ChromeRenderViewHostTestHarness(
-            content::BrowserTaskEnvironment::TimeSource::MOCK_TIME) {
-    scoped_feature_list_.InitAndEnableFeatureWithParameters(
-        features::kGlicActor,
-        {{features::kGlicActorPolicyControlExemption.name, "true"}});
-  }
+            content::BrowserTaskEnvironment::TimeSource::MOCK_TIME) {}
   ~ExecutionEngineTest() override = default;
 
   void SetUp() override {
@@ -235,8 +232,9 @@ class ExecutionEngineTest : public ChromeRenderViewHostTestHarness {
         }));
 
     task_ = ActorTask::CreateForTesting(
-        profile(), TaskId(0), std::move(task_ui_event_dispatcher),
-        /*options=*/nullptr, mock_actor_task_delegate_.GetWeakPtr());
+        profile(), TaskId(1), std::move(task_ui_event_dispatcher),
+        /*options=*/nullptr, &no_enterprise_checker_,
+        mock_actor_task_delegate_.GetWeakPtr());
 
     for (auto& mock :
          {mock_ui_event_dispatcher_, task_mock_ui_event_dispatcher_}) {
@@ -348,7 +346,8 @@ class ExecutionEngineTest : public ChromeRenderViewHostTestHarness {
   };
   std::optional<TabState> tab_state_;
 
-  base::test::ScopedFeatureList scoped_feature_list_;
+  MockPolicyChecker no_enterprise_checker_{
+      EnterprisePolicyBlockReason::kNotBlocked};
 };
 
 TEST_F(ExecutionEngineTest, ActSucceedsOnSupportedUrl) {

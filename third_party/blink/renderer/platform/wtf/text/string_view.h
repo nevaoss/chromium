@@ -49,6 +49,11 @@ enum class Utf8ConversionMode : uint8_t {
 //
 // Unlike `std::string_view`, pass-by-value is not recommended because a
 // `blink::StringView` instance consists of three words.
+//
+// When a method of this class is compatible with an equivalent method in
+// `std::string_view`, we use the same method name as `std::string_view` (i.e.,
+// `snake_case()`) rather than following the Google/Blink C++ style guide's
+// naming rules. This improves consistency in string manipulation.
 class WTF_EXPORT StringView {
   DISALLOW_NEW();
 
@@ -285,6 +290,10 @@ class WTF_EXPORT StringView {
   // Find characters. Returns the index of the match, or `kNotFound`.
   wtf_size_t Find(CharacterMatchFunctionPtr match_function,
                   wtf_size_t start = 0) const;
+
+  // Find the last occurrence of a character. Returns the index of the match, or
+  // `kNotFound`.
+  wtf_size_t rfind(UChar ch, wtf_size_t start = kNotFound) const;
 
   // Returns `true` if this StringView contains the specified character.
   bool contains(UChar ch) const;

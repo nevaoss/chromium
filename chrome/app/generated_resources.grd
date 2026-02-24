@@ -10417,8 +10417,8 @@ Keep your key file in a safe place. You will need it to create new versions of y
           <message name="IDS_VERTICAL_TAB_GROUP_MORE_OPTIONS" is_accessibility_with_no_ui="true" desc="In Title Case: The accessibility label for the button in the tab group header that opens the editor bubble.">
             More Options
           </message>
-          <message name="IDS_VERTICAL_TABS_SEND_FEEDBACK" translateable="false" desc="In Title Case: The button in context menu that allows users to send feedback about vertical tabs.">
-            Send Feedback About Vertical Tabs
+          <message name="IDS_VERTICAL_TABS_SEND_FEEDBACK" desc="In Title Case: The button in context menu that allows users to send feedback about vertical tabs.">
+            Send Feedback About the Tab Strip
           </message>
         </then>
         <else>
@@ -10437,8 +10437,8 @@ Keep your key file in a safe place. You will need it to create new versions of y
           <message name="IDS_VERTICAL_TAB_GROUP_MORE_OPTIONS" is_accessibility_with_no_ui="true"  desc="The accessibility label for the button in the tab group header that opens the editor bubble.">
             More options
           </message>
-          <message name="IDS_VERTICAL_TABS_SEND_FEEDBACK" translateable="false" desc="The button in context menu that allows users to send feedback about vertical tabs.">
-            Send feedback about vertical tabs
+          <message name="IDS_VERTICAL_TABS_SEND_FEEDBACK" desc="The button in context menu that allows users to send feedback about vertical tabs.">
+            Send feedback about the tab strip
           </message>
         </else>
       </if>
@@ -10459,6 +10459,9 @@ Keep your key file in a safe place. You will need it to create new versions of y
           <message name="IDS_RECENT_CHATS_TITLE" desc="In Title Case: The title for the recent chats container in the projects panel.">
             Recent Chats
           </message>
+          <message name="IDS_TAB_GROUP_MORE_OPTIONS" desc="In Title Case: The tooltip for the button in a tab group item that opens the options menu.">
+            More options
+          </message>
         </then>
         <else>
           <message name="IDS_VIEW_PROJECTS_PANEL" desc="The tooltip for the button in the top container that shows the projects panel.">
@@ -10472,6 +10475,9 @@ Keep your key file in a safe place. You will need it to create new versions of y
           </message>
           <message name="IDS_RECENT_CHATS_TITLE" desc="In Title Case: The title for the recent chats container in the projects panel.">
             Recent chats
+          </message>
+          <message name="IDS_TAB_GROUP_MORE_OPTIONS" desc="The tooltip for the button in a tab group item that opens the options menu.">
+            More options
           </message>
         </else>
       </if>
@@ -12277,9 +12283,6 @@ Check your passwords anytime in <ph name="GOOGLE_PASSWORD_MANAGER">$1<ex>Google 
       </if>
 
       <!-- Tab Search -->
-      <message name="IDS_TAB_SEARCH_PROMO" desc="Promo UI shown next to the tab search button to encourage it's use.">
-        To search your tabs, click here
-      </message>
       <message name="IDS_TAB_SEARCH_TOOLBAR_BUTTON_PROMO_TITLE" desc="Title text on the tab search toolbar button promo UI.">
         Tab search is now pinned to your toolbar
       </message>
@@ -12611,6 +12614,14 @@ Check your passwords anytime in <ph name="GOOGLE_PASSWORD_MANAGER">$1<ex>Google 
 
         <message name="IDS_SAVED_TAB_GROUPS_V2_INTRO_IPH_BOOKMARKS_BAR_NOT_SYNCED_BODY" desc="The text of an IPH that shows up when the browser is started with tab groups defaulted to saved, sync is off, and there is a bookmarks bar.">
           Your tab groups now automatically save
+        </message>
+
+        <message name="IDS_RESUMPTION_RAIL_IPH_TITLE" desc="The title text of an IPH that shows up to educate users about the Resumption Rail feature entrypoint.">
+          Continue your tasks
+        </message>
+
+        <message name="IDS_RESUMPTION_RAIL_IPH_BODY" desc="The text of an IPH that shows up to educate users about the Resumption Rail feature entrypoint.">
+          Quickly switch between your tab groups and your recent AI conversations without losing your place.
         </message>
 
       <!-- Saved Tab Group Error -->

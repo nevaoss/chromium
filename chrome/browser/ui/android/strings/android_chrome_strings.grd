@@ -485,6 +485,16 @@ For more settings that use data to improve your Chrome experience, go to <ph nam
       <message name="IDS_MANAGE_SEARCH_ENGINES_AND_SITE_SEARCH" desc="Title shown in the menu item that takes the user to 'Manage search engines and site search' in Settings.">
         Manage search engines and site search
       </message>
+      <message name="IDS_SITE_SEARCH_SEARCH_ENGINES_HEADER" desc="Label for 'Search Engines' section">
+        Search engines
+      </message>
+      <message name="IDS_SITE_SEARCH_SEARCH_ENGINES_DESCRIPTION" desc="Explanation for 'Search Engines' section">
+        To use a search engine other than the default, type its shortcut in the address bar followed by your preferred keyboard shortcut. You can also change your default search engine here.
+      </message>
+
+
+
+      <!-- Add Message -->
 
       <!-- Address bar settings -->
       <message name="IDS_ADDRESS_BAR_SETTINGS" desc="Title for Address Bar settings. [CHAR_LIMIT=32]">
@@ -4388,12 +4398,6 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       </message>
       <message name="IDS_MENU_STOP_IMAGE_DESCRIPTIONS" desc="Menu item to stop getting alt text accessibility image labels/descriptions [CHAR_LIMIT=27]">
         Stop image descriptions
-      </message>
-      <message name="IDS_MENU_SWITCH_TO_INCOGNITO" desc="Menu item for switching to incognito.">
-        Switch to Incognito
-      </message>
-      <message name="IDS_MENU_SWITCH_OUT_OF_INCOGNITO" desc="Menu item for switching out of incognito.">
-        Switch out of Incognito
       </message>
       <message name="IDS_MENU_ADD_TAB_TO_GROUP" desc="Menu item for adding a tab to a tab group.">
         Add tab to group

@@ -67,23 +67,20 @@ class SqlPersistentStore::BackendShard {
   void UpdateEntryLastUsedByKey(const CacheEntryKey& key,
                                 base::Time last_used,
                                 ErrorCallback callback);
-  void UpdateEntryLastUsedByResId(ResId res_id,
-                                  base::Time last_used,
-                                  ErrorCallback callback);
-  void UpdateEntryHeaderAndLastUsed(
+  void WriteEntryDataAndMetadata(
       const CacheEntryKey& key,
       ResId res_id,
+      std::optional<int64_t> old_body_end,
+      EntryWriteBuffer buffer,
       base::Time last_used,
       const std::optional<MemoryEntryDataHints>& new_hints,
-      scoped_refptr<net::IOBuffer> buffer,
+      scoped_refptr<net::IOBuffer> head_buffer,
       int64_t header_size_delta,
       ErrorCallback callback);
   void WriteEntryData(const CacheEntryKey& key,
                       ResId res_id,
                       int64_t old_body_end,
-                      int64_t offset,
-                      scoped_refptr<net::IOBuffer> buffer,
-                      int buf_len,
+                      EntryWriteBuffer buffer,
                       bool truncate,
                       ErrorCallback callback);
   void ReadEntryData(const CacheEntryKey& key,

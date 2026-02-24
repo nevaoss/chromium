@@ -106,11 +106,13 @@ import org.chromium.components.browser_ui.accessibility.PageZoomIndicatorCoordin
 import org.chromium.components.browser_ui.styles.ChromeColors;
 import org.chromium.components.embedder_support.util.UrlUtilities;
 import org.chromium.components.embedder_support.util.UrlUtilitiesJni;
+import org.chromium.components.omnibox.AutocompleteInput;
 import org.chromium.components.omnibox.AutocompleteMatch;
 import org.chromium.components.omnibox.AutocompleteMatchBuilder;
 import org.chromium.components.omnibox.AutocompleteRequestType;
 import org.chromium.components.omnibox.OmniboxFeatureList;
 import org.chromium.components.omnibox.OmniboxFeatures;
+import org.chromium.components.omnibox.OmniboxFocusReason;
 import org.chromium.components.omnibox.OmniboxSuggestionType;
 import org.chromium.components.search_engines.TemplateUrlService;
 import org.chromium.components.signin.identitymanager.IdentityManager;
@@ -470,7 +472,7 @@ public class LocationBarMediatorTest {
         verify(mUrlCoordinator)
                 .setAutocompleteText("text", "textWithAutocomplete", "additionalText");
 
-        var state = FuseboxSessionState.from(mTab);
+        var state = FuseboxSessionState.from(mLocationBarDataProvider, /* allowEphemeral= */ false);
         state.autocompleteInput.setRequestType(AutocompleteRequestType.AI_MODE);
         mMediator.onSuggestionsChanged(defaultMatch);
         verify(mStatusCoordinator, times(2)).onDefaultMatchClassified(true);
@@ -1015,10 +1017,15 @@ public class LocationBarMediatorTest {
                 /* shouldBeFocused= */ true,
                 null,
                 /* selectText= */ false,
-                OmniboxFocusReason.FAKE_BOX_TAP,
+                OmniboxFocusReason.NTP_AI_MODE,
                 AutocompleteRequestType.AI_MODE);
         verify(mUrlCoordinator).requestFocus();
-        verify(mFuseboxCoordinator).onAiModeActivatedFromNtp();
+
+        mMediator.beginOrResumeInput(/* activateNewSession= */ true);
+        ArgumentCaptor<AutocompleteInput> captor = ArgumentCaptor.forClass(AutocompleteInput.class);
+        verify(mFuseboxCoordinator).beginInput(captor.capture());
+
+        assertEquals(OmniboxFocusReason.NTP_AI_MODE, captor.getValue().getFocusReason());
     }
 
     @Test
@@ -1632,7 +1639,7 @@ public class LocationBarMediatorTest {
         doReturn("text").when(mUrlCoordinator).getTextWithAutocomplete();
         mMediator.onUrlFocusChange(true);
 
-        var state = FuseboxSessionState.from(mTab);
+        var state = FuseboxSessionState.from(mLocationBarDataProvider, /* allowEphemeral= */ false);
         state.autocompleteInput.setRequestType(AutocompleteRequestType.SEARCH);
         assertTrue(mNavigateButtonIsVisible);
 
@@ -1767,13 +1774,18 @@ public class LocationBarMediatorTest {
 
     @Test
     public void testRestoringText() {
+        ShadowLooper looper = ShadowLooper.shadowMainLooper();
         OmniboxFeatures.setShouldRetainOmniboxOnFocusForTesting(true);
         NewTabPageDelegate newTabPageDelegate = mock(NewTabPageDelegate.class);
         doReturn(newTabPageDelegate).when(mLocationBarDataProvider).getNewTabPageDelegate();
+        mTabletMediator.onFinishNativeInitialization();
+        mProfileSupplier.set(mProfile);
+        looper.idle();
 
         // Prepare a state to be restored for mTab.
         String newText = "new text";
-        var newState = FuseboxSessionState.from(mTab);
+        var newState =
+                FuseboxSessionState.from(mLocationBarDataProvider, /* allowEphemeral= */ false);
         newState.autocompleteInput.setUserText(newText);
         newState.setSessionActive(true);
 
@@ -1783,10 +1795,12 @@ public class LocationBarMediatorTest {
         doReturn(previousTabUserDataHost).when(previousTab).getUserDataHost();
 
         // Emulate a state where the omnibox is focused and user has typed a text.
+        doReturn(previousTab).when(mLocationBarDataProvider).getTab();
         mTabletMediator.onUrlFocusChange(true);
         String previousText = "previous text";
         // Note: input state is tracked by autocomplete.
-        var previousState = FuseboxSessionState.from(previousTab);
+        var previousState =
+                FuseboxSessionState.from(mLocationBarDataProvider, /* allowEphemeral= */ false);
         previousState.autocompleteInput.setUserText(previousText);
 
         // Emulate a tab switch from previousTab to mTab.
@@ -1794,7 +1808,7 @@ public class LocationBarMediatorTest {
         mTabletMediator.onTabChanged(previousTab);
         mTabletMediator.onUrlChanged(true);
 
-        ShadowLooper.idleMainLooper();
+        looper.idle();
 
         // The state for mTab was restored.
         verify(mUrlCoordinator)
@@ -1810,10 +1824,14 @@ public class LocationBarMediatorTest {
     @Test
     @EnableFeatures({OmniboxFeatureList.OMNIBOX_IMPROVEMENT_FOR_LFF})
     public void testRestoringTextAndEditingStateOnTablet() {
+        ShadowLooper looper = ShadowLooper.shadowMainLooper();
         OmniboxFeatures.sOmniboxImprovementForLFFPersistEditingState.setForTesting(true);
 
         // Recreate mediator to respect the overridden feature flag and params.
         mTabletMediator = createTabletMediator();
+        mTabletMediator.onFinishNativeInitialization();
+        mProfileSupplier.set(mProfile);
+        looper.idle();
 
         OmniboxFeatures.setShouldRetainOmniboxOnFocusForTesting(true);
         NewTabPageDelegate newTabPageDelegate = mock(NewTabPageDelegate.class);
@@ -1823,7 +1841,8 @@ public class LocationBarMediatorTest {
         String newText = "new text";
         final int newSelectionStart = 2;
         final int newSelectionEnd = 6;
-        var newState = FuseboxSessionState.from(mTab);
+        var newState =
+                FuseboxSessionState.from(mLocationBarDataProvider, /* allowEphemeral= */ false);
         newState.autocompleteInput.setUserText(newText);
         newState.autocompleteInput.setSelection(newSelectionStart, newSelectionEnd);
         newState.setSessionActive(true);
@@ -1834,13 +1853,15 @@ public class LocationBarMediatorTest {
         doReturn(previousTabUserDataHost).when(previousTab).getUserDataHost();
 
         // Emulate a state where the omnibox is focused and user has typed a text.
+        doReturn(previousTab).when(mLocationBarDataProvider).getTab();
         mTabletMediator.onUrlFocusChange(true);
         String previousText = "previous text";
         final int previousSelectionStart = 1;
         final int previousSelectionEnd = 5;
 
         // Note: input state is tracked by autocomplete.
-        var previousState = FuseboxSessionState.from(previousTab);
+        var previousState =
+                FuseboxSessionState.from(mLocationBarDataProvider, /* allowEphemeral= */ false);
         previousState.autocompleteInput.setUserText(previousText);
         doReturn(previousSelectionStart).when(mUrlCoordinator).getSelectionStart();
         doReturn(previousSelectionEnd).when(mUrlCoordinator).getSelectionEnd();
@@ -1850,7 +1871,7 @@ public class LocationBarMediatorTest {
         mTabletMediator.onTabChanged(previousTab);
         mTabletMediator.onUrlChanged(true);
 
-        ShadowLooper.idleMainLooper();
+        looper.idle();
 
         // The state for mTab was restored.
         ArgumentCaptor<UrlBarData> captor = ArgumentCaptor.forClass(UrlBarData.class);

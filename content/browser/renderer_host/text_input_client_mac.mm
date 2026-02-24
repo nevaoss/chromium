@@ -4,6 +4,9 @@
 
 #import "content/browser/renderer_host/text_input_client_mac.h"
 
+#include <utility>
+
+#include "base/check.h"
 #include "base/functional/bind.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/no_destructor.h"
@@ -21,6 +24,35 @@ namespace content {
 
 namespace {
 
+class DefaultAsyncRequestDelegate final
+    : public TextInputClientMac::AsyncRequestDelegate {
+ public:
+  DefaultAsyncRequestDelegate() = default;
+  ~DefaultAsyncRequestDelegate() final = default;
+
+  DefaultAsyncRequestDelegate(const DefaultAsyncRequestDelegate&) = delete;
+  DefaultAsyncRequestDelegate& operator=(const DefaultAsyncRequestDelegate&) =
+      delete;
+
+  void GetCharacterIndexAtPoint(
+      RenderFrameHost* rfh,
+      const TextInputClientMac::RequestToken& request_token,
+      const gfx::Point& point) final {
+    RenderFrameHostImpl::From(rfh)
+        ->GetAssociatedLocalFrame()
+        ->GetCharacterIndexAtPoint(request_token.value(), point);
+  }
+
+  void GetFirstRectForRange(
+      RenderFrameHost* rfh,
+      const TextInputClientMac::RequestToken& request_token,
+      const gfx::Range& range) final {
+    RenderFrameHostImpl::From(rfh)
+        ->GetAssociatedLocalFrame()
+        ->GetFirstRectForRange(request_token.value(), range);
+  }
+};
+
 RenderFrameHostImpl* GetFocusedRenderFrameHostImpl(RenderWidgetHost* widget) {
   RenderWidgetHostImpl* rwhi = RenderWidgetHostImpl::From(widget);
   FrameTree* tree = rwhi->frame_tree();
@@ -32,7 +64,8 @@ RenderFrameHostImpl* GetFocusedRenderFrameHostImpl(RenderWidgetHost* widget) {
 
 TextInputClientMac::TextInputClientMac()
     : condition_(&lock_),
-      wait_timeout_(features::kTextInputClientIPCTimeout.Get()) {}
+      async_request_delegate_(std::make_unique<DefaultAsyncRequestDelegate>()) {
+}
 
 TextInputClientMac::~TextInputClientMac() = default;
 
@@ -70,6 +103,7 @@ void TextInputClientMac::GetStringFromRange(RenderWidgetHost* rwh,
 
 uint32_t TextInputClientMac::GetCharacterIndexAtPoint(RenderWidgetHost* rwh,
                                                       const gfx::Point& point) {
+  DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
   RenderFrameHostImpl* rfhi = GetFocusedRenderFrameHostImpl(rwh);
   // If it doesn't have a focused frame, it calls SetCharacterIndexAndSignal()
   // with index 0.
@@ -77,16 +111,17 @@ uint32_t TextInputClientMac::GetCharacterIndexAtPoint(RenderWidgetHost* rwh,
     return 0;
   }
 
-  rfhi->GetAssociatedLocalFrame()->GetCharacterIndexAtPoint(point);
-
   base::TimeTicks start = base::TimeTicks::Now();
-  base::TimeDelta remaining_timeout = wait_timeout_;
+  base::TimeDelta wait_timeout = features::kTextInputClientIPCTimeout.Get();
+  base::TimeDelta remaining_timeout = wait_timeout;
 
   BeforeRequest();
+  async_request_delegate_->GetCharacterIndexAtPoint(
+      rfhi, current_request_.value(), point);
   while (!character_index_ && remaining_timeout.is_positive()) {
     base::ScopedAllowBaseSyncPrimitivesOutsideBlockingScope allow_wait;
     condition_.TimedWait(remaining_timeout);
-    remaining_timeout = start + wait_timeout_ - base::TimeTicks::Now();
+    remaining_timeout = start + wait_timeout - base::TimeTicks::Now();
   }
   // Return a sentinel if no response was received.
   uint32_t index = character_index_.value_or(UINT32_MAX);
@@ -101,21 +136,23 @@ uint32_t TextInputClientMac::GetCharacterIndexAtPoint(RenderWidgetHost* rwh,
 
 gfx::Rect TextInputClientMac::GetFirstRectForRange(RenderWidgetHost* rwh,
                                                    const gfx::Range& range) {
+  DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
   RenderFrameHostImpl* rfhi = GetFocusedRenderFrameHostImpl(rwh);
   if (!rfhi) {
     return gfx::Rect();
   }
 
-  rfhi->GetAssociatedLocalFrame()->GetFirstRectForRange(range);
-
   base::TimeTicks start = base::TimeTicks::Now();
-  base::TimeDelta remaining_timeout = wait_timeout_;
+  base::TimeDelta wait_timeout = features::kTextInputClientIPCTimeout.Get();
+  base::TimeDelta remaining_timeout = wait_timeout;
 
   BeforeRequest();
+  async_request_delegate_->GetFirstRectForRange(rfhi, current_request_.value(),
+                                                range);
   while (!first_rect_ && remaining_timeout.is_positive()) {
     base::ScopedAllowBaseSyncPrimitivesOutsideBlockingScope allow_wait;
     condition_.TimedWait(remaining_timeout);
-    remaining_timeout = start + wait_timeout_ - base::TimeTicks::Now();
+    remaining_timeout = start + wait_timeout - base::TimeTicks::Now();
   }
   // `first_rect_` is in (child) frame coordinate and needs to be transformed to
   // the root frame coordinate.
@@ -133,18 +170,66 @@ gfx::Rect TextInputClientMac::GetFirstRectForRange(RenderWidgetHost* rwh,
   return rect;
 }
 
-void TextInputClientMac::SetCharacterIndexAndSignal(uint32_t index) {
-  lock_.Acquire();
-  character_index_ = index;
-  lock_.Release();
+void TextInputClientMac::SetCharacterIndexAndSignal(
+    const RequestToken& request_token,
+    uint32_t index) {
+  {
+    base::AutoLock lock(lock_);
+    if (!current_request_.has_value() ||
+        current_request_.value() != request_token) {
+      // Stale request.
+      return;
+    }
+    character_index_ = index;
+  }
   condition_.Signal();
 }
 
-void TextInputClientMac::SetFirstRectAndSignal(const gfx::Rect& first_rect) {
-  lock_.Acquire();
-  first_rect_ = first_rect;
-  lock_.Release();
+void TextInputClientMac::SetFirstRectAndSignal(
+    const RequestToken& request_token,
+    const gfx::Rect& first_rect) {
+  {
+    base::AutoLock lock(lock_);
+    if (!current_request_.has_value() ||
+        current_request_.value() != request_token) {
+      // Stale request.
+      return;
+    }
+    first_rect_ = first_rect;
+  }
   condition_.Signal();
+}
+
+void TextInputClientMac::SetAsyncRequestDelegateForTesting(
+    std::unique_ptr<AsyncRequestDelegate> delegate) {
+  DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
+  async_request_delegate_ =
+      delegate ? std::move(delegate)
+               : std::make_unique<DefaultAsyncRequestDelegate>();
+}
+
+void TextInputClientMac::SetCharacterIndexWhileLockedForTesting(
+    const RequestToken& request_token,
+    uint32_t index) {
+  // Drop the lock to signal the condition variable. Tests use this to simulate
+  // a GetCharacterIndexAtPoint() response that arrives before the
+  // `condition_.Wait()` call, so it must run on the same thread (not just
+  // sequence) that calls Wait() to preserve ordering.
+  DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
+  base::AutoUnlock unlock(lock_);
+  SetCharacterIndexAndSignal(request_token, index);
+}
+
+void TextInputClientMac::SetFirstRectWhileLockedForTesting(
+    const RequestToken& request_token,
+    const gfx::Rect& first_rect) {
+  // Drop the lock to signal the condition variable. Tests use this to simulate
+  // a GetFirstRectForRange() response that arrives before the
+  // `condition_.Wait()` call, so it must run on the same thread (not just
+  // sequence) that calls Wait() to preserve ordering.
+  DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
+  base::AutoUnlock unlock(lock_);
+  SetFirstRectAndSignal(request_token, first_rect);
 }
 
 void TextInputClientMac::BeforeRequest() {
@@ -156,11 +241,15 @@ void TextInputClientMac::BeforeRequest() {
   UMA_HISTOGRAM_LONG_TIMES("TextInputClient.LockWait",
                            delta * base::Time::kMicrosecondsPerMillisecond);
 
+  CHECK(!current_request_.has_value());
+  current_request_ = RequestToken();
   character_index_.reset();
   first_rect_.reset();
 }
 
 void TextInputClientMac::AfterRequest() {
+  CHECK(current_request_.has_value());
+  current_request_.reset();
   lock_.Release();
 }
 

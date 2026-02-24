@@ -12,11 +12,13 @@
 #include "base/task/sequenced_task_runner.h"
 #include "base/time/default_tick_clock.h"
 #include "base/time/time.h"
+#include "chrome/browser/lifetime/browser_shutdown.h"
 #include "chrome/browser/page_load_metrics/page_load_metrics_initialize.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser_command_controller.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/browser_window/public/desktop_browser_window_capabilities.h"
 #include "chrome/browser/ui/layout_constants.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/view_ids.h"
@@ -28,6 +30,7 @@
 #include "chrome/common/webui_url_constants.h"
 #include "components/zoom/zoom_controller.h"
 #include "content/public/browser/context_menu_params.h"
+#include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/reload_type.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_process_host.h"
@@ -152,8 +155,9 @@ void WebUIToolbarWebView::AddedToWidget() {
   // before the WebUI acts on it.
   webui::SetBrowserWindowInterface(web_view_->GetWebContents(), browser_);
   web_view_->LoadInitialURL(GURL(chrome::kChromeUIWebUIToolbarURL));
-  GetWebUIToolbarUI()->SetDelegate(this);
-  reload_control_.Init();
+
+  // Do NOT call GetWebUIToolbarUI() here as it may be null.
+  // The reload_control_ will be initialized once the WebUI is ready.
 }
 
 gfx::Size WebUIToolbarWebView::CalculatePreferredSize(
@@ -196,11 +200,26 @@ void WebUIToolbarWebView::HandleContextMenu(
 }
 
 void WebUIToolbarWebView::OnPageInitialized() {
+  if (!reload_control_.is_initialized()) {
+    reload_control_.Init();
+  }
+
   InitialWebUIManager::From(browser_)->OnWebUIToolbarLoaded();
 }
 
 ReloadControl* WebUIToolbarWebView::GetReloadControl() {
   return &reload_control_;
+}
+
+void WebUIToolbarWebView::DidFinishNavigation(
+    content::NavigationHandle* navigation_handle) {
+  if (!navigation_handle->IsInPrimaryMainFrame() ||
+      !navigation_handle->HasCommitted()) {
+    return;
+  }
+  if (auto* ui = GetWebUIToolbarUI()) {
+    ui->SetDelegate(this);
+  }
 }
 
 void WebUIToolbarWebView::DidFirstVisuallyNonEmptyPaint() {
@@ -223,7 +242,16 @@ void WebUIToolbarWebView::PrimaryMainFrameRenderProcessGone(
     return;
   }
 
-  did_recover_from_previous_termination_ = false;
+  // Do not recover if the browser is shutting down.
+  if (browser_shutdown::IsTryingToQuit()) {
+    return;
+  }
+
+  // Do not recover if the browser is closing.
+  if (browser_->capabilities() &&
+      browser_->capabilities()->IsAttemptingToCloseBrowser()) {
+    return;
+  }
 
   // Reset the crash count if when the reset interval is reached.
   if (clock_->NowTicks() - last_crash_time_ >=
@@ -261,8 +289,9 @@ void WebUIToolbarWebView::PrimaryMainFrameRenderProcessGone(
 
 void WebUIToolbarWebView::RecoverFromRendererCrashOrUnresponsiveness() {
   CHECK(web_view_);
-  CHECK(!did_recover_from_previous_termination_);
-  did_recover_from_previous_termination_ = true;
+  // Note that in some cases the WebView might have been recovered already (e.g.
+  // when the user triggers a reload from the devtools), however we will just
+  // continue with the reload anyway.
   web_view_->web_contents()->GetController().Reload(content::ReloadType::NORMAL,
                                                     /*check_for_repost=*/false);
 }
@@ -284,10 +313,12 @@ void WebUIToolbarWebView::SetTickClockForTesting(const base::TickClock* clock) {
 }
 
 WebUIToolbarUI* WebUIToolbarWebView::GetWebUIToolbarUI() {
-  return web_view_->GetWebContents()
-      ->GetWebUI()
-      ->GetController()
-      ->GetAs<WebUIToolbarUI>();
+  content::WebUI* web_ui = web_view_->web_contents()->GetWebUI();
+  if (!web_ui) {
+    return nullptr;
+  }
+  auto* controller = web_ui->GetController();
+  return controller ? controller->GetAs<WebUIToolbarUI>() : nullptr;
 }
 
 BEGIN_METADATA(WebUIToolbarWebView)

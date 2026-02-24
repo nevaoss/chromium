@@ -132,6 +132,7 @@
 #include "chrome/browser/preloading/prefetch/search_prefetch/search_prefetch_url_loader_interceptor.h"
 #include "chrome/browser/preloading/preloading_features.h"
 #include "chrome/browser/preloading/preloading_prefs.h"
+#include "chrome/browser/preloading/preloading_utils.h"
 #include "chrome/browser/preloading/prerender/prerender_web_contents_delegate.h"
 #include "chrome/browser/preloading/search_preload/search_preload_features.h"
 #include "chrome/browser/privacy_sandbox/privacy_sandbox_settings_factory.h"
@@ -428,6 +429,7 @@
 #include "chrome/browser/tracing/tracing_features.h"
 #include "chrome/browser/tracing/windows_system_tracing_client_win.h"
 #include "chrome/install_static/install_util.h"
+#include "chrome/installer/util/isolation_support.h"
 #include "chrome/services/util_win/public/mojom/util_win.mojom.h"
 #include "content/public/browser/tracing_service.h"
 #include "sandbox/win/src/sandbox_policy.h"
@@ -728,7 +730,7 @@
 #endif  // BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(ENABLE_ON_DEVICE_TRANSLATION)
-#include "chrome/browser/on_device_translation/component_manager.h"
+#include "components/on_device_translation/component_manager.h"
 #endif  // BUILDFLAG(ENABLE_ON_DEVICE_TRANSLATION)
 
 #if BUILDFLAG(ENABLE_REQUEST_HEADER_INTEGRITY)
@@ -829,8 +831,7 @@ bool HandleNewTabPageLocationOverride(
     return false;
   }
   url::Component scheme;
-  if (!url::ExtractScheme(ntp_location.data(),
-                          static_cast<int>(ntp_location.length()), &scheme)) {
+  if (!url::ExtractScheme(ntp_location, &scheme)) {
     ntp_location = base::StrCat(
         {url::kHttpsScheme, url::kStandardSchemeSeparator, ntp_location});
   }
@@ -2791,6 +2792,7 @@ void ChromeContentBrowserClient::AppendExtraCommandLineSwitches(
       Profile* profile =
           Profile::FromBrowserContext(process->GetBrowserContext());
       PrefService* prefs = profile->GetPrefs();
+      PrefService* local_state = g_browser_process->local_state();
       // Currently this pref is only registered if applied via a policy.
       if (prefs->HasPrefPath(prefs::kDisable3DAPIs) &&
           prefs->GetBoolean(prefs::kDisable3DAPIs)) {
@@ -2834,6 +2836,14 @@ void ChromeContentBrowserClient::AppendExtraCommandLineSwitches(
                                 kForcePermissionPolicyUnloadDefaultEnabled)) {
         command_line->AppendSwitch(
             network::switches::kForcePermissionPolicyUnloadDefaultEnabled);
+      }
+
+      if (local_state->GetBoolean(
+              policy::policy_prefs::
+                  kLocalNetworkAccessPermissionsPolicyDefaultEnabled)) {
+        command_line->AppendSwitch(
+            network::switches::
+                kLocalNetworkAccessPermissionsPolicyDefaultEnabled);
       }
 
       if (prefs->GetBoolean(prefs::kWebAudioOutputBufferingEnabled)) {
@@ -2891,7 +2901,6 @@ void ChromeContentBrowserClient::AppendExtraCommandLineSwitches(
       // base::Feature, but it has a managed policy override. The override is
       // communicated to blink via a custom command-line flag. See
       // PageSchedulerImpl for the other half of related logic.
-      PrefService* local_state = g_browser_process->local_state();
       const PrefService::Preference* pref = local_state->FindPreference(
           policy::policy_prefs::kIntensiveWakeUpThrottlingEnabled);
       if (pref && pref->IsManaged()) {
@@ -5339,6 +5348,10 @@ bool ChromeContentBrowserClient::ShouldRestrictCoreSharingOnRenderer() {
   return false;
 }
 
+std::optional<std::wstring>
+ChromeContentBrowserClient::GetWindowsSecurityAttributeName() const {
+  return installer::GetIsolationAttributeName();
+}
 #endif  // BUILDFLAG(IS_WIN)
 
 void ChromeContentBrowserClient::
@@ -8979,7 +8992,8 @@ bool ChromeContentBrowserClient::ShouldAllowPrefetchRedirection(
   // don't generate parameters to be identified by search results providers, so
   // the triggering search related urls is avoided. See crbug.com/40282403 for
   // more details.
-  if (embedder_histogram_suffix != "BookmarkBar") {
+  if (embedder_histogram_suffix != preloading_utils::kBookmarkBarMetricSuffix &&
+      embedder_histogram_suffix != preloading_utils::kNewTabPageMetricSuffix) {
     return true;
   }
   auto* profile = Profile::FromBrowserContext(&browser_context);

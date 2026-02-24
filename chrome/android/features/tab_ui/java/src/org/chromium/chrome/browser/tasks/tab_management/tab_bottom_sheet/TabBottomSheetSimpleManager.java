@@ -99,7 +99,6 @@ public class TabBottomSheetSimpleManager implements Destroyable {
         }
     }
 
-    @CalledByNative
     public static boolean isOpen(Tab tab, int requestId) {
         TabBottomSheetManager tabBottomSheetManager =
                 TabBottomSheetUtils.getManagerFromWindow(assumeNonNull(tab.getWindowAndroid()));
@@ -107,16 +106,15 @@ public class TabBottomSheetSimpleManager implements Destroyable {
     }
 
     @CalledByNative
-    public static boolean setWebContents(Tab tab, int requestId, WebContents webContents) {
+    public static boolean setWebContents(Tab tab, @Nullable WebContents webContents) {
         TabBottomSheetManager tabBottomSheetManager =
                 TabBottomSheetUtils.getManagerFromWindow(assumeNonNull(tab.getWindowAndroid()));
         if (tabBottomSheetManager != null) {
-            return tabBottomSheetManager.setWebContents(requestId, webContents);
+            return tabBottomSheetManager.setWebContents(webContents);
         }
         return false;
     }
 
-    @CalledByNative
     public static @Nullable WebContents getWebContents(Tab tab, int requestId) {
         TabBottomSheetManager tabBottomSheetManager =
                 TabBottomSheetUtils.getManagerFromWindow(assumeNonNull(tab.getWindowAndroid()));

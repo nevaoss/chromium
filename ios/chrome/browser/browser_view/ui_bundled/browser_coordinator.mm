@@ -132,21 +132,22 @@
 #import "ios/chrome/browser/infobars/model/infobar_manager_impl.h"
 #import "ios/chrome/browser/intelligence/bwg/coordinator/bwg_coordinator.h"
 #import "ios/chrome/browser/intelligence/bwg/coordinator/gemini_first_run_coordinator.h"
-#import "ios/chrome/browser/intelligence/bwg/model/bwg_browser_agent.h"
 #import "ios/chrome/browser/intelligence/bwg/model/bwg_service.h"
 #import "ios/chrome/browser/intelligence/bwg/model/bwg_service_factory.h"
 #import "ios/chrome/browser/intelligence/bwg/model/bwg_tab_helper.h"
+#import "ios/chrome/browser/intelligence/bwg/model/gemini_browser_agent.h"
 #import "ios/chrome/browser/intelligence/bwg/utils/bwg_constants.h"
 #import "ios/chrome/browser/intelligence/enhanced_calendar/coordinator/enhanced_calendar_coordinator.h"
 #import "ios/chrome/browser/intelligence/enhanced_calendar/model/enhanced_calendar_configuration.h"
 #import "ios/chrome/browser/intelligence/features/features.h"
 #import "ios/chrome/browser/intelligence/page_action_menu/coordinator/page_action_menu_coordinator.h"
 #import "ios/chrome/browser/intents/model/intents_donation_helper.h"
-#import "ios/chrome/browser/lens/ui_bundled/lens_coordinator.h"
 #import "ios/chrome/browser/lens_overlay/coordinator/lens_overlay_availability.h"
 #import "ios/chrome/browser/lens_overlay/coordinator/lens_overlay_coordinator.h"
 #import "ios/chrome/browser/lens_overlay/coordinator/lens_view_finder_coordinator.h"
 #import "ios/chrome/browser/lens_overlay/model/lens_overlay_tab_helper.h"
+#import "ios/chrome/browser/main/coordinator/browser_layout_coordinator.h"
+#import "ios/chrome/browser/main/ui/browser_layout_view_controller.h"
 #import "ios/chrome/browser/metrics/model/tab_usage_recorder_browser_agent.h"
 #import "ios/chrome/browser/mini_map/coordinator/mini_map_coordinator.h"
 #import "ios/chrome/browser/ntp/model/new_tab_page_tab_helper.h"
@@ -180,7 +181,6 @@
 #import "ios/chrome/browser/print/coordinator/print_coordinator_impl.h"
 #import "ios/chrome/browser/promos_manager/coordinator/promos_manager_coordinator.h"
 #import "ios/chrome/browser/promos_manager/model/app_store_review_swift.h"
-#import "ios/chrome/browser/promos_manager/model/features.h"
 #import "ios/chrome/browser/push_notification/coordinator/notifications_opt_in_coordinator.h"
 #import "ios/chrome/browser/push_notification/coordinator/notifications_opt_in_coordinator_delegate.h"
 #import "ios/chrome/browser/push_notification/model/constants.h"
@@ -296,7 +296,6 @@
 #import "ios/chrome/browser/shared/ui/util/util_swift.h"
 #import "ios/chrome/browser/sharing/ui_bundled/sharing_coordinator.h"
 #import "ios/chrome/browser/sharing/ui_bundled/sharing_params.h"
-#import "ios/chrome/browser/sharing/ui_bundled/sharing_positioner.h"
 #import "ios/chrome/browser/side_swipe/ui_bundled/side_swipe_coordinator.h"
 #import "ios/chrome/browser/side_swipe/ui_bundled/side_swipe_mediator.h"
 #import "ios/chrome/browser/signin/model/account_consistency_browser_agent.h"
@@ -686,7 +685,6 @@ const char kChromeAppStoreUrl[] =
   BubblePresenterCoordinator* _bubblePresenterCoordinator;
   BubbleViewControllerPresenter* _contextualPanelEntrypointHelpPresenter;
   ToolbarAccessoryPresenter* _toolbarAccessoryPresenter;
-  LensCoordinator* _lensCoordinator;
   LensViewFinderCoordinator* _lensViewFinderCoordinator;
   LensOverlayCoordinator* _lensOverlayCoordinator;
   ToolbarCoordinator* _toolbarCoordinator;
@@ -717,6 +715,9 @@ const char kChromeAppStoreUrl[] =
   FileUploadPanelCoordinator* _fileUploadPanelCoordinator;
   RootDriveFilePickerCoordinator* _driveFilePickerCoordinator;
   GoogleOneCoordinator* _googleOneCoordinator;
+
+  // The coordinator that manages the BrowserLayoutViewController.
+  BrowserLayoutCoordinator* _browserLayoutCoordinator;
 
   // Coordinator to display a web page in Reader Mode UI.
   ReaderModeCoordinator* _readerModeCoordinator;
@@ -903,6 +904,10 @@ const char kChromeAppStoreUrl[] =
   return _voiceSearchController.audioPlaying;
 }
 
+- (BrowserLayoutViewController*)browserLayoutViewController {
+  return _browserLayoutCoordinator.viewController;
+}
+
 - (void)setActive:(BOOL)active {
   DCHECK_EQ(_active, self.viewController.active);
   if (_active == active) {
@@ -970,8 +975,6 @@ const char kChromeAppStoreUrl[] =
   self.readingListCoordinator.delegate = nil;
   self.readingListCoordinator = nil;
 
-  [_readerModeCoordinator stopAnimated:YES];
-  _readerModeCoordinator = nil;
   [self hideReaderModeBlurOverlay];
 
   [self.sharingCoordinator stop];
@@ -1120,10 +1123,8 @@ const char kChromeAppStoreUrl[] =
 
   LensOverlayTabHelper* lensOverlayTabHelper =
       LensOverlayTabHelper::FromWebState(activeWebState);
-  bool isLensOverlayAvailable =
-      IsLensOverlayAvailable(self.profile->GetPrefs()) && lensOverlayTabHelper;
 
-  if (isLensOverlayAvailable &&
+  if (lensOverlayTabHelper &&
       lensOverlayTabHelper->IsLensOverlayUIAttachedAndAlive()) {
     [HandlerForProtocol(_dispatcher, LensOverlayCommands)
         prepareLensUIForBackgroundTabChange];
@@ -1243,6 +1244,9 @@ const char kChromeAppStoreUrl[] =
   self.contextMenuProvider = [[ContextMenuConfigurationProvider alloc]
          initWithBrowser:browser
       baseViewController:_viewController];
+  _browserLayoutCoordinator =
+      [[BrowserLayoutCoordinator alloc] initWithBrowser:browser];
+  [_browserLayoutCoordinator start];
 }
 
 // Shuts down the BrowserViewController.
@@ -1257,6 +1261,8 @@ const char kChromeAppStoreUrl[] =
   [self.dispatcher stopDispatchingToTarget:_viewController];
   [_viewController shutdown];
   _viewController = nil;
+  [_browserLayoutCoordinator stop];
+  _browserLayoutCoordinator = nil;
 }
 
 // Ensure BrowserViewController's view is created
@@ -1434,12 +1440,8 @@ const char kChromeAppStoreUrl[] =
       componentFactory:[[NewTabPageComponentFactory alloc] init]];
   _NTPCoordinator.toolbarDelegate = _toolbarCoordinator;
 
-  if (IsLVFUnifiedExperienceEnabled(profile->GetPrefs())) {
-    _lensViewFinderCoordinator =
-        [[LensViewFinderCoordinator alloc] initWithBrowser:browser];
-  } else {
-    _lensCoordinator = [[LensCoordinator alloc] initWithBrowser:browser];
-  }
+  _lensViewFinderCoordinator =
+      [[LensViewFinderCoordinator alloc] initWithBrowser:browser];
 
   _safeAreaProvider = [[SafeAreaProvider alloc] initWithBrowser:browser];
 
@@ -1499,14 +1501,8 @@ const char kChromeAppStoreUrl[] =
   // The Lens coordinator needs to be started before the primary toolbar
   // coordinator so that the LensCommands dispatcher is correctly registered in
   // time.
-  if (IsLVFUnifiedExperienceEnabled(self.profile->GetPrefs())) {
-    _lensViewFinderCoordinator.baseViewController = viewController;
-    [_lensViewFinderCoordinator start];
-  } else {
-    _lensCoordinator.baseViewController = viewController;
-    _lensCoordinator.delegate = viewController;
-    [_lensCoordinator start];
-  }
+  _lensViewFinderCoordinator.baseViewController = viewController;
+  [_lensViewFinderCoordinator start];
 
   _toolbarCoordinator.baseViewController = viewController;
   _toolbarCoordinator.omniboxFocusDelegate = viewController;
@@ -1524,6 +1520,7 @@ const char kChromeAppStoreUrl[] =
 
   [_dispatcher startDispatchingToTarget:viewController
                             forProtocol:@protocol(BrowserCommands)];
+  _browserLayoutCoordinator.browserViewController = viewController;
 }
 
 // Destroys the browser view controller dependencies.
@@ -1566,13 +1563,8 @@ const char kChromeAppStoreUrl[] =
   [_lensOverlayCoordinator stop];
   _lensOverlayCoordinator = nil;
 
-  if (IsLVFUnifiedExperienceEnabled(self.profile->GetPrefs())) {
-    [_lensViewFinderCoordinator stop];
-    _lensViewFinderCoordinator = nil;
-  } else {
-    [_lensCoordinator stop];
-    _lensCoordinator = nil;
-  }
+  [_lensViewFinderCoordinator stop];
+  _lensViewFinderCoordinator = nil;
 
   // This can be removed if the browser agent guarenteed to be detroyed before
   // profile keyed objects.
@@ -1753,13 +1745,11 @@ const char kChromeAppStoreUrl[] =
   _dockingPromoCoordinator.promosUIHandler = _promosManagerCoordinator;
   [_dockingPromoCoordinator start];
 
-  if (IsLensOverlayAvailable(self.profile->GetPrefs())) {
-    _lensOverlayCoordinator = [[LensOverlayCoordinator alloc]
-        initWithBaseViewController:self.viewController
-                           browser:self.browser];
-    _lensOverlayCoordinator.presentationEnvironment = self.viewController;
-    [_lensOverlayCoordinator start];
-  }
+  _lensOverlayCoordinator = [[LensOverlayCoordinator alloc]
+      initWithBaseViewController:self.viewController
+                         browser:self.browser];
+  _lensOverlayCoordinator.presentationEnvironment = self.viewController;
+  [_lensOverlayCoordinator start];
 }
 
 // Stops child coordinators.
@@ -2100,7 +2090,7 @@ const char kChromeAppStoreUrl[] =
 
 #pragma mark - ActivityServiceCommands
 
-- (void)stopAndStartSharingCoordinator {
+- (void)stopAndStartSharingCoordinatorFromView:(UIView*)shareButton {
   SharingScenario scenario = IsReaderModeActiveInWebState(self.activeWebState)
                                  ? SharingScenario::ShareInReaderMode
                                  : SharingScenario::TabShareButton;
@@ -2109,29 +2099,26 @@ const char kChromeAppStoreUrl[] =
   // Exit fullscreen if needed to make sure that share button is visible.
   _fullscreenController->ExitFullscreen(FullscreenExitReason::kForcedByCode);
 
-  id<SharingPositioner> positioner = _toolbarCoordinator.sharingPositioner;
-  UIBarButtonItem* anchor = nil;
-  if ([positioner respondsToSelector:@selector(barButtonItem)]) {
-    anchor = positioner.barButtonItem;
+  if (!shareButton) {
+    shareButton = _toolbarCoordinator.shareButton;
   }
 
   [self.sharingCoordinator stop];
   self.sharingCoordinator = nil;
-  self.sharingCoordinator = [[SharingCoordinator alloc]
-      initWithBaseViewController:self.viewController
-                         browser:self.browser
-                          params:params
-                      originView:positioner.sourceView
-                      originRect:positioner.sourceRect
-                          anchor:anchor];
+  self.sharingCoordinator =
+      [[SharingCoordinator alloc] initWithBaseViewController:self.viewController
+                                                     browser:self.browser
+                                                      params:params
+                                                  sourceItem:shareButton];
   [self.sharingCoordinator start];
 }
 
-- (void)showShareSheet {
-  if (!self.sharingCoordinator) {
-    [self stopAndStartSharingCoordinator];
+- (void)showShareSheetFromShareButton:(UIView*)shareButton {
+  if (self.sharingCoordinator) {
+    [self.sharingCoordinator
+        cancelIfNecessaryAndCreateNewCoordinatorFromView:shareButton];
   } else {
-    [self.sharingCoordinator cancelIfNecessaryAndCreateNewCoordinator];
+    [self stopAndStartSharingCoordinatorFromView:shareButton];
   }
 }
 
@@ -2156,7 +2143,7 @@ const char kChromeAppStoreUrl[] =
       [[SharingCoordinator alloc] initWithBaseViewController:self.viewController
                                                      browser:self.browser
                                                       params:params
-                                                  originView:originView];
+                                                  sourceItem:originView];
   [self.sharingCoordinator start];
 }
 
@@ -2167,13 +2154,12 @@ const char kChromeAppStoreUrl[] =
                           additionalText:command.selectedText
                                 scenario:SharingScenario::SharedHighlight];
 
-  self.sharingCoordinator =
-      [[SharingCoordinator alloc] initWithBaseViewController:self.viewController
-                                                     browser:self.browser
-                                                      params:params
-                                                  originView:command.sourceView
-                                                  originRect:command.sourceRect
-                                                      anchor:nil];
+  self.sharingCoordinator = [[SharingCoordinator alloc]
+      initWithBaseViewController:self.viewController
+                         browser:self.browser
+                          params:params
+                      sourceView:command.sourceView
+                      sourceRect:command.sourceRect];
   [self.sharingCoordinator start];
 }
 
@@ -2183,13 +2169,12 @@ const char kChromeAppStoreUrl[] =
             title:command.title
          scenario:SharingScenario::ShareInWebContextMenu];
 
-  self.sharingCoordinator =
-      [[SharingCoordinator alloc] initWithBaseViewController:self.viewController
-                                                     browser:self.browser
-                                                      params:params
-                                                  originView:command.sourceView
-                                                  originRect:command.sourceRect
-                                                      anchor:nil];
+  self.sharingCoordinator = [[SharingCoordinator alloc]
+      initWithBaseViewController:self.viewController
+                         browser:self.browser
+                          params:params
+                      sourceView:command.sourceView
+                      sourceRect:command.sourceRect];
   [self.sharingCoordinator start];
 }
 
@@ -2843,6 +2828,12 @@ const char kChromeAppStoreUrl[] =
   }
 }
 
+- (void)hideComposeboxAndShowShareSheet {
+  [self hideComposeboxWithCompletion:^{
+    [self showShareSheetFromShareButton:nil];
+  }];
+}
+
 - (void)hideComposeboxWithCompletion:(ProceduralBlock)completion {
   if (IsComposeboxIOSEnabled()) {
     [self hideComposeboxImmediately:NO completion:completion];
@@ -3038,28 +3029,25 @@ const char kChromeAppStoreUrl[] =
   if (!activeWebState) {
     return;
   }
-  BOOL lensOverlayAvailable = IsLensOverlayAvailable(self.profile->GetPrefs());
   ReaderModeTabHelper* readerModeTabHelper =
       ReaderModeTabHelper::FromWebState(activeWebState);
   auto activateReader =
       base::BindOnce(&ReaderModeTabHelper::ActivateReader,
                      readerModeTabHelper->GetWeakPtr(), accessPoint);
 
-  if (lensOverlayAvailable) {
-    LensOverlayTabHelper* lensOverlayTabHelper =
-        LensOverlayTabHelper::FromWebState(activeWebState);
-    BOOL lensOverlayVisible =
-        lensOverlayTabHelper &&
-        lensOverlayTabHelper->IsLensOverlayUIAttachedAndAlive();
-    if (lensOverlayVisible) {
-      id<LensOverlayCommands> lensOverlayHandler =
-          HandlerForProtocol(_dispatcher, LensOverlayCommands);
-      [lensOverlayHandler
-          destroyLensUI:YES
-                 reason:lens::LensOverlayDismissalSource::kReaderModeActivated
-             completion:base::CallbackToBlock(std::move(activateReader))];
-      return;
-    }
+  LensOverlayTabHelper* lensOverlayTabHelper =
+      LensOverlayTabHelper::FromWebState(activeWebState);
+  BOOL lensOverlayVisible =
+      lensOverlayTabHelper &&
+      lensOverlayTabHelper->IsLensOverlayUIAttachedAndAlive();
+  if (lensOverlayVisible) {
+    id<LensOverlayCommands> lensOverlayHandler =
+        HandlerForProtocol(_dispatcher, LensOverlayCommands);
+    [lensOverlayHandler
+        destroyLensUI:YES
+               reason:lens::LensOverlayDismissalSource::kReaderModeActivated
+           completion:base::CallbackToBlock(std::move(activateReader))];
+    return;
   }
   std::move(activateReader).Run();
 }
@@ -3075,25 +3063,21 @@ const char kChromeAppStoreUrl[] =
       &ReaderModeTabHelper::DeactivateReader, readerModeTabHelper->GetWeakPtr(),
       ReaderModeDeactivationReason::kUserDeactivated);
 
-  BOOL lensOverlayAvailable = IsLensOverlayAvailable(self.profile->GetPrefs());
-
-  if (lensOverlayAvailable) {
-    LensOverlayTabHelper* lensOverlayTabHelper =
-        LensOverlayTabHelper::FromWebState(activeWebState);
-    BOOL lensOverlayVisible =
-        lensOverlayTabHelper &&
-        lensOverlayTabHelper->IsLensOverlayUIAttachedAndAlive();
-    if (lensOverlayVisible) {
-      id<LensOverlayCommands> lensOverlayHandler =
-          HandlerForProtocol(_dispatcher, LensOverlayCommands);
-      // TODO(crbug.com/436453178): Rename lens dismissal reason to be
-      // `kReaderModeInvoked`.
-      [lensOverlayHandler
-          destroyLensUI:YES
-                 reason:lens::LensOverlayDismissalSource::kReaderModeActivated
-             completion:base::CallbackToBlock(std::move(deactivateReader))];
-      return;
-    }
+  LensOverlayTabHelper* lensOverlayTabHelper =
+      LensOverlayTabHelper::FromWebState(activeWebState);
+  BOOL lensOverlayVisible =
+      lensOverlayTabHelper &&
+      lensOverlayTabHelper->IsLensOverlayUIAttachedAndAlive();
+  if (lensOverlayVisible) {
+    id<LensOverlayCommands> lensOverlayHandler =
+        HandlerForProtocol(_dispatcher, LensOverlayCommands);
+    // TODO(crbug.com/436453178): Rename lens dismissal reason to be
+    // `kReaderModeInvoked`.
+    [lensOverlayHandler
+        destroyLensUI:YES
+               reason:lens::LensOverlayDismissalSource::kReaderModeActivated
+           completion:base::CallbackToBlock(std::move(deactivateReader))];
+    return;
   }
   std::move(deactivateReader).Run();
 }
@@ -3149,9 +3133,8 @@ const char kChromeAppStoreUrl[] =
     [weakSelf showSystemFindPanel];
   };
 
-  BOOL lensOverlayAvailable = IsLensOverlayAvailable(self.profile->GetPrefs());
   web::WebState* activeWebState = self.activeWebState;
-  if (lensOverlayAvailable && activeWebState) {
+  if (activeWebState) {
     LensOverlayTabHelper* lensOverlayTabHelper =
         LensOverlayTabHelper::FromWebState(activeWebState);
     BOOL lensOverlayVisible =
@@ -3280,13 +3263,13 @@ const char kChromeAppStoreUrl[] =
 - (void)startGeminiFlowWithImageAttachment:(UIImage*)image
                                 entryPoint:(gemini::EntryPoint)entryPoint {
   if (IsGeminiRefactoredFREEnabled()) {
-    BwgBrowserAgent::FromBrowser(self.browser)
+    GeminiBrowserAgent::FromBrowser(self.browser)
         ->StartGeminiFlow(self.viewController, image, entryPoint);
     return;
   }
 
   if (entryPoint == gemini::EntryPoint::ImageContextMenu) {
-    BwgBrowserAgent::FromBrowser(self.browser)
+    GeminiBrowserAgent::FromBrowser(self.browser)
         ->StartGeminiFlow(self.viewController, image, entryPoint);
     return;
   }
@@ -3307,7 +3290,7 @@ const char kChromeAppStoreUrl[] =
       return;
     }
 
-    BwgBrowserAgent::FromBrowser(self.browser)->DismissFloaty();
+    GeminiBrowserAgent::FromBrowser(self.browser)->DismissFloaty();
     if (completion) {
       completion();
     }
@@ -3324,8 +3307,8 @@ const char kChromeAppStoreUrl[] =
 }
 
 - (void)updateFloatyWithTraitCollection:(UITraitCollection*)traitCollection {
-  BwgBrowserAgent* geminiBrowserAgent =
-      BwgBrowserAgent::FromBrowser(self.browser);
+  GeminiBrowserAgent* geminiBrowserAgent =
+      GeminiBrowserAgent::FromBrowser(self.browser);
   if (!IsGeminiCopresenceEnabled() || !geminiBrowserAgent) {
     return;
   }
@@ -3370,19 +3353,22 @@ const char kChromeAppStoreUrl[] =
   [_geminiFirstRunCoordinator start];
 }
 
-- (void)hideFloatyIfInvokedAnimated:(BOOL)animated {
-  BwgBrowserAgent* geminiBrowserAgent =
-      BwgBrowserAgent::FromBrowser(self.browser);
+- (void)hideFloatyIfInvokedAnimated:(BOOL)animated
+                         fromSource:(gemini::FloatyUpdateSource)source {
+  GeminiBrowserAgent* geminiBrowserAgent =
+      GeminiBrowserAgent::FromBrowser(self.browser);
   if (!IsGeminiCopresenceEnabled() || !geminiBrowserAgent) {
     return;
   }
 
-  geminiBrowserAgent->HideFloatyIfInvoked(animated);
+  geminiBrowserAgent->HideFloatyIfInvoked(animated, source);
 }
 
-- (void)updateFloatyVisibilityIfEligibleAnimated:(BOOL)animated {
-  BwgBrowserAgent* geminiBrowserAgent =
-      BwgBrowserAgent::FromBrowser(self.browser);
+- (void)updateFloatyVisibilityIfEligibleAnimated:(BOOL)animated
+                                      fromSource:
+                                          (gemini::FloatyUpdateSource)source {
+  GeminiBrowserAgent* geminiBrowserAgent =
+      GeminiBrowserAgent::FromBrowser(self.browser);
   BwgService* geminiService = BwgServiceFactory::GetForProfile(self.profile);
   if (!IsGeminiCopresenceEnabled() || !geminiBrowserAgent || !geminiService) {
     return;
@@ -3390,11 +3376,12 @@ const char kChromeAppStoreUrl[] =
 
   // Don't show the floaty if the page is ineligible.
   if (!geminiService->IsBwgAvailableForWebState(self.activeWebState)) {
-    geminiBrowserAgent->HideFloatyIfInvoked(animated);
+    geminiBrowserAgent->HideFloatyIfInvoked(
+        animated, gemini::FloatyUpdateSource::IneligibleSite);
     return;
   }
 
-  geminiBrowserAgent->ShowFloatyIfInvoked(animated);
+  geminiBrowserAgent->ShowFloatyIfInvoked(animated, source);
 }
 
 #pragma mark - PromosManagerCommands
@@ -4430,14 +4417,12 @@ const char kChromeAppStoreUrl[] =
 
   LensOverlayTabHelper* lensOverlayTabHelper =
       LensOverlayTabHelper::FromWebState(webState);
-  bool isLensOverlayAvailable =
-      IsLensOverlayAvailable(self.profile->GetPrefs()) && lensOverlayTabHelper;
 
   bool isBuildingLensOverlay =
-      isLensOverlayAvailable &&
+      lensOverlayTabHelper &&
       lensOverlayTabHelper->IsCapturingLensOverlaySnapshot();
   bool isUpdatingLensOverlayTabSwitcherSnapshot =
-      isLensOverlayAvailable &&
+      lensOverlayTabHelper &&
       lensOverlayTabHelper->IsUpdatingTabSwitcherSnapshot();
 
   if (isUpdatingLensOverlayTabSwitcherSnapshot && _safeAreaProvider) {
@@ -4499,28 +4484,26 @@ const char kChromeAppStoreUrl[] =
   NSMutableArray<UIView*>* overlays = [NSMutableArray array];
 
   PrefService* prefs = browser->GetProfile()->GetPrefs();
-  if (IsLensOverlayAvailable(prefs)) {
-    LensOverlayTabHelper* lensOverlayTabHelper =
-        LensOverlayTabHelper::FromWebState(webState);
+  LensOverlayTabHelper* lensOverlayTabHelper =
+      LensOverlayTabHelper::FromWebState(webState);
 
-    if (lensOverlayTabHelper) {
-      BOOL isLensOverlayCurrentlyInvoked;
+  if (lensOverlayTabHelper) {
+    BOOL isLensOverlayCurrentlyInvoked;
 
-      if (IsLensOverlaySameTabNavigationEnabled(prefs)) {
-        isLensOverlayCurrentlyInvoked =
-            lensOverlayTabHelper->IsLensOverlayInvokedOnCurrentNavigationItem();
-      } else {
-        isLensOverlayCurrentlyInvoked =
-            lensOverlayTabHelper->IsLensOverlayUIAttachedAndAlive();
-      }
+    if (IsLensOverlaySameTabNavigationEnabled(prefs)) {
+      isLensOverlayCurrentlyInvoked =
+          lensOverlayTabHelper->IsLensOverlayInvokedOnCurrentNavigationItem();
+    } else {
+      isLensOverlayCurrentlyInvoked =
+          lensOverlayTabHelper->IsLensOverlayUIAttachedAndAlive();
+    }
 
-      // A lens overlay is invoked in the given web state.
-      if (isLensOverlayCurrentlyInvoked) {
-        UIView* lensOverlayView = _lensOverlayCoordinator.viewController.view;
+    // A lens overlay is invoked in the given web state.
+    if (isLensOverlayCurrentlyInvoked) {
+      UIView* lensOverlayView = _lensOverlayCoordinator.viewController.view;
 
-        if (lensOverlayView) {
-          [overlays addObject:lensOverlayView];
-        }
+      if (lensOverlayView) {
+        [overlays addObject:lensOverlayView];
       }
     }
   }
@@ -4677,10 +4660,6 @@ const char kChromeAppStoreUrl[] =
 
 - (BOOL)isNTPActiveForBubblePresenter:(BubblePresenter*)bubblePresenter {
   return self.NTPCoordinator.isNTPActiveForCurrentWebState;
-}
-
-- (BOOL)isNTPScrolledToTopForBubblePresenter:(BubblePresenter*)bubblePresenter {
-  return [self.NTPCoordinator isScrolledToTop];
 }
 
 - (void)scrollNTPToTopForBubblePresenter:(BubblePresenter*)bubblePresenter {

@@ -9,6 +9,7 @@ import static org.chromium.build.NullUtil.assumeNonNull;
 
 import android.content.Context;
 import android.content.res.Configuration;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.text.Editable;
@@ -31,6 +32,7 @@ import androidx.annotation.DimenRes;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.ActionMenuView;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
@@ -59,6 +61,7 @@ import org.chromium.components.browser_ui.settings.search.SearchIndexProvider;
 import org.chromium.components.browser_ui.settings.search.SettingsIndexData;
 import org.chromium.components.browser_ui.settings.search.SettingsIndexData.SearchResults;
 import org.chromium.components.browser_ui.site_settings.SiteSettings;
+import org.chromium.components.browser_ui.styles.SemanticColorUtils;
 import org.chromium.components.browser_ui.widget.containment.ContainmentItemController;
 import org.chromium.components.browser_ui.widget.containment.ContainmentItemDecoration;
 import org.chromium.components.browser_ui.widget.containment.ContainmentViewStyler;
@@ -212,6 +215,9 @@ public class SettingsSearchCoordinator implements MultiColumnSettings.Observer {
         searchBox.setOnClickListener(v -> enterSearchState(/* showZeroState= */ true));
 
         View query = mActivity.findViewById(R.id.search_query_container);
+        Drawable bg = ContextCompat.getDrawable(mActivity, R.drawable.pill_background);
+        bg.setTint(SemanticColorUtils.getSettingsContainerBackgroundColor(mActivity));
+        searchBox.setBackground(bg);
         if (mMultiColumnSettings != null) {
             mHandler.post(this::initializeMultiColumnSearchUi);
         } else {
@@ -326,18 +332,43 @@ public class SettingsSearchCoordinator implements MultiColumnSettings.Observer {
                                 showUiInSingleColumn(searchBox, /* show= */ true);
                             }
                         });
+        var fm = getSettingsFragmentManager();
 
         // Help menu/icon layout may change from Fragment to Fragment. Monitor the Fragment resume
         // event to update the search bar width in response.
-        getSettingsFragmentManager()
-                .registerFragmentLifecycleCallbacks(
-                        new FragmentManager.FragmentLifecycleCallbacks() {
-                            @Override
-                            public void onFragmentResumed(FragmentManager fm, Fragment f) {
-                                updateSearchUiWidth();
-                            }
-                        },
-                        false);
+        fm.registerFragmentLifecycleCallbacks(
+                new FragmentManager.FragmentLifecycleCallbacks() {
+                    @Override
+                    public void onFragmentResumed(FragmentManager fm, Fragment f) {
+                        updateSearchUiWidth();
+                    }
+                },
+                false);
+
+        // Prevent TalkBack from navigating to background fragments.
+        fm.addOnBackStackChangedListener(
+                () -> {
+                    List<Fragment> fragments = fm.getFragments();
+                    if (fragments.isEmpty()) return;
+
+                    // The last fragment in the list is usually the one on top.
+                    // Top fragment: make it accessible;
+                    // Background fragments: hide them and their children.
+                    for (int i = 0; i < fragments.size(); i++) {
+                        Fragment f = fragments.get(i);
+                        if (f != null && f.getView() != null) {
+                            enableTalkbackNavigation(f.getView(), i == fragments.size() - 1);
+                        }
+                    }
+                });
+    }
+
+    private static void enableTalkbackNavigation(View view, boolean enable) {
+        if (enable) {
+            view.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES);
+        } else {
+            view.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
+        }
     }
 
     private void observeFragmentForVisibilityChange() {
@@ -688,7 +719,7 @@ public class SettingsSearchCoordinator implements MultiColumnSettings.Observer {
                     int margin =
                             ViewResizerUtil.computePaddingForWideDisplay(
                                     mActivity, searchBox, minWidePadding);
-                    boolean isOnWideScreen = margin > minWidePadding;
+                    boolean isOnWideScreen = margin >= minWidePadding;
                     int menuWidth = menuView.getWidth();
                     int searchBoxWidth;
                     int queryWidth;
@@ -1113,20 +1144,26 @@ public class SettingsSearchCoordinator implements MultiColumnSettings.Observer {
 
     private void scrollToPref(PreferenceFragmentCompat fragment, String key) {
         RecyclerView listView = fragment.getListView();
-        // OnScrollListener#onScrolled is always invoked after the recycler view layout pass
-        // is completed. Use this timing to scroll the preference. The listener is only meant
-        // to run once to scroll to the preference, and then be removed.
-        listView.addOnScrollListener(
-                new RecyclerView.OnScrollListener() {
-                    @Override
-                    public void onScrollStateChanged(RecyclerView recyclerView, int newState) {}
+        boolean containmentStyleDisabled = mItemDecorations.isEmpty();
+        if (containmentStyleDisabled) {
+            fragment.scrollToPreference(key);
+        } else {
+            // Calling #scrollToPreference directly doesn't work when if containment styled is
+            // enabled. But OnScrollListener#onScrolled is always invoked after the recycler view
+            // layout pass is completed. Use this timing to actually scroll the fragment to
+            // the chosen preference.
+            listView.addOnScrollListener(
+                    new RecyclerView.OnScrollListener() {
+                        @Override
+                        public void onScrollStateChanged(RecyclerView recyclerView, int newState) {}
 
-                    @Override
-                    public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
-                        fragment.scrollToPreference(key);
-                        listView.removeOnScrollListener(this);
-                    }
-                });
+                        @Override
+                        public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
+                            fragment.scrollToPreference(key);
+                            listView.removeOnScrollListener(this);
+                        }
+                    });
+        }
         listView.addOnItemTouchListener(
                 new RecyclerView.SimpleOnItemTouchListener() {
                     @Override

@@ -665,7 +665,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Android.AssistContent.WebPageContentProvider.GetAssistantPackageResult"
-    enum="BooleanSuccess" expires_after="2026-06-01">
+    enum="BooleanSuccess" expires_after="2026-08-02">
   <owner>salg@google.com</owner>
   <owner>ssid@google.com</owner>
   <summary>
@@ -1080,7 +1080,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.BackPress.MinimizeAppAndCloseTab.CustomTab.{Task}"
-    enum="MinimizeAppAndCloseTabType" expires_after="2026-05-31">
+    enum="MinimizeAppAndCloseTabType" expires_after="2026-08-02">
   <owner>lazzzis@chromium.org</owner>
   <owner>src/chrome/browser/back_press/android/OWNERS</owner>
   <summary>
@@ -1155,7 +1155,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Android.BottomControlsStacker.PercentageOfWindowUsedByBottomControlsAtMaxHeight"
-    units="%" expires_after="2026-05-31">
+    units="%" expires_after="2026-08-02">
   <owner>pnoland@chromium.org</owner>
   <owner>wenyufu@chromium.org</owner>
   <summary>
@@ -1168,7 +1168,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Android.BottomControlsStacker.PercentageOfWindowUsedByBottomControlsAtMinHeight"
-    units="%" expires_after="2026-05-31">
+    units="%" expires_after="2026-08-02">
   <owner>pnoland@chromium.org</owner>
   <owner>wenyufu@chromium.org</owner>
   <summary>
@@ -1241,7 +1241,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.BrowserControls.RenderDrivenShowConstraint"
-    enum="Boolean" expires_after="2026-05-31">
+    enum="Boolean" expires_after="2026-08-02">
   <owner>wenyufu@chromium.org</owner>
   <owner>clank-app-team@google.com</owner>
   <summary>
@@ -1394,7 +1394,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.ChildProcessConectionEventCounts"
-    enum="AndroidChildProcessConnectionEvents" expires_after="2026-05-31">
+    enum="AndroidChildProcessConnectionEvents" expires_after="2026-08-02">
   <owner>boliu@chromium.org</owner>
   <owner>yfriedman@chromium.org</owner>
   <summary>
@@ -1418,7 +1418,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.ChildProcessConnection.OnServiceConnectedCounts"
-    units="count" expires_after="2026-05-31">
+    units="count" expires_after="2026-08-02">
   <owner>boliu@chromium.org</owner>
   <owner>kawasin@chromium.org</owner>
   <owner>yfriedman@chromium.org</owner>
@@ -1433,7 +1433,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.ChildProcessRanking.{RankType}.Count" units="count"
-    expires_after="2026-05-31">
+    expires_after="2026-08-02">
   <owner>kawasin@google.com</owner>
   <owner>clank-performance-team@google.com</owner>
   <summary>
@@ -1675,6 +1675,17 @@ chromium-metrics-reviews@google.com.
   </token>
 </histogram>
 
+<histogram name="Android.DefaultBrowserPromo.Outcome.AppMenu"
+    enum="AndroidDefaultBrowserPromoOutcomeType" expires_after="2027-01-30">
+  <owner>eleanorlee@google.com</owner>
+  <owner>twellington@chromium.org</owner>
+  <summary>
+    The final default browser state (outcome) after the user has been prompted
+    to set Chrome as the default via the App Menu item. Recorded when the system
+    UI prompting the user to change their default is dismissed.
+  </summary>
+</histogram>
+
 <histogram name="Android.DefaultBrowserPromo.Outcome.{CurrentState}"
     enum="AndroidDefaultBrowserPromoOutcomeType" expires_after="2026-06-28">
   <owner>lazzzis@google.com</owner>
@@ -1910,7 +1921,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.DragDrop.FromWebContent.DropInWebContent.Duration"
-    units="ms" expires_after="2026-05-31">
+    units="ms" expires_after="2026-08-02">
   <owner>wenyufu@chromium.org</owner>
   <owner>clank-large-form-factors@google.com</owner>
   <summary>
@@ -2717,7 +2728,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.InputOnViz.Browser.TransferInputToVizResult2"
-    enum="TransferInputToVizResult" expires_after="2026-05-31">
+    enum="TransferInputToVizResult" expires_after="2026-08-02">
   <owner>kartarsingh@google.com</owner>
   <owner>amanvr@google.com</owner>
   <owner>woa-performance-team@google.com</owner>
@@ -2757,7 +2768,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.InputOnViz.Viz.DroppedNonTouchActions"
-    enum="MotionEventAction" expires_after="2026-05-31">
+    enum="MotionEventAction" expires_after="2026-08-02">
   <owner>kartarsingh@google.com</owner>
   <owner>woa-performance-team@google.com</owner>
   <summary>
@@ -2779,7 +2790,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.InputOnViz.Viz.PendingStateTransfers.{CurrentState}"
-    units="counts" expires_after="2026-05-31">
+    units="counts" expires_after="2026-08-02">
   <owner>kartarsingh@google.com</owner>
   <owner>woa-performance-team@google.com</owner>
   <summary>
@@ -3153,7 +3164,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.Messages.Enqueued.Hidden" enum="MessageIdentifier"
-    expires_after="2026-05-31">
+    expires_after="2026-08-02">
   <owner>lazzzis@chromium.org</owner>
   <owner>src/components/messages/OWNERS</owner>
   <summary>
@@ -3342,7 +3353,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.MultiInstance.MaxInstanceCount" units="instances"
-    expires_after="2026-05-31">
+    expires_after="2026-08-02">
   <owner>jinsukkim@chromium.org</owner>
   <owner>twellington@chromium.org</owner>
   <owner>clank-app-team@google.com</owner>
@@ -3737,6 +3748,32 @@ chromium-metrics-reviews@google.com.
     Recorded every time the user interacts with the ActionInSuggest, for the
     Action that the user interacted with. Not recorded if the user does not
     interact with ActionInSuggest.
+  </summary>
+</histogram>
+
+<histogram name="Android.Omnibox.InputToNavigationControllerStart.Intent"
+    units="ms" expires_after="2026-05-31">
+  <owner>gjc@google.com</owner>
+  <owner>chrome-loading@google.com</owner>
+  <owner>chrome-brapp-loading@google.com</owner>
+  <summary>
+    Records time between the intent that triggered an Omnibox navigation on
+    Android to the time the Omnibox code calls into the shared C++ navigation
+    code (NavigationController). The UMA is recorded each time a URL is loaded
+    in the NavigationController with a valid intent received timestamp.
+  </summary>
+</histogram>
+
+<histogram name="Android.Omnibox.InputToNavigationControllerStart.UserInput"
+    units="ms" expires_after="2026-05-31">
+  <owner>gjc@google.com</owner>
+  <owner>chrome-loading@google.com</owner>
+  <owner>chrome-brapp-loading@google.com</owner>
+  <summary>
+    Records time between the user input that triggered an Omnibox navigation on
+    Android to the time the Omnibox code calls into the shared C++ navigation
+    code (NavigationController). The UMA is recorded each time a URL is loaded
+    in the NavigationController with a valid input start timestamp.
   </summary>
 </histogram>
 
@@ -6214,7 +6251,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.ToolbarPosition.PositionAtStartup"
-    enum="ToolbarPosition" expires_after="2026-05-31">
+    enum="ToolbarPosition" expires_after="2026-08-02">
   <owner>pnoland@chromium.org</owner>
   <owner>gangwu@chromium.org</owner>
   <summary>
@@ -6230,7 +6267,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.ToolbarPosition.PositionPrefChanged"
-    enum="ToolbarPosition" expires_after="2026-05-31">
+    enum="ToolbarPosition" expires_after="2026-08-02">
   <owner>pnoland@chromium.org</owner>
   <owner>gangwu@chromium.org</owner>
   <summary>
@@ -6665,7 +6702,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.WebView.AssetPathWorkaroundUsed.FactoryInit"
-    enum="Boolean" expires_after="2026-03-11">
+    enum="Boolean" expires_after="2027-03-11">
   <owner>alexmitra@chromium.org</owner>
   <owner>src/android_webview/OWNERS</owner>
   <summary>
@@ -6682,7 +6719,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.WebView.AssetPathWorkaroundUsed.StartChromiumLocked"
-    enum="Boolean" expires_after="2026-03-11">
+    enum="Boolean" expires_after="2027-03-11">
   <owner>alexmitra@chromium.org</owner>
   <owner>src/android_webview/OWNERS</owner>
   <summary>
@@ -9229,6 +9266,28 @@ chromium-metrics-reviews@google.com.
   <summary>
     Counts the number of times Samsung specific text selection menu item
     ordering is used. Recorded when a WebView is initialized.
+  </summary>
+</histogram>
+
+<histogram name="Android.WebView.TracingInit.BackgroundInitMainThreadWaitTime"
+    units="ms" expires_after="2026-12-01">
+  <owner>pbirk@chromium.org</owner>
+  <owner>src/android_webview/OWNERS</owner>
+  <summary>
+    Time spent on the main thread waiting for background tracing init to finish.
+
+    This histogram is emitted a the point where WebView determines if tracing
+    should start on the main browser thread, since that is the point where the
+    startup code assumes that tracing is initialized. The histogram is only
+    emitted if tracing was initialized on a bachground thread, and it measures
+    the time spent waiting on the main thread for this initialization to finish.
+
+    Any values higher than 0 indicate that tracing did not manage to initialize
+    fully on the background thread before the main thread reached the point
+    where tracing is required.
+
+    The purpose of this histogram is to determine if background initialization
+    of tracing provides an overall benefit to WebView Startup Time.
   </summary>
 </histogram>
 

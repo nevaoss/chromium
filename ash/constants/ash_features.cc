@@ -260,9 +260,6 @@ BASE_FEATURE(kBocaConfigureMaxStudents, base::FEATURE_DISABLED_BY_DEFAULT);
 constexpr base::FeatureParam<int> kBocaMaxNumStudentsAllowed{
     &kBocaConfigureMaxStudents, "BocaMaxNumStudentsAllowed", 100};
 
-// Enables or disables use of the courseWorkMaterials API in the Boca app.
-BASE_FEATURE(kBocaCourseWorkMaterialApi, base::FEATURE_ENABLED_BY_DEFAULT);
-
 // Enables or disables sharing teacher's screen in the Boca app.
 BASE_FEATURE(kBocaScreenSharingTeacher, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -271,9 +268,6 @@ BASE_FEATURE(kBocaScreenSharingStudent, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables or disables sharing host audio in the Boca app.
 BASE_FEATURE(kBocaHostAudio, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Enables or disables using audio for the Kiosk client in the Boca app.
-BASE_FEATURE(kBocaAudioForKiosk, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables or disables setting audio params when sharing from a student device
 // to a remote kiosk receiver.
@@ -2367,10 +2361,6 @@ bool IsBocaConfigureMaxStudentsEnabled() {
   return base::FeatureList::IsEnabled(kBocaConfigureMaxStudents);
 }
 
-bool IsBocaCourseWorkMaterialApiEnabled() {
-  return base::FeatureList::IsEnabled(kBocaCourseWorkMaterialApi);
-}
-
 bool IsBocaScreenSharingTeacherEnabled() {
   return base::FeatureList::IsEnabled(kBocaScreenSharingTeacher);
 }
@@ -2381,10 +2371,6 @@ bool IsBocaScreenSharingStudentEnabled() {
 
 bool IsBocaHostAudioEnabled() {
   return base::FeatureList::IsEnabled(kBocaHostAudio);
-}
-
-bool IsBocaAudioForKioskEnabled() {
-  return base::FeatureList::IsEnabled(kBocaAudioForKiosk);
 }
 
 bool IsBocaRedirectStudentAudioToKioskEnabled() {

@@ -182,8 +182,6 @@ AnchorPositionScrollData::ComputeAdjustmentContainersData(
               CompositorElementIdFromUniqueObjectId(
                   box->UniqueId(), CompositorElementIdNamespace::
                                        kAnchorPositionScrollTranslation));
-          result.accumulated_adjustment +=
-              data->ComputeDefaultAnchorAdjustmentData().accumulated_adjustment;
         }
       }
     }

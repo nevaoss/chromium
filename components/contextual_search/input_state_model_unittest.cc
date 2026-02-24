@@ -15,8 +15,8 @@
 #include "components/prefs/testing_pref_service.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/omnibox_proto/rule_set.pb.h"
 #include "third_party/omnibox_proto/searchbox_config.pb.h"
-#include "third_party/omnibox_proto/searchbox_config_constraints.pb.h"
 #include "url/gurl.h"
 
 namespace contextual_search {
@@ -145,9 +145,10 @@ TEST_F(InputStateModelCompatibilityTest, SelectTool) {
       UnorderedElementsAre(omnibox::ModelMode::MODEL_MODE_GEMINI_REGULAR,
                            omnibox::ModelMode::MODEL_MODE_GEMINI_PRO));
 
-  // All other tools should be disabled.
+  // All other tools should be disabled (including Deep Search itself).
   EXPECT_THAT(new_state.disabled_tools,
-              UnorderedElementsAre(omnibox::ToolMode::TOOL_MODE_IMAGE_GEN,
+              UnorderedElementsAre(omnibox::ToolMode::TOOL_MODE_DEEP_SEARCH,
+                                   omnibox::ToolMode::TOOL_MODE_IMAGE_GEN,
                                    omnibox::ToolMode::TOOL_MODE_CANVAS));
 
   // All inputs disabled.
@@ -163,9 +164,8 @@ TEST_F(InputStateModelCompatibilityTest, SelectModel) {
       omnibox::ModelMode::MODEL_MODE_GEMINI_REGULAR);
   const auto& new_state = input_state_model_->get_state_for_testing();
 
-  // All other models disabled when a model is selected.
-  EXPECT_THAT(new_state.disabled_models,
-              UnorderedElementsAre(omnibox::ModelMode::MODEL_MODE_GEMINI_PRO));
+  // No models should be disabled.
+  EXPECT_TRUE(new_state.disabled_models.empty());
 
   // All tools disabled when a model is selected.
   EXPECT_THAT(new_state.disabled_tools,
@@ -337,6 +337,47 @@ TEST_F(InputStateModelCompatibilityTest, PolicyDisablesInputs) {
                                    omnibox::InputType::INPUT_TYPE_LENS_FILE,
                                    omnibox::InputType::INPUT_TYPE_BROWSER_TAB));
   EXPECT_TRUE(new_state.disabled_input_types.empty());
+}
+
+TEST_F(InputStateModelCompatibilityTest, MaxTotalInputsDisablesInputs) {
+  // Set max_total_inputs to 2.
+  config_.mutable_rule_set()->set_max_total_inputs(2);
+  // Recreate the model with the new config.
+  input_state_model_ =
+      std::make_unique<InputStateModel>(session_handle_, config_);
+  input_state_model_->SetPrefService(&pref_service_);
+  input_state_model_->set_state_for_testing(state_);
+
+  // Simulate adding two images.
+  std::vector<FileInfo> file_infos;
+  file_infos.emplace_back();
+  file_infos.back().mime_type = lens::MimeType::kImage;
+  file_infos.emplace_back();
+  file_infos.back().mime_type = lens::MimeType::kImage;
+  ON_CALL(session_handle_, GetUploadedContextFileInfos())
+      .WillByDefault(testing::Return(file_infos));
+
+  // Trigger an update.
+  input_state_model_->OnContextChanged();
+  const auto& new_state = input_state_model_->get_state_for_testing();
+
+  // All input types should be disabled.
+  EXPECT_THAT(new_state.disabled_input_types,
+              UnorderedElementsAre(omnibox::InputType::INPUT_TYPE_LENS_IMAGE,
+                                   omnibox::InputType::INPUT_TYPE_LENS_FILE,
+                                   omnibox::InputType::INPUT_TYPE_BROWSER_TAB));
+
+  // Simulate removing one image.
+  file_infos.pop_back();
+  ON_CALL(session_handle_, GetUploadedContextFileInfos())
+      .WillByDefault(testing::Return(file_infos));
+
+  // Trigger an update.
+  input_state_model_->OnContextChanged();
+  const auto& final_state = input_state_model_->get_state_for_testing();
+
+  // Input types should no longer be disabled.
+  EXPECT_TRUE(final_state.disabled_input_types.empty());
 }
 
 }  // namespace contextual_search

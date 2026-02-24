@@ -465,21 +465,11 @@ export class ContextualEntrypointAndCarouselElement extends I18nMixinLit
       this.showContextMenuDescription_ = this.contextMenuDescriptionEnabled_;
     }
 
-    switch (previousTool) {
-      case ComposeboxToolMode.kDeepSearch:
-        this.fire('set-deep-search-mode', {inDeepSearchMode: false});
-        break;
-      case ComposeboxToolMode.kImageGen:
-        this.fire('set-create-image-mode', {
-          inCreateImageMode: false,
-          imagePresent: this.hasImageFiles(),
-        });
-        break;
-      case ComposeboxToolMode.kCanvas:
-        this.fire('set-canvas-mode', {inCanvasMode: false});
-        break;
-      default:
-        break;
+    if (previousTool !== ComposeboxToolMode.kUnspecified) {
+      this.fire('set-tool-mode', {
+        tool: previousTool,
+        enabled: false,
+      });
     }
   }
 
@@ -594,6 +584,9 @@ export class ContextualEntrypointAndCarouselElement extends I18nMixinLit
         break;
       case ToolMode.kCreateImage:
         this.setInitialMode(ComposeboxToolMode.kImageGen);
+        break;
+      case ToolMode.kCanvas:
+        this.setInitialMode(ComposeboxToolMode.kCanvas);
         break;
       default:
     }
@@ -815,6 +808,18 @@ export class ContextualEntrypointAndCarouselElement extends I18nMixinLit
     this.handleToolClick_(e.detail.tool);
   }
 
+  protected handleDeepSearchClick_() {
+    this.handleToolClick_(ComposeboxToolMode.kDeepSearch);
+  }
+
+  protected handleImageGenClick_() {
+    this.handleToolClick_(ComposeboxToolMode.kImageGen);
+  }
+
+  protected handleCanvasClick_() {
+    this.handleToolClick_(ComposeboxToolMode.kCanvas);
+  }
+
   protected handleToolClick_(tool: ComposeboxToolMode) {
     if (this.entrypointName !== 'Realbox') {
       if (this.contextMenuDescriptionEnabled_) {
@@ -829,24 +834,10 @@ export class ContextualEntrypointAndCarouselElement extends I18nMixinLit
     }
 
     const isActive = this.activeTool_ === tool;
-    switch (tool) {
-      case ComposeboxToolMode.kDeepSearch:
-        this.fire('set-deep-search-mode', {inDeepSearchMode: isActive});
-        break;
-      case ComposeboxToolMode.kImageGen:
-        this.fire('set-create-image-mode', {
-          inCreateImageMode: isActive,
-          imagePresent: this.hasImageFiles(),
-        });
-        break;
-      case ComposeboxToolMode.kCanvas:
-        this.fire('set-canvas-mode', {
-          inCanvasMode: isActive,
-        });
-        break;
-      default:
-        break;
-    }
+    this.fire('set-tool-mode', {
+      tool: tool,
+      enabled: isActive,
+    });
   }
 
   protected onVoiceSearchClick_() {

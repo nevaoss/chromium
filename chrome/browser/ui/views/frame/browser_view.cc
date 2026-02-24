@@ -88,6 +88,7 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window_state.h"
 #include "chrome/browser/ui/color/chrome_color_id.h"
+#include "chrome/browser/ui/context_highlight/context_highlight_window_feature.h"
 #include "chrome/browser/ui/dialogs/browser_dialogs.h"
 #include "chrome/browser/ui/exclusive_access/exclusive_access_context.h"
 #include "chrome/browser/ui/exclusive_access/exclusive_access_manager.h"
@@ -114,6 +115,7 @@
 #include "chrome/browser/ui/tabs/tab_network_state.h"
 #include "chrome/browser/ui/tabs/tab_strip_api/tab_strip_service_feature.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
+#include "chrome/browser/ui/tabs/tab_strip_prefs.h"
 #include "chrome/browser/ui/tabs/tab_utils.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
 #include "chrome/browser/ui/toolbar/app_menu_model.h"
@@ -200,10 +202,11 @@
 #include "chrome/browser/ui/views/tabs/browser_tab_strip_controller.h"
 #include "chrome/browser/ui/views/tabs/new_tab_button.h"
 #include "chrome/browser/ui/views/tabs/projects/projects_panel_view.h"
+#include "chrome/browser/ui/views/tabs/shared/tab_strip_flat_edge_button.h"
 #include "chrome/browser/ui/views/tabs/tab.h"
+#include "chrome/browser/ui/views/tabs/tab_accessibility.h"
 #include "chrome/browser/ui/views/tabs/tab_search_button.h"
 #include "chrome/browser/ui/views/tabs/tab_strip.h"
-#include "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_flat_edge_button.h"
 #include "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.h"
 #include "chrome/browser/ui/views/theme_copying_widget.h"
 #include "chrome/browser/ui/views/toolbar/browser_app_menu_button.h"
@@ -304,6 +307,7 @@
 #include "ui/base/ui_base_features.h"
 #include "ui/base/window_open_disposition.h"
 #include "ui/base/window_open_disposition_utils.h"
+#include "ui/color/color_id.h"
 #include "ui/compositor/layer.h"
 #include "ui/compositor/paint_recorder.h"
 #include "ui/content_accelerators/accelerator_util.h"
@@ -929,8 +933,19 @@ BrowserView::BrowserView(Browser* browser)
   lens_overlay_view_ =
       contents_container->AddChildView(std::move(lens_overlay_view));
 
+  // Create the view that will house the AI highlight overlay.
+  auto context_highlight_view = std::make_unique<views::View>();
+  context_highlight_view->SetProperty(
+      views::kElementIdentifierKey,
+      ContextHighlightWindowFeature::kContextHighlightViewElementId);
+  context_highlight_view->SetVisible(false);
+  context_highlight_view->SetLayoutManager(
+      std::make_unique<views::FillLayout>());
+  context_highlight_view_ =
+      contents_container->AddChildView(std::move(context_highlight_view));
+
   contents_container->SetLayoutManager(std::make_unique<ContentsLayoutManager>(
-      contents_view, lens_overlay_view_));
+      contents_view, lens_overlay_view_, context_highlight_view_));
 
   toolbar_ = top_container_->AddChildView(
       std::make_unique<ToolbarView>(browser_.get(), this));
@@ -985,19 +1000,21 @@ BrowserView::BrowserView(Browser* browser)
         AddChildView(std::make_unique<CustomFloatingCorner>(
             *this, CustomFloatingCorner::CornerOrientation::kTopLeading,
             views::ShapeContextTokens::kContentSeparatorRadius,
-            CustomFloatingCorner::FrameColor()));
+            CustomFloatingCorner::FrameColor(), kColorVerticalTabStripShadow,
+            /*is_vertical_window_edge=*/true));
     vertical_tab_strip_bottom_corner_ =
         AddChildView(std::make_unique<CustomFloatingCorner>(
             *this, CustomFloatingCorner::CornerOrientation::kBottomLeading,
             views::ShapeContextTokens::kContentSeparatorRadius,
-            CustomFloatingCorner::FrameColor()));
+            CustomFloatingCorner::FrameColor(), kColorVerticalTabStripShadow,
+            /*is_vertical_window_edge=*/true));
   } else {
     horizontal_tab_strip_region_view_->InitializeTabStrip();
   }
 
   if (tabs::IsProjectsPanelFeatureEnabled()) {
     auto projects_panel_container = std::make_unique<ProjectsPanelView>(
-        browser_->GetActions()->root_action_item(), browser_->profile());
+        browser_.get(), browser_->GetActions()->root_action_item());
 
     projects_panel_container_ =
         AddChildView(std::move(projects_panel_container));
@@ -1104,6 +1121,7 @@ BrowserView::~BrowserView() {
   multi_contents_view_ = nullptr;
   main_shadow_overlay_ = nullptr;
   lens_overlay_view_ = nullptr;
+  context_highlight_view_ = nullptr;
   window_scrim_view_ = nullptr;
   contents_container_ = nullptr;
   vertical_tab_strip_region_view_ = nullptr;
@@ -1954,7 +1972,10 @@ void BrowserView::OnActiveTabChanged(content::WebContents* old_contents,
     ObserveAppBannerManager(app_banner_manager);
   }
 
-  UpdateUIForContents(new_contents);
+  // When switching tabs within a split, we want to layout to be done
+  // asynchronously in order to ensure the input events are triggered at the
+  // expected position.
+  UpdateUIForContents(new_contents, !tab_change_in_split_view);
 
   if (!IsFullscreen() || !tab_change_in_split_view) {
     RevealTabStripIfNeeded();
@@ -2004,13 +2025,11 @@ void BrowserView::OnActiveTabChanged(content::WebContents* old_contents,
 
     // Temporarily disable fast resize for to ensure that the new active tab
     // updates its layout.
-    views::WebView* contents_view_to_layout =
-        multi_contents_view_->GetActiveContentsView();
-    CHECK(contents_view_to_layout);
-    const bool original_fast_resize = contents_view_to_layout->GetFastResize();
-    contents_view_to_layout->SetFastResize(false);
+    const bool original_fast_resize =
+        multi_contents_view_->GetActiveContentsView()->GetFastResize();
+    UpdateFastResizeForContentViews(false);
     contents_container_->DeprecatedLayoutImmediately();
-    contents_view_to_layout->SetFastResize(original_fast_resize);
+    UpdateFastResizeForContentViews(original_fast_resize);
   } else if (tab_change_in_split_view) {
     UpdateActiveTabInSplitView();
   }
@@ -2375,13 +2394,8 @@ void BrowserView::ToolbarSizeChanged(bool is_animating) {
     return;
   }
 
-  std::vector<ContentsWebView*> contents_web_views =
-      GetAllVisibleContentsWebViews();
-
   if (is_animating) {
-    for (auto* contents_web_view : contents_web_views) {
-      contents_web_view->SetFastResize(true);
-    }
+    UpdateFastResizeForContentViews(true);
   }
   UpdateUIForContents(GetActiveWebContents());
 
@@ -2393,9 +2407,7 @@ void BrowserView::ToolbarSizeChanged(bool is_animating) {
   }
 
   if (is_animating) {
-    for (auto* contents_web_view : contents_web_views) {
-      contents_web_view->SetFastResize(false);
-    }
+    UpdateFastResizeForContentViews(false);
   }
 
   // When transitioning from animating to not animating we need to make sure the
@@ -2403,7 +2415,7 @@ void BrowserView::ToolbarSizeChanged(bool is_animating) {
   // haven't changed contents_container_ won't get a Layout and we'll end up
   // with a gray rect because the clip wasn't updated.
   if (!is_animating) {
-    for (auto* contents_web_view : contents_web_views) {
+    for (auto* contents_web_view : GetAllVisibleContentsWebViews()) {
       contents_web_view->InvalidateLayout();
     }
     contents_container_->DeprecatedLayoutImmediately();
@@ -2424,18 +2436,13 @@ void BrowserView::ToolbarSizeChanged(bool is_animating) {
 
 void BrowserView::TabDraggingStatusChanged(bool is_dragging) {
 #if !BUILDFLAG(IS_LINUX)
-  std::vector<ContentsWebView*> contents_web_views =
-      GetAllVisibleContentsWebViews();
-
-  for (auto* contents_web_view : contents_web_views) {
-    contents_web_view->SetFastResize(is_dragging);
-  }
+  UpdateFastResizeForContentViews(is_dragging);
 
   if (!is_dragging) {
     // When tab dragging is ended, we need to make sure the web contents get
     // re-layed out. Otherwise we may see web contents get clipped to the window
     // size that was used during dragging.
-    for (ContentsWebView* contents_web_view : contents_web_views) {
+    for (auto* contents_web_view : GetAllVisibleContentsWebViews()) {
       contents_web_view->InvalidateLayout();
     }
     contents_container_->DeprecatedLayoutImmediately();
@@ -3047,8 +3054,10 @@ void BrowserView::MaybeShowTabStripToolbarButtonIPH() {
   if (!browser()->is_type_normal()) {
     return;
   }
+
   bool should_show =
-      features::HasTabSearchToolbarButton() &&
+      tabs::GetTabSearchPosition(browser()->profile()) ==
+          tabs::TabSearchPosition::kToolbarButton &&
       toolbar_->pinned_toolbar_actions_container()->IsActionPinned(
           kActionTabSearch);
   if (should_show) {
@@ -3852,7 +3861,9 @@ std::u16string BrowserView::GetAccessibleWindowTitleForChannelAndProfile(
   int active_index = browser_->tab_strip_model()->active_index();
   std::u16string title;
   if (active_index > -1) {
-    title = GetAccessibleTabLabel(active_index, /* include_app_name */ false);
+    title =
+        tabs::GetAccessibleTabLabel(browser_->tab_strip_model()->GetActiveTab(),
+                                    /*is_for_tab=*/false);
   } else {
     title = browser_->GetWindowTitleForCurrentTab(false /* include_app_name */);
   }
@@ -3902,7 +3913,8 @@ std::u16string BrowserView::GetAccessibleWindowTitleForChannelAndProfile(
 
 void BrowserView::UpdateAccessibleNameForAllTabs() {
   for (int i = 0; i < browser()->tab_strip_model()->count(); ++i) {
-    std::u16string accessible_title = GetAccessibleTabLabel(i, true);
+    std::u16string accessible_title = tabs::GetAccessibleTabLabel(
+        browser()->tab_strip_model()->GetTabAtIndex(i), /*is_for_tab=*/true);
     views::View* tab = tab_strip_view()->GetTabAnchorViewAt(i);
     CHECK(tab);
     if (accessible_title.empty()) {
@@ -3913,150 +3925,6 @@ void BrowserView::UpdateAccessibleNameForAllTabs() {
     } else {
       tab->GetViewAccessibility().SetName(accessible_title);
     }
-  }
-}
-
-// This function constructs the accessible label for a tab, which is used by
-// assistive technologies to provide meaningful descriptions of the tab's
-// content. The label is based on various properties of the tab, such as the
-// title, group, alerts and memory usage.
-//
-// Note: If any new parameters are added or existing ones are removed that
-// affect the accessible name, ensure that the corresponding logic in
-// Tab::UpdateAccessibleName is updated accordingly to maintain consistency.
-std::u16string BrowserView::GetAccessibleTabLabel(int index,
-                                                  bool is_for_tab) const {
-  std::u16string title = is_for_tab ? browser_->GetTitleForTab(index)
-                                    : browser_->GetWindowTitleForTab(index);
-
-  TabStripModel* tab_strip_model = browser_->GetTabStripModel();
-  tabs::TabInterface* tab = tab_strip_model->GetTabAtIndex(index);
-
-  if (const std::optional<split_tabs::SplitTabId> split = tab->GetSplit()) {
-    const split_tabs::SplitTabData* split_data =
-        tab_strip_model->GetSplitData(split.value());
-    const std::vector<tabs::TabInterface*> tabs_in_split =
-        split_data->ListTabs();
-
-    int tab_index_in_split = std::distance(
-        tabs_in_split.begin(),
-        std::find(tabs_in_split.begin(), tabs_in_split.end(), tab));
-    title = l10n_util::GetStringFUTF16(
-        GetAccessibleTabLabelFormatStringForSplit(
-            split_tabs::SplitTabLayout::kVertical, tab_index_in_split),
-        title);
-  }
-
-  if (const std::optional<tab_groups::TabGroupId> group = tab->GetGroup()) {
-    std::u16string group_title = tab_strip_model->group_model()
-                                     ->GetTabGroup(group.value())
-                                     ->visual_data()
-                                     ->title();
-    if (group_title.empty()) {
-      title = l10n_util::GetStringFUTF16(IDS_TAB_AX_LABEL_UNNAMED_GROUP_FORMAT,
-                                         title);
-    } else {
-      title = l10n_util::GetStringFUTF16(IDS_TAB_AX_LABEL_NAMED_GROUP_FORMAT,
-                                         title, group_title);
-    }
-  }
-
-  // Tab is pinned.
-  if (tab->IsPinned()) {
-    title = l10n_util::GetStringFUTF16(IDS_TAB_AX_LABEL_PINNED_FORMAT, title);
-  }
-
-  const TabRendererData& tab_data = tab_strip_view()->GetTabRendererData(index);
-
-  // Tab has crashed.
-  if (tab_data.is_crashed) {
-    return l10n_util::GetStringFUTF16(IDS_TAB_AX_LABEL_CRASHED_FORMAT, title);
-  }
-
-  // Network error interstitial.
-  if (tab_data.network_state == TabNetworkState::kError) {
-    return l10n_util::GetStringFUTF16(IDS_TAB_AX_LABEL_NETWORK_ERROR_FORMAT,
-                                      title);
-  }
-
-  // Tab has a pending permission request.
-  if (GetLocationBar() && GetLocationBar()->GetChipController() &&
-      GetLocationBar()->GetChipController()->IsPermissionPromptChipVisible()) {
-    return l10n_util::GetStringFUTF16(
-        IDS_TAB_AX_LABEL_PERMISSION_REQUESTED_FORMAT, title);
-  }
-
-  // Alert tab states.
-  const tabs::TabAlertController* tab_alert_controller =
-      tabs::TabAlertController::From(tab);
-  CHECK(tab_alert_controller);
-
-  if (const std::optional<tabs::TabAlert> alert =
-          tab_alert_controller->GetAlertToShow()) {
-    title = l10n_util::GetStringFUTF16(
-        tabs::TabAlertController::GetAccessibleAlertStringId(alert.value()),
-        title);
-  }
-
-  if (tab_data.should_show_discard_status) {
-    title = l10n_util::GetStringFUTF16(IDS_TAB_AX_INACTIVE_TAB, title);
-    if (tab_data.discarded_memory_savings.is_positive()) {
-      title = l10n_util::GetStringFUTF16(
-          IDS_TAB_AX_MEMORY_SAVINGS, title,
-          ui::FormatBytes(tab_data.discarded_memory_savings));
-    }
-  } else if (tab_data.tab_resource_usage &&
-             tab_data.tab_resource_usage->memory_usage().is_positive()) {
-    const base::ByteSize memory_used =
-        tab_data.tab_resource_usage->memory_usage();
-    const bool is_high_memory_usage =
-        tab_data.tab_resource_usage->is_high_memory_usage();
-    if (is_high_memory_usage || is_for_tab) {
-      const int message_id = is_high_memory_usage ? IDS_TAB_AX_HIGH_MEMORY_USAGE
-                                                  : IDS_TAB_AX_MEMORY_USAGE;
-      title = l10n_util::GetStringFUTF16(message_id, title,
-                                         ui::FormatBytes(memory_used));
-    }
-  } else if (tab_data.collaboration_messaging &&
-             tab_data.collaboration_messaging->HasMessage()) {
-    std::u16string given_name = tab_data.collaboration_messaging->given_name();
-
-    switch (tab_data.collaboration_messaging->collaboration_event()) {
-      case collaboration::messaging::CollaborationEvent::TAB_ADDED:
-        title = l10n_util::GetStringFUTF16(
-                    IDS_DATA_SHARING_RECENT_ACTIVITY_MEMBER_ADDED_THIS_TAB,
-                    given_name) +
-                u", " + title;
-        break;
-      case collaboration::messaging::CollaborationEvent::TAB_UPDATED:
-        title = l10n_util::GetStringFUTF16(
-                    IDS_DATA_SHARING_RECENT_ACTIVITY_MEMBER_CHANGED_THIS_TAB,
-                    given_name) +
-                u", " + title;
-        break;
-      default:
-        NOTREACHED();
-    }
-  }
-
-  return title;
-}
-
-int BrowserView::GetAccessibleTabLabelFormatStringForSplit(
-    split_tabs::SplitTabLayout layout,
-    int tab_index_in_split) const {
-  switch (layout) {
-    case split_tabs::SplitTabLayout::kVertical:
-      switch (tab_index_in_split) {
-        case 0:
-          return IDS_TAB_AX_LABEL_SPLIT_TAB_LEFT_VIEW_FORMAT;
-        case 1:
-          return IDS_TAB_AX_LABEL_SPLIT_TAB_RIGHT_VIEW_FORMAT;
-        default:
-          NOTREACHED();
-      }
-    default:
-      NOTREACHED();
   }
 }
 
@@ -4485,11 +4353,6 @@ void BrowserView::OnWidgetMove() {
     // things.
     return;
   }
-
-  // Cancel any tabstrip animations, some of them may be invalidated by the
-  // window being repositioned.
-  // Comment out for one cycle to see if this fixes dist tests.
-  // tabstrip_->DestroyDragController();
 
   // There may be no status bubbles if this is invoked during construction.
   std::vector<StatusBubble*> status_bubbles = GetStatusBubbles();
@@ -5722,7 +5585,8 @@ bool BrowserView::MaybeUpdateDevtools(content::WebContents* contents) {
   return devtools_layout_updated;
 }
 
-void BrowserView::UpdateUIForContents(WebContents* contents) {
+void BrowserView::UpdateUIForContents(WebContents* contents,
+                                      bool should_layout_immediately) {
   TRACE_EVENT0("ui", "BrowserView::UpdateUIForContents");
   bool needs_layout = MaybeShowBookmarkBar(contents);
 
@@ -5735,7 +5599,17 @@ void BrowserView::UpdateUIForContents(WebContents* contents) {
   needs_layout |= MaybeUpdateDevtools(contents);
 
   if (needs_layout) {
-    DeprecatedLayoutImmediately();
+    if (should_layout_immediately) {
+      DeprecatedLayoutImmediately();
+    } else {
+      InvalidateLayout();
+    }
+  }
+}
+
+void BrowserView::UpdateFastResizeForContentViews(bool fast_resize) {
+  for (auto* contents_web_view : GetAllVisibleContentsWebViews()) {
+    contents_web_view->SetFastResize(fast_resize);
   }
 }
 

@@ -475,6 +475,9 @@ bool PathProvider(int key, base::FilePath* result) {
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
       cur = base::FilePath(
           FILE_PATH_LITERAL("/Library/Google/Chrome/NativeMessagingHosts"));
+#elif BUILDFLAG(GOOGLE_CHROME_FOR_TESTING_BRANDING)
+      cur = base::FilePath(FILE_PATH_LITERAL(
+          "/Library/Google/ChromeForTesting/NativeMessagingHosts"));
 #else
       cur = base::FilePath(FILE_PATH_LITERAL(
           "/Library/Application Support/Chromium/NativeMessagingHosts"));
@@ -483,6 +486,9 @@ bool PathProvider(int key, base::FilePath* result) {
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
       cur = base::FilePath(
           FILE_PATH_LITERAL("/etc/opt/chrome/native-messaging-hosts"));
+#elif BUILDFLAG(GOOGLE_CHROME_FOR_TESTING_BRANDING)
+      cur = base::FilePath(FILE_PATH_LITERAL(
+          "/etc/opt/chrome_for_testing/native-messaging-hosts"));
 #else
       cur = base::FilePath(
           FILE_PATH_LITERAL("/etc/chromium/native-messaging-hosts"));

@@ -788,6 +788,18 @@ void ChromeAutofillClient::ShowAutofillSettings(
           chrome::ShowSettingsSubPage(browser, chrome::kAutofillAiSubPage);
         }
         return;
+      case SuggestionType::kManageAutofillAiIdentityDocs:
+        base::UmaHistogramEnumeration(
+            "Autofill.YourSavedInfoSettingsPage.VisitReferrer",
+            autofill_metrics::AutofillSettingsReferrer::kFillingFlowDropdown);
+        chrome::ShowSettingsSubPage(browser, chrome::kIdentityDocsSubPage);
+        return;
+      case SuggestionType::kManageAutofillAiTravel:
+        base::UmaHistogramEnumeration(
+            "Autofill.YourSavedInfoSettingsPage.VisitReferrer",
+            autofill_metrics::AutofillSettingsReferrer::kFillingFlowDropdown);
+        chrome::ShowSettingsSubPage(browser, chrome::kTravelSubPage);
+        return;
       case SuggestionType::kManagePlusAddress:
         CHECK(base::FeatureList::IsEnabled(
             plus_addresses::features::kPlusAddressesEnabled));
@@ -1432,6 +1444,15 @@ void ChromeAutofillClient::ShowEntityImportBubble(
 void ChromeAutofillClient::CloseEntityImportBubble() {
 #if !BUILDFLAG(IS_ANDROID)
   AutofillAiImportDataController::Hide(CHECK_DEREF(web_contents()));
+#endif  // !BUILDFLAG(IS_ANDROID)
+}
+
+void ChromeAutofillClient::ShowAutofillAiLocalSaveNotification() {
+#if !BUILDFLAG(IS_ANDROID)
+  if (auto* controller = AutofillAiImportDataController::GetOrCreate(
+          web_contents(), GetAppLocale())) {
+    controller->ShowLocalSaveNotification();
+  }
 #endif  // !BUILDFLAG(IS_ANDROID)
 }
 

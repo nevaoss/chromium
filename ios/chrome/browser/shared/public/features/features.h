@@ -46,6 +46,16 @@ BASE_DECLARE_FEATURE(kIOSBrowserEditMenuMetrics);
 BASE_DECLARE_FEATURE(kIOSCustomFileUploadMenu);
 
 // Docking Promo experiment variations.
+extern const char kIOSDockingPromoV2VariationParam[];
+extern const char kIOSDockingPromoV2VariationHeader1[];
+extern const char kIOSDockingPromoV2VariationHeader2[];
+extern const char kIOSDockingPromoV2VariationHeader3[];
+
+// Feature flag to enable the Docking Promo V2.
+BASE_DECLARE_FEATURE(kIOSDockingPromoV2);
+
+// Helper function to check if `kIOSDockingPromoV2` is enabled.
+bool IsDockingPromoV2Enabled();
 
 // A parameter representing the experimental arm for when the Docking Promo is
 // displayed: during the FRE, or after the FRE.
@@ -133,10 +143,6 @@ BASE_DECLARE_FEATURE(kEnableLensInNTP);
 
 // Feature flag to enable the Lens "Search copied image" omnibox entrypoint.
 BASE_DECLARE_FEATURE(kEnableLensInOmniboxCopiedImage);
-
-// Feature flag to enable the Lens "Search copied image" omnibox entrypoint.
-BASE_DECLARE_FEATURE(kEnableLensOverlay);
-extern const base::NotFatalUntil kLensOverlayNotFatalUntil;
 
 // Whether to enable loading AIM in the lens result page.
 BASE_DECLARE_FEATURE(kLensLoadAIMInLensResultPage);
@@ -436,6 +442,9 @@ bool IsContentPushNotificationsSetUpListRegistrationOnly();
 // false otherwise.
 bool IsLiquidGlassEffectEnabled();
 
+// Feature flag to enable Enhanced Autofill.
+BASE_DECLARE_FEATURE(kIOSEnhancedAutofill);
+
 // Feature flag to enable the default input accessory view.
 BASE_DECLARE_FEATURE(kIOSKeyboardAccessoryDefaultView);
 
@@ -619,9 +628,6 @@ bool IsRefactorToolbarsSize();
 
 // Feature that disables all IPH messages.
 BASE_DECLARE_FEATURE(kIPHAblation);
-
-// Feature that disables IPH dismissal pan gesture for lens overlay promos.
-BASE_DECLARE_FEATURE(kLensOverlayDisableIPHPanGesture);
 
 // Returns true if IPH ablation is enabled.
 bool IsIPHAblationEnabled();
@@ -920,10 +926,18 @@ bool IsEnableNewStartupFlowEnabled();
 // Updates EnableNewStartupFlow NSUserDefaults key if the value was changed.
 void SaveEnableNewStartupFlowForNextStart();
 
+// Resets the cached value for IsEnableNewStartupFlowEnabled, needed for tests.
+void ResetEnableNewStartupFlowEnabledForTesting();
+
 // Flags for Share Ablation study.
 BASE_DECLARE_FEATURE(kDisableShareButton);
 BASE_DECLARE_FEATURE(kShareInOmniboxLongPress);
 BASE_DECLARE_FEATURE(kShareInOverflowMenu);
 BASE_DECLARE_FEATURE(kShareInVerbatimMatch);
+
+BASE_DECLARE_FEATURE(kUseSceneViewController);
+
+// Returns true if the UseSceneViewController feature is enabled.
+bool IsUseSceneViewControllerEnabled();
 
 #endif  // IOS_CHROME_BROWSER_SHARED_PUBLIC_FEATURES_FEATURES_H_

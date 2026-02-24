@@ -763,9 +763,6 @@ _CONFIG = [
             'display::ScreenInfo',
             'display::ScreenInfos',
 
-            # html-in-canvas
-            'cc::AllCanvasDrawElementIds',
-
             # Terminal value for display id's used across display <-> Blink.
             'display::kInvalidDisplayId',
 
@@ -853,10 +850,6 @@ _CONFIG = [
             'net::CookiePriority',
             'net::CookieSameSite',
             'net::CookieSourceScheme',
-
-            # Cookie prefix feature flags.
-            'net::features::kPrefixCookieHttp',
-            'net::features::kPrefixCookieHostHttp',
 
             # Net error codes
             'net::OK',

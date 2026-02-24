@@ -112,7 +112,6 @@
 #import "ios/chrome/browser/page_info/certificate/features/features.h"
 #import "ios/chrome/browser/policy/model/policy_util.h"
 #import "ios/chrome/browser/policy/model/reporting/features.h"
-#import "ios/chrome/browser/promos_manager/model/features.h"
 #import "ios/chrome/browser/reader_mode/model/features.h"
 #import "ios/chrome/browser/settings/ui_bundled/clear_browsing_data/public/features.h"
 #import "ios/chrome/browser/settings/ui_bundled/password/password_manager_ui_features.h"
@@ -434,6 +433,23 @@ const FeatureEntry::FeatureVariation
          kDefaultBrowserPictureInPictureArm3,
          std::size(kDefaultBrowserPictureInPictureArm3), nullptr},
 };
+
+const FeatureEntry::FeatureParam kIOSDockingPromoV2Header1[] = {
+    {kIOSDockingPromoV2VariationParam, kIOSDockingPromoV2VariationHeader1}};
+
+const FeatureEntry::FeatureParam kIOSDockingPromoV2Header2[] = {
+    {kIOSDockingPromoV2VariationParam, kIOSDockingPromoV2VariationHeader2}};
+
+const FeatureEntry::FeatureParam kIOSDockingPromoV2Header3[] = {
+    {kIOSDockingPromoV2VariationParam, kIOSDockingPromoV2VariationHeader3}};
+
+const FeatureEntry::FeatureVariation kIOSDockingPromoV2Variations[] = {
+    {"Display Header #1", kIOSDockingPromoV2Header1,
+     std::size(kIOSDockingPromoV2Header1), nullptr},
+    {"Display Header #2", kIOSDockingPromoV2Header2,
+     std::size(kIOSDockingPromoV2Header2), nullptr},
+    {"Display Header #3 without Subheader", kIOSDockingPromoV2Header3,
+     std::size(kIOSDockingPromoV2Header3), nullptr}};
 
 const FeatureEntry::FeatureParam kIOSDockingPromoDisplayedAfterFRE[] = {
     {kIOSDockingPromoExperimentType, "0"}};
@@ -1525,11 +1541,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kConfirmationButtonSwapOrderName,
      flag_descriptions::kConfirmationButtonSwapOrderDescription,
      flags_ui::kOsIos, FEATURE_VALUE_TYPE(kConfirmationButtonSwapOrder)},
-    {"fullscreen-promos-manager-skip-internal-limits",
-     flag_descriptions::kFullscreenPromosManagerSkipInternalLimitsName,
-     flag_descriptions::kFullscreenPromosManagerSkipInternalLimitsDescription,
-     flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(kFullscreenPromosManagerSkipInternalLimits)},
     {"fullscreen-viewport-adjustment-experiment",
      flag_descriptions::kFullscreenSmoothScrollingName,
      flag_descriptions::kFullscreenSmoothScrollingDescription, flags_ui::kOsIos,
@@ -1647,9 +1658,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kEnableLensInOmniboxCopiedImageName,
      flag_descriptions::kEnableLensInOmniboxCopiedImageDescription,
      flags_ui::kOsIos, FEATURE_VALUE_TYPE(kEnableLensInOmniboxCopiedImage)},
-    {"enable-lens-overlay", flag_descriptions::kEnableLensOverlayName,
-     flag_descriptions::kEnableLensOverlayDescription, flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(kEnableLensOverlay)},
     {"ntp-view-hierarchy-repair",
      flag_descriptions::kNTPViewHierarchyRepairName,
      flag_descriptions::kNTPViewHierarchyRepairDescription, flags_ui::kOsIos,
@@ -1671,6 +1679,9 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
     {"enable-feed-ablation", flag_descriptions::kEnableFeedAblationName,
      flag_descriptions::kEnableFeedAblationDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kEnableFeedAblation)},
+    {"ios-enhanced-autofill", flag_descriptions::kIOSEnhancedAutofillName,
+     flag_descriptions::kIOSEnhancedAutofillDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kIOSEnhancedAutofill)},
     {"ios-keyboard-accessory-default-view",
      flag_descriptions::kIOSKeyboardAccessoryDefaultViewName,
      flag_descriptions::kIOSKeyboardAccessoryDefaultViewDescription,
@@ -1741,6 +1752,10 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kUseDefaultAppsDestinationForPromosDescription,
      flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kIOSUseDefaultAppsDestinationForPromos)},
+    {"use-scene-view-controller",
+     flag_descriptions::kUseSceneViewControllerName,
+     flag_descriptions::kUseSceneViewControllerDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kUseSceneViewController)},
     {"persistent-default-browser-promo",
      flag_descriptions::kPersistentDefaultBrowserPromoName,
      flag_descriptions::kPersistentDefaultBrowserPromoDescription,
@@ -1783,6 +1798,11 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      FEATURE_WITH_PARAMS_VALUE_TYPE(kIOSDockingPromo,
                                     kIOSDockingPromoVariations,
                                     "IOSDockingPromo")},
+    {"ios-docking-promo-v2", flag_descriptions::kIOSDockingPromoV2Name,
+     flag_descriptions::kIOSDockingPromoV2Description, flags_ui::kOsIos,
+     FEATURE_WITH_PARAMS_VALUE_TYPE(kIOSDockingPromoV2,
+                                    kIOSDockingPromoV2Variations,
+                                    "IOSDockingPromoV2")},
     {"omnibox-grouping-framework-non-zps",
      flag_descriptions::kOmniboxGroupingFrameworkForTypedSuggestionsName,
      flag_descriptions::kOmniboxGroupingFrameworkForTypedSuggestionsDescription,
@@ -2014,10 +2034,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kLensUnaryApisWithHttpTransportEnabledDescription,
      flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kLensUnaryApisWithHttpTransportEnabled)},
-    {"lens-overlay-disable-iph-pan-gesture",
-     flag_descriptions::kLensOverlayDisableIPHPanGestureName,
-     flag_descriptions::kLensOverlayDisableIPHPanGestureDescription,
-     flags_ui::kOsIos, FEATURE_VALUE_TYPE(kLensOverlayDisableIPHPanGesture)},
     {"ios-provisional-notification-alert",
      flag_descriptions::kProvisionalNotificationAlertName,
      flag_descriptions::kProvisionalNotificationAlertDescription,
@@ -2453,6 +2469,9 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
     {"lens-strokes-api-enabled", flag_descriptions::kStrokesAPIEnabledName,
      flag_descriptions::kStrokesAPIEnabledDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kLensStrokesAPIEnabled)},
+    {"composebox-deep-search", flag_descriptions::kComposeboxDeepSearchName,
+     flag_descriptions::kComposeboxDeepSearchDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kComposeboxDeepSearch)},
     {"composebox-devtools", flag_descriptions::kComposeboxDevToolsName,
      flag_descriptions::kComposeboxDevToolsDescription, flags_ui::kOsIos,
      FEATURE_WITH_PARAMS_VALUE_TYPE(kComposeboxDevTools,
@@ -2759,6 +2778,10 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
     {"enable-new-startup-flow", flag_descriptions::kEnableNewStartupFlowName,
      flag_descriptions::kEnableNewStartupFlowDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kEnableNewStartupFlow)},
+    {"gemini-updated-eligibility",
+     flag_descriptions::kGeminiUpdatedEligibilityName,
+     flag_descriptions::kGeminiUpdatedEligibilityDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kGeminiUpdatedEligibility)},
 });
 
 bool SkipConditionalFeatureEntry(const flags_ui::FeatureEntry& entry) {

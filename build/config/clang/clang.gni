@@ -86,6 +86,7 @@ declare_args() {
   # Set to true to enable output of ThinLTO index and import files used for
   # creating a Chromium MLGO corpus in the ThinLTO case.
   lld_emit_indexes_and_imports = false
+<<<<<<< HEAD
 
   # Use explicit Clang header modules for libc++.
   # We'll gradually expand supported platform of modules
@@ -103,6 +104,8 @@ declare_args() {
       clang_modules_platform_supported && using_tested_sysroot &&
       # reclient and icecc don't handle headers in modulemap config.
       !use_reclient && !is_cronet_for_aosp_build && cc_wrapper != "icecc"
+=======
+>>>>>>> 146.0.7669.0~1
 }
 
 # We don't really need to collect a corpus for the host tools, just for the target.

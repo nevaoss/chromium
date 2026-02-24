@@ -60,6 +60,7 @@ const base::Feature* const kAllFeatures[] = {
     &kIPHDownloadInfoBarDownloadsAreFasterFeature,
     &kIPHEphemeralTabFeature,
     &kIPHFeedCardMenuFeature,
+    &kIPHFuseboxAttachmentFeature,
     &kIPHGenericAlwaysTriggerHelpUiFeature,
     &kIPHIdentityDiscFeature,
     &kIPHInstanceSwitcherFeature,
@@ -276,7 +277,6 @@ const base::Feature* const kAllFeatures[] = {
     &kIPHTabGroupsSharedTabChangedFeature,
     &kIPHTabGroupsSharedTabFeedbackFeature,
     &kIPHTabOrganizationSuccessFeature,
-    &kIPHTabSearchFeature,
     &kIPHTabSearchToolbarButtonFeature,
     &kIPHDesktopPwaInstallFeature,
     &kIPHProfileSwitchFeature,
@@ -327,8 +327,12 @@ const base::Feature* const kAllFeatures[] = {
     &kIPHiOSAddressPromoDesktopFeature,
     &kIPHiOSPaymentPromoDesktopFeature,
     &kIPHiOSLensPromoDesktopFeature,
-    &kIPHiOSEnhancedBrowsingDesktopFeature
+    &kIPHiOSEnhancedBrowsingDesktopFeature,
 #endif  // !BUILDFLAG(IS_ANDROID)
+
+#if !BUILDFLAG(IS_IOS)
+    &kIPHResumptionRailFeature,
+#endif  // !BUILDFLAG(IS_IOS)
 };
 }  // namespace
 

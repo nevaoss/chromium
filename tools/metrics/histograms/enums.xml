@@ -141,6 +141,7 @@ uploading your change for review.  These are checked by presubmit scripts.
       label="Launched from ChromeOS Projector App for re-authentication"/>
   <int value="18" label="Turn on sync menu item in Chrome app menu"/>
   <int value="19" label="Account addition flow triggered from a Sign-in promo"/>
+  <int value="20" label="Gemini in Chrome asked to reauthenticate"/>
 </enum>
 
 <enum name="AccountManagerAccountUpsertionResultStatus">
@@ -5452,6 +5453,7 @@ shown properly on the user-facing crash UI.
   <int value="-2147024713" label="ERROR_ALREADY_EXISTS"/>
   <int value="-2147024703" label="ERROR_BAD_EXE_FORMAT"/>
   <int value="-2147024671" label="ERROR_VIRUS_INFECTED"/>
+  <int value="-2147024638" label="WAIT_TIMEOUT"/>
   <int value="-2147024637" label="DRM_E_NOMORE_DATA"/>
   <int value="-2147024362" label="DRM_E_ARITHMETIC_OVERFLOW (0x80070216)"/>
   <int value="-2147024319" label="ERROR_INVALID_IMAGE_HASH (0x80070241)"/>
@@ -5482,12 +5484,18 @@ shown properly on the user-facing crash UI.
   <int value="-2147012867" label="WININET_E_CANNOT_CONNECT"/>
   <int value="-2147012866" label="WININET_E_CONNECTION_ABORTED"/>
   <int value="-2147012851" label="WININET_E_INVALID_CA"/>
+  <int value="-2147012721" label="WININET_E_DECODING_FAILED"/>
   <int value="-2147009295" label="ERROR_INSTALL_PACKAGE_NOT_FOUND"/>
   <int value="-2146959355" label="CO_E_SERVER_EXEC_FAILURE"/>
+  <int value="-2146959352" label="CO_E_SERVER_STOPPING"/>
   <int value="-2146893002" label="SEC_E_WRONG_CREDENTIAL_HANDLE"/>
   <int value="-2146893001" label="SEC_E_CRYPTO_SYSTEM_INVALID"/>
   <int value="-2146762496" label="TRUST_E_NOSIGNATURE"/>
   <int value="-2146435043" label="SCARD_E_NO_SERVICE"/>
+  <int value="-2145844845" label="HTTP_E_STATUS_FORBIDDEN"/>
+  <int value="-2145844844" label="HTTP_E_STATUS_NOT_FOUND"/>
+  <int value="-2145844744" label="HTTP_E_STATUS_GATEWAY_TIMEOUT"/>
+  <int value="-2143309801" label="Unknown error (0x803FB017)"/>
   <int value="-2140733418" label="APPMODEL_ERROR_PACKAGE_NOT_FOUND"/>
   <int value="-2140143615" label="MF_INDEX_SIZE_ERR"/>
   <int value="-2140143608" label="MF_NOT_FOUND_ERR"/>
@@ -5498,6 +5506,7 @@ shown properly on the user-facing crash UI.
   <int value="-2140143594" label="MF_QUOTA_EXCEEDED_ERR"/>
   <int value="-2140143535" label="MF_PARSE_ERR"/>
   <int value="-2140127227" label="MF_TYPE_ERR"/>
+  <int value="-2089484281" label="WEB_E_INVALID_JSON_STRING"/>
   <int value="-2089418750" label="E_INVALID_PROTOCOL_FORMAT"/>
   <int value="-2005532292" label="D3DERR_OUTOFVIDEOMEMORY"/>
   <int value="-2005270527" label="DXGI_ERROR_INVALID_CALL"/>
@@ -13204,6 +13213,7 @@ from previous Chrome versions.
   <int value="-398706729" label="PermissionPredictionsV3:disabled"/>
   <int value="-398623652" label="CCTTargetTranslateLanguage:enabled"/>
   <int value="-398325847" label="HelpAppCrosComponents:enabled"/>
+  <int value="-398280726" label="AutoDocPiPPermissionPromptAndroid:enabled"/>
   <int value="-398012541"
       label="CertificateTransparency2022PolicyAllCerts:enabled"/>
   <int value="-397959190" label="ClipboardHistory:enabled"/>
@@ -13400,6 +13410,7 @@ from previous Chrome versions.
   <int value="-328339709" label="WebFeedAwareness:enabled"/>
   <int value="-327520505" label="RelatedSearchesAlternateUx:enabled"/>
   <int value="-327272022" label="AutofillRejectCompanyBirthyearName:enabled"/>
+  <int value="-326714728" label="AimUsePecApi:disabled"/>
   <int value="-326535569" label="WebNotesStylize:disabled"/>
   <int value="-326083626" label="AppBanners:disabled"/>
   <int value="-325271559" label="NtpRepeatableQueries:enabled"/>
@@ -13781,6 +13792,8 @@ from previous Chrome versions.
   <int value="-197862414" label="PrivacyIndicators:enabled"/>
   <int value="-197413324" label="GlicBindPinnedUnboundTab:disabled"/>
   <int value="-196110497" label="force-text-direction"/>
+  <int value="-195307538"
+      label="EnableActivitylessSigninAllEntryPoint:enabled"/>
   <int value="-195242003"
       label="PrivateNetworkAccessRespectPreflightResults:disabled"/>
   <int value="-195161821" label="ScrollUpdateOptimizations:disabled"/>
@@ -13934,6 +13947,7 @@ from previous Chrome versions.
   <int value="-147104075" label="ImprovedPasswordChangeService:enabled"/>
   <int value="-146780296" label="EstablishGpuChannelAsync:enabled"/>
   <int value="-146552997" label="enable-affiliation-based-matching"/>
+  <int value="-146482646" label="TabStripGlicButtonAndroid:enabled"/>
   <int value="-146315671" label="PrivacyAdvisor:enabled"/>
   <int value="-146032762"
       label="CrOSLateBootAudioOffloadCrasDSPToSOF:disabled"/>
@@ -14011,6 +14025,7 @@ from previous Chrome versions.
   <int value="-119055644" label="GenericSensor:enabled"/>
   <int value="-118993417" label="TLS13HardeningForLocalAnchors:disabled"/>
   <int value="-118897826" label="IntensiveWakeUpThrottling:enabled"/>
+  <int value="-118545287" label="TabStripGlicButtonAndroid:disabled"/>
   <int value="-116829440" label="WebNNCoreMLExplicitGPUOrNPU:disabled"/>
   <int value="-116692797" label="HTTPAuthCommittedInterstitials:enabled"/>
   <int value="-115834377" label="EnableUnifiedMultiDeviceSetup:disabled"/>
@@ -14546,6 +14561,7 @@ from previous Chrome versions.
   <int value="65245449" label="FilesBannerFramework:enabled"/>
   <int value="65750425" label="OmniboxMostVisitedTilesDynamicSpacing:disabled"/>
   <int value="66897259" label="ModalPermissionDialogView:enabled"/>
+  <int value="67249017" label="AutoDocPiPPermissionPromptAndroid:disabled"/>
   <int value="67343657"
       label="LensOverlayTextSelectionContextMenuEntrypoint:disabled"/>
   <int value="67639499" label="stop-loading-in-background:disabled"/>
@@ -15474,6 +15490,8 @@ from previous Chrome versions.
   <int value="378948081"
       label="AutofillEnableInfoBarAccountIndicationFooter:disabled"/>
   <int value="378994579" label="Previews:enabled"/>
+  <int value="379062542"
+      label="EnableActivitylessSigninAllEntryPoint:disabled"/>
   <int value="379190682" label="ReorderBookmarks:enabled"/>
   <int value="379326303" label="enable-add-to-shelf"/>
   <int value="379397486" label="WebViewSupervisedUserSiteBlock:disabled"/>
@@ -15533,6 +15551,7 @@ from previous Chrome versions.
   <int value="399177140" label="FillingPasswordsFromAnyOrigin:enabled"/>
   <int value="399398207"
       label="OmniboxUIExperimentVerticalMarginLimitToNonTouchOnly:enabled"/>
+  <int value="399534946" label="AndroidTipsNotificationsV2:enabled"/>
   <int value="400239639" label="PrivacySandboxAdsAPIsOverride:enabled"/>
   <int value="400272381" label="LazyFrameLoading:disabled"/>
   <int value="400322063" label="ash-disable-screen-orientation-lock"/>
@@ -15984,6 +16003,7 @@ from previous Chrome versions.
   <int value="564355877" label="OopRasterizationDDL:disabled"/>
   <int value="564452531" label="SystemEmojiPickerExtension:enabled"/>
   <int value="564522013" label="Av1Decoder:disabled"/>
+  <int value="564811711" label="PersistAcrossRebootsDebugLogs:disabled"/>
   <int value="565002365" label="QuickOfficeForceFileDownload:disabled"/>
   <int value="565254510" label="LensRegionSearchStaticPage:disabled"/>
   <int value="565406673" label="EnableVirtualKeyboardMdUi:enabled"/>
@@ -18219,6 +18239,7 @@ from previous Chrome versions.
   <int value="1319537010"
       label="PolicyProvidedTrustAnchorsAllowedAtLockScreen:disabled"/>
   <int value="1319638975" label="UseWallpaperStagingUrl:disabled"/>
+  <int value="1319697431" label="PersistAcrossRebootsDebugLogs:enabled"/>
   <int value="1319725131" label="enable-distance-field-text"/>
   <int value="1319804064" label="YourSavedInfoSettingsPage:disabled"/>
   <int value="1320201920" label="enable-touchpad-three-finger-click"/>
@@ -19271,6 +19292,7 @@ from previous Chrome versions.
   <int value="1684043382" label="AssistantKeyRemapping:enabled"/>
   <int value="1684080951" label="ArcUnthrottleOnActiveAudio:enabled"/>
   <int value="1685280468" label="AppServiceShelf:enabled"/>
+  <int value="1685892690" label="AndroidTipsNotificationsV2:disabled"/>
   <int value="1686788127" label="AndroidKeyboardA11y:enabled"/>
   <int value="1687272287" label="HandwritingLibraryDlc:disabled"/>
   <int value="1687544136" label="AndroidManagedByMenuItem:enabled"/>
@@ -19493,6 +19515,7 @@ from previous Chrome versions.
   <int value="1761576233" label="OmniboxReportAssistedQueryStats:disabled"/>
   <int value="1761920078"
       label="OverrideSimilarLanguagesForHrefTranslate:enabled"/>
+  <int value="1762013378" label="AimUsePecApi:enabled"/>
   <int value="1762320532" label="AutofillKeyboardAccessory:enabled"/>
   <int value="1762346365"
       label="RevokeNotificationsPermissionIfDisabledOnAppLevel:enabled"/>
@@ -25170,6 +25193,7 @@ Called by update_net_error_codes.py.-->
   <int value="11" label="OptimizationGuidePushNotification"/>
   <int value="12" label="SendTabToSelfPushNotification"/>
   <int value="13" label="DesktopToMobilePromoPushNotification"/>
+  <int value="14" label="OneTimeTokenBackendTickle"/>
 </enum>
 
 <enum name="SharingScreenshotAction">
@@ -25617,10 +25641,8 @@ Called by update_net_error_codes.py.-->
 <enum name="SqliteErrorCode">
   <summary>Error codes returned by SQLite - see sqlite3.h</summary>
   <int value="0" label="SQLITE_OK">Successful result</int>
-  <int value="1" label="SQLITE_ERROR">SQL error or missing database</int>
-  <int value="2" label="SQLITE_INTERNAL">
-    NOT USED. Internal logic error in SQLite
-  </int>
+  <int value="1" label="SQLITE_ERROR">Generic error</int>
+  <int value="2" label="SQLITE_INTERNAL">Internal logic error in SQLite</int>
   <int value="3" label="SQLITE_PERM">Access permission denied</int>
   <int value="4" label="SQLITE_ABORT">Callback routine requested an abort</int>
   <int value="5" label="SQLITE_BUSY">The database file is locked</int>
@@ -25639,20 +25661,18 @@ Called by update_net_error_codes.py.-->
     The database disk image is malformed
   </int>
   <int value="12" label="SQLITE_NOTFOUND">
-    NOT USED. Table or record not found
+    Unknown opcode in sqlite3_file_control()
   </int>
   <int value="13" label="SQLITE_FULL">
     Insertion failed because database is full
   </int>
   <int value="14" label="SQLITE_CANTOPEN">Unable to open the database file</int>
-  <int value="15" label="SQLITE_PROTOCOL">
-    NOT USED. Database lock protocol error
-  </int>
-  <int value="16" label="SQLITE_EMPTY">Database is empty</int>
+  <int value="15" label="SQLITE_PROTOCOL">Database lock protocol error</int>
+  <int value="16" label="SQLITE_EMPTY">Internal use only</int>
   <int value="17" label="SQLITE_SCHEMA">The database schema changed</int>
   <int value="18" label="SQLITE_TOOBIG">String or BLOB exceeds size limit</int>
   <int value="19" label="SQLITE_CONSTRAINT">
-    Abort due to contraint violation
+    Abort due to constraint violation
   </int>
   <int value="20" label="SQLITE_MISMATCH">Data type mismatch</int>
   <int value="21" label="SQLITE_MISUSE">Library used incorrectly</int>
@@ -25660,9 +25680,9 @@ Called by update_net_error_codes.py.-->
     Uses OS features not supported on host
   </int>
   <int value="23" label="SQLITE_AUTH">Authorization denied</int>
-  <int value="24" label="SQLITE_FORMAT">Auxiliary database format error</int>
+  <int value="24" label="SQLITE_FORMAT">Not used</int>
   <int value="25" label="SQLITE_RANGE">
-    2nd parameter to sqlite3_bind() out of range
+    2nd parameter to sqlite3_bind out of range
   </int>
   <int value="26" label="SQLITE_NOTADB">
     File opened that is not a database file
@@ -25673,6 +25693,8 @@ Called by update_net_error_codes.py.-->
   <int value="101" label="SQLITE_DONE">
     sqlite3_step() has finished executing
   </int>
+  <int value="256" label="SQLITE_OK_LOAD_PERMANENTLY">TBD</int>
+  <int value="257" label="SQLITE_ERROR_MISSING_COLLSEQ">TBD</int>
   <int value="261" label="SQLITE_BUSY_RECOVERY">TBD</int>
   <int value="262" label="SQLITE_LOCKED_SHAREDCACHE">TBD</int>
   <int value="264" label="SQLITE_READONLY_RECOVERY">TBD</int>
@@ -25683,8 +25705,11 @@ Called by update_net_error_codes.py.-->
   <int value="279" label="SQLITE_AUTH_USER">TBD</int>
   <int value="283" label="SQLITE_NOTICE_RECOVER_WAL">TBD</int>
   <int value="284" label="SQLITE_WARNING_AUTOINDEX">TBD</int>
+  <int value="512" label="SQLITE_OK_SYMLINK">TBD</int>
+  <int value="513" label="SQLITE_ERROR_RETRY">TBD</int>
   <int value="516" label="SQLITE_ABORT_ROLLBACK">TBD</int>
   <int value="517" label="SQLITE_BUSY_SNAPSHOT">TBD</int>
+  <int value="518" label="SQLITE_LOCKED_VTAB">TBD</int>
   <int value="520" label="SQLITE_READONLY_CANTLOCK">TBD</int>
   <int value="522" label="SQLITE_IOERR_SHORT_READ">Short read from file</int>
   <int value="526" label="SQLITE_CANTOPEN_ISDIR">
@@ -25692,29 +25717,37 @@ Called by update_net_error_codes.py.-->
   </int>
   <int value="531" label="SQLITE_CONSTRAINT_COMMITHOOK">TBD</int>
   <int value="539" label="SQLITE_NOTICE_RECOVER_ROLLBACK">TBD</int>
+  <int value="769" label="SQLITE_ERROR_SNAPSHOT">TBD</int>
+  <int value="773" label="SQLITE_BUSY_TIMEOUT">TBD</int>
   <int value="776" label="SQLITE_READONLY_ROLLBACK">
     Cannot rollback due to readonly file
   </int>
   <int value="778" label="SQLITE_IOERR_WRITE">
     Error writing to file (other than SQLITE_FULL)
   </int>
+  <int value="779" label="SQLITE_CORRUPT_INDEX">TBD</int>
   <int value="782" label="SQLITE_CANTOPEN_FULLPATH">TBD</int>
   <int value="787" label="SQLITE_CONSTRAINT_FOREIGNKEY">
     Constraint failure due to foreign key violation
   </int>
+  <int value="795" label="SQLITE_NOTICE_RBU">TBD</int>
   <int value="1032" label="SQLITE_READONLY_DBMOVED">
     Readonly because database file was moved or unlinked while open
   </int>
   <int value="1034" label="SQLITE_IOERR_FSYNC">Error syncing to disk</int>
   <int value="1038" label="SQLITE_CANTOPEN_CONVPATH">TBD</int>
   <int value="1043" label="SQLITE_CONSTRAINT_FUNCTION">TBD</int>
+  <int value="1288" label="SQLITE_READONLY_CANTINIT">TBD</int>
   <int value="1290" label="SQLITE_IOERR_DIR_FSYNC">
     Error syncing directory changes to disk
   </int>
+  <int value="1294" label="SQLITE_CANTOPEN_DIRTYWAL">TBD</int>
   <int value="1299" label="SQLITE_CONSTRAINT_NOTNULL">
     NOTNULL constraint violated
   </int>
+  <int value="1544" label="SQLITE_READONLY_DIRECTORY">TBD</int>
   <int value="1546" label="SQLITE_IOERR_TRUNCATE">Error truncating file</int>
+  <int value="1550" label="SQLITE_CANTOPEN_SYMLINK">TBD</int>
   <int value="1555" label="SQLITE_CONSTRAINT_PRIMARYKEY">
     Primary key not unique
   </int>
@@ -25735,7 +25768,9 @@ Called by update_net_error_codes.py.-->
   <int value="2826" label="SQLITE_IOERR_BLOCKED">
     Deadlock due to other process access to SQLite files
   </int>
+  <int value="2835" label="SQLITE_CONSTRAINT_PINNED">TBD</int>
   <int value="3082" label="SQLITE_IOERR_NOMEM">Error mapping shared memory</int>
+  <int value="3091" label="SQLITE_CONSTRAINT_DATATYPE">TBD</int>
   <int value="3338" label="SQLITE_IOERR_ACCESS">
     Error getting file attributes (other than not found)
   </int>
@@ -25756,6 +25791,14 @@ Called by update_net_error_codes.py.-->
   <int value="6154" label="SQLITE_IOERR_MMAP">TBD</int>
   <int value="6410" label="SQLITE_IOERR_GETTEMPPATH">TBD</int>
   <int value="6666" label="SQLITE_IOERR_CONVPATH">TBD</int>
+  <int value="6922" label="SQLITE_IOERR_VNODE">TBD</int>
+  <int value="7178" label="SQLITE_IOERR_AUTH">TBD</int>
+  <int value="7434" label="SQLITE_IOERR_BEGIN_ATOMIC">TBD</int>
+  <int value="7690" label="SQLITE_IOERR_COMMIT_ATOMIC">TBD</int>
+  <int value="7946" label="SQLITE_IOERR_ROLLBACK_ATOMIC">TBD</int>
+  <int value="8202" label="SQLITE_IOERR_DATA">TBD</int>
+  <int value="8458" label="SQLITE_IOERR_CORRUPTFS">TBD</int>
+  <int value="8714" label="SQLITE_IOERR_IN_PAGE">TBD</int>
 </enum>
 
 <enum name="SqliteLoggedResultCode">
@@ -25829,6 +25872,7 @@ Called by update_net_error_codes.py.-->
   <int value="56" label="kIoCommitAtomic">SQLITE_IOERR_COMMIT_ATOMIC</int>
   <int value="57" label="kIoRollbackAtomic">SQLITE_IOERR_ROLLBACK_ATOMIC</int>
   <int value="58" label="kIoCorruptFileSystem">SQLITE_IOERR_CORRUPTFS</int>
+  <int value="59" label="kIoInPage">SQLITE_IOERR_IN_PAGE</int>
 </enum>
 
 <enum name="SSLCipherSuite">

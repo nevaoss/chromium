@@ -16,6 +16,7 @@
 #include "components/keyed_service/core/keyed_service.h"
 #include "content/public/browser/frame_tree_node_id.h"
 #include "net/base/backoff_entry.h"
+#include "third_party/omnibox_proto/chrome_aim_entry_point.pb.h"
 #include "url/gurl.h"
 
 class AimEligibilityService;
@@ -111,6 +112,11 @@ class ContextualTasksUiService : public KeyedService {
   // Returns the contextual_task UI for a task.
   virtual GURL GetContextualTaskUrlForTask(const base::Uuid& task_id);
 
+  // Sets the entry point override for a given task.
+  virtual void SetInitialEntryPointForTask(
+      const base::Uuid& task_id,
+      omnibox::ChromeAimEntryPoint entry_point);
+
   // Returns the URL that a task was created for. Once this is retrieved, the
   // entry is removed from the cache.
   virtual std::optional<GURL> GetInitialUrlForTask(const base::Uuid& uuid);
@@ -124,7 +130,8 @@ class ContextualTasksUiService : public KeyedService {
   // loaded in the absence of any other context.
   virtual GURL GetDefaultAiPageUrl();
 
-  // Called when a UI in a given browser window started showing a new task,
+  // Returns the URL for the default AI page for a given task.
+  virtual GURL GetDefaultAiPageUrlForTask(const base::Uuid& task_id);
   // either in a full tab or in the side panel. If |task_id| is invalid, the
   // UI is in a zero-state that is waiting for user to create a new task.
   virtual void OnTaskChanged(BrowserWindowInterface* browser_window_interface,
@@ -206,7 +213,13 @@ class ContextualTasksUiService : public KeyedService {
 
   // Fetches an access token for the primary account.
   using GetAccessTokenCallback = base::OnceCallback<void(const std::string&)>;
-  virtual void GetAccessToken(GetAccessTokenCallback callback);
+  virtual void GetAccessToken(
+      GetAccessTokenCallback callback,
+      base::WeakPtr<content::WebContents> web_contents);
+
+  // Gets the entry point override for a given task.
+  omnibox::ChromeAimEntryPoint GetInitialEntryPointForTask(
+      const base::Uuid& task_id);
 
   base::WeakPtr<ContextualTasksUiService> GetWeakPtr() {
     return weak_ptr_factory_.GetWeakPtr();
@@ -235,6 +248,10 @@ class ContextualTasksUiService : public KeyedService {
   void OnOAuthTokenReceived(GoogleServiceAuthError error,
                             signin::AccessTokenInfo access_token_info);
 
+  // Shows the OAuth error dialog for the given `web_contents`.
+  void ShowOauthErrorDialogForWebContents(
+      base::WeakPtr<content::WebContents> web_contents);
+
   // Runs all pending access token callbacks with the provided token.
   void RunPendingAccessTokenCallbacks(const std::string& token);
 
@@ -260,7 +277,9 @@ class ContextualTasksUiService : public KeyedService {
   std::unique_ptr<signin::AccessTokenFetcher> access_token_fetcher_;
 
   // Pending access token callbacks.
-  std::vector<GetAccessTokenCallback> pending_access_token_callbacks_;
+  std::vector<
+      std::pair<GetAccessTokenCallback, base::WeakPtr<content::WebContents>>>
+      pending_access_token_callbacks_;
 
   // Backoff entry used to control the retry logic for the OAuth token request.
   net::BackoffEntry request_access_token_backoff_;
@@ -276,6 +295,13 @@ class ContextualTasksUiService : public KeyedService {
   // intercepting a query from some other surface like the omnibox. The entry
   // in this map is removed once the UI is loaded with the correct thread.
   std::map<base::Uuid, GURL> task_id_to_creation_url_;
+
+  // Map a task's ID to the entry point that was used to open it. This is used
+  // to populate the aep param for GetInitialUrlForTask.
+  // TODO(crbug.com/480176325): Clean the contents of the map when tasks
+  // are cleaned up.
+  std::map<base::Uuid, omnibox::ChromeAimEntryPoint>
+      task_id_to_entry_point_override_;
 
   // Whether to allow active tab context to be suggested on compose box
   // automatically.

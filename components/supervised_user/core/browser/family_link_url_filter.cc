@@ -183,17 +183,6 @@ FilteringBehavior GetDefaultFilteringBehavior(const PrefService& pref_service) {
   return static_cast<FilteringBehavior>(behavior_value);
 }
 
-FilteringBehavior GetBehaviorFromSafeSearchClassification(
-    safe_search_api::Classification classification) {
-  switch (classification) {
-    case safe_search_api::Classification::SAFE:
-      return FilteringBehavior::kAllow;
-    case safe_search_api::Classification::UNSAFE:
-      return FilteringBehavior::kBlock;
-  }
-  NOTREACHED();
-}
-
 bool IsSameDomain(const GURL& url1, const GURL& url2) {
   return net::registry_controlled_domains::SameDomainOrHost(
       url1, url2, EXCLUDE_PRIVATE_REGISTRIES);
@@ -392,6 +381,9 @@ void FamilyLinkUrlFilter::OnFamilyLinkSettingsChanged(
   // Refresh auxiliary data structures.
   UpdateManualHosts();
   UpdateManualUrls();
+
+  // And notify the delegate owner that the settings have changed.
+  NotifyUrlFilteringDelegateChanged();
 }
 
 FamilyLinkUrlFilter::ManagedSiteList
@@ -620,13 +612,13 @@ void FamilyLinkUrlFilter::GetFilteringBehavior(
     const WebFilterMetricsOptions& options) {
   WebFilteringResult result = GetFilteringBehavior(url);
   if (result.IsAllowedBecauseOfDisabledFilter()) {
-    NotifyCallerAndObservers(std::move(callback), result);
+    std::move(callback).Run(result);
     return;
   }
 
   callback = WrapCallbackWithMetrics(std::move(callback), options);
   if (result.IsAllowed() && !result.IsFromDefaultSetting()) {
-    NotifyCallerAndObservers(std::move(callback), result);
+    std::move(callback).Run(result);
     return;
   }
 
@@ -634,7 +626,7 @@ void FamilyLinkUrlFilter::GetFilteringBehavior(
     // Any non-default reason trumps the async checker.
     // Also, if we're blocking anyway, then there's no need to check it.
     if (!result.IsFromDefaultSetting() || result.IsBlocked()) {
-      NotifyCallerAndObservers(std::move(callback), result);
+      std::move(callback).Run(result);
       return;
     }
   }
@@ -650,7 +642,7 @@ void FamilyLinkUrlFilter::GetFilteringBehaviorForSubFrame(
     const WebFilterMetricsOptions& options) {
   WebFilteringResult result = GetFilteringBehavior(url);
   if (result.IsAllowedBecauseOfDisabledFilter()) {
-    NotifyCallerAndObservers(std::move(callback), result);
+    std::move(callback).Run(result);
     return;
   }
 
@@ -658,7 +650,7 @@ void FamilyLinkUrlFilter::GetFilteringBehaviorForSubFrame(
 
   // If the reason is not default, then it is manually allowed or blocked.
   if (!result.IsFromDefaultSetting()) {
-    NotifyCallerAndObservers(std::move(callback), result);
+    std::move(callback).Run(result);
     return;
   }
 
@@ -666,7 +658,7 @@ void FamilyLinkUrlFilter::GetFilteringBehaviorForSubFrame(
   // the same domain as the main frame, block the subframe.
   if (result.IsBlocked() && !IsSameDomain(url, main_frame_url)) {
     // It is not in the same domain and is blocked.
-    NotifyCallerAndObservers(std::move(callback), result);
+    std::move(callback).Run(result);
     return;
   }
 
@@ -736,14 +728,6 @@ FamilyLinkUrlFilter::Statistics FamilyLinkUrlFilter::GetFilteringStatistics()
   return statistics_;
 }
 
-void FamilyLinkUrlFilter::AddObserver(Observer* observer) {
-  observers_.AddObserver(observer);
-}
-
-void FamilyLinkUrlFilter::RemoveObserver(Observer* observer) {
-  observers_.RemoveObserver(observer);
-}
-
 WebFilterType FamilyLinkUrlFilter::GetWebFilterType() const {
   if (base::FeatureList::IsEnabled(kSupervisedUserUseUrlFilteringService)) {
     return family_link_settings_service_->GetWebFilterType();
@@ -781,36 +765,12 @@ void FamilyLinkUrlFilter::RunAsyncChecker(
   CHECK(async_url_checker_) << "Filter must always have a checker.";
   async_url_checker_->CheckURL(
       url_matcher::util::Normalize(url),
-      base::BindOnce(&FamilyLinkUrlFilter::CheckCallback,
-                     weak_factory_.GetWeakPtr(), std::move(callback), url));
+      WebFilteringResult::BindUrlCheckerCallback(std::move(callback), url));
 }
 
 void FamilyLinkUrlFilter::SetURLCheckerClientForTesting(
     std::unique_ptr<safe_search_api::URLCheckerClient> url_checker_client) {
   async_url_checker_.reset(
       new safe_search_api::URLChecker(std::move(url_checker_client)));
-}
-
-void FamilyLinkUrlFilter::CheckCallback(
-    WebFilteringResult::Callback callback,
-    const GURL& requested_url,
-    const GURL& checked_url,
-    safe_search_api::Classification classification,
-    safe_search_api::ClassificationDetails details) const {
-  NotifyCallerAndObservers(
-      std::move(callback),
-      {.url = requested_url,
-       .behavior = GetBehaviorFromSafeSearchClassification(classification),
-       .reason = supervised_user::FilteringBehaviorReason::ASYNC_CHECKER,
-       .async_check_details = details});
-}
-
-void FamilyLinkUrlFilter::NotifyCallerAndObservers(
-    WebFilteringResult::Callback callback,
-    WebFilteringResult result) const {
-  std::move(callback).Run(result);
-  for (Observer& observer : observers_) {
-    observer.OnURLChecked(result);
-  }
 }
 }  // namespace supervised_user

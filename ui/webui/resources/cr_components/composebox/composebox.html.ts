@@ -44,7 +44,8 @@ export function getHtml(this: ComposeboxElement) {
     .errorMessage="${this.errorMessage_}"
     @dismiss-error-scrim="${this.onErrorScrimDismissed_}">
   </ntp-error-scrim>
-  <div id="composebox" @keydown="${this.onKeydown_}"
+  <div id="composebox" ?inert="${this.errorMessage_}"
+      @keydown="${this.onKeydown_}"
       @focusin="${this.handleComposeboxFocusIn_}"
       @focusout="${this.handleComposeboxFocusOut_}"
       @dragenter="${this.dragAndDropHandler_.handleDragEnter}"
@@ -67,8 +68,7 @@ export function getHtml(this: ComposeboxElement) {
             .value="${this.input_}"
             @input="${this.handleInput_}"
             @scroll="${this.handleScroll_}"
-            @focusin="${this.handleInputFocusIn_}"
-            @focusout="${this.handleInputFocusOut_}"></textarea>
+            @focusin="${this.handleInputFocusIn_}"></textarea>
           ${this.shouldShowSmartComposeInlineHint_() ? html`
             <div id="smartCompose" part="smart-compose">
               <!-- Comments in between spans to eliminate spacing between
@@ -107,9 +107,7 @@ export function getHtml(this: ComposeboxElement) {
           @add-file-context="${this.addFileContext_}"
           @delete-context="${this.deleteContext_}"
           @on-file-validation-error="${this.onFileValidationError_}"
-          @set-deep-search-mode="${this.setDeepSearchMode_}"
-          @set-create-image-mode="${this.setCreateImageMode_}"
-          @set-canvas-mode="${this.setCanvasMode_}"
+          @set-tool-mode="${this.onSetToolMode_}"
           @model-click="${this.onModelClick_}"
           @get-tab-preview="${this.getTabPreview_}"
           @open-file-dialog="${this.onOpenFileDialog_}"
@@ -121,7 +119,7 @@ export function getHtml(this: ComposeboxElement) {
           ?carousel-on-top_="${this.carouselOnTop_}"
           ?show-voice-search="${this.shouldShowVoiceSearch_()}"
           ?show-model-picker="${this.showModelPicker_}"
-          .submitButtonShown="${this.searchboxNextEnabled && this.submitEnabled_ && this.showSubmit_}">
+          .submitButtonShown="${this.searchboxNextEnabled && this.submitEnabled_}">
         <cr-composebox-dropdown
             id="matches"
             part="dropdown"
@@ -130,7 +128,7 @@ export function getHtml(this: ComposeboxElement) {
             .result="${this.result_}"
             .selectedMatchIndex="${this.selectedMatchIndex_}"
             .maxSuggestions="${this.maxSuggestions}"
-            .inDeepSearchMode="${this.inDeepSearchMode_}"
+            .toolMode="${this.activeToolMode_}"
             @selected-match-index-changed="${this.onSelectedMatchIndexChanged_}"
             @match-focusin="${this.onMatchFocusin_}"
             @match-click="${this.onMatchClick_}"

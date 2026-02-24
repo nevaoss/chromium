@@ -532,6 +532,12 @@ inline constexpr char kEnableSeamlessSigninDescription[] =
     "Enables the Seamless Sign-in flow that signs in the user without showing "
     "an additional bottom sheet when the sign-in promo button is clicked.";
 
+inline constexpr char kEnableActivitylessSigninAllEntryPointName[] =
+    "Enable activityless sign-in for all entry points";
+inline constexpr char kEnableActivitylessSigninAllEntryPointDescription[] =
+    "When enabled, activityless sign-in will be used for all entry points on "
+    "Android.";
+
 inline constexpr char kForceHistoryOptInScreenName[] =
     "Force history opt-in screen";
 inline constexpr char kForceHistoryOptInScreenDescription[] =
@@ -703,6 +709,12 @@ inline constexpr char kIsolatedSandboxedIframesDescription[] =
     "header, even in the main frame. The affected sandboxed documents can be "
     "grouped into processes based on their URL's site or origin. The default "
     "grouping when enabled is per-site.";
+
+inline constexpr char kAutoDocPiPPermissionPromptAndroidName[] =
+    "Auto Document Picture-in-Picture Permission Prompt on Android";
+inline constexpr char kAutoDocPiPPermissionPromptAndroidDescription[] =
+    "Enables the Auto Document Picture-in-Picture permission prompt on "
+    "Android.";
 
 inline constexpr char kAutofillAndroidDesktopSuppressAccessoryOnEmptyName[] =
     "Enable suppressing keyboard accessory on android desktop";
@@ -3688,12 +3700,6 @@ inline constexpr char kRecordWebAppDebugInfoDescription[] =
     "Enables recording additional web app related debugging data to be "
     "displayed in: chrome://web-app-internals";
 
-inline constexpr char kReduceIPAddressChangeNotificationName[] =
-    "Reduce IP address change notification";
-inline constexpr char kReduceIPAddressChangeNotificationDescription[] =
-    "Reduce the frequency of IP address change notifications that result in "
-    "TCP and QUIC connection resets.";
-
 inline constexpr char kReduceTransferSizeUpdatedIPCName[] =
     "Reduce TransferSizeUpdated IPC";
 inline constexpr char kReduceTransferSizeUpdatedIPCDescription[] =
@@ -3791,20 +3797,6 @@ inline constexpr char kTestThirdPartyCookiePhaseoutName[] =
 inline constexpr char kTestThirdPartyCookiePhaseoutDescription[] =
     "Enable to test third-party cookie phaseout. "
     "Learn more: https://goo.gle/3pcd-flags";
-
-inline constexpr char kTabstripComboButtonFlagId[] = "tabstrip-combo-button";
-inline constexpr char kTabstripComboButtonName[] = "Tabstrip Combo Button";
-inline constexpr char kTabstripComboButtonDescription[] =
-    "Combines tab search and the new tab button into a single combo button. "
-    "Might require tab search toolbar flag to be disabled to take effect in "
-    "specific regions.";
-
-inline constexpr char kLaunchedTabSearchToolbarName[] =
-    "Tab Search Toolbar Button";
-inline constexpr char kLaunchedTabSearchToolbarDescription[] =
-    "Enables tab search button to be in toolbar area. "
-    "Might require enabling the tab strip combo button configuration to also "
-    "match to toolbar in specific regions.";
 
 inline constexpr char kVerticalTabsName[] = "Vertical Tabs";
 inline constexpr char kVerticalTabsDescription[] =
@@ -4774,12 +4766,6 @@ inline constexpr char kAccessibilityUnifiedSnapshotsDescription[] =
     "When enabled, use the experimental unified code path for AXTree "
     "snapshots.";
 
-inline constexpr char kAdaptiveButtonInTopToolbarPageSummaryName[] =
-    "Adaptive button in top toolbar - Page Summary";
-inline constexpr char kAdaptiveButtonInTopToolbarPageSummaryDescription[] =
-    "Enables a summary button in the top toolbar. Must be selected in "
-    "Settings > Toolbar Shortcut.";
-
 inline constexpr char kAlwaysDrawCompositedToolbarHairlineName[] =
     "Always Draw Composited Toolbar Hairline";
 inline constexpr char kAlwaysDrawCompositedToolbarHairlineDescription[] =
@@ -4943,6 +4929,11 @@ inline constexpr char kAndroidTipsNotificationsName[] =
     "Android Tips Notifications";
 inline constexpr char kAndroidTipsNotificationsDescription[] =
     "Enable tips notifications for supported features on Android.";
+
+inline constexpr char kAndroidTipsNotificationsV2Name[] =
+    "Android Tips Notifications V2";
+inline constexpr char kAndroidTipsNotificationsV2Description[] =
+    "Enable tips notifications V2 for supported features on Android.";
 
 inline constexpr char kAndroidEnableTWAOriginDisplayName[] =
     "Enable TWA origin display";
@@ -5253,27 +5244,6 @@ inline constexpr char kDrawChromePagesEdgeToEdgeName[] =
 inline constexpr char kDrawChromePagesEdgeToEdgeDescription[] =
     "Enables drawing more native pages and secondary activities edge-to-edge.";
 
-inline constexpr char kDrawCutoutEdgeToEdgeName[] = "DrawCutoutEdgeToEdge";
-inline constexpr char kDrawCutoutEdgeToEdgeDescription[] =
-    "Enables the Android feature Edge-to-Edge Feature to coordinate with the "
-    "Display Cutout for the notch when drawing below the Nav Bar.";
-
-inline constexpr char kEdgeToEdgeBottomChinName[] = "EdgeToEdgeBottomChin";
-inline constexpr char kEdgeToEdgeBottomChinDescription[] =
-    "Enables the scrollable bottom chin for an intermediate Edge-to-Edge "
-    "experience.";
-
-inline constexpr char kEdgeToEdgeEverywhereName[] = "EdgeToEdgeEverywhere";
-inline constexpr char kEdgeToEdgeEverywhereDescription[] =
-    "Enables Chrome to draw below the system bars, all the time. This is "
-    "intended "
-    "to facilitate the transition to edge-to-edge being enforced at the system "
-    "level.";
-
-inline constexpr char kEdgeToEdgeTabletName[] = "EdgeToEdgeTablet";
-inline constexpr char kEdgeToEdgeTabletDescription[] =
-    "Enables the Android feature Edge-to-Edge on tablets";
-
 inline constexpr char kEnableAccessibilityLabeledByName[] =
     "Enable Accessibility LabeledBy";
 inline constexpr char kEnableAccessibilityLabeledByDescription[] =
@@ -5476,6 +5446,11 @@ inline constexpr char kOmniboxAutofocusOnIncognitoNtpName[] =
 inline constexpr char kOmniboxAutofocusOnIncognitoNtpDescription[] =
     "Enables the Omnibox to automatically gain focus when the New "
     "Tab Page in Incognito mode is opened, allowing immediate typing.";
+
+inline constexpr char kPersistAcrossRebootsDebugLogsName[] =
+    "persist-across-reboots-debug-logs";
+inline constexpr char kPersistAcrossRebootsDebugLogsDescription[] =
+    "Enables logs related to the persist across reboots feature.";
 
 inline constexpr char kPersistAcrossRebootsName[] = "persist-across-reboots";
 inline constexpr char kPersistAcrossRebootsDescription[] =
@@ -5703,11 +5678,10 @@ inline constexpr char kTabStripEmptySpaceContextMenuAndroidName[] =
 inline constexpr char kTabStripEmptySpaceContextMenuAndroidDescription[] =
     "Enables the context menu on the empty space of the tab strip.";
 
-inline constexpr char kTabStripIncognitoMigrationName[] =
-    "Tab Strip Incognito switcher migration to toolbar";
-inline constexpr char kTabStripIncognitoMigrationDescription[] =
-    "Migrates tab strip incognito switcher to toolbar and adds options to tab "
-    "switcher context menu.";
+inline constexpr char kTabStripGlicButtonAndroidName[] =
+    "Tab Strip Glic Button";
+inline constexpr char kTabStripGlicButtonAndroidDescription[] =
+    "Enables the Glic button on the tab strip.";
 
 inline constexpr char kToolbarSnapshotRefactorName[] =
     "Toolbar Snapshot Refactor";
@@ -5740,6 +5714,11 @@ inline constexpr char kUpdateMenuTypeNone[] = "None";
 inline constexpr char kUpdateMenuTypeUpdateAvailable[] = "Update Available";
 inline constexpr char kUpdateMenuTypeUnsupportedOSVersion[] =
     "Unsupported OS Version";
+
+inline constexpr char kAimUsePecApiName[] = "Use PEC API";
+inline constexpr char kAimUsePecApiDescription[] =
+    "When enabled, all composebox context menus will use the `SearchboxConfig` "
+    "from the PEC API.";
 
 inline constexpr char kUpdaterUIName[] = "Chrome Updater UI";
 inline constexpr char kUpdaterUIDescription[] =
@@ -5885,12 +5864,6 @@ inline constexpr char kEnableShouldShowPromotionName[] =
     "Enable Chrome Web Store Promotion Banner";
 inline constexpr char kEnableShouldShowPromotionDescription[] =
     "Enables showing the promotion banner on chromewebstore page.";
-
-inline constexpr char kImprovedPasswordChangeServiceName[] =
-    "Improved password change service";
-inline constexpr char kImprovedPasswordChangeServiceDescription[] =
-    "Experimental feature, which offers automatic password change to the user "
-    "when they sign in with a credential known to be leaked.";
 
 inline constexpr char kInfiniteTabsFreezingName[] = "Infinite Tabs Freezing";
 inline constexpr char kInfiniteTabsFreezingDescription[] =

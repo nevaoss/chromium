@@ -39,6 +39,7 @@
 #import "ios/chrome/browser/incognito_reauth/ui_bundled/incognito_reauth_constants.h"
 #import "ios/chrome/browser/incognito_reauth/ui_bundled/incognito_reauth_scene_agent.h"
 #import "ios/chrome/browser/incognito_reauth/ui_bundled/incognito_reauth_view.h"
+#import "ios/chrome/browser/intelligence/bwg/utils/bwg_constants.h"
 #import "ios/chrome/browser/intelligence/features/features.h"
 #import "ios/chrome/browser/intents/model/intents_donation_helper.h"
 #import "ios/chrome/browser/main_content/ui_bundled/main_content_ui.h"
@@ -914,24 +915,28 @@ const CGFloat kMultilineOmniboxAnimationDuration = 0.3f;
 
   // Create the typing shield.  It is initially hidden, and is made visible when
   // the keyboard appears.
-  self.typingShield = [[UIButton alloc] initWithFrame:initialViewsRect];
-  self.typingShield.hidden = YES;
-  self.typingShield.autoresizingMask = initialViewAutoresizing;
-  self.typingShield.accessibilityIdentifier = @"Typing Shield";
-  self.typingShield.accessibilityLabel = l10n_util::GetNSString(IDS_CANCEL);
-  if (ui::GetDeviceFormFactor() == ui::DEVICE_FORM_FACTOR_TABLET) {
-    self.typingShield.backgroundColor =
-        [UIColor colorNamed:kOmniboxPopoutOverlayColor];
+  if (!IsComposeboxIpadEnabled()) {
+    self.typingShield = [[UIButton alloc] initWithFrame:initialViewsRect];
+    self.typingShield.hidden = YES;
+    self.typingShield.autoresizingMask = initialViewAutoresizing;
+    self.typingShield.accessibilityIdentifier = @"Typing Shield";
+    self.typingShield.accessibilityLabel = l10n_util::GetNSString(IDS_CANCEL);
+    if (ui::GetDeviceFormFactor() == ui::DEVICE_FORM_FACTOR_TABLET) {
+      self.typingShield.backgroundColor =
+          [UIColor colorNamed:kOmniboxPopoutOverlayColor];
+    }
+    [self.typingShield addTarget:self
+                          action:@selector(shieldWasTapped:)
+                forControlEvents:UIControlEventTouchUpInside];
   }
-  [self.typingShield addTarget:self
-                        action:@selector(shieldWasTapped:)
-              forControlEvents:UIControlEventTouchUpInside];
   self.view.autoresizingMask = initialViewAutoresizing;
 
   [self addChildViewController:self.browserContentViewController];
   [self.view addSubview:self.contentArea];
   [self.browserContentViewController didMoveToParentViewController:self];
-  [self.view addSubview:self.typingShield];
+  if (!IsComposeboxIpadEnabled()) {
+    [self.view addSubview:self.typingShield];
+  }
   [super viewDidLoad];
 
   // Install fake status bar for iPad iOS7
@@ -1135,13 +1140,8 @@ const CGFloat kMultilineOmniboxAnimationDuration = 0.3f;
   __weak BrowserViewController* weakSelf = self;
   [super dismissViewControllerAnimated:flag
                             completion:^{
-                              BrowserViewController* strongSelf = weakSelf;
-                              strongSelf.dismissingModal = NO;
-                              if (completion) {
-                                completion();
-                              }
-                              [strongSelf.geminiHandler
-                                  updateFloatyVisibilityIfEligibleAnimated:NO];
+                              [weakSelf viewControllerDismissedWithCompletion:
+                                            completion];
                             }];
 }
 
@@ -1211,7 +1211,9 @@ const CGFloat kMultilineOmniboxAnimationDuration = 0.3f;
   // would be changed back to `kVisible` afterwards. Fix the bug and update the
   // visibility state.
 
-  [self.geminiHandler hideFloatyIfInvokedAnimated:YES];
+  [self.geminiHandler
+      hideFloatyIfInvokedAnimated:YES
+                       fromSource:gemini::FloatyUpdateSource::ViewTransition];
   void (^superCall)() = ^{
     [super presentViewController:viewControllerToPresent
                         animated:flag
@@ -1905,6 +1907,19 @@ const CGFloat kMultilineOmniboxAnimationDuration = 0.3f;
       ]];
     }
   }
+}
+
+// Helper method for dismissing view controller with `completion` block.
+- (void)viewControllerDismissedWithCompletion:(void (^)())completion {
+  self.dismissingModal = NO;
+  if (completion) {
+    completion();
+  }
+
+  [self.geminiHandler
+      updateFloatyVisibilityIfEligibleAnimated:NO
+                                    fromSource:gemini::FloatyUpdateSource::
+                                                   ViewTransition];
 }
 
 #pragma mark - Private Methods: Tap handling
@@ -2926,22 +2941,6 @@ const CGFloat kMultilineOmniboxAnimationDuration = 0.3f;
   return nil;
 }
 
-#pragma mark - LensPresentationDelegate
-
-- (CGRect)webContentAreaForLensCoordinator:(LensCoordinator*)lensCoordinator {
-  DCHECK(lensCoordinator);
-
-  // The LensCoordinator needs the content area of the webView with the
-  // header and footer toolbars visible.
-  UIEdgeInsets viewportInsets = self.rootSafeAreaInsets;
-  if (!CanShowTabStrip(self)) {
-    viewportInsets.bottom = [self secondaryToolbarHeightWithInset];
-  }
-
-  viewportInsets.top = [self expandedTopToolbarHeight];
-  return UIEdgeInsetsInsetRect(self.contentArea.bounds, viewportInsets);
-}
-
 #pragma mark - ContextualSheetPresenter
 
 - (void)insertContextualSheet:(UIView*)contextualSheet {
@@ -2957,7 +2956,9 @@ const CGFloat kMultilineOmniboxAnimationDuration = 0.3f;
     return;
   }
 
-  [self.geminiHandler hideFloatyIfInvokedAnimated:NO];
+  [self.geminiHandler
+      hideFloatyIfInvokedAnimated:NO
+                       fromSource:gemini::FloatyUpdateSource::Overlay];
 }
 
 - (void)lensOverlayWillAppear {
@@ -2977,7 +2978,10 @@ const CGFloat kMultilineOmniboxAnimationDuration = 0.3f;
     return;
   }
 
-  [self.geminiHandler updateFloatyVisibilityIfEligibleAnimated:NO];
+  [self.geminiHandler
+      updateFloatyVisibilityIfEligibleAnimated:NO
+                                    fromSource:gemini::FloatyUpdateSource::
+                                                   Overlay];
 }
 
 - (void)lensOverlayDidReadjustPresentation {

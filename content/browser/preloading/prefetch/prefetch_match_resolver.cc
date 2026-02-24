@@ -444,8 +444,7 @@ void PrefetchMatchResolver::StartWaitFor(const PrefetchKey& prefetch_key,
 
   // `kServable` -> `kNotServable` is the only possible change during
   // `FindPrefetchInternal()` call.
-  CHECK_EQ(prefetch_container.GetServableState(PrefetchCacheableDuration()),
-           servable_state);
+  CHECK_EQ(prefetch_container.GetServableState(), servable_state);
   switch (servable_state) {
     case PrefetchServableState::kServable:
     case PrefetchServableState::kNotServable:
@@ -522,14 +521,14 @@ void PrefetchMatchResolver::UnregisterCandidate(
 }
 
 void PrefetchMatchResolver::OnWillBeDestroyed(
-    PrefetchContainer& prefetch_container) {
+    const PrefetchContainer& prefetch_container) {
   MaybeUnblockForUnmatch(prefetch_container,
                          PrefetchPotentialCandidateServingResult::
                              kNotServedPrefetchWillBeDestroyed);
 }
 
 void PrefetchMatchResolver::OnGotInitialEligibility(
-    PrefetchContainer& prefetch_container,
+    const PrefetchContainer& prefetch_container,
     PreloadingEligibility eligibility) {
   CHECK(features::UsePrefetchPrerenderIntegration());
 
@@ -541,7 +540,7 @@ void PrefetchMatchResolver::OnGotInitialEligibility(
 }
 
 void PrefetchMatchResolver::OnDeterminedHead(
-    PrefetchContainer& prefetch_container) {
+    const PrefetchContainer& prefetch_container) {
   CHECK(candidates_.contains(prefetch_container.key()));
   CHECK(!prefetch_container.is_in_dtor());
 
@@ -568,10 +567,9 @@ void PrefetchMatchResolver::OnDeterminedHead(
     return;
   }
 
-  PrefetchServableState servable_state =
-      prefetch_container.GetServableState(PrefetchCacheableDuration());
+  PrefetchServableState servable_state = prefetch_container.GetServableState();
   PrefetchMatchResolverAction match_resolver_action =
-      prefetch_container.GetMatchResolverAction(PrefetchCacheableDuration());
+      prefetch_container.GetMatchResolverAction();
   switch (servable_state) {
     case PrefetchServableState::kShouldBlockUntilEligibilityGot:
       // All callsites of `PrefetchContainer::OnDeterminedHead()` are
@@ -656,8 +654,8 @@ void PrefetchMatchResolver::OnDeterminedHead(
       return;
   }
 
-  if (prefetch_container.CreateServingHandle()
-          .HaveDefaultContextCookiesChanged()) {
+  if (prefetch_container.CreateConstServingHandle()
+          ->HaveDefaultContextCookiesChanged()) {
     UnblockForCookiesChanged(prefetch_container.key());
     return;
   }
@@ -679,7 +677,7 @@ void PrefetchMatchResolver::OnDeterminedHead(
 }
 
 void PrefetchMatchResolver::OnPrefetchCompletedOrFailed(
-    PrefetchContainer& prefetch_container,
+    const PrefetchContainer& prefetch_container,
     const network::URLLoaderCompletionStatus& completion_status,
     const std::optional<int>& response_code) {}
 
@@ -905,9 +903,9 @@ void PrefetchMatchResolver::AttachPrefetchMatchPrerenderDebugMetrics() {
     metrics->prefetch_ahead_of_prerender_debug_metrics->prefetch_status =
         prefetch_container->GetPrefetchStatus();
     metrics->prefetch_ahead_of_prerender_debug_metrics->servable_state =
-        prefetch_container->GetServableState(PrefetchCacheableDuration());
+        prefetch_container->GetServableState();
     metrics->prefetch_ahead_of_prerender_debug_metrics->match_resolver_action =
-        prefetch_container->GetMatchResolverAction(PrefetchCacheableDuration());
+        prefetch_container->GetMatchResolverAction();
     metrics->prefetch_ahead_of_prerender_debug_metrics->queue_size =
         prefetch_service_->GetPrefetchSchedulerForMetrics()
             .GetQueueSizeForMetrics();

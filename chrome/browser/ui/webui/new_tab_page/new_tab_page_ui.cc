@@ -652,8 +652,7 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(Profile* profile) {
                      ntp_composebox::kContextMenuEnableMultiTabSelection.Get());
   source->AddBoolean("searchboxShowComposebox",
                      ntp_composebox::IsNtpComposeboxEnabled(profile));
-  source->AddBoolean("composeboxShowZps",
-                     ntp_composebox::kShowComposeboxZps.Get());
+  source->AddBoolean("composeboxShowZps", true);
   source->AddBoolean("composeboxShowTypedSuggest",
                      ntp_composebox::kShowComposeboxTypedSuggest.Get());
   source->AddBoolean("composeboxShowImageSuggest",
@@ -696,8 +695,6 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(Profile* profile) {
                          aim_eligibility_service->IsPdfUploadEligible() &&
                          composebox_config.is_pdf_upload_enabled();
   source->AddBoolean("composeboxShowPdfUpload", show_pdf_upload);
-
-  source->AddBoolean("composeboxShowSubmit", ntp_composebox::kShowSubmit.Get());
 
   source->AddBoolean("steadyComposeboxShowVoiceSearch",
                      ntp_composebox::kShowVoiceSearchInSteadyComposebox.Get());

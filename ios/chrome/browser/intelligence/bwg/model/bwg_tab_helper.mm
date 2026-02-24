@@ -186,7 +186,7 @@ void BwgTabHelper::GeneratePageContext(
       web_state_->IsLoading();
   if (should_update_context_after_page_load) {
     // TODO(crbug.com/466107255): Move waiting for page loading responsibility
-    // to BwgBrowserAgent.
+    // to GeminiBrowserAgent.
     base::OnceCallback<void()> pageContextPopulateCallback =
         base::BindOnce(&BwgTabHelper::PopulatePageContextFields,
                        weak_ptr_factory_.GetWeakPtr());
@@ -405,7 +405,10 @@ void BwgTabHelper::WasShown(web::WebState* web_state) {
   }
 
   if (IsGeminiCopresenceEnabled()) {
-    [bwg_commands_handler_ updateFloatyVisibilityIfEligibleAnimated:NO];
+    [bwg_commands_handler_
+        updateFloatyVisibilityIfEligibleAnimated:NO
+                                      fromSource:gemini::FloatyUpdateSource::
+                                                     WebNavigation];
   }
 }
 
@@ -426,7 +429,9 @@ void BwgTabHelper::WasHidden(web::WebState* web_state) {
     return;
   }
 
-  [bwg_commands_handler_ hideFloatyIfInvokedAnimated:NO];
+  [bwg_commands_handler_
+      hideFloatyIfInvokedAnimated:NO
+                       fromSource:gemini::FloatyUpdateSource::WebNavigation];
 }
 
 void BwgTabHelper::DidStartNavigation(
@@ -464,7 +469,8 @@ void BwgTabHelper::DidStartNavigation(
           new_url_without_ref,
           optimization_guide::proto::GLIC_ZERO_STATE_SUGGESTIONS,
           base::BindOnce(&BwgTabHelper::OnGeminiEligibilityDecision,
-                         weak_ptr_factory_.GetWeakPtr(), new_url_without_ref));
+                         weak_ptr_factory_.GetWeakPtr(), new_url_without_ref,
+                         can_request_metadata));
     } else {
       optimization_guide_decider_->CanApplyOptimizationOnDemand(
           {new_url_without_ref},
@@ -483,7 +489,10 @@ void BwgTabHelper::DidFinishNavigation(
     web::WebState* web_state,
     web::NavigationContext* navigation_context) {
   if (IsGeminiCopresenceEnabled()) {
-    [bwg_commands_handler_ updateFloatyVisibilityIfEligibleAnimated:NO];
+    [bwg_commands_handler_
+        updateFloatyVisibilityIfEligibleAnimated:NO
+                                      fromSource:gemini::FloatyUpdateSource::
+                                                     WebNavigation];
   }
 
   const GURL& current_url = navigation_context->GetUrl().GetWithoutRef();
@@ -763,6 +772,7 @@ bool BwgTabHelper::ComputeGeminiEligibility(
 
 void BwgTabHelper::OnGeminiEligibilityDecision(
     const GURL& url_without_ref,
+    bool user_enabled_request_metadata,
     optimization_guide::OptimizationGuideDecision decision,
     const optimization_guide::OptimizationMetadata& metadata) {
   // The URL has changed so the metadata is obsolete.
@@ -778,6 +788,7 @@ void BwgTabHelper::OnGeminiEligibilityDecision(
   ProfileIOS* profile =
       ProfileIOS::FromBrowserState(web_state_->GetBrowserState());
   if (eligible && IsGeminiImageRemixToolEnabled() &&
+      user_enabled_request_metadata &&
       feature_engagement::TrackerFactory::GetForProfile(profile)
           ->WouldTriggerHelpUI(
               feature_engagement::kIPHiOSGeminiImageRemixFeature) &&
@@ -796,13 +807,18 @@ void BwgTabHelper::OnGeminiEligibilityOnDemandDecision(
       decisions.find(optimization_guide::proto::GLIC_ZERO_STATE_SUGGESTIONS);
   if (it == decisions.end()) {
     // If the optimization type is missing, treat it as kTrue.
+    // On demand decisions are made for users who have not enabled metadata
+    // requests (MSBB).
     OnGeminiEligibilityDecision(
-        url_without_ref, optimization_guide::OptimizationGuideDecision::kTrue,
+        url_without_ref, false,
+        optimization_guide::OptimizationGuideDecision::kTrue,
         optimization_guide::OptimizationMetadata());
     return;
   }
 
-  OnGeminiEligibilityDecision(url_without_ref, it->second.decision,
+  // On demand decisions are made for users who have not enabled metadata
+  // requests (MSBB).
+  OnGeminiEligibilityDecision(url_without_ref, false, it->second.decision,
                               it->second.metadata);
 }
 

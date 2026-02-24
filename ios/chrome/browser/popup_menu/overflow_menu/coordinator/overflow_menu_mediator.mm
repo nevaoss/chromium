@@ -99,6 +99,7 @@
 #import "ios/chrome/browser/shared/public/features/system_flags.h"
 #import "ios/chrome/browser/shared/ui/symbols/symbols.h"
 #import "ios/chrome/browser/shared/ui/util/uikit_ui_util.h"
+#import "ios/chrome/browser/sharing/ui_bundled/sharing_metrics.h"
 #import "ios/chrome/browser/sharing/ui_bundled/sharing_params.h"
 #import "ios/chrome/browser/supervised_user/model/supervised_user_capabilities.h"
 #import "ios/chrome/browser/tab_switcher/ui_bundled/tab_utils.h"
@@ -1588,7 +1589,7 @@ OverflowMenuFooter* CreateOverflowMenuManagedFooter(
   self.openIncognitoTabAction.enterpriseDisabled =
       IsIncognitoModeDisabled(self.profilePrefs);
 
-  if (IsLensOverlayAvailable(_profilePrefs)) {
+  if (IsLensOverlayAllowedByPolicy(_profilePrefs)) {
     self.lensOverlayAction.enabled = ![self isLensOverlayVisible];
   }
 
@@ -1620,6 +1621,8 @@ OverflowMenuFooter* CreateOverflowMenuManagedFooter(
 
   if (base::FeatureList::IsEnabled(kShareInOverflowMenu) &&
       [self isCurrentURLWebURL]) {
+    base::UmaHistogramEnumeration("Mobile.ShareThisPage.Shown",
+                                  ShareThisPageLocation::kOverflowMenu);
     [appActions addObject:self.shareAction];
   }
 
@@ -1689,7 +1692,7 @@ OverflowMenuFooter* CreateOverflowMenuManagedFooter(
       search_engines::SupportsSearchImageWithLens(self.templateURLService);
   BOOL portraitOverride =
       IsLensOverlayLandscapeOrientationEnabled(_profilePrefs);
-  BOOL isAvailable = IsLensOverlayAvailable(_profilePrefs);
+  BOOL isAvailable = IsLensOverlayAllowedByPolicy(_profilePrefs);
   return isAvailable && isSupported && (isPortrait || portraitOverride) &&
          ![self isLensOverlayVisible];
 }
@@ -2493,9 +2496,10 @@ OverflowMenuFooter* CreateOverflowMenuManagedFooter(
 }
 
 - (void)shareThisPage {
-  RecordAction(UserMetricsAction("MobileMenuShareThisPage"));
+  base::UmaHistogramEnumeration("Mobile.ShareThisPage.Used",
+                                ShareThisPageLocation::kOverflowMenu);
   [self dismissMenu];
-  [self.activityServiceHandler showShareSheet];
+  [self.activityServiceHandler showShareSheetFromShareButton:nil];
 }
 
 // Dismisses the menu and requests the mobile version of the current page

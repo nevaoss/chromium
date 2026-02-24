@@ -23,7 +23,9 @@ class View;
 class ViewTracker;
 }  // namespace views
 
-// Container that holds the pinned and unpinned tabs in the vertical tab strip.
+// The view class for vertical tab strip which holds the pinned and unpinned
+// regions and associates them to their scroll views. It also is responsible for
+// scrolling to the active tab view when the active tab changes.
 class VerticalTabStripView final : public views::View,
                                    public views::LayoutDelegate,
                                    public TabStripModelObserver {
@@ -51,6 +53,7 @@ class VerticalTabStripView final : public views::View,
 
   // views::View:
   gfx::Size GetMinimumSize() const override;
+  void OnMouseEntered(const ui::MouseEvent& event) override;
 
   // TabStripModelObserver:
   void OnTabStripModelChanged(
@@ -69,7 +72,7 @@ class VerticalTabStripView final : public views::View,
       views::ScrollView* scroll_view,
       std::unique_ptr<views::ViewTracker> tracked_view);
 
-  raw_ptr<TabCollectionNode> collection_node_;
+  raw_ptr<TabCollectionNode> collection_node_ = nullptr;
   raw_ptr<views::ScrollView> pinned_tabs_scroll_view_ = nullptr;
   raw_ptr<VerticalPinnedTabContainerView> pinned_tabs_container_view_ = nullptr;
   raw_ptr<views::Separator> tabs_separator_ = nullptr;

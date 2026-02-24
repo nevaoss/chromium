@@ -446,15 +446,10 @@ void HTMLCanvasElement::AttributeChanged(
   HTMLElement::AttributeChanged(params);
   if (RuntimeEnabledFeatures::CanvasDrawElementEnabled() &&
       params.name == html_names::kLayoutsubtreeAttr) {
-    SetNeedsStyleRecalc(
-        kSubtreeStyleChange,
-        StyleChangeReasonForTracing::Create(style_change_reason::kAttribute));
-    SetForceReattachLayoutTree();
-    if (auto* object = GetLayoutObject()) {
-      object->SetNeedsLayout(layout_invalidation_reason::kAttributeChanged);
-      // Ensure paint artifact compositor does an update, since that's the
-      // mechanism we use to pass canvas draw element ids to the compositor.
-      object->GetFrameView()->SetPaintArtifactCompositorNeedsUpdate();
+    bool had_layoutsubtree = !params.old_value.IsNull();
+    bool has_layoutsubtree = !params.new_value.IsNull();
+    if (had_layoutsubtree != has_layoutsubtree) {
+      setLayoutSubtree(has_layoutsubtree);
     }
   }
 }
@@ -507,6 +502,13 @@ void HTMLCanvasElement::setWidth(unsigned value,
 
 void HTMLCanvasElement::setLayoutSubtree(bool value) {
   SetBooleanAttribute(html_names::kLayoutsubtreeAttr, value);
+  SetNeedsStyleRecalc(
+      kSubtreeStyleChange,
+      StyleChangeReasonForTracing::Create(style_change_reason::kAttribute));
+  SetForceReattachLayoutTree();
+  if (auto* object = GetLayoutObject()) {
+    object->SetNeedsLayout(layout_invalidation_reason::kAttributeChanged);
+  }
 }
 
 bool HTMLCanvasElement::layoutSubtree() const {

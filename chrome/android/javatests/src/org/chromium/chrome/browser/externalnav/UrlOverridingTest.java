@@ -842,7 +842,7 @@ public class UrlOverridingTest {
 
     @Test
     @SmallTest
-    @DisableIf.Device(DeviceFormFactor.DESKTOP) // https://crbug.com/446934111
+    @DisableIf.Device(DeviceFormFactor.DESKTOP) // https://crbug.com/481445778
     public void testNavigationFromXHRCallback() throws Exception {
         WebPageStation ctaPage = mTabbedActivityTestRule.startOnBlankPage();
         loadUrlAndWaitForIntentUrl(
@@ -923,7 +923,7 @@ public class UrlOverridingTest {
 
     @Test
     @SmallTest
-    @DisableIf.Device(DeviceFormFactor.DESKTOP) // https://crbug.com/446934111
+    @DisableIf.Device(DeviceFormFactor.DESKTOP) // https://crbug.com/481445778
     public void testNavigationWithFallbackURL() throws Exception {
         WebPageStation ctaPage = mTabbedActivityTestRule.startOnBlankPage();
         String fallbackUrl = mTestServer.getURL(FALLBACK_LANDING_PATH);
@@ -1122,7 +1122,6 @@ public class UrlOverridingTest {
 
     @Test
     @LargeTest
-    @DisableIf.Device(DeviceFormFactor.DESKTOP) // https://crbug.com/446934111
     public void testCctRedirectFromIntentUriStaysInChrome_InIncognito() throws Exception {
         var initialCtaPage = mTabbedActivityTestRule.startOnBlankPage();
         // This will cause getActivityTab() in loadUrlAndWaitForIntentUrl to return an incognito tab
@@ -1195,7 +1194,7 @@ public class UrlOverridingTest {
 
     @Test
     @LargeTest
-    @DisableIf.Device(DeviceFormFactor.DESKTOP) // https://crbug.com/446934111
+    @DisableIf.Device(DeviceFormFactor.DESKTOP) // https://crbug.com/481445778
     public void testIntentURIWithEmptySchemeDoesNothing() throws Exception {
         WebPageStation ctaPage = mTabbedActivityTestRule.startOnBlankPage();
         String targetUrl =
@@ -1722,7 +1721,7 @@ public class UrlOverridingTest {
 
     @Test
     @LargeTest
-    @DisableIf.Device(DeviceFormFactor.DESKTOP) // https://crbug.com/446934111
+    @DisableIf.Device(DeviceFormFactor.DESKTOP) // https://crbug.com/481445778
     public void testExternalNavigationMessage() throws Exception {
         WebPageStation ctaPage = mTabbedActivityTestRule.startOnBlankPage();
 
@@ -2025,14 +2024,12 @@ public class UrlOverridingTest {
 
     @Test
     @LargeTest
-    @DisableIf.Device(DeviceFormFactor.DESKTOP) // https://crbug.com/446934111
     public void testIncognitoSubframeExternalNavigation_Rejected() throws Exception {
         doTestIncognitoSubframeExternalNavigation(false);
     }
 
     @Test
     @LargeTest
-    @DisableIf.Device(DeviceFormFactor.DESKTOP) // https://crbug.com/446934111
     public void testIncognitoSubframeExternalNavigation_Accepted() throws Exception {
         doTestIncognitoSubframeExternalNavigation(true);
     }

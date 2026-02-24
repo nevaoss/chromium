@@ -299,6 +299,8 @@ static_library("ui") {
     "//chrome/browser/image_fetcher",
     "//chrome/browser/media/router:media_router_feature",
     "//chrome/browser/media/router/discovery/access_code:access_code_cast_feature",
+    "//chrome/browser/new_tab_page/chrome_colors:generate_chrome_colors_info",
+    "//chrome/browser/new_tab_page/chrome_colors:selected_colors_info",
     "//chrome/browser/omnibox",
     "//chrome/browser/optimization_guide",
     "//chrome/browser/page_content_annotations",
@@ -1390,14 +1392,19 @@ static_library("ui") {
         "webui/media_router/cast_feedback_ui.h",
         "webui/password_manager/promo_cards/access_on_any_device_promo.cc",
         "webui/password_manager/promo_cards/access_on_any_device_promo.h",
-        "webui/password_manager/promo_cards/move_passwords_promo.cc",
-        "webui/password_manager/promo_cards/move_passwords_promo.h",
         "webui/password_manager/promo_cards/password_checkup_promo.cc",
         "webui/password_manager/promo_cards/password_checkup_promo.h",
         "webui/password_manager/promo_cards/password_manager_shortcut_promo.cc",
         "webui/password_manager/promo_cards/password_manager_shortcut_promo.h",
         "webui/password_manager/promo_cards/web_password_manager_promo.cc",
         "webui/password_manager/promo_cards/web_password_manager_promo.h",
+      ]
+    }
+
+    if (enable_dice_support && is_chrome_branded) {
+      sources += [
+        "webui/password_manager/promo_cards/move_passwords_promo.cc",
+        "webui/password_manager/promo_cards/move_passwords_promo.h",
       ]
     }
 
@@ -2488,7 +2495,6 @@ static_library("ui") {
       "//chromeos/components/security_token_pin",
       "//chromeos/components/sharesheet:constants",
       "//chromeos/constants",
-      "//chromeos/crosapi/cpp",
       "//chromeos/crosapi/cpp:crosapi_constants",
       "//chromeos/crosapi/mojom:structured_metrics_service",
       "//chromeos/dbus/dlp",
@@ -2870,6 +2876,7 @@ static_library("ui") {
       "//chrome/browser/search/background",
       "//chrome/browser/themes",
       "//chrome/browser/ui/autofill/payments",
+      "//chrome/browser/ui/context_highlight",
       "//chrome/browser/ui/lens",
       "//chrome/browser/ui/lens:impl",
       "//chrome/browser/ui/wallet",
@@ -2994,7 +3001,6 @@ static_library("ui") {
       "//chrome/app:generated_resources",
       "//chrome/browser/browser_switcher",
       "//chrome/browser/default_browser",
-      "//chrome/browser/on_device_translation",
       "//chrome/browser/profiles",
       "//chrome/browser/shortcuts",
       "//chrome/browser/ui/download",
@@ -3013,6 +3019,7 @@ static_library("ui") {
       "//chrome/updater:browser_sources",
       "//components/capture_mode",
       "//components/country_codes",
+      "//components/on_device_translation",
       "//services/audio/public/mojom",
       "//services/video_capture/public/mojom",
     ]
@@ -3494,6 +3501,8 @@ static_library("ui") {
       "views/autofill/address_editor_view.h",
       "views/autofill/autofill_ai/autofill_ai_import_data_bubble_view.cc",
       "views/autofill/autofill_ai/autofill_ai_import_data_bubble_view.h",
+      "views/autofill/autofill_ai/autofill_ai_local_save_notification_view.cc",
+      "views/autofill/autofill_ai/autofill_ai_local_save_notification_view.h",
       "views/autofill/autofill_bubble_handler_impl.cc",
       "views/autofill/autofill_bubble_handler_impl.h",
       "views/autofill/autofill_bubble_utils.cc",
@@ -3689,10 +3698,6 @@ static_library("ui") {
       "views/commerce/price_tracking_icon_view.h",
       "views/commerce/price_tracking_view.cc",
       "views/commerce/price_tracking_view.h",
-      "views/commerce/product_specifications_button.cc",
-      "views/commerce/product_specifications_button.h",
-      "views/commerce/product_specifications_icon_view.cc",
-      "views/commerce/product_specifications_icon_view.h",
       "views/commerce/shopping_collection_iph_view.cc",
       "views/commerce/shopping_collection_iph_view.h",
       "views/confirm_bubble_views.cc",
@@ -4424,6 +4429,8 @@ static_library("ui") {
       "views/tabs/recent_activity_bubble_dialog_view.h",
       "views/tabs/tab.cc",
       "views/tabs/tab.h",
+      "views/tabs/tab_accessibility.cc",
+      "views/tabs/tab_accessibility.h",
       "views/tabs/tab_close_button.cc",
       "views/tabs/tab_close_button.h",
       "views/tabs/tab_container.cc",
@@ -4764,6 +4771,8 @@ static_library("ui") {
       "//chrome/browser/ui/views/permissions/chip:impl",
       "//chrome/browser/ui/views/tabs/dragging:tab_drag_target",
       "//chrome/browser/ui/views/tabs/projects",
+      "//chrome/browser/ui/views/tabs/shared",
+      "//chrome/browser/ui/views/tabs/shared:impl",
       "//chrome/browser/ui/views/tabs/vertical",
       "//chrome/browser/ui/views/tabs/vertical:impl",
       "//chrome/browser/ui/views/user_education",
@@ -4786,8 +4795,6 @@ static_library("ui") {
       "//components/commerce/core:pref_names",
       "//components/commerce/core:shopping_service",
       "//components/commerce/core:utils",
-      "//components/commerce/core/compare",
-      "//components/commerce/core/product_specifications",
       "//components/constrained_window",
       "//components/content_settings/browser/ui",
       "//components/contextual_tasks/public",
@@ -5306,7 +5313,6 @@ static_library("ui") {
         "webui/print_preview/print_preview_handler_chromeos.h",
       ]
       deps += [
-        "//chromeos/crosapi/cpp",
         "//chromeos/crosapi/mojom",
         "//chromeos/printing",
       ]
@@ -5624,7 +5630,6 @@ source_set("tab_search_feature") {
     "tab_search_feature.h",
   ]
   deps = [
-    ":ui_features",
     "//base",
     "//chrome/browser:browser_process",
     "//chrome/common:buildflags",

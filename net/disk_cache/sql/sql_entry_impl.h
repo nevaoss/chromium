@@ -13,6 +13,8 @@
 #include "net/disk_cache/buildflags.h"
 #include "net/disk_cache/disk_cache.h"
 #include "net/disk_cache/sql/cache_entry_key.h"
+#include "net/disk_cache/sql/entry_db_handle.h"
+#include "net/disk_cache/sql/entry_write_buffer.h"
 #include "net/disk_cache/sql/sql_persistent_store.h"
 #include "net/log/net_log_with_source.h"
 
@@ -34,16 +36,10 @@ class NET_EXPORT_PRIVATE SqlEntryImpl final
     : public Entry,
       public base::RefCounted<SqlEntryImpl> {
  public:
-  // For a speculatively created entry, this holds `std::nullopt` initially, and
-  // when the entry creation task is complete, it will hold either the `ResId`
-  // on success or an `Error` on failure. Otherwise, it just holds a `ResId`.
-  using ResIdOrErrorHolder = base::RefCountedData<std::optional<
-      std::variant<SqlPersistentStore::ResId, SqlPersistentStore::Error>>>;
-
   // Constructs a SqlEntryImpl.
   SqlEntryImpl(base::WeakPtr<SqlBackendImpl> backend,
                CacheEntryKey key,
-               scoped_refptr<ResIdOrErrorHolder> res_id_or_error,
+               scoped_refptr<EntryDbHandle> db_handle,
                base::Time last_used,
                int64_t body_end,
                scoped_refptr<net::GrowableIOBuffer> head);
@@ -93,9 +89,7 @@ class NET_EXPORT_PRIVATE SqlEntryImpl final
   const CacheEntryKey& cache_key() const { return key_; }
 
   // Returns the holder for the resource ID or an error.
-  const scoped_refptr<ResIdOrErrorHolder>& res_id_or_error() const {
-    return res_id_or_error_;
-  }
+  const scoped_refptr<EntryDbHandle>& db_handle() const { return db_handle_; }
 
   // Marks the entry as doomed. This is called by the backend when an
   // active entry is doomed.
@@ -131,6 +125,10 @@ class NET_EXPORT_PRIVATE SqlEntryImpl final
   // Flushes the write buffer to the backend.
   void FlushBuffer();
 
+  // Consolidates the write buffer and returns it, clearing the internal buffer
+  // state. Returns std::nullopt if the buffer is empty.
+  std::optional<EntryWriteBuffer> TakeWriteBuffer();
+
   base::WeakPtr<SqlBackendImpl> backend_;
 
   // The key for this cache entry.
@@ -138,7 +136,7 @@ class NET_EXPORT_PRIVATE SqlEntryImpl final
 
   // Holds the ResId of the entry or an error if the speculative creation
   // failed.
-  const scoped_refptr<ResIdOrErrorHolder> res_id_or_error_;
+  const scoped_refptr<EntryDbHandle> db_handle_;
 
   // The last time this entry was accessed.
   base::Time last_used_;
@@ -168,12 +166,7 @@ class NET_EXPORT_PRIVATE SqlEntryImpl final
   bool doomed_ = false;
 
   // Buffers data for stream 1 writes.
-  std::vector<scoped_refptr<net::IOBuffer>> write_buffers_;
-  // The total size of data in `write_buffers_`.
-  int write_buffer_size_ = 0;
-  // The start offset of the data in `write_buffers_`. -1 indicates that the
-  // buffer is empty/invalid.
-  int64_t write_buffer_offset_ = -1;
+  EntryWriteBuffer write_buffer_;
 
   // A buffer containing data read beyond the requested range.
   scoped_refptr<net::IOBuffer> read_cache_buffer_;

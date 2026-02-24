@@ -31,7 +31,6 @@
 #include "chrome/browser/browsing_data/chrome_browsing_data_remover_delegate.h"
 #include "chrome/browser/chained_back_navigation_tracker.h"
 #include "chrome/browser/commerce/browser_utils.h"
-#include "chrome/browser/content_settings/cookie_settings_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_side_panel_coordinator.h"
 #include "chrome/browser/devtools/devtools_window.h"
 #include "chrome/browser/download/download_prefs.h"
@@ -75,6 +74,7 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/dialogs/browser_dialogs.h"
+#include "chrome/browser/ui/dialogs/outdated_upgrade_bubble.h"
 #include "chrome/browser/ui/exclusive_access/exclusive_access_manager.h"
 #include "chrome/browser/ui/exclusive_access/fullscreen_controller.h"
 #include "chrome/browser/ui/find_bar/find_bar.h"
@@ -115,7 +115,6 @@
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
 #include "chrome/browser/ui/web_applications/web_app_launch_utils.h"
 #include "chrome/browser/ui/web_applications/web_app_tabbed_utils.h"
-#include "chrome/browser/ui/webui/commerce/product_specifications_disclosure_dialog.h"
 #include "chrome/browser/ui/webui/tab_search/tab_search.mojom.h"
 #include "chrome/browser/upgrade_detector/upgrade_detector.h"
 #include "chrome/browser/web_applications/web_app_constants.h"
@@ -134,12 +133,7 @@
 #include "components/bookmarks/common/bookmark_pref_names.h"
 #include "components/browsing_data/content/browsing_data_helper.h"
 #include "components/commerce/core/commerce_utils.h"
-#include "components/commerce/core/mojom/product_specifications.mojom.h"
 #include "components/commerce/core/pref_names.h"
-#include "components/content_settings/browser/page_specific_content_settings.h"
-#include "components/content_settings/core/browser/cookie_settings.h"
-#include "components/content_settings/core/common/content_settings.h"
-#include "components/content_settings/core/common/cookie_settings_base.h"
 #include "components/embedder_support/user_agent_utils.h"
 #include "components/favicon/content/content_favicon_driver.h"
 #include "components/feature_engagement/public/feature_constants.h"
@@ -186,7 +180,6 @@
 #include "content/public/browser/render_view_host.h"
 #include "content/public/browser/render_widget_host_view.h"
 #include "content/public/browser/web_contents.h"
-#include "content/public/browser/web_contents_observer.h"
 #include "content/public/common/content_switches.h"
 #include "content/public/common/url_constants.h"
 #include "content/public/common/url_utils.h"
@@ -194,9 +187,6 @@
 #include "pdf/buildflags.h"
 #include "printing/buildflags/buildflags.h"
 #include "rlz/buildflags/buildflags.h"
-#include "services/metrics/public/cpp/ukm_builders.h"
-#include "services/metrics/public/cpp/ukm_recorder.h"
-#include "services/metrics/public/cpp/ukm_source_id.h"
 #include "ui/base/clipboard/clipboard_buffer.h"
 #include "ui/base/clipboard/scoped_clipboard_writer.h"
 #include "ui/base/models/list_selection_model.h"
@@ -541,36 +531,6 @@ WebContents* GetTabAndRevertIfNecessary(Browser* browser,
   return GetTabAndRevertIfNecessaryHelper(browser, disposition, activate_tab);
 }
 
-void RecordReloadWithCookieBlocking(BrowserWindowInterface* browser,
-                                    WebContents* web_contents) {
-  // Figure out if 3P cookies are blocked for this page.
-  scoped_refptr<const content_settings::CookieSettings> cookie_settings =
-      CookieSettingsFactory::GetForProfile(browser->GetProfile());
-
-  // For this metric, we define "cookies blocked in settings" based on the
-  // global opt-in to third-party cookie blocking as well as no overriding
-  // content setting on the top-level site.
-  bool cookies_blocked_in_settings =
-      cookie_settings->ShouldBlockThirdPartyCookies() &&
-      !cookie_settings->IsThirdPartyAccessAllowed(
-          web_contents->GetLastCommittedURL(), nullptr);
-
-  // Also measure if 3P cookies were actually blocked on the site.
-  content_settings::PageSpecificContentSettings* pscs =
-      content_settings::PageSpecificContentSettings::GetForFrame(
-          web_contents->GetPrimaryMainFrame());
-  bool cookies_blocked =
-      pscs && pscs->blocked_browsing_data_model()->size() > 0U;
-
-  ukm::SourceId source_id =
-      web_contents->GetPrimaryMainFrame()->GetPageUkmSourceId();
-
-  ukm::builders::ThirdPartyCookies_BreakageIndicator_UserReload(source_id)
-      .SetTPCBlocked(cookies_blocked)
-      .SetTPCBlockedInSettings(cookies_blocked_in_settings)
-      .Record(ukm::UkmRecorder::Get());
-}
-
 void ReloadInternal(BrowserWindowInterface* browser,
                     WindowOpenDisposition disposition,
                     bool bypass_cache) {
@@ -623,9 +583,6 @@ void ReloadInternal(BrowserWindowInterface* browser,
     if (tab == active_contents && !new_tab->FocusLocationBarByDefault()) {
       new_tab->Focus();
     }
-
-    // User reloads is a possible breakage indicator from blocking 3P cookies.
-    RecordReloadWithCookieBlocking(browser, tab);
 
     DevToolsWindow* const devtools =
         DevToolsWindow::GetInstanceForInspectedWebContents(new_tab);
@@ -2445,10 +2402,11 @@ void ShowAvatarMenu(Browser* browser) {
 // full rollout of the code, this name will be misleading. We will clean up the
 // code and its related source enums.
 void OpenUpdateChromeDialog(Browser* browser) {
-  if (UpgradeDetector::GetInstance()->is_outdated_install()) {
-    UpgradeDetector::GetInstance()->NotifyOutdatedInstall();
-  } else if (UpgradeDetector::GetInstance()->is_outdated_install_no_au()) {
-    UpgradeDetector::GetInstance()->NotifyOutdatedInstallNoAutoUpdate();
+  UpgradeDetector* detector = UpgradeDetector::GetInstance();
+  if (detector->is_outdated_install()) {
+    ShowOutdatedUpgradeBubble(browser, browser, /*auto_update_enabled=*/true);
+  } else if (detector->is_outdated_install_no_au()) {
+    ShowOutdatedUpgradeBubble(browser, browser, /*auto_update_enabled=*/false);
   } else {
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
     if (base::FeatureList::IsEnabled(features::kFewerUpdateConfirmations)) {
@@ -2731,28 +2689,6 @@ void ExecLensRegionSearch(Browser* browser) {
         /*use_fullscreen_capture=*/false, is_google_dsp, entry_point);
   }
 #endif  // BUILDFLAG(ENABLE_LENS_DESKTOP_GOOGLE_BRANDED_FEATURES)
-}
-
-void OpenCommerceProductSpecificationsTab(Browser* browser,
-                                          const std::vector<GURL>& urls,
-                                          const int position) {
-  auto* prefs = browser->profile()->GetPrefs();
-  // If user has not accepted the latest disclosure, show the disclosure dialog
-  // first.
-  if (prefs && prefs->GetInteger(
-                   commerce::kProductSpecificationsAcceptedDisclosureVersion) !=
-                   static_cast<int>(commerce::product_specifications::mojom::
-                                        DisclosureVersion::kV1)) {
-    commerce::DialogArgs dialog_args(urls, std::string(), /*set_id=*/"",
-                                     /*in_new_tab=*/true);
-    commerce::ProductSpecificationsDisclosureDialog::ShowDialog(
-        browser->profile(), browser->tab_strip_model()->GetActiveWebContents(),
-        std::move(dialog_args));
-    return;
-  }
-
-  chrome::AddTabAt(browser, commerce::GetProductSpecsTabUrl(urls), position + 1,
-                   true, std::nullopt);
 }
 
 }  // namespace chrome

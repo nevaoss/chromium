@@ -8,6 +8,7 @@
 #include <utility>
 
 #include "base/check_is_test.h"
+#include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/user_metrics.h"
@@ -42,6 +43,7 @@
 #include "chrome/browser/ui/views/side_panel/side_panel_web_ui_view.h"
 #include "chrome/browser/ui/webui/new_tab_page/composebox/variations/composebox_fieldtrial.h"
 #include "chrome/browser/ui/webui/webui_embedding_context.h"
+#include "chrome/common/chrome_features.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/grit/generated_resources.h"
@@ -102,7 +104,7 @@ void SetBrowserWindowInterface(content::WebContents* web_contents,
   webui::SetBrowserWindowInterface(web_contents, browser_window);
 }
 
-std::set<SessionID> GetAllTabIdsInTabStrip(TabListInterface* tab_list) {
+std::set<SessionID> GetAllTabIdsInTabList(TabListInterface* tab_list) {
   std::set<SessionID> tab_ids;
   for (tabs::TabInterface* tab : tab_list->GetAllTabs()) {
     tab_ids.insert(sessions::SessionTabHelper::IdForTab(tab->GetContents()));
@@ -242,11 +244,16 @@ ContextualTasksSidePanelCoordinator::ContextualTasksSidePanelCoordinator(
       base::BindRepeating(&ContextualTasksSidePanelCoordinator::
                               GetSessionHandleForActiveTabOrSidePanel,
                           base::Unretained(this)));
-  browser_window_->GetTabStripModel()->AddObserver(this);
+  if (base::FeatureList::IsEnabled(kContextualTasksTabListInterfaceObserver)) {
+    TabListInterface::From(browser_window_)->AddTabListInterfaceObserver(this);
+  } else {
+    browser_window_->GetTabStripModel()->AddObserver(this);
+  }
 }
 
 ContextualTasksSidePanelCoordinator::~ContextualTasksSidePanelCoordinator() {
   browser_window_->GetTabStripModel()->RemoveObserver(this);
+  TabListInterface::From(browser_window_)->RemoveTabListInterfaceObserver(this);
 
   SidePanelRegistry* global_registry = SidePanelRegistry::From(browser_window_);
   if (global_registry) {
@@ -291,7 +298,9 @@ void ContextualTasksSidePanelCoordinator::CreateAndRegisterEntry(
   registered_entry->AddObserver(this);
 }
 
-void ContextualTasksSidePanelCoordinator::Show(bool transition_from_tab) {
+void ContextualTasksSidePanelCoordinator::Show(
+    bool transition_from_tab,
+    omnibox::ChromeAimEntryPoint entry_point) {
   // Increment the impression count and attempt to show the HaTS survey.
   int impression_count =
       pref_service_->GetInteger(prefs::kContextualTasksNextPanelOpenCount);
@@ -321,7 +330,7 @@ void ContextualTasksSidePanelCoordinator::Show(bool transition_from_tab) {
                                             task.GetTaskId());
   }
 
-  MaybeCreateCachedWebContents();
+  MaybeCreateCachedWebContents(entry_point);
   UpdateWebContentsForActiveTab();
 
   // Only show the side panel if it's closed.
@@ -528,6 +537,49 @@ ContextualTasksSidePanelCoordinator::GetWebContentsCacheItemForWebContents(
   return nullptr;
 }
 
+void ContextualTasksSidePanelCoordinator::OnTabAdded(tabs::TabInterface* tab,
+                                                     int index) {
+  content::WebContents* content = tab->GetContents();
+  // If the new tab is already associated with a task, do nothing.
+  if (contextual_tasks_service_->GetContextualTaskForTab(
+          sessions::SessionTabHelper::IdForTab(content))) {
+    return;
+  }
+
+  // If the new tab has an opener and it's associated to a task, associate
+  // the new tab to the same task.
+  TabListInterface* tab_list = TabListInterface::From(browser_window_);
+  tabs::TabInterface* opener = tab_list->GetOpenerForTab(tab->GetHandle());
+  if (!opener) {
+    return;
+  }
+  // Check if the new tab is opened through a link click
+  content::NavigationController& controller = content->GetController();
+  if (!controller.GetActiveEntry() ||
+      !ui::PageTransitionCoreTypeIs(
+          controller.GetActiveEntry()->GetTransitionType(),
+          ui::PAGE_TRANSITION_LINK)) {
+    return;
+  }
+  std::optional<ContextualTask> task =
+      contextual_tasks_service_->GetContextualTaskForTab(
+          sessions::SessionTabHelper::IdForTab(opener->GetContents()));
+  if (task) {
+    ui_service_->AssociateWebContentsToTask(content, task->GetTaskId());
+  }
+}
+
+void ContextualTasksSidePanelCoordinator::OnTabRemoved(
+    tabs::TabInterface* tab,
+    TabRemovedReason removed_reason) {
+  // Do not disassociate the tab from the task if insert into side panel or
+  // another tab strip.
+  if (removed_reason != TabRemovedReason::kInsertedIntoSidePanel &&
+      removed_reason != TabRemovedReason::kInsertedIntoOtherTabStrip) {
+    DisassociateTabFromTask(tab->GetContents());
+  }
+}
+
 std::optional<ContextualTask>
 ContextualTasksSidePanelCoordinator::GetCurrentTask() {
   tabs::TabInterface* active_tab_interface =
@@ -539,6 +591,11 @@ ContextualTasksSidePanelCoordinator::GetCurrentTask() {
   return contextual_tasks_service_->GetContextualTaskForTab(
       sessions::SessionTabHelper::IdForTab(
           active_tab_interface->GetContents()));
+}
+
+void ContextualTasksSidePanelCoordinator::SetSidePanelIdNotToOverrideForTesting(
+    SidePanelEntry::Id side_panel_id) {
+  side_panel_id_not_to_override_ = side_panel_id;
 }
 
 void ContextualTasksSidePanelCoordinator::UpdateSidePanelVisibility() {
@@ -559,7 +616,7 @@ void ContextualTasksSidePanelCoordinator::UpdateSidePanelVisibility() {
 
 void ContextualTasksSidePanelCoordinator::CleanUpUnusedWebContents() {
   std::set<SessionID> tab_ids =
-      GetAllTabIdsInTabStrip(TabListInterface::From(browser_window_));
+      GetAllTabIdsInTabList(TabListInterface::From(browser_window_));
   for (auto it = task_id_to_web_contents_cache_.begin();
        it != task_id_to_web_contents_cache_.end();) {
     base::Uuid task_id = it->first;
@@ -628,7 +685,15 @@ bool ContextualTasksSidePanelCoordinator::UpdateWebContentsForActiveTab() {
   return prev_web_contents != web_contents;
 }
 
-void ContextualTasksSidePanelCoordinator::OnActiveTabChanged() {
+void ContextualTasksSidePanelCoordinator::OnActiveTabChanged(
+    tabs::TabInterface* tab) {
+  // crbug.com/477278769: Do not open side panel if glic side panel is already
+  // open on tab changed.
+  if (side_panel_ui_->IsSidePanelEntryShowing(
+          SidePanelEntry::Key(side_panel_id_not_to_override_))) {
+    UpdateOpenState(/*is_open=*/false);
+  }
+
   bool was_side_panel_open = IsSidePanelOpenForContextualTask();
   bool web_contents_changed = UpdateWebContentsForActiveTab();
   UpdateSidePanelVisibility();
@@ -660,6 +725,8 @@ void ContextualTasksSidePanelCoordinator::OnActiveTabChanged() {
   ObserveWebContentsOnActiveTab();
 
   NotifyActiveTaskContextProvider();
+
+  CleanUpUnusedWebContents();
 }
 
 void ContextualTasksSidePanelCoordinator::OnTabStripModelChanged(
@@ -714,8 +781,7 @@ void ContextualTasksSidePanelCoordinator::OnTabStripModelChanged(
   }
 
   if (selection.active_tab_changed() && !tab_strip_model->empty()) {
-    OnActiveTabChanged();
-    CleanUpUnusedWebContents();
+    OnActiveTabChanged(tab_strip_model->GetActiveTab());
   }
 }
 
@@ -751,7 +817,8 @@ ContextualTasksSidePanelCoordinator::GetSidePanelWebContentsForActiveTab() {
   return web_contents;
 }
 
-void ContextualTasksSidePanelCoordinator::MaybeCreateCachedWebContents() {
+void ContextualTasksSidePanelCoordinator::MaybeCreateCachedWebContents(
+    omnibox::ChromeAimEntryPoint entry_point) {
   std::optional<ContextualTask> task = GetCurrentTask();
   if (!task) {
     return;
@@ -764,6 +831,7 @@ void ContextualTasksSidePanelCoordinator::MaybeCreateCachedWebContents() {
   }
 
   // Create new WebContents for the task.
+  ui_service_->SetInitialEntryPointForTask(task_id, entry_point);
   task_id_to_web_contents_cache_[task_id] =
       std::make_unique<WebContentsCacheItem>(
           CreateWebContents(

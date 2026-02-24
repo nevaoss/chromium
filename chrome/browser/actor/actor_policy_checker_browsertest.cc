@@ -23,6 +23,8 @@
 #include "chrome/browser/enterprise/browser_management/browser_management_service.h"
 #include "chrome/browser/enterprise/browser_management/management_service_factory.h"
 #include "chrome/browser/glic/glic_pref_names.h"
+#include "chrome/browser/glic/public/glic_keyed_service.h"
+#include "chrome/browser/glic/public/glic_keyed_service_factory.h"
 #include "chrome/browser/policy/profile_policy_connector.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/signin/chrome_signin_client_factory.h"
@@ -71,9 +73,6 @@ class ActorPolicyCheckerBrowserTestBase : public ActorToolsTest {
     scoped_feature_list_.InitWithFeaturesAndParameters(
         /* enabled_features = */
         {
-#if BUILDFLAG(IS_ANDROID)
-            {kActorEnableAndroid, {}},
-#endif
             {features::kGlicActor,
              {{features::kGlicActorPolicyControlExemption.name, "false"}}},
             {features::kGlicUserStatusCheck, {}}},
@@ -170,6 +169,10 @@ class ActorPolicyCheckerBrowserTestBase : public ActorToolsTest {
         is_likely_dogfood_client);
   }
 
+  actor::ActorPolicyChecker& GetPolicyChecker() {
+    return ActorKeyedService::Get(GetProfile())->GetPolicyChecker();
+  }
+
  protected:
   raw_ptr<signin::IdentityManager> identity_manager_;
   raw_ptr<signin::IdentityTestEnvironment> identity_test_env_;
@@ -191,9 +194,6 @@ class ActorPolicyCheckerBrowserTestNonManagedBrowser
     scoped_feature_list_.InitWithFeaturesAndParameters(
         /* enabled_features = */
         {
-#if BUILDFLAG(IS_ANDROID)
-            {kActorEnableAndroid, {}},
-#endif
             {features::kGlicActor,
              {{features::kGlicActorEligibleTiers.name,
                base::ToString(kAllowedTier)}}}},
@@ -246,13 +246,9 @@ class ActorPolicyCheckerBrowserTestNonManagedBrowser
 // kAiSubscriptionTier.
 IN_PROC_BROWSER_TEST_P(ActorPolicyCheckerBrowserTestNonManagedBrowser,
                        CapabilityBasedOnSubscriptionTier) {
+  EXPECT_EQ(GetPolicyChecker().CanActOnWeb(), TestHasChromeBenefits());
   EXPECT_EQ(
-      ActorKeyedService::Get(GetProfile())->GetPolicyChecker().CanActOnWeb(),
-      TestHasChromeBenefits());
-  EXPECT_EQ(
-      ActorKeyedService::Get(GetProfile())
-          ->GetPolicyChecker()
-          .CannotActOnWebReason(),
+      GetPolicyChecker().CannotActOnWebReason(),
       TestHasChromeBenefits()
           ? ActorPolicyChecker::CannotActReason::kNone
           : ActorPolicyChecker::CannotActReason::kAccountMissingChromeBenefits);
@@ -263,13 +259,9 @@ IN_PROC_BROWSER_TEST_P(ActorPolicyCheckerBrowserTestNonManagedBrowser,
   prefs->SetInteger(glic::prefs::kGlicActuationOnWeb,
                     std::to_underlying(
                         glic::prefs::GlicActuationOnWebPolicyState::kDisabled));
-  EXPECT_EQ(
-      ActorKeyedService::Get(GetProfile())->GetPolicyChecker().CanActOnWeb(),
-      TestHasChromeBenefits());
+  EXPECT_EQ(GetPolicyChecker().CanActOnWeb(), TestHasChromeBenefits());
   EXPECT_THAT(
-      ActorKeyedService::Get(GetProfile())
-          ->GetPolicyChecker()
-          .CannotActOnWebReason(),
+      GetPolicyChecker().CannotActOnWebReason(),
       TestHasChromeBenefits()
           ? ActorPolicyChecker::CannotActReason::kNone
           : ActorPolicyChecker::CannotActReason::kAccountMissingChromeBenefits);
@@ -277,13 +269,9 @@ IN_PROC_BROWSER_TEST_P(ActorPolicyCheckerBrowserTestNonManagedBrowser,
   // Set the user pref from Allowed to Disallowed or from Disallowed to Allowed.
   GetProfile()->GetPrefs()->SetInteger(
       subscription_eligibility::prefs::kAiSubscriptionTier, GetOppositeTier());
-  EXPECT_NE(
-      ActorKeyedService::Get(GetProfile())->GetPolicyChecker().CanActOnWeb(),
-      TestHasChromeBenefits());
+  EXPECT_NE(GetPolicyChecker().CanActOnWeb(), TestHasChromeBenefits());
   EXPECT_THAT(
-      ActorKeyedService::Get(GetProfile())
-          ->GetPolicyChecker()
-          .CannotActOnWebReason(),
+      GetPolicyChecker().CannotActOnWebReason(),
       TestHasChromeBenefits()
           ? ActorPolicyChecker::CannotActReason::kAccountMissingChromeBenefits
           : ActorPolicyChecker::CannotActReason::kNone);
@@ -304,9 +292,6 @@ class ActorPolicyCheckerBrowserTestManagedBrowser
     scoped_feature_list_.InitWithFeaturesAndParameters(
         /* enabled_features = */
         {
-#if BUILDFLAG(IS_ANDROID)
-            {kActorEnableAndroid, {}},
-#endif
             {features::kGlicActor,
              {{features::kGlicActorEnterprisePrefDefault.name,
                features::kGlicActorEnterprisePrefDefault.GetName(
@@ -368,8 +353,7 @@ class ActorPolicyCheckerBrowserTestManagedBrowser
       const std::vector<std::string>& url_allowlist,
       const std::vector<std::string>& url_blocklist,
       bool await_list_update) {
-    auto* actor_service = ActorKeyedService::Get(GetProfile());
-    ActorPolicyChecker& policy_checker = actor_service->GetPolicyChecker();
+    ActorPolicyChecker& policy_checker = GetPolicyChecker();
 
     policy::PolicyMap policies;
     std::optional<base::Value> value_to_set;
@@ -418,14 +402,14 @@ class ActorPolicyCheckerBrowserTestManagedBrowser
                                        /*await_list_update=*/true);
 
     auto* actor_service = ActorKeyedService::Get(GetProfile());
-    ActorPolicyChecker& policy_checker = actor_service->GetPolicyChecker();
+    ActorPolicyChecker& policy_checker = GetPolicyChecker();
 
     EXPECT_EQ(expected_result.can_act_on_web, policy_checker.CanActOnWeb());
 
     base::test::TestFuture<MayActOnUrlBlockReason> allowed;
-    MayActOnUrl(url_to_check, /*allow_insecure_http=*/true,
-                GetProfile(), actor_service->GetJournal(), TaskId(123),
-                policy_checker, allowed.GetCallback());
+    MayActOnUrl(url_to_check, /*allow_insecure_http=*/true, GetProfile(),
+                actor_service->GetJournal(), TaskId(123), policy_checker,
+                allowed.GetCallback());
     EXPECT_EQ(expected_result.may_act_on_url_block_reason, allowed.Get());
   }
 
@@ -440,18 +424,16 @@ IN_PROC_BROWSER_TEST_F(ActorPolicyCheckerBrowserTestManagedBrowser,
                        TasksDroppedWhenActuationCapabilityIsDisabled) {
   UpdateGeminiActOnWebPolicy(
       glic::prefs::GlicActuationOnWebPolicyState::kEnabled);
-  EXPECT_TRUE(
-      ActorKeyedService::Get(GetProfile())->GetPolicyChecker().CanActOnWeb());
-  EXPECT_EQ(ActorKeyedService::Get(GetProfile())
-                ->GetPolicyChecker()
-                .CannotActOnWebReason(),
+  EXPECT_TRUE(GetPolicyChecker().CanActOnWeb());
+  EXPECT_EQ(GetPolicyChecker().CannotActOnWebReason(),
             ActorPolicyChecker::CannotActReason::kNone);
 
   GURL url = embedded_test_server()->GetURL("/empty.html");
   std::unique_ptr<ToolRequest> action =
       MakeNavigateRequest(*active_tab(), url.spec());
   ActResultFuture result;
-  task_id_ = ActorKeyedService::Get(GetProfile())->CreateTask();
+  task_id_ =
+      ActorKeyedService::Get(GetProfile())->CreateTask(&GetPolicyChecker());
   actor_task().Act(ToRequestList(action), result.GetCallback());
   actor_task().Pause(/*from_actor=*/true);
   EXPECT_EQ(actor_task().GetState(), ActorTask::State::kPausedByActor);
@@ -460,12 +442,9 @@ IN_PROC_BROWSER_TEST_F(ActorPolicyCheckerBrowserTestManagedBrowser,
   // the policy.
   UpdateGeminiActOnWebPolicy(
       glic::prefs::GlicActuationOnWebPolicyState::kDisabled);
-  EXPECT_FALSE(
-      ActorKeyedService::Get(GetProfile())->GetPolicyChecker().CanActOnWeb());
-  EXPECT_EQ(ActorKeyedService::Get(GetProfile())
-                ->GetPolicyChecker()
-                .CannotActOnWebReason(),
-            ActorPolicyChecker::CannotActReason::kManagedOrDataProtected);
+  EXPECT_FALSE(GetPolicyChecker().CanActOnWeb());
+  EXPECT_EQ(GetPolicyChecker().CannotActOnWebReason(),
+            ActorPolicyChecker::CannotActReason::kDisabledByPolicy);
 
   ExpectErrorResult(result, mojom::ActionResultCode::kTaskPaused);
 }
@@ -474,10 +453,10 @@ IN_PROC_BROWSER_TEST_F(ActorPolicyCheckerBrowserTestManagedBrowser,
                        CannotCreateTaskWhenActOnWebCapabilityIsDisabled) {
   UpdateGeminiActOnWebPolicy(
       glic::prefs::GlicActuationOnWebPolicyState::kDisabled);
-  EXPECT_FALSE(
-      ActorKeyedService::Get(GetProfile())->GetPolicyChecker().CanActOnWeb());
+  EXPECT_FALSE(GetPolicyChecker().CanActOnWeb());
 
-  auto null_task_id = ActorKeyedService::Get(GetProfile())->CreateTask();
+  auto null_task_id =
+      ActorKeyedService::Get(GetProfile())->CreateTask(&GetPolicyChecker());
   EXPECT_EQ(null_task_id, TaskId());
 }
 
@@ -571,15 +550,15 @@ IN_PROC_BROWSER_TEST_F(ActorPolicyCheckerBrowserTestManagedBrowser,
       /*url_allowlist=*/{},
       /*url_blocklist=*/{"bar.com"},
       /*await_list_update=*/true);
-  EXPECT_TRUE(
-      ActorKeyedService::Get(GetProfile())->GetPolicyChecker().CanActOnWeb());
+  EXPECT_TRUE(GetPolicyChecker().CanActOnWeb());
 
   const GURL url =
       embedded_https_test_server().GetURL("bar.com", "/actor/two_clicks.html");
 
   ASSERT_TRUE(content::NavigateToURL(web_contents(), url));
 
-  task_id_ = ActorKeyedService::Get(GetProfile())->CreateTask();
+  task_id_ =
+      ActorKeyedService::Get(GetProfile())->CreateTask(&GetPolicyChecker());
 
   std::optional<int> button_id =
       GetDOMNodeId(*web_contents()->GetPrimaryMainFrame(), "#button1");
@@ -599,15 +578,15 @@ IN_PROC_BROWSER_TEST_F(ActorPolicyCheckerBrowserTestManagedBrowser,
       /*url_allowlist=*/{"bar.com"},
       /*url_blocklist=*/{},
       /*await_list_update=*/true);
-  EXPECT_TRUE(
-      ActorKeyedService::Get(GetProfile())->GetPolicyChecker().CanActOnWeb());
+  EXPECT_TRUE(GetPolicyChecker().CanActOnWeb());
 
   const GURL url =
       embedded_https_test_server().GetURL("bar.com", "/actor/two_clicks.html");
 
   ASSERT_TRUE(content::NavigateToURL(web_contents(), url));
 
-  task_id_ = ActorKeyedService::Get(GetProfile())->CreateTask();
+  task_id_ =
+      ActorKeyedService::Get(GetProfile())->CreateTask(&GetPolicyChecker());
 
   std::optional<int> button_id =
       GetDOMNodeId(*web_contents()->GetPrimaryMainFrame(), "#button1");
@@ -627,8 +606,7 @@ IN_PROC_BROWSER_TEST_F(ActorPolicyCheckerBrowserTestManagedBrowser,
       /*url_allowlist=*/{},
       /*url_blocklist=*/{"bar.com"},
       /*await_list_update=*/true);
-  EXPECT_TRUE(
-      ActorKeyedService::Get(GetProfile())->GetPolicyChecker().CanActOnWeb());
+  EXPECT_TRUE(GetPolicyChecker().CanActOnWeb());
 
   const GURL cross_origin_url =
       embedded_https_test_server().GetURL("bar.com", "/actor/blank.html");
@@ -638,7 +616,8 @@ IN_PROC_BROWSER_TEST_F(ActorPolicyCheckerBrowserTestManagedBrowser,
 
   ASSERT_TRUE(content::NavigateToURL(web_contents(), link_page_url));
 
-  task_id_ = ActorKeyedService::Get(GetProfile())->CreateTask();
+  task_id_ =
+      ActorKeyedService::Get(GetProfile())->CreateTask(&GetPolicyChecker());
 
   std::optional<int> link_id =
       GetDOMNodeId(*web_contents()->GetPrimaryMainFrame(), "#link");
@@ -662,8 +641,7 @@ IN_PROC_BROWSER_TEST_F(ActorPolicyCheckerBrowserTestManagedBrowser,
       /*url_allowlist=*/{"blocked.example.com"},
       /*url_blocklist=*/{},
       /*await_list_update=*/true);
-  EXPECT_TRUE(
-      ActorKeyedService::Get(GetProfile())->GetPolicyChecker().CanActOnWeb());
+  EXPECT_TRUE(GetPolicyChecker().CanActOnWeb());
 
   const GURL cross_origin_url = embedded_https_test_server().GetURL(
       "blocked.example.com", "/actor/blank.html");
@@ -673,7 +651,8 @@ IN_PROC_BROWSER_TEST_F(ActorPolicyCheckerBrowserTestManagedBrowser,
 
   ASSERT_TRUE(content::NavigateToURL(web_contents(), link_page_url));
 
-  task_id_ = ActorKeyedService::Get(GetProfile())->CreateTask();
+  task_id_ =
+      ActorKeyedService::Get(GetProfile())->CreateTask(&GetPolicyChecker());
 
   std::optional<int> link_id =
       GetDOMNodeId(*web_contents()->GetPrimaryMainFrame(), "#link");
@@ -695,9 +674,6 @@ class ActorPolicyCheckerBrowserTestManagedWithForcedDisabledDefaultPref
     scoped_feature_list_.InitWithFeaturesAndParameters(
         /* enabled_features = */
         {
-#if BUILDFLAG(IS_ANDROID)
-            {kActorEnableAndroid, {}},
-#endif
             {features::kGlicActor,
              {{features::kGlicActorEnterprisePrefDefault.name,
                features::kGlicActorEnterprisePrefDefault.GetName(
@@ -719,12 +695,9 @@ IN_PROC_BROWSER_TEST_F(
       glic::prefs::GlicActuationOnWebPolicyState::kEnabled);
 
   // If the default pref is kForcedDisabled, the policy value is discarded.
-  EXPECT_FALSE(
-      ActorKeyedService::Get(GetProfile())->GetPolicyChecker().CanActOnWeb());
-  EXPECT_EQ(ActorKeyedService::Get(GetProfile())
-                ->GetPolicyChecker()
-                .CannotActOnWebReason(),
-            ActorPolicyChecker::CannotActReason::kManagedOrDataProtected);
+  EXPECT_FALSE(GetPolicyChecker().CanActOnWeb());
+  EXPECT_EQ(GetPolicyChecker().CannotActOnWebReason(),
+            ActorPolicyChecker::CannotActReason::kDisabledByPolicy);
 }
 
 // Makes sure that on policy-managed clients, when the policy is unset, the
@@ -736,9 +709,6 @@ class ActorPolicyCheckerBrowserTestManagedPolicyNotSet
     scoped_feature_list_.InitWithFeaturesAndParameters(
         /* enabled_features = */
         {
-#if BUILDFLAG(IS_ANDROID)
-            {kActorEnableAndroid, {}},
-#endif
             {features::kGlicActor,
              {{features::kGlicActorEnterprisePrefDefault.name,
                features::kGlicActorEnterprisePrefDefault.GetName(
@@ -765,12 +735,9 @@ IN_PROC_BROWSER_TEST_F(ActorPolicyCheckerBrowserTestManagedPolicyNotSet,
   UpdateGeminiActOnWebPolicy(std::nullopt);
 
   // Policy is unset. Fallback to the default pref value.
-  EXPECT_FALSE(
-      ActorKeyedService::Get(GetProfile())->GetPolicyChecker().CanActOnWeb());
-  EXPECT_EQ(ActorKeyedService::Get(GetProfile())
-                ->GetPolicyChecker()
-                .CannotActOnWebReason(),
-            ActorPolicyChecker::CannotActReason::kManagedOrDataProtected);
+  EXPECT_FALSE(GetPolicyChecker().CanActOnWeb());
+  EXPECT_EQ(GetPolicyChecker().CannotActOnWebReason(),
+            ActorPolicyChecker::CannotActReason::kDisabledByPolicy);
 }
 
 // Makes sure that on policy-managed clients, when the default pref is not
@@ -782,9 +749,6 @@ class ActorPolicyCheckerBrowserTestManagedPolicyChangesCapability
     scoped_feature_list_.InitWithFeaturesAndParameters(
         /* enabled_features = */
         {
-#if BUILDFLAG(IS_ANDROID)
-            {kActorEnableAndroid, {}},
-#endif
             {features::kGlicActor,
              {{features::kGlicActorEnterprisePrefDefault.name,
                features::kGlicActorEnterprisePrefDefault.GetName(
@@ -805,42 +769,40 @@ IN_PROC_BROWSER_TEST_F(
   UpdateGeminiActOnWebPolicy(
       glic::prefs::GlicActuationOnWebPolicyState::kEnabled);
 
-  EXPECT_TRUE(
-      ActorKeyedService::Get(GetProfile())->GetPolicyChecker().CanActOnWeb());
+  EXPECT_TRUE(GetPolicyChecker().CanActOnWeb());
 
   UpdateGeminiActOnWebPolicy(
       glic::prefs::GlicActuationOnWebPolicyState::kDisabled);
 
-  EXPECT_FALSE(
-      ActorKeyedService::Get(GetProfile())->GetPolicyChecker().CanActOnWeb());
-  EXPECT_EQ(ActorKeyedService::Get(GetProfile())
-                ->GetPolicyChecker()
-                .CannotActOnWebReason(),
-            ActorPolicyChecker::CannotActReason::kManagedOrDataProtected);
+  EXPECT_FALSE(GetPolicyChecker().CanActOnWeb());
+  EXPECT_EQ(GetPolicyChecker().CannotActOnWebReason(),
+            ActorPolicyChecker::CannotActReason::kDisabledByPolicy);
 }
 
 // Exercise the policy checker for managed accounts (AccountInfo::IsManaged())
 // on non managed browsers (!browser_management_service->IsManaged()).
 class ActorPolicyCheckerBrowserTestWithManagedAccount
-    : public ActorPolicyCheckerBrowserTestBase {
+    : public ActorPolicyCheckerBrowserTestBase,
+      public ::testing::WithParamInterface<bool> {
  public:
   ActorPolicyCheckerBrowserTestWithManagedAccount() {
     scoped_feature_list_.InitWithFeaturesAndParameters(
         /* enabled_features = */
-        {
-#if BUILDFLAG(IS_ANDROID)
-            {kActorEnableAndroid, {}},
-#endif
-            {features::kGlicActor,
-             {{features::kGlicActorEnterprisePrefDefault.name,
-               features::kGlicActorEnterprisePrefDefault.GetName(
-                   features::GlicActorEnterprisePrefDefault::
-                       kEnabledByDefault)},
-              {features::kGlicActorEligibleTiers.name,
-               base::ToString(kAllowedTier)}}}},
+        {{features::kGlicActor,
+          {{features::kGlicActorEnterprisePrefDefault.name,
+            features::kGlicActorEnterprisePrefDefault.GetName(
+                IsPolicyDefaultPrefEnabled()
+                    ? features::GlicActorEnterprisePrefDefault::
+                          kEnabledByDefault
+                    : features::GlicActorEnterprisePrefDefault::
+                          kDisabledByDefault)},
+           {features::kGlicActorEligibleTiers.name,
+            base::ToString(kAllowedTier)}}}},
         /* disabled_features = */ {});
   }
   ~ActorPolicyCheckerBrowserTestWithManagedAccount() override = default;
+
+  bool IsPolicyDefaultPrefEnabled() const { return GetParam(); }
 
   void SetUpOnMainThread() override {
     ActorPolicyCheckerBrowserTestBase::SetUpOnMainThread();
@@ -853,72 +815,49 @@ class ActorPolicyCheckerBrowserTestWithManagedAccount
   base::test::ScopedFeatureList scoped_feature_list_;
 };
 
-IN_PROC_BROWSER_TEST_F(ActorPolicyCheckerBrowserTestWithManagedAccount,
+IN_PROC_BROWSER_TEST_P(ActorPolicyCheckerBrowserTestWithManagedAccount,
                        CapabilityUpdatedForAccount) {
   // No account is signed in, thus no capability.
-  EXPECT_FALSE(
-      ActorKeyedService::Get(GetProfile())->GetPolicyChecker().CanActOnWeb());
-  EXPECT_EQ(ActorKeyedService::Get(GetProfile())
-                ->GetPolicyChecker()
-                .CannotActOnWebReason(),
+  EXPECT_FALSE(GetPolicyChecker().CanActOnWeb());
+  EXPECT_EQ(GetPolicyChecker().CannotActOnWebReason(),
             ActorPolicyChecker::CannotActReason::kAccountCapabilityIneligible);
 
-  // Still no capability, because the account is an enterprise account whose
-  // domain is managed.
+  // Capability is calculated from the default pref value. Despite the account
+  // being an enterprise account, the browser has no management. Fallsback to
+  // the default policy pref instead of relying on the policy value.
   SimulatePrimaryAccountChangedSignIn(&kEnterpriseAccount);
-  EXPECT_FALSE(
-      ActorKeyedService::Get(GetProfile())->GetPolicyChecker().CanActOnWeb());
-  EXPECT_EQ(ActorKeyedService::Get(GetProfile())
-                ->GetPolicyChecker()
-                .CannotActOnWebReason(),
-            ActorPolicyChecker::CannotActReason::kManagedOrDataProtected);
+  EXPECT_EQ(GetPolicyChecker().CanActOnWeb(), IsPolicyDefaultPrefEnabled());
+  if (IsPolicyDefaultPrefEnabled()) {
+    EXPECT_EQ(GetPolicyChecker().CannotActOnWebReason(),
+              ActorPolicyChecker::CannotActReason::kNone);
+  } else {
+    EXPECT_EQ(
+        GetPolicyChecker().CannotActOnWebReason(),
+        ActorPolicyChecker::CannotActReason::kEnterpriseWithoutManagement);
+  }
 
 // Note: sign-out from enterprise account is not allowed in ChromeOS.
 #if !BUILDFLAG(IS_CHROMEOS)
   ClearPrimaryAccount();
-  EXPECT_FALSE(
-      ActorKeyedService::Get(GetProfile())->GetPolicyChecker().CanActOnWeb());
+  EXPECT_FALSE(GetPolicyChecker().CanActOnWeb());
 
   // Now the account is not an enterprise account, thus has the capability.
   SimulatePrimaryAccountChangedSignIn(&kNonEnterpriseAccount);
-  EXPECT_TRUE(
-      ActorKeyedService::Get(GetProfile())->GetPolicyChecker().CanActOnWeb());
+  EXPECT_TRUE(GetPolicyChecker().CanActOnWeb());
 #endif  // !BUILDFLAG(IS_CHROMEOS)
 }
 
-IN_PROC_BROWSER_TEST_F(ActorPolicyCheckerBrowserTestWithManagedAccount,
-                       GlicUserStatusChanged) {
-  // No account is signed in, thus no capability.
-  EXPECT_FALSE(
-      ActorKeyedService::Get(GetProfile())->GetPolicyChecker().CanActOnWeb());
-
-  // Now the account is not an enterprise account, thus has the capability.
-  SimulatePrimaryAccountChangedSignIn(&kNonEnterpriseAccount);
-  EXPECT_TRUE(
-      ActorKeyedService::Get(GetProfile())->GetPolicyChecker().CanActOnWeb());
-
-  // `isEnterpriseAccountDataProtected = true` disables the capability.
-  AddUserStatusPref(/*is_enterprise_account_data_protected=*/true);
-  EXPECT_FALSE(
-      ActorKeyedService::Get(GetProfile())->GetPolicyChecker().CanActOnWeb());
-  EXPECT_EQ(ActorKeyedService::Get(GetProfile())
-                ->GetPolicyChecker()
-                .CannotActOnWebReason(),
-            ActorPolicyChecker::CannotActReason::kManagedOrDataProtected);
-}
-
-IN_PROC_BROWSER_TEST_F(ActorPolicyCheckerBrowserTestWithManagedAccount,
+IN_PROC_BROWSER_TEST_P(ActorPolicyCheckerBrowserTestWithManagedAccount,
                        DataProtectedDogfoodUserCanActOnWeb) {
   SetIsLikelyDogfoodClient(true);
   SimulatePrimaryAccountChangedSignIn(&kNonEnterpriseAccount);
   AddUserStatusPref(/*is_enterprise_account_data_protected=*/true);
 
   // Dogfood devices are exempted from the data protected check.
-  EXPECT_TRUE(
-      ActorKeyedService::Get(GetProfile())->GetPolicyChecker().CanActOnWeb());
+  EXPECT_TRUE(GetPolicyChecker().CanActOnWeb());
 }
 
-IN_PROC_BROWSER_TEST_F(ActorPolicyCheckerBrowserTestWithManagedAccount,
+IN_PROC_BROWSER_TEST_P(ActorPolicyCheckerBrowserTestWithManagedAccount,
                        CanUseModelExecutionFeaturesCapabilityFalse) {
   SimulatePrimaryAccountChangedSignIn(&kNonEnterpriseAccount);
 
@@ -931,15 +870,12 @@ IN_PROC_BROWSER_TEST_F(ActorPolicyCheckerBrowserTestWithManagedAccount,
   AccountCapabilitiesTestMutator mutator(&account_info.capabilities);
   mutator.set_can_use_model_execution_features(false);
   identity_test_env_->UpdateAccountInfoForAccount(account_info);
-  EXPECT_FALSE(
-      ActorKeyedService::Get(GetProfile())->GetPolicyChecker().CanActOnWeb());
-  EXPECT_EQ(ActorKeyedService::Get(GetProfile())
-                ->GetPolicyChecker()
-                .CannotActOnWebReason(),
+  EXPECT_FALSE(GetPolicyChecker().CanActOnWeb());
+  EXPECT_EQ(GetPolicyChecker().CannotActOnWebReason(),
             ActorPolicyChecker::CannotActReason::kAccountCapabilityIneligible);
 }
 
-IN_PROC_BROWSER_TEST_F(ActorPolicyCheckerBrowserTestWithManagedAccount,
+IN_PROC_BROWSER_TEST_P(ActorPolicyCheckerBrowserTestWithManagedAccount,
                        CanUseModelExecutionFeaturesCapabilityTrue) {
   SimulatePrimaryAccountChangedSignIn(&kNonEnterpriseAccount);
 
@@ -952,9 +888,17 @@ IN_PROC_BROWSER_TEST_F(ActorPolicyCheckerBrowserTestWithManagedAccount,
   AccountCapabilitiesTestMutator mutator(&account_info.capabilities);
   mutator.set_can_use_model_execution_features(true);
   identity_test_env_->UpdateAccountInfoForAccount(account_info);
-  EXPECT_TRUE(
-      ActorKeyedService::Get(GetProfile())->GetPolicyChecker().CanActOnWeb());
+  EXPECT_TRUE(GetPolicyChecker().CanActOnWeb());
 }
+
+INSTANTIATE_TEST_SUITE_P(
+    /* no prefix */,
+    ActorPolicyCheckerBrowserTestWithManagedAccount,
+    ::testing::Bool(),
+    [](const testing::TestParamInfo<bool>& info) {
+      return info.param ? "PolicyDefaultPrefEnabledByDefault"
+                        : "PolicyDefaultPrefDisabledByDefault";
+    });
 
 // Exercise the policy checker for managed accounts (AccountInfo::IsManaged())
 // on policymanaged browsers (browser_management_service->IsManaged()).
@@ -966,25 +910,20 @@ IN_PROC_BROWSER_TEST_F(
     CapabilityUpdatedForAccount) {
   UpdateGeminiActOnWebPolicy(
       glic::prefs::GlicActuationOnWebPolicyState::kDisabled);
-  EXPECT_FALSE(
-      ActorKeyedService::Get(GetProfile())->GetPolicyChecker().CanActOnWeb());
-  EXPECT_EQ(ActorKeyedService::Get(GetProfile())
-                ->GetPolicyChecker()
-                .CannotActOnWebReason(),
-            ActorPolicyChecker::CannotActReason::kManagedOrDataProtected);
+  EXPECT_FALSE(GetPolicyChecker().CanActOnWeb());
+  EXPECT_EQ(GetPolicyChecker().CannotActOnWebReason(),
+            ActorPolicyChecker::CannotActReason::kDisabledByPolicy);
 
 // Note: sign-out from enterprise account is not allowed in ChromeOS.
 #if !BUILDFLAG(IS_CHROMEOS)
   ClearPrimaryAccount();
   // No capability because the policy is disabled.
   SimulatePrimaryAccountChangedSignIn(&kNonEnterpriseAccount);
-  EXPECT_FALSE(
-      ActorKeyedService::Get(GetProfile())->GetPolicyChecker().CanActOnWeb());
+  EXPECT_FALSE(GetPolicyChecker().CanActOnWeb());
 
   UpdateGeminiActOnWebPolicy(
       glic::prefs::GlicActuationOnWebPolicyState::kEnabled);
-  EXPECT_TRUE(
-      ActorKeyedService::Get(GetProfile())->GetPolicyChecker().CanActOnWeb());
+  EXPECT_TRUE(GetPolicyChecker().CanActOnWeb());
 #endif  // !BUILDFLAG(IS_CHROMEOS)
 }
 

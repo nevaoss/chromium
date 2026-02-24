@@ -56,7 +56,7 @@ constexpr net::NetworkTrafficAnnotationTag kSkillsDownloaderNetworkTag =
       })");
 
 inline constexpr char kSkillsDownloaderGstaticUrl[] =
-    "https://www.gstatic.com/chrome/webstore/skills/first_party_skills.pb";
+    "https://www.gstatic.com/chrome/skills/first_party_skills_binary";
 
 std::unique_ptr<network::SimpleURLLoader> CreateSimpleURLLoader(
     const GURL& url,
@@ -131,7 +131,7 @@ void SkillsDownloader::OnUrlDownloadComplete(
 
   auto skills_map = std::make_unique<SkillsMap>();
   for (auto& skill : *skills_list->mutable_skills()) {
-    (*skills_map)[skill.category()].push_back(std::move(skill));
+    skills_map->insert_or_assign(skill.id(), std::move(skill));
   }
 
   std::move(callback).Run(std::move(skills_map));

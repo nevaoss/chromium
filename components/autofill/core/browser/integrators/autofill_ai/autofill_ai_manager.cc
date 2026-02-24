@@ -53,6 +53,7 @@
 #include "components/autofill/core/browser/form_structure.h"
 #include "components/autofill/core/browser/foundations/autofill_client.h"
 #include "components/autofill/core/browser/integrators/autofill_ai/autofill_ai_import_utils.h"
+#include "components/autofill/core/browser/integrators/autofill_ai/autofill_ai_wallet_utils.h"
 #include "components/autofill/core/browser/integrators/autofill_ai/metrics/autofill_ai_logger.h"
 #include "components/autofill/core/browser/integrators/autofill_ai/metrics/autofill_ai_metrics.h"
 #include "components/autofill/core/browser/logging/log_manager.h"
@@ -142,6 +143,31 @@ base::flat_set<EntityTypeName> GetSaveEntitiesTypesNames(
     entity_types.insert(entity.type().name());
   }
   return entity_types;
+}
+
+// Returns whether saving `entity` will be synchronous in the UI. This is the
+// case iff the entity is saved locally or if it is written via sync.
+bool IsSaveSynchronous(const EntityInstance& entity) {
+  if (!entity.type().SupportsMaskedStorage()) {
+    return true;
+  }
+  switch (entity.record_type()) {
+    case EntityInstance::RecordType::kLocal:
+      return true;
+    case EntityInstance::RecordType::kServerWallet:
+      return false;
+  }
+  NOTREACHED();
+}
+
+// A placeholder for sending a Wallet upsert request.
+// TODO(crbug.com/478783796): Implement this properly.
+void SendWalletUpsertRequest(
+    const EntityInstance& entity_to_upload,
+    base::OnceCallback<void(std::optional<EntityInstance>)> callback) {
+  base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
+      FROM_HERE, base::BindOnce(std::move(callback), std::nullopt),
+      base::Seconds(3));
 }
 
 }  // namespace
@@ -334,14 +360,15 @@ bool AutofillAiManager::MaybeImportForm(const FormStructure& form,
         base::BindOnce(&AutofillAiManager::HandlePromptResult, GetWeakPtr(),
                        form.ToFormData(), candidate_entity, ukm_source_id, prompt_type);
 
-    std::optional<EntityInstance> entity_instance;
+    std::optional<EntityInstance> old_entity;
     if (prompt_type == AutofillClient::AutofillAiImportPromptType::kUpdate) {
-      entity_instance = *client_->GetEntityDataManager()->GetEntityInstance(
+      old_entity = *client_->GetEntityDataManager()->GetEntityInstance(
           candidate_entity.guid());
     }
-    client_->ShowEntityImportBubble(
-        std::move(candidate_entity), std::move(entity_instance),
-        /*save_is_synchronous=*/true, std::move(prompt_result_callback));
+    const bool is_save_synchronous = IsSaveSynchronous(candidate_entity);
+    client_->ShowEntityImportBubble(std::move(candidate_entity),
+                                    std::move(old_entity), is_save_synchronous,
+                                    std::move(prompt_result_callback));
   }
   return prompt_shown;
 }
@@ -377,9 +404,21 @@ void AutofillAiManager::HandlePromptResult(
   // Only add logic that is common across all prompt types below this line.
   // Otherwise use the switch above.
 
-  if (prompt_accepted) {
-    entity_manager.AddOrUpdateEntityInstance(std::move(entity));
+  if (!prompt_accepted) {
+    return;
   }
+
+  if (IsSaveSynchronous(entity)) {
+    entity_manager.AddOrUpdateEntityInstance(std::move(entity));
+    return;
+  }
+
+  // TODO(crbug.com/481566741): Pass the entity manager as a weak pointer.
+  base::OnceCallback<void(std::optional<EntityInstance>)> callback =
+      base::BindOnce(&HandleWalletUpsertResponse, /*entity_manager=*/nullptr,
+                     client_->GetWeakPtr(), prompt_type);
+  // For now, asynchronous saves imply saving to Wallet.
+  SendWalletUpsertRequest(entity, std::move(callback));
 }
 
 std::vector<Suggestion> AutofillAiManager::GetSuggestions(
@@ -749,18 +788,8 @@ AutofillAiManager::GetMigratePromptCandidates(
           observed_entity.IsSubsetOf(*local_entity)) {
         migrate_candidates.emplace_back(
             AutofillClient::AutofillAiImportPromptType::kMigrate,
-            EntityInstance(
-                local_entity->type(),
-                base::ToVector(local_entity->attributes()),
-                local_entity->guid(), local_entity->nickname(),
-                local_entity->date_modified(), local_entity->use_count(),
-                local_entity->use_date(),
-                EntityInstance::RecordType::kServerWallet,
-                // Entities that are migrated from local to server are never
-                // read-only, since local entities can always be edited by the
-                // users, so can their server counterpart.
-                EntityInstance::AreAttributesReadOnly(false),
-                /*frecency_override=*/""));
+            local_entity->CopyWithNewRecordType(
+                EntityInstance::RecordType::kServerWallet));
       }
     }
   }

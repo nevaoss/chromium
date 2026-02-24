@@ -1370,11 +1370,14 @@ suite('NewTabPageComposeboxTest', () => {
 
     // Enter create image mode.
     composeboxElement.$.context.dispatchEvent(
-        new CustomEvent('set-create-image-mode', {
-          detail: {inCreateImageMode: true},
+        new CustomEvent('set-tool-mode', {
+          detail: {tool: ComposeboxToolMode.kImageGen, enabled: true},
         }));
     await microtasksFinished();
-    assertEquals(handler.getCallCount('setCreateImageMode'), 1);
+    assertEquals(searchboxHandler.getCallCount('setActiveToolMode'), 1);
+    assertEquals(
+        ComposeboxToolMode.kImageGen,
+        searchboxHandler.getArgs('setActiveToolMode')[0]);
 
     // Upload an image file. `inputsDisabled` should be false.
     const id = generateZeroId();
@@ -1384,9 +1387,10 @@ suite('NewTabPageComposeboxTest', () => {
         id, FileUploadStatus.kProcessingSuggestSignalsReady, null);
     await microtasksFinished();
 
-    // TODO(crbug.com/452957831): Create test browser proxy for the composebox
-    // handler so we can assert the parameters this function was called with.
-    assertEquals(handler.getCallCount('setCreateImageMode'), 2);
+    assertEquals(searchboxHandler.getCallCount('setActiveToolMode'), 2);
+    assertEquals(
+        ComposeboxToolMode.kImageGen,
+        searchboxHandler.getArgs('setActiveToolMode')[0]);
 
     // Deleting the image should call setCreateImageMode again but with
     // imagePresent false.
@@ -1401,7 +1405,10 @@ suite('NewTabPageComposeboxTest', () => {
         }));
 
     await microtasksFinished();
-    assertEquals(handler.getCallCount('setCreateImageMode'), 3);
+    assertEquals(searchboxHandler.getCallCount('setActiveToolMode'), 3);
+    assertEquals(
+        ComposeboxToolMode.kImageGen,
+        searchboxHandler.getArgs('setActiveToolMode')[0]);
   });
 
   test('arrow up/down moves selection / focus', async () => {
@@ -1478,6 +1485,72 @@ suite('NewTabPageComposeboxTest', () => {
     // Restore.
     loadTimeData.overrideValues({composeboxShowZps: false});
   });
+
+  test(
+      'arrow up/down enables submit for suggestion with no query', async () => {
+        loadTimeData.overrideValues({composeboxShowZps: true});
+        createComposeboxElement();
+        await microtasksFinished();
+
+        // Add zps input.
+        composeboxElement.$.input.value = '';
+        composeboxElement.$.input.dispatchEvent(new Event('input'));
+
+        const matches = [
+          createSearchMatchForTesting({fillIntoEdit: ''}),
+        ];
+        searchboxCallbackRouterRemote.autocompleteResultChanged(
+            createAutocompleteResultForTesting({
+              matches: matches,
+            }));
+
+        assertTrue(await areMatchesShowing());
+
+        const matchEls =
+            composeboxElement.$.matches.shadowRoot.querySelectorAll(
+                'cr-composebox-match');
+        assertEquals(1, matchEls.length);
+
+        const arrowDownEvent = new KeyboardEvent('keydown', {
+          bubbles: true,
+          cancelable: true,
+          composed: true,  // So it propagates across shadow DOM boundary.
+          key: 'ArrowDown',
+        });
+
+        composeboxElement.$.input.dispatchEvent(arrowDownEvent);
+        await microtasksFinished();
+        assertTrue(arrowDownEvent.defaultPrevented);
+
+        // First match is selected
+        assertTrue(matchEls[0]!.hasAttribute(Attributes.SELECTED));
+        assertEquals('', composeboxElement.$.input.value);
+
+        // Assert submit is enabled.
+        const submitButton =
+            composeboxElement.shadowRoot.querySelector<HTMLElement>(
+                '#submitIcon');
+        assertTrue(!!submitButton);
+        assertFalse(submitButton.hasAttribute('disabled'));
+
+        // By pressing 'Enter' on the button.
+        const keydownEvent = (new KeyboardEvent('keydown', {
+          bubbles: true,
+          cancelable: true,
+          composed: true,
+          key: 'Enter',
+        }));
+        matchEls[0]!.dispatchEvent(keydownEvent);
+        assertTrue(keydownEvent.defaultPrevented);
+
+        await microtasksFinished();
+
+        // Assert call occurs.
+        assertEquals(searchboxHandler.getCallCount('openAutocompleteMatch'), 1);
+
+        // Restore.
+        loadTimeData.overrideValues({composeboxShowZps: false});
+      });
 
   test('Selection is restored after selected match is removed', async () => {
     loadTimeData.overrideValues(
@@ -1877,8 +1950,8 @@ suite('NewTabPageComposeboxTest', () => {
 
     // Deep search mode enabled.
     composeboxElement.$.context.dispatchEvent(
-        new CustomEvent('set-deep-search-mode', {
-          detail: {inDeepSearchMode: true},
+        new CustomEvent('set-tool-mode', {
+          detail: {tool: ComposeboxToolMode.kDeepSearch, enabled: true},
         }));
     await microtasksFinished();
     assertEquals(
@@ -1887,8 +1960,8 @@ suite('NewTabPageComposeboxTest', () => {
 
     // Deep search mode disabled.
     composeboxElement.$.context.dispatchEvent(
-        new CustomEvent('set-deep-search-mode', {
-          detail: {inDeepSearchMode: false},
+        new CustomEvent('set-tool-mode', {
+          detail: {tool: ComposeboxToolMode.kDeepSearch, enabled: false},
         }));
     await microtasksFinished();
     assertEquals(
@@ -1904,8 +1977,8 @@ suite('NewTabPageComposeboxTest', () => {
 
     // Create image mode enabled.
     composeboxElement.$.context.dispatchEvent(
-        new CustomEvent('set-create-image-mode', {
-          detail: {inCreateImageMode: true},
+        new CustomEvent('set-tool-mode', {
+          detail: {tool: ComposeboxToolMode.kImageGen, enabled: true},
         }));
     await microtasksFinished();
     assertEquals(
@@ -1914,8 +1987,8 @@ suite('NewTabPageComposeboxTest', () => {
 
     // Create image mode disabled.
     composeboxElement.$.context.dispatchEvent(
-        new CustomEvent('set-create-image-mode', {
-          detail: {inCreateImageMode: false},
+        new CustomEvent('set-tool-mode', {
+          detail: {tool: ComposeboxToolMode.kImageGen, enabled: false},
         }));
     await microtasksFinished();
     assertEquals(
@@ -2542,6 +2615,11 @@ suite('NewTabPageComposeboxTest', () => {
       disabledModels: [],
       disabledTools: [],
       disabledInputTypes: [],
+      toolConfigs: [],
+      modelConfigs: [],
+      toolsSectionConfig: null,
+      modelSectionConfig: null,
+      hintText: '',
     } as InputState;
     searchboxCallbackRouterRemote.onInputStateChanged(inputState);
     await microtasksFinished();

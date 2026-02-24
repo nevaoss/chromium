@@ -76,7 +76,8 @@ export class ContextualActionMenuElement extends ContextualActionMenuElementBase
   protected maxFileCount_: number =
       loadTimeData.getInteger('composeboxFileMaxCount');
   private metricsSource_: string = loadTimeData.getString('composeboxSource');
-
+  protected showContextMenuHeaders_: boolean =
+      loadTimeData.getBoolean('ShowContextMenuHeaders');
   protected get supportedTools_(): Map<ToolMode, {
     id: string,
     icon: string,
@@ -324,11 +325,12 @@ export class ContextualActionMenuElement extends ContextualActionMenuElementBase
     this.$.menu.close();
   }
 
-  protected onToolClick_(tool: ToolMode) {
+  protected onToolClick_(e: Event) {
+    const toolMode = Number((e.currentTarget as HTMLElement).dataset['mode']);
     this.dispatchEvent(new CustomEvent('tool-click', {
       bubbles: true,
       composed: true,
-      detail: {tool},
+      detail: {toolMode},
     }));
     this.$.menu.close();
   }

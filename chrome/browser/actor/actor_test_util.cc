@@ -11,7 +11,9 @@
 #include "base/base64.h"
 #include "base/check_op.h"
 #include "base/command_line.h"
+#include "base/no_destructor.h"
 #include "base/values.h"
+#include "chrome/browser/actor/enterprise_policy_checker.h"
 #include "chrome/browser/actor/execution_engine.h"
 #include "chrome/browser/actor/shared_types.h"
 #include "chrome/browser/actor/tools/attempt_login_tool_request.h"
@@ -697,8 +699,18 @@ MockPolicyChecker::~MockPolicyChecker() = default;
 bool MockPolicyChecker::CanActOnWeb() const {
   return true;
 }
+EnterprisePolicyChecker::CannotActReason
+MockPolicyChecker::CannotActOnWebReason() const {
+  return EnterprisePolicyChecker::CannotActReason::kNone;
+}
 EnterprisePolicyBlockReason MockPolicyChecker::Evaluate(const GURL& url) const {
   return reason_;
+}
+
+const EnterprisePolicyChecker* NoEnterprisePolicyChecker() {
+  static base::NoDestructor<MockPolicyChecker> checker(
+      EnterprisePolicyBlockReason::kNotBlocked);
+  return checker.get();
 }
 
 }  // namespace actor

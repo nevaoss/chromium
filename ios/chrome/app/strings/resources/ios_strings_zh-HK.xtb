@@ -370,6 +370,7 @@
 <translation id="2306265833370324042">顯示 <ph name="SEARCH_ENGINE_NAME" /> 詳情</translation>
 <translation id="2309265394777270359">關閉分頁</translation>
 <translation id="2311077293164383652">關閉固定分頁</translation>
+<translation id="2313392466694008052">使用 Gemini 編輯圖像</translation>
 <translation id="2316129865977710310">不用了，謝謝</translation>
 <translation id="2320166752086256636">隱藏鍵盤</translation>
 <translation id="2321086116217818302">正在準備密碼…</translation>
@@ -521,6 +522,7 @@
 <translation id="288655811176831528">關閉分頁</translation>
 <translation id="2888631381369839306">價格追蹤通知已開啟</translation>
 <translation id="2893168226686371498">預設瀏覽器</translation>
+<translation id="2893791155497534382">密碼和其他活動可以在相應的管理設定中刪除</translation>
 <translation id="2894757982205307093">在群組中新增分頁</translation>
 <translation id="2902312830803030883">更多操作</translation>
 <translation id="2904788871580817212">開咗嘅分頁有產品減價，由 <ph name="PREVIOUS_PRICE" /> 減到 <ph name="PRICE" />，<ph name="PRODUCT_NAME" />，<ph name="DOMAIN" /></translation>
@@ -845,6 +847,7 @@
 <translation id="4181841719683918333">語言</translation>
 <translation id="4183350924949589798">想增強安全性嗎？</translation>
 <translation id="4184063163998877398">{count,plural, =1{{count} 個安全度低的密碼}other{{count} 個安全度低的密碼}}</translation>
+<translation id="4196758674971560031">你建立的分頁群組會儲存在分頁群組部分，並會跨裝置更新。</translation>
 <translation id="4197456013861852807">{count,plural, =1{這 {count} 個項目只會儲存至此裝置。如要在其他裝置上使用，請儲存至 Google 帳戶 ({email})。}other{這 {count} 個項目只會儲存至此裝置。如要在其他裝置上使用，請儲存至 Google 帳戶 ({email})。}}</translation>
 <translation id="4207873326995387292">瀏覽器資料</translation>
 <translation id="421070604241073551">如果開啟，資料就會儲存至你的 Google 帳戶。關閉後，資料只會儲存至此裝置。</translation>
@@ -1298,6 +1301,7 @@
 <translation id="5768870767339201169">從上次離開的地方繼續瀏覽</translation>
 <translation id="5779117921996157216">{count,plural, =1{你有 {count} 個密碼被盜用，可能導致安全風險。請立即修正以確保安全。}other{你有 {count} 個密碼被盜用，可能導致安全風險。請立即修正以確保安全。}}</translation>
 <translation id="5791632441210678828">將追蹤緊嘅動態消息排次序嘅掣。</translation>
+<translation id="5799263916847593256">開啟即可查看價格記錄</translation>
 <translation id="5803566855766646066">確定要捨棄這張新的信用卡嗎？</translation>
 <translation id="5804241973901381774">權限</translation>
 <translation id="58081802114142635">你的活動記錄有助改善 Google AI</translation>
@@ -1372,7 +1376,6 @@
 <translation id="607620096698446287">無法上載 <ph name="FILENAME" /> (<ph name="FILESIZE" />)</translation>
 <translation id="6076618233738284461">固定網站</translation>
 <translation id="6077126322656614846">已允許存取攝錄機</translation>
-<translation id="607730456154980869">使用 Chrome 版 Gemini 更快取得答案</translation>
 <translation id="6078236141387574983">重新調整表格高度</translation>
 <translation id="6084848228346514841">選取分頁</translation>
 <translation id="6089212833343035912">Google 密碼管理工具 PIN</translation>
@@ -1505,6 +1508,7 @@
 <translation id="6494931198667773526">結束時間</translation>
 <translation id="6503077044568424649">最常瀏覽</translation>
 <translation id="6503763061813913607">安全檢查通知</translation>
+<translation id="6504541289630702018">輕鬆存取桌面版分頁群組</translation>
 <translation id="6505334220040167806">收埋分頁群組。</translation>
 <translation id="6506996418997555004">分享「<ph name="GROUP_NAME" />」分頁群組</translation>
 <translation id="6507973708545996744">登入後，即可從任何裝置取得自己的閱讀清單。</translation>
@@ -1641,6 +1645,7 @@
 <translation id="6964300328304469089">目前已選取<ph name="NAME" />，<ph name="EMAIL" />。請選擇帳戶。</translation>
 <translation id="6964760285928603117">從群組中移除</translation>
 <translation id="6965382102122355670">確定</translation>
+<translation id="6967355534157677591">生成圖像 Pro</translation>
 <translation id="6973630695168034713">資料夾</translation>
 <translation id="6979158407327259162">Google 雲端硬碟</translation>
 <translation id="6979737339423435258">所有時間</translation>
@@ -1939,7 +1944,6 @@
 <translation id="8059533439631660104">收起嗰個部分。</translation>
 <translation id="8061584726507121204">記錄</translation>
 <translation id="8064946459644399612">已套用「新分頁」偏好設定</translation>
-<translation id="8069168488983557089">取得要點和分析，以助瞭解任何主題</translation>
 <translation id="8069394452933076548">針對最近未使用的分頁，選擇何時要移至閒置分頁部分。</translation>
 <translation id="8073670137947914548">下載完畢</translation>
 <translation id="8076492880354921740">分頁</translation>
@@ -2135,6 +2139,7 @@
 <translation id="8730621377337864115">完成</translation>
 <translation id="8731268612289859741">安全碼</translation>
 <translation id="87371078663613140">瀏覽選單列中的選項</translation>
+<translation id="8739546376441802490">已釘選網站</translation>
 <translation id="8741627442233023406">{count,plural, =1{查看分頁…}other{查看所有分頁…}}</translation>
 <translation id="8741995161408053644">您的 Google 帳戶在 <ph name="BEGIN_LINK" />history.google.com<ph name="END_LINK" /> 上可能有其他形式的瀏覽記錄。</translation>
 <translation id="874599634440689554">建立連結</translation>

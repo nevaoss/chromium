@@ -323,7 +323,7 @@ int NativePixmapFrameResource::stride(size_t plane) const {
 
 VideoFrame::StorageType NativePixmapFrameResource::storage_type() const {
   // TODO(nhebert): We should remove storage_type from FrameResource in favor of
-  // HasDmabufs, HasGpuMemoryBuffer.
+  // HasDmabufs, HasMappableSharedImage.
   return VideoFrame::STORAGE_DMABUFS;
 }
 
@@ -489,12 +489,13 @@ scoped_refptr<VideoFrame> NativePixmapFrameResource::CreateDmabufVideoFrame()
   return video_frame;
 }
 
-scoped_refptr<VideoFrame> NativePixmapFrameResource::CreateMappableVideoFrame(
+scoped_refptr<VideoFrame>
+NativePixmapFrameResource::CreateMappableSharedImageVideoFrame(
     gpu::SharedImageInterface* sii) const {
   LOG_ASSERT(buffer_usage_.has_value())
-      << "Unsupported conversion from wrapped DMA buffers to GpuMemoryBuffer "
-         "VideoFrame.";
-  // Creates a GMB-backed frame with using duplicated file descriptors.
+      << "Unsupported conversion from wrapped DMA buffers to "
+         "MappableSharedImage VideoFrame.";
+  // Creates a MappableSI-backed frame using duplicated file descriptors.
   auto video_frame = CreateVideoFrameFromGpuMemoryBufferHandle(
       CreateGpuMemoryBufferHandle(), format(), coded_size(), visible_rect(),
       natural_size(), timestamp(), *buffer_usage_, sii);

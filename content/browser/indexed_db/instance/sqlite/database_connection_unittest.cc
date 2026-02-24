@@ -8,10 +8,12 @@
 #include <string>
 #include <string_view>
 
+#include "base/containers/span.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
 #include "base/functional/callback_helpers.h"
+#include "base/rand_util.h"
 #include "base/test/bind.h"
 #include "base/test/gmock_expected_support.h"
 #include "base/test/metrics/histogram_tester.h"
@@ -214,6 +216,47 @@ TEST_F(DatabaseConnectionTest, TooNew) {
   }
 }
 
+TEST_F(DatabaseConnectionTest, CompressionHistograms) {
+  base::HistogramTester histograms;
+
+  const std::u16string_view kDbName{u"test db"};
+  auto db = OpenDb(kDbName);
+  auto vc =
+      db->CreateTransaction(blink::mojom::IDBTransactionDurability::Default,
+                            blink::mojom::IDBTransactionMode::VersionChange);
+  vc->Begin({});
+  ASSERT_TRUE(
+      vc->CreateObjectStore(kObjectStoreId, u"object store name", {}, true)
+          .ok());
+
+  // Compressible data.
+  std::string compressible_data(1000, 'a');
+  ASSERT_TRUE(
+      vc->PutRecord(kObjectStoreId, kKey, IndexedDBValue(compressible_data, {}))
+          .has_value());
+
+  histograms.ExpectTotalCount("IndexedDB.SQLite.PutRecord.CompressionRatio", 1);
+  histograms.ExpectUniqueSample(
+      "IndexedDB.SQLite.PutRecord.PrecompressionValueSize.Compressed",
+      compressible_data.size(), 1);
+  histograms.ExpectTotalCount(
+      "IndexedDB.SQLite.PutRecord.PrecompressionValueSize.Uncompressed", 0);
+
+  // Data that is not effectively compressible.
+  std::string incompressible_data(1000, 'a');
+  base::RandBytes(base::as_writable_byte_span(incompressible_data));
+  ASSERT_TRUE(vc->PutRecord(kObjectStoreId, blink::IndexedDBKey("key2"),
+                            IndexedDBValue(incompressible_data, {}))
+                  .has_value());
+
+  histograms.ExpectTotalCount("IndexedDB.SQLite.PutRecord.CompressionRatio", 2);
+  histograms.ExpectTotalCount(
+      "IndexedDB.SQLite.PutRecord.PrecompressionValueSize.Compressed", 1);
+  histograms.ExpectUniqueSample(
+      "IndexedDB.SQLite.PutRecord.PrecompressionValueSize.Uncompressed",
+      incompressible_data.size(), 1);
+}
+
 class DatabaseConnectionCorruptionTest : public DatabaseConnectionTest {
  public:
   DatabaseConnectionCorruptionTest() = default;
@@ -245,12 +288,11 @@ class DatabaseConnectionCorruptionTest : public DatabaseConnectionTest {
 
     StatusOr<IndexedDBValue> value = read_value();
 
-    ASSERT_TRUE(value.has_value());
-    EXPECT_EQ(base::span(value.value().bits), base::span(kValue.bits));
+    ASSERT_OK_AND_ASSIGN(IndexedDBValue value_unwrapped, std::move(value));
+    EXPECT_EQ(base::span(value_unwrapped.bits), base::span(kValue.bits));
 
-    StatusOr<base::DictValue> contents_before_corruption =
-        SnapshotDatabase(*db);
-    ASSERT_TRUE(contents_before_corruption.has_value());
+    ASSERT_OK_AND_ASSIGN(base::DictValue contents_before_corruption,
+                         SnapshotDatabase(*db));
 
     // Close the database and then corrupt it.
     db.reset();
@@ -282,9 +324,9 @@ class DatabaseConnectionCorruptionTest : public DatabaseConnectionTest {
       ASSERT_NO_FATAL_FAILURE(InitializeDbWithOneRecord(*db));
       recovered_value = read_value();
 #else
-      StatusOr<base::DictValue> contents_after_recovery = SnapshotDatabase(*db);
-      ASSERT_TRUE(contents_after_recovery.has_value());
-      EXPECT_EQ(*contents_after_recovery, *contents_before_corruption);
+      ASSERT_OK_AND_ASSIGN(base::DictValue contents_after_recovery,
+                           SnapshotDatabase(*db));
+      EXPECT_EQ(contents_after_recovery, contents_before_corruption);
 #endif
 
       // Read works because the DB was recovered (or, on Fuchsia, was deleted,

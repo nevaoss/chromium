@@ -433,7 +433,8 @@ public class LocationBarCoordinator
                 mAutocompleteCoordinator,
                 mUrlCoordinator,
                 mStatusCoordinator,
-                locationBarDataProvider);
+                locationBarDataProvider,
+                mWindowAndroid);
 
         Callback<Profile> profileObserver =
                 new Callback<>() {
@@ -460,7 +461,7 @@ public class LocationBarCoordinator
 
     private void updateBottomContainerPosition() {
         var layoutParams = (MarginLayoutParams) mBottomContainerView.getLayoutParams();
-        if (isUrlBarFocused()) {
+        if (mLocationBarMediator.isUrlBarFocused()) {
             View rootView = mLocationBarLayout.getRootView();
             WindowInsets windowInsets = rootView.getRootWindowInsets();
             layoutParams.bottomMargin =
@@ -722,11 +723,6 @@ public class LocationBarCoordinator
     @Override
     public boolean didFocusUrlFromFakebox() {
         return mLocationBarMediator.didFocusUrlFromFakebox();
-    }
-
-    @Override
-    public boolean isUrlBarFocused() {
-        return mLocationBarMediator.isUrlBarFocused();
     }
 
     @Override

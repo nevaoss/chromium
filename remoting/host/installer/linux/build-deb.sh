@@ -126,6 +126,12 @@ mkdir -p "${tmpdir}/linux"
 cp -a "${SCRIPTDIR}"/* "${tmpdir}/linux"
 cd "${tmpdir}/linux"
 
+# The 'cp -a' command preserves the source file timestamps, which reflect the
+# checkout time and vary between builders. This results in non-reproducible
+# builds. Explicitly set the timestamp of all files to the build timestamp
+# to ensure consistent, deterministic package output.
+find . -exec touch -d "@$BUILD_TIMESTAMP" {} +
+
 if [[ ! "$OUTPUT_PATH" ]]; then
   OUTPUT_PATH="${SCRIPTDIR}/../../../../out/Release"
 fi
@@ -167,6 +173,10 @@ SOURCE_DATE_EPOCH="$BUILD_TIMESTAMP" \
   BUILD_DIR=$OUTPUT_PATH SRC_DIR=${SCRIPTDIR}/../../../.. \
   dpkg-buildpackage -b -us -uc
 LD_LIBRARY_PATH=$SAVE_LDLP
+
+# Remove buildinfo references from the changes file as they are not included in
+# the zip and can cause reproducibility issues due to environment differences.
+sed -i '/.buildinfo/d' ../${PACKAGE}_*.changes
 
 mv ../${PACKAGE}_*.deb "$OUTPUT_PATH"/
 mv ../${PACKAGE}_*.changes "$OUTPUT_PATH"/

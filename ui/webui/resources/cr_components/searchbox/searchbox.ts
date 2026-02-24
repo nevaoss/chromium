@@ -578,12 +578,6 @@ export class SearchboxElement extends SearchboxElementBase implements
       this.showThumbnail = !!this.thumbnailUrl_;
     }
 
-    if (this.ntpRealboxNextEnabled) {
-      if (changedPrivateProperties.has('inputFocused_')) {
-        this.fire('searchbox-input-focus-changed', {value: this.inputFocused_});
-      }
-    }
-
     if (changedPrivateProperties.has('tabSuggestions_')) {
       this.recentTabForChip_ =
           this.tabSuggestions_.find(tab => tab.showInCurrentTabChip) || null;
@@ -1250,16 +1244,9 @@ export class SearchboxElement extends SearchboxElementBase implements
         !this.isInputEmpty());
   }
 
-  protected setDeepSearchMode_() {
-    this.openComposebox_([], ToolMode.kDeepSearch);
-  }
-
-  protected setCreateImageMode_() {
-    this.openComposebox_([], ToolMode.kImageGen);
-  }
-
-  protected setCanvasMode_() {
-    this.openComposebox_([], ToolMode.kCanvas);
+  protected onSetToolMode_(
+      e: CustomEvent<{tool: ToolMode, enabled: boolean}>) {
+    this.openComposebox_([], e.detail.tool);
   }
 
   protected onModelClick_(e: CustomEvent<{model: ModelMode}>) {

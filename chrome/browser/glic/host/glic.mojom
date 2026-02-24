@@ -69,6 +69,12 @@ struct ConfigInfo {
 
   // The URL from which the FRE page is loaded from.
   url.mojom.Url fre_guest_url;
+
+  // User configured preset URLs for different environments of the guest web
+  // client.
+  url.mojom.Url autopush_guest_url;
+  url.mojom.Url preprod_guest_url;
+  url.mojom.Url prod_guest_url;
 };
 
 // Consolidated data payload to populate the Glic internals page.
@@ -82,7 +88,8 @@ enum ActuationEligibility {
   kEligible,
   kMissingAccountCapability,
   kMissingChromeBenefits,
-  kManagedOrDataProtected,
+  kDisabledByPolicy,
+  kEnterpriseWithoutManagement,
   kPlatformUnsupported,
 };
 
@@ -243,6 +250,11 @@ interface PageHandler {
 
   // Called by the internals WebUI page to get the data it will present.
   GetInternalsDataPayload() => (InternalsDataPayload internals_data);
+
+  // Sets the guest URL presets for the internals page.
+  SetGuestUrlPresets(url.mojom.Url autopush,
+                     url.mojom.Url preprod,
+                     url.mojom.Url prod);
 };
 
 // @generate glic_api
@@ -594,7 +606,8 @@ enum SkillSource {
   // Skill created by an end-user.
   kUserCreated = 2,
 };
-// LINT.ThenChange(//depot/chromium/components/skills/public/skill.mojom:SkillSource, //depot/chromium/components/skills/public/skill.h:SkillSource)
+// LINT.ThenChange(//depot/chromium/components/skills/public/skill.mojom:SkillSource,
+// //depot/chromium/components/sync/protocol/skill_specifics.proto:SkillSource)
 
 // LINT.IfChange(Skill)
 // A single skill preview.

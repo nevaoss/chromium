@@ -16,6 +16,7 @@ class TimeTicks;
 
 namespace gemini {
 enum class EntryPoint;
+enum class FloatyUpdateSource;
 }  // namespace gemini
 
 namespace ios::provider {
@@ -48,6 +49,12 @@ extern const char kFloatyTimeMinimizedHistogram[];
 
 // UMA histogram key for IOS.Gemini.Floaty.ViewStateTransition.
 extern const char kFloatyViewStateTransitionHistogram[];
+
+// UMA histogram key for IOS.Gemini.Floaty.ShownFromSource.
+extern const char kFloatyShownFromSourceHistogram[];
+
+// UMA histogram key for IOS.Gemini.Floaty.HiddenFromSource.
+extern const char kFloatyHiddenFromSourceHistogram[];
 
 // Enum for the IOS.Gemini.FRE.PromoAction and IOS.Gemini.FRE.ConsentAction
 // histograms.
@@ -165,6 +172,12 @@ extern const char kResponseLatencyWithContextHistogram[];
 
 // UMA histogram key for IOS.Gemini.Response.Latency.WithoutContext.
 extern const char kResponseLatencyWithoutContextHistogram[];
+
+// UMA histogram key for IOS.Gemini.Response.Latency.WithGeneratedImage.
+extern const char kResponseLatencyWithGeneratedImageHistogram[];
+
+// UMA histogram key for IOS.Gemini.Response.Latency.WithoutGeneratedImage.
+extern const char kResponseLatencyWithoutGeneratedImageHistogram[];
 
 // Represents the completed Gemini session types.
 enum class IOSGeminiSessionType {
@@ -306,8 +319,11 @@ void RecordFREConsentLinkClick();
 // Records prompt context attachment metrics.
 void RecordPromptContextAttachment(bool has_page_context);
 
-// Records the latency from prompt submission to response received.
-void RecordResponseLatency(base::TimeDelta latency, bool had_page_context);
+// Records the latency from prompt submission to response received, including
+// metadata about the prompt & response.
+void RecordResponseLatency(base::TimeDelta latency,
+                           bool had_page_context,
+                           bool had_generated_image);
 
 // Records the total number of prompts sent in a Gemini session.
 void RecordSessionPromptCount(int prompt_count);
@@ -342,8 +358,15 @@ void RecordFloatyMinimizedTime(base::TimeTicks elapsed_minimized_floaty_time);
 // Records the Gemini floaty view state transition.
 void RecordGeminiViewStateTransition(IOSGeminiViewStateTransition transition);
 
+// Records the `view_state` that will be shown from the hidden state.
 void RecordGeminiViewStateHiddenToShown(
-    ios::provider::GeminiViewState last_shown_view_state);
+    ios::provider::GeminiViewState view_state);
+
+// Records the floaty being shown from the `source` that triggered the call.
+void RecordFloatyShownFromSource(gemini::FloatyUpdateSource source);
+
+// Records the floaty being hidden from the `source` that triggered the call.
+void RecordFloatyHiddenFromSource(gemini::FloatyUpdateSource source);
 
 // Records that the user clicked a URL in a Gemini session.
 void RecordURLOpened();

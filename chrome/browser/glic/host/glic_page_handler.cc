@@ -48,6 +48,7 @@
 #include "chrome/browser/glic/host/glic.mojom.h"
 #include "chrome/browser/glic/host/glic_annotation_manager.h"
 #include "chrome/browser/glic/host/glic_features.mojom.h"
+#include "chrome/browser/glic/host/glic_skills_manager.h"
 #include "chrome/browser/glic/host/glic_synthetic_trial_manager.h"
 #include "chrome/browser/glic/host/glic_web_client_access.h"
 #include "chrome/browser/glic/host/guest_util.h"
@@ -98,6 +99,7 @@
 #include "components/sessions/content/session_tab_helper.h"
 #include "components/sessions/core/session_id.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
+#include "components/sync/protocol/skill_specifics.pb.h"
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/devtools_agent_host.h"
 #include "content/public/browser/web_contents.h"
@@ -188,13 +190,13 @@ GlicUnpinTrigger FromMojomUnpinTrigger(mojom::UnpinTrigger trigger) {
 // NEEDS_ANDROID_IMPL: (crbug.com/477622144) Remove desktop-only restrictions
 // from Skills backend.
 #if !BUILDFLAG(IS_ANDROID)
-mojom::SkillSource ToMojomSkillSource(skills::SkillSource source) {
+mojom::SkillSource ToMojomSkillSource(sync_pb::SkillSource source) {
   switch (source) {
-    case skills::SkillSource::kUnknown:
+    case sync_pb::SkillSource::SKILL_SOURCE_UNKNOWN:
       return mojom::SkillSource::kUnknown;
-    case skills::SkillSource::kFirstParty:
+    case sync_pb::SkillSource::SKILL_SOURCE_FIRST_PARTY:
       return mojom::SkillSource::kFirstParty;
-    case skills::SkillSource::kUserCreated:
+    case sync_pb::SkillSource::SKILL_SOURCE_USER_CREATED:
       return mojom::SkillSource::kUserCreated;
   }
 }
@@ -646,9 +648,13 @@ mojom::ProfileEnablementPtr BuildProfileEnablement(
         result->actuation_eligibility =
             mojom::ActuationEligibility::kMissingChromeBenefits;
         break;
-      case CannotActReason::kManagedOrDataProtected:
+      case CannotActReason::kDisabledByPolicy:
         result->actuation_eligibility =
-            mojom::ActuationEligibility::kManagedOrDataProtected;
+            mojom::ActuationEligibility::kDisabledByPolicy;
+        break;
+      case CannotActReason::kEnterpriseWithoutManagement:
+        result->actuation_eligibility =
+            mojom::ActuationEligibility::kEnterpriseWithoutManagement;
         break;
       case CannotActReason::kNone:
         NOTREACHED();
@@ -852,8 +858,6 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
                 base::Unretained(this)));
         // CallbackListSubscription prevents these callbacks from being invoked
         // when this object is destructed.
-        // TODO(crbug.com/445224605): Right now this code assumes that
-        //   ActorKeyedService only owns a single Execution engine instance.
         act_on_web_capability_changed_subscription_ =
             actor_service->AddActOnWebCapabilityChangedCallback(
                 base::BindRepeating(
@@ -1337,7 +1341,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
       return;
     }
     const auto& ftd = sharing_manager().GetFocusedTabData();
-    tabs::TabInterface* tab = ftd.focus();
+    tabs::TabInterface* tab = ftd.focus() ? ftd.focus() : ftd.unfocused_tab();
     if (!tab) {
       return;
     }
@@ -2052,6 +2056,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
     if (!web_client_) {
       return;
     }
+    host().skills_manager().UpdateSkillPreviews(std::nullopt);
     web_client_->NotifySkillPreviewsChanged(GetSkillPreviewsList());
   }
 #endif  // !BUILDFLAG(IS_ANDROID)
@@ -2506,9 +2511,28 @@ void GlicPageHandler::GetInternalsDataPayload(
   Profile* profile = Profile::FromBrowserContext(browser_context_);
   config->guest_url = GetGuestURL(profile);
   config->fre_guest_url = GetFreURL(profile);
+
+  PrefService* prefs = profile->GetPrefs();
+  config->autopush_guest_url =
+      GURL(prefs->GetString(prefs::kGlicGuestUrlPresetAutopush));
+  config->preprod_guest_url =
+      GURL(prefs->GetString(prefs::kGlicGuestUrlPresetPreprod));
+  config->prod_guest_url =
+      GURL(prefs->GetString(prefs::kGlicGuestUrlPresetProd));
+
   payload->config = std::move(config);
 
   std::move(callback).Run(std::move(payload));
+}
+
+void GlicPageHandler::SetGuestUrlPresets(const GURL& autopush_url,
+                                         const GURL& preprod_url,
+                                         const GURL& prod_url) {
+  PrefService* prefs =
+      Profile::FromBrowserContext(browser_context_)->GetPrefs();
+  prefs->SetString(prefs::kGlicGuestUrlPresetAutopush, autopush_url.spec());
+  prefs->SetString(prefs::kGlicGuestUrlPresetPreprod, preprod_url.spec());
+  prefs->SetString(prefs::kGlicGuestUrlPresetProd, prod_url.spec());
 }
 
 void GlicPageHandler::PanelStateChanged(

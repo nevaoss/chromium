@@ -18,7 +18,6 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import static org.chromium.build.NullUtil.assertNonNull;
@@ -58,6 +57,7 @@ import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.SettableNonNullObservableSupplier;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.build.annotations.Nullable;
+import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
 import org.chromium.chrome.browser.omnibox.R;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxAttachmentRecyclerViewAdapter.FuseboxAttachmentType;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxState;
@@ -71,6 +71,7 @@ import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.chrome.browser.ui.theme.BrandedColorScheme;
 import org.chromium.components.browser_ui.util.ChromeItemPickerExtras;
+import org.chromium.components.feature_engagement.Tracker;
 import org.chromium.components.metrics.OmniboxEventProtos.OmniboxEventProto.PageClassification;
 import org.chromium.components.omnibox.AutocompleteInput;
 import org.chromium.components.omnibox.AutocompleteRequestType;
@@ -112,6 +113,7 @@ public class FuseboxMediatorUnitTest {
     @Mock private Function<Tab, @Nullable Bitmap> mTabFaviconFactory;
     @Mock private ProfileResolver.Natives mProfileResolverNatives;
     @Mock private SnackbarManager mSnackbarManager;
+    @Mock private Tracker mTracker;
 
     @Captor private ArgumentCaptor<Intent> mIntentCaptor;
 
@@ -139,6 +141,7 @@ public class FuseboxMediatorUnitTest {
         LayoutInflater.from(activity).inflate(R.layout.fusebox_layout, viewGroup, true);
 
         ProfileResolverJni.setInstanceForTesting(mProfileResolverNatives);
+        TrackerFactory.setTrackerForTests(mTracker);
 
         mContext =
                 new ContextThemeWrapper(
@@ -298,17 +301,13 @@ public class FuseboxMediatorUnitTest {
 
     @Test
     public void onUrlFocusChange_viewsHiddenWhenNotFocused() {
-        // Show it first
+        // Show it first.
         mMediator.setToolbarVisible(true);
-        mMediator.setAutocompleteRequestTypeChangeable(true);
         assertTrue(mModel.get(FuseboxProperties.ATTACHMENTS_TOOLBAR_VISIBLE));
-        assertTrue(mModel.get(FuseboxProperties.AUTOCOMPLETE_REQUEST_TYPE_CHANGEABLE));
 
-        // Then hide it
+        // Then hide it.
         mMediator.setToolbarVisible(false);
-        mMediator.setAutocompleteRequestTypeChangeable(false);
         assertFalse(mModel.get(FuseboxProperties.ATTACHMENTS_TOOLBAR_VISIBLE));
-        assertFalse(mModel.get(FuseboxProperties.AUTOCOMPLETE_REQUEST_TYPE_CHANGEABLE));
     }
 
     @Test
@@ -516,33 +515,6 @@ public class FuseboxMediatorUnitTest {
         assertEquals(
                 BrandedColorScheme.INCOGNITO,
                 mModel.get(FuseboxProperties.COLOR_SCHEME).intValue());
-    }
-
-    @Test
-    public void setToolbarVisible_stateNotChanged_doesNothing() {
-        // Initial state is false. Calling with false should do nothing.
-        mMediator.setToolbarVisible(false);
-        verifyNoMoreInteractions(mComposeboxQueryControllerBridge);
-
-        // Transition to true. Should NOT start a session.
-        mMediator.setAutocompleteRequestTypeChangeable(true);
-        verifyNoMoreInteractions(mComposeboxQueryControllerBridge);
-
-        // Manually start a session to test the hiding part.
-        mMediator.activateAiMode(AiModeActivationSource.DEDICATED_BUTTON);
-        verifyNoMoreInteractions(mComposeboxQueryControllerBridge);
-
-        // Calling with true again. Should do nothing.
-        mMediator.setAutocompleteRequestTypeChangeable(true);
-        verifyNoMoreInteractions(mComposeboxQueryControllerBridge);
-
-        // Transition to false. Should abandon the session.
-        mMediator.setAutocompleteRequestTypeChangeable(false);
-        verifyNoMoreInteractions(mComposeboxQueryControllerBridge);
-
-        // Calling with false again. Should do nothing.
-        mMediator.setAutocompleteRequestTypeChangeable(false);
-        verifyNoMoreInteractions(mComposeboxQueryControllerBridge);
     }
 
     @Test
@@ -972,9 +944,34 @@ public class FuseboxMediatorUnitTest {
 
         assertTrue(mModel.get(FuseboxProperties.POPUP_CAMERA_BUTTON_ENABLED));
         assertTrue(mModel.get(FuseboxProperties.POPUP_GALLERY_BUTTON_ENABLED));
-
         assertFalse(mModel.get(FuseboxProperties.POPUP_TAB_PICKER_ENABLED));
         assertFalse(mModel.get(FuseboxProperties.CURRENT_TAB_BUTTON_ENABLED));
         assertFalse(mModel.get(FuseboxProperties.POPUP_FILE_BUTTON_ENABLED));
+    }
+
+    @Test
+    public void testPopupCreateImageButtonVisible() {
+        OmniboxFeatures.sShowImageGenerationButtonInIncognito.setForTesting(true);
+        doReturn(true).when(mComposeboxQueryControllerBridge).isCreateImagesEligible();
+        doReturn(false).when(mProfile).isIncognitoBranded();
+        recreateMediator();
+        assertTrue(mModel.get(FuseboxProperties.POPUP_CREATE_IMAGE_BUTTON_VISIBLE));
+
+        doReturn(false).when(mComposeboxQueryControllerBridge).isCreateImagesEligible();
+        recreateMediator();
+        assertFalse(mModel.get(FuseboxProperties.POPUP_CREATE_IMAGE_BUTTON_VISIBLE));
+    }
+
+    @Test
+    public void testPopupCreateImageButtonVisible_incognitoBranded() {
+        OmniboxFeatures.sShowImageGenerationButtonInIncognito.setForTesting(false);
+        doReturn(true).when(mComposeboxQueryControllerBridge).isCreateImagesEligible();
+        doReturn(true).when(mProfile).isIncognitoBranded();
+        recreateMediator();
+        assertFalse(mModel.get(FuseboxProperties.POPUP_CREATE_IMAGE_BUTTON_VISIBLE));
+
+        OmniboxFeatures.sShowImageGenerationButtonInIncognito.setForTesting(true);
+        recreateMediator();
+        assertTrue(mModel.get(FuseboxProperties.POPUP_CREATE_IMAGE_BUTTON_VISIBLE));
     }
 }

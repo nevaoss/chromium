@@ -180,14 +180,6 @@ NET_EXPORT BASE_DECLARE_FEATURE(kSplitCodeCacheByNetworkIsolationKey);
 // See https://github.com/MattMenke2/Explainer---Partition-Network-State.
 NET_EXPORT BASE_DECLARE_FEATURE(kPartitionConnectionsByNetworkIsolationKey);
 
-// "__Http-" prefix for cookies.
-// https://github.com/httpwg/http-extensions/pull/3110
-NET_EXPORT BASE_DECLARE_FEATURE(kPrefixCookieHttp);
-
-// "__HostHttp-" prefix for cookies.
-// https://github.com/httpwg/http-extensions/issues/3111
-NET_EXPORT BASE_DECLARE_FEATURE(kPrefixCookieHostHttp);
-
 // Changes the interval between two search engine preconnect attempts.
 NET_EXPORT BASE_DECLARE_FEATURE(kSearchEnginePreconnectInterval);
 
@@ -416,15 +408,11 @@ NET_EXPORT BASE_DECLARE_FEATURE(kUseNewAlpsCodepointQUIC);
 // Enables truncating the response body to the content length.
 NET_EXPORT BASE_DECLARE_FEATURE(kTruncateBodyToContentLength);
 
-#if BUILDFLAG(IS_MAC)
-// Reduces the frequency of IP address change notifications that result in
-// TCP and QUIC connection resets.
-NET_EXPORT BASE_DECLARE_FEATURE(kReduceIPAddressChangeNotification);
-
+#if BUILDFLAG(IS_APPLE)
 // Uses the Network framework path monitor instead of SCNetworkReachability for
-// connection type change detection on macOS.
+// connection type change detection on macOS & iOS.
 NET_EXPORT BASE_DECLARE_FEATURE(kUseNetworkPathMonitorForNetworkChangeNotifier);
-#endif  // BUILDFLAG(IS_MAC)
+#endif  // BUILDFLAG(IS_APPLE)
 
 // This feature will enable the Device Bound Session Credentials protocol to let
 // the server assert sessions (and cookies) are bound to a specific device.

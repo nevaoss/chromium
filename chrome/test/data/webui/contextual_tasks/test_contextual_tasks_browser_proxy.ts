@@ -31,6 +31,7 @@ class MockPage extends TestBrowserProxy implements PageInterface {
       'setOAuthToken',
       'setTaskDetails',
       'setThreadTitle',
+      'showOauthErrorDialog',
     ]);
   }
 
@@ -100,6 +101,10 @@ class MockPage extends TestBrowserProxy implements PageInterface {
   hideErrorPage() {
     this.methodCalled('hideErrorPage');
   }
+
+  showOauthErrorDialog() {
+    this.methodCalled('showOauthErrorDialog');
+  }
 }
 
 /**
@@ -114,6 +119,7 @@ class TestContextualTasksPageHandler extends TestBrowserProxy implements
 
   constructor(url: string, page: MockPage) {
     super([
+      'setThreadUrl',
       'closeSidePanel',
       'getCommonSearchParams',
       'getRecentTabs',
@@ -143,14 +149,18 @@ class TestContextualTasksPageHandler extends TestBrowserProxy implements
     this.page_ = page;
   }
 
+  setThreadUrl(url: string) {
+    this.url_ = url;
+  }
+
   getThreadUrl() {
     this.methodCalled('getThreadUrl');
-    return Promise.resolve({url: this.url_});
+    return Promise.resolve({url: this.url_ as unknown as Url});
   }
 
   getUrlForTask(uuid: Uuid) {
     this.methodCalled('getUrlForTask', uuid);
-    return Promise.resolve({url: this.url_});
+    return Promise.resolve({url: this.url_ as unknown as Url});
   }
 
   setTaskId(uuid: Uuid) {

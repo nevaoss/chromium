@@ -6,13 +6,18 @@
 #define CHROME_BROWSER_UI_WEBUI_SKILLS_SKILLS_DIALOG_HANDLER_H_
 
 #include "base/memory/raw_ptr.h"
+#include "base/memory/weak_ptr.h"
+#include "chrome/browser/optimization_guide/optimization_guide_keyed_service.h"
 #include "chrome/browser/ui/webui/skills/skills.mojom.h"
+#include "components/optimization_guide/core/model_execution/optimization_guide_model_execution_error.h"
 #include "components/skills/public/skill.mojom-forward.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 
 namespace content {
 class WebContents;
 }  // namespace content
+
+class Profile;
 
 namespace skills {
 
@@ -23,6 +28,7 @@ class SkillsDialogHandler : public skills::mojom::DialogHandler {
   SkillsDialogHandler(
       mojo::PendingReceiver<skills::mojom::DialogHandler> receiver,
       content::WebContents* web_contents,
+      OptimizationGuideKeyedService* optimization_guide_keyed_service,
       base::WeakPtr<SkillsDialogDelegate> delegate);
 
   SkillsDialogHandler(const SkillsDialogHandler&) = delete;
@@ -34,11 +40,27 @@ class SkillsDialogHandler : public skills::mojom::DialogHandler {
   void SubmitSkill(const skills::Skill& skill) override;
   void CloseDialog() override;
   void ShowEmojiPicker() override;
+  void GetInitialSkill(GetInitialSkillCallback callback) override;
+  void RefineSkill(
+      const skills::Skill& skill,
+      skills::mojom::DialogHandler::RefineSkillCallback callback) override;
+
+  // Callback for the model execution result for `RefineSkill`.
+ private:
+  void OnRefineSkillResponse(
+      skills::mojom::DialogHandler::RefineSkillCallback callback,
+      optimization_guide::OptimizationGuideModelExecutionResult result,
+      std::unique_ptr<optimization_guide::ModelQualityLogEntry> log_entry);
 
  private:
   mojo::Receiver<skills::mojom::DialogHandler> receiver_;
-  raw_ptr<content::WebContents> web_contents_ = nullptr;
+  const raw_ref<content::WebContents> web_contents_;
+  raw_ptr<OptimizationGuideKeyedService> optimization_guide_keyed_service_ =
+      nullptr;
   base::WeakPtr<SkillsDialogDelegate> delegate_;
+  // Initialized with the browser_context passed in the constructor.
+  const raw_ref<Profile> profile_;
+  base::WeakPtrFactory<SkillsDialogHandler> weak_ptr_factory_{this};
 };
 
 }  // namespace skills

@@ -79,7 +79,6 @@ import org.chromium.chrome.browser.ntp_customization.NtpCustomizationUtils;
 import org.chromium.chrome.browser.ntp_customization.NtpCustomizationUtils.NtpBackgroundImageType;
 import org.chromium.chrome.browser.ntp_customization.theme.chrome_colors.NtpThemeColorInfo;
 import org.chromium.chrome.browser.ntp_customization.theme.upload_image.BackgroundImageInfo;
-import org.chromium.chrome.browser.omnibox.OmniboxFocusReason;
 import org.chromium.chrome.browser.omnibox.OmniboxStub;
 import org.chromium.chrome.browser.omnibox.voice.VoiceRecognitionHandler;
 import org.chromium.chrome.browser.privacy.settings.PrivacyPreferencesManagerImpl;
@@ -126,6 +125,7 @@ import org.chromium.components.embedder_support.util.UrlUtilities;
 import org.chromium.components.feature_engagement.EventConstants;
 import org.chromium.components.feature_engagement.Tracker;
 import org.chromium.components.omnibox.AutocompleteRequestType;
+import org.chromium.components.omnibox.OmniboxFocusReason;
 import org.chromium.components.search_engines.TemplateUrlService;
 import org.chromium.components.search_engines.TemplateUrlService.TemplateUrlServiceObserver;
 import org.chromium.content_public.browser.LoadUrlParams;
@@ -684,9 +684,16 @@ public class NewTabPage
                 NtpCustomizationUtils.canEnableEdgeToEdgeForCustomizedTheme(
                         windowAndroid, mIsTablet);
         if (mCanSupportEdgeToEdgeForCustomizedTheme) {
+            // Apply edge-to-edge adjustments exclusively to phones. These are not required for LFF
+            // devices.
             initTopInsetProviderObserver();
-            initHomepageStateListener();
             initUseLightIconTint();
+        }
+
+        // The listener to observe custom background changes are added in all form factors as long
+        // as the feature is enabled.
+        if (NtpCustomizationUtils.isNtpThemeCustomizationEnabled()) {
+            initHomepageStateListener();
         }
 
         NewTabPageUma.recordContentSuggestionsDisplayStatus(profile);

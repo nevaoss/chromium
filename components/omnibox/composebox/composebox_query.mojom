@@ -43,6 +43,7 @@ enum FileUploadErrorType {
 };
 
 // The AIM model mode.
+// LINT.IfChange(ModelMode)
 enum ModelMode {
   // Model is unspecified.
   kUnspecified = 0,
@@ -53,8 +54,10 @@ enum ModelMode {
   // Uses Gemini Pro Model with automatic routing capabilities.
   kGeminiProAutoroute = 3,
 };
+// LINT.ThenChange(//tools/metrics/histograms/metadata/contextual_search/enums.xml:ContextualSearchAimModel)
 
 // The AIM tool mode.
+// LINT.IfChange(ToolMode)
 enum ToolMode {
   // Tool is unspecified.
   kUnspecified = 0,
@@ -71,6 +74,7 @@ enum ToolMode {
   // Enables Image Generation for Selfie type images.
   kImageGenSelfie = 6,
 };
+// LINT.ThenChange(//tools/metrics/histograms/metadata/contextual_search/enums.xml:ContextualSearchAimTool)
 
 // The AIM input type.
 enum InputType {
@@ -82,6 +86,27 @@ enum InputType {
   kLensFile = 2,
   // Input is a browser tab.
   kBrowserTab = 3,
+};
+
+// Configuration for a tool.
+struct ToolConfig {
+  ToolMode tool;
+  bool disable_active_model_selection;
+  string menu_label;
+  string chip_label;
+  string hint_text;
+};
+
+// Configuration for a model.
+struct ModelConfig {
+  ModelMode model;
+  string menu_label;
+  string hint_text;
+};
+
+// Configuration for a section.
+struct SectionConfig {
+  string header;
 };
 
 // Represents the current state of inputs, models, and tools within AIM.
@@ -103,5 +128,15 @@ struct InputState {
   array<ToolMode> disabled_tools;
   // The set of currently disabled input types.
   array<InputType> disabled_input_types;
+  // Configuration for available tools.
+  array<ToolConfig> tool_configs;
+  // Configuration for available models.
+  array<ModelConfig> model_configs;
+  // Configuration for the tools section.
+  SectionConfig? tools_section_config;
+  // Configuration for the model section.
+  SectionConfig? model_section_config;
+  // Hint text to display in the input.
+  string hint_text;
 };
-// LINT.ThenChange(//components/contextual_search/input_state_model.h:InputState)
+// LINT.ThenChange(//components/omnibox/common/input_state.h:InputState)

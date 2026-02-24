@@ -154,7 +154,7 @@ views::ProposedLayout VerticalTabGroupView::CalculateProposedLayout(
   // Layout children in order. Children will have their preferred height and
   // fill available width.
   for (auto* child : children) {
-    gfx::Rect bounds = gfx::Rect(child->GetPreferredSize());
+    gfx::Rect bounds = gfx::Rect(child->GetPreferredSize(size_bounds));
 
     auto drag_data = GetVisualDataForDraggedView(*child);
     CHECK(!drag_data || !drag_data->should_hide);
@@ -174,7 +174,7 @@ views::ProposedLayout VerticalTabGroupView::CalculateProposedLayout(
     height += bounds.height() + kTabVerticalPadding;
     width = std::max(width, bounds.width());
   }
-  // Remove excess padding if needed.
+  // Remove excess padding.
   height -= kTabVerticalPadding;
 
   if (!children.empty()) {
@@ -183,7 +183,12 @@ views::ProposedLayout VerticalTabGroupView::CalculateProposedLayout(
   layouts.child_layouts.emplace_back(
       group_line_.get(), group_line_->GetVisible(), group_line_bounds);
 
+  // Add extra padding below the group if not collapsed.
   const bool is_collapsed = IsCollapsed();
+  if (!is_collapsed) {
+    height += kTabVerticalPadding;
+  }
+
   layouts.host_size = gfx::Size(
       width, is_collapsed
                  ? header_bounds.height() + (2 * kGroupHeaderVerticalMargin)
@@ -235,8 +240,12 @@ std::u16string VerticalTabGroupView::GetGroupContentString() const {
     return std::u16string();
   }
 
-  return tab_groups::GetGroupContentString(
-      GetTabGroupFromNode(collection_node_));
+  const TabGroup* group = GetTabGroupFromNode(collection_node_);
+  if (group->tab_count() == 0) {
+    return std::u16string();
+  }
+
+  return tab_groups::GetGroupContentString(group);
 }
 
 void VerticalTabGroupView::ResetCollectionNode() {

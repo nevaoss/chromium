@@ -4,6 +4,8 @@
 
 #include "third_party/blink/renderer/core/script_tools/model_context.h"
 
+#include <optional>
+
 #include "base/run_loop.h"
 #include "base/test/bind.h"
 #include "base/test/run_until.h"
@@ -551,6 +553,107 @@ TEST_F(ModelContextTest, ExecuteDeclarativeFormTool_SPA_NoAutoSubmit) {
 
   EXPECT_FALSE(EvalJsBoolean(
       "document.querySelector('form').matches(':tool-form-active')"));
+}
+
+TEST_F(ModelContextTest, CancelTool) {
+  SimRequest main_resource("https://example.com/", "text/html");
+  LoadURL("https://example.com/");
+
+  main_resource.Complete(R"(
+<body>
+    <script>
+    async function echo(obj) {
+      return obj.text;
+    }
+
+    navigator.modelContext.registerTool({
+      execute: echo,
+      name: "echo",
+      description: "echo input",
+      inputSchema: {
+          type: "object",
+          properties: {
+              "text": {
+                  description: "Value to echo",
+                  type: "string",
+              }
+          },
+          required: ["text"]
+      },
+    });
+  </script>
+  </body>
+)");
+
+  auto* model_context =
+      ModelContextSupplement::modelContext(*Window().navigator());
+  ASSERT_TRUE(model_context);
+
+  base::RunLoop run_loop;
+
+  std::optional<uint32_t> execution_id = model_context->ExecuteTool(
+      "echo", "{\"text\": \"hello\"}",
+      base::BindLambdaForTesting(
+          [&](base::expected<WebString, WebDocument::ScriptToolError> res) {
+            ASSERT_FALSE(res.has_value());
+            run_loop.Quit();
+          }));
+
+  ASSERT_TRUE(execution_id.has_value());
+  model_context->CancelTool(execution_id.value());
+  run_loop.Run();
+}
+
+TEST_F(ModelContextTest, ToolEventsDispatched) {
+  SimRequest main_resource("https://example.com/", "text/html");
+  LoadURL("https://example.com/");
+  v8::HandleScope handle_scope(Window().GetIsolate());
+  ScriptState::Scope script_scope(
+      ToScriptStateForMainWorld(Window().GetFrame()));
+
+  main_resource.Complete(R"(
+<body>
+    <script>
+    async function longRunning(obj) {
+      await new Promise(r => setTimeout(r, 10000));
+      return "done";
+    }
+
+    navigator.modelContext.registerTool({
+      execute: longRunning,
+      name: "slow",
+      description: "slow tool",
+    });
+
+    window.events = [];
+    window.addEventListener('toolactivation', e => window.events.push('activation:' + e.toolName));
+    window.addEventListener('toolcancel', e => window.events.push('cancel:' + e.toolName));
+  </script>
+  </body>
+)");
+
+  auto* model_context =
+      ModelContextSupplement::modelContext(*Window().navigator());
+  ASSERT_TRUE(model_context);
+
+  base::RunLoop run_loop;
+
+  // Execute and Cancel
+  std::optional<uint32_t> execution_id = model_context->ExecuteTool(
+      "slow", "{}",
+      base::BindLambdaForTesting(
+          [&](base::expected<WebString, WebDocument::ScriptToolError> res) {
+            run_loop.Quit();
+          }));
+
+  EXPECT_EQ(EvalJsString("window.events.join(',')"), "activation:slow");
+
+  ASSERT_TRUE(execution_id.has_value());
+  model_context->CancelTool(*execution_id);
+  run_loop.Run();
+
+  EXPECT_EQ(EvalJsString("window.events.join(',')"),
+            "activation:slow,cancel:slow");
 }
 
 }  // namespace blink

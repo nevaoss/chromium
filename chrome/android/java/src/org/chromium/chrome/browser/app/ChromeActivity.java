@@ -655,7 +655,11 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
 
             mSnackbarManager =
                     new SnackbarManager(
-                            this, mBottomContainer, getWindowAndroid(), getEdgeToEdgeSupplier());
+                            this,
+                            mBottomContainer,
+                            getWindowAndroid(),
+                            getEdgeToEdgeSupplier(),
+                            getModalDialogManager());
             getInsetObserver().addObserver(mSnackbarManager);
             SnackbarManagerProvider.attach(getWindowAndroid(), mSnackbarManager);
             // TODO (crbug.com/365110749): Remove wiring the InsetObserver when the dialog window
@@ -2067,10 +2071,12 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
             if (!DisplayUtil.isContextInDefaultDisplay(this)
                     && DeviceFormFactor.isNonMultiDisplayContextOnTablet(this)) {
                 HostZoomMap.setTransparentZoomAdjustment(
-                        ContentFeatureList.sAndroidMonitorZoomScalingFactor.getValue() / 100.0f);
+                        (float) ContentFeatureList.sAndroidMonitorZoomScalingFactor.getValue()
+                                / 100.0f);
             } else if (DeviceInfo.isDesktop()) {
                 HostZoomMap.setTransparentZoomAdjustment(
-                        ContentFeatureList.sAndroidDesktopZoomScalingFactor.getValue() / 100.0f);
+                        (float) ContentFeatureList.sAndroidDesktopZoomScalingFactor.getValue()
+                                / 100.0f);
             }
         }
     }

@@ -5,6 +5,7 @@
 #ifndef CHROME_BROWSER_UI_OMNIBOX_OMNIBOX_CONTEXT_MENU_CONTROLLER_H_
 #define CHROME_BROWSER_UI_OMNIBOX_OMNIBOX_CONTEXT_MENU_CONTROLLER_H_
 
+#include <optional>
 #include <string>
 
 #include "base/functional/callback.h"
@@ -13,7 +14,10 @@
 #include "base/memory/weak_ptr.h"
 #include "base/task/cancelable_task_tracker.h"
 #include "base/time/time.h"
+#include "components/contextual_search/input_state_model.h"
 #include "components/omnibox/browser/searchbox.mojom.h"
+#include "components/omnibox/common/input_state.h"
+#include "components/omnibox/composebox/composebox_query.mojom.h"
 #include "ui/menus/simple_menu_model.h"
 #include "url/gurl.h"
 
@@ -74,6 +78,7 @@ class OmniboxContextMenuController : public ui::SimpleMenuModel::Delegate {
   void ExecuteCommand(int command_id, int event_flags) override;
   bool IsCommandIdEnabled(int command_id) const override;
   bool IsCommandIdVisible(int command_id) const override;
+  bool IsCommandIdChecked(int command_id) const override;
   void AddTabContext(const TabInfo& tab_info);
   void UpdateSearchboxContext(
       std::optional<TabInfo> tab_info,
@@ -89,7 +94,10 @@ class OmniboxContextMenuController : public ui::SimpleMenuModel::Delegate {
     kImage = 2,
     kImageGen = 3,
     kDeepResearch = 4,
-    kMaxValue = kDeepResearch,
+    kCanvas = 5,
+    kAutoModel = 6,
+    kThinkingModel = 7,
+    kMaxValue = kThinkingModel,
   };
   // LINT.ThenChange(//tools/metrics/histograms/metadata/omnibox/enums.xml:ContextType,//tools/metrics/histograms/metadata/omnibox/histograms.xml:ContextType)
 
@@ -128,9 +136,13 @@ class OmniboxContextMenuController : public ui::SimpleMenuModel::Delegate {
   // Adds a separator to the menu.
   void AddSeparator();
   // Adds recent tabs as items to the menu.
-  void AddRecentTabItems();
-  // Adds the static items with icons.
-  void AddStaticItems();
+  void AddRecentTabItems(bool add_separator = true);
+  // Adds the contextual input items to the menu.
+  void AddContextualInputItems();
+  // Adds the tool items to the menu.
+  void AddToolItems(bool add_separator = true);
+  // Adds the model picker items to the menu.
+  void AddModelPickerItems();
   // Adds a title with a localized string to the menu.
   void AddTitleWithStringId(int localization_id);
   // Gets the most recent tabs.
@@ -143,10 +155,23 @@ class OmniboxContextMenuController : public ui::SimpleMenuModel::Delegate {
   void OnFaviconDataAvailable(
       int command_id,
       const favicon_base::FaviconImageResult& image_result);
+  void OnGetInputState(const std::optional<omnibox::InputState>& input_state);
 
   void UpdateSearchboxContextToolMode(searchbox::mojom::ToolMode tool_mode);
 
   bool IsContentSharingEnabled() const;
+
+  omnibox::InputType GetInputTypeForCommandId(int command_id) const;
+  bool IsInputTypeAllowed(omnibox::InputType input_type) const;
+  bool IsInputTypeDisabled(omnibox::InputType input_type) const;
+
+  omnibox::ToolMode GetToolModeForCommandId(int command_id) const;
+  bool IsToolAllowed(omnibox::ToolMode tool) const;
+  bool IsToolDisabled(omnibox::ToolMode tool) const;
+
+  omnibox::ModelMode GetModelModeForCommandId(int command_id) const;
+  bool IsModelAllowed(omnibox::ModelMode model) const;
+  bool IsModelDisabled(omnibox::ModelMode model) const;
 
   raw_ptr<OmniboxController> GetOmniboxController() const;
   raw_ptr<OmniboxEditModel> GetEditModel();
@@ -161,6 +186,8 @@ class OmniboxContextMenuController : public ui::SimpleMenuModel::Delegate {
   base::CancelableTaskTracker cancelable_task_tracker_;
   raw_ptr<FaviconService> favicon_service_;
   int next_command_id_ = 0;
+
+  omnibox::InputState input_state_;
 
   base::WeakPtrFactory<OmniboxContextMenuController> weak_ptr_factory_{this};
 };

@@ -20,35 +20,6 @@
 # }
 
 TARGET_DEVICES = {
-    'android-pixel2-perf-fyi': {
-        'jetstream2': {
-            'JetStream2': 3,
-        },
-        'speedometer2': {
-            'Speedometer2': 3,
-        },
-        'speedometer3': {
-            'Speedometer3': 3,
-        },
-        'rendering.mobile': {
-            'css_transitions_triggered_style_element': 4,
-            'canvas_animation_no_clear': 4
-        },
-    },
-    'android-pixel2-perf': {
-        'jetstream2': {
-            'JetStream2': 5,
-        },
-        'system_health.common_mobile': 3,
-        'system_health.memory_mobile': 3,
-        'startup.mobile': 10,
-        'speedometer2': {
-            'Speedometer2': 10,
-        },
-        'speedometer3': {
-            'Speedometer3': 10,
-        },
-    },
     'android-go-wembley-perf': {
         'jetstream2': {
             'JetStream2': 5,
@@ -121,6 +92,36 @@ TARGET_DEVICES = {
         'speedometer3': {
             'Speedometer3': 8,
         },
+    },
+    'android-pixel9-perf': {
+        'jetstream2': 4,
+        'motionmark1.3.crossbench': 4,
+        'speedometer3.crossbench': 4,
+        'speedometer3.a11y.crossbench': 4,
+    },
+    'android-pixel9-pro-perf': {
+        'jetstream2': 4,
+        'motionmark1.3.crossbench': 4,
+        'speedometer3.crossbench': 4,
+        'speedometer3.a11y.crossbench': 4,
+    },
+    'android-pixel9-pro-xl-perf': {
+        'jetstream2': 4,
+        'motionmark1.3.crossbench': 4,
+        'speedometer3.crossbench': 4,
+        'speedometer3.a11y.crossbench': 4,
+    },
+    'android-pixel25-ultra-perf': {
+        'jetstream2': 4,
+        'motionmark1.3.crossbench': 4,
+        'speedometer3.crossbench': 4,
+        'speedometer3.a11y.crossbench': 4,
+    },
+    'android-pixel25-ultra-xl-perf': {
+        'jetstream2': 3,
+        'motionmark1.3.crossbench': 3,
+        'speedometer3.crossbench': 3,
+        'speedometer3.a11y.crossbench': 3,
     },
     'linux-perf': {
         'jetstream2.crossbench': 10,

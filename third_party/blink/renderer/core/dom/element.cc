@@ -1876,11 +1876,10 @@ bool ShouldContinueWithInterest(Element& invoker,
 }
 }  // namespace
 
-bool Element::InterestGained(Element* target) {
+bool Element::InterestGained(Element* target, InterestState state) {
   CHECK(RuntimeEnabledFeatures::HTMLInterestForAttributeEnabled());
-
-  if (!ShouldContinueWithInterest(*this, target,
-                                  InterestState::kFullInterest)) {
+  CHECK_NE(state, InterestState::kNoInterest);
+  if (!ShouldContinueWithInterest(*this, target, state)) {
     return false;
   }
 
@@ -1899,6 +1898,10 @@ bool Element::InterestGained(Element* target) {
       // Case 1.
       auto* invoker_data = GetInvokerData();
       CHECK(!invoker_data->HasInterestGainedTask());
+      if (state == InterestState::kExplicitInterest) {
+        DCHECK_NE(invoker_data->GetInterestState(), InterestState::kNoInterest);
+        ChangeInterestState(target, state);
+      }
       invoker_data->CancelInterestLostTask();
       return false;
     } else {
@@ -1907,8 +1910,7 @@ bool Element::InterestGained(Element* target) {
         return false;
       }
       // Event handlers might have changed things around, so re-check.
-      if (!ShouldContinueWithInterest(*this, target,
-                                      InterestState::kFullInterest)) {
+      if (!ShouldContinueWithInterest(*this, target, state)) {
         return false;
       }
     }
@@ -1927,7 +1929,7 @@ bool Element::InterestGained(Element* target) {
       ->UnpackAndRefresh(
           target->EnsureRareData().EnsureInterestInvokerTargetData())
       .setInterestInvoker(this);
-  ChangeInterestState(target, InterestState::kFullInterest);
+  ChangeInterestState(target, state);
 
   // If the target is a popover, invoke it.
   if (auto* popover = DynamicTo<HTMLElement>(target);
@@ -2031,7 +2033,8 @@ void Element::DefaultEventHandler(Event& event) {
       // pointerdown target to the target popover, which will not match the
       // `null` target for that pointerup event.
       if (auto* target_popover = DynamicTo<HTMLElement>(InterestForElement());
-          target_popover && target_popover->IsPopover()) {
+          target_popover && target_popover->IsPopover() &&
+          !RuntimeEnabledFeatures::LightDismissFromClickEnabled()) {
         GetDocument().SetPopoverPointerdownTarget(target_popover);
       }
       // Delays don't apply to long-press, since the "long press" has a
@@ -3558,10 +3561,7 @@ bool Element::toggleAttribute(const AtomicString& qualified_name,
   // https://dom.spec.whatwg.org/#dom-element-toggleattribute
   // 1. If qualifiedName does not match the Name production in XML, then throw
   // an "InvalidCharacterError" DOMException.
-  bool is_valid =
-      RuntimeEnabledFeatures::RelaxDOMValidNamesEnabled()
-          ? Document::IsValidAttributeLocalNameNewSpec(qualified_name)
-          : Document::IsValidName(qualified_name);
+  bool is_valid = Document::IsValidAttributeLocalName(qualified_name);
   if (!is_valid) {
     exception_state.ThrowDOMException(
         DOMExceptionCode::kInvalidCharacterError,
@@ -3601,10 +3601,7 @@ bool Element::toggleAttribute(const AtomicString& qualified_name,
   // https://dom.spec.whatwg.org/#dom-element-toggleattribute
   // 1. If qualifiedName does not match the Name production in XML, then throw
   // an "InvalidCharacterError" DOMException.
-  bool is_valid =
-      RuntimeEnabledFeatures::RelaxDOMValidNamesEnabled()
-          ? Document::IsValidAttributeLocalNameNewSpec(qualified_name)
-          : Document::IsValidName(qualified_name);
+  bool is_valid = Document::IsValidAttributeLocalName(qualified_name);
   if (!is_valid) {
     exception_state.ThrowDOMException(
         DOMExceptionCode::kInvalidCharacterError,
@@ -4083,7 +4080,7 @@ static inline bool IsEventHandlerAttribute(const Attribute& attribute) {
 
 bool Element::AttributeValueIsJavaScriptURL(const Attribute& attribute) {
   return ProtocolIsJavaScript(
-      StripLeadingAndTrailingHTMLSpaces(attribute.Value()));
+      StripLeadingAndTrailingHtmlSpaces(attribute.Value()));
 }
 
 bool Element::IsJavaScriptURLAttribute(const Attribute& attribute) const {
@@ -8484,7 +8481,7 @@ bool Element::IsKeyboardFocusableScroller(
 
 void Element::ShowInterestNow() {
   DCHECK(RuntimeEnabledFeatures::HTMLInterestForAttributeEnabled());
-  InterestGained(InterestForElement());
+  InterestGained(InterestForElement(), InterestState::kExplicitInterest);
 }
 
 void Element::LoseInterestNow(InterestLostCancelable cancelable,
@@ -8492,7 +8489,7 @@ void Element::LoseInterestNow(InterestLostCancelable cancelable,
   DCHECK(RuntimeEnabledFeatures::HTMLInterestForAttributeEnabled());
   Element* target = InterestForElement();
   DCHECK_EQ(GetInvokerData()->ActiveInterestTarget(), target);
-  DCHECK_EQ(GetInterestState(), InterestState::kFullInterest);
+  DCHECK_NE(GetInterestState(), InterestState::kNoInterest);
   InterestLost(target, cancelable, behavior);
 }
 
@@ -10585,9 +10582,6 @@ bool Element::PseudoElementStylesDependOnFunc(Functor& func) const {
   }
 
   for (PseudoElement* pseudo_element : rare_data->GetPseudoElements()) {
-    SCOPED_CRASH_KEY_NUMBER("Bug470512590", "pseudo_id",
-                            static_cast<int>(pseudo_element->GetPseudoId()));
-
     if (func(*pseudo_element->GetComputedStyle())) {
       return true;
     }
@@ -10906,15 +10900,15 @@ String Element::GetURLAttribute(const QualifiedName& name) const {
     }
   }
 #endif
-  KURL url = GetDocument().CompleteURL(
-      StripLeadingAndTrailingHTMLSpaces(getAttribute(name)));
-  return url.IsValid() ? url
-                       : StripLeadingAndTrailingHTMLSpaces(getAttribute(name));
+  StringView stripped_value =
+      StripLeadingAndTrailingHtmlSpaces(getAttribute(name));
+  KURL url = GetDocument().CompleteURL(stripped_value);
+  return url.IsValid() ? url.GetString() : stripped_value.ToString();
 }
 
 KURL Element::GetURLAttributeAsKURL(const QualifiedName& name) const {
   return GetDocument().CompleteURL(
-      StripLeadingAndTrailingHTMLSpaces(getAttribute(name)));
+      StripLeadingAndTrailingHtmlSpaces(getAttribute(name)));
 }
 
 KURL Element::GetNonEmptyURLAttribute(const QualifiedName& name) const {
@@ -10925,7 +10919,7 @@ KURL Element::GetNonEmptyURLAttribute(const QualifiedName& name) const {
     }
   }
 #endif
-  String value = StripLeadingAndTrailingHTMLSpaces(getAttribute(name));
+  StringView value = StripLeadingAndTrailingHtmlSpaces(getAttribute(name));
   if (value.empty()) {
     return KURL();
   }
@@ -12158,10 +12152,15 @@ void Element::ChangeInterestState(Element* target, InterestState new_state) {
     invoker_data->CancelInterestLostTask();
     invoker_data->CancelInterestGainedTask();
   } else {
-    DCHECK(!document.ElementsWithInterest().Contains(this));
-    document.ElementsWithInterest().insert(this);
+    if (current_state == InterestState::kNoInterest) {
+      DCHECK(!document.ElementsWithInterest().Contains(this));
+      document.ElementsWithInterest().insert(this);
+      invoker_data->SetActiveInterestTarget(target);
+    } else {
+      DCHECK(document.ElementsWithInterest().Contains(this));
+      DCHECK_EQ(invoker_data->ActiveInterestTarget(), target);
+    }
     invoker_data->SetInterestState(new_state);
-    invoker_data->SetActiveInterestTarget(target);
   }
   PseudoStateChanged(CSSSelector::kPseudoInterestSource);
   if (target) {
@@ -12197,7 +12196,7 @@ void Element::ScheduleInterestGainedTask() {
       BindOnce(
           [](Element* invoker, Element* target) {
             if (invoker) {
-              invoker->InterestGained(target);
+              invoker->InterestGained(target, InterestState::kFullInterest);
             }
           },
           WrapWeakPersistent(this), WrapWeakPersistent(target)),
@@ -12395,7 +12394,7 @@ void Element::HandleInterestForHoverOrFocus(InterestSource source,
       // Cancel any pending InterestGained tasks, and (if the invoker already
       // has interest) schedule an InterestLost task.
       invoker_data->CancelInterestGainedTask();
-      if (invoker_data->GetInterestState() != InterestState::kNoInterest) {
+      if (invoker_data->GetInterestState() == InterestState::kFullInterest) {
         ScheduleInterestLostTask();
       }
     }
@@ -12946,9 +12945,7 @@ void Element::SetAttributeHinted(AtomicString local_name,
                                  AtomicStringTable::WeakResult hint,
                                  String value,
                                  ExceptionState& exception_state) {
-  bool is_valid = RuntimeEnabledFeatures::RelaxDOMValidNamesEnabled()
-                      ? Document::IsValidAttributeLocalNameNewSpec(local_name)
-                      : Document::IsValidName(local_name);
+  bool is_valid = Document::IsValidAttributeLocalName(local_name);
   if (!is_valid) {
     exception_state.ThrowDOMException(
         DOMExceptionCode::kInvalidCharacterError,

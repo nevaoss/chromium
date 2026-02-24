@@ -3,47 +3,18 @@
 // found in the LICENSE file.
 
 chromium::import! {
-  "//mojo/public/rust/system:ffi_new" as mojo_ffi;
+  "//mojo/public/rust/system:ffi_bindings" as mojo_ffi;
 }
 
+use crate::mojo_types::declare_trappable_typed_handle;
 use mojo_ffi::data_pipe;
 use mojo_ffi::{MojoResult, UntypedHandle};
 
 // FOR_RELEASE: Make these arguments to the functions instead of bitfields
 pub use data_pipe::{ReadFlags, WriteFlags};
 
-// FOR_RELEASE: Put this somewhere more general once we've migrated more.
-// TODO(crbug.com/479878778): If the C API ever exposes the ability to check
-// a handle's type, we could do the check here and change this to `TryFrom`.
-/// Helper macro to declare strongly-typed wrappers around an UntypedHandle
-/// which are inter-convertible with it.
-macro_rules! declare_typed_handle {
-    ($name:ident) => {
-        pub struct $name {
-            handle: UntypedHandle,
-        }
-
-        impl From<UntypedHandle> for $name {
-            fn from(handle: UntypedHandle) -> Self {
-                Self { handle }
-            }
-        }
-
-        impl From<$name> for UntypedHandle {
-            fn from(typed_handle: $name) -> UntypedHandle {
-                typed_handle.handle
-            }
-        }
-    };
-}
-
-declare_typed_handle!(DataPipeProducerHandle);
-declare_typed_handle!(DataPipeConsumerHandle);
-
-// FOR_RELEASE: Do this once we've converted traps to the new FFI
-// Maybe even add it to the macro, if all non-message handles are trappable
-// impl Trappable for DataPipeConsumerHandle {}
-// impl Trappable for DataPipeProducerHandle {}
+declare_trappable_typed_handle!(DataPipeProducerHandle);
+declare_trappable_typed_handle!(DataPipeConsumerHandle);
 
 /// FOR_RELEASE: These impls are a fine starting point, but we can replace them
 /// with more ergonomic interfaces:
@@ -53,17 +24,17 @@ declare_typed_handle!(DataPipeConsumerHandle);
 
 impl DataPipeConsumerHandle {
     pub fn read_with_flags(
-        &mut self,
+        &self,
         buf: &mut [std::mem::MaybeUninit<u8>],
         flags: ReadFlags,
     ) -> MojoResult<usize> {
-        data_pipe::MojoReadData(&mut self.handle, buf, flags).map(|n| n.try_into().unwrap())
+        data_pipe::MojoReadData(&self.handle, buf, flags).map(|n| n.try_into().unwrap())
     }
 }
 
 impl DataPipeProducerHandle {
-    pub fn write_with_flags(&mut self, data: &[u8], flags: WriteFlags) -> MojoResult<usize> {
-        data_pipe::MojoWriteData(&mut self.handle, data, flags).map(|n| n.try_into().unwrap())
+    pub fn write_with_flags(&self, data: &[u8], flags: WriteFlags) -> MojoResult<usize> {
+        data_pipe::MojoWriteData(&self.handle, data, flags).map(|n| n.try_into().unwrap())
     }
 }
 

@@ -1042,6 +1042,20 @@ void MaybeRegisterChromeFeaturePromos(
                        "Triggered to encourage users to try out the reading "
                        "mode feature.")));
 
+  // kIPHResumptionRailFeature:
+  registry.RegisterFeature(std::move(
+      FeaturePromoSpecification::CreateForToastPromo(
+          feature_engagement::kIPHResumptionRailFeature,
+          kVerticalTabStripProjectsButtonElementId,
+          IDS_RESUMPTION_RAIL_IPH_BODY, IDS_RESUMPTION_RAIL_IPH_TITLE,
+          FeaturePromoSpecification::AcceleratorInfo(0))
+          .SetBubbleTitleText(IDS_RESUMPTION_RAIL_IPH_TITLE)
+          .SetBubbleArrow(HelpBubbleArrow::kLeftCenter)
+          .SetBubbleIcon(&vector_icons::kLightbulbOutlineIcon)
+          .SetMetadata(146, "gqueen@chromium.org",
+                       "Triggered to educate users about the Resumption Rail "
+                       "feature entrypoint.")));
+
   // kIPHSideBySidePinnableFeature:
   registry.RegisterFeature(std::move(
       FeaturePromoSpecification::CreateForCustomAction(
@@ -1315,16 +1329,6 @@ void MaybeRegisterChromeFeaturePromos(
           .SetBubbleArrow(HelpBubbleArrow::kTopLeft)
           .SetMetadata(121, "dpenning@chromium.org",
                        "Triggered when tab organization is accepted.")));
-
-  // kIPHTabSearchFeature:
-  registry.RegisterFeature(
-      std::move(FeaturePromoSpecification::CreateForLegacyPromo(
-                    &feature_engagement::kIPHTabSearchFeature,
-                    kTabSearchButtonElementId, IDS_TAB_SEARCH_PROMO)
-                    .SetBubbleArrow(HelpBubbleArrow::kTopLeft)
-                    .SetMetadata(92, "tluk@chromium.org",
-                                 "Triggered once when there are more than 8 "
-                                 "tabs in the tab strip.")));
 
   // kIPHTabSearchToolbarButtonFeature:
   registry.RegisterFeature(std::move(

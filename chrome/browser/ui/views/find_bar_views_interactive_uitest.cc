@@ -1156,7 +1156,7 @@ IN_PROC_BROWSER_TEST_F(FindBarViewsUiTest, FindBarWidgetIsNotActivatable) {
 //
 // Disabled on Linux Wayland: Linux Wayland doesn't support window activation.
 // See crbug.com/40863331.
-#if BUILDFLAG(IS_LINUX) && BUILDFLAG(IS_OZONE_WAYLAND)
+#if BUILDFLAG(IS_LINUX) && BUILDFLAG(SUPPORTS_OZONE_WAYLAND)
 #define MAYBE_FindBarTextfieldActivatesBrowserOnClick \
   DISABLED_FindBarTextfieldActivatesBrowserOnClick
 #else
@@ -1273,7 +1273,13 @@ IN_PROC_BROWSER_TEST_F(FindBarViewsUiTest, BookmarkShortcutWithFindBarFocus) {
       WaitForShow(kBookmarkNameFieldId));
 }
 
-IN_PROC_BROWSER_TEST_P(FindBarViewsUiTest, CopyBlockedByPolicy) {
+// TODO(crbug.com/481356529): Re-enable on Windows once the bug is fixed.
+#if BUILDFLAG(IS_WIN)
+#define MAYBE_CopyBlockedByPolicy DISABLED_CopyBlockedByPolicy
+#else
+#define MAYBE_CopyBlockedByPolicy CopyBlockedByPolicy
+#endif
+IN_PROC_BROWSER_TEST_P(FindBarViewsUiTest, MAYBE_CopyBlockedByPolicy) {
   const bool clipboard_restricted_by_policy = GetParam();
   if (clipboard_restricted_by_policy) {
     data_controls::SetDataControls(browser()->profile()->GetPrefs(), {R"({
@@ -1313,5 +1319,12 @@ IN_PROC_BROWSER_TEST_P(FindBarViewsUiTest, CopyBlockedByPolicy) {
                                 /* data_dst = */ nullptr, &clipboard_text);
             return base::EqualsASCII(clipboard_text, kExpectedText);
           }),
-      WaitForState(kTextCopiedState, true));
+      WaitForState(kTextCopiedState, true),
+      // Regardless of whether the copied data made it to the clipboard, pasting
+      // it back into the FindBar will result in getting the original text back
+      // as the current policy doesn't block it.
+      WithView(FindBarView::kTextField, [&](views::Textfield* textfield) {
+        textfield->ExecuteCommand(views::Textfield::kPaste, 0);
+        ASSERT_EQ(textfield->GetText(), u"some text");
+      }));
 }

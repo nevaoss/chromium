@@ -53,6 +53,7 @@ chromium-metrics-reviews@google.com.
   <int value="-847585811" label="DeveloperSettings"/>
   <int value="-789502130" label="AutofillCardBenefitsFragment"/>
   <int value="-745020245" label="AllSiteSettings"/>
+  <int value="-726418910" label="GlicSettings"/>
   <int value="-676399019" label="SecureDnsSettings"/>
   <int value="-638132714" label="LegalInformationSettings"/>
   <int value="-571101369" label="SafeBrowsingSettingsFragment"/>
@@ -336,15 +337,6 @@ chromium-metrics-reviews@google.com.
   <int value="5" label="Open new tab page"/>
   <int value="6" label="Restore the last session and open URLs"/>
 </enum>
-
-<!-- LINT.IfChange(SettingsAiPageCompareInteractions) -->
-
-<enum name="SettingsAiPageCompareInteractions">
-  <int value="0" label="Feature link clicked"/>
-  <int value="1" label="Learn more link clicked"/>
-</enum>
-
-<!-- LINT.ThenChange(//chrome/browser/resources/settings/metrics_browser_proxy.ts:AiPageCompareInteractions) -->
 
 <!-- LINT.IfChange(SettingsAiPageComposeInteractions) -->
 

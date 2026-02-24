@@ -708,7 +708,8 @@
       name: "AvoidMergingStyledSpanWithSiblings",
       status: "stable",
     },
-    { // If the start and end positions are the same in MoveParagraph,
+    {
+      // If the start and end positions are the same in MoveParagraph,
       // there is no need to collapse the whitespace between them.
       // https://crbug.com/406053617
       name: "AvoidNormalizingVisiblePositionsWhenStartEqualsEnd",
@@ -1094,6 +1095,15 @@
       name: "CollectWidthAndHeightAsStylesForNestedSvg",
       status: "stable",
     },
+    {
+      // Allows <input type=color> to accept any valid CSS color value
+      // (named colors, rgb(), hsl(), system colors, etc.) in addition to
+      // the legacy 7-character hex format (#rrggbb).
+      // https://crbug.com/40226268
+      // This was added in M146 and can be removed after M148.
+      name: "ColorInputAcceptsCSSColors",
+      status: "stable",
+    },
     // Enable the display-p3-linear color space in CSS.
     // https://chromestatus.com/feature/5162372125818880
     {
@@ -1282,7 +1292,7 @@
     },
     {
       name: "CrashReportingStorageAPI",
-      status: "experimental",
+      status: "stable",
       base_feature_status: "enabled",
       copied_from_base_feature_if: "overridden",
       origin_trial_feature_name: "CrashReportingStorageAPI",
@@ -1316,12 +1326,6 @@
     {
       // Allows using counter() and counters() in alt text (after / in content property).
       name: "CSSAltCounter",
-      status: "stable",
-    },
-    {
-      // An update of anchor positioning (primarily how scrolling affects
-      // layout, but includes other inter-connected changes).
-      name: "CSSAnchorUpdate",
       status: "stable",
     },
     {
@@ -1598,10 +1602,6 @@
       // Ignore the stylesheet encoding when parsing URLs, always using UTF-8.
       // See crbug.com/1485525.
       name: "CSSParserIgnoreCharsetForURLs",
-    },
-    {
-      name: "CSSPositionAnchorNone",
-      status: "stable",
     },
     {
       name: "CSSPositionStickyStaticScrollPosition",
@@ -2025,6 +2025,12 @@
       status: "stable",
     },
     {
+      // For readonly inputs, do not allow access to the picker.
+      // This landed in M146 and can be removed in M148.
+      name: "DisallowPickerForReadonlyInputs",
+      status: "stable",
+    },
+    {
       // `kHidden` and `kHiddenButPainting` visibility states are treated as
       // hidden in the sense of `document.visibilityState`.  However, they are
       // handled differently internally.  For example, video playback should
@@ -2261,11 +2267,6 @@
     {
       name: "EntropyIgnoredForFirstVideoFrameLCP",
       status: "experimental",
-    },
-    {
-      // See crbug.com/453919401 for more details.
-      name: "EquivalentEncompassRounding",
-      status: "stable",
     },
     {
       // `event.pseudoTarget` property to represent pseudo-elements in events. Returns `CSSPseudoElement` or null.
@@ -2596,6 +2597,17 @@
       status: "stable",
     },
     {
+      name: "FixLinebreakForPreTag",
+      status: "stable",
+    },
+    {
+      // This fixes the suppression of markers for <details> and
+      // list items for appearance:auto.
+      // This was added in M146 and can be removed after M148.
+      name: "FixMarkerSuppressionForAppearanceAuto",
+      status: "stable",
+    },
+    {
       // crbug.com/411739501
       name: "FixNextPositionCalculationInInsertList",
       status: "stable",
@@ -2827,6 +2839,13 @@
       name: "GeolocationElement",
       status: "stable",
       public: true,
+    },
+    {
+      // A feature flag that controls whether the geometry mapper singular
+      // transform fix is enabled.
+      // https://issues.chromium.org/issues/441128445
+      name: "GeometryMapperSingularTransformFix",
+      status: "stable",
     },
     {
       name: "GetAllScreensMedia",
@@ -3361,6 +3380,12 @@
       status: "test",
     },
     {
+      // Add styleDuration to PerformanceLongAnimationFrameTiming and
+      // forcedStyleDuration to PerformanceScriptTiming
+      name: "LongAnimationFrameStyleDuration",
+      status: "experimental",
+    },
+    {
       // Long press on a link selects the link text instead of bringing up
       // context menu. Enabled only on Android AuthView.
       name: "LongPressLinkSelectText",
@@ -3736,6 +3761,12 @@
       status: "stable",
     },
     {
+      // Kill switch for a fix to offset-path transform invalidation for
+      // https://crbug.com/463409688.
+      name: "OffsetPathTransformUpdateFix",
+      status: "stable",
+    },
+    {
       name: "OmitBlurEventOnElementRemoval",
       status: "test"
     },
@@ -3769,7 +3800,6 @@
       // This is a spec change since anchor positioning was shipped in Blink.
       // https://issues.chromium.org/issues/408223892
       name: "OriginatingElementIsImplicitAnchor",
-      depends_on: ["CSSPositionAnchorNone"],
       status: "stable",
     },
     {
@@ -4357,15 +4387,6 @@
       // enabled to make the whole feature work.
     },
     {
-      // This flag allows more characters to be accepted as valid names in the
-      // createElement and attribute related DOM APIs.
-      // https://github.com/whatwg/dom/pull/1079
-      // http://crbug.com/40228234
-      // https://chromestatus.com/feature/6278918763708416
-      name: "RelaxDOMValidNames",
-      status: "stable",
-    },
-    {
       name: "RelOpenerBcgDependencyHint",
       status: "experimental",
     },
@@ -4412,6 +4433,11 @@
       // re-applied to child elements during style removal.
       // See https://crbug.com/41438799
       name: "RemoveFormatFilterBackgroundColor",
+      status: "stable",
+    },
+    {
+      // See https://issues.chromium.org/issues/40779139
+      name: "RemoveScrollNodeWorkaround",
       status: "stable",
     },
     {
@@ -4604,6 +4630,7 @@
       // https://github.com/whatwg/html/pull/10869
       // https://github.com/whatwg/dom/pull/1341
       name: "ScopedCustomElementRegistry",
+      status: "experimental",
     },
     {
       // https://github.com/WICG/view-transitions/blob/main/scoped-transitions.md
@@ -4812,7 +4839,7 @@
     {
       // https://issues.chromium.org/issues/40502558
       name: "SelectionRemoveRangeNotFoundError",
-      status: "experimental",
+      status: "stable",
     },
     {
       // https://issues.chromium.org/issues/40502558
@@ -4857,6 +4884,14 @@
       // https://chromestatus.com/feature/5412736871825408
       // https://issues.chromium.org/issues/439964654
       name: "SelectMobileDesktopParity",
+      status: "stable",
+    },
+    {
+      // Removes the forced overflow:hidden rules on the select element's
+      // InnerElement unless the author specifies text-overflow:ellipsis. May
+      // cause text to overlap with the dropdown indicator.
+      // https://issues.chromium.org/issues/40805967
+      name: "SelectRemoveOverflowHidden",
       status: "stable",
     },
     {
@@ -5021,6 +5056,13 @@
       // This will be shipped in M143, and it can be removed in M145.
       // See https://issues.chromium.org/issues/442293382.
       name: "SkipDateTimeFieldDisableChecks",
+      status: "stable",
+    },
+    {
+      // When enabled, cursor movement (arrow keys) will skip over non-editable
+      // atomic or empty inline elements within editable content, instead of
+      // getting stuck or moving into the non-editable content.
+      name: "SkipNonEditableInAtomicMove",
       status: "stable",
     },
     {

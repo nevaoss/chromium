@@ -25,6 +25,7 @@
 #include "chrome/browser/web_applications/web_app_registrar.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "components/webapps/browser/install_result_code.h"
+#include "content/public/common/content_features.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
@@ -40,8 +41,10 @@ class WebAppInstallFromMigrateFromFieldCommandBrowserTest
     : public WebAppBrowserTestBase {
  public:
   WebAppInstallFromMigrateFromFieldCommandBrowserTest() {
-    scoped_feature_list_.InitAndEnableFeature(
-        blink::features::kWebAppMigrationApi);
+    scoped_feature_list_.InitWithFeatures(
+        {blink::features::kWebAppMigrationApi,
+         features::kWebAppPredictableAppUpdating},
+        {});
   }
 
   void SetUp() override {

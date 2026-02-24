@@ -787,9 +787,6 @@
     "max-content",
     "fit-content",
 
-    // contain-intrinsic-size
-    "from-element",
-
     // frame-sizing
     // "auto",
     "content-width",
@@ -1168,6 +1165,7 @@
     "window-controls-overlay",
     "tabbed",
     "picture-in-picture",
+    "unframed",
 
     // (display-state:) media feature
     // normal

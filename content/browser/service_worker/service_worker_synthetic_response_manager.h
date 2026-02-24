@@ -66,7 +66,9 @@ class CONTENT_EXPORT ServiceWorkerSyntheticResponseManager {
                     OnReceiveResponseCallback receive_response_callback,
                     OnReceiveRedirectCallback receive_redirect_callback,
                     OnCompleteCallback complete_callback);
-  void StartSyntheticResponse(FetchCallback callback);
+  // Tries to start the synthetic response. Returns true if the synthetic
+  // response is started, otherwise returns false.
+  bool MaybeStartSyntheticResponse(FetchCallback callback);
   SyntheticResponseStatus Status() const { return status_; }
 
   // The static function to override the dry run mode.
@@ -129,7 +131,7 @@ class CONTENT_EXPORT ServiceWorkerSyntheticResponseManager {
   std::optional<RaceNetworkRequestSimpleBufferManager> simple_buffer_manager_;
   std::optional<ServiceWorkerSyntheticResponseDataPipeConnector>
       data_pipe_connector_;
-  bool did_start_synthetic_response = false;
+  bool did_start_synthetic_response_ = false;
 
   base::TimeTicks request_start_time_;
   base::TimeTicks response_received_time_;

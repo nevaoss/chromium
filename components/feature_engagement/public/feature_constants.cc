@@ -265,9 +265,6 @@ BASE_FEATURE(kIPHTabGroupsSharedTabFeedbackFeature,
 BASE_FEATURE(kIPHTabOrganizationSuccessFeature,
              "IPH_TabOrganizationSuccess",
              base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHTabSearchFeature,
-             "IPH_TabSearch",
-             base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHTabSearchToolbarButtonFeature,
              "IPH_TabSearchToolbarButton",
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -443,6 +440,9 @@ BASE_FEATURE(kIPHEphemeralTabFeature,
 BASE_FEATURE(kIPHFeedCardMenuFeature,
              "IPH_FeedCardMenu",
              base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHFuseboxAttachmentFeature,
+             "IPH_FuseboxAttachment",
+             base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHGenericAlwaysTriggerHelpUiFeature,
              "IPH_GenericAlwaysTriggerHelpUiFeature",
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -986,6 +986,15 @@ BASE_FEATURE(kIPHiOSEnhancedBrowsingDesktopFeature,
 BASE_FEATURE(kIPHiOSTabGroupsDesktopFeature,
              "IPH_iOSTabGroupsDesktop",
              base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHiOSPriceTrackingDesktopFeature,
+             "IPH_iOSPriceTrackingDesktop",
+             base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // !BUILDFLAG(IS_ANDROID)
+
+#if !BUILDFLAG(IS_IOS)
+BASE_FEATURE(kIPHResumptionRailFeature,
+             "IPH_ResumptionRail",
+             base::FEATURE_ENABLED_BY_DEFAULT);
+#endif  // !BUILDFLAG(IS_IOS)
 
 }  // namespace feature_engagement

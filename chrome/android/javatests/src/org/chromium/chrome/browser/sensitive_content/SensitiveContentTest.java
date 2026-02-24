@@ -283,7 +283,7 @@ public class SensitiveContentTest {
     @Test
     @LargeTest
     @EnableFeatures(SensitiveContentFeatures.SENSITIVE_CONTENT_WHILE_SWITCHING_TABS)
-    @DisableIf.Device(DeviceFormFactor.DESKTOP) // https://crbug.com/446934111
+    @DisableIf.Device(DeviceFormFactor.DESKTOP) // https://crbug.com/479863847
     public void testIncognitoTabSwitcherBecomesSensitive() {
         final String histogram =
                 "SensitiveContent.TabSwitching.IncognitoTabSwitcherPane.Sensitivity";
@@ -350,10 +350,6 @@ public class SensitiveContentTest {
     @Test
     @LargeTest
     @EnableFeatures(SensitiveContentFeatures.SENSITIVE_CONTENT_WHILE_SWITCHING_TABS)
-    // TODO(crbug.com/439491767): Fix broken tests caused by desktop-like incognito window.
-    @DisableFeatures(ChromeFeatureList.ANDROID_OPEN_INCOGNITO_AS_WINDOW)
-    // Don't run on desktop because desktop requires incognito tabs in their own window.
-    @Restriction(DeviceFormFactor.PHONE_OR_TABLET)
     public void testIncognitoTabSwitcherBecomesSensitiveWithTabGroups() {
         // Open the first incognito tab.
         CtaPageStation page = mPage.openNewIncognitoTabOrWindowFast();
@@ -375,7 +371,7 @@ public class SensitiveContentTest {
 
         // Go back to a tab to cleanup tab state. It is easier to open a new tab than to go to an
         // existing tab.
-        incognitoTabSwitcher.openAppMenu().openNewTab();
+        incognitoTabSwitcher.openAppMenu().openNewIncognitoTabOrWindow();
     }
 
     // This test also tests if metrics are recorded properly.
@@ -594,7 +590,7 @@ public class SensitiveContentTest {
     @Test
     @LargeTest
     @EnableFeatures(SensitiveContentFeatures.SENSITIVE_CONTENT_WHILE_SWITCHING_TABS)
-    @DisableIf.Device(DeviceFormFactor.DESKTOP) // https://crbug.com/446934111
+    @DisableIf.Device(DeviceFormFactor.DESKTOP) // https://crbug.com/481447108
     public void testSensitiveContentIsRestoredFromTabState() {
         // Create a new tab.
         CtaPageStation page = mPage.openNewTabFast();

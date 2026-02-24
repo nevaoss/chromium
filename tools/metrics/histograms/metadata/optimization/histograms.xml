@@ -466,6 +466,9 @@ chromium-metrics-reviews@google.com.
   <variant name="PixPaymentMerchantAllowlist"
       summary="This optimization provides information about whether a
                merchant can trigger PIX bottom sheet."/>
+  <variant name="PixPspAllowlist"
+      summary="This optimization provides information about whether the PSP
+               hosts are eligible for Pix payments."/>
   <variant name="PriceInsights"
       summary="Returns price insights data for shopping websites"/>
   <variant name="PriceTracking"
@@ -1260,7 +1263,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="OptimizationGuide.ModelExecution.OnDeviceModelToBeInstalledReason.{ModelExecutionFeature}"
-    enum="OptimizationGuideOnDeviceModelStatus" expires_after="2026-05-31">
+    enum="OptimizationGuideOnDeviceModelStatus" expires_after="2026-08-02">
   <owner>holte@chromium.org</owner>
   <owner>andysjlim@chromium.org</owner>
   <summary>
@@ -1531,7 +1534,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="OptimizationGuide.ModelExecutor.ModelLoadingDuration2.{OptimizationTarget}"
-    units="ms" expires_after="2026-05-31">
+    units="ms" expires_after="2026-08-02">
   <owner>wittman@chromium.org</owner>
   <owner>rajendrant@chromium.org</owner>
   <summary>

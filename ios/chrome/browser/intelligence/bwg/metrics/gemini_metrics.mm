@@ -106,6 +106,12 @@ const char kResponseLatencyWithContextHistogram[] =
 const char kResponseLatencyWithoutContextHistogram[] =
     "IOS.Gemini.Response.Latency.WithoutContext";
 
+const char kResponseLatencyWithGeneratedImageHistogram[] =
+    "IOS.Gemini.Response.Latency.WithGeneratedImage";
+
+const char kResponseLatencyWithoutGeneratedImageHistogram[] =
+    "IOS.Gemini.Response.Latency.WithoutGeneratedImage";
+
 const char kSessionPromptCountHistogram[] = "IOS.Gemini.Session.PromptCount";
 
 const char kSessionFirstPromptHistogram[] = "IOS.Gemini.Session.FirstPrompt";
@@ -114,6 +120,12 @@ const char kFloatyTimeMinimizedHistogram[] = "IOS.Gemini.Floaty.TimeMinimized";
 
 const char kFloatyViewStateTransitionHistogram[] =
     "IOS.Gemini.Floaty.ViewStateTransition";
+
+const char kFloatyShownFromSourceHistogram[] =
+    "IOS.Gemini.Floaty.ShownFromSource";
+
+const char kFloatyHiddenFromSourceHistogram[] =
+    "IOS.Gemini.Floaty.HiddenFromSource";
 
 const char kImageRemixContextMenuEntryPointAspectRatioTappedHistogram[] =
     "IOS.Gemini.ImageRemix.ContextMenuEntryPoint.AspectRatio.Tapped";
@@ -254,13 +266,23 @@ void RecordFREConsentLinkClick() {
       base::UserMetricsAction("MobileGeminiFREConsentLinkClick"));
 }
 
-void RecordResponseLatency(base::TimeDelta latency, bool had_page_context) {
+void RecordResponseLatency(base::TimeDelta latency,
+                           bool had_page_context,
+                           bool had_generated_image) {
   if (had_page_context) {
     base::UmaHistogramMediumTimes(kResponseLatencyWithContextHistogram,
                                   latency);
   } else {
     base::UmaHistogramMediumTimes(kResponseLatencyWithoutContextHistogram,
                                   latency);
+  }
+
+  if (had_generated_image) {
+    base::UmaHistogramMediumTimes(kResponseLatencyWithGeneratedImageHistogram,
+                                  latency);
+  } else {
+    base::UmaHistogramMediumTimes(
+        kResponseLatencyWithoutGeneratedImageHistogram, latency);
   }
 }
 
@@ -321,6 +343,14 @@ void RecordGeminiViewStateHiddenToShown(
     default:
       break;
   }
+}
+
+void RecordFloatyShownFromSource(gemini::FloatyUpdateSource source) {
+  base::UmaHistogramEnumeration(kFloatyShownFromSourceHistogram, source);
+}
+
+void RecordFloatyHiddenFromSource(gemini::FloatyUpdateSource source) {
+  base::UmaHistogramEnumeration(kFloatyHiddenFromSourceHistogram, source);
 }
 
 void RecordURLOpened() {

@@ -549,9 +549,8 @@ namespace {
 // https://github.com/whatwg/dom/pull/1079
 // Returns the first character that is invalid, otherwise nullopt.
 template <typename CharType>
-std::optional<CharType> ParseNamespacePrefixNewSpec(
+std::optional<CharType> ParseNamespacePrefix(
     base::span<const CharType> characters) {
-  DCHECK(RuntimeEnabledFeatures::RelaxDOMValidNamesEnabled());
   DCHECK(!characters.empty());
   for (size_t i = 0; i < characters.size(); i++) {
     CharType c = characters[i];
@@ -568,9 +567,8 @@ std::optional<CharType> ParseNamespacePrefixNewSpec(
 // https://github.com/whatwg/dom/pull/1079
 // Returns the first character that is invalid, otherwise nullopt.
 template <typename CharType>
-std::optional<CharType> ParseAttributeLocalNameNewSpec(
+std::optional<CharType> ParseAttributeLocalName(
     base::span<const CharType> characters) {
-  DCHECK(RuntimeEnabledFeatures::RelaxDOMValidNamesEnabled());
   DCHECK(!characters.empty());
   for (size_t i = 0; i < characters.size(); i++) {
     CharType c = characters[i];
@@ -584,12 +582,11 @@ std::optional<CharType> ParseAttributeLocalNameNewSpec(
   return std::nullopt;
 }
 
-// https://github.com/whatwg/dom/pull/1079
+// https://dom.spec.whatwg.org/#valid-element-local-name
 // Returns the first character that is invalid, otherwise nullopt.
 template <typename CharType>
-std::optional<CharType> ParseElementLocalNameNewSpec(
+std::optional<CharType> ParseElementLocalName(
     const base::span<const CharType>& characters) {
-  DCHECK(RuntimeEnabledFeatures::RelaxDOMValidNamesEnabled());
   // If name's length is 0, then return false.
   DCHECK(!characters.empty());
   CharType next_char = characters[0];
@@ -719,58 +716,13 @@ static inline bool IsValidNamePart(UChar32 c) {
   return true;
 }
 
-// Tests whether |name| is something the HTML parser would accept as a
-// tag name.
-template <typename CharType>
-static inline bool IsValidElementNamePerHTMLParser(
-    base::span<const CharType> characters) {
-  CharType c = characters[0] | 0x20;
-  if (!('a' <= c && c <= 'z'))
-    return false;
-
-  for (size_t i = 1; i < characters.size(); ++i) {
-    c = characters[i];
-    if (c == '\t' || c == '\n' || c == '\f' || c == '\r' || c == ' ' ||
-        c == '/' || c == '>')
-      return false;
-  }
-  return true;
-}
-
-static bool IsValidElementNamePerHTMLParser(const String& name) {
+// https://dom.spec.whatwg.org/#valid-element-local-name
+bool IsValidElementName(const String& name) {
   if (name.empty()) {
     return false;
   }
   return VisitCharacters(
-      name, [](auto chars) { return IsValidElementNamePerHTMLParser(chars); });
-}
-
-// Tests whether |name| is a valid name per DOM spec. Also checks
-// whether the HTML parser would accept this element name and counts
-// cases of mismatches.
-bool IsValidElementName(Document* document, const String& name) {
-  if (RuntimeEnabledFeatures::RelaxDOMValidNamesEnabled()) {
-    if (name.empty()) {
-      return false;
-    }
-    return VisitCharacters(
-        name, [](auto chars) { return !ParseElementLocalNameNewSpec(chars); });
-  }
-
-  bool is_valid_dom_name = Document::IsValidName(name);
-  bool is_valid_html_name = IsValidElementNamePerHTMLParser(name);
-  if (is_valid_html_name != is_valid_dom_name) [[unlikely]] {
-    // This is inaccurate because it will not report activity in
-    // detached documents. However retrieving the frame from the
-    // bindings is too slow.
-    // TODO(crbug.com/40228234): Mark these UseCounters as obsolete when
-    // removing the RelaxDOMValidNames flag.
-    UseCounter::Count(document,
-                      is_valid_dom_name
-                          ? WebFeature::kElementNameDOMValidHTMLParserInvalid
-                          : WebFeature::kElementNameDOMInvalidHTMLParserValid);
-  }
-  return is_valid_dom_name;
+      name, [](auto chars) { return !ParseElementLocalName(chars); });
 }
 
 static bool AcceptsEditingFocus(const Element& element) {
@@ -1387,7 +1339,7 @@ Element* Document::CreateRawElement(const QualifiedName& qname,
 // https://dom.spec.whatwg.org/#dom-document-createelement
 Element* Document::CreateElementForBinding(const AtomicString& name,
                                            ExceptionState& exception_state) {
-  if (!IsValidElementName(this, name)) {
+  if (!IsValidElementName(name)) {
     exception_state.ThrowDOMException(
         DOMExceptionCode::kInvalidCharacterError,
         StrCat({"The tag name provided ('", name, "') is not a valid name."}));
@@ -1481,7 +1433,7 @@ Element* Document::CreateElementForBinding(
 
   // 1. If localName does not match Name production, throw
   // InvalidCharacterError.
-  if (!IsValidElementName(this, local_name)) {
+  if (!IsValidElementName(local_name)) {
     exception_state.ThrowDOMException(
         DOMExceptionCode::kInvalidCharacterError,
         StrCat({"The tag name provided ('", local_name,
@@ -1572,7 +1524,7 @@ Element* Document::createElementNS(
     return nullptr;
   }
 
-  if (!IsValidElementName(this, qualified_name)) {
+  if (!IsValidElementName(qualified_name)) {
     exception_state.ThrowDOMException(
         DOMExceptionCode::kInvalidCharacterError,
         StrCat({"The tag name provided ('", qualified_name,
@@ -5177,7 +5129,7 @@ void Document::ProcessBaseElement() {
   // encodings correctly.
   KURL base_element_url;
   if (href) {
-    String stripped_href = StripLeadingAndTrailingHTMLSpaces(*href);
+    StringView stripped_href = StripLeadingAndTrailingHtmlSpaces(*href);
     if (!stripped_href.empty())
       base_element_url = KURL(FallbackBaseURL(), stripped_href);
   }
@@ -5928,6 +5880,16 @@ bool Document::SetFocusedElement(Element* new_focused_element,
         // handler shifted focus
         focus_change_blocked = true;
         new_focused_element = nullptr;
+
+        if (ancestor) {
+          auto* new_ancestor = DynamicTo<Element>(
+              FlatTreeTraversal::CommonAncestor(*ancestor, *focused_element_));
+          if (new_ancestor != ancestor) {
+            ancestor->SetHasFocusWithinUpToAncestor(
+                false, new_ancestor,
+                /*need_snap_container_search=*/false);
+          }
+        }
       }
 
       // 'focusout' is a DOM level 3 name for the bubbling blur event.
@@ -5946,6 +5908,16 @@ bool Document::SetFocusedElement(Element* new_focused_element,
         // handler shifted focus
         focus_change_blocked = true;
         new_focused_element = nullptr;
+
+        if (ancestor) {
+          auto* new_ancestor = DynamicTo<Element>(
+              FlatTreeTraversal::CommonAncestor(*ancestor, *focused_element_));
+          if (new_ancestor != ancestor) {
+            ancestor->SetHasFocusWithinUpToAncestor(
+                false, new_ancestor,
+                /*need_snap_container_search=*/false);
+          }
+        }
       }
     }
     // EditContext's activation is synced with the associated element being
@@ -7410,24 +7382,21 @@ bool Document::IsValidName(const StringView& name) {
 }
 
 // static
-bool Document::IsValidAttributeLocalNameNewSpec(const StringView& local_name) {
-  DCHECK(RuntimeEnabledFeatures::RelaxDOMValidNamesEnabled());
+bool Document::IsValidAttributeLocalName(const StringView& local_name) {
   if (local_name.empty()) {
     return false;
   }
-  return VisitCharacters(local_name, [](auto chars) {
-    return !ParseAttributeLocalNameNewSpec(chars);
-  });
+  return VisitCharacters(
+      local_name, [](auto chars) { return !ParseAttributeLocalName(chars); });
 }
 
 // static
-bool Document::IsValidElementLocalNameNewSpec(const StringView& local_name) {
+bool Document::IsValidElementLocalName(const StringView& local_name) {
   if (local_name.empty()) {
     return false;
   }
-  return VisitCharacters(local_name, [](auto chars) {
-    return !ParseElementLocalNameNewSpec(chars);
-  });
+  return VisitCharacters(
+      local_name, [](auto chars) { return !ParseElementLocalName(chars); });
 }
 
 enum QualifiedNameStatus {
@@ -7449,59 +7418,14 @@ struct ParseQualifiedNameResult {
       : status(status), character(character) {}
 };
 
-template <typename CharType>
-static ParseQualifiedNameResult ParseQualifiedNameInternal(
-    const AtomicString& qualified_name,
-    base::span<const CharType> characters,
-    AtomicString& prefix,
-    AtomicString& local_name) {
-  bool name_start = true;
-  bool saw_colon = false;
-  size_t colon_pos = 0;
-
-  for (size_t i = 0; i < characters.size();) {
-    UChar32 c = CodePointAtAndNext(characters, i);
-    if (c == ':') {
-      if (saw_colon)
-        return ParseQualifiedNameResult(kQNMultipleColons);
-      name_start = true;
-      saw_colon = true;
-      colon_pos = i - 1;
-    } else if (name_start) {
-      if (!IsValidNameStart(c))
-        return ParseQualifiedNameResult(kQNInvalidStartChar, c);
-      name_start = false;
-    } else {
-      if (!IsValidNamePart(c))
-        return ParseQualifiedNameResult(kQNInvalidChar, c);
-    }
-  }
-
-  if (!saw_colon) {
-    prefix = g_null_atom;
-    local_name = qualified_name;
-  } else {
-    prefix = AtomicString(characters.take_first(colon_pos));
-    if (prefix.empty())
-      return ParseQualifiedNameResult(kQNEmptyPrefix);
-    local_name = AtomicString(characters.template subspan<1u>());
-  }
-
-  if (local_name.empty())
-    return ParseQualifiedNameResult(kQNEmptyLocalName);
-
-  return ParseQualifiedNameResult(kQNValid);
-}
-
 namespace {
 // https://github.com/whatwg/dom/pull/1079
 template <typename CharType>
-ParseQualifiedNameResult ParseQualifiedNameInternalNewSpec(
+ParseQualifiedNameResult ParseQualifiedNameInternal(
     base::span<const CharType> characters,
     AtomicString& out_prefix,
     AtomicString& out_local_name,
     Document::QualifiedNameParsingMode parsing_mode) {
-  DCHECK(RuntimeEnabledFeatures::RelaxDOMValidNamesEnabled());
   // Do a first pass to look for the colon. Otherwise, we don't know which
   // parsing rules to apply to the text we are iterating.
   std::optional<size_t> colon_index;
@@ -7530,7 +7454,7 @@ ParseQualifiedNameResult ParseQualifiedNameInternalNewSpec(
     if (!prefix.size()) {
       return ParseQualifiedNameResult(kQNEmptyPrefix, ':');
     }
-    if (auto invalid_char = ParseNamespacePrefixNewSpec(prefix)) {
+    if (auto invalid_char = ParseNamespacePrefix(prefix)) {
       return ParseQualifiedNameResult(kQNInvalidChar, *invalid_char);
     }
   } else {
@@ -7542,13 +7466,13 @@ ParseQualifiedNameResult ParseQualifiedNameInternalNewSpec(
   }
 
   if (parsing_mode == Document::QualifiedNameParsingMode::kParsingAttribute) {
-    if (auto invalid_char = ParseAttributeLocalNameNewSpec(local_name)) {
+    if (auto invalid_char = ParseAttributeLocalName(local_name)) {
       return ParseQualifiedNameResult(kQNInvalidChar, *invalid_char);
     }
   } else {
     DCHECK_EQ(parsing_mode,
               Document::QualifiedNameParsingMode::kParsingElement);
-    if (auto invalid_char = ParseElementLocalNameNewSpec(local_name)) {
+    if (auto invalid_char = ParseElementLocalName(local_name)) {
       return ParseQualifiedNameResult(kQNInvalidChar, *invalid_char);
     }
   }
@@ -7571,15 +7495,9 @@ bool Document::ParseQualifiedName(const AtomicString& qualified_name,
   }
 
   ParseQualifiedNameResult return_value = VisitCharacters(
-      qualified_name,
-      [&qualified_name, &prefix, &local_name, &parsing_mode](auto chars) {
-        if (RuntimeEnabledFeatures::RelaxDOMValidNamesEnabled()) {
-          return ParseQualifiedNameInternalNewSpec(chars, prefix, local_name,
-                                                   parsing_mode);
-        } else {
-          return ParseQualifiedNameInternal(qualified_name, chars, prefix,
-                                            local_name);
-        }
+      qualified_name, [&prefix, &local_name, &parsing_mode](auto chars) {
+        return ParseQualifiedNameInternal(chars, prefix, local_name,
+                                          parsing_mode);
       });
   if (return_value.status == kQNValid)
     return true;
@@ -7646,9 +7564,9 @@ void Document::SetEncodingData(const DocumentEncodingData& new_data) {
 }
 
 KURL Document::CompleteURL(
-    const String& url,
+    const StringView& url,
     const CompleteURLPreloadStatus preload_status) const {
-  return CompleteURLWithOverride(url, base_url_, preload_status);
+  return CompleteURLWithOverride(url.ToString(), base_url_, preload_status);
 }
 
 KURL Document::CompleteURLWithOverride(
@@ -7835,9 +7753,7 @@ Agent& Document::GetAgent() const {
 
 Attr* Document::createAttribute(const AtomicString& name,
                                 ExceptionState& exception_state) {
-  bool is_valid = RuntimeEnabledFeatures::RelaxDOMValidNamesEnabled()
-                      ? Document::IsValidAttributeLocalNameNewSpec(name)
-                      : Document::IsValidName(name);
+  bool is_valid = Document::IsValidAttributeLocalName(name);
   if (!is_valid) {
     exception_state.ThrowDOMException(
         DOMExceptionCode::kInvalidCharacterError,

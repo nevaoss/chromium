@@ -360,7 +360,6 @@ public class RuntimePermissionTest {
     @Test
     @MediumTest
     @Feature({"RuntimePermissions", "Location"})
-    @DisableIf.Device(DeviceFormFactor.DESKTOP) // https://crbug.com/446934111
     public void testAllowRuntimeLocationIncognito() throws Exception {
         RuntimePermissionTestUtils.setupGeolocationSystemMock();
         ChromeActivity incognitoActivity;
@@ -443,7 +442,7 @@ public class RuntimePermissionTest {
     @MediumTest
     @Feature({"RuntimePermissions", "MediaPermissions"})
     @CommandLineFlags.Add(ContentSwitches.USE_FAKE_DEVICE_FOR_MEDIA_STREAM)
-    @DisableIf.Device(DeviceFormFactor.DESKTOP) // https://crbug.com/446934111
+    @DisableIf.Device(DeviceFormFactor.DESKTOP) // https://crbug.com/481445397
     public void testRuntimeMediaPromptHistogram() throws Exception {
         String[] requestablePermission =
                 new String[] {Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO};

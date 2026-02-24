@@ -2278,8 +2278,8 @@ Called by update_use_counter_feature_enum.py.-->
   <int value="1965" label="GamepadButtons"/>
   <int value="1966" label="VibrateWithoutUserGesture"/>
   <int value="1967" label="OBSOLETE_DispatchMouseEventOnDisabledFormControl"/>
-  <int value="1968" label="ElementNameDOMInvalidHTMLParserValid"/>
-  <int value="1969" label="ElementNameDOMValidHTMLParserInvalid"/>
+  <int value="1968" label="OBSOLETE_ElementNameDOMInvalidHTMLParserValid"/>
+  <int value="1969" label="OBSOLETE_ElementNameDOMValidHTMLParserInvalid"/>
   <int value="1970" label="GATTServerDisconnectedEvent"/>
   <int value="1971" label="AnchorClickDispatchForNonConnectedNode"/>
   <int value="1972" label="HTMLParseErrorNestedForm"/>
@@ -6297,7 +6297,7 @@ Called by update_use_counter_feature_enum.py.-->
   <int value="5673" label="SmartCardEstablishContext"/>
   <int value="5674" label="SmartCardConnect"/>
   <int value="5675" label="NavigatorCPUPerformance"/>
-  <int value="5676" label="SelectionRemoveRangeNotFoundWouldThrow"/>
+  <int value="5676" label="OBSOLETE_SelectionRemoveRangeNotFoundWouldThrow"/>
   <int value="5677" label="NestedSvgCssSizingProperties"/>
   <int value="5678" label="CryptoAlgorithmChaCha20Poly1305"/>
   <int value="5679" label="CryptoAlgorithmMlDsa44"/>
@@ -6418,6 +6418,8 @@ Called by update_use_counter_feature_enum.py.-->
       label="GeolocationRequestPositionWithPotentiallyUpToDateWatchedCachedPosition"/>
   <int value="5784" label="AnchorCaseSensitiveMatch"/>
   <int value="5785" label="AnchorCaseInsensitiveMatch"/>
+  <int value="5786" label="PrerenderActivationByFormSubmission"/>
+  <int value="5787" label="LinkRelModulePreloadStyle"/>
 </enum>
 
 <!-- LINT.ThenChange(//third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom:WebFeature) -->
@@ -8637,7 +8639,7 @@ Called by update_use_counter_feature_enum.py.-->
   <int value="243" label="OBSOLETE_LocaleInfoObsoletedGetters"/>
   <int value="244" label="IntlLocaleInfo"/>
   <int value="245" label="ViewTransitionClass"/>
-  <int value="246" label="DRAFT_ReferenceTarget"/>
+  <int value="246" label="Referencetarget"/>
   <int value="247" label="Fedcm"/>
   <int value="248" label="WebOtp"/>
   <int value="249" label="PreservesPitch"/>
@@ -8766,7 +8768,7 @@ Called by update_use_counter_feature_enum.py.-->
   <int value="372" label="WasmSignExtensionOperators"/>
   <int value="373" label="DRAFT_IncomingCallNotifications"/>
   <int value="374" label="Popover"/>
-  <int value="375" label="DRAFT_WebInstallAPI"/>
+  <int value="375" label="NavigatorInstall"/>
   <int value="376" label="TopLevelAwait"/>
   <int value="377" label="AtomicsPause"/>
   <int value="378" label="LogicalAssignments"/>

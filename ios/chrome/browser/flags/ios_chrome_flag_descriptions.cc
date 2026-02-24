@@ -317,6 +317,10 @@ const char kComposeboxCompactModeDescription[] =
     "Enables the compact composebox, adding attachment or enabling AIM will "
     "expand it to the regular size.";
 
+const char kComposeboxDeepSearchName[] = "Enable Composebox Deep Search";
+extern const char kComposeboxDeepSearchDescription[] =
+    "Enables the deep search advanced tool in Composebox";
+
 const char kComposeboxDevToolsName[] = "Enable Composebox Dev Tools";
 const char kComposeboxDevToolsDescription[] =
     "Enables development tools for the composebox, allowing simulation of "
@@ -554,9 +558,6 @@ const char kEnableLensInOmniboxCopiedImageDescription[] =
     "when Google is the selected search engine, accessible from the omnibox or "
     "popup menu.";
 
-const char kEnableLensOverlayName[] = "Enable Lens Overlay";
-const char kEnableLensOverlayDescription[] = "Enables lens overlay UI";
-
 const char kEnableNewStartupFlowName[] = "EnableNewStartupFlow";
 const char kEnableNewStartupFlowDescription[] =
     "Enables the EnableNewStartupFlow feature.";
@@ -600,12 +601,6 @@ const char kForceStartupSigninPromoName[] = "Display the startup sign-in promo";
 const char kForceStartupSigninPromoDescription[] =
     "When enabled, the startup sign-in promo is always displayed when starting "
     "Chrome.";
-
-const char kFullscreenPromosManagerSkipInternalLimitsName[] =
-    "Fullscreen Promos Manager (Skip internal Impression Limits)";
-const char kFullscreenPromosManagerSkipInternalLimitsDescription[] =
-    "When enabled, the internal Impression Limits of the Promos Manager will "
-    "be ignored; this is useful for local development.";
 
 const char kFullscreenScrollThresholdName[] = "Fullscreen Scroll Threshold";
 const char kFullscreenScrollThresholdDescription[] =
@@ -675,6 +670,10 @@ const char kGeminiRefactoredFREName[] = "Gemini Refactored FRE";
 const char kGeminiRefactoredFREDescription[] =
     "Enables the refactored Gemini First Run Experience (FRE).";
 
+const char kGeminiUpdatedEligibilityName[] = "Gemini Updated Eligibility";
+const char kGeminiUpdatedEligibilityDescription[] =
+    "Enables the updated eligibility checks for Gemini users.";
+
 const char kHandleMdmErrorsForDasherAccountsName[] =
     "Mdm error handling for dasher accounts";
 const char kHandleMdmErrorsForDasherAccountsDescription[] =
@@ -724,6 +723,11 @@ const char kIOSDockingPromoDescription[] =
     "When enabled, the user will be presented an animated, instructional "
     "promo showing how to move Chrome to their native iOS dock.";
 
+const char kIOSDockingPromoV2Name[] = "Docking Promo V2";
+const char kIOSDockingPromoV2Description[] =
+    "When enabled, the user will be presented an animated, instructional "
+    "promo V2 showing how to move Chrome to their native iOS dock.";
+
 const char kIOSEnableCloudProfileReportingName[] =
     "Enable profile reporting on iOS";
 const char kIOSEnableCloudProfileReportingDescription[] =
@@ -735,6 +739,11 @@ const char kIOSEnableRealtimeEventReportingName[] =
 const char kIOSEnableRealtimeEventReportingDescription[] =
     "When enabled, realtime events will be reported to the user's "
     "organization.";
+
+const char kIOSEnhancedAutofillName[] = "Enhanced Autofill";
+const char kIOSEnhancedAutofillDescription[] =
+    "Saving, updating, editing, and filling entities (Passports, IBANs, "
+    "Loyalty Cards) via LLM-based classification";
 
 const char kIOSExpandedSetupListName[] = "Expanded Setup List";
 const char kIOSExpandedSetupListDescription[] =
@@ -909,12 +918,6 @@ const char kLensOverlayCustomBottomSheetName[] =
 const char kLensOverlayCustomBottomSheetDescription[] =
     "When enabled the system bottom sheet for the Lens result page is "
     "replaced by a custom bottom sheet presentation";
-
-const char kLensOverlayDisableIPHPanGestureName[] =
-    "Disable Lens Overlay IPH Pan Dismissal";
-const char kLensOverlayDisableIPHPanGestureDescription[] =
-    "Disable the pan gesture that dismisses Lens Overlay IPH. The IPH can "
-    "still be dismissed with a tap.";
 
 const char kLensOverlayEnableLandscapeCompatibilityName[] =
     "Allow Lens overlay to also run in landscape if the feature is enabled";
@@ -1577,6 +1580,10 @@ const char kUseFeedEligibilityServiceName[] =
 const char kUseFeedEligibilityServiceDescription[] =
     "Use the new eligibility service to handle whether the Discover "
     "feed is displayed on NTP";
+
+const char kUseSceneViewControllerName[] = "Use Scene View Controller";
+const char kUseSceneViewControllerDescription[] =
+    "Enables the use of SceneViewController.";
 
 const char kVariationsSeedCorpusName[] = "Variations seed corpus";
 const char kVariationsSeedCorpusDescription[] =

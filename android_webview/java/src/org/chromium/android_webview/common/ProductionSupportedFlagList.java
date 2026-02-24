@@ -274,8 +274,17 @@ public final class ProductionSupportedFlagList {
                 AutofillFeatures.AUTOFILL_FIX_FORM_EQUALITY,
                 "Fixes the semantics of Form[Field]Data::DeepEqual()"),
         Flag.baseFeature(
+                AutofillFeatures.AUTOFILL_FIX_CIVIL_STATE_MISCLASSIFICATION_FOR_ESPT,
+                "When enabled, improves heuristic regexes for state classification to avoid"
+                        + " misclassification as civil state."),
+        Flag.baseFeature(
                 AutofillFeatures.AUTOFILL_FIX_FORM_TRACKING,
                 "Improves form submission tracking and duplicate submission handling"),
+        Flag.baseFeature(
+                AutofillFeatures.AUTOFILL_FIX_STATE_COUNTRY_MISCLASSIFICATION,
+                "When enabled, the rationalization engine will fix misclassifications where"
+                        + " a field is detected as a COUNTRY when it should be a STATE or vice"
+                        + " versa."),
         Flag.baseFeature(
                 AutofillFeatures.AUTOFILL_DISALLOW_MORE_HYPHEN_LIKE_LABELS,
                 "Disallows labels that only contain em dashes, minuses, fullwidth hyphens and other"
@@ -321,6 +330,10 @@ public final class ProductionSupportedFlagList {
                 AutofillFeatures.AUTOFILL_SUPPORT_SPLIT_ZIP_CODE,
                 "When enabled, two-part zip codes are splitted into two fields while filling and"
                         + " imported from two adjacent fields."),
+        Flag.baseFeature(
+                AutofillFeatures.AUTOFILL_SUPPORT_COMBINED_ZIP_AND_CITY_FR,
+                "When enabled, fields that combine postal code and city in France will be parsed"
+                        + " correctly."),
         Flag.baseFeature(
                 AutofillFeatures.AUTOFILL_EXTEND_ZIP_CODE_VALIDATION,
                 "When enabled, zip code validation is extended to support more countries."),
@@ -1077,12 +1090,20 @@ public final class ProductionSupportedFlagList {
                 AwFeatures.WEBVIEW_EARLY_STARTUP_TRACING,
                 "Enables early startup tracing. This flag takes effect on subsequent application"
                     + " startups: After enabling this flag, applications must be started and then"
-                    + " restarted for tracing to apply."),
+                    + " restarted for changes to apply."),
         Flag.baseFeature(
-                AwFeatures.WEBVIEW_EARLY_PERFETTO_INIT,
-                "Initializes Perfetto as early as possible, right after native library load. "
+                AwFeatures.WEBVIEW_EARLY_TRACING_INIT,
+                "Initializes tracing as early as possible, right after native library load. "
                         + "After enabling this flag, applications must be started and then "
-                        + "restarted for tracing to apply."),
+                        + "restarted for changes to apply."),
+        Flag.baseFeature(
+                AwFeatures.WEBVIEW_BACKGROUND_TRACING_INIT,
+                "Initializes tracing on a background thread once native library has been loaded. "
+                        + "This flag is ignored if "
+                        + AwFeatures.WEBVIEW_EARLY_TRACING_INIT
+                        + " is enabled."
+                        + "After enabling this flag, applications must be started and then "
+                        + "restarted for changes to apply."),
         Flag.baseFeature(
                 BaseFeatures.LIBRARY_PREFETCHER_MADVISE,
                 "Use madvise MADV_WILLNEED to prefetch the native library. This replaces the "
@@ -1188,6 +1209,10 @@ public final class ProductionSupportedFlagList {
                 "Report external memory held by IndexedDB connections, so it's taken into account"
                         + " in GC heuristics."),
         Flag.baseFeature(
+                "MemoryDumpProviderGroupBySequence",
+                "Group MemoryDumpProvider by sequence affinity to reduce PostTask hops when"
+                        + " collecting dumps"),
+        Flag.baseFeature(
                 "VariationsStickyPersistence",
                 "Controls how prefs are written and persisted for tracking sticky study activation."
                     + " Note: The actual behavior is controlled by a feature param, but disabling"
@@ -1202,8 +1227,13 @@ public final class ProductionSupportedFlagList {
                 "CancelPendingCallbacksBeforeFetchRestart",
                 "The flag for ServiceWorkerSubresourceLoader. If enabled, the loader cancels"
                         + " pending callbacks before restarting a fetch."),
-        // Add new commandline switches and features above. The final entry should have a
-        // trailing comma for cleaner diffs.
+        Flag.baseFeature(
+                BaseFeatures.REBINDING_CHILD_SERVICE_CONNECTION_CONTROLLER,
+                "Use a single connection and rebindService() to manage the binding to a child"
+                        + " process service."),
+        Flag.baseFeature(
+                BaseFeatures.REBIND_SERVICE_BATCH_API,
+                "Use a batch API to rebind service connections."),
 
         // Features for PerfCombined2025_WebView study
         Flag.baseFeature("AsyncSetCookie"),
@@ -1243,7 +1273,10 @@ public final class ProductionSupportedFlagList {
                         + " AwWebPerformanceMetricsObserver"),
         Flag.baseFeature(
                 ContentFeatures.NO_SELECTION_MENU_CACHING,
-                "Enables Web Performance Metrics to be reported using"
-                        + " AwWebPerformanceMetricsObserver"),
+                "When this flag is enabled, the menu which is shown when selecting text will not be"
+                        + " cached. Instead, it is recomputed each time it is shown."),
+
+        // Add new commandline switches and features above. The final entry should have a
+        // trailing comma for cleaner diffs.
     };
 }

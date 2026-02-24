@@ -336,8 +336,8 @@ constexpr CGFloat kLocationBarCompactBottomPadding = 10.0;
   return self.secondaryToolbarCoordinator.viewController;
 }
 
-- (id<SharingPositioner>)sharingPositioner {
-  return self.primaryToolbarCoordinator.SharingPositioner;
+- (UIView*)shareButton {
+  return self.primaryToolbarCoordinator.shareButton;
 }
 
 // Public and in `ToolbarMediatorDelegate`.
@@ -972,17 +972,6 @@ constexpr CGFloat kLocationBarCompactBottomPadding = 10.0;
 }
 
 #pragma mark - ToolbarCommands
-
-- (void)triggerToolbarSlideInAnimation {
-  if (IsChromeNextIaEnabled()) {
-    [_topToolbarViewController triggerToolbarSlideInAnimation];
-    [_bottomToolbarViewController triggerToolbarSlideInAnimation];
-    return;
-  }
-  for (id<ToolbarCommands> coordinator in self.coordinators) {
-    [coordinator triggerToolbarSlideInAnimation];
-  }
-}
 
 - (void)indicateLensOverlayVisible:(BOOL)lensOverlayVisible {
   if (IsChromeNextIaEnabled()) {

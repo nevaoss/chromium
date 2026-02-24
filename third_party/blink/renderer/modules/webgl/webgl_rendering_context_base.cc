@@ -126,9 +126,9 @@
 #include "third_party/blink/renderer/platform/bindings/script_state.h"
 #include "third_party/blink/renderer/platform/bindings/v8_binding_macros.h"
 #include "third_party/blink/renderer/platform/graphics/accelerated_static_bitmap_image.h"
+#include "third_party/blink/renderer/platform/graphics/canvas_non2d_snapshot_provider_bitmap.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource_provider.h"
-#include "third_party/blink/renderer/platform/graphics/canvas_snapshot_provider_external_bitmap.h"
 #include "third_party/blink/renderer/platform/graphics/gpu/image_extractor.h"
 #include "third_party/blink/renderer/platform/graphics/gpu/shared_gpu_context.h"
 #include "third_party/blink/renderer/platform/graphics/graphics_context.h"
@@ -842,9 +842,9 @@ scoped_refptr<StaticBitmapImage> WebGLRenderingContextBase::GetImage() {
   constexpr auto kShouldInitialize =
       CanvasResourceProvider::ShouldInitialize::kNo;
 
-  std::unique_ptr<CanvasResourceProviderSharedImage> resource_provider;
+  std::unique_ptr<CanvasNon2DResourceProviderSharedImage> resource_provider;
   if (SharedGpuContext::IsGpuCompositingEnabled()) {
-    resource_provider = CanvasResourceProvider::CreateSharedImageProvider(
+    resource_provider = CanvasNon2DResourceProviderSharedImage::Create(
         size, GetSharedImageFormat(), GetAlphaType(), GetColorSpace(),
         kShouldInitialize, SharedGpuContext::ContextProviderWrapper(),
         RasterMode::kGPU, gpu::SHARED_IMAGE_USAGE_DISPLAY_READ);
@@ -1991,7 +1991,7 @@ WebGLRenderingContextBase::GetSharedImageResourceProvider() {
         RuntimeEnabledFeatures::WebGLImageChromiumEnabled()) {
       shared_image_usage_flags |= gpu::SHARED_IMAGE_USAGE_SCANOUT;
     }
-    resource_provider_ = CanvasResourceProvider::CreateSharedImageProvider(
+    resource_provider_ = CanvasNon2DResourceProviderSharedImage::Create(
         Host()->Size(), format, alpha_type, color_space, kShouldInitialize,
         SharedGpuContext::ContextProviderWrapper(), RasterMode::kGPU,
         shared_image_usage_flags, Host());
@@ -5679,8 +5679,8 @@ scoped_refptr<Image> WebGLRenderingContextBase::DrawImageIntoBufferForTexImage(
   }
 
   CHECK(snapshot_provider->IsExternalBitmapProvider());
-  CanvasSnapshotProviderExternalBitmap* snapshot_provider_bitmap =
-      static_cast<CanvasSnapshotProviderExternalBitmap*>(snapshot_provider);
+  CanvasNon2DSnapshotProviderBitmap* snapshot_provider_bitmap =
+      static_cast<CanvasNon2DSnapshotProviderBitmap*>(snapshot_provider);
 
   return snapshot_provider_bitmap->DoExternalDrawAndSnapshot(
       [&](MemoryManagedPaintCanvas& canvas) {
@@ -8874,7 +8874,7 @@ CanvasSnapshotProvider* WebGLRenderingContextBase::
     }
     temp = CreateSnapshotProviderForVideo(info, raster_context_provider);
   } else {
-    temp = CanvasSnapshotProviderExternalBitmap::Create(info);
+    temp = CanvasNon2DSnapshotProviderBitmap::Create(info);
   }
 
   if (!temp)

@@ -10,27 +10,115 @@
  * #include=cr-shared-style-lit
  * #css_wrapper_metadata_end */
 
+.dialog-container {
+  background-color: var(--color-sys-surface);
+  display: grid;
+  gap: 16px;
+  padding: 12px;
+}
+
+.header-container {
+  display: grid;
+  gap: 4px;
+}
+
 h1 {
-  font-size: 22px;
-  font-weight: 600;
-  margin-bottom: 8px;
-  color: var(--google-grey-900-rgb);
+  color: var(--color-sys-on-surface);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 24px;
+  margin: 0px;
 }
 
 p.description {
+  color: var(--color-sys-on-surface-subtle);
   font-size: 14px;
-  color: var(--google-grey-700-rgb);
-  margin-bottom: 24px;
+  font-weight: 400;
+  line-height: 20px;
+  margin: 0px;
 }
 
 .form-group {
-  margin-bottom: 24px;
+  gap: 16px;
 }
 
-cr-textarea {
-  --cr-input-border-radius: 8px;
-  --cr-input-border-bottom: none;
-  /* TODO(b/477970994): Follow up with UX on component customization. */
+cr-input {
+  --cr-input-border: 1px solid var(--color-sys-neutral-outline);
+  --cr-input-font-size: 12px;
+  --cr-input-padding-bottom: 10px;
+  --cr-input-padding-end: 10px;
+  --cr-input-padding-start: 10px;
+  --cr-input-padding-top: 10px;
+  font-weight: 400;
+}
+
+.cr-form-field-label {
+  --cr-form-field-label-color: var(--color-sys-on-surface);
+  --cr-form-field-label-font-size: 12px;
+  --cr-form-field-label-line-height: 18px;
+  font-weight: 500;
+}
+
+.textarea-wrapper {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+
+  border: 1px solid var(--cr-fallback-color-neutral-outline);
+  border-radius: 8px;
+  background-color: white;
+
+  transition: background-color 200ms ease-in-out;
+  overflow: hidden;
+}
+
+.textarea-wrapper:focus-within {
+  border-color: var(--cr-focus-outline-color);
+  box-shadow: 0 0 0 1px var(--cr-focus-outline-color);
+  background-color: var(--google-grey-100);
+}
+
+.textarea-wrapper:hover {
+  background-color: var(--google-grey-100);
+}
+
+textarea {
+  display: block;
+  width: 100%;
+  height: 90px;
+  box-sizing: border-box;
+  resize: none;
+  font-family: inherit;
+  font-size: inherit;
+  color: var(--cr-primary-text-color);
+  border: none;
+  outline: none;
+  background-color: transparent;
+  padding: 10px 10px 0 10px;
+  flex-grow: 1;
+}
+
+.textarea-actions {
+  display: flex;
+  gap: 0;
+  padding: 0 8px 8px 8px;
+  background-color: transparent;
+}
+
+cr-icon-button {
+  margin: 0;
+}
+
+.icon-undo {
+  --cr-icon-image: url('images/skills_undo.svg');
+}
+
+.icon-redo {
+  --cr-icon-image: url('images/skills_redo.svg');
+}
+
+.icon-refine {
+  --cr-icon-image: url('images/skills_pen_spark.svg');
 }
 
 .buttons-group {
@@ -47,14 +135,14 @@ cr-textarea {
   margin: 0;
   outline: none;
   box-shadow: none;
-  width: 24px;
-  height: 24px;
+  width: 16px;
+  height: 16px;
   align-self: center;
   margin-inline-end: 8px;
   font-family: 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
-  font-size: 20px;
+  font-size: 12px;
   text-align: center;
-  line-height: 24px;
+  line-height: 16px;
   color: var(--cr-primary-text-color);
   cursor: pointer;
   caret-color: transparent;

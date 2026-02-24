@@ -201,7 +201,9 @@ export class ActionChipsElement extends CrLitElement {
         chip.suggestion, [recentTabInfo], ToolMode.kUnspecified);
   }
 
-  protected handleClick_(chip: ActionChip): void {
+  protected handleClick_(e: Event): void {
+    const index = Number((e.currentTarget as HTMLElement).dataset['index']);
+    const chip = this.actionChips_[index]!;
     switch (chip.type) {
       case ChipType.kImage:
         this.onCreateImageClick_(chip);
@@ -220,9 +222,11 @@ export class ActionChipsElement extends CrLitElement {
     }
   }
 
-  protected removeChip_(chip: ActionChip, e: MouseEvent) {
+  protected removeChip_(e: MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
+    const index = Number((e.currentTarget as HTMLElement).dataset['index']);
+    const chip = this.actionChips_[index]!;
     this.actionChips_ =
         this.actionChips_.filter((c) => c.suggestion !== chip.suggestion);
   }
@@ -289,11 +293,11 @@ export class ActionChipsElement extends CrLitElement {
     const domain = url.hostname.replace(/^www\./, '');
 
     if (this.isRecentTabChip_(chip)) {
-      return `${suggestion} - ${domain}`;
+      return `${tabTitle}\n${domain}`;
     }
 
     if (this.isDeepDiveChip_(chip)) {
-      return `${tabTitle} - ${domain} - ${suggestion}`;
+      return `${suggestion}\n${domain}`;
     }
 
     return suggestion;

@@ -148,7 +148,8 @@ BOOL ShouldTriggerIPHForURLVisits(history::QueryURLAndVisitsResult result) {
 
     _mostVisitedSites = std::move(mostVisitedSites);
     _mostVisitedBridge =
-        std::make_unique<ntp_tiles::MostVisitedSitesObserverBridge>(self);
+        std::make_unique<ntp_tiles::MostVisitedSitesObserverBridge>(
+            self, _mostVisitedSites.get());
     if (IsContentSuggestionsCustomizable()) {
       _mostVisitedSites->EnableTileTypes(
           ntp_tiles::MostVisitedSites::EnableTileTypesOptions()
@@ -193,16 +194,16 @@ BOOL ShouldTriggerIPHForURLVisits(history::QueryURLAndVisitsResult result) {
 
 #pragma mark - MostVisitedSitesObserving
 
-- (void)onMostVisitedURLsAvailable:
-    (const ntp_tiles::NTPTilesVector&)mostVisited {
+- (void)mostVisitedSites:(ntp_tiles::MostVisitedSites*)mostVisitedSites
+          didUpdateTiles:(const ntp_tiles::NTPTilesVector&)tiles {
   // This is used by the shortcuts widget.
   content_suggestions_tile_saver::SaveMostVisitedToDisk(
-      mostVisited, _mostVisitedAttributesProvider,
+      tiles, _mostVisitedAttributesProvider,
       app_group::ShortcutsWidgetFaviconsFolder(), _accountManagerService);
 
   _freshMostVisitedItems = [NSMutableArray array];
   int index = 0;
-  for (const ntp_tiles::NTPTile& tile : mostVisited) {
+  for (const ntp_tiles::NTPTile& tile : tiles) {
     MostVisitedItem* item = [self convertNTPTile:tile];
     item.commandHandler = self;
     item.incognitoAvailable = _incognitoAvailable;
@@ -214,14 +215,15 @@ BOOL ShouldTriggerIPHForURLVisits(history::QueryURLAndVisitsResult result) {
 
   [self useFreshMostVisited];
 
-  if (mostVisited.size() && !_recordedPageImpression) {
+  if (tiles.size() && !_recordedPageImpression) {
     _recordedPageImpression = YES;
     [self recordMostVisitedTilesDisplayed];
-    ntp_tiles::metrics::RecordPageImpression(mostVisited.size());
+    ntp_tiles::metrics::RecordPageImpression(tiles.size());
   }
 }
 
-- (void)onIconMadeAvailable:(const GURL&)siteURL {
+- (void)mostVisitedSites:(ntp_tiles::MostVisitedSites*)mostVisitedSites
+    didUpdateFaviconForURL:(const GURL&)siteURL {
   // This is used by the shortcuts widget.
   content_suggestions_tile_saver::UpdateSingleFavicon(
       siteURL, _mostVisitedAttributesProvider,
@@ -298,6 +300,38 @@ BOOL ShouldTriggerIPHForURLVisits(history::QueryURLAndVisitsResult result) {
                               atIndex:item.index];
 }
 
+- (void)pinOrUnpinMostVisited:(MostVisitedItem*)item {
+  GURL url = item.URL;
+  __weak MostVisitedTilesMediator* weakSelf = self;
+  if (_mostVisitedSites->HasCustomLink(url)) {
+    // Remove the custom link.
+    if (_mostVisitedSites->DeleteCustomLink(url)) {
+      [self showSnackbarWithMessage:
+                l10n_util::GetNSString(
+                    IDS_IOS_CONTENT_SUGGESTIONS_PIN_SITE_SNACKBAR_UNPINNED)
+                         undoAction:^{
+                           [weakSelf undoLastPinAction];
+                           RecordSnackbarUndoUserAction(/*undo_pin=*/NO);
+                         }];
+    }
+    return;
+  }
+  if (!_mostVisitedSites->AddCustomLink(url,
+                                        base::SysNSStringToUTF16(item.title))) {
+    return;
+  }
+  _engagementTracker->NotifyEvent(
+      feature_engagement::events::kIOSPinMVTSiteUsed);
+  // Show snackbar message.
+  [self showSnackbarWithMessage:
+            l10n_util::GetNSString(
+                IDS_IOS_CONTENT_SUGGESTIONS_PIN_SITE_SNACKBAR_PINNED)
+                     undoAction:^{
+                       [weakSelf undoLastPinAction];
+                       RecordSnackbarUndoUserAction(/*undo_pin=*/YES);
+                     }];
+}
+
 - (void)removeMostVisited:(MostVisitedItem*)item {
   [self.contentSuggestionsMetricsRecorder recordMostVisitedTileRemoved];
   [self blockMostVisitedURL:item.URL];
@@ -317,6 +351,10 @@ BOOL ShouldTriggerIPHForURLVisits(history::QueryURLAndVisitsResult result) {
 - (void)openModalToAddPinnedSite {
   [self.contentSuggestionsHandler showPinnedSiteCreator];
   RecordAddSiteUserAction();
+}
+
+- (void)openModalToEditPinnedSite:(MostVisitedItem*)item {
+  [self.contentSuggestionsHandler showPinnedSiteEditorForItem:item];
 }
 
 #pragma mark - ContentSuggestionsMenuProvider
@@ -375,8 +413,7 @@ BOOL ShouldTriggerIPHForURLVisits(history::QueryURLAndVisitsResult result) {
     [menuElements
         addObject:[self.actionFactory
                       actionToEditPinnedSiteOnMostVisitedTileWithBlock:^{
-                        [weakSelf.contentSuggestionsHandler
-                            showPinnedSiteEditorForItem:item];
+                        [weakSelf openModalToEditPinnedSite:item];
                       }]];
     [menuElements addObject:[self.actionFactory
                                 actionToUnpinSiteFromMostVisitedTileWithBlock:^{
@@ -545,40 +582,6 @@ BOOL ShouldTriggerIPHForURLVisits(history::QueryURLAndVisitsResult result) {
       return;
     }
   }
-}
-
-// Pins or unpins the item to/from the most visited tile, depending on whether
-// the item is already pinned or not.
-- (void)pinOrUnpinMostVisited:(MostVisitedItem*)item {
-  GURL url = item.URL;
-  __weak MostVisitedTilesMediator* weakSelf = self;
-  if (_mostVisitedSites->HasCustomLink(url)) {
-    // Remove the custom link.
-    if (_mostVisitedSites->DeleteCustomLink(url)) {
-      [self showSnackbarWithMessage:
-                l10n_util::GetNSString(
-                    IDS_IOS_CONTENT_SUGGESTIONS_PIN_SITE_SNACKBAR_UNPINNED)
-                         undoAction:^{
-                           [weakSelf undoLastPinAction];
-                           RecordSnackbarUndoUserAction(/*undo_pin=*/NO);
-                         }];
-    }
-    return;
-  }
-  if (!_mostVisitedSites->AddCustomLink(url,
-                                        base::SysNSStringToUTF16(item.title))) {
-    return;
-  }
-  _engagementTracker->NotifyEvent(
-      feature_engagement::events::kIOSPinMVTSiteUsed);
-  // Show snackbar message.
-  [self showSnackbarWithMessage:
-            l10n_util::GetNSString(
-                IDS_IOS_CONTENT_SUGGESTIONS_PIN_SITE_SNACKBAR_PINNED)
-                     undoAction:^{
-                       [weakSelf undoLastPinAction];
-                       RecordSnackbarUndoUserAction(/*undo_pin=*/YES);
-                     }];
 }
 
 // Undo the last action that adds/removes/edits a pinned site.

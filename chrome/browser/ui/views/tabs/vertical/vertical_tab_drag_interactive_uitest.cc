@@ -8,7 +8,6 @@
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_finder.h"
-#include "chrome/browser/ui/browser_list.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/browser/ui/tabs/tab_group_model.h"
@@ -242,9 +241,14 @@ class VerticalTabDragHandlerTest
 
   BrowserWindowInterface& GetLatestBrowser() {
     CHECK(!GlobalBrowserCollection::GetInstance()->IsEmpty());
-    BrowserWindowInterface* browser = *(--BrowserList::GetInstance()->end());
-    CHECK(browser);
-    return *browser;
+    BrowserWindowInterface* latest_browser = nullptr;
+    GlobalBrowserCollection::GetInstance()->ForEach(
+        [&latest_browser](BrowserWindowInterface* browser) {
+          latest_browser = browser;
+          return true;
+        });
+    CHECK(latest_browser);
+    return *latest_browser;
   }
 
   gfx::ScopedAnimationDurationScaleMode disable_animation_{
@@ -984,7 +988,7 @@ IN_PROC_BROWSER_TEST_F(VerticalTabDragHandlerTest,
 // TODO(crbug.com/40249472): Tab DnD tests not working on ChromeOS and Mac, and
 // flakes on Wayland
 #if !BUILDFLAG(IS_MAC) && !BUILDFLAG(IS_CHROMEOS) && \
-    !BUILDFLAG(IS_OZONE_WAYLAND)
+    !BUILDFLAG(SUPPORTS_OZONE_WAYLAND)
 #define MAYBE_DragGroupHeader DragGroupHeader
 #else
 #define MAYBE_DragGroupHeader DISABLED_DragGroupHeader

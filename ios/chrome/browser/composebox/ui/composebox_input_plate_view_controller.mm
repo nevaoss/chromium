@@ -73,7 +73,7 @@ const NSDirectionalEdgeInsets kImageGenerationButtonInsets = {5, 8, 5, 28};
 const CGFloat kButtonsCompactSpacing = 4.0f;
 const CGFloat kButtonsStackViewSpacing = 6.0f;
 /// The spacing between the Lens and Voice buttons.
-const CGFloat kShortcutsSpacing = 16.0f;
+const CGFloat kShortcutsSpacing = 10.0f;
 /// The spacing for the main vertical input plate stack view.
 const CGFloat kInputPlateStackViewSpacing = 6.0f;
 /// The default vertical padding for the input plate. When the text view is the
@@ -91,7 +91,8 @@ const NSDirectionalEdgeInsets kInputPlateStackViewPadding = {.leading = 0.0f,
 /// toolbar).
 const NSDirectionalEdgeInsets kInputPlatePadding = {.leading = 8.0,
                                                     .trailing = 5.0};
-
+/// The spacing added after the Lens and Voice buttons in compact mode.
+const CGFloat kShortcutsTrailingPaddingCompact = 3.0f;
 /// The padding of the toolbar and carousel elements.
 ///
 /// Note: While padding is offset to visually align the clear button's visual
@@ -224,13 +225,19 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
   BOOL _createImageActionsHidden;
   BOOL _createImageActionsDisabled;
   /// Canvas action state.
+  BOOL _canvasActionsDisabled;
   BOOL _canvasActionsHidden;
+  /// Deep search action state.
+  BOOL _deepSearchActionsDisabled;
+  BOOL _deepSearchActionsHidden;
   /// Camera action state.
   BOOL _cameraActionsDisabled;
   BOOL _cameraActionsHidden;
   /// Gallery action state.
   BOOL _galleryActionsDisabled;
   BOOL _galleryActionsHidden;
+  /// The allowed models.
+  std::unordered_set<ComposeboxModelOption> _allowedModels;
   /// Container for the omnibox.
   UIView* _omniboxContainer;
 
@@ -249,6 +256,9 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
 
   /// Whether the canvas mode is enabled.
   BOOL _canvasEnabled;
+
+  /// Whether the deep search is enabled.
+  BOOL _deepSearchEnabled;
 
   /// Whether the model picker is allowed.
   BOOL _modelPickerAllowed;
@@ -490,6 +500,8 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
   [self animateButton:_imageGenerationButton hidden:!(controls & kCreateImage)];
   [self animateButton:_canvasButton hidden:!(controls & kCanvas)];
   [self animateLeadingImageHidden:!(controls & kLeadingImage)];
+
+  [self updateInputPlateStackViewPadding];
 }
 
 - (void)animateReveal:(void (^)(void))animations {
@@ -591,6 +603,16 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
   [self triggerGlowEffect];
 }
 
+- (void)setDeepSearchEnabled:(BOOL)enabled {
+  if (_deepSearchEnabled == enabled) {
+    return;
+  }
+  _deepSearchEnabled = enabled;
+  [self updatePlaceholderText];
+  [self updatePlusButtonItems];
+  [self triggerGlowEffect];
+}
+
 - (void)allowModelPicker:(BOOL)allowed {
   if (_modelPickerAllowed == allowed) {
     return;
@@ -670,11 +692,28 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
   [self updatePlusButtonItems];
 }
 
+// Hides the deep search actions in the plus menu.
+- (void)hideDeepSearchActions:(BOOL)hidden {
+  if (_deepSearchActionsHidden == hidden) {
+    return;
+  }
+  _deepSearchActionsHidden = hidden;
+  [self updatePlusButtonItems];
+}
+
 - (void)hideCameraActions:(BOOL)hidden {
   if (_cameraActionsHidden == hidden) {
     return;
   }
   _cameraActionsHidden = hidden;
+  [self updatePlusButtonItems];
+}
+
+- (void)disableCanvasActions:(BOOL)disabled {
+  if (_canvasActionsDisabled == disabled) {
+    return;
+  }
+  _canvasActionsDisabled = disabled;
   [self updatePlusButtonItems];
 }
 
@@ -699,6 +738,15 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
     return;
   }
   _galleryActionsDisabled = disabled;
+  [self updatePlusButtonItems];
+}
+
+- (void)setAllowedModels:
+    (std::unordered_set<ComposeboxModelOption>)allowedModels {
+  if (_allowedModels == allowedModels) {
+    return;
+  }
+  _allowedModels = allowedModels;
   [self updatePlusButtonItems];
 }
 
@@ -907,9 +955,14 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
   [self.delegate composeboxViewControllerDidTapImageGenerationButton:self];
 }
 
-/// Notifies the delegate to handle image generation tapped from the tool menu.
+/// Notifies the delegate to handle canvas tapped from the tool menu.
 - (void)handleCanvasTappedFromToolMenu {
   [self.delegate composeboxViewControllerDidTapCanvasButton:self];
+}
+
+/// Notifies the delegate to handle deep search tapped from the tool menu.
+- (void)handleDeepSearchTappedFromToolMenu {
+  [self.delegate composeboxViewControllerDidTapDeepSearchButton:self];
 }
 
 /// Notifies the mutator to handle the selection of a new model option.
@@ -1060,6 +1113,10 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
     [_editView setCustomPlaceholderText:
                    l10n_util::GetNSString(
                        IDS_IOS_COMPOSEBOX_CANVAS_ENABLED_PLACEHOLDER)];
+  } else if (_deepSearchEnabled) {
+    [_editView setCustomPlaceholderText:
+                   l10n_util::GetNSString(
+                       IDS_IOS_COMPOSEBOX_DEEP_SEARCH_ENABLED_PLACEHOLDER)];
   } else {
     [_editView setCustomPlaceholderText:nil];
   }
@@ -1472,27 +1529,59 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
                      galleryAction, fileAction
                    ]];
 
-  NSMutableArray<UIMenuElement*>* availableModes =
-      [[NSMutableArray alloc] initWithArray:@[ aimAction, createImageAction ]];
-  if (!_canvasActionsHidden) {
-    CHECK(ShowComposeboxAdditionalAdvancedTools());
-    // TODO(crbug.com/477243979): Replace icon once defined.
-    UIAction* canvasAction = [UIAction
-        actionWithTitle:l10n_util::GetNSString(IDS_IOS_COMPOSEBOX_CANVAS_ACTION)
-                  image:DefaultSymbolWithPointSize(kEditActionSymbol,
-                                                   kSymbolActionPointSize)
-             identifier:nil
-                handler:^(UIAction* action) {
-                  [weakSelf handleCanvasTappedFromToolMenu];
-                }];
-    [availableModes addObject:canvasAction];
+  // TODO(crbug.com/477243979): Replace icon once defined.
+  UIAction* canvasAction = [UIAction
+      actionWithTitle:l10n_util::GetNSString(IDS_IOS_COMPOSEBOX_CANVAS_ACTION)
+                image:DefaultSymbolWithPointSize(kEditActionSymbol,
+                                                 kSymbolActionPointSize)
+           identifier:nil
+              handler:^(UIAction* action) {
+                [weakSelf handleCanvasTappedFromToolMenu];
+              }];
+  UIMenuElementAttributes canvasAttributes = 0;
+  if (_canvasActionsHidden) {
+    canvasAttributes |= UIMenuElementAttributesHidden;
+  }
+  if (_canvasActionsDisabled) {
+    canvasAttributes |= UIMenuElementAttributesDisabled;
+  }
+  canvasAction.attributes = canvasAttributes;
+
+  if (_canvasEnabled) {
+    [canvasAction setState:UIMenuElementStateOn];
   }
 
-  UIMenu* modeMenu = [UIMenu menuWithTitle:@""
-                                     image:nil
-                                identifier:nil
-                                   options:UIMenuOptionsDisplayInline
-                                  children:availableModes];
+  // TODO(crbug.com/481280186): Replace icon once defined.
+  UIAction* deepSearchAction = [UIAction
+      actionWithTitle:l10n_util::GetNSString(
+                          IDS_IOS_COMPOSEBOX_DEEP_SEARCH_ACTION)
+                image:DefaultSymbolWithPointSize(kFindInPageActionSymbol,
+                                                 kSymbolActionPointSize)
+           identifier:nil
+              handler:^(UIAction* action) {
+                [weakSelf handleDeepSearchTappedFromToolMenu];
+              }];
+  UIMenuElementAttributes deepSearchAttributes = 0;
+  if (_deepSearchActionsHidden) {
+    deepSearchAttributes |= UIMenuElementAttributesHidden;
+  }
+  if (_deepSearchActionsDisabled) {
+    deepSearchAttributes |= UIMenuElementAttributesDisabled;
+  }
+  deepSearchAction.attributes = deepSearchAttributes;
+
+  if (_deepSearchEnabled) {
+    [deepSearchAction setState:UIMenuElementStateOn];
+  }
+
+  UIMenu* modeMenu = [UIMenu
+      menuWithTitle:@""
+              image:nil
+         identifier:nil
+            options:UIMenuOptionsDisplayInline
+           children:@[
+             aimAction, createImageAction, deepSearchAction, canvasAction
+           ]];
 
   NSMutableArray<UIMenuElement*>* sections =
       [[NSMutableArray alloc] initWithArray:@[ attachmentMenu, modeMenu ]];
@@ -1508,8 +1597,13 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
                   [weakSelf handleModelChangeFromToolsMenuWithOption:
                                 ComposeboxModelOption::kAuto];
                 }];
-    if (_modelOption == ComposeboxModelOption::kAuto) {
-      [autoModelOption setState:UIMenuElementStateOn];
+
+    if (_allowedModels.contains(ComposeboxModelOption::kAuto)) {
+      if (_modelOption == ComposeboxModelOption::kAuto) {
+        [autoModelOption setState:UIMenuElementStateOn];
+      }
+    } else {
+      autoModelOption.attributes |= UIMenuElementAttributesDisabled;
     }
 
     UIAction* thinkingModelOption = [UIAction
@@ -1523,8 +1617,12 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
                                 ComposeboxModelOption::kThinking];
                 }];
 
-    if (_modelOption == ComposeboxModelOption::kThinking) {
-      [thinkingModelOption setState:UIMenuElementStateOn];
+    if (_allowedModels.contains(ComposeboxModelOption::kThinking)) {
+      if (_modelOption == ComposeboxModelOption::kThinking) {
+        [thinkingModelOption setState:UIMenuElementStateOn];
+      }
+    } else {
+      thinkingModelOption.attributes |= UIMenuElementAttributesDisabled;
     }
 
     UIMenu* modelPickerMenu =
@@ -1676,13 +1774,6 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
     [_inputPlateStackView setCustomSpacing:kShortcutsSpacing
                                  afterView:_micButton];
     _bottomPaddingConstraint.constant = -kInputPlateStackViewVerticalPadding;
-    _inputPlateStackView.layoutMarginsRelativeArrangement = YES;
-    // Ensure we do not lose the margins on the sides when in compact mode.
-    _inputPlateStackView.layoutMargins = UIEdgeInsetsMake(
-        0, kInputPlatePadding.leading, 0, kInputPlatePadding.trailing);
-    // Margins are applied on the input plate, remove the margins on the
-    // omnibox.
-    _omniboxContainer.directionalLayoutMargins = NSDirectionalEdgeInsetsZero;
   } else {
     _toolbarView = [self createToolbarView];
     [_inputPlateStackView insertArrangedSubview:_carouselContainer atIndex:0];
@@ -1694,10 +1785,36 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
     _inputPlateContainerView.layer.cornerRadius = kInputPlateCornerRadius;
     _inputPlateInternalContainerView.layer.cornerRadius =
         kInputPlateCornerRadius;
+  }
+
+  [self updateInputPlateStackViewPadding];
+  [self updateInputPlateStackViewTopConstraint];
+}
+
+// Updates the side paddings of the input plate stack view.
+- (void)updateInputPlateStackViewPadding {
+  if (self.compact) {
+    CGFloat trailingPadding = kInputPlatePadding.trailing;
+    ComposeboxInputPlateControls shortcuts =
+        ComposeboxInputPlateControls::kLens |
+        ComposeboxInputPlateControls::kVoice;
+    BOOL shortcutsVisible =
+        (_visibleControls & shortcuts) != ComposeboxInputPlateControls::kNone;
+    if (shortcutsVisible) {
+      trailingPadding += kShortcutsTrailingPaddingCompact;
+    }
+
+    _inputPlateStackView.layoutMarginsRelativeArrangement = YES;
+    // Ensure we do not lose the margins on the sides when in compact mode.
+    _inputPlateStackView.layoutMargins =
+        UIEdgeInsetsMake(0, kInputPlatePadding.leading, 0, trailingPadding);
+    // Margins are applied on the input plate, remove the margins on the
+    // omnibox.
+    _omniboxContainer.directionalLayoutMargins = NSDirectionalEdgeInsetsZero;
+  } else {
     _inputPlateStackView.layoutMarginsRelativeArrangement = NO;
     _omniboxContainer.directionalLayoutMargins = kInputPlatePadding;
   }
-  [self updateInputPlateStackViewTopConstraint];
 }
 
 /// Animates the transition of the input plate stack view between compact and
@@ -1874,6 +1991,7 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
   };
 }
 
+/// Called when a drop session ends.
 - (void)dropSessionDidEnd:(id<UIDropSession>)session {
   CHECK(self.delegate);
 
@@ -2021,6 +2139,7 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
   CHECK(self.mutator);
   CHECK(tabInfo);
   CHECK_EQ(tabInfo.incognito, _theme.incognito);
+
   web::WebState* webState =
       [self.delegate webStateForTabOnCurrentProfile:tabInfo];
 
@@ -2037,11 +2156,6 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
   CHECK(
       [itemProvider hasItemConformingToTypeIdentifier:UTTypeImage.identifier]);
 
-  // TODO(crbug.com/475203545): Prevent duplicate items being added. The file
-  // picker and the drag-and-drop interfaces have different schemes for
-  // generating asset IDs. They should be common, in order to prevent the same
-  // file being added several times. This should be updated so that asset IDs
-  // generated during drag-and-drop match for the same image being dropped.
   [self.mutator processImageItemProvider:itemProvider
                                  assetID:[NSUUID UUID].UUIDString];
 }
@@ -2062,11 +2176,7 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
 - (void)handleTextDrop:(NSString*)text error:(NSError*)error {
   CHECK(self.mutator);
 
-  if (!text) {
-    return;
-  }
-
-  if (error) {
+  if (error || !text) {
     return;
   }
 
@@ -2080,11 +2190,7 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
 - (void)handlePDFDrop:(NSURL*)url error:(NSError*)error {
   CHECK(self.mutator);
 
-  if (!url) {
-    return;
-  }
-
-  if (error) {
+  if (error || !url) {
     return;
   }
 

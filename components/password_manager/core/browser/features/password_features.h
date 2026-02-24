@@ -18,6 +18,8 @@ namespace password_manager::features {
 
 #if !BUILDFLAG(IS_IOS)
 BASE_DECLARE_FEATURE(kActorLogin);
+// Enables FedCM support for Actor Login.
+BASE_DECLARE_FEATURE(kActorLoginFederatedLoginSupport);
 // Enables Actor Login form finding with async check
 BASE_DECLARE_FEATURE(kActorLoginFieldVisibilityCheck);
 // Ensures that `GetCredentials` differentiates between no saved credentials
@@ -115,9 +117,6 @@ BASE_DECLARE_FEATURE(kFillOnAccountSelect);
 // Allows filling from a secondary recovery password saved as a backup.
 BASE_DECLARE_FEATURE(kFillRecoveryPassword);
 #endif
-
-// Enables improvements to password change functionality.
-BASE_DECLARE_FEATURE(kImprovedPasswordChangeService);
 
 #if BUILDFLAG(IS_IOS)
 
@@ -227,24 +226,6 @@ BASE_DECLARE_FEATURE(kUserInterventionForPasswordChange);
 BASE_DECLARE_FEATURE(kWebAuthnUsePasskeyFromAnotherDeviceInContextMenu);
 
 #endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
-
-inline constexpr base::FeatureParam<std::string>
-    kPasswordChangeSuccessSurveyTriggerId{
-        &kImprovedPasswordChangeService, "PasswordChangeSuccessSurveyTriggerId",
-        /*default_value=*/""};
-inline constexpr base::FeatureParam<std::string>
-    kPasswordChangeErrorSurveyTriggerId{&kImprovedPasswordChangeService,
-                                        "PasswordChangeErrorSurveyTriggerId",
-                                        /*default_value=*/""};
-inline constexpr base::FeatureParam<std::string>
-    kPasswordChangeCanceledSurveyTriggerId{
-        &kImprovedPasswordChangeService,
-        "PasswordChangeCanceledSurveyTriggerId",
-        /*default_value=*/""};
-inline constexpr base::FeatureParam<std::string>
-    kPasswordChangeDelayedSurveyTriggerId{
-        &kImprovedPasswordChangeService, "PasswordChangeDelayedSurveyTriggerId",
-        /*default_value=*/""};
 
 inline constexpr base::FeatureParam<base::TimeDelta>
     kPasswordChangeThrottleTime{&kThrottlePasswordChangeDialog,

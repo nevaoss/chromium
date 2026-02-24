@@ -370,6 +370,7 @@
 <translation id="2306265833370324042">Mostrar detalles de <ph name="SEARCH_ENGINE_NAME" /></translation>
 <translation id="2309265394777270359">Cerrar pestaña</translation>
 <translation id="2311077293164383652">Cerrar pestaña fija</translation>
+<translation id="2313392466694008052">Editar imagen con Gemini</translation>
 <translation id="2316129865977710310">No, gracias</translation>
 <translation id="2320166752086256636">Ocultar teclado</translation>
 <translation id="2321086116217818302">Preparando contraseñas…</translation>
@@ -521,6 +522,7 @@
 <translation id="288655811176831528">Cerrar pestaña</translation>
 <translation id="2888631381369839306">Notificaciones de seguimiento de precios activadas</translation>
 <translation id="2893168226686371498">Navegador predeterminado</translation>
+<translation id="2893791155497534382">Las contraseñas y otras actividades se pueden eliminar en sus ajustes de gestión</translation>
 <translation id="2894757982205307093">Nueva pestaña en el grupo</translation>
 <translation id="2902312830803030883">Más acciones</translation>
 <translation id="2904788871580817212">Bajada de precio en tu pestaña abierta, de <ph name="PREVIOUS_PRICE" /> a <ph name="PRICE" />, <ph name="PRODUCT_NAME" />, <ph name="DOMAIN" /></translation>
@@ -845,6 +847,7 @@
 <translation id="4181841719683918333">Idiomas</translation>
 <translation id="4183350924949589798">¿Más seguridad?</translation>
 <translation id="4184063163998877398">{count,plural, =1{{count} contraseña poco segura}other{{count} contraseñas poco seguras}}</translation>
+<translation id="4196758674971560031">Los grupos de pestañas que has creado se guardan en la sección de grupos de pestañas y se actualizan en todos tus dispositivos.</translation>
 <translation id="4197456013861852807">{count,plural, =1{{count} elemento solo se guarda en este dispositivo. Para usarlo en tus otros dispositivos, guárdalo en tu cuenta de Google: {email}.}other{{count} elementos solo se guardan en este dispositivo. Para usarlos en tus otros dispositivos, guárdalos en tu cuenta de Google: {email}.}}</translation>
 <translation id="4207873326995387292">Información del navegador</translation>
 <translation id="421070604241073551">Si esta opción está activada, los datos se guardan en tu cuenta de Google. Si está desactivada, los datos solo se guardan en este dispositivo.</translation>
@@ -1298,6 +1301,7 @@ Handoff también debe estar habilitado en la sección General de Ajustes del sis
 <translation id="5768870767339201169">Sigue por donde lo dejaste</translation>
 <translation id="5779117921996157216">{count,plural, =1{Tienes {count} contraseña vulnerada que podría poner en riesgo tu seguridad. Soluciona el problema para protegerte.}other{Tienes {count} contraseñas vulneradas que podrían poner en riesgo tu seguridad. Soluciona el problema para protegerte.}}</translation>
 <translation id="5791632441210678828">Botón para ordenar el feed Siguiendo</translation>
+<translation id="5799263916847593256">Abre para ver el historial de precios.</translation>
 <translation id="5803566855766646066">¿Seguro que quieres descartar esta nueva tarjeta?</translation>
 <translation id="5804241973901381774">Permisos</translation>
 <translation id="58081802114142635">Tu actividad mejora la IA de Google</translation>
@@ -1372,7 +1376,6 @@ Handoff también debe estar habilitado en la sección General de Ajustes del sis
 <translation id="607620096698446287">No se ha podido subir <ph name="FILENAME" /> (<ph name="FILESIZE" />)</translation>
 <translation id="6076618233738284461">Fijar sitio</translation>
 <translation id="6077126322656614846">Acceso a cámara permitido</translation>
-<translation id="607730456154980869">Obtén respuestas más rápido con Gemini en Chrome</translation>
 <translation id="6078236141387574983">Ajustar la altura de la hoja</translation>
 <translation id="6084848228346514841">Seleccionar pestañas</translation>
 <translation id="6089212833343035912">PIN del Gestor de Contraseñas de Google</translation>
@@ -1505,6 +1508,7 @@ Handoff también debe estar habilitado en la sección General de Ajustes del sis
 <translation id="6494931198667773526">A</translation>
 <translation id="6503077044568424649">Más visitado</translation>
 <translation id="6503763061813913607">Notificaciones de Comprobación de tu estado</translation>
+<translation id="6504541289630702018">Accede fácilmente a tus grupos de pestañas del ordenador</translation>
 <translation id="6505334220040167806">Contraer grupo de pestañas.</translation>
 <translation id="6506996418997555004">Compartir el grupo de pestañas <ph name="GROUP_NAME" /></translation>
 <translation id="6507973708545996744">Inicia sesión para consultar tu lista de lectura en todos tus dispositivos.</translation>
@@ -1641,6 +1645,7 @@ Handoff también debe estar habilitado en la sección General de Ajustes del sis
 <translation id="6964300328304469089">Se ha seleccionado <ph name="NAME" />, <ph name="EMAIL" />. Elige una cuenta.</translation>
 <translation id="6964760285928603117">Quitar del grupo</translation>
 <translation id="6965382102122355670">Aceptar</translation>
+<translation id="6967355534157677591">Crear imagen Pro</translation>
 <translation id="6973630695168034713">Carpetas</translation>
 <translation id="6979158407327259162">Google Drive</translation>
 <translation id="6979737339423435258">Desde siempre</translation>
@@ -1939,7 +1944,6 @@ Handoff también debe estar habilitado en la sección General de Ajustes del sis
 <translation id="8059533439631660104">Oculta la sección.</translation>
 <translation id="8061584726507121204">Historial</translation>
 <translation id="8064946459644399612">Se han aplicado tus preferencias de la página Nueva pestaña</translation>
-<translation id="8069168488983557089">Obtén conclusiones e información valiosa que te ayudarán a entender cualquier tema</translation>
 <translation id="8069394452933076548">Elige cuándo se moverán las pestañas que no se han usado recientemente a la sección de pestañas inactivas.</translation>
 <translation id="8073670137947914548">Descarga finalizada</translation>
 <translation id="8076492880354921740">Pestañas</translation>
@@ -2135,6 +2139,7 @@ Handoff también debe estar habilitado en la sección General de Ajustes del sis
 <translation id="8730621377337864115">Hecho</translation>
 <translation id="8731268612289859741">Código de seguridad</translation>
 <translation id="87371078663613140">Explora las opciones en la barra de menú</translation>
+<translation id="8739546376441802490">El sitio fijado ya existe</translation>
 <translation id="8741627442233023406">{count,plural, =1{Revisar la pestaña…}other{Revisar todas las pestañas…}}</translation>
 <translation id="8741995161408053644">Es posible que tu cuenta de Google tenga otras formas del historial de navegación en la página <ph name="BEGIN_LINK" />history.google.com<ph name="END_LINK" />.</translation>
 <translation id="874599634440689554">Crear enlace</translation>

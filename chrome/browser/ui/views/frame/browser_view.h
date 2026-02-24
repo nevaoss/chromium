@@ -801,20 +801,6 @@ class BrowserView : public BrowserWindow,
   void OnWillChangeFocus(View* focused_before, View* focused_now) override;
   void OnDidChangeFocus(View* focused_before, View* focused_now) override;
 
-  // Creates an accessible tab label for screen readers that includes the tab
-  // status for the given tab index. This takes the form of
-  // "Page title - Tab state". The optional parameter `is_for_tab` can be set
-  // when getting the label for a tab (instead of a window). Titles for the
-  // window don't include less important messages like memory usage.
-  std::u16string GetAccessibleTabLabel(int index,
-                                       bool is_for_tab = false) const;
-
-  // Gets the string id to format a tab's accessible label if it is part of a
-  // split.
-  int GetAccessibleTabLabelFormatStringForSplit(
-      split_tabs::SplitTabLayout layout,
-      int tab_index_in_split) const;
-
   // Testing interface:
   views::View* GetContentsContainerForTest() { return contents_container_; }
   BrowserViewLayout* GetBrowserViewLayoutForTesting() {
@@ -1014,7 +1000,11 @@ class BrowserView : public BrowserWindow,
   // in response to a change notification from the specified
   // |contents|. |contents| can be null. In this case, all optional UI will be
   // removed.
-  void UpdateUIForContents(content::WebContents* contents);
+  void UpdateUIForContents(content::WebContents* contents,
+                           bool should_layout_immediately = true);
+
+  // Updates fast resize value for all the visible content views.
+  void UpdateFastResizeForContentViews(bool fast_resize);
 
   // Returns the y coordinate of the client area.
   int GetClientAreaTop();
@@ -1306,6 +1296,12 @@ class BrowserView : public BrowserWindow,
   // same bounds as the contents_web_view_, but also be above the
   // contents_web_view_.
   raw_ptr<views::View> lens_overlay_view_ = nullptr;
+
+  // The view that contains the AI highlight overlay. The AI highlight overlay
+  // is a UI overlay that is shown on top of the web contents. It therefore must
+  // always have the same bounds as the contents_view_, but also be above the
+  // contents_view_.
+  raw_ptr<views::View> context_highlight_view_ = nullptr;
 
   // Handled by ContentsLayoutManager.
   raw_ptr<views::View> contents_container_ = nullptr;

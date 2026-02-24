@@ -1897,6 +1897,18 @@ config("sanitize_c_array_bounds") {
     cflags = [
       "-fsanitize=array-bounds",
       "-fsanitize-trap=array-bounds",
+
+      # Some code users feature detection to determine if UBSAN (or any
+      # sanitizer) is enabled, they then do expensive debug like operations. We
+      # want to suppress this behaviour since we want to keep performance costs
+      # as low as possible while having these checks.
+      "-fsanitize-ignore-for-ubsan-feature=array-bounds",
+
+      # Because we've enabled array-bounds sanitizing we also want to suppress
+      # the related warning about "unsafe-buffer-usage-in-static-sized-array",
+      # since we know that the array bounds sanitizing will catch any out-of-
+      # bounds accesses.
+      "-Wno-unsafe-buffer-usage-in-static-sized-array",
     ]
   }
 }
@@ -3089,6 +3101,24 @@ config("win_pdbaltpath") {
   }
 }
 
+config("split_dwarf") {
+  split_dwarf_flags = [ "-gsplit-dwarf" ]
+
+  # When building for ChromeOS, turn off split DWARF inlining.
+  # Breakpad does not correctly handle files generated with
+  # that feature (https://g-issues.chromium.org/issues/41312543).
+  if (is_chromeos) {
+    split_dwarf_flags += [ "-fno-split-dwarf-inlining" ]
+  }
+  cflags = split_dwarf_flags
+
+  # Split debug info with all thinlto builds except apple.
+  # thinlto requires -gsplit-dwarf in ldflags.
+  if (use_thin_lto && !is_apple) {
+    ldflags = split_dwarf_flags
+  }
+}
+
 # Full symbols.
 config("symbols") {
   rustflags = []
@@ -3129,6 +3159,9 @@ config("symbols") {
     cflags = [ "-gseparate-dwarf" ]
     ldflags = [ "-gseparate-dwarf" ]
   } else {
+    if (use_debug_fission) {
+      configs += [ ":split_dwarf" ]
+    }
     cflags = []
     if (is_apple && enable_dsyms) {
       # If generating dSYMs, specify -fno-standalone-debug. This was
@@ -3178,21 +3211,10 @@ config("symbols") {
       swiftflags = [ "-g" ]
     }
 
-    split_dwarf_flags = []
-    if (use_debug_fission) {
-      split_dwarf_flags += [ "-gsplit-dwarf" ]
-
-      # When building for ChromeOS, turn off split DWARF inlining.
-      # Breakpad does not correctly handle files generated with
-      # that feature (https://g-issues.chromium.org/issues/41312543).
-      if (is_chromeos) {
-        split_dwarf_flags += [ "-fno-split-dwarf-inlining" ]
-      }
-    }
-    cflags += split_dwarf_flags
     asmflags = cflags
     ldflags = []
 
+<<<<<<< HEAD
     # Split debug info with all thinlto builds except apple.
     # thinlto requires -gsplit-dwarf in ldflags.
     if (use_debug_fission && use_thin_lto && !is_apple) {
@@ -3206,6 +3228,9 @@ config("symbols") {
     } else {
       _enable_gdb_index = symbol_level == 2 && !is_apple && use_lld && !is_wasm
     }
+=======
+    _enable_gdb_index = symbol_level == 2 && !is_apple && use_lld && !is_wasm
+>>>>>>> 146.0.7669.0~1
     if (_enable_gdb_index) {
       if (is_clang) {
         # This flag enables the GNU-format pubnames and pubtypes sections,
@@ -3262,6 +3287,7 @@ config("symbols") {
 # This config guarantees to hold symbol for stack trace which are shown to user
 # when crash happens in unittests running on buildbot.
 config("minimal_symbols") {
+  configs = []
   rustflags = []
   if (is_win) {
     # Functions, files, and line tables only.
@@ -3291,6 +3317,9 @@ config("minimal_symbols") {
       cflags += [ "-gline-tables-only" ]
     }
   } else {
+    if (use_debug_fission) {
+      configs += [ ":split_dwarf" ]
+    }
     cflags = []
     if (is_mac && !use_dwarf5) {
       # clang defaults to DWARF2 on macOS unless mac_deployment_target is

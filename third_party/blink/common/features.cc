@@ -149,7 +149,8 @@ BASE_FEATURE_PARAM(bool,
 // TODO(https://crbug.com/327075943): Delete this.
 BASE_FEATURE(kBFCacheOpenBroadcastChannel, base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kBFCacheWithSharedWorker, base::FEATURE_DISABLED_BY_DEFAULT);
+// TODO(https://crbug.com/431875857): Delete this.
+BASE_FEATURE(kBFCacheWithSharedWorker, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kBackForwardCacheDWCOnJavaScriptExecution,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -686,7 +687,11 @@ BASE_FEATURE_PARAM(int,
                    512);
 
 BASE_FEATURE(kFadeInScrollbarWhenMouseWheelMayBegin,
+#if BUILDFLAG(IS_MAC)
              base::FEATURE_ENABLED_BY_DEFAULT);
+#else
+             base::FEATURE_DISABLED_BY_DEFAULT);
+#endif
 
 // Enable the <fencedframe> element; see crbug.com/1123606. Note that enabling
 // this feature does not automatically expose this element to the web, it only
@@ -2503,6 +2508,13 @@ BASE_FEATURE_PARAM(base::TimeDelta,
                    base::Hertz(10));
 
 BASE_FEATURE(kVSyncEncoding, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Server-side kill switch for applying the local VisualViewport transform
+// (page scale + visual viewport location) when mapping visual rects into
+// viewport space in LayoutView's slow path (ancestor == nullptr). This keeps
+// results consistent with the GeometryMapper viewport fast path.
+BASE_FEATURE(kVisualRectMappingApplyLocalVisualViewportTransform,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kWebBluetoothCancelConnect,
 // TODO(382556910): Enable on Windows when DCHECK issue is resolved.

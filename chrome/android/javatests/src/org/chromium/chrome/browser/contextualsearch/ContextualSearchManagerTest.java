@@ -84,6 +84,7 @@ import org.chromium.chrome.test.util.MenuUtils;
 import org.chromium.components.external_intents.ExternalNavigationHandler;
 import org.chromium.content_public.browser.NavigationHandle;
 import org.chromium.content_public.browser.WebContents;
+import org.chromium.content_public.common.ContentFeatures;
 import org.chromium.ui.base.DeviceFormFactor;
 import org.chromium.ui.base.PageTransition;
 import org.chromium.ui.base.ViewUtils;
@@ -102,6 +103,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 // NOTE: Disable online detection so we we'll default to online on test bots with no network.
 @CommandLineFlags.Add({ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE})
 @EnableFeatures(ChromeFeatureList.CONTEXTUAL_SEARCH_DISABLE_ONLINE_DETECTION)
+@DisableFeatures({ContentFeatures.ANDROID_DESKTOP_ZOOM_SCALING})
 @Restriction(RESTRICTION_TYPE_NON_LOW_END_DEVICE)
 @Batch(Batch.PER_CLASS)
 public class ContextualSearchManagerTest extends ContextualSearchInstrumentationBase {
@@ -511,7 +513,7 @@ public class ContextualSearchManagerTest extends ContextualSearchInstrumentation
     @SmallTest
     @Feature({"ContextualSearch"})
     // Previously flaky on phones: https://crbug.com/765796
-    @DisableIf.Device(DeviceFormFactor.DESKTOP) // https://crbug.com/446934111
+    @DisableIf.Device(DeviceFormFactor.DESKTOP) // https://crbug.com/481444937
     public void testPanelDismissedOnToggleFullscreen() throws Exception {
         // Simulate a resolving search and assert that the panel peeks.
         simulateResolveSearch("search");
@@ -746,7 +748,7 @@ public class ContextualSearchManagerTest extends ContextualSearchInstrumentation
     @Test
     @SmallTest
     @Feature({"ContextualSearch"})
-    @DisableIf.Device(DeviceFormFactor.DESKTOP) // https://crbug.com/446934111
+    @DisableIf.Device(DeviceFormFactor.DESKTOP) // https://crbug.com/481444937
     public void testContextualDictionaryDefinitions() throws Exception {
         runDictionaryCardTest(CardTag.CT_CONTEXTUAL_DEFINITION);
     }
@@ -906,7 +908,7 @@ public class ContextualSearchManagerTest extends ContextualSearchInstrumentation
     // TODO(crbug.com/473893732): Update the test for lock top control or use restriction.
     @DisableFeatures(ChromeFeatureList.LOCK_TOP_CONTROLS_ON_LARGE_TABLETS_V2)
     // Previously flaky and disabled 4/2021.  https://crbug.com/1180304
-    @DisableIf.Device(DeviceFormFactor.DESKTOP) // https://crbug.com/446934111
+    @DisableIf.Device(DeviceFormFactor.DESKTOP) // https://crbug.com/481444937
     public void testTriggeringContextualSearchHidesFindInPageOverlay() throws Exception {
         MenuUtils.invokeCustomMenuActionSync(
                 InstrumentationRegistry.getInstrumentation(),

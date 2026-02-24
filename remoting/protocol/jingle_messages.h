@@ -10,6 +10,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <variant>
 #include <vector>
 
 #include "remoting/base/authentication_method.h"
@@ -126,6 +127,51 @@ struct JingleAuthentication {
   std::vector<uint8_t> session_authz_session_token;
 };
 
+struct IceTransportInfo {
+  IceTransportInfo();
+  ~IceTransportInfo();
+  struct NamedCandidate {
+    NamedCandidate();
+    NamedCandidate(const std::string& name, const webrtc::Candidate& candidate);
+    ~NamedCandidate();
+
+    std::string name;
+    webrtc::Candidate candidate;
+  };
+
+  struct IceCredentials {
+    IceCredentials();
+    IceCredentials(std::string channel,
+                   std::string ufrag,
+                   std::string password);
+    ~IceCredentials();
+
+    std::string channel;
+    std::string ufrag;
+    std::string password;
+  };
+
+  // Caller keeps ownership of |stanza|. |error| is set to debug error
+  // message when parsing fails.
+  bool ParseXml(const jingle_xmpp::XmlElement* stanza);
+  std::unique_ptr<jingle_xmpp::XmlElement> ToXml() const;
+
+  std::list<IceCredentials> ice_credentials;
+  std::list<NamedCandidate> candidates;
+};
+
+struct JingleTransportInfo {
+  JingleTransportInfo();
+  JingleTransportInfo(const JingleTransportInfo&);
+  JingleTransportInfo(JingleTransportInfo&&);
+  JingleTransportInfo& operator=(const JingleTransportInfo&);
+  JingleTransportInfo& operator=(JingleTransportInfo&&);
+  ~JingleTransportInfo();
+
+  std::vector<IceTransportInfo::IceCredentials> ice_credentials;
+  std::vector<IceCandidate> candidates;
+};
+
 struct HostAttributesAttachment {
   HostAttributesAttachment();
   HostAttributesAttachment(const HostAttributesAttachment&);
@@ -219,7 +265,8 @@ struct SessionTerminate {
   std::string error_location;
 };
 
-struct JingleMessage {
+class JingleMessage {
+ public:
   enum class ActionType {
     kUnknownAction,
     kSessionInitiate,
@@ -229,9 +276,17 @@ struct JingleMessage {
     kTransportInfo,
   };
 
+  // Structured data replacements for XML payloads.
+  using Payload = std::variant<std::monostate /*unset value*/,
+                               SessionInitiate,
+                               SessionAccept,
+                               SessionInfo,
+                               JingleTransportInfo,
+                               SessionTerminate>;
+
   JingleMessage();
   JingleMessage(const SignalingAddress& to,
-                ActionType action_value,
+                Payload payload_value,
                 const std::string& sid_value);
   ~JingleMessage();
 
@@ -250,16 +305,20 @@ struct JingleMessage {
 
   std::unique_ptr<jingle_xmpp::XmlElement> ToXml() const;
 
+  ActionType action() const { return action_; }
+  const Payload& payload() const { return payload_; }
+
+  void SetPayload(Payload payload);
+
+  static ActionType ActionFromPayload(const Payload& payload);
+
   SignalingAddress from;
   SignalingAddress to;
-  ActionType action = ActionType::kUnknownAction;
   std::string sid;
 
   std::string initiator;
 
   std::unique_ptr<ContentDescription> description;
-
-  // TODO: joedow - Add structured data replacements for XML payloads.
 
   // Legacy XML-based payloads, maintained for backward compatibility.
   std::unique_ptr<jingle_xmpp::XmlElement> transport_info_legacy;
@@ -285,6 +344,14 @@ struct JingleMessage {
   // message. Useful mainly for session-terminate messages. If it's empty, or
   // reason is UNKNOWN_REASON, this field will be ignored in the xml output.
   std::string error_location;
+
+ private:
+  friend bool JingleMessageFromXml(const jingle_xmpp::XmlElement* stanza,
+                                   JingleMessage* message,
+                                   std::string* error);
+
+  ActionType action_ = ActionType::kUnknownAction;
+  Payload payload_;
 };
 
 struct JingleMessageReply {
@@ -315,39 +382,6 @@ struct JingleMessageReply {
   ReplyType type;
   ErrorType error_type;
   std::string text;
-};
-
-struct IceTransportInfo {
-  IceTransportInfo();
-  ~IceTransportInfo();
-  struct NamedCandidate {
-    NamedCandidate();
-    NamedCandidate(const std::string& name, const webrtc::Candidate& candidate);
-    ~NamedCandidate();
-
-    std::string name;
-    webrtc::Candidate candidate;
-  };
-
-  struct IceCredentials {
-    IceCredentials();
-    IceCredentials(std::string channel,
-                   std::string ufrag,
-                   std::string password);
-    ~IceCredentials();
-
-    std::string channel;
-    std::string ufrag;
-    std::string password;
-  };
-
-  // Caller keeps ownership of |stanza|. |error| is set to debug error
-  // message when parsing fails.
-  bool ParseXml(const jingle_xmpp::XmlElement* stanza);
-  std::unique_ptr<jingle_xmpp::XmlElement> ToXml() const;
-
-  std::list<IceCredentials> ice_credentials;
-  std::list<NamedCandidate> candidates;
 };
 
 }  // namespace remoting::protocol

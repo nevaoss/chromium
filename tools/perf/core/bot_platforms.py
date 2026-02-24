@@ -509,6 +509,14 @@ def _jetstream_main_crossbench(estimated_runtime=180, arguments=()):
                           arguments=arguments)
 
 
+def _jetstream3_turbolev_future_crossbench(estimated_runtime=180, arguments=()):
+  arguments += ('--js-flags=--turbolev-future', )
+  return CrossbenchConfig('jetstream3-turbolev_future.crossbench',
+                          'jetstream_3',
+                          estimated_runtime=estimated_runtime,
+                          arguments=arguments)
+
+
 # LoadLine:
 def _loadline_phone_crossbench(estimated_runtime=7000, arguments=()):
   return CrossbenchConfig('loadline_phone.crossbench',
@@ -896,6 +904,11 @@ _ANDROID_AL_BRYA_BENCHMARK_CONFIGS = PerfSuite([
     _GetBenchmarkConfig('jetstream2'),
     _GetBenchmarkConfig('speedometer2'),
 ])
+_ANDROID_AL_BRYA_EXECUTABLE_CONFIGS = frozenset([
+    ExecutableConfig('web_tests_cuj',
+                     path='../../tools/perf/web_tests_cuj.py',
+                     estimated_runtime=10),
+])
 _ANDROID_AL_BENCHMARK_CONFIGS = PerfSuite([
     _GetBenchmarkConfig('rendering.mobile'),
 ])
@@ -1082,7 +1095,7 @@ ANDROID_BRYA = PerfPlatform(
     num_shards=7,
     benchmark_configs=_ANDROID_AL_BRYA_BENCHMARK_CONFIGS,
     platform_os='android',
-    executables=None,
+    executables=_ANDROID_AL_BRYA_EXECUTABLE_CONFIGS,
     crossbench=_CROSSBENCH_ANDROID_AL)
 ANDROID_CORSOLA = PerfPlatform(name='android-corsola-steelix-8gb-perf',
                                description='Corsola SKU steelix_MT8186_8GB',

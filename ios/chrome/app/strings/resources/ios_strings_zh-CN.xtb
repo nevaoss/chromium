@@ -370,6 +370,7 @@
 <translation id="2306265833370324042">显示<ph name="SEARCH_ENGINE_NAME" />详细信息</translation>
 <translation id="2309265394777270359">关闭标签页</translation>
 <translation id="2311077293164383652">关闭固定标签页</translation>
+<translation id="2313392466694008052">使用 Gemini 编辑图片</translation>
 <translation id="2316129865977710310">不用了，谢谢</translation>
 <translation id="2320166752086256636">隐藏键盘</translation>
 <translation id="2321086116217818302">正在准备密码…</translation>
@@ -521,6 +522,7 @@
 <translation id="288655811176831528">关闭标签页</translation>
 <translation id="2888631381369839306">已开启价格跟踪通知</translation>
 <translation id="2893168226686371498">默认浏览器</translation>
+<translation id="2893791155497534382">密码和其他活动记录可在相应管理设置中删除</translation>
 <translation id="2894757982205307093">在组内添加新标签页</translation>
 <translation id="2902312830803030883">更多操作</translation>
 <translation id="2904788871580817212">您打开的标签页中有降价，原价为 <ph name="PREVIOUS_PRICE" />，现价为 <ph name="PRICE" />，<ph name="PRODUCT_NAME" />，<ph name="DOMAIN" /></translation>
@@ -845,6 +847,7 @@
 <translation id="4181841719683918333">语言</translation>
 <translation id="4183350924949589798">想提升安全性？</translation>
 <translation id="4184063163998877398">{count,plural, =1{有 {count} 个安全系数低的密码}other{有 {count} 个安全系数低的密码}}</translation>
+<translation id="4196758674971560031">您创建的标签页分组会保存在“标签页分组”部分，并在您的所有设备上更新。</translation>
 <translation id="4197456013861852807">{count,plural, =1{有 {count} 项内容会仅保存到此设备上。若要在其他设备上使用它，请将它保存到您的 Google 账号 {email}。}other{有 {count} 项内容会仅保存到此设备上。若要在其他设备上使用它们，请将它们保存到您的 Google 账号 {email}。}}</translation>
 <translation id="4207873326995387292">浏览器信息</translation>
 <translation id="421070604241073551">当此设置处于开启状态时，数据会保存在您的 Google 账号中。当此设置处于关闭状态时，数据只会保存到此设备上。</translation>
@@ -1298,6 +1301,7 @@
 <translation id="5768870767339201169">从上次停下的地方继续</translation>
 <translation id="5779117921996157216">{count,plural, =1{您有 {count} 个已泄露的密码，这可能会给您带来安全风险。请立即修改以确保安全。}other{您有 {count} 个已泄露的密码，这可能会给您带来安全风险。请立即修改以确保安全。}}</translation>
 <translation id="5791632441210678828">用于对所关注 Feed 进行排序的按钮。</translation>
+<translation id="5799263916847593256">打开即可查看价格历史记录</translation>
 <translation id="5803566855766646066">确定要舍弃这张新信用卡吗？</translation>
 <translation id="5804241973901381774">权限</translation>
 <translation id="58081802114142635">您的活动记录可以帮助改进 Google AI</translation>
@@ -1372,7 +1376,6 @@
 <translation id="607620096698446287">无法上传“<ph name="FILENAME" />”(<ph name="FILESIZE" />)</translation>
 <translation id="6076618233738284461">固定网站</translation>
 <translation id="6077126322656614846">已启用摄像头使用权限</translation>
-<translation id="607730456154980869">通过 Chrome 中的 Gemini 更快地获得答案</translation>
 <translation id="6078236141387574983">重新调整动作条的高度</translation>
 <translation id="6084848228346514841">选择标签页</translation>
 <translation id="6089212833343035912">Google 密码管理工具 PIN 码</translation>
@@ -1505,6 +1508,7 @@
 <translation id="6494931198667773526">结束日期</translation>
 <translation id="6503077044568424649">常去网站</translation>
 <translation id="6503763061813913607">安全检查通知</translation>
+<translation id="6504541289630702018">轻松访问桌面设备保存的标签页分组</translation>
 <translation id="6505334220040167806">收起标签页分组。</translation>
 <translation id="6506996418997555004">分享标签页分组“<ph name="GROUP_NAME" />”</translation>
 <translation id="6507973708545996744">登录后即可将您的阅读清单同步到您的所有设备上。</translation>
@@ -1641,6 +1645,7 @@
 <translation id="6964300328304469089">目前选择的是：<ph name="NAME" />，<ph name="EMAIL" />。请选择一个账号。</translation>
 <translation id="6964760285928603117">从分组中移除</translation>
 <translation id="6965382102122355670">确定</translation>
+<translation id="6967355534157677591">生成图片（Pro 版）</translation>
 <translation id="6973630695168034713">文件夹</translation>
 <translation id="6979158407327259162">Google 云端硬盘</translation>
 <translation id="6979737339423435258">时间不限</translation>
@@ -1939,7 +1944,6 @@
 <translation id="8059533439631660104">合拢此部分。</translation>
 <translation id="8061584726507121204">历史记录</translation>
 <translation id="8064946459644399612">已应用“新标签页”页面偏好设置</translation>
-<translation id="8069168488983557089">获取关键要点和数据洞见，帮助您了解任何主题</translation>
 <translation id="8069394452933076548">选择何时将最近未使用的标签页移至“闲置标签页”部分中。</translation>
 <translation id="8073670137947914548">已下载完毕</translation>
 <translation id="8076492880354921740">标签页</translation>
@@ -2135,6 +2139,7 @@
 <translation id="8730621377337864115">完成</translation>
 <translation id="8731268612289859741">安全码</translation>
 <translation id="87371078663613140">浏览菜单栏中的选项</translation>
+<translation id="8739546376441802490">已经固定过该网站</translation>
 <translation id="8741627442233023406">{count,plural, =1{查看标签页…}other{查看所有标签页…}}</translation>
 <translation id="8741995161408053644">您的 Google 账号在 <ph name="BEGIN_LINK" />history.google.com<ph name="END_LINK" /> 上可能有其他形式的浏览记录。</translation>
 <translation id="874599634440689554">创建链接</translation>

@@ -71,10 +71,10 @@ tabs::TabInterface* GetCrashedTab(actor::ActorTask& task) {
 }
 }  // namespace
 
-GlicActorTaskManager::GlicActorTaskManager(Profile* profile)
-    : profile_(profile),
-      actor_keyed_service_(
-          actor::ActorKeyedServiceFactory::GetActorKeyedService(profile)) {
+GlicActorTaskManager::GlicActorTaskManager(
+    Profile* profile,
+    actor::ActorKeyedService* actor_keyed_service)
+    : profile_(profile), actor_keyed_service_(actor_keyed_service) {
   CHECK(profile_);
   CHECK(actor_keyed_service_);
 }
@@ -98,7 +98,8 @@ void GlicActorTaskManager::CreateTask(
   }
 
   current_task_id_ = actor_keyed_service_->CreateTaskWithOptions(
-      std::move(options), std::move(delegate));
+      &actor_keyed_service_->GetPolicyChecker(), std::move(options),
+      std::move(delegate));
 
   if (!current_task_id_.is_null()) {
     actor_task_state_changed_subscription_ =
@@ -388,10 +389,12 @@ void GlicActorTaskManager::MaybeShowDeactivationToastUi() {
     return;
   }
 
+#if !BUILDFLAG(IS_ANDROID)
   BrowserWindowInterface* const last_active_bwi =
       GetLastActiveBrowserWindowInterfaceWithAnyProfile();
   actor_keyed_service_->GetActorUiStateManager()->MaybeShowToast(
       last_active_bwi);
+#endif
 }
 
 void GlicActorTaskManager::PauseActorTask(

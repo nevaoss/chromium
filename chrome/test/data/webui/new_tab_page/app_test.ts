@@ -15,6 +15,8 @@ import type {AppElement, CustomizeButtonsElement} from 'chrome://new-tab-page/ne
 import type {PageRemote} from 'chrome://new-tab-page/new_tab_page.mojom-webui.js';
 import {NtpBackgroundImageSource, PageCallbackRouter, PageHandlerRemote} from 'chrome://new-tab-page/new_tab_page.mojom-webui.js';
 import {PageCallbackRouter as ComposeboxPageCallbackRouter, PageHandlerRemote as ComposeboxPageHandlerRemote} from 'chrome://resources/cr_components/composebox/composebox.mojom-webui.js';
+import {ToolMode as ComposeboxToolMode} from 'chrome://resources/cr_components/composebox/composebox_query.mojom-webui.js';
+import type {SearchboxElement} from 'chrome://resources/cr_components/searchbox/searchbox.js';
 import type {CrButtonElement} from 'chrome://resources/cr_elements/cr_button/cr_button.js';
 import type {CrToastElement} from 'chrome://resources/cr_elements/cr_toast/cr_toast.js';
 import {Command, CommandHandlerRemote} from 'chrome://resources/js/browser_command.mojom-webui.js';
@@ -45,7 +47,6 @@ suite('NewTabPageAppTest', () => {
   let backgroundManager: TestMock<BackgroundManager>;
   let moduleResolver: PromiseResolver<Module[]>;
   let searchboxHandler: TestMock<SearchboxPageHandlerRemote>;
-  let composeboxHandler: TestMock<ComposeboxPageHandlerRemote>;
 
   const url: URL = new URL(location.href);
   const backgroundImageLoadTime: number = 123;
@@ -91,7 +92,7 @@ suite('NewTabPageAppTest', () => {
     moduleRegistry.setResultFor('initializeModules', moduleResolver.promise);
     metrics = fakeMetricsPrivate();
 
-    composeboxHandler = installMock(
+    installMock(
         ComposeboxPageHandlerRemote,
         mock => ComposeboxProxyImpl.setInstance(new ComposeboxProxyImpl(
             mock, new ComposeboxPageCallbackRouter(),
@@ -2146,6 +2147,66 @@ suite('NewTabPageAppTest', () => {
           assertFalse(!!app.shadowRoot.querySelector('cr-composebox'));
         });
 
+    test('scrim remains shown when context menu is clicked', async () => {
+      const scrim = getScrim();
+      assertTrue(!!scrim);
+      assertTrue(scrim.hidden);
+
+      const searchboxContainer =
+          app.shadowRoot.getElementById('searchboxContainer')!;
+      const searchbox = $$(app, '#searchbox')!;
+
+      // Click on the searchbox.
+      searchboxContainer.dispatchEvent(new Event('focusin', {bubbles: true}));
+      await microtasksFinished();
+
+      // Assert scrim is shown.
+      assertFalse(scrim.hidden);
+
+      // Click on the context menu (the plus `+` button).
+      // This fires open-composebox on the searchbox element.
+      searchbox.dispatchEvent(new CustomEvent('open-composebox', {
+        detail: {searchboxText: '', contextFiles: []},
+      }));
+      await microtasksFinished();
+      assertFalse(scrim.hidden);
+    });
+
+    test('scrim is hidden after closing composebox', async () => {
+      const scrim = getScrim()!;
+      const searchbox = $$<SearchboxElement>(app, '#searchbox')!;
+      const searchboxContainer =
+          app.shadowRoot.getElementById('searchboxContainer')!;
+
+      // 1. Open NTP.
+      // 2. Click on the searchbox.
+      searchboxContainer.dispatchEvent(new Event('focusin', {bubbles: true}));
+      await microtasksFinished();
+      assertFalse(scrim.hidden);
+
+      // 3 & 4. Open composebox (Deep Search tool).
+      searchbox.dispatchEvent(new CustomEvent('open-composebox', {
+        detail: {searchboxText: '', contextFiles: []},
+      }));
+      await microtasksFinished();
+      assertTrue((app as any).showComposebox_);
+      assertFalse(scrim.hidden);
+
+      // 5 & 6. Close composebox and clear modes (the 'x' button clicks).
+      const composebox = app.shadowRoot.querySelector('cr-composebox')!;
+      composebox.dispatchEvent(new CustomEvent('close-composebox', {
+        detail: {composeboxText: ''},
+        bubbles: true,
+        composed: true,
+      }));
+      await microtasksFinished();
+      assertFalse((app as any).showComposebox_);
+
+      // The scrim should now be hidden because focus was lost
+      // when the dialog closed.
+      assertTrue(scrim.hidden);
+    });
+
     test('searchbox text carries over to composebox', async () => {
       // Arrange.
       callbackRouterRemote.setTheme(createTheme());
@@ -2320,7 +2381,10 @@ suite('NewTabPageAppTest', () => {
           // Assert.
           const composebox = app.shadowRoot.getElementById('composebox');
           assertTrue(!!composebox);
-          assertEquals(1, composeboxHandler.getCallCount('setCreateImageMode'));
+          assertEquals(1, searchboxHandler.getCallCount('setActiveToolMode'));
+          assertEquals(
+              ComposeboxToolMode.kImageGen,
+              searchboxHandler.getArgs('setActiveToolMode')[0]);
         });
     test(
         'Deep search chip click opens composebox deep search mode',
@@ -2339,7 +2403,10 @@ suite('NewTabPageAppTest', () => {
           // Assert.
           const composebox = app.shadowRoot.getElementById('composebox');
           assertTrue(!!composebox);
-          assertEquals(1, composeboxHandler.getCallCount('setDeepSearchMode'));
+          assertEquals(1, searchboxHandler.getCallCount('setActiveToolMode'));
+          assertEquals(
+              ComposeboxToolMode.kDeepSearch,
+              searchboxHandler.getArgs('setActiveToolMode')[0]);
         });
     test('Recent tab chip click opens composebox with context', async () => {
       const actionChipsElement =

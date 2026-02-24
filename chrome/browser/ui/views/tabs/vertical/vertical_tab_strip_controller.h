@@ -30,9 +30,10 @@ namespace views {
 class View;
 }
 
-// VerticalTabStripController manages the behavior of the vertical tab strip. It
-// performs a similar functionality as BrowserTabStripController.
-class VerticalTabStripController : public TabContextMenuController::Delegate {
+// VerticalTabStripController provides APIs for the views to integrate with rest
+// of the browser.
+class VerticalTabStripController : public TabContextMenuController::Delegate,
+                                   public TabStripModelObserver {
  public:
   VerticalTabStripController(TabStripModel* model,
                              BrowserView* browser_view,
@@ -63,6 +64,14 @@ class VerticalTabStripController : public TabContextMenuController::Delegate {
                                        bool stop_context_menu_propagation);
   bool IsCollapsed() const;
 
+  // This method should be called when the mouse has entered the tab strip. This
+  // is used as a baseline for some metrics.
+  void OnTabStripMouseEntered();
+
+  // This method should be called when a tab has been pressed. This could be to
+  // activate a tab, drag a tab, open a context menu or close a tab.
+  void OnTabMousePressed();
+
   tab_groups::TabGroupSyncService* GetTabGroupSyncService();
 
   TabContextMenuController* GetTabContextMenuController() {
@@ -71,9 +80,9 @@ class VerticalTabStripController : public TabContextMenuController::Delegate {
 
   VerticalTabDragHandler& GetDragHandler() { return drag_handler_.get(); }
 
-  void OnTabGroupFocusChanged(
-      std::optional<tab_groups::TabGroupId> new_focused_group_id,
-      std::optional<tab_groups::TabGroupId> old_focused_group_id);
+  // Notifies BrowserCommandController that the tab with keyboard focus has
+  // changed.
+  void TabKeyboardFocusChangedTo(const tabs::TabInterface* tab);
 
  private:
   // TabContextMenuController::Delegate:
@@ -89,6 +98,14 @@ class VerticalTabStripController : public TabContextMenuController::Delegate {
                                  int event_flags) override;
   bool GetContextMenuAccelerator(int command_id,
                                  ui::Accelerator* accelerator) override;
+
+  // TabStripModelObserver:
+  void OnTabGroupFocusChanged(
+      std::optional<tab_groups::TabGroupId> new_focused_group_id,
+      std::optional<tab_groups::TabGroupId> old_focused_group_id) override;
+
+  // Used for seek time metrics from the time the mouse enters the tabstrip.
+  std::optional<base::TimeTicks> mouse_entered_tabstrip_time_;
 
   std::unique_ptr<TabContextMenuController> context_menu_controller_;
   std::unique_ptr<TabMenuModelFactory> menu_model_factory_;

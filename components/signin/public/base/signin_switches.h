@@ -97,7 +97,9 @@ BASE_DECLARE_FEATURE(kChromeAndroidIdentitySurveyFirstRun);
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kChromeAndroidIdentitySurveyWeb);
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
-BASE_DECLARE_FEATURE(kChromeAndroidIdentitySurveyNtpAvatar);
+BASE_DECLARE_FEATURE(kChromeAndroidIdentitySurveyNtpSigninButton);
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE(kChromeAndroidIdentitySurveyNtpAccountAvatarTap);
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kChromeAndroidIdentitySurveyNtpPromo);
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
@@ -189,6 +191,12 @@ COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE_PARAM(base::TimeDelta,
                            kChromeIdentitySurveyLaunchWithDelayDuration);
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+
+#if BUILDFLAG(IS_ANDROID)
+// Whether activityless sign-in should be used for all entry points.
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE(kEnableActivitylessSigninAllEntryPoint);
+#endif
 
 #if BUILDFLAG(IS_ANDROID)
 // After an account is added via the ADD_SESSION header it will be redirected to

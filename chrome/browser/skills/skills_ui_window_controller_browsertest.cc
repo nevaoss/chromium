@@ -140,6 +140,11 @@ IN_PROC_BROWSER_TEST_F(SkillsUiWindowControllerBrowserTest,
 
 IN_PROC_BROWSER_TEST_F(SkillsUiWindowControllerBrowserTest,
                        UserFlow_CreateSkill_ThenInvoke) {
+#if BUILDFLAG(ENABLE_GLIC)
+  // Enable Glic late to avoid a crash in GlicTabIndicatorHelper during tab
+  // creation.
+  glic::GlicEnabling::SetBypassEnablementChecksForTesting(true);
+
   // Open Dialog.
   skills::Skill initial_skill(/*id=*/"",
                               /*name=*/"",
@@ -166,17 +171,23 @@ IN_PROC_BROWSER_TEST_F(SkillsUiWindowControllerBrowserTest,
       if (btn && !btn.disabled) { btn.click(); return 'CLICKED'; }
 
       // Fill inputs if found & empty
-      ['#nameText', '#instructionsText'].forEach(id => {
-        const el = root.querySelector(id);
-        if (el && !el.value) {
-          el.value = 'Test';
-          el.dispatchEvent(new CustomEvent('value-changed', {
-            bubbles: true,
-            composed: true,
-            detail: { value: 'Test' }
-          }));
-        }
-      });
+      let el = root.querySelector('#nameText');
+      if (el && !el.value) {
+        el.value = 'Test';
+        el.dispatchEvent(new CustomEvent('value-changed', {
+          bubbles: true,
+          composed: true,
+          detail: { value: 'Test' }
+        }));
+      }
+      el = root.querySelector('#instructionsText');
+      if (el && !el.value) {
+        el.value = 'Test';
+        el.dispatchEvent(new Event('input', {
+          bubbles: true,
+          composed: true
+        }));
+      }
       await new Promise(r => setTimeout(r, 100));
     }
     return 'TIMEOUT';
@@ -187,10 +198,6 @@ IN_PROC_BROWSER_TEST_F(SkillsUiWindowControllerBrowserTest,
   // Wait for the C++ backend to process the save and close the dialog.
   ASSERT_TRUE(close_future.Wait());
   EXPECT_EQ(nullptr, tab_controller()->GetDialogDelegateForTesting());
-#if BUILDFLAG(ENABLE_GLIC)
-  // Enable Glic late to avoid a crash in GlicTabIndicatorHelper during tab
-  // creation.
-  glic::GlicEnabling::SetBypassEnablementChecksForTesting(true);
 
   // Click the Toast "Try It" button.
   ClickToastActionButton();

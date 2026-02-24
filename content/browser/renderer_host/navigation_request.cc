@@ -3411,10 +3411,13 @@ void NavigationRequest::ResetStateForSiteInstanceChange() {
   // Reset bindings (e.g., since error pages for WebUI URLs don't get them).
   bindings_.reset();
 
-  // Reset any existing PageState with a non-empty, clean PageState, so that old
-  // attacker-controlled state is not pulled into the new process.
-  blink::PageState page_state =
-      blink::PageState::CreateFromEncodedData(commit_params_->page_state);
+  // Reset any existing *and* non-empty PageState with a clean PageState, so
+  // that old attacker-controlled state is not pulled into the new process.
+  // Note that `PageState::IsValid()` is really just "is the encoded page state
+  // non-empty", so the net effect of this is "replace a non-empty encoded page
+  // state with a fresh encoded page state".
+  blink::PageState page_state = blink::PageState::CreateFromEncodedData(
+      std::move(commit_params_->page_state));
   if (page_state.IsValid())
     commit_params_->page_state =
         blink::PageState::CreateFromURL(GetURL()).ToEncodedData();
@@ -8760,7 +8763,7 @@ bool NavigationRequest::NeedsUrlLoader() {
          !is_mhtml_subframe_loaded_from_achive;
 }
 
-void NavigationRequest::UpdatePrivateNetworkRequestPolicy() {
+void NavigationRequest::UpdateLocalNetworkAccessRequestPolicy() {
   // It is useless to update this state for same-document navigations as well
   // as pages served from the back-forward cache or prerendered pages.
   DCHECK(!IsSameDocument());
@@ -8784,8 +8787,8 @@ void NavigationRequest::UpdatePrivateNetworkRequestPolicy() {
   if (policy_override ==
       ContentBrowserClient::LocalNetworkAccessRequestPolicyOverride::
           kForceAllow) {
-    private_network_request_policy_ =
-        network::mojom::PrivateNetworkRequestPolicy::kAllow;
+    local_network_access_request_policy_ =
+        network::mojom::LocalNetworkAccessRequestPolicy::kAllow;
     return;
   }
 
@@ -8810,21 +8813,21 @@ void NavigationRequest::UpdatePrivateNetworkRequestPolicy() {
   // TODO(crbug.com/433300380): The lna_secure_context_overide check needs to be
   // done in all other policy derivation points. This boolean should probably be
   // put into PolicyContainerPolicies.
-  private_network_request_policy_ = DeriveLocalNetworkAccessRequestPolicy(
+  local_network_access_request_policy_ = DeriveLocalNetworkAccessRequestPolicy(
       policies, LocalNetworkAccessRequestContext::kSubresource);
 
   if (policy_override ==
       ContentBrowserClient::LocalNetworkAccessRequestPolicyOverride::
           kBlockInsteadOfWarn) {
-    private_network_request_policy_ =
-        OverrideToBlockInsteadOfWarn(private_network_request_policy_);
+    local_network_access_request_policy_ =
+        OverrideToBlockInsteadOfWarn(local_network_access_request_policy_);
   }
 
   if (policy_override ==
       ContentBrowserClient::LocalNetworkAccessRequestPolicyOverride::
           kWarnInsteadOfBlock) {
-    private_network_request_policy_ =
-        OverrideToWarnInsteadOfBlock(private_network_request_policy_);
+    local_network_access_request_policy_ =
+        OverrideToWarnInsteadOfBlock(local_network_access_request_policy_);
   }
 }
 
@@ -8930,7 +8933,7 @@ void NavigationRequest::ReadyToCommitNavigation(bool is_error) {
   RestartCommitTimeout();
 
   if (!IsSameDocument() && !IsPageActivation())
-    UpdatePrivateNetworkRequestPolicy();
+    UpdateLocalNetworkAccessRequestPolicy();
 
   RenderFrameHostImpl* previous_render_frame_host =
       frame_tree_node_->current_frame_host();
@@ -10314,9 +10317,9 @@ NavigationRequest::BuildClientSecurityStateForNavigationFetch() {
             policy_override =
                 client->ShouldOverrideLocalNetworkAccessRequestPolicy(context,
                                                                       origin);
-        state->private_network_request_policy =
+        state->local_network_access_request_policy =
             OverrideLocalNetworkAccessPolicy(
-                state->private_network_request_policy, policy_override);
+                state->local_network_access_request_policy, policy_override);
       }
 
       // Remove the initiator's COEP, it is unused. For iframes, the parent's
@@ -10353,7 +10356,7 @@ NavigationRequest::BuildClientSecurityStateForNavigationFetch() {
 
       // TODO(crbug.com/40258851): Remove COEP from
       // `client_security_state`, see the reasoning for subframes above.
-      client_security_state->private_network_request_policy =
+      client_security_state->local_network_access_request_policy =
           DeriveLocalNetworkAccessRequestPolicy(
               client_security_state->ip_address_space,
               client_security_state->is_web_secure_context, false,
@@ -10376,7 +10379,7 @@ NavigationRequest::BuildClientSecurityStateForCommittedDocument() {
 
   return network::mojom::ClientSecurityState::New(
       policies.cross_origin_embedder_policy, policies.is_web_secure_context,
-      policies.ip_address_space, private_network_request_policy_,
+      policies.ip_address_space, local_network_access_request_policy_,
       policies.document_isolation_policy);
 }
 

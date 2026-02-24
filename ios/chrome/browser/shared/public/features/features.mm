@@ -39,6 +39,21 @@ BASE_FEATURE(kIOSBrowserEditMenuMetrics, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kIOSCustomFileUploadMenu, base::FEATURE_DISABLED_BY_DEFAULT);
 
+const char kIOSDockingPromoV2VariationParam[] =
+    "IOSDockingPromoV2VariationParam";
+const char kIOSDockingPromoV2VariationHeader1[] =
+    "IOSDockingPromoV2VariationHeader1";
+const char kIOSDockingPromoV2VariationHeader2[] =
+    "IOSDockingPromoV2VariationHeader2";
+const char kIOSDockingPromoV2VariationHeader3[] =
+    "IOSDockingPromoV2VariationHeader3";
+
+BASE_FEATURE(kIOSDockingPromoV2, base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsDockingPromoV2Enabled() {
+  return base::FeatureList::IsEnabled(kIOSDockingPromoV2);
+}
+
 const char kIOSDockingPromoExperimentType[] = "IOSDockingPromoExperimentType";
 const char kIOSDockingPromoNewUserInactiveThresholdHours[] =
     "IOSDockingPromoNewUserInactiveThresholdHours";
@@ -62,12 +77,6 @@ BASE_FEATURE(kIOSDockingPromoPreventDeregistrationKillswitch,
 
 BASE_FEATURE(kEnableLensInOmniboxCopiedImage,
              base::FEATURE_DISABLED_BY_DEFAULT);
-
-BASE_FEATURE(kEnableLensOverlay, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Update to the correct milestone after launch.
-// Also update in components/omnibox/browser/autocomplete_result.cc.
-const base::NotFatalUntil kLensOverlayNotFatalUntil = base::NotFatalUntil::M200;
 
 BASE_FEATURE(kLensLoadAIMInLensResultPage, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -444,6 +453,8 @@ bool IsLiquidGlassEffectEnabled() {
   return false;
 }
 
+BASE_FEATURE(kIOSEnhancedAutofill, base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE(kIOSKeyboardAccessoryDefaultView,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -617,9 +628,6 @@ bool IsRefactorToolbarsSize() {
 }
 
 BASE_FEATURE(kIPHAblation, base::FEATURE_DISABLED_BY_DEFAULT);
-
-BASE_FEATURE(kLensOverlayDisableIPHPanGesture,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 
 bool IsIPHAblationEnabled() {
   return base::FeatureList::IsEnabled(kIPHAblation);
@@ -1016,11 +1024,28 @@ NSString* const kNewStartupFlowKey = @"IsEnableNewStartupFlowEnabled";
 
 BASE_FEATURE(kEnableNewStartupFlow, base::FEATURE_DISABLED_BY_DEFAULT);
 
+namespace {
+
+enum class NewStartupFlowStatus {
+  kUnspecified,
+  kEnabled,
+  kDisabled,
+};
+
+// Tracks the cached state for the current session.
+NewStartupFlowStatus startup_flow_status = NewStartupFlowStatus::kUnspecified;
+
+}  // namespace
+
 bool IsEnableNewStartupFlowEnabled() {
-  // Save the value to ensure this is constant during the session.
-  static const bool is_new_startup_flow_available =
-      [[NSUserDefaults standardUserDefaults] boolForKey:kNewStartupFlowKey];
-  return is_new_startup_flow_available;
+  // If we haven't checked the defaults yet this session, do it now.
+  if (startup_flow_status == NewStartupFlowStatus::kUnspecified) {
+    const bool is_enabled =
+        [[NSUserDefaults standardUserDefaults] boolForKey:kNewStartupFlowKey];
+    startup_flow_status = is_enabled ? NewStartupFlowStatus::kEnabled
+                                     : NewStartupFlowStatus::kDisabled;
+  }
+  return startup_flow_status == NewStartupFlowStatus::kEnabled;
 }
 
 void SaveEnableNewStartupFlowForNextStart() {
@@ -1029,8 +1054,18 @@ void SaveEnableNewStartupFlowForNextStart() {
                                           forKey:kNewStartupFlowKey];
 }
 
+void ResetEnableNewStartupFlowEnabledForTesting() {
+  startup_flow_status = NewStartupFlowStatus::kUnspecified;
+}
+
 // Flags for Share Ablation study.
 BASE_FEATURE(kDisableShareButton, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kShareInOmniboxLongPress, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kShareInOverflowMenu, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kShareInVerbatimMatch, base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kUseSceneViewController, base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsUseSceneViewControllerEnabled() {
+  return base::FeatureList::IsEnabled(kUseSceneViewController);
+}

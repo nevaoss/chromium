@@ -2052,8 +2052,8 @@ void NetworkContext::ResolveHost(
   bool is_network_disallowed_for_restrictions_id =
       (optional_parameters &&
        optional_parameters->network_restrictions_id.has_value() &&
-       !IsNetworkForNonceAndUrlAllowed(
-           optional_parameters->network_restrictions_id.value(), url));
+       !IsHostResolutionForNonceAndHostAllowed(
+           optional_parameters->network_restrictions_id.value(), *host));
   if (is_network_disallowed_for_nonce ||
       is_network_disallowed_for_restrictions_id) {
     mojo::Remote<mojom::ResolveHostClient> remote_response_client(
@@ -2855,17 +2855,25 @@ URLRequestContextOwner NetworkContext::MakeURLRequestContext(
         cache_params.type =
             net::URLRequestContextBuilder::HttpCacheParams::DISK_SIMPLE;
 
-        // We wrap `BackendFileOperations` to intercept file I/O with encryption
-        // ops.
-        if (!cache_params.file_operations_factory) {
-          // Since it's the fallback later anyways, explicitly created here to
-          // wrap.
-          cache_params.file_operations_factory =
-              base::MakeRefCounted<disk_cache::TrivialFileOperationsFactory>();
+        // For enterprise users, we wrap `BackendFileOperations` to intercept
+        // file I/O with encryption ops, and create and pass in a
+        // `CacheEncryptionDelegate` to encrypt/decrypt cache entries on disk.
+        if (params_->encryption_provider) {
+          std::unique_ptr<net::CacheEncryptionDelegate>
+              cache_encryption_delegate = std::make_unique<
+                  enterprise_encryption::OSCryptCacheEncryptionDelegate>(
+                  std::move(params_->encryption_provider));
+          if (!cache_params.file_operations_factory) {
+            // Since it's the fallback later anyways, explicitly created here to
+            // wrap. EncryptedBackendFileOperationsFactory will wrap this later
+            // when os_crypt_cache_encryption_delegate is created and
+            // initialized.
+            cache_params.file_operations_factory = base::MakeRefCounted<
+                disk_cache::TrivialFileOperationsFactory>();
+          }
+          builder.set_cache_encryption_delegate(
+              std::move(cache_encryption_delegate));
         }
-        cache_params.file_operations_factory = base::MakeRefCounted<
-            enterprise_encryption::EncryptedBackendFileOperationsFactory>(
-            std::move(cache_params.file_operations_factory));
 #else
         NOTREACHED();
 #endif  // BUILDFLAG(ENTERPRISE_CACHE_ENCRYPTION)
@@ -2879,15 +2887,6 @@ URLRequestContextOwner NetworkContext::MakeURLRequestContext(
             cache_params.app_status_listener_getter));
 #endif  // BUILDFLAG(IS_ANDROID)
     builder.EnableHttpCache(cache_params);
-
-    std::unique_ptr<net::CacheEncryptionDelegate> cache_encryption_delegate;
-    if (params_->encryption_provider) {
-      cache_encryption_delegate = std::make_unique<
-          enterprise_encryption::OSCryptCacheEncryptionDelegate>(
-          std::move(params_->encryption_provider));
-    }
-
-    builder.set_cache_encryption_delegate(std::move(cache_encryption_delegate));
   }
 
   std::unique_ptr<SSLConfigServiceMojo> ssl_config_service =
@@ -3689,6 +3688,43 @@ bool NetworkContext::IsNetworkForNonceAndUrlAllowed(
     return true;
   }
   // The nonce was revoked and the url isn't exempted.
+  return false;
+}
+
+bool NetworkContext::IsHostResolutionForNonceAndHostAllowed(
+    const base::UnguessableToken& nonce,
+    const mojom::HostResolverHost& host) const {
+  if (!base::FeatureList::IsEnabled(network::features::kConnectionAllowlists)) {
+    return true;
+  }
+
+  if (!network_revocation_nonces_.contains(nonce)) {
+    return true;
+  }
+
+  std::string host_fragment = host.is_host_port_pair()
+                                  ? host.get_host_port_pair().host()
+                                  : host.get_scheme_host_port().host();
+  GURL synthetic_url =
+      GURL(std::string(url::kHttpsScheme) +
+           std::string(url::kStandardSchemeSeparator) + host_fragment);
+  if (!synthetic_url.is_valid()) {
+    return false;
+  }
+
+  // Per
+  // https://wicg.github.io/connection-allowlists/#abstract-opdef-match-a-host-to-a-connection-allowlist,
+  // we need to match `synthetic_url` against a host-only variant against each
+  // URLPattern corresponding to `nonce`.
+  const std::set<std::unique_ptr<url_pattern::SimpleUrlPatternMatcher>>&
+      allowlisted_patterns = network_revocation_nonces_.find(nonce)->second;
+  for (const std::unique_ptr<url_pattern::SimpleUrlPatternMatcher>& pattern :
+       allowlisted_patterns) {
+    if (pattern->HostOnlyMatch(synthetic_url)) {
+      return true;
+    }
+  }
+
   return false;
 }
 

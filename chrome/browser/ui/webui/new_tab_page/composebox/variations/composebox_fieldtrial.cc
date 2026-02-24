@@ -204,11 +204,6 @@ const base::FeatureParam<std::string> kConfigParam(&kNtpComposebox,
                                                    "NtpComposeboxConfigParam",
                                                    "");
 
-const base::FeatureParam<bool> kShowComposeboxZps(
-    &kNtpComposebox,
-    "NtpComposeboxShowComposeboxZps",
-    false);
-
 const base::FeatureParam<bool> kShowComposeboxTypedSuggest(
     &kNtpComposebox,
     "NtpComposeboxShowComposeboxTypedSuggest",
@@ -252,7 +247,9 @@ const base::FeatureParam<bool> kShowModelPicker(&kNtpComposebox,
                                                 "NtpComposeboxShowModelPicker",
                                                 false);
 
-const base::FeatureParam<bool> kShowSubmit(&kNtpComposebox, "ShowSubmit", true);
+const base::FeatureParam<bool> kShowContextMenuHeaders(&kNtpComposebox,
+                                                       "ShowContextMenuHeaders",
+                                                       true);
 
 const base::FeatureParam<bool> kShowVoiceSearchInSteadyComposebox(
     &kNtpComposebox,

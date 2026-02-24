@@ -264,17 +264,26 @@ NET_EXPORT bool IsOnPath(const std::string_view cookie_path,
 // applies to the given cookie |name|.
 CookiePrefix GetCookiePrefix(std::string_view name);
 
+// Checks if a cookie value contains a hidden prefix name. This can be used to
+// reject cookies where the name is empty but the value starts with a cookie
+// prefix (e.g., "__Host-", "__Secure-", "__Http-"). Such cookies would be
+// sent back as "Cookie: __Host-foo=bar" which could be misinterpreted by
+// servers as a cookie named "__Host-foo".
+NET_EXPORT_PRIVATE bool HasHiddenPrefixName(std::string_view cookie_value);
+
 // Returns true if the cookie does not violate any constraints imposed
 // by the cookie name's prefix, as described in
 // https://datatracker.ietf.org/doc/html/draft-ietf-httpbis-rfc6265bis-13#name-cookie-name-prefixes
 bool IsCookiePrefixValid(CookiePrefix prefix,
                          const GURL& url,
                          const ParsedCookie& parsed_cookie);
-// As above. `secure`, `domain`, and `path` are the raw attribute values (i.e.
-// as taken from a ParsedCookie), NOT in normalized form as represented in
-// CookieBase.
+// As above. When `url` is present, `domain` and `path` are the raw attribute
+// values (i.e. as taken from a ParsedCookie). When `url` is nullopt (e.g., when
+// validating cookies loaded from storage), `domain` is in normalized form
+// (e.g., "example.com" for host-only, ".example.com" for domain cookies) and
+// URL scheme checks are skipped.
 NET_EXPORT_PRIVATE bool IsCookiePrefixValid(CookiePrefix prefix,
-                                            const GURL& url,
+                                            base::optional_ref<const GURL> url,
                                             bool secure,
                                             bool http_only,
                                             std::string_view domain,

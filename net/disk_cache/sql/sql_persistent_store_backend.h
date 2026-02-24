@@ -6,6 +6,7 @@
 #define NET_DISK_CACHE_SQL_SQL_PERSISTENT_STORE_BACKEND_H_
 
 #include "base/memory/weak_ptr.h"
+#include "net/disk_cache/sql/entry_write_buffer.h"
 #include "net/disk_cache/sql/eviction_candidate_aggregator.h"
 #include "net/disk_cache/sql/sql_persistent_store.h"
 #include "sql/database.h"
@@ -70,23 +71,20 @@ class SqlPersistentStore::Backend {
   Error UpdateEntryLastUsedByKey(const CacheEntryKey& key,
                                  base::Time last_used,
                                  base::TimeTicks start_time);
-  Error UpdateEntryLastUsedByResId(ResId res_id,
-                                   base::Time last_used,
-                                   base::TimeTicks start_time);
-  ErrorAndStoreStatus UpdateEntryHeaderAndLastUsed(
+  ErrorAndStoreStatus WriteEntryDataAndMetadata(
       const CacheEntryKey& key,
       ResId res_id,
+      std::optional<int64_t> old_body_end,
+      EntryWriteBuffer buffer,
       base::Time last_used,
       const std::optional<MemoryEntryDataHints>& new_hints,
-      scoped_refptr<net::IOBuffer> buffer,
+      scoped_refptr<net::IOBuffer> head_buffer,
       int64_t header_size_delta,
       base::TimeTicks start_time);
   ErrorAndStoreStatus WriteEntryData(const CacheEntryKey& key,
                                      ResId res_id,
                                      int64_t old_body_end,
-                                     int64_t offset,
-                                     scoped_refptr<net::IOBuffer> buffer,
-                                     int buf_len,
+                                     EntryWriteBuffer buffer,
                                      bool truncate,
                                      base::TimeTicks start_time);
   ReadResultOrError ReadEntryData(const CacheEntryKey& key,
@@ -171,21 +169,30 @@ class SqlPersistentStore::Backend {
       bool& corruption_detected);
   Error UpdateEntryLastUsedByKeyInternal(const CacheEntryKey& key,
                                          base::Time last_used);
-  Error UpdateEntryLastUsedByResIdInternal(ResId res_id, base::Time last_used);
-  Error UpdateEntryHeaderAndLastUsedInternal(
+  Error WriteEntryBodyDataHelper(
       const CacheEntryKey& key,
       ResId res_id,
+      int64_t old_body_end,
+      EntryWriteBuffer buffer,
+      bool truncate,
+      int64_t& body_end_delta,
+      base::CheckedNumeric<int64_t>& checked_total_size_delta,
+      int64_t& new_body_end,
+      bool& corruption_detected);
+  Error WriteEntryDataAndMetadataInternal(
+      const CacheEntryKey& key,
+      ResId res_id,
+      std::optional<int64_t> old_body_end,
+      EntryWriteBuffer buffer,
       base::Time last_used,
       const std::optional<MemoryEntryDataHints>& new_hints,
-      scoped_refptr<net::IOBuffer> buffer,
+      scoped_refptr<net::IOBuffer> head_buffer,
       int64_t header_size_delta,
       bool& corruption_detected);
   Error WriteEntryDataInternal(const CacheEntryKey& key,
                                ResId res_id,
                                int64_t old_body_end,
-                               int64_t offset,
-                               scoped_refptr<net::IOBuffer> buffer,
-                               int buf_len,
+                               EntryWriteBuffer buffer,
                                bool truncate,
                                bool& corruption_detected);
   ReadResultOrError ReadEntryDataInternal(const CacheEntryKey& key,

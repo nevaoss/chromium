@@ -41,8 +41,8 @@ namespace device {
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
     BUILDFLAG(IS_CHROMEOS)
-// Not yet enabled by default.
-BASE_FEATURE(kPasskeyUnlockManager, base::FEATURE_DISABLED_BY_DEFAULT);
+// Enabled in M146. Remove in or after M149.
+BASE_FEATURE(kPasskeyUnlockManager, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Not yet enabled by default.
 BASE_FEATURE(kPasskeyUnlockErrorUi, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -194,10 +194,10 @@ BASE_FEATURE(kWebAuthnSendPinGeneration,
 BASE_FEATURE(kAuthenticatorPasswordsOnlyImmediateRequests,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
-// Not yet enabled by default.
+// Enabled by default in M146. Remove in or after M149.
 BASE_FEATURE(kWebAuthnNewRefreshFlow,
              "WebAuthenticationNewRefreshFlow",
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enabled by default in M142. Remove in or after M145.
 BASE_FEATURE(kWebAuthenticationHashClientDataJsonForEnclave,

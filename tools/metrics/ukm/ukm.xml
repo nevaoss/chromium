@@ -15079,6 +15079,15 @@ be describing additional metrics about the same event.
       </history>
     </aggregation>
   </metric>
+  <metric name="VisibilityRatioAtPlaybackStart">
+    <summary>
+      The visibility ratio of the video element at the time playback started, as
+      a percentage from 0 to 100. 0 means that the element is not visible due to
+      factors like being off-screen, clipped, occluded by other elements, or
+      styled as invisible (e.g., opacity:0). 100 means that the element is fully
+      visible. This value can be unset if nothing is reported.
+    </summary>
+  </metric>
 </event>
 
 <event name="MediaRouter.CastWebSenderExtensionLoadUrl" singular="True">
@@ -24942,99 +24951,6 @@ be describing additional metrics about the same event.
       An ID corresponding to the event that will enable joining all active tabs
       for the window and the event together.
     </summary>
-  </metric>
-</event>
-
-<event name="ThirdPartyCookies.BreakageIndicator.HTTPError">
-  <owner>3pcd-core@google.com</owner>
-  <owner>johannhof@chromium.org</owner>
-  <owner>ryankalla@google.com</owner>
-  <summary>
-    Recorded when there is an HTTP error that could be associated with breakage
-    from 3PC blocking.
-  </summary>
-  <metric name="TPCBlocked" enum="Boolean">
-    <summary>
-      Whether the site actually had any blocked 3P cookies.
-    </summary>
-    <aggregation>
-      <history>
-        <index fields="profile.country"/>
-        <statistics>
-          <enumeration/>
-        </statistics>
-      </history>
-    </aggregation>
-  </metric>
-  <metric name="TPCBlockedInSettings" enum="Boolean">
-    <summary>
-      Whether the user had third party cookies blocked when the event occurred.
-      This metric considers the global third party cookie setting as well as
-      per-top-level-site content settings for opting out of third party cookie
-      blocking, but not e.g. the Storage Access state of individual iframes.
-    </summary>
-    <aggregation>
-      <history>
-        <index fields="profile.country"/>
-        <statistics>
-          <enumeration/>
-        </statistics>
-      </history>
-    </aggregation>
-  </metric>
-</event>
-
-<event name="ThirdPartyCookies.BreakageIndicator.UncaughtJSError">
-  <owner>3pcd-core@google.com</owner>
-  <owner>johannhof@chromium.org</owner>
-  <owner>ryankalla@google.com</owner>
-  <summary>
-    Recorded when there is a JS error that could be associated with breakage
-    from 3PC blocking.
-  </summary>
-  <metric name="HasOccurred" enum="Boolean">
-    <summary>
-      A boolean signaling that the event has occurred; only records true values.
-    </summary>
-  </metric>
-</event>
-
-<event name="ThirdPartyCookies.BreakageIndicator.UserReload">
-  <owner>3pcd-core@google.com</owner>
-  <owner>johannhof@chromium.org</owner>
-  <owner>ryankalla@google.com</owner>
-  <summary>
-    Recorded when there is a user reload event that could be associated with
-    breakage from 3PC blocking.
-  </summary>
-  <metric name="TPCBlocked" enum="Boolean">
-    <summary>
-      Whether the site actually had any blocked 3P cookies.
-    </summary>
-    <aggregation>
-      <history>
-        <index fields="profile.country"/>
-        <statistics>
-          <enumeration/>
-        </statistics>
-      </history>
-    </aggregation>
-  </metric>
-  <metric name="TPCBlockedInSettings" enum="Boolean">
-    <summary>
-      Whether the user had third party cookies blocked when the event occurred.
-      This metric considers the global third party cookie setting as well as
-      per-top-level-site content settings for opting out of third party cookie
-      blocking, but not e.g. the Storage Access state of individual iframes.
-    </summary>
-    <aggregation>
-      <history>
-        <index fields="profile.country"/>
-        <statistics>
-          <enumeration/>
-        </statistics>
-      </history>
-    </aggregation>
   </metric>
 </event>
 

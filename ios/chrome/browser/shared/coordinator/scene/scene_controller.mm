@@ -105,7 +105,6 @@
 #import "ios/chrome/browser/policy/ui_bundled/idle/idle_timeout_policy_scene_agent.h"
 #import "ios/chrome/browser/policy/ui_bundled/signin_policy_scene_agent.h"
 #import "ios/chrome/browser/policy/ui_bundled/user_policy_util.h"
-#import "ios/chrome/browser/promos_manager/model/features.h"
 #import "ios/chrome/browser/promos_manager/model/promos_manager_factory.h"
 #import "ios/chrome/browser/promos_manager/model/promos_manager_scene_agent.h"
 #import "ios/chrome/browser/promos_manager/public/utils.h"
@@ -186,7 +185,6 @@
 #import "ios/chrome/browser/url_loading/model/url_loading_params.h"
 #import "ios/chrome/browser/web_state_list/model/web_usage_enabler/web_usage_enabler_browser_agent.h"
 #import "ios/chrome/browser/whats_new/coordinator/promo/whats_new_scene_agent.h"
-#import "ios/chrome/browser/widget_kit/model/features.h"
 #import "ios/chrome/browser/window_activities/model/window_activity_helpers.h"
 #import "ios/chrome/common/app_group/app_group_constants.h"
 #import "ios/chrome/common/ui/reauthentication/reauthentication_module.h"
@@ -205,10 +203,6 @@
 #import "net/base/url_util.h"
 #import "services/network/public/cpp/shared_url_loader_factory.h"
 #import "ui/base/l10n/l10n_util.h"
-
-#if BUILDFLAG(ENABLE_WIDGETS_FOR_MIM)
-#import "ios/chrome/browser/widget_kit/model/model_swift.h"  // nogncheck
-#endif
 
 namespace {
 
@@ -236,9 +230,6 @@ const char kMultiWindowOpenInNewWindowHistogram[] =
 // Histogram key used to log the number of contexts to open that the app
 // received.
 const char kContextsToOpen[] = "IOS.NumberOfContextsToOpen";
-
-// The App Store page for Google Chrome.
-NSString* const kChromeAppStoreURL = @"https://apps.apple.com/app/id535886823";
 
 // Enum for IOS.NumberOfContextsToOpen histogram.
 // Keep in sync with "ContextsToOpen" in tools/metrics/histograms/enums.xml.
@@ -445,9 +436,6 @@ void OnListFamilyMembersResponse(
 
 // Manages the browser lifecycle.
 @property(nonatomic, strong) BrowserLifecycleManager* browserLifecycleManager;
-
-// YES if the Settings view is being dismissed.
-@property(nonatomic, assign) BOOL dismissingSettings;
 
 // The state of the scene controlled by this object.
 @property(nonatomic, weak, readonly) SceneState* sceneState;
@@ -962,11 +950,7 @@ void OnListFamilyMembersResponse(
 }
 
 - (BOOL)widgetURLEligibleForAccountChange:(NSURL*)URL {
-#if BUILDFLAG(ENABLE_WIDGETS_FOR_MIM)
   return [URL.scheme isEqualToString:@"chromewidgetkit"];
-#else
-  return NO;
-#endif
 }
 
 - (BOOL)shareExtensionURLEligibleForAccountChange:(NSURL*)URL {
@@ -1749,7 +1733,7 @@ void OnListFamilyMembersResponse(
 }
 
 - (void)closePresentedViews {
-  [self closePresentedViews:YES completion:nullptr];
+  [self.mainCoordinator closePresentedViews];
 }
 
 - (void)prepareTabSwitcher {
@@ -2041,18 +2025,8 @@ using UserFeedbackDataCallback =
 
 - (void)showSigninAccountNotificationFromViewController:
     (UIViewController*)baseViewController {
-  web::WebState* webState =
-      self.mainInterface.browser->GetWebStateList()->GetActiveWebState();
-  DCHECK(webState);
-  infobars::InfoBarManager* infoBarManager =
-      InfoBarManagerImpl::FromWebState(webState);
-  DCHECK(infoBarManager);
-  CommandDispatcher* dispatcher =
-      self.mainInterface.browser->GetCommandDispatcher();
-  id<SettingsCommands> settingsHandler =
-      HandlerForProtocol(dispatcher, SettingsCommands);
-  SigninNotificationInfoBarDelegate::Create(
-      infoBarManager, self.profile, settingsHandler, baseViewController);
+  [self.mainCoordinator
+      showSigninAccountNotificationFromViewController:baseViewController];
 }
 
 - (void)setIncognitoContentVisible:(BOOL)incognitoContentVisible {
@@ -2090,16 +2064,7 @@ using UserFeedbackDataCallback =
 }
 
 - (void)showPriceTrackingNotificationsSettings {
-  CHECK(!self.mainCoordinator.isSigninInProgress);
-  if (self.mainCoordinator.settingsNavigationController) {
-    __weak SceneController* weakSelf = self;
-    [self closePresentedViews:NO
-                   completion:^{
-                     [weakSelf openPriceTrackingNotificationsSettings];
-                   }];
-    return;
-  }
-  [self openPriceTrackingNotificationsSettings];
+  [self.mainCoordinator showPriceTrackingNotificationsSettings];
 }
 
 - (void)openPriceTrackingNotificationsSettings {
@@ -2178,35 +2143,12 @@ using UserFeedbackDataCallback =
             (SafariDataImportEntryPoint)entryPoint
                                 withUIHandler:
                                     (id<SafariDataImportUIHandler>)UIHandler {
-  // If presented over settings, the base view controller is the top presented
-  // view controller. Otherwise, it is the active view controller.
-  BOOL presentOverSettings =
-      self.mainCoordinator.settingsNavigationController &&
-      entryPoint == SafariDataImportEntryPoint::kSetting;
-  UIViewController* baseViewController =
-      presentOverSettings ? self.mainCoordinator.settingsNavigationController
-                          : self.activeViewController;
-
-  __weak __typeof(self.mainCoordinator) weakMainCoordinator =
-      self.mainCoordinator;
-  auto startImport = ^{
-    [weakMainCoordinator
-        displaySafariDataImportFromEntryPoint:entryPoint
-                                withUIHandler:UIHandler
-                           baseViewController:baseViewController];
-  };
-  if (presentOverSettings) {
-    startImport();
-  } else {
-    [self closePresentedViews:YES completion:startImport];
-  }
+  [self.mainCoordinator displaySafariDataImportFromEntryPoint:entryPoint
+                                                withUIHandler:UIHandler];
 }
 
 - (void)showAppStorePage {
-  [[UIApplication sharedApplication]
-                openURL:[NSURL URLWithString:kChromeAppStoreURL]
-                options:@{}
-      completionHandler:nil];
+  [self.mainCoordinator showAppStorePage];
 }
 
 #pragma mark - TabGridCoordinatorDelegate
@@ -3126,14 +3068,13 @@ using UserFeedbackDataCallback =
     return;
   }
 
-  ProfileIOS* targetProfile = targetInterface.browser->GetProfile();
   BrowserViewController* targetBVC = targetInterface.bvc;
   web::WebState* currentWebState =
       targetInterface.browser->GetWebStateList()->GetActiveWebState();
 
   // Refrain from reusing the same tab for Lens Overlay initiated requests.
   BOOL initiatedByLensOverlay = false;
-  if (IsLensOverlayAvailable(targetProfile->GetPrefs()) && currentWebState) {
+  if (currentWebState) {
     if (LensOverlayTabHelper* lensOverlayTabHelper =
             LensOverlayTabHelper::FromWebState(currentWebState)) {
       initiatedByLensOverlay =
@@ -3233,9 +3174,10 @@ using UserFeedbackDataCallback =
     };
   }
   [self.mainCoordinator
-      showTabViewController:self.currentInterface.viewController
-                  incognito:self.currentInterface.incognito
-                 completion:completion];
+      showBrowserLayoutViewController:self.currentInterface
+                                          .browserLayoutViewController
+                            incognito:self.currentInterface.incognito
+                           completion:completion];
   [HandlerForProtocol(self.currentInterface.browser->GetCommandDispatcher(),
                       SceneCommands)
       setIncognitoContentVisible:self.currentInterface.incognito];
@@ -3246,47 +3188,7 @@ using UserFeedbackDataCallback =
 // Close Settings, or Signin or the 3rd-party intents Incognito interstitial.
 - (void)closePresentedViews:(BOOL)animated
                  completion:(ProceduralBlock)completion {
-  // If the Incognito interstitial is active, stop it.
-  [self.mainCoordinator stopIncognitoInterstitialCoordinator];
-  [self.mainCoordinator stopYoutubeIncognitoCoordinator];
-
-  // If History is active, stop it.
-  [self.mainCoordinator stopHistoryCoordinator];
-
-  // If Assistant Sheet is active, stop it.
-  [self.mainCoordinator stopAssistantSheetCoordinator];
-
-  // If the Safari data import workflow is active, stop it.
-  [self.mainCoordinator stopSafariDataImportCoordinator];
-
-  __weak __typeof(self) weakSelf = self;
-  ProceduralBlock resetAndDismiss = ^{
-    __typeof(self) strongSelf = weakSelf;
-    // Cleanup Password Checkup after its UI was dismissed.
-    [strongSelf.mainCoordinator stopPasswordCheckupCoordinator];
-    if (completion) {
-      completion();
-    }
-  };
-
-  if (self.mainCoordinator.settingsNavigationController &&
-      !self.dismissingSettings) {
-    self.dismissingSettings = YES;
-    // `self.signinCoordinator` can be presented on top of the settings, to
-    // present the Trusted Vault reauthentication `self.signinCoordinator` has
-    // to be closed first.
-    // If signinCoordinator is already dismissing, completion execution will
-    // happen when it is done animating.
-    [self.mainCoordinator stopSigninCoordinatorWithCompletionAnimated:animated];
-    [self.mainCoordinator stopSettingsAnimated:animated
-                                    completion:resetAndDismiss];
-    self.dismissingSettings = NO;
-  } else {
-    // `self.signinCoordinator` can be presented without settings, from the
-    // bookmarks or the recent tabs view.
-    [self.mainCoordinator stopSigninCoordinatorWithCompletionAnimated:animated];
-    resetAndDismiss();
-  }
+  [self.mainCoordinator closePresentedViews:animated completion:completion];
 }
 
 #pragma mark - WebStateListObserving
@@ -3374,9 +3276,10 @@ using UserFeedbackDataCallback =
     [self setCurrentInterfaceForMode:mode];
     if (self.mainCoordinator.isTabGridActive) {
       [self.mainCoordinator
-          showTabViewController:self.currentInterface.viewController
-                      incognito:self.currentInterface.incognito
-                     completion:completion];
+          showBrowserLayoutViewController:self.currentInterface
+                                              .browserLayoutViewController
+                                incognito:self.currentInterface.incognito
+                               completion:completion];
       [self setIncognitoContentVisible:self.currentInterface.incognito];
     } else {
       if (completion) {

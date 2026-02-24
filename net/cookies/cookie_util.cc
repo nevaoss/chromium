@@ -101,26 +101,44 @@ std::optional<base::Time> SaturatedTimeFromUTCExploded(
   return std::nullopt;
 }
 
-bool HasValidSecurePrefixAttributes(const GURL& url, bool secure) {
-  return secure &&
-         ProvisionalAccessScheme(url) != CookieAccessScheme::kNonCryptographic;
+bool HasValidSecurePrefixAttributes(base::optional_ref<const GURL> url,
+                                    bool secure) {
+  if (!secure) {
+    return false;
+  }
+  // If URL is available, check the scheme; otherwise just require Secure.
+  if (url.has_value()) {
+    return ProvisionalAccessScheme(*url) !=
+           CookieAccessScheme::kNonCryptographic;
+  }
+  return true;
 }
 
 // Tests that a cookie has the attributes for a valid __Host- prefix without
 // testing that the prefix is in the cookie name.
-bool HasValidHostPrefixAttributes(const GURL& url,
+bool HasValidHostPrefixAttributes(base::optional_ref<const GURL> url,
                                   bool secure,
                                   std::string_view domain,
                                   std::string_view path) {
   if (!HasValidSecurePrefixAttributes(url, secure) || path != "/") {
     return false;
   }
-  return domain.empty() || (url.HostIsIPAddress() && url.GetHost() == domain);
+  if (url.has_value()) {
+    // With URL: domain is raw attribute value. Empty means no Domain attribute
+    // (valid for __Host-). Non-empty is only valid for IP addresses where
+    // domain matches host.
+    return domain.empty() ||
+           (url->HostIsIPAddress() && url->GetHost() == domain);
+  }
+  // Without URL (from storage): domain is normalized. Must be non-empty
+  // (host-only cookie has the host as domain) and not start with '.'
+  // (domain cookies start with '.').
+  return !domain.empty() && !domain.starts_with('.');
 }
 
 // Tests that a cookie has the attributes for a valid __Http- prefix without
 // testing that the prefix is in the cookie name.
-bool HasValidHttpPrefixAttributes(const GURL& url,
+bool HasValidHttpPrefixAttributes(base::optional_ref<const GURL> url,
                                   bool secure,
                                   bool http_only) {
   return HasValidSecurePrefixAttributes(url, secure) && http_only;
@@ -311,6 +329,22 @@ bool CookieWithAccessResultSorter(const CookieWithAccessResult& a,
                                   const CookieWithAccessResult& b) {
   return CookieMonster::CookieSorter(&a.cookie, &b.cookie);
 }
+
+// Cookie prefix data structure for the data-driven prefix checking.
+// Order matters: more specific prefixes (like __Host-Http-) must come before
+// less specific ones (like __Host-) to ensure correct matching in
+// GetCookiePrefix.
+struct CookiePrefixData {
+  std::string_view prefix;
+  CookiePrefix prefix_type;
+};
+
+constexpr CookiePrefixData kPrefixes[] = {
+    {"__Secure-", COOKIE_PREFIX_SECURE},
+    {"__Host-Http-", COOKIE_PREFIX_HOSTHTTP},
+    {"__Http-", COOKIE_PREFIX_HTTP},
+    {"__Host-", COOKIE_PREFIX_HOST},
+};
 
 }  // namespace
 
@@ -736,30 +770,27 @@ bool IsOnPath(const std::string_view cookie_path, const std::string_view url_pat
 }
 
 CookiePrefix GetCookiePrefix(std::string_view name) {
-  constexpr std::string_view kSecurePrefix("__Secure-");
-  constexpr std::string_view kHostPrefix("__Host-");
-  constexpr std::string_view kHttpPrefix("__Http-");
-  constexpr std::string_view kHostHttpPrefix("__Host-Http-");
-
-  if (base::StartsWith(name, kSecurePrefix,
-                       base::CompareCase::INSENSITIVE_ASCII)) {
-    return COOKIE_PREFIX_SECURE;
-  }
-  if (base::StartsWith(name, kHttpPrefix,
-                       base::CompareCase::INSENSITIVE_ASCII) &&
-      base::FeatureList::IsEnabled(features::kPrefixCookieHttp)) {
-    return COOKIE_PREFIX_HTTP;
-  }
-  if (base::StartsWith(name, kHostHttpPrefix,
-                       base::CompareCase::INSENSITIVE_ASCII) &&
-      base::FeatureList::IsEnabled(features::kPrefixCookieHostHttp)) {
-    return COOKIE_PREFIX_HOSTHTTP;
-  }
-  if (base::StartsWith(name, kHostPrefix,
-                       base::CompareCase::INSENSITIVE_ASCII)) {
-    return COOKIE_PREFIX_HOST;
+  for (const auto& prefix_data : kPrefixes) {
+    if (base::StartsWith(name, prefix_data.prefix,
+                         base::CompareCase::INSENSITIVE_ASCII)) {
+      return prefix_data.prefix_type;
+    }
   }
   return COOKIE_PREFIX_NONE;
+}
+
+bool HasHiddenPrefixName(std::string_view cookie_value) {
+  // Skip BWS as defined by HTTPSEM as SP or HTAB (0x20 or 0x9).
+  std::string_view value_without_BWS =
+      base::TrimString(cookie_value, " \t", base::TRIM_LEADING);
+
+  for (const auto& prefix_data : kPrefixes) {
+    if (base::StartsWith(value_without_BWS, prefix_data.prefix,
+                         base::CompareCase::INSENSITIVE_ASCII)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 bool IsCookiePrefixValid(CookiePrefix prefix,
@@ -771,7 +802,7 @@ bool IsCookiePrefixValid(CookiePrefix prefix,
 }
 
 bool IsCookiePrefixValid(CookiePrefix prefix,
-                         const GURL& url,
+                         base::optional_ref<const GURL> url,
                          bool secure,
                          bool http_only,
                          std::string_view domain,

@@ -4,28 +4,27 @@
 
 #include "chrome/browser/ui/startup/profile_launch_observer.h"
 
-#include "base/lazy_instance.h"
+#include "chrome/browser/browser_process.h"
+#include "chrome/browser/global_features.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_list.h"
 #include "chrome/browser/ui/browser_window.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "content/public/browser/browser_thread.h"
 
-base::LazyInstance<ProfileLaunchObserver>::DestructorAtExit
-    profile_launch_observer = LAZY_INSTANCE_INITIALIZER;
-
 ProfileLaunchObserver::ProfileLaunchObserver() {
-  BrowserList::AddObserver(this);
+  browser_collection_observation_.Observe(
+      GlobalBrowserCollection::GetInstance());
 }
 
-ProfileLaunchObserver::~ProfileLaunchObserver() {
-  BrowserList::RemoveObserver(this);
-}
+ProfileLaunchObserver::~ProfileLaunchObserver() = default;
 
 // static
 ProfileLaunchObserver* ProfileLaunchObserver::GetInstance() {
-  return &profile_launch_observer.Get();
+  return g_browser_process->GetFeatures()->profile_launch_observer();
 }
 
 // static
@@ -54,8 +53,8 @@ bool ProfileLaunchObserver::activated_profile() {
   return GetInstance()->activated_profile_internal();
 }
 
-void ProfileLaunchObserver::OnBrowserAdded(Browser* browser) {
-  opened_profiles_.insert(browser->profile());
+void ProfileLaunchObserver::OnBrowserCreated(BrowserWindowInterface* browser) {
+  opened_profiles_.insert(browser->GetProfile());
   MaybeActivateProfile();
 }
 
@@ -126,7 +125,7 @@ void ProfileLaunchObserver::MaybeActivateProfile() {
                                 base::Unretained(this)));
   // Avoid posting more than once before ActivateProfile gets called.
   observed_profiles_.RemoveAllObservations();
-  BrowserList::RemoveObserver(this);
+  browser_collection_observation_.Reset();
 }
 
 void ProfileLaunchObserver::ActivateProfile() {

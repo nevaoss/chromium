@@ -1092,7 +1092,7 @@ class PrefetchServiceTestBase : public PrefetchingMetricsTestBase {
     EXPECT_TRUE(serving_handle.HasPrefetchStatus());
     EXPECT_EQ(serving_handle.GetPrefetchStatus(),
               PrefetchStatus::kPrefetchSuccessful);
-    EXPECT_EQ(serving_handle.GetServableState(base::TimeDelta::Max()),
+    EXPECT_EQ(serving_handle.GetServableStateForTesting(base::TimeDelta::Max()),
               PrefetchServableState::kServable);
     ASSERT_TRUE(serving_handle.GetPrefetchContainer()->GetNonRedirectHead());
     EXPECT_TRUE(serving_handle.GetPrefetchContainer()
@@ -3209,7 +3209,7 @@ TEST_P(PrefetchServiceTest, DISABLED_CHROMEOS(StreamingURLLoaderSuccessCase)) {
   EXPECT_TRUE(serving_handle.HasPrefetchStatus());
   EXPECT_EQ(serving_handle.GetPrefetchStatus(),
             PrefetchStatus::kPrefetchNotFinishedInTime);
-  EXPECT_EQ(serving_handle.GetServableState(base::TimeDelta::Max()),
+  EXPECT_EQ(serving_handle.GetServableStateForTesting(base::TimeDelta::Max()),
             PrefetchServableState::kServable);
   EXPECT_TRUE(serving_handle.GetPrefetchContainer()->GetNonRedirectHead());
   EXPECT_TRUE(serving_handle.GetPrefetchContainer()
@@ -7278,14 +7278,14 @@ class RecordingPrefetchContainerObserver final
   void AddEvent(Event event) { actual_output_event_sequence_.push_back(event); }
 
  private:
-  void OnWillBeDestroyed(PrefetchContainer& prefetch_container) override {
+  void OnWillBeDestroyed(const PrefetchContainer& prefetch_container) override {
     AddEvent(Event::kObserverOnWillBeDestroyed);
   }
-  void OnGotInitialEligibility(PrefetchContainer& prefetch_container,
+  void OnGotInitialEligibility(const PrefetchContainer& prefetch_container,
                                PreloadingEligibility eligibility) override {
     AddEvent(Event::kObserverOnGotInitialEligibility);
   }
-  void OnDeterminedHead(PrefetchContainer& prefetch_container) override {
+  void OnDeterminedHead(const PrefetchContainer& prefetch_container) override {
     switch (prefetch_container.GetLoadState()) {
       case PrefetchContainer::LoadState::kNotStarted:
       case PrefetchContainer::LoadState::kEligible:
@@ -7302,7 +7302,7 @@ class RecordingPrefetchContainerObserver final
     AddEvent(Event::kObserverOnDeterminedHead);
   }
   void OnPrefetchCompletedOrFailed(
-      PrefetchContainer& prefetch_container,
+      const PrefetchContainer& prefetch_container,
       const network::URLLoaderCompletionStatus& completion_status,
       const std::optional<int>& response_code) override {
     CHECK(prefetch_container.GetLoadState() ==
@@ -7494,8 +7494,9 @@ TEST_P(
 
   // Now `PrefetchServableState` should be `kNotServable` since we don't
   // have a non-redirect response but `PrefetchStreamingURLLoader` is gone.
-  EXPECT_EQ(prefetch_container->GetServableState(base::TimeDelta::Max()),
-            PrefetchServableState::kNotServable);
+  EXPECT_EQ(
+      prefetch_container->GetServableStateForTesting(base::TimeDelta::Max()),
+      PrefetchServableState::kNotServable);
 
   // Start a navigation. The prefetch should not be served.
   std::unique_ptr<NavigationResult> navigation_result =

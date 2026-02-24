@@ -329,11 +329,15 @@ void ServiceWorkerSyntheticResponseManager::StartRequest(
               NetworkTrafficAnnotationTag()));
 }
 
-void ServiceWorkerSyntheticResponseManager::StartSyntheticResponse(
+bool ServiceWorkerSyntheticResponseManager::MaybeStartSyntheticResponse(
     FetchCallback callback) {
-  CHECK_EQ(status_, SyntheticResponseStatus::kReady);
-  TRACE_EVENT("ServiceWorker",
-              "ServiceWorkerSyntheticResponseManager::StartSyntheticResponse");
+  if (status_ != SyntheticResponseStatus::kReady) {
+    return false;
+  }
+
+  TRACE_EVENT(
+      "ServiceWorker",
+      "ServiceWorkerSyntheticResponseManager::MaybeStartSyntheticResponse");
   const auto& response_head = version_->GetResponseHeadForSyntheticResponse();
   CHECK(response_head);
   blink::mojom::FetchAPIResponsePtr response =
@@ -345,12 +349,15 @@ void ServiceWorkerSyntheticResponseManager::StartSyntheticResponse(
       stream_callback_.BindNewPipeAndPassReceiver();
   auto timing = blink::mojom::ServiceWorkerFetchEventTiming::New();
   timing->dispatch_event_time = base::TimeTicks::Now();
+
   std::move(callback).Run(
       blink::ServiceWorkerStatusCode::kOk,
       ServiceWorkerFetchDispatcher::FetchEventResult::kGotResponse,
       std::move(response), std::move(stream_handle), std::move(timing),
       version_);
-  did_start_synthetic_response = true;
+  did_start_synthetic_response_ = true;
+
+  return true;
 }
 
 void ServiceWorkerSyntheticResponseManager::MaybeSetResponseHead(
@@ -505,7 +512,7 @@ void ServiceWorkerSyntheticResponseManager::OnReceiveResponse(
 void ServiceWorkerSyntheticResponseManager::OnReceiveRedirect(
     const net::RedirectInfo& redirect_info,
     network::mojom::URLResponseHeadPtr response_head) {
-  if (did_start_synthetic_response) {
+  if (did_start_synthetic_response_) {
     // If the response is already returned from the stored data, that means the
     // renderer may already have received `OnReceiveResponse`. Sending
     // `OnReceiveRedirect` after `OnReceiveResponse` brings errors in that case.

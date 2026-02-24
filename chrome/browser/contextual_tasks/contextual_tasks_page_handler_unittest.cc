@@ -76,6 +76,7 @@ class MockPage : public mojom::Page {
   MOCK_METHOD(void, OnLensOverlayStateChanged, (bool is_showing), (override));
   MOCK_METHOD(void, ShowErrorPage, (), (override));
   MOCK_METHOD(void, HideErrorPage, (), (override));
+  MOCK_METHOD(void, ShowOauthErrorDialog, (), (override));
 
   mojo::Receiver<mojom::Page> receiver_{this};
 };
@@ -86,6 +87,14 @@ class MockUiService : public ContextualTasksUiService {
       : ContextualTasksUiService(profile, service, nullptr, nullptr) {}
 
   MOCK_METHOD(GURL, GetDefaultAiPageUrl, (), (override));
+  MOCK_METHOD(GURL,
+              GetDefaultAiPageUrlForTask,
+              (const base::Uuid& task_id),
+              (override));
+  MOCK_METHOD(void,
+              SetInitialEntryPointForTask,
+              (const base::Uuid&, omnibox::ChromeAimEntryPoint),
+              (override));
   MOCK_METHOD(std::optional<GURL>,
               GetInitialUrlForTask,
               (const base::Uuid&),

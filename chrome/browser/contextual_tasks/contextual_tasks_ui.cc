@@ -321,6 +321,9 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
                      contextual_tasks::GetAutoSubmitVoiceSearchQuery());
   source->AddBoolean("enableGhostLoader",
                      contextual_tasks::GetIsGhostLoaderEnabled());
+  source->AddBoolean(
+      "forceBasicModeIfOpeningThreadHistory",
+      contextual_tasks::ShouldForceBasicModeIfOpeningThreadHistory());
 
   source->AddString(
       "composeboxSource",
@@ -590,6 +593,12 @@ void ContextualTasksUI::PostMessageToWebview(
     const lens::ClientToAimMessage& message) {
   CHECK(page_handler_);
   page_handler_->PostMessageToWebview(message);
+}
+
+void ContextualTasksUI::ShowOauthErrorDialog() {
+  if (page_) {
+    page_->ShowOauthErrorDialog();
+  }
 }
 
 void ContextualTasksUI::OnInnerWebContentsCreated(

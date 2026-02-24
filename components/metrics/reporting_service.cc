@@ -49,7 +49,6 @@ ReportingService::ReportingService(
       max_retransmit_size_(max_retransmit_size),
       logs_event_manager_(logs_event_manager),
       reporting_active_(false),
-      log_upload_in_progress_(false),
       data_use_tracker_(DataUseTracker::Create(local_state)),
       background_upload_task_id_(background_upload_task_id) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -162,7 +161,7 @@ void ReportingService::OnAppEnterForeground() {
   // but we don't want it to use backoff interval logic since uploads should now
   // start succeeding -- this is handled in OnLogUploadComplete() below.
   if (upload_scheduler_ && upload_scheduler_->IsRunning() &&
-      !log_upload_in_progress_ &&
+      !upload_scheduler_->IsCallbackPending() &&
       failures_started_from_background_.value_or(false)) {
     upload_scheduler_->RestartWithUnsentLogsInterval();
   }
@@ -180,6 +179,9 @@ void ReportingService::SendNextLogWhenPossible() {
   // JobScheduler. See metrics::BackgroundUploadTask for implementation of the
   // background task.
   if (client_->IsJobSchedulerSupported()) {
+    // There should not be two upload tasks scheduled simultaneously.
+    CHECK(background_upload_task_scheduled_time_.is_null());
+    background_upload_task_scheduled_time_ = base::TimeTicks::Now();
     // For consistency with other platforms, we use OneOffInfo (rather than
     // PeriodicInfo), as we have our own scheduling mechanisms. When the task
     // is finished, another upload will be scheduled if necessary.
@@ -193,11 +195,6 @@ void ReportingService::SendNextLogWhenPossible() {
     background_task::TaskInfo task_info(background_upload_task_id_, one_off);
     background_task::BackgroundTaskSchedulerFactory::GetScheduler()->Schedule(
         task_info);
-
-    // There should not be two upload tasks scheduled simultaneously.
-    CHECK(background_upload_task_scheduled_time_.is_null());
-    background_upload_task_scheduled_time_ = base::TimeTicks::Now();
-
     return;
   }
 #endif  // BUILDFLAG(IS_ANDROID)
@@ -273,8 +270,6 @@ void ReportingService::SendStagedLog() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   CHECK(log_store()->has_staged_log());
 
-  CHECK(!log_upload_in_progress_);
-  log_upload_in_progress_ = true;
 #if BUILDFLAG(IS_ANDROID)
   // Keep track of whether the upload was initiated from the background for the
   // backoff reset logic (see feature kResetMetricsUploadBackoffOnForeground).
@@ -408,9 +403,6 @@ void ReportingService::OnLogUploadComplete(
     DVLOG(1) << "Stopping upload_scheduler_.";
     upload_scheduler_->Stop();
   }
-
-  CHECK(log_upload_in_progress_);
-  log_upload_in_progress_ = false;
 
 #if BUILDFLAG(IS_ANDROID)
   // When `server_is_healthy` is false, representing a failure with the upload,

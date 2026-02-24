@@ -43,6 +43,10 @@ BASE_DECLARE_FEATURE(
 // param.
 BASE_DECLARE_FEATURE(kEnableNotifyZeroStateRenderedCapability);
 
+// Enables use of TabListInterfaceObserver in
+// ContextualTasksSidePanelCoordinator.
+BASE_DECLARE_FEATURE(kContextualTasksTabListInterfaceObserver);
+
 // Enum denoting which entry point can show when enabled.
 enum class EntryPointOption {
   kNoEntryPoint,
@@ -137,6 +141,10 @@ extern bool GetIsProtectedPageErrorEnabled();
 
 // Returns if the ghost loader is enabled.
 extern bool GetIsGhostLoaderEnabled();
+
+// Returns if basic mode should be forced when the thread history is opened
+// before the handshake is complete.
+extern bool ShouldForceBasicModeIfOpeningThreadHistory();
 
 // Returns the base URL for the AI page.
 extern std::string GetContextualTasksAiPageUrl();

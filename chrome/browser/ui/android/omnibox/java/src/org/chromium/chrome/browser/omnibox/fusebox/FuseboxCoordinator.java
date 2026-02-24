@@ -28,7 +28,6 @@ import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.omnibox.R;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxAttachmentModelList.FuseboxAttachmentChangeListener;
-import org.chromium.chrome.browser.omnibox.fusebox.FuseboxMetrics.AiModeActivationSource;
 import org.chromium.chrome.browser.omnibox.suggestions.AutocompleteController;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
@@ -94,7 +93,6 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
      * @param profileObservableSupplier The supplier of the current profile.
      * @param tabModelSelectorSupplier The supplier of the tab model selector.
      * @param templateUrlServiceSupplier The supplier of the template URL service.
-     * @param autocompleteRequestTypeSupplier The supplier of the autocomplete request type.
      * @param snackbarManager The snackbar manager to show messages.
      */
     public FuseboxCoordinator(
@@ -158,7 +156,6 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
                         .with(
                                 FuseboxProperties.AUTOCOMPLETE_REQUEST_TYPE,
                                 AutocompleteRequestType.SEARCH)
-                        .with(FuseboxProperties.AUTOCOMPLETE_REQUEST_TYPE_CHANGEABLE, false)
                         // May not be correct, but the view side struggles to deal with a null here.
                         // Init with a default, and it will be corrected by the mediator before it
                         // matters.
@@ -173,25 +170,22 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
 
     @VisibleForTesting
     void onProfileAvailable(Profile profile) {
-        // Reset previous Mediator instance in case we migrate to continuous Profile observing.
         if (mMediator != null) {
             mMediator.destroy();
             mMediator = null;
         }
 
-        mComposeboxQueryControllerBridge = ComposeboxQueryControllerBridge.getForProfile(profile);
+        if (mComposeboxQueryControllerBridge != null) {
+            mComposeboxQueryControllerBridge.destroy();
+        }
+        mComposeboxQueryControllerBridge =
+                ComposeboxQueryControllerBridge.createForProfile(profile);
         AutocompleteController.getForProfile(profile)
                 .setComposeboxQueryControllerBridge(mComposeboxQueryControllerBridge);
         if (mComposeboxQueryControllerBridge == null) return;
 
         // Set the bridge for the model list to enable tight coupling.
         mModelList.setComposeboxQueryControllerBridge(mComposeboxQueryControllerBridge);
-
-        mModel.set(
-                FuseboxProperties.POPUP_CREATE_IMAGE_BUTTON_VISIBLE,
-                mComposeboxQueryControllerBridge.isCreateImagesEligible()
-                        && (OmniboxFeatures.sShowImageGenerationButtonInIncognito.getValue()
-                                || !profile.isIncognitoBranded()));
         mMediator =
                 new FuseboxMediator(
                         mContext,
@@ -235,11 +229,6 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
         if (mMediator == null) return;
         mLastBrandedColorScheme = brandedColorScheme;
         mMediator.updateVisualsForState(brandedColorScheme);
-    }
-
-    public void onAiModeActivatedFromNtp() {
-        if (mMediator == null) return;
-        mMediator.activateAiMode(AiModeActivationSource.NTP_BUTTON);
     }
 
     /**

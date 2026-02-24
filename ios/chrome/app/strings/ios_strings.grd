@@ -1282,7 +1282,7 @@
           Gemini
       </message>
       <message name="IDS_IOS_BWG_PROMO_MAIN_TITLE" desc="Main title text for the Gemini Promo page.">
-          Get answers faster with Gemini in Chrome
+          Do more with Gemini in Chrome
       </message>
       <message name="IDS_IOS_BWG_PROMO_PRIMARY_BUTTON" desc="Primary button text for the Gemini Promo page.">
           Get started
@@ -1291,7 +1291,7 @@
           Cancel
       </message>
       <message name="IDS_IOS_BWG_PROMO_SECOND_BOX_BODY" desc="Second box body text for the Gemini Promo page.">
-          Get key takeaways and insights that help you understand any topic
+          Get an overview and key insights for any page or topic
       </message>
       <message name="IDS_IOS_BWG_PROMO_SECOND_BOX_TITLE" desc="Second box title text for the Gemini Promo page.">
           Summarize
@@ -1466,6 +1466,12 @@
       </message>
       <message name="IDS_IOS_COMPOSEBOX_CREATE_IMAGE_PRO_ACTION" desc="The contextual menu option instructing the input plate to use the image generation tool when the advanced model is being used. [iOS only].">
         Create image Pro
+      </message>
+      <message name="IDS_IOS_COMPOSEBOX_DEEP_SEARCH_ACTION" desc="The contextual menu option for opening the tool that helps users perform complex research tasks. [iOS only].">
+        Deep Search
+      </message>
+      <message name="IDS_IOS_COMPOSEBOX_DEEP_SEARCH_ENABLED_PLACEHOLDER" desc="The placeholder to show when Deep Search is enabled and no user text was added.">
+        Research anything
       </message>
       <message name="IDS_IOS_COMPOSEBOX_DELETE_ATTACHMENT_ACCESSIBILITY_CUSTOM_ACTION" desc="The name of the custom accessibility action for that deletes a previously added attachment from the list of attachments in the AIM Composebox. [iOS only].">
         Delete attachment
@@ -1777,6 +1783,9 @@
       </message>
       <message name="IDS_IOS_CONTENT_SUGGESTIONS_PIN_SITE" desc="The name of the 'Pin Site' command in the Content Suggestions articles context menu">
         Pin site
+      </message>
+      <message name="IDS_IOS_CONTENT_SUGGESTIONS_PIN_SITE_ACCESSIBILITY_LABEL" desc="Content description for the most visited item that indicates that it is a pinned site.">
+          <ph name="WEBSITE_TITLE"><ex>Google</ex>$1</ph>, pinned site
       </message>
       <message name="IDS_IOS_CONTENT_SUGGESTIONS_PIN_SITE_ADD_PINNED_SITE_APPLY_BUTTON" desc="The top-right button of form for the user to add a pinned site. Tapping this button will close the form and add the filled information as a pinned site to the most visited tiles [Length: 7em]">
         Add
@@ -4877,6 +4886,9 @@ Handoff must also be enabled in the General section of Settings, and your device
       <message name="IDS_IOS_PASSKEY_CREATION_DATE" desc="Passkey creation date. [iOS only]">
         Created on <ph name="Date"><ex>2023/12/31</ex>$1</ph>
       </message>
+      <message name="IDS_IOS_PASSKEY_CREATION_START_REAUTH_REASON" desc="Message explaining that the reason why we are requiring the user to re-authenticate is to be able to create a passkey. This is shown by iOS in the Touch ID reauthentication system dialogue, right under the OS string 'Touch ID for $BROWSER_NAME'.">
+        Verify it's you to create a passkey
+      </message>
       <message name="IDS_IOS_PASSKEY_DOES_NOT_WORK" desc="Label indicating that the passkey was marked for deletion and does not work anymore. [iOS only]">
         Doesn't work
       </message>
@@ -5491,6 +5503,24 @@ Handoff must also be enabled in the General section of Settings, and your device
       </message>
       <message name="IDS_IOS_PRICE_NOTIFICATIONS_SETTINGS_ALERT_TITLE" desc="Title for Price Notifications UI Alert Prompt displayed from the settings menu that redirects the user to the iOS push notifications permission page.">
           Turn on price alerts?
+      </message>
+      <message name="IDS_IOS_PRICE_TRACKING_PROMO_KEEP_BROWSING_BUTTON" desc="The text of the Keep browsing button on the Price Tracking promo.">
+          Keep browsing
+      </message>
+      <message name="IDS_IOS_PRICE_TRACKING_PROMO_MOCK_NOTIFICATION_SUBTITLE" desc="The subtitle of the mock price tracking notification on the Price Tracking animation.">
+          Your item is now 15% off
+      </message>
+      <message name="IDS_IOS_PRICE_TRACKING_PROMO_MOCK_NOTIFICATION_TITLE" desc="The title of the mock price tracking notification on the Price Tracking animation.">
+          Price drop on your tracked product
+      </message>
+      <message name="IDS_IOS_PRICE_TRACKING_PROMO_SUBTITLE" desc="Subtitle of the full screen Price Tracking promo that encourages users to turn on price tracking alerts.">
+          Track prices and get alerts when the price drops on any site
+      </message>
+      <message name="IDS_IOS_PRICE_TRACKING_PROMO_TITLE" desc="Title of the full screen Price Tracking promo that encourages users to turn on price tracking alerts.">
+          Don't miss a price drop
+      </message>
+      <message name="IDS_IOS_PRICE_TRACKING_PROMO_TURN_ON_NOTIFICATIONS_BUTTON" desc="The text of the Turn on notifications button on the Price Tracking promo.">
+          Turn on notifications
       </message>
       <message name="IDS_IOS_PRINT_PDF_ERROR_SUBTITLE" desc="Message of a popup window indicating that the printing operation did not succeed. [Length: 100em] [iOS only]">
         Make sure you have a network connection, and try again.
