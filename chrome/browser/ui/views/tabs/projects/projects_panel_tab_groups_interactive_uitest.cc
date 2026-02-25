@@ -143,7 +143,8 @@ class ProjectsPanelTabGroupsInteractiveUiTest : public InteractiveBrowserTest {
 };
 
 // TODO(crbug.com/481446933): Flaky on Windows.
-#if BUILDFLAG(IS_WIN)
+// TODO(crbug.com/40759171): Flaky on Linux.
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX)
 #define MAYBE_MoreButtonVisibilityOnHover DISABLED_MoreButtonVisibilityOnHover
 #else
 #define MAYBE_MoreButtonVisibilityOnHover MoreButtonVisibilityOnHover
@@ -212,7 +213,27 @@ IN_PROC_BROWSER_TEST_F(ProjectsPanelTabGroupsInteractiveUiTest,
 }
 
 IN_PROC_BROWSER_TEST_F(ProjectsPanelTabGroupsInteractiveUiTest,
-                       MoreButtonClickShowsMenu) {
+                       ClickGroupResumesGroup) {
+  RunTestSequence(
+      WaitForShow(kVerticalTabStripTopContainerElementId),
+      AddTabGroup(u"Test Group"), OpenProjectsPanel(),
+      WaitForShow(kProjectsPanelTabGroupsItemViewElementId), Do([this]() {
+        EXPECT_CALL(*mock_tab_group_service_,
+                    OpenTabGroup(mock_groups_[0].saved_guid(), testing::_))
+            .WillOnce(testing::Return(std::nullopt));
+      }),
+      MoveMouseTo(kProjectsPanelTabGroupsItemViewElementId), ClickMouse(),
+      WaitForHide(kProjectsPanelViewElementId));
+}
+
+// TODO(crbug.com/40759171): Flaky on Linux.
+#if BUILDFLAG(IS_LINUX)
+#define MAYBE_MoreButtonClickShowsMenu DISABLED_MoreButtonClickShowsMenu
+#else
+#define MAYBE_MoreButtonClickShowsMenu MoreButtonClickShowsMenu
+#endif
+IN_PROC_BROWSER_TEST_F(ProjectsPanelTabGroupsInteractiveUiTest,
+                       MAYBE_MoreButtonClickShowsMenu) {
   RunTestSequence(
       WaitForShow(kVerticalTabStripTopContainerElementId),
       AddTabGroup(u"Test Group"), OpenProjectsPanel(),

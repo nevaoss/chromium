@@ -595,6 +595,16 @@ bool TabListBridge::IsThisTabListEditable() {
   return delegate->IsTabStripEditable();
 }
 
+bool TabListBridge::IsClosingAllTabs() {
+  return tab_strip_->closing_all();
+}
+
+void TabListBridge::WillCloseAllTabs(TabStripModel* model) {
+  for (auto& observer : observers_) {
+    observer.OnAllTabsAreClosing(*this);
+  }
+}
+
 // static
 // From //chrome/browser/ui/tabs/tab_list_interface.h
 TabListInterface* TabListInterface::From(

@@ -260,7 +260,7 @@ void AddIntAttribute(const AXObject* obj,
                      int min_value = INT_MIN) {
   const AtomicString& value = obj->AriaAttribute(attr_name);
   if (!value.empty()) {
-    int value_as_int = value.ToInt();
+    int value_as_int = StringToInt(value).value_or(0);
     if (value_as_int >= min_value) {
       node_data->AddIntAttribute(node_data_attr, value_as_int);
     }
@@ -1007,7 +1007,7 @@ bool AXObject::AriaIntAttribute(const QualifiedName& attribute,
     return false;
   }
 
-  int int_value = value.ToInt();
+  int int_value = StringToInt(value).value_or(0);
   int value_if_less_than_1 = 1;
 
   if (attribute == html_names::kAriaSetsizeAttr) {
@@ -5837,7 +5837,19 @@ ax::mojom::blink::Role AXObject::RawAriaRole() const {
 }
 
 ax::mojom::blink::Role AXObject::DetermineRawAriaRole() const {
-  const AtomicString& aria_role = AriaAttribute(html_names::kRoleAttr);
+  const Element* element = GetElement();
+  if (!element) {
+    return ax::mojom::blink::Role::kUnknown;
+  }
+  return DetermineRawAriaRole(*element);
+}
+
+// static
+ax::mojom::blink::Role AXObject::DetermineRawAriaRole(const Element& element) {
+  // Only consult the explicit role attribute so callers can opt into ARIA
+  // semantics without picking up any native or implicit roles.
+  const AtomicString& aria_role =
+      AXObject::AriaAttribute(element, html_names::kRoleAttr);
   if (aria_role.empty()) {
     return ax::mojom::blink::Role::kUnknown;
   }
@@ -8043,8 +8055,7 @@ bool AXObject::SupportsNameFromContents(bool recursive,
       // objects should return false for now.
       // TODO(crbug.com/443106926): investigate whether other Group objects
       // should be eligible in the future.
-      if (!::features::IsAXObjectSupportsNameFromAddressContentEnabled() ||
-          !GetNode()->HasTagName(html_names::kAddressTag)) {
+      if (!GetNode()->HasTagName(html_names::kAddressTag)) {
         return false;
       }
       [[fallthrough]];

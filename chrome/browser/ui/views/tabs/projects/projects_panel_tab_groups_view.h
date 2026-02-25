@@ -19,6 +19,7 @@ class ActionItem;
 namespace views {
 class ActionViewController;
 class Label;
+class LabelButton;
 }  // namespace views
 
 class ProjectsPanelNoTabGroupsView;
@@ -32,6 +33,8 @@ class ProjectsPanelTabGroupsView : public views::View {
   ProjectsPanelTabGroupsView(
       actions::ActionItem* root_action_item,
       views::ActionViewController* action_view_controller,
+      ProjectsPanelTabGroupsItemView::TabGroupPressedCallback
+          tab_group_button_callback = base::DoNothing(),
       ProjectsPanelTabGroupsItemView::MoreButtonPressedCallback
           more_button_callback = base::DoNothing());
   ProjectsPanelTabGroupsView(const ProjectsPanelTabGroupsView&) = delete;
@@ -47,10 +50,13 @@ class ProjectsPanelTabGroupsView : public views::View {
   }
 
  private:
+  ProjectsPanelTabGroupsItemView::TabGroupPressedCallback
+      tab_group_button_callback_;
   ProjectsPanelTabGroupsItemView::MoreButtonPressedCallback
       more_button_callback_;
   raw_ptr<views::Label> title_ = nullptr;
-  std::vector<raw_ptr<ProjectsPanelTabGroupsItemView>> item_views_;
+  raw_ptr<views::LabelButton> create_new_tab_group_button_ = nullptr;
+
   raw_ptr<ProjectsPanelNoTabGroupsView> no_tab_groups_view_ = nullptr;
 };
 

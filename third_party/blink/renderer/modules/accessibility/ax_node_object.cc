@@ -227,6 +227,12 @@ const ScrollMarkerPseudoElement* GetScrollMarker(const Node* node) {
   if (!element) {
     return nullptr;
   }
+  // Don't try to get scroll marker for the locked elements,
+  // as their style might not have been updated.
+  if (DisplayLockUtilities::IsDisplayLockedPreventingPaint(
+          element, /*inclusive_check=*/true)) {
+    return nullptr;
+  }
   return DynamicTo<ScrollMarkerPseudoElement>(
       element->GetPseudoElement(kPseudoIdScrollMarker));
 }
@@ -3524,7 +3530,7 @@ int AXNodeObject::HeadingLevel() const {
 
   if (RoleValue() == ax::mojom::blink::Role::kHeading) {
     const String& implicit_value = GetImplicitAriaLevel(RoleValue());
-    return implicit_value.empty() ? 0 : implicit_value.ToInt();
+    return implicit_value.empty() ? 0 : StringToInt(implicit_value).value_or(0);
   }
 
   // TODO(accessibility) For kDisclosureTriangle, kDisclosureTriangleGrouping,

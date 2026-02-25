@@ -127,7 +127,8 @@ public class SnackbarTest {
                                     null,
                                     ((BlankUiTestActivity) sActivity).getModalDialogManager());
                     mManager.isShowingSupplier()
-                            .addObserver((showing) -> mShowingHelper.notifyCalled());
+                            .addSyncObserverAndPostIfNonNull(
+                                    (showing) -> mShowingHelper.notifyCalled());
                     mManager.dismissAllSnackbars();
                     AccessibilityState.setIsPerformGesturesEnabledForTesting(false);
                 });
@@ -194,6 +195,7 @@ public class SnackbarTest {
 
     @Test
     @SmallTest
+    @DisabledTest(message = "https://crbug.com/458057621")
     public void testPersistentQueueStackOrder() {
         final Snackbar stackbar =
                 Snackbar.make(

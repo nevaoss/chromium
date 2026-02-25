@@ -1628,9 +1628,7 @@ void LayerContextImpl::SetNeedsPrepareTilesOnImplThread() {
   NOTREACHED();
 }
 
-void LayerContextImpl::SetNeedsCommitOnImplThread(bool urgent) {
-  NOTIMPLEMENTED();
-}
+void LayerContextImpl::SetNeedsCommitOnImplThread(bool urgent) {}
 
 void LayerContextImpl::SetVideoNeedsBeginFrames(bool needs_begin_frames) {}
 void LayerContextImpl::DidChangeBeginFrameSourcePaused(bool paused) {}

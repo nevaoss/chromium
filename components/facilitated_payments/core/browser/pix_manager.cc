@@ -31,6 +31,9 @@ namespace {
 static constexpr base::TimeDelta kProgressScreenDismissDelay = base::Seconds(2);
 static constexpr FacilitatedPaymentsType kPaymentsType =
     FacilitatedPaymentsType::kPix;
+// Experiment and control IDs for iframe.
+constexpr int64_t kIframeExperimentId = 3397365;
+constexpr int64_t kIframeControlId = 3397366;
 
 PixCodeValidationResult ConvertPixQrCodeTypeToValidationResult(
     base::expected<mojom::PixQrCodeType, std::string> pix_qr_code_type) {
@@ -92,13 +95,25 @@ void PixManager::OnPixCodeCopiedToClipboard(
   pix_code_copied_timestamp_ = base::TimeTicks::Now();
   ukm_source_id_ = ukm_source_id;
   LogPixCodeCopied(ukm_source_id_);
+  // TODO(crbug.com/479520609): Stop populating experiment IDs once backend
+  // experiment is fully enabled without the integrator trigger.
+  if (base::FeatureList::IsEnabled(kEnableIframeForPix)) {
+    initiate_payment_request_details_->chrome_experiment_ids_.push_back(
+        kIframeExperimentId);
+  } else {
+    initiate_payment_request_details_->chrome_experiment_ids_.push_back(
+        kIframeControlId);
+  }
   // If the copy event happened inside an iframe, check whether the iframe URL
   // is allowlisted. Otherwise, check whether the main frame URL is allowlisted.
   if (iframe_url.has_value()) {
     if (!IsIframeUrlAllowlisted(iframe_url.value())) {
-      // TODO(crbug.com/479520609): Log pix flow exited reason.
+      // The iframe URL is not part of the allowlist, ignore the copy event.
+      LogPixFlowExitedReason(PixFlowExitedReason::kIframeUrlNotAllowlisted);
       return;
     }
+    // Set psp hostname to initiate payment request details.
+    initiate_payment_request_details_->psp_hostname_ = iframe_url->GetHost();
   } else if (!IsMerchantAllowlisted(main_frame_url)) {
     // The merchant is not part of the allowlist, ignore the copy event.
     LogPixFlowExitedReason(PixFlowExitedReason::kMerchantNotAllowlisted);

@@ -6,7 +6,6 @@
 
 #include <string>
 #include <unordered_map>
-#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -174,6 +173,7 @@ std::string GetDebugJSONForClusters(
   return debug_string;
 }
 
+<<<<<<< HEAD
 template <typename T>
 std::string GetDebugJSONForUrlKeywordSet(
     const std::unordered_set<T>& keyword_set) {
@@ -202,6 +202,8 @@ template std::string GetDebugJSONForUrlKeywordSet<std::u16string>(
 template std::string GetDebugJSONForUrlKeywordSet<std::string>(
     const std::unordered_set<std::string>&);
 
+=======
+>>>>>>> 146.0.7680.0~1
 std::string GetDebugJSONForKeywordMap(
     const std::unordered_map<std::u16string, history::ClusterKeywordData>&
         keyword_to_data_map) {

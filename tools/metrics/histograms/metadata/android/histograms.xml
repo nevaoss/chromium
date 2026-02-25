@@ -990,7 +990,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.BackPress.Backfalsing2" enum="NavigationDirection"
-    expires_after="2026-02-09">
+    expires_after="2026-08-09">
   <owner>eleanorlee@google.com</owner>
   <owner>lazzzis@chromium.org</owner>
   <owner>clank-app-team@google.com</owner>
@@ -7638,6 +7638,17 @@ chromium-metrics-reviews@google.com.
     app or from the OS or from calling setWebContentsDebuggingEnabled(true).
     This is logged each time the MetricsService uploads metrics. Warning: this
     histogram was expired from 2025-05-18 to 2025-07-25; data may be missing.
+  </summary>
+</histogram>
+
+<histogram name="Android.WebView.IsInstantApp" enum="Boolean"
+    expires_after="2026-07-01">
+  <owner>peter@chromium.org</owner>
+  <owner>src/android_webview/OWNERS</owner>
+  <summary>
+    Records whether WebView is running in an Instant App. This is emitted once
+    during WebView global initialization. Recorded in an internal repository, so
+    code references might be missing.
   </summary>
 </histogram>
 

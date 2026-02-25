@@ -11,6 +11,7 @@
 #include "base/test/run_until.h"
 #include "chrome/browser/media/webrtc/media_capture_devices_dispatcher.h"
 #include "chrome/browser/performance_manager/public/user_tuning/user_performance_tuning_manager.h"
+#include "chrome/browser/tab_group_sync/tab_group_sync_service_factory.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
@@ -22,14 +23,15 @@
 #include "chrome/browser/ui/tabs/tab_network_state.h"
 #include "chrome/browser/ui/tabs/tab_renderer_data.h"
 #include "chrome/browser/ui/views/interaction/browser_elements_views.h"
-#include "chrome/browser/ui/views/tabs/tab_close_button.h"
-#include "chrome/browser/ui/views/tabs/tab_icon.h"
+#include "chrome/browser/ui/views/tabs/tab/tab_close_button.h"
+#include "chrome/browser/ui/views/tabs/tab/tab_icon.h"
 #include "chrome/browser/ui/views/tabs/vertical/root_tab_collection_node.h"
 #include "chrome/browser/ui/views/tabs/vertical/tab_collection_node.h"
 #include "chrome/browser/ui/views/test/vertical_tabs_browser_test_mixin.h"
 #include "chrome/grit/generated_resources.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/ui_test_utils.h"
+#include "components/data_sharing/public/features.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_contents_observer.h"
 #include "content/public/common/url_constants.h"
@@ -539,4 +541,68 @@ IN_PROC_BROWSER_TEST_F(VerticalTabViewTest, LogsTabCloseMetrics_SplitView) {
 
   EXPECT_EQ(user_action_tester.GetActionCount("CloseTab_NoAlertIndicator"), 1);
   EXPECT_EQ(user_action_tester.GetActionCount("CloseTab_EndTabInSplit"), 1);
+}
+
+class VerticalTabViewDataSharingEnabledTest : public VerticalTabViewTest {
+ public:
+  const std::vector<base::test::FeatureRefAndParams> GetEnabledFeatures()
+      override {
+    return {{tabs::kVerticalTabs, {}},
+            {data_sharing::features::kDataSharingFeature, {}}};
+  }
+
+ private:
+  // Disable animations so that tabs can be immediately clicked after being
+  // added to a group.
+  const gfx::AnimationTestApi::RenderModeResetter disable_rich_animations_ =
+      gfx::AnimationTestApi::SetRichAnimationRenderMode(
+          gfx::Animation::RichAnimationRenderMode::FORCE_DISABLED);
+};
+
+IN_PROC_BROWSER_TEST_F(VerticalTabViewDataSharingEnabledTest,
+                       LogsTabSwitchMetrics) {
+  base::UserActionTester user_action_tester;
+  base::HistogramTester histogram_tester;
+
+  // Add the initial tab to a group, then add a new tab.
+  tab_strip_model()->AddToNewGroup({0});
+  AppendTab();
+
+  // Get the view for the initial tab that is in a group.
+  tabs::TabInterface* tab = tab_strip_model()->GetTabAtIndex(0);
+  TabCollectionNode* tab_node =
+      unpinned_collection_node()
+          ->GetChildNodeOfType(TabCollectionNode::Type::GROUP)
+          ->GetNodeForHandle(tab->GetHandle());
+  VerticalTabView* tab_view =
+      views::AsViewClass<VerticalTabView>(tab_node->view());
+
+  // Ensure that the group is a saved tab group.
+  tab_groups::TabGroupSyncService* tab_group_service =
+      tab_groups::TabGroupSyncServiceFactory::GetForProfile(GetProfile());
+  tab_group_service->MakeTabGroupSharedForTesting(
+      tab->GetGroup().value(), syncer::CollaborationId("collaboration_id"));
+
+  ASSERT_EQ(1, tab_strip_model()->active_index());
+  ASSERT_EQ(
+      0, histogram_tester.GetBucketCount("TabStrip.Tab.Views.ActivationAction",
+                                         TabActivationTypes::kTab));
+  ASSERT_EQ(0, user_action_tester.GetActionCount("TabGroups_SwitchGroupedTab"));
+  ASSERT_EQ(0, user_action_tester.GetActionCount(
+                   "TabGroups.Shared.SwitchGroupedTab"));
+  ASSERT_EQ(0, user_action_tester.GetActionCount("SwitchTab_Click"));
+
+  ui::test::EventGenerator event_generator(
+      views::GetRootWindow(browser()->GetBrowserView().GetWidget()),
+      browser()->GetBrowserView().GetNativeWindow());
+  event_generator.MoveMouseTo(tab_view->GetBoundsInScreen().CenterPoint());
+  event_generator.ClickLeftButton();
+
+  EXPECT_EQ(0, tab_strip_model()->active_index());
+  histogram_tester.ExpectBucketCount("TabStrip.Tab.Views.ActivationAction",
+                                     TabActivationTypes::kTab, 1);
+  EXPECT_EQ(1, user_action_tester.GetActionCount("TabGroups_SwitchGroupedTab"));
+  EXPECT_EQ(1, user_action_tester.GetActionCount(
+                   "TabGroups.Shared.SwitchGroupedTab"));
+  EXPECT_EQ(1, user_action_tester.GetActionCount("SwitchTab_Click"));
 }

@@ -8,6 +8,7 @@
 #include "ui/views/layout/delegating_layout_manager.h"
 #include "ui/views/view.h"
 
+class TabStripComboButton;
 class TabStripFlatEdgeButton;
 class BrowserWindowInterface;
 
@@ -50,11 +51,13 @@ class VerticalTabStripTopContainer : public views::View,
   views::LabelButton* AddTopContainerChildButtonFor(
       actions::ActionId action_id);
   // Creates FlatEdgeButton (Tab Groups & Tab Search).
-  TabStripFlatEdgeButton* AddFlatEdgeChildButtonFor(
+  std::unique_ptr<TabStripFlatEdgeButton> CreateFlatEdgeButtonFor(
       actions::ActionId action_id);
 
-  TabStripFlatEdgeButton* GetTabSearchButton() { return tab_search_button_; }
+  TabStripComboButton* GetComboButton();
+  TabStripFlatEdgeButton* GetTabSearchButton();
   views::LabelButton* GetCollapseButton() { return collapse_button_; }
+  views::LabelButton* GetUnfocusButton() { return unfocus_button_; }
 
   bool IsPositionInWindowCaption(const gfx::Point& point);
 
@@ -69,19 +72,17 @@ class VerticalTabStripTopContainer : public views::View,
  private:
   void ShowEverythingMenu();
 
+  void UpdateComboButtonVisibility();
+
   void OnCollapsedStateChanged(
       tabs::VerticalTabStripStateController* controller);
-
-  // This method updates the flat edges of the tab search and tab group buttons
-  // according to the collapsed state.
-  void UpdateButtonStyles(tabs::VerticalTabStripStateController* controller);
 
   raw_ptr<tabs::VerticalTabStripStateController> state_controller_ = nullptr;
   raw_ptr<actions::ActionItem> root_action_item_ = nullptr;
   raw_ptr<BrowserWindowInterface> browser_ = nullptr;
-  raw_ptr<TabStripFlatEdgeButton> tab_search_button_ = nullptr;
-  raw_ptr<TabStripFlatEdgeButton> tab_group_button_ = nullptr;
+  raw_ptr<TabStripComboButton> combo_button_ = nullptr;
   raw_ptr<views::LabelButton> collapse_button_ = nullptr;
+  raw_ptr<views::LabelButton> unfocus_button_ = nullptr;
 
   raw_ptr<views::MenuButtonController> everything_menu_controller_ = nullptr;
 

@@ -18,7 +18,6 @@ import type {Uuid} from 'chrome://resources/mojo/mojo/public/mojom/base/uuid.moj
 import {getCss} from './app.css.js';
 import {getHtml} from './app.html.js';
 import type {ContextualTasksComposeboxElement} from './composebox.js';
-import type {ContextualTasksErrorDialogElement} from './error_dialog.js';
 import type {BrowserProxy} from './contextual_tasks_browser_proxy.js';
 import {BrowserProxyImpl} from './contextual_tasks_browser_proxy.js';
 import {PostMessageHandler} from './post_message_handler.js';
@@ -42,7 +41,6 @@ export interface ContextualTasksAppElement {
     composebox: ContextualTasksComposeboxElement,
     composeboxHeaderWrapper: HTMLElement,
     composeboxHeader: HTMLElement,
-    errorDialog: ContextualTasksErrorDialogElement,
     flexCenterContainer: HTMLElement,
   };
 }
@@ -147,12 +145,18 @@ export class ContextualTasksAppElement extends CrLitElement {
         type: Boolean,
         reflect: true,
       },
+      enableBasicModeZOrder_: {
+        type: Boolean,
+        reflect: true,
+      },
     };
   }
 
   accessor enableNativeZeroStateSuggestions: boolean =
       loadTimeData.getBoolean('enableNativeZeroStateSuggestions');
   private browserProxy_: BrowserProxy = BrowserProxyImpl.getInstance();
+  protected accessor enableBasicModeZOrder_: boolean =
+      loadTimeData.getBoolean('enableBasicModeZOrder');
   protected accessor isAiPage_: boolean = true;
   protected accessor isLensOverlayShowing_: boolean = false;
   // Indicates if in tab mode. Most start in a tab.
@@ -263,7 +267,6 @@ export class ContextualTasksAppElement extends CrLitElement {
       }),
       callbackRouter.showOauthErrorDialog.addListener(() => {
         this.isErrorDialogVisible_ = true;
-        this.$.errorDialog.showDialog();
       }),
     ];
 

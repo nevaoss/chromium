@@ -599,6 +599,10 @@
       base_feature: "none",
     },
     {
+      name: "ApproximateGeolocationWebVisibleAPI",
+      depends_on: ["ApproximateGeolocationPermission"],
+    },
+    {
       name: "AppTitle",
       status: "experimental",
       origin_trial_feature_name: "AppTitle",
@@ -639,6 +643,11 @@
       // Same for the transition to "suspended" after suspend() is called.
       // https://webaudio.github.io/web-audio-api/#AudioContext-constructors
       name: "AudioContextAsyncStateTransitions",
+      status: "experimental",
+    },
+    {
+      // AudioContext.playbackStats interface.
+      name: "AudioContextPlaybackStats",
       status: "experimental",
     },
     {
@@ -713,11 +722,6 @@
       // there is no need to collapse the whitespace between them.
       // https://crbug.com/406053617
       name: "AvoidNormalizingVisiblePositionsWhenStartEqualsEnd",
-      status: "stable",
-    },
-    {
-      // Killswitch for https://crbug.com/40947850.
-      name: "BackdropRootForClipPathWithBackdropFilter",
       status: "stable",
     },
     // When enabled, enforces new interoperable semantics for 3D transforms.
@@ -1514,27 +1518,6 @@
       status: "experimental",
     },
     {
-      // CSS if() function for custom properties. Flag is used only for media
-      // queries support in conditions.
-      // https://drafts.csswg.org/css-values-5/#if-notation.
-      name: "CSSInlineIfForMediaQueries",
-      status: "stable",
-    },
-    {
-      // CSS if() function for custom properties. Flag is used only for style
-      // queries support in conditions.
-      // https://drafts.csswg.org/css-values-5/#if-notation.
-      name: "CSSInlineIfForStyleQueries",
-      status: "stable",
-    },
-    {
-      // CSS if() function for custom properties. Flag is used only for supports
-      // queries support in conditions.
-      // https://drafts.csswg.org/css-values-5/#if-notation.
-      name: "CSSInlineIfForSupportsQueries",
-      status: "stable",
-    },
-    {
       // https://chromestatus.com/feature/6289894144212992
       name: "CSSKeyframesRuleLength",
       status: "stable",
@@ -1758,6 +1741,15 @@
       status: "stable",
     },
     {
+      // https://chromestatus.com/feature/5153932394102784
+      name: "CSSSupportsNamedFeatureFunction",
+      // TODO(https://crbug.com/353715317): Before shipping this feature, we
+      // should decide whether to remove the "align-content-on-display-block"
+      // named feature (which is so far the only CSSWG-resolved feature name)
+      // since it's probably too late for it to be useful.
+      status: "experimental",
+    },
+    {
       // Allows the CSS "accent-color" property to support the system accent color as the default option.
       name: "CSSSystemAccentColor",
       status: {
@@ -1906,10 +1898,6 @@
       status: "test",
     },
     {
-      name: "DesktopPWAsSubApps",
-      status: "test",
-    },
-    {
       name: "DeviceAttributes",
       status: {
         "ChromeOS": "stable",
@@ -2004,6 +1992,12 @@
     {
       name: "DisableDocumentBeingDestroyed",
       status: "stable",
+    },
+    {
+      // Switch from ellipsis to clip when a container is scrolled.
+      // This shipped in M146 and the flag can be removed in M148.
+      name: "DisableEllipsisWhenScrolled",
+      status: "experimental",
     },
     {
       name: "DisableReduceAcceptLanguage",
@@ -2176,6 +2170,13 @@
     },
     {
       name: "DocumentWrite",
+    },
+    {
+      // DOMActivate event inherits bubbles from the underlying event to
+      // prevent activation behavior of parent elements when it doesn't bubble.
+      // crbug.com/41431966
+      name: "DOMActivateBubblesInheritance",
+      status: "stable",
     },
     {
       name: "DOMPartsAPI",
@@ -3155,8 +3156,9 @@
       base_feature: "none",
     },
     {
+      // https://chromestatus.com/feature/5152834368700416
       name: "InstallElement",
-      status: "experimental"
+      status: {"Android": "", "default": "test"},
     },
     {
       name: "InstallOnDeviceSpeechRecognition",
@@ -3361,6 +3363,12 @@
       public: true,
     },
     {
+      name: "LoginElement",
+      depends_on: ["FedCm"],
+      status: "experimental",
+      base_feature: "none",
+    },
+    {
       // Enable sourceCharPosition for the invoke-type resolve-promise
       // https://issues.chromium.org/issues/381529126
       name: "LongAnimationFrameSourceCharPosition",
@@ -3426,6 +3434,11 @@
       public: true,
       status: "test",
       base_feature: "none",
+    },
+    {
+      // CSS margin-trim property: https://drafts.csswg.org/css-box-4/#margin-trim
+      name: "MarginTrim",
+      status: "experimental",
     },
     {
       name: "MaskDeserializationTimeForCrossOriginMessages",
@@ -3636,7 +3649,7 @@
     },
     {
       name: "NavigateEventAddHandlerOnPrecommit",
-      status: "experimental",
+      status: "stable",
     },
     {
       name: "NavigateEventCanTransition",
@@ -4073,7 +4086,6 @@
       public: true,
       base_feature_status: "enabled",
       copied_from_base_feature_if: "overridden",
-      implied_by: ["InstallElement"],
     },
     {
       name: "Permissions",
@@ -4621,7 +4633,7 @@
       // Spec: https://wicg.github.io/sanitizer-api/
       // Tracking bug: crbug.com/356601280
       name: "SanitizerAPI",
-      status: "experimental",
+      status: "stable",
     },
     {
       // https://wicg.github.io/webcomponents/proposals/Scoped-Custom-Element-Registries
@@ -4630,7 +4642,7 @@
       // https://github.com/whatwg/html/pull/10869
       // https://github.com/whatwg/dom/pull/1341
       name: "ScopedCustomElementRegistry",
-      status: "experimental",
+      status: "stable",
     },
     {
       // https://github.com/WICG/view-transitions/blob/main/scoped-transitions.md
@@ -4660,14 +4672,6 @@
       public: true,
       status: "stable",
       base_feature: "none",
-    },
-    {
-      // crbug.com/378692756
-      name: "ScriptRunIteratorCombiningMarkAlways",
-      status: "stable",
-    },
-    {
-      name: "ScriptRunIteratorCombiningMarks",
     },
     {
       name: "ScrollAnchorPriorityCandidateSubtree",
@@ -4884,14 +4888,6 @@
       // https://chromestatus.com/feature/5412736871825408
       // https://issues.chromium.org/issues/439964654
       name: "SelectMobileDesktopParity",
-      status: "stable",
-    },
-    {
-      // Removes the forced overflow:hidden rules on the select element's
-      // InnerElement unless the author specifies text-overflow:ellipsis. May
-      // cause text to overlap with the dropdown indicator.
-      // https://issues.chromium.org/issues/40805967
-      name: "SelectRemoveOverflowHidden",
       status: "stable",
     },
     {
@@ -5202,6 +5198,10 @@
     {
       name: "StylusHandwriting",
       base_feature: "none",
+    },
+    {
+      name: "SubApps",
+      status: "test",
     },
     {
       name: "Svg2Cascade",
@@ -5702,6 +5702,10 @@
       status: "stable"
     },
     {
+      name: "UseLargestPaintedImageForLCPCandidate",
+      status: "stable",
+    },
+    {
       // Android currently uses low-quality interpolation, while other platforms
       // default to medium-quality. This flag is for experimenting with changing
       // the value on Android. See: https://crbug.com/374315986.
@@ -5865,6 +5869,12 @@
       origin_trial_os: ["win", "mac", "linux", "chromeos"],
       status: "experimental",
       base_feature: "none",
+    },
+    {
+      // If enabled, form controls will only render the OS accent color in a
+      // web app context.
+      name: "WebAppScopeSystemAccentColor",
+      status: "experimental",
     },
     {
       name: "WebAppTabStrip",
@@ -6136,6 +6146,7 @@
     },
     {
       name: "WebMCP",
+      implied_by: ["WebMCPTesting"],
       status: "experimental",
     },
     {

@@ -872,6 +872,10 @@ void HTMLElement::AttributeChanged(const AttributeModificationParams& params) {
     return;
   }
 
+  if (params.reason != AttributeModificationReason::kDirectly) {
+    return;
+  }
+
   if (params.name == html_names::kCommandAttr) {
     bool old_is_overscroll = IsOverscrollCommand(
         GetCommandEventType(params.old_value, GetExecutionContext()));
@@ -901,8 +905,6 @@ void HTMLElement::AttributeChanged(const AttributeModificationParams& params) {
     }
   }
 
-  if (params.reason != AttributeModificationReason::kDirectly)
-    return;
   // adjustedFocusedElementInTreeScope() is not trivial. We should check
   // attribute names, then call adjustedFocusedElementInTreeScope().
   if (params.name == html_names::kHiddenAttr && !params.new_value.IsNull()) {
@@ -1688,6 +1690,11 @@ void HTMLElement::ShowPopoverInternal(Element* invoker,
     // :popover-open https://issues.chromium.org/issues/375004874
     OwnerShadowHost()->PseudoStateChanged(CSSSelector::kPseudoOpen);
   }
+  if (IsA<HTMLMenuItemElement>(invoker)) {
+    // There are some edge cases where :open doesn't change here, but in
+    // practice this basically means it's changing.
+    invoker->PseudoStateChanged(CSSSelector::kPseudoOpen);
+  }
 
   CHECK(!original_document.AllOpenPopovers().Contains(this));
   original_document.AllOpenPopovers().insert(this);
@@ -2127,6 +2134,11 @@ PopoverHideResult HTMLElement::HidePopoverInternal(
     // invalidate the select element's :open pseudo-class at the same time as
     // :popover-open https://issues.chromium.org/issues/375004874
     OwnerShadowHost()->PseudoStateChanged(CSSSelector::kPseudoOpen);
+  }
+  if (IsA<HTMLMenuItemElement>(invoker)) {
+    // There are some edge cases where :open doesn't change here, but in
+    // practice this basically means it's changing.
+    invoker->PseudoStateChanged(CSSSelector::kPseudoOpen);
   }
 
   document.AllOpenPopovers().erase(this);
@@ -2708,6 +2720,11 @@ bool HTMLElement::HandleCommandForActivation() {
             CommandEventType::kNone);
   const auto command_event_type =
       GetCommandEventType(action, GetExecutionContext());
+  bool is_valid_builtin =
+      command_target->IsValidBuiltinCommand(*this, command_event_type);
+  if (!is_valid_builtin && command_event_type != CommandEventType::kCustom) {
+    return false;
+  }
   Event* command_event =
       CommandEvent::Create(event_type_names::kCommand, action, this);
   command_target->DispatchEvent(*command_event);
@@ -3194,6 +3211,14 @@ Node::InsertionNotificationRequest HTMLElement::InsertedInto(
   if (IsFormAssociatedCustomElement())
     EnsureElementInternals().InsertedInto(insertion_point);
 
+  if (IsOverscrollCommand(GetCommandEventType(
+          FastGetAttribute(html_names::kCommandAttr), GetExecutionContext()))) {
+    const auto& command_for = FastGetAttribute(html_names::kCommandforAttr);
+    if (!command_for.empty()) {
+      GetDocument().AddOverscrollCommandTarget(command_for);
+    }
+  }
+
   return kInsertionDone;
 }
 
@@ -3214,6 +3239,14 @@ void HTMLElement::RemovedFrom(ContainerNode& insertion_point) {
   Element::RemovedFrom(insertion_point);
   if (IsFormAssociatedCustomElement())
     EnsureElementInternals().RemovedFrom(insertion_point);
+
+  if (IsOverscrollCommand(GetCommandEventType(
+          FastGetAttribute(html_names::kCommandAttr), GetExecutionContext()))) {
+    const auto& command_for = FastGetAttribute(html_names::kCommandforAttr);
+    if (!command_for.empty()) {
+      GetDocument().RemoveOverscrollCommandTarget(command_for);
+    }
+  }
 }
 
 void HTMLElement::DidMoveToNewDocument(Document& old_document) {

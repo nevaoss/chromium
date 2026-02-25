@@ -10,7 +10,6 @@
 #include "build/build_config.h"
 #include "cc/test/pixel_test_utils.h"
 #include "chrome/browser/actor/actor_keyed_service.h"
-#include "chrome/browser/actor/actor_policy_checker.h"
 #include "chrome/browser/actor/actor_task_metadata.h"
 #include "chrome/browser/actor/actor_test_util.h"
 #include "chrome/browser/actor/ui/actor_ui_tab_controller.h"
@@ -27,7 +26,7 @@
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/horizontal_tab_strip_region_view.h"
 #include "chrome/browser/ui/views/interaction/browser_elements_views.h"
-#include "chrome/browser/ui/views/tabs/glic/glic_button.h"
+#include "chrome/browser/ui/views/tabs/glic/tab_strip_glic_button.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/common/chrome_switches.h"
 #include "chrome/test/base/ui_test_utils.h"
@@ -263,8 +262,15 @@ class ContextSharingBorderViewUiTestBase : public test::InteractiveGlicTest {
     RunTestSequence(
         // See https://crrev.com/c/6373789: the glic window is in detach mode by
         // default.
-        OpenGlic(), ExecuteJsAt(test::kGlicContentsElementId,
-                                kContextAccessIndicatorCheckBox, kClickFn));
+        OpenGlic(), Do([this]() {
+          if (base::FeatureList::IsEnabled(features::kGlicMultiInstance)) {
+            if (auto* instance = GetGlicInstanceImpl()) {
+              instance->OnInteractionModeChange(mojom::WebClientMode::kAudio);
+            }
+          }
+        }),
+        ExecuteJsAt(test::kGlicContentsElementId,
+                    kContextAccessIndicatorCheckBox, kClickFn));
   }
 
   void CloseGlicWindow() {

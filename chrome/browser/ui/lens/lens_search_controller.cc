@@ -266,6 +266,7 @@ void LensSearchController::OpenLensOverlayWithPendingRegion(
   // Setup all state necessary for this Lens session.
   StartLensSession(invocation_source);
 
+  should_show_csb_ = false;
   lens_overlay_controller_->ShowUIWithPendingRegion(
       invocation_source, std::move(region), region_bitmap);
 }
@@ -853,7 +854,7 @@ void LensSearchController::CloseLensPart2(
   // Let the controllers know to cleanup.
   // TODO(crbug.com/404941800): Move logging to a shared location to not be
   // dependent on the overlay controller.
-  lens_overlay_controller_->CloseUI(dismissal_source);
+  lens_overlay_controller_->CloseUI();
   lens_searchbox_controller_->CloseUI();
   lens_composebox_controller_->CloseUI();
   lens_permission_bubble_controller_.reset();

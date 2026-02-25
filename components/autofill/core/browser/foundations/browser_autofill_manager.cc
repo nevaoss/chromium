@@ -200,7 +200,7 @@ using payments::AmountExtractionManager;
 
 namespace {
 
-ValuePatternsMetric GetValuePattern(const std::u16string& value) {
+ValuePatternsMetric GetValuePattern(std::u16string_view value) {
   if (IsUPIVirtualPaymentAddress(value)) {
     return ValuePatternsMetric::kUpiVpa;
   }
@@ -218,8 +218,8 @@ void LogValuePatternsMetric(const FormData& form) {
     if (!field.is_focusable()) {
       continue;
     }
-    std::u16string value;
-    base::TrimWhitespace(field.value(), base::TRIM_ALL, &value);
+    const std::u16string_view value =
+        base::TrimWhitespace(field.value(), base::TRIM_ALL);
     if (value.empty()) {
       continue;
     }
@@ -2643,7 +2643,8 @@ void BrowserAutofillManager::AddCachedAutofillAiPredictions(
                                     GetCurrentPageLanguage(), log_manager());
   LogCurrentFieldTypes(&form);
   NotifyObservers(&Observer::OnFieldTypesDetermined, form.global_id(),
-                  Observer::FieldTypeSource::kAutofillAiModel);
+                  Observer::FieldTypeSource::kAutofillAiModel,
+                  /*small_forms_were_parsed=*/client().IsTabInActorMode());
 }
 
 void BrowserAutofillManager::AnalyzeJavaScriptChangedAutofilledValue(

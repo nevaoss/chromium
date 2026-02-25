@@ -574,6 +574,17 @@ PromptInTab으로 설정하면, 사용자의 인증이 만료되는 즉시 Googl
 
 자세한 내용은
 https://support.google.com/chrome/a/?p=extended_updates_support 페이지를 참고하세요.</translation>
+<translation id="1432008122934973720">기본적으로 로컬 네트워크 액세스(LNA) 권한은 명시적으로 위임된 경우에만 교차 출처 서브프레임에서 요청할 수 있습니다. 이 정책을 사용하여 이 기본 동작을 재정의할 수 있습니다. 이렇게 하면 권한 정책에서 명시적으로 거부하지 않는 한, LNA 권한이 기본적으로 서브프레임에 상속됩니다.
+
+이 정책을 사용 설정하면 서브프레임에 기본적으로 모든 LNA 권한 정책 기능이 위임되며, 서브프레임이 로컬 네트워크 요청을 수행할 수 있습니다(권한 메시지가 표시됨).
+
+정책을 사용 중지하거나 설정하지 않으면 로컬 네트워크 요청을 수행하고 권한 메시지를 표시하려면 서브프레임에 권한 정책 기능을 명시적으로 위임해야 합니다.
+
+이 정책은 <ph name="LOCAL_NETWORK_ACCESS_FEATURE_NAME" />, <ph name="LOOPBACK_NETWORK_FEATURE_NAME" />, <ph name="LOCAL_NETWORK_FEATURE_NAME" /> 권한 정책 기능에 적용됩니다.
+
+로컬 네트워크 액세스에 관한 자세한 내용은 https://wicg.github.io/local-network-access/ 및 https://developer.chrome.com/blog/local-network-access를 참고하세요.
+
+권한 정책에 대한 자세한 내용은 https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Permissions_Policy를 참고하세요.</translation>
 <translation id="1432834104376790711">이 정책은 절전 모드 설정을 사용 또는 사용 중지합니다.
       Chrome에서 이 설정을 사용하면 프레임 속도가 제한되어 전력 소비가 줄어듭니다. 정책을 설정하지 않으면 최종 사용자가 chrome://settings/performance에서 이 설정을 제어할 수 있습니다.
       ChromeOS에서 이 설정을 사용하면 프레임 속도와 CPU 주파수가 떨어지고 백라이트가 어두워지며 Android가 절전 모드로 전환됩니다. CPU가 여러 개인 기기에서 일부 CPU가 사용 중지됩니다. 수준은 다음과 같습니다. <ph name="BATTERY_SAVER_MODE_DISABLED" /> (0): 절전 모드가 사용 중지됩니다.
@@ -1586,6 +1597,7 @@ URL로 입력된 측정항목 수집이 허용되거나 사용자가 이를 사�
 <translation id="2090939118981888335">정책을 사용 설정하면 데이터 압축 프록시가 허용됩니다. 정책을 사용 중지하면 프록시가 허용되지 않습니다.
 
       정책을 설정하면 사용자가 변경할 수 없습니다. 정책을 설정하지 않으면 사용자가 기능을 사용하도록 선택할 수 있습니다.</translation>
+<translation id="2091689441590064807">명시적 위임 없이 서브프레임에서 LNA 요청 허용 불가</translation>
 <translation id="2093552723795057221">오디오 상태 보고 안 함</translation>
 <translation id="209388704279338003">이 정책은 지원 중단되었으며 지원되지 않습니다. 대신 <ph name="DEVICE_PRINTERS_ACCESS_MODE_POLICY_NAME" /> 정책을 사용하세요.</translation>
 <translation id="2093951844062548778">이 정책은 선택한 콘텐츠에 액세스하고 정의 결과를 얻기 위해 정보를 서버로 보낼 권한을 빠른 답변에 부여합니다.
@@ -5002,17 +5014,6 @@ Chrome Root Store를 공개 신뢰의 소스로 사용하는 내장된
 <translation id="4426986640594727372">시스템 위치정보 액세스 허용</translation>
 <translation id="4427173305799125784">PDF 뷰어에서 PDF에 주석 작성 불가능</translation>
 <translation id="4432762137771104529">세이프 브라우징 확장 보고 사용 설정</translation>
-<translation id="4432772502174730966">이 정책은 적용 범위 내의 모든 생성형 AI 기능에 대한 기본 설정을 정의합니다. 예를 들어 정책이 값 1로 설정되면 모든 적용되는 생성형 AI 기능의 기본 설정이 1이 됩니다. 수동으로 설정된 정책 값에는 영향을 미치지 않습니다. 이 설정은 Chrome의 적용 범위에 해당하는 생성형 AI 기능의 기본값을 정의합니다. 적용되는 기능 목록은 https://support.google.com/chrome/a?p=generative_ai_settings를 참고하세요.
-
-0 = 이 기능을 사용하도록 허용하면서 Google에서 관련 데이터를 사용하여 AI 모델을 개선하도록 허용합니다. 관련 데이터에는 기능에 따라 프롬프트나 입력, 출력, 소스 자료, 서면 의견이 포함될 수 있습니다. AI 모델을 개선하기 위해 사람이 데이터를 검토할 수도 있습니다. 아래에 명시된 경우를 제외하고 0이 기본값입니다.
-
-1 = 기능을 사용하도록 허용하되 Google에서 사용자 콘텐츠(프롬프트, 입력, 출력, 소스 자료, 서면 의견 등)를 사용하여 모델을 개선하도록 허용하지 않습니다. 1은 <ph name="GOOGLE_ADMIN_CONSOLE_PRODUCT_NAME" />에서 관리되는 기업 사용자 및 <ph name="GOOGLE_WORKSPACE_PRODUCT_NAME" />에서 관리되는 Education 계정의 기본값입니다.
-
-2 = 기능을 허용하지 않습니다.
-
-적용되는 Chrome 기능에 해당하는 정책 값이 없는 경우 가장 가까운 더 높은 값이 사용됩니다. <ph name="GEMINI_SETTINGS_POLICY_NAME" />와 같은 일부 정책은 허용 및 허용되지 않음 상태만 지원합니다. <ph name="GEN_AI_DEFAULT_SETTINGS_POLICY_NAME" /> 정책을 0 또는 1로 설정하면 이 기능이 허용됩니다. 정책을 2로 설정하면 이 기능이 허용되지 않습니다. 기능이 이 정책의 값과 상호작용하는 방식에 관한 자세한 내용은 각 기능의 문서를 검토하세요.
-
-생성형 AI 기능의 데이터 처리에 관한 자세한 내용은 https://support.google.com/chrome/a?p=generative_ai_settings 페이지를 참고하세요.</translation>
 <translation id="443454694385851356">이전(안전하지 않음)</translation>
 <translation id="4435032708588431506">QUIC 허용</translation>
 <translation id="443665821428652897">브라우저 종료 시 사이트 데이터 지우기(지원 중단)</translation>
@@ -7224,13 +7225,6 @@ Microsoft SharePoint 및 OneDrive 카드에는 추가 관리자 구성이 필요
 <translation id="5746149754419996562"><ph name="PRODUCT_OS_NAME" />에서 한눈에 보기 위젯을 사용하도록 설정합니다. 구체적으로는 앱 표시줄의 날짜 칩을 통해 액세스할 수 있는 위젯입니다.
 이 정책을 사용 설정하면 <ph name="PRODUCT_OS_NAME" />에서 한눈에 보기가 사용 설정됩니다.
 이 정책을 사용 중지하거나 설정하지 않으면 <ph name="PRODUCT_OS_NAME" />에서 한눈에 보기가 사용 설정되지 않습니다.</translation>
-<translation id="5747628966013559697"><ph name="PRODUCT_NAME" />에서 기본적인 생성형 AI 모델을 다운로드하고 로컬에서 추론에 사용하는 방법을 구성합니다.
-
-정책을 허용됨(0)으로 설정하거나 설정하지 않으면 모델이 자동으로 다운로드되어 추론에 사용됩니다.
-
-정책을 사용 안 함(1)으로 설정하면 모델이 다운로드되지 않습니다.
-
-데스크톱 플랫폼의 경우 <ph name="COMPONENT_UPDATES_ENABLED_POLICY_NAME" />에서 모델 다운로드를 사용 중지할 수도 있습니다.</translation>
 <translation id="5749396052108288586">지원 중단된 정책입니다. 대신 <ph name="REMOTE_ACCESS_HOST_CLIENT_DOMAIN_LIST_POLICY_NAME" /> 정책을 사용하세요.</translation>
 <translation id="574983287620584622">로그인 화면에서 접근성 기능 단축키 사용 설정</translation>
 <translation id="5755002458331714762"> Web Components v0 API(Shadow DOM v0, Custom Elements v0, HTML Imports)는 2018년에 지원 중단되었으며 M80부터는 기본적으로 사용 중지되어 있습니다. 이 정책을 사용하면 위에서 언급된 기능을 M84까지 선택적으로 다시 사용 설정할 수 있습니다.
@@ -7715,6 +7709,7 @@ false로 설정되면 기능에 액세스할 수 없습니다.</translation>
 참고: 새로 시작된 렌더기 프로세스만 브라우저가 실행되는 동안 이 정책의 변경사항을 반영합니다.</translation>
 <translation id="6083281887050888160">'Just Works' 블루투스 페어링 사용 설정</translation>
 <translation id="6083631234867522991">Windows(Windows 클라이언트):</translation>
+<translation id="6085580138417523410">명시적 위임 없이 서브프레임에서 로컬 네트워크 액세스(LNA) 요청 허용</translation>
 <translation id="6087413944876892918"><ph name="HAPPY_EYEBALLS_V3" /> 알고리즘 사용</translation>
 <translation id="608788685013546076">전력 피크 시프트 배터리 임계값을 퍼센트로 설정</translation>
 <translation id="6089679180657323464">Wilco 진단 및 텔레메트리 컨트롤러 설정을 제어합니다.</translation>
@@ -10301,6 +10296,7 @@ URL 패턴은 <ph name="WEB_PRINTING_BLOCKED_FOR_URLS_POLICY_NAME" /> 정책과 
 <translation id="7669630878711068277">정책을 사용 설정하거나 설정하지 않으면 사용자가 <ph name="PRODUCT_NAME" />에서 인쇄할 수 있으며, 이 설정을 변경할 수 없습니다.
 
       사용 중지하면 사용자가 <ph name="PRODUCT_NAME" />에서 인쇄할 수 없습니다. 점 3개로 된 메뉴, 확장 프로그램, 자바스크립트 애플리케이션에서는 인쇄 기능이 사용 중지됩니다.</translation>
+<translation id="7672510074688643558">명시적 위임 없이 서브프레임에서 LNA 요청 허용</translation>
 <translation id="7673194325208122247">기간(밀리초)</translation>
 <translation id="7677220829878081413">
       이 정책을 ArcSession으로 설정하면 Android가 시작되었을 때 사용자가 로그아웃하면 기기가 강제로 재부팅됩니다.

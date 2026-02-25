@@ -15,8 +15,8 @@
 #include "base/test/task_environment.h"
 #include "components/autofill/core/browser/data_model/autofill_ai/entity_type.h"
 #include "components/autofill/core/browser/foundations/test_autofill_client.h"
-#include "components/autofill/core/browser/test_utils/autofill_test_utils.h"
 #include "components/autofill/core/browser/test_utils/autofill_testing_pref_service.h"
+#include "components/autofill/core/browser/test_utils/entity_data_test_utils.h"
 #include "components/autofill/core/browser/webdata/autofill_ai/entity_table.h"
 #include "components/autofill/core/browser/webdata/autofill_webdata_service_test_helper.h"
 #include "components/autofill/core/common/autofill_features.h"
@@ -81,7 +81,8 @@ std::string GetTestSuffix(
 DenseSet<EntityType> GetPrivatePasses() {
   DenseSet<EntityType> private_passes;
   for (const EntityType type : DenseSet<EntityType>::all()) {
-    if (type.SupportsMaskedStorage()) {
+    if (IsMaskedStorageSupported(type,
+                                 EntityInstance::RecordType::kServerWallet)) {
       private_passes.insert(type);
     }
   }
@@ -718,6 +719,28 @@ TEST_F(AutofillAiMayPerformImportToWalletTest,
     EXPECT_TRUE(MayPerformAutofillAiAction(
         client(), AutofillAiAction::kImportToWallet, entity_type))
         << entity_type;
+  }
+}
+
+// Tests that the Wallet import is not allowed for private passes if the country
+// is explicitly excluded (currently Germany, France and Italy).
+TEST_F(AutofillAiMayPerformImportToWalletTest,
+       ImportToWallet_FalseForPrivatePassIfCountryIsExcluded) {
+  base::test::ScopedFeatureList feature_list{
+      features::kAutofillAiWalletPrivatePasses};
+  client().SetWalletStorageEnabled(true);
+
+  for (const auto& country : {GeoIpCountryCode("DE"), GeoIpCountryCode("FR"),
+                              GeoIpCountryCode("IT")}) {
+    SCOPED_TRACE(testing::Message() << "country: " << country.value());
+    client().SetVariationConfigCountryCode(country);
+    for (const EntityType entity_type : GetPrivatePasses()) {
+      SCOPED_TRACE(testing::Message() << "entity_type: " << entity_type);
+      EXPECT_FALSE(MayPerformAutofillAiAction(
+          client(), AutofillAiAction::kImportToWallet, entity_type));
+    }
+    EXPECT_TRUE(MayPerformAutofillAiAction(
+        client(), AutofillAiAction::kImportToWallet, EntityType(kVehicle)));
   }
 }
 

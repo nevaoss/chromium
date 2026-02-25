@@ -127,23 +127,24 @@ public class FuseboxMediator {
                         Snackbar.UMA_FUSEBOX_UPLOAD_FAILED);
 
         mModel.set(FuseboxProperties.BUTTON_ADD_CLICKED, this::onToggleAttachmentsPopup);
-        mModel.set(FuseboxProperties.POPUP_CAMERA_CLICKED, this::onCameraClicked);
-        mModel.set(FuseboxProperties.POPUP_GALLERY_CLICKED, this::onImagePickerClicked);
-        mModel.set(FuseboxProperties.POPUP_FILE_CLICKED, this::onFilePickerClicked);
-        mModel.set(FuseboxProperties.POPUP_CLIPBOARD_CLICKED, this::onClipboardClicked);
+        mModel.set(FuseboxProperties.POPUP_ATTACH_CAMERA_CLICKED, this::onCameraClicked);
+        mModel.set(FuseboxProperties.POPUP_ATTACH_GALLERY_CLICKED, this::onImagePickerClicked);
+        mModel.set(FuseboxProperties.POPUP_ATTACH_FILE_CLICKED, this::onFilePickerClicked);
+        mModel.set(FuseboxProperties.POPUP_ATTACH_CLIPBOARD_CLICKED, this::onClipboardClicked);
         mModel.set(
                 FuseboxProperties.AUTOCOMPLETE_REQUEST_TYPE_CLICKED,
                 this::onRequestTypeButtonClicked);
         mModel.set(
-                FuseboxProperties.POPUP_AI_MODE_CLICKED,
+                FuseboxProperties.POPUP_TOOL_AI_MODE_CLICKED,
                 () -> activateAiMode(AiModeActivationSource.TOOL_MENU));
-        mModel.set(FuseboxProperties.POPUP_CREATE_IMAGE_CLICKED, this::activateImageGeneration);
-        mModel.set(FuseboxProperties.POPUP_TAB_PICKER_CLICKED, this::onTabPickerClicked);
         mModel.set(
-                FuseboxProperties.POPUP_FILE_BUTTON_VISIBLE,
+                FuseboxProperties.POPUP_TOOL_CREATE_IMAGE_CLICKED, this::activateImageGeneration);
+        mModel.set(FuseboxProperties.POPUP_ATTACH_TAB_PICKER_CLICKED, this::onTabPickerClicked);
+        mModel.set(
+                FuseboxProperties.POPUP_ATTACH_FILE_VISIBLE,
                 mComposeboxQueryControllerBridge.isPdfUploadEligible());
         mModel.set(
-                FuseboxProperties.POPUP_CREATE_IMAGE_BUTTON_VISIBLE,
+                FuseboxProperties.POPUP_TOOL_CREATE_IMAGE_VISIBLE,
                 mComposeboxQueryControllerBridge.isCreateImagesEligible()
                         && (OmniboxFeatures.sShowImageGenerationButtonInIncognito.getValue()
                                 || !profile.isIncognitoBranded()));
@@ -315,7 +316,7 @@ public class FuseboxMediator {
         } else {
             updateModelForCurrentTab();
             mModel.set(
-                    FuseboxProperties.POPUP_CLIPBOARD_BUTTON_VISIBLE,
+                    FuseboxProperties.POPUP_ATTACH_CLIPBOARD_VISIBLE,
                     Clipboard.getInstance().hasImage());
             mPopup.show();
         }
@@ -331,9 +332,10 @@ public class FuseboxMediator {
                         && tabSelector.getCurrentTab() != null
                         && !mModelList
                                 .getAttachedTabIds()
-                                .contains(tabSelector.getCurrentTab().getId());
+                                .contains(tabSelector.getCurrentTab().getId())
+                        && OmniboxFeatures.sAllowCurrentTab.getValue();
 
-        mModel.set(FuseboxProperties.CURRENT_TAB_BUTTON_VISIBLE, shouldShowCurrentTab);
+        mModel.set(FuseboxProperties.POPUP_ATTACH_CURRENT_TAB_VISIBLE, shouldShowCurrentTab);
         if (!shouldShowCurrentTab) return;
 
         TabModelSelector tabModelSelector = mTabModelSelectorSupplier.get();
@@ -341,23 +343,23 @@ public class FuseboxMediator {
         Tab currentTab = assumeNonNull(tabModelSelector.getCurrentTab());
         boolean tabIsEligible =
                 FuseboxTabUtils.isTabEligibleForAttachment(currentTab)
-                        && FuseboxTabUtils.isTabActive(currentTab)
-                        && !currentTab.isIncognitoBranded();
+                        && FuseboxTabUtils.isTabActive(currentTab);
 
         if (tabIsEligible) {
-            mModel.set(FuseboxProperties.CURRENT_TAB_BUTTON_VISIBLE, true);
+            mModel.set(FuseboxProperties.POPUP_ATTACH_CURRENT_TAB_VISIBLE, true);
             mModel.set(
-                    FuseboxProperties.CURRENT_TAB_BUTTON_CLICKED,
+                    FuseboxProperties.POPUP_ATTACH_CURRENT_TAB_CLICKED,
                     () -> onAddCurrentTab(currentTab));
             mModel.set(
-                    FuseboxProperties.CURRENT_TAB_BUTTON_FAVICON,
+                    FuseboxProperties.POPUP_ATTACH_CURRENT_TAB_FAVICON,
                     OmniboxResourceProvider.getFaviconBitmapForTab(currentTab));
         } else {
-            mModel.set(FuseboxProperties.CURRENT_TAB_BUTTON_VISIBLE, false);
+            mModel.set(FuseboxProperties.POPUP_ATTACH_CURRENT_TAB_VISIBLE, false);
         }
     }
 
     private void onAddCurrentTab(Tab tab) {
+        FuseboxMetrics.notifyAttachmentButtonUsed(FuseboxAttachmentButtonType.CURRENT_TAB);
         maybeActivateAiMode(AiModeActivationSource.IMPLICIT);
 
         Set<Integer> currentAttachedIds = mModelList.getAttachedTabIds();
@@ -401,7 +403,7 @@ public class FuseboxMediator {
     private void onAttachmentsChanged() {
         mModel.set(FuseboxProperties.ATTACHMENTS_VISIBLE, !mModelList.isEmpty());
         mModel.set(
-                FuseboxProperties.POPUP_CREATE_IMAGE_BUTTON_ENABLED,
+                FuseboxProperties.POPUP_TOOL_CREATE_IMAGE_ENABLED,
                 areAttachmentsCompatibleWithCreateImage());
         updatePopupButtonEnabledStates();
     }
@@ -559,11 +561,11 @@ public class FuseboxMediator {
                 mInput.getRequestType() != AutocompleteRequestType.IMAGE_GENERATION
                         && allowByCapacity;
 
-        mModel.set(FuseboxProperties.CURRENT_TAB_BUTTON_ENABLED, allowNonImage);
-        mModel.set(FuseboxProperties.POPUP_FILE_BUTTON_ENABLED, allowNonImage);
-        mModel.set(FuseboxProperties.POPUP_TAB_PICKER_ENABLED, allowNonImage);
-        mModel.set(FuseboxProperties.POPUP_CAMERA_BUTTON_ENABLED, allowByCapacity);
-        mModel.set(FuseboxProperties.POPUP_GALLERY_BUTTON_ENABLED, allowByCapacity);
+        mModel.set(FuseboxProperties.POPUP_ATTACH_CURRENT_TAB_ENABLED, allowNonImage);
+        mModel.set(FuseboxProperties.POPUP_ATTACH_FILE_ENABLED, allowNonImage);
+        mModel.set(FuseboxProperties.POPUP_ATTACH_TAB_PICKER_ENABLED, allowNonImage);
+        mModel.set(FuseboxProperties.POPUP_ATTACH_CAMERA_ENABLED, allowByCapacity);
+        mModel.set(FuseboxProperties.POPUP_ATTACH_GALLERY_ENABLED, allowByCapacity);
     }
 
     @VisibleForTesting

@@ -1277,6 +1277,7 @@
 <translation id="3052868890529250114">通常はサイトに安全に接続できますが、今回は安全な接続を使用できませんでした。攻撃者がネットワーク接続を傍受するか変更しようとしている可能性があります。<ph name="BEGIN_LEARN_MORE_LINK" />この警告の詳細<ph name="END_LEARN_MORE_LINK" /></translation>
 <translation id="3052964831964880138"><ph name="PRODUCT_NAME" /> が <ph name="PRICE_DROP" /> 値下げ</translation>
 <translation id="3056660797732519147">後払い決済のエラー画面。キーボードは非表示です。</translation>
+<translation id="3057844102210575426">旅行情報を管理</translation>
 <translation id="3061707000357573562">サービスへのパッチの適用</translation>
 <translation id="3062655045399308513">閲覧履歴データを削除...</translation>
 <translation id="3063453392496098461">VPN バックグラウンド サービスをインストールできませんでした。</translation>
@@ -2007,6 +2008,7 @@
 <translation id="4203769790323223880">カメラは許可されていません</translation>
 <translation id="4203896806696719780"><ph name="BEGIN_LINK" />ファイアウォールとウイルス対策の設定を確認する<ph name="END_LINK" /></translation>
 <translation id="4207195957038009075">Google ドライブ</translation>
+<translation id="4208390505124702064"><ph name="SITE_NAME" /> を検索</translation>
 <translation id="4209092469652827314">大</translation>
 <translation id="4210602799576081649">確認コードの有効期限が切れています。新しいコードをリクエストしてください</translation>
 <translation id="421066178035138955">バーチャル リアリティ デバイスとデータの使用</translation>
@@ -2063,6 +2065,7 @@
 <translation id="4270541775497538019">スタッカー 6</translation>
 <translation id="4271311252511481365">{NUM_REVIEWS,plural, =0{0 件のレビューを表示します。平均評価は星 <ph name="STARS" /> 個です。}=1{1 件のレビューを表示します。平均評価は星 <ph name="STARS" /> 個です。}other{全 # 件のレビューを表示します。平均評価は星 <ph name="STARS" /> 個です。}}</translation>
 <translation id="4271652479722040953">拡張機能が Chrome に追加されると、これらの拡張機能に関するデータが分析のため第三者に送信され、管理者に公開される可能性があります。こうしたデータには、名前、インストール時間、インストール元などの拡張機能に関する情報と、拡張機能に関連するアクティビティ（タブの変更、ウェブサイトへの接続、Cookie へのアクセスなど）が含まれます。このデータは、Chrome ウェブストアからインストールされた拡張機能と、ストア以外からインストールされた拡張機能の両方について収集されます。</translation>
+<translation id="4275788652681621337">サイドパネルを閉じる</translation>
 <translation id="4275830172053184480">デバイスの再起動</translation>
 <translation id="4276974990916607331">今はしない</translation>
 <translation id="4277028893293644418">パスワードを再設定</translation>
@@ -2626,6 +2629,7 @@
 <translation id="5209670883520018268">トレイ 20</translation>
 <translation id="5212364581680288382">オートバイ レース</translation>
 <translation id="5214542134842513912">広告のパーソナライズに使用できるトピックの大まかなカテゴリを選択します。大まかなカテゴリをオフにすると、その関連トピックもブロックされます。</translation>
+<translation id="52163492208010719">身分証明書を管理</translation>
 <translation id="521659676233207110">トレイ 13</translation>
 <translation id="5216942107514965959">最終アクセス日: 今日</translation>
 <translation id="5217759126664161410">プロトコルの形式が無効です。</translation>
@@ -2710,6 +2714,7 @@
 <translation id="5344522958567249764">広告プライバシーを管理</translation>
 <translation id="5344579389779391559">このページでは課金される恐れがあります</translation>
 <translation id="5345249337934847112">紙（厚手コート）</translation>
+<translation id="5346059693449184483">何かお手伝いできることはありますか？</translation>
 <translation id="5348330584842140856">このファイルは存在しないため移動されませんでした</translation>
 <translation id="5349543692327946794">ラベル（インクジェット）</translation>
 <translation id="5351548097010183514">建築資材、物資</translation>
@@ -2957,7 +2962,6 @@
 <translation id="5730040223043577876">パスワードを他のサイトで再使用した場合、Chrome ではパスワードの再設定を促すメッセージが表示されます。</translation>
 <translation id="5732392974455271431">ブロックの解除は保護者が行うことができます</translation>
 <translation id="573555826359077410">[フォームを作成] ボタンです。実行すると、Google フォームで新しいフォームをすばやく作成できます</translation>
-<translation id="5737022235680044108">シークレット モードでは、<ph name="HOST_NAME" /> は組織によってブロックされています。</translation>
 <translation id="5738385766833540397">トラッキングしている商品の値下げアラートを受け取る方法を管理します</translation>
 <translation id="5739619009927381786">次のステップで画面のロックを解除します（通常は指紋認証を使用します）。<ph name="BEGIN_LINK" />別の方法で確認<ph name="END_LINK" />することもできます。</translation>
 <translation id="573974402615125334">タブグループの共有、参加、共同作業を行うには、履歴とタブを同期してください</translation>
@@ -3640,7 +3644,6 @@
 <translation id="6844998850832008753">今回のみハンド トラッキングを許可しました</translation>
 <translation id="6849023911358004088">[セキュリティ設定を管理] ボタンです。実行すると、Chrome の設定でセーフ ブラウジングなどを管理できます</translation>
 <translation id="6850286078059909152">テキストの色</translation>
-<translation id="685163597635765693">シークレット モードでは、「<ph name="HOST_NAME" />」のリンクは組織によってブロックされています。</translation>
 <translation id="6852204201400771460">アプリを再読み込みしますか？</translation>
 <translation id="6854691830678097752">購入手続きをすばやく行うには、この CVC をアカウント（<ph name="ACCOUNT_EMAIL" />）に保存してください</translation>
 <translation id="6857776781123259569">パスワードを管理...</translation>
@@ -4507,6 +4510,7 @@
 <translation id="8216640997712497593">14x18 インチ</translation>
 <translation id="8218327578424803826">割り当てられた場所:</translation>
 <translation id="8220602974062798186"><ph name="TOPIC" /> とその関連トピックをブロックしますか？</translation>
+<translation id="8223142476690844338"><ph name="USER_NAME" />さん、何かお手伝いできることはありますか？</translation>
 <translation id="8226408512771130794"><ph name="KEYWORD_SHORTCUT" />、<ph name="KEYWORD_SUFFIX" /> に聞く</translation>
 <translation id="8228419419708659934">2 ページ表示</translation>
 <translation id="822925450938886901">詳細と適用される可能性のあるポリシーについては、ブラウザで chrome://management を開いてください。</translation>

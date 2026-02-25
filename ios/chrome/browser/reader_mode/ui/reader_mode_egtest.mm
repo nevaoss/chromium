@@ -58,7 +58,7 @@ id<GREYMatcher> ReaderModeCustomizationBadge() {
 
 // Base font size for Reader Mode, in pixels. This is the font size that is
 // multiplied by the font scale multipliers. This value is defined in
-// components/dom_distiller/core/javascript/dom_distiller_viewer.js.
+// components/dom_distiller/core/javascript/font_size_slider.js.
 constexpr double kReaderModeBaseFontSize = 16.0;
 
 // Return the number of links on the page.
@@ -147,6 +147,9 @@ id<GREYMatcher> ContextualPanelEntrypointImageViewMatcher() {
   chrome_test_util::GREYAssertErrorNil(
       [MetricsAppInterface setupHistogramTester]);
 
+  // The user should be signed out at the beginning of Reading Mode tests.
+  [SigninEarlGrey verifySignedOut];
+
   self.fakeIdentity = [FakeSystemIdentity fakeIdentity1];
   [SigninEarlGrey addFakeIdentity:self.fakeIdentity
                  withCapabilities:@{
@@ -173,13 +176,23 @@ id<GREYMatcher> ContextualPanelEntrypointImageViewMatcher() {
 
   if ([self isRunningTest:@selector(testTurnOnReaderModeViaPageActionMenu)] ||
       [self isRunningTest:@selector(testReaderModeChipShowsAIHubIfAvailable)] ||
+#if TARGET_OS_SIMULATOR
       [self isRunningTest:@selector
             (testSampleContextualChipVisibleInReaderMode)] ||
+#else
+      [self isRunningTest:@selector
+            (FLAKY_testSampleContextualChipVisibleInReaderMode)] ||
+#endif
       [self isRunningTest:@selector(testReaderModeChipHiddenInReaderMode)]) {
     config.features_enabled_and_params.push_back({kPageActionMenu, {}});
     config.features_enabled_and_params.push_back(
         {kProactiveSuggestionsFramework, {}});
   } else {
+    // Force an app restart before any tests that require the Gemini kill
+    // switch. This is required to ensure that
+    // BWGServiceFactory::BuildBwgService is re-evaluated for the new flag
+    // configuration, otherwise a cached BWGService instance may be used.
+    config.relaunch_policy = ForceRelaunchByCleanShutdown;
     config.features_disabled.push_back(kPageActionMenu);
     config.features_enabled_and_params.push_back({kGeminiKillSwitch, {}});
   }
@@ -202,20 +215,37 @@ id<GREYMatcher> ContextualPanelEntrypointImageViewMatcher() {
     config.additional_args.push_back(
         "--" + std::string(switches::kForceReaderModeDistillationTimeout));
   }
-  if ([self isRunningTest:@selector
-            (testSampleContextualChipVisibleInReaderMode)] ||
-      [self isRunningTest:@selector(testReaderModeChipHiddenInReaderMode)]) {
+  if ([self isRunningTest:@selector(testReaderModeChipHiddenInReaderMode)] ||
+#if TARGET_OS_SIMULATOR
+      [self
+          isRunningTest:@selector(testSampleContextualChipVisibleInReaderMode)]
+#else
+      [self isRunningTest:@selector
+            (FLAKY_testSampleContextualChipVisibleInReaderMode)]
+#endif
+  ) {
     config.features_enabled_and_params.push_back(
         {kProactiveSuggestionsFramework, {}});
     config.features_enabled_and_params.push_back({kAskGeminiChip, {}});
   }
+#if TARGET_OS_SIMULATOR
   if ([self isRunningTest:@selector
             (testReaderModeChipVisibleWhenLeavingReaderModeWithPSFDisabled)]) {
+#else
+  if ([self
+          isRunningTest:@selector
+          (FLAKY_testReaderModeChipVisibleWhenLeavingReaderModeWithPSFDisabled)]) {
+#endif
     config.features_disabled.push_back(kProactiveSuggestionsFramework);
     config.features_disabled.push_back(kAskGeminiChip);
   }
+#if TARGET_OS_SIMULATOR
   if ([self isRunningTest:@selector
             (testSampleContextualChipVisibleInReaderMode)]) {
+#else
+  if ([self isRunningTest:@selector
+            (FLAKY_testSampleContextualChipVisibleInReaderMode)]) {
+#endif
     config.features_enabled_and_params.push_back(
         {kContextualPanelForceShowEntrypoint, {}});
   }
@@ -536,7 +566,13 @@ id<GREYMatcher> ContextualPanelEntrypointImageViewMatcher() {
 }
 
 // Tests that font change is applied to the Reading Mode web page.
-- (void)testUpdateReaderModeFont {
+// TODO(crbug.com/481633359): Deflake this test.
+#if TARGET_OS_SIMULATOR
+#define MAYBE_testUpdateReaderModeFont testUpdateReaderModeFont
+#else
+#define MAYBE_testUpdateReaderModeFont FLAKY_testUpdateReaderModeFont
+#endif
+- (void)MAYBE_testUpdateReaderModeFont {
   [ChromeEarlGrey loadURL:self.testServer->GetURL("/article.html")];
 
   GREYAssertTrue(
@@ -573,7 +609,15 @@ id<GREYMatcher> ContextualPanelEntrypointImageViewMatcher() {
 }
 
 // Tests that tapping the reader mode chip shows the Reader mode options view.
-- (void)testTapReaderModeChipShowsOptionsView {
+// TODO(crbug.com/481633359): Deflake this test.
+#if TARGET_OS_SIMULATOR
+#define MAYBE_testTapReaderModeChipShowsOptionsView \
+  testTapReaderModeChipShowsOptionsView
+#else
+#define MAYBE_testTapReaderModeChipShowsOptionsView \
+  FLAKY_testTapReaderModeChipShowsOptionsView
+#endif
+- (void)MAYBE_testTapReaderModeChipShowsOptionsView {
   [ChromeEarlGrey loadURL:self.testServer->GetURL("/article.html")];
 
   // Open Reader Mode UI.
@@ -648,7 +692,15 @@ id<GREYMatcher> ContextualPanelEntrypointImageViewMatcher() {
 }
 
 // Tests that font size can be changed from the options view.
-- (void)testChangeReaderModeFontSizeFromOptionsView {
+// TODO(crbug.com/481633359): Deflake this test.
+#if TARGET_OS_SIMULATOR
+#define MAYBE_testChangeReaderModeFontSizeFromOptionsView \
+  testChangeReaderModeFontSizeFromOptionsView
+#else
+#define MAYBE_testChangeReaderModeFontSizeFromOptionsView \
+  FLAKY_testChangeReaderModeFontSizeFromOptionsView
+#endif
+- (void)MAYBE_testChangeReaderModeFontSizeFromOptionsView {
   std::vector<double> multipliers = ReaderModeFontScaleMultipliers();
   [ChromeEarlGrey setDoubleValue:multipliers[0]
                      forUserPref:dom_distiller::prefs::kFontScale];
@@ -718,7 +770,15 @@ id<GREYMatcher> ContextualPanelEntrypointImageViewMatcher() {
 }
 
 // Tests that color theme can be changed from the options view.
-- (void)testChangeReaderModeThemeFromOptionsView {
+// TODO(crbug.com/481633359): Deflake this test.
+#if TARGET_OS_SIMULATOR
+#define MAYBE_testChangeReaderModeThemeFromOptionsView \
+  testChangeReaderModeThemeFromOptionsView
+#else
+#define MAYBE_testChangeReaderModeThemeFromOptionsView \
+  FLAKY_testChangeReaderModeThemeFromOptionsView
+#endif
+- (void)MAYBE_testChangeReaderModeThemeFromOptionsView {
   [ChromeEarlGrey setIntegerValue:(int)dom_distiller::mojom::Theme::kLight
                       forUserPref:dom_distiller::prefs::kTheme];
 
@@ -765,7 +825,14 @@ id<GREYMatcher> ContextualPanelEntrypointImageViewMatcher() {
 }
 
 // Tests that tapping the close button in the options view dismisses the view.
-- (void)testTapCloseButtonInOptionsView {
+// TODO(crbug.com/481633359): Deflake this test.
+#if TARGET_OS_SIMULATOR
+#define MAYBE_testTapCloseButtonInOptionsView testTapCloseButtonInOptionsView
+#else
+#define MAYBE_testTapCloseButtonInOptionsView \
+  FLAKY_testTapCloseButtonInOptionsView
+#endif
+- (void)MAYBE_testTapCloseButtonInOptionsView {
   [ChromeEarlGrey loadURL:self.testServer->GetURL("/article.html")];
 
   // Open Reader Mode UI.
@@ -791,7 +858,15 @@ id<GREYMatcher> ContextualPanelEntrypointImageViewMatcher() {
 
 // Tests that tapping the "Turn Off" button in the options view dismisses the
 // view and deactivates Reader mode.
-- (void)testTapTurnOffButtonInOptionsView {
+// TODO(crbug.com/481633359): Deflake this test.
+#if TARGET_OS_SIMULATOR
+#define MAYBE_testTapTurnOffButtonInOptionsView \
+  testTapTurnOffButtonInOptionsView
+#else
+#define MAYBE_testTapTurnOffButtonInOptionsView \
+  FLAKY_testTapTurnOffButtonInOptionsView
+#endif
+- (void)MAYBE_testTapTurnOffButtonInOptionsView {
   [ChromeEarlGrey loadURL:self.testServer->GetURL("/article.html")];
 
   // Open Reader Mode UI.
@@ -828,7 +903,15 @@ id<GREYMatcher> ContextualPanelEntrypointImageViewMatcher() {
 }
 
 // Tests that tapping outside of the options view dismisses it.
-- (void)testTapOutsideOptionsViewDismissesIt {
+// TODO(crbug.com/481633359): Deflake this test.
+#if TARGET_OS_SIMULATOR
+#define MAYBE_testTapOutsideOptionsViewDismissesIt \
+  testTapOutsideOptionsViewDismissesIt
+#else
+#define MAYBE_testTapOutsideOptionsViewDismissesIt \
+  FLAKY_testTapOutsideOptionsViewDismissesIt
+#endif
+- (void)MAYBE_testTapOutsideOptionsViewDismissesIt {
   [ChromeEarlGrey loadURL:self.testServer->GetURL("/article.html")];
 
   // Open Reader Mode UI.
@@ -930,7 +1013,15 @@ id<GREYMatcher> ContextualPanelEntrypointImageViewMatcher() {
 
 // Tests that a sample contextual chip stays visible inside Reader mode if
 // kAskGeminiChip is enabled.
-- (void)testSampleContextualChipVisibleInReaderMode {
+// TODO(crbug.com/481633359): Deflake this test.
+#if TARGET_OS_SIMULATOR
+#define MAYBE_testSampleContextualChipVisibleInReaderMode \
+  testSampleContextualChipVisibleInReaderMode
+#else
+#define MAYBE_testSampleContextualChipVisibleInReaderMode \
+  FLAKY_testSampleContextualChipVisibleInReaderMode
+#endif
+- (void)MAYBE_testSampleContextualChipVisibleInReaderMode {
   [SigninEarlGrey signinWithFakeIdentity:self.fakeIdentity];
   [ChromeEarlGrey loadURL:self.testServer->GetURL("/article.html")];
 
@@ -1221,7 +1312,15 @@ id<GREYMatcher> ContextualPanelEntrypointImageViewMatcher() {
 // PSF is disabled.
 // TODO(crbug.com/467908483): Remove this test once PSF is launched with
 // Reading Mode.
-- (void)testReaderModeChipVisibleWhenLeavingReaderModeWithPSFDisabled {
+// TODO(crbug.com/481633359): Deflake this test.
+#if TARGET_OS_SIMULATOR
+#define MAYBE_testReaderModeChipVisibleWhenLeavingReaderModeWithPSFDisabled \
+  testReaderModeChipVisibleWhenLeavingReaderModeWithPSFDisabled
+#else
+#define MAYBE_testReaderModeChipVisibleWhenLeavingReaderModeWithPSFDisabled \
+  FLAKY_testReaderModeChipVisibleWhenLeavingReaderModeWithPSFDisabled
+#endif
+- (void)MAYBE_testReaderModeChipVisibleWhenLeavingReaderModeWithPSFDisabled {
   [self loadURLWithOptimizationGuideHints:self.testServer->GetURL(
                                               "/article.html")];
 

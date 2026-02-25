@@ -68,6 +68,9 @@ extern const char kAutofillDisableProfileUpdatesDescription[];
 extern const char kAutofillDisableSilentProfileUpdatesName[];
 extern const char kAutofillDisableSilentProfileUpdatesDescription[];
 
+extern const char kAutofillEnableBottomSheetScanCardAndFillName[];
+extern const char kAutofillEnableBottomSheetScanCardAndFillDescription[];
+
 extern const char kAutofillEnableCardBenefitsForAmericanExpressName[];
 extern const char kAutofillEnableCardBenefitsForAmericanExpressDescription[];
 
@@ -285,6 +288,9 @@ extern const char kDetectMainThreadFreezeDescription[];
 extern const char kDisableAutofillStrikeSystemName[];
 extern const char kDisableAutofillStrikeSystemDescription[];
 
+extern const char kDisableComposeboxFromAIMNTPName[];
+extern const char kDisableComposeboxFromAIMNTPDescription[];
+
 extern const char kDisableKeyboardAccessoryName[];
 extern const char kDisableKeyboardAccessoryDescription[];
 
@@ -333,8 +339,14 @@ extern const char kEnableFeedCardMenuSignInPromoDescription[];
 extern const char kEnableFeedHeaderSettingsName[];
 extern const char kEnableFeedHeaderSettingsDescription[];
 
+extern const char kEnableFileDownloadConnectorIOSName[];
+extern const char kEnableFileDownloadConnectorIOSDescription[];
+
 extern const char kEnableLensInOmniboxCopiedImageName[];
 extern const char kEnableLensInOmniboxCopiedImageDescription[];
+
+extern const char kEnableNTPBackgroundImageCacheName[];
+extern const char kEnableNTPBackgroundImageCacheDescription[];
 
 extern const char kEnableNewStartupFlowName[];
 extern const char kEnableNewStartupFlowDescription[];
@@ -413,6 +425,9 @@ extern const char kGeminiPersonalizationDescription[];
 
 extern const char kGeminiRefactoredFREName[];
 extern const char kGeminiRefactoredFREDescription[];
+
+extern const char kGeminiResponseViewDynamicResizingName[];
+extern const char kGeminiResponseViewDynamicResizingDescription[];
 
 extern const char kGeminiUpdatedEligibilityName[];
 extern const char kGeminiUpdatedEligibilityDescription[];
@@ -497,6 +512,9 @@ extern const char kIOSReactivationNotificationsDescription[];
 
 extern const char kIOSSaveToDriveClientFolderName[];
 extern const char kIOSSaveToDriveClientFolderDescription[];
+
+extern const char kIOSSaveToDriveSignedOutName[];
+extern const char kIOSSaveToDriveSignedOutDescription[];
 
 extern const char kIOSSoftLockName[];
 extern const char kIOSSoftLockDescription[];
@@ -629,6 +647,9 @@ extern const char kMobilePromoOnDesktopDescription[];
 
 extern const char kMobilePromoOnDesktopRecordActiveDaysName[];
 extern const char kMobilePromoOnDesktopRecordActiveDaysDescription[];
+
+extern const char kModelBasedPageClassificationName[];
+extern const char kModelBasedPageClassificationDescription[];
 
 extern const char kMostVisitedTilesCustomizationName[];
 extern const char kMostVisitedTilesCustomizationDescription[];
@@ -889,6 +910,9 @@ extern const char kSkipDefaultBrowserPromoInFirstRunDescription[];
 extern const char kSmartTabGroupingName[];
 extern const char kSmartTabGroupingDescription[];
 
+extern const char kSmoothScrollingUseDelegateName[];
+extern const char kSmoothScrollingUseDelegateDescription[];
+
 extern const char kStrokesAPIEnabledName[];
 extern const char kStrokesAPIEnabledDescription[];
 
@@ -960,8 +984,11 @@ extern const char kUseFeedEligibilityServiceDescription[];
 extern const char kUseSceneViewControllerName[];
 extern const char kUseSceneViewControllerDescription[];
 
-extern const char kVariationsSeedCorpusName[];
-extern const char kVariationsSeedCorpusDescription[];
+extern const char kVariationsExperimentalCorpusName[];
+extern const char kVariationsExperimentalCorpusDescription[];
+
+extern const char kVariationsRestrictDogfoodName[];
+extern const char kVariationsRestrictDogfoodDescription[];
 
 extern const char kViewCertificateInformationName[];
 extern const char kViewCertificateInformationDescription[];
@@ -977,9 +1004,6 @@ extern const char kWebPageAlternativeTextZoomDescription[];
 
 extern const char kWebPageDefaultZoomFromDynamicTypeName[];
 extern const char kWebPageDefaultZoomFromDynamicTypeDescription[];
-
-extern const char kWebPageReportedImagesSheetName[];
-extern const char kWebPageReportedImagesSheetDescription[];
 
 extern const char kWebPageTextZoomIPadName[];
 extern const char kWebPageTextZoomIPadDescription[];

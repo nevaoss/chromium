@@ -71,10 +71,6 @@
 #include "ui/views/view_class_properties.h"
 #include "ui/views/view_utils.h"
 
-#if BUILDFLAG(ENABLE_GLIC)
-#include "chrome/browser/ui/views/tabs/glic/glic_button.h"
-#endif  // BUILDFLAG(ENABLE_GLIC)
-
 namespace {
 
 class FrameGrabHandle : public views::View {
@@ -409,6 +405,10 @@ void HorizontalTabStripRegionView::Layout(PassKey) {
 
   LayoutSuperclass<views::AccessiblePaneView>(this);
 
+  if (tab_search_container_before_tab_strip) {
+    AdjustViewBoundsRect(tab_search_container_, 0);
+  }
+
   views::View* button_to_paint_to_layer = new_tab_button_;
 
   if (button_to_paint_to_layer) {
@@ -509,7 +509,7 @@ views::View* HorizontalTabStripRegionView::GetDefaultFocusableChild() {
 }
 
 #if BUILDFLAG(ENABLE_GLIC)
-glic::GlicButton* HorizontalTabStripRegionView::GetGlicButton() {
+views::LabelButton* HorizontalTabStripRegionView::GetGlicButton() {
   return tab_strip_action_container_->GetGlicButton();
 }
 #endif  // BUILDFLAG(ENABLE_GLIC)
@@ -693,6 +693,7 @@ void HorizontalTabStripRegionView::UpdateTabStripMargin() {
     // should have 6 px of padding between it and the tab_search button (not
     // including the corner radius).
     tab_strip_left_margin =
+        tab_search_container_->GetPreferredSize().width() +
         GetLayoutConstant(LayoutConstant::kTabStripPadding) +
         GetLayoutConstant(LayoutConstant::kTabStripPadding) -
         TabStyle::Get()->GetBottomCornerRadius();

@@ -610,6 +610,7 @@ html element embed
     property src
     property type
     property width
+html element federation
 html element fencedframe
     property allow
     property config
@@ -896,6 +897,7 @@ html element link
     property type
 html element listing
     property width
+html element login
 html element main
 html element map
     property areas

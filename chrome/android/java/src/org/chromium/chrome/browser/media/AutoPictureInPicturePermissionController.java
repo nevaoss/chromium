@@ -72,11 +72,6 @@ public class AutoPictureInPicturePermissionController {
         AutoPictureInPictureTabHelper helper =
                 assertNonNull(AutoPictureInPictureTabHelper.fromWebContents(webContents));
 
-        // Don't show a new prompt if one is already active for this WebContents.
-        if (helper.getPermissionController() != null) {
-            return;
-        }
-
         // If the user already selected "Allow Once" for this WebContents or the permission is not
         // "ASK", we shouldn't create a controller at all.
         if (helper.hasAllowOnce()
@@ -105,6 +100,27 @@ public class AutoPictureInPicturePermissionController {
     public static boolean isAutoPictureInPictureInUse(WebContents webContents) {
         return AutoPictureInPicturePermissionControllerJni.get()
                 .isAutoPictureInPictureInUse(webContents);
+    }
+
+    /**
+     * Called when the picture-in-picture window is destroyed. Checks if a permission prompt was
+     * active and, if so, reports the dismissal and cleans up.
+     *
+     * @param webContents The WebContents that was in picture-in-picture.
+     */
+    public static void handleWindowDestruction(WebContents webContents) {
+        AutoPictureInPictureTabHelper helper =
+                AutoPictureInPictureTabHelper.getIfPresent(webContents);
+        if (helper == null) {
+            return;
+        }
+
+        AutoPictureInPicturePermissionController controller = helper.getPermissionController();
+        if (controller != null) {
+            AutoPictureInPicturePermissionControllerJni.get()
+                    .onPictureInPictureDismissed(webContents);
+            controller.dismiss();
+        }
     }
 
     private AutoPictureInPicturePermissionController(
@@ -169,7 +185,7 @@ public class AutoPictureInPicturePermissionController {
             restoreContentAccessibility();
 
             AutoPictureInPictureTabHelper helper =
-                    AutoPictureInPictureTabHelper.fromWebContents(mWebContents);
+                    AutoPictureInPictureTabHelper.getIfPresent(mWebContents);
             if (helper != null && helper.getPermissionController() == this) {
                 helper.setPermissionController(null);
             }
@@ -255,5 +271,7 @@ public class AutoPictureInPicturePermissionController {
 
         boolean isAutoPictureInPictureInUse(
                 @JniType("content::WebContents*") WebContents webContents);
+
+        void onPictureInPictureDismissed(@JniType("content::WebContents*") WebContents webContents);
     }
 }

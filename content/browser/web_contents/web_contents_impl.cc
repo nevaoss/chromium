@@ -91,6 +91,7 @@
 #include "content/browser/host_zoom_map_impl.h"
 #include "content/browser/media/audio_stream_monitor.h"
 #include "content/browser/media/media_web_contents_observer.h"
+#include "content/browser/memory/scheduler_loop_quarantine_web_contents_observer.h"
 #include "content/browser/permissions/permission_controller_impl.h"
 #include "content/browser/permissions/permission_util.h"
 #include "content/browser/preloading/prefetch/prefetch_request.h"
@@ -4246,6 +4247,7 @@ void WebContentsImpl::Init(const WebContents::CreateParams& params,
     AttributionHost::CreateForWebContents(this);
   }
 
+  SchedulerLoopQuarantineWebContentsObserver::MaybeCreateForWebContents(this);
   RedirectChainDetector::CreateForWebContents(this);
   BtmWebContentsObserver::MaybeCreateForWebContents(this);
   RedirectHeuristicTabHelper::CreateForWebContents(this);
@@ -4850,6 +4852,13 @@ void WebContentsImpl::Restore() {
     return;
   }
   GetDelegate()->RestoreFromWebAPI();
+}
+
+void WebContentsImpl::SetResizable(bool resizable) {
+  if (!GetDelegate()) {
+    return;
+  }
+  GetDelegate()->SetResizableFromWebAPI(resizable);
 }
 #endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
 
@@ -12010,10 +12019,6 @@ void WebContentsImpl::CancelPreviewByMojoBinderPolicy(
     delegate_->CancelPreview(
         PreviewCancelReason::BlockedByMojoBinderPolicy(interface_name));
   }
-}
-
-void WebContentsImpl::OnWebApiWindowResizableChanged() {
-  delegate_->OnWebApiWindowResizableChanged();
 }
 
 FrameTreeNodeId WebContentsImpl::GetOuterDelegateFrameTreeNodeId() {

@@ -60,6 +60,10 @@ export class ActionChipsElement extends CrLitElement {
     return getCss();
   }
 
+  override render() {
+    return getHtml.bind(this)();
+  }
+
   static override get properties() {
     return {
       actionChips_: {type: Array, state: true},
@@ -88,11 +92,6 @@ export class ActionChipsElement extends CrLitElement {
 
   private delayTabUploads_: boolean =
       loadTimeData.getBoolean('addTabUploadDelayOnActionChipClick');
-
-  override render() {
-    return getHtml.bind(this)();
-  }
-
 
   protected getAdditionalIconClasses_(chip: ActionChip): string {
     switch (chip.type) {
@@ -206,15 +205,19 @@ export class ActionChipsElement extends CrLitElement {
     const chip = this.actionChips_[index]!;
     switch (chip.type) {
       case ChipType.kImage:
+        this.handler.activateMetricsFunnel('CreateImageChip');
         this.onCreateImageClick_(chip);
         break;
       case ChipType.kDeepSearch:
+        this.handler.activateMetricsFunnel('DeepSearchChip');
         this.onDeepSearchClick_(chip);
         break;
       case ChipType.kRecentTab:
+        this.handler.activateMetricsFunnel('RecentTabChip');
         this.onTabContextClick_(chip);
         break;
       case ChipType.kDeepDive:
+        this.handler.activateMetricsFunnel('DeepDiveChip');
         this.onDeepDiveClick_(chip);
         break;
       default:

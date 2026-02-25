@@ -10,6 +10,7 @@
 #include "base/functional/callback.h"
 #include "base/values.h"
 #include "components/wallet/core/browser/network/wallet_http_client.h"
+#include "components/wallet/core/browser/proto/client_info.pb.h"
 
 namespace wallet {
 
@@ -29,6 +30,10 @@ class WalletRequest {
 
   // Handles the response from the server.
   virtual void OnResponse(WalletHttpClient::HttpResponse http_response) && = 0;
+
+ protected:
+  // Returns the client information that should be provided in Wallet requests.
+  static ClientInfo BuildClientInfo();
 };
 
 }  // namespace wallet

@@ -19,6 +19,8 @@ using UsedModelConfigDataView = composebox_query::mojom::ModelConfigDataView;
 using UsedSectionConfigDataView =
     composebox_query::mojom::SectionConfigDataView;
 using UsedInputStateDataView = composebox_query::mojom::InputStateDataView;
+using UsedFileUploadStatus = composebox_query::mojom::FileUploadStatus;
+using UsedFileUploadErrorType = composebox_query::mojom::FileUploadErrorType;
 
 }  // namespace
 
@@ -36,6 +38,18 @@ UsedToolMode EnumTraits<UsedToolMode, omnibox::ToolMode>::ToMojom(
       return UsedToolMode::kImageGen;
     case omnibox::ToolMode::TOOL_MODE_IMAGE_GEN_UPLOAD:
       return UsedToolMode::kImageGenUpload;
+    case omnibox::ToolMode::TOOL_MODE_DEEP_BROWSE:
+      return UsedToolMode::kDeepBrowse;
+    case omnibox::ToolMode::TOOL_MODE_IMAGE_GEN_SELFIE:
+      return UsedToolMode::kImageGenSelfie;
+    case omnibox::ToolMode::TOOL_MODE_AIM:
+      return UsedToolMode::kAim;
+    case omnibox::ToolMode::TOOL_MODE_AIM_GEN_PROMPT:
+      return UsedToolMode::kAimGenPrompt;
+    case omnibox::ToolMode::TOOL_MODE_DISABLE_SUGGEST:
+      return UsedToolMode::kDisableSuggest;
+    case omnibox::ToolMode::TOOL_MODE_GEMINI_PRO:
+      return UsedToolMode::kGeminiPro;
     // The proto compiler generates these sentinel values. We must handle them
     // to satisfy the compiler's exhaustiveness check (since we don't have a
     // default case), but they should never be encountered in practice.
@@ -64,15 +78,25 @@ bool EnumTraits<UsedToolMode, omnibox::ToolMode>::FromMojom(
       *output = omnibox::ToolMode::TOOL_MODE_IMAGE_GEN;
       return true;
     case UsedToolMode::kDeepBrowse:
-      // No corresponding Proto value yet.
-      *output = omnibox::ToolMode::TOOL_MODE_UNSPECIFIED;
+      *output = omnibox::ToolMode::TOOL_MODE_DEEP_BROWSE;
+      return true;
+    case UsedToolMode::kAim:
+      *output = omnibox::ToolMode::TOOL_MODE_AIM;
+      return true;
+    case UsedToolMode::kAimGenPrompt:
+      *output = omnibox::ToolMode::TOOL_MODE_AIM_GEN_PROMPT;
+      return true;
+    case UsedToolMode::kDisableSuggest:
+      *output = omnibox::ToolMode::TOOL_MODE_DISABLE_SUGGEST;
+      return true;
+    case UsedToolMode::kGeminiPro:
+      *output = omnibox::ToolMode::TOOL_MODE_GEMINI_PRO;
       return true;
     case UsedToolMode::kImageGenUpload:
       *output = omnibox::ToolMode::TOOL_MODE_IMAGE_GEN_UPLOAD;
       return true;
     case UsedToolMode::kImageGenSelfie:
-      // No corresponding Proto value yet.
-      *output = omnibox::ToolMode::TOOL_MODE_UNSPECIFIED;
+      *output = omnibox::ToolMode::TOOL_MODE_IMAGE_GEN_SELFIE;
       return true;
   }
   NOTREACHED();
@@ -165,6 +189,153 @@ bool EnumTraits<UsedInputType, omnibox::InputType>::FromMojom(
 }
 
 // static
+UsedFileUploadStatus
+EnumTraits<UsedFileUploadStatus, contextual_search::FileUploadStatus>::ToMojom(
+    contextual_search::FileUploadStatus input) {
+  switch (input) {
+    case contextual_search::FileUploadStatus::kNotUploaded:
+      return UsedFileUploadStatus::kNotUploaded;
+    case contextual_search::FileUploadStatus::kProcessing:
+      return UsedFileUploadStatus::kProcessing;
+    case contextual_search::FileUploadStatus::kValidationFailed:
+      return UsedFileUploadStatus::kValidationFailed;
+    case contextual_search::FileUploadStatus::kUploadStarted:
+      return UsedFileUploadStatus::kUploadStarted;
+    case contextual_search::FileUploadStatus::kUploadSuccessful:
+      return UsedFileUploadStatus::kUploadSuccessful;
+    case contextual_search::FileUploadStatus::kUploadFailed:
+      return UsedFileUploadStatus::kUploadFailed;
+    case contextual_search::FileUploadStatus::kUploadExpired:
+      return UsedFileUploadStatus::kUploadExpired;
+    case contextual_search::FileUploadStatus::kProcessingSuggestSignalsReady:
+      return UsedFileUploadStatus::kProcessingSuggestSignalsReady;
+    case contextual_search::FileUploadStatus::kUploadReplaced:
+      return UsedFileUploadStatus::kUploadReplaced;
+  }
+  NOTREACHED();
+}
+
+// static
+bool EnumTraits<UsedFileUploadStatus, contextual_search::FileUploadStatus>::
+    FromMojom(UsedFileUploadStatus input,
+              contextual_search::FileUploadStatus* output) {
+  switch (input) {
+    case UsedFileUploadStatus::kNotUploaded:
+      *output = contextual_search::FileUploadStatus::kNotUploaded;
+      return true;
+    case UsedFileUploadStatus::kProcessing:
+      *output = contextual_search::FileUploadStatus::kProcessing;
+      return true;
+    case UsedFileUploadStatus::kValidationFailed:
+      *output = contextual_search::FileUploadStatus::kValidationFailed;
+      return true;
+    case UsedFileUploadStatus::kUploadStarted:
+      *output = contextual_search::FileUploadStatus::kUploadStarted;
+      return true;
+    case UsedFileUploadStatus::kUploadSuccessful:
+      *output = contextual_search::FileUploadStatus::kUploadSuccessful;
+      return true;
+    case UsedFileUploadStatus::kUploadFailed:
+      *output = contextual_search::FileUploadStatus::kUploadFailed;
+      return true;
+    case UsedFileUploadStatus::kUploadExpired:
+      *output = contextual_search::FileUploadStatus::kUploadExpired;
+      return true;
+    case UsedFileUploadStatus::kProcessingSuggestSignalsReady:
+      *output =
+          contextual_search::FileUploadStatus::kProcessingSuggestSignalsReady;
+      return true;
+    case UsedFileUploadStatus::kUploadReplaced:
+      *output = contextual_search::FileUploadStatus::kUploadReplaced;
+      return true;
+  }
+  NOTREACHED();
+}
+
+// static
+UsedFileUploadErrorType
+EnumTraits<UsedFileUploadErrorType, contextual_search::FileUploadErrorType>::
+    ToMojom(contextual_search::FileUploadErrorType input) {
+  switch (input) {
+    case contextual_search::FileUploadErrorType::kUnknown:
+      return UsedFileUploadErrorType::kUnknown;
+    case contextual_search::FileUploadErrorType::kBrowserProcessingError:
+      return UsedFileUploadErrorType::kBrowserProcessingError;
+    case contextual_search::FileUploadErrorType::kNetworkError:
+      return UsedFileUploadErrorType::kNetworkError;
+    case contextual_search::FileUploadErrorType::kServerError:
+      return UsedFileUploadErrorType::kServerError;
+    case contextual_search::FileUploadErrorType::kServerSizeLimitExceeded:
+      return UsedFileUploadErrorType::kServerSizeLimitExceeded;
+    case contextual_search::FileUploadErrorType::kAborted:
+      return UsedFileUploadErrorType::kAborted;
+    case contextual_search::FileUploadErrorType::kImageProcessingError:
+      return UsedFileUploadErrorType::kImageProcessingError;
+  }
+  NOTREACHED();
+}
+
+// static
+bool EnumTraits<UsedFileUploadErrorType,
+                contextual_search::FileUploadErrorType>::
+    FromMojom(UsedFileUploadErrorType input,
+              contextual_search::FileUploadErrorType* output) {
+  switch (input) {
+    case UsedFileUploadErrorType::kUnknown:
+      *output = contextual_search::FileUploadErrorType::kUnknown;
+      return true;
+    case UsedFileUploadErrorType::kBrowserProcessingError:
+      *output = contextual_search::FileUploadErrorType::kBrowserProcessingError;
+      return true;
+    case UsedFileUploadErrorType::kNetworkError:
+      *output = contextual_search::FileUploadErrorType::kNetworkError;
+      return true;
+    case UsedFileUploadErrorType::kServerError:
+      *output = contextual_search::FileUploadErrorType::kServerError;
+      return true;
+    case UsedFileUploadErrorType::kServerSizeLimitExceeded:
+      *output =
+          contextual_search::FileUploadErrorType::kServerSizeLimitExceeded;
+      return true;
+    case UsedFileUploadErrorType::kAborted:
+      *output = contextual_search::FileUploadErrorType::kAborted;
+      return true;
+    case UsedFileUploadErrorType::kImageProcessingError:
+      *output = contextual_search::FileUploadErrorType::kImageProcessingError;
+      return true;
+  }
+  NOTREACHED();
+}
+
+// static
+const std::string&
+StructTraits<composebox_query::mojom::AimUrlParamDataView,
+             omnibox::UrlParam>::param_key(const omnibox::UrlParam& param) {
+  return param.param_key();
+}
+
+// static
+const std::string&
+StructTraits<composebox_query::mojom::AimUrlParamDataView,
+             omnibox::UrlParam>::param_value(const omnibox::UrlParam& param) {
+  return param.param_value();
+}
+
+// static
+bool StructTraits<
+    composebox_query::mojom::AimUrlParamDataView,
+    omnibox::UrlParam>::Read(composebox_query::mojom::AimUrlParamDataView data,
+                             omnibox::UrlParam* output) {
+  if (!data.ReadParamKey(output->mutable_param_key())) {
+    return false;
+  }
+  if (!data.ReadParamValue(output->mutable_param_value())) {
+    return false;
+  }
+  return true;
+}
+
+// static
 omnibox::ToolMode
 StructTraits<UsedToolConfigDataView, omnibox::ToolConfig>::tool(
     const omnibox::ToolConfig& config) {
@@ -199,6 +370,14 @@ StructTraits<UsedToolConfigDataView, omnibox::ToolConfig>::hint_text(
 }
 
 // static
+std::vector<omnibox::UrlParam>
+StructTraits<UsedToolConfigDataView, omnibox::ToolConfig>::aim_url_params(
+    const omnibox::ToolConfig& config) {
+  return std::vector<omnibox::UrlParam>(config.aim_url_params().begin(),
+                                        config.aim_url_params().end());
+}
+
+// static
 bool StructTraits<UsedToolConfigDataView, omnibox::ToolConfig>::Read(
     UsedToolConfigDataView data,
     omnibox::ToolConfig* output) {
@@ -230,6 +409,15 @@ bool StructTraits<UsedToolConfigDataView, omnibox::ToolConfig>::Read(
   }
   output->set_hint_text(hint_text);
 
+  std::vector<omnibox::UrlParam> params;
+  if (!data.ReadAimUrlParams(&params)) {
+    return false;
+  }
+  output->mutable_aim_url_params()->Clear();
+  for (const auto& param : params) {
+    *output->add_aim_url_params() = param;
+  }
+
   return true;
 }
 
@@ -255,6 +443,14 @@ StructTraits<UsedModelConfigDataView, omnibox::ModelConfig>::hint_text(
 }
 
 // static
+std::vector<omnibox::UrlParam>
+StructTraits<UsedModelConfigDataView, omnibox::ModelConfig>::aim_url_params(
+    const omnibox::ModelConfig& config) {
+  return std::vector<omnibox::UrlParam>(config.aim_url_params().begin(),
+                                        config.aim_url_params().end());
+}
+
+// static
 bool StructTraits<UsedModelConfigDataView, omnibox::ModelConfig>::Read(
     UsedModelConfigDataView data,
     omnibox::ModelConfig* output) {
@@ -276,6 +472,15 @@ bool StructTraits<UsedModelConfigDataView, omnibox::ModelConfig>::Read(
     return false;
   }
   output->set_hint_text(hint_text);
+
+  std::vector<omnibox::UrlParam> params;
+  if (!data.ReadAimUrlParams(&params)) {
+    return false;
+  }
+  output->mutable_aim_url_params()->Clear();
+  for (const auto& param : params) {
+    *output->add_aim_url_params() = param;
+  }
 
   return true;
 }

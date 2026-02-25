@@ -3,9 +3,12 @@
 // found in the LICENSE file.
 
 #include "third_party/blink/renderer/core/dom/document.h"
+#include "third_party/blink/renderer/core/fileapi/file_list.h"
 #include "third_party/blink/renderer/core/html/forms/html_form_control_element.h"
 #include "third_party/blink/renderer/core/html/forms/html_form_element.h"
 #include "third_party/blink/renderer/core/html/forms/html_input_element.h"
+#include "third_party/blink/renderer/core/html/forms/html_option_element.h"
+#include "third_party/blink/renderer/core/html/forms/html_select_element.h"
 #include "third_party/blink/renderer/core/html/forms/html_text_area_element.h"
 #include "third_party/blink/renderer/core/html_names.h"
 #include "third_party/blink/renderer/core/testing/page_test_base.h"
@@ -325,11 +328,11 @@ TEST_F(HTMLFormMcpToolTest, FillFormControls_NumberInput_NumberString) {
         }
       )JSON";
 
-  EXPECT_FALSE(FillFormControls(*form_element, json_string));
+  EXPECT_TRUE(FillFormControls(*form_element, json_string));
 
   HTMLInputElement* num1 = GetInputElement("num1");
   ASSERT_TRUE(num1);
-  EXPECT_EQ("7", num1->Value());
+  EXPECT_EQ("35", num1->Value());
 }
 
 TEST_F(HTMLFormMcpToolTest, FillFormControls_NumberInput_InvalidString) {
@@ -724,6 +727,48 @@ TEST_F(HTMLFormMcpToolTest, ParameterSchema_TextInput_DuplicateName) {
   EXPECT_EQ(expected_json->ToJSONString(), actual);
 }
 
+TEST_F(HTMLFormMcpToolTest, ParameterSchema_ImplicitLabelText) {
+  SetBodyInnerHTML(
+      R"HTML(
+    <form id="form" toolname="mytool" tooldescription="perform task">
+      <label>
+        LABEL
+        <select name="select" required>
+          <option value="Option 1">This is option 1</option>
+          <option value="Option 2">This is option 2</option>
+          <option value="Option 3">This is option 3</option>
+        </select>
+        <button>Button text</button>
+      </label>
+    </form>
+  )HTML");
+
+  HTMLFormElement* form_element = GetFormElement("form");
+  ASSERT_TRUE(form_element);
+  ASSERT_TRUE(IsValidWebMCPForm(*form_element));
+  String actual = ComputeInputSchema(*form_element);
+  std::unique_ptr<JSONValue> expected_json = ParseJSON(R"JSON(
+    {
+      "type": "object",
+      "properties": {
+         "select": {
+           "type": "string",
+           "oneOf": [
+             { "const": "Option 1", "title": "This is option 1" },
+             { "const": "Option 2", "title": "This is option 2" },
+             { "const": "Option 3", "title": "This is option 3" }
+           ],
+           "enum": ["Option 1", "Option 2", "Option 3"],
+           "description": "LABEL"
+         }
+      },
+      "required": ["select"]
+    }
+  )JSON");
+  ASSERT_TRUE(expected_json);
+  EXPECT_EQ(expected_json->ToJSONString(), actual);
+}
+
 TEST_F(HTMLFormMcpToolTest, ParameterSchema_Select) {
   SetBodyInnerHTML(
       R"HTML(
@@ -793,6 +838,144 @@ TEST_F(HTMLFormMcpToolTest, ParameterSchema_Select_Title) {
   )JSON");
   ASSERT_TRUE(expected_json);
   EXPECT_EQ(expected_json->ToJSONString(), actual);
+}
+
+TEST_F(HTMLFormMcpToolTest, ParameterSchema_Select_Multiple) {
+  SetBodyInnerHTML(
+      R"HTML(
+    <form id="form" toolname="mytool" tooldescription="perform task">
+      <select name="select" multiple required>
+        <option value="Option 1">This is option 1</option>
+        <option value="Option 2">This is option 2</option>
+        <option value="Option 3">This is option 3</option>
+      </select>
+    </form>
+  )HTML");
+
+  HTMLFormElement* form_element = GetFormElement("form");
+  ASSERT_TRUE(form_element);
+  ASSERT_TRUE(IsValidWebMCPForm(*form_element));
+  String actual = ComputeInputSchema(*form_element);
+  std::unique_ptr<JSONValue> expected_json = ParseJSON(R"JSON(
+    {
+      "type": "object",
+      "properties": {
+         "select": {
+           "type": "array",
+           "items": {
+             "type": "string",
+             "oneOf": [
+               { "const": "Option 1", "title": "This is option 1" },
+               { "const": "Option 2", "title": "This is option 2" },
+               { "const": "Option 3", "title": "This is option 3" }
+             ],
+             "enum": ["Option 1", "Option 2", "Option 3"]
+           },
+           "uniqueItems": true
+         }
+      },
+      "required": ["select"]
+    }
+  )JSON");
+  ASSERT_TRUE(expected_json);
+  EXPECT_EQ(expected_json->ToJSONString(), actual);
+}
+
+TEST_F(HTMLFormMcpToolTest, FillFormControls_Select_Multiple) {
+  SetBodyInnerHTML(
+      R"HTML(
+    <form id=form toolname="mytool" tooldescription="perform task">
+      <select id="select1" name="select1" multiple>
+        <option id="o1" value="v1">Option 1</option>
+        <option id="o2" value="v2">Option 2</option>
+        <option id="o3" value="v3">Option 3</option>
+      </select>
+    </form>
+  )HTML");
+
+  HTMLFormElement* form_element = GetFormElement("form");
+  ASSERT_TRUE(form_element);
+  ASSERT_TRUE(IsValidWebMCPForm(*form_element));
+
+  HTMLOptionElement* o1 = DynamicTo<HTMLOptionElement>(
+      GetDocument().getElementById(AtomicString("o1")));
+  HTMLOptionElement* o2 = DynamicTo<HTMLOptionElement>(
+      GetDocument().getElementById(AtomicString("o2")));
+  HTMLOptionElement* o3 = DynamicTo<HTMLOptionElement>(
+      GetDocument().getElementById(AtomicString("o3")));
+  ASSERT_TRUE(o1);
+  ASSERT_TRUE(o2);
+  ASSERT_TRUE(o3);
+
+  EXPECT_FALSE(o1->Selected());
+  EXPECT_FALSE(o2->Selected());
+  EXPECT_FALSE(o3->Selected());
+
+  EXPECT_TRUE(
+      FillFormControls(*form_element, R"JSON({"select1": ["v1", "v3"]})JSON"));
+  EXPECT_TRUE(o1->Selected());
+  EXPECT_FALSE(o2->Selected());
+  EXPECT_TRUE(o3->Selected());
+
+  EXPECT_TRUE(
+      FillFormControls(*form_element, R"JSON({"select1": ["v2"]})JSON"));
+  EXPECT_FALSE(o1->Selected());
+  EXPECT_TRUE(o2->Selected());
+  EXPECT_FALSE(o3->Selected());
+
+  EXPECT_TRUE(FillFormControls(*form_element, R"JSON({"select1": []})JSON"));
+  EXPECT_FALSE(o1->Selected());
+  EXPECT_FALSE(o2->Selected());
+  EXPECT_FALSE(o3->Selected());
+}
+
+// The same as the previous test, but size=1 makes the <select> use MenuList.
+TEST_F(HTMLFormMcpToolTest, FillFormControls_Select_Multiple_MenuList) {
+  SetBodyInnerHTML(
+      R"HTML(
+    <form id=form toolname="mytool" tooldescription="perform task">
+      <select id="select1" name="select1" size=1 multiple>
+        <option id="o1" value="v1">Option 1</option>
+        <option id="o2" value="v2">Option 2</option>
+        <option id="o3" value="v3">Option 3</option>
+      </select>
+    </form>
+  )HTML");
+
+  HTMLFormElement* form_element = GetFormElement("form");
+  ASSERT_TRUE(form_element);
+  ASSERT_TRUE(IsValidWebMCPForm(*form_element));
+
+  HTMLOptionElement* o1 = DynamicTo<HTMLOptionElement>(
+      GetDocument().getElementById(AtomicString("o1")));
+  HTMLOptionElement* o2 = DynamicTo<HTMLOptionElement>(
+      GetDocument().getElementById(AtomicString("o2")));
+  HTMLOptionElement* o3 = DynamicTo<HTMLOptionElement>(
+      GetDocument().getElementById(AtomicString("o3")));
+  ASSERT_TRUE(o1);
+  ASSERT_TRUE(o2);
+  ASSERT_TRUE(o3);
+
+  EXPECT_FALSE(o1->Selected());
+  EXPECT_FALSE(o2->Selected());
+  EXPECT_FALSE(o3->Selected());
+
+  EXPECT_TRUE(
+      FillFormControls(*form_element, R"JSON({"select1": ["v1", "v3"]})JSON"));
+  EXPECT_TRUE(o1->Selected());
+  EXPECT_FALSE(o2->Selected());
+  EXPECT_TRUE(o3->Selected());
+
+  EXPECT_TRUE(
+      FillFormControls(*form_element, R"JSON({"select1": ["v2"]})JSON"));
+  EXPECT_FALSE(o1->Selected());
+  EXPECT_TRUE(o2->Selected());
+  EXPECT_FALSE(o3->Selected());
+
+  EXPECT_TRUE(FillFormControls(*form_element, R"JSON({"select1": []})JSON"));
+  EXPECT_FALSE(o1->Selected());
+  EXPECT_FALSE(o2->Selected());
+  EXPECT_FALSE(o3->Selected());
 }
 
 TEST_F(HTMLFormMcpToolTest, ParameterSchema_NumberInput) {
@@ -1453,6 +1636,8 @@ TEST_F(HTMLFormMcpToolTest, ParameterSchema_TimeInput) {
       R"HTML(
     <form id="form" toolname="mytool" tooldescription="perform task">
       <input name="time1" type="time">
+      <input name="time2" type="time" step="1">
+      <input name="time3" type="time" step="0.001">
     </form>
   )HTML");
 
@@ -1465,6 +1650,14 @@ TEST_F(HTMLFormMcpToolTest, ParameterSchema_TimeInput) {
       "type": "object",
       "properties": {
          "time1": {
+           "type": "string",
+           "format": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+         },
+         "time2": {
+           "type": "string",
+           "format": "^([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$"
+         },
+         "time3": {
            "type": "string",
            "format": "^([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9](\\.[0-9]{1,3})?)?$"
          }
@@ -1752,6 +1945,152 @@ TEST_F(HTMLFormMcpToolTest, FillFormControls_UrlInput) {
   EXPECT_EQ("https://www.google.com", url1->Value());
 }
 
+TEST_F(HTMLFormMcpToolTest, ParameterSchema_FileInput) {
+  SetBodyInnerHTML(
+      R"HTML(
+    <form id="form" toolname="mytool" tooldescription="perform task">
+      <input name="file1" type="file">
+      <input name="file2" type="file" multiple>
+    </form>
+  )HTML");
+
+  HTMLFormElement* form_element = GetFormElement("form");
+  ASSERT_TRUE(form_element);
+  ASSERT_TRUE(IsValidWebMCPForm(*form_element));
+  String actual = ComputeInputSchema(*form_element);
+  std::unique_ptr<JSONValue> expected_json = ParseJSON(R"JSON(
+    {
+      "type": "object",
+      "properties": {
+         "file1": {
+           "type": "string"
+         },
+         "file2": {
+           "type": "array",
+           "items": {
+             "type": "string"
+           }
+         }
+      },
+      "required": []
+    }
+  )JSON");
+  ASSERT_TRUE(expected_json);
+  EXPECT_EQ(expected_json->ToJSONString(), actual);
+}
+
+TEST_F(HTMLFormMcpToolTest, FillFormControls_FileInput) {
+  SetBodyInnerHTML(
+      R"HTML(
+    <form id=form toolname="mytool" tooldescription="perform task">
+      <input id=file1 name=file1 type=file>
+    </form>
+  )HTML");
+
+  HTMLFormElement* form_element = GetFormElement("form");
+  ASSERT_TRUE(form_element);
+  ASSERT_TRUE(IsValidWebMCPForm(*form_element));
+
+  String json_string =
+#if defined(FILE_PATH_USES_DRIVE_LETTERS)
+      R"JSON(
+        {
+          "file1": "C:\\Users\\johndoe\\avatar.png"
+        }
+      )JSON"
+#else
+      R"JSON(
+        {
+          "file1": "/home/johndoe/avatar.png"
+        }
+      )JSON"
+#endif
+      ;
+
+  EXPECT_TRUE(FillFormControls(*form_element, json_string));
+
+  HTMLInputElement* file1 = GetInputElement("file1");
+  ASSERT_TRUE(file1);
+  FileList* file_list = file1->files();
+  ASSERT_TRUE(file_list);
+  ASSERT_EQ(file_list->length(), 1);
+#if defined(FILE_PATH_USES_DRIVE_LETTERS)
+  EXPECT_EQ(file_list->item(0)->GetPath(), "C:\\Users\\johndoe\\avatar.png");
+#else
+  EXPECT_EQ(file_list->item(0)->GetPath(), "/home/johndoe/avatar.png");
+#endif
+}
+
+TEST_F(HTMLFormMcpToolTest, FillFormControls_FileInput_Multiple) {
+  SetBodyInnerHTML(
+      R"HTML(
+    <form id=form toolname="mytool" tooldescription="perform task">
+      <input id=file1 name=file1 type=file multiple>
+    </form>
+  )HTML");
+
+  HTMLFormElement* form_element = GetFormElement("form");
+  ASSERT_TRUE(form_element);
+  ASSERT_TRUE(IsValidWebMCPForm(*form_element));
+
+  String json_string =
+#if defined(FILE_PATH_USES_DRIVE_LETTERS)
+      R"JSON(
+        {
+          "file1": [ "C:\\Users\\johndoe\\avatar.png",
+                     "C:\\Users\\johndoe\\avatar_old.png" ]
+        }
+      )JSON"
+#else
+      R"JSON(
+        {
+          "file1": [ "/home/johndoe/avatar.png",
+                     "/home/johndoe/avatar_old.png" ]
+        }
+      )JSON"
+#endif
+      ;
+
+  EXPECT_TRUE(FillFormControls(*form_element, json_string));
+
+  HTMLInputElement* file1 = GetInputElement("file1");
+  ASSERT_TRUE(file1);
+  FileList* file_list = file1->files();
+  ASSERT_TRUE(file_list);
+  ASSERT_EQ(file_list->length(), 2);
+#if defined(FILE_PATH_USES_DRIVE_LETTERS)
+  EXPECT_EQ(file_list->item(0)->GetPath(), "C:\\Users\\johndoe\\avatar.png");
+  EXPECT_EQ(file_list->item(1)->GetPath(),
+            "C:\\Users\\johndoe\\avatar_old.png");
+#else
+  EXPECT_EQ(file_list->item(0)->GetPath(), "/home/johndoe/avatar.png");
+  EXPECT_EQ(file_list->item(1)->GetPath(), "/home/johndoe/avatar_old.png");
+#endif
+}
+
+TEST_F(HTMLFormMcpToolTest, FillFormControls_FileInput_Invalid) {
+  SetBodyInnerHTML(
+      R"HTML(
+    <form id=form toolname="mytool" tooldescription="perform task">
+      <input id=file1 name=file1 type=file>
+    </form>
+  )HTML");
+
+  HTMLFormElement* form_element = GetFormElement("form");
+  ASSERT_TRUE(form_element);
+  ASSERT_TRUE(IsValidWebMCPForm(*form_element));
+
+  String json_string =
+      R"JSON(
+        {
+          "file1": "avatar.png"
+        }
+      )JSON";
+
+  // A relative path is not allowed
+  EXPECT_FALSE(FillFormControls(*form_element, json_string));
+}
+
 TEST_F(HTMLFormMcpToolTest, FillFormControls_InvalidValue) {
   SetBodyInnerHTML(
       R"HTML(
@@ -1759,6 +2098,10 @@ TEST_F(HTMLFormMcpToolTest, FillFormControls_InvalidValue) {
       <input id=date name=date type=date>
       <input id=number name=number type=number>
       <input id=time name=time type=time>
+      <select id=select-multi name=select-multi multiple>
+        <option value=v1>Option 1</option>
+        <option value=v2>Option 2</option>
+      </select>
     </form>
   )HTML");
 
@@ -1771,6 +2114,11 @@ TEST_F(HTMLFormMcpToolTest, FillFormControls_InvalidValue) {
       R"JSON({ "number": "error" })JSON",
       R"JSON({ "time": "25:00:00" })JSON",
       R"JSON({ "time": "20:20:39+00:00" })JSON",
+      R"JSON({ "select-multi": ["unknown"] })JSON",
+      R"JSON({ "select-multi": ["unknown", "v1"] })JSON",
+      R"JSON({ "select-multi": ["v1", "unknown"] })JSON",
+      R"JSON({ "select-multi": "v1" })JSON",
+      R"JSON({ "select-multi": ["v1", "v1"] })JSON",
   };
   for (auto json : inputs) {
     EXPECT_FALSE(FillFormControls(*form_element, json)) << json;

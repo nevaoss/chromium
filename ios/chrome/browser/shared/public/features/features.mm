@@ -214,6 +214,8 @@ BASE_FEATURE(kIOSDownloadNoUIUpdateInBackground,
 
 BASE_FEATURE(kIOSSaveToDriveClientFolder, base::FEATURE_ENABLED_BY_DEFAULT);
 
+BASE_FEATURE(kIOSSaveToDriveSignedOut, base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE(kEnableFeedBackgroundRefresh, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kEnableFeedAblation, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -489,12 +491,7 @@ BASE_FEATURE(kSegmentationPlatformIosModuleRankerCaching,
 BASE_FEATURE(kEnableAppBackgroundRefresh, base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool IsAppBackgroundRefreshEnabled() {
-  // To test background refresh in conjunction with the keychain access
-  // migration, enable app background refresh if *either* its flag or
-  // the keychain access flag is enabled.
-  return base::FeatureList::IsEnabled(kEnableAppBackgroundRefresh) ||
-         base::FeatureList::IsEnabled(
-             crypto::features::kMigrateIOSKeychainAccessibility);
+  return base::FeatureList::IsEnabled(kEnableAppBackgroundRefresh);
 }
 
 BASE_FEATURE(kHomeMemoryImprovements, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -1067,5 +1064,14 @@ BASE_FEATURE(kShareInVerbatimMatch, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kUseSceneViewController, base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool IsUseSceneViewControllerEnabled() {
+  if (IsChromeNextIaEnabled()) {
+    return true;
+  }
   return base::FeatureList::IsEnabled(kUseSceneViewController);
+}
+
+BASE_FEATURE(kDisableComposeboxFromAIMNTP, base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsDisableComposeboxFromAIMNTPEnabled() {
+  return base::FeatureList::IsEnabled(kDisableComposeboxFromAIMNTP);
 }

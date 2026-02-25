@@ -10,6 +10,7 @@
 #include "components/autofill/core/common/autofill_features.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/container/flat_hash_map.h"
 
 namespace autofill {
 namespace {
@@ -143,28 +144,18 @@ TEST(AutofillEntityTypeTest, ReadOnly) {
   EXPECT_TRUE(EntityType(kFlightReservation).read_only());
 }
 
-// Tests that entity types that support masked storage have at least one
-// obfuscated attribute. Masked storage only makes sense for entities that have
-// obfuscated attributes since all unobfuscated attributes are already
-// transmitted via sync and therefore stored locally.
-TEST(AutofillEntityTypeTest, SupportsMaskedStorage) {
-  for (EntityType t : DenseSet<EntityType>::all()) {
-    EXPECT_TRUE(
-        !t.SupportsMaskedStorage() ||
-        std::ranges::any_of(t.attributes(),
-                            [](AttributeType a) { return a.is_obfuscated(); }))
-        << t;
-  }
-}
+// Tests that `EntityType` and `AttributeType` can be used in
+// `absl::flat_hash_map`.
+TEST(AutofillEntityTypeTest, CanBeUsedInAbslFlatHashMap) {
+  absl::flat_hash_map<EntityType, int> entity_type_map;
+  auto passport = EntityType(EntityTypeName::kPassport);
+  entity_type_map[passport] = 1;
+  EXPECT_EQ(entity_type_map[passport], 1);
 
-// Tests explicitly for some entity types that they support masked storage.
-TEST(AutofillEntityTypeTest, SupportsMaskedStorageSelectTypes) {
-  using enum EntityTypeName;
-  EXPECT_TRUE(EntityType(kDriversLicense).SupportsMaskedStorage());
-  EXPECT_TRUE(EntityType(kKnownTravelerNumber).SupportsMaskedStorage());
-  EXPECT_TRUE(EntityType(kNationalIdCard).SupportsMaskedStorage());
-  EXPECT_TRUE(EntityType(kPassport).SupportsMaskedStorage());
-  EXPECT_TRUE(EntityType(kRedressNumber).SupportsMaskedStorage());
+  absl::flat_hash_map<AttributeType, int> attribute_type_map;
+  auto passport_name = AttributeType(AttributeTypeName::kPassportName);
+  attribute_type_map[passport_name] = 2;
+  EXPECT_EQ(attribute_type_map[passport_name], 2);
 }
 
 }  // namespace

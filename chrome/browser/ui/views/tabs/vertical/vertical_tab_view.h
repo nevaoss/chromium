@@ -12,8 +12,8 @@
 #include "base/memory/raw_ptr.h"
 #include "chrome/browser/ui/tabs/tab_renderer_data.h"
 #include "chrome/browser/ui/tabs/tab_style.h"
-#include "chrome/browser/ui/views/tabs/alert_indicator_button.h"
-#include "chrome/browser/ui/views/tabs/tab_context_menu_controller.h"
+#include "chrome/browser/ui/views/tabs/tab/alert_indicator_button.h"
+#include "chrome/browser/ui/views/tabs/tab/tab_context_menu_controller.h"
 #include "chrome/common/buildflags.h"
 #include "components/tabs/public/tab_interface.h"
 #include "third_party/abseil-cpp/absl/container/flat_hash_map.h"
@@ -129,6 +129,8 @@ class VerticalTabView : public views::View,
   void ResetCollectionNode();
 
   void UpdateAccessibleName();
+  void OnAXNameChanged(ax::mojom::StringAttribute attribute,
+                       const std::optional<std::string>& name);
   void OnDataChanged();
   void SetSelection(bool selected);
   void UpdateTabData(tabs::TabInterface* tab);
@@ -139,6 +141,7 @@ class VerticalTabView : public views::View,
   void UpdateContrastRatioValues();
 
   void CloseButtonPressed(const ui::Event& event);
+  void RecordMousePressedInTab();
 
   bool IsHoverAnimationActive() const;
   double GetHoverAnimationValue() const;
@@ -181,6 +184,8 @@ class VerticalTabView : public views::View,
   float hover_opacity_min_;
   float hover_opacity_max_;
   float radial_highlight_opacity_;
+
+  base::CallbackListSubscription ax_name_changed_subscription_;
 
   base::WeakPtrFactory<VerticalTabView> weak_ptr_factory_{this};
 };

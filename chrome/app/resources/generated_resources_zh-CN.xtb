@@ -160,6 +160,7 @@
 <translation id="109647177154844434">卸载 Parallels Desktop 会删除您的 Windows 映像，包括其所有应用、设置和数据。确定要继续吗？</translation>
 <translation id="1097016918605049747">无法翻译此网页</translation>
 <translation id="1097658378307015415">登录前，请先以访客身份进入，以便激活“<ph name="NETWORK_ID" />”网络。</translation>
+<translation id="1099070179078143183">为提供诈骗检测等功能，Chrome 可使用直接在您设备上运行的 AI 模型，而无需将您的数据发送到 Google 服务器。如果关闭此设置，这些功能可能无法正常运行。<ph name="BEGIN_LINK" />详细了解设备端 AI<ph name="END_LINK" /></translation>
 <translation id="1099962274138857708">从“<ph name="DEVICE_NAME" />”复制的图片</translation>
 <translation id="1100504063505580045">当前图标</translation>
 <translation id="1102759278139578486">无法下载主要节点标注文件。请稍后再试。</translation>
@@ -513,6 +514,7 @@
 <translation id="1333965224356556482">不允许网站查看您的位置信息</translation>
 <translation id="1335282218035876586">您的 Chromebook 将不会再收到安全更新和软件更新。请升级您的 Chromebook 以获得最佳体验。</translation>
 <translation id="133535873114485416">首选输入模式</translation>
+<translation id="13356285923490863">政策名称</translation>
 <translation id="1335929031622236846">注册您的设备</translation>
 <translation id="133660899895084533">读取蓝牙外围设备的信息和数据</translation>
 <translation id="1336902454946927954">您的安全密钥已被锁定，因为无法识别您的指纹。若要解锁，请输入 PIN 码。</translation>
@@ -1384,6 +1386,7 @@
 <translation id="192564025059434655">2022 年 12 月之后，旧版 Chrome 应用将无法在 Windows 设备上开启。您可查看是否有可用的新版本。</translation>
 <translation id="1926339101652878330">这些设置由企业政策控制。如需更多信息，请与管理员联系。</translation>
 <translation id="1926887872692564784">光标</translation>
+<translation id="1927075772688962338">固定阅读模式</translation>
 <translation id="1927632033341042996">指纹 <ph name="NEW_FINGER_NUMBER" /></translation>
 <translation id="192817607445937251">屏幕锁定 PIN 码</translation>
 <translation id="192858925209436740">将 OneDrive 连接到“文件”应用即可从 Chromebook 中管理您存储的文档。您需要使用自己的 Microsoft 账号登录。</translation>
@@ -2618,6 +2621,7 @@
 <translation id="2749836841884031656">SIM 卡</translation>
 <translation id="2749881179542288782">检查拼写和语法</translation>
 <translation id="2750020734439919571">更多 Chrome 应用设置和权限</translation>
+<translation id="275010360476017464">使用麦克风与 Gemini 对话。与 Gemini 对话时，对话音频会存储在 Gemini 应用活动记录中（如果已开启这项设置）。</translation>
 <translation id="2750602041558385535">已拦截未经验证的下载内容</translation>
 <translation id="2751454300227269244">将嘴向右移</translation>
 <translation id="2751883373055093745"><ph name="WEBSITE" /> 想知道您的安全密钥的 ID 编号。此网站将会确切地知道您正在使用哪个安全密钥。</translation>
@@ -3766,6 +3770,7 @@
 <translation id="3557101512409028104">通过 Family Link 设置网站限制和屏幕使用时间限制</translation>
 <translation id="3557267430539505890"><ph name="BEGIN_PARAGRAPH1" />如果您允许 ChromeOS 设备自动发送报告，则可帮助我们确定 ChromeOS 中需要优先解决的问题和优先改进的方面。这些报告可能包含的内容有：ChromeOS 的崩溃时间、使用的功能、通常占用的内存量，等等。<ph name="END_PARAGRAPH1" />
     <ph name="BEGIN_PARAGRAPH2" />您随时可在孩子的 ChromeOS 设备的设置中开始或停止发送这些报告。如果您是网域管理员，可在管理控制台中更改这一设置。<ph name="END_PARAGRAPH2" /></translation>
+<translation id="3558579881215044733"><ph name="WINDOW_TITLE" /> – Gemini 正在处理您的任务…</translation>
 <translation id="3559079791149580653">停止将屏幕投放到“<ph name="DEVICE_NAME" />”</translation>
 <translation id="3559262020195162408">未能在此设备上安装政策。</translation>
 <translation id="3559533181353831840">还需大约 <ph name="TIME_LEFT" /></translation>
@@ -4761,7 +4766,6 @@
 <translation id="4206585797409671301">可以显示请求</translation>
 <translation id="4207144975205749656">对导航请求进行加密，防止同一网络上的攻击者看到您的流量</translation>
 <translation id="4207932031282227921">收到了权限请求，按 F6 即可回复</translation>
-<translation id="4208390505124702064">使用 <ph name="SITE_NAME" /> 搜索</translation>
 <translation id="4209092469652827314">大</translation>
 <translation id="4209247656298167054">无更新</translation>
 <translation id="4209251085232852247">已关闭</translation>
@@ -4879,7 +4883,6 @@
 <translation id="4281844954008187215">服务条款</translation>
 <translation id="4281849573951338030">自定义画笔按键</translation>
 <translation id="4282196459431406533">Smart Lock 已开启</translation>
-<translation id="4283635301190260296">收起垂直标签页栏</translation>
 <translation id="4284903252249997120">ChromeVox 屏幕阅读器和随选朗读功能</translation>
 <translation id="4285418559658561636">更新密码</translation>
 <translation id="4285498937028063278">取消固定</translation>
@@ -5594,6 +5597,7 @@
 <translation id="4784349455504343791"><ph name="WEBSITE_ORIGIN" /> 想使用您数字钱包中的个人信息。</translation>
 <translation id="4785719467058219317">您使用的安全密钥尚未在此网站注册</translation>
 <translation id="4785914069240823137">取消剪裁</translation>
+<translation id="4786430656008801173">设备端 AI</translation>
 <translation id="4787471921443575924">修改以下用户名的通行密钥：<ph name="USER_EMAIL" /></translation>
 <translation id="4788092183367008521">请检查您的网络连接，然后重试。</translation>
 <translation id="4789348252524569426">无法安装语音文件。您的设备需要更新。请重启设备，然后重试。</translation>
@@ -5748,6 +5752,7 @@
 <translation id="4881685975363383806">下次不再提醒我</translation>
 <translation id="4881695831933465202">打开</translation>
 <translation id="4882312758060467256">可以访问此网站</translation>
+<translation id="4882848900607400156">分享精确位置后，Gemini 可以更准确地回答您的问题。您的数据不会用于改进生成式 AI 模型。</translation>
 <translation id="4882919381756638075">网站通常会使用您的麦克风以实现通信功能（例如视频聊天）</translation>
 <translation id="4883436287898674711">所有<ph name="WEBSITE_1" />网站</translation>
 <translation id="48838266408104654">任务管理器(&amp;T)</translation>
@@ -5838,6 +5843,7 @@
 <translation id="4945439665401275950">若要设置指纹，请让您的孩子轻触电源按钮。您孩子的指纹数据会安全地存储在此 <ph name="DEVICE_TYPE" /> 上，绝不会外泄。</translation>
 <translation id="4946998421534856407">启动器键 + 向上键</translation>
 <translation id="4947376546135294974">来自您当前访问网站的数据</translation>
+<translation id="4948370357877377178">继续处理任务</translation>
 <translation id="4950100687509657457">创建个人资料</translation>
 <translation id="495164417696120157">{COUNT,plural, =1{1 个文件}other{# 个文件}}</translation>
 <translation id="495170559598752135">操作</translation>
@@ -8233,6 +8239,7 @@
 <translation id="6636623428211296678">探索下方的更多设置，或立即结束</translation>
 <translation id="6639554308659482635">SQLite 内存</translation>
 <translation id="6640268266988685324">已打开的标签页</translation>
+<translation id="664271268954513498">政策值</translation>
 <translation id="6642720633335369752">要查看所有已打开的应用窗口，请从屏幕底部向上滑动并按住屏幕。</translation>
 <translation id="664290675870910564">选择网络</translation>
 <translation id="6643016212128521049">清除</translation>
@@ -8860,7 +8867,6 @@
 <translation id="70577934383983846">在您的所有设备上使用此密码</translation>
 <translation id="7058024590501568315">隐藏的网络</translation>
 <translation id="7059858479264779982">设为自动启动</translation>
-<translation id="7060004353663489242">“<ph name="FIELD_LIST" />”是必填项</translation>
 <translation id="7063129466199351735">处理快捷方式…</translation>
 <translation id="7063311912041006059">网址格式（用“<ph name="SPECIAL_SYMBOL" />”代替搜索字词）</translation>
 <translation id="70641621694466590">前往“密码”页面</translation>
@@ -9059,6 +9065,7 @@
 <translation id="720715819012336933">{NUM_PAGES,plural, =1{退出网页}other{退出网页}}</translation>
 <translation id="7207457272187520234">发送使用情况数据和诊断数据。目前，此设备会自动向 Google 发送诊断数据、设备数据和应用使用情况数据。这些数据会有助于提高系统和应用的稳定性以及实现其他方面的改进。部分汇总数据还会对 Google 应用和合作伙伴（例如 Android 开发者）有所帮助。这项设置是由此设备的所有者强制指定的。如果您已开启“其他网络与应用活动记录”设置，这些数据可能会被保存到您的 Google 账号中。</translation>
 <translation id="7207631048330366454">搜索应用</translation>
+<translation id="7209958456051239069">分享精确位置后，Gemini 可以更准确地回答您的问题</translation>
 <translation id="7210257969463271891">您安装的 Web 应用会显示在此处</translation>
 <translation id="7210432570808024354">点按并拖动即可移动内容</translation>
 <translation id="7210499381659830293">扩展打印机</translation>
@@ -10634,7 +10641,6 @@
 <translation id="8263228331881858381">已保存通行密钥</translation>
 <translation id="8263336784344783289">为此组命名</translation>
 <translation id="8264024885325823677">此设置由您的管理员管理。</translation>
-<translation id="826410575944953302">展开纵向标签页栏</translation>
 <translation id="8264195025773092348">系统仅会显示受支持的设备。在断开连接之前，原生应用将无法使用 USB 设备。</translation>
 <translation id="8265018477030547118">仅在该设备上</translation>
 <translation id="826511437356419340">已进入窗口概览模式。您可以滑动手指或（若使用键盘）按 Tab 键进行浏览。</translation>
@@ -10679,6 +10685,7 @@
 <translation id="8288032458496410887">卸载 <ph name="APP" />…</translation>
 <translation id="8288553158681886528">提取 PDF 文件中的文本</translation>
 <translation id="8289128870594824098">磁盘大小</translation>
+<translation id="8289200713453671499">在不丢失当前浏览位置的情况下，快速在标签页分组和最近的 AI 对话之间切换。</translation>
 <translation id="8289509909262565712">欢迎使用 <ph name="DEVICE_OS" /></translation>
 <translation id="8291415872436043161">下载 Chrome</translation>
 <translation id="8291942417224950075">个人使用</translation>
@@ -10732,7 +10739,6 @@
 <translation id="8323518750352551353">是否单独浏览？</translation>
 <translation id="8323744572398547859">要访问您从其他设备打开的标签页，请登录并同步历史记录。登录后，您还可在自己的所有设备上使用保存的密码等信息。您可以随时在设置中停止同步。Google 可能会根据您的历史记录，在 Google 搜索及其他服务中提供个性化的体验。</translation>
 <translation id="8324158725704657629">别再询问</translation>
-<translation id="8324264291265547520">展开纵向标签页栏</translation>
 <translation id="8325413836429495820">不允许查看您的剪贴板</translation>
 <translation id="8326478304147373412">PKCS #7，证书链</translation>
 <translation id="8327386430364625757">数学字体</translation>
@@ -11660,6 +11666,7 @@
 <translation id="8945508919180478719">录音室级麦克风</translation>
 <translation id="8946359700442089734">此<ph name="IDS_SHORT_PRODUCT_NAME" />设备上未完全启用调试功能。</translation>
 <translation id="8946954897220903437">收起地址栏中的所有请求</translation>
+<translation id="8946996840522387154">使用麦克风与 Gemini 对话。与 Gemini 对话时，对话音频会存储在 Gemini 应用活动记录中（如果已开启这项设置）。您的数据不会用于改进生成式 AI 模型。</translation>
 <translation id="894763922177556086">良好</translation>
 <translation id="895054485242522631">网站可以使用移动传感器</translation>
 <translation id="8951256747718668828">发生错误，因此无法完成恢复</translation>
@@ -11808,7 +11815,6 @@
 <translation id="9032004780329249150">在 iOS 设备上使用您的密码</translation>
 <translation id="9032097289595078011">停用快速配对</translation>
 <translation id="9032513103438497286">屏蔽在此 <ph name="DEVICE_TYPE" /> 上安装的应用。如要限制下载应用或内容，请前往 Google Play 设置。</translation>
-<translation id="9033204084988490464">收起垂直标签页</translation>
 <translation id="9033765790910064284">仍然继续</translation>
 <translation id="9033857511263905942">粘贴(&amp;P)</translation>
 <translation id="903480517321259405">重新输入 PIN 码</translation>
@@ -12175,6 +12181,7 @@
 <translation id="987574372967138078"><ph name="WEBSITE_ORIGIN" /> 想从您的移动设备获取信息</translation>
 <translation id="988320949174893488">偶尔不流畅</translation>
 <translation id="988978206646512040">密码字段不能留空</translation>
+<translation id="989685714699739712">将标签页分组，并添加自定义名称和颜色</translation>
 <translation id="992032470292211616">这些扩展程序、应用和主题背景可能会危害您的设备。确定要继续下载吗？</translation>
 <translation id="992256792861109788">粉色</translation>
 <translation id="992592832486024913">停用 ChromeVox（语音反馈）</translation>

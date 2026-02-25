@@ -477,8 +477,7 @@ void ManagePasswordsUIController::OnCredentialLeak(
   }
 
   if (password_manager::IsPasswordChangeSupported(details.leak_type) &&
-      !password_manager::IsPasswordSavedAsBackup(details.leak_type) &&
-      !details.credentials.IsLikelySignupForm()) {
+      !password_manager::IsPasswordSavedAsBackup(details.leak_type)) {
     auto* password_change_service = GetPasswordChangeService(web_contents());
     CHECK(password_change_service);
 
@@ -1515,7 +1514,8 @@ ManagePasswordsUIController::GetBubbleControllerBaseWeakPtr() {
 }
 
 bool ManagePasswordsUIController::CanBeReshown() const {
-  return GetState() != password_manager::ui::AUTO_SIGNIN_STATE;
+  return GetState() != password_manager::ui::AUTO_SIGNIN_STATE &&
+         GetState() != password_manager::ui::INACTIVE_STATE;
 }
 
 void ManagePasswordsUIController::OnMouseEntered() {

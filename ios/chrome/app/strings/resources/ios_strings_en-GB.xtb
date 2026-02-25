@@ -249,6 +249,7 @@
 <translation id="1872096359983322073">Torch</translation>
 <translation id="1875733418125333939"><ph name="FILENAME" />.</translation>
 <translation id="1881621406744213161">Invite family members</translation>
+<translation id="188177382966899059">Deep Search</translation>
 <translation id="188237709236611317">Smart sort menu bar</translation>
 <translation id="1883255238294161206">Collapse list</translation>
 <translation id="1888854257756214946">Select password…</translation>
@@ -1328,7 +1329,6 @@ Handoff must also be enabled in the General section of Settings, and your device
 <translation id="5868644772996939262">AutoFill Passwords and Passkeys</translation>
 <translation id="5869522115854928033">Saved passwords</translation>
 <translation id="5873179562631407582">Tap and hold any open tabs</translation>
-<translation id="5878899964490256268"><ph name="EMAIL" />. Managed by your organisation.</translation>
 <translation id="5887400589839399685">Card saved</translation>
 <translation id="5888889603768021126">Signed in with</translation>
 <translation id="5889333064153755823">Delete browsing data</translation>
@@ -1665,6 +1665,7 @@ Handoff must also be enabled in the General section of Settings, and your device
 <ph name="BEGIN_LINK" />Learn more<ph name="END_LINK" /></translation>
 <translation id="7005768247344091502">Make default in Settings…</translation>
 <translation id="7007970306646738803">Choose what to do with the existing browsing data on this device, like tabs, history and passwords.</translation>
+<translation id="7012978439516925343">Verify that it's you to create a passkey</translation>
 <translation id="7015418667643980944">Split view</translation>
 <translation id="7016070607649558507">You have one weak password. Fix it now to stay safe.</translation>
 <translation id="7016958933495968912">Options for discover</translation>
@@ -2046,6 +2047,7 @@ Handoff must also be enabled in the General section of Settings, and your device
 <translation id="8407831512155324054">Your passwords look strong</translation>
 <translation id="8414030140103493759">Take photo or video</translation>
 <translation id="8414283596511250978">Never forget your passwords</translation>
+<translation id="8415120635186642416">Research anything</translation>
 <translation id="842523302461531262">Make default in settings…</translation>
 <translation id="8428045167754449968">City/Town</translation>
 <translation id="8428213095426709021">Settings</translation>

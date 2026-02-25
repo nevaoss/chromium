@@ -41,7 +41,9 @@ export function getHtml(this: SearchboxElement) {
         @model-click="${this.onModelClick_}"
         @get-tab-preview="${this.getTabPreview_}"
         @context-menu-container-click="${this.onContextMenuContainerClick_}"
+        @context-menu-entrypoint-click="${this.onContextMenuEntrypointClick_}"
         @context-menu-closed="${this.onContextMenuClosed_}"
+        @context-menu-opened="${this.onContextMenuOpened_}"
         ?show-dropdown="${this.dropdownIsVisible}"
         ?show-recent-tab-chip="${this.computeShowRecentTabChip_()}"
         .inputState="${this.inputState_}"
@@ -149,7 +151,7 @@ export function getHtml(this: SearchboxElement) {
         </div>
         <div class="dropdownContainer" ?inert="${this.errorMessage_}">
           ${dropdown}
-          ${this.recentTabForChip_ && this.dropdownIsVisible && this.isInputEmpty() ? html`
+          ${this.shouldShowRecentTabChipInDropdown_() ? html`
           <div id="recentTabChipContainer">
             <composebox-recent-tab-chip
                 .recentTab="${this.recentTabForChip_}"

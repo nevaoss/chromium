@@ -7,6 +7,7 @@
 #include <string_view>
 
 #include "base/check.h"
+#include "base/check_is_test.h"
 #include "base/containers/flat_set.h"
 #include "base/functional/bind.h"
 #include "base/no_destructor.h"
@@ -15,10 +16,12 @@
 #include "base/values.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/enterprise/platform_auth/extensible_enterprise_sso_policy_handler.h"
-#include "chrome/browser/enterprise/platform_auth/platform_auth_features.h"
 #include "chrome/browser/enterprise/platform_auth/platform_auth_provider_manager.h"
-#include "chrome/browser/enterprise/platform_auth/url_session_url_loader.h"
 #include "chrome/common/pref_names.h"
+#include "components/content_settings/core/common/content_settings_pattern.h"
+#include "components/enterprise/platform_auth/platform_auth_features.h"
+#include "components/enterprise/platform_auth/url_session_helper.h"
+#include "components/enterprise/platform_auth/url_session_url_loader.h"
 #include "components/policy/core/common/policy_logger.h"
 #include "components/prefs/pref_service.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
@@ -31,38 +34,17 @@ namespace enterprise_auth {
 
 namespace {
 
-constexpr char kWildcardSegment[] = "*";
+static bool g_use_mock_server_for_testing = false;
 
-// Splits both the pattern and the path into segments separated with |/|.
-// Compares corresponding segments. Wildcard |*| matches one whole segment.
-bool MatchOktaSSOUrlPattern(std::string_view path) {
-  static const base::NoDestructor<std::vector<std::string>> pattern_segments(
-      base::SplitString(kOktaSsoURLPattern.Get(), "/", base::TRIM_WHITESPACE,
-                        base::SPLIT_WANT_NONEMPTY));
-  const std::vector<std::string_view> path_segments = base::SplitStringPiece(
-      path, "/", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-
-  if (path_segments.size() != pattern_segments->size()) {
-    return false;
-  }
-
-  for (size_t i = 0; i < path_segments.size(); ++i) {
-    if (pattern_segments->at(i) != kWildcardSegment &&
-        path_segments.at(i) != pattern_segments->at(i)) {
-      return false;
-    }
-  }
-
-  return true;
 }
-
-}  // namespace
 
 ProxyingURLLoaderFactory::ProxyingURLLoaderFactory(
     mojo::PendingReceiver<network::mojom::URLLoaderFactory> receiver,
     mojo::PendingRemote<network::mojom::URLLoaderFactory> target_factory,
-    base::flat_set<std::string> configured_hosts)
-    : configured_hosts_(std::move(configured_hosts)) {
+    base::flat_set<std::string> configured_hosts,
+    const url::Origin& request_initiator)
+    : configured_hosts_(std::move(configured_hosts)),
+      request_initiator_(request_initiator) {
   DCHECK(!target_factory_.is_bound());
   // base::Unretained here is safe because the callbacks are owned by this, so
   // when this destroys itself, the callbacks will also get destroyed.
@@ -103,9 +85,9 @@ void ProxyingURLLoaderFactory::MaybeProxyRequest(
     for (const base::Value& host : configured_hosts_pref) {
       configured_hosts.insert(host.GetString());
     }
-    new ProxyingURLLoaderFactory(std::move(loader_receiver),
-                                 std::move(target_factory),
-                                 std::move(configured_hosts));
+    new ProxyingURLLoaderFactory(
+        std::move(loader_receiver), std::move(target_factory),
+        std::move(configured_hosts), request_initiator);
   }
 }
 
@@ -116,13 +98,18 @@ void ProxyingURLLoaderFactory::CreateLoaderAndStart(
     const network::ResourceRequest& request,
     mojo::PendingRemote<network::mojom::URLLoaderClient> client,
     const net::MutableNetworkTrafficAnnotationTag& traffic_annotation) {
-  if (configured_hosts_.contains(request.url.host()) &&
-      IsOktaSSORequest(request)) {
+  if (ShouldInterceptRequest(request)) {
     if (intercepted_request_callback_for_testing_) {
       std::move(intercepted_request_callback_for_testing_).Run(request);
     } else {
-      URLSessionURLLoader::CreateAndStart(request, std::move(loader_receiver),
-                                          std::move(client));
+      if (g_use_mock_server_for_testing) {
+        CHECK_IS_TEST();
+        URLSessionURLLoader::CreateAndStartForTesting(  // IN-TEST
+            request, std::move(loader_receiver), std::move(client));
+      } else {
+        URLSessionURLLoader::CreateAndStart(request, std::move(loader_receiver),
+                                            std::move(client));
+      }
     }
   } else {
     target_factory_->CreateLoaderAndStart(
@@ -146,33 +133,43 @@ void ProxyingURLLoaderFactory::OnProxyDisconnect() {
   }
 }
 
+bool ProxyingURLLoaderFactory::ShouldInterceptRequest(
+    const network::ResourceRequest& request) {
+  // Only intercept requests to domains configured by the MDM profile.
+  if (!configured_hosts_.contains(request.url.host())) {
+    return false;
+  }
+
+  // Check if this request fits the pattern for the Okta SSO request.
+  if (!url_session_helper::IsOktaSSORequest(request)) {
+    return false;
+  }
+
+  // Make sure the renderer process has set a correct request initiator.
+  if (!request.request_initiator.has_value() ||
+      !request.request_initiator.value().IsSameOriginWith(request_initiator_)) {
+    return false;
+  }
+
+  return true;
+}
+
 ProxyingURLLoaderFactory::~ProxyingURLLoaderFactory() {
   if (destruction_callback_for_testing_) {
     std::move(destruction_callback_for_testing_).Run();
   }
 }
 
-// static
-bool ProxyingURLLoaderFactory::IsOktaSSORequest(
-    const network::ResourceRequest& request) {
-  // Only match POST requests.
-  if (request.method != "POST") {
-    return false;
-  }
+ProxyingURLLoaderFactory::ScopedURLSessionOverrideForTesting::
+    ScopedURLSessionOverrideForTesting() {
+  CHECK_IS_TEST();
+  CHECK(!g_use_mock_server_for_testing);
+  g_use_mock_server_for_testing = true;
+}
 
-  const GURL& gurl = request.url;
-  // Only match HTTPS requests.
-  if (!gurl.SchemeIs(url::kHttpsScheme)) {
-    return false;
-  }
-
-  // Reject URLs with query parameters, fragments, or user credentials.
-  if (gurl.has_query() || gurl.has_ref() || gurl.has_username() ||
-      gurl.has_password()) {
-    return false;
-  }
-
-  return MatchOktaSSOUrlPattern(gurl.path());
+ProxyingURLLoaderFactory::ScopedURLSessionOverrideForTesting::
+    ~ScopedURLSessionOverrideForTesting() {
+  g_use_mock_server_for_testing = false;
 }
 
 }  // namespace enterprise_auth

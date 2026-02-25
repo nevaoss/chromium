@@ -160,6 +160,7 @@ Puedes revisar las contraseñas en cualquier momento, en <ph name="GOOGLE_PASSWO
 <translation id="109647177154844434">Si desinstalas Parallels Desktop, se borrará la imagen de Windows. Esto incluye sus aplicaciones, opciones de configuración y datos. ¿Confirmas que deseas continuar?</translation>
 <translation id="1097016918605049747">No se pudo traducir esta página.</translation>
 <translation id="1097658378307015415">Antes de acceder, ingresa como Invitado para activar la red <ph name="NETWORK_ID" />.</translation>
+<translation id="1099070179078143183">Para potenciar funciones como la detección de estafas, Chrome puede usar modelos de IA que se ejecutan directamente en tu dispositivo sin enviar tus datos a los servidores de Google. Si desactivas esta opción, es posible que estas funciones no tengan un comportamiento adecuado. <ph name="BEGIN_LINK" />Más información sobre la IA integrada en el dispositivo<ph name="END_LINK" /></translation>
 <translation id="1099962274138857708">Imagen copiada de <ph name="DEVICE_NAME" /></translation>
 <translation id="1100504063505580045">Ícono actual</translation>
 <translation id="1102759278139578486">No se pueden descargar los archivos de anotaciones de nodos principales. Vuelve a intentarlo más tarde.</translation>
@@ -513,6 +514,7 @@ Puedes revisar las contraseñas en cualquier momento, en <ph name="GOOGLE_PASSWO
 <translation id="1333965224356556482">No permitir que los sitios visualicen tu ubicación</translation>
 <translation id="1335282218035876586">Tu Chromebook ya no recibe actualizaciones de seguridad ni de software. Cambia tu Chromebook para obtener la mejor experiencia.</translation>
 <translation id="133535873114485416">Método de entrada preferido</translation>
+<translation id="13356285923490863">Nombre de la política</translation>
 <translation id="1335929031622236846">Inscribe tu dispositivo</translation>
 <translation id="133660899895084533">Leer los datos y la información de los periféricos Bluetooth</translation>
 <translation id="1336902454946927954">Se bloqueó la llave de seguridad porque no se reconoció tu huella dactilar. Para desbloquearla, ingresa el PIN.</translation>
@@ -1388,6 +1390,7 @@ Es posible que se apliquen a esta cuenta los permisos que otorgaste a apps. Pued
 <translation id="192564025059434655">Las versiones anteriores de las Apps de Chrome dejarán de funcionar en dispositivos con Windows después de diciembre de 2022. Puedes comprobar si hay una nueva versión disponible.</translation>
 <translation id="1926339101652878330">Esta configuración se controla por medio de una política de la empresa. Ponte en contacto con tu administrador para obtener más información.</translation>
 <translation id="1926887872692564784">Cursor</translation>
+<translation id="1927075772688962338">Fijar el modo de lectura</translation>
 <translation id="1927632033341042996">Dedo <ph name="NEW_FINGER_NUMBER" /></translation>
 <translation id="192817607445937251">PIN de bloqueo de pantalla</translation>
 <translation id="192858925209436740">Conecta OneDrive a la app de Archivos para administrar los documentos almacenados desde la Chromebook. Deberás acceder con tu cuenta de Microsoft.</translation>
@@ -2623,6 +2626,7 @@ Para administrar la configuración de esta cuenta, instala la app de Family Lin
 <translation id="2749836841884031656">SIM</translation>
 <translation id="2749881179542288782">Controlar la gramática con la ortografía</translation>
 <translation id="2750020734439919571">Más parámetros de configuración y permisos de las apps de Chrome</translation>
+<translation id="275010360476017464">Usa el micrófono para chatear con Gemini. Cuando hablas con Gemini, el audio se almacena en la Actividad en las Apps con Gemini (si está activada).</translation>
 <translation id="2750602041558385535">Se bloqueó una descarga no verificada</translation>
 <translation id="2751454300227269244">Mueve la boca hacia la derecha</translation>
 <translation id="2751883373055093745"><ph name="WEBSITE" /> quiere ver el número de ID de tu llave de seguridad. El sitio sabrá exactamente qué llave de seguridad estás utilizando.</translation>
@@ -3773,6 +3777,7 @@ Para administrar la configuración de esta cuenta, instala la app de Family Lin
 <translation id="3557101512409028104">Establece restricciones de sitios web y limita el tiempo de uso con Family Link</translation>
 <translation id="3557267430539505890"><ph name="BEGIN_PARAGRAPH1" />Cuando permites que los dispositivos ChromeOS envíen informes automáticos, nos ayudas a priorizar las tareas de corrección y mejora en ChromeOS. Estos informes pueden incluir cierta información como el momento en que falló ChromeOS, qué funciones se estaban usando y la cantidad de memoria que se usaba en general.<ph name="END_PARAGRAPH1" />
     <ph name="BEGIN_PARAGRAPH2" />Puedes permitir o cancelar estos informes en cualquier momento en la configuración del dispositivo ChromeOS de tu hijo. Si eres el administrador de dominio, puedes cambiar esta configuración en la Consola del administrador.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="3558579881215044733"><ph name="WINDOW_TITLE" /> - Gemini está trabajando en tu tarea…</translation>
 <translation id="3559079791149580653">Detener la transmisión de pantalla a <ph name="DEVICE_NAME" /></translation>
 <translation id="3559262020195162408">No se pudo instalar la política en el dispositivo.</translation>
 <translation id="3559533181353831840">Tiempo restante: <ph name="TIME_LEFT" /></translation>
@@ -4769,7 +4774,6 @@ Para administrar la configuración de esta cuenta, instala la app de Family Lin
 <translation id="4206585797409671301">Puede mostrar solicitudes</translation>
 <translation id="4207144975205749656">Encriptar las solicitudes de navegación para que los atacantes de la misma red no puedan ver tu tráfico</translation>
 <translation id="4207932031282227921">Se solicitó un permiso; para responder, presiona F6</translation>
-<translation id="4208390505124702064">Buscar <ph name="SITE_NAME" /></translation>
 <translation id="4209092469652827314">Grande</translation>
 <translation id="4209247656298167054">Sin actualizaciones</translation>
 <translation id="4209251085232852247">Desactivados</translation>
@@ -4887,7 +4891,6 @@ Para administrar la configuración de esta cuenta, instala la app de Family Lin
 <translation id="4281844954008187215">Condiciones del Servicio</translation>
 <translation id="4281849573951338030">Personalizar los botones del lápiz</translation>
 <translation id="4282196459431406533">Smart Lock está activado</translation>
-<translation id="4283635301190260296">Contraer pestañas verticales</translation>
 <translation id="4284903252249997120">Seleccionar para pronunciar y lector de pantalla de ChromeVox</translation>
 <translation id="4285418559658561636">Actualizar contraseña</translation>
 <translation id="4285498937028063278">Dejar de fijar</translation>
@@ -5602,6 +5605,7 @@ Usa Ctrl + Alt + Disminuir brillo para alejarte.</translation>
 <translation id="4784349455504343791"><ph name="WEBSITE_ORIGIN" /> quiere usar información personal de tu billetera digital.</translation>
 <translation id="4785719467058219317">Estás usando una llave de seguridad que no se registró con este sitio web</translation>
 <translation id="4785914069240823137">Cancelar recorte</translation>
+<translation id="4786430656008801173">IA integrada en el dispositivo</translation>
 <translation id="4787471921443575924">Editar la llave de acceso para el nombre de usuario: <ph name="USER_EMAIL" /></translation>
 <translation id="4788092183367008521">Comprueba la conexión de red y vuelve a intentarlo.</translation>
 <translation id="4789348252524569426">No se pueden instalar los archivos de voz. Debes actualizar el dispositivo. Reinicia el dispositivo y vuelve a intentarlo.</translation>
@@ -5757,6 +5761,7 @@ Usa Ctrl + Alt + Disminuir brillo para alejarte.</translation>
 <translation id="4881685975363383806">No recordármelo la próxima vez</translation>
 <translation id="4881695831933465202">Abrir</translation>
 <translation id="4882312758060467256">Tiene acceso a este sitio</translation>
+<translation id="4882848900607400156">Cuando compartes tu ubicación precisa, Gemini puede responder tus preguntas con mayor precisión. Tus datos no se usarán para mejorar modelos de IA generativa.</translation>
 <translation id="4882919381756638075">Por lo general, los sitios utilizan el micrófono para habilitar funciones de comunicación, como videochat.</translation>
 <translation id="4883436287898674711">Todos los sitios de <ph name="WEBSITE_1" /></translation>
 <translation id="48838266408104654">Adminis&amp;trador de tareas</translation>
@@ -5847,6 +5852,7 @@ Usa Ctrl + Alt + Disminuir brillo para alejarte.</translation>
 <translation id="4945439665401275950">Para configurar una huella dactilar, haz que tu hijo toque el botón de encendido. Los datos de la huella dactilar de tu hijo se almacenan de forma segura y no salen nunca de este dispositivo <ph name="DEVICE_TYPE" />.</translation>
 <translation id="4946998421534856407">Selector + flecha hacia arriba</translation>
 <translation id="4947376546135294974">Datos del sitio que estás visitando</translation>
+<translation id="4948370357877377178">Continúa con tus tareas</translation>
 <translation id="4950100687509657457">Crear perfil</translation>
 <translation id="495164417696120157">{COUNT,plural, =1{un archivo}other{# archivos}}</translation>
 <translation id="495170559598752135">Acciones</translation>
@@ -8246,6 +8252,7 @@ Tienes # contraseñas hackeadas más. El Administrador de contraseñas de Go
 <translation id="6636623428211296678">Explora más parámetros de configuración a continuación o finaliza ahora.</translation>
 <translation id="6639554308659482635">Memoria usada por SQLite</translation>
 <translation id="6640268266988685324">Abrir pestaña</translation>
+<translation id="664271268954513498">Valor de la política</translation>
 <translation id="6642720633335369752">Para ver todas las ventanas de las apps abiertas, desliza el dedo hacia arriba desde la parte inferior y mantén presionada la pantalla.</translation>
 <translation id="664290675870910564">Selección de red</translation>
 <translation id="6643016212128521049">Borrar</translation>
@@ -8873,7 +8880,6 @@ Tienes # contraseñas hackeadas más. El Administrador de contraseñas de Go
 <translation id="70577934383983846">Usa esta contraseña en todos tus dispositivos</translation>
 <translation id="7058024590501568315">Red oculta</translation>
 <translation id="7059858479264779982">Permitir inicio automático</translation>
-<translation id="7060004353663489242"><ph name="FIELD_LIST" /> es obligatorio</translation>
 <translation id="7063129466199351735">Procesando accesos directos…</translation>
 <translation id="7063311912041006059">URL con <ph name="SPECIAL_SYMBOL" /> en lugar de la consulta</translation>
 <translation id="70641621694466590">Ir a la página Contraseñas</translation>
@@ -9072,6 +9078,7 @@ Tienes # contraseñas hackeadas más. El Administrador de contraseñas de Go
 <translation id="720715819012336933">{NUM_PAGES,plural, =1{Salir de la página}other{Salir de las páginas}}</translation>
 <translation id="7207457272187520234">Envía datos de uso y diagnóstico. De forma automática, este dispositivo está enviando a Google datos de diagnóstico y sobre el uso del dispositivo y las apps. Esta información ayudará a lograr la estabilidad de las apps y el sistema, entre otras mejoras. Algunos datos agregados también ayudarán a las apps y los socios de Google, como los desarrolladores de Android. El propietario controla esta configuración. Si habilitaste la Actividad web y de aplicaciones adicional, es posible que se almacenen estos datos en tu Cuenta de Google.</translation>
 <translation id="7207631048330366454">Buscar apps</translation>
+<translation id="7209958456051239069">Si compartes tu ubicación precisa, Gemini puede responder tus preguntas con mayor exactitud</translation>
 <translation id="7210257969463271891">Las apps web que instales aparecerán aquí</translation>
 <translation id="7210432570808024354">Presionar y arrastrar para mover elementos</translation>
 <translation id="7210499381659830293">Impresoras de extensiones</translation>
@@ -10647,7 +10654,6 @@ Mantén el archivo de clave en un lugar seguro. Debes crear las nuevas versiones
 <translation id="8263228331881858381">Se guardó la llave de acceso</translation>
 <translation id="8263336784344783289">Escribe un nombre para este grupo</translation>
 <translation id="8264024885325823677">El administrador controla esta configuración.</translation>
-<translation id="826410575944953302">Expandir pestañas verticales</translation>
 <translation id="8264195025773092348">Solo se muestran dispositivos compatibles. Los dispositivos USB ya no estarán disponibles para las apps nativas hasta que se desconecten.</translation>
 <translation id="8265018477030547118">Solo en este dispositivo</translation>
 <translation id="826511437356419340">Se activó el modo de vista Recientes. Desliza el dedo para navegar o presiona Tab si usas un teclado.</translation>
@@ -10692,6 +10698,7 @@ Mantén el archivo de clave en un lugar seguro. Debes crear las nuevas versiones
 <translation id="8288032458496410887">Desinstalar <ph name="APP" />…</translation>
 <translation id="8288553158681886528">Extraer texto de PDF</translation>
 <translation id="8289128870594824098">Tamaño del disco</translation>
+<translation id="8289200713453671499">Cambia rápidamente entre tus grupos de pestañas y tus conversaciones recientes con IA sin perder tu lugar.</translation>
 <translation id="8289509909262565712">Te damos la bienvenida a <ph name="DEVICE_OS" /></translation>
 <translation id="8291415872436043161">Descarga Chrome</translation>
 <translation id="8291942417224950075">Para uso personal</translation>
@@ -10745,7 +10752,6 @@ Mantén el archivo de clave en un lugar seguro. Debes crear las nuevas versiones
 <translation id="8323518750352551353">¿Quieres separar la navegación?</translation>
 <translation id="8323744572398547859">Para obtener las pestañas de tus otros dispositivos, accede y sincroniza el historial. También accederás a tus contraseñas y más en todos tus dispositivos. Puedes detener la sincronización en cualquier momento desde la configuración. Es posible que Google personalice la Búsqueda y otros servicios en función de tu historial.</translation>
 <translation id="8324158725704657629">No volver a preguntar</translation>
-<translation id="8324264291265547520">Expandir pestañas verticales</translation>
 <translation id="8325413836429495820">No puede ver el contenido del portapapeles</translation>
 <translation id="8326478304147373412">PKCS N. º 7, cadena de certificados</translation>
 <translation id="8327386430364625757">Fuente matemática</translation>
@@ -11673,6 +11679,7 @@ Esto puede incluir información sobre el software instalado, los archivos, el na
 <translation id="8945508919180478719">Micrófono de estilo de estudio</translation>
 <translation id="8946359700442089734">Las funciones de depuración no se habilitaron completamente en este dispositivo <ph name="IDS_SHORT_PRODUCT_NAME" />.</translation>
 <translation id="8946954897220903437">Contraer todas las solicitudes en la barra de direcciones</translation>
+<translation id="8946996840522387154">Usa el micrófono para chatear con Gemini. Cuando hablas con Gemini, el audio se almacena en la Actividad en las Apps con Gemini (si está activada). Tus datos no se usarán para mejorar modelos de IA generativa.</translation>
 <translation id="894763922177556086">Buena</translation>
 <translation id="895054485242522631">Permitir que los sitios utilicen sensores de movimiento</translation>
 <translation id="8951256747718668828">No se pudo completar el restablecimiento debido a un error</translation>
@@ -11821,7 +11828,6 @@ Esto puede incluir información sobre el software instalado, los archivos, el na
 <translation id="9032004780329249150">Usa tus contraseñas en tus dispositivos iOS</translation>
 <translation id="9032097289595078011">Inhabilitar Vinculación rápida</translation>
 <translation id="9032513103438497286">Bloquea las apps instaladas en tu <ph name="DEVICE_TYPE" />. Para restringir la descarga de apps o contenido, ve a la configuración de Google Play.</translation>
-<translation id="9033204084988490464">Contraer pestañas verticales</translation>
 <translation id="9033765790910064284">Continuar de todos modos</translation>
 <translation id="9033857511263905942">&amp;Pegar</translation>
 <translation id="903480517321259405">Vuelve a introducir el PIN</translation>
@@ -12188,6 +12194,7 @@ Esto puede incluir información sobre el software instalado, los archivos, el na
 <translation id="987574372967138078"><ph name="WEBSITE_ORIGIN" /> quiere obtener información de tu dispositivo móvil</translation>
 <translation id="988320949174893488">Inestable por momentos</translation>
 <translation id="988978206646512040">No se permite una frase de contraseña vacía</translation>
+<translation id="989685714699739712">Organiza tus pestañas agrupándolas y etiquetándolas con un nombre y un color personalizados</translation>
 <translation id="992032470292211616">Las extensiones, las aplicaciones y los temas pueden dañar tu dispositivo. ¿Confirmas que quieres continuar?</translation>
 <translation id="992256792861109788">Rosa</translation>
 <translation id="992592832486024913">Inhabilitar ChromeVox (descripciones por voz)</translation>

@@ -8,6 +8,7 @@ option optimize_for = LITE_RUNTIME;
 
 package lens;
 
+import "added_inputs.proto";
 import "lens_overlay_request_id.proto";
 import "lens_overlay_visual_input_type.proto";
 import "lens_overlay_visual_search_interaction_data.proto";
@@ -108,8 +109,14 @@ message QueryPayload {
   // Whether to use research agent for this query.
   bool use_research_agent = 4;
 
+  // Whether to use canvas for this query.
+  bool use_canvas = 11;
+
   // Whether to use Image Generation for this query.
   bool use_image_generation = 12;
+
+  // Additional non-text inputs to be attached to the query.
+  AddedInputs added_inputs = 8;
 
   // CGI params.
   map<string, string> cgi_params = 9;

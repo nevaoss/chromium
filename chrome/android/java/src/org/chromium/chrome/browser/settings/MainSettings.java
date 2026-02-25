@@ -514,24 +514,23 @@ public class MainSettings extends ChromeBaseSettingsFragment
 
         if (shouldShowDefaultBrowserSetting()) {
             Preference pref = addPreferenceIfAbsent(PREF_DEFAULT_BROWSER);
-
-            pref.setOnPreferenceClickListener(
-                    preference -> {
-                        // We decided not to show the Role Model Dialog at all when the menu item in
-                        // Settings is clicked.
-                        DefaultBrowserPromoUtils.getInstance()
-                                .onMenuItemClick(
-                                        getActivity(),
-                                        /* windowAndroid= */ null,
-                                        DefaultBrowserPromoUtils.DefaultBrowserPromoEntryPoint
-                                                .SETTINGS);
-                        return true;
-                    });
+            pref.setOnPreferenceClickListener((p) -> showDefaultBrowserSettings(getActivity()));
         } else {
             removePreferenceIfPresent(PREF_DEFAULT_BROWSER);
         }
 
         notifyPreferencesUpdated();
+    }
+
+    private static boolean showDefaultBrowserSettings(Activity activity) {
+        // We decided not to show the Role Model Dialog at all when the menu item in
+        // Settings is clicked.
+        DefaultBrowserPromoUtils.getInstance()
+                .onMenuItemClick(
+                        activity,
+                        /* windowAndroid= */ null,
+                        DefaultBrowserPromoUtils.DefaultBrowserPromoEntryPoint.SETTINGS);
+        return true;
     }
 
     private static boolean shouldShowSignInPref(Profile profile) {
@@ -707,6 +706,9 @@ public class MainSettings extends ChromeBaseSettingsFragment
             Intent intent = new Intent();
             if (shouldShowNotificationPref(context, intent)) context.startActivity(intent);
             return false;
+        } else if (key.equals(PREF_DEFAULT_BROWSER)) {
+            showDefaultBrowserSettings((Activity) context);
+            return false;
         }
         // TODO(crbug.com/469676538): Handle the rest of preferences.
         return false;
@@ -746,9 +748,13 @@ public class MainSettings extends ChromeBaseSettingsFragment
         }
     }
 
+    private static boolean shouldShowGlicPreference() {
+        return ChromeFeatureList.sGlic.isEnabled();
+    }
+
     // TODO(crbug.com/481386779): Replace it with glic_enabling.
     private void updateGlicPreference() {
-        if (ChromeFeatureList.sGlic.isEnabled()) {
+        if (shouldShowGlicPreference()) {
             addPreferenceIfAbsent(PREF_GLIC);
         } else {
             removePreferenceIfPresent(PREF_GLIC);
@@ -1032,6 +1038,9 @@ public class MainSettings extends ChromeBaseSettingsFragment
                     }
                     if (!shouldShowDefaultBrowserSetting()) {
                         indexData.removeEntry(getUniqueId(PREF_DEFAULT_BROWSER));
+                    }
+                    if (!shouldShowGlicPreference()) {
+                        indexData.removeEntry(getUniqueId(PREF_GLIC));
                     }
                 }
             };

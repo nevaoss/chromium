@@ -10,10 +10,9 @@
 #include "base/test/bind.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "chrome/browser/actor/actor_features.h"
-#include "chrome/browser/actor/actor_policy_checker.h"
 #include "chrome/browser/actor/actor_task.h"
 #include "chrome/browser/actor/actor_test_util.h"
-#include "chrome/browser/actor/enterprise_policy_checker.h"
+#include "chrome/browser/actor/enterprise_policy_url_checker.h"
 #include "chrome/browser/actor/execution_engine.h"
 #include "chrome/browser/actor/ui/event_dispatcher.h"
 #include "chrome/browser/actor/ui/test_support/mock_actor_ui_state_manager.h"
@@ -42,13 +41,13 @@ std::unique_ptr<ui::ActorUiStateManagerInterface> BuildUiStateManagerMock() {
   return ui_state_manager;
 }
 
-constexpr char kActorTaskCreatedHistogram[] = "Actor.Task.Created";
-
 class ActorKeyedServiceTest : public testing::Test {
  public:
   ActorKeyedServiceTest()
       : task_environment_(base::test::TaskEnvironment::TimeSource::MOCK_TIME),
-        testing_profile_manager_(TestingBrowserProcess::GetGlobal()) {}
+        testing_profile_manager_(TestingBrowserProcess::GetGlobal()) {
+    scoped_feature_list_.InitAndEnableFeature(features::kGlicActor);
+  }
   ~ActorKeyedServiceTest() override = default;
 
   // testing::Test:
@@ -71,6 +70,7 @@ class ActorKeyedServiceTest : public testing::Test {
   base::CallbackListSubscription confirm_navigation_subscription_;
 
  private:
+  base::test::ScopedFeatureList scoped_feature_list_;
   content::BrowserTaskEnvironment task_environment_;
   TestingProfileManager testing_profile_manager_;
   raw_ptr<TestingProfile> profile_;
@@ -210,15 +210,6 @@ TEST_F(ActorKeyedServiceTest, PausedTaskTabs) {
   // Stop the task. This should remove the tab from the task.
   actor_service->StopTask(id, ActorTask::StoppedReason::kTaskComplete);
   EXPECT_FALSE(task);
-}
-
-TEST_F(ActorKeyedServiceTest, LogsActorTaskCreatedOnCreateTask) {
-  base::HistogramTester histogram_tester;
-  histogram_tester.ExpectTotalCount(kActorTaskCreatedHistogram, 0);
-
-  ActorKeyedService::Get(profile())->CreateTask(NoEnterprisePolicyChecker());
-
-  histogram_tester.ExpectBucketCount(kActorTaskCreatedHistogram, true, 1);
 }
 
 }  // namespace

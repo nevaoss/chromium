@@ -372,6 +372,9 @@ bool HTMLCanvasElement::PrepareTransferableResource(
     return false;
   }
 
+  // TODO(crbug.com/480074852): swap in paint records for element image
+  // placeholders.
+
   CanvasResource::ReleaseCallback release_callback;
   if (!frame->PrepareTransferableResource(out_resource, &release_callback,
                                           /*needs_verified_synctoken=*/false) ||
@@ -619,6 +622,8 @@ CanvasRenderingContext* HTMLCanvasElement::GetCanvasRenderingContextInternal(
 
   context_->RecordUKMCanvasRenderingAPI();
   context_->RecordUMACanvasRenderingAPI();
+  context_->MaybeRecordUKMCanvasAccessibility();
+
   // Since the |context_| is created, free the transparent image,
   // |transparent_image_| created for this canvas if it exists.
   if (transparent_image_.get()) {
@@ -756,6 +761,9 @@ void HTMLCanvasElement::PostFinalizeFrame(FlushReason reason) {
   // checks whether the `desynchronized` attribute is set on the context, but
   // only WebGL and Canvas2D have specific flows for low latency (for other
   // context types, setting the attribute is a no-op).
+  //
+  // TODO(crbug.com/480074852): don't paint if there are any element image
+  // placeholders in the command buffer.
   if (LowLatencyEnabled() && (IsWebGL() || IsRenderingContext2D()) &&
       frame_dispatcher_ && !dirty_rect_.IsEmpty()) {
     if (scoped_refptr<CanvasResource> canvas_resource =
@@ -1630,6 +1638,13 @@ void HTMLCanvasElement::SetIsDisplayed(bool displayed) {
       rate_limiter_->Reset();
       rate_limiter_.reset(nullptr);
     }
+  }
+
+  if (is_displayed_ && context_) {
+    // `MaybeRecordUKMCanvasAccessibility` records the metric only once. Since
+    // there is no specific order between creating the `context_` and setting
+    // `is_displayed_`, the function is called in both places.
+    context_->MaybeRecordUKMCanvasAccessibility();
   }
 }
 

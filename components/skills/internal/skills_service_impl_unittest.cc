@@ -40,6 +40,7 @@ namespace {
 
 using ::testing::_;
 using ::testing::AllOf;
+using ::testing::AtLeast;
 using ::testing::ElementsAre;
 using ::testing::Exactly;
 using ::testing::IsEmpty;
@@ -60,8 +61,21 @@ class MockSkillsServiceImpl : public SkillsServiceImpl {
               (override));
 };
 
-MATCHER_P3(HasSkill, name, icon, prompt, "") {
-  return arg.name == name && arg.icon == icon && arg.prompt == prompt;
+MATCHER_P4(HasSkill, name, icon, prompt, description, "") {
+  return arg.name == name && arg.icon == icon && arg.prompt == prompt &&
+         arg.description == description;
+}
+
+MATCHER_P5(HasSkillWithSource,
+           source_skill_id,
+           name,
+           icon,
+           prompt,
+           description,
+           "") {
+  return arg.source_skill_id == source_skill_id && arg.name == name &&
+         arg.icon == icon && arg.prompt == prompt &&
+         arg.description == description;
 }
 
 MATCHER_P(HasCreationTime, creation_time, "") {
@@ -78,7 +92,6 @@ class MockObserver : public SkillsService::Observer {
               OnSkillUpdated,
               (std::string_view skill_id,
                SkillsService::UpdateSource update_source));
-  MOCK_METHOD(void, OnInitialized, ());
   MOCK_METHOD(void, OnStatusChanged, ());
 };
 
@@ -202,24 +215,29 @@ TEST_F(SkillsServiceImplTest, LoadInitialSkills) {
   InitService();
 
   // Add some local skills which will be loaded after browser restart.
-  service().AddSkill("name1", "icon1", "prompt1");
-  service().AddSkill("name2", "icon2", "prompt2");
-  ASSERT_THAT(service().GetSkills(),
-              ElementsAre(Pointee(HasSkill("name1", "icon1", "prompt1")),
-                          Pointee(HasSkill("name2", "icon2", "prompt2"))));
+  service().AddSkill("source_skill_id", "name1", "icon1", "prompt1");
+  service().AddSkill(/*source_skill_id=*/"", "name2", "icon2", "prompt2");
+  ASSERT_THAT(
+      service().GetSkills(),
+      ElementsAre(
+          Pointee(HasSkillWithSource("source_skill_id", "name1", "icon1",
+                                     "prompt1", /*description=*/"")),
+          Pointee(HasSkill("name2", "icon2", "prompt2", /*description=*/""))));
 
   // Simulate browser restart, it calls LoadInitialSkills() to load skills from
   // the disk implicitly.
   ResetService();
   InitService();
 
-  EXPECT_THAT(service().GetSkills(),
-              ElementsAre(Pointee(HasSkill("name1", "icon1", "prompt1")),
-                          Pointee(HasSkill("name2", "icon2", "prompt2"))));
+  EXPECT_THAT(
+      service().GetSkills(),
+      ElementsAre(
+          Pointee(HasSkill("name1", "icon1", "prompt1", /*description=*/"")),
+          Pointee(HasSkill("name2", "icon2", "prompt2", /*description=*/""))));
 }
 
 TEST_F(SkillsServiceImplTest, NotifyOnServiceStatusChange) {
-  EXPECT_CALL(mock_observer_, OnStatusChanged);
+  EXPECT_CALL(mock_observer_, OnStatusChanged).Times(AtLeast(1));
   InitServiceWithoutSync();
   testing::Mock::VerifyAndClearExpectations(&mock_observer_);
 
@@ -243,9 +261,11 @@ TEST_F(SkillsServiceImplTest, NotifyOnServiceStatusChange) {
 TEST_F(SkillsServiceImplTest, GetSkillById) {
   InitService();
 
-  service().AddOrUpdateSkillFromSync("id", "name", "icon", "prompt",
+  service().AddOrUpdateSkillFromSync("id", /*source_skill_id=*/"", "name",
+                                     "icon", "prompt", "description",
                                      /*creation_time=*/base::Time::Now(),
-                                     /*last_update_time=*/base::Time::Now());
+                                     /*last_update_time=*/base::Time::Now(),
+                                     sync_pb::SKILL_SOURCE_USER_CREATED);
 
   const Skill* skill = service().GetSkillById("id");
   ASSERT_NE(nullptr, skill);
@@ -258,13 +278,15 @@ TEST_F(SkillsServiceImplTest, GetSkillById) {
 TEST_F(SkillsServiceImplTest, AddSkill) {
   InitService();
 
-  const Skill* added_skill = service().AddSkill("name", "icon", "prompt");
+  const Skill* added_skill = service().AddSkill(
+      /*source_skill_id=*/"source_skill_id", "name", "icon", "prompt");
 
   ASSERT_NE(nullptr, added_skill);
   EXPECT_EQ("name", added_skill->name);
   EXPECT_EQ("icon", added_skill->icon);
   EXPECT_EQ("prompt", added_skill->prompt);
-  EXPECT_EQ(sync_pb::SkillSource::SKILL_SOURCE_USER_CREATED,
+  EXPECT_EQ("source_skill_id", added_skill->source_skill_id);
+  EXPECT_EQ(sync_pb::SkillSource::SKILL_SOURCE_DERIVED_FROM_FIRST_PARTY,
             added_skill->source);
   EXPECT_EQ(1u, service().GetSkills().size());
   EXPECT_FALSE(added_skill->id.empty());
@@ -276,7 +298,8 @@ TEST_F(SkillsServiceImplTest, AddSkill) {
 TEST_F(SkillsServiceImplTest, UpdateSkill) {
   InitService();
 
-  const Skill* skill = service().AddSkill("name", "icon", "prompt");
+  const Skill* skill = service().AddSkill(/*source_skill_id=*/"source_id",
+                                          "name", "icon", "prompt");
   ASSERT_NE(nullptr, skill);
 
   const base::Time initial_update_time = skill->last_update_time;
@@ -294,7 +317,8 @@ TEST_F(SkillsServiceImplTest, UpdateSkill) {
 TEST_F(SkillsServiceImplTest, DeleteSkill) {
   InitService();
 
-  const Skill* skill = service().AddSkill("name", "icon", "prompt");
+  const Skill* skill =
+      service().AddSkill(/*source_skill_id=*/"", "name", "icon", "prompt");
   std::string skill_id(skill->id);
   ASSERT_NE(nullptr, skill);
   ASSERT_NE(nullptr, service().GetSkillById(skill_id));
@@ -308,7 +332,8 @@ TEST_F(SkillsServiceImplTest, DeleteSkill) {
 TEST_F(SkillsServiceImplTest, DeleteSkillFromSync) {
   InitService();
 
-  const Skill* skill = service().AddSkill("name", "icon", "prompt");
+  const Skill* skill =
+      service().AddSkill(/*source_skill_id=*/"", "name", "icon", "prompt");
   ASSERT_NE(nullptr, skill);
 
   std::string skill_id(skill->id);
@@ -321,12 +346,13 @@ TEST_F(SkillsServiceImplTest, DeleteSkillFromSync) {
 }
 
 TEST_F(SkillsServiceImplTest, Observer) {
-  EXPECT_CALL(mock_observer_, OnInitialized);
+  EXPECT_CALL(mock_observer_, OnStatusChanged).Times(AtLeast(1));
   InitService();
 
   EXPECT_CALL(mock_observer_,
               OnSkillUpdated(_, SkillsService::UpdateSource::kLocal));
-  const Skill* skill = service().AddSkill("name", "icon", "prompt");
+  const Skill* skill =
+      service().AddSkill(/*source_skill_id=*/"", "name", "icon", "prompt");
 
   EXPECT_CALL(mock_observer_,
               OnSkillUpdated(skill->id, SkillsService::UpdateSource::kLocal));
@@ -338,7 +364,7 @@ TEST_F(SkillsServiceImplTest, Observer) {
 }
 
 TEST_F(SkillsServiceImplTest, ObserverNoNotificationForNoOps) {
-  EXPECT_CALL(mock_observer_, OnInitialized);
+  EXPECT_CALL(mock_observer_, OnStatusChanged).Times(AtLeast(1));
   InitService();
   testing::Mock::VerifyAndClearExpectations(&mock_observer_);
 
@@ -353,7 +379,8 @@ TEST_F(SkillsServiceImplTest, ObserverNoNotificationForNoOps) {
 
   // `UpdateSkill` with the same values should not trigger notification.
   EXPECT_CALL(mock_observer_, OnSkillUpdated).Times(1);
-  const Skill* skill = service().AddSkill("name", "icon", "prompt");
+  const Skill* skill =
+      service().AddSkill(/*source_skill_id=*/"", "name", "icon", "prompt");
   std::string skill_id = skill->id;
   testing::Mock::VerifyAndClearExpectations(&mock_observer_);
 
@@ -365,23 +392,26 @@ TEST_F(SkillsServiceImplTest, UpdateExistingSkillFromSync) {
   InitService();
 
   // Add an initial skill.
-  const Skill* skill = service().AddSkill("name", "icon", "prompt");
+  const Skill* skill =
+      service().AddSkill(/*source_skill_id=*/"", "name", "icon", "prompt");
   const base::Time initial_creation_time = skill->creation_time;
 
   const base::Time new_update_time = skill->last_update_time + base::Hours(1);
   EXPECT_CALL(mock_observer_,
               OnSkillUpdated(skill->id, SkillsService::UpdateSource::kSync));
   const Skill* updated_skill = service().AddOrUpdateSkillFromSync(
-      skill->id, "sync name", "sync icon", "sync prompt", initial_creation_time,
-      /*last_update_time=*/new_update_time);
+      skill->id, /*source_skill_id=*/"", "sync name", "sync icon",
+      "sync prompt", "sync description", initial_creation_time,
+      /*last_update_time=*/new_update_time, sync_pb::SKILL_SOURCE_USER_CREATED);
 
   // Only the last update time should be updated.
   ASSERT_EQ(skill, updated_skill);
-  EXPECT_THAT(service().GetSkills(),
-              ElementsAre(Pointee(
-                  AllOf(HasSkill("sync name", "sync icon", "sync prompt"),
-                        HasCreationTime(initial_creation_time),
-                        HasLastUpdateTime(new_update_time)))));
+  EXPECT_THAT(
+      service().GetSkills(),
+      ElementsAre(Pointee(AllOf(
+          HasSkill("sync name", "sync icon", "sync prompt", "sync description"),
+          HasCreationTime(initial_creation_time),
+          HasLastUpdateTime(new_update_time)))));
 }
 
 TEST_F(SkillsServiceImplTest, AddSkillFromSync) {
@@ -394,13 +424,16 @@ TEST_F(SkillsServiceImplTest, AddSkillFromSync) {
               OnSkillUpdated(_, SkillsService::UpdateSource::kSync));
 
   const Skill* skill = service().AddOrUpdateSkillFromSync(
-      "id", "name", "icon", "prompt", creation_time, update_time);
+      "id", "source_skill_id", "name", "icon", "prompt", "description",
+      creation_time, update_time, sync_pb::SKILL_SOURCE_FIRST_PARTY);
   ASSERT_NE(nullptr, skill);
 
-  EXPECT_THAT(service().GetSkills(),
-              ElementsAre(Pointee(AllOf(HasSkill("name", "icon", "prompt"),
-                                        HasCreationTime(creation_time),
-                                        HasLastUpdateTime(update_time)))));
+  EXPECT_THAT(
+      service().GetSkills(),
+      ElementsAre(Pointee(AllOf(
+          HasSkillWithSource("source_skill_id", "name", "icon", "prompt",
+                             "description"),
+          HasCreationTime(creation_time), HasLastUpdateTime(update_time)))));
 }
 
 TEST_F(SkillsServiceImplTest, FetchDiscoverySkills_Success) {

@@ -66,20 +66,33 @@ void DeviceParentalControlsUrlFilter::GetFilteringBehavior(
     const GURL& url,
     WebFilteringResult::Callback callback,
     const WebFilterMetricsOptions& options) {
-  WebFilteringResult result = GetFilteringBehavior(url);
-  if (result.IsAllowedBecauseOfDisabledFilter()) {
-    std::move(callback).Run(result);
+  callback = WrapCallbackWithUrlServiceMetrics(std::move(callback), options);
+
+  // Only run the async checker if the web filter is actually enabled.
+  if (GetWebFilterType() == WebFilterType::kTryToBlockMatureSites) {
+    async_url_checker_->CheckURL(
+        url_matcher::util::Normalize(url),
+        WebFilteringResult::BindUrlCheckerCallback(
+            std::move(callback), url, InterstitialMode::kLearnMoreInterstitial));
     return;
   }
 
-  async_url_checker_->CheckURL(
-      url_matcher::util::Normalize(url),
-      WebFilteringResult::BindUrlCheckerCallback(std::move(callback), url));
+  // Fall back to the default, always-allow and static (non-RPC) behavior.
+  WebFilteringResult result = GetFilteringBehavior(url);
+  CHECK(result.IsAllowed());
+  std::move(callback).Run(result);
 }
 
 void DeviceParentalControlsUrlFilter::OnDeviceParentalControlsChanged(
     const DeviceParentalControls& controls) const {
   NotifyUrlFilteringDelegateChanged();
+}
+
+std::string_view DeviceParentalControlsUrlFilter::GetName() const {
+  // LINT.IfChange(device_parental_controls_url_filtering_delegate)
+  static constexpr std::string_view kName = "Device";
+  // LINT.ThenChange(//tools/metrics/histograms/metadata/families/histograms.xml:device_parental_controls_url_filtering_delegate)
+  return kName;
 }
 
 }  // namespace supervised_user

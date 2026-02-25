@@ -541,6 +541,17 @@ PromptInTab に設定した場合は、ユーザーの認証が期限切れに�
 このポリシーは、更新の延長が自動的に行われない古い機種にのみ該当します。
 
 詳しくは、https://support.google.com/chrome/a/?p=extended_updates_support をご覧ください。</translation>
+<translation id="1432008122934973720">デフォルトでは、ローカル ネットワーク アクセス（LNA）の権限は、明示的に委任されている場合にのみ、クロスオリジンのサブフレームでリクエストできます。このポリシーを使用すると、デフォルトの動作をオーバーライドして、権限ポリシーで明示的に拒否されていない限り、デフォルトで LNA 権限をサブフレームに継承します。
+
+このポリシーを有効に設定した場合、デフォルトですべての LNA 権限ポリシー機能がサブフレームに委任され、ローカル ネットワーク リクエストが許可されます（権限プロンプトがトリガーされます）。
+
+このポリシーを無効に設定するか未設定のままにした場合は、権限ポリシー機能がサブフレームに明示的に委任されているときに限り、ローカル ネットワーク リクエストが許可され、権限プロンプトがトリガーされます。
+
+このポリシーは、権限ポリシー機能の <ph name="LOCAL_NETWORK_ACCESS_FEATURE_NAME" />、<ph name="LOOPBACK_NETWORK_FEATURE_NAME" />、<ph name="LOCAL_NETWORK_FEATURE_NAME" /> に適用されます。
+
+ローカル ネットワーク アクセスについて詳しくは、https://wicg.github.io/local-network-access/ および https://developer.chrome.com/blog/local-network-access をご覧ください。
+
+権限ポリシーの詳細については、https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Permissions_Policy をご覧ください。</translation>
 <translation id="1432834104376790711">このポリシーでは、バッテリー セーバー モードの設定を有効または無効にできます。
       Chrome では、この設定によりフレームレートを抑制して消費電力を低減できます。このポリシーを未設定のままにした場合、エンドユーザーは chrome://settings/performance でこの設定を管理できます。
       ChromeOS では、この設定によりフレームレートと CPU 周波数を抑制し、バックライトを暗くして、Android をバッテリー セーバー モードにできます。複数の CPU を搭載したデバイスでは、一部の CPU がオフになります。
@@ -1522,6 +1533,7 @@ accounts.google.com など一部の URL は認証に必要です。オンライ�
 <translation id="2090939118981888335">このポリシーを有効に設定した場合、データ圧縮プロキシが許可されます。このポリシーを無効に設定した場合、プロキシは許可されません。
 
       このポリシーを設定した場合、ユーザーはこの設定を変更できません。未設定の場合、ユーザーはこの機能の使用を選択できます。</translation>
+<translation id="2091689441590064807">明示的な委任なしでサブフレームからの LNA リクエストを許可しない</translation>
 <translation id="2093552723795057221">音声の状態を報告しない</translation>
 <translation id="209388704279338003">このポリシーは非推奨で、サポートされていません。代わりに <ph name="DEVICE_PRINTERS_ACCESS_MODE_POLICY_NAME" /> を使用してください。</translation>
 <translation id="2093951844062548778">このポリシーでは、クイック アンサーで定義の結果を取得する際に、選択したコンテンツへのアクセスとサーバーへの情報送信を許可します。
@@ -4806,17 +4818,6 @@ WebSQL は M112 で削除されました。</translation>
 <translation id="4426986640594727372">システムの位置情報へのアクセスを許可する</translation>
 <translation id="4427173305799125784">PDF ビューアで PDF に注釈を追加できない</translation>
 <translation id="4432762137771104529">セーフ ブラウジングの詳細レポートを有効にする</translation>
-<translation id="4432772502174730966">このポリシーでは、対象となるすべての生成 AI 機能のデフォルト設定を定義します。たとえば、このポリシーを値 1 に設定した場合、対象となるすべての生成 AI 機能のデフォルト設定は 1 になります。この設定は、手動で設定したポリシー値には影響しません。この設定は、Chrome で対象となる生成 AI 機能でデフォルトとして定義されます。対象となる機能の一覧については、https://support.google.com/chrome/a?p=generative_ai_settings をご覧ください。
-
-0 = この機能の使用と、Google が AI モデルを改善する目的で関連データを使用することを許可します。関連データには、機能に応じてプロンプト、入力内容、出力内容、ソース資料、フィードバックの文面などが含まれます。AI モデルを改善するため、人間のレビュアーが確認する場合もあります。以下に記載している場合を除き、0 がデフォルト値です。
-
-1 = この機能の使用を許可しますが、Google がモデルを改善する目的でユーザーのコンテンツ（プロンプト、入力内容、出力内容、ソース資料、フィードバックの文面など）を使用することは許可しません。1 は、<ph name="GOOGLE_ADMIN_CONSOLE_PRODUCT_NAME" /> で管理されている企業ユーザーと、<ph name="GOOGLE_WORKSPACE_PRODUCT_NAME" /> で管理されている教育機関向けアカウントのデフォルト値です。
-
-2 = この機能を許可しません。
-
-対象となる Chrome の機能に同等のポリシー値がない場合は、次に大きい値が使用されます。一部のポリシー（<ph name="GEMINI_SETTINGS_POLICY_NAME" /> など）では、「許可する」と「許可しない」の状態のみがサポートされます。<ph name="GEN_AI_DEFAULT_SETTINGS_POLICY_NAME" /> ポリシーを 0 または 1 に設定した場合、この機能は許可されます。ポリシーを 2 に設定した場合、この機能は許可されません。このポリシーの値で各機能がどのように動作するかについては、該当の機能のドキュメントをご覧ください。
-
-生成 AI 機能のデータ処理について詳しくは、https://support.google.com/chrome/a?p=generative_ai_settings をご覧ください。</translation>
 <translation id="443454694385851356">以前の暗号化タイプ（安全ではありません）</translation>
 <translation id="4435032708588431506">QUIC を許可する</translation>
 <translation id="443665821428652897">ブラウザのシャットダウンでサイトのデータを削除する（サポート終了予定）</translation>
@@ -6878,13 +6879,6 @@ https://wiki.samba.org/index.php/Samba_4.6_Features_added/changed#Kerberos_clien
 <translation id="5746149754419996562"><ph name="PRODUCT_OS_NAME" /> で Glanceable ウィジェットの表示を有効にします。具体的には、シェルフの日付チップからアクセスできるウィジェットです。
 このポリシーを有効にすると、Glanceables は <ph name="PRODUCT_OS_NAME" /> で有効になります。
 このポリシーを無効にするか未設定のままにした場合、Glanceables は <ph name="PRODUCT_OS_NAME" /> で有効になりません。</translation>
-<translation id="5747628966013559697"><ph name="PRODUCT_NAME" /> で基本的な生成 AI モデルをダウンロードしローカルの推論に使用する方法を設定します。
-
-このポリシーを「許可」（0）に設定するか未設定のままにした場合、モデルは自動的にダウンロードされ推論に使用されます。
-
-このポリシーを無効（1）に設定した場合、モデルはダウンロードされません。
-
-パソコンのプラットフォームでは、モデルのダウンロードは <ph name="COMPONENT_UPDATES_ENABLED_POLICY_NAME" /> によって無効にすることもできます。</translation>
 <translation id="5749396052108288586">このポリシーはサポートを終了しました。代わりに <ph name="REMOTE_ACCESS_HOST_CLIENT_DOMAIN_LIST_POLICY_NAME" /> を使用してください。</translation>
 <translation id="574983287620584622">ログイン画面でユーザー補助機能のショートカットを有効にする</translation>
 <translation id="5755002458331714762"> Web Components v0 API（Shadow DOM v0、Custom Elements v0、HTML Imports）は 2018 年にサポートが終了し、M80 以降ではデフォルトで無効となっていますが、このポリシーにより M84 までこれらの機能を再度有効にできるようにしました。
@@ -7346,6 +7340,7 @@ false に設定した場合、教師はこの機能にアクセスできませ�
 注: ブラウザの実行中にこのポリシーを変更した場合は、新たに開始したレンダラ プロセスにのみ変更が反映されます。</translation>
 <translation id="6083281887050888160">「Just Works」Bluetooth ペア設定を有効にする</translation>
 <translation id="6083631234867522991">Windows（Windows クライアント）:</translation>
+<translation id="6085580138417523410">明示的な委任なしでサブフレームからのローカル ネットワーク アクセス（LNA）リクエストを許可する</translation>
 <translation id="6087413944876892918"><ph name="HAPPY_EYEBALLS_V3" /> アルゴリズムを使用する</translation>
 <translation id="608788685013546076">電力ピークシフトのバッテリーのしきい値をパーセントで設定する</translation>
 <translation id="6089679180657323464">Wilco の診断およびテレメトリー用コントローラの設定を制御します。</translation>
@@ -9747,6 +9742,7 @@ URL パターンは、<ph name="WEB_PRINTING_BLOCKED_FOR_URLS_POLICY_NAME" /> �
 <translation id="7669630878711068277">このポリシーを有効に設定するか未設定のままにした場合、ユーザーは <ph name="PRODUCT_NAME" /> で印刷することができます。ユーザーはこの設定を変更できません。
 
       このポリシーを無効に設定した場合、ユーザーは <ph name="PRODUCT_NAME" /> から印刷できません。印刷は、その他メニュー、拡張機能、JavaScript アプリケーションで無効になります。</translation>
+<translation id="7672510074688643558">明示的な委任なしでサブフレームからの LNA リクエストを許可する</translation>
 <translation id="7673194325208122247">期間（ミリ秒）</translation>
 <translation id="7677220829878081413">
       このポリシーを「ArcSession」に設定すると、ユーザーのログアウト時に Android が起動していた場合に、デバイスの再起動が行われます。

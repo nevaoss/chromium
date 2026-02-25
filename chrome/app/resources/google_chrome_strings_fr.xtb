@@ -206,6 +206,7 @@ Certaines fonctionnalités ne seront peut-être pas disponibles, et les modifica
 <translation id="308397506772922478">Si vous avez oublié votre phrase secrète ou si vous souhaitez modifier ce paramètre, <ph name="BEGIN_LINK" />supprimez les données Chrome de votre compte<ph name="END_LINK" />.</translation>
 <translation id="3100998948628680988">Nommer votre profil Chrome</translation>
 <translation id="310459126943037700">Échec de l'arrêt de la ou des tâches.</translation>
+<translation id="3104828284009500087">Recherchez ce que vous voulez sur la page</translation>
 <translation id="3112458742631356345">Chrome a bloqué ce téléchargement, car le fichier n'est pas souvent téléchargé et peut être dangereux</translation>
 <translation id="3114643501466072395">Pour vérifier si vos autres mots de passe sont suffisamment sécurisés afin d'empêcher toute violation de données et autres problèmes de sécurité, <ph name="BEGIN_LINK" />connectez-vous à Chrome<ph name="END_LINK" />.</translation>
 <translation id="3119573284443908657">Chrome a bloqué ce téléchargement, car le fichier d'archive contient d'autres fichiers susceptibles de dissimuler un logiciel malveillant</translation>
@@ -402,7 +403,6 @@ Certaines fonctionnalités peuvent être indisponibles. Veuillez spécifier un r
 <translation id="5334309298019785904">Impossible de synchroniser vos données dans Chrome OS, car la synchronisation n'est pas disponible pour votre domaine.</translation>
 <translation id="5334487786912937552">Pour télécharger des fichiers, Chrome a besoin d'accéder à l'espace de stockage</translation>
 <translation id="5337648990166757586">Facultatif : contribuez à améliorer les fonctionnalités et les performances de Chrome OS en envoyant automatiquement des données de diagnostic et d'utilisation à Google.</translation>
-<translation id="5346059693449184483">Que voulez-vous savoir ?</translation>
 <translation id="5346389065299425353">Approfondir votre recherche en ajoutant plusieurs onglets, fichiers et outils</translation>
 <translation id="5353252989841766347">Exporter des mots de passe depuis Chrome</translation>
 <translation id="5368118228313795342">Code supplémentaire : <ph name="EXTRA_CODE" />.</translation>
@@ -512,7 +512,6 @@ Google Chrome ne peut pas récupérer vos paramètres.</translation>
 <translation id="6321592572353357376">L'extension <ph name="EXTENSION_NAME" /> vous demande de vous connecter à Chrome</translation>
 <translation id="6326175484149238433">Supprimer de Google Chrome</translation>
 <translation id="6327105987658262776">Aucune mise à jour disponible.</translation>
-<translation id="6333195756043503664">Ouvrir Chrome lorsque mon ordinateur démarre</translation>
 <translation id="6334815226785304306">Définir Google Chrome comme navigateur par défaut et l'épingler à la barre des tâches</translation>
 <translation id="63540178978900677">Chrome n'est plus votre navigateur par défaut. Définir Chrome comme navigateur par défaut ?</translation>
 <translation id="6360449101159168105">Lorsque cet onglet était inactif, de la mémoire a été libérée pour préserver la rapidité de Chrome. Si vous le souhaitez, vous pouvez exclure définitivement ce site de la liste des sites inactifs.</translation>
@@ -697,7 +696,6 @@ Google Chrome ne peut pas récupérer vos paramètres.</translation>
 <translation id="8162006532256575008">Utiliser Chrome sans compte</translation>
 <translation id="8177472873527554730">Impossible de trouver du contenu sur la page</translation>
 <translation id="8221491193165283816">Les notifications sont bloquées par défaut. Pour autoriser ce site à vous envoyer des notifications, cliquez ici.</translation>
-<translation id="8223142476690844338">Bonjour <ph name="USER_NAME" />, que voulez-vous savoir ?</translation>
 <translation id="8255190535488645436">Votre webcam et votre micro sont en cours d'utilisation dans Google Chrome.</translation>
 <translation id="8267953129876836456">Chrome a identifié des recommandations de sécurité à examiner</translation>
 <translation id="8286862437124483331">Google Chrome tente d'afficher les mots de passe. Pour autoriser cette action, saisissez votre mot de passe Windows.</translation>

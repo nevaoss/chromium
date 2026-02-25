@@ -18,6 +18,9 @@ namespace tabs {
 class TabInterface;
 }
 
+namespace skills {
+struct Skill;
+}  // namespace skills
 namespace glic {
 
 class FocusedTabData;
@@ -35,7 +38,15 @@ class GlicSkillsManagerImpl : public GlicSkillsManager, public Host::Observer {
   void UpdateSkillPreviews(
       std::optional<tabs::TabInterface*> updated_tab) override;
 
+  void LaunchSkillsDialog(Profile* profile,
+                          skills::Skill skill,
+                          base::OnceCallback<void(bool)> callback) override;
+
+  glic::mojom::SkillPtr GetContextualSkill(std::string_view skill_id) override;
+
  private:
+  tabs::TabInterface* EnsureTabForSkills();
+
   // The function corresponding to our subscription.
   void OnFocusedTabChanged(const FocusedTabData& focused_tab_data);
 
@@ -50,6 +61,11 @@ class GlicSkillsManagerImpl : public GlicSkillsManager, public Host::Observer {
 
   // Used for observer WebUI state changes; this can also trigger updates.
   base::ScopedObservation<Host, Host::Observer> host_observation_{this};
+
+  // A cache of the contextual skills for the focused tab. When the user runs a
+  // skill, Glic retrieves the skill from this cache and sends it to the web
+  // client.
+  std::vector<glic::mojom::SkillPtr> contextual_skills_;
 
   base::WeakPtrFactory<GlicSkillsManagerImpl> weak_ptr_factory_{this};
 };

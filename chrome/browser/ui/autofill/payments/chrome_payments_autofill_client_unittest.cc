@@ -903,9 +903,9 @@ TEST_P(ChromePaymentsAutofillClientWalletBrandingTest,
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
   expected_description = IsWalletBrandingEnabled()
                              ? u"To pay faster next time, save your card and "
-                               u"billing address in your Google Wallet."
+                               u"billing address in Google Wallet"
                              : u"To pay faster next time, save your card and "
-                               u"billing address in your Google Account.";
+                               u"billing address in your Google Account";
 #endif
 
   // Verify that `AutofillSaveCardUiInfo` has the correct attributes
@@ -937,7 +937,7 @@ TEST_P(ChromePaymentsAutofillClientWalletBrandingTest,
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
   expected_description = IsWalletBrandingEnabled()
                              ? u"Pay faster when your card is saved. Card "
-                               u"details are encrypted in your Google Wallet."
+                               u"details are encrypted in Google Wallet."
                              : u"Pay faster when your card is saved. Card "
                                u"details are encrypted in your Google Account.";
 #endif

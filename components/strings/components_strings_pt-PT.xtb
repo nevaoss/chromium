@@ -1277,6 +1277,7 @@ Se não permitir, isto será bloqueado pelas suas definições de privacidade. I
 <translation id="3052868890529250114">Costuma estabelecer ligação aos sites em segurança, mas o Chrome não conseguiu usar uma ligação segura desta vez. Um atacante pode estar a tentar intercetar ou modificar a sua ligação de rede. <ph name="BEGIN_LEARN_MORE_LINK" />Saiba mais acerca deste aviso<ph name="END_LEARN_MORE_LINK" /></translation>
 <translation id="3052964831964880138"><ph name="PRODUCT_NAME" />: descida do preço de <ph name="PRICE_DROP" /></translation>
 <translation id="3056660797732519147">Ecrã de erro do método Comprar agora e pagar depois. Teclado oculto.</translation>
+<translation id="3057844102210575426">Gerir informações de viagem</translation>
 <translation id="3061707000357573562">Serviço de patch</translation>
 <translation id="3062655045399308513">Eliminar dados de navegação…</translation>
 <translation id="3063453392496098461">Falha ao instalar os serviços em segundo plano da VPN.</translation>
@@ -2007,6 +2008,7 @@ Se não permitir, isto será bloqueado pelas suas definições de privacidade. I
 <translation id="4203769790323223880">Acesso à câmara não permitido</translation>
 <translation id="4203896806696719780"><ph name="BEGIN_LINK" />Rever as configurações da firewall e de antivírus<ph name="END_LINK" /></translation>
 <translation id="4207195957038009075">Google Drive</translation>
+<translation id="4208390505124702064">Pesquisar <ph name="SITE_NAME" /></translation>
 <translation id="4209092469652827314">Grande</translation>
 <translation id="4210602799576081649">Código de validação expirado, solicite um novo código</translation>
 <translation id="421066178035138955">Usar dados e dispositivos de realidade virtual</translation>
@@ -2063,6 +2065,7 @@ Se não permitir, isto será bloqueado pelas suas definições de privacidade. I
 <translation id="4270541775497538019">Empilhador 6</translation>
 <translation id="4271311252511481365">{NUM_REVIEWS,plural, =0{Veja 0 críticas. A classificação média é de <ph name="STARS" /> estrelas.}=1{Veja 1 crítica. A classificação média é de <ph name="STARS" /> estrelas.}other{Veja as # críticas. A classificação média é de <ph name="STARS" /> estrelas.}}</translation>
 <translation id="4271652479722040953">Quando são adicionadas extensões ao Chrome, são enviados dados relevantes acerca destas extensões para terceiros para análise e estes podem estar visíveis para o seu administrador. Os dados incluem informações sobre as extensões, como o nome, a hora de instalação, a origem da instalação, bem como a atividade associada a estas extensões (como alterar separadores, contactar Websites ou aceder a cookies). Estes dados são recolhidos relativamente a extensões instaladas a partir da Web Store do Chrome, bem como extensões fora da loja.</translation>
+<translation id="4275788652681621337">Feche o painel lateral</translation>
 <translation id="4275830172053184480">Reiniciar o dispositivo</translation>
 <translation id="4276974990916607331">Não</translation>
 <translation id="4277028893293644418">Repor palavra-passe</translation>
@@ -2626,6 +2629,7 @@ Se não permitir, isto será bloqueado pelas suas definições de privacidade. I
 <translation id="5209670883520018268">Tabuleiro 20</translation>
 <translation id="5212364581680288382">Motociclismo</translation>
 <translation id="5214542134842513912">Escolha as categorias amplas de tópicos que podem ser usadas para ajudar a personalizar anúncios. A desativação de uma categoria mais ampla também bloqueia os respetivos tópicos relacionados.</translation>
+<translation id="52163492208010719">Gerir documentos de identificação</translation>
 <translation id="521659676233207110">Tabuleiro 13</translation>
 <translation id="5216942107514965959">Última visita hoje</translation>
 <translation id="5217759126664161410">Formato de protocolo inválido.</translation>
@@ -2710,6 +2714,7 @@ Se não permitir, isto será bloqueado pelas suas definições de privacidade. I
 <translation id="5344522958567249764">Gerir privacidade dos anúncios</translation>
 <translation id="5344579389779391559">Esta página pode tentar cobrar-lhe dinheiro</translation>
 <translation id="5345249337934847112">Papel (couché pesado)</translation>
+<translation id="5346059693449184483">Em que está a pensar?</translation>
 <translation id="5348330584842140856">Este ficheiro não foi movido porque já não existe</translation>
 <translation id="5349543692327946794">Etiquetas (jato de tinta)</translation>
 <translation id="5351548097010183514">Materiais de construção e acessórios</translation>
@@ -2957,7 +2962,6 @@ Se não permitir, isto será bloqueado pelas suas definições de privacidade. I
 <translation id="5730040223043577876">O Chrome recomenda a reposição da palavra-passe se a tiver reutilizado noutros sites.</translation>
 <translation id="5732392974455271431">Os teus pais podem desbloquear-te</translation>
 <translation id="573555826359077410">Botão Criar formulário; ative para criar rapidamente um novo formulário no Google Forms</translation>
-<translation id="5737022235680044108">A sua organização bloqueou <ph name="HOST_NAME" /> no Modo de navegação anónima.</translation>
 <translation id="5738385766833540397">Faça a gestão da forma como recebe alertas de descida do preço relativos a produtos que monitoriza</translation>
 <translation id="5739619009927381786">Desbloqueie o ecrã no passo seguinte, normalmente, com a sua impressão digital. Em alternativa, pode <ph name="BEGIN_LINK" />usar outro método de validação<ph name="END_LINK" />.</translation>
 <translation id="573974402615125334">Para partilhar, aderir e colaborar em grupos de separadores, sincronize o seu histórico e separadores</translation>
@@ -3640,7 +3644,6 @@ Se não permitir, isto será bloqueado pelas suas definições de privacidade. I
 <translation id="6844998850832008753">Monitorização das mãos permitida desta vez</translation>
 <translation id="6849023911358004088">Botão Gerir definições de segurança; ative para gerir a Navegação segura e muito mais nas definições do Chrome</translation>
 <translation id="6850286078059909152">Cor do texto</translation>
-<translation id="685163597635765693">A sua organização bloqueou os links "<ph name="HOST_NAME" />" no Modo de navegação anónima.</translation>
 <translation id="6852204201400771460">Quer atualizar a aplicação?</translation>
 <translation id="6854691830678097752">Para um pagamento mais rápido, guarde este Código de Segurança/CVC na sua conta, <ph name="ACCOUNT_EMAIL" /></translation>
 <translation id="6857776781123259569">Faça a gestão das palavras-passe…</translation>
@@ -4505,6 +4508,7 @@ Detalhes adicionais:
 <translation id="8216640997712497593">14 x 18 pol.</translation>
 <translation id="8218327578424803826">Localização atribuída:</translation>
 <translation id="8220602974062798186">Bloquear <ph name="TOPIC" /> e quaisquer tópicos relacionados?</translation>
+<translation id="8223142476690844338">Olá, <ph name="USER_NAME" />, em que está a pensar?</translation>
 <translation id="8226408512771130794"><ph name="KEYWORD_SHORTCUT" />, pergunte <ph name="KEYWORD_SUFFIX" /></translation>
 <translation id="8228419419708659934">Vista de duas páginas</translation>
 <translation id="822925450938886901">Para ver informações adicionais e políticas que possam ser aplicáveis, abra chrome://management no navegador.</translation>

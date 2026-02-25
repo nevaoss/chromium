@@ -4,6 +4,9 @@
 
 #include "components/skills/internal/skills_service_impl.h"
 
+#include "base/check_is_test.h"
+#include "base/memory/weak_ptr.h"
+#include "base/no_destructor.h"
 #include "base/notimplemented.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/uuid.h"
@@ -59,39 +62,52 @@ void SkillsServiceImpl::NotifySkillChanged(std::string_view skill_id,
   }
 }
 
-const Skill* SkillsServiceImpl::AddSkill(const std::string& name,
+const Skill* SkillsServiceImpl::AddSkill(const std::string& source_skill_id,
+                                         const std::string& name,
                                          const std::string& icon,
                                          const std::string& prompt) {
-  // TODO(crbug.com/471795213): verify that the service is ready to use.
-  CHECK(is_initialized_);
+  if (GetServiceStatus() != ServiceStatus::kReady) {
+    return nullptr;
+  }
 
   auto skill = std::make_unique<Skill>(
       base::Uuid::GenerateRandomV4().AsLowercaseString(), name, icon, prompt);
+  skill->source_skill_id = source_skill_id;
+  // If the skill has a source skill id, it is a derived skill.
+  if (!source_skill_id.empty()) {
+    skill->source = sync_pb::SkillSource::SKILL_SOURCE_DERIVED_FROM_FIRST_PARTY;
+  }
   return AddSkillImpl(std::move(skill), UpdateSource::kLocal);
 }
 
 const Skill* SkillsServiceImpl::AddOrUpdateSkillFromSync(
     std::string_view skill_id,
+    std::string_view source_skill_id,
     std::string_view name,
     std::string_view icon,
     std::string_view prompt,
+    std::string_view description,
     base::Time creation_time,
-    base::Time last_update_time) {
-  CHECK(is_initialized_);
+    base::Time last_update_time,
+    sync_pb::SkillSource source) {
+  CHECK_EQ(GetServiceStatus(), ServiceStatus::kReady);
 
   if (Skill* skill = GetMutableSkillById(skill_id)) {
     // Skill already exists, update its fields.
-    UpdateSkillImpl(skill, name, icon, prompt, last_update_time,
+    UpdateSkillImpl(skill, name, icon, prompt, description, last_update_time,
                     UpdateSource::kSync);
     return skill;
   }
 
   auto skill = std::make_unique<Skill>(std::string(skill_id), std::string(name),
-                                       std::string(icon), std::string(prompt));
+                                       std::string(icon), std::string(prompt),
+                                       std::string(description));
+  skill->source_skill_id = source_skill_id;
   // Use the creation and last update time from sync to keep them in sync with
   // other clients.
   skill->creation_time = creation_time;
   skill->last_update_time = last_update_time;
+  skill->source = source;
   return AddSkillImpl(std::move(skill), UpdateSource::kSync);
 }
 
@@ -99,7 +115,9 @@ const Skill* SkillsServiceImpl::UpdateSkill(std::string_view skill_id,
                                             std::string_view name,
                                             std::string_view icon,
                                             std::string_view prompt) {
-  CHECK(is_initialized_);
+  if (GetServiceStatus() != ServiceStatus::kReady) {
+    return nullptr;
+  }
 
   Skill* skill = GetMutableSkillById(skill_id);
   if (!skill) {
@@ -107,22 +125,13 @@ const Skill* SkillsServiceImpl::UpdateSkill(std::string_view skill_id,
     return nullptr;
   }
 
-  // First party skills are not owned by the user. They cannot be updated.
-  // Instead, the user should copy the skill content, so that the new, copied
-  // skill is user created, then update the copied skill.
-  CHECK_EQ(skill->source, sync_pb::SkillSource::SKILL_SOURCE_USER_CREATED)
-      << "Skill does not belong to the user. Cannot update skill.";
-
-  UpdateSkillImpl(skill, name, icon, prompt,
+  UpdateSkillImpl(skill, name, icon, prompt, /*description=*/"",
                   /*update_time=*/base::Time::Now(), UpdateSource::kLocal);
   return skill;
 }
 
 void SkillsServiceImpl::DeleteSkill(std::string_view skill_id,
                                     UpdateSource update_source) {
-  CHECK(is_initialized_);
-
-  // TODO(crbug.com/475855831): Add a check to ensure service is initialized.
   const std::string id_copy(skill_id);
   const size_t num_erased =
       std::erase_if(skills_, [&id_copy](const std::unique_ptr<Skill>& skill) {
@@ -135,7 +144,6 @@ void SkillsServiceImpl::DeleteSkill(std::string_view skill_id,
 }
 
 const Skill* SkillsServiceImpl::GetSkillById(std::string_view skill_id) const {
-  CHECK(is_initialized_);
   for (const std::unique_ptr<Skill>& skill : skills_) {
     if (skill->id == skill_id) {
       return skill.get();
@@ -146,8 +154,11 @@ const Skill* SkillsServiceImpl::GetSkillById(std::string_view skill_id) const {
 
 const std::vector<std::unique_ptr<Skill>>& SkillsServiceImpl::GetSkills()
     const {
-  CHECK(is_initialized_);
   return skills_;
+}
+
+const SkillsService::SkillsMap& SkillsServiceImpl::Get1PSkills() const {
+  return first_party_skills_map_;
 }
 
 void SkillsServiceImpl::LoadInitialSkills(
@@ -159,16 +170,15 @@ void SkillsServiceImpl::LoadInitialSkills(
   is_initialized_ = true;
 
   for (Observer& observer : observers_) {
-    observer.OnInitialized();
     observer.OnStatusChanged();
   }
 }
 
-bool SkillsServiceImpl::IsInitialized() const {
-  return is_initialized_;
-}
-
 SkillsService::ServiceStatus SkillsServiceImpl::GetServiceStatus() const {
+  if (service_status_for_testing_.has_value()) {
+    CHECK_IS_TEST();
+    return *service_status_for_testing_;
+  }
   if (!is_initialized_) {
     return ServiceStatus::kNotInitialized;
   }
@@ -186,9 +196,7 @@ void SkillsServiceImpl::SortSkills() {
 
 void SkillsServiceImpl::AddObserver(Observer* observer) {
   observers_.AddObserver(observer);
-  if (is_initialized_) {
-    observer->OnInitialized();
-  }
+  observer->OnStatusChanged();
 }
 
 void SkillsServiceImpl::RemoveObserver(Observer* observer) {
@@ -204,6 +212,13 @@ SkillsServiceImpl::GetControllerDelegate() {
 }
 
 void SkillsServiceImpl::SyncStatusChanged() {
+  for (Observer& observer : observers_) {
+    observer.OnStatusChanged();
+  }
+}
+
+void SkillsServiceImpl::SetServiceStatusForTesting(ServiceStatus status) {
+  service_status_for_testing_ = status;
   for (Observer& observer : observers_) {
     observer.OnStatusChanged();
   }
@@ -230,10 +245,16 @@ void SkillsServiceImpl::FetchDiscoverySkills() {
 
 void SkillsServiceImpl::Handle1pSkillsMap(
     std::unique_ptr<SkillsMap> skills_map) {
-  first_party_skills_map_ = std::move(skills_map);
+  SkillsMap* notification_ptr = nullptr;
+  // If skills_map is null, this means we don't have an updated value so we
+  // shouldn't modify the stored 1p map.
+  if (skills_map) {
+    first_party_skills_map_.swap(*skills_map);
+    notification_ptr = &first_party_skills_map_;
+  }
 
   for (Observer& observer : observers_) {
-    observer.OnDiscoverySkillsUpdated(first_party_skills_map_.get());
+    observer.OnDiscoverySkillsUpdated(notification_ptr);
   }
 }
 
@@ -245,6 +266,7 @@ void SkillsServiceImpl::UpdateSkillImpl(Skill* skill,
                                         std::string_view name,
                                         std::string_view icon,
                                         std::string_view prompt,
+                                        std::string_view description,
                                         base::Time update_time,
                                         UpdateSource update_source) {
   CHECK(skill);
@@ -261,6 +283,10 @@ void SkillsServiceImpl::UpdateSkillImpl(Skill* skill,
   }
   if (skill->prompt != prompt) {
     skill->prompt = prompt;
+    is_changed = true;
+  }
+  if (skill->description != description) {
+    skill->description = description;
     is_changed = true;
   }
 

@@ -39,6 +39,7 @@
 #include "net/cookies/cookie_inclusion_status.h"
 #include "net/cookies/cookie_monster.h"
 #include "net/cookies/cookie_options.h"
+#include "net/cookies/cookie_partition_key.h"
 #include "net/cookies/cookie_setting_override.h"
 #include "net/cookies/parsed_cookie.h"
 #include "net/first_party_sets/first_party_set_metadata.h"
@@ -340,10 +341,10 @@ struct CookiePrefixData {
 };
 
 constexpr CookiePrefixData kPrefixes[] = {
-    {"__Secure-", COOKIE_PREFIX_SECURE},
-    {"__Host-Http-", COOKIE_PREFIX_HOSTHTTP},
-    {"__Http-", COOKIE_PREFIX_HTTP},
-    {"__Host-", COOKIE_PREFIX_HOST},
+    {"__Secure-", CookiePrefix::kSecure},
+    {"__Host-Http-", CookiePrefix::kHostHttp},
+    {"__Http-", CookiePrefix::kHttp},
+    {"__Host-", CookiePrefix::kHost},
 };
 
 }  // namespace
@@ -673,7 +674,7 @@ GURL CookieDomainAndPathToURL(std::string_view domain,
                               bool is_https) {
   return CookieDomainAndPathToURL(
       domain, path,
-      std::string(is_https ? url::kHttpsScheme : url::kHttpScheme));
+      std::string_view(is_https ? url::kHttpsScheme : url::kHttpScheme));
 }
 
 GURL CookieDomainAndPathToURL(std::string_view domain,
@@ -776,7 +777,7 @@ CookiePrefix GetCookiePrefix(std::string_view name) {
       return prefix_data.prefix_type;
     }
   }
-  return COOKIE_PREFIX_NONE;
+  return CookiePrefix::kNone;
 }
 
 bool HasHiddenPrefixName(std::string_view cookie_value) {
@@ -807,42 +808,32 @@ bool IsCookiePrefixValid(CookiePrefix prefix,
                          bool http_only,
                          std::string_view domain,
                          std::string_view path) {
-  if (prefix == COOKIE_PREFIX_SECURE) {
-    return HasValidSecurePrefixAttributes(url, secure);
+  switch (prefix) {
+    case CookiePrefix::kNone:
+      return true;
+    case CookiePrefix::kSecure:
+      return HasValidSecurePrefixAttributes(url, secure);
+    case CookiePrefix::kHost:
+      return HasValidHostPrefixAttributes(url, secure, domain, path);
+    case CookiePrefix::kHttp:
+      return HasValidHttpPrefixAttributes(url, secure, http_only);
+    case CookiePrefix::kHostHttp:
+      return HasValidHttpPrefixAttributes(url, secure, http_only) &&
+             HasValidHostPrefixAttributes(url, secure, domain, path);
   }
-  if (prefix == COOKIE_PREFIX_HOST) {
-    return HasValidHostPrefixAttributes(url, secure, domain, path);
-  }
-  if (prefix == COOKIE_PREFIX_HTTP) {
-    return HasValidHttpPrefixAttributes(url, secure, http_only);
-  }
-  if (prefix == COOKIE_PREFIX_HOSTHTTP) {
-    return HasValidHttpPrefixAttributes(url, secure, http_only) &&
-           HasValidHostPrefixAttributes(url, secure, domain, path);
-  }
-  return true;
+  NOTREACHED();
 }
 
-bool IsCookiePartitionedValid(const GURL& url,
-                              const ParsedCookie& parsed_cookie,
-                              bool partition_has_nonce) {
-  return IsCookiePartitionedValid(
-      url, /*secure=*/parsed_cookie.IsSecure(),
-      /*is_partitioned=*/parsed_cookie.IsPartitioned(), partition_has_nonce);
-}
-
-bool IsCookiePartitionedValid(const GURL& url,
-                              bool secure,
-                              bool is_partitioned,
-                              bool partition_has_nonce) {
-  if (!is_partitioned) {
+bool IsCookiePartitionedValid(
+    base::optional_ref<const GURL> url,
+    bool secure,
+    base::optional_ref<const CookiePartitionKey> partition_key) {
+  if (!partition_key || CookiePartitionKey::HasNonce(partition_key)) {
     return true;
   }
-  if (partition_has_nonce) {
-    return true;
-  }
-  CookieAccessScheme scheme = cookie_util::ProvisionalAccessScheme(url);
-  bool result = (scheme != CookieAccessScheme::kNonCryptographic) && secure;
+  bool result = (!url || ProvisionalAccessScheme(*url) !=
+                             CookieAccessScheme::kNonCryptographic) &&
+                secure;
   DLOG_IF(WARNING, !result) << "Cookie has invalid Partitioned attribute";
   return result;
 }

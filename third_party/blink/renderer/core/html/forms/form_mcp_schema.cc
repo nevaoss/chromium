@@ -7,12 +7,15 @@
 #include <memory>
 #include <optional>
 
+#include "base/files/file_path.h"
 #include "third_party/blink/public/mojom/forms/form_control_type.mojom-blink-forward.h"
+#include "third_party/blink/public/platform/file_path_conversion.h"
 #include "third_party/blink/renderer/core/dom/element.h"
 #include "third_party/blink/renderer/core/dom/live_node_list.h"
 #include "third_party/blink/renderer/core/html/forms/html_form_control_element.h"
 #include "third_party/blink/renderer/core/html/forms/html_form_element.h"
 #include "third_party/blink/renderer/core/html/forms/html_input_element.h"
+#include "third_party/blink/renderer/core/html/forms/html_label_element.h"
 #include "third_party/blink/renderer/core/html/forms/html_option_element.h"
 #include "third_party/blink/renderer/core/html/forms/html_select_element.h"
 #include "third_party/blink/renderer/core/html/forms/html_text_area_element.h"
@@ -26,17 +29,49 @@ namespace blink {
 
 namespace {
 
-String ToNumberString(const JSONValue& value) {
-  String string;
+bool ToString(const JSONValue& value, String& out) {
+  if (value.AsString(&out)) {
+    return true;
+  }
   int i;
-  double d;
   if (value.AsInteger(&i)) {
-    return String::Number(i);
+    out = String::Number(i);
+    return true;
   }
+  double d;
   if (value.AsDouble(&d)) {
-    return String::Number(d);
+    out = String::Number(d);
+    return true;
   }
-  return g_null_atom;
+  bool b;
+  if (value.AsBoolean(&b)) {
+    out = b ? "true" : "false";
+    return true;
+  }
+  return false;
+}
+
+bool ToBoolean(const JSONValue& value, bool& out) {
+  if (value.AsBoolean(&out)) {
+    return true;
+  }
+  int i;
+  if (value.AsInteger(&i)) {
+    out = (i != 0);
+    return true;
+  }
+  String s;
+  if (value.AsString(&s)) {
+    if (EqualIgnoringASCIICase(s, "true") || s == "1") {
+      out = true;
+      return true;
+    }
+    if (EqualIgnoringASCIICase(s, "false") || s == "0") {
+      out = false;
+      return true;
+    }
+  }
+  return false;
 }
 
 }  // namespace
@@ -83,10 +118,15 @@ std::optional<WebDocument::ScriptToolError> FormMCPSchema::FillData(
     const String parameter_name = String(entry.first);
     auto it = name_to_controls_.find(parameter_name);
     if (it == name_to_controls_.end()) {
-      return WebDocument::ScriptToolError::kInvalidInputArguments;
+      return WebDocument::ScriptToolError(
+          WebDocument::ScriptToolError::kInvalidInputArguments,
+          String("Input contains a parameter \"" + parameter_name +
+                 "\" but there is no such parameter for the tool"));
     }
     if (!ValidateParameterData(parameter_name, *entry.second)) {
-      return WebDocument::ScriptToolError::kInvalidInputArguments;
+      return WebDocument::ScriptToolError(
+          WebDocument::ScriptToolError::kInvalidInputArguments,
+          String("Parameter didn't validate: " + parameter_name));
     }
   }
 
@@ -136,6 +176,9 @@ bool FormMCPSchema::ValidateParameterData(const String& name,
   if (IsColor(*controls_for_name)) {
     return ValidateTextData(*controls_for_name, value);
   }
+  if (IsFile(*controls_for_name)) {
+    return ValidateFileData(*controls_for_name, value);
+  }
 
   return false;
 }
@@ -146,7 +189,7 @@ bool FormMCPSchema::ValidateTextData(const ControlVector& controls_for_name,
     return false;
   }
   String s;
-  if (!value.AsString(&s)) {
+  if (!ToString(value, s)) {
     return false;
   }
   if (s.empty()) {
@@ -166,8 +209,11 @@ bool FormMCPSchema::ValidateNumberData(const ControlVector& controls_for_name,
   }
   if (auto* input =
           DynamicTo<HTMLInputElement>(controls_for_name.front().Get())) {
-    String number_string = ToNumberString(value);
-    return !number_string.empty() && input->SanitizeValue(number_string);
+    String number_string;
+    if (ToString(value, number_string)) {
+      return !number_string.empty() &&
+             !input->SanitizeValue(number_string).empty();
+    }
   }
   return false;
 }
@@ -177,7 +223,7 @@ bool FormMCPSchema::ValidateCheckboxData(const ControlVector& controls_for_name,
   // Single checkboxes are represented as a boolean in the schema.
   if (controls_for_name.size() == 1u) {
     bool unused;
-    return value.AsBoolean(&unused);
+    return ToBoolean(value, unused);
   }
 
   // Otherwise, a list of (unique) values.
@@ -196,7 +242,7 @@ bool FormMCPSchema::ValidateCheckboxData(const ControlVector& controls_for_name,
   // Each value in the array must have a corresponding form control.
   for (const JSONValue& item : *array) {
     String s;
-    if (!item.AsString(&s)) {
+    if (!ToString(item, s)) {
       return false;
     }
     if (!allowed_values.Contains(s)) {
@@ -212,7 +258,7 @@ bool FormMCPSchema::ValidateCheckboxData(const ControlVector& controls_for_name,
 bool FormMCPSchema::ValidateRadioData(const ControlVector& controls_for_name,
                                       const JSONValue& value) {
   String string;
-  if (!value.AsString(&string)) {
+  if (!ToString(value, string)) {
     return false;
   }
   // Make sure the provided value matches one of the options.
@@ -227,9 +273,71 @@ bool FormMCPSchema::ValidateRadioData(const ControlVector& controls_for_name,
 
 bool FormMCPSchema::ValidateSelectData(const ControlVector& controls_for_name,
                                        const JSONValue& value) {
-  // TODO(crbug.com/480888831): Check that it's one of the options.
-  String unused;
-  return controls_for_name.size() == 1u && value.AsString(&unused);
+  auto* element = DynamicTo<HTMLSelectElement>(controls_for_name.front().Get());
+  if (!element) {
+    return false;
+  }
+
+  HashSet<String> allowed_values;
+  for (HTMLOptionElement& option : element->GetOptionList()) {
+    allowed_values.insert(option.value());
+  }
+
+  if (!element->IsMultiple()) {
+    String s;
+    return ToString(value, s) && allowed_values.Contains(s);
+  }
+
+  const JSONArray* array = JSONArray::Cast(&value);
+  if (!array) {
+    return false;
+  }
+
+  // Each value in the array must have a corresponding option.
+  for (const JSONValue& item : *array) {
+    String s;
+    if (!ToString(item, s)) {
+      return false;
+    }
+    if (!allowed_values.Contains(s)) {
+      return false;
+    }
+    // Specified values must be unique.
+    allowed_values.erase(s);
+  }
+
+  return true;
+}
+
+bool FormMCPSchema::ValidateFileData(const ControlVector& controls_for_name,
+                                     const JSONValue& value) {
+  if (controls_for_name.size() != 1u) {
+    return false;
+  }
+  auto* input = To<HTMLInputElement>(controls_for_name.front().Get());
+  CHECK(input);
+
+  auto is_absolute_path_string = [](const JSONValue& value) -> bool {
+    String path_string;
+    if (ToString(value, path_string)) {
+      return StringToFilePath(path_string).IsAbsolute();
+    }
+    return false;
+  };
+
+  if (input->Multiple()) {
+    const JSONArray* array = JSONArray::Cast(&value);
+    if (!array) {
+      return false;
+    }
+    for (const JSONValue& item : *array) {
+      if (!is_absolute_path_string(item)) {
+        return false;
+      }
+    }
+    return true;
+  }
+  return is_absolute_path_string(value);
 }
 
 void FormMCPSchema::FillParameterData(const String& name,
@@ -257,6 +365,8 @@ void FormMCPSchema::FillParameterData(const String& name,
     FillRadioData(*controls_for_name, value);
   } else if (IsColor(*controls_for_name)) {
     FillTextData(*controls_for_name, value);
+  } else if (IsFile(*controls_for_name)) {
+    FillFileData(*controls_for_name, value);
   }
 }
 
@@ -300,6 +410,9 @@ std::unique_ptr<JSONObject> FormMCPSchema::ComputeParameterSchema(
   if (IsColor(*controls_for_name)) {
     return ComputeColorParameterSchema(*controls_for_name, required);
   }
+  if (IsFile(*controls_for_name)) {
+    return ComputeFileParameterSchema(*controls_for_name, required);
+  }
 
   return nullptr;
 }
@@ -341,13 +454,28 @@ std::unique_ptr<JSONObject> FormMCPSchema::ComputeTimeParameterSchema(
   CHECK(element);
   auto schema = std::make_unique<JSONObject>();
   schema->SetString("type", "string");
+  StepRange range =
+      To<HTMLInputElement>(element)->CreateStepRange(kAnyIsDefaultStep);
   // The regex format is based on the valid time microsyntax in HTML:
   // https://html.spec.whatwg.org/multipage/common-microsyntaxes.html#times
   // We cannot use the "time" type from json schema because that accepts
   // timezone which is not valid for <input type=time>.
-  schema->SetString(
-      "format",
-      "^([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9](\\.[0-9]{1,3})?)?$");
+  //
+  // The regexp is modify to increase the likelihood of correctly adhere to the
+  // step range, but full validation would be a lot more complicated to express.
+  if (range.Step() < 1000) {
+    // Allow fractional seconds
+    schema->SetString(
+        "format",
+        "^([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9](\\.[0-9]{1,3})?)?$");
+  } else if (range.Step() < 60000) {
+    // Allow seconds
+    schema->SetString("format",
+                      "^([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$");
+  } else {
+    // Allow HH:MM only
+    schema->SetString("format", "^([01][0-9]|2[0-3]):[0-5][0-9]$");
+  }
   AddTitle(*element, *schema);
   AddDescription(*element, *schema);
   required = element->IsRequired();
@@ -395,7 +523,6 @@ std::unique_ptr<JSONObject> FormMCPSchema::ComputeSelectParameterSchema(
   }
 
   auto schema = std::make_unique<JSONObject>();
-  schema->SetString("type", "string");
 
   auto one_of = std::make_unique<JSONArray>();
   auto enum_array = std::make_unique<JSONArray>();
@@ -406,8 +533,20 @@ std::unique_ptr<JSONObject> FormMCPSchema::ComputeSelectParameterSchema(
     one_of->PushObject(std::move(option_object));
     enum_array->PushString(option.value());
   }
-  schema->SetArray("oneOf", std::move(one_of));
-  schema->SetArray("enum", std::move(enum_array));
+
+  if (element->IsMultiple()) {
+    schema->SetString("type", "array");
+    auto items_schema = std::make_unique<JSONObject>();
+    items_schema->SetString("type", "string");
+    items_schema->SetArray("oneOf", std::move(one_of));
+    items_schema->SetArray("enum", std::move(enum_array));
+    schema->SetObject("items", std::move(items_schema));
+    schema->SetBoolean("uniqueItems", true);
+  } else {
+    schema->SetString("type", "string");
+    schema->SetArray("oneOf", std::move(one_of));
+    schema->SetArray("enum", std::move(enum_array));
+  }
 
   AddTitle(*element, *schema);
   AddDescription(*element, *schema);
@@ -538,13 +677,34 @@ std::unique_ptr<JSONObject> FormMCPSchema::ComputeColorParameterSchema(
   return schema;
 }
 
+std::unique_ptr<JSONObject> FormMCPSchema::ComputeFileParameterSchema(
+    const ControlVector& controls_for_name,
+    bool& required) {
+  HTMLInputElement* element =
+      To<HTMLInputElement>(controls_for_name.front().Get());
+  CHECK(element);
+  auto schema = std::make_unique<JSONObject>();
+  if (element->Multiple()) {
+    schema->SetString("type", "array");
+    auto items_object = std::make_unique<JSONObject>();
+    items_object->SetString("type", "string");
+    schema->SetObject("items", std::move(items_object));
+  } else {
+    schema->SetString("type", "string");
+  }
+  AddTitle(*element, *schema);
+  AddDescription(*element, *schema);
+  required = element->IsRequired();
+  return schema;
+}
+
 // Note: Fill* functions may assume that the incoming value passed
 // the corresponding Validate* function.
 
 void FormMCPSchema::FillTextData(const ControlVector& controls_for_name,
                                  const JSONValue& value) {
   String string;
-  if (!value.AsString(&string)) {
+  if (!ToString(value, string)) {
     return;
   }
   if (auto* input =
@@ -560,7 +720,10 @@ void FormMCPSchema::FillNumberData(const ControlVector& controls_for_name,
                                    const JSONValue& value) {
   if (auto* input =
           DynamicTo<HTMLInputElement>(controls_for_name.front().Get())) {
-    input->SetValue(ToNumberString(value));
+    String number_string;
+    bool success = ToString(value, number_string);
+    CHECK(success) << "ValidateNumberData should be called first";
+    input->SetValue(number_string);
   }
 }
 
@@ -568,7 +731,7 @@ void FormMCPSchema::FillCheckboxData(const ControlVector& controls_for_name,
                                      const JSONValue& value) {
   if (controls_for_name.size() == 1u) {
     bool checked;
-    CHECK(value.AsBoolean(&checked));
+    CHECK(ToBoolean(value, checked));
     To<HTMLInputElement>(*controls_for_name.front()).SetChecked(checked);
     return;
   }
@@ -584,7 +747,7 @@ void FormMCPSchema::FillCheckboxData(const ControlVector& controls_for_name,
   HashSet<String> checked_values;
   for (const JSONValue& item : *array) {
     String s;
-    CHECK(item.AsString(&s));
+    CHECK(ToString(item, s));
     checked_values.insert(s);
   }
 
@@ -598,7 +761,7 @@ void FormMCPSchema::FillCheckboxData(const ControlVector& controls_for_name,
 void FormMCPSchema::FillRadioData(const ControlVector& controls_for_name,
                                   const JSONValue& value) {
   String string;
-  if (!value.AsString(&string)) {
+  if (!ToString(value, string)) {
     return;
   }
   for (HTMLFormControlElement* control : controls_for_name) {
@@ -611,15 +774,63 @@ void FormMCPSchema::FillRadioData(const ControlVector& controls_for_name,
 
 void FormMCPSchema::FillSelectData(const ControlVector& controls_for_name,
                                    const JSONValue& value) {
-  String selected_value;
-  if (!value.AsString(&selected_value)) {
+  HTMLSelectElement& select = To<HTMLSelectElement>(*controls_for_name.front());
+
+  if (!select.IsMultiple()) {
+    String selected_value;
+    CHECK(ToString(value, selected_value));
+    select.SetValue(selected_value, /*send_events=*/true,
+                    WebAutofillState::kNotFilled);
     return;
   }
-  if (auto* select =
-          DynamicTo<HTMLSelectElement>(controls_for_name.front().Get())) {
-    select->SetValue(selected_value, /*send_events=*/true,
-                     WebAutofillState::kNotFilled);
+
+  const JSONArray* array = JSONArray::Cast(&value);
+  CHECK(array);
+
+  HashSet<String> selected_values;
+  for (const JSONValue& item : *array) {
+    String s;
+    CHECK(ToString(item, s));
+    selected_values.insert(s);
   }
+
+  Vector<int> selected_indices;
+  int index = 0;
+  for (HTMLOptionElement& option : select.GetOptionList()) {
+    if (selected_values.Contains(option.value())) {
+      selected_indices.push_back(index);
+    }
+    ++index;
+  }
+
+  select.SelectMultipleOptions(selected_indices);
+}
+
+void FormMCPSchema::FillFileData(const ControlVector& controls_for_name,
+                                 const JSONValue& value) {
+  // TODO(crbug.com/481211432): NEEDS PRIVACY REVIEW BEFORE SHIPPING
+  Vector<String> paths;
+  auto* file_input = To<HTMLInputElement>(controls_for_name.front().Get());
+  if (file_input->Multiple()) {
+    const JSONArray* array = JSONArray::Cast(&value);
+    if (!array) {
+      return;
+    }
+    for (const JSONValue& item : *array) {
+      String path;
+      if (!ToString(item, path)) {
+        return;
+      }
+      paths.push_back(path);
+    }
+  } else {
+    String path;
+    if (!ToString(value, path)) {
+      return;
+    }
+    paths.push_back(path);
+  }
+  file_input->SetFilesFromPaths(paths);
 }
 
 void FormMCPSchema::AddTitle(HTMLFormControlElement& control, JSONObject& obj) {
@@ -683,11 +894,11 @@ String FormMCPSchema::LabelText(HTMLFormControlElement& control) {
     StringBuilder builder;
 
     for (wtf_size_t i = 0; i < list->length(); ++i) {
-      Node* label = list->item(i);
       if (i != 0) {
         builder.Append("; ");
       }
-      builder.Append(label->textContent().StripWhiteSpace());
+      HTMLLabelElement& label = To<HTMLLabelElement>(*list->item(i));
+      builder.Append(label.TextContentExcludingLabelable().StripWhiteSpace());
     }
 
     if (!builder.empty()) {
@@ -775,6 +986,11 @@ bool FormMCPSchema::IsColor(HTMLFormControlElement& control) const {
   return input && input->FormControlType() == FormControlType::kInputColor;
 }
 
+bool FormMCPSchema::IsFile(HTMLFormControlElement& control) const {
+  auto* input = DynamicTo<HTMLInputElement>(control);
+  return input && input->FormControlType() == FormControlType::kInputFile;
+}
+
 bool FormMCPSchema::IsText(const ControlVector& controls_for_name) const {
   return controls_for_name.size() == 1u && IsText(*controls_for_name.front());
 }
@@ -821,6 +1037,10 @@ bool FormMCPSchema::IsRadio(const ControlVector& controls_for_name) const {
 
 bool FormMCPSchema::IsColor(const ControlVector& controls_for_name) const {
   return controls_for_name.size() == 1u && IsColor(*controls_for_name.front());
+}
+
+bool FormMCPSchema::IsFile(const ControlVector& controls_for_name) const {
+  return controls_for_name.size() == 1u && IsFile(*controls_for_name.front());
 }
 
 }  // namespace blink

@@ -551,6 +551,17 @@ Chrome 政策的優先順序高於這項政策，例如擴充功能是否列在 
 這項政策僅適用於不會自動延展更新的舊機型。
 
 詳情請參閱 https://support.google.com/chrome/a/?p=extended_updates_support。</translation>
+<translation id="1432008122934973720">根據預設，只有明確委派時，才能在跨來源子框架中要求區域網路存取 (LNA) 權限。你可以使用這項政策覆寫預設行為，讓子框架預設繼承 LNA 權限，除非權限政策明確拒絕。
+
+如果將這項政策設為啟用，子框架預設會取得所有 LNA 權限政策功能，並可提出區域網路要求 (觸發權限提示)。
+
+如果將這項政策設為停用或不設定，子框架必須獲得該權限政策功能的明確委派，才能提出區域網路要求及觸發權限提示。
+
+這項政策適用於權限政策功能「<ph name="LOCAL_NETWORK_ACCESS_FEATURE_NAME" />」、「<ph name="LOOPBACK_NETWORK_FEATURE_NAME" />」和「<ph name="LOCAL_NETWORK_FEATURE_NAME" />」。
+
+如要進一步瞭解區域網路存取權，請參閱 https://wicg.github.io/local-network-access/ 和 https://developer.chrome.com/blog/local-network-access。
+
+如要進一步瞭解權限政策，請參閱 https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Permissions_Policy。</translation>
 <translation id="1432834104376790711">這項政策會啟用或停用省電模式設定。
       如果是 Chrome，啟用這項設定會限制畫面更新率，以降低耗電量。如果不設定這項政策，使用者可前往 chrome://settings/performance 控管這項設定。
       如果是 ChromeOS，啟用這項設定會限制畫面更新率和 CPU 頻率、調暗背光。如果是 Android，啟用這項設定會進入省電模式。如果是搭載多個 CPU 的裝置，系統會關閉部分 CPU。
@@ -1527,6 +1538,7 @@ Attribution Reporting API 已淘汰，因此這項政策也已在 <ph name="PROD
 <translation id="2090939118981888335">如果將這項政策設為啟用，代表允許使用資料壓縮 Proxy。如果將這項政策設為停用，則代表禁止使用該 Proxy。
 
       如果設定這項政策，使用者將無法變更設定。如果不設定，使用者可選擇使用該功能。</translation>
+<translation id="2091689441590064807">未明確委派時，不允許在子框架中提出 LNA 要求</translation>
 <translation id="2093552723795057221">不要回報音訊狀態</translation>
 <translation id="209388704279338003">這項政策已淘汰，因此系統不再支援，請改用 <ph name="DEVICE_PRINTERS_ACCESS_MODE_POLICY_NAME" />。</translation>
 <translation id="2093951844062548778">這項政策可讓快速解答功能存取所選內容，並將相關資訊傳送給伺服器，進而取得定義結果。
@@ -2088,6 +2100,17 @@ Attribution Reporting API 已淘汰，因此這項政策也已在 <ph name="PROD
 <translation id="2466131534462628618">要求網頁認證入口的驗證機制忽略 Proxy 設定</translation>
 <translation id="2467181864598429837">預設瀏覽器行為</translation>
 <translation id="2467896267442150508">最長為期一週的限制時段。如果開始時間設在結束時間之後，限制時段會跨日。</translation>
+<translation id="2475594733565572760">這項政策會定義所有相關生成式 AI 功能的預設設定。舉例來說，如果將這項政策的值設為 1，1 就會是所有相關生成式 AI 功能的預設設定值。這不會影響任何手動設定的政策值。這項設定會定義 Chrome 中涵蓋的生成式 AI 功能預設值。如要查看相關功能的完整清單，請前往 https://support.google.com/chrome/a?p=generative_ai_settings。
+
+「<ph name="GEMINI_SETTINGS_POLICY_NAME" />」等部分政策，只會有「允許」和「不允許」兩種狀態。在此情況下，如果將「<ph name="GEN_AI_DEFAULT_SETTINGS_POLICY_NAME" />」設為 0 或 1，系統就會啟用這項功能。如果將「<ph name="GEN_AI_DEFAULT_SETTINGS_POLICY_NAME" />」設為 2，系統會停用這項功能。各項功能的說明文件詳細說明這項政策中的值如何影響該功能，例如 Chrome 內建 Gemini：https://support.google.com/chrome/a/?p=gemini_in_chrome。Chrome 內建 Gemini、Google 智慧鏡頭和 AI 模式等功能，皆有專屬的保證和/或服務條款 (https://support.google.com/chrome/a/?p=genai_features_chrome)，因此均適用此規定。
+
+0 = 允許使用這項功能，並允許 Google 運用相關資料改善 AI 模型。相關資料可能包括提示、輸入內容、輸出內容、來源資料和文字意見回饋 (視功能而定)。這些資料也可能會送交專人審查，以提升 AI 模型。預設值為 0，但以下註明的情形除外。
+
+1 = 允許使用這項功能，但不允許 Google 運用使用者的內容 (包括提示、輸入內容、輸出內容、來源資料和文字意見回饋) 改良模型。如果是「<ph name="GOOGLE_ADMIN_CONSOLE_PRODUCT_NAME" />」管理的企業版使用者，以及「<ph name="GOOGLE_WORKSPACE_PRODUCT_NAME" />」管理的教育版帳戶，預設值為 1。
+
+2 = 不允許使用這項功能。
+
+如要進一步瞭解生成式 AI 功能的資料處理方式，請前往 https://support.google.com/chrome/a?p=generative_ai_settings。</translation>
 <translation id="2476249479201711962">允許存取預設搜尋引擎內容選單</translation>
 <translation id="2478756867046106663">允許具有濫用行為的網站開啟新視窗或新分頁</translation>
 <translation id="2479760962196319822">這項政策可控管 <ph name="PRODUCT_OS_NAME" /> 使用者能否在本機儲存資料。
@@ -4167,6 +4190,7 @@ ServiceWorkerAutoPreload 功能會在開始執行 ServiceWorker 啟動程序時�
 <translation id="3927291637826333102">依這些來源允許執行螢幕畫面、視窗和分頁擷取功能</translation>
 <translation id="3928726028264020458">啟用裝置 VPD 資訊回報功能</translation>
 <translation id="3935592079035695061">毫秒數 (自午夜起算)。</translation>
+<translation id="3937800910397007337">強制將所有分頁設為前景優先</translation>
 <translation id="3941289958028934630">在登入畫面上停用互動朗讀功能</translation>
 <translation id="3943930334592166130">當多個憑證與 <ph name="AUTO_SELECT_CERTIFICATE_FOR_URLS_POLICY_NAME" /> 相符時，這項政策可控管是否要提示使用者選取用戶端憑證。
       如果將這項政策設為 Enabled，每當自動選取政策與多個憑證相符時，系統會提示使用者選取用戶端憑證。
@@ -4828,17 +4852,6 @@ ServiceWorkerAutoPreload 功能會在開始執行 ServiceWorker 啟動程序時�
 <translation id="4426986640594727372">允許系統地理位置存取權</translation>
 <translation id="4427173305799125784">PDF 檢視器無法為 PDF 加註</translation>
 <translation id="4432762137771104529">啟用安全瀏覽模式的進階回報功能</translation>
-<translation id="4432772502174730966">這項政策會定義所有相關生成式 AI 功能的預設設定。舉例來說，如果將這項政策的值設為 1，1 就會是所有相關生成式 AI 功能的預設設定值。這不會影響任何手動設定的政策值。這項設定會定義 Chrome 中涵蓋的生成式 AI 功能預設值。如要查看相關功能的完整清單，請前往 https://support.google.com/chrome/a?p=generative_ai_settings。
-
-0 = 允許使用這項功能，並允許 Google 運用相關資料改良 AI 模型。相關資料可能包括提示詞、輸入內容、輸出內容、來源資料和文字意見回饋 (視功能而定)。這些資料也可能會送交專人審查，以改良 AI 模型。預設值為 0，但以下註明的情形除外。
-
-1 = 允許使用這項功能，但不允許 Google 運用使用者的內容 (包括提示詞、輸入內容、輸出內容、來源資料和文字意見回饋) 改良模型。如果是 <ph name="GOOGLE_ADMIN_CONSOLE_PRODUCT_NAME" />管理的企業版使用者，以及 <ph name="GOOGLE_WORKSPACE_PRODUCT_NAME" /> 管理的教育版帳戶，預設值為 1。
-
-2 = 不允許使用這項功能。
-
-如果相關的 Chrome 功能沒有等同政策值，系統會使用較高但最接近的值。部分政策 (例如 <ph name="GEMINI_SETTINGS_POLICY_NAME" />) 只會有「允許」和「不允許」兩種狀態。如果將 <ph name="GEN_AI_DEFAULT_SETTINGS_POLICY_NAME" /> 政策設為 0 或 1，系統將允許使用這項功能；如果將政策設為 2，就會禁止使用。請參閱各項功能的說明文件，進一步瞭解這項政策中的值如何影響該功能。
-
-如要進一步瞭解生成式 AI 功能的資料處理方式，請前往 https://support.google.com/chrome/a?p=generative_ai_settings。</translation>
 <translation id="443454694385851356">舊版 (不安全)</translation>
 <translation id="4435032708588431506">允許 QUIC</translation>
 <translation id="443665821428652897">瀏覽器關閉時清除網站資料 (已淘汰)</translation>
@@ -6061,6 +6074,7 @@ Protected Audience API 已淘汰，因此這項政策也已在 <ph name="PRODUCT
       * 中度：使用者只能在 YouTube 上選擇中度或高度的嚴格篩選模式，但無法關閉嚴格篩選模式。
 
       * 關閉或未設定值：Chrome 不會強制執行 YouTube 上的嚴格篩選模式，但外部政策 (例如 YouTube 政策) 可能仍會強制執行嚴格篩選模式。</translation>
+<translation id="5191007233343702012">使用標準分頁優先順序</translation>
 <translation id="5191476996923842491">setTimeout() 函式的預設行為出現延遲。</translation>
 <translation id="519247340330463721">設定安全瀏覽相關政策。</translation>
 <translation id="5192555640439947289">如果將這項政策設為啟用，<ph name="PRODUCT_OS_NAME" /> 會在暫停或機蓋蓋上時，要求使用者輸入密碼才能解鎖裝置。
@@ -6276,6 +6290,7 @@ Protected Audience API 已淘汰，因此這項政策也已在 <ph name="PRODUCT
 <translation id="530949964068726932">隱藏系統匣選單中的無障礙選項</translation>
 <translation id="5309944663104291505">禁止強制安裝的隔離網頁應用程式和資訊站應用程式使用 Device Attributes API</translation>
 <translation id="5311275381462687162">預設的舊版 <ph name="ATTRIBUTE_SAMESITE_NAME" /> Cookie 行為設定</translation>
+<translation id="5311430612584074035">強制將設定檔中所有分頁設為前景優先</translation>
 <translation id="5312253627576569499">如果系統在螢幕調暗時或畫面關閉後不久便偵測到使用者活動，要將螢幕調暗延遲時間延長的百分比</translation>
 <translation id="5316856058059940708">停用大型游標</translation>
 <translation id="5318185076587284965">啟用遠端存取主機所使用的轉送伺服器</translation>
@@ -6313,6 +6328,15 @@ Protected Audience API 已淘汰，因此這項政策也已在 <ph name="PRODUCT
 <translation id="5345892164332459671">停用浮動單一登入 (SSO)，而且不將使用者的 Web 服務驗證移到新裝置</translation>
 <translation id="5345910753471481870">不要在「新分頁」頁面的搜尋框中顯示 Google 智慧鏡頭按鈕。</translation>
 <translation id="5346587320074666194">禁止在這些網站上存取感應器</translation>
+<translation id="5347735051291224683">這項政策可控管是否要強制以前景優先執行背景網頁內容。
+
+根據預設，瀏覽器會降低背景分頁的內容優先順序，以提升資源效率。啟用這項政策會覆寫該行為，讓背景分頁與使用中分頁的排程方式相同。
+
+請注意，強制背景內容以前景優先的方式執行，可能會稍微影響使用中分頁的回應速度。
+
+如果啟用這項政策，所有網頁內容無論是否顯示，都會以前景優先執行。
+
+如果停用或未設定這項政策，瀏覽器會根據標準經驗法則判斷優先順序，例如降低未顯示內容、未播放音訊、未參與視訊通話的優先順序。</translation>
 <translation id="534836255587440809">在登入畫面上停用自動點選功能</translation>
 <translation id="5348658899015174540"><ph name="GET_DISPLAY_MEDIA_SET_NAME" /> API 允許網頁應用程式一次擷取多個螢幕的畫面。
       在已定義的來源上，這項政策會解除鎖定網頁應用程式的 <ph name="AUTO_SELECT_ALL_SCREENS_NAME" /> 屬性。
@@ -6942,13 +6966,6 @@ Microsoft SharePoint 和 OneDrive 資訊卡需要額外的管理員設定。想�
 <translation id="5746149754419996562">在 <ph name="PRODUCT_OS_NAME" /> 上啟用 Glanceables 小工具。具體來說，你可以透過檔案櫃上的日期方塊存取這些小工具。
 如果啟用這項政策，系統就會在 <ph name="PRODUCT_OS_NAME" /> 上啟用 Glanceables。
 如果停用或未設定這項政策，系統就不會在 <ph name="PRODUCT_OS_NAME" /> 上啟用 Glanceables。</translation>
-<translation id="5747628966013559697">設定 <ph name="PRODUCT_NAME" /> 如何下載基礎生成式 AI 模型，並在本機用於推論。
-
-如果將這項政策設為允許 (0) 或不設定，系統會自動下載模型並用於推論。
-
-如果將這項政策設為停用 (1)，系統就不會下載模型。
-
-在電腦平台上，<ph name="COMPONENT_UPDATES_ENABLED_POLICY_NAME" /> 也可以停用模型下載功能。</translation>
 <translation id="5749396052108288586">這項政策已遭淘汰，請改用 <ph name="REMOTE_ACCESS_HOST_CLIENT_DOMAIN_LIST_POLICY_NAME" /> 政策。</translation>
 <translation id="574983287620584622">在登入畫面上啟用無障礙功能快速鍵</translation>
 <translation id="5755002458331714762"> Web Components v0 API (Shadow DOM v0、Custom Elements v0 和 HTML Imports) 已在 2018 年淘汰，並從 M80 版開始預設為停用。這項政策可讓你選擇性地重新啟用這些功能，直到 M84 版為止。
@@ -7419,6 +7436,7 @@ IP 位址空間覆寫有兩種形式：
 注意：在瀏覽器執行期間，只有新啟動的轉譯器程序會套用這項政策的變更。</translation>
 <translation id="6083281887050888160">啟用「Just Works」藍牙配對</translation>
 <translation id="6083631234867522991">Windows (Windows 用戶端)：</translation>
+<translation id="6085580138417523410">允許子框架在未獲得明確委派下提出區域網路存取 (LNA) 要求</translation>
 <translation id="6087413944876892918">使用 <ph name="HAPPY_EYEBALLS_V3" /> 演算法</translation>
 <translation id="608788685013546076">設定用電尖峰轉移電池閾值 (以百分比為單位)</translation>
 <translation id="6089679180657323464">控管 wilco 診斷與遙測控制器設定。</translation>
@@ -9877,6 +9895,7 @@ Gemini 啟動功能僅支援部分國家/地區和語言。設定這項政策無
 <translation id="7669630878711068277">如果將這項政策設為啟用或不設定，使用者將可在 <ph name="PRODUCT_NAME" /> 中列印，且無法變更這項設定。
 
       如果將這項政策設為停用，則使用者無法透過 <ph name="PRODUCT_NAME" /> 列印。在三點圖示選單、擴充功能和 JavaScript 應用程式中，列印功能皆會關閉。</translation>
+<translation id="7672510074688643558">允許子框架中的 LNA 要求，無需明確委派</translation>
 <translation id="7673194325208122247">時間範圍 (毫秒)</translation>
 <translation id="7677220829878081413">
       如果將這項政策設為 [ArcSession]，在 Android 已啟動的情況下，系統會在使用者登出時強制重新啟動裝置。

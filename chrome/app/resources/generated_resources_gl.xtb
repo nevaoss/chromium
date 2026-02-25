@@ -160,6 +160,7 @@ Comproba os teus contrasinais cando queiras no <ph name="GOOGLE_PASSWORD_MANAGER
 <translation id="109647177154844434">A desinstalación de Parallels Desktop eliminará a túa imaxe de Windows. Aquí inclúense as súas aplicacións, opcións de configuración e datos. Seguro que queres continuar?</translation>
 <translation id="1097016918605049747">Non se puido traducir esta páxina</translation>
 <translation id="1097658378307015415">Antes de iniciar sesión, accede como convidado para activar a rede <ph name="NETWORK_ID" /></translation>
+<translation id="1099070179078143183">Para ofrecer funcións como a detección de estafas, Chrome pode usar modelos de IA que se executan directamente no teu dispositivo sen lles enviar os teus datos aos servidores de Google. Se a opción está desactivada, é posible que estas funcións non estean operativas. <ph name="BEGIN_LINK" />Máis información sobre a IA no dispositivo<ph name="END_LINK" /></translation>
 <translation id="1099962274138857708">Copiouse a imaxe desde o dispositivo (<ph name="DEVICE_NAME" />)</translation>
 <translation id="1100504063505580045">Icona actual</translation>
 <translation id="1102759278139578486">Non se puideron descargar os ficheiros de anotación do nó principal. Téntao de novo máis tarde.</translation>
@@ -513,6 +514,7 @@ Comproba os teus contrasinais cando queiras no <ph name="GOOGLE_PASSWORD_MANAGER
 <translation id="1333965224356556482">Non permitir que os sitios vexan a túa localización</translation>
 <translation id="1335282218035876586">O teu Chromebook xa non vai recibir máis actualizacións de seguranza e software. Faite cun novo para desfrutar da mellor experiencia.</translation>
 <translation id="133535873114485416">Entrada de voz preferida</translation>
+<translation id="13356285923490863">Nome da política</translation>
 <translation id="1335929031622236846">Inscribir o teu dispositivo</translation>
 <translation id="133660899895084533">Ler datos e información dos periféricos de Bluetooth</translation>
 <translation id="1336902454946927954">Bloqueouse a chave de seguranza porque non se puido recoñecer a túa impresión dixital. Para desbloqueala, escribe o PIN.</translation>
@@ -907,7 +909,7 @@ Pode que se lle apliquen a esta conta os permisos que xa lles concedeses ás apl
 <translation id="1606077700029460857">Cambiar configuración do rato</translation>
 <translation id="1606566847233779212">Queres quitar os sitios específicos que engadiches?</translation>
 <translation id="1607139524282324606">Borrar entrada</translation>
-<translation id="1607499585984539560">O usuario non está vinculado ao dominio</translation>
+<translation id="1607499585984539560">O usuario non está afiliado ao dominio</translation>
 <translation id="1607540893439314147"><ph name="BEGIN_PARAGRAPH1" />Chatea con Gemini para empezar a redactar textos, facer plans, aprender cousas novas e moito máis coa IA de Google.<ph name="END_PARAGRAPH1" />
     <ph name="BEGIN_PARAGRAPH2" />Despois da configuración, selecciona a aplicación Gemini no andel da parte inferior da pantalla e comeza a usala.<ph name="END_PARAGRAPH2" /></translation>
 <translation id="1608668830839595724">Máis accións para os elementos seleccionados</translation>
@@ -2626,6 +2628,7 @@ Podes xestionar a configuración desde o menú da tarxeta ou ver máis opcións 
 <translation id="2749836841884031656">SIM</translation>
 <translation id="2749881179542288782">Comprobar a gramática e a ortografía</translation>
 <translation id="2750020734439919571">Máis opcións de configuración e permisos da aplicación Chrome</translation>
+<translation id="275010360476017464">Usa o micrófono para chatear con Gemini. Ao falar o audio almacénase na actividade das aplicacións Gemini (se a opción está activada).</translation>
 <translation id="2750602041558385535">Carga non verificada bloqueada</translation>
 <translation id="2751454300227269244">Mover a boca cara á dereita</translation>
 <translation id="2751883373055093745"><ph name="WEBSITE" /> quere coñecer o número de identificación da túa chave de seguranza. O sitio saberá que chave de seguranza estás utilizando exactamente.</translation>
@@ -4776,7 +4779,6 @@ Podes xestionar a configuración desde o menú da tarxeta ou ver máis opcións 
 <translation id="4206585797409671301">Permítese mostrar solicitudes</translation>
 <translation id="4207144975205749656">Encripta as solicitudes de navegación para que os atacantes na mesma rede non poidan ver o teu tráfico</translation>
 <translation id="4207932031282227921">Permiso solicitado; preme F6 para responder</translation>
-<translation id="4208390505124702064">Buscar en <ph name="SITE_NAME" /></translation>
 <translation id="4209092469652827314">Grande</translation>
 <translation id="4209247656298167054">Sen actualización</translation>
 <translation id="4209251085232852247">Estado: desactivado</translation>
@@ -4894,7 +4896,6 @@ Podes xestionar a configuración desde o menú da tarxeta ou ver máis opcións 
 <translation id="4281844954008187215">Condicións de servizo</translation>
 <translation id="4281849573951338030">Personalizar botóns do lapis</translation>
 <translation id="4282196459431406533">Smart Lock está activado</translation>
-<translation id="4283635301190260296">Contraer as pestanas verticais</translation>
 <translation id="4284903252249997120">Lector de pantalla de ChromeVox e Escoitar selección</translation>
 <translation id="4285418559658561636">Actualizar contrasinal</translation>
 <translation id="4285498937028063278">Deixar de fixar</translation>
@@ -5609,6 +5610,7 @@ Se queres afastala, usa Control + Alt + Reducir brillo.</translation>
 <translation id="4784349455504343791"><ph name="WEBSITE_ORIGIN" /> quere usar información persoal do teu moedeiro dixital.</translation>
 <translation id="4785719467058219317">Estás utilizando unha chave de seguranza que non está rexistrada neste sitio web</translation>
 <translation id="4785914069240823137">Cancelar recorte</translation>
+<translation id="4786430656008801173">IA no dispositivo</translation>
 <translation id="4787471921443575924">Editar a clave de acceso do nome de usuario: <ph name="USER_EMAIL" /></translation>
 <translation id="4788092183367008521">Comproba a conexión de rede e téntao de novo.</translation>
 <translation id="4789348252524569426">Non se puideron instalar os ficheiros de voz. Cómpre actualizar o teu dispositivo. Reinicia o dispositivo e téntao de novo.</translation>
@@ -5764,6 +5766,7 @@ Se queres afastala, usa Control + Alt + Reducir brillo.</translation>
 <translation id="4881685975363383806">Non lembrar a próxima vez</translation>
 <translation id="4881695831933465202">Abrir</translation>
 <translation id="4882312758060467256">Ten acceso a este sitio</translation>
+<translation id="4882848900607400156">Se compartes a túa localización precisa, Gemini poderá responder as túas preguntas con máis precisión. Os teus datos non se usarán para mellorar os modelos de IA xenerativa.</translation>
 <translation id="4882919381756638075">Os sitios adoitan usar o micrófono para ofrecerche determinadas funcións relacionadas coa comunicación (por exemplo, chat de vídeo)</translation>
 <translation id="4883436287898674711">Todos os sitios de <ph name="WEBSITE_1" /></translation>
 <translation id="48838266408104654">Xes&amp;tor de tarefas</translation>
@@ -5854,6 +5857,7 @@ Se queres afastala, usa Control + Alt + Reducir brillo.</translation>
 <translation id="4945439665401275950">Para configurar a impresión dixital, pídelle ao teu fillo ou filla que toque o botón de acendido. Os datos da súa impresión dixital almacenaranse de maneira segura neste dispositivo (<ph name="DEVICE_TYPE" />) e nunca sairán del.</translation>
 <translation id="4946998421534856407">menú de aplicacións + frecha arriba</translation>
 <translation id="4947376546135294974">Datos do sitio que estás visitando</translation>
+<translation id="4948370357877377178">Continúa coas túas tarefas</translation>
 <translation id="4950100687509657457">Crear perfil</translation>
 <translation id="495164417696120157">{COUNT,plural, =1{1 ficheiro}other{# ficheiros}}</translation>
 <translation id="495170559598752135">Accións</translation>
@@ -8876,7 +8880,6 @@ Quédanche # máis. O xestor de contrasinais de Google recomenda que comprobes e
 <translation id="70577934383983846">Usar este contrasinal en todos os teus dispositivos</translation>
 <translation id="7058024590501568315">Rede oculta</translation>
 <translation id="7059858479264779982">Establecer en inicio automático</translation>
-<translation id="7060004353663489242">É necesario completar o campo <ph name="FIELD_LIST" /></translation>
 <translation id="7063129466199351735">Procesando atallos...</translation>
 <translation id="7063311912041006059">URL co símbolo <ph name="SPECIAL_SYMBOL" /> no lugar da consulta</translation>
 <translation id="70641621694466590">Ir á páxina de contrasinais</translation>
@@ -9075,6 +9078,7 @@ Quédanche # máis. O xestor de contrasinais de Google recomenda que comprobes e
 <translation id="720715819012336933">{NUM_PAGES,plural, =1{Páxina de saída}other{Páxinas de saída}}</translation>
 <translation id="7207457272187520234">Enviar datos de uso e diagnóstico. Este dispositivo envía automaticamente datos de diagnóstico e de uso do dispositivo e das aplicacións a Google. Esta información permitirá aumentar a estabilidade do sistema e das aplicacións, e realizar outras melloras. Algúns datos agregados tamén serán útiles para as aplicacións e os socios de Google, como os programadores de Android. Esta opción de configuración contrólaa o propietario. Se está activada a opción Actividade web e das aplicacións adicional, estes datos pódense gardar na túa Conta de Google.</translation>
 <translation id="7207631048330366454">Buscar aplicacións</translation>
+<translation id="7209958456051239069">Se compartes a túa localización precisa, Gemini poderá responder as túas preguntas con máis precisión</translation>
 <translation id="7210257969463271891">As aplicacións web que instales mostraranse aquí</translation>
 <translation id="7210432570808024354">Tocar e arrastrar elementos para movelos</translation>
 <translation id="7210499381659830293">Impresoras da extensión</translation>
@@ -10649,7 +10653,6 @@ Mantén o ficheiro de clave nun lugar seguro, xa que o precisarás para crear no
 <translation id="8263228331881858381">Gardouse a clave de acceso</translation>
 <translation id="8263336784344783289">Ponlle un nome a este grupo</translation>
 <translation id="8264024885325823677">O teu administrador xestiona esta opción de configuración.</translation>
-<translation id="826410575944953302">Despregar as pestanas verticais</translation>
 <translation id="8264195025773092348">Só se mostran os dispositivos compatibles. Os dispositivos USB deixarán de estar dispoñibles para as aplicacións nativas ata que se desconecten.</translation>
 <translation id="8265018477030547118">Almacenaríase só neste dispositivo</translation>
 <translation id="826511437356419340">Entraches no modo de vista xeral da ventá. Pasa o dedo para navegar ou preme o tabulador no teclado.</translation>
@@ -10694,6 +10697,7 @@ Mantén o ficheiro de clave nun lugar seguro, xa que o precisarás para crear no
 <translation id="8288032458496410887">Desinstalar a aplicación <ph name="APP" />…</translation>
 <translation id="8288553158681886528">Extraer texto do PDF</translation>
 <translation id="8289128870594824098">Tamaño do disco</translation>
+<translation id="8289200713453671499">Cambia rapidamente entre os grupos de pestanas e as conversas recentes coa IA sen perder o fío.</translation>
 <translation id="8289509909262565712">Dámosche a benvida a <ph name="DEVICE_OS" /></translation>
 <translation id="8291415872436043161">Descargar Chrome</translation>
 <translation id="8291942417224950075">Para uso persoal</translation>
@@ -10747,7 +10751,6 @@ Mantén o ficheiro de clave nun lugar seguro, xa que o precisarás para crear no
 <translation id="8323518750352551353">Queres separar a navegación?</translation>
 <translation id="8323744572398547859">Para obter pestanas doutros dispositivos, inicia sesión e sincroniza o historial. Tamén poderás desfrutar dos teus contrasinais e moito máis en todos os teus dispositivos. Podes deter a sincronización cando queiras na configuración. Google pode personalizar a Busca e outros servizos en función do teu historial.</translation>
 <translation id="8324158725704657629">Non preguntar de novo</translation>
-<translation id="8324264291265547520">Despregar as pestanas verticais</translation>
 <translation id="8325413836429495820">Permiso denegado para consultar o portapapeis</translation>
 <translation id="8326478304147373412">PKCS n.º 7, cadea de certificados</translation>
 <translation id="8327386430364625757">Tipo de letra matemático</translation>
@@ -11675,6 +11678,7 @@ Pode tratarse de información sobre o software instalado, os ficheiros, o navega
 <translation id="8945508919180478719">Micrófono de estudio</translation>
 <translation id="8946359700442089734">As funcións de depuración non se activaron completamente neste dispositivo <ph name="IDS_SHORT_PRODUCT_NAME" />.</translation>
 <translation id="8946954897220903437">Contraer todas as solicitudes na barra de enderezos</translation>
+<translation id="8946996840522387154">Usa o micrófono para chatear con Gemini. Ao falar o audio almacénase na actividade das aplicacións Gemini (se a opción está activada). Os teus datos non se usarán para mellorar os modelos de IA xenerativa.</translation>
 <translation id="894763922177556086">Boa</translation>
 <translation id="895054485242522631">Os sitios poden usar os sensores de movemento</translation>
 <translation id="8951256747718668828">Non se puido completar a restauración debido a un erro</translation>
@@ -11823,7 +11827,6 @@ Pode tratarse de información sobre o software instalado, os ficheiros, o navega
 <translation id="9032004780329249150">Usa os teus contrasinais nos dispositivos iOS</translation>
 <translation id="9032097289595078011">Deshabilitar Vinculación rápida</translation>
 <translation id="9032513103438497286">Bloquea as aplicacións instaladas neste dispositivo (<ph name="DEVICE_TYPE" />). Para restrinxir a descarga de aplicacións ou contido, vai á configuración de Google Play.</translation>
-<translation id="9033204084988490464">Contraer as pestanas verticais</translation>
 <translation id="9033765790910064284">Continuar igualmente</translation>
 <translation id="9033857511263905942">&amp;Pegar</translation>
 <translation id="903480517321259405">Volve escribir o PIN</translation>

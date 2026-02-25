@@ -200,6 +200,8 @@ class WTF_EXPORT String {
     return base::as_string_view(Span16());
   }
 
+  // Returns a code unit at the specified index.
+  // This operator returns 0 if the specified index is out of range.
   UChar operator[](wtf_size_t index) const {
     if (!impl_ || index >= impl_->length())
       return 0;
@@ -462,7 +464,7 @@ class WTF_EXPORT String {
   //  - leading '+'
   //  - leading Unicode whitespace
   //  - trailing Unicode whitespace
-  //  - no "-0" (ToUIntStrict and ToUInt64Strict)
+  //  - no "-0" (ToUInt64Strict)
   //  - no out-of-range numbers which the resultant type can't represent
   //
   // If the input string is not acceptable, 0 is returned and |*ok| becomes
@@ -471,28 +473,10 @@ class WTF_EXPORT String {
   // We can use these functions to implement a Web Platform feature only if the
   // input string is already valid according to the specification of the
   // feature.
-  int ToIntStrict(bool* ok = nullptr) const;
-  unsigned ToUIntStrict(bool* ok = nullptr) const;
   unsigned HexToUIntStrict(bool* ok) const;
   uint64_t HexToUInt64Strict(bool* ok) const;
   int64_t ToInt64Strict(bool* ok = nullptr) const;
   uint64_t ToUInt64Strict(bool* ok = nullptr) const;
-
-  // The following ToFoo functions accept:
-  //  - leading '+'
-  //  - leading Unicode whitespace
-  //  - trailing garbage
-  //  - no "-0" (ToUInt and ToUInt64)
-  //  - no out-of-range numbers which the resultant type can't represent
-  //
-  // If the input string is not acceptable, 0 is returned and |*ok| becomes
-  // |false|.
-  //
-  // We can use these functions to implement a Web Platform feature only if the
-  // input string is already valid according to the specification of the
-  // feature.
-  int ToInt(bool* ok = nullptr) const;
-  unsigned ToUInt(bool* ok = nullptr) const;
 
   // See string_to_number.h for float/double parsing.
 

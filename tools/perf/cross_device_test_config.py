@@ -131,9 +131,9 @@ TARGET_DEVICES = {
     'linux-perf-fyi': {
         'jetstream2.crossbench': 4,
         'jetstream3.crossbench': 4,
+        'jetstream3-turbolev_future.crossbench': 4,
         'jetstream_main.crossbench': 4,
         'speedometer2': 4,
-        'speedometer2-minorms': 4,
         'speedometer3': 4,
         'speedometer3.crossbench': 4,
         'speedometer3.0.crossbench': 4,
@@ -145,19 +145,14 @@ TARGET_DEVICES = {
         'jetstream2': {
             'JetStream2': 5,
         },
-        'jetstream2-minorms': {
-            'JetStream2': 5,
-        },
         'jetstream2.crossbench': 20,
         'jetstream3.crossbench': 20,
+        'jetstream3-turbolev_future.crossbench': 20,
         'jetstream_main.crossbench': 20,
         # set speedometer to 20 shards to help warm up speedometer2
         # benchmark runs b/325578543
         'speedometer': {
             'http://browserbench.org/Speedometer/': 20,
-        },
-        'speedometer2-minorms': {
-            'Speedometer2': 20,
         },
         'speedometer2': {
             'Speedometer2': 20,
@@ -166,9 +161,6 @@ TARGET_DEVICES = {
             'Speedometer2': 20,
         },
         'speedometer3': {
-            'Speedometer3': 20,
-        },
-        'speedometer3-minorms': {
             'Speedometer3': 20,
         },
         'speedometer3-predictable': {
@@ -184,6 +176,7 @@ TARGET_DEVICES = {
         },
         'jetstream2.crossbench': 5,
         'jetstream3.crossbench': 5,
+        'jetstream3-turbolev_future.crossbench': 5,
         'jetstream_main.crossbench': 5,
         'speedometer2': {
             'Speedometer2': 20,
@@ -201,6 +194,7 @@ TARGET_DEVICES = {
         },
         'jetstream2.crossbench': 5,
         'jetstream3.crossbench': 5,
+        'jetstream3-turbolev_future.crossbench': 5,
         'jetstream_main.crossbench': 5,
         'system_health.common_desktop': {
             # cputimeToFirstContentfulPaint
@@ -224,6 +218,7 @@ TARGET_DEVICES = {
         },
         'jetstream2.crossbench': 5,
         'jetstream3.crossbench': 5,
+        'jetstream3-turbolev_future.crossbench': 5,
         'jetstream_main.crossbench': 5,
         'speedometer2': {
             'Speedometer2': 20,
@@ -242,6 +237,7 @@ TARGET_DEVICES = {
         },
         'jetstream2.crossbench': 5,
         'jetstream3.crossbench': 5,
+        'jetstream3-turbolev_future.crossbench': 5,
         'jetstream_main.crossbench': 5,
         'speedometer2': {
             'Speedometer2': 20,
@@ -259,6 +255,7 @@ TARGET_DEVICES = {
         },
         'jetstream2.crossbench': 5,
         'jetstream3.crossbench': 5,
+        'jetstream3-turbolev_future.crossbench': 5,
         'jetstream_main.crossbench': 5,
         'speedometer2': {
             'Speedometer2': 20,
@@ -274,23 +271,15 @@ TARGET_DEVICES = {
         'jetstream2': {
             'JetStream2': 6,
         },
-        'jetstream2-minorms': {
-            'JetStream2': 5,
-        },
         'jetstream2-no-field-trials': 6,
         'jetstream2.crossbench': 5,
         'jetstream3.crossbench': 5,
+        'jetstream3-turbolev_future.crossbench': 5,
         'jetstream_main.crossbench': 5,
         'speedometer2': {
             'Speedometer2': 20,
         },
-        'speedometer2-minorms': {
-            'Speedometer2': 20,
-        },
         'speedometer3': {
-            'Speedometer3': 28,
-        },
-        'speedometer3-minorms': {
             'Speedometer3': 28,
         },
         'speedometer3-no-field-trials': 28,
@@ -306,6 +295,7 @@ TARGET_DEVICES = {
         },
         'jetstream2.crossbench': 4,
         'jetstream3.crossbench': 4,
+        'jetstream3-turbolev_future.crossbench': 4,
         'jetstream_main.crossbench': 4,
         'speedometer2': {
             'Speedometer2': 5,
@@ -341,6 +331,7 @@ TARGET_DEVICES = {
         'jetstream2': 6,
         'jetstream2.crossbench': 6,
         'jetstream3.crossbench': 6,
+        'jetstream3-turbolev_future.crossbench': 6,
         'jetstream_main.crossbench': 6,
         'speedometer2': 20,
         'speedometer3': 20,

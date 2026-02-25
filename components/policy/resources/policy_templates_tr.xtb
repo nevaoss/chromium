@@ -578,6 +578,17 @@ modellerde geçerlidir.
 
 Daha fazla ayrıntı için lütfen
 https://support.google.com/chrome/a/?p=extended_updates_support adresine bakın.</translation>
+<translation id="1432008122934973720">Varsayılan olarak, yerel ağ erişimi (LNA) izinlerinin kaynaklar arası alt çerçevelerde istenmesine yalnızca açıkça yetkilendirildikleri takdirde izin verilir. Bu politika, bu varsayılan davranışı geçersiz kılmak için kullanılabilir. Böylece LNA izinleri, izin politikasında açıkça reddedilmediği sürece alt çerçevelere varsayılan olarak devredilir.
+
+Bu politika, etkin değerine ayarlanırsa alt çerçeveler tüm LNA izin politikası özellikleri için varsayılan olarak yetkilendirilir ve yerel ağ isteği gönderebilir (bu işlem, izin istemini tetikler).
+
+Bu politika, devre dışı değerine ayarlanır veya ayarlanmadan bırakılırsa alt çerçevelerin yerel ağ isteği gönderebilmesi ve izin istemini tetikleyebilmesi için izin politikası özelliğiyle açıkça yetkilendirilmesi gerekir.
+
+Bu politika; <ph name="LOCAL_NETWORK_ACCESS_FEATURE_NAME" />, <ph name="LOOPBACK_NETWORK_FEATURE_NAME" /> ve <ph name="LOCAL_NETWORK_FEATURE_NAME" /> izin politikası özellikleri için geçerlidir.
+
+Yerel ağ erişimi hakkında daha fazla bilgiyi https://wicg.github.io/local-network-access/ ve https://developer.chrome.com/blog/local-network-access sayfasında bulabilirsiniz.
+
+İzin politikası hakkında daha fazla bilgiyi https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Permissions_Policy sayfasında bulabilirsiniz.</translation>
 <translation id="1432834104376790711">Bu politika, Pil Tasarrufu Modu ayarını etkinleştirir veya devre dışı bırakır.
       Chrome'da bu ayar, güç tüketimini azaltmak için kare hızının kısıtlanmasını sağlar. Bu politika ayarlanmazsa son kullanıcı bu ayarı chrome://settings/performance bölümünden kontrol edebilir.
       ChromeOS'te bu ayar, kare hızının ve CPU frekansının kısıtlanmasını, arka ışıkların kısılmasını ve Android'in, Pil Tasarrufu Modu'na alınmasını sağlar. Birden fazla CPU'su olan cihazlarda bazı CPU'lar kapatılır.
@@ -1593,6 +1604,7 @@ Bu cihaz politikası, mevcut <ph name="SECURITY_KEY_PERMIT_ATTESTATION_POLICY_NA
 <translation id="2090939118981888335">Politika, Etkin değerine ayarlanırsa veri sıkıştırma proxy'sine izin verilir. Politika, Devre Dışı değerine ayarlanırsa proxy'ye izin verilmez.
 
       Bu politikayı ayarlarsanız kullanıcılar değiştiremez. Politika ayarlanmadan bırakılırsa kullanıcılar, özelliği kullanmayı seçebilir.</translation>
+<translation id="2091689441590064807">Açıkça yetki verilmeden alt çerçevelerde LNA isteklerine izin verme</translation>
 <translation id="2093552723795057221">Ses durumunu bildirme</translation>
 <translation id="209388704279338003">Bu politikanın desteği sonlandırıldığı için lütfen bunun yerine <ph name="DEVICE_PRINTERS_ACCESS_MODE_POLICY_NAME" /> politikasını kullanın.</translation>
 <translation id="2093951844062548778">Bu politika, tanım sonuçlarını almak için Bil bakalım'a seçilen içeriğe erişme ve sunucuya bilgi gönderme izni verir.
@@ -5049,17 +5061,6 @@ Bu politikayı ayarlarsanız kullanıcılar <ph name="PRODUCT_NAME" /> ürünün
 <translation id="4426986640594727372">Sistem coğrafi konum erişimine izin ver</translation>
 <translation id="4427173305799125784">PDF görüntüleyici PDF'lere not ekleyemez</translation>
 <translation id="4432762137771104529">Güvenli Tarama Genişletilmiş Raporlamasını Etkinleştir</translation>
-<translation id="4432772502174730966">Bu politika, kapsanan tüm üretken yapay zeka özellikleri için varsayılan ayarı tanımlar. Örneğin, bu politika 1 değeri ayarlanırsa, kapsam dahilindeki tüm üretken yapay zeka özelliklerinin varsayılan ayarı 1 olacaktır. Manuel olarak ayarlanmış herhangi bir politika değeri etkilenmez. Bu ayar, Chrome'da kapsam dahilindeki üretken yapay zeka özellikleri için varsayılan değerleri tanımlar. Kapsam dahilindeki özellikler için https://support.google.com/chrome/a?p=generative_ai_settings adresini ziyaret edin.
-
-0 = Özelliğin kullanılmasına izin verirken Google'ın yapay zeka modellerini iyileştirmek için ilgili verileri kullanmasına izin verir. İlgili veriler arasında özelliğe bağlı olarak istemler, girişler, çıkışlar, kaynak materyaller ve yazılı geri bildirimler yer alabilir. Bu bilgiler, gerçek kişiler tarafından da yapay zeka modellerini iyileştirmek için incelenebilir. Aşağıdaki değerler belirtilmediği sürece varsayılan değer 0'dır.
-
-1 = Özelliğin kullanılmasına izin verir ancak Google'ın kullanıcıların içeriklerini (istemler, girişler, çıkışlar, kaynak materyaller ve yazılı geri bildirimler dahil) kullanarak modelleri iyileştirmesine izin vermez. <ph name="GOOGLE_ADMIN_CONSOLE_PRODUCT_NAME" /> tarafından yönetilen kurumsal kullanıcılar ve <ph name="GOOGLE_WORKSPACE_PRODUCT_NAME" /> tarafından yönetilen eğitim hesapları için varsayılan değer 1'dir.
-
-2 = Özelliğe izin vermez.
-
-Kapsanan bir Chrome özelliği eşdeğer politika değerine sahip değilse en yakın üst değer kullanılır. Bazı politikalar (ör. <ph name="GEMINI_SETTINGS_POLICY_NAME" />) yalnızca İzin Verildi ve İzin Verilmedi durumlarını destekler. <ph name="GEN_AI_DEFAULT_SETTINGS_POLICY_NAME" /> politikası, 0 veya 1 değerine ayarlanırsa bu özelliğe izin verilir. Politika, 2 değerine ayarlanırsa bu özelliğe izin verilmez. Bu özelliğin, bu politikadaki değerlerle nasıl etkileşime girdiği hakkında daha fazla bilgi için lütfen ilgili özelliğin belgelerini inceleyin.
-
-Üretken yapay zeka özelliklerinde verilerin nasıl işlendiği hakkında daha fazla bilgi için lütfen https://support.google.com/chrome/a?p=generative_ai_settings adresine göz atın.</translation>
 <translation id="443454694385851356">Eski (güvenli değil)</translation>
 <translation id="4435032708588431506">QUIC'ye izin ver</translation>
 <translation id="443665821428652897">Tarayıcı kapandığında site verilerini temizle (kullanımdan kaldırıldı)</translation>
@@ -7238,13 +7239,6 @@ Bu politika ayarlanmadan bırakılır veya Devre Dışı değerine ayarlanırsa 
 <translation id="5746149754419996562"><ph name="PRODUCT_OS_NAME" /> sisteminde Glanceables widget'larının kullanımını etkinleştirir. Widget'lara özel olarak raftaki tarih çipinden erişilebilirsiniz.
 Bu politika etkinleştirildiğinde <ph name="PRODUCT_OS_NAME" /> sisteminde Glanceables etkinleştirilir.
 Bu politika devre dışı bırakılır veya ayarlanmazsa <ph name="PRODUCT_OS_NAME" /> sisteminde Glanceables etkinleştirilmez.</translation>
-<translation id="5747628966013559697"><ph name="PRODUCT_NAME" /> öğesinin, üretken yapay zekanın temel modelini indirme ve yerel çıkarım için kullanma şeklini yapılandırın.
-
-Politika, İzin Verildi (0) değerine ayarlanır veya ayarlanmadan bırakılırsa model otomatik olarak indirilir ve çıkarım için kullanılır.
-
-Politika, Devre Dışı (1) değerine ayarlanırsa model indirilmez.
-
-Masaüstü platformlarda model indirme işlemi, <ph name="COMPONENT_UPDATES_ENABLED_POLICY_NAME" /> tarafından da devre dışı bırakılabilir.</translation>
 <translation id="5749396052108288586">Bu politika kullanımdan kaldırılmıştır. Lütfen bunun yerine <ph name="REMOTE_ACCESS_HOST_CLIENT_DOMAIN_LIST_POLICY_NAME" /> politikasını kullanın.</translation>
 <translation id="574983287620584622">Giriş ekranında erişilebilirlik özellikleri kısayollarını etkinleştir</translation>
 <translation id="5755002458331714762"> Web Bileşenleri v0 API'leri (Gölge DOM v0, Özel Öğeler v0 ve HTML İçe Aktarmaları) 2018'de kullanımdan kaldırılmıştır ve M80 düzeyinden itibaren varsayılan olarak devre dışıdır. Bu politika, bu özelliklerin M84'e kadar seçilerek yeniden etkinleştirilmesine olanak tanır.
@@ -7729,6 +7723,7 @@ NOT: Tarayıcı çalışırken bu politikada yapılan değişiklikleri yalnızca
 yeni başlatılan oluşturucu işlemleri yansıtır.</translation>
 <translation id="6083281887050888160">"Just Works" Bluetooth eşlemeyi etkinleştir</translation>
 <translation id="6083631234867522991">Windows (Windows istemcileri):</translation>
+<translation id="6085580138417523410">Açıkça yetki verilmeden alt çerçevelerde yerel ağ erişimi (LNA) isteklerine izin ver</translation>
 <translation id="6087413944876892918"><ph name="HAPPY_EYEBALLS_V3" /> algoritmasını kullan</translation>
 <translation id="608788685013546076">Güç tüketimi en üst düzeydeyken pil kullanımına geçme eşiği yüzdesini ayarla</translation>
 <translation id="6089679180657323464">Wilco teşhis ve telemetri denetleyicisi ayarlarını kontrol eder.</translation>
@@ -10325,6 +10320,7 @@ Not: Bu politika yalnızca uzantıları destekleyen platformlarda geçerlidir.</
 <translation id="7669630878711068277">Politika, Etkin değerine ayarlanır veya ayarlanmadan bırakılırsa kullanıcılar <ph name="PRODUCT_NAME" /> üzerinde yazdırabilir ve bu ayarı değiştiremez.
 
       Politika, Devre Dışı değerine ayarlanırsa kullanıcılar <ph name="PRODUCT_NAME" /> üzerinden yazdırma işlemi gerçekleştiremez. Üç nokta menüsünde, uzantılarda ve JavaScript uygulamalarında yazdırma işlemi devre dışı bırakılır.</translation>
+<translation id="7672510074688643558">Açıkça yetki verilmeden alt çerçevelerde LNA isteklerine izin ver</translation>
 <translation id="7673194325208122247">Dönem (milisaniye)</translation>
 <translation id="7677220829878081413">
       Bu politika ArcSession değerine ayarlandığında, Android başlatılmışsa kullanıcı oturumu kapatıldığında cihazı yeniden başlamaya zorlar.

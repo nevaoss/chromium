@@ -10,8 +10,6 @@ import {ToolMode as ComposeboxToolMode} from './composebox_query.mojom-webui.js'
 import type {ContextualEntrypointAndCarouselElement} from './contextual_entrypoint_and_carousel.js';
 
 export function getHtml(this: ContextualEntrypointAndCarouselElement) {
-  const showDescription =
-      this.showContextMenuDescription_ && !this.shouldShowRecentTabChip_;
   const getActiveToolChip = () => {
     switch (this.activeTool_) {
       case ComposeboxToolMode.kDeepSearch:
@@ -86,25 +84,29 @@ export function getHtml(this: ContextualEntrypointAndCarouselElement) {
         ${
       this.showModelPicker ?
           html`
-        <cr-composebox-contextual-entrypoint-button id="contextEntrypoint"
-            part="composebox-entrypoint"
-            exportparts="context-menu-entrypoint-icon"
-            class="upload-button no-overlap"
-            .tabSuggestions="${this.tabSuggestions}"
-            .showMenuOnClick="${this.showMenuOnClick}"
-            @open-image-upload="${this.openImageUpload_}"
-            @open-file-upload="${this.openFileUpload_}"
-            @add-tab-context="${this.addTabContext_}"
-            @delete-tab-context="${this.onDeleteFile_}"
-            @tool-click="${this.onToolClick_}"
-            .hasImageFiles="${this.hasImageFiles()}"
-            .disabledTabIds="${this.addedTabsIds_}"
-            .fileNum="${this.files_.size}"
-            .searchboxLayoutMode="${this.searchboxLayoutMode}"
-            .inputState="${this.inputState}"
-            ?show-context-menu-description="${showDescription}"
-            glif-animation-state="${this.contextMenuGlifAnimationState}">
-        </cr-composebox-contextual-entrypoint-button>
+          ${
+              this.shouldHideEntrypointButton_ ? '' :
+                  html`
+            <cr-composebox-contextual-entrypoint-button id="contextEntrypoint"
+                part="composebox-entrypoint"
+                exportparts="context-menu-entrypoint-icon"
+                class="upload-button no-overlap"
+                .tabSuggestions="${this.tabSuggestions}"
+                .showMenuOnClick="${this.showMenuOnClick}"
+                @open-image-upload="${this.openImageUpload_}"
+                @open-file-upload="${this.openFileUpload_}"
+                @add-tab-context="${this.addTabContext_}"
+                @delete-tab-context="${this.onDeleteFile_}"
+                @tool-click="${this.onToolClick_}"
+                .hasImageFiles="${this.hasImageFiles()}"
+                .disabledTabIds="${this.addedTabsIds_}"
+                .fileNum="${this.files_.size}"
+                .searchboxLayoutMode="${this.searchboxLayoutMode}"
+                .inputState="${this.inputState}"
+                ?show-context-menu-description="${
+                      this.shouldShowDescription_()}"
+                glif-animation-state="${this.contextMenuGlifAnimationState}">
+            </cr-composebox-contextual-entrypoint-button>`}
         ` :
           html`
         <cr-composebox-context-menu-entrypoint id="contextEntrypoint"
@@ -126,8 +128,8 @@ export function getHtml(this: ContextualEntrypointAndCarouselElement) {
             .disabledTabIds="${this.addedTabsIds_}"
             .fileNum="${this.files_.size}"
             .searchboxLayoutMode="${this.searchboxLayoutMode}"
-            ?inputs-disabled="${this.inputsDisabled_}"
-            ?show-context-menu-description="${showDescription}"
+            ?upload-button-disabled="${this.uploadButtonDisabled_}"
+            ?show-context-menu-description="${this.shouldShowDescription_()}"
             glif-animation-state="${this.contextMenuGlifAnimationState}">
         </cr-composebox-context-menu-entrypoint>`}
         ${
@@ -181,7 +183,7 @@ export function getHtml(this: ContextualEntrypointAndCarouselElement) {
               id="imageUploadButton"
               iron-icon="composebox:imageUpload"
               title="${this.i18n('composeboxImageUploadButtonTitle')}"
-              .disabled="${this.inputsDisabled_}"
+              .disabled="${this.uploadButtonDisabled_}"
               @click="${this.openImageUpload_}">
           </cr-icon-button>
           ${this.composeboxShowPdfUpload_ ? html`
@@ -190,7 +192,7 @@ export function getHtml(this: ContextualEntrypointAndCarouselElement) {
               id="fileUploadButton"
               iron-icon="composebox:fileUpload"
               title="${this.i18n('composeboxPdfUploadButtonTitle')}"
-              .disabled="${this.inputsDisabled_}"
+              .disabled="${this.uploadButtonDisabled_}"
               @click="${this.openFileUpload_}">
           </cr-icon-button>
           `: ''}

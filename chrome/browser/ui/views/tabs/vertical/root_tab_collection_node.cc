@@ -62,6 +62,12 @@ void RootTabCollectionNode::Reset() {
   remove_node_view_from_parent_.Run(view);
 }
 
+base::CallbackListSubscription
+RootTabCollectionNode::RegisterOnChildrenAddedCallback(
+    base::RepeatingClosure callback) {
+  return on_children_added_callback_list_.Add(std::move(callback));
+}
+
 void RootTabCollectionNode::OnChildrenAdded(
     const tabs::TabCollection::Position& position,
     const tabs::TabCollectionNodes& handles,
@@ -72,6 +78,7 @@ void RootTabCollectionNode::OnChildrenAdded(
         ->AddNewChild(GetPassKey(), child, position.index,
                       /*perform_initialization=*/insert_from_detached);
   }
+  on_children_added_callback_list_.Notify();
 }
 
 void RootTabCollectionNode::OnChildrenRemoved(
@@ -178,27 +185,7 @@ void RootTabCollectionNode::OnTabStripModelChanged(
     changed_tabs.insert(tab_strip_model->GetTabAtIndex(replace->index));
   }
 
-  std::set<TabCollectionNode*> final_nodes_to_notify;
-  for (auto* tab : changed_tabs) {
-    if (auto* node = GetNodeForHandle(tab->GetHandle())) {
-      final_nodes_to_notify.insert(node);
-    }
-
-    if (tab->IsSplit()) {
-      if (const auto* split_data =
-              tab_strip_model->GetSplitData(tab->GetSplit().value())) {
-        for (auto* sibling : split_data->ListTabs()) {
-          if (auto* sibling_node = GetNodeForHandle(sibling->GetHandle())) {
-            final_nodes_to_notify.insert(sibling_node);
-          }
-        }
-      }
-    }
-  }
-
-  for (auto* node : final_nodes_to_notify) {
-    node->NotifyDataChanged();
-  }
+  UpdateTabsData(changed_tabs);
 }
 
 void RootTabCollectionNode::OnTabGroupChanged(const TabGroupChange& change) {
@@ -221,6 +208,17 @@ void RootTabCollectionNode::OnTabGroupChanged(const TabGroupChange& change) {
   }
 }
 
+void RootTabCollectionNode::OnTabGroupFocusChanged(
+    std::optional<tab_groups::TabGroupId> new_focused_group_id,
+    std::optional<tab_groups::TabGroupId> old_focused_group_id) {
+  if (tab_strip_model_->closing_all()) {
+    return;
+  }
+
+  tab_strip_controller_->TabGroupFocusChanged(new_focused_group_id,
+                                              old_focused_group_id);
+}
+
 void RootTabCollectionNode::OnTabChangedAt(tabs::TabInterface* tab,
                                            int model_index,
                                            TabChangeType change_type) {
@@ -228,17 +226,48 @@ void RootTabCollectionNode::OnTabChangedAt(tabs::TabInterface* tab,
     return;
   }
 
-  UpdateTabData(tab);
+  UpdateTabsData({tab});
 }
 
 void RootTabCollectionNode::OnTabBlockedStateChanged(tabs::TabInterface* tab,
                                                      int model_index) {
-  UpdateTabData(tab);
+  UpdateTabsData({tab});
 }
 
-void RootTabCollectionNode::UpdateTabData(tabs::TabInterface* tab) {
-  TabCollectionNode* tab_node = GetNodeForHandle(tab->GetHandle());
-  if (tab_node) {
-    tab_node->NotifyDataChanged();
+void RootTabCollectionNode::UpdateTabsData(
+    const std::set<tabs::TabInterface*>& changed_tabs) {
+  std::set<TabCollectionNode*> nodes_to_notify;
+
+  for (auto* tab : changed_tabs) {
+    auto* node = GetNodeForHandle(tab->GetHandle());
+    if (!node) {
+      continue;
+    }
+
+    nodes_to_notify.insert(node);
+
+    // Include all tabs within a split when notifying data change to ensure
+    // consistent visual state across the split.
+    if (!tab->IsSplit() ||
+        !tab_strip_model_->ContainsSplit(tab->GetSplit().value())) {
+      continue;
+    }
+
+    const auto* split_data =
+        tab_strip_model_->GetSplitData(tab->GetSplit().value());
+
+    for (auto* sibling : split_data->ListTabs()) {
+      if (auto* sibling_node = GetNodeForHandle(sibling->GetHandle())) {
+        nodes_to_notify.insert(sibling_node);
+      }
+    }
   }
+
+  for (auto* node : nodes_to_notify) {
+    node->NotifyDataChanged();
+  }
+}
+
+void RootTabCollectionNode::NotifyOnChildrenAdded() {
+  on_children_added_callback_list_.Notify();
 }

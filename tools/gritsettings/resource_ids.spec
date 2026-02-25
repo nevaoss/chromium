@@ -485,6 +485,10 @@
     "META": {"sizes": {"includes": [10]}},
     "includes": [4030],
   },
+    "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/guest_view_shared/resources.grd": {
+    "META": {"sizes": {"includes": [10]}},
+    "includes": [4035],
+  },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/history/resources.grd": {
     "META": {"sizes": {"includes": [53]}},
     "includes": [4040],
@@ -506,8 +510,8 @@
     "includes": [4100],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/intro/resources.grd": {
-    "META": {"sizes": {"includes": [20],}},
-    "includes": [4140],
+    "META": {"sizes": {"includes": [50],}},
+    "includes": [4110],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/key_value_pair_viewer_shared/resources.grd": {
    "META": {"sizes": {"includes": [10]}},

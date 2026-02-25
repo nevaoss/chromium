@@ -26,15 +26,16 @@
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/tabs/tab_style.h"
 #include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
-#include "chrome/browser/ui/views/tabs/alert_indicator_button.h"
-#include "chrome/browser/ui/views/tabs/glow_hover_controller.h"
+#include "chrome/browser/ui/views/tabs/tab/alert_indicator_button.h"
+#include "chrome/browser/ui/views/tabs/tab/glow_hover_controller.h"
+#include "chrome/browser/ui/views/tabs/tab/tab_close_button.h"
+#include "chrome/browser/ui/views/tabs/tab/tab_icon.h"
 #include "chrome/browser/ui/views/tabs/tab_accessibility.h"
-#include "chrome/browser/ui/views/tabs/tab_close_button.h"
-#include "chrome/browser/ui/views/tabs/tab_icon.h"
 #include "chrome/browser/ui/views/tabs/vertical/tab_collection_node.h"
 #include "chrome/browser/ui/views/tabs/vertical/vertical_split_tab_view.h"
 #include "chrome/browser/ui/views/tabs/vertical/vertical_tab_drag_handler.h"
 #include "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_controller.h"
+#include "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_view.h"
 #include "chrome/common/buildflags.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/tabs/public/tab_interface.h"
@@ -179,6 +180,7 @@ VerticalTabView::VerticalTabView(TabCollectionNode* collection_node)
                      /*align_leading=*/true,
                      /*expand=*/true)};
 
+  SetProperty(views::kElementIdentifierKey, kTabElementId);
   SetLayoutManager(std::make_unique<views::DelegatingLayoutManager>(this));
   SetEventTargeter(std::make_unique<views::ViewTargeter>(this));
 
@@ -200,6 +202,11 @@ VerticalTabView::VerticalTabView(TabCollectionNode* collection_node)
   GetViewAccessibility().SetName(
       std::string(), ax::mojom::NameFrom::kAttributeExplicitlyEmpty);
 
+  ax_name_changed_subscription_ =
+      GetViewAccessibility().AddStringAttributeChangedCallback(
+          ax::mojom::StringAttribute::kName,
+          base::BindRepeating(&VerticalTabView::OnAXNameChanged,
+                              base::Unretained(this)));
   node_destroyed_subscription_ =
       collection_node_->RegisterWillDestroyCallback(base::BindOnce(
           &VerticalTabView::ResetCollectionNode, base::Unretained(this)));
@@ -283,8 +290,7 @@ bool VerticalTabView::OnKeyReleased(const ui::KeyEvent& event) {
 bool VerticalTabView::OnMousePressed(const ui::MouseEvent& event) {
   auto* controller = collection_node_->GetController();
   shift_pressed_on_mouse_down_ = event.IsShiftDown();
-
-  controller->OnTabMousePressed();
+  RecordMousePressedInTab();
 
   if (event.IsOnlyLeftMouseButton() ||
       (event.IsOnlyRightMouseButton() && event.flags() & ui::EF_FROM_TOUCH)) {
@@ -299,6 +305,7 @@ bool VerticalTabView::OnMousePressed(const ui::MouseEvent& event) {
       }
     } else if (!selected_) {
       controller->SelectTab(GetTabInterface(), GetGestureDetail(event));
+      base::RecordAction(base::UserMetricsAction("SwitchTab_Click"));
     }
     // Potentially start the drag for the mouse press.
     // Follow-up mouse-movement events will update the drag controller and
@@ -620,6 +627,13 @@ void VerticalTabView::UpdateAccessibleName() {
   }
 }
 
+void VerticalTabView::OnAXNameChanged(ax::mojom::StringAttribute attribute,
+                                      const std::optional<std::string>& name) {
+  if (GetWidget() && active_) {
+    GetWidget()->UpdateAccessibleNameForRootView();
+  }
+}
+
 void VerticalTabView::OnDataChanged() {
   tabs::TabInterface* tab = const_cast<tabs::TabInterface*>(GetTabInterface());
   CHECK(tab);
@@ -669,6 +683,7 @@ void VerticalTabView::UpdateTabData(tabs::TabInterface* tab) {
 
   alert_indicator_->TransitionToAlertState(
       tabs::TabAlertController::GetAlertStateToShow(tab_data_.alert_state));
+  alert_indicator_->UpdateEnabledForMuteToggle();
 }
 
 void VerticalTabView::UpdateTitle() {
@@ -725,6 +740,12 @@ void VerticalTabView::UpdateContrastRatioValues() {
 }
 
 void VerticalTabView::CloseButtonPressed(const ui::Event& event) {
+  if (active_) {
+    base::RecordAction(base::UserMetricsAction("CloseTab_Active"));
+  } else {
+    base::RecordAction(base::UserMetricsAction("CloseTab_Inactive"));
+  }
+
   CHECK(alert_indicator_);
   if (!alert_indicator_->GetVisible()) {
     base::RecordAction(base::UserMetricsAction("CloseTab_NoAlertIndicator"));
@@ -748,12 +769,26 @@ void VerticalTabView::CloseButtonPressed(const ui::Event& event) {
                                                    : "CloseTab_EndTabInSplit"));
   }
 
+  // Hide the interactive close button while the tab is animating out.
+  if (close_button_) {
+    close_button_->SetVisible(false);
+  }
+
   if (collection_node_) {
     collection_node_->GetController()->CloseTab(GetTabInterface());
   }
+}
 
-  // Hide the interactive close button while the tab is animating out.
-  close_button_->SetVisible(false);
+void VerticalTabView::RecordMousePressedInTab() {
+  views::View* parent_view = parent();
+  while (parent_view &&
+         !views::IsViewClass<VerticalTabStripView>(parent_view)) {
+    parent_view = parent_view->parent();
+  }
+
+  auto* tab_strip_view = views::AsViewClass<VerticalTabStripView>(parent_view);
+  CHECK(tab_strip_view);
+  tab_strip_view->RecordMousePressedInTab();
 }
 
 bool VerticalTabView::IsHoverAnimationActive() const {
@@ -767,6 +802,7 @@ bool VerticalTabView::IsHoverAnimationActive() const {
 
   return hovered_ || (hover_controller_ && hover_controller_->ShouldDraw());
 }
+
 double VerticalTabView::GetHoverAnimationValue() const {
   if (split_) {
     if (auto* split_view = views::AsViewClass<VerticalSplitTabView>(parent())) {

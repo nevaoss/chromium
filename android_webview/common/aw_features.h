@@ -72,6 +72,9 @@ extern const base::FeatureParam<base::TimeDelta>
 BASE_DECLARE_FEATURE(kWebViewFetchOriginTrialsComponent);
 BASE_DECLARE_FEATURE(kWebViewEnableApiCallUserActions);
 BASE_DECLARE_FEATURE(kWebViewWebPerformanceMetricsReporting);
+BASE_DECLARE_FEATURE(kWebViewTestNonembeddedLowEntropySource);
+BASE_DECLARE_FEATURE(kWebViewUseNonembeddedLowEntropySource);
+
 }  // namespace android_webview::features
 
 #endif  // ANDROID_WEBVIEW_COMMON_AW_FEATURES_H_

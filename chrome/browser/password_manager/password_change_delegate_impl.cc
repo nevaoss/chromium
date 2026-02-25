@@ -391,17 +391,13 @@ void PasswordChangeDelegateImpl::OnPasswordChangeFormFound(
     password_manager::PasswordFormManager* form_manager) {
   form_finder_.reset();
 
-  if (!form_manager) {
-    UpdateState(State::kChangePasswordFormNotFound);
-    return;
-  }
-
-  CHECK(!submission_verifier_);
-  CHECK(executor());
+  CHECK(form_manager);
   generated_password_ = GeneratePassword(
       *form_manager->GetParsedObservedForm(),
       form_manager->GetDriver()->GetPasswordGenerationHelper());
 
+  CHECK(executor());
+  CHECK(!submission_verifier_);
   submission_verifier_ =
       std::make_unique<ChangePasswordFormFillingSubmissionHelper>(
           executor(), ChromePasswordManagerClient::FromWebContents(executor()),
@@ -412,6 +408,24 @@ void PasswordChangeDelegateImpl::OnPasswordChangeFormFound(
   submission_verifier_->FillChangePasswordForm(
       form_manager, username_, original_password_, generated_password_);
   UpdateState(State::kChangingPassword);
+}
+
+void PasswordChangeDelegateImpl::OnPasswordChangeFormNotFound(
+    ChangePasswordFormFinder::ErrorCase error_case) {
+  form_finder_.reset();
+
+  switch (error_case) {
+    case ChangePasswordFormFinder::ErrorCase::kInterruptionDetected:
+      UpdateState(State::kOtpDetected);
+      break;
+    case ChangePasswordFormFinder::ErrorCase::kFailedToCapturePageContent:
+    case ChangePasswordFormFinder::ErrorCase::kFailedToParseResponse:
+    case ChangePasswordFormFinder::ErrorCase::kNoButtonToClick:
+    case ChangePasswordFormFinder::ErrorCase::kFailedToClickButton:
+    case ChangePasswordFormFinder::ErrorCase::kFormNotFound:
+      UpdateState(State::kChangePasswordFormNotFound);
+      break;
+  }
 }
 
 void PasswordChangeDelegateImpl::OnTabWillDetach(
@@ -598,6 +612,8 @@ void PasswordChangeDelegateImpl::ProceedToChangePassword() {
   form_finder_ = std::make_unique<ChangePasswordFormFinder>(
       executor(), client, logs_uploader_.get(),
       base::BindOnce(&PasswordChangeDelegateImpl::OnPasswordChangeFormFound,
+                     weak_ptr_factory_.GetWeakPtr()),
+      base::BindOnce(&PasswordChangeDelegateImpl::OnPasswordChangeFormNotFound,
                      weak_ptr_factory_.GetWeakPtr()));
 
   // When interruptions (including OTPs) are detected on a server there is no
@@ -719,7 +735,8 @@ void PasswordChangeDelegateImpl::OnCrossOriginNavigationDetected() {
   // Navigation happened when looking for a change password form, password
   // change can be terminated safely with `kChangePasswordFormNotFound`.
   if (form_finder_) {
-    OnPasswordChangeFormFound(/*form_manager=*/nullptr);
+    OnPasswordChangeFormNotFound(
+        ChangePasswordFormFinder::kInterruptionDetected);
     return;
   }
   // Navigation happened when submitting the form. Terminate flow with a failure

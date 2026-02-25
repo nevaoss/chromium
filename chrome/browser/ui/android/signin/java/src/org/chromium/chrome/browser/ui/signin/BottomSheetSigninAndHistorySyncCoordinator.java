@@ -13,7 +13,6 @@ import android.view.View;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResult;
-import androidx.activity.result.ActivityResultCallback;
 import androidx.annotation.ColorInt;
 
 import org.chromium.base.supplier.OneshotSupplier;
@@ -65,7 +64,8 @@ import java.util.function.Supplier;
 public class BottomSheetSigninAndHistorySyncCoordinator extends SigninAndHistorySyncCoordinator
         implements SigninBottomSheetCoordinator.Delegate,
                 HistorySyncCoordinator.HistorySyncDelegate,
-                SigninSnackbarController.Listener {
+                SigninSnackbarController.Listener,
+                ActivityResultTracker.ResultListener {
 
     private static final String ADD_ACCOUNT_ACTIVITY_KEY = "ADD_ACCOUNT_ACTIVITY_KEY";
     private final WindowAndroid mWindowAndroid;
@@ -77,7 +77,7 @@ public class BottomSheetSigninAndHistorySyncCoordinator extends SigninAndHistory
     private final @Nullable ActivityDelegate mActivityDelegate;
     private final Delegate mDelegate;
     private final DeviceLockActivityLauncher mDeviceLockActivityLauncher;
-    private final OneshotSupplier<ProfileProvider> mProfileSupplier;
+    private final @Nullable OneshotSupplier<Profile> mProfileSupplier;
     private final Supplier<BottomSheetController> mBottomSheetController;
     private final Supplier<@Nullable ModalDialogManager> mModalDialogManagerSupplier;
     private final @Nullable SnackbarManager mSnackbarManager;
@@ -92,6 +92,7 @@ public class BottomSheetSigninAndHistorySyncCoordinator extends SigninAndHistory
     private boolean mDidShowSigninStep;
     private boolean mFlowInitialized;
 
+    // TODO(https://crbug.com/469772349): Remove @Nullable once the legacy flow will be removed.
     // Each access point use a different key as a same activity can host different instances of this
     // coordinator.
     private @Nullable String mRegisteredActivityKey;
@@ -162,7 +163,7 @@ public class BottomSheetSigninAndHistorySyncCoordinator extends SigninAndHistory
             ActivityResultTracker activityResultTracker,
             BottomSheetSigninAndHistorySyncCoordinator.Delegate delegate,
             DeviceLockActivityLauncher deviceLockActivityLauncher,
-            OneshotSupplier<ProfileProvider> profileSupplier,
+            OneshotSupplier<Profile> profileSupplier,
             Supplier<BottomSheetController> bottomSheetController,
             Supplier<@Nullable ModalDialogManager> modalDialogManagerSupplier,
             SnackbarManager snackbarManager,
@@ -187,7 +188,7 @@ public class BottomSheetSigninAndHistorySyncCoordinator extends SigninAndHistory
             ActivityResultTracker activityResultTracker,
             Delegate delegate,
             DeviceLockActivityLauncher deviceLockActivityLauncher,
-            OneshotSupplier<ProfileProvider> profileSupplier,
+            OneshotSupplier<Profile> profileSupplier,
             Supplier<BottomSheetController> bottomSheetController,
             Supplier<@Nullable ModalDialogManager> modalDialogManagerSupplier,
             SnackbarManager snackbarManager,
@@ -206,14 +207,7 @@ public class BottomSheetSigninAndHistorySyncCoordinator extends SigninAndHistory
         mIsLegacyFlow = false;
 
         mRegisteredActivityKey = ADD_ACCOUNT_ACTIVITY_KEY + signinAccessPoint;
-        activityResultTracker.register(
-                assumeNonNull(mRegisteredActivityKey),
-                new ActivityResultCallback<ActivityResult>() {
-                    @Override
-                    public void onActivityResult(ActivityResult result) {
-                        onAddAccountResult(result.getResultCode(), result.getData());
-                    }
-                });
+        activityResultTracker.register(this);
 
         // TODO(crbug.com/41493768): Implement the loading state UI.
     }
@@ -248,7 +242,7 @@ public class BottomSheetSigninAndHistorySyncCoordinator extends SigninAndHistory
             ActivityDelegate activityDelegate,
             Delegate delegate,
             DeviceLockActivityLauncher deviceLockActivityLauncher,
-            OneshotSupplier<ProfileProvider> profileSupplier,
+            OneshotSupplier<ProfileProvider> profileProviderSupplier,
             BottomSheetController bottomSheetController,
             Supplier<@Nullable ModalDialogManager> modalDialogManagerSupplier,
             BottomSheetSigninAndHistorySyncConfig config,
@@ -259,14 +253,16 @@ public class BottomSheetSigninAndHistorySyncCoordinator extends SigninAndHistory
         mActivityDelegate = activityDelegate;
         mDelegate = delegate;
         mDeviceLockActivityLauncher = deviceLockActivityLauncher;
-        mProfileSupplier = profileSupplier;
+        mProfileSupplier = null;
         mBottomSheetController = SupplierUtils.of(bottomSheetController);
         mModalDialogManagerSupplier = modalDialogManagerSupplier;
         mSigninAccessPoint = signinAccessPoint;
         mConfig = config;
         mSnackbarManager = null;
-        mProfileSupplier.onAvailable(this::onProfileAvailable);
         mIsLegacyFlow = true;
+
+        profileProviderSupplier.onAvailable(
+                profileProvider -> onProfileAvailable(profileProvider.getOriginalProfile()));
 
         // TODO(crbug.com/41493768): Implement the loading state UI.
     }
@@ -290,7 +286,7 @@ public class BottomSheetSigninAndHistorySyncCoordinator extends SigninAndHistory
 
         mConfig = config;
         mDidShowSigninStep = false;
-        mProfileSupplier.onAvailable(this::onProfileAvailable);
+        assumeNonNull(mProfileSupplier).runSyncOrOnAvailable(this::onProfileAvailable);
     }
 
     /**
@@ -373,8 +369,7 @@ public class BottomSheetSigninAndHistorySyncCoordinator extends SigninAndHistory
                                 SigninMetricsUtils.logAddAccountStateHistogram(State.STARTED);
                                 // TODO(https://crbug.com/437039516): Save the config in instance
                                 // state via ActivityResultTracker.
-                                mActivityResultTracker.startActivity(
-                                        assumeNonNull(mRegisteredActivityKey), intent);
+                                mActivityResultTracker.startActivity(this, intent);
                             });
         } else {
             mActivityDelegate.addAccount();
@@ -450,8 +445,7 @@ public class BottomSheetSigninAndHistorySyncCoordinator extends SigninAndHistory
             mHistorySyncCoordinator = null;
         }
         if (!mIsLegacyFlow && mDialogModel != null) {
-            mModalDialogManagerSupplier
-                    .get()
+            assumeNonNull(mModalDialogManagerSupplier.get())
                     .dismissDialog(mDialogModel, DialogDismissalCause.ACTION_ON_DIALOG_COMPLETED);
         }
 
@@ -471,8 +465,21 @@ public class BottomSheetSigninAndHistorySyncCoordinator extends SigninAndHistory
         }
     }
 
-    private void onProfileAvailable(ProfileProvider profileProvider) {
-        mProfile = assumeNonNull(profileProvider.getOriginalProfile());
+    /** Implements {@link ActivityResultTracker.ResultListener} */
+    @Override
+    public void onActivityResult(ActivityResult result) {
+        onAddAccountResult(result.getResultCode(), result.getData());
+    }
+
+    /** Implements {@link ActivityResultTracker.ResultListener} */
+    @Override
+    public String getRestorationKey() {
+        return assertNonNull(mRegisteredActivityKey);
+    }
+
+    private void onProfileAvailable(Profile profile) {
+        validateProfile(profile);
+        mProfile = profile;
         AccountManagerFacadeProvider.getInstance()
                 .getAccounts()
                 .then(
@@ -480,6 +487,14 @@ public class BottomSheetSigninAndHistorySyncCoordinator extends SigninAndHistory
                             mFlowInitialized = true;
                             finishLoadingAndSelectSigninFlow(accounts);
                         });
+    }
+
+    private void validateProfile(Profile profile) {
+        if (profile.isOffTheRecord()
+                && SigninFeatureMap.isEnabled(SigninFeatures.ENABLE_SEAMLESS_SIGNIN)) {
+            throw new IllegalStateException(
+                    "This sign-in flow should not be initiated with an incognito profile.");
+        }
     }
 
     private void finishLoadingAndSelectSigninFlow(List<AccountInfo> accounts) {
@@ -650,8 +665,7 @@ public class BottomSheetSigninAndHistorySyncCoordinator extends SigninAndHistory
         assumeNonNull(mDialogModel);
         mDialogModel.set(ModalDialogProperties.CUSTOM_VIEW, view);
 
-        mModalDialogManagerSupplier
-                .get()
+        assumeNonNull(mModalDialogManagerSupplier.get())
                 .showDialog(
                         mDialogModel,
                         ModalDialogManager.ModalDialogType.APP,

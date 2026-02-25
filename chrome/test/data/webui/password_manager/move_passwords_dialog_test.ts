@@ -36,10 +36,10 @@ suite('MovePasswordsDialogTest', function() {
 
   async function createDialog(
       passwords: chrome.passwordsPrivate.PasswordUiEntry[],
-      hasOnlyDevice = false) {
+      hasOnlyOneDeviceCredential = false) {
     dialog = document.createElement('move-passwords-dialog');
     dialog.passwords = passwords;
-    dialog.hasOnlyDeviceCredentials = hasOnlyDevice;
+    dialog.hasOnlyOneDeviceCredential = hasOnlyOneDeviceCredential;
     dialog.isAccountStoreUser = true;
     document.body.appendChild(dialog);
     await flushTasks();
@@ -66,7 +66,7 @@ suite('MovePasswordsDialogTest', function() {
 
   test('Content displayed properly for only password', async function() {
     const password = createPasswordEntry({id: 0, username: 'user1'});
-    await createDialog([password], /*hasOnlyDevice=*/ true);
+    await createDialog([password], /*hasOnlyOneDeviceCredential=*/ true);
 
     assertTrue(dialog.descriptionString.includes('Your password for'));
     assertEquals(
@@ -80,7 +80,7 @@ suite('MovePasswordsDialogTest', function() {
       'Content displayed properly for single uploadable password',
       async function() {
         const password = createPasswordEntry({id: 0, username: 'user1'});
-        await createDialog([password], /*hasOnlyDevice=*/ false);
+        await createDialog([password], /*hasOnlyOneDeviceCredential=*/ false);
 
         assertTrue(dialog.descriptionString.includes('1 password for'));
         assertEquals(
@@ -124,8 +124,7 @@ suite('MovePasswordsDialogTest', function() {
     items[1]!.dispatchEvent(new CustomEvent('change'));
     await flushTasks();
 
-    dialog.shadowRoot!.querySelector<HTMLButtonElement>(
-                          '#acceptButton')!.click();
+    dialog.$.acceptButton.click();
 
     const movedIds = await passwordManager.whenCalled('movePasswordsToAccount');
     assertEquals(1, movedIds.length);
@@ -137,9 +136,7 @@ suite('MovePasswordsDialogTest', function() {
         [createPasswordEntry({id: 0}), createPasswordEntry({id: 1})];
     await createDialog(passwords);
 
-    const acceptButton =
-        dialog.shadowRoot!.querySelector<HTMLButtonElement>('#acceptButton')!;
-    assertFalse(acceptButton.disabled);
+    assertFalse(dialog.$.acceptButton.disabled);
 
     // Simulate unchecking all items.
     const items = dialog.shadowRoot!.querySelectorAll('password-preview-item');
@@ -150,7 +147,7 @@ suite('MovePasswordsDialogTest', function() {
     await flushTasks();
 
     assertTrue(
-        acceptButton.disabled,
+        dialog.$.acceptButton.disabled,
         'Button should be disabled when nothing is selected');
   });
 

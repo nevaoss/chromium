@@ -26,6 +26,7 @@
 #include "components/sync/protocol/sync.pb.h"
 #include "components/sync/protocol/sync_entity.pb.h"
 #include "components/sync/protocol/sync_enums.pb.h"
+#include "components/sync/service/device_statistics_tracker.h"
 #include "components/sync/test/fake_server.h"
 #include "components/sync_device_info/device_info.h"
 #include "components/sync_device_info/device_info_sync_service.h"
@@ -803,8 +804,8 @@ IN_PROC_BROWSER_TEST_P(SingleClientDeviceInfoWithDeviceStatisticsSyncTest,
 }
 
 // TODO(crbug.com/465716865): Figure out why this test sometimes times out on
-// ASan
-#if defined(ADDRESS_SANITIZER)
+// ASan and consistently times out on ChromeOS Debug
+#if defined(ADDRESS_SANITIZER) || (BUILDFLAG(IS_CHROMEOS) && !defined(NDEBUG))
 #define MAYBE_ShouldRecordDeviceStatisticsMetrics \
   DISABLED_ShouldRecordDeviceStatisticsMetrics
 #else

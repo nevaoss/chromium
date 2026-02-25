@@ -160,6 +160,7 @@
 <translation id="109647177154844434">Parallels Desktop をアンインストールすると、Windows のイメージが削除されます。これにはアプリケーション、設定、データも含まれます。続行してもよろしいですか？</translation>
 <translation id="1097016918605049747">このページを翻訳できませんでした</translation>
 <translation id="1097658378307015415">ログインする前に、ゲスト セッションを開始して <ph name="NETWORK_ID" /> ネットワークを有効にしてください</translation>
+<translation id="1099070179078143183">デバイス上で直接稼働する AI モデルを使用して、Google のサーバーにデータを送信することなく、Chrome の不正検出などの機能をサポートします。オフにすると、これらの機能は動作しない可能性があります。<ph name="BEGIN_LINK" />オンデバイス AI の詳細<ph name="END_LINK" /></translation>
 <translation id="1099962274138857708"><ph name="DEVICE_NAME" /> から画像がコピーされました</translation>
 <translation id="1100504063505580045">現在のアイコン</translation>
 <translation id="1102759278139578486">メインノードのアノテーション ファイルをダウンロードできません。しばらくしてからもう一度お試しください。</translation>
@@ -513,6 +514,7 @@
 <translation id="1333965224356556482">サイトに位置情報へのアクセスを許可しない</translation>
 <translation id="1335282218035876586">この Chromebook は、セキュリティ アップデートとソフトウェア アップデートの提供が終了しました。快適にご利用いただくには、Chromebook をアップグレードしてください。</translation>
 <translation id="133535873114485416">優先する入力</translation>
+<translation id="13356285923490863">ポリシー名</translation>
 <translation id="1335929031622236846">デバイスを登録する</translation>
 <translation id="133660899895084533">Bluetooth 周辺機器の情報とデータを読み取る</translation>
 <translation id="1336902454946927954">指紋を認識できなかったため、セキュリティ キーがロックされています。ロックを解除するには PIN を入力してください。</translation>
@@ -2622,6 +2624,7 @@
 <translation id="2749836841884031656">SIM</translation>
 <translation id="2749881179542288782">スペルと一緒に文法をチェック</translation>
 <translation id="2750020734439919571">その他の Chrome アプリの設定と権限</translation>
+<translation id="275010360476017464">マイクを使用して Gemini と会話できます。Gemini に話しかけると、音声は Gemini アプリ アクティビティに保存されます（オンになっている場合）。</translation>
 <translation id="2750602041558385535">未確認のダウンロードをブロックしました</translation>
 <translation id="2751454300227269244">口を右に動かす</translation>
 <translation id="2751883373055093745"><ph name="WEBSITE" /> がセキュリティ キーの ID 番号の読み取りを求めています。許可すると、使用しているセキュリティ キーがサイトで認識されます。</translation>
@@ -4721,6 +4724,7 @@
 <translation id="4169535189173047238">許可しない</translation>
 <translation id="4170314459383239649">終了時に削除</translation>
 <translation id="417112242673828206">{NUM_TABS,plural, =1{Gemini とタブを共有}other{Gemini と # 個のタブを共有}}</translation>
+<translation id="4172944993779635350">「<ph name="URL" />」のパスワードがこのデバイスのみに保存されています。他のデバイスで使用するには、アカウントに保存してください。</translation>
 <translation id="4173129130568053653">Gemini が予約やショッピング カートの作成など、さまざまなタスクをサポートします。</translation>
 <translation id="4175137578744761569">明るい紫と白</translation>
 <translation id="4176463684765177261">停止中</translation>
@@ -4765,7 +4769,6 @@
 <translation id="4206585797409671301">リクエストの表示を許可するウェブサイト</translation>
 <translation id="4207144975205749656">ナビゲーション リクエストを暗号化して、同じネットワーク上の攻撃者がトラフィックを追跡できないようにします</translation>
 <translation id="4207932031282227921">権限がリクエストされました。対応するには、F6 キーを押してください</translation>
-<translation id="4208390505124702064"><ph name="SITE_NAME" /> を検索</translation>
 <translation id="4209092469652827314">大</translation>
 <translation id="4209247656298167054">更新なし</translation>
 <translation id="4209251085232852247">オフになっています</translation>
@@ -4883,7 +4886,6 @@
 <translation id="4281844954008187215">利用規約</translation>
 <translation id="4281849573951338030">ペンボタンをカスタマイズ</translation>
 <translation id="4282196459431406533">Smart Lock が有効です</translation>
-<translation id="4283635301190260296">垂直タブを閉じる</translation>
 <translation id="4284903252249997120">ChromeVox スクリーン リーダーと「選択して読み上げ」</translation>
 <translation id="4285418559658561636">パスワードを更新</translation>
 <translation id="4285498937028063278">固定を解除</translation>
@@ -5038,6 +5040,7 @@
 <translation id="4386604394450371010">概要</translation>
 <translation id="4387890294700445764">不正使用されたパスワード</translation>
 <translation id="4388650384344483842">8 文字以上で指定してください</translation>
+<translation id="4388700905120039425">{COUNT,plural, =1{<ph name="URL" /> のパスワード}other{<ph name="URL" /> のパスワード（{COUNT} 件）}}</translation>
 <translation id="4390396490617716185"><ph name="FIRST_SWITCH" />、<ph name="SECOND_SWITCH" />、<ph name="THIRD_SWITCH" />、他 <ph name="NUMBER_OF_OTHER_SWITCHES" /> 個のスイッチ</translation>
 <translation id="439266289085815679">Bluetooth 設定は <ph name="USER_EMAIL" /> によって管理されています。</translation>
 <translation id="4392896746540753732">設定ファイルを編集します</translation>
@@ -5566,6 +5569,7 @@
 <translation id="4762849514113423887">パスワードが正しくありません。もう一度お試しください。</translation>
 <translation id="4763408175235639573">このページを表示したときに以下の Cookie が設定されました</translation>
 <translation id="4763757134413542119"><ph name="USER_EMAIL" /> は、有効な Google for Education アカウントではありません。管理者にお問い合わせください。管理者の方は、g.co/workspace/edusignup に移動して組織を設定できます</translation>
+<translation id="4765053150631027076">{COUNT,plural, =1{「<ph name="URL" />」の {COUNT} 件のパスワードがこのデバイスのみに保存されています。他のデバイスで使用するには、アカウントに保存してください。}other{「<ph name="URL" />」の {COUNT} 件のパスワードがこのデバイスのみに保存されています。他のデバイスで使用するには、アカウントに保存してください。}}</translation>
 <translation id="4765524037138975789">{MONTHS,plural, =1{このデバイスは 1 か月間保存され、次回はコードなしで接続できます。これは管理者によって設定されています。}other{このデバイスは {MONTHS} か月間保存され、次回はコードなしで接続できます。これは管理者によって設定されています。}}</translation>
 <translation id="476563889641554689">Google レンズを使用して検索する範囲を選択します</translation>
 <translation id="4766551476047591055">{MINUTES,plural, =0{公開鍵と整合性ブロックを確認しています... 残り 1 分未満}=1{公開鍵と整合性ブロックを確認しています... 残り 1 分}other{公開鍵と整合性ブロックを確認しています... 残り # 分}}</translation>
@@ -5597,6 +5601,7 @@
 <translation id="4784349455504343791"><ph name="WEBSITE_ORIGIN" /> は、デジタル ウォレットの個人情報の使用を求めています。</translation>
 <translation id="4785719467058219317">このウェブサイトに登録されていないセキュリティ キーを使用しています</translation>
 <translation id="4785914069240823137">切り抜きをキャンセル</translation>
+<translation id="4786430656008801173">オンデバイス AI</translation>
 <translation id="4787471921443575924">ユーザー名 <ph name="USER_EMAIL" /> のパスキーを編集</translation>
 <translation id="4788092183367008521">ネットワーク接続を確認してからもう一度お試しください。</translation>
 <translation id="4789348252524569426">音声ファイルをインストールできません。デバイスを更新する必要があります。デバイスを再起動してもう一度お試しください。</translation>
@@ -5751,6 +5756,7 @@
 <translation id="4881685975363383806">次回表示しない</translation>
 <translation id="4881695831933465202">開く</translation>
 <translation id="4882312758060467256">このサイトへのアクセスが許可されています</translation>
+<translation id="4882848900607400156">正確な位置情報を共有すると、Gemini がより正確に質問に回答できるようになります。ユーザーのデータが生成 AI モデルの改善に使用されることはありません。</translation>
 <translation id="4882919381756638075">通常、ビデオチャットなどの通信機能を使用するため、サイトがマイクを使用する場合があります</translation>
 <translation id="4883436287898674711"><ph name="WEBSITE_1" /> の全サイト</translation>
 <translation id="48838266408104654">タスク マネージャ(&amp;T)</translation>
@@ -5841,6 +5847,7 @@
 <translation id="4945439665401275950">指紋を設定するには、お子様に電源ボタンをタップしてもらってください。お子様の指紋データはこの <ph name="DEVICE_TYPE" /> にのみ安全に保存されます。</translation>
 <translation id="4946998421534856407">ランチャー+上矢印</translation>
 <translation id="4947376546135294974">アクセスしているサイトのデータ</translation>
+<translation id="4948370357877377178">タスクを続行</translation>
 <translation id="4950100687509657457">プロフィールの作成</translation>
 <translation id="495164417696120157">{COUNT,plural, =1{ファイル}other{# 件のファイル}}</translation>
 <translation id="495170559598752135">操作</translation>
@@ -6034,6 +6041,7 @@
 <translation id="5088534251099454936">PKCS #1 SHA-512 with RSA 暗号化</translation>
 <translation id="5090637338841444533">カメラ位置の追跡を許可しないサイト</translation>
 <translation id="5091636240353511739">PIN を表示</translation>
+<translation id="5093447877601682598">タブバーに関するフィードバックを送信</translation>
 <translation id="5093477827231450397">他のサイトに広告を提案しないようブロックしたウェブサイトのリスト</translation>
 <translation id="5093569275467863761">バックフォワード キャッシュのシークレット サブフレーム: <ph name="BACK_FORWARD_CACHE_INCOGNITO_PAGE_URL" /></translation>
 <translation id="5094176498302660097">ファイルアプリからこのアプリまたは他のアプリで、サポートされているファイルを開いて編集できます。デフォルトでこのアプリを使用して開くファイルを管理するには、<ph name="BEGIN_LINK" />デバイスでデフォルトのアプリを設定する方法<ph name="END_LINK" />をご確認ください。</translation>
@@ -8235,6 +8243,7 @@
 <translation id="6636623428211296678">下で他の設定を確認するか、ここで終了できます</translation>
 <translation id="6639554308659482635">SQLite メモリ</translation>
 <translation id="6640268266988685324">開いているタブ</translation>
+<translation id="664271268954513498">ポリシーの値</translation>
 <translation id="6642720633335369752">開いているアプリのウィンドウをすべて表示するには、下から上にスワイプして長押しします。</translation>
 <translation id="664290675870910564">ネットワークの選択</translation>
 <translation id="6643016212128521049">削除</translation>
@@ -8860,8 +8869,8 @@
 <translation id="7057567173736333354">画像の説明を入力</translation>
 <translation id="70577934383983846">このパスワードをすべてのデバイスで使用する</translation>
 <translation id="7058024590501568315">非公開ネットワーク</translation>
+<translation id="7058325593717863084">タブバーに関するフィードバックを送信</translation>
 <translation id="7059858479264779982">自動起動に設定する</translation>
-<translation id="7060004353663489242"><ph name="FIELD_LIST" /> は必須です</translation>
 <translation id="7063129466199351735">ショートカットを処理しています...</translation>
 <translation id="7063311912041006059">URL（<ph name="SPECIAL_SYMBOL" />=検索語句）</translation>
 <translation id="70641621694466590">パスワード ページに移動</translation>
@@ -9060,6 +9069,7 @@
 <translation id="720715819012336933">{NUM_PAGES,plural, =1{ページを離れる}other{ページを離れる}}</translation>
 <translation id="7207457272187520234">使用状況データや診断データを送信します。このデバイスは現在、診断データやデバイスとアプリの使用状況データを Google に自動送信するように設定されています。この情報は、システムとアプリの安定性の向上やその他の機能の改善に役立てられます。また、Google のアプリやパートナー（Android デベロッパーなど）も、集計データとしてこの情報を活用します。この設定は所有者によって管理されています。[その他のウェブとアプリのアクティビティ] の設定がオンになっている場合、このデータは Google アカウントに保存されます。</translation>
 <translation id="7207631048330366454">アプリを検索</translation>
+<translation id="7209958456051239069">正確な位置情報を共有すると、Gemini がより正確に質問に回答できるようになります</translation>
 <translation id="7210257969463271891">インストールしたウェブアプリがここに表示されます</translation>
 <translation id="7210432570808024354">タップしてドラッグでアイテムを移動する</translation>
 <translation id="7210499381659830293">拡張プリンタ</translation>
@@ -10634,7 +10644,6 @@
 <translation id="8263228331881858381">パスキーを保存しました</translation>
 <translation id="8263336784344783289">このグループに名前を付ける</translation>
 <translation id="8264024885325823677">この設定は管理者によって管理されています。</translation>
-<translation id="826410575944953302">縦方向のタブを開く</translation>
 <translation id="8264195025773092348">サポートされているデバイスのみが表示されます。切断されるまで、USB デバイスはネイティブ アプリで使用できなくなります。</translation>
 <translation id="8265018477030547118">保存先: このデバイスのみ</translation>
 <translation id="826511437356419340">ウィンドウ概観モードに切り替わりました。移動するにはスワイプするか、キーボードの場合は Tab キーを押してください。</translation>
@@ -10679,6 +10688,7 @@
 <translation id="8288032458496410887">「<ph name="APP" />」をアンインストール...</translation>
 <translation id="8288553158681886528">PDF からテキストを抽出</translation>
 <translation id="8289128870594824098">ディスクサイズ</translation>
+<translation id="8289200713453671499">タブグループと最近の AI との会話をその場ですばやく切り替えることができます。</translation>
 <translation id="8289509909262565712"><ph name="DEVICE_OS" /> へようこそ</translation>
 <translation id="8291415872436043161">Chrome をダウンロードする</translation>
 <translation id="8291942417224950075">個人でのご利用</translation>
@@ -10732,7 +10742,6 @@
 <translation id="8323518750352551353">ブラウジングを切り分け？</translation>
 <translation id="8323744572398547859">他のデバイスと同じタブを使用するには、ログインして履歴を同期します。同期すると、すべてのデバイスでパスワードなどの設定も使用できるようになります。 同期は [設定] でいつでも停止できます。Google では、履歴に基づいて検索やその他のサービスをパーソナライズすることがあります。</translation>
 <translation id="8324158725704657629">次回から表示しない</translation>
-<translation id="8324264291265547520">縦方向のタブを開く</translation>
 <translation id="8325413836429495820">クリップボードの読み取りを許可しないサイト</translation>
 <translation id="8326478304147373412">PKCS #7、証明書チェーン</translation>
 <translation id="8327386430364625757">数字フォント</translation>
@@ -11660,6 +11669,7 @@
 <translation id="8945508919180478719">スタジオ式マイク</translation>
 <translation id="8946359700442089734">この <ph name="IDS_SHORT_PRODUCT_NAME" /> デバイスでデバッグ機能が完全に有効になっていませんでした。</translation>
 <translation id="8946954897220903437">アドレスバーのすべてのリクエストを閉じる</translation>
+<translation id="8946996840522387154">マイクを使用して Gemini と会話できます。Gemini に話しかけると、音声は Gemini アプリ アクティビティに保存されます（オンになっている場合）。ユーザーのデータが生成 AI モデルの改善に使用されることはありません。</translation>
 <translation id="894763922177556086">良い</translation>
 <translation id="895054485242522631">サイトがモーション センサーを使用できるようにする</translation>
 <translation id="8951256747718668828">エラーが発生したため、復元を完了できませんでした</translation>
@@ -11808,7 +11818,6 @@
 <translation id="9032004780329249150">iOS デバイスでパスワードを使用する</translation>
 <translation id="9032097289595078011">ファスト ペアリングを無効にする</translation>
 <translation id="9032513103438497286">この <ph name="DEVICE_TYPE" /> でアプリのインストールをブロックします。アプリやコンテンツのダウンロードを制限するには、Google Play の設定にアクセスしてください。</translation>
-<translation id="9033204084988490464">垂直タブを閉じる</translation>
 <translation id="9033765790910064284">続行</translation>
 <translation id="9033857511263905942">貼り付け(&amp;P)</translation>
 <translation id="903480517321259405">もう一度 PIN を入力してください</translation>

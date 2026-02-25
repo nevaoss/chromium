@@ -16,6 +16,7 @@
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/extensions/settings_overridden_dialog.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
+#include "chrome/browser/ui/views/extensions/rich_radio_button.h"
 #include "chrome/common/chrome_paths.h"
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/test/base/search_test_utils.h"
@@ -116,7 +117,8 @@ class SettingsOverriddenExplicitChoiceDialogInteractiveUiTest
   // Waits for the dialog to show, and verifies it's explicit-choice type.
   auto WaitForDialogToShow() {
     auto steps =
-        Steps(WaitForShow(kSettingsOverriddenDialogSaveButtonId),
+        Steps(WaitForShow(kSettingsOverriddenDialogId),
+              EnsurePresent(kSettingsOverriddenDialogSaveButtonId),
               EnsurePresent(kSettingsOverriddenDialogPreviousSettingButtonId),
               EnsurePresent(kSettingsOverriddenDialogNewSettingButtonId));
     AddDescriptionPrefix(steps, __func__);
@@ -168,9 +170,43 @@ IN_PROC_BROWSER_TEST_F(SettingsOverriddenExplicitChoiceDialogInteractiveUiTest,
                   WaitForDialogToShow(), ScreenshotDialog());
 }
 
-// TODO(http://crbug.com/461806299): Add tests for the following:
-// - 'Escape' key won't dismiss the dialog
-// - Clicking 'Save' without a selected options won't dismiss the dialog
-// - Clicking 'Save' after selecting an option dismisses the dialog
+IN_PROC_BROWSER_TEST_F(SettingsOverriddenExplicitChoiceDialogInteractiveUiTest,
+                       SelectOption) {
+  // This test covers the unconventional explicit-choice dialog behavior,
+  // having no initially-selected radio button.
+  RunTestSequence(
+      SetNewSearchProvider(DefaultSearch::kUseDefault),
+      LoadExtensionOverridingSearch(), PerformSearchFromOmnibox(),
+      WaitForDialogToShow(),
+      // Assert that neither radio button is initially selected or focused.
+      CheckViewProperty(kSettingsOverriddenDialogPreviousSettingButtonId,
+                        &views::View::HasFocus, false),
+      CheckViewProperty(kSettingsOverriddenDialogPreviousSettingButtonId,
+                        &extensions::RichRadioButton::GetCheckedForTesting,
+                        false),
+      CheckViewProperty(kSettingsOverriddenDialogNewSettingButtonId,
+                        &views::View::HasFocus, false),
+      CheckViewProperty(kSettingsOverriddenDialogNewSettingButtonId,
+                        &extensions::RichRadioButton::GetCheckedForTesting,
+                        false),
+      // Assert that the Save button is disabled initially. Choosing an
+      // option enables it.
+      CheckViewProperty(kSettingsOverriddenDialogSaveButtonId,
+                        &views::View::GetEnabled, false),
+      // Select an option.
+      PressButton(kSettingsOverriddenDialogNewSettingButtonId),
+      // Ensure the selected option is checked (but not focused).
+      CheckViewProperty(kSettingsOverriddenDialogNewSettingButtonId,
+                        &views::View::HasFocus, false),
+      CheckViewProperty(kSettingsOverriddenDialogNewSettingButtonId,
+                        &extensions::RichRadioButton::GetCheckedForTesting,
+                        true),
+      // Assert that the save button is now enabled.
+      CheckViewProperty(kSettingsOverriddenDialogSaveButtonId,
+                        &views::View::GetEnabled, true),
+      // Click the save button.
+      PressButton(kSettingsOverriddenDialogSaveButtonId),
+      WaitForHide(kSettingsOverriddenDialogSaveButtonId));
+}
 
 }  // namespace

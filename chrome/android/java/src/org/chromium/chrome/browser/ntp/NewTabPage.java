@@ -76,7 +76,7 @@ import org.chromium.chrome.browser.ntp_customization.NtpCustomizationConfigManag
 import org.chromium.chrome.browser.ntp_customization.NtpCustomizationCoordinator;
 import org.chromium.chrome.browser.ntp_customization.NtpCustomizationCoordinatorFactory;
 import org.chromium.chrome.browser.ntp_customization.NtpCustomizationUtils;
-import org.chromium.chrome.browser.ntp_customization.NtpCustomizationUtils.NtpBackgroundImageType;
+import org.chromium.chrome.browser.ntp_customization.NtpCustomizationUtils.NtpBackgroundType;
 import org.chromium.chrome.browser.ntp_customization.theme.chrome_colors.NtpThemeColorInfo;
 import org.chromium.chrome.browser.ntp_customization.theme.upload_image.BackgroundImageInfo;
 import org.chromium.chrome.browser.omnibox.OmniboxStub;
@@ -124,6 +124,7 @@ import org.chromium.components.embedder_support.util.UrlConstants;
 import org.chromium.components.embedder_support.util.UrlUtilities;
 import org.chromium.components.feature_engagement.EventConstants;
 import org.chromium.components.feature_engagement.Tracker;
+import org.chromium.components.omnibox.AutocompleteInput;
 import org.chromium.components.omnibox.AutocompleteRequestType;
 import org.chromium.components.omnibox.OmniboxFocusReason;
 import org.chromium.components.search_engines.TemplateUrlService;
@@ -217,11 +218,9 @@ public class NewTabPage
     private final boolean mIsInNightMode;
     private final @Nullable OneshotSupplier<ModuleRegistry> mModuleRegistrySupplier;
     private final boolean mCanSupportEdgeToEdgeForCustomizedTheme;
-    private final MonotonicObservableSupplier<TopInsetProvider> mTopInsetProviderSupplier;
-    private @Nullable Callback<TopInsetProvider> mTopInsetProviderCallback;
+    private final TopInsetProvider mTopInsetProvider;
+    private TopInsetProvider.@Nullable Observer mTopInsetChangeObserver;
 
-    private TopInsetProvider.@org.chromium.build.annotations.Nullable Observer
-            mTopInsetChangeObserver;
     private NtpCustomizationConfigManager.@org.chromium.build.annotations.Nullable
             HomepageStateListener
             mHomepageStateListener;
@@ -275,8 +274,8 @@ public class NewTabPage
             mRestoringState = restoringState;
 
             // Fallback added for metric records only.
-            restoringState.addObserver(
-                    new Callback<>() {
+            restoringState.addSyncObserverAndPostIfNonNull(
+                    new Callback<Integer>() {
                         long mStart;
 
                         @Override
@@ -312,7 +311,7 @@ public class NewTabPage
                             onEnd.run();
                         }
                     });
-            mRestoringState.addObserver(mOnScrollStateChanged);
+            mRestoringState.addSyncObserverAndPostIfNonNull(mOnScrollStateChanged);
             mHandler.postDelayed(
                     mFallback, BackPressMetrics.MAX_FALLBACK_DELAY_NTP_SMOOTH_TRANSITION);
         }
@@ -435,11 +434,10 @@ public class NewTabPage
                 }
 
                 mOmniboxStub.setUrlBarFocus(
-                        /* shouldBeFocused= */ true,
-                        pastedText,
-                        /* selectText= */ false,
-                        focusReason,
-                        requestType);
+                        new AutocompleteInput()
+                                .setUserText(pastedText)
+                                .setFocusReason(focusReason)
+                                .setRequestType(requestType));
             }
         }
 
@@ -558,7 +556,7 @@ public class NewTabPage
             NonNullObservableSupplier<Integer> tabStripHeightSupplier,
             OneshotSupplier<ModuleRegistry> moduleRegistrySupplier,
             MonotonicObservableSupplier<EdgeToEdgeController> edgeToEdgeControllerSupplier,
-            MonotonicObservableSupplier<TopInsetProvider> topInsetProviderSupplier,
+            TopInsetProvider topInsetProvider,
             StartupMetricsTracker startupMetricsTracker,
             MultiInstanceManager multiInstanceManager) {
         mConstructedTimeNs = System.nanoTime();
@@ -578,7 +576,7 @@ public class NewTabPage
         mIsInNightMode = isInNightMode;
         mTabStripHeightSupplier = tabStripHeightSupplier;
         mModuleRegistrySupplier = moduleRegistrySupplier;
-        mTopInsetProviderSupplier = topInsetProviderSupplier;
+        mTopInsetProvider = topInsetProvider;
         mWindowAndroid = windowAndroid;
 
         Profile profile = mTab.getProfile();
@@ -832,21 +830,7 @@ public class NewTabPage
 
     private void initTopInsetProviderObserver() {
         mTopInsetChangeObserver = this::onToEdgeChange;
-        var topInsetProvider = mTopInsetProviderSupplier.get();
-        if (topInsetProvider != null) {
-            topInsetProvider.addObserver(mTopInsetChangeObserver);
-            return;
-        }
-
-        mTopInsetProviderCallback =
-                provider -> {
-                    provider.addObserver(assumeNonNull(mTopInsetChangeObserver));
-                    if (mTopInsetProviderCallback != null) {
-                        mTopInsetProviderSupplier.removeObserver(mTopInsetProviderCallback);
-                        mTopInsetProviderCallback = null;
-                    }
-                };
-        mTopInsetProviderSupplier.addObserver(mTopInsetProviderCallback);
+        mTopInsetProvider.addObserver(mTopInsetChangeObserver);
     }
 
     // Called when ChromeFeatureList.sNewTabPageCustomizationV2 is enabled to add a
@@ -859,8 +843,8 @@ public class NewTabPage
                             Bitmap originalBitmap,
                             @Nullable BackgroundImageInfo backgroundImageInfo,
                             boolean fromInitialization,
-                            @NtpBackgroundImageType int oldType,
-                            @NtpBackgroundImageType int newType) {
+                            @NtpBackgroundType int oldType,
+                            @NtpBackgroundType int newType) {
                         onBackgroundChangedImpl(/* applyWhiteBackgroundOnSearchBox= */ true);
                     }
 
@@ -869,13 +853,13 @@ public class NewTabPage
                             @Nullable NtpThemeColorInfo ntpThemeColorInfo,
                             @ColorInt int backgroundColor,
                             boolean fromInitialization,
-                            @NtpBackgroundImageType int oldType,
-                            @NtpBackgroundImageType int newType) {
+                            @NtpBackgroundType int oldType,
+                            @NtpBackgroundType int newType) {
                         onBackgroundChangedImpl(/* applyWhiteBackgroundOnSearchBox= */ false);
                     }
 
                     @Override
-                    public void onBackgroundReset(@NtpBackgroundImageType int oldType) {
+                    public void onBackgroundReset(@NtpBackgroundType int oldType) {
                         onBackgroundChangedImpl(/* applyWhiteBackgroundOnSearchBox= */ false);
                     }
                 };
@@ -894,10 +878,10 @@ public class NewTabPage
     private void initUseLightIconTint() {
         if (mIsTablet) return;
 
-        @NtpBackgroundImageType
-        int imageType = NtpCustomizationConfigManager.getInstance().getBackgroundImageType();
-        if (imageType == NtpBackgroundImageType.IMAGE_FROM_DISK
-                || imageType == NtpBackgroundImageType.THEME_COLLECTION) {
+        @NtpBackgroundType
+        int imageType = NtpCustomizationConfigManager.getInstance().getBackgroundType();
+        if (imageType == NtpBackgroundType.IMAGE_FROM_DISK
+                || imageType == NtpBackgroundType.THEME_COLLECTION) {
             mUseLightIconTint = true;
         } else {
             mUseLightIconTint = false;
@@ -1231,20 +1215,14 @@ public class NewTabPage
             mHomeModulesCoordinator.destroy();
         }
 
-        var topInsetProvider = mTopInsetProviderSupplier.get();
-        if (topInsetProvider != null && mTopInsetChangeObserver != null) {
-            topInsetProvider.removeObserver(mTopInsetChangeObserver);
+        if (mTopInsetChangeObserver != null) {
+            mTopInsetProvider.removeObserver(mTopInsetChangeObserver);
             mTopInsetChangeObserver = null;
         }
 
         if (mHomepageStateListener != null) {
             NtpCustomizationConfigManager.getInstance().removeListener(mHomepageStateListener);
             mHomepageStateListener = null;
-        }
-
-        if (mTopInsetProviderCallback != null) {
-            mTopInsetProviderSupplier.removeObserver(mTopInsetProviderCallback);
-            mTopInsetProviderCallback = null;
         }
 
         sTotalCount--;
@@ -1284,8 +1262,8 @@ public class NewTabPage
         return mCanSupportEdgeToEdgeForCustomizedTheme
                 && !mIsTablet
                 && isInSingleUrlBarMode()
-                && NtpCustomizationConfigManager.getInstance().getBackgroundImageType()
-                        != NtpBackgroundImageType.DEFAULT;
+                && NtpCustomizationConfigManager.getInstance().getBackgroundType()
+                        != NtpBackgroundType.DEFAULT;
     }
 
     @Override
@@ -1479,7 +1457,7 @@ public class NewTabPage
                         this::onSingleTabCardClicked,
                         /* seeMoreLinkClickedCallback= */ null,
                         () -> mSnapshotSingleTabCardChanged = true,
-                        mTabContentManagerSupplier.get()
+                        assertNonNull(mTabContentManagerSupplier.get())
                         /* tabContentManager= */ ,
                         mIsTablet ? mFeedSurfaceProvider.getUiConfig() : null,
                         /* moduleDelegate= */ null);

@@ -1277,6 +1277,7 @@ I motsatt fall blir dette blokkert av personverninnstillingene. Dette gjør at i
 <translation id="3052868890529250114">Du pleier å ha en sikker tilkobling til nettsteder, men Chrome kunne ikke bruke en sikker tilkobling denne gangen. Det kan hende at angripere prøver å tyvlytte på eller modifisere nettverkstilkoblingen din. <ph name="BEGIN_LEARN_MORE_LINK" />Finn ut mer om denne advarselen<ph name="END_LEARN_MORE_LINK" /></translation>
 <translation id="3052964831964880138"><ph name="PRICE_DROP" /> avslag på <ph name="PRODUCT_NAME" /></translation>
 <translation id="3056660797732519147">Feilskjerm for Kjøp nå, betal senere. Tastaturet er skjult.</translation>
+<translation id="3057844102210575426">Administrer reiseinformasjon</translation>
 <translation id="3061707000357573562">Feilrettingstjeneste</translation>
 <translation id="3062655045399308513">Slett nettlesingsdata…</translation>
 <translation id="3063453392496098461">Installasjonen av VPN-bakgrunnstjenester mislyktes.</translation>
@@ -2007,6 +2008,7 @@ I motsatt fall blir dette blokkert av personverninnstillingene. Dette gjør at i
 <translation id="4203769790323223880">Kamera er ikke tillatt</translation>
 <translation id="4203896806696719780"><ph name="BEGIN_LINK" />Sjekk brannmur- og antiviruskonfigurasjonen<ph name="END_LINK" /></translation>
 <translation id="4207195957038009075">Google Disk</translation>
+<translation id="4208390505124702064">Søk på <ph name="SITE_NAME" /></translation>
 <translation id="4209092469652827314">Stor</translation>
 <translation id="4210602799576081649">Bekreftelseskoden er utløpt – be om en ny kode</translation>
 <translation id="421066178035138955">Bruk virtuell virkelighet-enheter og -data</translation>
@@ -2063,6 +2065,7 @@ I motsatt fall blir dette blokkert av personverninnstillingene. Dette gjør at i
 <translation id="4270541775497538019">Hylle 6</translation>
 <translation id="4271311252511481365">{NUM_REVIEWS,plural, =0{Vis 0 anmeldelser. Gjennomsnittlig vurdering: <ph name="STARS" /> stjerner.}=1{Vis 1 anmeldelse. Gjennomsnittlig vurdering: <ph name="STARS" /> stjerner.}other{Vis alle # anmeldelsene. Gjennomsnittlig vurdering: <ph name="STARS" /> stjerner.}}</translation>
 <translation id="4271652479722040953">Når utvidelser legges til i Chrome, sendes relevante data om disse utvidelsene til tredjeparter for analyse og kan være synlige for administratoren din. Dataene inkluderer informasjon om utvidelsene, for eksempel navn, installeringstidspunkt og installeringskilde, samt aktivitet knyttet til disse utvidelsene (for eksempel bytte av faner, kontakt med nettsteder eller bruk av informasjonskapsler). Disse dataene samles inn både for utvidelser som er installert fra Chrome Nettmarked, og for utvidelser som er installert utenfor nettbutikken.</translation>
+<translation id="4275788652681621337">Lukk sidepanelet</translation>
 <translation id="4275830172053184480">Start enheten din på nytt</translation>
 <translation id="4276974990916607331">Nei takk</translation>
 <translation id="4277028893293644418">Tilbakestill passordet</translation>
@@ -2626,6 +2629,7 @@ I motsatt fall blir dette blokkert av personverninnstillingene. Dette gjør at i
 <translation id="5209670883520018268">Skuff 20</translation>
 <translation id="5212364581680288382">Motorsykkelløp</translation>
 <translation id="5214542134842513912">Velg hvilke generelle emnekategorier som kan brukes til å tilpasse annonser personlig. Hvis du slår av en mer generell kategori, blokkeres også de relaterte emnene.</translation>
+<translation id="52163492208010719">Administrer legitimasjonsdokumenter</translation>
 <translation id="521659676233207110">Skuff 13</translation>
 <translation id="5216942107514965959">Sist besøkt i dag</translation>
 <translation id="5217759126664161410">Ugyldig protokollformat.</translation>
@@ -2710,6 +2714,7 @@ I motsatt fall blir dette blokkert av personverninnstillingene. Dette gjør at i
 <translation id="5344522958567249764">Administrer annonsepersonvern</translation>
 <translation id="5344579389779391559">Denne siden kan prøve å belaste deg for penger</translation>
 <translation id="5345249337934847112">Papir (tungt, belagt)</translation>
+<translation id="5346059693449184483">Hva tenker du på?</translation>
 <translation id="5348330584842140856">Denne filen ble ikke flyttet, fordi den ikke finnes lenger</translation>
 <translation id="5349543692327946794">Etiketter (blekk)</translation>
 <translation id="5351548097010183514">Byggematerialer og -utstyr</translation>
@@ -2957,7 +2962,6 @@ I motsatt fall blir dette blokkert av personverninnstillingene. Dette gjør at i
 <translation id="5730040223043577876">Chrome anbefaler at du tilbakestiller passordet ditt hvis du også har brukt det på andre nettsteder.</translation>
 <translation id="5732392974455271431">Foreldrene dine kan oppheve blokkeringen for deg</translation>
 <translation id="573555826359077410">Knappen «Opprett skjema» – aktiver for å opprette et nytt skjema i Google Skjemaer raskt</translation>
-<translation id="5737022235680044108">Organisasjonen din har blokkert <ph name="HOST_NAME" /> i inkognitomodus.</translation>
 <translation id="5738385766833540397">Administrer hvordan du mottar varsler om avslag for produkter du sporer</translation>
 <translation id="5739619009927381786">Lås opp skjermen i neste trinn, vanligvis med fingeravtrykket ditt. Alternativt kan du prøve å <ph name="BEGIN_LINK" />bekrefte på en annen måte<ph name="END_LINK" />.</translation>
 <translation id="573974402615125334">For å dele, bli med i og samarbeide i fanegrupper, synkroniser loggen og fanene dine</translation>
@@ -3640,7 +3644,6 @@ I motsatt fall blir dette blokkert av personverninnstillingene. Dette gjør at i
 <translation id="6844998850832008753">Håndsporing er tillatt denne gangen</translation>
 <translation id="6849023911358004088">Knappen «Administrer sikkerhetsinnstillinger» – aktiver for å administrere Safe Browsing med mer i Chrome-innstillingene</translation>
 <translation id="6850286078059909152">Tekstfarge</translation>
-<translation id="685163597635765693">Organisasjonen din har blokkert «<ph name="HOST_NAME" />»-linker i inkognitomodus.</translation>
 <translation id="6852204201400771460">Vil du laste inn appen på nytt?</translation>
 <translation id="6854691830678097752">For å betale raskere, lagre denne verifiseringskoden i kontoen din, <ph name="ACCOUNT_EMAIL" /></translation>
 <translation id="6857776781123259569">Administrer passord…</translation>
@@ -4505,6 +4508,7 @@ I motsatt fall blir dette blokkert av personverninnstillingene. Dette gjør at i
 <translation id="8216640997712497593">14 x 18 tommer</translation>
 <translation id="8218327578424803826">Tilordnet posisjon:</translation>
 <translation id="8220602974062798186">Vil du blokkere <ph name="TOPIC" /> og eventuelle relaterte emner?</translation>
+<translation id="8223142476690844338">Hei, <ph name="USER_NAME" />. Hva tenker du på?</translation>
 <translation id="8226408512771130794"><ph name="KEYWORD_SHORTCUT" />, spør <ph name="KEYWORD_SUFFIX" /></translation>
 <translation id="8228419419708659934">Visning med to sider</translation>
 <translation id="822925450938886901">For å finne ut mer og se regler som kan gjelde, åpne chrome://management i nettleseren.</translation>

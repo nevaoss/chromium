@@ -5,6 +5,7 @@
 import 'chrome://resources/cr_elements/cr_button/cr_button.js';
 import 'chrome://resources/cr_elements/cr_icon/cr_icon.js';
 import 'chrome://resources/cr_elements/icons.html.js';
+import './card.js';
 import './icons.html.js';
 
 import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
@@ -32,6 +33,7 @@ export class UserSkillsPageElement extends CrLitElement {
   static override get properties() {
     return {
       skills_: {type: Object},
+      searchTerm_: {type: String},
       addSkillButtonDisabled_: {type: Boolean},
     };
   }
@@ -39,9 +41,23 @@ export class UserSkillsPageElement extends CrLitElement {
   // Map tracking skills by id.
   protected accessor skills_: Map<string, Skill> = new Map();
   protected accessor addSkillButtonDisabled_: boolean = false;
+  protected accessor searchTerm_: string = '';
   private proxy_: SkillsPageBrowserProxy = SkillsPageBrowserProxy.getInstance();
   private listenerIds_: number[] = [];
   private addSkillButtonDisabledTimer_: number|undefined = undefined;
+
+  get filteredSkills_(): Skill[] {
+    const term = this.searchTerm_.toLowerCase();
+    const allSkillsArray = Array.from(this.skills_.values());
+
+    if (!term) {
+      return allSkillsArray;
+    }
+
+    return allSkillsArray.filter(
+        skill => skill.name.toLowerCase().includes(term) ||
+            skill.prompt.toLowerCase().includes(term));
+  }
 
   override connectedCallback() {
     super.connectedCallback();
@@ -86,8 +102,12 @@ export class UserSkillsPageElement extends CrLitElement {
     this.requestUpdate();
   }
 
+  onSearchChanged(searchTerm: string) {
+    this.searchTerm_ = searchTerm;
+  }
+
   protected onExploreButtonClick_() {
-    const path = '/discover-skills';
+    const path = '/browse-skills';
     this.fire('route-click', {path});
   }
 
@@ -101,8 +121,10 @@ export class UserSkillsPageElement extends CrLitElement {
     // Disable the button temporarily to prevent double-clicking.
     // The button will open a dialog to block the page, so we can
     // safely re-enable it after a short period of time.
-    this.addSkillButtonDisabledTimer_ =
-        setTimeout(() => this.addSkillButtonDisabled_ = false, 1000);
+    this.addSkillButtonDisabledTimer_ = setTimeout(() => {
+      this.addSkillButtonDisabled_ = false;
+      this.addSkillButtonDisabledTimer_ = undefined;
+    }, 1000);
   }
 }
 

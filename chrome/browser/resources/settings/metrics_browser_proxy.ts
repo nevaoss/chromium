@@ -192,7 +192,7 @@ export enum PrivacyGuideInteractions {
   SWAA_COMPLETION_LINK = 8,
   PRIVACY_SANDBOX_COMPLETION_LINK = 9,
   SEARCH_SUGGESTIONS_NEXT_BUTTON = 10,
-  TRACKING_PROTECTION_COMPLETION_LINK = 11,
+  // TRACKING_PROTECTION_COMPLETION_LINK = 11, // OBSOLETE
   AD_TOPICS_NEXT_BUTTON = 12,
   AI_SETTINGS_COMPLETION_LINK = 13,
   // Max value should be updated whenever new entries are added.
@@ -661,17 +661,20 @@ export interface MetricsBrowserProxy {
       histogramName: string, referrer: AutofillSettingsReferrer): void;
 
   /**
-   * Records a click on a category link on the Your saved info page.
+   * Records a click on a category link on the Your saved info page with
+   * a corresponding metric and user action.
    */
   recordYourSavedInfoCategoryClick(category: YourSavedInfoDataCategory): void;
 
   /**
-   * Records a click on a data chip on the Your saved info page.
+   * Records a click on a data chip on the Your saved info page with
+   * a corresponding metric and user action.
    */
   recordYourSavedInfoDataChipClick(chip: YourSavedInfoDataChip): void;
 
   /**
-   * Records a click on a related service link on the Your saved info page.
+   * Records a click on a related service link on the Your saved info page with
+   * a corresponding metric and user action.
    */
   recordYourSavedInfoRelatedServiceClick(service: YourSavedInfoRelatedService):
       void;
@@ -911,6 +914,10 @@ export class MetricsBrowserProxyImpl implements MetricsBrowserProxy {
       category,
       YourSavedInfoDataCategory.MAX_VALUE,
     ]);
+    if (category !== YourSavedInfoDataCategory.MAX_VALUE) {
+      this.recordAction(`Settings.YourSavedInfo.CategoryClick.${
+          YourSavedInfoDataCategory[category]}`);
+    }
   }
 
   recordYourSavedInfoDataChipClick(chip: YourSavedInfoDataChip) {
@@ -919,6 +926,10 @@ export class MetricsBrowserProxyImpl implements MetricsBrowserProxy {
       chip,
       YourSavedInfoDataChip.MAX_VALUE,
     ]);
+    if (chip !== YourSavedInfoDataChip.MAX_VALUE) {
+      this.recordAction(
+          `Settings.YourSavedInfo.ChipClick.${YourSavedInfoDataChip[chip]}`);
+    }
   }
 
   recordYourSavedInfoRelatedServiceClick(service: YourSavedInfoRelatedService) {
@@ -927,6 +938,10 @@ export class MetricsBrowserProxyImpl implements MetricsBrowserProxy {
       service,
       YourSavedInfoRelatedService.MAX_VALUE,
     ]);
+    if (service !== YourSavedInfoRelatedService.MAX_VALUE) {
+      this.recordAction(`Settings.YourSavedInfo.RelatedServiceClick.${
+          YourSavedInfoRelatedService[service]}`);
+    }
   }
 
   static getInstance(): MetricsBrowserProxy {

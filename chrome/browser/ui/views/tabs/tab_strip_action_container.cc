@@ -24,7 +24,7 @@
 #include "chrome/browser/ui/user_education/browser_user_education_interface.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/tabs/glic/glic_actor_task_icon.h"
-#include "chrome/browser/ui/views/tabs/glic/glic_button.h"
+#include "chrome/browser/ui/views/tabs/glic/tab_strip_glic_button.h"
 #include "chrome/browser/ui/views/tabs/tab_strip_nudge_button.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/grit/generated_resources.h"
@@ -283,7 +283,8 @@ TabStripActionContainer::TabStripActionContainer(
 #if BUILDFLAG(ENABLE_GLIC)
   if (glic::GlicEnabling::IsProfileEligible(
           browser_window_interface_->GetProfile())) {
-    if (features::kGlicActorUiTaskIcon.Get()) {
+    if (base::FeatureList::IsEnabled(features::kGlicActorUi) &&
+        features::kGlicActorUiTaskIcon.Get()) {
       glic_actor_button_container_ =
           AddChildView(CreateGlicActorButtonContainer());
       glic_actor_task_icon_ =
@@ -334,14 +335,15 @@ TabStripActionContainer::~TabStripActionContainer() {
 }
 
 #if BUILDFLAG(ENABLE_GLIC)
-std::unique_ptr<glic::GlicButton> TabStripActionContainer::CreateGlicButton() {
+std::unique_ptr<glic::TabStripGlicButton>
+TabStripActionContainer::CreateGlicButton() {
   glic::GlicKeyedService* service =
       glic::GlicKeyedService::Get(browser_window_interface_->GetProfile());
   std::u16string tooltip_text = l10n_util::GetStringUTF16(
       service->IsWindowOrFreShowing() ? IDS_GLIC_TAB_STRIP_BUTTON_TOOLTIP_CLOSE
                                       : IDS_GLIC_TAB_STRIP_BUTTON_TOOLTIP);
-  std::unique_ptr<glic::GlicButton> glic_button =
-      std::make_unique<glic::GlicButton>(
+  std::unique_ptr<glic::TabStripGlicButton> glic_button =
+      std::make_unique<glic::TabStripGlicButton>(
           browser_window_interface_,
           base::BindRepeating(&TabStripActionContainer::OnGlicButtonClicked,
                               base::Unretained(this)),
@@ -525,11 +527,7 @@ void TabStripActionContainer::OnGlicActorTaskIconClicked() {
   controller->ShowBubble(glic_actor_task_icon_);
 
   auto current_task_nudge_state = icon_manager->GetCurrentActorTaskNudgeState();
-  if (base::FeatureList::IsEnabled(features::kGlicActorUiGlobalTaskIndicator)) {
     actor::ui::LogGlobalTaskIndicatorClick(current_task_nudge_state);
-  } else {
-    actor::ui::LogTaskNudgeClick(current_task_nudge_state);
-  }
 }
 
 #endif  // BUILDFLAG(ENABLE_GLIC)
@@ -611,10 +609,8 @@ void TabStripActionContainer::ShowGlicActorTaskIcon() {
   glic_button_ = glic_actor_button_container_->InsertGlicButton(glic_button_);
   glic_actor_task_icon_->SetVisible(true);
   glic_actor_button_container_->SetVisible(true);
-  if (base::FeatureList::IsEnabled(features::kGlicActorUiGlobalTaskIndicator)) {
-    glic_button_->Collapse();
-    glic_button_->SetSplitButtonCornerStyling();
-  }
+  glic_button_->Collapse();
+  glic_button_->SetSplitButtonCornerStyling();
   UpdateGlicActorButtonContainerBorders();
 
   // If in entry mode, attempt to animate the icon's appearance. If the tab
@@ -647,8 +643,6 @@ void TabStripActionContainer::HideGlicActorTaskIcon() {
   CHECK(glic_button_);
   CHECK(glic_actor_task_icon_);
 
-  // If feature is enabled, try to animate first.
-  if (base::FeatureList::IsEnabled(features::kGlicActorUiGlobalTaskIndicator)) {
     // If it's already hidden, do nothing.
     if (!glic_actor_task_icon_->GetVisible()) {
       return;
@@ -668,7 +662,6 @@ void TabStripActionContainer::HideGlicActorTaskIcon() {
       animation_session_->Start();
       return;
     }
-  }
   // If animation isn't possible, snap hide immediately.
   FinalizeHideGlicActorTaskIcon();
 #else
@@ -684,23 +677,13 @@ void TabStripActionContainer::FinalizeHideGlicActorTaskIcon() {
       animation_session_.reset();
     }
     glic_actor_task_icon_->SetIsShowingNudge(false);
-    // Once we hide the nudge we want to bring the glic button default label
-    // back.
-    // TODO(mjenn): Remove when GlicActorUiGlobalTaskIndicator is launched.
-    if (!base::FeatureList::IsEnabled(
-            features::kGlicActorUiGlobalTaskIndicator)) {
-      glic_button_->Expand();
-    }
   }
   glic_actor_task_icon_->SetVisible(false);
   glic_actor_task_icon_->SetTaskIconToDefault();
   glic_button_ = AddChildView(std::move(glic_button_));
   glic_actor_button_container_->SetVisible(false);
-
-  if (base::FeatureList::IsEnabled(features::kGlicActorUiGlobalTaskIndicator)) {
-    glic_button_->Expand();
-    glic_button_->ResetSplitButtonCornerStyling();
-  }
+  glic_button_->Expand();
+  glic_button_->ResetSplitButtonCornerStyling();
   // Reset the animation mode for the next time the icon is shown.
   glic_actor_task_icon_->SetAnimationMode(TaskIconAnimationMode::kEntry);
   UpdateGlicActorButtonContainerBorders();

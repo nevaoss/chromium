@@ -90,16 +90,9 @@ namespace ui {
 class TrackedElement;
 }  // namespace ui
 
-namespace views {
-class View;
-class WebView;
-}  // namespace views
-
 class LensSearchController;
 class PrefService;
 enum class SidePanelEntryHideReason;
-
-extern void* kLensOverlayPreselectionWidgetIdentifier;
 
 // Manages all state associated with the lens overlay.
 // This class is not thread safe. It should only be used from the browser
@@ -115,7 +108,6 @@ class LensOverlayController : public OverlayBaseController,
                         PrefService* pref_service);
   ~LensOverlayController() override;
 
-  DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kOverlayId);
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kOverlaySidePanelWebViewId);
 
   // A simple utility that gets the the LensOverlayController TabFeature set by
@@ -165,16 +157,6 @@ class LensOverlayController : public OverlayBaseController,
   // logging.
   uint64_t GetInvocationTimeSinceEpoch();
 
-  // Testing helper method for checking the blur layer delegate.
-  lens::LensOverlayBlurLayerDelegate*
-  GetLensOverlayBlurLayerDelegateForTesting();
-
-  // Testing helper method for checking view housing our overlay.
-  views::View* GetOverlayViewForTesting();
-
-  // Testing helper method for checking web view.
-  views::WebView* GetOverlayWebViewForTesting();
-
   // Send text data to the WebUI, or stores it to be sent when the WebUI is
   // ready.
   void SendText(lens::mojom::TextPtr text);
@@ -196,42 +178,11 @@ class LensOverlayController : public OverlayBaseController,
   // Send message to overlay to copy the currently selection if any.
   void TriggerCopy();
 
-  // Returns true if the overlay is open and covering the current active tab.
-  bool IsOverlayShowing() const;
-
-  // Returns true if the overlay is showing or is in live page mode.
-  bool IsOverlayActive() const;
-
-  // Returns true if the overlay is in the process of initializing.
-  bool IsOverlayInitializing();
-
-  // Returns true if the overlay is currently in the process of closing.
-  bool IsOverlayClosing();
-
   // Returns true if the overlay has a region selection.
   bool HasRegionSelection() const;
 
   // Pass a result frame URL to load in the side panel.
   void LoadURLInResultsFrame(const GURL& url);
-
-  // Whether it's possible to capture a screenshot. virtual for testing.
-  virtual bool IsScreenshotPossible(content::RenderWidgetHostView* view);
-
-  // Returns the tab interface that that owns the search controller that owns
-  // this overlay controller.
-  tabs::TabInterface* GetTabInterface();
-
-  // Show preselection toast bubble. Creates a preselection bubble if it does
-  // not exist.
-  void ShowPreselectionBubble();
-
-  // Closes the preselection bubble and reopens it. Used to prevent UI conflicts
-  // between the preselection bubble and top chrome in fullscreen.
-  void CloseAndReshowPreselectionBubble();
-
-  // Hides preselection toast bubble. Used when backgrounding the overlay. This
-  // hides the widget associated with the bubble.
-  void HidePreselectionBubble();
 
   // Queues a tutorial IPH to be shown if the given URL is eligible. Cancels any
   // queued IPH.
@@ -245,9 +196,6 @@ class LensOverlayController : public OverlayBaseController,
 
   // Handles a new region thumbnail being created.
   void HandleRegionBitmapCreated(const SkBitmap& region_bitmap);
-
-  // Called when the side panel alignment chgces.
-  void OnSidePanelAlignmentChanged();
 
   // TODO(crbug.com/404941800): All the Handle*Response methods should not exist
   // in this class. They currently exist to unblock development. They will be
@@ -398,16 +346,13 @@ class LensOverlayController : public OverlayBaseController,
       lens::mojom::CenterRotatedBoxPtr region,
       const SkBitmap& region_bitmap);
 
-  // Plays the overlay close animation and then invokes the callback.
-  void TriggerOverlayFadeOutAnimation(base::OnceClosure callback);
-
   // Closes the overlay UI and sets state to kOff. This method is the final
   // cleanup of closing the overlay UI. This resets all state internal to the
   // LensOverlayController.
   // Anyone called trying to close the UI should go through CloseUIAsync or
   // CloseUISync. Those methods also reset state external to
   // LensOverlayController.
-  void CloseUI(lens::LensOverlayDismissalSource dismissal_source);
+  void CloseUI() override;
 
   // Returns the vsrid to use for the new tab URL.
   std::string GetVsridForNewTab();
@@ -485,17 +430,10 @@ class LensOverlayController : public OverlayBaseController,
   // to update the progress bar.
   void HandlePageContentUploadProgress(uint64_t position, uint64_t total);
 
-  // Hides the overlay view and restores input to the tab contents web view.
-  // This does not change any overlay state.
-  void HideOverlay();
-
-  // Hides the overlay, but also sets the state to kHidden.
-  void HideOverlayAndSetHiddenState();
-
   // Should only be called when the overlay is in kHidden state. This will
   // reshow the overlay using the current viewport screenshot and page context
   // on the live page.
-  void ReshowOverlay();
+  void ReshowOverlay() override;
 
  private:
   // Data class for constructing overlay and storing overlay state for
@@ -619,7 +557,7 @@ class LensOverlayController : public OverlayBaseController,
       const SkBitmap& screenshot,
       const std::vector<gfx::Rect>& all_bounds,
       std::optional<uint32_t> pdf_current_page,
-      std::optional<base::TimeTicks> screenshot_bitmap_start_time,
+      base::TimeTicks screenshot_bitmap_start_time,
       SkBitmap rgb_screenshot);
 
   // Stores the page content and continues the initialization process. Also
@@ -638,15 +576,6 @@ class LensOverlayController : public OverlayBaseController,
   // Updates state of the ghost loader. |suppress_ghost_loader| is true when
   // the page bytes can't be uploaded.
   void SuppressGhostLoader();
-
-  // Called when the UI needs to show the overlay via a view that is a child of
-  // the tab contents view.
-  void ShowOverlay();
-
-  // Hide the shared overlay view if it is not being used by another tab. This
-  // is determined by checking if any of the children of the overlay view are
-  // visible.
-  void MaybeHideSharedOverlayView();
 
   // Requests to open the side panel if this class has not already done so.
   // Must be called before issuing results to the side panel.
@@ -668,11 +597,22 @@ class LensOverlayController : public OverlayBaseController,
   // Returns true if the searchbox is a CONTEXTUAL_SEARCHBOX.
   bool IsContextualSearchbox();
 
-  // Returns true if the Lens results side panel is showing.
-  bool IsResultsSidePanelShowing();
-
-  // Called when the UI needs to create the view to show in the overlay.
-  raw_ptr<views::View> CreateViewForOverlay();
+  // OverlayBaseController overrides:
+  bool IsResultsSidePanelShowing() override;
+  void RequestSyncClose(DismissalSource source) override;
+  GURL GetInitialURL() override;
+  void NotifyIsOverlayShowing(bool is_showing) override;
+  int GetToolResourceId() override;
+  ui::ElementIdentifier GetViewContainerId() override;
+  SidePanelEntry::PanelType GetSidePanelType() override;
+  bool ShouldCloseSidePanel() override;
+  void StartScreenshotFlow() override;
+  void FinishedWaitingForReflow(base::TimeTicks reflow_start_time) override;
+  bool ShouldShowPreselectionBubble() override;
+  bool UseOverlayBlur() override;
+  void NotifyOverlayClosing() override;
+  void NotifyTabForegrounded() override;
+  void NotifyTabWillEnterBackground() override;
 
   // content::WebContentsDelegate:
   bool HandleContextMenu(content::RenderFrameHost& render_frame_host,
@@ -682,15 +622,6 @@ class LensOverlayController : public OverlayBaseController,
 
   // FullscreenObserver:
   void OnFullscreenStateChanged() override;
-
-  // ViewObserver:
-  void OnViewBoundsChanged(views::View* observed_view) override;
-
-  // views::WidgetObserver:
-#if BUILDFLAG(IS_MAC)
-  void OnWidgetActivationChanged(views::Widget* widget, bool active) override;
-#endif
-  void OnWidgetDestroying(views::Widget* widget) override;
 
   // OmniboxTabHelper::Observer:
   void OnOmniboxInputStateChanged() override {}
@@ -702,12 +633,6 @@ class LensOverlayController : public OverlayBaseController,
   // find_in_page::FindResultObserver:
   void OnFindEmptyText(content::WebContents* web_contents) override;
   void OnFindResultAvailable(content::WebContents* web_contents) override;
-
-  // ImmersiveModeController::Observer:
-  void OnImmersiveRevealStarted() override;
-  void OnImmersiveRevealEnded() override;
-  void OnImmersiveFullscreenEntered() override;
-  void OnImmersiveFullscreenExited() override;
 
   // Called when the Lens backend handshake is complete.
   void OnHandshakeComplete();
@@ -722,33 +647,6 @@ class LensOverlayController : public OverlayBaseController,
 
   // Gets the ui scale factor of the page.
   float GetUiScaleFactor();
-
-  // Called anytime the side panel opens. Used to close lens overlay when
-  // another side panel opens.
-  void OnSidePanelDidOpen();
-
-  // Sets the top right or top left corner of the overlay to be rounded if the
-  // side panel is open and the `SideBySide` feature is enabled. This is
-  // necessary because rounded corners are owned by the `MultiContentsView`,
-  // and the overlay is shown on top of it.
-  // TODO(crbug.com/443102583): Remove this block if `overlay_view_` ends up
-  // getting reparented into `MultiContentsView`.
-  void SetOverlayRoundedCorner();
-
-  // Called to continue the screenshot process while opening lens overlay.
-  void FinishedWaitingForReflow(
-      std::optional<base::TimeTicks> reflow_start_time);
-
-  // content::RenderProcessHostObserver:
-  void RenderProcessExited(
-      content::RenderProcessHost* host,
-      const content::ChildProcessTerminationInfo& info) override;
-
-  // Called when the associated tab enters the foreground.
-  void TabForegrounded(tabs::TabInterface* tab);
-
-  // Called when the associated tab will enter the background.
-  void TabWillEnterBackground(tabs::TabInterface* tab);
 
   // Suggest a name for the save as image feature incorporating the hostname of
   // the page. Protocol, TLD, etc are not taken into consideration. Duplicate
@@ -848,9 +746,6 @@ class LensOverlayController : public OverlayBaseController,
   // points since the state of the overlay has changed.
   void UpdateEntryPointsState();
 
-  // Notifies the side panel whether the overlay is showing.
-  void NotifyIsOverlayShowing(bool is_showing);
-
   // Callback to run when the partial page text is retrieved from the PDF.
   void OnPdfPartialPageTextRetrieved(
       std::vector<std::u16string> pdf_pages_text);
@@ -866,7 +761,7 @@ class LensOverlayController : public OverlayBaseController,
       lens::LensOverlayInvocationSource invocation_source);
 
   // Called by LensSearchContextualizationController after taking a screenshot.
-  void OnScreenshotTaken(std::optional<base::TimeTicks> screenshot_start_time,
+  void OnScreenshotTaken(base::TimeTicks screenshot_start_time,
                          const SkBitmap& bitmap,
                          const std::vector<gfx::Rect>& all_bounds,
                          std::optional<uint32_t> pdf_current_page);
@@ -876,7 +771,7 @@ class LensOverlayController : public OverlayBaseController,
   void ReshowOverlayPart2();
   // Part 3 of reshowing the overlay. Called after the RGB bitmap has been
   // created.
-  void ReshowOverlayPart3(const SkBitmap& rgb_bitmap);
+  void ReshowOverlayPart3(SkBitmap rgb_bitmap);
 
   // Starts the query flow.
   void StartQueryFlow();
@@ -884,15 +779,14 @@ class LensOverlayController : public OverlayBaseController,
   // Fetches the partial PDF text if the page is a PDF.
   void FetchPdfTextIfEligible();
 
-  // Sets the opacity of the overlay web view. No-op if the web view does not
-  // exist.
-  void SetOverlayWebViewOpacity(float opacity);
-
   // For the current session only, grants the permissions needed for
   // contextualization if the non-blocking privacy notice is being used and the
   // permissions have not already been permanently granted.
   virtual void MaybeGrantLensOverlayPermissionsForSession(
       std::optional<lens::LensOverlayInvocationSource> invocation_source);
+
+  static lens::LensOverlayDismissalSource ConvertDismissalSource(
+      DismissalSource dismissal_source);
 
   // Shorthand to grab the LensSearchboxController for this instance of Lens.
   lens::LensSearchboxController* GetLensSearchboxController();

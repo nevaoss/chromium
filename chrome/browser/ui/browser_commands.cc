@@ -771,42 +771,16 @@ void OpenURLOffTheRecord(Profile* profile, const GURL& url) {
   AddSelectedTabWithURL(displayer.browser(), url, ui::PAGE_TRANSITION_LINK);
 }
 
-namespace {
-
-bool CanGoBackToOpener(content::WebContents* web_contents) {
-  if (!web_contents) {
-    return false;
-  }
-
-  tabs::TabInterface* tab =
-      tabs::TabInterface::MaybeGetFromContents(web_contents);
-  if (!tab) {
-    return false;
-  }
-
-  const back_to_opener::BackToOpenerController* controller =
-      back_to_opener::BackToOpenerController::From(tab);
-  return controller && controller->CanGoBackToOpener();
-}
-
-}  // namespace
 
 bool CanGoBack(const Browser* browser) {
   return CanGoBack(browser->tab_strip_model()->GetActiveWebContents());
 }
 
 bool CanGoBack(content::WebContents* web_contents) {
-  if (!web_contents) {
-    return false;
-  }
-
-  // Check for regular back navigation first.
-  if (web_contents->GetController().CanGoBack()) {
-    return true;
-  }
-
-  // If no regular back navigation, check for back-to-opener.
-  return CanGoBackToOpener(web_contents);
+  return web_contents &&
+         (web_contents->GetController().CanGoBack() ||
+          back_to_opener::BackToOpenerController::CanGoBackToOpener(
+              web_contents));
 }
 
 bool ShouldEnableBackButton(const Browser* browser) {
@@ -822,7 +796,8 @@ bool ShouldEnableBackButton(const Browser* browser) {
   }
 
   // If no regular back navigation, check for back-to-opener.
-  return CanGoBackToOpener(web_contents);
+  return back_to_opener::BackToOpenerController::CanGoBackToOpener(
+      web_contents);
 }
 
 enum class BackNavigationMenuIPHTrigger : int {
@@ -891,16 +866,7 @@ void GoBack(content::WebContents* web_contents) {
   }
 
   // If no regular back navigation, try back-to-opener.
-  tabs::TabInterface* tab =
-      tabs::TabInterface::MaybeGetFromContents(web_contents);
-  if (tab) {
-    back_to_opener::BackToOpenerController* controller =
-        back_to_opener::BackToOpenerController::From(tab);
-    if (controller && controller->CanGoBackToOpener()) {
-      controller->GoBackToOpener();
-      return;
-    }
-  }
+  back_to_opener::BackToOpenerController::GoBackToOpener(web_contents);
 }
 
 bool CanGoForward(const Browser* browser) {
@@ -2214,13 +2180,13 @@ void CloseTabSearch(Browser* browser) {
 }
 
 void ToggleContextualTasksSidePanel(BrowserWindowInterface* browser) {
-  auto* coordinator =
-      contextual_tasks::ContextualTasksSidePanelCoordinator::From(browser);
-  CHECK(coordinator);
-  if (coordinator->IsSidePanelOpenForContextualTask()) {
-    coordinator->Close();
+  auto* controller =
+      contextual_tasks::ContextualTasksPanelController::From(browser);
+  CHECK(controller);
+  if (controller->IsPanelOpenForContextualTask()) {
+    controller->Close();
   } else {
-    coordinator->Show();
+    controller->Show();
   }
 }
 
@@ -2353,6 +2319,13 @@ void OpenFeedbackDialog(BrowserWindowInterface* bwi,
                            std::string() /* description_placeholder_text */,
                            category_tag, std::string() /* extra_diagnostics */);
 }
+
+#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+void OpenReportUnsafeSiteDialog(Browser* browser) {
+  base::RecordAction(UserMetricsAction("ReportUnsafeSite"));
+  // TODO(crbug.com/468396148): Implement
+}
+#endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
 
 void ToggleBookmarkBar(Browser* browser) {
   base::RecordAction(UserMetricsAction("ShowBookmarksBar"));

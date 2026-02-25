@@ -426,20 +426,11 @@ class WTF_EXPORT StringImpl {
 
   bool ContainsOnlyWhitespaceOrEmpty();
 
-  int ToInt(NumberParsingOptions, bool* ok) const;
-  wtf_size_t ToUInt(NumberParsingOptions, bool* ok) const;
   int64_t ToInt64(NumberParsingOptions, bool* ok) const;
   uint64_t ToUInt64(NumberParsingOptions, bool* ok) const;
 
   wtf_size_t HexToUIntStrict(bool* ok);
   uint64_t HexToUInt64Strict(bool* ok);
-
-  // FIXME: Like NumberParsingOptions::kStrict, these give false for "ok" when
-  // there is trailing garbage.  Like NumberParsingOptions::kLoose, these return
-  // the value when there is trailing garbage.  It would be better if these were
-  // more consistent with the above functions instead.
-  double ToDouble(bool* ok = nullptr);
-  float ToFloat(bool* ok = nullptr);
 
   scoped_refptr<StringImpl> LowerASCII();
   scoped_refptr<StringImpl> UpperASCII();
