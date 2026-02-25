@@ -1103,14 +1103,14 @@ component("base") {
     "//third_party/rust/serde_json_lenient/v0_2/wrapper",
   ]
 
-<<<<<<< HEAD
   # TODO(neva_rust): Remove this workaround once Neva supports Rust build.
   if (disable_rust_for_neva) {
     deps -= [
       ":rust_logger",
       "//third_party/rust/serde_json_lenient/v0_2/wrapper",
     ]
-=======
+  }
+
   if (use_asan_backup_ref_ptr) {
     # Used by raw_ptr_service.cc to override {malloc,free,ignore_free} hooks.
     sources += [
@@ -1128,7 +1128,6 @@ component("base") {
     if (use_asan_backup_ref_ptr_v2) {
       deps += [ "//build/config/sanitizers:sanitizer_shared_hooks" ]
     }
->>>>>>> 146.0.7669.0~1
   }
 
   # `raw_ptr` cannot be made a component due to CRT symbol issues.

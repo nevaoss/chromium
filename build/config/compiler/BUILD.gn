@@ -3214,23 +3214,7 @@ config("symbols") {
     asmflags = cflags
     ldflags = []
 
-<<<<<<< HEAD
-    # Split debug info with all thinlto builds except apple.
-    # thinlto requires -gsplit-dwarf in ldflags.
-    if (use_debug_fission && use_thin_lto && !is_apple) {
-      ldflags += split_dwarf_flags
-    }
-
-    # TODO(neva): Remove this when Neva GCC can remove use_gold logic.
-    if (use_neva_appruntime) {
-      _enable_gdb_index = symbol_level == 2 && !is_apple &&
-                          (use_gold || use_lld) && !is_wasm
-    } else {
-      _enable_gdb_index = symbol_level == 2 && !is_apple && use_lld && !is_wasm
-    }
-=======
     _enable_gdb_index = symbol_level == 2 && !is_apple && use_lld && !is_wasm
->>>>>>> 146.0.7669.0~1
     if (_enable_gdb_index) {
       if (is_clang) {
         # This flag enables the GNU-format pubnames and pubtypes sections,
