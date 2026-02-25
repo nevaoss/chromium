@@ -132,7 +132,6 @@ std::string OzonePlatform::GetPlatformNameForTest() {
   return GetOzonePlatformName();
 }
 
-<<<<<<< HEAD
 ///@name IS_NEVA_APPRUNTIME
 ///@{
 // static
@@ -141,12 +140,11 @@ bool OzonePlatform::IsWayland() {
   return result;
 }
 ///@}
-=======
+
 // static
 bool OzonePlatform::RunningOnWaylandForTest() {
   return OzonePlatform::GetPlatformNameForTest() == "wayland";
 }
->>>>>>> 146.0.7680.0~1
 
 PlatformClipboard* OzonePlatform::GetPlatformClipboard() {
   // Platforms that support system clipboard must override this method.

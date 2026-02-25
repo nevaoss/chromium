@@ -173,37 +173,6 @@ std::string GetDebugJSONForClusters(
   return debug_string;
 }
 
-<<<<<<< HEAD
-template <typename T>
-std::string GetDebugJSONForUrlKeywordSet(
-    const std::unordered_set<T>& keyword_set) {
-  base::ListValue keyword_list;
-  for (const auto& keyword : keyword_set) {
-    keyword_list.Append(keyword);
-  }
-
-  std::string debug_string;
-// TODO(neva): Remove this workaround when Neva GCC version upgraded to 12.3+.
-#if defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
-  if (!base::JSONWriter::WriteWithOptions(
-          keyword_list, base::JsonOptions::OPTIONS_PRETTY_PRINT,
-#else   // defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
-  if (!base::JSONWriter::WriteWithOptions(
-          keyword_list, base::JSONWriter::OPTIONS_PRETTY_PRINT,
-#endif  // !(defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__))
-          &debug_string)) {
-    debug_string = "Error: Could not write keywords list to JSON.";
-  }
-  return debug_string;
-}
-
-template std::string GetDebugJSONForUrlKeywordSet<std::u16string>(
-    const std::unordered_set<std::u16string>&);
-template std::string GetDebugJSONForUrlKeywordSet<std::string>(
-    const std::unordered_set<std::string>&);
-
-=======
->>>>>>> 146.0.7680.0~1
 std::string GetDebugJSONForKeywordMap(
     const std::unordered_map<std::u16string, history::ClusterKeywordData>&
         keyword_to_data_map) {
