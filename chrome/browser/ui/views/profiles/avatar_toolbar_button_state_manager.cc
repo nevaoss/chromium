@@ -946,22 +946,8 @@ class PromoStateProviderCoordinator
   }
 
  private:
-<<<<<<< HEAD
-  // TODO(neva): Remove this when we use Clang. Also, try to contribute it into
-  // upstream.
-#if defined(__GNUC__) && !defined(__clang__)
-  constexpr static const void* const tmpHistorySyncOptinCoordinatorKey =
-      nullptr;
-  constexpr static const void* const kHistorySyncOptinCoordinatorKey =
-      &tmpHistorySyncOptinCoordinatorKey;
-#else   // defined(__GNUC__) && !defined(__clang__)
-  constexpr static const void* const kHistorySyncOptinCoordinatorKey =
-      &kHistorySyncOptinCoordinatorKey;
-#endif  // !(defined(__GNUC__) && !defined(__clang__))
-=======
   constexpr static const void* const kPromoStateProviderCoordinatorKey =
       &kPromoStateProviderCoordinatorKey;
->>>>>>> 146.0.7669.0~1
 
   explicit PromoStateProviderCoordinator(Profile& profile)
       : profile_(profile),
