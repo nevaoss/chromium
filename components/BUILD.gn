@@ -399,11 +399,11 @@ test("components_unittests") {
     "//components/webui/flags:unit_tests",
   ]
 
-<<<<<<< HEAD
   # TODO(neva_rust): Remove this workaround when Neva supports Rust build.
   if (disable_rust_for_neva) {
     deps -= [ "//components/user_data_importer/utility:unit_tests" ]
-=======
+  }
+
   if (!is_fuchsia) {
     deps += [
       "//components/enterprise:unit_tests",
@@ -412,7 +412,6 @@ test("components_unittests") {
       "//components/enterprise/connectors/core:unit_tests",
       "//components/enterprise/obfuscation/core:unit_tests",
     ]
->>>>>>> 146.0.7680.0~1
   }
 
   if (enable_supervised_users) {

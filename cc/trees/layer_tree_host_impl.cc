@@ -2522,16 +2522,13 @@ void LayerTreeHostImpl::NotifyAllTileTasksCompleted() {
     // executes (within worker context's cleanup).
     if (image_decode_cache_holder_) {
       image_decode_cache_holder_->SetShouldAggressivelyFreeResources(true);
-<<<<<<< HEAD
+    }
 
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
     if (resource_pool_ && settings_.use_aggressive_release_policy)
       resource_pool_->InvalidateResources();
 #endif
 
-=======
-    }
->>>>>>> 146.0.7680.0~1
     SetContextVisibility(false);
   }
 }
