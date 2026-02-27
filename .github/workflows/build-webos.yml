@@ -10,6 +10,7 @@ on:
 
 jobs:
   build:
+    name: build-webos
     runs-on: self-hosted
     env:
       CI_TOKEN: ${{ secrets.CI_TOKEN }}
