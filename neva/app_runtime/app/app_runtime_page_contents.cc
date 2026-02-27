@@ -1042,6 +1042,7 @@ content::WebContents* PageContents::AddNewContents(
 }
 
 void PageContents::ActivateContents(content::WebContents* contents) {
+  SetFocus();
   delegate_->ActivateContents();
 }
 
