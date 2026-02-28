@@ -14,8 +14,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import("//neva/app_runtime/app_runtime_locales.gni")
+import("//neva/neva.gni")
 import("//webos/install/paths.gni")
 import("//webos/install/sysbus.gni")
+import("//webos/install/weboswebruntime/common_resources.gni")
 
 copy("wam_demo_cursor") {
   sources = [ "$root_out_dir/cursor.png" ]
@@ -68,6 +71,33 @@ install_scripts("wam_demo_scripts") {
   outputs = [ "$image_path/$wam_demo_dir/run_wam_demo" ]
 }
 
+copy("weboswebruntime") {
+  sources = weboswebruntime_resources
+
+  outputs = [ "$image_path/$wam_demo_data_dir/{{source_file_part}}" ]
+
+  deps = [
+    "//neva/app_runtime:app_runtime_resources", # for app_runtime_content.pak
+    "//third_party/icu:icudata",                # for icudtl.dat
+    "//v8:v8",                                  # for snapshot_blob.bin
+    "//webos:webos_resources",                  # for webos_content.pak
+  ]
+}
+
+copy("locales") {
+  sources = weboswebruntime_locales
+
+  foreach(locale, app_runtime_locales) {
+    sources += [ "$root_gen_dir/webos/repack/$locale.pak" ]
+  }
+
+  outputs = [ "$image_path/$wam_demo_data_locales_dir/{{source_file_part}}" ]
+  deps = [
+    "//third_party/blink/public/strings",
+    "//webos:resources",
+  ]
+}
+
 copy("wam_demo") {
   sources = [ "$root_out_dir/wam_demo" ]
   outputs = [ "$image_path/$wam_demo_dir/{{source_file_part}}" ]
@@ -83,4 +113,11 @@ copy("wam_demo") {
     ":wam_demo_manifest",
     ":wam_demo_roles",
   ]
+
+  if (!use_cbe || !is_wam_demo_cbe) {
+    deps += [
+      ":weboswebruntime",
+      ":locales",
+    ]
+  }
 }
