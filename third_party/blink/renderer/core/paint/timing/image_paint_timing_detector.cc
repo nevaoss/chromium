@@ -6,6 +6,9 @@
 #include <cstddef>
 
 #include "base/feature_list.h"
+#include "cc/layers/heads_up_display_layer.h"
+#include "cc/layers/layer.h"
+#include "cc/trees/layer_tree_host.h"
 #include "services/metrics/public/cpp/ukm_builders.h"
 #include "services/metrics/public/cpp/ukm_recorder.h"
 #include "third_party/blink/public/common/features.h"
@@ -22,6 +25,7 @@
 #include "third_party/blink/renderer/core/paint/timing/largest_contentful_paint_calculator.h"
 #include "third_party/blink/renderer/core/paint/timing/paint_timing.h"
 #include "third_party/blink/renderer/core/paint/timing/paint_timing_detector.h"
+#include "third_party/blink/renderer/core/paint/timing/paint_timing_utils.h"
 #include "third_party/blink/renderer/core/style/style_fetched_image.h"
 #include "third_party/blink/renderer/core/timing/dom_window_performance.h"
 #include "third_party/blink/renderer/core/timing/performance_entry.h"
@@ -29,6 +33,8 @@
 #include "third_party/blink/renderer/core/timing/soft_navigation_heuristics.h"
 #include "third_party/blink/renderer/platform/heap/thread_state.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
+#include "third_party/blink/renderer/platform/widget/frame_widget.h"
+#include "ui/gfx/geometry/rect_conversions.h"
 
 namespace blink {
 
@@ -92,15 +98,37 @@ ImagePaintTimingDetector::ImagePaintTimingDetector(LocalFrameView* frame_view)
       records_manager_(frame_view),
       frame_view_(frame_view) {}
 
-std::pair<ImageRecord*, bool>
-ImagePaintTimingDetector::UpdateMetricsCandidate() {
-  // Calling NotifyMetricsIfLargestImagePaintChanged only has an impact on
-  // PageLoadMetrics, and not on the web exposed metrics.
-  //
-  // Two different candidates are rare to have the same time and size.
-  // So when they are unchanged, the candidate is considered unchanged.
-  return GetLargestContentfulPaintCalculator()
-      ->NotifyMetricsIfLargestImagePaintChanged();
+void ImagePaintTimingDetector::SendRectsToHud() {
+  auto* hud_layer =
+      paint_timing::GetHUDLayerIfContentfulPaintRectsEnabled(frame_view_);
+
+  if (!hud_layer) {
+    return;
+  }
+
+  LocalFrame& main_frame = frame_view_->GetFrame().LocalFrameRoot();
+  FrameWidget* widget = main_frame.GetWidgetForLocalRoot();
+  if (!widget) {
+    return;
+  }
+
+  for (const auto& record : records_manager_.images_queued_for_paint_time_) {
+    if (record->FrameIndex() == frame_index_) {
+      cc::WebVitalMetricType type;
+
+      if (record->GetSoftNavigationContext()) {
+        type = cc::WebVitalMetricType::kInteractionContentfulPaint;
+      } else if (IsRecordingLargestImagePaint()) {
+        type = cc::WebVitalMetricType::kNavigationContentfulPaint;
+      } else {
+        continue;
+      }
+
+      hud_layer->AddWebVitalsDebugRect(
+          {type, gfx::ToEnclosedRect(
+                     widget->DIPsToBlinkSpace(record->RootVisualRect()))});
+    }
+  }
 }
 
 OptionalPaintTimingCallback
@@ -108,6 +136,9 @@ ImagePaintTimingDetector::TakePaintTimingCallback() {
   viewport_size_ = std::nullopt;
   if (!added_entry_in_latest_frame_)
     return std::nullopt;
+
+  // Do this before incrementing frame_index_;
+  SendRectsToHud();
 
   added_entry_in_latest_frame_ = false;
   auto callback = BindOnce(
@@ -390,7 +421,7 @@ bool ImagePaintTimingDetector::RecordImage(
     records_manager_.OnImageLoaded(record_id_hash, frame_index_, style_image);
     added_entry_in_latest_frame_ = true;
 
-    if (std::optional<PaintTimingVisualizer>& visualizer =
+    if (PaintTimingVisualizer* visualizer =
             frame_view_->GetPaintTimingDetector().Visualizer()) {
       visualizer->DumpImageDebuggingRect(
           object, mapped_visual_rect,
@@ -412,7 +443,7 @@ uint64_t ImagePaintTimingDetector::ComputeImageRectSize(
     const PropertyTreeStateOrAlias& current_paint_chunk_properties,
     const LayoutObject& object,
     const MediaTiming& media_timing) {
-  if (std::optional<PaintTimingVisualizer>& visualizer =
+  if (PaintTimingVisualizer* visualizer =
           frame_view_->GetPaintTimingDetector().Visualizer()) {
     visualizer->DumpImageDebuggingRect(
         object, mapped_visual_rect,

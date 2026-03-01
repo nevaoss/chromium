@@ -89,6 +89,7 @@ class ChromePermissionsClient : public permissions::PermissionsClient {
   void OnPromptResolved(
       const permissions::PermissionRequest* request,
       permissions::PermissionAction action,
+      const PromptOptions& prompt_options,
       permissions::PermissionPromptDisposition prompt_disposition,
       permissions::PermissionPromptDispositionReason prompt_disposition_reason,
       std::optional<QuietUiReason> quiet_ui_reason,
@@ -111,13 +112,12 @@ class ChromePermissionsClient : public permissions::PermissionsClient {
       const GURL& origin) override;
   bool CanBypassEmbeddingOriginCheck(const GURL& requesting_origin,
                                      const GURL& embedding_origin) override;
-  std::optional<GURL> OverrideCanonicalOrigin(
+  std::optional<GURL> GetCanonicalOriginOverride(
       const GURL& requesting_origin,
       const GURL& embedding_origin) override;
-  // Checks if `requesting_origin` and `embedding_origin` are the new tab page
-  // origins.
-  bool DoURLsMatchNewTabPage(const GURL& requesting_origin,
-                             const GURL& embedding_origin) override;
+  std::optional<GURL> GetEmbeddingOriginOverride(
+      const GURL& requesting_origin,
+      content::WebContents* web_contents) override;
 #if BUILDFLAG(IS_ANDROID)
   bool IsDseOrigin(content::BrowserContext* browser_context,
                    const url::Origin& origin) override;

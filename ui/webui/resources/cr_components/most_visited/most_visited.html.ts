@@ -21,7 +21,7 @@ export function getHtml(this: MostVisitedElement) {
       @mouseenter="${this.onTileHover_}" @mouseleave="${this.onTileExit_}"
       @mousedown="${this.onTileMouseDown_}" @keydown="${this.onTileKeyDown_}"
       draggable="true" data-index="${index}">
-      <a href="${item.url.url}" aria-label="${item.title}"
+      <a href="${item.url}" aria-label="${item.title}"
           draggable="false">
       </a>
       <cr-icon-button id="actionMenuButton" class="icon-more-vert"
@@ -31,7 +31,7 @@ export function getHtml(this: MostVisitedElement) {
             !this.isFromEnterpriseShortcut_(item.source)}"
           data-index="${index}"></cr-icon-button>
       <cr-icon-button id="removeButton" class="icon-clear"
-          title="${this.i18n('linkRemoveA11y', item.title)}"
+          title="${this.getRemoveButtonText_(item.title)}"
           @click="${this.onTileRemoveButtonClick_}" tabindex="0"
           ?hidden="${this.customLinksEnabled_ ||
             this.isFromEnterpriseShortcut_(item.source)}"

@@ -113,8 +113,8 @@ void DispatchOnCommitted(extensions::events::HistogramValue histogram_value,
       navigation_handle->GetRenderFrameHost();
   ui::PageTransition transition_type = navigation_handle->GetPageTransition();
 
-  base::Value::List args;
-  base::Value::Dict dict;
+  base::ListValue args;
+  base::DictValue dict;
   int tab_id = static_cast<int>(NevaExtensionsServiceFactory::GetService(
                                     web_contents->GetBrowserContext())
                                     ->GetTabHelper()
@@ -160,7 +160,7 @@ void DispatchOnCommitted(extensions::events::HistogramValue histogram_value,
   }
   dict.Set(web_navigation_api_constants::kTransitionTypeKey,
            transition_type_string);
-  base::Value::List qualifiers;
+  base::ListValue qualifiers;
   if (transition_type & ui::PAGE_TRANSITION_CLIENT_REDIRECT) {
     qualifiers.Append("client_redirect");
   }

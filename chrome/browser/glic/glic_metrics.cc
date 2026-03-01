@@ -19,8 +19,11 @@
 #include "chrome/browser/glic/host/context/glic_sharing_utils.h"
 #include "chrome/browser/glic/public/context/glic_sharing_manager.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
-#include "chrome/browser/glic/widget/browser_conditions.h"
 #include "chrome/browser/glic/widget/glic_window_controller.h"
+#include "chrome/browser/ui/browser_window/public/browser_collection_observer.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
+#include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/common/actor/task_id.h"
 #include "chrome/common/chrome_features.h"
 #include "components/prefs/pref_service.h"
@@ -35,12 +38,9 @@
 #if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/actor/actor_keyed_service.h"
 #include "chrome/browser/glic/fre/glic_fre_controller.h"
+#include "chrome/browser/glic/widget/browser_conditions.h"
 #include "chrome/browser/ui/browser.h"
-#include "chrome/browser/ui/browser_window/public/browser_collection_observer.h"
-#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
-#include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
 #include "chrome/browser/ui/browser_window/public/desktop_browser_window_capabilities.h"
-#include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "ui/views/widget/widget.h"
 #endif
@@ -224,7 +224,6 @@ enum class BrowserActiveState {
 };
 // LINT.ThenChange(//tools/metrics/histograms/metadata/glic/enums.xml:GlicBrowserActiveState)
 
-#if !BUILDFLAG(IS_ANDROID)
 // Computes BrowserActiveState.
 class BrowserActivityObserver : public BrowserCollectionObserver {
  public:
@@ -242,7 +241,12 @@ class BrowserActivityObserver : public BrowserCollectionObserver {
     ForEachCurrentBrowserWindowInterfaceOrderedByActivation(
         [&browser_hidden](BrowserWindowInterface* browser_window_interface) {
           if (!browser_window_interface->GetWindow()->IsMinimized() &&
+#if !BUILDFLAG(IS_ANDROID)
+              // BrowserActiveState is only used for metrics.
+              // `IsVisibleOnScreen()` is not available on Android, and we're
+              // not bothering to add it.
               browser_window_interface->capabilities()->IsVisibleOnScreen() &&
+#endif
               browser_window_interface->GetWindow()->IsVisible()) {
             browser_hidden = false;
             return false;
@@ -297,16 +301,6 @@ class BrowserActivityObserver : public BrowserCollectionObserver {
   base::ScopedObservation<GlobalBrowserCollection, BrowserCollectionObserver>
       browser_collection_observer_{this};
 };
-#else  // TODO(b/470059315): Implement this for android.
-
-class BrowserActivityObserver {
- public:
-  BrowserActiveState GetBrowserActiveState() const {
-    return BrowserActiveState::kBrowserActive;
-  }
-};
-
-#endif
 
 }  // namespace internal
 
@@ -343,6 +337,37 @@ GlicMetrics::GlicMetrics(Profile* profile, GlicEnabling* enabling)
 }
 
 GlicMetrics::~GlicMetrics() = default;
+
+void GlicMetrics::OnTrustFirstOnboardingShown() {
+  base::RecordAction(base::UserMetricsAction("Glic.Fre.Shown"));
+  base::RecordAction(base::UserMetricsAction("Glic.Fre.Shown.Onboarding"));
+  onboarding_shown_time_ = base::TimeTicks::Now();
+}
+
+void GlicMetrics::OnTrustFirstOnboardingAccept() {
+  OnFreAccepted();
+  base::RecordAction(base::UserMetricsAction("Glic.Fre.Accept"));
+  base::RecordAction(base::UserMetricsAction("Glic.Fre.Accept.Onboarding"));
+
+  if (!onboarding_shown_time_.is_null()) {
+    base::UmaHistogramLongTimes(
+        "Glic.Fre.TotalTime.Accepted.Onboarding",
+        base::TimeTicks::Now() - onboarding_shown_time_);
+    onboarding_shown_time_ = base::TimeTicks();
+  }
+}
+
+void GlicMetrics::OnTrustFirstOnboardingDismissed() {
+  if (onboarding_shown_time_.is_null() ||
+      enabling_->HasConsentedForProfile(profile_)) {
+    return;
+  }
+  base::RecordAction(base::UserMetricsAction("Glic.Fre.Dismissed.Onboarding"));
+
+  base::UmaHistogramLongTimes("Glic.Fre.TotalTime.Dismissed.Onboarding",
+                              base::TimeTicks::Now() - onboarding_shown_time_);
+  onboarding_shown_time_ = base::TimeTicks();
+}
 
 void GlicMetrics::OnFreAccepted() {
   // Store the current time in a instance variable.
@@ -547,10 +572,6 @@ void GlicMetrics::OnTurnCompleted(mojom::WebClientModel model,
                                 duration);
 }
 
-void GlicMetrics::OnModelChanged(mojom::WebClientModel model) {
-  current_model_ = model;
-}
-
 void GlicMetrics::OnRecordUseCounter(uint16_t counter) {
   static_assert(1000u > static_cast<uint32_t>(mojom::WebUseCounter::kMaxValue));
   // Since the front end can contain a newer version than what chrome is
@@ -562,6 +583,10 @@ void GlicMetrics::OnRecordUseCounter(uint16_t counter) {
 
 void GlicMetrics::OnGlicWindowStartedOpening(bool attached,
                                              mojom::InvocationSource source) {
+  if (GlicEnabling::IsTrustFirstOnboardingEnabledForProfile(profile_)) {
+    OnTrustFirstOnboardingShown();
+  }
+
   base::UmaHistogramEnumeration(
       "Glic.Session.Open.BrowserActiveState",
       browser_activity_observer_->GetBrowserActiveState());
@@ -723,6 +748,12 @@ void GlicMetrics::OnGlicWindowClose(Browser* last_active_browser,
     scroll_attempt_count_ = 0;
   }
 
+  if (!onboarding_shown_time_.is_null() &&
+      !enabling_->HasConsentedForProfile(profile_)) {
+    OnTrustFirstOnboardingDismissed();
+  }
+  onboarding_shown_time_ = base::TimeTicks();
+
   glic_window_size_timer_.Stop();
   profile_->GetPrefs()->SetTime(prefs::kGlicWindowLastDismissedTime,
                                 base::Time::Now());
@@ -752,7 +783,6 @@ void GlicMetrics::OnGlicScrollComplete(bool success) {
 }
 
 void GlicMetrics::LogClosedCaptionsShown() {
-  CHECK(base::FeatureList::IsEnabled(features::kGlicClosedCaptioning));
   bool pref_enabled =
       profile_->GetPrefs()->GetBoolean(prefs::kGlicClosedCaptioningEnabled);
   base::UmaHistogramBoolean("Glic.Response.ClosedCaptionsShown", pref_enabled);
@@ -882,10 +912,12 @@ void GlicMetrics::OnImpressionTimerFired() {
   }
   base::UmaHistogramEnumeration("Glic.EntryPoint.Status", impression);
 
+#if !BUILDFLAG(IS_ANDROID)
   ui::Accelerator saved_hotkey =
       glic::GlicLauncherConfiguration::GetGlobalHotkey();
   base::UmaHistogramBoolean("Glic.OsEntrypoint.Settings.ShortcutStatus",
                             saved_hotkey != ui::Accelerator());
+#endif
 }
 
 void GlicMetrics::OnGlicWindowSizeTimerFired() {

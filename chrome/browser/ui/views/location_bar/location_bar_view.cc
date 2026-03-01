@@ -17,6 +17,8 @@
 #include "base/i18n/rtl.h"
 #include "base/metrics/field_trial_params.h"
 #include "base/strings/utf_string_conversions.h"
+#include "base/trace_event/trace_event.h"
+#include "base/trace_event/typed_macros.h"
 #include "build/build_config.h"
 #include "chrome/app/chrome_command_ids.h"
 #include "chrome/app/vector_icons/vector_icons.h"
@@ -188,6 +190,7 @@
 #include "ui/views/controls/focus_ring.h"
 #include "ui/views/controls/highlight_path_generator.h"
 #include "ui/views/controls/label.h"
+#include "ui/views/interaction/element_tracker_views.h"
 #include "ui/views/property_effects.h"
 #include "ui/views/style/typography.h"
 #include "ui/views/style/typography_provider.h"
@@ -302,12 +305,13 @@ void LocationBarView::Init() {
 
     permission_dashboard_controller_ =
         std::make_unique<PermissionDashboardController>(
-            this, permission_dashboard_view_);
+            this, this, permission_dashboard_view_);
   } else {
     chip_controller_ = std::make_unique<ChipController>(
-        this, AddChildViewAt(std::make_unique<PermissionChipView>(
-                                 PermissionChipView::PressedCallback()),
-                             0));
+        this, this,
+        AddChildViewAt(std::make_unique<PermissionChipView>(
+                           PermissionChipView::PressedCallback()),
+                       0));
   }
 
   const auto& typography_provider = views::TypographyProvider::Get();
@@ -350,7 +354,12 @@ void LocationBarView::Init() {
   omnibox_view_ = AddChildView(std::move(omnibox_view));
   omnibox_view_->Init();
 
-  if (omnibox::IsAimPopupFeatureEnabled()) {
+  const bool is_web_app =
+      browser_ && web_app::AppBrowserController::IsWebApp(browser_);
+
+  // Skip creating the AIM WebUI for web apps since it's not supported there
+  // and results in an extra Omnibox process being created.
+  if (!is_web_app && omnibox::IsAimPopupFeatureEnabled()) {
     omnibox_popup_aim_presenter_ = std::make_unique<OmniboxPopupAimPresenter>(
         this, omnibox_controller_.get());
   }
@@ -359,9 +368,16 @@ void LocationBarView::Init() {
       base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxPopup) &&
       !base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxFullPopup);
 
-  if ((web_ui_popup_dropdown_only &&
-       !base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxPopupDebug)) ||
-      base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxFullPopup)) {
+  // Default to the legacy popup view for web apps since creating the WebUI
+  // popup results in an extra Omnibox process being created (note that the
+  // address bar is not shown in web apps). When the legacy
+  // `OmniboxPopupViewViews` is deprecated we will need to ensure that a null
+  // `omnibox_popup_view_` doesn't cause any issues (or aim for a cleaner
+  // solution).
+  if (!is_web_app &&
+      ((web_ui_popup_dropdown_only &&
+        !base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxPopupDebug)) ||
+       base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxFullPopup))) {
     omnibox_popup_view_ = std::make_unique<OmniboxPopupViewWebUI>(
         /*omnibox_view=*/omnibox_view_, omnibox_controller_.get(),
         /*location_bar_view=*/this);
@@ -483,10 +499,6 @@ void LocationBarView::Init() {
     // first so that they appear on the left side of the icon container.
     // TODO(crbug.com/40835681): Improve the ordering heuristics for page action
     // icons and determine a way to handle simultaneous icon animations.
-    if (base::FeatureList::IsEnabled(commerce::kProductSpecifications)) {
-      params.types_enabled.push_back(
-          PageActionIconType::kProductSpecifications);
-    }
     params.types_enabled.push_back(PageActionIconType::kDiscounts);
     params.types_enabled.push_back(PageActionIconType::kPriceInsights);
     params.types_enabled.push_back(PageActionIconType::kPriceTracking);
@@ -540,18 +552,10 @@ void LocationBarView::Init() {
                                 PageActionIconType::kLensOverlayHomework);
   }
 
-  // Because the AIM eligibility service might not be ready on startup,
-  // the AI Mode page action type is always added. Unless the main AIM
-  // omnibox entrypoint Feature is explicitly disabled, which can be used
-  // as a kill switch in case of any unanticipated issues with this
-  // approach.
-  auto* feature_list = base::FeatureList::GetInstance();
-  bool aim_omnibox_entrypoint_explicitly_disabled =
-      feature_list &&
-      feature_list->IsFeatureOverridden(
-          omnibox::kAiModeOmniboxEntryPoint.name) &&
-      !base::FeatureList::IsEnabled(omnibox::kAiModeOmniboxEntryPoint);
-  if (!aim_omnibox_entrypoint_explicitly_disabled) {
+  // Because AIM eligibility can change during the lifecycle of the
+  // `LocationBarView`, the AI Mode page action is added regardless of
+  // eligibility, but its visibility is toggled to match eligibility.
+  if (base::FeatureList::IsEnabled(omnibox::kAiModeOmniboxEntryPoint)) {
     // Position in the leading position, like the entrypoint for
     // kLensOverlayHomework above. While both chips may be enabled, they will
     // not appear at the same time due to different focus behavior. The
@@ -581,7 +585,7 @@ void LocationBarView::Init() {
   page_action_icon_controller_ = page_action_icon_container_->controller();
 
   if (!page_action_icon_container_->children().empty() &&
-      !aim_omnibox_entrypoint_explicitly_disabled &&
+      base::FeatureList::IsEnabled(omnibox::kAiModeOmniboxEntryPoint) &&
       !IsPageActionMigrated(PageActionIconType::kAiMode)) {
     auto* first_page_action_icon_view = static_cast<PageActionIconView*>(
         page_action_icon_container_->children().front());
@@ -1149,6 +1153,7 @@ bool LocationBarView::HasSecurityStateChanged() {
 }
 
 void LocationBarView::Update(WebContents* contents) {
+  TRACE_EVENT("omnibox", "LocationBarView::Update");
   if (contents) {
     page_action_icon_controller_->UpdateWebContents(contents);
   }
@@ -1222,6 +1227,42 @@ LocationBarView::GetChipAnchor() {
     return {{chip, chip, views::BubbleBorder::TOP_LEFT}};
   }
   return std::nullopt;
+}
+
+ui::TrackedElement* LocationBarView::GetAnchorOrNull() {
+  return views::ElementTrackerViews::GetInstance()->GetElementForView(this);
+}
+
+Browser* LocationBarView::GetBrowser() {
+  return browser();
+}
+
+bool LocationBarView::IsVisible() const {
+  return GetVisible();
+}
+
+bool LocationBarView::IsDrawn() const {
+  return View::IsDrawn();
+}
+
+bool LocationBarView::IsTopLevelFullscreen() const {
+  return GetWidget()->GetTopLevelWidget()->IsFullscreen();
+}
+
+void LocationBarView::InvalidateLayout() {
+  View::InvalidateLayout();
+}
+
+gfx::Rect LocationBarView::Bounds() const {
+  return bounds();
+}
+
+gfx::Size LocationBarView::MinimumSize() const {
+  return GetMinimumSize();
+}
+
+gfx::Size LocationBarView::PreferredSize() const {
+  return GetPreferredSize();
 }
 
 SkColor LocationBarView::GetIconLabelBubbleSurroundingForegroundColor() const {
@@ -1535,6 +1576,7 @@ void LocationBarView::RefreshBackground() {
 }
 
 bool LocationBarView::RefreshContentSettingViews() {
+  TRACE_EVENT("omnibox", "LocationBarView::RefreshContentSettingViews");
   if (web_app::AppBrowserController::IsWebApp(browser_)) {
     // For web apps, the location bar is normally hidden and icons appear in
     // the window frame instead.
@@ -1554,7 +1596,7 @@ bool LocationBarView::RefreshContentSettingViews() {
         base::FeatureList::IsEnabled(
             content_settings::features::kLeftHandSideActivityIndicators)) {
       visibility_changed |= permission_dashboard_controller()->Update(
-          v->content_setting_image_model(), v->delegate());
+          v->content_setting_image_model());
     } else {
       v->Update();
       if (was_visible != v->GetVisible()) {
@@ -1596,6 +1638,10 @@ void LocationBarView::RefreshAiModePageActionIconView() {
 
 void LocationBarView::RefreshPageActionContainerViewAndIconsVisibility(
     bool should_hide_page_actions) {
+  TRACE_EVENT(
+      "omnibox",
+      "LocationBarView::RefreshPageActionContainerViewAndIconsVisibility",
+      "should_hide_page_actions", should_hide_page_actions);
   page_actions::PageActionController* page_action_controller =
       GetPageActionController();
   page_action_container_->SetController(page_action_controller);
@@ -1609,11 +1655,10 @@ void LocationBarView::RefreshClearAllButtonIcon() {
   const bool touch_ui = ui::TouchUiController::Get()->touch_ui();
   const gfx::VectorIcon& icon =
       touch_ui ? omnibox::kClearIcon : kTabCloseNormalIcon;
-  const ui::ColorProvider* cp = GetColorProvider();
   SetImageFromVectorIconWithColor(
       clear_all_button_, icon,
-      cp->GetColor(kColorLocationBarClearAllButtonIcon),
-      cp->GetColor(kColorLocationBarClearAllButtonIconDisabled));
+      {kColorLocationBarClearAllButtonIcon,
+       kColorLocationBarClearAllButtonIconDisabled});
   clear_all_button_->SetBorder(views::CreateEmptyBorder(
       GetLayoutInsets(LOCATION_BAR_ICON_INTERIOR_PADDING)));
 }
@@ -1923,6 +1968,7 @@ void LocationBarView::OnChildViewRemoved(View* observed_view, View* child) {
 }
 
 void LocationBarView::OnChanged() {
+  TRACE_EVENT("omnibox", "LocationBarView::OnChanged");
   // Ensure that background colors get updated on tab-switch.
   RefreshBackground();
   location_icon_view_->Update(

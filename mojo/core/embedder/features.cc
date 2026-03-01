@@ -16,8 +16,6 @@ const base::FeatureParam<int> kMojoUseEventFdPages{&kMojoUseEventFd,
 #endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) ||
         // BUILDFLAG(IS_ANDROID)
 
-BASE_FEATURE(kMojoInlineMessagePayloads, base::FEATURE_ENABLED_BY_DEFAULT);
-
 #if BUILDFLAG(MOJO_SUPPORT_LEGACY_CORE)
 // TODO(neva): Remove BUILDFLAG(IS_WEBOS) if mojoipcz is better when considering
 // memory and performance perspective.

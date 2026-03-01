@@ -91,7 +91,7 @@ class EMULATOR_EXPORT EmulatorDataSource : public base::Thread {
                         const scoped_refptr<base::TaskRunner>& taskRunner);
   std::string GetCachedValueForURL(const std::string& url);
   static std::string PrepareRequestParams(RequestArgs& args);
-  static std::string PrepareRequestParams(base::Value::Dict& request);
+  static std::string PrepareRequestParams(base::DictValue& request);
   static bool GetResponseParams(ResponseArgs& args,
                                 const std::string& response);
 

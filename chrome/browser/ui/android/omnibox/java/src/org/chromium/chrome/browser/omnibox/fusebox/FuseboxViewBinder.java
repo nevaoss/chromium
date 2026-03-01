@@ -18,11 +18,11 @@ import android.view.View;
 import android.widget.Button;
 
 import androidx.annotation.ColorInt;
-import androidx.annotation.DimenRes;
 import androidx.annotation.Px;
 import androidx.annotation.StringRes;
 import androidx.annotation.StyleRes;
 import androidx.constraintlayout.widget.ConstraintSet;
+import androidx.recyclerview.widget.RecyclerView.LayoutManager;
 
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
@@ -58,8 +58,6 @@ class FuseboxViewBinder {
             updateButtonsVisibilityAndStyling(model, view);
             updateButtonsA11yAnnouncements(model, view);
             updateToolDrawables(model.get(FuseboxProperties.AUTOCOMPLETE_REQUEST_TYPE), view);
-        } else if (propertyKey == FuseboxProperties.AUTOCOMPLETE_REQUEST_TYPE_CHANGEABLE) {
-            updateButtonsVisibilityAndStyling(model, view);
         } else if (propertyKey == FuseboxProperties.AUTOCOMPLETE_REQUEST_TYPE_CLICKED) {
             view.requestType.setOnClickListener(
                     v -> model.get(FuseboxProperties.AUTOCOMPLETE_REQUEST_TYPE_CLICKED).run());
@@ -67,6 +65,26 @@ class FuseboxViewBinder {
             boolean visible = model.get(FuseboxProperties.ATTACHMENTS_VISIBLE);
             view.attachmentsView.setVisibility(visible ? View.VISIBLE : View.GONE);
             reanchorViewsForCompactFusebox(model, view);
+
+            // This fixes a flicker we see when transitioning from 0 attachments to 1 attachment.
+            // The last attachment would be shown at the start of the fade animation, and any
+            // attempt to reset the attachment View or clear out pending animations didn't help. The
+            // correct solution is probably to instead allow the fade out animation to play, but
+            // that's difficult due to how this and similar classes are set up here. We don't have
+            // control over event sequencing or good observability on RV animations. Note when
+            // trying to repro this bug, as of writing only the add current tab context is able to
+            // trigger this, all of the intent based context flows have full screen animations that
+            // hide inconsistencies. Lastly, this removeAllViews() fixes the issue when invoked on
+            // either visibility edge. Here we're running it when hidden instead of when shown.
+            // While it doesn't really matter, this kind of shows that we've given up on the fade
+            // out animation, but we're trying to avoid tampering with the fade in animation, which
+            // still works.
+            if (!visible) {
+                LayoutManager layoutManager = view.attachmentsView.getLayoutManager();
+                if (layoutManager != null) {
+                    layoutManager.removeAllViews();
+                }
+            }
         } else if (propertyKey == FuseboxProperties.BUTTON_ADD_CLICKED) {
             view.addButton.setOnClickListener(
                     v -> model.get(FuseboxProperties.BUTTON_ADD_CLICKED).run());
@@ -79,71 +97,72 @@ class FuseboxViewBinder {
             view.popup.mPopupWindow.setBackgroundDrawable(background);
         } else if (propertyKey == FuseboxProperties.COMPACT_UI) {
             reanchorViewsForCompactFusebox(model, view);
-        } else if (propertyKey == FuseboxProperties.CURRENT_TAB_BUTTON_CLICKED) {
+        } else if (propertyKey == FuseboxProperties.POPUP_ATTACH_CAMERA_CLICKED) {
+            view.popup.mCameraButton.setOnClickListener(
+                    v -> model.get(FuseboxProperties.POPUP_ATTACH_CAMERA_CLICKED).run());
+        } else if (propertyKey == FuseboxProperties.POPUP_ATTACH_CAMERA_ENABLED) {
+            view.popup.mCameraButton.setEnabled(
+                    model.get(FuseboxProperties.POPUP_ATTACH_CAMERA_ENABLED));
+        } else if (propertyKey == FuseboxProperties.POPUP_ATTACH_CLIPBOARD_CLICKED) {
+            view.popup.mClipboardButton.setOnClickListener(
+                    v -> model.get(FuseboxProperties.POPUP_ATTACH_CLIPBOARD_CLICKED).run());
+        } else if (propertyKey == FuseboxProperties.POPUP_ATTACH_CLIPBOARD_VISIBLE) {
+            view.popup.mClipboardButton.setVisibility(
+                    model.get(FuseboxProperties.POPUP_ATTACH_CLIPBOARD_VISIBLE)
+                            ? View.VISIBLE
+                            : View.GONE);
+        } else if (propertyKey == FuseboxProperties.POPUP_ATTACH_CURRENT_TAB_CLICKED) {
             view.popup.mAddCurrentTab.setOnClickListener(
-                    v -> model.get(FuseboxProperties.CURRENT_TAB_BUTTON_CLICKED).run());
-        } else if (propertyKey == FuseboxProperties.CURRENT_TAB_BUTTON_ENABLED) {
+                    v -> model.get(FuseboxProperties.POPUP_ATTACH_CURRENT_TAB_CLICKED).run());
+        } else if (propertyKey == FuseboxProperties.POPUP_ATTACH_CURRENT_TAB_ENABLED) {
             setIsEnabledAndReapplyColorFilter(
                     view.popup.mAddCurrentTab,
-                    model.get(FuseboxProperties.CURRENT_TAB_BUTTON_ENABLED));
-        } else if (propertyKey == FuseboxProperties.CURRENT_TAB_BUTTON_FAVICON) {
+                    model.get(FuseboxProperties.POPUP_ATTACH_CURRENT_TAB_ENABLED));
+        } else if (propertyKey == FuseboxProperties.POPUP_ATTACH_CURRENT_TAB_FAVICON) {
             updateForCurrentTabFavicon(
-                    model.get(FuseboxProperties.CURRENT_TAB_BUTTON_FAVICON), view);
-        } else if (propertyKey == FuseboxProperties.CURRENT_TAB_BUTTON_VISIBLE) {
+                    model.get(FuseboxProperties.POPUP_ATTACH_CURRENT_TAB_FAVICON), view);
+        } else if (propertyKey == FuseboxProperties.POPUP_ATTACH_CURRENT_TAB_VISIBLE) {
             view.popup.mAddCurrentTab.setVisibility(
-                    model.get(FuseboxProperties.CURRENT_TAB_BUTTON_VISIBLE)
+                    model.get(FuseboxProperties.POPUP_ATTACH_CURRENT_TAB_VISIBLE)
                             ? View.VISIBLE
                             : View.GONE);
-        } else if (propertyKey == FuseboxProperties.POPUP_AI_MODE_CLICKED) {
+        } else if (propertyKey == FuseboxProperties.POPUP_ATTACH_FILE_CLICKED) {
+            view.popup.mFileButton.setOnClickListener(
+                    v -> model.get(FuseboxProperties.POPUP_ATTACH_FILE_CLICKED).run());
+        } else if (propertyKey == FuseboxProperties.POPUP_ATTACH_FILE_ENABLED) {
+            view.popup.mFileButton.setEnabled(
+                    model.get(FuseboxProperties.POPUP_ATTACH_FILE_ENABLED));
+        } else if (propertyKey == FuseboxProperties.POPUP_ATTACH_FILE_VISIBLE) {
+            view.popup.mFileButton.setVisibility(
+                    model.get(FuseboxProperties.POPUP_ATTACH_FILE_VISIBLE)
+                            ? View.VISIBLE
+                            : View.GONE);
+        } else if (propertyKey == FuseboxProperties.POPUP_ATTACH_GALLERY_CLICKED) {
+            view.popup.mGalleryButton.setOnClickListener(
+                    v -> model.get(FuseboxProperties.POPUP_ATTACH_GALLERY_CLICKED).run());
+        } else if (propertyKey == FuseboxProperties.POPUP_ATTACH_GALLERY_ENABLED) {
+            view.popup.mGalleryButton.setEnabled(
+                    model.get(FuseboxProperties.POPUP_ATTACH_GALLERY_ENABLED));
+        } else if (propertyKey == FuseboxProperties.POPUP_ATTACH_TAB_PICKER_CLICKED) {
+            view.popup.mTabButton.setOnClickListener(
+                    v -> model.get(FuseboxProperties.POPUP_ATTACH_TAB_PICKER_CLICKED).run());
+        } else if (propertyKey == FuseboxProperties.POPUP_ATTACH_TAB_PICKER_ENABLED) {
+            view.popup.mTabButton.setEnabled(
+                    model.get(FuseboxProperties.POPUP_ATTACH_TAB_PICKER_ENABLED));
+        } else if (propertyKey == FuseboxProperties.POPUP_TOOL_AI_MODE_CLICKED) {
             view.popup.mAiModeButton.setOnClickListener(
-                    v -> model.get(FuseboxProperties.POPUP_AI_MODE_CLICKED).run());
-        } else if (propertyKey == FuseboxProperties.POPUP_CAMERA_BUTTON_ENABLED) {
-            view.popup.mCameraButton.setEnabled(
-                    model.get(FuseboxProperties.POPUP_CAMERA_BUTTON_ENABLED));
-        } else if (propertyKey == FuseboxProperties.POPUP_CAMERA_CLICKED) {
-            view.popup.mCameraButton.setOnClickListener(
-                    v -> model.get(FuseboxProperties.POPUP_CAMERA_CLICKED).run());
-        } else if (propertyKey == FuseboxProperties.POPUP_CLIPBOARD_BUTTON_VISIBLE) {
-            view.popup.mClipboardButton.setVisibility(
-                    model.get(FuseboxProperties.POPUP_CLIPBOARD_BUTTON_VISIBLE)
-                            ? View.VISIBLE
-                            : View.GONE);
-        } else if (propertyKey == FuseboxProperties.POPUP_CLIPBOARD_CLICKED) {
-            view.popup.mClipboardButton.setOnClickListener(
-                    v -> model.get(FuseboxProperties.POPUP_CLIPBOARD_CLICKED).run());
-        } else if (propertyKey == FuseboxProperties.POPUP_CREATE_IMAGE_BUTTON_ENABLED) {
+                    v -> model.get(FuseboxProperties.POPUP_TOOL_AI_MODE_CLICKED).run());
+        } else if (propertyKey == FuseboxProperties.POPUP_TOOL_CREATE_IMAGE_CLICKED) {
+            view.popup.mCreateImageButton.setOnClickListener(
+                    v -> model.get(FuseboxProperties.POPUP_TOOL_CREATE_IMAGE_CLICKED).run());
+        } else if (propertyKey == FuseboxProperties.POPUP_TOOL_CREATE_IMAGE_ENABLED) {
             setIsEnabledAndReapplyColorFilter(
                     view.popup.mCreateImageButton,
-                    model.get(FuseboxProperties.POPUP_CREATE_IMAGE_BUTTON_ENABLED));
-        } else if (propertyKey == FuseboxProperties.POPUP_CREATE_IMAGE_BUTTON_VISIBLE) {
+                    model.get(FuseboxProperties.POPUP_TOOL_CREATE_IMAGE_ENABLED));
+        } else if (propertyKey == FuseboxProperties.POPUP_TOOL_CREATE_IMAGE_VISIBLE) {
             updateButtonsVisibilityAndStyling(model, view);
-        } else if (propertyKey == FuseboxProperties.POPUP_CREATE_IMAGE_CLICKED) {
-            view.popup.mCreateImageButton.setOnClickListener(
-                    v -> model.get(FuseboxProperties.POPUP_CREATE_IMAGE_CLICKED).run());
-        } else if (propertyKey == FuseboxProperties.POPUP_FILE_BUTTON_ENABLED) {
-            view.popup.mFileButton.setEnabled(
-                    model.get(FuseboxProperties.POPUP_FILE_BUTTON_ENABLED));
-        } else if (propertyKey == FuseboxProperties.POPUP_FILE_BUTTON_VISIBLE) {
-            view.popup.mFileButton.setVisibility(
-                    model.get(FuseboxProperties.POPUP_FILE_BUTTON_VISIBLE)
-                            ? View.VISIBLE
-                            : View.GONE);
-        } else if (propertyKey == FuseboxProperties.POPUP_FILE_CLICKED) {
-            view.popup.mFileButton.setOnClickListener(
-                    v -> model.get(FuseboxProperties.POPUP_FILE_CLICKED).run());
-        } else if (propertyKey == FuseboxProperties.POPUP_GALLERY_CLICKED) {
-            view.popup.mGalleryButton.setOnClickListener(
-                    v -> model.get(FuseboxProperties.POPUP_GALLERY_CLICKED).run());
-        } else if (propertyKey == FuseboxProperties.POPUP_GALLERY_BUTTON_ENABLED) {
-            view.popup.mGalleryButton.setEnabled(
-                    model.get(FuseboxProperties.POPUP_GALLERY_BUTTON_ENABLED));
-        } else if (propertyKey == FuseboxProperties.POPUP_TAB_PICKER_CLICKED) {
-            view.popup.mTabButton.setOnClickListener(
-                    v -> model.get(FuseboxProperties.POPUP_TAB_PICKER_CLICKED).run());
         } else if (propertyKey == FuseboxProperties.SHOW_DEDICATED_MODE_BUTTON) {
             updateButtonsVisibilityAndStyling(model, view);
-        } else if (propertyKey == FuseboxProperties.POPUP_TAB_PICKER_ENABLED) {
-            view.popup.mTabButton.setEnabled(model.get(FuseboxProperties.POPUP_TAB_PICKER_ENABLED));
         }
         // go/keep-sorted end
     }
@@ -248,8 +267,6 @@ class FuseboxViewBinder {
     }
 
     static void updateButtonsVisibilityAndStyling(PropertyModel model, FuseboxViewHolder views) {
-        boolean isRequestTypeChangeable =
-                model.get(FuseboxProperties.AUTOCOMPLETE_REQUEST_TYPE_CHANGEABLE);
         boolean showFuseboxToolbar = model.get(FuseboxProperties.ATTACHMENTS_TOOLBAR_VISIBLE);
         boolean showDedicatedModeButton = model.get(FuseboxProperties.SHOW_DEDICATED_MODE_BUTTON);
         boolean isAiModeUsed =
@@ -370,13 +387,9 @@ class FuseboxViewBinder {
         }
 
         boolean isCreateImageButtonVisible =
-                isRequestTypeChangeable
-                        && model.get(FuseboxProperties.POPUP_CREATE_IMAGE_BUTTON_VISIBLE);
-        views.popup.mAiModeButton.setVisibility(isRequestTypeChangeable ? View.VISIBLE : View.GONE);
+                model.get(FuseboxProperties.POPUP_TOOL_CREATE_IMAGE_VISIBLE);
         views.popup.mCreateImageButton.setVisibility(
                 isCreateImageButtonVisible ? View.VISIBLE : View.GONE);
-        views.popup.mRequestTypeDivider.setVisibility(
-                isRequestTypeChangeable ? View.VISIBLE : View.GONE);
 
         @StyleRes
         int textAppearance = OmniboxResourceProvider.getPopupButtonTextRes(brandedColorScheme);
@@ -397,13 +410,13 @@ class FuseboxViewBinder {
     }
 
     static void reanchorViewsForCompactFusebox(PropertyModel model, FuseboxViewHolder views) {
-        Resources res = views.parentView.getResources();
         boolean shouldShowCompactUi =
                 model.get(FuseboxProperties.COMPACT_UI)
                         || !model.get(FuseboxProperties.ATTACHMENTS_TOOLBAR_VISIBLE);
 
         int topToTop = shouldShowCompactUi ? R.id.url_bar : ConstraintSet.UNSET;
         int topToBottom = shouldShowCompactUi ? ConstraintSet.UNSET : R.id.url_bar;
+        int bottomToBottom = shouldShowCompactUi ? ConstraintSet.UNSET : ConstraintSet.PARENT_ID;
 
         var cs = new ConstraintSet();
         cs.clone(views.parentView);
@@ -419,47 +432,9 @@ class FuseboxViewBinder {
         if (topToBottom != ConstraintSet.UNSET) {
             cs.connect(id, ConstraintSet.TOP, topToBottom, ConstraintSet.BOTTOM);
         }
-        cs.connect(id, ConstraintSet.BOTTOM, ConstraintSet.PARENT_ID, ConstraintSet.BOTTOM);
-
-        @DimenRes int urlBarMinHeightRes;
-        @DimenRes int urlBarTopMarginRes;
-        if (shouldShowCompactUi) {
-            // Restore the non-expanded fusebox min height.
-            urlBarMinHeightRes = R.dimen.location_bar_height;
-            // Supposed to have 4dp of gap on the top and bottom here for to account for the inset
-            // of the background, but it causes problems as the toolbar also has a min height. Using
-            // 0 will work instead.
-            urlBarTopMarginRes = R.dimen.fusebox_url_bar_top_margin_compact;
-        } else {
-            // Override the min height being used to allow fusebox elements to squish closer to the
-            // url bar. Visual white space is still maintained by these other elements instead of
-            // the url bar, as they need to be larger than they visually appear for min touch sizes.
-            urlBarMinHeightRes = R.dimen.fusebox_expanded_location_bar_height;
-            cs.setMargin(
-                    id,
-                    ConstraintSet.BOTTOM,
-                    res.getDimensionPixelSize(R.dimen.fusebox_button_bottom_margin));
-            boolean hasAttachments = model.get(FuseboxProperties.ATTACHMENTS_VISIBLE);
-            urlBarTopMarginRes =
-                    hasAttachments
-                            ? R.dimen.fusebox_url_bar_top_margin_with_attachments
-                            : R.dimen.fusebox_url_bar_top_margin_expanded;
+        if (bottomToBottom != ConstraintSet.UNSET) {
+            cs.connect(id, ConstraintSet.BOTTOM, bottomToBottom, ConstraintSet.BOTTOM);
         }
-
-        // TODO(https://crbug.com/470120691): Modifications to the url bar is a layering violation.
-        View urlBar = views.parentView.findViewById(R.id.url_bar);
-        if (urlBar != null) {
-            urlBar.setMinimumHeight(res.getDimensionPixelSize(urlBarMinHeightRes));
-        }
-
-        cs.setMargin(
-                id,
-                ConstraintSet.START,
-                res.getDimensionPixelSize(R.dimen.fusebox_button_start_margin));
-        @Px int urlBarTopMarginPx = res.getDimensionPixelSize(urlBarTopMarginRes);
-        cs.setMargin(R.id.url_bar, ConstraintSet.TOP, urlBarTopMarginPx);
-        cs.setMargin(R.id.delete_button, ConstraintSet.TOP, urlBarTopMarginPx);
-        cs.setMargin(R.id.location_bar_status, ConstraintSet.TOP, urlBarTopMarginPx);
 
         cs.connect(
                 R.id.url_bar,

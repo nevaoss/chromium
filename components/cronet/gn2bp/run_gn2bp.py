@@ -14,18 +14,22 @@ and pass Cronet tests in Android infra. The CL will not be submitted.
 """
 
 import argparse
+
 import contextlib
 import hashlib
 import multiprocessing.dummy
 import json
 import os
 import pathlib
+import re
 import string
-import subprocess
+import base64
 import sys
 import tempfile
 import textwrap
 import time
+import urllib.request
+from functools import cmp_to_key
 from typing import List, Optional, Set, Tuple
 
 REPOSITORY_ROOT = os.path.abspath(
@@ -34,6 +38,7 @@ REPOSITORY_ROOT = os.path.abspath(
 sys.path.insert(0, REPOSITORY_ROOT)
 import build.android.gyp.util.build_utils as build_utils  # pylint: disable=wrong-import-position
 import components.cronet.tools.utils as cronet_utils  # pylint: disable=wrong-import-position
+import components.cronet.tools.breakages_constants as breakages_constants  # pylint: disable=wrong-import-position
 
 _BORINGSSL_PATH = os.path.join(REPOSITORY_ROOT, 'third_party', 'boringssl')
 _BORINGSSL_SCRIPT = os.path.join('src', 'util', 'generate_build_files.py')
@@ -51,7 +56,10 @@ _GN2BP_SCRIPT_PATH = os.path.join(REPOSITORY_ROOT,
 _JAVA_HOME = os.path.join(REPOSITORY_ROOT, 'third_party', 'jdk', 'current')
 _JAVA_PATH = os.path.join(_JAVA_HOME, 'bin', 'java')
 _OUT_DIR = os.path.join(REPOSITORY_ROOT, 'out')
-
+_BREAKAGES_FILE_URL = "https://chromium.googlesource.com/chromium/src/+/refs/heads/main/components/cronet/android/breakages.json?format=TEXT"
+# The changeID of all commits submitted between NOW and last _MONTHS_OF_CHANGELIST
+# months will be collected and checked against the breakages.json
+_MONTHS_OF_CHANGELIST = 6
 
 class _OptionalExit(contextlib.AbstractContextManager):
   """A context manager wrapper that optionally skips the exit phase of its
@@ -92,6 +100,9 @@ def _run_license_generation():
   cronet_utils.run(["python3", _GENERATE_LICENSE_SCRIPT_PATH])
 
 
+def _is_trybot():
+  return os.environ.get('SWARMING_BOT_ID',
+                        '').startswith('luci-chrome-try-')
 def _run_gn2bp(desc_files: Set[tempfile.NamedTemporaryFile],
                skip_build_scripts: bool, delete_temporary_files: bool,
                channel: str) -> int:
@@ -154,16 +165,19 @@ def _gen_extras_bp(import_channel: str):
           GN2BP_MODULE_PREFIX=f'{import_channel}_cronet_'))
 
 
-def _gen_androidtest_xml():
+def _gen_androidtest_xml(import_channel: str):
   """Generate AndroidTest.xml, required to run test in Android."""
+  module_prefix = f'{import_channel}_cronet_'
   androidtest_xml_template_path = os.path.join(REPOSITORY_ROOT, 'components',
                                                'cronet', 'gn2bp', 'templates',
                                                'AndroidTest.xml.template')
   androidtest_xml_template_contents = cronet_utils.read_file(
       androidtest_xml_template_path)
   androidtest_xml_path = os.path.join(REPOSITORY_ROOT, 'AndroidTest.xml')
-  cronet_utils.write_file(androidtest_xml_path,
-                          androidtest_xml_template_contents)
+  cronet_utils.write_file(
+      androidtest_xml_path,
+      string.Template(androidtest_xml_template_contents).substitute(
+          GN2BP_MODULE_PREFIX=module_prefix))
 
 def _gen_boringssl(import_channel: str):
   """Generate boringssl Android build files."""
@@ -210,6 +224,13 @@ def _wait_and_fail_if_not_presubmit_verified(change_id: str):
       time.sleep(60 * 5)  # 5 mins
 
 
+def _is_bot_environment():
+  return os.environ.get('SWARMING_BOT_ID', None) is not None
+
+def _is_ci_bot():
+  return os.environ.get('SWARMING_BOT_ID',
+                        '').startswith('luci-chrome-trusted-')
+
 def _run_copybara_to_aosp(config: str, copybara_binary: str,
                           git_url_and_branch: Optional[Tuple[str, str]],
                           regenerate_consistency_file: bool,
@@ -236,7 +257,7 @@ def _run_copybara_to_aosp(config: str, copybara_binary: str,
       Chromium version: {version}
 
       """)
-  if not os.environ.get('SWARMING_BOT_ID', '').startswith('luci-chrome-trusted-'):
+  if not _is_ci_bot():
     # This is not ideal, but we don't have a better signal to tell if gn2bp is
     # running in CI or somewhere else.
     #
@@ -338,6 +359,159 @@ def _fill_desc_file_for_arch(arch, desc_file, delete_temporary_files):
     _write_desc_json(gn_out_dir, desc_file)
 
 
+# TODO(crbug.com/481701970): Create an abstraction for versions and move this there.
+def compare_versions(version1: str, version2: str) -> int:
+  return int(version1.split('.')[2]) - int(version2.split('.')[2])
+
+
+# TODO(crbug.com/481701970): Create an abstraction for versions and move this there.
+def sort_versions(versions: List[str]) -> List[str]:
+  return sorted(versions, key=cmp_to_key(compare_versions))
+
+def _verify_latest_stable_or_exit(stamp: str):
+  """Verifies that the current checkout is on the latest stable milestone."""
+  print('Fetching latest stable version from chromiumdash...')
+  with urllib.request.urlopen(
+      # Chromiumdash lists releases by date. Because of LTS backports, an older
+      # milestone is often released more recently than the newest major version.
+      # We fetch a large batch (e.g., 50) and select the highest branch number
+      # to ensure we identify the actual latest stable branch.
+      'https://chromiumdash.appspot.com/fetch_releases?num=50&platform=Android&channel=Stable'
+  ) as url:
+    data = json.loads(url.read().decode())
+    current_version = _get_version_string()
+    print(f'Current checkout version is {current_version}')
+    latest_stable = sort_versions(
+        [release_json['version'] for release_json in data])[-1]
+    print(f'Latest stable version is {latest_stable}')
+
+    # Version is major.minor.build.patch
+    latest_build = latest_stable.split('.')[2]
+    current_build = current_version.split('.')[2]
+
+    if latest_build != current_build:
+      # There are two main approaches: either exit cleanly (indicating success
+      # without an import) or exit with an error. Exiting cleanly might falsely
+      # suggest a successful import, while exiting with an error could obscure
+      # genuine pipeline failures. We opt for the safer approach of exiting
+      # with an error until this logic is integrated into a LUCI recipe.
+      print(f'Note: The current branch ({current_build}) is not on the '
+            f'latest stable milestone branch ({latest_build}). Exiting!')
+      # stamp is never null since this runs in CI context only.
+      build_utils.Touch(stamp)
+      sys.exit(0)
+
+
+def _get_chromium_last_change() -> str:
+  """Returns the LASTCHANGE string from build/util/LASTCHANGE.
+
+    The LASTCHANGE file is generated by `gclient sync`. It reflects the
+    `Cr-Commit-Position` of the last commit, which indicates the branch where
+    the commit was submitted. This mechanism is reliable for CI/Try builders, where
+    the last commit consistently includes this field. However, it may not work
+    correctly for local checkouts with cherry-picked commits.
+  """
+  lastchange_path = os.path.join(REPOSITORY_ROOT, 'build', 'util', 'LASTCHANGE')
+  if not os.path.exists(lastchange_path):
+    raise FileNotFoundError(f'Could not find {lastchange_path}')
+
+  for line in cronet_utils.read_file(lastchange_path).splitlines():
+    if line.startswith('LASTCHANGE='):
+      return line.split('=')[1]
+  raise ValueError(f'Could not find LASTCHANGE in {lastchange_path}')
+
+
+def _fetch_breakages() -> list[dict[str, str]]:
+  print(f"Fetching breakages.json from {_BREAKAGES_FILE_URL}")
+  with urllib.request.urlopen(_BREAKAGES_FILE_URL) as url:
+    return json.loads(base64.b64decode(url.read().decode()))["breakages"]
+  raise ValueError("Failed to fetch breakages")
+
+
+def _get_change_ids_from_head(months: int) -> dict[str, int]:
+  """Returns a dictionary of Change-ID to index for commits since the last {months}."""
+  # Run git log with the specific trailer format
+  cmd = [
+      'git', 'log', f'--since={months} months ago',
+      '--format=%(trailers:key=Change-Id,valueonly)'
+  ]
+  output = cronet_utils.run_and_get_stdout(cmd)
+  change_ids = [line.strip() for line in output.splitlines() if line.strip()]
+  change_ids_dictionary = {}
+  for i, change_id in enumerate(change_ids):
+    change_ids_dictionary[change_id] = i
+  return change_ids_dictionary
+
+
+def validate_release(breakages: list[dict[str, any]],
+                     changelist: dict[str, int]) -> None:
+  print("Validating the current release against breakages.json")
+  for breakage in breakages:
+    bad_change_id = breakage.get(breakages_constants.BAD_CHANGE_ID_TXT)
+
+    good_change_ids = breakage.get(breakages_constants.GOOD_CHANGE_IDS_TXT, [])
+    if not isinstance(good_change_ids, list):
+      raise ValueError(
+          f'The type of `{breakages_constants.GOOD_CHANGE_IDS_TXT}` must be a list. {breakage=}'
+      )
+
+    if not good_change_ids:
+      raise RuntimeError(
+          f'Stopping the import: there is a breakage that has not been fixed yet. {breakage=}'
+      )
+
+    if bad_change_id not in changelist:
+      continue
+
+    good_change_ids_in_history = [
+        good_change_id for good_change_id in good_change_ids
+        if good_change_id in changelist
+    ]
+    if not good_change_ids_in_history:
+      raise RuntimeError(
+          f'Stopping the import: the current checkout includes a breaking change, but not its fix. {breakage=}'
+      )
+
+    if len(good_change_ids_in_history) >= 2:
+      raise RuntimeError(
+          'Stopping the import: there might be a problem with the local checkout, multiple '
+          'good change IDs, for the same breakage, have been found in the history. Multiple '
+          'good change IDs are only necessary when a fix has to be cherry-picked into a release '
+          'branch, where it might end up with a different change ID than the original fix. '
+          f'{breakage=}')
+    good_change_id_index = changelist[good_change_ids_in_history[0]]
+    if good_change_id_index >= changelist[bad_change_id]:
+      raise RuntimeError(
+          f'Stopping the import: there might be a problem with the local checkout, '
+          f'the local history shows a bad change ID that is more recent than its fix. '
+          f'{breakage=}')
+
+
+def _pick_target_channel_for_bot_environment():
+  """Picks the most appropriate channel depending on whether the current chromium
+  checkout is a release branch or not."""
+  if not _is_bot_environment():
+    raise RuntimeError('This is only supported when running within a builder '
+                       'environment')
+
+  print('Running automatic channel selection logic.')
+  # We check the build/util/LASTCHANGE file to see if we are on a release branch or not.
+  last_change = _get_chromium_last_change()
+
+  # Content is of the format:
+  # COMMIT_HASH-refs/heads/main@{#COMMIT_NUMBER}
+  if 'refs/heads/main' in last_change:
+    return 'tot'
+
+  # COMMIT_HASH-refs/branch-heads/branch_number@{#COMMIT_NUMBER}
+  branch_number = _get_version_string().split('.')[2]
+  if f'refs/branch-heads/{branch_number}' in last_change:
+    return 'stable'
+  raise ValueError(
+      f'Could not automatically determine the appropriate channel. LASTCHANGE value is {last_change}'
+  )
+
+
 def main():
   parser = argparse.ArgumentParser()
   parser.add_argument('--stamp', type=str, help='Path to touch on success')
@@ -384,16 +558,57 @@ def main():
                             "must re-import the exact same Cronet version that "
                             "is currently in the destination."))
   parser.add_argument('--channel',
-                      help='The channel this execution of gn2bp is targeting.',
+                      help='The channel this execution of gn2bp is targeting. '
+                      'This must not be used when running the script within a '
+                      'CQ/CI bot. In that scenario the channel being targeted '
+                      'is defined based on the environment we are running in '
+                      '(see _pick_target_channel_for_bot_environment).',
                       type=str,
                       choices=['tot', 'stable'],
-                      default='tot')
+                      default=None)
   parser.add_argument(
       '--wait-for-presubmit-verified',
       help=
       'Whether the script should wait for presubmit verified after uploading a CL to Android',
       action='store_true')
+  parser.add_argument(
+      '--skip-release-validation',
+      help=
+      'Validates the current Git history against the remote breakages.json file to ensure no known breakages are present.',
+      default=False,
+      action='store_true')
   args = parser.parse_args()
+
+  if _is_bot_environment():
+    if args.channel is not None:
+      raise RuntimeError('Automatic channel selection must be used in a bot '
+                         f'environment. However, found {args.channel}')
+    args.channel = _pick_target_channel_for_bot_environment()
+    print(f'Automatic selection logic has chosen `{args.channel}` track')
+
+  # Don't validate releases for trybots. Otherwise, in certain scenarios, this could prevent
+  # landing fixes. For example, whenever a breakage entry does not have a good change ID.
+  # In this case, validate_release will always fail in CQ: breakages.json is always fetched
+  # from HEAD, making validate_release believe that no fix has landed yet (and also preventing
+  # said fix from landing).
+  if not _is_trybot() and not args.skip_release_validation:
+    validate_release(_fetch_breakages(),
+                     _get_change_ids_from_head(_MONTHS_OF_CHANGELIST))
+  else:
+    print("Skipping release validation")
+
+  # When importing to the 'stable' channel from a CI environment, we must verify that
+  # the current Chromium checkout is on a stable release branch. This safeguards
+  # against mistakenly importing non-release branches, particularly when the
+  # channel is dynamically determined.
+  # On a trybot, it's fine to not verify the latest release as the trybot
+  # does not have permission to auto-submit unlike CI bots.
+  if args.channel == 'stable' and _is_bot_environment() and not _is_trybot():
+    _verify_latest_stable_or_exit(args.stamp)
+
+  if args.channel not in ['tot', 'stable']:
+    raise ValueError('Invalid {args.channel=}')
+
   delete_temporary_files = not args.keep_temporary_files
 
   if not args.skip_copybara and os.listdir(
@@ -429,7 +644,7 @@ def main():
                channel=args.channel)
     _gen_boringssl(args.channel)
     _gen_extras_bp(args.channel)
-    _gen_androidtest_xml()
+    _gen_androidtest_xml(args.channel)
 
     if not args.skip_copybara:
       _run_copybara_to_aosp(

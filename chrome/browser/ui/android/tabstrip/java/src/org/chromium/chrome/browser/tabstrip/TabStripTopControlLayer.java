@@ -25,6 +25,7 @@ import org.chromium.chrome.browser.browser_controls.TopControlsStacker.TopContro
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.toolbar.ControlContainer;
 import org.chromium.chrome.browser.toolbar.top.tab_strip.TabStripTransitionCoordinator.TabStripTransitionHandler;
+import org.chromium.ui.util.TokenHolder;
 
 /**
  * Top control layer representing tab strip. It can have different state than the current height
@@ -38,7 +39,9 @@ public class TabStripTopControlLayer implements TopControlLayer, TabStripTransit
     private final BrowserControlsStateProvider mBrowserControls;
     private final ControlContainer mControlContainer;
     private final SettableNonNullObservableSupplier<Integer> mSupplier;
+    private final @Nullable TokenHolder mLockTopControlsTokenJar;
 
+    private int mLockTopControlsToken = TokenHolder.INVALID_TOKEN;
     private @Nullable BrowserControlsOffsetTagsInfo mOffsetTagsInfo;
 
     // Not null after #initializeWithNative.
@@ -109,15 +112,19 @@ public class TabStripTopControlLayer implements TopControlLayer, TabStripTransit
      * @param topControlsStacker The top controls stacker instance.
      * @param browserControls The browser controls instance.
      * @param controlContainer The {@link ControlContainer} instance.
+     * @param lockTopControlsTokenJar {@link TokenHolder} from TopControlLockCoordinator that used
+     *     to preserve the lock top controls state.
      */
     public TabStripTopControlLayer(
             int tabStripHeight,
             TopControlsStacker topControlsStacker,
             BrowserControlsStateProvider browserControls,
-            ControlContainer controlContainer) {
+            ControlContainer controlContainer,
+            @Nullable TokenHolder lockTopControlsTokenJar) {
         mTopControlsStacker = topControlsStacker;
         mBrowserControls = browserControls;
         mControlContainer = controlContainer;
+        mLockTopControlsTokenJar = lockTopControlsTokenJar;
         mSupplier = ObservableSuppliers.createNonNull(tabStripHeight);
 
         if (ChromeFeatureList.sTopControlsRefactor.isEnabled()) {
@@ -129,6 +136,10 @@ public class TabStripTopControlLayer implements TopControlLayer, TabStripTransit
     public void destroy() {
         mTopControlsStacker.removeControl(this);
         mSupplier.destroy();
+        if (mLockTopControlsTokenJar != null) {
+            mLockTopControlsTokenJar.releaseToken(mLockTopControlsToken);
+            mLockTopControlsToken = TokenHolder.INVALID_TOKEN;
+        }
     }
 
     /**
@@ -242,11 +253,20 @@ public class TabStripTopControlLayer implements TopControlLayer, TabStripTransit
 
     private void prepForTransitionRequested(
             int newHeight, boolean applyScrimOverlay, Runnable onHeightTransitionStartCallback) {
-        if (mTabStrip == null) return;
+        if (mTabStrip == null && !canTransitionWithoutTabStrip()) return;
 
         if (mTransitionState != null) {
             notifyTransitionFinished(false);
         }
+
+        // Request lock top controls token before we establish the transition, since it might
+        // trigger a call to update the browser controls height.
+        if (mLockTopControlsTokenJar != null) {
+            int oldToken = mLockTopControlsToken;
+            mLockTopControlsToken = mLockTopControlsTokenJar.acquireToken();
+            mLockTopControlsTokenJar.releaseToken(oldToken);
+        }
+
         mTransitionState =
                 new TransitionState(
                         getTopControlHeight(),
@@ -269,7 +289,16 @@ public class TabStripTopControlLayer implements TopControlLayer, TabStripTransit
         if (!isInTransition()) return;
 
         // Once transition is finished, put the offset tags back so layers can scroll as intended.
-        assertNonNull(mTabStrip).updateOffsetTagsInfo(mOffsetTagsInfo);
+        if (mTabStrip != null) {
+            mTabStrip.updateOffsetTagsInfo(mOffsetTagsInfo);
+        } else {
+            assert canTransitionWithoutTabStrip() : "Transition started when mTabStrip == null.";
+        }
+
+        if (mLockTopControlsTokenJar != null) {
+            mLockTopControlsTokenJar.releaseToken(mLockTopControlsToken);
+            mLockTopControlsToken = TokenHolder.INVALID_TOKEN;
+        }
 
         notifyTransitionFinished(true);
         mTransitionState = null;
@@ -307,13 +336,21 @@ public class TabStripTopControlLayer implements TopControlLayer, TabStripTransit
         mTransitionState.transitionStartedCallback.run();
         mControlContainer.onHeightChanged(
                 mTransitionState.targetHeight, mTransitionState.applyScrimOverlay);
-        assertNonNull(mTabStrip)
-                .onHeightChanged(mTransitionState.targetHeight, mTransitionState.applyScrimOverlay);
+        if (mTabStrip != null) {
+            mTabStrip.onHeightChanged(
+                    mTransitionState.targetHeight, mTransitionState.applyScrimOverlay);
+        } else {
+            assert canTransitionWithoutTabStrip() : "Transition started when mTabStrip == null.";
+        }
     }
 
     private void notifyTransitionFinished(boolean success) {
         mControlContainer.onHeightTransitionFinished(success);
-        assertNonNull(mTabStrip).onHeightTransitionFinished(success);
+        if (mTabStrip != null) {
+            mTabStrip.onHeightTransitionFinished(success);
+        } else {
+            assert canTransitionWithoutTabStrip() : "Transition finished when mTabStrip == null.";
+        }
 
         recordTabStripTransitionFinished(success);
         if (!success) {
@@ -324,5 +361,10 @@ public class TabStripTopControlLayer implements TopControlLayer, TabStripTransit
     private void recordTabStripTransitionFinished(boolean finished) {
         RecordHistogram.recordBooleanHistogram(
                 "Android.DynamicTopChrome.TabStripTransition.Finished", finished);
+    }
+
+    private boolean canTransitionWithoutTabStrip() {
+        return BrowserControlsUtils.isForceTopChromeHeightAdjustmentOnStartupEnabled(
+                mControlContainer.getView().getContext());
     }
 }

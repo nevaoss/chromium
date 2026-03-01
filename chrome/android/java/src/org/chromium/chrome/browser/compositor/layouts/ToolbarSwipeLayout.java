@@ -19,7 +19,8 @@ import org.chromium.base.CallbackUtils;
 import org.chromium.base.MathUtils;
 import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.base.metrics.RecordUserAction;
-import org.chromium.base.supplier.ObservableSupplier;
+import org.chromium.base.supplier.MonotonicObservableSupplier;
+import org.chromium.base.supplier.NonNullObservableSupplier;
 import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.SettableNullableObservableSupplier;
 import org.chromium.build.annotations.NullMarked;
@@ -130,7 +131,7 @@ public class ToolbarSwipeLayout extends Layout {
             BrowserControlsStateProvider browserControlsStateProvider,
             LayoutManager layoutManager,
             TopUiThemeColorProvider topUiColorProvider,
-            ObservableSupplier<Integer> bottomControlsOffsetSupplier,
+            NonNullObservableSupplier<Integer> bottomControlsOffsetSupplier,
             ViewGroup contentContainer) {
         super(context, updateHost, renderHost);
         mBlackHoleEventFilter = new BlackHoleEventFilter(context);
@@ -144,7 +145,8 @@ public class ToolbarSwipeLayout extends Layout {
         mMoveToolbar = !DeviceFormFactor.isNonMultiDisplayContextOnTablet(context);
 
         // No new captures should be taken mid swipe, so this shouldn't matter.
-        ObservableSupplier<Long> captureResourceIdSupplier = ObservableSuppliers.alwaysNull();
+        MonotonicObservableSupplier<Long> captureResourceIdSupplier =
+                ObservableSuppliers.alwaysNull();
 
         if (mMoveToolbar) {
             mLeftToolbarOverlay =

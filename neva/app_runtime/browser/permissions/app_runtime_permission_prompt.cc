@@ -72,7 +72,7 @@ AppRuntimePermissionPrompt::GetPromptPosition() const {
 
 void AppRuntimePermissionPrompt::ShowBubble() {
   if (delegate_) {
-    delegate_->Deny();
+    delegate_->Deny(/*prompt_options=*/std::monostate());
   }
 }
 

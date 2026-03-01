@@ -3,10 +3,10 @@
 // found in the LICENSE file.
 
 import {BrowserProxy, PageCallbackRouter, PageHandlerRemote} from 'chrome://omnibox-popup.top-chrome/omnibox_popup.js';
+import type {PageRemote} from 'chrome://omnibox-popup.top-chrome/omnibox_popup.js';
 import {assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {TestMock} from 'chrome://webui-test/test_mock.js';
-import {eventToPromise, microtasksFinished} from 'chrome://webui-test/test_util.js';
-import type {PageRemote} from 'chrome://omnibox-popup.top-chrome/omnibox_popup.js';
+import {microtasksFinished} from 'chrome://webui-test/test_util.js';
 
 class TestAimBrowserProxy {
   callbackRouter: PageCallbackRouter;
@@ -29,17 +29,9 @@ suite('AimAppTest', function() {
     BrowserProxy.setInstance(testProxy as unknown as BrowserProxy);
   });
 
-  test('ContextMenuPrevented', async function() {
-    const app = document.createElement('omnibox-aim-app');
-    document.body.appendChild(app);
-    const whenFired = eventToPromise('contextmenu', document.documentElement);
-    document.documentElement.dispatchEvent(
-        new Event('contextmenu', {cancelable: true}));
-    const e = await whenFired;
-    assertTrue(e.defaultPrevented);
-  });
-
-  test('ClearsInputOnCloseByDefault', async function() {
+  // TODO(crbug.com/479888362): Disabled by gardener due to failure without
+  // clear culprit.
+  test.skip('ClearsInputOnCloseByDefault', async function() {
     const app = document.createElement('omnibox-aim-app');
     document.body.appendChild(app);
 

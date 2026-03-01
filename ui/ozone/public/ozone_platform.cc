@@ -141,6 +141,11 @@ bool OzonePlatform::IsWayland() {
 }
 ///@}
 
+// static
+bool OzonePlatform::RunningOnWaylandForTest() {
+  return OzonePlatform::GetPlatformNameForTest() == "wayland";
+}
+
 PlatformClipboard* OzonePlatform::GetPlatformClipboard() {
   // Platforms that support system clipboard must override this method.
   return nullptr;

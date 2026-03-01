@@ -10,6 +10,7 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/site_protection/site_familiarity_utils.h"
 #include "chrome/common/extensions/api/settings_private.h"
+#include "components/content_settings/browser/ui/javascript_optimizer_setting.h"
 #include "components/content_settings/core/common/features.h"
 #include "components/prefs/pref_service.h"
 #include "components/safe_browsing/core/common/safe_browsing_prefs.h"
@@ -102,7 +103,7 @@ PrefObject GeneratedJavascriptOptimizerPref::GetPrefObject() const {
         extensions::api::settings_private::Enforcement::kEnforced;
     pref_object.controlled_by =
         extensions::api::settings_private::ControlledBy::kSafeBrowsingOff;
-    base::Value::List user_selectable_values;
+    base::ListValue user_selectable_values;
     user_selectable_values.Append(
         base::Value(static_cast<int>(JavascriptOptimizerSetting::kAllowed)));
     user_selectable_values.Append(

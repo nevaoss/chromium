@@ -8,12 +8,12 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/bind_post_task.h"
 #include "base/task/thread_pool.h"
-#include "chrome/browser/page_content_annotations/page_content_extraction_service.h"
 #include "chrome/browser/page_content_annotations/page_content_extraction_service_factory.h"
-#include "chrome/browser/page_content_annotations/page_content_extraction_types.h"
 #include "chrome/browser/profiles/profile.h"
 #include "components/lens/lens_features.h"
 #include "components/optimization_guide/content/browser/page_context_eligibility.h"
+#include "components/page_content_annotations/content/page_content_extraction_service.h"
+#include "components/page_content_annotations/core/page_content_extraction_types.h"
 #include "components/sessions/content/session_tab_helper.h"
 #include "components/viz/common/frame_sinks/copy_output_result.h"
 #include "content/public/browser/navigation_handle.h"
@@ -124,9 +124,7 @@ void TabContextualizationController::OnAnnotatedPageContentReceived(
   }
 
   std::move(callback).Run(
-      optimization_guide::IsPageContextEligible(
-          tab_url.GetHost(), tab_url.GetPath(),
-          std::move(frame_metadata_structs), page_context_eligibility_),
+      IsPageContextEligible(tab_url, std::move(frame_metadata_structs)),
       std::move(result));
 }
 
@@ -176,14 +174,10 @@ bool TabContextualizationController::GetInitialPageContextEligibility() {
     return false;
   }
 
-  std::optional<page_content_annotations::ExtractedPageContentResult>
-      extracted_page_content_result =
-          page_content_extraction_service
-              ->GetExtractedPageContentAndEligibilityForPage(
-                  web_contents->GetPrimaryPage());
-
-  return !extracted_page_content_result ||
-         extracted_page_content_result->is_eligible_for_server_upload;
+  std::optional<bool> server_upload_eligibility =
+      page_content_extraction_service->GetServerUploadEligibilityForPage(
+          web_contents->GetPrimaryPage());
+  return server_upload_eligibility.value_or(true);
 }
 
 bool TabContextualizationController::GetCurrentPageContextEligibility() {
@@ -257,6 +251,15 @@ void TabContextualizationController::OnPdfBytesReceived(
     std::move(callback).Run(std::move(data));
     return;
   }
+
+  // Check if the PDF is context eligible. This is required since all files
+  // are marked context ineligible until their data is received. This is usually
+  // done after the annotated page content is received, but since PDFs don't go
+  // through that codepath, eligibility must be checked here. This matches the
+  // behavior of the launched Lens flow.
+  const auto& tab_url = web_contents->GetLastCommittedURL();
+  data->is_page_context_eligible =
+      IsPageContextEligible(tab_url, /*frame_metadata=*/{});
 
   base::span<const uint8_t> file_data_span = base::span(bytes);
   std::vector<uint8_t> file_data_vector(file_data_span.begin(),
@@ -333,7 +336,7 @@ void TabContextualizationController::CaptureScreenshot(
       std::move(callback));
 
   view->CopyFromSurface(
-      /*src_rect=*/gfx::Rect(), /*output_size=*/gfx::Size(),
+      /*src_rect=*/gfx::Rect(), /*output_size=*/gfx::Size(), base::TimeDelta(),
       base::BindPostTask(base::SequencedTaskRunner::GetCurrentDefault(),
                          std::move(callback_wrapper)));
 }
@@ -373,6 +376,14 @@ void TabContextualizationController::AddScreenshotToContextDataAndContinue(
   }
 
   std::move(callback).Run(std::move(data));
+}
+
+bool TabContextualizationController::IsPageContextEligible(
+    const GURL& url,
+    const std::vector<optimization_guide::FrameMetadata>& frame_metadata) {
+  return optimization_guide::IsPageContextEligible(url.GetHost(), url.GetPath(),
+                                                   frame_metadata,
+                                                   page_context_eligibility_);
 }
 
 }  // namespace lens

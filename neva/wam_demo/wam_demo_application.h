@@ -58,7 +58,7 @@ class WamDemoApplication : public pal::PlatformApplicationDelegate {
     std::unique_ptr<WamDemoWindow> window;
     std::unique_ptr<WamDemoWebView> webview;
     std::unique_ptr<neva_app_runtime::WebViewProfile> profile;
-    std::unique_ptr<base::Value::Dict> launch_params_dict;
+    std::unique_ptr<base::DictValue> launch_params_dict;
   };
 
   WamDemoApplication(CreateParams params,
@@ -99,7 +99,7 @@ class WamDemoApplication : public pal::PlatformApplicationDelegate {
   std::unique_ptr<neva_app_runtime::WebViewProfile> profile_;
   std::unique_ptr<WamDemoWindow> window_;
   std::unique_ptr<WamDemoWebView> webview_;
-  std::unique_ptr<base::Value::Dict> launch_params_dict_;
+  std::unique_ptr<base::DictValue> launch_params_dict_;
   bool render_gone_ = false;
   base::Time creation_time_ = base::Time::Now();
   std::unique_ptr<pal::PlatformSystemHandler> platform_system_handler_;

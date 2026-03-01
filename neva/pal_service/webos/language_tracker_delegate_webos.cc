@@ -80,7 +80,7 @@ void LanguageTrackerDelegateWebOS::OnResponse(pal::luna::Client::ResponseStatus,
     return;
   }
 
-  const base::Value::Dict& root_dict = root->GetDict();
+  const base::DictValue& root_dict = root->GetDict();
   std::optional<bool> return_value = root_dict.FindBool("returnValue");
   if (return_value.has_value() && !return_value.value()) {
     const std::string* message = root_dict.FindString("errorText");

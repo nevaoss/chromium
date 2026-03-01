@@ -7,7 +7,6 @@
 #import <algorithm>
 #import <map>
 
-#import "base/containers/contains.h"
 #import "base/feature_list.h"
 #import "base/functional/bind.h"
 #import "base/functional/callback_helpers.h"
@@ -619,7 +618,8 @@ void AutofillBottomSheetTabHelper::AttachListenersForPaymentsForm(
 void AutofillBottomSheetTabHelper::OnFieldTypesDetermined(
     autofill::AutofillManager& manager,
     autofill::FormGlobalId form_id,
-    FieldTypeSource source) {
+    FieldTypeSource source,
+    bool small_forms_were_parsed) {
   AttachListenersForPaymentsForm(manager, form_id, /*only_new=*/true);
 }
 

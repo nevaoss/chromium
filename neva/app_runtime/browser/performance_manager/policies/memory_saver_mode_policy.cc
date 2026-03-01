@@ -23,7 +23,6 @@
 
 #include "neva/app_runtime/browser/performance_manager/policies/memory_saver_mode_policy.h"
 
-#include "base/containers/contains.h"
 #include "base/strings/string_number_conversions.h"
 #include "components/performance_manager/public/features.h"
 #include "neva/app_runtime/app/app_runtime_page_contents.h"

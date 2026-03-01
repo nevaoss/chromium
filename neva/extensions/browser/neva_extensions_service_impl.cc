@@ -236,7 +236,7 @@ void NevaExtensionsServiceImpl::GetExtensionsInfo(
   const extensions::ExtensionSet& extensions = registry->enabled_extensions();
 
   for (auto& extension : extensions) {
-    base::Value::Dict dict;
+    base::DictValue dict;
     dict.Set("id", extension->id());
     dict.Set("name", extension->name());
     extension_infos.push_back(base::Value(std::move(dict)));

@@ -18,6 +18,7 @@
 #include "chrome/browser/web_applications/externally_managed_app_manager.h"
 #include "chrome/browser/web_applications/manifest_update_utils.h"
 #include "chrome/browser/web_applications/mojom/user_display_mode.mojom-shared.h"
+#include "chrome/browser/web_applications/scheduler/manifest_silent_update_result.h"
 #include "chrome/browser/web_applications/test/fake_web_app_origin_association_manager.h"
 #include "chrome/browser/web_applications/test/fake_web_app_provider.h"
 #include "chrome/browser/web_applications/test/fake_web_contents_manager.h"
@@ -29,6 +30,7 @@
 #include "chrome/browser/web_applications/web_app_command_scheduler.h"
 #include "chrome/browser/web_applications/web_app_constants.h"
 #include "chrome/browser/web_applications/web_app_helpers.h"
+#include "chrome/browser/web_applications/web_app_icon_manager.h"
 #include "chrome/browser/web_applications/web_app_install_info.h"
 #include "chrome/browser/web_applications/web_app_provider.h"
 #include "chrome/browser/web_applications/web_app_registrar.h"
@@ -104,9 +106,7 @@ class ManifestSilentUpdateCommandTest : public WebAppTest {
     manifest->display = DisplayMode::kStandalone;
     manifest->name = u"Foo App";
     manifest->icons = {icon};
-    manifest->has_background_color = true;
     manifest->background_color = kManifestIconColor;
-    manifest->has_theme_color = true;
     manifest->theme_color = kManifestIconColor;
     manifest->has_valid_specified_start_url = true;
     auto note_taking = blink::mojom::ManifestNoteTaking::New();
@@ -224,7 +224,7 @@ TEST_F(ManifestSilentUpdateCommandTest, StartUrlUpdatedSilently) {
             "https://www.foo.bar/web_apps/basic.html");
 
   auto& new_manifest = GetPageManifest();
-  const GURL new_start_url("https://www.foo.bar/new_scope/new_basic.html");
+  const GURL new_start_url("https://www.foo.bar/web_apps/new_basic.html");
   new_manifest->start_url = new_start_url;
 
   EXPECT_EQ(RunManifestUpdateAndGetResult(),
@@ -348,7 +348,9 @@ TEST_F(ManifestSilentUpdateCommandTest, ScopeUpdatedSilently) {
 
   auto& new_manifest = GetPageManifest();
   const GURL new_scope("https://www.foo.bar/new_scope/");
+  const GURL new_start_url("https://www.foo.bar/new_scope/new_basic.html");
   new_manifest->scope = new_scope;
+  new_manifest->start_url = new_start_url;
 
   EXPECT_EQ(RunManifestUpdateAndGetResult(),
             ManifestSilentUpdateCheckResult::kAppSilentlyUpdated);
@@ -739,7 +741,7 @@ TEST_F(ManifestSilentUpdateCommandTest,
 
   auto& new_manifest = GetPageManifest();
   new_manifest->name = u"New Name";
-  const GURL new_start_url("https://www.foo.bar/new_scope/new_basic.html");
+  const GURL new_start_url("https://www.foo.bar/web_apps/new_basic.html");
   new_manifest->start_url = new_start_url;
 
   EXPECT_EQ(
@@ -1174,6 +1176,39 @@ TEST_F(ManifestSilentUpdateCommandTest,
 
   EXPECT_EQ(provider().registrar_unsafe().GetAppStartUrl(app_id),
             "https://www.foo.bar/web_apps/new_basic.html");
+  EXPECT_THAT(
+      histogram_tester_.GetAllSamples(
+          "Webapp.Update.ManifestSilentUpdateCheckResult"),
+      BucketsAre(base::Bucket(
+          ManifestSilentUpdateCheckResult::kAppHasNonSecurityAndSecurityChanges,
+          /*count=*/1)));
+}
+
+TEST_F(ManifestSilentUpdateCommandTest, SyncInstalledAppUpdated) {
+  webapps::AppId app_id = test::InstallDummyWebApp(
+      profile(), "Name", GURL("https://www.foo.bar/web_apps/basic.html"),
+      webapps::WebappInstallSource::SYNC);
+  SetupBasicInstallablePageState();
+
+  auto& new_manifest = GetPageManifest();
+  new_manifest->name = u"New Name";
+  new_manifest->theme_color = SK_ColorYELLOW;
+
+  // Sync installed apps should allow updates, but security sensitive updates
+  // (like name) should still be pending. Non-sensitive updates (like theme
+  // color) should be applied.
+  EXPECT_EQ(
+      RunManifestUpdateAndGetResult(),
+      ManifestSilentUpdateCheckResult::kAppHasNonSecurityAndSecurityChanges);
+
+  EXPECT_EQ(provider().registrar_unsafe().GetAppThemeColor(app_id),
+            SK_ColorYELLOW);
+
+  std::optional<proto::PendingUpdateInfo> pending_update_info =
+      provider().registrar_unsafe().GetAppById(app_id)->pending_update_info();
+  ASSERT_TRUE(pending_update_info.has_value());
+  EXPECT_EQ(pending_update_info->name(), "New Name");
+
   EXPECT_THAT(
       histogram_tester_.GetAllSamples(
           "Webapp.Update.ManifestSilentUpdateCheckResult"),

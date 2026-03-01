@@ -41,13 +41,13 @@ Test cases: QR-1273
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/src/heap/heap-controller.cc b/src/heap/heap-controller.cc
-index f4acba8b222..2ba833b5358 100644
+index ad047225af6..f0232fab72f 100644
 --- a/src/heap/heap-controller.cc
 +++ b/src/heap/heap-controller.cc
-@@ -33,7 +33,7 @@ double MemoryController<Trait>::GrowingFactor(
+@@ -46,7 +46,7 @@ double MemoryController<Trait>::GrowingFactor(
    }
    if (V8_UNLIKELY(v8_flags.trace_gc_verbose)) {
-     Isolate::FromHeap(heap)->PrintWithTimestamp(
+     isolate->PrintWithTimestamp(
 -        "[%s] factor %.1f based on mu=%.3f, speed_ratio=%.f "
 +        "[%s] factor %.3f based on mu=%.3f, speed_ratio=%.f "
          "(gc=%.f, mutator=%.f)\n",

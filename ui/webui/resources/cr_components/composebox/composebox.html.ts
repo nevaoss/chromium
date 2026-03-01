@@ -41,9 +41,11 @@ export function getHtml(this: ComposeboxElement) {
   <ntp-error-scrim id="errorScrim" part="error-scrim"
     ?compact-mode="${this.searchboxLayoutMode === 'Compact' &&
                      this.contextFilesSize_ === 0}"
-    @error-scrim-visibility-changed="${this.onErrorScrimVisibilityChanged_}">
+    .errorMessage="${this.errorMessage_}"
+    @dismiss-error-scrim="${this.onErrorScrimDismissed_}">
   </ntp-error-scrim>
-  <div id="composebox" @keydown="${this.onKeydown_}"
+  <div id="composebox" ?inert="${this.errorMessage_}"
+      @keydown="${this.onKeydown_}"
       @focusin="${this.handleComposeboxFocusIn_}"
       @focusout="${this.handleComposeboxFocusOut_}"
       @dragenter="${this.dragAndDropHandler_.handleDragEnter}"
@@ -66,8 +68,7 @@ export function getHtml(this: ComposeboxElement) {
             .value="${this.input_}"
             @input="${this.handleInput_}"
             @scroll="${this.handleScroll_}"
-            @focusin="${this.handleInputFocusIn_}"
-            @focusout="${this.handleInputFocusOut_}"></textarea>
+            @focusin="${this.handleInputFocusIn_}"></textarea>
           ${this.shouldShowSmartComposeInlineHint_() ? html`
             <div id="smartCompose" part="smart-compose">
               <!-- Comments in between spans to eliminate spacing between
@@ -79,6 +80,9 @@ export function getHtml(this: ComposeboxElement) {
           `: ''}
         </div>
       </div>
+      <!-- A seperate container is needed for the submit button so the
+      expand/collapse animation can be applied without affecting the submit
+      button enabled/disabled state. -->
       <div id="cancelContainer" class="icon-fade" part="cancel">
         <cr-icon-button
             class="action-icon icon-clear"
@@ -94,25 +98,31 @@ export function getHtml(this: ComposeboxElement) {
           exportparts="context-menu-entrypoint-icon,
               cr-composebox-file-carousel, upload-container, voice-icon,
               carousel-divider, carousel-container, thumbnail"
-          .tabSuggestions="${this.tabSuggestions}"
+          in-composebox
+          .tabSuggestions="${this.tabSuggestions_}"
+          .showMenuOnClick="${this.showMenuOnClick}"
           .entrypointName="${this.entrypointName ? this.entrypointName : 'Composebox'}"
+          .fileUploadsComplete="${this.fileUploadsComplete}"
           @add-tab-context="${this.addTabContext_}"
           @open-voice-search="${this.openAimVoiceSearch_}"
           @add-file-context="${this.addFileContext_}"
           @delete-context="${this.deleteContext_}"
           @on-file-validation-error="${this.onFileValidationError_}"
-          @set-deep-search-mode="${this.setDeepSearchMode_}"
-          @set-create-image-mode="${this.setCreateImageMode_}"
+          @set-tool-mode="${this.onSetToolMode_}"
+          @model-click="${this.onModelClick_}"
           @get-tab-preview="${this.getTabPreview_}"
           @open-file-dialog="${this.onOpenFileDialog_}"
           @context-menu-container-click="${this.searchboxLayoutMode === 'Compact' ?  nothing : this.focusInput}"
+          @context-menu-closed="${this.onContextMenuClosed_}"
+          @context-menu-opened="${this.onContextMenuOpened_}"
           ?show-dropdown="${this.showDropdown_}"
           ?show-recent-tab-chip="${false}"
+          .inputState="${this.inputState_}"
           searchbox-layout-mode="${this.searchboxLayoutMode}"
           ?carousel-on-top_="${this.carouselOnTop_}"
           ?show-voice-search="${this.shouldShowVoiceSearch_()}"
-          ?in-composebox="${this.inComposebox}"
-          .submitButtonShown="${this.searchboxNextEnabled && this.submitEnabled_ && this.showSubmit_}">
+          ?show-model-picker="${this.showModelPicker_}"
+          .submitButtonShown="${this.searchboxNextEnabled && this.submitEnabled_}">
         <cr-composebox-dropdown
             id="matches"
             part="dropdown"
@@ -121,7 +131,7 @@ export function getHtml(this: ComposeboxElement) {
             .result="${this.result_}"
             .selectedMatchIndex="${this.selectedMatchIndex_}"
             .maxSuggestions="${this.maxSuggestions}"
-            .inDeepSearchMode="${this.inDeepSearchMode_}"
+            .toolMode="${this.activeToolMode_}"
             @selected-match-index-changed="${this.onSelectedMatchIndexChanged_}"
             @match-focusin="${this.onMatchFocusin_}"
             @match-click="${this.onMatchClick_}"
@@ -131,9 +141,6 @@ export function getHtml(this: ComposeboxElement) {
         ${this.searchboxNextEnabled ? submitContainer : ''}
       </contextual-entrypoint-and-carousel>
     </div>
-    <!-- A seperate container is needed for the submit button so the
-    expand/collapse animation can be applied without affecting the submit
-    button enabled/disabled state. -->
     ${this.showLensButton ? html`<cr-icon-button
         class="action-icon"
         id="lensIcon"
@@ -154,6 +161,7 @@ export function getHtml(this: ComposeboxElement) {
   <cr-composebox-voice-search id="voiceSearch"
       @voice-search-cancel="${this.onVoiceSearchClose_}"
       @voice-search-final-result="${this.onVoiceSearchFinalResult_}"
+      @voice-search-error="${this.onVoiceSearchError_}"
       @transcript-update="${this.onTranscriptUpdate_}"
       @speech-received="${this.onSpeechReceived_}"
       exportparts="voice-close-button">

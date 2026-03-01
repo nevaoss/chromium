@@ -71,7 +71,7 @@ bool IsSubscription(const std::string& param) {
   if (!json || !json->is_dict())
     return false;
 
-  const base::Value::Dict& dict = json->GetDict();
+  const base::DictValue& dict = json->GetDict();
   if (dict.FindBool("subscribe").value_or(false)) {
     return true;
   }

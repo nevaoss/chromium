@@ -35,7 +35,7 @@ SystemServiceBridgeDelegateDummy::~SystemServiceBridgeDelegateDummy() {}
 
 void SystemServiceBridgeDelegateDummy::Call(std::string uri,
                                             std::string payload) {
-  base::Value::Dict dict;
+  base::DictValue dict;
   dict.Set("name", name_);
   dict.Set("method", __FUNCTION__);
   dict.Set("uri", uri);
@@ -53,7 +53,7 @@ void SystemServiceBridgeDelegateDummy::Call(std::string uri,
 }
 
 void SystemServiceBridgeDelegateDummy::Cancel() {
-  base::Value::Dict dict;
+  base::DictValue dict;
   dict.Set("name", name_);
   dict.Set("method", __FUNCTION__);
 

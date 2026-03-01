@@ -16,7 +16,7 @@ import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.components.metrics.OmniboxEventProtos.OmniboxEventProto.PageClassification;
-import org.chromium.components.omnibox.AimToolsAndModelsProto.ChromeAimToolsAndModels;
+import org.chromium.components.omnibox.ToolModeProto.ToolMode;
 
 import java.util.List;
 import java.util.Map;
@@ -99,7 +99,7 @@ public class AutocompleteInputUnitTest {
         assertEquals("", mInput.getUserText());
 
         mInput.setUserText(null);
-        assertEquals(null, mInput.getUserText());
+        assertEquals("", mInput.getUserText());
     }
 
     @Test
@@ -216,7 +216,7 @@ public class AutocompleteInputUnitTest {
                 Map.of(
                         // NTP
                         PageClassification.INSTANT_NTP_WITH_OMNIBOX_AS_STARTING_FOCUS_VALUE,
-                        PageClassification.NTP_COMPOSEBOX_VALUE,
+                        PageClassification.NTP_OMNIBOX_COMPOSEBOX_VALUE,
                         // SRP
                         PageClassification.SEARCH_RESULT_PAGE_NO_SEARCH_TERM_REPLACEMENT_VALUE,
                         PageClassification.SRP_OMNIBOX_COMPOSEBOX_VALUE,
@@ -319,11 +319,11 @@ public class AutocompleteInputUnitTest {
 
     @Test
     public void toolMode() {
-        assertEquals(ChromeAimToolsAndModels.TOOL_MODE_UNSPECIFIED_VALUE, mInput.getToolMode());
+        assertEquals(ToolMode.TOOL_MODE_UNSPECIFIED_VALUE, mInput.getToolMode());
         mInput.setRequestType(AutocompleteRequestType.IMAGE_GENERATION);
-        assertEquals(ChromeAimToolsAndModels.TOOL_MODE_IMAGE_GEN_VALUE, mInput.getToolMode());
+        assertEquals(ToolMode.TOOL_MODE_IMAGE_GEN_VALUE, mInput.getToolMode());
         mInput.setHasAttachments(true);
         assertEquals(
-                ChromeAimToolsAndModels.TOOL_MODE_IMAGE_GEN_UPLOAD_VALUE, mInput.getToolMode());
+                ToolMode.TOOL_MODE_IMAGE_GEN_UPLOAD_VALUE, mInput.getToolMode());
     }
 }

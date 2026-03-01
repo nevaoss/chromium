@@ -13,12 +13,13 @@
   box-sizing: border-box;
   margin-bottom: 12px;
   margin-top: 4px;
-  padding-inline-end: var(--context-carousel-inline-end-spacing, 50px);
-  padding-inline-start: var(--context-carousel-inline-start-spacing, 50px);
+  margin-inline-end: var(--context-carousel-inline-end-spacing, 50px);
+  margin-inline-start: var(--context-carousel-inline-start-spacing, 50px);
 }
 
 #carousel.top {
-  margin: 0;
+  margin-bottom: 0;
+  margin-top: 0;
   position: absolute;
   top: 14px;
   width: auto;
@@ -35,13 +36,17 @@
   flex-wrap: nowrap;
 }
 
+:host([is-omnibox-in-compact-mode_]) .context-menu-container {
+  min-height: 0;
+}
+
 .context-menu-container > * {
   flex-shrink: 0;
 }
 
 #contextEntrypoint {
   color: var(--color-searchbox-results-foreground);
-  padding-inline: 8px;
+  padding-inline: var(--contextual-entrypoint-and-carousel-context-entrypoint-padding-inline, 8px);
 }
 
 #toolChipsContainer {
@@ -66,11 +71,15 @@
   flex-wrap: nowrap;
 }
 
+:host(:not([file-uploads-complete])) .upload-button {
+  cursor: not-allowed;
+}
+
 .context-menu-container:has(.contextual-chip) {
   padding-bottom: var(--contextual-entrypoint-and-carousel-contextual-chip-padding-bottom);
 }
 
-:host([inputs-disabled_]) .upload-button {
+:host([upload-button-disabled_]) .upload-button {
   color: var(--color-composebox-upload-button-disabled);
 }
 

@@ -328,7 +328,7 @@ void WebOSSystemInjection::SetLoadErrorPolicy(const std::string& param) {
 }
 
 void WebOSSystemInjection::SetKeyMask(const std::vector<std::string>& str_array) {
-  base::Value::List root;
+  base::ListValue root;
   for (const auto& item : str_array)
     root.Append(item);
 

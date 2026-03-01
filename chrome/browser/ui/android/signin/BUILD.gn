@@ -105,6 +105,7 @@ android_library("java") {
     "java/src/org/chromium/chrome/browser/ui/signin/account_picker/ExistingAccountRowViewBinder.java",
     "java/src/org/chromium/chrome/browser/ui/signin/account_picker/OnClickListenerViewBinder.java",
     "java/src/org/chromium/chrome/browser/ui/signin/account_picker/SeamlessSigninCoordinator.java",
+    "java/src/org/chromium/chrome/browser/ui/signin/account_picker/SigninBottomSheetUiCoordinator.java",
     "java/src/org/chromium/chrome/browser/ui/signin/account_picker/WebSigninAccountPickerDelegate.java",
     "java/src/org/chromium/chrome/browser/ui/signin/fullscreen_signin/FreManagementNoticeDialogHelper.java",
     "java/src/org/chromium/chrome/browser/ui/signin/fullscreen_signin/FullscreenSigninConfig.java",
@@ -197,6 +198,7 @@ android_resources("java_resources") {
     "java/res/values/dimens.xml",
   ]
   deps = [
+    "//chrome/app:java_strings_grd",
     "//chrome/browser/ui/android/strings:ui_strings_grd",
     "//components/browser_ui/strings/android:browser_ui_strings_grd",
     "//components/browser_ui/styles/android:java_resources",

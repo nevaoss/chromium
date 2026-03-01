@@ -142,7 +142,6 @@ FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHTabGroupsSaveV2CloseGroupFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHTabGroupsSharedTabChangedFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHTabGroupsSharedTabFeedbackFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHTabOrganizationSuccessFeature);
-FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHTabSearchFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHTabSearchToolbarButtonFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHDesktopSnoozeFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHDesktopPwaInstallFeature);
@@ -205,6 +204,7 @@ FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHDownloadInfoBarDownloadContinuingFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHDownloadInfoBarDownloadsAreFasterFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHEphemeralTabFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHFeedCardMenuFeature);
+FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHFuseboxAttachmentFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHGenericAlwaysTriggerHelpUiFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHHomePageButtonFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHHomepageTileFeature);
@@ -307,6 +307,7 @@ FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHiOSDownloadAutoDeletionFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHiOSLensKeyboardFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHiOSPromoAppStoreFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHiOSPromoWhatsNewFeature);
+FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHiOSPromoBackgroundCustomizationFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHiOSPromoSigninFullscreenFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHiOSPromoPostRestoreFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(
@@ -371,6 +372,7 @@ FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHiOSHomepageLensNewBadge);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHiOSHomepageCustomizationNewBadge);
 FEATURE_CONSTANTS_DECLARE_FEATURE(
     kIPHiOSOneTimeDefaultBrowserNotificationFeature);
+FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHiOSGeminiImageRemixFeature);
 
 // A feature flag to enable and parametrize the sliding window of time for a
 // user's eligibility to be shown a default browser promo. This is not an FET
@@ -392,6 +394,9 @@ FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHiOSGeminiFullscreenPromoFeature);
 
 // FET feature flag that enables omnibox Gemini contextual cue chip.
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHiOSGeminiContextualCueChip);
+
+// FET feature flag that enables customized sites in the most visited tile.
+FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHiOSPinMostVisitedSiteFeature);
 
 #endif  // BUILDFLAG(IS_IOS)
 
@@ -441,7 +446,13 @@ FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHiOSAddressPromoDesktopFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHiOSPaymentPromoDesktopFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHiOSLensPromoDesktopFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHiOSEnhancedBrowsingDesktopFeature);
+FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHiOSTabGroupsDesktopFeature);
+FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHiOSPriceTrackingDesktopFeature);
 #endif  // !BUILDFLAG(IS_ANDROID)
+
+#if !BUILDFLAG(IS_IOS)
+FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHResumptionRailFeature);
+#endif  // !BUILDFLAG(IS_IOS)
 
 }  // namespace feature_engagement
 

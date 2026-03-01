@@ -28,8 +28,8 @@ export function getHtml(this: EventListItemElement) {
       </span>
       <div class="event-scope-column">
         ${this.scope ? html`
-          <cr-icon icon="${this.scopeIcon}" title="${this.scopeLabel}">
-          </cr-icon>
+          <scope-icon .scope="${this.scope}"></scope-icon>
+          </scope-icon>
         ` : ''}
       </div>
       <div class="event-type-column">
@@ -72,13 +72,13 @@ export function getHtml(this: EventListItemElement) {
     </div>
   ` : ''}
   ${this.errors.length > 0 ? html`
-    <div class="event-error-details">
+    <ul class="event-error-details">
       ${this.errors.map(item => html`
-        <div>
+        <li>
           ${item}
-        </div>
+        </li>
       `)}
-    </div>
+    </ul>
   ` : ''}
   ${this.updaterVersion ? html`
     <div>
@@ -87,6 +87,14 @@ export function getHtml(this: EventListItemElement) {
   ` : ''}
   ${this.formattedDuration ? html`
     <span class="event-duration">${this.formattedDuration}</span>
+  ` : ''}
+  ${this.policies !== undefined ? html`
+    <div>
+    <h3>Enterprise Policies</h3>
+    <enterprise-policy-table .policies="${this.policies}"
+        .appId="${this.appId}">
+    </enterprise-policy-table>
+    </div>
   ` : ''}
   <raw-event-details .events="${[this.event]}">
   </raw-event-details>

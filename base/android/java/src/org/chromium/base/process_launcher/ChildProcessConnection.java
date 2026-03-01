@@ -37,8 +37,10 @@ import org.chromium.build.BuildConfig;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 
+import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Executor;
@@ -958,9 +960,41 @@ public class ChildProcessConnection {
         }
     }
 
+    @IntDef({
+        ServiceNames.JAVA_SANDBOXED,
+        ServiceNames.NATIVE_ONLY_SANDBOXED,
+        ServiceNames.PRIVILEGED,
+        ServiceNames.OTHER
+    })
+    @Target(ElementType.TYPE_USE)
+    @Retention(RetentionPolicy.SOURCE)
+    private @interface ServiceNames {
+        int JAVA_SANDBOXED = 0;
+        int NATIVE_ONLY_SANDBOXED = 1;
+        int PRIVILEGED = 2;
+        int OTHER = 3;
+        int NUM_ENTRIES = 4;
+    }
+
     private void fallbackService() {
         assert mFallbackServiceName != null;
-        Log.w(TAG, "Fallback to %s", mFallbackServiceName);
+        @ServiceNames int serviceName;
+        String className = mFallbackServiceName.getClassName();
+        // Don't use the exact match because service names have a number as a suffix.
+        if (className.startsWith("org.chromium.content.app.SandboxedProcessService")) {
+            serviceName = ServiceNames.JAVA_SANDBOXED;
+        } else if (className.startsWith(
+                "org.chromium.content.app.NativeOnlySandboxedProcessService")) {
+            serviceName = ServiceNames.NATIVE_ONLY_SANDBOXED;
+        } else if (className.startsWith("org.chromium.content.app.PrivilegedProcessService")) {
+            serviceName = ServiceNames.PRIVILEGED;
+        } else {
+            serviceName = ServiceNames.OTHER;
+        }
+        RecordHistogram.recordEnumeratedHistogram(
+                "Android.ChildProcessConnection.FallbackService",
+                serviceName,
+                ServiceNames.NUM_ENTRIES);
 
         Intent bindIntent = new Intent();
         bindIntent.setComponent(mFallbackServiceName);

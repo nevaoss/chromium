@@ -44,7 +44,7 @@ namespace {
 
 void GetWebOSLocalizedErrorStrings(int error_code,
                                    const GURL& failed_url,
-                                   base::Value::Dict& error_strings) {
+                                   base::DictValue& error_strings) {
   error_strings.Set("textdirection", base::i18n::IsRTL() ? "rtl" : "ltr");
 
   std::u16string failed_url_string(url_formatter::FormatUrl(
@@ -139,7 +139,7 @@ void WebOSContentRendererClient::PrepareErrorPage(
     if (template_html.empty()) {
       LOG(ERROR) << "unable to load template.";
     } else {
-      base::Value::Dict error_strings;
+      base::DictValue error_strings;
       neva_app_runtime::AppRuntimeLocalizedError::GetErrorStrings(
           error.reason(), error_strings);
 

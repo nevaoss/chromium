@@ -73,7 +73,7 @@ void MemoryManagerDelegateOSE::OnMemoryStatus(OnceResponse callback,
     return;
 
   // webOS OSE com.webos.service.memorymanager
-  const base::Value::Dict& dict = root->GetDict();
+  const base::DictValue& dict = root->GetDict();
   const std::string* status = dict.FindStringByDottedPath("system.level");
 
   if (status && !status->empty()) {
@@ -94,7 +94,7 @@ void MemoryManagerDelegateOSE::OnLevelChanged(luna::Client::ResponseStatus,
   if (!root || !root->is_dict())
     return;
 
-  const base::Value::Dict& dict = root->GetDict();
+  const base::DictValue& dict = root->GetDict();
   if (dict.FindByDottedPath("current") && dict.FindByDottedPath("previous")) {
     // Memory level is changed.
     // Example of expected json: { "previous": "normal", "current": "low" }

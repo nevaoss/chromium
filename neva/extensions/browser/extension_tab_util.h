@@ -37,7 +37,7 @@ namespace neva {
 
 class ExtensionTabUtil {
  public:
-  static base::Value::Dict CreateWindowValueForExtension(
+  static base::DictValue CreateWindowValueForExtension(
       int window_id,
       bool focused,
       extensions::api::windows::WindowType type =

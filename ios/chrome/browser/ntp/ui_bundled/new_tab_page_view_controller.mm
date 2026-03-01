@@ -13,6 +13,7 @@
 #import "base/feature_list.h"
 #import "base/ios/block_types.h"
 #import "base/task/sequenced_task_runner.h"
+#import "components/feature_engagement/public/tracker.h"
 #import "ios/chrome/browser/content_suggestions/magic_stack/public/magic_stack_constants.h"
 #import "ios/chrome/browser/content_suggestions/magic_stack/ui/magic_stack_collection_view.h"
 #import "ios/chrome/browser/content_suggestions/public/ntp_home_constants.h"
@@ -117,8 +118,6 @@ const CGFloat kBackgroundImageAnimationDuration = 0.2;
     NSMutableArray<UIViewController*>* viewControllersAboveFeed;
 
 // Identity disc shown in the NTP.
-// TODO(crbug.com/40165977): Remove once the Feed header properly supports
-// ContentSuggestions.
 @property(nonatomic, weak) UIButton* identityDiscButton;
 
 // Tap gesture recognizer when the omnibox is focused.
@@ -347,8 +346,10 @@ const CGFloat kBackgroundImageAnimationDuration = 0.2;
       presentInProductHelpWithType:InProductHelpType::kDiscoverFeedMenu];
 
   if (!IsFirstRunRecent(base::Days(3))) {
-    [self.helpHandler
-        presentInProductHelpWithType:InProductHelpType::kHomeCustomizationMenu];
+    if (!IsNTPBackgroundCustomizationEnabled()) {
+      [self.helpHandler presentInProductHelpWithType:
+                            InProductHelpType::kHomeCustomizationMenu];
+    }
   }
 
   // Scrolls NTP into feed initially if `shouldScrollIntoFeed`.
@@ -568,10 +569,10 @@ const CGFloat kBackgroundImageAnimationDuration = 0.2;
       [[[self.viewControllersAboveFeed reverseObjectEnumerator] allObjects]
           mutableCopy];
 
-  // TODO(crbug.com/40165977): The contentCollectionView width might be
-  // narrower than the ContentSuggestions view. This causes elements to be
-  // hidden, so we set clipsToBounds to ensure that they remain visible. The
-  // collection view changes, so we must set this property each time it does.
+  // The contentCollectionView width might be narrower than the
+  // ContentSuggestions view. This causes elements to be hidden, so we set
+  // clipsToBounds to ensure that they remain visible. The collection view
+  // changes, so we must set this property each time it does.
   self.collectionView.clipsToBounds = NO;
 
   [self.overscrollActionsController invalidate];
@@ -934,19 +935,19 @@ const CGFloat kBackgroundImageAnimationDuration = 0.2;
 }
 
 - (void)scrollViewDidScrollToTop:(UIScrollView*)scrollView {
-  // TODO(crbug.com/40710989): Handle scrolling.
+  // No-op.
 }
 
 - (void)scrollViewWillBeginDecelerating:(UIScrollView*)scrollView {
-  // TODO(crbug.com/40710989): Handle scrolling.
+  // No-op.
 }
 
 - (void)scrollViewDidEndDecelerating:(UIScrollView*)scrollView {
-  // TODO(crbug.com/40710989): Handle scrolling.
+  // No-op.
 }
 
 - (void)scrollViewDidEndScrollingAnimation:(UIScrollView*)scrollView {
-  // TODO(crbug.com/40710989): Handle scrolling.
+  // No-op.
 }
 
 - (BOOL)scrollViewShouldScrollToTop:(UIScrollView*)scrollView {
@@ -973,8 +974,6 @@ const CGFloat kBackgroundImageAnimationDuration = 0.2;
 
 #pragma mark - UIGestureRecognizerDelegate
 
-// TODO(crbug.com/40165977): Remove once the Feed header properly supports
-// ContentSuggestions.
 - (BOOL)gestureRecognizer:(UIGestureRecognizer*)gestureRecognizer
        shouldReceiveTouch:(UITouch*)touch {
   // Ignore all touches inside the Feed CollectionView, which includes
@@ -1695,6 +1694,7 @@ const CGFloat kBackgroundImageAnimationDuration = 0.2;
   CGFloat scrollPositionToSave = [self scrollPosition];
   scrollPositionToSave -= self.collectionShiftingOffset;
   self.mutator.scrollPositionToSave = scrollPositionToSave;
+  [self.mutator setIsScrolledToTop:[self isNTPScrolledToTop]];
 }
 
 // Updates the feed container's height constraint and z-position.

@@ -174,7 +174,7 @@ void MediaSessionWebOS::MediaSessionPositionChanged(
 
   NEVA_VLOGTF(3);
 
-  base::Value::Dict root_dict;
+  base::DictValue root_dict;
   root_dict.Set(kMediaId, session_id_);
   root_dict.Set(kMediaPlayPosition,
                 std::to_string(position->GetPosition().InSecondsF()));
@@ -210,7 +210,7 @@ bool MediaSessionWebOS::RegisterMediaSession(const std::string& session_id) {
     return false;
   }
 
-  base::Value::Dict root_dict;
+  base::DictValue root_dict;
   root_dict.Set(kMediaId, session_id);
   root_dict.Set(kAppId, application_id_);
   root_dict.Set(kSubscribe, true);
@@ -247,7 +247,7 @@ void MediaSessionWebOS::UnregisterMediaSession() {
   if (playback_state_ != PlaybackState::kStopped)
     SetPlaybackStatus(PlaybackState::kStopped);
 
-  base::Value::Dict root_dict;
+  base::DictValue root_dict;
   root_dict.Set(kMediaId, session_id_);
 
   std::string payload;
@@ -278,7 +278,7 @@ bool MediaSessionWebOS::ActivateMediaSession(const std::string& session_id) {
     return false;
   }
 
-  base::Value::Dict root_dict;
+  base::DictValue root_dict;
   root_dict.Set(kMediaId, session_id);
 
   std::string payload;
@@ -305,7 +305,7 @@ void MediaSessionWebOS::DeactivateMediaSession() {
     return;
   }
 
-  base::Value::Dict root_dict;
+  base::DictValue root_dict;
   root_dict.Set(kMediaId, session_id_);
 
   std::string payload;
@@ -348,7 +348,7 @@ void MediaSessionWebOS::SetPlaybackStatus(PlaybackState playback_state) {
   playback_state_ = playback_state;
   std::string play_status = get_playback_status(playback_state_);
 
-  base::Value::Dict root_dict;
+  base::DictValue root_dict;
   root_dict.Set(kMediaId, session_id_);
   root_dict.Set(kMediaPlayStatus, play_status);
 
@@ -370,10 +370,10 @@ void MediaSessionWebOS::SetPlaybackStatus(PlaybackState playback_state) {
 
 void MediaSessionWebOS::SetMetadataProperty(const std::string& property,
                                             const std::string& value) {
-  base::Value::Dict metadata;
+  base::DictValue metadata;
   metadata.Set(property, value);
 
-  base::Value::Dict root_dict;
+  base::DictValue root_dict;
   root_dict.Set(kMediaId, session_id_);
   root_dict.Set(kMediaMetaData, std::move(metadata));
 
@@ -400,7 +400,7 @@ void MediaSessionWebOS::ReceiveMediaKeyEvent(const std::string& payload) {
     return;
   }
   auto response =
-      std::make_unique<base::Value::Dict>(std::move(value->GetDict()));
+      std::make_unique<base::DictValue>(std::move(value->GetDict()));
   auto return_value = response->FindBoolByDottedPath(kReturnValue);
   auto subscribed = response->FindBoolByDottedPath(kSubscribed);
 
@@ -442,7 +442,7 @@ void MediaSessionWebOS::CheckReplyStatusMessage(const std::string& message) {
   }
 
   auto response =
-      std::make_unique<base::Value::Dict>(std::move(value->GetDict()));
+      std::make_unique<base::DictValue>(std::move(value->GetDict()));
   auto return_value = response->FindBoolByDottedPath(kReturnValue);
   if (!return_value || !*return_value) {
     NEVA_LOGF(ERROR) << " MCS call Failed. message: " << message

@@ -19,6 +19,7 @@
 #import "ios/chrome/browser/shared/model/profile/profile_ios.h"
 #import "ios/chrome/browser/shared/model/web_state_list/web_state_list.h"
 #import "ios/chrome/browser/shared/public/commands/command_dispatcher.h"
+#import "ios/chrome/browser/shared/public/commands/drive_file_picker_commands.h"
 #import "ios/chrome/browser/shared/public/commands/file_upload_panel_commands.h"
 #import "ios/chrome/browser/shared/ui/buildflags.h"
 #import "ios/chrome/browser/shared/ui/symbols/symbols.h"
@@ -28,6 +29,29 @@
 #import "ios/chrome/browser/web/model/choose_file/choose_file_util.h"
 #import "ios/chrome/grit/ios_strings.h"
 #import "ui/base/l10n/l10n_util_mac.h"
+
+namespace {
+
+// Whether Choose From Drive is available.
+BOOL IsChooseFromDriveAvailable(Browser* browser,
+                                bool allowsDirectorySelection) {
+  if (!browser || allowsDirectorySelection) {
+    return NO;
+  }
+  web::WebState* activeWebState =
+      browser->GetWebStateList()->GetActiveWebState();
+  ProfileIOS* profile = browser->GetProfile();
+  CHECK(profile);
+  signin::IdentityManager* identityManager =
+      IdentityManagerFactory::GetInstance()->GetForProfile(profile);
+  drive::DriveService* driveService =
+      drive::DriveServiceFactory::GetForProfile(profile);
+  return drive::IsChooseFromDriveAvailable(
+      activeWebState, profile->IsOffTheRecord(), identityManager, driveService,
+      profile->GetPrefs());
+}
+
+}  // namespace
 
 @interface FileUploadPanelCoordinator () <
     UIContextMenuInteractionDelegate,
@@ -78,18 +102,6 @@
   _mediator.fileUploadPanelHandler = HandlerForProtocol(
       self.browser->GetCommandDispatcher(), FileUploadPanelCommands);
 
-  if (!_mediator.allowsDirectorySelection) {
-    ProfileIOS* profile = self.browser->GetProfile();
-    CHECK(profile);
-    signin::IdentityManager* identityManager =
-        IdentityManagerFactory::GetInstance()->GetForProfile(profile);
-    drive::DriveService* driveService =
-        drive::DriveServiceFactory::GetForProfile(profile);
-    _isChooseFromDriveAvailable = drive::IsChooseFromDriveAvailable(
-        activeWebState, profile->IsOffTheRecord(), identityManager,
-        driveService, profile->GetPrefs());
-  }
-
   if (_mediator.shouldShowCamera) {
     base::UmaHistogramEnumeration("IOS.FileUploadPanel.EntryPointVariant",
                                   FileUploadPanelEntryPointVariant::kCamera);
@@ -98,7 +110,8 @@
     return;
   }
 
-  if (_mediator.allowsDirectorySelection) {
+  if (_mediator.allowsDirectorySelection ||
+      (!_isChooseFromDriveAvailable && !_mediator.allowsMediaSelection)) {
     base::UmaHistogramEnumeration(
         "IOS.FileUploadPanel.EntryPointVariant",
         FileUploadPanelEntryPointVariant::kFilePicker);
@@ -115,7 +128,6 @@
   [_mediator disconnect];
   _mediator = nil;
   [self hideFilePicker];
-  [self hideDriveFilePicker];
   [self hidePhotoPicker];
   [self hideCamera];
   [self hideContextMenu];
@@ -226,7 +238,7 @@
 
 - (void)doContextMenuInteractionEndAnimationCompletion {
   [self hideContextMenu];
-  if (!_cameraPicker && !_filePicker && !_photoPicker) {
+  if (!_mediator.isPresentingFilePicker) {
     [_mediator cancelFileSelection];
   }
 }
@@ -477,7 +489,8 @@
 }
 
 - (UIAction*)driveFilePickerAction {
-  if (!_isChooseFromDriveAvailable) {
+  if (!IsChooseFromDriveAvailable(self.browser,
+                                  _mediator.allowsDirectorySelection)) {
     return nil;
   }
   if (!_driveFilePickerAction) {
@@ -506,11 +519,15 @@
 }
 
 - (void)showDriveFilePicker {
-  // TODO(crbug.com/441659098): Show the Drive file picker.
-}
-
-- (void)hideDriveFilePicker {
-  // TODO(crbug.com/441659098): Hide the Drive file picker.
+  if (!IsChooseFromDriveAvailable(self.browser,
+                                  _mediator.allowsDirectorySelection)) {
+    //  If the user gets signed-out, the feature may become unavailable during
+    // usage.
+    return;
+  }
+  id<DriveFilePickerCommands> driveFilePickerCommands = HandlerForProtocol(
+      self.browser->GetCommandDispatcher(), DriveFilePickerCommands);
+  [driveFilePickerCommands showDriveFilePicker];
 }
 
 #pragma mark - UIAdaptivePresentationControllerDelegate
@@ -526,6 +543,7 @@
     (FileUploadPanelContextMenuActionVariant)actionVariant {
   base::UmaHistogramEnumeration("IOS.FileUploadPanel.ContextMenuActionVariant",
                                 actionVariant);
+  _mediator.isPresentingFilePicker = true;
   switch (actionVariant) {
     case FileUploadPanelContextMenuActionVariant::kFilePicker:
       [self showFilePicker];

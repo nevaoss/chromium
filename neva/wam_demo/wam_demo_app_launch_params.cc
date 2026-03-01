@@ -29,9 +29,9 @@ const char kApplicationWamDemoSystemPrefix[] = "com.webos.app.neva.wam.demo.";
 AppLaunchParams::AppLaunchParams() = default;
 AppLaunchParams::~AppLaunchParams() = default;
 
-std::unique_ptr<base::Value::Dict> AppLaunchParams::AsDict(
+std::unique_ptr<base::DictValue> AppLaunchParams::AsDict(
     const AppLaunchParams& params) {
-  auto dict = std::make_unique<base::Value::Dict>();
+  auto dict = std::make_unique<base::DictValue>();
   dict->Set("appid", params.appid);
   dict->Set("appurl", params.appurl);
   dict->Set("fullscreen", params.fullscreen);
@@ -41,7 +41,7 @@ std::unique_ptr<base::Value::Dict> AppLaunchParams::AsDict(
   dict->Set("group_owner", params.group_owner);
   dict->Set("transparent_background", params.transparent_background);
 
-  base::Value::List injection_list;
+  base::ListValue injection_list;
   for (const auto& injection : params.injections)
     injection_list.Append(injection);
   dict->Set("injections", std::move(injection_list));

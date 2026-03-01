@@ -58,7 +58,7 @@ VisibleRegionCapture::VisibleRegionCapture(ReplyCallback callback,
       output_width = 0;
 
     view->CopyFromSurface(
-        gfx::Rect(), gfx::Size(output_width, output_height),
+        gfx::Rect(), gfx::Size(output_width, output_height), base::TimeDelta(),
         base::BindOnce(&VisibleRegionCapture::OnBitmapCaptured,
                        base::Unretained(this)));
     return;

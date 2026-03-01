@@ -34,7 +34,7 @@ class NevaMessagingDelegate : public extensions::MessagingDelegate {
   ~NevaMessagingDelegate() override;
 
   // MessagingDelegate:
-  std::optional<base::Value::Dict> MaybeGetTabInfo(
+  std::optional<base::DictValue> MaybeGetTabInfo(
       content::WebContents* web_contents) override;
   content::WebContents* GetWebContentsByTabId(
       content::BrowserContext* browser_context,
