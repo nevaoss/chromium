@@ -25,11 +25,11 @@ Hence disable MANGLE_JPEG_NAMES usage for webOS target.
 :Issues Addressed:
 [NEVA-6765] Upgrade neva-master-rolling up to 4664 BUILD (M96 branchpoint)
 ---
- BUILD.gn | 14 +++++++++++---
- 1 file changed, 11 insertions(+), 3 deletions(-)
+ BUILD.gn | 13 +++++++++++--
+ 1 file changed, 11 insertions(+), 2 deletions(-)
 
 diff --git a/BUILD.gn b/BUILD.gn
-index 036b358..888dbd3 100644
+index b423384..3a338e4 100644
 --- a/BUILD.gn
 +++ b/BUILD.gn
 @@ -7,6 +7,7 @@
@@ -37,10 +37,10 @@ index 036b358..888dbd3 100644
  import("//build/config/features.gni")
  import("//build/config/sanitizers/sanitizers.gni")
 +import("//neva/neva.gni")
- if (current_cpu == "arm" || current_cpu == "arm64") {
+ if (current_cpu == "arm" || current_cpu == "arm64" || current_cpu == "arm64e") {
    import("//build/config/arm.gni")
  }
-@@ -185,7 +186,11 @@ config("libjpeg_simd_config") {
+@@ -186,7 +187,11 @@ config("libjpeg_simd_config") {
  static_library("simd") {
    include_dirs = [ "." ]
    deps = [ ":libjpeg_headers" ]
@@ -53,7 +53,7 @@ index 036b358..888dbd3 100644
    configs += [ ":libjpeg_simd_config" ]
  
    if (is_msan && (current_cpu == "x86" || current_cpu == "x64")) {
-@@ -238,7 +243,11 @@ static_library("simd") {
+@@ -240,7 +245,11 @@ static_library("simd") {
  
  config("libjpeg_config") {
    include_dirs = [ "src" ]
