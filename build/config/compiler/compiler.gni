@@ -46,13 +46,9 @@ declare_args() {
   # In late bring-up on macOS (see docs/mac_lld.md).
   # Tentatively used on iOS.
   # The default linker everywhere else.
-<<<<<<< HEAD
   # NOTE(neva): Disable use_lld for webOS built with GCC and ld.gold.
-  use_lld = is_clang && current_os != "zos" &&
+  use_lld = is_clang && current_os != "zos" && experimental_linker_path == "" &&
             (!is_webos || current_toolchain == default_toolchain)
-=======
-  use_lld = is_clang && current_os != "zos" && experimental_linker_path == ""
->>>>>>> 147.0.7686.0~1
 
   # If false, build using C++20; otherwise, build using C++23.
   use_cxx23 = true

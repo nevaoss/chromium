@@ -567,34 +567,6 @@ config("compiler") {
 
   # Linux-specific compiler flags setup.
   # ------------------------------------
-<<<<<<< HEAD
-  # TODO(neva): Remove this when Neva GCC can remove use_gold logic.
-  if (use_neva_appruntime) {
-    if (use_gold) {
-      ldflags += [ "-fuse-ld=gold" ]
-
-      if (gold_path != "") {
-        ldflags += [ "-B$gold_path" ]
-      }
-
-      ldflags += [
-        # Experimentation found that using four linking threads
-        # saved ~20% of link time.
-        # https://groups.google.com/a/chromium.org/group/chromium-dev/browse_thread/thread/281527606915bb36
-        # Only apply this to the target linker, since the host
-        # linker might not be gold, but isn't used much anyway.
-        "-Wl,--threads",
-        "-Wl,--thread-count=4",
-      ]
-    }
-  }
-
-  if (use_icf && (!is_apple || use_lld)) {
-    ldflags += [ "-Wl,--icf=all" ]
-  }
-
-=======
->>>>>>> 147.0.7686.0~1
   if (is_linux || is_chromeos) {
     cflags += [ "-pthread" ]
     # Do not use the -pthread ldflag here since it becomes a no-op
