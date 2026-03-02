@@ -20,11 +20,13 @@ enum class SafariDataImportEntryPoint;
 @protocol SafariDataImportUIHandler;
 @protocol SceneCommands;
 @class BrowserLayoutViewController;
+@class OpenNewTabCommand;
 @class SceneCoordinator;
 @class SettingsNavigationController;
 @class ShowSigninCommand;
 @class SigninCoordinator;
 @protocol TabOpening;
+enum class UserFeedbackSender;
 struct UrlLoadParams;
 
 namespace password_manager {
@@ -53,12 +55,6 @@ enum class WarningType;
 // tabs. This must be called after the incognito browser has been deleted
 // because the incognito profile is deleted.
 @property(nonatomic, assign) Browser* incognitoBrowser;
-
-// Navigation View controller for the settings.
-// TODO(crbug.com/463347803): This property is temporarily exposed to facilitate
-// migration. It should be private once the migration is complete.
-@property(nonatomic, strong)
-    SettingsNavigationController* settingsNavigationController;
 
 // Returns YES if sign-in is in progress.
 @property(nonatomic, readonly) BOOL isSigninInProgress;
@@ -170,6 +166,19 @@ enum class WarningType;
 - (void)showPrivacySettingsFromViewController:
     (UIViewController*)baseViewController;
 
+// Shows the Report an Issue UI, presenting from `baseViewController`.
+- (void)showReportAnIssueFromViewController:
+            (UIViewController*)baseViewController
+                                     sender:(UserFeedbackSender)sender;
+
+// Shows the Report an Issue UI, presenting from `baseViewController`, using
+// `specificProductData` for additional product data to be sent in the report.
+- (void)
+    showReportAnIssueFromViewController:(UIViewController*)baseViewController
+                                 sender:(UserFeedbackSender)sender
+                    specificProductData:(NSDictionary<NSString*, NSString*>*)
+                                            specificProductData;
+
 // Shows the Settings UI if nothing else is displayed.
 - (void)maybeShowSettingsFromViewController;
 
@@ -191,6 +200,9 @@ enum class WarningType;
 
 // Shows the settings UI for price tracking notifications.
 - (void)showPriceTrackingNotificationsSettings;
+
+// Closes presented views and opens `command`.
+- (void)closePresentedViewsAndOpenURL:(OpenNewTabCommand*)command;
 
 // Closes presented views.
 - (void)closePresentedViews;

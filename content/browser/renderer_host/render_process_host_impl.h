@@ -67,7 +67,10 @@
 #include "mojo/public/cpp/bindings/unique_receiver_set.h"
 #include "mojo/public/cpp/system/invitation.h"
 #include "net/base/network_isolation_key.h"
+#include "services/network/public/cpp/network_service_buildflags.h"
+#if BUILDFLAG(IS_P2P_ENABLED)
 #include "services/network/public/mojom/p2p.mojom-forward.h"
+#endif  // BUILDFLAG(IS_P2P_ENABLED)
 #include "services/network/public/mojom/url_loader_factory.mojom-forward.h"
 #include "services/resource_coordinator/public/mojom/memory_instrumentation/memory_instrumentation.mojom.h"
 #include "services/service_manager/public/cpp/binder_registry.h"
@@ -157,7 +160,9 @@ class FramelessMediaInterfaceProxy;
 class InProcessChildThreadParams;
 class IsolationContext;
 class MediaStreamTrackMetricsHost;
+#if BUILDFLAG(IS_P2P_ENABLED)
 class P2PSocketDispatcherHost;
+#endif  // BUILDFLAG(IS_P2P_ENABLED)
 class PermissionServiceContext;
 class PluginRegistryImpl;
 class ProcessLock;
@@ -882,10 +887,12 @@ class CONTENT_EXPORT RenderProcessHostImpl
       mojo::PendingReceiver<media::mojom::VideoDecoder> receiver) override;
 #endif  // BUILDFLAG(ALLOW_OOP_VIDEO_DECODER)
 
+#if BUILDFLAG(IS_P2P_ENABLED)
   void BindP2PSocketManager(
       net::NetworkAnonymizationKey isolation_key,
       mojo::PendingReceiver<network::mojom::P2PSocketManager> receiver,
       GlobalRenderFrameHostId render_frame_host_id);
+#endif  // BUILDFLAG(IS_P2P_ENABLED)
 
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
   void SetV8SnapshotPath(const std::string& v8_snapshot_path) override;
@@ -1492,7 +1499,9 @@ class CONTENT_EXPORT RenderProcessHostImpl
   // the renderer process.
   bool did_update_renderer_locked_state_ = false;
 
+#if BUILDFLAG(IS_P2P_ENABLED)
   std::unique_ptr<P2PSocketDispatcherHost> p2p_socket_dispatcher_host_;
+#endif  // BUILDFLAG(IS_P2P_ENABLED)
 
   // Must be accessed on UI thread.
   AecDumpManagerImpl aec_dump_manager_;

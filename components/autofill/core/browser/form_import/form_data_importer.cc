@@ -40,6 +40,7 @@
 #include "components/autofill/core/browser/data_quality/validation.h"
 #include "components/autofill/core/browser/field_type_utils.h"
 #include "components/autofill/core/browser/field_types.h"
+#include "components/autofill/core/browser/form_import/addresses/address_form_data_importer.h"
 #include "components/autofill/core/browser/form_import/addresses/address_profile_save_manager.h"
 #include "components/autofill/core/browser/form_import/payments/payments_form_data_importer.h"
 #include "components/autofill/core/browser/form_parsing/form_field_parser.h"
@@ -48,7 +49,6 @@
 #include "components/autofill/core/browser/foundations/autofill_client.h"
 #include "components/autofill/core/browser/geo/autofill_country.h"
 #include "components/autofill/core/browser/geo/phone_number_i18n.h"
-#include "components/autofill/core/browser/integrators/plus_addresses/autofill_plus_address_delegate.h"
 #include "components/autofill/core/browser/logging/log_manager.h"
 #include "components/autofill/core/browser/metrics/profile_import_metrics.h"
 #include "components/autofill/core/browser/payments/credit_card_save_manager.h"
@@ -70,114 +70,6 @@ namespace {
 
 using AddressImportRequirement =
     autofill_metrics::AddressProfileImportRequirementMetric;
-
-// Struct storing a field's value for import and selected option value, if
-// present.
-struct ValueForImport {
-  // The return value of `AutofillField::value_for_import()`.
-  std::u16string value_for_import;
-  // The value of the selected option. Only set for <select> fields and where
-  // `FormFieldData::selected_option()` doesn't return std::nullopt.
-  std::optional<std::u16string> selected_option_value;
-};
-
-// Determines if a field's value matches a previously observed field of the same
-// type, allowing for duplicate fields with identical values or <select>/<input>
-// value mirroring.
-bool FieldValueMatchesPrecedingField(const ValueForImport& current_values,
-                                     const ValueForImport& preceding_values) {
-  bool field_values_match = false;
-  // Checks for exact value match between current and previously observed
-  // fields.
-  if (preceding_values.value_for_import == current_values.value_for_import) {
-    field_values_match = true;
-  }
-
-  // Check if the selected option value of the current field (if it's a <select>
-  // field) matches the value previously observed for a field of the same type.
-  // This handles the case where a <select> option's value is stored in a
-  // separate <input> field.
-  // Example:
-  // <select id="country">
-  //   <option value="US">United States</option>
-  // </select>
-  // <input type="text" name="country_code" value="US">
-  // Here, `selected_option_value` would be "US", and
-  // `observed_field.value_for_import` from the input would also be "US".
-  if (current_values.selected_option_value ==
-      preceding_values.value_for_import) {
-    field_values_match = true;
-  }
-
-  // Check if the value of the selected option from a previously observed
-  // <select> field matches the value intended for import from the current
-  // field.
-  // Example:
-  // <input type="text" name="country_code" value="US">
-  // <select id="country">
-  //   <option value="US">United States</option>
-  // </select>
-  // Here, `observed_field.selected_option_value` would be "US", and
-  // `value_for_import` from the <select> would also be "US".
-  if (preceding_values.selected_option_value ==
-      current_values.value_for_import) {
-    field_values_match = true;
-  }
-  return field_values_match;
-}
-
-// Return true if the `field_type` and `current_values` are valid within the
-// context of importing a form.
-bool IsValidFieldTypeAndValue(
-    const base::flat_map<FieldType, ValueForImport>& preceding_values,
-    FieldType field_type,
-    const ValueForImport& current_values,
-    LogBuffer* import_log_buffer) {
-  // Abandon the import if an email address value shows up in a field that is
-  // not an email address.
-  if (field_type != EMAIL_ADDRESS &&
-      IsValidEmailAddress(current_values.value_for_import)) {
-    LOG_AF(import_log_buffer)
-        << LogMessage::kImportAddressProfileFromFormFailed
-        << "Email address found in field of different type: "
-        << FieldTypeToStringView(field_type) << CTag{};
-    return false;
-  }
-
-  // Allow the import if `field_type` wasn't observed before. Also, allow it for
-  // duplicate fields with identical field values.
-  // TODO(crbug.com/395855125): Clean up when launched.
-  if (auto it = preceding_values.find(field_type);
-      it == preceding_values.end() ||
-      FieldValueMatchesPrecedingField(current_values,
-                                      preceding_values.at(field_type))) {
-    return true;
-  }
-
-  // Allow the import for duplicate EMAIL_ADDRESS fields because it is common to
-  // see a second 'confirm email address' field.
-  if (field_type == EMAIL_ADDRESS) {
-    return true;
-  }
-
-  // Allow the import for duplicate phone number component fields because a form
-  // might request several phone numbers.
-  // TODO(crbug.com/40735892) Remove feature check when launched.
-  if (GroupTypeOfFieldType(field_type) == FieldTypeGroup::kPhone &&
-      base::FeatureList::IsEnabled(
-          features::kAutofillEnableImportWhenMultiplePhoneNumbers)) {
-    return true;
-  }
-
-  // Abandon the import if two fields of the same type are encountered (after
-  // prior exception checks). This indicates ambiguous data or miscategorization
-  // of types.
-  LOG_AF(import_log_buffer)
-      << LogMessage::kImportAddressProfileFromFormFailed
-      << "Multiple fields of type " << FieldTypeToStringView(field_type) << "."
-      << CTag{};
-  return false;
-}
 
 bool HasSynthesizedTypes(
     const base::flat_map<FieldType, std::u16string>& observed_field_values,
@@ -234,19 +126,16 @@ FormDataImporter::FormDataImporter(AutofillClient* client,
 #endif  // !BUILDFLAG(IS_IOS)
       multistep_importer_(client_->GetAppLocale(),
                           client_->GetVariationConfigCountryCode()),
+      address_form_data_importer_(client),
       payments_form_data_importer_(client) {
-  address_data_manager_observation_.Observe(&address_data_manager());
+  address_data_manager_observation_.Observe(
+      &GetAddressFormDataImporter().address_data_manager());
   if (history_service) {
     history_service_observation_.Observe(history_service);
   }
 }
 
 FormDataImporter::~FormDataImporter() = default;
-
-FormDataImporter::ExtractedAddressProfile::ExtractedAddressProfile() = default;
-FormDataImporter::ExtractedAddressProfile::ExtractedAddressProfile(
-    const FormDataImporter::ExtractedAddressProfile& other) = default;
-FormDataImporter::ExtractedAddressProfile::~ExtractedAddressProfile() = default;
 
 void FormDataImporter::ImportAndProcessFormData(
     const FormStructure& submitted_form,
@@ -289,7 +178,8 @@ void FormDataImporter::ImportAndProcessFormData(
 
   // Reset last fetch payments method metadata after all payments related form
   // data processing logic is finished.
-  fetched_payments_data_context_ = FetchedPaymentsDataContext();
+  GetPaymentsFormDataImporter().fetched_payments_data_context() =
+      payments::PaymentsFormDataImporter::FetchedPaymentsDataContext();
 
   // Record the prompt status iff at least one prompt could have been displayed.
   // Recording that status isn't pertinent otherwise. When there is a full
@@ -330,48 +220,6 @@ void FormDataImporter::ImportAndProcessFormData(
       ukm_source_id);
 }
 
-bool FormDataImporter::ComplementCountry(AutofillProfile& profile,
-                                         LogBuffer* import_log_buffer) {
-  if (profile.HasRawInfo(ADDRESS_HOME_COUNTRY)) {
-    return false;
-  }
-  const std::string fallback =
-      address_data_manager().GetDefaultCountryCodeForNewAddress().value();
-  if (import_log_buffer) {
-    *import_log_buffer
-        << LogMessage::kImportAddressProfileComplementedCountryCode << fallback
-        << CTag{};
-  }
-  return profile.SetInfoWithVerificationStatus(
-      ADDRESS_HOME_COUNTRY, base::ASCIIToUTF16(fallback),
-      client_->GetAppLocale(), VerificationStatus::kObserved);
-}
-
-bool FormDataImporter::SetPhoneNumber(
-    AutofillProfile& profile,
-    const PhoneNumber::PhoneCombineHelper& combined_phone) {
-  if (combined_phone.IsEmpty()) {
-    return true;
-  }
-
-  bool parsed_successfully = PhoneNumber::ImportPhoneNumberToProfile(
-      combined_phone, client_->GetAppLocale(), profile);
-  autofill_metrics::LogPhoneNumberImportParsingResult(parsed_successfully);
-  return parsed_successfully;
-}
-
-void FormDataImporter::RemoveInaccessibleProfileValues(
-    AutofillProfile& profile) {
-  const FieldTypeSet inaccessible_fields =
-      profile.FindInaccessibleProfileValues();
-  profile.ClearFields(inaccessible_fields);
-  autofill_metrics::LogRemovedSettingInaccessibleFields(
-      !inaccessible_fields.empty());
-  for (const FieldType inaccessible_field : inaccessible_fields) {
-    autofill_metrics::LogRemovedSettingInaccessibleField(inaccessible_field);
-  }
-}
-
 void FormDataImporter::CacheFetchedVirtualCard(
     const std::u16string& last_four) {
   fetched_virtual_cards_.insert(last_four);
@@ -400,7 +248,8 @@ FormDataImporter::ExtractedFormData FormDataImporter::ExtractFormData(
 
 #if !BUILDFLAG(IS_IOS)
   if (payment_methods_autofill_enabled) {
-    extracted_form_data.extracted_iban = ExtractIban(submitted_form);
+    extracted_form_data.extracted_iban =
+        GetPaymentsFormDataImporter().ExtractIban(submitted_form);
   }
 #endif  // !BUILDFLAG(IS_IOS)
 
@@ -431,7 +280,7 @@ FormDataImporter::ExtractedFormData FormDataImporter::ExtractFormData(
 
 size_t FormDataImporter::ExtractAddressProfiles(
     const FormStructure& form,
-    std::vector<FormDataImporter::ExtractedAddressProfile>*
+    std::vector<AddressFormDataImporter::ExtractedAddressProfile>*
         extracted_address_profiles) {
   // Create a buffer to collect logging output for the autofill-internals.
   LogManager* log_manager = client_->GetCurrentLogManager();
@@ -494,196 +343,10 @@ size_t FormDataImporter::ExtractAddressProfiles(
   return num_complete_profiles;
 }
 
-AutofillProfile FormDataImporter::ConstructProfileFromObservedValues(
-    const base::flat_map<FieldType, std::u16string>& observed_values,
-    LogBuffer* import_log_buffer,
-    ProfileImportMetadata& import_metadata) {
-  AutofillProfile candidate_profile(
-      i18n_model_definition::kLegacyHierarchyCountryCode);
-
-  auto country_it = observed_values.find(ADDRESS_HOME_COUNTRY);
-  if (country_it != observed_values.end()) {
-    // Try setting the collected country value into the profile and report
-    // invalid country if the operation failed.
-    candidate_profile.SetInfoWithVerificationStatus(
-        ADDRESS_HOME_COUNTRY, country_it->second, client_->GetAppLocale(),
-        VerificationStatus::kObserved);
-
-    // Track the validity of the entered country for metrics.
-    import_metadata.observed_invalid_country =
-        !candidate_profile.HasRawInfo(ADDRESS_HOME_COUNTRY);
-  }
-
-  // When setting a phone number, the region is deduced from the profile's
-  // country or the app locale. For the variation country code to take
-  // precedence over the app locale, country code complemention needs to happen
-  // before `SetPhoneNumber()`.
-  import_metadata.did_complement_country =
-      ComplementCountry(candidate_profile, import_log_buffer);
-
-  // We only set complete phone, so aggregate phone parts in these vars and set
-  // complete at the end.
-  PhoneNumber::PhoneCombineHelper combined_phone;
-
-  // Populate the profile with the collected values. Note that this is after the
-  // profile's country has been set to make sure the correct address
-  // representation is used.
-  for (const auto& [type, value] : observed_values) {
-    // The profile country has already been established by this point. It's
-    // ignored here to avoid re-setting up a potentially invalid country that
-    // was present in the form.
-    if (type == ADDRESS_HOME_COUNTRY) {
-      continue;
-    }
-    if (GroupTypeOfFieldType(type) == FieldTypeGroup::kPhone) {
-      // We need to store phone data in the variables, before building the whole
-      // number at the end.
-      combined_phone.SetInfo(type, value);
-    } else {
-      candidate_profile.SetInfoWithVerificationStatus(
-          type, value, client_->GetAppLocale(), VerificationStatus::kObserved);
-    }
-  }
-
-  // Track if the form contains split zip fields such that at least zip prefix
-  // field is not empty for metrics. It's enough to verify
-  // ADDRESS_HOME_ZIP_PREFIX because a field can be classified as
-  // ADDRESS_HOME_ZIP_PREFIX only if the next field is ADDRESS_HOME_ZIP_SUFFIX.
-  // Note that the value of ADDRESS_HOME_ZIP_SUFFIX can be empty in the USA,
-  // since the suffix is an optional part of the zip code.
-  import_metadata.observed_split_zip =
-      candidate_profile.HasRawInfo(ADDRESS_HOME_ZIP_PREFIX);
-
-  if (!SetPhoneNumber(candidate_profile, combined_phone)) {
-    import_metadata.phone_import_status = PhoneImportStatus::kInvalid;
-  } else if (!combined_phone.IsEmpty()) {
-    import_metadata.phone_import_status = PhoneImportStatus::kValid;
-  }
-  return candidate_profile;
-}
-
-base::flat_map<FieldType, std::u16string>
-FormDataImporter::GetAddressObservedFieldValues(
-    base::span<const AutofillField* const> section_fields,
-    ProfileImportMetadata& import_metadata,
-    LogBuffer* import_log_buffer,
-    bool& has_invalid_field_types,
-    bool& has_multiple_distinct_email_addresses,
-    bool& has_address_related_fields) const {
-  AutofillPlusAddressDelegate* plus_address_delegate =
-      client_->GetPlusAddressDelegate();
-  base::flat_map<FieldType, ValueForImport> preceding_values;
-
-  // Tracks if subsequent phone number fields should be ignored,
-  // since they do not belong to the first phone number in the form.
-  bool ignore_phone_number_fields = false;
-
-  // Go through each |form| field and attempt to constitute a valid profile.
-  for (const AutofillField* const field : section_fields) {
-    std::u16string value = field->value_for_import();
-    base::TrimWhitespace(value, base::TRIM_ALL, &value);
-
-    // If we don't know the type of the field, or the user hasn't entered any
-    // information into the field, then skip it.
-    if (!field->IsFieldFillable() || value.empty()) {
-      continue;
-    }
-    // If the field was filled with a fallback type, skip it in order to not
-    // introduce noise to the map's data, as this would add an entry for
-    // field type X with a value retrieved from another field type Y.
-    if (field->WasAutofilledWithFallback()) {
-      continue;
-    }
-    // When the experimental plus addresses feature is enabled, and the value is
-    // a plus address, exclude it from the resulting address profile.
-    if (plus_address_delegate &&
-        (plus_address_delegate->IsPlusAddress(base::UTF16ToUTF8(value)) ||
-         plus_address_delegate->MatchesPlusAddressFormat(value))) {
-      continue;
-    }
-
-    FieldType field_type = field->Type().GetAddressType();
-    // Only address types are relevant in this function, other types are treated
-    // in different flows.
-    if (field_type == UNKNOWN_TYPE) {
-      continue;
-    }
-    has_address_related_fields = true;
-
-    // There can be multiple email fields (e.g. in the case of 'confirm email'
-    // fields) but they must all contain the same value, else the profile is
-    // invalid.
-    if (field_type == EMAIL_ADDRESS) {
-      auto email_it = preceding_values.find(EMAIL_ADDRESS);
-      if (email_it != preceding_values.end() &&
-          email_it->second.value_for_import != value) {
-        LOG_AF(import_log_buffer)
-            << LogMessage::kImportAddressProfileFromFormFailed
-            << "Multiple different email addresses present." << CTag{};
-        has_multiple_distinct_email_addresses = true;
-      }
-    }
-    std::optional<std::u16string> selected_option_value = std::nullopt;
-    if (base::optional_ref<const SelectOption> o = field->selected_option()) {
-      selected_option_value = o->value;
-    }
-    // If the field type and |value| don't pass basic validity checks then
-    // abandon the import.
-    if (!IsValidFieldTypeAndValue(
-            preceding_values, field_type,
-            {.value_for_import = value,
-             .selected_option_value = selected_option_value},
-            import_log_buffer)) {
-      has_invalid_field_types = true;
-    }
-
-    const auto field_and_value_it = preceding_values.find(field_type);
-    // Found phone number component field.
-    // TODO(crbug.com/40735892) Remove feature check when launched.
-    if (GroupTypeOfFieldType(field_type) == FieldTypeGroup::kPhone &&
-        base::FeatureList::IsEnabled(
-            features::kAutofillEnableImportWhenMultiplePhoneNumbers)) {
-      if (ignore_phone_number_fields) {
-        continue;
-      }
-      // Each phone number related type only occurs once per number. Seeing a
-      // type a second time implies that it belongs to a new number. Since
-      // Autofill currently supports storing only one phone number per profile,
-      // ignore this and all subsequent phone number fields.
-      if (field_and_value_it != preceding_values.end()) {
-        ignore_phone_number_fields = true;
-        continue;
-      }
-    }
-    // Ensure that for <select> fields, the selected option's displayed text
-    // (which is typically user-friendly) is prioritized over the potentially
-    // less readable option value that might be present in a corresponding
-    // <input> field.
-    if (field_and_value_it == preceding_values.end() ||
-        !field_and_value_it->second.selected_option_value.has_value() ||
-        selected_option_value.has_value()) {
-      preceding_values.insert_or_assign(
-          field_type, ValueForImport{.value_for_import = std::move(value),
-                                     .selected_option_value =
-                                         std::move(selected_option_value)});
-    }
-
-    if (field->parsed_autocomplete()) {
-      import_metadata.did_import_from_unrecognized_autocomplete_field |=
-          field->parsed_autocomplete()->field_type ==
-          HtmlFieldType::kUnrecognized;
-    }
-  }
-  return base::MakeFlatMap<FieldType, std::u16string>(
-      preceding_values, {}, [](const std::pair<FieldType, ValueForImport>& p) {
-        return std::make_pair(p.first, p.second.value_for_import);
-      });
-}
-
 bool FormDataImporter::ExtractAddressProfileFromSection(
     base::span<const AutofillField* const> section_fields,
     const GURL& source_url,
-    std::vector<FormDataImporter::ExtractedAddressProfile>*
+    std::vector<AddressFormDataImporter::ExtractedAddressProfile>*
         extracted_address_profiles,
     LogBuffer* import_log_buffer) {
   // Tracks if the form section contains multiple distinct email addresses.
@@ -703,14 +366,15 @@ bool FormDataImporter::ExtractAddressProfileFromSection(
   // well to detect and discard address forms with multiple fields of the same
   // type.
   base::flat_map<FieldType, std::u16string> observed_field_values =
-      GetAddressObservedFieldValues(section_fields, import_metadata,
-                                    import_log_buffer, has_invalid_field_types,
-                                    has_multiple_distinct_email_addresses,
-                                    has_address_related_fields);
+      GetAddressFormDataImporter().GetAddressObservedFieldValues(
+          section_fields, import_metadata, import_log_buffer,
+          has_invalid_field_types, has_multiple_distinct_email_addresses,
+          has_address_related_fields);
 
   // The candidate for profile import.
-  AutofillProfile candidate_profile = ConstructProfileFromObservedValues(
-      observed_field_values, import_log_buffer, import_metadata);
+  AutofillProfile candidate_profile =
+      GetAddressFormDataImporter().ConstructProfileFromObservedValues(
+          observed_field_values, import_log_buffer, import_metadata);
 
   // After ensuring the correct country is set on the profile, we can search for
   // any synthesized nodes. If any of these exist, we'll exclude the profile
@@ -745,7 +409,8 @@ bool FormDataImporter::ExtractAddressProfileFromSection(
 
   // This relies on the profile's country code and must be done strictly after
   // `ComplementCountry()`.
-  RemoveInaccessibleProfileValues(candidate_profile);
+  GetAddressFormDataImporter().RemoveInaccessibleProfileValues(
+      candidate_profile);
 
   // Do not import a profile if any of the requirements is violated.
   // `IsMinimumAddress()` goes first, since it logs to autofill-internals.
@@ -788,7 +453,7 @@ bool FormDataImporter::ExtractAddressProfileFromSection(
   // incognito mode.
   DCHECK(!client_->IsOffTheRecord());
 
-  ExtractedAddressProfile extracted_address_profile;
+  AddressFormDataImporter::ExtractedAddressProfile extracted_address_profile;
   extracted_address_profile.profile = candidate_profile;
   extracted_address_profile.url = source_url;
   extracted_address_profile.import_metadata = import_metadata;
@@ -797,7 +462,7 @@ bool FormDataImporter::ExtractAddressProfileFromSection(
 }
 
 bool FormDataImporter::ProcessExtractedAddressProfiles(
-    const std::vector<FormDataImporter::ExtractedAddressProfile>&
+    const std::vector<AddressFormDataImporter::ExtractedAddressProfile>&
         extracted_address_profiles,
     bool allow_prompt,
     ukm::SourceId ukm_source_id) {
@@ -807,7 +472,8 @@ bool FormDataImporter::ProcessExtractedAddressProfiles(
   // import addresses. If it is false, we should not display UI to import
   // addresses due to a possible dialog or bubble conflict.
   bool allow_only_silent_updates = !allow_prompt;
-  for (const ExtractedAddressProfile& candidate : extracted_address_profiles) {
+  for (const AddressFormDataImporter::ExtractedAddressProfile& candidate :
+       extracted_address_profiles) {
     address_profile_save_manager_->ImportProfileFromForm(
         candidate.profile, client_->GetAppLocale(), candidate.url,
         ukm_source_id, allow_only_silent_updates, candidate.import_metadata);
@@ -853,11 +519,11 @@ bool FormDataImporter::ProcessExtractedCreditCard(
 
   auto* virtual_card_enrollment_manager =
       client_->GetPaymentsAutofillClient()->GetVirtualCardEnrollmentManager();
+  auto& context = GetPaymentsFormDataImporter().fetched_payments_data_context();
   if (virtual_card_enrollment_manager &&
       virtual_card_enrollment_manager->ShouldOfferVirtualCardEnrollment(
-          *extracted_credit_card,
-          fetched_payments_data_context_.fetched_card_instrument_id,
-          fetched_payments_data_context_.card_was_fetched_from_cache)) {
+          *extracted_credit_card, context.fetched_card_instrument_id,
+          context.card_was_fetched_from_cache)) {
     virtual_card_enrollment_manager->InitVirtualCardEnroll(
         *extracted_credit_card, VirtualCardEnrollmentSource::kDownstream,
         base::BindOnce(
@@ -954,7 +620,9 @@ std::optional<CreditCard> FormDataImporter::ExtractCreditCard(
   // If Save and Fill suggestion was clicked (regardless of whether the card was
   // saved or not eventually) before the form extraction, don't offer other
   // payments post-checkout flows.
-  if (fetched_payments_data_context_.card_submitted_through_save_and_fill) {
+  if (GetPaymentsFormDataImporter()
+          .fetched_payments_data_context()
+          .card_submitted_through_save_and_fill) {
     return std::nullopt;
   }
 
@@ -1058,22 +726,6 @@ std::optional<CreditCard> FormDataImporter::TryMatchingExistingServerCard(
   }
 
   return candidate;
-}
-
-std::optional<Iban> FormDataImporter::ExtractIban(const FormStructure& form) {
-  Iban candidate_iban = ExtractIbanFromForm(form);
-  if (candidate_iban.value().empty()) {
-    return std::nullopt;
-  }
-
-  // Sets the `kAutofillHasSeenIban` pref to true indicating that the user has
-  // submitted a form with an IBAN, which indicates that the user is familiar
-  // with IBANs as a concept. We set the pref so that even if the user travels
-  // to a country where IBAN functionality is not typically used, they will
-  // still be able to save new IBANs from the settings page using this pref.
-  payments_data_manager().SetAutofillHasSeenIban();
-
-  return candidate_iban;
 }
 
 payments::PaymentsFormDataImporter::ExtractCreditCardFromFormResult
@@ -1186,23 +838,6 @@ FormDataImporter::ExtractCreditCardFromForm(const FormStructure& form) {
   return result;
 }
 
-Iban FormDataImporter::ExtractIbanFromForm(const FormStructure& form) {
-  // Creates an IBAN candidate with `kUnknown` record type as it is currently
-  // unknown if this IBAN already exists locally or on the server.
-  Iban candidate_iban;
-  for (const auto& field : form) {
-    const std::u16string& value = field->value_for_import();
-    if (!field->IsFieldFillable() || value.empty()) {
-      continue;
-    }
-    if (field->Type().GetTypes().contains(IBAN_VALUE) && Iban::IsValid(value)) {
-      candidate_iban.set_value(value);
-      break;
-    }
-  }
-  return candidate_iban;
-}
-
 base::flat_set<std::string>
 FormDataImporter::ExtractGUIDsOfProfilesWithoutManualEdits(
     const FormStructure& submitted_form) const {
@@ -1220,7 +855,8 @@ FormDataImporter::ExtractGUIDsOfProfilesWithoutManualEdits(
 }
 
 void FormDataImporter::OnAddressDataChanged() {
-  multistep_importer_.OnAddressDataChanged(address_data_manager());
+  multistep_importer_.OnAddressDataChanged(
+      GetAddressFormDataImporter().address_data_manager());
 }
 
 void FormDataImporter::OnHistoryDeletions(
@@ -1238,13 +874,13 @@ void FormDataImporter::
       payment_method_type_if_non_interactive_authentication_flow_completed;
 }
 
+AddressFormDataImporter& FormDataImporter::GetAddressFormDataImporter() {
+  return address_form_data_importer_;
+}
+
 payments::PaymentsFormDataImporter&
 FormDataImporter::GetPaymentsFormDataImporter() {
   return payments_form_data_importer_;
-}
-
-AddressDataManager& FormDataImporter::address_data_manager() {
-  return client_->GetPersonalDataManager().address_data_manager();
 }
 
 PaymentsDataManager& FormDataImporter::payments_data_manager() {

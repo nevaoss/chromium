@@ -53,6 +53,12 @@ public class ContentFeatureList {
     public static final String ACCESSIBILITY_MANAGE_BROADCAST_RECEIVER_ON_BACKGROUND =
             "AccessibilityManageBroadcastReceiverOnBackground";
 
+    public static final String ALLOW_DELAYED_AUDIO_FOCUS_GAIN_ANDROID =
+            "AllowDelayedAudioFocusGainAndroid";
+
+    public static final String ANDROID_ENABLE_BACKGROUND_MEDIA_CAPTURING =
+            "AndroidEnableBackgroundMediaCapturing";
+
     public static final String ANDROID_CAPTURE_KEY_EVENTS = "AndroidCaptureKeyEvents";
     public static final String ANDROID_CARET_BROWSING = "AndroidCaretBrowsing";
 
@@ -132,7 +138,7 @@ public class ContentFeatureList {
             new MutableFlagWithSafeDefault(
                     ContentFeatureMap.getInstance(),
                     ContentInternalFeatures.STRICT_HIGH_RANK_PROCESS_LRU,
-                    false);
+                    true);
 
     public static final MutableFlagWithSafeDefault sRemoveCachedProcessFromBindingManager =
             new MutableFlagWithSafeDefault(

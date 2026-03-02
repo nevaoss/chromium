@@ -110,8 +110,9 @@ class CommandStorageBackendTest : public testing::Test {
     auto infos = CommandStorageBackend::GetSessionFilesSortedByReverseTimestamp(
         file_path_, CommandStorageManager::SessionType::kOther);
     std::vector<base::FilePath> result;
-    for (const auto& info : infos)
+    for (const auto& info : infos) {
       result.push_back(info.path);
+    }
     return result;
   }
 
@@ -223,8 +224,9 @@ TEST_F(CommandStorageBackendTest, RandomDataEncrypted) {
       // Read previous data.
       commands = backend->ReadLastSessionCommands().commands;
       ASSERT_EQ(i, commands.size());
-      for (auto j = commands.begin(); j != commands.end(); ++j)
+      for (auto j = commands.begin(); j != commands.end(); ++j) {
         AssertCommandEqualsData(data[j - commands.begin()], j->get());
+      }
 
       backend->AppendCommands(std::move(commands), true, base::DoNothing(),
                               key);
@@ -374,10 +376,10 @@ TEST_F(CommandStorageBackendTest, MaxSizeType) {
 
 TEST_F(CommandStorageBackendTest, IsValidFileWithInvalidFiles) {
   base::WriteFile(file_path(), "z");
-  EXPECT_FALSE(CommandStorageBackend::IsValidFile(file_path()));
+  EXPECT_FALSE(CommandStorageBackend::IsValidFileForTest(file_path()));
 
   base::WriteFile(file_path(), "a longer string that does not match header");
-  EXPECT_FALSE(CommandStorageBackend::IsValidFile(file_path()));
+  EXPECT_FALSE(CommandStorageBackend::IsValidFileForTest(file_path()));
 }
 
 TEST_F(CommandStorageBackendTest, IsNotValidFileWithoutMarker) {
@@ -386,7 +388,7 @@ TEST_F(CommandStorageBackendTest, IsNotValidFileWithoutMarker) {
   backend->AppendCommands({}, true, base::DoNothing());
   backend = nullptr;
 
-  EXPECT_FALSE(CommandStorageBackend::IsValidFile(path));
+  EXPECT_FALSE(CommandStorageBackend::IsValidFileForTest(path));
 }
 
 TEST_F(CommandStorageBackendTest, SimpleReadWriteWithRestoreType) {
@@ -443,8 +445,9 @@ TEST_F(CommandStorageBackendTest, RandomDataWithRestoreType) {
       // Read previous data.
       commands = backend->ReadLastSessionCommands().commands;
       ASSERT_EQ(i, commands.size());
-      for (auto j = commands.begin(); j != commands.end(); ++j)
+      for (auto j = commands.begin(); j != commands.end(); ++j) {
         AssertCommandEqualsData(data[j - commands.begin()], j->get());
+      }
 
       // Write the previous data back.
       backend->AppendCommands(std::move(commands), true, base::DoNothing());

@@ -276,13 +276,12 @@ scoped_refptr<StaticBitmapImage> StaticBitmapImageTransform::ApplyWithBlit(
         viz::SkColorTypeToSinglePlaneSharedImageFormat(dest_color_type),
         dest_alpha_type, SkColorSpaceToGfxColorSpace(dest_color_space),
         CanvasResourceProvider::ShouldInitialize::kNo,
-        source->ContextProviderWrapper(), RasterMode::kGPU,
-        source->GetSharedImage()->usage());
+        source->ContextProviderWrapper(), source->GetSharedImage()->usage());
 
     if (resource_provider) {
       // Perform the blit and return the drawn resource.
       return resource_provider->DoExternalDrawAndSnapshot(
-          [&](MemoryManagedPaintCanvas& canvas) {
+          [&](cc::PaintCanvas& canvas) {
             BlitToCanvas(canvas, source_paint_image, source_orientation,
                          SkRect::Make(source_rect), dest_size, options);
           },

@@ -12,17 +12,37 @@ import static org.chromium.chrome.browser.autofill.editors.autofill_ai.EntityEdi
 import static org.chromium.chrome.browser.autofill.editors.autofill_ai.EntityEditorProperties.DELETE_CONFIRMATION_TITLE;
 import static org.chromium.chrome.browser.autofill.editors.autofill_ai.EntityEditorProperties.DELETE_RUNNABLE;
 import static org.chromium.chrome.browser.autofill.editors.autofill_ai.EntityEditorProperties.DONE_RUNNABLE;
+import static org.chromium.chrome.browser.autofill.editors.autofill_ai.EntityEditorProperties.EDITOR_FIELDS;
 import static org.chromium.chrome.browser.autofill.editors.autofill_ai.EntityEditorProperties.EDITOR_TITLE;
+import static org.chromium.chrome.browser.autofill.editors.common.EditorComponentsProperties.ItemType.NOTICE;
+import static org.chromium.chrome.browser.autofill.editors.common.EditorComponentsProperties.ItemType.TEXT_INPUT;
+import static org.chromium.chrome.browser.autofill.editors.common.EditorComponentsProperties.NoticeProperties.IMPORTANT_FOR_ACCESSIBILITY;
+import static org.chromium.chrome.browser.autofill.editors.common.EditorComponentsProperties.NoticeProperties.NOTICE_ALL_KEYS;
+import static org.chromium.chrome.browser.autofill.editors.common.EditorComponentsProperties.NoticeProperties.NOTICE_TEXT;
+import static org.chromium.chrome.browser.autofill.editors.common.EditorComponentsProperties.NoticeProperties.SHOW_BACKGROUND;
+import static org.chromium.chrome.browser.autofill.editors.common.field.FieldProperties.LABEL;
+import static org.chromium.chrome.browser.autofill.editors.common.field.FieldProperties.VALUE;
+import static org.chromium.chrome.browser.autofill.editors.common.text_field.TextFieldProperties.TEXT_ALL_KEYS;
+import static org.chromium.chrome.browser.autofill.editors.common.text_field.TextFieldProperties.TEXT_FIELD_TYPE;
 
 import android.content.Context;
+import android.text.TextUtils;
 
 import org.chromium.build.annotations.EnsuresNonNull;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.autofill.R;
 import org.chromium.chrome.browser.autofill.editors.autofill_ai.EntityEditorCoordinator.Delegate;
+import org.chromium.chrome.browser.autofill.editors.common.EditorComponentsProperties.EditorItem;
+import org.chromium.components.autofill.autofill_ai.AttributeInstance;
+import org.chromium.components.autofill.autofill_ai.AttributeType;
+import org.chromium.components.autofill.autofill_ai.DataType;
 import org.chromium.components.autofill.autofill_ai.EntityInstance;
 import org.chromium.components.autofill.autofill_ai.RecordType;
+import org.chromium.components.signin.base.CoreAccountInfo;
+import org.chromium.components.signin.identitymanager.ConsentLevel;
+import org.chromium.components.signin.identitymanager.IdentityManager;
+import org.chromium.ui.modelutil.ListModel;
 import org.chromium.ui.modelutil.PropertyModel;
 
 /** Mediator for the Entity Editor. */
@@ -30,11 +50,13 @@ import org.chromium.ui.modelutil.PropertyModel;
 class EntityEditorMediator {
     private final Context mContext;
     private final Delegate mDelegate;
+    private final IdentityManager mIdentityManager;
     private @Nullable PropertyModel mEditorModel;
 
-    EntityEditorMediator(Context context, Delegate delegate) {
+    EntityEditorMediator(Context context, Delegate delegate, IdentityManager identityManager) {
         mContext = context;
         mDelegate = delegate;
+        mIdentityManager = identityManager;
     }
 
     @EnsuresNonNull("mEditorModel")
@@ -60,6 +82,7 @@ class EntityEditorMediator {
                                     R.string.autofill_delete_suggestion_button)
                             .with(DELETE_RUNNABLE, () -> mDelegate.onDelete(entityInstance))
                             .with(ALLOW_DELETE, entityInstance.getRecordType() == RecordType.LOCAL)
+                            .with(EDITOR_FIELDS, getEditorFields(entityInstance))
                             .build();
         }
         return mEditorModel;
@@ -71,5 +94,79 @@ class EntityEditorMediator {
 
     private void onDone() {
         assumeNonNull(mEditorModel).set(EntityEditorProperties.VISIBLE, false);
+    }
+
+    private ListModel<EditorItem> getEditorFields(EntityInstance entityInstance) {
+        ListModel<EditorItem> editorFields = new ListModel<>();
+        for (AttributeType attributeType : entityInstance.getEntityType().getAttributeTypes()) {
+            switch (attributeType.getDataType()) {
+                case DataType.NAME:
+                case DataType.STATE:
+                case DataType.STRING:
+                    editorFields.add(getTextFieldItem(entityInstance, attributeType));
+                    break;
+                    // TODO: crbug.com/476755159 - Implement other data types.
+            }
+        }
+        maybeAddEntitySourceNoticeItem(editorFields, entityInstance.getRecordType());
+        return editorFields;
+    }
+
+    private EditorItem getTextFieldItem(
+            EntityInstance entityInstance, AttributeType attributeType) {
+        @Nullable AttributeInstance attribute =
+                entityInstance.getAttribute(attributeType.getTypeName());
+        String attributeValue = "";
+        if (attribute != null) {
+            assert attribute.getAttributeValue() instanceof AttributeInstance.StringValue;
+            attributeValue =
+                    ((AttributeInstance.StringValue) attribute.getAttributeValue()).getValue();
+        }
+        return new EditorItem(
+                TEXT_INPUT,
+                new PropertyModel.Builder(TEXT_ALL_KEYS)
+                        .with(LABEL, attributeType.getTypeNameAsString())
+                        .with(TEXT_FIELD_TYPE, attributeType.getTypeName())
+                        .with(VALUE, attributeValue)
+                        .build(),
+                /* isFullLine= */ true);
+    }
+
+    private void maybeAddEntitySourceNoticeItem(
+            ListModel<EditorItem> editorFields, @RecordType int recordType) {
+        String sourceNotice = getEntitySourceNotice(recordType);
+        if (TextUtils.isEmpty(sourceNotice)) {
+            return;
+        }
+        editorFields.add(
+                new EditorItem(
+                        NOTICE,
+                        new PropertyModel.Builder(NOTICE_ALL_KEYS)
+                                .with(NOTICE_TEXT, getEntitySourceNotice(recordType))
+                                .with(SHOW_BACKGROUND, true)
+                                .with(IMPORTANT_FOR_ACCESSIBILITY, true)
+                                .build(),
+                        /* isFullLine= */ true));
+    }
+
+    private String getEntitySourceNotice(@RecordType int recordType) {
+        switch (recordType) {
+            case RecordType.LOCAL:
+                return mContext.getString(R.string.autofill_ai_local_entity_editor_source_notice);
+            case RecordType.SERVER_WALLET:
+                String email = getUserEmail();
+                return email == null
+                        ? ""
+                        : mContext.getString(
+                                        R.string.autofill_ai_wallet_entity_editor_source_notice)
+                                .replace("$1", email);
+        }
+        assert false : "Invalid entity record type: " + recordType;
+        return "";
+    }
+
+    private @Nullable String getUserEmail() {
+        CoreAccountInfo accountInfo = mIdentityManager.getPrimaryAccountInfo(ConsentLevel.SIGNIN);
+        return CoreAccountInfo.getEmailFrom(accountInfo);
     }
 }

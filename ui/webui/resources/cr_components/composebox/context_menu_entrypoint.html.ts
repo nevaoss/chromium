@@ -4,11 +4,12 @@
 
 import {html} from '//resources/lit/v3_0/lit.rollup.js';
 
-import {type ContextMenuEntrypointElement, GlifAnimationState} from './context_menu_entrypoint.js';
+import {GlifAnimationState} from './common.js';
+import type {ContextMenuEntrypointElement} from './context_menu_entrypoint.js';
 
 export function getHtml(this: ContextMenuEntrypointElement) {
   // clang-format off
-  const entrypointButton = !this.hideEntrypointButton ? html`
+  const entrypointButton = html`
     ${this.showContextMenuDescription ? html`
     <cr-button id="entrypoint"
         class="ai-mode-button"
@@ -29,7 +30,7 @@ export function getHtml(this: ContextMenuEntrypointElement) {
         ?disabled="${this.uploadButtonDisabled}"
         title="${this.i18n('addContextTitle')}"
         noink>
-    </cr-icon-button>`}` : '';
+    </cr-icon-button>`}`;
   return html`<!--_html_template_start_-->
     ${this.glifAnimationState !== GlifAnimationState.INELIGIBLE ? html`
     <div id="glowWrapper" class="glow-container">

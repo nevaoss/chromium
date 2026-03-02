@@ -1092,9 +1092,11 @@ END_METADATA
 ///////////////////////////////////////////////////////////////////////////////
 // TabStrip, public:
 
-TabStrip::TabStrip(std::unique_ptr<TabStripController> controller)
+TabStrip::TabStrip(
+    std::unique_ptr<TabStripController> controller,
+    std::unique_ptr<TabHoverCardController> hover_card_controller)
     : controller_(std::move(controller)),
-      hover_card_controller_(std::make_unique<TabHoverCardController>(this)),
+      hover_card_controller_(std::move(hover_card_controller)),
       drag_context_(*AddChildView(std::make_unique<TabDragContextImpl>(this))),
       style_(TabStyle::Get()) {
   // TODO(pbos): This is probably incorrect, the background of individual tabs
@@ -1844,10 +1846,16 @@ void TabStrip::ToggleTabGroupCollapsedState(
 }
 
 void TabStrip::NotifyTabstripBubbleOpened() {
+  if (!tab_container_) {
+    return;
+  }
   tab_container_->NotifyTabstripBubbleOpened();
 }
 
 void TabStrip::NotifyTabstripBubbleClosed() {
+  if (!tab_container_) {
+    return;
+  }
   tab_container_->NotifyTabstripBubbleClosed();
 }
 
@@ -2447,6 +2455,10 @@ void TabStrip::OnGestureEvent(ui::GestureEvent* event) {
 }
 
 void TabStrip::OnTouchUiChanged() {
+  if (!tab_container_) {
+    return;
+  }
+
   tab_container_->CompleteAnimationAndLayout();
   PreferredSizeChanged();
 }

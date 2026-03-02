@@ -350,6 +350,16 @@ void ToastService::RegisterToasts(
       ToastSpecification::Builder(kDeleteIcon, IDS_SKILL_DELETED_TOAST_BODY)
           .Build());
 
+  toast_registry_->RegisterToast(
+      ToastId::kRecordReplay, ToastSpecification::Builder(kInfoIcon).Build());
+
+  toast_registry_->RegisterToast(
+      ToastId::kAutoSignIn,
+      ToastSpecification::Builder(vector_icons::kPasswordManagerIcon,
+                                  IDS_MANAGE_PASSWORDS_AUTO_SIGNIN_TOAST_BODY)
+          .AddMenu()
+          .Build());
+
   if (base::FeatureList::IsEnabled(
           autofill::features::kAutofillAiWalletPrivatePasses)) {
     toast_registry_->RegisterToast(
@@ -362,6 +372,18 @@ void ToastService::RegisterToasts(
                 base::BindRepeating(chrome::ShowAutofill,
                                     base::Unretained(browser_window_interface)))
             .AddGlobalScoped()
+            .Build());
+    toast_registry_->RegisterToast(
+        // TODO(crbug.com/477845712): Use the correct icon.
+        ToastId::kAutofillAiWalletErrorMessage,
+        ToastSpecification::Builder(kCheckIcon).AddGlobalScoped().Build());
+  }
+
+  if (base::FeatureList::IsEnabled(toast_features::kTranslateToast)) {
+    toast_registry_->RegisterToast(
+        ToastId::kTranslate,
+        ToastSpecification::Builder(vector_icons::kTranslateIcon,
+                                    IDS_TRANSLATE_TOAST_BODY)
             .Build());
   }
 }  // RegisterToasts() end.

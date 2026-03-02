@@ -165,8 +165,8 @@ DisplayMode ResolveAppDisplayModeForStandaloneLaunchContainer(
       } else {
         return DisplayMode::kStandalone;
       }
-    case DisplayMode::kBorderless:
-      return DisplayMode::kBorderless;
+    case DisplayMode::kUnframed:
+      return DisplayMode::kUnframed;
   }
 }
 
@@ -256,7 +256,7 @@ bool WebAppRegistrar::IsSupportedDisplayModeForNavigationCapture(
     case blink::mojom::DisplayMode::kFullscreen:
     case blink::mojom::DisplayMode::kMinimalUi:
     case blink::mojom::DisplayMode::kWindowControlsOverlay:
-    case blink::mojom::DisplayMode::kBorderless:
+    case blink::mojom::DisplayMode::kUnframed:
     case blink::mojom::DisplayMode::kStandalone:
     case blink::mojom::DisplayMode::kTabbed:
       return true;
@@ -1008,6 +1008,9 @@ bool WebAppRegistrar::AppMatches(const webapps::AppId& app_id,
                          case WebAppFilter::BinaryOp::Op::kOr:
                            return AppMatches(app_id, *bin_op.left) ||
                                   AppMatches(app_id, *bin_op.right);
+                         case WebAppFilter::BinaryOp::Op::kExclude:
+                           return AppMatches(app_id, *bin_op.left) &&
+                                  !AppMatches(app_id, *bin_op.right);
                        }
                      }},
       filter.data_);

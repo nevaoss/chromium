@@ -96,15 +96,6 @@ std::unique_ptr<jingle_xmpp::XmlElement> JingleMessage::ToXml() const {
   return JingleMessageToXml(*this);
 }
 
-void JingleMessage::AddAttachment(std::unique_ptr<XmlElement> attachment) {
-  DCHECK(attachment);
-  if (!attachments_legacy) {
-    attachments_legacy = std::make_unique<XmlElement>(
-        QName(kChromotingXmlNamespace, "attachments"));
-  }
-  attachments_legacy->AddElement(attachment.release());
-}
-
 JingleMessageReply::JingleMessageReply()
     : type(REPLY_RESULT), error_type(NONE) {}
 
@@ -153,11 +144,22 @@ JingleAuthentication::JingleAuthentication() = default;
 JingleAuthentication::JingleAuthentication(const JingleAuthentication&) =
     default;
 JingleAuthentication::JingleAuthentication(JingleAuthentication&&) = default;
+
 JingleAuthentication& JingleAuthentication::operator=(
     const JingleAuthentication&) = default;
+
 JingleAuthentication& JingleAuthentication::operator=(JingleAuthentication&&) =
     default;
+
 JingleAuthentication::~JingleAuthentication() = default;
+
+bool JingleAuthentication::is_empty() const {
+  return supported_methods.empty() && !method && spake_message.empty() &&
+         verification_hash.empty() && certificate.empty() && !pairing_info &&
+         session_authz_host_token.empty() &&
+         session_authz_session_token.empty() && pairing_error.empty() &&
+         id.empty() && test_id.empty() && test_key.empty();
+}
 
 IceTransportInfo::NamedCandidate::NamedCandidate() = default;
 
@@ -234,6 +236,15 @@ SessionInfo::SessionInfo(SessionInfo&&) = default;
 SessionInfo& SessionInfo::operator=(const SessionInfo&) = default;
 SessionInfo& SessionInfo::operator=(SessionInfo&&) = default;
 SessionInfo::~SessionInfo() = default;
+
+SessionInfo::GenericInfo::GenericInfo() = default;
+SessionInfo::GenericInfo::GenericInfo(const GenericInfo&) = default;
+SessionInfo::GenericInfo::GenericInfo(GenericInfo&&) = default;
+SessionInfo::GenericInfo& SessionInfo::GenericInfo::operator=(
+    const GenericInfo&) = default;
+SessionInfo::GenericInfo& SessionInfo::GenericInfo::operator=(GenericInfo&&) =
+    default;
+SessionInfo::GenericInfo::~GenericInfo() = default;
 
 JingleTransportInfo::JingleTransportInfo() = default;
 JingleTransportInfo::JingleTransportInfo(const JingleTransportInfo&) = default;

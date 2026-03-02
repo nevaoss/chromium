@@ -184,7 +184,6 @@ Jinak to vaše nastavení ochrany soukromí bude blokovat. Povolením umožníte
 <translation id="1289129165308566697">Mějte svou historii na jiných zařízeních</translation>
 <translation id="1292571435393770077">Přihrádka 16</translation>
 <translation id="1292701964462482250">Software na počítači Chromu brání v bezpečném připojení k webu (pouze počítače se systémem Windows)</translation>
-<translation id="1293154089865862473">Aby bylo možné nabízet tyto možnosti, sdílí se obsah stránky placení s Googlem. Pokud chcete možnosti uhrazení na splátky v automatickém vyplňování skrýt, přejděte na <ph name="IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_FOOTNOTE_HIDE_OPTION_PAYMENT_SETTINGS_LINK_TEXT" />.</translation>
 <translation id="1293556467332435079">Soubory</translation>
 <translation id="1293797321964802402">Obálka 9 × 11 palců</translation>
 <translation id="129553762522093515">Nedávno zavřené</translation>
@@ -1123,7 +1122,6 @@ Jinak to vaše nastavení ochrany soukromí bude blokovat. Povolením umožníte
 <translation id="2782088940970074970">Autopůjčovny</translation>
 <translation id="278436560439594386">Domácí spotřebiče</translation>
 <translation id="2784474685437057136">B5 Extra</translation>
-<translation id="2784540996156451674">Aby bylo možné nabízet tyto možnosti, sdílí se obsah stránky placení s Googlem.</translation>
 <translation id="2784949926578158345">Připojení bylo resetováno.</translation>
 <translation id="2786008859124691917">Jízdní kola a příslušenství</translation>
 <translation id="2792012897584536778">Administrátoři tohoto zařízení nastavili bezpečnostní certifikáty, které jim mohou umožnit zobrazit obsah webů, které navštěvujete.</translation>
@@ -2787,6 +2785,7 @@ Jinak to vaše nastavení ochrany soukromí bude blokovat. Povolením umožníte
 <translation id="5466018172325111652">Neobdrželi jste kód? <ph name="BEGIN_LINK" />Vygenerovat nový kód<ph name="END_LINK" /></translation>
 <translation id="5466818462212249084">Platební aplikace</translation>
 <translation id="5470861586879999274">&amp;Opakovat úpravy</translation>
+<translation id="5471158297908124590">K úpravě platebních metod ověřte svou totožnost</translation>
 <translation id="5472588168895083535">Sledování rukou je blokováno</translation>
 <translation id="5477756102936130143">Povolit přesměrování na podporované platební aplikace</translation>
 <translation id="5479505548832623900">Pravděpodobně rozšířením ignorováno.</translation>
@@ -2864,6 +2863,7 @@ Kontaktujte administrátora systému.</translation>
 <translation id="5570825185877910964">Ochránit účet</translation>
 <translation id="5571083550517324815">Vyzvednutí na této adrese není možné. Vyberte jinou adresu.</translation>
 <translation id="5572434905385510939">22 × 28″</translation>
+<translation id="5573090972398558474">Vaše organizace tuto stránku v anonymním režimu zablokovala.</translation>
 <translation id="5573641252776268565">Úprava pasu</translation>
 <translation id="5578606540385219379">Poskytovatelé služeb</translation>
 <translation id="5580958916614886209">Zkontrolujte měsíc vypršení platnosti a zkuste to znovu.</translation>
@@ -3170,6 +3170,7 @@ Kontaktujte administrátora systému.</translation>
 <translation id="6093795393556121384">Vaše karta je ověřena</translation>
 <translation id="6094253940069566294">Úprava vozidla</translation>
 <translation id="6094290315941448991">Zásady administrátora zakazují nahrávání obrazovky, když je viditelný důvěrný obsah</translation>
+<translation id="6097297436119286254">K vyplnění platebních údajů ověřte svou totožnost</translation>
 <translation id="6099269767116481177">22 × 29,5″</translation>
 <translation id="6101583188322746099">Rozvoz potravin</translation>
 <translation id="6104072995492677441">JIS B6</translation>
@@ -4289,6 +4290,7 @@ Kontaktujte administrátora systému.</translation>
 <translation id="7844689747373518809">{COUNT,plural, =0{Žádné}=1{1 aplikace (<ph name="EXAMPLE_APP_1" />)}=2{2 aplikace (<ph name="EXAMPLE_APP_1" />, <ph name="EXAMPLE_APP_2" />)}few{# aplikace (<ph name="EXAMPLE_APP_1" />, <ph name="EXAMPLE_APP_2" />, <ph name="AND_MORE" />)}many{# aplikace (<ph name="EXAMPLE_APP_1" />, <ph name="EXAMPLE_APP_2" />, <ph name="AND_MORE" />)}other{# aplikací (<ph name="EXAMPLE_APP_1" />, <ph name="EXAMPLE_APP_2" />, <ph name="AND_MORE" />)}}</translation>
 <translation id="7846161022626028328">Došlo k chybě. Zkuste to znovu.</translation>
 <translation id="784623644169604270">Žádná nedávná aktivita</translation>
+<translation id="7848926355794727168">Automatické procházení</translation>
 <translation id="7853222852810008596">V této měně není možnost zaplatit později k dispozici</translation>
 <translation id="785476343534277563">Univerzitní sport</translation>
 <translation id="7855695075675558090"><ph name="TOTAL_LABEL" /> <ph name="CURRENCY_CODE" /> <ph name="FORMATTED_TOTAL_AMOUNT" /></translation>
@@ -4917,6 +4919,7 @@ Další podrobnosti:
 <translation id="8897428486789851669">Plavání</translation>
 <translation id="8899807382908246773">Rušivé reklamy</translation>
 <translation id="8903921497873541725">Přiblížit</translation>
+<translation id="8903998444169664879">Ke změně nastavení plateb ověřte svou totožnost</translation>
 <translation id="890493561996401738">Tlačítko Odstranit návrh, odstranění provedete stisknutím klávesy Enter, <ph name="REMOVE_BUTTON_FOCUSED_FRIENDLY_MATCH_TEXT" /></translation>
 <translation id="8910898109640902752">2 × 10 palců</translation>
 <translation id="8914504000324227558">Znovu spustit Chrome</translation>

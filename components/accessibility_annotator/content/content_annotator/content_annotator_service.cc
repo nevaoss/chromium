@@ -7,16 +7,22 @@
 #include "components/accessibility_annotator/content/content_annotator/content_classifier.h"
 #include "components/accessibility_annotator/core/accessibility_annotator_features.h"
 #include "components/page_content_annotations/core/page_content_annotation_type.h"
+#include "components/translate/core/common/language_detection_details.h"
 
 namespace accessibility_annotator {
 
 ContentAnnotatorService::ContentAnnotatorService(
     page_content_annotations::PageContentAnnotationsService&
-        page_content_annotations_service)
+        page_content_annotations_service,
+    page_content_annotations::PageContentExtractionService&
+        page_content_extraction_service)
     : page_content_annotations_service_(page_content_annotations_service),
+      page_content_extraction_service_(page_content_extraction_service),
       join_entries_(kContentAnnotatorMaxPendingUrls.Get()) {
   page_content_annotations_service_->AddObserver(
       page_content_annotations::AnnotationType::kContentVisibility, this);
+  page_content_extraction_service_observation_.Observe(
+      &page_content_extraction_service_.get());
 }
 
 ContentAnnotatorService::~ContentAnnotatorService() {
@@ -27,6 +33,7 @@ ContentAnnotatorService::~ContentAnnotatorService() {
 void ContentAnnotatorService::OnPageContentAnnotated(
     const page_content_annotations::HistoryVisit& visit,
     const page_content_annotations::PageContentAnnotationsResult& result) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   CHECK(result.GetType() ==
         page_content_annotations::AnnotationType::kContentVisibility);
   CacheIterator it = GetOrCreateJoinEntry(visit.url);
@@ -34,6 +41,21 @@ void ContentAnnotatorService::OnPageContentAnnotated(
   it->second.sensitivity_score = 1.0 - result.GetContentVisibilityScore();
   it->second.navigation_timestamp = visit.nav_entry_timestamp;
   MaybeAnnotate(it);
+}
+
+void ContentAnnotatorService::OnLanguageDetermined(
+    const translate::LanguageDetectionDetails& details) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  CacheIterator it = GetOrCreateJoinEntry(details.url);
+  it->second.adopted_language = details.adopted_language;
+  MaybeAnnotate(it);
+}
+
+void ContentAnnotatorService::OnPageContentExtracted(
+    content::Page& page,
+    const optimization_guide::proto::AnnotatedPageContent& page_content) {
+  // TODO(crbug.com/463735432): Implement logic to locally
+  // store page title and transformed APC.
 }
 
 ContentAnnotatorService::CacheIterator

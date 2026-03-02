@@ -1344,6 +1344,11 @@ export declare interface PanelOpeningData {
    */
   promptSuggestion?: string;
   /**
+   * If true and promptSuggestion is set, the prompt will be automatically
+   * submitted after the panel opens.
+   */
+  autoSend?: boolean;
+  /**
    * An optional Skill. If provided, the Gemini app should auto-run it.
    */
   skillToInvoke?: Skill;
@@ -1621,6 +1626,7 @@ export declare interface TabData {
   /**
    * Whether the tab's browser window is active. Note that this does not
    * consider whether the tab is active in the window.
+   * WARNING: This is not implemented on Android, and is always true.
    */
   isWindowActive?: boolean;
 }
@@ -2636,6 +2642,8 @@ export enum InvocationSource {
   HANDOFF_BUTTON = 14,
   // From invoking skills.
   SKILLS = 15,
+  // Automatically opened from contextual cueing.
+  AUTO_OPENED_BY_CONTEXTUAL_CUE = 16,
 }
 
 ///////////////////////////////////////////////

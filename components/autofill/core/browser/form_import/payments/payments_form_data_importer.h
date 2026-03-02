@@ -5,12 +5,19 @@
 #ifndef COMPONENTS_AUTOFILL_CORE_BROWSER_FORM_IMPORT_PAYMENTS_PAYMENTS_FORM_DATA_IMPORTER_H_
 #define COMPONENTS_AUTOFILL_CORE_BROWSER_FORM_IMPORT_PAYMENTS_PAYMENTS_FORM_DATA_IMPORTER_H_
 
+#include <optional>
+
 #include "base/memory/raw_ref.h"
 #include "components/autofill/core/browser/data_model/payments/credit_card.h"
 
 namespace autofill {
 
 class AutofillClient;
+class FormDataImporter;
+class FormDataImporterTestApi;
+class FormStructure;
+class Iban;
+class PaymentsDataManager;
 
 namespace payments {
 
@@ -30,15 +37,59 @@ class PaymentsFormDataImporter {
     bool has_duplicate_credit_card_field_type = false;
   };
 
+  // Context for most recently fetched payment method.
+  struct FetchedPaymentsDataContext {
+    // The instrument id of the card that has been most recently retrieved via
+    // Autofill Downstream (card retrieval from server). This can be used to
+    // decide whether the card submitted is the same card retrieved. This field
+    // is optional and is set when an Autofill credit card Downstream has
+    // happened.
+    std::optional<int64_t> fetched_card_instrument_id;
+
+    // Whether the last unmasked card (note: it may or may not be the extracted
+    // card) is fetched from the local cache (instead of going through a server
+    // retrieval process). This field is optional and is set when an Autofill
+    // credit card Downstream has happened.
+    std::optional<bool> card_was_fetched_from_cache;
+
+    // Whether Save and Fill suggestion was clicked on for the last fetched
+    // card. If so, no other payments post-checkout flow should be offered
+    // again.
+    bool card_submitted_through_save_and_fill = false;
+  };
+
   explicit PaymentsFormDataImporter(AutofillClient* client);
   PaymentsFormDataImporter(const PaymentsFormDataImporter&) = delete;
   PaymentsFormDataImporter& operator=(const PaymentsFormDataImporter&) = delete;
   virtual ~PaymentsFormDataImporter();
 
+  FetchedPaymentsDataContext& fetched_payments_data_context() {
+    return fetched_payments_data_context_;
+  }
+
+  // Returns the extracted IBAN from the `form` if it is a new IBAN.
+  std::optional<Iban> ExtractIban(const FormStructure& form);
+
  private:
   friend class PaymentsFormDataImporterTestApi;
+  // TODO(crbug.com/481379161): Remove `FormDataImporter` and
+  //    `FormDataImporterTestApi` as friend classes once the FDI->PaymentsFDI
+  //    migration is complete. This is very much not ideal and temporary, but
+  //    the alternative is having most functions be public until the last
+  //    second, which probably carries slightly higher risk.
+  friend class autofill::FormDataImporter;
+  friend class autofill::FormDataImporterTestApi;
+
+  // Helper function which extracts the IBAN from the form structure.
+  Iban ExtractIbanFromForm(const FormStructure& form);
+
+  PaymentsDataManager& payments_data_manager();
 
   const raw_ref<AutofillClient> client_;
+
+  // Struct to record contexts for the last payments data fetch. Should be reset
+  // when a new fetch starts.
+  FetchedPaymentsDataContext fetched_payments_data_context_;
 };
 
 }  // namespace payments

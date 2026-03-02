@@ -44,7 +44,7 @@ export function getHtml(this: ComposeboxElement) {
     .errorMessage="${this.errorMessage_}"
     @dismiss-error-scrim="${this.onErrorScrimDismissed_}">
   </ntp-error-scrim>
-  <div id="composebox" ?inert="${this.errorMessage_}"
+  <div id="composebox" part="composebox" ?inert="${this.errorMessage_}"
       @keydown="${this.onKeydown_}"
       @focusin="${this.handleComposeboxFocusIn_}"
       @focusout="${this.handleComposeboxFocusOut_}"
@@ -112,6 +112,8 @@ export function getHtml(this: ComposeboxElement) {
           @model-click="${this.onModelClick_}"
           @get-tab-preview="${this.getTabPreview_}"
           @open-file-dialog="${this.onOpenFileDialog_}"
+          @query-autocomplete="${this.onQueryAutocomplete_}"
+          @clear-autocomplete-matches="${this.clearAutocompleteMatches}"
           @context-menu-container-click="${this.searchboxLayoutMode === 'Compact' ?  nothing : this.focusInput}"
           @context-menu-closed="${this.onContextMenuClosed_}"
           @context-menu-opened="${this.onContextMenuOpened_}"

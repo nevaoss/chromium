@@ -134,6 +134,18 @@ chromium-metrics-reviews@google.com.
   <int value="2" label="Partial success (resolution downgraded)"/>
 </enum>
 
+<!-- LINT.IfChange(ContentSyncReason) -->
+
+<enum name="ContentSyncReason">
+  <summary>
+    The reason for content synchronization (copy) in CompoundImageBacking.
+  </summary>
+  <int value="0" label="Read (Stale data)"/>
+  <int value="1" label="Write (Synchronization before write)"/>
+</enum>
+
+<!-- LINT.ThenChange(//gpu/command_buffer/service/shared_image/compound_image_backing.cc:ContentSyncReason) -->
+
 <enum name="ContextLostReason">
   <summary>The reason for losing a GPU context.</summary>
   <int value="0" label="CONTEXT_INIT_FAILED"/>
@@ -1370,6 +1382,23 @@ Called by update_gpu_driver_bug_workaround_entries.py.-->
   <int value="4" label="SHADER_MODEL_4_1"/>
   <int value="5" label="SHADER_MODEL_5_0"/>
 </enum>
+
+<!-- LINT.IfChange(SharedImageAccessStream) -->
+
+<enum name="SharedImageAccessStream">
+  <summary>Corresponds to SharedImageAccessStream enum.</summary>
+  <int value="0" label="Skia"/>
+  <int value="1" label="Overlay"/>
+  <int value="2" label="GL"/>
+  <int value="3" label="Dawn"/>
+  <int value="4" label="DawnBuffer"/>
+  <int value="5" label="Memory"/>
+  <int value="6" label="Vaapi"/>
+  <int value="7" label="WebNNTensor"/>
+  <int value="8" label="Vulkan"/>
+</enum>
+
+<!-- LINT.ThenChange(//gpu/command_buffer/service/shared_image/compound_image_backing.h:SharedImageAccessStream) -->
 
 <enum name="SharedImageBackingType">
   <summary>Corresponds to SharedImageBacking implementations.</summary>

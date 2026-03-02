@@ -458,6 +458,9 @@ bool UtilityProcessHost::StartProcess() {
 #if BUILDFLAG(IS_OZONE)
       switches::kRenderNodeOverride,
 #endif
+#if BUILDFLAG(USE_VAAPI)
+      switches::kHardwareVideoDevicePath,
+#endif
   };
   cmd_line->CopySwitchesFrom(browser_command_line, kSwitchNames);
 

@@ -266,11 +266,6 @@ BASE_FEATURE(kBocaScreenSharingTeacher, base::FEATURE_ENABLED_BY_DEFAULT);
 // Enables or disables sharing student's screen in the Boca app.
 BASE_FEATURE(kBocaScreenSharingStudent, base::FEATURE_ENABLED_BY_DEFAULT);
 
-// Enables or disables setting audio params when sharing from a student device
-// to a remote kiosk receiver.
-BASE_FEATURE(kBocaRedirectStudentAudioToKiosk,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 // Enables or disables Boca receiver custom polling.
 BASE_FEATURE(kBocaReceiverCustomPolling, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -437,7 +432,7 @@ BASE_FEATURE(kCrosSafetyService, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kCryptauthAttestationSyncing, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables experimental containerless Crostini VMs.
-BASE_FEATURE(kCrostiniContainerless, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kCrostiniContainerless, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables or disables Crostini GPU support.
 // Note that this feature can be overridden by login_manager based on
@@ -1996,9 +1991,6 @@ BASE_FEATURE(kVcPortraitRelight, base::FEATURE_ENABLED_BY_DEFAULT);
 // conferencing portrait relighing models.
 BASE_FEATURE(kVcRelightingInferenceBackend, base::FEATURE_DISABLED_BY_DEFAULT);
 
-// This is only used as a way to disable stopAllScreenShare.
-BASE_FEATURE(kVcStopAllScreenShare, base::FEATURE_DISABLED_BY_DEFAULT);
-
 // Enable or disable the fake effects for ChromeOS video conferencing controls
 // UI. Only meaningful in the emulator.
 BASE_FEATURE(kVcControlsUiFakeEffects, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -2353,10 +2345,6 @@ bool IsBocaScreenSharingTeacherEnabled() {
 
 bool IsBocaScreenSharingStudentEnabled() {
   return base::FeatureList::IsEnabled(kBocaScreenSharingStudent);
-}
-
-bool IsBocaRedirectStudentAudioToKioskEnabled() {
-  return base::FeatureList::IsEnabled(kBocaRedirectStudentAudioToKiosk);
 }
 
 bool IsBocaReceiverCustomPollingEnabled() {
@@ -3303,11 +3291,6 @@ bool IsVideoConferenceEnabled() {
 
 bool IsBirchVideoConferenceSuggestionsEnabled() {
   return base::FeatureList::IsEnabled(kBirchVideoConferenceSuggestions);
-}
-
-bool IsStopAllScreenShareEnabled() {
-  return base::FeatureList::IsEnabled(kVcStopAllScreenShare) &&
-         IsVideoConferenceEnabled();
 }
 
 bool IsVcBackgroundReplaceEnabled() {

@@ -46,6 +46,7 @@
 }
 
 #tabHeader,
+#toolHeader,
 #modelHeader {
   color: var(--cr-primary-text-color);
   font-size: 11px;
@@ -81,6 +82,7 @@
 
 .dropdown-item:hover {
   background-color: var(--cr-hover-background-color);
+  outline: none;
 }
 
 .dropdown-item[disabled] {

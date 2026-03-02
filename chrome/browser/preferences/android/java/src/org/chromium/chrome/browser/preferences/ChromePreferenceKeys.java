@@ -526,6 +526,8 @@ public final class ChromePreferenceKeys {
             new KeyPrefix("Chrome.MultiInstance.ProfileType.*");
     public static final String MULTI_INSTANCE_RESTORATION_MESSAGE_SHOWN =
             "Chrome.MultiWindow.RestorationMessageShown";
+    public static final KeyPrefix MULTI_INSTANCE_LATEST_PERSISTENT_STATE_ID =
+            new KeyPrefix("Chrome.MultiInstance.LatestPersistentStateId.*");
 
     public static final String MULTI_INSTANCE_START_TIME = "Chrome.MultiInstance.StartTime";
 
@@ -799,13 +801,6 @@ public final class ChromePreferenceKeys {
     /** Is this client in the crash reporting group. */
     public static final String PRIVACY_IN_SAMPLE_FOR_CRASHES =
             "Chrome.Privacy.InSampleForCrashReporting";
-
-    /**
-     * This is deprecated and is going to be removed in the future (See https://crbug.com/1320040).
-     * Use PrivacyPreferencesManagerImpl#isUsageAndCrashReportingPermitted to know if metrics
-     * reporting is allowed.
-     */
-    @Deprecated public static final String PRIVACY_METRICS_REPORTING = "metrics_reporting";
 
     public static final String PRIVACY_METRICS_REPORTING_PERMITTED_BY_USER =
             "Chrome.Privacy.UsageAndCrashReportingPermittedByUser";
@@ -1281,6 +1276,7 @@ public final class ChromePreferenceKeys {
                 MULTI_INSTANCE_MAX_INSTANCE_LIMIT,
                 MULTI_INSTANCE_INSTANCE_LIMIT_DOWNGRADE_TRIGGERED,
                 MULTI_INSTANCE_PROFILE_TYPE.pattern(),
+                MULTI_INSTANCE_LATEST_PERSISTENT_STATE_ID.pattern(),
                 MULTI_INSTANCE_RESTORATION_MESSAGE_SHOWN,
                 MULTI_INSTANCE_IS_INCOGNITO_SELECTED.pattern(),
                 MULTI_INSTANCE_INCOGNITO_TAB_COUNT.pattern(),

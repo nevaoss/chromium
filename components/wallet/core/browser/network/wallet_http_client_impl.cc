@@ -16,6 +16,7 @@
 #include "components/signin/public/identity_manager/identity_manager.h"
 #include "components/signin/public/identity_manager/primary_account_access_token_fetcher.h"
 #include "components/wallet/core/browser/data_models/wallet_pass.h"
+#include "components/wallet/core/browser/metrics/wallet_metrics.h"
 #include "components/wallet/core/browser/network/get_unmasked_pass_request.h"
 #include "components/wallet/core/browser/network/upsert_private_pass_request.h"
 #include "components/wallet/core/browser/network/upsert_public_pass_request.h"
@@ -40,7 +41,7 @@ WalletHttpClientImpl::~WalletHttpClientImpl() = default;
 
 void WalletHttpClientImpl::UpsertPublicPass(Pass pass,
                                             UpsertPublicPassCallback callback) {
-  CHECK(base::FeatureList::IsEnabled(kWalletablePassDetection));
+  CHECK(base::FeatureList::IsEnabled(features::kWalletablePassDetection));
   SendRequest(std::make_unique<UpsertPublicPassRequest>(std::move(pass),
                                                         std::move(callback)));
 }
@@ -48,7 +49,7 @@ void WalletHttpClientImpl::UpsertPublicPass(Pass pass,
 void WalletHttpClientImpl::UpsertPrivatePass(
     PrivatePass pass,
     UpsertPrivatePassCallback callback) {
-  CHECK(base::FeatureList::IsEnabled(kWalletApiPrivatePassesEnabled));
+  CHECK(base::FeatureList::IsEnabled(features::kWalletApiPrivatePassesEnabled));
   SendRequest(std::make_unique<UpsertPrivatePassRequest>(std::move(pass),
                                                          std::move(callback)));
 }
@@ -77,8 +78,7 @@ void WalletHttpClientImpl::GetAuthToken(TokenReadyCallback callback) {
   access_token_fetcher_ =
       std::make_unique<signin::PrimaryAccountAccessTokenFetcher>(
           // TODO(crbug.com/468916773): Replace with wallet auth id
-          signin::OAuthConsumerId::kPaymentsAccessTokenFetcher,
-          &identity_manager_.get(),
+          signin::OAuthConsumerId::kWalletPasses, &identity_manager_.get(),
           base::BindOnce(&WalletHttpClientImpl::OnTokenFetched,
                          weak_ptr_factory_.GetWeakPtr()),
           // The user must be signed in to make requests.
@@ -120,7 +120,7 @@ void WalletHttpClientImpl::SendRequestInternal(
 
   std::unique_ptr<network::ResourceRequest> resource_request =
       std::make_unique<network::ResourceRequest>();
-  GURL base_url(kWalletSaveUrl.Get());
+  GURL base_url(features::kWalletSaveUrl.Get());
   resource_request->url = base_url.Resolve(request->GetRequestUrlPath());
   resource_request->method = "POST";
   resource_request->credentials_mode = network::mojom::CredentialsMode::kOmit;
@@ -174,16 +174,21 @@ void WalletHttpClientImpl::SendRequestInternal(
   loader_ptr->DownloadToString(
       url_loader_factory_.get(),
       base::BindOnce(&WalletHttpClientImpl::OnSimpleLoaderComplete,
-                     weak_ptr_factory_.GetWeakPtr(), it, std::move(request)),
+                     weak_ptr_factory_.GetWeakPtr(), it, std::move(request),
+                     base::TimeTicks::Now()),
       network::SimpleURLLoader::kMaxBoundedStringDownloadSize);
 }
 
 void WalletHttpClientImpl::OnSimpleLoaderComplete(
     UrlLoaderList::iterator it,
     std::unique_ptr<WalletRequest> request,
+    base::TimeTicks request_start,
     std::optional<std::string> response_body) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   active_loaders_.erase(it);
+  metrics::RecordNetworkRequestLatency(request->GetRequestType(),
+                                       base::TimeTicks::Now() - request_start);
+
   if (!response_body) {
     // TODO(crbug.com/468915960): Handle detailed errors.
     std::move(*request).OnResponse(

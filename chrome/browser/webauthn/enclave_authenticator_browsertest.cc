@@ -2436,6 +2436,7 @@ IN_PROC_BROWSER_TEST_F(EnclaveAuthenticatorBrowserTest,
             AuthenticatorRequestDialogModel::Mechanism::Enclave>(m.type);
       }));
   EXPECT_FALSE(request_delegate()->enclave_controller_for_testing());
+  EXPECT_TRUE(dialog_model()->gpm_create_available_but_disabled_by_policy);
 }
 
 #if BUILDFLAG(IS_WIN) && defined(ARCH_CPU_ARM64)
@@ -2465,6 +2466,7 @@ IN_PROC_BROWSER_TEST_F(EnclaveAuthenticatorBrowserTest,
             AuthenticatorRequestDialogModel::Mechanism::Enclave>(m.type);
       }));
   EXPECT_FALSE(request_delegate()->enclave_controller_for_testing());
+  EXPECT_TRUE(dialog_model()->gpm_create_available_but_disabled_by_policy);
 }
 
 IN_PROC_BROWSER_TEST_F(EnclaveAuthenticatorBrowserTest, EnrollAndCreate) {
@@ -3444,8 +3446,9 @@ IN_PROC_BROWSER_TEST_F(EnclaveAuthenticatorBrowserTest,
 
     {
       auto store_keys_lock = second_manager.GetStoreKeysLock();
-      second_manager.StoreKeys(kSyncGaiaId, {*security_domain_secret},
-                               /*last_key_version=*/kSecretVersion,
+      second_manager.StoreKeys(kSyncGaiaId,
+                               {trusted_vault::TrustedVaultKeyAndVersion(
+                                   *security_domain_secret, kSecretVersion)},
                                /*user_action_trigger=*/std::nullopt);
     }
 

@@ -145,6 +145,8 @@ inline constexpr char kChromeUIFaviconHost[] = "favicon";
 inline constexpr char kChromeUIFaviconURL[] = "chrome://favicon/";
 inline constexpr char kChromeUIFeedbackHost[] = "feedback";
 inline constexpr char kChromeUIFeedbackURL[] = "chrome://feedback/";
+inline constexpr char kChromeUIFeedbackReportUnsafeSiteURL[] =
+    "chrome://feedback/report-unsafe-site";
 inline constexpr char kChromeUIFileiconURL[] = "chrome://fileicon/";
 inline constexpr char kChromeUIFlagsHost[] = "flags";
 inline constexpr char kChromeUIFlagsURL[] = "chrome://flags/";
@@ -236,14 +238,6 @@ inline constexpr char kChromeUIPolicyURL[] = "chrome://policy/";
 inline constexpr char kChromeUIPredictorsHost[] = "predictors";
 inline constexpr char kChromeUIPrefsInternalsHost[] = "prefs-internals";
 inline constexpr char kChromeUIPrintURL[] = "chrome://print/";
-inline constexpr char kChromeUIPrivacySandboxDialogCombinedPath[] = "combined";
-inline constexpr char kChromeUIPrivacySandboxDialogHost[] =
-    "privacy-sandbox-dialog";
-inline constexpr char kChromeUIPrivacySandboxDialogNoticePath[] = "notice";
-inline constexpr char kChromeUIPrivacySandboxDialogNoticeRestrictedPath[] =
-    "restricted";
-inline constexpr char kChromeUIPrivacySandboxDialogURL[] =
-    "chrome://privacy-sandbox-dialog";
 inline constexpr char16_t kChromeUIPrivacySandboxFledgeURL[] =
     u"chrome://settings/adPrivacy/sites";
 inline constexpr char kChromeUIPrivacySandboxInternalsHost[] =
@@ -290,6 +284,7 @@ inline constexpr char kChromeUISignoutConfirmationURL[] =
 inline constexpr char kChromeUISiteEngagementHost[] = "site-engagement";
 inline constexpr char kChromeUISkillsHost[] = "skills";
 inline constexpr char kChromeUISkillsURL[] = "chrome://skills/";
+inline constexpr char kChromeUISkillsDialogPath[] = "dialog";
 inline constexpr char kChromeUISplitViewNewTabPageURL[] =
     "chrome://tab-search.top-chrome/split_new_tab_page.html";
 inline constexpr char kChromeUISuggestInternalsHost[] = "suggest-internals";
@@ -324,11 +319,6 @@ inline constexpr char kChromeUIUntrustedImageEditorURL[] =
     "chrome-untrusted://image-editor/";
 inline constexpr char kChromeUIUntrustedPrintURL[] =
     "chrome-untrusted://print/";
-inline constexpr char kChromeUIUntrustedPrivacySandboxDialogURL[] =
-    "chrome-untrusted://privacy-sandbox-dialog/";
-inline constexpr char
-    kChromeUIUntrustedPrivacySandboxDialogPrivacyPolicyPath[] =
-        "privacy-policy";
 inline constexpr char kChromeUIUntrustedThemeURL[] =
     "chrome-untrusted://theme/";
 inline constexpr char kChromeUIUntrustedWebUITestURL[] =
@@ -348,6 +338,9 @@ inline constexpr char kChromeUIWebUITestHost[] = "webui-test";
 inline constexpr char kChromeUIWebUIToolbarURL[] =
     "chrome://webui-toolbar.top-chrome";
 inline constexpr char kChromeUIWebUIToolbarHost[] = "webui-toolbar.top-chrome";
+inline constexpr char kChromeUIWebNNInternalsHost[] = "webnn-internals";
+inline constexpr char kChromeUIWebNNInternalsURL[] =
+    "chrome://webnn-internals/";
 
 #if BUILDFLAG(IS_ANDROID)
 inline constexpr char kChromeUIJavaCrashURL[] = "chrome://java-crash/";

@@ -9,6 +9,7 @@
 
 #include "base/containers/flat_map.h"
 #include "components/autofill/core/browser/field_types.h"
+#include "components/autofill/core/browser/form_import/addresses/address_form_data_importer.h"
 #include "components/autofill/core/browser/form_import/form_data_importer.h"
 #include "components/autofill/core/browser/payments/credit_card_save_manager.h"
 #include "components/autofill/core/browser/payments/iban_save_manager.h"
@@ -17,7 +18,8 @@ namespace autofill {
 
 class FormDataImporterTestApi {
  public:
-  using ExtractedAddressProfile = FormDataImporter::ExtractedAddressProfile;
+  using ExtractedAddressProfile =
+      AddressFormDataImporter::ExtractedAddressProfile;
   using ExtractedFormData = FormDataImporter::ExtractedFormData;
 
   explicit FormDataImporterTestApi(FormDataImporter* fdi) : fdi_(*fdi) {}
@@ -64,29 +66,6 @@ class FormDataImporterTestApi {
   base::flat_set<std::string> ExtractGUIDsOfProfilesWithoutManualEdits(
       const FormStructure& submitted_form) const {
     return fdi_->ExtractGUIDsOfProfilesWithoutManualEdits(submitted_form);
-  }
-
-  base::flat_map<FieldType, std::u16string> GetObservedFieldValues(
-      base::span<const AutofillField* const> section_fields) {
-    ProfileImportMetadata import_metadata;
-    bool has_invalid_field_types = false;
-    bool has_multiple_distinct_email_addresses = false;
-    bool has_address_related_fields = false;
-    return fdi_->GetAddressObservedFieldValues(
-        section_fields, import_metadata, nullptr, has_invalid_field_types,
-        has_multiple_distinct_email_addresses, has_address_related_fields);
-  }
-
-  bool HasInvalidFieldTypes(
-      base::span<const AutofillField* const> section_fields) {
-    ProfileImportMetadata import_metadata;
-    bool has_invalid_field_types = false;
-    bool has_multiple_distinct_email_addresses = false;
-    bool has_address_related_fields = false;
-    std::ignore = fdi_->GetAddressObservedFieldValues(
-        section_fields, import_metadata, nullptr, has_invalid_field_types,
-        has_multiple_distinct_email_addresses, has_address_related_fields);
-    return has_invalid_field_types;
   }
 
   bool ProcessExtractedAddressProfiles(

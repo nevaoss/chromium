@@ -14,7 +14,7 @@
 
 namespace chromeos::converters::diagnostics {
 
-bool ConvertMojoRoutine(crosapi::mojom::DiagnosticsRoutineEnum in,
+bool ConvertMojoRoutine(ash::cros_healthd::mojom::DiagnosticRoutineEnum in,
                         chromeos::api::os_diagnostics::RoutineType* out);
 
 chromeos::api::os_diagnostics::RoutineStatus ConvertRoutineStatus(
@@ -22,19 +22,19 @@ chromeos::api::os_diagnostics::RoutineStatus ConvertRoutineStatus(
 chromeos::api::os_diagnostics::RoutineStatus ConvertRoutineStatus(
     ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status);
 
-crosapi::mojom::DiagnosticsRoutineCommandEnum ConvertRoutineCommand(
+ash::cros_healthd::mojom::DiagnosticRoutineCommandEnum ConvertRoutineCommand(
     chromeos::api::os_diagnostics::RoutineCommandType commandType);
 
-crosapi::mojom::DiagnosticsAcPowerStatusEnum ConvertAcPowerStatusRoutineType(
+ash::cros_healthd::mojom::AcPowerStatusEnum ConvertAcPowerStatusRoutineType(
     chromeos::api::os_diagnostics::AcPowerStatus routineType);
 
 chromeos::api::os_diagnostics::UserMessageType ConvertRoutineUserMessage(
-    crosapi::mojom::DiagnosticsRoutineUserMessageEnum userMessage);
+    ash::cros_healthd::mojom::DiagnosticRoutineUserMessageEnum userMessage);
 
-crosapi::mojom::DiagnosticsDiskReadRoutineTypeEnum ConvertDiskReadRoutineType(
+ash::cros_healthd::mojom::DiskReadRoutineTypeEnum ConvertDiskReadRoutineType(
     chromeos::api::os_diagnostics::DiskReadRoutineType routineType);
 
-crosapi::mojom::DiagnosticsNvmeSelfTestTypeEnum ConvertNvmeSelfTestRoutineType(
+ash::cros_healthd::mojom::NvmeSelfTestTypeEnum ConvertNvmeSelfTestRoutineType(
     chromeos::api::os_diagnostics::RunNvmeSelfTestRequest routineType);
 
 crosapi::mojom::TelemetryDiagnosticVolumeButtonRoutineArgument::ButtonType

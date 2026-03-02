@@ -83,14 +83,17 @@ export class AppElement extends AppElementBase implements SpeechListener,
       willDrawAgainSoon_: {type: Boolean},
       pageLanguage_: {type: String},
       presentationState_: {type: Number},
+      lineFocusStyle_: {type: Object},
+      lineFocusMovement_: {type: Object},
     };
   }
 
   private startTime_ = Date.now();
 
   protected accessor contentState_: ContentState;
+  protected accessor lineFocusStyle_: LineFocusStyle|null = null;
+  protected accessor lineFocusMovement_: LineFocusMovement|null = null;
 
-  private isReadAloudEnabled_: boolean;
   protected isDocsLoadMoreButtonVisible_: boolean = false;
   protected isImmersiveEnabled_: boolean = false;
 
@@ -150,7 +153,6 @@ export class AppElement extends AppElementBase implements SpeechListener,
   constructor() {
     super();
     this.logger_.logTimeFrom(TimeFrom.APP, this.startTime_, Date.now());
-    this.isReadAloudEnabled_ = chrome.readingMode.isReadAloudEnabled;
     this.styleUpdater_ = new AppStyleUpdater(this);
     this.nodeStore_.clear();
     ColorChangeUpdater.forDocument().start();
@@ -161,14 +163,6 @@ export class AppElement extends AppElementBase implements SpeechListener,
       this.contentController_.configureTrustedTypes();
     }
     this.isImmersiveEnabled_ = chrome.readingMode.isImmersiveEnabled;
-  }
-
-  override disconnectedCallback() {
-    super.disconnectedCallback();
-    // Even though disconnectedCallback isn't always called reliably in prod,
-    // it is called in tests, and the speech extension timeout can cause
-    // flakiness.
-    this.voiceLanguageController_.stopWaitingForSpeechExtension();
   }
 
   override connectedCallback() {
@@ -201,15 +195,13 @@ export class AppElement extends AppElementBase implements SpeechListener,
       this.lineFocusController_.addListener(this);
     }
     this.contentController_.addListener(this);
-    if (this.isReadAloudEnabled_) {
-      this.speechController_.addListener(this);
-      this.voiceLanguageController_.addListener(this);
-      this.notificationManager_.addListener(this.$.languageToast);
+    this.speechController_.addListener(this);
+    this.voiceLanguageController_.addListener(this);
+    this.notificationManager_.addListener(this.$.languageToast);
 
-      // Clear state. We don't do this in disconnectedCallback because that's
-      // not always reliabled called.
-      this.nodeStore_.clearDomNodes();
-    }
+    // Clear state. We don't do this in disconnectedCallback because that's
+    // not always reliabled called.
+    this.nodeStore_.clearDomNodes();
     this.showLoading();
 
     this.settingsPrefs_ = {
@@ -219,7 +211,7 @@ export class AppElement extends AppElementBase implements SpeechListener,
       speechRate: chrome.readingMode.speechRate,
       font: chrome.readingMode.fontName,
       highlightGranularity: chrome.readingMode.highlightGranularity,
-      lineFocus: chrome.readingMode.lineFocus,
+      lineFocus: chrome.readingMode.lastNonDisabledLineFocus,
       linksEnabled: chrome.readingMode.linksEnabled,
       imagesEnabled: chrome.readingMode.imagesEnabled,
     };
@@ -237,10 +229,8 @@ export class AppElement extends AppElementBase implements SpeechListener,
 
       const selection = this.getSelection();
       this.selectionController_.onSelectionChange(selection);
-      if (this.isReadAloudEnabled_) {
-        this.speechController_.onSelectionChange();
-        this.contentController_.onSelectionChange(this.shadowRoot);
-      }
+      this.speechController_.onSelectionChange();
+      this.contentController_.onSelectionChange(this.shadowRoot);
     };
 
     // Pass copy commands to main page. Copy commands will not work if they are
@@ -329,6 +319,14 @@ export class AppElement extends AppElementBase implements SpeechListener,
     };
   }
 
+  override disconnectedCallback() {
+    super.disconnectedCallback();
+    // Even though disconnectedCallback isn't always called reliably in prod,
+    // it is called in tests, and the speech extension timeout can cause
+    // flakiness.
+    this.voiceLanguageController_.stopWaitingForSpeechExtension();
+  }
+
   private onWindowResize_() {
     requestAnimationFrame(() => {
       this.onTextLocationsChange_();
@@ -352,9 +350,7 @@ export class AppElement extends AppElementBase implements SpeechListener,
 
   protected onContainerScroll_() {
     this.selectionController_.onScroll();
-    if (this.isReadAloudEnabled_) {
-      this.speechController_.onScroll();
-    }
+    this.speechController_.onScroll();
     // Add fading effect to Immersive Mode text when scrolling.
     if (this.isImmersiveEnabled_) {
       const fontSize = Number.parseInt(window.getComputedStyle(this.$.container)
@@ -377,9 +373,7 @@ export class AppElement extends AppElementBase implements SpeechListener,
 
   showLoading() {
     this.contentController_.setState(ContentType.LOADING);
-    if (this.isReadAloudEnabled_) {
-      this.speechController_.resetForNewContent();
-    }
+    this.speechController_.resetForNewContent();
   }
 
   // TODO: crbug.com/40927698 - Handle focus changes for speech, including
@@ -483,6 +477,15 @@ export class AppElement extends AppElementBase implements SpeechListener,
     this.$.containerScroller.scrollTo({top: 0, behavior: 'smooth'});
   }
 
+  onLineFocusToggled(): void {
+    if (!chrome.readingMode.isLineFocusEnabled) {
+      return;
+    }
+    this.lineFocusStyle_ = this.lineFocusController_.getCurrentLineFocusStyle();
+    this.lineFocusMovement_ =
+        this.lineFocusController_.getCurrentLineFocusMovement();
+  }
+
   onContentStateChange(): void {
     this.contentState_ = this.contentController_.getState();
   }
@@ -571,9 +574,10 @@ export class AppElement extends AppElementBase implements SpeechListener,
   }
 
   private restoreSettingsFromPrefs_() {
-    if (this.isReadAloudEnabled_) {
-      this.voiceLanguageController_.restoreFromPrefs();
-    }
+    this.voiceLanguageController_.restoreFromPrefs();
+    const lineFocus = chrome.readingMode.isLineFocusOn ?
+        chrome.readingMode.lastNonDisabledLineFocus :
+        chrome.readingMode.lineFocusOff;
     this.settingsPrefs_ = {
       letterSpacing: chrome.readingMode.letterSpacing,
       lineSpacing: chrome.readingMode.lineSpacing,
@@ -581,14 +585,15 @@ export class AppElement extends AppElementBase implements SpeechListener,
       speechRate: chrome.readingMode.speechRate,
       font: chrome.readingMode.fontName,
       highlightGranularity: chrome.readingMode.highlightGranularity,
-      lineFocus: chrome.readingMode.lineFocus,
+      lineFocus,
       linksEnabled: chrome.readingMode.linksEnabled,
       imagesEnabled: chrome.readingMode.imagesEnabled,
     };
     this.styleUpdater_.setAllTextStyles();
     if (chrome.readingMode.isLineFocusEnabled) {
       this.lineFocusController_.restoreFromPrefs(
-          this.settingsPrefs_.lineFocus, this.$.container,
+          chrome.readingMode.lastNonDisabledLineFocus,
+          chrome.readingMode.isLineFocusOn, this.$.container,
           this.$.containerParent.clientHeight);
       this.setLineFocus_();
     }
@@ -654,6 +659,8 @@ export class AppElement extends AppElementBase implements SpeechListener,
       this.lineFocusController_.onStyleChange(
           event.detail.data, this.$.container,
           this.$.containerParent.clientHeight);
+      this.lineFocusStyle_ =
+          this.lineFocusController_.getCurrentLineFocusStyle();
       this.setLineFocus_();
     }
   }
@@ -664,29 +671,34 @@ export class AppElement extends AppElementBase implements SpeechListener,
       this.lineFocusController_.onMovementChange(
           event.detail.data, this.$.container,
           this.$.containerParent.clientHeight);
+      this.lineFocusMovement_ =
+          this.lineFocusController_.getCurrentLineFocusMovement();
       this.setLineFocus_();
-      if (!this.lineFocusController_.isEnabled()) {
-        return;
-      }
-
-      const padding = Math.floor(this.$.containerParent.clientHeight / 2);
-      if (this.lineFocusController_.isStatic()) {
-        // Add padding so the top and bottom lines of the page can still be
-        // focused even though line focus stays in the middle.
-        this.styleUpdater_.setPaddingForLineFocus(padding);
-        this.$.containerScroller.scrollBy({top: padding, behavior: 'instant'});
-      } else {
-        // Reset the padding and maintain the current scroll position.
-        this.styleUpdater_.setPaddingForLineFocus(0);
-        this.$.containerScroller.scrollBy({top: -padding, behavior: 'instant'});
-      }
     }
   }
 
   private setLineFocus_() {
-    if (chrome.readingMode.isLineFocusEnabled) {
-      this.styleUpdater_.setLineFocusStyle(
-          this.lineFocusController_.getCurrentLineFocusType());
+    if (!chrome.readingMode.isLineFocusEnabled) {
+      return;
+    }
+    this.styleUpdater_.setLineFocusStyle(
+        this.lineFocusController_.getCurrentLineFocusType());
+
+    const oldPadding = this.styleUpdater_.getPaddingForLineFocus();
+    // Add padding so the top and bottom lines of the page can still be
+    // focused even though static line focus stays in the middle.
+    const shouldAddPadding = this.lineFocusController_.isEnabled() &&
+        this.lineFocusController_.isStatic();
+    const newPadding = shouldAddPadding ?
+        Math.floor(this.$.containerParent.clientHeight / 2) :
+        0;
+    if (oldPadding !== newPadding) {
+      this.styleUpdater_.setPaddingForLineFocus(newPadding);
+      const paddingDiff = newPadding - oldPadding;
+      // Maintain the same scroll position even after adding or removing padding
+      // by scrolling by the difference in padding.
+      this.$.containerScroller.scrollBy(
+          {top: paddingDiff, behavior: 'instant'});
     }
   }
 
@@ -705,10 +717,8 @@ export class AppElement extends AppElementBase implements SpeechListener,
 
   languageChanged() {
     this.pageLanguage_ = chrome.readingMode.baseLanguageForSpeech;
-    if (this.isReadAloudEnabled_) {
-      this.voiceLanguageController_.onPageLanguageChanged();
-      TextSegmenter.getInstance().updateLanguage(this.pageLanguage_);
-    }
+    this.voiceLanguageController_.onPageLanguageChanged();
+    TextSegmenter.getInstance().updateLanguage(this.pageLanguage_);
   }
 
   protected computeHasContent(): boolean {
@@ -738,6 +748,10 @@ export class AppElement extends AppElementBase implements SpeechListener,
       this.styleUpdater_.setLineFocusStyle(
           this.lineFocusController_.getCurrentLineFocusType());
     }
+  }
+
+  protected getImmersiveClass_(): string {
+    return this.isImmersiveEnabled_ ? 'immersive' : '';
   }
 }
 

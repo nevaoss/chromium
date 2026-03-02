@@ -109,7 +109,7 @@ class KURLCharsetConverter final : public url::CharsetConverter {
   explicit KURLCharsetConverter(const TextEncoding* encoding)
       : encoding_(encoding) {}
 
-  void ConvertFromUTF16(std::u16string_view input,
+  void ConvertFromUtf16(std::u16string_view input,
                         url::CanonOutput* output) override {
     std::string encoded = encoding_->Encode(
         String(input), UnencodableHandling::kURLEncodedEntitiesForUnencodables);
@@ -659,7 +659,7 @@ bool KURL::SetPort(const String& input) {
   if (parsed_port.empty()) {
     return false;
   }
-  auto port_value = StringToUint(parsed_port);
+  auto port_value = StringToUintLoose(parsed_port);
   if (!port_value || *port_value > UINT16_MAX) {
     return false;
   }

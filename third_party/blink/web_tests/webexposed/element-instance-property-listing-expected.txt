@@ -171,6 +171,7 @@ namespace http://www.w3.org/1999/xhtml
     property localName
     property lookupNamespaceURI
     property lookupPrefix
+    property marker
     property matches
     property moveBefore
     property namespaceURI
@@ -574,6 +575,7 @@ html element colgroup
     property span
     property vAlign
     property width
+html element credential
 html element data
     property value
 html element datalist
@@ -610,7 +612,6 @@ html element embed
     property src
     property type
     property width
-html element federation
 html element fencedframe
     property allow
     property config
@@ -1499,6 +1500,7 @@ namespace http://www.w3.org/2000/svg
     property localName
     property lookupNamespaceURI
     property lookupPrefix
+    property marker
     property matches
     property moveBefore
     property namespaceURI

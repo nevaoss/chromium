@@ -2277,7 +2277,7 @@ _BANNED_CPP_FUNCTIONS: Sequence[BanRule] = (
         pattern='PageActionIconView',
         explanation=
         ('PageActionIconView will soon be removed. Use PageActionView instead. '
-         'See chrome/browser/ui/views/page_action/README.md for details.'),
+         'See chrome/browser/ui/views/page_action/README.md for details.', ),
         treat_as_error=False,
     ),
     BanRule(
@@ -8305,3 +8305,7 @@ def CheckSettingsChanges(input_api, output_api):
             '  //components/browser_ui/settings/android/java/src/org/chromium/components/browser_ui/settings/search/SearchIndexProvider.java',
             problems)
     ]
+
+
+def CheckAyeAye(input_api, output_api):
+    return input_api.canned_checks.CheckAyeAye(input_api, output_api)

@@ -29,6 +29,7 @@
 #include "components/autofill/core/common/mojom/autofill_types.mojom.h"
 #include "components/optimization_guide/proto/features/common_quality_data.pb.h"
 #include "content/public/browser/web_contents.h"
+#include "content/public/browser/webid/identity_credential_source.h"
 #include "content/public/test/test_renderer_host.h"
 #include "mojo/public/cpp/bindings/associated_receiver_set.h"
 #include "mojo/public/cpp/bindings/associated_remote.h"
@@ -196,8 +197,8 @@ TEST_F(ActorLoginSiwgControllerTest, ButtonFound_ClickSucceeded) {
             // Manually trigger the federated login completion callback.
             auto* request = FederatedActorLoginRequest::Get(web_contents());
             ASSERT_TRUE(request);
-            request->on_federated_result_received_callback().Run(
-                FederatedLoginResult::kSuccess);
+            request->OnFederatedResultReceived(
+                content::webid::FederatedLoginResult::kSuccess);
           }));
 
   // 4. Verify Success callback.

@@ -2191,8 +2191,6 @@ ax::mojom::blink::Role AXNodeObject::RoleFromLayoutObjectOrNode() const {
     return ax::mojom::blink::Role::kGenericContainer;
   }
 
-  DCHECK(GetLayoutObject());
-
   if (GetLayoutObject()->IsListMarker()) {
     Node* list_item = GetLayoutObject()->GeneratingNode();
     if (list_item && ShouldIgnoreListItem(list_item)) {
@@ -2323,10 +2321,6 @@ ax::mojom::blink::Role AXNodeObject::RoleFromLayoutObjectOrNode() const {
 
   if (IsA<HTMLMenuBarElement>(node)) {
     return ax::mojom::blink::Role::kMenuBar;
-  }
-
-  if (IsA<HTMLMenuItemElement>(node)) {
-    return ax::mojom::blink::Role::kMenuItem;
   }
 
   if (IsA<HTMLMenuListElement>(node)) {
@@ -2541,6 +2535,23 @@ ax::mojom::blink::Role AXNodeObject::NativeRoleIgnoringAria() const {
     } else {
       return ax::mojom::blink::Role::kListBoxOption;
     }
+  }
+
+  if (auto* menu_item = DynamicTo<HTMLMenuItemElement>(*GetNode())) {
+    if (menu_item->IsCheckable()) {
+      DCHECK(menu_item->NearestAncestorFieldSet())
+          << "IsCheckable implies that it has a NearestAncestorFieldSet";
+      // We have to look at the parent <fieldset>'s checkable attribute to see
+      // if this menu item behaves as a radio button or a checkbox.
+      const AtomicString& checkable_type =
+          menu_item->NearestAncestorFieldSet()->FastGetAttribute(
+              html_names::kCheckableAttr);
+      if (EqualIgnoringASCIICase(checkable_type, keywords::kSingle)) {
+        return ax::mojom::blink::Role::kMenuItemRadio;
+      }
+      return ax::mojom::blink::Role::kMenuItemCheckBox;
+    }
+    return ax::mojom::blink::Role::kMenuItem;
   }
 
   if (IsA<HTMLOptGroupElement>(GetNode())) {
@@ -3530,7 +3541,9 @@ int AXNodeObject::HeadingLevel() const {
 
   if (RoleValue() == ax::mojom::blink::Role::kHeading) {
     const String& implicit_value = GetImplicitAriaLevel(RoleValue());
-    return implicit_value.empty() ? 0 : StringToInt(implicit_value).value_or(0);
+    return implicit_value.empty()
+               ? 0
+               : StringToIntLoose(implicit_value).value_or(0);
   }
 
   // TODO(accessibility) For kDisclosureTriangle, kDisclosureTriangleGrouping,
@@ -6091,9 +6104,7 @@ void AXNodeObject::AddPseudoElementChildrenFromLayoutTree() {
     // All added pseudo-element descendants are included in the tree.
     if (AXObject* ax_child = AXObjectCache().GetOrCreate(child, this)) {
       DCHECK(AXObjectCacheImpl::IsRelevantPseudoElementDescendant(*child));
-      if (ax_child->IsIncludedInTree()) {
-        AddChildAndCheckIncluded(ax_child);
-      }
+      AddChildAndCheckIncluded(ax_child);
     }
     child = child->NextSibling();
   }
@@ -6174,6 +6185,14 @@ void AXNodeObject::AddChildrenImpl() {
 #define CHECK_ATTACHED()                                  \
   if (IsDetached()) {                                     \
     NOTREACHED() << "Detached adding children: " << this; \
+  }
+
+  // Don't add children if inside an inactive scroll marker tab or
+  // inside an inactive column scroll marker tab.
+  if (InsideInactiveScrollMarkerTab() ||
+      IsIgnoredAsInsideInactiveColumnTab(GetNode())) {
+    CHECK_ATTACHED();
+    return;
   }
 
   CHECK(NeedsToUpdateChildren());
@@ -6495,8 +6514,6 @@ bool AXNodeObject::CanHaveChildren() const {
       // model in the HTML spec.
       break;
     case ax::mojom::blink::Role::kCheckBox:
-    case ax::mojom::blink::Role::kMenuItemCheckBox:
-    case ax::mojom::blink::Role::kMenuItemRadio:
     case ax::mojom::blink::Role::kProgressIndicator:
     case ax::mojom::blink::Role::kRadioButton:
     case ax::mojom::blink::Role::kScrollBar:
@@ -6511,6 +6528,8 @@ bool AXNodeObject::CanHaveChildren() const {
       break;
     case ax::mojom::blink::Role::kComboBoxSelect:
     case ax::mojom::blink::Role::kMenuItem:
+    case ax::mojom::blink::Role::kMenuItemCheckBox:
+    case ax::mojom::blink::Role::kMenuItemRadio:
     case ax::mojom::blink::Role::kPopUpButton:
     case ax::mojom::blink::Role::kStaticText:
       // Note: these can have AXInlineTextBox children, but when adding them, we

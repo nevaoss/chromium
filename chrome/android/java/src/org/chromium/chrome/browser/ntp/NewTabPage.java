@@ -88,6 +88,7 @@ import org.chromium.chrome.browser.readaloud.ReadAloudController.Entrypoint;
 import org.chromium.chrome.browser.search_engines.TemplateUrlServiceFactory;
 import org.chromium.chrome.browser.search_resumption.SearchResumptionModuleCoordinator;
 import org.chromium.chrome.browser.search_resumption.SearchResumptionModuleUtils;
+import org.chromium.chrome.browser.setup_list.SetupListManager;
 import org.chromium.chrome.browser.share.ShareDelegate;
 import org.chromium.chrome.browser.single_tab.SingleTabSwitcherCoordinator;
 import org.chromium.chrome.browser.suggestions.SuggestionsMetrics;
@@ -220,6 +221,7 @@ public class NewTabPage
     private final boolean mCanSupportEdgeToEdgeForCustomizedTheme;
     private final TopInsetProvider mTopInsetProvider;
     private TopInsetProvider.@Nullable Observer mTopInsetChangeObserver;
+    private boolean mIsUseEdgeToEdgeForCustomizedTheme;
 
     private NtpCustomizationConfigManager.@org.chromium.build.annotations.Nullable
             HomepageStateListener
@@ -610,7 +612,12 @@ public class NewTabPage
                     @Override
                     public void onShown(Tab tab, @TabSelectionType int type) {
                         // Showing the NTP is only meaningful when the page has been loaded already.
-                        if (mIsLoaded) recordNtpShown();
+                        if (mIsLoaded) {
+                            recordNtpShown();
+                            if (mHomeModulesCoordinator != null) {
+                                mHomeModulesCoordinator.updateModules();
+                            }
+                        }
                         mNewTabPageLayout.onSwitchToForeground();
                     }
 
@@ -691,6 +698,7 @@ public class NewTabPage
         // The listener to observe custom background changes are added in all form factors as long
         // as the feature is enabled.
         if (NtpCustomizationUtils.isNtpThemeCustomizationEnabled()) {
+            setIsUseEdgeToEdgeForCustomizedTheme();
             initHomepageStateListener();
         }
 
@@ -868,6 +876,8 @@ public class NewTabPage
     }
 
     private void onBackgroundChangedImpl(boolean applyWhiteBackgroundOnSearchBox) {
+        setIsUseEdgeToEdgeForCustomizedTheme();
+
         if (!mIsTablet) {
             mUseLightIconTint = applyWhiteBackgroundOnSearchBox;
         }
@@ -1259,11 +1269,7 @@ public class NewTabPage
 
     @Override
     public boolean supportsEdgeToEdgeOnTop() {
-        return mCanSupportEdgeToEdgeForCustomizedTheme
-                && !mIsTablet
-                && isInSingleUrlBarMode()
-                && NtpCustomizationConfigManager.getInstance().getBackgroundType()
-                        != NtpBackgroundType.DEFAULT;
+        return mIsUseEdgeToEdgeForCustomizedTheme;
     }
 
     @Override
@@ -1429,6 +1435,11 @@ public class NewTabPage
             mMostRecentTabSupplier.set(mostRecentTab);
         }
 
+        Profile profile = mTab.getProfile();
+        if (profile != null) {
+            SetupListManager.getInstance().maybePrimeCompletionStatus(profile.getOriginalProfile());
+        }
+
         if (mHomeModulesCoordinator == null) {
             initializeMagicStack();
         }
@@ -1514,6 +1525,15 @@ public class NewTabPage
             // Updates the mHomeSurfaceTracker since the Tab of the NTP is closed.
             mHomeSurfaceTracker.updateHomeSurfaceAndTrackingTabs(null, null);
         }
+    }
+
+    /** Sets whether the NTP is currently set as edge-to-edge. */
+    private void setIsUseEdgeToEdgeForCustomizedTheme() {
+        mIsUseEdgeToEdgeForCustomizedTheme =
+                mCanSupportEdgeToEdgeForCustomizedTheme
+                        && !mIsTablet
+                        && NtpCustomizationConfigManager.getInstance().getBackgroundType()
+                                != NtpBackgroundType.DEFAULT;
     }
 
     public boolean isSingleTabCardVisibleForTesting() {

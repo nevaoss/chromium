@@ -18,6 +18,9 @@
 
 #include <cstdint>
 #include <string_view>
+#include <tuple>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 #include "base/byte_size.h"
@@ -93,6 +96,10 @@ class ScopedClipboard {
   }
 
   bool Acquire(HWND owner) {
+    // On UI thread, an owner HWND is expected for proper clipboard ownership.
+    // On worker threads, nullptr is acceptable for read-only clipboard access.
+    CHECK(!base::CurrentUIThread::IsSet() || owner != nullptr);
+
     const int kMaxAttemptsToOpenClipboard = 5;
 
     CHECK(!opened_);
@@ -260,6 +267,11 @@ ClipboardWin::ClipboardWin() {
   if (base::FeatureList::IsEnabled(features::kPlatformClipboardMonitor)) {
     ui::ClipboardMonitor::GetInstance()->SetNotifier(this);
   }
+
+  if (base::FeatureList::IsEnabled(features::kNonBlockingOsClipboardReads)) {
+    worker_task_runner_ = base::ThreadPool::CreateSequencedTaskRunner(
+        {base::MayBlock(), base::TaskPriority::USER_BLOCKING});
+  }
 }
 
 ClipboardWin::~ClipboardWin() {
@@ -389,6 +401,29 @@ std::vector<std::u16string> ClipboardWin::GetStandardFormats(
 
 // |data_dst| is not used. It's only passed to be consistent with other
 // platforms.
+void ClipboardWin::ReadHTML(ClipboardBuffer buffer,
+                            const std::optional<DataTransferEndpoint>& data_dst,
+                            ReadHtmlCallback callback) const {
+  ReadAsync(base::BindOnce(
+                [](ClipboardBuffer buffer, HWND owner_window) {
+                  ReadHTMLResult result;
+                  ReadHTMLInternal(owner_window, buffer, &result.markup,
+                                   &result.src_url, &result.fragment_start,
+                                   &result.fragment_end);
+                  return result;
+                },
+                buffer),
+            base::BindOnce(
+                [](ReadHtmlCallback callback, ReadHTMLResult result) {
+                  std::move(callback).Run(
+                      std::move(result.markup), GURL(result.src_url),
+                      result.fragment_start, result.fragment_end);
+                },
+                std::move(callback)));
+}
+
+// |data_dst| is not used. It's only passed to be consistent with other
+// platforms.
 void ClipboardWin::ReadAvailableTypes(
     ClipboardBuffer buffer,
     const DataTransferEndpoint* data_dst,
@@ -478,6 +513,17 @@ void ClipboardWin::ReadHTML(ClipboardBuffer buffer,
                             std::string* src_url,
                             uint32_t* fragment_start,
                             uint32_t* fragment_end) const {
+  ReadHTMLInternal(GetClipboardWindow(), buffer, markup, src_url,
+                   fragment_start, fragment_end);
+}
+
+// static
+void ClipboardWin::ReadHTMLInternal(HWND owner_window,
+                                    ClipboardBuffer buffer,
+                                    std::u16string* markup,
+                                    std::string* src_url,
+                                    uint32_t* fragment_start,
+                                    uint32_t* fragment_end) {
   DCHECK_EQ(buffer, ClipboardBuffer::kCopyPaste);
   RecordRead(ClipboardFormatMetric::kHtml);
 
@@ -491,8 +537,9 @@ void ClipboardWin::ReadHTML(ClipboardBuffer buffer,
 
   // Acquire the clipboard.
   ScopedClipboard clipboard;
-  if (!clipboard.Acquire(GetClipboardWindow()))
+  if (!clipboard.Acquire(owner_window)) {
     return;
+  }
 
   HANDLE data = GetClipboardDataWithLimit(
       ClipboardFormatType::HtmlType().ToFormatEtc().cfFormat);
@@ -573,7 +620,7 @@ void ClipboardWin::ReadRTF(ClipboardBuffer buffer,
 // |data_dst| is not used. It's only passed to be consistent with other
 // platforms.
 void ClipboardWin::ReadPng(ClipboardBuffer buffer,
-                           const DataTransferEndpoint* data_dst,
+                           const std::optional<DataTransferEndpoint>& data_dst,
                            ReadPngCallback callback) const {
   RecordRead(ClipboardFormatMetric::kPng);
   std::vector<uint8_t> data = ReadPngInternal(buffer);
@@ -902,6 +949,22 @@ void ClipboardWin::WriteConfidentialDataForPassword() {
   WriteData(
       ClipboardFormatType::UploadCloudClipboardType(),
       base::span(reinterpret_cast<const uint8_t*>(&value), sizeof(value)));
+}
+
+template <typename Result>
+void ClipboardWin::ReadAsync(
+    base::OnceCallback<Result(HWND)> read_func,
+    base::OnceCallback<void(Result)> reply_func) const {
+  if (!base::FeatureList::IsEnabled(features::kNonBlockingOsClipboardReads)) {
+    Result result =
+        std::move(read_func).Run(/*owner_window=*/GetClipboardWindow());
+    std::move(reply_func).Run(std::move(result));
+    return;
+  }
+  CHECK(worker_task_runner_);
+  worker_task_runner_->PostTaskAndReplyWithResult(
+      FROM_HERE, base::BindOnce(std::move(read_func), /*owner_window=*/nullptr),
+      std::move(reply_func));
 }
 
 std::vector<uint8_t> ClipboardWin::ReadPngInternal(

@@ -2363,6 +2363,7 @@ chromium-metrics-reviews@google.com.
   <int value="1430" label="LocalNetworkAccessPermissionsPolicyDefaultEnabled"/>
   <int value="1431" label="ForceForegroundPriorityForAllTabs"/>
   <int value="1432" label="WebRtcDiagnosticLogCollectionAllowedForOrigins"/>
+  <int value="1433" label="IsolatedWebAppUserInstallationEnabled"/>
 </enum>
 
 <enum name="EnterprisePoliciesSources">
@@ -2782,6 +2783,7 @@ chromium-metrics-reviews@google.com.
   <int value="20" label="Rotate attestation credentials command"/>
   <int value="21" label="Fetch CRD availability info command"/>
   <int value="22" label="Fetch support packet command"/>
+  <int value="23" label="Query device location command"/>
 </enum>
 
 <enum name="ReportSchedulerReportTrigger">

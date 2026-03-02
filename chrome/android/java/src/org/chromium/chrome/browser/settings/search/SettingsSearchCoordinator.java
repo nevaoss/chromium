@@ -32,6 +32,7 @@ import androidx.annotation.DimenRes;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.ActionMenuView;
 import androidx.appcompat.widget.Toolbar;
+import androidx.appcompat.widget.TooltipCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
@@ -235,6 +236,9 @@ public class SettingsSearchCoordinator
         View searchBox = mActivity.findViewById(R.id.search_box);
         setSearchBoxVerticalMargin(searchBox, mUseMultiColumn);
         searchBox.setOnClickListener(this::onClickSearchBox);
+        TooltipCompat.setTooltipText(
+                searchBox.findViewById(R.id.search_icon),
+                mActivity.getString(R.string.search_in_settings_hint));
 
         View query = mActivity.findViewById(R.id.search_query_container);
         Drawable bg = ContextCompat.getDrawable(mActivity, R.drawable.pill_background);
@@ -254,6 +258,7 @@ public class SettingsSearchCoordinator
         setUpQueryEdit(queryEdit);
         View backToSettings = mActivity.findViewById(R.id.back_arrow_icon);
         backToSettings.setOnClickListener(v -> handleBackAction());
+        TooltipCompat.setTooltipText(backToSettings, mActivity.getString(R.string.back));
         mBackActionCallback =
                 new OnBackPressedCallback(false) {
                     @Override
@@ -262,7 +267,10 @@ public class SettingsSearchCoordinator
                     }
                 };
         mActivity.getOnBackPressedDispatcher().addCallback(mActivity, mBackActionCallback);
-        query.findViewById(R.id.clear_text).setOnClickListener(v -> clearQueryText());
+        View clearText = query.findViewById(R.id.clear_text);
+        clearText.setOnClickListener(v -> clearQueryText());
+        TooltipCompat.setTooltipText(
+                clearText, mActivity.getString(R.string.search_in_settings_clear_query));
         if (savedState != null) {
             int state = savedState.getInt(KEY_FRAGMENT_STATE);
             if (state == FS_SEARCH || state == FS_RESULTS) {
@@ -322,15 +330,24 @@ public class SettingsSearchCoordinator
     public void onAccessibilityStateChanged(
             AccessibilityState.State oldAccessibilityState,
             AccessibilityState.State newAccessibilityState) {
+        if (mActivity.isFinishing() || mActivity.isDestroyed()) return;
+
+        // If #onSaveInstance has already been called, we cannot commit Fragment transactions. The
+        // UI update is safe to skip since the user cannot see the search view in this state.
+        if (getSettingsFragmentManager().isStateSaved()) return;
+
         if (!oldAccessibilityState.equals(newAccessibilityState)) {
             if (mIndexData != null) {
                 mIndexData.setNeedsIndexing();
                 initIndex();
-            }
-            if (mFragmentState != FS_SETTINGS) {
+
                 EditText queryEdit = mActivity.findViewById(R.id.search_query);
-                queryEdit.requestFocus();
-                onQueryUpdated(queryEdit.getText().toString());
+                if (queryEdit == null) return;
+
+                if (mFragmentState != FS_SETTINGS) {
+                    queryEdit.requestFocus();
+                    onQueryUpdated(queryEdit.getText().toString());
+                }
             }
         }
     }
@@ -501,9 +518,11 @@ public class SettingsSearchCoordinator
     @Initializer
     @EnsuresNonNull("mIndexData")
     private void initIndex() {
-        if (mIndexData == null) {
+        SettingsIndexData indexData = SettingsIndexData.getInstance();
+        if (indexData == null) {
             mIndexData = SettingsIndexData.createInstance();
         } else {
+            mIndexData = indexData;
             if (!mIndexData.needsIndexing()) return;
         }
 
@@ -918,10 +937,10 @@ public class SettingsSearchCoordinator
             // Query edit UI should be hidden while we're browsing results.
             if (mFragmentState == FS_RESULTS) query.setVisibility(View.GONE);
 
-            // In single mode we end up at non-main settings where search cannot be initiated.
-            // Keeping the empty fragment in that state is confusing and misleading. To sort
-            // out the inconsistency, we revert to default state (FS_SETTINGS);
-            if (mFragmentState == FS_SEARCH && mShowingEmptyFragment) {
+            // When switching from 2-column to single-column mode, we'll always be at non-main
+            // settings where search cannot be initiated and search UI should be hidden.
+            // For UI consistency, we revert to default state (FS_SETTINGS).
+            if (mFragmentState == FS_SEARCH) {
                 exitSearchState(/* clearFragment= */ false);
                 mUpdateFirstVisibleTitle.onResult(0);
                 return;

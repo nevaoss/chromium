@@ -7,7 +7,6 @@ import '../read_aloud/voice_selection_menu.js';
 import '../menus/simple_action_menu.js';
 import '../menus/color_menu.js';
 import '../menus/font_menu.js';
-import '../menus/font_select.js';
 import '../menus/line_focus_menu.js';
 import '../menus/line_spacing_menu.js';
 import '../menus/letter_spacing_menu.js';
@@ -33,7 +32,7 @@ import {CrLitElement, html, type TemplateResult} from '//resources/lit/v3_0/lit.
 import type {PropertyValues} from '//resources/lit/v3_0/lit.rollup.js';
 
 import {DEFAULT_SETTINGS, SettingsOption, ToolbarEvent} from '../content/read_anything_types.js';
-import type {SettingsPrefs} from '../content/read_anything_types.js';
+import type {LineFocusMovement, LineFocusStyle, SettingsPrefs} from '../content/read_anything_types.js';
 import type {ColorMenuElement} from '../menus/color_menu.js';
 import type {FontMenuElement} from '../menus/font_menu.js';
 import type {HighlightMenuElement} from '../menus/highlight_menu.js';
@@ -151,7 +150,8 @@ export class ReadAnythingToolbarElement extends ReadAnythingToolbarElementBase {
       isImmersiveMode: {type: Boolean},
       isReadAnythingPinned: {type: Boolean},
       isImmersiveEnabled_: {type: Boolean},
-      isReadAloudEnabled_: {type: Boolean},
+      lineFocusStyle: {type: Object},
+      lineFocusMovement: {type: Object},
     };
   }
 
@@ -177,8 +177,9 @@ export class ReadAnythingToolbarElement extends ReadAnythingToolbarElementBase {
   accessor selectedVoice: SpeechSynthesisVoice|undefined;
   accessor pageLanguage: string = '';
   accessor isImmersiveMode: boolean = false;
+  accessor lineFocusStyle: LineFocusStyle|null = null;
+  accessor lineFocusMovement: LineFocusMovement|null = null;
   protected accessor hideSpinner_: boolean = true;
-  protected accessor isReadAloudEnabled_: boolean = true;
   protected accessor isImmersiveEnabled_: boolean = false;
   // Overflow buttons on the toolbar that open a menu of options.
   protected accessor moreOptionsButtons_: MenuButton[] = [];
@@ -210,6 +211,47 @@ export class ReadAnythingToolbarElement extends ReadAnythingToolbarElementBase {
   // Corresponds to UI setup being complete on the toolbar when
   // connectedCallback has finished executing.
   private isSetupComplete_: boolean = false;
+
+  constructor() {
+    super();
+    this.constructorTime_ = Date.now();
+    this.logger_.logTimeFrom(
+        TimeFrom.TOOLBAR, this.startTime_, this.constructorTime_);
+    this.isImmersiveEnabled_ = chrome.readingMode.isImmersiveEnabled;
+
+    // Only add the button to the toolbar if the feature is enabled.
+    if (chrome.readingMode.imagesFeatureEnabled) {
+      this.textStyleToggles_.push({
+        id: IMAGES_TOGGLE_BUTTON_ID,
+        icon: chrome.readingMode.imagesEnabled ? IMAGES_ENABLED_ICON :
+                                                 IMAGES_DISABLED_ICON,
+        title: chrome.readingMode.imagesEnabled ?
+            loadTimeData.getString('disableImagesLabel') :
+            loadTimeData.getString('enableImagesLabel'),
+      });
+    }
+  }
+
+  override connectedCallback() {
+    super.connectedCallback();
+
+    this.windowResizeCallback_ = this.maybeUpdateMoreOptions_.bind(this);
+    window.addEventListener('resize', this.windowResizeCallback_);
+
+    this.loadFontsStylesheet();
+    this.initializeMenuButtons_();
+    this.isSetupComplete_ = true;
+  }
+
+  override disconnectedCallback() {
+    if (this.windowResizeCallback_) {
+      window.removeEventListener('resize', this.windowResizeCallback_);
+    }
+    if (this.spinnerDebouncerCallbackHandle_ !== undefined) {
+      clearTimeout(this.spinnerDebouncerCallbackHandle_);
+    }
+    super.disconnectedCallback();
+  }
 
   override updated(changedProperties: PropertyValues<this>) {
     super.updated(changedProperties);
@@ -303,48 +345,6 @@ export class ReadAnythingToolbarElement extends ReadAnythingToolbarElementBase {
   }
 
 
-  constructor() {
-    super();
-    this.constructorTime_ = Date.now();
-    this.logger_.logTimeFrom(
-        TimeFrom.TOOLBAR, this.startTime_, this.constructorTime_);
-    this.isReadAloudEnabled_ = chrome.readingMode.isReadAloudEnabled;
-    this.isImmersiveEnabled_ = chrome.readingMode.isImmersiveEnabled;
-
-    // Only add the button to the toolbar if the feature is enabled.
-    if (chrome.readingMode.imagesFeatureEnabled) {
-      this.textStyleToggles_.push({
-        id: IMAGES_TOGGLE_BUTTON_ID,
-        icon: chrome.readingMode.imagesEnabled ? IMAGES_ENABLED_ICON :
-                                                 IMAGES_DISABLED_ICON,
-        title: chrome.readingMode.imagesEnabled ?
-            loadTimeData.getString('disableImagesLabel') :
-            loadTimeData.getString('enableImagesLabel'),
-      });
-    }
-  }
-
-  override connectedCallback() {
-    super.connectedCallback();
-
-    this.windowResizeCallback_ = this.maybeUpdateMoreOptions_.bind(this);
-    window.addEventListener('resize', this.windowResizeCallback_);
-
-    this.loadFontsStylesheet();
-    this.initializeMenuButtons_();
-    this.isSetupComplete_ = true;
-  }
-
-  override disconnectedCallback() {
-    if (this.windowResizeCallback_) {
-      window.removeEventListener('resize', this.windowResizeCallback_);
-    }
-    if (this.spinnerDebouncerCallbackHandle_ !== undefined) {
-      clearTimeout(this.spinnerDebouncerCallbackHandle_);
-    }
-    super.disconnectedCallback();
-  }
-
   private initializeMenuButtons_() {
     const fontSizeElement = {
       id: 'font-size',
@@ -360,19 +360,14 @@ export class ReadAnythingToolbarElement extends ReadAnythingToolbarElementBase {
       return;
     }
 
-    if (this.isReadAloudEnabled_) {
-      this.textStyleOptions_.push(
-          fontSizeElement,
-          {
-            id: 'font',
-            icon: 'read-anything:font',
-            ariaLabel: loadTimeData.getString('fontNameTitle'),
-            openMenu: (target: HTMLElement) => this.$.fontMenu.open(target),
-          },
-      );
-    }
-
     this.textStyleOptions_.push(
+        fontSizeElement,
+        {
+          id: 'font',
+          icon: 'read-anything:font',
+          ariaLabel: loadTimeData.getString('fontNameTitle'),
+          openMenu: (target: HTMLElement) => this.$.fontMenu.open(target),
+        },
         {
           id: 'color',
           icon: 'read-anything:color',
@@ -473,10 +468,7 @@ export class ReadAnythingToolbarElement extends ReadAnythingToolbarElementBase {
     this.updateLinkToggleButton();
     this.updateImagesToggleButton();
     this.setFont_(chrome.readingMode.fontName);
-
-    if (this.isReadAloudEnabled_) {
-      this.speechRate_ = getCurrentSpeechRate();
-    }
+    this.speechRate_ = getCurrentSpeechRate();
   }
 
   protected playPauseButtonAriaLabel_() {
@@ -723,13 +715,6 @@ export class ReadAnythingToolbarElement extends ReadAnythingToolbarElementBase {
           (!(el as any).disabled) && (el.className !== 'separator');
     });
 
-    // Allow focusing the font selection if it's visible.
-    if (!this.isReadAloudEnabled_) {
-      const select = toolbar.querySelector<HTMLSelectElement>('#font-select');
-      assert(select, 'no font select menu');
-      focusableElements.unshift(select);
-    }
-
     // Allow focusing the more options menu if it's visible.
     const moreOptionsButton = this.$.more;
     assert(moreOptionsButton, 'no more options button');
@@ -904,7 +889,7 @@ export class ReadAnythingToolbarElement extends ReadAnythingToolbarElementBase {
          this.shadowRoot.activeElement.clientHeight === 0)) {
       // If the play / pause button is enabled, we should focus it. Otherwise,
       // we should focus the rate menu.
-      const tagToFocus = this.isReadAloudEnabled_ ? '#play-pause' : '#rate';
+      const tagToFocus = this.isReadAloudPlayable ? '#play-pause' : '#rate';
       this.$.toolbarContainer.querySelector<HTMLElement>(tagToFocus)?.focus();
     }
 
@@ -949,20 +934,8 @@ export class ReadAnythingToolbarElement extends ReadAnythingToolbarElementBase {
                                                                             -1;
   }
 
-  // When Read Aloud is enabled, we want the aria label of the toolbar
-  // convey information about Read Aloud.
-  protected getToolbarAriaLabel_(): string {
-    return this.isReadAloudEnabled_ ?
-        this.i18n('readingModeReadAloudToolbarLabel') :
-        this.i18n('readingModeToolbarLabel');
-  }
-
   protected getVoiceSpeedLabel_(): string {
     return loadTimeData.getStringF('voiceSpeedWithRateLabel', this.speechRate_);
-  }
-
-  protected shouldShowToolbarAudioControls_(): boolean {
-    return this.isReadAloudEnabled_ || this.isImmersiveEnabled_;
   }
 
   protected getAudioState_(): string {
