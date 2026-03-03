@@ -2841,9 +2841,7 @@ void WebLocalFrameImpl::UpdateForSameDocumentNavigation(
       blink::WebFrameLoadType::kReplaceCurrentItem, blink::FirePopstate::kNo,
       frame_->DomWindow()->GetSecurityOrigin(),
       /*is_browser_initiated=*/true,
-      /*is_synchronously_committed=*/true,
-      /*soft_navigation_heuristics_task_id=*/std::nullopt,
-      HasTransientUserActivation(),
+      /*is_synchronously_committed=*/true, HasTransientUserActivation(),
       /*has_ua_visual_transition=*/false,
       /*should_skip_screenshot=*/false);
 }
