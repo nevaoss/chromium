@@ -35,7 +35,9 @@
 
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
 #include "base/command_line.h"
+#include "base/functional/callback_helpers.h"
 #include "base/neva/base_switches.h"
+#include "base/strings/string_number_conversions.h"
 #include "url/url_util.h"
 #endif
 
