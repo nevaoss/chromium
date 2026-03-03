@@ -150,10 +150,9 @@ void BrowsingDataRemover::Remove(const TimeRange& time_range, int remove_mask) {
   if (storage_partition_remove_mask) {
     waiting_for_clear_storage_partition_data_ = true;
 
-    const uint32_t quota_storage_remove_mask = 0xFFFFFFFF;
     storage_partition_->ClearData(
-        storage_partition_remove_mask, quota_storage_remove_mask,
-        blink::StorageKey(), delete_begin, delete_end,
+        storage_partition_remove_mask, blink::StorageKey(), delete_begin,
+        delete_end,
         base::BindOnce(&BrowsingDataRemover::OnClearedStoragePartitionData,
                        weak_ptr_factory_.GetWeakPtr()));
   }
