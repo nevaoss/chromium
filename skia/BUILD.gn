@@ -677,7 +677,6 @@ component("skia_switches") {
   deps = [ "//base" ]
 }
 
-<<<<<<< HEAD
 # TODO(neva_rust): Remove this workaround once Neva supports Rust build.
 if (!disable_rust_for_neva) {
   rust_static_library("rust_common_ffi") {
@@ -693,24 +692,8 @@ if (!disable_rust_for_neva) {
       ":skia_config",
       "//build/config/compiler:no_chromium_code",
     ]
+    no_clippy = true  # TODO(https://crbug.com/472355480)
   }
-=======
-rust_static_library("rust_common_ffi") {
-  visibility = [ ":*" ]
-  crate_name = "skia_rust_common"
-  allow_unsafe = true  # For FFI
-  crate_root = skia_rust_common_ffi_crate_root
-  sources = skia_rust_common_ffi_rs_srcs
-  cxx_bindings = skia_rust_common_ffi_cxx_bridge_srcs
-  public_deps = [ ":rust_common_ffi_cpp" ]
-  configs -= [ "//build/config/compiler:chromium_code" ]
-  configs += [
-    ":skia_config",
-    "//build/config/compiler:no_chromium_code",
-  ]
-  no_clippy = true  # TODO(https://crbug.com/472355480)
-}
->>>>>>> 147.0.7695.0~1
 
   source_set("rust_common_ffi_cpp") {
     visibility = [ ":*" ]
@@ -729,7 +712,6 @@ rust_static_library("rust_common_ffi") {
     ]
   }
 
-<<<<<<< HEAD
   rust_static_library("rust_png_ffi") {
     visibility = [ ":*" ]
     edition = "2021"
@@ -747,28 +729,8 @@ rust_static_library("rust_common_ffi") {
       ":skia_config",
       "//build/config/compiler:no_chromium_code",
     ]
+    no_clippy = true  # TODO(https://crbug.com/472355480)
   }
-=======
-rust_static_library("rust_png_ffi") {
-  visibility = [ ":*" ]
-  edition = "2021"
-  allow_unsafe = true  # For FFI
-  crate_root = skia_codec_rust_png_ffi_crate_root
-  sources = skia_codec_rust_png_ffi_rs_srcs
-  cxx_bindings = skia_codec_rust_png_ffi_cxx_bridge_srcs
-  public_deps = [ ":rust_png_ffi_cpp" ]
-  deps = [
-    ":rust_common_ffi",
-    "//third_party/rust/png/v0_18:lib",
-  ]
-  configs -= [ "//build/config/compiler:chromium_code" ]
-  configs += [
-    ":skia_config",
-    "//build/config/compiler:no_chromium_code",
-  ]
-  no_clippy = true  # TODO(https://crbug.com/472355480)
-}
->>>>>>> 147.0.7695.0~1
 
   source_set("rust_png_ffi_cpp") {
     visibility = [ ":*" ]
