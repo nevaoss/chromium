@@ -35,12 +35,23 @@ using l10n_util::GetNSStringF;
 
 #pragma mark - Public
 
+- (instancetype)init {
+  if ((self = [super init])) {
+    _updateChromeState = UpdateChromeSafetyCheckState::kDefault;
+    _passwordState = PasswordSafetyCheckState::kDefault;
+    _safeBrowsingState = SafeBrowsingSafetyCheckState::kDefault;
+    _runningState = RunningSafetyCheckState::kDefault;
+    _itemType = SafetyCheckItemType::kDefault;
+  }
+  return self;
+}
+
 - (instancetype)
     initWithUpdateChromeState:(UpdateChromeSafetyCheckState)updateChromeState
                 passwordState:(PasswordSafetyCheckState)passwordState
             safeBrowsingState:(SafeBrowsingSafetyCheckState)safeBrowsingState
                  runningState:(RunningSafetyCheckState)runningState {
-  if ((self = [super init])) {
+  if ((self = [self init])) {
     _updateChromeState = updateChromeState;
     _passwordState = passwordState;
     _safeBrowsingState = safeBrowsingState;
@@ -94,7 +105,6 @@ using l10n_util::GetNSStringF;
   state.reusedPasswordsCount = self.reusedPasswordsCount;
   state.compromisedPasswordsCount = self.compromisedPasswordsCount;
   state.lastRunTime = self.lastRunTime;
-  state.safetyCheckConsumerSource = self.safetyCheckConsumerSource;
   state.audience = self.audience;
   state.itemType = self.itemType;
   return state;

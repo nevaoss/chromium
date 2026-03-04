@@ -56,7 +56,7 @@ bool ShouldUseBroadcasterForSmoothScrolling() {
          !base::FeatureList::IsEnabled(kSmoothScrollingUseDelegate);
 }
 
-BASE_FEATURE(kFullscreenScrollThreshold, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kFullscreenScrollThreshold, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // This feature will always be disabled and will only be enabled by tests.
 BASE_FEATURE(kForceSynthesizedRestoreSession,
@@ -101,7 +101,7 @@ BASE_FEATURE(kUpdateSSLStatusOnNavigationItemLazyCreation,
 BASE_FEATURE(kEnableBEContextMenuConfiguration,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kIOSDownloadSanitizeFilename, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kIOSDownloadSanitizeFilename, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kEnableContextMenuTimeout, base::FEATURE_DISABLED_BY_DEFAULT);
 

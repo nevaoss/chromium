@@ -125,6 +125,7 @@
 <translation id="1436671784520050284">ສືບຕໍ່ການຕັ້ງຄ່າ</translation>
 <translation id="143681031165817424">ບັນທຶກທີ່ຢູ່ໃນອຸປະກອນເຄື່ອງນີ້ເທົ່ານັ້ນ</translation>
 <translation id="1445276840641906250">ແຖບທັງໝົດຂອງທ່ານໃນໂປຣແກຣມທ່ອງເວັບດຽວ</translation>
+<translation id="1447564161241938558">ຜູ້ເບິ່ງແຍງລະບົບຂອງທ່ານປິດໃຊ້ການນຳເຂົ້າລະຫັດຜ່ານ ແລະ ກະແຈຜ່ານ</translation>
 <translation id="1450170672351507823">ການປົກປ້ອງມາດຕະຖານເປີດຢູ່. ເພື່ອຄວາມປອດໄພຍິ່ງຂຶ້ນ, ກະລຸນາໃຊ້ການປົກປ້ອງທີ່ປັບປຸງໃຫ້ດີຂຶ້ນ.</translation>
 <translation id="1455660774629812862">ບໍ່ຕ້ອງເຊື່ອງ</translation>
 <translation id="1456545332132818232">ຄຳຕິຊົມສິນຄ້າ <ph name="PRODUCT_NAME" />, <ph name="STARS" /> ຈາກທັງໝົດ <ph name="MAX_STARS" />, <ph name="DOMAIN" /></translation>
@@ -373,7 +374,6 @@
 <translation id="2306265833370324042">ສະແດງລາຍລະອຽດ <ph name="SEARCH_ENGINE_NAME" /></translation>
 <translation id="2309265394777270359">ປິດແຖບ</translation>
 <translation id="2311077293164383652">ປິດແຖບທີ່ປັກໝຸດແລ້ວ</translation>
-<translation id="2313392466694008052">ແກ້ໄຂຮູບພາບດ້ວຍ Gemini</translation>
 <translation id="2316129865977710310">ບໍ່​, ​ຂອບ​ໃຈ</translation>
 <translation id="2320166752086256636">ເຊື່ອງ​ແປ້ນ​ພິມ</translation>
 <translation id="2321086116217818302">ກຳລັງກະກຽມລະຫັດຜ່ານ…</translation>
@@ -1786,6 +1786,7 @@ Handoff ຍັງ​ຕ້ອງ​ໄດ້​ເປີດ​ໃຊ້​ງາ
 <translation id="7506817096924591340"><ph name="FILENAME" /> (<ph name="FILESIZE" />).</translation>
 <translation id="7508728395076009983">ເພື່ອລັອກ incognito tab ຂອງທ່ານ, ໃຫ້ຕັ້ງຄ່າ Touch ID, Face ID ຫຼື ລະຫັດກ່ອນ.</translation>
 <translation id="750886945254958667">ເກັບກຸ່ມນີ້ໄວ້ເພື່ອເພີ່ມແຖບໃນພາຍຫຼັງ ຫຼື ອອກຈາກກຸ່ມຫາກທ່ານບໍ່ຕ້ອງການເຂົ້າເຖິງກຸ່ມແລ້ວ</translation>
+<translation id="7511727374778217603">{COUNT,plural, =1{ເພີ່ມໄດ້ສູງສຸດ 1 ແຖບ}other{ເພີ່ມໄດ້ສູງສຸດ {COUNT} ແຖບ}}</translation>
 <translation id="7512909159512473473">ລະບຸລະຫັດຜ່ານ…</translation>
 <translation id="7514365320538308">ດາວ​ໂຫລດ</translation>
 <translation id="7514530647142300459">ໃຊ້ລະຫັດຜ່ານໃນບັນຊີ Google <ph name="EMAIL" /> ຂອງທ່ານຕໍ່ໄປ</translation>
@@ -2236,6 +2237,7 @@ Handoff ຍັງ​ຕ້ອງ​ໄດ້​ເປີດ​ໃຊ້​ງາ
 <translation id="9055291197094969722">ສ້າງກຸ່ມແຖບເພື່ອຈັດລະບຽບແຖບທີ່ເປີດຢູ່ຂອງທ່ານ ແລະ ເຮັດວຽກໄດ້ຢ່າງມີປະສິດທິພາບ</translation>
 <translation id="9055580485132823283">ທ່ານກຳລັງຈະລຶບລະຫັດຜ່ານ {password_count} ລາຍການ, ກະແຈຜ່ານ {passkey_count} ລາຍການ, ພ້ອມທັງລາຍຊື່ເວັບໄຊ ແລະ ແອັບທີ່ທ່ານເລືອກທີ່ຈະບໍ່ບັນທຶກຂໍ້ມູນການເຂົ້າສູ່ລະບົບ. ລະບົບຈະບໍ່ລຶບບັນຊີໃດກໍຕາມທີ່ທ່ານສ້າງໄວ້ສຳລັບເວັບໄຊ ແລະ ແອັບ.</translation>
 <translation id="9057030985451135243">ສຶກສາກ່ຽວກັບກຸ່ມແຖບທີ່ໃຊ້ຮ່ວມກັນ</translation>
+<translation id="9064106978262828592">ພົບບັນຫາໃນການສົ່ງອອກຂໍ້ມູນຂອງທ່ານ</translation>
 <translation id="9065203028668620118">ແກ້ໄຂ</translation>
 <translation id="9066097352053395362">ເຊື່ອງ ແກ້ໄຂບຸກມາກ</translation>
 <translation id="9070824521421603770">ທ່ານຈະອອກຈາກລະບົບ ແລະ ແຖບຈະຖືກປິດ</translation>

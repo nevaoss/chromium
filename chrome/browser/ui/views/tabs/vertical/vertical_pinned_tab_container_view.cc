@@ -167,6 +167,11 @@ void VerticalPinnedTabContainerView::UpdateLayoutForDrag() {
   layout_manager_->ResetToTargetLayout();
 }
 
+const views::ProposedLayout& VerticalPinnedTabContainerView::GetLayoutForDrag()
+    const {
+  return layout_manager_->target_layout();
+}
+
 void VerticalPinnedTabContainerView::HandleTabDragInContainer(
     const gfx::Rect& dragged_tab_bounds) {
   const views::ProposedLayout& target_layout = layout_manager_->target_layout();
@@ -181,6 +186,10 @@ void VerticalPinnedTabContainerView::HandleTabDragInContainer(
   }
   if (node) {
     GetDragHandler().HandleDraggedTabsOverNode(*node, std::nullopt);
+    // Synchronously force a layout here to update the target layout. Since all
+    // the calculations are based off on target layout, we need to ensure it is
+    // updated where there are model change.
+    DeprecatedLayoutImmediately();
   }
 }
 

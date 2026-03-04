@@ -12,6 +12,7 @@
 #include "chrome/browser/actor/resources/grit/actor_browser_resources.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/skills/skills_ui_window_controller.h"
+#include "chrome/browser/translate/chrome_translate_client.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/chrome_pages.h"
@@ -41,6 +42,7 @@
 #include "components/safe_browsing/core/common/safe_browsing_prefs.h"
 #include "components/strings/grit/components_strings.h"
 #include "components/tabs/public/tab_interface.h"
+#include "components/translate/core/browser/translate_manager.h"
 #include "components/vector_icons/vector_icons.h"
 #include "ui/menus/simple_menu_model.h"
 #if BUILDFLAG(ENABLE_GLIC)
@@ -363,20 +365,10 @@ void ToastService::RegisterToasts(
   if (base::FeatureList::IsEnabled(
           autofill::features::kAutofillAiWalletPrivatePasses)) {
     toast_registry_->RegisterToast(
-        ToastId::kSavedAutofillAiEntityToWallet,
-        // TODO(crbug.com/477845712): Use the correct icon.
-        ToastSpecification::Builder(kCheckIcon)
-            .AddCloseButton()
-            .AddActionButton(
-                IDS_AUTOFILL_AI_TOAST_BUTTON,
-                base::BindRepeating(chrome::ShowAutofill,
-                                    base::Unretained(browser_window_interface)))
+        ToastId::kAutofillAiWalletErrorMessage,
+        ToastSpecification::Builder(vector_icons::kPersonTextIcon)
             .AddGlobalScoped()
             .Build());
-    toast_registry_->RegisterToast(
-        // TODO(crbug.com/477845712): Use the correct icon.
-        ToastId::kAutofillAiWalletErrorMessage,
-        ToastSpecification::Builder(kCheckIcon).AddGlobalScoped().Build());
   }
 
   if (base::FeatureList::IsEnabled(toast_features::kTranslateToast)) {
@@ -384,6 +376,24 @@ void ToastService::RegisterToasts(
         ToastId::kTranslate,
         ToastSpecification::Builder(vector_icons::kTranslateIcon,
                                     IDS_TRANSLATE_TOAST_BODY)
+            .AddActionButton(
+                IDS_TRANSLATE_TOAST_UNDO_BUTTON,
+                base::BindRepeating(
+                    [](BrowserWindowInterface* window) {
+                      content::WebContents* web_contents =
+                          window->GetActiveTabInterface()->GetContents();
+                      if (!web_contents) {
+                        return;
+                      }
+                      ChromeTranslateClient* chrome_translate_client =
+                          ChromeTranslateClient::FromWebContents(web_contents);
+                      if (chrome_translate_client) {
+                        chrome_translate_client->UndoTranslate();
+                      }
+                    },
+                    base::Unretained(browser_window_interface)))
+            .AddCloseButton()
             .Build());
   }
+
 }  // RegisterToasts() end.

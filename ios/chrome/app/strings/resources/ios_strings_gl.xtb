@@ -125,6 +125,7 @@
 <translation id="1436671784520050284">Continuar coa configuración</translation>
 <translation id="143681031165817424">O enderezo gardouse só neste dispositivo</translation>
 <translation id="1445276840641906250">Todas as túas pestanas nun navegador</translation>
+<translation id="1447564161241938558">Quen se encarga da administración desactivou a opción de importar contrasinais e claves de acceso</translation>
 <translation id="1450170672351507823">A protección estándar está activada. Se queres unha seguranza aínda maior, utiliza a protección mellorada.</translation>
 <translation id="1455660774629812862">Non ocultar</translation>
 <translation id="1456545332132818232">Reseñas de produtos en <ph name="PRODUCT_NAME" />, <ph name="STARS" /> de <ph name="MAX_STARS" />, <ph name="DOMAIN" /></translation>
@@ -373,7 +374,6 @@
 <translation id="2306265833370324042">Mostrar os detalles de <ph name="SEARCH_ENGINE_NAME" /></translation>
 <translation id="2309265394777270359">Pechar pestana</translation>
 <translation id="2311077293164383652">Pechar pestana fixada</translation>
-<translation id="2313392466694008052">Editar imaxe con Gemini</translation>
 <translation id="2316129865977710310">Non, grazas</translation>
 <translation id="2320166752086256636">Ocultar teclado</translation>
 <translation id="2321086116217818302">Preparando contrasinais…</translation>
@@ -1786,6 +1786,7 @@ Handoff tamén debe estar activado na sección Xeral da configuración e os teus
 <translation id="7506817096924591340"><ph name="FILENAME" /> (<ph name="FILESIZE" />).</translation>
 <translation id="7508728395076009983">Para bloquear as pestanas do modo de incógnito, configura Touch ID, Face ID ou un código de desbloqueo.</translation>
 <translation id="750886945254958667">Mantén este grupo para engadir pestanas máis adiante ou abandónao se xa non vas acceder a el</translation>
+<translation id="7511727374778217603">{COUNT,plural, =1{Engade 1 pestana como máximo}other{Engade ata {COUNT} pestanas}}</translation>
 <translation id="7512909159512473473">Poñer frase de acceso…</translation>
 <translation id="7514365320538308">Descargar</translation>
 <translation id="7514530647142300459">Sigue usando os contrasinais na túa Conta de Google <ph name="EMAIL" /></translation>
@@ -2236,6 +2237,7 @@ Handoff tamén debe estar activado na sección Xeral da configuración e os teus
 <translation id="9055291197094969722">Crea grupos de pestanas para organizar as que estean abertas e seguir mantendo a produtividade</translation>
 <translation id="9055580485132823283">Vas eliminar {password_count} contrasinais, {passkey_count} claves de acceso e a lista de sitios e aplicacións dos que elixises non gardar nunca a información de inicio de sesión. Non se eliminarán as contas que creases para sitios e aplicacións.</translation>
 <translation id="9057030985451135243">Máis información acerca dos grupos de pestanas compartidos</translation>
+<translation id="9064106978262828592">Produciuse un problema ao exportar os teus datos</translation>
 <translation id="9065203028668620118">Editar</translation>
 <translation id="9066097352053395362">Ocultar Editar marcador</translation>
 <translation id="9070824521421603770">Pecharanse a túa sesión e as pestanas</translation>

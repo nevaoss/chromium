@@ -16,7 +16,6 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.inOrder;
@@ -150,7 +149,7 @@ import java.util.stream.Collectors;
 public class MultiInstanceManagerApi31UnitTest {
     private static final int INSTANCE_ID_1 = 1;
     private static final int INSTANCE_ID_2 = 2;
-    private static final int INACTIVE_INSTANCE_ID = 4;
+    private static final int NONEXISTENT_INSTANCE_ID = 4;
     private static final int PASSED_ID_2 = 2;
     private static final int PASSED_ID_INVALID = INVALID_WINDOW_ID;
     private static final int TASK_ID_56 = 56;
@@ -1576,12 +1575,7 @@ public class MultiInstanceManagerApi31UnitTest {
                 MultiWindowUtils.OPEN_ADJACENTLY_PARAM,
                 true);
 
-        mMultiInstanceManager.moveTabsToWindow(
-                /* destWindowId= */ INVALID_WINDOW_ID,
-                tabs,
-                /* destTabIndex= */ TabList.INVALID_TAB_INDEX,
-                /* destGroupTabId= */ TabList.INVALID_TAB_INDEX,
-                NewWindowAppSource.KEYBOARD_SHORTCUT);
+        mMultiInstanceManager.moveTabsToNewWindow(tabs, NewWindowAppSource.KEYBOARD_SHORTCUT);
 
         verify(mTabReparentingDelegate)
                 .reparentTabsToNewWindow(
@@ -1602,12 +1596,7 @@ public class MultiInstanceManagerApi31UnitTest {
                 MultiWindowUtils.OPEN_ADJACENTLY_PARAM,
                 false);
 
-        mMultiInstanceManager.moveTabsToWindow(
-                /* destWindowId= */ INVALID_WINDOW_ID,
-                tabs,
-                /* destTabIndex= */ TabList.INVALID_TAB_INDEX,
-                /* destGroupTabId= */ TabList.INVALID_TAB_INDEX,
-                NewWindowAppSource.KEYBOARD_SHORTCUT);
+        mMultiInstanceManager.moveTabsToNewWindow(tabs, NewWindowAppSource.KEYBOARD_SHORTCUT);
 
         verify(mTabReparentingDelegate)
                 .reparentTabsToNewWindow(
@@ -1629,12 +1618,7 @@ public class MultiInstanceManagerApi31UnitTest {
                 MultiWindowUtils.OPEN_ADJACENTLY_PARAM,
                 false);
 
-        mMultiInstanceManager.moveTabsToWindow(
-                /* destWindowId= */ INVALID_WINDOW_ID,
-                tabs,
-                /* destTabIndex= */ TabList.INVALID_TAB_INDEX,
-                /* destGroupTabId= */ TabList.INVALID_TAB_INDEX,
-                NewWindowAppSource.KEYBOARD_SHORTCUT);
+        mMultiInstanceManager.moveTabsToNewWindow(tabs, NewWindowAppSource.KEYBOARD_SHORTCUT);
 
         verify(mTabReparentingDelegate)
                 .reparentTabsToNewWindow(
@@ -1660,42 +1644,69 @@ public class MultiInstanceManagerApi31UnitTest {
     }
 
     @Test
-    public void testMoveTabsToWindow_InvalidParams() {
+    public void testMoveTabsToWindowByIdChecked_InvalidParams() {
         List<Tab> tabs = List.of(mTab1, mTab2);
 
-        // destTabIndex should not be specified when moving tabs to a new window.
+        // destWindowId should have persisted instance state.
         assertThrows(
                 AssertionError.class,
                 () ->
-                        mMultiInstanceManager.moveTabsToWindow(
-                                /* destWindowId= */ INVALID_WINDOW_ID,
+                        mMultiInstanceManager.moveTabsToWindowByIdChecked(
+                                /* destWindowId= */ NONEXISTENT_INSTANCE_ID,
                                 tabs,
                                 /* destTabIndex= */ 2,
-                                /* destGroupTabId= */ TabList.INVALID_TAB_INDEX,
-                                NewWindowAppSource.KEYBOARD_SHORTCUT));
+                                /* destGroupTabId= */ TabList.INVALID_TAB_INDEX));
 
-        // destGroupTabId should not be specified when moving tabs to a new window.
+        // destTabIndex and destGroupTabId should not both be specified when moving tabs to an
+        // existing window.
         assertThrows(
                 AssertionError.class,
                 () ->
-                        mMultiInstanceManager.moveTabsToWindow(
-                                /* destWindowId= */ INVALID_WINDOW_ID,
-                                tabs,
-                                /* destTabIndex= */ TabList.INVALID_TAB_INDEX,
-                                /* destGroupTabId= */ 2,
-                                NewWindowAppSource.KEYBOARD_SHORTCUT));
-
-        // destTabIndex and destGroupTabId should not both be specified when moving tabs to a
-        // window.
-        assertThrows(
-                AssertionError.class,
-                () ->
-                        mMultiInstanceManager.moveTabsToWindow(
+                        mMultiInstanceManager.moveTabsToWindowByIdChecked(
                                 /* destWindowId= */ 1,
                                 tabs,
                                 /* destTabIndex= */ 1,
-                                /* destGroupTabId= */ 2,
-                                NewWindowAppSource.OTHER));
+                                /* destGroupTabId= */ 2));
+    }
+
+    @Test
+    public void testMoveTabsToWindowByIdChecked_toDestTabIndex() {
+        // Setup.
+        setupTwoInstances();
+
+        // Act.
+        List<Tab> tabs = List.of(mTab1, mTab2);
+        int destTabIndex = 0;
+        mMultiInstanceManager.moveTabsToWindowByIdChecked(
+                /* destWindowId= */ 1,
+                tabs,
+                destTabIndex,
+                /* destGroupTabId= */ TabList.INVALID_TAB_INDEX);
+
+        // Verify.
+        verify(mTabReparentingDelegate)
+                .reparentTabsToExistingWindow(
+                        eq(mTabbedActivityTask63), eq(tabs), eq(destTabIndex), eq(-1));
+    }
+
+    @Test
+    public void testMoveTabsToWindowByIdChecked_toDestTabGroup() {
+        // Setup.
+        setupTwoInstances();
+        List<Tab> tabs = List.of(mTab1, mTab2);
+        when(mTab1.getTabGroupId()).thenReturn(null);
+        when(mTab2.getTabGroupId()).thenReturn(null);
+
+        // Act.
+        mMultiInstanceManager.moveTabsToWindowByIdChecked(
+                /* destWindowId= */ 1,
+                tabs,
+                /* destTabIndex= */ TabList.INVALID_TAB_INDEX,
+                /* destGroupTabId= */ 3);
+
+        // Verify.
+        verify(mTabReparentingDelegate)
+                .reparentTabsToExistingWindow(eq(mTabbedActivityTask63), eq(tabs), eq(-1), eq(3));
     }
 
     @Test
@@ -1761,12 +1772,7 @@ public class MultiInstanceManagerApi31UnitTest {
         when(mCurrentActivity.getResources()).thenReturn(mock(Resources.class));
 
         // Act.
-        mMultiInstanceManager.moveTabsToWindow(
-                /* destWindowId= */ INVALID_WINDOW_ID,
-                tabs,
-                /* destTabIndex= */ TabList.INVALID_TAB_INDEX,
-                /* destGroupTabId= */ TabList.INVALID_TAB_INDEX,
-                NewWindowAppSource.KEYBOARD_SHORTCUT);
+        mMultiInstanceManager.moveTabsToNewWindow(tabs, NewWindowAppSource.KEYBOARD_SHORTCUT);
 
         // Verify that tab reparenting is not initiated, and a message is shown.
         verify(mTabReparentingDelegate, never())
@@ -1790,149 +1796,37 @@ public class MultiInstanceManagerApi31UnitTest {
     }
 
     @Test
-    public void testMoveTabsToWindow_validInput() {
-        setupTwoInstances();
-        InstanceInfo instanceInfo = mMultiInstanceManager.getInstanceInfoFor(mTabbedActivityTask63);
-        clearInvocations(mMultiInstanceManager); // Clear getInstanceInfoFor call above.
-
-        // Act.
-        List<Tab> tabs = List.of(mTab1, mTab2);
-        int tabAtIndex = 0;
-        mMultiInstanceManager.moveTabsToWindow(mTabbedActivityTask63, tabs, tabAtIndex);
-
-        // Verify.
-        InOrder inOrderVerifier = inOrder(mMultiInstanceManager);
-        inOrderVerifier
-                .verify(mMultiInstanceManager)
-                .moveTabsToWindow(mTabbedActivityTask63, tabs, tabAtIndex);
-        inOrderVerifier.verify(mMultiInstanceManager).getInstanceInfoFor(mTabbedActivityTask63);
-        inOrderVerifier
-                .verify(mMultiInstanceManager)
-                .moveTabsToWindow(instanceInfo, tabs, tabAtIndex, NewWindowAppSource.OTHER);
-    }
-
-    @Test
-    public void testMoveTabGroupToWindow_validInput() {
+    public void testMoveTabGroupToWindowByIdChecked_toActiveDestWindow() {
+        // Setup.
         setupTwoInstances();
 
         // Act.
-        int tabAtIndex = 0;
-        mMultiInstanceManager.moveTabGroupToWindow(
-                mTabbedActivityTask63, mTabGroupMetadata, tabAtIndex);
-
-        // Verify.
-        verify(mMultiInstanceManager)
-                .moveTabGroupToWindow(any(Activity.class), eq(mTabGroupMetadata), eq(tabAtIndex));
-        verify(mMultiInstanceManager).getInstanceInfoFor(any());
-    }
-
-    @Test
-    public void testMoveTabsToWindow_toValidTabIndex() {
-        setupTwoInstances();
-        List<Tab> tabs = List.of(mTab1, mTab2);
-        // Act.
-        InstanceInfo info = mMultiInstanceManager.getInstanceInfoFor(mTabbedActivityTask63);
-        mMultiInstanceManager.moveTabsToWindow(
-                info, tabs, /* tabAtIndex= */ 0, NewWindowAppSource.OTHER);
+        int destTabIndex = 0;
+        mMultiInstanceManager.moveTabGroupToWindowByIdChecked(
+                /* destWindowId= */ 1, mTabGroupMetadata, destTabIndex);
 
         // Verify.
         verify(mTabReparentingDelegate)
-                .reparentTabsToExistingWindow(any(), eq(tabs), eq(0), eq(-1));
+                .reparentTabGroupToExistingWindow(
+                        eq(mTabbedActivityTask63), eq(mTabGroupMetadata), eq(destTabIndex));
     }
 
     @Test
-    public void testMoveTabGroupToWindow_toValidTabIndex() {
+    public void testMoveTabGroupToWindowByIdChecked_toInactiveDestWindow() {
+        // Setup.
         setupTwoInstances();
 
         // Act.
-        InstanceInfo info = mMultiInstanceManager.getInstanceInfoFor(mTabbedActivityTask63);
-        mMultiInstanceManager.moveTabGroupToWindow(
-                info, mTabGroupMetadata, /* startIndex= */ 0, NewWindowAppSource.OTHER);
-
-        // Verify.
-        verify(mTabReparentingDelegate)
-                .reparentTabGroupToExistingWindow(any(), eq(mTabGroupMetadata), eq(0));
-    }
-
-    @Test
-    public void testMoveTabsToWindow_toInactiveDestWindow() {
-        setupTwoInstances();
-        List<Tab> tabs = List.of(mTab1, mTab2);
-
-        // Act.
-        InstanceInfo info =
-                new InstanceInfo(
-                        /* instanceId= */ INACTIVE_INSTANCE_ID,
-                        /* taskId= */ INACTIVE_INSTANCE_ID,
-                        InstanceInfo.Type.ADJACENT,
-                        "https://id-4.com",
-                        /* title= */ "",
-                        /* customTitle= */ null,
-                        /* tabCount= */ 0,
-                        /* incognitoTabCount= */ 0,
-                        /* isIncognitoSelected= */ false,
-                        /* lastAccessedTime= */ 0,
-                        /* closureTime= */ 0);
-        mMultiInstanceManager.moveTabsToWindow(
-                info, tabs, /* tabAtIndex= */ 0, NewWindowAppSource.OTHER);
-
-        // Verify.
-        verify(mTabReparentingDelegate)
-                .reparentTabsToNewWindow(
-                        tabs,
-                        INACTIVE_INSTANCE_ID,
-                        /* openAdjacently= */ false,
-                        NewWindowAppSource.OTHER);
-    }
-
-    @Test
-    public void testMoveTabGroupToWindow_toInactiveDestWindow() {
-        setupTwoInstances();
-
-        // Act.
-        InstanceInfo info =
-                new InstanceInfo(
-                        /* instanceId= */ INACTIVE_INSTANCE_ID,
-                        /* taskId= */ INACTIVE_INSTANCE_ID,
-                        InstanceInfo.Type.ADJACENT,
-                        "https://id-4.com",
-                        /* title= */ "",
-                        /* customTitle= */ null,
-                        /* tabCount= */ 0,
-                        /* incognitoTabCount= */ 0,
-                        /* isIncognitoSelected= */ false,
-                        /* lastAccessedTime= */ 0,
-                        /* closureTime= */ 0);
-        mMultiInstanceManager.moveTabGroupToWindow(
-                info, mTabGroupMetadata, /* startIndex= */ 0, NewWindowAppSource.OTHER);
+        mMultiInstanceManager.moveTabGroupToWindowByIdChecked(
+                NONEXISTENT_INSTANCE_ID, mTabGroupMetadata, /* destTabIndex= */ 0);
 
         // Verify.
         verify(mTabReparentingDelegate)
                 .reparentTabGroupToNewWindow(
                         mTabGroupMetadata,
-                        INACTIVE_INSTANCE_ID,
+                        NONEXISTENT_INSTANCE_ID,
                         /* openAdjacently= */ true,
                         NewWindowAppSource.OTHER);
-    }
-
-    @Test
-    public void testMoveTabsToWindow_toDestTabGroup() {
-        setupTwoInstances();
-        List<Tab> tabs = List.of(mTab1, mTab2);
-        when(mTab1.getTabGroupId()).thenReturn(null);
-        when(mTab2.getTabGroupId()).thenReturn(null);
-
-        // Act.
-        mMultiInstanceManager.moveTabsToWindow(
-                /* destWindowId= */ 1,
-                tabs,
-                /* destTabIndex= */ TabList.INVALID_TAB_INDEX,
-                /* destGroupTabId= */ 3,
-                NewWindowAppSource.OTHER);
-
-        // Verify.
-        verify(mTabReparentingDelegate)
-                .reparentTabsToExistingWindow(any(), eq(tabs), eq(-1), eq(3));
     }
 
     @Test
@@ -2046,18 +1940,18 @@ public class MultiInstanceManagerApi31UnitTest {
         long accessTime0 = MultiInstancePersistentStore.readLastAccessedTime(0);
         long accessTime1 = MultiInstancePersistentStore.readLastAccessedTime(1);
 
-        InstanceInfo info0 = mMultiInstanceManager.getInstanceInfoFor(mTabbedActivityTask62);
-        InstanceInfo info1 = mMultiInstanceManager.getInstanceInfoFor(mTabbedActivityTask63);
+        List<InstanceInfo> instances =
+                mMultiInstanceManager.getInstanceInfo(PersistedInstanceType.ANY);
 
         // Verify the lastAccessedTime for both instances.
         assertEquals(
                 "InstanceInfo.lastAccessedTime for instance0 is incorrect.",
                 accessTime0,
-                info0.lastAccessedTime);
+                instances.get(0).lastAccessedTime);
         assertEquals(
                 "InstanceInfo.lastAccessedTime for instance1 is incorrect.",
                 accessTime1,
-                info1.lastAccessedTime);
+                instances.get(1).lastAccessedTime);
         assertTrue(
                 "Access time for instance0 should be older than access time for instance1.",
                 accessTime0 < accessTime1);

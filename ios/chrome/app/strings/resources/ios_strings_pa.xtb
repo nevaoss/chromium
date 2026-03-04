@@ -374,7 +374,6 @@
 <translation id="2306265833370324042"><ph name="SEARCH_ENGINE_NAME" /> ਵੇਰਵੇ ਦਿਖਾਓ</translation>
 <translation id="2309265394777270359">ਟੈਬ ਬੰਦ ਕਰੋ</translation>
 <translation id="2311077293164383652">ਪਿੰਨ ਕੀਤੀ ਟੈਬ ਨੂੰ ਬੰਦ ਕਰੋ</translation>
-<translation id="2313392466694008052">Gemini ਨਾਲ ਚਿੱਤਰ ਦਾ ਸੰਪਾਦਨ ਕਰੋ</translation>
 <translation id="2316129865977710310">ਨਹੀਂ ਧੰਨਵਾਦ</translation>
 <translation id="2320166752086256636">ਕੀ-ਬੋਰਡ ਲੁੁਕਾਓ</translation>
 <translation id="2321086116217818302">ਪਾਸਵਰਡ ਤਿਆਰ ਕੀਤੇ ਜਾ ਰਹੇ ਹਨ…</translation>
@@ -1787,6 +1786,7 @@ Handoff ਨੂੰ ਵੀ ਸੈਟਿੰਗਾਂ ਦੇ 'ਆਮ' ਸੈਕਸ਼�
 <translation id="7506817096924591340"><ph name="FILENAME" /> (<ph name="FILESIZE" />).</translation>
 <translation id="7508728395076009983">ਆਪਣੀਆਂ ਇਨਕੋਗਨਿਟੋ ਟੈਬਾਂ ਨੂੰ ਲਾਕ ਕਰਨ ਲਈ, ਸਪਰਸ਼ ਆਈਡੀ, ਚਿਹਰਾ ਆਈਡੀ ਜਾਂ ਪਾਸਕੋਡ ਦਾ ਸੈੱਟਅੱਪ ਕਰੋ।</translation>
 <translation id="750886945254958667">ਬਾਅਦ ਵਿੱਚ ਟੈਬਾਂ ਸ਼ਾਮਲ ਕਰਨ ਲਈ, ਇਸ ਗਰੁੱਪ ਨੂੰ ਬਣਾਈ ਰੱਖੋ ਜਾਂ ਜੇ ਤੁਸੀਂ ਹੁਣ ਇਸ ਤੱਕ ਪਹੁੰਚ ਨਹੀਂ ਕਰਨਾ ਚਾਹੁੰਦੇ, ਤਾਂ ਇਸ ਨੂੰ ਛੱਡੋ</translation>
+<translation id="7511727374778217603">{COUNT,plural, =1{ਵੱਧੋ-ਵੱਧ 1 ਟੈਬ ਸ਼ਾਮਲ ਕਰੋ}one{ਵੱਧੋ-ਵੱਧ {COUNT} ਟੈਬ ਸ਼ਾਮਲ ਕਰੋ}other{ਵੱਧੋ-ਵੱਧ {COUNT} ਟੈਬਾਂ ਸ਼ਾਮਲ ਕਰੋ}}</translation>
 <translation id="7512909159512473473">ਪਾਸਫਰੇਜ਼ ਦਾਖਲ ਕਰੋ…</translation>
 <translation id="7514365320538308">ਡਾਊਨਲੋਡ ਕਰੋ</translation>
 <translation id="7514530647142300459">ਆਪਣੇ Google ਖਾਤੇ, <ph name="EMAIL" /> ਵਿੱਚ ਪਾਸਵਰਡਾਂ ਨੂੰ ਵਰਤਣਾ ਜਾਰੀ ਰੱਖੋ</translation>
@@ -2060,6 +2060,7 @@ Handoff ਨੂੰ ਵੀ ਸੈਟਿੰਗਾਂ ਦੇ 'ਆਮ' ਸੈਕਸ਼�
 <translation id="8439758443371991593">'ਪੜ੍ਹਨ-ਸੂਚੀ ਵਿੱਚ ਸ਼ਾਮਲ ਕਰੋ' ਨੂੰ ਲੁਕਾਓ</translation>
 <translation id="8443986842926457191">URL 2048 ਅੱਖਰ-ਚਿੰਨ੍ਹਾਂ ਤੋਂ ਵੱਧ ਹੈ</translation>
 <translation id="8449869326050867919">ਪਾਸਵਰਡ ਸਾਂਝਾ ਕੀਤਾ ਗਿਆ</translation>
+<translation id="8473815223723723001">Gemini ਨਾਲ ਚਿੱਤਰ ਦਾ ਸੰਪਾਦਨ ਕਰੋ</translation>
 <translation id="8473863474539038330">ਪਤੇ ਅਤੇ ਹੋਰ</translation>
 <translation id="8474378002946546633">ਸੂਚਨਾਵਾਂ ਦੀ ਆਗਿਆ ਦਿਓ</translation>
 <translation id="8477178913400731244">ਡਾਟਾ ਮਿਟਾਓ</translation>
@@ -2237,6 +2238,7 @@ Handoff ਨੂੰ ਵੀ ਸੈਟਿੰਗਾਂ ਦੇ 'ਆਮ' ਸੈਕਸ਼�
 <translation id="9055291197094969722">ਆਪਣੀਆਂ ਖੁੱਲ੍ਹੀਆਂ ਹੋਈਆਂ ਟੈਬਾਂ ਨੂੰ ਵਿਵਸਥਿਤ ਕਰਨ ਲਈ ਟੈਬ ਗਰੁੱਪ ਬਣਾਓ ਅਤੇ ਉਤਪਾਦਕ ਰਹੋ</translation>
 <translation id="9055580485132823283">ਤੁਸੀਂ {password_count} ਪਾਸਵਰਡ, {passkey_count} ਪਾਸਕੀ ਅਤੇ ਉਨ੍ਹਾਂ ਸਾਈਟਾਂ ਅਤੇ ਐਪਾਂ ਦੀ ਸੂਚੀ ਨੂੰ ਮਿਟਾਉਣ ਜਾ ਰਹੇ ਹੋ, ਜਿਨ੍ਹਾਂ ਲਈ ਤੁਸੀਂ ਸਾਈਨ-ਇਨ ਜਾਣਕਾਰੀ ਨੂੰ ਕਦੇ ਵੀ ਰੱਖਿਅਤ ਨਾ ਕਰਨ ਦਾ ਵਿਕਲਪ ਚੁਣਿਆ ਹੈ। ਸਾਈਟਾਂ ਅਤੇ ਐਪਾਂ ਲਈ ਤੁਹਾਡੇ ਵੱਲੋਂ ਬਣਾਇਆ ਗਿਆ ਕੋਈ ਵੀ ਖਾਤਾ ਨਹੀਂ ਮਿਟਾਇਆ ਜਾਵੇਗਾ।</translation>
 <translation id="9057030985451135243">ਸਾਂਝੇ ਕੀਤੇ ਟੈਬ ਗਰੁੱਪਾਂ ਬਾਰੇ ਹੋਰ ਜਾਣੋ</translation>
+<translation id="9064106978262828592">ਤੁਹਾਡੇ ਡਾਟੇ ਨੂੰ ਨਿਰਯਾਤ ਕਰਨ ਵਿੱਚ ਸਮੱਸਿਆ ਆਈ</translation>
 <translation id="9065203028668620118">ਸੰਪਾਦਿਤ ਕਰੋ</translation>
 <translation id="9066097352053395362">'ਬੁੱਕਮਾਰਕ ਦਾ ਸੰਪਾਦਨ ਕਰੋ' ਨੂੰ ਲੁਕਾਓ</translation>
 <translation id="9070824521421603770">ਤੁਸੀਂ ਸਾਈਨ-ਆਊਟ ਹੋ ਜਾਵੋਗੇ ਅਤੇ ਟੈਬਾਂ ਬੰਦ ਹੋ ਜਾਣਗੀਆਂ</translation>

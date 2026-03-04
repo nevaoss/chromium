@@ -683,7 +683,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.ConfigureDataTypeManagerReason"
-    enum="SyncConfigureDataTypeManagerReason" expires_after="2026-03-31">
+    enum="SyncConfigureDataTypeManagerReason" expires_after="2027-01-31">
   <owner>treib@chromium.org</owner>
   <owner>src/components/sync/OWNERS</owner>
   <summary>
@@ -1002,7 +1002,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.DataTypeOrphanMetadata.{Operation}" enum="SyncDataTypes"
-    expires_after="2026-04-26">
+    expires_after="2026-08-16">
   <owner>mastiz@chromium.org</owner>
   <owner>treib@chromium.org</owner>
   <summary>
@@ -1028,7 +1028,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.DataTypeRunFailures2" enum="SyncDataTypes"
-    expires_after="2026-06-14">
+    expires_after="2026-08-16">
   <owner>rushans@google.com</owner>
   <owner>mastiz@chromium.org</owner>
   <summary>
@@ -1040,7 +1040,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.DataTypeStartFailures2" enum="SyncDataTypes"
-    expires_after="2026-06-14">
+    expires_after="2026-08-16">
   <owner>rushans@google.com</owner>
   <owner>mastiz@chromium.org</owner>
   <summary>
@@ -1942,6 +1942,22 @@ chromium-metrics-reviews@google.com.
     Emitted per network GetUpdates() request to the sync server, it represents
     the reason for sending such GetUpdates() request.
   </summary>
+</histogram>
+
+<histogram name="Sync.PrefModelAssociator.OnPrefValueChanged{SyncDataType}"
+    enum="SyncablePref" expires_after="2026-06-21">
+  <owner>ankushkush@google.com</owner>
+  <owner>src/components/sync/OWNERS</owner>
+  <summary>
+    Records the syncable preference id when it is changed. This is recorded as
+    soon as an OnPrefValueChanged notification is received. Note that this is
+    only recorded for syncable preferences and has been introduced to
+    investigate metric changes in crbug.com/418991364.
+
+    This is different from Sync.SyncablePrefValueChanged in the sense that this
+    one is recorded even before the pref sync data type has started.
+  </summary>
+  <token key="SyncDataType" variants="SyncDataType"/>
 </histogram>
 
 <histogram name="Sync.ProblematicServerSideBookmarks"

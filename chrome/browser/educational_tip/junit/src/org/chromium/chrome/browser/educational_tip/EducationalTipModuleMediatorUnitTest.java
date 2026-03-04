@@ -43,6 +43,8 @@ import org.chromium.chrome.browser.signin.services.IdentityServicesProvider;
 import org.chromium.chrome.browser.sync.SyncServiceFactory;
 import org.chromium.chrome.browser.ui.default_browser_promo.DefaultBrowserPromoUtils;
 import org.chromium.chrome.browser.ui.default_browser_promo.DefaultBrowserPromoUtils.DefaultBrowserPromoTriggerStateListener;
+import org.chromium.components.browser_ui.bottomsheet.BottomSheetController;
+import org.chromium.components.browser_ui.bottomsheet.BottomSheetObserver;
 import org.chromium.components.feature_engagement.FeatureConstants;
 import org.chromium.components.feature_engagement.Tracker;
 import org.chromium.components.signin.identitymanager.IdentityManager;
@@ -69,10 +71,13 @@ public class EducationalTipModuleMediatorUnitTest {
     @Mock private SyncService mSyncService;
     @Mock private IdentityManager mIdentityManager;
     @Mock private SetupListManager mSetupListManager;
+    @Mock private BottomSheetController mBottomSheetController;
 
     @Captor
     private ArgumentCaptor<DefaultBrowserPromoTriggerStateListener>
             mDefaultBrowserPromoTriggerStateListener;
+
+    @Captor private ArgumentCaptor<BottomSheetObserver> mBottomSheetObserverCaptor;
 
     SettableMonotonicObservableSupplier<Profile> mProfileSupplier;
     private Context mContext;
@@ -87,6 +92,7 @@ public class EducationalTipModuleMediatorUnitTest {
         TrackerFactory.setTrackerForTests(mTracker);
         DefaultBrowserPromoUtils.setInstanceForTesting(mMockDefaultBrowserPromoUtils);
         SetupListManager.setInstanceForTesting(mSetupListManager);
+        when(mActionDelegate.getBottomSheetController()).thenReturn(mBottomSheetController);
 
         // Setup for History sync promo
         mProfileSupplier = ObservableSuppliers.createMonotonic();
@@ -215,6 +221,17 @@ public class EducationalTipModuleMediatorUnitTest {
 
     @Test
     @SmallTest
+    public void testShowSetupList_CelebratoryPromo() {
+        // Test showing celebratory promo card.
+        testShowModuleImpl(
+                ModuleType.SETUP_LIST_CELEBRATORY_PROMO,
+                R.string.setup_list_celebratory_promo_title,
+                R.string.setup_list_celebratory_promo_description,
+                R.drawable.setup_list_celebratory_promo_logo);
+    }
+
+    @Test
+    @SmallTest
     public void testShowSetupList_Completed() {
         when(mSetupListManager.isSetupListActive()).thenReturn(true);
         when(mSetupListManager.isSetupListModule(ModuleType.ENHANCED_SAFE_BROWSING_PROMO))
@@ -263,24 +280,35 @@ public class EducationalTipModuleMediatorUnitTest {
     @SmallTest
     public void testUpdateModule_TriggersAnimation() {
         mEducationalTipModuleMediator.setModuleTypeForTesting(ModuleType.SIGN_IN_PROMO);
+        when(mSetupListManager.isSetupListModule(ModuleType.SIGN_IN_PROMO)).thenReturn(true);
         when(mSetupListManager.isModuleAwaitingCompletionAnimation(ModuleType.SIGN_IN_PROMO))
                 .thenReturn(true);
         when(mProfile.getOriginalProfile()).thenReturn(mProfile);
 
+        mEducationalTipModuleMediator.showModule();
         mEducationalTipModuleMediator.updateModule();
 
         // Verify priming was called immediately.
         verify(mSetupListManager).maybePrimeCompletionStatus(mProfile);
 
-        // Should be marked completed immediately.
+        // Completion image should be set immediately to trigger the icon animation.
+        assertEquals(
+                R.drawable.setup_list_completed_background_wavy_circle,
+                mModel.get(EducationalTipModuleProperties.MODULE_CONTENT_COMPLETED_IMAGE));
+
+        // Strikethrough should NOT be applied yet.
+        assertEquals(false, mModel.get(EducationalTipModuleProperties.MARK_COMPLETED));
+
+        // Advance to apply strikethrough.
+        mFakeTime.advanceMillis(SetupListManager.STRIKETHROUGH_DURATION_MS);
+        ShadowLooper.runMainLooperOneTask();
         assertEquals(true, mModel.get(EducationalTipModuleProperties.MARK_COMPLETED));
 
         // Verify reordering has NOT happened yet.
         verify(mModuleDelegate, never()).updateModuleRanking(anyInt());
 
         // 1. Advance to the combined duration.
-        mFakeTime.advanceMillis(
-                SetupListManager.STRIKETHROUGH_DURATION_MS + SetupListManager.HIDE_DURATION_MS);
+        mFakeTime.advanceMillis(SetupListManager.HIDE_DURATION_MS);
         ShadowLooper.runMainLooperOneTask();
 
         // Final verification of completion signal and reordering trigger.
@@ -355,6 +383,46 @@ public class EducationalTipModuleMediatorUnitTest {
         verify(mModuleDelegate).removeModule(mDefaultModuleTypeForTesting);
         verify(mMockDefaultBrowserPromoUtils)
                 .removeListener(mDefaultBrowserPromoTriggerStateListener.capture());
+    }
+
+    @Test
+    @SmallTest
+    public void testBottomSheetObserver_AddedAndRemoved() {
+        verify(mBottomSheetController).addObserver(any());
+        mEducationalTipModuleMediator.destroy();
+        verify(mBottomSheetController).removeObserver(any());
+    }
+
+    @Test
+    @SmallTest
+    public void testBottomSheetObserver_TriggersUpdate() {
+        mEducationalTipModuleMediator.setModuleTypeForTesting(ModuleType.SAVE_PASSWORDS_PROMO);
+        verify(mBottomSheetController).addObserver(mBottomSheetObserverCaptor.capture());
+
+        // Simulate sheet dismissal.
+        mBottomSheetObserverCaptor
+                .getValue()
+                .onSheetStateChanged(BottomSheetController.SheetState.HIDDEN, 0);
+
+        // verify it triggers a profile check as part of updateModule().
+        verify(mActionDelegate).getProfileSupplier();
+    }
+
+    @Test
+    @SmallTest
+    public void testBottomSheetObserver_DefaultBrowser_SkipsOnInteractionComplete() {
+        mEducationalTipModuleMediator.setModuleTypeForTesting(ModuleType.DEFAULT_BROWSER_PROMO);
+        verify(mBottomSheetController).addObserver(mBottomSheetObserverCaptor.capture());
+
+        // Simulate sheet dismissal with interaction complete (clicked button).
+        mBottomSheetObserverCaptor
+                .getValue()
+                .onSheetStateChanged(
+                        BottomSheetController.SheetState.HIDDEN,
+                        BottomSheetController.StateChangeReason.INTERACTION_COMPLETE);
+
+        // verify updateModule was NOT called (profile supplier never accessed).
+        verify(mActionDelegate, never()).getProfileSupplier();
     }
 
     private void testShowModuleImpl(

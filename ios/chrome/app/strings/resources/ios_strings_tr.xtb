@@ -125,6 +125,7 @@
 <translation id="1436671784520050284">Kuruluma devam et</translation>
 <translation id="143681031165817424">Adres yalnızca bu cihaza kaydedildi</translation>
 <translation id="1445276840641906250">Tüm sekmeleriniz tek tarayıcıda</translation>
+<translation id="1447564161241938558">Şifreleri ve geçiş anahtarlarını içe aktarma, yöneticiniz tarafından devre dışı bırakıldı</translation>
 <translation id="1450170672351507823">Standart koruma açık. Daha fazla güvenlik için gelişmiş korumayı kullanın.</translation>
 <translation id="1455660774629812862">Gizleme</translation>
 <translation id="1456545332132818232"><ph name="PRODUCT_NAME" /> ürünü ile ilgili yorumlar, <ph name="MAX_STARS" /> üzerinden <ph name="STARS" />, <ph name="DOMAIN" /></translation>
@@ -373,7 +374,6 @@
 <translation id="2306265833370324042"><ph name="SEARCH_ENGINE_NAME" /> ayrıntılarını göster</translation>
 <translation id="2309265394777270359">Sekmeyi Kapat</translation>
 <translation id="2311077293164383652">Sabit Sekmeyi Kapat</translation>
-<translation id="2313392466694008052">Gemini ile görüntüyü düzenle</translation>
 <translation id="2316129865977710310">Hayır, teşekkürler</translation>
 <translation id="2320166752086256636">Klavyeyi gizle</translation>
 <translation id="2321086116217818302">Şifreler hazırlanıyor…</translation>
@@ -1786,6 +1786,7 @@ Handoff'un ayrıca, Ayarlar'ın Genel bölümünde de etkinleştirilmesi ve ciha
 <translation id="7506817096924591340"><ph name="FILENAME" /> (<ph name="FILESIZE" />).</translation>
 <translation id="7508728395076009983">Gizli sekmelerinizi kilitlemek için Touch ID, Face ID veya Şife Kodu kurun.</translation>
 <translation id="750886945254958667">Daha sonra sekme eklemek için bu grubu tutun veya artık erişmek istemiyorsanız gruptan ayrılın</translation>
+<translation id="7511727374778217603">{COUNT,plural, =1{En fazla 1 sekme ekleyin}other{En fazla {COUNT} sekme ekleyin}}</translation>
 <translation id="7512909159512473473">Parolayı girin…</translation>
 <translation id="7514365320538308">İndir</translation>
 <translation id="7514530647142300459">Google Hesabınızdaki (<ph name="EMAIL" />) şifreleri kullanmaya devam edin</translation>
@@ -2236,6 +2237,7 @@ Handoff'un ayrıca, Ayarlar'ın Genel bölümünde de etkinleştirilmesi ve ciha
 <translation id="9055291197094969722">Açık sekmelerinizi düzenlemek ve üretkenliğinizi her zaman korumak için sekme grupları oluşturun</translation>
 <translation id="9055580485132823283">{password_count} şifreyi, {passkey_count} geçiş anahtarını ve oturum açma bilgilerini hiçbir zaman kaydetmemeyi seçtiğiniz site ve uygulamaların listesini silmek üzeresiniz. Siteler ve uygulamalar için oluşturduğunuz hesaplar silinmez.</translation>
 <translation id="9057030985451135243">Ortak sekme grupları hakkında bilgi</translation>
+<translation id="9064106978262828592">Verileriniz dışa aktarılırken sorun oluştu</translation>
 <translation id="9065203028668620118">Düzenle</translation>
 <translation id="9066097352053395362">Yer İşaretini Düzenle Seçeneğini Gizle</translation>
 <translation id="9070824521421603770">Oturumunuz ve sekmeler kapatılacak</translation>

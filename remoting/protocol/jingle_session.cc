@@ -26,16 +26,16 @@
 #include "remoting/base/constants.h"
 #include "remoting/base/source_location.h"
 #include "remoting/protocol/authenticator.h"
-#include "remoting/protocol/content_description.h"
 #include "remoting/protocol/errors.h"
-#include "remoting/protocol/jingle_message_xml_converter.h"
-#include "remoting/protocol/jingle_messages.h"
 #include "remoting/protocol/jingle_session_manager.h"
-#include "remoting/protocol/session_config.h"
 #include "remoting/protocol/session_observer.h"
 #include "remoting/protocol/session_plugin.h"
 #include "remoting/protocol/transport.h"
+#include "remoting/signaling/content_description.h"
 #include "remoting/signaling/iq_sender.h"
+#include "remoting/signaling/jingle_data_structures.h"
+#include "remoting/signaling/jingle_message_xml_converter.h"
+#include "remoting/signaling/session_config.h"
 #include "remoting/signaling/xmpp_constants.h"
 #include "third_party/libjingle_xmpp/xmllite/xmlelement.h"
 #include "third_party/webrtc/api/candidate.h"
@@ -388,7 +388,8 @@ void JingleSession::SendTransportInfo(
       peer_address_, std::move(*transport_info), session_id_);
   AddPluginAttachments(message.get());
 
-  std::unique_ptr<jingle_xmpp::XmlElement> stanza = message->ToXml();
+  std::unique_ptr<jingle_xmpp::XmlElement> stanza =
+      JingleMessageToXml(*message);
   stanza->AddAttr(kQNameId, GetNextOutgoingId());
 
   auto request = session_manager_->iq_sender()->SendIq(
@@ -488,7 +489,8 @@ void JingleSession::SendMessage(std::unique_ptr<JingleMessage> message) {
     // SESSION_TERMINATE message.
     AddPluginAttachments(message.get());
   }
-  std::unique_ptr<jingle_xmpp::XmlElement> stanza = message->ToXml();
+  std::unique_ptr<jingle_xmpp::XmlElement> stanza =
+      JingleMessageToXml(*message);
   stanza->AddAttr(kQNameId, GetNextOutgoingId());
 
   auto request = session_manager_->iq_sender()->SendIq(

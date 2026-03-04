@@ -8,11 +8,6 @@ import type {ComposeboxFileThumbnailElement} from './file_thumbnail.js';
 
 export function getHtml(this: ComposeboxFileThumbnailElement) {
   // clang-format off
-  const spinner = html`
-      <svg role="image" class="spinner" viewBox="0 0 100 100">
-        <circle class="spinner-circle" cx="50" cy="50" r="40" />
-      </svg>`;
-
   return html`<!--_html_template_start_-->
     <div id="container">
       ${this.file.url ? html`
@@ -22,13 +17,17 @@ export function getHtml(this: ComposeboxFileThumbnailElement) {
             </cr-composebox-tab-favicon>
             ${this.isUploading_ ? html`
               <div id="spinnerOverlay">
-                ${spinner}
+                <svg role="image" class="spinner" viewBox="0 0 100 100">
+                  <circle class="spinner-circle" cx="50" cy="50" r="40" />
+                </svg>
               </div>
             ` : ''}
           </div>
 
           <div class="tabInfo">
-            <div class="title">${this.file.name}</div>
+            <div part="thumbnail-title" class="title">
+              ${this.file.name}
+            </div>
             <div class="url">${this.formattedUrl_}</div>
           </div>
           <div class="overlay">
@@ -47,7 +46,9 @@ export function getHtml(this: ComposeboxFileThumbnailElement) {
       ` : (this.file.objectUrl || this.file.dataUrl) ? html`
         <div id="imgChip">
           ${this.isUploading_ ? html`
-              ${spinner}
+            <svg role="image" class="spinner" viewBox="0 0 100 100">
+              <circle class="spinner-circle" cx="50" cy="50" r="40" />
+            </svg>
           ` : html`
             <img class="img-thumbnail"
               src="${this.file.objectUrl || this.file.dataUrl}"
@@ -65,13 +66,15 @@ export function getHtml(this: ComposeboxFileThumbnailElement) {
         <div id="pdfChip" class="chip">
           <div id="pdfThumbnail" class="thumbnail" part="thumbnail">
             ${this.isUploading_ ? html`
-                ${spinner}`
-              : html`
-                  <cr-icon icon="thumbnail:pdf" class="pdf-icon">
-                  </cr-icon>
+              <svg role="image" class="spinner" viewBox="0 0 100 100">
+                <circle class="spinner-circle" cx="50" cy="50" r="40" />
+              </svg>
+            ` : html`
+              <cr-icon icon="thumbnail:pdf" class="pdf-icon"></cr-icon>
             `}
           </div>
-          <p class="title" id="pdfTitle">${this.file.name}</p>
+          <p class="title"
+              part="thumbnail-title" id="pdfTitle">${this.file.name}</p>
           <div class="overlay">
             <div class="gradient-protection"></div>
             ${this.file.isDeletable ? html`<cr-icon-button

@@ -28,13 +28,14 @@
 DEFINE_USER_DATA(skills::SkillsUiTabController);
 
 namespace {
-using glic::mojom::SkillSource;
 
 constexpr base::TimeDelta kNotifyTimeoutSeconds = base::Seconds(60);
 constexpr base::TimeDelta kGlicPanelPollIntervalMilliseconds =
     base::Milliseconds(60);
 
 #if BUILDFLAG(ENABLE_GLIC)
+using glic::mojom::SkillSource;
+
 glic::mojom::SkillPreviewPtr GetPreviewFromSkill(const skills::Skill& skill) {
   auto skill_preview = glic::mojom::SkillPreview::New();
   skill_preview->id = skill.id;
@@ -90,7 +91,9 @@ void SkillsUiTabController::ShowDialog(Skill skill) {
     // Dialog is already open.
     return;
   }
-  RecordSkillsAction(skills::SkillsActions::kOpenedCreationDialog);
+  // TODO(crbug.com/477385216): Update to use an enum for creation mode.
+  RecordSkillsDialogAction(SkillsDialogAction::kOpened,
+                           /*is_edit_mode=*/!skill.id.empty());
 
   current_skill_ = skill;
 
@@ -117,6 +120,7 @@ void SkillsUiTabController::ShowDialog(Skill skill) {
                                   std::move(skill));
     }
   }
+  dialog_delegate_->SetInitiallyFocusedView(dialog_view->web_view());
   dialog_delegate_->SetContentsView(std::move(dialog_view));
   dialog_widget_ = constrained_window::ShowWebModalDialogViewsOwned(
       dialog_delegate_.get(), tab_->GetContents(),
@@ -249,10 +253,13 @@ void SkillsUiTabController::NotifySkillToInvokeChanged() {
 
   switch (skill->source) {
     case sync_pb::SkillSource::SKILL_SOURCE_FIRST_PARTY:
-      RecordSkillsAction(skills::SkillsActions::kUsed1stPartySkill);
+      RecordSkillsInvokeAction(SkillsInvokeAction::kFirstParty);
       break;
     case sync_pb::SkillSource::SKILL_SOURCE_USER_CREATED:
-      RecordSkillsAction(skills::SkillsActions::kUsedUserCreatedSkill);
+      RecordSkillsInvokeAction(SkillsInvokeAction::kUserCreated);
+      break;
+    case sync_pb::SkillSource::SKILL_SOURCE_DERIVED_FROM_FIRST_PARTY:
+      RecordSkillsInvokeAction(SkillsInvokeAction::kDerivedFromFirstParty);
       break;
     default:
       break;

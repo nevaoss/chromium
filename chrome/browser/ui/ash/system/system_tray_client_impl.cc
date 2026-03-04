@@ -45,14 +45,12 @@
 #include "chrome/browser/ash/system/system_clock.h"
 #include "chrome/browser/ash/system_web_apps/apps/personalization_app/personalization_app_metrics.h"
 #include "chrome/browser/chromeos/extensions/vpn_provider/vpn_service_factory.h"
-#include "chrome/browser/lifetime/application_lifetime.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/ui/ash/system_web_apps/system_web_app_ui_utils.h"
 #include "chrome/browser/ui/browser_navigator_params.h"
 #include "chrome/browser/ui/chrome_pages.h"
 #include "chrome/browser/ui/managed_ui.h"
 #include "chrome/browser/ui/scoped_tabbed_browser_displayer.h"
-#include "chrome/browser/ui/settings_window_manager_chromeos.h"
 #include "chrome/browser/ui/singleton_tabs.h"
 #include "chrome/browser/ui/webui/access_code_cast/access_code_cast_dialog.h"
 #include "chrome/browser/ui/webui/ash/bluetooth/bluetooth_pairing_dialog.h"
@@ -75,6 +73,7 @@
 #include "chromeos/ash/experiences/settings_ui/settings_app_manager.h"
 #include "components/prefs/pref_service.h"
 #include "components/services/app_service/public/cpp/app_launch_util.h"
+#include "components/session_manager/core/session.h"
 #include "components/session_manager/core/session_manager.h"
 #include "components/session_manager/core/session_manager_observer.h"
 #include "components/user_manager/user_manager.h"
@@ -96,8 +95,14 @@ constexpr char kOfficialCalendarUrlPrefix[] =
     "https://calendar.google.com/calendar/";
 
 void ShowSettingsSubPageForActiveUser(const std::string& sub_page) {
-  chrome::SettingsWindowManager::GetInstance()->ShowOSSettings(
-      ProfileManager::GetActiveUserProfile(), sub_page);
+  auto* session = session_manager::SessionManager::Get()->GetActiveSession();
+  if (!session) {
+    return;
+  }
+  ash::SettingsAppManager::Get()->Open(
+      CHECK_DEREF(
+          user_manager::UserManager::Get()->FindUser(session->account_id())),
+      {.sub_page = sub_page});
 }
 
 // Returns the severity of a pending update.
@@ -734,7 +739,7 @@ void SystemTrayClientImpl::SetLocaleAndExit(
     const std::string& locale_iso_code) {
   ProfileManager::GetActiveUserProfile()->ChangeAppLocale(
       locale_iso_code, Profile::APP_LOCALE_CHANGED_VIA_SYSTEM_TRAY);
-  chrome::AttemptUserExit();
+  session_manager::SessionManager::Get()->RequestSignOut();
 }
 
 void SystemTrayClientImpl::ShowAccessCodeCastingDialog(

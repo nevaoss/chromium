@@ -135,6 +135,7 @@ const base::Feature* const kAllFeatures[] = {
 #endif  // BUILDFLAG(IS_IOS) || BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(IS_IOS)
+    &kIPHiOSActiveDaysTrackingFeature,
     &kIPHLongPressToolbarTipFeature,
     &kIPHBadgedReadingListFeature,
     &kIPHWhatsNewFeature,
@@ -330,6 +331,7 @@ const base::Feature* const kAllFeatures[] = {
     &kIPHiOSLensPromoDesktopFeature,
     &kIPHiOSEnhancedBrowsingDesktopFeature,
     &kIPHiOSTabGroupsDesktopFeature,
+    &kIPHiOSPriceTrackingDesktopFeature,
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 #if !BUILDFLAG(IS_IOS)

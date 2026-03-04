@@ -102,14 +102,14 @@ bool DefaultSearchExtensionControlledController::
   }
 
   // 5) Don't show if the user has already seen or acknowledged the dialog.
-  if (ExtensionSettingsOverriddenDialog::HasShownFor(base::to_address(profile_),
+  if (ExtensionSettingsOverriddenDialog::HasShownFor(*profile_,
                                                      extension->id())) {
     return false;
   }
 
   // 6) Don't show if the user has already acknowledged the dialog.
   if (ExtensionSettingsOverriddenDialog::HasAcknowledgedExtension(
-          base::to_address(profile_), extension->id(),
+          *profile_, extension->id(),
           ControlledHomeDialogController::kAcknowledgedPreference)) {
     return false;
   }
@@ -119,7 +119,8 @@ bool DefaultSearchExtensionControlledController::
   //
   // 7) Don't show for "simple override" extensions.
   if (simple_overrides::IsSimpleOverrideExtension(*extension)) {
-    return false;
+    return ExtensionSettingsOverriddenDialog::
+        ShouldShowForSimpleOverrideExtension(*profile_, *extension);
   }
 
   // If we reach here, we should show the confirmation.
@@ -147,7 +148,7 @@ void DefaultSearchExtensionControlledController::OnParamsLoaded(
   }
 
   auto dialog = std::make_unique<ExtensionSettingsOverriddenDialog>(
-      std::move(*params), base::to_address(profile_));
+      std::move(*params), *profile_);
   CHECK(dialog->ShouldShow());
 
   dialog->SetDialogResultCallback(base::BindOnce(

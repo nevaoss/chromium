@@ -704,6 +704,7 @@ Se não permitir, isto será bloqueado pelas suas definições de privacidade. I
 <translation id="2137891579555018930">A aguardar autorização…</translation>
 <translation id="213826338245044447">Marcadores de Telemóvel</translation>
 <translation id="2141000681034340397">Editar entrada</translation>
+<translation id="2141475438898772664">Pague em 4 prestações ou mensalmente</translation>
 <translation id="2144171668675205303">Sem tópicos ativos</translation>
 <translation id="2145193671493396738">Notícias de economia</translation>
 <translation id="214556005048008348">Cancelar pagamento</translation>
@@ -1117,6 +1118,7 @@ Se não permitir, isto será bloqueado pelas suas definições de privacidade. I
 <translation id="277133753123645258">Método de envio</translation>
 <translation id="277499241957683684">Registo do dispositivo em falta</translation>
 <translation id="2775884851269838147">Primeira página de impressão</translation>
+<translation id="277828055419948999">O Chromium pode preencher automaticamente campos difíceis que o preenchimento automático padrão pode não preencher</translation>
 <translation id="2781185443919227679">Praias e ilhas</translation>
 <translation id="2781692009645368755">Google Pay</translation>
 <translation id="2781799097551205934">A preparar o pagamento</translation>
@@ -2473,6 +2475,7 @@ Se não permitir, isto será bloqueado pelas suas definições de privacidade. I
 <translation id="4950898438188848926">Botão de mudança de separador: prima Enter para mudar para o separador aberto, <ph name="TAB_SWITCH_FOCUSED_FRIENDLY_MATCH_TEXT" /></translation>
 <translation id="495170559598752135">Ações</translation>
 <translation id="4953689047182316270">Responder a eventos de acessibilidade</translation>
+<translation id="4954505713046251871">Para oferecer sugestões e melhorar esta funcionalidade, o URL e o conteúdo da página são partilhados com a Google</translation>
 <translation id="4954891067389874142">Pague mais rapidamente quando o seu cartão for guardado. As informações do cartão são encriptadas na Carteira do Google.</translation>
 <translation id="4957080528849277028">Botão Ver o Histórico do Chrome; ative para ver e gerir o histórico de navegação nas definições do Chrome</translation>
 <translation id="4957781475307065660">{DOMAIN_COUNT,plural, =1{+ 1 site}other{+ # sites}}</translation>
@@ -2847,6 +2850,7 @@ Se não permitir, isto será bloqueado pelas suas definições de privacidade. I
 <translation id="5543564889050342791">Jardins zoológicos, aquários e reservas</translation>
 <translation id="5543722831081909240">180 graus</translation>
 <translation id="5544836308113951378">Cruzeiros e charters</translation>
+<translation id="5545314360139398232">Associe o emissor <ph name="ISSUER_NAME" /> para pagar ao longo do tempo</translation>
 <translation id="5547939254150808298">Impressão e publicação</translation>
 <translation id="554815783948612276">Fornecedores de fóruns e chats</translation>
 <translation id="5548606607480005320">Verificação de segurança</translation>
@@ -3694,6 +3698,7 @@ Se não permitir, isto será bloqueado pelas suas definições de privacidade. I
 <translation id="6926216138694948720">Arte corporal</translation>
 <translation id="692638818576287323">Veículos comerciais</translation>
 <translation id="6927878187051807444">ficheiros da câmara e capturas de ecrã</translation>
+<translation id="6929949393612835405">Fechar e voltar a "<ph name="OPENER_TITLE" />"</translation>
 <translation id="6930607614725241390">Pesquise no painel lateral</translation>
 <translation id="6934236486840930310"><ph name="BEGIN_BOLD" />O seu motor de pesquisa predefinido permite-lhe pesquisar na Web e ativar as funcionalidades do Chrome<ph name="END_BOLD" />, como pesquisar a partir da barra de endereço e de imagens em páginas Web. É possível que uma funcionalidade não esteja disponível se o seu motor de busca não a suportar.</translation>
 <translation id="6934672428414710184">Este nome é proveniente da sua Conta Google.</translation>
@@ -3976,6 +3981,7 @@ Detalhes adicionais:
 <translation id="7377314930809374926">Indústria hoteleira</translation>
 <translation id="7378594059915113390">Controlos de multimédia</translation>
 <translation id="7378810950367401542">/</translation>
+<translation id="7379321689415048316">O Chrome pode preencher automaticamente campos difíceis que o preenchimento automático padrão pode não preencher</translation>
 <translation id="7380398842872229465">10 x 15 pol.</translation>
 <translation id="7381551826960739226">O preenchimento automático de métodos de pagamento está desativado, porque este formulário não usa uma ligação segura.</translation>
 <translation id="7388380253839603603">Preços dos combustíveis e abastecimento de veículos</translation>
@@ -4223,6 +4229,7 @@ Detalhes adicionais:
 <translation id="7714404809393719981">Foto (semibrilho)</translation>
 <translation id="7714424966701020172">A opção de preenchimento do nome completo foi selecionada</translation>
 <translation id="7714464543167945231">Certificado</translation>
+<translation id="7714943438925794410">O conteúdo da página de pagamento é partilhado com a Google para oferecer estas opções. Para ocultar as opções para pagar depois no preenchimento automático, aceda às <ph name="IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_FOOTNOTE_HIDE_OPTION_PAYMENT_SETTINGS_LINK_TEXT" />.</translation>
 <translation id="7716147886133743102">Bloqueada pelo gestor</translation>
 <translation id="7716375162095500223">Ainda não carregado ou ignorado</translation>
 <translation id="7716424297397655342">Não é possível carregar este site a partir da cache</translation>
@@ -4305,6 +4312,7 @@ Detalhes adicionais:
 <translation id="7862306158978555061">mostrar informações confidenciais</translation>
 <translation id="7865448901209910068">A melhor velocidade</translation>
 <translation id="7865482168955081228">O ecrã de erro do método Comprar agora e pagar depois está fechado.</translation>
+<translation id="7870207318911766769">O conteúdo da página de pagamento é partilhado com a Google para oferecer estas opções.</translation>
 <translation id="7870281855125116701">Desconto encontrado</translation>
 <translation id="7871445724586827387">Altere a palavra-passe da sua Conta Google</translation>
 <translation id="787226752901403048">Inicie sessão no Chrome para partilhar e aderir a grupos de separadores, e desenvolver ideias em conjunto</translation>

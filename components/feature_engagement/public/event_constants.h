@@ -80,6 +80,9 @@ extern const char kGlicOnboardingCompleted[];
 // The user has opened Chrome (cold start or from background).
 extern const char kChromeOpened[];
 
+// The user had at least one active session today.
+extern const char kChromeActiveSessionDay[];
+
 // The user has opened an incognito tab.
 extern const char kIncognitoTabOpened[];
 
@@ -414,6 +417,11 @@ extern const char kIOSGeminiConsentGiven[];
 
 // Event fired when the user pins a site to the most visited tile.
 extern const char kIOSPinMVTSiteUsed[];
+
+// Event fired on each foreground transition where no scene has a startup
+// parameter. This includes switching between two windows in multi-window mode
+// when the user opens Chrome from the icon.
+extern const char kIOSChromeOpenedFromIcon[];
 
 #endif  // BUILDFLAG(IS_IOS)
 

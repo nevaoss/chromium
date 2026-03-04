@@ -117,6 +117,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &autofill::features::kAutofillAndroidDesktopSuppressAccessoryOnEmpty,
     &autofill::features::kAutofillAndroidKeyboardAccessoryDynamicPositioning,
     &autofill::features::kAutofillDeepLinkAutofillOptions,
+    &autofill::features::kAutofillEnableAiBasedAmountExtraction,
     &autofill::features::kAutofillEnableBuyNowPayLater,
     &autofill::features::kAutofillEnableCardBenefitsForAmericanExpress,
     &autofill::features::kAutofillEnableCardBenefitsForBmo,
@@ -170,7 +171,6 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &feature_engagement::kIPHTabSwitcherButtonFeature,
     &features::kAbortNavigationsFromTabClosures,
     &features::kAndroidAnimatedProgressBarInBrowser,
-    &features::kAndroidWebAppLaunchHandler,
     &features::kBackForwardCache,
     &features::kContextMenuEmptySpace,
     &features::kDisplayEdgeToEdgeFullscreen,
@@ -225,7 +225,6 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kAndroidDesktopDensity,
     &kAndroidElegantTextHeight,
     &kAndroidFirstRunLaunchBounds,
-    &kAndroidLogoViewRefactor,
     &kAndroidNewMediaPicker,
     &kAndroidNoVisibleHintForDifferentTLD,
     &kAndroidOmniboxFocusedNewTabPage,
@@ -320,7 +319,6 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kDefaultBrowserPromoFre,
     &kDesktopAndroidLinkCapturing,
     &kDesktopUAOnConnectedDisplay,
-    &kDeviceAuthenticatorAndroidx,
     &kDontAutoHideBrowserControls,
     &kDrawChromePagesEdgeToEdge,
     &kEdgeToEdgeBottomChin,
@@ -370,7 +368,6 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kNewTabPageCustomizationForMvt,
     &kNewTabPageCustomizationToolbarButton,
     &kNewTabPageCustomizationV2,
-    &kNotificationPermissionBottomSheet,
     &kNotificationPermissionVariant,
     &kNotificationTrampoline,
     &kNotificationTrampolineNoNewTask,
@@ -481,7 +478,6 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &privacy_sandbox::kPrivacySandboxActivityTypeStorage,
     &privacy_sandbox::kPrivacySandboxAdTopicsContentParity,
     &privacy_sandbox::kPrivacySandboxAdsApiUxEnhancements,
-    &privacy_sandbox::kPrivacySandboxSentimentSurvey,
     &privacy_sandbox::kPrivacySandboxSettings4,
     &privacy_sandbox::kRelatedWebsiteSetsUi,
     &safe_browsing::kAutoRevokeSuspiciousNotification,
@@ -556,7 +552,6 @@ BASE_FEATURE(kAndroidDataImporterService, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidDesktopDensity, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidElegantTextHeight, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidFirstRunLaunchBounds, base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kAndroidLogoViewRefactor, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidNewMediaPicker, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidNoVisibleHintForDifferentTLD, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidOmniboxFocusedNewTabPage, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -652,9 +647,6 @@ BASE_FEATURE(kDefaultBrowserPromoEntryPoint, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kDefaultBrowserPromoFre, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kDesktopAndroidLinkCapturing, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kDesktopUAOnConnectedDisplay, base::FEATURE_DISABLED_BY_DEFAULT);
-// The feature is a no-op, it replaces android.hardware.biometrics library on
-// Android with androidx.biometric.
-BASE_FEATURE(kDeviceAuthenticatorAndroidx, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kDiscardPageWithCrashedSubframePolicy, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kDiscardPageWithCrashedSubframeRelaxedEligibility, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kDontAutoHideBrowserControls, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -709,7 +701,6 @@ BASE_FEATURE(kNewTabPageCustomization, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kNewTabPageCustomizationForMvt, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kNewTabPageCustomizationToolbarButton, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kNewTabPageCustomizationV2, base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kNotificationPermissionBottomSheet, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kNotificationPermissionVariant, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kNotificationTrampoline, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kNotificationTrampolineNoNewTask, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -724,12 +715,12 @@ BASE_FEATURE(kPersistAcrossRebootsDebugLogs, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kPowerSavingModeBroadcastReceiverInBackground, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kPreconnectOnTabCreation, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kPriceChangeModule, base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kProcessRankPolicyAndroid, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kProcessRankPolicyAndroid, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kProtectRecentlyVisibleTab, base::FEATURE_DISABLED_BY_DEFAULT);
 // Put a higher memory priority to protected background tabs (e.g. tabs with
 // user edits in forms) to prevent them from being killed by LMKD before any
 // other non-protected tabs.
-BASE_FEATURE(kProtectedTabsAndroid, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kProtectedTabsAndroid, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kPwaRestoreUi, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kPwaRestoreUiAtStartup, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kReadAloud, base::FEATURE_ENABLED_BY_DEFAULT);

@@ -6,6 +6,7 @@
 #define COMPONENTS_AUTOFILL_CORE_BROWSER_FORM_IMPORT_FORM_DATA_IMPORTER_TEST_API_H_
 
 #include <string>
+#include <vector>
 
 #include "base/containers/flat_map.h"
 #include "components/autofill/core/browser/field_types.h"
@@ -16,6 +17,8 @@
 
 namespace autofill {
 
+class FormStructure;
+
 class FormDataImporterTestApi {
  public:
   using ExtractedAddressProfile =
@@ -24,56 +27,24 @@ class FormDataImporterTestApi {
 
   explicit FormDataImporterTestApi(FormDataImporter* fdi) : fdi_(*fdi) {}
 
-  std::optional<NonInteractivePaymentMethodType>
-  payment_method_type_if_non_interactive_authentication_flow_completed() const {
-    return fdi_
-        ->payment_method_type_if_non_interactive_authentication_flow_completed_;
-  }
-
   void set_credit_card_save_manager(
       std::unique_ptr<CreditCardSaveManager> ccsm) {
     fdi_->credit_card_save_manager_ = std::move(ccsm);
   }
 
-  void set_iban_save_manager(
-      std::unique_ptr<IbanSaveManager> iban_save_manager) {
-    fdi_->iban_save_manager_ = std::move(iban_save_manager);
-  }
-
-  FormDataImporter::CreditCardImportType credit_card_import_type() const {
+  payments::PaymentsFormDataImporter::CreditCardImportType
+  credit_card_import_type() const {
     return fdi_->credit_card_import_type_;
   }
 
   void set_credit_card_import_type(
-      FormDataImporter::CreditCardImportType credit_card_import_type) {
+      payments::PaymentsFormDataImporter::CreditCardImportType
+          credit_card_import_type) {
     fdi_->credit_card_import_type_ = credit_card_import_type;
-  }
-
-  IbanSaveManager* iban_save_manager() {
-    return fdi_->iban_save_manager_.get();
   }
 
   std::optional<CreditCard> ExtractCreditCard(const FormStructure& form) {
     return fdi_->ExtractCreditCard(form);
-  }
-
-  size_t ExtractAddressProfiles(
-      const FormStructure& form,
-      std::vector<ExtractedAddressProfile>* extracted_address_profiles) {
-    return fdi_->ExtractAddressProfiles(form, extracted_address_profiles);
-  }
-
-  base::flat_set<std::string> ExtractGUIDsOfProfilesWithoutManualEdits(
-      const FormStructure& submitted_form) const {
-    return fdi_->ExtractGUIDsOfProfilesWithoutManualEdits(submitted_form);
-  }
-
-  bool ProcessExtractedAddressProfiles(
-      const std::vector<ExtractedAddressProfile>& extracted_address_profiles,
-      bool allow_prompt,
-      ukm::SourceId ukm_source_id) {
-    return fdi_->ProcessExtractedAddressProfiles(extracted_address_profiles,
-                                                 allow_prompt, ukm_source_id);
   }
 
   ExtractedFormData ExtractFormData(const FormStructure& form,

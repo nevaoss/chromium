@@ -6,12 +6,13 @@
 
 #include "base/sequence_checker.h"
 #include "chrome/browser/profiles/profile.h"
-#include "components/legion/client.h"
-#include "components/legion/features.h"
-#include "components/legion/phosphor/blind_sign_auth_factory.h"
-#include "components/legion/phosphor/token_fetcher_impl.h"
-#include "components/legion/phosphor/token_manager_impl.h"
 #include "components/prefs/pref_service.h"
+#include "components/private_ai/client.h"
+#include "components/private_ai/common/legion_logger.h"
+#include "components/private_ai/features.h"
+#include "components/private_ai/phosphor/blind_sign_auth_factory.h"
+#include "components/private_ai/phosphor/token_fetcher_impl.h"
+#include "components/private_ai/phosphor/token_manager_impl.h"
 #include "components/signin/public/base/consent_level.h"
 #include "components/signin/public/base/oauth_consumer_id.h"
 #include "components/signin/public/identity_manager/access_token_info.h"
@@ -22,7 +23,7 @@
 #include "services/network/public/mojom/network_context.mojom.h"
 #include "services/network/public/mojom/network_service.mojom.h"
 
-namespace legion {
+namespace private_ai {
 
 // static
 bool PrivateAiService::CanLegionBeEnabled() {
@@ -42,6 +43,7 @@ PrivateAiService::PrivateAiService(
 
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
+  auto logger = std::make_unique<LegionLogger>();
   auto url_loader_factory = profile_->GetDefaultStoragePartition()
                                 ->GetURLLoaderFactoryForBrowserProcess();
   auto bsa = bsa_factory_->CreateBlindSignAuth(url_loader_factory->Clone());
@@ -51,10 +53,10 @@ PrivateAiService::PrivateAiService(
   token_manager_ =
       std::make_unique<phosphor::TokenManagerImpl>(std::move(token_fetcher));
 
-  client_ = legion::Client::Create(
+  client_ = Client::Create(
       kLegionUrl.Get(), kLegionApiKey.Get(), kLegionProxyServerUrl.Get(),
       profile_->GetDefaultStoragePartition()->GetNetworkContext(),
-      token_manager_.get(), content::GetNetworkService());
+      token_manager_.get(), content::GetNetworkService(), std::move(logger));
 }
 
 PrivateAiService::~PrivateAiService() {
@@ -146,4 +148,4 @@ void PrivateAiService::OnPrimaryAccountChanged(
   }
 }
 
-}  // namespace legion
+}  // namespace private_ai

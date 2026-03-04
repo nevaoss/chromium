@@ -178,7 +178,17 @@ void TileDisplayLayerImpl::PushPropertiesTo(LayerImpl* layer) {
   NOTREACHED();
 }
 
-void TileDisplayLayerImpl::AppendQuadsSpecialization(
+void TileDisplayLayerImpl::ComputeCheckerboardedNeedsRecord(
+    AppendQuadsData* append_quads_data) {
+  // NOTE: Currently it is not necessary to compute
+  // append_quads_data->checkerboarded_needs_recorded on the Viz side, as it is
+  // consumed only on the client side. However, it will become necessary when we
+  // introduce frames driven entirely by Viz. At that point, we should dedupe
+  // the relevant code into TileBasedLayerImpl.
+  // See crbug.com/482862751.
+}
+
+int TileDisplayLayerImpl::AppendQuadsSpecialization(
     const AppendQuadsContext& context,
     viz::CompositorRenderPass* render_pass,
     AppendQuadsData* append_quads_data,
@@ -186,13 +196,6 @@ void TileDisplayLayerImpl::AppendQuadsSpecialization(
     const Occlusion& scaled_occlusion,
     const gfx::Vector2d& quad_offset,
     float max_contents_scale) {
-  // NOTE: Currently it is not necessary to compute
-  // append_quads_data->checkerboarded_needs_recorded on the Viz side, as it is
-  // consumed only on the client side. However, it will become necessary when we
-  // introduce frames driven entirely by Viz. At that point, we should dedupe
-  // the relevant code into TileBasedLayerImpl.
-  // See crbug.com/482862751.
-
   const float ideal_scale_key = GetIdealContentsScaleKey();
 
   // Append quads for the tiles in this layer.
@@ -203,6 +206,13 @@ void TileDisplayLayerImpl::AppendQuadsSpecialization(
                       shared_quad_state, scaled_occlusion, quad_offset,
                       max_contents_scale);
   }
+
+  // TileDisplayLayerImpl does not currently track the number of missing tiles,
+  // as that info is used only to pass to `checkerboarded_needs_raster` on the
+  // client side.
+  // TODO(crbug.com/401566175): Determine if we need to
+  // track `checkerboarded_needs_raster` on the Viz side in the longer term.
+  return 0;
 }
 
 void TileDisplayLayerImpl::AppendQuadForTile(

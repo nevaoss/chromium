@@ -10,12 +10,13 @@
 #include "base/functional/bind.h"
 #include "base/location.h"
 #include "remoting/protocol/authenticator.h"
-#include "remoting/protocol/content_description.h"
-#include "remoting/protocol/jingle_messages.h"
 #include "remoting/protocol/jingle_session.h"
 #include "remoting/protocol/session_observer.h"
 #include "remoting/protocol/transport.h"
+#include "remoting/signaling/content_description.h"
 #include "remoting/signaling/iq_sender.h"
+#include "remoting/signaling/jingle_data_structures.h"
+#include "remoting/signaling/jingle_message_xml_converter.h"
 #include "remoting/signaling/signal_strategy.h"
 #include "remoting/signaling/xmpp_constants.h"
 #include "third_party/libjingle_xmpp/xmllite/xmlelement.h"
@@ -78,7 +79,7 @@ void JingleSessionManager::OnSignalStrategyStateChange(
 
 bool JingleSessionManager::OnSignalStrategyIncomingStanza(
     const jingle_xmpp::XmlElement* stanza) {
-  if (!JingleMessage::IsJingleMessage(stanza)) {
+  if (!IsJingleMessage(stanza)) {
     return false;
   }
 
@@ -86,7 +87,7 @@ bool JingleSessionManager::OnSignalStrategyIncomingStanza(
       new jingle_xmpp::XmlElement(*stanza));
   std::unique_ptr<JingleMessage> message(new JingleMessage());
   std::string error_msg;
-  if (!message->ParseXml(stanza, &error_msg)) {
+  if (!JingleMessageFromXml(stanza, message.get(), &error_msg)) {
     SendReply(std::move(stanza_copy), JingleMessageReply::BAD_REQUEST);
     return true;
   }
@@ -164,8 +165,8 @@ bool JingleSessionManager::OnSignalStrategyIncomingStanza(
 void JingleSessionManager::SendReply(
     std::unique_ptr<jingle_xmpp::XmlElement> original_stanza,
     JingleMessageReply::ErrorType error) {
-  signal_strategy_->SendStanza(
-      JingleMessageReply(error).ToXml(original_stanza.get()));
+  signal_strategy_->SendStanza(JingleMessageReplyToXml(
+      JingleMessageReply(error), original_stanza.get()));
 }
 
 void JingleSessionManager::SessionDestroyed(JingleSession* session) {

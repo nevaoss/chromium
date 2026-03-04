@@ -26,7 +26,6 @@ import static org.robolectric.Shadows.shadowOf;
 
 import static org.chromium.chrome.browser.url_constants.UrlConstantResolver.getOriginalNativeNtpUrl;
 
-import android.app.Activity;
 import android.app.SearchManager;
 import android.content.Intent;
 import android.content.res.ColorStateList;
@@ -48,8 +47,6 @@ import org.mockito.junit.MockitoRule;
 import org.robolectric.Robolectric;
 import org.robolectric.android.controller.ActivityController;
 import org.robolectric.annotation.Config;
-import org.robolectric.annotation.Implementation;
-import org.robolectric.annotation.Implements;
 import org.robolectric.shadows.ShadowActivity;
 import org.robolectric.shadows.ShadowLooper;
 
@@ -100,12 +97,7 @@ import java.util.Map;
 import java.util.Set;
 
 @RunWith(BaseRobolectricTestRunner.class)
-@Config(
-        manifest = Config.NONE,
-        shadows = {
-            SearchActivityUnitTest.ShadowSearchActivityUtils.class,
-            SearchActivityUnitTest.ShadowTabBuilder.class,
-        })
+@Config(manifest = Config.NONE)
 @EnableFeatures({
     ChromeFeatureList.PROCESS_RANK_POLICY_ANDROID,
     ChromeFeatureList.UMA_SESSION_CORRECTNESS_FIXES
@@ -121,35 +113,8 @@ public class SearchActivityUnitTest {
     private static final String HISTOGRAM_SUFFIX_LAUNCHER = ".Launcher";
     private static final String HISTOGRAM_SUFFIX_HUB = ".Hub";
 
-    // SearchActivityUtils call intercepting mock.
-    private interface TestSearchActivityUtils {
-        void resolveOmniboxRequestForResult(Activity activity, OmniboxLoadUrlParams params);
-    }
-
-    // Shadow forwarding static calls to TestSearchActivityUtils.
-    @Implements(SearchActivityUtils.class)
-    public static class ShadowSearchActivityUtils {
-        static TestSearchActivityUtils sMockUtils;
-
-        @Implementation
-        public static void resolveOmniboxRequestForResult(
-                Activity activity, OmniboxLoadUrlParams params) {
-            sMockUtils.resolveOmniboxRequestForResult(activity, params);
-        }
-    }
-
-    @Implements(TabBuilder.class)
-    public static class ShadowTabBuilder {
-        static Tab sMockTab;
-
-        @Implementation
-        public Tab build() {
-            return sMockTab;
-        }
-    }
-
     public @Rule MockitoRule mMockitoRule = MockitoJUnit.rule();
-    private @Mock TestSearchActivityUtils mUtils;
+    private @Mock SearchActivityUtils.TestDelegate mUtils;
     private @Mock TemplateUrlService mTemplateUrlSvc;
     private @Mock Profile mProfile;
     private @Mock TemplateUrlServiceFactoryJni mTemplateUrlFactoryJni;
@@ -210,9 +175,9 @@ public class SearchActivityUnitTest {
                 .thenReturn(mStatusCoordinator);
         lenient().when(mLocationBarCoordinator.getUrlBarCoordinator()).thenReturn(mUrlCoordinator);
 
-        ShadowSearchActivityUtils.sMockUtils = mUtils;
+        SearchActivityUtils.setDelegateForTesting(mUtils);
         WebContentsFactory.setWebContentsForTesting(mWebContents);
-        ShadowTabBuilder.sMockTab = mTab;
+        TabBuilder.setTabForTesting(mTab);
         RevenueStats.setCustomTabSearchClientHookForTesting(mSetCustomTabSearchClient);
         ShadowLooper.runUiThreadTasksIncludingDelayedTasks();
     }

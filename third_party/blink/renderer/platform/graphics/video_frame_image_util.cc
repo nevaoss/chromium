@@ -33,8 +33,6 @@
 
 namespace blink {
 
-namespace {
-
 bool ShouldCreateAcceleratedImages(
     viz::RasterContextProvider* raster_context_provider) {
   if (!raster_context_provider) {
@@ -52,8 +50,6 @@ bool ShouldCreateAcceleratedImages(
 
   return true;
 }
-
-}  // namespace
 
 ImageOrientationEnum VideoTransformationToImageOrientation(
     media::VideoTransformation transform) {
@@ -124,17 +120,43 @@ scoped_refptr<StaticBitmapImage> CreateImageFromVideoFrame(
     return nullptr;
   }
 
+  std::optional<CanvasSnapshotProvider::Info> sw_draw_info;
+  CanvasNon2DResourceProviderSharedImage* si_provider = nullptr;
+  if (snapshot_provider->IsExternalBitmapProvider()) {
+    sw_draw_info =
+        static_cast<CanvasNon2DSnapshotProviderBitmap*>(snapshot_provider)
+            ->Info();
+  } else {
+    si_provider =
+        static_cast<CanvasNon2DResourceProviderSharedImage*>(snapshot_provider);
+  }
+  return CreateImageFromVideoFrame(
+      std::move(frame), si_provider, std::move(sw_draw_info), video_renderer,
+      prefer_tagged_orientation, reinterpret_video_as_srgb);
+}
+
+scoped_refptr<StaticBitmapImage> CreateImageFromVideoFrame(
+    scoped_refptr<media::VideoFrame> frame,
+    CanvasNon2DResourceProviderSharedImage* snapshot_provider,
+    std::optional<CanvasSnapshotProvider::Info> sw_draw_info,
+    media::PaintCanvasVideoRenderer* video_renderer,
+    bool prefer_tagged_orientation,
+    bool reinterpret_video_as_srgb) {
+  CHECK(sw_draw_info || snapshot_provider);
+  CHECK(!sw_draw_info || !snapshot_provider);
+
   auto raster_context_provider = GetRasterContextProvider();
-  if (snapshot_provider->IsAccelerated()) {
+  if (snapshot_provider && snapshot_provider->IsAccelerated()) {
     prefer_tagged_orientation = false;
   }
 
   const auto transform =
       frame->metadata().transformation.value_or(media::kNoTransformation);
 
-  // If the provider isn't accelerated, avoid GPU round trips to upload frame
+  // If not doing an accelerated draw, avoid GPU round trips to upload frame
   // data from MappableSI-backed frames.
-  if (frame->HasMappableSharedImage() && !snapshot_provider->IsAccelerated()) {
+  if (frame->HasMappableSharedImage() &&
+      (!snapshot_provider || !snapshot_provider->IsAccelerated())) {
     frame = media::ConvertToMemoryMappedFrame(std::move(frame));
     if (!frame) {
       DLOG(ERROR) << "Failed to map VideoFrame.";
@@ -162,20 +184,27 @@ scoped_refptr<StaticBitmapImage> CreateImageFromVideoFrame(
   }
 
   media::PaintCanvasVideoRenderer::PaintParams params;
-  params.dest_rect = gfx::RectF(snapshot_provider->Size());
+  params.dest_rect = gfx::RectF(snapshot_provider ? snapshot_provider->Size()
+                                                  : sw_draw_info->size);
   params.transformation =
       prefer_tagged_orientation
           ? media::kNoTransformation
           : frame->metadata().transformation.value_or(media::kNoTransformation);
   params.reinterpret_as_srgb = reinterpret_video_as_srgb;
-  return snapshot_provider->DoExternalDrawAndSnapshot(
-      [&](cc::PaintCanvas& canvas) {
-        video_renderer->Paint(frame.get(), &canvas, media_flags, params,
-                              raster_context_provider.get());
-      },
-      prefer_tagged_orientation
-          ? VideoTransformationToImageOrientation(transform)
-          : ImageOrientationEnum::kDefault);
+  auto draw_callback = [&](cc::PaintCanvas& canvas) {
+    video_renderer->Paint(frame.get(), &canvas, media_flags, params,
+                          raster_context_provider.get());
+  };
+  auto orientation = prefer_tagged_orientation
+                         ? VideoTransformationToImageOrientation(transform)
+                         : ImageOrientationEnum::kDefault;
+  if (sw_draw_info) {
+    return CanvasNon2DSnapshotProviderBitmap::DoExternalDrawAndSnapshot(
+        sw_draw_info.value(), draw_callback, orientation);
+  }
+
+  return static_cast<CanvasNon2DResourceProviderSharedImage*>(snapshot_provider)
+      ->DoExternalDrawAndSnapshot(draw_callback, orientation);
 }
 
 void DrawVideoFrameIntoCanvas(scoped_refptr<media::VideoFrame> frame,

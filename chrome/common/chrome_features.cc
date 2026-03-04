@@ -184,10 +184,6 @@ BASE_FEATURE(kDesktopTaskManagerEndProcessDisabledForExtension,
 // Controls the enablement of structured metrics on Windows, Linux, and Mac.
 BASE_FEATURE(kChromeStructuredMetrics, base::FEATURE_ENABLED_BY_DEFAULT);
 
-// Enables new fallback behaviour for Chrome profile creation controlled by
-// a command line flag when Chrome is launched with profile-email switch.
-BASE_FEATURE(kCreateProfileIfNoneExists, base::FEATURE_ENABLED_BY_DEFAULT);
-
 // When enabled, allows parsing of `tab_group_color_palette` theme key, else
 // ignores it.
 BASE_FEATURE(kCustomizeTabGroupColorPalette, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -315,10 +311,11 @@ BASE_FEATURE(kGlicHandoffButtonHideWhenOmniboxPopupOpened,
 // If enabled, the magic cursor in the actor overlay is shown.
 BASE_FEATURE(kGlicActorUiOverlayMagicCursor, base::FEATURE_DISABLED_BY_DEFAULT);
 
-// If enabled, the actor splits up the validation and execution portion of
-// invoking a tool.
+// If enabled, tool execution is split into separate Validate and Execute steps.
+// The Validate step initializes the tool in the renderer and returns the
+// target's coordinate point early, before the actual execution occurs.
 BASE_FEATURE(kGlicActorSplitValidateAndExecute,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 const char kGlicActorUiTaskIconName[] = "glic-actor-ui-task-icon";
 const char kGlicActorUiOverlayName[] = "glic-actor-ui-overlay";
@@ -481,7 +478,13 @@ BASE_FEATURE(kGlicLocaleFiltering, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Controls whether the Glic FRE dialog is displayed in the same window as the
 // main app.
-BASE_FEATURE(kGlicUnifiedFreScreen, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGlicUnifiedFreScreen,
+#if !BUILDFLAG(IS_ANDROID)
+             base::FEATURE_DISABLED_BY_DEFAULT
+#else  // Android only supports the unified FRE.
+             base::FEATURE_ENABLED_BY_DEFAULT
+#endif
+);
 
 // Controls the bugfix where the unified FRE synchronizes cookies to the wrong
 // storage partition.
@@ -504,10 +507,22 @@ BASE_FEATURE(kGlic, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicDetached, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Controls whether the Glic feature uses multiple instances or not.
-BASE_FEATURE(kGlicMultiInstance, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGlicMultiInstance,
+#if !BUILDFLAG(IS_ANDROID)
+             base::FEATURE_DISABLED_BY_DEFAULT
+#else  // Android only supports multi instance.
+             base::FEATURE_ENABLED_BY_DEFAULT
+#endif
+);
 
 // Controls whether Glic warms up WebContents instead of a full instance.
-BASE_FEATURE(kGlicWebContentsWarming, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGlicWebContentsWarming,
+#if !BUILDFLAG(IS_ANDROID)
+             base::FEATURE_DISABLED_BY_DEFAULT
+#else  // Android does not support instance warming, only web contents warming.
+             base::FEATURE_ENABLED_BY_DEFAULT
+#endif
+);
 
 // Controls desired min width for the side panel. Not guaranteed to be respected
 // if user manually resizes.
@@ -1025,6 +1040,8 @@ BASE_FEATURE(kGlicGuestUrlPresets, base::FEATURE_DISABLED_BY_DEFAULT);
 const base::FeatureParam<int> kGlicGuestUrlPresetType{
     &kGlicGuestUrlPresets, "glic-guest-url-preset-type", 0};
 
+BASE_FEATURE(kGlicContextualCueBubble, base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE(kActorFormFillingServiceEnableAddress,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -1040,6 +1057,7 @@ BASE_FEATURE(kPrivacyGuideForceAvailable, base::FEATURE_DISABLED_BY_DEFAULT);
 
 #if BUILDFLAG(ENABLE_GLIC) && BUILDFLAG(ENABLE_PDF)
 BASE_FEATURE(kPdfGlicSummarize, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kPdfGlicSummarizeFre, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif
 
 #if !BUILDFLAG(IS_ANDROID)
@@ -1094,10 +1112,6 @@ const base::FeatureParam<base::TimeDelta>
     kHappinessTrackingSurveysForDesktopHistoryPageExperimentTime{
         &kHappinessTrackingSurveysForDesktopHistoryPageExperiment,
         "history-page-time", base::Seconds(5)};
-const base::FeatureParam<std::string>
-    kHappinessTrackingSurveysForDesktopHistoryPageExperimentTriggerId{
-        &kHappinessTrackingSurveysForDesktopHistoryPageExperiment,
-        "history-page-experiment-trigger-id", "eNwB9x81L0ugnJ3q1cK0SZPphQ3o"};
 
 // Enables or disables the Happiness Tracking System for Desktop History Page in
 // the Control group.
@@ -1107,10 +1121,6 @@ const base::FeatureParam<base::TimeDelta>
     kHappinessTrackingSurveysForDesktopHistoryPageControlTime{
         &kHappinessTrackingSurveysForDesktopHistoryPageControl,
         "history-page-time", base::Seconds(5)};
-const base::FeatureParam<std::string>
-    kHappinessTrackingSurveysForDesktopHistoryPageControlTriggerId{
-        &kHappinessTrackingSurveysForDesktopHistoryPageControl,
-        "history-page-control-trigger-id", "LkMGyZ9zz0ugnJ3q1cK0RXMjZsdD"};
 
 // Enables or disables the Happiness Tracking System for Desktop Chrome
 // Settings.
@@ -1308,17 +1318,8 @@ BASE_FEATURE(kHttpsFirstModeIncognito, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kHttpsFirstModeIncognitoNewSettings,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-#if BUILDFLAG(IS_MAC)
-// Enables immersive fullscreen. The tab strip and toolbar are placed underneath
-// the titlebar. The tab strip and toolbar can auto hide and reveal.
-BASE_FEATURE(kImmersiveFullscreen, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Enables immersive fullscreen mode for PWA windows. PWA windows will use
-// immersive fullscreen mode if and only if both this and kImmersiveFullscreen
-// are enabled. PWA windows currently do not use ImmersiveFullscreenTabs even if
-// the feature is enabled.
-BASE_FEATURE(kImmersiveFullscreenPWAs, base::FEATURE_ENABLED_BY_DEFAULT);
-#endif  // BUILDFLAG(IS_MAC)
+// Experimental image replacement feature. b/482792874
+BASE_FEATURE(kIndigo, base::FEATURE_DISABLED_BY_DEFAULT);
 
 #if !BUILDFLAG(IS_ANDROID)
 // A feature that controls whether Instant uses a spare renderer.

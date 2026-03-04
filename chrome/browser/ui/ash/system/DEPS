@@ -22,7 +22,6 @@ include_rules = [
   "+chrome/browser/ash/system",
   "+chrome/browser/ash/system_web_apps/apps/personalization_app",
   "+chrome/browser/chromeos/extensions/vpn_provider",
-  "+chrome/browser/lifetime",
   "+chrome/browser/media/router/discovery/access_code",
   "+chrome/browser/profiles",
   "+chrome/browser/ui/ash/cast_config",
@@ -51,10 +50,13 @@ include_rules = [
 ]
 
 specific_include_rules = {
-  "system_tray_client_impl_(browser|unit)test\.cc": [
+  "system_tray_client_impl_(browser|unit)test\\.cc": [
     "+chrome/browser/browser_process.h",
     "+chrome/browser/browser_process_platform_part.h",
     "+chrome/browser/ui/ash/new_window/chrome_new_window_client.h",
     "+chrome/browser/ui/settings_window_manager_chromeos.h",
+  ],
+  "system_tray_client_impl_browsertest\\.cc": [
+    "+chrome/common/webui_url_constants.h",
   ],
 }

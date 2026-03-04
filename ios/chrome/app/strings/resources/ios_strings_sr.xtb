@@ -125,6 +125,7 @@
 <translation id="1436671784520050284">Настави са подешавањем</translation>
 <translation id="143681031165817424">Адреса је сачувана само на овом уређају</translation>
 <translation id="1445276840641906250">Све картице у једном прегледачу</translation>
+<translation id="1447564161241938558">Администратор је онемогућио увоз лозинки и приступних кључева</translation>
 <translation id="1450170672351507823">Стандардна заштита је укључена. Користите напредну заштиту да бисте се додатно заштитили.</translation>
 <translation id="1455660774629812862">Не скривај</translation>
 <translation id="1456545332132818232">Рецензије производа <ph name="PRODUCT_NAME" />, <ph name="STARS" /> од <ph name="MAX_STARS" />, <ph name="DOMAIN" /></translation>
@@ -373,7 +374,6 @@
 <translation id="2306265833370324042">Прикажи детаље за <ph name="SEARCH_ENGINE_NAME" /></translation>
 <translation id="2309265394777270359">Затвори картицу</translation>
 <translation id="2311077293164383652">Затвори закачену картицу</translation>
-<translation id="2313392466694008052">Измените слику помоћу Gemini-ја</translation>
 <translation id="2316129865977710310">Не, хвала</translation>
 <translation id="2320166752086256636">Сакриј тастатуру</translation>
 <translation id="2321086116217818302">Припремају се лозинке...</translation>
@@ -1786,6 +1786,7 @@ Handoff треба да се омогући у одељку General (Опште)
 <translation id="7506817096924591340"><ph name="FILENAME" /> (<ph name="FILESIZE" />).</translation>
 <translation id="7508728395076009983">Да бисте закључали картице без архивирања, подесите Touch ID, Face ID или шифру.</translation>
 <translation id="750886945254958667">Задржите ову групу да бисте додали картице касније или је напустите ако више не желите да јој приступате</translation>
+<translation id="7511727374778217603">{COUNT,plural, =1{Додајте највише 1 картицу}one{Додајте до {COUNT} картицу}few{Додајте до {COUNT} картице}other{Додајте до {COUNT} картица}}</translation>
 <translation id="7512909159512473473">Унеси приступну фразу…</translation>
 <translation id="7514365320538308">Преузми</translation>
 <translation id="7514530647142300459">Наставите да користите лозинке на Google налогу <ph name="EMAIL" /></translation>
@@ -2059,6 +2060,7 @@ Handoff треба да се омогући у одељку General (Опште)
 <translation id="8439758443371991593">Сакриј опцију Додај на листу за читање</translation>
 <translation id="8443986842926457191">URL има више од 2048 знакова</translation>
 <translation id="8449869326050867919">Лозинка се дели</translation>
+<translation id="8473815223723723001">Измените слику помоћу Gemini-ја</translation>
 <translation id="8473863474539038330">Адресе и друго</translation>
 <translation id="8474378002946546633">Дозволи обавештења</translation>
 <translation id="8477178913400731244">Избриши податке</translation>
@@ -2236,6 +2238,7 @@ Handoff треба да се омогући у одељку General (Опште)
 <translation id="9055291197094969722">Правите групе картица да бисте организовали отворене картице и остали продуктивни</translation>
 <translation id="9055580485132823283">Избрисаћете лозинке ({password_count}), приступне кључеве ({passkey_count}) и листу сајтова и апликација за које сте одабрали да никада не чувате податке за пријављивање. Налози које сте отворили за сајтове и апликације неће бити избрисани.</translation>
 <translation id="9057030985451135243">Сазнајте више о дељеним групама картица</translation>
+<translation id="9064106978262828592">Проблеми са извозом података</translation>
 <translation id="9065203028668620118">Измени</translation>
 <translation id="9066097352053395362">Сакриј опцију Измени обележиваче</translation>
 <translation id="9070824521421603770">Одјавићете се и картице ће бити затворене</translation>

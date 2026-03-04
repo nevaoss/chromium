@@ -1118,6 +1118,7 @@
 <translation id="277133753123645258">વિતરણ પદ્ધતિ</translation>
 <translation id="277499241957683684">ઉપકરણ રેકોર્ડ ખૂટે છે</translation>
 <translation id="2775884851269838147">પહેલાં પેજ પ્રિન્ટ કરો</translation>
+<translation id="277828055419948999">ઑટોમૅટિક રીતે ભરવાની સ્ટૅન્ડર્ડ સુવિધા ચૂકી શકે એવા મુશ્કેલ ફીલ્ડને Chromium ઑટોમૅટિક રીતે ભરી શકે છે</translation>
 <translation id="2781185443919227679">દરિયાકાંઠા અને ટાપુઓ</translation>
 <translation id="2781692009645368755">Google Pay</translation>
 <translation id="2781799097551205934">ચેકઆઉટ માટે તૈયાર થઈ જાઓ</translation>
@@ -2474,6 +2475,7 @@
 <translation id="4950898438188848926">ટૅબ, સ્વિચ બટન, ખુલ્લા ટૅબ, <ph name="TAB_SWITCH_FOCUSED_FRIENDLY_MATCH_TEXT" /> પર સ્વિચ કરવા માટે Enter દબાવો</translation>
 <translation id="495170559598752135">ક્રિયાઓ</translation>
 <translation id="4953689047182316270">ઍક્સેસિબિલિટી ઇવેન્ટનો જવાબ આપો</translation>
+<translation id="4954505713046251871">સૂચનો ઑફર કરવા અને આ સુવિધાને બહેતર બનાવવા માટે પેજનું URL તથા કન્ટેન્ટ, Google સાથે શેર કરવામાં આવે છે</translation>
 <translation id="4954891067389874142">તમારું કાર્ડ સાચવેલું હોય ત્યારે વધુ ઝડપથી ચુકવણી કરો. કાર્ડની વિગતો Google Walletમાં એન્ક્રિપ્ટેડ હોય છે.</translation>
 <translation id="4957080528849277028">'તમારો Chrome ઇતિહાસ જુઓ' બટન, Chrome સેટિંગમાં તમારો બ્રાઉઝિંગ ઇતિહાસ જોવા અને મેનેજ કરવા માટે સક્રિય કરો</translation>
 <translation id="4957781475307065660">{DOMAIN_COUNT,plural, =1{+ 1 સાઇટ}one{+ # સાઇટ}other{+ # સાઇટ}}</translation>
@@ -3979,6 +3981,7 @@
 <translation id="7377314930809374926">આતિથ્યસત્કાર ઉદ્યોગ</translation>
 <translation id="7378594059915113390">મીડિયા નિયંત્રણો</translation>
 <translation id="7378810950367401542">/</translation>
+<translation id="7379321689415048316">ઑટોમૅટિક રીતે ભરવાની સ્ટૅન્ડર્ડ સુવિધા ચૂકી શકે એવા મુશ્કેલ ફીલ્ડને Chrome ઑટોમૅટિક રીતે ભરી શકે છે</translation>
 <translation id="7380398842872229465">10 x 15 ઇંચ</translation>
 <translation id="7381551826960739226">ઑટોમૅટિક ચુકવણી પદ્ધતિઓ ભરવાનું બંધ કર્યું છે કારણ કે આ ફોર્મ સુરક્ષિત કનેક્શનનો ઉપયોગ કરતું નથી.</translation>
 <translation id="7388380253839603603">ગૅસની કિંમતો અને વાહનોના ઈંધણ સંબંધિત સેવાઓ</translation>
@@ -4227,6 +4230,7 @@
 <translation id="7714404809393719981">ફોટો (સેમી-ગ્લોસ)</translation>
 <translation id="7714424966701020172">'પૂરું નામ ભરો' વિકલ્પ પસંદ કરવામાં આવ્યો હતો</translation>
 <translation id="7714464543167945231">પ્રમાણપત્ર</translation>
+<translation id="7714943438925794410">આ વિકલ્પો ઑફર કરવા માટે ચેકઆઉટ પેજ પરનું કન્ટેન્ટ Google સાથે શેર કરવામાં આવે છે. ઑટોમૅટિક રીતે ભરવાની સુવિધાનો ઉપયોગ કરીને પછીથી ચુકવણી કરવાના વિકલ્પો છુપાવવા માટે, <ph name="IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_FOOTNOTE_HIDE_OPTION_PAYMENT_SETTINGS_LINK_TEXT" /> પર જાઓ.</translation>
 <translation id="7716147886133743102">વ્યવસ્થાપક દ્વારા અવરોધિત કરેલ છે</translation>
 <translation id="7716375162095500223">હજુ સુધી અપલોડ કર્યો નથી અથવા અવગણ્યો</translation>
 <translation id="7716424297397655342">કૅશમાંથી આ સાઇટ લોડ કરી શકાતી નથી</translation>
@@ -4309,6 +4313,7 @@
 <translation id="7862306158978555061">સંવેદનશીલ માહિતી બતાવો</translation>
 <translation id="7865448901209910068">શ્રેષ્ઠ ઝડપ</translation>
 <translation id="7865482168955081228">'હમણાં ખરીદો, પછીથી ચુકવો' ભૂલ બતાવતી સ્ક્રીન બંધ છે.</translation>
+<translation id="7870207318911766769">આ વિકલ્પો ઑફર કરવા માટે ચેકઆઉટ પેજ પરનું કન્ટેન્ટ Google સાથે શેર કરવામાં આવે છે.</translation>
 <translation id="7870281855125116701">ડિસ્કાઉન્ટ મળ્યું</translation>
 <translation id="7871445724586827387">Google એકાઉન્ટનો તમારો પાસવર્ડ બદલો</translation>
 <translation id="787226752901403048">ટૅબના ગ્રૂપ શેર કરવા અને તેમાં જોડાવા માટે Chrome માં સાઇન ઇન કરો અને સાથે મળીને આઇડિયા પર કાર્ય કરો</translation>

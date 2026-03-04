@@ -11,6 +11,8 @@
 #include <utility>
 
 #include "net/base/features.h"
+#include "net/cookies/cookie_inclusion_status.h"
+#include "net/cookies/cookie_util.h"
 #include "services/network/public/cpp/is_potentially_trustworthy.h"
 #include "services/network/public/mojom/restricted_cookie_manager.mojom-blink.h"
 #include "third_party/blink/public/common/features_generated.h"
@@ -112,14 +114,13 @@ network::mojom::blink::RestrictedCanonicalCookieParamsPtr ToCookieParams(
         base::Time::FromMillisecondsSinceUnixEpoch(options->expires().value());
   }
 
-  String cookie_url_host = cookie_url.Host().ToString();
   String domain;
   // Trying to set `__http-` prefixed cookie will be rejected further down by
   // CreateSanitizedCookie regardless of the condition below. Its role is to
   // provide a more meaningful exception message than "Cookie was malformed..".
-  const bool is_http_prefix = name.StartsWithIgnoringASCIICase("__http-");
+  const bool is_http_prefix = name.StartsWithIgnoringAsciiCase("__http-");
   const bool is_host_http_prefix =
-      name.StartsWithIgnoringASCIICase("__host-http-");
+      name.StartsWithIgnoringAsciiCase("__host-http-");
   if (is_http_prefix || is_host_http_prefix) {
     StringBuilder builder;
     UNSAFE_TODO(builder.AppendFormat(
@@ -129,7 +130,7 @@ network::mojom::blink::RestrictedCanonicalCookieParamsPtr ToCookieParams(
     return nullptr;
   }
   const bool is_host_prefixed_cookie =
-      name.StartsWithIgnoringASCIICase("__host-");
+      name.StartsWithIgnoringAsciiCase("__host-");
   if (!options->domain().IsNull()) {
     if (is_host_prefixed_cookie) {
       exception_state.ThrowTypeError(
@@ -145,8 +146,9 @@ network::mojom::blink::RestrictedCanonicalCookieParamsPtr ToCookieParams(
     }
 
     domain = StrCat({".", options->domain()}).LowerASCII();
-    if (!cookie_url_host.EndsWith(domain) &&
-        cookie_url_host != options->domain().LowerASCII()) {
+    net::CookieInclusionStatus status;
+    if (!net::cookie_util::GetCookieDomainWithString(GURL(cookie_url),
+                                                     domain.Utf8(), status)) {
       exception_state.ThrowTypeError(
           "Cookie domain must domain-match current host");
       return nullptr;

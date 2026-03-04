@@ -416,9 +416,6 @@ void SetRuntimeFeaturesFromChromiumFeatures() {
            raw_ref(webnn::mojom::features::
                        kExperimentalWebMachineLearningNeuralNetwork),
            kSetOnlyIfOverridden},
-#if BUILDFLAG(IS_ANDROID)
-          {"WebAppLaunchQueue", raw_ref(features::kAndroidWebAppLaunchHandler)},
-#endif
           {"LocalNetworkAccessPermissionPolicy",
            raw_ref(network::features::kLocalNetworkAccessChecks)},
           {"LocalNetworkAccessSplitPermissions",
@@ -640,17 +637,6 @@ void ResolveInvalidConfigurations() {
         << network::features::kInterestGroupStorage.name << " in addition.";
     WebRuntimeFeatures::EnableAdInterestGroupAPI(false);
     WebRuntimeFeatures::EnableFledge(false);
-  }
-
-  // PermissionElement cannot be enabled without the support of the
-  // browser process.
-  if (!base::FeatureList::IsEnabled(blink::features::kPermissionElement)) {
-    LOG_IF(WARNING,
-           WebRuntimeFeatures::IsPermissionElementEnabledByRuntimeFlag())
-        << "PermissionElement cannot be enabled in this configuration. Use --"
-        << switches::kEnableFeatures << "="
-        << blink::features::kPermissionElement.name << " instead.";
-    WebRuntimeFeatures::EnablePermissionElement(false);
   }
 
   // UserMediaElement cannot be enabled without the support of the

@@ -857,6 +857,10 @@
   <message name="IDS_AUTOFILL_AI_FLIGHT_RESERVATION_ENTITY_NAME" desc="The label for something that a user can autofill when filling a form. For context, a user has been able to fill addresses within Chrome for many users. Now a user can also fill a “Flight reservation”.">
     Flight
   </message>
+  <!-- TODO(crbug.com/485269384): Make Order entity translatable. -->
+  <message name="IDS_AUTOFILL_AI_ORDER_ENTITY_NAME" desc="The label for something that a user can autofill when filling a form. For context, a user has been able to fill addresses within Chrome for many users. Now a user can also fill an “Order”." translateable="false">
+    Order
+  </message>
 
   <!-- Titles -->
   <message name="IDS_AUTOFILL_AI_DRIVERS_LICENSES_TITLE" desc="The title of a chip referring to drivers licenses (IDS_AUTOFILL_AI_DRIVERS_LICENSE_ENTITY_NAME) on Your saved info settings page.">
@@ -876,6 +880,9 @@
   </message>
   <message name="IDS_AUTOFILL_AI_FLIGHT_RESERVATIONS_TITLE" desc="The title of a chip referring to flights (IDS_AUTOFILL_AI_FLIGHT_RESERVATION_ENTITY_NAME) on Your saved info settings page.">
     Flight reservations
+  </message>
+  <message name="IDS_AUTOFILL_AI_ORDERS_TITLE" desc="The title of a chip referring to orders (IDS_AUTOFILL_AI_ORDER_ENTITY_NAME) on Your saved info settings page." translateable="false">
+    Orders
   </message>
 
   <!-- Add entity strings -->
@@ -1032,6 +1039,29 @@
     VIN (Vehicle Identification Number)
   </message>
 
+  <!-- Attributes of the order entity -->
+  <message name="IDS_AUTOFILL_AI_ORDER_ID_ATTRIBUTE_NAME" translateable="false">
+    Id
+  </message>
+  <message name="IDS_AUTOFILL_AI_ORDER_ACCOUNT_ATTRIBUTE_NAME" translateable="false">
+    Account
+  </message>
+  <message name="IDS_AUTOFILL_AI_ORDER_DATE_ATTRIBUTE_NAME" translateable="false">
+    Date
+  </message>
+  <message name="IDS_AUTOFILL_AI_ORDER_MERCHANT_NAME_ATTRIBUTE_NAME" translateable="false">
+    Merchant name
+  </message>
+  <message name="IDS_AUTOFILL_AI_ORDER_MERCHANT_DOMAIN_ATTRIBUTE_NAME" translateable="false">
+    Merchant domain
+  </message>
+  <message name="IDS_AUTOFILL_AI_ORDER_PRODUCT_NAMES_ATTRIBUTE_NAME" translateable="false">
+    Product names
+  </message>
+  <message name="IDS_AUTOFILL_AI_ORDER_GRAND_TOTAL_ATTRIBUTE_NAME" translateable="false">
+    Grand total
+  </message>
+
   <!-- Manage suggestion -->
   <message name="IDS_AUTOFILL_AI_MANAGE_SUGGESTION_MAIN_TEXT" desc="The label for a button that opens the Autofill for AI information management interface in Chrome settings. When users choose this option, they can edit, delete, and “create” new information, like a new passport or driver’s license.">
     Manage information
@@ -1181,6 +1211,12 @@
     </message>
     <message name="IDS_AUTOFILL_AI_SAVE_OR_UPDATE_ENTITY_IN_WALLET_SOURCE_NOTICE" desc="A description that appears beneath the entity details notifying the user that their data is going to be stored in Google Wallet." translateable="false">
       Save your info and get things done faster, like filling forms across Google products. You can <ph name="BEGIN_LINK">&lt;link&gt;</ph>manage your info<ph name="END_LINK">&lt;/link&gt;</ph> in <ph name="IDS_AUTOFILL_GOOGLE_WALLET_TITLE">$1<ex>Google Wallet</ex></ph> for <ph name="ACCOUNT">$2<ex>alexpark@gmail.com</ex></ph>
+    </message>
+    <message name="IDS_AUTOFILL_AI_SAVE_OR_UPDATE_ENTITY_NEW_ATTRIBUTE_ACCESSIBILITY_NAME" desc="Used in entity update dialogs, as the accessible names for rows with new attributes" translateable="false" formatter_data="android_java">
+      <ph name="ATTRIBUTE_NAME">$1<ex>Passport number</ex></ph>, new
+    </message>
+    <message name="IDS_AUTOFILL_AI_SAVE_OR_UPDATE_ENTITY_UPDATED_ATTRIBUTE_ACCESSIBILITY_NAME" desc="Used in entity update dialogs, as the accessible names for rows with updated attributes" translateable="false" formatter_data="android_java">
+      <ph name="ATTRIBUTE_NAME">$1<ex>Passport number</ex></ph>, was <ph name="OLD_ATTRIBUTE_ATTRIBUTE">$2<ex>old value</ex></ph>
     </message>
   </if>
 

@@ -209,6 +209,9 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
   CGFloat GetFloatyOffsetFromFullscreenController(
       FullscreenController* controller);
 
+  // Invokes the floaty.
+  void InvokeFloaty(GeminiConfiguration* config);
+
   // Forces the floaty to be shown if it is invoked. Can be used to set the
   // floaty opacity to 1.0 effectively re-showing the floaty. Useful to re-show
   // the floaty if a user is currently in fullscreen mode.
@@ -223,6 +226,11 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
       ios::provider::GeminiPageContextComputationState computation_state,
       std::unique_ptr<optimization_guide::proto::PageContext>
           page_context_proto);
+
+  // Updates the presented source, if any, of the active tab helper.
+  void UpdateActiveTabHelperWithPresentedSource(
+      gemini::FloatyUpdateSource source,
+      bool is_presented);
 
   // The gateway for bridging internal protocols.
   __strong id<BWGGatewayProtocol> bwg_gateway_ = nullptr;
@@ -286,6 +294,14 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
   // to avoid showing the floaty when view controllers are presented/dismissed
   // while an overlay is presented.
   bool is_external_overlay_presented_ = false;
+
+  // Whether an alert is currently presented. Used to avoid showing the floaty
+  // when view controllers are presented/dismissed while an alert is presented.
+  bool is_alert_presented_ = false;
+
+  // Whether a banner is currently presented. Used to avoid showing the floaty
+  // when view controllers are presented/dismissed while a banner is presented.
+  bool is_banner_presented_ = false;
 
   // Registrar for pref changes.
   PrefChangeRegistrar pref_change_registrar_;

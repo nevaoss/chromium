@@ -14,7 +14,6 @@
 #include "base/strings/string_number_conversions.h"
 #include "build/build_config.h"
 #include "build/chromecast_buildflags.h"
-#include "components/system_media_controls/linux/buildflags/buildflags.h"
 #include "gpu/config/gpu_driver_bug_workarounds.h"
 #include "gpu/config/gpu_finch_features.h"
 #include "media/media_buildflags.h"
@@ -23,6 +22,7 @@
 
 #if BUILDFLAG(IS_LINUX)
 #include "base/cpu.h"
+#include "components/system_media_controls/linux/buildflags/buildflags.h"
 #endif
 
 #if BUILDFLAG(IS_MAC)
@@ -334,14 +334,6 @@ const char kHardwareVideoDevicePath[] = "hardware-video-device-path";
 
 namespace media {
 
-// Controls whether the new, AudioDecoder interface backed AudioFileReader is
-// used, instead of the LegacyAudioFileReader that manually uses an
-// FFmpegDecodingLoop.
-// For more information, see crbug.com/440616500.
-#if BUILDFLAG(ENABLE_FFMPEG)
-BASE_FEATURE(kAudioDecoderAudioFileReader, base::FEATURE_ENABLED_BY_DEFAULT);
-#endif
-
 // Only used for disabling overlay fullscreen (aka SurfaceView) in Clank.
 BASE_FEATURE(kOverlayFullscreenVideo,
              "overlay-fullscreen-video",
@@ -574,9 +566,6 @@ BASE_FEATURE(kCrOSDspBasedNsDeactivatedGroups,
              base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kCrOSDspBasedAgcDeactivatedGroups,
              base::FEATURE_ENABLED_BY_DEFAULT);
-
-BASE_FEATURE(kCrOSDspBasedNsAllowed, base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kCrOSDspBasedAgcAllowed, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kIgnoreUiGains, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kShowForceRespectUiGainsToggle, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -978,12 +967,18 @@ BASE_FEATURE(kHardwareSecureDecryptionRequireServerCert,
 
 // Enables handling of hardware media keys for controlling media.
 BASE_FEATURE(kHardwareMediaKeyHandling,
-#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || \
-    BUILDFLAG(USE_MPRIS)
+#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
+             base::FEATURE_ENABLED_BY_DEFAULT
+#elif BUILDFLAG(IS_LINUX)
+#if BUILDFLAG(USE_MPRIS)
              base::FEATURE_ENABLED_BY_DEFAULT
 #else
              base::FEATURE_DISABLED_BY_DEFAULT
-#endif
+#endif  // BUILDFLAG(USE_MPRIS)
+#else
+             base::FEATURE_DISABLED_BY_DEFAULT
+#endif  // BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) ||
+        // BUILDFLAG(IS_LINUX)
 );
 
 // Enables a platform-specific resolution cutoff for prioritizing platform
@@ -1462,8 +1457,28 @@ BASE_FEATURE(kCastStreamingAv1, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Controls whether the new exponential bitrate calculate logic is used, or
 // the legacy linear algorithm.
+// TODO(crbug.com/302584587): This is the V2 implementation of this experiment,
+// following the failure of the initial experiment.
 BASE_FEATURE(kCastStreamingExponentialVideoBitrateAlgorithm,
              base::FEATURE_DISABLED_BY_DEFAULT);
+const base::FeatureParam<int>
+    kCastStreamingExponentialVideoBitrateAlgorithmWindowSize{
+        &kCastStreamingExponentialVideoBitrateAlgorithm, "window_size", 30};
+const base::FeatureParam<int>
+    kCastStreamingExponentialVideoBitrateAlgorithmDropThreshold{
+        &kCastStreamingExponentialVideoBitrateAlgorithm, "drop_threshold", 1};
+const base::FeatureParam<double>
+    kCastStreamingExponentialVideoBitrateAlgorithmIncreaseFactor{
+        &kCastStreamingExponentialVideoBitrateAlgorithm, "increase_factor",
+        1.05};
+const base::FeatureParam<double>
+    kCastStreamingExponentialVideoBitrateAlgorithmDecreaseFactor{
+        &kCastStreamingExponentialVideoBitrateAlgorithm, "decrease_factor",
+        0.9};
+const base::FeatureParam<double>
+    kCastStreamingExponentialVideoBitrateAlgorithmDynamicWindowMultiplier{
+        &kCastStreamingExponentialVideoBitrateAlgorithm,
+        "dynamic_window_multiplier", 0.0};
 
 BASE_FEATURE(kCastStreamingHardwareHevc, base::FEATURE_DISABLED_BY_DEFAULT);
 

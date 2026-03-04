@@ -23,11 +23,19 @@
 #include "chrome/browser/record_replay/recording.pb.h"
 #include "chrome/browser/record_replay/recording_data_manager.h"
 #include "chrome/browser/record_replay/replayer.h"
+#include "chrome/common/record_replay/aliases.h"
+#include "components/autofill/core/browser/data_model/addresses/autofill_profile.h"
+#include "components/autofill/core/browser/data_model/payments/credit_card.h"
+#include "third_party/abseil-cpp/absl/functional/overload.h"
 
 namespace record_replay {
 
 RecordReplayManager::RecordReplayManager(RecordReplayClient* client)
-    : client_(*client) {}
+    : client_(*client) {
+  if (auto* autofill_client = client_->GetAutofillClient()) {
+    autofill_observation_.Observe(autofill_client);
+  }
+}
 
 RecordReplayManager::~RecordReplayManager() = default;
 
@@ -72,36 +80,104 @@ void RecordReplayManager::StopRecording() {
 
 void RecordReplayManager::OnClick(RecordReplayDriver& driver,
                                   const ElementId& element_id,
-                                  const std::string& element_selector,
+                                  Selector element_selector,
                                   base::PassKey<RecordReplayDriver> pass_key) {
   if (!recorder_) {
     return;
   }
-  recorder_->AddClick(element_selector);
+  recorder_->AddClick(std::move(element_selector));
 }
 
 void RecordReplayManager::OnSelectChanged(
     RecordReplayDriver& driver,
     const ElementId& element_id,
-    const std::string& element_selector,
-    const std::string& value,
+    Selector element_selector,
+    FieldValue value,
     base::PassKey<RecordReplayDriver> pass_key) {
   if (!recorder_) {
     return;
   }
-  recorder_->AddSelectChange(element_selector, value);
+  recorder_->AddSelectChange(std::move(element_selector), std::move(value));
 }
 
 void RecordReplayManager::OnTextChange(
     RecordReplayDriver& driver,
     const ElementId& element_id,
-    const std::string& element_selector,
-    const std::string& text,
+    Selector element_selector,
+    FieldValue text,
     base::PassKey<RecordReplayDriver> pass_key) {
   if (!recorder_) {
     return;
   }
-  recorder_->AddTextChange(element_selector, text);
+  recorder_->AddTextChange(std::move(element_selector), std::move(text));
+}
+
+void RecordReplayManager::OnFillOrPreviewForm(
+    autofill::AutofillManager& manager,
+    autofill::FormGlobalId form_id,
+    autofill::mojom::ActionPersistence action_persistence,
+    const base::flat_set<autofill::FieldGlobalId>& filled_field_ids,
+    const autofill::FillingPayload& filling_payload) {
+  if (action_persistence != autofill::mojom::ActionPersistence ::kFill) {
+    return;
+  }
+  if (filled_field_ids.empty()) {
+    return;
+  }
+  struct Specifics {
+    Recording::Action::AutofillSpecifics::Type type;
+    std::string guid;
+  };
+  std::optional<Specifics> specifics = std::visit(
+      absl::Overload{
+          [](const autofill::AutofillProfile* ap) -> std::optional<Specifics> {
+            return Specifics{
+                Recording_Action_AutofillSpecifics_Type_AUTOFILL_PROFILE,
+                ap->guid()};
+          },
+          [](const autofill::CreditCard* cc) -> std::optional<Specifics> {
+            // TODO(b/483386299): If `cc` is a virtual credit card, is the GUID
+            // meaningful?
+            return Specifics{
+                Recording_Action_AutofillSpecifics_Type_CREDIT_CARD,
+                cc->guid()};
+          },
+          [](const autofill::EntityInstance* ei) -> std::optional<Specifics> {
+            return Specifics{
+                Recording_Action_AutofillSpecifics_Type_ENTITY_INSTANCE,
+                *ei->guid()};
+          },
+          [](const autofill::VerifiedProfile*) -> std::optional<Specifics> {
+            LOG(ERROR) << "VerifiedProfile is not supported";
+            return std::nullopt;
+          },
+          [](const autofill::OtpFillData*) -> std::optional<Specifics> {
+            LOG(ERROR) << "OtpFillData is not supported";
+            return std::nullopt;
+          },
+      },
+      filling_payload);
+  if (!specifics) {
+    return;
+  }
+  autofill::FieldGlobalId field_id = *filled_field_ids.begin();
+  blink::LocalFrameToken token = blink::LocalFrameToken(*field_id.frame_token);
+  DomNodeId dom_node_id = DomNodeId(*field_id.renderer_id);
+  if (auto* driver = client_->GetDriverFactory().GetDriver(token)) {
+    driver->GetElementSelector(
+        dom_node_id,
+        base::BindOnce(
+            [](base::WeakPtr<RecordReplayManager> self, Specifics specifics,
+               Selector element_selector) {
+              if (!self || !self->recorder_ || element_selector->empty()) {
+                return;
+              }
+              self->recorder_->AddAutofill(std::move(element_selector),
+                                           specifics.type,
+                                           std::move(specifics.guid));
+            },
+            GetWeakPtr(), *std::move(specifics)));
+  }
 }
 
 void RecordReplayManager::GetMatchingRecording(
@@ -120,9 +196,8 @@ void RecordReplayManager::GetMatchingRecording(
     return;
   }
 
-  const std::string element_selector = recording->actions(0).element_selector();
   GetMatchingElements(
-      element_selector,
+      Selector(recording->actions(0).element_selector()),
       base::BindOnce(
           [](Recording recording, std::vector<ElementId> matches) {
             return matches.size() == 1 ? std::optional(std::move(recording))
@@ -156,7 +231,7 @@ void RecordReplayManager::StopReplay() {
 }
 
 void RecordReplayManager::GetMatchingElements(
-    const std::string& element_selector,
+    Selector element_selector,
     base::OnceCallback<void(std::vector<ElementId>)> cb) {
   std::vector<RecordReplayDriver*> drivers =
       client_->GetDriverFactory().GetActiveDrivers();
@@ -177,8 +252,8 @@ void RecordReplayManager::GetMatchingElements(
         element_selector,
         base::BindOnce(
             [](blink::LocalFrameToken frame_token,
-               const std::vector<int64_t>& dom_node_ids) {
-              return base::ToVector(dom_node_ids, [&](int64_t dom_node_id) {
+               const std::vector<DomNodeId>& dom_node_ids) {
+              return base::ToVector(dom_node_ids, [&](DomNodeId dom_node_id) {
                 return ElementId{frame_token, dom_node_id};
               });
             },

@@ -495,17 +495,16 @@ bool CanBeSyntheticSelect(Element& element) {
 }
 
 bool HasSelectInTagName(Element& element) {
-  return element.localName().Contains(kSelectName, kTextCaseASCIIInsensitive);
+  return element.localName().ContainsIgnoringAsciiCase(kSelectName);
 }
 
 bool HasSelectInClassAttribute(Element& element) {
-  return element.GetClassAttribute().Contains(kSelectName,
-                                              kTextCaseASCIIInsensitive);
+  return element.GetClassAttribute().ContainsIgnoringAsciiCase(kSelectName);
 }
 
 bool HasSelectInNameAttribute(Element& element) {
   return element.getAttribute(html_names::kNameAttr)
-      .Contains(kSelectName, kTextCaseASCIIInsensitive);
+      .ContainsIgnoringAsciiCase(kSelectName);
 }
 
 bool IsRoleCombobox(Element& element) {
@@ -1232,7 +1231,7 @@ void Document::SetDoctype(DocumentType* doc_type) {
   doc_type_ = doc_type;
   if (doc_type_) {
     AdoptIfNeeded(*doc_type_);
-    if (doc_type_->publicId().StartsWithIgnoringASCIICase(
+    if (doc_type_->publicId().StartsWithIgnoringAsciiCase(
             "-//wapforum//dtd xhtml mobile 1.")) {
       is_mobile_document_ = true;
       style_engine_->ViewportStyleSettingChanged();
@@ -1595,7 +1594,7 @@ CDATASection* Document::createCDATASection(const String& data,
         "This operation is not supported for HTML documents.");
     return nullptr;
   }
-  if (data.Contains("]]>")) {
+  if (data.contains("]]>")) {
     exception_state.ThrowDOMException(DOMExceptionCode::kInvalidCharacterError,
                                       "String cannot contain ']]>' since that "
                                       "is the end delimiter of a CData "
@@ -1615,7 +1614,7 @@ ProcessingInstruction* Document::createProcessingInstruction(
         StrCat({"The target provided ('", target, "') is not a valid name."}));
     return nullptr;
   }
-  if (data.Contains("?>")) {
+  if (data.contains("?>")) {
     exception_state.ThrowDOMException(
         DOMExceptionCode::kInvalidCharacterError,
         StrCat({"The data provided ('", data, "') contains '?>'."}));
@@ -5756,10 +5755,26 @@ void Document::SetActiveElement(Element* new_active_element) {
 
 void Document::RemoveFocusedElementOfSubtree(Node& node,
                                              bool among_children_only) {
-  if (!node.isConnected() || !focused_element_ ||
-      !node.IsShadowIncludingInclusiveAncestorOf(*focused_element_)) {
+  if (!node.isConnected()) {
     return;
   }
+
+  if (!focused_element_) {
+    if (RuntimeEnabledFeatures::ClearFocusWithinOnSubtreeRemovalEnabled()) {
+      if (auto* element = DynamicTo<Element>(node);
+          element && element->HasFocusWithin()) {
+        element->SetHasFocusWithinUpToAncestor(
+            /*has_focus_within=*/false, /*ancestor=*/nullptr,
+            /*need_snap_container_search=*/false);
+      }
+    }
+    return;
+  }
+
+  if (!node.IsShadowIncludingInclusiveAncestorOf(*focused_element_)) {
+    return;
+  }
+
   const auto& focused_element = *node.GetTreeScope().AdjustedFocusedElement();
   if (focused_element.IsDescendantOf(&node) ||
       (!among_children_only && node == focused_element)) {

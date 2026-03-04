@@ -22,6 +22,7 @@
 #include "chrome/browser/autocomplete/shortcuts_backend_factory.h"
 #include "chrome/browser/autofill/account_setting_service_factory.h"
 #include "chrome/browser/autofill/autocomplete_history_manager_factory.h"
+#include "chrome/browser/autofill/autofill_accessibility_annotator_data_adapter_factory.h"
 #include "chrome/browser/autofill/autofill_ai_model_cache_factory.h"
 #include "chrome/browser/autofill/autofill_ai_model_executor_factory.h"
 #include "chrome/browser/autofill/autofill_entity_data_manager_factory.h"
@@ -340,7 +341,6 @@
 #include "chrome/browser/password_manager/factories/password_counter_factory.h"
 #include "chrome/browser/payments/payment_request_display_manager_factory.h"
 #include "chrome/browser/prefs/persistent_renderer_prefs_manager_factory.h"
-#include "chrome/browser/privacy_sandbox/privacy_sandbox_survey_desktop_controller_factory.h"
 #include "chrome/browser/profile_resetter/reset_report_uploader_factory.h"
 #include "chrome/browser/record_replay/recording_data_manager_factory.h"
 #include "chrome/browser/screen_ai/screen_ai_service_router_factory.h"
@@ -672,6 +672,7 @@ void ChromeBrowserMainExtraPartsProfiles::
   AccountPasswordStoreFactory::GetInstance();
   AccountReconcilorFactory::GetInstance();
   autofill::AccountSettingServiceFactory::GetInstance();
+  autofill::AutofillAccessibilityAnnotatorDataAdapterFactory::GetInstance();
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
   AccountsPolicyManagerFactory::GetInstance();
   search_integrity::SearchIntegrityFactory::GetInstance();
@@ -1023,7 +1024,7 @@ void ChromeBrowserMainExtraPartsProfiles::
   LanguageDetectionModelServiceFactory::GetInstance();
   LanguageModelManagerFactory::GetInstance();
 #if !BUILDFLAG(IS_ANDROID)
-  legion::PrivateAiServiceFactory::GetInstance();
+  private_ai::PrivateAiServiceFactory::GetInstance();
   LensKeyedServiceFactory::GetInstance();
 #endif
 #if BUILDFLAG(IS_ANDROID)
@@ -1230,9 +1231,6 @@ void ChromeBrowserMainExtraPartsProfiles::
   PrivacySandboxNoticeServiceFactory::GetInstance();
   PrivacySandboxServiceFactory::GetInstance();
   PrivacySandboxSettingsFactory::GetInstance();
-#if !BUILDFLAG(IS_ANDROID)
-  PrivacySandboxSurveyDesktopControllerFactory::GetInstance();
-#endif
 #if BUILDFLAG(IS_ANDROID)
   PrivacySandboxActivityTypesFactory::GetInstance();
 #endif

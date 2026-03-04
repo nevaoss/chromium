@@ -244,17 +244,16 @@ BASE_FEATURE(kTcpPortReuseMetricsWin, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kTcpSocketIoCompletionPortWin, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif
 
+#if BUILDFLAG(IS_MAC)
+BASE_FEATURE(kTcpPortRandomizationMac, base::FEATURE_DISABLED_BY_DEFAULT);
+const base::FeatureParam<int> kTcpPortRandomizationReuseDelaySec{
+    &kTcpPortRandomizationMac, "reuse_delay_sec", 120};
+#endif
+
 BASE_FEATURE(kAvoidEntryCreationForNoStore, base::FEATURE_DISABLED_BY_DEFAULT);
 const base::FeatureParam<int> kAvoidEntryCreationForNoStoreCacheSize{
     &kAvoidEntryCreationForNoStore, "AvoidEntryCreationForNoStoreCacheSize",
     1000};
-
-// A flag for new Kerberos feature, that suggests new UI
-// when Kerberos authentication in browser fails on ChromeOS.
-// b/260522530
-#if BUILDFLAG(IS_CHROMEOS)
-BASE_FEATURE(kKerberosInBrowserRedirect, base::FEATURE_ENABLED_BY_DEFAULT);
-#endif
 
 // A flag to use asynchronous session creation for new QUIC sessions.
 BASE_FEATURE(kAsyncQuicSession,
@@ -468,6 +467,11 @@ BASE_FEATURE_PARAM(int,
                    "SqlDiskCacheOptimisticWriteBufferSize",
                    32 * 1024 * 1024);
 BASE_FEATURE_PARAM(bool,
+                   kSqlDiskCachePreloadDatabase,
+                   &kDiskCacheBackendExperiment,
+                   "SqlDiskCachePreloadDatabase",
+                   false);
+BASE_FEATURE_PARAM(bool,
                    kSqlDiskCacheSynchronousOff,
                    &kDiskCacheBackendExperiment,
                    "SqlDiskCacheSynchronousOff",
@@ -497,6 +501,11 @@ BASE_FEATURE_PARAM(int,
                    &kDiskCacheBackendExperiment,
                    "SqlDiskCacheMaxReadBufferTotalSize",
                    32 * 1024 * 1024);
+BASE_FEATURE_PARAM(bool,
+                   kSqlDiskCacheSerialCheckpoint,
+                   &kDiskCacheBackendExperiment,
+                   "SqlDiskCacheSerialCheckpoint",
+                   true);
 #endif  // ENABLE_DISK_CACHE_SQL_BACKEND
 
 BASE_FEATURE(kIgnoreHSTSForLocalhost, base::FEATURE_ENABLED_BY_DEFAULT);

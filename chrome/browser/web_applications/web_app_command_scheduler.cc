@@ -26,6 +26,7 @@
 #include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
 #include "chrome/browser/profiles/keep_alive/scoped_profile_keep_alive.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/web_applications/commands/app_migration_data_read_command.h"
 #include "chrome/browser/web_applications/commands/app_update_data_read_command.h"
 #include "chrome/browser/web_applications/commands/apply_manifest_migration_command.h"
 #include "chrome/browser/web_applications/commands/apply_pending_manifest_update_command.h"
@@ -489,11 +490,16 @@ void WebAppCommandScheduler::InstallFromSync(const WebApp& web_app,
   if (web_app.sync_proto().has_theme_color()) {
     theme_color = web_app.sync_proto().theme_color();
   }
+  std::optional<webapps::ManifestId> migrated_from_manifest_id;
+  if (web_app.sync_proto().has_migrated_from_manifest_id()) {
+    migrated_from_manifest_id = webapps::ManifestId(
+        GURL(web_app.sync_proto().migrated_from_manifest_id()));
+  }
   InstallFromSyncCommand::Params params = InstallFromSyncCommand::Params(
       web_app.app_id(), web_app.manifest_id(), web_app.start_url(),
       web_app.sync_proto().name(), GURL(web_app.sync_proto().scope()),
       theme_color, web_app.user_display_mode(), manifest_icon_infos,
-      trusted_icon_infos);
+      trusted_icon_infos, migrated_from_manifest_id);
   provider_->command_manager().ScheduleCommand(
       std::make_unique<InstallFromSyncCommand>(&profile_.get(), params,
                                                std::move(callback)),
@@ -857,6 +863,17 @@ void WebAppCommandScheduler::ReadAppUpdateDataFromDisk(
     const base::Location& location) {
   provider_->command_manager().ScheduleCommand(
       std::make_unique<AppUpdateDataReadCommand>(app_id, std::move(callback)),
+      location);
+}
+
+void WebAppCommandScheduler::ReadAppMigrationDataFromDisk(
+    const webapps::AppId& old_app_id,
+    const webapps::AppId& new_app_id,
+    base::OnceCallback<void(std::optional<WebAppIdentityUpdate>)> callback,
+    const base::Location& location) {
+  provider_->command_manager().ScheduleCommand(
+      std::make_unique<AppMigrationDataReadCommand>(old_app_id, new_app_id,
+                                                    std::move(callback)),
       location);
 }
 

@@ -1664,6 +1664,7 @@ Chrome 政策的优先级高于此政策，例如：如果某个扩展程序已�
 <translation id="2158741059065130266">如果此政策设为 True，<ph name="PRODUCT_OS_NAME" />“文件”应用的用户可以看到回收站的垃圾桶图标，“我的文件”和“下载内容”下的文件（包括其使用者创建的子文件夹中的文件）在删除后会被发送到回收站中。
 
       如果此政策设为 False，通过显示隐藏文件并在“我的文件”或“下载内容”下找到 .Trash 目录，用户仍可查看之前位于回收站中的文件。</translation>
+<translation id="215891883000260452">为特定源启用 WebRTC 诊断日志收集功能</translation>
 <translation id="2159092270572925582">此政策允许您设置一个网址格式列表，从而指定允许哪些网站显示可屏蔽的（即主动型）混合内容（即 HTTPS 网站上的 HTTP 内容），以及要为哪些网站上可选的可屏蔽（即被动型）混合内容停用升级功能。
 
           如果您未设置此政策，可屏蔽的混合内容将被屏蔽，同时可选的可屏蔽混合内容将被升级，而且用户将能设置例外情况以允许在特定网站上显示此类内容。
@@ -2488,6 +2489,13 @@ IPv4 地址的前缀为 0010；IPv6 地址的前缀为 0020。对于双栈网络
       注意：自 M114 起，特定自助服务终端应用可在特殊使用情形（例如学生评估）下为其应用覆盖这项政策的行为。</translation>
 <translation id="2667894101494585925">启用优化指南提取功能</translation>
 <translation id="2669157090883237118">不更改建议的 <ph name="PRODUCT_OS_NAME" /> 配置。</translation>
+<translation id="2669314653349044073">此政策允许针对特定源启用 WebRTC 诊断日志收集功能。
+
+如需详细了解有效的输入格式，请访问 https://chromeenterprise.google/policies/url-patterns。<ph name="WILDCARD_VALUE" /> 不是此政策可接受的值。此政策只能根据源进行匹配，因此网址格式中的任何路径都会被忽略。支持协议和子网域。
+
+如果设置了此政策，系统将为与列表中格式相符的源启用诊断日志收集功能。
+
+如果未设置此政策，系统将默认停用诊断日志收集功能。</translation>
 <translation id="2672012807430078509">控制是否允许将 NTLM 作为 SMB 装载功能的身份验证协议</translation>
 <translation id="2673363037046384711">最终用户可以启用或停用高效模式。</translation>
 <translation id="2673968385134502798">游戏</translation>
@@ -6385,6 +6393,13 @@ JavaScript 优化政策的例外情况仅在网站级别 (eTLD+1) 上强制执�
 <translation id="5303080953475303561">通过设置此政策，您可以控制锁定屏幕将会按照什么样的频率要求用户输入密码以实现快速解锁。每当系统显示锁定屏幕时，如果与上次输入密码相距的时间超出了所选值指定的时长，便无法快速解锁。如果用户在锁定屏幕上的停留时长超过了此时长，那么当用户下次输错代码或重新进入锁定屏幕时（以先发生者为准），系统就会要求输入密码。
 
       如果您未设置此政策，使用快速解锁功能的用户需要每天在锁定屏幕上输入其密码一次。</translation>
+<translation id="530488290401810961">配置 <ph name="PRODUCT_NAME" /> 如何下载基础生成式 AI 模型并在本地用于推理。
+
+如果此政策设为“允许”（即值为 0）或未经设置，系统会自动下载模型，并将其用于推理。
+
+如果此政策设为“停用”（即值为 1），系统将不会下载模型，并且会删除现有模型（如果已下载）。
+
+在桌面平台上，也可以通过 <ph name="COMPONENT_UPDATES_ENABLED_POLICY_NAME" /> 禁止下载模型。</translation>
 <translation id="5306186200045823863">信任 Symantec Corporation 的旧版 PKI 基础架构</translation>
 <translation id="5307432759655324440">无痕模式的可用性</translation>
 <translation id="5308551343115571396"><ph name="LACROS_NAME" /> 停用后，系统会尝试保留尽可能多的用户数据，但会移除所有浏览器数据。</translation>
@@ -6404,7 +6419,6 @@ JavaScript 优化政策的例外情况仅在网站级别 (eTLD+1) 上强制执�
 <translation id="530949964068726932">在系统任务栏菜单中隐藏无障碍选项</translation>
 <translation id="5309944663104291505">不允许强制安装的独立式 Web 应用 (IWA) 和自助服务终端应用使用 Device Attributes API</translation>
 <translation id="5311275381462687162">默认旧版 <ph name="ATTRIBUTE_SAMESITE_NAME" /> Cookie 行为设置</translation>
-<translation id="5311430612584074035">强制将配置文件中的所有标签页设为前台优先级</translation>
 <translation id="5312253627576569499">在屏幕变暗后或在屏幕关闭不久后察觉到用户活动时，系统会对屏幕变暗延迟时间采取的调整幅度（百分比）</translation>
 <translation id="5316856058059940708">停用大号光标</translation>
 <translation id="5318185076587284965">允许远程访问主机使用中继服务器</translation>
@@ -12228,11 +12242,6 @@ Gemini 只能在部分国家/地区启用，并且仅支持部分语言。设置
 <translation id="9135095804754272364">在检测到 USB 设备时显示通知</translation>
 <translation id="9136212796239682721">停用下载气泡界面</translation>
 <translation id="9136399279941091445">放宽所指定设备政策的非办公时段</translation>
-<translation id="9138686056337842869">如果此政策设为 True，Chrome 应用将能继续在自助服务终端会话中运行，无论 Chrome 应用是否默认已启用。
-
-如果此政策未设置或设为 False，系统将使用设备上定义的默认行为。
-
-当用户尝试启动已停用的 Chrome 应用时，系统会向用户显示一条消息，说明该应用未启动的原因，并建议用户联系其 IT 部门。</translation>
 <translation id="9139775903828905867">控制用于触发 F11 的快捷键</translation>
 <translation id="9140064482233876338">已在 M69 中弃用。请改用 OverrideSecurityRestrictionsOnInsecureOrigin。
 

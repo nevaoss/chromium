@@ -75,19 +75,19 @@ class AutofillManager
   //
   // For the On{Before,After}Foo() events, the following invariant holds:
   // Every OnBeforeFoo() is followed by an OnAfterFoo(); on OnAfterFoo() may be
-  // called asynchronously (but on the UI thread). The only exceptions where
-  // OnBeforeFoo() may be called without a corresponding OnAfterFoo() call are:
-  // - if the number of cached forms exceeds `kAutofillManagerMaxFormCacheSize`;
-  // - if this AutofillManager has been destroyed or reset in the meantime.
+  // called asynchronously (but on the UI thread). The only exception where
+  // OnBeforeFoo() may be called without a corresponding OnAfterFoo() call is
+  // when this AutofillManager has been destroyed or reset during the
+  // asynchronous parsing.
   //
   // When observing an AutofillManager, make sure to remove the observation
   // before the AutofillManager is destroyed. Pending destruction is signaled
   // by a call to `OnAutofillManagerStateChanged` with current `LifecycleState`
   // `kPendingDeletion`.
-  // If you want to observe all AutofillManagers of a `WebContents`, consider
+  // If you want to observe all AutofillManagers of an AutofillClient, consider
   // using `autofill::ScopedAutofillManagersObservation`, which abstracts away
   // all the boilerplate for adding and removing observers of AutofillManagers
-  // of a `WebContents`.
+  // of an AutofillClient.
   //
   // TODO(crbug.com/40280003): Consider moving events that are specific to BAM
   // to a new BAM::Observer class.
@@ -95,11 +95,19 @@ class AutofillManager
    public:
     virtual void OnAutofillManagerStateChanged(AutofillManager& manager,
                                                LifecycleState previous,
-                                               LifecycleState current) {}
+                                               LifecycleState new_state) {}
 
     virtual void OnBeforeLanguageDetermined(AutofillManager& manager) {}
     virtual void OnAfterLanguageDetermined(AutofillManager& manager) {}
 
+    // Unlike other events, OnFormsSeen() determines both heuristic and server
+    // types. OnAfterFormsSeen() is fired after the heuristic type detection is
+    // complete (if it started at all). Whether the server types have been
+    // determined by then or not is unspecified.
+    //
+    // TODO(crbug.com/470949499): Consider calling OnAfterFormsSeen() after the
+    // heuristics *and* the server predictions have been determined. The main
+    // challenge is likely the server's possibly slow response time.
     virtual void OnBeforeFormsSeen(
         AutofillManager& manager,
         base::span<const FormGlobalId> updated_forms,
@@ -124,12 +132,9 @@ class AutofillManager
                                                FormGlobalId form,
                                                FieldGlobalId field) {}
 
-    // TODO(crbug.com/40227496): Get rid of `text_value`.
-    virtual void OnAfterTextFieldValueChanged(
-        AutofillManager& manager,
-        FormGlobalId form,
-        FieldGlobalId field,
-        const std::u16string& text_value) {}
+    virtual void OnAfterTextFieldValueChanged(AutofillManager& manager,
+                                              FormGlobalId form,
+                                              FieldGlobalId field) {}
 
     virtual void OnBeforeTextFieldDidScroll(AutofillManager& manager,
                                             FormGlobalId form,
@@ -251,7 +256,7 @@ class AutofillManager
   // See autofill_driver.mojom for documentation.
   // Some functions are virtual for testing.
   virtual void OnFormsSeen(const std::vector<FormData>& updated_forms,
-                           const std::vector<FormGlobalId>& removed_forms);
+                           const std::vector<FormGlobalId>& removed_form_ids);
   virtual void OnFormSubmitted(const FormData& form,
                                mojom::SubmissionSource source);
   virtual void OnTextFieldValueChanged(const FormData& form,

@@ -30,10 +30,7 @@
 #include "components/performance_manager/public/features.h"
 #include "components/saved_tab_groups/public/features.h"
 #include "components/saved_tab_groups/public/tab_group_sync_service.h"
-#include "components/security_interstitials/content/security_interstitial_tab_helper.h"
 #include "components/tabs/public/tab_interface.h"
-#include "content/public/browser/navigation_controller.h"
-#include "content/public/browser/navigation_entry.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/common/url_constants.h"
 
@@ -57,13 +54,6 @@ GetCollaborationMessage(tabs::TabInterface* tab) {
   return data->GetWeakPtr();
 }
 
-bool IsNTP(const GURL& url) {
-  return url.SchemeIs(content::kChromeUIScheme) &&
-         (url.GetHost() == chrome::kChromeUINewTabHost ||
-          url.GetHost() == chrome::kChromeUINewTabPageHost ||
-          url.GetHost() == chrome::kChromeUITabSearchHost);
-}
-
 }  // namespace
 
 // static
@@ -72,20 +62,6 @@ TabRendererData TabRendererData::FromTabInterface(tabs::TabInterface* tab) {
   content::WebContents* const contents = tab->GetContents();
   CHECK(contents);
 
-  // If the tab is showing a lookalike interstitial ("Did you mean example.com"
-  // on éxample.com), don't show the URL in the hover card because it's
-  // misleading.
-  security_interstitials::SecurityInterstitialTabHelper*
-      security_interstitial_tab_helper = security_interstitials::
-          SecurityInterstitialTabHelper::FromWebContents(contents);
-
-  bool should_display_url =
-      // NTP URLs are hidden to match the omnibox behavior.
-      !IsNTP(contents->GetVisibleURL()) &&
-      (!security_interstitial_tab_helper ||
-       !security_interstitial_tab_helper->IsDisplayingInterstitial() ||
-       security_interstitial_tab_helper->ShouldDisplayURL());
-
   TabRendererData data;
 
   TabUIHelper* const tab_ui_helper = TabUIHelper::From(tab);
@@ -93,7 +69,6 @@ TabRendererData TabRendererData::FromTabInterface(tabs::TabInterface* tab) {
   data.title = tab_ui_helper->GetTitle();
   data.needs_attention = tab_ui_helper->needs_attention();
   auto* const bwi = tab->GetBrowserWindowInterface();
-  Browser* browser = bwi ? bwi->GetBrowserForMigrationOnly() : nullptr;
 
   // Note that in unit tests, this may be null.
   if (bwi) {
@@ -125,50 +100,21 @@ TabRendererData TabRendererData::FromTabInterface(tabs::TabInterface* tab) {
   data.collaboration_messaging = GetCollaborationMessage(tab);
   data.network_state = TabNetworkStateForWebContents(contents);
 
-  // In the case of reverted uncommitted navigations, there might not be a valid
-  // NavigationEntry. In that case, show about:blank to match the omnibox.
-  content::NavigationEntry* entry =
-      contents->GetController().GetLastCommittedEntry();
-  const bool missing_navigation_entry = !entry || entry->IsInitialEntry();
-  data.visible_url = missing_navigation_entry ? GURL(url::kAboutBlankURL)
-                                              : contents->GetVisibleURL();
-
-  // Allow empty title for chrome-untrusted:// URLs.
-  if (data.title.empty() &&
-      data.visible_url.SchemeIs(content::kChromeUIUntrustedScheme)) {
-    data.should_render_empty_title = true;
-  }
+  data.visible_url = tab_ui_helper->GetVisibleURL();
+  data.should_render_loading_title = tab_ui_helper->ShouldRenderLoadingTitle();
   data.last_committed_url = contents->GetLastCommittedURL();
-  data.should_display_url = should_display_url;
+  data.should_display_url = tab_ui_helper->ShouldDisplayURL();
   data.is_crashed = tab_ui_helper->IsCrashed();
   data.pinned = tab->IsPinned();
-  data.show_icon =
-      data.pinned || (browser && browser->ShouldDisplayFavicon(contents));
+  data.show_icon = tab_ui_helper->ShouldDisplayFavicon();
   data.blocked = tab->IsBlocked();
   data.should_hide_throbber = tab_ui_helper->ShouldHideThrobber();
   data.alert_state = tabs::TabAlertController::From(tab)->GetAllActiveAlerts();
+  data.should_themify_favicon = tab_ui_helper->ShouldThemifyFavicon();
 
-  data.should_themify_favicon =
-      entry && favicon::ShouldThemifyFaviconForEntry(entry);
-
-  std::optional<mojom::LifecycleUnitDiscardReason> discard_reason =
-      memory_saver::GetDiscardReason(contents);
-
-  // Only show discard status for tabs that were proactively discarded or
-  // suggested by the PerformanceDetectionManager to prevent confusion to users
-  // on why a tab was discarded. Also, the favicon discard animation may use
-  // resources so the animation should be limited to prevent performance issues.
-  data.should_show_discard_status =
-      memory_saver::IsURLSupported(contents->GetURL()) &&
-      contents->WasDiscarded() && discard_reason.has_value() &&
-      (discard_reason.value() == mojom::LifecycleUnitDiscardReason::PROACTIVE ||
-       discard_reason.value() == mojom::LifecycleUnitDiscardReason::SUGGESTED);
-
-  if (contents->WasDiscarded()) {
-    data.discarded_memory_savings =
-        memory_saver::GetDiscardedMemorySavings(contents);
-  }
-
+  data.should_show_discard_status = tab_ui_helper->ShouldShowDiscardStatus();
+  data.discarded_memory_savings =
+      tab_ui_helper->GetDiscardedMemorySavings().value_or(base::ByteSize());
   if (const auto* const resource_tab_helper =
           TabResourceUsageTabHelper::From(tab)) {
     data.tab_resource_usage = resource_tab_helper->resource_usage();

@@ -215,7 +215,6 @@ test("components_unittests") {
     "//components/collaboration:unit_tests",
     "//components/commerce/core:shopping_service_unit_tests",
     "//components/commerce/core:utils_unit_tests",
-    "//components/commerce/core/product_specifications:unit_tests",
     "//components/component_updater:unit_tests",
     "//components/component_updater/installer_policies:unit_tests",
     "//components/consent_auditor:unit_tests",
@@ -506,7 +505,7 @@ test("components_unittests") {
       "//components/heavy_ad_intervention:unit_tests",
       "//components/history/content/browser:unit_tests",
       "//components/history_clusters/core:unit_tests",
-      "//components/history_embeddings:unit_tests",
+      "//components/history_embeddings/core:unit_tests",
       "//components/input:unit_tests",
       "//components/invalidation:legacy_topics_cleanup_unit_tests",
       "//components/invalidation:unit_tests",
@@ -658,6 +657,7 @@ test("components_unittests") {
         "//components/crash/content/browser:unit_tests",
         "//components/crash/core/app:unit_tests",
         "//components/enterprise/content:unit_tests",
+        "//components/history_embeddings/content:unit_tests",
         "//components/page_content_annotations/content:unit_tests",
       ]
     }
@@ -765,8 +765,8 @@ test("components_unittests") {
       "//components/access_code_cast/common:unit_tests",
       "//components/headless/console_message_logger:unit_tests",
       "//components/headless/screen_info:unit_tests",
-      "//components/legion:unit_tests",
       "//components/live_caption:unit_tests",
+      "//components/private_ai:unit_tests",
 
       # TODO(crbug.com/470475787): Enable this test on Android.
       "//components/password_manager/core/browser/actor_login/internal:unit_tests",

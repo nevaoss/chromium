@@ -401,16 +401,19 @@ TEST(ProtoValueConversionsTest, GeminiThreadSpecificsToValue) {
   sync_pb::GeminiThreadSpecifics gemini_specifics;
   gemini_specifics.set_conversation_id("my_id");
   gemini_specifics.set_title("my_title");
+  gemini_specifics.set_last_turn_time_unix_epoch_millis(1770989828);
 
   base::DictValue value =
       GeminiThreadSpecificsToValue(gemini_specifics).TakeDict();
   EXPECT_FALSE(value.empty());
   EXPECT_THAT(value.FindString("conversation_id"), Pointee(Eq("my_id")));
   EXPECT_THAT(value.FindString("title"), Pointee(Eq("my_title")));
+  EXPECT_THAT(value.FindString("last_turn_time_unix_epoch_millis"),
+              Pointee(Eq("1770989828")));
 }
 
-TEST(ProtoValueConversionsTest, ThemeSpecificsIosToValue) {
-  sync_pb::ThemeSpecificsIos specifics;
+TEST(ProtoValueConversionsTest, ThemeIosSpecificsToValue) {
+  sync_pb::ThemeIosSpecifics specifics;
 
   // Populate `UserColorTheme`.
   auto* color_theme = specifics.mutable_user_color_theme();
@@ -424,7 +427,7 @@ TEST(ProtoValueConversionsTest, ThemeSpecificsIosToValue) {
   background->set_collection_id("nature_collection");
   background->set_main_color(4278190080);
 
-  base::DictValue value = ThemeSpecificsIosToValue(specifics).TakeDict();
+  base::DictValue value = ThemeIosSpecificsToValue(specifics).TakeDict();
   EXPECT_FALSE(value.empty());
 
   const base::DictValue* color_dict = value.FindDict("user_color_theme");

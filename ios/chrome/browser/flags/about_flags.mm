@@ -1357,6 +1357,15 @@ const FeatureEntry::FeatureVariation kPositionForExplainGeminiEditMenu[] = {
     {"Explain Gemini shows up after Search with Google",
      kAfterSearchForExplainGeminiEditMenu, nullptr}};
 
+const FeatureEntry::FeatureParam kPageActionMenuIconSparkles1[] = {
+    {kPageActionMenuIconParams, "1"}};
+const FeatureEntry::FeatureParam kPageActionMenuIconSparkles2[] = {
+    {kPageActionMenuIconParams, "2"}};
+
+const FeatureEntry::FeatureVariation kPageActionMenuIconVariations[] = {
+    {"Sparkles 1", kPageActionMenuIconSparkles1, nullptr},
+    {"Sparkles 2", kPageActionMenuIconSparkles2, nullptr}};
+
 // To add a new entry, add to the end of kFeatureEntries. There are four
 // distinct types of entries:
 // . ENABLE_DISABLE_VALUE: entry is either enabled, disabled, or uses the
@@ -1574,9 +1583,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
     {"enable-feed-ablation", flag_descriptions::kEnableFeedAblationName,
      flag_descriptions::kEnableFeedAblationDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kEnableFeedAblation)},
-    {"ios-enhanced-autofill", flag_descriptions::kIOSEnhancedAutofillName,
-     flag_descriptions::kIOSEnhancedAutofillDescription, flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(kIOSEnhancedAutofill)},
     {"ios-keyboard-accessory-default-view",
      flag_descriptions::kIOSKeyboardAccessoryDefaultViewName,
      flag_descriptions::kIOSKeyboardAccessoryDefaultViewDescription,
@@ -1775,11 +1781,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kCredentialProviderPasskeyPRFName,
      flag_descriptions::kCredentialProviderPasskeyPRFDescription,
      flags_ui::kOsIos, FEATURE_VALUE_TYPE(kCredentialProviderPasskeyPRF)},
-    {"cpe-performance-improvements",
-     flag_descriptions::kCredentialProviderPerformanceImprovementsName,
-     flag_descriptions::kCredentialProviderPerformanceImprovementsDescription,
-     flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(kCredentialProviderPerformanceImprovements)},
     {"migrate-ios-keychain-accessibility",
      flag_descriptions::kMigrateIOSKeychainAccessibilityName,
      flag_descriptions::kMigrateIOSKeychainAccessibilityDescription,
@@ -1905,11 +1906,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kLensOverlayEnableLandscapeCompatibilityDescription,
      flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kLensOverlayEnableLandscapeCompatibility)},
-    {"lens-overlay-force-show-onboarding-screen",
-     flag_descriptions::kLensOverlayForceShowOnboardingScreenName,
-     flag_descriptions::kLensOverlayForceShowOnboardingScreenDescription,
-     flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(kLensOverlayForceShowOnboardingScreen)},
     {"data-sharing", flag_descriptions::kDataSharingName,
      flag_descriptions::kDataSharingDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(data_sharing::features::kDataSharingFeature)},
@@ -2061,6 +2057,12 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kSupervisedUserBlockInterstitialV3Description,
      flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(supervised_user::kSupervisedUserBlockInterstitialV3)},
+    {"supervised-user-emit-log-record-separately",
+     flag_descriptions::kSupervisedUserEmitLogRecordSeparatelyName,
+     flag_descriptions::kSupervisedUserEmitLogRecordSeparatelyDescription,
+     flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(
+         supervised_user::kSupervisedUserEmitLogRecordSeparately)},
     {"supervised-user-merge-device-parental-controls-and-family-link-prefs",
      flag_descriptions::
          kSupervisedUserMergeDeviceParentalControlsAndFamilyLinkPrefsName,
@@ -2422,10 +2424,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      FEATURE_WITH_PARAMS_VALUE_TYPE(kPersistTabContext,
                                     kPersistTabContextVariations,
                                     "PersistTabContext")},
-    {"composebox-autoattach-tab",
-     flag_descriptions::kComposeboxAutoattachTabName,
-     flag_descriptions::kComposeboxAutoattachTabDescription, flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(kComposeboxAutoattachTab)},
     {"composebox-immersive-srp", flag_descriptions::kComposeboxImmersiveSRPName,
      flag_descriptions::kComposeboxImmersiveSRPDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kComposeboxImmersiveSRP)},
@@ -2499,10 +2497,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
     {"ios-synced-set-up", flag_descriptions::kIOSSyncedSetUpName,
      flag_descriptions::kIOSSyncedSetUpDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kIOSSyncedSetUp)},
-    {"multiline-browser-omnibox",
-     flag_descriptions::kMultilineBrowserOmniboxName,
-     flag_descriptions::kMultilineBrowserOmniboxDescription, flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(kMultilineBrowserOmnibox)},
     {"gemini-full-chat-history", flag_descriptions::kGeminiFullChatHistoryName,
      flag_descriptions::kGeminiFullChatHistoryDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kGeminiFullChatHistory)},
@@ -2700,6 +2694,27 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      FEATURE_WITH_PARAMS_VALUE_TYPE(kModelBasedPageClassification,
                                     kModelBasedPageClassificationVariations,
                                     "ModelBasedPageClassification")},
+    {"page-action-menu-icon", flag_descriptions::kPageActionMenuIconName,
+     flag_descriptions::kPageActionMenuIconDescription, flags_ui::kOsIos,
+     FEATURE_WITH_PARAMS_VALUE_TYPE(kPageActionMenuIcon,
+                                    kPageActionMenuIconVariations,
+                                    "PageActionMenuIcon")},
+    {"ios-choose-from-drive-signed-out",
+     flag_descriptions::kIOSChooseFromDriveSignedOutName,
+     flag_descriptions::kIOSChooseFromDriveSignedOutDescription,
+     flags_ui::kOsIos, FEATURE_VALUE_TYPE(kIOSChooseFromDriveSignedOut)},
+    {"ios-save-to-photos-signed-out",
+     flag_descriptions::kIOSSaveToPhotosSignedOutName,
+     flag_descriptions::kIOSSaveToPhotosSignedOutDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kIOSSaveToPhotosSignedOut)},
+    {"aim-cobrowse-debug-entrypoint",
+     flag_descriptions::kAIMCobrowseDebugEntrypointName,
+     flag_descriptions::kAIMCobrowseDebugEntrypointDescription,
+     flags_ui::kOsIos, FEATURE_VALUE_TYPE(kAIMCobrowseDebugEntrypoint)},
+    {"ios-date-to-calendar-signed-out",
+     flag_descriptions::kIOSDateToCalendarSignedOutName,
+     flag_descriptions::kIOSDateToCalendarSignedOutDescription,
+     flags_ui::kOsIos, FEATURE_VALUE_TYPE(kIOSDateToCalendarSignedOut)},
 });
 
 bool SkipConditionalFeatureEntry(const flags_ui::FeatureEntry& entry) {

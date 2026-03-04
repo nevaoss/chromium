@@ -11,8 +11,9 @@
 namespace blink {
 
 CanvasNon2DSnapshotProviderBitmap::ImageProviderImpl::ImageProviderImpl(
-    CanvasSnapshotProvider::Info info)
-    : info_(info) {}
+    bool is_f16,
+    const gfx::ColorSpace& color_space)
+    : is_f16_(is_f16), color_space_(color_space) {}
 
 cc::ImageProvider::ScopedResult
 CanvasNon2DSnapshotProviderBitmap::ImageProviderImpl::GetRasterContent(
@@ -27,28 +28,19 @@ CanvasNon2DSnapshotProviderBitmap::ImageProviderImpl::GetRasterContent(
         canvas_deferred_paint_record->GetPaintRecord());
   }
 
-  // TODO(xidachen): Ensure this function works for paint worklet generated
-  // images.
-  // If we like to decode high bit depth image source to half float backed
-  // image, we need to sniff the image bit depth here to avoid double
-  // decoding.
-  ImageProvider::ScopedResult scoped_decoded_image;
+  // To decode high bit depth image source to half float backed image, we need
+  // to sniff the image bit depth here to avoid double decoding.
+  auto target_color_type =
+      (is_f16_ && draw_image.paint_image().is_high_bit_depth())
+          ? kRGBA_F16_SkColorType
+          : kN32_SkColorType;
   cc::TargetColorParams target_color_params;
-  target_color_params.color_space = info_.color_space;
+  target_color_params.color_space = color_space_;
 
-  if (info_.format == viz::SinglePlaneFormat::kRGBA_F16 &&
-      draw_image.paint_image().is_high_bit_depth()) {
-    cc::PlaybackImageProvider image_provider(
-        &Image::SharedCCDecodeCache(kRGBA_F16_SkColorType), target_color_params,
-        cc::PlaybackImageProvider::Settings());
-    scoped_decoded_image = image_provider.GetRasterContent(draw_image);
-  } else {
-    cc::PlaybackImageProvider image_provider(
-        &Image::SharedCCDecodeCache(kN32_SkColorType), target_color_params,
-        cc::PlaybackImageProvider::Settings());
-    scoped_decoded_image = image_provider.GetRasterContent(draw_image);
-  }
-  return scoped_decoded_image;
+  return cc::PlaybackImageProvider(
+             &Image::SharedCCDecodeCache(target_color_type),
+             target_color_params, cc::PlaybackImageProvider::Settings())
+      .GetRasterContent(draw_image);
 }
 
 std::unique_ptr<CanvasNon2DSnapshotProviderBitmap>
@@ -76,24 +68,26 @@ bool CanvasNon2DSnapshotProviderBitmap::IsValid() const {
   return true;
 }
 
+// static
 scoped_refptr<StaticBitmapImage>
 CanvasNon2DSnapshotProviderBitmap::DoExternalDrawAndSnapshot(
+    const CanvasSnapshotProvider::Info& info,
     base::FunctionRef<void(cc::PaintCanvas&)> draw_callback,
-    ImageOrientation orientation /*= ImageOrientationEnum::kDefault*/) {
-  const bool can_use_lcd_text = info_.alpha_type == kOpaque_SkAlphaType;
+    ImageOrientation orientation) {
+  const bool can_use_lcd_text = info.alpha_type == kOpaque_SkAlphaType;
   const auto props =
       skia::LegacyDisplayGlobals::ComputeSurfaceProps(can_use_lcd_text);
   sk_sp<SkSurface> surface = SkSurfaces::Raster(
-      SkImageInfo::Make(info_.size.width(), info_.size.height(),
-                        viz::ToClosestSkColorType(info_.format),
-                        kPremul_SkAlphaType,
-                        info_.color_space.ToSkColorSpace()),
+      SkImageInfo::Make(info.size.width(), info.size.height(),
+                        viz::ToClosestSkColorType(info.format),
+                        kPremul_SkAlphaType, info.color_space.ToSkColorSpace()),
       &props);
   if (!surface) {
     return nullptr;
   }
 
-  ImageProviderImpl image_provider(info_);
+  ImageProviderImpl image_provider(
+      info.format == viz::SinglePlaneFormat::kRGBA_F16, info.color_space);
   cc::SkiaPaintCanvas canvas(surface->getCanvas(), &image_provider);
   draw_callback(canvas);
 

@@ -24,6 +24,42 @@ const POLYMER_IMPORT_REGEX = [
 const LIT_IMPORT_REGEX =
     ['resources', 'lit', 'v3_0', 'lit.rollup.js$'].join('\\u002F');
 
+const CR_LIT_ELEMENT_EXTENDS_MIXIN_SELECTOR =
+    'CallExpression[callee.name=/Mixin$/][arguments.0.name="CrLitElement"]';
+
+function isCrLitElementSubclass(node, programNode) {
+  assert.ok(node.type === 'ClassDeclaration');
+
+  if (!node.superClass) {
+    return false;
+  }
+
+  if (node.superClass.type === 'Identifier') {
+    if (node.superClass.name === 'CrLitElement') {
+      // Case1: 'MyElement extends CrLitElement {...}'
+      return true;
+    }
+
+    // Case2:
+    // const MyElementBase = SomeMixin(CrLitElement);
+    // MyElement extends MyElementBase {...}'
+    const baseClassSelector = esquery.parse(
+        `Program > VariableDeclaration > VariableDeclarator[id.name="${
+            node.superClass.name}"] ${CR_LIT_ELEMENT_EXTENDS_MIXIN_SELECTOR}`);
+    const matchingNodes = esquery.match(programNode, baseClassSelector);
+    return matchingNodes.length > 0;
+  }
+
+  if (node.superClass.type === 'CallExpression') {
+    // Case3: 'MyElement extends SomeMixin(SomeOtherMixin((CrLitElement)) {...}'
+    const selector = esquery.parse(CR_LIT_ELEMENT_EXTENDS_MIXIN_SELECTOR);
+    const matchingNodes = esquery.match(node.superClass, selector);
+    return matchingNodes.length > 0;
+  }
+
+  return false;
+}
+
 const litElementStructureRule = ESLintUtils.RuleCreator.withoutDocs({
   name: 'lit-element-structure',
   meta: {
@@ -34,6 +70,12 @@ const litElementStructureRule = ESLintUtils.RuleCreator.withoutDocs({
       recommended: 'error',
     },
     messages: {
+      useFireHelper:
+          'Use this.fire(...) instead of this.dispatchEvent(new CustomEvent(...))..',
+      useFireHelperWithEventName:
+          'Use this.fire(...) instead of this.dispatchEvent(new CustomEvent(...)), for event \'{{eventName}}\'.',
+      incorrectClassName:
+          'CrLitElement subclass {{className}} should end with the \'Element\' suffix.',
       incorrectMethodDefinitionOrder:
           'Inconsistent method definition order in class {{className}}. Expected [{{expectedOrder}}], found [{{actualOrder}}].',
       missingSuperCalls:
@@ -109,17 +151,22 @@ const litElementStructureRule = ESLintUtils.RuleCreator.withoutDocs({
       }
 
       visitClassDeclaration(node) {
-        if (!node.id.name.includes('Element') || node.superClass === null) {
+        this.isLitElement =
+            isCrLitElementSubclass(node, context.sourceCode.ast);
+        if (!this.isLitElement) {
           return;
         }
 
-        if (node.superClass.type === 'Identifier' &&
-            (node.superClass.name.match(NATIVE_HTML_SUBCLASS_REGEX) ||
-             node.superClass.name === 'TestBrowserProxy')) {
-          return;
+        if (!node.id.name.endsWith('Element')) {
+          context.report({
+            node: node,
+            messageId: 'incorrectClassName',
+            data: {
+              className: node.id.name,
+            },
+          });
         }
 
-        this.isLitElement = true;
         this.node = node;
       }
 
@@ -156,6 +203,48 @@ const litElementStructureRule = ESLintUtils.RuleCreator.withoutDocs({
             node.arguments[0].property.name === 'is';
         const arg1Correct = node.arguments[1].name === this.node.id.name;
         this.hasCustomElementRegistration = arg0Correct && arg1Correct;
+      }
+
+      runUseFireHelperCheck(node) {
+        if (!this.isLitElement) {
+          return;
+        }
+
+        assert.ok(node.type === 'ObjectExpression');
+
+        const callExpressionNode = node.parent.parent;
+        assert.ok(callExpressionNode.type === 'CallExpression');
+
+        function hasProp(node, name, value) {
+          return node.properties.some(prop => {
+            return prop.key.name === name && prop.value.value === value;
+          });
+        }
+
+        if (!hasProp(node, 'bubbles', true) ||
+            !hasProp(node, 'composed', true)) {
+          return;
+        }
+
+        let propertiesLength = 2;
+        if (node.properties.find(prop => prop.key.name === 'detail')) {
+          propertiesLength++;
+        }
+
+        if (node.properties.length > propertiesLength) {
+          // Handle case where properties other than 'bubbles', 'composed',
+          // 'detail' are passed.
+          return;
+        }
+
+        const eventName = node.parent.arguments[0]?.value;
+        context.report({
+          node: callExpressionNode,
+          messageId: eventName ? 'useFireHelperWithEventName' : 'useFireHelper',
+          data: {
+            eventName: node.parent.arguments[0]?.value,
+          },
+        });
       }
 
       runMissingTagNameRegistrationCheck() {
@@ -331,6 +420,14 @@ interface HTMLElementTagNameMap {
         }
 
         currentClassInfo.superCallCalled.add(node.property.name);
+      },
+      ['CallExpression[callee.object.type="ThisExpression"][callee.property.name="dispatchEvent"] > NewExpression[callee.name="CustomEvent"] > ObjectExpression'](
+          node) {
+        if (!hasLitImport) {
+          return;
+        }
+
+        currentClassInfo.runUseFireHelperCheck(node);
       },
       'ClassDeclaration:exit'(node) {
         if (!hasLitImport) {
@@ -946,8 +1043,6 @@ const litElementTemplateStructure = ESLintUtils.RuleCreator.withoutDocs({
           messageId: 'ifStatementFound',
         });
       },
-      // TODO (crbug.com/481519338): Enable these parts of the check.
-      /*
       ['VariableDeclaration'](node) {
         if (!hasLitImport) {
           return;
@@ -963,7 +1058,6 @@ const litElementTemplateStructure = ESLintUtils.RuleCreator.withoutDocs({
           });
         }
       },
-      */
     };
   },
 });

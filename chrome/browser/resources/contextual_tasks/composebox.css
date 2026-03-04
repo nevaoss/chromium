@@ -17,8 +17,11 @@
   --composebox-border-radius: 24px;
   --composebox-collapsed-height: 90px;
   --composebox-margin-bottom: 30px;
-  --context-carousel-inline-end-spacing: 24px;
-  --context-carousel-inline-start-spacing: 24px;
+  --context-carousel-inline-end-spacing: 56px;
+  --context-carousel-inline-start-spacing: 20px;
+  --context-carousel-top-position: 20px;
+  --context-top-carousel-bottom-margin: 0;
+  --context-top-carousel-top-margin: 0;
   --composebox-container-height:
     calc(var(--composebox-height) + var(--composebox-dropdown-height)
       + var(--composebox-margin-bottom)
@@ -30,8 +33,6 @@
   --composebox-submit-container-inline-end:
       var(--composebox-last-icon-inline-end);
   --composebox-last-icon-inline-end: 12px;
-  --cr-composebox-file-chip-url-text-size: 11px;
-  --cr-composebox-file-chip-title-text-size: 14px;
   --cr-searchbox-height: 52px;
   --cr-searchbox-min-width: min(calc(100%), 1100px);
   --icon-menu-spacing: 6px;
@@ -121,7 +122,6 @@
 }
 
 #composebox {
-  --composebox-thumbnail-img-chip-size: 44px;
   --expanded-border-radius: var(--composebox-border-radius);
   --input-bottom-spacing: 16px;
   --text-input-left-spacing: 24px;
@@ -151,7 +151,7 @@
 }
 
 #composebox::part(thumbnail) {
-  --thumbnail-size_: 28px;
+  --thumbnail-size_: var(--file-chip-thumbnail-full-size);
   height: var(--thumbnail-size_);
   padding: 0;
   width: var(--thumbnail-size_);
@@ -166,6 +166,12 @@
 #composebox::part(g-container) {
   max-height: 40vh;
   padding: 0;
+}
+
+#composebox::part(input),
+#composebox::part(tool-chip-label),
+#composebox::part(file-thumbnail-title) {
+  font-family: var(--google-sans-font);
 }
 
 #composebox::part(input-container) {
@@ -192,7 +198,7 @@
 
 #composebox[show-file-carousel_]::part(carousel-container) {
   /* Give room for the close button in the top right. */
-  --context-carousel-inline-end-spacing: 62px;
+  --context-carousel-inline-end-spacing: 56px;
 }
 
 #composebox:not([expanding_])[show-file-carousel_]::part(cr-composebox-file-carousel) {
@@ -510,7 +516,7 @@
 :host([is-zero-state]) #contextualTasksSuggestionsContainer::part(match-text-container) {
   border-radius: 4px;
   color: var(--color-composebox-font-dark);
-  font-family: inherit;
+  font-family: var(--google-sans-font);
   font-size: 16px;
   letter-spacing: 1%;
   inset-inline-start: 12px;

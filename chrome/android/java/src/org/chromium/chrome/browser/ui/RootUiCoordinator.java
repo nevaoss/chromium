@@ -36,7 +36,6 @@ import androidx.core.view.WindowInsetsCompat;
 import org.chromium.base.Callback;
 import org.chromium.base.CallbackController;
 import org.chromium.base.DeviceInfo;
-import org.chromium.base.Log;
 import org.chromium.base.TraceEvent;
 import org.chromium.base.lifetime.Destroyable;
 import org.chromium.base.metrics.RecordUserAction;
@@ -95,7 +94,6 @@ import org.chromium.chrome.browser.fullscreen.BrowserControlsManager;
 import org.chromium.chrome.browser.fullscreen.FullscreenBackPressHandler;
 import org.chromium.chrome.browser.fullscreen.FullscreenManager;
 import org.chromium.chrome.browser.fullscreen.FullscreenOptions;
-import org.chromium.chrome.browser.glic.GlicKeyedService;
 import org.chromium.chrome.browser.host_zoom.HostZoomListenerFactory;
 import org.chromium.chrome.browser.image_descriptions.ImageDescriptionsController;
 import org.chromium.chrome.browser.incognito.reauth.IncognitoReauthController;
@@ -122,9 +120,9 @@ import org.chromium.chrome.browser.multiwindow.MultiInstanceManager;
 import org.chromium.chrome.browser.multiwindow.MultiWindowUtils;
 import org.chromium.chrome.browser.ntp_customization.NtpCustomizationUtils;
 import org.chromium.chrome.browser.ntp_customization.edge_to_edge.TopInsetCoordinator;
-import org.chromium.chrome.browser.omnibox.OmniboxActionDelegateImpl;
 import org.chromium.chrome.browser.omnibox.OmniboxChipManager;
 import org.chromium.chrome.browser.omnibox.geo.GeolocationHeader;
+import org.chromium.chrome.browser.omnibox.suggestions.action.OmniboxActionDelegateImpl;
 import org.chromium.chrome.browser.omnibox.voice.VoiceRecognitionHandler;
 import org.chromium.chrome.browser.open_in_app.OpenInAppEntryPoint;
 import org.chromium.chrome.browser.open_in_app.OpenInAppMenuItemProvider;
@@ -288,7 +286,7 @@ public class RootUiCoordinator
     private final MenuOrKeyboardActionController mMenuOrKeyboardActionController;
     protected final ActivityWindowAndroid mWindowAndroid;
     protected final ActivityResultTracker mActivityResultTracker;
-    private final OneshotSupplier<ChromeAndroidTask> mChromeAndroidTaskSupplier;
+    protected final OneshotSupplier<ChromeAndroidTask> mChromeAndroidTaskSupplier;
 
     protected final ActivityTabProvider mActivityTabProvider;
     protected MonotonicObservableSupplier<ShareDelegate> mShareDelegateSupplier;
@@ -1622,26 +1620,6 @@ public class RootUiCoordinator
                     return result != null && result;
                 }
             }
-        } else if (id == R.id.glic_menu_id) {
-            var task = mChromeAndroidTaskSupplier.get();
-            if (task == null) {
-                Log.w(TAG, "Failed to trigger GLIC: ChromeAndroidTask is null.");
-                return false;
-            }
-            Profile profile = mTabModelSelectorSupplier.get().getCurrentModel().getProfile();
-            assert profile != null;
-            long browserWindowPtr = task.getOrCreateNativeBrowserWindowPtr(profile);
-            GlicKeyedService service = new GlicKeyedService();
-            if (service == null) {
-                return false;
-            }
-
-            // TODO(crbug.com/479863299): Create and pass in enum for invocationSource.
-            service.toggleUI(
-                    browserWindowPtr,
-                    assumeNonNull(mProfileSupplier.get()),
-                    /* invocationSource= */ 7);
-            return true;
         }
         return false;
     }

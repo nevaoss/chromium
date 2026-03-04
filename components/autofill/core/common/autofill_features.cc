@@ -393,7 +393,7 @@ BASE_FEATURE(kAutofillDeepLinkAutofillOptions,
              base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_ANDROID)
 
-// If enabled, `GlicFormParsingTracker` will wait up to 1 second
+// If enabled, `FormParsingTracker` will wait up to 1 second
 // for Autofill to finish parsing forms pesent on a given tab before capturing
 // APC. For more context see: go/autofill-actor-mode-implementation
 // TODO(crbug.com/479794574): Convert to killswitch if no regressions are
@@ -421,6 +421,11 @@ BASE_FEATURE(kAutofillDisallowMoreHyphenLikeLabels,
 // disambiguating address and credit card names is used.
 BASE_FEATURE(kAutofillDisambiguateContradictingFieldTypes,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+// When enabled, AndroidAutofillProvider::OnTextFieldDidScroll() will not fire
+// FormFieldData::OnFormFieldDidChange().
+BASE_FEATURE(kAutofillDoNotFireFormFieldChangedOnWebviewScrollEvents,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Controls an ablation study in which autofill for addresses and payment data
 // can be suppressed.
@@ -745,6 +750,12 @@ BASE_FEATURE_PARAM(int,
                    "sampling_rate",
                    10);
 
+// Kill switch: If enabled, ParseFormAsync() calls the parsing callback even if
+// the cache is full before the parsing even starts.
+// TODO(crbug.com/484285907): Clean up after April 10, 2026 (M148 branch point).
+BASE_FEATURE(kAutofillManagerFiresOnAfterFooIfCacheIsFull,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 // When enabled, all behaviours related to the on-device machine learning
 // model for field type predictions will be guarded.
 // TODO(crbug.com/40276177): Remove when launched.
@@ -804,6 +815,11 @@ BASE_FEATURE(kAutofillNewSuggestionGeneration,
 // new form and moving it back to the cache, which reduces the number of members
 // that are copied.
 BASE_FEATURE(kAutofillOptimizeCacheUpdates, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// When enabled, `IsNormalizedNameVariantOf()` uses a linear-time greedy
+// algorithm instead of an exponential one that generates all name variants.
+BASE_FEATURE(kAutofillOptimizeIsNormalizedNameVariantOf,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // If enabled, prefilled country calling codes like "+49" do not prevent
 // autofilling.
@@ -902,6 +918,11 @@ BASE_FEATURE(kAutofillSkipPreFilledFields, base::FEATURE_ENABLED_BY_DEFAULT);
 // TODO(crbug.com/453999673): Clean up when launched.
 BASE_FEATURE(kAutofillSmsOtpCrowdsourcing, base::FEATURE_ENABLED_BY_DEFAULT);
 
+// If enabled, fetch sms otp from gmscore and upload votes for sms otp.
+// TODO(crbug.com/453999673): Clean up when launched.
+BASE_FEATURE(kAutofillSmsOtpCrowdsourcingFetchFromGmscore,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 // If this feature is enabled, the AddressFieldParser does NOT try to parse
 // address lines once it has found a street name and house number or other
 // combinations of fields that indicate that an address form uses structured
@@ -977,6 +998,10 @@ BASE_FEATURE_PARAM(std::string,
 // TODO: crbug.com/444147005 - Clean up after this feature is rolled out.
 BASE_FEATURE(kAutofillUploadManualFallbackFieldsToServer,
              base::FEATURE_ENABLED_BY_DEFAULT);
+
+// Enables the use of the Accessibility Annotator data adapter for Autofill AI.
+BASE_FEATURE(kAutofillUseAccessibilityAnnotator,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables using a custom address model for India, overriding the legacy one.
 BASE_FEATURE(kAutofillUseINAddressModel, base::FEATURE_DISABLED_BY_DEFAULT);

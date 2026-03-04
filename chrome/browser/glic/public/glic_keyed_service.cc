@@ -85,6 +85,11 @@
 #include "chrome/browser/glic/media/glic_media_integration.h"
 #include "chrome/browser/glic/widget/glic_widget.h"
 #include "chrome/browser/glic/widget/glic_window_controller_impl.h"
+
+#endif
+
+#if BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/glic/android/glic_keyed_service_android.h"
 #endif
 
 namespace glic {
@@ -712,9 +717,9 @@ base::CallbackListSubscription GlicKeyedService::AddUserInputSubmittedCallback(
 
 #if !BUILDFLAG(IS_ANDROID)  // Single instance only
 void GlicKeyedService::CaptureRegion(
-    content::WebContents* web_contents,
+    tabs::TabInterface* tab,
     mojo::PendingRemote<mojom::CaptureRegionObserver> observer) {
-  region_capture_controller_->CaptureRegion(web_contents, std::move(observer));
+  region_capture_controller_->CaptureRegion(tab, std::move(observer));
 }
 #endif
 
@@ -956,12 +961,14 @@ void GlicKeyedService::RequestToConfirmNavigation(
 void GlicKeyedService::RequestToShowAutofillSuggestionsDialog(
     actor::TaskId task_id,
     std::vector<autofill::ActorFormFillingRequest> requests,
+    base::WeakPtr<actor::AutofillSelectionDialogEventHandler> event_handler,
     AutofillSuggestionSelectedCallback callback) {
   CHECK(UseDefaultWindowController());
   auto* window_controller_impl =
       static_cast<GlicWindowControllerImpl*>(window_controller_.get());
   window_controller_impl->host().RequestToShowAutofillSuggestionsDialog(
-      task_id, std::move(requests), std::move(callback));
+      task_id, std::move(requests), std::move(event_handler),
+      std::move(callback));
 }
 #endif
 

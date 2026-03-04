@@ -3374,7 +3374,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Net.HttpJob.BytesSent2" units="bytes"
-    expires_after="2026-02-22">
+    expires_after="2026-06-28">
   <owner>ashleynewson@chromium.org</owner>
   <owner>src/android_webview/OWNERS</owner>
   <summary>
@@ -3463,7 +3463,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Net.HttpJob.TotalTime.TLS13.Google" units="ms"
-    expires_after="2026-06-16">
+    expires_after="2026-08-16">
   <owner>bashi@chromium.org</owner>
   <owner>trusty-transport@chromium.org</owner>
   <improvement direction="LOWER_IS_BETTER"/>
@@ -4947,7 +4947,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Net.QuicSession.AcceptChFrameReceivedViaAlps"
-    enum="AcceptChEntries" expires_after="2026-06-14">
+    enum="AcceptChEntries" expires_after="2026-08-16">
   <owner>bnc@chromium.org</owner>
   <owner>src/net/OWNERS</owner>
   <summary>
@@ -6989,7 +6989,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Net.QuicSessionAttempt.CryptoConnectTime.{SuccessOrFailure}"
-    units="ms" expires_after="2026-06-16">
+    units="ms" expires_after="2026-08-16">
   <owner>bashi@chromium.org</owner>
   <owner>blink-network-stack@google.com</owner>
   <summary>
@@ -7253,7 +7253,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Net.RestrictedCookieManager.GetCookiesString.Duration.Subsampled"
-    units="microseconds" expires_after="2026-06-14">
+    units="microseconds" expires_after="2026-08-16">
   <owner>acondor@chromium.org</owner>
   <owner>clank-performance-team@google.com</owner>
   <summary>
@@ -7269,7 +7269,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Net.RestrictedCookieManager.PartitionedCookiesInScript.Subsampled"
-    units="cookies" expires_after="2026-02-22">
+    units="cookies" expires_after="2026-07-22">
   <owner>dylancutler@google.com</owner>
   <owner>src/net/cookies/OWNERS</owner>
   <summary>
@@ -8449,7 +8449,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Net.SSLHandshakeEarlyDataReason"
-    enum="SSLHandshakeEarlyDataReason" expires_after="2026-05-24">
+    enum="SSLHandshakeEarlyDataReason" expires_after="2026-08-16">
   <owner>bashi@chromium.org</owner>
   <owner>trusty-transport@chromium.org</owner>
   <summary>
@@ -8661,7 +8661,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Net.TcpSocketPoolLimitRandomization.Transition.{Action}.{PastState}To{NextState}"
-    units="sockets" expires_after="2026-06-15">
+    units="sockets" expires_after="2026-08-16">
   <owner>arichiv@chromium.org</owner>
   <owner>katabolism-finch@google.com</owner>
   <summary>
@@ -8881,7 +8881,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Net.URLLoader.ProportionOfWritesBlockedByMojo" units="%"
-    expires_after="2026-06-14">
+    expires_after="2026-08-16">
   <owner>yoichio@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
   <improvement direction="LOWER_IS_BETTER"/>

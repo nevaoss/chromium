@@ -374,7 +374,6 @@
 <translation id="2306265833370324042">Показать сведения: <ph name="SEARCH_ENGINE_NAME" /></translation>
 <translation id="2309265394777270359">Закрыть вкладку</translation>
 <translation id="2311077293164383652">Закрыть закрепленную вкладку</translation>
-<translation id="2313392466694008052">Изменить изображение с помощью Gemini</translation>
 <translation id="2316129865977710310">Нет, спасибо</translation>
 <translation id="2320166752086256636">Скрыть клавиатуру</translation>
 <translation id="2321086116217818302">Подготовка паролей…</translation>
@@ -1787,6 +1786,7 @@
 <translation id="7506817096924591340"><ph name="FILENAME" /> (<ph name="FILESIZE" />).</translation>
 <translation id="7508728395076009983">Чтобы закреплять вкладки инкогнито, настройте Touch ID, Face ID или код доступа.</translation>
 <translation id="750886945254958667">Вы сможете пользоваться ей в дальнейшем и добавлять вкладки. Если группа больше не нужна, выйдите из нее.</translation>
+<translation id="7511727374778217603">{COUNT,plural, =1{Добавить можно не более 1 вкладки.}one{Добавить можно не более {COUNT} вкладки.}few{Добавить можно не более {COUNT} вкладок.}many{Добавить можно не более {COUNT} вкладок.}other{Добавить можно не более {COUNT} вкладки.}}</translation>
 <translation id="7512909159512473473">Ввести кодовую фразу</translation>
 <translation id="7514365320538308">Скачать</translation>
 <translation id="7514530647142300459">Продолжайте использовать пароли в аккаунте <ph name="EMAIL" />.</translation>
@@ -1929,7 +1929,7 @@
 <translation id="7987685713885608670">Чтобы надежнее защитить пароли, включите их шифрование на устройстве перед сохранением в Google Менеджере паролей.</translation>
 <translation id="798991908416757345">Группы вкладок недоступны</translation>
 <translation id="7993170188789685695">Чтобы закрыть уведомление, нажмите дважды.</translation>
-<translation id="7996239959906074962">Настройка</translation>
+<translation id="7996239959906074962">Настроить…</translation>
 <translation id="8001561107130904792">Доступ к контенту страниц</translation>
 <translation id="800361585186029508">Введенные URL будут открываться в Google Chrome.</translation>
 <translation id="8005666035647241369">В Google Менеджере паролей на этом устройстве</translation>
@@ -2060,6 +2060,7 @@
 <translation id="8439758443371991593">Скрыть действие "Добавить в список для чтения"</translation>
 <translation id="8443986842926457191">URL должен быть не длиннее 2048 символов.</translation>
 <translation id="8449869326050867919">Доступ к паролю предоставлен</translation>
+<translation id="8473815223723723001">Изменить изображение с помощью Gemini</translation>
 <translation id="8473863474539038330">Адреса и другие данные</translation>
 <translation id="8474378002946546633">Разрешить оповещения</translation>
 <translation id="8477178913400731244">Удалить данные</translation>
@@ -2237,6 +2238,7 @@
 <translation id="9055291197094969722">Для удобства упорядочивайте открытые вкладки, добавляя их в группы.</translation>
 <translation id="9055580485132823283">Вы собираетесь удалить пароли ({password_count}) и ключи доступа ({passkey_count}), а также список сайтов и приложений, данные для входа в которые не сохраняются. Аккаунты, созданные для сайтов и приложений, не будут удалены.</translation>
 <translation id="9057030985451135243">Узнайте о группах вкладок с общим доступом</translation>
+<translation id="9064106978262828592">Не удалось экспортировать данные.</translation>
 <translation id="9065203028668620118">Изменить</translation>
 <translation id="9066097352053395362">Скрыть действие "Изменить закладку"</translation>
 <translation id="9070824521421603770">Вы выйдете из аккаунта, а вкладки будут закрыты</translation>

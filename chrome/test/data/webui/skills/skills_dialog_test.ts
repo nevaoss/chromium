@@ -215,7 +215,7 @@ suite('SkillsDialogAppPage', function() {
     assertEquals(SkillSource.kDerivedFromFirstParty, submittedSkill.source);
   });
 
-  test('SubmitsEditedSkill', async function() {
+  test('EditUserCreatedSkill', async function() {
     const userCreatedSkill: Skill = {
       id: 'user-created-skill',
       sourceSkillId: '',
@@ -242,6 +242,35 @@ suite('SkillsDialogAppPage', function() {
     assertEquals(editedName, submittedSkill.name);
     assertEquals(editedPrompt, submittedSkill.prompt);
     assertEquals(SkillSource.kUserCreated, submittedSkill.source);
+  });
+
+  test('EditDerivedFromFirstPartySkill', async function() {
+    const derivedFromFirstPartySkill: Skill = {
+      id: 'derived-from-first-party-skill',
+      sourceSkillId: 'first-party-skill',
+      name: 'test skill',
+      icon: '',
+      prompt: 'test prompt',
+      description: 'test description',
+      source: SkillSource.kDerivedFromFirstParty,
+      creationTime: {internalValue: 0n},
+      lastUpdateTime: {internalValue: 0n},
+    };
+    await setupDialogWithSkill(derivedFromFirstPartySkill);
+
+    // Edit the fields.
+    const editedName = 'edited skill';
+    const editedPrompt = 'edited prompt';
+    await updateName(editedName);
+    await updateInstructions(editedPrompt);
+
+    // Click the save button and verify the proxy call.
+    skillsDialogApp.$.saveButton.click();
+    const submittedSkill = await dialogHandler.whenCalled('submitSkill');
+    assertEquals(derivedFromFirstPartySkill.id, submittedSkill.id);
+    assertEquals(editedName, submittedSkill.name);
+    assertEquals(editedPrompt, submittedSkill.prompt);
+    assertEquals(SkillSource.kDerivedFromFirstParty, submittedSkill.source);
   });
 
   test('EmojiTriggerOpensPicker', async function() {
@@ -374,6 +403,48 @@ suite('SkillsDialogAppPage', function() {
 
     assertTrue(skillsDialogApp.$.iconUndo.disabled);
     assertTrue(skillsDialogApp.$.iconRedo.disabled);
+  });
+
+  test('RefineUsesOriginalPromptForSubsequentRefines', async function() {
+    // 1. Set the initial text
+    const originalText = 'Original Prompt';
+    await updateInstructions(originalText);
+
+    // 2. Perform the first refinement
+    const firstRefinedText = 'AI Refined Prompt 1';
+    dialogHandler.setResultFor(
+        'refineSkill',
+        Promise.resolve({refinedSkill: {prompt: firstRefinedText}}));
+
+    skillsDialogApp.$.iconRefine.click();
+
+    let calledSkill = await dialogHandler.whenCalled('refineSkill');
+    assertEquals(originalText, calledSkill.prompt);
+
+    await microtasksFinished();
+    assertEquals(
+        firstRefinedText,
+        skillsDialogApp.shadowRoot
+            .querySelector<HTMLTextAreaElement>('#instructionsText')!.value);
+
+    dialogHandler.resetResolver('refineSkill');
+
+    // 3. Perform a second refinement immediately after (without manual edits)
+    const secondRefinedText = 'AI Refined Prompt 2';
+    dialogHandler.setResultFor(
+        'refineSkill',
+        Promise.resolve({refinedSkill: {prompt: secondRefinedText}}));
+
+    skillsDialogApp.$.iconRefine.click();
+
+    calledSkill = await dialogHandler.whenCalled('refineSkill');
+    assertEquals(originalText, calledSkill.prompt);
+
+    await microtasksFinished();
+    assertEquals(
+        secondRefinedText,
+        skillsDialogApp.shadowRoot
+            .querySelector<HTMLTextAreaElement>('#instructionsText')!.value);
   });
 
   test('DisplaysSignedInEmail', async function() {
@@ -677,5 +748,76 @@ suite('SkillsDialogAppPage', function() {
     assertTrue(!!nameInputAfter);
     assertEquals(null, loaderAfter);
     assertEquals('Done', (nameInputAfter as CrInputElement).value);
+  });
+
+  test('AutoPopulateTimesOut', async function() {
+    // 1. Setup a hanging promise for refineSkill
+    const resolver = new PromiseResolver<{refinedSkill: Skill}>();
+    dialogHandler.refineSkill = () => resolver.promise;
+
+    const newSkill: Skill = {
+      id: '',
+      sourceSkillId: '',
+      name: '',
+      icon: '⚡',
+      prompt: 'Trigger auto-pop',
+      description: '',
+      source: SkillSource.kUserCreated,
+      creationTime: {internalValue: 0n},
+      lastUpdateTime: {internalValue: 0n},
+    };
+
+    // 2. Mount
+    await setupDialogWithSkill(newSkill);
+
+    // 3. Assert Loading State
+    const loader =
+        skillsDialogApp.shadowRoot.querySelector('#nameLoaderContainer');
+    assertTrue(!!loader);
+    assertTrue(testWindowProxy.hasScheduledTimeout());
+
+    // 4. Trigger Timeout
+    testWindowProxy.runTimeout();
+    await microtasksFinished();
+
+    // 5. Assert "Silently Fail" / Normal UI State (No Error)
+    const loaderAfter =
+        skillsDialogApp.shadowRoot.querySelector('#nameLoaderContainer');
+    assertEquals(null, loaderAfter);
+
+    const nameInput = skillsDialogApp.shadowRoot.querySelector('#nameText');
+    assertTrue(!!nameInput);
+
+    // Values should remain defaults
+    assertEquals('', (nameInput as CrInputElement).value);
+    assertEquals('⚡', skillsDialogApp.$.emojiTrigger.value);
+  });
+
+  test('AutoPopulateSkippedWhenNameIsNotEmpty', async function() {
+    // 1. Define a skill that looks like a "new" skill (no ID) so it triggers
+    // the "Add" flow, but give it a name to test the guard clause.
+    const preNamedSkill: Skill = {
+      id: '',
+      sourceSkillId: '',
+      name: 'Pre-existing Name',
+      icon: '⚡',
+      prompt: 'Instructions triggering auto-pop logic',
+      source: SkillSource.kUserCreated,
+      description: '',
+      creationTime: {internalValue: 0n},
+      lastUpdateTime: {internalValue: 0n},
+    };
+
+    // 2. Mount the component.
+    await setupDialogWithSkill(preNamedSkill);
+
+    // 3. Verify that refineSkill was NEVER called.
+    assertEquals(0, dialogHandler.getCallCount('refineSkill'));
+
+    // 4. Verify no loading state is shown and name remains unchanged.
+    const loader =
+        skillsDialogApp.shadowRoot.querySelector('#nameLoaderContainer');
+    assertEquals(null, loader);
+    assertEquals('Pre-existing Name', skillsDialogApp.$.nameText.value);
   });
 });

@@ -112,7 +112,7 @@ class ReadAnythingUntrustedPageHandler::DistillerDelegate
     // observer of previous request and allow it to observe new request.
     viewer_handle_.reset();
     const GURL& url = contents->GetLastCommittedURL();
-    viewer_handle_ = service->ViewUrl(
+    viewer_handle_ = service->ViewUrlIgnoreCache(
         this,
         service->CreateDefaultDistillerPageWithHandle(
             std::make_unique<dom_distiller::SourcePageHandleWebContents>(
@@ -1338,11 +1338,13 @@ void ReadAnythingUntrustedPageHandler::ProcessDistilledArticle(
     }
     dom_distiller_content_ = full_html;
 
-    if (dom_distiller_title() && dom_distiller_content()) {
+    // If distillation successfully produced content, update the distillation
+    // state and notify the renderer.
+    if (dom_distiller_content()) {
       page_->OnReadabilityDistillationStateChanged(
           read_anything::mojom::ReadAnythingDistillationState::
               kDistillationWithContent);
-      page_->UpdateContent(dom_distiller_title().value(),
+      page_->UpdateContent(dom_distiller_title().value_or(""),
                            dom_distiller_content().value());
     }
   } else {

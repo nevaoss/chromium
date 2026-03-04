@@ -36,6 +36,7 @@ export function getHtml(this: ContextualTasksComposeboxElement) {
       ` : ''}
       <cr-composebox
           id="composebox"
+          style="${this.getComposeboxBoundsStyles_()}"
           ?autofocus="${false}"
           carousel-on-top_
           entrypoint-name="ContextualTasks"
@@ -45,6 +46,7 @@ export function getHtml(this: ContextualTasksComposeboxElement) {
           .disableCaretColorAnimation="${true}"
           .isInCoBrowsingZeroState="${this.isZeroState}"
           .lensButtonTriggersOverlay="${true}"
+          .enableCarouselScrolling="${true}"
           @result-changed="${this.onSuggestionsResultReceived_}">
       </cr-composebox>
     </div>

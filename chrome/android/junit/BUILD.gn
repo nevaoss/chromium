@@ -113,6 +113,7 @@ if (is_android) {
       "//chrome/browser/device:java",
       "//chrome/browser/device_reauth/android:java",
       "//chrome/browser/download/android:java",
+      "//chrome/browser/educational_tip:java",
       "//chrome/browser/enterprise/util:java",
       "//chrome/browser/feature_engagement:java",
       "//chrome/browser/feed/android:java",
@@ -445,6 +446,7 @@ if (is_android) {
       "src/org/chromium/chrome/browser/app/tab_activity_glue/ReparentingTaskUnitTest.java",
       "src/org/chromium/chrome/browser/app/tab_activity_glue/TabReparentingControllerTest.java",
       "src/org/chromium/chrome/browser/app/tabmodel/PersistentStoreMigrationManagerImplUnitTest.java",
+      "src/org/chromium/chrome/browser/app/tabmodel/TabCountTrackerUnitTest.java",
       "src/org/chromium/chrome/browser/app/tabmodel/TabModelOrchestratorUnitTest.java",
       "src/org/chromium/chrome/browser/app/tabmodel/TabbedModeTabModelOrchestratorUnitTest.java",
     ]
@@ -875,6 +877,7 @@ if (is_android) {
       "src/org/chromium/chrome/browser/ntp/IncognitoNewTabPageUnitTest.java",
       "src/org/chromium/chrome/browser/ntp/IncognitoNtpMetricsUnitTest.java",
       "src/org/chromium/chrome/browser/ntp/IncognitoNtpOmniboxAutofocusManagerUnitTest.java",
+      "src/org/chromium/chrome/browser/ntp/IncognitoNtpOmniboxAutofocusTrackerUnitTest.java",
       "src/org/chromium/chrome/browser/ntp/NewTabPageLocationPolicyManagerUnitTest.java",
       "src/org/chromium/chrome/browser/ntp/NewTabPageUtilUnitTest.java",
       "src/org/chromium/chrome/browser/ntp/RecentTabsPageUnitTest.java",
@@ -923,13 +926,6 @@ if (is_android) {
       "src/org/chromium/chrome/browser/omaha/VersionNumberTest.java",
       "src/org/chromium/chrome/browser/omaha/metrics/UpdateSuccessMetricsTest.java",
     ]
-
-    deps = [ ":chrome_junit_tests_helper" ]
-  }
-
-  robolectric_library(
-      "chrome_junit_tests_org.chromium.chrome.browser.omnibox") {
-    sources = [ "//chrome/android/java/src/org/chromium/chrome/browser/omnibox/OmniboxActionDelegateImplUnitTest.java" ]
 
     deps = [ ":chrome_junit_tests_helper" ]
   }
@@ -988,7 +984,6 @@ if (is_android) {
       "src/org/chromium/chrome/browser/privacy_sandbox/CctHandlerTest.java",
       "src/org/chromium/chrome/browser/privacy_sandbox/FakeCookieControlsBridge.java",
       "src/org/chromium/chrome/browser/privacy_sandbox/PrivacySandbox3pcdRollbackMessageControllerTest.java",
-      "src/org/chromium/chrome/browser/privacy_sandbox/PrivacySandboxSurveyControllerTest.java",
     ]
 
     deps = [ ":chrome_junit_tests_helper" ]
@@ -1418,6 +1413,7 @@ if (is_android) {
       "src/org/chromium/chrome/browser/feed/FeedActionDelegateImplTest.java",
       "src/org/chromium/chrome/browser/feedback/ChromeFeedbackCollectorUnitTest.java",
       "src/org/chromium/chrome/browser/feedback/FeedFeedbackCollectorTest.java",
+      "src/org/chromium/chrome/browser/feedback/UploadedCrashIdsFeedbackSourceTest.java",
       "src/org/chromium/chrome/browser/findinpage/FindToolbarManagerTest.java",
       "src/org/chromium/chrome/browser/flags/BadFlagsSnackbarManagerTest.java",
       "src/org/chromium/chrome/browser/fonts/FontPreloaderUnitTest.java",

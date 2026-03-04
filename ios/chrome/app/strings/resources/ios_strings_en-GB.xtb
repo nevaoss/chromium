@@ -125,6 +125,7 @@
 <translation id="1436671784520050284">Continue setup</translation>
 <translation id="143681031165817424">Address saved only on this device</translation>
 <translation id="1445276840641906250">All your tabs in one browser</translation>
+<translation id="1447564161241938558">Import passwords and passkeys is disabled by your administrator</translation>
 <translation id="1450170672351507823">Standard protection is on. For even more security, use enhanced protection.</translation>
 <translation id="1455660774629812862">Don't hide</translation>
 <translation id="1456545332132818232">Product reviews on <ph name="PRODUCT_NAME" />, <ph name="STARS" /> out of <ph name="MAX_STARS" />, <ph name="DOMAIN" /></translation>
@@ -373,7 +374,6 @@
 <translation id="2306265833370324042">Show <ph name="SEARCH_ENGINE_NAME" /> details</translation>
 <translation id="2309265394777270359">Close tab</translation>
 <translation id="2311077293164383652">Close pinned tab</translation>
-<translation id="2313392466694008052">Edit image with Gemini</translation>
 <translation id="2316129865977710310">No, thanks</translation>
 <translation id="2320166752086256636">Hide keyboard</translation>
 <translation id="2321086116217818302">Preparing passwords…</translation>
@@ -1786,6 +1786,7 @@ Handoff must also be enabled in the General section of Settings, and your device
 <translation id="7506817096924591340"><ph name="FILENAME" /> (<ph name="FILESIZE" />).</translation>
 <translation id="7508728395076009983">To lock your incognito tabs, set up touch ID, face ID or a passcode.</translation>
 <translation id="750886945254958667">Keep this group to add tabs later, or leave it if you no longer want access to it</translation>
+<translation id="7511727374778217603">{COUNT,plural, =1{Add up to 1 tab}other{Add up to {COUNT} tabs}}</translation>
 <translation id="7512909159512473473">Enter passphrase…</translation>
 <translation id="7514365320538308">Download</translation>
 <translation id="7514530647142300459">Keep using the passwords in your Google Account <ph name="EMAIL" /></translation>
@@ -2236,6 +2237,7 @@ Handoff must also be enabled in the General section of Settings, and your device
 <translation id="9055291197094969722">Create tab groups to organise your open tabs and stay productive</translation>
 <translation id="9055580485132823283">You are about to delete {password_count} passwords, {passkey_count} passkeys and the list of sites and apps for which you chose to never save sign-in info. Any account that you created for sites and apps won't be deleted.</translation>
 <translation id="9057030985451135243">Learn about shared tab groups</translation>
+<translation id="9064106978262828592">Trouble exporting your data</translation>
 <translation id="9065203028668620118">Edit</translation>
 <translation id="9066097352053395362">Hide Edit bookmark</translation>
 <translation id="9070824521421603770">You'll be signed out and tabs will be closed</translation>

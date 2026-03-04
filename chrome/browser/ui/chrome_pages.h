@@ -148,7 +148,6 @@ void ShowPaymentMethods(BrowserWindowInterface* bwi);
 void ShowContactInfo(BrowserWindowInterface* bwi);
 void ShowIdentityDocs(BrowserWindowInterface* bwi);
 void ShowTravel(BrowserWindowInterface* bwi);
-void ShowAutofill(BrowserWindowInterface* bwi);
 void ShowAllSitesSettingsFilteredByRwsOwner(
     Browser* browser,
     const std::string& rws_owner_host_name);
@@ -196,8 +195,6 @@ void ShowWebAppSettings(Profile* profile,
                         const std::string& app_id,
                         web_app::AppSettingsPageEntryPoint entry_point);
 #endif
-
-void ShowAllComparisonTables(Browser* browser);
 
 }  // namespace chrome
 

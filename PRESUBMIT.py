@@ -282,16 +282,17 @@ _BANNED_JAVA_FUNCTIONS: Sequence[BanRule] = (
          ),
         explanation=
         ('Usage of IS_DESKTOP_ANDROID build flag or DeviceInfo.isDesktop() '
-         'is discouraged. Use system affordances to determine feature '
-         'availablility. Refer to https://chromium.googlesource.com/chromium/src/+/HEAD/docs/ui/android/device_form_factor.md for guidelines. '
+         'is discouraged. Use system affordances (see guidelines link below) to determine feature '
+         'availablility. '
          'To request an exception, file a bug at '
          'https://b.corp.google.com/issues/new?component=1753515&template=2172655'
-         'Once approved, use centralized util DeviceInfo.isDesktop() '
+         ' . Once approved, use centralized util DeviceInfo.isDesktop() '
          'instead of direct build flag or PackageManager.FEATURE_PC checks. '
          'Allowances may be granted to only the directories below: '
          '[build/, chrome/, components/, extensions/, infra/, tools/] '
          'Note: in particular we need to avoid components shared with '
-         'WebView.', ),
+         'WebView. Refer to https://chromium.googlesource.com/chromium/src/+/HEAD/docs/ui/android/device_form_factor.md for guidelines. ',
+         ),
         treat_as_error=False,
         surface_as_gerrit_lint=True,
     ),
@@ -584,6 +585,19 @@ _BANNED_CPP_FUNCTIONS: Sequence[BanRule] = (
          ),
         False,
         (),
+    ),
+    BanRule(
+        r'/\bMemoryPressureListener\b',
+        (
+            'base::MemoryPressureListener is deprecated. Use base::MemoryConsumer ',
+            'instead.',
+        ),
+        False,
+        (
+            r'^base/memory/memory_pressure_listener\.(cc|h)$',
+            r'^base/memory/memory_pressure_listener_unittest\.cc$',
+            r'^base/memory/mock_memory_pressure_listener\.(cc|h)$',
+        ),
     ),
     BanRule(
         r'/\b(?!(Sequenced|SingleThread))\w*TaskRunner::(GetCurrentDefault|CurrentDefaultHandle)',
@@ -947,7 +961,7 @@ _BANNED_CPP_FUNCTIONS: Sequence[BanRule] = (
             r'base/allocator/partition_allocator/src/partition_alloc/shim/early_zone_registration_utils_apple.h',
 
             # Needed to use QUICHE API.
-            r'components/legion/phosphor/.*',
+            r'components/private_ai/phosphor/.*',
             r'net/third_party/quiche/overrides/quiche_platform_impl/quiche_stack_trace_impl\.*',
             r'services/network/web_transport\.cc',
 
@@ -4980,7 +4994,6 @@ def _CheckAndroidCrLogUsage(input_api, output_api):
     tag_length_errors = []
     tag_errors = []
     tag_with_dot_errors = []
-    util_log_errors = []
 
     for f in input_api.AffectedSourceFiles(sources):
         file_content = input_api.ReadFile(f)
@@ -5002,12 +5015,6 @@ def _CheckAndroidCrLogUsage(input_api, output_api):
                     # Make sure it uses "TAG"
                     if not match.group('tag') == 'TAG':
                         tag_errors.append('%s:%d' % (f.LocalPath(), line_num))
-        else:
-            # Report non cr Log function calls in changed lines
-            for line_num, line in f.ChangedContents():
-                if (log_call_pattern.search(line)
-                        or has_some_log_import_pattern.search(line)):
-                    util_log_errors.append('%s:%d' % (f.LocalPath(), line_num))
 
         # Per file checks
         if has_modified_logs:
@@ -5041,12 +5048,6 @@ def _CheckAndroidCrLogUsage(input_api, output_api):
             output_api.PresubmitPromptWarning(
                 'Please use a variable named "TAG" for your log tags.\n' +
                 REF_MSG, tag_errors))
-
-    if util_log_errors:
-        results.append(
-            output_api.PresubmitPromptWarning(
-                'Please use org.chromium.base.Log for new logs.\n' + REF_MSG,
-                util_log_errors))
 
     if tag_with_dot_errors:
         results.append(
@@ -7639,6 +7640,8 @@ def CheckAndroidTestAnnotations(input_api, output_api):
             files_to_check=[r'.*Test\.java$'])
 
     for f in input_api.AffectedSourceFiles(_FilterFile):
+        if f.Action() != 'A':
+            continue
         batch_matched = None
         do_not_batch_matched = None
         is_instrumentation_test = True
@@ -7682,12 +7685,10 @@ def CheckAndroidTestAnnotations(input_api, output_api):
 
     if missing_annotation_errors:
         results.append(
-            output_api.PresubmitPromptWarning(
+            output_api.PresubmitError(
                 """
-A change was made to an on-device test that has neither been annotated with
-@Batch nor @DoNotBatch. If this is a new test, please add the annotation. If
-this is an existing test, please consider adding it if you are sufficiently
-familiar with the test (but do so as a separate change).
+An on-device test has been added that has neither been annotated with @Batch
+nor @DoNotBatch. Please add the annotation.
 
 See https://source.chromium.org/chromium/chromium/src/+/main:docs/testing/batching_instrumentation_tests.md
 """, missing_annotation_errors))

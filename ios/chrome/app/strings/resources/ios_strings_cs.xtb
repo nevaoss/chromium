@@ -125,6 +125,7 @@
 <translation id="1436671784520050284">Pokračovat v nastavování</translation>
 <translation id="143681031165817424">Adresa uložená pouze v tomto zařízení</translation>
 <translation id="1445276840641906250">Všechny vaše karty v jednom prohlížeči</translation>
+<translation id="1447564161241938558">Administrátor import hesel a přístupových klíčů zakázal</translation>
 <translation id="1450170672351507823">Je zapnutá standardní ochrana. Ještě vyšší zabezpečení poskytuje Pokročilá ochrana.</translation>
 <translation id="1455660774629812862">Neskrývat</translation>
 <translation id="1456545332132818232">Recenze produktu <ph name="PRODUCT_NAME" />, <ph name="STARS" /> z <ph name="MAX_STARS" />, <ph name="DOMAIN" /></translation>
@@ -373,7 +374,6 @@
 <translation id="2306265833370324042">Zobrazit podrobnosti vyhledávače <ph name="SEARCH_ENGINE_NAME" /></translation>
 <translation id="2309265394777270359">Zavřít kartu</translation>
 <translation id="2311077293164383652">Zavřít připnutou kartu</translation>
-<translation id="2313392466694008052">Úprava obrázku pomocí Gemini</translation>
 <translation id="2316129865977710310">Ne, děkuji</translation>
 <translation id="2320166752086256636">Skrýt klávesnici</translation>
 <translation id="2321086116217818302">Příprava hesel…</translation>
@@ -1786,6 +1786,7 @@ Funkce Handoff musí být povolena také v Nastavení v sekci Obecné a zaříze
 <translation id="7506817096924591340"><ph name="FILENAME" /> (<ph name="FILESIZE" />).</translation>
 <translation id="7508728395076009983">Pokud chcete uzamknout anonymní karty, nastavte Touch ID, Face ID nebo heslo.</translation>
 <translation id="750886945254958667">Skupinu můžete zachovat, abyste do ní mohli přidat karty později, nebo ji můžete opustit, pokud k ní už nechcete mít přístup.</translation>
+<translation id="7511727374778217603">{COUNT,plural, =1{Přidejte maximálně 1 kartu}few{Přidejte maximálně {COUNT} karty}many{Přidejte maximálně {COUNT} karty}other{Přidejte maximálně {COUNT} karet}}</translation>
 <translation id="7512909159512473473">Zadat heslovou frázi…</translation>
 <translation id="7514365320538308">Stáhnout</translation>
 <translation id="7514530647142300459">Pokračujte v používání hesel v účtu Google <ph name="EMAIL" /></translation>
@@ -2059,6 +2060,7 @@ Funkce Handoff musí být povolena také v Nastavení v sekci Obecné a zaříze
 <translation id="8439758443371991593">Skrýt možnost Přidat do seznamu četby</translation>
 <translation id="8443986842926457191">Adresa URL je delší než 2048 znaků.</translation>
 <translation id="8449869326050867919">Heslo bylo sdíleno</translation>
+<translation id="8473815223723723001">Upravit obrázek pomocí Gemini</translation>
 <translation id="8473863474539038330">Adresy a další</translation>
 <translation id="8474378002946546633">Povolit oznámení</translation>
 <translation id="8477178913400731244">Vymazat data</translation>
@@ -2236,6 +2238,7 @@ Funkce Handoff musí být povolena také v Nastavení v sekci Obecné a zaříze
 <translation id="9055291197094969722">Uspořádejte si otevřené karty vytvořením skupin karet, abyste zůstali produktivní</translation>
 <translation id="9055580485132823283">Chystáte se smazat hesla ({password_count}), přístupové klíče ({passkey_count}) a seznam webů a aplikací, pro které jste ukládání přihlašovacích údajů zakázali. Účty vytvořené pro weby a aplikace se nesmažou.</translation>
 <translation id="9057030985451135243">Další informace o sdílených skupinách karet</translation>
+<translation id="9064106978262828592">Při exportu dat došlo k potížím</translation>
 <translation id="9065203028668620118">Upravit</translation>
 <translation id="9066097352053395362">Skrýt možnost Upravit záložku</translation>
 <translation id="9070824521421603770">Budete odhlášeni a zavřou se karty</translation>

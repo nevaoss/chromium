@@ -125,6 +125,7 @@
 <translation id="1436671784520050284">Halda uppsetningu áfram</translation>
 <translation id="143681031165817424">Heimilisfang er aðeins vistað á þessu tæki</translation>
 <translation id="1445276840641906250">Allir fliparnir þínir í einum vafra</translation>
+<translation id="1447564161241938558">Stjórnandinn þinn hefur slökkt á innflutningi aðgangsorða og aðgangslykla</translation>
 <translation id="1450170672351507823">Kveikt er á hefðbundinni vörn. Þú getur aukið öryggið með því að nota aukna vörn.</translation>
 <translation id="1455660774629812862">Ekki fela</translation>
 <translation id="1456545332132818232">Umsagnir um <ph name="PRODUCT_NAME" />, <ph name="STARS" /> af <ph name="MAX_STARS" />, <ph name="DOMAIN" /></translation>
@@ -373,7 +374,6 @@
 <translation id="2306265833370324042">Sýna upplýsingar um <ph name="SEARCH_ENGINE_NAME" /></translation>
 <translation id="2309265394777270359">Loka flipa</translation>
 <translation id="2311077293164383652">Loka festum flipa</translation>
-<translation id="2313392466694008052">Breyta mynd með Gemini</translation>
 <translation id="2316129865977710310">Nei, takk</translation>
 <translation id="2320166752086256636">Fela lyklaborð</translation>
 <translation id="2321086116217818302">Undirbýr aðgangsorð…</translation>
@@ -1786,6 +1786,7 @@ Einnig þarf að vera kveikt á Handoff í hlutanum General í Settings og tæki
 <translation id="7506817096924591340"><ph name="FILENAME" /> (<ph name="FILESIZE" />).</translation>
 <translation id="7508728395076009983">Settu upp snertiauðkenni, andlitskennsl eða aðgangskóða til að læsa huliðsflipunum þínum.</translation>
 <translation id="750886945254958667">Haltu hópnum ef þú vilt bæta flipum við síðar eða yfirgefðu hann ef þú vilt ekki hafa aðgang að honum lengur.</translation>
+<translation id="7511727374778217603">{COUNT,plural, =1{Bættu við allt að einum flipa}one{Bættu allt að {COUNT} flipa við}other{Bættu allt að {COUNT} flipum við}}</translation>
 <translation id="7512909159512473473">Slá inn aðgangsorð…</translation>
 <translation id="7514365320538308">Sækja</translation>
 <translation id="7514530647142300459">Haltu áfram að nota aðgangsorðin á Google-reikningnum þínum <ph name="EMAIL" /></translation>
@@ -2059,6 +2060,7 @@ Einnig þarf að vera kveikt á Handoff í hlutanum General í Settings og tæki
 <translation id="8439758443371991593">Fela „Bæta við leslista“</translation>
 <translation id="8443986842926457191">Vefslóð er lengri en 2048 stafir</translation>
 <translation id="8449869326050867919">Aðgangsorði deilt</translation>
+<translation id="8473815223723723001">Breyta mynd með Gemini</translation>
 <translation id="8473863474539038330">Heimilisföng og fleira</translation>
 <translation id="8474378002946546633">Leyfa tilkynningar</translation>
 <translation id="8477178913400731244">Eyða gögnum</translation>
@@ -2236,6 +2238,7 @@ Einnig þarf að vera kveikt á Handoff í hlutanum General í Settings og tæki
 <translation id="9055291197094969722">Búðu til flipahópa til að flokka opnu flipana þína og afkasta meiru</translation>
 <translation id="9055580485132823283">Þú ert í þann mund að fara að eyða {password_count} aðgangsorðum, {passkey_count} aðgangslyklum og listanum yfir vefsvæðin og forritin sem þú valdir að þurfa aldrei að skrá þig inn á/í. Engum reikningum sem þú hefur búið til á vefsvæðum eða í forritum verður eytt.</translation>
 <translation id="9057030985451135243">Nánar um sameiginlega flipahópa</translation>
+<translation id="9064106978262828592">Vandamál kom upp við að flytja út gögnin þín</translation>
 <translation id="9065203028668620118">Breyta</translation>
 <translation id="9066097352053395362">Fela „Breyta bókamerki“</translation>
 <translation id="9070824521421603770">Þú verður skráð(ur) út og flipum verður lokað</translation>

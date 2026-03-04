@@ -213,7 +213,6 @@ import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
 import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
 import org.chromium.chrome.browser.preferences.Pref;
 import org.chromium.chrome.browser.price_change.PriceChangeModuleBuilder;
-import org.chromium.chrome.browser.privacy_sandbox.PrivacySandboxSurveyController;
 import org.chromium.chrome.browser.profiles.OtrProfileId;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.profiles.ProfileManager;
@@ -280,6 +279,7 @@ import org.chromium.chrome.browser.tabmodel.TabGroupColorUtils;
 import org.chromium.chrome.browser.tabmodel.TabGroupMetadata;
 import org.chromium.chrome.browser.tabmodel.TabGroupModelFilter;
 import org.chromium.chrome.browser.tabmodel.TabGroupUtils;
+import org.chromium.chrome.browser.tabmodel.TabList;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.tabmodel.TabModelSelectorBase;
@@ -2926,8 +2926,11 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
         }
         boolean isTabInGroup = tab.getTabGroupId() != null;
 
-        mMultiInstanceManager.moveTabsToWindow(
-                this, Collections.singletonList(tab), /* atIndex= */ 0);
+        mMultiInstanceManager.moveTabsToWindowByIdChecked(
+                mWindowId,
+                Collections.singletonList(tab),
+                /* destTabIndex= */ 0,
+                /* destGroupTabId= */ TabList.INVALID_TAB_INDEX);
 
         if (isTabInGroup) RecordUserAction.record("MobileToolbarReorderTab.TabRemovedFromGroup");
         RecordHistogram.recordBooleanHistogram(HISTOGRAM_DRAGGED_TAB_OPENED_NEW_WINDOW, true);
@@ -2959,7 +2962,11 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
             tabs.add(tab);
         }
 
-        mMultiInstanceManager.moveTabsToWindow(this, tabs, /* atIndex= */ 0);
+        mMultiInstanceManager.moveTabsToWindowByIdChecked(
+                mWindowId,
+                tabs,
+                /* destTabIndex= */ 0,
+                /* destGroupTabId= */ TabList.INVALID_TAB_INDEX);
 
         DragDropMetricUtils.recordDragDropType(
                 ChromeDragDropUtils.getDragDropTypeFromIntent(intent),
@@ -2981,7 +2988,8 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
 
         // The metadata was attached as part of a drag and drop operation, so detach the target
         // group and reparent them to this instance now.
-        mMultiInstanceManager.moveTabGroupToWindow(this, tabGroupMetadata, /* atIndex= */ 0);
+        mMultiInstanceManager.moveTabGroupToWindowByIdChecked(
+                mWindowId, tabGroupMetadata, /* destTabIndex= */ 0);
         DragDropMetricUtils.recordDragDropType(
                 ChromeDragDropUtils.getDragDropTypeFromIntent(intent),
                 AppHeaderUtils.isAppInDesktopWindow(
@@ -3702,14 +3710,6 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
         ChromeSurveyController.initialize(
                 mTabModelSelector, getLifecycleDispatcher(), activity, messageDispatcher, profile);
 
-        PrivacySandboxSurveyController.initialize(
-                mTabModelSelector,
-                getLifecycleDispatcher(),
-                activity,
-                messageDispatcher,
-                getActivityTabProvider(),
-                profile);
-
         SigninSurveyController.initialize(
                 profile, mTabModelSelector, getLifecycleDispatcher(), activity, messageDispatcher);
 
@@ -4136,7 +4136,8 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                             mRootUiCoordinator.getBottomSheetController(),
                             profileSupplier,
                             NtpCustomizationCoordinator.BottomSheetType.MAIN,
-                            getWindowAndroid())
+                            getWindowAndroid(),
+                            mModuleRegistrySupplier.get())
                     .showBottomSheet();
             NtpCustomizationMetricsUtils.recordOpenBottomSheetEntry(
                     NtpCustomizationCoordinator.EntryPointType.MAIN_MENU);

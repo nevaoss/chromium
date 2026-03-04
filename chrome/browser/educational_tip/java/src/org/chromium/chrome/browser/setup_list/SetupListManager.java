@@ -56,9 +56,9 @@ public class SetupListManager implements SharedPreferences.OnSharedPreferenceCha
     private boolean mIsPriming;
 
     /** Delay constants for the completion animation. */
-    public static final int STRIKETHROUGH_DURATION_MS = 70;
+    public static final int STRIKETHROUGH_DURATION_MS = 500;
 
-    public static final int HIDE_DURATION_MS = 1000;
+    public static final int HIDE_DURATION_MS = 600;
 
     /** Maximum number of items to show in the setup list. */
     public static final int MAX_SETUP_LIST_ITEMS = 5;
@@ -89,6 +89,11 @@ public class SetupListManager implements SharedPreferences.OnSharedPreferenceCha
 
     @VisibleForTesting
     static final long TWO_CELL_LAYOUT_ACTIVE_WINDOW_MILLIS = TimeUnit.DAYS.toMillis(3);
+
+    @VisibleForTesting
+    static final String ADDRESS_BAR_PLACEMENT_PARAM = "include_address_bar_placement";
+
+    @VisibleForTesting static final String PW_MANAGEMENT_PARAM = "include_pw_management";
 
     @VisibleForTesting
     @SuppressWarnings("UseSharedPreferencesManagerFromChromeCheck")
@@ -181,9 +186,13 @@ public class SetupListManager implements SharedPreferences.OnSharedPreferenceCha
         }
 
         if (moduleType == ModuleType.SIGN_IN_PROMO
-                || moduleType == ModuleType.ENHANCED_SAFE_BROWSING_PROMO
-                || moduleType == ModuleType.ADDRESS_BAR_PLACEMENT_PROMO) {
+                || moduleType == ModuleType.ENHANCED_SAFE_BROWSING_PROMO) {
             return true;
+        }
+
+        if (moduleType == ModuleType.ADDRESS_BAR_PLACEMENT_PROMO) {
+            return ChromeFeatureList.getFieldTrialParamByFeatureAsBoolean(
+                    ChromeFeatureList.ANDROID_SETUP_LIST, ADDRESS_BAR_PLACEMENT_PARAM, true);
         }
 
         // For modules that require a profile or account state.
@@ -196,13 +205,19 @@ public class SetupListManager implements SharedPreferences.OnSharedPreferenceCha
         boolean isSignedIn =
                 identityManager != null && identityManager.hasPrimaryAccount(ConsentLevel.SIGNIN);
 
+        boolean isPwManagementEnabled =
+                ChromeFeatureList.getFieldTrialParamByFeatureAsBoolean(
+                        ChromeFeatureList.ANDROID_SETUP_LIST, PW_MANAGEMENT_PARAM, true);
+
         if (moduleType == ModuleType.SAVE_PASSWORDS_PROMO) {
-            return isSignedIn;
+            return isPwManagementEnabled && isSignedIn;
         }
 
         if (moduleType == ModuleType.PASSWORD_CHECKUP_PROMO) {
             SyncService syncService = SyncServiceFactory.getForProfile(profile);
-            return isSignedIn && PasswordManagerHelper.hasChosenToSyncPasswords(syncService);
+            return isPwManagementEnabled
+                    && isSignedIn
+                    && PasswordManagerHelper.hasChosenToSyncPasswords(syncService);
         }
 
         return false;

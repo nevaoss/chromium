@@ -109,6 +109,12 @@ BASE_DECLARE_FEATURE(kFillChangePasswordFormByTyping);
 // selection, rather than autofilling on page load, with highlighting of fields.
 BASE_DECLARE_FEATURE(kFillOnAccountSelect);
 
+#if BUILDFLAG(IS_ANDROID)
+// When enabled, the user can be prompted to retrieve the trusted vault key
+// during a password saving flow.
+BASE_DECLARE_FEATURE(kInFlowTrustedVaultKeyRetrievalAndroid);
+#endif  // BUILDFLAG(IS_ANDROID)
+
 #if BUILDFLAG(IS_IOS)
 
 // Enables the clean up of hanging form extraction requests made by the
@@ -149,6 +155,10 @@ BASE_DECLARE_FEATURE(kPasswordFormGroupedAffiliations);
 // Enables "chunking" generated passwords by adding hyphens every 4 characters
 // to make them more readable.
 BASE_DECLARE_FEATURE(kPasswordGenerationChunking);
+#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
+
+#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)  // Desktop
+BASE_DECLARE_FEATURE(kPasswordSaveInContextErrorResolutionOnDesktop);
 #endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
 
 // Enables logging the content of chrome://password-manager-internals to the

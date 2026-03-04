@@ -163,7 +163,6 @@
 <translation id="2738871930057338499">Nie można połączyć się z internetem. Kod HTTP 403 (Zabroniony). Sprawdź konfigurację proxy.</translation>
 <translation id="2753623023919742414">Kliknij, aby wyszukać</translation>
 <translation id="2768103863314748511">Ustaw Chromium jako domyślną przeglądarkę plików PDF</translation>
-<translation id="277828055419948999">Chromium może automatycznie uzupełniać trudne pola, które standardowe autouzupełnianie mogłoby pominąć</translation>
 <translation id="2785438272836277133">To rozszerzenie zawiera złośliwe oprogramowanie i jest niebezpieczne. Usuń je z Chromium, aby nie odczytywało ani nie zmieniało Twoich danych na stronach, które odwiedzasz. Dotyczy to też Twoich danych osobowych.</translation>
 <translation id="2799223571221894425">Uruchom ponownie</translation>
 <translation id="2803971713792056305">Twoja przeglądarka Chromium</translation>
@@ -238,6 +237,7 @@
 <translation id="3522404737534491619">Aby udostępnić okno, pozwól Chromium na nagrywanie ekranu w ustawieniach systemu</translation>
 <translation id="3530103706039034513">Jesteś już zalogowany(a) na konto <ph name="EXISTING_USER" />.  Aby przeglądać osobno, zaloguj się w Chromium w swoim profilu jako <ph name="USER_EMAIL_ADDRESS" />.</translation>
 <translation id="3561853857681580870">Aby udostępnić ekran, pozwól Chromium na nagrywanie ekranu w ustawieniach systemu.</translation>
+<translation id="3588112919289558122">Silniejsza ochrona wyłącza optymalizację JavaScriptu w witrynach, których Chromium nie rozpoznaje</translation>
 <translation id="3597003331831379823">Nie udało się uruchomić konfiguracji z podwyższonymi uprawnieniami. <ph name="METAINSTALLER_ERROR" /></translation>
 <translation id="3600428265489994557">Zaloguj się w Chromium</translation>
 <translation id="3639635944603682591">Dane przeglądania tej osoby zostaną usunięte z tego urządzenia. Aby je odzyskać, zaloguj się w Chromium jako <ph name="USER_EMAIL" />.</translation>
@@ -371,6 +371,7 @@
 <translation id="5174969993834422967">Zazwyczaj blokujesz powiadomienia. Aby zezwolić tej stronie na wysyłanie powiadomień, kliknij ikonę powiadomienia w prawym rogu paska lokalizacji.</translation>
 <translation id="5174983315706567306">Za mało miejsca na dysku.</translation>
 <translation id="5187123684706427865">Konto Chromium wymaga ponownego uwierzytelnienia</translation>
+<translation id="5219681158518957165">Użyj zalecanych ustawień przeglądarki</translation>
 <translation id="5224391634244552924">Brak zapisanych haseł. Chromium może sprawdzać Twoje hasła, gdy je zapiszesz.</translation>
 <translation id="5231355151045086930">Wylogowanie z Chromium</translation>
 <translation id="5234764350956374838">Zamknij</translation>
@@ -474,6 +475,7 @@
 <translation id="6327105987658262776">Brak dostępnych aktualizacji.</translation>
 <translation id="6333502561965082103">Chromium wykonuje teraz inną operację. Spróbuj ponownie później.</translation>
 <translation id="6334986366598267305">Korzystanie z Chromium na wspólnych komputerach i przy użyciu konta Google jest teraz jeszcze łatwiejsze.</translation>
+<translation id="6347002662287820329">Ustaw Chromium jako przeglądarkę domyślną, aby mieć łatwy dostęp do znanych, lubianych i zaufanych funkcji.</translation>
 <translation id="6347933965114150440">Skrót w Chromium</translation>
 <translation id="6366160072964553914">Pobieranie zostało zablokowane przez Chromium, ponieważ ten plik nie jest często pobierany i może być niebezpieczny</translation>
 <translation id="6373523479360886564">Czy na pewno chcesz odinstalować Chromium?</translation>
@@ -590,7 +592,6 @@ Chromium nie może odzyskać ustawień.</translation>
 <translation id="7461356015007898716">Aby w przyszłości otrzymywać aktualizacje Chromium, musisz mieć system Windows 10 lub nowszy. Na tym komputerze jest zainstalowany system Windows 7.</translation>
 <translation id="7467949745582939695">Uruchomić ponownie Chromium?</translation>
 <translation id="7483335560992089831">Nie można zainstalować tej samej wersji Chromium co obecnie uruchomiona. Zamknij Chromium i spróbuj ponownie.</translation>
-<translation id="7517403744065880907">Gdy zalogujesz się w Chromium, będziesz mieć możliwość zapisywania haseł i innych danych na swoim koncie Google oraz korzystania z nich. <ph name="LEARN_MORE" /></translation>
 <translation id="751935028865900641">Strony będą prawdopodobnie działać zgodnie z oczekiwaniami. Gdy zamkniesz wszystkie okna Chromium, nastąpi wylogowanie z większości stron. Jeśli będziesz zalogowany(-a) w Chromium, nie wylogujemy Cię z konta Google.</translation>
 <translation id="753534427205733210">{0,plural, =1{Chromium uruchomi się ponownie za 1 minutę}few{Chromium uruchomi się ponownie za # minuty}many{Chromium uruchomi się ponownie za # minut}other{Chromium uruchomi się ponownie za # minuty}}</translation>
 <translation id="7565444033145385702">Aby chronić swoje dane, zezwól Chromium na usunięcie uprawnień witryn, których ostatnio nie odwiedzasz.</translation>
@@ -733,7 +734,6 @@ Chromium nie może odzyskać ustawień.</translation>
 <translation id="9183331186620388872">Wskazówka dotycząca Chromium: wyszukuj za pomocą Obiektywu</translation>
 <translation id="9185526690718004400">Uruchom ponownie, aby zaktualizować &amp;Chromium</translation>
 <translation id="9190841055450128916">Chromium (mDNS-In)</translation>
-<translation id="9206863043651638213">Zyskaj więcej możliwości dzięki zalogowaniu się w Chromium</translation>
 <translation id="924957577793602335">Dostosuj Chromium do swoich potrzeb</translation>
 <translation id="93478295209880648">Chromium może działać nieprawidłowo, bo nie jest już zgodny z Windows XP ani Windows Vista</translation>
 <translation id="945522503751344254">Prześlij opinię</translation>

@@ -125,6 +125,7 @@
 <translation id="1436671784520050284">Jarraitu konfiguratzen</translation>
 <translation id="143681031165817424">Gailu honetan baino ez da gorde helbidea</translation>
 <translation id="1445276840641906250">Fitxa guztiak arakatzaile berean</translation>
+<translation id="1447564161241938558">Administratzaileak desgaitu egin du pasahitzak eta sarbide-gakoak inportatzeko aukera</translation>
 <translation id="1450170672351507823">Babes estandarra dago aktibatuta. Segurtasuna areagotzeko, erabili babes hobetua.</translation>
 <translation id="1455660774629812862">Ez ezkutatu</translation>
 <translation id="1456545332132818232"><ph name="PRODUCT_NAME" /> produktuaren iritziak, <ph name="MAX_STARS" /> izarretik <ph name="STARS" />, <ph name="DOMAIN" /></translation>
@@ -373,7 +374,6 @@
 <translation id="2306265833370324042">Erakutsi <ph name="SEARCH_ENGINE_NAME" /> bilatzailearen xehetasunak</translation>
 <translation id="2309265394777270359">Itxi fitxa</translation>
 <translation id="2311077293164383652">Itxi fitxa ainguratua</translation>
-<translation id="2313392466694008052">Editatu irudia Gemini bidez</translation>
 <translation id="2316129865977710310">Ez, eskerrik asko</translation>
 <translation id="2320166752086256636">Ezkutatu teklatua</translation>
 <translation id="2321086116217818302">Pasahitzak prestatzen…</translation>
@@ -1786,6 +1786,7 @@
 <translation id="7506817096924591340"><ph name="FILENAME" /> (<ph name="FILESIZE" />).</translation>
 <translation id="7508728395076009983">Ezkutuko moduko fitxak blokeatzeko, konfiguratu Touch ID, Face ID edo pasakode bat.</translation>
 <translation id="750886945254958667">Mantendu talde hau geroago fitxak gehitzeko. Aurrerantzean hura atzitu nahi ez baduzu, irten bertatik.</translation>
+<translation id="7511727374778217603">{COUNT,plural, =1{Gehitu fitxa bateraino}other{Gehitu {COUNT} fitxaraino}}</translation>
 <translation id="7512909159512473473">Idatzi pasaesaldia…</translation>
 <translation id="7514365320538308">Deskargatu</translation>
 <translation id="7514530647142300459">Jarraitu Google-ko <ph name="EMAIL" /> kontuko pasahitzak erabiltzen</translation>
@@ -2236,6 +2237,7 @@
 <translation id="9055291197094969722">Sortu fitxa taldeak irekita dauzkazun fitxak antolatzeko eta produktibo izaten jarraitzeko</translation>
 <translation id="9055580485132823283">{password_count} pasahitz, {passkey_count} sarbide-gako eta saioa hasteko informazioa inoiz ez gordetzeko aukeratu dituzun webguneen eta aplikazioen zerrenda ezabatuko dituzu. Webgune eta aplikazioetarako sortu dituzun kontuak ez dira ezabatuko.</translation>
 <translation id="9057030985451135243">Lortu partekatutako fitxa taldeei buruzko informazioa</translation>
+<translation id="9064106978262828592">Arazoak ditugu datuak esportatzeko</translation>
 <translation id="9065203028668620118">Editatu</translation>
 <translation id="9066097352053395362">Ezkutatu "Editatu laster-marka"</translation>
 <translation id="9070824521421603770">Zure saioa amaituko da, eta fitxak itxiko dira</translation>

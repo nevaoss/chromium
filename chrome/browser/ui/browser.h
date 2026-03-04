@@ -649,9 +649,6 @@ class Browser : public TabStripModelObserver,
   // Saving can be disabled e.g. for the DevTools window.
   bool CanSaveContents(content::WebContents* web_contents) const;
 
-  // Returns whether favicon should be shown.
-  bool ShouldDisplayFavicon(content::WebContents* web_contents) const;
-
   /////////////////////////////////////////////////////////////////////////////
 
   // Called by Navigate() when a navigation has occurred in a tab in
@@ -941,6 +938,8 @@ class Browser : public TabStripModelObserver,
       const GURL& opener_url,
       const std::string& frame_name,
       const GURL& target_url,
+      WindowOpenDisposition disposition,
+      const blink::mojom::WindowFeatures& window_features,
       const content::StoragePartitionConfig& partition_config,
       content::SessionStorageNamespace* session_storage_namespace) override;
   void WebContentsCreated(content::WebContents* source_contents,

@@ -295,6 +295,10 @@ public final class ProductionSupportedFlagList {
                 "Disallows labels that only contain em dashes, minuses, fullwidth hyphens and other"
                         + " special characters."),
         Flag.baseFeature(
+                AutofillFeatures.AUTOFILL_DO_NOT_FIRE_FORM_FIELD_CHANGED_ON_WEBVIEW_SCROLL_EVENTS,
+                "When enabled, AndroidAutofillProvider::OnTextFieldDidScroll() will not fire"
+                        + " FormFieldData::OnFormFieldDidChange()."),
+        Flag.baseFeature(
                 AutofillFeatures.AUTOFILL_MOVE_SMALL_FORM_LOGIC_TO_CLIENT,
                 "Moves the small form handling from Autofill server to client."),
         Flag.baseFeature(
@@ -383,9 +387,6 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(
                 AutofillFeatures.AUTOFILL_SUPPORT_PHONETIC_NAME_FOR_JP,
                 "When enabled, Autofill will support phonetic name for Japan."),
-        Flag.baseFeature(
-                AutofillFeatures.AUTOFILL_UKM_EXPERIMENTAL_FIELDS,
-                "Enables UKM collection for experimental fields"),
         Flag.baseFeature(
                 FeatureConstants.KEYBOARD_ACCESSORY_PAYMENT_VIRTUAL_CARD_FEATURE,
                 "When enabled, merchant bound virtual cards will be offered in the keyboard "
@@ -684,6 +685,8 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature("V8Flag_trim_descriptor_arrays_in_gc"),
         Flag.baseFeature("V8Flag_trim_descriptor_arrays_in_gc_with_stack"),
         Flag.baseFeature("V8Flag_memory_reducer"),
+        Flag.baseFeature("V8Flag_verify_bytecode_light"),
+        Flag.baseFeature("V8Flag_enforce_global_heap_limit"),
         Flag.baseFeature("V8FlushBaselineCode"),
         Flag.baseFeature("V8FlushCodeBasedOnTabVisibility"),
         Flag.baseFeature("V8FlushCodeBasedOnTime"),
@@ -955,10 +958,6 @@ public final class ProductionSupportedFlagList {
                 PaymentFeatureList.ANDROID_PAYMENT_INTENTS_OMIT_DEPRECATED_PARAMETERS,
                 "Omit the deprecated parameters from the intents that are sent to "
                         + "Android payment apps in the PaymentRequest API."),
-        Flag.baseFeature(
-                PaymentFeatureList.ALLOW_SHOW_WITHOUT_READY_TO_PAY,
-                "Make Android payment apps available to show even if their"
-                        + " \"is ready to pay\" query returns false."),
         Flag.baseFeature(
                 GpuFeatures.WEB_GPU_ENABLE_RANGE_ANALYSIS_FOR_ROBUSTNESS,
                 "Use range analysis to remove unnecessary bounds checks"),
@@ -1234,6 +1233,8 @@ public final class ProductionSupportedFlagList {
                 "Group MemoryDumpProvider by sequence affinity to reduce PostTask hops when"
                         + " collecting dumps"),
         Flag.baseFeature(
+                "VariationsStickyNoopTest", "No-op flag for testing sticky study activation."),
+        Flag.baseFeature(
                 "VariationsStickyPersistence",
                 "Controls how prefs are written and persisted for tracking sticky study activation."
                     + " Note: The actual behavior is controlled by a feature param, but disabling"
@@ -1304,6 +1305,10 @@ public final class ProductionSupportedFlagList {
                 AwFeatures.WEBVIEW_USE_NONEMBEDDED_LOW_ENTROPY_SOURCE,
                 "When enabled, WebView uses the low entropy source provided by the "
                         + "nonembedded WebView service."),
+        Flag.baseFeature(
+                PaymentFeatureList.PAYMENT_REQUEST_USE_RENDERER_URL_LOADER,
+                "When enabled, the PaymentRequest will use the URL loader from the renderer instead"
+                        + " of the browser process."),
 
         // Add new commandline switches and features above. The final entry should have a
         // trailing comma for cleaner diffs.

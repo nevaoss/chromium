@@ -1696,6 +1696,7 @@ URL로 입력된 측정항목 수집이 허용되거나 사용자가 이를 사�
 <translation id="2158741059065130266">정책을 True로 설정하면 <ph name="PRODUCT_OS_NAME" /> Files 앱 사용자에게 휴지통이 표시되며 내 파일 및 다운로드에 속한 파일(사용자가 만든 하위 항목 포함)을 삭제하면 휴지통으로 전송됩니다.
 
       정책을 False로 설정하면 휴지통에 있던 파일을 내 파일 또는 다운로드에서 계속 접근할 수 있게 됩니다. 숨겨진 파일을 표시하고 내 파일 또는 다운로드의 .Trash 디렉터리를 찾으면 됩니다.</translation>
+<translation id="215891883000260452">특정 출처에 대해 WebRTC 진단 로그 수집 사용 설정</translation>
 <translation id="2159092270572925582">차단 가능한(능동) 혼합 콘텐츠(HTTPS 사이트의 HTTP 콘텐츠) 표시를 허용하고 선택적으로 차단 가능한 혼합 콘텐츠 업그레이드를 사용 중지할 사이트를 지정하는 URL 패턴 목록을 설정할 수 있습니다.
 
           정책을 설정하지 않으면 차단 가능한 혼합 콘텐츠는 차단되고 선택적으로 차단 가능한 혼합 콘텐츠는 업그레이드되며 사용자는 예외를 설정해 특정 사이트에서 혼합 콘텐츠를 허용할 수 있습니다.
@@ -1985,6 +1986,7 @@ Chrome 앱은 ID(예: pjkljhegncpnkpknbcohdijeoejaedia)로, Android 앱은 패�
       이 정책은 <ph name="DEFAULT_WEB_USB_GUARD_SETTING_POLICY_NAME" />, <ph name="WEB_USB_ASK_FOR_URLS_POLICY_NAME" />, <ph name="WEB_USB_BLOCKED_FOR_URLS_POLICY_NAME" />, 사용자의 환경설정보다 우선 적용됩니다.
 
       이 정책은 WebUSB API를 통한 USB 기기 액세스에만 영향을 미칩니다. Web Serial API를 통한 USB 기기 액세스 권한을 부여하려면 <ph name="SERIAL_ALLOW_USB_DEVICES_FOR_URLS_POLICY_NAME" /> 정책을 확인하세요.</translation>
+<translation id="2318353380372431186">IWA 사용자 설치 사용 설정</translation>
 <translation id="2318583605563438459">부모가 감독 대상 계정을 추가하도록 허용</translation>
 <translation id="2326031114717677574">오디오 데이터가 샘플링 및 수집되는 속도입니다. 허용되는 최솟값은 1분입니다.
 
@@ -2529,6 +2531,13 @@ Chrome에서 퍼스트 파티 세트 관련 통합을 지원하는지 제어합�
       참고: M114부터는 특정 키오스크 앱에서 학생 평가와 같은 특수한 사용 사례의 경우 이 정책의 동작을 재정의할 수 있습니다.</translation>
 <translation id="2667894101494585925">최적화 가이드 가져오기를 사용 설정합니다.</translation>
 <translation id="2669157090883237118"><ph name="PRODUCT_OS_NAME" /> 추천 구성 변경 안함</translation>
+<translation id="2669314653349044073">이 정책을 통해 특정 출처에 대한 WebRTC의 진단 로그 수집을 사용 설정할 수 있습니다.
+
+유효한 입력 패턴에 관한 자세한 내용은 https://chromeenterprise.google/policies/url-patterns 페이지를 참고하세요. <ph name="WILDCARD_VALUE" /> 값은 이 정책에 허용되는 값이 아닙니다. 이 정책은 출처만 기준으로 일치 여부를 판단하므로 URL 패턴의 경로는 무시됩니다. 스키마 및 하위 도메인이 지원됩니다.
+
+정책을 설정하면 목록의 패턴과 일치하는 출처에 대해 진단 로그 수집이 사용 설정됩니다.
+
+정책을 설정하지 않으면 진단 로그 수집이 기본적으로 사용 중지됩니다.</translation>
 <translation id="2672012807430078509">SMB 마운트용 인증 프로토콜로 NTLM을 사용할지 여부를 제어합니다.</translation>
 <translation id="2673363037046384711">최종 사용자가 고효율 모드를 사용 또는 사용 중지할 수 있음</translation>
 <translation id="2673968385134502798">게임</translation>
@@ -2636,6 +2645,7 @@ Chrome에서 퍼스트 파티 세트 관련 통합을 지원하는지 제어합�
       사용 중지하면 기본 메시지 호스트가 시스템 수준에서 설치된 경우에만 <ph name="PRODUCT_NAME" />에서 이러한 호스트를 사용할 수 있습니다.</translation>
 <translation id="2753637905605932878">WebRTC가 사용하는 로컬 UDP 포트 범위 제한</translation>
 <translation id="2755847332939882873">시스템 전체의 성능 흔적 수집 허용</translation>
+<translation id="2755963656455766808">사용자가 분리형 웹 앱을 수동으로 설치할 수 있는 기능을 제어합니다.</translation>
 <translation id="2757054304033424106">설치가 허용된 확장 프로그램/앱 유형</translation>
 <translation id="275769337615229465">대부분의 출처는 동일한 사이트의 다른 출처와 격리됩니다.</translation>
 <translation id="2759224876420453487">멀티 프로필 세션에서 사용자 활동 제어</translation>
@@ -5740,6 +5750,12 @@ JavaScript 최적화 정책 예외는 사이트 세부사항에서만 시행됩�
        완전한 호스트 일치 또는 모든 도메인 일치를 통해 호스트 이름을 허용할 수 있습니다. 예를 들어, 이 목록에 'foo.example.com' 또는 'example.com'이 포함될 경우 'https://foo.example.com/bar' 같은 URL에는 경고가 표시되지 않을 수 있습니다.</translation>
 <translation id="4852900976354340846">Direct Sockets 설정</translation>
 <translation id="485419696366295465"><ph name="BOREALIS_NAME" /> 하위 시스템과 관련된 정책을 관리합니다.</translation>
+<translation id="4854384393031206645">분리형 웹 앱(IWA)을 수동으로 설치하는 사용자 기능을 제어합니다.
+
+이 정책을 false로 설정하면 IWA 사용자 설치가 차단됩니다.
+
+이 정책을 true로 설정하거나 정책을 설정하지 않으면 IWA 사용자 설치가 허용됩니다.
+</translation>
 <translation id="4855636880814771207">정책을 '사용'으로 설정하거나 설정하지 않으면 사용자가 블루투스를 켜거나 끄도록 허용합니다.
 
       정책을 '사용 안함'으로 설정하면 <ph name="PRODUCT_OS_NAME" />에서 블루투스를 끄며 사용자가 켤 수 없습니다.
@@ -6174,6 +6190,7 @@ https://chromeenterprise.google/policies/url-patterns/ 페이지를 참고하세
       </translation>
 <translation id="5104606191349861549">키보드 단축키(버전 129부터 지원됨)</translation>
 <translation id="5105313908130842249">배터리 전원으로 실행할 때 화면 잠금 지연</translation>
+<translation id="5105593357527099243">IWA 사용자 설치 사용 중지</translation>
 <translation id="510604120100968366">배터리 잔량 낮음 알림음 기능을 켭니다.
 
           이 기능은 배터리 잔량 낮음 알림음을 재생합니다.
@@ -6522,6 +6539,13 @@ False로 설정하면 <ph name="PRODUCT_NAME" />에서 시스템 알림을 사�
 <translation id="5303080953475303561">정책을 설정하면 빠른 잠금 해제를 위해 잠금 화면에서 비밀번호를 요청하는 빈도를 제어할 수 있습니다. 선택한 값을 통해 지정된 기간 이전에 마지막 비밀번호 입력이 이루어진 경우 잠금 화면이 표시되었을 때 빠른 잠금 해제를 사용할 수 없습니다. 사용자가 이 시간이 지날 때까지 잠금 화면에 머무르면 다음번에 잘못된 코드를 입력하거나 잠금 화면으로 다시 이동했을 때(둘 중 먼저 발생한 상황에 적용됨) 비밀번호를 입력해야 합니다.
 
       정책을 설정하지 않으면 빠른 잠금 해제를 이용하는 사용자가 잠금 화면에서 매일 비밀번호를 입력해야 합니다.</translation>
+<translation id="530488290401810961"><ph name="PRODUCT_NAME" />에서 기본적인 생성형 AI 모델을 다운로드하고 로컬에서 추론에 사용하는 방법을 구성합니다.
+
+정책을 허용됨(0)으로 설정하거나 설정하지 않으면 모델이 자동으로 다운로드되어 추론에 사용됩니다.
+
+정책을 사용 안함(1)으로 설정하면 모델이 다운로드되지 않으며 기존 모델(이미 다운로드된 경우)이 삭제됩니다.
+
+데스크톱 플랫폼의 경우 <ph name="COMPONENT_UPDATES_ENABLED_POLICY_NAME" />에서 모델 다운로드를 사용 중지할 수도 있습니다.</translation>
 <translation id="5306186200045823863">Symantec Corporation의 Legacy PKI 인프라에서 트러스트를 사용 설정합니다.</translation>
 <translation id="5307432759655324440">시크릿 모드 사용 가능 여부</translation>
 <translation id="5308551343115571396"><ph name="LACROS_NAME" />가 사용 중지되면 최대한 많은 사용자 데이터 유지를 시도하는 동시에 모든 브라우저 데이터를 삭제합니다.</translation>
@@ -6541,7 +6565,6 @@ False로 설정하면 <ph name="PRODUCT_NAME" />에서 시스템 알림을 사�
 <translation id="530949964068726932">작업 표시줄 메뉴에서 접근성 옵션 숨기기</translation>
 <translation id="5309944663104291505">강제 설치된 분리형 웹 앱 및 키오스크 애플리케이션에서 Device Attributes API를 사용하도록 허용 안 함</translation>
 <translation id="5311275381462687162">기본 레거시 <ph name="ATTRIBUTE_SAMESITE_NAME" /> 쿠키 동작 설정</translation>
-<translation id="5311430612584074035">프로필의 모든 탭에 포그라운드 우선순위 강제 적용</translation>
 <translation id="5312253627576569499">화면이 어두워졌거나 화면이 꺼진 후 얼마 지나지 않았을 때 사용자 활동이 감지될 경우 화면 어둡게 하기 지연 시간이 조정되는 비율입니다.</translation>
 <translation id="5316856058059940708">큰 커서 사용 중지</translation>
 <translation id="5318185076587284965">원격 액세스 호스트에 의한 릴레이 서버 사용 설정</translation>
@@ -12535,11 +12558,6 @@ https://chromeenterprise.google/policies/url-patterns 페이지를 참고하세�
 <translation id="9135095804754272364">USB 기기가 감지되면 알림 표시</translation>
 <translation id="9136212796239682721">다운로드 도움말 풍선 UI 사용 중지</translation>
 <translation id="9136399279941091445">특정 기기 정책이 공개되었을 때 Off hours 간격</translation>
-<translation id="9138686056337842869">정책을 True로 설정하면 기본 Chrome 앱 사용 설정과 관계없이 Chrome 앱이 키오스크 세션에서 계속 실행됩니다.
-
-정책을 설정하지 않거나 False로 설정하면 기기에 정의된 기본 동작이 사용됩니다.
-
-사용 중지된 Chrome 앱을 실행하려고 하면 앱이 실행되지 않은 이유를 설명하는 메시지와 IT 부서에 문의하라는 메시지가 표시됩니다.</translation>
 <translation id="9139775903828905867">F11을 트리거하는 데 사용되는 단축키를 제어합니다.</translation>
 <translation id="9140064482233876338">M69에서 지원 중단되었습니다. 대신 OverrideSecurityRestrictionsOnInsecureOrigin을 사용하시기 바랍니다.
 

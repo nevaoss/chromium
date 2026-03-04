@@ -125,6 +125,7 @@
 <translation id="1436671784520050284">Жөндөөнү улантуу</translation>
 <translation id="143681031165817424">Дарек ушул түзмөккө гана сакталды</translation>
 <translation id="1445276840641906250">Бардык өтмөктөр бир серепчиде</translation>
+<translation id="1447564161241938558">Сырсөздөрдү жана киргизүүчү ачкычтарды өткөрүп алуу функциясын администраторуңуз өчүрүп койгон</translation>
 <translation id="1450170672351507823">Стандарттуу коргоо күйүк. Анын ордуна Жакшыртылган коргоону колдонуңуз.</translation>
 <translation id="1455660774629812862">Жашырбоо</translation>
 <translation id="1456545332132818232"><ph name="PRODUCT_NAME" /> тууралуу сын-пикирлер, <ph name="MAX_STARS" /> ичинен <ph name="STARS" />, <ph name="DOMAIN" /></translation>
@@ -373,7 +374,6 @@
 <translation id="2306265833370324042"><ph name="SEARCH_ENGINE_NAME" /> чоо-жайын көрсөтүү</translation>
 <translation id="2309265394777270359">Өтмөктү жабуу</translation>
 <translation id="2311077293164383652">Кадалган өтмөктү жабуу</translation>
-<translation id="2313392466694008052">Сүрөттү Gemini менен түзөтүү</translation>
 <translation id="2316129865977710310">Жок, рахмат</translation>
 <translation id="2320166752086256636">Баскычтопту жашыруу</translation>
 <translation id="2321086116217818302">Сырсөздөр даярдалууда…</translation>
@@ -1786,6 +1786,7 @@ Handoff Параметрлердин жалпы бөлүмүндө да иште
 <translation id="7506817096924591340"><ph name="FILENAME" /> (<ph name="FILESIZE" />).</translation>
 <translation id="7508728395076009983">Жашыруун өтмөктөрдү кулпулоо үчүн Touch ID, Face ID же өткөрүүчү кодду жөндөңүз.</translation>
 <translation id="750886945254958667">Өтмөктөрдү кийинчерээк кошуу үчүн бул топту калтырып, же ага кирүүнү каалабасаңыз, андан чыгыңыз</translation>
+<translation id="7511727374778217603">{COUNT,plural, =1{1 өтмөккө чейин кошуңуз}other{{COUNT} өтмөккө чейин кошуңуз}}</translation>
 <translation id="7512909159512473473">Сыр сүйлөмдү киргизиңиз…</translation>
 <translation id="7514365320538308">Жүктөп алуу</translation>
 <translation id="7514530647142300459"><ph name="EMAIL" /> Google аккаунтуңуздагы сырсөздөрдү колдоно бериңиз</translation>

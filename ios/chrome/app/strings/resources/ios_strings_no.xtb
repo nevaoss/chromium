@@ -125,6 +125,7 @@
 <translation id="1436671784520050284">Fortsett konfigureringen</translation>
 <translation id="143681031165817424">Adressen er kun lagret på denne enheten</translation>
 <translation id="1445276840641906250">Alle fanene dine i én nettleser</translation>
+<translation id="1447564161241938558">Administratoren din har slått av import av passord og passnøkler</translation>
 <translation id="1450170672351507823">Standardbeskyttelse er på. Bruk økt beskyttelse om du vil ha enda mer sikkerhet.</translation>
 <translation id="1455660774629812862">Ikke skjul</translation>
 <translation id="1456545332132818232">Produktanmeldelser av <ph name="PRODUCT_NAME" />, <ph name="STARS" /> av <ph name="MAX_STARS" />, <ph name="DOMAIN" /></translation>
@@ -373,7 +374,6 @@
 <translation id="2306265833370324042">Vis <ph name="SEARCH_ENGINE_NAME" />-detaljer</translation>
 <translation id="2309265394777270359">Lukk fane</translation>
 <translation id="2311077293164383652">Lukk festet fane</translation>
-<translation id="2313392466694008052">Rediger bilde med Gemini</translation>
 <translation id="2316129865977710310">Nei takk</translation>
 <translation id="2320166752086256636">Skjul tastaturet</translation>
 <translation id="2321086116217818302">Klargjør passordene …</translation>
@@ -1786,6 +1786,7 @@ Handoff må også være aktivert i Generelt-delen av Innstillinger, og enhetene 
 <translation id="7506817096924591340"><ph name="FILENAME" /> (<ph name="FILESIZE" />).</translation>
 <translation id="7508728395076009983">For å låse inkognitofanene dine, konfigurer Touch ID, Face ID eller en sikkerhetskode.</translation>
 <translation id="750886945254958667">Behold denne gruppen for å legge til faner senere, eller forlat den hvis du ikke vil ha tilgang til den lenger</translation>
+<translation id="7511727374778217603">{COUNT,plural, =1{Legg til opptil 1 fane}other{Legg til opptil {COUNT} faner}}</translation>
 <translation id="7512909159512473473">Angi en passordfrase…</translation>
 <translation id="7514365320538308">Last ned</translation>
 <translation id="7514530647142300459">Fortsett å bruke passordene i Google-kontoen din, <ph name="EMAIL" /></translation>
@@ -2236,6 +2237,7 @@ Handoff må også være aktivert i Generelt-delen av Innstillinger, og enhetene 
 <translation id="9055291197094969722">Opprett fanegrupper for å organisere de åpne fanene dine og holde deg produktiv</translation>
 <translation id="9055580485132823283">Du er i ferd med å slette {password_count} passord, {passkey_count} passnøkler samt listen over nettsteder og apper du har valgt å aldri lagre påloggingsinformasjon for. Eventuelle kontoer du har opprettet for nettsteder og apper, blir ikke slettet.</translation>
 <translation id="9057030985451135243">Finn ut mer om delte fanegrupper</translation>
+<translation id="9064106978262828592">Problemer med å eksportere dataene dine</translation>
 <translation id="9065203028668620118">Endre</translation>
 <translation id="9066097352053395362">Skjul Rediger bokmerke</translation>
 <translation id="9070824521421603770">Du blir logget av, og faner blir lukket</translation>

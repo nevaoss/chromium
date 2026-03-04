@@ -22,10 +22,13 @@ import type {ComposeboxPosition} from './contextual_tasks.mojom-webui.js';
 import type {BrowserProxy} from './contextual_tasks_browser_proxy.js';
 import {BrowserProxyImpl} from './contextual_tasks_browser_proxy.js';
 import {PostMessageHandler} from './post_message_handler.js';
+import type {Rect} from './post_message_handler.js';
 
 declare global {
   interface HTMLElementEventMap {
+    'loadstart': chrome.webviewTag.LoadStartEvent;
     'newwindow': chrome.webviewTag.NewWindowEvent;
+    'permissionrequest': chrome.webviewTag.PermissionRequestEvent;
   }
 }
 
@@ -164,6 +167,7 @@ export class ContextualTasksAppElement extends CrLitElement {
       isInputLocked_: {
         type: Boolean,
       },
+      forcedComposeboxBounds_: {type: Object},
     };
   }
 
@@ -185,6 +189,7 @@ export class ContextualTasksAppElement extends CrLitElement {
       loadTimeData.getBoolean('enableNativeZeroStateSuggestions');
   protected accessor isGhostLoaderVisible_: boolean = false;
   protected accessor isInputLocked_: boolean = false;
+  protected accessor forcedComposeboxBounds_: Rect|null = null;
 
   protected friendlyZeroStateSubtitle: string =
       loadTimeData.getString('friendlyZeroStateSubtitle');
@@ -211,6 +216,10 @@ export class ContextualTasksAppElement extends CrLitElement {
   // This is needed to keep navigations between non-AIM pages from triggering
   // the input hide/restore callbacks.
   private isNavigatingFromAiPage_: boolean = false;
+  // Tracks the basic mode state before a navigation occurs. This is used to
+  // restore the basic mode state after the navigation, to ensure that if
+  // already in basic mode, the user is returned to basic mode.
+  private basicModeBeforeNavigation_ = this.isInBasicMode_;
 
   override async connectedCallback() {
     super.connectedCallback();
@@ -335,17 +344,18 @@ export class ContextualTasksAppElement extends CrLitElement {
         this.isFrameLoading = false;
         this.setIsGhostLoaderVisible(false);
       });
-      this.$.threadFrame.addEventListener('loadstart', async (ev: any) => {
-        if (!ev.isTopLevel) {
-          return;
-        }
-        this.isFrameLoading = true;
-        const {isAiPage} =
-            await this.browserProxy_.handler.isAiPage(ev.url as string);
-        if (this.isFrameLoading && !isAiPage) {
-          this.setIsGhostLoaderVisible(true);
-        }
-      });
+      this.$.threadFrame.addEventListener(
+          'loadstart', async (ev: chrome.webviewTag.LoadStartEvent) => {
+            if (!ev.isTopLevel) {
+              return;
+            }
+            this.isFrameLoading = true;
+            const {isAiPage} =
+                await this.browserProxy_.handler.isAiPage(ev.url);
+            if (this.isFrameLoading && !isAiPage) {
+              this.setIsGhostLoaderVisible(true);
+            }
+          });
     }
 
     // Setup the webview request overrides before loading the first URL.
@@ -411,6 +421,9 @@ export class ContextualTasksAppElement extends CrLitElement {
   override firstUpdated() {
     this.postMessageHandler_ =
         new PostMessageHandler(this.$.threadFrame, this.browserProxy_);
+    this.postMessageHandler_.setInputPlateBoundsUpdateCallback((rect: Rect) => {
+      this.forcedComposeboxBounds_ = rect;
+    });
 
     this.eventTracker_.add(
         this.$.composebox, 'composebox-height-update', (e: CustomEvent) => {
@@ -439,6 +452,7 @@ export class ContextualTasksAppElement extends CrLitElement {
   private setStyleVariable(variable: string, value: string) {
     this.$.composebox.style.setProperty(variable, `${value}px`);
   }
+
   /* Adjust composebox based on server notifications. Negatives are used if
    * server wants to change marginTop, marginRight.
    */
@@ -561,11 +575,12 @@ export class ContextualTasksAppElement extends CrLitElement {
 
     // Allow downloading files. This is necessary since aim can generate images
     // for download.
-    this.$.threadFrame.addEventListener('permissionrequest', (e: any) => {
-      if (e.permission === 'download') {
-        e.request.allow();
-      }
-    });
+    this.$.threadFrame.addEventListener(
+        'permissionrequest', (e: chrome.webviewTag.PermissionRequestEvent) => {
+          if (e.permission === 'download') {
+            e.request.allow();
+          }
+        });
 
     // Sets the user agent to the default user agent + the contextual tasks
     // custom suffix.
@@ -614,6 +629,7 @@ export class ContextualTasksAppElement extends CrLitElement {
                 !!this.signInDomains_.find((domain) => domain === url.host);
             if (this.isAiPage_) {
               this.isNavigatingFromAiPage_ = true;
+              this.basicModeBeforeNavigation_ = this.isInBasicMode_;
               this.isInBasicMode_ = true;
             }
             if (this.forcedEmbeddedPageHost && !isSigninDomain) {
@@ -630,7 +646,7 @@ export class ContextualTasksAppElement extends CrLitElement {
       return;
     }
 
-    this.isInBasicMode_ = false;
+    this.isInBasicMode_ = this.basicModeBeforeNavigation_;
     this.isNavigatingFromAiPage_ = false;
   };
 

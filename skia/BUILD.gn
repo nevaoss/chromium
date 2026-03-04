@@ -32,7 +32,6 @@ buildflag_header("buildflags") {
   flags = [
     "SKIA_SUPPORT_SKOTTIE=$skia_support_skottie",
     "SKIA_USE_DAWN=$skia_use_dawn",
-    "SKIA_USE_METAL=$skia_use_metal",
   ]
 }
 
@@ -58,6 +57,7 @@ rust_static_library("bridge_rust_side") {
     ":skia_config",
     "//build/config/compiler:no_chromium_code",
   ]
+  no_clippy = true  # TODO(https://crbug.com/472355480)
 }
 }
 
@@ -165,9 +165,6 @@ config("skia_config") {
     if (skia_use_dawn) {
       defines += [ "SK_DAWN" ]
       configs += [ "//third_party/dawn/include/dawn:public" ]
-    }
-    if (skia_use_metal) {
-      defines += [ "SK_METAL" ]
     }
   }
   if (current_cpu == "loong64") {
@@ -608,12 +605,10 @@ component("skia") {
     }
 
     public_deps += [ ":skia_graphite_public" ]
-    deps += [ ":skia_graphite_private" ]
-
-    if (skia_use_metal) {
-      deps += [ ":skia_ganesh_metal" ]
-    }
-    deps += [ "//gpu/config:workaround_list" ]
+    deps += [
+      ":skia_graphite_private",
+      "//gpu/config:workaround_list",
+    ]
   }
 
   if (skia_support_pdf) {
@@ -682,6 +677,7 @@ component("skia_switches") {
   deps = [ "//base" ]
 }
 
+<<<<<<< HEAD
 # TODO(neva_rust): Remove this workaround once Neva supports Rust build.
 if (!disable_rust_for_neva) {
   rust_static_library("rust_common_ffi") {
@@ -698,6 +694,23 @@ if (!disable_rust_for_neva) {
       "//build/config/compiler:no_chromium_code",
     ]
   }
+=======
+rust_static_library("rust_common_ffi") {
+  visibility = [ ":*" ]
+  crate_name = "skia_rust_common"
+  allow_unsafe = true  # For FFI
+  crate_root = skia_rust_common_ffi_crate_root
+  sources = skia_rust_common_ffi_rs_srcs
+  cxx_bindings = skia_rust_common_ffi_cxx_bridge_srcs
+  public_deps = [ ":rust_common_ffi_cpp" ]
+  configs -= [ "//build/config/compiler:chromium_code" ]
+  configs += [
+    ":skia_config",
+    "//build/config/compiler:no_chromium_code",
+  ]
+  no_clippy = true  # TODO(https://crbug.com/472355480)
+}
+>>>>>>> 147.0.7695.0~1
 
   source_set("rust_common_ffi_cpp") {
     visibility = [ ":*" ]
@@ -716,6 +729,7 @@ if (!disable_rust_for_neva) {
     ]
   }
 
+<<<<<<< HEAD
   rust_static_library("rust_png_ffi") {
     visibility = [ ":*" ]
     edition = "2021"
@@ -734,6 +748,27 @@ if (!disable_rust_for_neva) {
       "//build/config/compiler:no_chromium_code",
     ]
   }
+=======
+rust_static_library("rust_png_ffi") {
+  visibility = [ ":*" ]
+  edition = "2021"
+  allow_unsafe = true  # For FFI
+  crate_root = skia_codec_rust_png_ffi_crate_root
+  sources = skia_codec_rust_png_ffi_rs_srcs
+  cxx_bindings = skia_codec_rust_png_ffi_cxx_bridge_srcs
+  public_deps = [ ":rust_png_ffi_cpp" ]
+  deps = [
+    ":rust_common_ffi",
+    "//third_party/rust/png/v0_18:lib",
+  ]
+  configs -= [ "//build/config/compiler:chromium_code" ]
+  configs += [
+    ":skia_config",
+    "//build/config/compiler:no_chromium_code",
+  ]
+  no_clippy = true  # TODO(https://crbug.com/472355480)
+}
+>>>>>>> 147.0.7695.0~1
 
   source_set("rust_png_ffi_cpp") {
     visibility = [ ":*" ]
@@ -1079,10 +1114,6 @@ if (skia_support_gpu) {
         "//third_party/dawn/src/dawn:proc",
       ]
     }
-    if (skia_use_metal) {
-      public += skia_graphite_mtl_public
-      frameworks = [ "Metal.framework" ]
-    }
     deps = [ "//gpu/config:workaround_list" ]
   }
 
@@ -1094,33 +1125,11 @@ if (skia_support_gpu) {
     if (skia_use_dawn) {
       sources += skia_graphite_dawn_sources
     }
-    if (skia_use_metal) {
-      sources += skia_shared_mtl_sources
-      sources += skia_graphite_mtl_sources
-    }
     deps = [ "//gpu/config:workaround_list" ]
     if (skia_use_dawn) {
       deps += [ "//third_party/dawn/include/dawn:cpp_headers" ]
     }
     visibility = [ ":skia" ]
-  }
-
-  if (skia_use_metal) {
-    # Split out Ganesh Metal sources, because they require ARC.
-    skia_source_set("skia_ganesh_metal") {
-      sources = skia_gpu_metal_public
-      sources += skia_gpu_metal_private
-      cflags_objcc = [
-        "-Wno-unguarded-availability",
-        "-fobjc-arc",
-      ]
-      deps = [ "//gpu/config:workaround_list" ]
-      if (skia_use_dawn) {
-        # Needed due to include chain containing webgpu_cpp.h via GrDawnTypes.h.
-        public_deps = [ "//third_party/dawn/include/dawn:cpp_headers" ]
-      }
-      visibility = [ ":skia" ]
-    }
   }
 }
 

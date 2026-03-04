@@ -125,6 +125,7 @@
 <translation id="1436671784520050284">Beállítás folytatása</translation>
 <translation id="143681031165817424">A cím csak erre az eszközre van mentve</translation>
 <translation id="1445276840641906250">A lapok mindegyike egyetlen böngészőben</translation>
+<translation id="1447564161241938558">A rendszergazda letiltotta a jelszavak és azonosítókulcsok importálását</translation>
 <translation id="1450170672351507823">A Normál védelem be van kapcsolva. A még nagyobb biztonság érdekében használjon Speciális védelmet.</translation>
 <translation id="1455660774629812862">Ne legyenek elrejtve</translation>
 <translation id="1456545332132818232">Termékvélemények a következőről: <ph name="PRODUCT_NAME" />, <ph name="MAX_STARS" /> csillagból <ph name="STARS" /> csillag, <ph name="DOMAIN" /></translation>
@@ -373,7 +374,6 @@
 <translation id="2306265833370324042">A(z) <ph name="SEARCH_ENGINE_NAME" /> részleteinek megjelenítése</translation>
 <translation id="2309265394777270359">Lap bezárása</translation>
 <translation id="2311077293164383652">Rögzített lap bezárása</translation>
-<translation id="2313392466694008052">Kép szerkesztése a Geminivel</translation>
 <translation id="2316129865977710310">Köszönöm, nem</translation>
 <translation id="2320166752086256636">Billentyűzet elrejtése</translation>
 <translation id="2321086116217818302">Jelszavak előkészítése…</translation>
@@ -1786,6 +1786,7 @@ Az Átadást engedélyezni kell a Beállítások általános részében is, és 
 <translation id="7506817096924591340"><ph name="FILENAME" /> (<ph name="FILESIZE" />).</translation>
 <translation id="7508728395076009983">Az inkognitó lapok bezárásához állítsa be a következőket: Touch ID, Face ID vagy jelkód.</translation>
 <translation id="750886945254958667">Megtarthatja a csoportot, ha később szeretne lapokat hozzáadni, de ki is léphet belőle, ha a továbbiakban nem kíván hozzáférni.</translation>
+<translation id="7511727374778217603">{COUNT,plural, =1{Legfeljebb 1 lapot adhat hozzá}other{Legfeljebb {COUNT} lapot adhat hozzá}}</translation>
 <translation id="7512909159512473473">Összetett jelszó megadása…</translation>
 <translation id="7514365320538308">Letöltés</translation>
 <translation id="7514530647142300459">A Google-fiókjában (<ph name="EMAIL" />) lévő jelszavak használatának folytatása</translation>
@@ -2236,6 +2237,7 @@ Az Átadást engedélyezni kell a Beállítások általános részében is, és 
 <translation id="9055291197094969722">Létrehozhat lapcsoportokat a megnyitott lapok rendszerezéséhez és a hatékonyság fenntartásához</translation>
 <translation id="9055580485132823283">{password_count} jelszót, {passkey_count} azonosítókulcsot, valamint azon webhelyek és alkalmazások listáját készül törölni, amelyeknél úgy döntött, hogy soha nem menti a bejelentkezési adatokat. A webhelyekhez és alkalmazásokhoz létrehozott fiókok nem törlődnek.</translation>
 <translation id="9057030985451135243">További információ a megosztott lapcsoportokról</translation>
+<translation id="9064106978262828592">Probléma az adatok exportálásakor</translation>
 <translation id="9065203028668620118">Szerkesztés</translation>
 <translation id="9066097352053395362">A „Könyvjelző szerkesztése” művelet elrejtése</translation>
 <translation id="9070824521421603770">A rendszer kijelentkezteti Önt, a lapokat pedig bezárja</translation>

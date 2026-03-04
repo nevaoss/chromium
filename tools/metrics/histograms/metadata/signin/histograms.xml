@@ -1767,7 +1767,7 @@ prefs when the profile is loaded.  -->
 </histogram>
 
 <histogram name="Signin.GetAccountsBackoffRetries" units="retries"
-    expires_after="2026-04-01">
+    expires_after="2027-04-01">
   <owner>samarchehade@google.com</owner>
   <owner>chrome-signin-mobile-team@google.com</owner>
   <summary>
@@ -1851,6 +1851,24 @@ prefs when the profile is loaded.  -->
   <token key="ConsentLevel">
     <variant name="OnSignin" summary="signing in to"/>
     <variant name="OnSync" summary="enabling sync in"/>
+  </token>
+</histogram>
+
+<histogram
+    name="Signin.HistorySyncOptin.SyncStartupAwaitTime.{SyncStartupEvent}"
+    units="ms" expires_after="2026-07-05">
+  <owner>anthie@google.com</owner>
+  <owner>chrome-signin-desktop-team@google.com</owner>
+  <summary>
+    Records the time spent until {SyncStartupEvent}. It is recorded when the
+    sync service reaches a transport state past the initialization or when we
+    exceed a given timeout and the sync service transport has not been updated.
+  </summary>
+  <token key="SyncStartupEvent">
+    <variant name="Complete"
+        summary="the sync engine completes its initialization"/>
+    <variant name="Timeout"
+        summary="we timeout waiting for the sync engine to initialize"/>
   </token>
 </histogram>
 
@@ -2329,16 +2347,6 @@ prefs when the profile is loaded.  -->
   </summary>
 </histogram>
 
-<histogram name="Signin.IsShared{AccountInvestigationReportingType}"
-    enum="BooleanIsShared" expires_after="2024-08-18">
-  <owner>droger@chromium.org</owner>
-  <owner>skym@chromium.org</owner>
-  <summary>
-    Current best guess if this device is shared between multiple users.
-    {AccountInvestigationReportingType}
-  </summary>
-</histogram>
-
 <histogram name="Signin.ListAccountsFailure" enum="GoogleServiceAuthError"
     expires_after="never">
 <!-- expires-never: ListAccounts calls are used to monitor the accounts in the
@@ -2537,7 +2545,7 @@ the browser and content area. -->
 </histogram>
 
 <histogram name="Signin.NumberOfActiveAccounts.{TimeRange}" units="accounts"
-    expires_after="2026-06-14">
+    expires_after="2026-08-16">
   <owner>bsazonov@chromium.org</owner>
   <owner>droger@chromium.org</owner>
   <owner>treib@chromium.org</owner>
@@ -3632,7 +3640,7 @@ kept as long as profile signout is possible -->
 </histogram>
 
 <histogram name="Signin.SyncOptIn.OpenedSyncSettings" enum="SigninAccessPoint"
-    expires_after="2026-06-13">
+    expires_after="2026-08-16">
   <owner>rsult@google.com</owner>
   <owner>dgn@chromium.org</owner>
   <owner>chrome-signin-desktop-team@google.com</owner>

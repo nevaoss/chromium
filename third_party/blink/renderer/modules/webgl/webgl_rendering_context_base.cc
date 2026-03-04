@@ -676,7 +676,7 @@ WebGLRenderingContextBase::CreateContextProviderInternal(
   }
   gpu::gles2::GLES2Interface* gl = context_provider->ContextGL();
   if (!String(gl->GetString(GL_EXTENSIONS))
-           .Contains("GL_OES_packed_depth_stencil")) {
+           .contains("GL_OES_packed_depth_stencil")) {
     host->HostDispatchEvent(WebGLContextEvent::Create(
         event_type_names::kWebglcontextcreationerror,
         "OES_packed_depth_stencil support is required."));
@@ -1436,7 +1436,7 @@ void WebGLRenderingContextBase::InitializeNewContext() {
 
   // This limits the count of threads if the extension is yet to be requested.
   if (String(ContextGL()->GetString(GL_EXTENSIONS))
-          .Contains("GL_KHR_parallel_shader_compile")) {
+          .contains("GL_KHR_parallel_shader_compile")) {
     ContextGL()->MaxShaderCompilerThreadsKHR(2);
   }
   is_web_gl2_formats_types_added_ = false;
@@ -5561,7 +5561,7 @@ void WebGLRenderingContextBase::TexImageStaticBitmapImage(
   scoped_refptr<StaticBitmapImage> color_converted_image;
   if (params.unpack_colorspace_conversion && image->IsTextureBacked()) {
     color_converted_image = StaticBitmapImageTransform::ConvertToColorSpace(
-        image, PredefinedColorSpaceToSkColorSpace(unpack_color_space_));
+        image, PredefinedColorSpaceToGfxColorSpace(unpack_color_space_));
     if (!color_converted_image) {
       SynthesizeGLError(GL_OUT_OF_MEMORY, func_name,
                         "ImageBitmap in unpack color space unexpectedly empty");
@@ -5670,22 +5670,11 @@ scoped_refptr<Image> WebGLRenderingContextBase::DrawImageIntoBufferForTexImage(
   // TODO(https://crbug.com/1341235): The choice of color type should match the
   // format of the TexImage function. The choice of alpha type should opaque for
   // opaque images. The color space should match the unpack color space.
-  CanvasSnapshotProvider* snapshot_provider =
-      generated_image_cache_.GetCanvasSnapshotProvider(
-          {kPremul_SkAlphaType,
-           gfx::ColorSpace::CreateSRGB(),
-           GetN32FormatForCanvas(),
-           {width, height}});
-  if (!snapshot_provider) {
-    SynthesizeGLError(GL_OUT_OF_MEMORY, function_name, "out of memory");
-    return nullptr;
-  }
-
-  CHECK(snapshot_provider->IsExternalBitmapProvider());
-  CanvasNon2DSnapshotProviderBitmap* snapshot_provider_bitmap =
-      static_cast<CanvasNon2DSnapshotProviderBitmap*>(snapshot_provider);
-
-  return snapshot_provider_bitmap->DoExternalDrawAndSnapshot(
+  auto snapshot = CanvasNon2DSnapshotProviderBitmap::DoExternalDrawAndSnapshot(
+      {kPremul_SkAlphaType,
+       gfx::ColorSpace::CreateSRGB(),
+       GetN32FormatForCanvas(),
+       {width, height}},
       [&](cc::PaintCanvas& canvas) {
         if (!image->IsOpaque()) {
           canvas.clear(SkColors::kTransparent);
@@ -5701,6 +5690,12 @@ scoped_refptr<Image> WebGLRenderingContextBase::DrawImageIntoBufferForTexImage(
                     draw_options);
       },
       ImageOrientationEnum::kDefault);
+
+  if (!snapshot) {
+    SynthesizeGLError(GL_OUT_OF_MEMORY, function_name, "out of memory");
+  }
+
+  return snapshot;
 }
 
 WebGLTexture* WebGLRenderingContextBase::ValidateTexImageBinding(
@@ -6417,9 +6412,9 @@ void WebGLRenderingContextBase::TexImageHelperMediaVideoFrame(
   // conformance/textures/misc/texture-corner-case-videos.html
   //
   // TODO(crbug.com/1181562): TexSubImage2D via the GPU path performs poorly on
-  // Linux when used with ShMem GpuMemoryBuffer backed frames. We don't have a
-  // way to differentiate between true texture backed frames and ShMem GMBs, so
-  // for now limit GPU texturing to TexImage2D.
+  // Linux when used with frames backed by SharedImages holding shared memory.
+  // We don't have a way to differentiate this case from that of true texture
+  // backed frames, so for now limit GPU texturing to TexImage2D.
   const bool function_supports_gpu_teximage = params.function_id == kTexImage2D;
 #else
   const bool function_supports_gpu_teximage =

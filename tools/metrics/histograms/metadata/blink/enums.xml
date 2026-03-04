@@ -6424,6 +6424,7 @@ Called by update_use_counter_feature_enum.py.-->
   <int value="5787" label="LinkRelModulePreloadStyle"/>
   <int value="5788" label="AudioContextPlaybackStats"/>
   <int value="5789" label="ParseFromStringXML"/>
+  <int value="5790" label="NonParentOriginInitiatedNavigationOfSubframe"/>
 </enum>
 
 <!-- LINT.ThenChange(//third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom:WebFeature) -->
@@ -8295,7 +8296,7 @@ Called by update_use_counter_css.py.-->
   <int value="5" label="Invalid display property"/>
 </enum>
 
-<!-- LINT.ThenChange(//third_party/blink/renderer/core/html/html_permission_element.h:InvalidStyleReason) -->
+<!-- LINT.ThenChange(//third_party/blink/renderer/core/html/html_capability_element_base.h:InvalidStyleReason) -->
 
 <!-- LINT.IfChange(PermissionElementUserInteractionDeniedReason) -->
 
@@ -8315,7 +8316,7 @@ Called by update_use_counter_css.py.-->
   <int value="10" label="Web app installation data error"/>
 </enum>
 
-<!-- LINT.ThenChange(//third_party/blink/renderer/core/html/html_permission_element.h:UserInteractionDeniedReason) -->
+<!-- LINT.ThenChange(//third_party/blink/renderer/core/html/html_capability_element_base.h:UserInteractionDeniedReason) -->
 
 <enum name="RaceTaskPriority">
   <int value="0" label="LowerPriority"/>
@@ -8816,10 +8817,10 @@ Called by update_use_counter_feature_enum.py.-->
   <int value="410" label="Reporting"/>
   <int value="411" label="FontLanguageOverride"/>
   <int value="412" label="Webnn"/>
-  <int value="413" label="TextDetect"/>
+  <int value="413" label="TextDetection"/>
   <int value="414" label="TextJustify"/>
   <int value="415" label="Summarizer"/>
-  <int value="416" label="TranslationApi"/>
+  <int value="416" label="OBSOLETE_TranslationApi"/>
   <int value="417" label="DRAFT_MetaTextScale"/>
   <int value="418" label="Jpegxl"/>
   <int value="419" label="PartitionedCookies"/>
@@ -8828,6 +8829,8 @@ Called by update_use_counter_feature_enum.py.-->
   <int value="422" label="Rewriter"/>
   <int value="423" label="Writer"/>
   <int value="424" label="DRAFT_InstallElement"/>
+  <int value="425" label="LanguageDetector"/>
+  <int value="426" label="Translator"/>
 </enum>
 
 <!-- LINT.ThenChange(//third_party/blink/public/mojom/use_counter/metrics/webdx_feature.mojom:WebDXFeature) -->

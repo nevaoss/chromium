@@ -504,7 +504,7 @@ bool AppBrowserController::HasPendingMigration() const {
   return false;
 }
 
-void AppBrowserController::CreateMetadataAndTriggerAppUpdateDialog(
+void AppBrowserController::TriggerAppUpdateOrMigrationDialog(
     base::TimeTicks start_time) const {}
 
 bool AppBrowserController::IsPreventCloseEnabled() const {

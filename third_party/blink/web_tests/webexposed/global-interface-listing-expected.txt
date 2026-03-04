@@ -1028,6 +1028,10 @@ interface CSSPseudoElement
     getter parent
     getter type
     method constructor
+    method convertPointFromNode
+    method convertQuadFromNode
+    method convertRectFromNode
+    method getBoxQuads
     method pseudo
 interface CSSRGB : CSSColorValue
     attribute @@toStringTag
@@ -3101,8 +3105,6 @@ interface FormControlRange : AbstractRange
     method constructor
     method getBoundingClientRect
     method getClientRects
-    method setFormControlRange
-    method toString
 interface FormData
     attribute @@toStringTag
     method @@iterator
@@ -3833,6 +3835,7 @@ interface HTMLCanvasElement : HTMLElement
     attribute @@toStringTag
     getter height
     getter layoutSubtree
+    getter onpaint
     getter width
     method captureStream
     method configureHighDynamicRange
@@ -3844,6 +3847,7 @@ interface HTMLCanvasElement : HTMLElement
     method transferControlToOffscreen
     setter height
     setter layoutSubtree
+    setter onpaint
     setter width
 interface HTMLCollection
     attribute @@toStringTag
@@ -4573,6 +4577,7 @@ interface HTMLInputElement : HTMLElement
     getter willValidate
     method checkValidity
     method constructor
+    method getValueRange
     method reportValidity
     method select
     method setCustomValidity
@@ -4624,13 +4629,23 @@ interface HTMLInputElement : HTMLElement
     setter valueAsNumber
     setter webkitdirectory
     setter width
-interface HTMLInstallElement : HTMLPermissionElement
+interface HTMLInstallElement : HTMLElement
     attribute @@toStringTag
+    getter initialPermissionStatus
     getter installURL
+    getter invalidReason
+    getter isValid
     getter manifestId
+    getter onpromptaction
+    getter onpromptdismiss
+    getter onvalidationstatuschange
+    getter permissionStatus
     method constructor
     setter installURL
     setter manifestId
+    setter onpromptaction
+    setter onpromptdismiss
+    setter onvalidationstatuschange
 interface HTMLLIElement : HTMLElement
     attribute @@toStringTag
     getter type
@@ -4994,22 +5009,6 @@ interface HTMLParamElement : HTMLElement
     setter type
     setter value
     setter valueType
-interface HTMLPermissionElement : HTMLElement
-    static method isTypeSupported
-    attribute @@toStringTag
-    getter initialPermissionStatus
-    getter invalidReason
-    getter isValid
-    getter onpromptaction
-    getter onpromptdismiss
-    getter onvalidationstatuschange
-    getter permissionStatus
-    getter type
-    method constructor
-    setter onpromptaction
-    setter onpromptdismiss
-    setter onvalidationstatuschange
-    setter type
 interface HTMLPictureElement : HTMLElement
     attribute @@toStringTag
     method constructor
@@ -5321,6 +5320,7 @@ interface HTMLTextAreaElement : HTMLElement
     getter wrap
     method checkValidity
     method constructor
+    method getValueRange
     method reportValidity
     method select
     method setCustomValidity
@@ -5383,6 +5383,7 @@ interface HTMLUnknownElement : HTMLElement
     attribute @@toStringTag
     method constructor
 interface HTMLUserMediaElement : HTMLElement
+    static method isTypeSupported
     attribute @@toStringTag
     getter initialPermissionStatus
     getter invalidReason
@@ -10606,6 +10607,11 @@ interface TrustedHTML
     method constructor
     method toJSON
     method toString
+interface TrustedParserOptions
+    attribute @@toStringTag
+    getter runScripts
+    getter sanitizer
+    method constructor
 interface TrustedScript
     static method fromLiteral
     attribute @@toStringTag
@@ -10623,6 +10629,7 @@ interface TrustedTypePolicy
     getter name
     method constructor
     method createHTML
+    method createParserOptions
     method createScript
     method createScriptURL
 interface TrustedTypePolicyFactory

@@ -88,9 +88,6 @@ TabDragContext* VerticalDraggedTabsContainer::OnTabDragUpdated(
     return GetDragHandler().GetDragContext();
   }
 
-  gfx::Point point_in_container = views::View::ConvertPointFromScreen(
-      base::to_address(host_view_), point_in_screen);
-
   // Used to determine whether the layout should snap into position without
   // animating at the end of this drag cycle.
   bool is_initial_drag = dragging_views_.empty();
@@ -99,11 +96,7 @@ TabDragContext* VerticalDraggedTabsContainer::OnTabDragUpdated(
     InitializeDragState(drag_controller);
   }
 
-  gfx::Rect dragged_bounds_in_container =
-      GetDraggingViewsBoundsAtPoint(point_in_container);
-  HandleTabDragInContainer(dragged_bounds_in_container);
-
-  UpdateDraggingViewTransforms(point_in_container);
+  ApplyUpdatesForDragPositionChange();
 
   if (is_initial_drag) {
     // This is needed so that the transformation takes over without animating
@@ -116,13 +109,34 @@ TabDragContext* VerticalDraggedTabsContainer::OnTabDragUpdated(
   return GetDragHandler().GetDragContext();
 }
 
+void VerticalDraggedTabsContainer::ApplyUpdatesForDragPositionChange() {
+  gfx::Point point_in_container = views::View::ConvertPointFromScreen(
+      base::to_address(host_view_), last_drag_point_in_screen_);
+
+  gfx::Rect dragged_bounds_in_container =
+      GetDraggingViewsBoundsAtPoint(point_in_container);
+
+  auto* scroll_view = GetScrollViewForContainer();
+  CHECK(scroll_view);
+  scroll_handler_.OnDraggedTabPositionUpdated(
+      *scroll_view, views::View::ConvertRectToTarget(
+                        base::to_address(host_view_), scroll_view,
+                        dragged_bounds_in_container));
+
+  HandleTabDragInContainer(dragged_bounds_in_container);
+
+  UpdateDraggingViewTransforms(point_in_container);
+}
+
 void VerticalDraggedTabsContainer::OnTabDragExited(
     const gfx::Point& point_in_screen) {
   ResetDragState();
+  scroll_handler_.StopScrolling();
 }
 
 void VerticalDraggedTabsContainer::OnTabDragEnded() {
   ResetDragState();
+  scroll_handler_.StopScrolling();
 }
 
 bool VerticalDraggedTabsContainer::CanDropTab() {
@@ -159,6 +173,13 @@ void VerticalDraggedTabsContainer::InitializeDragState(
     TabDragTarget::DragController& controller) {
   CHECK(dragging_views_.empty());
 
+  auto* scroll_view = GetScrollViewForContainer();
+  CHECK(scroll_view);
+  on_scrolled_subscription_ =
+      scroll_view->AddContentsScrolledCallback(base::BindRepeating(
+          &VerticalDraggedTabsContainer::ApplyUpdatesForDragPositionChange,
+          base::Unretained(this)));
+
   tab_strip_padding_ = GetLayoutConstant(
       IsTabStripCollapsed()
           ? LayoutConstant::kVerticalTabStripCollapsedPadding
@@ -178,6 +199,7 @@ void VerticalDraggedTabsContainer::BuildDragLayout(
   dragging_views_bounds_.Offset(
       GetSourceViewOffsetFromMouse(*source_dragged_view, session_data));
 
+  const auto& target_layout = GetLayoutForDrag();
   for (auto* attached_view : session_data.attached_views()) {
     auto* dragging_view = GetDragHandler().ViewFromTabSlot(attached_view);
     CHECK(dragging_view);
@@ -192,14 +214,19 @@ void VerticalDraggedTabsContainer::BuildDragLayout(
     }
 
     const bool is_source_view = dragging_view == source_dragged_view;
+    const auto* dragging_view_layout =
+        target_layout.GetLayoutFor(dragging_view);
+    CHECK(dragging_view_layout);
 
     switch (drag_layout_) {
       case DragLayout::kVertical:
         CHECK(!IsHorizontalDragSupported());
-        AddViewToVerticalDragLayout(dragging_view, is_source_view);
+        AddViewToVerticalDragLayout(dragging_view, dragging_view_layout->bounds,
+                                    is_source_view);
         break;
       case DragLayout::kSquash:
-        AddViewToSquashedDragLayout(dragging_view, is_source_view);
+        AddViewToSquashedDragLayout(dragging_view, dragging_view_layout->bounds,
+                                    is_source_view);
         break;
       default:
         NOTREACHED();
@@ -209,8 +236,9 @@ void VerticalDraggedTabsContainer::BuildDragLayout(
 
 void VerticalDraggedTabsContainer::AddViewToVerticalDragLayout(
     views::View* dragging_view,
+    const gfx::Rect& view_bounds,
     bool is_source_dragged_view) {
-  gfx::Rect bounds = gfx::Rect(dragging_view->GetPreferredSize({}));
+  gfx::Rect bounds = view_bounds;
   bounds.set_y(dragging_views_bounds_.height());
   dragging_views_.insert(
       {dragging_view, {.offset = bounds.OffsetFromOrigin()}});
@@ -227,9 +255,10 @@ void VerticalDraggedTabsContainer::AddViewToVerticalDragLayout(
 
 void VerticalDraggedTabsContainer::AddViewToSquashedDragLayout(
     views::View* dragging_view,
+    const gfx::Rect& view_bounds,
     bool is_source_dragged_view) {
   if (is_source_dragged_view) {
-    dragging_views_bounds_.set_size(dragging_view->bounds().size());
+    dragging_views_bounds_.set_size(view_bounds.size());
   }
   dragging_views_.insert(
       {dragging_view,
@@ -250,6 +279,8 @@ void VerticalDraggedTabsContainer::ResetDragState() {
   UpdateLayoutForDrag();
   dragging_views_.clear();
   dragging_views_bounds_ = gfx::Rect();
+
+  on_scrolled_subscription_.reset();
 }
 
 // TODO(crbug.com/476084253): Support laying out with multiple dragged tabs.
@@ -337,12 +368,16 @@ views::View* VerticalDraggedTabsContainer::GetViewForDragBounds(
       continue;
     }
 
-    if (HasMinimumOverlap(
-            dragged_tab_bounds, child_layout.bounds,
-            IsHorizontalDragSupported()
-                ? std::make_optional(child_layout.bounds.width() * 0.5)
-                : std::nullopt,
-            child_layout.bounds.height() * 0.5)) {
+    // The percentage overlap between dragged tabs and the view at its
+    // target position to be considered the view over current drag bounds.
+    constexpr float kEntryThreshold = 0.6f;
+
+    if (HasMinimumOverlap(dragged_tab_bounds, child_layout.bounds,
+                          IsHorizontalDragSupported()
+                              ? std::make_optional(child_layout.bounds.width() *
+                                                   kEntryThreshold)
+                              : std::nullopt,
+                          child_layout.bounds.height() * kEntryThreshold)) {
       return child_layout.child_view;
     }
   }

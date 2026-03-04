@@ -2030,11 +2030,6 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
 
         getProfileProviderSupplier().runSyncOrOnAvailable(this::initializeManualFillingComponent);
 
-        var chromeAndroidTask = getChromeAndroidTaskSupplier().get();
-        if (chromeAndroidTask != null) {
-            chromeAndroidTask.onNativeInitializationFinished();
-        }
-
         mTabReparentingControllerSupplier.set(
                 new TabReparentingController(
                         ReparentingDelegateFactory.createReparentingControllerDelegate(
@@ -2897,6 +2892,9 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
                 && ChromeFeatureList.isEnabled(ChromeFeatureList.TASK_MANAGER_CLANK)) {
             TaskManager taskManager = TaskManagerFactory.createTaskManager();
             taskManager.launch(ContextUtils.getApplicationContext());
+            if (fromMenu) {
+                RecordUserAction.record("MobileMenuTaskManager");
+            }
             return true;
         }
 

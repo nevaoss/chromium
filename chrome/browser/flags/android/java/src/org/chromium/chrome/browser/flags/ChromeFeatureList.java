@@ -156,6 +156,7 @@ public abstract class ChromeFeatureList {
     // Feature names.
     // LINT.IfChange(FeaturesExposedToJava)
     // keep-sorted start group_prefixes=["public static final String"]
+
     public static final String ABORT_NAVIGATIONS_FROM_TAB_CLOSURES =
             "AbortNavigationsFromTabClosures";
     public static final String ACCOUNT_FOR_SUPPRESSED_KEYBOARD_INSETS =
@@ -189,7 +190,6 @@ public abstract class ChromeFeatureList {
     public static final String ANDROID_DESKTOP_DENSITY = "AndroidDesktopDensity";
     public static final String ANDROID_ELEGANT_TEXT_HEIGHT = "AndroidElegantTextHeight";
     public static final String ANDROID_FIRST_RUN_LAUNCH_BOUNDS = "AndroidFirstRunLaunchBounds";
-    public static final String ANDROID_LOGO_VIEW_REFACTOR = "AndroidLogoViewRefactor";
     public static final String ANDROID_NEW_MEDIA_PICKER = "AndroidNewMediaPicker";
     public static final String ANDROID_NO_VISIBLE_HINT_FOR_DIFFERENT_TLD =
             "AndroidNoVisibleHintForDifferentTLD";
@@ -216,7 +216,6 @@ public abstract class ChromeFeatureList {
     public static final String ANDROID_TWA_ORIGIN_DISPLAY = "AndroidTWAOriginDisplay";
     public static final String ANDROID_USE_ADMINS_FOR_ENTERPRISE_INFO =
             "AndroidUseAdminsForEnterpriseInfo";
-    public static final String ANDROID_WEB_APP_LAUNCH_HANDLER = "AndroidWebAppLaunchHandler";
     public static final String ANDROID_WINDOW_CONTROLS_OVERLAY = "AndroidWindowControlsOverlay";
     public static final String ANDROID_WINDOW_MANAGEMENT_WEB_API = "AndroidWindowManagementWebApi";
     public static final String ANDROID_WINDOW_POPUP_CUSTOM_TAB_UI = "AndroidWindowPopupCustomTabUi";
@@ -248,6 +247,8 @@ public abstract class ChromeFeatureList {
             "AutofillAndroidKeyboardAccessoryDynamicPositioning";
     public static final String AUTOFILL_DEEP_LINK_AUTOFILL_OPTIONS =
             "AutofillDeepLinkAutofillOptions";
+    public static final String AUTOFILL_ENABLE_AI_BASED_AMOUNT_EXTRACTION =
+            "AutofillEnableAiBasedAmountExtraction";
     public static final String AUTOFILL_ENABLE_BUY_NOW_PAY_LATER = "AutofillEnableBuyNowPayLater";
     public static final String AUTOFILL_ENABLE_CARD_BENEFITS_FOR_AMERICAN_EXPRESS =
             "AutofillEnableCardBenefitsForAmericanExpress";
@@ -396,7 +397,6 @@ public abstract class ChromeFeatureList {
     public static final String DESKTOP_ANDROID_LINK_CAPTURING = "DesktopAndroidLinkCapturing";
     public static final String DESKTOP_UA_ON_CONNECTED_DISPLAY = "DesktopUAOnConnectedDisplay";
     public static final String DETAILED_LANGUAGE_SETTINGS = "DetailedLanguageSettings";
-    public static final String DEVICE_AUTHENTICATOR_ANDROIDX = "DeviceAuthenticatorAndroidx";
     public static final String DISCO_FEED_ENDPOINT = "DiscoFeedEndpoint";
     public static final String DISPLAY_EDGE_TO_EDGE_FULLSCREEN = "DisplayEdgeToEdgeFullscreen";
     public static final String DISPLAY_WILDCARD_CONTENT_SETTINGS =
@@ -498,8 +498,6 @@ public abstract class ChromeFeatureList {
     public static final String NEW_TAB_PAGE_CUSTOMIZATION_TOOLBAR_BUTTON =
             "NewTabPageCustomizationToolbarButton";
     public static final String NEW_TAB_PAGE_CUSTOMIZATION_V2 = "NewTabPageCustomizationV2";
-    public static final String NOTIFICATION_PERMISSION_BOTTOM_SHEET =
-            "NotificationPermissionBottomSheet";
     public static final String NOTIFICATION_PERMISSION_VARIANT = "NotificationPermissionVariant";
     public static final String NOTIFICATION_TRAMPOLINE = "NotificationTrampoline";
     public static final String NOTIFICATION_TRAMPOLINE_NO_NEW_TASK =
@@ -542,7 +540,6 @@ public abstract class ChromeFeatureList {
             "PrivacySandboxAdsApiUxEnhancements";
     public static final String PRIVACY_SANDBOX_AD_TOPICS_CONTENT_PARITY =
             "PrivacySandboxAdTopicsContentParity";
-    public static final String PRIVACY_SANDBOX_SENTIMENT_SURVEY = "PrivacySandboxSentimentSurvey";
     public static final String PRIVACY_SANDBOX_SETTINGS_4 = "PrivacySandboxSettings4";
     public static final String PROCESS_RANK_POLICY_ANDROID = "ProcessRankPolicyAndroid";
     public static final String PROTECT_RECENTLY_VISIBLE_TAB = "ProtectRecentlyVisibleTab";
@@ -727,8 +724,6 @@ public abstract class ChromeFeatureList {
             newCachedFlag(ANDROID_DESKTOP_DENSITY, true);
     public static final CachedFlag sAndroidElegantTextHeight =
             newCachedFlag(ANDROID_ELEGANT_TEXT_HEIGHT, true);
-    public static final CachedFlag sAndroidLogoViewRefactor =
-            newCachedFlag(ANDROID_LOGO_VIEW_REFACTOR, /* defaultValue= */ true);
     public static final CachedFlag sAndroidNewMediaPicker =
             newCachedFlag(ANDROID_NEW_MEDIA_PICKER, false);
     public static final CachedFlag sAndroidOpenIncognitoAsWindow =
@@ -764,8 +759,6 @@ public abstract class ChromeFeatureList {
             newCachedFlag(ANDROID_TWA_ORIGIN_DISPLAY, false);
     public static final CachedFlag sAndroidUseAdminsForEnterpriseInfo =
             newCachedFlag(ANDROID_USE_ADMINS_FOR_ENTERPRISE_INFO, true);
-    public static final CachedFlag sAndroidWebAppLaunchHandler =
-            newCachedFlag(ANDROID_WEB_APP_LAUNCH_HANDLER, false, true);
     public static final CachedFlag sAndroidWindowControlsOverlay =
             newCachedFlag(ANDROID_WINDOW_CONTROLS_OVERLAY, true);
     public static final CachedFlag sAndroidWindowManagementWebApi =
@@ -1127,7 +1120,6 @@ public abstract class ChromeFeatureList {
                     sAndroidDataImporterService,
                     sAndroidDesktopDensity,
                     sAndroidElegantTextHeight,
-                    sAndroidLogoViewRefactor,
                     sAndroidNewMediaPicker,
                     sAndroidOpenIncognitoAsWindow,
                     sAndroidProgressBarVisualUpdate,
@@ -1140,7 +1132,6 @@ public abstract class ChromeFeatureList {
                     sAndroidThemeResourceProvider,
                     sAndroidTwaOriginDisplay,
                     sAndroidUseAdminsForEnterpriseInfo,
-                    sAndroidWebAppLaunchHandler,
                     sAndroidWindowControlsOverlay,
                     sAndroidWindowManagementWebApi,
                     sAndroidWindowPopupCustomTabUi,

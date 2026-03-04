@@ -426,7 +426,7 @@ IN_PROC_BROWSER_TEST_F(ProfileKeyedServiceGuestBrowserTest,
     "EnterpriseReportingPrivateEventRouter",
     "ExtensionNavigationRegistry",
     "ExtensionSystem",
-    "ExtensionURLLoaderFactory::BrowserContextShutdownNotifierFactory",
+    "ExtensionProtocolShutdownNotifierFactory",
     "FederatedIdentityPermissionContext",
     "FederatedIdentityAutoReauthnPermissionContext",
     "FeedbackPrivateAPI",
@@ -695,7 +695,7 @@ IN_PROC_BROWSER_TEST_F(ProfileKeyedServiceGuestBrowserTest,
     "ExtensionSystem",
     "ExtensionSystemShared",
     "ExtensionUpdater",
-    "ExtensionURLLoaderFactory::BrowserContextShutdownNotifierFactory",
+    "ExtensionProtocolShutdownNotifierFactory",
     "ExtensionWebUIOverrideRegistrar",
     "ExternalInstallManager",
   #if BUILDFLAG(ENABLE_EXTENSIONS)
@@ -962,10 +962,6 @@ IN_PROC_BROWSER_TEST_F(ProfileKeyedServiceGuestBrowserTest,
 #endif // BUILDFLAG(IS_CHROMEOS)
   };
   // clang-format on
-
-  if (base::FeatureList::IsEnabled(commerce::kProductSpecifications)) {
-    guest_active_services.insert("ProductSpecificationsService");
-  }
 
   if (SearchEnginePreconnector::ShouldBeEnabledAsKeyedService()) {
     guest_active_services.insert("SearchEnginePreconnector");

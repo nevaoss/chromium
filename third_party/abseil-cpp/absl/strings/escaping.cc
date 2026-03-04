@@ -179,14 +179,17 @@ bool CUnescapeInternal(absl::string_view src, bool leave_nulls_escaped,
                  absl::ascii_isxdigit(static_cast<unsigned char>(src[p + 1]))) {
             // Arbitrarily many hex digits
             ch = (ch << 4) + hex_digit_to_int(src[++p]);
-          }
-          if (ch > 0xFF) {
-            if (error != nullptr) {
-              *error = "Value of \\" +
-                       std::string(src.substr(hex_start, p + 1 - hex_start)) +
-                       " exceeds 0xff";
+            // If ch was 0xFF at the start of this loop, the most can it can be
+            // here is (0xFF << 4) + 0xF, which is 4095, thus ch cannot overflow
+            // 32-bits here. The check below is sufficient.
+            if (ch > 0xFF) {
+              if (error != nullptr) {
+                *error = "Value of \\" +
+                         std::string(src.substr(hex_start, p + 1 - hex_start)) +
+                         " exceeds 0xff";
+              }
+              return false;
             }
-            return false;
           }
           if ((ch == 0) && leave_nulls_escaped) {
             // Copy the escape sequence for the null character
@@ -949,19 +952,6 @@ bool Base64Unescape(absl::string_view src, std::string* absl_nonnull dest) {
 bool WebSafeBase64Unescape(absl::string_view src,
                            std::string* absl_nonnull dest) {
   return Base64UnescapeInternal(src.data(), src.size(), dest, kUnWebSafeBase64);
-}
-
-void Base64Escape(absl::string_view src, std::string* absl_nonnull dest) {
-  strings_internal::Base64EscapeInternal(
-      reinterpret_cast<const unsigned char*>(src.data()), src.size(), dest,
-      true, strings_internal::kBase64Chars);
-}
-
-void WebSafeBase64Escape(absl::string_view src,
-                         std::string* absl_nonnull dest) {
-  strings_internal::Base64EscapeInternal(
-      reinterpret_cast<const unsigned char*>(src.data()), src.size(), dest,
-      false, strings_internal::kWebSafeBase64Chars);
 }
 
 std::string Base64Escape(absl::string_view src) {

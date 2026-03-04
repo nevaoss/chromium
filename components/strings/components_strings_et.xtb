@@ -655,6 +655,7 @@ Vastasel korral blokeeritakse see teie privaatsusseadetes. See võimaldab teie k
 <translation id="2071156619270205202">Seda kaarti ei saa virtuaalkaardi numbrina kasutada.</translation>
 <translation id="2071852865256799872">Teie brauserit haldab teie organisatsioon ja teie profiili haldab <ph name="PROFILE_DOMAIN" /></translation>
 <translation id="2072011841331007013">Google Jamboard</translation>
+<translation id="2073286362006276165">Teave salvestati ainult seadmesse</translation>
 <translation id="2074733626795553847">Deblokeeri <ph name="TOPIC" /></translation>
 <translation id="2074771604462073334">Külastasite</translation>
 <translation id="2078956195623975415">Muusika- ja tantsumängud</translation>
@@ -703,6 +704,7 @@ Vastasel korral blokeeritakse see teie privaatsusseadetes. See võimaldab teie k
 <translation id="2137891579555018930">Heakskiidu ootel …</translation>
 <translation id="213826338245044447">Mobiili järjehoidjad</translation>
 <translation id="2141000681034340397">Sisendi muutmine</translation>
+<translation id="2141475438898772664">Makske neljas osas või iga kuu</translation>
 <translation id="2144171668675205303">Aktiivseid teemasid ei ole</translation>
 <translation id="2145193671493396738">Majandusuudised</translation>
 <translation id="214556005048008348">Tühista makse</translation>
@@ -1116,6 +1118,7 @@ Vastasel korral blokeeritakse see teie privaatsusseadetes. See võimaldab teie k
 <translation id="277133753123645258">Tarneviis</translation>
 <translation id="277499241957683684">Seadme kirje puudub</translation>
 <translation id="2775884851269838147">Esimesena prinditav leht</translation>
+<translation id="277828055419948999">Chromium saab automaatselt täita keerukaid välju, mida tavaline automaattäide ei pruugi tuvastada.</translation>
 <translation id="2781185443919227679">Rannad ja saared</translation>
 <translation id="2781692009645368755">Google Pay</translation>
 <translation id="2781799097551205934">Maksmise ettevalmistamine</translation>
@@ -2472,6 +2475,7 @@ Vastasel korral blokeeritakse see teie privaatsusseadetes. See võimaldab teie k
 <translation id="4950898438188848926">Vahelehe vahetamise nupp, vajutage sisestusklahvi avatud vahelehe aktiveerimiseks, <ph name="TAB_SWITCH_FOCUSED_FRIENDLY_MATCH_TEXT" /></translation>
 <translation id="495170559598752135">Toimingud</translation>
 <translation id="4953689047182316270">Juurdepääsetavuse sündmustele vastamine</translation>
+<translation id="4954505713046251871">Soovituste pakkumiseks ja selle funktsiooni täiustamiseks jagatakse lehe URL-i ja sisu Google'iga</translation>
 <translation id="4954891067389874142">Kui teie kaart on salvestatud, saate kiiremini maksta. Kaardi andmed on Google Walletis krüpteeritud.</translation>
 <translation id="4957080528849277028">Nupp Chrome'i ajaloo vaatamine, aktiveerige nupp, et Chrome'i seadetes oma sirvimisajalugu vaadata ja hallata</translation>
 <translation id="4957781475307065660">{DOMAIN_COUNT,plural, =1{ja veel üks sait}other{ja veel # saiti}}</translation>
@@ -2846,6 +2850,7 @@ Vastasel korral blokeeritakse see teie privaatsusseadetes. See võimaldab teie k
 <translation id="5543564889050342791">Loomaaiad, akvaariumid, kaitsealad</translation>
 <translation id="5543722831081909240">180 kraadi</translation>
 <translation id="5544836308113951378">Kruiisid ja tšarterreisid</translation>
+<translation id="5545314360139398232">Linkige teenuse <ph name="ISSUER_NAME" /> konto, et maksegraafiku alusel maksta</translation>
 <translation id="5547939254150808298">Trükkimine ja kirjastamine</translation>
 <translation id="554815783948612276">Foorumite ja vestlusteenuste pakkujad</translation>
 <translation id="5548606607480005320">Ohutuskontroll</translation>
@@ -3693,6 +3698,7 @@ Vastasel korral blokeeritakse see teie privaatsusseadetes. See võimaldab teie k
 <translation id="6926216138694948720">Kehamaalingud</translation>
 <translation id="692638818576287323">Tarbesõidukid</translation>
 <translation id="6927878187051807444">kaamera failid ja ekraanipildid</translation>
+<translation id="6929949393612835405">Sule ja naase lehele „<ph name="OPENER_TITLE" />“</translation>
 <translation id="6930607614725241390">Otsimine külgpaneelilt</translation>
 <translation id="6934236486840930310"><ph name="BEGIN_BOLD" />Teie vaikeotsingumootor võimaldab teil veebist otsida ja toetab Chrome'i funktsioone<ph name="END_BOLD" />, nagu otsimine aadressiribalt ja veebilehtedel olevatelt piltidelt. Funktsioon ei pruugi olla saadaval, kui teie otsingumootor seda ei toeta.</translation>
 <translation id="6934672428414710184">Nimi pärineb teie Google'i kontolt</translation>
@@ -3975,6 +3981,7 @@ Lisateave:
 <translation id="7377314930809374926">Võõrustamistööstus</translation>
 <translation id="7378594059915113390">Meedia juhtnupud</translation>
 <translation id="7378810950367401542">/</translation>
+<translation id="7379321689415048316">Chrome saab automaatselt täita keerukaid välju, mida tavaline automaattäide ei pruugi tuvastada.</translation>
 <translation id="7380398842872229465">10 × 15 tolli</translation>
 <translation id="7381551826960739226">Automaatne makseviiside täitmine on keelatud, sest see vorm ei kasuta turvalist ühendust.</translation>
 <translation id="7388380253839603603">Kütusehinnad ja sõidukikütus</translation>
@@ -4899,6 +4906,7 @@ Lisateave:
 <translation id="8858065207712248076">Chromium soovitab teil organisatsiooni <ph name="BEGIN_BOLD" /><ph name="ORG_NAME" /><ph name="END_BOLD" /> parooli lähtestada, kui kasutasite seda ka muudel saitidel.</translation>
 <translation id="885906927438988819">Kui õigekirjavigu pole, <ph name="BEGIN_LINK" />käitage Windowsi võrgudiagnostika<ph name="END_LINK" />.</translation>
 <translation id="8861126751581835107">Fotograafia ja digikunst</translation>
+<translation id="8861482055962701239">Seda teavet ei saanud teie Google Walletisse salvestada. See salvestati selles seadmes hoopis Chrome'i. Chrome pakub järgmisel korral, kui seda kasutate, selle Walletisse salvestamist.</translation>
 <translation id="8863218129525348270">Järgmine kord kiiremini maksmiseks salvestage oma kaart seadmesse</translation>
 <translation id="8864939224504814334">Ülikonnad ja ametlik riietus</translation>
 <translation id="8866132857352163524">Filmimuusika</translation>

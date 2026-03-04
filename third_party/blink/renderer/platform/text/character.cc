@@ -143,12 +143,11 @@ unsigned Character::ExpansionOpportunityCount(
   unsigned count = 0;
   if (direction == TextDirection::kLtr) {
     for (size_t i = 0; i < characters.size(); ++i) {
-      count += CountJustificationOpportunity8(method, characters[i], context);
+      count += context.CountOpportunity8(method, characters[i]);
     }
   } else {
     for (size_t i = characters.size(); i > 0; --i) {
-      count +=
-          CountJustificationOpportunity8(method, characters[i - 1], context);
+      count += context.CountOpportunity8(method, characters[i - 1]);
     }
   }
 
@@ -165,37 +164,18 @@ unsigned Character::ExpansionOpportunityCount(
   }
   unsigned count = 0;
 
-  if (!RuntimeEnabledFeatures::EmojiJustificationEnabled()) {
-    if (direction == TextDirection::kLtr) {
-      for (size_t i = 0; i < characters.size();) {
-        UChar32 character = CodePointAtAndNext(characters, i);
-        count += CountJustificationOpportunity16(method, character, context);
-      }
-    } else {
-      for (size_t i = characters.size(); i > 0; --i) {
-        UChar32 character = characters[i - 1];
-        if (U16_IS_TRAIL(character) && i > 1 &&
-            U16_IS_LEAD(characters[i - 2])) {
-          character = U16_GET_SUPPLEMENTARY(characters[i - 2], character);
-          i--;
-        }
-        count += CountJustificationOpportunity16(method, character, context);
-      }
-    }
-    return count;
-  }
   CharacterBreakIterator iter(characters);
   if (direction == TextDirection::kLtr) {
     for (int i = 0; static_cast<size_t>(i) < characters.size();
          i = iter.Next()) {
       UChar32 character = CodePointAt(characters, i);
-      count += CountJustificationOpportunity16(method, character, context);
+      count += context.CountOpportunity16(method, character);
     }
   } else {
     for (int i = iter.Preceding(characters.size()); i != kTextBreakDone;
          i = iter.Preceding(i)) {
       UChar32 character = CodePointAt(characters, i);
-      count += CountJustificationOpportunity16(method, character, context);
+      count += context.CountOpportunity16(method, character);
     }
   }
   return count;

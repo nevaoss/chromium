@@ -30,7 +30,6 @@
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
 #include "chrome/browser/preloading/bookmarkbar_preload/bookmarkbar_preload_pipeline_manager.h"
 #include "chrome/browser/preloading/new_tab_page_preload/new_tab_page_preload_pipeline_manager.h"
-#include "chrome/browser/privacy_sandbox/privacy_sandbox_tab_observer.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_key.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
@@ -58,6 +57,7 @@
 #if BUILDFLAG(ENABLE_GLIC) && !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/skills/skills_update_observer.h"
 #endif  // BUILDFLAG(ENABLE_GLIC) && !BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/indigo/indigo_page_action_controller.h"
 #include "chrome/browser/ui/tab_ui_helper.h"
 #include "chrome/browser/ui/tabs/alert/tab_alert_controller.h"
 #include "chrome/browser/ui/tabs/back_to_opener/back_to_opener_controller.h"
@@ -331,10 +331,6 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
     contextual_cueing::ContextualCueingHelper::MaybeCreateForWebContents(
         tab.GetContents());
 
-    privacy_sandbox_tab_observer_ =
-        std::make_unique<privacy_sandbox::PrivacySandboxTabObserver>(
-            tab.GetContents());
-
     if (tab_groups::TabGroupSyncService* tab_group_sync_service =
             tab_groups::TabGroupSyncServiceFactory::GetForProfile(profile)) {
       saved_tab_group_web_contents_listener_ =
@@ -571,7 +567,15 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
             tab.GetContents());
   }
 #endif
+
+#if !BUILDFLAG(IS_ANDROID)
+  if (base::FeatureList::IsEnabled(features::kIndigo)) {
+    indigo_page_action_controller_ =
+        std::make_unique<indigo::IndigoPageActionController>(
+            tab, *page_action_controller_);
+  }
 }
+#endif  // !BUILDFLAG(IS_ANDROID)
 
 TabUIHelper* TabFeatures::SetTabUIHelperForTesting(
     std::unique_ptr<TabUIHelper> tab_ui_helper) {
@@ -621,13 +625,6 @@ void TabFeatures::WillDiscardContents(tabs::TabInterface* tab,
   // scoped.
   side_panel_registry_->Deregister(
       SidePanelEntry::Key(SidePanelEntry::Id::kAboutThisSite));
-
-  if (privacy_sandbox_tab_observer_) {
-    privacy_sandbox_tab_observer_.reset();
-    privacy_sandbox_tab_observer_ =
-        std::make_unique<privacy_sandbox::PrivacySandboxTabObserver>(
-            new_contents);
-  }
 
   if (web_app::AreWebAppsEnabled(
           tab->GetBrowserWindowInterface()->GetProfile())) {

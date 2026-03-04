@@ -11,18 +11,11 @@
 #include <utility>
 
 #include "base/containers/flat_set.h"
-#include "base/containers/span.h"
-#include "base/memory/raw_ptr.h"
 #include "base/scoped_observation.h"
-#include "build/build_config.h"
-#include "components/autofill/core/browser/data_manager/addresses/address_data_manager.h"
 #include "components/autofill/core/browser/form_import/addresses/address_form_data_importer.h"
-#include "components/autofill/core/browser/form_import/addresses/autofill_profile_import_process.h"
-#include "components/autofill/core/browser/form_import/form_data_importer_utils.h"
 #include "components/autofill/core/browser/form_import/payments/payments_form_data_importer.h"
 #include "components/autofill/core/browser/form_structure.h"
 #include "components/history/core/browser/history_service_observer.h"
-#include "services/metrics/public/cpp/ukm_source_id.h"
 
 namespace history {
 class HistoryService;
@@ -30,38 +23,16 @@ class HistoryService;
 
 namespace autofill {
 
-class AddressProfileSaveManager;
 class AutofillClient;
 class CreditCardSaveManager;
-class IbanSaveManager;
 class PaymentsDataManager;
-enum class NonInteractivePaymentMethodType;
+class SourceId;
 
 // Manages logic for importing address profiles and credit card information from
 // web forms into the user's Autofill profile via the `AddressDataManager` and
 // the `PaymentsDataManager`. Owned by `AutofillClient` implementations.
-class FormDataImporter : public AddressDataManager::Observer,
-                         public history::HistoryServiceObserver {
+class FormDataImporter : public history::HistoryServiceObserver {
  public:
-  // Record type of the credit card extracted from the form, if one exists.
-  // TODO(crbug.com/40255227): Remove this enum and user CreditCard::RecordType
-  // instead.
-  enum CreditCardImportType {
-    // No card was successfully extracted from the form.
-    kNoCard,
-    // The extracted card is already stored locally on the device.
-    kLocalCard,
-    // The extracted card is already known to be a server card (either masked or
-    // unmasked).
-    kServerCard,
-    // The extracted card is not currently stored with the browser.
-    kNewCard,
-    // The extracted card is already known to be a virtual card.
-    kVirtualCard,
-    // The extracted card is known to be a duplicate local and server card.
-    kDuplicateLocalServerCard,
-  };
-
   // The parameters should outlive the FormDataImporter.
   FormDataImporter(AutofillClient* client,
                    history::HistoryService* history_service);
@@ -83,26 +54,9 @@ class FormDataImporter : public AddressDataManager::Observer,
   payments::PaymentsFormDataImporter::ExtractCreditCardFromFormResult
   ExtractCreditCardFromForm(const FormStructure& form);
 
-  // Tries to initiate the saving of `extracted_iban` if applicable.
-  bool ProcessIbanImportCandidate(Iban& extracted_iban);
-
-  // Cache the last four of the fetched virtual card so we don't offer saving
-  // them.
-  void CacheFetchedVirtualCard(const std::u16string& last_four);
-
   CreditCardSaveManager* GetCreditCardSaveManager() {
     return credit_card_save_manager_.get();
   }
-
-  void AddMultiStepImportCandidate(const AutofillProfile& profile,
-                                   const ProfileImportMetadata& import_metadata,
-                                   bool is_imported) {
-    multistep_importer_.AddMultiStepImportCandidate(profile, import_metadata,
-                                                    is_imported);
-  }
-
-  // AddressDataManager::Observer
-  void OnAddressDataChanged() override;
 
   // history::HistoryServiceObserver
   void OnHistoryDeletions(history::HistoryService* history_service,
@@ -114,13 +68,6 @@ class FormDataImporter : public AddressDataManager::Observer,
     return form_associator_.GetFormAssociations(form_signature);
   }
 
-  // This should only set
-  // `payment_method_type_if_non_interactive_authentication_flow_completed_` to
-  // a value when there was an autofill with no interactive authentication,
-  // otherwise it should set to nullopt.
-  void SetPaymentMethodTypeIfNonInteractiveAuthenticationFlowCompleted(
-      std::optional<NonInteractivePaymentMethodType>
-          payment_method_type_if_non_interactive_authentication_flow_completed);
 
   // Gets the AddressFormDataImporter owned by `this`.
   AddressFormDataImporter& GetAddressFormDataImporter();
@@ -156,27 +103,6 @@ class FormDataImporter : public AddressDataManager::Observer,
   ExtractedFormData ExtractFormData(const FormStructure& form,
                                     bool profile_autofill_enabled,
                                     bool payment_methods_autofill_enabled);
-
-  // Attempts to construct ExtractedAddressProfile by extracting values
-  // from the fields in the `form`'s sections. Extraction can fail if the
-  // fields' values don't pass validation. Apart from complete address profiles,
-  // partial profiles for silent updates are extracted. All are stored in
-  // `extracted_form_data`'s `extracted_address_profiles`.
-  // The function returns the number of _complete_ extracted profiles.
-  size_t ExtractAddressProfiles(
-      const FormStructure& form,
-      std::vector<AddressFormDataImporter::ExtractedAddressProfile>*
-          extracted_address_profiles);
-
-  // Helper method for ExtractAddressProfiles which only considers the fields
-  // for a specified `section`. If no section is passed, the import is
-  // performed on the union of all sections.
-  bool ExtractAddressProfileFromSection(
-      base::span<const AutofillField* const> section_fields,
-      const GURL& source_url,
-      std::vector<AddressFormDataImporter::ExtractedAddressProfile>*
-          extracted_address_profiles,
-      LogBuffer* import_log_buffer);
 
   // Returns the extracted card if one was found in the form.
   //
@@ -224,25 +150,8 @@ class FormDataImporter : public AddressDataManager::Observer,
       bool is_credit_card_upstream_enabled,
       ukm::SourceId ukm_source_id);
 
-  // If the mandatory re-auth opt-in bubble can be shown for a credit card, this
-  // function will start the flow and return true. Otherwise, it will return
-  // false.
-  bool ProceedWithCardMandatoryReauthOptInIfApplicable();
-
-  // Processes the extracted address profiles. `extracted_address_profiles`
-  // contains the addresses extracted from the form. |allow_prompt| denotes if a
-  // prompt can be shown. Returns true if the import of a complete profile is
-  // initiated.
-  bool ProcessExtractedAddressProfiles(
-      const std::vector<AddressFormDataImporter::ExtractedAddressProfile>&
-          extracted_address_profiles,
-      bool allow_prompt,
-      ukm::SourceId ukm_source_id);
-
-  // Extracts the GUIDs of profiles used to autofill `submitted_form`, returning
-  // an empty set if any field was manually edited.
-  base::flat_set<std::string> ExtractGUIDsOfProfilesWithoutManualEdits(
-      const FormStructure& submitted_form) const;
+  // Helper function which extracts the IBAN from the form structure.
+  Iban ExtractIbanFromForm(const FormStructure& form);
 
   PaymentsDataManager& payments_data_manager();
 
@@ -252,29 +161,16 @@ class FormDataImporter : public AddressDataManager::Observer,
   // Responsible for managing credit card save flows (local or upload).
   std::unique_ptr<CreditCardSaveManager> credit_card_save_manager_;
 
-  // Responsible for managing address profiles save flows.
-  std::unique_ptr<AddressProfileSaveManager> address_profile_save_manager_;
-
-  // Responsible for managing IBAN save flows. It is guaranteed to be non-null.
-  std::unique_ptr<IbanSaveManager> iban_save_manager_;
-
   base::ScopedObservation<history::HistoryService, HistoryServiceObserver>
       history_service_observation_{this};
-
-  base::ScopedObservation<AddressDataManager, AddressDataManager::Observer>
-      address_data_manager_observation_{this};
 
   // Represents the type of the credit card import candidate from the submitted
   // form. It will be used to determine whether to offer upload save or not.
   // Will be passed to `credit_card_save_manager_` for metrics. If no credit
   // card was found in the form, the type will be `kNoCard`.
-  CreditCardImportType credit_card_import_type_ = CreditCardImportType::kNoCard;
-
-  // Used to store the last four digits of the fetched virtual cards.
-  base::flat_set<std::u16string> fetched_virtual_cards_;
-
-  // Enables importing from multi-step import flows.
-  MultiStepImportMerger multistep_importer_;
+  payments::PaymentsFormDataImporter::CreditCardImportType
+      credit_card_import_type_ =
+          payments::PaymentsFormDataImporter::CreditCardImportType::kNoCard;
 
   // Enables associating recently submitted forms with each other.
   FormAssociator form_associator_;
@@ -285,17 +181,14 @@ class FormDataImporter : public AddressDataManager::Observer,
   // FormDataImporter to handle payments-related functionality.
   payments::PaymentsFormDataImporter payments_form_data_importer_;
 
-  // If the most recent payments autofill flow had a non-interactive
-  // authentication,
-  // `payment_method_type_if_non_interactive_authentication_flow_completed_`
-  // will contain the type of payment method that had the non-interactive
-  // authentication, otherwise it will be nullopt. This is for logging purposes
-  // to log the type of non interactive payment method type that triggers
-  // mandatory reauth.
-  std::optional<NonInteractivePaymentMethodType>
-      payment_method_type_if_non_interactive_authentication_flow_completed_;
-
   friend class FormDataImporterTestApi;
+
+  // TODO(crbug.com/481379161): Remove `payments::PaymentsFormDataImporter` as a
+  //    friend class once the FDI->PaymentsFDI migration is complete. This is
+  //    very much not ideal and temporary, but the alternative is temporarily
+  //    passing in class variables as parameters until the last second, which
+  //    probably carries slightly higher risk.
+  friend class payments::PaymentsFormDataImporter;
 };
 
 }  // namespace autofill

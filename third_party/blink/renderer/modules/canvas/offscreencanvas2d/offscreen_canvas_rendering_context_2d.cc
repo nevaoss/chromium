@@ -225,7 +225,6 @@ OffscreenCanvasRenderingContext2D::GetOrCreateResourceProvider() {
   if (use_shared_image) {
     provider = Canvas2DResourceProviderSharedImage::Create(
         host->Size(), format, alpha_type, color_space,
-        CanvasResourceProvider::ShouldInitialize::kCallClear,
         SharedGpuContext::ContextProviderWrapper(),
         can_use_gpu ? RasterMode::kGPU : RasterMode::kCPU,
         shared_image_usage_flags, host);
@@ -235,7 +234,6 @@ OffscreenCanvasRenderingContext2D::GetOrCreateResourceProvider() {
         host->GetOrCreateResourceDispatcher()->GetWeakPtr();
     provider = Canvas2DResourceProviderSharedImage::CreateForSoftwareCompositor(
         host->Size(), format, alpha_type, color_space,
-        CanvasResourceProvider::ShouldInitialize::kCallClear,
         SharedGpuContext::SharedImageInterfaceProvider(), host);
   }
 
@@ -247,8 +245,7 @@ OffscreenCanvasRenderingContext2D::GetOrCreateResourceProvider() {
     // another type of resource prover above is a sign that the graphics
     // pipeline is in a bad state (e.g. gpu process crashed, out of memory)
     provider = Canvas2DResourceProviderBitmap::Create(
-        host->Size(), format, alpha_type, color_space,
-        CanvasResourceProvider::ShouldInitialize::kCallClear, host);
+        host->Size(), format, alpha_type, color_space, host);
   }
 
   resource_provider_ = std::move(provider);

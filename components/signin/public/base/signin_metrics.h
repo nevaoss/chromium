@@ -324,10 +324,12 @@ enum class AccessPoint : int {
   // Set sync consent from sync internals.
   kSetSyncConsentFromSyncInternals = 93,
   kIosChromeWebView = 94,
+  kAshUserSessionManager = 95,
+  kAshChromeSessionManager = 96,
   // Add values above this line with a corresponding label to the
   // "SigninAccessPoint" enum in
   // tools/metrics/histograms/metadata/signin/enums.xml.
-  kMaxValue = kIosChromeWebView,  // This must be last.
+  kMaxValue = kAshChromeSessionManager,  // This must be last.
 };
 // LINT.ThenChange(/tools/metrics/histograms/metadata/signin/enums.xml)
 
@@ -746,10 +748,6 @@ void LogCookieJarCounts(const int signed_in,
 // account(s) present in the cookie jar.
 void LogAccountRelation(const AccountRelation relation,
                         const ReportingType type);
-
-// Records if the best guess is that this profile is currently shared or not
-// between multiple users.
-void LogIsShared(const bool is_shared, const ReportingType type);
 
 // Records the number of signed-in accounts in the cookie jar for the given
 // (potentially unconsented) primary account type, characterized by sync being

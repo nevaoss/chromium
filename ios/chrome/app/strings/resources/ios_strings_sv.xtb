@@ -374,7 +374,6 @@
 <translation id="2306265833370324042">Visa information om <ph name="SEARCH_ENGINE_NAME" /></translation>
 <translation id="2309265394777270359">Stäng flik</translation>
 <translation id="2311077293164383652">Stäng fäst flik</translation>
-<translation id="2313392466694008052">Redigera bild med Gemini</translation>
 <translation id="2316129865977710310">Nej tack</translation>
 <translation id="2320166752086256636">Dölj tangentbordet</translation>
 <translation id="2321086116217818302">Lösenorden förbereds …</translation>
@@ -1787,6 +1786,7 @@ Du måste även aktivera Handoff i avsnittet Allmänt i inställningarna och sam
 <translation id="7506817096924591340"><ph name="FILENAME" /> (<ph name="FILESIZE" />).</translation>
 <translation id="7508728395076009983">Konfigurera Touch ID, Face ID eller ett lösenord om du vill låsa flikar i inkognitoläget.</translation>
 <translation id="750886945254958667">Behåll gruppen om du vill lägga till flikar senare eller lämna den om du inte längre vill ha åtkomst till den</translation>
+<translation id="7511727374778217603">{COUNT,plural, =1{Lägg till upp till en flik}other{Lägg till upp till {COUNT} flikar}}</translation>
 <translation id="7512909159512473473">Ange lösenfras …</translation>
 <translation id="7514365320538308">Ladda ned</translation>
 <translation id="7514530647142300459">Fortsätt använda lösenorden i Google-kontot <ph name="EMAIL" /></translation>
@@ -2237,6 +2237,7 @@ Du måste även aktivera Handoff i avsnittet Allmänt i inställningarna och sam
 <translation id="9055291197094969722">Skapa flikgrupper för att ordna dina öppna flikar och vara produktiv</translation>
 <translation id="9055580485132823283">Du är på väg att radera {password_count} lösenord, {passkey_count} nycklar och listan över webbplatser och appar där du valt att aldrig spara inloggningsuppgifter. Konton som du har skapat för webbplatser och appar raderas inte.</translation>
 <translation id="9057030985451135243">Läs mer om delade flikgrupper</translation>
+<translation id="9064106978262828592">Det gick inte att exportera din data</translation>
 <translation id="9065203028668620118">Redigera</translation>
 <translation id="9066097352053395362">Dölj Redigera bokmärke</translation>
 <translation id="9070824521421603770">Du loggas ut och flikar stängs</translation>

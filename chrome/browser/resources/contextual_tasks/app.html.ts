@@ -21,7 +21,8 @@ export function getHtml(this: ContextualTasksAppElement) {
       </top-toolbar>
     </div>
   `}
-  <webview id="threadFrame" allowtransparency="on" partition="persist:contextual-tasks"></webview>
+  <webview id="threadFrame" allowtransparency="on" partition="persist:contextual-tasks"
+      aria-hidden="${this.isZeroState_ && !this.isShownInTab_}"></webview>
   <ghost-loader id="ghostLoader"></ghost-loader>
   ${this.isErrorDialogVisible_ ?
     html`<contextual-tasks-error-dialog></contextual-tasks-error-dialog>` : ''}
@@ -38,6 +39,7 @@ export function getHtml(this: ContextualTasksAppElement) {
     <contextual-tasks-composebox id="composebox"
           ?hidden="${this.isInBasicMode_ && !this.enableBasicModeZOrder_}"
           .isZeroState="${this.isZeroState_}"
+          .forcedComposeboxBounds="${this.forcedComposeboxBounds_}"
           .isSidePanel="${!this.isShownInTab_}"
           .enableNativeZeroStateSuggestions=
               "${this.enableNativeZeroStateSuggestions_}"

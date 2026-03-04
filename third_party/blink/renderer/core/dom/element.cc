@@ -6552,8 +6552,8 @@ void Element::setEditContext(EditContext* edit_context,
   CHECK(DynamicTo<HTMLElement>(this));
 
   // https://w3c.github.io/edit-context/#extensions-to-the-htmlelement-interface
-  // 1. If this's local name is neither a valid shadow host name nor "canvas",
-  // then throw a "NotSupportedError" DOMException.
+  // Step 1: If this's local name is neither a valid shadow host name nor
+  // "canvas", then throw a "NotSupportedError" DOMException.
   const AtomicString& local_name = localName();
   if (!(IsCustomElement() && CustomElement::IsValidName(local_name)) &&
       !IsValidShadowHostName(local_name) &&
@@ -6564,25 +6564,81 @@ void Element::setEditContext(EditContext* edit_context,
     return;
   }
 
-  if (edit_context && edit_context->attachedElements().size() > 0 &&
-      edit_context->attachedElements()[0] != this) {
-    exception_state.ThrowDOMException(
-        DOMExceptionCode::kNotSupportedError,
-        "An EditContext can be only be associated with a single element");
-    return;
-  }
-
-  // If an element is in focus when being attached to a new EditContext,
-  // its old EditContext, if it has any, will get blurred,
-  // and the new EditContext will automatically get focused.
-  if (auto* old_edit_context = editContext()) {
-    if (IsFocusedElementInDocument()) {
-      old_edit_context->Blur();
+  if (RuntimeEnabledFeatures::EditContextAssignmentAsPerSpecEnabled()) {
+    // Step 2: If edit_context is not null, then:
+    // Step 2.1: If edit_context's associated element is equal to this, then
+    // terminate these steps.
+    // Step 2.2: If edit_context's associated element is not null, then throw a
+    // "NotSupportedError" DOMException.
+    if (edit_context && edit_context->attachedElements().size() > 0) {
+      if (edit_context->attachedElements()[0] != this) {
+        exception_state.ThrowDOMException(
+            DOMExceptionCode::kNotSupportedError,
+            "An EditContext can be only be associated with a single element");
+      }
+      return;
     }
 
-    old_edit_context->DetachElement(DynamicTo<HTMLElement>(this));
+    // Step 3: Let old_edit_context be the value of this's internal
+    // [[EditContext]] slot.
+    auto* old_edit_context = editContext();
+
+    // Step 4: If old_edit_context is not null and old_edit_context is this's
+    // node document's active EditContext, then:
+    if (old_edit_context && IsFocusedElementInDocument()) {
+      // Step 4.1: Deactivate old_edit_context
+      // Note: `Blur` might fire events (like compositionend), which could
+      // modify old_edit_context's associations. This is why we re-check the
+      // associations below.
+      old_edit_context->Blur();
+
+      // Step 4.2: If old_edit_context's associated element is not equal to
+      // this, then terminate these steps.
+      if (!old_edit_context->attachedElements().size() ||
+          old_edit_context->attachedElements()[0] != this) {
+        return;
+      }
+      // Step 4.3: If edit_context is not null, edit_context's associated
+      // element is not null and edit_context's associated element is not equal
+      // to this
+      if (edit_context && edit_context->attachedElements().size() > 0) {
+        if (edit_context->attachedElements()[0] != this) {
+          exception_state.ThrowDOMException(
+              DOMExceptionCode::kNotSupportedError,
+              "An EditContext can be only be associated with a single element");
+        }
+        return;
+      }
+    }
+
+    // Step 5: If old_edit_context is not null, set old_edit_context's
+    // associated element to null.
+    if (old_edit_context) {
+      old_edit_context->DetachElement(DynamicTo<HTMLElement>(this));
+    }
+  } else {
+    if (edit_context && edit_context->attachedElements().size() > 0 &&
+        edit_context->attachedElements()[0] != this) {
+      exception_state.ThrowDOMException(
+          DOMExceptionCode::kNotSupportedError,
+          "An EditContext can be only be associated with a single element");
+      return;
+    }
+
+    // If an element is in focus when being attached to a new EditContext,
+    // its old EditContext, if it has any, will get blurred,
+    // and the new EditContext will automatically get focused.
+    if (auto* old_edit_context = editContext()) {
+      if (IsFocusedElementInDocument()) {
+        old_edit_context->Blur();
+      }
+
+      old_edit_context->DetachElement(DynamicTo<HTMLElement>(this));
+    }
   }
 
+  // Step 6: If edit_context is not null, then set edit_context's associated
+  // element to this.
   if (edit_context) {
     edit_context->AttachElement(DynamicTo<HTMLElement>(this));
 
@@ -7221,16 +7277,16 @@ CustomElementRegistry* Element::customElementRegistry() const {
   if (!RuntimeEnabledFeatures::ScopedCustomElementRegistryEnabled()) {
     return nullptr;
   }
-  // TODO(crbug.com/429140221) Need to evaluate if storing registry
-  // in element whenever needed is too memory consuming. For now
-  // we'll take the naive approach and assume an element using its tree
-  // scope's registry if not explicitly set.
-  if (const ElementRareDataVector* data = RareData()) {
-    if (data->HasCustomElementRegistrySet()) {
-      return data->GetCustomElementRegistry();
+  // If scoped registry is not exercised at all in the document,
+  // we can avoid the rare data lookup and just return the tree scope's
+  // registry.
+  if (GetDocument().ScopedCustomElementRegistryUsed()) {
+    if (const ElementRareDataVector* data = RareData()) {
+      if (data->HasCustomElementRegistrySet()) {
+        return data->GetCustomElementRegistry();
+      }
     }
   }
-
   return GetTreeScope().customElementRegistry();
 }
 
@@ -7246,6 +7302,7 @@ void Element::SetCustomElementRegistry(CustomElementRegistry* registry,
     EnsureRareData().ClearCustomElementRegistry();
   } else {
     data_ = EnsureRareData().SetCustomElementRegistry(registry);
+    GetDocument().SetScopedCustomElementRegistryUsed();
   }
 }
 
@@ -12139,6 +12196,9 @@ DOMTokenList& Element::part() {
 }
 
 DOMTokenList* Element::GetMarker() const {
+  if (!RuntimeEnabledFeatures::DocumentPatchingEnabled()) {
+    return nullptr;
+  }
   if (const ElementRareDataVector* data = RareData()) {
     return data->GetMarker();
   }

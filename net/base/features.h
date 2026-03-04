@@ -330,17 +330,20 @@ NET_EXPORT BASE_DECLARE_FEATURE(kTcpPortReuseMetricsWin);
 NET_EXPORT BASE_DECLARE_FEATURE(kTcpSocketIoCompletionPortWin);
 #endif
 
+#if BUILDFLAG(IS_MAC)
+// Whether or not to enable TCP port randomization on macOS by choosing a
+// randomized ephemeral source port.
+NET_EXPORT BASE_DECLARE_FEATURE(kTcpPortRandomizationMac);
+// How long (in seconds) to avoid reusing a recently-used ephemeral port for
+// the same peer. Defaults to 120 to match common NAT timeout values.
+NET_EXPORT extern const base::FeatureParam<int>
+    kTcpPortRandomizationReuseDelaySec;
+#endif
+
 // Avoid creating cache entries for transactions that are most likely no-store.
 NET_EXPORT BASE_DECLARE_FEATURE(kAvoidEntryCreationForNoStore);
 NET_EXPORT extern const base::FeatureParam<int>
     kAvoidEntryCreationForNoStoreCacheSize;
-
-// A flag for new Kerberos feature, that suggests new UI
-// when Kerberos authentication in browser fails on ChromeOS.
-// b/260522530
-#if BUILDFLAG(IS_CHROMEOS)
-NET_EXPORT BASE_DECLARE_FEATURE(kKerberosInBrowserRedirect);
-#endif
 
 // A flag to use asynchronous session creation for new QUIC sessions.
 NET_EXPORT BASE_DECLARE_FEATURE(kAsyncQuicSession);
@@ -543,6 +546,8 @@ NET_EXPORT BASE_DECLARE_FEATURE_PARAM(int,
 // Disables synchronous writes in the WAL file of the SQL disk cache's DB.
 // This is faster but less safe.
 NET_EXPORT BASE_DECLARE_FEATURE_PARAM(bool, kSqlDiskCacheSynchronousOff);
+// Enables the database preloading for the SQL disk cache backend.
+NET_EXPORT BASE_DECLARE_FEATURE_PARAM(bool, kSqlDiskCachePreloadDatabase);
 // The number of shards for the SQL disk cache.
 NET_EXPORT BASE_DECLARE_FEATURE_PARAM(int, kSqlDiskCacheShardCount);
 // Loads the in-memory index on initialization.
@@ -555,6 +560,8 @@ NET_EXPORT BASE_DECLARE_FEATURE_PARAM(int,
                                       kSqlDiskCacheMaxWriteBufferSizePerEntry);
 // The maximum size of the read buffer for all entries.
 NET_EXPORT BASE_DECLARE_FEATURE_PARAM(int, kSqlDiskCacheMaxReadBufferTotalSize);
+// Execute the checkpoint serially.
+NET_EXPORT BASE_DECLARE_FEATURE_PARAM(bool, kSqlDiskCacheSerialCheckpoint);
 #endif  // ENABLE_DISK_CACHE_SQL_BACKEND
 
 // If enabled, ignore Strict-Transport-Security for [*.]localhost hosts.

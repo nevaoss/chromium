@@ -125,6 +125,7 @@
 <translation id="1436671784520050284">Продължаване с настройването</translation>
 <translation id="143681031165817424">Адресът е запазен само на това устройство</translation>
 <translation id="1445276840641906250">Един браузър за всичките ви раздели</translation>
+<translation id="1447564161241938558">Импортирането на пароли и ключове за достъп е деактивирано от администратора ви</translation>
 <translation id="1450170672351507823">Режимът за стандартна защита е включен. За още по-голяма сигурност използвайте подобрената защита.</translation>
 <translation id="1455660774629812862">Без скриване</translation>
 <translation id="1456545332132818232">Отзиви за продукта за <ph name="PRODUCT_NAME" />, <ph name="STARS" /> от <ph name="MAX_STARS" /> в сайта <ph name="DOMAIN" /></translation>
@@ -373,7 +374,6 @@
 <translation id="2306265833370324042">Показване на подробностите за <ph name="SEARCH_ENGINE_NAME" /></translation>
 <translation id="2309265394777270359">Затваряне на раздела</translation>
 <translation id="2311077293164383652">Затваряне на фиксирания раздел</translation>
-<translation id="2313392466694008052">Редактиране на изображението с Gemini</translation>
 <translation id="2316129865977710310">Не, благодаря</translation>
 <translation id="2320166752086256636">Скриване на клавиатурата</translation>
 <translation id="2321086116217818302">Паролите се подготвят…</translation>
@@ -1786,6 +1786,7 @@
 <translation id="7506817096924591340"><ph name="FILENAME" /> (<ph name="FILESIZE" />).</translation>
 <translation id="7508728395076009983">За да заключите разделите си в режим „инкогнито“, настройте Touch ID, Face ID или код за достъп.</translation>
 <translation id="750886945254958667">Запазете тази група, за да добавяте раздели по-късно, или я напуснете, ако вече не искате достъп до нея</translation>
+<translation id="7511727374778217603">{COUNT,plural, =1{Добавете до 1 раздел}other{Добавете до {COUNT} раздела}}</translation>
 <translation id="7512909159512473473">Въвеждане на пропуск…</translation>
 <translation id="7514365320538308">Изтегляне</translation>
 <translation id="7514530647142300459">Продължете да използвате паролите в профила си в Google <ph name="EMAIL" /></translation>
@@ -2059,6 +2060,7 @@
 <translation id="8439758443371991593">Скриване на „Добавяне към списъка за четене“</translation>
 <translation id="8443986842926457191">URL адресът е повече от 2048 знака</translation>
 <translation id="8449869326050867919">Паролата е споделена</translation>
+<translation id="8473815223723723001">Редактиране на изображението с Gemini</translation>
 <translation id="8473863474539038330">Адреси и др.</translation>
 <translation id="8474378002946546633">Разрешаване на известията</translation>
 <translation id="8477178913400731244">Изтриване на данните</translation>
@@ -2236,6 +2238,7 @@
 <translation id="9055291197094969722">Създавайте групи раздели, за да организирате отворените си раздели и да работите продуктивно</translation>
 <translation id="9055580485132823283">Напът сте да изтриете {password_count} пароли, {passkey_count} ключа за достъп и списъка със сайтове и приложения, за които сте избрали данните за вход никога да не се запазват. Профилите, които сте създали за сайтове или приложения, няма да бъдат изтрити.</translation>
 <translation id="9057030985451135243">Научете за споделените групи раздели</translation>
+<translation id="9064106978262828592">При експортирането на данните ви възникна проблем</translation>
 <translation id="9065203028668620118">Редактиране</translation>
 <translation id="9066097352053395362">Скриване на „Редактиране на отметката“</translation>
 <translation id="9070824521421603770">Ще излезете от профила си и разделите ще бъдат затворени</translation>

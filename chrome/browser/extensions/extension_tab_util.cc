@@ -157,7 +157,7 @@ int GetTabIdForExtensions(WebContents& web_contents) {
 
 bool IsFileUrl(const GURL& url) {
   return url.SchemeIsFile() || (url.SchemeIs(content::kViewSourceScheme) &&
-                                GURL(url.GetContent()).SchemeIsFile());
+                                GURL(url.GetContentPiece()).SchemeIsFile());
 }
 
 ExtensionTabUtil::ScrubTabBehaviorType GetScrubTabBehaviorImpl(
@@ -322,17 +322,17 @@ WindowController* ExtensionTabUtil::GetControllerInProfileWithId(
     int window_id,
     bool also_match_incognito_profile,
     std::string* error_message) {
-  Profile* incognito_profile =
+  const Profile* incognito_profile =
       also_match_incognito_profile
           ? profile->GetPrimaryOTRProfile(/*create_if_needed=*/false)
           : nullptr;
-  for (auto* browser : GetAllBrowserWindowInterfaces()) {
-    if ((browser->GetProfile() == profile ||
-         browser->GetProfile() == incognito_profile)) {
-      WindowController* controller = WindowControllerFromBrowser(browser);
-      if (controller->GetWindowId() == window_id) {
-        return controller;
-      }
+  for (WindowController* window_controller :
+       *WindowControllerList::GetInstance()) {
+    const Profile* controller_profile = window_controller->profile();
+    if ((controller_profile == profile ||
+         controller_profile == incognito_profile) &&
+        window_controller->GetWindowId() == window_id) {
+      return window_controller;
     }
   }
 

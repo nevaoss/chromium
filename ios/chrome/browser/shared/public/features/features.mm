@@ -84,10 +84,6 @@ BASE_FEATURE(kLensOverlayEnableLandscapeCompatibility,
              "EnableLensOverlayLandscapeSupport",
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kLensOverlayForceShowOnboardingScreen,
-             "EnableLensOverlayForceShowOnboardingScreen",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
 BASE_FEATURE(kLensOverlayNavigationHistory, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kLensOverlayCustomBottomSheet, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -114,8 +110,6 @@ BASE_FEATURE(kNTPMIAEntrypoint,
 BASE_FEATURE(kNTPMIAEntrypointAllLocales,
              "kNTPMIAEntrypointAllLocales",
              base::FEATURE_DISABLED_BY_DEFAULT);
-
-BASE_FEATURE(kComposeboxAutoattachTab, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Used to gate the immersive SRP in the Composebox.
 BASE_FEATURE(kComposeboxImmersiveSRP, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -209,12 +203,18 @@ bool IsOmahaServiceRefactorEnabled() {
 // TODO(crbug.com/473788390): Clean-up feature once file upload menu is ready.
 BASE_FEATURE(kIOSChooseFromDrive, base::FEATURE_ENABLED_BY_DEFAULT);
 
+BASE_FEATURE(kIOSChooseFromDriveSignedOut, base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kIOSDateToCalendarSignedOut, base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE(kIOSDownloadNoUIUpdateInBackground,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kIOSSaveToDriveClientFolder, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kIOSSaveToDriveSignedOut, base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kIOSSaveToPhotosSignedOut, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kEnableFeedBackgroundRefresh, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -454,8 +454,6 @@ bool IsLiquidGlassEffectEnabled() {
 
   return false;
 }
-
-BASE_FEATURE(kIOSEnhancedAutofill, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kIOSKeyboardAccessoryDefaultView,
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -875,16 +873,6 @@ int GetSyncedSetUpImpressionLimit() {
       kIOSSyncedSetUp, kSyncedSetUpImpressionLimit, /*default_value=*/1);
 }
 
-BASE_FEATURE(kMultilineBrowserOmnibox, base::FEATURE_DISABLED_BY_DEFAULT);
-
-bool IsMultilineBrowserOmniboxEnabled() {
-  if (ui::GetDeviceFormFactor() != ui::DEVICE_FORM_FACTOR_PHONE ||
-      IsComposeboxIOSEnabled()) {
-    return false;
-  }
-  return base::FeatureList::IsEnabled(kMultilineBrowserOmnibox);
-}
-
 BASE_FEATURE(kDisableKeyboardAccessory, base::FEATURE_DISABLED_BY_DEFAULT);
 
 const char kDisableKeyboardAccessoryParam[] = "kDisableKeyboardAccessoryParam";
@@ -1068,4 +1056,16 @@ BASE_FEATURE(kDisableComposeboxFromAIMNTP, base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool IsDisableComposeboxFromAIMNTPEnabled() {
   return base::FeatureList::IsEnabled(kDisableComposeboxFromAIMNTP);
+}
+
+BASE_FEATURE(kAIMCobrowseDebugEntrypoint, base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsAIMCobrowseDebugEntrypointEnabled() {
+  return base::FeatureList::IsEnabled(kAIMCobrowseDebugEntrypoint);
+}
+
+BASE_FEATURE(kRecordRecentActiveDays, base::FEATURE_ENABLED_BY_DEFAULT);
+
+bool IsRecordRecentActiveDaysEnabled() {
+  return base::FeatureList::IsEnabled(kRecordRecentActiveDays);
 }

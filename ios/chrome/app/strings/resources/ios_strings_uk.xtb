@@ -125,6 +125,7 @@
 <translation id="1436671784520050284">Продовжити налаштування</translation>
 <translation id="143681031165817424">Адресу збережено лише на цьому пристрої</translation>
 <translation id="1445276840641906250">Усі ваші вкладки в одному вебпереглядачі</translation>
+<translation id="1447564161241938558">Адміністратор вимкнув імпортування паролів і ключів доступу</translation>
 <translation id="1450170672351507823">Стандартний захист увімкнено. Щоб посилити свою безпеку, активуйте покращений захист.</translation>
 <translation id="1455660774629812862">Не приховувати</translation>
 <translation id="1456545332132818232">Відгуки про товар <ph name="PRODUCT_NAME" />, <ph name="STARS" /> з <ph name="MAX_STARS" /> зірочок, на сайті <ph name="DOMAIN" /></translation>
@@ -373,7 +374,6 @@
 <translation id="2306265833370324042">Показати інформацію про <ph name="SEARCH_ENGINE_NAME" /></translation>
 <translation id="2309265394777270359">Закрити вкладку</translation>
 <translation id="2311077293164383652">Закрити закріплену вкладку</translation>
-<translation id="2313392466694008052">Редагувати зображення за допомогою Gemini</translation>
 <translation id="2316129865977710310">Ні, дякую</translation>
 <translation id="2320166752086256636">Сховати клавіатуру</translation>
 <translation id="2321086116217818302">Готуються паролі…</translation>
@@ -1786,6 +1786,7 @@
 <translation id="7506817096924591340"><ph name="FILENAME" /> (<ph name="FILESIZE" />).</translation>
 <translation id="7508728395076009983">Щоб закріпляти анонімні вкладки, налаштуйте Touch ID, Face ID або код доступу.</translation>
 <translation id="750886945254958667">Збережіть цю групу, щоб додавати вкладки пізніше, або вийдіть із неї, якщо вона вам більше не потрібна</translation>
+<translation id="7511727374778217603">{COUNT,plural, =1{Можна додати щонайбільше 1 вкладку}one{Можна додати щонайбільше {COUNT} вкладку}few{Можна додати щонайбільше {COUNT} вкладки}many{Можна додати щонайбільше {COUNT} вкладок}other{Можна додати щонайбільше {COUNT} вкладки}}</translation>
 <translation id="7512909159512473473">Ввести парольну фразу…</translation>
 <translation id="7514365320538308">Завантажити</translation>
 <translation id="7514530647142300459">Продовжуйте використовувати паролі в обліковому записі Google <ph name="EMAIL" /></translation>
@@ -2059,6 +2060,7 @@
 <translation id="8439758443371991593">Сховати опцію "Додати в список читання"</translation>
 <translation id="8443986842926457191">URL-адреса містить більше ніж 2048 символів</translation>
 <translation id="8449869326050867919">Пароль надіслано</translation>
+<translation id="8473815223723723001">Редагувати зображення за допомогою Gemini</translation>
 <translation id="8473863474539038330">Адреси й інше</translation>
 <translation id="8474378002946546633">Дозволити сповіщення</translation>
 <translation id="8477178913400731244">Видалити дані</translation>
@@ -2236,6 +2238,7 @@
 <translation id="9055291197094969722">Упорядковуйте відкриті вкладки в групи, щоб працювати ефективніше</translation>
 <translation id="9055580485132823283">Ви збираєтеся видалити паролі ({password_count}), ключі доступу ({passkey_count}) та список сайтів і додатків, для яких вирішили не зберігати дані для входу. Облікові записи, створені для сайтів і додатків, не видалятимуться.</translation>
 <translation id="9057030985451135243">Докладніше про спільні групи вкладок</translation>
+<translation id="9064106978262828592">Не вдалось експортувати дані</translation>
 <translation id="9065203028668620118">Редагувати</translation>
 <translation id="9066097352053395362">Сховати опцію "Редагувати закладку"</translation>
 <translation id="9070824521421603770">Ви вийдете з облікового запису, а вкладки буде закрито</translation>

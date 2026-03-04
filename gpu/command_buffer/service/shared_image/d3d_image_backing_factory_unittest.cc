@@ -179,11 +179,11 @@ class D3DImageBackingFactoryTest
     context_state_ = base::MakeRefCounted<SharedContextState>(
         std::move(share_group), surface_, context_,
         /*use_virtualized_gl_contexts=*/false, base::DoNothing(),
-        gr_context_type, nullptr, nullptr, dawn_context_provider_.get());
+        gr_context_type, /*vulkan_context_provider=*/nullptr,
+        dawn_context_provider_.get());
     context_state_->InitializeSkia(GpuPreferences(), workarounds);
-    auto feature_info =
-        base::MakeRefCounted<gles2::FeatureInfo>(workarounds, GpuFeatureInfo());
-    context_state_->InitializeGL(GpuPreferences(), std::move(feature_info));
+    context_state_->InitializeGL(GpuPreferences(), workarounds,
+                                 GpuFeatureInfo());
     copy_manager_ = base::MakeRefCounted<SharedImageCopyManager>();
     copy_manager_->AddStrategy(std::make_unique<SharedMemoryCopyStrategy>());
   }

@@ -201,7 +201,7 @@ void PaintLayerScrollableArea::DisposeImpl() {
        scroll_marker_group_data_set_) {
     scroll_marker_group->SetNeedsScrollersMapUpdate();
   }
-  if (InResizeMode() && !GetLayoutBox()->DocumentBeingDestroyed()) {
+  if (InResizeMode()) {
     if (LocalFrame* frame = GetLayoutBox()->GetFrame())
       frame->GetEventHandler().ResizeScrollableAreaDestroyed();
   }
@@ -212,9 +212,8 @@ void PaintLayerScrollableArea::DisposeImpl() {
     probe::UpdateScrollableFlag(GetLayoutBox()->GetNode(), false);
   }
 
-  if (!GetLayoutBox()->DocumentBeingDestroyed()) {
-    if (auto* element = DynamicTo<Element>(GetLayoutBox()->GetNode()))
-      element->SetSavedLayerScrollOffset(scroll_offset_);
+  if (auto* element = DynamicTo<Element>(GetLayoutBox()->GetNode())) {
+    element->SetSavedLayerScrollOffset(scroll_offset_);
   }
 
   // Note: it is not safe to call ScrollAnchor::clear if the document is being
@@ -237,8 +236,6 @@ void PaintLayerScrollableArea::DisposeImpl() {
     resizer_->Destroy();
 
   ClearScrollableArea();
-
-  RunScrollCompleteCallbacks(ScrollableArea::ScrollCompletionMode::kFinished);
 
   layer_ = nullptr;
 }
@@ -2529,6 +2526,27 @@ void PaintLayerScrollableArea::Resize(
 
   // FIXME: We should also autoscroll the window as necessary to
   // keep the point under the cursor in view.
+}
+
+PhysicalAxes PaintLayerScrollableArea::ScrollableAxes() const {
+  const auto* box = GetLayoutBox();
+
+  // The LayoutView (viewport) always scrolls both axes.
+  if (box->IsLayoutView()) {
+    return kPhysicalAxesBoth;
+  }
+
+  PhysicalAxes axes = kPhysicalAxesNone;
+  const auto& style = box->StyleRef();
+
+  if (style.IsOverflowValueScrollableX()) {
+    axes |= kPhysicalAxesHorizontal;
+  }
+  if (style.IsOverflowValueScrollableY()) {
+    axes |= kPhysicalAxesVertical;
+  }
+
+  return axes;
 }
 
 PhysicalOffset PaintLayerScrollableArea::LocalToScrollOriginOffset() const {

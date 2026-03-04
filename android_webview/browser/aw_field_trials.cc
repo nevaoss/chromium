@@ -83,7 +83,7 @@ void AwFieldTrials::RegisterFeatureOverrides(base::FeatureList* feature_list) {
   aw_feature_overrides.DisableFeature(ui::kAndroidHDR);
 
   // Disable launch_handler on WebView.
-  aw_feature_overrides.DisableFeature(::features::kAndroidWebAppLaunchHandler);
+  aw_feature_overrides.DisableFeature(blink::features::kWebAppLaunchQueue);
 
   // Disable Reducing User Agent minor version on WebView.
   aw_feature_overrides.DisableFeature(
@@ -233,7 +233,6 @@ void AwFieldTrials::RegisterFeatureOverrides(base::FeatureList* feature_list) {
 
   // Disabling the permission element as it needs embedder support in order to
   // function and the webview permission manager cannot support it.
-  aw_feature_overrides.DisableFeature(blink::features::kPermissionElement);
   aw_feature_overrides.DisableFeature(blink::features::kGeolocationElement);
   aw_feature_overrides.DisableFeature(blink::features::kUserMediaElement);
   aw_feature_overrides.DisableFeature(blink::features::kInstallElement);
@@ -317,4 +316,8 @@ void AwFieldTrials::RegisterFeatureOverrides(base::FeatureList* feature_list) {
   // Launched for WebView. Experimentation needed for Chrome on Android.
   aw_feature_overrides.EnableFeature(
       stylus_handwriting::android::kProbeStylusWritingInBackground);
+
+  // As WebSettings.setAllowContentAccess() allows this to be controlled by
+  // the WebView's host, we keep the old behavior for content:// URLs.
+  aw_feature_overrides.DisableFeature(blink::features::kContentSchemeIsLocal);
 }

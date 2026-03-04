@@ -11,6 +11,20 @@ import type {BrowserProxy} from './contextual_tasks_browser_proxy.js';
 const HANDSHAKE_INTERVAL_MS = 500;
 const MAX_HANDSHAKE_ATTEMPTS = 1000;
 
+export interface Rect {
+  top: number;
+  left: number;
+  width: number;
+  right: number;
+  bottom: number;
+  height: number;
+}
+
+export interface InputPlateBoundsUpdateMessage {
+  type: 'input-plate-bounds-update';
+  'bounds-rect': Rect;
+}
+
 /**
  * A proxy class to control post messages sent to the webview.
  */
@@ -25,6 +39,7 @@ export class PostMessageHandler {
   private handshakeIntervalId_: number|null = null;
   private pendingMessages_: Array<Uint8Array|object> = [];
   private handshakeMessage_: Uint8Array|null = null;
+  private onInputPlateBoundsUpdate_: ((rect: Rect) => void)|null = null;
 
   constructor(
       webview: chrome.webviewTag.WebView, browserProxy: BrowserProxy,
@@ -89,7 +104,7 @@ export class PostMessageHandler {
     this.resetHandshake_();
   }
 
-  private onLoadStart_(event: any) {
+  private onLoadStart_(event: chrome.webviewTag.LoadStartEvent) {
     // This event is fired anytime a load starts in the webview, including
     // subframes and navigations within the same page. Only reset the handshake
     // if its the top level frame to avoid unnecessary resets.
@@ -105,7 +120,7 @@ export class PostMessageHandler {
   // used to determine if the webview is ready to receive messages. Doing this
   // in onLoadStart_ can cause a race condition where the handshake completes
   // with the page that is about to navigate away from.
-  private onLoadCommit_(event: any) {
+  private onLoadCommit_(event: chrome.webviewTag.LoadCommitEvent) {
     if (!event.isTopLevel) {
       return;
     }
@@ -160,6 +175,16 @@ export class PostMessageHandler {
       return;
     }
 
+    // TODO(crbug.com/483737358): Sending an object instead of a proto is
+    // a temporary solution to unblock the prototype. Remove this method
+    // once the proto is implemented on the webview side.
+    if (event.data && event.data.type === 'input-plate-bounds-update') {
+      if (this.onInputPlateBoundsUpdate_) {
+        this.onInputPlateBoundsUpdate_(event.data['bounds-rect']);
+      }
+      return;
+    }
+
     try {
       // No json messages are expected from the webview.
       JSON.parse(event.data);
@@ -173,6 +198,10 @@ export class PostMessageHandler {
         this.browserProxy_.handler.onWebviewMessage(messageBytes);
       }
     }
+  }
+
+  setInputPlateBoundsUpdateCallback(callback: (rect: Rect) => void) {
+    this.onInputPlateBoundsUpdate_ = callback;
   }
 
   completeHandshake() {

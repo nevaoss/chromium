@@ -252,7 +252,7 @@ class CC_EXPORT PictureLayerImpl
 
   void UpdateDirectlyCompositedImageFromRasterSource();
 
-  void SanityCheckTilingState() const;
+  void SanityCheckTilingState() const override;
 
   void GetDebugBorderProperties(SkColor4f* color, float* width) const override;
   void GetAllPrioritizedTilesForTracing(
@@ -396,13 +396,13 @@ class CC_EXPORT PictureLayerImpl
 
  private:
   // TileBasedLayerImpl:
-  void AppendQuadsSpecialization(const AppendQuadsContext& context,
-                                 viz::CompositorRenderPass* render_pass,
-                                 AppendQuadsData* append_quads_data,
-                                 viz::SharedQuadState* shared_quad_state,
-                                 const Occlusion& scaled_occlusion,
-                                 const gfx::Vector2d& quad_offset,
-                                 float max_contents_scale) override;
+  int AppendQuadsSpecialization(const AppendQuadsContext& context,
+                                viz::CompositorRenderPass* render_pass,
+                                AppendQuadsData* append_quads_data,
+                                viz::SharedQuadState* shared_quad_state,
+                                const Occlusion& scaled_occlusion,
+                                const gfx::Vector2d& quad_offset,
+                                float max_contents_scale) override;
   float GetMaximumContentsScaleForUseInAppendQuads() const override;
   void AppendQuadsForResourcelessSoftwareDraw(
       const AppendQuadsContext& context,
@@ -414,6 +414,8 @@ class CC_EXPORT PictureLayerImpl
       const gfx::Rect& coverage_rect,
       float coverage_scale,
       float ideal_contents_scale) override;
+  void ComputeCheckerboardedNeedsRecord(
+      AppendQuadsData* append_quads_data) override;
 
   // Returns whether the tile was missing.
   bool AppendQuadForTile(TilingSetCoverageIterator<PictureLayerTiling> iter,

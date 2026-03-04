@@ -281,8 +281,14 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
         // Divider
         maybeAddDividerLine(modelList, R.id.divider_line_id);
 
+        // History parent
+        if (shouldShowHistoryParentItem()) {
+            modelList.add(buildHistoryParentItem());
+        }
+
         // Open History
-        if (!IncognitoUtils.shouldOpenIncognitoAsWindow() || !isIncognitoShowing()) {
+        if (!ChromeFeatureList.isEnabled(ChromeFeatureList.SUBMENUS_IN_APP_MENU)
+                && (!IncognitoUtils.shouldOpenIncognitoAsWindow() || !isIncognitoShowing())) {
             modelList.add(buildHistoryItem());
         }
 
@@ -290,7 +296,8 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
         if (shouldShowTinkerTank()) modelList.add(buildTinkerTankItem());
 
         // Quick Delete
-        if (shouldShowQuickDeleteItem()) {
+        if (!ChromeFeatureList.isEnabled(ChromeFeatureList.SUBMENUS_IN_APP_MENU)
+                && shouldShowQuickDeleteItem()) {
             modelList.add(buildQuickDeleteItem());
             maybeAddDividerLine(modelList, R.id.quick_delete_divider_line_id);
         }
@@ -302,7 +309,10 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
         modelList.add(buildBookmarksItem());
 
         // Recent Tabs
-        if (shouldShowRecentTabsItem()) modelList.add(buildRecentTabsItem());
+        if (!ChromeFeatureList.isEnabled(ChromeFeatureList.SUBMENUS_IN_APP_MENU)
+                && shouldShowRecentTabsItem()) {
+            modelList.add(buildRecentTabsItem());
+        }
 
         // Extensions
         if (shouldShowExtensionsItem()) {
@@ -335,13 +345,25 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
             modelList.add(buildShareListItem(shouldShowIconBeforeItem()));
         }
 
+        // Save and print
+        if (shouldShowSaveAndPrintParentItem(
+                currentTab, isNativePage, isFileScheme, isContentScheme, url)) {
+            modelList.add(
+                    buildSaveAndPrintParentItem(
+                            currentTab, isNativePage, isFileScheme, isContentScheme, url));
+        }
+
         // Download Page
-        if (shouldShowDownloadPageMenuItem(currentTab)) {
+        if (!ChromeFeatureList.isEnabled(ChromeFeatureList.SUBMENUS_IN_APP_MENU)
+                && shouldShowDownloadPageMenuItem(currentTab)) {
             modelList.add(buildDownloadPageItem(currentTab));
         }
 
         // Print
-        if (shouldShowPrintItem(currentTab)) modelList.add(buildPrintItem(currentTab));
+        if (!ChromeFeatureList.isEnabled(ChromeFeatureList.SUBMENUS_IN_APP_MENU)
+                && shouldShowPrintItem(currentTab)) {
+            modelList.add(buildPrintItem(currentTab));
+        }
 
         // Price Tracking (enable / disable)
         MVCListAdapter.ListItem priceTrackingItem =
@@ -367,8 +389,14 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
         // Readaloud
         observeAndMaybeAddReadAloud(modelList, currentTab);
 
+        // More tools
+        if (shouldShowMoreToolsItem(currentTab)) {
+            modelList.add(buildMoreToolsItem(currentTab));
+        }
+
         // Reader mode
-        if (shouldShowReaderModeItem(currentTab)) {
+        if (!ChromeFeatureList.isEnabled(ChromeFeatureList.SUBMENUS_IN_APP_MENU)
+                && shouldShowReaderModeItem(currentTab)) {
             modelList.add(buildReaderModeItem(currentTab));
         }
 
@@ -378,8 +406,9 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
         }
 
         // Universal Install / Open Web APK
-        if (shouldShowHomeScreenMenuItem(
-                isNativePage, isFileScheme, isContentScheme, isIncognitoShowing(), url)) {
+        if (!ChromeFeatureList.isEnabled(ChromeFeatureList.SUBMENUS_IN_APP_MENU)
+                && shouldShowHomeScreenMenuItem(
+                        isNativePage, isFileScheme, isContentScheme, isIncognitoShowing(), url)) {
             assert currentTab != null;
             modelList.add(buildAddToHomescreenListItem(currentTab, shouldShowIconBeforeItem()));
         }
@@ -401,7 +430,8 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
         }
 
         // Paint Preview
-        if (shouldShowPaintPreview(isNativePage, currentTab)) {
+        if (!ChromeFeatureList.isEnabled(ChromeFeatureList.SUBMENUS_IN_APP_MENU)
+                && shouldShowPaintPreview(isNativePage, currentTab)) {
             modelList.add(buildPaintPreviewItem(isNativePage, currentTab));
         }
 
@@ -642,6 +672,51 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
                         shouldShowIconBeforeItem() ? R.drawable.ic_select_window : 0));
     }
 
+    private boolean shouldShowHistoryParentItem() {
+        if (!ChromeFeatureList.isEnabled(ChromeFeatureList.SUBMENUS_IN_APP_MENU)) {
+            return false;
+        }
+
+        if (!IncognitoUtils.shouldOpenIncognitoAsWindow() || !isIncognitoShowing()) {
+            return true;
+        }
+
+        if (shouldShowRecentTabsItem()) {
+            return true;
+        }
+
+        if (shouldShowQuickDeleteItem()) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private MVCListAdapter.ListItem buildHistoryParentItem() {
+        assert shouldShowHistoryParentItem();
+
+        List<ListItem> submenuItems = new ArrayList<>();
+        if (!IncognitoUtils.shouldOpenIncognitoAsWindow() || !isIncognitoShowing()) {
+            submenuItems.add(buildHistoryItem());
+        }
+
+        if (shouldShowRecentTabsItem()) {
+            submenuItems.add(buildRecentTabsItem());
+        }
+
+        if (shouldShowQuickDeleteItem()) {
+            submenuItems.add(buildQuickDeleteItem());
+        }
+
+        return new MVCListAdapter.ListItem(
+                AppMenuHandler.AppMenuItemType.MENU_ITEM_WITH_SUBMENU,
+                buildModelForMenuItemWithSubmenu(
+                        R.id.history_parent_menu_id,
+                        R.string.menu_history,
+                        shouldShowIconBeforeItem() ? R.drawable.ic_history_24dp : Resources.ID_NULL,
+                        submenuItems));
+    }
+
     private MVCListAdapter.ListItem buildHistoryItem() {
         return new MVCListAdapter.ListItem(
                 AppMenuHandler.AppMenuItemType.STANDARD,
@@ -796,6 +871,76 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
                         shouldShowIconBeforeItem() ? R.drawable.ic_zoom : 0));
     }
 
+    private boolean shouldShowSaveAndPrintParentItem(
+            @Nullable Tab currentTab,
+            boolean isNativePage,
+            boolean isFileScheme,
+            boolean isContentScheme,
+            GURL url) {
+        if (!ChromeFeatureList.isEnabled(ChromeFeatureList.SUBMENUS_IN_APP_MENU)) {
+            return false;
+        }
+
+        if (shouldShowDownloadPageMenuItem(currentTab)) {
+            return true;
+        }
+
+        if (shouldShowHomeScreenMenuItem(
+                isNativePage, isFileScheme, isContentScheme, isIncognitoShowing(), url)) {
+            return true;
+        }
+
+        if (shouldShowPrintItem(currentTab)) {
+            return true;
+        }
+
+        if (shouldShowPaintPreview(isNativePage, currentTab)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private MVCListAdapter.ListItem buildSaveAndPrintParentItem(
+            @Nullable Tab currentTab,
+            boolean isNativePage,
+            boolean isFileScheme,
+            boolean isContentScheme,
+            GURL url) {
+        assert shouldShowSaveAndPrintParentItem(
+                currentTab, isNativePage, isFileScheme, isContentScheme, url);
+
+        List<ListItem> submenuItems = new ArrayList<>();
+
+        if (shouldShowDownloadPageMenuItem(currentTab)) {
+            submenuItems.add(buildDownloadPageItem(currentTab));
+        }
+
+        if (shouldShowHomeScreenMenuItem(
+                isNativePage, isFileScheme, isContentScheme, isIncognitoShowing(), url)) {
+            assert currentTab != null;
+            submenuItems.add(buildAddToHomescreenListItem(currentTab, shouldShowIconBeforeItem()));
+        }
+
+        if (shouldShowPrintItem(currentTab)) {
+            submenuItems.add(buildPrintItem(currentTab));
+        }
+
+        if (shouldShowPaintPreview(isNativePage, currentTab)) {
+            submenuItems.add(buildPaintPreviewItem(isNativePage, currentTab));
+        }
+
+        return new MVCListAdapter.ListItem(
+                AppMenuHandler.AppMenuItemType.MENU_ITEM_WITH_SUBMENU,
+                buildModelForMenuItemWithSubmenu(
+                        R.id.save_and_print_parent_menu_id,
+                        R.string.menu_save_and_print,
+                        shouldShowIconBeforeItem()
+                                ? R.drawable.ic_file_save_24dp
+                                : Resources.ID_NULL,
+                        submenuItems));
+    }
+
     private MVCListAdapter.ListItem buildDownloadPageItem(Tab currentTab) {
         assert shouldShowDownloadPageMenuItem(currentTab);
         return new MVCListAdapter.ListItem(
@@ -851,6 +996,60 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
                         R.id.print_id,
                         R.string.menu_print,
                         shouldShowIconBeforeItem() ? R.drawable.sharing_print : 0));
+    }
+
+    private boolean shouldShowTaskManagerItem() {
+        return ChromeFeatureList.isEnabled(ChromeFeatureList.TASK_MANAGER_CLANK);
+    }
+
+    private MVCListAdapter.ListItem buildTaskManagerItem() {
+        assert shouldShowTaskManagerItem();
+
+        return new MVCListAdapter.ListItem(
+                AppMenuHandler.AppMenuItemType.STANDARD,
+                buildModelForStandardMenuItem(
+                        R.id.task_manager,
+                        R.string.menu_task_manager,
+                        shouldShowIconBeforeItem() ? R.drawable.ic_task_manager_24dp : 0));
+    }
+
+    private boolean shouldShowMoreToolsItem(@Nullable Tab currentTab) {
+        if (!ChromeFeatureList.isEnabled(ChromeFeatureList.SUBMENUS_IN_APP_MENU)) {
+            return false;
+        }
+
+        if (shouldShowReaderModeItem(currentTab)) {
+            return true;
+        }
+
+        if (shouldShowTaskManagerItem()) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private MVCListAdapter.ListItem buildMoreToolsItem(@Nullable Tab currentTab) {
+        assert shouldShowMoreToolsItem(currentTab);
+
+        List<ListItem> submenuItems = new ArrayList<>();
+        if (shouldShowReaderModeItem(currentTab)) {
+            submenuItems.add(buildReaderModeItem(currentTab));
+        }
+
+        if (shouldShowTaskManagerItem()) {
+            submenuItems.add(buildTaskManagerItem());
+        }
+
+        return new MVCListAdapter.ListItem(
+                AppMenuHandler.AppMenuItemType.MENU_ITEM_WITH_SUBMENU,
+                buildModelForMenuItemWithSubmenu(
+                        R.id.more_tools_menu_id,
+                        R.string.menu_more_tools,
+                        shouldShowIconBeforeItem()
+                                ? R.drawable.ic_more_tools_24dp
+                                : Resources.ID_NULL,
+                        submenuItems));
     }
 
     @Contract("null -> false")

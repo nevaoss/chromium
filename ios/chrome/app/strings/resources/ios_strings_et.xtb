@@ -125,6 +125,7 @@
 <translation id="1436671784520050284">Jätka seadistamist</translation>
 <translation id="143681031165817424">Aadress salvestatakse ainult sellesse seadmesse</translation>
 <translation id="1445276840641906250">Kõik teie vahelehed ühes brauseris</translation>
+<translation id="1447564161241938558">Teie administraator on paroolide ja pääsuvõtmete importimise keelanud</translation>
 <translation id="1450170672351507823">Tavakaitse on sisse lülitatud. Turvalisuse suurendamiseks kasutage täiustatud kaitset.</translation>
 <translation id="1455660774629812862">Ära peida</translation>
 <translation id="1456545332132818232">Toote <ph name="PRODUCT_NAME" /> arvustused, tärne <ph name="STARS" /> maksimumist <ph name="MAX_STARS" />, <ph name="DOMAIN" /></translation>
@@ -373,7 +374,6 @@
 <translation id="2306265833370324042">Kuva üksuse <ph name="SEARCH_ENGINE_NAME" /> üksikasjad</translation>
 <translation id="2309265394777270359">Sule vaheleht</translation>
 <translation id="2311077293164383652">Sule kinnitatud vaheleht</translation>
-<translation id="2313392466694008052">Pildi muutmine Geminiga</translation>
 <translation id="2316129865977710310">Ei, aitäh</translation>
 <translation id="2320166752086256636">Peida klaviatuur</translation>
 <translation id="2321086116217818302">Paroolide ettevalmistamine …</translation>
@@ -1786,6 +1786,7 @@ Handoff peab olema lubatud seadete jaotises General ja seadmed peavad kasutama s
 <translation id="7506817096924591340"><ph name="FILENAME" /> (<ph name="FILESIZE" />).</translation>
 <translation id="7508728395076009983">Inkognito vahelehtede lukustamiseks seadistage Touch ID, Face ID või pääsukood.</translation>
 <translation id="750886945254958667">Saate säilitada selle grupi, et lisada vahelehed hiljem, või lahkuda sellest, kui te ei soovi sellele enam juurde pääseda</translation>
+<translation id="7511727374778217603">{COUNT,plural, =1{Lisage kuni 1 vaheleht}other{Lisage kuni {COUNT} vahelehte}}</translation>
 <translation id="7512909159512473473">Sisestage parool …</translation>
 <translation id="7514365320538308">Laadi alla</translation>
 <translation id="7514530647142300459">Jätkake paroolide kasutamist oma Google'i kontol <ph name="EMAIL" /></translation>
@@ -2236,6 +2237,7 @@ Handoff peab olema lubatud seadete jaotises General ja seadmed peavad kasutama s
 <translation id="9055291197094969722">Looge vahelehegruppe, et korrastada avatud vahelehti ja olla produktiivne</translation>
 <translation id="9055580485132823283">Jätkates kustutate {password_count} parooli, {passkey_count} pääsuvõtit ning loendi saitidest ja rakendustest, mille sisselogimisteabe salvestamise olete keelanud. Saitidel ja rakendustel loodud kontosid ei kustutata.</translation>
 <translation id="9057030985451135243">Teave jagatud vahelehegruppide kohta</translation>
+<translation id="9064106978262828592">Probleemid teie andmete eksportimisega</translation>
 <translation id="9065203028668620118">Muuda</translation>
 <translation id="9066097352053395362">Peida valik Muuda järjehoidjat</translation>
 <translation id="9070824521421603770">Teid logitakse välja ja vahelehed suletakse</translation>

@@ -572,16 +572,16 @@ public final class ChromePreferenceKeys {
     // Start timestamp of 1-day period for measuring the duration of disjoint time spent in various
     // windowing modes.
     public static final String MULTI_WINDOW_MODE_CYCLE_START_TIME =
-            "Chrome.MultiWindowMode.CycleStartTime";
+            "Chrome.MultiWindowMode.CycleStartTime3";
     // Start timestamp of the current windowing mode.
-    public static final KeyPrefix MULTI_WINDOW_MODE_START_TIME2 =
-            new KeyPrefix("Chrome.MultiWindowMode.StartTime2.*");
+    public static final KeyPrefix MULTI_WINDOW_MODE_START_TIME =
+            new KeyPrefix("Chrome.MultiWindowMode.StartTime3.*");
     // Tracks window IDs of activities in a given windowing mode.
     public static final KeyPrefix MULTI_WINDOW_MODE_ACTIVITIES =
-            new KeyPrefix("Chrome.MultiWindowMode.Activities.*");
+            new KeyPrefix("Chrome.MultiWindowMode.Activities3.*");
     // Aggregated duration of time spent in a given windowing mode.
     public static final KeyPrefix MULTI_WINDOW_MODE_DURATION_MS =
-            new KeyPrefix("Chrome.MultiWindowMode.DurationMs.*");
+            new KeyPrefix("Chrome.MultiWindowMode.DurationMs3.*");
 
     public static final String NOTIFICATIONS_CHANNELS_VERSION = "channels_version_key";
     public static final String NOTIFICATIONS_LAST_SHOWN_NOTIFICATION_TYPE =
@@ -591,6 +591,13 @@ public final class ChromePreferenceKeys {
 
     public static final String NOTIFICATION_PERMISSION_RATIONALE_TIMESTAMP_KEY =
             "Chrome.NotificationPermission.RationaleTimestamp";
+
+    /**
+     * Stores the system time in milliseconds when the notification permission was requested for the
+     * first time.
+     */
+    public static final String NOTIFICATION_PERMISSION_FIRST_REQUEST_TIMESTAMP =
+            "Chrome.NotificationPermission.FirstRequestTimestamp";
 
     // Number of times we've showed any prompt (either Android UI or Chrome rationale) related to
     // the notification permission.
@@ -916,6 +923,10 @@ public final class ChromePreferenceKeys {
     /** Timestamp for when the user first saw the Setup List on the New Tab Page. */
     public static final String SETUP_LIST_FIRST_SHOWN_TIMESTAMP =
             "Chrome.SetupList.FirstShownTimestamp";
+
+    /** Boolean preference indicating whether the celebratory promo has been shown. */
+    public static final String SETUP_LIST_CELEBRATORY_PROMO_SHOWN =
+            "Chrome.SetupList.CelebratoryPromoShown";
 
     /**
      * Key prefix for boolean preferences indicating whether a specific Setup List item has been
@@ -1297,8 +1308,9 @@ public final class ChromePreferenceKeys {
                 MULTI_WINDOW_MODE_ACTIVITIES.pattern(),
                 MULTI_WINDOW_MODE_CYCLE_START_TIME,
                 MULTI_WINDOW_MODE_DURATION_MS.pattern(),
-                MULTI_WINDOW_MODE_START_TIME2.pattern(),
+                MULTI_WINDOW_MODE_START_TIME.pattern(),
                 NOTIFICATION_PERMISSION_RATIONALE_TIMESTAMP_KEY,
+                NOTIFICATION_PERMISSION_FIRST_REQUEST_TIMESTAMP,
                 NOTIFICATION_PERMISSION_REQUEST_COUNT,
                 NTP_LOCATION_POLICY_ENABLED,
                 OFFLINE_INDICATOR_V2_WALL_TIME_SHOWN_MS,
@@ -1346,6 +1358,7 @@ public final class ChromePreferenceKeys {
                 SEGMENTATION_FEED_ACTIVE_USER,
                 SERIAL_NOTIFICATION_IDS,
                 SETUP_LIST_FIRST_SHOWN_TIMESTAMP,
+                SETUP_LIST_CELEBRATORY_PROMO_SHOWN,
                 SETUP_LIST_COMPLETED_KEY_PREFIX.pattern(),
                 SETTINGS_SAFETY_CHECK_LAST_RUN_TIMESTAMP,
                 SETTINGS_SAFETY_CHECK_RUN_COUNTER,

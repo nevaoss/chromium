@@ -980,6 +980,10 @@ interface CSSPseudoElement
     getter parent
     getter type
     method constructor
+    method convertPointFromNode
+    method convertQuadFromNode
+    method convertRectFromNode
+    method getBoxQuads
     method pseudo
 interface CSSRGB : CSSColorValue
     attribute @@toStringTag
@@ -2987,8 +2991,6 @@ interface FormControlRange : AbstractRange
     method constructor
     method getBoundingClientRect
     method getClientRects
-    method setFormControlRange
-    method toString
 interface FormData
     attribute @@toStringTag
     method @@iterator
@@ -3684,6 +3686,7 @@ interface HTMLCanvasElement : HTMLElement
     attribute @@toStringTag
     getter height
     getter layoutSubtree
+    getter onpaint
     getter width
     method captureStream
     method configureHighDynamicRange
@@ -3695,6 +3698,7 @@ interface HTMLCanvasElement : HTMLElement
     method transferControlToOffscreen
     setter height
     setter layoutSubtree
+    setter onpaint
     setter width
 interface HTMLCollection
     attribute @@toStringTag
@@ -4396,6 +4400,7 @@ interface HTMLInputElement : HTMLElement
     getter willValidate
     method checkValidity
     method constructor
+    method getValueRange
     method reportValidity
     method select
     method setCustomValidity
@@ -5114,6 +5119,7 @@ interface HTMLTextAreaElement : HTMLElement
     getter wrap
     method checkValidity
     method constructor
+    method getValueRange
     method reportValidity
     method select
     method setCustomValidity
@@ -9927,6 +9933,11 @@ interface TrustedHTML
     method constructor
     method toJSON
     method toString
+interface TrustedParserOptions
+    attribute @@toStringTag
+    getter runScripts
+    getter sanitizer
+    method constructor
 interface TrustedScript
     static method fromLiteral
     attribute @@toStringTag
@@ -9944,6 +9955,7 @@ interface TrustedTypePolicy
     getter name
     method constructor
     method createHTML
+    method createParserOptions
     method createScript
     method createScriptURL
 interface TrustedTypePolicyFactory

@@ -1635,6 +1635,7 @@ Attribution Reporting API 已淘汰，因此這項政策也已在 <ph name="PROD
 
 如果未設定這項政策，就不會傳送受管理裝置的 DNS-over-HTTPS 查詢。如果設定這項政策，瀏覽器可能會將 DNS-over-HTTPS 要求傳送給與使用者所設系統解析器相關聯的解析器。</translation>
 <translation id="2158741059065130266">如果將這項政策設為 True，<ph name="PRODUCT_OS_NAME" />「檔案」應用程式的使用者將可查看垃圾桶中的項目。如果使用者要刪除「我的檔案」及「下載內容」中的檔案 (包括使用者建立的子系)，這些檔案也會傳送到垃圾桶中。如果將這項政策設為 False，使用者仍可查看先前位於垃圾桶中的檔案，方法是顯示隱藏的檔案，並在「我的檔案」或「下載內容」中找出 .Trash 目錄即可。</translation>
+<translation id="215891883000260452">為特定來源啟用 WebRTC 診斷記錄收集功能</translation>
 <translation id="2159092270572925582">你可以設定網址模式清單，指定哪些網站能夠顯示可封鎖的 (即主動) 複合型內容 (亦即 HTTPS 網站上的 HTTP 內容)，並禁止這些網站升級可選擇性封鎖的複合型內容。
 
          如果未設定這項政策，系統會禁止顯示可封鎖的複合型內容，並升級可選擇性封鎖的複合型內容。此外，使用者可以設定例外狀況清單，允許特定網站顯示複合型內容。
@@ -2449,6 +2450,13 @@ Attribution Reporting API 已淘汰，因此這項政策也已在 <ph name="PROD
 注意：自 M114 起，特定資訊站應用程式可在特殊用途 (例如學生評量) 情況下覆寫這項政策的行為。</translation>
 <translation id="2667894101494585925">啟用最佳化指南擷取功能</translation>
 <translation id="2669157090883237118">不要變更 <ph name="PRODUCT_OS_NAME" /> 建議設定。</translation>
+<translation id="2669314653349044073">這項政策可針對特定來源啟用 WebRTC 診斷記錄收集功能。
+
+如要進一步瞭解有效的輸入模式，請參閱 https://chromeenterprise.google/policies/url-patterns。<ph name="WILDCARD_VALUE" /> 不是這項政策許可的值。這項政策只會根據來源進行比對，因此會忽略網址模式中的路徑。支援通訊協定和子網域。
+
+如果設定這項政策，與清單中模式相符的來源就會啟用診斷記錄收集功能。
+
+如果未設定這項政策，系統預設會停用診斷記錄收集功能。</translation>
 <translation id="2672012807430078509">控管是否要為 SMB 掛接功能啟用 NTLM 驗證通訊協定</translation>
 <translation id="2673363037046384711">使用者可以啟用或停用高效率模式。</translation>
 <translation id="2673968385134502798">遊戲</translation>
@@ -6280,6 +6288,13 @@ Protected Audience API 已淘汰，因此這項政策也已在 <ph name="PRODUCT
 <translation id="5303080953475303561">你可以透過這項政策，控管螢幕鎖定畫面要求使用者輸入密碼以快速解鎖的頻率。每當螢幕鎖定畫面顯示時，如果上一次輸入密碼的時間點落在所選值指定的時間範圍之前，裝置將無法快速解鎖。如果使用者停留在螢幕鎖定畫面的時間超過這個時間長度，則下次當他們輸入錯誤的解鎖碼或重新進入螢幕鎖定畫面時 (以先發生者為準)，系統就會要求輸入密碼。
 
       如果不設定這項政策，則使用快速解鎖功能的使用者每天都必須在螢幕鎖定畫面輸入密碼。</translation>
+<translation id="530488290401810961">設定 <ph name="PRODUCT_NAME" /> 如何下載基礎生成式 AI 模型，並在本機用於推論。
+
+如果將這項政策設為允許 (0) 或不設定，系統會自動下載模型並用於推論。
+
+如果將這項政策設為停用 (1)，系統就不會下載模型，並會刪除現有模型 (如果已下載)。
+
+在電腦平台上，<ph name="COMPONENT_UPDATES_ENABLED_POLICY_NAME" /> 也可以停用模型下載功能。</translation>
 <translation id="5306186200045823863">信任 Symantec 公司的舊版 PKI 基礎架構</translation>
 <translation id="5307432759655324440">無痕模式適用性</translation>
 <translation id="5308551343115571396"><ph name="LACROS_NAME" /> 停用後，我們將移除所有瀏覽器資料，但會盡可能嘗試保留使用者資料。</translation>
@@ -6299,7 +6314,6 @@ Protected Audience API 已淘汰，因此這項政策也已在 <ph name="PRODUCT
 <translation id="530949964068726932">隱藏系統匣選單中的無障礙選項</translation>
 <translation id="5309944663104291505">禁止強制安裝的隔離網頁應用程式和資訊站應用程式使用 Device Attributes API</translation>
 <translation id="5311275381462687162">預設的舊版 <ph name="ATTRIBUTE_SAMESITE_NAME" /> Cookie 行為設定</translation>
-<translation id="5311430612584074035">強制將設定檔中所有分頁設為前景優先</translation>
 <translation id="5312253627576569499">如果系統在螢幕調暗時或畫面關閉後不久便偵測到使用者活動，要將螢幕調暗延遲時間延長的百分比</translation>
 <translation id="5316856058059940708">停用大型游標</translation>
 <translation id="5318185076587284965">啟用遠端存取主機所使用的轉送伺服器</translation>
@@ -12034,11 +12048,6 @@ Topics API 已淘汰，因此這項政策也已在 <ph name="PRODUCT_NAME" /> 14
 <translation id="9135095804754272364">偵測到 USB 裝置時顯示通知</translation>
 <translation id="9136212796239682721">停用下載對話框 UI</translation>
 <translation id="9136399279941091445">發布指定裝置政策時的停機時間間隔</translation>
-<translation id="9138686056337842869">無論是否預設啟用 Chrome 應用程式，只要將這項政策設為 True，Chrome 應用程式就能繼續在資訊站工作階段中執行。
-
-如果不設定這項政策或設為 False，系統會依裝置上定義的預設行為運作。
-
-嘗試啟動已停用的 Chrome 應用程式時，系統會向使用者顯示訊息，說明為何無法啟動應用程式，並建議聯絡 IT 部門。</translation>
 <translation id="9139775903828905867">控制用於觸發 F11 的快速鍵</translation>
 <translation id="9140064482233876338">這項政策自 M69 起已淘汰，請改用 OverrideSecurityRestrictionsOnInsecureOrigin。
 

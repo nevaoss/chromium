@@ -93,6 +93,7 @@ class GlicActorTaskManager;
 // preference for changes and cause the UI to respond to it.
 class GlicKeyedService : public KeyedService,
                          public GlicSharingManagerProvider,
+                         public base::SupportsUserData,
 #if !BUILDFLAG(IS_ANDROID)  // Single instance only
                          public Host::InstanceDelegate,
 #endif
@@ -113,6 +114,13 @@ class GlicKeyedService : public KeyedService,
   GlicKeyedService(const GlicKeyedService&) = delete;
   GlicKeyedService& operator=(const GlicKeyedService&) = delete;
   ~GlicKeyedService() override;
+
+#if BUILDFLAG(IS_ANDROID)
+  // Returns a Java object of the type GlicKeyedService for the given
+  // GlicKeyedService.
+  static base::android::ScopedJavaLocalRef<jobject> GetJavaObject(
+      GlicKeyedService* glic_keyed_service);
+#endif  // BUILDFLAG(IS_ANDROID)
 
   // Convenience method, may return nullptr.
   static GlicKeyedService* Get(content::BrowserContext* context);
@@ -293,7 +301,7 @@ class GlicKeyedService : public KeyedService,
 
 #if !BUILDFLAG(IS_ANDROID)  // Single instance only
   void CaptureRegion(
-      content::WebContents* web_contents,
+      tabs::TabInterface* tab,
       mojo::PendingRemote<mojom::CaptureRegionObserver> observer);
 #endif
 
@@ -394,6 +402,7 @@ class GlicKeyedService : public KeyedService,
   void RequestToShowAutofillSuggestionsDialog(
       actor::TaskId task_id,
       std::vector<autofill::ActorFormFillingRequest> requests,
+      base::WeakPtr<actor::AutofillSelectionDialogEventHandler> event_handler,
       AutofillSuggestionSelectedCallback callback) override;
 #endif
 

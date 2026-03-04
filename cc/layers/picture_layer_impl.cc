@@ -277,14 +277,8 @@ void PictureLayerImpl::AppendQuadsForResourcelessSoftwareDraw(
   ValidateQuadResources(quad);
 }
 
-void PictureLayerImpl::AppendQuadsSpecialization(
-    const AppendQuadsContext& context,
-    viz::CompositorRenderPass* render_pass,
-    AppendQuadsData* append_quads_data,
-    viz::SharedQuadState* shared_quad_state,
-    const Occlusion& scaled_occlusion,
-    const gfx::Vector2d& quad_offset,
-    float max_contents_scale) {
+void PictureLayerImpl::ComputeCheckerboardedNeedsRecord(
+    AppendQuadsData* append_quads_data) {
   const ScrollTree& scroll_tree =
       layer_tree_impl()->property_trees()->scroll_tree();
 
@@ -313,7 +307,16 @@ void PictureLayerImpl::AppendQuadsSpecialization(
       }
     }
   }
+}
 
+int PictureLayerImpl::AppendQuadsSpecialization(
+    const AppendQuadsContext& context,
+    viz::CompositorRenderPass* render_pass,
+    AppendQuadsData* append_quads_data,
+    viz::SharedQuadState* shared_quad_state,
+    const Occlusion& scaled_occlusion,
+    const gfx::Vector2d& quad_offset,
+    float max_contents_scale) {
   // Ignore missing tiles outside of viewport for tile priority. This is
   // normally the same as draw viewport but can be independently overridden by
   // embedders like Android WebView with SetExternalTilePriorityConstraints.
@@ -339,15 +342,7 @@ void PictureLayerImpl::AppendQuadsSpecialization(
     }
   }
 
-  if (missing_tile_count) {
-    append_quads_data->num_missing_tiles += missing_tile_count;
-    append_quads_data->checkerboarded_needs_raster = true;
-    TRACE_EVENT_INSTANT1("cc", "PictureLayerImpl::AppendQuads checkerboard",
-                         TRACE_EVENT_SCOPE_THREAD, "missing_tile_count",
-                         missing_tile_count);
-  }
-
-  SanityCheckTilingState();
+  return missing_tile_count;
 }
 
 bool PictureLayerImpl::AppendQuadForTile(
@@ -448,11 +443,6 @@ bool PictureLayerImpl::AppendQuadForTile(
                  offset_visible_geometry_rect, color, false);
     ValidateQuadResources(quad);
 
-    bool tile_missing = false;
-    if (geometry_rect.Intersects(scaled_viewport_for_tile_priority)) {
-      tile_missing = true;
-    }
-
     // Report data on any missing images that might be the largest
     // contentful image.
     if (*iter) {
@@ -461,7 +451,8 @@ bool PictureLayerImpl::AppendQuadForTile(
           iter->HasMissingLCPCandidateImages());
     }
 
-    return tile_missing;
+    // Report the tile as missing iff it is in the viewport.
+    return geometry_rect.Intersects(scaled_viewport_for_tile_priority);
   }
 
   if (iter.resolution() != HIGH_RESOLUTION) {

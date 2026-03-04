@@ -374,6 +374,7 @@ if (_is_default_toolchain) {
       "//chrome/browser/creator/android:java",
       "//chrome/browser/data_sharing:factory_java",
       "//chrome/browser/data_sharing:instant_message_delegate_factory_java",
+      "//chrome/browser/glic:public_java",
       "//chrome/browser/glic/android:java",
       "//chrome/browser/page_content_annotations:factory_java",
       "//chrome/browser/prefs/android:java",
@@ -388,6 +389,7 @@ if (_is_default_toolchain) {
 
       # TODO(ssid): Decouple dependency on internal library.
       "//base:holder_java",
+      "//chrome/browser/actor/android:actor_java",
       "//chrome/browser/autofill/android:third_party_provider_java",
       "//chrome/browser/collaboration:utils_java",
       "//chrome/browser/data_sharing:data_sharing_public_java",
@@ -919,6 +921,7 @@ if (_is_default_toolchain) {
     deps = [
       ":chrome_java",
       "//chrome/android/features/keyboard_accessory:internal_java",
+      "//chrome/browser/actor/android:actor_java",
       "//chrome/browser/android/content:java",
       "//chrome/browser/android/httpclient:java",
       "//chrome/browser/commerce/merchant_viewer/android:java",
@@ -990,7 +993,6 @@ if (_is_default_toolchain) {
       "//chrome/browser/metrics/metrics_reporting_state.h",
       "//chrome/browser/notifications/notification_handler.h",
       "//chrome/browser/notifications/notification_platform_bridge_android.cc",
-      "//components/privacy_sandbox/privacy_sandbox_survey_service.h",
     ]
   }
 
@@ -1069,7 +1071,6 @@ if (_is_default_toolchain) {
       "junit:chrome_junit_tests_org.chromium.chrome.browser.ntp",
       "junit:chrome_junit_tests_org.chromium.chrome.browser.offlinepages",
       "junit:chrome_junit_tests_org.chromium.chrome.browser.omaha",
-      "junit:chrome_junit_tests_org.chromium.chrome.browser.omnibox",
       "junit:chrome_junit_tests_org.chromium.chrome.browser.page_info",
       "junit:chrome_junit_tests_org.chromium.chrome.browser.password_manager",
       "junit:chrome_junit_tests_org.chromium.chrome.browser.permissions",

@@ -60,6 +60,13 @@ targets.mixin(
             ),
         ],
     ),
+    resultdb = targets.resultdb(
+        base_variant = {
+            # LINT.IfChange(avd-11-x86-emulator)
+            "device_os": "RSR1.210722.013.A2",
+            # LINT.ThenChange(//tools/android/avd/proto/android_30_google_apis_x86.textpb:avd-11-x86-emulator)
+        },
+    ),
 )
 
 targets.mixin(
@@ -1237,14 +1244,14 @@ targets.mixin(
 targets.mixin(
     name = "gpu_force_skia_ganesh",
     args = [
-        "--extra-browser-args=--disable-features=SkiaGraphite",
+        "--extra-browser-args=--disable-skia-graphite",
     ],
 )
 
 targets.mixin(
     name = "gpu_force_skia_graphite",
     args = [
-        "--extra-browser-args=--enable-features=SkiaGraphite",
+        "--extra-browser-args=--enable-skia-graphite",
     ],
 )
 
@@ -2413,8 +2420,8 @@ targets.mixin(
     swarming = targets.swarming(
         dimensions = {
             "display_attached": "1",
-            "gpu": "1002:7340-31.0.24002.92|1002:7340-32.0.21037.1004",
-            "os": "Windows-10-19045|Windows-11-26100",
+            "gpu": "1002:7340-32.0.21037.1004",
+            "os": "Windows-11-26100",
             "pool": "chromium.tests.gpu",
         },
     ),

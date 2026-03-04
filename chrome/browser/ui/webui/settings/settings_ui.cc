@@ -531,6 +531,8 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
       "enableSmartCardReadersContentSetting",
       base::FeatureList::IsEnabled(blink::features::kSmartCard) &&
           content::AreIsolatedWebAppsEnabled(profile));
+  html_source->AddBoolean("enableWebPrintingContentSetting",
+                          content::AreIsolatedWebAppsEnabled(profile));
 #endif
 
 #if BUILDFLAG(IS_WIN) && BUILDFLAG(GOOGLE_CHROME_BRANDING)
@@ -601,8 +603,6 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
       {"showComposeControl", compose_visible},
       {"showHistorySearchControl",
        history_embeddings::IsHistoryEmbeddingsSettingVisible(profile)},
-      {"showCompareControl", commerce::IsProductSpecificationsSettingVisible(
-                                 shopping_service->GetAccountChecker())},
       {"showPasswordChangeControl",
        PasswordChangeServiceFactory::GetForProfile(profile) &&
            PasswordChangeServiceFactory::GetForProfile(profile)

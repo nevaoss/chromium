@@ -95,7 +95,11 @@ TabSearchBubbleHost::TabSearchBubbleHost(
   webui_bubble_manager_observer_.Observe(webui_bubble_manager_.get());
 }
 
-TabSearchBubbleHost::~TabSearchBubbleHost() = default;
+TabSearchBubbleHost::~TabSearchBubbleHost() {
+  for (auto& observer : observers_) {
+    observer.OnHostDestroying();
+  }
+}
 
 void TabSearchBubbleHost::OnWidgetVisibilityChanged(views::Widget* widget,
                                                     bool visible) {
@@ -221,8 +225,6 @@ bool TabSearchBubbleHost::ShowTabSearchBubble(
         tab_search_prefs::GetIntFromTabOrganizationFeature(
             organization_feature));
   }
-
-  profile_->GetPrefs()->SetBoolean(tab_search_prefs::kTabSearchOpened, true);
 
   if (webui_bubble_manager_->GetBubbleWidget()) {
     return false;

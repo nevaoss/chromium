@@ -8,6 +8,7 @@
 <translation id="1073417869336441572">Hjælp os med at forbedre Chrome ved at fortælle os, hvorfor du har tilladt tredjepartscookies. <ph name="BEGIN_LINK" />Send feedback<ph name="END_LINK" /></translation>
 <translation id="1074758928858737435">Du kan anmode om at se computerversionen af websites</translation>
 <translation id="1085696779717592361">Brug Chrome som standard</translation>
+<translation id="1126523729897810826">Udfør de foreslåede handlinger nedenfor for at få mest muligt ud af Chrome</translation>
 <translation id="113098737392899175">Naviger på sider med en tekstmarkør, når der er tilsluttet et tastatur</translation>
 <translation id="1149644372535087155">Gem adgangskoder i Chrome</translation>
 <translation id="1178015372320901893">Feltet i bunden, der viser Mine genveje</translation>
@@ -53,6 +54,7 @@
 <translation id="1569054338208717605">Gør websites hurtigere med Chromes V8-maskine, som dog gør Chrome en smule mindre modstandsdygtig over for angreb</translation>
 <translation id="1593426485665524382">Nye handlinger er tilgængelige øverst på skærmen</translation>
 <translation id="1594521731409209842">Knib fingrene sammen på skærmen for at tilpasse størrelsen på billedet</translation>
+<translation id="1599268789440304082">Konfigurationsarket er åbnet</translation>
 <translation id="1601560923496285236">Anvend</translation>
 <translation id="1615755956145364867">Websites kan anmode om tilladelse til at afspille beskyttet indhold</translation>
 <translation id="1620510694547887537">Kamera</translation>
@@ -352,7 +354,9 @@ Avanceret beskyttelse styrer disse Chrome-indstillinger:
 <translation id="4505788138578415521">Webadressen er udvidet</translation>
 <translation id="4522570452068850558">Detaljer</translation>
 <translation id="4523472416386354622">Log ind for at starte</translation>
+<translation id="4529207923544043455">Feltet i bunden viser udførte og ikke-udførte opgaver på konfigurationslisten</translation>
 <translation id="4534723447064627427">Aktivér også din mikrofon i <ph name="BEGIN_LINK" />Android-indstillingerne<ph name="END_LINK" /> for at give <ph name="APP_NAME" /> adgang til mikrofonen.</translation>
+<translation id="4545694195887112015">Konfigurationsarket er lukket</translation>
 <translation id="4566417217121906555">Slå mikrofon fra</translation>
 <translation id="4570913071927164677">Oplysninger</translation>
 <translation id="4578289292431526768">Kom i gang</translation>
@@ -749,6 +753,7 @@ Avanceret beskyttelse styrer disse Chrome-indstillinger:
 <translation id="8719283222052720129">Aktivér tilladelse for <ph name="APP_NAME" /> i <ph name="BEGIN_LINK" />Android-indstillingerne<ph name="END_LINK" />.</translation>
 <translation id="8721719390026067591">Når dette er slået til, kan websites anmode om tilladelse til at søge efter Bluetooth-enheder. Når dette er slået fra, kan websites ikke søge efter Bluetooth-enheder.</translation>
 <translation id="8725066075913043281">Forsøg igen</translation>
+<translation id="8727043961453758442">Få mest muligt ud af Chrome</translation>
 <translation id="8730621377337864115">Udført</translation>
 <translation id="8737426583868847403">Websites, du har gemt et tilpasset zoomniveau for, vises her</translation>
 <translation id="8748714929822124637">Tillad ikke, at websites kan tilgå andre enheder på dit lokale netværk</translation>

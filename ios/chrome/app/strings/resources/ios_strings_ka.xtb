@@ -125,6 +125,7 @@
 <translation id="1436671784520050284">დაყენების გაგრძელება</translation>
 <translation id="143681031165817424">მისამართი შეინახა მხოლოდ ამ მოწყობილობაზე</translation>
 <translation id="1445276840641906250">თქვენი ყველა ჩანართი ერთ ბრაუზერში</translation>
+<translation id="1447564161241938558">პაროლებისა და წვდომის გასაღებების იმპორტი გათიშა თქვენმა ადმინისტრატორმა</translation>
 <translation id="1450170672351507823">სტანდარტული დაცვა ჩართულია. გირჩევთ დამატებითი დაცვის გამოყენებასაც.</translation>
 <translation id="1455660774629812862">არ დაიმალოს</translation>
 <translation id="1456545332132818232">პროდუქტის მიმოხილვები <ph name="PRODUCT_NAME" />-ზე, <ph name="STARS" />/<ph name="MAX_STARS" />, <ph name="DOMAIN" /></translation>
@@ -373,7 +374,6 @@
 <translation id="2306265833370324042"><ph name="SEARCH_ENGINE_NAME" />-ის დეტალური ინფორმაციის ჩვენება</translation>
 <translation id="2309265394777270359">ჩანართის დახურვა</translation>
 <translation id="2311077293164383652">ჩამაგრებული ჩანართის დახურვა</translation>
-<translation id="2313392466694008052">სურათის რედაქტირება Gemini-ს მეშვეობით</translation>
 <translation id="2316129865977710310">არა, გმადლობთ</translation>
 <translation id="2320166752086256636">კლავიატურის დამალვა</translation>
 <translation id="2321086116217818302">მიმდინარეობს პაროლების მომზადება…</translation>
@@ -1786,6 +1786,7 @@ Handoff ასევე უნდა იყოს ჩართული პა�
 <translation id="7506817096924591340"><ph name="FILENAME" /> (<ph name="FILESIZE" />).</translation>
 <translation id="7508728395076009983">ინკოგნიტო ჩანართების ჩასაკეტად დაყენეთ Touch ID, Face ID ან საიდუმლო კოდი.</translation>
 <translation id="750886945254958667">შეინარჩუნეთ ეს ჯგუფი, რომ მოგვიანებით მასში დაამატოთ ჩანართები, ან დატოვეთ ის, თუ აღარ გსურთ მასზე წვდომა</translation>
+<translation id="7511727374778217603">{COUNT,plural, =1{დაამატეთ მაქსიმუმ 1 ჩანართი}other{დაამატეთ მაქსიმუმ {COUNT} ჩანართი}}</translation>
 <translation id="7512909159512473473">შეიყვანეთ საიდუმლო ფრაზა…</translation>
 <translation id="7514365320538308">ჩამოტვირთვა</translation>
 <translation id="7514530647142300459">გააგრძელეთ პაროლების გამოყენება თქვენს Google ანგარიშში (<ph name="EMAIL" />)</translation>
@@ -2059,6 +2060,7 @@ Handoff ასევე უნდა იყოს ჩართული პა�
 <translation id="8439758443371991593">საკითხავ სიაში დამატების დამალვა</translation>
 <translation id="8443986842926457191">URL შედგება 2048-ზე მეტი სიმბოლოსგან</translation>
 <translation id="8449869326050867919">პაროლი გაზიარებულია</translation>
+<translation id="8473815223723723001">სურათის რედაქტირება Gemini-ს მეშვეობით</translation>
 <translation id="8473863474539038330">მისამართები და სხვა</translation>
 <translation id="8474378002946546633">შეტყობინებების დაშვება</translation>
 <translation id="8477178913400731244">მონაცემების წაშლა</translation>
@@ -2236,6 +2238,7 @@ Handoff ასევე უნდა იყოს ჩართული პა�
 <translation id="9055291197094969722">შექმენით ჩანართების ჯგუფები და მოახდინეთ თქვენი გახსნილი ჩანართების ორგანიზება და იყავით პროდუქტიული</translation>
 <translation id="9055580485132823283">თქვენ აპირებთ, წაშალოთ {password_count} პაროლი, წვდომის {passkey_count} გასაღები და იმ საიტებისა და აპების სია, რომლებშიც აირჩიეთ, რომ არასდროს შენახულიყო სისტემაში შესვლის ინფორმაცია. საიტებისთვის ან აპებისთვის შექმნილი არცერთი ანგარიში არ წაიშლება.</translation>
 <translation id="9057030985451135243">შეიტყვეთ გაზიარებული ჩანართების ჯგუფების შესახებ</translation>
+<translation id="9064106978262828592">თქვენი მონაცემების ექსპორტისას წარმოიქმნა პრობლემა</translation>
 <translation id="9065203028668620118">რედაქტირება</translation>
 <translation id="9066097352053395362">სანიშნის რედაქტირების დამალვა</translation>
 <translation id="9070824521421603770">სისტემიდან გახვალთ, ჩანართები კი დაიხურება</translation>

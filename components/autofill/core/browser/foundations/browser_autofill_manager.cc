@@ -92,6 +92,7 @@
 #include "components/autofill/core/browser/filling/form_filler.h"
 #include "components/autofill/core/browser/filling/payments/field_filling_payments_util.h"
 #include "components/autofill/core/browser/form_import/form_data_importer.h"
+#include "components/autofill/core/browser/form_import/payments/payments_form_data_importer.h"
 #include "components/autofill/core/browser/form_qualifiers.h"
 #include "components/autofill/core/browser/form_structure.h"
 #include "components/autofill/core/browser/foundations/autofill_client.h"
@@ -277,6 +278,7 @@ bool IsSingleFieldFillerFillingProduct(FillingProduct filling_product) {
     case FillingProduct::kIdentityCredential:
     case FillingProduct::kDataList:
     case FillingProduct::kOneTimePassword:
+    case FillingProduct::kAtMemory:
       return false;
   }
 }
@@ -342,6 +344,8 @@ FillDataType GetEventTypeFromSingleFieldSuggestionType(SuggestionType type) {
     case SuggestionType::kPendingStateSignin:
     case SuggestionType::kOneTimePasswordEntry:
     case SuggestionType::kLoadingThrobber:
+    case SuggestionType::kAtMemorySearchResult:
+    case SuggestionType::kBnplFootnote:
       NOTREACHED();
   }
   NOTREACHED();
@@ -443,6 +447,7 @@ bool IsTriggerSourceOnlyRelevantForCompose(
     case AutofillSuggestionTriggerSource::kPlusAddressUpdatedInBrowserProcess:
     case AutofillSuggestionTriggerSource::kProactivePasswordRecovery:
     case AutofillSuggestionTriggerSource::kGlic:
+    case AutofillSuggestionTriggerSource::kAtMemory:
       return false;
   }
 }
@@ -501,8 +506,8 @@ void MaybeAddAddressSuggestionStrikes(AutofillClient& client,
 #if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
   for (const auto& field : form) {
     if (field->autocomplete_attribute() == "off" &&
-        field->did_trigger_suggestions() && !field->is_autofilled() &&
-        !field->previously_autofilled()) {
+        field->did_trigger_suggestions() &&
+        !field->all_modifiers().contains(FieldModifier::kAutofill)) {
       // This means that the user triggered suggestions and ignored them. In
       // that case we record a strike for this specific field. Multiple strikes
       // will lead to automatic address suggestions to be suppressed.
@@ -524,7 +529,6 @@ DenseSet<FillingProduct> GetFillingProductsToSuggest(
   using enum AutofillSuggestionTriggerSource;
   switch (trigger_source) {
     case kUnspecified:
-      return {};
     case kTextareaFocusedWithoutClick:
     case kComposeDialogLostFocus:
     case kComposeDelayedProactiveNudge:
@@ -547,6 +551,8 @@ DenseSet<FillingProduct> GetFillingProductsToSuggest(
     case kGlic:
       return {FillingProduct::kAddress, FillingProduct::kCreditCard,
               FillingProduct::kPassword};
+    case kAtMemory:
+      return {FillingProduct::kAtMemory};
   }
 }
 
@@ -660,7 +666,7 @@ void MaybeImportFromSubmittedForm(AutofillClient& client,
     }
 
     if (autofill_field->Type().GetLoyaltyCardType() == LOYALTY_MEMBERSHIP_ID &&
-        autofill_field->is_autofilled()) {
+        autofill_field->last_modifier() == FieldModifier::kAutofill) {
       // Only store loyalty cards values in Autocomplete if they were filled
       // manually.
       fields_for_autocomplete.back().set_should_autocomplete(false);
@@ -792,9 +798,11 @@ bool IsManagementFooterOption(const Suggestion& suggestion) {
     case SuggestionType::kDevtoolsTestAddresses:
     case SuggestionType::kDevtoolsTestAddressEntry:
     case SuggestionType::kDevtoolsTestAddressByCountry:
+    case SuggestionType::kAtMemorySearchResult:
     case SuggestionType::kFillAutofillAi:
     case SuggestionType::kPendingStateSignin:
     case SuggestionType::kLoadingThrobber:
+    case SuggestionType::kBnplFootnote:
       return false;
   }
 }
@@ -1119,17 +1127,19 @@ void BrowserAutofillManager::OnTextFieldValueChangedImpl(
           ToOptionalBoolean(!autofill_field->value().empty())});
 
   UpdatePendingForm(form);
+  const bool edited_autofilled_field =
+      autofill_field->last_modifier() == FieldModifier::kAutofill;
 
-  if (!metrics_->user_did_type || autofill_field->is_autofilled()) {
+  if (!metrics_->user_did_type || edited_autofilled_field) {
     metrics_->user_did_type = true;
     client().GetFormInteractionsUkmLogger().LogTextFieldValueChanged(
         driver().GetPageUkmSourceId(), *form_structure, *autofill_field);
   }
 
+  autofill_field->AddFieldModifier(FieldModifier::kUser);
+
   auto* logger = GetEventFormLogger(*autofill_field);
-  if (autofill_field->is_autofilled()) {
-    autofill_field->set_is_autofilled(false);
-    autofill_field->set_previously_autofilled(true);
+  if (edited_autofilled_field) {
     if (logger) {
       logger->OnEditedAutofilledField(field_id);
     }
@@ -1175,7 +1185,7 @@ void BrowserAutofillManager::OnAskForValuesToFillImpl(
           autofill_field->form_control_type() ==
               FormControlType::kInputPassword &&
           !autofill_field->value().empty() &&
-          !autofill_field->is_autofilled()) {
+          autofill_field->last_modifier() != FieldModifier::kAutofill) {
         // Hiding the dialog is put behind this feature flag since the agent is
         // also performing a hide.
         if (base::FeatureList::IsEnabled(
@@ -1740,9 +1750,11 @@ void BrowserAutofillManager::OnGenerateSuggestionsComplete(
     std::vector<Suggestion> suggestions) {
   ReorderWebauthnFallbackToFooter(suggestions);
 
-  base::UmaHistogramTimes(
-      "Autofill.Timing.SuggestionGeneration",
-      base::TimeTicks::Now() - suggestion_generation_start_time);
+  if (!suggestions.empty()) {
+    base::UmaHistogramTimes(
+        "Autofill.Timing.SuggestionGeneration2",
+        base::TimeTicks::Now() - suggestion_generation_start_time);
+  }
 
   LogSuggestionsCount(context, suggestions);
   // When focusing on a field, log whether there is a suggestion for the user
@@ -2073,8 +2085,10 @@ void BrowserAutofillManager::FillOrPreviewCreditCardForm(
              CreditCard::CardInfoRetrievalEnrollmentState::
                  kRetrievalEnrolled)) {
       DCHECK(!credit_card.cvc().empty());
-      self->client().GetFormDataImporter()->CacheFetchedVirtualCard(
-          credit_card.LastFourDigits());
+      self->client()
+          .GetFormDataImporter()
+          ->GetPaymentsFormDataImporter()
+          .CacheFetchedVirtualCard(credit_card.LastFourDigits());
 
       FilledCardInformationBubbleOptions options;
       options.masked_card_name = credit_card.CardNameForAutofillDisplay();
@@ -2212,10 +2226,12 @@ void BrowserAutofillManager::OnSelectControlSelectionChangedImpl(
 
   UpdatePendingForm(form);
 
+  const bool edited_autofilled_field =
+      autofill_field->last_modifier() == FieldModifier::kAutofill;
+  autofill_field->AddFieldModifier(FieldModifier::kUser);
+
   auto* logger = GetEventFormLogger(*autofill_field);
-  if (autofill_field->is_autofilled()) {
-    autofill_field->set_is_autofilled(false);
-    autofill_field->set_previously_autofilled(true);
+  if (edited_autofilled_field) {
     if (logger) {
       logger->OnEditedAutofilledField(field_id);
     }
@@ -3271,7 +3287,10 @@ std::vector<Suggestion> BrowserAutofillManager::GetAvailableSuggestions(
             ExtendEmailSuggestionsWithLoyaltyCardSuggestions(
                 *valuables_manager,
                 client().GetLastCommittedPrimaryMainFrameURL(),
-                field.is_autofilled(), suggestions);
+                // TODO(crbug.com/393114125): Change to use
+                // `AutofillField::field_modifiers_` after launching
+                // `kAutofillFixIsAutofilled`.
+                field.is_autofilled_according_to_renderer(), suggestions);
           }
         }
       }
@@ -3443,16 +3462,6 @@ void BrowserAutofillManager::ProcessFieldLogEventsInForm(
         metrics_->initial_interaction_timestamp,
         metrics_->form_submitted_timestamp,
         GetAcUnrecognizedBehavior(client()));
-  }
-
-  if (base::FeatureList::IsEnabled(features::kAutofillUKMExperimentalFields) &&
-      !metrics_->form_submitted_timestamp.is_null() &&
-      ShouldUploadUkm(form_structure,
-                      /*require_classified_field=*/false)) {
-    client()
-        .GetFormInteractionsUkmLogger()
-        .LogAutofillFormWithExperimentalFieldsCountAtFormRemove(
-            driver().GetPageUkmSourceId(), form_structure);
   }
 
   for (const auto& autofill_field : form_structure) {

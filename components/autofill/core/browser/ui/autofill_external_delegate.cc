@@ -252,6 +252,8 @@ bool AutofillExternalDelegate::IsAutofillAndFirstLayerSuggestionId(
     case SuggestionType::kWebauthnSignInWithAnotherDevice:
     case SuggestionType::kPendingStateSignin:
     case SuggestionType::kLoadingThrobber:
+    case SuggestionType::kAtMemorySearchResult:
+    case SuggestionType::kBnplFootnote:
       return false;
   }
 }
@@ -626,6 +628,9 @@ void AutofillExternalDelegate::DidSelectSuggestion(
           mojom::FieldActionType::kReplaceAll, query_form_, query_field_,
           suggestion.main_text.value, suggestion.type, LOYALTY_MEMBERSHIP_ID);
       break;
+    case SuggestionType::kAtMemorySearchResult:
+      // TODO(crbug.com/481976778): Preview @memory search result
+      break;
     case SuggestionType::kWebauthnSignInWithAnotherDevice:
       manager_->DelegateSelectToPasswordManager(suggestion, query_field_);
       break;
@@ -673,6 +678,7 @@ void AutofillExternalDelegate::DidSelectSuggestion(
     case SuggestionType::kViewPasswordDetails:
     case SuggestionType::kPendingStateSignin:
     case SuggestionType::kLoadingThrobber:
+    case SuggestionType::kBnplFootnote:
       NOTREACHED();  // Should be handled elsewhere.
   }
 }
@@ -862,6 +868,9 @@ void AutofillExternalDelegate::DidAcceptSuggestion(
                                   GetTriggerSource());
       break;
     }
+    case SuggestionType::kAtMemorySearchResult:
+      // TODO(crbug.com/481976778): Fill @memory search result
+      break;
     case SuggestionType::kWebauthnSignInWithAnotherDevice:
       manager_->DelegateAcceptToPasswordManager(suggestion, metadata,
                                                 query_field_);
@@ -883,6 +892,7 @@ void AutofillExternalDelegate::DidAcceptSuggestion(
     case SuggestionType::kViewPasswordDetails:
     case SuggestionType::kPendingStateSignin:
     case SuggestionType::kLoadingThrobber:
+    case SuggestionType::kBnplFootnote:
       NOTREACHED();  // Should be handled elsewhere.
   }
   // Note that some suggestion types return early.
@@ -992,6 +1002,8 @@ bool AutofillExternalDelegate::RemoveSuggestion(const Suggestion& suggestion) {
     case SuggestionType::kLoyaltyCardEntry:
     case SuggestionType::kOneTimePasswordEntry:
     case SuggestionType::kLoadingThrobber:
+    case SuggestionType::kAtMemorySearchResult:
+    case SuggestionType::kBnplFootnote:
       return false;
   }
 }

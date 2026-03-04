@@ -23,6 +23,9 @@ namespace flag_descriptions {
 extern const char kAIHubNewBadgeName[];
 extern const char kAIHubNewBadgeDescription[];
 
+extern const char kAIMCobrowseDebugEntrypointName[];
+extern const char kAIMCobrowseDebugEntrypointDescription[];
+
 extern const char kAIMEligibilityRefreshNTPModulesName[];
 extern const char kAIMEligibilityRefreshNTPModulesDescription[];
 
@@ -186,9 +189,6 @@ extern const char kComposeboxAdditionalAdvancedToolsDescription[];
 
 extern const char kComposeboxAttachmentsTypedStateName[];
 extern const char kComposeboxAttachmentsTypedStateDescription[];
-
-extern const char kComposeboxAutoattachTabName[];
-extern const char kComposeboxAutoattachTabDescription[];
 
 extern const char kComposeboxCloseButtonTopAlignName[];
 extern const char kComposeboxCloseButtonTopAlignDescription[];
@@ -447,8 +447,14 @@ extern const char kIOSBrowserReportIncludeAllProfilesDescription[];
 extern const char kIOSChooseFromDriveName[];
 extern const char kIOSChooseFromDriveDescription[];
 
+extern const char kIOSChooseFromDriveSignedOutName[];
+extern const char kIOSChooseFromDriveSignedOutDescription[];
+
 extern const char kIOSCustomFileUploadMenuName[];
 extern const char kIOSCustomFileUploadMenuDescription[];
+
+extern const char kIOSDateToCalendarSignedOutName[];
+extern const char kIOSDateToCalendarSignedOutDescription[];
 
 extern const char kIOSDockingPromoName[];
 extern const char kIOSDockingPromoDescription[];
@@ -461,9 +467,6 @@ extern const char kIOSEnableCloudProfileReportingDescription[];
 
 extern const char kIOSEnableRealtimeEventReportingName[];
 extern const char kIOSEnableRealtimeEventReportingDescription[];
-
-extern const char kIOSEnhancedAutofillName[];
-extern const char kIOSEnhancedAutofillDescription[];
 
 extern const char kIOSExpandedSetupListName[];
 extern const char kIOSExpandedSetupListDescription[];
@@ -506,6 +509,9 @@ extern const char kIOSSaveToDriveClientFolderDescription[];
 
 extern const char kIOSSaveToDriveSignedOutName[];
 extern const char kIOSSaveToDriveSignedOutDescription[];
+
+extern const char kIOSSaveToPhotosSignedOutName[];
+extern const char kIOSSaveToPhotosSignedOutDescription[];
 
 extern const char kIOSSoftLockName[];
 extern const char kIOSSoftLockDescription[];
@@ -576,9 +582,6 @@ extern const char kLensOverlayCustomBottomSheetDescription[];
 extern const char kLensOverlayEnableLandscapeCompatibilityName[];
 extern const char kLensOverlayEnableLandscapeCompatibilityDescription[];
 
-extern const char kLensOverlayForceShowOnboardingScreenName[];
-extern const char kLensOverlayForceShowOnboardingScreenDescription[];
-
 extern const char kLensOverlayNavigationHistoryName[];
 extern const char kLensOverlayNavigationHistoryDescription[];
 
@@ -647,9 +650,6 @@ extern const char kMostVisitedTilesCustomizationDescription[];
 
 extern const char kMostVisitedTilesHorizontalRenderGroupName[];
 extern const char kMostVisitedTilesHorizontalRenderGroupDescription[];
-
-extern const char kMultilineBrowserOmniboxName[];
-extern const char kMultilineBrowserOmniboxDescription[];
 
 extern const char kNTPBackgroundColorSliderName[];
 extern const char kNTPBackgroundColorSliderDescription[];
@@ -761,6 +761,9 @@ extern const char kOmniboxZeroSuggestPrefetchingOnWebDescription[];
 
 extern const char kOptimizationGuideDebugLogsName[];
 extern const char kOptimizationGuideDebugLogsDescription[];
+
+extern const char kPageActionMenuIconName[];
+extern const char kPageActionMenuIconDescription[];
 
 extern const char kPageActionMenuName[];
 extern const char kPageActionMenuDescription[];
@@ -906,6 +909,9 @@ extern const char kStrokesAPIEnabledDescription[];
 
 extern const char kSupervisedUserBlockInterstitialV3Name[];
 extern const char kSupervisedUserBlockInterstitialV3Description[];
+
+extern const char kSupervisedUserEmitLogRecordSeparatelyName[];
+extern const char kSupervisedUserEmitLogRecordSeparatelyDescription[];
 
 extern const char
     kSupervisedUserMergeDeviceParentalControlsAndFamilyLinkPrefsName[];

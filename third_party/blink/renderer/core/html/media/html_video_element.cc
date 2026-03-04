@@ -64,6 +64,8 @@
 #include "third_party/blink/renderer/core/loader/document_loader.h"
 #include "third_party/blink/renderer/core/loader/resource/video_timing.h"
 #include "third_party/blink/renderer/core/paint/timing/paint_timing_detector.h"
+#include "third_party/blink/renderer/platform/graphics/canvas_non2d_snapshot_provider_bitmap.h"
+#include "third_party/blink/renderer/platform/graphics/canvas_resource_provider.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_snapshot_provider.h"
 #include "third_party/blink/renderer/platform/graphics/gpu/extensions_3d_util.h"
 #include "third_party/blink/renderer/platform/graphics/gpu/shared_gpu_context.h"
@@ -411,6 +413,7 @@ void HTMLVideoElement::OnVisibilityRatioReport(double ratio) {
 
 void HTMLVideoElement::ResetCache(TimerBase*) {
   snapshot_provider_.reset();
+  cached_draw_info_.reset();
 }
 
 bool HTMLVideoElement::IsPersistent() const {
@@ -630,8 +633,10 @@ scoped_refptr<StaticBitmapImage> HTMLVideoElement::CreateStaticBitmapImage(
   auto required_provider_info = CreateSnapshotProviderInfoForVideoFrame(
       *media_video_frame, size, reinterpret_as_srgb);
 
-  if (!snapshot_provider_ ||
-      !required_provider_info.Matches(*snapshot_provider_) ||
+  bool cached_info_matches_required_info =
+      cached_draw_info_ &&
+      required_provider_info.Matches(cached_draw_info_.value());
+  if (!cached_info_matches_required_info ||
       allow_accelerated_images != allow_accelerated_images_) {
     viz::RasterContextProvider* raster_context_provider = nullptr;
     if (allow_accelerated_images) {
@@ -641,20 +646,30 @@ scoped_refptr<StaticBitmapImage> HTMLVideoElement::CreateStaticBitmapImage(
       }
     }
     snapshot_provider_.reset();
+    cached_draw_info_ = required_provider_info;
 
-    // Providing a null |raster_context_provider| creates a software provider.
-    snapshot_provider_ = CreateSnapshotProviderForVideo(
-        required_provider_info, raster_context_provider);
-    if (!snapshot_provider_) {
-      return nullptr;
+    if (ShouldCreateAcceleratedImages(raster_context_provider)) {
+      snapshot_provider_ = CanvasNon2DResourceProviderSharedImage::Create(
+          required_provider_info.size, required_provider_info.format,
+          required_provider_info.alpha_type, required_provider_info.color_space,
+          CanvasResourceProvider::ShouldInitialize::kNo,
+          SharedGpuContext::ContextProviderWrapper(),
+          gpu::SHARED_IMAGE_USAGE_DISPLAY_READ);
+      if (!snapshot_provider_) {
+        return nullptr;
+      }
     }
+
     allow_accelerated_images_ = allow_accelerated_images;
   }
   cache_deleting_timer_.StartOneShot(kTemporaryResourceDeletionDelay,
                                      FROM_HERE);
 
+  std::optional<CanvasSnapshotProvider::Info> sw_draw_info =
+      snapshot_provider_ ? std::nullopt : cached_draw_info_;
   auto image = CreateImageFromVideoFrame(
-      std::move(media_video_frame), snapshot_provider_.get(), video_renderer,
+      std::move(media_video_frame), snapshot_provider_.get(),
+      std::move(sw_draw_info), video_renderer,
       /*prefer_tagged_orientation=*/true, reinterpret_as_srgb);
   if (image)
     image->SetOriginClean(!WouldTaintOrigin());

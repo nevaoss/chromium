@@ -528,7 +528,8 @@ suite('ContextualTasksAppTest', function() {
         {url: 'http://example.com'} as OnBeforeRequestDetails);
     await microtasksFinished();
 
-    // Should be in basic mode now because the app is navigating from an AI page.
+    // Should be in basic mode now because the app is navigating from an AI
+    // page.
     assertTrue(appElement.hasAttribute('is-in-basic-mode_'));
     assertTrue(appElement.isNavigatingForTesting());
 
@@ -573,6 +574,53 @@ suite('ContextualTasksAppTest', function() {
     // Should still not be in basic mode.
     assertFalse(appElement.hasAttribute('is-in-basic-mode_'));
   });
+
+  // Regression test for crbug.com/484936343.
+  test(
+      'restores basic mode state after navigation when starting in basic mode',
+      async () => {
+        // Enable the flag that forces basic mode on history.
+        loadTimeData.overrideValues(
+            {forceBasicModeIfOpeningThreadHistory: true});
+
+        // Construct a URL with history params.
+        const fixtureUrlWithHistory = new URL(fixtureUrl);
+        fixtureUrlWithHistory.searchParams.set('atvm', '1');
+
+        const proxy = new TestContextualTasksBrowserProxy(
+            fixtureUrlWithHistory.toString());
+        BrowserProxyImpl.setInstance(proxy);
+        proxy.handler.setIsShownInTab(true);
+
+        const appElement = document.createElement('contextual-tasks-app');
+        document.body.appendChild(appElement);
+        await microtasksFinished();
+
+        // Verify initial state is basic mode.
+        assertTrue(appElement.hasAttribute('is-in-basic-mode_'));
+
+        // Ensure the app is on an AI page so navigation logic triggers.
+        proxy.callbackRouterRemote.onAiPageStatusChanged(true);
+        await proxy.callbackRouterRemote.$.flushForTesting();
+        await microtasksFinished();
+
+        // Simulate navigation start.
+        appElement.onBeforeRequestForTesting(
+            {url: 'http://example.com'} as OnBeforeRequestDetails);
+        await microtasksFinished();
+
+        // Should still be in basic mode during navigation.
+        assertTrue(appElement.hasAttribute('is-in-basic-mode_'));
+        assertTrue(appElement.isNavigatingForTesting());
+
+        // Simulate navigation complete.
+        appElement.onCompletedForTesting();
+        await microtasksFinished();
+
+        // Should still be in basic mode after navigation (restored).
+        assertTrue(appElement.hasAttribute('is-in-basic-mode_'));
+        assertFalse(appElement.isNavigatingForTesting());
+      });
 
   test('sends composebox height update', async () => {
     const proxy = new TestContextualTasksBrowserProxy(fixtureUrl);
@@ -636,4 +684,48 @@ suite('ContextualTasksAppTest', function() {
 
         assertTrue(composebox.inputEnabled);
       });
+
+  test('composebox bounds update styles', async () => {
+    const proxy = new TestContextualTasksBrowserProxy(fixtureUrl);
+    BrowserProxyImpl.setInstance(proxy);
+
+    const appElement = document.createElement('contextual-tasks-app');
+    document.body.appendChild(appElement);
+    await microtasksFinished();
+
+    const composebox = appElement.$.composebox;
+    const crComposebox =
+        composebox.shadowRoot.querySelector<HTMLElement>('#composebox');
+    assertTrue(!!crComposebox);
+
+    const rect = {
+      top: 10,
+      left: 20,
+      width: 100,
+      height: 200,
+      right: 120,
+      bottom: 210,
+    };
+
+    // Simulate callback update
+    (appElement as any).forcedComposeboxBounds_ = rect;
+    await microtasksFinished();
+
+    // Verify styles applied
+    assertEquals('fixed', crComposebox.style.position);
+    assertEquals('10px', crComposebox.style.top);
+    assertEquals('20px', crComposebox.style.left);
+    assertEquals('100px', crComposebox.style.width);
+    assertEquals('', crComposebox.style.height);
+
+    // Verify zero state clears styles
+    (appElement as any).isZeroState_ = true;
+    await microtasksFinished();
+
+    assertEquals('', crComposebox.style.position);
+    assertEquals('', crComposebox.style.top);
+    assertEquals('', crComposebox.style.left);
+    assertEquals('', crComposebox.style.width);
+    assertEquals('', crComposebox.style.height);
+  });
 });

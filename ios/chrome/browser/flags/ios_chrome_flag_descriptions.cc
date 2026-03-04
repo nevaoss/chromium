@@ -15,6 +15,10 @@ const char kAIHubNewBadgeName[] = "AI Hub New Badge";
 const char kAIHubNewBadgeDescription[] =
     "Enables showing a new badge on the AI Hub button in the toolbar.";
 
+const char kAIMCobrowseDebugEntrypointName[] = "AIM Cobrowse debug entrypoint";
+const char kAIMCobrowseDebugEntrypointDescription[] =
+    "Enables the AIM Cobrowse debug entrypoint feature.";
+
 const char kAIMEligibilityRefreshNTPModulesName[] =
     "AIMEligibilityRefreshNTPModules";
 const char kAIMEligibilityRefreshNTPModulesDescription[] =
@@ -304,12 +308,6 @@ const char kComposeboxAttachmentsTypedStateName[] =
 const char kComposeboxAttachmentsTypedStateDescription[] =
     "Enables showing suggestions for multiple composebox attachments in a "
     "typed state.";
-
-const char kComposeboxAutoattachTabName[] =
-    "Automatically attach current tab within the composebox";
-const char kComposeboxAutoattachTabDescription[] =
-    "When enabled, the composebox will automatically attach curent tab as "
-    "context.";
 
 const char kComposeboxCloseButtonTopAlignName[] =
     "Align the close button in composebox to the top edge of the view";
@@ -726,9 +724,18 @@ const char kIOSChooseFromDriveName[] = "IOS Choose from Drive";
 const char kIOSChooseFromDriveDescription[] =
     "Enables the Choose from Drive feature on iOS.";
 
+const char kIOSChooseFromDriveSignedOutName[] = "Choose from Drive Signed Out";
+const char kIOSChooseFromDriveSignedOutDescription[] =
+    "Enables the Choose from Drive feature to signed out users.";
+
 const char kIOSCustomFileUploadMenuName[] = "Custom file upload menu";
 const char kIOSCustomFileUploadMenuDescription[] =
     "Enables the custom file upload menu implementation.";
+
+const char kIOSDateToCalendarSignedOutName[] = "Date to Calendar Signed Out";
+const char kIOSDateToCalendarSignedOutDescription[] =
+    "When enabled, signed-out users can long-press detected dates to access "
+    "the 'Add to Google Calendar' feature.";
 
 const char kIOSDockingPromoName[] = "Docking Promo";
 const char kIOSDockingPromoDescription[] =
@@ -751,11 +758,6 @@ const char kIOSEnableRealtimeEventReportingName[] =
 const char kIOSEnableRealtimeEventReportingDescription[] =
     "When enabled, realtime events will be reported to the user's "
     "organization.";
-
-const char kIOSEnhancedAutofillName[] = "Enhanced Autofill";
-const char kIOSEnhancedAutofillDescription[] =
-    "Saving, updating, editing, and filling entities (Passports, IBANs, "
-    "Loyalty Cards) via LLM-based classification";
 
 const char kIOSExpandedSetupListName[] = "Expanded Setup List";
 const char kIOSExpandedSetupListDescription[] =
@@ -826,6 +828,10 @@ const char kIOSSaveToDriveClientFolderDescription[] =
 const char kIOSSaveToDriveSignedOutName[] = "Save to Drive Signed Out";
 const char kIOSSaveToDriveSignedOutDescription[] =
     "Enables the Save to Drive feature to signed out users.";
+
+const char kIOSSaveToPhotosSignedOutName[] = "Save to Photos Signed Out";
+const char kIOSSaveToPhotosSignedOutDescription[] =
+    "Enables the Save to Photos feature to signed out users.";
 
 const char kIOSSoftLockName[] = "Soft Lock on iOS";
 const char kIOSSoftLockDescription[] = "Enables experimental Soft Lock on iOS.";
@@ -940,12 +946,6 @@ const char kLensOverlayEnableLandscapeCompatibilityName[] =
 const char kLensOverlayEnableLandscapeCompatibilityDescription[] =
     "When enabled, it allows Lens Overlay to run in landscape orientation";
 
-const char kLensOverlayForceShowOnboardingScreenName[] =
-    "Force show Lens overlay onboarding screen";
-const char kLensOverlayForceShowOnboardingScreenDescription[] =
-    "When enabled, it forces showing the onboarding screen everytime lens "
-    "overlay is open";
-
 const char kLensOverlayNavigationHistoryName[] =
     "Enable Lens overlay navigation history";
 const char kLensOverlayNavigationHistoryDescription[] =
@@ -1058,10 +1058,6 @@ const char kMostVisitedTilesHorizontalRenderGroupName[] =
     "MVTiles Horizontal Render Group";
 const char kMostVisitedTilesHorizontalRenderGroupDescription[] =
     "When enabled, the MV tiles are represented as individual matches";
-
-const char kMultilineBrowserOmniboxName[] = "Multiline omnibox in browser";
-const char kMultilineBrowserOmniboxDescription[] =
-    "Enables multiline for the browser omnibox.";
 
 const char kNTPBackgroundColorSliderName[] =
     "Enable the background color slider in the background customization color "
@@ -1252,6 +1248,10 @@ const char kOptimizationGuideDebugLogsName[] =
 const char kOptimizationGuideDebugLogsDescription[] =
     "Enables the optimization guide to log and save debug messages that can be "
     "shown in the internals page.";
+
+const char kPageActionMenuIconName[] = "PageActionMenuIcon";
+const char kPageActionMenuIconDescription[] =
+    "When enabled, changes the icon for the page action menu entry point.";
 
 const char kPageActionMenuName[] = "Page Action Menu";
 const char kPageActionMenuDescription[] =
@@ -1500,18 +1500,26 @@ const char kSupervisedUserBlockInterstitialV3Name[] =
 const char kSupervisedUserBlockInterstitialV3Description[] =
     "Enables URL filter interstitial V3 for Family Link users.";
 
+const char kSupervisedUserEmitLogRecordSeparatelyName[] =
+    "Emit supervised user log record separately";
+const char kSupervisedUserEmitLogRecordSeparatelyDescription[] =
+    "Emit supervised user log record separately for Family Link and device "
+    "parental controls users (no user-visible effect).";
+
 const char kSupervisedUserMergeDeviceParentalControlsAndFamilyLinkPrefsName[] =
     "Merge device parental controls and Family Link prefs";
 const char
     kSupervisedUserMergeDeviceParentalControlsAndFamilyLinkPrefsDescription[] =
         "Merges non-web filtering device parental controls settings with "
-        "Family Link settings in the SupervisedUserPrefStore.";
+        "Family Link settings in the SupervisedUserPrefStore (no user-visible "
+        "effect).";
 
 const char kSupervisedUserUseUrlFilteringServiceName[] =
     "Use URL filtering service";
 const char kSupervisedUserUseUrlFilteringServiceDescription[] =
     "Use the SupervisedUserUrlFilteringService to get URL filtering settings "
-    "directly from supervision services instead of using PrefService.";
+    "directly from supervision services instead of using PrefService (no "
+    "user-visible effect).";
 
 const char kSyncAutofillWalletCredentialDataName[] =
     "Sync Autofill Wallet Credential Data";

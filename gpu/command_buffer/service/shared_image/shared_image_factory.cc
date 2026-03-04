@@ -875,8 +875,7 @@ gpu::SharedImageCapabilities SharedImageFactory::MakeCapabilities() {
       gl::GetGLImplementation() == gl::kGLImplementationEGLANGLE &&
       gl::GetANGLEImplementation() == gl::ANGLEImplementation::kMetal;
   const bool is_skia_graphite =
-      gr_context_type_ == GrContextType::kGraphiteDawn ||
-      gr_context_type_ == GrContextType::kGraphiteMetal;
+      gr_context_type_ == GrContextType::kGraphiteDawn;
   shared_image_caps.supports_luminance_shared_images =
       !is_angle_metal && !is_skia_graphite;
   shared_image_caps.supports_r16_shared_images =
@@ -885,6 +884,16 @@ gpu::SharedImageCapabilities SharedImageFactory::MakeCapabilities() {
       IsNativeBufferSupported(viz::MultiPlaneFormat::kNV12,
                               gfx::BufferUsage::GPU_READ_CPU_READ_WRITE,
                               gpu_extra_info_);
+  if (context_state_) {
+    shared_image_caps.supports_ycbcr_nv12_sampling =
+        context_state_->feature_info()
+            ->feature_flags()
+            .chromium_image_ycbcr_420v;
+    shared_image_caps.supports_ycbcr_p010_sampling =
+        context_state_->feature_info()
+            ->feature_flags()
+            .chromium_image_ycbcr_p010;
+  }
   shared_image_caps.disable_r8_shared_images =
       workarounds_.r8_egl_images_broken;
   shared_image_caps.disable_webgpu_shared_images =

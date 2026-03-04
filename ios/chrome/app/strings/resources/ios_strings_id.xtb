@@ -125,6 +125,7 @@
 <translation id="1436671784520050284">Lanjutkan penyiapan</translation>
 <translation id="143681031165817424">Alamat hanya disimpan di perangkat ini</translation>
 <translation id="1445276840641906250">Semua tab Anda dalam satu browser</translation>
+<translation id="1447564161241938558">Impor sandi dan kunci sandi dinonaktifkan oleh administrator Anda</translation>
 <translation id="1450170672351507823">Perlindungan standar aktif. Untuk keamanan yang lebih baik, gunakan Perlindungan yang ditingkatkan.</translation>
 <translation id="1455660774629812862">Jangan sembunyikan</translation>
 <translation id="1456545332132818232">Ulasan produk <ph name="PRODUCT_NAME" />, <ph name="STARS" /> dari <ph name="MAX_STARS" />, <ph name="DOMAIN" /></translation>
@@ -373,7 +374,6 @@
 <translation id="2306265833370324042">Tampilkan detail <ph name="SEARCH_ENGINE_NAME" /></translation>
 <translation id="2309265394777270359">Tutup Tab</translation>
 <translation id="2311077293164383652">Tutup Tab Tersemat</translation>
-<translation id="2313392466694008052">Edit gambar dengan Gemini</translation>
 <translation id="2316129865977710310">Lain kali</translation>
 <translation id="2320166752086256636">Sembunyikan keyboard</translation>
 <translation id="2321086116217818302">Mempersiapkan sandi…</translation>
@@ -1786,6 +1786,7 @@ Handoff juga harus diaktifkan pada bagian General di Settings, dan perangkat And
 <translation id="7506817096924591340"><ph name="FILENAME" /> (<ph name="FILESIZE" />).</translation>
 <translation id="7508728395076009983">Untuk mengunci tab Samaran, siapkan Touch ID, Face ID, atau Kode Sandi.</translation>
 <translation id="750886945254958667">Simpan grup ini untuk menambahkan tab nanti, atau keluar dari grup jika Anda tidak ingin lagi mengaksesnya</translation>
+<translation id="7511727374778217603">{COUNT,plural, =1{Tambahkan maksimal 1 tab}other{Tambahkan maksimal {COUNT} tab}}</translation>
 <translation id="7512909159512473473">Masukkan frasa sandi…</translation>
 <translation id="7514365320538308">Download</translation>
 <translation id="7514530647142300459">Tetap gunakan sandi yang tersimpan di Akun Google Anda <ph name="EMAIL" /></translation>
@@ -2059,6 +2060,7 @@ Handoff juga harus diaktifkan pada bagian General di Settings, dan perangkat And
 <translation id="8439758443371991593">Sembunyikan Tambahkan ke Daftar Bacaan</translation>
 <translation id="8443986842926457191">URL berisi lebih dari 2048 karakter</translation>
 <translation id="8449869326050867919">Sandi dibagikan</translation>
+<translation id="8473815223723723001">Edit Gambar dengan Gemini</translation>
 <translation id="8473863474539038330">Alamat dan lain-lain</translation>
 <translation id="8474378002946546633">Izinkan pemberitahuan</translation>
 <translation id="8477178913400731244">Hapus data</translation>
@@ -2236,6 +2238,7 @@ Handoff juga harus diaktifkan pada bagian General di Settings, dan perangkat And
 <translation id="9055291197094969722">Buat grup tab untuk mengatur tab yang terbuka dan tetap produktif</translation>
 <translation id="9055580485132823283">Anda akan menghapus {password_count} sandi, {passkey_count} kunci sandi, dan daftar situs &amp; aplikasi yang Anda pilih agar tidak pernah menyimpan info login. Akun apa pun yang Anda buat untuk situs dan aplikasi tidak akan dihapus.</translation>
 <translation id="9057030985451135243">Pelajari grup tab bersama</translation>
+<translation id="9064106978262828592">Terjadi masalah saat mengekspor data Anda</translation>
 <translation id="9065203028668620118">Edit</translation>
 <translation id="9066097352053395362">Sembunyikan Edit Bookmark</translation>
 <translation id="9070824521421603770">Anda akan logout dan tab akan ditutup</translation>

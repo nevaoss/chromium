@@ -7,6 +7,7 @@ import 'chrome://resources/cr_elements/cr_checkbox/cr_checkbox.js';
 import 'chrome://resources/cr_elements/cr_dialog/cr_dialog.js';
 import 'chrome://resources/cr_elements/cr_icon_button/cr_icon_button.js';
 import 'chrome://resources/cr_elements/cr_icon/cr_icon.js';
+import 'chrome://resources/cr_elements/cr_toggle/cr_toggle.js';
 import 'chrome://resources/cr_elements/icons.html.js';
 import './icons.html.js';
 import './profile_card.js';
@@ -16,6 +17,7 @@ import './signin_error_dialog.js';
 import {HelpBubbleMixinLit} from 'chrome://resources/cr_components/help_bubble/help_bubble_mixin_lit.js';
 import type {CrButtonElement} from 'chrome://resources/cr_elements/cr_button/cr_button.js';
 import type {CrCheckboxElement} from 'chrome://resources/cr_elements/cr_checkbox/cr_checkbox.js';
+import type {CrToggleElement} from 'chrome://resources/cr_elements/cr_toggle/cr_toggle.js';
 import {I18nMixinLit} from 'chrome://resources/cr_elements/i18n_mixin_lit.js';
 import {WebUiListenerMixinLit} from 'chrome://resources/cr_elements/web_ui_listener_mixin_lit.js';
 import {assert} from 'chrome://resources/js/assert.js';
@@ -29,7 +31,7 @@ import {DragDropReorderTileListDelegate} from './drag_drop_reorder_tile_list_del
 import type {ManageProfilesBrowserProxy, ProfileState} from './manage_profiles_browser_proxy.js';
 import {ManageProfilesBrowserProxyImpl} from './manage_profiles_browser_proxy.js';
 import {navigateTo, NavigationMixin, Routes} from './navigation_mixin.js';
-import {isAskOnStartupAllowed, isGlicVersion, isProfileCreationAllowed} from './profile_picker_flags.js';
+import {isAskOnStartupAllowed, isGlicVersion, isProfileCreationAllowed, isUseRefreshedUI} from './profile_picker_flags.js';
 import {getCss} from './profile_picker_main_view.css.js';
 import {getHtml} from './profile_picker_main_view.html.js';
 import type {SigninErrorDialogElement} from './signin_error_dialog.js';
@@ -37,7 +39,7 @@ import type {SigninErrorDialogElement} from './signin_error_dialog.js';
 export interface ProfilePickerMainViewElement {
   $: {
     addProfile: CrButtonElement,
-    askOnStartup: CrCheckboxElement,
+    askOnStartup: CrCheckboxElement|CrToggleElement,
     'picker-logo': HTMLElement,
     browseAsGuestButton: HTMLElement,
     openAllProfilesButton: HTMLElement,
@@ -81,6 +83,8 @@ export class ProfilePickerMainViewElement extends
       isGlic_: {type: Boolean, reflect: true},
       // Exposed to CSS as 'is-open-all-profiles-button-experiment-enabled_'.
       isOpenAllProfilesButtonExperimentEnabled_: {type: Boolean, reflect: true},
+      // Exposed to CSS as 'is-refreshed-ui_'.
+      isRefreshedUI_: {type: Boolean, reflect: true},
     };
   }
 
@@ -112,6 +116,7 @@ export class ProfilePickerMainViewElement extends
       loadTimeData.getInteger('maxProfilesCountToShowOpenAllProfilesButton');
   protected accessor shouldShowOpenAllProfilesButton_: boolean = false;
 
+  protected accessor isRefreshedUI_: boolean = isUseRefreshedUI();
   private showProfilePickerToAllUsersExperiment_: boolean =
       loadTimeData.getBoolean('showProfilePickerToAllUsersExperiment');
   private isProfilePickerTextVariationsEnabled_: boolean =

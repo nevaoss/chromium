@@ -11,6 +11,7 @@
 #import "components/application_locale_storage/application_locale_storage.h"
 #import "components/prefs/pref_registry_simple.h"
 #import "components/prefs/testing_pref_service.h"
+#import "components/sync/base/features.h"
 #import "components/sync/protocol/theme_specifics.pb.h"
 #import "components/sync/protocol/theme_types.pb.h"
 #import "components/themes/ntp_background_data.h"
@@ -83,20 +84,20 @@ class HomeBackgroundCustomizationServiceTest : public PlatformTest {
     observation_.Observe(service_.get());
   }
 
-  std::string EncodeThemeSpecificsIos(
-      sync_pb::ThemeSpecificsIos theme_specifics_ios) {
-    std::string serialized = theme_specifics_ios.SerializeAsString();
+  std::string EncodeThemeIosSpecifics(
+      sync_pb::ThemeIosSpecifics theme_ios_specifics) {
+    std::string serialized = theme_ios_specifics.SerializeAsString();
     // Encode bytestring so it can be stored in a pref.
     return base::Base64Encode(serialized);
   }
 
-  sync_pb::ThemeSpecificsIos DecodeThemeSpecificsIos(std::string encoded) {
+  sync_pb::ThemeIosSpecifics DecodeThemeIosSpecifics(std::string encoded) {
     // This pref is base64 encoded, so decode it first.
     std::string serialized;
     base::Base64Decode(encoded, &serialized);
-    sync_pb::ThemeSpecificsIos theme_specifics_ios;
-    theme_specifics_ios.ParseFromString(serialized);
-    return theme_specifics_ios;
+    sync_pb::ThemeIosSpecifics theme_ios_specifics;
+    theme_ios_specifics.ParseFromString(serialized);
+    return theme_ios_specifics;
   }
 
   std::vector<CollectionImage> GetDefaultRecentlyUsedImages() {
@@ -173,8 +174,8 @@ TEST_F(HomeBackgroundCustomizationServiceTest,
 
     EXPECT_TRUE(actual.is_string());
 
-    sync_pb::ThemeSpecificsIos theme_specifics =
-        DecodeThemeSpecificsIos(actual.GetString());
+    sync_pb::ThemeIosSpecifics theme_specifics =
+        DecodeThemeIosSpecifics(actual.GetString());
 
     EXPECT_EQ(expected.image_url, theme_specifics.ntp_background().url());
     EXPECT_EQ(expected.attribution_action_url,
@@ -242,7 +243,7 @@ TEST_F(HomeBackgroundCustomizationServiceTest, SetCurrentBackground) {
   service_->StoreCurrentTheme();
 
   // Make sure disk data has this item.
-  sync_pb::ThemeSpecificsIos disk_theme_specifics = DecodeThemeSpecificsIos(
+  sync_pb::ThemeIosSpecifics disk_theme_specifics = DecodeThemeIosSpecifics(
       pref_service_->GetString(prefs::kIosSavedThemeSpecificsIos));
 
   EXPECT_EQ(background_url, disk_theme_specifics.ntp_background().url());
@@ -266,8 +267,8 @@ TEST_F(HomeBackgroundCustomizationServiceTest, SetCurrentBackground) {
 
   const base::Value& value = recent_backgrounds_disk[0];
   ASSERT_TRUE(value.is_string());
-  sync_pb::ThemeSpecificsIos recent_theme_specifics_disk =
-      DecodeThemeSpecificsIos(value.GetString());
+  sync_pb::ThemeIosSpecifics recent_theme_specifics_disk =
+      DecodeThemeIosSpecifics(value.GetString());
 
   EXPECT_EQ(background_url, recent_theme_specifics_disk.ntp_background().url());
   EXPECT_EQ(attribution_line_1,
@@ -331,7 +332,7 @@ TEST_F(HomeBackgroundCustomizationServiceTest, SetBackgroundColor) {
   service_->StoreCurrentTheme();
 
   // Make sure disk data has this item.
-  sync_pb::ThemeSpecificsIos disk_theme_specifics = DecodeThemeSpecificsIos(
+  sync_pb::ThemeIosSpecifics disk_theme_specifics = DecodeThemeIosSpecifics(
       pref_service_->GetString(prefs::kIosSavedThemeSpecificsIos));
 
   EXPECT_EQ(color_theme, disk_theme_specifics.user_color_theme());
@@ -347,8 +348,8 @@ TEST_F(HomeBackgroundCustomizationServiceTest, SetBackgroundColor) {
 
   const base::Value& value = recent_backgrounds_disk[0];
   ASSERT_TRUE(value.is_string());
-  sync_pb::ThemeSpecificsIos recent_theme_specifics_disk =
-      DecodeThemeSpecificsIos(value.GetString());
+  sync_pb::ThemeIosSpecifics recent_theme_specifics_disk =
+      DecodeThemeIosSpecifics(value.GetString());
 
   EXPECT_EQ(color_theme, recent_theme_specifics_disk.user_color_theme());
 
@@ -537,7 +538,7 @@ TEST_F(HomeBackgroundCustomizationServiceTest, LoadRecentBackgrounds) {
   // First, set up data on disk.
   sync_pb::UserColorTheme color_theme = GenerateUserColorTheme(0xff0000);
 
-  sync_pb::ThemeSpecificsIos color_theme_specifics;
+  sync_pb::ThemeIosSpecifics color_theme_specifics;
   *color_theme_specifics.mutable_user_color_theme() = color_theme;
 
   HomeUserUploadedBackground user_background =
@@ -545,7 +546,7 @@ TEST_F(HomeBackgroundCustomizationServiceTest, LoadRecentBackgrounds) {
 
   base::ListValue recent_backgrounds_data =
       base::ListValue()
-          .Append(EncodeThemeSpecificsIos(color_theme_specifics))
+          .Append(EncodeThemeIosSpecifics(color_theme_specifics))
           .Append(user_background.ToDict());
 
   pref_service_->SetList(prefs::kIosRecentlyUsedBackgrounds,
@@ -857,4 +858,130 @@ TEST_F(HomeBackgroundCustomizationServiceTest,
 
   EXPECT_NE(nil, user_image_manager_->LoadUserUploadedImage(image1_file_path));
   EXPECT_EQ(nil, user_image_manager_->LoadUserUploadedImage(image2_file_path));
+}
+
+// Tests that when `syncer::kSyncThemesIos` is enabled, the service migrates
+// legacy theme data to the new theme pref and sets the migration flag.
+TEST_F(HomeBackgroundCustomizationServiceTest,
+       MigratesLegacyThemeWhenSyncEnabled) {
+  feature_list_.Reset();
+  feature_list_.InitWithFeatures(
+      {kNTPBackgroundCustomization, syncer::kSyncThemesIos}, {});
+
+  sync_pb::UserColorTheme expected_theme = GenerateUserColorTheme(0xff0000);
+
+  sync_pb::ThemeIosSpecifics legacy_data;
+  *legacy_data.mutable_user_color_theme() = expected_theme;
+
+  pref_service_->SetString(prefs::kIosSavedThemeSpecificsIos,
+                           EncodeThemeIosSpecifics(legacy_data));
+
+  // Ensure new pref and migration flag are empty/false.
+  pref_service_->SetString(prefs::kIosNtpThemeSpecifics, "");
+  pref_service_->SetBoolean(prefs::kIosNtpThemeMigrationComplete, false);
+
+  CreateService();
+
+  // Verify migration flag is set.
+  EXPECT_TRUE(pref_service_->GetBoolean(prefs::kIosNtpThemeMigrationComplete));
+
+  // Verify migration occurred.
+  std::string current_theme =
+      pref_service_->GetString(prefs::kIosNtpThemeSpecifics);
+  EXPECT_FALSE(current_theme.empty());
+
+  sync_pb::ThemeIosSpecifics migrated_theme =
+      DecodeThemeIosSpecifics(current_theme);
+
+  EXPECT_EQ(expected_theme, migrated_theme.user_color_theme());
+  ASSERT_TRUE(service_->GetCurrentColorTheme());
+  EXPECT_EQ(expected_theme, service_->GetCurrentColorTheme());
+}
+
+// Tests that if the user has already migrated, cleared their background (so new
+// theme pref is empty), and restarts, the legacy theme is NOT resurrected.
+TEST_F(HomeBackgroundCustomizationServiceTest,
+       DoesNotResurrectLegacyThemeAfterClear) {
+  feature_list_.Reset();
+  feature_list_.InitWithFeatures(
+      {kNTPBackgroundCustomization, syncer::kSyncThemesIos}, {});
+
+  // User has a legacy theme, but migration is marked complete (this simulates a
+  // user who migrated, then cleared their background.)
+  sync_pb::UserColorTheme legacy_theme = GenerateUserColorTheme(0xff0000);
+  sync_pb::ThemeIosSpecifics legacy_data;
+  *legacy_data.mutable_user_color_theme() = legacy_theme;
+
+  pref_service_->SetString(prefs::kIosSavedThemeSpecificsIos,
+                           EncodeThemeIosSpecifics(legacy_data));
+
+  pref_service_->SetString(prefs::kIosNtpThemeSpecifics, "");
+  pref_service_->SetBoolean(prefs::kIosNtpThemeMigrationComplete, true);
+
+  CreateService();
+
+  std::string current_theme =
+      pref_service_->GetString(prefs::kIosNtpThemeSpecifics);
+  EXPECT_TRUE(current_theme.empty());
+  EXPECT_FALSE(service_->GetCurrentColorTheme().has_value());
+}
+
+// Tests that when `syncer::kSyncThemesIos` is enabled, theme data is saved to
+// both the new pref and the legacy pref (dual writes).
+TEST_F(HomeBackgroundCustomizationServiceTest,
+       DualWritesToBothPrefsWhenSyncEnabled) {
+  feature_list_.Reset();
+  feature_list_.InitWithFeatures(
+      {kNTPBackgroundCustomization, syncer::kSyncThemesIos}, {});
+
+  CreateService();
+
+  sync_pb::UserColorTheme expected_theme = GenerateUserColorTheme(0x00ff00);
+
+  service_->SetBackgroundColor(expected_theme.color(),
+                               expected_theme.browser_color_variant());
+  service_->StoreCurrentTheme();
+
+  // Verify new theme pref.
+  std::string new_pref = pref_service_->GetString(prefs::kIosNtpThemeSpecifics);
+  EXPECT_FALSE(new_pref.empty());
+
+  sync_pb::ThemeIosSpecifics new_theme = DecodeThemeIosSpecifics(new_pref);
+  EXPECT_EQ(expected_theme, new_theme.user_color_theme());
+
+  // Verify legacy theme pref.
+  std::string legacy_pref =
+      pref_service_->GetString(prefs::kIosSavedThemeSpecificsIos);
+  EXPECT_FALSE(legacy_pref.empty());
+
+  sync_pb::ThemeIosSpecifics legacy_theme =
+      DecodeThemeIosSpecifics(legacy_pref);
+  EXPECT_EQ(expected_theme, legacy_theme.user_color_theme());
+}
+
+// Tests that clearing the background clears both prefs when sync is enabled.
+TEST_F(HomeBackgroundCustomizationServiceTest, ClearsBothPrefs) {
+  feature_list_.Reset();
+  feature_list_.InitWithFeatures(
+      {kNTPBackgroundCustomization, syncer::kSyncThemesIos}, {});
+
+  CreateService();
+
+  // Set a background first
+  sync_pb::UserColorTheme theme = GenerateUserColorTheme(0x00ff00);
+  service_->SetBackgroundColor(theme.color(), theme.browser_color_variant());
+  service_->StoreCurrentTheme();
+
+  EXPECT_FALSE(pref_service_->GetString(prefs::kIosNtpThemeSpecifics).empty());
+  EXPECT_FALSE(
+      pref_service_->GetString(prefs::kIosSavedThemeSpecificsIos).empty());
+
+  // Clear the theme.
+  service_->ClearCurrentBackground();
+  service_->StoreCurrentTheme();
+
+  // Verify both theme prefs are cleared.
+  EXPECT_TRUE(pref_service_->GetString(prefs::kIosNtpThemeSpecifics).empty());
+  EXPECT_TRUE(
+      pref_service_->GetString(prefs::kIosSavedThemeSpecificsIos).empty());
 }

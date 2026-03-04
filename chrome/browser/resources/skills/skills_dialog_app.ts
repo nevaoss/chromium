@@ -224,6 +224,8 @@ export class SkillsDialogAppElement extends CrLitElement {
   }
 
   protected onUndoClick_() {
+    // Undo is only enabled after a successful refinement, at which point
+    // originalPrompt_ is guaranteed to be populated.
     this.skill_ = {...this.skill_, prompt: this.originalPrompt_};
 
     this.canUndoRefine_ = false;
@@ -248,26 +250,23 @@ export class SkillsDialogAppElement extends CrLitElement {
     if (this.isRefineLoading_) {
       return;
     }
+    if (!this.originalPrompt_) {
+      this.originalPrompt_ = this.skill_.prompt;
+    }
+    const skillToRefine = {
+      ...this.skill_,
+      prompt: this.originalPrompt_,
+    };
 
     this.isRefineLoading_ = true;
     this.hasRefineError_ = false;
 
-    const refineRequest =
-        SkillsDialogBrowserProxy.getInstance().handler.refineSkill(this.skill_);
-
-    const timeout = new Promise<never>((_, reject) => {
-      WindowProxyImpl.getInstance().setTimeout(
-          () => reject(new Error('Refine skill timed out')),
-          REFINE_SKILL_TIMEOUT_MS);
-    });
-
     // Race the request against the timeout
-    return Promise.race([refineRequest, timeout])
+    return this.requestRefinedSkillWithTimeout_(skillToRefine)
         .then(({refinedSkill}) => {
           // If the server returned null, do not overwrite the current state.
           if (refinedSkill && !this.hasRefineError_) {
             // Only update if we have a valid result.
-            this.originalPrompt_ = this.skill_.prompt;
             this.skill_ = {
               ...this.skill_,
               // If the refined prompt is missing or empty, keep the original
@@ -289,8 +288,9 @@ export class SkillsDialogAppElement extends CrLitElement {
 
   /** Submits skill and closes the dialog. */
   protected submitSkill_(): void {
+    let skillSource: SkillSource =
+        this.skill_.source || SkillSource.kUserCreated;
     // Remixing a first party skill, set the parent and clear the ID.
-    let skillSource = SkillSource.kUserCreated;
     if (this.skill_.source === SkillSource.kFirstParty) {
       const sourceSkillId = this.skill_.id;
       this.skill_ = {...this.skill_, id: '', sourceSkillId: sourceSkillId};
@@ -311,13 +311,12 @@ export class SkillsDialogAppElement extends CrLitElement {
   }
 
   protected autoPopulateNameAndIcon_() {
-    if (!this.skill_.prompt) {
+    if (!this.skill_.prompt || this.skill_.name) {
       return;
     }
 
     this.isAutoGenerationLoading_ = true;
-    SkillsDialogBrowserProxy.getInstance()
-        .handler.refineSkill(this.skill_)
+    return this.requestRefinedSkillWithTimeout_(this.skill_)
         .then(({refinedSkill}) => {
           if (refinedSkill) {
             const newName =
@@ -345,6 +344,20 @@ export class SkillsDialogAppElement extends CrLitElement {
         .finally(() => {
           this.isAutoGenerationLoading_ = false;
         });
+  }
+
+  private requestRefinedSkillWithTimeout_(skillToRefine: Skill) {
+    const refineRequest =
+        SkillsDialogBrowserProxy.getInstance().handler.refineSkill(
+            skillToRefine);
+
+    const timeout = new Promise<never>((_, reject) => {
+      WindowProxyImpl.getInstance().setTimeout(
+          () => reject(new Error('Refine skill timed out')),
+          REFINE_SKILL_TIMEOUT_MS);
+    });
+
+    return Promise.race([refineRequest, timeout]);
   }
 }
 

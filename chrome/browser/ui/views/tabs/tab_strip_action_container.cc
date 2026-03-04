@@ -61,9 +61,9 @@
 #include "chrome/browser/contextual_cueing/contextual_cueing_features.h"
 #include "chrome/browser/legion/private_ai_service.h"
 #include "chrome/browser/legion/private_ai_service_factory.h"
-#include "components/legion/client.h"
-#include "components/legion/features.h"
-#include "components/legion/legion_common.h"
+#include "components/private_ai/client.h"
+#include "components/private_ai/features.h"
+#include "components/private_ai/legion_common.h"
 #endif  // !BUILDFLAG(IS_ANDROID)
 #endif  // BUILDFLAG(ENABLE_GLIC)
 namespace {
@@ -87,17 +87,17 @@ void PrewarmLegionSession(Profile* profile) {
   if (!profile) {
     return;
   }
-  if (base::FeatureList::IsEnabled(legion::kLegion) &&
+  if (base::FeatureList::IsEnabled(private_ai::kLegion) &&
       base::FeatureList::IsEnabled(
           contextual_cueing::kZeroStateSuggestionsUseLegion)) {
-    legion::PrivateAiService* private_ai_service =
-        legion::PrivateAiServiceFactory::GetForProfile(profile);
+    private_ai::PrivateAiService* private_ai_service =
+        private_ai::PrivateAiServiceFactory::GetForProfile(profile);
     if (private_ai_service) {
-      legion::Client* client = private_ai_service->GetClient();
+      private_ai::Client* client = private_ai_service->GetClient();
       if (client) {
         // Prewarm the session.
-        client->EstablishSession(
-            base::BindOnce([](base::expected<void, legion::ErrorCode> result) {
+        client->EstablishSession(base::BindOnce(
+            [](base::expected<void, private_ai::ErrorCode> result) {
               if (!result.has_value()) {
                 LOG(ERROR) << "Failed to prewarm Legion session: "
                            << static_cast<int>(result.error());

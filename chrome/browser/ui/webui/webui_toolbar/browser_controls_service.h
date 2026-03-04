@@ -17,6 +17,7 @@
 #include "mojo/public/cpp/bindings/remote.h"
 #include "ui/base/models/menu_model.h"
 #include "ui/base/mojom/menu_source_type.mojom-shared.h"
+#include "ui/base/pointer/touch_ui_controller.h"
 #include "ui/views/controls/menu/menu_runner.h"
 
 class BrowserWindowInterface;
@@ -37,6 +38,7 @@ class BrowserControlsService
         gfx::Point viewport_coordinate_css_pixels,
         ui::mojom::MenuSourceType source) = 0;
     virtual void OnPageInitialized() = 0;
+    virtual void PermitLaunchUrl() = 0;
   };
 
   BrowserControlsService(
@@ -60,6 +62,8 @@ class BrowserControlsService
       browser_controls_api::mojom::ContextMenuType menu_type,
       browser_controls_api::mojom::ContextMenuState state);
 
+  void SetDelegate(BrowserControlsServiceDelegate* delegate);
+
   // browser_controls_api::mojom::BrowserControlsService:
   void AddObserver(
       mojo::PendingRemote<browser_controls_api::mojom::BrowserControlsObserver>
@@ -77,6 +81,7 @@ class BrowserControlsService
   void GetTabSplitState(GetTabSplitStateCallback callback) override;
   void GetButtonPinState(browser_controls_api::mojom::ToolbarButtonType type,
                          GetButtonPinStateCallback callback) override;
+  void GetLayoutConstants(GetLayoutConstantsCallback callback) override;
 
   // Updates the split status of the active tab in the renderer.
   void OnTabSplitStatusChanged(
@@ -89,6 +94,8 @@ class BrowserControlsService
       bool is_pinned);
 
  private:
+  void OnTouchUiChanged();
+
   // Returns the MetricsReporter associated with `web_contents_` or nullptr.
   //
   // This method fetches the reporter from the MetricsReporterService associated
@@ -112,6 +119,8 @@ class BrowserControlsService
   const raw_ptr<BrowserWindowInterface> browser_;
 
   raw_ptr<BrowserControlsServiceDelegate> delegate_;
+
+  base::CallbackListSubscription touch_ui_subscription_;
 
   // Must be the last member.
   base::WeakPtrFactory<BrowserControlsService> weak_ptr_factory_{this};

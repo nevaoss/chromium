@@ -57,9 +57,21 @@ class ClipboardWin : public Clipboard, public ClipboardChangeNotifier {
                          ClipboardBuffer buffer,
                          const DataTransferEndpoint* data_dst) const override;
   void Clear(ClipboardBuffer buffer) override;
+  void ReadText(ClipboardBuffer buffer,
+                const std::optional<DataTransferEndpoint>& data_dst,
+                ReadTextCallback callback) const override;
+  void ReadAsciiText(ClipboardBuffer buffer,
+                     const std::optional<DataTransferEndpoint>& data_dst,
+                     ReadAsciiTextCallback callback) const override;
+  void ReadAvailableTypes(ClipboardBuffer buffer,
+                          const std::optional<DataTransferEndpoint>& data_dst,
+                          ReadAvailableTypesCallback callback) const override;
   void ReadHTML(ClipboardBuffer buffer,
                 const std::optional<DataTransferEndpoint>& data_dst,
                 ReadHtmlCallback callback) const override;
+  void ReadFilenames(ClipboardBuffer buffer,
+                     const std::optional<DataTransferEndpoint>& data_dst,
+                     ReadFilenamesCallback callback) const override;
   void ReadAvailableTypes(ClipboardBuffer buffer,
                           const DataTransferEndpoint* data_dst,
                           std::vector<std::u16string>* types) const override;
@@ -128,6 +140,21 @@ class ClipboardWin : public Clipboard, public ClipboardChangeNotifier {
   template <typename Result>
   void ReadAsync(base::OnceCallback<Result(HWND)> read_func,
                  base::OnceCallback<void(Result)> reply_func) const;
+  static std::u16string ReadTextInternal(ClipboardBuffer buffer,
+                                         HWND owner_window);
+  static std::string ReadAsciiTextInternal(ClipboardBuffer buffer,
+                                           HWND owner_window);
+  static std::vector<std::u16string> ReadAvailableTypesInternal(
+      ClipboardBuffer buffer,
+      const std::optional<DataTransferEndpoint>& data_dst,
+      HWND owner_window);
+  static std::vector<std::u16string> GetStandardFormatsInternal(
+      ClipboardBuffer buffer,
+      const std::optional<DataTransferEndpoint>& data_dst);
+  static bool IsFormatAvailableInternal(
+      const ClipboardFormatType& format,
+      ClipboardBuffer buffer,
+      const std::optional<DataTransferEndpoint>& data_dst);
   struct ReadHTMLResult {
     std::u16string markup;
     std::string src_url;
@@ -142,6 +169,8 @@ class ClipboardWin : public Clipboard, public ClipboardChangeNotifier {
                                std::string* src_url,
                                uint32_t* fragment_start,
                                uint32_t* fragment_end);
+  static std::vector<ui::FileInfo> ReadFilenamesInternal(ClipboardBuffer buffer,
+                                                         HWND owner_window);
   std::vector<uint8_t> ReadPngInternal(ClipboardBuffer buffer) const;
   SkBitmap ReadBitmapInternal(ClipboardBuffer buffer) const;
 

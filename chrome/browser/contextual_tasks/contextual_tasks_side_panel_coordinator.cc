@@ -24,6 +24,8 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_utils.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_web_view.h"
+#include "chrome/browser/contextual_tasks/entry_point_eligibility_manager.h"
 #include "chrome/browser/media/webrtc/media_capture_devices_dispatcher.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
@@ -71,7 +73,6 @@
 #include "ui/compositor/layer.h"
 #include "ui/views/controls/webview/unhandled_keyboard_event_handler.h"
 #include "ui/views/controls/webview/webview.h"
-#include "ui/views/view_class_properties.h"
 
 namespace {
 inline constexpr int kSidePanelPreferredDefaultWidth = 440;
@@ -135,139 +136,21 @@ ContextualTasksSidePanelCoordinator::WebContentsCacheItem::
 
 DEFINE_USER_DATA(ContextualTasksSidePanelCoordinator);
 
-class ContextualTasksWebView
-    : public views::WebView,
-      public web_modal::WebContentsModalDialogManagerDelegate {
- public:
-  explicit ContextualTasksWebView(content::BrowserContext* browser_context)
-      : views::WebView(browser_context) {
-    SetProperty(views::kElementIdentifierKey,
-                kContextualTasksSidePanelWebViewElementId);
-  }
-  ~ContextualTasksWebView() override { SetWebContents(nullptr); }
-
-  base::WeakPtr<ContextualTasksWebView> GetWeakPtr() {
-    return weak_ptr_factory_.GetWeakPtr();
-  }
-
-  void SetWebContents(content::WebContents* wc) override {
-    if (web_contents() == wc) {
-      return;
-    }
-
-    if (web_contents() && !web_contents()->IsBeingDestroyed()) {
-      web_contents()->WasHidden();
-    }
-    DetachWebContentsModalDialogManager(web_contents());
-
-    AttachWebContentsModalDialogManager(wc);
-    views::WebView::SetWebContents(wc);
-
-    if (wc) {
-      wc->WasShown();
-      // Set `this` as the delegate to handle media access permissions.
-      wc->SetDelegate(this);
-      // Set ViewType::kComponent so `ChromeSpeechRecognitionManagerDelegate`
-      // allows speech recognition in `CheckRenderFrameType()`.
-      extensions::SetViewType(wc, extensions::mojom::ViewType::kComponent);
-    }
-  }
-
-  // content::WebContentsDelegate:
-  void RequestMediaAccessPermission(
-      content::WebContents* web_contents,
-      const content::MediaStreamRequest& request,
-      content::MediaResponseCallback callback) override {
-    // Handle the media access requests for voice search by routing them through
-    // `MediaCaptureDevicesDispatcher`.
-    MediaCaptureDevicesDispatcher::GetInstance()->ProcessMediaAccessRequest(
-        web_contents, request, std::move(callback), /*extension=*/nullptr);
-  }
-
-  // content::WebContentsDelegate:
-  bool HandleKeyboardEvent(
-      content::WebContents* source,
-      const input::NativeWebKeyboardEvent& event) override {
-    return unhandled_keyboard_event_handler_.HandleKeyboardEvent(
-        event, GetFocusManager());
-  }
-
-  // content::WebContentsDelegate:
-  content::WebContents* OpenURLFromTab(
-      content::WebContents* source,
-      const content::OpenURLParams& params,
-      base::OnceCallback<void(content::NavigationHandle&)>
-          navigation_handle_callback) override {
-    BrowserWindowInterface* browser = GetBrowser();
-    if (browser) {
-      return browser->OpenURL(params, std::move(navigation_handle_callback));
-    } else {
-      VLOG(1) << "Cannot find browser to open URL from tab.";
-      return nullptr;
-    }
-  }
-
-  // web_modal::WebContentsModalDialogManagerDelegate:
-  web_modal::WebContentsModalDialogHost* GetWebContentsModalDialogHost(
-      content::WebContents* web_contents) override {
-    if (!GetBrowser()) {
-      return nullptr;
-    }
-    return GetBrowser()->GetWebContentsModalDialogHostForWindow();
-  }
-
- private:
-  // Attach a modal dialog manager to a WebContents so that dialogs can be
-  // displayed correctly while in the side panel.
-  void AttachWebContentsModalDialogManager(content::WebContents* web_contents) {
-    if (!web_contents) {
-      return;
-    }
-    web_modal::WebContentsModalDialogManager::CreateForWebContents(
-        web_contents);
-    web_modal::WebContentsModalDialogManager::FromWebContents(web_contents)
-        ->SetDelegate(this);
-  }
-
-  // Detach the modal dialog manager from the provided WebContents. This should
-  // happen when the contents is detached from the side panel.
-  void DetachWebContentsModalDialogManager(content::WebContents* web_contents) {
-    if (!web_contents) {
-      return;
-    }
-    auto* dialog_manager =
-        web_modal::WebContentsModalDialogManager::FromWebContents(web_contents);
-    if (dialog_manager) {
-      dialog_manager->SetDelegate(nullptr);
-    }
-  }
-
-  BrowserWindowInterface* GetBrowser() {
-    if (!web_contents()) {
-      return nullptr;
-    }
-    return webui::GetBrowserWindowInterface(web_contents());
-  }
-
-  // A handler to handle unhandled keyboard messages coming back from the
-  // renderer process.
-  views::UnhandledKeyboardEventHandler unhandled_keyboard_event_handler_;
-
-  base::WeakPtrFactory<ContextualTasksWebView> weak_ptr_factory_{this};
-};
-
 ContextualTasksSidePanelCoordinator::ContextualTasksSidePanelCoordinator(
     BrowserWindowInterface* browser_window,
-    ActiveTaskContextProvider* active_task_context_provider)
+    ActiveTaskContextProvider* active_task_context_provider,
+    EntryPointEligibilityManager* eligibility_manager)
     : ContextualTasksSidePanelCoordinator(
           browser_window,
           browser_window->GetFeatures().side_panel_ui(),
-          active_task_context_provider) {}
+          active_task_context_provider,
+          eligibility_manager) {}
 
 ContextualTasksSidePanelCoordinator::ContextualTasksSidePanelCoordinator(
     BrowserWindowInterface* browser_window,
     SidePanelUI* side_panel_ui,
-    ActiveTaskContextProvider* active_task_context_provider)
+    ActiveTaskContextProvider* active_task_context_provider,
+    EntryPointEligibilityManager* eligibility_manager)
     : browser_window_(browser_window),
       contextual_tasks_service_(ContextualTasksServiceFactory::GetForProfile(
           browser_window->GetProfile())),
@@ -283,6 +166,14 @@ ContextualTasksSidePanelCoordinator::ContextualTasksSidePanelCoordinator(
   CreateAndRegisterEntry(SidePanelRegistry::From(browser_window_));
   active_task_context_provider_->SetContextualTasksPanelController(this);
   TabListInterface::From(browser_window_)->AddTabListInterfaceObserver(this);
+
+  if (eligibility_manager) {
+    eligibility_change_subscription_ =
+        eligibility_manager->RegisterOnEntryPointEligibilityChanged(
+            base::BindRepeating(
+                &ContextualTasksSidePanelCoordinator::OnEligibilityChange,
+                weak_ptr_factory_.GetWeakPtr()));
+  }
 }
 
 ContextualTasksSidePanelCoordinator::~ContextualTasksSidePanelCoordinator() {
@@ -566,10 +457,10 @@ void ContextualTasksSidePanelCoordinator::OnAiInteraction() {
 contextual_search::ContextualSearchSessionHandle*
 ContextualTasksSidePanelCoordinator::
     GetContextualSearchSessionHandleForPanel() {
-  if (!web_view_ || !web_view_->GetWebContents()) {
+  if (!web_view_ || !web_view_->web_contents()) {
     return nullptr;
   }
-  auto* web_contents = web_view_->GetWebContents();
+  auto* web_contents = web_view_->web_contents();
   auto* web_ui_interface = GetWebUiInterface(web_contents);
   return web_ui_interface
              ? web_ui_interface->GetOrCreateContextualSessionHandle()
@@ -728,7 +619,7 @@ bool ContextualTasksSidePanelCoordinator::UpdateWebContentsForActiveTab() {
     return false;
   }
 
-  content::WebContents* prev_web_contents = web_view_->GetWebContents();
+  content::WebContents* prev_web_contents = web_view_->web_contents();
   if (prev_web_contents) {
     auto* cache_item = GetWebContentsCacheItemForWebContents(prev_web_contents);
     if (cache_item) {
@@ -905,8 +796,7 @@ void ContextualTasksSidePanelCoordinator::UpdateContextualTaskUI() {
     return;
   }
 
-  content::WebContents* web_contents = web_view_->GetWebContents();
-  if (auto* web_ui_interface = GetWebUiInterface(web_contents)) {
+  if (auto* web_ui_interface = GetWebUiInterface(web_view_->web_contents())) {
     web_ui_interface->OnActiveTabContextStatusChanged();
   }
 }
@@ -1039,8 +929,8 @@ std::pair<std::optional<base::Uuid>,
 ContextualTasksSidePanelCoordinator::GetSessionHandleForActiveTabOrSidePanel() {
   content::WebContents* web_contents = nullptr;
   if (IsPanelOpenForContextualTask()) {
-    if (web_view_ && web_view_->GetWebContents()) {
-      web_contents = web_view_->GetWebContents();
+    if (web_view_ && web_view_->web_contents()) {
+      web_contents = web_view_->web_contents();
     }
   } else {
     tabs::TabInterface* active_tab_interface =
@@ -1078,8 +968,7 @@ size_t ContextualTasksSidePanelCoordinator::GetNumberOfActiveTasks() const {
 
 std::optional<tabs::TabHandle>
 ContextualTasksSidePanelCoordinator::GetAutoSuggestedTabHandle() {
-  auto* web_contents = web_view_->GetWebContents();
-  auto* web_ui_interface = GetWebUiInterface(web_contents);
+  auto* web_ui_interface = GetWebUiInterface(web_view_->web_contents());
   if (!web_ui_interface ||
       !web_ui_interface->IsActiveTabContextSuggestionShowing()) {
     return std::nullopt;
@@ -1105,6 +994,16 @@ void ContextualTasksSidePanelCoordinator::RecordSessionEndMetrics() {
     base::UmaHistogramBoolean("ContextualTasks.Session.Completed", true);
   }
   in_cobrowsing_session_ = false;
+}
+
+void ContextualTasksSidePanelCoordinator::OnEligibilityChange(
+    bool is_eligible) {
+  if (!is_eligible) {
+    if (IsPanelOpenForContextualTask()) {
+      Close();
+    }
+    task_id_to_web_contents_cache_.clear();
+  }
 }
 
 }  // namespace contextual_tasks

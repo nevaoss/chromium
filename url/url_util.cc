@@ -908,7 +908,13 @@ void EncodeURIComponent(std::string_view input, CanonOutput* output) {
   }
 }
 
-bool IsURIComponentChar(char c) {
+std::string EncodeUriComponent(std::string_view input) {
+  RawCanonOutputT<char> output;
+  EncodeURIComponent(input, &output);
+  return std::string(output.view());
+}
+
+bool IsUriComponentChar(char c) {
   return IsComponentChar(c);
 }
 
@@ -924,7 +930,7 @@ bool CompareSchemeComponent(std::u16string_view spec,
   return DoCompareSchemeComponent(spec, component, compare_to);
 }
 
-bool HasInvalidURLEscapeSequences(std::string_view input) {
+bool HasInvalidUrlEscapeSequences(std::string_view input) {
   for (size_t i = 0; i < input.size(); i++) {
     if (input[i] == '%') {
       unsigned char ch;

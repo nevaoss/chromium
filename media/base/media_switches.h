@@ -133,10 +133,6 @@ MEDIA_EXPORT extern const base::FeatureParam<int> kAudioDuckingAttenuation;
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kAudioDuckingWin);
 #endif  // BUILDFLAG(IS_WIN)
 
-#if BUILDFLAG(ENABLE_FFMPEG)
-MEDIA_EXPORT BASE_DECLARE_FEATURE(kAudioDecoderAudioFileReader);
-#endif
-
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kAudioFocusDuckFlash);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kAutoPictureInPictureForVideoPlayback);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kAutoplayDisableSettings);
@@ -151,6 +147,16 @@ MEDIA_EXPORT BASE_DECLARE_FEATURE(
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kCastStreamingAv1);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(
     kCastStreamingExponentialVideoBitrateAlgorithm);
+MEDIA_EXPORT extern const base::FeatureParam<int>
+    kCastStreamingExponentialVideoBitrateAlgorithmWindowSize;
+MEDIA_EXPORT extern const base::FeatureParam<int>
+    kCastStreamingExponentialVideoBitrateAlgorithmDropThreshold;
+MEDIA_EXPORT extern const base::FeatureParam<double>
+    kCastStreamingExponentialVideoBitrateAlgorithmIncreaseFactor;
+MEDIA_EXPORT extern const base::FeatureParam<double>
+    kCastStreamingExponentialVideoBitrateAlgorithmDecreaseFactor;
+MEDIA_EXPORT extern const base::FeatureParam<double>
+    kCastStreamingExponentialVideoBitrateAlgorithmDynamicWindowMultiplier;
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kCastStreamingHardwareHevc);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kCastStreamingMediaVideoEncoder);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kCastStreamingPerformanceOverlay);
@@ -195,8 +201,6 @@ MEDIA_EXPORT BASE_DECLARE_FEATURE(kCrOSEnforceSystemAec);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kCrOSDspBasedAecDeactivatedGroups);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kCrOSDspBasedNsDeactivatedGroups);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kCrOSDspBasedAgcDeactivatedGroups);
-MEDIA_EXPORT BASE_DECLARE_FEATURE(kCrOSDspBasedNsAllowed);
-MEDIA_EXPORT BASE_DECLARE_FEATURE(kCrOSDspBasedAgcAllowed);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kIgnoreUiGains);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kShowForceRespectUiGainsToggle);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kCrOSSystemVoiceIsolationOption);

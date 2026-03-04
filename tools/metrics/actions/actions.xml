@@ -485,6 +485,8 @@ should be able to be added at any place in this file.
       summary="For iOSPinMostVisitedSiteFeature feature"/>
   <variant name="_iOSPostDefaultAbandonmentPromo"
       summary="For iOSPostDefaultAbandonmentPromo feature"/>
+  <variant name="_iOSPriceTrackingDesktop"
+      summary="For iOSPriceTrackingDesktopFeature"/>
   <variant name="_iOSPromoAllTabs"
       summary="For All Tabs default browser promo."/>
   <variant name="_iOSPromoAppStore" summary="For iOSPromoAppStore feature"/>
@@ -16286,6 +16288,11 @@ should be able to be added at any place in this file.
   <description>Please enter the description of this user action.</description>
 </action>
 
+<action name="InfobarModalCancelButtonTap">
+  <owner>thegreenfrog@chromium.org</owner>
+  <description>Reported when the inforbar modal is cancelled.</description>
+</action>
+
 <action name="InProductHelp.Dismissed">
   <owner>dtrainor@chromium.org</owner>
   <owner>nyquist@chromium.org</owner>
@@ -18634,6 +18641,26 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="IOS.Omnibox.MobileFusebox.Action.LensSearch">
+  <owner>stkhapugin@chromium.org</owner>
+  <owner>christianxu@google.com</owner>
+  <description>Recorded when user taps Lens button in Fusebox.</description>
+</action>
+
+<action name="IOS.Omnibox.MobileFusebox.Action.QRScanner">
+  <owner>stkhapugin@chromium.org</owner>
+  <owner>christianxu@google.com</owner>
+  <description>
+    Recorded when user taps QR Scanner button in Fusebox.
+  </description>
+</action>
+
+<action name="IOS.Omnibox.MobileFusebox.Action.VoiceSearch">
+  <owner>stkhapugin@chromium.org</owner>
+  <owner>christianxu@google.com</owner>
+  <description>Recorded when user taps Voice button in Fusebox.</description>
+</action>
+
 <action name="IOS.OpenIn">
   <obsolete>Renamed to IOS.OpenIn.Tapped, 08/2020</obsolete>
   <owner>ewannpv@chromium.org</owner>
@@ -18990,18 +19017,12 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
-<action name="IOSCollaborationInitShareAndManage">
+<action name="IOSCollaborationInitShareOrManage">
   <owner>lpromero@google.com</owner>
   <owner>gambard@chromium.org</owner>
   <description>
     Reported when trying to share a tab group or manage it, if already shared.
   </description>
-</action>
-
-<action name="IOSCollaborationInitShareOrManage">
-  <owner>lpromero@google.com</owner>
-  <owner>gambard@chromium.org</owner>
-  <description>TODO(crbug.com/483957682): Write the description.</description>
 </action>
 
 <action name="IOSCollaborationShowDeleteDialog">
@@ -28522,6 +28543,11 @@ should be able to be added at any place in this file.
     <variant name=".LongTapMenu"
         summary="Users switched to incognito by long tap menu"/>
   </token>
+</action>
+
+<action name="MobileMenuTaskManager">
+  <owner>massan@google.com</owner>
+  <description>User pressed 'Task manager' in the app menu.</description>
 </action>
 
 <action name="MobileMenuTextZoom">
@@ -43651,7 +43677,11 @@ should be able to be added at any place in this file.
 
 <action name="Signin_AccountMenu_ErrorButton_BookmarksLimitExceeded">
   <owner>mtatarski@google.com</owner>
-  <description>TODO(crbug.com/483961997): Write the description.</description>
+  <owner>chrome-sync-client-team@google.com</owner>
+  <description>
+    Recorded when the user taps on the error button (bookmark limit exceeded) in
+    the account menu. iOS only.
+  </description>
 </action>
 
 <action name="Signin_AccountMenu_ErrorButton_MDM">

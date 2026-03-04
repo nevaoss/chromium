@@ -9,23 +9,6 @@ import {html, nothing} from '//resources/lit/v3_0/lit.rollup.js';
 import type {ComposeboxElement} from './composebox.js';
 
 export function getHtml(this: ComposeboxElement) {
-  const submitContainer = html`
-    <div id="submitContainer" class="icon-fade" part="submit"
-        slot="${this.searchboxNextEnabled ? 'submit-button' : nothing}"
-        tabindex="-1"
-        @click="${this.submitQuery_}"
-        @focusin="${this.handleSubmitFocusIn_}">
-      <div id="submitOverlay" part="submit-overlay"
-          title="${this.i18n('composeboxSubmitButtonTitle')}">
-      </div>
-      <cr-icon-button
-        class="action-icon icon-arrow-upward"
-        id="submitIcon"
-        part="action-icon submit-icon"
-        tabindex="0"
-        ?disabled="${!this.canSubmitFilesAndInput_}">
-      </cr-icon-button>
-    </div>`;
   // clang-format off
   return html`<!--_html_template_start_-->
   ${!this.disableComposeboxAnimation ? html`
@@ -97,7 +80,8 @@ export function getHtml(this: ComposeboxElement) {
           class="${this.carouselOnTop_ && this.isCollapsible ? 'icon-fade' : ''}"
           exportparts="context-menu-entrypoint-icon,
               cr-composebox-file-carousel, upload-container, voice-icon,
-              carousel-divider, carousel-container, thumbnail"
+              carousel-divider, carousel-container, thumbnail,
+              thumbnail-title, tool-chip-label"
           in-composebox
           .tabSuggestions="${this.tabSuggestions_}"
           .showMenuOnClick="${this.showMenuOnClick}"
@@ -122,6 +106,7 @@ export function getHtml(this: ComposeboxElement) {
           .inputState="${this.inputState_}"
           searchbox-layout-mode="${this.searchboxLayoutMode}"
           ?carousel-on-top_="${this.carouselOnTop_}"
+          ?enable-carousel-scrolling="${this.enableCarouselScrolling}"
           ?show-voice-search="${this.shouldShowVoiceSearch_()}"
           ?show-model-picker="${this.showModelPicker_}"
           .submitButtonShown="${this.searchboxNextEnabled && this.submitEnabled_}">
@@ -140,7 +125,20 @@ export function getHtml(this: ComposeboxElement) {
             ?hidden="${!this.showDropdown_}"
             .lastQueriedInput="${this.lastQueriedInput_}">
         </cr-composebox-dropdown>
-        ${this.searchboxNextEnabled ? submitContainer : ''}
+        ${this.searchboxNextEnabled ? html`
+          <div id="submitContainer" class="icon-fade" part="submit"
+              slot="submit-button" tabindex="-1" @click="${this.submitQuery_}"
+              @focusin="${this.handleSubmitFocusIn_}">
+            <div id="submitOverlay" part="submit-overlay"
+                title="${this.i18n('composeboxSubmitButtonTitle')}">
+            </div>
+            <cr-icon-button id="submitIcon"
+                class="action-icon icon-arrow-upward"
+                part="action-icon submit-icon" tabindex="0"
+                ?disabled="${!this.canSubmitFilesAndInput_}">
+            </cr-icon-button>
+          </div>
+        ` : ''}
       </contextual-entrypoint-and-carousel>
     </div>
     ${this.showLensButton ? html`<cr-icon-button
@@ -158,7 +156,19 @@ export function getHtml(this: ComposeboxElement) {
     <!-- A seperate container is needed for the submit button so the
        expand/collapse animation can be applied without affecting the submit
        button enabled/disabled state. -->
-    ${this.searchboxNextEnabled ? '' : submitContainer}
+    ${!this.searchboxNextEnabled ? html`
+      <div id="submitContainer" class="icon-fade" part="submit"
+          tabindex="-1" @click="${this.submitQuery_}"
+          @focusin="${this.handleSubmitFocusIn_}">
+        <div id="submitOverlay" part="submit-overlay"
+            title="${this.i18n('composeboxSubmitButtonTitle')}">
+        </div>
+        <cr-icon-button id="submitIcon" class="action-icon icon-arrow-upward"
+            part="action-icon submit-icon" tabindex="0"
+            ?disabled="${!this.canSubmitFilesAndInput_}">
+        </cr-icon-button>
+      </div>
+    ` : ''}
   </div>
   <cr-composebox-voice-search id="voiceSearch"
       @voice-search-cancel="${this.onVoiceSearchClose_}"

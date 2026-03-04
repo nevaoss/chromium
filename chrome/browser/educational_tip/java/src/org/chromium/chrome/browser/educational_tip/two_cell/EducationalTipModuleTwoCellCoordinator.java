@@ -5,11 +5,13 @@
 package org.chromium.chrome.browser.educational_tip.two_cell;
 
 import static org.chromium.chrome.browser.educational_tip.two_cell.EducationalTipModuleTwoCellProperties.ITEM_1_CLICK_HANDLER;
+import static org.chromium.chrome.browser.educational_tip.two_cell.EducationalTipModuleTwoCellProperties.ITEM_1_COMPLETED_ICON;
 import static org.chromium.chrome.browser.educational_tip.two_cell.EducationalTipModuleTwoCellProperties.ITEM_1_DESCRIPTION;
 import static org.chromium.chrome.browser.educational_tip.two_cell.EducationalTipModuleTwoCellProperties.ITEM_1_ICON;
 import static org.chromium.chrome.browser.educational_tip.two_cell.EducationalTipModuleTwoCellProperties.ITEM_1_MARK_COMPLETED;
 import static org.chromium.chrome.browser.educational_tip.two_cell.EducationalTipModuleTwoCellProperties.ITEM_1_TITLE;
 import static org.chromium.chrome.browser.educational_tip.two_cell.EducationalTipModuleTwoCellProperties.ITEM_2_CLICK_HANDLER;
+import static org.chromium.chrome.browser.educational_tip.two_cell.EducationalTipModuleTwoCellProperties.ITEM_2_COMPLETED_ICON;
 import static org.chromium.chrome.browser.educational_tip.two_cell.EducationalTipModuleTwoCellProperties.ITEM_2_DESCRIPTION;
 import static org.chromium.chrome.browser.educational_tip.two_cell.EducationalTipModuleTwoCellProperties.ITEM_2_ICON;
 import static org.chromium.chrome.browser.educational_tip.two_cell.EducationalTipModuleTwoCellProperties.ITEM_2_MARK_COMPLETED;
@@ -27,6 +29,7 @@ import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.educational_tip.EducationTipModuleActionDelegate;
 import org.chromium.chrome.browser.educational_tip.EducationalTipCardProvider;
 import org.chromium.chrome.browser.educational_tip.EducationalTipCardProviderFactory;
+import org.chromium.chrome.browser.educational_tip.EducationalTipModuleUtils;
 import org.chromium.chrome.browser.educational_tip.R;
 import org.chromium.chrome.browser.magic_stack.ModuleDelegate;
 import org.chromium.chrome.browser.magic_stack.ModuleDelegate.ModuleType;
@@ -35,6 +38,7 @@ import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.setup_list.SetupListCompletable;
 import org.chromium.chrome.browser.setup_list.SetupListManager;
 import org.chromium.chrome.browser.setup_list.SetupListModuleUtils;
+import org.chromium.components.browser_ui.bottomsheet.BottomSheetObserver;
 import org.chromium.ui.modelutil.PropertyModel;
 
 import java.util.List;
@@ -52,6 +56,7 @@ public class EducationalTipModuleTwoCellCoordinator implements ModuleProvider {
     private final PropertyModel mModel;
     private final CallbackController mCallbackController = new CallbackController();
     private final Handler mHandler = new Handler(Looper.getMainLooper());
+    private final BottomSheetObserver mBottomSheetObserver;
     private @Nullable EducationalTipCardProvider mItem1Provider;
     private @Nullable EducationalTipCardProvider mItem2Provider;
     private @ModuleType int mItem1Type;
@@ -74,6 +79,14 @@ public class EducationalTipModuleTwoCellCoordinator implements ModuleProvider {
         mModel.set(
                 MODULE_TITLE,
                 mActionDelegate.getContext().getString(R.string.educational_tip_module_title));
+
+        mBottomSheetObserver =
+                EducationalTipModuleUtils.createBottomSheetObserver(
+                        () ->
+                                mItem1Type == ModuleType.DEFAULT_BROWSER_PROMO
+                                        || mItem2Type == ModuleType.DEFAULT_BROWSER_PROMO,
+                        this::updateModule);
+        mActionDelegate.getBottomSheetController().addObserver(mBottomSheetObserver);
 
         refreshSlots();
     }
@@ -103,7 +116,10 @@ public class EducationalTipModuleTwoCellCoordinator implements ModuleProvider {
         mItem1Provider =
                 EducationalTipCardProviderFactory.createInstance(
                         mItem1Type,
-                        () -> {},
+                        () -> {
+                            mModuleDelegate.onModuleClicked(mModuleType);
+                            SetupListModuleUtils.setModuleCompleted(mItem1Type);
+                        },
                         mCallbackController,
                         mActionDelegate,
                         removeModuleCallback);
@@ -128,7 +144,10 @@ public class EducationalTipModuleTwoCellCoordinator implements ModuleProvider {
         mItem2Provider =
                 EducationalTipCardProviderFactory.createInstance(
                         mItem2Type,
-                        () -> {},
+                        () -> {
+                            mModuleDelegate.onModuleClicked(mModuleType);
+                            SetupListModuleUtils.setModuleCompleted(mItem2Type);
+                        },
                         mCallbackController,
                         mActionDelegate,
                         removeModuleCallback);
@@ -158,6 +177,7 @@ public class EducationalTipModuleTwoCellCoordinator implements ModuleProvider {
 
     @Override
     public void hideModule() {
+        mActionDelegate.getBottomSheetController().removeObserver(mBottomSheetObserver);
         mCallbackController.destroy();
         if (mItem1Provider != null) {
             mItem1Provider.destroy();
@@ -191,15 +211,19 @@ public class EducationalTipModuleTwoCellCoordinator implements ModuleProvider {
 
         // 1. Immediately trigger the visual "completed" state for affected slots.
         if (item1NeedsAnimation) {
-            mModel.set(ITEM_1_MARK_COMPLETED, true);
+            mHandler.postDelayed(
+                    () -> mModel.set(ITEM_1_MARK_COMPLETED, true),
+                    SetupListManager.STRIKETHROUGH_DURATION_MS);
             if (mItem1Provider instanceof SetupListCompletable completable) {
-                mModel.set(ITEM_1_ICON, completable.getCardImageCompletedResId());
+                mModel.set(ITEM_1_COMPLETED_ICON, completable.getCardImageCompletedResId());
             }
         }
         if (item2NeedsAnimation) {
-            mModel.set(ITEM_2_MARK_COMPLETED, true);
+            mHandler.postDelayed(
+                    () -> mModel.set(ITEM_2_MARK_COMPLETED, true),
+                    SetupListManager.STRIKETHROUGH_DURATION_MS);
             if (mItem2Provider instanceof SetupListCompletable completable) {
-                mModel.set(ITEM_2_ICON, completable.getCardImageCompletedResId());
+                mModel.set(ITEM_2_COMPLETED_ICON, completable.getCardImageCompletedResId());
             }
         }
 
@@ -216,9 +240,6 @@ public class EducationalTipModuleTwoCellCoordinator implements ModuleProvider {
 
                             // Re-query ranking and update slots with new top items.
                             refreshSlots();
-
-                            // Perform the vanish-and-reappear animation for the entire container.
-                            mModuleDelegate.updateModuleRanking(mModuleType);
                         }),
                 SetupListManager.STRIKETHROUGH_DURATION_MS + SetupListManager.HIDE_DURATION_MS);
     }

@@ -209,11 +209,13 @@ export class ComposeboxElement extends I18nMixinLit
         type: Boolean,
         reflect: true,
       },
+      enableCarouselScrolling: {type: Boolean},
     };
   }
 
   accessor disableCaretColorAnimation: boolean = false;
   accessor disableComposeboxAnimation: boolean = false;
+  accessor enableCarouselScrolling: boolean = false;
   accessor lensButtonTriggersOverlay: boolean = false;
   accessor fileUploadsComplete: boolean = true;
   accessor maxSuggestions: number|null = null;
@@ -702,6 +704,10 @@ export class ComposeboxElement extends I18nMixinLit
           },
           bigBuffer);
 
+      if (!token) {
+        continue;
+      }
+
       const attachment: ComposeboxFile = {
         uuid: token,
         name: file.name,
@@ -755,26 +761,30 @@ export class ComposeboxElement extends I18nMixinLit
     delayUpload: boolean,
     onContextAdded: (file: ComposeboxFile) => void,
   }>) {
-    const {token} = await this.searchboxHandler_.addTabContext(
-        e.detail.id, e.detail.delayUpload);
-    if (!token) {
+    try {
+      const token = await this.searchboxHandler_.addTabContext(
+          e.detail.id, e.detail.delayUpload);
+
+      const attachment: ComposeboxFile = {
+        uuid: token,
+        name: e.detail.title,
+        dataUrl: null,
+        objectUrl: null,
+        type: 'tab',
+        status: FileUploadStatus.kNotUploaded,
+        url: e.detail.url,
+        tabId: e.detail.id,
+        isDeletable: true,
+      };
+
+      e.detail.onContextAdded(attachment);
+      this.focusInput();
+
+    } catch (e) {
+      // TODO(crbug.com/484429365): Notify the user the reason for the context
+      // upload failure.
       return;
     }
-
-    const attachment: ComposeboxFile = {
-      uuid: token,
-      name: e.detail.title,
-      dataUrl: null,
-      objectUrl: null,
-      type: 'tab',
-      status: FileUploadStatus.kNotUploaded,
-      url: e.detail.url,
-      tabId: e.detail.id,
-      isDeletable: true,
-    };
-
-    e.detail.onContextAdded(attachment);
-    this.focusInput();
   }
 
   protected onPaste_(event: ClipboardEvent) {
@@ -833,6 +843,7 @@ export class ComposeboxElement extends I18nMixinLit
   protected voiceSearchEndCleanup_() {
     this.inVoiceSearchMode_ = false;
     this.animationState = GlowAnimationState.NONE;
+    this.transcript_ = '';
   }
 
   protected async onVoiceSearchFinalResult_(e: CustomEvent<string>) {
@@ -847,6 +858,7 @@ export class ComposeboxElement extends I18nMixinLit
       this.searchboxHandler_.submitQuery(
           e.detail, /*mouse_button=*/ 0, /*alt_key=*/ false,
           /*ctrl_key=*/ false, /*meta_key=*/ false, /*shift_key=*/ false);
+      this.submitCleanup_();
     } else {
       // If auto-submit is not enabled, update the input to the voice search
       // query, clear autocomplete matches, and recompute whether submission
@@ -892,7 +904,8 @@ export class ComposeboxElement extends I18nMixinLit
   protected onCancelClick_() {
     if (this.hasContent_()) {
       this.resetModes();
-      this.clearAllInputs(/* querySubmitted= */ false);
+      this.clearAllInputs(/* querySubmitted= */ false,
+                          /* shouldBlockAutoSuggestedTabs= */ true);
       this.focusInput();
       this.queryAutocomplete_(/* clearMatches= */ true);
     } else {
@@ -903,7 +916,8 @@ export class ComposeboxElement extends I18nMixinLit
   handleEscapeKeyLogic(): void {
     if (!this.composeboxCloseByEscape_ && this.hasContent_()) {
       this.resetModes();
-      this.clearAllInputs(/* querySubmitted= */ false);
+      this.clearAllInputs(/* querySubmitted= */ false,
+                          /* shouldBlockAutoSuggestedTabs= */ false);
       this.focusInput();
       this.queryAutocomplete_(/* clearMatches= */ true);
     } else {
@@ -1187,7 +1201,7 @@ export class ComposeboxElement extends I18nMixinLit
 
   private closeComposebox_() {
     this.resetModes();
-    this.searchboxHandler_.clearFiles();
+    this.searchboxHandler_.clearFiles(/*shouldBlockAutoSuggestedTabs=*/ false);
     this.resetToolsAndModels();
     this.fire('close-composebox', {composeboxText: this.input_});
 
@@ -1196,6 +1210,29 @@ export class ComposeboxElement extends I18nMixinLit
       this.animationState = GlowAnimationState.NONE;
       this.$.input.blur();
     }
+  }
+
+  protected submitCleanup_() {
+    // Update states after submitting:
+    this.animationState = GlowAnimationState.SUBMITTING;
+    // Nano banana and deep search allow for follow ups, so
+    // do not clear them.
+    if (this.activeToolMode_ === ToolMode.kCanvas) {
+      this.resetModes();
+    }
+
+    // If the composebox is expandable or we should clear it, clear the input
+    // after submitting the query.
+    if (this.isCollapsible || this.clearAllInputsWhenSubmittingQuery_) {
+      this.clearAllInputs(/* querySubmitted= */ true,
+                          /* shouldBlockAutoSuggestedTabs= */ false);
+    }
+
+    if (this.isCollapsible) {
+      this.$.input.blur();
+    }
+
+    this.fire('composebox-submit');
   }
 
   protected submitQuery_(e: KeyboardEvent|MouseEvent) {
@@ -1229,24 +1266,7 @@ export class ComposeboxElement extends I18nMixinLit
           e.ctrlKey, e.metaKey, e.shiftKey);
     }
 
-    this.animationState = GlowAnimationState.SUBMITTING;
-
-    // Nano banana and deep search allow for follow ups, so
-    // do not clear them.
-    if (this.activeToolMode_ === ToolMode.kCanvas) {
-      this.resetModes();
-    }
-
-    // If the composebox is expandable, collapse it and clear the input after
-    // submitting.
-    if (this.isCollapsible || this.clearAllInputsWhenSubmittingQuery_) {
-      this.clearAllInputs(/* querySubmitted= */ true);
-    }
-
-    if (this.isCollapsible) {
-      this.$.input.blur();
-    }
-    this.fire('composebox-submit');
+    this.submitCleanup_();
   }
 
   /**
@@ -1349,7 +1369,7 @@ export class ComposeboxElement extends I18nMixinLit
     }
 
     // Populate the smart compose suggestion.
-    this.smartComposeInlineHint_ = this.result_.smartComposeInlineHint ?
+    this.smartComposeInlineHint_ = this.result_.smartComposeInlineHint?.trim() ?
         this.result_.smartComposeInlineHint :
         '';
   }
@@ -1451,7 +1471,8 @@ export class ComposeboxElement extends I18nMixinLit
     this.searchboxHandler_.queryAutocomplete(this.input_, false);
   }
 
-  clearAllInputs(querySubmitted: boolean) {
+  clearAllInputs(
+      querySubmitted: boolean, shouldBlockAutoSuggestedTabs: boolean) {
     this.clearInput();
     // Let `querySubmit_` handle clearing files if the tool mode is a tool mode
     // that should be cleared after submitting. For all other general
@@ -1467,7 +1488,7 @@ export class ComposeboxElement extends I18nMixinLit
     if (!querySubmitted) {
       // If the query was submitted, the searchbox handler will clear its own
       // uploaded file state when the query submission is handled.
-      this.searchboxHandler_.clearFiles();
+      this.searchboxHandler_.clearFiles(shouldBlockAutoSuggestedTabs);
     }
     this.fileUploadsComplete = this.pendingUploads_.size === 0;
   }

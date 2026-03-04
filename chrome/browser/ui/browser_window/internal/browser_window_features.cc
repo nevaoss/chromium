@@ -117,6 +117,7 @@
 #include "chrome/browser/ui/views/tabs/tab_strip_action_container.h"
 #include "chrome/browser/ui/views/toolbar/chrome_labs/chrome_labs_coordinator.h"
 #include "chrome/browser/ui/views/toolbar/pinned_toolbar_actions_controller.h"
+#include "chrome/browser/ui/views/toolbar/toolbar_view.h"
 #include "chrome/browser/ui/views/translate/translate_bubble_controller.h"
 #include "chrome/browser/ui/views/upgrade_notification_controller.h"
 #include "chrome/browser/ui/views/user_education/impl/browser_user_education_interface_impl.h"
@@ -727,17 +728,17 @@ void BrowserWindowFeatures::InitPostBrowserViewConstruction(
             browser_,
             contextual_tasks::ContextualTasksServiceFactory::GetForProfile(
                 browser_->GetProfile()));
+    contextual_tasks_entry_point_eligibility_manager_ =
+        GetUserDataFactory()
+            .CreateInstance<contextual_tasks::EntryPointEligibilityManager>(
+                *browser_, browser_);
     contextual_tasks_side_panel_coordinator_ =
         GetUserDataFactory()
             .CreateInstance<
                 contextual_tasks::ContextualTasksSidePanelCoordinator>(
                 *browser_, browser_,
-                contextual_tasks_active_task_context_provider_.get());
-
-    contextual_tasks_entry_point_eligibility_manager_ =
-        GetUserDataFactory()
-            .CreateInstance<contextual_tasks::EntryPointEligibilityManager>(
-                *browser_, browser_);
+                contextual_tasks_active_task_context_provider_.get(),
+                contextual_tasks_entry_point_eligibility_manager_.get());
 
     if (contextual_tasks::kShowEntryPoint.Get() ==
         contextual_tasks::EntryPointOption::kToolbarRevisit) {
@@ -768,6 +769,8 @@ void BrowserWindowFeatures::InitPostBrowserViewConstruction(
           BrowserElementsViews::From(browser_view->browser())
               ->GetViewAs<TabStripActionContainer>(
                   kTabStripActionContainerElementId),
+          BrowserElementsViews::From(browser_view->browser())
+              ->GetViewAs<ToolbarView>(ToolbarView::kToolbarElementId),
           glic_service);
 
       if (base::FeatureList::IsEnabled(features::kGlicActorUi) &&
@@ -907,6 +910,7 @@ void BrowserWindowFeatures::TearDownPreBrowserWindowDestruction() {
 #endif
 
   contextual_tasks_side_panel_coordinator_.reset();
+  contextual_tasks_entry_point_eligibility_manager_.reset();
 
 #if !BUILDFLAG(IS_CHROMEOS)
   if (download_toolbar_ui_controller_) {

@@ -176,11 +176,11 @@ BASE_FEATURE(kBackForwardCacheMemoryControls,
 // Enables getting screenshots as shared images for back forward transitions
 // in cross-document navigations.
 BASE_FEATURE(kBackForwardTransitionsCrossDocSharedImage,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 // Enables getting screenshots as shared images for back forward transitions
 // to native pages.
 BASE_FEATURE(kBackForwardTransitionsNativePageSharedImage,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_ANDROID)
 
 // If enabled, makes battery saver request heavy align wake ups.
@@ -1327,15 +1327,12 @@ const base::FeatureParam<int> kAndroidDesktopZoomScalingFactor{
 const base::FeatureParam<int> kAndroidMonitorZoomScalingFactor{
     &kAndroidDesktopZoomScaling, "monitor-zoom-scaling-factor", 100};
 
-// A feature to enable launch handler and file handler api for Chrome on Android
-BASE_FEATURE(kAndroidWebAppLaunchHandler, base::FEATURE_ENABLED_BY_DEFAULT);
-
 // Allows the use of "Smart Zoom", an alternative form of page zoom, and
 // enables the associated UI.
 BASE_FEATURE(kSmartZoom, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables setting the importance for subframes in WebContents.
-BASE_FEATURE(kSubframeImportance, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kSubframeImportance, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Skips clearing objects on main document ready. Only has an impact
 // when gin java bridge is enabled.
@@ -1417,13 +1414,13 @@ const base::FeatureParam<std::string> kForcedOffCapturingAppsUserSetting{
 // "delay_seconds" field trial parameter. This allows for experimentation with
 // different timeout values for keeping subframe processes alive for potential
 // reuse.
-BASE_FEATURE(kSubframeProcessShutdownDelay, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kSubframeProcessShutdownDelay, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Specifies the custom shutdown delay in seconds to use when the
 // kSubframeProcessShutdownDelay feature is enabled.
 // Default value, matching the original kSubframeProcessShutdownDelay.
 const base::FeatureParam<int> kSubframeProcessShutdownDelaySeconds{
-    &kSubframeProcessShutdownDelay, "delay_seconds", 2};
+    &kSubframeProcessShutdownDelay, "delay_seconds", 10};
 
 namespace {
 enum class VideoCaptureServiceConfiguration {

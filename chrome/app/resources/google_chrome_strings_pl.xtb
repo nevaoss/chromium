@@ -251,6 +251,7 @@
 <translation id="3622716124581627104">Rozpoznawaj obiekty lub miejsca i kopiuj lub tłumacz tekst. Gdy używasz Obiektywu Google, do Google jest wysyłany zrzut ekranu ze strony. <ph name="LEARN_MORE" /></translation>
 <translation id="3622797965165704966">Korzystanie z Chrome na wspólnych komputerach i przy użyciu konta Google jest teraz jeszcze łatwiejsze.</translation>
 <translation id="3635073343384702370">Chrome może sprawdzać Twoje hasła, gdy je zapiszesz</translation>
+<translation id="3636970668267555808">Ustaw Chrome jako przeglądarkę domyślną, aby mieć łatwy dostęp do znanych, lubianych i zaufanych funkcji.</translation>
 <translation id="3667616615096815454">Nie można zainstalować aplikacji. Serwer jej nie rozpoznaje.</translation>
 <translation id="3673813398384385993">Przeglądarka Chrome wykryła, że rozszerzenie „<ph name="EXTENSION_NAME" />” zawiera złośliwe oprogramowanie</translation>
 <translation id="3697952514309507634">Inne profile Chrome</translation>
@@ -304,7 +305,6 @@
 <translation id="4205939740494406371">Chrome nie może sprawdzić Twoich haseł. Spróbuj ponownie za 24 godziny lub <ph name="BEGIN_LINK" />sprawdź hasła na koncie Google<ph name="END_LINK" />.</translation>
 <translation id="4222932583846282852">Anuluję...</translation>
 <translation id="4224210481850767180">Instalacja została anulowana.</translation>
-<translation id="4230631012078055975">Zyskaj więcej możliwości dzięki zalogowaniu się w Chrome</translation>
 <translation id="4242034826641750751">Ta strona musi mieć w Chrome dostęp do aparatu i mikrofonu</translation>
 <translation id="424864128008805179">Wylogować z Chrome?</translation>
 <translation id="4251615635259297716">Połączyć Twoje dane Chrome z tym kontem?</translation>
@@ -501,6 +501,7 @@
 <translation id="6251759518630934363">Ostrzega o niebezpiecznych witrynach, nawet takich, które wcześniej nie były znane Google. Jest to możliwe dzięki analizowaniu większej ilości danych z witryn niż w trybie standardowej ochrony. Możesz wybrać pomijanie ostrzeżeń Chrome.</translation>
 <translation id="6277547788421725101">Rodzic wyłączył „Uprawnienia stron, aplikacji i rozszerzeń” w Chrome</translation>
 <translation id="627882678981830918">Dostosuj i kontroluj Chrome. Ustaw Chrome jako przeglądarkę domyślną.</translation>
+<translation id="6280042952415350607">Silniejsza ochrona wyłącza optymalizację JavaScriptu w witrynach, których Chrome nie rozpoznaje</translation>
 <translation id="6288580400488258237">Ustaw Google Chrome jako przeglądarkę domyślną i przypnij ją do paska zadań</translation>
 <translation id="6291089322031436445">Aplikacje do Chrome w wersji deweloperskiej</translation>
 <translation id="6291549208091401781">Google Chrome jest już zainstalowany dla wszystkich użytkowników tego komputera.</translation>
@@ -602,7 +603,6 @@
 <translation id="7308322188646931570">Chrome musi mieć dostęp do pamięci, by pobierać pliki</translation>
 <translation id="7339898014177206373">Nowe okno</translation>
 <translation id="7352651011704765696">Coś poszło nie tak</translation>
-<translation id="7379321689415048316">Chrome może automatycznie uzupełniać trudne pola, które standardowe autouzupełnianie mogłoby pominąć</translation>
 <translation id="7386878009611068389">Aby zapewnić sobie większe bezpieczeństwo online dzięki ustawieniom wybranym przez Twojego rodzica, przełącz się na swój profil Chrome, na który jesteś już zalogowany(-a) jako <ph name="USER_EMAIL_ADDRESS" /></translation>
 <translation id="7398801000654795464">Byłeś zalogowany w Chrome jako <ph name="USER_EMAIL_ADDRESS" />. Zaloguj się ponownie, korzystając z tego samego konta.</translation>
 <translation id="7412494426921990001">Kliknij menu Chrome</translation>
@@ -705,7 +705,6 @@
 <translation id="8321888067342493336">Zapisz jako obraz</translation>
 <translation id="8336463659890584292">Gdy witryna prosi o prywatne wstępne wczytanie linków z jej stron, Chrome używa serwerów Google. Pozwala to na ukrycie Twojej tożsamości przed wstępnie wczytywaną witryną, ale Google uczy się, które witryny są wstępnie wczytywane.</translation>
 <translation id="8342675569599923794">Ten plik jest niebezpieczny, dlatego został zablokowany przez Chrome.</translation>
-<translation id="8349094670477064572">Gdy zalogujesz się w Chrome, będziesz mieć możliwość zapisywania haseł i innych danych na swoim koncie Google oraz korzystania z nich. <ph name="LEARN_MORE" /></translation>
 <translation id="835927394551949760">Zapytaj Google</translation>
 <translation id="8362914115861174987">Tłumacz na</translation>
 <translation id="8366770919198174997">Zmniejsza wydajność, ale sprawia, że przeglądarka Chrome jest bardziej odporna na ataki</translation>

@@ -71,13 +71,17 @@ class TestTileBasedLayerImpl : public TileBasedLayerImpl<FakeTiling> {
 
  private:
   // TileBasedLayerImpl:
-  void AppendQuadsSpecialization(const AppendQuadsContext& context,
-                                 viz::CompositorRenderPass* render_pass,
-                                 AppendQuadsData* append_quads_data,
-                                 viz::SharedQuadState* shared_quad_state,
-                                 const Occlusion& scaled_occlusion,
-                                 const gfx::Vector2d& quad_offset,
-                                 float max_contents_scale) override {}
+  int AppendQuadsSpecialization(const AppendQuadsContext& context,
+                                viz::CompositorRenderPass* render_pass,
+                                AppendQuadsData* append_quads_data,
+                                viz::SharedQuadState* shared_quad_state,
+                                const Occlusion& scaled_occlusion,
+                                const gfx::Vector2d& quad_offset,
+                                float max_contents_scale) override {
+    return 0;
+  }
+  void ComputeCheckerboardedNeedsRecord(
+      AppendQuadsData* append_quads_data) override {}
   float GetMaximumContentsScaleForUseInAppendQuads() const override {
     return 1.f;
   }
@@ -397,19 +401,20 @@ class OcclusionTestTileBasedLayerImpl : public TestTileBasedLayerImpl {
   void set_max_contents_scale(float scale) { max_contents_scale_ = scale; }
 
  private:
-  void AppendQuadsSpecialization(const AppendQuadsContext& context,
-                                 viz::CompositorRenderPass* render_pass,
-                                 AppendQuadsData* append_quads_data,
-                                 viz::SharedQuadState* shared_quad_state,
-                                 const Occlusion& scaled_occlusion,
-                                 const gfx::Vector2d& quad_offset,
-                                 float max_contents_scale) override {
+  int AppendQuadsSpecialization(const AppendQuadsContext& context,
+                                viz::CompositorRenderPass* render_pass,
+                                AppendQuadsData* append_quads_data,
+                                viz::SharedQuadState* shared_quad_state,
+                                const Occlusion& scaled_occlusion,
+                                const gfx::Vector2d& quad_offset,
+                                float max_contents_scale) override {
     scaled_occlusion_ = scaled_occlusion;
     // Create a dummy quad to avoid tripping debug checks.
     auto* quad =
         render_pass->CreateAndAppendDrawQuad<viz::SolidColorDrawQuad>();
     quad->SetNew(shared_quad_state, gfx::Rect(1, 1), gfx::Rect(1, 1),
                  SkColors::kTransparent, false);
+    return 0;
   }
   float GetMaximumContentsScaleForUseInAppendQuads() const override {
     return max_contents_scale_;
@@ -550,19 +555,20 @@ class QuadOffsetTestTileBasedLayerImpl : public TestTileBasedLayerImpl {
   const gfx::Vector2d& quad_offset() const { return quad_offset_; }
 
  private:
-  void AppendQuadsSpecialization(const AppendQuadsContext& context,
-                                 viz::CompositorRenderPass* render_pass,
-                                 AppendQuadsData* append_quads_data,
-                                 viz::SharedQuadState* shared_quad_state,
-                                 const Occlusion& scaled_occlusion,
-                                 const gfx::Vector2d& quad_offset,
-                                 float max_contents_scale) override {
+  int AppendQuadsSpecialization(const AppendQuadsContext& context,
+                                viz::CompositorRenderPass* render_pass,
+                                AppendQuadsData* append_quads_data,
+                                viz::SharedQuadState* shared_quad_state,
+                                const Occlusion& scaled_occlusion,
+                                const gfx::Vector2d& quad_offset,
+                                float max_contents_scale) override {
     quad_offset_ = quad_offset;
     // Create a dummy quad to avoid tripping debug checks.
     auto* quad =
         render_pass->CreateAndAppendDrawQuad<viz::SolidColorDrawQuad>();
     quad->SetNew(shared_quad_state, gfx::Rect(1, 1), gfx::Rect(1, 1),
                  SkColors::kTransparent, false);
+    return 0;
   }
   float GetIdealContentsScaleKey() const override { return 1.f; }
 
@@ -627,13 +633,13 @@ class QuadOffsetOrderTestTileBasedLayerImpl : public TestTileBasedLayerImpl {
   }
 
  private:
-  void AppendQuadsSpecialization(const AppendQuadsContext& context,
-                                 viz::CompositorRenderPass* render_pass,
-                                 AppendQuadsData* append_quads_data,
-                                 viz::SharedQuadState* shared_quad_state,
-                                 const Occlusion& scaled_occlusion,
-                                 const gfx::Vector2d& quad_offset,
-                                 float max_contents_scale) override {
+  int AppendQuadsSpecialization(const AppendQuadsContext& context,
+                                viz::CompositorRenderPass* render_pass,
+                                AppendQuadsData* append_quads_data,
+                                viz::SharedQuadState* shared_quad_state,
+                                const Occlusion& scaled_occlusion,
+                                const gfx::Vector2d& quad_offset,
+                                float max_contents_scale) override {
     shared_quad_state_at_specialization_ =
         std::make_unique<viz::SharedQuadState>(*shared_quad_state);
     // Create a dummy quad to avoid tripping debug checks.
@@ -641,6 +647,7 @@ class QuadOffsetOrderTestTileBasedLayerImpl : public TestTileBasedLayerImpl {
         render_pass->CreateAndAppendDrawQuad<viz::SolidColorDrawQuad>();
     quad->SetNew(shared_quad_state, gfx::Rect(1, 1), gfx::Rect(1, 1),
                  SkColors::kTransparent, false);
+    return 0;
   }
   float GetIdealContentsScaleKey() const override { return 1.f; }
 

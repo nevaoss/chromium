@@ -331,7 +331,7 @@ bool IsGeminiLatencyImprovementEnabled() {
   return base::FeatureList::IsEnabled(kGeminiLatencyImprovement);
 }
 
-BASE_FEATURE(kGeminiImmediateOverlay, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGeminiImmediateOverlay, base::FEATURE_ENABLED_BY_DEFAULT);
 
 bool IsGeminiImmediateOverlayEnabled() {
   return base::FeatureList::IsEnabled(kGeminiImmediateOverlay);
@@ -501,4 +501,20 @@ int GetModelBasedPageClassificationExecutionRate() {
   return base::GetFieldTrialParamByFeatureAsInt(
       kModelBasedPageClassification,
       kModelBasedPageClassificationExecutionRateParam, 0);
+}
+
+BASE_FEATURE(kPageActionMenuIcon, base::FEATURE_DISABLED_BY_DEFAULT);
+
+const char kPageActionMenuIconParams[] = "PageActionMenuIconParams";
+
+PageActionMenuIconVariations GetPageActionMenuIcon() {
+  int param = base::GetFieldTrialParamByFeatureAsInt(
+      kPageActionMenuIcon, kPageActionMenuIconParams, 0);
+  if (param == 1) {
+    return PageActionMenuIconVariations::kSparkles1;
+  }
+  if (param == 2) {
+    return PageActionMenuIconVariations::kSparkles2;
+  }
+  return PageActionMenuIconVariations::kDefault;
 }

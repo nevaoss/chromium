@@ -343,6 +343,13 @@
       name: "AIPageContentPaidContentAnnotation",
       status: "stable"
     },
+    // Clamp AIPageContent visible bounding boxes to the local-root viewport
+    // after visual-viewport mapping to normalize viewport-relative geometry.
+    {
+      name: "AIPageContentVisualViewportClamp",
+      status: "stable",
+      implied_by: ["AIPageContentBuildOnLoadForTesting"],
+    },
     {
       name: "AIPromptAPI",
       public: true,
@@ -530,6 +537,12 @@
       status: "stable",
     },
     {
+      // This is a bug fix for rendering a missing focus ring on <a> elements.
+      // Shipping in M147, safe to remove in M150.
+      name: "AnchorFocusRingFix",
+      status: "stable",
+    },
+    {
       // Kill switch for https://crbug.com/415834974 which changes anchor
       // positioning adjustments to occur even in cases where there is no
       // scrollable overflow.
@@ -702,7 +715,7 @@
     },
     {
       name: "AvoidForcedLayoutOnInvisibleDocumentClose",
-      status: "test",
+      status: "stable",
     },
     {
       // Fix for https://crbug.com/471876082
@@ -1009,6 +1022,16 @@
       // This was added in M142 and can be removed after M144.
       // https://issues.chromium.org/issues/346766786
       name: "ClearCurrentTargetAfterDispatch",
+      status: "stable",
+    },
+    {
+      // Fixes a bug where ancestor elements retain a stale :focus-within
+      // state if the focused element's subtree is removed during blur
+      // or focusout events.
+      // This was added in M147 and can be removed after M149.
+      // https://issues.chromium.org/issues/454668198
+      // https://issues.chromium.org/issues/457465869
+      name: "ClearFocusWithinOnSubtreeRemoval",
       status: "stable",
     },
     {
@@ -1763,6 +1786,11 @@
       status: "experimental",
     },
     {
+      // https://issues.chromium.org/40675832: CSS `text-decoration-skip-ink: all` value
+      name: "CSSTextDecorationSkipInkAll",
+      status: "experimental",
+    },
+    {
       // crbug.com/434361099
       name: "CssTextIndent",
       status: "stable",
@@ -1995,10 +2023,6 @@
       origin_trial_allows_insecure: true,
     },
     {
-      name: "DisableDocumentBeingDestroyed",
-      status: "stable",
-    },
-    {
       // Switch from ellipsis to clip when a container is scrolled.
       // This shipped in M146 and the flag can be removed in M148.
       name: "DisableEllipsisWhenScrolled",
@@ -2107,10 +2131,7 @@
     // document.patch, <template patchfor> etc.
     {
       name: "DocumentPatching",
-      status: {
-        "default": "test",
-      },
-      depends_on: ["HTMLProcessingInstruction"],
+      status: "experimental",
     },
     {
       name: "DocumentPictureInPictureAPI",
@@ -2206,6 +2227,11 @@
       status: "stable",
     },
     {
+      // See https://crbug.com/443612843
+      name: "EditContextAssignmentAsPerSpec",
+      status: "test"
+    },
+    {
       // See https://crbug.com/379170477
       name: "EditContextHandleTextOrSelectionUpdateDuringComposition",
       status: "test",
@@ -2241,11 +2267,6 @@
       public: true,
       status: "test",
       base_feature: "none",
-    },
-    {
-      // crbug.com/447267214
-      name: "EmojiJustification",
-      status: "stable",
     },
     {
       // crbug.com/420857717
@@ -2850,6 +2871,19 @@
       status: "stable",
     },
     {
+      // GeometryUtils mixin.
+      // https://drafts.csswg.org/cssom-view/#the-geometryutils-interface
+      name: "GeometryUtils",
+      status: "experimental",
+    },
+    {
+      // GeometryUtils for CSSPseudoElement interface.
+      // https://www.w3.org/TR/cssom-view-1/#the-geometryutils-interface
+      name: "GeometryUtilsForCSSPseudoElement",
+      depends_on: ["CSSPseudoElementInterface"],
+      status: "experimental",
+    },
+    {
       name: "GetAllScreensMedia",
       depends_on: ["GetDisplayMedia"],
       public: true,
@@ -3045,7 +3079,7 @@
     {
       // Parse processing instructions in HTML.
       name: "HTMLProcessingInstruction",
-      status: "test",
+      status: "experimental",
     },
     {
       name: "ICUCapitalization",
@@ -3264,12 +3298,11 @@
     },
     {
       name: "LayoutMergeAnonymousFix",
-      depends_on: ["DisableDocumentBeingDestroyed"],
       status: "stable",
     },
     {
       name: "LayoutReinsertOnInFlowStateChange",
-      depends_on: ["LayoutMergeAnonymousFix", "DisableDocumentBeingDestroyed"],
+      depends_on: ["LayoutMergeAnonymousFix"],
       status: "stable",
     },
     {
@@ -3411,6 +3444,7 @@
     {
       name: "MachineLearningNeuralNetwork",
       origin_trial_feature_name: "WebMachineLearningNeuralNetwork",
+      origin_trial_os: ["win", "mac", "linux", "chromeos"],
       // Enabled by webnn::mojom::features::kWebMachineLearningNeuralNetwork.
       base_feature: "none",
     },
@@ -3995,10 +4029,6 @@
       status: "stable",
     },
     {
-      name: "PaintTimingRecordTimingForDetachedPaintedElements",
-      status: "stable",
-    },
-    {
       name: "PaintUnderInvalidationChecking",
       settable_from_internals: true,
     },
@@ -4073,16 +4103,6 @@
       origin_trial_feature_name: "PerMethodCanMakePaymentQuota",
       status: "experimental",
       base_feature: "none",
-    },
-    {
-      // Tracking bug for the implementation: https://crbug.com/1462930
-      name: "PermissionElement",
-      origin_trial_feature_name: "PermissionElement",
-      origin_trial_os: ["win", "mac", "linux", "fuchsia", "chromeos", "android"],
-      status: "experimental",
-      public: true,
-      base_feature_status: "enabled",
-      copied_from_base_feature_if: "overridden",
     },
     {
       name: "Permissions",
@@ -4477,11 +4497,6 @@
       name: "RenderPriorityAttribute",
     },
     {
-      // See https://crbug.com/40896371 for details.
-      name: "ReplacedElementCursorPositioningFix",
-      status: "stable",
-    },
-    {
       name: "ReportFirstFrameTimeAsRenderTime",
       status: "test",
     },
@@ -4532,13 +4547,6 @@
       status: "stable",
     },
     {
-      // Constrains text selections to stay within table cell boundaries
-      // (e.g., triple-click paragraph selection)
-      // See crbug.com/40852213.
-      name: "RestrictTableCellSelectionToBoundary",
-      status: "stable",
-    },
-    {
       // If enabled, makes the root scrollbars' foreground elements follow the
       // browser
       name: "RootScrollbarFollowsBrowserTheme",
@@ -4548,7 +4556,7 @@
     // https://chromestatus.com/feature/4771962874363904
     {
       name: "RouteMatching",
-      status: "test",
+      status: "experimental",
     },
     {
       name: "RtcAudioJitterBufferMaxPackets",
@@ -4769,6 +4777,14 @@
         "Win": "stable",
         "iOS": "",
         "default": "test",
+      },
+    },
+    {
+      name: "SecurePaymentConfirmationCapabilities",
+      status: {
+        "Android": "test",
+        "Mac": "test",
+        "Win": "test",
       },
     },
     {
@@ -5408,11 +5424,6 @@
       status: "stable",
     },
     {
-      // crbug.com/461332428
-      name: "TextCombineNoSideways",
-      status: "stable",
-    },
-    {
       name: "TextDetector",
       status: "experimental",
     },
@@ -5769,11 +5780,6 @@
       status: "stable",
     },
     {
-      // Fix for https://crbug.com/354497121
-      name: "UseSpecValuesInTextFormatUpdateEventStyles",
-      status: "stable"
-    },
-    {
       name: "UseUndoStepElementDispatchBeforeInput",
       status: "stable",
     },
@@ -5876,9 +5882,10 @@
       copied_from_base_feature_if: "overridden",
     },
     {
+      // This needs to be kept as a runtime flag
+      // in order to disable the API in WebView.
       name: "WebAppLaunchQueue",
       status: "stable",
-      base_feature: "none",
     },
     {
       name: "WebAppScopeExtensions",
@@ -6196,7 +6203,7 @@
     },
     {
       name: "WebPrinting",
-      status: {"Android": "", "default": "test"},
+      status: {"Android": "", "ChromeOS": "stable", "default": "test"},
     },
     // WebShare is enabled by default on Android (non-WebView), Win, ChromeOS, and Mac.
     // This is done in chrome/renderer/chrome_content_renderer_client.cc to prevent

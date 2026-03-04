@@ -125,6 +125,7 @@
 <translation id="1436671784520050284">Gaan voort met opstelling</translation>
 <translation id="143681031165817424">Adres is net op hierdie toestel gestoor</translation>
 <translation id="1445276840641906250">Al jou oortjies in een blaaier</translation>
+<translation id="1447564161241938558">“Voer wagwoorde en toegangsleutels in” is deur jou administrateur gedeaktiveer</translation>
 <translation id="1450170672351507823">Standaardbeskerming is aan. Gebruik verbeterde beskerming vir selfs nog meer sekuriteit.</translation>
 <translation id="1455660774629812862">Moenie versteek nie</translation>
 <translation id="1456545332132818232">Produkresensies van <ph name="PRODUCT_NAME" />, <ph name="STARS" /> uit <ph name="MAX_STARS" />, <ph name="DOMAIN" /></translation>
@@ -373,7 +374,6 @@
 <translation id="2306265833370324042">Wys <ph name="SEARCH_ENGINE_NAME" />-besonderhede</translation>
 <translation id="2309265394777270359">Maak oortjie toe</translation>
 <translation id="2311077293164383652">Maak vasgespelde oortjie toe</translation>
-<translation id="2313392466694008052">Wysig prent met Gemini</translation>
 <translation id="2316129865977710310">Nee, dankie</translation>
 <translation id="2320166752086256636">Versteek sleutelbord</translation>
 <translation id="2321086116217818302">Maak tans wagwoorde gereed …</translation>
@@ -1786,6 +1786,7 @@ Oorgee moet ook in die Algemene afdeling van Instellings geaktiveer word, en jou
 <translation id="7506817096924591340"><ph name="FILENAME" /> (<ph name="FILESIZE" />).</translation>
 <translation id="7508728395076009983">Stel Raak-ID, Gesig-ID of 'n wagkode op om jou Incognito-oortjies te sluit.</translation>
 <translation id="750886945254958667">Hou hierdie groep om later oortjies by te voeg, of verlaat dit as jy nie meer toegang daartoe wil hê nie</translation>
+<translation id="7511727374778217603">{COUNT,plural, =1{Voeg tot 1 oortjie by}other{Voeg tot {COUNT} oortjies by}}</translation>
 <translation id="7512909159512473473">Voer wagfrase in …</translation>
 <translation id="7514365320538308">Laai af</translation>
 <translation id="7514530647142300459">Hou aan om die wagwoorde in jou Google-rekening <ph name="EMAIL" /> te gebruik</translation>
@@ -2236,6 +2237,7 @@ Oorgee moet ook in die Algemene afdeling van Instellings geaktiveer word, en jou
 <translation id="9055291197094969722">Skep oortjiegroepe om jou oop oortjies te organiseer en produktief te bly</translation>
 <translation id="9055580485132823283">Jy is op die punt om {password_count} wagwoorde, {passkey_count} toegangsleutels en die lys werwe en apps uit te vee wat jy gekies het om nooit aanmeldinligting voor te stoor nie. Enige rekening wat jy vir werwe en apps geskep het, sal nie uitgevee word nie.</translation>
 <translation id="9057030985451135243">Kry meer inligting oor gedeelde oortjiegroepe</translation>
+<translation id="9064106978262828592">Kon nie jou data uitvoer nie</translation>
 <translation id="9065203028668620118">Wysig</translation>
 <translation id="9066097352053395362">Versteek Wysig boekmerk</translation>
 <translation id="9070824521421603770">Jy sal afgemeld word en oortjies sal toegemaak word</translation>

@@ -13,7 +13,6 @@ import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
-import org.chromium.chrome.browser.magic_stack.ModuleConfigChecker;
 import org.chromium.chrome.browser.magic_stack.ModuleDelegate;
 import org.chromium.chrome.browser.magic_stack.ModuleDelegate.ModuleType;
 import org.chromium.chrome.browser.magic_stack.ModuleProvider;
@@ -27,7 +26,7 @@ import org.chromium.ui.modelutil.PropertyKey;
 import org.chromium.ui.modelutil.PropertyModel;
 
 @NullMarked
-public class EducationalTipModuleBuilder implements ModuleProviderBuilder, ModuleConfigChecker {
+public class EducationalTipModuleBuilder implements ModuleProviderBuilder {
     private final EducationTipModuleActionDelegate mActionDelegate;
     private final @ModuleType int mModuleType;
     private @Nullable Profile mProfile;
@@ -66,10 +65,14 @@ public class EducationalTipModuleBuilder implements ModuleProviderBuilder, Modul
     /** Create view for the educational tip module. */
     @Override
     public ViewGroup createView(ViewGroup parentView) {
+        int layoutId =
+                mModuleType == ModuleType.SETUP_LIST_CELEBRATORY_PROMO
+                        ? R.layout.setup_list_celebratory_promo_layout
+                        : R.layout.educational_tip_module_layout;
         ViewGroup moduleView =
                 (ViewGroup)
                         LayoutInflater.from(mActionDelegate.getContext())
-                                .inflate(R.layout.educational_tip_module_layout, parentView, false);
+                                .inflate(layoutId, parentView, false);
 
         if (SetupListModuleUtils.isSetupListModule(mModuleType)) {
             // Setup List images don't have a background
@@ -90,8 +93,6 @@ public class EducationalTipModuleBuilder implements ModuleProviderBuilder, Modul
     public @Nullable Integer getManualRank() {
         return SetupListModuleUtils.getManualRank(mModuleType);
     }
-
-    // ModuleEligibilityChecker implementation:
 
     @Override
     public boolean isEligible() {

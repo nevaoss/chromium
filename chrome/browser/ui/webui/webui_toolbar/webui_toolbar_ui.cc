@@ -63,6 +63,10 @@ WebUIToolbarUI::WebUIToolbarUI(content::WebUI* web_ui)
   source->AddInteger(
       "toolbarIconDefaultMargin",
       GetLayoutConstant(LayoutConstant::kToolbarIconDefaultMargin));
+  source->AddInteger("toolbarButtonHeight",
+                     GetLayoutConstant(LayoutConstant::kToolbarButtonHeight));
+  source->AddInteger("toolbarButtonIconSize",
+                     GetLayoutConstant(LayoutConstant::kToolbarButtonIconSize));
 
   webui::SetupWebUIDataSource(source, kWebuiToolbarResources,
                               IDR_WEBUI_TOOLBAR_WEBUI_TOOLBAR_HTML);
@@ -144,8 +148,10 @@ void WebUIToolbarUI::OnContextMenuStateChanged(
 
 void WebUIToolbarUI::SetDelegate(
     BrowserControlsService::BrowserControlsServiceDelegate* delegate) {
-  DCHECK(!browser_controls_service_);
   delegate_ = delegate;
+  if (browser_controls_service_) {
+    browser_controls_service_->SetDelegate(delegate);
+  }
 }
 
 BrowserControlsService* WebUIToolbarUI::browser_controls_service_for_testing() {

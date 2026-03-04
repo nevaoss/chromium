@@ -237,9 +237,7 @@ class ToolbarButton : public views::LabelButton,
                              SkColor pressed_color,
                              SkColor disabled_color);
 
-  static constexpr int kDefaultIconSize = 16;
-  static constexpr int kDefaultIconSizeChromeRefresh = 20;
-  static constexpr int kDefaultTouchableIconSize = 24;
+  std::optional<SkColor> GetBackgroundColor() const;
 
  private:
   friend test::ToolbarButtonTestApi;

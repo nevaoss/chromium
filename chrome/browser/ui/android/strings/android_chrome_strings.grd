@@ -497,7 +497,15 @@ For more settings that use data to improve your Chrome experience, go to <ph nam
       <message name="IDS_SITE_SEARCH_SITE_SEARCH_DESCRIPTION" desc="Explanation for 'Site Search' section">
         To search a specific site or part of Chrome, type its shortcut in the address bar, followed by your preferred keyboard shortcut.
       </message>
-
+      <message name="IDS_SITE_SEARCH_LIST_MENU_EDIT" desc="Option in site search list menu. User can click the 'Edit' option to edit the search engine.">
+        Edit
+      </message>
+      <message name="IDS_SITE_SEARCH_LIST_MENU_MAKE_DEFAULT" desc="Option in site search list menu. User can click the 'Make default' option to make the selected option the default search engine.">
+        Make default
+      </message>
+      <message name="IDS_SITE_SEARCH_LIST_MENU_DELETE" desc="Option in site search list menu. User can click the 'Delete' option to remove the search engine.">
+        Delete
+      </message>
 
 
       <!-- Add Message -->
@@ -4284,6 +4292,9 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       <message name="IDS_MENU_DOWNLOAD" desc="Tooltip for the button to download the current web page. [CHAR_LIMIT=27]">
         Download
       </message>
+      <message name="IDS_MENU_SAVE_AND_PRINT" desc="Parent menu item for items related to saving and printing page">
+        Save and print
+      </message>
       <message name="IDS_MENU_DOWNLOAD_PAGE" desc="Menu item for downloading the current web page. [CHAR_LIMIT=27]">
         Download page
       </message>
@@ -4373,8 +4384,14 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       <message name="IDS_MENU_AUTO_DARK_WEB_CONTENTS" desc="Menu item in Chrome's overflow/options menu. When Chrome's browser UI is set to dark theme and this option is checked, sites will have a dark theme automatically applied as well. [CHAR_LIMIT=24]">
         Dark theme
       </message>
+      <message name="IDS_MENU_MORE_TOOLS" desc="Menu item to more tools. [CHAR_LIMIT=27]">
+        More tools
+      </message>
       <message name="IDS_MENU_READER_MODE_PREFS" desc="Menu item to show reader mode preferences pane, which allows users to change the appearance (font size, theme, etc.) of the page. [CHAR_LIMIT=27]">
         Appearance
+      </message>
+      <message name="IDS_MENU_TASK_MANAGER" desc="Menu item to show the task manager. [CHAR_LIMIT=27]">
+        Task manager
       </message>
       <message name="IDS_MENU_SETTINGS" desc="Menu item for opening browser settings. [CHAR_LIMIT=27]">
         Settings
@@ -6539,15 +6556,6 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       <message name="IDS_NOTIFICATION_PERMISSION_RATIONALE_REJECT_BUTTON_TEXT" desc="The text of the negative button on the notification permission prompt dialog">
         No thanks
       </message>
-      <message name="IDS_NOTIFICATION_PERMISSION_RATIONALE_CONTENT_DESCRIPTION" desc="The content description for the notification permission rationale bottom sheet. Read as accessibility string when tapping on the bottom sheet.">
-        Notification permission flow
-      </message>
-      <message name="IDS_NOTIFICATION_PERMISSION_RATIONALE_OPENED_FULL" desc="The accessibility string read when the notification permission rationale bottom sheet is fully opened.">
-        Notification permission flow opened at full height
-      </message>
-      <message name="IDS_NOTIFICATION_PERMISSION_RATIONALE_CLOSED_DESCRIPTION" desc="The accessibility string read when the notification permission rationale bottom sheet is closed.">
-        Notification permission flow closed
-      </message>
 
       <!-- Notification Trampoline Toast Messages-->
       <message name="IDS_NOTIFICATION_TRAMPOLINE_TOAST_MESSAGE" desc="A short message that was shown when a notification is clicked while Chrome is in background waiting to be launched.">
@@ -7475,6 +7483,12 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       <message name="IDS_TIPS_PROMO_BOTTOM_SHEET_DESCRIPTION_PASSWORD_AUTOFILL" desc="Description of the Password Autofill feature tip main page promo.">
         Create, save, and manage your passwords so you can easily sign in to sites and apps using Chrome
       </message>
+      <message name="IDS_TIPS_PROMO_BOTTOM_SHEET_TITLE_SIGNIN" desc="Title of the Sign in feature tip main page promo. [CHAR_LIMIT=32]">
+        Sign in to Chrome
+      </message>
+      <message name="IDS_TIPS_PROMO_BOTTOM_SHEET_DESCRIPTION_SIGNIN" desc="Description of the Sign in feature tip main page promo.">
+        Sign in to easily continue on all your devices
+      </message>
       <message name="IDS_TIPS_PROMO_BOTTOM_SHEET_FIRST_STEP_ESB" desc="Description of the Enhanced Safe Browsing feature tip first step detail page promo.">
         Open Chrome menu > Settings
       </message>
@@ -7519,6 +7533,15 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       </message>
       <message name="IDS_TIPS_PROMO_BOTTOM_SHEET_THIRD_STEP_PASSWORD_AUTOFILL" desc="Description of the Password Autofill feature tip third step detail page promo.">
         Tap Save to easily access this password the next time you sign in
+      </message>
+      <message name="IDS_TIPS_PROMO_BOTTOM_SHEET_FIRST_STEP_SIGNIN" desc="Description of the Sign in feature tip first step detail page promo.">
+        Tap profile in top right
+      </message>
+      <message name="IDS_TIPS_PROMO_BOTTOM_SHEET_SECOND_STEP_SIGNIN" desc="Description of the Sign in feature tip second step detail page promo.">
+        Select account
+      </message>
+      <message name="IDS_TIPS_PROMO_BOTTOM_SHEET_THIRD_STEP_SIGNIN" desc="Description of the Sign in feature tip third step detail page promo.">
+        Press continue
       </message>
       <message name="IDS_TIPS_PROMO_BOTTOM_SHEET_TITLE_QUICK_DELETE_SHORT" desc="Title of the Quick Delete feature tip detail page promo. [CHAR_LIMIT=32]">
         Quickly delete browsing data

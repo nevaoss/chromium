@@ -125,6 +125,7 @@
 <translation id="1436671784520050284">設定を続行</translation>
 <translation id="143681031165817424">住所はこのデバイスにのみ保存されました</translation>
 <translation id="1445276840641906250">1 つのブラウザですべてのタブを管理</translation>
+<translation id="1447564161241938558">パスワードとパスキーのインポートは管理者によって無効にされています</translation>
 <translation id="1450170672351507823">標準保護機能がオンになっています。セキュリティをさらに強化するには、保護強化機能を使用してください。</translation>
 <translation id="1455660774629812862">非表示にしない</translation>
 <translation id="1456545332132818232"><ph name="PRODUCT_NAME" /> の商品レビュー、<ph name="MAX_STARS" /> 個中 <ph name="STARS" />、<ph name="DOMAIN" /></translation>
@@ -373,7 +374,6 @@
 <translation id="2306265833370324042"><ph name="SEARCH_ENGINE_NAME" /> の詳細を表示</translation>
 <translation id="2309265394777270359">タブを閉じる</translation>
 <translation id="2311077293164383652">固定タブを閉じる</translation>
-<translation id="2313392466694008052">Gemini を使用して画像を編集</translation>
 <translation id="2316129865977710310">今はしない</translation>
 <translation id="2320166752086256636">キーボードを非表示</translation>
 <translation id="2321086116217818302">パスワードを準備しています…</translation>
@@ -1786,6 +1786,7 @@
 <translation id="7506817096924591340"><ph name="FILENAME" />（<ph name="FILESIZE" />）。</translation>
 <translation id="7508728395076009983">シークレット タブをロックするには、Touch ID、Face ID、またはパスコードを設定してください。</translation>
 <translation id="750886945254958667">後でタブを追加できるようにこのグループを保持するか、今後使用しない場合は退出します</translation>
+<translation id="7511727374778217603">{COUNT,plural, =1{追加できるタブは 1 個までです}other{追加できるタブは {COUNT} 個までです}}</translation>
 <translation id="7512909159512473473">パスフレーズを入力…</translation>
 <translation id="7514365320538308">ダウンロード</translation>
 <translation id="7514530647142300459">Google アカウント（<ph name="EMAIL" />）のパスワードを引き続き使用してください</translation>
@@ -2236,6 +2237,7 @@
 <translation id="9055291197094969722">タブグループを作成して、開いているタブを整理し、生産性を維持できます</translation>
 <translation id="9055580485132823283">{password_count} 件のパスワード、{passkey_count} 件のパスキーと、ログイン情報を保存しない設定にしたサイトとアプリの一覧を削除しようとしています。サイトやアプリで作成したアカウントは削除されません。</translation>
 <translation id="9057030985451135243">共有タブグループの詳細</translation>
+<translation id="9064106978262828592">データのエクスポート中に問題が発生しました</translation>
 <translation id="9065203028668620118">編集</translation>
 <translation id="9066097352053395362">[ブックマークを編集] を非表示</translation>
 <translation id="9070824521421603770">ログアウトしてタブを閉じます</translation>

@@ -27,6 +27,7 @@
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_page_context.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_page_state_change_handler.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_session_delegate.h"
+#import "ios/chrome/browser/intelligence/bwg/model/gemini_startup_configuration.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_suggestion_delegate.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_suggestion_handler.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_view_state_change_handler.h"
@@ -117,7 +118,8 @@ GeminiBrowserAgent::GeminiBrowserAgent(Browser* browser)
 
   if (bwg_gateway_) {
     bwg_link_opening_handler_ = [[BWGLinkOpeningHandler alloc]
-        initWithURLLoader:UrlLoadingBrowserAgent::FromBrowser(browser_)];
+        initWithURLLoader:UrlLoadingBrowserAgent::FromBrowser(browser_)
+               dispatcher:browser_->GetCommandDispatcher()];
     gemini_page_state_change_handler_ = [[GeminiPageStateChangeHandler alloc]
         initWithPrefService:browser_->GetProfile()->GetPrefs()];
     bwg_gateway_.pageStateChangeHandler = gemini_page_state_change_handler_;
@@ -142,6 +144,16 @@ GeminiBrowserAgent::GeminiBrowserAgent(Browser* browser)
       gemini_camera_handler_ = [[GeminiCameraHandler alloc]
           initWithPrefService:browser_->GetProfile()->GetPrefs()];
       bwg_gateway_.cameraHandler = gemini_camera_handler_;
+    }
+
+    if (IsGeminiDynamicSettingsEnabled()) {
+      GeminiStartupConfiguration* config =
+          [[GeminiStartupConfiguration alloc] init];
+      config.authService =
+          AuthenticationServiceFactory::GetForProfile(browser_->GetProfile());
+      config.gateway = bwg_gateway_;
+
+      ios::provider::ConfigureWithStartupConfiguration(config);
     }
   }
 
@@ -274,6 +286,18 @@ CGFloat GeminiBrowserAgent::GetFloatyOffsetFromFullscreenController(
   return offset;
 }
 
+void GeminiBrowserAgent::InvokeFloaty(GeminiConfiguration* config) {
+  web::WebState* web_state = browser_->GetWebStateList()->GetActiveWebState();
+  BwgTabHelper* gemini_tab_helper = GetActiveTabHelper(web_state);
+  ios::provider::StartBwgOverlay(config);
+  gemini_tab_helper->SetBwgUiShowing(true);
+  if (IsGeminiCopresenceEnabled()) {
+    fullscreen_controller_->ExitFullscreen();
+    last_shown_view_state_ = ios::provider::GetCurrentGeminiViewState();
+    is_floaty_invoked_ = true;
+  }
+}
+
 void GeminiBrowserAgent::ForceShowFloatyIfInvoked() {
   if (!fullscreen_controller_ || !is_floaty_invoked_) {
     return;
@@ -306,6 +330,17 @@ GeminiPageContext* GeminiBrowserAgent::CreateGeminiPageContext(
   page_context.favicon = FetchPageFavicon();
   ApplyUserPrefsToPageContext(page_context);
   return page_context;
+}
+
+void GeminiBrowserAgent::UpdateActiveTabHelperWithPresentedSource(
+    gemini::FloatyUpdateSource source,
+    bool is_presented) {
+  web::WebState* web_state = browser_->GetWebStateList()->GetActiveWebState();
+  BwgTabHelper* gemini_tab_helper = GetActiveTabHelper(web_state);
+  if (!gemini_tab_helper) {
+    return;
+  }
+  gemini_tab_helper->UpdatePresentedSource(source, is_presented);
 }
 
 void GeminiBrowserAgent::UpdateForTraitCollection(
@@ -556,7 +591,14 @@ void GeminiBrowserAgent::DismissFloaty() {
   }
 
   is_floaty_invoked_ = false;
-  ios::provider::ResetGemini();
+  // TODO(crbug.com/484045717): Refactor to merge these two provider calls.
+  if (IsGeminiCopresenceEnabled()) {
+    ios::provider::UpdateGeminiViewState(
+        ios::provider::GeminiViewState::kHidden,
+        /*animated=*/false);
+  } else {
+    ios::provider::ResetGemini();
+  }
 }
 
 void GeminiBrowserAgent::HideFloatyIfInvoked(
@@ -567,9 +609,8 @@ void GeminiBrowserAgent::HideFloatyIfInvoked(
   }
 
   floaty_hidden_timestamp_ = base::TimeTicks::Now();
-  if (source == gemini::FloatyUpdateSource::Overlay) {
-    is_external_overlay_presented_ = true;
-  }
+
+  UpdateActiveTabHelperWithPresentedSource(source, /*is_presented=*/true);
 
   if (is_floaty_temporarily_hidden_) {
     return;
@@ -593,9 +634,7 @@ void GeminiBrowserAgent::ShowFloatyIfInvoked(
     return;
   }
 
-  if (source == gemini::FloatyUpdateSource::Overlay) {
-    is_external_overlay_presented_ = false;
-  }
+  UpdateActiveTabHelperWithPresentedSource(source, /*is_presented=*/false);
 
   // `HideFloatyIfInvoked()` may be called when a view controller
   // dismisses. If a view controller dismisses as part of presenting another
@@ -609,8 +648,12 @@ void GeminiBrowserAgent::ShowFloatyIfInvoked(
   // be hidden quickly followed by a new WebState being shown where
   // hiding/showing the floaty are valid invocations.
   bool is_web_navigation = source == gemini::FloatyUpdateSource::WebNavigation;
-  if ((!is_web_navigation && triggered_during_transition) ||
-      is_external_overlay_presented_) {
+
+  web::WebState* web_state = browser_->GetWebStateList()->GetActiveWebState();
+  BwgTabHelper* gemini_tab_helper = GetActiveTabHelper(web_state);
+  bool should_block =
+      gemini_tab_helper && gemini_tab_helper->ShouldBlockFloatyFromShowing();
+  if ((!is_web_navigation && triggered_during_transition) || should_block) {
     return;
   }
 
@@ -769,6 +812,8 @@ void GeminiBrowserAgent::PresentFloatyWithState(
     }
     ios::provider::UpdatePageContext(pageContext);
     ForceShowFloatyIfInvoked();
+    ios::provider::UpdateGeminiViewState(
+        ios::provider::GeminiViewState::kExpanded, /*animated=*/true);
     return;
   }
 
@@ -823,13 +868,12 @@ void GeminiBrowserAgent::PresentFloatyWithState(
   config.hostWindowScene = browser_->GetSceneState().scene;
 
   // Start the overlay and update the tab helper to reflect this.
-  ios::provider::StartBwgOverlay(config);
-  gemini_tab_helper->SetBwgUiShowing(true);
-  if (IsGeminiCopresenceEnabled()) {
-    fullscreen_controller_->ExitFullscreen();
-    last_shown_view_state_ = ios::provider::GetCurrentGeminiViewState();
-    is_floaty_invoked_ = true;
-  }
+  base::WeakPtr<GeminiBrowserAgent> weak_ptr = weak_factory_.GetWeakPtr();
+  DismissGeminiFromOtherWindows(base::BindOnce(^{
+    if (weak_ptr) {
+      weak_ptr->InvokeFloaty(config);
+    }
+  }));
 }
 
 UIImage* GeminiBrowserAgent::FetchPageFavicon() {

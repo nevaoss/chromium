@@ -16,50 +16,32 @@
 #include <utility>
 
 #include "base/check_deref.h"
-#include "base/containers/flat_map.h"
+#include "base/containers/flat_set.h"
 #include "base/functional/bind.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "build/build_config.h"
 #include "components/autofill/core/browser/autofill_field.h"
-#include "components/autofill/core/browser/autofill_type.h"
-#include "components/autofill/core/browser/country_type.h"
-#include "components/autofill/core/browser/data_manager/addresses/address_data_manager.h"
 #include "components/autofill/core/browser/data_manager/payments/payments_data_manager.h"
 #include "components/autofill/core/browser/data_manager/personal_data_manager.h"
 #include "components/autofill/core/browser/data_model/addresses/autofill_i18n_api.h"
 #include "components/autofill/core/browser/data_model/addresses/autofill_profile.h"
 #include "components/autofill/core/browser/data_model/addresses/autofill_profile_comparator.h"
-#include "components/autofill/core/browser/data_model/addresses/autofill_structured_address_name.h"
-#include "components/autofill/core/browser/data_model/addresses/autofill_structured_address_utils.h"
-#include "components/autofill/core/browser/data_model/addresses/phone_number.h"
 #include "components/autofill/core/browser/data_model/payments/credit_card.h"
 #include "components/autofill/core/browser/data_model/payments/iban.h"
-#include "components/autofill/core/browser/data_quality/addresses/profile_requirement_utils.h"
-#include "components/autofill/core/browser/data_quality/autofill_data_util.h"
-#include "components/autofill/core/browser/data_quality/validation.h"
 #include "components/autofill/core/browser/field_type_utils.h"
 #include "components/autofill/core/browser/field_types.h"
 #include "components/autofill/core/browser/form_import/addresses/address_form_data_importer.h"
-#include "components/autofill/core/browser/form_import/addresses/address_profile_save_manager.h"
 #include "components/autofill/core/browser/form_import/payments/payments_form_data_importer.h"
-#include "components/autofill/core/browser/form_parsing/form_field_parser.h"
 #include "components/autofill/core/browser/form_structure.h"
 #include "components/autofill/core/browser/form_types.h"
 #include "components/autofill/core/browser/foundations/autofill_client.h"
-#include "components/autofill/core/browser/geo/autofill_country.h"
-#include "components/autofill/core/browser/geo/phone_number_i18n.h"
-#include "components/autofill/core/browser/logging/log_manager.h"
 #include "components/autofill/core/browser/metrics/profile_import_metrics.h"
 #include "components/autofill/core/browser/payments/credit_card_save_manager.h"
-#include "components/autofill/core/browser/payments/iban_save_manager.h"
 #include "components/autofill/core/browser/payments/mandatory_reauth_manager.h"
 #include "components/autofill/core/browser/payments/payments_autofill_client.h"
-#include "components/autofill/core/browser/payments/payments_network_interface.h"
 #include "components/autofill/core/browser/payments/virtual_card_enrollment_manager.h"
 #include "components/autofill/core/common/autofill_features.h"
-#include "components/autofill/core/common/autofill_internals/log_message.h"
-#include "components/autofill/core/common/autofill_internals/logging_scope.h"
 #include "components/autofill/core/common/autofill_payments_features.h"
 #include "components/autofill/core/common/autofill_util.h"
 #include "components/history/core/browser/history_service.h"
@@ -68,21 +50,10 @@ namespace autofill {
 
 namespace {
 
-using AddressImportRequirement =
-    autofill_metrics::AddressProfileImportRequirementMetric;
-
-bool HasSynthesizedTypes(
-    const base::flat_map<FieldType, std::u16string>& observed_field_values,
-    AddressCountryCode country_code) {
-  return std::ranges::any_of(observed_field_values, [country_code](
-                                                        const auto& entry) {
-    return i18n_model_definition::IsSynthesizedType(entry.first, country_code);
-  });
-}
-
 bool ShouldProcessExtractedCreditCard(
     const raw_ref<AutofillClient>& client,
-    FormDataImporter::CreditCardImportType credit_card_import_type) {
+    payments::PaymentsFormDataImporter::CreditCardImportType
+        credit_card_import_type) {
   // Processing should not occur if the current window is a tab modal pop-up, as
   // no credit card save or feature enrollment should happen in this case.
   if (base::FeatureList::IsEnabled(
@@ -94,7 +65,7 @@ bool ShouldProcessExtractedCreditCard(
   // If there is no `credit_card_import_type` from form extraction, the
   // extracted card is not a viable candidate for processing.
   if (credit_card_import_type ==
-      FormDataImporter::CreditCardImportType::kNoCard) {
+      payments::PaymentsFormDataImporter::CreditCardImportType::kNoCard) {
     return false;
   }
 
@@ -119,17 +90,8 @@ FormDataImporter::FormDataImporter(AutofillClient* client,
     : client_(CHECK_DEREF(client)),
       credit_card_save_manager_(
           std::make_unique<CreditCardSaveManager>(client)),
-      address_profile_save_manager_(
-          std::make_unique<AddressProfileSaveManager>(client)),
-#if !BUILDFLAG(IS_IOS)
-      iban_save_manager_(std::make_unique<IbanSaveManager>(client)),
-#endif  // !BUILDFLAG(IS_IOS)
-      multistep_importer_(client_->GetAppLocale(),
-                          client_->GetVariationConfigCountryCode()),
       address_form_data_importer_(client),
       payments_form_data_importer_(client) {
-  address_data_manager_observation_.Observe(
-      &GetAddressFormDataImporter().address_data_manager());
   if (history_service) {
     history_service_observation_.Observe(history_service);
   }
@@ -173,7 +135,8 @@ void FormDataImporter::ImportAndProcessFormData(
   if (extracted_data.extracted_iban.has_value() &&
       payment_methods_autofill_enabled) {
     iban_prompt_potentially_shown =
-        ProcessIbanImportCandidate(*extracted_data.extracted_iban);
+        payments_form_data_importer_.ProcessIbanImportCandidate(
+            *extracted_data.extracted_iban);
   }
 
   // Reset last fetch payments method metadata after all payments related form
@@ -203,7 +166,8 @@ void FormDataImporter::ImportAndProcessFormData(
   if (base::FeatureList::IsEnabled(
           features::kAutofillEnableSupportForNameAndEmail)) {
     base::flat_set<std::string> unedited_autofilled_profile_guids =
-        ExtractGUIDsOfProfilesWithoutManualEdits(submitted_form);
+        GetAddressFormDataImporter().ExtractGUIDsOfProfilesWithoutManualEdits(
+            submitted_form);
 
     for (auto& candidate : extracted_data.extracted_address_profiles) {
       candidate.import_metadata.unedited_autofilled_profile_guids =
@@ -211,18 +175,13 @@ void FormDataImporter::ImportAndProcessFormData(
     }
   }
 
-  ProcessExtractedAddressProfiles(
+  GetAddressFormDataImporter().ProcessExtractedAddressProfiles(
       extracted_data.extracted_address_profiles,
       // If a payments prompt is potentially shown, do not allow for a second
       // address profile import dialog.
       /*allow_prompt=*/!payments_prompt_potentially_shown &&
           !iban_prompt_potentially_shown,
       ukm_source_id);
-}
-
-void FormDataImporter::CacheFetchedVirtualCard(
-    const std::u16string& last_four) {
-  fetched_virtual_cards_.insert(last_four);
 }
 
 FormDataImporter::ExtractedFormData FormDataImporter::ExtractFormData(
@@ -240,7 +199,8 @@ FormDataImporter::ExtractedFormData FormDataImporter::ExtractFormData(
   // Reset `credit_card_import_type_` every time we extract
   // data from form no matter whether `ExtractCreditCard()` is
   // called or not.
-  credit_card_import_type_ = CreditCardImportType::kNoCard;
+  credit_card_import_type_ =
+      payments::PaymentsFormDataImporter::CreditCardImportType::kNoCard;
   if (payment_methods_autofill_enabled) {
     extracted_form_data.extracted_credit_card =
         ExtractCreditCard(submitted_form);
@@ -256,8 +216,9 @@ FormDataImporter::ExtractedFormData FormDataImporter::ExtractFormData(
   size_t num_complete_address_profiles = 0;
   if (profile_autofill_enabled &&
       !base::FeatureList::IsEnabled(features::kAutofillDisableAddressImport)) {
-    num_complete_address_profiles = ExtractAddressProfiles(
-        submitted_form, &extracted_form_data.extracted_address_profiles);
+    num_complete_address_profiles =
+        GetAddressFormDataImporter().ExtractAddressProfiles(
+            submitted_form, &extracted_form_data.extracted_address_profiles);
   }
 
   if (profile_autofill_enabled && payment_methods_autofill_enabled) {
@@ -278,213 +239,6 @@ FormDataImporter::ExtractedFormData FormDataImporter::ExtractFormData(
   return extracted_form_data;
 }
 
-size_t FormDataImporter::ExtractAddressProfiles(
-    const FormStructure& form,
-    std::vector<AddressFormDataImporter::ExtractedAddressProfile>*
-        extracted_address_profiles) {
-  // Create a buffer to collect logging output for the autofill-internals.
-  LogManager* log_manager = client_->GetCurrentLogManager();
-  LogBuffer import_log_buffer(IsLoggingActive(log_manager));
-  LOG_AF(import_log_buffer) << LoggingScope::kAddressProfileFormImport;
-  // Print the full form into the logging scope.
-  LOG_AF(import_log_buffer)
-      << LogMessage::kImportAddressProfileFromForm << form << CTag{};
-
-  // We save a maximum of 2 profiles per submitted form (e.g. for shipping and
-  // billing).
-  static const size_t kMaxNumAddressProfilesSaved = 2;
-  size_t num_complete_profiles = 0;
-
-  if (!form.field_count()) {
-    LOG_AF(import_log_buffer) << LogMessage::kImportAddressProfileFromFormFailed
-                              << "Form is empty." << CTag{};
-  } else {
-    // Relevant sections for address fields.
-    std::map<Section, std::vector<const AutofillField*>> section_fields;
-    for (const auto& field : form) {
-      if (field->Type().GetAddressType() != UNKNOWN_TYPE) {
-        section_fields[field->section()].push_back(field.get());
-      }
-    }
-
-    for (const auto& [section, fields] : section_fields) {
-      if (num_complete_profiles == kMaxNumAddressProfilesSaved) {
-        break;
-      }
-      // Log the output from a section in a separate div for readability.
-      LOG_AF(import_log_buffer)
-          << Tag{"div"} << Attrib{"class", "profile_import_from_form_section"};
-      LOG_AF(import_log_buffer)
-          << LogMessage::kImportAddressProfileFromFormSection << section
-          << CTag{};
-      // Try to extract an address profile from the form fields of this section.
-      // Only allow for a prompt if no other complete profile was found so far.
-      if (ExtractAddressProfileFromSection(fields, form.source_url(),
-                                           extracted_address_profiles,
-                                           &import_log_buffer)) {
-        num_complete_profiles++;
-      }
-      // And close the div of the section import log.
-      LOG_AF(import_log_buffer) << CTag{"div"};
-    }
-    autofill_metrics::LogAddressFormImportStatusMetric(
-        num_complete_profiles == 0
-            ? autofill_metrics::AddressProfileImportStatusMetric::kNoImport
-            : autofill_metrics::AddressProfileImportStatusMetric::
-                  kRegularImport);
-  }
-  LOG_AF(import_log_buffer)
-      << LogMessage::kImportAddressProfileFromFormNumberOfImports
-      << num_complete_profiles << CTag{};
-
-  // Write log buffer to autofill-internals.
-  LOG_AF(log_manager) << std::move(import_log_buffer);
-
-  return num_complete_profiles;
-}
-
-bool FormDataImporter::ExtractAddressProfileFromSection(
-    base::span<const AutofillField* const> section_fields,
-    const GURL& source_url,
-    std::vector<AddressFormDataImporter::ExtractedAddressProfile>*
-        extracted_address_profiles,
-    LogBuffer* import_log_buffer) {
-  // Tracks if the form section contains multiple distinct email addresses.
-  bool has_multiple_distinct_email_addresses = false;
-
-  // Tracks if the form section contains an invalid types.
-  bool has_invalid_field_types = false;
-
-  // Metadata about the way we construct candidate_profile.
-  ProfileImportMetadata import_metadata;
-  import_metadata.origin = url::Origin::Create(source_url);
-
-  // Tracks if any of the fields belongs to FormType::kAddressForm.
-  bool has_address_related_fields = false;
-
-  // Stores the values collected for each related `FieldType`. Used as
-  // well to detect and discard address forms with multiple fields of the same
-  // type.
-  base::flat_map<FieldType, std::u16string> observed_field_values =
-      GetAddressFormDataImporter().GetAddressObservedFieldValues(
-          section_fields, import_metadata, import_log_buffer,
-          has_invalid_field_types, has_multiple_distinct_email_addresses,
-          has_address_related_fields);
-
-  // The candidate for profile import.
-  AutofillProfile candidate_profile =
-      GetAddressFormDataImporter().ConstructProfileFromObservedValues(
-          observed_field_values, import_log_buffer, import_metadata);
-
-  // After ensuring the correct country is set on the profile, we can search for
-  // any synthesized nodes. If any of these exist, we'll exclude the profile
-  // from the import process
-  bool has_synthesized_types = HasSynthesizedTypes(
-      observed_field_values, candidate_profile.GetAddressCountryCode());
-
-  // This is done prior to checking the validity of the profile, because multi-
-  // step import profile merging requires the profile to be finalized. Ideally
-  // we would return false here if it fails, but that breaks the metrics.
-  bool finalized_import = candidate_profile.FinalizeAfterImport();
-
-  // Remove invalid values of types that are optional in some countries.
-  // This is done after `FinalizeAfterImport()` to ensure that formatted
-  // invalid values are also removed.
-  RemoveInvalidValues(candidate_profile, import_log_buffer, import_metadata);
-
-  // Reject the profile if the validation requirements are not met.
-  // `ValidateNonEmptyValues()` goes first to collect metrics.
-  bool has_invalid_information =
-      !ValidateNonEmptyValues(candidate_profile, import_log_buffer) ||
-      has_multiple_distinct_email_addresses || has_invalid_field_types ||
-      has_synthesized_types;
-
-  // Profiles with valid information qualify for multi-step imports.
-  // This requires the profile to be finalized to apply the merging logic.
-  if (finalized_import && has_address_related_fields &&
-      !has_invalid_information) {
-    multistep_importer_.ProcessMultiStepImport(candidate_profile,
-                                               import_metadata);
-  }
-
-  // This relies on the profile's country code and must be done strictly after
-  // `ComplementCountry()`.
-  GetAddressFormDataImporter().RemoveInaccessibleProfileValues(
-      candidate_profile);
-
-  // Do not import a profile if any of the requirements is violated.
-  // `IsMinimumAddress()` goes first, since it logs to autofill-internals.
-  bool all_fulfilled = IsMinimumAddress(candidate_profile, import_log_buffer) &&
-                       !has_invalid_information;
-
-  // Collect metrics regarding the requirements for an address profile import.
-  autofill_metrics::LogAddressFormImportRequirementMetric(candidate_profile);
-  autofill_metrics::LogAddressFormImportRequirementMetric(
-      has_multiple_distinct_email_addresses
-          ? AddressImportRequirement::kEmailAddressUniqueRequirementViolated
-          : AddressImportRequirement::kEmailAddressUniqueRequirementFulfilled);
-  autofill_metrics::LogAddressFormImportRequirementMetric(
-      has_invalid_field_types
-          ? AddressImportRequirement::kNoInvalidFieldTypesRequirementViolated
-          : AddressImportRequirement::kNoInvalidFieldTypesRequirementFulfilled);
-  autofill_metrics::LogAddressFormImportRequirementMetric(
-      has_synthesized_types
-          ? AddressImportRequirement::kNoSythesizedTypesRequirementViolated
-          : AddressImportRequirement::kNoSythesizedTypesRequirementFulfilled);
-  autofill_metrics::LogAddressFormImportRequirementMetric(
-      import_metadata.observed_invalid_country
-          ? AddressImportRequirement::kCountryValidRequirementViolated
-          : AddressImportRequirement::kCountryValidRequirementFulfilled);
-  autofill_metrics::LogAddressFormImportRequirementMetric(
-      all_fulfilled ? AddressImportRequirement::kOverallRequirementFulfilled
-                    : AddressImportRequirement::kOverallRequirementViolated);
-
-  if (!finalized_import || !all_fulfilled) {
-    return false;
-  }
-
-  autofill_metrics::LogZipCodeLengthMetric(
-      candidate_profile.GetRawInfo(ADDRESS_HOME_ZIP));
-  autofill_metrics::LogZipCodeSeparatorMetric(
-      candidate_profile.GetRawInfo(ADDRESS_HOME_ZIP));
-
-  // At this stage, the saving of the profile can only be omitted by the
-  // incognito mode but the import is not triggered if the browser is in the
-  // incognito mode.
-  DCHECK(!client_->IsOffTheRecord());
-
-  AddressFormDataImporter::ExtractedAddressProfile extracted_address_profile;
-  extracted_address_profile.profile = candidate_profile;
-  extracted_address_profile.url = source_url;
-  extracted_address_profile.import_metadata = import_metadata;
-  extracted_address_profiles->push_back(std::move(extracted_address_profile));
-  return true;
-}
-
-bool FormDataImporter::ProcessExtractedAddressProfiles(
-    const std::vector<AddressFormDataImporter::ExtractedAddressProfile>&
-        extracted_address_profiles,
-    bool allow_prompt,
-    ukm::SourceId ukm_source_id) {
-  int imported_profiles = 0;
-  // `allow_prompt` is true if no credit card or IBAN prompt was shown. If it is
-  // true, we know there is no UI currently displaying, so we can display UI to
-  // import addresses. If it is false, we should not display UI to import
-  // addresses due to a possible dialog or bubble conflict.
-  bool allow_only_silent_updates = !allow_prompt;
-  for (const AddressFormDataImporter::ExtractedAddressProfile& candidate :
-       extracted_address_profiles) {
-    address_profile_save_manager_->ImportProfileFromForm(
-        candidate.profile, client_->GetAppLocale(), candidate.url,
-        ukm_source_id, allow_only_silent_updates, candidate.import_metadata);
-    // Limit the number of importable profiles to 2.
-    if (!allow_only_silent_updates && ++imported_profiles >= 2) {
-      return true;
-    }
-  }
-  return imported_profiles > 0;
-}
-
 bool FormDataImporter::ProcessExtractedCreditCard(
     const FormStructure& submitted_form,
     const std::optional<CreditCard>& extracted_credit_card,
@@ -492,7 +246,8 @@ bool FormDataImporter::ProcessExtractedCreditCard(
     ukm::SourceId ukm_source_id) {
   if (!base::FeatureList::IsEnabled(
           features::kAutofillPrioritizeSaveCardOverMandatoryReauth) &&
-      ProceedWithCardMandatoryReauthOptInIfApplicable()) {
+      payments_form_data_importer_
+          .ProceedWithCardMandatoryReauthOptInIfApplicable()) {
     return true;
   }
 
@@ -505,10 +260,12 @@ bool FormDataImporter::ProcessExtractedCreditCard(
   // virtual cards beyond this point. If
   // `kAutofillPrioritizeSaveCardOverMandatoryReauth` is enabled, try to offer
   // mandatory re-auth before returning.
-  if (credit_card_import_type_ == CreditCardImportType::kVirtualCard) {
+  if (credit_card_import_type_ ==
+      payments::PaymentsFormDataImporter::CreditCardImportType::kVirtualCard) {
     return base::FeatureList::IsEnabled(
                features::kAutofillPrioritizeSaveCardOverMandatoryReauth) &&
-           ProceedWithCardMandatoryReauthOptInIfApplicable();
+           payments_form_data_importer_
+               .ProceedWithCardMandatoryReauthOptInIfApplicable();
   }
 
   // Do not offer upload save for google domain.
@@ -541,49 +298,13 @@ bool FormDataImporter::ProcessExtractedCreditCard(
 
   if (base::FeatureList::IsEnabled(
           features::kAutofillPrioritizeSaveCardOverMandatoryReauth) &&
-      ProceedWithCardMandatoryReauthOptInIfApplicable()) {
+      payments_form_data_importer_
+          .ProceedWithCardMandatoryReauthOptInIfApplicable()) {
     // Try to offer mandatory re-auth as the last step.
     return true;
   }
 
   return false;
-}
-
-bool FormDataImporter::ProceedWithCardMandatoryReauthOptInIfApplicable() {
-  // If a flow without interactive authentication was completed and the user
-  // didn't update the result that was filled into the form, re-auth opt-in
-  // flow might be offered.
-  if (auto* mandatory_reauth_manager =
-          client_->GetPaymentsAutofillClient()
-              ->GetOrCreatePaymentsMandatoryReauthManager();
-      credit_card_import_type_ != CreditCardImportType::kNewCard &&
-      mandatory_reauth_manager &&
-      mandatory_reauth_manager->ShouldOfferOptin(
-          payment_method_type_if_non_interactive_authentication_flow_completed_)) {
-    payment_method_type_if_non_interactive_authentication_flow_completed_
-        .reset();
-    mandatory_reauth_manager->StartOptInFlow();
-    return true;
-  }
-  return false;
-}
-
-bool FormDataImporter::ProcessIbanImportCandidate(Iban& extracted_iban) {
-  // If a flow where there was no interactive authentication was completed,
-  // re-auth opt-in flow might be offered.
-  if (auto* mandatory_reauth_manager =
-          client_->GetPaymentsAutofillClient()
-              ->GetOrCreatePaymentsMandatoryReauthManager();
-      mandatory_reauth_manager &&
-      mandatory_reauth_manager->ShouldOfferOptin(
-          payment_method_type_if_non_interactive_authentication_flow_completed_)) {
-    payment_method_type_if_non_interactive_authentication_flow_completed_
-        .reset();
-    mandatory_reauth_manager->StartOptInFlow();
-    return true;
-  }
-
-  return iban_save_manager_->AttemptToOfferSave(extracted_iban);
 }
 
 std::optional<CreditCard> FormDataImporter::ExtractCreditCard(
@@ -627,14 +348,17 @@ std::optional<CreditCard> FormDataImporter::ExtractCreditCard(
   }
 
   // If the extracted card is a known virtual card, return the extracted card.
-  if (fetched_virtual_cards_.contains(candidate.LastFourDigits())) {
-    credit_card_import_type_ = CreditCardImportType::kVirtualCard;
+  if (GetPaymentsFormDataImporter().fetched_virtual_cards_.contains(
+          candidate.LastFourDigits())) {
+    credit_card_import_type_ =
+        payments::PaymentsFormDataImporter::CreditCardImportType::kVirtualCard;
     return candidate;
   }
 
   // Can import one valid card per form. Start by treating it as kNewCard, but
   // overwrite this type if we discover it is already a local or server card.
-  credit_card_import_type_ = CreditCardImportType::kNewCard;
+  credit_card_import_type_ =
+      payments::PaymentsFormDataImporter::CreditCardImportType::kNewCard;
 
   // Attempt to merge with an existing local credit card without presenting a
   // prompt.
@@ -646,7 +370,8 @@ std::optional<CreditCard> FormDataImporter::ExtractCreditCard(
     if (maybe_updated_card.UpdateFromImportedCard(candidate,
                                                   client_->GetAppLocale())) {
       payments_data_manager().UpdateCreditCard(maybe_updated_card);
-      credit_card_import_type_ = CreditCardImportType::kLocalCard;
+      credit_card_import_type_ =
+          payments::PaymentsFormDataImporter::CreditCardImportType::kLocalCard;
       // Update `candidate` to reflect all the details of the updated card.
       // `UpdateFromImportedCard` has updated all values except for the
       // extracted CVC, as we will not update that until later after prompting
@@ -698,11 +423,13 @@ std::optional<CreditCard> FormDataImporter::TryMatchingExistingServerCard(
       // If `credit_card_import_type_` was local card, then a local card was
       // extracted from the form. If a server card is now also extracted from
       // the form, the duplicate local and server card case is detected.
-      if (credit_card_import_type_ == CreditCardImportType::kLocalCard) {
-        credit_card_import_type_ =
+      if (credit_card_import_type_ == payments::PaymentsFormDataImporter::
+                                          CreditCardImportType::kLocalCard) {
+        credit_card_import_type_ = payments::PaymentsFormDataImporter::
             CreditCardImportType::kDuplicateLocalServerCard;
       } else {
-        credit_card_import_type_ = CreditCardImportType::kServerCard;
+        credit_card_import_type_ = payments::PaymentsFormDataImporter::
+            CreditCardImportType::kServerCard;
       }
       return server_card_with_cvc;
     } else {
@@ -832,46 +559,23 @@ FormDataImporter::ExtractCreditCardFromForm(const FormStructure& form) {
   for (const std::unique_ptr<AutofillField>& field : form.fields()) {
     fields.push_back(field.get());
   }
-  extract_data_and_remove_field_if(fields, &AutofillField::is_user_edited);
-  extract_data_and_remove_field_if(fields, &AutofillField::is_autofilled);
+  extract_data_and_remove_field_if(fields, [](const auto& field) {
+    return field.all_modifiers().contains(FieldModifier::kUser);
+  });
+  extract_data_and_remove_field_if(fields, [](const AutofillField& field) {
+    return field.last_modifier() == FieldModifier::kAutofill;
+  });
   extract_data_and_remove_field_if(fields, [](const auto&) { return true; });
   return result;
-}
-
-base::flat_set<std::string>
-FormDataImporter::ExtractGUIDsOfProfilesWithoutManualEdits(
-    const FormStructure& submitted_form) const {
-  base::flat_set<std::string> unedited_source_profile_guids;
-  for (const std::unique_ptr<AutofillField>& field : submitted_form) {
-    if (field->is_user_edited()) {
-      return {};
-    }
-    if (const std::optional<std::string>& guid =
-            field->autofill_source_profile_guid()) {
-      unedited_source_profile_guids.insert(guid.value());
-    }
-  }
-  return unedited_source_profile_guids;
-}
-
-void FormDataImporter::OnAddressDataChanged() {
-  multistep_importer_.OnAddressDataChanged(
-      GetAddressFormDataImporter().address_data_manager());
 }
 
 void FormDataImporter::OnHistoryDeletions(
     history::HistoryService* history_service,
     const history::DeletionInfo& deletion_info) {
-  multistep_importer_.OnBrowsingHistoryCleared(deletion_info);
+  GetAddressFormDataImporter()
+      .multi_step_import_merger()
+      .OnBrowsingHistoryCleared(deletion_info);
   form_associator_.OnBrowsingHistoryCleared(deletion_info);
-}
-
-void FormDataImporter::
-    SetPaymentMethodTypeIfNonInteractiveAuthenticationFlowCompleted(
-        std::optional<NonInteractivePaymentMethodType>
-            payment_method_type_if_non_interactive_authentication_flow_completed) {
-  payment_method_type_if_non_interactive_authentication_flow_completed_ =
-      payment_method_type_if_non_interactive_authentication_flow_completed;
 }
 
 AddressFormDataImporter& FormDataImporter::GetAddressFormDataImporter() {

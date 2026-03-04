@@ -94,11 +94,6 @@ BASE_FEATURE(kAutocorrectByDefault, base::FEATURE_ENABLED_BY_DEFAULT);
 // each new user session.
 BASE_FEATURE(kAutozoomNudgeSessionReset, base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Enables a settings option to set an explicit charge limit for Chromebooks.
-BASE_FEATURE(kBatteryChargeLimit,
-             "CrosBatteryChargeLimit",
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 // Make Battery Saver available.
 BASE_FEATURE(kBatterySaver,
              "CrosBatterySaver",
@@ -766,7 +761,7 @@ BASE_FEATURE(kFilesTrashDrive, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kFirmwareUpdateUIV2, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Controls if the Fjord variant of OOBE is shown.
-BASE_FEATURE(kFjordOobe, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kFjordOobe, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Force flag for the Fjord variant of OOBE. This is to make testing easier
 // because the Fjord OOBE variant is buildflag dependent.
@@ -1025,9 +1020,6 @@ BASE_FEATURE(kHideShelfControlsInTabletMode, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // If enabled, add Hindi Inscript keyboard layout.
 BASE_FEATURE(kHindiInscriptLayout, base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Helpful notifications for devices with Hybrid Chargers.
-BASE_FEATURE(kHybridChargerNotifications, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // If enabled, allows the user to cycle between windows of an app using Alt + `.
 BASE_FEATURE(kSameAppWindowCycle, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -1736,10 +1728,6 @@ BASE_FEATURE(kSessionManagerLongKillTimeout, base::FEATURE_DISABLED_BY_DEFAULT);
 // file session_manager_service.cc.
 BASE_FEATURE(kSessionManagerLivenessCheck, base::FEATURE_ENABLED_BY_DEFAULT);
 
-// Removes notifier settings from quick settings view.
-BASE_FEATURE(kSettingsAppNotificationSettings,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
 // Whether theme changes should be animated for the Settings app.
 BASE_FEATURE(kSettingsAppThemeChangeAnimation,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -1786,10 +1774,6 @@ BASE_FEATURE(kShimlessRMAFlexibleSerialNumberName,
 // Enables or disables the option to hide Google SKU on the device information
 // page.
 BASE_FEATURE(kShimlessRMAHideGoogleSKU, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// If enabled, system shortcuts will utilize state machiens instead of
-// keeping track of entire history of keys pressed.
-BASE_FEATURE(kShortcutStateMachines, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables or disables a toggle to enable Bluetooth debug logs.
 BASE_FEATURE(kShowBluetoothDebugLogToggle, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -2024,12 +2008,6 @@ BASE_FEATURE(kVcTrayTitleHeader,
              "VCTrayTitleHeader",
              base::FEATURE_ENABLED_BY_DEFAULT);
 
-// Enables or disables alternative light intensity for ChromeOS video
-// conferencing relighting.
-BASE_FEATURE(kVcLightIntensity,
-             "VCLightIntensity",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
 // Enables or disables web API support for ChromeOS video conferencing.
 BASE_FEATURE(kVcWebApi, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -2221,10 +2199,6 @@ bool IsAutoSignOutEnabled() {
 
 bool IsBabelOrcaAvailable() {
   return base::FeatureList::IsEnabled(kBabelOrca);
-}
-
-bool IsBatteryChargeLimitAvailable() {
-  return base::FeatureList::IsEnabled(kBatteryChargeLimit);
 }
 
 bool IsBatterySaverAvailable() {
@@ -2735,10 +2709,6 @@ bool IsHideShelfControlsInTabletModeEnabled() {
   return base::FeatureList::IsEnabled(kHideShelfControlsInTabletMode);
 }
 
-bool IsHybridChargerNotificationsEnabled() {
-  return base::FeatureList::IsEnabled(kHybridChargerNotifications);
-}
-
 bool IsSnoopingProtectionEnabled() {
   return base::FeatureList::IsEnabled(kSnoopingProtection) &&
          switches::HasHps();
@@ -3142,10 +3112,6 @@ bool IsSeparateNetworkIconsEnabled() {
 
 bool IsSeparateWebAppShortcutBadgeIconEnabled() {
   return base::FeatureList::IsEnabled(kSeparateWebAppShortcutBadgeIcon);
-}
-
-bool IsSettingsAppNotificationSettingsEnabled() {
-  return base::FeatureList::IsEnabled(kSettingsAppNotificationSettings);
 }
 
 bool IsSettingsAppThemeChangeAnimationEnabled() {

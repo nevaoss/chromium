@@ -1703,6 +1703,7 @@ Bu politika ayarlanmadan bırakılırsa, yönetilen cihazlar için DNS-over-HTTP
 <translation id="2158741059065130266">Politika, Doğru değerine ayarlanırsa <ph name="PRODUCT_OS_NAME" /> Dosyalar uygulamasının kullanıcıları bir çöp kutusu görür ve Dosyalarım ve İndirilenler bölümlerindeki dosyalar (kullanıcıların oluşturduğu alt öğeler dahil) silindiğinde oraya gönderilir.
 
       Politika, Yanlış değerine ayarlanırsa daha önce çöp kutusunda bulunan dosyalar, gizli dosyalar gösterilerek ve Dosyalarım veya İndirilenler bölümünde .çöp kutusu dizini bulunarak kullanılabilir olmaya devam eder.</translation>
+<translation id="215891883000260452">Belirli kaynaklar için WebRTC teşhis günlüklerinin toplanmasını etkinleştir</translation>
 <translation id="2159092270572925582">Engellenebilir (ör. etkin) karma içeriği (ör. HTTPS sitelerindeki HTTP içeriği) görüntülemesine izin verilen sitelerin belirtildiği ve isteğe bağlı olarak engellenebilir karma içerik yükseltmelerinin devre dışı bırakılacağı bir URL kalıpları listesini ayarlamanıza olanak tanır.
 
           Bu politika ayarlanmadan bırakılırsa engellenebilir karma içerik engellenir ve isteğe bağlı olarak engellenebilir karma içerik yükseltilir, ayrıca kullanıcıların belirli sitelerde buna izin vermek üzere istisnalar ayarlamasına izin verilir.
@@ -1995,6 +1996,7 @@ Bu politikayı ayarlarsanız kullanıcılar <ph name="PRODUCT_NAME" /> ürünün
       Bu politika <ph name="DEFAULT_WEB_USB_GUARD_SETTING_POLICY_NAME" />, <ph name="WEB_USB_ASK_FOR_URLS_POLICY_NAME" />, <ph name="WEB_USB_BLOCKED_FOR_URLS_POLICY_NAME" /> politikalarını ve kullanıcının tercihlerini geçersiz kılar.
 
       Bu politika, yalnızca WebUSB API üzerinden USB cihazlarına erişimi etkiler. Web Serial API üzerinden USB cihazlarına erişim izni vermek için <ph name="SERIAL_ALLOW_USB_DEVICES_FOR_URLS_POLICY_NAME" /> politikasını inceleyin.</translation>
+<translation id="2318353380372431186">IWA kullanıcı yüklemesini etkinleştir</translation>
 <translation id="2318583605563438459">Anne veya babaların gözetilen hesap eklemesine izin ver</translation>
 <translation id="2326031114717677574">Ağ verilerinin örneklenme ve toplanma hızı. İzin verilen minimum sıklık 1 dakikadır.
 
@@ -2560,6 +2562,13 @@ Sistem, AAAA kayıtlarını yalnızca küresel bir IPv6 ana makinesinden cihaza 
       Not: M114 sürümünden itibaren belirli kiosk uygulamalarının, öğrenci değerlendirmeleri gibi özel kullanım alanlarında bu politikanın davranışını geçersiz kılmasına izin verilmektedir.</translation>
 <translation id="2667894101494585925">Optimizasyon Kılavuzunun Getirilmesini Etkinleştir</translation>
 <translation id="2669157090883237118">Önerilen <ph name="PRODUCT_OS_NAME" /> yapılandırmasını değiştirme.</translation>
+<translation id="2669314653349044073">Bu politika, belirli kaynaklar için WebRTC teşhis günlüklerinin toplanmasını etkinleştirmeye olanak tanır.
+
+Geçerli giriş kalıpları hakkında ayrıntılı bilgi için https://chromeenterprise.google/policies/url-patterns/ adresine bakabilirsiniz. <ph name="WILDCARD_VALUE" />, bu politikada kabul edilen bir değer değildir. Bu politika, yalnızca kaynağa göre eşleşir. Dolayısıyla, URL kalıbındaki yollar yok sayılır. Şema ve alt alan adları desteklenir.
+
+Politika ayarlanırsa listedeki kalıplarla eşleşen kaynaklar için teşhis günlüklerinin toplanması etkinleştirilir.
+
+Politika ayarlanmazsa teşhis günlüklerinin toplanması varsayılan olarak devre dışı bırakılır.</translation>
 <translation id="2672012807430078509">NTLM'nin SMB ekleme için kimlik doğrulama protokolü olarak etkinleştirilmesini kontrol eder</translation>
 <translation id="2673363037046384711">Son kullanıcı, Yüksek Verimlilik Modu'nu etkinleştirebilir veya devre dışı bırakabilir.</translation>
 <translation id="2673968385134502798">Oyunlar</translation>
@@ -2667,6 +2676,7 @@ Politika, Devre dışı değerine ayarlanır veya ayarlanmadan bırakılırsa ku
       Politika, Devre Dışı değerine ayarlanırsa <ph name="PRODUCT_NAME" />, bu ana makineleri yalnızca sistem düzeyinde yüklendiyse kullanabilir.</translation>
 <translation id="2753637905605932878">WebRTC tarafından kullanılan yerel UDP bağlantı noktaları aralığını kısıtlama</translation>
 <translation id="2755847332939882873">Sistem genelinde performans izleme verilerinin toplanmasına izin ver</translation>
+<translation id="2755963656455766808">Kullanıcının yalıtılmış web uygulamalarını manuel olarak yükleme yetkisini kontrol eder</translation>
 <translation id="2757054304033424106">Yüklenmesine izin verilen uzantı/uygulama türleri</translation>
 <translation id="275769337615229465">Çoğu kaynak, aynı sitedeki diğer kaynaklardan yalıtılır.</translation>
 <translation id="2759224876420453487">Çok profilli bir oturumda kullanıcı çalışma biçimini kontrol et</translation>
@@ -5772,6 +5782,12 @@ Bu politika, geçici olarak tasarlanmıştır ve 2026 yılında kaldırılacakt�
        Ana makine adı tam olarak eşleşirse veya alan adında eşleşme söz konusu olursa ana makine adına izin verilebilir. Örneğin, bu listede "foo.example.com" veya "example.com" yer alıyorsa "https://foo.example.com/bar" gibi bir URL için uyarılar gizlenebilir.</translation>
 <translation id="4852900976354340846">Direct Sockets ayarları</translation>
 <translation id="485419696366295465"><ph name="BOREALIS_NAME" /> alt sistemiyle ilgili politikaları kontrol eder.</translation>
+<translation id="4854384393031206645">Kullanıcının yalıtılmış web uygulamalarını (IWA'lar) manuel olarak yükleme yetkisini kontrol eder.
+
+Bu politika, Yanlış değerine ayarlanırsa IWA kullanıcı yüklemesi engellenir.
+
+Bu politika, Doğru değerine ayarlanırsa veya hiç ayarlanmazsa IWA kullanıcı yüklemelerine izin verilir.
+</translation>
 <translation id="4855636880814771207">Politikanın Etkin değerine ayarlanması veya ayarlanmadan bırakılması, kullanıcıların Bluetooth'u açmalarına veya kapatmalarına izin verir.
 
       Politika, Devre dışı değerine ayarlanırsa <ph name="PRODUCT_OS_NAME" />, Bluetooth'u kapatır ve kullanıcılar açamaz.
@@ -6194,6 +6210,7 @@ Bu politika, web içeriğinin yeni davranışa geçirilmesi için zaman tanıyan
       </translation>
 <translation id="5104606191349861549">Tuş Kısayolları (sürüm 129'dan beri destekleniyor)</translation>
 <translation id="5105313908130842249">Pil gücüyle çalışırken ekran kilidi gecikmesi</translation>
+<translation id="5105593357527099243">IWA kullanıcı yüklemesini devre dışı bırak</translation>
 <translation id="510604120100968366">Düşük pil seviyesi sesi özelliğini etkinleştirin.
 
           Bu özellik, düşük pil seviyesi sesini çalmaktan sorumludur.
@@ -6545,6 +6562,13 @@ Not: Bu politika HSTS yükseltmeleri için geçerli değildir.</translation>
 <translation id="5303080953475303561">Politikanın ayarlanması, hızlı kilit açma için kilit ekranında ne sıklıkta şifre isteneceğini kontrol eder. Kilit ekranı her görüntülendiğinde, son şifre girişi, seçilen değer tarafından belirtilen zaman aralığından önce yapılmışsa hızlı kilit açma kullanılamaz. Kullanıcı bu süreden daha uzun bir zaman kilit ekranında kalırsa yanlış kod girdiğinde veya kilit ekranına tekrar girdiğinde (hangisi önce olursa) şifre sorulur.
 
       Politika ayarlanmadan bırakılırsa hızlı kilit açmayı kullanan kullanıcıların kilit ekranında şifrelerini her gün girmeleri gerekir.</translation>
+<translation id="530488290401810961"><ph name="PRODUCT_NAME" /> uygulamasının, üretken yapay zekanın temel modelini indirme ve yerel çıkarım için kullanma şeklini yapılandırın.
+
+Politika, İzin Verildi (0) değerine ayarlanır veya ayarlanmadan bırakılırsa model otomatik olarak indirilir ve çıkarım için kullanılır.
+
+Politika, Devre Dışı (1) değerine ayarlanırsa model indirilmez ve mevcut model (daha önce indirilmişse) silinir.
+
+Masaüstü platformlarda model indirme işlemi, <ph name="COMPONENT_UPDATES_ENABLED_POLICY_NAME" /> tarafından da devre dışı bırakılabilir.</translation>
 <translation id="5306186200045823863">Symantec Corporation'ın Eski PKI Altyapısına güveni etkinleştir</translation>
 <translation id="5307432759655324440">Gizli modun kullanılabilirliği</translation>
 <translation id="5308551343115571396"><ph name="LACROS_NAME" /> devre dışı bırakıldıktan sonra tüm tarayıcı verilerini kaldırırken mümkün olduğunca fazla kullanıcı verisini saklamaya çalışırız.</translation>
@@ -6564,7 +6588,6 @@ Not: Bu politika HSTS yükseltmeleri için geçerli değildir.</translation>
 <translation id="530949964068726932">Sistem tepsisi menüsündeki erişilebilirlik seçeneklerini gizle</translation>
 <translation id="5309944663104291505">Zorunlu yüklenmiş, yalıtılmış web uygulamalarının ve kiosk uygulamalarının Device Attributes API'yi kullanmasına izin verme</translation>
 <translation id="5311275381462687162">Varsayılan eski <ph name="ATTRIBUTE_SAMESITE_NAME" /> çerez davranışı ayarı</translation>
-<translation id="5311430612584074035">Profildeki tüm sekmeler için ön plan önceliğini zorla</translation>
 <translation id="5312253627576569499">Ekran kararmış durumdayken veya kapandıktan hemen sonra bir kullanıcı etkinliği algılandığında, ekran kararma gecikmesinin ölçekleneceği yüzdeyi belirtir</translation>
 <translation id="5316856058059940708">Büyük imleci devre dışı bırak</translation>
 <translation id="5318185076587284965">Uzaktan erişen ana makine tarafından geçiş sunucuları kullanılmasını etkinleştir</translation>
@@ -12566,11 +12589,6 @@ Bu politika yalnızca <ph name="FULL_RESTORE_ENABLED_NAME" /> politikası doğru
 <translation id="9135095804754272364">USB cihazı algılandığında bildirim göster</translation>
 <translation id="9136212796239682721">İndirme baloncuğu kullanıcı arayüzünü devre dışı bırak</translation>
 <translation id="9136399279941091445">Belirtilen cihaz politikaları etkinleştirildiğinde kapalı olduğu saat aralıkları</translation>
-<translation id="9138686056337842869">Bu politikanın Doğru değerine ayarlanması, Chrome Uygulamalarının varsayılan Chrome Uygulamaları etkinleştirmesinden bağımsız olarak Kiosk oturumunda çalışmaya devam etmesini sağlar.
-
-Bu politika ayarlanmadan bırakılır veya Yanlış değerine ayarlanırsa cihazda tanımlanan varsayılan davranış kullanılır.
-
-Devre dışı bırakılmış bir Chrome Uygulaması başlatılmaya çalışıldığında, kullanıcıya uygulamanın neden başlatılamadığına dair bir mesaj gösterilir ve BT departmanlarıyla iletişime geçmeleri önerilir.</translation>
 <translation id="9139775903828905867">F11'yi tetiklemek için kullanılan kısayolu kontrol et</translation>
 <translation id="9140064482233876338">M69 sürümünde kullanımdan kaldırılmıştır. Bunun yerine OverrideSecurityRestrictionsOnInsecureOrigin politikasını kullanın.
 

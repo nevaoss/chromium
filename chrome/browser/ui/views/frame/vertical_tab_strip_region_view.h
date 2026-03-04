@@ -82,7 +82,7 @@ class VerticalTabStripRegionView final : public TabStripRegionView,
     return target_collapse_state_;
   }
 
-  bool is_animating_for_testing() { return resize_animation_.is_animating(); }
+  bool is_animating() { return resize_animation_.is_animating(); }
 
   VerticalTabStripTopContainer* GetTopContainer() {
     return top_button_container_;
@@ -129,6 +129,12 @@ class VerticalTabStripRegionView final : public TabStripRegionView,
   BrowserRootView::DropTarget* GetDropTarget(
       gfx::Point loc_in_local_coords) override;
   views::View* GetViewForDrop() override;
+  bool CanDrop(const OSExchangeData& data) override;
+  bool GetDropFormats(int* formats,
+                      std::set<ui::ClipboardFormatType>* format_types) override;
+  void OnDragEntered(const ui::DropTargetEvent& event) override;
+  int OnDragUpdated(const ui::DropTargetEvent& event) override;
+  void OnDragExited() override;
   void SetTabStripObserver(TabStripObserver* observer) override;
   views::View* GetTabStripView() override;
   bool TraverseUsingUpDownKeys() override;

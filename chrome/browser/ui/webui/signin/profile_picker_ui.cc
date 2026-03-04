@@ -167,10 +167,21 @@ int GetMainViewSingleProfileSubtitleId(bool is_glic_version) {
   return IDS_PROFILE_PICKER_MAIN_VIEW_SUBTITLE;
 }
 
+int GetProfileTypeChoiceNotNowButtonLabelId() {
+  if (base::FeatureList::IsEnabled(
+          switches::kProfileCreationDeclineSigninCTAExperiment)) {
+    return IDS_PROFILE_PICKER_PROFILE_CREATION_FLOW_STAY_SIGNED_OUT_BUTTON_LABEL;
+  }
+
+  return base::FeatureList::IsEnabled(switches::kFirstRunDesktopRefresh)
+             ? IDS_PROFILE_PICKER_PROFILE_CREATION_FLOW_DONT_SIGN_IN_BUTTON_LABEL
+             : IDS_PROFILE_PICKER_PROFILE_CREATION_FLOW_NOT_NOW_BUTTON_LABEL;
+}
+
 void AddStrings(content::WebUIDataSource* html_source, bool is_glic_version) {
   constexpr webui::LocalizedString kLocalizedStrings[] = {
       {"addSpaceButton", IDS_PROFILE_PICKER_ADD_SPACE_BUTTON},
-      {"askOnStartupCheckboxText", IDS_PROFILE_PICKER_ASK_ON_STARTUP},
+      {"askOnStartupText", IDS_PROFILE_PICKER_ASK_ON_STARTUP},
       {"openAllProfilesButtonText",
        IDS_PROFILE_PICKER_OPEN_ALL_PROFILES_BUTTON},
       {"browseAsGuestButton", IDS_PROFILE_PICKER_BROWSE_AS_GUEST_BUTTON},
@@ -220,12 +231,8 @@ void AddStrings(content::WebUIDataSource* html_source, bool is_glic_version) {
   };
   html_source->AddLocalizedStrings(kLocalizedStrings);
 
-  html_source->AddLocalizedString(
-      "declineSignInButtonLabel",
-       base::FeatureList::IsEnabled(
-           switches::kProfileCreationDeclineSigninCTAExperiment)
-           ? IDS_PROFILE_PICKER_PROFILE_CREATION_FLOW_STAY_SIGNED_OUT_BUTTON_LABEL
-           : IDS_PROFILE_PICKER_PROFILE_CREATION_FLOW_NOT_NOW_BUTTON_LABEL);
+  html_source->AddLocalizedString("declineSignInButtonLabel",
+                                  GetProfileTypeChoiceNotNowButtonLabelId());
   html_source->AddLocalizedString("mainViewTitle",
                                   GetMainViewTitleId(is_glic_version));
   html_source->AddLocalizedString(
@@ -277,6 +284,7 @@ void AddFlags(content::WebUIDataSource* html_source, bool is_glic_version) {
     html_source->AddBoolean("isProfilePickerTextVariationsEnabled", false);
     html_source->AddBoolean("isOpenAllProfilesButtonExperimentEnabled", false);
     html_source->AddInteger("maxProfilesCountToShowOpenAllProfilesButton", 0);
+    html_source->AddBoolean("useRefreshedUI", false);
     return;
   }
 
@@ -316,6 +324,9 @@ void AddFlags(content::WebUIDataSource* html_source, bool is_glic_version) {
   html_source->AddInteger(
       "maxProfilesCountToShowOpenAllProfilesButton",
       switches::kMaxProfilesCountToShowOpenAllButtonInProfilePicker.Get());
+  html_source->AddBoolean(
+      "useRefreshedUI",
+      base::FeatureList::IsEnabled(switches::kFirstRunDesktopRefresh));
 }
 
 void AddResourcePaths(content::WebUIDataSource* html_source,
@@ -325,6 +336,10 @@ void AddResourcePaths(content::WebUIDataSource* html_source,
       {"left_banner_dark.svg", IDR_SIGNIN_IMAGES_SHARED_LEFT_BANNER_DARK_SVG},
       {"right_banner.svg", IDR_SIGNIN_IMAGES_SHARED_RIGHT_BANNER_SVG},
       {"right_banner_dark.svg", IDR_SIGNIN_IMAGES_SHARED_RIGHT_BANNER_DARK_SVG},
+      {"profile_picker_light_background.svg",
+       IDR_SIGNIN_IMAGES_PROFILE_PICKER_LIGHT_BACKGROUND_SVG},
+      {"profile_picker_dark_background.svg",
+       IDR_SIGNIN_IMAGES_PROFILE_PICKER_DARK_BACKGROUND_SVG},
 #if BUILDFLAG(ENABLE_GLIC)
       {"glic_banner_top_right.svg",
        glic::GetResourceID(IDR_GLIC_PROFILE_BANNER_TOP_RIGHT)},

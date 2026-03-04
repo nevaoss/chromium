@@ -639,6 +639,12 @@ bool EntityInstance::IsUnmaskedServerEntity() const {
              });
 }
 
+EntityInstance EntityInstance::CopyWithNewEntityId(EntityId id) const {
+  EntityInstance new_instance = *this;
+  new_instance.guid_ = std::move(id);
+  return new_instance;
+}
+
 EntityInstance EntityInstance::CopyWithNewRecordType(
     RecordType record_type) const {
   EntityInstance new_entity = *this;
@@ -714,6 +720,7 @@ bool IsMaskedStorageSupported(EntityType type,
       return true;
     case EntityTypeName::kFlightReservation:
     case EntityTypeName::kVehicle:
+    case EntityTypeName::kOrder:
       return false;
   }
   NOTREACHED();

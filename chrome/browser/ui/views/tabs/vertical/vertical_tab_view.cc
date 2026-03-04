@@ -29,9 +29,9 @@
 #include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
 #include "chrome/browser/ui/views/tabs/tab/alert_indicator_button.h"
 #include "chrome/browser/ui/views/tabs/tab/glow_hover_controller.h"
+#include "chrome/browser/ui/views/tabs/tab/tab_accessibility.h"
 #include "chrome/browser/ui/views/tabs/tab/tab_close_button.h"
 #include "chrome/browser/ui/views/tabs/tab/tab_icon.h"
-#include "chrome/browser/ui/views/tabs/tab_accessibility.h"
 #include "chrome/browser/ui/views/tabs/vertical/tab_collection_node.h"
 #include "chrome/browser/ui/views/tabs/vertical/vertical_split_tab_view.h"
 #include "chrome/browser/ui/views/tabs/vertical/vertical_tab_drag_handler.h"
@@ -548,7 +548,11 @@ views::ProposedLayout VerticalTabView::CalculateProposedLayout(
   gfx::Rect bounds_remaining = gfx::Rect(0, 0, width, height);
   bounds_remaining.Inset(gfx::Insets::VH(0, kHorizontalInset));
 
-  const bool is_centered = collapsed_ || pinned_;
+  // If the tab is collapsed but animating with a wider width then we shouldn't
+  // center the contents.
+  const bool is_centered =
+      (collapsed_ && width < VerticalTabStripRegionView::kCollapsedWidth) ||
+      pinned_;
 
   int placed_children = 0;
   for (const auto& child : tab_children_configs_) {
@@ -734,7 +738,7 @@ void VerticalTabView::UpdateTabData(tabs::TabInterface* tab) {
 
 void VerticalTabView::UpdateTitle() {
   std::u16string title = tab_data_.title;
-  if (title.empty() && !tab_data_.should_render_empty_title) {
+  if (tab_data_.should_render_loading_title) {
     title = icon_->GetShowingLoadingAnimation()
                 ? l10n_util::GetStringUTF16(IDS_TAB_LOADING_TITLE)
                 : CoreTabHelper::GetDefaultTitle();

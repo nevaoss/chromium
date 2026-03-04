@@ -17,7 +17,8 @@
               "execution_mode": "COMPILE_AND_TEST",
               "legacy_chromium_config": {
                 "apply_configs": [
-                  "mb"
+                  "mb",
+                  "mac_toolchain"
                 ],
                 "config": "chromium",
                 "target_platform": "mac"
@@ -67,5 +68,6 @@
     ]
   },
   "builder_group": "chromium.build",
-  "recipe": "chrome_build/build_perf_developer"
+  "recipe": "chrome_build/build_perf_developer",
+  "xcode_build_version": "17a400"
 }

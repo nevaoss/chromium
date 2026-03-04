@@ -34,6 +34,7 @@
 #include "content/browser/preloading/prefetch/prefetch_status.h"
 #include "content/browser/preloading/prefetch/prefetch_streaming_url_loader.h"
 #include "content/browser/preloading/prefetch/prefetch_type.h"
+#include "content/browser/preloading/prefetch/prefetch_url_loader_factory_utils.h"
 #include "content/browser/preloading/preloading_attempt_impl.h"
 #include "content/browser/preloading/preloading_trigger_type_impl.h"
 #include "content/browser/preloading/prerender/prerender_features.h"
@@ -581,33 +582,37 @@ PrefetchStatus PrefetchContainer::GetPrefetchStatus() const {
   return prefetch_status_.value();
 }
 
-PrefetchNetworkContext* PrefetchContainer::CreateNetworkContext(
-    bool is_isolated_network_context_required,
+PrefetchNetworkContext* PrefetchContainer::CreateIsolatedNetworkContext(
     mojo::Remote<network::mojom::NetworkContext> isolated_network_context) {
-  auto owned_network_context = std::make_unique<PrefetchNetworkContext>(
-      is_isolated_network_context_required, std::move(isolated_network_context),
-      request());
-  PrefetchNetworkContext* network_context = owned_network_context.get();
-  network_contexts_.emplace(is_isolated_network_context_required,
-                            std::move(owned_network_context));
-
-  return network_context;
+  CHECK(!isolated_network_context_);
+  isolated_network_context_ = std::make_unique<PrefetchNetworkContext>(
+      std::move(isolated_network_context), request());
+  return isolated_network_context_.get();
 }
 
-PrefetchNetworkContext* PrefetchContainer::GetNetworkContext(
-    bool is_isolated_network_context_required) const {
-  const auto network_context_itr =
-      network_contexts_.find(is_isolated_network_context_required);
-  if (network_context_itr == network_contexts_.end()) {
-    return nullptr;
+PrefetchNetworkContext* PrefetchContainer::GetIsolatedNetworkContext() const {
+  return isolated_network_context_.get();
+}
+
+scoped_refptr<network::SharedURLLoaderFactory>
+PrefetchContainer::GetOrCreateDefaultNetworkContextURLLoaderFactory() {
+  if (!default_network_context_url_loader_factory_) {
+    // The corresponding `CreatePrefetchURLLoaderFactory()` call is inside
+    // `PrefetchNetworkContext`.
+    default_network_context_url_loader_factory_ =
+        CreatePrefetchURLLoaderFactory(request()
+                                           .browser_context()
+                                           ->GetDefaultStoragePartition()
+                                           ->GetNetworkContext(),
+                                       request());
   }
-  return network_context_itr->second.get();
+  CHECK(default_network_context_url_loader_factory_);
+  return default_network_context_url_loader_factory_;
 }
 
 void PrefetchContainer::CloseIdleConnections() {
-  for (const auto& network_context_itr : network_contexts_) {
-    CHECK(network_context_itr.second);
-    network_context_itr.second->CloseIdleConnections();
+  if (isolated_network_context_) {
+    isolated_network_context_->CloseIdleConnections();
   }
 }
 
@@ -870,20 +875,6 @@ PrefetchContainer::PrepareUpdateHeaders(const GURL& url) const {
                             &updates_for_follow_redirect.modified_headers);
     }
   }
-
-  // ------------------------------------------------------------------------
-  // To avoid spurious reordering, don't remove headers that will be updated
-  // anyway.
-  std::erase_if(
-      updates_for_resource_request.removed_headers,
-      [&](const std::string& header) {
-        return updates_for_resource_request.modified_headers.HasHeader(header);
-      });
-  std::erase_if(
-      updates_for_follow_redirect.removed_headers,
-      [&](const std::string& header) {
-        return updates_for_follow_redirect.modified_headers.HasHeader(header);
-      });
 
   return std::make_tuple(std::move(updates_for_resource_request),
                          std::move(updates_for_follow_redirect));
@@ -1557,10 +1548,7 @@ bool PrefetchContainer::IsProxyRequiredForURL(const GURL& url) const {
          request().prefetch_type().IsProxyRequiredWhenCrossOrigin();
 }
 
-void PrefetchContainer::MakeResourceRequest() {
-  // `UpdateResourceRequest()` updates this request later on. Anything here that
-  // should be changed on redirect should happen there.
-
+void PrefetchContainer::MakeInitialResourceRequest() {
   const GURL& url = GetURL();
   url::Origin origin = url::Origin::Create(url);
   net::IsolationInfo isolation_info = net::IsolationInfo::Create(

@@ -374,7 +374,6 @@
 <translation id="2306265833370324042"><ph name="SEARCH_ENGINE_NAME" /> tafsilotlarini ochish</translation>
 <translation id="2309265394777270359">Varaqni yopish</translation>
 <translation id="2311077293164383652">Qadalgan varaqni yopish</translation>
-<translation id="2313392466694008052">Rasmni Gemini bilan tahrirlash</translation>
 <translation id="2316129865977710310">Kerak emas</translation>
 <translation id="2320166752086256636">Klaviaturani berkitish</translation>
 <translation id="2321086116217818302">Parollar tayyorlanmoqda…</translation>
@@ -1787,6 +1786,7 @@ Handoff funksiyasini faqatgina Chrome sozlamalarida emas, balki qurilma sozlamal
 <translation id="7506817096924591340"><ph name="FILENAME" /> (<ph name="FILESIZE" />).</translation>
 <translation id="7508728395076009983">inkognito varaqlarni qulflash uchun Touch ID, Face ID yoki kirish kodini sozlang.</translation>
 <translation id="750886945254958667">Undan foydalanish va unga varaqlar kiritish mumkin. Guruh kerak boʻlmasa, uni tark eting.</translation>
+<translation id="7511727374778217603">{COUNT,plural, =1{1 tagacha varaq qoʻshing}other{{COUNT} tagacha varaq qoʻshing}}</translation>
 <translation id="7512909159512473473">Kodli iborani kiriting…</translation>
 <translation id="7514365320538308">Yuklab olish</translation>
 <translation id="7514530647142300459">Parollarni Google hisobingizda (<ph name="EMAIL" />) saqlashda davom eting</translation>
@@ -2237,6 +2237,7 @@ Handoff funksiyasini faqatgina Chrome sozlamalarida emas, balki qurilma sozlamal
 <translation id="9055291197094969722">Ochilgan sahifalarni tartiblash va samarali ishlash uchun varaqlar guruhini yarating</translation>
 <translation id="9055580485132823283">Quyidagilar oʻchiriladi: {password_count} ta parol, {passkey_count} ta kalit va hisob maʼlumotlari hech qachon saqlanmasligi tanlangan sayt va ilovalar roʻyxati. Sayt va ilovalarda yaratilgan hisoblar oʻchirilmaydi.</translation>
 <translation id="9057030985451135243">Umumiy varaqlar guruhi haqida batafsil</translation>
+<translation id="9064106978262828592">Maʼlumotlarni eksport qilishda muammo</translation>
 <translation id="9065203028668620118">O‘zgartirish</translation>
 <translation id="9066097352053395362">Bukmarkni tahrirlash panelini berkitish</translation>
 <translation id="9070824521421603770">Hisobingizdan chiqasiz va varaqlar yopiladi</translation>

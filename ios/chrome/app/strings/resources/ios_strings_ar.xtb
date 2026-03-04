@@ -125,6 +125,7 @@
 <translation id="1436671784520050284">متابعة الإعداد</translation>
 <translation id="143681031165817424">تم حفظ العنوان على هذا الجهاز فقط.</translation>
 <translation id="1445276840641906250">جميع علامات التبويب في متصفِّح واحد</translation>
+<translation id="1447564161241938558">أوقَفَ المشرف إمكانية استيراد كلمات المرور ومفاتيح المرور</translation>
 <translation id="1450170672351507823">الحماية العادية مفعَّلة. لزيادة مستوى الأمان، يمكنك استخدام "الحماية المُحسَّنة".</translation>
 <translation id="1455660774629812862">عدم الإخفاء</translation>
 <translation id="1456545332132818232">مراجعات المنتج "<ph name="PRODUCT_NAME" />"، <ph name="STARS" /> من أصل <ph name="MAX_STARS" />، على النطاق <ph name="DOMAIN" /></translation>
@@ -373,7 +374,6 @@
 <translation id="2306265833370324042">عرض تفاصيل <ph name="SEARCH_ENGINE_NAME" /></translation>
 <translation id="2309265394777270359">إغلاق علامة التبويب</translation>
 <translation id="2311077293164383652">إغلاق علامة التبويب المثبَّتة</translation>
-<translation id="2313392466694008052">‏تعديل الصورة باستخدام Gemini</translation>
 <translation id="2316129865977710310">لا، شكرًا</translation>
 <translation id="2320166752086256636">إخفاء لوحة المفاتيح</translation>
 <translation id="2321086116217818302">جارٍ تحضير كلمات المرور…</translation>
@@ -1784,6 +1784,7 @@
 <translation id="7506817096924591340">‎<ph name="FILENAME" /> (<ph name="FILESIZE" />).</translation>
 <translation id="7508728395076009983">‏لقفل علامات التبويب في وضع التصفّح المتخفي، ما عليك سوى إعداد رمز مرور أو ميزة Touch ID أو Face ID.</translation>
 <translation id="750886945254958667">يمكنك الاحتفاظ بهذه المجموعة لإضافة علامات تبويب إليها لاحقًا، أو مغادرتها إذا لم تعُد بحاجة إليها</translation>
+<translation id="7511727374778217603">{COUNT,plural, =1{لا يمكن إضافة أكثر من علامة تبويب واحدة}zero{لا يمكن إضافة أكثر من {COUNT} علامة تبويب}two{لا يمكن إضافة أكثر من علامتَي تبويب ({COUNT})}few{لا يمكن إضافة أكثر من {COUNT} علامات تبويب}many{لا يمكن إضافة أكثر من {COUNT} علامة تبويب}other{لا يمكن إضافة أكثر من {COUNT} علامة تبويب}}</translation>
 <translation id="7512909159512473473">إدخال عبارة المرور…</translation>
 <translation id="7514365320538308">تنزيل</translation>
 <translation id="7514530647142300459">‏يُرجى مواصلة استخدام كلمات المرور في حسابك على Google: <ph name="EMAIL" /></translation>
@@ -2235,6 +2236,7 @@
 <translation id="9055291197094969722">يُرجى إنشاء مجموعات علامات تبويب لتنظيم علامات التبويب المفتوحة وزيادة الإنتاجية</translation>
 <translation id="9055580485132823283">‏أنت على وشك حذف {password_count} من كلمات المرور و{passkey_count} من مفاتيح المرور وقائمة المواقع الإلكترونية والتطبيقات التي اخترت عدم حفظ معلومات تسجيل الدخول إليها، ولن يتم حذف أي حساب أنشأته للمواقع الإلكترونية والتطبيقات.</translation>
 <translation id="9057030985451135243">التعرّف على مجموعات علامات التبويب المشتركة</translation>
+<translation id="9064106978262828592">حدثت مشكلة أثناء تصدير بياناتك</translation>
 <translation id="9065203028668620118">تعديل</translation>
 <translation id="9066097352053395362">إخفاء خيار "تعديل الإشارة المرجعية"</translation>
 <translation id="9070824521421603770">سيتم تسجيل خروجك من الحساب وإغلاق علامات التبويب</translation>

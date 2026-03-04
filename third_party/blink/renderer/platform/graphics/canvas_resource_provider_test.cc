@@ -176,7 +176,6 @@ TEST_F(CanvasResourceProviderTest,
                                    /*has_alpha=*/true);
   auto provider = Canvas2DResourceProviderSharedImage::Create(
       gfx::Size(10, 10), color_params,
-      CanvasResourceProvider::ShouldInitialize::kCallClear,
       context_provider_wrapper_, RasterMode::kGPU, shared_image_usage_flags);
 
   // When the backing SI does not support WebGPU, a new backing SI should be
@@ -204,7 +203,6 @@ TEST_F(CanvasResourceProviderTest,
                                          gpu::SHARED_IMAGE_USAGE_WEBGPU_WRITE;
   provider = Canvas2DResourceProviderSharedImage::Create(
       gfx::Size(10, 10), color_params,
-      CanvasResourceProvider::ShouldInitialize::kCallClear,
       context_provider_wrapper_, RasterMode::kGPU,
       shared_image_usages_with_webgpu);
   client_si = provider->GetBackingClientSharedImageForTransferToWebGPU(
@@ -283,8 +281,8 @@ TEST_F(CanvasResourceProviderTest, CanvasResourceProviderUnacceleratedOverlay) {
                                    CanvasPixelFormat::kUint8,
                                    /*has_alpha=*/true);
   auto provider = Canvas2DResourceProviderSharedImage::Create(
-      kSize, color_params, CanvasResourceProvider::ShouldInitialize::kCallClear,
-      context_provider_wrapper_, RasterMode::kCPU, shared_image_usage_flags);
+      kSize, color_params, context_provider_wrapper_, RasterMode::kCPU,
+      shared_image_usage_flags);
 
   EXPECT_EQ(provider->Size(), kSize);
   EXPECT_TRUE(provider->IsValid());
@@ -559,9 +557,8 @@ TEST_F(CanvasResourceProviderTest, Canvas2DResourceProviderBitmap) {
   Canvas2DColorParams color_params(PredefinedColorSpace::kSRGB,
                                    CanvasPixelFormat::kUint8,
                                    /*has_alpha=*/true);
-  auto provider = Canvas2DResourceProviderBitmap::CreateForTesting(
-      kSize, color_params,
-      CanvasResourceProvider::ShouldInitialize::kCallClear);
+  auto provider =
+      Canvas2DResourceProviderBitmap::CreateForTesting(kSize, color_params);
 
   EXPECT_EQ(provider->Size(), kSize);
   EXPECT_TRUE(provider->IsValid());
@@ -613,7 +610,7 @@ TEST_F(CanvasResourceProviderTest,
 }
 
 TEST_F(CanvasResourceProviderTest,
-       CanvasResourceProviderDirect2DGpuMemoryBuffer) {
+       ConcurrentReadWriteUsageResultsInSingleBuffering) {
   const gfx::Size kSize(10, 10);
   const SkImageInfo kInfo =
       SkImageInfo::MakeN32Premul(10, 10, SkColorSpace::MakeSRGB());
@@ -652,16 +649,13 @@ TEST_F(CanvasResourceProviderTest, DimensionsExceedMaxTextureSize_Bitmap) {
                                    CanvasPixelFormat::kUint8,
                                    /*has_alpha=*/true);
   auto provider = Canvas2DResourceProviderBitmap::CreateForTesting(
-      gfx::Size(kMaxTextureSize - 1, kMaxTextureSize), color_params,
-      CanvasResourceProvider::ShouldInitialize::kCallClear);
+      gfx::Size(kMaxTextureSize - 1, kMaxTextureSize), color_params);
   EXPECT_TRUE(provider && provider->IsValid());
   provider = Canvas2DResourceProviderBitmap::CreateForTesting(
-      gfx::Size(kMaxTextureSize, kMaxTextureSize), color_params,
-      CanvasResourceProvider::ShouldInitialize::kCallClear);
+      gfx::Size(kMaxTextureSize, kMaxTextureSize), color_params);
   EXPECT_TRUE(provider && provider->IsValid());
   provider = Canvas2DResourceProviderBitmap::CreateForTesting(
-      gfx::Size(kMaxTextureSize + 1, kMaxTextureSize), color_params,
-      CanvasResourceProvider::ShouldInitialize::kCallClear);
+      gfx::Size(kMaxTextureSize + 1, kMaxTextureSize), color_params);
   EXPECT_TRUE(provider && provider->IsValid());
 }
 

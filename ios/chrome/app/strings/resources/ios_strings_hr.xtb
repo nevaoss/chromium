@@ -125,6 +125,7 @@
 <translation id="1436671784520050284">Nastavi s postavljanjem</translation>
 <translation id="143681031165817424">Adresa je spremljena samo na ovom uređaju</translation>
 <translation id="1445276840641906250">Sve vaše kartice u jednom pregledniku</translation>
+<translation id="1447564161241938558">Administrator je onemogućio uvoz zaporki i pristupnih ključeva</translation>
 <translation id="1450170672351507823">Uključena je standardna zaštita. Za još veću sigurnost koristite poboljšanu zaštitu.</translation>
 <translation id="1455660774629812862">Nemoj sakriti</translation>
 <translation id="1456545332132818232">Recenzije proizvoda <ph name="PRODUCT_NAME" />, <ph name="STARS" /> od <ph name="MAX_STARS" />, <ph name="DOMAIN" /></translation>
@@ -373,7 +374,6 @@
 <translation id="2306265833370324042">Prikaži pojedinosti za <ph name="SEARCH_ENGINE_NAME" /></translation>
 <translation id="2309265394777270359">Zatvori karticu</translation>
 <translation id="2311077293164383652">Zatvori prikvačenu karticu</translation>
-<translation id="2313392466694008052">Uredite sliku uz Gemini</translation>
 <translation id="2316129865977710310">Ne, hvala</translation>
 <translation id="2320166752086256636">Sakrij tipkovnicu</translation>
 <translation id="2321086116217818302">Priprema zaporki…</translation>
@@ -1786,6 +1786,7 @@ Handoff mora biti omogućen i u odjeljku Općenito u Postavkama, a vaši uređaj
 <translation id="7506817096924591340"><ph name="FILENAME" /> (<ph name="FILESIZE" />).</translation>
 <translation id="7508728395076009983">Da biste zaključali anonimne kartice, postavite Touch ID, Face ID ili šifru.</translation>
 <translation id="750886945254958667">Zadržite ovu grupu da biste kasnije dodali kartice ili je napustite ako joj više ne želite pristupati</translation>
+<translation id="7511727374778217603">{COUNT,plural, =1{Dodajte najviše jednu karticu}one{Dodajte najviše {COUNT} karticu}few{Dodajte najviše {COUNT} kartice}other{Dodajte najviše {COUNT} kartica}}</translation>
 <translation id="7512909159512473473">Unesite šifru…</translation>
 <translation id="7514365320538308">Preuzmi</translation>
 <translation id="7514530647142300459">Nastavite upotrebljavati zaporke na svom Google računu <ph name="EMAIL" /></translation>
@@ -2236,6 +2237,7 @@ Handoff mora biti omogućen i u odjeljku Općenito u Postavkama, a vaši uređaj
 <translation id="9055291197094969722">Izradite grupe kartica da biste organizirali otvorene kartice i bili produktivni</translation>
 <translation id="9055580485132823283">Spremate se izbrisati zaporke (njih {password_count}), pristupne ključeve (njih {passkey_count}) i popis web-lokacija i aplikacija za koje ste odabrali da se podaci za prijavu nikad ne spremaju. Računi koje ste izradili za web-lokacije i aplikacije neće se izbrisati.</translation>
 <translation id="9057030985451135243">Saznajte više o dijeljenim grupama kartica</translation>
+<translation id="9064106978262828592">Poteškoće pri izvozu podataka</translation>
 <translation id="9065203028668620118">Uredi</translation>
 <translation id="9066097352053395362">Sakrij stavku Uredi oznaku</translation>
 <translation id="9070824521421603770">Odjavit ćete se i kartice će se zatvoriti</translation>

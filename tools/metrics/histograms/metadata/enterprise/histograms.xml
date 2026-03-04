@@ -682,6 +682,28 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Enterprise.DataControls.DragAndDrop.EvaluationLatency"
+    units="ms" expires_after="2027-02-09">
+  <owner>rslan@google.com</owner>
+  <owner>cep-se@google.com</owner>
+  <summary>
+    Records the time taken to evaluate the Data Controls policy verdict for a
+    drag and drop operation. This is synchronous on the UI thread. Recorded when
+    the policy evaluation finishes, immediately before the verdict is returned.
+  </summary>
+</histogram>
+
+<histogram name="Enterprise.DataControls.DragAndDrop.Verdict"
+    enum="DataControlsDragAndDropVerdict" expires_after="2027-02-09">
+  <owner>rslan@google.com</owner>
+  <owner>cep-se@google.com</owner>
+  <summary>
+    Records the verdict of the Data Controls policy check for a drag and drop
+    operation. This is recorded when the kDataControlsDragEnforcement feature is
+    enabled and the policy evaluation completes.
+  </summary>
+</histogram>
+
 <histogram name="Enterprise.DataProtection.URLVerdictSource"
     enum="DataProtectionURLVerdictSource" expires_after="2026-07-19">
   <owner>alshawwa@chromium.org</owner>
@@ -1451,7 +1473,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Enterprise.Dlp.ConfidentialContentsCount" units="entries"
-    expires_after="2026-06-14">
+    expires_after="2026-08-16">
   <owner>aidazolic@chromium.org</owner>
   <owner>chromeos-dlp@google.com</owner>
   <summary>
@@ -1775,7 +1797,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Enterprise.Dlp.ReportedWarnLevelRestriction"
-    enum="EnterpriseDlpPolicyRestriction" expires_after="2026-03-22">
+    enum="EnterpriseDlpPolicyRestriction" expires_after="2027-03-22">
   <owner>poromov@chromium.org</owner>
   <owner>chromeos-dlp@google.com</owner>
   <summary>
@@ -4376,7 +4398,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="EnterpriseCheck.SystemCallCount" units="count"
-    expires_after="2026-06-14">
+    expires_after="2026-08-16">
   <owner>nafisabedin@google.com</owner>
   <improvement direction="LOWER_IS_BETTER"/>
   <summary>

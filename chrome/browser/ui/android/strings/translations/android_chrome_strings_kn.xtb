@@ -24,6 +24,7 @@
 <translation id="1089606299949659462">ಪರಿಶೀಲನೆ ಪೂರ್ಣಗೊಂಡಿದೆ!</translation>
 <translation id="1094555143448724771">ನಿಮ್ಮ ಇತರ ಸಾಧನಗಳಲ್ಲಿನ ಟ್ಯಾಬ್‌ಗಳನ್ನು ನೋಡಲು, ನಿಮ್ಮ ಟ್ಯಾಬ್‌ಗಳು ಮತ್ತು ಇತಿಹಾಸವನ್ನು ಸಿಂಕ್ ಮಾಡಿ</translation>
 <translation id="1095761715416917775">ನಿಮ್ಮ ಸಿಂಕ್ ಡೇಟಾಕ್ಕೆ ನೀವು ಯಾವಾಗಲೂ ಆ್ಯಕ್ಸೆಸ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗುವ ಹಾಗೆ ನೋಡಿಕೊಳ್ಳಿ</translation>
+<translation id="1096091316906284742">Chrome Finds ಸಕ್ರಿಯಗೊಳಿಸುವಿಕೆ ಕೆಳಭಾಗದ ಶೀಟ್</translation>
 <translation id="1100066534610197918">ಗುಂಪಿನ ಹೊಸ ಟ್ಯಾಬ್‌ನಲ್ಲಿ ತೆರೆ</translation>
 <translation id="1103142993930332957">Chrome ಸುಧಾರಿಸಲು ಸಹಾಯ ಮಾಡಬೇಕೇ?</translation>
 <translation id="1105960400813249514">ಸ್ಕ್ರೀನ್ ಕ್ಯಾಪ್ಚರ್</translation>
@@ -299,6 +300,7 @@
 <translation id="2287421207599770907">{NUMBER_OF_TABS,plural, =1{<ph name="TABS_COUNT_ONE" /> ಟ್ಯಾಬ್ ಅನ್ನು ನೋಡಿ}one{<ph name="TABS_COUNT_MANY" /> ಟ್ಯಾಬ್‌ಗಳನ್ನು ನೋಡಿ}other{<ph name="TABS_COUNT_MANY" /> ಟ್ಯಾಬ್‌ಗಳನ್ನು ನೋಡಿ}}</translation>
 <translation id="2297822946037605517">ಈ ಪುಟವನ್ನು ಹಂಚಿ</translation>
 <translation id="230115972905494466">ಯಾವುದೇ ಹೊಂದಾಣಿಕೆಯಾಗುವ ಸಾಧನಗಳು ಕಂಡುಬಂದಿಲ್ಲ</translation>
+<translation id="2316129865977710310">ಬೇಡ, ಧನ್ಯವಾದಗಳು</translation>
 <translation id="2318045970523081853">ಕರೆ ಮಾಡಲು ಟ್ಯಾಪ್ ಮಾಡಿ</translation>
 <translation id="2323763861024343754">ಸೈಟ್ ಸಂಗ್ರಹಣೆ</translation>
 <translation id="2328474416100889417">ಪ್ರತಿಯೊಬ್ಬರೂ ತಕ್ಷಣವೇ "<ph name="GROUP_NAME" />" ಟ್ಯಾಬ್ ಗುಂಪಿಗೆ ಆ್ಯಕ್ಸೆಸ್ ಅನ್ನು ಕಳೆದುಕೊಳ್ಳುತ್ತಾರೆ ಮತ್ತು ಎಲ್ಲಾ ಆಹ್ವಾನ ಲಿಂಕ್‌ಗಳನ್ನು ಆಫ್ ಮಾಡಲಾಗುತ್ತದೆ</translation>
@@ -394,6 +396,7 @@
 <translation id="2702516483241149200">ಹೊಸ ಫೀಚರ್: ಈ ಪಠ್ಯಕ್ಕೆ ಸ್ಕ್ರಾಲ್ ಆಗುವ ಲಿಂಕ್ ಅನ್ನು ಹಂಚಿಕೊಳ್ಳಿ</translation>
 <translation id="2708226184420201102"><ph name="PRODUCT_NAME" /> ಅನ್ನು ಬ್ರೌಸರ್‌ನಲ್ಲಿ ತೆರೆಯಿರಿ</translation>
 <translation id="271033894570825754">ಹೊಸ ಸಂಗ್ರಹಣೆ</translation>
+<translation id="2710883118091822664">ನಿಮ್ಮ ಎಲ್ಲಾ ಸಾಧನಗಳಲ್ಲಿ ಸುಲಭವಾಗಿ ಮುಂದುವರಿಸಲು ಸೈನ್ ಇನ್ ಮಾಡಿ</translation>
 <translation id="2718352093833049315">ಕೇವಲ ವೈ-ಫೈ ಮಾತ್ರ</translation>
 <translation id="2718846868787000099">ವಿಷಯವನ್ನು ನಿಮ್ಮ ಆದ್ಯತೆಯ ಭಾಷೆಗಳಲ್ಲಿ ತೋರಿಸಲು, ನೀವು ಭೇಟಿ ನೀಡುವ ಸೈಟ್‌ಗಳು ನಿಮ್ಮ ಆದ್ಯತೆಗಳನ್ನು ನೋಡಬಹುದು</translation>
 <translation id="2723001399770238859">ಆಡಿಯೋ</translation>
@@ -475,6 +478,7 @@
 <translation id="2992473221983447149">ಚಿತ್ರದ ವಿವರಣೆಗಳು</translation>
 <translation id="2996291259634659425">ಪಾಸ್‌ಫ್ರೇಸ್ ರಚಿಸಿ</translation>
 <translation id="2996809686854298943">URL ಅಗತ್ಯವಿದೆ</translation>
+<translation id="3008916997590006706">ಮುಂದಿನ ಬಾರಿ ನೀವು ಸೈನ್ ಇನ್ ಮಾಡಿದಾಗ ಈ ಪಾಸ್‌ವರ್ಡ್ ಅನ್ನು ಸುಲಭವಾಗಿ ಆ್ಯಕ್ಸೆಸ್ ಮಾಡಲು ಸೇವ್ ಮಾಡಿ ಎಂಬುದನ್ನು ಟ್ಯಾಪ್ ಮಾಡಿ</translation>
 <translation id="3024215143424744261">ರೀಡಿಂಗ್ ಮೋಡ್ ಆದ್ಯತೆಗಳನ್ನು ಮುಚ್ಚಲಾಗಿದೆ</translation>
 <translation id="3026955690410463085">ಲಿಂಕ್ ಸೇರಿಸಿ</translation>
 <translation id="3027644380269727216">ಸೈಟ್‌ ಒಂದರಲ್ಲಿನ ನಿಮ್ಮ ಚಟುವಟಿಕೆಯನ್ನು ಆಧರಿಸಿ. ಈ ಸೆಟ್ಟಿಂಗ್ ಆನ್ ಆಗಿದೆ.</translation>
@@ -528,6 +532,7 @@
 <translation id="3268048651973962414">ಹುಡುಕಾಟ ಫಲಿತಾಂಶಗಳನ್ನು ನೋಡಲು ಮೇಲಕ್ಕೆ ಡ್ರ್ಯಾಗ್ ಮಾಡಿ</translation>
 <translation id="3269093882174072735">ಚಿತ್ರ ಲೋಡ್ ಮಾಡಿ</translation>
 <translation id="3280562213547448728">ಧ್ವನಿ ಹುಡುಕಾಟ</translation>
+<translation id="3282568296779691940">Chrome ಗೆ ಸೈನ್ ಇನ್ ಮಾಡಿ</translation>
 <translation id="3285065882678541460">{TAB_COUNT,plural, =1{<ph name="TAB_GROUPS_PART" />, <ph name="TAB_COUNT_ONE" /> ಟ್ಯಾಬ್}one{<ph name="TAB_GROUPS_PART" />, <ph name="TAB_COUNT_MANY" /> ಟ್ಯಾಬ್‌ಗಳು}other{<ph name="TAB_GROUPS_PART" />, <ph name="TAB_COUNT_MANY" /> ಟ್ಯಾಬ್‌ಗಳು}}</translation>
 <translation id="3286508210927575634">{PASSWORDS_COUNT,plural, =1{1 ಪಾಸ್‌ವರ್ಡ್ ಅನ್ನು ಈ ಸಾಧನದಲ್ಲಿ ಮಾತ್ರ ಸೇವ್‌ ಮಾಡಲಾಗಿದೆ. ಇದನ್ನು ನಿಮ್ಮ ಇತರ ಸಾಧನಗಳಲ್ಲಿ ಬಳಸಲು, ಇದನ್ನು ನಿಮ್ಮ Google ಖಾತೆಯಲ್ಲಿ ಸೇವ್ ಮಾಡಿ.}one{ಈ ಸಾಧನದಲ್ಲಿ # ಪಾಸ್‌ವರ್ಡ್‌ಗಳನ್ನು ಮಾತ್ರ ಸೇವ್‌ ಮಾಡಲಾಗಿದೆ. ಅವುಗಳನ್ನು ನಿಮ್ಮ ಇತರ ಸಾಧನಗಳಲ್ಲಿ ಬಳಸಲು, ಅವುಗಳನ್ನು ನಿಮ್ಮ Google ಖಾತೆಯಲ್ಲಿ ಸೇವ್‌ ಮಾಡಿ.}other{ಈ ಸಾಧನದಲ್ಲಿ # ಪಾಸ್‌ವರ್ಡ್‌ಗಳನ್ನು ಮಾತ್ರ ಸೇವ್‌ ಮಾಡಲಾಗಿದೆ. ಅವುಗಳನ್ನು ನಿಮ್ಮ ಇತರ ಸಾಧನಗಳಲ್ಲಿ ಬಳಸಲು, ಅವುಗಳನ್ನು ನಿಮ್ಮ Google ಖಾತೆಯಲ್ಲಿ ಸೇವ್‌ ಮಾಡಿ.}}</translation>
 <translation id="3293181007446299124">ನಿಮ್ಮ ಬ್ರೌಸಿಂಗ್ ಇತಿಹಾಸವು ನಿಮ್ಮ ಸಾಧನದಲ್ಲಿ ಖಾಸಗಿಯಾಗಿ ಉಳಿಯುತ್ತದೆ ಮತ್ತು ನಿಮ್ಮ ಗುರುತನ್ನು ರಕ್ಷಿಸಲು ವರದಿಗಳನ್ನು ತಡವಾಗಿ ಕಳುಹಿಸಲಾಗುತ್ತದೆ</translation>
@@ -606,6 +611,7 @@
 <translation id="3635073343384702370">ನೀವು ಪಾಸ್‌ವರ್ಡ್‌ಗಳನ್ನು ಸೇವ್ ಮಾಡಿದಾಗ, Chrome ಅವುಗಳನ್ನು ಪರಿಶೀಲಿಸಬಹುದು.</translation>
 <translation id="3636940436873918441">ಆದ್ಯತೆಯ ಭಾಷೆಗಳು</translation>
 <translation id="3637744895182738742">ನೀವು ಪಾಸ್‌ಫ್ರೇಸ್ ಅನ್ನು ಮರೆತಿದ್ದರೆ ಅಥವಾ ಈ ಸೆಟ್ಟಿಂಗ್ ಅನ್ನು ಬದಲಾಯಿಸಲು ಬಯಸಿದರೆ, <ph name="BEGIN_LINK" />ನಿಮ್ಮ ಖಾತೆಯಲ್ಲಿರುವ Chrome ಡೇಟಾವನ್ನು ಅಳಿಸಿ<ph name="END_LINK" />.</translation>
+<translation id="3641581193271938629">Chrome Finds ಆಯ್ಕೆಮಾಡುವಿಕೆ ಮುಚ್ಚಲಾಗಿದೆ</translation>
 <translation id="3647019414263135904">ಸಂದರ್ಭದ ಪಾಪ್ಅಪ್ ಅನ್ನು ತೆರೆಯಿರಿ ಅಥವಾ ಮುಚ್ಚಿರಿ</translation>
 <translation id="3653111872753786013"><ph name="WEBSITE_TITLE" />: <ph name="WEBSITE_URL" /></translation>
 <translation id="3674208116086565128">Google ಆ್ಯಪ್ ಹೋಮ್‌ಗೆ ಹೋಗಿ</translation>
@@ -714,7 +720,6 @@
 <translation id="4113030288477039509">ನಿಮ್ಮ ನಿರ್ವಾಹಕರಿಂದ ನಿರ್ವಹಿಸಲಾಗಿದೆ</translation>
 <translation id="4116038641877404294">ಪುಟಗಳನ್ನು ಆಫ್‌ಲೈನ್‌ನಲ್ಲಿ ಬಳಸಲು ಅವುಗಳನ್ನು ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ</translation>
 <translation id="4121654769234887259">ನೀವು ಈ ಪಾಸ್‌ವರ್ಡ್ ನೆನಪಿಟ್ಟುಕೊಳ್ಳುವ ಅಗತ್ಯವಿಲ್ಲ. ಅದನ್ನು <ph name="USERNAME" /> ನ Google Password Manager ನಲ್ಲಿ ಸೇವ್ ಮಾಡಲಾಗುತ್ತದೆ.</translation>
-<translation id="4124152339699379357">ಅಧಿಸೂಚನೆಯ ಅನುಮತಿಯ ಫ್ಲೋ ಅನ್ನು ಪೂರ್ಣ ಎತ್ತರದಲ್ಲಿ ತೆರೆಯಲಾಗಿದೆ</translation>
 <translation id="4132137475637520539">ಲಿಂಕ್ ಅನ್ನು ಹೊಂದಿರುವ ಯಾರಿಗಾದರೂ ಸೇರಿಕೊಳ್ಳಲು ಅವಕಾಶ ಮಾಡಿಕೊಡಿ</translation>
 <translation id="4135200667068010335">ಟ್ಯಾಬ್ ಅನ್ನು ಹಂಚಿಕೊಳ್ಳಬೇಕಾದ ಸಾಧನಗಳ ಪಟ್ಟಿಯನ್ನು ಮುಚ್ಚಲಾಗಿದೆ.</translation>
 <translation id="4136632885151622181"><ph name="TAB_TITLE" />, ಬಹು ಆಯ್ಕೆಮಾಡಿದ ಪಿನ್ ಮಾಡಿದ ರೆಕಾರ್ಡಿಂಗ್ ಟ್ಯಾಬ್</translation>
@@ -780,6 +785,7 @@
 <translation id="4384468725000734951">ಹುಡುಕಲು Sogou ಬಳಸಲಾಗುತ್ತಿದೆ</translation>
 <translation id="4387647248986092471">ಕಾರ್ ಪ್ರೊಫೈಲ್ ಲಾಕ್ ಅನ್ನು ರಚಿಸಿ</translation>
 <translation id="4387817230000841154">ಡೌನ್‌ಲೋಡ್‌ಗಳನ್ನು ತೆರೆಯಿರಿ</translation>
+<translation id="4395046795145457714">Chrome Find ಗಳ ಸಕ್ರಿಯಗೊಳಿಸುವಿಕೆಯನ್ನು ಪೂರ್ಣ ಎತ್ತರದಲ್ಲಿ ತೆರೆಯಲಾಗಿದೆ</translation>
 <translation id="4398561997852463382"><ph name="TAB_TITLE" />, ಆಯ್ಕೆಮಾಡಿದ ಪಿನ್ ಮಾಡಿದ ರೆಕಾರ್ಡಿಂಗ್ ಅಜ್ಞಾತ ಟ್ಯಾಬ್</translation>
 <translation id="4402611456429872546"><ph name="LANG" /> - ಡೌನ್‌ಲೋಡ್ ಆಗುತ್ತಿದೆ…</translation>
 <translation id="4404568932422911380">ಯಾವುದೇ ಬುಕ್‌ಮಾರ್ಕ್‌ಗಳು ಲಭ್ಯವಿಲ್ಲ</translation>
@@ -959,6 +965,7 @@
 <translation id="5075939510584558547">ಎನ್‌ಕ್ರಿಪ್ಶನ್ ಇಲ್ಲದೆ ಸೇವ್ ಮಾಡಿ</translation>
 <translation id="5078638979202084724">ಎಲ್ಲಾ ಟ್ಯಾಬ್‌ಗಳನ್ನು ಬುಕ್‌ಮಾರ್ಕ್ ಮಾಡಿ</translation>
 <translation id="5085038751173179818">ನಿಮ್ಮ ಎಲ್ಲಾ ಸಾಧನಗಳಲ್ಲಿ ನಿಮ್ಮ ಬುಕ್‌ಮಾರ್ಕ್‌ಗಳು ಮತ್ತು ಇತ್ಯಾದಿಗಳನ್ನು ಪಡೆಯಲು ಈ ಸೈಟ್ ಮತ್ತು Chrome ಗೆ ಸೈನ್ ಇನ್ ಮಾಡಿ</translation>
+<translation id="5088347662971855383">Gemini ಅನ್ನು ಪಿನ್ ಮಾಡಿ</translation>
 <translation id="5091199029769593641">ಶೀಘ್ರವೇ, ನೀವು ಹೊಸ ಟ್ಯಾಬ್ ಅನ್ನು ತೆರೆದಾಗ, ನಿಮಗೆ <ph name="SITE_NAME" /> ನಲ್ಲಿ ಸ್ಟೋರಿಗಳನ್ನು ಕಾಣುತ್ತವೆ. ನೀವು ಅನುಸರಿಸುವ ಸೈಟ್‌ಗಳನ್ನು ನಿಮ್ಮ Google ಖಾತೆಯಲ್ಲಿ ಸೇವ್ ಮಾಡಲಾಗಿದೆ. ನೀವು ಅವುಗಳನ್ನು Discover ಸೆಟ್ಟಿಂಗ್‌ಗಳಲ್ಲಿ ನಿರ್ವಹಿಸಬಹುದು.</translation>
 <translation id="509429900233858213">ದೋಷವೊಂದು ಕಾಣಿಸಿಕೊಂಡಿದೆ.</translation>
 <translation id="5096775069898886423">ಸುರಕ್ಷಿತ ಕನೆಕ್ಷನ್‌ಗಳನ್ನು ಬೆಂಬಲಿಸದ ಸೈಟ್‌ಗಳಿಗಾಗಿ, ಸೈಟ್‌ಗೆ ಭೇಟಿ ನೀಡುವ ಮೊದಲು ಎಚ್ಚರಿಕೆಯನ್ನು ಪಡೆಯಿರಿ</translation>
@@ -1003,6 +1010,7 @@
 <translation id="5267572070504076962">ಅಪಾಯಕಾರಿ ಸೈಟ್‌ಗಳ ದಾಳಿಯಿಂದ ರಕ್ಷಣೆ ಪಡೆಯಲು ಸುರಕ್ಷಿತ ಬ್ರೌಸಿಂಗ್ ಅನ್ನು ಆನ್ ಮಾಡಿ</translation>
 <translation id="5271967389191913893">ಡೌನ್‌ಲೋಡ್‌ ಮಾಡಬೇಕಾದ ವಿಷಯವನ್ನು ಸಾಧನಕ್ಕೆ ತೆರೆಯಲಾಗುತ್ತಿಲ್ಲ.</translation>
 <translation id="5273031377282080577">ನಿಮ್ಮ ನಿರ್ವಾಹಕರು ಈ ಸೆಟ್ಟಿಂಗ್ ಅನ್ನು ನಿರ್ವಹಿಸುತ್ತಾರೆ.</translation>
+<translation id="5290322819358431297">ಪಾಸ್‌ವರ್ಡ್‌ಗಳನ್ನು ಆಟೋಫಿಲ್ ಮಾಡಿ</translation>
 <translation id="5292796745632149097">ಇಲ್ಲಿಗೆ ಕಳುಹಿಸಿ</translation>
 <translation id="5301876394151419436">ನೀವು <ph name="EMAIL" /> ಎಂಬುದಾಗಿ ಸೈನ್ ಇನ್ ಮಾಡಿರುವಿರಿ ನೀವು ಸೆಟ್ಟಿಂಗ್‌ಗಳಲ್ಲಿ ಯಾವಾಗ ಬೇಕಾದರೂ ಸಿಂಕ್ ಮಾಡುವುದನ್ನು ನಿಲ್ಲಿಸಬಹುದು. Google, ನಿಮ್ಮ ಇತಿಹಾಸವನ್ನು ಆಧರಿಸಿ Search ಮತ್ತು ಇತರ ಸೇವೆಗಳನ್ನು ವೈಯಕ್ತಿಕಗೊಳಿಸಬಹುದು.</translation>
 <translation id="5304593522240415983">ಈ ಕ್ಷೇತ್ರವು ಖಾಲಿಯಾಗಿರುವಂತಿಲ್ಲ</translation>
@@ -1045,6 +1053,7 @@
 <translation id="5469852975082458401">ಪಠ್ಯದ ಕರ್ಸರ್ ಮೂಲಕ ನೀವು ಪುಟಗಳನ್ನು ನ್ಯಾವಿಗೇಟ್ ಮಾಡಬಹುದು. ಆಫ್ ಮಾಡಲು F7 ಒತ್ತಿರಿ.</translation>
 <translation id="5471273988133666918">ಟ್ಯಾಬ್ <ph name="TAB_TITLE" /> ಅನ್ನು ಸರಿಸಲು ಸಾಧ್ಯವಿಲ್ಲ</translation>
 <translation id="548278423535722844">ನಕ್ಷೆಗಳ ಅಪ್ಲಿಕೇಶನ್‌ನಲ್ಲಿ ತೆರೆಯಿರಿ</translation>
+<translation id="5489222148748465285">Chrome ಹುಡುಕುತ್ತಿರಲಿ?</translation>
 <translation id="5494920125229734069">ಎಲ್ಲವನ್ನೂ ಆಯ್ಕೆ ಮಾಡಿ</translation>
 <translation id="549660026907543296"><ph name="MEMBER_FULL_NAME" /> ಎಂಬುದಾಗಿ ಸೇರಿಕೊಳ್ಳಿ</translation>
 <translation id="5517326820028369152">ಇತ್ತೀಚಿನ ಚಟುವಟಿಕೆಯ ಕೆಳಭಾಗದ ಶೀಟ್‌</translation>
@@ -1095,6 +1104,7 @@
 <translation id="572328651809341494">ಇತ್ತೀಚಿನ ಟ್ಯಾಬ್‌ಗಳು</translation>
 <translation id="5728072125198221967">ಲಿಂಕ್ ಮಾಡಿರುವ Google ಸೇವೆಗಳು</translation>
 <translation id="5734658507307260911"><ph name="TAB_TITLE" />, ಪಿನ್ ಮಾಡಲಾದ ಆಡಿಬಲ್ ಅಜ್ಞಾತ ಟ್ಯಾಬ್</translation>
+<translation id="5736345781200955827">ನಿಮ್ಮ ಪಾಸ್‌ವರ್ಡ್‌ಗಳನ್ನು ರಚಿಸಿ, ಸೇವ್ ಮಾಡಿ ಹಾಗೂ ನಿರ್ವಹಿಸಿ ಇದರಿಂದ ನೀವು Chrome ಅನ್ನು ಬಳಸಿಕೊಂಡು ಸೈಟ್‌ಗಳು ಮತ್ತು ಆ್ಯಪ್‌ಗಳಿಗೆ ಸುಲಭವಾಗಿ ಸೈನ್ ಇನ್ ಮಾಡಬಹುದು</translation>
 <translation id="5744751019568455640">ನಿಮ್ಮ ವೆಬ್‌ಪುಟದಲ್ಲಿನ ವಿಷಯವನ್ನು ಓದಲು ನೀವು ಆಯ್ಕೆಮಾಡಬಹುದಾದ ಎಲ್ಲಾ ಧ್ವನಿಗಳು ಇಲ್ಲಿವೆ. ನೀವು ಈ ಧ್ವನಿಯನ್ನು ಇಷ್ಟಪಟ್ಟರೆ ಮತ್ತು ನಾನು ಅದನ್ನು ಬಳಸುವುದನ್ನು ಮುಂದುವರಿಸಲು ಬಯಸಿದರೆ, ಧ್ವನಿಯ ಹೆಸರನ್ನು ಟ್ಯಾಪ್ ಮಾಡಿ.</translation>
 <translation id="574845902699630049"><ph name="OWNER_FULL_NAME" /> ಹೆಸರಿನಲ್ಲಿ ಹಂಚಿಕೊಳ್ಳಿ</translation>
 <translation id="5749068826913805084">ಫೈಲ್‌ಗಳನ್ನು ಡೌನ್‌ಲೋಡ್ ಮಾಡಲು Chrome ಗೆ ಸಂಗ್ರಹಣೆ ಆ್ಯಕ್ಸೆಸ್ ಅಗತ್ಯವಿದೆ.</translation>
@@ -1339,7 +1349,9 @@
 <translation id="6647441008198474441">ನೀವು ಮುಂದೆ ಯಾವ ಸೈಟ್‌ಗಳಿಗೆ ಭೇಟಿ ನೀಡಬಹುದು ಎಂಬುದನ್ನು ಊಹಿಸಲು ನೀವು ಭೇಟಿ ನೀಡುವ URL ಗಳನ್ನು Google ಗೆ ಕಳುಹಿಸಲಾಗುತ್ತದೆ</translation>
 <translation id="6648977384226967773">{CONTACT,plural, =1{<ph name="CONTACT_PREVIEW" />\u2026 ಮತ್ತು ಇನ್ನೂ <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" />}one{<ph name="CONTACT_PREVIEW" />\u2026 ಮತ್ತು ಇನ್ನೂ <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" />}other{<ph name="CONTACT_PREVIEW" />\u2026 ಮತ್ತು ಇನ್ನೂ <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" />}}</translation>
 <translation id="6649642165559792194">ಚಿತ್ರವನ್ನು ಪೂರ್ವವೀಕ್ಷಿಸಿ <ph name="BEGIN_NEW" />ಹೊಸದು<ph name="END_NEW" /></translation>
+<translation id="6661521899577697780">Chrome Finds ಸಕ್ರಿಯಗೊಳಿಸುವಿಕೆಯನ್ನು ಅರ್ಧ ಎತ್ತರದಲ್ಲಿ ತೆರೆಯಲಾಗಿದೆ</translation>
 <translation id="666731172850799929"><ph name="APP_NAME" /> ರಲ್ಲಿ ತೆರೆಯಿರಿ</translation>
+<translation id="6669390930482049506">ನನಗೆ ತಿಳಿಸಿ</translation>
 <translation id="6671495933530132209">ಚಿತ್ರವನ್ನು ಕಾಪಿ ಮಾಡಿ</translation>
 <translation id="6672697278890207089">ನಿಮ್ಮ ಪಾಸ್‌ಫ್ರೇಸ್ ನಮೂದಿಸಿ</translation>
 <translation id="6672917148207387131"><ph name="DOMAIN" /> ಅನ್ನು ಸೇರಿಸಿ</translation>
@@ -1389,6 +1401,7 @@
 <translation id="6828070228333235514">ಬೆಲೆ ಟ್ರ್ಯಾಕಿಂಗ್ ಅನ್ನು ನಿಲ್ಲಿಸಿ</translation>
 <translation id="6830728435402077660">ಸುರಕ್ಷಿತವಾಗಿಲ್ಲ</translation>
 <translation id="6831043979455480757">Translate</translation>
+<translation id="6835182496791325827">ನೀವು ದೂರದಲ್ಲಿರುವಾಗ ನಿಮ್ಮ ಹುಡುಕಾಟಗಳಿಗೆ Chrome ಉತ್ತಮ ಫಲಿತಾಂಶಗಳನ್ನು ಕಂಡುಕೊಂಡಾಗ ಸೂಚನೆ ಪಡೆಯಿರಿ.</translation>
 <translation id="6846298663435243399">ಲೋಡ್ ಮಾಡಲಾಗುತ್ತಿದೆ...</translation>
 <translation id="6850409657436465440">ನಿಮ್ಮ ಡೌನ್‌ಲೋಡ್ ಇನ್ನೂ ಪ್ರಗತಿಯಲ್ಲಿದೆ</translation>
 <translation id="6850830437481525139"><ph name="TAB_COUNT" /> ಟ್ಯಾಬ್‌ಗಳನ್ನು ಮುಚ್ಚಲಾಗಿದೆ</translation>
@@ -1830,7 +1843,6 @@
 <translation id="8506357771923193001">ನಿಮ್ಮ ಡೌನ್‌ಲೋಡ್‌ಗಳನ್ನು ನೀವು ಇಲ್ಲಿ ಕಾಣಬಹುದು</translation>
 <translation id="8512053371384421952">ನೀವು ಇನ್ನು ಮುಂದೆ <ph name="DOMAIN" /> ನಿಂದ ನೋಟಿಫಿಕೇಶನ್‌ಗಳನ್ನು ಸ್ವೀಕರಿಸುವುದಿಲ್ಲ</translation>
 <translation id="8516012719330875537">ಚಿತ್ರದ ಎಡಿಟರ್</translation>
-<translation id="8526855376374973824">ಅಧಿಸೂಚನೆಯ ಅನುಮತಿಯ ಫ್ಲೋ</translation>
 <translation id="8533670235862049797">ಸುರಕ್ಷಿತ ಬ್ರೌಸಿಂಗ್ ಆನ್ ಆಗಿದೆ</translation>
 <translation id="8540136935098276800">ಸರಿಯಾಗಿ ಫಾರ್ಮ್ಯಾಟ್ ಮಾಡಲಾದ URL ಅನ್ನು ನಮೂದಿಸಿ</translation>
 <translation id="854522910157234410">ಈ ಪುಟವನ್ನು ತೆರೆಯಿರಿ</translation>
@@ -1901,7 +1913,6 @@
 <translation id="8854223127042600341">ನಿಮ್ಮ ಆಫ್‌ಲೈನ್ ಫೈಲ್‌ಗಳನ್ನು ನೋಡಿ</translation>
 <translation id="885480114717186641">ನೀವು <ph name="HOST_NAME" /> ಗಾಗಿ ಡೆಸ್ಕ್‌ಟಾಪ್ ಸೈಟ್ ಅನ್ನು ವಿನಂತಿಸಬಹುದು</translation>
 <translation id="8856607253650333758">ವಿವರಣೆಗಳನ್ನು ಪಡೆಯಿರಿ</translation>
-<translation id="8856931513242997049">ಅಧಿಸೂಚನೆಯ ಅನುಮತಿಯ ಫ್ಲೋ ಮುಚ್ಚಲಾಗಿದೆ</translation>
 <translation id="8863714995118816041"><ph name="SITE_NAME" /> ಗಾಗಿ ಪುನಃ ಅನುಮತಿಗಳನ್ನು ನೀಡಲಾಗಿದೆ</translation>
 <translation id="8865415417596392024">ನಿಮ್ಮ ಖಾತೆಯಲ್ಲಿರುವ Chrome ಡೇಟಾ</translation>
 <translation id="8872506776304248286">ಆಪ್‌ನಲ್ಲಿ ತೆರೆಯಿರಿ</translation>

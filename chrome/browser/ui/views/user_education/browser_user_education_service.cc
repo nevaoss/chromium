@@ -59,7 +59,6 @@
 #include "chrome/browser/ui/views/user_education/browser_ntp_promos.h"
 #include "chrome/browser/ui/views/user_education/custom_webui_help_bubble.h"
 #include "chrome/browser/ui/views/user_education/impl/browser_feature_promo_controller.h"
-#include "chrome/browser/ui/views/user_education/impl/browser_feature_promo_controller_20.h"
 #include "chrome/browser/ui/views/user_education/impl/browser_feature_promo_controller_25.h"
 #include "chrome/browser/ui/views/user_education/impl/browser_feature_promo_preconditions.h"
 #include "chrome/browser/ui/views/user_education/impl/browser_user_education_context.h"
@@ -1683,6 +1682,21 @@ void MaybeRegisterChromeFeaturePromos(
                          "Triggered when Tab Groups are interacted with.")));
   }
 
+  // kIPHiOSPriceTrackingDesktopFeature
+  if (MobilePromoOnDesktopTypeEnabled(
+          MobilePromoOnDesktopPromoType::kPriceTracking)) {
+    registry.RegisterFeature(std::move(
+        FeaturePromoSpecification::CreateForCustomUi(
+            feature_engagement::kIPHiOSPriceTrackingDesktopFeature,
+            kToolbarAvatarButtonElementId,
+            user_education::CreateCustomHelpBubbleViewFactoryCallback(
+                base::BindRepeating(
+                    &IOSPromoBubbleView::Create,
+                    desktop_to_mobile_promos::PromoType::kPriceTracking)))
+            .SetMetadata(146, "bmcclure@google.com",
+                         "Triggered when Price Tracking alerts are enabled.")));
+  }
+
 #endif  // BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN)
 
 #if BUILDFLAG(ENABLE_COMPOSE)
@@ -2130,27 +2144,16 @@ CreateUserEducationResources(UserEducationService& user_education_service) {
     MaybeRegisterNtpPromos(*user_education_service.ntp_promo_registry());
   }
 
-  if (user_education::features::IsUserEducationV25()) {
-    auto result = std::make_unique<BrowserFeaturePromoController25>(
-        feature_engagement::TrackerFactory::GetForBrowserContext(profile),
-        &user_education_service.feature_promo_registry(),
-        &user_education_service.help_bubble_factory_registry(),
-        &user_education_service.user_education_storage_service(),
-        &user_education_service.feature_promo_session_policy(),
-        &user_education_service.tutorial_service(),
-        &user_education_service.product_messaging_controller());
-    result->Init();
-    return result;
-  } else {
-    return std::make_unique<BrowserFeaturePromoController20>(
-        feature_engagement::TrackerFactory::GetForBrowserContext(profile),
-        &user_education_service.feature_promo_registry(),
-        &user_education_service.help_bubble_factory_registry(),
-        &user_education_service.user_education_storage_service(),
-        &user_education_service.feature_promo_session_policy(),
-        &user_education_service.tutorial_service(),
-        &user_education_service.product_messaging_controller());
-  }
+  auto result = std::make_unique<BrowserFeaturePromoController25>(
+      feature_engagement::TrackerFactory::GetForBrowserContext(profile),
+      &user_education_service.feature_promo_registry(),
+      &user_education_service.help_bubble_factory_registry(),
+      &user_education_service.user_education_storage_service(),
+      &user_education_service.feature_promo_session_policy(),
+      &user_education_service.tutorial_service(),
+      &user_education_service.product_messaging_controller());
+  result->Init();
+  return result;
 }
 
 void QueueLegalAndPrivacyNotices(Profile* profile) {

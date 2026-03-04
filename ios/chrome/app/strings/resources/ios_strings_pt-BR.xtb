@@ -125,6 +125,7 @@
 <translation id="1436671784520050284">Continuar a configuração</translation>
 <translation id="143681031165817424">Endereço salvo apenas neste dispositivo</translation>
 <translation id="1445276840641906250">Todas as guias em um só navegador</translation>
+<translation id="1447564161241938558">A importação de senhas e chaves de acesso foi desativada pelo admin</translation>
 <translation id="1450170672351507823">A proteção padrão está ativada. Para ter ainda mais segurança, use a Proteção reforçada.</translation>
 <translation id="1455660774629812862">Não ocultar</translation>
 <translation id="1456545332132818232">Avaliações do produto <ph name="PRODUCT_NAME" />, <ph name="STARS" /> de <ph name="MAX_STARS" />, em <ph name="DOMAIN" /></translation>
@@ -373,7 +374,6 @@
 <translation id="2306265833370324042">Mostrar detalhes de <ph name="SEARCH_ENGINE_NAME" /></translation>
 <translation id="2309265394777270359">Fechar guia</translation>
 <translation id="2311077293164383652">Fechar guia fixada</translation>
-<translation id="2313392466694008052">Editar imagem com o Gemini</translation>
 <translation id="2316129865977710310">Não.</translation>
 <translation id="2320166752086256636">Ocultar teclado</translation>
 <translation id="2321086116217818302">Preparando senhas…</translation>
@@ -1354,7 +1354,7 @@ A "Transição" também deve ser ativada na seção "Geral" das configurações.
 <translation id="5968400720580217226">Modo IA</translation>
 <translation id="5971459446352190251">Pesquisa por QR code</translation>
 <translation id="5971872012779224351">{count,plural, =1{1 favorito excluído}one{{count} favorito excluído}other{{count} favoritos excluídos}}</translation>
-<translation id="5972844218283131174">Desmarcar tudo</translation>
+<translation id="5972844218283131174">Desmarcar todas</translation>
 <translation id="5976160379964388480">Outros</translation>
 <translation id="5977976211062815271">Neste dispositivo</translation>
 <translation id="5986043348928676121">Avançar</translation>
@@ -1786,6 +1786,7 @@ A "Transição" também deve ser ativada na seção "Geral" das configurações.
 <translation id="7506817096924591340"><ph name="FILENAME" /> (<ph name="FILESIZE" />).</translation>
 <translation id="7508728395076009983">Para bloquear suas guias anônimas, configure o Touch ID, o Face ID ou uma senha.</translation>
 <translation id="750886945254958667">Mantenha este grupo para adicionar guias mais tarde ou saia dele se não quiser mais ter acesso</translation>
+<translation id="7511727374778217603">{COUNT,plural, =1{Adicione até 1 guia}one{Adicione até {COUNT} guia}other{Adicione até {COUNT} guias}}</translation>
 <translation id="7512909159512473473">Digite a senha longa…</translation>
 <translation id="7514365320538308">Baixar</translation>
 <translation id="7514530647142300459">Continue usando as senhas na sua Conta do Google <ph name="EMAIL" /></translation>
@@ -2236,6 +2237,7 @@ A "Transição" também deve ser ativada na seção "Geral" das configurações.
 <translation id="9055291197094969722">Crie grupos de guias para organizar as guias abertas e manter a produtividade</translation>
 <translation id="9055580485132823283">Você está prestes a excluir {password_count} senhas, {passkey_count} chaves de acesso e a lista de sites e apps em que escolheu nunca salvar informações de login. As contas que você criou em sites e apps não serão excluídas.</translation>
 <translation id="9057030985451135243">Saiba mais sobre os grupos de guias compartilhados.</translation>
+<translation id="9064106978262828592">Erro ao exportar seus dados</translation>
 <translation id="9065203028668620118">Editar</translation>
 <translation id="9066097352053395362">Ocultar opção "Editar favorito"</translation>
 <translation id="9070824521421603770">Sua conta será desconectada e as guias serão fechadas</translation>

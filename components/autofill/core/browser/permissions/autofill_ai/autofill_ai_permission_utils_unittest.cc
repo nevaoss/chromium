@@ -116,6 +116,7 @@ class AutofillAiPermissionUtilsTest : public ::testing::Test {
         client().GetSyncService(), webdata_helper_.autofill_webdata_service(),
         /*history_service=*/nullptr,
         /*strike_database=*/nullptr,
+        /*accessibility_annotator_data_adapter=*/nullptr,
         /*variation_country_code=*/GeoIpCountryCode("US")));
     client().SetUpPrefsAndIdentityForAutofillAi();
     client().set_sync_service(&sync_service_);
@@ -795,15 +796,14 @@ TEST_F(AutofillAiMayPerformImportToWalletTest,
 }
 
 // Tests that the Wallet import is not allowed for private passes if the country
-// is explicitly excluded (currently Germany, France and Italy).
+// is explicitly excluded (currently just France).
 TEST_F(AutofillAiMayPerformImportToWalletTest,
        ImportToWallet_FalseForPrivatePassIfCountryIsExcluded) {
   base::test::ScopedFeatureList feature_list{
       features::kAutofillAiWalletPrivatePasses};
   client().SetWalletStorageEnabled(true);
 
-  for (const auto& country : {GeoIpCountryCode("DE"), GeoIpCountryCode("FR"),
-                              GeoIpCountryCode("IT")}) {
+  for (const auto& country : {GeoIpCountryCode("FR")}) {
     SCOPED_TRACE(testing::Message() << "country: " << country.value());
     client().SetVariationConfigCountryCode(country);
     for (const EntityType entity_type : GetPrivatePasses()) {

@@ -510,7 +510,7 @@ Value FunContains::Evaluate(EvaluationContext& context) const {
   if (s2.empty())
     return true;
 
-  return s1.Contains(s2) != 0;
+  return s1.contains(s2) != 0;
 }
 
 Value FunSubstringBefore::Evaluate(EvaluationContext& context) const {
@@ -647,7 +647,7 @@ Value FunLang::Evaluate(EvaluationContext& context) const {
     return false;
 
   String lang_value = language_attribute->Value();
-  return lang_value.StartsWithIgnoringASCIICase(lang) &&
+  return lang_value.StartsWithIgnoringAsciiCase(lang) &&
          (lang.length() == lang_value.length() ||
           lang_value[lang.length()] == '-');
 }

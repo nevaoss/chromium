@@ -4334,6 +4334,7 @@ QuicChromiumClientSession::CreateWebSocketQuicStreamAdapterImpl(
     WebSocketQuicStreamAdapter::Delegate* delegate) {
   DCHECK(connection()->connected());
   DCHECK(CanOpenNextOutgoingBidirectionalStream());
+  DCHECK(allow_extended_connect());
   auto websocket_quic_spdy_stream = std::make_unique<WebSocketQuicSpdyStream>(
       GetNextOutgoingBidirectionalStreamId(), this, quic::BIDIRECTIONAL);
 

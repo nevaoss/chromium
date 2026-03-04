@@ -374,7 +374,6 @@
 <translation id="2306265833370324042">Dangos manylion <ph name="SEARCH_ENGINE_NAME" /></translation>
 <translation id="2309265394777270359">Cau'r Tab</translation>
 <translation id="2311077293164383652">Cau Tab wedi'i Binio</translation>
-<translation id="2313392466694008052">Golygu llun gyda Gemini</translation>
 <translation id="2316129865977710310">Dim diolch</translation>
 <translation id="2320166752086256636">Cuddio bysellfwrdd</translation>
 <translation id="2321086116217818302">Wrthi'n paratoi cyfrineiriau…</translation>
@@ -1787,6 +1786,7 @@ Rhaid galluogi Handoff hefyd yn adran Cyffredinol y Gosodiadau, a rhaid i'ch dyf
 <translation id="7506817096924591340"><ph name="FILENAME" /> (<ph name="FILESIZE" />).</translation>
 <translation id="7508728395076009983">I gloi eich tabiau anhysbys, gosodwch Touch ID, Face ID, neu God Pas.</translation>
 <translation id="750886945254958667">Cadwch y grŵp hwn i ychwanegu tabiau yn ddiweddarach, neu gadewch ef os nad ydych am gael mynediad ato mwyach</translation>
+<translation id="7511727374778217603">{COUNT,plural, =1{Ychwanegu hyd at 1 tab}zero{Ychwanegu hyd at {COUNT} tab}two{Ychwanegu hyd at {COUNT} dab}few{Ychwanegu hyd at {COUNT} tab}many{Ychwanegu hyd at {COUNT} tab}other{Ychwanegu hyd at {COUNT} tab}}</translation>
 <translation id="7512909159512473473">Rhowch gyfrinymadrodd…</translation>
 <translation id="7514365320538308">Lawrlwytho</translation>
 <translation id="7514530647142300459">Parhewch i ddefnyddio'r cyfrineiriau yn eich Cyfrif Google <ph name="EMAIL" /></translation>
@@ -2060,6 +2060,7 @@ Rhaid galluogi Handoff hefyd yn adran Cyffredinol y Gosodiadau, a rhaid i'ch dyf
 <translation id="8439758443371991593">Cuddio Ychwanegu at Restr Darllen</translation>
 <translation id="8443986842926457191">Mae'r URL yn fwy na 2048 nod</translation>
 <translation id="8449869326050867919">Wedi rhannu cyfrinair</translation>
+<translation id="8473815223723723001">Golygu llun gyda Gemini</translation>
 <translation id="8473863474539038330">Cyfeiriadau a rhagor</translation>
 <translation id="8474378002946546633">Caniatáu hysbysiadau</translation>
 <translation id="8477178913400731244">Dileu data</translation>
@@ -2237,6 +2238,7 @@ Rhaid galluogi Handoff hefyd yn adran Cyffredinol y Gosodiadau, a rhaid i'ch dyf
 <translation id="9055291197094969722">Creu grwpiau tab i drefnu eich tabiau agored ac aros yn gynhyrchiol</translation>
 <translation id="9055580485132823283">Rydych ar fin dileu {password_count} o gyfrineiriau, {passkey_count} o godau pas, a'r rhestr o wefannau ac apiau y gwnaethoch ddewis peidio byth â chadw mewngofnodi. Ni fydd unrhyw gyfrif a grëwyd gennych ar gyfer gwefannau ac apiau yn cael ei ddileu.</translation>
 <translation id="9057030985451135243">Dysgu rhagor am grwpiau tabiau a rennir</translation>
+<translation id="9064106978262828592">Trafferth wrth allforio'ch data</translation>
 <translation id="9065203028668620118">Golygu</translation>
 <translation id="9066097352053395362">Cuddio Golygu Nod Tudalen</translation>
 <translation id="9070824521421603770">Byddwch yn cael eich allgofnodi a bydd tabiau'n cael eu cau</translation>

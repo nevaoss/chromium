@@ -447,6 +447,16 @@ BASE_FEATURE(kConsumeCodeCacheOffThread, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kContentCaptureConstantStreaming,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+// If enabled, content:// URLs are considered local, and won't be allowed
+// to be downloaded.
+BASE_FEATURE(kContentSchemeIsLocal,
+#if BUILDFLAG(IS_ANDROID)
+             base::FEATURE_ENABLED_BY_DEFAULT
+#else
+             base::FEATURE_DISABLED_BY_DEFAULT
+#endif
+);
+
 // When enabled, add a new option, {imageOrientation: 'none'}, to
 // createImageBitmap, which ignores the image orientation metadata of the source
 // and renders the image as encoded.
@@ -600,11 +610,7 @@ BASE_FEATURE_PARAM(bool,
                    true);
 
 BASE_FEATURE(kDelayLayerTreeViewDeletionOnLocalSwap,
-#if BUILDFLAG(IS_ANDROID)
              base::FEATURE_ENABLED_BY_DEFAULT
-#else
-             base::FEATURE_DISABLED_BY_DEFAULT
-#endif
 );
 
 BASE_FEATURE_PARAM(base::TimeDelta,
@@ -1802,12 +1808,23 @@ BASE_FEATURE_PARAM(int,
                    kMemoryCacheStrongReferenceTotalSizeThresholdParam,
                    &kMemoryCacheStrongReference,
                    "memory_cache_strong_ref_total_size_threshold",
-                   15 * 1024 * 1024);
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+                   200 * 1024 * 1024
+#else
+                   15 * 1024 * 1024
+#endif
+);
+
 BASE_FEATURE_PARAM(int,
                    kMemoryCacheStrongReferenceResourceSizeThresholdParam,
                    &kMemoryCacheStrongReference,
                    "memory_cache_strong_ref_resource_size_threshold",
-                   3 * 1024 * 1024);
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+                   100 * 1024 * 1024
+#else
+                   3 * 1024 * 1024
+#endif
+);
 
 BASE_FEATURE(kMemoryPurgeOnFreeze,
 #if BUILDFLAG(IS_ANDROID)
@@ -2096,11 +2113,21 @@ BASE_FEATURE(kReducedReferrerGranularity, base::FEATURE_ENABLED_BY_DEFAULT);
 // Whether `blink::MemoryCache` and `blink::ResourceFetcher` release their
 // strong references to resources on memory pressure.
 BASE_FEATURE(kReleaseResourceStrongReferencesOnMemoryPressure,
-             base::FEATURE_ENABLED_BY_DEFAULT);
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+             base::FEATURE_DISABLED_BY_DEFAULT
+#else
+             base::FEATURE_ENABLED_BY_DEFAULT
+#endif
+);
 
 // Whether `blink::Resource` deletes its decoded data on memory pressure.
 BASE_FEATURE(kReleaseResourceDecodedDataOnMemoryPressure,
-             base::FEATURE_ENABLED_BY_DEFAULT);
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+             base::FEATURE_DISABLED_BY_DEFAULT
+#else
+             base::FEATURE_ENABLED_BY_DEFAULT
+#endif
+);
 
 // Flag guard for removing usage of the CommitNavigationParams.redirects
 // array of URLs in the renderer process.

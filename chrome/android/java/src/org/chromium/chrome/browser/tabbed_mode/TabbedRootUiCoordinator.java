@@ -106,6 +106,8 @@ import org.chromium.chrome.browser.gesturenav.BackActionDelegate;
 import org.chromium.chrome.browser.gesturenav.HistoryNavigationCoordinator;
 import org.chromium.chrome.browser.gesturenav.NavigationSheet;
 import org.chromium.chrome.browser.gesturenav.TabbedSheetDelegate;
+import org.chromium.chrome.browser.glic.GlicKeyedService;
+import org.chromium.chrome.browser.glic.GlicKeyedServiceFactory;
 import org.chromium.chrome.browser.history.HistoryManagerUtils;
 import org.chromium.chrome.browser.hub.HubManager;
 import org.chromium.chrome.browser.incognito.reauth.IncognitoReauthCoordinatorFactory;
@@ -126,7 +128,6 @@ import org.chromium.chrome.browser.multiwindow.MultiWindowUtils;
 import org.chromium.chrome.browser.night_mode.WebContentsDarkModeMessageController;
 import org.chromium.chrome.browser.notifications.permissions.NotificationPermissionController;
 import org.chromium.chrome.browser.notifications.permissions.NotificationPermissionController.RationaleDelegate;
-import org.chromium.chrome.browser.notifications.permissions.NotificationPermissionRationaleBottomSheet;
 import org.chromium.chrome.browser.notifications.permissions.NotificationPermissionRationaleDialogController;
 import org.chromium.chrome.browser.notifications.tips.TipsOptInCoordinator;
 import org.chromium.chrome.browser.notifications.tips.TipsUtils;
@@ -138,8 +139,8 @@ import org.chromium.chrome.browser.ntp_customization.policy.NtpCustomizationPoli
 import org.chromium.chrome.browser.ntp_customization.theme.NtpSyncedThemeManager;
 import org.chromium.chrome.browser.offlinepages.indicator.OfflineIndicatorControllerV2;
 import org.chromium.chrome.browser.offlinepages.indicator.OfflineIndicatorInProductHelpController;
-import org.chromium.chrome.browser.omnibox.OmniboxActionDelegateImpl;
 import org.chromium.chrome.browser.omnibox.UrlFocusChangeListener;
+import org.chromium.chrome.browser.omnibox.suggestions.action.OmniboxActionDelegateImpl;
 import org.chromium.chrome.browser.open_in_app.OpenInAppUtils;
 import org.chromium.chrome.browser.open_in_app.TabbedOpenInAppEntryPoint;
 import org.chromium.chrome.browser.pdf.PdfPageIphController;
@@ -223,7 +224,6 @@ import org.chromium.components.browser_ui.widget.scrim.ScrimManager;
 import org.chromium.components.browser_ui.widget.scrim.ScrimManager.ScrimClient;
 import org.chromium.components.collaboration.CollaborationService;
 import org.chromium.components.feature_engagement.Tracker;
-import org.chromium.components.omnibox.action.OmniboxActionDelegate;
 import org.chromium.components.signin.AccountManagerFacadeProvider;
 import org.chromium.components.signin.base.CoreAccountInfo;
 import org.chromium.components.signin.identitymanager.ConsentLevel;
@@ -1026,7 +1026,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                     new ChromeTabbedOnDragListener(
                             mMultiInstanceManager,
                             mTabModelSelectorSupplier.get(),
-                            mWindowAndroid,
+                            mActivity,
                             mLayoutStateProviderOneShotSupplier,
                             getDesktopWindowStateManager());
 
@@ -1627,7 +1627,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         if (TabBottomSheetUtils.isTabBottomSheetEnabled()) {
             View contentView =
                     LayoutInflater.from(mActivity).inflate(R.layout.search_activity, null);
-            OmniboxActionDelegate omniboxActionDelegate =
+            var omniboxActionDelegate =
                     new OmniboxActionDelegateImpl(
                             mActivity,
                             () -> null,
@@ -1881,18 +1881,10 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
             return true;
         }
 
-        final Supplier<RationaleDelegate> rationaleUIDelegateSupplier;
-        if (NotificationPermissionController.shouldUseBottomSheetRationaleUi()) {
-            rationaleUIDelegateSupplier =
-                    () ->
-                            new NotificationPermissionRationaleBottomSheet(
-                                    mActivity, getBottomSheetController());
-        } else {
-            rationaleUIDelegateSupplier =
-                    () ->
-                            new NotificationPermissionRationaleDialogController(
-                                    mActivity, mModalDialogManagerSupplier.get());
-        }
+        final Supplier<RationaleDelegate> rationaleUIDelegateSupplier =
+                () ->
+                        new NotificationPermissionRationaleDialogController(
+                                mActivity, mModalDialogManagerSupplier.get());
         mNotificationPermissionController =
                 new NotificationPermissionController(mWindowAndroid, rationaleUIDelegateSupplier);
         NotificationPermissionController.attach(mWindowAndroid, mNotificationPermissionController);
@@ -2121,6 +2113,27 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
             }
         } else if (id == R.id.close_window) {
             mActivity.finishAndRemoveTask();
+            return true;
+        } else if (id == R.id.glic_menu_id) {
+            Profile profile = mTabModelSelectorSupplier.get().getCurrentModel().getProfile();
+            assert profile != null;
+
+            GlicKeyedService service = GlicKeyedServiceFactory.getForProfile(profile);
+            if (service == null) {
+                return false;
+            }
+
+            var task = mChromeAndroidTaskSupplier.get();
+            if (task == null) {
+                Log.w(TAG, "Failed to trigger GLIC: ChromeAndroidTask is null.");
+                return false;
+            }
+            long browserWindowPtr = task.getOrCreateNativeBrowserWindowPtr(profile);
+            // TODO(crbug.com/479863299): Create and pass in enum for invocationSource.
+            service.toggleUI(
+                    browserWindowPtr,
+                    assumeNonNull(mProfileSupplier.get()),
+                    /* invocationSource= */ 7);
             return true;
         }
 

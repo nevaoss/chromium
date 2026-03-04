@@ -11,7 +11,7 @@ import {CrLitElement} from 'chrome://resources/lit/v3_0/lit.rollup.js';
 import {ToolMode} from 'chrome://resources/mojo/components/omnibox/composebox/composebox_query.mojom-webui.js';
 
 import type {ActionChip, ActionChipsHandlerInterface, PageCallbackRouter} from '../action_chips.mojom-webui.js';
-import {ChipType} from '../action_chips.mojom-webui.js';
+import {ChipType, IconType} from '../action_chips.mojom-webui.js';
 import {WindowProxy} from '../window_proxy.js';
 
 import {getCss} from './action_chips.css.js';
@@ -66,41 +66,47 @@ export class ActionChipsElement extends CrLitElement {
 
   static override get properties() {
     return {
-      actionChips_: {type: Array, state: true},
-      showSimplifiedUI_: {
-        type: Boolean,
-        reflect: true,
-      },
-      showDismissalUI_: {
+      reducedMotionPreferred: {
         type: Boolean,
         reflect: true,
       },
       showBackground: {type: Boolean, reflect: true},
+      actionChips_: {type: Array, state: true},
+      showDismissalUI_: {
+        type: Boolean,
+        reflect: true,
+      },
+      showSimplifiedUI_: {
+        type: Boolean,
+        reflect: true,
+      },
     };
   }
 
-  private handler: ActionChipsHandlerInterface;
-  private callbackRouter: PageCallbackRouter;
-  protected accessor actionChips_: ActionChip[] = [];
+  accessor reducedMotionPreferred: boolean = false;
   accessor showBackground: boolean = false;
-  protected accessor showSimplifiedUI_: boolean =
-      loadTimeData.getBoolean('ntpNextShowSimplificationUIEnabled');
+
+  protected accessor actionChips_: ActionChip[] = [];
   protected accessor showDismissalUI_: boolean =
       loadTimeData.getBoolean('ntpNextShowDismissalUIEnabled');
-  private onActionChipChangedListenerId_: number|null = null;
-  private initialLoadStartTime_: number|null = null;
+  protected accessor showSimplifiedUI_: boolean =
+      loadTimeData.getBoolean('ntpNextShowSimplificationUIEnabled');
 
+  private callbackRouter: PageCallbackRouter;
   private delayTabUploads_: boolean =
       loadTimeData.getBoolean('addTabUploadDelayOnActionChipClick');
+  private handler: ActionChipsHandlerInterface;
+  private initialLoadStartTime_: number|null = null;
+  private onActionChipChangedListenerId_: number|null = null;
 
   protected getAdditionalIconClasses_(chip: ActionChip): string {
-    switch (chip.type) {
-      case ChipType.kImage:
-        return 'banana';
-      case ChipType.kDeepSearch:
-        return 'deep-search';
-      case ChipType.kDeepDive:
-        return 'deep-dive';
+    switch (chip.suggestTemplateInfo.typeIcon) {
+      case IconType.kBanana:
+        return 'icon-type-banana';
+      case IconType.kGlobeWithSearchLoop:
+        return 'icon-type-globe-with-search-loop';
+      case IconType.kSubArrowRight:
+        return 'icon-type-sub-arrow-right';
       default:
         return '';
     }

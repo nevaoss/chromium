@@ -1373,7 +1373,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.DefaultBrowserPromo.GenericPromoDisplayCount"
-    units="count" expires_after="2026-06-14">
+    units="count" expires_after="2026-08-16">
   <owner>gayane@google.com</owner>
   <owner>bling-mony-pod@google.com</owner>
   <summary>
@@ -1486,7 +1486,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.DefaultBrowserVideoPromo.Fullscreen"
-    enum="IOSDefaultBrowserVideoPromoAction" expires_after="2026-06-14">
+    enum="IOSDefaultBrowserVideoPromoAction" expires_after="2026-08-16">
   <owner>cheickcisse@google.com</owner>
   <owner>sebsg@chromium.org</owner>
   <owner>bling-mony-pod@google.com</owner>
@@ -1874,7 +1874,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.ExperienceKitCalendar.Present"
-    enum="ExperienceKitCalendarTypes" expires_after="2026-06-07">
+    enum="ExperienceKitCalendarTypes" expires_after="2026-08-16">
   <owner>olivierrobin@chromium.org</owner>
   <owner>erahmaoui@google.com</owner>
   <summary>
@@ -3081,7 +3081,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.HomeCustomization.Background.UserUploaded.Error"
-    enum="IOSUserUploadedImageError" expires_after="2026-05-10">
+    enum="IOSUserUploadedImageError" expires_after="2026-08-16">
   <owner>cheickcisse@google.com</owner>
   <owner>bling-mony-pod@google.com</owner>
   <summary>
@@ -3092,7 +3092,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.HomeCustomization.Background.UserUploaded.ImageSizeInKB"
-    units="KB" expires_after="2026-05-03">
+    units="KB" expires_after="2026-08-16">
   <owner>cheickcisse@google.com</owner>
   <owner>bling-mony-pod@google.com</owner>
   <summary>
@@ -4235,7 +4235,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.MultiWindow.OpenInNewWindow" enum="WindowActivityOrigin"
-    expires_after="2026-03-29">
+    expires_after="2026-09-29">
   <owner>marq@chromium.org</owner>
   <owner>fedegermi@google.com</owner>
   <summary>
@@ -4499,7 +4499,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.NumberOfContextsToOpen" enum="ContextsToOpen"
-    expires_after="2026-05-03">
+    expires_after="2026-08-16">
   <owner>fedegermi@google.com</owner>
   <owner>bling-fundamentals@google.com</owner>
   <summary>
@@ -4887,7 +4887,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.PageLoad.DefaultModeMobile" enum="Boolean"
-    expires_after="2026-01-28">
+    expires_after="2027-01-28">
   <owner>gambard@chromium.org</owner>
   <owner>bling-fundamentals@google.com</owner>
   <summary>
@@ -4924,7 +4924,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.PageLoadTiming.OmnibarToPageLoaded" units="ms"
-    expires_after="2026-03-09">
+    expires_after="2027-03-09">
   <owner>gambard@chromium.org</owner>
   <owner>bling-fundamentals@google.com</owner>
   <summary>
@@ -5325,6 +5325,24 @@ chromium-metrics-reviews@google.com.
     Indicates whether the Post Restore Signin Promo was displayed. Note: this
     metric got expired for a while between 2024-03-31 and 2024-11-07.
   </summary>
+</histogram>
+
+<histogram name="IOS.PreviousActiveDays{Days}" units="count"
+    expires_after="2027-03-01">
+  <owner>gujen@google.com</owner>
+  <owner>bling-mony-pod@google.com</owner>
+  <summary>
+    Records the total number of days during which the client was active in a
+    lookback window of {Days} days. A client is considered active on a given day
+    if it emitted either Session.IsActive=Active or any value to
+    Session.TotalDuration. Recorded the first time a session starts or ends per
+    calendar day (based on current local time).
+  </summary>
+  <token key="Days">
+    <variant name="7"/>
+    <variant name="14"/>
+    <variant name="28"/>
+  </token>
 </histogram>
 
 <histogram name="IOS.PriceInsights.Model.CanTrack" enum="Boolean"
@@ -6651,7 +6669,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.Sessions.DiscardedScenesStillConnectedCount"
-    units="sessions" expires_after="2026-03-01">
+    units="sessions" expires_after="2026-09-01">
   <owner>sdefresne@google.com</owner>
   <owner>bling-fundamentals@google.com</owner>
   <summary>
@@ -6803,6 +6821,17 @@ chromium-metrics-reviews@google.com.
     Chrome and then opens URLs in another app won't be counted. As such, this
     metric undercounts the true number of Chrome shortcuts. This is a
     restriction of the native Shortcuts API.
+  </summary>
+</histogram>
+
+<histogram name="IOS.Snapshots.BlockedByPlaceholder" enum="Boolean"
+    expires_after="2027-02-12">
+  <owner>tarekmakkouk@google.com</owner>
+  <owner>bling-alchemy-eng@google.com</owner>
+  <summary>
+    Records whether a snapshot extraction fails because a placeholder is
+    scheduled to be shown for the next navigation. Yes (true) if blocked, No
+    (false) otherwise.
   </summary>
 </histogram>
 

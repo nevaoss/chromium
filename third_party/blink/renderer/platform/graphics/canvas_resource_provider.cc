@@ -892,9 +892,10 @@ scoped_refptr<StaticBitmapImage> CanvasResourceProviderSharedImage::Snapshot(
     return nullptr;
   }
 
-  // We don't need to EndWriteAccess here since that's required to make the
-  // rendering results visible on the GpuMemoryBuffer while we return cpu
-  // memory, rendererd to by skia, here.
+  // We don't need to EndWriteAccess here since that's required to upload the
+  // rendering results to the resource's SharedImage (e.g., for GPU compositing)
+  // while in this case we are simply returning the rendered CPU-side results to
+  // the client.
   if (!is_accelerated_) {
     return UnacceleratedSnapshot(orientation);
   }
@@ -1059,15 +1060,12 @@ Canvas2DResourceProviderBitmap::Create(gfx::Size size,
                                        viz::SharedImageFormat format,
                                        SkAlphaType alpha_type,
                                        const gfx::ColorSpace& color_space,
-                                       ShouldInitialize should_initialize,
                                        Delegate* delegate) {
   auto provider = base::WrapUnique<Canvas2DResourceProviderBitmap>(
       new Canvas2DResourceProviderBitmap(size, format, alpha_type, color_space,
                                          delegate));
   if (provider->IsValid()) {
-    if (should_initialize ==
-        CanvasResourceProvider::ShouldInitialize::kCallClear)
-      provider->ClearAtCreation();
+    provider->ClearAtCreation();
     // The ClearAtCreation() call cannot turn a CRPBitmap invalid.
     CHECK(provider->IsValid());
     return provider;
@@ -1115,13 +1113,12 @@ Canvas2DResourceProviderSharedImage::Create(
     viz::SharedImageFormat format,
     SkAlphaType alpha_type,
     const gfx::ColorSpace& color_space,
-    ShouldInitialize should_initialize,
     base::WeakPtr<WebGraphicsContext3DProviderWrapper> context_provider_wrapper,
     RasterMode raster_mode,
     gpu::SharedImageUsageSet shared_image_usage_flags,
     Delegate* delegate) {
   return CreateSharedImageProviderBase<Canvas2DResourceProviderSharedImage>(
-      size, format, alpha_type, color_space, should_initialize,
+      size, format, alpha_type, color_space, ShouldInitialize::kCallClear,
       context_provider_wrapper, raster_mode, shared_image_usage_flags,
       delegate);
 }
@@ -1130,15 +1127,13 @@ std::unique_ptr<Canvas2DResourceProviderSharedImage>
 Canvas2DResourceProviderSharedImage::Create(
     gfx::Size size,
     const Canvas2DColorParams& color_params,
-    ShouldInitialize initialize_provider,
     base::WeakPtr<WebGraphicsContext3DProviderWrapper> context_provider_wrapper,
     RasterMode raster_mode,
-    gpu::SharedImageUsageSet shared_image_usage_flags,
-    Delegate* delegate) {
+    gpu::SharedImageUsageSet shared_image_usage_flags) {
   return Create(size, color_params.GetSharedImageFormat(),
                 color_params.GetAlphaType(), color_params.GetGfxColorSpace(),
-                initialize_provider, std::move(context_provider_wrapper),
-                raster_mode, shared_image_usage_flags, delegate);
+                std::move(context_provider_wrapper), raster_mode,
+                shared_image_usage_flags);
 }
 
 std::unique_ptr<Canvas2DResourceProviderSharedImage>
@@ -1147,12 +1142,11 @@ Canvas2DResourceProviderSharedImage::CreateForSoftwareCompositor(
     viz::SharedImageFormat format,
     SkAlphaType alpha_type,
     const gfx::ColorSpace& color_space,
-    ShouldInitialize initialize_provider,
     WebGraphicsSharedImageInterfaceProvider* shared_image_interface_provider,
     Delegate* delegate) {
   return CreateSharedImageProviderForSoftwareCompositorBase<
       Canvas2DResourceProviderSharedImage>(
-      size, format, alpha_type, color_space, initialize_provider,
+      size, format, alpha_type, color_space, ShouldInitialize::kCallClear,
       shared_image_interface_provider, delegate);
 }
 
@@ -1909,12 +1903,10 @@ void CanvasResourceProviderSharedImage::DisableLineDrawingAsPathsIfNecessary() {
 std::unique_ptr<CanvasResourceProvider>
 Canvas2DResourceProviderBitmap::CreateForTesting(
     gfx::Size size,
-    const Canvas2DColorParams& color_params,
-    ShouldInitialize initialize_provider,
-    Delegate* delegate) {
+    const Canvas2DColorParams& color_params) {
   return Canvas2DResourceProviderBitmap::Create(
       size, color_params.GetSharedImageFormat(), color_params.GetAlphaType(),
-      color_params.GetGfxColorSpace(), initialize_provider, delegate);
+      color_params.GetGfxColorSpace());
 }
 
 }  // namespace blink

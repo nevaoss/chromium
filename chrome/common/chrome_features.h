@@ -142,10 +142,6 @@ BASE_DECLARE_FEATURE(kDesktopTaskManagerEndProcessDisabledForExtension);
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kChromeStructuredMetrics);
 
-// TODO(crbug.com/419817061): Remove this flag when launch is complete.
-COMPONENT_EXPORT(CHROME_FEATURES)
-BASE_DECLARE_FEATURE(kCreateProfileIfNoneExists);
-
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kCustomizeTabGroupColorPalette);
 
@@ -408,6 +404,9 @@ COMPONENT_EXPORT(CHROME_FEATURES) BASE_DECLARE_FEATURE(kGlicShowStatusTrayIcon);
 #endif
 COMPONENT_EXPORT(CHROME_FEATURES)
 extern const base::FeatureParam<std::string> kGlicGuestURL;
+
+COMPONENT_EXPORT(CHROME_FEATURES)
+BASE_DECLARE_FEATURE(kGlicContextualCueBubble);
 
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kGlicUserStatusCheck);
@@ -764,6 +763,7 @@ extern const base::FeatureParam<int> kGlicGuestUrlPresetType;
 
 #if BUILDFLAG(ENABLE_GLIC) && BUILDFLAG(ENABLE_PDF)
 COMPONENT_EXPORT(CHROME_FEATURES) BASE_DECLARE_FEATURE(kPdfGlicSummarize);
+COMPONENT_EXPORT(CHROME_FEATURES) BASE_DECLARE_FEATURE(kPdfGlicSummarizeFre);
 #endif
 
 #if !BUILDFLAG(IS_ANDROID)
@@ -807,18 +807,12 @@ BASE_DECLARE_FEATURE(kHappinessTrackingSurveysForDesktopHistoryPageExperiment);
 COMPONENT_EXPORT(CHROME_FEATURES)
 extern const base::FeatureParam<base::TimeDelta>
     kHappinessTrackingSurveysForDesktopHistoryPageExperimentTime;
-COMPONENT_EXPORT(CHROME_FEATURES)
-extern const base::FeatureParam<std::string>
-    kHappinessTrackingSurveysForDesktopHistoryPageExperimentTriggerId;
 
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kHappinessTrackingSurveysForDesktopHistoryPageControl);
 COMPONENT_EXPORT(CHROME_FEATURES)
 extern const base::FeatureParam<base::TimeDelta>
     kHappinessTrackingSurveysForDesktopHistoryPageControlTime;
-COMPONENT_EXPORT(CHROME_FEATURES)
-extern const base::FeatureParam<std::string>
-    kHappinessTrackingSurveysForDesktopHistoryPageControlTriggerId;
 
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kHappinessTrackingSurveysForHistoryEmbeddings);
@@ -963,12 +957,8 @@ BASE_DECLARE_FEATURE(kHttpsFirstModeIncognito);
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kHttpsFirstModeIncognitoNewSettings);
 
-#if BUILDFLAG(IS_MAC)
-COMPONENT_EXPORT(CHROME_FEATURES) BASE_DECLARE_FEATURE(kImmersiveFullscreen);
 COMPONENT_EXPORT(CHROME_FEATURES)
-BASE_DECLARE_FEATURE(kImmersiveFullscreenPWAs);
-COMPONENT_EXPORT(CHROME_FEATURES) BASE_DECLARE_FEATURE(kFullscreenAnimateTabs);
-#endif
+BASE_DECLARE_FEATURE(kIndigo);
 
 #if !BUILDFLAG(IS_ANDROID)
 COMPONENT_EXPORT(CHROME_FEATURES)

@@ -51,7 +51,7 @@
 
 #if !BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 #include "chrome/grit/guest_view_shared_resources_map.h"  // nogncheck
-#include "components/guest_view/browser/slim_web_view/slim_web_view_page_handler.h"  // nogncheck
+#include "components/guest_view/browser/slim_web_view/slim_web_view_page_handler_factory.h"  // nogncheck
 #endif  // !BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 
 namespace glic {
@@ -59,6 +59,16 @@ namespace glic {
 // Enables sending bitmaps across glic for favicons instead of converting to
 // PNG.
 BASE_FEATURE(kGlicBitmapsEnabled, base::FEATURE_ENABLED_BY_DEFAULT);
+
+// Sets the maximum number of in-flight requests to the guest.
+BASE_FEATURE(kGlicMaxInFlightRequests, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE_PARAM(int,
+                   kGlicMaxInFlightRequestLimit,
+                   &kGlicMaxInFlightRequests,
+                   "max_in_flight_request_limit",
+                   200);
+BASE_FEATURE(kGlicSendResponsesForAllRequests,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 class GlicPreloadHandler : public glic::mojom::GlicPreloadHandler {
  public:
@@ -186,6 +196,14 @@ GlicUI::GlicUI(content::WebUI* web_ui)
   source->AddBoolean("loggingEnabled",
                      command_line->HasSwitch(::switches::kGlicHostLogging));
 
+  source->AddInteger("maxInFlightRequests",
+                     base::FeatureList::IsEnabled(kGlicMaxInFlightRequests)
+                         ? kGlicMaxInFlightRequestLimit.Get()
+                         : INT_MAX);
+  source->AddBoolean(
+      "sendResponsesForAllRequests",
+      base::FeatureList::IsEnabled(kGlicSendResponsesForAllRequests));
+
   // Set up guest URL via cli flag or default to finch param value.
   const GURL guest_url = GetGuestURL();
   source->AddString("glicGuestURL", guest_url.spec());
@@ -300,14 +318,6 @@ GlicUI* GlicUI::From(content::WebContents* web_contents) {
   return controller->GetAs<GlicUI>();
 }
 
-#if !BUILDFLAG(ENABLE_EXTENSIONS_CORE)
-void GlicUI::BindInterface(
-    mojo::PendingReceiver<guest_view::mojom::PageHandlerFactory> receiver) {
-  slim_web_view_page_factory_receiver_.reset();
-  slim_web_view_page_factory_receiver_.Bind(std::move(receiver));
-}
-#endif  // !BUILDFLAG(ENABLE_EXTENSIONS_CORE)
-
 void GlicUI::BindInterface(
     mojo::PendingReceiver<glic::mojom::PageHandlerFactory> receiver) {
   page_factory_receiver_.reset();
@@ -341,14 +351,6 @@ void GlicUI::AttachToHost(Host* host) {
         std::move(pending_page_));
   }
 }
-
-#if !BUILDFLAG(ENABLE_EXTENSIONS_CORE)
-void GlicUI::CreatePageHandler(
-    mojo::PendingReceiver<guest_view::mojom::PageHandler> receiver) {
-  guest_view::SlimWebViewPageHandler::CreateForCurrentDocument(
-      web_ui()->GetRenderFrameHost(), std::move(receiver));
-}
-#endif  // !BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 
 void GlicUI::CreatePageHandler(
     mojo::PendingReceiver<glic::mojom::PageHandler> receiver,
@@ -385,5 +387,11 @@ void GlicUI::CreatePreloadHandler(
       web_ui()->GetWebContents()->GetBrowserContext(), std::move(receiver),
       std::move(page));
 }
+
+#if !BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+content::RenderFrameHost* GlicUI::GetWebUiRenderFrameHost() {
+  return web_ui()->GetRenderFrameHost();
+}
+#endif  // !BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 
 }  // namespace glic

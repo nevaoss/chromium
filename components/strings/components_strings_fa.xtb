@@ -704,6 +704,7 @@
 <translation id="2137891579555018930">درانتظار اجازه…</translation>
 <translation id="213826338245044447">نشانک‌های تلفن‌ همراه</translation>
 <translation id="2141000681034340397">ویرایش ورودی</translation>
+<translation id="2141475438898772664">پرداخت در ۴ قسط یا به‌صورت ماهانه</translation>
 <translation id="2144171668675205303">موضوع فعالی وجود ندارد</translation>
 <translation id="2145193671493396738">اخبار اقتصادی</translation>
 <translation id="214556005048008348">لغو پرداخت</translation>
@@ -961,7 +962,7 @@
 <translation id="2514548229949738417">خانه و باغ</translation>
 <translation id="2515629240566999685">بررسی سیگنال در منطقه‌تان</translation>
 <translation id="2515761554693942801">‏قبلاً انتخاب کرده‌اید در وب‌سایت‌هایی که از <ph name="PROVIDER_ORIGIN" /> استفاده می‌کنند درستی‌سنجی با Touch ID انجام شود. این ارائه‌دهنده ممکن است اطلاعات روش پرداختتان را ذخیره کرده باشد، که می‌توانید <ph name="LINK_TEXT" />.</translation>
-<translation id="2518584823165598232">این کارت دردسترس نیست. لطفاً با ارائه‌دهنده کارت تماس بگیرید.</translation>
+<translation id="2518584823165598232">این کارت دردسترس نیست. لطفاً با ارائه‌کننده کارت تماس بگیرید.</translation>
 <translation id="2521385132275182522">منگنه در پایین سمت راست</translation>
 <translation id="2521736961081452453">ایجاد فرم</translation>
 <translation id="2524461107774643265">افزودن اطلاعات بیشتر</translation>
@@ -1118,6 +1119,7 @@
 <translation id="277133753123645258">روش ارسال</translation>
 <translation id="277499241957683684">ثبت دستگاه موجود نیست</translation>
 <translation id="2775884851269838147">صفحه چاپ اول</translation>
+<translation id="277828055419948999">‏‫Chromium می‌تواند فیلدهای دشواری را که تکمیل خودکار استاندارد ممکن است ازدست بدهد تکمیل کند.</translation>
 <translation id="2781185443919227679">ساحل و جزیره</translation>
 <translation id="2781692009645368755">Google Pay</translation>
 <translation id="2781799097551205934">درحال آماده شدن برای تسویه‌حساب</translation>
@@ -2258,7 +2260,7 @@
 <translation id="4612904677925722054">این سایت ممکن است محتوای مناسب بزرگسالان داشته باشد. ولی یا سرپرست باید بازدید شما از این وب‌سایت را تأیید کند.</translation>
 <translation id="4619564267100705184">هویتتان را درستی‌سنجی کنید</translation>
 <translation id="4622292761762557753">درهرصورت منتقل شود</translation>
-<translation id="4622647778991854660">اعلان‌ها را در «مرکز اعلان» فعال کنید. باز کردن <ph name="LINK" />.</translation>
+<translation id="4622647778991854660">اعلان‌ها را در «مرکز اعلان‌ها» فعال کنید. باز کردن <ph name="LINK" />.</translation>
 <translation id="4623894491222334521">مدارک شناسایی</translation>
 <translation id="4627675673814409125">‏این خط‌مشی را نمی‌توان در سطح نمایه Chrome تنظیم کرد و نادیده گرفته خواهد شد.</translation>
 <translation id="4628678854894591460">پیشنهادهای تعطیلات</translation>
@@ -2474,6 +2476,7 @@
 <translation id="4950898438188848926">‏دکمه جابه‌جایی برگه، برای جابه‌جایی به برگه باز، کلید Enter را فشار دهید، <ph name="TAB_SWITCH_FOCUSED_FRIENDLY_MATCH_TEXT" /></translation>
 <translation id="495170559598752135">کنش‌ها</translation>
 <translation id="4953689047182316270">پاسخ دادن به رویدادهای مربوط به دسترس‌پذیری</translation>
+<translation id="4954505713046251871">‏برای ارائه پیشنهادها و بهبود این ویژگی، نشانی وب و محتوای صفحه با Google هم‌رسانی می‌شود</translation>
 <translation id="4954891067389874142">‏وقتی کارتتان ذخیره شده باشد، می‌توانید سریع‌تر پرداخت کنید. جزئیات کارت در «کیف پول Google» رمزگذاری می‌شود.</translation>
 <translation id="4957080528849277028">‏دکمه «مشاهده سابقه Chrome»؛ برای مشاهده و مدیریت سابقه مرور در تنظیمات Chrome، آن را فعال کنید</translation>
 <translation id="4957781475307065660">{DOMAIN_COUNT,plural, =1{‫+ ۱ سایت}one{‫+ # سایت}other{‫+ # سایت}}</translation>
@@ -2659,7 +2662,7 @@
 <translation id="5254043433801397071">بهینه‌سازی محتوای چاپ</translation>
 <translation id="5255583962255635076">خط‌مشی‌های مرورگر اعمال‌شده در نمایه کاری شما</translation>
 <translation id="5255690596502591079">درهرصورت ضبط شود</translation>
-<translation id="5255771248404149177">ارائه‌دهنده کارت شما می‌خواهد هویت شما را تأیید کند</translation>
+<translation id="5255771248404149177">ارائه‌کننده کارت شما می‌خواهد هویت شما را تأیید کند</translation>
 <translation id="525579853540851404">صفحه پیشرفت «حالا خرید کنید، بعداً بپردازید». صفحه‌کلید پنهان است.</translation>
 <translation id="5255833070095767006">۴۶۰ × ۳۵۰ میلی‌متر</translation>
 <translation id="5257739419779698609">{0,plural, =1{خط‌مشی سرپرست توصیه نمی‌کند این فایل را در <ph name="DESTINATION_NAME" /> کپی کنید}one{خط‌مشی سرپرست توصیه نمی‌کند این فایل را در <ph name="DESTINATION_NAME" /> کپی کنید}other{خط‌مشی سرپرست توصیه نمی‌کند این فایل‌ها را در <ph name="DESTINATION_NAME" /> کپی کنید}}</translation>
@@ -2848,6 +2851,7 @@
 <translation id="5543564889050342791">باغ وحش، آکواریوم، منطقه حفاظت‌شده</translation>
 <translation id="5543722831081909240">۱۸۰ درجه</translation>
 <translation id="5544836308113951378">سفر دریایی و دربستی</translation>
+<translation id="5545314360139398232">به <ph name="ISSUER_NAME" /> پیوند دهید تا بتوانید قسطی پرداخت کنید</translation>
 <translation id="5547939254150808298">چاپ و نشر</translation>
 <translation id="554815783948612276">ارائه‌دهند گپ و تالار گفتمان</translation>
 <translation id="5548606607480005320">بررسی ایمنی</translation>
@@ -3695,6 +3699,7 @@
 <translation id="6926216138694948720">هنر بدن</translation>
 <translation id="692638818576287323">خودروهای تجاری</translation>
 <translation id="6927878187051807444">فایل‌های دوربین و نماگرفت‌ها</translation>
+<translation id="6929949393612835405">بستن و برگشتن به «<ph name="OPENER_TITLE" />»</translation>
 <translation id="6930607614725241390">جستجو در پانل کناری</translation>
 <translation id="6934236486840930310">‏<ph name="BEGIN_BOLD" />موتور جستجوی پیش‌فرض به شما امکان می‌دهد در وب جستجو کنید و ویژگی‌های Chrome را تقویت می‌کند<ph name="END_BOLD" />، مثلاً جستجو از نوار نشانی و از تصاویر موجود در صفحه‌های وب. اگر موتور جستجوی شما از ویژگی‌ای پشتیبانی نکند، شاید آن ویژگی دردسترس نباشد.</translation>
 <translation id="6934672428414710184">‏این نام از حساب Google شما گرفته شده است</translation>
@@ -3882,7 +3887,7 @@
 <translation id="7217745192097460130">از «شناسه لمسی» برای تأیید و تکمیل خرید استفاده شود؟</translation>
 <translation id="7219179957768738017">اتصال از <ph name="SSL_VERSION" /> استفاده می‌کند.</translation>
 <translation id="7220786058474068424">درحال پردازش</translation>
-<translation id="7221855153210829124">نمایش اعلان‌ها</translation>
+<translation id="7221855153210829124">نشان دادن اعلان‌ها</translation>
 <translation id="722454870747268814">زبانه ناشناس جدید</translation>
 <translation id="7226892411756387078">متن ساده</translation>
 <translation id="7227293336683593977">سابقه قیمت</translation>
@@ -3977,13 +3982,14 @@
 <translation id="7377314930809374926">صنعت مهمان‌داری</translation>
 <translation id="7378594059915113390">کنترل‌های رسانه</translation>
 <translation id="7378810950367401542">/</translation>
+<translation id="7379321689415048316">‏‫Chrome می‌تواند فیلدهای دشواری را که تکمیل خودکار استاندارد ممکن است ازدست بدهد تکمیل کند</translation>
 <translation id="7380398842872229465">۱۵ × ۱۰ اینچ</translation>
 <translation id="7381551826960739226">تکمیل خودکار روش‌های پرداخت غیرفعال است زیرا این فرم از اتصال ایمن استفاده نمی‌کند.</translation>
 <translation id="7388380253839603603">قیمت بنزین و تأمین سوخت خودرو</translation>
 <translation id="7388594495505979117">{0,plural, =1{دستگاه یک دقیقه دیگر بازراه‌اندازی خواهد شد}one{دستگاه # دقیقه دیگر بازراه‌اندازی خواهد شد}other{دستگاه # دقیقه دیگر بازراه‌اندازی خواهد شد}}</translation>
 <translation id="7393161616326137353">بازی‌های ماجراجویی</translation>
 <translation id="7393475648162498734">پاداش‌ها و مزایایی که برای کارت‌هایتان دردسترس است در زمان تسویه‌حساب نشان داده می‌شود</translation>
-<translation id="7393971683644170444">درحال متصل شدن به ارائه‌دهنده کارت…</translation>
+<translation id="7393971683644170444">درحال متصل کردن به ارائه‌کننده کارت…</translation>
 <translation id="739728382607845710">نماد مدیریت‌كننده پرداخت</translation>
 <translation id="7399616692258236448">درخواست‌های مکان به‌طور خودکار برای همه سایت‌ها، به‌جز آن‌هایی که مجاز کرده‌اید، مسدود می‌شوند</translation>
 <translation id="7400418766976504921">نشانی وب</translation>
@@ -4225,6 +4231,7 @@
 <translation id="7714404809393719981">عکس (نیمه‌براق)</translation>
 <translation id="7714424966701020172">گزینه تکمیل نام کامل انتخاب شد</translation>
 <translation id="7714464543167945231">گواهی</translation>
+<translation id="7714943438925794410">‏محتوای صفحه تسویه‌حساب برای ارائه این گزینه‌ها، با Google هم‌رسانی می‌شود. برای پنهان کردن گزینه‌های «بعداً پرداخت شود» در «تکمیل خودکار»، به <ph name="IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_FOOTNOTE_HIDE_OPTION_PAYMENT_SETTINGS_LINK_TEXT" /> بروید.</translation>
 <translation id="7716147886133743102">توسط سرپرست مسدود شده است</translation>
 <translation id="7716375162095500223">هنوز بارگذاری نشده است یا رد شده است</translation>
 <translation id="7716424297397655342">این سایت نمی‌تواند از حافظه پنهان بار شود</translation>
@@ -4307,6 +4314,7 @@
 <translation id="7862306158978555061">نمایش اطلاعات حساس</translation>
 <translation id="7865448901209910068">بهترین سرعت</translation>
 <translation id="7865482168955081228">صفحه خطای «حالا خرید کنید، بعداً بپردازید» بسته شد.</translation>
+<translation id="7870207318911766769">‏محتوای صفحه تسویه‌حساب برای ارائه این گزینه‌ها، با Google هم‌رسانی می‌شود.</translation>
 <translation id="7870281855125116701">تخفیف پیدا شد</translation>
 <translation id="7871445724586827387">‏تغییر گذرواژه «حساب Google»</translation>
 <translation id="787226752901403048">‏به سیستم Chrome وارد شوید و گروه‌های زبانه را هم‌سانی کنید، به آن‌ها بپیوندید، و با هم روی ایده‌ها کار کنید</translation>

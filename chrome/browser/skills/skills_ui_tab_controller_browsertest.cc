@@ -99,15 +99,15 @@ class SkillsUiTabControllerBrowserTest : public InProcessBrowserTest {
 IN_PROC_BROWSER_TEST_F(SkillsUiTabControllerBrowserTest,
                        ShowDialogOpensWidget) {
   EXPECT_FALSE(IsDialogVisible());
-  histogram_tester_.ExpectBucketCount(
-      "Skills.Actions", skills::SkillsActions::kOpenedCreationDialog, 0);
-  skills::Skill test_skill("id", "skill_name", "icon", "Test Prompt");
+  histogram_tester_.ExpectBucketCount("Skills.Dialog.Creation.Action",
+                                      SkillsDialogAction::kOpened, 0);
+  skills::Skill test_skill("", "skill_name", "icon", "Test Prompt");
   skills_ui_tab_controller()->ShowDialog(std::move(test_skill));
 
   EXPECT_TRUE(IsDialogVisible());
   EXPECT_NE(nullptr, GetDialogWebContents());
-  histogram_tester_.ExpectBucketCount(
-      "Skills.Actions", skills::SkillsActions::kOpenedCreationDialog, 1);
+  histogram_tester_.ExpectBucketCount("Skills.Dialog.Creation.Action",
+                                      SkillsDialogAction::kOpened, 1);
 }
 
 // Verify calling ShowDialog twice doesn't open two dialogs.
@@ -252,16 +252,15 @@ IN_PROC_BROWSER_TEST_F(SkillsUiTabControllerBrowserTest,
   // Enable Glic late to avoid a crash in GlicTabIndicatorHelper during tab
   // creation.
   glic::GlicEnabling::SetBypassEnablementChecksForTesting(true);
-  skills::Skill test_skill("id", "name", "icon", "prompt");
+  skills::Skill test_skill("", "name", "icon", "prompt");
   skills_ui_tab_controller()->ShowDialog(std::move(test_skill));
 
   content::WebContents* web_contents = GetDialogWebContents();
   ASSERT_TRUE(web_contents);
   ASSERT_TRUE(content::WaitForLoadStop(web_contents));
 
-  histogram_tester_.ExpectBucketCount(
-      "Skills.Actions", skills::SkillsActions::kClickedCancelInCreationDialog,
-      0);
+  histogram_tester_.ExpectBucketCount("Skills.Dialog.Creation.Action",
+                                      SkillsDialogAction::kCancelled, 0);
 
   // Setup Listener.
   base::test::TestFuture<void> close_future;
@@ -286,9 +285,8 @@ IN_PROC_BROWSER_TEST_F(SkillsUiTabControllerBrowserTest,
   ASSERT_TRUE(close_future.Wait());
   EXPECT_FALSE(IsDialogVisible());
 
-  histogram_tester_.ExpectBucketCount(
-      "Skills.Actions", skills::SkillsActions::kClickedCancelInCreationDialog,
-      1);
+  histogram_tester_.ExpectBucketCount("Skills.Dialog.Creation.Action",
+                                      SkillsDialogAction::kCancelled, 1);
   glic::GlicEnabling::SetBypassEnablementChecksForTesting(false);
 #endif
 }
@@ -356,6 +354,80 @@ IN_PROC_BROWSER_TEST_F(SkillsUiTabControllerBrowserTest,
   EXPECT_EQ(*prompt, kTestPrompt);
   EXPECT_EQ(*icon, kTestIcon);
 
+  glic::GlicEnabling::SetBypassEnablementChecksForTesting(false);
+#endif
+}
+
+IN_PROC_BROWSER_TEST_F(SkillsUiTabControllerBrowserTest,
+                       KeyboardShortcutsAreRouted) {
+#if BUILDFLAG(ENABLE_GLIC)
+  glic::GlicEnabling::SetBypassEnablementChecksForTesting(true);
+
+  skills::Skill test_skill("id", "name", "icon", "prompt");
+  skills_ui_tab_controller()->ShowDialog(std::move(test_skill));
+
+  content::WebContents* dialog_contents = GetDialogWebContents();
+  ASSERT_TRUE(dialog_contents);
+  ASSERT_TRUE(content::WaitForLoadStop(dialog_contents));
+
+  // Focus the WebView to ensure it's ready for input.
+  views::Widget* widget = GetDialogWidget();
+  widget->GetFocusManager()->SetFocusedView(
+      views::ElementTrackerViews::GetInstance()->GetUniqueView(
+          SkillsDialogView::kSkillsDialogElementId, GetBrowserContext()));
+
+  static constexpr char kSetupScript[] = R"(
+    (async function() {
+      await customElements.whenDefined('skills-dialog-app');
+      for (let i = 0; i < 40; i++) {
+        const app = document.querySelector('skills-dialog-app');
+        if (app && app.shadowRoot) {
+            const crInput = app.shadowRoot.getElementById('nameText');
+            if (crInput && crInput.shadowRoot) {
+              const nativeInput = crInput.shadowRoot.querySelector('input');
+              if (nativeInput) {
+                // Use cr-input's API to set the value safely
+                crInput.value = 'Hello World';
+                nativeInput.focus();
+                // Force an input event so the Undo stack registers it
+                nativeInput.dispatchEvent(
+                  new Event('input', { bubbles: true }));
+                return true;
+              }
+            }
+          }
+        await new Promise(r => setTimeout(r, 100));
+      }
+      return false;
+    })();
+  )";
+  EXPECT_EQ(true, content::EvalJs(dialog_contents, kSetupScript));
+
+  // Simulate the Accelerator (Ctrl+A / Cmd+A).
+  ui::KeyboardCode key = ui::VKEY_A;
+  bool control = false;
+  bool command = false;
+#if BUILDFLAG(IS_MAC)
+  command = true;
+#else
+  control = true;
+#endif
+
+  content::SimulateKeyPress(dialog_contents, ui::DomKey::FromCharacter('a'),
+                            ui::DomCode::US_A, key, control, /*shift=*/false,
+                            /*alt=*/false, command);
+
+  auto selection_check = content::EvalJs(dialog_contents, R"(
+    (function() {
+      const app = document.querySelector('skills-dialog-app');
+      const crInput = app && app.shadowRoot ?
+                      app.shadowRoot.getElementById('nameText') : null;
+      const nativeInput = crInput && crInput.shadowRoot ?
+                          crInput.shadowRoot.querySelector('input') : null;
+      return nativeInput ?
+        (nativeInput.selectionEnd - nativeInput.selectionStart) : 0;
+    })()
+  )");
   glic::GlicEnabling::SetBypassEnablementChecksForTesting(false);
 #endif
 }

@@ -12,6 +12,7 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/task/thread_pool.h"
+#include "base/types/expected.h"
 #include "base/unguessable_token.h"
 #include "chrome/browser/contextual_search/contextual_search_web_contents_helper.h"
 #include "chrome/browser/contextual_tasks/active_task_context_provider.h"
@@ -425,7 +426,8 @@ void ContextualTasksComposeboxHandler::OnTabContextualizationFetched(
 }
 
 void ContextualTasksComposeboxHandler::OnTaskChanged() {
-  ClearFiles();
+  ClearFiles(/*should_block_auto_suggested_tabs=*/false);
+  InitializeInputStateModel();
 }
 
 void ContextualTasksComposeboxHandler::AddFileContextFromBrowser(
@@ -842,18 +844,21 @@ void ContextualTasksComposeboxHandler::AddFileContext(
     searchbox::mojom::SelectedFileInfoPtr file_info,
     mojo_base::BigBuffer file_bytes,
     AddFileContextCallback callback) {
-  if (auto* session_handle = GetContextualSessionHandle()) {
-    auto token = session_handle->CreateContextToken();
-    pending_context_uploads_.insert(token);
-    std::string mime_type = file_info->mime_type;
-    std::string file_name = file_info->file_name;
-    ContextualSearchboxHandler::page_->AddFileContext(token,
-                                                      std::move(file_info));
-    std::move(callback).Run(token);
-    session_handle->StartFileContextUploadFlow(token, file_name, mime_type,
-                                               std::move(file_bytes),
-                                               CreateImageEncodingOptions());
+  auto* session_handle = GetContextualSessionHandle();
+  if (!session_handle) {
+    std::move(callback).Run(std::nullopt);
+    return;
   }
+  auto token = session_handle->CreateContextToken();
+  pending_context_uploads_.insert(token);
+  std::string mime_type = file_info->mime_type;
+  std::string file_name = file_info->file_name;
+  ContextualSearchboxHandler::page_->AddFileContext(token,
+                                                    std::move(file_info));
+  std::move(callback).Run(token);
+  session_handle->StartFileContextUploadFlow(token, file_name, mime_type,
+                                             std::move(file_bytes),
+                                             CreateImageEncodingOptions());
 }
 
 void ContextualTasksComposeboxHandler::FileSelectionCanceled() {
@@ -886,7 +891,7 @@ void ContextualTasksComposeboxHandler::AddTabContext(
     base::UnguessableToken token = base::UnguessableToken::Create();
     delayed_tabs_[token] = tab_id;
     pending_delayed_tab_ids_.insert(tab_id);
-    std::move(callback).Run(token);
+    std::move(callback).Run(base::ok(token));
     return;
   }
 
@@ -898,7 +903,8 @@ void ContextualTasksComposeboxHandler::AddTabContext(
 
   auto* contextual_session_handle = GetContextualSessionHandle();
   if (!contextual_session_handle) {
-    std::move(callback).Run(std::nullopt);
+    std::move(callback).Run(base::unexpected(
+        contextual_search::FileUploadErrorType::kBrowserProcessingError));
     return;
   }
   auto token = contextual_session_handle->CreateContextToken();
@@ -909,15 +915,21 @@ void ContextualTasksComposeboxHandler::AddTabContext(
                                                     std::move(callback));
 }
 
-void ContextualTasksComposeboxHandler::ClearFiles() {
+void ContextualTasksComposeboxHandler::ClearFiles(
+    bool should_block_auto_suggested_tabs) {
   // Clear all files from the UI.
-  ComposeboxHandler::ClearFiles();
+  ComposeboxHandler::ClearFiles(should_block_auto_suggested_tabs);
   // Clear any delayed tabs.
   delayed_tabs_.clear();
 
   pending_delayed_tab_ids_.clear();
   pending_context_uploads_.clear();
   pending_message_ = std::nullopt;
+
+  if (current_suggestion_ && should_block_auto_suggested_tabs) {
+    blocklisted_suggestions_.insert(*current_suggestion_);
+  }
+  current_suggestion_ = std::nullopt;
 }
 
 void ContextualTasksComposeboxHandler::HandleLensButtonClick() {
@@ -948,7 +960,7 @@ void ContextualTasksComposeboxHandler::OnLensThumbnailCreated(
   if (visual_selection_token_) {
     OnFileUploadStatusChanged(
         *visual_selection_token_, lens::MimeType::kUnknown,
-        contextual_search::FileUploadStatus::kUploadExpired, std::nullopt);
+        contextual_search::FileUploadStatus::kUploadReplaced, std::nullopt);
   }
 
   // Lens will handle the creation of the interaction request needed for this
@@ -962,11 +974,11 @@ void ContextualTasksComposeboxHandler::OnLensThumbnailCreated(
 // Only runs for non-delayed context. DeleteContext here runs
 // ComposeboxHandler::DeleteContext.
 void ContextualTasksComposeboxHandler::OnVisualSelectionAdded(
-    const base::UnguessableToken& token) {
+    const std::optional<base::UnguessableToken>& token) {
   // Remove old visual selection if it exists.
   if (visual_selection_token_.has_value()) {
-    DeleteContext(visual_selection_token_.value(),
-                  /*from_automatic_chip=*/false);
+    ComposeboxHandler::DeleteContext(visual_selection_token_.value(),
+                                     /*from_automatic_chip=*/false);
   }
   // Replace the visual selection token with the new one.
   visual_selection_token_ = token;
@@ -1058,16 +1070,18 @@ void ContextualTasksComposeboxHandler::DeleteContext(
 
 void ContextualTasksComposeboxHandler::UpdateSuggestedTabContext(
     searchbox::mojom::TabInfoPtr candidate_tab_info) {
+  current_suggestion_ = std::nullopt;
+
   // Filter the suggested tab info based on blocklisted URLs and update the UI.
   searchbox::mojom::TabInfoPtr filtered_suggestion;
   if (base::FeatureList::IsEnabled(
           contextual_tasks::kContextualTasksTabAutoSuggestionChipEnabled) &&
       candidate_tab_info &&
       !blocklisted_suggestions_.contains(candidate_tab_info->url)) {
+    current_suggestion_ = candidate_tab_info->url;
     filtered_suggestion = std::move(candidate_tab_info);
   }
 
-  has_suggested_tab_context_ = !filtered_suggestion.is_null();
   SearchboxHandler::page_->UpdateAutoSuggestedTabContext(
       std::move(filtered_suggestion));
 }

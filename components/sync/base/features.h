@@ -67,7 +67,6 @@ BASE_DECLARE_FEATURE(kUnoPhase2FollowUp);
 // Controls whether to enable syncing of Autofill Wallet Credential Data.
 BASE_DECLARE_FEATURE(kSyncAutofillWalletCredentialData);
 
-constexpr size_t kSyncBookmarksLimit = 100000;
 // If enabled, the error that the bookmarks count exceeded the limit during the
 // last initial merge is reset after a certain period.
 BASE_DECLARE_FEATURE(kSyncResetBookmarksInitialMergeLimitExceededError);
@@ -88,19 +87,6 @@ BASE_DECLARE_FEATURE(kReplaceSyncPromosWithSignInPromos);
 // they were already signed in by the time `kReplaceSyncPromosWithSignInPromos`
 // was enabled.
 BASE_DECLARE_FEATURE_PARAM(bool, kExplicitSigninForExtensions);
-
-// Feature flag to enable an observer for awaiting the sync engine startup.
-BASE_DECLARE_FEATURE(kEnableAwaitSyncServiceStartup);
-
-// Configurable timeout for the sync engine startup observation in the profile
-// picker.
-extern const base::FeatureParam<int>
-    kAwaitSyncServiceStartupInProfilePickerTimeoutSeconds;
-
-// Configurable timeout for the sync engine startup observation when browser is
-// open.
-extern const base::FeatureParam<int>
-    kAwaitSyncServiceStartupInBrowserTimeoutSeconds;
 
 // If enabled, allowlisted priority preferences will be synced even if the
 // preferences user toggle is off. Note that this flag is only meaningful if

@@ -4,30 +4,34 @@
 
 #include "chrome/browser/ui/webui/legion_internals/legion_internals_page_handler.h"
 
+#include <memory>
 #include <string>
 #include <utility>
 
 #include "base/functional/bind.h"
+#include "base/functional/callback_helpers.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/stringprintf.h"
 #include "base/time/time.h"
 #include "chrome/browser/ui/webui/legion_internals/legion_internals.mojom.h"
-#include "components/legion/client.h"
-#include "components/legion/common/legion_logger.h"
-#include "components/legion/features.h"
-#include "components/legion/phosphor/token_manager.h"
-#include "components/legion/proto/legion.pb.h"
+#include "components/private_ai/client.h"
+#include "components/private_ai/common/legion_logger.h"
+#include "components/private_ai/features.h"
+#include "components/private_ai/phosphor/token_manager.h"
+#include "components/private_ai/proto/legion.pb.h"
 #include "content/public/browser/network_service_instance.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "services/network/public/mojom/network_context.mojom.h"
 #include "services/network/public/mojom/network_service.mojom.h"
 
 LegionInternalsPageHandler::LegionInternalsPageHandler(
-    legion::phosphor::TokenManager* token_manager,
+    private_ai::phosphor::TokenManager* token_manager,
     network::mojom::NetworkContext* network_context,
+    private_ai::Client* private_ai_client,
     mojo::PendingReceiver<legion_internals::mojom::LegionInternalsPageHandler>
         receiver)
     : token_manager_(token_manager),
+      private_ai_client_(private_ai_client),
       network_context_(network_context),
       receiver_(this, std::move(receiver)) {}
 
@@ -36,47 +40,55 @@ LegionInternalsPageHandler::~LegionInternalsPageHandler() = default;
 void LegionInternalsPageHandler::SetPage(
     mojo::PendingRemote<legion_internals::mojom::LegionInternalsPage> page) {
   page_.Bind(std::move(page));
+  if (private_ai_client_) {
+    scoped_logger_observations_.AddObservation(private_ai_client_->GetLogger());
+  }
 }
 
 void LegionInternalsPageHandler::Connect(const std::string& url,
                                          const std::string& api_key,
                                          ConnectCallback callback) {
-  client_ = legion::Client::Create(
-      url, api_key, legion::kLegionProxyServerUrl.Get(), network_context_,
-      token_manager_, content::GetNetworkService());
-  scoped_logger_observation_.Observe(client_->GetLogger());
+  webui_client_ = private_ai::Client::Create(
+      url, api_key, private_ai::kLegionProxyServerUrl.Get(), network_context_,
+      token_manager_, content::GetNetworkService(),
+      std::make_unique<private_ai::LegionLogger>());
+  scoped_logger_observations_.AddObservation(webui_client_->GetLogger());
+  webui_client_->EstablishSession(base::DoNothing());
   std::move(callback).Run();
 }
 
 void LegionInternalsPageHandler::Close(CloseCallback callback) {
-  scoped_logger_observation_.Reset();
-  client_.reset();
+  if (webui_client_) {
+    scoped_logger_observations_.RemoveObservation(webui_client_->GetLogger());
+    webui_client_.reset();
+  }
   std::move(callback).Run();
 }
 
 void LegionInternalsPageHandler::SendRequest(const std::string& feature_name,
                                              const std::string& request,
                                              SendRequestCallback callback) {
-  if (!client_) {
+  if (!webui_client_) {
     auto result = legion_internals::mojom::LegionResponse::New();
     result->error = std::string("Error: not connected");
     std::move(callback).Run(std::move(result));
     return;
   }
 
-  legion::proto::FeatureName feature_name_proto;
-  if (!legion::proto::FeatureName_Parse(feature_name, &feature_name_proto)) {
+  private_ai::proto::FeatureName feature_name_proto;
+  if (!private_ai::proto::FeatureName_Parse(feature_name,
+                                            &feature_name_proto)) {
     auto result = legion_internals::mojom::LegionResponse::New();
     result->error = std::string("Error: invalid feature_name: ") + feature_name;
     std::move(callback).Run(std::move(result));
     return;
   }
 
-  client_->SendTextRequest(
+  webui_client_->SendTextRequest(
       feature_name_proto, request,
       base::BindOnce(
           [](SendRequestCallback callback,
-             base::expected<std::string, legion::ErrorCode> response) {
+             base::expected<std::string, private_ai::ErrorCode> response) {
             auto result = legion_internals::mojom::LegionResponse::New();
             if (response.has_value()) {
               result->response = *response;
@@ -108,7 +120,8 @@ void LegionInternalsPageHandler::LogToPage(
   if (!page_) {
     return;
   }
-
+  // TODO(crbug.com/461435924): Make it possible to differentiate logs from
+  // the webui client and logs from the profile client.
   base::Time::Exploded exploded;
   base::Time::Now().LocalExplode(&exploded);
   std::string timestamp = base::StringPrintf(

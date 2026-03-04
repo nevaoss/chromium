@@ -8,6 +8,7 @@
 #include "base/strings/strcat.h"
 #include "base/strings/string_util.h"
 #include "components/wallet/core/browser/data_models/data_model_utils.h"
+#include "google_apis/gaia/google_service_auth_error.h"
 
 namespace wallet::metrics {
 
@@ -36,6 +37,22 @@ void LogSaveEvent(PassCategory pass_category,
       event);
 }
 
+void RecordNetworkRequestOauthError(const GoogleServiceAuthError& error) {
+  base::UmaHistogramEnumeration("Wallet.NetworkRequest.OauthError",
+                                error.state(),
+                                GoogleServiceAuthError::NUM_STATES);
+}
+
+void RecordHttpResponseOrErrorCode(WalletRequest::WalletNetworkRequestType type,
+                                   int http_response_or_net_error) {
+  base::UmaHistogramSparse(
+      base::ReplaceStringPlaceholders(
+          "Wallet.NetworkRequest.$1.HttpResponseOrErrorCode",
+          {WalletNetworkRequestTypeToString(type)},
+          /*offsets=*/nullptr),
+      http_response_or_net_error);
+}
+
 void RecordNetworkRequestLatency(WalletRequest::WalletNetworkRequestType type,
                                  base::TimeDelta request_latency) {
   base::UmaHistogramTimes(
@@ -43,6 +60,16 @@ void RecordNetworkRequestLatency(WalletRequest::WalletNetworkRequestType type,
                                       {WalletNetworkRequestTypeToString(type)},
                                       /*offsets=*/nullptr),
       request_latency);
+}
+
+void RecordNetworkRequestResponseSize(
+    WalletRequest::WalletNetworkRequestType type,
+    size_t response_size) {
+  base::UmaHistogramCounts10000(base::ReplaceStringPlaceholders(
+                                    "Wallet.NetworkRequest.$1.ResponseByteSize",
+                                    {WalletNetworkRequestTypeToString(type)},
+                                    /*offsets=*/nullptr),
+                                response_size);
 }
 
 std::string WalletNetworkRequestTypeToString(

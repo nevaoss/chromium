@@ -45,6 +45,7 @@
 #include "chrome/install_static/install_util.h"
 #include "chrome/installer/setup/configure_app_container_sandbox.h"
 #include "chrome/installer/setup/downgrade_cleanup.h"
+#include "chrome/installer/setup/generate_visual_elements_manifest_work_item.h"
 #include "chrome/installer/setup/install_params.h"
 #include "chrome/installer/setup/installer_state.h"
 #include "chrome/installer/setup/last_breaking_installer_version.h"
@@ -53,7 +54,7 @@
 #include "chrome/installer/setup/update_active_setup_version_work_item.h"
 #include "chrome/installer/util/app_command.h"
 #include "chrome/installer/util/callback_work_item.h"
-#include "chrome/installer/util/conditional_work_item_list.h"
+#include "chrome/installer/util/conditional_work_item.h"
 #include "chrome/installer/util/create_reg_key_work_item.h"
 #include "chrome/installer/util/firewall_manager_win.h"
 #include "chrome/installer/util/google_update_constants.h"
@@ -234,36 +235,41 @@ void AddChromeWorkItems(const InstallParams& install_params,
                                     temp_path, WorkItem::NEW_NAME_IF_IN_USE,
                                     new_chrome_exe);
 
-  // Install kVisualElementsManifest if it is present in |src_path|. No need to
-  // make this a conditional work item as if the file is not there now, it will
-  // never be.
-  // TODO(grt): Touch the Start Menu shortcut after putting the manifest in
-  // place to force the Start Menu to refresh Chrome's tile.
-  if (base::PathExists(src_path.Append(installer::kVisualElementsManifest))) {
-    install_list->AddMoveTreeWorkItem(
-        src_path.Append(installer::kVisualElementsManifest),
-        target_path.Append(installer::kVisualElementsManifest), temp_path,
-        WorkItem::ALWAYS_MOVE);
-  } else {
-    // We do not want to have an old VisualElementsManifest pointing to an old
-    // version directory. Delete it as there wasn't a new one to replace it.
-    install_list->AddDeleteTreeWorkItem(
-        target_path.Append(installer::kVisualElementsManifest), temp_path);
-  }
-
   // In the past, we copied rather than moved for system level installs so that
   // the permissions of %ProgramFiles% would be picked up.  Now that |temp_path|
   // is in %ProgramFiles% for system level installs (and in %LOCALAPPDATA%
   // otherwise), there is no need to do this.
   // Note that we pass true for check_duplicates to avoid failing on in-use
   // repair runs if the current_version is the same as the new_version.
+  const base::FilePath target_version_dir =
+      target_path.AppendASCII(new_version.GetString());
   bool check_for_duplicates =
       (current_version.IsValid() && current_version == new_version);
+  // Allow items in `src_path` to be left behind. It is in a temporary directory
+  // that will eventually be cleaned up.
   install_list->AddMoveTreeWorkItem(
-      src_path.AppendASCII(new_version.GetString()),
-      target_path.AppendASCII(new_version.GetString()), temp_path,
-      check_for_duplicates ? WorkItem::CHECK_DUPLICATES
-                           : WorkItem::ALWAYS_MOVE);
+      src_path.AppendASCII(new_version.GetString()), target_version_dir,
+      temp_path,
+      WorkItem::MoveTreeOptions{.check_for_duplicates = check_for_duplicates,
+                                .lenient_deletion = true});
+
+  // Delete an old VisualElementsManifest unconditionally.
+  const base::FilePath manifest_path =
+      target_path.Append(installer::kVisualElementsManifest);
+  install_list->AddDeleteTreeWorkItem(manifest_path, temp_path);
+
+  // Generate a new VisualElementsManifest if the installation has
+  // VisualElements.
+  // TODO(grt): Touch the Start Menu shortcut after putting the manifest in
+  // place to force the Start Menu to refresh Chrome's tile.
+  std::unique_ptr<WorkItem> manifest_item(WorkItem::CreateConditionalWorkItem(
+      std::make_unique<ConditionFileExists>(
+          target_version_dir.AppendASCII(kVisualElements)),
+      std::make_unique<GenerateVisualElementsManifestWorkItem>(target_path,
+                                                               new_version),
+      /*else_item=*/nullptr));
+  manifest_item->set_log_message("VisualElementsDirectoryExists");
+  install_list->AddWorkItem(manifest_item.release());
 
   // Delete any old_chrome.exe if present (ignore failure if it's in use).
   install_list
@@ -767,10 +773,9 @@ bool AppendPostInstallTasks(const InstallParams& install_params,
   // We update the 'opv' value with the current version that is active,
   // the 'cpv' value with the critical update version (if present), and the
   // 'cmd' value with the rename command to run.
+  std::unique_ptr<WorkItemList> in_use_update_work_items;
   {
-    std::unique_ptr<WorkItemList> in_use_update_work_items(
-        WorkItem::CreateConditionalWorkItemList(
-            new ConditionRunIfFileExists(new_chrome_exe)));
+    in_use_update_work_items.reset(WorkItem::CreateWorkItemList());
     in_use_update_work_items->set_log_message("InUseUpdateWorkItemList");
 
     // |critical_version| will be valid only if this in-use update includes a
@@ -823,20 +828,19 @@ bool AppendPostInstallTasks(const InstallParams& install_params,
           product_rename_cmd.GetCommandLineString(), true);
     }
 
-    // Delay deploying the new chrome_proxy while chrome is running.
+    // Delay deploying the new chrome_proxy while chrome is running. Allow items
+    // in `src_path` to be left behind. It is in a temporary directory that will
+    // eventually be cleaned up.
     in_use_update_work_items->AddMoveTreeWorkItem(
         src_path.Append(kChromeProxyExe),
         target_path.Append(kChromeProxyNewExe), temp_path,
-        WorkItem::ALWAYS_MOVE);
-
-    post_install_task_list->AddWorkItem(in_use_update_work_items.release());
+        WorkItem::MoveTreeOptions{.lenient_deletion = true});
   }
 
   // Append work items that will be executed if this was NOT an in-use update.
+  std::unique_ptr<WorkItemList> regular_update_work_items;
   {
-    std::unique_ptr<WorkItemList> regular_update_work_items(
-        WorkItem::CreateConditionalWorkItemList(
-            new Not(new ConditionRunIfFileExists(new_chrome_exe))));
+    regular_update_work_items.reset(WorkItem::CreateWorkItemList());
     regular_update_work_items->set_log_message("RegularUpdateWorkItemList");
 
     // If a channel was specified by policy, update the "channel" registry value
@@ -865,13 +869,18 @@ bool AppendPostInstallTasks(const InstallParams& install_params,
     }
 
     // Only move chrome_proxy.exe directly when chrome.exe isn't in use to avoid
-    // different versions getting mixed up between the two binaries.
+    // different versions getting mixed up between the two binaries. Allow items
+    // in `src_path` to be left behind. It is in a temporary directory that will
+    // eventually be cleaned up.
     regular_update_work_items->AddMoveTreeWorkItem(
         src_path.Append(kChromeProxyExe), target_path.Append(kChromeProxyExe),
-        temp_path, WorkItem::ALWAYS_MOVE);
-
-    post_install_task_list->AddWorkItem(regular_update_work_items.release());
+        temp_path, WorkItem::MoveTreeOptions{.lenient_deletion = true});
   }
+
+  post_install_task_list->AddWorkItem(WorkItem::CreateConditionalWorkItem(
+      std::make_unique<ConditionFileExists>(new_chrome_exe),
+      std::move(in_use_update_work_items),
+      std::move(regular_update_work_items)));
 
   // If we're told that we're an MSI install, make sure to set the marker
   // in the client state key so that future updates do the right thing.

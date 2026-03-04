@@ -71,6 +71,11 @@ BASE_FEATURE(kClearUndecryptablePasswordsOnSync,
 BASE_FEATURE(kCredentialManagementUnifiedUi, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // !BUILDFLAG(IS_IOS) && !BUILDFLAG(IS_ANDROID)
 
+#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
+BASE_FEATURE(kPasswordSaveInContextErrorResolutionOnDesktop,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
+
 BASE_FEATURE(kDebugUiForOtps, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kDisablePasswordChangeFromNewPasswordFields,
@@ -96,6 +101,11 @@ BASE_FEATURE(kFillOnAccountSelect,
              "fill-on-account-select",
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+#if BUILDFLAG(IS_ANDROID)
+BASE_FEATURE(kInFlowTrustedVaultKeyRetrievalAndroid,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+#endif  // BUILDFLAG(IS_ANDROID)
+
 #if BUILDFLAG(IS_IOS)
 BASE_FEATURE(kIosCleanupHangingPasswordFormExtractionRequests,
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -106,7 +116,7 @@ const base::FeatureParam<int> kIosPasswordFormExtractionRequestsTimeoutMs = {
 
 BASE_FEATURE(kIOSProactivePasswordGenerationBottomSheet,
              "kIOSProactivePasswordGenerationBottomSheet",
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // IS_IOS
 
 BASE_FEATURE(kMarkAllCredentialsAsLeaked, base::FEATURE_DISABLED_BY_DEFAULT);

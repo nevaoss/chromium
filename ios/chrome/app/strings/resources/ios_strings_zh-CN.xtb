@@ -213,7 +213,7 @@
 <translation id="1749733017156547309">必须输入密码</translation>
 <translation id="174998178145075354">{count,plural, =1{键盘上方显示了 {count} 个地址选项。}other{键盘上方显示了 {count} 个地址选项。}}</translation>
 <translation id="1750238553597293878">请继续使用您的 Google 账号的密码</translation>
-<translation id="17513872634828108">目前打开的标签页</translation>
+<translation id="17513872634828108">打开的标签页</translation>
 <translation id="1752547299766512813">保存密码</translation>
 <translation id="1764070164487214210">路线</translation>
 <translation id="1764511703783285459">其他密码管理工具未分享任何密码或通行密钥</translation>
@@ -374,7 +374,6 @@
 <translation id="2306265833370324042">显示<ph name="SEARCH_ENGINE_NAME" />详细信息</translation>
 <translation id="2309265394777270359">关闭标签页</translation>
 <translation id="2311077293164383652">关闭固定标签页</translation>
-<translation id="2313392466694008052">使用 Gemini 编辑图片</translation>
 <translation id="2316129865977710310">不用了，谢谢</translation>
 <translation id="2320166752086256636">隐藏键盘</translation>
 <translation id="2321086116217818302">正在准备密码…</translation>
@@ -1787,6 +1786,7 @@
 <translation id="7506817096924591340"><ph name="FILENAME" /> (<ph name="FILESIZE" />)。</translation>
 <translation id="7508728395076009983">如需锁定您的无痕式标签页，请设置触控 ID、面容 ID 或密码。</translation>
 <translation id="750886945254958667">您可以保留此分组，以便日后添加标签页；如果不再想访问它，也可以退出分组</translation>
+<translation id="7511727374778217603">{COUNT,plural, =1{最多只能添加 1 个标签页}other{最多只能添加 {COUNT} 个标签页}}</translation>
 <translation id="7512909159512473473">输入口令…</translation>
 <translation id="7514365320538308">下载</translation>
 <translation id="7514530647142300459">继续使用 Google 账号 <ph name="EMAIL" /> 中的密码</translation>
@@ -2237,6 +2237,7 @@
 <translation id="9055291197094969722">创建标签页分组即可整理打开的标签页，并保持高效</translation>
 <translation id="9055580485132823283">您即将删除 {password_count} 个密码、{passkey_count} 个通行密钥以及您选择一律不保存登录信息的网站和应用列表。您为网站和应用创建的任何账号都不会被删除。</translation>
 <translation id="9057030985451135243">了解分享的标签页分组</translation>
+<translation id="9064106978262828592">导出数据时出错</translation>
 <translation id="9065203028668620118">修改</translation>
 <translation id="9066097352053395362">隐藏“修改书签”</translation>
 <translation id="9070824521421603770">您将退出账号，而且标签页将被关闭</translation>

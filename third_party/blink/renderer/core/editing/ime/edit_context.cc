@@ -12,6 +12,8 @@
 #include "third_party/blink/public/web/web_local_frame_client.h"
 #include "third_party/blink/public/web/web_range.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_edit_context_init.h"
+#include "third_party/blink/renderer/bindings/core/v8/v8_underline_style.h"
+#include "third_party/blink/renderer/bindings/core/v8/v8_underline_thickness.h"
 #include "third_party/blink/renderer/core/css/css_color.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/editing/ime/character_bounds_update_event.h"
@@ -146,48 +148,40 @@ void EditContext::DispatchTextFormatEvent(
     const auto range_end = base::checked_cast<wtf_size_t>(
         ime_text_span.end_offset + composition_range_start_);
 
-    String underline_thickness;
-    String underline_style;
-    // Use values defined in spec [1] for `TextFormat::underlineStyle` &
-    // `TextFormat::underlineThickness`
-    // TODO(crbug.com/354497121): Remove this change and update the TextFormat
-    // attribute type as per the spec [1] when the feature is enabled by
-    // default.
-    // [1]: https://w3c.github.io/edit-context/#textformatupdateevent
-    bool use_spec_values = RuntimeEnabledFeatures::
-        UseSpecValuesInTextFormatUpdateEventStylesEnabled();
+    V8UnderlineThickness::Enum underline_thickness;
+    V8UnderlineStyle::Enum underline_style;
+
     switch (ime_text_span.thickness) {
       case ui::ImeTextSpan::Thickness::kNone:
-        underline_thickness = use_spec_values ? "none" : "None";
+        underline_thickness = V8UnderlineThickness::Enum::kNone;
         break;
       case ui::ImeTextSpan::Thickness::kThin:
-        underline_thickness = use_spec_values ? "thin" : "Thin";
+        underline_thickness = V8UnderlineThickness::Enum::kThin;
         break;
       case ui::ImeTextSpan::Thickness::kThick:
-        underline_thickness = use_spec_values ? "thick" : "Thick";
+        underline_thickness = V8UnderlineThickness::Enum::kThick;
         break;
     }
     switch (ime_text_span.underline_style) {
       case ui::ImeTextSpan::UnderlineStyle::kNone:
-        underline_style = use_spec_values ? "none" : "None";
+        underline_style = V8UnderlineStyle::Enum::kNone;
         break;
       case ui::ImeTextSpan::UnderlineStyle::kSolid:
-        underline_style = use_spec_values ? "solid" : "Solid";
+        underline_style = V8UnderlineStyle::Enum::kSolid;
         break;
       case ui::ImeTextSpan::UnderlineStyle::kDot:
-        underline_style = use_spec_values ? "dotted" : "Dotted";
+        underline_style = V8UnderlineStyle::Enum::kDotted;
         break;
       case ui::ImeTextSpan::UnderlineStyle::kDash:
-        underline_style = use_spec_values ? "dashed" : "Dashed";
+        underline_style = V8UnderlineStyle::Enum::kDashed;
         break;
       case ui::ImeTextSpan::UnderlineStyle::kSquiggle:
-        underline_style = use_spec_values ? "wavy" : "Squiggle";
+        underline_style = V8UnderlineStyle::Enum::kWavy;
         break;
     }
 
-    text_formats.push_back(
-        TextFormat::Create(range_start, range_end, underline_style,
-                           underline_thickness, ASSERT_NO_EXCEPTION));
+    text_formats.push_back(TextFormat::Create(
+        range_start, range_end, underline_style, underline_thickness));
   }
 
   TextFormatUpdateEvent* event = MakeGarbageCollected<TextFormatUpdateEvent>(
@@ -212,8 +206,9 @@ void EditContext::Focus() {
 void EditContext::Blur() {
   TRACE_EVENT0("ime", "EditContext::Blur");
 
-  if (GetInputMethodController().GetActiveEditContext() != this)
+  if (GetInputMethodController().GetActiveEditContext() != this) {
     return;
+  }
   // Clean up the state of the |this| EditContext.
   FinishComposingText(ConfirmCompositionBehavior::kKeepSelection);
   GetInputMethodController().SetActiveEditContext(nullptr);
@@ -734,6 +729,11 @@ bool EditContext::CommitText(const WebString& text,
 bool EditContext::FinishComposingText(
     ConfirmCompositionBehavior selection_behavior) {
   TRACE_EVENT0("ime", "EditContext::FinishComposingText");
+  if (finish_composing_in_progress_) {
+    return false;
+  }
+  finish_composing_in_progress_ =
+      RuntimeEnabledFeatures::EditContextAssignmentAsPerSpecEnabled();
   int text_length = 0;
   if (has_composition_) {
     String text =
@@ -751,6 +751,7 @@ bool EditContext::FinishComposingText(
   }
 
   ClearCompositionState();
+  finish_composing_in_progress_ = false;
   return true;
 }
 

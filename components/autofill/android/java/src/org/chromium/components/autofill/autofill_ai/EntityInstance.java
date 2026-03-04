@@ -10,6 +10,8 @@ import org.jni_zero.JniType;
 
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
+import org.chromium.components.autofill.autofill_ai.AttributeInstance.DateValue;
+import org.chromium.components.autofill.autofill_ai.AttributeInstance.StringValue;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -25,7 +27,7 @@ public class EntityInstance {
     private final String mGUID;
     private final @RecordType int mRecordType;
     private final EntityType mEntityType;
-    private final Map<Integer, AttributeInstance> mAttributes = new HashMap<>();
+    private final Map<AttributeType, AttributeInstance> mAttributes = new HashMap<>();
     private final EntityMetadata mMetadata;
 
     /** Builder for the {@link EntityInstance}. */
@@ -96,9 +98,9 @@ public class EntityInstance {
         mEntityType = entityType;
         mMetadata = metadata;
         for (AttributeInstance attribute : attributes) {
-            assert !mAttributes.containsKey(attribute.getAttributeType().getTypeName())
+            assert !mAttributes.containsKey(attribute.getAttributeType())
                     : "Duplicate attribute: " + attribute.getAttributeType().getTypeName();
-            mAttributes.put(attribute.getAttributeType().getTypeName(), attribute);
+            mAttributes.put(attribute.getAttributeType(), attribute);
         }
     }
 
@@ -123,8 +125,27 @@ public class EntityInstance {
         return new ArrayList<>(mAttributes.values());
     }
 
-    public @Nullable AttributeInstance getAttribute(@AttributeTypeName int attributeTypeName) {
-        return mAttributes.get(attributeTypeName);
+    public @Nullable AttributeInstance getAttribute(AttributeType attributeType) {
+        return mAttributes.get(attributeType);
+    }
+
+    public void setAttributeValue(AttributeType attributeType, String value) {
+        switch (attributeType.getDataType()) {
+            case DataType.NAME:
+            case DataType.STATE:
+            case DataType.STRING:
+            case DataType.COUNTRY:
+                mAttributes.put(
+                        attributeType,
+                        new AttributeInstance(attributeType, new StringValue(value)));
+                break;
+            case DataType.DATE:
+                mAttributes.put(
+                        attributeType, new AttributeInstance(attributeType, new DateValue(value)));
+                break;
+            default:
+                assert false : "Unhandled attribute data type: " + attributeType.getDataType();
+        }
     }
 
     @CalledByNative

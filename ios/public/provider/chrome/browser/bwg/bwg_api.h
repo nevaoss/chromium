@@ -17,6 +17,7 @@ class AuthenticationService;
 @class GeminiPageContext;
 @class GeminiSettingsAction;
 @class GeminiSettingsMetadata;
+@class GeminiStartupConfiguration;
 @protocol BWGGatewayProtocol;
 
 typedef NS_ENUM(NSInteger, GeminiSettingsContext);
@@ -86,7 +87,11 @@ enum class BWGPageContextAttachmentState {
 enum class GeminiViewState {
   // The Gemini view state is unknown.
   kUnknown,
-  // The Gemini view is hidden.
+  // The Gemini view is hidden. When the floaty is set to `kHidden`, the floaty
+  // is destructed and properties are stored in the view manager in the Gemini
+  // SDK. After this, setting the `GeminiViewState` to another state
+  // will reinitialize the floaty with stored properties from when the floaty
+  // was initially hidden.
   kHidden,
   // The Gemini view is collapsed (minimized) into a circle.
   kCollapsed,
@@ -105,6 +110,10 @@ enum class GeminiUIElementType {
   // The zero state element.
   kZeroState,
 };
+
+// Configures Gemini with the given startup configuration.
+void ConfigureWithStartupConfiguration(
+    GeminiStartupConfiguration* startup_configuration);
 
 // Starts the overlay experience with the given configuration.
 void StartBwgOverlay(GeminiConfiguration* gemini_configuration);

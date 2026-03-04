@@ -137,7 +137,8 @@ FindDatesAndSetFormatStrings(
   // Cheap plausibility checks if the field is relevant for date matching.
   auto may_be_interesting = [](const std::unique_ptr<AutofillField>& field) {
     return field->form_control_type() == FormControlType::kInputText &&
-           (field->is_user_edited() || field->is_autofilled() ||
+           (field->all_modifiers().contains_any(
+                {FieldModifier::kUser, FieldModifier::kAutofill}) ||
             field->initial_value() != field->value());
   };
 
@@ -489,8 +490,8 @@ void FindAndSetPossibleOtpFieldTypes(
   }
 
   for (auto [field, pt] : base::zip(fields, possible_types)) {
-    const std::string field_value_u8 =
-        base::UTF16ToUTF8(base::TrimWhitespace(field->value(), base::TRIM_ALL));
+    const std::string field_value_u8 = base::UTF16ToUTF8(
+        base::TrimWhitespace(field->value_for_import(), base::TRIM_ALL));
 
     // Check if the field value matches any of the recent OTPs.
     for (const OneTimeToken& otp : recent_otps) {

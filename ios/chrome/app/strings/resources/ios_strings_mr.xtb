@@ -374,7 +374,6 @@
 <translation id="2306265833370324042"><ph name="SEARCH_ENGINE_NAME" /> चे तपशील दाखवा</translation>
 <translation id="2309265394777270359">टॅब बंद करा</translation>
 <translation id="2311077293164383652">पिन केलेला टॅब बंद करा</translation>
-<translation id="2313392466694008052">Gemini वापरून इमेज संपादित करा</translation>
 <translation id="2316129865977710310">नाही, नको</translation>
 <translation id="2320166752086256636">कीबोर्ड लपवा</translation>
 <translation id="2321086116217818302">पासवर्ड तयार करत आहे…</translation>
@@ -585,7 +584,7 @@
 <translation id="3140825265190223781">सेव्ह केलेले पासवर्ड आणि पासकी</translation>
 <translation id="3143515551205905069">सिंक रद्द करा</translation>
 <translation id="3144126448740580210">पूर्ण झाले</translation>
-<translation id="3147521114983561406">पासकी तुमच्या Password Manager मध्ये सेव्ह केल्या जातात. ते गुप्त मोडआणि नियमित टॅबमध्ये अ‍ॅक्सेस करण्यायोग्य आहेत.</translation>
+<translation id="3147521114983561406">पासकी तुमच्या Password Manager मध्ये सेव्ह केल्या जातात. ते गुप्त मोड आणि नियमित टॅबमध्ये अ‍ॅक्सेस करण्यायोग्य आहेत.</translation>
 <translation id="3148052723910099040">नियमित टॅब ग्रिड</translation>
 <translation id="3148237711805373460">मला तिथे न्या</translation>
 <translation id="3157387275655328056">वाचन सूचीमध्ये जोडा</translation>
@@ -1788,6 +1787,7 @@
 <translation id="7506817096924591340"><ph name="FILENAME" /> (<ph name="FILESIZE" />).</translation>
 <translation id="7508728395076009983">तुमचे गुप्त टॅब लॉक करण्यासाठी, टच आयडी, फेस आयडी किंवा पासकोड सेट करा.</translation>
 <translation id="750886945254958667">नंतर टॅब जोडण्यासाठी हा गट कायम ठेवा किंवा तुम्हाला यापुढे त्याचा अ‍ॅक्सेस नको असल्यास, त्यामधून बाहेर पडा</translation>
+<translation id="7511727374778217603">{COUNT,plural, =1{कमाल १ टॅब जोडा}other{कमाल {COUNT} टॅब जोडा}}</translation>
 <translation id="7512909159512473473">पासफ्रेझ एंटर करा…</translation>
 <translation id="7514365320538308">डाउनलोड करा</translation>
 <translation id="7514530647142300459">तुमच्या Google खाते <ph name="EMAIL" /> मधील पासवर्ड वापरणे सुरू ठेवा</translation>
@@ -2061,6 +2061,7 @@
 <translation id="8439758443371991593">वाचन सूची मध्ये जोडा हे लपवा</translation>
 <translation id="8443986842926457191">URL मध्ये २०४८ पेक्षा जास्त वर्ण आहेत</translation>
 <translation id="8449869326050867919">पासवर्ड शेअर केला</translation>
+<translation id="8473815223723723001">Gemini वापरून इमेज संपादित करा</translation>
 <translation id="8473863474539038330">अ‍ॅड्रेस आणि बरेच काही</translation>
 <translation id="8474378002946546633">सूचनांना अनुमती द्या</translation>
 <translation id="8477178913400731244">डेटा हटवा</translation>
@@ -2238,6 +2239,7 @@
 <translation id="9055291197094969722">तुमचे उघडे असलेले टॅब संगतवार लावण्यासाठी आणि उत्पादनक्षम राहण्यासाठी टॅब गट तयार करा</translation>
 <translation id="9055580485132823283">तुमचे {password_count} पासवर्ड, {passkey_count} पासकी आणि तुम्ही साइन-इन माहिती कधीही सेव्ह न करण्याचे निवडलेल्या साइट व ॲप्सची सूची हटवणार आहात. एखाद्या साइट आणि ॲप्ससाठी तुम्ही तयार केलेले कोणतेही खाते हटवले जाणार नाही.</translation>
 <translation id="9057030985451135243">शेअर केलेल्या टॅब गटांबद्दल जाणून घ्या</translation>
+<translation id="9064106978262828592">तुमचा डेटा एक्सपोर्ट करताना समस्या आली</translation>
 <translation id="9065203028668620118">संपादन</translation>
 <translation id="9066097352053395362">बुकमार्क संपादित करा हे लपवा</translation>
 <translation id="9070824521421603770">तुम्हाला साइन आउट केले जाईल आणि टॅब बंद केले जातील</translation>

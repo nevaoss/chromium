@@ -7,6 +7,7 @@
 #include <bit>
 #include <optional>
 
+#include "base/containers/adapters.h"
 #include "base/notreached.h"
 #include "third_party/blink/renderer/core/animation/css/css_animations.h"
 #include "third_party/blink/renderer/core/animation/css_interpolation_environment.h"
@@ -188,17 +189,6 @@ CascadeOrigin TargetOriginForRevert(CascadeOrigin origin) {
   }
 }
 
-CSSPropertyID UnvisitedID(CSSPropertyID id) {
-  if (id == CSSPropertyID::kVariable) {
-    return id;
-  }
-  const CSSProperty& property = CSSProperty::Get(id);
-  if (!property.IsVisited()) {
-    return id;
-  }
-  return property.GetUnvisitedProperty()->PropertyID();
-}
-
 bool IsInterpolation(CascadePriority priority) {
   switch (priority.GetOrigin()) {
     case CascadeOrigin::kAnimation:
@@ -283,19 +273,19 @@ bool IsVariableNameOnly(StringView str) {
 
 MatchResult& StyleCascade::MutableMatchResult() {
   DCHECK(!generation_) << "Apply has already been called";
-  needs_match_result_analyze_ = true;
+  needs_collect_from_match_result_ = true;
   return match_result_;
 }
 
 void StyleCascade::AddInterpolations(const ActiveInterpolationsMap* map,
                                      CascadeOrigin origin) {
   DCHECK(map);
-  needs_interpolations_analyze_ = true;
+  needs_collect_from_interpolations_ = true;
   interpolations_.Add(map, origin);
 }
 
 void StyleCascade::Apply(CascadeFilter filter) {
-  AnalyzeIfNeeded();
+  CollectDeclarationsIfNeeded();
   state_.InvalidateLengthConversionData();
 
   // For performance avoid stack initialization on this large object.
@@ -328,19 +318,9 @@ void StyleCascade::Apply(CascadeFilter filter) {
   ApplyUnresolvedEnv(resolver);
 }
 
-std::unique_ptr<CSSBitset> StyleCascade::GetImportantSet() {
-  AnalyzeIfNeeded();
-  if (!map_.HasImportant()) {
-    return nullptr;
-  }
-  auto set = std::make_unique<CSSBitset>();
-  for (CSSPropertyID id : map_.NativeBitset()) {
-    // We use the unvisited ID because visited/unvisited colors are currently
-    // interpolated together.
-    // TODO(crbug.com/1062217): Interpolate visited colors separately
-    set->Or(UnvisitedID(id), map_.At(CSSPropertyName(id)).IsImportant());
-  }
-  return set;
+std::unique_ptr<CSSBitset> StyleCascade::ReleaseImportantSet() {
+  CollectDeclarationsIfNeeded();
+  return map_.ReleaseImportantSet();
 }
 
 void StyleCascade::Reset() {
@@ -384,8 +364,8 @@ const CSSValue* StyleCascade::Resolve(
 
 HeapHashMap<CSSPropertyName, Member<const CSSValue>>
 StyleCascade::GetCascadedValues() const {
-  DCHECK(!needs_match_result_analyze_);
-  DCHECK(!needs_interpolations_analyze_);
+  DCHECK(!needs_collect_from_match_result_);
+  DCHECK(!needs_collect_from_interpolations_);
   DCHECK_GE(generation_, 0);
 
   HeapHashMap<CSSPropertyName, Member<const CSSValue>> result;
@@ -462,18 +442,18 @@ const CSSUnparsedDeclarationValue* StyleCascade::ResolveSubstitutions(
       sequence.BuildVariableData(), context);
 }
 
-void StyleCascade::AnalyzeIfNeeded() {
-  if (needs_match_result_analyze_) {
-    AnalyzeMatchResult();
-    needs_match_result_analyze_ = false;
+void StyleCascade::CollectDeclarationsIfNeeded() {
+  if (needs_collect_from_match_result_) {
+    CollectFromMatchResult();
+    needs_collect_from_match_result_ = false;
   }
-  if (needs_interpolations_analyze_) {
-    AnalyzeInterpolations();
-    needs_interpolations_analyze_ = false;
+  if (needs_collect_from_interpolations_) {
+    CollectFromInterpolations();
+    needs_collect_from_interpolations_ = false;
   }
 }
 
-void StyleCascade::AnalyzeMatchResult() {
+void StyleCascade::CollectFromMatchResult() {
   AddExplicitDefaults();
 
   int index = 0;
@@ -497,7 +477,7 @@ void StyleCascade::AnalyzeMatchResult() {
   }
 }
 
-void StyleCascade::AnalyzeInterpolations() {
+void StyleCascade::CollectFromInterpolations() {
   const auto& entries = interpolations_.GetEntries();
   for (wtf_size_t i = 0; i < entries.size(); ++i) {
     for (const auto& active_interpolation : *entries[i].map) {
@@ -586,22 +566,22 @@ void StyleCascade::AddExplicitDefaults() {
   }
 }
 
-void StyleCascade::Reanalyze() {
+void StyleCascade::ResetAndCollectAgain() {
   map_.Reset();
   generation_ = 0;
   depends_on_cascade_affecting_property_ = false;
 
-  needs_match_result_analyze_ = true;
-  needs_interpolations_analyze_ = true;
-  AnalyzeIfNeeded();
+  needs_collect_from_match_result_ = true;
+  needs_collect_from_interpolations_ = true;
+  CollectDeclarationsIfNeeded();
 }
 
 void StyleCascade::ApplyCascadeAffecting(CascadeResolver& resolver) {
-  // During the initial call to Analyze, we speculatively assume that the
-  // direction/writing-mode inherited from the parent will be the final
-  // direction/writing-mode. If either property ends up with another value,
-  // our assumption was incorrect, and we have to Reanalyze with the correct
-  // values on ComputedStyle.
+  // During the initial call to CollectDeclarationsIfNeeded, we speculatively
+  // assume that the direction/writing-mode inherited from the parent will be
+  // the final direction/writing-mode. If either property ends up with another
+  // value, our assumption was incorrect, and we have to ResetAndCollectAgain()
+  // with the correct values on ComputedStyle.
   auto direction = state_.StyleBuilder().Direction();
   auto writing_mode = state_.StyleBuilder().GetWritingMode();
   // Similarly, we assume that the effective zoom of this element
@@ -621,21 +601,21 @@ void StyleCascade::ApplyCascadeAffecting(CascadeResolver& resolver) {
     LookupAndApply(GetCSSPropertyZoom(), resolver);
   }
 
-  bool reanalyze = false;
+  bool reset_and_collect_again = false;
 
   if (depends_on_cascade_affecting_property_) {
     if (direction != state_.StyleBuilder().Direction() ||
         writing_mode != state_.StyleBuilder().GetWritingMode()) {
-      reanalyze = true;
+      reset_and_collect_again = true;
     }
   }
   if (effective_zoom != state_.StyleBuilder().EffectiveZoom()) {
     effective_zoom_changed_ = true;
-    reanalyze = true;
+    reset_and_collect_again = true;
   }
 
-  if (reanalyze) {
-    Reanalyze();
+  if (reset_and_collect_again) {
+    ResetAndCollectAgain();
   }
 }
 
@@ -775,8 +755,8 @@ void StyleCascade::ApplyWideOverlapping(CascadeResolver& resolver) {
   }
 }
 
-// Go through all properties that were found during the analyze phase
-// (e.g. in AnalyzeMatchResult()) and actually apply them. We need to do this
+// Go through all properties that were found during the "collect" phase
+// (CollectFromMatchResult()) and actually apply them. We need to do this
 // in a second phase so that we know which ones actually won the cascade
 // before we start applying, as some properties can affect others.
 void StyleCascade::ApplyMatchResult(CascadeResolver& resolver) {
@@ -1251,10 +1231,36 @@ StyleCascade::MakeFunctionContextFromMixinAndResolveSubstitutions(
     return nullptr;
   }
 
+  // TODO(sesse): Can we avoid taking a copy here if there are no CQ-dependent
+  // locals?
+  HeapHashMap<String, Member<CSSVariableData>> locals_after_cq =
+      mixin_parameter_bindings->GetBaseLocals();
+  for (const auto& [name, candidates] :
+       mixin_parameter_bindings->GetConditionalOverrideLocals()) {
+    // Mark this as uncacheable in the MPC.
+    // TODO(sesse): Loosen this restriction, by including the CQ evaluation
+    // results in the MPC key (and also update operator== and GetHash() to
+    // include CQ-dependent locals).
+    state_.StyleBuilder().SetHasContainerRelativeValue();
+
+    // Find the last-declared value with a matching container query (if any),
+    // and apply it.
+    for (const MixinParameterBindings::CQDependentValue& candidate :
+         base::Reversed(candidates)) {
+      if (EvaluateContainerQuery(state_.GetElement(), state_.GetPseudoId(),
+                                 *candidate.container_query, tree_scope,
+                                 state_.NearestSizeContainer(),
+                                 match_result_)) {
+        locals_after_cq.Set(name, candidate.data);
+        break;
+      }
+    }
+  }
+
   FunctionContext ctx = {
       .arguments = function_arguments,
       .locals = {},  // Populated by ApplyLocalVariables.
-      .unresolved_locals = mixin_parameter_bindings->GetLocals(),
+      .unresolved_locals = std::move(locals_after_cq),
       .local_types = local_types,
       .parent = function_context,
   };
@@ -2358,6 +2364,12 @@ bool StyleCascade::ResolveAttrInto(CSSParserTokenStream& stream,
     substituted_attribute_value = g_null_atom;
   }
 
+  // We only use this `local_context` to parse attribute value against attr()
+  // type, we don't actually compute attribute_value here. The computation is
+  // done later on the property where attr() is used and we already have the
+  // right property context there. Hence we don't need to use the property in
+  // the CSSParserLocalContext here, since it's only needed for computing
+  // random() values, not during parsing.
   CSSParserLocalContext local_context =
       CSSParserLocalContext::CreateWithoutPropertyForSubstitutions();
   // Parse value according to the attribute type.

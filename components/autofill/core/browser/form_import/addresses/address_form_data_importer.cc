@@ -4,29 +4,52 @@
 
 #include "components/autofill/core/browser/form_import/addresses/address_form_data_importer.h"
 
+#include <map>
+#include <optional>
+#include <string>
+#include <vector>
+
 #include "base/check_deref.h"
+#include "base/containers/flat_map.h"
+#include "base/containers/flat_set.h"
+#include "base/containers/span.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/types/optional_ref.h"
 #include "components/autofill/core/browser/autofill_field.h"
+#include "components/autofill/core/browser/country_type.h"
 #include "components/autofill/core/browser/data_manager/addresses/address_data_manager.h"
 #include "components/autofill/core/browser/data_manager/personal_data_manager.h"
 #include "components/autofill/core/browser/data_model/addresses/autofill_i18n_api.h"
 #include "components/autofill/core/browser/data_model/addresses/autofill_profile.h"
 #include "components/autofill/core/browser/data_model/addresses/autofill_structured_address_component.h"
 #include "components/autofill/core/browser/data_model/addresses/phone_number.h"
+#include "components/autofill/core/browser/data_quality/addresses/profile_requirement_utils.h"
 #include "components/autofill/core/browser/data_quality/validation.h"
+#include "components/autofill/core/browser/field_types.h"
+#include "components/autofill/core/browser/form_import/addresses/address_profile_save_manager.h"
+#include "components/autofill/core/browser/form_import/addresses/autofill_profile_import_process.h"
+#include "components/autofill/core/browser/form_import/form_data_importer_utils.h"
+#include "components/autofill/core/browser/form_structure.h"
 #include "components/autofill/core/browser/foundations/autofill_client.h"
 #include "components/autofill/core/browser/integrators/plus_addresses/autofill_plus_address_delegate.h"
+#include "components/autofill/core/browser/logging/log_manager.h"
 #include "components/autofill/core/browser/metrics/profile_import_metrics.h"
 #include "components/autofill/core/common/autofill_features.h"
 #include "components/autofill/core/common/autofill_internals/log_message.h"
+#include "components/autofill/core/common/autofill_internals/logging_scope.h"
 #include "components/autofill/core/common/logging/log_buffer.h"
 #include "components/autofill/core/common/logging/log_macros.h"
+#include "services/metrics/public/cpp/ukm_source_id.h"
+#include "url/gurl.h"
+#include "url/origin.h"
 
 namespace autofill {
 
 namespace {
+
+using AddressImportRequirement =
+    autofill_metrics::AddressProfileImportRequirementMetric;
 
 // Struct storing a field's value for import and selected option value, if
 // present.
@@ -136,16 +159,16 @@ bool IsValidFieldTypeAndValue(
   return false;
 }
 
-}  // namespace
-
-AddressFormDataImporter::AddressFormDataImporter(AutofillClient* client)
-    : client_(CHECK_DEREF(client)) {}
-
-AddressFormDataImporter::~AddressFormDataImporter() = default;
-
-AddressDataManager& AddressFormDataImporter::address_data_manager() {
-  return client_->GetPersonalDataManager().address_data_manager();
+bool HasSynthesizedTypes(
+    const base::flat_map<FieldType, std::u16string>& observed_field_values,
+    AddressCountryCode country_code) {
+  return std::ranges::any_of(observed_field_values, [country_code](
+                                                        const auto& entry) {
+    return i18n_model_definition::IsSynthesizedType(entry.first, country_code);
+  });
 }
+
+}  // namespace
 
 AddressFormDataImporter::ExtractedAddressProfile::ExtractedAddressProfile() =
     default;
@@ -153,6 +176,131 @@ AddressFormDataImporter::ExtractedAddressProfile::ExtractedAddressProfile(
     const AddressFormDataImporter::ExtractedAddressProfile& other) = default;
 AddressFormDataImporter::ExtractedAddressProfile::~ExtractedAddressProfile() =
     default;
+
+AddressFormDataImporter::AddressFormDataImporter(AutofillClient* client)
+    : client_(CHECK_DEREF(client)),
+      multistep_importer_(client_->GetAppLocale(),
+                          client_->GetVariationConfigCountryCode()),
+      address_profile_save_manager_(
+          std::make_unique<AddressProfileSaveManager>(client)) {
+  address_data_manager_observation_.Observe(&address_data_manager());
+}
+
+AddressFormDataImporter::~AddressFormDataImporter() = default;
+
+void AddressFormDataImporter::OnAddressDataChanged() {
+  multistep_importer_.OnAddressDataChanged(address_data_manager());
+}
+
+size_t AddressFormDataImporter::ExtractAddressProfiles(
+    const FormStructure& form,
+    std::vector<ExtractedAddressProfile>* extracted_address_profiles) {
+  // Create a buffer to collect logging output for the autofill-internals.
+  LogManager* log_manager = client_->GetCurrentLogManager();
+  LogBuffer import_log_buffer(IsLoggingActive(log_manager));
+  LOG_AF(import_log_buffer) << LoggingScope::kAddressProfileFormImport;
+  // Print the full form into the logging scope.
+  LOG_AF(import_log_buffer)
+      << LogMessage::kImportAddressProfileFromForm << form << CTag{};
+
+  // We save a maximum of 2 profiles per submitted form (e.g. for shipping and
+  // billing).
+  static const size_t kMaxNumAddressProfilesSaved = 2;
+  size_t num_complete_profiles = 0;
+
+  if (!form.field_count()) {
+    LOG_AF(import_log_buffer) << LogMessage::kImportAddressProfileFromFormFailed
+                              << "Form is empty." << CTag{};
+  } else {
+    // Relevant sections for address fields.
+    std::map<Section, std::vector<const AutofillField*>> section_fields;
+    for (const auto& field : form) {
+      if (field->Type().GetAddressType() != UNKNOWN_TYPE) {
+        section_fields[field->section()].push_back(field.get());
+      }
+    }
+
+    for (const auto& [section, fields] : section_fields) {
+      if (num_complete_profiles == kMaxNumAddressProfilesSaved) {
+        break;
+      }
+      // Log the output from a section in a separate div for readability.
+      LOG_AF(import_log_buffer)
+          << Tag{"div"} << Attrib{"class", "profile_import_from_form_section"};
+      LOG_AF(import_log_buffer)
+          << LogMessage::kImportAddressProfileFromFormSection << section
+          << CTag{};
+      // Try to extract an address profile from the form fields of this section.
+      // Only allow for a prompt if no other complete profile was found so far.
+      if (ExtractAddressProfileFromSection(
+              fields, form.source_url(), form.submission_source(),
+              extracted_address_profiles, &import_log_buffer)) {
+        num_complete_profiles++;
+      }
+      // And close the div of the section import log.
+      LOG_AF(import_log_buffer) << CTag{"div"};
+    }
+    autofill_metrics::LogAddressFormImportStatusMetric(
+        num_complete_profiles == 0
+            ? autofill_metrics::AddressProfileImportStatusMetric::kNoImport
+            : autofill_metrics::AddressProfileImportStatusMetric::
+                  kRegularImport);
+  }
+  LOG_AF(import_log_buffer)
+      << LogMessage::kImportAddressProfileFromFormNumberOfImports
+      << num_complete_profiles << CTag{};
+
+  // Write log buffer to autofill-internals.
+  LOG_AF(log_manager) << std::move(import_log_buffer);
+
+  return num_complete_profiles;
+}
+
+bool AddressFormDataImporter::ProcessExtractedAddressProfiles(
+    const std::vector<ExtractedAddressProfile>& extracted_address_profiles,
+    bool allow_prompt,
+    ukm::SourceId ukm_source_id) {
+  int imported_profiles = 0;
+  // `allow_prompt` is true if no credit card or IBAN prompt was shown. If it is
+  // true, we know there is no UI currently displaying, so we can display UI to
+  // import addresses. If it is false, we should not display UI to import
+  // addresses due to a possible dialog or bubble conflict.
+  bool allow_only_silent_updates = !allow_prompt;
+  for (const ExtractedAddressProfile& candidate : extracted_address_profiles) {
+    address_profile_save_manager_->ImportProfileFromForm(
+        candidate.profile, client_->GetAppLocale(), candidate.url,
+        ukm_source_id, allow_only_silent_updates, candidate.import_metadata);
+    // Limit the number of importable profiles to 2.
+    if (!allow_only_silent_updates && ++imported_profiles >= 2) {
+      return true;
+    }
+  }
+  return imported_profiles > 0;
+}
+
+base::flat_set<std::string>
+AddressFormDataImporter::ExtractGUIDsOfProfilesWithoutManualEdits(
+    const FormStructure& submitted_form) const {
+  base::flat_set<std::string> unedited_source_profile_guids;
+  for (const std::unique_ptr<AutofillField>& field : submitted_form) {
+    if (field->all_modifiers().contains(FieldModifier::kUser)) {
+      return {};
+    }
+    if (const std::optional<std::string>& guid =
+            field->autofill_source_profile_guid()) {
+      unedited_source_profile_guids.insert(guid.value());
+    }
+  }
+  return unedited_source_profile_guids;
+}
+
+AddressDataManager& AddressFormDataImporter::address_data_manager() {
+  return client_->GetPersonalDataManager().address_data_manager();
+}
+
+MultiStepImportMerger& AddressFormDataImporter::multi_step_import_merger() {
+  return multistep_importer_;
+}
 
 base::flat_map<FieldType, std::u16string>
 AddressFormDataImporter::GetAddressObservedFieldValues(
@@ -338,6 +486,123 @@ AutofillProfile AddressFormDataImporter::ConstructProfileFromObservedValues(
     import_metadata.phone_import_status = PhoneImportStatus::kValid;
   }
   return candidate_profile;
+}
+
+bool AddressFormDataImporter::ExtractAddressProfileFromSection(
+    base::span<const AutofillField* const> section_fields,
+    const GURL& source_url,
+    mojom::SubmissionSource submission_source,
+    std::vector<ExtractedAddressProfile>* extracted_address_profiles,
+    LogBuffer* import_log_buffer) {
+  // Tracks if the form section contains multiple distinct email addresses.
+  bool has_multiple_distinct_email_addresses = false;
+
+  // Tracks if the form section contains an invalid types.
+  bool has_invalid_field_types = false;
+
+  // Metadata about the way we construct candidate_profile.
+  ProfileImportMetadata import_metadata;
+  import_metadata.origin = url::Origin::Create(source_url);
+  import_metadata.submission_source = submission_source;
+
+  // Tracks if any of the fields belongs to FormType::kAddressForm.
+  bool has_address_related_fields = false;
+
+  // Stores the values collected for each related `FieldType`. Used as
+  // well to detect and discard address forms with multiple fields of the same
+  // type.
+  base::flat_map<FieldType, std::u16string> observed_field_values =
+      GetAddressObservedFieldValues(section_fields, import_metadata,
+                                    import_log_buffer, has_invalid_field_types,
+                                    has_multiple_distinct_email_addresses,
+                                    has_address_related_fields);
+
+  // The candidate for profile import.
+  AutofillProfile candidate_profile = ConstructProfileFromObservedValues(
+      observed_field_values, import_log_buffer, import_metadata);
+
+  // After ensuring the correct country is set on the profile, we can search for
+  // any synthesized nodes. If any of these exist, we'll exclude the profile
+  // from the import process
+  bool has_synthesized_types = HasSynthesizedTypes(
+      observed_field_values, candidate_profile.GetAddressCountryCode());
+
+  // This is done prior to checking the validity of the profile, because multi-
+  // step import profile merging requires the profile to be finalized. Ideally
+  // we would return false here if it fails, but that breaks the metrics.
+  bool finalized_import = candidate_profile.FinalizeAfterImport();
+
+  // Remove invalid values of types that are optional in some countries.
+  // This is done after `FinalizeAfterImport()` to ensure that formatted
+  // invalid values are also removed.
+  RemoveInvalidValues(candidate_profile, import_log_buffer, import_metadata);
+
+  // Reject the profile if the validation requirements are not met.
+  // `ValidateNonEmptyValues()` goes first to collect metrics.
+  bool has_invalid_information =
+      !ValidateNonEmptyValues(candidate_profile, import_log_buffer) ||
+      has_multiple_distinct_email_addresses || has_invalid_field_types ||
+      has_synthesized_types;
+
+  // Profiles with valid information qualify for multi-step imports.
+  // This requires the profile to be finalized to apply the merging logic.
+  if (finalized_import && has_address_related_fields &&
+      !has_invalid_information) {
+    multistep_importer_.ProcessMultiStepImport(candidate_profile,
+                                               import_metadata);
+  }
+
+  // This relies on the profile's country code and must be done strictly after
+  // `ComplementCountry()`.
+  RemoveInaccessibleProfileValues(candidate_profile);
+
+  // Do not import a profile if any of the requirements is violated.
+  // `IsMinimumAddress()` goes first, since it logs to autofill-internals.
+  bool all_fulfilled = IsMinimumAddress(candidate_profile, import_log_buffer) &&
+                       !has_invalid_information;
+
+  // Collect metrics regarding the requirements for an address profile import.
+  autofill_metrics::LogAddressFormImportRequirementMetric(candidate_profile);
+  autofill_metrics::LogAddressFormImportRequirementMetric(
+      has_multiple_distinct_email_addresses
+          ? AddressImportRequirement::kEmailAddressUniqueRequirementViolated
+          : AddressImportRequirement::kEmailAddressUniqueRequirementFulfilled);
+  autofill_metrics::LogAddressFormImportRequirementMetric(
+      has_invalid_field_types
+          ? AddressImportRequirement::kNoInvalidFieldTypesRequirementViolated
+          : AddressImportRequirement::kNoInvalidFieldTypesRequirementFulfilled);
+  autofill_metrics::LogAddressFormImportRequirementMetric(
+      has_synthesized_types
+          ? AddressImportRequirement::kNoSythesizedTypesRequirementViolated
+          : AddressImportRequirement::kNoSythesizedTypesRequirementFulfilled);
+  autofill_metrics::LogAddressFormImportRequirementMetric(
+      import_metadata.observed_invalid_country
+          ? AddressImportRequirement::kCountryValidRequirementViolated
+          : AddressImportRequirement::kCountryValidRequirementFulfilled);
+  autofill_metrics::LogAddressFormImportRequirementMetric(
+      all_fulfilled ? AddressImportRequirement::kOverallRequirementFulfilled
+                    : AddressImportRequirement::kOverallRequirementViolated);
+
+  if (!finalized_import || !all_fulfilled) {
+    return false;
+  }
+
+  autofill_metrics::LogZipCodeLengthMetric(
+      candidate_profile.GetRawInfo(ADDRESS_HOME_ZIP));
+  autofill_metrics::LogZipCodeSeparatorMetric(
+      candidate_profile.GetRawInfo(ADDRESS_HOME_ZIP));
+
+  // At this stage, the saving of the profile can only be omitted by the
+  // incognito mode but the import is not triggered if the browser is in the
+  // incognito mode.
+  DCHECK(!client_->IsOffTheRecord());
+
+  ExtractedAddressProfile extracted_address_profile;
+  extracted_address_profile.profile = candidate_profile;
+  extracted_address_profile.url = source_url;
+  extracted_address_profile.import_metadata = import_metadata;
+  extracted_address_profiles->push_back(std::move(extracted_address_profile));
+  return true;
 }
 
 void AddressFormDataImporter::RemoveInaccessibleProfileValues(

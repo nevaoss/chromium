@@ -24,6 +24,7 @@
 <translation id="1089606299949659462">Peržiūra baigta!</translation>
 <translation id="1094555143448724771">Jei norite peržiūrėti kitų įrenginių skirtukus, sinchronizuokite skirtukus ir istoriją</translation>
 <translation id="1095761715416917775">Galimybė visada pasiekti sinchronizuotus duomenis</translation>
+<translation id="1096091316906284742">Apatinis „Chrome“ radinių pasirinkimo lapas</translation>
 <translation id="1100066534610197918">Atidar. naujame grup. skirtuke</translation>
 <translation id="1103142993930332957">Norite padėti tobulinti „Chrome“?</translation>
 <translation id="1105960400813249514">Ekrano fiksavimas</translation>
@@ -299,6 +300,7 @@ Tik jūsų slaptafrazę turintis asmuo galės perskaityti šifruotus duomenis. S
 <translation id="2287421207599770907">{NUMBER_OF_TABS,plural, =1{Žr. <ph name="TABS_COUNT_ONE" /> skirtuką}one{Žr. <ph name="TABS_COUNT_MANY" /> skirtuką}few{Žr. <ph name="TABS_COUNT_MANY" /> skirtukus}many{Žr. <ph name="TABS_COUNT_MANY" /> skirtuko}other{Žr. <ph name="TABS_COUNT_MANY" /> skirtukų}}</translation>
 <translation id="2297822946037605517">Bendrinti šį puslapį</translation>
 <translation id="230115972905494466">Nerasta jokių suderinamų įrenginių</translation>
+<translation id="2316129865977710310">Ne, ačiū</translation>
 <translation id="2318045970523081853">Palieskite ir skambinkite</translation>
 <translation id="2323763861024343754">Svetainės saugykla</translation>
 <translation id="2328474416100889417">Visi iškart neteks prieigos prie skirtukų grupės „<ph name="GROUP_NAME" />“, o visos kvietimų nuorodos bus išjungtos</translation>
@@ -394,6 +396,7 @@ Tik jūsų slaptafrazę turintis asmuo galės perskaityti šifruotus duomenis. S
 <translation id="2702516483241149200">Naujiena: bendrinkite nuorodą, kuria galima slinkti į šį tekstą</translation>
 <translation id="2708226184420201102">Atidaryti „<ph name="PRODUCT_NAME" />“ naršyklėje</translation>
 <translation id="271033894570825754">Nauja kolekcija</translation>
+<translation id="2710883118091822664">Prisijunkite, kad galėtumėte lengvai tęsti visuose įrenginiuose</translation>
 <translation id="2718352093833049315">Tik su „Wi–Fi“</translation>
 <translation id="2718846868787000099">Kad turinys būtų rodomas pageidaujamomis kalbomis, svetainės, kuriose lankotės, gali matyti jūsų nuostatas</translation>
 <translation id="2723001399770238859">garso įrašas</translation>
@@ -475,6 +478,7 @@ Tik jūsų slaptafrazę turintis asmuo galės perskaityti šifruotus duomenis. S
 <translation id="2992473221983447149">Vaizdų aprašai</translation>
 <translation id="2996291259634659425">Kurkite slaptafrazę</translation>
 <translation id="2996809686854298943">Reikalingas URL</translation>
+<translation id="3008916997590006706">Palieskite „Išsaugoti“, kad galėtumėte lengvai pasiekti šį slaptažodį, kai kitą kartą prisijungsite</translation>
 <translation id="3024215143424744261">Teksto perskaitymo režimo nuostatos uždarytos</translation>
 <translation id="3026955690410463085">Įtraukti nuorodą</translation>
 <translation id="3027644380269727216">Pagrįsta jūsų veikla svetainėje. Šis nustatymas įjungtas.</translation>
@@ -528,6 +532,7 @@ Tik jūsų slaptafrazę turintis asmuo galės perskaityti šifruotus duomenis. S
 <translation id="3268048651973962414">Patraukite aukštyn, kad peržiūrėtumėte paieškos rezultatus</translation>
 <translation id="3269093882174072735">Įkelti vaizdą</translation>
 <translation id="3280562213547448728">Paieška balsu</translation>
+<translation id="3282568296779691940">Prisijungti prie „Chrome“</translation>
 <translation id="3285065882678541460">{TAB_COUNT,plural, =1{<ph name="TAB_GROUPS_PART" />, <ph name="TAB_COUNT_ONE" /> skirtukas}one{<ph name="TAB_GROUPS_PART" />, <ph name="TAB_COUNT_MANY" /> skirtukas}few{<ph name="TAB_GROUPS_PART" />, <ph name="TAB_COUNT_MANY" /> skirtukai}many{<ph name="TAB_GROUPS_PART" />, <ph name="TAB_COUNT_MANY" /> skirtuko}other{<ph name="TAB_GROUPS_PART" />, <ph name="TAB_COUNT_MANY" /> skirtukų}}</translation>
 <translation id="3286508210927575634">{PASSWORDS_COUNT,plural, =1{Vienas slaptažodis išsaugotas tik šiame įrenginyje. Jei norite jį naudoti kituose įrenginiuose, išsaugokite „Google“ paskyroje.}one{# slaptažodis išsaugotas tik šiame įrenginyje. Jei norite juos naudoti kituose įrenginiuose, išsaugokite „Google“ paskyroje.}few{# slaptažodžiai išsaugoti tik šiame įrenginyje. Jei norite juos naudoti kituose įrenginiuose, išsaugokite „Google“ paskyroje.}many{# slaptažodžio išsaugota tik šiame įrenginyje. Jei norite juos naudoti kituose įrenginiuose, išsaugokite „Google“ paskyroje.}other{# slaptažodžių išsaugota tik šiame įrenginyje. Jei norite juos naudoti kituose įrenginiuose, išsaugokite „Google“ paskyroje.}}</translation>
 <translation id="3293181007446299124">Naršymo istorija saugoma privačiai įrenginyje, o ataskaitos siunčiamos su delsa, siekiant apsaugoti jūsų tapatybę</translation>
@@ -606,6 +611,7 @@ Tik jūsų slaptafrazę turintis asmuo galės perskaityti šifruotus duomenis. S
 <translation id="3635073343384702370">„Chrome“ gali tikrinti jūsų slaptažodžius, kai juos išsaugote</translation>
 <translation id="3636940436873918441">Pageidaujamos kalbos</translation>
 <translation id="3637744895182738742">Jei pamiršote slaptafrazę ar norite pakeisti šį nustatymą, <ph name="BEGIN_LINK" />ištrinkite „Chrome“ duomenis paskyroje<ph name="END_LINK" />.</translation>
+<translation id="3641581193271938629">„Chrome“ radinių pasirinkimo langas uždarytas</translation>
 <translation id="3647019414263135904">Atidaryti arba uždaryti kontekstinį iššokantįjį langą</translation>
 <translation id="3653111872753786013"><ph name="WEBSITE_TITLE" />: <ph name="WEBSITE_URL" /></translation>
 <translation id="3674208116086565128">Eiti į „Google“ programos pagrindinį skirtuką</translation>
@@ -714,7 +720,6 @@ Tik jūsų slaptafrazę turintis asmuo galės perskaityti šifruotus duomenis. S
 <translation id="4113030288477039509">Tvarko jūsų administratorius</translation>
 <translation id="4116038641877404294">Atsisiųskite puslapius, kad galėtumėte naudoti juos neprisijungę</translation>
 <translation id="4121654769234887259">Jums nereikės prisiminti šio slaptažodžio. Jis bus išsaugotas „Google“ slaptažodžių tvarkyklėje kaip priskirtas el. pašto adresui <ph name="USERNAME" />.</translation>
-<translation id="4124152339699379357">Pranešimų leidimo srautas atidarytas per visą ekrano aukštį</translation>
 <translation id="4132137475637520539">Leisti prisijungti visiems nuorodą turintiems žmonėms</translation>
 <translation id="4135200667068010335">Įrenginių, su kuriais reikia bendrinti skirtuką, sąrašas uždarytas.</translation>
 <translation id="4136632885151622181">„<ph name="TAB_TITLE" />“, kelis kartus pasirinktas prisegtas įrašantis skirtukas</translation>
@@ -780,6 +785,7 @@ Tik jūsų slaptafrazę turintis asmuo galės perskaityti šifruotus duomenis. S
 <translation id="4384468725000734951">Atliekant paiešką naudojama „Sogou“</translation>
 <translation id="4387647248986092471">Kurti automobilio profilio užraktą</translation>
 <translation id="4387817230000841154">Atidaryti atsisiuntimų puslapį</translation>
+<translation id="4395046795145457714">„Chrome“ radinių pasirinkimo langas atidarytas per visą ekrano aukštį</translation>
 <translation id="4398561997852463382">„<ph name="TAB_TITLE" />“, pasirinktas prisegtas įrašantis inkognito skirtukas</translation>
 <translation id="4402611456429872546"><ph name="LANG" /> – atsisiunčiama…</translation>
 <translation id="4404568932422911380">Nėra jokių žymių</translation>
@@ -960,6 +966,7 @@ Adresu <ph name="BEGIN_LINK" />myactivity.google.com<ph name="END_LINK" /> gali 
 <translation id="5075939510584558547">Išsaugoti be šifruotės</translation>
 <translation id="5078638979202084724">Žymėti visus skirtukus</translation>
 <translation id="5085038751173179818">Prisijunkite prie šios svetainės ir „Chrome“, kad gautumėte žymes ir kt. visuose savo įrenginiuose</translation>
+<translation id="5088347662971855383">Prisegti „Gemini“</translation>
 <translation id="5091199029769593641">Netrukus atidarę naują skirtuką matysite istorijas iš „<ph name="SITE_NAME" />“. Svetainės, kurias stebite, saugomos jūsų „Google“ paskyroje. Jas galite tvarkyti „Discover“ nustatymuose.</translation>
 <translation id="509429900233858213">Įvyko klaida.</translation>
 <translation id="5096775069898886423">Jei svetainė nepalaiko saugių ryšių, esate įspėjami prieš apsilankydami svetainėje</translation>
@@ -1004,6 +1011,7 @@ Adresu <ph name="BEGIN_LINK" />myactivity.google.com<ph name="END_LINK" /> gali 
 <translation id="5267572070504076962">Įjunkite Saugų naršymą, kad būtumėte apsaugoti nuo pavojingų svetainių</translation>
 <translation id="5271967389191913893">Įrenginyje nepavyksta atidaryti norimo atsisiųsti turinio.</translation>
 <translation id="5273031377282080577">Šį nustatymą tvarko administratorius.</translation>
+<translation id="5290322819358431297">Automatinis slaptažodžių pildymas</translation>
 <translation id="5292796745632149097">Siųsti į</translation>
 <translation id="5301876394151419436">Esate prisijungę kaip <ph name="EMAIL" />. Galite bet kada sustabdyti sinchronizavimą skiltyje „Nustatymai“. „Google“ gali suasmeninti Paiešką ir kitas paslaugas pagal jūsų istoriją.</translation>
 <translation id="5304593522240415983">Šis laukas negali būti tuščias</translation>
@@ -1046,6 +1054,7 @@ Adresu <ph name="BEGIN_LINK" />myactivity.google.com<ph name="END_LINK" /> gali 
 <translation id="5469852975082458401">Puslapius galite naršyti naudodami teksto žymeklį. Paspauskite F7, kad išjungtumėte.</translation>
 <translation id="5471273988133666918">Negalima perkelti skirtuko „<ph name="TAB_TITLE" />“</translation>
 <translation id="548278423535722844">Atidaryti Žemėlapių programoje</translation>
+<translation id="5489222148748465285">Leisti „Chrome“ toliau ieškoti?</translation>
 <translation id="5494920125229734069">Pasirinkti viską</translation>
 <translation id="549660026907543296">Prisijungti kaip <ph name="MEMBER_FULL_NAME" /></translation>
 <translation id="5517326820028369152">Naujausios veiklos apatinis lapas</translation>
@@ -1096,6 +1105,7 @@ Adresu <ph name="BEGIN_LINK" />myactivity.google.com<ph name="END_LINK" /> gali 
 <translation id="572328651809341494">Naujausi skirtukai</translation>
 <translation id="5728072125198221967">Susietos „Google“ paslaugos</translation>
 <translation id="5734658507307260911">„<ph name="TAB_TITLE" />“, prisegtas inkognito skirtukas su garsu</translation>
+<translation id="5736345781200955827">Kurkite, saugokite ir tvarkykite slaptažodžius, kad galėtumėte lengvai prisijungti prie svetainių ir programų naudodami „Chrome“</translation>
 <translation id="5744751019568455640">Čia pateikiami balsai, kuriuos galite pasirinkti tinklalapiams skaityti. Jei jums patinka šis balsas ir norite, kad jis būtų toliau naudojamas, tiesiog palieskite balso pavadinimą.</translation>
 <translation id="574845902699630049">Bendrinti <ph name="OWNER_FULL_NAME" /> vardu</translation>
 <translation id="5749068826913805084">„Chrome“ reikia prieigos prie saugyklos failams atsisiųsti.</translation>
@@ -1340,7 +1350,9 @@ Pavyzdžiui, kai kurios svetainės gali atsakyti į šią užklausą rodydamos j
 <translation id="6647441008198474441">URL, kuriais lankotės, siunčiami „Google“, kad numatytų, kokiose svetainėse galite vėliau apsilankyti</translation>
 <translation id="6648977384226967773">{CONTACT,plural, =1{<ph name="CONTACT_PREVIEW" />\u2026 ir dar <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" />}one{<ph name="CONTACT_PREVIEW" />\u2026 ir dar <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" />}few{<ph name="CONTACT_PREVIEW" />\u2026 ir dar <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" />}many{<ph name="CONTACT_PREVIEW" />\u2026 ir dar <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" />}other{<ph name="CONTACT_PREVIEW" />\u2026 ir dar <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" />}}</translation>
 <translation id="6649642165559792194">Peržiūrėti vaizdą <ph name="BEGIN_NEW" />Naujas<ph name="END_NEW" /></translation>
+<translation id="6661521899577697780">„Chrome“ radinių pasirinkimo langas atidarytas iki pusės ekrano aukščio</translation>
 <translation id="666731172850799929">Atidaryti naudojant „<ph name="APP_NAME" />“</translation>
+<translation id="6669390930482049506">Pranešti man</translation>
 <translation id="6671495933530132209">Kopijuoti vaizdą</translation>
 <translation id="6672697278890207089">Įveskite slaptafrazę</translation>
 <translation id="6672917148207387131">Pridėti <ph name="DOMAIN" /></translation>
@@ -1390,6 +1402,7 @@ Pavyzdžiui, kai kurios svetainės gali atsakyti į šią užklausą rodydamos j
 <translation id="6828070228333235514">Stabdyti kainos stebėjimą</translation>
 <translation id="6830728435402077660">Nesaugu</translation>
 <translation id="6831043979455480757">Vertėjas</translation>
+<translation id="6835182496791325827">Gaukite pranešimą, kai „Chrome“ randa geriausius paieškos rezultatus, kai jūsų nėra.</translation>
 <translation id="6846298663435243399">Įkeliama…</translation>
 <translation id="6850409657436465440">Atsisiuntimas vis dar vykdomas</translation>
 <translation id="6850830437481525139">Uždaryta skirtukų lapų: <ph name="TAB_COUNT" /></translation>
@@ -1831,7 +1844,6 @@ Jei norite pakeisti šį nustatymą, <ph name="BEGIN_LINK" />ištrinkite „Chro
 <translation id="8506357771923193001">Čia rasite atsisiuntimus</translation>
 <translation id="8512053371384421952">Nebegausite pranešimų iš <ph name="DOMAIN" />.</translation>
 <translation id="8516012719330875537">Vaizdų redagavimo priemonė</translation>
-<translation id="8526855376374973824">Pranešimų leidimo srautas</translation>
 <translation id="8533670235862049797">Saugus naršymas įjungtas</translation>
 <translation id="8540136935098276800">Įveskite tinkamo formato URL</translation>
 <translation id="854522910157234410">Atidaryti šį puslapį</translation>
@@ -1902,7 +1914,6 @@ Jei norite pakeisti šį nustatymą, <ph name="BEGIN_LINK" />ištrinkite „Chro
 <translation id="8854223127042600341">Žr. neprisijungus pasiekiamus failus</translation>
 <translation id="885480114717186641">Galite pateikti <ph name="HOST_NAME" /> svetainės kompiuteriams užklausą</translation>
 <translation id="8856607253650333758">Gauti aprašus</translation>
-<translation id="8856931513242997049">Pranešimų leidimo srautas uždarytas</translation>
 <translation id="8863714995118816041">Svetainei <ph name="SITE_NAME" /> vėl suteikti leidimai</translation>
 <translation id="8865415417596392024">„Chrome“ duomenys jūsų paskyroje</translation>
 <translation id="8872506776304248286">Atidaryti programoje</translation>

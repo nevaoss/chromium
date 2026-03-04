@@ -49,7 +49,7 @@ class CodePointIterator;
 
 #define DISPATCH_CASE_OP(case_sensitivity, op, args)  \
   ((case_sensitivity == kTextCaseSensitive) ? op args \
-                                            : op##IgnoringASCIICase args)
+                                            : op##IgnoringAsciiCase args)
 
 // You can find documentation about this class in README.md in this directory.
 //
@@ -248,9 +248,7 @@ class WTF_EXPORT String {
                   wtf_size_t index = 0) const;
 
   // Find substrings.
-  size_type find(const StringView& value, size_type start = 0) const {
-    return impl_ ? impl_->Find(value, start) : kNotFound;
-  }
+  size_type find(const StringView& value, size_type start = 0) const;
   wtf_size_t Find(const StringView& value,
                   wtf_size_t start,
                   TextCaseSensitivity case_sensitivity) const {
@@ -268,18 +266,13 @@ class WTF_EXPORT String {
   }
 
   // ASCII case insensitive string matching.
-  wtf_size_t FindIgnoringASCIICase(const StringView& value,
+  wtf_size_t FindIgnoringAsciiCase(const StringView& value,
                                    unsigned start = 0) const {
-    return impl_ ? impl_->FindIgnoringASCIICase(value, start) : kNotFound;
+    return impl_ ? impl_->FindIgnoringAsciiCase(value, start) : kNotFound;
   }
 
   bool Contains(char c) const { return find(c) != kNotFound; }
   bool contains(const StringView& value) const { return find(value) != npos; }
-  bool Contains(
-      const StringView& value,
-      TextCaseSensitivity case_sensitivity = kTextCaseSensitive) const {
-    return Find(value, 0, case_sensitivity) != kNotFound;
-  }
 
   // Find the last instance of a single character or string.
   wtf_size_t ReverseFind(UChar c, unsigned start = UINT_MAX) const {
@@ -315,8 +308,8 @@ class WTF_EXPORT String {
     return impl_ ? impl_->StartsWithIgnoringCaseAndAccents(prefix)
                  : prefix.empty();
   }
-  bool StartsWithIgnoringASCIICase(const StringView& prefix) const {
-    return impl_ ? impl_->StartsWithIgnoringASCIICase(prefix) : prefix.empty();
+  bool StartsWithIgnoringAsciiCase(const StringView& prefix) const {
+    return impl_ ? impl_->StartsWithIgnoringAsciiCase(prefix) : prefix.empty();
   }
   bool StartsWith(UChar character) const {
     return impl_ ? impl_->StartsWith(character) : false;
@@ -337,8 +330,10 @@ class WTF_EXPORT String {
     return impl_ ? impl_->DeprecatedEndsWithIgnoringCase(prefix)
                  : prefix.empty();
   }
-  bool EndsWithIgnoringASCIICase(const StringView& prefix) const {
-    return impl_ ? impl_->EndsWithIgnoringASCIICase(prefix) : prefix.empty();
+  // Returns true if this string ends with the specified `suffix`, using ASCII
+  // case-insensitive matching. If `suffix` is empty, this returns `true`.
+  bool EndsWithIgnoringAsciiCase(const StringView& suffix) const {
+    return impl_ ? impl_->EndsWithIgnoringAsciiCase(suffix) : suffix.empty();
   }
   bool EndsWith(UChar character) const {
     return impl_ ? impl_->EndsWith(character) : false;

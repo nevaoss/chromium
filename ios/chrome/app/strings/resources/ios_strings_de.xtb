@@ -125,6 +125,7 @@
 <translation id="1436671784520050284">Einrichtung fortsetzen</translation>
 <translation id="143681031165817424">Die Adresse wird nur auf diesem Gerät gespeichert</translation>
 <translation id="1445276840641906250">Alle deine Tabs in einem Browser</translation>
+<translation id="1447564161241938558">Der Import von Passwörtern und Passkeys wurde von deinem Administrator deaktiviert</translation>
 <translation id="1450170672351507823">Standardschutz ist aktiviert. Der erweiterte Schutz bietet noch mehr Sicherheit.</translation>
 <translation id="1455660774629812862">Nicht ausblenden</translation>
 <translation id="1456545332132818232">Rezensionen für <ph name="PRODUCT_NAME" />, <ph name="STARS" /> von <ph name="MAX_STARS" />, <ph name="DOMAIN" /></translation>
@@ -373,7 +374,6 @@
 <translation id="2306265833370324042">Details für <ph name="SEARCH_ENGINE_NAME" /> anzeigen</translation>
 <translation id="2309265394777270359">Tab schließen</translation>
 <translation id="2311077293164383652">Angepinnten Tab schließen</translation>
-<translation id="2313392466694008052">Bild mit Gemini bearbeiten</translation>
 <translation id="2316129865977710310">Nein, danke</translation>
 <translation id="2320166752086256636">Tastatur ausblenden</translation>
 <translation id="2321086116217818302">Passwörter werden zum Exportieren vorbereitet…</translation>
@@ -1786,6 +1786,7 @@ Handoff muss auch im Abschnitt „Allgemein“ deiner Einstellungen aktiviert se
 <translation id="7506817096924591340"><ph name="FILENAME" /> (<ph name="FILESIZE" />).</translation>
 <translation id="7508728395076009983">Wenn du deine Inkognitotabs sperren möchtest, richte zuerst Touch ID, Face ID oder einen Sicherheitscode ein.</translation>
 <translation id="750886945254958667">Du kannst diese Gruppe beibehalten, um später Tabs hinzuzufügen, oder sie verlassen, wenn du keinen Zugriff mehr darauf haben möchtest</translation>
+<translation id="7511727374778217603">{COUNT,plural, =1{Bis zu 1 Tab hinzufügen}other{Bis zu {COUNT} Tabs hinzufügen}}</translation>
 <translation id="7512909159512473473">Passphrase eingeben…</translation>
 <translation id="7514365320538308">Herunterladen</translation>
 <translation id="7514530647142300459">Verwende weiterhin die Passwörter in deinem Google-Konto <ph name="EMAIL" /></translation>
@@ -2236,6 +2237,7 @@ Handoff muss auch im Abschnitt „Allgemein“ deiner Einstellungen aktiviert se
 <translation id="9055291197094969722">Mit Tabgruppen kannst du deine geöffneten Tabs organisieren und bist produktiver</translation>
 <translation id="9055580485132823283">Du bist im Begriff, {password_count} Passwörter, {passkey_count} Passkeys und die Liste der Websites und Apps zu löschen, für die du festgelegt hast, dass Anmeldedaten nie gespeichert werden sollen. Konten, die du für Websites und Apps erstellt hast, werden nicht gelöscht.</translation>
 <translation id="9057030985451135243">Informationen zu geteilten Tabgruppen</translation>
+<translation id="9064106978262828592">Probleme beim Exportieren deiner Daten</translation>
 <translation id="9065203028668620118">Bearbeiten</translation>
 <translation id="9066097352053395362">„Lesezeichen bearbeiten“ ausblenden</translation>
 <translation id="9070824521421603770">Du wirst abgemeldet und Tabs werden geschlossen</translation>

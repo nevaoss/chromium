@@ -73,6 +73,7 @@
 #include "third_party/blink/renderer/core/html/forms/html_option_element.h"
 #include "third_party/blink/renderer/core/html/forms/html_select_element.h"
 #include "third_party/blink/renderer/core/html/html_anchor_element.h"
+#include "third_party/blink/renderer/core/html/html_capability_element_base.h"
 #include "third_party/blink/renderer/core/html/html_details_element.h"
 #include "third_party/blink/renderer/core/html/html_dialog_element.h"
 #include "third_party/blink/renderer/core/html/html_document.h"
@@ -82,7 +83,6 @@
 #include "third_party/blink/renderer/core/html/html_menu_bar_element.h"
 #include "third_party/blink/renderer/core/html/html_menu_item_element.h"
 #include "third_party/blink/renderer/core/html/html_menu_list_element.h"
-#include "third_party/blink/renderer/core/html/html_permission_element.h"
 #include "third_party/blink/renderer/core/html/html_slot_element.h"
 #include "third_party/blink/renderer/core/html/media/html_audio_element.h"
 #include "third_party/blink/renderer/core/html/media/html_video_element.h"
@@ -1271,9 +1271,10 @@ static bool AttributeValueMatches(const Attribute& attribute_item,
 
       unsigned start_search_at = 0;
       while (true) {
-        wtf_size_t found_pos = value.Find(
-            selector_value, start_search_at,
-            case_insensitive ? kTextCaseASCIIInsensitive : kTextCaseSensitive);
+        wtf_size_t found_pos =
+            case_insensitive
+                ? value.FindIgnoringAsciiCase(selector_value, start_search_at)
+                : value.find(selector_value, start_search_at);
         if (found_pos == kNotFound) {
           return false;
         }
@@ -1293,30 +1294,27 @@ static bool AttributeValueMatches(const Attribute& attribute_item,
       if (selector_value.empty()) {
         return false;
       }
-      return value.Contains(selector_value, case_insensitive
-                                                ? kTextCaseASCIIInsensitive
-                                                : kTextCaseSensitive);
+      return case_insensitive ? value.ContainsIgnoringAsciiCase(selector_value)
+                              : value.contains(selector_value);
     case CSSSelector::kAttributeBegin:
       if (selector_value.empty()) {
         return false;
       }
-      return value.StartsWith(selector_value, case_insensitive
-                                                  ? kTextCaseASCIIInsensitive
-                                                  : kTextCaseSensitive);
+      return case_insensitive
+                 ? value.StartsWithIgnoringAsciiCase(selector_value)
+                 : value.StartsWith(selector_value);
     case CSSSelector::kAttributeEnd:
       if (selector_value.empty()) {
         return false;
       }
-      return value.EndsWith(selector_value, case_insensitive
-                                                ? kTextCaseASCIIInsensitive
-                                                : kTextCaseSensitive);
+      return case_insensitive ? value.EndsWithIgnoringAsciiCase(selector_value)
+                              : value.EndsWith(selector_value);
     case CSSSelector::kAttributeHyphen:
       if (value.length() < selector_value.length()) {
         return false;
       }
-      if (!value.StartsWith(selector_value, case_insensitive
-                                                ? kTextCaseASCIIInsensitive
-                                                : kTextCaseSensitive)) {
+      if (case_insensitive ? !value.StartsWithIgnoringAsciiCase(selector_value)
+                           : !value.StartsWith(selector_value)) {
         return false;
       }
       // It they start the same, check for exact match or following '-':
@@ -2865,8 +2863,7 @@ bool SelectorChecker::CheckPseudoClass(const SelectorCheckingContext& context,
       if (!RuntimeEnabledFeatures::CSSLangExtendedRangesEnabled()) {
         DCHECK_EQ(selector.ArgumentList()->size(), 1u);
         const AtomicString& argument = (*selector.ArgumentList())[0];
-        if (value.empty() ||
-            !value.StartsWith(argument, kTextCaseASCIIInsensitive)) {
+        if (value.empty() || !value.StartsWithIgnoringAsciiCase(argument)) {
           break;
         }
         if (value.length() != argument.length() &&
@@ -2959,15 +2956,13 @@ bool SelectorChecker::CheckPseudoClass(const SelectorCheckingContext& context,
       return media_element && media_element->paused();
     }
     case CSSSelector::kPseudoPermissionGranted: {
-      CHECK(RuntimeEnabledFeatures::PermissionElementEnabled(
-                element.GetExecutionContext()) ||
-            RuntimeEnabledFeatures::GeolocationElementEnabled(
+      CHECK(RuntimeEnabledFeatures::GeolocationElementEnabled(
                 element.GetExecutionContext()) ||
             RuntimeEnabledFeatures::UserMediaElementEnabled(
                 element.GetExecutionContext()) ||
             RuntimeEnabledFeatures::InstallElementEnabled(
                 element.GetExecutionContext()));
-      auto* permission_element = DynamicTo<HTMLPermissionElement>(element);
+      auto* permission_element = DynamicTo<HTMLCapabilityElementBase>(element);
       return permission_element && permission_element->granted();
     }
     case CSSSelector::kPseudoPictureInPicture:

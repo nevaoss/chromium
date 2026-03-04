@@ -2941,7 +2941,6 @@ EXPORTS
     ?AwaitWithDeadline@Mutex@absl@@QAE_NABVCondition@2@VTime@2@@Z
     ?BadDownCastCrash@base_internal@absl@@YAXPBD0@Z
     ?Base64Escape@absl@@YA?AV?$basic_string@DU?$char_traits@D@__Cr@std@@V?$allocator@D@23@@__Cr@std@@V?$basic_string_view@DU?$char_traits@D@__Cr@std@@@34@@Z
-    ?Base64Escape@absl@@YAXV?$basic_string_view@DU?$char_traits@D@__Cr@std@@@__Cr@std@@PAV?$basic_string@DU?$char_traits@D@__Cr@std@@V?$allocator@D@23@@34@@Z
     ?Base64EscapeInternal@strings_internal@absl@@YAIPBEIPADIPBD_N@Z
     ?Base64Unescape@absl@@YA_NV?$basic_string_view@DU?$char_traits@D@__Cr@std@@@__Cr@std@@PAV?$basic_string@DU?$char_traits@D@__Cr@std@@V?$allocator@D@23@@34@@Z
     ?Basename@flags_internal@absl@@YA?AV?$basic_string_view@DU?$char_traits@D@__Cr@std@@@__Cr@std@@V345@@Z
@@ -3877,7 +3876,6 @@ EXPORTS
     ?RecordClearedReservationSlow@container_internal@absl@@YAXPAUHashtablezInfo@12@@Z
     ?RecordErase@HashtablezInfoHandle@container_internal@absl@@QAEXXZ
     ?RecordEraseSlow@container_internal@absl@@YAXPAUHashtablezInfo@12@@Z
-    ?RecordInsertHit@HashtablezInfoHandle@container_internal@absl@@QAEXXZ
     ?RecordInsertMiss@HashtablezInfoHandle@container_internal@absl@@QAEXII@Z
     ?RecordInsertMissSlow@container_internal@absl@@YAXPAUHashtablezInfo@12@II@Z
     ?RecordRehash@HashtablezInfoHandle@container_internal@absl@@QAEXI@Z
@@ -4143,46 +4141,26 @@ EXPORTS
     ?ThrowBadStatusOrAccess@internal_statusor@absl@@YAXVStatus@2@@Z
     ?ThrowSeedGenException@random_internal@absl@@YAXXZ
     ?ThrowStdBadAlloc@absl@@YAXXZ
-    ?ThrowStdBadAlloc@base_internal@absl@@YAXXZ
     ?ThrowStdBadArrayNewLength@absl@@YAXXZ
     ?ThrowStdBadFunctionCall@absl@@YAXXZ
-    ?ThrowStdBadFunctionCall@base_internal@absl@@YAXXZ
     ?ThrowStdDomainError@absl@@YAXABV?$basic_string@DU?$char_traits@D@__Cr@std@@V?$allocator@D@23@@__Cr@std@@@Z
     ?ThrowStdDomainError@absl@@YAXPBD@Z
-    ?ThrowStdDomainError@base_internal@absl@@YAXABV?$basic_string@DU?$char_traits@D@__Cr@std@@V?$allocator@D@23@@__Cr@std@@@Z
-    ?ThrowStdDomainError@base_internal@absl@@YAXPBD@Z
     ?ThrowStdInvalidArgument@absl@@YAXABV?$basic_string@DU?$char_traits@D@__Cr@std@@V?$allocator@D@23@@__Cr@std@@@Z
     ?ThrowStdInvalidArgument@absl@@YAXPBD@Z
-    ?ThrowStdInvalidArgument@base_internal@absl@@YAXABV?$basic_string@DU?$char_traits@D@__Cr@std@@V?$allocator@D@23@@__Cr@std@@@Z
-    ?ThrowStdInvalidArgument@base_internal@absl@@YAXPBD@Z
     ?ThrowStdLengthError@absl@@YAXABV?$basic_string@DU?$char_traits@D@__Cr@std@@V?$allocator@D@23@@__Cr@std@@@Z
     ?ThrowStdLengthError@absl@@YAXPBD@Z
-    ?ThrowStdLengthError@base_internal@absl@@YAXABV?$basic_string@DU?$char_traits@D@__Cr@std@@V?$allocator@D@23@@__Cr@std@@@Z
-    ?ThrowStdLengthError@base_internal@absl@@YAXPBD@Z
     ?ThrowStdLogicError@absl@@YAXABV?$basic_string@DU?$char_traits@D@__Cr@std@@V?$allocator@D@23@@__Cr@std@@@Z
     ?ThrowStdLogicError@absl@@YAXPBD@Z
-    ?ThrowStdLogicError@base_internal@absl@@YAXABV?$basic_string@DU?$char_traits@D@__Cr@std@@V?$allocator@D@23@@__Cr@std@@@Z
-    ?ThrowStdLogicError@base_internal@absl@@YAXPBD@Z
     ?ThrowStdOutOfRange@absl@@YAXABV?$basic_string@DU?$char_traits@D@__Cr@std@@V?$allocator@D@23@@__Cr@std@@@Z
     ?ThrowStdOutOfRange@absl@@YAXPBD@Z
-    ?ThrowStdOutOfRange@base_internal@absl@@YAXABV?$basic_string@DU?$char_traits@D@__Cr@std@@V?$allocator@D@23@@__Cr@std@@@Z
-    ?ThrowStdOutOfRange@base_internal@absl@@YAXPBD@Z
     ?ThrowStdOverflowError@absl@@YAXABV?$basic_string@DU?$char_traits@D@__Cr@std@@V?$allocator@D@23@@__Cr@std@@@Z
     ?ThrowStdOverflowError@absl@@YAXPBD@Z
-    ?ThrowStdOverflowError@base_internal@absl@@YAXABV?$basic_string@DU?$char_traits@D@__Cr@std@@V?$allocator@D@23@@__Cr@std@@@Z
-    ?ThrowStdOverflowError@base_internal@absl@@YAXPBD@Z
     ?ThrowStdRangeError@absl@@YAXABV?$basic_string@DU?$char_traits@D@__Cr@std@@V?$allocator@D@23@@__Cr@std@@@Z
     ?ThrowStdRangeError@absl@@YAXPBD@Z
-    ?ThrowStdRangeError@base_internal@absl@@YAXABV?$basic_string@DU?$char_traits@D@__Cr@std@@V?$allocator@D@23@@__Cr@std@@@Z
-    ?ThrowStdRangeError@base_internal@absl@@YAXPBD@Z
     ?ThrowStdRuntimeError@absl@@YAXABV?$basic_string@DU?$char_traits@D@__Cr@std@@V?$allocator@D@23@@__Cr@std@@@Z
     ?ThrowStdRuntimeError@absl@@YAXPBD@Z
-    ?ThrowStdRuntimeError@base_internal@absl@@YAXABV?$basic_string@DU?$char_traits@D@__Cr@std@@V?$allocator@D@23@@__Cr@std@@@Z
-    ?ThrowStdRuntimeError@base_internal@absl@@YAXPBD@Z
     ?ThrowStdUnderflowError@absl@@YAXABV?$basic_string@DU?$char_traits@D@__Cr@std@@V?$allocator@D@23@@__Cr@std@@@Z
     ?ThrowStdUnderflowError@absl@@YAXPBD@Z
-    ?ThrowStdUnderflowError@base_internal@absl@@YAXABV?$basic_string@DU?$char_traits@D@__Cr@std@@V?$allocator@D@23@@__Cr@std@@@Z
-    ?ThrowStdUnderflowError@base_internal@absl@@YAXPBD@Z
     ?Tick@PerThreadSem@synchronization_internal@absl@@SAXPAUThreadIdentity@base_internal@3@@Z
     ?TimeFromTimespec@absl@@YA?AVTime@1@Utimespec@@@Z
     ?TimeFromTimeval@absl@@YA?AVTime@1@Utimeval@@@Z
@@ -4375,7 +4353,6 @@ EXPORTS
     ?Wakeup@Mutex@absl@@AAEPAUPerThreadSynch@base_internal@2@PAU342@@Z
     ?WasPresentOnCommandLine@flags_internal@absl@@YA_NV?$basic_string_view@DU?$char_traits@D@__Cr@std@@@__Cr@std@@@Z
     ?WebSafeBase64Escape@absl@@YA?AV?$basic_string@DU?$char_traits@D@__Cr@std@@V?$allocator@D@23@@__Cr@std@@V?$basic_string_view@DU?$char_traits@D@__Cr@std@@@34@@Z
-    ?WebSafeBase64Escape@absl@@YAXV?$basic_string_view@DU?$char_traits@D@__Cr@std@@@__Cr@std@@PAV?$basic_string@DU?$char_traits@D@__Cr@std@@V?$allocator@D@23@@34@@Z
     ?WebSafeBase64Unescape@absl@@YA_NV?$basic_string_view@DU?$char_traits@D@__Cr@std@@@__Cr@std@@PAV?$basic_string@DU?$char_traits@D@__Cr@std@@V?$allocator@D@23@@34@@Z
     ?WideToUtf8@strings_internal@absl@@YAI_WPADAAUShiftState@12@@Z
     ?WithMetadataFrom@LogMessage@log_internal@absl@@QAEAAV123@ABVLogEntry@3@@Z

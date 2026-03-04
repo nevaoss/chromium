@@ -95,7 +95,28 @@ void SyncBreadcrumbsLog() {
   _sceneState.currentOrigin = [self originFromSession:session
                                               options:connectionOptions];
   _sceneState.activationLevel = SceneActivationLevelBackground;
-  _sceneState.connectionOptions = connectionOptions;
+  if (IsEnableNewStartupFlowEnabled()) {
+    if (connectionOptions.shortcutItem) {
+      [self addTaskRequestForShortcutItem:connectionOptions.shortcutItem
+                               taskSource:TaskSource::TaskSourceColdStart
+                                  handler:nil];
+    }
+    if (connectionOptions.URLContexts.count != 0) {
+      for (UIOpenURLContext* URLContext in connectionOptions.URLContexts) {
+        [self addTaskRequestForURLContext:URLContext
+                               taskSource:TaskSource::TaskSourceColdStart];
+      }
+    }
+    if (connectionOptions.userActivities.count != 0) {
+      for (NSUserActivity* userActivity in connectionOptions.userActivities) {
+        [self addTaskRequestForUserActivity:userActivity
+                                 taskSource:TaskSource::TaskSourceColdStart];
+      }
+    }
+  } else {
+    _sceneState.connectionOptions = connectionOptions;
+  }
+
   if (connectionOptions.shortcutItem != nil ||
       connectionOptions.URLContexts.count != 0 ||
       connectionOptions.userActivities.count != 0) {
@@ -170,7 +191,14 @@ void SyncBreadcrumbsLog() {
     openURLContexts:(NSSet<UIOpenURLContext*>*)URLContexts {
   DCHECK(!_sceneState.URLContextsToOpen);
   _sceneState.startupHadExternalIntent = YES;
-  _sceneState.URLContextsToOpen = URLContexts;
+  if (IsEnableNewStartupFlowEnabled()) {
+    for (UIOpenURLContext* URLContext in URLContexts) {
+      [self addTaskRequestForURLContext:URLContext
+                             taskSource:TaskSource::TaskSourceContextURL];
+    }
+  } else {
+    _sceneState.URLContextsToOpen = URLContexts;
+  }
 }
 
 - (void)windowScene:(UIWindowScene*)windowScene
@@ -178,13 +206,9 @@ void SyncBreadcrumbsLog() {
                completionHandler:(void (^)(BOOL succeeded))completionHandler {
   _sceneState.startupHadExternalIntent = YES;
   if (IsEnableNewStartupFlowEnabled()) {
-    TaskRequest* request = [[TaskRequest alloc]
-        initWithShortcutItem:shortcutItem
-                  sceneState:_sceneState
-                  taskSource:TaskSource::TaskSourceQuickAction
-                     handler:completionHandler];
-
-    [_sceneState.profileState.appState.taskOrchestrator addTaskRequest:request];
+    [self addTaskRequestForShortcutItem:shortcutItem
+                             taskSource:TaskSource::TaskSourceQuickAction
+                                handler:completionHandler];
   } else {
     [_sceneController performActionForShortcutItem:shortcutItem
                                  completionHandler:completionHandler];
@@ -194,7 +218,53 @@ void SyncBreadcrumbsLog() {
 - (void)scene:(UIScene*)scene
     continueUserActivity:(NSUserActivity*)userActivity {
   _sceneState.startupHadExternalIntent = YES;
-  _sceneState.pendingUserActivity = userActivity;
+  if (IsEnableNewStartupFlowEnabled()) {
+    [self addTaskRequestForUserActivity:userActivity
+                             taskSource:TaskSource::TaskSourceUserActivity];
+  } else {
+    _sceneState.pendingUserActivity = userActivity;
+  }
+}
+
+#pragma mark - Task Helpers
+
+- (void)addTaskRequestForShortcutItem:(UIApplicationShortcutItem*)shortcutItem
+                           taskSource:(TaskSource)taskSource
+                              handler:(void (^)(BOOL))completionHandler {
+  TaskRequest* request =
+      [[TaskRequest alloc] initWithShortcutItem:shortcutItem
+                                     sceneState:_sceneState
+                                     taskSource:taskSource
+                                        handler:completionHandler];
+  MainApplicationDelegate* appDelegate =
+      base::apple::ObjCCastStrict<MainApplicationDelegate>(
+          UIApplication.sharedApplication.delegate);
+
+  [appDelegate.appState.taskOrchestrator addTaskRequest:request];
+}
+
+- (void)addTaskRequestForURLContext:(UIOpenURLContext*)URLContext
+                         taskSource:(TaskSource)taskSource {
+  TaskRequest* request = [[TaskRequest alloc] initWithURLContext:URLContext
+                                                      sceneState:_sceneState
+                                                      taskSource:taskSource];
+  MainApplicationDelegate* appDelegate =
+      base::apple::ObjCCastStrict<MainApplicationDelegate>(
+          UIApplication.sharedApplication.delegate);
+
+  [appDelegate.appState.taskOrchestrator addTaskRequest:request];
+}
+
+- (void)addTaskRequestForUserActivity:(NSUserActivity*)userActivity
+                           taskSource:(TaskSource)taskSource {
+  TaskRequest* request = [[TaskRequest alloc] initWithUserActivity:userActivity
+                                                        sceneState:_sceneState
+                                                        taskSource:taskSource];
+  MainApplicationDelegate* appDelegate =
+      base::apple::ObjCCastStrict<MainApplicationDelegate>(
+          UIApplication.sharedApplication.delegate);
+
+  [appDelegate.appState.taskOrchestrator addTaskRequest:request];
 }
 
 @end

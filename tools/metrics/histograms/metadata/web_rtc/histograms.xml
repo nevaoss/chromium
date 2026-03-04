@@ -772,7 +772,7 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="WebRTC.BWE.InitialRtt" units="ms" expires_after="2026-06-14">
+<histogram name="WebRTC.BWE.InitialRtt" units="ms" expires_after="2026-08-16">
   <owner>holmer@chromium.org</owner>
   <summary>
     The round-trip time as measured 2 seconds into a WebRTC call.
@@ -780,7 +780,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="WebRTC.BWE.InitialVsConvergedDiff" units="kbps"
-    expires_after="2026-06-14">
+    expires_after="2026-08-16">
   <owner>holmer@chromium.org</owner>
   <summary>
     The difference between the bandwidth estimate at 2 seconds and 20 seconds
@@ -904,7 +904,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="WebRTC.Call.AudioBitrateReceivedInKbps" units="kbps"
-    expires_after="2026-06-14">
+    expires_after="2026-08-16">
   <owner>holmer@chromium.org</owner>
   <summary>
     Average audio bitrate received during a call, counted from first packet
@@ -952,7 +952,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="WebRTC.Call.RtcpBitrateReceivedInBps" units="bits/s"
-    expires_after="2026-06-14">
+    expires_after="2026-08-16">
   <owner>holmer@chromium.org</owner>
   <summary>
     Average RTCP bitrate received during a call, counted from first packet
@@ -1172,17 +1172,6 @@ chromium-metrics-reviews@google.com.
     capturer. The first is defined as being either the first frame ever obtained
     from WGC frame pool or the first frame obtained after a capture interruption
     - e.g. when a captured window is brought back after being minimized.
-  </summary>
-</histogram>
-
-<histogram name="WebRTC.DesktopCapture.Win.WgcDirtyRegionSupport"
-    enum="BooleanActive" expires_after="2026-03-22">
-  <owner>henrika@chromium.org</owner>
-  <owner>webrtc-dev@chromium.org</owner>
-  <summary>
-    A boolean is recorded to this histogram each time a WGC capturer is created.
-    The result is true if WGC supports Dirty Region APIs and it is expected that
-    Windows 24H2 (build 26100) and above should support this new functionality.
   </summary>
 </histogram>
 
@@ -1889,7 +1878,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="WebRTC.Screenshare.FullScreenDetectorResult"
-    enum="FullScreenDetectorResult" expires_after="2026-06-16">
+    enum="FullScreenDetectorResult" expires_after="2026-08-16">
   <owner>agpalak@chromium.org</owner>
   <owner>rtc-meet-in-chrome@google.com</owner>
   <summary>

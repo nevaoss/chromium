@@ -1689,6 +1689,7 @@ Nếu bạn không đặt chính sách này, thì các truy vấn DNS-over-HTTPS
 <translation id="2158741059065130266">Nếu bạn đặt chính sách này thành Đúng, người dùng ứng dụng Files <ph name="PRODUCT_OS_NAME" /> sẽ nhìn thấy Thùng rác. Các tệp trong mục Tệp của tôi và Tệp đã tải xuống (bao gồm cả các tệp con tương ứng do người dùng tạo) sẽ được gửi đến đó khi bị xoá.
 
       Nếu bạn đặt chính sách này thành Sai, các tệp từng nằm trong thùng rác vẫn sẽ hiển thị khi người dùng cho hiện các tệp bị ẩn và tìm thư mục .Trash trong mục Tệp của tôi hoặc Tệp đã tải xuống.</translation>
+<translation id="215891883000260452">Bật tính năng thu thập nhật ký chẩn đoán WebRTC cho các nguồn gốc cụ thể</translation>
 <translation id="2159092270572925582">Cho phép bạn đặt một danh sách mẫu url chỉ định các trang web được phép hiển thị nội dung hỗn hợp (nghĩa là nội dung HTTP trên những trang web HTTPS) có thể chặn (nghĩa là chủ động) và chỉ định các bản nâng cấp nội dung hỗn hợp có thể tuỳ ý chặn sẽ bị tắt.
 
           Nếu bạn không đặt chính sách này, nội dung hỗn hợp có thể chặn sẽ bị chặn và nội dung hỗn hợp có thể tuỳ ý chặn sẽ được nâng cấp. Đồng thời, người dùng sẽ được phép đặt trường hợp ngoại lệ để hiển thị nội dung trên các trang web cụ thể.
@@ -1978,6 +1979,7 @@ Trên <ph name="MAC_OS_NAME" />, chính sách này chỉ có trên các phiên b
       Chính sách này sẽ ghi đè <ph name="DEFAULT_WEB_USB_GUARD_SETTING_POLICY_NAME" />, <ph name="WEB_USB_ASK_FOR_URLS_POLICY_NAME" />, <ph name="WEB_USB_BLOCKED_FOR_URLS_POLICY_NAME" /> và các lựa chọn ưu tiên của người dùng.
 
       Chính sách này chỉ ảnh hưởng đến quyền truy cập vào thiết bị USB thông qua API WebUSB. Để cấp quyền truy cập vào thiết bị USB thông qua API Web Serial, hãy xem chính sách <ph name="SERIAL_ALLOW_USB_DEVICES_FOR_URLS_POLICY_NAME" />.</translation>
+<translation id="2318353380372431186">Cho phép người dùng cài đặt IWA</translation>
 <translation id="2318583605563438459">Cho phép cha mẹ thêm tài khoản được giám sát</translation>
 <translation id="2326031114717677574">Chu kỳ hệ thống lấy mẫu và thu thập dữ liệu âm thanh. Thời gian tối thiểu cho phép là 1 phút.
 
@@ -2512,6 +2514,13 @@ Hệ thống chỉ truy vấn bản ghi AAAA khi thiết bị có thể kết n�
       Lưu ý: Kể từ M114, các ứng dụng kiosk cụ thể được phép ghi đè hành vi của chính sách này cho ứng dụng trong các trường hợp sử dụng đặc biệt, chẳng hạn như đánh giá học viên.</translation>
 <translation id="2667894101494585925">Bật chế độ Tìm nạp hướng dẫn tối ưu hoá</translation>
 <translation id="2669157090883237118">Không thay đổi cấu hình <ph name="PRODUCT_OS_NAME" /> đề xuất.</translation>
+<translation id="2669314653349044073">Chính sách này cho phép bật tính năng thu thập nhật ký chẩn đoán WebRTC cho các nguồn gốc cụ thể.
+
+Để biết thông tin chi tiết về các mẫu đầu vào hợp lệ, vui lòng truy cập vào https://chromeenterprise.google/policies/url-patterns. Giá trị <ph name="WILDCARD_VALUE" /> không được chấp nhận cho chính sách này. Chính sách này chỉ so khớp dựa trên nguồn gốc, nên mọi đường dẫn trong mẫu URL đều bị bỏ qua. Hỗ trợ lược đồ và miền con.
+
+Nếu chính sách này được thiết lập, tính năng thu thập nhật ký chẩn đoán sẽ được bật cho những nguồn gốc khớp với các mẫu trong danh sách.
+
+Nếu chính sách này không được thiết lập, tính năng thu thập nhật ký chẩn đoán sẽ bị tắt theo mặc định.</translation>
 <translation id="2672012807430078509">Kiểm soát việc bật NTLM làm giao thức xác thực cho các điểm kết nối SMB</translation>
 <translation id="2673363037046384711">Người dùng cuối có thể bật hoặc tắt Chế độ hiệu quả cao.</translation>
 <translation id="2673968385134502798">Trò chơi</translation>
@@ -2619,6 +2628,7 @@ Khi chính sách này được đặt thành false hoặc không được địn
       Nếu bạn đặt chính sách này thành Tắt, <ph name="PRODUCT_NAME" /> chỉ có thể sử dụng các máy chủ này nếu được cài đặt ở cấp hệ thống.</translation>
 <translation id="2753637905605932878">Hạn chế phạm vi của cổng UDP cục bộ do WebRTC sử dụng</translation>
 <translation id="2755847332939882873">Cho phép thu thập dữ liệu theo dõi hoạt động trên toàn hệ thống</translation>
+<translation id="2755963656455766808">Kiểm soát khả năng cài đặt Ứng dụng web tách biệt theo cách thủ công của người dùng</translation>
 <translation id="2757054304033424106">Các loại tiện ích/ứng dụng được phép cài đặt</translation>
 <translation id="275769337615229465">Hầu hết các nguồn gốc sẽ tách biệt với các nguồn gốc khác trong cùng một trang web.</translation>
 <translation id="2759224876420453487">Kiểm soát hoạt động của người dùng trong một phiên đa cấu hình</translation>
@@ -5730,6 +5740,12 @@ Chính sách này chỉ mang tính tạm thời và sẽ bị loại bỏ vào n
        Một tên máy chủ có thể được phép nếu trùng khớp hoàn toàn với máy chủ hoặc trùng khớp với bất kỳ miền nào. Ví dụ: một URL như "https://foo.example.com/bar" có thể không hiển thị cảnh báo nếu danh sách này có "foo.example.com" hoặc "example.com".</translation>
 <translation id="4852900976354340846">Chế độ cài đặt Direct Sockets</translation>
 <translation id="485419696366295465">Kiểm soát các chính sách liên quan đến hệ thống con <ph name="BOREALIS_NAME" />.</translation>
+<translation id="4854384393031206645">Kiểm soát khả năng cài đặt Ứng dụng web tách biệt (IWA) theo cách thủ công của người dùng.
+
+Nếu bạn đặt chính sách này thành false (sai), hệ thống sẽ chặn khả năng cài đặt cài đặt IWA của người dùng.
+
+Nếu bạn đặt chính sách này thành true (đúng) hoặc không đặt chính sách này, người dùng sẽ được phép cài đặt IWA.
+</translation>
 <translation id="4855636880814771207">Nếu bạn đặt chính sách này thành Bật hoặc không đặt chính sách này, thì người dùng có thể bật hoặc tắt Bluetooth.
 
       Nếu bạn đặt chính sách này thành Tắt, thì <ph name="PRODUCT_OS_NAME" /> sẽ tắt Bluetooth và người dùng không thể bật được.
@@ -6166,6 +6182,7 @@ Chính sách này là giải pháp tạm thời để bạn có thời gian di c
       </translation>
 <translation id="5104606191349861549">Phím tắt (được hỗ trợ kể từ phiên bản 129)</translation>
 <translation id="5105313908130842249">Độ trễ khóa màn hình khi chạy trên nguồn pin</translation>
+<translation id="5105593357527099243">Không cho phép người dùng cài đặt IWA</translation>
 <translation id="510604120100968366">Bật tính năng phát chuông báo pin yếu.
 
           Tính năng này có nhiệm vụ phát chuông báo pin yếu.
@@ -6520,6 +6537,13 @@ Lưu ý: Chính sách này không áp dụng cho bản nâng cấp HSTS.</transl
 <translation id="5303080953475303561">Việc đặt chính sách này sẽ kiểm soát tần suất màn hình khóa yêu cầu mật khẩu để mở khóa nhanh. Mỗi lần màn hình khóa xuất hiện, nếu lần nhập mật khẩu gần đây nhất diễn ra trước khoảng thời gian chỉ định theo giá trị đã chọn, thì người dùng sẽ không sử dụng được tính năng mở khóa nhanh. Nếu vượt quá khoảng thời gian này mà người dùng vẫn chưa mở khóa màn hình, thì hệ thống sẽ yêu cầu mật khẩu vào lần tới khi người dùng nhập sai mã hoặc khi màn hình khóa xuất hiện lại, tùy theo trường hợp nào xảy ra trước.
 
       Nếu bạn không đặt chính sách này, người dùng sử dụng tính năng mở khóa nhanh sẽ phải nhập mật khẩu hằng ngày trên màn hình khóa.</translation>
+<translation id="530488290401810961">Định cấu hình cách <ph name="PRODUCT_NAME" /> tải mô hình AI tạo sinh nền tảng xuống và dùng mô hình đó để suy luận cục bộ.
+
+Khi bạn không đặt hoặc đặt chính sách này thành Allowed (Cho phép) (0), mô hình sẽ tự động được tải xuống và dùng để suy luận.
+
+Khi bạn đặt chính sách này thành Disabled (Tắt) (1), mô hình sẽ không được tải xuống và mô hình hiện có (nếu đã tải xuống) sẽ bị xoá.
+
+Trên nền tảng máy tính, bạn cũng có thể tắt tính năng tải mô hình xuống bằng chính sách <ph name="COMPONENT_UPDATES_ENABLED_POLICY_NAME" />.</translation>
 <translation id="5306186200045823863">Cho phép tin cậy Cơ sở hạ tầng khóa công khai (PKI) cũ của Symantec Corporation</translation>
 <translation id="5307432759655324440">Tính khả dụng của chế độ ẩn danh</translation>
 <translation id="5308551343115571396">Sau khi <ph name="LACROS_NAME" /> tắt, chúng tôi sẽ cố gắng giữ lại nhiều dữ liệu người dùng nhất có thể trong khi xoá tất cả dữ liệu của trình duyệt.</translation>
@@ -6539,7 +6563,6 @@ Lưu ý: Chính sách này không áp dụng cho bản nâng cấp HSTS.</transl
 <translation id="530949964068726932">Ẩn các tuỳ chọn hỗ trợ tiếp cận trong trình đơn ở khay hệ thống</translation>
 <translation id="5309944663104291505">Không cho phép các Ứng dụng web tách biệt và ứng dụng kiosk bị buộc cài đặt sử dụng Device Attributes API</translation>
 <translation id="5311275381462687162">Tùy chọn cài đặt mặc định cho hành vi <ph name="ATTRIBUTE_SAMESITE_NAME" /> cũ của cookie</translation>
-<translation id="5311430612584074035">Buộc chế độ ưu tiên nền trước đối với tất cả các thẻ trong hồ sơ</translation>
 <translation id="5312253627576569499">Tỷ lệ phần trăm mà theo đó độ trễ làm tối màn hình sẽ thay đổi khi phát hiện thấy hoạt động của người dùng trong khi màn hình ở chế độ tối hoặc ngay sau khi màn hình tắt hẳn</translation>
 <translation id="5316856058059940708">Tắt tính năng con trỏ lớn</translation>
 <translation id="5318185076587284965">Cho phép máy chủ truy cập từ xa sử dụng máy chủ chuyển tiếp</translation>
@@ -12523,11 +12546,6 @@ Chính sách này chỉ có hiệu lực khi bạn đặt chính sách <ph name=
 <translation id="9135095804754272364">Hiện thông báo khi phát hiện thiết bị USB</translation>
 <translation id="9136212796239682721">Tắt giao diện người dùng bong bóng tải xuống</translation>
 <translation id="9136399279941091445">Khoảng thời gian tắt khi chính sách thiết bị đã chỉ định được phát hành</translation>
-<translation id="9138686056337842869">Khi bạn đặt chính sách này thành True, thì Ứng dụng Chrome có thể tiếp tục chạy trong phiên Kiosk, bất kể trạng thái bật Ứng dụng Chrome theo mặc định.
-
-Nếu bạn không đặt chính sách này hoặc đặt chính sách này thành False, thì chế độ mặc định được xác định trên thiết bị sẽ được sử dụng.
-
-Khi cố gắng khởi chạy một ứng dụng Chrome đang tắt, người dùng sẽ thấy thông báo giải thích lý do ứng dụng không khởi chạy và đề xuất liên hệ với bộ phận CNTT.</translation>
 <translation id="9139775903828905867">Kiểm soát phím tắt dùng để kích hoạt phím F11</translation>
 <translation id="9140064482233876338">Không còn dùng trong M69. Thay vào đó, hãy sử dụng OverrideSecurityRestrictionsOnInsecureOrigin.
 

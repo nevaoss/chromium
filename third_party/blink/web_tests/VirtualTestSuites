@@ -54,6 +54,19 @@
     "expires": "never"
   },
   {
+    "prefix": "allow-unsafe-redirect-schemes",
+    "platforms": ["Linux"],
+    "bases": [
+      "external/wpt/fetch/api/redirect/redirect-location.any.js"
+    ],
+    "exclusive_tests": "ALL",
+    "args": [
+      "--enable-features=AllowUnsafeRedirectSchemesForManualMode"
+    ],
+    "owners": ["helmut@januschka.com"],
+    "expires": "Jan 24, 2027"
+  },
+  {
     "prefix": "attribution-reporting-aggregatable-debug",
     "platforms": [
       "Linux",
@@ -1055,6 +1068,27 @@
       "--enable-features=FedCmLightweightMode"
     ],
     "expires": "Aug 1, 2026"
+  },
+  {
+    "prefix": "fedcm-navigation-interception",
+    "platforms": [
+      "Linux",
+      "Mac",
+      "Win"
+    ],
+    "bases": [
+      "external/wpt/fedcm/fedcm-navigation-interception/"
+    ],
+    "exclusive_tests": "ALL",
+    "args": [
+      "--enable-features=FedCmNavigationInterception"
+    ],
+    "owners": [
+      "cbiesinger@chromium.org",
+      "npm@chromium.org",
+      "goto@chromium.org"
+    ],
+    "expires": "Dec 1, 2026"
   },
   {
     "prefix": "fedcm-flexible-tokens",
@@ -2521,7 +2555,7 @@
       "external/wpt/html/semantics/permission-element"
     ],
     "args": [
-      "--enable-blink-features=PermissionElement"
+      "--enable-blink-features=UserMediaElement"
     ],
     "owners": [
       "permissions-core@google.com"
@@ -2535,7 +2569,7 @@
     ],
     "bases": [],
     "args": [
-      "--disable-blink-features=PermissionElement,GeolocationElement,InstallElement"
+      "--disable-blink-features=UserMediaElement,GeolocationElement,InstallElement"
     ],
     "owners": [
       "permissions-core@google.com"

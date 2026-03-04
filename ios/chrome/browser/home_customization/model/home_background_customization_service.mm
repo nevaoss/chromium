@@ -7,6 +7,7 @@
 #import <Foundation/Foundation.h>
 
 #import <set>
+#import <string_view>
 
 #import "base/base64.h"
 #import "base/containers/adapters.h"
@@ -24,43 +25,109 @@
 #import "ios/chrome/browser/home_customization/model/home_background_image_service.h"
 #import "ios/chrome/browser/home_customization/model/theme_syncable_service_ios.h"
 #import "ios/chrome/browser/home_customization/model/user_uploaded_image_manager.h"
+#import "ios/chrome/browser/home_customization/utils/theme_ios_specifics_utils.h"
 #import "ios/chrome/browser/shared/model/prefs/pref_names.h"
 #import "ios/chrome/browser/shared/public/features/features.h"
 #import "third_party/skia/include/core/SkColor.h"
 #import "url/gurl.h"
 
 namespace sync_pb {
+
 bool operator==(const sync_pb::NtpCustomBackground& lhs,
                 const sync_pb::NtpCustomBackground& rhs) {
-  return lhs.url() == rhs.url();
+  return home_customization::AreNtpCustomBackgroundsEquivalent(lhs, rhs);
 }
 
 bool operator==(const sync_pb::UserColorTheme& lhs,
                 const sync_pb::UserColorTheme& rhs) {
-  return lhs.color() == rhs.color() &&
-         lhs.browser_color_variant() == rhs.browser_color_variant();
+  return home_customization::AreUserColorThemesEquivalent(lhs, rhs);
 }
 
-bool operator==(const sync_pb::ThemeSpecificsIos& lhs,
-                const sync_pb::ThemeSpecificsIos& rhs) {
-  // Ntp Background field takes precedence. Only compare colors if neither
-  // theme has an ntp background.
-  if (lhs.has_ntp_background() != rhs.has_ntp_background()) {
-    return false;
-  }
-
-  // Only compare url.
-  if (lhs.has_ntp_background()) {
-    return lhs.ntp_background() == rhs.ntp_background();
-  }
-
-  if (lhs.has_user_color_theme() != rhs.has_user_color_theme()) {
-    return false;
-  }
-
-  return lhs.user_color_theme() == rhs.user_color_theme();
+bool operator==(const sync_pb::ThemeIosSpecifics& lhs,
+                const sync_pb::ThemeIosSpecifics& rhs) {
+  return home_customization::AreThemeIosSpecificsEquivalent(lhs, rhs);
 }
+
 }  // namespace sync_pb
+
+namespace {
+
+// Checks if the legacy theme pref has been migrated. If not, copies the legacy
+// value to the new pref and marks migration as complete. Returns the encoded
+// migrated theme if migration occurred, or `std::nullopt` otherwise.
+std::optional<std::string> MigrateLegacyThemeIfNeeded(
+    PrefService* profile_pref_service) {
+  CHECK(base::FeatureList::IsEnabled(syncer::kSyncThemesIos));
+
+  if (profile_pref_service->GetBoolean(prefs::kIosNtpThemeMigrationComplete)) {
+    return std::nullopt;
+  }
+
+  // Mark migration as complete immediately so it's not tried again.
+  profile_pref_service->SetBoolean(prefs::kIosNtpThemeMigrationComplete, true);
+
+  const std::string legacy_theme =
+      profile_pref_service->GetString(prefs::kIosSavedThemeSpecificsIos);
+
+  // Only migrate if legacy data exists.
+  if (!legacy_theme.empty()) {
+    profile_pref_service->SetString(prefs::kIosNtpThemeSpecifics, legacy_theme);
+    return legacy_theme;
+  }
+
+  return std::nullopt;
+}
+
+// Retrieves the active `ThemeIosSpecifics`.
+std::string GetThemeSpecifics(PrefService* profile_pref_service) {
+  if (base::FeatureList::IsEnabled(syncer::kSyncThemesIos)) {
+    return profile_pref_service->GetString(prefs::kIosNtpThemeSpecifics);
+  }
+
+  // When `syncer::kSyncThemesIos` is disabled use the legacy theme pref.
+  return profile_pref_service->GetString(prefs::kIosSavedThemeSpecificsIos);
+}
+
+// Sets the string value for `pref_name` to `value` in `pref_service`. If
+// `value` is empty, the pref is cleared instead.
+void SetOrClearStringPref(PrefService* pref_service,
+                          std::string_view pref_name,
+                          const std::string& value) {
+  if (value.empty()) {
+    pref_service->ClearPref(pref_name);
+  } else {
+    pref_service->SetString(pref_name, value);
+  }
+}
+
+// Saves the encoded theme to the appropriate pref based on
+// `syncer::kSyncThemesIos`.
+void SaveThemeSpecifics(PrefService* profile_pref_service,
+                        const std::string& encoded_theme) {
+  // Always update the legacy pref, which ensures that if
+  // `syncer::kSyncThemesIos` is turned off, the user's most recent theme is
+  // still preserved in the legacy pref.
+  SetOrClearStringPref(profile_pref_service, prefs::kIosSavedThemeSpecificsIos,
+                       encoded_theme);
+
+  if (!base::FeatureList::IsEnabled(syncer::kSyncThemesIos)) {
+    return;
+  }
+
+  SetOrClearStringPref(profile_pref_service, prefs::kIosNtpThemeSpecifics,
+                       encoded_theme);
+
+  // If writing a new value, ensure migration is marked complete. This prevents
+  // any potential weird edge case where a user saves a theme somehow before
+  // migration logic ever ran.
+  if (!encoded_theme.empty() &&
+      !profile_pref_service->GetBoolean(prefs::kIosNtpThemeMigrationComplete)) {
+    profile_pref_service->SetBoolean(prefs::kIosNtpThemeMigrationComplete,
+                                     true);
+  }
+}
+
+}  // namespace
 
 HomeBackgroundCustomizationService::HomeBackgroundCustomizationService(
     PrefService* pref_service,
@@ -74,6 +141,9 @@ HomeBackgroundCustomizationService::HomeBackgroundCustomizationService(
   if (!IsNTPBackgroundCustomizationEnabled()) {
     return;
   }
+
+  CHECK(pref_service_);
+
   pref_change_registrar_.Init(pref_service_);
   PrefChangeRegistrar::NamedChangeCallback callback = base::BindRepeating(
       &HomeBackgroundCustomizationService::OnPolicyPrefsChanged,
@@ -106,7 +176,7 @@ HomeBackgroundCustomizationService::HomeBackgroundCustomizationService(
        base::Reversed(recently_used_backgrounds_list)) {
     if (background_value.is_string()) {
       recently_used_backgrounds_.Put(
-          DecodeThemeSpecificsIos(background_value.GetString()));
+          DecodeThemeIosSpecifics(background_value.GetString()));
     } else if (background_value.is_dict()) {
       std::optional<HomeUserUploadedBackground> user_background =
           HomeUserUploadedBackground::FromDict(background_value.GetDict());
@@ -154,6 +224,8 @@ void HomeBackgroundCustomizationService::RegisterProfilePrefs(
   // Use a simple list as a sentinel value to indicate "new user".
   registry->RegisterListPref(prefs::kIosRecentlyUsedBackgrounds,
                              base::ListValue().Append(true));
+  registry->RegisterStringPref(prefs::kIosNtpThemeSpecifics, std::string());
+  registry->RegisterBooleanPref(prefs::kIosNtpThemeMigrationComplete, false);
 }
 
 std::optional<HomeCustomBackground>
@@ -333,8 +405,8 @@ void HomeBackgroundCustomizationService::StoreCurrentTheme() {
     new_recent_background = current_theme_;
   }
 
-  pref_service_->SetString(prefs::kIosSavedThemeSpecificsIos,
-                           EncodeThemeSpecificsIos(current_theme_));
+  std::string encoded_theme = EncodeThemeIosSpecifics(current_theme_);
+  SaveThemeSpecifics(pref_service_, encoded_theme);
 
   if (current_user_uploaded_background_) {
     pref_service_->SetDict(prefs::kIosUserUploadedBackground,
@@ -358,10 +430,10 @@ void HomeBackgroundCustomizationService::StoreRecentlyUsedBackgroundsList() {
   base::ListValue recently_used_backgrounds_list;
   for (const RecentlyUsedBackgroundInternal& background :
        recently_used_backgrounds_) {
-    if (std::holds_alternative<sync_pb::ThemeSpecificsIos>(background)) {
-      sync_pb::ThemeSpecificsIos theme =
-          std::get<sync_pb::ThemeSpecificsIos>(background);
-      recently_used_backgrounds_list.Append(EncodeThemeSpecificsIos(theme));
+    if (std::holds_alternative<sync_pb::ThemeIosSpecifics>(background)) {
+      sync_pb::ThemeIosSpecifics theme =
+          std::get<sync_pb::ThemeIosSpecifics>(background);
+      recently_used_backgrounds_list.Append(EncodeThemeIosSpecifics(theme));
     } else {
       HomeUserUploadedBackground userBackground =
           std::get<HomeUserUploadedBackground>(background);
@@ -386,8 +458,21 @@ void HomeBackgroundCustomizationService::LoadCurrentTheme() {
   if (!IsNTPBackgroundCustomizationEnabled()) {
     return;
   }
-  current_theme_ = DecodeThemeSpecificsIos(
-      pref_service_->GetString(prefs::kIosSavedThemeSpecificsIos));
+
+  std::string saved_encoded_theme = GetThemeSpecifics(pref_service_);
+
+  // If theme sync is enabled, check if a migration from legacy theme storage is
+  // needed.
+  if (base::FeatureList::IsEnabled(syncer::kSyncThemesIos)) {
+    std::optional<std::string> migrated_theme =
+        MigrateLegacyThemeIfNeeded(pref_service_);
+
+    // Use the migrated theme if present, otherwise keep the existing
+    // `saved_encoded_theme`.
+    saved_encoded_theme = migrated_theme.value_or(saved_encoded_theme);
+  }
+
+  current_theme_ = DecodeThemeIosSpecifics(saved_encoded_theme);
 
   const base::DictValue& background_data =
       pref_service_->GetDict(prefs::kIosUserUploadedBackground);
@@ -465,9 +550,9 @@ HomeBackgroundCustomizationService::GetThemeSyncableService() {
 RecentlyUsedBackground
 HomeBackgroundCustomizationService::ConvertBackgroundRepresentation(
     RecentlyUsedBackgroundInternal background) {
-  if (std::holds_alternative<sync_pb::ThemeSpecificsIos>(background)) {
-    sync_pb::ThemeSpecificsIos theme_specifics =
-        std::get<sync_pb::ThemeSpecificsIos>(background);
+  if (std::holds_alternative<sync_pb::ThemeIosSpecifics>(background)) {
+    sync_pb::ThemeIosSpecifics theme_specifics =
+        std::get<sync_pb::ThemeIosSpecifics>(background);
     if (theme_specifics.has_ntp_background()) {
       return theme_specifics.ntp_background();
     }
@@ -487,7 +572,7 @@ HomeBackgroundCustomizationService::ConvertBackgroundRepresentation(
             custom_background)) {
       sync_pb::NtpCustomBackground ntp_custom_background =
           std::get<sync_pb::NtpCustomBackground>(custom_background);
-      sync_pb::ThemeSpecificsIos theme_specifics;
+      sync_pb::ThemeIosSpecifics theme_specifics;
       *theme_specifics.mutable_ntp_background() = ntp_custom_background;
       return theme_specifics;
     } else {
@@ -496,28 +581,28 @@ HomeBackgroundCustomizationService::ConvertBackgroundRepresentation(
   } else {
     sync_pb::UserColorTheme user_color_theme =
         std::get<sync_pb::UserColorTheme>(background);
-    sync_pb::ThemeSpecificsIos theme_specifics;
+    sync_pb::ThemeIosSpecifics theme_specifics;
     *theme_specifics.mutable_user_color_theme() = user_color_theme;
     return theme_specifics;
   }
 }
 
-std::string HomeBackgroundCustomizationService::EncodeThemeSpecificsIos(
-    sync_pb::ThemeSpecificsIos theme_specifics_ios) {
-  std::string serialized = theme_specifics_ios.SerializeAsString();
+std::string HomeBackgroundCustomizationService::EncodeThemeIosSpecifics(
+    sync_pb::ThemeIosSpecifics theme_ios_specifics) {
+  std::string serialized = theme_ios_specifics.SerializeAsString();
   // Encode bytestring so it can be stored in a pref.
   return base::Base64Encode(serialized);
 }
 
-sync_pb::ThemeSpecificsIos
-HomeBackgroundCustomizationService::DecodeThemeSpecificsIos(
+sync_pb::ThemeIosSpecifics
+HomeBackgroundCustomizationService::DecodeThemeIosSpecifics(
     std::string encoded) {
   // This pref is base64 encoded, so decode it first.
   std::string serialized;
   base::Base64Decode(encoded, &serialized);
-  sync_pb::ThemeSpecificsIos theme_specifics_ios;
-  theme_specifics_ios.ParseFromString(serialized);
-  return theme_specifics_ios;
+  sync_pb::ThemeIosSpecifics theme_ios_specifics;
+  theme_ios_specifics.ParseFromString(serialized);
+  return theme_ios_specifics;
 }
 
 void HomeBackgroundCustomizationService::DefaultRecentlyUsedBackgroundsLoaded(
@@ -545,7 +630,7 @@ void HomeBackgroundCustomizationService::DefaultRecentlyUsedBackgroundsLoaded(
           image.attribution_action_url.spec());
       new_background.set_collection_id(image.collection_id);
 
-      sync_pb::ThemeSpecificsIos new_theme_specifics;
+      sync_pb::ThemeIosSpecifics new_theme_specifics;
       *new_theme_specifics.mutable_ntp_background() = new_background;
 
       recently_used_backgrounds_.Put(new_theme_specifics);

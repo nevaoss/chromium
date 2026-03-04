@@ -290,7 +290,7 @@ static const char* const kSwitchNames[] = {
     switches::kProfilingFlush,
     switches::kRunAllCompositorStagesBeforeDraw,
     switches::kSkiaFontCacheLimitMb,
-    switches::kSkiaGraphiteBackend,
+    switches::kSkiaGraphiteDawnBackend,
     switches::kSkiaResourceCacheLimitMb,
     switches::kTestGLLib,
     switches::kUseAdapterLuid,
@@ -319,7 +319,7 @@ static const char* const kSwitchNames[] = {
     switches::kGpuWatchdogTimeoutSeconds,
     switches::kUseCmdDecoder,
     switches::kForceVideoOverlays,
-    switches::kSkiaGraphiteBackend,
+    switches::kSkiaGraphiteDawnBackend,
 #if BUILDFLAG(IS_ANDROID)
     switches::kDisableAdpf,
 #endif

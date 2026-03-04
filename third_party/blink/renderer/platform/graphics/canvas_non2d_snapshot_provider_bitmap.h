@@ -25,28 +25,34 @@ class PLATFORM_EXPORT CanvasNon2DSnapshotProviderBitmap
 
   ~CanvasNon2DSnapshotProviderBitmap() override;
 
+  static scoped_refptr<StaticBitmapImage> DoExternalDrawAndSnapshot(
+      const CanvasSnapshotProvider::Info& info,
+      base::FunctionRef<void(cc::PaintCanvas&)> draw_callback,
+      ImageOrientation orientation);
+
   // CanvasSnapshotProvider:
   bool IsGpuContextLost() const override;
   bool IsValid() const override;
   bool IsAccelerated() const override { return false; }
   bool IsExternalBitmapProvider() const override { return true; }
-  scoped_refptr<StaticBitmapImage> DoExternalDrawAndSnapshot(
-      base::FunctionRef<void(cc::PaintCanvas&)> draw_callback,
-      ImageOrientation orientation) override;
   viz::SharedImageFormat GetSharedImageFormat() const override {
     return info_.format;
   }
   gfx::ColorSpace GetColorSpace() const override { return info_.color_space; }
   SkAlphaType GetAlphaType() const override { return info_.alpha_type; }
   gfx::Size Size() const override { return info_.size; }
+  const CanvasSnapshotProvider::Info& Info() const { return info_; }
 
  private:
   explicit CanvasNon2DSnapshotProviderBitmap(
       const CanvasSnapshotProvider::Info& info);
 
+  // Used for any images that clients pass to cc::PaintCanvas::DrawImage() in
+  // the invocation of the `draw_callback` that clients provide to
+  // `DoExternalDrawAndSnapshot()`.
   class ImageProviderImpl : public cc::ImageProvider {
    public:
-    explicit ImageProviderImpl(CanvasSnapshotProvider::Info info);
+    ImageProviderImpl(bool is_f16, const gfx::ColorSpace& color_space);
     ~ImageProviderImpl() override = default;
 
     // cc::ImageProvider:
@@ -54,7 +60,8 @@ class PLATFORM_EXPORT CanvasNon2DSnapshotProviderBitmap
         const cc::DrawImage& draw_image) override;
 
    private:
-    const CanvasSnapshotProvider::Info info_;
+    bool is_f16_;
+    gfx::ColorSpace color_space_;
   };
 
   const CanvasSnapshotProvider::Info info_;

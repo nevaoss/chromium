@@ -20,6 +20,7 @@
 #include "extensions/common/extension_features.h"
 #include "extensions/common/manifest.h"
 #include "extensions/common/manifest_handlers/background_info.h"
+#include "extensions/common/manifest_handlers/message_serialization_info.h"
 #include "extensions/common/mojom/context_type.mojom.h"
 #include "extensions/common/mojom/message_port.mojom.h"
 #include "extensions/renderer/extension_interaction_provider.h"
@@ -179,11 +180,6 @@ std::optional<Message> MessageFromV8(v8::Local<v8::Context> context,
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
   CHECK(isolate);
 
-  if (format == mojom::SerializationFormat::kStructuredClone) {
-    CHECK(base::FeatureList::IsEnabled(
-        extensions_features::kStructuredCloningForMessaging));
-  }
-
   size_t message_size = 0;
   std::string json_message;
   StructuredCloneMessageData structured_message;
@@ -221,15 +217,14 @@ std::optional<Message> MessageFromV8(v8::Local<v8::Context> context,
   MessageMetadata metadata = GetMessageMetadata(context);
   switch (format) {
     case mojom::SerializationFormat::kJson: {
-      return std::make_optional<Message>(
-          std::move(json_message), mojom::SerializationFormat::kJson,
-          metadata.has_user_gesture, metadata.is_from_privileged_context);
+      return std::make_optional<Message>(std::move(json_message),
+                                         metadata.has_user_gesture,
+                                         metadata.is_from_privileged_context);
     }
     case mojom::SerializationFormat::kStructuredClone: {
-      return std::make_optional<Message>(
-          std::move(structured_message),
-          mojom::SerializationFormat::kStructuredClone,
-          metadata.has_user_gesture, metadata.is_from_privileged_context);
+      return std::make_optional<Message>(std::move(structured_message),
+                                         metadata.has_user_gesture,
+                                         metadata.is_from_privileged_context);
     }
   }
 

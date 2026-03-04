@@ -24,6 +24,7 @@
 <translation id="1089606299949659462">അവലോകനം പൂർത്തിയായി!</translation>
 <translation id="1094555143448724771">നിങ്ങളുടെ മറ്റ് ഉപകരണങ്ങളിൽ നിന്നുള്ള ടാബുകൾ കാണാൻ, ടാബുകളും ചരിത്രവും സമന്വയിപ്പിക്കുക</translation>
 <translation id="1095761715416917775">സമന്വയിപ്പിക്കുന്ന ഡാറ്റ നിങ്ങൾക്ക് എല്ലായ്‌പ്പോഴും ആക്‌സസ് ചെയ്യാനാകുമെന്ന് ഉറപ്പാക്കുക</translation>
+<translation id="1096091316906284742">Chrome Finds ഓപ്റ്റ് ഇൻ ബോട്ടം ഷീറ്റ്</translation>
 <translation id="1100066534610197918">ഗ്രൂപ്പിലെ പുതിയ ടാബിൽ തുറക്കൂ</translation>
 <translation id="1103142993930332957">Chrome മെച്ചപ്പെടുത്താൻ സഹായിക്കണോ?</translation>
 <translation id="1105960400813249514">സ്‌ക്രീൻ ക്യാപ്‌ചർ</translation>
@@ -299,6 +300,7 @@
 <translation id="2287421207599770907">{NUMBER_OF_TABS,plural, =1{<ph name="TABS_COUNT_ONE" /> ടാബ് കാണുക}other{<ph name="TABS_COUNT_MANY" /> ടാബുകൾ കാണുക}}</translation>
 <translation id="2297822946037605517">ഈ പേജ് പങ്കിടുക</translation>
 <translation id="230115972905494466">അനുയോജ്യമായ ഉപകരണങ്ങളൊന്നും കണ്ടെത്തിയില്ല</translation>
+<translation id="2316129865977710310">വേണ്ട, നന്ദി</translation>
 <translation id="2318045970523081853">കോൾ ചെയ്യാൻ ടാപ്പ് ചെയ്യുക</translation>
 <translation id="2323763861024343754">സൈറ്റ് സ്‌റ്റോറേജ്</translation>
 <translation id="2328474416100889417">എല്ലാവർക്കും ഉടൻ തന്നെ “<ph name="GROUP_NAME" />” ടാബ് ഗ്രൂപ്പിലേക്കുള്ള ആക്‌സസ് നഷ്‌ടമാകും, എല്ലാ ക്ഷണ ലിങ്കുകളും ഓഫാക്കുകയും ചെയ്യും</translation>
@@ -394,6 +396,7 @@
 <translation id="2702516483241149200">പുതിയത്: ഈ ടെക്സ്റ്റിലേക്ക് സ്ക്രോൾ ചെയ്യുന്ന ഒരു ലിങ്ക് പങ്കിടുക</translation>
 <translation id="2708226184420201102"><ph name="PRODUCT_NAME" /> ബ്രൗസറിൽ തുറക്കുക</translation>
 <translation id="271033894570825754">പുതിയ ശേഖരം</translation>
+<translation id="2710883118091822664">നിങ്ങളുടെ എല്ലാ ഉപകരണങ്ങളിലും എളുപ്പത്തിൽ തുടരാൻ സൈൻ ഇൻ ചെയ്യുക</translation>
 <translation id="2718352093833049315">Wi-Fi യിൽ മാത്രം</translation>
 <translation id="2718846868787000099">നിങ്ങൾ തിരഞ്ഞെടുത്ത ഭാഷകളിൽ ഉള്ളടക്കം കാണിക്കുന്നതിന്, സന്ദർശിക്കുന്ന സൈറ്റുകൾക്ക് നിങ്ങളുടെ മുൻഗണനകൾ കാണാൻ കഴിയും</translation>
 <translation id="2723001399770238859">ഓഡിയോ</translation>
@@ -475,6 +478,7 @@
 <translation id="2992473221983447149">ചിത്രത്തിന്റെ വിവരണങ്ങൾ</translation>
 <translation id="2996291259634659425">പാസ്‌ഫ്രെയ്‌സ് സൃഷ്‌ടിക്കുക</translation>
 <translation id="2996809686854298943">URL ആവശ്യമാണ്</translation>
+<translation id="3008916997590006706">അടുത്ത തവണ സൈൻ ഇൻ ചെയ്യുമ്പോൾ ഈ പാസ്‌വേഡ് എളുപ്പത്തിൽ ആക്‌സസ് ചെയ്യാൻ 'സംരക്ഷിക്കുക' ടാപ്പ് ചെയ്യുക</translation>
 <translation id="3024215143424744261">റീഡിംഗ് മോഡ്, മുൻഗണനകൾ അവസാനിപ്പിച്ചു</translation>
 <translation id="3026955690410463085">ലിങ്ക് ഉൾപ്പെടുത്തുക</translation>
 <translation id="3027644380269727216">സൈറ്റിലെ നിങ്ങളുടെ ആക്റ്റിവിറ്റിയെ അടിസ്ഥാനമാക്കി. ഈ ക്രമീകരണം ഓണാണ്.</translation>
@@ -528,6 +532,7 @@
 <translation id="3268048651973962414">തിരയൽ ഫലങ്ങൾ കാണാൻ മുകളിലേക്ക് വലിച്ചിടുക</translation>
 <translation id="3269093882174072735">ചിത്രം ലോഡ് ചെയ്യുക</translation>
 <translation id="3280562213547448728">ശബ്ദ തിരയൽ</translation>
+<translation id="3282568296779691940">Chrome-ലേക്ക് സൈൻ ഇൻ ചെയ്യുക</translation>
 <translation id="3285065882678541460">{TAB_COUNT,plural, =1{<ph name="TAB_GROUPS_PART" />, <ph name="TAB_COUNT_ONE" /> ടാബ്}other{<ph name="TAB_GROUPS_PART" />, <ph name="TAB_COUNT_MANY" /> ടാബുകൾ}}</translation>
 <translation id="3286508210927575634">{PASSWORDS_COUNT,plural, =1{ഒരു പാസ്‌വേഡ് ഈ ഉപകരണത്തിൽ മാത്രമേ സംരക്ഷിച്ചിട്ടുള്ളൂ. മറ്റ് ഉപകരണങ്ങളിൽ ഉപയോഗിക്കാൻ, അത് നിങ്ങളുടെ Google Account-ൽ സംരക്ഷിക്കുക.}other{# പാസ്‌വേഡുകൾ ഈ ഉപകരണത്തിൽ മാത്രമേ സംരക്ഷിച്ചിട്ടുള്ളൂ. മറ്റ് ഉപകരണങ്ങളിൽ ഉപയോഗിക്കാൻ, അവ നിങ്ങളുടെ Google Account-ൽ സംരക്ഷിക്കുക.}}</translation>
 <translation id="3293181007446299124">നിങ്ങളുടെ ബ്രൗസിംഗ് ചരിത്രം നിങ്ങളുടെ ഉപകരണത്തിൽ സ്വകാര്യമായി സൂക്ഷിക്കുകയും നിങ്ങളുടെ ഐഡന്റിറ്റി സംരക്ഷിക്കാനായി റിപ്പോർട്ടുകൾ വൈകി അയയ്ക്കുകയും ചെയ്യുന്നു.</translation>
@@ -606,6 +611,7 @@
 <translation id="3635073343384702370">നിങ്ങളുടെ പാസ്‌വേഡുകൾ സംരക്ഷിക്കുകയാണങ്കിൽ, Chrome-ന് അവ പരിശോധിക്കാനാകും</translation>
 <translation id="3636940436873918441">മുൻഗണന നൽകുന്ന ഭാഷകൾ</translation>
 <translation id="3637744895182738742">നിങ്ങൾ പാസ്ഫ്രെയ്‌സ് മറന്നാലോ ഈ ക്രമീകരണം മാറ്റണമെന്നുണ്ടെങ്കിലോ, <ph name="BEGIN_LINK" />നിങ്ങളുടെ അക്കൗണ്ടിലെ Chrome ഡാറ്റ ഇല്ലാതാക്കുക<ph name="END_LINK" />.</translation>
+<translation id="3641581193271938629">Chrome Finds ഓപ്റ്റ് ഇൻ അടച്ചു</translation>
 <translation id="3647019414263135904">സന്ദർഭോചിത പോപ്പ് അപ്പ് തുറക്കുക അല്ലെങ്കിൽ അടയ്ക്കുക</translation>
 <translation id="3653111872753786013"><ph name="WEBSITE_TITLE" />: <ph name="WEBSITE_URL" /></translation>
 <translation id="3674208116086565128">Google ആപ്പ് ഹോമിലേക്ക് പോകുക</translation>
@@ -714,7 +720,6 @@
 <translation id="4113030288477039509">നിങ്ങളുടെ അഡ്‌മിനിസ്ട്രേറ്റർ നിയന്ത്രിക്കുന്നത്</translation>
 <translation id="4116038641877404294">ഓഫ്‌ലൈനായി ഉപയോഗിക്കാൻ പേജുകൾ ഡൗൺലോഡ് ചെയ്യുക</translation>
 <translation id="4121654769234887259">നിങ്ങൾ ഈ പാസ്‌വേഡ് ഓർമ്മിക്കേണ്ടതില്ല. <ph name="USERNAME" /> എന്നതിനുള്ള Google Password Manager-ൽ ഇത് സംരക്ഷിക്കും.</translation>
-<translation id="4124152339699379357">അറിയിപ്പ് അനുമതി ഫ്ലോ മുഴുവനായും തുറന്നിരിക്കുന്നു</translation>
 <translation id="4132137475637520539">ലിങ്കുള്ള എല്ലാവരെയും ചേരാൻ അനുവദിക്കുക</translation>
 <translation id="4135200667068010335">ടാബ് പങ്കിടാനാകുന്ന ഉപകരണങ്ങളുടെ ലിസ്‌റ്റ് അടച്ചിരിക്കുന്നു.</translation>
 <translation id="4136632885151622181"><ph name="TAB_TITLE" />, മൾട്ടിസെലക്റ്റ് ചെയ്ത, പിൻ ചെയ്ത, മീഡിയ റെക്കോർഡ് ചെയ്യുന്ന ടാബ്</translation>
@@ -780,6 +785,7 @@
 <translation id="4384468725000734951">തിരയാൻ Sogou ഉപയോഗിക്കുന്നു</translation>
 <translation id="4387647248986092471">കാർ പ്രൊഫൈൽ ലോക്ക് സൃഷ്ടിക്കുക</translation>
 <translation id="4387817230000841154">ഡൗൺലോഡുകൾ തുറക്കുക</translation>
+<translation id="4395046795145457714">Chrome Finds ഓപ്റ്റ് ഇൻ പൂർണ്ണ ഉയരത്തിൽ തുറന്നു</translation>
 <translation id="4398561997852463382"><ph name="TAB_TITLE" />, തിരഞ്ഞെടുത്ത, പിൻ ചെയ്ത, മീഡിയ റെക്കോർഡ് ചെയ്യുന്ന അദൃശ്യ ടാബ്</translation>
 <translation id="4402611456429872546"><ph name="LANG" /> - ഡൗൺലോഡ് ചെയ്യുന്നു…</translation>
 <translation id="4404568932422911380">ബുക്ക്‌മാർക്കുകളൊന്നുമില്ല</translation>
@@ -960,6 +966,7 @@
 <translation id="5075939510584558547">എൻക്രിപ്ഷൻ ഇല്ലാതെ സംരക്ഷിക്കുക</translation>
 <translation id="5078638979202084724">എല്ലാ ടാബുകളും ബുക്ക്‌മാര്‍ക്ക് ചെയ്യുക</translation>
 <translation id="5085038751173179818">നിങ്ങളുടെ ബുക്ക്‌മാർക്കുകളും മറ്റും നിങ്ങളുടെ എല്ലാ ഉപകരണങ്ങളിലും നേടാൻ ഈ സൈറ്റിലേക്കും Chrome-ലേക്കും സൈൻ ഇൻ ചെയ്യുക</translation>
+<translation id="5088347662971855383">Gemini പിൻ ചെയ്യുക</translation>
 <translation id="5091199029769593641">ഉടൻ, പുതിയൊരു ടാബ് തുറക്കുമ്പോൾ, നിങ്ങൾക്ക് <ph name="SITE_NAME" /> എന്നതിൽ നിന്നുള്ള സ്റ്റോറികൾ കാണാനാകും. നിങ്ങൾ പിന്തുടരുന്ന സൈറ്റുകൾ നിങ്ങളുടെ Google അക്കൗണ്ടിൽ സംരക്ഷിക്കുന്നു. Discover ക്രമീകരണത്തിൽ നിങ്ങൾക്ക് അവ മാനേജ് ചെയ്യാനാകും.</translation>
 <translation id="509429900233858213">ഒരു പിശക് സംഭവിച്ചു.</translation>
 <translation id="5096775069898886423">സുരക്ഷിതമായ കണക്ഷനുകളെ പിന്തുണയ്‌ക്കാത്ത സൈറ്റുകൾക്ക്, ആ സൈറ്റ് സന്ദർശിക്കുന്നതിന് മുമ്പ് മുന്നറിയിപ്പ് നേടുക</translation>
@@ -1004,6 +1011,7 @@
 <translation id="5267572070504076962">അപകടകരമായ സൈറ്റുകളിൽ നിന്ന് പരിരക്ഷ നേടാൻ സുരക്ഷിത ബ്രൗസിംഗ് ഓണാക്കുക</translation>
 <translation id="5271967389191913893">ഡൗൺലോഡ് ചെയ്യേണ്ട ഉള്ളടക്കം ഉപകരണത്തിന് തുറക്കാനാവില്ല.</translation>
 <translation id="5273031377282080577">ഈ ക്രമീകരണം നിങ്ങളുടെ അഡ്‌മിൻ മാനേജ് ചെയ്യുന്നു.</translation>
+<translation id="5290322819358431297">പാസ്‌വേഡ് സ്വയമേവ പൂരിപ്പിക്കുക</translation>
 <translation id="5292796745632149097">ഇതിലേക്ക് അയയ്ക്കുക</translation>
 <translation id="5301876394151419436">നിങ്ങൾ <ph name="EMAIL" /> ആയി സൈൻ ഇൻ ചെയ്തിരിക്കുന്നു. നിങ്ങൾക്ക് ക്രമീകരണത്തിൽ ഏതുസമയത്തും സമന്വയിപ്പിക്കൽ നിർത്താം. നിങ്ങളുടെ ചരിത്രം അടിസ്ഥാനമാക്കി Search-ഉം മറ്റ് സേവനങ്ങളും Google വ്യക്തിപരമാക്കിയേക്കാം.</translation>
 <translation id="5304593522240415983">ഈ ഫീൽഡ് ശൂന്യമായിടാൻ കഴിയില്ല</translation>
@@ -1046,6 +1054,7 @@
 <translation id="5469852975082458401">ടെക്‌സ്‌റ്റ് കഴ്‌സർ ഉപയോഗിച്ച് നിങ്ങൾക്ക് പേജുകൾക്കിടയിൽ നാവിഗേറ്റ് ചെയ്യാനാകും. ഓഫാക്കാൻ F7 അമർത്തുക.</translation>
 <translation id="5471273988133666918"><ph name="TAB_TITLE" /> ടാബ് നീക്കാനാകില്ല</translation>
 <translation id="548278423535722844">മാപ്‌സ് ആപ്പിൽ തുറക്കുക</translation>
+<translation id="5489222148748465285">Chrome തുടർന്നും തിരയണോ?</translation>
 <translation id="5494920125229734069">എല്ലാം തിരഞ്ഞെടുക്കുക</translation>
 <translation id="549660026907543296"><ph name="MEMBER_FULL_NAME" /> എന്നയാളായി ചേരുക</translation>
 <translation id="5517326820028369152">'സമീപകാല ആക്റ്റിവിറ്റി' ബോട്ടം ഷീറ്റ്</translation>
@@ -1096,6 +1105,7 @@
 <translation id="572328651809341494">അടുത്തിടെയുള്ള ടാബുകൾ</translation>
 <translation id="5728072125198221967">ലിങ്ക് ചെയ്ത Google സേവനങ്ങൾ</translation>
 <translation id="5734658507307260911"><ph name="TAB_TITLE" />, പിൻ ചെയ്ത, ഓഡിയോ പ്ലേ ചെയ്യുന്ന അദൃശ്യ ടാബ്</translation>
+<translation id="5736345781200955827">Chrome ഉപയോഗിച്ച് സൈറ്റുകളിലേക്കും ആപ്പുകളിലേക്കും എളുപ്പത്തിൽ സൈൻ ഇൻ ചെയ്യാൻ നിങ്ങളുടെ പാസ്‌വേഡുകൾ സൃഷ്ടിക്കുക, സംരക്ഷിക്കുക, മാനേജ് ചെയ്യുക</translation>
 <translation id="5744751019568455640">നിങ്ങളുടെ വെബ് പേജുകൾ വായിക്കാൻ തിരഞ്ഞെടുക്കാവുന്ന ശബ്ദങ്ങൾ ഇവയാണ്. നിങ്ങൾക്ക് ഈ ശബ്ദം ഇഷ്ടപ്പെടുകയും തുടർന്നും ഞാനിത് ഉപയോഗിക്കണമെന്ന് ആഗ്രഹിക്കുകയും ചെയ്യുന്നുണ്ടെങ്കിൽ, ശബ്ദത്തിന്റെ പേരിൽ ടാപ്പ് ചെയ്യുക.</translation>
 <translation id="574845902699630049"><ph name="OWNER_FULL_NAME" /> ആയി പങ്കിടുക</translation>
 <translation id="5749068826913805084">ഫയലുകൾ ഡൗൺലോഡ് ചെയ്യാൻ Chrome-ന് സ്റ്റോറേജ് ആക്‌സസ് ആവശ്യമുണ്ട്.</translation>
@@ -1340,7 +1350,9 @@
 <translation id="6647441008198474441">നിങ്ങൾ അടുത്തതായി ഏതൊക്കെ സൈറ്റുകളായിരിക്കും സന്ദർശിക്കുകയെന്ന് പ്രവചിക്കാൻ, നിങ്ങൾ സന്ദർശിക്കുന്ന URL-കൾ Google-ലേക്ക് അയയ്ക്കുന്നു</translation>
 <translation id="6648977384226967773">{CONTACT,plural, =1{<ph name="CONTACT_PREVIEW" />\u2026 എന്നതും ‌മറ്റ് <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" /> പേയ്‌മെന്റ് രീതികളും}other{<ph name="CONTACT_PREVIEW" />\u2026 എന്നതും ‌മറ്റ് <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" /> പേയ്‌മെന്റ് രീതികളും}}</translation>
 <translation id="6649642165559792194"><ph name="BEGIN_NEW" />പുതിയ<ph name="END_NEW" /> ചിത്രം പ്രിവ്യൂ ചെയ്യുക</translation>
+<translation id="6661521899577697780">Chrome Finds ഓപ്റ്റ് ഇൻ പകുതി ഉയരത്തിൽ തുറന്നു</translation>
 <translation id="666731172850799929"><ph name="APP_NAME" />-ൽ തുറക്കുക</translation>
+<translation id="6669390930482049506">എന്നെ അറിയിക്കുക</translation>
 <translation id="6671495933530132209">ചിത്രം പകർത്തുക</translation>
 <translation id="6672697278890207089">നിങ്ങളുടെ പാസ്ഫ്രെയ്സ് നല്‍കുക</translation>
 <translation id="6672917148207387131"><ph name="DOMAIN" /> ചേർക്കുക</translation>
@@ -1390,6 +1402,7 @@
 <translation id="6828070228333235514">നിരക്ക് ട്രാക്ക് ചെയ്യൽ നിർത്തുക</translation>
 <translation id="6830728435402077660">സുരക്ഷിതമല്ല</translation>
 <translation id="6831043979455480757">വിവർത്തനം ചെയ്യുക</translation>
+<translation id="6835182496791325827">ഉപകരണം ഉപയോഗിക്കാത്തപ്പോൾ നിങ്ങളുടെ തിരയലുകൾക്കുള്ള മികച്ച ഫലങ്ങൾ Chrome കണ്ടെത്തുമ്പോൾ അറിയിപ്പ് നേടുക.</translation>
 <translation id="6846298663435243399">ലോഡുചെയ്യുന്നു...</translation>
 <translation id="6850409657436465440">നിങ്ങളുടെ ഡൗൺലോഡ് ഇപ്പോഴും പുരോഗതിയിലാണ്</translation>
 <translation id="6850830437481525139"><ph name="TAB_COUNT" /> ടാബുകൾ അടച്ചു</translation>
@@ -1831,7 +1844,6 @@
 <translation id="8506357771923193001">നിങ്ങളുടെ ഡൗൺലോഡുകൾ ഇവിടെ കാണാം</translation>
 <translation id="8512053371384421952"><ph name="DOMAIN" /> എന്നതിൽ നിന്ന് നിങ്ങൾക്ക് ഇനി അറിയിപ്പുകൾ ലഭിക്കില്ല.</translation>
 <translation id="8516012719330875537">ചിത്ര എഡിറ്റർ</translation>
-<translation id="8526855376374973824">അറിയിപ്പ് അനുമതി ഫ്ലോ</translation>
 <translation id="8533670235862049797">സുരക്ഷിത ബ്രൗസിംഗ് ഓണാണ്</translation>
 <translation id="8540136935098276800">ശരിയായി ഫോർമാറ്റ് ചെയ്‌ത URL നൽകുക</translation>
 <translation id="854522910157234410">ഈ പേജ് തുറക്കുക</translation>
@@ -1902,7 +1914,6 @@
 <translation id="8854223127042600341">നിങ്ങളുടെ ഓഫ്‌ലൈൻ ഫയലുകൾ കാണുക</translation>
 <translation id="885480114717186641">നിങ്ങൾക്ക് <ph name="HOST_NAME" /> എന്നതിനുള്ള ഡെസ്‌ക്‌ടോപ്പ് സൈറ്റ് അഭ്യർത്ഥിക്കാം</translation>
 <translation id="8856607253650333758">വിവരണങ്ങൾ നേടുക</translation>
-<translation id="8856931513242997049">അറിയിപ്പ് അനുമതി ഫ്ലോ അടച്ചിരിക്കുന്നു</translation>
 <translation id="8863714995118816041"><ph name="SITE_NAME" /> -ന് വീണ്ടും അനുമതികൾ നൽകി</translation>
 <translation id="8865415417596392024">നിങ്ങളുടെ അക്കൗണ്ടിലെ Chrome ഡാറ്റ</translation>
 <translation id="8872506776304248286">ആപ്പിൽ തുറക്കുക</translation>

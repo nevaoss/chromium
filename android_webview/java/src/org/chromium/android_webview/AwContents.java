@@ -4,6 +4,8 @@
 
 package org.chromium.android_webview;
 
+import static org.chromium.build.NullUtil.assertNonNull;
+
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
@@ -1132,18 +1134,20 @@ public class AwContents implements SmartClipProvider {
         controller.setSelectionActionMenuDelegate(selectionActionMenuDelegate);
         AwSelectionDropdownMenuDelegate.maybeSetWebViewDropdownSelectionMenuDelegate(controller);
 
+        assert webContents != null;
+        ImeAdapter adapter = assertNonNull(ImeAdapter.fromWebContents(webContents));
+
         // Listen for dpad events from IMEs (e.g. Samsung Cursor Control) so we know to enable
         // spatial navigation mode to allow these events to move focus out of the WebView.
-        ImeAdapter.fromWebContents(webContents)
-                .addEventObserver(
-                        new ImeEventObserver() {
-                            @Override
-                            public void onBeforeSendKeyEvent(KeyEvent event) {
-                                if (AwContents.isDpadEvent(event)) {
-                                    mSettings.setSpatialNavigationEnabled(true);
-                                }
-                            }
-                        });
+        adapter.addEventObserver(
+                new ImeEventObserver() {
+                    @Override
+                    public void onBeforeSendKeyEvent(KeyEvent event) {
+                        if (AwContents.isDpadEvent(event)) {
+                            mSettings.setSpatialNavigationEnabled(true);
+                        }
+                    }
+                });
     }
 
     private void initializeAutofillProvider(
@@ -2387,12 +2391,19 @@ public class AwContents implements SmartClipProvider {
             throw new IllegalArgumentException("This API does not support javascript URLs");
         }
 
-        // TODO(crbug.com/408128748): Add support for extra headers.
+        IllegalArgumentException headerException = validateAdditionalHeaders(params.extraHeaders);
+        if (headerException != null) {
+            throw headerException;
+        }
+
         // TODO(crbug.com/408974593): Consider adding a fixupUrl option.
         // TODO(crbug.com/408974593): Allow developers to set the PageTransition type.
         LoadUrlParams loadUrlParams = new LoadUrlParams(params.url, PageTransition.TYPED);
         loadUrlParams.setShouldReplaceCurrentEntry(params.shouldReplaceCurrentEntry);
-
+        loadUrlParams.setExtraHeaders(params.extraHeaders);
+        // Remove extra headers for cross origin redirects to avoid data leakage - see
+        // crbug.com/40051073
+        loadUrlParams.setRemoveExtraHeadersOnCrossOriginRedirect(true);
         loadUrlParams.setOverrideUserAgent(UserAgentOverrideOption.TRUE);
 
         NavigationHandle handle = mNavigationController.loadUrl(loadUrlParams);
@@ -4919,8 +4930,10 @@ public class AwContents implements SmartClipProvider {
         @Override
         public boolean onCheckIsTextEditor() {
             if (isDestroyed(NO_WARN)) return false;
-            ImeAdapter imeAdapter = ImeAdapter.fromWebContents(mWebContents);
-            return imeAdapter != null ? imeAdapter.onCheckIsTextEditor() : false;
+            assert mWebContents != null;
+            ImeAdapter adapter = assertNonNull(ImeAdapter.fromWebContents(mWebContents));
+            // Gracefully handle a null adapter in non-debug builds.
+            return adapter != null && adapter.onCheckIsTextEditor();
         }
 
         @Override

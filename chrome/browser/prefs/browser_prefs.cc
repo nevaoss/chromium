@@ -85,6 +85,7 @@
 #include "chrome/browser/ui/safety_hub/safety_hub_prefs.h"
 #include "chrome/browser/ui/search_engines/keyword_editor_controller.h"
 #include "chrome/browser/ui/tabs/projects/projects_prefs.h"
+#include "chrome/browser/ui/tabs/tab_strip_prefs.h"
 #include "chrome/browser/ui/toolbar/chrome_labs/chrome_labs_prefs.h"
 #include "chrome/browser/ui/toolbar/chrome_location_bar_model_delegate.h"
 #include "chrome/browser/ui/toolbar/toolbar_pref_names.h"
@@ -993,6 +994,9 @@ constexpr char kDiceMigrationBackup[] = "signin.dice_migration.backup";
 constexpr char kDiceMigrationRestoredFromBackup[] =
     "signin.dice_migration.restored_from_backup";
 
+// Deprecated 02/2026.
+inline constexpr char kTabSearchOpened[] = "tab_search.opened";
+
 // Register local state used only for migration (clearing or moving to a new
 // key).
 void RegisterLocalStatePrefsForMigration(PrefRegistrySimple* registry) {
@@ -1382,6 +1386,9 @@ void RegisterProfilePrefsForMigration(
   registry->RegisterTimePref(kDiceMigrationDialogLastShownTime, base::Time());
   registry->RegisterDictionaryPref(kDiceMigrationBackup);
   registry->RegisterBooleanPref(kDiceMigrationRestoredFromBackup, false);
+
+  // Deprecated 02/2026.
+  registry->RegisterBooleanPref(kTabSearchOpened, false);
 }
 
 }  // namespace
@@ -2675,6 +2682,14 @@ void MigrateObsoleteProfilePrefs(PrefService* profile_prefs,
 
   // Added 02/2026.
   profile_prefs->ClearPref(kExplicitBrowserSigninWithoutFeatureEnabled);
+
+  // Added 02/2026.
+  profile_prefs->ClearPref(kTabSearchOpened);
+
+#if !BUILDFLAG(IS_ANDROID)
+  // Added 02/2026.
+  tabs::MigrateTabSearchPref(profile_prefs);
+#endif  // !BUILDFLAG(IS_ANDROID)
 
   // Please don't delete the following line. It is used by PRESUBMIT.py.
   // END_MIGRATE_OBSOLETE_PROFILE_PREFS

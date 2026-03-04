@@ -853,6 +853,7 @@ _CONFIG = [
             'net::CookiePriority',
             'net::CookieSameSite',
             'net::CookieSourceScheme',
+            'net::cookie_util::GetCookieDomainWithString',
 
             # Net error codes
             'net::OK',
@@ -1597,7 +1598,7 @@ _CONFIG = [
     {
         'paths': [
             'third_party/blink/renderer/core/css/properties/css_parsing_utils.cc',
-            'third_party/blink/renderer/core/html/html_permission_element.cc',
+            'third_party/blink/renderer/core/html/html_capability_element_base.cc',
             'third_party/blink/renderer/core/paint/box_border_painter.cc',
         ],
         'allowed': [

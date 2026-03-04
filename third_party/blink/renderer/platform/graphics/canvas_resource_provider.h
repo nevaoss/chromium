@@ -158,13 +158,6 @@ class PLATFORM_EXPORT CanvasResourceProvider
     return base::ByteSize(format_.EstimatedSizeInBytes(size_));
   }
 
-  // This is supported only by CanvasNon2DResourceProviderSharedImage.
-  scoped_refptr<StaticBitmapImage> DoExternalDrawAndSnapshot(
-      base::FunctionRef<void(cc::PaintCanvas&)> draw_callback,
-      ImageOrientation orientation) override {
-    NOTREACHED();
-  }
-
   virtual bool WritePixels(const SkImageInfo& orig_info,
                            const void* pixels,
                            size_t row_bytes,
@@ -335,9 +328,7 @@ class PLATFORM_EXPORT Canvas2DResourceProviderBitmap
 
   static std::unique_ptr<CanvasResourceProvider> CreateForTesting(
       gfx::Size size,
-      const Canvas2DColorParams& color_params,
-      ShouldInitialize initialize_provider,
-      Delegate* delegate = nullptr);
+      const Canvas2DColorParams& color_params);
 
  protected:
   Canvas2DResourceProviderBitmap(ResourceProviderType type,
@@ -350,12 +341,12 @@ class PLATFORM_EXPORT Canvas2DResourceProviderBitmap
   friend class CanvasRenderingContext2D;
   friend class OffscreenCanvasRenderingContext2D;
 
+  // The returned instance will have been cleared at creation.
   static std::unique_ptr<Canvas2DResourceProviderBitmap> Create(
       gfx::Size size,
       viz::SharedImageFormat format,
       SkAlphaType alpha_type,
       const gfx::ColorSpace& color_space,
-      ShouldInitialize initialize_provider,
       Delegate* delegate = nullptr);
 
   Canvas2DResourceProviderBitmap(gfx::Size size,
@@ -548,12 +539,12 @@ class PLATFORM_EXPORT CanvasResourceProviderSharedImage
 class PLATFORM_EXPORT Canvas2DResourceProviderSharedImage
     : public CanvasResourceProviderSharedImage {
  public:
+  // The returned instance will have been cleared at creation.
   static std::unique_ptr<Canvas2DResourceProviderSharedImage> Create(
       gfx::Size size,
       viz::SharedImageFormat format,
       SkAlphaType alpha_type,
       const gfx::ColorSpace& color_space,
-      ShouldInitialize initialize_provider,
       base::WeakPtr<WebGraphicsContext3DProviderWrapper>,
       RasterMode raster_mode,
       gpu::SharedImageUsageSet shared_image_usage_flags,
@@ -561,19 +552,17 @@ class PLATFORM_EXPORT Canvas2DResourceProviderSharedImage
   static std::unique_ptr<Canvas2DResourceProviderSharedImage> Create(
       gfx::Size size,
       const Canvas2DColorParams& color_params,
-      ShouldInitialize initialize_provider,
       base::WeakPtr<WebGraphicsContext3DProviderWrapper>,
       RasterMode raster_mode,
-      gpu::SharedImageUsageSet shared_image_usage_flags,
-      Delegate* delegate = nullptr);
+      gpu::SharedImageUsageSet shared_image_usage_flags);
 
+  // The returned instance will have been cleared at creation.
   static std::unique_ptr<Canvas2DResourceProviderSharedImage>
   CreateForSoftwareCompositor(
       gfx::Size size,
       viz::SharedImageFormat format,
       SkAlphaType alpha_type,
       const gfx::ColorSpace& color_space,
-      ShouldInitialize initialize_provider,
       WebGraphicsSharedImageInterfaceProvider* shared_image_interface_provider,
       Delegate* delegate = nullptr);
 
@@ -693,7 +682,7 @@ class PLATFORM_EXPORT CanvasNon2DResourceProviderSharedImage
 
   scoped_refptr<StaticBitmapImage> DoExternalDrawAndSnapshot(
       base::FunctionRef<void(cc::PaintCanvas&)> draw_callback,
-      ImageOrientation orientation) final;
+      ImageOrientation orientation);
 
   // For WebGpu RecyclableCanvasResource.
   void OnAcquireRecyclableCanvasResource();

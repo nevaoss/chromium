@@ -125,6 +125,7 @@
 <translation id="1436671784520050284">Fortsæt konfiguration</translation>
 <translation id="143681031165817424">Adressen er kun gemt på denne enhed</translation>
 <translation id="1445276840641906250">Alle dine faner i én browser</translation>
+<translation id="1447564161241938558">Din administrator har deaktiveret import af adgangskoder og adgangsnøgler</translation>
 <translation id="1450170672351507823">Standardbeskyttelse er aktiveret. Du kan øge sikkerheden ved at bruge forbedret beskyttelse.</translation>
 <translation id="1455660774629812862">Skjul ikke</translation>
 <translation id="1456545332132818232">Produktanmeldelser på <ph name="PRODUCT_NAME" />, <ph name="STARS" /> af <ph name="MAX_STARS" />, <ph name="DOMAIN" /></translation>
@@ -373,7 +374,6 @@
 <translation id="2306265833370324042">Se oplysninger om <ph name="SEARCH_ENGINE_NAME" /></translation>
 <translation id="2309265394777270359">Luk fane</translation>
 <translation id="2311077293164383652">Luk fastgjort fane</translation>
-<translation id="2313392466694008052">Rediger billedet med Gemini</translation>
 <translation id="2316129865977710310">Nej tak</translation>
 <translation id="2320166752086256636">Skjul tastaturet</translation>
 <translation id="2321086116217818302">Forbereder adgangskoder…</translation>
@@ -1786,6 +1786,7 @@ Handoff skal være aktiveret i afsnittet Generelt i Indstillinger, og dine enhed
 <translation id="7506817096924591340"><ph name="FILENAME" /> (<ph name="FILESIZE" />).</translation>
 <translation id="7508728395076009983">Du kan låse dine inkognitofaner ved at konfigurere Touch ID, Face ID eller en adgangskode.</translation>
 <translation id="750886945254958667">Behold denne gruppe for at tilføje faner senere, eller forlad den, hvis du ikke længere vil have adgang til den</translation>
+<translation id="7511727374778217603">{COUNT,plural, =1{Tilføj op til 1 fane}one{Tilføj op til {COUNT} fane}other{Tilføj op til {COUNT} faner}}</translation>
 <translation id="7512909159512473473">Angiv adgangssætning…</translation>
 <translation id="7514365320538308">Download</translation>
 <translation id="7514530647142300459">Fortsæt med at bruge adgangskoderne på din Google-konto <ph name="EMAIL" /></translation>
@@ -2236,6 +2237,7 @@ Handoff skal være aktiveret i afsnittet Generelt i Indstillinger, og dine enhed
 <translation id="9055291197094969722">Opret fanegrupper for at organisere dine åbne faner og få mere fra hånden</translation>
 <translation id="9055580485132823283">Du er ved at slette {password_count} adgangskoder, {passkey_count} adgangsnøgler og listen over websites og apps, hvor du har valgt aldrig at gemme loginoplysninger. Alle konti, du har oprettet til websites og apps, slettes ikke.</translation>
 <translation id="9057030985451135243">Få flere oplysninger om delte fanegrupper</translation>
+<translation id="9064106978262828592">Der opstod et problem med at eksportere dine data</translation>
 <translation id="9065203028668620118">Rediger</translation>
 <translation id="9066097352053395362">Skjul Rediger bogmærke</translation>
 <translation id="9070824521421603770">Du logges ud, og fanerne lukkes.</translation>

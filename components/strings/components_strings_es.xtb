@@ -655,6 +655,7 @@ De lo contrario, lo impedirá tu configuración de privacidad. Permitirá que el
 <translation id="2071156619270205202">Esta tarjeta no reúne los requisitos necesarios para un número de tarjeta virtual.</translation>
 <translation id="2071852865256799872">Tu organización gestiona tu navegador, y <ph name="PROFILE_DOMAIN" /> gestiona tu perfil</translation>
 <translation id="2072011841331007013">Google Jamboard</translation>
+<translation id="2073286362006276165">Información guardada solo en el dispositivo</translation>
 <translation id="2074733626795553847">Desbloquear <ph name="TOPIC" /></translation>
 <translation id="2074771604462073334">Lo has visitado</translation>
 <translation id="2078956195623975415">Juegos musicales y de baile</translation>
@@ -703,6 +704,7 @@ De lo contrario, lo impedirá tu configuración de privacidad. Permitirá que el
 <translation id="2137891579555018930">Esperando permiso...</translation>
 <translation id="213826338245044447">Marcadores móvil</translation>
 <translation id="2141000681034340397">Editar los datos introducidos</translation>
+<translation id="2141475438898772664">Paga en 4 cuotas o mensualmente</translation>
 <translation id="2144171668675205303">No hay temas activos</translation>
 <translation id="2145193671493396738">Noticias de economía</translation>
 <translation id="214556005048008348">Cancelar pago</translation>
@@ -1116,6 +1118,7 @@ De lo contrario, lo impedirá tu configuración de privacidad. Permitirá que el
 <translation id="277133753123645258">Método de envío</translation>
 <translation id="277499241957683684">Falta un registro de dispositivo.</translation>
 <translation id="2775884851269838147">Primera página de impresión</translation>
+<translation id="277828055419948999">Chromium puede autocompletar campos difíciles que la función Autocompletar estándar podría pasar por alto</translation>
 <translation id="2781185443919227679">Islas y playas</translation>
 <translation id="2781692009645368755">Google Pay</translation>
 <translation id="2781799097551205934">Preparando la tramitación de la compra</translation>
@@ -2472,6 +2475,7 @@ De lo contrario, lo impedirá tu configuración de privacidad. Permitirá que el
 <translation id="4950898438188848926">Botón de cambio de pestaña; pulsa Intro para cambiar a la pestaña abierta, <ph name="TAB_SWITCH_FOCUSED_FRIENDLY_MATCH_TEXT" /></translation>
 <translation id="495170559598752135">Acciones</translation>
 <translation id="4953689047182316270">Responder a eventos de accesibilidad</translation>
+<translation id="4954505713046251871">Para ofrecer sugerencias y mejorar esta función, la URL y el contenido de la página se comparten con Google</translation>
 <translation id="4954891067389874142">Paga más rápido cuando tu tarjeta esté guardada. La información de la tarjeta se cifra en Google Wallet.</translation>
 <translation id="4957080528849277028">Botón Ver tu historial de Chrome: actívalo para ver y gestionar tu historial de navegación desde la configuración de Chrome</translation>
 <translation id="4957781475307065660">{DOMAIN_COUNT,plural, =1{+ 1 sitio}other{+ # sitios}}</translation>
@@ -2846,6 +2850,7 @@ De lo contrario, lo impedirá tu configuración de privacidad. Permitirá que el
 <translation id="5543564889050342791">Zoológicos, acuarios y reservas naturales</translation>
 <translation id="5543722831081909240">180 grados</translation>
 <translation id="5544836308113951378">Cruceros y chárteres</translation>
+<translation id="5545314360139398232">Vincula <ph name="ISSUER_NAME" /> para pagar a plazos</translation>
 <translation id="5547939254150808298">Impresión y edición</translation>
 <translation id="554815783948612276">Proveedores de chat y de foros</translation>
 <translation id="5548606607480005320">Comprobación de seguridad</translation>
@@ -3693,6 +3698,7 @@ De lo contrario, lo impedirá tu configuración de privacidad. Permitirá que el
 <translation id="6926216138694948720">Arte corporal</translation>
 <translation id="692638818576287323">Vehículos comerciales</translation>
 <translation id="6927878187051807444">archivos de la cámara y capturas de pantalla</translation>
+<translation id="6929949393612835405">Cerrar y volver a <ph name="OPENER_TITLE" /></translation>
 <translation id="6930607614725241390">Busca en el panel lateral</translation>
 <translation id="6934236486840930310"><ph name="BEGIN_BOLD" />Tu buscador predeterminado te permite hacer búsquedas en la Web y te ofrece funciones de Chrome,<ph name="END_BOLD" /> como hacer búsquedas desde la barra de direcciones y desde imágenes de páginas web. Es posible que una función no esté disponible si tu buscador no la admite.</translation>
 <translation id="6934672428414710184">Este nombre proviene de tu cuenta de Google</translation>
@@ -3975,6 +3981,7 @@ Más información:
 <translation id="7377314930809374926">Industria hotelera</translation>
 <translation id="7378594059915113390">Controles multimedia</translation>
 <translation id="7378810950367401542">/</translation>
+<translation id="7379321689415048316">Chrome puede autocompletar campos difíciles que la función Autocompletar estándar podría pasar por alto</translation>
 <translation id="7380398842872229465">10x15 pulgadas</translation>
 <translation id="7381551826960739226">La opción de autocompletado de los métodos de pago está inhabilitada porque este formulario no utiliza una conexión segura.</translation>
 <translation id="7388380253839603603">Precios de la gasolina y repostaje de vehículos</translation>
@@ -4899,6 +4906,7 @@ Más información:
 <translation id="8858065207712248076">Chrome te recomienda que cambies tu contraseña de <ph name="BEGIN_BOLD" /><ph name="ORG_NAME" /><ph name="END_BOLD" /> si la has vuelto a utilizar en otros sitios.</translation>
 <translation id="885906927438988819">Si está escrito correctamente, <ph name="BEGIN_LINK" />prueba a ejecutar el diagnóstico de red de Windows<ph name="END_LINK" />.</translation>
 <translation id="8861126751581835107">Artes digitales y fotográficas</translation>
+<translation id="8861482055962701239">No se ha podido guardar esta información en tu Google Wallet, pero se ha guardado en Chrome en este dispositivo. Chrome te ofrecerá guardarla en Wallet la próxima vez que la uses.</translation>
 <translation id="8863218129525348270">Para pagar más rápido la próxima vez, guarda la tarjeta en tu dispositivo</translation>
 <translation id="8864939224504814334">Trajes y ropa formal</translation>
 <translation id="8866132857352163524">Bandas sonoras</translation>

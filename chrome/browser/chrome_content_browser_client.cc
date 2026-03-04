@@ -24,7 +24,6 @@
 #include "base/containers/fixed_flat_set.h"
 #include "base/containers/to_vector.h"
 #include "base/dcheck_is_on.h"
-#include "base/feature_list.h"
 #include "base/files/file_path.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
@@ -369,7 +368,6 @@
 #include "media/mojo/mojom/speech_recognizer.mojom.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "net/base/data_url.h"
-#include "net/base/features.h"
 #include "net/cookies/cookie_setting_override.h"
 #include "net/cookies/site_for_cookies.h"
 #include "net/ssl/client_cert_store.h"
@@ -574,6 +572,7 @@
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(IS_CHROMEOS)
+#include "ash/constants/webui_url_constants.h"
 #include "ash/shell.h"
 #include "base/debug/leak_annotations.h"
 #include "chrome/browser/chromeos/policy/dlp/dlp_scoped_file_access_delegate.h"
@@ -1642,7 +1641,7 @@ void ChromeContentBrowserClient::MaybeProxyNetworkBoundRequest(
   // the hijacked remote to this.
   network::mojom::URLLoaderFactoryParamsPtr params =
       network::mojom::URLLoaderFactoryParams::New();
-  params->process_id = network::OriginatingProcess::browser();
+  params->process_id = network::OriginatingProcessId::browser();
   params->is_trusted = true;
   params->isolation_info = isolation_info;
   // Disable CORS wrapping, this is already handled by the caller.
@@ -6160,7 +6159,7 @@ bool IsSystemFeatureURLDisabled(const GURL& url) {
 
   // chrome://os-settings/pwa.html shouldn't be replaced to let the settings app
   // installation complete successfully.
-  if (url.DomainIs(chrome::kChromeUIOSSettingsHost) &&
+  if (url.DomainIs(ash::kChromeUIOSSettingsHost) &&
       url.GetPath() != "/pwa.html") {
     return IsSystemFeatureDisabled(policy::SystemFeature::kOsSettings);
   }
@@ -6169,8 +6168,7 @@ bool IsSystemFeatureURLDisabled(const GURL& url) {
     return IsSystemFeatureDisabled(policy::SystemFeature::kBrowserSettings);
   }
 
-#if BUILDFLAG(IS_CHROMEOS)
-  if (url.DomainIs(chrome::kChromeUIUntrustedCroshHost)) {
+  if (url.DomainIs(ash::kChromeUIUntrustedCroshHost)) {
     return IsSystemFeatureDisabled(policy::SystemFeature::kCrosh);
   }
 
@@ -6190,7 +6188,7 @@ bool IsSystemFeatureURLDisabled(const GURL& url) {
     return IsSystemFeatureDisabled(policy::SystemFeature::kGallery);
   }
 
-  if (url.DomainIs(chrome::kChromeUIUntrustedTerminalHost)) {
+  if (url.DomainIs(ash::kChromeUIUntrustedTerminalHost)) {
     return IsSystemFeatureDisabled(policy::SystemFeature::kTerminal);
   }
 
@@ -6205,8 +6203,6 @@ bool IsSystemFeatureURLDisabled(const GURL& url) {
   if (url.DomainIs(ash::kChromeUIRecorderAppHost)) {
     return IsSystemFeatureDisabled(policy::SystemFeature::kRecorder);
   }
-
-#endif
 
   return false;
 }
@@ -6879,9 +6875,8 @@ ChromeContentBrowserClient::CreateLoginDelegate(
   // create a TGT using their credentials. Note that the credentials are NOT
   // passed to the browser and everything happens on OS level, hence we return
   // nullptr instead of LoginDelegate to fail authentication. (See b/260522530).
-  if (base::FeatureList::IsEnabled(net::features::kKerberosInBrowserRedirect) &&
-      auth_info.scheme ==
-          net::HttpAuth::SchemeToString(net::HttpAuth::AUTH_SCHEME_NEGOTIATE)) {
+  if (auth_info.scheme ==
+      net::HttpAuth::SchemeToString(net::HttpAuth::AUTH_SCHEME_NEGOTIATE)) {
     ash::KerberosInBrowserDialog::Show();
     return nullptr;
   }
@@ -7121,7 +7116,7 @@ bool ChromeContentBrowserClient::HandleWebUI(
   }
 
   if (IsSystemFeatureURLDisabled(*url)) {
-    *url = GURL(chrome::kChromeUIAppDisabledURL);
+    *url = GURL(ash::kChromeUIAppDisabledURL);
     return true;
   }
 #endif

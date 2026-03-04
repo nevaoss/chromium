@@ -125,6 +125,7 @@
 <translation id="1436671784520050284">Vazhdo konfigurimin</translation>
 <translation id="143681031165817424">Adresa është ruajtur vetëm në këtë pajisje</translation>
 <translation id="1445276840641906250">Të gjitha skedat e tua në një shfletues të vetëm</translation>
+<translation id="1447564161241938558">Importimi i fjalëkalimeve dhe çelësave të kalimit është çaktivizuar nga administratori yt</translation>
 <translation id="1450170672351507823">"Mbrojtja standarde" është aktive. Për akoma më shumë mbrojtje, përdor "Mbrojtjen e përparuar".</translation>
 <translation id="1455660774629812862">Mos i fshih</translation>
 <translation id="1456545332132818232">Komentet e produktit për <ph name="PRODUCT_NAME" />, <ph name="STARS" /> nga <ph name="MAX_STARS" />, <ph name="DOMAIN" /></translation>
@@ -373,7 +374,6 @@
 <translation id="2306265833370324042">Shfaq detajet për <ph name="SEARCH_ENGINE_NAME" /></translation>
 <translation id="2309265394777270359">Mbylle skedën</translation>
 <translation id="2311077293164383652">Mbyll skedën e gozhduar</translation>
-<translation id="2313392466694008052">Modifiko imazhin me Gemini</translation>
 <translation id="2316129865977710310">Jo, faleminderit</translation>
 <translation id="2320166752086256636">Fshih tastierën</translation>
 <translation id="2321086116217818302">Po përgatit fjalëkalimet…</translation>
@@ -1786,6 +1786,7 @@ Handoff duhet gjithashtu të jetë i aktivizuar në seksionin "Të përgjithshme
 <translation id="7506817096924591340"><ph name="FILENAME" /> (<ph name="FILESIZE" />).</translation>
 <translation id="7508728395076009983">Për të kyçur skedat e tua "e fshehta", konfiguro Touch ID, Face ID, ose Passcode.</translation>
 <translation id="750886945254958667">Mbaje këtë grup për të shtuar skeda më vonë ose largohu nga ai nëse nuk dëshiron më të kesh qasje në të</translation>
+<translation id="7511727374778217603">{COUNT,plural, =1{Shto deri në 1 skedë}other{Shto deri në {COUNT} skeda}}</translation>
 <translation id="7512909159512473473">Fut frazën e kalimit…</translation>
 <translation id="7514365320538308">Shkarko</translation>
 <translation id="7514530647142300459">Vazhdo të përdorësh fjalëkalimet në "Llogarinë tënde të Google" <ph name="EMAIL" /></translation>
@@ -2059,6 +2060,7 @@ Handoff duhet gjithashtu të jetë i aktivizuar në seksionin "Të përgjithshme
 <translation id="8439758443371991593">Fshih "Shto te 'Lista e leximit'"</translation>
 <translation id="8443986842926457191">URL-ja është më shumë se 2048 karaktere</translation>
 <translation id="8449869326050867919">Fjalëkalimi u nda</translation>
+<translation id="8473815223723723001">Modifiko imazhin me Gemini</translation>
 <translation id="8473863474539038330">Adresat dhe të tjera</translation>
 <translation id="8474378002946546633">Lejo njoftimet</translation>
 <translation id="8477178913400731244">Fshi të dhënat</translation>

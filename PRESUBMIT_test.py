@@ -1636,23 +1636,8 @@ class LogUsageTest(unittest.TestCase):
 
         mock_input_api.files = [
             MockAffectedFile('RandomStuff.java', ['random stuff']),
-            MockAffectedFile('HasAndroidLog.java', [
-                'import android.util.Log;',
-                'some random stuff',
-                'Log.d("TAG", "foo");',
-            ]),
-            MockAffectedFile('HasExplicitUtilLog.java', [
-                'some random stuff',
-                'android.util.Log.d("TAG", "foo");',
-            ]),
             MockAffectedFile('IsInBasePackage.java', [
                 'package org.chromium.base;',
-                'private static final String TAG = "cr_Foo";',
-                'Log.d(TAG, "foo");',
-            ]),
-            MockAffectedFile('IsInBasePackageButImportsLog.java', [
-                'package org.chromium.base;',
-                'import android.util.Log;',
                 'private static final String TAG = "cr_Foo";',
                 'Log.d(TAG, "foo");',
             ]),
@@ -1733,8 +1718,8 @@ class LogUsageTest(unittest.TestCase):
                                                  mock_output_api)
 
         self.assertEqual(
-            5, len(msgs),
-            'Expected %d items, found %d: %s' % (5, len(msgs), msgs))
+            4, len(msgs),
+            'Expected %d items, found %d: %s' % (4, len(msgs), msgs))
 
         # Declaration format
         nb = len(msgs[0].items)
@@ -1758,23 +1743,13 @@ class LogUsageTest(unittest.TestCase):
         self.assertIn('HasInlineTag.java:4', msgs[2].items)
         self.assertIn('HasInlineTagWithSpace.java:4', msgs[2].items)
 
-        # Util Log usage
+        # Tag must not contain
         nb = len(msgs[3].items)
         self.assertEqual(
-            5, nb, 'Expected %d items, found %d: %s' % (3, nb, msgs[3].items))
-        self.assertIn('HasAndroidLog.java:1', msgs[3].items)
-        self.assertIn('HasAndroidLog.java:3', msgs[3].items)
-        self.assertIn('HasExplicitUtilLog.java:2', msgs[3].items)
-        self.assertIn('IsInBasePackageButImportsLog.java:2', msgs[3].items)
-        self.assertIn('IsInBasePackageButImportsLog.java:4', msgs[3].items)
-
-        # Tag must not contain
-        nb = len(msgs[4].items)
-        self.assertEqual(
-            3, nb, 'Expected %d items, found %d: %s' % (2, nb, msgs[4].items))
-        self.assertIn('HasDottedTag.java', msgs[4].items)
-        self.assertIn('HasDottedTagPublic.java', msgs[4].items)
-        self.assertIn('HasOldTag.java', msgs[4].items)
+            3, nb, 'Expected %d items, found %d: %s' % (2, nb, msgs[3].items))
+        self.assertIn('HasDottedTag.java', msgs[3].items)
+        self.assertIn('HasDottedTagPublic.java', msgs[3].items)
+        self.assertIn('HasOldTag.java', msgs[3].items)
 
 
 class GoogleAnswerUrlFormatTest(unittest.TestCase):
@@ -3094,6 +3069,23 @@ class BannedTypeCheckTest(unittest.TestCase):
                          'content/desktop_android.cc')
         self.assertEqual(results[8].locations[0].start_line, 2)
         self.assertEqual(results[8].locations[0].end_line, 2)
+
+    def testBannedMemoryPressureListener(self):
+        input_api = MockInputApi()
+        input_api.files = [
+            MockFile('some/cpp/problematic/file.cc',
+                     ['MemoryPressureListener* listener;']),
+            MockFile('base/memory/memory_pressure_listener.cc',
+                     ['void MemoryPressureListener::NotifyMemoryPressure() {']),
+        ]
+
+        results = PRESUBMIT.CheckNoBannedPatterns(input_api, MockOutputApi())
+
+        self.assertEqual(1, len(results))
+        self.assertIn('some/cpp/problematic/file.cc', results[0].message)
+        self.assertTrue(
+            all('base/memory/memory_pressure_listener.cc' not in r.message
+                for r in results))
 
     def testBannedCppRandomFunctions(self):
         banned_rngs = [
@@ -5247,6 +5239,7 @@ class CheckAndroidTestAnnotations(unittest.TestCase):
         errors = PRESUBMIT.CheckAndroidTestAnnotations(mock_input,
                                                        MockOutputApi())
         self.assertEqual(2, len(errors))
+        self.assertEqual('error', errors[0].type)
         self.assertEqual(2, len(errors[0].items))
         self.assertIn('OneTest.java', errors[0].items[0])
         self.assertIn('TwoTest.java', errors[0].items[1])
@@ -5342,6 +5335,17 @@ class CheckAndroidTestAnnotations(unittest.TestCase):
         self.assertEqual(1, len(errors))
         self.assertEqual(1, len(errors[0].items))
         self.assertIn('OneTest.java', errors[0].items[0])
+
+    def testIgnoreModifiedFiles(self):
+        """Examples of when modified files without @Batch or @DoNotBatch are ignored."""
+        mock_input = MockInputApi()
+        mock_input.files = [
+            MockFile('path/OneTest.java', ['public class OneTest'], action='M'),
+            MockFile('path/TwoTest.java', ['public class TwoTest'], action='M'),
+        ]
+        errors = PRESUBMIT.CheckAndroidTestAnnotations(mock_input,
+                                                       MockOutputApi())
+        self.assertEqual(0, len(errors))
 
 
 class CheckAndroidNullAwayAnnotatedClasses(unittest.TestCase):

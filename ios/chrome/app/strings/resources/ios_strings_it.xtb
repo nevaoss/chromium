@@ -125,6 +125,7 @@
 <translation id="1436671784520050284">Continua configurazione</translation>
 <translation id="143681031165817424">Indirizzo salvato solo su questo dispositivo</translation>
 <translation id="1445276840641906250">Tutte le tue schede in un unico browser</translation>
+<translation id="1447564161241938558">L'importazione di password e passkey è stata disattivata dall'amministratore</translation>
 <translation id="1450170672351507823">È attiva la protezione standard. Per una maggiore sicurezza, utilizza la Protezione avanzata.</translation>
 <translation id="1455660774629812862">Non nascondere</translation>
 <translation id="1456545332132818232">Recensioni prodotto su <ph name="PRODUCT_NAME" />, <ph name="STARS" /> su <ph name="MAX_STARS" />, <ph name="DOMAIN" /></translation>
@@ -373,7 +374,6 @@
 <translation id="2306265833370324042">Mostra dettagli <ph name="SEARCH_ENGINE_NAME" /></translation>
 <translation id="2309265394777270359">Chiudi scheda</translation>
 <translation id="2311077293164383652">Chiudi scheda fissata</translation>
-<translation id="2313392466694008052">Modifica immagine con Gemini</translation>
 <translation id="2316129865977710310">No, grazie</translation>
 <translation id="2320166752086256636">Nascondi tastiera</translation>
 <translation id="2321086116217818302">Preparazione delle password…</translation>
@@ -1786,6 +1786,7 @@ La funzione Handoff deve anche essere attivata nella sezione Generali di Imposta
 <translation id="7506817096924591340"><ph name="FILENAME" /> (<ph name="FILESIZE" />).</translation>
 <translation id="7508728395076009983">Per bloccare le schede di navigazione in incognito, configura Touch ID, Face ID o un passcode.</translation>
 <translation id="750886945254958667">Mantieni questo gruppo per aggiungere schede in un secondo momento o esci se non vuoi più accedervi</translation>
+<translation id="7511727374778217603">{COUNT,plural, =1{Aggiungi fino a 1 scheda}other{Aggiungi fino a {COUNT} schede}}</translation>
 <translation id="7512909159512473473">Inserisci passphrase…</translation>
 <translation id="7514365320538308">Scarica</translation>
 <translation id="7514530647142300459">Continua a usare le password nel tuo Account Google <ph name="EMAIL" /></translation>
@@ -2236,6 +2237,7 @@ La funzione Handoff deve anche essere attivata nella sezione Generali di Imposta
 <translation id="9055291197094969722">Crea gruppi di schede per organizzare le schede aperte e mantenere la produttività</translation>
 <translation id="9055580485132823283">Stai per eliminare {password_count} password, {passkey_count} passkey e l'elenco di siti e app per cui hai scelto di non salvare mai i dati di accesso. Gli account creati per siti e app non verranno eliminati.</translation>
 <translation id="9057030985451135243">Scopri di più sui gruppi di schede condivisi</translation>
+<translation id="9064106978262828592">Si è verificato un problema durante l'esportazione dei dati</translation>
 <translation id="9065203028668620118">Modifica</translation>
 <translation id="9066097352053395362">Nascondi Modifica preferito</translation>
 <translation id="9070824521421603770">Il tuo account verrà disconnesso e le schede verranno chiuse</translation>

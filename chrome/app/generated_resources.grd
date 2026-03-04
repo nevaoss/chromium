@@ -8705,6 +8705,9 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_NTP_COMPOSE_FILE_TYPE_NOT_ALLOWED_ERROR" desc="Error text displayed when user attempts to upload file in non-supported format.">
         Can't upload.  Try a different file format.
       </message>
+      <message name="IDS_NTP_COMPOSE_FILE_UPLOAD_NOT_ALLOWED" desc="Error text displayed when a user attempts to upload file when attachments are not allowed in the current context.">
+        Can’t upload. Attachments are not allowed.
+      </message>
       <message name="IDS_NTP_COMPOSE_FILE_UPLOAD_FAILED">
         Unexpected error, file upload failed.
       </message>
@@ -8713,6 +8716,9 @@ Keep your key file in a safe place. You will need it to create new versions of y
       </message>
       <message name="IDS_NTP_COMPOSE_MOST_RECENT_TABS" desc="Heading for a list of tabs that can be added to a contextual search. This is a subsection of a menu.">
         Most recent tabs
+      </message>
+      <message name="IDS_NTP_COMPOSEBOX_TAB_PICKER_ADD_TABS_TITLE" desc="Title for the Composebox tab picker when no tabs are selected.">
+        Add recent tabs
       </message>
       <message name="IDS_NTP_COMPOSE_ADD_IMAGE"  desc="Text for a button label that opens a menu so users can add an image to their search.">
         Add image
@@ -10469,6 +10475,24 @@ Keep your key file in a safe place. You will need it to create new versions of y
       </if>
       <message name="IDS_TAB_GROUPS_NO_TAB_GROUPS" desc="Text indicating the user has no Tab groups.">
         Organize your tabs by grouping them together and label them with a custom name and color
+      </message>
+      <message name="IDS_TAB_SEARCH_BUTTON_CXMENU_UNPIN" desc="Name of the tab search button context menu item for unpinning tab search.">
+        Unpin
+      </message>
+      <message name="IDS_TAB_SEARCH_BUTTON_CXMENU_PIN" desc="Name of the tab search button context menu item for pinning tab search.">
+        Pin
+      </message>
+      <message name="IDS_PROJECTS_PANEL_BUTTON_CXMENU_UNPIN" desc="Name of the projects panel button context menu item for unpinning the projects panel.">
+        Unpin
+      </message>
+      <message name="IDS_PROJECTS_PANEL_BUTTON_CXMENU_PIN" desc="Name of the projects panel button context menu item for pinning the projects panel.">
+        Pin
+      </message>
+      <message name="IDS_EVERYTHING_MENU_BUTTON_CXMENU_UNPIN" desc="Name of the everything menu button context menu item for unpinning the everything menu.">
+        Unpin
+      </message>
+      <message name="IDS_EVERYTHING_MENU_BUTTON_CXMENU_PIN" desc="Name of the everything menu button context menu item for pinning the everything menu.">
+        Pin
       </message>
       <!-- /Projects Panel Strings -->
 
@@ -19414,10 +19438,6 @@ Please help our engineers fix this problem. Tell us what happened right before y
       <message name="IDS_COPIED_TO_CLIPBOARD_TOAST_BODY" desc="Text on a toast notification that is shown when an item has been copied to clipboard.">
         Copied to clipboard
       </message>
-      <!-- TODO(crbug.com/477845712): Add translation when the string is finalized. -->
-      <message name="IDS_AUTOFILL_AI_TOAST_BUTTON" desc="Button text on a toast notification that allows a user to open the 'Your saved info' page in settings." translateable="false">
-        Manage
-      </message>
     </if>
 
     <if expr="is_android">
@@ -19538,11 +19558,8 @@ Please help our engineers fix this problem. Tell us what happened right before y
     <message name="IDS_IWA_INSTALLER_CONFIRM_TITLE" desc="Title of the confirmation popup that appears immediately before Isolated Web App installation">
       Do you want to continue and allow this software to make changes to your device?
     </message>
-    <message name="IDS_IWA_INSTALLER_CONFIRM_SUBTITLE" desc="Subtitle of the confirmation popup that appears immediately before Isolated Web App installation. $1 = IDS_IWA_INSTALLER_CONFIRM_LEARN_MORE">
-      To keep your device secure, you should only run and install software from trusted sources and developers. <ph name="LEARN_MORE">$1<ex>Learn more</ex></ph>
-    </message>
-    <message name="IDS_IWA_INSTALLER_CONFIRM_LEARN_MORE" desc="Link to a learn more page shown in the confirmation popup that appears immediately before Isolated Web App installation">
-      Learn more
+    <message name="IDS_IWA_INSTALLER_CONFIRM_SUBTITLE" desc="Subtitle of the confirmation popup that appears immediately before Isolated Web App installation.">
+      To keep your device secure, you should only run and install software from trusted sources and developers.
     </message>
     <message name="IDS_IWA_INSTALLER_CONFIRM_CONTINUE" desc="Text of the continue button in the confirmation popup that appears immediately before Isolated Web App installation">
       Continue
@@ -19903,6 +19920,12 @@ Please help our engineers fix this problem. Tell us what happened right before y
     </message>
     <message name="IDS_TIPS_NOTIFICATIONS_PASSWORD_AUTOFILL_SUBTITLE" desc="Subtitle for the password autofill tip notification.">
       Create, save, and manage your passwords so you can easily sign in to sites and apps using Chrome
+    </message>
+    <message name="IDS_TIPS_NOTIFICATIONS_SIGNIN_TITLE" desc="Title for the sign-in tip notification. [CHAR_LIMIT=32]">
+      Make Chrome your own
+    </message>
+    <message name="IDS_TIPS_NOTIFICATIONS_SIGNIN_SUBTITLE" desc="Subtitle for the sign-in tip notification.">
+      Sign in to easily continue on all your devices
     </message>
 
     <!-- chrome://updater -->

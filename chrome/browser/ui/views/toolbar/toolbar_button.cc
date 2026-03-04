@@ -257,12 +257,12 @@ void ToolbarButton::UpdateIconsWithColors(const gfx::VectorIcon& icon,
                                             icon, disabled_color, icon_size));
 }
 
-int ToolbarButton::GetIconSize() const {
-  if (ui::TouchUiController::Get()->touch_ui()) {
-    return kDefaultTouchableIconSize;
-  }
+std::optional<SkColor> ToolbarButton::GetBackgroundColor() const {
+  return highlight_color_animation_.GetBackgroundColor();
+}
 
-  return kDefaultIconSizeChromeRefresh;
+int ToolbarButton::GetIconSize() const {
+  return GetLayoutConstant(LayoutConstant::kToolbarButtonIconSize);
 }
 
 bool ToolbarButton::ShouldPaintBorder() const {

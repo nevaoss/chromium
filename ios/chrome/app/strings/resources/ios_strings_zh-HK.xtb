@@ -125,7 +125,7 @@
 <translation id="1436671784520050284">繼續設定</translation>
 <translation id="143681031165817424">地址淨係會儲存喺呢部裝置度</translation>
 <translation id="1445276840641906250">集中在同一個瀏覽器使用所有分頁</translation>
-<translation id="1447564161241938558">系統管理員已停用匯入密碼和密碼金鑰功能</translation>
+<translation id="1447564161241938558">管理員已停用匯入密碼和密鑰功能</translation>
 <translation id="1450170672351507823">已開啟「標準保護功能」。如要進一步提升安全性，請使用「強化保護功能」。</translation>
 <translation id="1455660774629812862">不要隱藏</translation>
 <translation id="1456545332132818232"><ph name="PRODUCT_NAME" />嘅產品評論，<ph name="MAX_STARS" /> 星入面攞到 <ph name="STARS" /> 星，<ph name="DOMAIN" /></translation>
@@ -374,7 +374,6 @@
 <translation id="2306265833370324042">顯示 <ph name="SEARCH_ENGINE_NAME" /> 詳情</translation>
 <translation id="2309265394777270359">關閉分頁</translation>
 <translation id="2311077293164383652">關閉固定分頁</translation>
-<translation id="2313392466694008052">使用 Gemini 編輯圖像</translation>
 <translation id="2316129865977710310">不用了，謝謝</translation>
 <translation id="2320166752086256636">隱藏鍵盤</translation>
 <translation id="2321086116217818302">正在準備密碼…</translation>
@@ -1787,6 +1786,7 @@
 <translation id="7506817096924591340"><ph name="FILENAME" /> (<ph name="FILESIZE" />)。</translation>
 <translation id="7508728395076009983">如要鎖定無痕式分頁，請設定 Touch ID、Face ID 或密碼。</translation>
 <translation id="750886945254958667">如果保留群組，你之後可新增分頁；如果不再使用，亦可離開群組</translation>
+<translation id="7511727374778217603">{COUNT,plural, =1{最多可加入 1 個分頁}other{最多可加入 {COUNT} 個分頁}}</translation>
 <translation id="7512909159512473473">輸入密碼短語…</translation>
 <translation id="7514365320538308">下載</translation>
 <translation id="7514530647142300459">請繼續使用 Google 帳戶 (<ph name="EMAIL" />) 中的密碼</translation>
@@ -2060,6 +2060,7 @@
 <translation id="8439758443371991593">隱藏「加入閱讀清單」</translation>
 <translation id="8443986842926457191">網址超過 2048 個字元</translation>
 <translation id="8449869326050867919">已分享密碼</translation>
+<translation id="8473815223723723001">使用 Gemini 編輯圖像</translation>
 <translation id="8473863474539038330">地址及其他資料</translation>
 <translation id="8474378002946546633">允許通知</translation>
 <translation id="8477178913400731244">刪除資料</translation>
@@ -2237,6 +2238,7 @@
 <translation id="9055291197094969722">建立分頁群組可整理已開啟的分頁，從而提升效率</translation>
 <translation id="9055580485132823283">你將會刪除 {password_count} 個密碼、{passkey_count} 個密鑰，以及你選擇一律不儲存登入資料的網站和應用程式清單。系統不會刪除任何你為網站和應用程式建立的帳戶。</translation>
 <translation id="9057030985451135243">瞭解共用分頁群組</translation>
+<translation id="9064106978262828592">無法匯出資料</translation>
 <translation id="9065203028668620118">編輯</translation>
 <translation id="9066097352053395362">隱藏「編輯書籤」</translation>
 <translation id="9070824521421603770">系統會將你登出並關閉分頁</translation>

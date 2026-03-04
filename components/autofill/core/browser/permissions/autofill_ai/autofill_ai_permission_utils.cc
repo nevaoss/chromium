@@ -98,7 +98,7 @@ void MaybeOutputReason(std::string* out, std::string_view message) {
 
   // List of countries in which private passes are not supported.
   constexpr static auto kPrivatePassExclusions =
-      base::MakeFixedFlatSet<std::string_view>({"DE", "FR", "IT"});
+      base::MakeFixedFlatSet<std::string_view>({"FR"});
   return !IsMaskedStorageSupported(*entity_type,
                                    EntityInstance::RecordType::kServerWallet) ||
          !kPrivatePassExclusions.contains(country_code.value()) ||
@@ -162,6 +162,7 @@ void MaybeOutputReason(std::string* out, std::string_view message) {
     case EntityTypeName::kNationalIdCard:
     case EntityTypeName::kPassport:
     case EntityTypeName::kDriversLicense:
+    case EntityTypeName::kOrder:
       return prefs.GetBoolean(prefs::kAutofillAiIdentityEntitiesEnabled);
     case EntityTypeName::kVehicle:
     case EntityTypeName::kFlightReservation:
@@ -222,6 +223,7 @@ void MaybeOutputReason(std::string* out, std::string_view message) {
       case EntityTypeName::kKnownTravelerNumber:
         return is_enabled(features::kAutofillAiWalletPrivatePasses);
       case EntityTypeName::kFlightReservation:
+      case EntityTypeName::kOrder:
         return false;
     }
     NOTREACHED();

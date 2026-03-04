@@ -279,11 +279,10 @@ SqlPersistentStore::Backend::Backend(
       type_(type),
       read_cache_memory_monitor_(std::move(read_cache_memory_monitor)),
       db_(sql::DatabaseOptions()
-              .set_exclusive_locking(true)
 #if BUILDFLAG(IS_WIN)
               .set_exclusive_database_file_lock(true)
 #endif  // IS_WIN
-              .set_preload(true)
+              .set_preload(net::features::kSqlDiskCachePreloadDatabase.Get())
               .set_wal_mode(true)
               .set_no_sync_on_wal_mode(
                   net::features::kSqlDiskCacheSynchronousOff.Get())

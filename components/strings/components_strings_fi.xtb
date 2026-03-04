@@ -704,6 +704,7 @@ Muussa tapauksessa tämä estetään tietosuoja-asetuksilla. Jos sallit tämän,
 <translation id="2137891579555018930">Odotetaan lupaa…</translation>
 <translation id="213826338245044447">Mobiilikirjanmerkit</translation>
 <translation id="2141000681034340397">Muokkaa tekstiä</translation>
+<translation id="2141475438898772664">Maksa neljässä erässä tai kuukausittain</translation>
 <translation id="2144171668675205303">Ei aktiivisia aiheita</translation>
 <translation id="2145193671493396738">Talousuutiset</translation>
 <translation id="214556005048008348">Peru maksu</translation>
@@ -1117,6 +1118,7 @@ Muussa tapauksessa tämä estetään tietosuoja-asetuksilla. Jos sallit tämän,
 <translation id="277133753123645258">Lähetystapa</translation>
 <translation id="277499241957683684">Laitetallenne puuttuu</translation>
 <translation id="2775884851269838147">Ensimmäinen tulostettava sivu</translation>
+<translation id="277828055419948999">Chromium voi täyttää automaattisesti vaikeita kenttiä, jotka tavallinen automaattinen täyttö ei välttämättä havaitse</translation>
 <translation id="2781185443919227679">Rannat ja saaret</translation>
 <translation id="2781692009645368755">Google Pay</translation>
 <translation id="2781799097551205934">Valmistaudutaan maksamaan</translation>
@@ -2474,6 +2476,7 @@ Muussa tapauksessa tämä estetään tietosuoja-asetuksilla. Jos sallit tämän,
 <translation id="4950898438188848926">Välilehden vaihtopainike, siirry avoimelle välilehdelle painamalla Enter, <ph name="TAB_SWITCH_FOCUSED_FRIENDLY_MATCH_TEXT" /></translation>
 <translation id="495170559598752135">Toiminnot</translation>
 <translation id="4953689047182316270">Vastata esteettömyystapahtumiin</translation>
+<translation id="4954505713046251871">Sivun URL-osoite ja sisältö jaetaan Googlelle ehdotusten tarjoamiseksi ja ominaisuuden parantamiseksi</translation>
 <translation id="4954891067389874142">Maksa nopeammin, kun kortti on tallennettu. Kortin tiedot salataan Google Walletissa.</translation>
 <translation id="4957080528849277028">Katso Chrome-historiasi ‑painike, aktivoi katsoaksesi ja ylläpitääksesi selaushistoriaasi Chromen asetuksista</translation>
 <translation id="4957781475307065660">{DOMAIN_COUNT,plural, =1{ja 1 muu sivusto}other{ja # muuta sivustoa}}</translation>
@@ -2848,6 +2851,7 @@ Muussa tapauksessa tämä estetään tietosuoja-asetuksilla. Jos sallit tämän,
 <translation id="5543564889050342791">Eläintarhat, akvaariot ja suojelualueet</translation>
 <translation id="5543722831081909240">180 astetta</translation>
 <translation id="5544836308113951378">Risteilyt ja tilausalukset</translation>
+<translation id="5545314360139398232">Linkitä <ph name="ISSUER_NAME" />, jotta voit maksaa erissä</translation>
 <translation id="5547939254150808298">Paino‑ ja julkaisutoiminta</translation>
 <translation id="554815783948612276">Keskusteluryhmät ja chatit</translation>
 <translation id="5548606607480005320">Turvatarkistus</translation>
@@ -3695,6 +3699,7 @@ Muussa tapauksessa tämä estetään tietosuoja-asetuksilla. Jos sallit tämän,
 <translation id="6926216138694948720">Tatuoinnit ja lävistykset</translation>
 <translation id="692638818576287323">Hyötyajoneuvot</translation>
 <translation id="6927878187051807444">kameratiedostot ja kuvakaappaukset</translation>
+<translation id="6929949393612835405">Sulje ja palaa kohtaan "<ph name="OPENER_TITLE" />"</translation>
 <translation id="6930607614725241390">Hae sivupaneelista</translation>
 <translation id="6934236486840930310"><ph name="BEGIN_BOLD" />Oletushakukoneellasi voit tehdä hakuja verkosta ja hyödyntää Chromen ominaisuuksia<ph name="END_BOLD" />, esimerkiksi hakea osoitepalkista ja verkkosivuilla olevien kuvien avulla. Ominaisuus ei välttämättä ole käytettävissä, jos hakukone ei tue sitä.</translation>
 <translation id="6934672428414710184">Tämä nimi on peräisin Google-tililtäsi</translation>
@@ -3977,6 +3982,7 @@ Lisätietoja:
 <translation id="7377314930809374926">Matkailu ja vapaa-ajan palvelut</translation>
 <translation id="7378594059915113390">Mediaohjaimet</translation>
 <translation id="7378810950367401542">/</translation>
+<translation id="7379321689415048316">Chrome voi täyttää automaattisesti vaikeita kenttiä, jotka tavallinen automaattinen täyttö ei välttämättä havaitse</translation>
 <translation id="7380398842872229465">10 x 15 tuumaa</translation>
 <translation id="7381551826960739226">Automaattinen maksutapojen täyttäminen on poistettu käytöstä, koska tämä lomake ei käytä turvallista yhteyttä.</translation>
 <translation id="7388380253839603603">Polttoaineen hinnat ja ajoneuvon tankkaaminen</translation>

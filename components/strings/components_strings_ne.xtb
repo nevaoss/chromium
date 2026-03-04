@@ -655,6 +655,7 @@
 <translation id="2071156619270205202">यो कार्डलाई भर्चुअल कार्ड नम्बर प्रदान गर्न मिल्दैन।</translation>
 <translation id="2071852865256799872">तपाईंको सङ्गठनले तपाईंको ब्राउजर र <ph name="PROFILE_DOMAIN" /> ले तपाईंको प्रोफाइल व्यवस्थापन गर्छ</translation>
 <translation id="2072011841331007013">Google Jamboard</translation>
+<translation id="2073286362006276165">जानकारी डिभाइसमा मात्र सेभ गरिएको छ</translation>
 <translation id="2074733626795553847"><ph name="TOPIC" /> अनब्लक गर्नुहोस्</translation>
 <translation id="2074771604462073334">तपाईंले ट्याब खोलेको समय:</translation>
 <translation id="2078956195623975415">सङ्गीत तथा नृत्यसम्बन्धी गेमहरू</translation>
@@ -703,6 +704,7 @@
 <translation id="2137891579555018930">अनुमति प्राप्त गर्न बाँकी छ…</translation>
 <translation id="213826338245044447">मोबाइल बुकमार्कहरू</translation>
 <translation id="2141000681034340397">आफ्नो इनपुट बदल्नुहोस्</translation>
+<translation id="2141475438898772664">४ किस्तामा वा मासिक रूपमा भुक्तानी गर्नुहोस्</translation>
 <translation id="2144171668675205303">कुनै पनि सक्रिय विषय छैन</translation>
 <translation id="2145193671493396738">आर्थिक समाचार</translation>
 <translation id="214556005048008348">भुक्तानी रद्द गर्नुहोस्</translation>
@@ -1116,6 +1118,7 @@
 <translation id="277133753123645258">ढुवानीको विधि</translation>
 <translation id="277499241957683684">हराइएको यन्त्रको रेकर्ड</translation>
 <translation id="2775884851269838147">प्रिन्ट गरिनु पर्ने पहिलो पृष्ठ</translation>
+<translation id="277828055419948999">Chromium ले डिफल्ट अटोफिलले छुटाउन सक्ने कठिन फिल्डहरू अटोफिल गर्न सक्छ</translation>
 <translation id="2781185443919227679">समुद्री तट तथा टापुहरू</translation>
 <translation id="2781692009645368755">Google Pay</translation>
 <translation id="2781799097551205934">चेकआउट गर्ने तयारी गरिँदै छ</translation>
@@ -2470,6 +2473,7 @@
 <translation id="4950898438188848926">ट्याब बदल्ने बटन, खुला रहेको ट्याबमा जान Enter थिच्नुहोस्, <ph name="TAB_SWITCH_FOCUSED_FRIENDLY_MATCH_TEXT" /></translation>
 <translation id="495170559598752135">कार्यहरू</translation>
 <translation id="4953689047182316270">पहुँचसम्बन्धी कार्यक्रमहरूमा प्रतिक्रिया दिनुहोस्</translation>
+<translation id="4954505713046251871">सुझावहरू दिन र यो सुविधामा सुधार ल्याउन यो पेजको URL र यसमा भएको सामग्री Google सँग सेयर गरिन्छ</translation>
 <translation id="4954891067389874142">आफ्नो कार्ड सेभ गरेर अझ छिटो भुक्तानी गर्नुहोस्। कार्डसम्बन्धी जानकारी Google Wallet मा इन्क्रिप्ट गरिन्छ।</translation>
 <translation id="4957080528849277028">Chrome को ब्राउजिङ हिस्ट्री हेर्ने बटन, Chrome का सेटिङमा गई आफ्ना ब्राउजिङ हिस्ट्री हेर्न तथा व्यवस्थापन गर्न यो बटन थिच्नुहोस्</translation>
 <translation id="4957781475307065660">{DOMAIN_COUNT,plural, =1{थप एउटा साइट}other{थप # वटा साइट}}</translation>
@@ -2844,6 +2848,7 @@
 <translation id="5543564889050342791">चिडियाखाना, एक्वारियम तथा आरक्षहरू</translation>
 <translation id="5543722831081909240">१८० डिग्री</translation>
 <translation id="5544836308113951378">क्रुज तथा चार्टर गरिएका जलयातायातका साधन</translation>
+<translation id="5545314360139398232">किस्तामा भुक्तानी गर्न <ph name="ISSUER_NAME" /> लिंक गर्नुहोस्</translation>
 <translation id="5547939254150808298">मुद्रण तथा प्रकाशन</translation>
 <translation id="554815783948612276">फोरम तथा च्याट प्रदायकहरू</translation>
 <translation id="5548606607480005320">सुरक्षा जाँच</translation>
@@ -3691,6 +3696,7 @@
 <translation id="6926216138694948720">शरीरमा बनाइने कला</translation>
 <translation id="692638818576287323">व्यावसायिक प्रयोजनका लागि प्रयोग हुने सवारी साधन</translation>
 <translation id="6927878187051807444">क्यामेरा फाइल र स्क्रिनसटहरू</translation>
+<translation id="6929949393612835405">बन्द गर्नुहोस् र "<ph name="OPENER_TITLE" />" मा फर्कनुहोस्</translation>
 <translation id="6930607614725241390">साइड प्यानलमा खोज्नुहोस्</translation>
 <translation id="6934236486840930310"><ph name="BEGIN_BOLD" />तपाईं आफ्नो डिफल्ट सर्च इन्जिन प्रयोग गरेर वेबमार्फत सामग्री खोज्न र Chrome का सुविधाहरू<ph name="END_BOLD" /> (जस्तै, वेबपेजमा उपलब्ध एड्रेस बार तथा फोटोहरू प्रयोग गरेर सामग्री खोज्ने सुविधा) प्राप्त गर्न सक्नुहुन्छ। तपाईंको सर्च इन्जिनमा काम नगर्ने सुविधा उपलब्ध नहुन सक्छ।</translation>
 <translation id="6934672428414710184">यो नाम तपाईंको Google खाताबाट लिइएको हो</translation>
@@ -3972,6 +3978,7 @@
 <translation id="7377314930809374926">आतिथ्य उद्योग</translation>
 <translation id="7378594059915113390">मिडियासम्बन्धी नियन्त्रणहरू</translation>
 <translation id="7378810950367401542">/</translation>
+<translation id="7379321689415048316">Chrome ले डिफल्ट अटोफिलले छुटाउन सक्ने कठिन फिल्डहरू अटोफिल गर्न सक्छ</translation>
 <translation id="7380398842872229465">१० x १५ इन्च</translation>
 <translation id="7381551826960739226">यो फाराममा सुरक्षित कनेक्सन प्रयोग नगरिएको हुनाले भुक्तानी विधिसम्बन्धी जानकारी स्वतः हाल्ने सुविधा अफ गरिएको छ।</translation>
 <translation id="7388380253839603603">पेट्रोलको मूल्य तथा इन्धनसम्बन्धी स्रोतसाधनहरू</translation>
@@ -4896,6 +4903,7 @@
 <translation id="8858065207712248076">तपाईंले आफ्नो <ph name="BEGIN_BOLD" /><ph name="ORG_NAME" /><ph name="END_BOLD" /> को पासवर्ड अन्य साइटहरूमा पुनः प्रयोग गर्नुभएका खण्डमा Chrome ले तपाईंलाई उक्त पासवर्ड रिसेट गर्न सिफारिस गर्दछ।</translation>
 <translation id="885906927438988819">हिज्जे सही छ भने <ph name="BEGIN_LINK" />'Windows नेटवर्कका डाइगोनेस्टिक्स' चलाएर हेर्नुहोस्<ph name="END_LINK" />।</translation>
 <translation id="8861126751581835107">फोटोग्राफी तथा डिजिटल कला</translation>
+<translation id="8861482055962701239">यो जानकारी तपाईंको Google Wallet मा सेभ गर्न सकिएन। यसलाई बरु यो डिभाइसको Chrome मा सेभ गरिएको छ। तपाईंले अर्को पटक यो कार्ड प्रयोग गर्दा Chrome ले यसलाई Wallet मा सेभ गर्ने विकल्प देखाउने छ।</translation>
 <translation id="8863218129525348270">अर्के पटक अझ छिटो भुक्तानी गर्न आफ्नो कार्ड डिभाइसमा सेभ गर्नुहोस्</translation>
 <translation id="8864939224504814334">अफिस जस्ता ठाउँहरूमा लगाइने सुट तथा पोशाक</translation>
 <translation id="8866132857352163524">साउन्ड ट्र्याकहरू</translation>
