@@ -7,11 +7,8 @@ import("//build/config/chromeos/ui_mode.gni")
 import("//build/config/ui.gni")
 import("//content/common/features.gni")
 import("//media/media_options.gni")
-<<<<<<< HEAD
 import("//neva/neva.gni")
-=======
 import("//printing/buildflags/buildflags.gni")
->>>>>>> 147.0.7695.0~1
 import("//sandbox/features.gni")
 import("//services/screen_ai/buildflags/features.gni")
 import("//testing/libfuzzer/fuzzer_test.gni")
