@@ -6,6 +6,7 @@ package org.chromium.chrome.browser.search_engines.settings.custom_search_engine
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
@@ -26,6 +27,7 @@ import org.mockito.junit.MockitoRule;
 import org.robolectric.RuntimeEnvironment;
 import org.robolectric.annotation.Config;
 
+import org.chromium.base.Callback;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.search_engines.R;
@@ -57,6 +59,7 @@ public class CustomSearchEngineListMediatorUnitTest {
     @Mock private TemplateUrlService mTemplateUrlService;
     @Mock private TemplateUrl mTemplateUrl;
     @Mock private LargeIconBridgeJni mLargeIconBridgeJni;
+    @Mock private Callback<TemplateUrl> mOnEditSearchEngine;
 
     private CustomSearchEngineListMediator mMediator;
 
@@ -82,7 +85,9 @@ public class CustomSearchEngineListMediatorUnitTest {
                 .when(mTemplateUrlService)
                 .runWhenLoaded(any());
 
-        mMediator = new CustomSearchEngineListMediator(mContext, mModelList, mProfile);
+        mMediator =
+                new CustomSearchEngineListMediator(
+                        mContext, mModelList, mProfile, mOnEditSearchEngine);
     }
 
     @Test
@@ -134,5 +139,21 @@ public class CustomSearchEngineListMediatorUnitTest {
         mMediator.onMenuItemClicked(R.string.site_search_list_menu_make_default, mTemplateUrl);
 
         verify(mTemplateUrlService).setSearchEngine(keyword);
+    }
+
+    @Test
+    public void testMenuDelegate_DefaultSearchEngine() {
+        when(mTemplateUrlService.getDefaultSearchEngineTemplateUrl()).thenReturn(mTemplateUrl);
+
+        Mockito.clearInvocations(mModelList, mTemplateUrlService);
+        mMediator.onTemplateURLServiceChanged();
+
+        ArgumentCaptor<ListItem> itemCaptor = ArgumentCaptor.forClass(ListItem.class);
+        verify(mModelList).add(itemCaptor.capture());
+
+        PropertyModel model = itemCaptor.getValue().model;
+        ListMenuDelegate delegate = model.get(CustomSearchEngineProperties.MENU_DELEGATE);
+
+        assertNull(delegate);
     }
 }

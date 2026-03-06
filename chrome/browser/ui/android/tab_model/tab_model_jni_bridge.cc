@@ -26,6 +26,7 @@
 #include "chrome/browser/content_settings/host_content_settings_map_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/tab_contents/tab_util.h"
+#include "chrome/browser/ui/android/tab_model/tab_model.h"
 #include "chrome/browser/ui/android/tab_model/tab_model_list.h"
 #include "chrome/browser/ui/android/tab_model/tab_model_observer_jni_bridge.h"
 #include "chrome/browser/ui/browser_navigator_params.h"
@@ -517,6 +518,26 @@ tabs::TabInterface* TabModelJniBridge::GetOpenerForTab(tabs::TabHandle target) {
   return Java_TabModelJniBridge_getOpenerForTab(env, jobj, target_tab);
 }
 
+tabs::TabInterface* TabModelJniBridge::InsertWebContentsAt(
+    int index,
+    std::unique_ptr<content::WebContents> web_contents,
+    bool should_pin,
+    std::optional<tab_groups::TabGroupId> group) {
+  JNIEnv* env = AttachCurrentThread();
+
+  TabAndroid* new_tab = Java_TabModelJniBridge_insertWebContentsAt(
+      env, java_object_.get(env), index, web_contents->GetJavaWebContents(),
+      should_pin, tab_groups::TabGroupId::ToOptionalToken(group));
+
+  // If new tab creation is successful, Java assumes ownership of the lifetime
+  // of the WebContents.
+  if (new_tab) {
+    web_contents.release();
+  }
+
+  return new_tab;
+}
+
 content::WebContents* TabModelJniBridge::DiscardTab(tabs::TabHandle tab) {
   if (!base::FeatureList::IsEnabled(features::kWebContentsDiscard)) {
     return nullptr;
@@ -530,7 +551,9 @@ content::WebContents* TabModelJniBridge::DiscardTab(tabs::TabHandle tab) {
   }
 
   content::WebContents* web_contents = tab_android->web_contents();
-  if (!web_contents) {
+  // Don't discard if there are no WebContents or if the WebContents is already
+  // discarded.
+  if (!web_contents || web_contents->WasDiscarded()) {
     return nullptr;
   }
   web_contents->Discard(base::DoNothing());

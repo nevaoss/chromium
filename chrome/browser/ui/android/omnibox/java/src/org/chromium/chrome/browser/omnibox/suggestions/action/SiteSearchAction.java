@@ -33,7 +33,10 @@ public class SiteSearchAction extends OmniboxAction {
     }
 
     @Override
-    public void execute(OmniboxActionDelegate delegate) {
-        // TODO(crbug.com/459590224): Implement execution.
+    public boolean execute(OmniboxActionDelegate delegate) {
+        if (delegate.getAutocompleteInput() != null) {
+            delegate.getAutocompleteInput().setKeyword(keyword);
+        }
+        return false; // do not clear omnibox focus.
     }
 }

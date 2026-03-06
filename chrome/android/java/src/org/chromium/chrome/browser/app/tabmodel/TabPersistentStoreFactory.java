@@ -63,7 +63,7 @@ public class TabPersistentStoreFactory {
                 public void onShadowStoreRazed() {}
 
                 @Override
-                public void onAllShadowStoresRazed() {}
+                public void onAllStoresRazed() {}
 
                 @Override
                 public void onWindowCleared() {}
@@ -117,7 +117,10 @@ public class TabPersistentStoreFactory {
                     tabCreatorManager,
                     tabPersistencePolicy,
                     migrationManager,
-                    cipherFactory);
+                    cipherFactory,
+                    new TabCountTracker(windowTag),
+                    ModelTrackingOrchestrator::new,
+                    /* isAuthoritative= */ true);
         }
         throw new IllegalStateException();
     }
@@ -243,7 +246,10 @@ public class TabPersistentStoreFactory {
                         shadowTabCreatorManager,
                         tabPersistencePolicy,
                         migrationManager,
-                        cipherFactory);
+                        cipherFactory,
+                        new TabCountTracker(windowTag),
+                        ModelTrackingOrchestrator::new,
+                        /* isAuthoritative= */ false);
 
         new ShadowTabStoreValidator(
                 authoritativeStore,

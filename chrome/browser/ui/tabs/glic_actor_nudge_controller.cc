@@ -27,7 +27,6 @@ using glic::GlicInstance;
 using glic::GlicKeyedService;
 using glic::GlicWindowController;
 using glic::Host;
-using glic::mojom::CurrentView;
 
 DEFINE_USER_DATA(GlicActorNudgeController);
 GlicActorNudgeController::GlicActorNudgeController(
@@ -39,7 +38,6 @@ GlicActorNudgeController::GlicActorNudgeController(
       scoped_data_holder_(browser->GetUnownedUserDataHost(), *this) {
   if (base::FeatureList::IsEnabled(features::kGlicActorUi)) {
     RegisterActorNudgeStateCallback();
-    UpdateCurrentActorNudgeState();
   }
 
     ActorTaskListBubbleController* bubble_controller =
@@ -63,15 +61,6 @@ GlicActorNudgeController* GlicActorNudgeController::From(
 }
 
 void GlicActorNudgeController::OnStateUpdate(
-    bool show_bubble,
-    ActorTaskNudgeState actor_task_nudge_state) {
-  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE, base::BindOnce(&GlicActorNudgeController::OnStateUpdateImpl,
-                                weak_ptr_factory_.GetWeakPtr(), show_bubble,
-                                actor_task_nudge_state));
-}
-
-void GlicActorNudgeController::OnStateUpdateImpl(
     bool show_bubble,
     ActorTaskNudgeState actor_task_nudge_state) {
   // If the task icon is inactive, hide it and perform no additional style

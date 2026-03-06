@@ -33,6 +33,9 @@ class GlicWebClientAccess {
   // client should not be destroyed until after `done` is called.
   virtual void PanelWasClosed(base::OnceClosure done) = 0;
 
+  // Requests the web client to stop microphone recording.
+  virtual void StopMicrophone(base::OnceClosure done) = 0;
+
   // Informs the client that the state of the panel has changed.
   virtual void PanelStateChanged(
       const glic::mojom::PanelState& panel_state) = 0;
@@ -42,11 +45,6 @@ class GlicWebClientAccess {
   // Informs the web client when the user starts and finishes dragging to resize
   // the panel.
   virtual void ManualResizeChanged(bool resizing) = 0;
-
-  // Called when the browser wants the web client to change its view to match
-  // the requested change (e.g., because the user clicked a UI element to toggle
-  // to a different view).
-  virtual void RequestViewChange(mojom::ViewChangeRequestPtr request) = 0;
 
   // Informs the web client that additional context is available.
   virtual void NotifyAdditionalContext(mojom::AdditionalContextPtr context) = 0;

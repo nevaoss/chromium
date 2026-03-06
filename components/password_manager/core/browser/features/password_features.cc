@@ -107,6 +107,9 @@ BASE_FEATURE(kInFlowTrustedVaultKeyRetrievalAndroid,
 #endif  // BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(IS_IOS)
+BASE_FEATURE(kInFlowTrustedVaultKeyRetrievalIos,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE(kIosCleanupHangingPasswordFormExtractionRequests,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -127,6 +130,9 @@ BASE_FEATURE(kOtpPhishGuard, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kPasswordDateLastFilled, base::FEATURE_ENABLED_BY_DEFAULT);
 
+BASE_FEATURE(kPasswordChangeImmediateSubmission,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE(kPasswordFormClientsideClassifier,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -140,6 +146,9 @@ BASE_FEATURE(kPasswordGenerationChunking,
 #endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
 
 BASE_FEATURE(kPasswordManagerLogToTerminal, base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kPasswordStorePropagatesActionableErrors,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kProactivelyDownloadModelForPasswordChange,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -175,6 +184,8 @@ BASE_FEATURE(kTriggerPasswordResyncWhenUndecryptablePasswordsDetected,
 
 BASE_FEATURE(kUseActionablesForImprovedPasswordChange,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kUseDetachedWidget, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kUserInterventionForPasswordChange,
              base::FEATURE_DISABLED_BY_DEFAULT);

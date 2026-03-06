@@ -993,6 +993,21 @@ bool LocalFrameView::InvalidationDisallowed() const {
   return GetFrame().LocalFrameRoot().View()->invalidation_disallowed_;
 }
 
+void LocalFrameView::WillBeginImplCommit() {
+  if (needs_post_lifecycle_steps_before_impl_commit_) {
+    RunPostLifecycleSteps();
+    did_run_post_lifecycle_steps_before_impl_commit_ = true;
+  }
+}
+
+void LocalFrameView::DidBeginMainFrame() {
+  if (!did_run_post_lifecycle_steps_before_impl_commit_) {
+    RunPostLifecycleSteps();
+  }
+  needs_post_lifecycle_steps_before_impl_commit_ = false;
+  did_run_post_lifecycle_steps_before_impl_commit_ = false;
+}
+
 void LocalFrameView::RunPostLifecycleSteps() {
   {
     InvalidationDisallowedScope invalidation_disallowed(*this);
@@ -1015,9 +1030,6 @@ void LocalFrameView::RunPostLifecycleSteps() {
     });
   }
 
-  // TODO(crbug.com/484345338): This fires just after the paint lifecycle phase
-  // but before the commit. The commit should be blocked until these events are
-  // fired.
   if (RuntimeEnabledFeatures::CanvasDrawElementEnabled()) {
     ForAllNonThrottledLocalFrameViews([](LocalFrameView& frame_view) {
       if (frame_view.painted_canvas_child_elements_.empty()) {
@@ -1352,7 +1364,7 @@ void LocalFrameView::InvalidateLayoutForViewportConstrainedObjects() {
   auto* layout_view = GetLayoutView();
   if (layout_view && !layout_view->NeedsLayout()) {
     for (const auto& fragment : layout_view->PhysicalFragments()) {
-      if (fragment.StickyDescendants()) {
+      if (!fragment.StickyDescendants().empty()) {
         layout_view->SetNeedsSimplifiedLayout();
         return;
       }
@@ -5023,6 +5035,8 @@ bool LocalFrameView::HasDominantVideoElement() const {
 void LocalFrameView::DidPaintCanvasChild(const Element& child) {
   if (IsUpdatingLifecycle()) {
     painted_canvas_child_elements_.insert(&child);
+    LocalFrameView* root_view = GetFrame().LocalFrameRoot().View();
+    root_view->needs_post_lifecycle_steps_before_impl_commit_ = true;
   }
 }
 

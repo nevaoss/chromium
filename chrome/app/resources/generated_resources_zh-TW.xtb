@@ -354,7 +354,6 @@
 <translation id="1221825588892235038">僅限選取的內容</translation>
 <translation id="1222835797152767346">設定 PIN 碼可簡化登入程序</translation>
 <translation id="1223484782328004593">「<ph name="APP_NAME" />」必須取得授權</translation>
-<translation id="1223498995510244364">摘要</translation>
 <translation id="1223853788495130632">管理員為這項設定推薦特定的值。</translation>
 <translation id="1225177025209879837">正在處理要求...</translation>
 <translation id="1227107020813934021">尋找文件掃描器</translation>
@@ -1055,6 +1054,7 @@
 <translation id="1695510246756136088">無法連上網際網路，請再試一次。</translation>
 <translation id="1696214930320482113">你可以用設定檔區分工作、個人和娛樂內容，不必改用其他瀏覽器。立即新增設定檔！</translation>
 <translation id="1696555181932908973">你可以在「<ph name="SITE_ETLD_PLUS_ONE" />」上試著透過其他方法繼續操作。</translation>
+<translation id="1696685050160038195">為了維護裝置安全，建議你只執行及安裝來自可信任來源和開發人員的軟體。</translation>
 <translation id="169675691788639886">裝置有設定好的 SSH 伺服器。請勿使用敏感帳戶登入。</translation>
 <translation id="1697122132646041614">如果按倒讚，系統會顯示意見回饋表單。你可以在表單中詳細說明不喜歡這些結果的原因。</translation>
 <translation id="1697532407822776718">大功告成！</translation>
@@ -2006,6 +2006,7 @@
 <translation id="2332742915001411729">重設為預設值</translation>
 <translation id="2333166365943957309">UI 階層</translation>
 <translation id="233375395665273385">刪除並登出</translation>
+<translation id="2334384018887664164">你可以在內容設定中將信任的網站加入許可清單</translation>
 <translation id="233471714539944337">敏感內容</translation>
 <translation id="2335758110242123814">開啟群組</translation>
 <translation id="2336228925368920074">將所有分頁加入書籤...</translation>
@@ -2101,6 +2102,7 @@
 <translation id="240789602312469910">傳送使用狀況與診斷資料。如要協助改善貴子女的 Android 使用體驗，可以選擇讓系統自動將診斷情形、裝置狀態和應用程式使用資料傳送給 Google。這些資料將有助於改善系統和應用程式的穩定性與其他功能，並不會用於識別貴子女的身分。部分匯總資料還能協助 Google 應用程式和合作夥伴 (例如 Android 開發人員) 提升產品和服務品質。這項<ph name="BEGIN_LINK1" />設定<ph name="END_LINK1" />是由裝置擁有者執行。擁有者可選擇將這部裝置的診斷資料與使用資料傳送給 Google。如果將貴子女的「其他網路和應用程式活動」設定為開啟，這類資料可能會儲存在他們的 Google 帳戶中。<ph name="BEGIN_LINK2" />進一步瞭解指標<ph name="BEGIN_LINK2_END" />瞭解詳情<ph name="END_LINK2" /></translation>
 <translation id="2408018932941436077">正在儲存信用卡</translation>
 <translation id="2408742686124047357">固定 Google 智慧鏡頭至工具列，方便日後使用</translation>
+<translation id="2408762424059547338">關閉 JavaScript 最佳化功能，進一步防範攻擊</translation>
 <translation id="2408955596600435184">請輸入你的 PIN 碼</translation>
 <translation id="2409268599591722235">開始使用</translation>
 <translation id="2409378541210421746">編輯語言選項</translation>
@@ -2377,6 +2379,7 @@
 <translation id="2581992808349413349">在 DNS (網域名稱系統) 中透過安全連線查詢網站的 IP 位址。這會使用位於 <ph name="DNS_SERVER_TEMPLATE_WITH_IDENTIFIER" /> 的代管服務供應商</translation>
 <translation id="2582253231918033891"><ph name="PRODUCT_NAME" /> <ph name="PRODUCT_VERSION" /> (平台：<ph name="PLATFORM_VERSION" />) <ph name="DEVICE_SERIAL_NUMBER" /></translation>
 <translation id="2583905535229480958">任何智慧卡讀卡機</translation>
+<translation id="2583949330716828639">管理網站例外狀況</translation>
 <translation id="2584109212074498965">無法取得 Kerberos 票證。請再試一次，或與貴機構的裝置管理員聯絡。(錯誤代碼 <ph name="ERROR_CODE" />)。</translation>
 <translation id="2584974473573720127">使用 Chrome 管理網站的麥克風權限</translation>
 <translation id="2586561813241011046">無法安裝「<ph name="APP_NAME" />」。請再試一次，或是與系統管理員聯絡。錯誤代碼：<ph name="ERROR_CODE" />。</translation>
@@ -5747,6 +5750,7 @@
 <translation id="4871322859485617074">PIN 碼包含無效的字元</translation>
 <translation id="4871370605780490696">新增書籤</translation>
 <translation id="4871568871368204250">關閉同步處理功能</translation>
+<translation id="4871630917300912613">JavaScript 防護機制</translation>
 <translation id="4871719318659334896">關閉群組</translation>
 <translation id="4872192066608821120">如要匯入密碼，請選取所需 CSV 檔案</translation>
 <translation id="4872212987539553601">設定裝置端加密功能</translation>
@@ -5855,6 +5859,7 @@
 <translation id="4943927218331934807">需要密碼</translation>
 <translation id="4944310289250773232">這是由 <ph name="SAML_DOMAIN" /> 代管的驗證服務</translation>
 <translation id="4945439665401275950">如要設定指紋，請讓孩子輕觸電源按鈕。孩子的指紋資料會安全儲存在這部 <ph name="DEVICE_TYPE" /> 上，絕不會外洩。</translation>
+<translation id="4946215577126251136">顯示「專案面板」按鈕</translation>
 <translation id="4946998421534856407">啟動鍵 + 向上鍵</translation>
 <translation id="4947376546135294974">所造訪網站的資料</translation>
 <translation id="4948370357877377178">繼續處理工作</translation>
@@ -6089,7 +6094,6 @@
 <translation id="51143538739122961">插入並輕觸安全金鑰</translation>
 <translation id="5115309401544567011">請將 <ph name="DEVICE_TYPE" /> 接上電源。</translation>
 <translation id="5115338116365931134">單一登入 (SSO)</translation>
-<translation id="5116015291385561204">驗證身分才能自動填入私密資訊</translation>
 <translation id="5116315184170466953">按讚可對這項分頁群組建議給予正面評價</translation>
 <translation id="5116628073786783676">另存音訊(&amp;V)...</translation>
 <translation id="5117139026559873716">中斷手機與 <ph name="DEVICE_TYPE" /> 的連線。這兩個裝置將不再自動連線。</translation>
@@ -6682,11 +6686,11 @@
 <translation id="5523532775593636291">清單內的網站一律會保持使用中的狀態，系統不會釋出記憶體</translation>
 <translation id="5523558474028191231">名稱可以包含字母、數字和特殊字元，且不得超過 <ph name="MAX_CHARACTER_COUNT" /> 個字元</translation>
 <translation id="5526745900034778153">如要繼續同步處理，請重新登入</translation>
-<translation id="5527211644528700597">使用裝置端方法偵測威脅</translation>
 <translation id="5527474464531963247">你也可以選取其他網路。</translation>
 <translation id="5527597176701279474">正在安裝「<ph name="APP_NAME" />」</translation>
 <translation id="5527822190489075064">最佳化充電</translation>
 <translation id="5529554942700688235">記憶體用量節省摘要，已釋出 <ph name="MEMORY_VALUE" /></translation>
+<translation id="5529693968082667490">顯示「分頁搜尋」按鈕</translation>
 <translation id="5530977410273748884">如要將密碼儲存到 Google 密碼管理工具，請按一下這個按鍵</translation>
 <translation id="5532223876348815659">通用</translation>
 <translation id="5533001281916885985"><ph name="SITE_NAME" /> 要求下列權限</translation>
@@ -6878,7 +6882,6 @@
 <translation id="5663459693447872156">自動切換為半形</translation>
 <translation id="5663653125349867535">閱讀清單(&amp;R)</translation>
 <translation id="5663918299073387939">網站通常會要求控制 MIDI 裝置及重設程式，以便建立和編輯音樂或更新裝置韌體</translation>
-<translation id="5666116074010586111">將網址和網頁內容傳送給 Google，加快偵測威脅的速度</translation>
 <translation id="5666911576871845853">新增設定檔(&amp;A)</translation>
 <translation id="5667293444945855280">惡意程式</translation>
 <translation id="5667546120811588575">正在設定 Google Play...</translation>
@@ -7117,6 +7120,7 @@
 <translation id="583673505367439042">網站可以要求編輯裝置上的檔案和資料夾</translation>
 <translation id="5836999627049108525">原文語言</translation>
 <translation id="583756221537636748">充電盒</translation>
+<translation id="5840656138956959276">強化：嚴格</translation>
 <translation id="5840680448799937675">一律在離線時分享檔案</translation>
 <translation id="5841270259333717135">設定乙太網路</translation>
 <translation id="5841338463993781099">要儲存到帳戶中嗎？</translation>
@@ -7941,6 +7945,7 @@
 <translation id="6411135999030237579">按住即可自動重複按鍵動作</translation>
 <translation id="6414618057231176439">選取要安裝的「<ph name="VM_NAME" />」版本。</translation>
 <translation id="641469293210305670">安裝更新內容和應用程式</translation>
+<translation id="6415434255504060856">所有網站都採用嚴格模式</translation>
 <translation id="6415757856498750027">輸入「w」會得到「ư」</translation>
 <translation id="6415816101512323589">要開啟本機資料復原功能功能保護資料嗎？</translation>
 <translation id="6415900369006735853">透過手機連上網際網路</translation>
@@ -8072,7 +8077,6 @@
 <translation id="6508261954199872201">應用程式：<ph name="APP_NAME" /></translation>
 <translation id="6511607461419653612">請重新啟動 Chromebook，然後再試一次</translation>
 <translation id="6511827214781912955">建議你刪除「<ph name="FILENAME" />」，讓這部裝置的其他使用者無法查看你的密碼</translation>
-<translation id="6512364354776355686">針對所有不安全連線發出警告</translation>
 <translation id="6512759338201777379">AI 生成的<ph name="SUBJECT" />圖片 <ph name="INDEX" />，情境為<ph name="MOOD" />。</translation>
 <translation id="6513247462497316522">如果你沒有連線至其他網路，Google Chrome 將使用行動數據網路連線。</translation>
 <translation id="6514010653036109809">可用的裝置：</translation>
@@ -8232,6 +8236,7 @@
 <translation id="6613267708691765962">正在掃描惡意軟體...</translation>
 <translation id="6615455863669487791">顯示</translation>
 <translation id="6618013221808317456">禁止網站使用 JavaScript 最佳化功能</translation>
+<translation id="6618154741503063152">無法上傳。不允許附加檔案。</translation>
 <translation id="6619058681307408113">線上印表機服務精靈 (LPD)</translation>
 <translation id="661907246513853610">網站可以追蹤你的位置</translation>
 <translation id="6619243162837544323">網路狀態</translation>
@@ -8336,6 +8341,7 @@
 <translation id="6686665106869989887">分頁已移動到右側</translation>
 <translation id="6686676261102452995">你今天開啟過</translation>
 <translation id="6686817083349815241">儲存你的密碼</translation>
+<translation id="6686878118106035853">自訂強化防護會關閉所有網站的 JavaScript 最佳化功能</translation>
 <translation id="6687008241368170505">變更 Google 密碼管理工具 PIN 碼</translation>
 <translation id="6687079240787935001">隱藏「<ph name="MODULE_TITLE" />」</translation>
 <translation id="6689948774466767379">滑鼠按鍵</translation>
@@ -9326,7 +9332,6 @@
 <translation id="7368927539449986686">編輯網站搜尋引擎</translation>
 <translation id="7370592524170198497">乙太網路 EAP：</translation>
 <translation id="7374376573160927383">管理 USB 裝置</translation>
-<translation id="73750335798090836">安全起見，使用旅遊及身分文件等敏感資訊時，請務必透過指紋、臉孔或螢幕鎖定進行驗證</translation>
 <translation id="7376124766545122644">無法使用這個連結，請確認連結的開頭是「http://」或「https://」，然後再試一次。</translation>
 <translation id="7376553024552204454">滑鼠游標移動時醒目顯示</translation>
 <translation id="7377250337652426186">如果要返回的頁數超過 1 頁以上，請點選並按住「返回」按鈕。</translation>
@@ -9827,7 +9832,6 @@
 <translation id="7697109152153663933">按一下「密碼和自動填入」</translation>
 <translation id="769824636077131955">這份文件的大小過大，無法進行安全性檢查。可列印文件大小上限為 50 MB。</translation>
 <translation id="7698507637739331665">已封鎖部分項目</translation>
-<translation id="7700176975240938448">使用 <ph name="FOCUS_TOGGLE_HOTKEY" /> 輕鬆開啟</translation>
 <translation id="7700516433658473670">印表機和掃描器</translation>
 <translation id="7700873336634517379">否，繼續在這個設定檔中使用學校帳戶</translation>
 <translation id="7701040980221191251">無</translation>
@@ -10019,7 +10023,6 @@
 <translation id="7830833461614351956">要將 <ph name="NUM_OF_FILES" /> 個檔案複製到「<ph name="CLOUD_PROVIDER" />」再開啟嗎？</translation>
 <translation id="7831754656372780761"><ph name="TAB_TITLE" /> <ph name="EMOJI_MUTING" /></translation>
 <translation id="7833720883933317473">你所儲存的自訂字詞會顯示在這裡</translation>
-<translation id="7833725807105678871">首重網站速度，而非強化安全防護功能</translation>
 <translation id="7834832693620032149">如要分享音訊，請改為分享分頁或視窗</translation>
 <translation id="7836577093182643605">這份主題封鎖清單列出了你不希望與其他網站分享的主題</translation>
 <translation id="7836850009646241041">請再次輕觸你的安全金鑰</translation>
@@ -10328,6 +10331,7 @@
 <translation id="8034399942062051455">已關閉 V8 最佳化功能</translation>
 <translation id="8034697324150621782">與上方畫面交換</translation>
 <translation id="8035059678007243127">無痕模式往返快取頁面：<ph name="BACK_FORWARD_CACHE_INCOGNITO_PAGE_URL" /></translation>
+<translation id="8036143516314698610">顯示「已儲存的分頁群組」按鈕</translation>
 <translation id="8036193484521570992">協助改善自動填入功能</translation>
 <translation id="8036504271468642248">上一句</translation>
 <translation id="8037117027592400564">讀取使用合成語音朗讀的所有文字</translation>
@@ -10816,6 +10820,7 @@
 <translation id="8356197132883132838"><ph name="TITLE" /> - <ph name="COUNT" /></translation>
 <translation id="8356409598322585307">你已註冊這部裝置，因此不必再次註冊。</translation>
 <translation id="8357388086258943206">安裝 Linux 時發生錯誤</translation>
+<translation id="8357883857705092796">無法辨識的網站</translation>
 <translation id="8358685469073206162">你要還原網頁嗎？</translation>
 <translation id="835927394551949760">向 Google 提問</translation>
 <translation id="835951711479681002">儲存在 Google 帳戶中</translation>
@@ -11457,6 +11462,7 @@
 <translation id="8781834595282316166">在群組中新增分頁</translation>
 <translation id="8781980678064919987">蓋上機蓋時關機</translation>
 <translation id="8782565991310229362">Kiosk 應用程式已取消執行。</translation>
+<translation id="8783171585655659524">包括螢幕截圖</translation>
 <translation id="8783834180813871000">輸入藍牙配對碼，然後按下返回鍵或 Enter 鍵。</translation>
 <translation id="8784626084144195648">二進位化平均</translation>
 <translation id="8785622406424941542">觸控筆</translation>
@@ -11509,7 +11515,6 @@
 <translation id="8821045908425223359">自動設定 IP 位址</translation>
 <translation id="8821268776955756404"><ph name="APP_NAME" /> 已可使用。</translation>
 <translation id="882204272221080310">更新韌體以提升安全性。</translation>
-<translation id="8822690627597552656">降低部分陌生網站的速度，以封鎖常見攻擊</translation>
 <translation id="8823514049557262177">複製連結文字(&amp;X)</translation>
 <translation id="8823704566850948458">建議密碼...</translation>
 <translation id="8823963789776061136">您也可以選取印表機 PPD。<ph name="LINK_BEGIN" />瞭解詳情<ph name="LINK_END" /></translation>

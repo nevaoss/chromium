@@ -31,6 +31,20 @@ class PaymentsFormDataImporterTestApi {
     return payments_fdi_->iban_save_manager_.get();
   }
 
+  std::optional<CreditCard> ExtractCreditCard(const FormStructure& form) {
+    return payments_fdi_->ExtractCreditCard(form);
+  }
+
+  bool ProcessExtractedCreditCard(
+      const FormStructure& submitted_form,
+      const std::optional<CreditCard>& credit_card_import_candidate,
+      bool is_credit_card_upstream_enabled,
+      ukm::SourceId ukm_source_id) {
+    return payments_fdi_->ProcessExtractedCreditCard(
+        submitted_form, credit_card_import_candidate,
+        is_credit_card_upstream_enabled, ukm_source_id);
+  }
+
  private:
   const raw_ref<PaymentsFormDataImporter> payments_fdi_;
 };

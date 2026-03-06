@@ -33,6 +33,7 @@
 #include "base/memory/scoped_refptr.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/sequence_checker.h"
+#include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
@@ -1966,7 +1967,6 @@ void NetworkContext::ClearBadProxiesCache(
 void NetworkContext::CreateWebSocket(
     const GURL& url,
     const std::vector<std::string>& requested_protocols,
-    const net::SiteForCookies& site_for_cookies,
     net::StorageAccessApiStatus storage_access_api_status,
     const net::IsolationInfo& isolation_info,
     std::vector<mojom::HttpHeaderPtr> additional_headers,
@@ -1989,8 +1989,8 @@ void NetworkContext::CreateWebSocket(
   DCHECK(process_id);
 
   websocket_factory_->CreateWebSocket(
-      url, requested_protocols, site_for_cookies, storage_access_api_status,
-      isolation_info, std::move(additional_headers), process_id, origin,
+      url, requested_protocols, storage_access_api_status, isolation_info,
+      std::move(additional_headers), process_id, origin,
       std::move(client_security_state), options,
       static_cast<net::NetworkTrafficAnnotationTag>(traffic_annotation),
       std::move(handshake_client), std::move(url_loader_network_observer),
@@ -3686,9 +3686,9 @@ bool NetworkContext::IsNetworkForNonceAndUrlAllowed(
 
   // If network has been revoked for the nonce, but the url is exempted, it's
   // allowed.
-  if (network_revocation_exemptions_.contains(nonce) &&
-      network_revocation_exemptions_.find(nonce)->second.contains(
-          url.GetWithoutFilename())) {
+  if (auto it = network_revocation_exemptions_.find(nonce);
+      it != network_revocation_exemptions_.end() &&
+      it->second.contains(url.GetWithoutFilename())) {
     return true;
   }
   // The nonce was revoked and the url isn't exempted.
@@ -3702,16 +3702,16 @@ bool NetworkContext::IsHostResolutionForNonceAndHostAllowed(
     return true;
   }
 
-  if (!network_revocation_nonces_.contains(nonce)) {
+  auto it = network_revocation_nonces_.find(nonce);
+  if (it == network_revocation_nonces_.end()) {
     return true;
   }
 
   std::string host_fragment = host.is_host_port_pair()
                                   ? host.get_host_port_pair().host()
                                   : host.get_scheme_host_port().host();
-  GURL synthetic_url =
-      GURL(std::string(url::kHttpsScheme) +
-           std::string(url::kStandardSchemeSeparator) + host_fragment);
+  GURL synthetic_url = GURL(base::StrCat(
+      {url::kHttpsScheme, url::kStandardSchemeSeparator, host_fragment}));
   if (!synthetic_url.is_valid()) {
     return false;
   }
@@ -3721,7 +3721,7 @@ bool NetworkContext::IsHostResolutionForNonceAndHostAllowed(
   // we need to match `synthetic_url` against a host-only variant against each
   // URLPattern corresponding to `nonce`.
   const std::set<std::unique_ptr<url_pattern::SimpleUrlPatternMatcher>>&
-      allowlisted_patterns = network_revocation_nonces_.find(nonce)->second;
+      allowlisted_patterns = it->second;
   for (const std::unique_ptr<url_pattern::SimpleUrlPatternMatcher>& pattern :
        allowlisted_patterns) {
     if (pattern->HostOnlyMatch(synthetic_url)) {

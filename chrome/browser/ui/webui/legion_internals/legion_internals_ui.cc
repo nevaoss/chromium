@@ -8,8 +8,8 @@
 #include <utility>
 
 #include "base/feature_list.h"
-#include "chrome/browser/legion/private_ai_service.h"
-#include "chrome/browser/legion/private_ai_service_factory.h"
+#include "chrome/browser/private_ai/private_ai_service.h"
+#include "chrome/browser/private_ai/private_ai_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/webui/legion_internals/legion_internals.mojom.h"
 #include "chrome/browser/ui/webui/legion_internals/legion_internals_page_handler.h"
@@ -17,7 +17,7 @@
 #include "chrome/grit/legion_internals_resources.h"
 #include "chrome/grit/legion_internals_resources_map.h"
 #include "components/private_ai/features.h"
-#include "components/private_ai/proto/legion.pb.h"
+#include "components/private_ai/proto/private_ai.pb.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/internal_webui_config.h"
 #include "content/public/browser/storage_partition.h"
@@ -34,7 +34,7 @@ LegionInternalsUIConfig::~LegionInternalsUIConfig() = default;
 
 bool LegionInternalsUIConfig::IsWebUIEnabled(
     content::BrowserContext* browser_context) {
-  if (!base::FeatureList::IsEnabled(private_ai::kLegion)) {
+  if (!base::FeatureList::IsEnabled(private_ai::kPrivateAi)) {
     return false;
   }
 
@@ -55,12 +55,17 @@ LegionInternalsUI::LegionInternalsUI(content::WebUI* web_ui)
   webui::SetupWebUIDataSource(source, base::span(kLegionInternalsResources),
                               IDR_LEGION_INTERNALS_LEGION_INTERNALS_HTML);
 
-  source->AddString("default_url", private_ai::kLegionUrl.Get());
-  source->AddString("default_api_key", private_ai::kLegionApiKey.Get());
+  source->AddString("default_url", private_ai::kPrivateAiUrl.Get());
+  source->AddString("default_api_key", private_ai::kPrivateAiApiKey.Get());
+  source->AddString("default_proxy_url",
+                    private_ai::kPrivateAiProxyServerUrl.Get());
   source->AddString("default_feature_name",
                     private_ai::proto::FeatureName_Name(
                         private_ai::proto::FeatureName::
                             FEATURE_NAME_DEMO_GEMINI_GENERATE_CONTENT));
+  source->AddBoolean(
+      "default_use_token_attestation",
+      base::FeatureList::IsEnabled(private_ai::kPrivateAiUseTokenAttestation));
 }
 
 LegionInternalsUI::~LegionInternalsUI() = default;

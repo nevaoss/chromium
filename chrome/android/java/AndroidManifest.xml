@@ -126,6 +126,9 @@ by a child template that "extends" this file.
     <!-- Permission for reading the Advanced Protection Mode status. -->
     <uses-permission android:name="android.permission.QUERY_ADVANCED_PROTECTION_MODE"/>
 
+    <!-- Needed for allowing cross-app and cross-profile communication over the loopback interface. -->
+    <uses-permission android:name="android.permission.USE_LOOPBACK_INTERFACE"/>
+
     {% set enable_vr = enable_vr|default(0) %}
     {% if enable_vr == "true" %}
     <!-- Indicates use of Android's VR-mode, available only on Android N+. -->
@@ -229,7 +232,6 @@ by a child template that "extends" this file.
         android:allowBackup="false"
         {% endif %}
         android:networkSecurityConfig="@xml/network_security_config"
-        android:allowAudioPlaybackCapture="false"
         android:appComponentFactory="org.chromium.chrome.browser.base.SplitCompatAppComponentFactory"
         android:enableOnBackInvokedCallback="true"
         {% if javaless_renderers is defined %}
@@ -297,13 +299,6 @@ by a child template that "extends" this file.
                 <data android:mimeType="text/html"/>
                 <data android:mimeType="text/plain"/>
                 <data android:mimeType="application/xhtml+xml"/>
-            </intent-filter>
-            <!-- PDF viewing support. -->
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="application/pdf" />
-                <data android:scheme="content" />
             </intent-filter>
             <!-- MHTML support, used for snapshots -->
             <intent-filter>
@@ -920,6 +915,11 @@ by a child template that "extends" this file.
             android:exported="false"
             android:isolatedProcess="true"
             android:process=":decoder_service" />
+
+        <!-- Actor foreground service -->
+        <service android:name="org.chromium.chrome.browser.actor.ActorForegroundService"
+           android:foregroundServiceType="dataSync" android:exported="false">
+        </service>
 
         <!-- Download foreground service -->
         <service android:name="org.chromium.chrome.browser.download.DownloadForegroundService"

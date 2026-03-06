@@ -17,7 +17,7 @@
 #include "base/strings/string_util.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/types/expected.h"
-#include "components/private_ai/common/legion_logger.h"
+#include "components/private_ai/common/private_ai_logger.h"
 #include "components/private_ai/proto_utils/google_rpc_code.h"
 #include "net/http/http_request_headers.h"
 #include "net/storage_access_api/status.h"
@@ -67,7 +67,7 @@ constexpr net::NetworkTrafficAnnotationTag kTrafficAnnotation =
 WebSocketClient::WebSocketClient(
     const GURL& service_url,
     network::mojom::NetworkContext* network_context,
-    LegionLogger* logger)
+    PrivateAiLogger* logger)
     : service_url_(service_url),
       network_context_(network_context),
       logger_(logger),
@@ -159,8 +159,7 @@ void WebSocketClient::Connect() {
       "X-WebChannel-Content-Type", "application/x-protobuf"));
 
   network_context_->CreateWebSocket(
-      service_url_, requested_protocols, net::SiteForCookies(),
-      net::StorageAccessApiStatus::kNone,
+      service_url_, requested_protocols, net::StorageAccessApiStatus::kNone,
       net::IsolationInfo::CreateForInternalRequest(
           url::Origin::Create(service_url_)),
       std::move(additional_headers), network::OriginatingProcessId::browser(),

@@ -911,6 +911,7 @@
 <translation id="4405320213589929829">പ്രാദേശിക വിവരങ്ങളും വഴികളും നേടാൻ വെബ് പേജുകളിലെ വിലാസങ്ങൾ ഉപയോഗിക്കുക.</translation>
 <translation id="441218095371040430">കീബോർഡ് ഉപയോഗിക്കുക</translation>
 <translation id="4415276339145661267">നിങ്ങളുടെ Google Account മാനേജ് ചെയ്യുക</translation>
+<translation id="4416582610654027550">സാധുതയുള്ള URL ടൈപ്പ് ചെയ്യുക</translation>
 <translation id="4420409367264901497">ബുക്ക്‌മാർക്ക് എഡിറ്റ് ചെയ്യുക</translation>
 <translation id="4425365312778464779">ഈ അക്കൗണ്ട് മാനേജ് ചെയ്യപ്പെടുന്നു</translation>
 <translation id="4430277756566635951">നിലവിൽ <ph name="EMAIL" /> തിരഞ്ഞെടുത്തിരിക്കുന്നു. അക്കൗണ്ട് തിരഞ്ഞെടുക്കുക.</translation>
@@ -1035,6 +1036,7 @@
 <translation id="484462545196658690">സ്വയമേവ</translation>
 <translation id="4850886885716139402">കാണുക</translation>
 <translation id="4854068532375923088">നിങ്ങളുടെ ക്യാമറ ഉപയോഗിക്കാൻ “Gemini-യെ” അനുവദിക്കുക</translation>
+<translation id="4860114370595561279">നിങ്ങളുടെ സംരക്ഷിച്ച വിവരങ്ങൾ നിങ്ങളുടെ ഉപകരണത്തിൽ സംഭരിച്ചിരിക്കുന്നു</translation>
 <translation id="4860895144060829044">വിളിക്കുക</translation>
 <translation id="4861953997778766866">നിങ്ങളുടെ പങ്കിട്ട ടാബ് ഗ്രൂപ്പുകളിൽ എല്ലാവർക്കും മാറ്റങ്ങൾ വരുത്താനാകും</translation>
 <translation id="4865063548323785458">സൈറ്റുകളിലേക്കും ആപ്പുകളിലേക്കും എളുപ്പത്തിൽ സൈൻ ഇൻ ചെയ്യുന്നതിന് നിങ്ങളുടെ പാസ്‌വേഡുകൾ സംരക്ഷിച്ച് സ്വയമേവ പൂരിപ്പിക്കുക</translation>
@@ -1404,7 +1406,6 @@
 <translation id="6140948187512243695">വിശദാംശങ്ങൾ‌ കാണിക്കുക</translation>
 <translation id="6144589619057374135">${url} അദൃശ്യ മോഡിൽ തുറക്കുക</translation>
 <translation id="6146563240635539929">വീഡിയോകൾ</translation>
-<translation id="6147279996212084542">വിശദീകരിക്കുക</translation>
 <translation id="6151006591088192882"><ph name="BIOMETRIC_AUTHENITCATION_TYPE" /> ഉപയോഗിച്ച് അദൃശ്യ ടാബുകൾ അൺലോക്ക് ചെയ്യുക</translation>
 <translation id="6152340033632117531">നിഷ്‌ക്രിയം</translation>
 <translation id="6152406514676263192">നിങ്ങളുടെ താൽപ്പര്യങ്ങൾ അടിസ്ഥാനമാക്കി എറ്റവും പ്രസക്തമായ ഉള്ളടക്കം കാണാൻ സമന്വയിപ്പിക്കൂ.</translation>
@@ -1651,7 +1652,6 @@
 <translation id="6964300328304469089"><ph name="NAME" />, <ph name="EMAIL" /> നിലവിൽ തിരഞ്ഞെടുത്തിരിക്കുന്നു. അക്കൗണ്ട് തിരഞ്ഞെടുക്കുക.</translation>
 <translation id="6964760285928603117">ഗ്രൂപ്പിൽ നിന്ന് നീക്കം ചെയ്യുക</translation>
 <translation id="6965382102122355670">ശരി</translation>
-<translation id="6967355534157677591">Pro മുഖേന ചിത്രം സൃഷ്ടിക്കൂ</translation>
 <translation id="6973630695168034713">ഫോൾഡറുകൾ</translation>
 <translation id="6979158407327259162">Google Drive</translation>
 <translation id="6979737339423435258">എല്ലാ സമയത്തും</translation>
@@ -2060,6 +2060,7 @@
 <translation id="8439758443371991593">'വായിക്കാനുള്ളവയുടെ ലിസ്റ്റിലേക്ക് ചേർക്കുക' മറയ്ക്കുക</translation>
 <translation id="8443986842926457191">URL-ൽ 2048 പ്രതീകങ്ങളിൽ കൂടുതൽ അടങ്ങിയിരിക്കുന്നു</translation>
 <translation id="8449869326050867919">പാസ്‌വേഡ് പങ്കിട്ടു</translation>
+<translation id="8473815223723723001">Gemini ഉപയോഗിച്ച് ചിത്രം എഡിറ്റ് ചെയ്യുക</translation>
 <translation id="8473863474539038330">വിലാസങ്ങളും മറ്റും</translation>
 <translation id="8474378002946546633">അറിയിപ്പുകൾ അനുവദിക്കുക</translation>
 <translation id="8477178913400731244">ഡാറ്റ ഇല്ലാതാക്കുക</translation>
@@ -2185,7 +2186,6 @@
 <translation id="8856643812068084733">ആർക്കൈവുകൾ</translation>
 <translation id="8863067612494559785"><ph name="DEVICE_NAME" /> എന്നതിലേക്ക് അയയ്‌ക്കുന്നു…</translation>
 <translation id="8863431381414769983">Google Maps-ൽ നിന്ന് വഴികളും പ്രാദേശിക വിവരങ്ങളും നേടുക</translation>
-<translation id="8867879594900082274">നിങ്ങളുടെ എഡിറ്റുകൾ ഈ ഉപകരണത്തിലെ പിൻ ചെയ്ത സൈറ്റുകൾക്ക് മാത്രമേ ബാധകമാകൂ.</translation>
 <translation id="8871974300055371298">ഉള്ളടക്ക ക്രമീകരണങ്ങൾ</translation>
 <translation id="8877788021141246043">ഒരു റിമൈൻഡർ സജ്ജീകരിക്കുക</translation>
 <translation id="8879604564928138696">ഉപയോഗിച്ചുനോക്കാൻ ഡബിൾ ടാപ്പ് ചെയ്യുക</translation>

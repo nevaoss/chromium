@@ -57,7 +57,9 @@ pub struct UntypedHandle {
 
 impl UntypedHandle {
     /// Create a new UntypedHandle from a raw value.
-    /// SAFETY: The value must represent a live, unonwned handle.
+    ///
+    /// # Safety
+    /// The value must represent a live, unonwned handle.
     pub unsafe fn wrap_raw_value(raw_value: raw_ffi::MojoHandle) -> Self {
         // FOR_RELEASE: There are apparently other types of handle ("Pseudohandles")
         // that should not be representable by this type. Look into these and check for
@@ -93,6 +95,17 @@ impl UntypedHandle {
         // pointer cast is sound.
         handles.as_mut_ptr().cast()
     }
+
+    /// Consume this UntypedHandle and return the underlying raw MojoHandle.
+    ///
+    /// This function gives up ownership of the underlying handle, so the
+    /// caller is responsible for ensuring it does not get copied, and gets
+    /// properly closed.
+    pub fn into_raw_value(self) -> raw_ffi::MojoHandle {
+        let val = self.handle_value.into();
+        std::mem::forget(self);
+        val
+    }
 }
 
 impl Drop for UntypedHandle {
@@ -122,7 +135,9 @@ pub struct MessageHandle {
 
 impl MessageHandle {
     /// Create a new MessageHandle from a raw value.
-    /// SAFETY: The value must represent a live, unonwned handle.
+    ///
+    /// # Safety
+    /// The value must represent a live, unonwned handle.
     pub unsafe fn wrap_raw_value(raw_value: raw_ffi::MojoHandle) -> Self {
         Self {
             handle_value: raw_value.try_into().unwrap(),

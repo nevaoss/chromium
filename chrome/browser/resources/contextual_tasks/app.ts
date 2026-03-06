@@ -2,7 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// <if expr="not is_android">
 import './composebox.js';
+// </if>
 import './error_dialog.js';
 import './error_page.js';
 import './ghost_loader.js';
@@ -13,16 +15,24 @@ import {EventTracker} from 'chrome://resources/js/event_tracker.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {CrLitElement} from 'chrome://resources/lit/v3_0/lit.rollup.js';
 import type {PropertyValues} from 'chrome://resources/lit/v3_0/lit.rollup.js';
+// <if expr="not is_android">
+import type {UnguessableToken} from 'chrome://resources/mojo/mojo/public/mojom/base/unguessable_token.mojom-webui.js';
+// </if>
 import type {Uuid} from 'chrome://resources/mojo/mojo/public/mojom/base/uuid.mojom-webui.js';
 
 import {getCss} from './app.css.js';
 import {getHtml} from './app.html.js';
+// <if expr="not is_android">
 import type {ContextualTasksComposeboxElement} from './composebox.js';
 import type {ComposeboxPosition} from './contextual_tasks.mojom-webui.js';
+// </if>
 import type {BrowserProxy} from './contextual_tasks_browser_proxy.js';
 import {BrowserProxyImpl} from './contextual_tasks_browser_proxy.js';
 import {PostMessageHandler} from './post_message_handler.js';
+// <if expr="not is_android">
 import type {Rect} from './post_message_handler.js';
+import {getNonOccludedClipPath} from './utils/clip_path.js';
+// </if>
 
 declare global {
   interface HTMLElementEventMap {
@@ -42,10 +52,23 @@ export type OnBeforeRequestDetails = Parameters<
 const VIEWPORT_HEIGHT_KEY = 'bih';
 const VIEWPORT_WIDTH_KEY = 'biw';
 
+// <if expr="not is_android">
+// The extra padding to add to the occluders to ensure that the composebox is
+// fully visible. This helps to account for inconsistencies between the bounding
+// boxes of the element, and what is actually rendered (for example, box shadows
+// on the elements might not be included in the bounding box).
+const OCCLUDER_EXTRA_PADDING_PX = 15;
+// </if>
+
 export interface ContextualTasksAppElement {
   $: {
     threadFrame: chrome.webviewTag.WebView,
+    // <if expr="not is_android">
     composebox: ContextualTasksComposeboxElement,
+    // </if>
+    // <if expr="is_android">
+    composebox: HTMLElement,
+    // </if>
     composeboxHeaderWrapper: HTMLElement,
     composeboxHeader: HTMLElement,
     flexCenterContainer: HTMLElement,
@@ -167,10 +190,24 @@ export class ContextualTasksAppElement extends CrLitElement {
       isInputLocked_: {
         type: Boolean,
       },
+      // <if expr="not is_android">
       forcedComposeboxBounds_: {type: Object},
+      // </if>
+      friendlyZeroStateGaiaName_: {type: String},
+      friendlyZeroStateTitleBeforeName_: {type: String},
+      friendlyZeroStateTitleAfterName_: {type: String},
+      // <if expr="not is_android">
+      occluders_: {type: Array},
+      // </if>
     };
   }
 
+  protected accessor friendlyZeroStateGaiaName_: string =
+      loadTimeData.getString('friendlyZeroStateGaiaName');
+  protected accessor friendlyZeroStateTitleBeforeName_: string =
+      loadTimeData.getString('friendlyZeroStateTitleBeforeName');
+  protected accessor friendlyZeroStateTitleAfterName_: string =
+      loadTimeData.getString('friendlyZeroStateTitleAfterName');
   private browserProxy_: BrowserProxy = BrowserProxyImpl.getInstance();
   protected accessor enableBasicModeZOrder_: boolean =
       loadTimeData.getBoolean('enableBasicModeZOrder');
@@ -189,7 +226,15 @@ export class ContextualTasksAppElement extends CrLitElement {
       loadTimeData.getBoolean('enableNativeZeroStateSuggestions');
   protected accessor isGhostLoaderVisible_: boolean = false;
   protected accessor isInputLocked_: boolean = false;
+  // <if expr="not is_android">
   protected accessor forcedComposeboxBounds_: Rect|null = null;
+  // A list of occluders that are currently visible to the user. An occluder is
+  // any element that is currently visible to the user that may be intersecting
+  // and rendering over the composebox. This is a dynamic list send from the
+  // embedded page, which allows the client to keep track and know which parts
+  // of the composebox are not visible to the user, and therefore not clickable.
+  protected accessor occluders_: Rect[]|null = null;
+  // </if>
 
   protected friendlyZeroStateSubtitle: string =
       loadTimeData.getString('friendlyZeroStateSubtitle');
@@ -267,6 +312,18 @@ export class ContextualTasksAppElement extends CrLitElement {
 
         this.isInBasicMode_ = false;
       }),
+      // <if expr="not is_android">
+      callbackRouter.injectInput.addListener(
+          (title: string, thumbnail: string, fileToken: UnguessableToken) => {
+            this.$.composebox.injectInput(
+                title, 'chrome://image?url=' + encodeURIComponent(thumbnail),
+                fileToken);
+          }),
+      callbackRouter.removeInjectedInput.addListener(
+          (fileToken: UnguessableToken) => {
+            this.$.composebox.deleteFile(fileToken);
+          }),
+      // </if>
       callbackRouter.setTaskDetails.addListener(updateTaskDetailsInUrl),
       callbackRouter.setAimUrl.addListener(updateAimUrl),
       callbackRouter.onZeroStateChange.addListener((isZeroState: boolean) => {
@@ -277,7 +334,12 @@ export class ContextualTasksAppElement extends CrLitElement {
         // we are not in zero state anymore, or not in an AIM URL. In
         // both thread/AIM cases for zero state, we clear input.
         if (isZeroState && !wasZeroState) {
+          // <if expr="not is_android">
           this.$.composebox.clearInputAndFocus();
+          // Reset the forced composebox bounds since the zero state position
+          // is controlled natively.
+          this.forcedComposeboxBounds_ = null;
+          // </if>
         }
       }),
       callbackRouter.onLensOverlayStateChanged.addListener(
@@ -293,9 +355,11 @@ export class ContextualTasksAppElement extends CrLitElement {
       callbackRouter.showOauthErrorDialog.addListener(() => {
         this.isErrorDialogVisible_ = true;
       }),
+      // <if expr="not is_android">
       callbackRouter.updateComposeboxPosition.addListener(
           this.onUpdateComposeboxPosition_.bind(this),
           ),
+      // </if>
       callbackRouter.lockInput.addListener(() => {
         this.isInputLocked_ = true;
       }),
@@ -335,28 +399,12 @@ export class ContextualTasksAppElement extends CrLitElement {
     this.updateCommonSearchParams();
 
     // Listeners for ghost loader
-    if (this.enableGhostLoader_) {
-      this.$.threadFrame.addEventListener('contentload', () => {
-        this.isFrameLoading = false;
-        this.setIsGhostLoaderVisible(false);
-      });
-      this.$.threadFrame.addEventListener('loadabort', () => {
-        this.isFrameLoading = false;
-        this.setIsGhostLoaderVisible(false);
-      });
-      this.$.threadFrame.addEventListener(
-          'loadstart', async (ev: chrome.webviewTag.LoadStartEvent) => {
-            if (!ev.isTopLevel) {
-              return;
-            }
-            this.isFrameLoading = true;
-            const {isAiPage} =
-                await this.browserProxy_.handler.isAiPage(ev.url);
-            if (this.isFrameLoading && !isAiPage) {
-              this.setIsGhostLoaderVisible(true);
-            }
-          });
-    }
+    this.$.threadFrame.addEventListener(
+        'loadstart', this.onThreadFrameLoadStart.bind(this));
+    this.$.threadFrame.addEventListener(
+        'contentload', this.onThreadFrameContentLoad.bind(this));
+    this.$.threadFrame.addEventListener(
+        'loadabort', this.onThreadFrameLoadAbort.bind(this));
 
     // Setup the webview request overrides before loading the first URL.
     this.setupWebviewRequestOverrides();
@@ -376,7 +424,9 @@ export class ContextualTasksAppElement extends CrLitElement {
     } else {
       const {url} = await this.browserProxy_.handler.getThreadUrl();
       threadUrl = url;
+      // <if expr="not is_android">
       this.$.composebox.clearInputAndFocus();
+      // </if>
     }
 
     const threadUrlAsUrl = new URL(threadUrl);
@@ -421,9 +471,9 @@ export class ContextualTasksAppElement extends CrLitElement {
   override firstUpdated() {
     this.postMessageHandler_ =
         new PostMessageHandler(this.$.threadFrame, this.browserProxy_);
-    this.postMessageHandler_.setInputPlateBoundsUpdateCallback((rect: Rect) => {
-      this.forcedComposeboxBounds_ = rect;
-    });
+    // <if expr="not is_android">
+    this.postMessageHandler_.setInputPlateBoundsUpdateCallback(
+        this.onInputPlateBoundsUpdate_.bind(this));
 
     this.eventTracker_.add(
         this.$.composebox, 'composebox-height-update', (e: CustomEvent) => {
@@ -434,7 +484,12 @@ export class ContextualTasksAppElement extends CrLitElement {
             type: 'composebox-height-update',
             height: e.detail.height,
           });
+          // Update the height of the forced composebox bounds if it is set.
+          if (this.forcedComposeboxBounds_) {
+            this.forcedComposeboxBounds_.height = e.detail.height;
+          }
         });
+    // </if>
   }
 
   override updated(changedProperties: PropertyValues<this>) {
@@ -449,13 +504,56 @@ export class ContextualTasksAppElement extends CrLitElement {
       this.updateCommonSearchParams();
     }
   }
+
+  // <if expr="not is_android">
   private setStyleVariable(variable: string, value: string) {
     this.$.composebox.style.setProperty(variable, `${value}px`);
+  }
+  // </if>
+
+  private async onThreadFrameLoadStart(ev: chrome.webviewTag.LoadStartEvent) {
+    if (!ev.isTopLevel) {
+      return;
+    }
+    // Set frame loading to true initially to avoid race conditions.
+    this.isFrameLoading = true;
+    const wasAiPage = this.isAiPage_;
+    const {isAiPage} = await this.browserProxy_.handler.isAiPage(ev.url);
+
+    // If the frame is no longer loading after waiting for isAiPage,
+    // then exit early to prevent racind.
+    if (!this.isFrameLoading) {
+      return;
+    }
+
+    if (!isAiPage) {
+      // If this is not an AI page, show the ghost loader.
+      this.setIsGhostLoaderVisible(true);
+    } else if (wasAiPage) {
+      // Since this is a navigation from one AI page to another,
+      // enter basic mode to avoid flickering between navigations.
+      this.isNavigatingFromAiPage_ = true;
+      this.basicModeBeforeNavigation_ = this.isInBasicMode_;
+      this.isInBasicMode_ = true;
+    }
+  }
+
+  private onThreadFrameContentLoad() {
+    this.isFrameLoading = false;
+    this.setIsGhostLoaderVisible(false);
+    this.updateBasicModeAfterNavigation();
+  }
+
+  private onThreadFrameLoadAbort() {
+    this.isFrameLoading = false;
+    this.setIsGhostLoaderVisible(false);
+    this.updateBasicModeAfterNavigation();
   }
 
   /* Adjust composebox based on server notifications. Negatives are used if
    * server wants to change marginTop, marginRight.
    */
+  // <if expr="not is_android">
   private onUpdateComposeboxPosition_(position: ComposeboxPosition) {
     if (position.maxWidth !== null) {
       this.setStyleVariable('--max-composebox-width', `${position.maxWidth}px`);
@@ -477,6 +575,40 @@ export class ContextualTasksAppElement extends CrLitElement {
           '--composebox-margin-left', `${position.marginLeft}px`);
     }
   }
+  // </if>
+
+  // <if expr="not is_android">
+  private onInputPlateBoundsUpdate_(inputRect?: Rect, occluders?: Rect[]) {
+    if (inputRect !== undefined) {
+      this.forcedComposeboxBounds_ = inputRect;
+    }
+    if (occluders !== undefined) {
+      this.occluders_ = occluders;
+    }
+  }
+  // </if>
+
+  getThreadFrameStyles(): string {
+    // <if expr="not is_android">
+    if (this.occluders_ == null) {
+      return '';
+    }
+
+    // If the forced composebox bounds are set, use those since its cheaper
+    // than calling getBoundingClientRect();
+    const composeboxBounds = this.forcedComposeboxBounds_ ??
+        this.$.composebox.getBoundingClientRect();
+
+    // If occluders are present, set the clip path and a z-index that ensures
+    // the thread frame is above the occluders.
+    return getNonOccludedClipPath(
+               composeboxBounds, this.occluders_, OCCLUDER_EXTRA_PADDING_PX) +
+        'z-index: 100;';
+    // </if>
+    // <if expr="is_android">
+    return '';
+    // </if>
+  }
 
   protected async onNewThreadClick_() {
     chrome.metricsPrivate.recordUserAction(
@@ -495,8 +627,10 @@ export class ContextualTasksAppElement extends CrLitElement {
       newThreadUrl.searchParams.set('aep', aep);
     }
     this.$.threadFrame.src = newThreadUrl.href;
+    // <if expr="not is_android">
     this.$.composebox.startExpandAnimation();
     this.$.composebox.clearInputAndFocus();
+    // </if>
   }
 
   getEnableNativeZeroStateSuggestionsForTesting() {
@@ -512,9 +646,9 @@ export class ContextualTasksAppElement extends CrLitElement {
   // specific thread, this will return the same URL that was provided.
   private maybeUpdateThreadUrlForRestore(threadUrl: URL, webUiUrl: URL):
       string {
-    // Check if the provided URL is default by checking for thread ID, turn ID,
-    // and title. If those params are not present, but are present on the WebUI
-    // URL, apply them to the thread URL.
+    // Check if the provided URL is default by checking for thread ID, turn
+    // ID, and title. If those params are not present, but are present on the
+    // WebUI URL, apply them to the thread URL.
     // TODO(470107169): The ContextualTasksService should provide this URL
     //                  based on task ID alone.
     const updatedThreadUrl = new URL(threadUrl.href);
@@ -535,8 +669,8 @@ export class ContextualTasksAppElement extends CrLitElement {
   }
 
   private maybeLoadPendingUrl_() {
-    // If all the data needed to make the initial request is available, load the
-    // pending URL.
+    // If all the data needed to make the initial request is available, load
+    // the pending URL.
     if (this.pendingUrl_ && this.commonSearchParams_) {
       this.$.threadFrame.src = this.pendingUrl_;
       this.pendingUrl_ = '';
@@ -568,10 +702,6 @@ export class ContextualTasksAppElement extends CrLitElement {
           urls: ['<all_urls>'],
         },
         ['blocking']);
-    this.$.threadFrame.request.onCompleted.addListener(this.onCompleted, {
-      types: ['main_frame'] as any,
-      urls: ['<all_urls>'],
-    });
 
     // Allow downloading files. This is necessary since aim can generate images
     // for download.
@@ -592,7 +722,6 @@ export class ContextualTasksAppElement extends CrLitElement {
   private removeWebviewRequestOverrides() {
     this.$.threadFrame.request.onBeforeRequest.removeListener(
         this.onBeforeRequest);
-    this.$.threadFrame.request.onCompleted.removeListener(this.onCompleted);
   }
 
   private addCommonSearchParams(url: URL): URL {
@@ -627,11 +756,6 @@ export class ContextualTasksAppElement extends CrLitElement {
             const newUrl = this.addCommonSearchParams(url);
             const isSigninDomain =
                 !!this.signInDomains_.find((domain) => domain === url.host);
-            if (this.isAiPage_) {
-              this.isNavigatingFromAiPage_ = true;
-              this.basicModeBeforeNavigation_ = this.isInBasicMode_;
-              this.isInBasicMode_ = true;
-            }
             if (this.forcedEmbeddedPageHost && !isSigninDomain) {
               newUrl.host = this.forcedEmbeddedPageHost;
             }
@@ -641,15 +765,6 @@ export class ContextualTasksAppElement extends CrLitElement {
             return {};
           };
 
-  private onCompleted = (): void => {
-    if (!this.isNavigatingFromAiPage_) {
-      return;
-    }
-
-    this.isInBasicMode_ = this.basicModeBeforeNavigation_;
-    this.isNavigatingFromAiPage_ = false;
-  };
-
   getThreadUrlForTesting() {
     return this.$.threadFrame.src;
   }
@@ -658,8 +773,19 @@ export class ContextualTasksAppElement extends CrLitElement {
     this.isErrorDialogVisible_ = false;
   }
 
+  private updateBasicModeAfterNavigation() {
+    if (!this.isNavigatingFromAiPage_) {
+      return;
+    }
+
+    this.isInBasicMode_ = this.basicModeBeforeNavigation_;
+    this.isNavigatingFromAiPage_ = false;
+  }
+
   private setIsGhostLoaderVisible(isVisible: boolean) {
-    this.isGhostLoaderVisible_ = isVisible;
+    if (this.enableGhostLoader_) {
+      this.isGhostLoaderVisible_ = isVisible;
+    }
   }
 
   private hasThreadHistoryParams(url: URL): boolean {
@@ -671,8 +797,8 @@ export class ContextualTasksAppElement extends CrLitElement {
     this.popStateFinishedCallbackForTesting_ = callback;
   }
 
-  setMockPostMessageHandlerForTesting(mockPostMessageHandler:
-                                          PostMessageHandler) {
+  setMockPostMessageHandlerForTesting(
+      mockPostMessageHandler: PostMessageHandler) {
     this.postMessageHandler_ = mockPostMessageHandler;
   }
 
@@ -684,8 +810,20 @@ export class ContextualTasksAppElement extends CrLitElement {
     return this.onBeforeRequest(details);
   }
 
-  onCompletedForTesting() {
-    this.onCompleted();
+  getIsFrameLoadingForTesting() {
+    return this.isFrameLoading;
+  }
+
+  onThreadFrameLoadStartForTesting(event: chrome.webviewTag.LoadStartEvent) {
+    this.onThreadFrameLoadStart(event);
+  }
+
+  onThreadFrameContentLoadForTesting() {
+    this.onThreadFrameContentLoad();
+  }
+
+  onThreadFrameLoadAbortForTesting() {
+    this.onThreadFrameLoadAbort();
   }
 }
 

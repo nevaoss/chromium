@@ -843,6 +843,34 @@ void ReorderWebauthnFallbackToFooter(std::vector<Suggestion>& suggestions) {
   }
 }
 
+// Determines if address suggestions should be merged with plus addresses.
+// The function is used in both the old suggestion generation flow and the new
+// flow.
+// TODO(crbug.com/409962888): Delete this function when we remove the old
+// suggestion generation flow.
+bool ShouldMergeAddressAndPlusAddress(
+    const std::vector<Suggestion>& suggestions,
+    bool are_plus_addresses_empty,
+    const AutofillField* autofill_field,
+    AutofillSuggestionTriggerSource trigger_source) {
+  // Only offer plus address suggestions together with address suggestions if
+  // these exist. Otherwise, plus address suggestions will be generated and
+  // shown alongside single field form fill suggestions. Plus address
+  // suggestions are not shown if the plus address email override was applied on
+  // at least one address suggestion.
+  const bool should_offer_plus_addresses_with_profiles =
+      !are_plus_addresses_empty && autofill_field &&
+      autofill_field->Type().GetGroups().contains(FieldTypeGroup::kEmail) &&
+      !suggestions.empty() &&
+      !WasEmailOverrideAppliedOnSuggestions(suggestions);
+  // Try to show plus address suggestions. If the user specifically requested
+  // plus addresses, disregard any other requirements (like having profile
+  // suggestions) and show only plus address suggestions. Otherwise plus address
+  // suggestions are mixed with profile suggestions if these exist.
+  return IsPlusAddressesManuallyTriggered(trigger_source) ||
+         should_offer_plus_addresses_with_profiles;
+}
+
 }  // namespace
 
 BrowserAutofillManager::MetricsState::MetricsState(
@@ -1527,36 +1555,18 @@ void BrowserAutofillManager::GenerateSuggestionsAndMaybeShowUIPhase3(
     return;
   }
 
-  // Only offer plus address suggestions together with address suggestions if
-  // these exist. Otherwise, plus address suggestions will be generated and
-  // shown alongside single field form fill suggestions. Plus address
-  // suggestions are not shown if the plus address email override was applied on
-  // at least one address suggestion.
-  const bool should_offer_plus_addresses_with_profiles =
-      !plus_addresses.empty() && autofill_field &&
-      autofill_field->Type().GetGroups().contains(FieldTypeGroup::kEmail) &&
-      !suggestions.empty() &&
-      !WasEmailOverrideAppliedOnSuggestions(suggestions);
-  // Try to show plus address suggestions. If the user specifically requested
-  // plus addresses, disregard any other requirements (like having profile
-  // suggestions) and show only plus address suggestions. Otherwise plus address
-  // suggestions are mixed with profile suggestions if these exist.
-  if (IsPlusAddressesManuallyTriggered(trigger_source) ||
-      should_offer_plus_addresses_with_profiles) {
-    const AutofillPlusAddressDelegate::SuggestionContext suggestions_context =
-        IsPlusAddressesManuallyTriggered(trigger_source)
-            ? AutofillPlusAddressDelegate::SuggestionContext::kManualFallback
-            : AutofillPlusAddressDelegate::SuggestionContext::
-                  kAutofillProfileOnEmailField;
+  if (ShouldMergeAddressAndPlusAddress(suggestions, plus_addresses.empty(),
+                                       autofill_field, trigger_source)) {
     std::vector<Suggestion> plus_address_suggestions =
         GetSuggestionsFromPlusAddresses(
             form, field, form_structure, autofill_field, client(),
             IsPlusAddressesManuallyTriggered(trigger_source), plus_addresses);
 
-    MixPlusAddressAndAddressSuggestions(std::move(plus_address_suggestions),
-                                        std::move(suggestions),
-                                        suggestions_context, form.global_id(),
-                                        field.global_id(), std::move(callback));
+    MergeAddressAndPlusAddressSuggestions(
+        plus_address_suggestions, std::move(suggestions), trigger_source,
+        form.global_id(), field.global_id());
+    std::move(callback).Run(/*show_suggestions=*/true,
+                            std::move(plus_address_suggestions));
     return;
   }
 
@@ -1659,6 +1669,34 @@ void BrowserAutofillManager::GenerateSuggestionsAndMaybeShowUIPhase3(
       std::move(on_suggestions_returned));
 }
 
+std::optional<Suggestion>
+BrowserAutofillManager::CreatePasskeySuggestionForMerge(
+    const FormFieldData& field) {
+  if (!ShouldShowWebauthnHybridEntryPoint(field)) {
+    return std::nullopt;
+  }
+  PasswordManagerDelegate* password_delegate =
+      client().GetPasswordManagerDelegate(field.global_id());
+  if (!password_delegate) {
+    return std::nullopt;
+  }
+
+  // If any field **on the page** allows starting the hybrid passkey flow,
+  // this suggestion becomes available.
+  std::optional<Suggestion> passkey_suggestion =
+      password_delegate->GetWebauthnSignInWithAnotherDeviceSuggestion();
+  if (!passkey_suggestion) {
+    return std::nullopt;
+  }
+  return {passkey_suggestion.value()};
+}
+
+void BrowserAutofillManager::MergePasskeysAndExistingSuggestions(
+    std::vector<Suggestion>& suggestions,
+    Suggestion passkey_suggestion) {
+  suggestions.push_back(passkey_suggestion);
+}
+
 void BrowserAutofillManager::GenerateFooter(
     const FormData& form,
     const FormFieldData& field,
@@ -1667,24 +1705,32 @@ void BrowserAutofillManager::GenerateFooter(
     base::TimeTicks suggestion_generation_start_time,
     bool show_suggestions,
     std::vector<Suggestion> suggestions) {
-  if (ShouldShowWebauthnHybridEntryPoint(field)) {
-    if (PasswordManagerDelegate* password_delegate =
-            client().GetPasswordManagerDelegate(field.global_id())) {
-      // If any field **on the page** allows starting the hybrid passkey flow,
-      // this suggestion becomes available.
-      if (std::optional<Suggestion> passkey_suggestion =
-              password_delegate
-                  ->GetWebauthnSignInWithAnotherDeviceSuggestion()) {
-        suggestions.push_back(*std::move(passkey_suggestion));
-        show_suggestions = true;
-      }
-    }
+  std::optional<Suggestion> passkey_suggestion =
+      CreatePasskeySuggestionForMerge(field);
+  if (passkey_suggestion.has_value()) {
+    MergePasskeysAndExistingSuggestions(suggestions,
+                                        std::move(passkey_suggestion.value()));
   }
 
   OnGenerateSuggestionsComplete(form.global_id(), field.global_id(),
                                 trigger_source, context,
                                 suggestion_generation_start_time,
                                 show_suggestions, std::move(suggestions));
+}
+
+void BrowserAutofillManager::MergeAutocompleteAndPlusAddressSuggestions(
+    std::vector<Suggestion>& plus_address_suggestions,
+    std::vector<Suggestion> single_field_suggestions,
+    AutofillPlusAddressDelegate::SuggestionContext suggestions_context) {
+  bool original_plus_address_suggestions_empty =
+      plus_address_suggestions.empty();
+  base::Extend(plus_address_suggestions, single_field_suggestions);
+  if (!original_plus_address_suggestions_empty) {
+    // Include ManagePlusAddressSuggestion item.
+    plus_address_suggestions.emplace_back(SuggestionType::kSeparator);
+    plus_address_suggestions.push_back(
+        client().GetPlusAddressDelegate()->GetManagePlusAddressSuggestion());
+  }
 }
 
 void BrowserAutofillManager::
@@ -1695,14 +1741,7 @@ void BrowserAutofillManager::
         OnGenerateSuggestionsCallback callback,
         std::vector<Suggestion> plus_address_suggestions,
         std::vector<Suggestion> single_field_suggestions) {
-  std::vector<Suggestion> suggestions;
-  suggestions.reserve(plus_address_suggestions.size() +
-                      single_field_suggestions.size());
-  // Prioritize plus address over single field form fill suggestions.
-  base::Extend(suggestions, plus_address_suggestions);
-  base::Extend(suggestions, std::move(single_field_suggestions));
-
-  if (suggestions.empty()) {
+  if (plus_address_suggestions.empty() && single_field_suggestions.empty()) {
     // Note the check below is the same done for regular autocomplete
     // suggestions.
     // TODO(crbug.com/381994105): Consider adding
@@ -1720,24 +1759,24 @@ void BrowserAutofillManager::
     }
     return;
   }
-
   if (!plus_address_suggestions.empty()) {
+    // TODO(crbug.com/409962888): Move this call to
+    // `OnPlusAddressSuggestionShown` into
+    // `BrowserAutofillManager::OnDidShowSuggestions`.
     const PasswordFormClassification password_form_classification =
         client().ClassifyAsPasswordForm(*this, form.global_id(),
                                         field.global_id());
     client().GetPlusAddressDelegate()->OnPlusAddressSuggestionShown(
         *this, form.global_id(), field.global_id(), suggestions_context,
-        password_form_classification.type, suggestions[0].type);
-
-    // Include ManagePlusAddressSuggestion item.
-    suggestions.emplace_back(SuggestionType::kSeparator);
-    suggestions.push_back(
-        client().GetPlusAddressDelegate()->GetManagePlusAddressSuggestion());
+        password_form_classification.type, plus_address_suggestions[0].type);
   }
-
+  MergeAutocompleteAndPlusAddressSuggestions(
+      plus_address_suggestions, std::move(single_field_suggestions),
+      suggestions_context);
   // Show the list of `suggestions`. These may include single field form field
   // and/or plus address suggestions.
-  std::move(callback).Run(/*show_suggestions=*/true, std::move(suggestions));
+  std::move(callback).Run(/*show_suggestions=*/true,
+                          std::move(plus_address_suggestions));
 }
 
 void BrowserAutofillManager::OnGenerateSuggestionsComplete(
@@ -1809,33 +1848,37 @@ void BrowserAutofillManager::OnGenerateSuggestionsComplete(
   }
 }
 
-void BrowserAutofillManager::MixPlusAddressAndAddressSuggestions(
-    std::vector<Suggestion> plus_address_suggestions,
-    std::vector<Suggestion> address_suggestions,
-    AutofillPlusAddressDelegate::SuggestionContext suggestions_context,
+void BrowserAutofillManager::MergeAddressAndPlusAddressSuggestions(
+    std::vector<Suggestion>& plus_address_suggestions,
+    std::vector<Suggestion> suggestions,
+    AutofillSuggestionTriggerSource trigger_source,
     const FormGlobalId& form_id,
-    const FieldGlobalId& field_id,
-    OnGenerateSuggestionsCallback callback) {
+    const FieldGlobalId& field_id) {
   if (plus_address_suggestions.empty()) {
-    std::move(callback).Run(/*show_suggestions=*/true,
-                            std::move(address_suggestions));
+    base::Extend(plus_address_suggestions, std::move(suggestions));
     return;
   }
 
+  const AutofillPlusAddressDelegate::SuggestionContext suggestions_context =
+      IsPlusAddressesManuallyTriggered(trigger_source)
+          ? AutofillPlusAddressDelegate::SuggestionContext::kManualFallback
+          : AutofillPlusAddressDelegate::SuggestionContext::
+                kAutofillProfileOnEmailField;
+
   const PasswordFormClassification password_form_classification =
       client().ClassifyAsPasswordForm(*this, form_id, field_id);
+  // TODO(crbug.com/409962888): Move this call to `OnPlusAddressSuggestionShown`
+  // into `BrowserAutofillManager::OnDidShowSuggestions()`.
   client().GetPlusAddressDelegate()->OnPlusAddressSuggestionShown(
       *this, form_id, field_id, suggestions_context,
       password_form_classification.type, plus_address_suggestions[0].type);
-  if (address_suggestions.empty()) {
+  if (suggestions.empty()) {
     plus_address_suggestions.emplace_back(SuggestionType::kSeparator);
     plus_address_suggestions.push_back(
         client().GetPlusAddressDelegate()->GetManagePlusAddressSuggestion());
   }
   // Mix both types of suggestions.
-  base::Extend(plus_address_suggestions, std::move(address_suggestions));
-  std::move(callback).Run(/*show_suggestions=*/true,
-                          std::move(plus_address_suggestions));
+  base::Extend(plus_address_suggestions, std::move(suggestions));
 }
 
 void BrowserAutofillManager::FillOrPreviewForm(
@@ -3249,6 +3292,17 @@ bool BrowserAutofillManager::EvaluateAblationStudy(
   return false;
 }
 
+void BrowserAutofillManager::MergeIdentityCredentialsAndAddressSuggestions(
+    std::vector<Suggestion>& suggestion,
+    std::vector<Suggestion> identity_credential_suggestions) {
+  // TODO(crbug.com/380367784): figure out what to do when both verified
+  // and unverified suggestions point to the same email address.
+  suggestion.insert(
+      suggestion.begin(),
+      std::make_move_iterator(identity_credential_suggestions.begin()),
+      std::make_move_iterator(identity_credential_suggestions.end()));
+}
+
 std::vector<Suggestion> BrowserAutofillManager::GetAvailableSuggestions(
     const FormData& form,
     const FormStructure* form_structure,
@@ -3284,13 +3338,12 @@ std::vector<Suggestion> BrowserAutofillManager::GetAvailableSuggestions(
             suggestions = GetLoyaltyCardSuggestions(form, form_structure, field,
                                                     autofill_field);
           } else {
-            ExtendEmailSuggestionsWithLoyaltyCardSuggestions(
-                *valuables_manager,
-                client().GetLastCommittedPrimaryMainFrameURL(),
-                // TODO(crbug.com/393114125): Change to use
-                // `AutofillField::field_modifiers_` after launching
-                // `kAutofillFixIsAutofilled`.
-                field.is_autofilled_according_to_renderer(), suggestions);
+            std::vector<Suggestion> loyalty_cards_suggestions_for_merge =
+                CreateLoyaltyCardSuggestionsForMerge(
+                    *valuables_manager,
+                    client().GetLastCommittedPrimaryMainFrameURL());
+            MergeLoyaltyCardsAndAddressSuggestions(
+                suggestions, std::move(loyalty_cards_suggestions_for_merge));
           }
         }
       }
@@ -3350,10 +3403,8 @@ std::vector<Suggestion> BrowserAutofillManager::GetAvailableSuggestions(
           identity_credential_delegate->GetVerifiedAutofillSuggestions(
               form, form_structure, field, autofill_field, client());
       // Insert verified suggestions above unverified ones.
-      // TODO(crbug.com/380367784): figure out what to do when both verified
-      // and unverified suggestions point to the same email address.
-      suggestions.insert(suggestions.begin(), verified_suggestions.begin(),
-                         verified_suggestions.end());
+      MergeIdentityCredentialsAndAddressSuggestions(
+          suggestions, std::move(verified_suggestions));
     }
   }
 

@@ -30,6 +30,7 @@
 #include "chrome/browser/glic/service/glic_instance_impl.h"
 #include "chrome/browser/glic/service/metrics/glic_instance_coordinator_metrics.h"
 #include "chrome/browser/glic/service/metrics/glic_instance_metrics.h"
+#include "chrome/browser/glic/widget/browser_conditions.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/common/chrome_features.h"
@@ -38,6 +39,7 @@
 #include "components/web_modal/web_contents_modal_dialog_manager.h"
 #include "content/public/browser/render_process_host.h"
 #include "content/public/browser/web_contents.h"
+#include "third_party/abseil-cpp/absl/functional/overload.h"
 
 namespace glic {
 
@@ -247,14 +249,17 @@ void GlicInstanceCoordinatorImpl::Toggle(
     BrowserWindowInterface* browser,
     bool prevent_close,
     mojom::InvocationSource source,
-    std::optional<std::string> prompt_suggestion,
-    bool auto_send) {
+    std::optional<std::string> deprecated_prompt_suggestion,
+    bool deprecated_auto_send,
+    std::optional<std::string> deprecated_conversation_id) {
   if (!browser) {
-    ToggleFloaty(prevent_close, source, prompt_suggestion);
+    CHECK(!deprecated_conversation_id || deprecated_conversation_id->empty());
+    ToggleFloaty(prevent_close, source, deprecated_prompt_suggestion);
     return;
   }
 
-  ToggleSidePanel(browser, prevent_close, source, prompt_suggestion, auto_send);
+  ToggleSidePanel(browser, prevent_close, source, deprecated_prompt_suggestion,
+                  deprecated_auto_send, deprecated_conversation_id);
 }
 
 void GlicInstanceCoordinatorImpl::ShowAfterSignIn(
@@ -273,6 +278,60 @@ void GlicInstanceCoordinatorImpl::Close(const CloseOptions& options) {
   // TODO(crbug.com/450286204): Determine whether there are cases where this
   // should be able to close a side panel UI instead.
   CloseFloaty(options);
+}
+
+void GlicInstanceCoordinatorImpl::Invoke(tabs::TabInterface* tab,
+                                         GlicInvokeOptions options) {
+  if (!tab || !GlicInstanceHelper::From(tab)) {
+    // TODO(crbug.com/483387751): Add error handling for empty tab case.
+    return;
+  }
+
+  GlicInstanceImpl* instance = nullptr;
+
+  instance = std::visit(
+      absl::Overload{[&](const ConversationId& conversation_id) {
+                       if (conversation_id.empty()) {
+                         if (options.on_error) {
+                           std::move(options.on_error)
+                               .Run(GlicInvokeError::kInvalidConversationId);
+                         }
+                         // TODO(crbug.com/483387751): Show default toast here
+                         // once implemented.
+                         return (GlicInstanceImpl*)nullptr;
+                       }
+                       return GetOrCreateInstanceImplForConversationId(
+                           conversation_id);
+                     },
+                     [&](NewConversation) { return CreateGlicInstance(); },
+                     [&](DefaultConversation) {
+                       return GetOrCreateGlicInstanceImplForTab(tab);
+                     }},
+      options.conversation);
+
+  if (!instance) {
+    return;
+  }
+
+  if (invoke_handlers_.contains(instance)) {
+    // TODO(crbug.com/483387751): Don't just fail silently here.
+    return;
+  }
+
+  instance->Show(ShowOptions::ForSidePanel(
+      *tab, GlicPinTrigger::kInstanceCreation, options.invocation_source));
+
+  invoke_handlers_[instance] = std::make_unique<GlicInvokeHandler>(
+      *instance, std::move(options),
+      base::BindOnce(&GlicInstanceCoordinatorImpl::OnInvokeHandlerComplete,
+                     base::Unretained(this)));
+  invoke_handlers_[instance]->Invoke();
+}
+
+void GlicInstanceCoordinatorImpl::OnInvokeHandlerComplete(
+    GlicInstance* instance,
+    GlicInvokeHandler* handler) {
+  invoke_handlers_.erase(instance);
 }
 
 void GlicInstanceCoordinatorImpl::CloseAndShutdownInstanceWithFrame(
@@ -438,6 +497,30 @@ GlicInstance* GlicInstanceCoordinatorImpl::GetActiveInstance() {
   return active_instance_;
 }
 
+GlicInstanceImpl* GlicInstanceCoordinatorImpl::GetInstanceImplForConversationId(
+    const std::string& conversation_id) {
+  for (const auto& [id, instance] : instances_) {
+    if (instance->conversation_id() == conversation_id) {
+      return instance.get();
+    }
+  }
+  return nullptr;
+}
+
+GlicInstanceImpl*
+GlicInstanceCoordinatorImpl::GetOrCreateInstanceImplForConversationId(
+    const std::string& conversation_id) {
+  GlicInstanceImpl* instance =
+      GetInstanceImplForConversationId(conversation_id);
+  if (!instance) {
+    instance = CreateGlicInstance();
+    auto info = mojom::ConversationInfo::New();
+    info->conversation_id = conversation_id;
+    instance->RegisterConversation(std::move(info), base::DoNothing());
+  }
+  return instance;
+}
+
 GlicInstanceImpl*
 GlicInstanceCoordinatorImpl::GetOrCreateGlicInstanceImplForTab(
     tabs::TabInterface* tab) {
@@ -601,13 +684,29 @@ void GlicInstanceCoordinatorImpl::ToggleSidePanel(
     bool prevent_close,
     glic::mojom::InvocationSource source,
     std::optional<std::string> prompt_suggestion,
-    bool auto_send) {
+    bool auto_send,
+    std::optional<std::string> conversation_id) {
   auto* tab = TabListInterface::From(browser)->GetActiveTab();
   if (!tab) {
+    LOG(ERROR) << "Active tab is null";
     return;
   }
+  if (!GlicInstanceHelper::From(tab)) {
+    LOG(ERROR) << "Tab doesn't have an instance helper in its UnownedUserData";
+    return;
+  }
+
   GlicInstanceImpl* instance = nullptr;
-  if (source == glic::mojom::InvocationSource::kSharedImage) {
+  if (base::FeatureList::IsEnabled(features::kGlicWebContinuity) &&
+      conversation_id && !conversation_id->empty()) {
+    instance = GetInstanceImplForConversationId(*conversation_id);
+    if (!instance) {
+      instance = CreateGlicInstance();
+      auto info = mojom::ConversationInfo::New();
+      info->conversation_id = *conversation_id;
+      instance->RegisterConversation(std::move(info), base::DoNothing());
+    }
+  } else if (source == glic::mojom::InvocationSource::kSharedImage) {
     // kSharedImage currently requires a new instance.
     instance = CreateGlicInstance();
   } else {
@@ -616,9 +715,19 @@ void GlicInstanceCoordinatorImpl::ToggleSidePanel(
   // If the tab is already bound, then it already has a pin trigger and this pin
   // trigger will not be used. If it's not already bound, then we know it's a
   // newly created instance, so we provide the instance creation trigger.
-  instance->Toggle(
-      ShowOptions::ForSidePanel(*tab, GlicPinTrigger::kInstanceCreation),
-      prevent_close, source, prompt_suggestion, auto_send);
+  ShowOptions options = ShowOptions::ForSidePanel(
+      *tab, GlicPinTrigger::kInstanceCreation, source);
+
+  // If the user has not consented, don't pin the tab.
+  if (GlicEnabling::ShouldBypassFreUi(profile_, source)) {
+    if (auto* side_panel_options =
+            std::get_if<SidePanelShowOptions>(&options.embedder_options)) {
+      side_panel_options->pin_on_bind = false;
+    }
+  }
+
+  instance->Toggle(std::move(options), prevent_close, source, prompt_suggestion,
+                   auto_send);
 }
 
 void GlicInstanceCoordinatorImpl::RemoveInstance(GlicInstanceImpl* instance) {
@@ -650,13 +759,7 @@ void GlicInstanceCoordinatorImpl::SwitchConversation(
 
   GlicInstanceImpl* target_instance = nullptr;
   if (!info->conversation_id.empty()) {
-    for (const auto& [id, instance] : instances_) {
-      if (instance->conversation_id().has_value() &&
-          instance->conversation_id().value() == info->conversation_id) {
-        target_instance = instance.get();
-        break;
-      }
-    }
+    target_instance = GetInstanceImplForConversationId(info->conversation_id);
   }
 
   if (!target_instance) {
@@ -968,13 +1071,10 @@ GlicInstanceImpl* GlicInstanceCoordinatorImpl::GetOrRestoreInstanceImpl(
 
   // Prioritize finding an existing instance by conversation ID, then by
   // instance ID.
-  if (!instance_info.conversation_id.empty()) {
-    for (const auto& [id, instance] : instances_) {
-      if (instance->conversation_id() == instance_info.conversation_id) {
-        return instance.get();
-      }
-    }
-  } else if (auto* instance = GetInstanceImplFor(instance_id)) {
+  if (auto* instance =
+          !instance_info.conversation_id.empty()
+              ? GetInstanceImplForConversationId(instance_info.conversation_id)
+              : GetInstanceImplFor(instance_id)) {
     return instance;
   }
 
@@ -993,6 +1093,11 @@ void GlicInstanceCoordinatorImpl::RestoreTab(
     const glic::GlicRestoredState& state) {
   tabs::TabInterface* tab = tabs::TabInterface::GetFromContents(web_contents);
   if (!tab) {
+    LOG(ERROR) << "Tab is null";
+    return;
+  }
+  if (!GlicInstanceHelper::From(tab)) {
+    LOG(ERROR) << "Tab doesn't have an instance helper in its UnownedUserData";
     return;
   }
 

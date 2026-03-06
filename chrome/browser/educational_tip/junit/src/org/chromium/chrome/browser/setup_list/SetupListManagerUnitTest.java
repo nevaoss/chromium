@@ -6,6 +6,7 @@ package org.chromium.chrome.browser.setup_list;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -47,9 +48,11 @@ import org.chromium.components.search_engines.SearchEngineChoiceService;
 import org.chromium.components.signin.identitymanager.ConsentLevel;
 import org.chromium.components.signin.identitymanager.IdentityManager;
 import org.chromium.components.sync.SyncService;
+import org.chromium.components.sync.UserSelectableType;
 import org.chromium.ui.shadows.ShadowAppCompatResources;
 
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /** Test relating to {@link SetupListManager} */
@@ -127,24 +130,80 @@ public class SetupListManagerUnitTest {
         assertFalse(manager.getRankedModuleTypes().contains(ModuleType.SAVE_PASSWORDS_PROMO));
         assertFalse(manager.getRankedModuleTypes().contains(ModuleType.PASSWORD_CHECKUP_PROMO));
 
-        // Sign in: Save Passwords should appear. Password Checkup needs sync.
+        // Sign in: Save Passwords and History Sync should appear. Password Checkup needs sync.
         when(mIdentityManager.hasPrimaryAccount(ConsentLevel.SIGNIN)).thenReturn(true);
         when(mPasswordManagerHelperJni.hasChosenToSyncPasswords(any())).thenReturn(false);
         manager.maybePrimeCompletionStatus(mProfile);
         assertTrue(manager.getRankedModuleTypes().contains(ModuleType.SAVE_PASSWORDS_PROMO));
+        assertTrue(manager.getRankedModuleTypes().contains(ModuleType.HISTORY_SYNC_PROMO));
         assertFalse(manager.getRankedModuleTypes().contains(ModuleType.PASSWORD_CHECKUP_PROMO));
 
         // Enable Password Sync: Password Checkup should now appear.
         when(mPasswordManagerHelperJni.hasChosenToSyncPasswords(any())).thenReturn(true);
         manager.maybePrimeCompletionStatus(mProfile);
         assertTrue(manager.getRankedModuleTypes().contains(ModuleType.SAVE_PASSWORDS_PROMO));
+        assertTrue(manager.getRankedModuleTypes().contains(ModuleType.HISTORY_SYNC_PROMO));
         assertTrue(manager.getRankedModuleTypes().contains(ModuleType.PASSWORD_CHECKUP_PROMO));
 
-        // Sign out: Both should disappear.
+        // Sign out: All should disappear.
         when(mIdentityManager.hasPrimaryAccount(ConsentLevel.SIGNIN)).thenReturn(false);
         manager.maybePrimeCompletionStatus(mProfile);
         assertFalse(manager.getRankedModuleTypes().contains(ModuleType.SAVE_PASSWORDS_PROMO));
+        assertFalse(manager.getRankedModuleTypes().contains(ModuleType.HISTORY_SYNC_PROMO));
         assertFalse(manager.getRankedModuleTypes().contains(ModuleType.PASSWORD_CHECKUP_PROMO));
+    }
+
+    @Test
+    @SmallTest
+    public void testPriming_SignInCompletedInSystem() {
+        // Mock user as signed out initially.
+        when(mIdentityManager.hasPrimaryAccount(ConsentLevel.SIGNIN)).thenReturn(false);
+
+        SetupListManager.setInstanceForTesting(new SetupListManager());
+        SetupListManager manager = SetupListManager.getInstance();
+        manager.maybePrimeCompletionStatus(mProfile);
+
+        // Sign in promo should be eligible and NOT completed.
+        assertTrue(manager.getRankedModuleTypes().contains(ModuleType.SIGN_IN_PROMO));
+        assertFalse(manager.isModuleCompleted(ModuleType.SIGN_IN_PROMO));
+
+        // Mock user as signed in.
+        when(mIdentityManager.hasPrimaryAccount(ConsentLevel.SIGNIN)).thenReturn(true);
+
+        // Re-prime status.
+        manager.maybePrimeCompletionStatus(mProfile);
+
+        // Sign in should now be identified as completed via priming.
+        assertTrue(manager.isModuleCompleted(ModuleType.SIGN_IN_PROMO));
+    }
+
+    @Test
+    @SmallTest
+    public void testPriming_HistorySyncCompletedInSystem() {
+        // Mock user as signed in but with history sync NOT yet completed in system.
+        when(mIdentityManager.hasPrimaryAccount(ConsentLevel.SIGNIN)).thenReturn(true);
+        when(mSyncService.getSelectedTypes()).thenReturn(Set.of());
+
+        SetupListManager.setInstanceForTesting(new SetupListManager());
+        SetupListManager manager = SetupListManager.getInstance();
+        manager.maybePrimeCompletionStatus(mProfile);
+
+        // History sync should be eligible and NOT completed.
+        assertTrue(manager.getRankedModuleTypes().contains(ModuleType.HISTORY_SYNC_PROMO));
+        assertFalse(manager.isModuleCompleted(ModuleType.HISTORY_SYNC_PROMO));
+
+        // Mock history and tabs sync as completed in the system.
+        when(mSyncService.getSelectedTypes())
+                .thenReturn(Set.of(UserSelectableType.HISTORY, UserSelectableType.TABS));
+
+        // Re-prime the status.
+        manager.maybePrimeCompletionStatus(mProfile);
+
+        // History sync should now be identified as completed via the priming logic.
+        assertTrue(manager.isModuleCompleted(ModuleType.HISTORY_SYNC_PROMO));
+
+        // Because it's completed silently during priming, it shouldn't be awaiting animation.
+        assertFalse(manager.isModuleAwaitingCompletionAnimation(ModuleType.HISTORY_SYNC_PROMO));
     }
 
     @Test
@@ -274,15 +333,15 @@ public class SetupListManagerUnitTest {
 
         // The item should STILL be at its initial position because it's awaiting animation.
         assertEquals(firstModuleType, (int) manager.getRankedModuleTypes().get(0));
-        assertEquals(0, (int) manager.getManualRank(firstModuleType));
+        assertEquals(1, (int) manager.getManualRank(firstModuleType));
         assertTrue(manager.isModuleAwaitingCompletionAnimation(firstModuleType));
 
         manager.onCompletionAnimationFinished(firstModuleType);
 
         // Now the item should be at the end of the list and its rank updated.
         rankedModules = manager.getRankedModuleTypes();
-        int expectedRank = rankedModules.size() - 1;
-        assertEquals(firstModuleType, (int) rankedModules.get(expectedRank));
+        int expectedRank = rankedModules.size(); // index + 1
+        assertEquals(firstModuleType, (int) rankedModules.get(expectedRank - 1));
         assertEquals(expectedRank, (int) manager.getManualRank(firstModuleType));
         assertFalse(manager.isModuleAwaitingCompletionAnimation(firstModuleType));
     }
@@ -313,6 +372,28 @@ public class SetupListManagerUnitTest {
 
     @Test
     @SmallTest
+    public void testGetManualRank_WithOffset() {
+        SetupListManager.setInstanceForTesting(new SetupListManager());
+        SetupListManager manager = SetupListManager.getInstance();
+        manager.maybePrimeCompletionStatus(mProfile);
+
+        List<Integer> rankedModules = manager.getRankedModuleTypes();
+        int firstModule = rankedModules.get(0);
+
+        // Verify that the rank of the first item is equal to the offset.
+        assertEquals(
+                SetupListManager.SETUP_LIST_RANK_OFFSET, (int) manager.getManualRank(firstModule));
+
+        // Verify that it returns null when inactive.
+        mSharedPreferencesManager.writeLong(
+                ChromePreferenceKeys.SETUP_LIST_FIRST_SHOWN_TIMESTAMP,
+                TimeUtils.currentTimeMillis() - SetupListManager.SETUP_LIST_ACTIVE_WINDOW_MILLIS);
+        SetupListManager.setInstanceForTesting(new SetupListManager());
+        assertNull(SetupListManager.getInstance().getManualRank(firstModule));
+    }
+
+    @Test
+    @SmallTest
     public void testArm1_AddressBarFocus() {
         // Arm 1: Address Bar Focus (Address Bar enabled, PW Management disabled)
         FeatureOverrides.newBuilder()
@@ -324,7 +405,7 @@ public class SetupListManagerUnitTest {
         // Mock eligible promos.
         when(mIdentityManager.hasPrimaryAccount(ConsentLevel.SIGNIN)).thenReturn(true);
         when(mPasswordManagerHelperJni.hasChosenToSyncPasswords(any())).thenReturn(true);
-        when(mSearchEngineChoiceService.isDefaultBrowserPromoSuppressed()).thenReturn(false);
+        when(mSearchEngineChoiceService.isDefaultBrowserPromoSuppressed()).thenReturn(true);
 
         SetupListManager.setInstanceForTesting(new SetupListManager());
         SetupListManager manager = SetupListManager.getInstance();
@@ -349,7 +430,7 @@ public class SetupListManagerUnitTest {
         // Mock eligible promos.
         when(mIdentityManager.hasPrimaryAccount(ConsentLevel.SIGNIN)).thenReturn(true);
         when(mPasswordManagerHelperJni.hasChosenToSyncPasswords(any())).thenReturn(true);
-        when(mSearchEngineChoiceService.isDefaultBrowserPromoSuppressed()).thenReturn(false);
+        when(mSearchEngineChoiceService.isDefaultBrowserPromoSuppressed()).thenReturn(true);
 
         SetupListManager.setInstanceForTesting(new SetupListManager());
         SetupListManager manager = SetupListManager.getInstance();
@@ -374,7 +455,7 @@ public class SetupListManagerUnitTest {
         // Mock eligible promos.
         when(mIdentityManager.hasPrimaryAccount(ConsentLevel.SIGNIN)).thenReturn(true);
         when(mPasswordManagerHelperJni.hasChosenToSyncPasswords(any())).thenReturn(true);
-        when(mSearchEngineChoiceService.isDefaultBrowserPromoSuppressed()).thenReturn(false);
+        when(mSearchEngineChoiceService.isDefaultBrowserPromoSuppressed()).thenReturn(true);
 
         SetupListManager.setInstanceForTesting(new SetupListManager());
         SetupListManager manager = SetupListManager.getInstance();

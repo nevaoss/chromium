@@ -75,10 +75,10 @@ UIImage* DefaultIconForAutofillAiEntityType(EntityTypeName entity_type_name,
   NSString* symbol_name = nil;
   switch (entity_type_name) {
     case EntityTypeName::kPassport:
-      // TODO(crbug.com/480933607): Change this placeholder to a custom passport
-      // symbol when the SVG file is ready.
-      symbol_name = kPersonTextRectangleSymbol;
-      break;
+      return SymbolWithPalette(
+          CustomSymbolWithPointSize(kPassportSymbol, symbol_point_size), @[
+            [UIColor colorNamed:kTextPrimaryColor],
+          ]);
     case EntityTypeName::kDriversLicense:
     case EntityTypeName::kNationalIdCard:
       symbol_name = kPersonTextRectangleSymbol;
@@ -105,6 +105,28 @@ UIImage* DefaultIconForAutofillAiEntityType(EntityTypeName entity_type_name,
       DefaultSymbolWithPointSize(symbol_name, symbol_point_size), @[
         [UIColor colorNamed:kTextPrimaryColor],
       ]);
+}
+
+bool IsEnhancedAutofillEnabled(ProfileIOS* profile) {
+  ProfileIOS* original_profile = profile->GetOriginalProfile();
+  return autofill::GetAutofillAiOptInStatus(
+      original_profile->GetPrefs(),
+      IdentityManagerFactory::GetForProfile(original_profile));
+}
+
+void SetEnhancedAutofillEnabled(ProfileIOS* profile, bool enabled) {
+  ProfileIOS* original_profile = profile->GetOriginalProfile();
+  autofill::SetAutofillAiOptInStatus(
+      GoogleGroupsManagerFactory::GetForProfile(original_profile),
+      original_profile->GetPrefs(),
+      IOSAutofillEntityDataManagerFactory::GetForProfile(original_profile),
+      IdentityManagerFactory::GetForProfile(original_profile),
+      SyncServiceFactory::GetForProfile(original_profile),
+      IsWalletStorageEnabled(original_profile),
+      original_profile->IsOffTheRecord(),
+      GeoIpCountryCode(GetCountryCodeFromVariations()),
+      enabled ? autofill::AutofillAiOptInStatus::kOptedIn
+              : autofill::AutofillAiOptInStatus::kOptedOut);
 }
 
 }  // namespace autofill

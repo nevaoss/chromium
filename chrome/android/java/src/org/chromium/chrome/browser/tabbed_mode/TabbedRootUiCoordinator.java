@@ -55,6 +55,7 @@ import org.chromium.chrome.browser.ChromeInactivityTracker;
 import org.chromium.chrome.browser.ChromeInactivityTracker.InactivityObserver;
 import org.chromium.chrome.browser.SwipeRefreshHandler;
 import org.chromium.chrome.browser.accessibility.PageZoomIphController;
+import org.chromium.chrome.browser.actor.ui.ActorOverlayCoordinator;
 import org.chromium.chrome.browser.app.tabwindow.TabWindowManagerSingleton;
 import org.chromium.chrome.browser.back_press.BackPressManager;
 import org.chromium.chrome.browser.bookmarks.BookmarkManagerOpener;
@@ -139,6 +140,7 @@ import org.chromium.chrome.browser.ntp_customization.policy.NtpCustomizationPoli
 import org.chromium.chrome.browser.ntp_customization.theme.NtpSyncedThemeManager;
 import org.chromium.chrome.browser.offlinepages.indicator.OfflineIndicatorControllerV2;
 import org.chromium.chrome.browser.offlinepages.indicator.OfflineIndicatorInProductHelpController;
+import org.chromium.chrome.browser.omnibox.OmniboxChipManager;
 import org.chromium.chrome.browser.omnibox.UrlFocusChangeListener;
 import org.chromium.chrome.browser.omnibox.suggestions.action.OmniboxActionDelegateImpl;
 import org.chromium.chrome.browser.open_in_app.OpenInAppUtils;
@@ -326,6 +328,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
     private final OneshotSupplierImpl<Boolean> mTrackerInitializedOneshotSupplier =
             new OneshotSupplierImpl<>();
     private ContextualTasksBridge mContextualTasksBridge;
+    private @Nullable ActorOverlayCoordinator mActorOverlayCoordinator;
 
     // Activity tab observer that updates the current tab used by various UI components.
     private class RootUiTabObserver extends ActivityTabTabObserver {
@@ -461,7 +464,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
             @NonNull FullscreenManager fullscreenManager,
             @NonNull Supplier<CompositorViewHolder> compositorViewHolderSupplier,
             @NonNull Supplier<TabContentManager> tabContentManagerSupplier,
-            @NonNull Supplier<SnackbarManager> snackbarManagerSupplier,
+            @NonNull MonotonicObservableSupplier<SnackbarManager> snackbarManagerSupplier,
             @NonNull SettableMonotonicObservableSupplier<EdgeToEdgeController> edgeToEdgeSupplier,
             @NonNull TopInsetProvider topInsetProvider,
             @NonNull OneshotSupplierImpl<SystemBarColorHelper> systemBarColorHelperSupplier,
@@ -839,6 +842,11 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
             mContextualTasksBridge = null;
         }
 
+        if (mActorOverlayCoordinator != null) {
+            mActorOverlayCoordinator.destroy();
+            mActorOverlayCoordinator = null;
+        }
+
         super.onDestroy();
     }
 
@@ -862,6 +870,20 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                         mOverviewColorSupplier,
                         mInsetObserver,
                         mEdgeToEdgeManager.getEdgeToEdgeSystemBarColorHelper());
+    }
+
+    @Override
+    protected void initializeToolbar() {
+        if (OpenInAppUtils.isOpenInAppAvailable()) {
+            View controlContainer = mActivity.findViewById(R.id.control_container);
+            assert controlContainer != null;
+
+            ViewGroup omniboxChipContainer =
+                    controlContainer.findViewById(R.id.omnibox_chip_container);
+            mOmniboxChipManager = new OmniboxChipManager(omniboxChipContainer);
+        }
+
+        super.initializeToolbar();
     }
 
     @Override
@@ -950,6 +972,17 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                             mActivityTabProvider.asObservable(),
                             assumeNonNull(mOmniboxChipManager),
                             mActivity);
+        }
+
+        if (ChromeFeatureList.sGlicActorUi.isEnabled()
+                && ChromeFeatureList.sGlicActorUiOverlay.getValue()) {
+            ViewStub stub = mActivity.findViewById(R.id.actor_overlay_stub);
+            mActorOverlayCoordinator =
+                    new ActorOverlayCoordinator(
+                            stub,
+                            assumeNonNull(mTabModelSelectorSupplier.get()),
+                            mBrowserControlsManager,
+                            mTabObscuringHandlerSupplier.get());
         }
     }
 
@@ -1084,7 +1117,14 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
             mBookmarkBarVisibilityProvider.addObserver(mBookmarkBarVisibilityObserver);
         }
 
-        mSideUiCoordinator = SideUiCoordinatorFactory.create();
+        ViewStub sideUiStartAnchorContainerStub =
+                mActivity.findViewById(R.id.side_ui_start_anchor_container_stub);
+        ViewStub sideUiEndAnchorContainerStub =
+                mActivity.findViewById(R.id.side_ui_end_anchor_container_stub);
+
+        mSideUiCoordinator =
+                SideUiCoordinatorFactory.create(
+                        sideUiStartAnchorContainerStub, sideUiEndAnchorContainerStub);
         mSidePanelContainerCoordinator = SidePanelContainerCoordinatorFactory.create();
         if (ChromeFeatureList.isEnabled(ChromeFeatureList.CONTEXTUAL_TASKS)) {
             mContextualTasksBridge = new ContextualTasksBridge();

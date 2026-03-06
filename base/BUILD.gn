@@ -2037,7 +2037,6 @@ component("base") {
       "win/winrt_foundation_helpers.h",
       "win/winrt_storage_util.cc",
       "win/winrt_storage_util.h",
-      "win/wintrust_shim.h",
       "win/wmi.cc",
       "win/wmi.h",
       "win/wrapped_window_proc.cc",
@@ -2931,12 +2930,14 @@ buildflag_header("fuzzing_buildflags") {
   flags = [ "USE_FUZZING_ENGINE=$use_fuzzing_engine" ]
 }
 
-buildflag_header("plist_size_buildflags") {
-  header = "app_plist_size_buildflags.h"
-  header_dir = "base/apple"
+if (is_mac) {
+  buildflag_header("plist_size_buildflags") {
+    header = "app_plist_size_buildflags.h"
+    header_dir = "base/apple"
 
-  plist_file = read_file("//chrome/app/app-Info.plist", "string")
-  flags = [ "APP_INFO_PLIST_FILE_SIZE=" + len(plist_file) ]
+    plist_file = read_file("//chrome/app/app-Info.plist", "string")
+    flags = [ "APP_INFO_PLIST_FILE_SIZE=" + len(plist_file) ]
+  }
 }
 
 # This is the subset of files from base that should not be used with a dynamic
@@ -5883,6 +5884,7 @@ if (is_android) {
       "test/android/junit/src/org/chromium/base/test/BaseRobolectricTestRule.java",
       "test/android/junit/src/org/chromium/base/test/BaseRobolectricTestRunner.java",
       "test/android/junit/src/org/chromium/base/test/BaseTimeLimitedStatement.java",
+      "test/android/junit/src/org/chromium/base/test/RobolectricUtil.java",
       "test/android/junit/src/org/chromium/base/test/util/BaseFlagTestRule.java",
       "test/android/junit/src/org/chromium/base/test/util/TestRunnerTestRule.java",
     ]

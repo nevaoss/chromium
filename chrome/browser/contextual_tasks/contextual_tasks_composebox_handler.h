@@ -152,6 +152,7 @@ class ContextualTasksComposeboxHandler : public ComposeboxHandler,
       std::string query,
       tabs::TabHandle active_tab_handle,
       std::optional<base::Uuid> original_task_id,
+      std::optional<base::UnguessableToken> overlay_token,
       std::unique_ptr<contextual_tasks::ContextualTaskContext> context);
 
   // Called when a tab context reupload has started or canceled, to continue
@@ -192,7 +193,9 @@ class ContextualTasksComposeboxHandler : public ComposeboxHandler,
       std::unique_ptr<lens::ContextualInputData> page_content_data);
 
   void OnVisualSelectionAdded(
-      const std::optional<base::UnguessableToken>& token);
+      base::UnguessableToken overlay_token,
+      base::expected<base::UnguessableToken,
+                     contextual_search::FileUploadErrorType> token);
 
   LensSearchController* GetLensSearchController() const;
 
@@ -218,6 +221,9 @@ class ContextualTasksComposeboxHandler : public ComposeboxHandler,
 
   // Helper to send the pending query if all uploads are complete.
   void MaybeSendPendingQuery();
+
+  // Sends an update to AIM that an injected input has been deleted.
+  void SendDeleteInjectedInputUpdate(const std::string& id);
 
   // The context controller for the current profile. The profile will outlive
   // this class.
@@ -253,6 +259,11 @@ class ContextualTasksComposeboxHandler : public ComposeboxHandler,
   std::set<base::UnguessableToken> pending_context_uploads_;
 
   std::optional<base::UnguessableToken> visual_selection_token_;
+  // The overlay token associated with the visual selection. This is stored
+  // alongside the visual selection token because the overlay controller may be
+  // reset or closed, but the visual selection should still be associated with
+  // the overlay token that created it.
+  std::optional<base::UnguessableToken> visual_selection_overlay_token_;
   base::WeakPtrFactory<ContextualTasksComposeboxHandler> weak_factory_{this};
 };
 

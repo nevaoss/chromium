@@ -31,7 +31,7 @@ class ConnectionTokenAttestation : public Connection {
   // fail immediately without attempting to send a request over the wire.
   ConnectionTokenAttestation(std::unique_ptr<Connection> inner_connection,
                              phosphor::TokenManager* token_manager,
-                             base::OnceClosure on_disconnect);
+                             base::OnceCallback<void(ErrorCode)> on_disconnect);
   ~ConnectionTokenAttestation() override;
 
   ConnectionTokenAttestation(const ConnectionTokenAttestation&) = delete;
@@ -39,13 +39,15 @@ class ConnectionTokenAttestation : public Connection {
       delete;
 
   // Connection override:
-  void Send(proto::LegionRequest request,
+  void Send(proto::PrivateAiRequest request,
             base::TimeDelta timeout,
             OnRequestCallback callback) override;
 
+  void OnDestroy(ErrorCode error) override;
+
  private:
   struct PendingRequest {
-    PendingRequest(proto::LegionRequest request,
+    PendingRequest(proto::PrivateAiRequest request,
                    base::TimeDelta timeout,
                    OnRequestCallback callback);
     ~PendingRequest();
@@ -53,7 +55,7 @@ class ConnectionTokenAttestation : public Connection {
     PendingRequest(PendingRequest&&);
     PendingRequest& operator=(PendingRequest&&);
 
-    proto::LegionRequest request;
+    proto::PrivateAiRequest request;
     base::TimeDelta timeout;
     OnRequestCallback callback;
   };
@@ -68,13 +70,12 @@ class ConnectionTokenAttestation : public Connection {
   void FetchToken();
   void OnTokenFetched(std::optional<phosphor::BlindSignedAuthToken> auth_token);
   void OnAttestationResponse(
-      base::expected<proto::LegionResponse, ErrorCode> result);
+      base::expected<proto::PrivateAiResponse, ErrorCode> result);
+  void CallOnDisconnect(ErrorCode error_code);
 
-  void FailPendingRequestsAndCallOnDisconnect(ErrorCode error_code);
-
-  std::unique_ptr<Connection> inner_connection_;
-  raw_ptr<phosphor::TokenManager> token_manager_;
-  base::OnceClosure on_disconnect_;
+  const std::unique_ptr<Connection> inner_connection_;
+  const raw_ptr<phosphor::TokenManager> token_manager_;
+  base::OnceCallback<void(ErrorCode)> on_disconnect_;
 
   AttestationState attestation_state_ = AttestationState::kFetchingToken;
   std::vector<PendingRequest> pending_requests_;

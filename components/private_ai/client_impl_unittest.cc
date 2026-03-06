@@ -13,9 +13,10 @@
 #include "base/test/task_environment.h"
 #include "base/test/test_future.h"
 #include "base/time/time.h"
-#include "components/private_ai/common/legion_logger.h"
+#include "components/private_ai/common/private_ai_logger.h"
 #include "components/private_ai/connection.h"
-#include "components/private_ai/proto/legion.pb.h"
+#include "components/private_ai/error_code.h"
+#include "components/private_ai/proto/private_ai.pb.h"
 #include "components/private_ai/testing/fake_connection.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -30,9 +31,9 @@ class FakeConnectionFactory : public ConnectionFactory {
   ~FakeConnectionFactory() override = default;
 
   std::unique_ptr<Connection> Create(
-      base::RepeatingClosure on_disconnect) override {
-    auto connection =
-        std::make_unique<FakeConnection>(std::move(on_disconnect));
+      base::OnceCallback<void(ErrorCode)> on_disconnect) override {
+    auto connection = std::make_unique<FakeConnection>(
+        std::move(on_disconnect), std::move(on_destruction_));
     last_connection_ = connection.get();
     return connection;
   }
@@ -40,6 +41,10 @@ class FakeConnectionFactory : public ConnectionFactory {
   FakeConnection* last_connection() {
     CHECK(last_connection_);
     return last_connection_;
+  }
+
+  void set_on_destruction(base::OnceClosure on_destruction) {
+    on_destruction_ = std::move(on_destruction);
   }
 
   void SimulateDisconnectAndDestroyConnection() {
@@ -55,11 +60,12 @@ class FakeConnectionFactory : public ConnectionFactory {
 
  private:
   raw_ptr<FakeConnection> last_connection_;
+  base::OnceClosure on_destruction_;
 };
 
 void ResolvePendingRequest(
     FakeConnection* connection,
-    base::expected<proto::LegionResponse, ErrorCode> result) {
+    base::expected<proto::PrivateAiResponse, ErrorCode> result) {
   CHECK(connection);
   CHECK(!connection->pending_requests().empty());
   auto pending_request = std::move(connection->pending_requests().front());
@@ -75,7 +81,7 @@ class ClientImplTest : public ::testing::Test {
     auto factory = std::make_unique<FakeConnectionFactory>();
     factory_ = factory.get();
     client_ = std::make_unique<ClientImpl>(std::move(factory),
-                                           std::make_unique<LegionLogger>());
+                                           std::make_unique<PrivateAiLogger>());
   }
 
   ~ClientImplTest() override = default;
@@ -92,7 +98,7 @@ class ClientImplTest : public ::testing::Test {
 TEST_F(ClientImplTest, SendTextRequestSuccess) {
   const std::string kExpectedResponseText = "response text";
 
-  proto::LegionResponse legion_response;
+  proto::PrivateAiResponse legion_response;
   {
     auto* generate_content_response =
         legion_response.mutable_generate_content_response();
@@ -116,7 +122,7 @@ TEST_F(ClientImplTest, SendTextRequestSuccess) {
 
 // Test the successful request flow for paic requests.
 TEST_F(ClientImplTest, SendPaicRequestSuccess) {
-  proto::LegionResponse legion_response;
+  proto::PrivateAiResponse legion_response;
   legion_response.mutable_paic_response();
 
   base::test::TestFuture<base::expected<proto::PaicMessage, ErrorCode>> future;
@@ -147,7 +153,7 @@ TEST_F(ClientImplTest, ConnectionRecreation) {
 
   // A subsequent request should succeed on the new connection.
   const std::string kExpectedResponseText = "response text";
-  proto::LegionResponse legion_response;
+  proto::PrivateAiResponse legion_response;
   legion_response.mutable_generate_content_response()
       ->add_candidates()
       ->mutable_content()
@@ -186,7 +192,7 @@ TEST_F(ClientImplTest, SendTextRequestTimeout) {
 
 // Test that an empty response from the server is handled correctly.
 TEST_F(ClientImplTest, SendTextRequestEmptyResponse) {
-  proto::LegionResponse legion_response;
+  proto::PrivateAiResponse legion_response;
   legion_response.mutable_generate_content_response();
 
   base::test::TestFuture<base::expected<std::string, ErrorCode>> future;
@@ -211,11 +217,33 @@ TEST_F(ClientImplTest, SendGenerateContentRequestMalformedResponse) {
 
   // Response missing GenerateContentResponse.
   ResolvePendingRequest(factory_->last_connection(),
-                        base::ok(proto::LegionResponse()));
+                        base::ok(proto::PrivateAiResponse()));
 
   const auto& result = future.Get();
   ASSERT_FALSE(result.has_value());
   EXPECT_EQ(result.error(), ErrorCode::kNoResponse);
+}
+
+// Test that the connection is destroyed asynchronously after a disconnect.
+TEST_F(ClientImplTest, AsyncDisconnect) {
+  base::test::TestFuture<void> destroyed_future;
+  factory_->set_on_destruction(destroyed_future.GetCallback());
+
+  base::test::TestFuture<base::expected<std::string, ErrorCode>> future;
+  client_->SendTextRequest(proto::FeatureName::FEATURE_NAME_UNSPECIFIED,
+                           "some text", future.GetCallback(), /*options=*/{});
+
+  auto* connection = factory_->last_connection();
+  ASSERT_TRUE(connection);
+
+  // Simulate disconnect.
+  factory_->SimulateDisconnectAndDestroyConnection();
+
+  // The connection should not be destroyed immediately.
+  EXPECT_FALSE(destroyed_future.IsReady());
+
+  // Running pending tasks should destroy the connection.
+  EXPECT_TRUE(destroyed_future.Wait());
 }
 
 }  // namespace private_ai

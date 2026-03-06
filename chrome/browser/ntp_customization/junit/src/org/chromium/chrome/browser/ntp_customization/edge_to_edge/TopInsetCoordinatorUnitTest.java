@@ -39,13 +39,12 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
-import org.robolectric.annotation.Config;
 
 import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.OneshotSupplierImpl;
 import org.chromium.base.supplier.SettableNullableObservableSupplier;
-import org.chromium.base.test.BaseRobolectricTestRule;
 import org.chromium.base.test.BaseRobolectricTestRunner;
+import org.chromium.base.test.RobolectricUtil;
 import org.chromium.base.test.util.Restriction;
 import org.chromium.chrome.browser.layouts.LayoutStateProvider;
 import org.chromium.chrome.browser.layouts.LayoutType;
@@ -130,9 +129,6 @@ public class TopInsetCoordinatorUnitTest {
         mTopInsetCoordinator.destroy();
     }
 
-    // TODO(crbug.com/481750031): Fix failure on SDK 30+ due to window inset consumption
-    // differences.
-    @Config(sdk = 29)
     @Test
     @SuppressWarnings("DirectInvocationOnMock")
     public void testOnApplyWindowInsets_ConsumeTopInset() {
@@ -402,7 +398,7 @@ public class TopInsetCoordinatorUnitTest {
 
         // Verifies the observer is added when the LayoutStateProvider is available.
         mLayoutStateProviderSupplier.set(mLayoutStateProvider);
-        BaseRobolectricTestRule.runAllBackgroundAndUi();
+        RobolectricUtil.runAllBackgroundAndUi();
 
         verify(mLayoutStateProvider)
                 .addObserver(any(LayoutStateProvider.LayoutStateObserver.class));
@@ -464,7 +460,8 @@ public class TopInsetCoordinatorUnitTest {
         Insets systemInsets = Insets.of(0, top, 0, 0);
         Insets displayCutoutInsets = Insets.of(0, top, 0, 0);
         var builder = new WindowInsetsCompat.Builder();
-        return builder.setInsets(WindowInsetsCompat.Type.systemBars(), systemInsets)
+        return builder.setInsets(WindowInsetsCompat.Type.statusBars(), systemInsets)
+                .setInsets(WindowInsetsCompat.Type.captionBar(), systemInsets)
                 .setInsets(WindowInsetsCompat.Type.displayCutout(), displayCutoutInsets)
                 .build();
     }

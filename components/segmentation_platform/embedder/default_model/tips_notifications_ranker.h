@@ -22,9 +22,13 @@ class TipsNotificationsRanker : public DefaultModelProvider {
     kQuickDeleteTipIdx,
     kGoogleLensTipIdx,
     kBottomOmniboxTipIdx,
+    kPasswordAutofillTipIdx,
+    kSigninTipIdx,
     kLabelCount
   };
 
+  // The features defined here should be in the same order as the pair list in
+  // the tips_notifications_ranker.cc file.
   enum Feature {
     kEnhancedSafeBrowsingUseCountIdx,
     kQuickDeleteMagicStackShownCountIdx,
@@ -41,6 +45,12 @@ class TipsNotificationsRanker : public DefaultModelProvider {
     kQuickDeleteTipShownIdx,
     kGoogleLensTipShownIdx,
     kBottomOmniboxTipShownIdx,
+    kPasswordAutofillAccountPasswordsCountIdx,
+    kPasswordAutofillLocalPasswordsCountIdx,
+    kIsUserSignedInIdx,
+    kSigninMagicStackShownCountIdx,
+    kPasswordAutofillTipShownIdx,
+    kSigninTipShownIdx,
     kFeatureCount
   };
 

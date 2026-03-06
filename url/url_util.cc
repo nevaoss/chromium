@@ -838,8 +838,8 @@ bool ReplaceComponents(std::string_view spec,
                              output, out_parsed);
 }
 
-void DecodeURLEscapeSequences(std::string_view input,
-                              DecodeURLMode mode,
+void DecodeUrlEscapeSequences(std::string_view input,
+                              DecodeUrlMode mode,
                               CanonOutputW* output) {
   if (input.empty()) {
     return;
@@ -880,7 +880,7 @@ void DecodeURLEscapeSequences(std::string_view input,
         // Valid UTF-8 character, convert to UTF-16.
         AppendUtf16Value(code_point, output);
         i = next_character;
-      } else if (mode == DecodeURLMode::kUTF8) {
+      } else if (mode == DecodeUrlMode::kUtf8) {
         DCHECK_EQ(code_point, 0xFFFD);
         AppendUtf16Value(code_point, output);
         i = next_character;
@@ -899,6 +899,13 @@ void DecodeURLEscapeSequences(std::string_view input,
 }
 
 void EncodeURIComponent(std::string_view input, CanonOutput* output) {
+  if (output->capacity() - output->length() < input.length() * 3) {
+    size_t required_size = 0;
+    for (unsigned char c : input) {
+      required_size += IsComponentChar(c) ? 1 : 3;
+    }
+    output->ReserveSizeIfNeeded(output->length() + required_size);
+  }
   for (unsigned char c : input) {
     if (IsComponentChar(c)) {
       output->push_back(c);
@@ -909,9 +916,7 @@ void EncodeURIComponent(std::string_view input, CanonOutput* output) {
 }
 
 std::string EncodeUriComponent(std::string_view input) {
-  RawCanonOutputT<char> output;
-  EncodeURIComponent(input, &output);
-  return std::string(output.view());
+  return std::string(UriComponentEncoder(input).view());
 }
 
 bool IsUriComponentChar(char c) {

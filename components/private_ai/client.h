@@ -13,7 +13,7 @@
 #include "base/types/expected.h"
 #include "components/private_ai/error_code.h"
 #include "components/private_ai/phosphor/token_manager.h"
-#include "components/private_ai/proto/legion.pb.h"
+#include "components/private_ai/proto/private_ai.pb.h"
 #include "services/network/public/mojom/network_service.mojom.h"
 #include "url/gurl.h"
 
@@ -23,7 +23,7 @@ class NetworkContext;
 
 namespace private_ai {
 
-class LegionLogger;
+class PrivateAiLogger;
 
 // Interface for the legion client.
 class Client {
@@ -40,48 +40,30 @@ class Client {
   using OnPaicMessageRequestCompletedCallback = base::OnceCallback<void(
       base::expected<proto::PaicMessage, ErrorCode> result)>;
 
-  // Callback for when a `EstablishSession` operation completes.
-  using OnEstablishSessionCompletedCallback =
-      base::OnceCallback<void(base::expected<void, ErrorCode>)>;
-
   struct RequestOptions {
     base::TimeDelta timeout = kDefaultTimeout;
   };
 
   static constexpr base::TimeDelta kDefaultTimeout = base::Seconds(120);
 
-  static std::unique_ptr<Client> CreateWithApiKey(
-      const GURL& url,
-      network::mojom::NetworkContext* network_context,
-      std::unique_ptr<LegionLogger> logger);
-
-  static std::unique_ptr<Client> CreateWithToken(
-      const GURL& url,
-      network::mojom::NetworkContext* network_context,
-      phosphor::TokenManager* token_manager,
-      std::unique_ptr<LegionLogger> logger);
-
-  static std::unique_ptr<Client> CreateWithProxyAndToken(
-      const GURL& url,
-      const GURL& proxy_url,
-      network::mojom::NetworkService* network_service,
-      phosphor::TokenManager* token_manager,
-      std::unique_ptr<LegionLogger> logger);
-
-  // Creates a client based on the provided configuration. This is a helper to
-  // consolidate client creation logic.
-  // - If `api_key` is not empty, it creates an API key based client.
-  // - Otherwise, it creates a token based client.
-  // - If `proxy_url_string` is not empty, the token based client will be
-  // wrapped in a proxy.
+  // Creates a client based on the provided configuration.
+  // `url`: The URL for the Legion service.
+  // `api_key`: The API key for the Legion service.
+  // `proxy_url_string`: Optional URL for the proxy server.
+  // `use_token_attestation`: Whether to use token attestation.
+  // `network_context`: The network context to use for connections.
+  // `token_manager`: Required if `use_token_attestation` is true.
+  // `network_service`: Required if `proxy_url_string` is not empty.
+  // `logger`: The logger for the client.
   static std::unique_ptr<Client> Create(
       const std::string& url,
       const std::string& api_key,
       const std::string& proxy_url_string,
+      bool use_token_attestation,
       network::mojom::NetworkContext* network_context,
       phosphor::TokenManager* token_manager,
       network::mojom::NetworkService* network_service,
-      std::unique_ptr<LegionLogger> logger);
+      std::unique_ptr<PrivateAiLogger> logger);
 
   virtual ~Client() = default;
 
@@ -91,11 +73,10 @@ class Client {
   // Takes a URL without scheme and an api_key and returns a URL.
   static GURL FormatUrl(const std::string& url, const std::string& api_key);
 
-  // Establishes a secure session without sending a request. The callback will
-  // be invoked upon completion. Calling this function is optional as a session
-  // will be established automatically when needed/first request is sent.
-  virtual void EstablishSession(
-      OnEstablishSessionCompletedCallback callback) = 0;
+  // Establishes a secure connection without sending a request. Calling this
+  // function is optional as a connection will be established automatically
+  // when needed/first request is sent.
+  virtual void EstablishConnection() = 0;
 
   // Sends a request with a single text content.
   virtual void SendTextRequest(proto::FeatureName feature_name,
@@ -117,7 +98,7 @@ class Client {
                                OnPaicMessageRequestCompletedCallback callback,
                                const RequestOptions& options) = 0;
 
-  virtual LegionLogger* GetLogger() = 0;
+  virtual PrivateAiLogger* GetLogger() = 0;
 };
 
 }  // namespace private_ai

@@ -12,11 +12,11 @@
 #include "base/memory/weak_ptr.h"
 #include "base/types/expected.h"
 #include "components/private_ai/client.h"
-#include "components/private_ai/common/legion_logger.h"
+#include "components/private_ai/common/private_ai_logger.h"
 #include "components/private_ai/connection.h"
 #include "components/private_ai/connection_factory.h"
-#include "components/private_ai/legion_common.h"
-#include "components/private_ai/proto/legion.pb.h"
+#include "components/private_ai/private_ai_common.h"
+#include "components/private_ai/proto/private_ai.pb.h"
 
 namespace private_ai {
 
@@ -27,14 +27,14 @@ class ConnectionFactory;
 class ClientImpl : public Client {
  public:
   ClientImpl(std::unique_ptr<ConnectionFactory> connection_factory,
-             std::unique_ptr<LegionLogger> logger);
+             std::unique_ptr<PrivateAiLogger> logger);
   ~ClientImpl() override;
 
   ClientImpl(const ClientImpl&) = delete;
   ClientImpl& operator=(const ClientImpl&) = delete;
 
   // Client overrides:
-  void EstablishSession(OnEstablishSessionCompletedCallback callback) override;
+  void EstablishConnection() override;
   void SendTextRequest(proto::FeatureName feature_name,
                        const std::string& text,
                        OnTextRequestCompletedCallback callback,
@@ -49,31 +49,31 @@ class ClientImpl : public Client {
                        OnPaicMessageRequestCompletedCallback callback,
                        const RequestOptions& options) override;
 
-  LegionLogger* GetLogger() override;
+  PrivateAiLogger* GetLogger() override;
 
  private:
   // Callback for when a `SendRequest` operation completes.
   // If the operation is successful, the result will contain the server's
   // response. Otherwise, it will contain an `ErrorCode` error.
   using OnRequestCompletedCallback = base::OnceCallback<void(
-      base::expected<proto::LegionResponse, ErrorCode> result)>;
+      base::expected<proto::PrivateAiResponse, ErrorCode> result)>;
 
   // Returns the existing connection or creates a new one if it doesn't
   // exist.
   Connection* GetOrCreateConnection();
 
   void SendRequest(proto::FeatureName feature_name,
-                   proto::LegionRequest legion_request,
+                   proto::PrivateAiRequest legion_request,
                    OnRequestCompletedCallback callback,
                    const RequestOptions& options);
 
   void OnReponseReceived(
       OnRequestCompletedCallback cb,
-      base::expected<proto::LegionResponse, ErrorCode> legion_response);
+      base::expected<proto::PrivateAiResponse, ErrorCode> legion_response);
 
-  void OnConnectionDisconnected();
+  void OnConnectionDisconnected(ErrorCode error_code);
 
-  std::unique_ptr<LegionLogger> logger_;
+  std::unique_ptr<PrivateAiLogger> logger_;
 
   std::unique_ptr<Connection> connection_;
 

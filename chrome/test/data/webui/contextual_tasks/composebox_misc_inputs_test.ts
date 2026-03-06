@@ -268,7 +268,7 @@ suite('ContextualTasksComposeboxMiscInputsTest', () => {
     // Same token for auto inject (mac) and manual (linux/windows)
     const sharedToken = '12345678-1234-1234-1234-123456789abc';
     mockSearchboxPageHandler.setResultFor(
-        ADD_FILE_CONTEXT_FN, Promise.resolve({token: sharedToken}));
+        ADD_FILE_CONTEXT_FN, Promise.resolve(sharedToken));
 
     const file = new File(['content'], 'foo.pdf', {type: 'application/pdf'});
     // Automatically add file (Mac)
@@ -675,8 +675,7 @@ suite('ContextualTasksComposeboxMiscInputsTest', () => {
         contextualTasksApp.isShownInTab_ = false;
         contextualTasksApp.isZeroState_ = true;
 
-        assertFalse(
-            contextualTasksApp.getEnableNativeZeroStateSuggestionsForTesting());
+        contextualTasksApp.setEnableNativeZeroStateSuggestionsForTesting(false);
 
         await contextualTasksApp.updateComplete;
         await contextualTasksApp.$.composebox.updateComplete;
@@ -742,8 +741,7 @@ suite('ContextualTasksComposeboxMiscInputsTest', () => {
         contextualTasksApp.isShownInTab_ = true;
         contextualTasksApp.isZeroState_ = true;
 
-        assertFalse(
-            contextualTasksApp.getEnableNativeZeroStateSuggestionsForTesting());
+        contextualTasksApp.setEnableNativeZeroStateSuggestionsForTesting(false);
 
         await contextualTasksApp.updateComplete;
         await contextualTasksApp.$.composebox.updateComplete;

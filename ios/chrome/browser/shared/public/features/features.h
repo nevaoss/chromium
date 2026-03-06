@@ -248,12 +248,8 @@ extern const base::FeatureParam<int>
 // Feature flag the "Hide Toolbar" button in the overflow menu.
 BASE_DECLARE_FEATURE(kHideToolbarsInOverflowMenu);
 
-extern const char kBottomOmniboxEvolutionParam[];
-extern const char kBottomOmniboxEvolutionParamEditStateFollowSteadyState[];
-extern const char kBottomOmniboxEvolutionParamForceBottomOmniboxEditState[];
-
-// Feature flag to enable improvdements in the bottom omnibox.
-BASE_DECLARE_FEATURE(kBottomOmniboxEvolution);
+// Flag to hide voice and lens actions in fusebox.
+BASE_DECLARE_FEATURE(kHideFuseboxVoiceLensActions);
 
 // Whether the Safety Check Manager can automatically trigger Safety Checks.
 bool IsSafetyCheckAutorunByManagerEnabled();
@@ -821,6 +817,13 @@ extern const char kDisableKeyboardAccessoryOnlySymbols[];
 extern const char kDisableKeyboardAccessoryOnlyFeatures[];
 extern const char kDisableKeyboardAccessoryCompletely[];
 
+// Enables the keyboard accessory in the Fusebox.
+BASE_DECLARE_FEATURE(kEnableFuseboxKeyboardAccessory);
+extern const char kEnableFuseboxKeyboardAccessoryParam[];
+extern const char kEnableFuseboxKeyboardAccessoryOnlySymbols[];
+extern const char kEnableFuseboxKeyboardAccessoryOnlyFeatures[];
+extern const char kEnableFuseboxKeyboardAccessoryBoth[];
+
 // Returns true if keyboard accessory is enabled.
 bool ShouldShowKeyboardAccessory();
 // Returns true if the symbols :/- and .com in the keyboard accessory are
@@ -948,5 +951,11 @@ BASE_DECLARE_FEATURE(kRecordRecentActiveDays);
 
 // Returns true if kRecordRecentActiveDays is enabled.
 bool IsRecordRecentActiveDaysEnabled();
+
+// Enables the AimCobrowse feature.
+BASE_DECLARE_FEATURE(kAimCobrowse);
+
+// Returns true if the AimCobrowse feature is enabled.
+bool IsAimCobrowseEnabled();
 
 #endif  // IOS_CHROME_BROWSER_SHARED_PUBLIC_FEATURES_FEATURES_H_

@@ -113,13 +113,12 @@ class WindowPerformanceTest : public testing::Test,
                                   base::TimeTicks presentation_timestamp,
                                   uint64_t expected_frame_source_id,
                                   uint64_t actual_frame_source_id) {
-    uint64_t presentation_promise_index =
-        performance_->event_presentation_promise_count_;
+    uint64_t frame_index = GetCurrentFrameIndex();
     SimulateJustPaintFinished();
     SimulateJustCommitFinished(commit_timestamp);
-    SimulateJustPresentationTime(
-        presentation_promise_index, presentation_timestamp,
-        expected_frame_source_id, actual_frame_source_id);
+    SimulateJustPresentationTime(frame_index, presentation_timestamp,
+                                 expected_frame_source_id,
+                                 actual_frame_source_id);
   }
 
   void SimulateInteractionId(PerformanceEventTiming* entry) {
@@ -128,7 +127,8 @@ class WindowPerformanceTest : public testing::Test,
         entry->GetEventTimingReportingInfo()->enqueued_to_main_thread_time,
         entry->GetEventTimingReportingInfo()->commit_finish_time,
         entry->GetEndTime()};
-    performance_->SetInteractionIdAndRecordLatency(entry, event_timestamps);
+    performance_->GetResponsivenessMetrics().TryAssignInteractionId(
+        entry, event_timestamps);
   }
 
   PerformanceEventTiming* RegisterKeyboardEvent(
@@ -237,8 +237,8 @@ class WindowPerformanceTest : public testing::Test,
     performance_->PageVisibilityChangedWithTimestamp(timestamp);
   }
 
-  uint64_t GetPresentationPromiseIndex() const {
-    return performance_->event_presentation_promise_count_;
+  uint64_t GetCurrentFrameIndex() const {
+    return performance_->current_frame_index_;
   }
 
   test::TaskEnvironment task_environment_;
@@ -927,7 +927,7 @@ TEST_P(WindowPerformanceTest, KeyupFinishLastButCallbackInvokedFirst) {
   RegisterKeyboardEvent(event_type_names::kKeydown, keydown_timestamp,
                         processing_start_keydown, processing_end_keydown,
                         digit_1_key_code);
-  const uint64_t presentation_index_keydown = GetPresentationPromiseIndex();
+  const uint64_t presentation_index_keydown = GetCurrentFrameIndex();
 
   SimulateJustPaintFinished();
   SimulateJustCommitFinished(processing_end_keydown);
@@ -940,7 +940,7 @@ TEST_P(WindowPerformanceTest, KeyupFinishLastButCallbackInvokedFirst) {
   RegisterKeyboardEvent(event_type_names::kKeyup, keyup_timestamp,
                         processing_start_keyup, processing_end_keyup,
                         digit_1_key_code);
-  const uint64_t presentation_index_keyup = GetPresentationPromiseIndex();
+  const uint64_t presentation_index_keyup = GetCurrentFrameIndex();
 
   // keyup resolved without a paint, due to no damage.
   SimulateJustPresentationTime(presentation_index_keyup,
@@ -2147,6 +2147,74 @@ TEST_P(InteractionIdTest, ClickIncorrectPointerId) {
   // Flush UKM logging mojo request.
   RunPendingTasks();
   CheckUKMValues({{40, UserInteractionType::kTapOrClick}});
+}
+
+TEST_P(InteractionIdTest, ContextMenu) {
+  PointerId pointer_id = 4;
+
+  // 1. Pointerdown
+  base::TimeTicks pointerdown_timestamp = GetTimeOrigin();
+  base::TimeTicks processing_start_pointerdown = GetTimeStamp(1);
+  base::TimeTicks processing_end_pointerdown = GetTimeStamp(2);
+  PerformanceEventTiming* pointerdown_entry = RegisterPointerEvent(
+      event_type_names::kPointerdown, pointerdown_timestamp,
+      processing_start_pointerdown, processing_end_pointerdown, pointer_id);
+
+  // pointerdown is pending and should not have an interactionId yet.
+  EXPECT_FALSE(pointerdown_entry->HasKnownInteractionID());
+  EXPECT_FALSE(pointerdown_entry->HasKnownEndTime());
+
+  // 2. Contextmenu
+  base::TimeTicks contextmenu_timestamp = GetTimeStamp(3);
+  base::TimeTicks processing_start_contextmenu = GetTimeStamp(4);
+  base::TimeTicks processing_end_contextmenu = GetTimeStamp(5);
+  PerformanceEventTiming* contextmenu_entry = RegisterPointerEvent(
+      event_type_names::kContextmenu, contextmenu_timestamp,
+      processing_start_contextmenu, processing_end_contextmenu, pointer_id);
+
+  // Now pointerdown should have a fallback time.
+  EXPECT_TRUE(pointerdown_entry->HasKnownEndTime());
+  EXPECT_EQ(pointerdown_entry->GetEventTimingReportingInfo()->fallback_reason,
+            FallbackReason::kInteractionInterruptedByContextMenu);
+  EXPECT_EQ(pointerdown_entry->GetEndTime(), processing_end_contextmenu);
+
+  SimulateAllRenderingStages(GetTimeStamp(6));
+
+  // ...And finally, after presentation time arrives, we should have an
+  // interactionId.
+  EXPECT_TRUE(pointerdown_entry->HasKnownInteractionID());
+  EXPECT_GT(pointerdown_entry->interactionId(), 0u);
+
+  // Contextmenu itself should not have an interactionId, but should have a
+  // duration and fallback.
+  EXPECT_TRUE(contextmenu_entry->HasKnownInteractionID());
+  EXPECT_EQ(contextmenu_entry->interactionId(), 0u);
+  EXPECT_TRUE(contextmenu_entry->HasKnownEndTime());
+  EXPECT_EQ(contextmenu_entry->GetEventTimingReportingInfo()->fallback_reason,
+            FallbackReason::kInteractionInterruptedByContextMenu);
+  EXPECT_EQ(contextmenu_entry->GetEndTime(), processing_end_contextmenu);
+
+  // 3. Pointerup
+  base::TimeTicks pointerup_timestamp = GetTimeStamp(6);
+  base::TimeTicks processing_start_pointerup = GetTimeStamp(7);
+  base::TimeTicks processing_end_pointerup = GetTimeStamp(8);
+  base::TimeTicks presentation_pointerup = GetTimeStamp(9);
+  PerformanceEventTiming* pointerup_entry = RegisterPointerEvent(
+      event_type_names::kPointerup, pointerup_timestamp,
+      processing_start_pointerup, processing_end_pointerup, pointer_id);
+
+  SimulateAllRenderingStages(presentation_pointerup);
+
+  // pointerup should have the same interactionId as pointerdown and a good end
+  // time.
+  EXPECT_EQ(pointerup_entry->interactionId(),
+            pointerdown_entry->interactionId());
+  EXPECT_TRUE(pointerup_entry->HasKnownEndTime());
+  EXPECT_EQ(pointerup_entry->GetEndTime(), presentation_pointerup);
+
+  // After a wait, we should see the UKM.
+  test::RunDelayedTasks(base::Seconds(1));
+  CheckUKMValues({{5, UserInteractionType::kTapOrClick}});
 }
 
 INSTANTIATE_TEST_SUITE_P(All, InteractionIdTest, ::testing::Bool());

@@ -15,6 +15,7 @@
 #include "base/functional/callback_helpers.h"
 #include "base/metrics/user_metrics.h"
 #include "base/metrics/user_metrics_action.h"
+#include "build/branding_buildflags.h"
 #include "chrome/app/chrome_command_ids.h"
 #include "chrome/app/vector_icons/vector_icons.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_side_panel_coordinator.h"
@@ -652,14 +653,8 @@ void BrowserActions::InitializeBrowserActions() {
           kTabSearchTabStripIcon)
           .SetProperty(
               actions::kActionItemPinnableKey,
-              !base::FeatureList::IsEnabled(
-                  tabs::kHorizontalTabStripComboButton)
-                  ? static_cast<
-                        std::underlying_type_t<actions::ActionPinnableState>>(
-                        actions::ActionPinnableState::kPinnable)
-                  : static_cast<
-                        std::underlying_type_t<actions::ActionPinnableState>>(
-                        actions::ActionPinnableState::kNotPinnable))
+              static_cast<std::underlying_type_t<actions::ActionPinnableState>>(
+                  actions::ActionPinnableState::kNotPinnable))
           .Build());
 
   if (tabs::IsVerticalTabsFeatureEnabled()) {

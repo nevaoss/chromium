@@ -15,7 +15,7 @@
 #include "base/test/test_future.h"
 #include "components/private_ai/attestation/handler.h"
 #include "components/private_ai/attestation/server_evidence.h"
-#include "components/private_ai/legion_common.h"
+#include "components/private_ai/private_ai_common.h"
 #include "components/private_ai/secure_session.h"
 #include "components/private_ai/transport.h"
 #include "testing/gmock/include/gmock/gmock.h"
@@ -224,7 +224,7 @@ class SecureChannelImplTest : public ::testing::Test {
   base::test::TaskEnvironment task_environment_;
   base::HistogramTester histogram_tester_;
 
-  LegionLogger logger_;
+  PrivateAiLogger logger_;
   std::unique_ptr<SecureChannelImpl> secure_channel_;
 
   std::unique_ptr<MockTransport> transport_ptr_;
@@ -267,9 +267,9 @@ void SecureChannelImplTest::SetUpHandshake() {
       });
 }
 
-// Tests the successful establishment of a secure session and sending a single
-// request.
-TEST_F(SecureChannelImplTest, WriteAndEstablishSessionSucceeds) {
+// Tests the successful establishment of a secure connection and sending a
+// single request.
+TEST_F(SecureChannelImplTest, WriteAndEstablishConnectionSucceeds) {
   SetUpAttestation();
   SetUpHandshake();
 

@@ -172,22 +172,6 @@ const FeatureEntry::FeatureVariation kNTPMIAEntrypointVariations[] = {
      kNTPMIAEntrypointAIMInQuickActions, nullptr},
 };
 
-const FeatureEntry::FeatureParam
-    kBottomOmniboxEvolutionEditStateFollowSteadyState[] = {
-        {kBottomOmniboxEvolutionParam,
-         kBottomOmniboxEvolutionParamEditStateFollowSteadyState}};
-const FeatureEntry::FeatureParam
-    kBottomOmniboxEvolutionForceBottomOmniboxEditState[] = {
-        {kBottomOmniboxEvolutionParam,
-         kBottomOmniboxEvolutionParamForceBottomOmniboxEditState}};
-
-const FeatureEntry::FeatureVariation kBottomOmniboxEvolutionVariations[] = {
-    {"A: Follows the same position in edit state as the steady state.",
-     kBottomOmniboxEvolutionEditStateFollowSteadyState, nullptr},
-    {"B: Forces the bottom omnibox position for the edit state",
-     kBottomOmniboxEvolutionForceBottomOmniboxEditState, nullptr},
-};
-
 const FeatureEntry::FeatureParam kComposeboxTabPickerVariationCachedAPC[] = {
     {kComposeboxTabPickerVariationParam,
      kComposeboxTabPickerVariationParamCachedAPC}};
@@ -219,6 +203,28 @@ const FeatureEntry::FeatureVariation kDisableKeyboardAccessoryVariations[] = {
      kDisableKeyboardAccessoryOnlyFeaturesParam, nullptr},
     {"C) disable completely", kDisableKeyboardAccessoryCompletelyParam,
      nullptr}};
+
+const FeatureEntry::FeatureParam
+    kEnableFuseboxKeyboardAccessoryOnlySymbolsParam[] = {
+        {kEnableFuseboxKeyboardAccessoryParam,
+         kEnableFuseboxKeyboardAccessoryOnlySymbols}};
+
+const FeatureEntry::FeatureParam
+    kEnableFuseboxKeyboardAccessoryOnlyFeaturesParam[] = {
+        {kEnableFuseboxKeyboardAccessoryParam,
+         kEnableFuseboxKeyboardAccessoryOnlyFeatures}};
+
+const FeatureEntry::FeatureParam kEnableFuseboxKeyboardAccessoryBothParam[] = {
+    {kEnableFuseboxKeyboardAccessoryParam,
+     kEnableFuseboxKeyboardAccessoryBoth}};
+
+const FeatureEntry::FeatureVariation
+    kEnableFuseboxKeyboardAccessoryVariations[] = {
+        {"A) only show symbols",
+         kEnableFuseboxKeyboardAccessoryOnlySymbolsParam, nullptr},
+        {"B) only show lens and voice search",
+         kEnableFuseboxKeyboardAccessoryOnlyFeaturesParam, nullptr},
+        {"C) enable both", kEnableFuseboxKeyboardAccessoryBothParam, nullptr}};
 
 const FeatureEntry::FeatureParam
     kIOSKeyboardAccessoryTwoBubbleWithKeyboardIcon[] = {
@@ -1252,10 +1258,15 @@ const FeatureEntry::FeatureVariation kZeroStateSuggestionsVariations[] = {
 
 const FeatureEntry::FeatureParam kGeminiCopresenceResponseReadyIntervalParam[] =
     {{kGeminiCopresenceResponseReadyInterval, "7.0"}};
+const FeatureEntry::FeatureParam
+    kGeminiCopresenceZeroStateWithChatHistoryParam[] = {
+        {kGeminiCopresenceZeroStateWithChatHistory, "true"}};
 
 const FeatureEntry::FeatureVariation kGeminiCopresenceVariations[] = {
     {"Response Ready Interval", kGeminiCopresenceResponseReadyIntervalParam,
      nullptr},
+    {"Zero State with Chat History",
+     kGeminiCopresenceZeroStateWithChatHistoryParam, nullptr},
 };
 
 const char kFRESignInHeaderTextUpdateParamName[] =
@@ -1709,11 +1720,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kOmniboxGroupingFrameworkForTypedSuggestionsDescription,
      flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(omnibox::kGroupingFrameworkForNonZPS)},
-    {"bottom-omnibox-evolution", flag_descriptions::kBottomOmniboxEvolutionName,
-     flag_descriptions::kBottomOmniboxEvolutionDescription, flags_ui::kOsIos,
-     FEATURE_WITH_PARAMS_VALUE_TYPE(kBottomOmniboxEvolution,
-                                    kBottomOmniboxEvolutionVariations,
-                                    "BottomOmniboxEvolution")},
     {"bwg-precise-location", flag_descriptions::kBWGPreciseLocationName,
      flag_descriptions::kBWGPreciseLocationDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kBWGPreciseLocation)},
@@ -1792,6 +1798,11 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(
          password_manager::features::kPasswordFormClientsideClassifier)},
+    {"send-tab-to-self-enhanced-handoff",
+     flag_descriptions::kSendTabToSelfEnhancedHandoffName,
+     flag_descriptions::kSendTabToSelfEnhancedHandoffDescription,
+     flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(send_tab_to_self::kSendTabToSelfPropagateFormFields)},
     {"send-tab-ios-push-notifications",
      flag_descriptions::kSendTabToSelfIOSPushNotificationsName,
      flag_descriptions::kSendTabToSelfIOSPushNotificationsDescription,
@@ -2412,6 +2423,10 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(
          segmentation_platform::features::kAppBundlePromoEphemeralCard)},
+    {"hide-fusebox-voice-lens-actions",
+     flag_descriptions::kHideFuseboxVoiceLensActionsName,
+     flag_descriptions::kHideFuseboxVoiceLensActionsDescription,
+     flags_ui::kOsIos, FEATURE_VALUE_TYPE(kHideFuseboxVoiceLensActions)},
     {"hide-toolbars-in-overflow-menu",
      flag_descriptions::kHideToolbarsInOverflowMenuName,
      flag_descriptions::kHideToolbarsInOverflowMenuDescription,
@@ -2518,6 +2533,14 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      FEATURE_WITH_PARAMS_VALUE_TYPE(kDisableKeyboardAccessory,
                                     kDisableKeyboardAccessoryVariations,
                                     "DisableKeyboardAccessoryVariations")},
+    {"enable-fusebox-keyboard-accessory",
+     flag_descriptions::kEnableFuseboxKeyboardAccessoryName,
+     flag_descriptions::kEnableFuseboxKeyboardAccessoryDescription,
+     flags_ui::kOsIos,
+     FEATURE_WITH_PARAMS_VALUE_TYPE(
+         kEnableFuseboxKeyboardAccessory,
+         kEnableFuseboxKeyboardAccessoryVariations,
+         "EnableFuseboxKeyboardAccessoryVariations")},
     {"mdm-errors-for-dasher-accounts-handling",
      flag_descriptions::kHandleMdmErrorsForDasherAccountsName,
      flag_descriptions::kHandleMdmErrorsForDasherAccountsDescription,
@@ -2547,9 +2570,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
     {"composebox-ios", flag_descriptions::kComposeboxIOSName,
      flag_descriptions::kComposeboxIOSDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kComposeboxIOS)},
-    {"gemini-immediate-overlay", flag_descriptions::kGeminiImmediateOverlayName,
-     flag_descriptions::kGeminiImmediateOverlayDescription, flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(kGeminiImmediateOverlay)},
     {"gemini-navigation-promo", flag_descriptions::kGeminiNavigationPromoName,
      flag_descriptions::kGeminiNavigationPromoDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kGeminiNavigationPromo)},
@@ -2707,6 +2727,9 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kIOSSaveToPhotosSignedOutName,
      flag_descriptions::kIOSSaveToPhotosSignedOutDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kIOSSaveToPhotosSignedOut)},
+    {"aim-cobrowse", flag_descriptions::kAimCobrowseName,
+     flag_descriptions::kAimCobrowseDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kAimCobrowse)},
     {"aim-cobrowse-debug-entrypoint",
      flag_descriptions::kAIMCobrowseDebugEntrypointName,
      flag_descriptions::kAIMCobrowseDebugEntrypointDescription,
@@ -2715,6 +2738,25 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kIOSDateToCalendarSignedOutName,
      flag_descriptions::kIOSDateToCalendarSignedOutDescription,
      flags_ui::kOsIos, FEATURE_VALUE_TYPE(kIOSDateToCalendarSignedOut)},
+    {"gemini-backend-migration", flag_descriptions::kGeminiBackendMigrationName,
+     flag_descriptions::kGeminiBackendMigrationDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kGeminiBackendMigration)},
+    {"gemini-actor", flag_descriptions::kGeminiActorName,
+     flag_descriptions::kGeminiActorDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kGeminiActor)},
+    {"gemini-rich-apc-extraction",
+     flag_descriptions::kGeminiRichAPCExtractionName,
+     flag_descriptions::kGeminiRichAPCExtractionDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kGeminiRichAPCExtraction)},
+    {"in-flow-trusted-vault-key-retrieval-ios",
+     flag_descriptions::kInFlowTrustedVaultKeyRetrievalIosName,
+     flag_descriptions::kInFlowTrustedVaultKeyRetrievalIosDescription,
+     flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(
+         password_manager::features::kInFlowTrustedVaultKeyRetrievalIos)},
+    {"sync-themes-ios", flag_descriptions::kSyncThemesIosName,
+     flag_descriptions::kSyncThemesIosDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(syncer::kSyncThemesIos)},
 });
 
 bool SkipConditionalFeatureEntry(const flags_ui::FeatureEntry& entry) {

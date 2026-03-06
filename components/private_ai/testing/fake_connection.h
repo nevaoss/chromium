@@ -8,10 +8,11 @@
 #include <vector>
 
 #include "base/functional/callback.h"
+#include "base/functional/callback_helpers.h"
 #include "base/time/time.h"
 #include "components/private_ai/connection.h"
 #include "components/private_ai/error_code.h"
-#include "components/private_ai/proto/legion.pb.h"
+#include "components/private_ai/proto/private_ai.pb.h"
 
 namespace private_ai {
 
@@ -28,18 +29,21 @@ class FakeConnection : public Connection {
 
     ~PendingRequest();
 
-    proto::LegionRequest request;
+    proto::PrivateAiRequest request;
     base::TimeDelta timeout;
     OnRequestCallback callback;
   };
 
-  explicit FakeConnection(base::OnceClosure on_disconnect);
+  explicit FakeConnection(base::OnceCallback<void(ErrorCode)> on_disconnect,
+                          base::OnceClosure on_destruction = {});
   ~FakeConnection() override;
 
   // Connection implementation:
-  void Send(proto::LegionRequest request,
+  void Send(proto::PrivateAiRequest request,
             base::TimeDelta timeout,
             OnRequestCallback callback) override;
+
+  void OnDestroy(ErrorCode error) override;
 
   // Resolves all pending callbacks with ErrorCode::kNetworkError and runs the
   // on_disconnect callback.
@@ -48,7 +52,8 @@ class FakeConnection : public Connection {
   std::vector<PendingRequest>& pending_requests() { return pending_requests_; }
 
  private:
-  base::OnceClosure on_disconnect_;
+  base::OnceCallback<void(ErrorCode)> on_disconnect_;
+  base::OnceClosure on_destruction_;
   std::vector<PendingRequest> pending_requests_;
 };
 

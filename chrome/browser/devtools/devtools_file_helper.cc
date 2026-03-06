@@ -169,8 +169,8 @@ void DevToolsFileHelper::Save(const std::string& url,
     if (gurl.is_valid()) {
       url::RawCanonOutputW<1024> unescaped_content;
       std::string escaped_content = gurl.ExtractFileName();
-      url::DecodeURLEscapeSequences(escaped_content,
-                                    url::DecodeURLMode::kUTF8OrIsomorphic,
+      url::DecodeUrlEscapeSequences(escaped_content,
+                                    url::DecodeUrlMode::kUtf8OrIsomorphic,
                                     &unescaped_content);
       // TODO(crbug.com/40839171): Due to filename encoding on Windows we can't
       // expect to always be able to convert to UTF8 and back
@@ -217,7 +217,7 @@ void DevToolsFileHelper::Append(const std::string& url,
 
 void DevToolsFileHelper::SaveToFileSelected(
     const std::string& url,
-    const std::string& content,
+    std::string content,
     bool is_base64,
     SaveCallback callback,
     const ui::SelectedFileInfo& file_info) {
@@ -246,10 +246,11 @@ void DevToolsFileHelper::SaveToFileSelected(
   scoped_refptr<base::SequencedTaskRunner> current_task_runner =
       base::SequencedTaskRunner::GetCurrentDefault();
   file_task_runner_->PostTask(
-      FROM_HERE, BindOnce(&WriteToFile, file_info.path(), content, is_base64)
-                     .Then(base::BindPostTask(
-                         current_task_runner,
-                         BindOnce(std::move(callback), file_system_path))));
+      FROM_HERE,
+      BindOnce(&WriteToFile, file_info.path(), std::move(content), is_base64)
+          .Then(base::BindPostTask(
+              current_task_runner,
+              BindOnce(std::move(callback), std::move(file_system_path)))));
 }
 
 void DevToolsFileHelper::AddFileSystem(

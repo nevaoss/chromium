@@ -1038,7 +1038,10 @@ bool PaintLayerScrollableArea::ScrollByPageWithSnap(
   gfx::PointF new_position = GetSnapPositionAndSetTarget(*strategy).value_or(
       current_position + displacement);
 
-  return ScrollToAbsolutePosition(new_position, scroll_behavior);
+  return SetScrollOffset(
+      ScrollOffset(new_position - gfx::PointF(ScrollOrigin())),
+      mojom::blink::ScrollType::kProgrammatic, cc::ScrollSourceType::kNone,
+      scroll_behavior);
 }
 
 void PaintLayerScrollableArea::UpdateAfterLayout() {
@@ -2390,7 +2393,7 @@ void PaintLayerScrollableArea::EnqueueForSnapUpdateIfNeeded() {
     return;
   }
 
-  if (box->IsPseudo(kPseudoIdOverscrollAreaParent)) {
+  if (box->IsOverscrollAreaParent()) {
     // ::-internal-overscroll-area-parent has implicit snap areas and should
     // always be enqueued for pending snap updates.
     box->GetFrameView()->AddPendingSnapUpdate(this);
@@ -2408,8 +2411,8 @@ void PaintLayerScrollableArea::EnqueueForSnapUpdateIfNeeded() {
 
 void PaintLayerScrollableArea::UpdateAllStickyConstraints() {
   for (const auto& fragment : GetLayoutBox()->PhysicalFragments()) {
-    if (auto* sticky_descendants = fragment.StickyDescendants()) {
-      for (auto& sticky_descendant : *sticky_descendants) {
+    for (const auto& item : fragment.StickyDescendants()) {
+      if (auto* sticky_descendant = item.GetIfConsumed()) {
         auto* constraints =
             sticky_descendant->ComputeStickyPositionConstraints();
         constraints->ComputeStickyOffset(ScrollPosition());
@@ -2423,7 +2426,7 @@ void PaintLayerScrollableArea::EnqueueForStickyUpdateIfNeeded() {
   // Enqueue ourselves for a sticky update if we have any sticky descendants.
   const auto* box = GetLayoutBox();
   for (const auto& fragment : box->PhysicalFragments()) {
-    if (fragment.StickyDescendants()) {
+    if (fragment.HasConsumedStickyDescendants()) {
       box->GetFrameView()->AddPendingStickyUpdate(this);
       break;
     }
@@ -2444,8 +2447,8 @@ void PaintLayerScrollableArea::InvalidatePaintForStickyDescendants() {
   }
 
   for (const auto& fragment : GetLayoutBox()->PhysicalFragments()) {
-    if (auto* sticky_descendants = fragment.StickyDescendants()) {
-      for (auto& sticky_descendant : *sticky_descendants) {
+    for (const auto& item : fragment.StickyDescendants()) {
+      if (auto* sticky_descendant = item.GetIfConsumed()) {
         sticky_descendant->SetNeedsPaintPropertyUpdate();
         DCHECK(sticky_descendant->StickyConstraints());
         sticky_descendant->StickyConstraints()->ComputeStickyOffset(
@@ -2819,8 +2822,10 @@ bool PaintLayerScrollableArea::VisualViewportSuppliesScrollbars() const {
     return false;
 
   // On desktop, we always use the layout viewport's scrollbars.
-  if (!frame->GetSettings()->GetViewportEnabled())
+  if (!frame->GetSettings()->GetViewportEnabled() ||
+      ScrollbarTheme::DesktopAndroidScrollbarsEnabled()) {
     return false;
+  }
 
   const TopDocumentRootScrollerController& controller =
       GetLayoutBox()->GetDocument().GetPage()->GlobalRootScrollerController();

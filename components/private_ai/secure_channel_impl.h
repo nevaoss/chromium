@@ -20,8 +20,8 @@
 #include "base/time/time.h"
 #include "base/types/expected.h"
 #include "components/private_ai/attestation/handler.h"
-#include "components/private_ai/common/legion_logger.h"
-#include "components/private_ai/legion_common.h"
+#include "components/private_ai/common/private_ai_logger.h"
+#include "components/private_ai/private_ai_common.h"
 #include "components/private_ai/secure_channel.h"
 #include "components/private_ai/secure_session.h"
 #include "components/private_ai/transport.h"
@@ -37,7 +37,7 @@ class SecureChannelImpl : public SecureChannel {
    public:
     FactoryImpl(const GURL& url,
                 network::mojom::NetworkContext* network_context,
-                LegionLogger* logger);
+                PrivateAiLogger* logger);
     ~FactoryImpl() override;
 
     std::unique_ptr<SecureChannel> Create(ResponseCallback callback) override;
@@ -45,14 +45,14 @@ class SecureChannelImpl : public SecureChannel {
    private:
     const GURL url_;
     raw_ptr<network::mojom::NetworkContext> network_context_;
-    raw_ptr<LegionLogger> logger_;
+    raw_ptr<PrivateAiLogger> logger_;
   };
 
   SecureChannelImpl(ResponseCallback callback,
                     std::unique_ptr<Transport> transport,
                     std::unique_ptr<SecureSession> secure_session,
                     std::unique_ptr<AttestationHandler> attestation_handler,
-                    LegionLogger* logger);
+                    PrivateAiLogger* logger);
   ~SecureChannelImpl() override;
 
   SecureChannelImpl(const SecureChannelImpl&) = delete;
@@ -107,7 +107,7 @@ class SecureChannelImpl : public SecureChannel {
       GUARDED_BY_CONTEXT(sequence_checker_);
   std::unique_ptr<AttestationHandler> attestation_handler_
       GUARDED_BY_CONTEXT(sequence_checker_);
-  raw_ptr<LegionLogger> logger_ GUARDED_BY_CONTEXT(sequence_checker_);
+  raw_ptr<PrivateAiLogger> logger_ GUARDED_BY_CONTEXT(sequence_checker_);
 
   State state_ GUARDED_BY_CONTEXT(sequence_checker_) =
       State::kPerformingAttestation;

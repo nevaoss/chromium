@@ -9,7 +9,8 @@
 
 #include "base/functional/callback.h"
 #include "base/time/time.h"
-#include "components/private_ai/proto/legion.pb.h"
+#include "components/private_ai/error_code.h"
+#include "components/private_ai/proto/private_ai.pb.h"
 
 namespace private_ai {
 
@@ -22,14 +23,22 @@ FakeConnection::PendingRequest& FakeConnection::PendingRequest::operator=(
 
 FakeConnection::PendingRequest::~PendingRequest() = default;
 
-FakeConnection::FakeConnection(base::OnceClosure on_disconnect)
-    : on_disconnect_(std::move(on_disconnect)) {}
+FakeConnection::FakeConnection(
+    base::OnceCallback<void(ErrorCode)> on_disconnect,
+    base::OnceClosure on_destruction)
+    : on_disconnect_(std::move(on_disconnect)),
+      on_destruction_(std::move(on_destruction)) {}
 
-FakeConnection::~FakeConnection() = default;
+FakeConnection::~FakeConnection() {
+  if (on_destruction_) {
+    std::move(on_destruction_).Run();
+  }
+}
 
-void FakeConnection::Send(proto::LegionRequest request,
+void FakeConnection::Send(proto::PrivateAiRequest request,
                           base::TimeDelta timeout,
                           OnRequestCallback callback) {
+  CHECK(callback);
   PendingRequest pending_request;
   pending_request.request = std::move(request);
   pending_request.timeout = timeout;
@@ -38,13 +47,17 @@ void FakeConnection::Send(proto::LegionRequest request,
   pending_requests_.push_back(std::move(pending_request));
 }
 
-void FakeConnection::SimulateDisconnect() {
+void FakeConnection::OnDestroy(ErrorCode error) {
   auto callbacks = std::move(pending_requests_);
   for (auto& pending_request : callbacks) {
-    std::move(pending_request.callback)
-        .Run(base::unexpected(ErrorCode::kNetworkError));
+    std::move(pending_request.callback).Run(base::unexpected(error));
   }
-  std::move(on_disconnect_).Run();
+}
+
+void FakeConnection::SimulateDisconnect() {
+  if (on_disconnect_) {
+    std::move(on_disconnect_).Run(ErrorCode::kNetworkError);
+  }
 }
 
 }  // namespace private_ai

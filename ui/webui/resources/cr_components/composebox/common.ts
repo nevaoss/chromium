@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 import {ComposeboxContextAddedMethod} from '//resources/cr_components/search/constants.js';
+import type {InputState} from '//resources/mojo/components/omnibox/composebox/composebox_query.mojom-webui.js';
 import type {UnguessableToken} from '//resources/mojo/mojo/public/mojom/base/unguessable_token.mojom-webui.js';
 import type {Url} from '//resources/mojo/url/mojom/url.mojom-webui.js';
 
@@ -28,7 +29,8 @@ export enum TabUploadOrigin {
   CONTEXT_MENU = 0,
   RECENT_TAB_CHIP = 1,
   ACTION_CHIP = 2,
-  OTHER = 3,
+  AUTO_ACTIVE = 3,
+  OTHER = 4,
 }
 
 export interface TabUpload {
@@ -83,4 +85,11 @@ export function recordContextAdditionMethod(
   recordEnumerationValue(
       'ContextualSearch.ContextAdded.ContextAddedMethod.' + composeboxSource,
       additionMethod, ComposeboxContextAddedMethod.MAX_VALUE + 1);
+}
+
+export function hasValidInputState(inputState: InputState|null): boolean {
+  return !!inputState &&
+    (inputState.allowedModels.length > 0 ||
+     inputState.allowedTools.length > 0 ||
+     inputState.allowedInputTypes.length > 0);
 }

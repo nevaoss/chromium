@@ -15,10 +15,10 @@
 #include "base/time/time.h"
 #include "chrome/browser/ui/webui/legion_internals/legion_internals.mojom.h"
 #include "components/private_ai/client.h"
-#include "components/private_ai/common/legion_logger.h"
+#include "components/private_ai/common/private_ai_logger.h"
 #include "components/private_ai/features.h"
 #include "components/private_ai/phosphor/token_manager.h"
-#include "components/private_ai/proto/legion.pb.h"
+#include "components/private_ai/proto/private_ai.pb.h"
 #include "content/public/browser/network_service_instance.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "services/network/public/mojom/network_context.mojom.h"
@@ -47,13 +47,15 @@ void LegionInternalsPageHandler::SetPage(
 
 void LegionInternalsPageHandler::Connect(const std::string& url,
                                          const std::string& api_key,
+                                         const std::string& proxy_url,
+                                         bool use_token_attestation,
                                          ConnectCallback callback) {
   webui_client_ = private_ai::Client::Create(
-      url, api_key, private_ai::kLegionProxyServerUrl.Get(), network_context_,
+      url, api_key, proxy_url, use_token_attestation, network_context_,
       token_manager_, content::GetNetworkService(),
-      std::make_unique<private_ai::LegionLogger>());
+      std::make_unique<private_ai::PrivateAiLogger>());
   scoped_logger_observations_.AddObservation(webui_client_->GetLogger());
-  webui_client_->EstablishSession(base::DoNothing());
+  webui_client_->EstablishConnection();
   std::move(callback).Run();
 }
 

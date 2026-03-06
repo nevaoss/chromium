@@ -407,7 +407,8 @@ void ContextualSearchboxHandler::AddFileContext(
   // TODO(crbug.com/483526904): Return synchronous error in the callback.
   if (!contextual_search::ContextualSearchService::IsContextSharingEnabled(
           profile_->GetPrefs())) {
-    std::move(callback).Run(std::nullopt);
+    std::move(callback).Run(base::unexpected(
+        contextual_search::FileUploadErrorType::kBrowserProcessingError));
     return;
   }
 
@@ -419,7 +420,7 @@ void ContextualSearchboxHandler::AddFileContext(
     // listening for file upload updates.
     // TODO(crbug.com/477324337): Consider calling this callback elsewhere in
     // the flow.
-    std::move(callback).Run(context_token);
+    std::move(callback).Run(base::ok(context_token));
     contextual_session_handle->StartFileContextUploadFlow(
         context_token, file_info_mojom->file_name, file_info_mojom->mime_type,
         std::move(file_bytes), CreateImageEncodingOptions());
@@ -435,7 +436,8 @@ void ContextualSearchboxHandler::AddFileContextFromBrowser(
   // TODO(crbug.com/483526904): Return synchronous error in the callback.
   if (!contextual_search::ContextualSearchService::IsContextSharingEnabled(
           profile_->GetPrefs())) {
-    std::move(callback).Run(std::nullopt);
+    std::move(callback).Run(base::unexpected(
+        contextual_search::FileUploadErrorType::kBrowserProcessingError));
     return;
   }
 
@@ -446,7 +448,7 @@ void ContextualSearchboxHandler::AddFileContextFromBrowser(
     // listening for file upload updates.
     // TODO(crbug.com/477324337): Consider calling this callback elsewhere in
     // the flow.
-    std::move(callback).Run(context_token);
+    std::move(callback).Run(base::ok(context_token));
     contextual_session_handle->StartFileContextUploadFlow(
         context_token, file_name, mime_type, std::move(file_bytes),
         std::move(image_encoding_options));
@@ -581,7 +583,8 @@ void ContextualSearchboxHandler::InitializeInputStateModel() {
     const omnibox::SearchboxConfig* config_ptr =
         service ? service->GetSearchboxConfig() : nullptr;
     input_state_model_ = std::make_unique<contextual_search::InputStateModel>(
-        *session_handle, config_ptr ? *config_ptr : omnibox::SearchboxConfig());
+        *session_handle, config_ptr ? *config_ptr : omnibox::SearchboxConfig(),
+        profile_ ? profile_->IsOffTheRecord() : false);
     if (profile_) {
       input_state_model_->SetPrefService(profile_->GetPrefs());
     }
@@ -772,6 +775,7 @@ void ContextualSearchboxHandler::ComputeAndOpenQueryUrl(
 
     if (input_state_model_) {
       for (auto const& [key, val] :
+           // Appends url params for tool and model selection.
            input_state_model_->GetAdditionalQueryParams()) {
         additional_params[key] = val;
       }
@@ -787,7 +791,6 @@ void ContextualSearchboxHandler::ComputeAndOpenQueryUrl(
     search_url_request_info->query_text = query_text;
     search_url_request_info->additional_params = additional_params;
     search_url_request_info->aim_entry_point = aim_entry_point;
-    search_url_request_info->active_model = GetInputState().active_model;
 
     contextual_session_handle->CreateSearchUrl(
         std::move(search_url_request_info),

@@ -12,13 +12,13 @@
 #include "base/functional/callback_helpers.h"
 #include "base/logging.h"
 #include "components/private_ai/connection.h"
-#include "components/private_ai/proto/legion.pb.h"
+#include "components/private_ai/proto/private_ai.pb.h"
 
 namespace private_ai {
 
 ConnectionBasic::ConnectionBasic(
     std::unique_ptr<SecureChannel::Factory> secure_channel_factory,
-    base::OnceClosure on_disconnect)
+    base::OnceCallback<void(ErrorCode)> on_disconnect)
     : on_disconnect_(std::move(on_disconnect)) {
   CHECK(secure_channel_factory);
   CHECK(on_disconnect_);
@@ -30,7 +30,7 @@ ConnectionBasic::ConnectionBasic(
 
 ConnectionBasic::~ConnectionBasic() = default;
 
-void ConnectionBasic::Send(proto::LegionRequest request,
+void ConnectionBasic::Send(proto::PrivateAiRequest request,
                            base::TimeDelta timeout,
                            OnRequestCallback callback) {
   // Indicates that `secure_channel_` is already closed.
@@ -51,7 +51,14 @@ void ConnectionBasic::Send(proto::LegionRequest request,
           Request(serialized_request.begin(), serialized_request.end()))) {
     // The channel is in a permanent failure state.
     DVLOG(1) << "Secure channel write failed.";
-    HandleDisconnect(ErrorCode::kError);
+    CallOnDisconnect(ErrorCode::kError);
+  }
+}
+
+void ConnectionBasic::OnDestroy(ErrorCode error) {
+  auto pending_requests = std::move(pending_request_callbacks_);
+  for (auto& pending_request : pending_requests) {
+    std::move(pending_request.second).Run(base::unexpected(error));
   }
 }
 
@@ -59,22 +66,22 @@ void ConnectionBasic::OnResponseReceived(
     base::expected<Response, ErrorCode> result) {
   if (!result.has_value()) {
     DVLOG(1) << "Secure channel returned an error.";
-    HandleDisconnect(result.error());
+    CallOnDisconnect(result.error());
     return;
   }
 
-  proto::LegionResponse legion_response;
+  proto::PrivateAiResponse legion_response;
   if (!legion_response.ParseFromArray(result->data(), result->size())) {
-    LOG(ERROR) << "Failed to parse LegionResponse";
+    LOG(ERROR) << "Failed to parse PrivateAiResponse";
     // This is a protocol error. We don't know which request this response was
     // for, so we fail all of them.
-    HandleDisconnect(ErrorCode::kResponseParseError);
+    CallOnDisconnect(ErrorCode::kResponseParseError);
     return;
   }
 
   auto it = pending_request_callbacks_.find(legion_response.request_id());
   if (it == pending_request_callbacks_.end()) {
-    LOG(ERROR) << "Received LegionResponse for unknown request_id: "
+    LOG(ERROR) << "Received PrivateAiResponse for unknown request_id: "
                << legion_response.request_id();
     return;
   }
@@ -85,14 +92,9 @@ void ConnectionBasic::OnResponseReceived(
   std::move(callback).Run(std::move(legion_response));
 }
 
-void ConnectionBasic::HandleDisconnect(ErrorCode error_code) {
-  auto pending_requests = std::move(pending_request_callbacks_);
-  for (auto& pending_request : pending_requests) {
-    std::move(pending_request.second).Run(base::unexpected(error_code));
-  }
-
+void ConnectionBasic::CallOnDisconnect(ErrorCode error_code) {
   if (on_disconnect_) {
-    std::move(on_disconnect_).Run();
+    std::move(on_disconnect_).Run(error_code);
   }
 }
 

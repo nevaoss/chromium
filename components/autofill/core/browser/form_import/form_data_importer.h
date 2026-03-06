@@ -50,10 +50,6 @@ class FormDataImporter : public history::HistoryServiceObserver {
                                 bool payment_methods_autofill_enabled,
                                 ukm::SourceId ukm_source_id);
 
-  // Extracts credit card from the form structure.
-  payments::PaymentsFormDataImporter::ExtractCreditCardFromFormResult
-  ExtractCreditCardFromForm(const FormStructure& form);
-
   CreditCardSaveManager* GetCreditCardSaveManager() {
     return credit_card_save_manager_.get();
   }
@@ -104,26 +100,6 @@ class FormDataImporter : public history::HistoryServiceObserver {
                                     bool profile_autofill_enabled,
                                     bool payment_methods_autofill_enabled);
 
-  // Returns the extracted card if one was found in the form.
-  //
-  // The returned card is, unless nullopt,
-  // - a matching server card, if any match is found, or
-  // - the candidate input card, augmented with a matching local card's nickname
-  //   if such any match is found.
-  // It is nullopt under the following conditions:
-  // - if the card number is invalid;
-  // - if the card is a known virtual card;
-  // - if a card matches but the extracted card has no expiration date.
-  //
-  // The function has two side-effects:
-  // - all matching local cards are updated to include the information from the
-  //   extracted card;
-  // - `credit_card_import_type_` is set to
-  //   - SERVER_CARD if a server card matches;
-  //   - LOCAL_CARD if a local and no server card matches;
-  //   - NEW_CARD otherwise.
-  std::optional<CreditCard> ExtractCreditCard(const FormStructure& form);
-
   // Returns an existing server card based on the following criteria:
   // - If `candidate` compares with a full server card, this function returns
   //   the existing full server card which has the same full card number as
@@ -139,19 +115,6 @@ class FormDataImporter : public history::HistoryServiceObserver {
   //   the `candidate` does not have expiration date.
   std::optional<CreditCard> TryMatchingExistingServerCard(
       const CreditCard& candidate);
-
-  // Tries to initiate the saving of the `extracted_credit_card` if applicable.
-  // `submitted_form` is the form from which the card was
-  // imported. `is_credit_card_upstream_enabled` indicates if server card
-  // storage is enabled. Returns true if a save is initiated.
-  bool ProcessExtractedCreditCard(
-      const FormStructure& submitted_form,
-      const std::optional<CreditCard>& extracted_credit_card,
-      bool is_credit_card_upstream_enabled,
-      ukm::SourceId ukm_source_id);
-
-  // Helper function which extracts the IBAN from the form structure.
-  Iban ExtractIbanFromForm(const FormStructure& form);
 
   PaymentsDataManager& payments_data_manager();
 

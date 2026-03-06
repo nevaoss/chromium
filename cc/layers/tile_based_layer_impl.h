@@ -106,6 +106,10 @@ class CC_EXPORT TileBasedLayerImpl : public LayerImpl {
   virtual void ComputeCheckerboardedNeedsRecord(
       AppendQuadsData* append_quads_data) = 0;
 
+  // Called just before starting the loop appending quads to allow subclasses to
+  // do any desired setup.
+  virtual void WillAppendQuads() {}
+
   // Called when AppendQuads() goes through a flow for which behavior is
   // subclass-specific (i.e., not defined in TileBasedLayerImpl::AppendQuads()
   // itself). `quad_offset` is the offset by which appended quads should be
@@ -115,13 +119,15 @@ class CC_EXPORT TileBasedLayerImpl : public LayerImpl {
   // into this method to allow implementations to operate on the original state
   // (e.g., to locate tiles in layer space). However, it will be properly
   // adjusted before AppendQuads() returns to the caller.
-  virtual int AppendQuadsSpecialization(const AppendQuadsContext& context,
-                                        viz::CompositorRenderPass* render_pass,
-                                        AppendQuadsData* append_quads_data,
-                                        viz::SharedQuadState* shared_quad_state,
-                                        const Occlusion& scaled_occlusion,
-                                        const gfx::Vector2d& quad_offset,
-                                        float max_contents_scale) = 0;
+  virtual int AppendQuadsSpecialization(
+      const AppendQuadsContext& context,
+      viz::CompositorRenderPass* render_pass,
+      AppendQuadsData* append_quads_data,
+      viz::SharedQuadState* shared_quad_state,
+      const Occlusion& scaled_occlusion,
+      const gfx::Vector2d& quad_offset,
+      const std::optional<gfx::Rect>& scaled_cull_rect,
+      float max_contents_scale) = 0;
 
   virtual float GetMaximumContentsScaleForUseInAppendQuads() const = 0;
 
@@ -296,9 +302,12 @@ void TileBasedLayerImpl<Tiling>::AppendQuads(
 
   ComputeCheckerboardedNeedsRecord(append_quads_data);
 
+  WillAppendQuads();
+
   int missing_tile_count = AppendQuadsSpecialization(
       context, render_pass, append_quads_data, shared_quad_state,
-      scaled_occlusion, quad_offset, max_contents_scale);
+      scaled_occlusion, quad_offset,
+      CalculateScaledCullRect(max_contents_scale), max_contents_scale);
 
   if (missing_tile_count) {
     append_quads_data->num_missing_tiles += missing_tile_count;

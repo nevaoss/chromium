@@ -8,8 +8,8 @@
 #include "base/test/scoped_feature_list.h"
 #include "chrome/browser/actor/actor_test_util.h"
 #include "chrome/browser/glic/test_support/glic_functional_browsertest.h"
+#include "chrome/browser/page_content_annotations/multi_source_page_context_fetcher.h"
 #include "chrome/common/actor_webui.mojom.h"
-#include "content/public/test/browser_test_utils.h"
 
 namespace glic::actor {
 
@@ -18,6 +18,23 @@ using ::actor::TaskId;
 using ::base::test::TestFuture;
 using ::optimization_guide::proto::Actions;
 using ::optimization_guide::proto::ActionsResult;
+using ::optimization_guide::proto::TabObservation;
+using ::page_content_annotations::FetchPageContextResult;
+
+MATCHER_P(HasResultCode, expected_code, "") {
+  return arg.action_result() == static_cast<int32_t>(expected_code);
+}
+
+// Helper to mock the result returned on a TabObservation built using
+// actor::BuildActionsResultWithObservations. While live, use the provided
+// function to set TabObservationResults. Unset on destruction.
+class ScopedMockTabObservationResult {
+ public:
+  explicit ScopedMockTabObservationResult(
+      base::RepeatingCallback<void(TabObservation*,
+                                   const FetchPageContextResult&)> callback);
+  ~ScopedMockTabObservationResult();
+};
 
 // Helper class that utilizes content::DOMMessageQueue to capture the result of
 // an asynchronous PerformActions call. It listens for messages sent via
@@ -44,6 +61,8 @@ class GlicActorFunctionalBrowserTestBase
   ~GlicActorFunctionalBrowserTestBase() override;
 
  protected:
+  void SetUpOnMainThread() override;
+
   ::actor::ActorKeyedService* actor_keyed_service();
 
   // Helper that sets a future if an ActorTask with `task_id` enters a completed

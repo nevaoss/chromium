@@ -15,7 +15,7 @@
 #include "base/time/time.h"
 #include "components/private_ai/connection.h"
 #include "components/private_ai/phosphor/data_types.h"
-#include "components/private_ai/proto/legion.pb.h"
+#include "components/private_ai/proto/private_ai.pb.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "services/network/public/mojom/network_context.mojom.h"
 #include "url/gurl.h"
@@ -46,20 +46,22 @@ class ConnectionProxy : public Connection {
                   phosphor::TokenManager* token_manager,
                   network::mojom::NetworkService* network_service,
                   InnerConnectionFactory inner_connection_factory,
-                  base::OnceClosure on_disconnect);
+                  base::OnceCallback<void(ErrorCode)> on_disconnect);
   ~ConnectionProxy() override;
 
   ConnectionProxy(const ConnectionProxy&) = delete;
   ConnectionProxy& operator=(const ConnectionProxy&) = delete;
 
   // Connection override:
-  void Send(proto::LegionRequest request,
+  void Send(proto::PrivateAiRequest request,
             base::TimeDelta timeout,
             OnRequestCallback callback) override;
 
+  void OnDestroy(ErrorCode error) override;
+
  private:
   struct PendingRequest {
-    PendingRequest(proto::LegionRequest request,
+    PendingRequest(proto::PrivateAiRequest request,
                    base::TimeDelta timeout,
                    OnRequestCallback callback);
     ~PendingRequest();
@@ -67,19 +69,19 @@ class ConnectionProxy : public Connection {
     PendingRequest(PendingRequest&&);
     PendingRequest& operator=(PendingRequest&&);
 
-    proto::LegionRequest request;
+    proto::PrivateAiRequest request;
     base::TimeDelta timeout;
     OnRequestCallback callback;
   };
 
   void OnProxyToken(std::optional<phosphor::BlindSignedAuthToken> auth_token);
-  void FailPendingRequestsAndDisconnect();
+  void CallOnDisconnect(ErrorCode error_code);
 
   const GURL proxy_url_;
   raw_ptr<phosphor::TokenManager> token_manager_;
   raw_ptr<network::mojom::NetworkService> network_service_;
   InnerConnectionFactory inner_connection_factory_;
-  base::OnceClosure on_disconnect_;
+  base::OnceCallback<void(ErrorCode)> on_disconnect_;
 
   mojo::Remote<network::mojom::NetworkContext> proxied_context_;
   std::unique_ptr<Connection> inner_connection_;

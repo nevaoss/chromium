@@ -28,7 +28,8 @@ class PLATFORM_EXPORT CanvasNon2DSnapshotProviderBitmap
   static scoped_refptr<StaticBitmapImage> DoExternalDrawAndSnapshot(
       const CanvasSnapshotProvider::Info& info,
       base::FunctionRef<void(cc::PaintCanvas&)> draw_callback,
-      ImageOrientation orientation);
+      ImageOrientation orientation,
+      sk_sp<SkSurface> client_provided_surface = nullptr);
 
   // CanvasSnapshotProvider:
   bool IsGpuContextLost() const override;
@@ -42,6 +43,10 @@ class PLATFORM_EXPORT CanvasNon2DSnapshotProviderBitmap
   SkAlphaType GetAlphaType() const override { return info_.alpha_type; }
   gfx::Size Size() const override { return info_.size; }
   const CanvasSnapshotProvider::Info& Info() const { return info_; }
+
+  static sk_sp<SkSurface> CreateSurface(
+      const CanvasSnapshotProvider::Info& info);
+  sk_sp<SkSurface> GetCachedSurface();
 
  private:
   explicit CanvasNon2DSnapshotProviderBitmap(
@@ -64,6 +69,7 @@ class PLATFORM_EXPORT CanvasNon2DSnapshotProviderBitmap
     gfx::ColorSpace color_space_;
   };
 
+  sk_sp<SkSurface> surface_;
   const CanvasSnapshotProvider::Info info_;
 };
 

@@ -126,6 +126,7 @@ class ValuableSuggestionGeneratorTest : public testing::Test {
   AutofillClient& client() { return autofill_client_; }
   FormStructure& form() { return *form_structure_; }
   AutofillField& field() { return *form_structure_->fields().front(); }
+  FormFieldData& field_data() { return *form_structure_->fields().front(); }
   gfx::Image CustomIconForTest() { return gfx::test::CreateImage(32, 32); }
 
   TestValuablesDataManager& valuables_data_manager() {
@@ -206,7 +207,7 @@ TEST_F(ValuableSuggestionGeneratorTest,
        GetSuggestionsForLoyaltyCards_WithMatchingDomainAndFieldAutofilled) {
   test_autofill_client().set_last_committed_primary_main_frame_url(
       GURL("https://domain2.example/test"));
-  field().set_is_autofilled_according_to_renderer(true);
+  field_data().set_is_autofilled_according_to_renderer(true);
   std::vector<Suggestion> suggestions_with_matching_domain =
       GetSuggestionsForLoyaltyCards(form().ToFormData(), &form(), field(),
                                     &field(), PasswordFormClassification(),
@@ -333,10 +334,12 @@ TEST_F(ValuableSuggestionGeneratorTest,
       Suggestion(l10n_util::GetStringUTF16(IDS_AUTOFILL_MANAGE_ADDRESSES),
                  SuggestionType::kManageAddress)};
 
-  ExtendEmailSuggestionsWithLoyaltyCardSuggestions(
-      valuables_data_manager(),
-      GURL("https://common-matching-domain.example/test"),
-      /*trigger_field_is_autofilled=*/false, email_suggestions);
+  std::vector<Suggestion> loyalty_card_suggestions =
+      CreateLoyaltyCardSuggestionsForMerge(
+          valuables_data_manager(),
+          GURL("https://common-matching-domain.example/test"));
+  MergeLoyaltyCardsAndAddressSuggestions(email_suggestions,
+                                         std::move(loyalty_card_suggestions));
 
 #if BUILDFLAG(IS_ANDROID)
   EXPECT_THAT(
@@ -401,9 +404,11 @@ TEST_F(ValuableSuggestionGeneratorTest,
       Suggestion(l10n_util::GetStringUTF16(IDS_AUTOFILL_MANAGE_ADDRESSES),
                  SuggestionType::kManageAddress)};
 
-  ExtendEmailSuggestionsWithLoyaltyCardSuggestions(
-      valuables_data_manager(), GURL("https://common-domain.example/test"),
-      /*trigger_field_is_autofilled=*/false, email_suggestions);
+  std::vector<Suggestion> loyalty_card_suggestions =
+      CreateLoyaltyCardSuggestionsForMerge(
+          valuables_data_manager(), GURL("https://common-domain.example/test"));
+  MergeLoyaltyCardsAndAddressSuggestions(email_suggestions,
+                                         std::move(loyalty_card_suggestions));
 
   EXPECT_THAT(email_suggestions,
               testing::ElementsAre(
@@ -456,10 +461,12 @@ TEST_F(ValuableSuggestionGeneratorTest,
       Suggestion(l10n_util::GetStringUTF16(IDS_AUTOFILL_MANAGE_ADDRESSES),
                  SuggestionType::kManageAddress)};
 
-  ExtendEmailSuggestionsWithLoyaltyCardSuggestions(
-      valuables_data_manager(),
-      GURL("https://common-matching-domain.example/test"),
-      /*trigger_field_is_autofilled=*/true, email_suggestions);
+  std::vector<Suggestion> loyalty_card_suggestions =
+      CreateLoyaltyCardSuggestionsForMerge(
+          valuables_data_manager(),
+          GURL("https://common-matching-domain.example/test"));
+  MergeLoyaltyCardsAndAddressSuggestions(email_suggestions,
+                                         std::move(loyalty_card_suggestions));
 
 #if BUILDFLAG(IS_ANDROID)
   EXPECT_THAT(
@@ -516,8 +523,16 @@ TEST_F(ValuableSuggestionGeneratorTest,
 #endif  // BUILDFLAG(IS_ANDROID)
 }
 
+// TODO(crbug.com/431155933): Remove this test when cleaning up the feature.
+// The test is subsumed by GetSuggestionsForLoyaltyCards_SuggestionsUpdatedIPH
+// right below, whose name should be updated when cleaning up the feature.
 TEST_F(ValuableSuggestionGeneratorTest,
        GetSuggestionsForLoyaltyCards_SuggestionsIPH) {
+  base::test::ScopedFeatureList scoped_feature_list_;
+  scoped_feature_list_.InitWithFeatures(
+      /*enabled_features=*/{},
+      /*disabled_features=*/{features::kAutofillAiWalletVehicleRegistration,
+                             features::kAutofillAiWalletFlightReservation});
   test_api(valuables_data_manager()).ClearLoyaltyCards();
   test_api(valuables_data_manager())
       .AddLoyaltyCard(LoyaltyCard(

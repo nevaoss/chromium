@@ -16,7 +16,6 @@ import {ComposeboxContextAddedMethod} from '//resources/cr_components/search/con
 import type {CrIconButtonElement} from '//resources/cr_elements/cr_icon_button/cr_icon_button.js';
 import {I18nMixinLit} from '//resources/cr_elements/i18n_mixin_lit.js';
 import {assert} from '//resources/js/assert.js';
-import {EventTracker} from '//resources/js/event_tracker.js';
 import {loadTimeData} from '//resources/js/load_time_data.js';
 import type {PropertyValues} from '//resources/lit/v3_0/lit.rollup.js';
 import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
@@ -26,8 +25,8 @@ import type {InputState} from '//resources/mojo/components/omnibox/composebox/co
 import type {UnguessableToken} from '//resources/mojo/mojo/public/mojom/base/unguessable_token.mojom-webui.js';
 import type {Url} from '//resources/mojo/url/mojom/url.mojom-webui.js';
 
-import type {ComposeboxFile, ContextualUpload} from './common.js';
-import {GlifAnimationState, recordBoolean, recordContextAdditionMethod, recordEnumerationValue, recordUserAction, TabUploadOrigin} from './common.js';
+import type {ComposeboxFile, ContextualUpload, TabUpload} from './common.js';
+import {GlifAnimationState, hasValidInputState, recordBoolean, recordContextAdditionMethod, recordEnumerationValue, recordUserAction, TabUploadOrigin} from './common.js';
 import {FileUploadErrorType, FileUploadStatus, InputType, ToolMode as ComposeboxToolMode} from './composebox_query.mojom-webui.js';
 import {getCss} from './contextual_entrypoint_and_carousel.css.js';
 import {getHtml} from './contextual_entrypoint_and_carousel.html.js';
@@ -38,11 +37,9 @@ import type {RecentTabChipElement} from './recent_tab_chip.js';
 export interface ContextualEntrypointAndCarouselElement {
   $: {
     fileInput: HTMLInputElement,
-    fileUploadButton: CrIconButtonElement,
     contextEntrypoint: ContextualEntrypointAndMenuElement,
     carousel: ComposeboxFileCarouselElement,
     imageInput: HTMLInputElement,
-    imageUploadButton: CrIconButtonElement,
     recentTabChip: RecentTabChipElement,
     voiceSearchButton: CrIconButtonElement,
   };
@@ -121,7 +118,6 @@ export class ContextualEntrypointAndCarouselElement extends I18nMixinLit
       // Determines if the entrypoint button should be hidden. This applies
       // specifically to Omnibox Searchbox in compact mode, as opposed to the
       // AIM composebox where the entrypoint is always visible.
-      hideEntrypointButton: {type: Boolean},
       inComposebox: {type: Boolean},
       showModelPicker: {type: Boolean},
       fileUploadsComplete: {
@@ -140,10 +136,6 @@ export class ContextualEntrypointAndCarouselElement extends I18nMixinLit
       files_: {type: Object},
       addedTabsIds_: {type: Object},
       imageFileTypes_: {type: Array},
-      composeboxShowPdfUpload_: {
-        reflect: true,
-        type: Boolean,
-      },
       showContextMenuDescription_: {type: Boolean},
       showFileCarousel_: {
         reflect: true,
@@ -191,8 +183,6 @@ export class ContextualEntrypointAndCarouselElement extends I18nMixinLit
   protected accessor imageFileTypes_: string[] =
       loadTimeData.getString('composeboxImageFileTypes').split(',');
   protected accessor uploadButtonDisabled_: boolean = false;
-  protected accessor composeboxShowPdfUpload_: boolean =
-      loadTimeData.getBoolean('composeboxShowPdfUpload');
   protected contextMenuDescriptionEnabled_: boolean =
       loadTimeData.getBoolean('composeboxShowContextMenuDescription');
   protected accessor showContextMenuDescription_: boolean =
@@ -201,37 +191,18 @@ export class ContextualEntrypointAndCarouselElement extends I18nMixinLit
   protected accessor activeTool_: ComposeboxToolMode =
       ComposeboxToolMode.kUnspecified;
   protected accessor submitButtonShown: boolean = false;
-  protected accessor hideEntrypointButton: boolean = false;
-
-  computeUploadButtonDisabled(): boolean {
-    // If only 1 image is uploaded and the create image tool is enabled, we
-    // don't want to disable the context menu entrypoint because the user
-    // should still be able to use the tool within the context menu.
-    const isCreateImageToolAvailableWithImages = this.createImageModeEnabled_ &&
-        this.hasImageFiles() && this.files_.size === 1;
-    // Only return true if:
-    //   1. The max number of files is reached, and the create image tool button
-    //      is not available.
-    //   2. The user has an image uploaded and is in create image mode.
-    //   3. The user is in deep search mode.
-    return (this.activeTool_ === ComposeboxToolMode.kDeepSearch) ||
-        (this.files_.size >= this.maxFileCount_ &&
-         !isCreateImageToolAvailableWithImages) ||
-        (this.hasImageFiles() &&
-         this.activeTool_ === ComposeboxToolMode.kImageGen) ||
-        !this.fileUploadsComplete;
-  }
+  private automaticActiveTab_: ComposeboxFile|null = null;
 
   getActiveToolMode() {
     return this.activeTool_;
   }
 
   hasAutomaticActiveTabChipToken(): boolean {
-    return this.automaticActiveTabChipToken_ !== null;
+    return this.automaticActiveTab_ !== null;
   }
 
   getAutomaticActiveTabChipElement(): HTMLElement|null {
-    if (!this.automaticActiveTabChipToken_) {
+    if (!this.automaticActiveTab_) {
       return null;
     }
     const carousel =
@@ -241,8 +212,7 @@ export class ContextualEntrypointAndCarouselElement extends I18nMixinLit
       return null;
     }
 
-    return carousel.getThumbnailElementByUuid(
-        this.automaticActiveTabChipToken_);
+    return carousel.getThumbnailElementByUuid(this.automaticActiveTab_.uuid);
   }
 
   protected get inToolMode_(): boolean {
@@ -306,7 +276,7 @@ export class ContextualEntrypointAndCarouselElement extends I18nMixinLit
 
   protected get shouldHideEntrypointButton_(): boolean {
     return this.shouldShowContextualChipsForCompactMode_ ||
-        this.hideEntrypointButton;
+        (this.showModelPicker && !hasValidInputState(this.inputState));
   }
 
   protected shouldShowDescription_(): boolean {
@@ -336,31 +306,12 @@ export class ContextualEntrypointAndCarouselElement extends I18nMixinLit
 
   // TODO(b/481755889): Move property declarations above methods and remove
   // getters.
-  private eventTracker_: EventTracker = new EventTracker();
   private maxFileCount_: number =
       loadTimeData.getInteger('composeboxFileMaxCount');
   private maxFileSize_: number =
       loadTimeData.getInteger('composeboxFileMaxSize');
-  private createImageModeEnabled_: boolean =
-      loadTimeData.getBoolean('composeboxShowCreateImageButton');
   private composeboxSource_: string =
       loadTimeData.getString('composeboxSource');
-  private automaticActiveTabChipToken_: UnguessableToken|null = null;
-
-  override connectedCallback() {
-    super.connectedCallback();
-    this.eventTracker_.add(
-        window.matchMedia('(width <= 264px)'), 'change',
-        (e: MediaQueryListEvent) => {
-          this.showContextMenuDescription_ =
-              !e.matches && this.contextMenuDescriptionEnabled_;
-        });
-  }
-
-  override disconnectedCallback() {
-    super.disconnectedCallback();
-    this.eventTracker_.removeAll();
-  }
 
   override willUpdate(changedProperties: PropertyValues<this>) {
     super.willUpdate(changedProperties);
@@ -368,13 +319,13 @@ export class ContextualEntrypointAndCarouselElement extends I18nMixinLit
     const changedPrivateProperties =
         changedProperties as Map<PropertyKey, unknown>;
     if (changedPrivateProperties.has('fileUploadsComplete')) {
-      this.uploadButtonDisabled_ = this.computeUploadButtonDisabled();
+      this.uploadButtonDisabled_ = !this.fileUploadsComplete;
     }
     if (changedPrivateProperties.has('files_') ||
         changedPrivateProperties.has(`activeTool_`)) {
       // `uploadButtonDisabled_` decides whether or not the context menu
       // entrypoint is shown to the user.
-      this.uploadButtonDisabled_ = this.computeUploadButtonDisabled();
+      this.uploadButtonDisabled_ = !this.fileUploadsComplete;
       this.showFileCarousel_ = this.files_.size > 0;
       this.fire('on-context-files-changed', {files: this.files_.size});
     }
@@ -402,11 +353,11 @@ export class ContextualEntrypointAndCarouselElement extends I18nMixinLit
         ComposeboxContextAddedMethod.COPY_PASTE, this.composeboxSource_);
   }
 
-  blurEntrypoint() {
-    this.$.contextEntrypoint.blur();
-  }
-
   closeMenu() {
+    if (!this.showMenuOnClick) {
+      return;
+    }
+
     const entrypointAndMenu =
         this.shadowRoot.querySelector<ContextualEntrypointAndMenuElement>(
             '#contextEntrypoint');
@@ -429,16 +380,14 @@ export class ContextualEntrypointAndCarouselElement extends I18nMixinLit
             file.origin === TabUploadOrigin.CONTEXT_MENU) {
           entrypointAndMenu.openMenuForMultiSelection();
         }
-        this.addTabContext_(new CustomEvent('addTabContext', {
-          detail: {
-            id: file.tabId,
-            title: file.title,
-            url: file.url,
-            delayUpload: file.delayUpload,
-            replaceAutoActiveTabToken: false,
-            origin: file.origin,
-          },
-        }));
+        this.addTabContextHandleCallback_({
+          tabId: file.tabId,
+          title: file.title,
+          url: file.url,
+          delayUpload: file.delayUpload,
+          replaceAutoActiveTabToken: false,
+          origin: file.origin,
+        } as TabUpload);
       } else {
         dataTransfer.items.add(file.file);
       }
@@ -454,7 +403,7 @@ export class ContextualEntrypointAndCarouselElement extends I18nMixinLit
 
   updateFileStatus(
       token: UnguessableToken, status: FileUploadStatus,
-      errorType: FileUploadErrorType) {
+      errorType: FileUploadErrorType|null) {
     let errorMessage = null;
     let file = this.files_.get(token);
     if (file) {
@@ -465,21 +414,34 @@ export class ContextualEntrypointAndCarouselElement extends I18nMixinLit
             FileUploadStatus.kUploadReplaced,
           ].includes(status)) {
         this.files_.delete(token);
+
         if (file.tabId) {
           this.addedTabsIds_ = new Map([...this.addedTabsIds_.entries()].filter(
               ([id, _]) => id !== file!.tabId));
         }
         switch (status) {
           case FileUploadStatus.kValidationFailed:
-            errorMessage = this.i18n(
-                FILE_VALIDATION_ERRORS_MAP.get(errorType) ??
-                'composeboxFileUploadValidationFailed');
+            if (errorType) {
+              errorMessage = this.i18n(
+                  FILE_VALIDATION_ERRORS_MAP.get(errorType) ??
+                  'composeboxFileUploadValidationFailed');
+            } else {
+              errorMessage = this.i18n('composeboxFileUploadValidationFailed');
+            }
             break;
           case FileUploadStatus.kUploadFailed:
             errorMessage = this.i18n('composeboxFileUploadFailed');
             break;
           case FileUploadStatus.kUploadExpired:
             errorMessage = this.i18n('composeboxFileUploadExpired');
+            break;
+          case FileUploadStatus.kUploadReplaced:
+            // Update `composebox.ts` with the status since
+            // this should not return an error message for this
+            // 'non-uploaded' terminal file state, meaning
+            // its file status is still needed for understanding state
+            // when returned and back in the context of the function caller.
+            file = {...file, status: status};
             break;
           default:
             break;
@@ -572,40 +534,40 @@ export class ContextualEntrypointAndCarouselElement extends I18nMixinLit
   }
 
   updateAutoActiveTabContext(tab: TabInfo|null) {
-    const chipPresentBeforeUpdate = this.automaticActiveTabChipToken_;
-    // If there is already a suggested tab context, remove it.
-    if (this.automaticActiveTabChipToken_) {
-      this.onDeleteFile_(new CustomEvent('deleteTabContext', {
-        detail: {
-          uuid: this.automaticActiveTabChipToken_,
-        },
-      }));
-      this.automaticActiveTabChipToken_ = null;
-    }
-
-    // Only query autocomplete if we're replacing the current chip or if we're
-    // adding a new chip. Autocomplete should not be re-queried if there was no
-    // autochip to start, and the current tab cannot be added as an autochip.
-    if (!tab) {
-      if (chipPresentBeforeUpdate) {
-        this.fire('query-autocomplete', {clearMatches: true});
-      }
-    } else {
-      this.addTabContext_(new CustomEvent('addTabContext', {
-        detail: {
-          id: tab.tabId,
-          title: tab.title,
-          url: tab.url,
-          delayUpload: /*delay_upload=*/ true,
-          replaceAutoActiveTabToken: true,
-          origin: TabUploadOrigin.OTHER,
-        },
-      }));
+    const shouldDeleteAutomaticActiveTab = this.automaticActiveTab_ &&
+        (!tab || this.automaticActiveTab_.tabId !== tab.tabId);
+    if (shouldDeleteAutomaticActiveTab) {
+      this.deleteFile(this.automaticActiveTab_!.uuid);
+      this.automaticActiveTab_ = null;
 
       // TODO(crbug.com/482150500): Correctly query for url based suggestions
       // when delayed tab is present. Right now, while url-based suggestions are
       // not set-up, clear the autocomplete matches.
-      this.fire('clear-autocomplete-matches');
+      this.fire('query-autocomplete', {clearMatches: true});
+    }
+
+    if (tab) {
+      // Ignore the `TabInfo` update if there is a matching
+      // `automaticActiveTab_`.
+      if (this.automaticActiveTab_ &&
+          tab.url === this.automaticActiveTab_.url &&
+          tab.tabId === this.automaticActiveTab_.tabId) {
+        return;
+      }
+
+      this.addTabContextHandleCallback_(
+          {
+            tabId: tab.tabId,
+            title: tab.title,
+            url: tab.url,
+            delayUpload: /*delay_upload=*/ true,
+            origin: TabUploadOrigin.AUTO_ACTIVE,
+          } as TabUpload,
+          /*replaceAutoActiveTabToke=*/ true);
+
+      // Only query autocomplete if we're replacing the current chip or if we're
+      // adding a new chip.
+      this.fire('query-autocomplete', {clearMatches: true});
     }
   }
 
@@ -642,16 +604,13 @@ export class ContextualEntrypointAndCarouselElement extends I18nMixinLit
   }
 
   private addTabFromAttachment_(tabAttachment: TabAttachment) {
-    this.addTabContext_(new CustomEvent('addTabContext', {
-      detail: {
-        id: tabAttachment.tabId,
-        title: tabAttachment.title,
-        url: tabAttachment.url,
-        delayUpload: /*delay_upload=*/ false,
-        replaceAutoActiveTabToken: false,
-        origin: TabUploadOrigin.OTHER,
-      },
-    }));
+    this.addTabContextHandleCallback_({
+      tabId: tabAttachment.tabId,
+      title: tabAttachment.title,
+      url: tabAttachment.url,
+      delayUpload: /*delay_upload=*/ false,
+      origin: TabUploadOrigin.OTHER,
+    } as TabUpload);
   }
 
   addSearchContext(context: SearchContext) {
@@ -711,32 +670,36 @@ export class ContextualEntrypointAndCarouselElement extends I18nMixinLit
 
   protected onDeleteFile_(
       e: CustomEvent<{uuid: UnguessableToken, fromUserAction?: boolean}>) {
-    if (!e.detail.uuid || !this.files_.has(e.detail.uuid)) {
+    this.deleteFile(e.detail.uuid, e.detail.fromUserAction);
+  }
+
+  deleteFile(uuidToDelete: UnguessableToken, fromUserAction?: boolean) {
+    if (!uuidToDelete || !this.files_.has(uuidToDelete)) {
       return;
     }
 
-    const file = this.files_.get(e.detail.uuid);
+    const file = this.files_.get(uuidToDelete);
     if (file?.tabId) {
       this.addedTabsIds_ = new Map([...this.addedTabsIds_.entries()].filter(
           ([id, _]) => id !== file.tabId));
     }
 
     const fromAutoSuggestedChip =
-        e.detail.uuid === this.automaticActiveTabChipToken_ &&
-        (e.detail.fromUserAction === true);
+        uuidToDelete === this.automaticActiveTab_?.uuid &&
+        (fromUserAction === true);
     if (fromAutoSuggestedChip) {
       const metricName = 'ContextualSearch.UserAction.DeleteAutoSuggestedTab.' +
           this.composeboxSource_;
       recordUserAction(metricName);
       recordBoolean(metricName, true);
-      this.automaticActiveTabChipToken_ = null;
+      this.automaticActiveTab_ = null;
     }
 
     this.files_ = new Map([...this.files_.entries()].filter(
-        ([uuid, _]) => uuid !== e.detail.uuid));
+        ([uuid, _]) => uuid !== uuidToDelete));
     this.fire(
         'delete-context',
-        {uuid: e.detail.uuid, fromAutoSuggestedChip: fromAutoSuggestedChip});
+        {uuid: uuidToDelete, fromAutoSuggestedChip: fromAutoSuggestedChip});
   }
 
   private handleProcessFilesError_(error: ProcessFilesError) {
@@ -934,57 +897,55 @@ export class ContextualEntrypointAndCarouselElement extends I18nMixinLit
     });
   }
 
-  protected addTabContext_(e: CustomEvent<{
-    id: number,
-    title: string,
-    url: Url,
-    delayUpload: boolean,
-    replaceAutoActiveTabToken: boolean,
-    origin: TabUploadOrigin,
-  }>) {
-    e.stopPropagation();
-
+  private addTabContextHandleCallback_(
+      tabUpload: TabUpload, replaceAutoActiveTabToken: boolean = false) {
     this.fire('add-tab-context', {
-      id: e.detail.id,
-      title: e.detail.title,
-      url: e.detail.url,
-      delayUpload: e.detail.delayUpload,
-      origin: e.detail.origin,
+      id: tabUpload.tabId,
+      title: tabUpload.title,
+      url: tabUpload.url,
+      delayUpload: tabUpload.delayUpload,
+      origin: tabUpload.origin,
       onContextAdded: (file: ComposeboxFile) => {
         this.files_ = new Map([...this.files_.entries(), [file.uuid, file]]);
         this.addedTabsIds_ = new Map(
-            [...this.addedTabsIds_.entries(), [e.detail.id, file.uuid]]);
-        if (e.detail.replaceAutoActiveTabToken) {
-          if (this.automaticActiveTabChipToken_) {
-            this.onDeleteFile_(new CustomEvent('deleteTabContext', {
-              detail: {
-                uuid: this.automaticActiveTabChipToken_,
-              },
-            }));
-          }
-          this.automaticActiveTabChipToken_ = file.uuid;
+            [...this.addedTabsIds_.entries(), [tabUpload.tabId, file.uuid]]);
+        if (replaceAutoActiveTabToken) {
+          this.automaticActiveTab_ = Object.assign(file, {uuid: file.uuid});
         }
       },
     });
   }
 
+  protected addTabContext_(e: CustomEvent<{
+    id: number,
+    title: string,
+    url: Url,
+    delayUpload: boolean,
+    origin: TabUploadOrigin,
+  }>) {
+    this.addTabContextHandleCallback_({
+      tabId: e.detail.id,
+      title: e.detail.title,
+      url: e.detail.url,
+      delayUpload: e.detail.delayUpload,
+      origin: e.detail.origin,
+    } as TabUpload);
+  }
+
   protected openImageUpload_() {
-    if (this.entrypointName === 'ContextualTasks') {
+    if (this.entrypointName !== 'ContextualTasks') {
       // Open file dialog using top level primary window
       // in contextual tasks composebox.
-      this.fire('open-file-dialog', {isImage: true});
-    } else {
       assert(this.$.imageInput);
       this.$.imageInput.click();
     }
   }
 
   protected openFileUpload_() {
-    if (this.entrypointName === 'ContextualTasks') {
+    if (this.entrypointName !== 'ContextualTasks') {
       // Open file dialog using top level primary window
       // in contextual tasks composebox.
-      this.fire('open-file-dialog', {isImage: false});
-    } else if (this.$.fileInput) {
+      assert(this.$.fileInput);
       this.$.fileInput.click();
     }
   }

@@ -9,7 +9,6 @@
 #include "build/build_config.h"
 #include "chrome/browser/ui/tabs/features.h"
 #include "chrome/browser/ui/ui_features.h"
-#include "chrome/common/chrome_features.h"
 #include "components/omnibox/common/omnibox_features.h"
 #include "ui/base/pointer/touch_ui_controller.h"
 #include "ui/base/ui_base_features.h"
@@ -124,7 +123,7 @@ int GetLayoutConstant(LayoutConstant constant) {
       return touch_ui ? 0 : 4;
     case LayoutConstant::kToolbarIconDefaultMargin:
       return touch_ui ? 0 : 2;
-    case LayoutConstant::kToolbarStandardSpacing:
+    case LayoutConstant::kLocationBarMargin:
       return touch_ui ? 12 : 9;
     case LayoutConstant::kToolbarHeightSidePanelInset:
       return 8;

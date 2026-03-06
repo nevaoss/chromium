@@ -5,6 +5,7 @@
 #ifndef COMPONENTS_SKILLS_PUBLIC_SKILLS_METRICS_H_
 #define COMPONENTS_SKILLS_PUBLIC_SKILLS_METRICS_H_
 
+#include <cstddef>
 namespace skills {
 
 // These values are persisted to logs. Entries should not be renumbered and
@@ -19,6 +20,17 @@ enum class SkillsDialogAction {
   kMaxValue = kRefined,
 };
 // LINT.ThenChange(//tools/metrics/histograms/metadata/skills/enums.xml:SkillsDialogAction)
+
+// LINT.IfChange(SkillsFetchResult)
+enum class SkillsFetchResult {
+  kSuccess = 0,
+  kEmptyResponseBody = 1,
+  kEmptyResponseHeader = 2,
+  kProtoParseFailure = 3,
+  kNetworkError = 4,
+  kMaxValue = kNetworkError,
+};
+// LINT.ThenChange(//tools/metrics/histograms/metadata/skills/enums.xml:SkillsFetchResult)
 
 // LINT.IfChange(SkillsInvokeAction)
 enum class SkillsInvokeAction {
@@ -35,6 +47,18 @@ void RecordSkillsDialogAction(SkillsDialogAction action, bool is_edit_mode);
 
 // Records the execution of a skill and its type.
 void RecordSkillsInvokeAction(SkillsInvokeAction action);
+
+// Records the current total number of skills the user possesses.
+// This is called periodically by the SkillsMetricsProvider to capture
+// the user's status throughout the session.
+void RecordUserSkillCount(size_t skill_count);
+
+// Records the result of a first-party skill list download attempt from static
+// content server link.
+void RecordSkillsFetchResult(SkillsFetchResult result);
+
+// Records the HTTP response code received when downloading skills.
+void RecordSkillsHttpCode(int http_code);
 
 }  // namespace skills
 

@@ -55,12 +55,14 @@
 #import "ios/chrome/browser/settings/ui_bundled/password/password_checkup/password_checkup_coordinator.h"
 #import "ios/chrome/browser/settings/ui_bundled/settings_navigation_controller.h"
 #import "ios/chrome/browser/shared/coordinator/scene/scene_state.h"
+#import "ios/chrome/browser/shared/coordinator/scene/state/incognito_state.h"
 #import "ios/chrome/browser/shared/model/application_context/application_context.h"
 #import "ios/chrome/browser/shared/model/browser/browser.h"
 #import "ios/chrome/browser/shared/model/browser/browser_provider.h"
 #import "ios/chrome/browser/shared/model/browser/browser_provider_interface.h"
 #import "ios/chrome/browser/shared/model/profile/profile_ios.h"
 #import "ios/chrome/browser/shared/model/profile/profile_ios_util.h"
+#import "ios/chrome/browser/shared/model/url/chrome_url_constants.h"
 #import "ios/chrome/browser/shared/model/web_state_list/web_state_list.h"
 #import "ios/chrome/browser/shared/public/commands/bookmarks_commands.h"
 #import "ios/chrome/browser/shared/public/commands/browser_coordinator_commands.h"
@@ -77,6 +79,7 @@
 #import "ios/chrome/browser/signin/model/authentication_service_factory.h"
 #import "ios/chrome/browser/signin/model/identity_manager_factory.h"
 #import "ios/chrome/browser/signin/model/system_identity_manager.h"
+#import "ios/chrome/browser/snapshots/model/snapshot_tab_helper.h"
 #import "ios/chrome/browser/tab_switcher/ui_bundled/tab_grid/tab_grid_coordinator.h"
 #import "ios/chrome/browser/url_loading/model/scene_url_loading_service.h"
 #import "ios/chrome/browser/url_loading/model/url_loading_browser_agent.h"
@@ -225,7 +228,7 @@ void OnListFamilyMembersResponse(
                      regularBrowser:_regularBrowser.get()
                     inactiveBrowser:_inactiveBrowser.get()
                    incognitoBrowser:_incognitoBrowser];
-  _tabGridCoordinator.delegate = self.delegate;
+  _tabGridCoordinator.delegate = self.tabGridDelegate;
   [_tabGridCoordinator start];
   if (IsUseSceneViewControllerEnabled()) {
     _viewController = [[SceneViewController alloc] init];
@@ -264,11 +267,39 @@ void OnListFamilyMembersResponse(
   [self stopAssistantSheetCoordinator];
   [_tabGridCoordinator stop];
   [_appBarCoordinator stop];
-  self.delegate = nil;
+  self.UIHandler = nil;
+  self.tabGridDelegate = nil;
   self.sceneURLLoadingService = nullptr;
 }
 
 #pragma mark - Public
+
+- (void)openNonIncognitoTab:(ProceduralBlock)completion {
+  if (_regularBrowser->GetWebStateList()->GetActiveWebState()) {
+    // Reuse an existing tab, if one exists.
+    ApplicationMode mode = [self isIncognitoForced] ? ApplicationMode::INCOGNITO
+                                                    : ApplicationMode::NORMAL;
+    [self.UIHandler setCurrentInterfaceForMode:mode];
+    if (self.isTabGridActive) {
+      [self.UIHandler displayCurrentBVC:completion];
+    } else {
+      if (completion) {
+        completion();
+      }
+    }
+  } else {
+    // Open a new NTP.
+    UrlLoadParams params = UrlLoadParams::InNewTab(GURL(kChromeUINewTabURL));
+    params.web_params.transition_type = ui::PAGE_TRANSITION_TYPED;
+    ApplicationModeForTabOpening mode =
+        [self isIncognitoForced] ? ApplicationModeForTabOpening::INCOGNITO
+                                 : ApplicationModeForTabOpening::NORMAL;
+    [_tabOpener dismissModalsAndMaybeOpenSelectedTabInMode:mode
+                                         withUrlLoadParams:params
+                                            dismissOmnibox:YES
+                                                completion:completion];
+  }
+}
 
 - (void)setBrowsersFromProvider:(id<BrowserProviderInterface>)provider {
   _regularBrowser = provider.mainBrowserProvider.browser->AsWeakPtr();
@@ -534,16 +565,14 @@ void OnListFamilyMembersResponse(
 - (void)stopSettingsAnimated:(BOOL)animated
                   completion:(ProceduralBlock)completion {
   if (_settingsNavigationController) {
-    // Dismiss the view controller if it is presented.
+    // Clean-up and then dismiss the view controller if it is presented.
+    [_settingsNavigationController cleanUpSettings];
     UIViewController* presentingViewController =
         _settingsNavigationController.presentingViewController;
 
     __weak __typeof(self) weakSelf = self;
     ProceduralBlock cleanup = ^{
-      [weakSelf cleanUpSettings];
-      if (completion) {
-        completion();
-      }
+      [weakSelf stopSettingsCallbackWithCompletion:completion];
     };
 
     if (presentingViewController) {
@@ -676,7 +705,7 @@ void OnListFamilyMembersResponse(
   _assistantSheetCoordinator = [[AssistantSheetCoordinator alloc]
       initWithBaseViewController:self.activeViewController
                          browser:self.currentBrowser];
-  _assistantSheetCoordinator.mode = AssistantSheetModeGemini;
+  _assistantSheetCoordinator.mode = AssistantSheetModeAI;
   [_assistantSheetCoordinator start];
 }
 
@@ -998,6 +1027,68 @@ void OnListFamilyMembersResponse(
                        userActivity:userActivity
                             options:options
                        errorHandler:nil];
+}
+
+- (void)prepareToPresentModalWithSnackbarDismissal:(BOOL)dismissSnackbars
+                                        completion:(ProceduralBlock)completion {
+  __weak __typeof(self) weakSelf = self;
+  ProceduralBlock ensureNTP = ^{
+    [weakSelf ensureNTP];
+    completion();
+  };
+  if (self.isTabGridActive ||
+      ((self.currentBrowser->type() == Browser::Type::kIncognito) &&
+       ![self isIncognitoForced])) {
+    [self closePresentedViews:YES
+                   completion:^{
+                     [weakSelf openNonIncognitoTab:ensureNTP];
+                   }];
+    return;
+  }
+  [self dismissModalDialogsWithCompletion:ensureNTP
+                           dismissOmnibox:YES
+                         dismissSnackbars:dismissSnackbars];
+}
+
+- (void)displayTabGridInMode:(TabGridOpeningMode)mode {
+  if (self.isTabGridActive) {
+    return;
+  }
+
+  BOOL incognito = self.currentBrowser->type() == Browser::Type::kIncognito;
+  if (mode == TabGridOpeningMode::kRegular && incognito) {
+    [self.UIHandler setCurrentInterfaceForMode:ApplicationMode::NORMAL];
+  } else if (mode == TabGridOpeningMode::kIncognito && !incognito) {
+    [self.UIHandler setCurrentInterfaceForMode:ApplicationMode::INCOGNITO];
+  }
+
+  [self showTabSwitcher];
+}
+
+- (void)stopAllVoiceSearch {
+  // Stop voice search on the regular browser.
+  id<BrowserCoordinatorCommands> handler = HandlerForProtocol(
+      _regularBrowser->GetCommandDispatcher(), BrowserCoordinatorCommands);
+  [handler stopVoiceSearch];
+
+  // Stop voice search on the incognito browser.
+  handler = HandlerForProtocol(_incognitoBrowser->GetCommandDispatcher(),
+                               BrowserCoordinatorCommands);
+  [handler stopVoiceSearch];
+}
+
+- (void)setIncognitoContentVisible:(BOOL)incognitoContentVisible {
+  self.sceneState.incognitoState.incognitoContentVisible =
+      incognitoContentVisible;
+}
+
+- (void)prepareTabSwitcher {
+  web::WebState* currentWebState =
+      self.currentBrowser->GetWebStateList()->GetActiveWebState();
+  if (currentWebState) {
+    SnapshotTabHelper::FromWebState(currentWebState)
+        ->UpdateSnapshotWithCallback(nil);
+  }
 }
 
 #pragma mark - SettingsCommands
@@ -1340,8 +1431,8 @@ void OnListFamilyMembersResponse(
 
 #pragma mark - Properties
 
-- (void)setDelegate:(id<TabGridCoordinatorDelegate>)delegate {
-  _delegate = delegate;
+- (void)setTabGridDelegate:(id<TabGridCoordinatorDelegate>)delegate {
+  _tabGridDelegate = delegate;
   _tabGridCoordinator.delegate = delegate;
 }
 
@@ -1453,17 +1544,20 @@ void OnListFamilyMembersResponse(
 }
 
 - (void)settingsWasDismissed {
-  [self cleanUpSettings];
+  [_settingsNavigationController cleanUpSettings];
+  _settingsNavigationController = nil;
   [self stopPasswordCheckupCoordinator];
 }
 
 #pragma mark - Private
 
-// Calls `cleanUpSettings` on the SettingsNavigationController before setting
-// it to nil.
-- (void)cleanUpSettings {
-  [_settingsNavigationController cleanUpSettings];
+// Callbacks for `stopSettingsAnimated:completion:`. It releases the navigation
+// controller and call the completion if it is non nil.
+- (void)stopSettingsCallbackWithCompletion:(ProceduralBlock)completion {
   _settingsNavigationController = nil;
+  if (completion) {
+    completion();
+  }
 }
 
 // Returns YES if incognito mode is disabled.
@@ -1834,6 +1928,30 @@ void OnListFamilyMembersResponse(
 
   data.productSpecificData = specificProductData;
   return data;
+}
+
+// Shows the tab switcher UI.
+- (void)showTabSwitcher {
+  [self setActiveMode:TabGridMode::kNormal];
+  TabGridPage page = (self.currentBrowser->type() == Browser::Type::kIncognito)
+                         ? TabGridPageIncognitoTabs
+                         : TabGridPageRegularTabs;
+
+  [self showTabGridPage:page];
+}
+
+// Ensures that a non-incognito NTP tab is open. If incognito is forced, then
+// it will ensure an incognito NTP tab is open.
+- (void)ensureNTP {
+  // If the tab does not exist, open a new tab.
+  UrlLoadParams params = UrlLoadParams::InCurrentTab(GURL(kChromeUINewTabURL));
+  ApplicationMode mode =
+      (self.currentBrowser->type() == Browser::Type::kIncognito)
+          ? ApplicationMode::INCOGNITO
+          : ApplicationMode::NORMAL;
+  [self.UIHandler openOrReuseTabInMode:mode
+                     withUrlLoadParams:params
+                   tabOpenedCompletion:nil];
 }
 
 @end

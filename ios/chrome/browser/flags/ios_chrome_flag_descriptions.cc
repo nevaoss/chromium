@@ -33,6 +33,9 @@ const char kAIMNTPEntrypointTabletName[] = "AIMNTPEntrypointTablet";
 const char kAIMNTPEntrypointTabletDescription[] =
     "Enables the AIMNTPEntrypointTablet feature.";
 
+const char kAimCobrowseName[] = "AimCobrowse";
+const char kAimCobrowseDescription[] = "Enables the AimCobrowse feature.";
+
 const char kAnimatedDefaultBrowserPromoInFREName[] =
     "Enable the animated Default Browser Promo in the FRE";
 const char kAnimatedDefaultBrowserPromoInFREDescription[] =
@@ -259,10 +262,6 @@ const char kBestOfAppFREName[] = "Display Best of App view in the FRE";
 const char kBestOfAppFREDescription[] =
     "When enabled, displays some views during the FRE highlighting the best "
     "features in the app.";
-
-const char kBottomOmniboxEvolutionName[] = "Bottom Omnibox Evolution";
-const char kBottomOmniboxEvolutionDescription[] =
-    "Enables improvements in the bottom omnibox UX and animations.";
 
 const char kBreakpadNoDelayInitialUploadName[] =
     "Remove delay on initial crash upload";
@@ -559,6 +558,11 @@ const char kEnableFileDownloadConnectorIOSDescription[] =
     "When enabled, the enterprise DLP file download featured is available on "
     "iOS. ";
 
+const char kEnableFuseboxKeyboardAccessoryName[] =
+    "Enable Omnibox Keyboard Accessory in Fusebox";
+extern const char kEnableFuseboxKeyboardAccessoryDescription[] =
+    "Enables parts or all of omnibox keyboard accessory.";
+
 const char kEnableLensInOmniboxCopiedImageName[] =
     "Enable Google Lens in the Omnibox for Copied Images";
 const char kEnableLensInOmniboxCopiedImageDescription[] =
@@ -636,6 +640,13 @@ const char kFullscreenTransitionSpeedDescription[] =
     "When enabled, the speed of the fullscreen' transition is "
     "increased-decreased.";
 
+const char kGeminiActorName[] = "Gemini Actor";
+const char kGeminiActorDescription[] = "Enables the Gemini Actor.";
+
+const char kGeminiBackendMigrationName[] = "Gemini Backend Migration";
+const char kGeminiBackendMigrationDescription[] =
+    "Enables the backend migration for Gemini.";
+
 const char kGeminiCopresenceName[] = "Gemini Copresence";
 const char kGeminiCopresenceDescription[] =
     "Enables the Gemini Copresence feature, which provides a persistent Gemini "
@@ -652,10 +663,6 @@ const char kGeminiFullChatHistoryDescription[] =
 const char kGeminiImageRemixToolName[] = "Gemini Image Remix Tool";
 const char kGeminiImageRemixToolDescription[] =
     "Enables the image remix tool in the Gemini floaty.";
-
-const char kGeminiImmediateOverlayName[] = "GeminiImmediateOverlay";
-const char kGeminiImmediateOverlayDescription[] =
-    "Enables immediate access to Gemini in the page tools menu.";
 
 const char kGeminiLatencyImprovementName[] = "GeminiLatencyImprovement";
 const char kGeminiLatencyImprovementDescription[] =
@@ -685,6 +692,10 @@ const char kGeminiResponseViewDynamicResizingName[] =
 const char kGeminiResponseViewDynamicResizingDescription[] =
     "Enables dynamic resizing for the Gemini response view.";
 
+const char kGeminiRichAPCExtractionName[] = "Gemini Rich APC Extraction";
+const char kGeminiRichAPCExtractionDescription[] =
+    "Enables rich APC extraction for Gemini.";
+
 const char kGeminiUpdatedEligibilityName[] = "Gemini Updated Eligibility";
 const char kGeminiUpdatedEligibilityDescription[] =
     "Enables the updated eligibility checks for Gemini users.";
@@ -693,6 +704,11 @@ const char kHandleMdmErrorsForDasherAccountsName[] =
     "Mdm error handling for dasher accounts";
 const char kHandleMdmErrorsForDasherAccountsDescription[] =
     "Enables the mdm error handling feature for dasher accounts";
+
+const char kHideFuseboxVoiceLensActionsName[] =
+    "Hide Voice and Lens in Fusebox";
+const char kHideFuseboxVoiceLensActionsDescription[] =
+    "Hides voice and lens shortcuts in fusebox.";
 
 const char kHideToolbarsInOverflowMenuName[] = "Hide Toolbars in Overflow menu";
 const char kHideToolbarsInOverflowMenuDescription[] =
@@ -862,6 +878,11 @@ const char kIdentityConfirmationSnackbarName[] =
     "Identity Confirmation Snackbar";
 const char kIdentityConfirmationSnackbarDescription[] =
     "When enabled, the identity confirmation snackbar will show on startup.";
+
+const char kInFlowTrustedVaultKeyRetrievalIosName[] =
+    "In-flow Trusted Vault key retrieval";
+const char kInFlowTrustedVaultKeyRetrievalIosDescription[] =
+    "Starts the key retrieval flow after offering to save a password.";
 
 const char kInProductHelpDemoModeName[] = "In-Product Help Demo Mode";
 const char kInProductHelpDemoModeDescription[] =
@@ -1432,6 +1453,12 @@ const char kSegmentationPlatformIosModuleRankerSplitBySurfaceDescription[] =
     "Enables the Magic Stack module ranking to be split by surface for "
     "engagement";
 
+const char kSendTabToSelfEnhancedHandoffName[] =
+    "Send Tab To Self enhanced handoff";
+const char kSendTabToSelfEnhancedHandoffDescription[] =
+    "Enables an enhanced version of Send Tab To Self that propagates more "
+    "information, such as form fields.";
+
 const char kSendTabToSelfIOSPushNotificationsName[] =
     "Send tab to self iOS push notifications";
 const char kSendTabToSelfIOSPushNotificationsDescription[] =
@@ -1529,6 +1556,10 @@ const char kSyncAutofillWalletCredentialDataDescription[] =
 const char kSyncSandboxName[] = "Use Chrome Sync sandbox";
 const char kSyncSandboxDescription[] =
     "Connects to the testing server for Chrome Sync.";
+
+const char kSyncThemesIosName[] = "Enable Sync Themes on iOS";
+const char kSyncThemesIosDescription[] =
+    "Enables syncing of themes across iOS devices.";
 
 const char kSyncTrustedVaultInfobarMessageImprovementsName[] =
     "Trusted vault infobar message improvements";

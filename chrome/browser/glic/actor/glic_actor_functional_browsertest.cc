@@ -7,9 +7,23 @@
 #include "base/base64.h"
 #include "base/json/json_reader.h"
 #include "base/json/json_writer.h"
+#include "base/test/bind.h"
 #include "chrome/browser/actor/actor_features.h"
+#include "chrome/browser/actor/actor_proto_conversion.h"
 
 namespace glic::actor {
+
+ScopedMockTabObservationResult::ScopedMockTabObservationResult(
+    base::RepeatingCallback<void(TabObservation*,
+                                 const FetchPageContextResult&)> callback) {
+  ::actor::SetTabObservationResultOverrideForTesting(callback);
+}
+
+ScopedMockTabObservationResult::~ScopedMockTabObservationResult() {
+  ::actor::SetTabObservationResultOverrideForTesting(
+      base::RepeatingCallback<void(TabObservation*,
+                                   const FetchPageContextResult&)>());
+}
 
 AsyncActionWaiter::AsyncActionWaiter(content::RenderFrameHost* rfh,
                                      std::string request_id)
@@ -71,6 +85,11 @@ GlicActorFunctionalBrowserTestBase::~GlicActorFunctionalBrowserTestBase() =
 ::actor::ActorKeyedService*
 GlicActorFunctionalBrowserTestBase::actor_keyed_service() {
   return ::actor::ActorKeyedService::Get(browser()->profile());
+}
+
+void GlicActorFunctionalBrowserTestBase::SetUpOnMainThread() {
+  GlicFunctionalBrowserTestBase::SetUpOnMainThread();
+  RunTestSequence(OpenGlic());
 }
 
 base::CallbackListSubscription

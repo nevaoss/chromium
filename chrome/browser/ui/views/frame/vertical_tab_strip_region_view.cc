@@ -15,6 +15,7 @@
 #include "base/metrics/user_metrics.h"
 #include "base/metrics/user_metrics_action.h"
 #include "base/notimplemented.h"
+#include "chrome/browser/ui/actions/chrome_action_id.h"
 #include "chrome/browser/ui/browser_actions.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
@@ -69,6 +70,7 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
     : browser_view_(browser_view),
       tab_strip_model_(browser_view->browser()->GetTabStripModel()),
       state_controller_(state_controller),
+      root_action_item_(root_action_item),
       hover_card_controller_(
           std::make_unique<TabHoverCardController>(this,
                                                    browser_view->browser())),
@@ -367,24 +369,56 @@ void VerticalTabStripRegionView::OnTabGroupFocusChanged(
     std::optional<tab_groups::TabGroupId> old_focused_group_id) {
   top_button_container_->GetUnfocusButton()->SetVisible(
       new_focused_group_id.has_value());
+  // Temporarily, we are updating the visibility of the collapse action to be
+  // inverse to the unfocus button because of horizontal space constraints in
+  // the top container.
+  actions::ActionItem* collapse_action =
+      actions::ActionManager::Get().FindAction(kActionToggleCollapseVertical,
+                                               root_action_item_);
+  collapse_action->SetVisible(!new_focused_group_id.has_value());
 }
 
 TabDragContext* VerticalTabStripRegionView::GetDragContext() {
   return drag_handler_->GetDragContext();
 }
 
-std::optional<BrowserRootView::DropIndex>
-VerticalTabStripRegionView::GetDropIndex(const ui::DropTargetEvent& event) {
-  return std::nullopt;
-}
-
 BrowserRootView::DropTarget* VerticalTabStripRegionView::GetDropTarget(
     gfx::Point loc_in_local_coords) {
+  if (tab_strip_view_) {
+    if (tab_strip_view_->bounds().Contains(loc_in_local_coords)) {
+      return this;
+    }
+  }
   return nullptr;
 }
 
 views::View* VerticalTabStripRegionView::GetViewForDrop() {
-  return nullptr;
+  return this;
+}
+
+std::optional<BrowserRootView::DropIndex>
+VerticalTabStripRegionView::GetDropIndex(const ui::DropTargetEvent& event) {
+  // Check unpinned tabs.
+  VerticalUnpinnedTabContainerView* unpinned_container =
+      GetUnpinnedTabsContainer();
+  if (unpinned_container) {
+    gfx::Point loc_in_unpinned = views::View::ConvertPointToTarget(
+        this, unpinned_container, event.location());
+    if (loc_in_unpinned.y() >= 0 &&
+        loc_in_unpinned.y() < unpinned_container->height()) {
+      return unpinned_container->GetLinkDropIndex(loc_in_unpinned);
+    }
+  }
+
+  // If it's between containers or at the end, return the end of the unpinned
+  // container.
+  if (unpinned_container) {
+    return unpinned_container->GetLinkDropIndex(
+        gfx::Point(0, unpinned_container->height()));
+  }
+
+  // TODO(crbug.com/485262103): Handle dragging over pinned tabs.
+  return std::nullopt;
 }
 
 void VerticalTabStripRegionView::SetTabStripObserver(

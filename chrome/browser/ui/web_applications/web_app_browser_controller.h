@@ -177,6 +177,7 @@ class WebAppBrowserController : public AppBrowserController,
   void CreateMetadataAndTriggerAppUpdateDialog(
       base::TimeTicks start_time) const;
   void CreateMetadataAndTriggerAppMigrationDialog(
+      bool is_forced_migration_on_startup,
       base::TimeTicks start_time) const;
   void OnMetadataObtainedTriggerUpdateDialog(
       base::TimeTicks start_time,
@@ -185,7 +186,8 @@ class WebAppBrowserController : public AppBrowserController,
       base::TimeTicks start_time,
       std::optional<WebAppIdentityUpdate> identity_update) const;
   void OnUpdateDialogResult(WebAppIdentityUpdateResult result) const;
-  void OnMigrationDialogResult(WebAppIdentityUpdateResult result) const;
+  void OnMigrationDialogResult(bool is_forced_migration,
+                               WebAppIdentityUpdateResult result) const;
 
 #if BUILDFLAG(IS_CHROMEOS)
   void CheckDigitalAssetLinkRelationshipForAndroidApp(

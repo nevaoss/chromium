@@ -14,7 +14,9 @@ import {assert} from '//resources/js/assert.js';
 import {EventTracker} from '//resources/js/event_tracker.js';
 import {loadTimeData} from '//resources/js/load_time_data.js';
 import type {AutocompleteMatch, AutocompleteResult, PageCallbackRouter as SearchboxPageCallbackRouter} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import type {PageHandlerRemote} from '//resources/cr_components/composebox/composebox.mojom-webui.js';
 import {ToolMode} from '//resources/mojo/components/omnibox/composebox/composebox_query.mojom-webui.js';
+import type {UnguessableToken} from '//resources/mojo/mojo/public/mojom/base/unguessable_token.mojom-webui.js';
 import {CrLitElement} from 'chrome://resources/lit/v3_0/lit.rollup.js';
 import type {PropertyValues} from 'chrome://resources/lit/v3_0/lit.rollup.js';
 
@@ -77,6 +79,10 @@ export class ContextualTasksComposeboxElement extends CrLitElement {
         type: Boolean,
         reflect: true,
       },
+      isLensOverlayShowing: {
+        type: Boolean,
+        reflect: true,
+      },
       composeboxHeight_: {type: Number},
       composeboxDropdownHeight_: {type: Number},
       isComposeboxFocused_: {
@@ -110,6 +116,7 @@ export class ContextualTasksComposeboxElement extends CrLitElement {
   accessor enableNativeZeroStateSuggestions: boolean = false;
   accessor isZeroState: boolean = false;
   accessor isSidePanel: boolean = false;
+  accessor isLensOverlayShowing: boolean = false;
   accessor inputEnabled: boolean = true;
   accessor forcedComposeboxBounds: Rect|null = null;
 
@@ -135,6 +142,7 @@ export class ContextualTasksComposeboxElement extends CrLitElement {
       loadTimeData.getBoolean('showOnboardingTooltip');
   protected accessor activeToolMode_: ToolMode = ToolMode.kUnspecified;
   private eventTracker_: EventTracker = new EventTracker();
+  private pageHandler_: PageHandlerRemote;
   private searchboxCallbackRouter_: SearchboxPageCallbackRouter;
   private searchboxListenerIds_: number[] = [];
   private onboardingTooltipIsVisible_: boolean = false;
@@ -151,6 +159,7 @@ export class ContextualTasksComposeboxElement extends CrLitElement {
 
   constructor() {
     super();
+    this.pageHandler_ = ComposeboxProxyImpl.getInstance().handler;
     this.searchboxCallbackRouter_ =
         ComposeboxProxyImpl.getInstance().searchboxCallbackRouter;
   }
@@ -267,15 +276,23 @@ export class ContextualTasksComposeboxElement extends CrLitElement {
     return this.isSidePanel && this.activeToolMode_ !== ToolMode.kDeepSearch;
   }
 
+  protected getInputPlaceholder_() {
+    return this.isLensOverlayShowing ?
+        loadTimeData.getString('composeboxHintTextLensOverlay') :
+        '';
+  }
+
   protected getComposeboxBoundsStyles_() {
     if (this.isZeroState || !this.forcedComposeboxBounds) {
       return '';
     }
     // Do not set height, since the expanding of the composebox is dynamic.
+    // Set the bottom of the rect instead of the top to allow the composebox to
+    // expand upwards.
     const rect = this.forcedComposeboxBounds;
     const style: string[] = [
       `position: fixed;`,
-      `top: ${rect.top}px;`,
+      `bottom: ${window.innerHeight - rect.bottom}px;`,
       `left: ${rect.left}px;`,
       `width: ${rect.width}px;`,
       `margin: 0;`,
@@ -368,6 +385,14 @@ export class ContextualTasksComposeboxElement extends CrLitElement {
     composebox.animationState = GlowAnimationState.EXPANDING;
   }
 
+  protected handleImageUpload_() {
+    this.pageHandler_.handleFileUpload(true);
+  }
+
+  protected handleFileUpload_() {
+    this.pageHandler_.handleFileUpload(false);
+  }
+
   private startObservingResize_(target: Element|null) {
     if (this.resizeObserver_) {
       this.resizeObserver_.disconnect();
@@ -389,6 +414,14 @@ export class ContextualTasksComposeboxElement extends CrLitElement {
       this.resizeObserver_.disconnect();
       this.resizeObserver_ = null;
     }
+  }
+
+  injectInput(title: string, thumbnail: string, fileToken: UnguessableToken) {
+    this.$.composebox.injectInput(title, thumbnail, fileToken);
+  }
+
+  deleteFile(fileToken: UnguessableToken) {
+    this.$.composebox.deleteFile(fileToken);
   }
 
   get isComposeboxFocusedForTesting() {

@@ -20,6 +20,7 @@
 #include "chrome/browser/ui/views/tabs/tab_slot_view.h"
 #include "chrome/browser/ui/views/tabs/tab_strip_types.h"
 #include "chrome/browser/ui/views/tabs/vertical/tab_collection_node.h"
+#include "chrome/browser/ui/views/tabs/vertical/vertical_tab_link_drop_handler.h"
 #include "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_controller.h"
 #include "components/tab_groups/tab_group_id.h"
 #include "components/tabs/public/split_tab_collection.h"
@@ -28,15 +29,24 @@
 #include "components/tabs/public/tab_group_tab_collection.h"
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/web_contents.h"
+#include "ui/base/class_property.h"
 #include "ui/base/clipboard/clipboard_constants.h"
 #include "ui/base/dragdrop/drag_drop_types.h"
 #include "ui/base/dragdrop/os_exchange_data.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/base/models/list_selection_model.h"
 #include "ui/compositor/layer.h"
+#include "ui/gfx/geometry/point.h"
+#include "ui/gfx/geometry/vector2d.h"
 #include "ui/views/view_utils.h"
 
+DEFINE_UI_CLASS_PROPERTY_TYPE(gfx::Vector2d*)
+
 namespace {
+
+// Stores the offset of the view's initial position to the target position
+// it should be, relative to the source dragged view's origin.
+DEFINE_OWNED_UI_CLASS_PROPERTY_KEY(gfx::Vector2d, kOffsetAtTabDragStart)
 
 // This is a shim around `TabCollectionNode` to make it compatible with the
 // tab dragging logic in `TabDragController`. Longer term, core tab dragging
@@ -93,7 +103,10 @@ const TabGroup& TabGroupDataFromNode(const TabCollectionNode& node) {
 VerticalTabDragHandlerImpl::VerticalTabDragHandlerImpl(
     TabStripModel& tab_strip_model,
     TabCollectionNode& root_node)
-    : tab_strip_model_(tab_strip_model), root_node_(root_node) {}
+    : tab_strip_model_(tab_strip_model),
+      root_node_(root_node),
+      link_drop_handler_(
+          std::make_unique<VerticalTabLinkDropHandler>(tab_strip_model)) {}
 
 VerticalTabDragHandlerImpl::~VerticalTabDragHandlerImpl() = default;
 
@@ -516,6 +529,26 @@ views::View* VerticalTabDragHandlerImpl::ViewFromTabSlot(
   return node.view();
 }
 
+std::optional<gfx::Vector2d>
+VerticalTabDragHandlerImpl::GetOffsetFromSourceAtDragStart(View* view) const {
+  gfx::Vector2d* offset = view->GetProperty(kOffsetAtTabDragStart);
+  return offset ? std::make_optional(*offset) : std::nullopt;
+}
+
+base::TimeTicks VerticalTabDragHandlerImpl::GetDragStartTime() const {
+  if (drag_controller_ && drag_controller_->IsActive()) {
+    return drag_start_time_;
+  }
+  return base::TimeTicks();
+}
+
+std::optional<BrowserRootView::DropIndex>
+VerticalTabDragHandlerImpl::GetLinkDropIndexForNode(
+    const TabCollectionNode& node,
+    std::optional<DragPositionHint> position_hint) const {
+  return link_drop_handler_->GetDropIndexForNode(node, position_hint);
+}
+
 bool VerticalTabDragHandlerImpl::CanAcceptEvent(const ui::Event& event) {
   // The drag context has to be able to process mouse events during the drag.
   // By default, this is predicated on visibility, but the handler should not
@@ -636,6 +669,13 @@ void VerticalTabDragHandlerImpl::DestroyDragController() {
 void VerticalTabDragHandlerImpl::StartedDragging(
     const std::vector<TabSlotView*>& views) {
   CHECK(drag_controller_);
+  drag_start_time_ = base::TimeTicks::Now();
+  auto* source_dragged_view = ViewFromTabSlot(drag_controller_->GetSessionData()
+                                                  .source_view_drag_data()
+                                                  ->attached_view);
+  CHECK(source_dragged_view);
+  gfx::Point source_view_origin_in_screen =
+      source_dragged_view->GetBoundsInScreen().origin();
 
   for (auto* view : views) {
     auto* slot_view = views::AsViewClass<VerticalTabSlotView>(view);
@@ -645,6 +685,9 @@ void VerticalTabDragHandlerImpl::StartedDragging(
     CHECK(dragged_view);
     dragged_view->SetPaintToLayer();
     dragged_view->layer()->SetFillsBoundsOpaquely(false);
+    gfx::Vector2d offset = dragged_view->GetBoundsInScreen().origin() -
+                           source_view_origin_in_screen;
+    dragged_view->SetProperty(kOffsetAtTabDragStart, offset);
 
     // Update the height to use preferred size because newly added tabs will
     // animate in from 0, which affects the window offset for newly-detached
@@ -662,6 +705,7 @@ void VerticalTabDragHandlerImpl::StoppedDragging() {
     views::View* dragged_view = ViewFromTabSlot(slot_view);
     CHECK(dragged_view);
     dragged_view->DestroyLayer();
+    dragged_view->ClearProperty(kOffsetAtTabDragStart);
   }
 
   if (!drag_controller_) {

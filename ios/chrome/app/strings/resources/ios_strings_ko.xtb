@@ -911,6 +911,7 @@
 <translation id="4405320213589929829">웹페이지의 주소를 사용하여 지역 정보와 경로를 찾습니다</translation>
 <translation id="441218095371040430">키보드 사용</translation>
 <translation id="4415276339145661267">Google 계정 관리</translation>
+<translation id="4416582610654027550">유효한 URL을 입력하세요.</translation>
 <translation id="4420409367264901497">북마크 수정</translation>
 <translation id="4425365312778464779">관리 계정임</translation>
 <translation id="4430277756566635951">현재 <ph name="EMAIL" />님이 선택되었습니다. 계정을 선택하세요.</translation>
@@ -1035,6 +1036,7 @@
 <translation id="484462545196658690">자동</translation>
 <translation id="4850886885716139402">보기</translation>
 <translation id="4854068532375923088">'Gemini'가 카메라를 사용하도록 허용</translation>
+<translation id="4860114370595561279">저장된 정보는 기기에 저장됩니다.</translation>
 <translation id="4860895144060829044">전화걸기</translation>
 <translation id="4861953997778766866">모든 사용자가 공유 탭 그룹을 변경할 수 있습니다</translation>
 <translation id="4865063548323785458">비밀번호를 저장하고 자동 완성하여 사이트 및 앱에 간편하게 로그인하세요</translation>
@@ -1404,7 +1406,6 @@ Handoff는 설정의 일반 섹션에서도 사용 설정할 수 있으며, 이�
 <translation id="6140948187512243695">세부정보 표시</translation>
 <translation id="6144589619057374135">시크릿 모드에서 ${url} 열기</translation>
 <translation id="6146563240635539929">동영상</translation>
-<translation id="6147279996212084542">설명</translation>
 <translation id="6151006591088192882"><ph name="BIOMETRIC_AUTHENITCATION_TYPE" /> 인증으로 시크릿 탭 잠금 해제</translation>
 <translation id="6152340033632117531">비활성</translation>
 <translation id="6152406514676263192">동기화하여 내 관심분야와 가장 관련성이 높은 콘텐츠를 받아보세요.</translation>
@@ -1651,7 +1652,6 @@ Handoff는 설정의 일반 섹션에서도 사용 설정할 수 있으며, 이�
 <translation id="6964300328304469089">현재 <ph name="NAME" />님(<ph name="EMAIL" />)이 선택되었습니다. 계정을 선택하세요.</translation>
 <translation id="6964760285928603117">그룹에서 삭제</translation>
 <translation id="6965382102122355670">확인</translation>
-<translation id="6967355534157677591">이미지 만들기 Pro</translation>
 <translation id="6973630695168034713">폴더</translation>
 <translation id="6979158407327259162">Google Drive</translation>
 <translation id="6979737339423435258">전체 기간</translation>
@@ -2060,6 +2060,7 @@ Handoff는 설정의 일반 섹션에서도 사용 설정할 수 있으며, 이�
 <translation id="8439758443371991593">읽기 목록에 추가 숨기기</translation>
 <translation id="8443986842926457191">URL이 2,048자(영문 기준)를 초과합니다.</translation>
 <translation id="8449869326050867919">비밀번호 공유됨</translation>
+<translation id="8473815223723723001">Gemini로 이미지 수정</translation>
 <translation id="8473863474539038330">주소 및 기타</translation>
 <translation id="8474378002946546633">알림 허용</translation>
 <translation id="8477178913400731244">데이터 삭제</translation>
@@ -2185,7 +2186,6 @@ Handoff는 설정의 일반 섹션에서도 사용 설정할 수 있으며, 이�
 <translation id="8856643812068084733">자료실</translation>
 <translation id="8863067612494559785"><ph name="DEVICE_NAME" />(으)로 전송 중…</translation>
 <translation id="8863431381414769983">Google 지도에서 경로 및 지역 정보 받기</translation>
-<translation id="8867879594900082274">이 기기의 고정된 사이트에만 수정사항이 적용됩니다.</translation>
 <translation id="8871974300055371298">콘텐츠 설정</translation>
 <translation id="8877788021141246043">알림을 설정해 줘</translation>
 <translation id="8879604564928138696">두 번 탭하여 시도하기</translation>

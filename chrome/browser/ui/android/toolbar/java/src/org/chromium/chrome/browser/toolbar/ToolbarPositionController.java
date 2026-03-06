@@ -22,6 +22,7 @@ import androidx.core.view.WindowInsetsCompat;
 
 import org.chromium.base.Callback;
 import org.chromium.base.DeviceInfo;
+import org.chromium.base.Log;
 import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.base.supplier.MonotonicObservableSupplier;
 import org.chromium.base.supplier.NonNullObservableSupplier;
@@ -53,6 +54,7 @@ import org.chromium.ui.insets.InsetObserver;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.util.function.Supplier;
 
 /** Class responsible for managing the position (top, bottom) of the browsing mode toolbar. */
 @NullMarked
@@ -110,6 +112,7 @@ public class ToolbarPositionController implements OnSharedPreferenceChangeListen
     // has not been determined yet. Prefer `isToolbarConfiguredToShowOnTop()` call when querying
     // intended placement.
     private static @Nullable Boolean sToolbarShouldShowOnTop;
+    private static final String TAG = "ToolbarPosition";
 
     private final BrowserControlsSizer mBrowserControlsSizer;
     private final NonNullObservableSupplier<Boolean> mIsNtpWithFakeboxShowingSupplier;
@@ -129,6 +132,7 @@ public class ToolbarPositionController implements OnSharedPreferenceChangeListen
     private final NonNullObservableSupplier<Integer> mControlContainerHeightSupplier;
     private final TopInsetProvider mTopInsetProvider;
     private final MonotonicObservableSupplier<Profile> mProfileSupplier;
+    private final Supplier<@Nullable Tab> mActiveTabSupplier;
     private final Handler mHandler;
     @LayerVisibility private int mLayerVisibility;
     private int mControlContainerHeight;
@@ -157,6 +161,7 @@ public class ToolbarPositionController implements OnSharedPreferenceChangeListen
     private final NonNullObservableSupplier<Integer> mKeyboardHeightSupplier;
     private final WindowAndroid mWindowAndroid;
     private final int mHairlineHeight;
+    private final boolean mEnableLogs;
 
     /**
      * @param browserControlsSizer {@link BrowserControlsSizer}, used to manipulate position of the
@@ -184,6 +189,7 @@ public class ToolbarPositionController implements OnSharedPreferenceChangeListen
      * @param topInsetProvider The {@link TopInsetProvider} instance.
      * @param controlsPosition Supplier to update whenever toolbar position changes.
      * @param profileSupplier Supplier of the currently applicable profile.
+     * @param activeTabSupplier Supplier of the currently active Tab.
      */
     public ToolbarPositionController(
             BrowserControlsSizer browserControlsSizer,
@@ -209,7 +215,8 @@ public class ToolbarPositionController implements OnSharedPreferenceChangeListen
             SettableNonNullObservableSupplier<Integer> controlsPosition,
             MonotonicObservableSupplier<Profile> profileSupplier,
             NonNullObservableSupplier<Integer> keyboardHeightSupplier,
-            WindowAndroid windowAndroid) {
+            WindowAndroid windowAndroid,
+            Supplier<@Nullable Tab> activeTabSupplier) {
         mBrowserControlsSizer = browserControlsSizer;
         mIsNtpWithFakeboxShowingSupplier = isNtpWithFakeboxShowingSupplier;
         mIsTabSwitcherFinishedShowingSupplier = isTabSwitcherFinishedShowingSupplier;
@@ -232,6 +239,7 @@ public class ToolbarPositionController implements OnSharedPreferenceChangeListen
         mWindowAndroid = windowAndroid;
         mCurrentPosition.set(mBrowserControlsSizer.getControlsPosition());
         mProfileSupplier = profileSupplier;
+        mActiveTabSupplier = activeTabSupplier;
 
         mIsFirstPositionChange = true;
         mHairlineHeight =
@@ -256,6 +264,7 @@ public class ToolbarPositionController implements OnSharedPreferenceChangeListen
         mSharedPreferences = sharedPreferences;
         mSharedPreferences.registerOnSharedPreferenceChangeListener(this);
         recordStartupPosition(isToolbarConfiguredToShowOnTop());
+        mEnableLogs = ChromeFeatureList.sNewTabPageCustomizationV2EnableLogs.getValue();
 
         mLayerVisibility = LayerVisibility.HIDDEN;
         mBottomToolbarLayer =
@@ -490,6 +499,10 @@ public class ToolbarPositionController implements OnSharedPreferenceChangeListen
         int controlContainerHeight = mControlContainer.getToolbarHeight();
         mCurrentPosition.set(newControlsPosition);
 
+        if (mEnableLogs) {
+            Log.i(TAG, "Set a new control position: %d.", newControlsPosition);
+        }
+
         if (newControlsPosition == ControlsPosition.TOP) {
             newTopHeight = mBrowserControlsSizer.getTopControlsHeight() + controlContainerHeight;
             mLayerVisibility = LayerVisibility.HIDDEN;
@@ -518,16 +531,7 @@ public class ToolbarPositionController implements OnSharedPreferenceChangeListen
                 progressBarChangeRunnable.run();
             }
         } else {
-            // When the toolbar is at bottom, it shouldn't add any top inset. Calling
-            // onToEdgeChange() immediately to remove the top padding of Toolbar if exists.
-            boolean isLayoutChanged =
-                    onToEdgeChange(/* systemTopInset= */ 0, /* consumeTopInset= */ false);
-            // During toolbar swiping, it is possible that the toolbar's layout has been forced to
-            // update before its position is moved to the bottom. In this case, skips calling
-            // maybeForceLayoutUpdateAndCapture() again.
-            if (isLayoutChanged) {
-                maybeForceLayoutUpdateAndCapture();
-            }
+            maybeForceBottomToolbarLayoutUpdateAndCapture();
 
             newTopHeight = mBrowserControlsSizer.getTopControlsHeight() - controlContainerHeight;
             mLayerVisibility = LayerVisibility.VISIBLE;
@@ -678,7 +682,9 @@ public class ToolbarPositionController implements OnSharedPreferenceChangeListen
 
             int keyboardHeight = windowInsetsCompat.getInsets(WindowInsetsCompat.Type.ime()).bottom;
 
-            if (shouldIgnoreKeyboardHeightForIncognitoNtp()) {
+            // Ignore keyboard's height for offset calculation if the keyboard resizes the window.
+            if (shouldIgnoreKeyboardHeightInResizeMode()
+                    || shouldIgnoreKeyboardHeightForIncognitoNtp()) {
                 keyboardHeight = 0;
             }
 
@@ -721,6 +727,9 @@ public class ToolbarPositionController implements OnSharedPreferenceChangeListen
      * mode to work correctly. This is managed by not attaching the {@code
      * DeferredIMEWindowInsetApplicationCallback} in {@code AutocompleteMediator}.
      *
+     * <p>TODO(crbug.com/485814887): This is a temporary method that should be removed after the feature is
+     * stable, along with the {@code sEnableToolbarPositioningInResizeMode} killswitch.
+     *
      * @return Whether the keyboard height should be ignored.
      */
     private boolean shouldIgnoreKeyboardHeightForIncognitoNtp() {
@@ -745,6 +754,24 @@ public class ToolbarPositionController implements OnSharedPreferenceChangeListen
                 && isIncognitoNtpShowing
                 && isOmniboxFocused
                 && isKeyboardInResizingMode;
+    }
+
+    /**
+     * Returns whether the keyboard height should be ignored for toolbar's Y offset calculation when
+     * omnibox is focused and keyboard is in resize mode. This can be true only if the
+     * corresponding feature flag is enabled.
+     *
+     * @return Whether the keyboard height should be ignored.
+     */
+    private boolean shouldIgnoreKeyboardHeightInResizeMode() {
+        InsetObserver insetObserver = mWindowAndroid.getInsetObserver();
+        boolean allowToolbarPositioningInResizeMode =
+                ChromeFeatureList.sEnableToolbarPositioningInResizeMode.isEnabled();
+
+        boolean isKeyboardInResizeMode =
+                insetObserver != null && !insetObserver.isKeyboardInOverlayMode();
+
+        return allowToolbarPositioningInResizeMode && isKeyboardInResizeMode;
     }
 
     /** Returns whether the toolbar will be shown on top for the supplied tab. */
@@ -803,19 +830,48 @@ public class ToolbarPositionController implements OnSharedPreferenceChangeListen
 
         mTopInset = consumeTopInset ? systemTopInset : 0;
         mToolbarLayout.onToEdgeChange(mTopInset);
+        if (mEnableLogs) {
+            Log.i(TAG, "The top padding to add on the toolbar is %d.", mTopInset);
+        }
         return true;
     }
 
     /**
-     * Forces layout update and capture a new toolbar bitmap when toolbar position changes. Skips
-     * the first time when the toolbar position is set.
+     * Forces toolbar's layout update and capture a new toolbar bitmap when toolbar position changes
+     * to bottom. Skips the first time when the toolbar position is set, as well as if the active
+     * Tab is a NTP.
      */
-    private void maybeForceLayoutUpdateAndCapture() {
+    @VisibleForTesting
+    void maybeForceBottomToolbarLayoutUpdateAndCapture() {
         if (mIsFirstPositionChange) {
             // Skips forcing capture the first time when toolbar position is set.
+            // The value of mIsFirstPositionChange will be updated in the updateCurrentPosition().
             return;
         }
 
-        mControlContainer.doSynchronousLayoutAndCapture();
+        Tab tab = mActiveTabSupplier.get();
+        if (tab != null && !tab.isOffTheRecord() && UrlUtilities.isNtpUrl(tab.getUrl())) {
+            // On certain devices, the toolbar position could switch from top to bottom, and then
+            // back to the top when creating a NTP. Force calling onToEdgeChange() will reset the
+            // correct top padding which has been set on the toolbar. Since the toolbar is always
+            // shown at the top on NTPs, skips the temporary bottom position on NTPs. See
+            // https://crbug.com/485266759.
+            return;
+        }
+
+        // When the toolbar is at bottom, it shouldn't add any top inset. Calling
+        // onToEdgeChange() immediately to remove the top padding of Toolbar if exists.
+        boolean isLayoutChanged =
+                onToEdgeChange(/* systemTopInset= */ 0, /* consumeTopInset= */ false);
+        // During toolbar swiping, it is possible that the toolbar's layout has been forced to
+        // update before its position is moved to the bottom. In this case, skips calling
+        // doSynchronousLayoutAndCapture() again.
+        if (isLayoutChanged) {
+            mControlContainer.doSynchronousLayoutAndCapture();
+        }
+    }
+
+    public boolean getIsFirstPositionChangeForTesting() {
+        return mIsFirstPositionChange;
     }
 }

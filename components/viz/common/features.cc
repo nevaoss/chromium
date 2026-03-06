@@ -80,9 +80,6 @@ const char kDrawQuadSplit[] = "num_of_splits";
 // can be split into during occlusion culling.
 BASE_FEATURE(kDrawQuadSplitLimit, base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kEnableRenderPassDrawQuadCullingOptimization,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 constexpr base::FeatureParam<DelegatedCompositingMode>::Option
     kDelegatedCompositingModeOption[] = {
         {DelegatedCompositingMode::kFull, "full"},
@@ -207,13 +204,7 @@ BASE_FEATURE(kAllowForceMergeRenderPassWithRequireOverlayQuads,
 // if enabled, Any CompositorFrameSink of type video that defines a preferred
 // framerate that is below the display framerate will throttle OnBeginFrame
 // callbacks to match the preferred framerate.
-BASE_FEATURE(kOnBeginFrameThrottleVideo,
-#if BUILDFLAG(IS_ANDROID)
-             base::FEATURE_ENABLED_BY_DEFAULT
-#else
-             base::FEATURE_DISABLED_BY_DEFAULT
-#endif
-);
+BASE_FEATURE(kOnBeginFrameThrottleVideo, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // If enabled, Chrome uses ADPF(Android Dynamic Performance Framework) if the
 // device's SOC manufacturer is in the allowlist.
@@ -397,12 +388,6 @@ int DrawQuadSplitLimit() {
       kDrawQuadSplitLimit, kDrawQuadSplit, kDefaultDrawQuadSplitLimit);
   return std::clamp(split_limit, kMinDrawQuadSplitLimit,
                     kMaxDrawQuadSplitLimit);
-}
-
-bool IsRenderPassDrawQuadCullingOptimizationEnabled() {
-  static bool is_enabled = base::FeatureList::IsEnabled(
-      kEnableRenderPassDrawQuadCullingOptimization);
-  return is_enabled;
 }
 
 bool IsBackForwardTransitionsSameDocSharedImageEnabled() {

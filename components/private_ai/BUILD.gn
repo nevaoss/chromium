@@ -10,7 +10,7 @@ proto_library("proto") {
   proto_in_dir = "//"
   sources = [
     "proto/google_rpc_code.proto",
-    "proto/legion.proto",
+    "proto/private_ai.proto",
   ]
 
   deps = [ "//components/optimization_guide/proto:optimization_guide_proto" ]
@@ -20,7 +20,7 @@ proto_library("proto") {
 proto_extras("proto_extras") {
   sources = [
     "proto/google_rpc_code.proto",
-    "proto/legion.proto",
+    "proto/private_ai.proto",
   ]
 
   deps = [ ":proto" ]
@@ -60,7 +60,7 @@ source_set("private_ai") {
     "connection_token_attestation.cc",
     "connection_token_attestation.h",
     "error_code.h",
-    "legion_common.h",
+    "private_ai_common.h",
     "secure_channel.h",
     "secure_channel_impl.cc",
     "secure_channel_impl.h",
@@ -104,7 +104,7 @@ source_set("testing") {
     "testing/fake_connection.h",
     "testing/fake_token_manager.cc",
     "testing/fake_token_manager.h",
-    "testing/mock_legion_client.h",
+    "testing/mock_private_ai_client.h",
   ]
   public_deps = [
     ":private_ai",
@@ -124,7 +124,7 @@ source_set("unit_tests") {
     "connection_proxy_unittest.cc",
     "connection_timeout_unittest.cc",
     "connection_token_attestation_unittest.cc",
-    "legion_logger_unittest.cc",
+    "private_ai_logger_unittest.cc",
     "secure_channel_impl_unittest.cc",
     "secure_session_async_impl_unittest.cc",
   ]

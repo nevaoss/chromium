@@ -25,9 +25,12 @@
 #include "components/prefs/pref_service.h"
 #include "components/search/search.h"
 #include "components/search_engines/template_url_service.h"
+#include "components/signin/public/base/oauth_consumer_id.h"
+#include "components/signin/public/identity_manager/access_token_info.h"
 #include "components/signin/public/identity_manager/account_info.h"
 #include "components/signin/public/identity_manager/accounts_in_cookie_jar_info.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
+#include "components/signin/public/identity_manager/primary_account_access_token_fetcher.h"
 #include "google_apis/gaia/google_service_auth_error.h"
 #include "net/base/load_flags.h"
 #include "net/base/url_util.h"
@@ -54,6 +57,9 @@ static constexpr char
 // Histogram for the eligibility request session index.
 static constexpr char kEligibilityRequestPrimaryAccountIndexHistogramName[] =
     "Omnibox.AimEligibility.EligibilityRequestPrimaryAccountIndex";
+// Histogram for OAuth fallback.
+static constexpr char kEligibilityRequestOAuthFallbackHistogramName[] =
+    "Omnibox.AimEligibility.EligibilityRequestOAuthFallback";
 // Histogram for the eligibility request status.
 static constexpr char kEligibilityRequestStatusHistogramName[] =
     "Omnibox.AimEligibility.EligibilityRequestStatus";
@@ -74,6 +80,12 @@ static constexpr char kEligibilityRequestRetriesFailedHistogramName[] =
     "Omnibox.AimEligibility.EligibilityRequestRetries.Failed";
 static constexpr char kEligibilityRequestRetriesSucceededHistogramName[] =
     "Omnibox.AimEligibility.EligibilityRequestRetries.Succeeded";
+// Histogram for the access token fetch status.
+static constexpr char kEligibilityRequestOAuthTokenFetchStatusHistogramName[] =
+    "Omnibox.AimEligibility.EligibilityRequestOAuthTokenFetchStatus";
+// Histogram for whether the OAuth token was provided.
+static constexpr char kEligibilityRequestOAuthTokenProvidedHistogramName[] =
+    "Omnibox.AimEligibility.EligibilityRequestOAuthTokenProvided";
 
 static constexpr char kRequestPath[] = "/async/folae";
 static constexpr char kRequestQuery[] = "async=_fmt:pb";
@@ -496,6 +508,14 @@ bool AimEligibilityService::IsCanvasEligible() const {
   return IsEligibleByServer(server_eligible);
 }
 
+bool AimEligibilityService::IsCobrowseEligible() const {
+  if (!base::FeatureList::IsEnabled(
+          omnibox::kAimCoBrowseEligibilityCheckEnabled)) {
+    return true;
+  }
+  return GetMostRecentResponse().is_cobrowse_eligible();
+}
+
 bool AimEligibilityService::HasAimUrlParams(const GURL& url) const {
   for (const auto& rule : GetMostRecentResponse().aim_detection_url_rule()) {
     int matched_params = 0;
@@ -514,6 +534,27 @@ bool AimEligibilityService::HasAimUrlParams(const GURL& url) const {
   }
 
   return false;
+}
+
+bool AimEligibilityService::ShouldTryOAuth() const {
+  if (!base::FeatureList::IsEnabled(omnibox::kAimEligibilityServiceOauth)) {
+    return false;
+  }
+  return !GetPrimaryAccountInfo(identity_manager_).IsEmpty();
+}
+
+void AimEligibilityService::ConfigureRequestCookiesAndCredentials(
+    network::ResourceRequest* request,
+    bool use_oauth) const {
+  if (use_oauth) {
+    request->credentials_mode = network::mojom::CredentialsMode::kOmit;
+  } else {
+    request->credentials_mode = network::mojom::CredentialsMode::kInclude;
+    // Set the SiteForCookies to the request URL's site to avoid cookie
+    // blocking.
+    request->site_for_cookies = net::SiteForCookies::FromUrl(request->url);
+  }
+  request->load_flags = net::LOAD_DO_NOT_SAVE_COOKIES;
 }
 
 const omnibox::AimEligibilityResponse&
@@ -541,6 +582,15 @@ const omnibox::SearchboxConfig* AimEligibilityService::GetSearchboxConfig()
 
 void AimEligibilityService::StartServerEligibilityRequestForDebugging() {
   StartServerEligibilityRequest(RequestSource::kUser, GetLocale());
+}
+
+void AimEligibilityService::FetchEligibility(RequestSource source) {
+  if (!base::FeatureList::IsEnabled(
+          omnibox::kAimCoBrowseAutomatedFetchRequestEnabled)) {
+    // Ignoring request.
+    return;
+  }
+  StartServerEligibilityRequest(source, GetLocale());
 }
 
 bool AimEligibilityService::SetEligibilityResponseForDebugging(
@@ -572,6 +622,8 @@ std::string AimEligibilityService::RequestSourceToString(RequestSource source) {
       return "NetworkChange";
     case RequestSource::kUser:
       return "User";
+    case RequestSource::kCoBrowseAimUrlDetection:
+      return "CoBrowseAimUrlDetection";
   }
 }
 
@@ -780,17 +832,67 @@ void AimEligibilityService::StartServerEligibilityRequest(
   std::unique_ptr<network::ResourceRequest> request =
       std::make_unique<network::ResourceRequest>();
   request->url = request_url;
-  request->credentials_mode = network::mojom::CredentialsMode::kInclude;
-  request->load_flags = net::LOAD_DO_NOT_SAVE_COOKIES;
-  // Set the SiteForCookies to the request URL's site to avoid cookie blocking.
-  request->site_for_cookies = net::SiteForCookies::FromUrl(request->url);
 
+  const bool use_oauth = ShouldTryOAuth();
+  if (base::FeatureList::IsEnabled(omnibox::kAimEligibilityServiceOauth)) {
+    LogEligibilityRequestOAuthFallback(use_oauth, request_source);
+  }
+
+  ConfigureRequestCookiesAndCredentials(request.get(), use_oauth);
   // If mode is POST with Proto, set method to POST.
   if (GetServerEligibilityRequestMode() ==
       ServerEligibilityRequestMode::kPostWithProto) {
     request->method = "POST";
   }
 
+  if (use_oauth) {
+    // Avoid starting a new token fetch if one is already in progress. In the
+    // event a request fires multiple times skip re-fetching to use the
+    // original in-flight `PrimaryAccountAccessTokenFetcher`.
+    if (access_token_fetcher_) {
+      return;
+    }
+
+    signin::AccessTokenFetcher::TokenCallback callback = base::BindOnce(
+        &AimEligibilityService::OnAccessTokenAvailable,
+        weak_factory_.GetWeakPtr(), request_source, locale, std::move(request));
+
+    access_token_fetcher_ =
+        std::make_unique<signin::PrimaryAccountAccessTokenFetcher>(
+            signin::OAuthConsumerId::kAimEligibilityService, identity_manager_,
+            std::move(callback),
+            signin::PrimaryAccountAccessTokenFetcher::Mode::kWaitUntilAvailable,
+            signin::ConsentLevel::kSignin);
+  } else {
+    SendServerEligibilityRequest(request_source, locale, std::move(request));
+  }
+}
+
+void AimEligibilityService::OnAccessTokenAvailable(
+    RequestSource request_source,
+    const std::string& locale,
+    std::unique_ptr<network::ResourceRequest> request,
+    GoogleServiceAuthError error,
+    signin::AccessTokenInfo access_token_info) {
+  access_token_fetcher_.reset();
+
+  const bool has_token = !access_token_info.token.empty();
+  LogEligibilityRequestOAuthTokenProvided(has_token, request_source);
+  LogEligibilityRequestOAuthTokenFetchStatus(error.state(), request_source);
+
+  if (has_token) {
+    request->headers.SetHeader(
+        net::HttpRequestHeaders::kAuthorization,
+        base::StrCat({"Bearer ", access_token_info.token}));
+  }
+
+  SendServerEligibilityRequest(request_source, locale, std::move(request));
+}
+
+void AimEligibilityService::SendServerEligibilityRequest(
+    RequestSource request_source,
+    const std::string& locale,
+    std::unique_ptr<network::ResourceRequest> request) {
   std::unique_ptr<network::SimpleURLLoader> loader =
       network::SimpleURLLoader::Create(std::move(request),
                                        kRequestTrafficAnnotation);
@@ -933,6 +1035,38 @@ void AimEligibilityService::LogEligibilityRequestStatus(
   base::UmaHistogramEnumeration(sliced_name, status);
 }
 
+void AimEligibilityService::LogEligibilityRequestOAuthTokenFetchStatus(
+    GoogleServiceAuthError::State state,
+    RequestSource request_source) const {
+  const auto& name = kEligibilityRequestOAuthTokenFetchStatusHistogramName;
+  const auto& sliced_name =
+      GetHistogramNameSlicedByRequestSource(name, request_source);
+  base::UmaHistogramEnumeration(name, state,
+                                GoogleServiceAuthError::NUM_STATES);
+  base::UmaHistogramEnumeration(sliced_name, state,
+                                GoogleServiceAuthError::NUM_STATES);
+}
+
+void AimEligibilityService::LogEligibilityRequestOAuthTokenProvided(
+    bool has_token,
+    RequestSource request_source) const {
+  const auto& name = kEligibilityRequestOAuthTokenProvidedHistogramName;
+  const auto& sliced_name =
+      GetHistogramNameSlicedByRequestSource(name, request_source);
+  base::UmaHistogramBoolean(name, has_token);
+  base::UmaHistogramBoolean(sliced_name, has_token);
+}
+
+void AimEligibilityService::LogEligibilityRequestOAuthFallback(
+    bool fallback_happened,
+    RequestSource request_source) const {
+  const auto& name = kEligibilityRequestOAuthFallbackHistogramName;
+  const auto& sliced_name =
+      GetHistogramNameSlicedByRequestSource(name, request_source);
+  base::UmaHistogramBoolean(name, fallback_happened);
+  base::UmaHistogramBoolean(sliced_name, fallback_happened);
+}
+
 void AimEligibilityService::LogEligibilityRequestResponseCode(
     int response_code,
     RequestSource request_source) const {
@@ -972,6 +1106,11 @@ void AimEligibilityService::LogEligibilityResponse(
   base::UmaHistogramBoolean(
       base::StrCat({sliced_prefix, ".is_image_generation_eligible"}),
       most_recent_response_.is_image_generation_eligible());
+  base::UmaHistogramBoolean(
+      base::StrCat({sliced_prefix, ".is_cobrowse_eligible"}),
+      most_recent_response_.is_cobrowse_eligible());
+  base::UmaHistogramBoolean(base::StrCat({prefix, ".is_cobrowse_eligible"}),
+                            most_recent_response_.is_cobrowse_eligible());
 }
 
 void AimEligibilityService::LogEligibilityResponseChanges(
@@ -994,4 +1133,7 @@ void AimEligibilityService::LogEligibilityResponseChanges(
       base::StrCat({prefix, ".is_image_generation_eligible"}),
       old_response.is_image_generation_eligible() !=
           new_response.is_image_generation_eligible());
+  base::UmaHistogramBoolean(base::StrCat({prefix, ".is_cobrowse_eligible"}),
+                            old_response.is_cobrowse_eligible() !=
+                                new_response.is_cobrowse_eligible());
 }

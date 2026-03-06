@@ -15,6 +15,7 @@
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/renderer/core/animation/element_animations.h"
 #include "third_party/blink/renderer/core/css/clip_path_paint_image_generator.h"
+#include "third_party/blink/renderer/core/css/properties/css_bitset.h"
 #include "third_party/blink/renderer/core/dom/dom_node_ids.h"
 #include "third_party/blink/renderer/core/dom/pseudo_element.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
@@ -76,6 +77,7 @@
 #include "third_party/blink/renderer/core/style/computed_style_constants.h"
 #include "third_party/blink/renderer/core/style/style_overflow_clip_margin.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition.h"
+#include "third_party/blink/renderer/core/view_transition/view_transition_transition_element.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition_utils.h"
 #include "third_party/blink/renderer/platform/geometry/contoured_rect.h"
 #include "third_party/blink/renderer/platform/geometry/float_rounded_rect.h"
@@ -1958,7 +1960,7 @@ void FragmentPaintPropertyTreeBuilder::UpdateEffect() {
           style.IsRunningBackdropFilterAnimationOnCompositor();
 
       const auto* parent_effect = context_.current_effect;
-      if (object_.IsPseudo(kPseudoIdViewTransition)) {
+      if (IsA<ViewTransitionTransitionElement>(object_.GetNode())) {
         parent_effect = ParentForViewTransitionPseudoEffect();
       }
       DCHECK(parent_effect);
@@ -2855,8 +2857,8 @@ void FragmentPaintPropertyTreeBuilder::UpdateInnerBorderShapeClip() {
                                            box);
       const PhysicalRect inner_reference_rect =
           border_shape_rects ? border_shape_rects->inner : expanded_box_rect;
-      const Path inner_path =
-          BorderShapePainter::InnerPath(box.StyleRef(), inner_reference_rect);
+      const Path inner_path = BorderShapePainter::OverflowClipInnerPath(
+          box.StyleRef(), inner_reference_rect);
       gfx::RectF layout_clip_rect(expanded_box_rect);
       PhysicalOffset offset = -OffsetInStitchedFragments(BoxFragment());
       layout_clip_rect.Offset(gfx::Vector2dF(offset));
@@ -3512,10 +3514,10 @@ void FragmentPaintPropertyTreeBuilder::UpdatePaintOffset() {
       // recomputing them.
       context_.current.paint_offset += box->PhysicalLocation();
 
-      if (object_.IsPseudo(kPseudoIdViewTransition)) {
-        auto* scope = DynamicTo<LayoutBox>(To<PseudoElement>(object_.GetNode())
-                                               ->UltimateOriginatingElement()
-                                               .GetLayoutObject());
+      if (const auto* transition_element =
+              DynamicTo<ViewTransitionTransitionElement>(object_.GetNode())) {
+        auto* scope = DynamicTo<LayoutBox>(
+            transition_element->UltimateOriginatingElement().GetLayoutObject());
         LayoutBlock* containing_block = object_.ContainingBlock();
         if (scope && containing_block == scope) {
           // Undo the scroll origin offset that was applied during
@@ -3713,7 +3715,7 @@ void FragmentPaintPropertyTreeBuilder::UpdateForSelf() {
   PhysicalOffset sticky_offset;
   UpdateForObjectLocation(paint_offset_translation, sticky_offset);
 
-  if (object_.IsPseudo(kPseudoIdViewTransition)) {
+  if (IsA<ViewTransitionTransitionElement>(object_.GetNode())) {
     // The transition pseudos escape the scope's clip and scroll translation.
     context_.current.clip = context_.clip_ancestor_for_transition_pseudo_root;
     context_.current.transform =
@@ -4450,6 +4452,15 @@ bool PaintPropertyTreeBuilder::CanDoDeferredOpacityNodeUpdate(
   if (!properties || !properties->Effect())
     return false;
 
+  if (properties->Effect()->HasActiveOpacityAnimation()) {
+    const CSSBitset* important_properties =
+        object.StyleRef().GetBaseImportantSet();
+    if (important_properties &&
+        important_properties->Has(CSSPropertyID::kOpacity)) {
+      return false;
+    }
+  }
+
   // Descendant state depends on opacity being zero, so we can't do a direct
   // update if it changes
   bool old_opacity_is_zero = properties->Effect()->Opacity() == 0;
@@ -4466,6 +4477,7 @@ bool PaintPropertyTreeBuilder::CanDoDeferredOpacityNodeUpdate(
       To<Element>(object.GetNode())->IsInCanvasSubtree()) {
     return false;
   }
+
   return true;
 }
 

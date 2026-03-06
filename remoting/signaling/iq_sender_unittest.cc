@@ -13,6 +13,8 @@
 #include "base/strings/stringprintf.h"
 #include "base/test/mock_callback.h"
 #include "base/test/task_environment.h"
+#include "remoting/signaling/jingle_data_structures.h"
+#include "remoting/signaling/jingle_message_xml_converter.h"
 #include "remoting/signaling/mock_signal_strategy.h"
 #include "remoting/signaling/xmpp_constants.h"
 #include "testing/gmock/include/gmock/gmock.h"
@@ -35,10 +37,6 @@ namespace remoting {
 namespace {
 
 const char kStanzaId[] = "123";
-const char kNamespace[] = "chromium:testns";
-const char kNamespacePrefix[] = "tes";
-const char kBodyTag[] = "test";
-const char kType[] = "get";
 const char kTo[] = "user@domain.com";
 
 MATCHER_P(XmlEq, expected, "") {
@@ -59,22 +57,19 @@ class IqSenderTest : public testing::Test {
 
  protected:
   void SendTestMessage() {
-    std::unique_ptr<XmlElement> iq_body(
-        new XmlElement(QName(kNamespace, kBodyTag)));
+    JingleMessage message;
+    message.to = SignalingAddress(kTo);
+    message.sid = "test_sid";
+    message.message_id = kStanzaId;
+    message.SetPayload(SessionTerminate());
+
     XmlElement* sent_stanza;
-    EXPECT_CALL(signal_strategy_, GetNextId()).WillOnce(Return(kStanzaId));
     EXPECT_CALL(signal_strategy_, SendStanzaPtr(_))
         .WillOnce(DoAll(SaveArg<0>(&sent_stanza), Return(true)));
-    request_ = sender_->SendIq(kType, kTo, std::move(iq_body), callback_.Get());
+    request_ = sender_->SendIq(message, callback_.Get());
 
-    std::string expected_xml_string = base::StringPrintf(
-        "<cli:iq type=\"%s\" to=\"%s\" id=\"%s\" "
-        "xmlns:cli=\"jabber:client\">"
-        "<%s:%s xmlns:%s=\"%s\"/>"
-        "</cli:iq>",
-        kType, kTo, kStanzaId, kNamespacePrefix, kBodyTag, kNamespacePrefix,
-        kNamespace);
-    EXPECT_EQ(expected_xml_string, sent_stanza->Str());
+    std::unique_ptr<XmlElement> expected_stanza = JingleMessageToXml(message);
+    EXPECT_EQ(expected_stanza->Str(), sent_stanza->Str());
     delete sent_stanza;
   }
 
@@ -89,7 +84,10 @@ class IqSenderTest : public testing::Test {
         new XmlElement(QName("test:namespace", "response-body"));
     response->AddElement(response_body);
 
-    bool result = sender_->OnSignalStrategyIncomingStanza(response.get());
+    ftl::ChromotingMessage message;
+    message.mutable_xmpp()->set_stanza(response->Str());
+    bool result = sender_->OnSignalStrategyIncomingMessage(
+        SignalingAddress(from), SignalingMessage(message));
 
     if (response_out) {
       *response_out = std::move(response);

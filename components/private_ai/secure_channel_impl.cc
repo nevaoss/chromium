@@ -19,8 +19,8 @@
 #include "base/types/expected.h"
 #include "components/private_ai/attestation/handler.h"
 #include "components/private_ai/attestation/handler_impl.h"
-#include "components/private_ai/legion_common.h"
-#include "components/private_ai/proto/legion.pb.h"
+#include "components/private_ai/private_ai_common.h"
+#include "components/private_ai/proto/private_ai.pb.h"
 #include "components/private_ai/proto_utils/attestation_evidence_utils.h"
 #include "components/private_ai/secure_session.h"
 #include "components/private_ai/secure_session_async_impl.h"
@@ -35,7 +35,7 @@ namespace private_ai {
 SecureChannelImpl::FactoryImpl::FactoryImpl(
     const GURL& url,
     network::mojom::NetworkContext* network_context,
-    LegionLogger* logger)
+    PrivateAiLogger* logger)
     : url_(url), network_context_(network_context), logger_(logger) {}
 
 SecureChannelImpl::FactoryImpl::~FactoryImpl() = default;
@@ -57,7 +57,7 @@ SecureChannelImpl::SecureChannelImpl(
     std::unique_ptr<Transport> transport,
     std::unique_ptr<SecureSession> secure_session,
     std::unique_ptr<AttestationHandler> attestation_handler,
-    LegionLogger* logger)
+    PrivateAiLogger* logger)
     : transport_(std::move(transport)),
       secure_session_(std::move(secure_session)),
       attestation_handler_(std::move(attestation_handler)),

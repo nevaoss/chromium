@@ -210,9 +210,11 @@ export class ComposeboxElement extends I18nMixinLit
         reflect: true,
       },
       enableCarouselScrolling: {type: Boolean},
+      inputPlaceholderOverride: {type: String},
     };
   }
 
+  accessor inputPlaceholderOverride: string = '';
   accessor disableCaretColorAnimation: boolean = false;
   accessor disableComposeboxAnimation: boolean = false;
   accessor enableCarouselScrolling: boolean = false;
@@ -436,6 +438,10 @@ export class ComposeboxElement extends I18nMixinLit
           (this.inputState_.allowedModels.length > 0 ||
            this.inputState_.allowedTools.length > 0 ||
            this.inputState_.allowedInputTypes.length > 0);
+    }
+
+    if (changedPrivateProperties.has('inputPlaceholderOverride')) {
+      this.updateInputPlaceholder_();
     }
   }
   override updated(changedProperties: PropertyValues<this>) {
@@ -694,17 +700,20 @@ export class ComposeboxElement extends I18nMixinLit
       const fileBuffer = await file.arrayBuffer();
       const bigBuffer:
           BigBuffer = {bytes: Array.from(new Uint8Array(fileBuffer))};
-      const {token} = await this.searchboxHandler_.addFileContext(
-          {
-            fileName: file.name,
-            imageDataUrl: null,
-            mimeType: file.type,
-            isDeletable: true,
-            selectionTime: new Date(),
-          },
-          bigBuffer);
-
-      if (!token) {
+      let token: UnguessableToken;
+      try {
+        token = await this.searchboxHandler_.addFileContext(
+            {
+              fileName: file.name,
+              imageDataUrl: null,
+              mimeType: file.type,
+              isDeletable: true,
+              selectionTime: new Date(),
+            },
+            bigBuffer);
+      } catch (e) {
+        // TODO(crbug.com/484429365): Notify the user the reason for the context
+        // upload failure.
         continue;
       }
 
@@ -744,6 +753,26 @@ export class ComposeboxElement extends I18nMixinLit
     };
 
     this.$.context.onFileContextAdded(attachment);
+  }
+
+  injectInput(title: string, thumbnail: string, fileToken: UnguessableToken) {
+    const attachment: ComposeboxFile = {
+      uuid: fileToken,
+      name: title,
+      dataUrl: thumbnail,
+      objectUrl: thumbnail,
+      type: 'injectedinput',
+      status: FileUploadStatus.kUploadSuccessful,
+      url: null,
+      tabId: null,
+      isDeletable: true,
+    };
+
+    this.$.context.onFileContextAdded(attachment);
+  }
+
+  deleteFile(fileToken: UnguessableToken) {
+    this.$.context.deleteFile(fileToken);
   }
 
   private updateAutoSuggestedTabContext_(tab: TabInfo|null) {
@@ -938,10 +967,6 @@ export class ComposeboxElement extends I18nMixinLit
     }
   }
 
-  protected onOpenFileDialog_(e: CustomEvent<{isImage: boolean}>) {
-    this.pageHandler_.handleFileUpload(e.detail.isImage);
-  }
-
   protected onLensIconMouseDown_(e: MouseEvent) {
     // Prevent the composebox from expanding due to being focused by capturing
     // the mousedown event. This is needed to allow the Lens icon to be
@@ -951,6 +976,11 @@ export class ComposeboxElement extends I18nMixinLit
   }
 
   private updateInputPlaceholder_() {
+    if (this.inputPlaceholderOverride) {
+      this.inputPlaceholder_ = this.inputPlaceholderOverride;
+      return;
+    }
+
     if (this.inputState_) {
       if (this.activeToolMode_ !== ToolMode.kUnspecified) {
         const config = this.inputState_.toolConfigs.find(
@@ -1376,35 +1406,56 @@ export class ComposeboxElement extends I18nMixinLit
 
   private async onContextualInputStatusChanged_(
       token: UnguessableToken, status: FileUploadStatus,
-      errorType: FileUploadErrorType) {
+      errorType: FileUploadErrorType|null) {
+    // If error message is updated, then the returned file is stale and removed
+    // from carousel. File is removed from carousel on `kUploadReplaced` as
+    // well despite no error message being returned (special case).
+    // Else, `file` below is updated to its most recent state,
+    // and `errorMessage` is null.
     const {file, errorMessage} =
         this.$.context.updateFileStatus(token, status, errorType);
-    if (errorMessage) {
+    if (errorMessage) {  // `file` value is definitely stale.
       this.errorMessage_ = errorMessage;
       this.pendingUploads_.delete(token);
       this.fileUploadsComplete = this.pendingUploads_.size === 0;
     } else if (file) {
+      // Treat `kUploadReplaced` like an error upload state
+      // (like `kUploadFailed`. `kValidationFailed`,
+      // `kUploadExpired`), just without setting `errorMessage_`.
+      // This means for `kUploadReplaced`, we do not fetch suggestions,
+      // etc.
+      if (file.status === FileUploadStatus.kUploadReplaced) {
+        this.pendingUploads_.delete(file.uuid);
+        this.fileUploadsComplete = this.pendingUploads_.size === 0;
+        return;
+      } else if (file.status === FileUploadStatus.kUploadSuccessful) {
+        // At this point, due to the error message handling above (for
+        // `kValidationFailed`, `kUploadExpired`, and `kUploadFailed`),
+        // if kUploadSuccessful, the file upload is complete.
+        // Else, the file upload is in progress.
+        this.pendingUploads_.delete(file.uuid);
+        this.fileUploadsComplete = this.pendingUploads_.size === 0;
+
+        const announcer = getAnnouncerInstance();
+        announcer.announce(this.i18n('composeboxFileUploadCompleteText'));
+      } else if (
+          file.status === FileUploadStatus.kProcessing ||
+          file.status === FileUploadStatus.kProcessingSuggestSignalsReady) {
+        // `NotUploaded`, `UploadStarted` come before and after `kProcessing`
+        //  respectively, so we only need to add to `pendingUploads_` when in a
+        //  type of processing state.
+        this.pendingUploads_.add(file.uuid);
+        this.fileUploadsComplete = this.pendingUploads_.size === 0;
+      }
+
+      // Fetch contextual suggestions for processingSuggestSignalsReady
+      // non-images:
       if (status === FileUploadStatus.kProcessingSuggestSignalsReady &&
           this.showZps && !file.type.includes('image')) {
         // Query autocomplete to get contextual suggestions for files.
         this.queryAutocomplete_(/* clearMatches= */ true);
       }
-      // `NotUploaded`, `UploadStarted` come before and after `kProcessing`
-      //  respectively, so we only need to add to `pendingUploads_` when in a
-      //  type of processing state.
-      if (file.status === FileUploadStatus.kProcessing ||
-          file.status === FileUploadStatus.kProcessingSuggestSignalsReady) {
-        this.pendingUploads_.add(file.uuid);
-        this.fileUploadsComplete = this.pendingUploads_.size === 0;
-      }
-      const isFinished = file?.status === FileUploadStatus.kValidationFailed ||
-          file.status === FileUploadStatus.kUploadSuccessful ||
-          file.status === FileUploadStatus.kUploadExpired ||
-          file.status === FileUploadStatus.kUploadFailed;
-      if (isFinished) {
-        this.pendingUploads_.delete(file.uuid);
-        this.fileUploadsComplete = this.pendingUploads_.size === 0;
-      }
+      // For image files:
       if (status === FileUploadStatus.kProcessingSuggestSignalsReady &&
           file.type.includes('image')) {
         // If we're in create image mode, update the aim tool mode.
@@ -1422,11 +1473,6 @@ export class ComposeboxElement extends I18nMixinLit
       if (status === FileUploadStatus.kProcessing &&
           file.type.includes('tab')) {
         this.queryAutocomplete_(/* clearMatches= */ true);
-      }
-
-      if (status === FileUploadStatus.kUploadSuccessful) {
-        const announcer = getAnnouncerInstance();
-        announcer.announce(this.i18n('composeboxFileUploadCompleteText'));
       }
     }
   }

@@ -3192,16 +3192,8 @@ def CheckNoBannedPatterns(input_api, output_api):
             for ban_rule in _BANNED_CPP_FUNCTIONS:
                 CheckForMatch(f, line_num, line, ban_rule)
 
-    # As of 05/2024, iOS fully migrated ConsentLevel::kSync to kSignin, and
-    # Android is in the process of preventing new users from entering kSync.
-    # So the warning is restricted to those platforms.
-    ios_pattern = input_api.re.compile(r'(^|[\W_])ios[\W_]')
     file_filter = lambda f: (
-        f.LocalPath().endswith(('.cc', '.mm', '.h')) and
-        ('android' in f.LocalPath() or
-         # Simply checking for an 'ios' substring would
-         # catch unrelated cases, use a regex.
-         ios_pattern.search(f.LocalPath())))
+        f.LocalPath().endswith(('.cc', '.mm', '.h')))
     for f in input_api.AffectedFiles(file_filter=file_filter):
         for line_num, line in f.ChangedContents():
             for ban_rule in _DEPRECATED_SYNC_CONSENT_CPP_FUNCTIONS:
@@ -6756,6 +6748,36 @@ def CheckSyslogUseWarningOnUpload(input_api, output_api, src_file_filter=None):
     return []
 
 
+def CheckNoMainLayoutSwitcher(input_api, output_api):
+    """
+    Prevents MainLayoutSwitcher.java (a temporary and deprecated file)
+    from appearing in CLs.
+    """
+
+    # Skip this check if there are no diffs, such as running presubmit with "--all --no_diffs".
+    # Otherwise AffectedFiles() will include MainLayoutSwitcher.java even if it's not changed.
+    if input_api.no_diffs:
+        return []
+
+    git_footers = input_api.change.GitFootersFromDescription()
+    if 'true' in [footer.lower() for footer in git_footers.get(
+            u'Allow-MainLayoutSwitcher-Changes', [])]:
+        return []
+
+    results = []
+    for f in input_api.AffectedFiles(include_deletes=False):
+        if f.UnixLocalPath() == 'chrome/android/java/src/org/chromium/chrome/browser/app/MainLayoutSwitcher.java':
+            results.append(output_api.PresubmitError(
+                'MainLayoutSwitcher.java is a temporary class to support the forked main layout '
+                '(main_forked_with_secondary_ui_container.xml) during Android side panel '
+                'development.\n'
+                'Generally we should not need to change this file except deleting it, but if you '
+                'must, add "Allow-MainLayoutSwitcher-Changes: true" to your commit message '
+                'footers and send the CL to the file owners.',
+                [f]))
+    return results
+
+
 def CheckChangeOnUpload(input_api, output_api):
     if input_api.version < [2, 0, 0]:
         return [
@@ -6767,6 +6789,7 @@ def CheckChangeOnUpload(input_api, output_api):
     results = []
     results.extend(
         input_api.canned_checks.CheckPatchFormatted(input_api, output_api))
+    results.extend(CheckNoMainLayoutSwitcher(input_api, output_api))
     return results
 
 
@@ -6794,6 +6817,7 @@ def CheckChangeOnCommit(input_api, output_api):
     results.extend(
         input_api.canned_checks.CheckChangeHasNoUnwantedTags(
             input_api, output_api))
+    results.extend(CheckNoMainLayoutSwitcher(input_api, output_api))
     return results
 
 
@@ -8121,17 +8145,6 @@ def CheckAyeAye(input_api, output_api):
     Gerrit. Running them locally should surface any warnings or errors
     earlier.
     """
-    try:
-        command = [
-            'git', 'config', '--get', '--type=bool', 'localayeaye.enable'
-        ]
-        opted_in = input_api.subprocess.check_output(command)
-        # TODO(crbug.com/467912454): Roll this out by default.
-        if not opted_in:
-            return []
-    except Exception:
-        return []
-    print("User opted-in to AyeAye checks as top-level presubmit...")
     return input_api.canned_checks.CheckAyeAye(input_api, output_api)
 
 
@@ -8149,11 +8162,12 @@ def CheckSettingsChanges(input_api, output_api):
          exists in the indexing block (stripping comments to avoid false hits).
     """
     cc_list = ['jinsukkim@chromium.org', 'adelm@google.com']
-    registry_path = 'java/src/org/chromium/chrome/browser/settings/search/SearchIndexProviderRegistry.java'
+
+    registry_filename = 'SearchIndexProviderRegistry.java'
 
     # Filter for Java files, excluding the registry file itself.
-    is_java_file = lambda f: (f.LocalPath().endswith('.java') and not f.
-                              LocalPath().endswith(registry_path))
+    is_java_file = lambda f: (f.LocalPath().endswith('.java') and not
+                              f.LocalPath().endswith(registry_filename))
     java_files = input_api.AffectedFiles(include_deletes=False,
                                          file_filter=is_java_file)
 
@@ -8185,37 +8199,51 @@ def CheckSettingsChanges(input_api, output_api):
          'this using updateEntrySummaryForKey(), addEntryForKey(), or Entry.Builder.setSummary().'
          ),
         (input_api.re.compile(r'\.(?:setVisible|removePreference)\('),
-         ['removeEntry', 'removeEntryForKey'],
-         'Preference visibility toggled. Ensure updateDynamicPreferences uses removeEntryForKey().'
+         ['removeEntry', 'removeEntryForKey', 'addEntry', 'addEntryForKey'],
+         'Preference visibility toggled. Ensure updateDynamicPreferences uses removeEntryForKey()/addEntryForKey().'
          ),
         (input_api.re.compile(r'\.addPreference\('),
          ['addEntry', 'addEntryForKey', 'updateEntry', 'updateEntryForKey'],
          'Preference added via Java. Ensure it is indexed in updateDynamicPreferences.'
          ),
-        (input_api.re.compile(
-            r'\.put(String|Int|Boolean|Long|Serializable)\('), ['getExtras'],
-         'Bundle extras modified. Ensure getExtras() provides these for search results.'
+        (input_api.re.compile(r'(?:getArguments\(\)|bundle|extras|savedInstanceState)\.put\w*\('),
+         ['getExtras'],
+         'Bundle extras (arguments) are modified. Ensure getExtras() provides these '
+         'so search results open the fragment correctly.'
          ),
-        (input_api.re.compile(
-            r'(?:getArguments\(\)\.get\w*\(|\.containsKey\(|extras\.get\w*\(|getArguments\(\)\.is)'
-        ), ['getExtras'],
-         'Fragment reads mandatory Bundle arguments. Ensure getExtras() overrides this.'
+        (input_api.re.compile(r'(?:getArguments\(\)\.(?:get\w*|containsKey|is)|(?:bundle|extras|savedInstanceState)\.(?:get\w*|containsKey))'),
+         ['getExtras'],
+         'The Fragment reads mandatory arguments from its Bundle. Ensure getExtras() '
+         'overrides this in the provider to pass these arguments when launched from search.'
          )
     ]
 
     problems = []
     relevant_files_found = False
     registry_content = ''
-    registry_full_path = input_api.os_path.join(input_api.PresubmitLocalPath(),
-                                                registry_path)
+    registry_repo_path = (
+        'chrome/android/java/src/org/chromium/chrome/browser/settings/search/'
+        'SearchIndexProviderRegistry.java')
+    repo_root = input_api.change.RepositoryRoot()
+    registry_full_path = input_api.os_path.join(repo_root, *registry_repo_path.split('/'))
 
-    try:
-        registry_content = input_api.ReadFile(registry_full_path)
-    except IOError:
-        # If the registry cannot be read (e.g., file has been moved), we default
-        # to an empty string. It is better to skip the registration check than
-        # to block the entire presubmit.
-        pass
+    registry_files = [f for f in input_api.AffectedFiles(include_deletes=False)
+                      if f.LocalPath().endswith(registry_filename)]
+    registry_file_in_cl = registry_files[0] if registry_files else None
+
+    if registry_file_in_cl:
+        # Read the staged content (what you just wrote in the cl you are uploading).
+        registry_content = input_api.ReadFile(registry_file_in_cl)
+    else:
+        # Fallback to using the absolute path.
+        try:
+            with open(registry_full_path, 'r') as f:
+                registry_content = f.read()
+        except IOError:
+            # If the registry cannot be read (e.g., file has been moved), we default
+            # to an empty string. It is better to skip the registration check than
+            # to block the entire presubmit.
+            pass
 
     for f in java_files:
         content = input_api.ReadFile(f)
@@ -8241,20 +8269,21 @@ def CheckSettingsChanges(input_api, output_api):
 
         if not provider_field_re.search(content):
             problems.append(
-                f'{f.LocalPath()}:0\n'
-                f'    \tMissing SEARCH_INDEX_DATA_PROVIDER field. To make this screen\n'
-                f'    \tsearchable, add a "public static final SearchIndexProvider\n'
-                f'    \tSEARCH_INDEX_DATA_PROVIDER" field to your Fragment class.\n'
-                f'    \tSee: //components/browser_ui/settings/android/java/src/org/chromium/components/browser_ui/settings/search/SearchIndexProvider.java'
+              f'{f.LocalPath()}:0\n'
+              f'    \tIssue:  Missing SEARCH_INDEX_DATA_PROVIDER field.\n'
+              f'    \tAction: Add "public static final SearchIndexProvider SEARCH_INDEX_DATA_PROVIDER" to the class.'
             )
 
-        if class_name and f"{class_name}.SEARCH_INDEX_DATA_PROVIDER" not in registry_content:
-            problems.append(
-                f'{f.LocalPath()}:0\n'
-                f'    \tProvider not registered. Please add\n'
-                f'    \t"{class_name}.SEARCH_INDEX_DATA_PROVIDER" to the registry file at:\n'
-                f'    \t//chrome/android/java/src/org/chromium/chrome/browser/settings/search/SearchIndexProviderRegistry.java'
+        if registry_content and class_name:
+            registry_pattern = input_api.re.compile(
+              r'\b' + class_name + r'\s*\.\s*SEARCH_INDEX_DATA_PROVIDER'
             )
+            if not registry_pattern.search(registry_content):
+                problems.append(
+                    f'{f.LocalPath()}:0\n'
+                    f'    \tIssue:  Fragment not found in SearchIndexProviderRegistry.java.\n'
+                    f'    \tAction: Register "{class_name}.SEARCH_INDEX_DATA_PROVIDER" in the registry file.'
+                )
 
         provider_body_match = input_api.re.search(
             r'SEARCH_INDEX_DATA_PROVIDER\s*=\s*new [^{]+{(.*?)};', content,
@@ -8285,8 +8314,8 @@ def CheckSettingsChanges(input_api, output_api):
                     # If UI call found, ensure the provider body contains a mirroring API call.
                     if not any(s in clean_body for s in expected_api):
                         problems.append(f'{f.LocalPath()}:{line_num}\n'
-                                        f'    \t{line.strip()}\n'
-                                        f'    \t-> {msg}')
+                                        f'    \tUI Code: {line.strip()}\n'
+                                        f'    \tIndexer: {msg}')
 
     if relevant_files_found:
         for cc in cc_list:
@@ -8297,16 +8326,14 @@ def CheckSettingsChanges(input_api, output_api):
 
     return [
         output_api.PresubmitPromptWarning(
-            'Potential Search Index Issues:\n'
-            '  To ensure settings are searchable, concrete fragments must\n'
-            '  define a SEARCH_INDEX_DATA_PROVIDER and be registered in the\n'
-            '  SearchIndexProviderRegistry.java. Additionally, UI changes\n'
-            '  should be mirrored in the indexer.\n\n'
-            '  For instructions on implementing search indexing, see:\n'
-            '  //components/browser_ui/settings/android/java/src/org/chromium/components/browser_ui/settings/search/SearchIndexProvider.java',
+            'Potential Settings Search Indexing Issues:\n'
+            '  To ensure settings are searchable and prevent crashes, concrete\n'
+            '  fragments must define a SEARCH_INDEX_DATA_PROVIDER and be registered\n'
+            '  in SearchIndexProviderRegistry.java. UI changes (summaries, \n'
+            '  visibility, and arguments) must be mirrored in the indexer.\n\n'
+            '  Search Indexing API Reference:\n'
+            '  //components/browser_ui/settings/android/java/src/org/chromium/components/browser_ui/settings/search/SearchIndexProvider.java\n\n'
+            '  Detailed issues found in your changes:\n',
             problems)
     ]
 
-
-def CheckAyeAye(input_api, output_api):
-    return input_api.canned_checks.CheckAyeAye(input_api, output_api)
