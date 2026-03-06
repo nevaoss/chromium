@@ -675,7 +675,6 @@ void ToCdmInputBuffer(const DecoderBuffer& encrypted_buffer,
   }
 }
 
-<<<<<<< HEAD
 #if defined(USE_NEVA_CDM)
 cdm::Exception ToCdmExceptionType(cdm::Error error) {
   switch (error) {
@@ -700,7 +699,7 @@ cdm::Exception ToCdmExceptionType(cdm::Error error) {
   return cdm::kExceptionInvalidStateError;
 }
 #endif
-=======
+
 base::span<uint8_t> AsSpan(cdm::Buffer* buffer) {
   CHECK(buffer);
   // SAFETY: |buffer->Data()| must return a buffer of |buffer->Size()| bytes.
@@ -732,5 +731,4 @@ base::span<const uint8_t> KeyIdFrom(const cdm::InputBuffer_2* input_buffer) {
       base::span(input_buffer->key_id, input_buffer->key_id_size));
 }
 
->>>>>>> 147.0.7702.0~1
 }  // namespace media
