@@ -55,11 +55,12 @@ class TabUIHelper : public tabs::ContentsObservingTabFeature {
 
 #if !BUILDFLAG(IS_ANDROID)
   bool ShouldDisplayFavicon();
+  bool IsMonochromeFavicon();
 #endif
 
   // Get the favicon of the tab. It will return a favicon from history service
   // if it needs to, otherwise, it will return the favicon of the WebContents.
-  ui::ImageModel GetFavicon() const;
+  ui::ImageModel GetFavicon();
 
   // Return true if the throbber should be hidden during a page load.
   bool ShouldHideThrobber() const;
@@ -91,7 +92,7 @@ class TabUIHelper : public tabs::ContentsObservingTabFeature {
     return created_by_session_restore_;
   }
 
-  void set_needs_attention(bool attention) { needs_attention_ = attention; }
+  void SetNeedsAttention(bool needs_attention);
   bool needs_attention() const { return needs_attention_; }
 
   // Returns true if the tab is eligible to show the discard UI.
@@ -101,9 +102,13 @@ class TabUIHelper : public tabs::ContentsObservingTabFeature {
   std::optional<base::ByteSize> GetDiscardedMemorySavings();
 
  private:
+  void OnTabPinnedStatusChange(tabs::TabInterface* tab_interface,
+                               bool new_pinned_state);
+
   bool was_active_at_least_once_ = false;
   bool created_by_session_restore_ = false;
   bool needs_attention_ = false;
+  base::CallbackListSubscription pin_tab_subscription_;
 
   base::RepeatingClosureList tab_ui_change_callbacks_;
 

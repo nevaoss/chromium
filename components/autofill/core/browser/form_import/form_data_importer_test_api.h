@@ -43,25 +43,11 @@ class FormDataImporterTestApi {
     fdi_->credit_card_import_type_ = credit_card_import_type;
   }
 
-  std::optional<CreditCard> ExtractCreditCard(const FormStructure& form) {
-    return fdi_->ExtractCreditCard(form);
-  }
-
   ExtractedFormData ExtractFormData(const FormStructure& form,
                                     bool profile_autofill_enabled,
                                     bool payment_methods_autofill_enabled) {
     return fdi_->ExtractFormData(form, profile_autofill_enabled,
                                  payment_methods_autofill_enabled);
-  }
-
-  bool ProcessExtractedCreditCard(
-      const FormStructure& submitted_form,
-      const std::optional<CreditCard>& credit_card_import_candidate,
-      bool is_credit_card_upstream_enabled,
-      ukm::SourceId ukm_source_id) {
-    return fdi_->ProcessExtractedCreditCard(
-        submitted_form, credit_card_import_candidate,
-        is_credit_card_upstream_enabled, ukm_source_id);
   }
 
   void ImportAndProcessFormData(const FormStructure& submitted_form,

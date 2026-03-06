@@ -94,7 +94,6 @@
 #include "chrome/browser/web_applications/web_app_utils.h"
 #include "chrome/browser/web_applications/web_contents/web_app_data_retriever.h"
 #include "chrome/browser/web_applications/web_contents/web_contents_manager.h"
-#include "chrome/common/chrome_features.h"
 #include "components/keep_alive_registry/keep_alive_registry.h"
 #include "components/keep_alive_registry/keep_alive_types.h"
 #include "components/keep_alive_registry/scoped_keep_alive.h"
@@ -783,11 +782,14 @@ void WebAppCommandScheduler::InstallAppFromUrl(
 void WebAppCommandScheduler::FetchManifestAndUpdate(
     const GURL& install_url,
     const webapps::ManifestId& manifest_id,
-    base::OnceCallback<void(FetchManifestAndUpdateResult)> callback,
+    std::optional<base::Time> previous_time_for_silent_icon_update,
+    bool force_trusted_silent_update,
+    FetchManifestAndUpdateCallback callback,
     const base::Location& location) {
   provider_->command_manager().ScheduleCommand(
-      std::make_unique<FetchManifestAndUpdateCommand>(install_url, manifest_id,
-                                                      std::move(callback)),
+      std::make_unique<FetchManifestAndUpdateCommand>(
+          install_url, manifest_id, previous_time_for_silent_icon_update,
+          force_trusted_silent_update, std::move(callback)),
       location);
 }
 
@@ -869,11 +871,13 @@ void WebAppCommandScheduler::ReadAppUpdateDataFromDisk(
 void WebAppCommandScheduler::ReadAppMigrationDataFromDisk(
     const webapps::AppId& old_app_id,
     const webapps::AppId& new_app_id,
+    bool is_forced_migration_on_startup,
     base::OnceCallback<void(std::optional<WebAppIdentityUpdate>)> callback,
     const base::Location& location) {
   provider_->command_manager().ScheduleCommand(
-      std::make_unique<AppMigrationDataReadCommand>(old_app_id, new_app_id,
-                                                    std::move(callback)),
+      std::make_unique<AppMigrationDataReadCommand>(
+          old_app_id, new_app_id, is_forced_migration_on_startup,
+          std::move(callback)),
       location);
 }
 

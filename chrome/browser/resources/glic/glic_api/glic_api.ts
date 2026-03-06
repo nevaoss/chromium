@@ -184,6 +184,11 @@ export declare interface GlicWebClient {
    */
   invoke?(options: InvokeOptions): Promise<void>;
 
+  /**
+   * Requests the web client to stop microphone recording.
+   */
+  stopMicrophone?(): Promise<void>;
+
   // !!! ATTENTION !!!
   // Avoid adding new methods to this interface! Instead, to push information to
   // the web client it's much more preferable to add new functions to
@@ -200,6 +205,9 @@ export declare interface GlicBrowserHost {
 
   /** Return the platform glic is running on. */
   getPlatform?(): Platform;
+
+  /** Return the form factor of the device glic is running on. */
+  getFormFactor?(): FormFactor;
 
   /**
    * Notifies the browser that the web client has switched modes. Note that this
@@ -602,7 +610,13 @@ export declare interface GlicBrowserHost {
   /** Returns the state of the location permission. */
   getLocationPermissionState?(): ObservableValue<boolean>;
 
-  /** Returns the state of the tab context permission. */
+  /**
+   * Returns the state of the tab context permission for this instance.
+   *
+   * Note: This state may differ from the global default if per-instance
+   * permissions are enabled and the user has toggled access for this specific
+   * instance.
+   */
   getTabContextPermissionState?(): ObservableValue<boolean>;
 
   /** Returns the state of the OS granted location permission. */
@@ -621,8 +635,9 @@ export declare interface GlicBrowserHost {
   getActuationOnWebSetting?(): ObservableValue<boolean>;
 
   /**
-   * Returns the state of the default tab context permission for new sessions.
-   * The returned observable will be updated when the setting changes.
+   * Returns the state of the global default tab context permission set in
+   * Chrome settings. New instances inherit this value upon creation. The
+   * returned observable will be updated when the global setting changes.
    */
   getDefaultTabContextPermissionState?(): ObservableValue<boolean>;
 
@@ -639,8 +654,12 @@ export declare interface GlicBrowserHost {
   setLocationPermissionState(enabled: boolean): Promise<void>;
 
   /**
-   * Set the state of the tab context permission in settings. Returns a promise
-   * that resolves when the browser has stored the new pref value.
+   * Set the state of the tab context permission. Returns a promise that
+   * resolves when the browser has stored the new value.
+   *
+   * Note: If per-instance permissions are enabled, this may only update the
+   * client's local state optimistically and resolve immediately without
+   * modifying a global browser preference.
    */
   setTabContextPermissionState(enabled: boolean): Promise<void>;
 
@@ -872,22 +891,6 @@ export declare interface GlicBrowserHost {
   getHostCapabilities?(): Set<HostCapability>;
 
   /**
-   * Emits when the browser wants the web client to change its view to match
-   * a requested change (e.g., because the user clicked a UI element to toggle
-   * to a different view).
-   *
-   * The web client should update its view to match the requested change.
-   */
-  getViewChangeRequests?(): Observable<ViewChangeRequest>;
-
-  /**
-   * Notifies the browser that the web client has changed the view shown to the
-   * user. This is used to trigger updates to browser UI which shows the current
-   * state of the web client, such as toggle controls.
-   */
-  onViewChanged?(notification: ViewChangedNotification): void;
-
-  /**
    * Returns an observable that emits when PageMetadata for the given tab
    * changes. Only meta tags which are direct children of the head element and
    * match one of the names provided in the names parameter will be
@@ -1037,6 +1040,11 @@ export declare interface GlicBrowserHost {
    * corresponding task id).
    */
   actorTaskListRowClicked?(): Observable<number>;
+
+  /**
+   * Called when the microphone status changes in the web client.
+   */
+  onMicrophoneStatusChange?(status: MicrophoneStatus): void;
 }
 
 /** Information about a conversation. */
@@ -1564,6 +1572,8 @@ export declare interface MetaTag {
 export declare interface FrameMetadata {
   url: string;
   metaTags: MetaTag[];
+  /** Whether chrome has audio/video transcripts for this frame. */
+  hasMediaTranscripts?: boolean;
 }
 
 /** Metadata about the page.  Includes URL and meta tags for each frame. */
@@ -1925,46 +1935,6 @@ export declare interface DraggableArea {
 }
 
 /**
- * Top-level views of the glic web client.
- */
-export enum ClientView {
-  ACTUATION = 'actuation',
-  CONVERSATION = 'conversation',
-}
-
-/**
- * A request to change the glic web client to a view suitable for tracking the
- * progress of actuation, if possible.
- */
-export declare interface ViewChangeRequestActuation {
-  readonly desiredView: ClientView.ACTUATION;
-}
-
-/**
- * A request to change the glic web client to a view which shows a
- * conversational interface of some type (whether textual, aural or other).
- */
-export declare interface ViewChangeRequestConversation {
-  readonly desiredView: ClientView.CONVERSATION;
-}
-
-/**
- * A request to change the glic web client to a view of some type. These all
- * specify what the desired view is, but some may carry additional information
- * about the request.
- */
-export declare type ViewChangeRequest =
-    ViewChangeRequestActuation | ViewChangeRequestConversation;
-
-/**
- * A notification that the view has changed to the specified view.
- */
-export declare interface ViewChangedNotification {
-  /** The view that was changed to. */
-  currentView: ClientView;
-}
-
-/**
  * A generic interface for observing a stream of values.
  *
  * Subscriptions should be kept only while necessary, as they incur some cost.
@@ -1991,7 +1961,7 @@ export declare interface Observable<T> {
  *
  * See also comments about Observable.
  */
-export interface ObservableValue<T> extends Observable<T> {
+export declare interface ObservableValue<T> extends Observable<T> {
   /**
    * Provides synchronous access to the current value. Returns undefined if the
    * initial value has not yet been populated.
@@ -2346,93 +2316,32 @@ export declare interface SelectAutofillSuggestionsDialogResponse {
 // Types used in presubmit check.
 //
 
-// Types to be checked for backwards compatibility on presubmit, excluding
-// enums.
-export interface BackwardsCompatibleTypes {
-  actInFocusedTabParams: ActInFocusedTabParams;
-  actInFocusedTabResult: ActInFocusedTabResult;
-  additionalContext: AdditionalContext;
-  additionalContextPart: AdditionalContextPart;
-  annotatedPageData: AnnotatedPageData;
-  autofillSuggestion: AutofillSuggestion;
-  browserHost: GlicBrowserHost;
-  chromeVersion: ChromeVersion;
-  createTabOptions: CreateTabOptions;
-  credential: Credential;
-  documentData: DocumentData;
-  draggableArea: DraggableArea;
-  focusedTabData: FocusedTabData;
-  formFillingRequest: FormFillingRequest;
-  formFillingResponse: FormFillingResponse;
-  glicBrowserHostJournal: GlicBrowserHostJournal;
-  glicBrowserHostMetrics: GlicBrowserHostMetrics;
-  hostRegistry: GlicHostRegistry;
-  imageOriginAnnotations: ImageOriginAnnotations;
-  navigationConfirmationRequest: NavigationConfirmationRequest;
-  navigationConfirmationResponse: NavigationConfirmationResponse;
-  openPanelInfo: OpenPanelInfo;
-  panelOpeningData: PanelOpeningData;
-  panelState: PanelState;
-  pdfDocumentData: PdfDocumentData;
-  resizeWindowOptions: ResizeWindowOptions;
-  selectAutofillSuggestionsDialogRequest:
-      SelectAutofillSuggestionsDialogRequest;
-  selectAutofillSuggestionsDialogResponse:
-      SelectAutofillSuggestionsDialogResponse;
-  selectCredentialDialogRequest: SelectCredentialDialogRequest;
-  selectCredentialDialogResponse: SelectCredentialDialogResponse;
-  screenshot: Screenshot;
-  scrollToParams: ScrollToParams;
-  scrollToSelector: ScrollToSelector;
-  scrollToTextFragmentSelector: ScrollToTextFragmentSelector;
-  scrollToTextSelector: ScrollToTextSelector;
-  skill: Skill;
-  skillPreview: SkillPreview;
-  subscriber: Subscriber;
-  tabContextOptions: TabContextOptions;
-  tabContextResult: TabContextResult;
-  resumeActorTaskResult: ResumeActorTaskResult;
-  tabData: TabData;
-  userConfirmationDialogRequest: UserConfirmationDialogRequest;
-  userConfirmationDialogResponse: UserConfirmationDialogResponse;
-  userProfileInfo: UserProfileInfo;
-  webClient: GlicWebClient;
-  webPageData: WebPageData;
-  rect: Rect;
-  captureRegionResult: CaptureRegionResult;
-  capturedRegion: CapturedRegion;
-  openSettingsOptions: OpenSettingsOptions;
-  osPermissionType: OsPermissionType;
-  zeroStateSuggestions: ZeroStateSuggestions;
-  zeroStateSuggestionsV2: ZeroStateSuggestionsV2;
-  zeroStateSuggestionsOptions: ZeroStateSuggestionsOptions;
+// Types not intended to be used externally, and therefore may not be
+// backwards compatible. All remaining types can only be updated in
+// backwards compatible ways.
+export interface PrivateTypes {
+  privateTypes: PrivateTypes;
+  closedEnums: ClosedEnums;
 }
 
-// Enums that should not be changed.
+// Enums that should not be changed. All other enums may be extended
+// in future versions.
 export interface ClosedEnums {
   panelStateKind: typeof PanelStateKind;
   webClientMode: typeof WebClientMode;
-}
 
-// Enums that can be extended.
-export interface ExtensibleEnums {
-  captureScreenshotErrorReason: typeof CaptureScreenshotErrorReason;
-  captureRegionErrorReason: typeof CaptureRegionErrorReason;
-  scrollToErrorReason: typeof ScrollToErrorReason;
-  webClientInitializeErrorReason: typeof WebClientInitializeErrorReason;
-  invocationSource: typeof InvocationSource;
-  actInFocusedTabErrorReason: typeof ActInFocusedTabErrorReason;
-  createTaskErrorReason: typeof CreateTaskErrorReason;
-  performActionsErrorReason: typeof PerformActionsErrorReason;
-  settingsPageField: typeof SettingsPageField;
-  hostCapability: typeof HostCapability;
-  actorTaskState: typeof ActorTaskState;
-  actorTaskPauseReason: typeof ActorTaskPauseReason;
-  actorTaskStopReason: typeof ActorTaskStopReason;
-  UserGrantedPermissionDuration: typeof UserGrantedPermissionDuration;
-  webUseCounter: typeof WebUseCounter;
-  platform: typeof Platform;
-  cancelActionsResult: typeof CancelActionsResult;
+  // NOTICE: Enums below this line were added here by default, and
+  // may in fact be safe to extend. Please verify safety before
+  // removing them.
+  webClientModel: typeof WebClientModel;
+  skillSource: typeof SkillSource;
+  switchConversationErrorReason: typeof SwitchConversationErrorReason;
+  pinTrigger: typeof PinTrigger;
+  registerConversationErrorReason: typeof RegisterConversationErrorReason;
+  metricUserInputReactionType: typeof MetricUserInputReactionType;
+  additionalContextSource: typeof AdditionalContextSource;
+  unpinTrigger: typeof UnpinTrigger;
+  responseStopCause: typeof ResponseStopCause;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -2544,6 +2453,16 @@ export enum Platform {
   LINUX = 3,
   CHROME_OS = 4,
   ANDROID = 5,
+}
+
+///////////////////////////////////////////////
+// WARNING - GENERATED FROM MOJOM, DO NOT EDIT.
+// The form factor of the device glic is running on.
+export enum FormFactor {
+  UNKNOWN = 0,
+  DESKTOP = 1,
+  PHONE = 2,
+  TABLET = 3,
 }
 
 ///////////////////////////////////////////////
@@ -2706,6 +2625,8 @@ export enum InvocationSource {
   AUTO_OPENED_BY_CONTEXTUAL_CUE = 16,
   // User clicked the summarize button in the PDF viewer.
   PDF_SUMMARIZE_BUTTON = 17,
+  // From a navigation capture.
+  NAVIGATION_CAPTURE = 18,
 }
 
 ///////////////////////////////////////////////
@@ -2725,6 +2646,15 @@ export enum WebClientMode {
   TEXT = 0,
   // Audio operation mode.
   AUDIO = 1,
+}
+
+///////////////////////////////////////////////
+// WARNING - GENERATED FROM MOJOM, DO NOT EDIT.
+// Microphone status.
+export enum MicrophoneStatus {
+  NOT_LISTENING = 0,
+  LISTENING = 1,
+  UNKNOWN = 2,
 }
 
 ///////////////////////////////////////////////

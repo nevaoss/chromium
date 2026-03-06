@@ -131,6 +131,14 @@ class EmptyInstanceDelegate : public Host::InstanceDelegate {
   class MetricsBackwardsCompatibilityStub
       : public GlicInstanceMetricsBackwardsCompatibility {
    public:
+    void OnUserInputSubmitted(mojom::WebClientMode mode) override {}
+    void DidRequestContextFromTab(tabs::TabInterface& tab) override {}
+    void OnResponseStarted() override {}
+    void OnResponseStopped(mojom::ResponseStopCause cause) override {}
+    void OnTurnCompleted(mojom::WebClientModel model,
+                         base::TimeDelta duration) override {}
+    void OnReaction(mojom::MetricUserInputReactionType reaction_type) override {
+    }
     void OnGlicScrollAttempt() override {}
     void OnGlicScrollComplete(bool success) override {}
   };
@@ -310,6 +318,14 @@ void Host::PanelWasClosed() {
   if (handler_info_ && handler_info_->web_client) {
     handler_info_->web_client->PanelWasClosed(base::DoNothing());
     handler_info_->open_complete = false;
+  }
+}
+
+void Host::StopMicrophone(base::OnceClosure done) {
+  if (auto* client = GetPrimaryWebClient()) {
+    client->StopMicrophone(std::move(done));
+  } else {
+    std::move(done).Run();
   }
 }
 
@@ -499,6 +515,9 @@ void Host::SetWebClient(GlicWebClientAccess* web_client) {
             // Unretained is safe because web_client is calling us.
             base::Unretained(web_client)));
   }
+#if !BUILDFLAG(IS_ANDROID)  // NEEDS_ANDROID_IMPL
+  skills_manager().UpdateSkillPreviews(std::nullopt);
+#endif
 }
 
 void Host::WebClientInitializeFailed(GlicWebClientAccess* web_client) {
@@ -635,24 +654,9 @@ content::RenderProcessHost* Host::GetWebClientRenderProcessHost() const {
   return nullptr;
 }
 
-void Host::OnViewChanged(GlicWebClientAccess* client,
-                         mojom::CurrentView new_view) {
-  if (client != GetPrimaryWebClient()) {
-    return;
-  }
-  if (primary_current_view_ != new_view) {
-    primary_current_view_ = new_view;
-    observers_.Notify(&Observer::OnViewChanged, primary_current_view_);
-  }
-}
-
 void Host::OnInteractionModeChange(GlicPageHandler* page_handler,
                                    mojom::WebClientMode new_mode) {
   instance_delegate_->OnInteractionModeChange(new_mode);
-}
-
-mojom::CurrentView Host::GetPrimaryCurrentView() {
-  return primary_current_view_;
 }
 
 void Host::ResizePanel(GlicPageHandler* page_handler,

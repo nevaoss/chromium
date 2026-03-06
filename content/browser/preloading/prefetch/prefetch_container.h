@@ -9,9 +9,12 @@
 
 #include "base/auto_reset.h"
 #include "base/memory/weak_ptr.h"
+#include "base/no_destructor.h"
 #include "base/observer_list.h"
 #include "base/observer_list_types.h"
+#include "base/strings/string_util.h"
 #include "base/time/time.h"
+#include "base/unguessable_token.h"
 #include "content/browser/preloading/prefetch/prefetch_status.h"
 #include "content/browser/preloading/prefetch/prefetch_streaming_url_loader_common_types.h"
 #include "content/browser/preloading/preload_pipeline_info_impl.h"
@@ -21,6 +24,7 @@
 #include "mojo/public/cpp/bindings/remote.h"
 #include "net/http/http_no_vary_search_data.h"
 #include "net/http/http_request_headers.h"
+#include "services/network/public/cpp/resource_request.h"
 #include "services/network/public/mojom/devtools_observer.mojom-forward.h"
 #include "services/network/public/mojom/network_context.mojom-forward.h"
 #include "third_party/blink/public/mojom/loader/referrer.mojom.h"
@@ -43,9 +47,9 @@ class Origin;
 
 namespace content {
 
+class PrefetchIsolatedNetworkContext;
 class PrefetchKey;
 class PrefetchMatchResolverAction;
-class PrefetchNetworkContext;
 class PrefetchRequest;
 class PrefetchResponseReader;
 class PrefetchService;
@@ -284,10 +288,6 @@ class CONTENT_EXPORT PrefetchContainer {
 
   base::WeakPtr<PrefetchResponseReader> GetResponseReaderForCurrentPrefetch();
 
-  // Whether or not the prefetch proxy would be required to fetch the given url
-  // based on |prefetch_type_|.
-  bool IsProxyRequiredForURL(const GURL& url) const;
-
   // Creates the initial resource request based on `PrefetchRequest`.
   // `UpdateResourceRequest()`, which will be called on redirect, may update
   // this resource request later on.
@@ -295,6 +295,13 @@ class CONTENT_EXPORT PrefetchContainer {
   const network::ResourceRequest* GetResourceRequest() const {
     return resource_request_.get();
   }
+
+  // Returns the devtools request id that should be set to resource request
+  // during `MakeInitialResourceRequest()`.
+  // Note that this is also called via
+  // `SetPrefetchStatusWithoutUpdatingTriggeringOutcome()`, where resource
+  // request might not yet created.
+  const std::string& GetDevtoolsRequestId() const;
 
   // Equivalent to `request().no_vary_search_hint()`.
   // Exposed for `PrefetchMatchResolver`.
@@ -333,8 +340,8 @@ class CONTENT_EXPORT PrefetchContainer {
   // Whether or not the prefetch was determined to be eligibile.
   void OnEligibilityCheckComplete(PreloadingEligibility eligibility);
 
-  // Adds a the new URL to |redirect_chain_|.
-  void AddRedirectHop(const net::RedirectInfo& redirect_info);
+  // Adds `url` (the next URL to prefetch) to |redirect_chain_|.
+  void AddRedirectHop(const GURL& url);
 
   // Returns a tuple of `PrefetchUpdateHeadersParams`s that indicates the header
   // modification upon redirect, to be passed to `UpdateResourceRequest()` and
@@ -355,10 +362,6 @@ class CONTENT_EXPORT PrefetchContainer {
   void SetIsDecoy(bool is_decoy) { is_decoy_ = is_decoy; }
   bool IsDecoy() const { return is_decoy_; }
 
-  // Whether the prefetch request is cross-site/cross-origin for given origin.
-  bool IsCrossSiteRequest(const url::Origin& origin) const;
-  bool IsCrossOriginRequest(const url::Origin& origin) const;
-
   // Whether this prefetch is potentially contaminated by cross-site state.
   // If so, it may need special handling for privacy.
   // See https://crbug.com/1439246.
@@ -367,7 +370,7 @@ class CONTENT_EXPORT PrefetchContainer {
 
   // Allows for |PrefetchCookieListener|s to be registered for
   // `GetCurrentSingleRedirectHopToPrefetch()`.
-  void RegisterCookieListener();
+  void RegisterCookieListenerForTesting();
   void PauseAllCookieListeners();
   void ResumeAllCookieListeners();
 
@@ -376,10 +379,10 @@ class CONTENT_EXPORT PrefetchContainer {
   // redirect hops where needed.
   // This returns `nullptr` when the isolated network context for `this` is not
   // yet created.
-  PrefetchNetworkContext* GetIsolatedNetworkContext() const;
+  PrefetchIsolatedNetworkContext* GetIsolatedNetworkContext() const;
 
   // Creates the isolated network context.
-  PrefetchNetworkContext* CreateIsolatedNetworkContext(
+  PrefetchIsolatedNetworkContext* CreateIsolatedNetworkContext(
       mojo::Remote<network::mojom::NetworkContext> isolated_network_context);
 
   scoped_refptr<network::SharedURLLoaderFactory>
@@ -422,13 +425,13 @@ class CONTENT_EXPORT PrefetchContainer {
       bool is_success,
       const network::URLLoaderCompletionStatus& completion_status);
 
-  // Note: Even if this returns `kServable`, `CreateRequestHandler()` can still
-  // fail (returning null handler) due to final checks. See also the comment for
+  // Note: Even if `GetMatchResolverAction().ToServableState()` is `kServable`,
+  // `CreateRequestHandler()` can still fail (returning null handler) due to
+  // final checks. See also the comment for
   // `PrefetchResponseReader::CreateRequestHandler()`.
-  PrefetchServableState GetServableState() const;
   PrefetchMatchResolverAction GetMatchResolverAction() const;
   // Allows to pass `cacheable_duration` for testing.
-  PrefetchServableState GetServableStateForTesting(
+  PrefetchMatchResolverAction GetMatchResolverActionForTesting(
       base::TimeDelta cacheable_duration) const;
 
   // Starts blocking `PrefetchMatchResolver` until non-redirect response header
@@ -467,8 +470,10 @@ class CONTENT_EXPORT PrefetchContainer {
                                  serving_page_metrics_container);
   void UpdateServingPageMetrics();
 
-  // Returns request id to be used by DevTools and test utilities.
-  const std::string& RequestId() const { return request_id_; }
+  // Returns the container id used by test utilities.
+  const std::string& ContainerIdForTesting() const {
+    return container_id_for_testing_;
+  }
 
   // Simulates state transitions for:
   // - Passing eligibility check successfully (`LoadState::kEligible`),
@@ -674,14 +679,6 @@ class CONTENT_EXPORT PrefetchContainer {
   const PrefetchSingleRedirectHop& GetPreviousSingleRedirectHopToPrefetch()
       const;
 
-  // Returns "Sec-Purpose" header value for a prefetch request to `request_url`.
-  const char* GetSecPurposeHeaderValue(const GURL& request_url) const;
-
-  // Adds Speculation Rules Tags headers for a prefetch request to `request_url`
-  // to `headers`.
-  void AddSpeculationTagsHeader(const GURL& request_url,
-                                net::HttpRequestHeaders& headers) const;
-
   // Called when a prefetch request could not be started because of eligibility
   // reasons. Should only be called for the initial prefetch request and not
   // redirects.
@@ -724,10 +721,6 @@ class CONTENT_EXPORT PrefetchContainer {
   void OnPrefetchCompleteInternal(
       const network::URLLoaderCompletionStatus& completion_status);
 
-  PrefetchServableState GetServableStateInternal(
-      base::TimeDelta cacheable_duration) const;
-  PrefetchServableState GetServableStateInternal2(
-      base::TimeDelta cacheable_duration) const;
   PrefetchMatchResolverAction GetMatchResolverActionInternal(
       base::TimeDelta cacheable_duration) const;
 
@@ -777,7 +770,7 @@ class CONTENT_EXPORT PrefetchContainer {
   // The network contexts used for this prefetch.
   scoped_refptr<network::SharedURLLoaderFactory>
       default_network_context_url_loader_factory_;
-  std::unique_ptr<PrefetchNetworkContext> isolated_network_context_;
+  std::unique_ptr<PrefetchIsolatedNetworkContext> isolated_network_context_;
 
   // The currently prefetching streaming URL loader, prefetching the last
   // element of `redirect_chain_`. Multiple streaming URL loaders can be used in
@@ -808,8 +801,8 @@ class CONTENT_EXPORT PrefetchContainer {
   base::WeakPtr<PrefetchServingPageMetricsContainer>
       serving_page_metrics_container_;
 
-  // Request identifier used by DevTools and test utilities.
-  std::string request_id_;
+  // Container id used by test utilities.
+  const std::string container_id_for_testing_;
 
   // Information of preload pipeline that this prefetch belongs/is related to.
   //

@@ -911,6 +911,7 @@
 <translation id="4405320213589929829">ဒေသတွင်း အချက်အလက်နှင့် ခရီးလမ်းညွှန်ချက်များ ရယူရန် အင်တာနက်စာမျက်နှာများရှိ လိပ်စာများကို သုံးပါ။</translation>
 <translation id="441218095371040430">လက်ကွက်ကို သုံးရန်</translation>
 <translation id="4415276339145661267">သင့် Google Account ကို စီမံခြင်း</translation>
+<translation id="4416582610654027550">မှန်ကန်သည့် URL ကို ရိုက်ပါ</translation>
 <translation id="4420409367264901497">လိပ်စာတည်းဖြတ်ရန်</translation>
 <translation id="4425365312778464779">ဤအကောင့်ကို စီမံခန့်ခွဲထားသည်</translation>
 <translation id="4430277756566635951"><ph name="EMAIL" /> ကို လောလောဆယ် ရွေးထားသည်။ အကောင့်ရွေးပါ။</translation>
@@ -1035,6 +1036,7 @@
 <translation id="484462545196658690">အော်တို</translation>
 <translation id="4850886885716139402">မြင်ကွင်း</translation>
 <translation id="4854068532375923088">“Gemini” အား သင့်ကင်မရာ သုံးခွင့်ပြုခြင်း</translation>
+<translation id="4860114370595561279">သိမ်းထားသောအချက်အလက်ကို သင့်စက်တွင် သိမ်းသည်</translation>
 <translation id="4860895144060829044">ဖုန်းခေါ်ရန်</translation>
 <translation id="4861953997778766866">မျှဝေထားသော သင့်တဘ်အုပ်စုများကို လူတိုင်းက ပြောင်းလဲနိုင်သည်</translation>
 <translation id="4865063548323785458">ဝဘ်ဆိုက်နှင့် အက်ပ်များသို့ အလွယ်တကူ လက်မှတ်ထိုးဝင်နိုင်ရန်အတွက် သင့်စကားဝှက်များကို သိမ်းပြီး အော်တိုဖြည့်ပါ</translation>
@@ -1403,7 +1405,6 @@ Handoff ကို ဆက်တင်များ၏ ယေဘူယျအပိ�
 <translation id="6140948187512243695">အသေးစိတ်များကို ပြရန်</translation>
 <translation id="6144589619057374135">ရုပ်ဖျက်မုဒ်တွင် ${url} ဖွင့်ရန်</translation>
 <translation id="6146563240635539929">ဗီယီယိုများ</translation>
-<translation id="6147279996212084542">ရှင်းပြရန်</translation>
 <translation id="6151006591088192882">ရုပ်ဖျက်တဘ်များကို <ph name="BIOMETRIC_AUTHENITCATION_TYPE" /> ဖြင့် ဖွင့်ရန်</translation>
 <translation id="6152340033632117531">သုံးမနေပါ</translation>
 <translation id="6152406514676263192">သင့်စိတ်ဝင်စားမှုများအပေါ် အခြေခံသည့် အသက်ဆိုင်ဆုံး အကြောင်းအရာများအတွက် စင့်ခ်လုပ်နိုင်သည်။</translation>
@@ -1650,7 +1651,6 @@ Handoff ကို ဆက်တင်များ၏ ယေဘူယျအပိ�
 <translation id="6964300328304469089"><ph name="NAME" />၊ <ph name="EMAIL" /> ကို လောလောဆယ် ရွေးထားသည်။ အကောင့်ရွေးပါ။</translation>
 <translation id="6964760285928603117">အဖွဲ့မှ ဖယ်ရှားပါ</translation>
 <translation id="6965382102122355670">OK</translation>
-<translation id="6967355534157677591">ပုံပြုလုပ်စနစ် Pro</translation>
 <translation id="6973630695168034713">ဖိုင်တွဲ</translation>
 <translation id="6979158407327259162">Google Drive</translation>
 <translation id="6979737339423435258">အားလုံး</translation>
@@ -2059,6 +2059,7 @@ Handoff ကို ဆက်တင်များ၏ ယေဘူယျအပိ�
 <translation id="8439758443371991593">‘ဖတ်ရန်စာရင်းတွင် ထည့်ရန်’ ကိုဖျောက်ရန်</translation>
 <translation id="8443986842926457191">URL သည် စာလုံးရေ ၂၀၄၈ လုံးထက်များနေသည်</translation>
 <translation id="8449869326050867919">စကားဝှက်မျှဝေထားသည်</translation>
+<translation id="8473815223723723001">Gemini ဖြင့် ပုံတည်းဖြတ်ပါ</translation>
 <translation id="8473863474539038330">လိပ်စာများနှင့် အခြားအရာများ</translation>
 <translation id="8474378002946546633">အကြောင်းကြားချက်များ ခွင့်ပြုရန်</translation>
 <translation id="8477178913400731244">ဒေတာဖျက်ရန်</translation>
@@ -2184,7 +2185,6 @@ Handoff ကို ဆက်တင်များ၏ ယေဘူယျအပိ�
 <translation id="8856643812068084733">မှတ်တမ်းများ</translation>
 <translation id="8863067612494559785"><ph name="DEVICE_NAME" /> သို့ ပို့နေသည်…</translation>
 <translation id="8863431381414769983">Google Maps မှ ခရီးလမ်းညွှန်ချက်နှင့် ဒေသတွင်းအချက်အလက်များ ရယူပါ</translation>
-<translation id="8867879594900082274">သင့်တည်းဖြတ်ချက်များသည် ဤစက်ရှိ ပင်ထိုးထားသော ဝဘ်ဆိုက်များတွင်သာ သက်ရောက်မည်။</translation>
 <translation id="8871974300055371298">အကြောင်းအရာ ဆက်တင်များ</translation>
 <translation id="8877788021141246043">သတိပေးချက် သတ်မှတ်ပါ</translation>
 <translation id="8879604564928138696">စမ်းကြည့်ရန် နှစ်ချက်တို့ပါ</translation>

@@ -110,7 +110,6 @@
 #include "third_party/blink/renderer/core/dom/dataset_dom_string_map.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/document_lifecycle.h"
-#include "third_party/blink/renderer/core/dom/document_part_root.h"
 #include "third_party/blink/renderer/core/dom/dom_token_list.h"
 #include "third_party/blink/renderer/core/dom/element_data_cache.h"
 #include "third_party/blink/renderer/core/dom/element_rare_data_vector.h"
@@ -1176,12 +1175,6 @@ Element& Element::CloneWithChildren(
 
   clone.CloneAttributesFrom(*this);
   clone.CloneNonAttributePropertiesFrom(*this, data);
-  if (data.Has(CloneOption::kPreserveDOMPartsMinimalAPI) && HasNodePart()) {
-    DCHECK(RuntimeEnabledFeatures::DOMPartsAPIMinimalEnabled());
-    clone.SetHasNodePart();
-  } else if (data.Has(CloneOption::kPreserveDOMParts)) {
-    PartRoot::CloneParts(*this, clone, data);
-  }
 
   // Append the clone to its parent first, before cloning children. If this is
   // done in the reverse order, each new child will receive treeDepth calls to
@@ -1210,12 +1203,6 @@ Element& Element::CloneWithoutChildren(NodeCloningData& data,
 
   clone.CloneAttributesFrom(*this);
   clone.CloneNonAttributePropertiesFrom(*this, data);
-  if (data.Has(CloneOption::kPreserveDOMPartsMinimalAPI) && HasNodePart()) {
-    DCHECK(RuntimeEnabledFeatures::DOMPartsAPIMinimalEnabled());
-    clone.SetHasNodePart();
-  } else if (data.Has(CloneOption::kPreserveDOMParts)) {
-    PartRoot::CloneParts(*this, clone, data);
-  }
   return clone;
 }
 
@@ -1348,6 +1335,9 @@ void Element::SetElementAttribute(const QualifiedName& name, Element* element) {
   if (isConnected()) {
     if (AXObjectCache* cache = GetDocument().ExistingAXObjectCache()) {
       cache->HandleAttributeChanged(name, this);
+    }
+    if (name == html_names::kCommandforAttr) {
+      GetDocument().MarkOverscrollCommandTargetsDirty();
     }
   }
 }
@@ -3066,9 +3056,10 @@ bool Element::ScrollLayoutBoxBy(const ScrollToOptions* scroll_to_options) {
   new_position =
       scrollable_area->GetSnapPositionAndSetTarget(*strategy).value_or(
           new_position);
-  return scrollable_area->ScrollToAbsolutePosition(
-      new_position, scroll_behavior, mojom::blink::ScrollType::kProgrammatic,
-      cc::ScrollSourceType::kRelativeScroll);
+  return scrollable_area->SetScrollOffset(
+      ScrollOffset(new_position - gfx::PointF(scrollable_area->ScrollOrigin())),
+      mojom::blink::ScrollType::kProgrammatic,
+      cc::ScrollSourceType::kRelativeScroll, scroll_behavior);
 }
 
 bool Element::ScrollLayoutBoxTo(const ScrollToOptions* scroll_to_options) {
@@ -3800,29 +3791,10 @@ void Element::AttributeChanged(const AttributeModificationParams& params) {
           ->RemovePendingParsingElement(GetIdAttribute(), this);
     }
 
-    // If the id changes that may have been a target of overscroll command, we
-    // need to notify that an overscroll-target pseudo class may have changed.
-    const auto& overscroll_command_targets =
-        GetDocument().OverscrollCommandTargets();
-    auto invalidate_overscroll_target_state = [&](const AtomicString& idref) {
-      OverscrollTargetStateChanged();
-      // We also may have a new target with the same id. Note that this
-      // invalidates all elements with this id, which should be a small set
-      // typically.
-      for (auto& element : GetDocument().GetAllElementsById(idref)) {
-        element->OverscrollTargetStateChanged();
-      }
-    };
-
-    if (!params.old_value.empty() &&
-        overscroll_command_targets.Contains(params.old_value)) {
-      invalidate_overscroll_target_state(params.old_value);
+    if (isConnected() &&
+        (!params.old_value.empty() || !params.new_value.empty())) {
+      GetDocument().MarkOverscrollCommandTargetsDirty();
     }
-    if (!params.new_value.empty() &&
-        overscroll_command_targets.Contains(params.new_value)) {
-      invalidate_overscroll_target_state(params.new_value);
-    }
-
   } else if (name == html_names::kClassAttr) {
     if (params.old_value == params.new_value &&
         params.reason != AttributeModificationReason::kByMoveToNewDocument &&
@@ -4078,7 +4050,7 @@ void Element::UpdateClassList(const AtomicString& old_class_string,
 
 static inline bool IsEventHandlerAttribute(const Attribute& attribute) {
   return attribute.GetName().NamespaceURI().IsNull() &&
-         attribute.GetName().LocalName().StartsWith("on");
+         attribute.GetName().LocalName().starts_with("on");
 }
 
 bool Element::AttributeValueIsJavaScriptURL(const Attribute& attribute) {
@@ -4324,13 +4296,6 @@ Node::InsertionNotificationRequest Element::InsertedInto(
     SetContainsFullScreenElementOnAncestorsCrossingFrameBoundaries(true);
   }
 
-  if (!id_value.empty() &&
-      GetDocument().OverscrollCommandTargets().Contains(id_value)) {
-    for (auto& element : GetDocument().GetAllElementsById(id_value)) {
-      element->OverscrollTargetStateChanged();
-    }
-  }
-
   // Clean up the unnecessary explicitly set custom element registry
   // in element rare data set in RemovedFrom. Note that we only need
   // to do such bookkeeping when scoped custom element registry is actually
@@ -4348,6 +4313,10 @@ Node::InsertionNotificationRequest Element::InsertedInto(
         }
       }
     }
+  }
+
+  if (insertion_point.isConnected() && !GetIdAttribute().empty()) {
+    GetDocument().MarkOverscrollCommandTargetsDirty();
   }
 
   return kInsertionDone;
@@ -4529,13 +4498,6 @@ void Element::RemovedFrom(ContainerNode& insertion_point) {
     observer->Notify();
   }
 
-  if (!id_value.empty() &&
-      document.OverscrollCommandTargets().Contains(id_value)) {
-    for (auto& element : document.GetAllElementsById(id_value)) {
-      element->OverscrollTargetStateChanged();
-    }
-  }
-
   // Removing an element means that we should remove this overscroll area,
   // since we won't visit this node during style when we typically would do
   // this. There may be another element with the same ID that we discover
@@ -4551,6 +4513,10 @@ void Element::RemovedFrom(ContainerNode& insertion_point) {
   // Remove all of the overscroll areas from this tracker.
   if (auto* tracker = GetOverscrollAreaTracker()) {
     tracker->RemoveAllOverscroll();
+  }
+
+  if (was_in_document && !GetIdAttribute().empty()) {
+    document.MarkOverscrollCommandTargetsDirty();
   }
 }
 
@@ -7564,7 +7530,7 @@ bool Element::AttachDeclarativeShadowRoot(
     shadow_root.SetKeepCustomElementRegistryNull(true);
   }
   // 10.8.NEW. Process shadowrootadoptedstylesheets attribute.
-  if (RuntimeEnabledFeatures::DeclarativeCSSModulesEnabled()) {
+  if (RuntimeEnabledFeatures::ShadowRootAdoptedStyleSheetEnabled()) {
     shadow_root.ProcessAdoptedStylesheetAttribute(adopted_stylesheets);
   }
   return true;
@@ -8869,6 +8835,8 @@ void Element::SetIsAdRelated() {
   DCHECK(!IsA<HTMLFrameOwnerElement>(this));
 
   UnpackAndRefresh(EnsureRareData().EnsureDisplayAdElementMonitor(this));
+
+  probe::UpdateAdRelatedState(*this, /*is_ad_related=*/true);
 }
 
 bool Element::IsAdRelated() const {
@@ -9262,22 +9230,10 @@ void Element::SetInnerHTMLInternal(
         // No options; nothing to do.
       }
       ContainerNode* container = this;
-      bool swap_dom_parts{false};
       if (template_element) {
         container = template_element->content();
-        swap_dom_parts =
-            RuntimeEnabledFeatures::DOMPartsAPIEnabled() &&
-            template_element->hasAttribute(html_names::kParsepartsAttr);
       }
       ReplaceChildrenWithFragment(container, fragment, exception_state);
-      if (swap_dom_parts &&
-          !RuntimeEnabledFeatures::DOMPartsAPIMinimalEnabled()) {
-        // Move the parts list over to the template's content document's
-        // DocumentPartRoot.
-        To<DocumentFragment>(*container)
-            .getPartRoot()
-            .SwapPartsList(fragment->getPartRoot());
-      }
     }
   }
 }
@@ -13061,7 +13017,7 @@ void Element::SetAttributeHinted(AtomicString local_name,
   // This method is probably the most common case for `setAttribute`.
   // For performance reasons, we'll skip the TT check if we can determine it's
   // unnecessary based on a quick heuristic.
-  if (q_name.LocalName().StartsWith("on") ||
+  if (q_name.LocalName().starts_with("on") ||
       !GetCheckedAttributeTypes().empty()) [[unlikely]] {
     value = TrustedTypesCheckForAttribute(q_name, std::move(value),
                                           "setAttribute", exception_state);

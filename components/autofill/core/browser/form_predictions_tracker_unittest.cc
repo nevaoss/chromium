@@ -220,8 +220,8 @@ TEST_F(FormPredictionsTrackerTest, IgnoreSmallForms) {
 // callback immediately.
 TEST_F(FormPredictionsTrackerTest, Wait_ExecutesImmediatelyIfNoForms) {
   base::test::TestFuture<void> future;
-  tracker().Wait(future.GetCallback());
-  EXPECT_TRUE(future.IsReady());
+  tracker().Wait(future.GetCallback(), base::Milliseconds(1000));
+  EXPECT_TRUE(future.Wait());
 }
 
 // Tests that if Wait() is called when all tracked forms are already fully
@@ -242,8 +242,8 @@ TEST_F(FormPredictionsTrackerTest, Wait_ExecutesImmediatelyIfAlreadyParsed) {
       AutofillManager::Observer::FieldTypeSource::kAutofillServer, true);
 
   base::test::TestFuture<void> future;
-  tracker().Wait(future.GetCallback());
-  EXPECT_TRUE(future.IsReady());
+  tracker().Wait(future.GetCallback(), base::Milliseconds(1000));
+  EXPECT_TRUE(future.Wait());
 }
 
 // Tests that if a form is tracked but not fully parsed, Wait() defers the
@@ -255,7 +255,7 @@ TEST_F(FormPredictionsTrackerTest, Wait_DefersUntilFormFullyParsed) {
       std::vector<FormGlobalId>{form_id}, base::span<FormGlobalId>());
 
   base::test::TestFuture<void> future;
-  tracker().Wait(future.GetCallback());
+  tracker().Wait(future.GetCallback(), base::Milliseconds(1000));
 
   // Finish heuristic parsing.
   autofill_manager().NotifyObservers(
@@ -269,7 +269,7 @@ TEST_F(FormPredictionsTrackerTest, Wait_DefersUntilFormFullyParsed) {
       &AutofillManager::Observer::OnFieldTypesDetermined, form_id,
       AutofillManager::Observer::FieldTypeSource::kAutofillServer,
       /*small_forms_were_parsed=*/true);
-  EXPECT_TRUE(future.IsReady());
+  EXPECT_TRUE(future.Wait());
 }
 
 // Tests that if multiple forms are tracked, Wait() waits for the last remaining
@@ -282,7 +282,7 @@ TEST_F(FormPredictionsTrackerTest, Wait_UntilMultipleFormsParsed) {
       std::vector<FormGlobalId>{form1, form2}, base::span<FormGlobalId>());
 
   base::test::TestFuture<void> future;
-  tracker().Wait(future.GetCallback());
+  tracker().Wait(future.GetCallback(), base::Milliseconds(1000));
 
   // Fully parse form 1.
   autofill_manager().NotifyObservers(
@@ -305,7 +305,7 @@ TEST_F(FormPredictionsTrackerTest, Wait_UntilMultipleFormsParsed) {
   autofill_manager().NotifyObservers(
       &AutofillManager::Observer::OnFieldTypesDetermined, form2,
       AutofillManager::Observer::FieldTypeSource::kAutofillServer, true);
-  EXPECT_TRUE(future.IsReady());
+  EXPECT_TRUE(future.Wait());
 }
 
 // Tests that calling Wait() while a callback is already registered, schedules
@@ -319,8 +319,8 @@ TEST_F(FormPredictionsTrackerTest, Wait_MultipleCallbacksPending) {
   base::test::TestFuture<void> future1;
   base::test::TestFuture<void> future2;
 
-  tracker().Wait(future1.GetCallback());
-  tracker().Wait(future2.GetCallback());
+  tracker().Wait(future1.GetCallback(), base::Milliseconds(1000));
+  tracker().Wait(future2.GetCallback(), base::Milliseconds(1000));
   EXPECT_EQ(2UL, test_api(tracker()).num_callbacks());
 
   autofill_manager().NotifyObservers(
@@ -335,8 +335,8 @@ TEST_F(FormPredictionsTrackerTest, Wait_MultipleCallbacksPending) {
       &AutofillManager::Observer::OnFieldTypesDetermined, form_id,
       AutofillManager::Observer::FieldTypeSource::kAutofillServer, true);
 
-  EXPECT_TRUE(future1.IsReady());
-  EXPECT_TRUE(future2.IsReady());
+  EXPECT_TRUE(future1.Wait());
+  EXPECT_TRUE(future2.Wait());
   EXPECT_EQ(0UL, test_api(tracker()).num_callbacks());
 }
 
@@ -350,7 +350,7 @@ TEST_F(FormPredictionsTrackerTest, Wait_ReschedulesAfterExecution) {
       std::vector<FormGlobalId>{form1}, base::span<FormGlobalId>());
 
   base::test::TestFuture<void> future1;
-  tracker().Wait(future1.GetCallback());
+  tracker().Wait(future1.GetCallback(), base::Milliseconds(1000));
 
   // Fully parse form 1 to fire the first callback.
   autofill_manager().NotifyObservers(
@@ -360,7 +360,7 @@ TEST_F(FormPredictionsTrackerTest, Wait_ReschedulesAfterExecution) {
   autofill_manager().NotifyObservers(
       &AutofillManager::Observer::OnFieldTypesDetermined, form1,
       AutofillManager::Observer::FieldTypeSource::kAutofillServer, true);
-  EXPECT_TRUE(future1.IsReady());
+  EXPECT_TRUE(future1.Wait());
 
   // The second form is added, the tracker should now be in an "unparsed" state
   // again.
@@ -371,7 +371,7 @@ TEST_F(FormPredictionsTrackerTest, Wait_ReschedulesAfterExecution) {
 
   // Register a second wait.
   base::test::TestFuture<void> future2;
-  tracker().Wait(future2.GetCallback());
+  tracker().Wait(future2.GetCallback(), base::Milliseconds(1000));
   EXPECT_FALSE(future2.IsReady());
 
   // Form 2 gets fully parsed, the future2 should be ready.
@@ -382,7 +382,7 @@ TEST_F(FormPredictionsTrackerTest, Wait_ReschedulesAfterExecution) {
   autofill_manager().NotifyObservers(
       &AutofillManager::Observer::OnFieldTypesDetermined, form2,
       AutofillManager::Observer::FieldTypeSource::kAutofillServer, true);
-  EXPECT_TRUE(future2.IsReady());
+  EXPECT_TRUE(future2.Wait());
 }
 
 // Verifies that timeouts set when waiting are respected and the callback gets
@@ -401,7 +401,7 @@ TEST_F(FormPredictionsTrackerTest, Wait_TimeoutOnSingleCallback) {
   EXPECT_FALSE(future.IsReady());
 
   task_environment().FastForwardBy(base::Milliseconds(400));
-  EXPECT_TRUE(future.IsReady());
+  EXPECT_TRUE(future.Wait());
 }
 
 // Verifies that if the callback got executed because of a timeout, it is not
@@ -418,7 +418,7 @@ TEST_F(FormPredictionsTrackerTest,
   EXPECT_FALSE(future.IsReady());
 
   task_environment().FastForwardBy(base::Milliseconds(500));
-  EXPECT_TRUE(future.IsReady());
+  EXPECT_TRUE(future.Wait());
 
   autofill_manager().NotifyObservers(
       &AutofillManager::Observer::OnFieldTypesDetermined, form,
@@ -447,15 +447,15 @@ TEST_F(FormPredictionsTrackerTest, Wait_TimeoutsOnMultipleCallbacksPending) {
 
   task_environment().FastForwardBy(base::Milliseconds(500));
   EXPECT_FALSE(future1.IsReady());
-  EXPECT_TRUE(future2.IsReady());
+  EXPECT_TRUE(future2.Wait());
   EXPECT_FALSE(future3.IsReady());
 
   task_environment().FastForwardBy(base::Milliseconds(250));
-  EXPECT_TRUE(future1.IsReady());
+  EXPECT_TRUE(future1.Wait());
   EXPECT_FALSE(future3.IsReady());
 
   task_environment().FastForwardBy(base::Milliseconds(250));
-  EXPECT_TRUE(future3.IsReady());
+  EXPECT_TRUE(future3.Wait());
 }
 
 // Verifies that one callback timing out doesn't block other callbacks from
@@ -477,7 +477,7 @@ TEST_F(FormPredictionsTrackerTest,
 
   task_environment().FastForwardBy(base::Milliseconds(500));
   EXPECT_FALSE(future1.IsReady());
-  EXPECT_TRUE(future2.IsReady());
+  EXPECT_TRUE(future2.Wait());
   EXPECT_FALSE(future3.IsReady());
 
   autofill_manager().NotifyObservers(
@@ -487,8 +487,8 @@ TEST_F(FormPredictionsTrackerTest,
   autofill_manager().NotifyObservers(
       &AutofillManager::Observer::OnFieldTypesDetermined, form,
       AutofillManager::Observer::FieldTypeSource::kAutofillServer, true);
-  EXPECT_TRUE(future1.IsReady());
-  EXPECT_TRUE(future3.IsReady());
+  EXPECT_TRUE(future1.Wait());
+  EXPECT_TRUE(future3.Wait());
 }
 
 TEST_F(FormPredictionsTrackerTest, Wait_FeatureDisabled) {
@@ -503,8 +503,8 @@ TEST_F(FormPredictionsTrackerTest, Wait_FeatureDisabled) {
 
   // Since the flag is disabled, there should be no waiting.
   base::test::TestFuture<void> future;
-  tracker().Wait(future.GetCallback());
-  EXPECT_TRUE(future.IsReady());
+  tracker().Wait(future.GetCallback(), base::Milliseconds(1000));
+  EXPECT_TRUE(future.Wait());
 }
 
 // Tests that if a form is reported in `OnAfterFormsSeen` but has no fields,

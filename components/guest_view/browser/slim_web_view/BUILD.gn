@@ -14,14 +14,9 @@ static_library("slim_web_view") {
     "slim_web_view_constants.h",
     "slim_web_view_guest.cc",
     "slim_web_view_guest.h",
-    "slim_web_view_page_handler.cc",
-    "slim_web_view_page_handler.h",
-    "slim_web_view_page_handler_factory.cc",
-    "slim_web_view_page_handler_factory.h",
   ]
 
   deps = [
-    ":mojo_bindings",
     ":strings",
     "//base",
     "//components/guest_view/browser",
@@ -33,12 +28,30 @@ static_library("slim_web_view") {
   ]
 }
 
+static_library("page_handler") {
+  sources = [
+    "slim_web_view_page_handler.cc",
+    "slim_web_view_page_handler.h",
+    "slim_web_view_page_handler_factory.cc",
+    "slim_web_view_page_handler_factory.h",
+  ]
+
+  public_deps = [ ":mojo_bindings" ]
+
+  deps = [
+    ":slim_web_view",
+    "//components/guest_view/browser",
+    "//content/public/browser",
+  ]
+}
+
 mojom("mojo_bindings") {
   sources = [ "slim_web_view.mojom" ]
   webui_module_path = "/shared/guest_view"
 
   deps = [
     "//mojo/public/mojom/base",
+    "//ui/gfx/geometry/mojom",
     "//url/mojom:url_mojom_gurl",
   ]
 }

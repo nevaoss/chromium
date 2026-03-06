@@ -169,7 +169,9 @@ BASE_FEATURE(kAutofillAiCreateEntityDataManager,
 );
 
 // If enabled, AutofillAi entities will be deduped on every major milestone.
-BASE_FEATURE(kAutofillAiDedupeEntities, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kAutofillAiDedupeEntities,
+             IS_AUTOFILL_AI_PLATFORM ? base::FEATURE_ENABLED_BY_DEFAULT
+                                     : base::FEATURE_DISABLED_BY_DEFAULT);
 
 // When enabled, a HaTS survey is shown after a walletable suggestion is
 // displayed and the form submitted. The survey does not require the suggestion
@@ -202,12 +204,6 @@ BASE_FEATURE_PARAM(std::string,
                    &kAutofillAiIgnoreGeoIp,
                    "autofill_ai_geo_ip_blocklist",
                    "");
-
-// If enabled, Autofill AI ignores the GeoIp restrictions for uploading private
-// passes to Wallet. Even with the feature enabled, we continue to check whether
-// Wallet is supported in the country at all.
-BASE_FEATURE(kAutofillAiIgnorePrivatePassGeoIpRestrictions,
-             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // If enabled, Autofill AI does not depend on Autofill for addresses being
 // enabled.
@@ -303,12 +299,14 @@ BASE_FEATURE(kAutofillAiSetSyncablePrefFromAccountPref,
 // example, if there is a flight number "LH89" on file, a submitted value of
 // "89" on a field with type `FLIGHT_RESERVATION_FLIGHT_NUMBER` uploads "N".
 BASE_FEATURE(kAutofillAiVoteForFormatStringsForFlightNumbers,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             IS_AUTOFILL_AI_PLATFORM ? base::FEATURE_ENABLED_BY_DEFAULT
+                                     : base::FEATURE_DISABLED_BY_DEFAULT);
 
 // If enabled, AutofillAi supports flight reservation entities from Google
 // Wallet.
 BASE_FEATURE(kAutofillAiWalletFlightReservation,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             IS_AUTOFILL_AI_PLATFORM ? base::FEATURE_ENABLED_BY_DEFAULT
+                                     : base::FEATURE_DISABLED_BY_DEFAULT);
 
 // If enabled, AutofillAi supports private passes entities from Google Wallet.
 BASE_FEATURE(kAutofillAiWalletPrivatePasses, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -316,7 +314,8 @@ BASE_FEATURE(kAutofillAiWalletPrivatePasses, base::FEATURE_DISABLED_BY_DEFAULT);
 // If enabled, AutofillAi supports vehicle registration entities from Google
 // Wallet.
 BASE_FEATURE(kAutofillAiWalletVehicleRegistration,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             IS_AUTOFILL_AI_PLATFORM ? base::FEATURE_ENABLED_BY_DEFAULT
+                                     : base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables the second iteration AutofillAI.
 BASE_FEATURE(kAutofillAiWithDataSchema,
@@ -566,12 +565,6 @@ BASE_FEATURE(kAutofillEnableKeyboardAccessoryChipWidthAdjustment,
              base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_ANDROID)
 
-// When enabled, the precedence is given to the field label over the name when
-// they match different types. Applied only for parsing of address forms in
-// Turkish.
-// TODO(crbug.com/40735892): Remove once launched.
-BASE_FEATURE(kAutofillEnableLabelPrecedenceForTurkishAddresses,
-             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // When enabled, Autofill will help users fill in loyalty card details.
 // TODO(crbug.com/395831853): Remove once launched.
@@ -659,6 +652,12 @@ BASE_FEATURE(kAutofillExtractOnlyNonAdFrames,
 // When enabled, adds stricter conditions to trigger refills in order to avoid
 // trivial refill operations, which are refills that do not modify any field.
 BASE_FEATURE(kAutofillFewerTrivialRefills, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// If enabled, removes address field values that contain words "select",
+// "choose", or "optional" during profile import.
+// TODO(crbug.com/485170688): Remove when launched.
+BASE_FEATURE(kAutofillFilterPlaceholderValuesOnImport,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // When enabled, improves heuristic regexes for state classification to avoid
 // misclassification as civil state.

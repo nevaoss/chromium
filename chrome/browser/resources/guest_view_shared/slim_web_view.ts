@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {assert, assertNotReached} from '//resources/js/assert.js';
+import {assert, assertInstanceof, assertNotReached} from '//resources/js/assert.js';
 import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
 import type {PropertyValues} from '//resources/lit/v3_0/lit.rollup.js';
 import type {DictionaryValue} from '//resources/mojo/mojo/public/mojom/base/values.mojom-webui.js';
@@ -21,16 +21,38 @@ export interface SlimWebViewElement {
 
 const GUEST_INSTANCE_ID_PENDING: number = 0;
 
-export class LoadCommitEvent extends Event {
-  readonly url: string;
-  readonly isTopLevel: boolean;
+export class ExitEvent extends Event {
+  readonly reason: string;
+  readonly processId: number;
 
   static factory(args: EventDict) {
-    return new LoadCommitEvent(args);
+    return new ExitEvent(args);
   }
 
   private constructor(args: EventDict) {
-    super('loadcommit', {
+    super('exit', {
+      bubbles: true,
+      cancelable: false,
+    });
+    this.reason = args.getString('reason');
+    this.processId = args.getInt('processId');
+  }
+}
+
+export class LoadEvent extends Event {
+  readonly url: string;
+  readonly isTopLevel: boolean;
+
+  static loadCommitFactory(args: EventDict) {
+    return new LoadEvent('loadcommit', args);
+  }
+
+  static loadStartFactory(args: EventDict) {
+    return new LoadEvent('loadstart', args);
+  }
+
+  protected constructor(type: string, args: EventDict) {
+    super(type, {
       bubbles: true,
       cancelable: false,
     });
@@ -39,9 +61,7 @@ export class LoadCommitEvent extends Event {
   }
 }
 
-export class LoadAbortEvent extends Event {
-  readonly url: string;
-  readonly isTopLevel: boolean;
+export class LoadAbortEvent extends LoadEvent {
   readonly code: number;
   readonly reason: string;
 
@@ -50,12 +70,7 @@ export class LoadAbortEvent extends Event {
   }
 
   private constructor(args: EventDict) {
-    super('loadabort', {
-      bubbles: true,
-      cancelable: false,
-    });
-    this.url = args.getString('url');
-    this.isTopLevel = args.getBool('isTopLevel');
+    super('loadabort', args);
     this.code = args.getInt('code');
     this.reason = args.getString('reason');
   }
@@ -84,8 +99,54 @@ export class NewWindowEvent extends Event {
   }
 }
 
+class SizeChangedEvent extends Event {
+  readonly oldHeight: number;
+  readonly oldWidth: number;
+  readonly newHeight: number;
+  readonly newWidth: number;
+
+  static factory(args: EventDict) {
+    return new SizeChangedEvent(args);
+  }
+
+  private constructor(args: EventDict) {
+    super('sizechanged', {
+      bubbles: true,
+      cancelable: false,
+    });
+    this.oldHeight = args.getInt('oldHeight');
+    this.oldWidth = args.getInt('oldWidth');
+    this.newHeight = args.getInt('newHeight');
+    this.newWidth = args.getInt('newWidth');
+  }
+
+  handle(element: HTMLElement) {
+    assertInstanceof(element, SlimWebViewElement);
+    const maxWidth = element.maxwidth || element.offsetWidth;
+    const minWidth =
+        Math.min(element.minwidth || element.offsetWidth, maxWidth);
+    const maxHeight = element.maxheight || element.offsetHeight;
+    const minHeight =
+        Math.min(element.minheight || element.offsetHeight, maxHeight);
+
+    if (!element.autosize ||
+        (this.newWidth >= minWidth && this.newWidth <= maxWidth &&
+         this.newHeight >= minHeight && this.newHeight <= maxHeight)) {
+      element.style.width = `${this.newWidth}px`;
+      element.style.height = `${this.newHeight}px`;
+      element.dispatchEvent(this);
+    }
+  }
+}
+
 const eventDescriptors: EventMap = new Map([
   ['contentload', {}],
+  [
+    'exit',
+    {
+      factory: ExitEvent.factory,
+    },
+  ],
   [
     'loadabort',
     {
@@ -95,8 +156,18 @@ const eventDescriptors: EventMap = new Map([
   [
     'loadcommit',
     {
-      factory: LoadCommitEvent.factory,
+      factory: LoadEvent.loadCommitFactory,
     },
+  ],
+  [
+    'loadstart',
+    {
+      factory: LoadEvent.loadStartFactory,
+    },
+  ],
+  [
+    'loadstop',
+    {},
   ],
   [
     'newwindow',
@@ -104,6 +175,14 @@ const eventDescriptors: EventMap = new Map([
       factory: NewWindowEvent.factory,
     },
   ],
+  [
+    'sizechanged',
+    {
+      factory: SizeChangedEvent.factory,
+      handler: SizeChangedEvent.prototype.handle,
+    },
+  ],
+  ['unresponsive', {}],
 ]);
 
 export class SlimWebViewElement extends CrLitElement {
@@ -123,10 +202,22 @@ export class SlimWebViewElement extends CrLitElement {
   static override get properties() {
     return {
       src: {type: String, reflect: true},
+      autosize: {type: Boolean, reflect: true},
+      minwidth: {type: Number, reflect: true},
+      maxwidth: {type: Number, reflect: true},
+      minheight: {type: Number, reflect: true},
+      maxheight: {type: Number, reflect: true},
+      partition: {type: String, reflect: true},
     };
   }
 
   accessor src: string = '';
+  accessor autosize: boolean = false;
+  accessor minwidth: number = 0;
+  accessor maxwidth: number = 0;
+  accessor minheight: number = 0;
+  accessor maxheight: number = 0;
+  accessor partition: string = '';
 
   contentWindow: WindowProxy|null = null;
 
@@ -154,6 +245,15 @@ export class SlimWebViewElement extends CrLitElement {
     }
   }
 
+  override shouldUpdate(changedProperties: PropertyValues<this>): boolean {
+    if (changedProperties.has('partition')) {
+      if (!this.validatePartitionUpdate(changedProperties.get('partition'))) {
+        changedProperties.delete('partition');
+      }
+    }
+    return super.shouldUpdate(changedProperties);
+  }
+
   override updated(changedProperties: PropertyValues<this>) {
     super.updated(changedProperties);
     if (changedProperties.has('src')) {
@@ -167,11 +267,35 @@ export class SlimWebViewElement extends CrLitElement {
       }
       this.navigate();
     }
+    if (changedProperties.has('autosize') ||
+        changedProperties.has('minwidth') ||
+        changedProperties.has('maxwidth') ||
+        changedProperties.has('minheight') ||
+        changedProperties.has('maxheight')) {
+      this.updateAutoSize();
+    }
   }
 
   private async createGuest() {
+    const css = getComputedStyle(this);
+    const elementRect = this.getBoundingClientRect();
+    const elementWidth =
+        elementRect.width || parseInt(css.getPropertyValue('width'));
+    const elementHeight =
+        elementRect.height || parseInt(css.getPropertyValue('height'));
     const createParams: DictionaryValue = {
-      storage: {instanceId: {intValue: this.viewInstanceId}},
+      storage: {
+        instanceId: {intValue: this.viewInstanceId},
+        elementWidth: {intValue: elementWidth},
+        elementHeight: {intValue: elementHeight},
+        // Attributes relevant to guest creation.
+        autosize: {boolValue: this.autosize},
+        minwidth: {intValue: this.minwidth},
+        maxwidth: {intValue: this.maxwidth},
+        minheight: {intValue: this.minheight},
+        maxheight: {intValue: this.maxheight},
+        partition: {stringValue: this.partition},
+      },
     };
     const result =
         await BrowserProxyImpl.getInstance().handler.createGuest(createParams);
@@ -232,6 +356,41 @@ export class SlimWebViewElement extends CrLitElement {
     assert(url.protocol === 'https:' || url.href === 'about:blank');
     BrowserProxyImpl.getInstance().handler.navigate(
         this.guestInstanceId, url.href);
+  }
+
+  private updateAutoSize() {
+    if (this.guestInstanceId === null ||
+        this.guestInstanceId === GUEST_INSTANCE_ID_PENDING) {
+      return;
+    }
+    const params = {
+      enableAutoSize: this.autosize,
+      min: {
+        width: this.minwidth,
+        height: this.minheight,
+      },
+      max: {
+        width: this.maxwidth,
+        height: this.maxheight,
+      },
+    };
+    BrowserProxyImpl.getInstance().handler.setSize(
+        this.guestInstanceId, params);
+  }
+
+  private validatePartitionUpdate(oldPartition: string|undefined): boolean {
+    if (this.guestInstanceId !== null) {
+      this.partition = oldPartition || '';
+      console.error(
+          'partition attribute can\'t be changed after the first navigation');
+      return false;
+    }
+    if (this.partition === 'persist:') {
+      this.partition = oldPartition || '';
+      console.error('invalid partition attribute');
+      return false;
+    }
+    return true;
   }
 }
 

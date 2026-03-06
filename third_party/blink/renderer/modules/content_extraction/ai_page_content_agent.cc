@@ -4,6 +4,8 @@
 
 #include "third_party/blink/renderer/modules/content_extraction/ai_page_content_agent.h"
 
+#include <algorithm>
+
 #include "base/check.h"
 #include "base/containers/adapters.h"
 #include "base/time/time.h"
@@ -577,18 +579,6 @@ RGBA32 GetColor(const ComputedStyle& style) {
 
 const LayoutIFrame* GetIFrame(const LayoutObject& object) {
   return DynamicTo<LayoutIFrame>(object);
-}
-
-std::optional<DOMNodeId> GetDomNodeId(const LayoutObject& object) {
-  auto* node = object.GetNode();
-  if (object.IsLayoutView()) {
-    node = &object.GetDocument();
-  }
-
-  if (!node) {
-    return std::nullopt;
-  }
-  return DOMNodeIds::IdForNode(node);
 }
 
 bool IsVisible(const LayoutObject& object) {
@@ -1546,8 +1536,12 @@ AIPageContentAgent::ContentBuilder::ContentBuilder(
 AIPageContentAgent::ContentBuilder::~ContentBuilder() = default;
 
 std::optional<AIPageContentAgent::CustomPasswordSource>
-AIPageContentAgent::CustomPasswordReason(DOMNodeId dom_node_id) const {
-  DCHECK_NE(dom_node_id, kInvalidDOMNodeId);
+AIPageContentAgent::ExistingCustomPasswordReason(
+    const LayoutObject& object) const {
+  const DOMNodeId dom_node_id = DOMNodeIds::ExistingIdForNode(object.GetNode());
+  if (!dom_node_id) {
+    return std::nullopt;
+  }
   auto it = custom_password_decision_.find(dom_node_id);
   if (it == custom_password_decision_.end()) {
     return std::nullopt;
@@ -1664,6 +1658,25 @@ bool IsLikelyJSCustomPasswordField(const String& value) {
   return mask_count >= value.length() - 1;
 }
 
+DOMNodeId GetAccessibilityFocusedDOMNodeId(const LocalFrame& frame) {
+  const Document* document = frame.GetDocument();
+  if (!document) {
+    return kInvalidDOMNodeId;
+  }
+
+  AXObjectCache* ax_object_cache = document->ExistingAXObjectCache();
+  if (!ax_object_cache) {
+    return kInvalidDOMNodeId;
+  }
+
+  Node* ax_focused_node = ax_object_cache->GetAccessibilityFocus();
+  if (!ax_focused_node) {
+    return kInvalidDOMNodeId;
+  }
+
+  return DOMNodeIds::IdForNode(ax_focused_node);
+}
+
 }  // namespace
 
 mojom::blink::AIPageContentPtr AIPageContentAgent::ContentBuilder::Build(
@@ -1718,9 +1731,13 @@ mojom::blink::AIPageContentPtr AIPageContentAgent::ContentBuilder::Build(
   AddFrameData(frame, *frame_data);
   page_content->frame_data = std::move(frame_data);
 
-  auto root_node = MaybeGenerateContentNode(*layout_view, *document_style);
+  RecursionData recursion_data(*document_style);
+  recursion_data.accessibility_focused_node_id =
+      GetAccessibilityFocusedDOMNodeId(frame);
+
+  auto root_node = MaybeGenerateContentNode(*layout_view, recursion_data);
   CHECK(root_node);
-  WalkChildren(*layout_view, *root_node, *document_style);
+  WalkChildren(*layout_view, *root_node, recursion_data);
   page_content->root_node = std::move(root_node);
   page_content->visible_bounding_boxes_for_password_redaction =
       std::move(visible_bounding_box_for_passwords_);
@@ -1858,19 +1875,22 @@ bool AIPageContentAgent::ContentBuilder::IsGenericContainer(
     return true;
   }
 
-  // Use `ExistingIdForNode` since an Id should have already been generated if
-  // this node is interactive.
-  if (interactive_dom_node_ids_.Contains(
-          DOMNodeIds::ExistingIdForNode(object.GetNode()))) {
-    return true;
-  }
-
   return false;
+}
+
+DOMNodeId AIPageContentAgent::ContentBuilder::AddInteractiveNode(Node& node) {
+  // This intentionally creates a DOM node id when missing for metadata-linked
+  // nodes (focus, selection, label-for, popup opener).
+  const DOMNodeId dom_node_id = DOMNodeIds::IdForNode(&node);
+  AddInteractiveNode(dom_node_id);
+  return dom_node_id;
 }
 
 void AIPageContentAgent::ContentBuilder::AddInteractiveNode(
     DOMNodeId dom_node_id) {
   CHECK_NE(dom_node_id, kInvalidDOMNodeId);
+  // Adding the node id to this set forces the node to be emitted with a node id
+  // and a fallback attribute type of kContainer when nothing else applies.
   interactive_dom_node_ids_.insert(dom_node_id);
 }
 
@@ -1993,6 +2013,8 @@ void AIPageContentAgent::ContentBuilder::ProcessIframe(
     // The aria attribute values don't pierce frame boundaries.
     child_recursion_data.is_aria_disabled = false;
     child_recursion_data.stack_depth = recursion_data.stack_depth + 1;
+    child_recursion_data.accessibility_focused_node_id =
+        GetAccessibilityFocusedDOMNodeId(*local_frame);
 
     // Add a node for the iframe's LayoutView for consistency with remote
     // frames.
@@ -2020,15 +2042,13 @@ AIPageContentAgent::ContentBuilder::MaybeGenerateContentNode(
   // Compute state that is used to decide whether this node generates a
   // ContentNode before making the decision below.
   AddAnnotatedRoles(object, attributes.annotated_roles);
-  AddForDomNodeId(object, attributes);
+  PopulateLabelForDomNodeId(object, attributes);
 
   auto* element = DynamicTo<Element>(object.GetNode());
   if (actionable_mode() && element) {
     attributes.aria_role = AXObject::DetermineRawAriaRole(*element);
   }
   AddNodeInteractionInfo(object, attributes, recursion_data.is_aria_disabled);
-
-  const std::optional<DOMNodeId> dom_node_id = GetDomNodeId(object);
 
   // Set the attribute type and add any special attributes if the attribute type
   // requires it.
@@ -2088,10 +2108,7 @@ AIPageContentAgent::ContentBuilder::MaybeGenerateContentNode(
   } else if (const auto* form_control =
                  DynamicTo<HTMLFormControlElement>(object.GetNode())) {
     ProcessFormControlNode(*form_control, attributes);
-    if (dom_node_id) {
-      ApplyCustomPasswordRedactionHeuristicsIfNeeded(object, *dom_node_id,
-                                                     attributes);
-    }
+    ApplyCustomPasswordRedactionHeuristicsIfNeeded(object, attributes);
   } else if (element &&
              ProcessAriaFormControlNode(object, *element, attributes)) {
     // ProcessAriaFormControlNode sets the attribute type and data.
@@ -2119,26 +2136,70 @@ AIPageContentAgent::ContentBuilder::MaybeGenerateContentNode(
     // Keep container at the bottom of the list as it is the least specific.
     attributes.attribute_type =
         mojom::blink::AIPageContentAttributeType::kContainer;
+  } else if (interactive_dom_node_ids_.Contains(
+                 DOMNodeIds::ExistingIdForNode(object.GetNode()))) {
+    // Fall back to a generic container when we need to emit this node for
+    // dom_node_id purposes but no more specific type matched.
+    attributes.attribute_type =
+        mojom::blink::AIPageContentAttributeType::kContainer;
   } else {
     // If no attribute type was set, do not generate a content node.
     return nullptr;
   }
 
-  if (dom_node_id) {
-    attributes.dom_node_id = *dom_node_id;
+  // Resolve and allocate DOM ids only when output policy needs them.
+  if (ShouldEmitNodeIdForOutput(object, attributes)) {
+    if (const DOMNodeId dom_node_id = DOMNodeIds::IdForNode(object.GetNode())) {
+      attributes.dom_node_id = dom_node_id;
+    }
   }
 
-  AddNodeGeometry(object, attributes);
+  AddNodeGeometry(object, attributes,
+                  recursion_data.accessibility_focused_node_id);
   AddLabel(object, attributes);
   attributes.is_ad_related = element && element->IsAdRelated();
 
   return content_node;
 }
 
+bool AIPageContentAgent::ContentBuilder::ShouldEmitNodeIdForOutput(
+    const LayoutObject& object,
+    const mojom::blink::AIPageContentAttributes& attributes) const {
+  // Preserve existing behavior when node-id options are not provided.
+  if (!options_->node_id_allowlist) {
+    return true;
+  }
+
+  // Actionable nodes participate in tool execution and need an id.
+  if (actionable_mode() && attributes.node_interaction_info) {
+    return true;
+  }
+
+  // Metadata-linked nodes (focused element, accessibility focus, selection
+  // endpoints, label-for targets, popup openers) need an id.
+  if (interactive_dom_node_ids_.Contains(
+          DOMNodeIds::ExistingIdForNode(object.GetNode()))) {
+    return true;
+  }
+
+  // Otherwise, fall back to per-attribute options policy.
+  return IsNodeIdAttributeTypeAllowlisted(attributes.attribute_type);
+}
+
+bool AIPageContentAgent::ContentBuilder::IsNodeIdAttributeTypeAllowlisted(
+    mojom::blink::AIPageContentAttributeType attribute_type) const {
+  if (!options_->node_id_allowlist) {
+    return false;
+  }
+  // The policy allowlist is expected to be small. Prioritize direct readability
+  // over auxiliary data structures here.
+  return std::ranges::find(*options_->node_id_allowlist, attribute_type) !=
+         options_->node_id_allowlist->end();
+}
+
 void AIPageContentAgent::ContentBuilder::
     ApplyCustomPasswordRedactionHeuristicsIfNeeded(
         const LayoutObject& object,
-        DOMNodeId dom_node_id,
         mojom::blink::AIPageContentAttributes& attributes) const {
   // Only form controls have `form_control_data`. Keep this defensive because
   // callers may evolve and still call this helper.
@@ -2176,7 +2237,7 @@ void AIPageContentAgent::ContentBuilder::
 
   const std::optional<AIPageContentAgent::CustomPasswordSource>
       existing_custom_password_like_reason =
-          agent_.CustomPasswordReason(dom_node_id);
+          agent_.ExistingCustomPasswordReason(object);
   bool is_custom_password = existing_custom_password_like_reason.has_value();
   std::optional<AIPageContentAgent::CustomPasswordSource>
       custom_password_like_reason = existing_custom_password_like_reason;
@@ -2189,8 +2250,9 @@ void AIPageContentAgent::ContentBuilder::
           AIPageContentAgent::CustomPasswordSource::kJavaScript;
     }
     if (custom_password_like_reason) {
-      agent_.custom_password_decision_.Set(dom_node_id,
-                                           *custom_password_like_reason);
+      agent_.custom_password_decision_.Set(
+          DOMNodeIds::IdForNode(object.GetNode()),
+          *custom_password_like_reason);
       is_custom_password = true;
     }
   }
@@ -2270,9 +2332,9 @@ void AIPageContentAgent::ContentBuilder::AddLabel(
   attributes.label = accumulated_text.ToString();
 }
 
-void AIPageContentAgent::ContentBuilder::AddForDomNodeId(
+void AIPageContentAgent::ContentBuilder::PopulateLabelForDomNodeId(
     const LayoutObject& object,
-    mojom::blink::AIPageContentAttributes& attributes) const {
+    mojom::blink::AIPageContentAttributes& attributes) {
   if (!actionable_mode()) {
     return;
   }
@@ -2287,7 +2349,12 @@ void AIPageContentAgent::ContentBuilder::AddForDomNodeId(
     return;
   }
 
-  attributes.label_for_dom_node_id = DOMNodeIds::IdForNode(control);
+  const DOMNodeId control_dom_node_id = AddInteractiveNode(*control);
+
+  // Always emit the label target id regardless of node-id policy so
+  // `label_for_dom_node_id` remains round-trippable and actions on the label
+  // can resolve and trigger the associated control.
+  attributes.label_for_dom_node_id = control_dom_node_id;
 }
 
 void AIPageContentAgent::ContentBuilder::AddAnnotatedRoles(
@@ -2385,14 +2452,15 @@ void AIPageContentAgent::ContentBuilder::TrackPasswordRedactionIfNeeded(
 
 bool AIPageContentAgent::ContentBuilder::ShouldAddNodeGeometry(
     const LayoutObject& object,
-    const mojom::blink::AIPageContentAttributes& attributes) const {
+    const mojom::blink::AIPageContentAttributes& attributes,
+    DOMNodeId accessibility_focused_node_id) const {
   if (actionable_mode()) {
     return true;
   }
 
   // When in non-actionable mode, we only want to add geometry for the
   // accessibility focused node.
-  if (attributes.dom_node_id == accessibility_focused_node_id_) {
+  if (attributes.dom_node_id == accessibility_focused_node_id) {
     return true;
   }
 
@@ -2415,8 +2483,10 @@ bool AIPageContentAgent::ContentBuilder::ShouldAddNodeGeometry(
 
 void AIPageContentAgent::ContentBuilder::AddNodeGeometry(
     const LayoutObject& object,
-    mojom::blink::AIPageContentAttributes& attributes) {
-  if (!ShouldAddNodeGeometry(object, attributes)) {
+    mojom::blink::AIPageContentAttributes& attributes,
+    DOMNodeId accessibility_focused_node_id) {
+  if (!ShouldAddNodeGeometry(object, attributes,
+                             accessibility_focused_node_id)) {
     TrackPasswordRedactionIfNeeded(object, attributes);
     return;
   }
@@ -2550,25 +2620,27 @@ void AIPageContentAgent::ContentBuilder::AddPageInteractionInfo(
       *page_content.page_interaction_info;
 
   // Focused element
+  //
+  // TODO(crbug.com/415778689): Remove when consumers move to the frame data.
   if (Element* element = document.FocusedElement()) {
-    page_interaction_info.focused_dom_node_id = DOMNodeIds::IdForNode(element);
-    AddInteractiveNode(*page_interaction_info.focused_dom_node_id);
+    page_interaction_info.focused_dom_node_id = AddInteractiveNode(*element);
   }
 
+  LocalFrame* frame = document.GetFrame();
+  CHECK(frame);
+
   // Accessibility focus
-  if (AXObjectCache* ax_object_cache = document.ExistingAXObjectCache()) {
-    if (Node* ax_focused_node = ax_object_cache->GetAccessibilityFocus()) {
-      accessibility_focused_node_id_ = DOMNodeIds::IdForNode(ax_focused_node);
-      page_interaction_info.accessibility_focused_dom_node_id =
-          accessibility_focused_node_id_;
-      AddInteractiveNode(
-          *page_interaction_info.accessibility_focused_dom_node_id);
-    }
+  //
+  // TODO(crbug.com/415778689): Remove when consumers move to the frame data.
+  if (DOMNodeId accessibility_focused_node_id =
+          GetAccessibilityFocusedDOMNodeId(*frame);
+      accessibility_focused_node_id != kInvalidDOMNodeId) {
+    page_interaction_info.accessibility_focused_dom_node_id =
+        accessibility_focused_node_id;
+    AddInteractiveNode(accessibility_focused_node_id);
   }
 
   // Mouse location
-  LocalFrame* frame = document.GetFrame();
-  CHECK(frame);
   EventHandler& event_handler = frame->GetEventHandler();
   page_interaction_info.mouse_position =
       gfx::ToRoundedPoint(event_handler.LastKnownMousePositionInRootFrame());
@@ -2620,18 +2692,31 @@ void AIPageContentAgent::ContentBuilder::AddFrameInteractionInfo(
     Node* end_node = end_position.ComputeContainerNode();
 
     if (start_node) {
-      selection.start_dom_node_id = DOMNodeIds::IdForNode(start_node);
-      AddInteractiveNode(selection.start_dom_node_id);
+      selection.start_dom_node_id = AddInteractiveNode(*start_node);
 
       selection.start_offset = start_position.ComputeOffsetInContainerNode();
     }
 
     if (end_node) {
-      selection.end_dom_node_id = DOMNodeIds::IdForNode(end_node);
-      AddInteractiveNode(selection.end_dom_node_id);
+      selection.end_dom_node_id = AddInteractiveNode(*end_node);
 
       selection.end_offset = end_position.ComputeOffsetInContainerNode();
     }
+  }
+
+  // Focused element
+  if (Element* element = frame.GetDocument()->FocusedElement()) {
+    frame_interaction_info.focused_dom_node_id = DOMNodeIds::IdForNode(element);
+    AddInteractiveNode(*frame_interaction_info.focused_dom_node_id);
+  }
+
+  // Accessibility focus
+  if (DOMNodeId accessibility_focused_node_id =
+          GetAccessibilityFocusedDOMNodeId(frame);
+      accessibility_focused_node_id != kInvalidDOMNodeId) {
+    frame_interaction_info.accessibility_focused_dom_node_id =
+        accessibility_focused_node_id;
+    AddInteractiveNode(accessibility_focused_node_id);
   }
 }
 
@@ -2673,7 +2758,9 @@ void AIPageContentAgent::ContentBuilder::MaybeAddPopupData(
   ComputeHitTestableNodesInViewport(*popup_frame);
 
   auto mojom_popup = mojom::blink::AIPageContentPopup::New();
-  // Build the ContentNode tree.
+  // Build the ContentNode tree. We don't set accessibility_focused_node_id for
+  // popups because focus within transient popup windows is not tracked for
+  // frame-level interactions.
   auto web_popup_root_node = MaybeGenerateContentNode(
       *web_popup_layout_view, *web_popup_layout_view->Style());
   CHECK(web_popup_root_node);
@@ -2711,6 +2798,10 @@ void AIPageContentAgent::ContentBuilder::MaybeAddPopupData(
 
   // Add identifier for the node which opened the popup.
   mojom_popup->opener_dom_node_id = opener.GetDomNodeId();
+  DCHECK_NE(mojom_popup->opener_dom_node_id, kInvalidDOMNodeId);
+  // Always keep the popup opener id regardless of node-id policy so popup
+  // metadata can round-trip and browser-side actions can toggle the popup.
+  AddInteractiveNode(mojom_popup->opener_dom_node_id);
 
   frame_data.popup = std::move(mojom_popup);
 }

@@ -11,6 +11,7 @@
 #include "ash/constants/ash_features.h"
 #include "ash/constants/ash_switches.h"
 #include "ash/constants/personalization_entry_point.h"
+#include "ash/constants/url_constants.h"
 #include "ash/constants/web_app_id_constants.h"
 #include "ash/public/cpp/locale_update_controller.h"
 #include "ash/public/cpp/login_types.h"
@@ -45,8 +46,10 @@
 #include "chrome/browser/ash/system/system_clock.h"
 #include "chrome/browser/ash/system_web_apps/apps/personalization_app/personalization_app_metrics.h"
 #include "chrome/browser/chromeos/extensions/vpn_provider/vpn_service_factory.h"
+#include "chrome/browser/enterprise/browser_management/management_identity.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/ui/ash/system_web_apps/system_web_app_ui_utils.h"
+#include "chrome/browser/ui/ash/system_web_apps/system_web_app_utils.h"
 #include "chrome/browser/ui/browser_navigator_params.h"
 #include "chrome/browser/ui/chrome_pages.h"
 #include "chrome/browser/ui/managed_ui.h"
@@ -732,7 +735,7 @@ void SystemTrayClientImpl::ShowMultiDeviceSetup() {
 }
 
 void SystemTrayClientImpl::ShowFirmwareUpdate() {
-  chrome::ShowFirmwareUpdatesApp(ProfileManager::GetActiveUserProfile());
+  ash::ShowFirmwareUpdatesApp(ProfileManager::GetActiveUserProfile());
 }
 
 void SystemTrayClientImpl::SetLocaleAndExit(
@@ -912,7 +915,7 @@ void SystemTrayClientImpl::ShowChromebookPerksYouTubePage() {
 
 void SystemTrayClientImpl::ShowEolInfoPage() {
   ash::NewWindowDelegate::GetInstance()->OpenUrl(
-      GURL(chrome::kEolNotificationURL),
+      GURL(ash::external_urls::kEolNotificationURL),
       ash::NewWindowDelegate::OpenUrlFrom::kUserInteraction,
       ash::NewWindowDelegate::Disposition::kNewForegroundTab);
 }

@@ -245,6 +245,7 @@
 #include "chrome/browser/android/preferences/browser_prefs_android.h"
 #include "chrome/browser/android/preferences/shared_preferences_migrator_android.h"
 #include "chrome/browser/android/usage_stats/usage_stats_bridge.h"
+#include "chrome/browser/auxiliary_search/auxiliary_search_donation_service.h"
 #include "chrome/browser/first_run/android/first_run_prefs.h"
 #include "chrome/browser/lens/android/lens_prefs.h"
 #include "chrome/browser/media/android/cdm/media_drm_origin_id_manager.h"
@@ -1518,6 +1519,10 @@ void RegisterLocalState(PrefRegistrySimple* registry) {
   registry->RegisterIntegerPref(prefs::kLastWhatsNewVersion, 0);
 #endif  // BUILDFLAG(IS_ANDROID)
 
+#if BUILDFLAG(ENABLE_EXTENSIONS)
+  extensions::ExtensionPrefs::RegisterBrowserPrefs(registry);
+#endif
+
 #if BUILDFLAG(ENABLE_ON_DEVICE_TRANSLATION)
   on_device_translation::RegisterLocalStatePrefs(registry);
 #endif  // BUILDFLAG(ENABLE_ON_DEVICE_TRANSLATION)
@@ -1685,10 +1690,6 @@ void RegisterLocalState(PrefRegistrySimple* registry) {
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || \
     BUILDFLAG(IS_ANDROID)
   registry->RegisterBooleanPref(prefs::kChromeForTestingAllowed, true);
-#endif
-
-#if BUILDFLAG(IS_WIN)
-  registry->RegisterBooleanPref(prefs::kUiAutomationProviderEnabled, false);
 #endif
 
   registry->RegisterBooleanPref(prefs::kQRCodeGeneratorEnabled, true);
@@ -1888,6 +1889,7 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
 #endif
 
 #if BUILDFLAG(IS_ANDROID)
+  AuxiliarySearchDonationService::RegisterProfilePrefs(registry);
   feed::prefs::RegisterFeedSharedProfilePrefs(registry);
   feed::RegisterProfilePrefs(registry);
   cdm::MediaDrmStorageImpl::RegisterProfilePrefs(registry);

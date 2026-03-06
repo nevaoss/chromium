@@ -9,6 +9,7 @@ import android.graphics.Bitmap;
 
 import androidx.annotation.VisibleForTesting;
 
+import org.chromium.base.Callback;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.search_engines.R;
@@ -42,13 +43,19 @@ public class CustomSearchEngineListMediator
     private final LargeIconBridge mLargeIconBridge;
     private final int mFaviconSize;
     private final Map<GURL, Bitmap> mIconCache = new HashMap<GURL, Bitmap>();
+    private final Callback<TemplateUrl> mOnEditSearchEngine;
 
-    public CustomSearchEngineListMediator(Context context, ModelList modelList, Profile profile) {
+    public CustomSearchEngineListMediator(
+            Context context,
+            ModelList modelList,
+            Profile profile,
+            Callback<TemplateUrl> onEditSearchEngine) {
         mContext = context;
         mModelList = modelList;
         mTemplateUrlService = TemplateUrlServiceFactory.getForProfile(profile);
         mLargeIconBridge = new LargeIconBridge(profile);
         mFaviconSize = context.getResources().getDimensionPixelSize(R.dimen.default_favicon_size);
+        mOnEditSearchEngine = onEditSearchEngine;
 
         mTemplateUrlService.addObserver(this);
         mTemplateUrlService.runWhenLoaded(this::refreshList);
@@ -72,7 +79,7 @@ public class CustomSearchEngineListMediator
         // TODO: Get only default search engines in template url services after the API is
         // available.
         List<TemplateUrl> urls = mTemplateUrlService.getTemplateUrls();
-
+        TemplateUrl defaultSearchEngine = mTemplateUrlService.getDefaultSearchEngineTemplateUrl();
         for (TemplateUrl url : urls) {
             PropertyModel model =
                     new PropertyModel.Builder(CustomSearchEngineProperties.ALL_KEYS)
@@ -80,7 +87,9 @@ public class CustomSearchEngineListMediator
                             .with(CustomSearchEngineProperties.URL, url.getKeyword())
                             .with(
                                     CustomSearchEngineProperties.MENU_DELEGATE,
-                                    createMenuDelegate(url))
+                                    url.equals(defaultSearchEngine)
+                                            ? null
+                                            : createMenuDelegate(url))
                             .with(
                                     CustomSearchEngineProperties.ICON,
                                     FaviconUtils.createGenericFaviconBitmap(
@@ -93,10 +102,9 @@ public class CustomSearchEngineListMediator
     }
 
     private void fetchFavicon(TemplateUrl url, PropertyModel model) {
-        String urlString = mTemplateUrlService.getSearchEngineUrlFromTemplateUrl(url.getKeyword());
-        if (urlString == null) return;
+        GURL faviconUrl = url.getFaviconURL();
+        if (faviconUrl == null) return;
 
-        GURL faviconUrl = new GURL(urlString);
         SearchEngineIconUtils.updateIcon(
                 mContext,
                 model,
@@ -139,7 +147,7 @@ public class CustomSearchEngineListMediator
     @VisibleForTesting
     void onMenuItemClicked(int textId, TemplateUrl url) {
         if (R.string.site_search_list_menu_edit == textId) {
-            // TODO: Implement Edit Dialog
+            mOnEditSearchEngine.onResult(url);
         } else if (R.string.site_search_list_menu_make_default == textId) {
             mTemplateUrlService.setSearchEngine(url.getKeyword());
         } else if (R.string.site_search_list_menu_delete == textId) {

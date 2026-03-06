@@ -26,6 +26,7 @@
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_configuration.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_page_context.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_page_state_change_handler.h"
+#import "ios/chrome/browser/intelligence/bwg/model/gemini_scroll_observer.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_session_delegate.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_startup_configuration.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_suggestion_delegate.h"
@@ -49,11 +50,13 @@
 #import "ios/chrome/browser/shared/public/commands/settings_commands.h"
 #import "ios/chrome/browser/shared/ui/symbols/symbols.h"
 #import "ios/chrome/browser/shared/ui/util/layout_guide_names.h"
+#import "ios/chrome/browser/shared/ui/util/uikit_ui_util.h"
 #import "ios/chrome/browser/shared/ui/util/util_swift.h"
 #import "ios/chrome/browser/signin/model/authentication_service_factory.h"
 #import "ios/chrome/browser/url_loading/model/url_loading_browser_agent.h"
 #import "ios/public/provider/chrome/browser/bwg/bwg_api.h"
 #import "ios/public/provider/chrome/browser/bwg/bwg_gateway_protocol.h"
+#import "ios/web/public/ui/crw_web_view_proxy.h"
 #import "ui/gfx/image/image.h"
 
 namespace {
@@ -182,6 +185,10 @@ GeminiBrowserAgent::GeminiBrowserAgent(Browser* browser)
                     weak_ptr->OnKeyboardStateChanged(false);
                   }
                 }];
+    scroll_observer_ = [[GeminiScrollObserver alloc]
+        initWithScrollCallback:base::BindRepeating(
+                                   &GeminiBrowserAgent::OnScrollEvent,
+                                   weak_factory_.GetWeakPtr())];
   }
 }
 
@@ -196,6 +203,14 @@ GeminiBrowserAgent::~GeminiBrowserAgent() {
         removeObserver:keyboard_hide_observer_];
     keyboard_hide_observer_ = nil;
   }
+
+  web::WebState* active_web_state =
+      browser_->GetWebStateList()->GetActiveWebState();
+  if (active_web_state) {
+    [active_web_state->GetWebViewProxy().scrollViewProxy
+        removeObserver:scroll_observer_];
+  }
+  scroll_observer_ = nil;
 
   if (fullscreen_controller_) {
     fullscreen_controller_->RemoveObserver(this);
@@ -212,21 +227,24 @@ void GeminiBrowserAgent::OnKeyboardStateChanged(bool is_visible) {
   }
 
   is_keyboard_visible_ = is_visible;
-  // If the floaty is expanded or temporarily hidden, the floaty should not be
-  // re-shown on keyboard updates.
-  if (last_shown_view_state_ == ios::provider::GeminiViewState::kExpanded ||
-      is_floaty_temporarily_hidden_) {
+  if (is_visible) {
+    // If the floaty is expanded or temporarily hidden, the floaty should not be
+    // re-shown on keyboard updates.
+    if (last_shown_view_state_ == ios::provider::GeminiViewState::kExpanded ||
+        is_floaty_temporarily_hidden_) {
+      return;
+    }
+
+    is_hidden_by_keyboard_ = true;
+    HideFloatyIfInvoked(/*animated=*/false,
+                        gemini::FloatyUpdateSource::Keyboard);
     return;
   }
 
-  // Ensures that the floaty visibility is updated properly on a keyboard
-  // update.
-  CGFloat offset =
-      GetFloatyOffsetFromFullscreenController(fullscreen_controller_);
-  if (is_keyboard_visible_) {
-    ios::provider::UpdateOverlayOffsetWithOpacity(offset, kFloatyHiddenOpacity);
-  } else {
-    ios::provider::UpdateOverlayOffsetWithOpacity(offset, kFloatyShownOpacity);
+  if (is_hidden_by_keyboard_) {
+    ShowFloatyIfInvoked(/*animated=*/false,
+                        gemini::FloatyUpdateSource::Keyboard);
+    is_hidden_by_keyboard_ = false;
   }
 }
 
@@ -280,9 +298,17 @@ CGFloat GeminiBrowserAgent::GetFloatyOffsetFromFullscreenController(
     FullscreenController* controller) {
   CGFloat fully_expanded_bottom_toolbar_height =
       controller->GetMaxViewportInsets().bottom;
+
+  SceneState* scene_state = browser_->GetSceneState();
+  if (scene_state && scene_state.window && IsLandscape(scene_state.window)) {
+    fully_expanded_bottom_toolbar_height +=
+        scene_state.window.safeAreaInsets.bottom;
+  }
+
   CGFloat offset =
       (fully_expanded_bottom_toolbar_height * controller->GetProgress()) -
       kFloatyIntrinsicPaddingCorrection;
+
   return offset;
 }
 
@@ -303,7 +329,6 @@ void GeminiBrowserAgent::ForceShowFloatyIfInvoked() {
     return;
   }
 
-  fullscreen_controller_->ExitFullscreen();
   CGFloat offset =
       GetFloatyOffsetFromFullscreenController(fullscreen_controller_);
   ios::provider::UpdateOverlayOffsetWithOpacity(offset, kFloatyShownOpacity);
@@ -345,10 +370,15 @@ void GeminiBrowserAgent::UpdateActiveTabHelperWithPresentedSource(
 
 void GeminiBrowserAgent::UpdateForTraitCollection(
     UITraitCollection* traitCollection) {
+  if (is_floaty_temporarily_hidden_) {
+    return;
+  }
+
   // Update the offset for a device orientation update to landscape or portrait.
   CGFloat offset =
       GetFloatyOffsetFromFullscreenController(fullscreen_controller_);
-  ios::provider::UpdateOverlayOffsetWithOpacity(offset, kFloatyShownOpacity);
+  ios::provider::UpdateOverlayOffsetWithOpacity(
+      offset, fullscreen_controller_->GetProgress());
 }
 
 void GeminiBrowserAgent::PresentFloaty(UIViewController* base_view_controller,
@@ -371,67 +401,39 @@ void GeminiBrowserAgent::PresentFloaty(UIViewController* base_view_controller,
         }));
   }
 
-  // Configure the callback to be executed once the page context is ready.
   base::WeakPtr<GeminiBrowserAgent> weak_ptr = weak_factory_.GetWeakPtr();
+
+  // Present the overlay immediately without page context.
+  PresentFloatyWithPendingContext(base_view_controller, entry_point,
+                                  image_attachment);
+
+  // Configure the callback to be executed once the page context is ready.
   base::RepeatingCallback<void(PageContextWrapperCallbackResponse)>
-      page_context_completion_callback;
+      page_context_completion_callback = base::BindRepeating(
+          [](base::WeakPtr<GeminiBrowserAgent> weak_ptr,
+             PageContextWrapperCallbackResponse response) {
+            if (weak_ptr) {
+              // Cancel the timeout timer since the page context is ready.
+              weak_ptr->page_context_timeout_timer_.Stop();
+              weak_ptr->UpdateFloatyPageContext(std::move(response));
+            }
+          },
+          weak_ptr);
 
-  if (IsGeminiImmediateOverlayEnabled()) {
-    // Present the overlay immediately without page context.
-    PresentFloatyWithPendingContext(base_view_controller, entry_point,
-                                    image_attachment);
+  base::UmaHistogramLongTimes(first_run_shown ? kStartupTimeWithFREHistogram
+                                              : kStartupTimeNoFREHistogram,
+                              base::TimeTicks::Now() - start_time);
 
-    page_context_completion_callback = base::BindRepeating(
-        [](base::WeakPtr<GeminiBrowserAgent> weak_ptr,
-           PageContextWrapperCallbackResponse response) {
-          if (weak_ptr) {
-            // Cancel the timeout timer since the page context is ready.
-            weak_ptr->page_context_timeout_timer_.Stop();
-            weak_ptr->UpdateFloatyPageContext(std::move(response));
-          }
-        },
-        weak_ptr);
-
-    base::UmaHistogramLongTimes(first_run_shown ? kStartupTimeWithFREHistogram
-                                                : kStartupTimeNoFREHistogram,
-                                base::TimeTicks::Now() - start_time);
-
-    // Start the timeout timer to force page context generation if page load
-    // takes too long.
-    page_context_timeout_timer_.Start(
-        FROM_HERE, kFullPageContextTimeout,
-        base::BindOnce(
-            &GeminiBrowserAgent::TriggerBestEffortPageContextGeneration,
-            weak_factory_.GetWeakPtr()));
-  } else {
-    page_context_completion_callback = base::BindRepeating(
-        &GeminiBrowserAgent::OnPageContextReady, weak_factory_.GetWeakPtr(),
-        base_view_controller, image_attachment, start_time, first_run_shown,
-        entry_point);
-  }
+  // Start the timeout timer to force page context generation if page load
+  // takes too long.
+  page_context_timeout_timer_.Start(
+      FROM_HERE, kFullPageContextTimeout,
+      base::BindOnce(
+          &GeminiBrowserAgent::TriggerBestEffortPageContextGeneration,
+          weak_factory_.GetWeakPtr()));
 
   gemini_tab_helper->SetupPageContextGeneration(
       std::move(page_context_completion_callback));
-}
-
-void GeminiBrowserAgent::PresentFloatyWithPageContext(
-    UIViewController* base_view_controller,
-    base::expected<std::unique_ptr<optimization_guide::proto::PageContext>,
-                   PageContextWrapperError> expected_page_context,
-    gemini::EntryPoint entry_point) {
-  if (expected_page_context.has_value()) {
-    PresentFloatyWithState(
-        base_view_controller, std::move(expected_page_context.value()),
-        ios::provider::GeminiPageContextComputationState::kSuccess,
-        entry_point);
-  } else {
-    PresentFloatyWithState(
-        base_view_controller,
-        /*page_context_proto=*/nullptr,
-        GeminiPageContextComputationStateFromPageContextWrapperError(
-            expected_page_context.error()),
-        entry_point);
-  }
 }
 
 void GeminiBrowserAgent::PresentFloatyWithPendingContext(
@@ -591,6 +593,7 @@ void GeminiBrowserAgent::DismissFloaty() {
   }
 
   is_floaty_invoked_ = false;
+  is_hidden_by_keyboard_ = false;
   // TODO(crbug.com/484045717): Refactor to merge these two provider calls.
   if (IsGeminiCopresenceEnabled()) {
     ios::provider::UpdateGeminiViewState(
@@ -661,6 +664,11 @@ void GeminiBrowserAgent::ShowFloatyIfInvoked(
   RecordFloatyShownFromSource(source);
   is_floaty_temporarily_hidden_ = false;
 
+  // Exit fullscreen to prepare floaty for incoming response stream.
+  if (source == gemini::FloatyUpdateSource::ForcedFromQueryResponse) {
+    fullscreen_controller_->ExitFullscreen();
+  }
+
   base::WeakPtr<GeminiBrowserAgent> weak_ptr = weak_factory_.GetWeakPtr();
   [UIView animateWithDuration:kFloatyAnimationDuration
                    animations:^{
@@ -693,6 +701,8 @@ void GeminiBrowserAgent::OnActiveWebStateChanged(web::WebState* old_active,
     if (old_tab_helper) {
       old_tab_helper->RemoveObserver(this);
     }
+    [old_active->GetWebViewProxy().scrollViewProxy
+        removeObserver:scroll_observer_];
   }
 
   if (new_active) {
@@ -702,6 +712,29 @@ void GeminiBrowserAgent::OnActiveWebStateChanged(web::WebState* old_active,
       // Propagate the context of the new active tab.
       OnPageContextUpdated(new_active);
     }
+    [new_active->GetWebViewProxy().scrollViewProxy
+        addObserver:scroll_observer_];
+  }
+}
+
+void GeminiBrowserAgent::OnScrollEvent() {
+  if (!is_floaty_invoked_ || is_keyboard_visible_) {
+    return;
+  }
+
+  // Catch-all in case the floaty is still in a temporarily hidden state. A
+  // fullscreen update implies a user is interacting with the web page,
+  // therefore we should force-show the floaty if invoked. Uses the command
+  // handler to do eligibility checks outside of this browser agent before
+  // showing the floaty.
+  if (is_floaty_temporarily_hidden_) {
+    id<BWGCommands> gemini_handler =
+        HandlerForProtocol(browser_->GetCommandDispatcher(), BWGCommands);
+    [gemini_handler
+        updateFloatyVisibilityIfEligibleAnimated:NO
+                                      fromSource:gemini::FloatyUpdateSource::
+                                                     ForcedFromScroll];
+    return;
   }
 }
 
@@ -729,22 +762,7 @@ void GeminiBrowserAgent::OnGeminiTabHelperDestroyed(BwgTabHelper* tab_helper) {
 void GeminiBrowserAgent::FullscreenProgressUpdated(
     FullscreenController* controller,
     CGFloat progress) {
-  if (!is_floaty_invoked_) {
-    return;
-  }
-
-  // Catch-all in case the floaty is still in a temporarily hidden state. A
-  // fullscreen update implies a user is interacting with the web page,
-  // therefore we should force-show the floaty if invoked. Uses the command
-  // handler to do eligibility checks outside of this browser agent before
-  // showing the floaty.
-  if (is_floaty_temporarily_hidden_) {
-    id<BWGCommands> gemini_handler =
-        HandlerForProtocol(browser_->GetCommandDispatcher(), BWGCommands);
-    [gemini_handler
-        updateFloatyVisibilityIfEligibleAnimated:NO
-                                      fromSource:gemini::FloatyUpdateSource::
-                                                     ForcedFromFullscreen];
+  if (!is_floaty_invoked_ || is_floaty_temporarily_hidden_) {
     return;
   }
 
@@ -846,11 +864,14 @@ void GeminiBrowserAgent::PresentFloatyWithState(
   config.shouldShowSuggestionChips =
       gemini_tab_helper->ShouldShowSuggestionChips();
   config.contextualCueChipLabel = gemini_tab_helper->GetContextualCueLabel();
+  config.entryPoint = entry_point;
   config.imageRemixIPHShouldShow =
       entry_point == gemini::EntryPoint::ImageRemixIPH;
   config.responseReadyInterval = GetGeminiCopresenceResponseReadyInterval();
   config.responseViewDynamicSizeEnabled =
       IsGeminiResponseViewDynamicResizingEnabled();
+  config.geminiCopresenceZeroStateWithChatHistoryEnabled =
+      IsGeminiCopresenceZeroStateWithChatHistoryEnabled();
 
   // Set the location permission state.
   // TODO(crbug.com/426207968): Populate with actual value.
@@ -907,34 +928,6 @@ void GeminiBrowserAgent::ApplyUserPrefsToPageContext(
     gemini_page_context.BWGPageContextAttachmentState =
         ios::provider::BWGPageContextAttachmentState::kAttached;
   }
-}
-
-void GeminiBrowserAgent::OnPageContextReady(
-    UIViewController* base_view_controller,
-    UIImage* image_attachment,
-    base::TimeTicks start_time,
-    bool first_run_shown,
-    gemini::EntryPoint entry_point,
-    PageContextWrapperCallbackResponse response) {
-  // Cancel the timeout timer since the page context is ready.
-  page_context_timeout_timer_.Stop();
-
-  if (response.has_value()) {
-    PresentFloatyWithState(
-        base_view_controller, std::move(response.value()),
-        ios::provider::GeminiPageContextComputationState::kSuccess, entry_point,
-        image_attachment);
-  } else {
-    PresentFloatyWithState(
-        base_view_controller, nullptr,
-        GeminiPageContextComputationStateFromPageContextWrapperError(
-            response.error()),
-        entry_point, image_attachment);
-  }
-
-  base::UmaHistogramLongTimes(first_run_shown ? kStartupTimeWithFREHistogram
-                                              : kStartupTimeNoFREHistogram,
-                              base::TimeTicks::Now() - start_time);
 }
 
 void GeminiBrowserAgent::TriggerBestEffortPageContextGeneration() {

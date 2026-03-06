@@ -10,9 +10,11 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -47,6 +49,7 @@ import org.robolectric.shadows.ShadowPackageManager;
 import org.chromium.base.ContextUtils;
 import org.chromium.base.ResettersForTesting;
 import org.chromium.base.supplier.ObservableSuppliers;
+import org.chromium.base.supplier.SettableMonotonicObservableSupplier;
 import org.chromium.base.supplier.SettableNonNullObservableSupplier;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.Features.DisableFeatures;
@@ -80,7 +83,9 @@ import org.chromium.components.user_prefs.UserPrefsJni;
 import org.chromium.ui.KeyboardVisibilityDelegate;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.display.DisplayAndroid;
+import org.chromium.ui.insets.InsetObserver;
 import org.chromium.url.GURL;
+import org.chromium.url.JUnitTestGURLs;
 
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -92,6 +97,7 @@ public class ToolbarPositionControllerTest {
     @Rule public MockitoRule mMockitoJUnit = MockitoJUnit.rule();
     private static final int TOOLBAR_HEIGHT = 56;
     private static final int CONTROL_CONTAINER_ID = 12356;
+    private static final int STATUS_BAR_HEIGHT = 10;
 
     private final BrowserControlsSizer mBrowserControlsSizer =
             new BrowserControlsSizer() {
@@ -276,6 +282,7 @@ public class ToolbarPositionControllerTest {
     @Mock private PrefService mLocalPrefService;
     @Mock private WindowAndroid mWindowAndroid;
     @Mock private DisplayAndroid mDisplayAndroid;
+    @Mock private InsetObserver mInsetObserver;
 
     private Context mContext;
     private final SettableNonNullObservableSupplier<Boolean> mIsNtpShowing =
@@ -303,6 +310,8 @@ public class ToolbarPositionControllerTest {
             ObservableSuppliers.createNonNull(TOOLBAR_HEIGHT);
     private final SettableNonNullObservableSupplier<Integer> mKeyboardHeightSupplier =
             ObservableSuppliers.createNonNull(0);
+    private final SettableMonotonicObservableSupplier<Tab> mActivityTabSupplier =
+            ObservableSuppliers.createMonotonic();
     private SettableNonNullObservableSupplier<Profile> mProfileSupplier;
     private HistogramWatcher mStartupExpectation;
 
@@ -349,6 +358,7 @@ public class ToolbarPositionControllerTest {
         mProfileSupplier = ObservableSuppliers.createNonNull(mProfile);
         UserPrefsJni.setInstanceForTesting(mUserPrefsNatives);
         when(mUserPrefsNatives.get(mProfile)).thenReturn(mPrefs);
+        doReturn(mInsetObserver).when(mWindowAndroid).getInsetObserver();
 
         ResettersForTesting.register(
                 ToolbarPositionController::resetCachedToolbarConfigurationForTesting);
@@ -381,7 +391,8 @@ public class ToolbarPositionControllerTest {
                         mToolbarPosition,
                         mProfileSupplier,
                         mKeyboardHeightSupplier,
-                        mWindowAndroid);
+                        mWindowAndroid,
+                        mActivityTabSupplier);
 
         LocalStatePrefs.setNativePrefsLoadedForTesting(true);
         LocalStatePrefsJni.setInstanceForTesting(mLocalStatePrefsNatives);
@@ -1031,21 +1042,9 @@ public class ToolbarPositionControllerTest {
     @Config(qualifiers = "sw400dp", sdk = 30)
     @EnableFeatures(ChromeFeatureList.ANDROID_BOTTOM_TOOLBAR_V2)
     public void testBottomAnchoredFocusedOmnibox() {
-        doReturn(mDisplayAndroid).when(mWindowAndroid).getDisplay();
-        doReturn(1000).when(mDisplayAndroid).getDisplayHeight();
-        doReturn(mRootView).when(mControlContainerView).getRootView();
-        int statusBarHeight = 10;
-        WindowInsets rootViewInsets =
-                new WindowInsets.Builder()
-                        .setInsets(WindowInsets.Type.ime(), Insets.of(0, 0, 0, 400))
-                        .setInsets(
-                                WindowInsets.Type.statusBars(), Insets.of(0, statusBarHeight, 0, 0))
-                        .build();
-        doReturn(rootViewInsets).when(mControlContainerView).getRootWindowInsets();
-
-        setUserToolbarAnchorPreference(/* showToolbarOnTop= */ false);
-        mIsOmniboxFocused.set(true);
-        assertControlsAtBottom();
+        // Null InsetObserver, should fallback to keyboard's overlay mode.
+        doReturn(null).when(mWindowAndroid).getInsetObserver();
+        setupBottomAnchoredFocusedOmniboxTest();
 
         mKeyboardHeightSupplier.set(400);
         verify(mControlContainerView).setTranslationY(-400f);
@@ -1054,8 +1053,32 @@ public class ToolbarPositionControllerTest {
         // the toolbar should be translated up to the top of the screen but no further.
         doReturn(430).when(mDisplayAndroid).getDisplayHeight();
         mKeyboardHeightSupplier.set(401);
-        verify(mControlContainerView).setTranslationY(-(430f - TOOLBAR_HEIGHT - statusBarHeight));
+        verify(mControlContainerView)
+                .setTranslationY(-(430f - TOOLBAR_HEIGHT - STATUS_BAR_HEIGHT));
         verify(mControlContainer, atLeast(1)).setMaxHeight(20);
+    }
+
+    @Test
+    @Config(qualifiers = "sw400dp", sdk = 30)
+    @EnableFeatures(ChromeFeatureList.ANDROID_BOTTOM_TOOLBAR_V2)
+    public void testBottomAnchoredFocusedOmnibox_whenOverlayKeyboardMode() {
+        doReturn(true).when(mInsetObserver).isKeyboardInOverlayMode();
+        setupBottomAnchoredFocusedOmniboxTest();
+
+        mKeyboardHeightSupplier.set(400);
+        verify(mControlContainerView, atLeast(1)).setTranslationY(-400f);
+    }
+
+    @Test
+    @Config(qualifiers = "sw400dp", sdk = 30)
+    @EnableFeatures(ChromeFeatureList.ANDROID_BOTTOM_TOOLBAR_V2)
+    public void testBottomAnchoredFocusedOmnibox_whenResizeKeyboardMode() {
+        doReturn(false).when(mInsetObserver).isKeyboardInOverlayMode();
+        setupBottomAnchoredFocusedOmniboxTest();
+
+        mKeyboardHeightSupplier.set(400);
+        // In resize mode, keyboard height should be ignored for translation.
+        verify(mControlContainerView, atLeast(1)).setTranslationY(0f);
     }
 
     @Test
@@ -1063,6 +1086,70 @@ public class ToolbarPositionControllerTest {
         mController.destroy();
         setUserToolbarAnchorPreference(/* showToolbarOnTop= */ false);
         assertControlsAtTop();
+    }
+
+    private void setupBottomAnchoredFocusedOmniboxTest() {
+        doReturn(mDisplayAndroid).when(mWindowAndroid).getDisplay();
+        doReturn(1000).when(mDisplayAndroid).getDisplayHeight();
+        doReturn(mRootView).when(mControlContainerView).getRootView();
+
+        WindowInsets rootViewInsets =
+                new WindowInsets.Builder()
+                        .setInsets(WindowInsets.Type.ime(), Insets.of(0, 0, 0, 400))
+                        .setInsets(
+                                WindowInsets.Type.statusBars(),
+                                Insets.of(0, STATUS_BAR_HEIGHT, 0, 0))
+                        .build();
+        doReturn(rootViewInsets).when(mControlContainerView).getRootWindowInsets();
+
+        setUserToolbarAnchorPreference(/* showToolbarOnTop= */ false);
+        mIsOmniboxFocused.set(true);
+        assertControlsAtBottom();
+    }
+
+    @Test
+    public void testMaybeForceBottomToolbarLayoutUpdateAndCapture() {
+        // 1. Test mIsFirstPositionChange is true.
+        assertTrue(mController.getIsFirstPositionChangeForTesting());
+        // After setUp, mIsFirstPositionChange is true because initial position (TOP) didn't change.
+        mController.maybeForceBottomToolbarLayoutUpdateAndCapture();
+        verify(mControlContainer, never()).doSynchronousLayoutAndCapture();
+
+        // Trigger a position change to set mIsFirstPositionChange to false.
+        setUserToolbarAnchorPreference(false); // Changes to BOTTOM
+        assertControlsAtBottom();
+        // During this first change, maybeForceToolbarLayoutUpdateAndCapture() was called inside
+        // updateCurrentPosition(), but mIsFirstPositionChange was still true, so it did nothing.
+        verify(mControlContainer, never()).doSynchronousLayoutAndCapture();
+
+        // mIsFirstPositionChange is now false.
+        assertFalse(mController.getIsFirstPositionChangeForTesting());
+
+        // 2. Test active tab is NTP.
+        Tab ntpTab = mock(Tab.class);
+        when(ntpTab.getUrl()).thenReturn(JUnitTestGURLs.NTP_URL);
+        when(ntpTab.isOffTheRecord()).thenReturn(false);
+        mActivityTabSupplier.set(ntpTab);
+        mController.maybeForceBottomToolbarLayoutUpdateAndCapture();
+        verify(mControlContainer, never()).doSynchronousLayoutAndCapture();
+
+        // 3. Test active tab is not NTP, and layout changed.
+        Tab regularTab = mock(Tab.class);
+        when(regularTab.getUrl()).thenReturn(JUnitTestGURLs.URL_1);
+        mActivityTabSupplier.set(regularTab);
+
+        // We need onToEdgeChange to return true.
+        // maybeForceToolbarLayoutUpdateAndCapture calls onToEdgeChange(0, false).
+        // Set mTopInset to something non-zero first.
+        mController.onToEdgeChange(50, true);
+        mController.maybeForceBottomToolbarLayoutUpdateAndCapture();
+        verify(mControlContainer).doSynchronousLayoutAndCapture();
+
+        // 4. Test active tab is not NTP, but layout DID NOT change.
+        // mTopInset is now 0 (from previous call).
+        clearInvocations(mControlContainer);
+        mController.maybeForceBottomToolbarLayoutUpdateAndCapture();
+        verify(mControlContainer, never()).doSynchronousLayoutAndCapture();
     }
 
     private void assertControlsAtBottom() {

@@ -318,6 +318,7 @@ class GlicInstanceImpl : public GlicInstance,
       std::optional<EmbedderKey> new_key);
   void ClearActiveEmbedderAndNotifyStateChange();
   void MaybeShowHostUi(GlicUiEmbedder* embedder,
+                       mojom::InvocationSource source,
                        std::optional<std::string> prompt_suggestion,
                        bool auto_send);
   void OnBoundTabDestroyed(tabs::TabInterface* tab);
@@ -353,8 +354,7 @@ class GlicInstanceImpl : public GlicInstance,
   // Updates the floating panel can attach state.
   void UpdateFloatingPanelCanAttach();
 
-  using StateChangeCallbackList =
-      base::RepeatingCallbackList<void(bool, mojom::CurrentView view)>;
+  using StateChangeCallbackList = base::RepeatingCallbackList<void(bool)>;
   StateChangeCallbackList state_change_callback_list_;
 
   base::ObserverList<PanelStateObserver> state_observers_;

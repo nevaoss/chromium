@@ -688,6 +688,21 @@
       <message name="IDS_IOS_AUTOFILL_SUGGESTION_INDEX_VALUE" desc="The accessibility value of a suggestion shown in the Autofill keyboard acessory to indicate the position of the focused suggestion in the list of suggestions. [Length: unlimited] [iOS only]">
         <ph name="INDEX">$1<ex>1</ex></ph> of <ph name="NUM_SUGGESTIONS">$2<ex>5</ex></ph>
       </message>
+      <message name="IDS_IOS_AUTOFILL_VERIFICATION_INFO_FOOTER" desc="The footer text explaining the verify sensitive info setting. [iOS only]">
+        If you share this device, use your screen lock to verify it's you when using sensitive info like passports
+      </message>
+      <message name="IDS_IOS_AUTOFILL_VERIFICATION_INFO_LABEL" desc="The label for the toggle to verify identity when filling sensitive info. [iOS only]">
+        Verify it's you when filling sensitive info
+      </message>
+      <message name="IDS_IOS_AUTOFILL_WALLET_PROMO_DETAIL_TEXT" desc="Text explaining that the user needs to enable 'Use passes across Google' in Wallet settings to use autofill. [iOS only]">
+        To autofill your info, turn on “Use passes across Google” in Wallet settings
+      </message>
+      <message name="IDS_IOS_AUTOFILL_WALLET_PROMO_LINK_TEXT" desc="Link text to open the Google Wallet app. [iOS only]">
+        Open Google Wallet
+      </message>
+      <message name="IDS_IOS_AUTOFILL_WALLET_PROMO_TITLE" desc="Title of the wallet promo in autofill settings. [iOS only]">
+        Allow Wallet to share data
+      </message>
       <message name="IDS_IOS_AUTOFILL_WALLET_SERVER_NAME" desc="The name of the data source for non-local card and address info. Title case. 'Google Pay' should not be translated as it is the product name. [Length: 15em] [iOS only]">
         Google Pay
       </message>
@@ -1482,9 +1497,6 @@
       <message name="IDS_IOS_COMPOSEBOX_CREATE_IMAGE_ACTION" desc="The contextual menu option instructing the input plate to use the image generation tool. [iOS only].">
         Create image
       </message>
-      <message name="IDS_IOS_COMPOSEBOX_CREATE_IMAGE_PRO_ACTION" desc="The contextual menu option instructing the input plate to use the image generation tool when the advanced model is being used. [iOS only].">
-        Create image Pro
-      </message>
       <message name="IDS_IOS_COMPOSEBOX_DEEP_SEARCH_ACTION" desc="The contextual menu option for opening the tool that helps users perform complex research tasks. [iOS only].">
         Deep Search
       </message>
@@ -1816,17 +1828,17 @@
       <message name="IDS_IOS_CONTENT_SUGGESTIONS_PIN_SITE_EDIT_PINNED_SITE_TITLE" desc="The title of form for the user to edit an existing pinned site">
         Edit site
       </message>
-      <message name="IDS_IOS_CONTENT_SUGGESTIONS_PIN_SITE_FORM_FOOTER" desc="The footer of form for the user to add or edit a pinned site">
-        Your edits will only apply to your pinned sites on this device.
-      </message>
       <message name="IDS_IOS_CONTENT_SUGGESTIONS_PIN_SITE_FORM_NAME" desc="The label of the 'name' field of form for the user to add or edit a pinned site">
         Name
       </message>
       <message name="IDS_IOS_CONTENT_SUGGESTIONS_PIN_SITE_FORM_URL" desc="The label of the 'URL' field of form for the user to edit an existing pinned site">
         URL
       </message>
-      <message name="IDS_IOS_CONTENT_SUGGESTIONS_PIN_SITE_FORM_URL_VALIDATION_FAILED" desc="Error message shown below URL input field when the the site is already pinned. [Length: 20em]">
+      <message name="IDS_IOS_CONTENT_SUGGESTIONS_PIN_SITE_FORM_URL_EXISTS" desc="Error message shown below URL input field when the the site is already pinned. [Length: 20em]">
         Pinned site already exists
+      </message>
+      <message name="IDS_IOS_CONTENT_SUGGESTIONS_PIN_SITE_FORM_URL_VALIDATION_FAILED" desc="Error message shown below URL input field when the the site is invalid. [Length: 20em]">
+        Type a valid URL
       </message>
       <message name="IDS_IOS_CONTENT_SUGGESTIONS_PIN_SITE_IN_PRODUCT_HELP" desc="In-product help that points at the first most visited tile in content suggestions to educate the user that they could long tap on the tile to pin this site">
         Tap and hold to pin your favorite sites
@@ -6661,6 +6673,9 @@ Handoff must also be enabled in the General section of Settings, and your device
       </message>
       <message name="IDS_IOS_SETTINGS_ENHANCED_AUTOFILL_SAVED_INFORMATION" desc="Text describing that the information is saved on device in the Enhanced Autofill Settings menu. [iOS only]">
         Your saved information is stored on your device
+      </message>
+      <message name="IDS_IOS_SETTINGS_ENHANCED_AUTOFILL_TOGGLE_REAUTH_REASON" desc="Message explaining that the reason why we are requiring the user to re-authenticate is to be able to toggle enhanced autofill. This is shown by iOS in the Touch ID reauthentication system dialogue, right under the OS string 'Enter iPhone Passcode for $BROWSER_NAME'. [Length: one line]">
+        Toggle enhanced autofill
       </message>
       <message name="IDS_IOS_SETTINGS_EXPORT_PASSWORDS_SET_UP_SCREENLOCK_CONTENT" desc="Message informing the user that in order to export the passwords, a screen lock needs to be set up on the device. This is shown as an alert message after the user tries to view or copy the password from a settings page. [Length: about two lines]">
         To export passwords, you must first set a passcode on your device.

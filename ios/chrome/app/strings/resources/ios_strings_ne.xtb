@@ -911,6 +911,7 @@
 <translation id="4405320213589929829">स्थानीय जानकारी र जाने बाटो प्राप्त गर्न वेबपेजमा ठेगानाहरू प्रयोग गर्नुहोस्।</translation>
 <translation id="441218095371040430">किबोर्ड प्रयोग गर्नुहोस्</translation>
 <translation id="4415276339145661267">आफ्नो Google खाता व्यवस्थापन गर्नुहोस्</translation>
+<translation id="4416582610654027550">कुनै मान्य URL टाइप गर्नुहोस्</translation>
 <translation id="4420409367264901497">बुकमार्क सम्पादन गर्नुहोस्</translation>
 <translation id="4425365312778464779">यो खाता व्यवस्थापन गरिन्छ</translation>
 <translation id="4430277756566635951">अहिले <ph name="EMAIL" /> चयन गरिएको छ। एउटा खाता चयन गर्नुहोस्।</translation>
@@ -1035,6 +1036,7 @@
 <translation id="484462545196658690">स्वतः</translation>
 <translation id="4850886885716139402">हेर्नुहोस्</translation>
 <translation id="4854068532375923088">“Gemini” लाई तपाईंको क्यामेरा प्रयोग गर्ने अनुमति दिनुहोस्</translation>
+<translation id="4860114370595561279">तपाईंको सेभ गरिएको जानकारी तपाईंको डिभाइसमा भण्डारण गरिन्छ</translation>
 <translation id="4860895144060829044">कल गर्नुहोस्</translation>
 <translation id="4861953997778766866">तपाईंले सेयर गर्नुभएका ट्याब समूहहरूमा सबै जनाले परिवर्तन गर्न सक्छन्</translation>
 <translation id="4865063548323785458">साइट र एपहरूमा सजिलैसँग साइन इन गर्न आफ्ना पासवर्डहरू सेभ गर्नुहोस् र स्वतः भर्नुहोस्</translation>
@@ -1404,7 +1406,6 @@
 <translation id="6140948187512243695">विवरणहरू देखाउनुहोस्</translation>
 <translation id="6144589619057374135">${url} इन्कोग्निटो मोडमा खोल्नुहोस्</translation>
 <translation id="6146563240635539929">भिडियोहरू</translation>
-<translation id="6147279996212084542">व्याख्या गर्नुहोस्</translation>
 <translation id="6151006591088192882"><ph name="BIOMETRIC_AUTHENITCATION_TYPE" /> प्रयोग गरी इन्कोग्निटो ट्याबहरू अनलक गर्नुहोस्</translation>
 <translation id="6152340033632117531">निष्क्रिय</translation>
 <translation id="6152406514676263192">आफ्नो रुचिअनुसारका सबैभन्दा सान्दर्भिक सामग्री हेर्न सिंक गर्नुहोस्।</translation>
@@ -1651,7 +1652,6 @@
 <translation id="6964300328304469089">अहिले <ph name="NAME" />, <ph name="EMAIL" /> चयन गरिएको छ। एउटा खाता चयन गर्नुहोस्।</translation>
 <translation id="6964760285928603117">समूहबाट हटाउनुहोस्</translation>
 <translation id="6965382102122355670">ठिक छ</translation>
-<translation id="6967355534157677591">Pro प्रयोग गरी फोटो बनाउनुहोस्</translation>
 <translation id="6973630695168034713">फोल्डरहरू</translation>
 <translation id="6979158407327259162">Google ड्राइभ</translation>
 <translation id="6979737339423435258">सुरूबाट नै</translation>
@@ -2060,6 +2060,7 @@
 <translation id="8439758443371991593">"रिडिङ लिस्टमा हाल्नुहोस्" लुकाउनुहोस्</translation>
 <translation id="8443986842926457191">URL मा २०४८ भन्दा बढी वर्ण प्रयोग गरिएको छ</translation>
 <translation id="8449869326050867919">पासवर्ड सेयर गरिएको छ</translation>
+<translation id="8473815223723723001">Gemini प्रयोग गरी फोटो सम्पादन गर्नुहोस्</translation>
 <translation id="8473863474539038330">ठेगाना र थप कुराहरू</translation>
 <translation id="8474378002946546633">सूचना प्राप्त गर्ने सुविधा अन गर्नुहोस्</translation>
 <translation id="8477178913400731244">डेटा मेटाउनुहोस्</translation>
@@ -2185,7 +2186,6 @@
 <translation id="8856643812068084733">अभिलेखहरू</translation>
 <translation id="8863067612494559785"><ph name="DEVICE_NAME" /> मा पठाइँदै छ…</translation>
 <translation id="8863431381414769983">Google नक्साबाट जाने बाटो र स्थानीय जानकारी प्राप्त गर्नुहोस्</translation>
-<translation id="8867879594900082274">तपाईंले गरेका परिवर्तनहरू यो डिभाइसमा पिन गरिएका साइटहरूमा मात्र लागू हुने छन्।</translation>
 <translation id="8871974300055371298">विषयवस्तु सेटिङहरू</translation>
 <translation id="8877788021141246043">कुनै रिमाइन्डर सेट गर्नुहोस्</translation>
 <translation id="8879604564928138696">यसलाई प्रयोग गरी हेर्न डबल ट्याप गर्नुहोस्</translation>

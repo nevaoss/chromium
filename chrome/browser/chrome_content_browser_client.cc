@@ -358,6 +358,7 @@
 #include "device/vr/buildflags/buildflags.h"
 #include "extensions/browser/browser_frame_context_data.h"
 #include "extensions/buildflags/buildflags.h"
+#include "extensions/common/switches.h"
 #include "google_apis/gaia/gaia_urls.h"
 #include "google_apis/google_api_keys.h"
 #include "gpu/config/gpu_switches.h"
@@ -2964,9 +2965,9 @@ void ChromeContentBrowserClient::AppendExtraCommandLineSwitches(
                                                                 // only.
         extensions::switches::kAllowlistedExtensionID,
         extensions::switches::kExtensionTestApiOnWebPages,  // For tests only.
+        extensions::switches::kAppsGalleryURL,
 #endif
         switches::kAllowInsecureLocalhost,
-        switches::kAppsGalleryURL,
         switches::kDisableJavaScriptHarmonyShipping,
         variations::switches::kEnableBenchmarking,
         variations::switches::kEnableBenchmarkingApi,
@@ -3470,6 +3471,8 @@ bool ChromeContentBrowserClient::IsPrivacySandboxReportingDestinationAttested(
       gated_api =
           privacy_sandbox::PrivacySandboxAttestationsGatedAPI::kSharedStorage;
       break;
+    default:
+      NOTREACHED();
   }
 
   return privacy_sandbox_settings->IsEventReportingDestinationAttested(
@@ -4829,9 +4832,9 @@ void ChromeContentBrowserClient::OverrideWebPreferences(
       base::FeatureList::IsEnabled(::features::kContextMenuEmptySpace);
 #endif
 
-  if (base::FeatureList::IsEnabled(::features::kDevToolsAiPromptApi) &&
-      web_contents->GetVisibleURL().SchemeIs(content::kChromeDevToolsScheme)) {
-    web_prefs->ai_prompt_api_enabled = true;
+  if (web_contents->GetVisibleURL().SchemeIs(content::kChromeDevToolsScheme) &&
+      base::FeatureList::IsEnabled(::features::kDevToolsAiOriginTrialsApis)) {
+    web_prefs->ai_ot_apis_enabled = true;
   }
 }
 
@@ -5295,7 +5298,7 @@ bool ChromeContentBrowserClient::PreSpawnChild(
 
   // Allow loading Chrome's DLLs.
   for (const auto* dll : {chrome::kBrowserResourcesDll, chrome::kElfDll}) {
-    result = config->AllowExtraDll(GetModulePath(dll).value().c_str());
+    result = config->AllowExtraDll(GetModulePath(dll).value());
     if (result != sandbox::SBOX_ALL_OK) {
       return false;
     }
@@ -6444,7 +6447,7 @@ void ChromeContentBrowserClient::WillCreateURLLoaderFactory(
     // WARNING: This factory blocks certain requests from going out via the
     // final network bound factory.
     enterprise_auth::ProxyingURLLoaderFactory::MaybeProxyRequest(
-        request_initiator, type, factory_builder);
+        request_initiator, type, browser_context, factory_builder);
   }
 #endif
 

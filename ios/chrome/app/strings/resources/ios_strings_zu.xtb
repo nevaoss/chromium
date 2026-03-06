@@ -911,6 +911,7 @@
 <translation id="4405320213589929829">Sebenzisa amakheli emakhasini wewebhu ukuze uthole ulwazi lwendawo nezinkomba.</translation>
 <translation id="441218095371040430">Sebenzisa ikhibhodi</translation>
 <translation id="4415276339145661267">Lawula i-akhawunti yakho ye-Google</translation>
+<translation id="4416582610654027550">Thayipha i-URL evumelekile</translation>
 <translation id="4420409367264901497">Hlela ibhukhimakhi</translation>
 <translation id="4425365312778464779">Le akhawunti iyalawulwa</translation>
 <translation id="4430277756566635951"><ph name="EMAIL" /> ikhethiwe njengamanje. Khetha i-akhawunti.</translation>
@@ -1035,6 +1036,7 @@
 <translation id="484462545196658690">Okuzenzakalelayo</translation>
 <translation id="4850886885716139402">Buka</translation>
 <translation id="4854068532375923088">Vumela okuthi “Gemini” kusebenzise ikhamera yakho</translation>
+<translation id="4860114370595561279">Imininingwane yakho elondoloziwe igcinwa kudivayisi yakho</translation>
 <translation id="4860895144060829044">Shaya</translation>
 <translation id="4861953997778766866">Wonke umuntu angenza ushintsho emaqenjini ethebhu owabelane ngawo</translation>
 <translation id="4865063548323785458">Londoloza futhi wenze amaphasiwedi akho azigcwaliseleke ukuze ungenge ngemvume kalula kumasayithi nama-app</translation>
@@ -1404,7 +1406,6 @@ I-Handoff futhi kufanele inikwe amandla esigabeni sokuvamile zezilungiselelo, fu
 <translation id="6140948187512243695">Bonisa imininingwane</translation>
 <translation id="6144589619057374135">Vula i-${url} ku-Incognito</translation>
 <translation id="6146563240635539929">Amavidiyo</translation>
-<translation id="6147279996212084542">Chaza</translation>
 <translation id="6151006591088192882">Vula amathebhu we-Incognito nge-<ph name="BIOMETRIC_AUTHENITCATION_TYPE" /></translation>
 <translation id="6152340033632117531">Akusebenzi</translation>
 <translation id="6152406514676263192">Vumelanisa ngokuqukethwe okuhlobene kakhulu ngokusekelwe kuzintshisekelo zakho.</translation>
@@ -1651,7 +1652,6 @@ I-Handoff futhi kufanele inikwe amandla esigabeni sokuvamile zezilungiselelo, fu
 <translation id="6964300328304469089"><ph name="NAME" />, <ph name="EMAIL" /> kukhethiwe njengamanje. Khetha i-akhawunti.</translation>
 <translation id="6964760285928603117">Susa kusukela kuqembu</translation>
 <translation id="6965382102122355670">KULUNGILE</translation>
-<translation id="6967355534157677591">Sungula isithombe sePro</translation>
 <translation id="6973630695168034713">Amafolda</translation>
 <translation id="6979158407327259162">I-Google Drayivu</translation>
 <translation id="6979737339423435258">Sonke isikhathi</translation>
@@ -2186,7 +2186,6 @@ I-Handoff futhi kufanele inikwe amandla esigabeni sokuvamile zezilungiselelo, fu
 <translation id="8856643812068084733">Izingobo zomlando</translation>
 <translation id="8863067612494559785">Ithumela ku-<ph name="DEVICE_NAME" />…</translation>
 <translation id="8863431381414769983">Thola izikhombisi-ndlela nolwazi lwendawo ku-Amamephu eGoogle</translation>
-<translation id="8867879594900082274">Ukuhlela kwakho kuzosebenza kuphela kumasayithi akho aphiniwe kule divayisi.</translation>
 <translation id="8871974300055371298">Izilungiselelo zokuqukethwe</translation>
 <translation id="8877788021141246043">Setha isikhumbuzi</translation>
 <translation id="8879604564928138696">Thepha kabili ukuze uzame</translation>

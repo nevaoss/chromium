@@ -9,7 +9,10 @@ source_set("ui") {
     "picture_in_picture_view_controller.mm",
   ]
   deps = [
+    "//base",
+    "//ios/chrome/browser/default_browser/model:utils",
     "//ios/chrome/browser/picture_in_picture/public",
+    "//ios/chrome/browser/shared/public/commands",
     "//ios/chrome/common/ui/button_stack",
   ]
   frameworks = [

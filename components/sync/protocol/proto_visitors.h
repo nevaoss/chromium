@@ -1373,6 +1373,35 @@ VISIT_PROTO_FIELDS(const sync_pb::SendTabToSelfSpecifics& proto) {
   VISIT(target_device_sync_cache_guid);
   VISIT(opened);
   VISIT(notification_dismissed);
+  VISIT(page_context);
+}
+
+VISIT_PROTO_FIELDS(const sync_pb::TextFragmentData& proto) {
+  VISIT(text_start);
+  VISIT(text_end);
+  VISIT(prefix);
+  VISIT(suffix);
+}
+
+VISIT_PROTO_FIELDS(const sync_pb::ScrollPosition& proto) {
+  VISIT(text_fragment);
+}
+
+VISIT_PROTO_FIELDS(const sync_pb::PageContext& proto) {
+  VISIT(form_field_info);
+  VISIT(scroll_position);
+}
+
+VISIT_PROTO_FIELDS(const sync_pb::FormFieldInfo& proto) {
+  VISIT_REP(fields);
+}
+
+VISIT_PROTO_FIELDS(const sync_pb::FormField& proto) {
+  VISIT(id_attribute);
+  VISIT(name_attribute);
+  VISIT(label);
+  VISIT(form_control_type);
+  VISIT(value);
 }
 
 VISIT_PROTO_FIELDS(const sync_pb::SessionHeader& proto) {
@@ -2076,6 +2105,12 @@ VISIT_PROTO_FIELDS(const sync_pb::Any& proto) {
   VISIT_BYTES(value);
 }
 
+VISIT_PROTO_FIELDS(const sync_pb::NaiveDate& proto) {
+  VISIT(day);
+  VISIT(month);
+  VISIT(year);
+}
+
 VISIT_PROTO_FIELDS(const sync_pb::LoyaltyCard& proto) {
   VISIT(merchant_name);
   VISIT(program_name);
@@ -2115,8 +2150,8 @@ VISIT_PROTO_FIELDS(const sync_pb::Passport& proto) {
   VISIT(masked_number);
   VISIT(owner_name);
   VISIT(country_code);
-  VISIT(issue_date_unix_epoch_micros);
-  VISIT(expiration_date_unix_epoch_micros);
+  VISIT(issue_date);
+  VISIT(expiration_date);
 }
 
 VISIT_PROTO_FIELDS(const sync_pb::DriverLicense& proto) {
@@ -2124,16 +2159,16 @@ VISIT_PROTO_FIELDS(const sync_pb::DriverLicense& proto) {
   VISIT(owner_name);
   VISIT(country_code);
   VISIT(region);
-  VISIT(issue_date_unix_epoch_micros);
-  VISIT(expiration_date_unix_epoch_micros);
+  VISIT(issue_date);
+  VISIT(expiration_date);
 }
 
 VISIT_PROTO_FIELDS(const sync_pb::NationalIdCard& proto) {
   VISIT(masked_number);
   VISIT(owner_name);
   VISIT(country_code);
-  VISIT(issue_date_unix_epoch_micros);
-  VISIT(expiry_date_unix_epoch_micros);
+  VISIT(issue_date);
+  VISIT(expiration_date);
 }
 
 VISIT_PROTO_FIELDS(const sync_pb::RedressNumber& proto) {
@@ -2144,7 +2179,7 @@ VISIT_PROTO_FIELDS(const sync_pb::RedressNumber& proto) {
 VISIT_PROTO_FIELDS(const sync_pb::KnownTravelerNumber& proto) {
   VISIT(masked_number);
   VISIT(owner_name);
-  VISIT(expiry_date_unix_epoch_micros);
+  VISIT(expiration_date);
 }
 
 VISIT_PROTO_FIELDS(const sync_pb::AutofillValuableMetadataSpecifics& proto) {
@@ -2169,6 +2204,7 @@ VISIT_PROTO_FIELDS(const sync_pb::SharedTabDetails& proto) {
 
 VISIT_PROTO_FIELDS(const sync_pb::SharedTabGroupDetails& proto) {
   VISIT(pinned_position);
+  VISIT(projects_position);
 }
 
 VISIT_PROTO_FIELDS(const sync_pb::SharedTabGroupAccountDataSpecifics& proto) {
@@ -2259,6 +2295,7 @@ VISIT_PROTO_FIELDS(const sync_pb::AiThreadSpecifics& proto) {
   VISIT(server_id);
   VISIT(conversation_turn_id);
   VISIT(title);
+  VISIT(last_turn_time_unix_epoch_millis);
 }
 
 VISIT_PROTO_FIELDS(const sync_pb::ContextualTask& proto) {

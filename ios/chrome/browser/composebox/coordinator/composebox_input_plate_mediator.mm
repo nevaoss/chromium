@@ -574,7 +574,7 @@ CreateInputDataFromAnnotatedPageContent(
   contextual_search::ContextualSearchSessionHandle* sessionHandle =
       _contextualSearchSession.get();
   _inputStateModel = std::make_unique<contextual_search::InputStateModel>(
-      *sessionHandle, *searchboxConfig);
+      *sessionHandle, *searchboxConfig, _isIncognito);
 
   if (needPreselection) {
     // Try maintaining the same options if there was no change in their
@@ -1009,8 +1009,7 @@ CreateInputDataFromAnnotatedPageContent(
     return;
   }
 
-  BOOL imageGenUploadMode =
-      (_items.count) > 0 && [self uploadAllowedInImageGeneration];
+  BOOL imageGenUploadMode = _items.count > 0;
 
   omnibox::ToolMode toolMode =
       imageGenUploadMode ? omnibox::ToolMode::TOOL_MODE_IMAGE_GEN_UPLOAD
@@ -1535,26 +1534,16 @@ CreateInputDataFromAnnotatedPageContent(
   if (experimental_flags::ShouldForceDisableComposeboxCreateImages()) {
     return NO;
   }
-  if (!_aimEligibilityService) {
-    return NO;
-  }
-  BOOL generateImageAllowed =
-      [self toolAllowedInInputState:omnibox::ToolMode::TOOL_MODE_IMAGE_GEN];
-  return generateImageAllowed &&
-         _aimEligibilityService->IsCreateImagesEligible();
-}
 
-// Whether upload is permitted when in image generation.
-- (BOOL)uploadAllowedInImageGeneration {
-  if (![self imageToolAllowed]) {
-    return NO;
-  }
   if (EnableComposeboxServerSideState()) {
-    return [self
-        toolAllowedInInputState:omnibox::ToolMode::TOOL_MODE_IMAGE_GEN_UPLOAD];
+    return
+        [self toolAllowedInInputState:omnibox::ToolMode::TOOL_MODE_IMAGE_GEN];
+  } else {
+    if (!_aimEligibilityService) {
+      return NO;
+    }
+    return _aimEligibilityService->IsCreateImagesEligible();
   }
-
-  return YES;
 }
 
 // Whether the client is allowed to access canvas mode.
@@ -1565,12 +1554,15 @@ CreateInputDataFromAnnotatedPageContent(
   if (experimental_flags::ShouldForceDisableComposeboxCanvas()) {
     return NO;
   }
-  if (!_aimEligibilityService) {
-    return NO;
-  }
 
-  return [self toolAllowedInInputState:omnibox::TOOL_MODE_CANVAS] &&
-         _aimEligibilityService->IsCanvasEligible();
+  if (EnableComposeboxServerSideState()) {
+    return [self toolAllowedInInputState:omnibox::TOOL_MODE_CANVAS];
+  } else {
+    if (!_aimEligibilityService) {
+      return NO;
+    }
+    return _aimEligibilityService->IsCanvasEligible();
+  }
 }
 
 // Whether the client is allowed to access deep search mode.
@@ -1581,11 +1573,15 @@ CreateInputDataFromAnnotatedPageContent(
   if (experimental_flags::ShouldForceDisableComposeboxDeepSearch()) {
     return NO;
   }
-  if (!_aimEligibilityService) {
-    return NO;
+
+  if (EnableComposeboxServerSideState()) {
+    return [self toolAllowedInInputState:omnibox::TOOL_MODE_DEEP_SEARCH];
+  } else {
+    if (!_aimEligibilityService) {
+      return NO;
+    }
+    return _aimEligibilityService->IsDeepSearchEligible();
   }
-  return [self toolAllowedInInputState:omnibox::TOOL_MODE_DEEP_SEARCH] &&
-         _aimEligibilityService->IsDeepSearchEligible();
 }
 
 // Checks if the user is eligible to upload PDFs, taking into account
@@ -1749,16 +1745,15 @@ CreateInputDataFromAnnotatedPageContent(
 
 // Whether the current state allows tab attachments.
 - (BOOL)fileAttachmentAllowed {
-  BOOL canUploadFiles = [self isEligibleToUploadPdf];
-  if (![self attachmentsAvailable] || !canUploadFiles) {
+  if (![self attachmentsAvailable]) {
     return NO;
   }
 
   if (EnableComposeboxServerSideState()) {
     return [self inputStateAllowsType:omnibox::INPUT_TYPE_LENS_FILE];
+  } else {
+    return [self isEligibleToUploadPdf];
   }
-
-  return YES;
 }
 
 // Whether the current state allows image attachments.
@@ -1770,12 +1765,6 @@ CreateInputDataFromAnnotatedPageContent(
   if (EnableComposeboxServerSideState() &&
       ![self inputStateAllowsType:omnibox::INPUT_TYPE_LENS_IMAGE]) {
     return NO;
-  }
-
-  BOOL isImageCreationMode =
-      _modeHolder.mode == ComposeboxMode::kImageGeneration;
-  if (isImageCreationMode) {
-    return [self uploadAllowedInImageGeneration];
   }
 
   return YES;
@@ -1980,7 +1969,9 @@ CreateInputDataFromAnnotatedPageContent(
       LensEntrypoint::Composebox, [self isDSEGoogle]);
   BOOL allowsMultimodalActions = dseGoogle && eligibleToAIM;
   BOOL canSend = hasContent && !compactMode && allowsMultimodalActions;
-  BOOL showShortcuts = !hasContent && !canSend;
+  BOOL showShortcuts =
+      !hasContent && !canSend &&
+      !base::FeatureList::IsEnabled(kHideFuseboxVoiceLensActions);
   BOOL showLeadingImage = !compactMode || !allowsMultimodalActions;
   BOOL shouldPersistAIMButton =
       IsComposeboxAIMNudgeEnabled() && !compactMode && allowsMultimodalActions;
@@ -2169,7 +2160,7 @@ CreateInputDataFromAnnotatedPageContent(
   contextual_search::ContextualSearchSessionHandle* sessionHandle =
       _contextualSearchSession.get();
   _inputStateModel = std::make_unique<contextual_search::InputStateModel>(
-      *sessionHandle, *config);
+      *sessionHandle, *config, _isIncognito);
 }
 
 - (void)preselectPreferencesIfAvailable:

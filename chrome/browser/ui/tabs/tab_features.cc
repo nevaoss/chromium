@@ -196,16 +196,12 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
         page_actions::PageActionPropertiesProvider());
     page_action_controller_ = std::move(page_action_controller);
 
-    if (IsPageActionMigrated(PageActionIconType::kTranslate)) {
-      translate_page_action_controller_ =
-          std::make_unique<TranslatePageActionController>(tab);
-    }
+    translate_page_action_controller_ =
+        std::make_unique<TranslatePageActionController>(tab);
 
-    if (IsPageActionMigrated(PageActionIconType::kMemorySaver)) {
-      memory_saver_chip_controller_ =
-          std::make_unique<memory_saver::MemorySaverChipController>(
-              *page_action_controller_);
-    }
+    memory_saver_chip_controller_ =
+        std::make_unique<memory_saver::MemorySaverChipController>(
+            *page_action_controller_);
 
     if (IsPageActionMigrated(PageActionIconType::kIntentPicker)) {
       intent_picker_view_page_action_controller_ =
@@ -381,7 +377,8 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
     }
 #endif  // BUILDFLAG(ENABLE_GLIC)
     // TODO(crbug.com/433973411): Move this logic to a helper function.
-    if (base::FeatureList::IsEnabled(features::kGlicActorUi) &&
+    if (base::FeatureList::IsEnabled(features::kGlicActor) &&
+        base::FeatureList::IsEnabled(features::kGlicActorUi) &&
         profile->IsRegularProfile()) {
       // The associated tab is passed to CreateInstance twice: for dependency
       // injection callbacks and as a direct constructor argument.

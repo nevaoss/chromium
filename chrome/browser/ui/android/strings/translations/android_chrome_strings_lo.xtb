@@ -645,6 +645,7 @@
 <translation id="3775705724665058594">ສົ່ງຫາອຸປະກອນຂອງທ່ານ</translation>
 <translation id="3777796259512476958">ພາທ່ານອອກຈາກລະບົບຂອງເວັບໄຊສ່ວນໃຫຍ່</translation>
 <translation id="3791957072666773229">{TAB_COUNT,plural, =1{1 ແຖບ}other{# ແຖບ}}</translation>
+<translation id="3792938779249970121">ເລືອກບັນຊີ</translation>
 <translation id="3795154175078851242">ສຳເນົາຮູບພ້ອມລິ້ງ</translation>
 <translation id="3807999512799921804"><ph name="TAB_TITLE" />, ແຖບບໍ່ເປີດເຜີຍຕົວຕົນທີ່ປັກໝຸດ ແລະ ມີສຽງເຊິ່ງເລືອກໄວ້</translation>
 <translation id="3810973564298564668">ຈັດການ</translation>
@@ -726,6 +727,7 @@
 <translation id="4137746084635924146">ພາສາອຸປະກອນປັດຈຸບັນ</translation>
 <translation id="414128724510021958">ເວັບໄຊເດັສທັອບຖືກຮ້ອງຂໍໂດຍຄ່າເລີ່ມຕົ້ນ</translation>
 <translation id="4162867837470729563">ລາຍຊື່ຂອງຕົວເລືອກການແບ່ງປັນແບບຄວາມສູງແບບເຕັມ.</translation>
+<translation id="4165077084524712774">ເຄື່ອງມືເພີ່ມເຕີມ</translation>
 <translation id="4170011742729630528">ບໍ່ມີການບໍລິການໃຫ້ຢູ່, ລອງໃໝ່ອີກພາຍຫຼັງ.</translation>
 <translation id="4170577491341606575">ກຳລັງດຶງຂໍ້ມູນຂອງທ່ານ\u2026</translation>
 <translation id="4177222230309051052">ໃຊ້ບຸກມາກຂອງທ່ານທັງໝົດ</translation>
@@ -737,6 +739,7 @@
 <translation id="4189344235004694858">{NUM_REVOKED_PERMISSIONS,plural, =1{Chrome ໄດ້ຢຸດບໍ່ໃຫ້ເວັບໄຊນີ້ສົ່ງການແຈ້ງເຕືອນເນື່ອງຈາກມີສະແປມ ຫຼື ເນື້ອຫາຫຼອກລວງ}other{Chrome ໄດ້ຢຸດບໍ່ໃຫ້ເວັບໄຊເຫຼົ່ານີ້ສົ່ງການແຈ້ງເຕືອນເນື່ອງຈາກມີສະແປມ ຫຼື ເນື້ອຫາຫຼອກລວງ}}</translation>
 <translation id="4195643157523330669">ເປີດຢູ່ໃນແຖບໃໝ່</translation>
 <translation id="4197828496439691735">{NUM_TABS,plural, =1{1 ແຖບຢູ່ອຸປະກອນນີ້}other{# ແຖບຢູ່ອຸປະກອນນີ້}}</translation>
+<translation id="4198268995694216131">ເວັບໄຊເພີ່ມເຕີມ</translation>
 <translation id="4198423547019359126">ບໍ່ມີບ່ອນບັນທຶກການດາວໂຫຼດທີ່ສາມາດໃຊ້ໄດ້</translation>
 <translation id="4209029522667123437"><ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> • ທ່ານໃຊ້ໃນເວັບໄຊນີ້</translation>
 <translation id="4214315110991671325">ຫາກທ່ານອະນຸຍາດໃຫ້ໃຊ້ຄຸກກີ້ໄດ້, Chrome ອາດໃຊ້ພວກມັນສຳລັບການໂຫຼດກ່ອນລ່ວງໜ້າ.</translation>
@@ -1017,6 +1020,7 @@
 <translation id="5304593522240415983">ບ່ອນໃສ່ຂໍ້ມູນນີ້​ບໍ່​ສາ​ມາດ​ໃຫ້ຫວ່າງ​ເປົ່າໄດ້</translation>
 <translation id="5306014156308790439">ປຸ່ມເພີ່ມໃສ່ໃນຄໍເລັກຊັນປິດການນຳໃຊ້ຢູ່</translation>
 <translation id="5308380583665731573">​ເຊື່ອມ​ຕໍ່</translation>
+<translation id="5313967007315987356">ເພີ່ມ​ເວັບ​ໄຊ​ທ໌</translation>
 <translation id="5316947901395241499">ຜູ້ເບິ່ງແຍງລະບົບຂອງທ່ານປິດການບັນທຶກລະຫັດຜ່ານ</translation>
 <translation id="5317780077021120954">ບັນທຶກ</translation>
 <translation id="5319359161174645648">Google ແນະນຳໃຫ້ໃຊ້ Chrome</translation>
@@ -1228,6 +1232,7 @@
 <translation id="6202812185118613467">ກັບຄືນເຂົ້າສູ່ລະບົບເພື່ອເລີ່ມຊິ້ງຂໍ້ມູນ</translation>
 <translation id="6204781143409202534">Chrome ກວດພົບວ່າອາດເປັນສະແປມຈາກ <ph name="DOMAIN" />.</translation>
 <translation id="6205314730813004066">ຄວາມເປັນສ່ວນຕົວກ່ຽວກັບໂຄສະນາ</translation>
+<translation id="6210282067670792090">ໃນແຖບທີ່ຢູ່, ໃຫ້ໃຊ້ຄີລັດກັບທາງລັດຕ່າງໆສຳລັບໂປຣແກຣມຊອກຫາ ແລະ ການຊອກຫາເວັບໄຊ</translation>
 <translation id="6210748933810148297">ບໍ່ແມ່ນ <ph name="EMAIL" /> ບໍ?</translation>
 <translation id="6211386937064921208">ກຳລັງສະແດງໜ້ານີ້</translation>
 <translation id="6212567362666004597">ເພີ່ມແຖບໃສ່ກຸ່ມ</translation>
@@ -1269,6 +1274,7 @@
 <translation id="6340526405444716530">ການປັບແຕ່ງໃຫ້ເປັນແບບສ່ວນຕົວ</translation>
 <translation id="6341580099087024258">ຖາມບ່ອນບັນທຶກໄຟລ໌</translation>
 <translation id="6342069812937806050">ເມື່ອກີ້ນີ້</translation>
+<translation id="634208815998129842">ຕົວຈັດການໜ້າວຽກ</translation>
 <translation id="6343495912647200061">{SHIPPING_ADDRESS,plural, =1{<ph name="SHIPPING_ADDRESS_PREVIEW" />\u2026 ແລະ ອີກ <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" /> ທີ່ຢູ່ການຈັດສົ່ງ}other{<ph name="SHIPPING_ADDRESS_PREVIEW" />\u2026 ແລະ ອີກ <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" /> ທີ່ຢູ່ການຈັດສົ່ງ}}</translation>
 <translation id="6345878117466430440">ໝາຍວ່າອ່ານແລ້ວ</translation>
 <translation id="6356893102071098867">ກວດສອບວ່າທ່ານເລືອກບັນຊີທີ່ຖືກຕ້ອງແລ້ວ</translation>
@@ -1350,6 +1356,7 @@
 <translation id="6647441008198474441">URL ທີ່ທ່ານເຂົ້າເບິ່ງຈະຖືກສົ່ງໄປໃຫ້ Google ເພື່ອຄາດເດົາເວັບໄຊທີ່ທ່ານອາດຈະເຂົ້າເບິ່ງເປັນລຳດັບຕໍ່ໄປ</translation>
 <translation id="6648977384226967773">{CONTACT,plural, =1{<ph name="CONTACT_PREVIEW" />\u2026 ແລະ ອີກ <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" /> ລາຍຊື່ຜູ້ຕິດຕໍ່}other{<ph name="CONTACT_PREVIEW" />\u2026 ແລະ ອີກ <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" /> ລາຍຊື່ຜູ້ຕິດຕໍ່}}</translation>
 <translation id="6649642165559792194">ເບິ່ງຕົວຢ່າງຮູບ <ph name="BEGIN_NEW" />ໃໝ່<ph name="END_NEW" /></translation>
+<translation id="6659594942844771486">ແຖບ</translation>
 <translation id="6661521899577697780">ການເລືອກໃຊ້ Chrome Finds ເປີດຢູ່ລະດັບຄວາມສູງເຄິ່ງໜຶ່ງຂອງໜ້າຈໍ</translation>
 <translation id="666731172850799929">ເປີດ​ຢູ່​ໃນ <ph name="APP_NAME" /></translation>
 <translation id="6669390930482049506">ແຈ້ງເຕືອນຂ້ອຍ</translation>
@@ -1458,6 +1465,7 @@
 <translation id="6980258170429555165">ເມນູ <ph name="MENU_NAME" /> ຖືກໄຮໄລ້.</translation>
 <translation id="6983306615164277634">ນອກຈາກນັ້ນ, ທ່ານຍັງສາມາດແຕະແຖບທີ່ຢູ່ຄ້າງໄວ້ເພື່ອປ່ຽນຕຳແໜ່ງໄດ້ນຳ.</translation>
 <translation id="6987047470128880212">ບໍ່ສາມາດໃຊ້ໂໝດບໍ່ເປີດເຜີຍຕົວຢູ່ອຸປະກອນນີ້ໄດ້</translation>
+<translation id="6989358895283601928">ບັນທຶກ ແລະ ພິມ</translation>
 <translation id="6996145122199359148">ດາວໂຫຼດໜ້ານີ້</translation>
 <translation id="7013762323294215682">ກະແຈຜ່ານນີ້ຈະຖືກບັນທຶກໄວ້ໃນຕົວຈັດການລະຫັດຜ່ານຂອງທ່ານ. ທຸກຄົນທີ່ມີສິດເຂົ້າເຖິງຈະສາມາດໃຊ້ກະແຈຜ່ານນີ້ໄດ້.</translation>
 <translation id="7020741890149022655">ເພີ່ມໃສ່ລາຍຊື່ການອ່ານ <ph name="BEGIN_NEW" />ໃໝ່<ph name="END_NEW" /></translation>
@@ -1485,6 +1493,7 @@
 <translation id="7117485132243600300">ຈັດການເນື້ອຫາທີ່ທ່ານຕິດຕາມ ແລະ ແນະນຳຫົວຂໍ້ ແລະ ການຊອກຫາ</translation>
 <translation id="7119984597597798764">ປິດ <ph name="INSTANCE_TITLE" /></translation>
 <translation id="7121179479711575744">ເຂົ້າສູ່ລະບົບ Chrome</translation>
+<translation id="7136694880210472378">ເຮັດ​ເປັນຄ່າມາດຕະຖານ</translation>
 <translation id="7136902389402789299">{NUM_SITES,plural, =1{ກວດສອບການອະນຸຍາດສຳລັບ 1 ເວັບໄຊແລ້ວ}other{ກວດສອບການອະນຸຍາດສຳລັບ # ເວັບໄຊແລ້ວ}}</translation>
 <translation id="7138678301420049075">ອື່ນໆ</translation>
 <translation id="7140829094791862589">ຈັດຮຽງຕາມລຳດັບດ້ວຍຕົນເອງ</translation>
@@ -1512,6 +1521,7 @@
 <translation id="7196215469483532480">ເປີດຄຳອະທິບາຍຄູ່ມືຄວາມເປັນສ່ວນຕົວແບບເຕັມຄວາມສູງແລ້ວ</translation>
 <translation id="7196455519852483601">ທ່ານສາມາດລຶບປະຫວັດ, ຄຸກກີ້, ຂໍ້ມູນເວັບໄຊ ແລະ ອື່ນໆຂອງທ່ານບາງສ່ວນ ຫຼື ທັງໝົດໄດ້</translation>
 <translation id="7197682514647286393">ລຶບຂໍ້ມູນການທ່ອງເວັບໄດ້ຢ່າງວ່ອງໄວ</translation>
+<translation id="719791532916917144">ຄີລັດ</translation>
 <translation id="7207760545532569765">ກູ້ຄືນ <ph name="TAB_COUNT" /> ແຖບເປັນກຸ່ມແຖບໃນພື້ນຫຼັງໃໝ່.</translation>
 <translation id="7217781228893594884">ແຖບ​ບໍ່ເປີດເຜີຍຕົວຕົນຈະຖືກລັອກເມື່ອທ່ານອອກ Chrome</translation>
 <translation id="7221869452894271364">​ໂຫຼດ​ຫນ້າ​ນີ້ຄືນອີກ</translation>
@@ -1540,6 +1550,7 @@
 <translation id="7314734791127433392">ບໍ່ສາມາດກວດສອບລະຫັດຜ່ານໄດ້</translation>
 <translation id="7324354302972299151">ສົ່ງຄຳຮ້ອງຂໍ “Do Not Track”</translation>
 <translation id="7333041109965360609">ຍົກເລີກການສະໝັກຮັບຂໍ້ມູນຈາກການແຈ້ງເຕືອນແລ້ວ</translation>
+<translation id="7335766481146072567">ກົດສືບຕໍ່</translation>
 <translation id="7336259382292148213">ການແຈ້ງເຕືອນປອດໄພດີ</translation>
 <translation id="7339898014177206373">ໜ້າ​ຕ່າງໃໝ່</translation>
 <translation id="7340958967809483333">ຕົວເລືອກສຳລັບ Discover</translation>
@@ -1709,6 +1720,7 @@
 <translation id="7998918019931843664">ເປີດ​ແຖບ​ປິດຄືນໃໝ່</translation>
 <translation id="8001245658307297681">ທ່ານກຳລັງເບິ່ງໄຟລ໌ໃນເຄື່ອງ</translation>
 <translation id="8004582292198964060">ບຣາວ​ເຊີ</translation>
+<translation id="8006630792898017994">ຍະຫວ່າງ ຫຼື Tab</translation>
 <translation id="8023190977980579548"><ph name="TAB_TITLE" />, ແຖບການແບ່ງປັນບໍ່ເປີດເຜີຍຕົວຕົນທີ່ປັກໝຸດເຊິ່ງເລືອກໄວ້ຫຼາຍແຖບ</translation>
 <translation id="8025972204417227828">ເພີ່ມໃໝ່</translation>
 <translation id="8027863900915310177">ເລືອກບ່ອນທີ່ຈະດາວໂຫຼດ</translation>
@@ -1749,6 +1761,7 @@
 <translation id="813082847718468539">ເບິ່ງຂໍ້ມູນເວັບໄຊທ໌</translation>
 <translation id="8135406045838672858">PDF ທີ່ດາວໂຫຼດແລ້ວຈະເປີດຂຶ້ນໂດຍອັດຕະໂນມັດດ້ວຍ <ph name="APP_NAME" /></translation>
 <translation id="8137562778192957619">ທ່ານບໍ່ຈຳເປັນຕ້ອງຈື່ລະຫັດຜ່ານນີ້. ລະບົບຈະບັນທຶກໄວ້ໃນຕົວຈັດການລະຫັດຜ່ານ Google.</translation>
+<translation id="8151185429379586178">ເຄື່ອງ​ມື​ຜູ້ພັດ​ທະ​ນາ</translation>
 <translation id="8152331954420209374">ເຂົ້າໄປ Lens</translation>
 <translation id="8153206878708357851">ເປີດ/ປິດການຮຽກເບິ່ງດ້ວຍແປ້ນພິມ</translation>
 <translation id="8154784523622173959">ປັບແຕ່ງພື້ນຫຼັງຂອງໜ້ານີ້ໃຫ້ເປັນແບບສ່ວນຕົວ</translation>
@@ -1828,6 +1841,7 @@
 <translation id="8449781591250785734">{NUM_SITES,plural, =1{ລຶບການອະນຸຍາດອອກຈາກເວັບໄຊແລ້ວ 1 ລາຍການ}other{ລຶບການອະນຸຍາດອອກຈາກເວັບໄຊແລ້ວ # ລາຍການ}}</translation>
 <translation id="8453310803815879010">ເລີ່ມກມ Dino</translation>
 <translation id="8455675988389029454">ຮັບບຸກມາກ, ລະຫັດຜ່ານ ແລະ ອື່ນໆໃນທຸກອຸປະກອນຂອງທ່ານ</translation>
+<translation id="8458341576712814616">ທາງລັດ</translation>
 <translation id="8458413889418591446">ເພື່ອກັບຄືນໄປຫາເວັບໄຊທີ່ທ່ານເຄີຍເຂົ້າເບິ່ງໄດ້ຢ່າງວ່ອງໄວ, ໃຫ້ຊິ້ງປະຫວັດ ແລະ ແຖບຂອງທ່ານ</translation>
 <translation id="84594714173170813">ໃຊ້ຂໍ້ມູນ Chrome ໃນບັນຊີ Google ຂອງທ່ານຕໍ່ໄປ</translation>
 <translation id="8460448946170646641">ກວດສອບການຄວບຄຸມຄວາມເປັນສ່ວນຕົວ ແລະ ຄວາມປອດໄພຫຼັກ</translation>
@@ -1852,6 +1866,7 @@
 <translation id="8559961053328923750">Chrome ຈໍາກັດຈໍານວນຂໍ້ມູນທັງໝົດທີ່ເວັບໄຊສາມາດແບ່ງປັນຜ່ານໂປຣແກຣມທ່ອງເວັບເພື່ອວັດແທກປະສິດທິພາບການໂຄສະນາ</translation>
 <translation id="8559990750235505898">ໃຫ້ການແປໜ້າຕ່າງໆເປັນພາສາອື່ນ</translation>
 <translation id="8560602726703398413">ຊອກລາຍການອ່ານຂອງທ່ານໃນ Bookmarks</translation>
+<translation id="85618473456579127">ແຕະໂປຣໄຟລ໌ຢູ່ເທິງສຸດເບື້ອງຂວາ</translation>
 <translation id="8565021320663436446">ລຶບ <ph name="MEMBER_FULL_NAME" /> ອອກບໍ?</translation>
 <translation id="8570677896027847510">ບໍ່ສາມາດດາວໂຫຼດໄຟລ໌ໄດ້ຢ່າງປອດໄພ</translation>
 <translation id="8571213806525832805">4 ອາທິດຜ່ານມາ</translation>

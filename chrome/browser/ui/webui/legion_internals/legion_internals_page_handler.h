@@ -9,7 +9,7 @@
 #include "base/scoped_multi_source_observation.h"
 #include "chrome/browser/ui/webui/legion_internals/legion_internals.mojom.h"
 #include "components/private_ai/client.h"
-#include "components/private_ai/common/legion_logger.h"
+#include "components/private_ai/common/private_ai_logger.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/remote.h"
 
@@ -26,7 +26,7 @@ class NetworkContext;
 
 class LegionInternalsPageHandler
     : public legion_internals::mojom::LegionInternalsPageHandler,
-      public private_ai::LegionLogger::Observer {
+      public private_ai::PrivateAiLogger::Observer {
  public:
   explicit LegionInternalsPageHandler(
       private_ai::phosphor::TokenManager* token_manager,
@@ -45,13 +45,15 @@ class LegionInternalsPageHandler
                    page) override;
   void Connect(const std::string& url,
                const std::string& api_key,
+               const std::string& proxy_url,
+               bool use_token_attestation,
                ConnectCallback callback) override;
   void Close(CloseCallback callback) override;
   void SendRequest(const std::string& feature_name,
                    const std::string& request,
                    SendRequestCallback callback) override;
 
-  // private_ai::LegionLogger::Observer:
+  // private_ai::PrivateAiLogger::Observer:
   void OnLogInfo(const base::Location& location,
                  std::string_view message) override;
   void OnLogError(const base::Location& location,
@@ -71,8 +73,8 @@ class LegionInternalsPageHandler
   mojo::Receiver<legion_internals::mojom::LegionInternalsPageHandler> receiver_;
   mojo::Remote<legion_internals::mojom::LegionInternalsPage> page_;
 
-  base::ScopedMultiSourceObservation<private_ai::LegionLogger,
-                                     private_ai::LegionLogger::Observer>
+  base::ScopedMultiSourceObservation<private_ai::PrivateAiLogger,
+                                     private_ai::PrivateAiLogger::Observer>
       scoped_logger_observations_{this};
 };
 

@@ -1302,19 +1302,19 @@ static bool AttributeValueMatches(const Attribute& attribute_item,
       }
       return case_insensitive
                  ? value.StartsWithIgnoringAsciiCase(selector_value)
-                 : value.StartsWith(selector_value);
+                 : value.starts_with(selector_value);
     case CSSSelector::kAttributeEnd:
       if (selector_value.empty()) {
         return false;
       }
       return case_insensitive ? value.EndsWithIgnoringAsciiCase(selector_value)
-                              : value.EndsWith(selector_value);
+                              : value.ends_with(selector_value);
     case CSSSelector::kAttributeHyphen:
       if (value.length() < selector_value.length()) {
         return false;
       }
       if (case_insensitive ? !value.StartsWithIgnoringAsciiCase(selector_value)
-                           : !value.StartsWith(selector_value)) {
+                           : !value.starts_with(selector_value)) {
         return false;
       }
       // It they start the same, check for exact match or following '-':
@@ -3677,17 +3677,8 @@ bool SelectorChecker::MatchesActiveViewTransitionPseudoClass(
 }
 
 bool SelectorChecker::MatchesOverscrollTarget(const Element& element) {
-  if (!RuntimeEnabledFeatures::OverscrollGesturesEnabled()) {
-    return false;
-  }
-
-  const AtomicString& id = element.FastGetAttribute(html_names::kIdAttr);
-  if (id.empty() ||
-      !element.GetDocument().OverscrollCommandTargets().Contains(id)) {
-    return false;
-  }
-
-  return element.GetDocument().getElementById(id) == &element;
+  return RuntimeEnabledFeatures::OverscrollGesturesEnabled() &&
+         element.GetDocument().OverscrollCommandTargets().Contains(&element);
 }
 
 bool SelectorChecker::MatchesFocusPseudoClass(

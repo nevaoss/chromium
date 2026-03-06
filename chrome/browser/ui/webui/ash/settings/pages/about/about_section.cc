@@ -177,10 +177,10 @@ std::string GetSafetyInfoLink() {
   const std::vector<std::string_view> board = base::SplitStringPiece(
       release_board, "-", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   if (board[0] == "nocturne") {
-    return chrome::kSafetyPixelSlateURL;
+    return ash::external_urls::kSafetyPixelSlateURL;
   }
   if (board[0] == "eve" || board[0] == "atlas") {
-    return chrome::kSafetyPixelbookURL;
+    return ash::external_urls::kSafetyPixelbookURL;
   }
 
   return std::string();
@@ -363,7 +363,7 @@ void AboutSection::AddLoadTimeData(content::WebUIDataSource* html_source) {
   html_source->AddLocalizedStrings(kLocalizedStrings);
 
   html_source->AddString("aboutTPMFirmwareUpdateLearnMoreURL",
-                         chrome::kTPMFirmwareUpdateLearnMoreURL);
+                         ash::external_urls::kTPMFirmwareUpdateLearnMoreURL);
   html_source->AddString(
       "aboutUpgradeUpToDate",
       ui::SubstituteChromeOSDeviceType(IDS_SETTINGS_UPGRADE_UP_TO_DATE));
@@ -426,7 +426,7 @@ void AboutSection::AddLoadTimeData(content::WebUIDataSource* html_source) {
       "endOfLifeMessage",
       l10n_util::GetStringFUTF16(IDS_SETTINGS_ABOUT_PAGE_LAST_UPDATE_MESSAGE,
                                  ui::GetChromeOSDeviceName(),
-                                 chrome::kEolNotificationURL));
+                                 ash::external_urls::kEolNotificationURL));
 
   html_source->AddString("eolIncentiveOfferTitle",
                          l10n_util::GetStringUTF16(
@@ -454,7 +454,7 @@ void AboutSection::AddLoadTimeData(content::WebUIDataSource* html_source) {
       "extendedUpdatesSecondaryMessage",
       l10n_util::GetStringFUTF16(
           IDS_SETTINGS_ABOUT_PAGE_EXTENDED_UPDATES_SECONDARY_MESSAGE,
-          chrome::kDeviceExtendedUpdatesLearnMoreURL));
+          ash::external_urls::kDeviceExtendedUpdatesLearnMoreURL));
 
   std::string safetyInfoLink = GetSafetyInfoLink();
   html_source->AddBoolean("shouldShowSafetyInfo", !safetyInfoLink.empty());

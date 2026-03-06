@@ -20,4 +20,19 @@ void RecordSkillsInvokeAction(SkillsInvokeAction action) {
   base::UmaHistogramEnumeration("Skills.Invoke.Action", action);
 }
 
+void RecordUserSkillCount(size_t skill_count) {
+  base::UmaHistogramCounts1000("Skills.UserSkills.Count",
+                               base::checked_cast<int>(skill_count));
+}
+
+void RecordSkillsFetchResult(SkillsFetchResult result) {
+  base::UmaHistogramEnumeration("Skills.Downloader.FirstParty.FetchResult",
+                                result);
+}
+
+void RecordSkillsHttpCode(int http_code) {
+  base::UmaHistogramSparse("Skills.Downloader.FirstParty.HttpResponseCode",
+                           http_code);
+}
+
 }  // namespace skills

@@ -28,11 +28,14 @@
 #include "chrome/browser/web_applications/web_app_constants.h"
 #include "chrome/browser/web_applications/web_app_filter.h"
 #include "chrome/browser/web_applications/web_app_icon_manager.h"
+#include "chrome/browser/web_applications/web_app_install_manager.h"
 #include "chrome/browser/web_applications/web_app_management_type.h"
 #include "chrome/browser/web_applications/web_app_proto_utils.h"
 #include "chrome/browser/web_applications/web_app_registrar.h"
 #include "chrome/browser/web_applications/web_app_registry_update.h"
 #include "chrome/browser/web_applications/web_app_sync_bridge.h"
+#include "chrome/browser/web_applications/web_app_ui_manager.h"
+#include "components/services/app_service/public/cpp/app_launch_util.h"
 #include "components/sync/protocol/web_app_specifics.pb.h"
 #include "components/webapps/browser/installable/installable_metrics.h"
 #include "components/webapps/browser/uninstall_result_code.h"
@@ -99,7 +102,7 @@ ApplyManifestMigrationCommand::ApplyManifestMigrationCommand(
       profile_keep_alive_(std::move(profile_keep_alive)) {
   GetMutableDebugValue().Set("source_app_id", source_app_id_);
   GetMutableDebugValue().Set("destination_app_id", destination_app_id_);
-  GetMutableDebugValue().Set("migration_behavior_",
+  GetMutableDebugValue().Set("migration_behavior",
                              base::ToString(migration_behavior_));
 }
 
@@ -317,11 +320,45 @@ void ApplyManifestMigrationCommand::AppUninstalledCompleteMigration(
   GetMutableDebugValue().Set("source_app_uninstall_code",
                              base::ToString(uninstall_code));
   if (!webapps::UninstallSucceeded(uninstall_code)) {
+    // Note: We could still launch the migrated-to app. Avoiding for simplicity
+    // - if this metric happens frequently, we can consider allowing the
+    // launch too.
     CompleteCommandAndSelfDestruct(
         ApplyManifestMigrationResult::kUnableToRemoveSourceApp);
     return;
   }
 
+  apps::AppLaunchParams params(destination_app_id_,
+                               // Note: This is overridden with the web app
+                               // config, as per kOverrideWithWebAppConfig.
+                               apps::LaunchContainer::kLaunchContainerWindow,
+                               // Note: This is overridden with the web app
+                               // config, as per kOverrideWithWebAppConfig.
+                               WindowOpenDisposition::NEW_WINDOW,
+                               apps::LaunchSource::kFromMigration);
+  LaunchWebAppWindowSetting launch_setting =
+      LaunchWebAppWindowSetting::kOverrideWithWebAppConfig;
+
+  all_apps_lock_->ui_manager().LaunchWebApp(
+      std::move(params), launch_setting, *profile_,
+      base::BindOnce(&ApplyManifestMigrationCommand::OnAppLaunched,
+                     weak_factory_.GetWeakPtr()),
+      *all_apps_lock_);
+}
+
+void ApplyManifestMigrationCommand::OnAppLaunched(
+    base::WeakPtr<Browser> browser,
+    base::WeakPtr<content::WebContents> web_contents,
+    apps::LaunchContainer container,
+    base::Value debug_value) {
+  GetMutableDebugValue().Set("launch_web_app_debug_value",
+                             std::move(debug_value));
+  if (!browser || !web_contents) {
+    CompleteCommandAndSelfDestruct(
+        ApplyManifestMigrationResult::
+            kAppMigrationAppliedSuccessfullyLaunchFailed);
+    return;
+  }
   CompleteCommandAndSelfDestruct(
       ApplyManifestMigrationResult::kAppMigrationAppliedSuccessfully);
 }
@@ -329,6 +366,22 @@ void ApplyManifestMigrationCommand::AppUninstalledCompleteMigration(
 void ApplyManifestMigrationCommand::CompleteCommandAndSelfDestruct(
     ApplyManifestMigrationResult result) {
   GetMutableDebugValue().Set("migration_result", base::ToString(result));
+  switch (result) {
+    case ApplyManifestMigrationResult::kAppMigrationAppliedSuccessfully:
+    case ApplyManifestMigrationResult::
+        kAppMigrationAppliedSuccessfullyLaunchFailed:
+      all_apps_lock_->install_manager().NotifyWebAppMigrated(
+          source_app_id_, destination_app_id_);
+      break;
+    case ApplyManifestMigrationResult::kSourceAppInvalidForMigration:
+    case ApplyManifestMigrationResult::kDestinationAppInvalid:
+    case ApplyManifestMigrationResult::kDestinationAppDoesNotLinkToSourceApp:
+    case ApplyManifestMigrationResult::kAppMigrationFailedDuringIconCopy:
+    case ApplyManifestMigrationResult::kUnableToRemoveSourceApp:
+      break;
+    case ApplyManifestMigrationResult::kSystemShutdown:
+      NOTREACHED();
+  }
   CompleteAndSelfDestruct(CommandResult::kSuccess, result);
 }
 

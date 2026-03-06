@@ -81,6 +81,41 @@ std::string WindowOpenDispositionToString(
   }
 }
 
+std::string TerminationStatusToString(base::TerminationStatus status) {
+  switch (status) {
+    case base::TERMINATION_STATUS_NORMAL_TERMINATION:
+      return "normal";
+    case base::TERMINATION_STATUS_ABNORMAL_TERMINATION:
+    case base::TERMINATION_STATUS_STILL_RUNNING:
+      return "abnormal";
+#if BUILDFLAG(IS_CHROMEOS)
+    case base::TERMINATION_STATUS_PROCESS_WAS_KILLED_BY_OOM:
+      return "oom killed";
+#endif
+#if BUILDFLAG(IS_ANDROID)
+    case base::TERMINATION_STATUS_OOM_PROTECTED:
+      return "oom";
+#endif
+    case base::TERMINATION_STATUS_OOM:
+      return "oom";
+    case base::TERMINATION_STATUS_PROCESS_WAS_KILLED:
+      return "killed";
+    case base::TERMINATION_STATUS_PROCESS_CRASHED:
+      return "crashed";
+    case base::TERMINATION_STATUS_LAUNCH_FAILED:
+      return "failed to launch";
+#if BUILDFLAG(IS_WIN)
+    case base::TERMINATION_STATUS_INTEGRITY_FAILURE:
+      return "integrity failure";
+#endif
+    case base::TERMINATION_STATUS_EVICTED_FOR_MEMORY:
+      return "evicted for memory";
+    case base::TERMINATION_STATUS_MAX_ENUM:
+      break;
+  }
+  NOTREACHED() << "Unknown Termination Status.";
+}
+
 }  // namespace
 
 namespace guest_view {
@@ -155,6 +190,34 @@ content::WebContents* SlimWebViewGuest::CreateCustomWebContents(
   return nullptr;
 }
 
+void SlimWebViewGuest::RendererUnresponsive(
+    content::WebContents* source,
+    content::RenderWidgetHost* render_widget_host,
+    base::RepeatingClosure hang_monitor_restarter) {
+  CHECK(!base::FeatureList::IsEnabled(features::kGuestViewMPArch));
+
+  DispatchEventToView(std::make_unique<GuestViewEvent>(
+      slim_web_view::kEventUnresponsive, base::DictValue()));
+}
+
+void SlimWebViewGuest::DidStartNavigation(
+    content::NavigationHandle* navigation_handle) {
+  if (!IsObservedNavigationWithinGuest(navigation_handle)) {
+    return;
+  }
+  // New window creation is not supported in SlimWebView.
+  CHECK(!GetOpener());
+  if (navigation_handle->IsSameDocument()) {
+    return;
+  }
+  base::DictValue args;
+  args.Set(guest_view::kUrl, navigation_handle->GetURL().spec());
+  args.Set(guest_view::kIsTopLevel,
+           IsObservedNavigationWithinGuestMainFrame(navigation_handle));
+  DispatchEventToView(std::make_unique<GuestViewEvent>(
+      slim_web_view::kEventLoadStart, std::move(args)));
+}
+
 void SlimWebViewGuest::DidFinishNavigation(
     content::NavigationHandle* navigation_handle) {
   if (!IsObservedNavigationWithinGuest(navigation_handle)) {
@@ -204,6 +267,32 @@ void SlimWebViewGuest::GuestViewDocumentOnLoadCompleted() {
       slim_web_view::kEventContentLoad, base::DictValue()));
 }
 
+bool SlimWebViewGuest::IsAutoSizeSupported() const {
+  return true;
+}
+
+void SlimWebViewGuest::GuestSizeChangedDueToAutoSize(
+    const gfx::Size& old_size,
+    const gfx::Size& new_size) {
+  base::DictValue args;
+  args.Set(slim_web_view::kOldHeight, old_size.height());
+  args.Set(slim_web_view::kOldWidth, old_size.width());
+  args.Set(slim_web_view::kNewHeight, new_size.height());
+  args.Set(slim_web_view::kNewWidth, new_size.width());
+  DispatchEventToView(std::make_unique<GuestViewEvent>(
+      slim_web_view::kEventSizeChanged, std::move(args)));
+}
+
+void SlimWebViewGuest::GuestViewMainFrameProcessGone(
+    base::TerminationStatus status) {
+  base::DictValue args;
+  args.Set(slim_web_view::kReason, TerminationStatusToString(status));
+  args.Set(slim_web_view::kProcessId,
+           GetGuestMainFrame()->GetProcess()->GetID().value());
+  DispatchEventToView(std::make_unique<GuestViewEvent>(
+      slim_web_view::kEventExit, std::move(args)));
+}
+
 void SlimWebViewGuest::MaybeRecreateGuestContents(
     content::RenderFrameHost* outer_contents_frame) {
   NOTREACHED() << "new window creation is not supported in SlimWebView";
@@ -244,6 +333,11 @@ void SlimWebViewGuest::CreateInnerPage(
   std::unique_ptr<content::WebContents> new_contents =
       content::WebContents::Create(stored_params);
   std::move(callback).Run(std::move(owned_this), std::move(new_contents));
+}
+
+void SlimWebViewGuest::GuestViewDidStopLoading() {
+  DispatchEventToView(std::make_unique<GuestViewEvent>(
+      slim_web_view::kEventLoadStop, base::DictValue()));
 }
 
 void SlimWebViewGuest::LoadAbort(bool is_top_level,

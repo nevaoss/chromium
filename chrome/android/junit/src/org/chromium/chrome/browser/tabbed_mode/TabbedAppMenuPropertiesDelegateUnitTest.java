@@ -60,8 +60,8 @@ import org.chromium.base.ThreadUtils;
 import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.OneshotSupplierImpl;
 import org.chromium.base.supplier.SettableMonotonicObservableSupplier;
-import org.chromium.base.test.BaseRobolectricTestRule;
 import org.chromium.base.test.BaseRobolectricTestRunner;
+import org.chromium.base.test.RobolectricUtil;
 import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.chrome.R;
@@ -141,6 +141,7 @@ import org.chromium.components.user_prefs.UserPrefs;
 import org.chromium.components.user_prefs.UserPrefsJni;
 import org.chromium.components.webapps.AppBannerManager;
 import org.chromium.components.webapps.AppBannerManagerJni;
+import org.chromium.content_public.browser.ContentFeatureList;
 import org.chromium.content_public.browser.NavigationController;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.google_apis.gaia.GoogleServiceAuthError;
@@ -170,6 +171,7 @@ import java.util.List;
     ChromeFeatureList.FEED_AUDIO_OVERVIEWS,
     ChromeFeatureList.GLIC,
     ChromeFeatureList.TASK_MANAGER_CLANK,
+    ContentFeatureList.ANDROID_DEV_TOOLS_FRONTEND,
     DomDistillerFeatures.READER_MODE_IMPROVEMENTS,
     DomDistillerFeatures.READER_MODE_DISTILL_IN_APP
 })
@@ -365,7 +367,7 @@ public class TabbedAppMenuPropertiesDelegateUnitTest {
                         mReadAloudControllerSupplier,
                         mPageZoomManagerMock,
                         /* openInAppMenuItemProvider= */ null);
-        BaseRobolectricTestRule.runAllBackgroundAndUi();
+        RobolectricUtil.runAllBackgroundAndUi();
         mTabbedAppMenuPropertiesDelegate = Mockito.spy(delegate);
 
         MultiWindowTestUtils.resetInstanceInfo();

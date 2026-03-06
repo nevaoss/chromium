@@ -23,6 +23,7 @@
 #include "base/test/mock_callback.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/time/time.h"
+#include "build/branding_buildflags.h"
 #include "build/build_config.h"
 #include "chrome/browser/feature_engagement/tracker_factory.h"
 #include "chrome/browser/profiles/profile.h"
@@ -47,6 +48,7 @@
 #include "components/user_education/common/feature_promo/feature_promo_registry.h"
 #include "components/user_education/common/feature_promo/feature_promo_result.h"
 #include "components/user_education/common/feature_promo/feature_promo_specification.h"
+#include "components/user_education/common/feature_promo/impl/feature_promo_controller_impl.h"
 #include "components/user_education/common/help_bubble/help_bubble_factory_registry.h"
 #include "components/user_education/common/help_bubble/help_bubble_params.h"
 #include "components/user_education/common/product_messaging_controller.h"
@@ -93,7 +95,7 @@ using ::testing::Return;
 class BrowserFeaturePromoControllerTestHelper {
  public:
   BrowserFeaturePromoControllerTestHelper(
-      const user_education::FeaturePromoControllerCommon& controller,
+      const user_education::FeaturePromoControllerImpl& controller,
       const ui::AcceleratorProvider& accelerator_provider)
       : controller_(controller), accelerator_provider_(accelerator_provider) {}
   ~BrowserFeaturePromoControllerTestHelper() = default;
@@ -106,7 +108,7 @@ class BrowserFeaturePromoControllerTestHelper {
   }
 
  private:
-  const raw_ref<const user_education::FeaturePromoControllerCommon> controller_;
+  const raw_ref<const user_education::FeaturePromoControllerImpl> controller_;
   const raw_ref<const ui::AcceleratorProvider> accelerator_provider_;
 };
 
@@ -165,9 +167,9 @@ using user_education::UserEducationSessionData;
 using user_education::UserEducationStorageService;
 
 using BubbleCloseCallback =
-    user_education::FeaturePromoControllerCommon::BubbleCloseCallback;
+    user_education::FeaturePromoControllerImpl::BubbleCloseCallback;
 using ShowPromoCallback =
-    user_education::FeaturePromoControllerCommon::ShowPromoResultCallback;
+    user_education::FeaturePromoControllerImpl::ShowPromoResultCallback;
 
 class BrowserFeaturePromoController25TestBase : public TestWithBrowserView {
  public:
@@ -187,10 +189,10 @@ class BrowserFeaturePromoController25TestBase : public TestWithBrowserView {
     auto* const service =
         UserEducationServiceFactory::GetForBrowserContext(browser()->profile());
     auto* const interface = BrowserUserEducationInterface::From(browser());
-    controller_ = static_cast<user_education::FeaturePromoControllerCommon*>(
+    controller_ = static_cast<user_education::FeaturePromoControllerImpl*>(
         service->GetFeaturePromoControllerForTesting());
     user_education_context_ = interface->GetUserEducationContextForTesting();
-    lock_ = user_education::FeaturePromoControllerCommon::
+    lock_ = user_education::FeaturePromoControllerImpl::
         BlockActiveWindowCheckForTesting();
 
     mock_tracker_ =
@@ -510,10 +512,10 @@ class BrowserFeaturePromoController25TestBase : public TestWithBrowserView {
   const base::TimeDelta kMoreThanNewSession =
       user_education::features::GetIdleTimeBetweenSessions() + base::Hours(1);
 
-  raw_ptr<user_education::FeaturePromoControllerCommon> controller_;
+  raw_ptr<user_education::FeaturePromoControllerImpl> controller_;
   user_education::UserEducationContextPtr user_education_context_;
   raw_ptr<NiceMock<feature_engagement::test::MockTracker>> mock_tracker_;
-  user_education::FeaturePromoControllerCommon::TestLock lock_;
+  user_education::FeaturePromoControllerImpl::TestLock lock_;
   int custom_callback_count_ = 0;
   bool tracker_initialized_ = true;
 
@@ -544,7 +546,7 @@ class BrowserFeaturePromoController25TestBase : public TestWithBrowserView {
 };
 
 using BubbleCloseCallback =
-    user_education::FeaturePromoControllerCommon::BubbleCloseCallback;
+    user_education::FeaturePromoControllerImpl::BubbleCloseCallback;
 
 class BrowserFeaturePromoController25Test
     : public BrowserFeaturePromoController25TestBase {

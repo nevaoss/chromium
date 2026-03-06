@@ -137,7 +137,10 @@ class WTF_EXPORT AtomicString {
     return string_.FindIgnoringAsciiCase(value, start);
   }
 
-  bool Contains(char c) const { return find(c) != kNotFound; }
+  // Returns `true` if this string contains the specified `c`.
+  bool contains(UChar c) const { return find(c) != kNotFound; }
+  bool contains(LChar c) const { return find(c) != kNotFound; }
+  bool contains(char c) const { return find(c) != kNotFound; }
   // Returns `true` if this string contains the specified `value`.
   // If `value` is empty, this returns `true`.
   bool contains(const StringView& value) const;
@@ -155,20 +158,20 @@ class WTF_EXPORT AtomicString {
     return string_.ReverseFind(value, start);
   }
 
-  bool StartsWith(const StringView& prefix) const {
+  bool starts_with(const StringView& prefix) const {
     return string_.StartsWith(prefix);
   }
   bool StartsWithIgnoringAsciiCase(const StringView& prefix) const {
     return string_.StartsWithIgnoringAsciiCase(prefix);
   }
-  bool StartsWith(UChar character) const {
+  bool starts_with(UChar character) const {
     return string_.StartsWith(character);
   }
 
-  bool EndsWith(const StringView& suffix) const {
+  bool ends_with(const StringView& suffix) const {
     return string_.EndsWith(suffix);
   }
-  bool EndsWith(UChar character) const { return string_.EndsWith(character); }
+  bool ends_with(UChar character) const { return string_.EndsWith(character); }
   // Returns true if this string ends with the specified `suffix`, using ASCII
   // case-insensitive matching. If `suffix` is empty, this returns `true`.
   bool EndsWithIgnoringAsciiCase(const StringView& suffix) const {

@@ -830,6 +830,14 @@
       name: "BlockingFocusWithoutUserActivation",
       status: "experimental",
     },
+    // Makes <body> marginwidth/marginheight take precedence over
+    // left/right/top/bottom presentational margin attributes, and prevents
+    // iframe marginwidth/marginheight injection when body margin attrs exist.
+    // Added in M147, remove in M149. See crbug.com/41310601.
+    {
+      name: "BodyMarginAttributePrecedence",
+      status: "stable",
+    },
     // https://crbug.com/415304289: Mouse and Pointer boundary event dispatch
     // (i.e. dispatch of enter, leave, over, out events) tracks DOM node removal
     // to fix event pairing on ancestor nodes.
@@ -1495,12 +1503,12 @@
       // https://chromestatus.com/feature/5157805733183488
       name: "CSSGapDecoration",
       status: "experimental",
+      depends_on: ["CSSGridGapSuppression"],
     },
     {
       // https://chromestatus.com/feature/5157805733183488
       name: "CSSGridGapSuppression",
-      status: "experimental",
-      depends_on: ["CSSGapDecoration"],
+      status: "stable",
     },
     {
       name: "CSSGridLanesLayout",
@@ -1558,6 +1566,17 @@
     },
     {
       name: "CSSLineClampLineBreakingEllipsis",
+      depends_on: ["CSSLineClamp"],
+    },
+    {
+      // This flag makes `(-webkit-)line-clamp: <integer>` clamp by both lines
+      // and height if there's also `(max-)height` set on the element.
+      //
+      // In https://github.com/w3c/csswg-drafts/issues/12041 the CSSWG resolved
+      // that the `line-clamp: <integer>` syntax couldn't have that behavior due
+      // to web compat, but we haven't decided on a new syntax for it yet.
+      // Therefore we keep the behavior under this flag for now.
+      name: "CSSLineClampLinesAndHeight",
       depends_on: ["CSSLineClamp"],
     },
     {
@@ -1754,6 +1773,11 @@
       base_feature: "CssSelectorFragmentAnchor",
     },
     {
+      // https://drafts.csswg.org/cssom-1/#dom-cssstylesheetinit-baseurl
+      name: "CSSStyleSheetInitBaseURL",
+      status: "experimental",
+    },
+    {
       name: "CSSSupportsAtRuleFunction",
       status: "experimental",
     },
@@ -1893,6 +1917,11 @@
       name: "DeclarativeCSSModules",
       status: "experimental",
     },
+    // https://crbug.com/448174611
+    {
+      name: "DeclarativeCSSModulesStyleTag",
+      implied_by: ["DeclarativeCSSModules"],
+    },
     {
       // https://chromestatus.com/feature/5133099851317248
       name: "DecoupleComputedBorderWidthFromStyle",
@@ -1909,6 +1938,12 @@
       // Killswitch for https://crbug.com/400317114 fix.
       // This lands in M142, and the flag can be removed in M144.
       name: "DelegatesFocusTextControlInputFix",
+      status: "stable",
+    },
+    {
+      // Delete text from descendant text nodes before removing children of
+      // a root editable element to ensure selectionchange event fires.
+      name: "DeleteTextInContentEditableBeforeRemovingChildren",
       status: "stable",
     },
     // This allows pages to opt out of the unload deprecation. Enabling this
@@ -2204,14 +2239,6 @@
       // crbug.com/41431966
       name: "DOMActivateBubblesInheritance",
       status: "stable",
-    },
-    {
-      name: "DOMPartsAPI",
-      status: "experimental",
-      implied_by: ["DOMPartsAPIMinimal"],
-    },
-    {
-      name: "DOMPartsAPIMinimal",
     },
     {
       // When enabled, retarget the relatedTarget attribute of drag events.
@@ -2621,6 +2648,11 @@
       status: "stable",
     },
     {
+      // Returns alignment value instead of a boolean
+      name: "FixJustifyQueryCommandValue",
+      status: "stable",
+    },
+    {
       name: "FixLinebreakForPreTag",
       status: "stable",
     },
@@ -2812,15 +2844,6 @@
     {
       // https://github.com/flackr/reduce-motion/blob/main/explainer.md
       name: "ForceReduceMotion",
-    },
-    {
-      // The FormControlRange interface allows web authors to create
-      // Range-like objects of the value of <textarea> and <input>
-      // elements.
-      // crbug.com/421421332
-      // https://github.com/MicrosoftEdge/MSEdgeExplainers/blob/main/FormControlRange/explainer.md
-      name: "FormControlRange",
-      status: "test",
     },
     {
       // TODO(crbug.com/1419161): Remove this feature after M113 has been stable
@@ -3297,12 +3320,7 @@
       status: "stable",
     },
     {
-      name: "LayoutMergeAnonymousFix",
-      status: "stable",
-    },
-    {
       name: "LayoutReinsertOnInFlowStateChange",
-      depends_on: ["LayoutMergeAnonymousFix"],
       status: "stable",
     },
     {
@@ -3317,6 +3335,13 @@
       // reaches stable.
       name: "LazyImageConformantLoadEventTiming",
       status: "stable",
+    },
+    {
+      // Enables the loading attribute for video and audio elements,
+      // allowing lazy loading similar to images.
+      // https://crbug.com/469111735
+      name: "LazyLoadVideoAndAudio",
+      status: "experimental",
     },
     {
       // Allow triggering the word suggestion from left click.
@@ -3642,7 +3667,7 @@
     // https://crbug.com/466888680
     {
       name: "ModulePreloadStyleJson",
-      status: "experimental",
+      status: "stable",
     },
     {
       name: "MojoJS",
@@ -3819,6 +3844,13 @@
       status: "stable",
     },
     {
+      // The OpaqueRange interface provides a live AbstractRange subtype
+      // for encapsulated content within <textarea> and <input> elements.
+      // crbug.com/421421332
+      name: "OpaqueRange",
+      status: "test",
+    },
+    {
       // Restrict popover invoker lookup to the same TreeScope as the element.
       // This will be shipped in M142, and it can be removed in M144.
       // See https://issues.chromium.org/issues/443031270.
@@ -3975,15 +4007,19 @@
       status: "stable",
     },
     {
+      // Improves the performance of the global overlay:none!important UA style
+      // rule by replacing the normal UA style rule with other things which
+      // result in the same behavior. Added in M147, should be safe to remove
+      // in M150.
+      name: "OverlayGlobalRuleRemoval",
+      status: "stable",
+    },
+    {
       // Enables the CSS overlay property. When this flag is disabled, top
       // layer exit animations will work without the need for using the overlay
       // property.
       name: "OverlayProperty",
       status: "stable",
-    },
-    {
-      name: "OverscrollCustomization",
-      status: "experimental",
     },
     {
       // https://chromestatus.com/feature/5261280285949952
@@ -4652,7 +4688,7 @@
     {
       // https://github.com/WICG/view-transitions/blob/main/scoped-transitions.md
       name: "ScopedViewTransitions",
-      status: "experimental"
+      status: "stable"
     },
     {
       // https://github.com/w3c/window-management/issues/149
@@ -4805,6 +4841,9 @@
       name: "SecurePaymentConfirmationUxRefresh",
       status: {
         "Android": "stable",
+        "Mac": "stable",
+        "Win": "stable",
+        "iOS": "",
         "default": "test",
       },
     },
@@ -4910,6 +4949,14 @@
       status: "stable",
     },
     {
+      // Removes the forced overflow:hidden rules on the select element's
+      // InnerElement unless the author specifies text-overflow:ellipsis. May
+      // cause text to overlap with the dropdown indicator.
+      // https://issues.chromium.org/issues/40805967
+      name: "SelectRemoveOverflowHidden",
+      status: "stable",
+    },
+    {
       name: "SendBeaconThrowForBlobWithNonSimpleType",
       public: true,
       status: "stable",
@@ -4989,6 +5036,11 @@
     {
       name: "ShadowContourFollowsBorder",
       status: "stable",
+    },
+    // https://crbug.com/448174611
+    {
+      name: "ShadowRootAdoptedStyleSheet",
+      implied_by: ["DeclarativeCSSModules"],
     },
     {
       // Reference Target allows IDREF attributes to refer inside Shadow DOM.
@@ -5088,6 +5140,15 @@
     },
     {
       name: "SkipOofItemForBreakCandidate",
+      status: "stable",
+    },
+    {
+      // Skip lines that contain only pseudo-element content (like ::before
+      // or ::after) when determining valid caret positions for line
+      // navigation. Pseudo-elements don't have DOM nodes for caret positioning,
+      // so including them caused incorrect selection behavior.
+      // See crbug.com/357889508
+      name: "SkipPseudoOnlyLinesInLineNavigation",
       status: "stable",
     },
     {
@@ -6174,6 +6235,12 @@
       status: "experimental",
     },
     {
+      // Support for form-associated custom elements in declarative
+      // WebMCP tools.
+      name: "WebMCPFormAssociatedCustomElements",
+      status: "experimental",
+    },
+    {
       name: "WebMCPTesting",
       status: "experimental",
     },
@@ -6217,6 +6284,10 @@
     {
       name: "WebSocketStream",
       status: "stable",
+    },
+    {
+      name: "WebSocketStreamStandardBinaryChunkType",
+      status: "experimental",
     },
     {
       name: "WebSpeechRecognitionContext",
@@ -6323,7 +6394,7 @@
       name: "WebXRLayers",
       depends_on: ["WebXR"],
       public: true,
-      status: "experimental",
+      status: "stable",
       base_feature: "none",
     },
     {
@@ -6338,7 +6409,7 @@
       depends_on: ["WebXR"],
       origin_trial_feature_name: "WebXRPlaneDetection",
       public: true,
-      status: "experimental",
+      status: "stable",
       base_feature: "none",
     },
     {

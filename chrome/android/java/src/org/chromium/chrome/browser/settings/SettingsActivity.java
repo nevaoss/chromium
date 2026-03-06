@@ -66,6 +66,7 @@ import org.chromium.chrome.browser.ui.desktop_windowing.AppHeaderCoordinator;
 import org.chromium.chrome.browser.ui.device_lock.MissingDeviceLockLauncher;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager.SnackbarManageable;
+import org.chromium.chrome.browser.util.DefaultBrowserInfo;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetControllerFactory;
 import org.chromium.components.browser_ui.bottomsheet.ManagedBottomSheetController;
@@ -373,7 +374,10 @@ public class SettingsActivity extends ChromeBaseAppCompatActivity
     }
 
     private void maybeCreateAppHeaderCoordinator(@Nullable Bundle savedInstanceState) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) return;
+        if (!ChromeFeatureList.sSearchInSettings.isEnabled()
+                || Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+            return;
+        }
 
         var delegate =
                 new BrowserStateBrowserControlsVisibilityDelegate(
@@ -1272,6 +1276,16 @@ public class SettingsActivity extends ChromeBaseAppCompatActivity
             }
             assert fragment instanceof SettingsFragment
                     : className + "does not implement SettingsFragment";
+        }
+    }
+
+    @Override
+    public void onTopResumedActivityChanged(boolean isTopResumedActivity) {
+        super.onTopResumedActivityChanged(isTopResumedActivity);
+        // In SettingsActivity, there are two entry points that can trigger the DB setting.
+        // So we need to reset the cached default browser info to make sure it's up to date
+        if (isInMultiWindowMode() && !isTopResumedActivity) {
+            DefaultBrowserInfo.resetDefaultInfoTask();
         }
     }
 }

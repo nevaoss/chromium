@@ -44,10 +44,13 @@ export function getHtml(this: ContextualTasksComposeboxElement) {
           .lensButtonDisabled="${false}"
           .showLensButton="${this.showLensButton_}"
           .disableCaretColorAnimation="${true}"
+          .inputPlaceholderOverride="${this.getInputPlaceholder_()}"
           .isInCoBrowsingZeroState="${this.isZeroState}"
           .lensButtonTriggersOverlay="${true}"
           .enableCarouselScrolling="${true}"
-          @result-changed="${this.onSuggestionsResultReceived_}">
+          @result-changed="${this.onSuggestionsResultReceived_}"
+          @open-image-upload="${this.handleImageUpload_}"
+          @open-file-upload="${this.handleFileUpload_}">
       </cr-composebox>
     </div>
     ${!this.isSidePanel && this.enableNativeZeroStateSuggestions ? html`

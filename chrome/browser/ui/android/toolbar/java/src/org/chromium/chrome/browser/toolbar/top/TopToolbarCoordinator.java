@@ -40,7 +40,6 @@ import org.chromium.chrome.browser.browser_controls.TopControlsStacker.TopContro
 import org.chromium.chrome.browser.device.DeviceClassManager;
 import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
 import org.chromium.chrome.browser.fullscreen.FullscreenManager;
-import org.chromium.chrome.browser.hub.NewTabAnimationUtils;
 import org.chromium.chrome.browser.layouts.LayoutManager;
 import org.chromium.chrome.browser.layouts.LayoutStateProvider;
 import org.chromium.chrome.browser.layouts.LayoutType;
@@ -162,8 +161,6 @@ public class TopToolbarCoordinator implements Toolbar, TopControlLayer {
      * @param tabCountSupplier Supplier of {@link
      *     org.chromium.chrome.browser.toolbar.CustomTabCount}.
      * @param homepageEnabledSupplier Supplier of whether Home button is enabled.
-     * @param homepageNonNtpSupplier Supplier of whether homepage is set to something other than the
-     *     NTP.
      * @param resourceManagerSupplier A supplier of a resource manager for native textures.
      * @param historyDelegate Delegate used to display navigation history.
      * @param initializeWithIncognitoColors Whether the toolbar should be initialized with incognito
@@ -199,7 +196,6 @@ public class TopToolbarCoordinator implements Toolbar, TopControlLayer {
             @Nullable ToggleTabStackButtonCoordinator tabSwitcherButtonCoordinator,
             MonotonicObservableSupplier<Integer> tabCountSupplier,
             NonNullObservableSupplier<Boolean> homepageEnabledSupplier,
-            NonNullObservableSupplier<Boolean> homepageNonNtpSupplier,
             Supplier<ResourceManager> resourceManagerSupplier,
             HistoryDelegate historyDelegate,
             boolean initializeWithIncognitoColors,
@@ -261,7 +257,7 @@ public class TopToolbarCoordinator implements Toolbar, TopControlLayer {
                             ignoreCache -> {
                                 var omniboxStub = getLocationBar().getOmniboxStub();
                                 if (omniboxStub != null) {
-                                    omniboxStub.setUrlBarFocus(null);
+                                    omniboxStub.endInput();
                                 }
                                 tabController.stopOrReloadCurrentTab(ignoreCache);
                             },
@@ -304,8 +300,6 @@ public class TopToolbarCoordinator implements Toolbar, TopControlLayer {
         new OneShotCallback<>(mAppMenuButtonHelperSupplier, this::setAppMenuButtonHelper);
         homepageEnabledSupplier.addSyncObserverAndCallIfNonNull(
                 (show) -> mToolbarLayout.onHomeButtonIsEnabledUpdate(show));
-        homepageNonNtpSupplier.addSyncObserverAndCallIfNonNull(
-                (isNonNtp) -> mToolbarLayout.onHomepageIsNonNtpUpdate(isNonNtp));
 
         // When we can force height adjustment on start up, we need to create tab strip transition
         // earlier, before native is ready.
@@ -390,9 +384,6 @@ public class TopToolbarCoordinator implements Toolbar, TopControlLayer {
         // enable the overlay on XR devices. See https://crbug.com/377982076.
         if (DeviceClassManager.enableFullscreen() || DeviceInfo.isXr()) {
             int layoutsToShowOn = LayoutType.BROWSING | LayoutType.TAB_SWITCHER;
-            if (!NewTabAnimationUtils.isNewTabAnimationEnabled()) {
-                layoutsToShowOn |= LayoutType.SIMPLE_ANIMATION;
-            }
             mOverlayCoordinator =
                     new TopToolbarOverlayCoordinator(
                             mToolbarLayout.getContext(),

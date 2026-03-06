@@ -131,7 +131,10 @@ if (is_linux || is_chromeos) {
 }
 
 source_set("constants") {
-  sources = [ "base/trace_constants.h" ]
+  sources = [
+    "base/registry_controlled_domain_constants.h",
+    "base/trace_constants.h",
+  ]
   deps = [ "//base" ]
 }
 
@@ -309,6 +312,7 @@ component("net") {
     "base/session_usage.h",
     "base/sockaddr_storage.cc",
     "base/sockaddr_storage.h",
+    "base/switches.h",
     "base/sys_addrinfo.h",
     "base/task/task_runner.cc",
     "base/task/task_runner.h",
@@ -477,6 +481,8 @@ component("net") {
     "device_bound_sessions/cookie_craving_display.cc",
     "device_bound_sessions/cookie_craving_display.h",
     "device_bound_sessions/deletion_reason.h",
+    "device_bound_sessions/failed_request.cc",
+    "device_bound_sessions/failed_request.h",
     "device_bound_sessions/inclusion_result.h",
     "device_bound_sessions/session_access.cc",
     "device_bound_sessions/session_access.h",
@@ -1038,6 +1044,10 @@ component("net") {
     "socket/stream_socket_handle.h",
     "socket/tcp_client_socket.cc",
     "socket/tcp_client_socket.h",
+    "socket/tcp_connect_job.cc",
+    "socket/tcp_connect_job.h",
+    "socket/tcp_connect_job_connector.cc",
+    "socket/tcp_connect_job_connector.h",
     "socket/tcp_server_socket.cc",
     "socket/tcp_server_socket.h",
     "socket/tcp_socket.h",
@@ -2139,8 +2149,6 @@ static_library("test_support") {
     "base/connection_endpoint_metadata_test_util.h",
     "base/load_timing_info_test_util.cc",
     "base/load_timing_info_test_util.h",
-    "base/mock_file_stream.cc",
-    "base/mock_file_stream.h",
     "base/mock_network_change_notifier.cc",
     "base/mock_network_change_notifier.h",
     "base/mock_proxy_delegate.cc",
@@ -2893,6 +2901,7 @@ target(_test_target_type, "net_unittests") {
     "disk_cache/blockfile/storage_block_unittest.cc",
     "disk_cache/cache_util_unittest.cc",
     "disk_cache/entry_unittest.cc",
+    "disk_cache/memory/mem_backend_impl_unittest.cc",
     "disk_cache/simple/simple_file_enumerator_unittest.cc",
     "disk_cache/simple/simple_file_tracker_unittest.cc",
     "disk_cache/simple/simple_index_file_unittest.cc",
@@ -3065,6 +3074,7 @@ target(_test_target_type, "net_unittests") {
     "socket/ssl_connect_job_unittest.cc",
     "socket/ssl_server_socket_unittest.cc",
     "socket/tcp_client_socket_unittest.cc",
+    "socket/tcp_connect_job_unittest.cc",
     "socket/tcp_server_socket_unittest.cc",
     "socket/tcp_socket_unittest.cc",
     "socket/tcp_stream_attempt_unittest.cc",
@@ -3234,6 +3244,7 @@ target(_test_target_type, "net_unittests") {
     "//components/network_time/time_tracker",
     "//crypto",
     "//crypto:test_support",
+    "//net:constants",
     "//net/base/registry_controlled_domains",
     "//net/base/registry_controlled_domains:lookup_strings_test_sets",
     "//net/base/registry_controlled_domains:registry_controlled_domains_test_dafsas",

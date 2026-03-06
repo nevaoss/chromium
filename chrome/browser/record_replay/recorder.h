@@ -7,6 +7,7 @@
 
 #include <string>
 
+#include "base/containers/span.h"
 #include "base/time/time.h"
 #include "chrome/browser/record_replay/recording.pb.h"
 #include "chrome/common/record_replay/aliases.h"
@@ -32,6 +33,9 @@ class Recorder {
   void AddAutofill(Selector element_selector,
                    Recording::Action::AutofillSpecifics::Type type,
                    std::string guid);
+
+  void SetName(std::string name);
+  void SetScreenshot(base::span<const uint8_t> screenshot);
 
   const Recording& recording() const { return recording_; }
 

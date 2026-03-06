@@ -30,6 +30,7 @@ import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import static org.chromium.base.test.transit.ViewFinder.waitForView;
 import static org.chromium.ui.test.util.MockitoHelper.doCallback;
 import static org.chromium.ui.test.util.MockitoHelper.doRunnable;
 import static org.chromium.ui.test.util.ViewUtils.onViewWaiting;
@@ -1126,7 +1127,7 @@ public class SigninFirstRunFragmentTest {
     public void testFragmentSigninWhenAddedAccountIsNotYetAvailable() {
         // This will freeze AccountManagerFacade with the currently available list of accounts.
         // The added account from add account flow later on will not be available.
-        try (var ignored = mSigninTestRule.blockGetAccountsUpdate(/* populateCache= */ true)) {
+        try (var ignored = mSigninTestRule.blockGetAccountsUpdateAndPopulateCache()) {
             launchActivityWithFragment();
             onScrollToView(withText(R.string.signin_add_account_to_device)).perform(click());
             mSigninTestRule.setAddAccountFlowResult(TestAccounts.TEST_ACCOUNT_NO_NAME);
@@ -1218,8 +1219,7 @@ public class SigninFirstRunFragmentTest {
     @MediumTest
     @Restriction({DeviceRestriction.RESTRICTION_TYPE_NON_AUTO})
     public void testFragmentWhenAccountsAreLoadedAfterChildStatusAndNativeAndPolicy() {
-        FakeAccountManagerFacade.UpdateBlocker blocker =
-                mSigninTestRule.blockGetAccountsUpdate(/* populateCache= */ false);
+        FakeAccountManagerFacade.UpdateBlocker blocker = mSigninTestRule.blockGetAccountsUpdate();
         launchActivityWithFragment();
         checkFragmentWhenLoading();
 
@@ -1556,10 +1556,7 @@ public class SigninFirstRunFragmentTest {
      */
     private void clickOnUmaDialogLinkAndWait() {
         onView(withId(R.id.signin_fre_footer)).perform(clickOnUmaDialogLink());
-        ViewUtils.onViewWaiting(
-                        withText(R.string.done),
-                        true) // Sets dialog to be in focus. Needed for API 30+.
-                .check(matches(isDisplayed()));
+        waitForView(withText(R.string.done));
     }
 
     private ViewAction clickOnUmaDialogLink() {

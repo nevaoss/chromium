@@ -138,8 +138,6 @@ class MultiContentsView : public views::View,
     gfx::Insets clipped_area;
 
     bool operator==(const TargetContentBounds&) const = default;
-
-    void Outset(const gfx::Outsets& outsets);
   };
   void SetTargetContentBounds(
       std::optional<TargetContentBounds> target_content_bounds);
@@ -195,6 +193,8 @@ class MultiContentsView : public views::View,
   MultiContentsBackgroundView* background_view_for_testing() const {
     return background_view_;
   }
+
+  MultiContentsViewDelegate* delegate_for_testing() { return delegate_.get(); }
 
   const FocusableViewMap* GetFocusableViewsMapFor(
       const ContentsContainerView* container) const;

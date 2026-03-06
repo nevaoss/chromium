@@ -10,7 +10,6 @@
 
 #include "base/feature_list.h"
 #include "base/metrics/field_trial_params.h"
-#include "build/branding_buildflags.h"
 #include "build/build_config.h"
 #include "chrome/common/buildflags.h"
 #include "extensions/buildflags/buildflags.h"
@@ -30,6 +29,8 @@ BASE_DECLARE_FEATURE(kCreateNewTabGroupAppMenuTopLevel);
 BASE_DECLARE_FEATURE(kDseIntegrity);
 BASE_DECLARE_FEATURE(kFewerUpdateConfirmations);
 #endif
+
+BASE_DECLARE_FEATURE(kDesktopGlowUp);
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
 
@@ -323,9 +324,6 @@ BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationEnableAll);
 
 // The following feature params indicate whether individual features should
 // have their page actions controlled using the new framework.
-BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationLensOverlay);
-BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationMemorySaver);
-BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationTranslate);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationIntentPicker);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationZoom);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationOfferNotification);

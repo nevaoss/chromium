@@ -11,12 +11,12 @@
 #include "base/logging.h"
 #include "base/metrics/histogram_functions.h"
 #include "components/private_ai/phosphor/token_manager.h"
-#include "components/private_ai/proto/legion.pb.h"
+#include "components/private_ai/proto/private_ai.pb.h"
 
 namespace private_ai {
 
 ConnectionTokenAttestation::PendingRequest::PendingRequest(
-    proto::LegionRequest request,
+    proto::PrivateAiRequest request,
     base::TimeDelta timeout,
     OnRequestCallback callback)
     : request(std::move(request)),
@@ -35,7 +35,7 @@ ConnectionTokenAttestation::PendingRequest::operator=(PendingRequest&&) =
 ConnectionTokenAttestation::ConnectionTokenAttestation(
     std::unique_ptr<Connection> inner_connection,
     phosphor::TokenManager* token_manager,
-    base::OnceClosure on_disconnect)
+    base::OnceCallback<void(ErrorCode)> on_disconnect)
     : inner_connection_(std::move(inner_connection)),
       token_manager_(token_manager),
       on_disconnect_(std::move(on_disconnect)) {
@@ -49,7 +49,7 @@ ConnectionTokenAttestation::ConnectionTokenAttestation(
 
 ConnectionTokenAttestation::~ConnectionTokenAttestation() = default;
 
-void ConnectionTokenAttestation::Send(proto::LegionRequest request,
+void ConnectionTokenAttestation::Send(proto::PrivateAiRequest request,
                                       base::TimeDelta timeout,
                                       OnRequestCallback callback) {
   if (attestation_state_ == AttestationState::kSuccess) {
@@ -77,13 +77,13 @@ void ConnectionTokenAttestation::OnTokenFetched(
     std::optional<phosphor::BlindSignedAuthToken> auth_token) {
   if (!auth_token.has_value()) {
     LOG(ERROR) << "Failed to get anonymous auth token";
-    FailPendingRequestsAndCallOnDisconnect(ErrorCode::kClientAttestationFailed);
+    CallOnDisconnect(ErrorCode::kClientAttestationFailed);
     return;
   }
 
   attestation_state_ = AttestationState::kWaitingAttestationResponse;
 
-  proto::LegionRequest request_proto;
+  proto::PrivateAiRequest request_proto;
   request_proto.mutable_anonymous_token_request()->set_anonymous_token(
       auth_token->token);
   request_proto.mutable_anonymous_token_request()->set_encoded_extensions(
@@ -96,13 +96,13 @@ void ConnectionTokenAttestation::OnTokenFetched(
 }
 
 void ConnectionTokenAttestation::OnAttestationResponse(
-    base::expected<proto::LegionResponse, ErrorCode> result) {
+    base::expected<proto::PrivateAiResponse, ErrorCode> result) {
   if (!result.has_value()) {
     LOG(ERROR) << "Client attestation request failed with error: "
                << static_cast<int>(result.error());
     base::UmaHistogramEnumeration("Legion.Client.RequestErrorCode",
                                   result.error());
-    FailPendingRequestsAndCallOnDisconnect(ErrorCode::kClientAttestationFailed);
+    CallOnDisconnect(ErrorCode::kClientAttestationFailed);
     return;
   }
 
@@ -115,17 +115,20 @@ void ConnectionTokenAttestation::OnAttestationResponse(
   pending_requests_.clear();
 }
 
-void ConnectionTokenAttestation::FailPendingRequestsAndCallOnDisconnect(
-    ErrorCode error_code) {
+void ConnectionTokenAttestation::OnDestroy(ErrorCode error) {
   attestation_state_ = AttestationState::kFailed;
 
-  for (auto& pending_request : pending_requests_) {
-    std::move(pending_request.callback).Run(base::unexpected(error_code));
+  auto pending_requests = std::move(pending_requests_);
+  for (auto& pending_request : pending_requests) {
+    std::move(pending_request.callback).Run(base::unexpected(error));
   }
-  pending_requests_.clear();
 
+  inner_connection_->OnDestroy(error);
+}
+
+void ConnectionTokenAttestation::CallOnDisconnect(ErrorCode error_code) {
   if (on_disconnect_) {
-    std::move(on_disconnect_).Run();
+    std::move(on_disconnect_).Run(error_code);
   }
 }
 

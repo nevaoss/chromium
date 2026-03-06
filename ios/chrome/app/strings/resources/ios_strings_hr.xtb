@@ -911,6 +911,7 @@
 <translation id="4405320213589929829">Upotrijebite adrese na web-stranicama da biste dobili lokalne informacije i upute.</translation>
 <translation id="441218095371040430">Upotrijebite tipkovnicu</translation>
 <translation id="4415276339145661267">Upravljajte svojim Google računom</translation>
+<translation id="4416582610654027550">Unesite važeći URL</translation>
 <translation id="4420409367264901497">Uređivanje oznake</translation>
 <translation id="4425365312778464779">Ovo je upravljani račun</translation>
 <translation id="4430277756566635951">Trenutačno je odabrano: <ph name="EMAIL" />. Odaberite račun.</translation>
@@ -1035,6 +1036,7 @@
 <translation id="484462545196658690">Automatski</translation>
 <translation id="4850886885716139402">Prikaz</translation>
 <translation id="4854068532375923088">Dopustite da Gemini upotrebljava vašu kameru</translation>
+<translation id="4860114370595561279">Vaši spremljeni podaci pohranjuju se na vaš uređaj</translation>
 <translation id="4860895144060829044">Poziv</translation>
 <translation id="4861953997778766866">Svi mogu unositi promjene u vaše dijeljene grupe kartica</translation>
 <translation id="4865063548323785458">Spremite i automatski popunite zaporke da biste se lako prijavljivali na web-lokacije i u aplikacije</translation>
@@ -1404,7 +1406,6 @@ Handoff mora biti omogućen i u odjeljku Općenito u Postavkama, a vaši uređaj
 <translation id="6140948187512243695">Prikaži detalje</translation>
 <translation id="6144589619057374135">Otvorite ${url} u anonimnom načinu</translation>
 <translation id="6146563240635539929">Videozapisi</translation>
-<translation id="6147279996212084542">Objasni</translation>
 <translation id="6151006591088192882">Otključajte anonimne kartice pomoću opcije <ph name="BIOMETRIC_AUTHENITCATION_TYPE" /></translation>
 <translation id="6152340033632117531">Neaktivno</translation>
 <translation id="6152406514676263192">Omogućite sinkronizaciju da biste dobivali najrelevantniji sadržaj na temelju svojih interesa.</translation>
@@ -1651,7 +1652,6 @@ Handoff mora biti omogućen i u odjeljku Općenito u Postavkama, a vaši uređaj
 <translation id="6964300328304469089">Trenutačno je odabrano: <ph name="NAME" />, <ph name="EMAIL" />. Odaberite račun.</translation>
 <translation id="6964760285928603117">Ukloni iz grupe</translation>
 <translation id="6965382102122355670">U redu</translation>
-<translation id="6967355534157677591">Izrada slika Pro</translation>
 <translation id="6973630695168034713">Mape</translation>
 <translation id="6979158407327259162">Google disk</translation>
 <translation id="6979737339423435258">Cijelo vrijeme</translation>
@@ -2060,6 +2060,7 @@ Handoff mora biti omogućen i u odjeljku Općenito u Postavkama, a vaši uređaj
 <translation id="8439758443371991593">Sakrij stavku Dodaj na popis za čitanje</translation>
 <translation id="8443986842926457191">URL ima više od 2048 znakova</translation>
 <translation id="8449869326050867919">Podijeljena je zaporka</translation>
+<translation id="8473815223723723001">Uredite sliku uz Gemini</translation>
 <translation id="8473863474539038330">Adrese i više</translation>
 <translation id="8474378002946546633">Dopusti obavijesti</translation>
 <translation id="8477178913400731244">Izbriši podatke</translation>
@@ -2185,7 +2186,6 @@ Handoff mora biti omogućen i u odjeljku Općenito u Postavkama, a vaši uređaj
 <translation id="8856643812068084733">Arhive</translation>
 <translation id="8863067612494559785">Slanje na uređaj <ph name="DEVICE_NAME" />…</translation>
 <translation id="8863431381414769983">Preuzmite upute i lokalne informacije s Google karata</translation>
-<translation id="8867879594900082274">Vaša će se uređivanja primjenjivati samo na vaše prikvačene web-lokacije na ovom uređaju.</translation>
 <translation id="8871974300055371298">Postavke sadržaja</translation>
 <translation id="8877788021141246043">Postavi podsjetnik</translation>
 <translation id="8879604564928138696">Dodirnite dvaput da biste isprobali</translation>

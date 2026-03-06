@@ -77,36 +77,38 @@ void JingleSessionManager::RemoveSessionObserver(SessionObserver* observer) {
 void JingleSessionManager::OnSignalStrategyStateChange(
     SignalStrategy::State state) {}
 
-bool JingleSessionManager::OnSignalStrategyIncomingStanza(
-    const jingle_xmpp::XmlElement* stanza) {
-  if (!IsJingleMessage(stanza)) {
+bool JingleSessionManager::OnSignalStrategyIncomingMessage(
+    const SignalingAddress& sender_address,
+    const SignalingMessage& signaling_message) {
+  // TODO: joedow - Update JingleSessionManager to use JingleMessage.
+  auto stanza = SignalStrategy::GetXmlStanza(signaling_message);
+  if (!stanza || !IsJingleMessage(stanza.get())) {
     return false;
   }
 
-  std::unique_ptr<jingle_xmpp::XmlElement> stanza_copy(
-      new jingle_xmpp::XmlElement(*stanza));
-  std::unique_ptr<JingleMessage> message(new JingleMessage());
+  auto message = std::make_unique<JingleMessage>();
   std::string error_msg;
-  if (!JingleMessageFromXml(stanza, message.get(), &error_msg)) {
-    SendReply(std::move(stanza_copy), JingleMessageReply::BAD_REQUEST);
+  if (!JingleMessageFromXml(stanza.get(), message.get(), &error_msg)) {
+    SendReply(std::move(stanza), JingleMessageReply::BAD_REQUEST);
     return true;
   }
 
-  // TODO: joedow - Use std::visit(absl::Overload(...), message->payload()) here
-  // once the JingleMessage payload is being populated for incoming messages.
+  // TODO: joedow - Use std::visit(absl::Overload(...),
+  // message->payload()) here once the JingleMessage payload is being
+  // populated for incoming messages.
   if (message->action() == JingleMessage::ActionType::kSessionInitiate) {
     // Description must be present in session-initiate messages.
     DCHECK(message->description.get());
 
-    SendReply(std::move(stanza_copy), JingleMessageReply::NONE);
+    SendReply(std::make_unique<jingle_xmpp::XmlElement>(*stanza),
+              JingleMessageReply::NONE);
 
     std::unique_ptr<Authenticator> authenticator =
         authenticator_factory_->CreateAuthenticator(
             signal_strategy_->GetLocalAddress().id(), message->from.id());
 
     JingleSession* session = new JingleSession(this);
-    session->InitializeIncomingConnection(stanza->Attr(kQNameId), *message,
-                                          std::move(authenticator));
+    session->InitializeIncomingConnection(*message, std::move(authenticator));
     sessions_[session->session_id_] = session;
 
     // Destroy the session if it was rejected due to incompatible protocol.
@@ -151,14 +153,14 @@ bool JingleSessionManager::OnSignalStrategyIncomingStanza(
 
   auto it = sessions_.find(message->sid);
   if (it == sessions_.end()) {
-    SendReply(std::move(stanza_copy), JingleMessageReply::INVALID_SID);
+    SendReply(std::move(stanza), JingleMessageReply::INVALID_SID);
     return true;
   }
 
   it->second->OnIncomingMessage(
-      stanza->Attr(kQNameId), std::move(message),
+      std::move(message),
       base::BindOnce(&JingleSessionManager::SendReply, base::Unretained(this),
-                     std::move(stanza_copy)));
+                     std::move(stanza)));
   return true;
 }
 

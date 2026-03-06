@@ -62,7 +62,7 @@ constexpr net::NetworkTrafficAnnotationTag kGetTokenTrafficAnnotation =
 
 // The maximum size of the Legion requests - 256 KB (in practice these
 // should be much smaller than this).
-const int kLegionRequestMaxBodySize = 256 * 1024;
+const int kPrivateAiRequestMaxBodySize = 256 * 1024;
 const char kProtobufContentType[] = "application/x-protobuf";
 
 }  // namespace
@@ -77,17 +77,17 @@ ConfigHttp::~ConfigHttp() = default;
 
 // static
 GURL ConfigHttp::GetServerUrl() {
-  return GURL(kLegionTokenServerUrl.Get());
+  return GURL(kPrivateAiTokenServerUrl.Get());
 }
 
 // static
 std::string ConfigHttp::GetInitialDataPath() {
-  return kLegionTokenServerGetInitialDataPath.Get();
+  return kPrivateAiTokenServerGetInitialDataPath.Get();
 }
 
 // static
 std::string ConfigHttp::GetTokensPath() {
-  return kLegionTokenServerGetTokensPath.Get();
+  return kPrivateAiTokenServerGetTokensPath.Get();
 }
 
 network::SharedURLLoaderFactory* ConfigHttp::GetOrCreateURLLoaderFactory() {
@@ -156,7 +156,7 @@ void ConfigHttp::DoRequest(quiche::BlindSignMessageRequestType request_type,
       base::BindOnce(&ConfigHttp::OnDoRequestCompleted,
                      weak_ptr_factory_.GetWeakPtr(), std::move(url_loader),
                      std::move(callback)),
-      kLegionRequestMaxBodySize);
+      kPrivateAiRequestMaxBodySize);
 }
 
 void ConfigHttp::OnDoRequestCompleted(

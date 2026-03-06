@@ -911,6 +911,7 @@
 <translation id="4405320213589929829">ସ୍ଥାନୀୟ ସୂଚନା ଏବଂ ଦିଗନିର୍ଦ୍ଦେଶ ପାଇବାକୁ ୱେବ ପୃଷ୍ଠାଗୁଡ଼ିକରେ ଥିବା ଠିକଣାଗୁଡ଼ିକୁ ବ୍ୟବହାର କରନ୍ତୁ।</translation>
 <translation id="441218095371040430">କୀବୋର୍ଡ ବ୍ୟବହାର କରନ୍ତୁ</translation>
 <translation id="4415276339145661267">ଆପଣଙ୍କର Google ଆକାଉଣ୍ଟ ପରିଚାଳନା କରନ୍ତୁ</translation>
+<translation id="4416582610654027550">ଏକ ଵୈଧ URL ଟାଇପ୍‌ କରନ୍ତୁ</translation>
 <translation id="4420409367264901497">ବୁକମାର୍କକୁ ଏଡିଟ କରନ୍ତୁ</translation>
 <translation id="4425365312778464779">ଏହି ଆକାଉଣ୍ଟଟି ପରିଚାଳିତ ହେଉଛି</translation>
 <translation id="4430277756566635951"><ph name="EMAIL" />କୁ ବର୍ତ୍ତମାନ ଚୟନ କରାଯାଇଛି। ଏକ ଆକାଉଣ୍ଟ ବାଛନ୍ତୁ।</translation>
@@ -1035,6 +1036,7 @@
 <translation id="484462545196658690">ସ୍ୱତଃ</translation>
 <translation id="4850886885716139402">ଦେଖନ୍ତୁ</translation>
 <translation id="4854068532375923088">ଆପଣଙ୍କ କେମେରା ବ୍ୟବହାର କରିବା ପାଇଁ “Gemini”କୁ ଅନୁମତି ଦିଅନ୍ତୁ</translation>
+<translation id="4860114370595561279">ଆପଣଙ୍କର ସେଭ କରାଯାଇଥିବା ସୂଚନା ଆପଣଙ୍କ ଡିଭାଇସରେ ଷ୍ଟୋର ହୋଇଛି</translation>
 <translation id="4860895144060829044">କଲ୍ କରନ୍ତୁ</translation>
 <translation id="4861953997778766866">ଆପଣଙ୍କର ସେୟାର କରାଯାଇଥିବା ଟାବ ଗ୍ରୁପରେ ସମସ୍ତେ ପରିବର୍ତ୍ତନ କରିପାରିବେ</translation>
 <translation id="4865063548323785458">ସାଇଟ ଏବଂ ଆପ୍ସରେ ସହଜରେ ସାଇନ ଇନ କରିବାକୁ ଆପଣଙ୍କ ପାସୱାର୍ଡଗୁଡ଼ିକୁ ସେଭ କରି ଅଟୋଫିଲ କରନ୍ତୁ</translation>
@@ -1404,7 +1406,6 @@ Handoff, ନିଶ୍ଚିତ ରୂପେ ସେଟିଂସ୍‍ର ସା�
 <translation id="6140948187512243695">ବିବରଣୀ ଦେଖାନ୍ତୁ</translation>
 <translation id="6144589619057374135">ଇନକଗ୍ନିଟୋରେ ${url} ଖୋଲନ୍ତୁ</translation>
 <translation id="6146563240635539929">ଭିଡିଓଗୁଡ଼ିକ</translation>
-<translation id="6147279996212084542">ବର୍ଣ୍ଣନା କରନ୍ତୁ</translation>
 <translation id="6151006591088192882"><ph name="BIOMETRIC_AUTHENITCATION_TYPE" /> ସାହାଯ୍ୟରେ ଇନକଗ୍ନିଟୋ ଟାବଗୁଡ଼ିକୁ ଅନଲକ କରନ୍ତୁ</translation>
 <translation id="6152340033632117531">ନିଷ୍କ୍ରିୟ</translation>
 <translation id="6152406514676263192">ଆପଣଙ୍କ ରୁଚି ଆଧାରରେ ସବୁଠାରୁ ଅଧିକ ପ୍ରାସଙ୍ଗିକ ବିଷୟବସ୍ତୁ ପାଇଁ ସିଙ୍କ କରନ୍ତୁ।</translation>
@@ -1651,7 +1652,6 @@ Handoff, ନିଶ୍ଚିତ ରୂପେ ସେଟିଂସ୍‍ର ସା�
 <translation id="6964300328304469089"><ph name="NAME" />, <ph name="EMAIL" />କୁ ବର୍ତ୍ତମାନ ଚୟନ କରାଯାଇଛି। ଏକ ଆକାଉଣ୍ଟ ବାଛନ୍ତୁ।</translation>
 <translation id="6964760285928603117">ଗୋଷ୍ଠୀରୁ କାଢ଼ି ଦିଅନ୍ତୁ</translation>
 <translation id="6965382102122355670">ଓକେ ବଟନ୍</translation>
-<translation id="6967355534157677591">Pro ଇମେଜ ତିଆରି କରନ୍ତୁ</translation>
 <translation id="6973630695168034713">ଫୋଲ୍ଡର୍‌ଗୁଡ଼ିକ</translation>
 <translation id="6979158407327259162">Google Drive</translation>
 <translation id="6979737339423435258">ସବୁ ସମୟରେ</translation>
@@ -2060,6 +2060,7 @@ Handoff, ନିଶ୍ଚିତ ରୂପେ ସେଟିଂସ୍‍ର ସା�
 <translation id="8439758443371991593">'ପଢ଼ିବା ତାଲିକାରେ ଯୋଗ କରନ୍ତୁ'କୁ ଲୁଚାନ୍ତୁ</translation>
 <translation id="8443986842926457191">URLରେ 2048ରୁ ଅଧିକ କେରେକ୍ଟର ଅଛି</translation>
 <translation id="8449869326050867919">ପାସୱାର୍ଡ ସେୟାର କରାଯାଇଛି</translation>
+<translation id="8473815223723723001">Gemini ମାଧ୍ୟମରେ ଇମେଜକୁ ଏଡିଟ କରନ୍ତୁ</translation>
 <translation id="8473863474539038330">ଠିକଣାଗୁଡ଼ିକ ଏବଂ ଅଧିକ</translation>
 <translation id="8474378002946546633">ବିଜ୍ଞପ୍ତିଗୁଡ଼ିକୁ ଅନୁମତି ଦିଅନ୍ତୁ</translation>
 <translation id="8477178913400731244">ଡାଟାକୁ ଡିଲିଟ କରନ୍ତୁ</translation>
@@ -2185,7 +2186,6 @@ Handoff, ନିଶ୍ଚିତ ରୂପେ ସେଟିଂସ୍‍ର ସା�
 <translation id="8856643812068084733">ଆର୍କାଇଭ</translation>
 <translation id="8863067612494559785"><ph name="DEVICE_NAME" />କୁ ପଠାଯାଉଛି…</translation>
 <translation id="8863431381414769983">Google Mapsରୁ ଦିଗନିର୍ଦ୍ଦେଶ ଏବଂ ସ୍ଥାନୀୟ ସୂଚନା ପାଆନ୍ତୁ</translation>
-<translation id="8867879594900082274">ଆପଣଙ୍କ ଏଡିଟଗୁଡ଼ିକ କେବଳ ଏହି ଡିଭାଇସରେ ଆପଣଙ୍କ ପିନ କରାଯାଇଥିବା ସାଇଟଗୁଡ଼ିକରେ ଲାଗୁ ହେବ।</translation>
 <translation id="8871974300055371298">ବିଷୟବସ୍ତୁ ସେଟିଂସ୍</translation>
 <translation id="8877788021141246043">ଗୋଟିଏ ରିମାଇଣ୍ଡର୍‌କୁ ସେଟ୍ କରନ୍ତୁ</translation>
 <translation id="8879604564928138696">ଚେଷ୍ଟା କରିବାକୁ ଦୁଇଥର ଟାପ କରନ୍ତୁ</translation>

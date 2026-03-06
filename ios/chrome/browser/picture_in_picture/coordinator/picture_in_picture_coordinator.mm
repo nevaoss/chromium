@@ -7,6 +7,7 @@
 #import <AVKit/AVKit.h>
 
 #import "ios/chrome/browser/default_browser/model/utils.h"
+#import "ios/chrome/browser/default_browser/promo/public/features.h"
 #import "ios/chrome/browser/picture_in_picture/coordinator/picture_in_picture_mediator.h"
 #import "ios/chrome/browser/picture_in_picture/public/picture_in_picture_configuration.h"
 #import "ios/chrome/browser/picture_in_picture/ui/picture_in_picture_view_controller.h"
@@ -19,6 +20,7 @@
   UINavigationController* _navigationController;
   PictureInPictureMediator* _mediator;
   PictureInPictureConfiguration* _configuration;
+  id<PictureInPictureCommands> _handler;
 }
 
 - (instancetype)initWithConfiguration:
@@ -50,12 +52,15 @@
       primaryButtonTitle:_configuration.primaryButtonTitle
                 videoURL:_configuration.videoURL];
 
+  _handler = HandlerForProtocol(self.browser->GetCommandDispatcher(),
+                                PictureInPictureCommands);
   _viewController.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc]
       initWithBarButtonSystemItem:UIBarButtonSystemItemClose
                            target:self
                            action:@selector(dismiss)];
   _viewController.actionDelegate = _mediator;
   _viewController.mutator = _mediator;
+  _viewController.handler = _handler;
   _navigationController = [[UINavigationController alloc]
       initWithRootViewController:_viewController];
   [self.baseViewController presentViewController:_navigationController
@@ -72,20 +77,24 @@
   _navigationController = nil;
 }
 
+#pragma mark - Public
+
+- (void)dismissIfNotPipRestore {
+  [_viewController dismissIfNotPipRestore];
+}
+
 #pragma mark - Private
 
 // Dismisses the picture-in-picture view controller.
 - (void)dismiss {
-  id<PictureInPictureCommands> handler = HandlerForProtocol(
-      self.browser->GetCommandDispatcher(), PictureInPictureCommands);
-  [handler dismissPictureInPicture];
+  [_handler dismissPictureInPicture];
 }
 
 // Opens the feature's destination.
 - (void)openFeatureDestination {
   switch (_configuration.feature) {
     case PictureInPictureFeature::kDefaultBrowser:
-      OpenIOSDefaultBrowserSettingsPage(YES);
+      OpenIOSDefaultBrowserSettingsPage(IsDefaultAppsPictureInPictureVariant());
       break;
   }
 }

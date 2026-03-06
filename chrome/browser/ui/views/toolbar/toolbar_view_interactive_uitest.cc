@@ -31,6 +31,7 @@
 #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
 #include "chrome/browser/ui/views/toolbar/webui_toolbar_web_view.h"
 #include "chrome/browser/ui/waap/initial_web_ui_manager.h"
+#include "chrome/common/chrome_features.h"
 #include "chrome/grit/generated_resources.h"
 #include "chrome/test/base/chrome_test_utils.h"
 #include "chrome/test/base/in_process_browser_test.h"
@@ -542,7 +543,9 @@ class ToolbarViewVerticalTabsRTLTest
   base::test::ScopedFeatureList scoped_feature_list_;
 };
 
-IN_PROC_BROWSER_TEST_P(ToolbarViewVerticalTabsRTLTest, ReloadButtonWorks) {
+// TODO(crbug.com/485291602): Re-enable this test.
+IN_PROC_BROWSER_TEST_P(ToolbarViewVerticalTabsRTLTest,
+                       DISABLED_ReloadButtonWorks) {
   DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kTabId);
 
   ASSERT_TRUE(embedded_test_server()->Start());

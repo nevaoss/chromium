@@ -194,10 +194,6 @@ public final class ProductionSupportedFlagList {
                 "Enables using the new ALPS codepoint to negotiate application settings for"
                         + " HTTP2."),
         Flag.baseFeature(
-                BlinkFeatures.ASYNC_TOUCH_MOVES_IMMEDIATELY_AFTER_SCROLL,
-                "Send touch move events as async or non-blocking to Renderer immediately after a"
-                        + " scroll has started."),
-        Flag.baseFeature(
                 BlinkFeatures.FORCE_OFF_TEXT_AUTOSIZING,
                 "Disable text inflation with setLayoutAlgorithm(TEXT_AUTOSIZING)"),
         Flag.baseFeature(
@@ -281,6 +277,9 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(
                 AutofillFeatures.AUTOFILL_FIX_FORM_TRACKING,
                 "Improves form submission tracking and duplicate submission handling"),
+        Flag.baseFeature(
+                AutofillFeatures.AUTOFILL_FIX_IS_AUTOFILLED,
+                "Introduces AutofillField::field_modifiers_ to replace multiple other members."),
         Flag.baseFeature(
                 AutofillFeatures.AUTOFILL_FIX_STATE_COUNTRY_MISCLASSIFICATION,
                 "When enabled, the rationalization engine will fix misclassifications where"
@@ -374,11 +373,6 @@ public final class ProductionSupportedFlagList {
                 AutofillFeatures.AUTOFILL_STRUCTURED_FIELDS_DISABLE_ADDRESS_LINES,
                 "When enabled, Autofill disable address lines on forms with structured address"
                         + " fields."),
-        Flag.baseFeature(
-                AutofillFeatures.AUTOFILL_ENABLE_LABEL_PRECEDENCE_FOR_TURKISH_ADDRESSES,
-                "When enabled, the precedence is given to the field label over the name when they"
-                        + " match different types. Applied only for parsing of address forms in"
-                        + " Turkish."),
         Flag.baseFeature(
                 AutofillFeatures.AUTOFILL_ENABLE_STREET_ADDRESS_MERGE_MODES,
                 "If enabled, the missing merge modes will be re-enabled on nodes. To do that,"
@@ -645,6 +639,9 @@ public final class ProductionSupportedFlagList {
                 "PartitionAllocUseSmallSingleSlotSpans",
                 "Uses a more nuanced heuristic to classify small single-slot spans."),
         Flag.baseFeature(
+                "MemoryCoordinatorLastResortGC",
+                "Clears strong references in the MemoryCache in last resort GC."),
+        Flag.baseFeature(
                 BlinkFeatures.DISCARD_INPUT_EVENTS_TO_RECENTLY_MOVED_FRAMES,
                 "Enables a browser intervention which silently ignores input events "
                         + "targeting a cross-origin iframe which has moved within its "
@@ -686,7 +683,6 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature("V8Flag_trim_descriptor_arrays_in_gc_with_stack"),
         Flag.baseFeature("V8Flag_memory_reducer"),
         Flag.baseFeature("V8Flag_verify_bytecode_light"),
-        Flag.baseFeature("V8Flag_enforce_global_heap_limit"),
         Flag.baseFeature("V8FlushBaselineCode"),
         Flag.baseFeature("V8FlushCodeBasedOnTabVisibility"),
         Flag.baseFeature("V8FlushCodeBasedOnTime"),
@@ -774,12 +770,6 @@ public final class ProductionSupportedFlagList {
                 "If enabled, non-render-blocking style loading tasks have higher priority on"
                         + " visible pages"),
         Flag.baseFeature(
-                MediaFeatures.LIBVPX_USE_CHROME_THREADS,
-                "Attaches libvpx threads to the chromium thread system."),
-        Flag.baseFeature(
-                MediaFeatures.LIBAOM_USE_CHROME_THREADS,
-                "Attaches libaom threads to the chromium thread system."),
-        Flag.baseFeature(
                 MediaFeatures.PAUSE_MUTED_BACKGROUND_AUDIO,
                 "Prevents inaudble audio from decoding in background tabs (experimental)."),
         Flag.baseFeature(
@@ -834,6 +824,8 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature("NetworkServiceDedicatedThread"),
         Flag.baseFeature(NetworkServiceFeatures.NETWORK_SERVICE_TASK_SCHEDULER),
         Flag.baseFeature(NetworkServiceFeatures.NETWORK_SERVICE_PER_PRIORITY_TASK_QUEUES),
+        Flag.baseFeature(
+                NetFeatures.DRAIN_SPDY_SESSION_SYNCHRONOUSLY_ON_REMOTE_ENDPOINT_DISCONNECT),
         Flag.baseFeature(NetFeatures.NET_TASK_SCHEDULER),
         Flag.baseFeature(NetFeatures.NET_TASK_SCHEDULER2),
         Flag.baseFeature("BrowserThreadPoolAdjustment"),
@@ -1088,9 +1080,6 @@ public final class ProductionSupportedFlagList {
                 ContentFeatures.WEBVIEW_ASYNC_DRAW_ONLY,
                 "Disable synchronous draw. Experiment to reduce ANRs."),
         Flag.baseFeature(
-                BlinkFeatures.AUTOFILL_ENABLE_SYNTHETIC_SELECT_METRICS_LOGGING,
-                "Enable counting of synthetic select elements in DOM."),
-        Flag.baseFeature(
                 VizFeatures.NO_LATE_BEGIN_FRAMES,
                 "Enables not sending BeginFrameArgs late when a client begins observing them."),
         Flag.baseFeature(
@@ -1309,6 +1298,10 @@ public final class ProductionSupportedFlagList {
                 PaymentFeatureList.PAYMENT_REQUEST_USE_RENDERER_URL_LOADER,
                 "When enabled, the PaymentRequest will use the URL loader from the renderer instead"
                         + " of the browser process."),
+        Flag.baseFeature(
+                BlinkFeatures.UNTHROTTLE_ASYNC_TOUCH_MOVES,
+                "When enabled, touch move events to javascript handlers are unthrottled if "
+                        + "they are sent as async to Renderer."),
 
         // Add new commandline switches and features above. The final entry should have a
         // trailing comma for cleaner diffs.

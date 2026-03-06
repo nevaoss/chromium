@@ -1325,7 +1325,7 @@ bool BrowserView::GetTabStripVisible() const {
   // In non-fullscreen the tabstrip should always be visible.
   auto* const immersive_mode_controller =
       ImmersiveModeController::From(browser());
-  if (!immersive_mode_controller->IsEnabled()) {
+  if (!immersive_mode_controller || !immersive_mode_controller->IsEnabled()) {
     return true;
   }
 
@@ -1539,6 +1539,11 @@ void BrowserView::OnProjectsPanelStateChanged(
 // BrowserView, BrowserWindow implementation:
 
 void BrowserView::Show() {
+  // Attempts to show closed windows should no-op.
+  if (browser_widget_->IsClosed()) {
+    return;
+  }
+
   if (auto* manager = InitialWebUIManager::From(browser())) {
     if (manager->RequestDeferShow(
             base::BindOnce(&BrowserView::OnInitialWebUIReady,

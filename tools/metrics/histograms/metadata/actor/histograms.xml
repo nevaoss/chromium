@@ -204,6 +204,18 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Actor.NavigationGating.ActionNavigationsApprovedByServer"
+    enum="BooleanAllowed" expires_after="2027-02-20">
+  <owner>masnoble@google.com</owner>
+  <owner>dylancutler@google.com</owner>
+  <owner>cfredric@google.com</owner>
+  <summary>
+    Records whether the navigation was approved by the server via a
+    NavigationConfirmationRequest to glic every time the actor processes a
+    navigation that was caused by an action and was not blocklisted.
+  </summary>
+</histogram>
+
 <histogram name="Actor.NavigationGating.AllowListSize" units="origins"
     expires_after="2026-08-02">
   <owner>dylancutler@google.com</owner>
@@ -240,7 +252,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Actor.NavigationGating.CrossOrigin2" enum="Boolean"
-    expires_after="2026-05-31">
+    expires_after="2026-08-23">
   <owner>dylancutler@google.com</owner>
   <owner>johannhof@google.com</owner>
   <summary>
@@ -261,7 +273,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Actor.NavigationGating.GatingDecision" enum="GatingDecision"
-    expires_after="2026-06-21">
+    expires_after="2026-08-23">
   <owner>tquintanilla@google.com</owner>
   <owner>dylancutler@google.com</owner>
   <summary>
@@ -283,7 +295,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Actor.NavigationGating.TimeElapsedForGating2" units="ms"
-    expires_after="2026-05-31">
+    expires_after="2026-08-23">
   <owner>dylancutler@google.com</owner>
   <owner>johannhof@google.com</owner>
   <summary>
@@ -338,6 +350,7 @@ chromium-metrics-reviews@google.com.
     machine. Not recorded for timeouts.
   </summary>
   <token key="State">
+    <variant name="WaitForAutofillParsing"/>
     <variant name="WaitForLoadCompletion"/>
     <variant name="WaitForPageStability"/>
     <variant name="WaitForVisualStateUpdate"/>

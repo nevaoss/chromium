@@ -911,6 +911,7 @@
 <translation id="4405320213589929829">স্থানীয় তথ্য ও দিকনির্দেশ পেতে ওয়েবপেজে ঠিকানা ব্যবহার করুন।</translation>
 <translation id="441218095371040430">কীবোর্ড ব্যবহার করুন</translation>
 <translation id="4415276339145661267">আপনার Google অ্যাকাউন্ট ম্যানেজ করুন</translation>
+<translation id="4416582610654027550">একটি সঠিক URL লিখুন</translation>
 <translation id="4420409367264901497">বুকমার্ক এডিট করুন</translation>
 <translation id="4425365312778464779">এটি একটি ম্যানেজ করা অ্যাকাউন্ট</translation>
 <translation id="4430277756566635951">বর্তমানে <ph name="EMAIL" /> আইডি বেছে নেওয়া হয়েছে। একটি অ্যাকাউন্ট বেছে নিন।</translation>
@@ -1035,6 +1036,7 @@
 <translation id="484462545196658690">অটো</translation>
 <translation id="4850886885716139402">দেখুন</translation>
 <translation id="4854068532375923088">আপনার ক্যামেরা ব্যবহার করার জন্য “Gemini”-কে অনুমতি দিন</translation>
+<translation id="4860114370595561279">আপনার সেভ করা তথ্য ডিভাইসে সেভ থাকে</translation>
 <translation id="4860895144060829044">কল করুন</translation>
 <translation id="4861953997778766866">আপনার শেয়ার করা ট্যাব গ্রুপে প্রত্যেকে পরিবর্তন করতে পারবেন</translation>
 <translation id="4865063548323785458">সাইট ও অ্যাপে সহজে সাইন-ইন করতে আপনার পাসওয়ার্ড সেভ ও অটোফিল করুন</translation>
@@ -1405,7 +1407,6 @@
 <translation id="6140948187512243695">বিশদ বিবরণ দেখান</translation>
 <translation id="6144589619057374135">'ছদ্মবেশী মোডে' ${url} খুলুন</translation>
 <translation id="6146563240635539929">ভিডিও</translation>
-<translation id="6147279996212084542">ব্যাখ্যা করুন</translation>
 <translation id="6151006591088192882"><ph name="BIOMETRIC_AUTHENITCATION_TYPE" /> দিয়ে ছদ্মবেশী ট্যাব আনলক করুন</translation>
 <translation id="6152340033632117531">অ্যাক্টিভ নেই</translation>
 <translation id="6152406514676263192">আপনার আগ্রহের উপর ভিত্তি করে সবচেয়ে প্রাসঙ্গিক কন্টেন্টের জন্য সিঙ্ক করুন।</translation>
@@ -1652,7 +1653,6 @@
 <translation id="6964300328304469089">বর্তমানে, <ph name="NAME" />, <ph name="EMAIL" /> আইডি বেছে নেওয়া হয়েছে। একটি অ্যাকাউন্ট বেছে নিন।</translation>
 <translation id="6964760285928603117">গ্রুপ থেকে সরান</translation>
 <translation id="6965382102122355670">ঠিক আছে</translation>
-<translation id="6967355534157677591">Pro-তে ছবি তৈরি করুন</translation>
 <translation id="6973630695168034713">ফোল্ডারগুলি</translation>
 <translation id="6979158407327259162">Google Drive</translation>
 <translation id="6979737339423435258">শুরু থেকে</translation>
@@ -2061,6 +2061,7 @@
 <translation id="8439758443371991593">'পড়ার তালিকায় যোগ করুন' বিকল্পটি লুকান</translation>
 <translation id="8443986842926457191">URL-এ ২০৪৮টির বেশি অক্ষর রয়েছে</translation>
 <translation id="8449869326050867919">পাসওয়ার্ড শেয়ার করা হয়েছে</translation>
+<translation id="8473815223723723001">Gemini-এর সাহায্যে ছবি এডিট করুন</translation>
 <translation id="8473863474539038330">ঠিকানা ও আরও অনেককিছু</translation>
 <translation id="8474378002946546633">সূচনাকে মঞ্জুরী দিন</translation>
 <translation id="8477178913400731244">ডেটা মুছুন</translation>
@@ -2186,7 +2187,6 @@
 <translation id="8856643812068084733">আর্কাইভ</translation>
 <translation id="8863067612494559785"><ph name="DEVICE_NAME" /> ডিভাইসে পাঠানো হচ্ছে…</translation>
 <translation id="8863431381414769983">Google Maps থেকে স্থানীয় তথ্য এবং দিকনির্দেশ পান</translation>
-<translation id="8867879594900082274">আপনার এডিট শুধুমাত্র এই ডিভাইসে পিন করা সাইটে প্রযোজ্য হবে।</translation>
 <translation id="8871974300055371298">কন্টেন্ট সেটিংস</translation>
 <translation id="8877788021141246043">রিমাইন্ডার সেট করুন</translation>
 <translation id="8879604564928138696">চেষ্টা করতে ডবল ট্যাপ করুন</translation>

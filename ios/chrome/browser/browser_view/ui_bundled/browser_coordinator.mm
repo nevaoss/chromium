@@ -388,6 +388,7 @@ const char kChromeAppStoreUrl[] =
     AppLauncherTabHelperBrowserPresentationProvider,
     AutoDeletionCommands,
     AutofillAddCreditCardCoordinatorDelegate,
+    AutofillCommands,
     BrowserCoordinatorCommands,
     BubblePresenterDelegate,
     CollaborationGroupCommands,
@@ -395,6 +396,7 @@ const char kChromeAppStoreUrl[] =
     ContextualSheetCommands,
     CountryCodePickerCommands,
     DefaultBrowserGenericPromoCommands,
+    DefaultBrowserPromoNonModalCommands,
     DefaultPromoNonModalPresentationDelegate,
     DockingPromoCommands,
     DownloadListCommands,
@@ -408,6 +410,7 @@ const char kChromeAppStoreUrl[] =
     FormInputAccessoryCoordinatorNavigator,
     BWGCommands,
     GoogleOneCommands,
+    IOSPasskeyClientCommands,
     MiniMapCommands,
     NetExportTabHelperDelegate,
     NewTabPageCommands,
@@ -428,9 +431,11 @@ const char kChromeAppStoreUrl[] =
     PasswordSuggestionCommands,
     PasswordSuggestionCoordinatorDelegate,
     PictureInPictureCommands,
+    PriceTrackedItemsCommands,
     PromosManagerCommands,
     PolicyChangeCommands,
     SendTabToSelfCoordinatorDelegate,
+    SharedTabGroupLastTabAlertCommands,
     SyncedSetUpCoordinatorDelegate,
     SyncedSetUpCommands,
     PrerenderBrowserAgentDelegate,
@@ -450,6 +455,7 @@ const char kChromeAppStoreUrl[] =
     SnapshotGeneratorDelegate,
     StoreKitCoordinatorDelegate,
     SyncPresenterCommands,
+    TextZoomCommands,
     TrustedVaultReauthenticationCoordinatorDelegate,
     UnitConversionCommands,
     URLLoadingDelegate,
@@ -908,10 +914,6 @@ const char kChromeAppStoreUrl[] =
 }
 
 #pragma mark - Public
-
-- (BOOL)isPlayingTTS {
-  return _voiceSearchController.audioPlaying;
-}
 
 - (BrowserLayoutViewController*)browserLayoutViewController {
   return _browserLayoutCoordinator.viewController;
@@ -1954,6 +1956,17 @@ const char kChromeAppStoreUrl[] =
       FROM_HERE, std::move(animationCompletion));
 }
 
+// Starts the StoreKitCoordinator with the given productParameters.
+- (void)startStoreKitCoordinatorWithParameters:
+    (NSDictionary*)productParameters {
+  self.storeKitCoordinator = [[StoreKitCoordinator alloc]
+      initWithBaseViewController:self.viewController
+                         browser:self.browser];
+  self.storeKitCoordinator.delegate = self;
+  self.storeKitCoordinator.iTunesProductParameters = productParameters;
+  [self.storeKitCoordinator start];
+}
+
 #pragma mark - ActivityServiceCommands
 
 - (void)stopAndStartSharingCoordinatorFromView:(UIView*)shareButton {
@@ -2546,6 +2559,22 @@ const char kChromeAppStoreUrl[] =
   // Preload VoiceSearchController and views and view controllers needed
   // for voice search.
   [_voiceSearchController prepareToAppear];
+}
+
+- (void)startVoiceSearch {
+  id<SceneCommands> sceneHandler =
+      HandlerForProtocol(self.browser->GetCommandDispatcher(), SceneCommands);
+  [sceneHandler stopAllVoiceSearch];
+  [_viewController startVoiceSearch];
+}
+
+- (void)stopVoiceSearch {
+  if (!_voiceSearchController.audioPlaying) {
+    return;
+  }
+
+  // Calling showVoiceSearch stops TTS audio if it is playing.
+  [_viewController startVoiceSearch];
 }
 
 - (void)dismissPasswordSuggestions {
@@ -4141,12 +4170,22 @@ const char kChromeAppStoreUrl[] =
 #pragma mark - WebContentCommands
 
 - (void)showAppStoreWithParameters:(NSDictionary*)productParameters {
-  self.storeKitCoordinator = [[StoreKitCoordinator alloc]
-      initWithBaseViewController:self.viewController
-                         browser:self.browser];
-  self.storeKitCoordinator.delegate = self;
-  self.storeKitCoordinator.iTunesProductParameters = productParameters;
-  [self.storeKitCoordinator start];
+  // TODO (crbug.com/486139801): Start the StoreKitCoordinator with
+  // clearPresentedState regardless of whether the ComposeBox feature is
+  // enabled. This was originally restricted to the feature flag to ensure a
+  // safer cherry-pick.
+  if (IsComposeboxIOSEnabled()) {
+    __weak __typeof(self) weakSelf = self;
+
+    // Properly start the StoreKitCoordinator in a clean presented state.
+    [self
+        clearPresentedStateWithCompletion:^{
+          [weakSelf startStoreKitCoordinatorWithParameters:productParameters];
+        }
+                           dismissOmnibox:YES];
+  } else {
+    [self startStoreKitCoordinatorWithParameters:productParameters];
+  }
 }
 
 - (void)showDialogForPassKitPasses:(NSArray<PKPass*>*)passes {
@@ -5087,6 +5126,10 @@ const char kChromeAppStoreUrl[] =
   _pictureInPictureCoordinator = nil;
 }
 
+- (void)dismissPictureInPictureIfNotPipRestore {
+  [_pictureInPictureCoordinator dismissIfNotPipRestore];
+}
+
 #pragma mark - NotificationsOptInCoordinatorDelegate
 
 - (void)notificationsOptInScreenDidFinish:
@@ -5190,8 +5233,7 @@ const char kChromeAppStoreUrl[] =
 
 #pragma mark - EnterpriseCommands
 
-- (void)showEnterpriseWarningDialog:
-            (data_controls::DataControlsDialog::Type)dialogType
+- (void)showEnterpriseWarningDialog:(enterprise::DialogType)dialogType
                  organizationDomain:(std::string_view)organizationDomain
                            callback:(base::OnceCallback<void(bool)>)callback {
   // If a dialog is already shown, dismiss it before showing a new one.

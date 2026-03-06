@@ -911,6 +911,7 @@
 <translation id="4405320213589929829">Користете адреси на веб-страници за да добивате локални информации и насоки.</translation>
 <translation id="441218095371040430">Користете ја тастатурата</translation>
 <translation id="4415276339145661267">Управувајте со сметката на Google</translation>
+<translation id="4416582610654027550">Внесете валидна URL</translation>
 <translation id="4420409367264901497">Измени го обележувачот</translation>
 <translation id="4425365312778464779">Сметкава е управувана</translation>
 <translation id="4430277756566635951">Тековно избрана: <ph name="EMAIL" /> Изберете сметка.</translation>
@@ -1035,6 +1036,7 @@
 <translation id="484462545196658690">Автоматски</translation>
 <translation id="4850886885716139402">Приказ</translation>
 <translation id="4854068532375923088">Дозволете му на Gemini да ја користи вашата камера</translation>
+<translation id="4860114370595561279">Вашите зачувани податоци се складираат на уредот</translation>
 <translation id="4860895144060829044">Повикајте</translation>
 <translation id="4861953997778766866">Секој може да врши промени во споделените групи картички</translation>
 <translation id="4865063548323785458">Зачувувајте и автоматски пополнувајте ги лозинките за да може лесно да се најавувате на сајтовите и апликациите</translation>
@@ -1404,7 +1406,6 @@ Handoff мора да биде овозможен и во Општиот дел 
 <translation id="6140948187512243695">Прикажи детали</translation>
 <translation id="6144589619057374135">Отвори ${url} во „Инкогнито“</translation>
 <translation id="6146563240635539929">Видеа</translation>
-<translation id="6147279996212084542">Објасни</translation>
 <translation id="6151006591088192882">Отклучете ги картичките „Инкогнито“ со <ph name="BIOMETRIC_AUTHENITCATION_TYPE" /></translation>
 <translation id="6152340033632117531">Неактивно</translation>
 <translation id="6152406514676263192">Синхронизирање со најрелевантните содржини според вашите интереси.</translation>
@@ -1651,7 +1652,6 @@ Handoff мора да биде овозможен и во Општиот дел 
 <translation id="6964300328304469089">Тековно избрана: <ph name="NAME" />, <ph name="EMAIL" />. Изберете сметка.</translation>
 <translation id="6964760285928603117">Отстрани од групата</translation>
 <translation id="6965382102122355670">Во ред</translation>
-<translation id="6967355534157677591">Создајте слика Pro</translation>
 <translation id="6973630695168034713">Папки</translation>
 <translation id="6979158407327259162">Google Диск</translation>
 <translation id="6979737339423435258">Целосната историја</translation>
@@ -2060,6 +2060,7 @@ Handoff мора да биде овозможен и во Општиот дел 
 <translation id="8439758443371991593">Скриј „Додај во список за читање“</translation>
 <translation id="8443986842926457191">URL-адресата има повеќе од 2.048 знаци.</translation>
 <translation id="8449869326050867919">Лозинката е споделена</translation>
+<translation id="8473815223723723001">Изменете ја сликата со Gemini</translation>
 <translation id="8473863474539038330">Адреси и друго</translation>
 <translation id="8474378002946546633">Дозволете известувања</translation>
 <translation id="8477178913400731244">Избришете ги податоците</translation>
@@ -2185,7 +2186,6 @@ Handoff мора да биде овозможен и во Општиот дел 
 <translation id="8856643812068084733">Архиви</translation>
 <translation id="8863067612494559785">Се испраќа до <ph name="DEVICE_NAME" />…</translation>
 <translation id="8863431381414769983">Добивање насоки и локални податоци од „Карти на Google“</translation>
-<translation id="8867879594900082274">Вашите измени ќе се применат само на закачените сајтови на уредов.</translation>
 <translation id="8871974300055371298">Поставки за содржина</translation>
 <translation id="8877788021141246043">Потсетник</translation>
 <translation id="8879604564928138696">Допрете двапати за да се обидете</translation>
@@ -2237,6 +2237,7 @@ Handoff мора да биде овозможен и во Општиот дел 
 <translation id="9055291197094969722">Создавајте групи картички за да ги организирате отворените картички и да бидете продуктивни</translation>
 <translation id="9055580485132823283">Ќе избришете {password_count} лозинки, {passkey_count} криптографски клучеви, како и списокот со сајтови и апликации за коишто сте избрале никогаш да не се зачувуваат податоците за најавување. Сметките што сте ги создале за сајтовите и апликациите нема да се избришат.</translation>
 <translation id="9057030985451135243">Дознајте повеќе за споделените групи картички</translation>
+<translation id="9064106978262828592">Проблем при извезувањето на вашите податоци</translation>
 <translation id="9065203028668620118">Изменете</translation>
 <translation id="9066097352053395362">Скриј „Изменете обележувач“</translation>
 <translation id="9070824521421603770">Ќе се одјавите, а картичките ќе се затворат</translation>

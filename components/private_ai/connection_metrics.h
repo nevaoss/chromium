@@ -25,14 +25,16 @@ class ConnectionMetrics : public Connection {
   ConnectionMetrics& operator=(const ConnectionMetrics&) = delete;
 
   // Connection override:
-  void Send(proto::LegionRequest request,
+  void Send(proto::PrivateAiRequest request,
             base::TimeDelta timeout,
             OnRequestCallback callback) override;
+
+  void OnDestroy(ErrorCode error) override;
 
  private:
   void OnResponse(base::TimeTicks start_time,
                   OnRequestCallback callback,
-                  base::expected<proto::LegionResponse, ErrorCode> result);
+                  base::expected<proto::PrivateAiResponse, ErrorCode> result);
 
   std::unique_ptr<Connection> inner_connection_;
 

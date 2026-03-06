@@ -707,12 +707,12 @@ inline UAShadowPseudoResult UAShadowPseudoCascading(const Element& element) {
   // this (developer-expected) behavior to those existing
   // pseudo-elements.  (It's possible that we could, but it would
   // require a good bit of compatibility analysis.)
-  DCHECK(shadow_pseudo_id.empty() || !shadow_pseudo_id.StartsWith("-") ||
-         shadow_pseudo_id.StartsWith("-webkit-") ||
-         shadow_pseudo_id.StartsWith("-internal-"))
+  DCHECK(shadow_pseudo_id.empty() || !shadow_pseudo_id.starts_with("-") ||
+         shadow_pseudo_id.starts_with("-webkit-") ||
+         shadow_pseudo_id.starts_with("-internal-"))
       << "shadow pseudo IDs should either begin with -webkit- or -internal- "
          "or not begin with a -";
-  return {true, shadow_pseudo_id.StartsWith("-")};
+  return {true, shadow_pseudo_id.starts_with("-")};
 }
 
 // Matches :host and :host-context rules if the element is a shadow host.
@@ -1753,7 +1753,8 @@ void StyleResolver::ApplyBaseStyleNoCache(
           {.origin = CascadeOrigin::kUserAgent});
     }
 
-    if (RuntimeEnabledFeatures::OverlayPropertyEnabled()) {
+    if (RuntimeEnabledFeatures::OverlayPropertyEnabled() &&
+        !RuntimeEnabledFeatures::OverlayGlobalRuleRemovalEnabled()) {
       // UA rule: * { overlay: none !important }
       // Implemented here because DCHECKs ensures we don't add universal rules
       // to the UA sheets. Note that this is a universal rule in any namespace.
@@ -2618,6 +2619,15 @@ bool StyleResolver::ApplyAnimatedStyle(
     DCHECK(!state.GetFontBuilder().FontDirty());
   }
 
+  if (ElementAnimations* animations =
+          animating_element->GetElementAnimations()) {
+    if (StyleBaseData* base_data = state.StyleBuilder().BaseData()) {
+      if (const CSSBitset* important_set = base_data->GetBaseImportantSet()) {
+        animations->CancelCompositedAnimationsAffectingProperties(
+            *important_set);
+      }
+    }
+  }
   CSSAnimations::CalculateCompositorAnimationUpdate(
       state.AnimationUpdate(), *animating_element, element,
       *state.StyleBuilder().GetBaseComputedStyle(), state.ParentStyle(),

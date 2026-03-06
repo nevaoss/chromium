@@ -195,7 +195,7 @@
 <translation id="1668001730617725852">Abrir en un nuevo grupo de pestañas</translation>
 <translation id="1674504678466460478">De <ph name="SOURCE_LANGUAGE" /> a <ph name="TARGET_LANGUAGE" /></translation>
 <translation id="168389590065701766">Ahora puedes abrir Google Lens desde la barra de direcciones y buscar cualquier cosa que veas</translation>
-<translation id="1689333818294560261">Sobrenombre</translation>
+<translation id="1689333818294560261">Nombre</translation>
 <translation id="169048873465870056">¿Eliminar la pestaña y el grupo?</translation>
 <translation id="1698090540708020240">Importar contraseñas…</translation>
 <translation id="1700629756560807968"><ph name="NUMBER_OF_SELECTED_BOOKMARKS" /> seleccionados</translation>
@@ -911,6 +911,7 @@
 <translation id="4405320213589929829">Usa direcciones en páginas web para obtener información local e indicaciones.</translation>
 <translation id="441218095371040430">Usar teclado</translation>
 <translation id="4415276339145661267">Gestionar tu cuenta de Google</translation>
+<translation id="4416582610654027550">Escribe una URL válida</translation>
 <translation id="4420409367264901497">Editar marcador</translation>
 <translation id="4425365312778464779">Esta es una cuenta gestionada</translation>
 <translation id="4430277756566635951">Se ha seleccionado <ph name="EMAIL" />. Elige una cuenta.</translation>
@@ -1035,6 +1036,7 @@
 <translation id="484462545196658690">Automático</translation>
 <translation id="4850886885716139402">Ver</translation>
 <translation id="4854068532375923088">Permitir que Gemini use tu cámara</translation>
+<translation id="4860114370595561279">La información guardada se almacena en tu dispositivo</translation>
 <translation id="4860895144060829044">Llamar</translation>
 <translation id="4861953997778766866">Todos los usuarios pueden hacer cambios en tus grupos de pestañas compartidos</translation>
 <translation id="4865063548323785458">Guarda y autocompleta tus contraseñas para iniciar sesión fácilmente en sitios y aplicaciones</translation>
@@ -1404,7 +1406,6 @@ Handoff también debe estar habilitado en la sección General de Ajustes del sis
 <translation id="6140948187512243695">Mostrar detalles</translation>
 <translation id="6144589619057374135">Abrir ${url} en incógnito</translation>
 <translation id="6146563240635539929">Vídeos</translation>
-<translation id="6147279996212084542">Explicar</translation>
 <translation id="6151006591088192882">Desbloquear pestañas de Incógnito con <ph name="BIOMETRIC_AUTHENITCATION_TYPE" /></translation>
 <translation id="6152340033632117531">Inactivas</translation>
 <translation id="6152406514676263192">Habilita la sincronización para ver contenido más relevante según tus intereses.</translation>
@@ -1651,7 +1652,6 @@ Handoff también debe estar habilitado en la sección General de Ajustes del sis
 <translation id="6964300328304469089">Se ha seleccionado <ph name="NAME" />, <ph name="EMAIL" />. Elige una cuenta.</translation>
 <translation id="6964760285928603117">Quitar del grupo</translation>
 <translation id="6965382102122355670">Aceptar</translation>
-<translation id="6967355534157677591">Crear imagen Pro</translation>
 <translation id="6973630695168034713">Carpetas</translation>
 <translation id="6979158407327259162">Google Drive</translation>
 <translation id="6979737339423435258">Desde siempre</translation>
@@ -2060,6 +2060,7 @@ Handoff también debe estar habilitado en la sección General de Ajustes del sis
 <translation id="8439758443371991593">Ocultar Añadir a lista de lectura</translation>
 <translation id="8443986842926457191">La URL contiene más de 2048 caracteres</translation>
 <translation id="8449869326050867919">Contraseña compartida</translation>
+<translation id="8473815223723723001">Editar imagen con Gemini</translation>
 <translation id="8473863474539038330">Direcciones y más</translation>
 <translation id="8474378002946546633">Permitir notificaciones</translation>
 <translation id="8477178913400731244">Eliminar datos</translation>
@@ -2185,7 +2186,6 @@ Handoff también debe estar habilitado en la sección General de Ajustes del sis
 <translation id="8856643812068084733">Archivos</translation>
 <translation id="8863067612494559785">Enviando a <ph name="DEVICE_NAME" />…</translation>
 <translation id="8863431381414769983">Obtén indicaciones e información local de Google Maps</translation>
-<translation id="8867879594900082274">Los cambios que hagas solo se aplicarán a los sitios fijados en este dispositivo.</translation>
 <translation id="8871974300055371298">Configuración de contenido</translation>
 <translation id="8877788021141246043">Añadir un recordatorio</translation>
 <translation id="8879604564928138696">Toca dos veces para probar</translation>

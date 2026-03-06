@@ -110,6 +110,7 @@
 #include "third_party/abseil-cpp/absl/container/flat_hash_map.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/skia/include/core/SkBitmap.h"
+#include "ui/base/device_form_factor.h"
 #include "ui/base/window_open_disposition.h"
 #include "ui/display/screen.h"
 #include "ui/gfx/geometry/mojom/geometry.mojom.h"
@@ -151,6 +152,22 @@ struct EqualsTraits<::SkBitmap> {
 namespace glic {
 
 namespace {
+
+mojom::FormFactor GetGlicFormFactor(ui::DeviceFormFactor form_factor) {
+  switch (form_factor) {
+    case ui::DEVICE_FORM_FACTOR_DESKTOP:
+      return mojom::FormFactor::kDesktop;
+    case ui::DEVICE_FORM_FACTOR_PHONE:
+      return mojom::FormFactor::kPhone;
+    case ui::DEVICE_FORM_FACTOR_TABLET:
+      return mojom::FormFactor::kTablet;
+    case ui::DEVICE_FORM_FACTOR_TV:
+    case ui::DEVICE_FORM_FACTOR_AUTOMOTIVE:
+    case ui::DEVICE_FORM_FACTOR_FOLDABLE:
+    case ui::DEVICE_FORM_FACTOR_XR:
+      return mojom::FormFactor::kUnknown;
+  }
+}
 
 #if BUILDFLAG(IS_MAC)
 constexpr mojom::Platform kPlatform = mojom::Platform::kMacOS;
@@ -719,8 +736,10 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
         browser_is_open_calculator_(profile_, this),
         receiver_(this, std::move(receiver)),
         annotation_manager_(
-            std::make_unique<GlicAnnotationManager>(glic_service_)),
-        journal_handler_(profile_) {
+            std::make_unique<GlicAnnotationManager>(glic_service_)) {
+    if (base::FeatureList::IsEnabled(features::kGlicActor)) {
+      journal_handler_ = std::make_unique<JournalHandler>(profile_);
+    }
     active_state_calculator_.AddObserver(this);
   }
 
@@ -894,6 +913,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
     auto state = glic::mojom::WebClientInitialState::New();
     state->chrome_version = version_info::GetVersion();
     state->platform = kPlatform;
+    state->form_factor = GetGlicFormFactor(ui::GetDeviceFormFactor());
     state->microphone_permission_enabled =
         pref_service_->GetBoolean(prefs::kGlicMicrophoneEnabled);
     state->location_permission_enabled =
@@ -967,7 +987,16 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
     if (GlicEnabling::IsMultiInstanceEnabled()) {
       state->host_capabilities.push_back(mojom::HostCapability::kMultiInstance);
     }
-    if (GlicEnabling::IsTrustFirstOnboardingEnabledForProfile(profile_)) {
+
+    const mojom::InvocationSource invocation_source =
+        host().invocation_source().value_or(
+            mojom::InvocationSource::kUnsupported);
+
+    const bool should_bypass_fre_ui =
+        GlicEnabling::ShouldBypassFreUi(profile_, invocation_source);
+
+    if (!should_bypass_fre_ui &&
+        GlicEnabling::IsTrustFirstOnboardingEnabledForProfile(profile_)) {
       int arm = features::kGlicTrustFirstOnboardingArmParam.Get();
       if (arm == 1) {
         state->host_capabilities.push_back(
@@ -1133,6 +1162,10 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
     host().OnInteractionModeChange(page_handler_, new_mode);
   }
 
+  void OnMicrophoneStatusChange(glic::mojom::MicrophoneStatus status) override {
+    // TODO(crbug.com/472338366): Plumb microphone status to the Glic Instance.
+  }
+
   void ResizeWidget(const gfx::Size& size,
                     base::TimeDelta duration,
                     ResizeWidgetCallback callback) override {
@@ -1162,8 +1195,10 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
     }
 
     tabs::TabInterface* tab = ftd.focus();
-    if (auto* instance_metrics = host().instance_metrics()) {
-      instance_metrics->DidRequestContextFromFocusedTab();
+    if (tab) {
+      host()
+          .instance_metrics_backwards_compatibility()
+          .DidRequestContextFromTab(*tab);
     }
     auto tab_handle = tab ? tab->GetHandle() : tabs::TabHandle::Null();
     sharing_manager().GetContextFromTab(
@@ -1650,51 +1685,65 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
                           int32_t task_id,
                           const std::string& event,
                           const std::string& details) override {
-    journal_handler_.LogBeginAsyncEvent(event_async_id, task_id, event,
-                                        details);
+    if (journal_handler_) {
+      journal_handler_->LogBeginAsyncEvent(event_async_id, task_id, event,
+                                           details);
+    }
   }
 
   void LogEndAsyncEvent(uint64_t event_async_id,
                         const std::string& details) override {
-    journal_handler_.LogEndAsyncEvent(event_async_id, details);
+    if (journal_handler_) {
+      journal_handler_->LogEndAsyncEvent(event_async_id, details);
+    }
   }
 
   void LogInstantEvent(int32_t task_id,
                        const std::string& event,
                        const std::string& details) override {
-    journal_handler_.LogInstantEvent(task_id, event, details);
+    if (journal_handler_) {
+      journal_handler_->LogInstantEvent(task_id, event, details);
+    }
   }
 
   void JournalClear() override {
-    journal_handler_.Clear();
+    if (journal_handler_) {
+      journal_handler_->Clear();
+    }
   }
 
   void JournalSnapshot(bool clear_journal,
                        JournalSnapshotCallback callback) override {
-    journal_handler_.Snapshot(clear_journal, std::move(callback));
+    if (journal_handler_) {
+      journal_handler_->Snapshot(clear_journal, std::move(callback));
+    }
   }
 
   void JournalStart(uint64_t max_bytes, bool capture_screenshots) override {
-    journal_handler_.Start(max_bytes, capture_screenshots);
+    if (journal_handler_) {
+      journal_handler_->Start(max_bytes, capture_screenshots);
+    }
   }
 
   void JournalStop() override {
-    journal_handler_.Stop();
+    if (journal_handler_) {
+      journal_handler_->Stop();
+    }
   }
 
   void JournalRecordFeedback(bool positive,
                              const std::string& reason) override {
-    journal_handler_.RecordFeedback(positive, reason);
+    if (journal_handler_) {
+      journal_handler_->RecordFeedback(positive, reason);
+    }
   }
 
   // TODO(crbug.com/450026474): Remove call to GlicMetrics once
   // non-profile-scoped metrics are logged entirely from GlicInstanceMetrics.
   void OnUserInputSubmitted(mojom::WebClientMode mode) override {
     glic_service_->OnUserInputSubmitted(mode);
-    glic_service_->metrics()->OnUserInputSubmitted(mode);
-    if (auto* instance_metrics = host().instance_metrics()) {
-      instance_metrics->OnUserInputSubmitted(mode);
-    }
+    host().instance_metrics_backwards_compatibility().OnUserInputSubmitted(
+        mode);
 
     // TODO(crbug.com/462769104): move this to a non-metrics API.
     sharing_manager().OnConversationTurnSubmitted();
@@ -1711,18 +1760,14 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
   // TODO(crbug.com/450026474): Remove call to GlicMetrics once
   // non-profile-scoped metrics are logged entirely from GlicInstanceMetrics.
   void OnReaction(mojom::MetricUserInputReactionType reaction_type) override {
-    glic_service_->metrics()->OnReaction(reaction_type);
-    if (auto* instance_metrics = host().instance_metrics()) {
-      instance_metrics->OnReaction(reaction_type);
-    }
+    host().instance_metrics_backwards_compatibility().OnReaction(reaction_type);
   }
 
   // TODO(crbug.com/450026474): Remove call to GlicMetrics once
   // non-profile-scoped metrics are logged entirely from GlicInstanceMetrics.
   void OnResponseStarted() override {
-    glic_service_->metrics()->OnResponseStarted();
+    host().instance_metrics_backwards_compatibility().OnResponseStarted();
     if (auto* instance_metrics = host().instance_metrics()) {
-      instance_metrics->OnResponseStarted();
       instance_metrics->RecordAttachedContextTabCount(
           sharing_manager().GetNumPinnedTabs());
     }
@@ -1735,10 +1780,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
     if (details) {
       cause = details->cause;
     }
-    glic_service_->metrics()->OnResponseStopped(cause);
-    if (auto* instance_metrics = host().instance_metrics()) {
-      instance_metrics->OnResponseStopped(cause);
-    }
+    host().instance_metrics_backwards_compatibility().OnResponseStopped(cause);
   }
 
   void OnSessionTerminated() override {
@@ -1749,10 +1791,8 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
   // non-profile-scoped metrics are logged entirely from GlicInstanceMetrics.
   void OnTurnCompleted(glic::mojom::WebClientModel model,
                        base::TimeDelta duration) override {
-    glic_service_->metrics()->OnTurnCompleted(model, duration);
-    if (auto* instance_metrics = host().instance_metrics()) {
-      instance_metrics->OnTurnCompleted(model, duration);
-    }
+    host().instance_metrics_backwards_compatibility().OnTurnCompleted(model,
+                                                                      duration);
   }
 
   void OnRecordUseCounter(uint16_t counter) override {
@@ -1823,10 +1863,6 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
                                                std::move(observer));
   }
 
-  void OnViewChanged(mojom::ViewChangedNotificationPtr notification) override {
-    host().OnViewChanged(this, notification->current_view);
-  }
-
   void SetOnboardingCompleted() override {
     glic_service_->metrics()->OnTrustFirstOnboardingAccept();
     pref_service_->SetInteger(prefs::kGlicCompletedFre,
@@ -1859,6 +1895,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
 
   void PanelWillOpen(glic::mojom::PanelOpeningDataPtr panel_opening_data,
                      PanelWillOpenCallback done) override {
+    host().SetInvocationSource(panel_opening_data->invocation_source);
     base::UmaHistogramBoolean("Glic.Host.OpenedInRegularTab", false);
     web_client_->NotifyPanelWillOpen(
         std::move(panel_opening_data),
@@ -1874,8 +1911,13 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
   }
 
   void PanelWasClosed(base::OnceClosure done) override {
+    host().SetInvocationSource(mojom::InvocationSource::kUnsupported);
     web_client_->NotifyPanelWasClosed(
         mojo::WrapCallbackWithDefaultInvokeIfNotRun(std::move(done)));
+  }
+
+  void StopMicrophone(base::OnceClosure done) override {
+    web_client_->StopMicrophone(std::move(done));
   }
 
   void PanelStateChanged(const glic::mojom::PanelState& panel_state) override {
@@ -1884,10 +1926,6 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
 
   void ManualResizeChanged(bool resizing) override {
     web_client_->NotifyManualResizeChanged(resizing);
-  }
-
-  void RequestViewChange(mojom::ViewChangeRequestPtr request) override {
-    web_client_->RequestViewChange(std::move(request));
   }
 
   void NotifyAdditionalContext(mojom::AdditionalContextPtr context) override {
@@ -2083,6 +2121,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
   }
 
   void Uninstall() {
+    host().SetInvocationSource(mojom::InvocationSource::kUnsupported);
     page_metadata_manager_.reset();
     SetAudioDucking(false, base::DoNothing());
     host().UnsetWebClient(this);
@@ -2399,7 +2438,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
   const std::unique_ptr<GlicAnnotationManager> annotation_manager_;
   std::unique_ptr<system_permission_settings::ScopedObservation>
       system_permission_settings_observation_;
-  JournalHandler journal_handler_;
+  std::unique_ptr<JournalHandler> journal_handler_;
   std::unique_ptr<DebouncerDeduper> debouncer_deduper_;
   std::unique_ptr<PageMetadataManager> page_metadata_manager_;
 // NEEDS_ANDROID_IMPL: (crbug.com/477622144) Remove desktop-only restrictions

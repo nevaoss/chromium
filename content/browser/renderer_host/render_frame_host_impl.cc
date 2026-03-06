@@ -7680,10 +7680,8 @@ void RenderFrameHostImpl::DownloadURL(
             }
           }
         })");
-  std::unique_ptr<download::DownloadUrlParameters> parameters(
-      new download::DownloadUrlParameters(blink_parameters->url,
-                                          GetProcess()->GetDeprecatedID(),
-                                          GetRoutingID(), traffic_annotation));
+  std::unique_ptr<download::DownloadUrlParameters> parameters =
+      CreateDownloadUrlParameters(blink_parameters->url, traffic_annotation);
   parameters->set_content_initiated(!blink_parameters->is_context_menu_save);
   parameters->set_has_user_gesture(blink_parameters->has_user_gesture);
   parameters->set_suggested_name(
@@ -8291,6 +8289,16 @@ void RenderFrameHostImpl::SetStorageAccessApiStatus(
       return;
   }
   NOTREACHED();
+}
+
+std::unique_ptr<download::DownloadUrlParameters>
+RenderFrameHostImpl::CreateDownloadUrlParameters(
+    const GURL& url,
+    const net::NetworkTrafficAnnotationTag& traffic_annotation) const {
+  return std::make_unique<download::DownloadUrlParameters>(
+      base::PassKey<RenderFrameHostImpl>(), url,
+      std::optional<url::Origin>(GetLastCommittedOrigin()),
+      GetProcess()->GetDeprecatedID(), GetRoutingID(), traffic_annotation);
 }
 
 void RenderFrameHostImpl::UpdateEncoding(const std::string& encoding_name) {
@@ -11719,8 +11727,9 @@ CanCommitStatus RenderFrameHostImpl::CanCommitOriginAndUrl(
   UrlInfo url_info(
       UrlInfoInit(url)
           .WithOrigin(origin)
-          .WithStoragePartitionConfig(
-              GetSiteInstance()->GetSiteInfo().storage_partition_config())
+          .WithStoragePartitionConfig(GetSiteInstance()
+                                          ->GetSecurityPrincipal()
+                                          .GetStoragePartitionConfig())
           .WithWebExposedIsolationInfo(
               GetSiteInstance()->GetWebExposedIsolationInfo())
           .WithSandbox(is_sandboxed)
@@ -12026,8 +12035,7 @@ bool RenderFrameHostImpl::CheckOrDispatchBeforeUnloadForSubtree(
   if (run_beforeunload_for_legacy) {
     DCHECK(send_ipc);
     beforeunload_pending_replies_.insert(this);
-    SendBeforeUnload(is_reload, GetWeakPtr(), /*for_legacy=*/true,
-                     /*is_renderer_initiated_navigation=*/subframes_only);
+    SendBeforeUnload(is_reload, GetWeakPtr(), /*for_legacy=*/true);
   }
 
   return found_beforeunload;
@@ -12139,8 +12147,7 @@ RenderFrameHostImpl::CheckOrDispatchBeforeUnloadForFrame(
   // ACKs.
   beforeunload_pending_replies_.insert(rfh);
 
-  SendBeforeUnload(is_reload, rfh->GetWeakPtr(), /*for_legacy=*/false,
-                   /*is_renderer_initiated_navigation=*/subframes_only);
+  SendBeforeUnload(is_reload, rfh->GetWeakPtr(), /*for_legacy=*/false);
   return FrameIterationAction::kContinue;
 }
 
@@ -16747,8 +16754,9 @@ void RenderFrameHostImpl::SendCommitNavigation(
           navigation_request->frame_tree_node()
               ->frame_tree()
               .controller()
-              .GetSessionStorageNamespace(
-                  GetSiteInstance()->GetStoragePartitionConfig())
+              .GetSessionStorageNamespace(GetSiteInstance()
+                                              ->GetSecurityPrincipal()
+                                              .GetStoragePartitionConfig())
               ->id();
       partition->BindSessionStorageAreaForProcess(
           process_id, commit_params->storage_key, namespace_id,
@@ -17073,8 +17081,7 @@ RenderFrameHostImpl::BuildCommitFailedNavigationCallback(
 void RenderFrameHostImpl::SendBeforeUnload(
     bool is_reload,
     base::WeakPtr<RenderFrameHostImpl> rfh,
-    bool for_legacy,
-    const bool is_renderer_initiated_navigation) {
+    bool for_legacy) {
   TRACE_EVENT("navigation", "RenderFrameHostImpl::SendBeforeUnload",
               perfetto::Flow::FromPointer(this));
   auto before_unload_closure = base::BindOnce(
@@ -17171,15 +17178,12 @@ void RenderFrameHostImpl::SendBeforeUnload(
                    base::TimeTicks renderer_before_unload_end_time,
                    base::WeakPtr<NavigationControllerImpl>
                        navigation_controller,
-                   const bool can_be_in_navigate_to_pending_entry,
-                   const bool is_renderer_initiated_navigation) {
+                   const bool can_be_in_navigate_to_pending_entry) {
                   if (can_be_in_navigate_to_pending_entry &&
                       navigation_controller) {
                     navigation_controller
                         ->set_can_be_in_navigate_to_pending_entry(true);
                   }
-                  SCOPED_CRASH_KEY_BOOL("RFHI", "is_renderer_init_nav",
-                                        is_renderer_initiated_navigation);
                   std::move(callback).Run(
                       /*proceed=*/true, renderer_before_unload_start_time,
                       renderer_before_unload_end_time,
@@ -17197,8 +17201,7 @@ void RenderFrameHostImpl::SendBeforeUnload(
                 /*renderer_before_unload_end_time=*/
                 renderer_before_unload_end_time_for_legacy,
                 frame_tree()->controller().GetWeakPtr(),
-                can_be_in_navigate_to_pending_entry,
-                is_renderer_initiated_navigation));
+                can_be_in_navigate_to_pending_entry));
     return;
   }
   auto scope = MakeUrgentMessageScopeIfNeeded();
@@ -17774,7 +17777,7 @@ std::string GetURLTypeForCrashKey(const GURL& url) {
   return url.GetScheme();
 }
 
-std::string GetURLRelationForCrashKey(
+std::string_view GetURLRelationForCrashKey(
     const GURL& actual_url,
     const GURL& predicted_url,
     const blink::mojom::CommonNavigationParams& common_params,

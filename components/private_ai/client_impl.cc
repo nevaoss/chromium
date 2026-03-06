@@ -4,6 +4,7 @@
 
 #include "components/private_ai/client_impl.h"
 
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -11,9 +12,9 @@
 #include "base/location.h"
 #include "base/logging.h"
 #include "base/strings/to_string.h"
-#include "components/private_ai/common/legion_logger.h"
+#include "components/private_ai/common/private_ai_logger.h"
 #include "components/private_ai/connection.h"
-#include "components/private_ai/proto/legion.pb.h"
+#include "components/private_ai/proto/private_ai.pb.h"
 #include "components/private_ai/proto_utils/generate_content_response_utils.h"
 
 namespace private_ai {
@@ -40,14 +41,14 @@ void ReceiveTextRequest(
 
 void ReceiveGenerateContentResponse(
     Client::OnGenerateContentRequestCompletedCallback cb,
-    base::expected<proto::LegionResponse, ErrorCode> legion_response) {
+    base::expected<proto::PrivateAiResponse, ErrorCode> legion_response) {
   if (!legion_response.has_value()) {
     std::move(cb).Run(base::unexpected(legion_response.error()));
     return;
   }
 
   if (!legion_response->has_generate_content_response()) {
-    LOG(ERROR) << "LegionResponse did not contain a "
+    LOG(ERROR) << "PrivateAiResponse did not contain a "
                   "generate_content_response";
     std::move(cb).Run(base::unexpected(ErrorCode::kNoResponse));
     return;
@@ -57,14 +58,14 @@ void ReceiveGenerateContentResponse(
 
 void ReceivePaicMessage(
     Client::OnPaicMessageRequestCompletedCallback cb,
-    base::expected<proto::LegionResponse, ErrorCode> legion_response) {
+    base::expected<proto::PrivateAiResponse, ErrorCode> legion_response) {
   if (!legion_response.has_value()) {
     std::move(cb).Run(base::unexpected(legion_response.error()));
     return;
   }
 
   if (!legion_response->has_paic_response()) {
-    LOG(ERROR) << "LegionResponse did not contain a "
+    LOG(ERROR) << "PrivateAiResponse did not contain a "
                   "paic_response";
     std::move(cb).Run(base::unexpected(ErrorCode::kNoResponse));
     return;
@@ -75,23 +76,25 @@ void ReceivePaicMessage(
 }  // namespace
 
 ClientImpl::ClientImpl(std::unique_ptr<ConnectionFactory> connection_factory,
-                       std::unique_ptr<LegionLogger> logger)
+                       std::unique_ptr<PrivateAiLogger> logger)
     : logger_(std::move(logger)),
       connection_factory_(std::move(connection_factory)) {
   CHECK(logger_);
 }
 
-ClientImpl::~ClientImpl() = default;
+ClientImpl::~ClientImpl() {
+  if (connection_) {
+    connection_->OnDestroy(ErrorCode::kDestroyed);
+  }
+}
 
-void ClientImpl::EstablishSession(
-    OnEstablishSessionCompletedCallback callback) {
+void ClientImpl::EstablishConnection() {
   GetOrCreateConnection();
-  std::move(callback).Run(base::ok());
 }
 
 Connection* ClientImpl::GetOrCreateConnection() {
   if (!connection_) {
-    connection_ = connection_factory_->Create(base::BindRepeating(
+    connection_ = connection_factory_->Create(base::BindOnce(
         &ClientImpl::OnConnectionDisconnected, base::Unretained(this)));
   }
   return connection_.get();
@@ -118,7 +121,7 @@ void ClientImpl::SendTextRequest(proto::FeatureName feature_name,
                              std::move(text_response_callback), options);
 }
 
-LegionLogger* ClientImpl::GetLogger() {
+PrivateAiLogger* ClientImpl::GetLogger() {
   return logger_.get();
 }
 
@@ -127,7 +130,7 @@ void ClientImpl::SendGenerateContentRequest(
     const proto::GenerateContentRequest& request,
     OnGenerateContentRequestCompletedCallback callback,
     const RequestOptions& options) {
-  proto::LegionRequest request_proto;
+  proto::PrivateAiRequest request_proto;
   *request_proto.mutable_generate_content_request() = request;
 
   auto response_callback =
@@ -141,7 +144,7 @@ void ClientImpl::SendPaicRequest(proto::FeatureName feature_name,
                                  const proto::PaicMessage& request,
                                  OnPaicMessageRequestCompletedCallback callback,
                                  const RequestOptions& options) {
-  proto::LegionRequest legion_request;
+  proto::PrivateAiRequest legion_request;
   *legion_request.mutable_paic_request() = request;
 
   auto response_callback =
@@ -152,7 +155,7 @@ void ClientImpl::SendPaicRequest(proto::FeatureName feature_name,
 }
 
 void ClientImpl::SendRequest(proto::FeatureName feature_name,
-                             proto::LegionRequest legion_request,
+                             proto::PrivateAiRequest legion_request,
                              OnRequestCompletedCallback callback,
                              const RequestOptions& options) {
   logger_->LogInfo(FROM_HERE, "SendRequest started.");
@@ -167,7 +170,7 @@ void ClientImpl::SendRequest(proto::FeatureName feature_name,
 
 void ClientImpl::OnReponseReceived(
     OnRequestCompletedCallback cb,
-    base::expected<proto::LegionResponse, ErrorCode> legion_response) {
+    base::expected<proto::PrivateAiResponse, ErrorCode> legion_response) {
   if (legion_response.has_value()) {
     logger_->LogInfo(FROM_HERE, "Response received.");
   } else {
@@ -177,10 +180,25 @@ void ClientImpl::OnReponseReceived(
   std::move(cb).Run(legion_response);
 }
 
-void ClientImpl::OnConnectionDisconnected() {
-  logger_->LogInfo(FROM_HERE,
-                   "Connection disconnected. Destroying connection.");
-  connection_.reset();
+void ClientImpl::OnConnectionDisconnected(ErrorCode error_code) {
+  CHECK(connection_);
+  logger_->LogInfo(
+      FROM_HERE, "Connection disconnected. Destroying connection with error: " +
+                     base::ToString(error_code));
+
+  // Remove the reference to this Connection object to ensure that any
+  // attempt at sending new requests from response handlers will create
+  // a new Connection.
+  auto connection = std::move(connection_);
+  connection->OnDestroy(error_code);
+
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE, base::BindOnce(
+                     [](std::unique_ptr<Connection> connection) {
+                       // Release the connection asynchronously to avoid
+                       // use-after-free inside this callback.
+                     },
+                     std::move(connection)));
 }
 
 }  // namespace private_ai

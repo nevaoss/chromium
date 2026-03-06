@@ -4,6 +4,7 @@
 
 package org.chromium.chrome.browser.ui;
 
+import static org.chromium.build.NullUtil.assertNonNull;
 import static org.chromium.build.NullUtil.assumeNonNull;
 import static org.chromium.chrome.browser.ui.activity_recreation.ActivityRecreationController.IS_TAB_SWITCHER_SHOWN;
 import static org.chromium.chrome.browser.ui.activity_recreation.ActivityRecreationController.URL_BAR_EDIT_TEXT;
@@ -48,6 +49,7 @@ import org.chromium.base.supplier.OneshotSupplier;
 import org.chromium.base.supplier.OneshotSupplierImpl;
 import org.chromium.base.supplier.SettableMonotonicObservableSupplier;
 import org.chromium.base.supplier.SettableNonNullObservableSupplier;
+import org.chromium.base.supplier.SupplierUtils;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.ActivityTabProvider;
 import org.chromium.chrome.browser.ActivityUtils;
@@ -71,6 +73,8 @@ import org.chromium.chrome.browser.compositor.bottombar.OverlayPanel;
 import org.chromium.chrome.browser.compositor.bottombar.OverlayPanelManager;
 import org.chromium.chrome.browser.compositor.layouts.LayoutManagerImpl;
 import org.chromium.chrome.browser.compositor.overlays.strip.StripLayoutHelperManager;
+import org.chromium.chrome.browser.contextmenu.ChromeContextMenuPopulator;
+import org.chromium.chrome.browser.contextmenu.ChromeContextMenuPopulatorFactory;
 import org.chromium.chrome.browser.contextualsearch.ContextualSearchManager;
 import org.chromium.chrome.browser.contextualsearch.ContextualSearchManager.ContextualSearchTabPromotionDelegate;
 import org.chromium.chrome.browser.contextualsearch.ContextualSearchManagerSupplier;
@@ -126,7 +130,6 @@ import org.chromium.chrome.browser.omnibox.suggestions.action.OmniboxActionDeleg
 import org.chromium.chrome.browser.omnibox.voice.VoiceRecognitionHandler;
 import org.chromium.chrome.browser.open_in_app.OpenInAppEntryPoint;
 import org.chromium.chrome.browser.open_in_app.OpenInAppMenuItemProvider;
-import org.chromium.chrome.browser.open_in_app.OpenInAppUtils;
 import org.chromium.chrome.browser.paint_preview.DemoPaintPreview;
 import org.chromium.chrome.browser.password_manager.ManagePasswordsReferrer;
 import org.chromium.chrome.browser.password_manager.PasswordManagerLauncher;
@@ -175,10 +178,7 @@ import org.chromium.chrome.browser.ui.appmenu.AppMenuCoordinator;
 import org.chromium.chrome.browser.ui.appmenu.AppMenuCoordinatorFactory;
 import org.chromium.chrome.browser.ui.appmenu.AppMenuDelegate;
 import org.chromium.chrome.browser.ui.appmenu.AppMenuHandler;
-import org.chromium.chrome.browser.ui.appmenu.AppMenuItemProperties;
 import org.chromium.chrome.browser.ui.appmenu.AppMenuObserver;
-import org.chromium.chrome.browser.ui.appmenu.AppMenuSubmenuHeaderItemProperties;
-import org.chromium.chrome.browser.ui.appmenu.AppMenuUtil;
 import org.chromium.chrome.browser.ui.browser_window.ChromeAndroidTask;
 import org.chromium.chrome.browser.ui.desktop_windowing.AppHeaderUtils;
 import org.chromium.chrome.browser.ui.desktop_windowing.TopControlsLockCoordinator;
@@ -215,6 +215,7 @@ import org.chromium.components.browser_ui.widget.gesture.BackPressHandler;
 import org.chromium.components.browser_ui.widget.scrim.ScrimManager;
 import org.chromium.components.browser_ui.widget.scrim.ScrimManager.ScrimClient;
 import org.chromium.components.dom_distiller.core.DomDistillerFeatures;
+import org.chromium.components.embedder_support.contextmenu.ContextMenuPopulatorFactory;
 import org.chromium.components.feature_engagement.EventConstants;
 import org.chromium.components.feature_engagement.Tracker;
 import org.chromium.components.messages.DismissReason;
@@ -239,16 +240,14 @@ import org.chromium.ui.base.PageTransition;
 import org.chromium.ui.display.DisplayAndroid;
 import org.chromium.ui.display.DisplayUtil;
 import org.chromium.ui.edge_to_edge.EdgeToEdgeManager;
-import org.chromium.ui.hierarchicalmenu.HierarchicalMenuController;
-import org.chromium.ui.hierarchicalmenu.HierarchicalMenuController.SubmenuHeaderFactory;
 import org.chromium.ui.modaldialog.ModalDialogManager;
 import org.chromium.ui.modaldialog.ModalDialogManager.ModalDialogManagerObserver;
-import org.chromium.ui.modelutil.MVCListAdapter.ListItem;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.ui.widget.Toast;
 import org.chromium.url.GURL;
 
 import java.lang.ref.WeakReference;
+import java.util.Collections;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 
@@ -370,7 +369,7 @@ public class RootUiCoordinator
     protected final FullscreenManager mFullscreenManager;
     protected final Supplier<CompositorViewHolder> mCompositorViewHolderSupplier;
     protected StatusBarColorController mStatusBarColorController;
-    protected final Supplier<SnackbarManager> mSnackbarManagerSupplier;
+    protected final MonotonicObservableSupplier<SnackbarManager> mSnackbarManagerSupplier;
     protected final SettableMonotonicObservableSupplier<EdgeToEdgeController>
             mEdgeToEdgeControllerSupplier;
     protected Destroyable mEdgeToEdgeBottomChin;
@@ -496,7 +495,7 @@ public class RootUiCoordinator
             @NonNull FullscreenManager fullscreenManager,
             @NonNull Supplier<CompositorViewHolder> compositorViewHolderSupplier,
             @NonNull Supplier<TabContentManager> tabContentManagerSupplier,
-            @NonNull Supplier<SnackbarManager> snackbarManagerSupplier,
+            @NonNull MonotonicObservableSupplier<SnackbarManager> snackbarManagerSupplier,
             @NonNull
                     SettableMonotonicObservableSupplier<EdgeToEdgeController>
                             edgeToEdgeControllerSupplier,
@@ -1145,6 +1144,12 @@ public class RootUiCoordinator
                                     .get()
                                     .getTabCreator(
                                             mTabModelSelectorSupplier.get().isIncognitoSelected());
+            ContextMenuPopulatorFactory contextMenuPopulatorFactory =
+                    new ChromeContextMenuPopulatorFactory(
+                            /* itemDelegate= */ null,
+                            mShareDelegateSupplier,
+                            ChromeContextMenuPopulator.ContextMenuMode.THIN_WEB_VIEW,
+                            /* customContentActions= */ Collections.emptyList());
             mEphemeralTabCoordinatorSupplier.set(
                     new EphemeralTabCoordinator(
                             mActivity,
@@ -1152,7 +1157,8 @@ public class RootUiCoordinator
                             mActivity.getWindow().getDecorView(),
                             mActivityTabProvider,
                             tabCreator,
-                            getBottomSheetController()));
+                            getBottomSheetController(),
+                            contextMenuPopulatorFactory));
         }
         if (ChromeFeatureList.isEnabled(ChromeFeatureList.READALOUD)) {
             TabModelSelector tabModelSelector = mTabModelSelectorSupplier.get();
@@ -1745,7 +1751,7 @@ public class RootUiCoordinator
                     mActivityLifecycleDispatcher,
                     mTabModelSelectorSupplier,
                     getBottomSheetController(),
-                    mSnackbarManagerSupplier,
+                    SupplierUtils.asNonNull(mSnackbarManagerSupplier),
                     mTabBookmarkerSupplier,
                     mProfileSupplier,
                     mBookmarkModelSupplier,
@@ -1803,7 +1809,7 @@ public class RootUiCoordinator
                                                 new QuickDeleteDelegateImpl(
                                                         mProfileSupplier, mTabSwitcherSupplier),
                                                 mModalDialogManagerSupplier.get(),
-                                                mSnackbarManagerSupplier.get(),
+                                                assertNonNull(mSnackbarManagerSupplier.get()),
                                                 mLayoutManager,
                                                 mTabModelSelectorSupplier.get(),
                                                 tabModelSelector);
@@ -1811,12 +1817,6 @@ public class RootUiCoordinator
                             },
                             TabWindowManagerSingleton::getInstance,
                             this::bringTabToFront);
-
-            if (OpenInAppUtils.isOpenInAppAvailable()) {
-                ViewGroup omniboxChipContainer =
-                        controlContainer.findViewById(R.id.omnibox_chip_container);
-                mOmniboxChipManager = new OmniboxChipManager(omniboxChipContainer);
-            }
 
             mToolbarManager =
                     new ToolbarManager(
@@ -1873,7 +1873,7 @@ public class RootUiCoordinator
                             mTopInsetProvider,
                             mXrSpaceModeObservableSupplier,
                             mPageZoomManager,
-                            mSnackbarManagerSupplier.get(),
+                            assertNonNull(mSnackbarManagerSupplier.get()),
                             mOmniboxChipManager);
             if (!mSupportsAppMenuSupplier.getAsBoolean()) {
                 mToolbarManager.getToolbar().disableMenuButton();
@@ -1981,22 +1981,6 @@ public class RootUiCoordinator
         // TODO(crbug.com/40613711): Revisit this as part of the broader
         // discussion around activity-specific UI customizations.
         if (mSupportsAppMenuSupplier.getAsBoolean()) {
-            SubmenuHeaderFactory submenuHeaderFactory =
-                    (clickedItem, backRunnable) -> {
-                        PropertyModel.Builder builder =
-                                new PropertyModel.Builder(
-                                        AppMenuSubmenuHeaderItemProperties.ALL_KEYS);
-                        HierarchicalMenuController.populateDefaultHeaderProperties(
-                                builder,
-                                new AppMenuUtil.AppMenuKeyProvider(),
-                                clickedItem.model.get(AppMenuItemProperties.TITLE),
-                                backRunnable);
-                        builder.with(
-                                AppMenuItemProperties.MENU_ITEM_ID, R.id.submenu_header_menu_id);
-                        return new ListItem(
-                                AppMenuHandler.AppMenuItemType.SUBMENU_HEADER, builder.build());
-                    };
-
             mAppMenuCoordinator =
                     AppMenuCoordinatorFactory.createAppMenuCoordinator(
                             mActivity,
@@ -2011,7 +1995,7 @@ public class RootUiCoordinator
                             this::getAppRectOnScreen,
                             mWindowAndroid,
                             mBrowserControlsManager,
-                            submenuHeaderFactory);
+                            R.id.submenu_header_menu_id);
             AppMenuCoordinatorFactory.setExceptionReporter(
                     ChromePureJavaExceptionReporter::reportJavaException);
 
@@ -2400,8 +2384,9 @@ public class RootUiCoordinator
     /** Initialize logic for hiding page zoom slider when snackbar is showing */
     private void initSnackbarObserver() {
         // On show snackbar, hide page zoom dialog
-        mSnackbarManagerSupplier
-                .get()
+        SnackbarManager snackbarManager = mSnackbarManagerSupplier.get();
+        assumeNonNull(snackbarManager);
+        snackbarManager
                 .isShowingSupplier()
                 .addSyncObserverAndPostIfNonNull(
                         (Boolean isShowing) -> {
@@ -2475,12 +2460,14 @@ public class RootUiCoordinator
      *     information.
      */
     public void onSavePersistentState(PersistableBundle outPersistentState) {
-        if (mToolbarManager.isUrlBarFocused()) {
+        if (mToolbarManager != null && mToolbarManager.isUrlBarFocused()) {
             outPersistentState.putString(
                     URL_BAR_EDIT_TEXT, mToolbarManager.getUrlBarTextWithoutAutocomplete());
         }
-        outPersistentState.putBoolean(
-                IS_TAB_SWITCHER_SHOWN, mLayoutManager.isLayoutVisible(LayoutType.TAB_SWITCHER));
+        if (mLayoutManager != null) {
+            outPersistentState.putBoolean(
+                    IS_TAB_SWITCHER_SHOWN, mLayoutManager.isLayoutVisible(LayoutType.TAB_SWITCHER));
+        }
     }
 
     /**
@@ -2589,7 +2576,7 @@ public class RootUiCoordinator
     }
 
     /** Returns a supplier of the share delegate. */
-    public Supplier<ShareDelegate> getShareDelegateSupplier() {
+    public MonotonicObservableSupplier<ShareDelegate> getShareDelegateSupplier() {
         return mShareDelegateSupplier;
     }
 
