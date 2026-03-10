@@ -273,10 +273,12 @@ void AppRuntimeContentRendererClient::
     DidStartServiceWorkerContextOnWorkerThread(
         int64_t service_worker_version_id,
         const GURL& service_worker_scope,
-        const GURL& script_url) {
+        const GURL& script_url,
+        const blink::ServiceWorkerToken& service_worker_token) {
   extensions_renderer_client_->dispatcher()
       ->DidStartServiceWorkerContextOnWorkerThread(
-          service_worker_version_id, service_worker_scope, script_url);
+          service_worker_version_id, service_worker_scope, script_url,
+          service_worker_token);
 }
 
 void AppRuntimeContentRendererClient::
@@ -284,10 +286,12 @@ void AppRuntimeContentRendererClient::
         v8::Local<v8::Context> context,
         int64_t service_worker_version_id,
         const GURL& service_worker_scope,
-        const GURL& script_url) {
+        const GURL& script_url,
+        const blink::ServiceWorkerToken& service_worker_token) {
   extensions_renderer_client_->dispatcher()
       ->WillDestroyServiceWorkerContextOnWorkerThread(
-          context, service_worker_version_id, service_worker_scope, script_url);
+          context, service_worker_version_id, service_worker_scope, script_url,
+          service_worker_token);
 }
 #endif  // defined(USE_NEVA_CHROME_EXTENSIONS)
 
