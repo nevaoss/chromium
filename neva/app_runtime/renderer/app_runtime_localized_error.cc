@@ -178,7 +178,7 @@ const AppRuntimeLocalizedErrorMap* LookupErrorMap(int error_code) {
 }  // namespace
 
 void AppRuntimeLocalizedError::GetErrorStrings(int error_code,
-    base::Value::Dict& error_strings) {
+                                               base::DictValue& error_strings) {
   // Grab the strings and settings that depend on the error type.  Init
   // options with default values.
   AppRuntimeLocalizedErrorMap options = {

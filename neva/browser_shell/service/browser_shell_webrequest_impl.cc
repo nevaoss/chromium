@@ -114,7 +114,7 @@ void WebRequestImpl::SetOnBeforeRequestListener(const std::string& json) {
   std::optional<base::Value> json_val =
       base::JSONReader::Read(json, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   if (json_val && json_val->is_dict()) {
-    base::Value::List* urls_list = json_val->GetDict().FindList("urls");
+    base::ListValue* urls_list = json_val->GetDict().FindList("urls");
     if (urls_list) {
       for (base::Value& val : *urls_list) {
         std::string* filter = val.GetIfString();

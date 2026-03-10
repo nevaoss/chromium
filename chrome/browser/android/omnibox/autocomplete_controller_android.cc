@@ -152,11 +152,11 @@ AutocompleteControllerAndroid::AutocompleteControllerAndroid(
 void AutocompleteControllerAndroid::Start(
     JNIEnv* env,
     const JavaRef<jstring>& j_text,
-    jint j_cursor_pos,
+    int32_t j_cursor_pos,
     const JavaRef<jstring>& j_desired_tld,
     const JavaRef<jstring>& j_current_url,
     ::metrics::OmniboxEventProto::PageClassification page_classification,
-    ::omnibox::ChromeAimToolsAndModels tool_mode,
+    ::omnibox::ToolMode tool_mode,
     bool prevent_inline_autocomplete,
     bool prefer_keyword,
     bool allow_exact_keyword_match,
@@ -191,7 +191,9 @@ void AutocompleteControllerAndroid::Start(
     if (AreLensSuggestInputsReady(*inputs)) {
       input_.set_lens_overlay_suggest_inputs(std::move(inputs));
     }
-    input_.set_aim_tool_mode(tool_mode);
+    omnibox::InputState input_state;
+    input_state.active_tool = tool_mode;
+    input_.set_input_state(input_state);
   }
   autocomplete_controller_->Start(input_);
 }
@@ -211,18 +213,6 @@ void AutocompleteControllerAndroid::StartPrefetch(
     auto_complete_text = omnibox::IsNTPPage(page_classification)
                              ? u""
                              : ConvertJavaStringToUTF16(env, j_current_url);
-  }
-
-  // If the Prewarm feature is enabled, we trigger them from the omnibox focus,
-  // so we check them here.
-  if (features::kPrewarmZeroSuggestTrigger.Get()) {
-    if (auto* web_contents =
-            content::WebContents::FromJavaWebContents(j_web_contents)) {
-      auto* prerender_manager =
-          PrerenderManager::GetOrCreateForWebContents(web_contents);
-      CHECK(prerender_manager);
-      prerender_manager->MaybeStartPrewarmSearchResult();
-    }
   }
 
   AutocompleteInput input(auto_complete_text, page_classification,
@@ -257,7 +247,7 @@ void AutocompleteControllerAndroid::OnOmniboxFocused(
     const JavaRef<jstring>& j_omnibox_text,
     const JavaRef<jstring>& j_current_url,
     ::metrics::OmniboxEventProto::PageClassification page_classification,
-    ::omnibox::ChromeAimToolsAndModels tool_mode,
+    ::omnibox::ToolMode tool_mode,
     const JavaRef<jstring>& j_current_title) {
   using OFT = metrics::OmniboxFocusType;
 
@@ -322,7 +312,9 @@ void AutocompleteControllerAndroid::OnOmniboxFocused(
         tool_mode != omnibox::TOOL_MODE_IMAGE_GEN_UPLOAD) {
       input_.set_lens_overlay_suggest_inputs(std::move(inputs));
     }
-    input_.set_aim_tool_mode(tool_mode);
+    omnibox::InputState input_state;
+    input_state.active_tool = tool_mode;
+    input_.set_input_state(input_state);
   }
 
   autocomplete_controller_->Start(input_);
@@ -338,17 +330,29 @@ void AutocompleteControllerAndroid::ResetSession(JNIEnv* env) {
   autocomplete_controller_->ResetSession();
 }
 
+void AutocompleteControllerAndroid::StartPrewarm(
+    JNIEnv* env,
+    const base::android::JavaRef<jobject>& j_web_contents) {
+  if (auto* web_contents =
+          content::WebContents::FromJavaWebContents(j_web_contents)) {
+    auto* prerender_manager =
+        PrerenderManager::GetOrCreateForWebContents(web_contents);
+    CHECK(prerender_manager);
+    prerender_manager->MaybeStartPrewarmSearchResult();
+  }
+}
+
 void AutocompleteControllerAndroid::OnSuggestionSelected(
     JNIEnv* env,
     uintptr_t match_ptr,
     int suggestion_line,
-    const jint j_window_open_disposition,
+    const int32_t j_window_open_disposition,
     const JavaRef<jstring>& j_current_url,
     ::metrics::OmniboxEventProto::PageClassification page_classification,
-    jlong elapsed_time_since_first_modified,
-    jint completed_length,
+    int64_t elapsed_time_since_first_modified,
+    int32_t completed_length,
     const JavaRef<jobject>& j_web_contents,
-    jlong omnibox_action_ptr) {
+    int64_t omnibox_action_ptr) {
   std::u16string url = ConvertJavaStringToUTF16(env, j_current_url);
   const GURL current_url = GURL(url);
   const base::TimeTicks& now(base::TimeTicks::Now());
@@ -467,7 +471,7 @@ void AutocompleteControllerAndroid::DeleteMatch(JNIEnv* env,
 
 void AutocompleteControllerAndroid::DeleteMatchElement(JNIEnv* env,
                                                        uintptr_t match_ptr,
-                                                       jint element_index) {
+                                                       int32_t element_index) {
   const auto* match = reinterpret_cast<AutocompleteMatch*>(match_ptr);
   if (match->SupportsDeletion()) {
     autocomplete_controller_->DeleteMatchElement(*match, element_index);
@@ -478,7 +482,7 @@ ScopedJavaLocalRef<jobject> AutocompleteControllerAndroid::
     UpdateMatchDestinationURLWithAdditionalSearchboxStats(
         JNIEnv* env,
         uintptr_t match_ptr,
-        jlong elapsed_time_since_input_change) {
+        int64_t elapsed_time_since_input_change) {
   auto* match = reinterpret_cast<AutocompleteMatch*>(match_ptr);
   autocomplete_controller_
       ->UpdateMatchDestinationURLWithAdditionalSearchboxStats(
@@ -537,8 +541,8 @@ void AutocompleteControllerAndroid::SetVoiceMatches(
 
 void AutocompleteControllerAndroid::OnSuggestionDropdownHeightChanged(
     JNIEnv* env,
-    jint dropdown_height_with_keyboard_active_px,
-    jint suggestion_height_px) {
+    int32_t dropdown_height_with_keyboard_active_px,
+    int32_t suggestion_height_px) {
   if (suggestion_height_px == 0) {
     // Don't touch the group definitions.
     return;
@@ -560,10 +564,6 @@ void AutocompleteControllerAndroid::CreateNavigationObserver(
     JNIEnv* env,
     uintptr_t navigation_handle_ptr,
     uintptr_t match_ptr) {
-  if (!base::FeatureList::IsEnabled(omnibox::kOmniboxShortcutsAndroid)) {
-    return;
-  }
-
   auto* navigation_handle =
       reinterpret_cast<content::NavigationHandle*>(navigation_handle_ptr);
   const auto& match = *reinterpret_cast<AutocompleteMatch*>(match_ptr);

@@ -23,9 +23,8 @@ import androidx.core.view.WindowInsetsCompat;
 import org.chromium.base.Callback;
 import org.chromium.base.DeviceInfo;
 import org.chromium.base.metrics.RecordHistogram;
+import org.chromium.base.supplier.MonotonicObservableSupplier;
 import org.chromium.base.supplier.NonNullObservableSupplier;
-import org.chromium.base.supplier.ObservableSupplier;
-import org.chromium.base.supplier.ObservableSupplierImpl;
 import org.chromium.base.supplier.SettableNonNullObservableSupplier;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
@@ -43,6 +42,7 @@ import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.toolbar.settings.AddressBarPreference;
 import org.chromium.chrome.browser.toolbar.top.ToolbarLayout;
+import org.chromium.chrome.browser.ui.edge_to_edge.TopInsetProvider;
 import org.chromium.components.embedder_support.util.UrlUtilities;
 import org.chromium.components.user_prefs.UserPrefs;
 import org.chromium.ui.KeyboardVisibilityDelegate;
@@ -112,22 +112,23 @@ public class ToolbarPositionController implements OnSharedPreferenceChangeListen
     private static @Nullable Boolean sToolbarShouldShowOnTop;
 
     private final BrowserControlsSizer mBrowserControlsSizer;
-    private final ObservableSupplier<Boolean> mIsNtpWithFakeboxShowingSupplier;
-    private final ObservableSupplier<Boolean> mIsIncognitoNtpShowingSupplier;
-    private final ObservableSupplier<Boolean> mIsTabSwitcherFinishedShowingSupplier;
-    private final ObservableSupplier<Boolean> mIsOmniboxFocusedSupplier;
-    private final ObservableSupplier<Boolean> mIsFormFieldFocusedSupplier;
-    private final ObservableSupplier<Boolean> mIsFindInPageShowingSupplier;
+    private final NonNullObservableSupplier<Boolean> mIsNtpWithFakeboxShowingSupplier;
+    private final NonNullObservableSupplier<Boolean> mIsIncognitoNtpShowingSupplier;
+    private final NonNullObservableSupplier<Boolean> mIsTabSwitcherFinishedShowingSupplier;
+    private final NonNullObservableSupplier<Boolean> mIsOmniboxFocusedSupplier;
+    private final NonNullObservableSupplier<Boolean> mIsFormFieldFocusedSupplier;
+    private final NonNullObservableSupplier<Boolean> mIsFindInPageShowingSupplier;
     private final ControlContainer mControlContainer;
     private final ToolbarLayout mToolbarLayout;
     private final BottomControlsStacker mBottomControlsStacker;
-    private final ObservableSupplierImpl<Integer> mBrowserControlsOffsetSupplier;
+    private final SettableNonNullObservableSupplier<Integer> mBrowserControlsOffsetSupplier;
     private final View mToolbarProgressBarContainer;
     private final KeyboardVisibilityDelegate mKeyboardVisibilityDelegate;
     private final NonNullObservableSupplier<Integer> mKeyboardAccessoryHeightSupplier;
-    private final ObservableSupplier<Integer> mControlContainerTranslationSupplier;
-    private final ObservableSupplier<Integer> mControlContainerHeightSupplier;
-    private final ObservableSupplier<Profile> mProfileSupplier;
+    private final NonNullObservableSupplier<Integer> mControlContainerTranslationSupplier;
+    private final NonNullObservableSupplier<Integer> mControlContainerHeightSupplier;
+    private final TopInsetProvider mTopInsetProvider;
+    private final MonotonicObservableSupplier<Profile> mProfileSupplier;
     private final Handler mHandler;
     @LayerVisibility private int mLayerVisibility;
     private int mControlContainerHeight;
@@ -148,6 +149,7 @@ public class ToolbarPositionController implements OnSharedPreferenceChangeListen
     private final Callback<Integer> mControlContainerTranslationCallback;
     private final Callback<Integer> mControlContainerHeightCallback;
     private final SharedPreferences mSharedPreferences;
+    private final TopInsetProvider.Observer mTopInsetProviderObserver;
     private int mTopInset;
 
     private final SettableNonNullObservableSupplier<Integer> mCurrentPosition;
@@ -178,31 +180,33 @@ public class ToolbarPositionController implements OnSharedPreferenceChangeListen
      * @param controlContainerHeightSupplier Supplier of an override current height of the control
      *     container. If the value is equal to LayoutParams.WRAP_CONTENT, it should be understood as
      *     meaning that the height should no longer be overridden.
+     * @param topInsetProvider The {@link TopInsetProvider} instance.
      * @param controlsPosition Supplier to update whenever toolbar position changes.
      * @param profileSupplier Supplier of the currently applicable profile.
      */
     public ToolbarPositionController(
             BrowserControlsSizer browserControlsSizer,
             SharedPreferences sharedPreferences,
-            ObservableSupplier<Boolean> isNtpWithFakeboxShowingSupplier,
-            ObservableSupplier<Boolean> isIncognitoNtpShowingSupplier,
-            ObservableSupplier<Boolean> isTabSwitcherFinishedShowingSupplier,
-            ObservableSupplier<Boolean> isOmniboxFocusedSupplier,
-            ObservableSupplier<Boolean> isFormFieldFocusedSupplier,
-            ObservableSupplier<Boolean> isFindInPageShowingSupplier,
+            NonNullObservableSupplier<Boolean> isNtpWithFakeboxShowingSupplier,
+            NonNullObservableSupplier<Boolean> isIncognitoNtpShowingSupplier,
+            NonNullObservableSupplier<Boolean> isTabSwitcherFinishedShowingSupplier,
+            NonNullObservableSupplier<Boolean> isOmniboxFocusedSupplier,
+            NonNullObservableSupplier<Boolean> isFormFieldFocusedSupplier,
+            NonNullObservableSupplier<Boolean> isFindInPageShowingSupplier,
             NonNullObservableSupplier<Integer> keyboardAccessoryHeightSupplier,
             KeyboardVisibilityDelegate keyboardVisibilityDelegate,
             ControlContainer controlContainer,
             ToolbarLayout toolbarLayout,
             BottomControlsStacker bottomControlsStacker,
-            ObservableSupplierImpl<Integer> browserControlsOffsetSupplier,
+            SettableNonNullObservableSupplier<Integer> browserControlsOffsetSupplier,
             View toolbarProgressBarContainer,
-            ObservableSupplier<Integer> controlContainerTranslationSupplier,
-            ObservableSupplier<Integer> controlContainerHeightSupplier,
+            NonNullObservableSupplier<Integer> controlContainerTranslationSupplier,
+            NonNullObservableSupplier<Integer> controlContainerHeightSupplier,
+            TopInsetProvider topInsetProvider,
             Handler handler,
             Context context,
             SettableNonNullObservableSupplier<Integer> controlsPosition,
-            ObservableSupplier<Profile> profileSupplier,
+            MonotonicObservableSupplier<Profile> profileSupplier,
             NonNullObservableSupplier<Integer> keyboardHeightSupplier,
             WindowAndroid windowAndroid) {
         mBrowserControlsSizer = browserControlsSizer;
@@ -221,6 +225,7 @@ public class ToolbarPositionController implements OnSharedPreferenceChangeListen
         mToolbarProgressBarContainer = toolbarProgressBarContainer;
         mControlContainerTranslationSupplier = controlContainerTranslationSupplier;
         mControlContainerHeightSupplier = controlContainerHeightSupplier;
+        mTopInsetProvider = topInsetProvider;
         mCurrentPosition = controlsPosition;
         mKeyboardHeightSupplier = keyboardHeightSupplier;
         mWindowAndroid = windowAndroid;
@@ -239,11 +244,12 @@ public class ToolbarPositionController implements OnSharedPreferenceChangeListen
         mKeyboardVisibilityListener =
                 (showing) -> updateCurrentPosition(/* prefStateChanged= */ false);
 
-        mIsNtpWithFakeboxShowingSupplier.addObserver(mIsNtpShowingObserver);
-        mIsTabSwitcherFinishedShowingSupplier.addObserver(mIsTabSwitcherFinishedShowingObserver);
-        mIsOmniboxFocusedSupplier.addObserver(mIsOmniboxFocusedObserver);
-        mIsFormFieldFocusedSupplier.addObserver(mIsFormFieldFocusedObserver);
-        mIsFindInPageShowingSupplier.addObserver(mIsFindInPageShowingObserver);
+        mIsNtpWithFakeboxShowingSupplier.addSyncObserverAndPostIfNonNull(mIsNtpShowingObserver);
+        mIsTabSwitcherFinishedShowingSupplier.addSyncObserverAndPostIfNonNull(
+                mIsTabSwitcherFinishedShowingObserver);
+        mIsOmniboxFocusedSupplier.addSyncObserverAndPostIfNonNull(mIsOmniboxFocusedObserver);
+        mIsFormFieldFocusedSupplier.addSyncObserverAndPostIfNonNull(mIsFormFieldFocusedObserver);
+        mIsFindInPageShowingSupplier.addSyncObserverAndPostIfNonNull(mIsFindInPageShowingObserver);
         mKeyboardVisibilityDelegate.addKeyboardVisibilityListener(mKeyboardVisibilityListener);
         mSharedPreferences = sharedPreferences;
         mSharedPreferences.registerOnSharedPreferenceChangeListener(this);
@@ -353,15 +359,23 @@ public class ToolbarPositionController implements OnSharedPreferenceChangeListen
         mControlContainerHeightSupplier.addSyncObserverAndCallIfNonNull(
                 mControlContainerHeightCallback);
 
-        mKeyboardAccessoryHeightSupplier.addObserver(mKeyboardAccessoryHeightObserver);
-        mKeyboardAccessoryHeightSupplier.addObserver(mKeyboardHeightProgressBarCallback);
+        mKeyboardAccessoryHeightSupplier.addSyncObserverAndPostIfNonNull(
+                mKeyboardAccessoryHeightObserver);
+        mKeyboardAccessoryHeightSupplier.addSyncObserverAndPostIfNonNull(
+                mKeyboardHeightProgressBarCallback);
         mKeyboardVisibilityDelegate.addKeyboardVisibilityListener(
                 mKeyboardVisibilityViewOffsetCallback);
-        mIsFormFieldFocusedSupplier.addObserver(mFormFieldViewOffsetCallback);
-        mIsIncognitoNtpShowingSupplier.addObserver(mIncognitoNtpShowingViewOffsetCallback);
-        mControlContainerTranslationSupplier.addObserver(mControlContainerTranslationCallback);
-        mKeyboardHeightSupplier.addObserver(mKeyboardHeightToolbarCallback);
-        mKeyboardHeightSupplier.addObserver(mKeyboardHeightProgressBarCallback);
+        mIsFormFieldFocusedSupplier.addSyncObserverAndPostIfNonNull(mFormFieldViewOffsetCallback);
+        mIsIncognitoNtpShowingSupplier.addSyncObserverAndPostIfNonNull(
+                mIncognitoNtpShowingViewOffsetCallback);
+        mControlContainerTranslationSupplier.addSyncObserverAndPostIfNonNull(
+                mControlContainerTranslationCallback);
+        mKeyboardHeightSupplier.addSyncObserverAndPostIfNonNull(mKeyboardHeightToolbarCallback);
+        mKeyboardHeightSupplier.addSyncObserverAndPostIfNonNull(mKeyboardHeightProgressBarCallback);
+
+        // Set up observer to handle edge-to-edge changes.
+        mTopInsetProviderObserver = this::onToEdgeChange;
+        mTopInsetProvider.addObserver(mTopInsetProviderObserver);
 
         updateCurrentPosition();
         mHandler = handler;
@@ -386,6 +400,7 @@ public class ToolbarPositionController implements OnSharedPreferenceChangeListen
         mControlContainerTranslationSupplier.removeObserver(mControlContainerTranslationCallback);
         mControlContainerHeightSupplier.removeObserver(mControlContainerHeightCallback);
         mKeyboardAccessoryHeightSupplier.removeObserver(mKeyboardAccessoryHeightObserver);
+        mTopInsetProvider.removeObserver(mTopInsetProviderObserver);
     }
 
     /**
@@ -501,6 +516,9 @@ public class ToolbarPositionController implements OnSharedPreferenceChangeListen
                 progressBarChangeRunnable.run();
             }
         } else {
+            // When the toolbar is at bottom, it shouldn't add any top inset. Calling
+            // onToEdgeChange() immediately to remove the top padding of Toolbar if exists.
+            onToEdgeChange(/* systemTopInset= */ 0, /* consumeTopInset= */ false);
             newTopHeight = mBrowserControlsSizer.getTopControlsHeight() - controlContainerHeight;
             mLayerVisibility = LayerVisibility.VISIBLE;
             CoordinatorLayout.LayoutParams progressBarLayoutParams =
@@ -762,7 +780,8 @@ public class ToolbarPositionController implements OnSharedPreferenceChangeListen
      * @param consumeTopInset Determines if the toolbar should utilize this top inset, extending
      *     across the full height of both the status bar and itself.
      */
-    public void onToEdgeChange(int systemTopInset, boolean consumeTopInset) {
+    @VisibleForTesting
+    void onToEdgeChange(int systemTopInset, boolean consumeTopInset) {
         // Exits early if the top padding doesn't need adjusting.
         if (NtpCustomizationUtils.shouldSkipTopInsetsChange(
                 mTopInset, systemTopInset, consumeTopInset)) {

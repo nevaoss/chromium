@@ -8,7 +8,8 @@
 #import <Foundation/Foundation.h>
 
 @protocol BWGLinkOpeningDelegate;
-@protocol BWGPageStateChangeDelegate;
+@protocol GeminiPageStateChangeDelegate;
+@protocol GeminiCameraDelegate;
 @protocol GeminiSessionDelegate;
 @protocol GeminiSuggestionDelegate;
 
@@ -17,10 +18,14 @@
 
 // Handlers for BWG protocols.
 @property(nonatomic, weak) id<BWGLinkOpeningDelegate> linkOpeningHandler;
-@property(nonatomic, weak) id<BWGPageStateChangeDelegate>
+@property(nonatomic, weak) id<GeminiPageStateChangeDelegate>
     pageStateChangeHandler;
 @property(nonatomic, weak) id<GeminiSessionDelegate> sessionHandler;
 @property(nonatomic, weak) id<GeminiSuggestionDelegate> suggestionHandler;
+
+// TODO(crbug.com/455905539): Remove optional when internal is implemented.
+@optional
+@property(nonatomic, weak) id<GeminiCameraDelegate> cameraHandler;
 
 @end
 

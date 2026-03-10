@@ -6,6 +6,7 @@ import 'chrome://new-tab-page/strings.m.js';
 import 'chrome://resources/cr_components/composebox/context_menu_entrypoint.js';
 
 import {PageCallbackRouter, PageHandlerRemote} from 'chrome://resources/cr_components/composebox/composebox.mojom-webui.js';
+import {TabUploadOrigin} from 'chrome://resources/cr_components/composebox/common.js';
 import {ComposeboxProxyImpl} from 'chrome://resources/cr_components/composebox/composebox_proxy.js';
 import type {ContextMenuEntrypointElement} from 'chrome://resources/cr_components/composebox/context_menu_entrypoint.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
@@ -31,7 +32,7 @@ suite('ContextMenuEntrypoint', () => {
     for (let i = 1; i <= count; i++) {
       tabs.push({
         title: `Tab ${i}`,
-        url: {url: `https://www.google.com/${i}`},
+        url: `https://www.google.com/${i}`,
         tabId: i,
         showInCurrentTabChip: false,
         showInPreviousTabChip: true,
@@ -99,7 +100,7 @@ suite('ContextMenuEntrypoint', () => {
         entrypoint.tabSuggestions = [
           {
             title: 'Tab 1',
-            url: {url: 'https://www.google.com'},
+            url: 'https://www.google.com',
             tabId: 1,
             showInCurrentTabChip: false,
             showInPreviousTabChip: true,
@@ -107,7 +108,7 @@ suite('ContextMenuEntrypoint', () => {
           },
           {
             title: 'Tab 2',
-            url: {url: 'https://www.google.com'},
+            url: 'https://www.google.com',
             tabId: 2,
             showInCurrentTabChip: false,
             showInPreviousTabChip: true,
@@ -139,7 +140,7 @@ suite('ContextMenuEntrypoint', () => {
     entrypoint.tabSuggestions = [
       {
         title: 'Tab 1',
-        url: {url: 'https://www.google.com'},
+        url: 'https://www.google.com',
         tabId: 1,
         showInCurrentTabChip: false,
         showInPreviousTabChip: true,
@@ -147,7 +148,7 @@ suite('ContextMenuEntrypoint', () => {
       },
       {
         title: 'Tab 2',
-        url: {url: 'https://www.google.com'},
+        url: 'https://www.google.com',
         tabId: 2,
         showInCurrentTabChip: false,
         showInPreviousTabChip: true,
@@ -342,7 +343,7 @@ suite('ContextMenuEntrypoint', () => {
     // Simulate parent component behavior of listening for event and changing
     // property.
     entrypoint.addEventListener('deep-search-click', () => {
-      entrypoint.inputsDisabled = !entrypoint.inputsDisabled;
+      entrypoint.uploadButtonDisabled = !entrypoint.uploadButtonDisabled;
     });
     await entrypoint.updateComplete;
 
@@ -351,7 +352,7 @@ suite('ContextMenuEntrypoint', () => {
     // Assert entrypoint is enabled initially.
     const deepSearchButton = $$<HTMLButtonElement>(entrypoint, '#deepSearch');
     assertTrue(!!deepSearchButton);
-    assertFalse(entrypoint.inputsDisabled);
+    assertFalse(entrypoint.uploadButtonDisabled);
 
     // Click deep search button.
     const eventFired = eventToPromise('deep-search-click', entrypoint);
@@ -361,14 +362,14 @@ suite('ContextMenuEntrypoint', () => {
 
     // Assert menu is closed and entrypoint is disabled.
     assertFalse(entrypoint.$.menu.open);
-    assertTrue(entrypoint.inputsDisabled);
+    assertTrue(entrypoint.uploadButtonDisabled);
 
     // Toggle deep search button.
     entrypoint['onDeepSearchClick_']();
     await entrypoint.updateComplete;
 
     // Assert entrypoint is enabled again.
-    assertFalse(entrypoint.inputsDisabled);
+    assertFalse(entrypoint.uploadButtonDisabled);
   });
 
   test('image upload is disabled based on state', async () => {
@@ -597,7 +598,8 @@ suite('ContextMenuEntrypoint', () => {
     // Act by clicking on tab to initiate upload flow.
     const whenTabContextAdded = eventToPromise('add-tab-context', entrypoint);
     tab.click();
-    await whenTabContextAdded;
+    const event = await whenTabContextAdded;
+    assertEquals(TabUploadOrigin.CONTEXT_MENU, event.detail.origin);
 
     // Assert context menu is still open.
     assertTrue(entrypoint.$.menu.open);

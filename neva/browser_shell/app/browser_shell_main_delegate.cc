@@ -47,12 +47,12 @@ const std::string kUserAgentKey = "user-agent";
 const std::string kDeprecatedUserAgentKey = "override_user_agent_string";
 const std::string kParametersName = "parameters";
 
-base::Value::Dict GetLaunchArgsParams() {
+base::DictValue GetLaunchArgsParams() {
   std::string args_from_cli =
       base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
           switches::kShellLaunchArgs);
 
-  base::Value::Dict args_dict;
+  base::DictValue args_dict;
   std::optional<base::Value> json = base::JSONReader::Read(
       args_from_cli, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   if (json && json->is_dict())
@@ -67,7 +67,7 @@ base::Value::Dict GetLaunchArgsParams() {
 }
 
 std::string GetUserAgentFromArgs() {
-  base::Value::Dict dict = GetLaunchArgsParams();
+  base::DictValue dict = GetLaunchArgsParams();
 
   std::string* user_agent_value = dict.FindString(kUserAgentKey);
   if (user_agent_value) {
@@ -85,8 +85,8 @@ std::string GetUserAgentFromArgs() {
       embedder_support::kUserAgent);
 }
 
-base::Value::Dict ReadLaunchArgs() {
-  base::Value::Dict dict = GetLaunchArgsParams();
+base::DictValue ReadLaunchArgs() {
+  base::DictValue dict = GetLaunchArgsParams();
 
   std::optional<bool> fullscreen_value = dict.FindBool(kFullscreenKey);
   if (!fullscreen_value) {
@@ -157,7 +157,7 @@ void BrowserShellMainDelegate::PreMainMessageLoopRun() {
   shell_params.enable_dev_tools = enable_dev_tools;
   shell_params.user_agent = GetUserAgentFromArgs();
 
-  base::Value::Dict launch_params_dict = ReadLaunchArgs();
+  base::DictValue launch_params_dict = ReadLaunchArgs();
   if (!shell_params.user_agent.empty())
     launch_params_dict.Set(kUserAgentKey, shell_params.user_agent);
   base::JSONWriter::Write(base::Value(std::move(launch_params_dict)),

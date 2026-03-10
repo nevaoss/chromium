@@ -56,7 +56,6 @@ export enum ContentSettingsTypes {
   SMART_CARD_READERS = 'smart-card-readers',
   SOUND = 'sound',
   STORAGE_ACCESS = 'storage-access',
-  TRACKING_PROTECTION = 'tracking-protection',
   TOP_LEVEL_STORAGE_ACCESS = 'top-level-storage-access',
   USB_DEVICES = 'usb-devices',
   VR = 'vr',
@@ -148,7 +147,7 @@ export enum SettingsState {
 /**
  * Enumeration of states for the Javascript optimizer default setting generated
  * pref. Must be kept in sync with the JavascriptOptimizerSetting enum in:
- * chrome/browser/content_settings/generated_javascript_optimizer_pref.h
+ * components/content_settings/browser/ui/javascript_optimizer_setting.h
  */
 // LINT.IfChange(JavascriptOptimizerSetting)
 export enum JavascriptOptimizerSetting {
@@ -156,7 +155,7 @@ export enum JavascriptOptimizerSetting {
   ALLOWED = 1,
   BLOCKED_FOR_UNFAMILIAR_SITES = 2,
 }
-// LINT.ThenChange(//chrome/browser/content_settings/generated_javascript_optimizer_pref.h:JavascriptOptimizerSetting)
+// LINT.ThenChange(//components/content_settings/browser/ui/javascript_optimizer_setting.h)
 
 /**
  * An invalid subtype value.

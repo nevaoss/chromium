@@ -1410,7 +1410,6 @@
 <translation id="7177485034254901881">Ovim uređajem <ph name="DEVICE_TYPE" /> upravlja <ph name="MANAGER" />. Administratori mogu konfigurirati uređaj na daljinu.</translation>
 <translation id="7180611975245234373">Osvježi</translation>
 <translation id="7180865173735832675">Prilagodi</translation>
-<translation id="7182063559013288142">Instant žarišna točka</translation>
 <translation id="7184043045742675738">Kliknite bilo koju tipku da biste prilagodili gumb. Premjestite tipku pomoću miša ili tipki sa strelicama.</translation>
 <translation id="7187669805838282391">u srijedu</translation>
 <translation id="7205318498545665455">Odaberite mikrofon</translation>
@@ -1557,7 +1556,7 @@ Da biste dobili te prijepise, preuzmite model prijepisa (do 100 MB).</translati
 <translation id="7847923465436619066">Alat za odabir jezika prijepisa</translation>
 <translation id="7849030488395653706">polarna svjetlost</translation>
 <translation id="7849737607196682401">čipke</translation>
-<translation id="7850320739366109486">Ne ometaj</translation>
+<translation id="7850320739366109486">Ne uznemiravaj</translation>
 <translation id="7850847810298646851">Pozadina koju pokreće Google AI</translation>
 <translation id="785170686607360576">tulipan</translation>
 <translation id="7856267634822906833">Bluetooth dodirni zaslon</translation>

@@ -16,9 +16,10 @@
 #import "ios/chrome/browser/feature_engagement/model/tracker_factory.h"
 #import "ios/chrome/browser/intelligence/bwg/coordinator/bwg_mediator_delegate.h"
 #import "ios/chrome/browser/intelligence/bwg/metrics/gemini_metrics.h"
-#import "ios/chrome/browser/intelligence/bwg/model/bwg_browser_agent.h"
 #import "ios/chrome/browser/intelligence/bwg/model/bwg_service.h"
 #import "ios/chrome/browser/intelligence/bwg/model/bwg_tab_helper.h"
+#import "ios/chrome/browser/intelligence/bwg/model/gemini_browser_agent.h"
+#import "ios/chrome/browser/intelligence/bwg/utils/bwg_constants.h"
 #import "ios/chrome/browser/intelligence/features/features.h"
 #import "ios/chrome/browser/intelligence/proto_wrappers/page_context_wrapper.h"
 #import "ios/chrome/browser/shared/model/prefs/pref_names.h"
@@ -49,7 +50,7 @@
   raw_ptr<BwgService> _BWGService;
 
   // The browser-scoped BWG browser agent.
-  raw_ptr<BwgBrowserAgent> _BWGBrowserAgent;
+  raw_ptr<GeminiBrowserAgent> _geminiBrowserAgent;
 
   // Start time for the preparation of the presentation of BWG overlay.
   base::TimeTicks _BWGOverlayPreparationStartTime;
@@ -59,13 +60,17 @@
 
   // The feature engagement tracker.
   raw_ptr<feature_engagement::Tracker> _tracker;
+
+  // The entry point BWG was started from.
+  gemini::EntryPoint _entryPoint;
 }
 
 - (instancetype)initWithPrefService:(PrefService*)prefService
                        webStateList:(WebStateList*)webStateList
                  baseViewController:(UIViewController*)baseViewController
+                         entryPoint:(gemini::EntryPoint)entryPoint
                          BWGService:(BwgService*)BWGService
-                    BWGBrowserAgent:(BwgBrowserAgent*)BWGBrowserAgent
+                 geminiBrowserAgent:(GeminiBrowserAgent*)geminiBrowserAgent
                             tracker:(feature_engagement::Tracker*)tracker {
   self = [super init];
   if (self) {
@@ -73,8 +78,9 @@
     _webStateList = webStateList;
     _baseViewController = baseViewController;
     _BWGService = BWGService;
-    _BWGBrowserAgent = BWGBrowserAgent;
+    _geminiBrowserAgent = geminiBrowserAgent;
     _tracker = tracker;
+    _entryPoint = entryPoint;
   }
   return self;
 }
@@ -108,7 +114,7 @@
   [self prepareBWGOverlay];
 }
 
-#pragma mark - BWGConsentMutator
+#pragma mark - GeminiConsentMutator
 
 // Did consent to Gemini.
 - (void)didConsentGemini {
@@ -195,8 +201,9 @@
     return;
   }
 
-  _BWGBrowserAgent->PresentFloatyWithPageContext(
-      self.baseViewController, std::move(pageContextWrapperResponse));
+  _geminiBrowserAgent->PresentFloatyWithPageContext(
+      self.baseViewController, std::move(pageContextWrapperResponse),
+      _entryPoint);
 
   base::UmaHistogramLongTimes100(
       _didPresentBWGFRE ? kStartupTimeWithFREHistogram
@@ -224,8 +231,8 @@
   partialPageContext->set_url(activeWebState->GetVisibleURL().spec());
   partialPageContext->set_title(base::UTF16ToUTF8(activeWebState->GetTitle()));
 
-  _BWGBrowserAgent->PresentFloatyWithPendingContext(
-      self.baseViewController, std::move(partialPageContext));
+  _geminiBrowserAgent->PresentFloatyWithPendingContext(
+      self.baseViewController, std::move(partialPageContext), _entryPoint);
 
   base::UmaHistogramLongTimes100(
       _didPresentBWGFRE ? kStartupTimeWithFREHistogram
@@ -251,7 +258,7 @@
     return;
   }
 
-  _BWGBrowserAgent->UpdateFloatyPageContext(std::move(response));
+  _geminiBrowserAgent->UpdateFloatyPageContext(std::move(response));
 }
 
 // Notifies the currently active WebState's BWG tab helper that the FRE will be

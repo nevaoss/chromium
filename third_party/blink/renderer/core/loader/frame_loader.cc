@@ -887,6 +887,9 @@ void FrameLoader::StartNavigation(FrameLoadRequest& request,
         NavigationApi::DispatchResult::kContinue) {
       return;
     }
+
+    request.SetResumeDeferredCommitListener(
+        std::move(params->resume_deferred_commit_listener));
   }
 
   // https://whatpr.org/html/10903/d1c086a...0e0afb3/browsing-the-web.html#beginning-navigation
@@ -965,7 +968,8 @@ void FrameLoader::StartNavigation(FrameLoadRequest& request,
       request.GetInitiatorFrameToken(), request.GetSourceLocation(),
       request.TakeInitiatorNavigationStateKeepAliveHandle(),
       request.IsContainerInitiated(),
-      request.GetWindowFeatures().explicit_opener);
+      request.GetWindowFeatures().explicit_opener,
+      request.TakeResumeDeferredCommitListener());
 }
 
 static void FillStaticResponseIfNeeded(WebNavigationParams* params,
@@ -1611,7 +1615,10 @@ void FrameLoader::ProcessFragment(const KURL& url,
                            !block_fragment_scroll);
 }
 
-bool FrameLoader::ShouldClose(bool is_reload) {
+bool FrameLoader::ShouldClose(
+    bool is_reload,
+    base::TimeTicks& out_before_unload_dialog_opened_time,
+    base::TimeTicks& out_before_unload_dialog_closed_time) {
   TRACE_EVENT1("loading", "FrameLoader::ShouldClose", "is_reload", is_reload);
   const base::TimeTicks before_unload_events_start = base::TimeTicks::Now();
 
@@ -1638,7 +1645,9 @@ bool FrameLoader::ShouldClose(bool is_reload) {
     IgnoreOpensDuringUnloadCountIncrementer ignore_opens_during_unload(
         frame_->GetDocument());
     if (!frame_->GetDocument()->DispatchBeforeUnloadEvent(
-            &page->GetChromeClient(), is_reload, did_allow_navigation)) {
+            &page->GetChromeClient(), is_reload, did_allow_navigation,
+            out_before_unload_dialog_opened_time,
+            out_before_unload_dialog_closed_time)) {
       frame_->DomWindow()->navigation()->InformAboutCanceledNavigation();
       return false;
     }
@@ -1662,7 +1671,9 @@ bool FrameLoader::ShouldClose(bool is_reload) {
           ignore_opens_during_unload_descendant(
               descendant_frame->GetDocument());
       if (!descendant_frame->GetDocument()->DispatchBeforeUnloadEvent(
-              &page->GetChromeClient(), is_reload, did_allow_navigation)) {
+              &page->GetChromeClient(), is_reload, did_allow_navigation,
+              out_before_unload_dialog_opened_time,
+              out_before_unload_dialog_closed_time)) {
         frame_->DomWindow()->navigation()->InformAboutCanceledNavigation();
         return false;
       }

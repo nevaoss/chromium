@@ -5,6 +5,7 @@
 #ifndef CHROME_BROWSER_UI_OMNIBOX_OMNIBOX_CONTEXT_MENU_CONTROLLER_H_
 #define CHROME_BROWSER_UI_OMNIBOX_OMNIBOX_CONTEXT_MENU_CONTROLLER_H_
 
+#include <optional>
 #include <string>
 
 #include "base/functional/callback.h"
@@ -13,9 +14,17 @@
 #include "base/memory/weak_ptr.h"
 #include "base/task/cancelable_task_tracker.h"
 #include "base/time/time.h"
+#include "components/contextual_search/input_state_model.h"
 #include "components/omnibox/browser/searchbox.mojom.h"
+#include "components/omnibox/common/input_state.h"
+#include "components/omnibox/composebox/composebox_query.mojom.h"
 #include "ui/menus/simple_menu_model.h"
 #include "url/gurl.h"
+
+inline constexpr char kClassicContextTypeHistogramPrefix[] =
+    "Omnibox.AimEntrypoint.ClassicPopup.ContextualElement";
+inline constexpr char kAimContextTypeHistogramPrefix[] =
+    "Omnibox.AimEntrypoint.AimPopup.ContextualElement";
 
 class FaviconService;
 class OmniboxPopupFileSelector;
@@ -32,7 +41,7 @@ class ImageModel;
 }  // namespace ui
 
 namespace omnibox {
-enum ChromeAimToolsAndModels : int;
+enum ToolMode : int;
 }  // namespace omnibox
 
 namespace content {
@@ -42,6 +51,8 @@ class WebContents;
 namespace contextual_search {
 struct FileInfo;
 }  // namespace contextual_search
+
+enum class OmniboxPopupState;
 
 // OmniboxContextMenuController creates and manages state for the context menu
 // shown for the omnibox.
@@ -67,10 +78,29 @@ class OmniboxContextMenuController : public ui::SimpleMenuModel::Delegate {
   void ExecuteCommand(int command_id, int event_flags) override;
   bool IsCommandIdEnabled(int command_id) const override;
   bool IsCommandIdVisible(int command_id) const override;
+  bool IsCommandIdChecked(int command_id) const override;
   void AddTabContext(const TabInfo& tab_info);
   void UpdateSearchboxContext(
       std::optional<TabInfo> tab_info,
       std::optional<searchbox::mojom::ToolMode> tool_mode);
+
+  // Tracks the context type.
+  // These values are persisted to logs. Entries should not be renumbered and
+  // numeric values should never be reused.
+  // LINT.IfChange(ContextType)
+  enum class ContextType {
+    kTab = 0,
+    kFile = 1,
+    kImage = 2,
+    kImageGen = 3,
+    kDeepResearch = 4,
+    kCanvas = 5,
+    kAutoModel = 6,
+    kThinkingModel = 7,
+    kRegularModel = 8,
+    kMaxValue = kRegularModel,
+  };
+  // LINT.ThenChange(//tools/metrics/histograms/metadata/omnibox/enums.xml:ContextType,//tools/metrics/histograms/metadata/omnibox/histograms.xml:ContextType)
 
  private:
   FRIEND_TEST_ALL_PREFIXES(OmniboxContextMenuControllerTest,
@@ -88,9 +118,10 @@ class OmniboxContextMenuController : public ui::SimpleMenuModel::Delegate {
   // unit testing easier.
   static bool IsCommandIdEnabledHelper(
       int command_id,
-      omnibox::ChromeAimToolsAndModels aim_tool_mode,
+      omnibox::ToolMode aim_tool_mode,
       const std::vector<contextual_search::FileInfo>& file_infos,
-      int max_num_files);
+      int max_num_files,
+      OmniboxPopupState page_type);
 
   void BuildMenu();
   // Adds a IDC_* style command to the menu with a string16.
@@ -107,8 +138,12 @@ class OmniboxContextMenuController : public ui::SimpleMenuModel::Delegate {
   void AddSeparator();
   // Adds recent tabs as items to the menu.
   void AddRecentTabItems();
-  // Adds the static items with icons.
-  void AddStaticItems();
+  // Adds the contextual input items to the menu.
+  void AddContextualInputItems();
+  // Adds the tool items to the menu.
+  void AddToolItems();
+  // Adds the model picker items to the menu.
+  void AddModelPickerItems();
   // Adds a title with a localized string to the menu.
   void AddTitleWithStringId(int localization_id);
   // Gets the most recent tabs.
@@ -121,8 +156,30 @@ class OmniboxContextMenuController : public ui::SimpleMenuModel::Delegate {
   void OnFaviconDataAvailable(
       int command_id,
       const favicon_base::FaviconImageResult& image_result);
+  void OnGetInputState(const std::optional<omnibox::InputState>& input_state);
 
   void UpdateSearchboxContextToolMode(searchbox::mojom::ToolMode tool_mode);
+
+  bool IsContentSharingEnabled() const;
+
+  /* Helpers for InputType input_state fields. */
+  omnibox::InputType GetInputTypeForCommandId(int command_id) const;
+  bool IsInputTypeVisible(omnibox::InputType input_type) const;
+  bool IsInputTypeEnabled(omnibox::InputType input_type) const;
+
+  /* Helpers for ToolMode input_state fields. */
+  omnibox::ToolMode GetToolModeForCommandId(int command_id) const;
+  const omnibox::ToolConfig* GetToolConfig(omnibox::ToolMode tool) const;
+  std::optional<omnibox::SectionConfig> GetToolSectionConfig() const;
+  bool IsToolVisible(omnibox::ToolMode tool) const;
+  bool IsToolEnabled(omnibox::ToolMode tool) const;
+
+  /* Helpers for ModelMode input_state fields. */
+  omnibox::ModelMode GetModelModeForCommandId(int command_id) const;
+  const omnibox::ModelConfig* GetModelConfig(omnibox::ModelMode model) const;
+  std::optional<omnibox::SectionConfig> GetModelSectionConfig() const;
+  bool IsModelVisible(omnibox::ModelMode model) const;
+  bool IsModelEnabled(omnibox::ModelMode model) const;
 
   raw_ptr<OmniboxController> GetOmniboxController() const;
   raw_ptr<OmniboxEditModel> GetEditModel();
@@ -137,6 +194,8 @@ class OmniboxContextMenuController : public ui::SimpleMenuModel::Delegate {
   base::CancelableTaskTracker cancelable_task_tracker_;
   raw_ptr<FaviconService> favicon_service_;
   int next_command_id_ = 0;
+
+  omnibox::InputState input_state_;
 
   base::WeakPtrFactory<OmniboxContextMenuController> weak_ptr_factory_{this};
 };

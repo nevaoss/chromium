@@ -7,16 +7,19 @@ package org.chromium.chrome.browser.metrics;
 import android.app.ActivityManager;
 import android.app.ApplicationStartInfo;
 import android.content.Context;
+import android.os.Build;
 import android.os.SystemClock;
 import android.view.View;
 
+import androidx.annotation.IntDef;
 import androidx.annotation.RequiresApi;
 
 import org.chromium.base.BinderCallsListener;
 import org.chromium.base.ContextUtils;
+import org.chromium.base.ThreadUtils;
 import org.chromium.base.TimeUtils;
 import org.chromium.base.metrics.RecordHistogram;
-import org.chromium.base.supplier.ObservableSupplier;
+import org.chromium.base.supplier.MonotonicObservableSupplier;
 import org.chromium.base.task.PostTask;
 import org.chromium.base.task.TaskTraits;
 import org.chromium.build.annotations.NullMarked;
@@ -37,6 +40,11 @@ import org.chromium.content_public.browser.NavigationHandle;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.url.GURL;
 
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.util.List;
+import java.util.function.Supplier;
+
 /**
  * Records UMA page load metrics for the first navigation on a cold start.
  *
@@ -52,7 +60,50 @@ public class StartupMetricsTracker {
             "Startup.Android.Cold.TimeToStartupFcpOrPaintPreview";
     private static final String COLD_START_TIME_TO_FIRST_FRAME =
             "Startup.Android.Cold.TimeToFirstFrame";
+    private static final String COLD_START_MISMATCH_HISTOGRAM =
+            "Startup.Android.Cold.TemperatureMismatch";
     private boolean mFirstNavigationCommitted;
+
+    // These values are persisted to logs. Entries should not be renumbered and
+    // numeric values should never be reused.
+    //
+    // LINT.IfChange(AndroidStartupTemperature)
+    @IntDef({
+        AndroidStartupTemperature.UNSET,
+        AndroidStartupTemperature.COLD,
+        AndroidStartupTemperature.WARM,
+        AndroidStartupTemperature.HOT,
+        AndroidStartupTemperature.NUM_ENTRIES
+    })
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface AndroidStartupTemperature {
+        int UNSET = 0;
+        int COLD = 1;
+        int WARM = 2;
+        int HOT = 3;
+        int NUM_ENTRIES = 4;
+    }
+
+    // LINT.ThenChange(//tools/metrics/histograms/metadata/startup/enums.xml:AndroidStartupTemperature)
+
+    // LINT.IfChange(AndroidColdStartMismatchLocation)
+    @IntDef({
+        AndroidColdStartMismatchLocation.TRACKER_COLD_SYSTEM_NOT_COLD_ACTIVITY,
+        AndroidColdStartMismatchLocation.TRACKER_COLD_SYSTEM_NOT_COLD_OTHER,
+        AndroidColdStartMismatchLocation.TRACKER_NOT_COLD_SYSTEM_COLD_ACTIVITY,
+        AndroidColdStartMismatchLocation.TRACKER_NOT_COLD_SYSTEM_COLD_OTHER,
+        AndroidColdStartMismatchLocation.NUM_ENTRIES
+    })
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface AndroidColdStartMismatchLocation {
+        int TRACKER_COLD_SYSTEM_NOT_COLD_ACTIVITY = 0;
+        int TRACKER_COLD_SYSTEM_NOT_COLD_OTHER = 1;
+        int TRACKER_NOT_COLD_SYSTEM_COLD_ACTIVITY = 2;
+        int TRACKER_NOT_COLD_SYSTEM_COLD_OTHER = 3;
+        int NUM_ENTRIES = 4;
+    }
+
+    // LINT.ThenChange(//tools/metrics/histograms/metadata/startup/enums.xml:AndroidColdStartMismatchLocation)
 
     private class TabObserver extends TabModelSelectorTabObserver {
         private boolean mFirstLoadStarted;
@@ -137,6 +188,7 @@ public class StartupMetricsTracker {
     // The time of the activity onCreate(). All metrics (such as time to first visible content) are
     // reported in uptimeMillis relative to this value.
     private final long mActivityStartTimeMs;
+    private Supplier<Boolean> mIsRestoringPersistentStateSupplier;
     private boolean mFirstVisibleContentRecorded;
     private boolean mTimeToStartupFcpOrPaintPreviewRecorded;
     private @Nullable TabModelSelectorTabObserver mTabObserver;
@@ -154,8 +206,11 @@ public class StartupMetricsTracker {
     private volatile long mFirstSafeBrowsingResponseTimeMicros;
     private boolean mFirstSafeBrowsingResponseTimeRecorded;
 
-    public StartupMetricsTracker(ObservableSupplier<TabModelSelector> tabModelSelectorSupplier) {
+    public StartupMetricsTracker(
+            MonotonicObservableSupplier<TabModelSelector> tabModelSelectorSupplier,
+            Supplier<Boolean> isRestoringPersistentStateSupplier) {
         mActivityStartTimeMs = SystemClock.uptimeMillis();
+        mIsRestoringPersistentStateSupplier = isRestoringPersistentStateSupplier;
         tabModelSelectorSupplier.addObserver(this::registerObservers);
         SafeBrowsingApiBridge.setOneTimeSafeBrowsingApiUrlCheckObserver(
                 this::updateSafeBrowsingCheckTime);
@@ -172,7 +227,26 @@ public class StartupMetricsTracker {
                         ContextUtils.getApplicationContext()
                                 .getSystemService(Context.ACTIVITY_SERVICE);
         activityManager.addApplicationStartInfoCompletionListener(
-                PostTask.getUiBestEffortExecutor(), this::recordApplicationStartInfoMetrics);
+                PostTask.getUiBestEffortExecutor(), this::recordTimeToFirstFrame);
+    }
+
+    /**
+     * Returns the most recent ApplicationStartInfo at the time the request is made. May or may not
+     * contain certain bits of information at the time of the request - see the API for more
+     * details. Makes a Binder transaction so call on a background thread.
+     *
+     * @return Returns an ApplicationStartInfo if available for the current start or null.
+     */
+    @RequiresApi(35)
+    public static @Nullable ApplicationStartInfo getCurrentApplicationStartInfo() {
+        ThreadUtils.assertOnBackgroundThread();
+        ActivityManager activityManager =
+                (ActivityManager)
+                        ContextUtils.getApplicationContext()
+                                .getSystemService(Context.ACTIVITY_SERVICE);
+        List<ApplicationStartInfo> startInfos = activityManager.getHistoricalProcessStartReasons(1);
+        if (startInfos == null || startInfos.isEmpty()) return null;
+        return startInfos.get(0);
     }
 
     private void updateSafeBrowsingCheckTime(long urlCheckTimeDeltaMicros) {
@@ -264,6 +338,7 @@ public class StartupMetricsTracker {
                 });
     }
 
+    @SuppressWarnings("NullAway")
     public void destroy() {
         mShouldTrack = false;
         mShouldTrackTimeToFirstDraw = false;
@@ -275,17 +350,15 @@ public class StartupMetricsTracker {
             PageLoadMetrics.removeObserver(mPageObserver);
             mPageObserver = null;
         }
+        if (mIsRestoringPersistentStateSupplier != null) {
+            mIsRestoringPersistentStateSupplier = null;
+        }
     }
 
     private String activityTypeToSuffix(@ActivityType int type) {
         if (type == ActivityType.TABBED) return ".Tabbed";
         assert type == ActivityType.WEB_APK;
         return ".WebApk";
-    }
-
-    private void recordExperimentalHistogram(String name, long ms) {
-        RecordHistogram.deprecatedRecordMediumTimesHistogram(
-                "Startup.Android.Experimental." + name + ".Tabbed.ColdStartTracker", ms);
     }
 
     private void recordBinderMetricsCold(String variant) {
@@ -309,7 +382,6 @@ public class StartupMetricsTracker {
                             + activityTypeToSuffix(mHistogramSuffix),
                     firstCommitMs);
             if (mHistogramSuffix == ActivityType.TABBED) {
-                recordExperimentalHistogram("FirstNavigationCommit", firstCommitMs);
                 recordFirstSafeBrowsingResponseTime();
                 recordTimeToFirstVisibleContent(firstCommitMs);
             }
@@ -319,18 +391,33 @@ public class StartupMetricsTracker {
     private void recordFcpMetrics(long firstFcpMs) {
         if (!SimpleStartupForegroundSessionDetector.runningCleanForegroundSession()) return;
         if (ColdStartTracker.wasColdOnFirstActivityCreationOrNow()) {
-            recordExperimentalHistogram("FirstContentfulPaint", firstFcpMs);
-            RecordHistogram.deprecatedRecordMediumTimesHistogram(
-                    "Startup.Android.Cold.TimeToFirstContentfulPaint3.Tabbed", firstFcpMs);
+            if (mIsRestoringPersistentStateSupplier != null
+                    && mIsRestoringPersistentStateSupplier.get()) {
+                RecordHistogram.deprecatedRecordMediumTimesHistogram(
+                        "Startup.Android.Cold.WithPersistentState."
+                                + "TimeToFirstContentfulPaint3.Tabbed",
+                        firstFcpMs);
+            } else {
+                RecordHistogram.deprecatedRecordMediumTimesHistogram(
+                        "Startup.Android.Cold.TimeToFirstContentfulPaint3.Tabbed", firstFcpMs);
+            }
             recordTimeToStartupFcpOrPaintPreview(firstFcpMs);
         }
     }
 
     private void recordTimeToFirstVisibleContent(long durationMs) {
         if (mFirstVisibleContentRecorded) return;
+
         mFirstVisibleContentRecorded = true;
-        RecordHistogram.deprecatedRecordMediumTimesHistogram(
-                "Startup.Android.Cold.TimeToFirstVisibleContent4", durationMs);
+        if (mIsRestoringPersistentStateSupplier != null
+                && mIsRestoringPersistentStateSupplier.get()) {
+            RecordHistogram.deprecatedRecordMediumTimesHistogram(
+                    "Startup.Android.Cold.WithPersistentState.TimeToFirstVisibleContent4",
+                    durationMs);
+        } else {
+            RecordHistogram.deprecatedRecordMediumTimesHistogram(
+                    "Startup.Android.Cold.TimeToFirstVisibleContent4", durationMs);
+        }
     }
 
     private void recordFirstSafeBrowsingResponseTime() {
@@ -384,12 +471,20 @@ public class StartupMetricsTracker {
      * @param applicationStartInfo contains various bits of information regarding app startup.
      */
     @RequiresApi(35)
-    private void recordApplicationStartInfoMetrics(ApplicationStartInfo applicationStartInfo) {
+    private void recordTimeToFirstFrame(ApplicationStartInfo applicationStartInfo) {
+        if (!SimpleStartupForegroundSessionDetector.runningCleanForegroundSession()
+                || mActivityStartInfoMetricsRecorded) return;
+
+        boolean isTrackerCold = ColdStartTracker.wasColdOnFirstActivityCreationOrNow();
+        boolean isSystemCold =
+                applicationStartInfo.getStartType() == ApplicationStartInfo.START_TYPE_COLD;
+        if (isTrackerCold != isSystemCold && Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
+            recordMismatchHistogram(applicationStartInfo, isTrackerCold);
+        }
+
         // TODO(crbug.com/463329742): Replace ColdStartTracker with ApplicationStartInfo when
         // test-related cold-start tracking issues are mitigated.
-        if (!SimpleStartupForegroundSessionDetector.runningCleanForegroundSession()
-                || !ColdStartTracker.wasColdOnFirstActivityCreationOrNow()
-                || mActivityStartInfoMetricsRecorded) return;
+        if (!isTrackerCold) return;
         mActivityStartInfoMetricsRecorded = true;
         final long firstFrameTimeMs =
                 applicationStartInfo
@@ -400,5 +495,42 @@ public class StartupMetricsTracker {
             RecordHistogram.recordMediumTimesHistogram(
                     COLD_START_TIME_TO_FIRST_FRAME, firstFrameTimeMs - mActivityStartTimeMs);
         }
+    }
+
+    /**
+     * Records a histogram capturing TemperatureMismatch context.
+     *
+     * <p>This metric records context around how a cold start detection mismatch occurred using
+     * ColdStartTracker (Clank's solution) and ApplicationStartInfo (Android API). If there is a
+     * mismatch, see if Clank and Android agree on what component caused this launch.
+     *
+     * @param applicationStartInfo contains various bits of information regarding app startup.
+     * @param isTrackerCold boolean that determines whether Clank had a cold start based on whether
+     *     the start was caused by an Activity launch.
+     */
+    @RequiresApi(36)
+    private void recordMismatchHistogram(
+            ApplicationStartInfo applicationStartInfo, boolean isTrackerCold) {
+        boolean isSystemActivity =
+                applicationStartInfo.getStartComponent()
+                        == ApplicationStartInfo.START_COMPONENT_ACTIVITY;
+
+        @AndroidColdStartMismatchLocation int sample;
+        if (isTrackerCold) {
+            sample =
+                    isSystemActivity
+                            ? AndroidColdStartMismatchLocation.TRACKER_COLD_SYSTEM_NOT_COLD_ACTIVITY
+                            : AndroidColdStartMismatchLocation.TRACKER_COLD_SYSTEM_NOT_COLD_OTHER;
+        } else {
+            sample =
+                    isSystemActivity
+                            ? AndroidColdStartMismatchLocation.TRACKER_NOT_COLD_SYSTEM_COLD_ACTIVITY
+                            : AndroidColdStartMismatchLocation.TRACKER_NOT_COLD_SYSTEM_COLD_OTHER;
+        }
+
+        RecordHistogram.recordEnumeratedHistogram(
+                COLD_START_MISMATCH_HISTOGRAM,
+                sample,
+                AndroidColdStartMismatchLocation.NUM_ENTRIES);
     }
 }

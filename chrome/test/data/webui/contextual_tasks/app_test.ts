@@ -5,6 +5,7 @@
 import 'chrome://contextual-tasks/app.js';
 
 import {BrowserProxyImpl} from 'chrome://contextual-tasks/contextual_tasks_browser_proxy.js';
+import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {assertDeepEquals, assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {microtasksFinished} from 'chrome://webui-test/test_util.js';
 
@@ -24,6 +25,7 @@ suite('ContextualTasksAppTest', function() {
     if (initialUrl) {
       window.history.replaceState({}, '', initialUrl);
     }
+    loadTimeData.overrideValues({enableBasicModeZOrder: true});
   });
 
   test('gets thread url', () => {
@@ -102,7 +104,7 @@ suite('ContextualTasksAppTest', function() {
     document.body.appendChild(appElement);
     await microtasksFinished();
 
-    const threadUrl = new URL(appElement.getPendingUrlForTesting());
+    const threadUrl = new URL(appElement.getThreadUrlForTesting());
 
     assertEquals(threadId, threadUrl.searchParams.get('mtid'));
     assertEquals(turnId, threadUrl.searchParams.get('mstk'));
@@ -124,11 +126,83 @@ suite('ContextualTasksAppTest', function() {
     document.body.appendChild(appElement);
     await microtasksFinished();
 
-    const threadUrl = new URL(appElement.getPendingUrlForTesting());
+    const threadUrl = new URL(appElement.getThreadUrlForTesting());
 
     assertEquals(threadId, threadUrl.searchParams.get('mtid'));
     assertEquals(turnId, threadUrl.searchParams.get('mstk'));
     assertEquals(title, threadUrl.searchParams.get('q'));
+  });
+
+  test('history entry added if task changes', async () => {
+    window.history.replaceState(
+        {}, '', `?task=111&thread=222&turn=333&title=wrong`);
+
+    const proxy = new TestContextualTasksBrowserProxy(fixtureUrl);
+    BrowserProxyImpl.setInstance(proxy);
+
+    const appElement = document.createElement('contextual-tasks-app');
+    document.body.appendChild(appElement);
+    await microtasksFinished();
+
+    const initialHistoryLength = window.history.length;
+
+    // Since the task ID is different from the one above, this call should add
+    // an entry to history.
+    proxy.callbackRouterRemote.setTaskDetails({value: '123'}, '456', '789');
+    await proxy.callbackRouterRemote.$.flushForTesting();
+    await microtasksFinished();
+
+    assertEquals(initialHistoryLength + 1, window.history.length);
+  });
+
+  test('no history entry added if task did not change', async () => {
+    window.history.replaceState(
+        {}, '', `?task=111&thread=222&turn=333&title=wrong`);
+
+    const proxy = new TestContextualTasksBrowserProxy(fixtureUrl);
+    BrowserProxyImpl.setInstance(proxy);
+
+    const appElement = document.createElement('contextual-tasks-app');
+    document.body.appendChild(appElement);
+    await microtasksFinished();
+
+    const initialHistoryLength = window.history.length;
+
+    // Since the task ID is is the same as above, a history entry should not be
+    // added.
+    proxy.callbackRouterRemote.setTaskDetails({value: '111'}, '456', '789');
+    await proxy.callbackRouterRemote.$.flushForTesting();
+    await microtasksFinished();
+
+    assertEquals(initialHistoryLength, window.history.length);
+  });
+
+  test('back navigation fetches previous task url', async () => {
+    window.history.replaceState(
+        {}, '', `?task=111&thread=222&turn=333&title=wrong`);
+
+    const proxy = new TestContextualTasksBrowserProxy(
+        `http://example.com?mtid=111&mstk=222&q=title`);
+    BrowserProxyImpl.setInstance(proxy);
+
+    const appElement = document.createElement('contextual-tasks-app');
+    document.body.appendChild(appElement);
+    const {promise, resolve} = Promise.withResolvers<void>();
+    appElement.setPopStateFinishedCallbackForTesting(resolve);
+    await microtasksFinished();
+
+    // Fake a task change event.
+    proxy.callbackRouterRemote.setTaskDetails({value: '999'}, '456', '789');
+    await proxy.callbackRouterRemote.$.flushForTesting();
+    await microtasksFinished();
+
+    window.history.back();
+
+    // There should have been a call to get the url for the previous task.
+    assertDeepEquals(
+        {value: '111'}, await proxy.handler.whenCalled('getUrlForTask'));
+
+    await promise;
   });
 
   test('history requested if url param set', async () => {
@@ -142,7 +216,7 @@ suite('ContextualTasksAppTest', function() {
     document.body.appendChild(appElement);
     await microtasksFinished();
 
-    const threadUrl = new URL(appElement.getPendingUrlForTesting());
+    const threadUrl = new URL(appElement.getThreadUrlForTesting());
 
     // The param to open history should have been added to the initial thread
     // URL.
@@ -178,51 +252,13 @@ suite('ContextualTasksAppTest', function() {
     assertTrue(!!appElement.shadowRoot.querySelector('top-toolbar'));
   });
 
-  test('thread url pending until oauth token', async () => {
+  test('thread url set immediately', async () => {
     const proxy = new TestContextualTasksBrowserProxy(fixtureUrl);
     BrowserProxyImpl.setInstance(proxy);
 
     const app = document.createElement('contextual-tasks-app');
     document.body.appendChild(app);
 
-    await proxy.handler.whenCalled('getThreadUrl');
-
-    const webview = app.shadowRoot.querySelector('webview');
-    assertTrue(!!webview);
-    assertFalse(!!webview.getAttribute('src'));
-
-    const token = 'test_token';
-    proxy.callbackRouterRemote.setOAuthToken(token);
-    await proxy.callbackRouterRemote.$.flushForTesting();
-    await microtasksFinished();
-
-    assertEquals(fixtureUrl, webview.getAttribute('src'));
-  });
-
-  test('thread url set immediately if oauth token available', async () => {
-    const proxy = new TestContextualTasksBrowserProxy(fixtureUrl);
-    BrowserProxyImpl.setInstance(proxy);
-
-    // Delay getThreadUrl to simulate token arriving first.
-    let resolveThreadUrl: (val: any) => void;
-    const threadUrlPromise = new Promise<any>((resolve) => {
-      resolveThreadUrl = resolve;
-    });
-    proxy.handler.getThreadUrl = () => {
-      proxy.handler.methodCalled('getThreadUrl');
-      return threadUrlPromise;
-    };
-
-    const app = document.createElement('contextual-tasks-app');
-    document.body.appendChild(app);
-
-    // Send token.
-    const token = 'test_token';
-    proxy.callbackRouterRemote.setOAuthToken(token);
-    await proxy.callbackRouterRemote.$.flushForTesting();
-
-    // Resolve URL.
-    resolveThreadUrl!({url: {url: fixtureUrl}});
     await proxy.handler.whenCalled('getThreadUrl');
     await microtasksFinished();
 
@@ -231,29 +267,81 @@ suite('ContextualTasksAppTest', function() {
     assertEquals(fixtureUrl, webview.getAttribute('src'));
   });
 
-  test('composebox visibility toggles', async () => {
-    const proxy = new TestContextualTasksBrowserProxy(fixtureUrl);
-    BrowserProxyImpl.setInstance(proxy);
 
-    const appElement = document.createElement('contextual-tasks-app');
-    document.body.appendChild(appElement);
-    await microtasksFinished();
+  test(
+      'composebox z-index changes when visibility toggles with enableBasicModeZOrder',
+      async () => {
+        const proxy = new TestContextualTasksBrowserProxy(fixtureUrl);
+        BrowserProxyImpl.setInstance(proxy);
 
-    const composebox =
-        appElement.shadowRoot.querySelector('contextual-tasks-composebox');
-    assertTrue(!!composebox);
-    assertFalse(composebox.hasAttribute('hidden'));
+        const appElement = document.createElement('contextual-tasks-app');
+        document.body.appendChild(appElement);
+        await microtasksFinished();
 
-    // Hide the compose box.
-    proxy.callbackRouterRemote.hideInput();
-    await proxy.callbackRouterRemote.$.flushForTesting();
-    assertTrue(composebox.hasAttribute('hidden'));
+        const composebox =
+            appElement.shadowRoot.querySelector('contextual-tasks-composebox');
+        const threadFrame = appElement.shadowRoot.querySelector('#threadFrame');
+        const flexCenterContainer =
+            appElement.shadowRoot.querySelector('#flexCenterContainer');
 
-    // Restore the compose box.
-    proxy.callbackRouterRemote.restoreInput();
-    await proxy.callbackRouterRemote.$.flushForTesting();
-    assertFalse(composebox.hasAttribute('hidden'));
-  });
+        assertTrue(!!composebox);
+        assertFalse(composebox.hasAttribute('hidden'));
+
+        // Hide the compose box (enter basic mode).
+        proxy.callbackRouterRemote.hideInput();
+        await proxy.callbackRouterRemote.$.flushForTesting();
+
+        // With flag enabled, hidden attribute should NOT be present.
+        assertFalse(composebox.hasAttribute('hidden'));
+
+        const threadFrameStyle = getComputedStyle(threadFrame!);
+        const flexCenterStyle = getComputedStyle(flexCenterContainer!);
+
+        assertEquals(
+            '1', threadFrameStyle.zIndex, 'Thread frame z-index should be 1');
+        assertEquals(
+            '0', flexCenterStyle.zIndex,
+            'Flex center container z-index should be 0');
+
+        // Restore the compose box.
+        proxy.callbackRouterRemote.restoreInput();
+        await proxy.callbackRouterRemote.$.flushForTesting();
+        assertFalse(composebox.hasAttribute('hidden'));
+
+        const threadFrameStyleRestored = getComputedStyle(threadFrame!);
+        const flexCenterStyleRestored = getComputedStyle(flexCenterContainer!);
+
+        // Verify z-index is not stuck
+        assertFalse(threadFrameStyleRestored.zIndex === '1');
+        assertFalse(flexCenterStyleRestored.zIndex === '0');
+      });
+
+  test(
+      'composebox visibility toggles with enableBasicModeZOrder set to false',
+      async () => {
+        loadTimeData.overrideValues({enableBasicModeZOrder: false});
+        const proxy = new TestContextualTasksBrowserProxy(fixtureUrl);
+        BrowserProxyImpl.setInstance(proxy);
+
+        const appElement = document.createElement('contextual-tasks-app');
+        document.body.appendChild(appElement);
+        await microtasksFinished();
+
+        const composebox =
+            appElement.shadowRoot.querySelector('contextual-tasks-composebox');
+        assertTrue(!!composebox);
+        assertFalse(composebox.hasAttribute('hidden'));
+
+        // Hide the compose box.
+        proxy.callbackRouterRemote.hideInput();
+        await proxy.callbackRouterRemote.$.flushForTesting();
+        assertTrue(composebox.hasAttribute('hidden'));
+
+        // Restore the compose box.
+        proxy.callbackRouterRemote.restoreInput();
+        await proxy.callbackRouterRemote.$.flushForTesting();
+        assertFalse(composebox.hasAttribute('hidden'));
+      });
 
   test('task details updated in url', async () => {
     // Set the q query parameter for the AI page.
@@ -297,31 +385,110 @@ suite('ContextualTasksAppTest', function() {
     assertTrue(appElement.hasAttribute('is-ai-page_'));
   });
 
-  test('lens overlay state reflected in dom', async () => {
-    const proxy = new TestContextualTasksBrowserProxy(fixtureUrl);
+  // Disabled due to flakiness. See http://crbug.com/481936603.
+  test.skip('copies source and aep params on new thread click', async () => {
+    const initialThreadUrl = new URL('http://example.com?q=initial');
+    initialThreadUrl.searchParams.set('source', 'some-source');
+    initialThreadUrl.searchParams.set('aep', 'some-aep');
+
+    const proxy = new TestContextualTasksBrowserProxy(initialThreadUrl.href);
     BrowserProxyImpl.setInstance(proxy);
+    proxy.handler.setIsShownInTab(true);
 
     const appElement = document.createElement('contextual-tasks-app');
     document.body.appendChild(appElement);
     await microtasksFinished();
 
-    const composebox =
-        appElement.shadowRoot.querySelector('contextual-tasks-composebox');
-    if (!composebox) {
-      throw new Error('composebox not found');
-    }
-    assertFalse(composebox.hasAttribute('is-lens-overlay-showing'));
-
-    proxy.callbackRouterRemote.onLensOverlayStateChanged(true);
+    // Switch to side panel view, which should show the toolbar.
+    proxy.handler.setIsShownInTab(false);
+    proxy.callbackRouterRemote.onSidePanelStateChanged();
     await proxy.callbackRouterRemote.$.flushForTesting();
     await microtasksFinished();
 
-    assertTrue(composebox.hasAttribute('is-lens-overlay-showing'));
+    // Make sure the initial URL is set.
+    assertEquals(initialThreadUrl.href, appElement.getThreadUrlForTesting());
 
-    proxy.callbackRouterRemote.onLensOverlayStateChanged(false);
-    await proxy.callbackRouterRemote.$.flushForTesting();
+    const newThreadUrl = 'http://new-thread.com/';
+    proxy.handler.setThreadUrl(newThreadUrl);
+
+    // Simulate a new thread click from the toolbar.
+    const toolbar = appElement.shadowRoot.querySelector('top-toolbar');
+    assertTrue(!!toolbar, 'Toolbar should be visible');
+    toolbar.dispatchEvent(
+        new CustomEvent('new-thread-click', {bubbles: true, composed: true}));
     await microtasksFinished();
 
-    assertFalse(composebox.hasAttribute('is-lens-overlay-showing'));
+    const finalUrl = new URL(appElement.getThreadUrlForTesting());
+    assertEquals(newThreadUrl, finalUrl.origin + finalUrl.pathname);
+    assertEquals('some-source', finalUrl.searchParams.get('source'));
+    assertEquals('some-aep', finalUrl.searchParams.get('aep'));
   });
+
+  test(
+      'does not force enter basic mode when thread history is open if flag is disabled',
+      async () => {
+        loadTimeData.overrideValues(
+            {forceBasicModeIfOpeningThreadHistory: false});
+        const fixtureUrlWithHistory = new URL(fixtureUrl);
+        fixtureUrlWithHistory.searchParams.set('atvm', '1');
+        const proxy = new TestContextualTasksBrowserProxy(
+            fixtureUrlWithHistory.toString());
+        BrowserProxyImpl.setInstance(proxy);
+        proxy.handler.setIsShownInTab(true);
+
+        const appElement = document.createElement('contextual-tasks-app');
+        document.body.appendChild(appElement);
+        await microtasksFinished();
+
+        const composebox =
+            appElement.shadowRoot.querySelector('contextual-tasks-composebox');
+        const threadFrame = appElement.shadowRoot.querySelector('#threadFrame');
+        const flexCenterContainer =
+            appElement.shadowRoot.querySelector('#flexCenterContainer');
+
+        assertTrue(!!composebox);
+        assertFalse(composebox.hasAttribute('hidden'));
+
+        const threadFrameStyle = getComputedStyle(threadFrame!);
+        const flexCenterStyle = getComputedStyle(flexCenterContainer!);
+
+        // Verify z-index is not set to basic mode values
+        assertFalse(threadFrameStyle.zIndex === '1');
+        assertFalse(flexCenterStyle.zIndex === '0');
+      });
+
+  test(
+      'force enter basic mode when thread URL has history params', async () => {
+        loadTimeData.overrideValues(
+            {forceBasicModeIfOpeningThreadHistory: true});
+        const fixtureUrlWithHistory = new URL(fixtureUrl);
+        fixtureUrlWithHistory.searchParams.set('atvm', '1');
+        const proxy = new TestContextualTasksBrowserProxy(
+            fixtureUrlWithHistory.toString());
+        BrowserProxyImpl.setInstance(proxy);
+        proxy.handler.setIsShownInTab(true);
+
+        const appElement = document.createElement('contextual-tasks-app');
+        document.body.appendChild(appElement);
+        await microtasksFinished();
+
+        const composebox =
+            appElement.shadowRoot.querySelector('contextual-tasks-composebox');
+        const threadFrame = appElement.shadowRoot.querySelector('#threadFrame');
+        const flexCenterContainer =
+            appElement.shadowRoot.querySelector('#flexCenterContainer');
+
+        assertTrue(!!composebox);
+        // With z-order enabled, it should NOT be hidden
+        assertFalse(composebox.hasAttribute('hidden'));
+
+        const threadFrameStyle = getComputedStyle(threadFrame!);
+        const flexCenterStyle = getComputedStyle(flexCenterContainer!);
+
+        assertEquals(
+            '1', threadFrameStyle.zIndex, 'Thread frame z-index should be 1');
+        assertEquals(
+            '0', flexCenterStyle.zIndex,
+            'Flex center container z-index should be 0');
+      });
 });

@@ -227,6 +227,6 @@ void NevaExtensionLoader::OnExtensionInstalled(
     const extensions::Extension* extension,
     const syncer::StringOrdinal& page_ordinal,
     int install_flags,
-    base::Value::Dict ruleset_install_prefs) {}
+    base::DictValue ruleset_install_prefs) {}
 
 }  // namespace neva

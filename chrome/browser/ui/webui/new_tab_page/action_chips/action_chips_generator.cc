@@ -4,14 +4,18 @@
 
 #include "chrome/browser/ui/webui/new_tab_page/action_chips/action_chips_generator.h"
 
+#include <algorithm>
 #include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
 
+#include "base/containers/fixed_flat_set.h"
 #include "base/functional/callback_forward.h"
 #include "base/i18n/char_iterator.h"
+#include "base/logging.h"
+#include "base/metrics/histogram_functions.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
@@ -21,7 +25,10 @@
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/webui/new_tab_page/action_chips/action_chips.mojom-forward.h"
+#include "chrome/browser/ui/webui/new_tab_page/action_chips/action_chips.mojom-shared.h"
 #include "chrome/browser/ui/webui/new_tab_page/action_chips/action_chips.mojom.h"
+#include "chrome/browser/ui/webui/new_tab_page/action_chips/action_chips_metrics.h"
 #include "chrome/browser/ui/webui/new_tab_page/action_chips/remote_suggestions_service_simple.h"
 #include "chrome/browser/ui/webui/new_tab_page/action_chips/tab_id_generator.h"
 #include "chrome/grit/generated_resources.h"
@@ -38,10 +45,13 @@
 #include "components/url_formatter/url_formatter.h"
 #include "content/public/browser/web_contents.h"
 #include "third_party/omnibox_proto/groups.pb.h"
+#include "third_party/omnibox_proto/page_vertical.pb.h"
+#include "third_party/omnibox_proto/types.pb.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "url/url_util.h"
 
 namespace {
+using ::action_chips::RecordActionChipsRequestStatus;
 using ::action_chips::RemoteSuggestionsServiceSimple;
 using ::action_chips::RemoteSuggestionsServiceSimpleImpl;
 using ::action_chips::mojom::ActionChip;
@@ -98,8 +108,7 @@ ChipsGenerationScenario GetScenario(
     base::optional_ref<const TabInterface> tab,
     OptimizationGuideKeyedService* optimization_guide_decider,
     AutocompleteProviderClient& client) {
-  if (ntp_features::kNtpNextShowStaticTextParam.Get() ||
-      !client.IsPersonalizedUrlDataCollectionActive() || !tab.has_value()) {
+  if (!client.IsPersonalizedUrlDataCollectionActive() || !tab.has_value()) {
     return ChipsGenerationScenario::kStaticChipsOnly;
   }
   // Check if deep dive parameter is enabled, and tab is in deep
@@ -111,14 +120,22 @@ ChipsGenerationScenario GetScenario(
   return ChipsGenerationScenario::kSteady;
 }
 
+// Create a recent tab chip. The chip by default (in U.S.) would look like the
+// following:
+// |-------------------------|
+// | Ask about previous tab  |
+// |  ${title of the tab}    |
+// |-------------------------|
 ActionChipPtr CreateRecentTabChip(TabInfoPtr tab, std::string_view suggestion) {
   ActionChipPtr chip = ActionChip::New();
   chip->type = ChipType::kRecentTab;
   chip->title =
       !suggestion.empty()
-          ? suggestion
+          ? std::string(suggestion)
           : l10n_util::GetStringUTF8(IDS_NTP_ACTION_CHIP_TAB_HEADING_1);
-  chip->suggestion = tab->title;
+  // As mentioned above, the title of the tab is displayed on the second line.
+  chip->subtitle = tab->title;
+  chip->suggestion = std::string();
   chip->tab = std::move(tab);
   return chip;
 }
@@ -127,10 +144,11 @@ ActionChipPtr CreateDeepSearchChip(std::string_view suggestion) {
   ActionChipPtr chip = ActionChip::New();
   chip->type = ChipType::kDeepSearch;
   chip->title = l10n_util::GetStringUTF8(IDS_NTP_COMPOSE_DEEP_SEARCH);
-  chip->suggestion =
+  chip->subtitle =
       !suggestion.empty()
-          ? suggestion
+          ? std::string(suggestion)
           : l10n_util::GetStringUTF8(IDS_NTP_ACTION_CHIP_DEEP_SEARCH_BODY);
+  chip->suggestion = std::string();
   return chip;
 }
 
@@ -148,10 +166,11 @@ ActionChipPtr CreateImageCreationChip(std::string_view suggestion) {
   ActionChipPtr chip = ActionChip::New();
   chip->type = ChipType::kImage;
   chip->title = l10n_util::GetStringUTF8(IDS_NTP_COMPOSE_CREATE_IMAGES);
-  chip->suggestion =
+  chip->subtitle =
       !suggestion.empty()
-          ? suggestion
+          ? std::string(suggestion)
           : l10n_util::GetStringUTF8(IDS_NTP_ACTION_CHIP_CREATE_IMAGE_BODY_1);
+  chip->suggestion = std::string();
   return chip;
 }
 
@@ -169,7 +188,9 @@ ActionChipPtr CreateDeepDiveChip(TabInfoPtr tab,
                                  const std::u16string_view suggestion) {
   ActionChipPtr chip = ActionChip::New();
   chip->type = ChipType::kDeepDive;
-  chip->suggestion = base::UTF16ToUTF8(suggestion);
+  const std::string suggestion_string = base::UTF16ToUTF8(suggestion);
+  chip->subtitle = suggestion_string;
+  chip->suggestion = suggestion_string;
   chip->tab = std::move(tab);
   return chip;
 }
@@ -178,7 +199,7 @@ std::vector<ActionChipPtr> CreateDeepDiveChips(
     const TabInfoPtr& tab,
     const SearchSuggestionParser::SuggestResults& suggestions) {
   std::vector<ActionChipPtr> chips;
-  chips.push_back(CreateRecentTabChip(tab->Clone(), ""));
+  chips.push_back(CreateRecentTabChip(tab->Clone(), /*suggestion=*/""));
   for (const auto& suggestion : suggestions) {
     if (chips.size() == 3) {
       break;
@@ -194,6 +215,40 @@ std::vector<ActionChipPtr> CreateDeepDiveChips(
   return chips;
 }
 
+std::vector<omnibox::ToolMode> GetAllowedTools(
+    const AimEligibilityService* aim_eligibility_service) {
+  std::vector<omnibox::ToolMode> allowed_tools;
+  if (aim_eligibility_service == nullptr) {
+    return allowed_tools;
+  }
+  if (aim_eligibility_service->IsDeepSearchEligible()) {
+    allowed_tools.push_back(omnibox::TOOL_MODE_DEEP_SEARCH);
+  }
+  if (aim_eligibility_service->IsCreateImagesEligible()) {
+    allowed_tools.push_back(omnibox::TOOL_MODE_IMAGE_GEN);
+  }
+  return allowed_tools;
+}
+
+std::optional<ChipType> GetChipType(
+    omnibox::GroupId group_id,
+    base::optional_ref<const omnibox::PageVertical> page_vertical) {
+  switch (group_id) {
+    case omnibox::GROUP_AI_MODE_DEEP_SEARCH_ACTION:
+      return ChipType::kDeepSearch;
+    case omnibox::GROUP_AI_MODE_CREATE_IMAGE_ACTION:
+      return ChipType::kImage;
+    case omnibox::GROUP_AI_MODE_CONTEXTUAL_SEARCH_ACTION:
+      if (page_vertical.has_value() &&
+          *page_vertical == omnibox::PAGE_VERTICAL_EDU) {
+        return ChipType::kDeepDive;
+      }
+      return ChipType::kRecentTab;
+    default:
+      return std::nullopt;
+  }
+}
+
 TabInfoPtr CreateTabInfo(const TabIdGenerator& tab_id_generator,
                          const TabInterface& tab) {
   TabInfoPtr tab_info = TabInfo::New();
@@ -205,35 +260,50 @@ TabInfoPtr CreateTabInfo(const TabIdGenerator& tab_id_generator,
   return tab_info;
 }
 
-struct CreateChipsForSteadyStateOptions {
-  std::string recent_tab_suggestion;
-  std::string deep_search_suggestion;
-  std::string image_creation_suggestion;
-};
+TabInfoPtr CreateTabInfo(const TabIdGenerator& tab_id_generator,
+                         base::optional_ref<const TabInterface> tab) {
+  return tab.has_value() ? CreateTabInfo(tab_id_generator, *tab) : nullptr;
+}
 
 std::vector<ActionChipPtr> CreateChipsForSteadyState(
     TabInfoPtr tab,
-    const AimEligibilityService* aim_eligibility_service,
-    const CreateChipsForSteadyStateOptions& options) {
+    const AimEligibilityService* aim_eligibility_service) {
   std::vector<ActionChipPtr> chips;
-  if (!tab.is_null()) {
-    chips.push_back(
-        CreateRecentTabChip(std::move(tab), options.recent_tab_suggestion));
-  }
-  std::optional<ActionChipPtr> deep_search_chip =
-      CreateDeepSearchChipIfEligible(options.deep_search_suggestion,
-                                     aim_eligibility_service);
-  if (deep_search_chip.has_value()) {
-    chips.push_back(*std::move(deep_search_chip));
+  if (!tab.is_null() &&
+      ntp_features::kNtpNextShowStaticRecentTabChipParam.Get()) {
+    chips.push_back(CreateRecentTabChip(std::move(tab), /*suggestion=*/""));
   }
 
-  std::optional<ActionChipPtr> image_creation_chip =
-      CreateImageCreationChipIfEligible(options.image_creation_suggestion,
-                                        aim_eligibility_service);
-  if (image_creation_chip.has_value()) {
-    chips.push_back(*std::move(image_creation_chip));
+  if (std::optional<ActionChipPtr> deep_search_chip =
+          CreateDeepSearchChipIfEligible(
+              /*suggestion=*/"", aim_eligibility_service);
+      deep_search_chip.has_value()) {
+    chips.push_back(std::move(*deep_search_chip));
+  }
+
+  if (std::optional<ActionChipPtr> image_creation_chip =
+          CreateImageCreationChipIfEligible(
+              /*suggestion=*/"", aim_eligibility_service);
+      image_creation_chip.has_value()) {
+    chips.push_back(std::move(*image_creation_chip));
   }
   return chips;
+}
+
+struct TitleAndUrl {
+  std::optional<std::u16string> title;
+  std::optional<GURL> url;
+};
+
+TitleAndUrl GetTitleAndUrl(base::optional_ref<const TabInterface> tab) {
+  if (!tab.has_value()) {
+    return {};
+  }
+  content::WebContents& contents = *tab->GetContents();
+  return {
+      .title = contents.GetTitle(),
+      .url = contents.GetLastCommittedURL(),
+  };
 }
 }  // namespace
 
@@ -276,42 +346,69 @@ void ActionChipsGeneratorImpl::GenerateActionChips(
   // Cancel the existing chips generation by destructing the
   // loader.
   loader_.reset();
+
+  if (ntp_features::kNtpNextShowStaticTextParam.Get()) {
+    std::move(callback).Run(CreateChipsForSteadyState(
+        CreateTabInfo(*tab_id_generator_, tab), aim_eligibility_service_));
+    return;
+  }
+
+  if (ntp_features::kNtpNextSuggestionsFromNewSearchSuggestionsEndpointParam
+          .Get()) {
+    GenerateActionChipsFromNewEndpoint(
+        client_->IsPersonalizedUrlDataCollectionActive() ? tab : std::nullopt,
+        std::move(callback));
+    return;
+  }
+
+  GenerateActionChipsFromScenario(tab, std::move(callback));
+}
+
+void ActionChipsGeneratorImpl::GenerateActionChipsFromNewEndpoint(
+    base::optional_ref<const TabInterface> tab,
+    base::OnceCallback<void(std::vector<action_chips::mojom::ActionChipPtr>)>
+        callback) {
+  std::optional<omnibox::PageVertical> page_vertical;
+  if (ntp_features::kNtpNextShowDeepDiveSuggestionsParam.Get() &&
+      tab.has_value() && IsDeepDiveTab(*tab, optimization_guide_decider_)) {
+    page_vertical = omnibox::PageVertical::PAGE_VERTICAL_EDU;
+  }
+
+  auto [title, url] = GetTitleAndUrl(tab);
+  loader_ = remote_suggestions_service_simple_->GetActionChipSuggestions(
+      title, url, GetAllowedTools(aim_eligibility_service_), page_vertical,
+      base::BindOnce(
+          &ActionChipsGeneratorImpl::GenerateActionChipsFromRemoteResponse,
+          this->weak_factory_.GetWeakPtr(),
+          CreateTabInfo(*tab_id_generator_, tab), std::move(page_vertical),
+          std::move(callback)));
+}
+
+void ActionChipsGeneratorImpl::GenerateActionChipsFromScenario(
+    base::optional_ref<const TabInterface> tab,
+    base::OnceCallback<void(std::vector<action_chips::mojom::ActionChipPtr>)>
+        callback) {
   switch (GetScenario(tab, optimization_guide_decider_, *client_)) {
-    case ChipsGenerationScenario::kStaticChipsOnly: {
-      std::move(callback).Run(CreateChipsForSteadyState(
-          tab.has_value() ? CreateTabInfo(*tab_id_generator_, *tab) : nullptr,
-          aim_eligibility_service_,
-          /*options=*/{}));
-      break;
-    }
     case ChipsGenerationScenario::kDeepDive: {
-      if (ntp_features::kNtpNextSuggestionsFromNewSearchSuggestionsEndpointParam
-              .Get()) {
-        // TODO: b:457512149 - Use the new endpoint once it is ready.
-        std::move(callback).Run(CreateChipsForSteadyState(
-            tab.has_value() ? CreateTabInfo(*tab_id_generator_, *tab) : nullptr,
-            aim_eligibility_service_,
-            /*options=*/{}));
-      } else {
-        content::WebContents& contents = *tab->GetContents();
-        loader_ =
-            remote_suggestions_service_simple_
-                ->GetDeepdiveChipSuggestionsForTab(
-                    contents.GetTitle(), contents.GetLastCommittedURL(),
-                    base::BindOnce(&ActionChipsGeneratorImpl::
-                                       GenerateDeepDiveChipsFromRemoteResponse,
-                                   this->weak_factory_.GetWeakPtr(),
-                                   CreateTabInfo(*tab_id_generator_, *tab),
-                                   std::move(callback)));
-      }
+      // In the deep-dive scenario, we have a previous tab available.
+      DCHECK(tab.has_value());
+      content::WebContents& contents = *tab->GetContents();
+      loader_ =
+          remote_suggestions_service_simple_->GetDeepdiveChipSuggestionsForTab(
+              contents.GetTitle(), contents.GetLastCommittedURL(),
+              base::BindOnce(&ActionChipsGeneratorImpl::
+                                 GenerateDeepDiveChipsFromRemoteResponse,
+                             this->weak_factory_.GetWeakPtr(),
+                             CreateTabInfo(*tab_id_generator_, tab),
+                             std::move(callback)));
       break;
     }
-    default:
-      // TODO: b:457512149 - handle the other cases correctly.
+    case ChipsGenerationScenario::kStaticChipsOnly:
+    case ChipsGenerationScenario::kSteady: {
       std::move(callback).Run(CreateChipsForSteadyState(
-          tab.has_value() ? CreateTabInfo(*tab_id_generator_, *tab) : nullptr,
-          aim_eligibility_service_,
-          /*options=*/{}));
+          CreateTabInfo(*tab_id_generator_, tab), aim_eligibility_service_));
+      break;
+    }
   }
 }
 
@@ -320,12 +417,73 @@ void ActionChipsGeneratorImpl::GenerateDeepDiveChipsFromRemoteResponse(
     base::OnceCallback<void(std::vector<action_chips::mojom::ActionChipPtr>)>
         callback,
     RemoteSuggestionsServiceSimple::ActionChipSuggestionsResult&& result) {
-  if (!result.has_value() || result->size() == 0) {
-    std::move(callback).Run(CreateChipsForSteadyState(std::move(tab),
-                                                      aim_eligibility_service_,
-                                                      /*options=*/{}));
+  if (!result.has_value() || result->size() <= 1) {
+    std::move(callback).Run(
+        CreateChipsForSteadyState(std::move(tab), aim_eligibility_service_));
     return;
   }
   std::vector<ActionChipPtr> chips = CreateDeepDiveChips(tab, *result);
+  std::move(callback).Run(std::move(chips));
+}
+
+void ActionChipsGeneratorImpl::GenerateActionChipsFromRemoteResponse(
+    action_chips::mojom::TabInfoPtr tab,
+    std::optional<const omnibox::PageVertical> page_vertical,
+    base::OnceCallback<void(std::vector<action_chips::mojom::ActionChipPtr>)>
+        callback,
+    RemoteSuggestionsServiceSimple::ActionChipSuggestionsResult&& result) {
+  RecordActionChipsRequestStatus(result);
+  if (!result.has_value()) {
+    std::move(callback).Run(
+        CreateChipsForSteadyState(std::move(tab), aim_eligibility_service_));
+    return;
+  }
+
+  std::vector<ActionChipPtr> chips;
+  for (const auto& suggestion : *result) {
+    if (suggestion.suggest_type() !=
+        omnibox::SuggestType::TYPE_FUSEBOX_ACTION) {
+      VLOG(1) << "Skipping a suggestion whose suggest type was: "
+              << suggestion.suggest_type();
+      continue;
+    }
+
+    if (!suggestion.suggestion_group_id().has_value()) {
+      VLOG(1)
+          << "A suggestion did not have a group ID. Its match_contents was: "
+          << suggestion.match_contents();
+      continue;
+    }
+    const omnibox::GroupId group_id = *suggestion.suggestion_group_id();
+    const std::optional<ChipType> chip_type =
+        GetChipType(group_id, page_vertical);
+
+    if (!chip_type.has_value()) {
+      if (VLOG_IS_ON(1)) {
+        std::vector<std::string_view> subtypes;
+        std::ranges::transform(
+            suggestion.subtypes(), std::back_inserter(subtypes),
+            [](int subtype) { return omnibox::SuggestSubtype_Name(subtype); });
+        VLOG(1) << "Skipping a suggestion since its chip type cannot be "
+                   "determined. Its group ID is "
+                << omnibox::GroupId_Name(group_id) << ", its subtypes are "
+                << base::JoinString(subtypes, ", ");
+      }
+      continue;
+    }
+
+    ActionChipPtr chip = ActionChip::New();
+    // In the deep-dive state, the first chip needs to be a recent tab chip.
+    chip->type = chips.empty() && *chip_type == ChipType::kDeepDive
+                     ? ChipType::kRecentTab
+                     : *chip_type;
+    chip->title = base::UTF16ToUTF8(suggestion.match_contents());
+    chip->subtitle = base::UTF16ToUTF8(suggestion.annotation());
+    chip->suggestion = base::UTF16ToUTF8(suggestion.suggestion());
+    if (group_id == omnibox::GROUP_AI_MODE_CONTEXTUAL_SEARCH_ACTION) {
+      chip->tab = tab->Clone();
+    }
+    chips.push_back(std::move(chip));
+  }
   std::move(callback).Run(std::move(chips));
 }

@@ -256,8 +256,8 @@ CopyOutputSharedImageResult::CopyOutputSharedImageResult(
       release_callback_(std::move(release_callback)) {
   // check non-null `shared_image_`
   DCHECK(shared_image_);
-  // If we're constructing empty result, all mailbox_holders must be zero.
-  // Otherwise, the first mailbox must be non-zero.
+  // If we're constructing empty result, all shared image mailboxes must be
+  // zero. Otherwise, the first mailbox must be non-zero.
   DCHECK_EQ(rect.IsEmpty(), shared_image_->mailbox().IsZero());
   // If we're constructing empty result, the callbacks must be empty.
   // From definition of implication: p => q  <=>  !p || q.
@@ -343,12 +343,15 @@ SkBitmap CopyOutputResult::ScopedSkBitmap::GetOutScopedBitmap() const {
   return bitmap_copy;
 }
 
-base::expected<CopyOutputBitmapWithMetadata, std::string>
+base::expected<CopyOutputBitmapWithMetadata, CopyOutputResult::Error>
 CopyOutputResult::ScopedSkBitmap::GetOutScopedBitmapAndMetadata() const {
   SkBitmap bitmap = GetOutScopedBitmap();
   if (bitmap.drawsNothing()) {
-    return base::unexpected<std::string>(
-        "SkBitmap is empty or null; no pixel data available");
+    if (result_) {
+      return base::unexpected<CopyOutputResult::Error>(result_->error());
+    }
+    return base::unexpected<CopyOutputResult::Error>(
+        CopyOutputResult::Error::kUnknown);
   }
 
   return CopyOutputBitmapWithMetadata{.bitmap = std::move(bitmap)};

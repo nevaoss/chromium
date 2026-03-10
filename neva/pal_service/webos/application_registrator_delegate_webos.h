@@ -48,7 +48,7 @@ class ApplicationRegistratorDelegateWebOS
                   unsigned,
                   const std::string& json);
 
-  bool ParseRelaunchEvent(const base::Value::Dict& root_dict,
+  bool ParseRelaunchEvent(const base::DictValue& root_dict,
                           std::string* options);
   const std::string application_name_;
   RepeatingResponse callback_;

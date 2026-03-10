@@ -65,7 +65,7 @@ std::string PlatformSystemDelegateWebOS::GetCountry() const {
 }
 
 std::string PlatformSystemDelegateWebOS::GetDeviceInfoJSON() const {
-  base::Value::Dict dict;
+  base::DictValue dict;
 
   std::string model_name;
   if (GetKeyValue("ModelName", model_name))
@@ -180,7 +180,7 @@ void PlatformSystemDelegateWebOS::LoadLocalePreferences() {
     if (!root || !root->is_dict())
       return;
 
-    const base::Value::Dict& dict = root->GetDict();
+    const base::DictValue& dict = root->GetDict();
     const std::string* system_language =
         dict.FindStringByDottedPath("localeInfo.locales.UI");
     if (system_language)
@@ -241,7 +241,7 @@ void PlatformSystemDelegateWebOS::SettingsServiceConnected(
   if (!root || !root->is_dict())
     return;
 
-  const base::Value::Dict& dict(root->GetDict());
+  const base::DictValue& dict(root->GetDict());
   if (dict.FindBool("connected").value_or(false))
     RequestSystemSettings();
 }
@@ -255,7 +255,7 @@ void PlatformSystemDelegateWebOS::OnLocalePreferencesCallback(
   if (!root || !root->is_dict())
     return;
 
-  const base::Value::Dict& dict = root->GetDict();
+  const base::DictValue& dict = root->GetDict();
   const std::string* system_language =
       dict.FindStringByDottedPath("settings.localeInfo.locales.UI");
   if (system_language)
@@ -273,7 +273,7 @@ void PlatformSystemDelegateWebOS::OnHightContrastCallback(
   if (!root || !root->is_dict())
     return;
 
-  const base::Value::Dict& dict = root->GetDict();
+  const base::DictValue& dict = root->GetDict();
   const std::string* hight_contrast =
       dict.FindStringByDottedPath("settings.highContrast");
   if (hight_contrast)
@@ -291,7 +291,7 @@ void PlatformSystemDelegateWebOS::OnSystemOptionCallback(
   if (!root || !root->is_dict())
     return;
 
-  const base::Value::Dict& dict = root->GetDict();
+  const base::DictValue& dict = root->GetDict();
   const std::string* country = dict.FindStringByDottedPath("settings.country");
   if (country)
     registry_["LocalCountry"] = *country;

@@ -58,7 +58,7 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="PDF.EngineLifetime" units="ms" expires_after="2026-05-10">
+<histogram name="PDF.EngineLifetime" units="ms" expires_after="2026-07-12">
   <owner>rhalavati@chromium.org</owner>
   <owner>thestig@chromium.org</owner>
   <summary>
@@ -68,7 +68,7 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="PDF.FirstPaintTime" units="ms" expires_after="2026-05-10">
+<histogram name="PDF.FirstPaintTime" units="ms" expires_after="2026-07-12">
   <owner>rhalavati@chromium.org</owner>
   <owner>thestig@chromium.org</owner>
   <summary>
@@ -80,7 +80,7 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="PDF.FormType" enum="PDFFormTypes" expires_after="2026-05-10">
+<histogram name="PDF.FormType" enum="PDFFormTypes" expires_after="2026-07-12">
   <owner>dhoss@chromium.org</owner>
   <owner>kmoon@chromium.org</owner>
   <owner>thestig@chromium.org</owner>
@@ -253,7 +253,7 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="PDF.PageHasText" enum="Boolean" expires_after="2026-05-10">
+<histogram name="PDF.PageHasText" enum="Boolean" expires_after="2026-07-12">
   <owner>rhalavati@chromium.org</owner>
   <owner>thestig@chromium.org</owner>
   <summary>
@@ -271,7 +271,7 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="PDF.RenderAndPaintTime" units="ms" expires_after="2026-05-24">
+<histogram name="PDF.RenderAndPaintTime" units="ms" expires_after="2026-07-26">
   <owner>thestig@chromium.org</owner>
   <owner>ask@chromium.org</owner>
   <summary>
@@ -282,7 +282,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PDF.RenderAndPaintVisiblePagesTime" units="ms"
-    expires_after="2026-05-24">
+    expires_after="2026-07-26">
   <owner>thestig@chromium.org</owner>
   <owner>ask@chromium.org</owner>
   <summary>
@@ -292,7 +292,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PDF.RenderPaintAndFlushTime" units="ms"
-    expires_after="2026-05-24">
+    expires_after="2026-07-26">
   <owner>thestig@chromium.org</owner>
   <owner>ask@chromium.org</owner>
   <summary>
@@ -437,7 +437,7 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="PDF.Version" enum="PDFVersion" expires_after="2026-05-24">
+<histogram name="PDF.Version" enum="PDFVersion" expires_after="2026-07-26">
   <owner>dhoss@chromium.org</owner>
   <owner>thestig@chromium.org</owner>
   <summary>Tracks versions of documents opened in the PDF viewer.</summary>

@@ -36,15 +36,7 @@ void GetNodeStrings(BrowserAccessibility* node,
 
 OneShotAccessibilityTreeSearch::OneShotAccessibilityTreeSearch(
     BrowserAccessibility* scope)
-    : tree_(scope->manager()),
-      scope_node_(scope),
-      start_node_(scope),
-      direction_(OneShotAccessibilityTreeSearch::FORWARDS),
-      result_limit_(UNLIMITED_RESULTS),
-      immediate_descendants_only_(false),
-      can_wrap_to_last_element_(false),
-      onscreen_only_(false),
-      did_search_(false) {}
+    : tree_(scope->manager()), scope_node_(scope), start_node_(scope) {}
 
 OneShotAccessibilityTreeSearch::~OneShotAccessibilityTreeSearch() = default;
 
@@ -64,9 +56,14 @@ void OneShotAccessibilityTreeSearch::SetDirection(Direction direction) {
   direction_ = direction;
 }
 
-void OneShotAccessibilityTreeSearch::SetResultLimit(int result_limit) {
+void OneShotAccessibilityTreeSearch::SetResultLimit(size_t result_limit) {
   DCHECK(!did_search_);
   result_limit_ = result_limit;
+}
+
+void OneShotAccessibilityTreeSearch::SetSearchLimit(size_t search_limit) {
+  DCHECK(!did_search_);
+  search_limit_ = search_limit;
 }
 
 void OneShotAccessibilityTreeSearch::SetImmediateDescendantsOnly(
@@ -146,11 +143,15 @@ void OneShotAccessibilityTreeSearch::SearchByIteratingOverChildren() {
       index--;
   }
 
-  while (index < count && (result_limit_ == UNLIMITED_RESULTS ||
-                           static_cast<int>(matches_.size()) < result_limit_)) {
+  size_t nodes_checked_count = 0;
+  while (index < count && (!result_limit_ || matches_.size() < result_limit_) &&
+         (!search_limit_ || nodes_checked_count < search_limit_)) {
     BrowserAccessibility* node = scope_node_->PlatformGetChild(index);
-    if (Matches(node))
+
+    if (Matches(node)) {
       matches_.push_back(node);
+    }
+    nodes_checked_count++;
 
     if (direction_ == FORWARDS)
       index++;
@@ -169,12 +170,30 @@ void OneShotAccessibilityTreeSearch::SearchByWalkingTree() {
       node = tree_->PreviousInTreeOrder(start_node_, can_wrap_to_last_element_);
   }
 
-  BrowserAccessibility* stop_node = scope_node_->PlatformGetParent();
+  BrowserAccessibility* stop_node = nullptr;
+  if (direction_ == FORWARDS) {
+    // Walk up the ancestor chain until we find an ancestor that has a next
+    // platform sibling. That sibling is the node that comes immediately after
+    // the scope_node's subtree.
+    for (BrowserAccessibility* current_node = scope_node_; current_node;
+         current_node = current_node->PlatformGetParent()) {
+      if (auto* next_sibling = current_node->PlatformGetNextSibling()) {
+        stop_node = next_sibling;
+        break;
+      }
+    }
+  } else {
+    stop_node = tree_->PreviousInTreeOrder(scope_node_, /* wrap */ false);
+  }
+
+  size_t nodes_checked_count = 0;
   while (node && node != stop_node &&
-         (result_limit_ == UNLIMITED_RESULTS ||
-          static_cast<int>(matches_.size()) < result_limit_)) {
-    if (Matches(node))
+         (!result_limit_ || matches_.size() < result_limit_) &&
+         (!search_limit_ || nodes_checked_count < search_limit_)) {
+    if (Matches(node)) {
       matches_.push_back(node);
+    }
+    nodes_checked_count++;
 
     if (direction_ == FORWARDS) {
       node = tree_->NextInTreeOrder(node);

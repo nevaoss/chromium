@@ -72,6 +72,7 @@
 #include "third_party/blink/renderer/core/accessibility/histogram_macros.h"
 #include "third_party/blink/renderer/core/content_capture/content_capture_manager.h"
 #include "third_party/blink/renderer/core/core_initializer.h"
+#include "third_party/blink/renderer/core/css/media_value_change.h"
 #include "third_party/blink/renderer/core/css/properties/longhands.h"
 #include "third_party/blink/renderer/core/dom/element.h"
 #include "third_party/blink/renderer/core/dom/focus_params.h"
@@ -144,6 +145,7 @@
 #include "third_party/blink/renderer/core/view_transition/view_transition.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition_utils.h"
 #include "third_party/blink/renderer/platform/graphics/animation_worklet_mutator_dispatcher_impl.h"
+#include "third_party/blink/renderer/platform/graphics/color_space_gamut.h"
 #include "third_party/blink/renderer/platform/graphics/compositor_mutator_client.h"
 #include "third_party/blink/renderer/platform/graphics/paint_worklet_paint_dispatcher.h"
 #include "third_party/blink/renderer/platform/heap/cross_thread_handle.h"
@@ -161,6 +163,7 @@
 #include "third_party/blink/renderer/platform/wtf/cross_thread_functional.h"
 #include "third_party/blink/renderer/platform/wtf/functional.h"
 #include "third_party/perfetto/include/perfetto/tracing/track.h"
+#include "third_party/perfetto/include/perfetto/tracing/track_event_args.h"
 #include "ui/base/dragdrop/mojom/drag_drop_types.mojom-blink.h"
 #include "ui/base/mojom/menu_source_type.mojom-blink-forward.h"
 #include "ui/base/mojom/window_show_state.mojom-blink.h"
@@ -857,10 +860,8 @@ void WebFrameWidgetImpl::BindInputTargetClient(
 void WebFrameWidgetImpl::FrameSinkIdAt(const gfx::PointF& point,
                                        const uint64_t trace_id,
                                        FrameSinkIdAtCallback callback) {
-  TRACE_EVENT_WITH_FLOW1("viz,benchmark", "Event.Pipeline",
-                         TRACE_ID_GLOBAL(trace_id),
-                         TRACE_EVENT_FLAG_FLOW_IN | TRACE_EVENT_FLAG_FLOW_OUT,
-                         "step", "FrameSinkIdAt");
+  TRACE_EVENT("viz,benchmark", "Event.Pipeline",
+              perfetto::Flow::Global(trace_id), "step", "FrameSinkIdAt");
 
   gfx::PointF local_point;
   viz::FrameSinkId id = GetFrameSinkIdAtPoint(point, &local_point);
@@ -1815,6 +1816,7 @@ void WebFrameWidgetImpl::UpdateVisualProperties(
   // https://developer.mozilla.org/en-US/docs/Web/CSS/@media/display-mode
 #if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
   ui::mojom::blink::WindowShowState old_show_state = window_show_state_;
+  bool old_resizable = resizable_;
 #endif
   SetDisplayMode(visual_properties.display_mode);
   SetWindowShowState(visual_properties.window_show_state);
@@ -1875,6 +1877,9 @@ void WebFrameWidgetImpl::UpdateVisualProperties(
 #if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
   if (old_show_state != window_show_state_) {
     View()->OnWindowShowStateChanged(old_show_state, window_show_state_);
+  }
+  if (old_resizable != resizable_) {
+    View()->OnResizableChanged(resizable_);
   }
 #endif  //  !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
 
@@ -4149,8 +4154,9 @@ void WebFrameWidgetImpl::GetCompositionCharacterBoundsInWindow(
 #if BUILDFLAG(IS_ANDROID)
 namespace {
 
-void GetLineBounds(Vector<gfx::QuadF>& line_quads, Node* editor_node) {
-  for (const Node& node : NodeTraversal::DescendantsOf(*editor_node)) {
+void GetLineBounds(Vector<gfx::QuadF>& line_quads,
+                   TextControlInnerEditorElement* inner_editor) {
+  for (const Node& node : NodeTraversal::DescendantsOf(*inner_editor)) {
     if (!node.GetLayoutObject() || !node.GetLayoutObject()->IsText()) {
       continue;
     }
@@ -4167,32 +4173,21 @@ Vector<gfx::Rect> WebFrameWidgetImpl::CalculateVisibleLineBoundsOnScreen() {
   if (!focused_element) {
     return bounds_in_dips;
   }
-
-  Node* editor_node;
-  if (TextControlElement* text_control = ToTextControlOrNull(focused_element);
-      text_control && !text_control->IsDisabledOrReadOnly() &&
-      !text_control->Value().empty()) {
-    editor_node = text_control->InnerEditorElement();
-  } else if (IsEditable(*focused_element) &&
-             !focused_element->textContent().empty()) {
-    editor_node = focused_element;
-  } else {
-    return bounds_in_dips;
-  }
-
-  LayoutObject* layout_object = focused_element->GetLayoutObject();
-  if (!layout_object) {
+  TextControlElement* text_control = ToTextControlOrNull(focused_element);
+  if (!text_control || text_control->IsDisabledOrReadOnly() ||
+      text_control->Value().empty() || !text_control->GetLayoutObject()) {
     return bounds_in_dips;
   }
 
   Vector<gfx::QuadF> bounds_from_blink;
-  GetLineBounds(bounds_from_blink, editor_node);
+  GetLineBounds(bounds_from_blink, text_control->InnerEditorElement());
 
   gfx::Rect screen = LocalRootImpl()->GetFrameView()->FrameToScreen(
       GetPage()->GetVisualViewport().VisibleContentRect());
   for (auto& quad : bounds_from_blink) {
-    gfx::Rect bounding_box = layout_object->GetFrameView()->FrameToScreen(
-        gfx::ToRoundedRect(quad.BoundingBox()));
+    gfx::Rect bounding_box =
+        focused_element->GetLayoutObject()->GetFrameView()->FrameToScreen(
+            gfx::ToRoundedRect(quad.BoundingBox()));
     bounding_box.Intersect(screen);
     if (bounding_box.IsEmpty()) {
       continue;
@@ -4214,15 +4209,9 @@ void WebFrameWidgetImpl::UpdateCursorAnchorInfo(bool update_requested) {
   if (!focused_element) {
     return;
   }
-
-  // Only update cursor for active text controls or contenteditable elements.
-  if (TextControlElement* text_control = ToTextControlOrNull(focused_element);
-      (!text_control || text_control->IsDisabledOrReadOnly()) &&
-      !IsEditable(*focused_element)) {
-    return;
-  }
-  LayoutObject* layout_object = focused_element->GetLayoutObject();
-  if (!layout_object) {
+  TextControlElement* text_control = ToTextControlOrNull(focused_element);
+  if (!text_control || text_control->IsDisabledOrReadOnly() ||
+      !text_control->GetLayoutObject()) {
     return;
   }
 
@@ -4243,7 +4232,8 @@ void WebFrameWidgetImpl::UpdateCursorAnchorInfo(bool update_requested) {
 
   mojom::blink::TextAppearanceInfoPtr text_appearance_info =
       mojom::blink::TextAppearanceInfo::New(
-          layout_object->StyleRef()
+          text_control->GetLayoutObject()
+              ->StyleRef()
               .VisitedDependentColor(GetCSSPropertyColor())
               .Rgb());
 
@@ -4984,6 +4974,12 @@ void WebFrameWidgetImpl::DidUpdateSurfaceAndScreen(
           previous_original_screen_infos.current(),
           original_screen_infos.current());
 
+  const bool color_gamut_changed =
+      color_space_utilities::GetColorSpaceGamut(
+          previous_original_screen_infos.current()) !=
+      color_space_utilities::GetColorSpaceGamut(
+          original_screen_infos.current());
+
   // Update Screens interface data before firing any events. The API is designed
   // to offer synchronous access to the most up-to-date cached screen
   // information when a change event is fired.  It is not required but it
@@ -4991,14 +4987,19 @@ void WebFrameWidgetImpl::DidUpdateSurfaceAndScreen(
   // window.screen events are fired as well.
   ForEachLocalFrameControlledByWidget(
       LocalRootImpl()->GetFrame(),
-      [&original_screen_infos,
-       window_screen_has_changed](WebLocalFrameImpl* local_frame) {
+      [&original_screen_infos, window_screen_has_changed,
+       color_gamut_changed](WebLocalFrameImpl* local_frame) {
         auto* screen = local_frame->GetFrame()->DomWindow()->screen();
         screen->UpdateDisplayId(original_screen_infos.current().display_id);
         CoreInitializer::GetInstance().DidUpdateScreens(
             *local_frame->GetFrame(), original_screen_infos);
         if (window_screen_has_changed)
           screen->DispatchEvent(*Event::Create(event_type_names::kChange));
+        if (color_gamut_changed) {
+          local_frame->GetFrame()
+              ->GetDocument()
+              ->MediaQueryAffectingValueChanged(MediaValueChange::kOther);
+        }
       });
 
   if (previous_original_screen_infos != original_screen_infos) {
@@ -5228,6 +5229,14 @@ void WebFrameWidgetImpl::SetMayThrottleIfUndrawnFrames(
     return;
   widget_base_->LayerTreeHost()->SetMayThrottleIfUndrawnFrames(
       may_throttle_if_undrawn_frames);
+}
+
+std::unique_ptr<cc::ScopedRequestHighFramerate>
+WebFrameWidgetImpl::RequestHighFramerate() {
+  if (!View()->does_composite()) {
+    return nullptr;
+  }
+  return widget_base_->LayerTreeHost()->RequestHighFramerate();
 }
 
 int WebFrameWidgetImpl::GetVirtualKeyboardResizeHeight() const {

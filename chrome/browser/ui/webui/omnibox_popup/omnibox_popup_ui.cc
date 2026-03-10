@@ -41,7 +41,7 @@ namespace {
 
 using AddContextButtonVariant = omnibox::AddContextButtonVariant;
 
-std::string AddContextButtonVariantToSearchboxLayoutMode(
+std::string_view AddContextButtonVariantToSearchboxLayoutMode(
     AddContextButtonVariant variant) {
   switch (variant) {
     case AddContextButtonVariant::kNone:
@@ -122,8 +122,13 @@ OmniboxPopupUI::OmniboxPopupUI(content::WebUI* web_ui)
                      omnibox::kCloseComposeboxByEscape.Get());
   source->AddBoolean("composeboxContextMenuEnableMultiTabSelection",
                      omnibox::kContextMenuEnableMultiTabSelection.Get());
+  auto* session_handle = GetOrCreateContextualSessionHandle();
+  bool allow_drag_and_drop =
+      session_handle &&
+      session_handle->CheckSearchContentSharingSettings(profile_->GetPrefs()) &&
+      omnibox::kEnableContextDragAndDrop.Get();
   source->AddBoolean("composeboxContextDragAndDropEnabled",
-                     omnibox::kEnableContextDragAndDrop.Get());
+                     allow_drag_and_drop);
   source->AddBoolean("composeboxNoFlickerSuggestionsFix", false);
   source->AddBoolean("composeboxShowContextMenu",
                      omnibox::kShowContextMenu.Get());
@@ -158,10 +163,8 @@ OmniboxPopupUI::OmniboxPopupUI(content::WebUI* web_ui)
                      omnibox::kShowVoiceSearchInExpandedComposebox.Get());
   source->AddBoolean("steadyComposeboxShowVoiceSearch",
                      omnibox::kShowVoiceSearchInSteadyComposebox.Get());
-  source->AddBoolean("expandedSearchboxShowVoiceSearch", false);
-  const std::string searchbox_layout_mode =
-      AddContextButtonVariantToSearchboxLayoutMode(
-          omnibox::kWebUIOmniboxAimPopupAddContextButtonVariantParam.Get());
+  auto searchbox_layout_mode = AddContextButtonVariantToSearchboxLayoutMode(
+      omnibox::kWebUIOmniboxAimPopupAddContextButtonVariantParam.Get());
   source->AddString("searchboxLayoutMode", searchbox_layout_mode);
   source->AddBoolean("steadyComposeboxShowVoiceSearch",
                      omnibox::kShowVoiceSearchInSteadyComposebox.Get());
@@ -233,7 +236,8 @@ OmniboxPopupUI::GetOrCreateContextualSessionHandle() {
     if (contextual_search_service) {
       shared_session_handle_ = contextual_search_service->CreateSession(
           omnibox::CreateQueryControllerConfigParams(),
-          contextual_search::ContextualSearchSource::kOmnibox);
+          contextual_search::ContextualSearchSource::kOmnibox,
+          lens::LensOverlayInvocationSource::kOmniboxContextualQuery);
       // TODO(crbug.com/469875271): Determine what to do with the return value
       // of this call, or move this call to a different location.
       shared_session_handle_->CheckSearchContentSharingSettings(

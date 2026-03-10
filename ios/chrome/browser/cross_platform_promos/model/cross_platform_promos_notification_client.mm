@@ -5,6 +5,7 @@
 #import "ios/chrome/browser/cross_platform_promos/model/cross_platform_promos_notification_client.h"
 
 #import "base/functional/callback_helpers.h"
+#import "base/metrics/histogram_functions.h"
 #import "components/desktop_to_mobile_promos/pref_names.h"
 #import "components/desktop_to_mobile_promos/promos_types.h"
 #import "components/prefs/pref_service.h"
@@ -66,6 +67,10 @@ bool CrossPlatformPromosNotificationClient::HandleNotificationInteraction(
     return false;
   }
 
+  base::UmaHistogramEnumeration(
+      "IOS.CrossPlatformPromos.PushNotification.Interaction",
+      promo_type.value());
+
   Browser* browser = GetActiveForegroundBrowser();
   if (!browser) {
     pending_promo_type_ = promo_type;
@@ -95,6 +100,12 @@ CrossPlatformPromosNotificationClient::GetNotificationType(
         return NotificationType::kCrossPlatformPromoESB;
       case desktop_to_mobile_promos::PromoType::kLens:
         return NotificationType::kCrossPlatformPromoLens;
+      case desktop_to_mobile_promos::PromoType::kTabGroups:
+        // TODO (crbug.com/479493988): Create the Tab Groups iOS promo.
+        break;
+      case desktop_to_mobile_promos::PromoType::kPriceTracking:
+        // TODO (crbug.com/479493988): Create the Price Tracking iOS promo.
+        break;
       case desktop_to_mobile_promos::PromoType::kAddress:
       case desktop_to_mobile_promos::PromoType::kPayment:
         // Promo types not supported for push notifications.
@@ -137,6 +148,12 @@ void CrossPlatformPromosNotificationClient::ShowPromo(
     case desktop_to_mobile_promos::PromoType::kLens:
       cross_platform_service->ShowLensPromo(browser);
       break;
+    case desktop_to_mobile_promos::PromoType::kTabGroups:
+      // TODO (crbug.com/479493988): Create the Tab Groups iOS promo.
+      break;
+    case desktop_to_mobile_promos::PromoType::kPriceTracking:
+      // TODO (crbug.com/479493988): Create the Price Tracking iOS promo.
+      break;
     case desktop_to_mobile_promos::PromoType::kAddress:
     case desktop_to_mobile_promos::PromoType::kPayment:
       // Promo types not supported for push notifications.
@@ -146,6 +163,9 @@ void CrossPlatformPromosNotificationClient::ShowPromo(
   // Clear the promo reminder pref after showing the promo so that the in-app
   // notification is not shown again later.
   GetProfile()->GetPrefs()->ClearPref(prefs::kIOSPromoReminder);
+
+  base::UmaHistogramEnumeration("IOS.CrossPlatformPromos.Promo.Shown.FromPush",
+                                promo_type);
 }
 
 NSArray<UNNotificationCategory*>*

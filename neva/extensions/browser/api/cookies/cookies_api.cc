@@ -142,7 +142,7 @@ void CookiesGetAllFunction::GetAllCookiesCallback(
               return cookies_helpers::CreateCookie(cookie);
             });
 
-  base::Value::List result;
+  base::ListValue result;
   for (const auto& cookie : it) {
     result.Append(cookie.ToValue());
   }

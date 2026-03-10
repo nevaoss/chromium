@@ -10,6 +10,7 @@
 #import "ios/chrome/browser/intelligence/bwg/metrics/gemini_metrics.h"
 #import "ios/chrome/browser/intelligence/bwg/model/bwg_tab_helper.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_session_delegate.h"
+#import "ios/chrome/browser/intelligence/bwg/utils/bwg_constants.h"
 #import "ios/chrome/browser/intelligence/features/features.h"
 #import "ios/chrome/browser/shared/model/web_state_list/web_state_list.h"
 #import "ios/chrome/browser/shared/public/commands/bwg_commands.h"
@@ -18,9 +19,13 @@
 
 namespace {
 
+// Returns an equivalent IOSGeminiFirstPromptSubmission enum value for a given
+// BWGInputType.
 IOSGeminiFirstPromptSubmissionMethod ConvertBWGInputTypeToHistogramEnum(
     BWGInputType input_type) {
   switch (input_type) {
+    case BWGInputTypeUnknown:
+      return IOSGeminiFirstPromptSubmissionMethod::kUnknown;
     case BWGInputTypeText:
       return IOSGeminiFirstPromptSubmissionMethod::kText;
     case BWGInputTypeSummarize:
@@ -39,9 +44,61 @@ IOSGeminiFirstPromptSubmissionMethod ConvertBWGInputTypeToHistogramEnum(
       return IOSGeminiFirstPromptSubmissionMethod::kWhatCanGeminiDo;
     case BWGInputTypeDiscoveryCard:
       return IOSGeminiFirstPromptSubmissionMethod::kDiscoveryCard;
-    case BWGInputTypeUnknown:
-    default:
-      return IOSGeminiFirstPromptSubmissionMethod::kUnknown;
+    case BWGInputTypeOmniboxSummarize:
+      return IOSGeminiFirstPromptSubmissionMethod::kOmniboxSummarize;
+    case BWGInputTypeOmniboxPrompt:
+      return IOSGeminiFirstPromptSubmissionMethod::kOmniboxPrompt;
+    case BWGInputTypeTransitionToLive:
+      return IOSGeminiFirstPromptSubmissionMethod::kTransitionToLive;
+    case BWGInputTypeOnboardingWhatCanGeminiDo:
+      return IOSGeminiFirstPromptSubmissionMethod::kOnboardingWhatCanGeminiDo;
+    case BWGInputTypeOnboardingAskAboutPage:
+      return IOSGeminiFirstPromptSubmissionMethod::kOnboardingAskAboutPage;
+    case BWGInputTypeOnboardingSummarize:
+      return IOSGeminiFirstPromptSubmissionMethod::kOnboardingSummarize;
+    case BWGInputTypeSuggestedReply:
+      return IOSGeminiFirstPromptSubmissionMethod::kSuggestedReply;
+    case BWGInputTypeNanoBananaTurnThisPageIntoAComicStrip:
+      return IOSGeminiFirstPromptSubmissionMethod::
+          kNanoBananaTurnThisPageIntoAComicStrip;
+    case BWGInputTypeNanoBananaMakeAFolkArtIllustration:
+      return IOSGeminiFirstPromptSubmissionMethod::
+          kNanoBananaMakeAFolkArtIllustration;
+    case BWGInputTypeNanoBananaMakeACustomMiniFigure:
+      return IOSGeminiFirstPromptSubmissionMethod::
+          kNanoBananaMakeACustomMiniFigure;
+    case BWGInputTypeNanoBananaGiveMeAGrungeMakeover:
+      return IOSGeminiFirstPromptSubmissionMethod::
+          kNanoBananaGiveMeAGrungeMakeover;
+    case BWGInputTypeNanoBananaTurnThisImageIntoAVintagePostcard:
+      return IOSGeminiFirstPromptSubmissionMethod::
+          kNanoBananaTurnThisImageIntoAVintagePostcard;
+    case BWGInputTypeNanoBananaTurnThisImageIntoAWatercolorPainting:
+      return IOSGeminiFirstPromptSubmissionMethod::
+          kNanoBananaTurnThisImageIntoAWatercolorPainting;
+    case BWGInputTypeNanoBananaMakeThisImageLookLikeInstantFilm:
+      return IOSGeminiFirstPromptSubmissionMethod::
+          kNanoBananaMakeThisImageLookLikeInstantFilm;
+  }
+}
+
+IOSGeminiSessionCancellationReason HistogramEnumFromGeminiCancelType(
+    GeminiCancelType cancel_type) {
+  switch (cancel_type) {
+    case GeminiCancelTypeUnknown:
+      return IOSGeminiSessionCancellationReason::kUnknown;
+    case GeminiCancelTypeStopButtonTapped:
+      return IOSGeminiSessionCancellationReason::kStopButtonTapped;
+    case GeminiCancelTypeOutsideTapped:
+      return IOSGeminiSessionCancellationReason::kOutsideTapped;
+    case GeminiCancelTypeExpandedStateCloseButtonTapped:
+      return IOSGeminiSessionCancellationReason::
+          kExpandedStateCloseButtonTapped;
+    case GeminiCancelTypeCollapsedStateCloseButtonTapped:
+      return IOSGeminiSessionCancellationReason::
+          kCollapsedStateCloseButtonTapped;
+    case GeminiCancelTypeLoadingStateCloseButtonTapped:
+      return IOSGeminiSessionCancellationReason::kLoadingStateCloseButtonTapped;
   }
 }
 
@@ -105,7 +162,7 @@ IOSGeminiFirstPromptSubmissionMethod ConvertBWGInputTypeToHistogramEnum(
 
 - (void)UIDidDisappearWithClientID:(NSString*)clientID
                           serverID:(NSString*)serverID {
-  [_BWGHandler dismissGeminiFlowWithCompletion:nil];
+  [_geminiHandler dismissGeminiFlowWithCompletion:nil];
   [self setSessionActive:NO clientID:clientID];
 
   web::WebState* webState = [self webStateWithClientID:clientID];
@@ -150,14 +207,24 @@ IOSGeminiFirstPromptSubmissionMethod ConvertBWGInputTypeToHistogramEnum(
   RecordSessionFirstPrompt(_hasSubmittedFirstPrompt);
 }
 
+- (void)startReceivingResponseWithSessionID:(NSString*)sessionID
+                             conversationID:(NSString*)conversationID {
+  [self.geminiHandler
+      updateFloatyVisibilityIfEligibleAnimated:NO
+                                    fromSource:gemini::FloatyUpdateSource::
+                                                   ForcedFromQueryResponse];
+}
+
 - (void)responseReceivedWithClientID:(NSString*)clientID
-                            serverID:(NSString*)serverID {
+                            serverID:(NSString*)serverID
+            isNanoBananaToolSelected:(BOOL)isNanoBananaToolSelected
+                    isImageGenerated:(BOOL)isImageGenerated {
   [self updateSessionWithClientID:clientID serverID:serverID];
 
   // Calculate and record response latency.
   if (_waitingForResponse && !_lastPromptSentTime.is_null()) {
     base::TimeDelta latency = base::TimeTicks::Now() - _lastPromptSentTime;
-    RecordResponseLatency(latency, _lastPromptHadPageContext);
+    RecordResponseLatency(latency, _lastPromptHadPageContext, isImageGenerated);
 
     // Reset latency tracking.
     _waitingForResponse = NO;
@@ -169,19 +236,24 @@ IOSGeminiFirstPromptSubmissionMethod ConvertBWGInputTypeToHistogramEnum(
     RecordFirstResponseReceived();
   }
   // Track all responses for conversation engagement.
-  RecordGeminiResponseReceived();
+  RecordGeminiResponseReceived(isImageGenerated);
 }
 
 - (void)didTapGeminiSettingsButton {
-  [self.settingsHandler showBWGSettings];
+  [self.settingsHandler showGeminiSettings];
 }
 
 - (void)didSendQueryWithInputType:(BWGInputType)inputType
+         isNanoBananaToolSelected:(BOOL)isNanoBananaToolSelected
+              imagesAttachedCount:(NSUInteger)imagesAttachedCount
+                   longPressImage:(BOOL)longPressImage
               pageContextAttached:(BOOL)pageContextAttached {
   _totalPromptsInSession++;
 
-  // Record user action for prompt sent.
-  RecordGeminiPromptSent();
+  // Record that a prompt was sent with arguments.
+  RecordGeminiPromptSent(isNanoBananaToolSelected,
+                         static_cast<int>(imagesAttachedCount), longPressImage,
+                         pageContextAttached);
 
   // Check if this is the user's first prompt.
   if (!_hasSubmittedFirstPrompt) {
@@ -190,8 +262,6 @@ IOSGeminiFirstPromptSubmissionMethod ConvertBWGInputTypeToHistogramEnum(
         ConvertBWGInputTypeToHistogramEnum(inputType);
     RecordFirstPromptSubmission(method);
   }
-  // Track context attachment for all prompts.
-  RecordPromptContextAttachment(pageContextAttached);
   // Start latency tracking.
   _lastPromptSentTime = base::TimeTicks::Now();
   _lastPromptHadPageContext = pageContextAttached;
@@ -209,6 +279,44 @@ IOSGeminiFirstPromptSubmissionMethod ConvertBWGInputTypeToHistogramEnum(
   BWGTabHelper->DeleteBwgSessionInStorage();
   // Record the new chat metric.
   RecordGeminiNewChatButtonTapped();
+}
+
+// Called when a feedback button is tapped in the Gemini UI.
+- (void)didTapFeedbackButton:(GeminiFeedbackType)feedbackType
+                   sessionID:(NSString*)sessionID
+              conversationID:(NSString*)conversationID {
+  switch (feedbackType) {
+    case GeminiFeedbackType::kThumbsUp:
+      RecordGeminiFeedback(IOSGeminiFeedback::kThumbsUp);
+      break;
+    case GeminiFeedbackType::kThumbsDown:
+      RecordGeminiFeedback(IOSGeminiFeedback::kThumbsDown);
+      break;
+  }
+}
+
+// Called when a gemini session is cancelled.
+- (void)responseCancelledWithReason:(GeminiCancelType)reason
+                          sessionID:(NSString*)sessionID
+                     conversationID:(NSString*)conversationID {
+  RecordGeminiSessionCancellation(HistogramEnumFromGeminiCancelType(reason));
+}
+
+// Called when the user taps on the photo, gallery, CreateImageSelected or
+// CreateImageDeselected in Attachment sheet behind + button.
+- (void)didTapInputPlateAttachmentOption:
+            (gemini::InputPlateAttachmentOption)attachmentOption
+                               sessionID:(NSString*)sessionID
+                          conversationID:(NSString*)conversationID {
+  RecordGeminiInputPlateAttachmentOptionTapped(attachmentOption);
+}
+
+// Called when the user taps on save / share / copy / download image action
+// button.
+- (void)imageActionButtonTapped:(gemini::ImageActionButtonType)actionButtonType
+                      sessionID:(NSString*)sessionID
+                 conversationID:(NSString*)conversationID {
+  RecordGeminiImageActionButtonTapped(actionButtonType);
 }
 
 #pragma mark - Private

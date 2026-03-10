@@ -2,27 +2,69 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import '//resources/cr_components/composebox/composebox_dropdown.js';
 import '//resources/cr_components/composebox/composebox.js';
 import './onboarding_tooltip.js';
 
 import type {ComposeboxElement} from '//resources/cr_components/composebox/composebox.js';
+import type {ComposeboxDropdownElement} from '//resources/cr_components/composebox/composebox_dropdown.js';
 import {ComposeboxProxyImpl} from '//resources/cr_components/composebox/composebox_proxy.js';
 import {GlowAnimationState} from '//resources/cr_components/search/constants.js';
 import {assert} from '//resources/js/assert.js';
 import {EventTracker} from '//resources/js/event_tracker.js';
 import {loadTimeData} from '//resources/js/load_time_data.js';
-import type {PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerRemote as SearchboxPageHandlerRemote, TabInfo} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import type {AutocompleteMatch, AutocompleteResult, PageCallbackRouter as SearchboxPageCallbackRouter} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import {CrLitElement} from 'chrome://resources/lit/v3_0/lit.rollup.js';
-
+import type {PropertyValues} from 'chrome://resources/lit/v3_0/lit.rollup.js';
+import {ToolMode} from '//resources/mojo/components/omnibox/composebox/composebox_query.mojom-webui.js';
 import {getCss} from './composebox.css.js';
 import {getHtml} from './composebox.html.js';
+import {VoiceSearchState} from './constants.js';
 import type {ContextualTasksOnboardingTooltipElement} from './onboarding_tooltip.js';
 
+function recordVoiceSearchAction(voiceSearchState: VoiceSearchState) {
+  // Safety return statement in rare case chrome metrics is not available.
+  if (!chrome.metricsPrivate) {
+    return;
+  }
+
+  chrome.metricsPrivate.recordEnumerationValue(
+      'ContextualTasks.VoiceSearch.State', voiceSearchState,
+      VoiceSearchState.MAX_VALUE + 1);
+}
+
+function createGhostMatch(): AutocompleteMatch {
+  return {
+    contents: '\u200b',
+    description: '\u200b',
+
+    destinationUrl: {url: ''},
+    type: 'SEARCH_SUGGEST',
+    isSearchType: true,
+    // Server side for contextual tasks should always make suggestions
+    // non-deletable.
+    allowedToBeDeleted: false,
+    fillIntoEdit: '',
+    inlineAutocompletion: '',
+    imageDominantColor: '',
+    isRichSuggestion: false,
+
+    a11yLabel: '',
+    removeButtonA11yLabel: '',
+
+    iconPath: '//resources/cr_components/searchbox/icons/search_spark.svg',
+    contentsClass: [],
+    descriptionClass: [],
+    swapContentsAndDescription: false,
+    supportsDeletion: false,
+  } as unknown as AutocompleteMatch;
+}
 export interface ContextualTasksComposeboxElement {
   $: {
     composebox: ComposeboxElement,
     composeboxContainer: HTMLElement,
     onboardingTooltip: ContextualTasksOnboardingTooltipElement,
+    coBrSuggestionsContainer: ComposeboxDropdownElement,
   };
 }
 
@@ -35,6 +77,10 @@ export class ContextualTasksComposeboxElement extends CrLitElement {
     return getCss();
   }
 
+  override render() {
+    return getHtml.bind(this)();
+  }
+
   static override get properties() {
     return {
       isZeroState: {
@@ -42,10 +88,6 @@ export class ContextualTasksComposeboxElement extends CrLitElement {
         reflect: true,
       },
       isSidePanel: {
-        type: Boolean,
-        reflect: true,
-      },
-      isLensOverlayShowing: {
         type: Boolean,
         reflect: true,
       },
@@ -59,28 +101,47 @@ export class ContextualTasksComposeboxElement extends CrLitElement {
         type: Boolean,
         value: loadTimeData.getBoolean('composeboxShowContextMenu'),
       },
-      tabSuggestions_: {type: Array},
       showOnboardingTooltip_: {
         type: Boolean,
         value: loadTimeData.getBoolean('showOnboardingTooltip'),
       },
+      zeroStateSuggestions_: {type: Object},
+      isLoading_: {type: Boolean, reflect: true},
+      enableNativeZeroStateSuggestions: {type: Boolean},
+      activeToolMode_: {
+        type: Number,
+        reflect: true,
+      },
     };
   }
 
+  accessor enableNativeZeroStateSuggestions: boolean = false;
   accessor isZeroState: boolean = false;
   accessor isSidePanel: boolean = false;
-  accessor isLensOverlayShowing: boolean = false;
+
+  protected accessor zeroStateSuggestions_: AutocompleteResult = {
+    input: '',
+
+    suggestionGroupsMap: {},
+
+    matches: Array(5).fill(null).map(() => createGhostMatch()),
+
+    smartComposeInlineHint: null,
+  };
+  /* If suggestions are loading. Set this any time that should hide suggestions
+   * while load next set of suggestions (after attaching image, etc.)
+   */
+  accessor isLoading_ = true;
   protected accessor composeboxHeight_: number = 0;
   protected accessor composeboxDropdownHeight_: number = 0;
   protected accessor isComposeboxFocused_: boolean = false;
   protected accessor showContextMenu_: boolean =
       loadTimeData.getBoolean('composeboxShowContextMenu');
-  protected accessor tabSuggestions_: TabInfo[] = [];
   protected accessor showOnboardingTooltip_: boolean =
       loadTimeData.getBoolean('showOnboardingTooltip');
+  protected accessor activeToolMode_: ToolMode = ToolMode.kUnspecified;
   private eventTracker_: EventTracker = new EventTracker();
   private searchboxCallbackRouter_: SearchboxPageCallbackRouter;
-  private searchboxHandler_: SearchboxPageHandlerRemote;
   private searchboxListenerIds_: number[] = [];
   private onboardingTooltipIsVisible_: boolean = false;
   private numberOfTimesTooltipShown_: number = 0;
@@ -90,22 +151,20 @@ export class ContextualTasksComposeboxElement extends CrLitElement {
       loadTimeData.getBoolean('isOnboardingTooltipDismissCountBelowCap');
   private userDismissedTooltip_: boolean = false;
   private resizeObserver_: ResizeObserver|null = null;
+  private tooltipImpressionTimer_: number|null = null;
+  private composeboxShowZps: boolean =
+      loadTimeData.getBoolean('composeboxShowZps');
+  private readonly tooltipImpressionDelay_: number =
+      loadTimeData.getInteger('composeboxShowOnboardingTooltipImpressionDelay');
 
   constructor() {
     super();
     this.searchboxCallbackRouter_ =
         ComposeboxProxyImpl.getInstance().searchboxCallbackRouter;
-    this.searchboxHandler_ = ComposeboxProxyImpl.getInstance().searchboxHandler;
   }
 
   override connectedCallback() {
     super.connectedCallback();
-
-    this.searchboxListenerIds_.push(
-        this.searchboxCallbackRouter_.onTabStripChanged.addListener(
-            this.refreshTabSuggestions_.bind(this)));
-
-    this.refreshTabSuggestions_();
 
     const composebox = this.$.composebox;
     if (composebox) {
@@ -141,14 +200,62 @@ export class ContextualTasksComposeboxElement extends CrLitElement {
             this.updateTooltipVisibility_();
           });
 
+      this.eventTracker_.add(
+          composebox, 'composebox-voice-search-start', () => {
+            recordVoiceSearchAction(
+                VoiceSearchState.VOICE_SEARCH_BUTTON_CLICKED);
+          });
 
+      this.eventTracker_.add(
+          composebox, 'composebox-voice-search-transcription-success', () => {
+            recordVoiceSearchAction(VoiceSearchState.SUCCESSFUL_TRANSCRIPT);
+          });
+
+      this.eventTracker_.add(
+          composebox, 'composebox-voice-search-error', () => {
+            recordVoiceSearchAction(VoiceSearchState.VOICE_SEARCH_ERROR);
+          });
+      this.eventTracker_.add(
+          composebox, 'composebox-voice-search-error-and-canceled', () => {
+            recordVoiceSearchAction(
+                VoiceSearchState.VOICE_SEARCH_ERROR_AND_CANCELED);
+          });
+      this.eventTracker_.add(
+          composebox, 'active-tool-mode-changed',
+          (e: CustomEvent<{value: ToolMode}>) => {
+            this.activeToolMode_ = e.detail.value;
+          });
+      this.eventTracker_.add(
+          composebox, 'composebox-voice-search-user-canceled', () => {
+            recordVoiceSearchAction(VoiceSearchState.VOICE_SEARCH_CANCELED);
+          });
+      // Initial check.
       this.updateTooltipVisibility_();
+      this.activeToolMode_ = composebox.activeToolMode;
 
       this.resizeObserver_ = new ResizeObserver(() => {
         this.composeboxHeight_ = composebox.offsetHeight;
       });
       this.resizeObserver_.observe(composebox);
     }
+  }
+
+  override willUpdate(changedProperties: PropertyValues<this>) {
+    super.willUpdate(changedProperties);
+    // Get zero state autocomplete matches. If `composeboxShowZps` is true
+    // then an autocomplete request will already be being made by
+    // cr-composebox and therefore this isn't needed here. We currently
+    // aren't showing ZPS in all cases (i.e. for context) which is why
+    // this is currently needed.
+    if (changedProperties.has('isZeroState') && this.isZeroState &&
+        !this.composeboxShowZps) {
+      this.$.composebox.queryAutocomplete(/*clearMatches=*/ false);
+    }
+  }
+
+  get showLensButton_() {
+    //Lens should be hidden in the side panel if deep search is enabled.
+    return this.isSidePanel && this.activeToolMode_ !== ToolMode.kDeepSearch;
   }
 
   private updateTooltipVisibility_() {
@@ -161,24 +268,34 @@ export class ContextualTasksComposeboxElement extends CrLitElement {
       return;
     }
 
-
     if (this.onboardingTooltipIsVisible_ &&
         !this.$.composebox.getHasAutomaticActiveTabChipToken()) {
       tooltip.hide();
       this.onboardingTooltipIsVisible_ = false;
       this.stopObservingResize_();
+      // Clear the timer if the tooltip is hidden. This will prevent it being
+      // count as an impression if the chip only showed up briefly.
+      this.clearTooltipImpressionTimer_();
     } else if (this.$.composebox.getHasAutomaticActiveTabChipToken()) {
       const target = this.$.composebox.getAutomaticActiveTabChipElement();
       if (target) {
         tooltip.target = target;
       }
 
-      const shouldShow = this.shouldShowOnboardingTooltip();
-      if (shouldShow) {
+      if (this.onboardingTooltipIsVisible_) {
+        tooltip.updatePosition();
+      } else if (this.shouldShowOnboardingTooltip()) {
         tooltip.show();
         this.startObservingResize_(target);
-        this.numberOfTimesTooltipShown_++;
         this.onboardingTooltipIsVisible_ = true;
+
+        // Start the impression timer if the tooltip is newly shown.
+        this.tooltipImpressionTimer_ = setTimeout(() => {
+          // If the timer is not cleared, that means the delay passed since the
+          // tooltip was shown. Increment the impression count.
+          this.numberOfTimesTooltipShown_++;
+          this.tooltipImpressionTimer_ = null;
+        }, this.tooltipImpressionDelay_);
       }
     }
     tooltip.shouldShow = this.onboardingTooltipIsVisible_;
@@ -195,10 +312,24 @@ export class ContextualTasksComposeboxElement extends CrLitElement {
     this.userDismissedTooltip_ = true;
     this.onboardingTooltipIsVisible_ = false;
     this.stopObservingResize_();
+    this.clearTooltipImpressionTimer_();
+  }
+
+  protected onZeroStateResultReceived_(e: CustomEvent<AutocompleteResult>) {
+    this.isLoading_ = false;
+    this.zeroStateSuggestions_ = e.detail;
+  }
+
+  private clearTooltipImpressionTimer_() {
+    if (this.tooltipImpressionTimer_) {
+      clearTimeout(this.tooltipImpressionTimer_);
+      this.tooltipImpressionTimer_ = null;
+    }
   }
 
   override disconnectedCallback() {
     super.disconnectedCallback();
+    this.clearTooltipImpressionTimer_();
     this.stopObservingResize_();
     if (this.resizeObserver_) {
       this.resizeObserver_.disconnect();
@@ -208,16 +339,6 @@ export class ContextualTasksComposeboxElement extends CrLitElement {
     this.searchboxListenerIds_.forEach(
         id => assert(this.searchboxCallbackRouter_.removeListener(id)));
     this.searchboxListenerIds_ = [];
-  }
-
-  override render() {
-    return getHtml.bind(this)();
-  }
-
-  protected async refreshTabSuggestions_() {
-    const {tabs} = await this.searchboxHandler_.getRecentTabs();
-    this.tabSuggestions_ = [...tabs];
-    this.updateTooltipVisibility_();
   }
 
   clearInputAndFocus(querySubmitted: boolean = false): void {
@@ -264,6 +385,22 @@ export class ContextualTasksComposeboxElement extends CrLitElement {
 
   get composeboxHeightForTesting() {
     return this.composeboxHeight_;
+  }
+
+  get numberOfTimesTooltipShownForTesting() {
+    return this.numberOfTimesTooltipShown_;
+  }
+
+  set numberOfTimesTooltipShownForTesting(n: number) {
+    this.numberOfTimesTooltipShown_ = n;
+  }
+
+  set userDismissedTooltipForTesting(dismissed: boolean) {
+    this.userDismissedTooltip_ = dismissed;
+  }
+
+  updateTooltipVisibilityForTesting() {
+    this.updateTooltipVisibility_();
   }
 }
 

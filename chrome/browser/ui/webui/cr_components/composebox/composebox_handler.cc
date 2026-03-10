@@ -10,7 +10,6 @@
 #include <vector>
 
 #include "base/metrics/histogram_functions.h"
-#include "base/notreached.h"
 #include "base/time/time.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/omnibox/omnibox_controller.h"
@@ -22,6 +21,7 @@
 #include "components/lens/lens_url_utils.h"
 #include "components/metrics/metrics_provider.h"
 #include "components/omnibox/browser/autocomplete_match_type.h"
+#include "components/omnibox/browser/vector_icons.h"
 #include "content/public/browser/page_navigator.h"
 #include "net/base/url_util.h"
 #include "third_party/metrics_proto/omnibox_event.pb.h"
@@ -158,58 +158,6 @@ ComposeboxHandler::ComposeboxHandler(
 
 ComposeboxHandler::~ComposeboxHandler() = default;
 
-omnibox::ChromeAimToolsAndModels ComposeboxHandler::GetAimToolMode() const {
-  return aim_tool_mode_;
-}
-
-// TODO(crbug.com/450894455): Clean up how we set the tool mode. Create a enum
-// on the WebUI side that can set this.
-void ComposeboxHandler::SetDeepSearchMode(bool enabled) {
-  if (enabled) {
-    aim_tool_mode_ = omnibox::ChromeAimToolsAndModels::TOOL_MODE_DEEP_SEARCH;
-  } else {
-    aim_tool_mode_ = omnibox::ChromeAimToolsAndModels::TOOL_MODE_UNSPECIFIED;
-  }
-
-  if (auto* metrics_recorder = GetMetricsRecorder()) {
-    metrics_recorder->RecordToolState(
-        contextual_search::SubmissionType::kDeepSearch,
-        enabled ? contextual_search::AimToolState::kEnabled
-                : contextual_search::AimToolState::kDisabled);
-  }
-}
-
-void ComposeboxHandler::SetCreateImageMode(bool enabled, bool image_present) {
-  std::optional<contextual_search::AimToolState> tool_state;
-  if (enabled) {
-    // Only log if not already in some form of create image mode so this metric
-    // does not get double counted.
-    if (aim_tool_mode_ ==
-        omnibox::ChromeAimToolsAndModels::TOOL_MODE_UNSPECIFIED) {
-      tool_state = contextual_search::AimToolState::kEnabled;
-    }
-    // Server uses different `azm` param to make IMAGE_GEN requests when an
-    // image is present.
-    if (image_present) {
-      aim_tool_mode_ =
-          omnibox::ChromeAimToolsAndModels::TOOL_MODE_IMAGE_GEN_UPLOAD;
-    } else {
-      aim_tool_mode_ = omnibox::ChromeAimToolsAndModels::TOOL_MODE_IMAGE_GEN;
-    }
-  } else {
-    aim_tool_mode_ = omnibox::ChromeAimToolsAndModels::TOOL_MODE_UNSPECIFIED;
-    tool_state = contextual_search::AimToolState::kDisabled;
-  }
-
-  if (!tool_state) {
-    return;
-  }
-  if (auto* metrics_recorder = GetMetricsRecorder()) {
-    metrics_recorder->RecordToolState(
-        contextual_search::SubmissionType::kCreateImages, *tool_state);
-  }
-}
-
 void ComposeboxHandler::FocusChanged(bool focused) {
   // Unimplemented. Currently the composebox session is tied to when it is
   // connected/disconnected from the DOM, so this is not needed.
@@ -252,19 +200,19 @@ void ComposeboxHandler::ExecuteAction(uint8_t line,
                                       bool ctrl_key,
                                       bool meta_key,
                                       bool shift_key) {
-  NOTREACHED();
+  mojo::ReportBadMessage("Composebox does not have actions");
 }
 
 void ComposeboxHandler::OnThumbnailRemoved() {
-  NOTREACHED();
+  mojo::ReportBadMessage("No thumbnails in composebox input");
 }
 
 void ComposeboxHandler::ClearFiles() {
   ContextualSearchboxHandler::ClearFiles();
   // Reset the AIM tool mode to not include file upload if it currently does.
-  if (aim_tool_mode_ ==
-      omnibox::ChromeAimToolsAndModels::TOOL_MODE_IMAGE_GEN_UPLOAD) {
-    aim_tool_mode_ = omnibox::ChromeAimToolsAndModels::TOOL_MODE_IMAGE_GEN;
+  if (GetInputState().active_tool ==
+      omnibox::ToolMode::TOOL_MODE_IMAGE_GEN_UPLOAD) {
+    input_state_model_->setActiveTool(omnibox::ToolMode::TOOL_MODE_IMAGE_GEN);
   }
 }
 
@@ -296,37 +244,30 @@ void ComposeboxHandler::SubmitQuery(
     WindowOpenDisposition disposition,
     omnibox::ChromeAimEntryPoint aim_entrypoint,
     std::map<std::string, std::string> additional_params) {
-  contextual_search::SubmissionType submission_type;
-  switch (aim_tool_mode_) {
-    case omnibox::ChromeAimToolsAndModels::TOOL_MODE_DEEP_SEARCH:
-      additional_params["dr"] = "1";
-      submission_type = contextual_search::SubmissionType::kDeepSearch;
-      break;
-    case omnibox::ChromeAimToolsAndModels::TOOL_MODE_IMAGE_GEN:
-    case omnibox::ChromeAimToolsAndModels::TOOL_MODE_IMAGE_GEN_UPLOAD:
-      additional_params["imgn"] = "1";
-      submission_type = contextual_search::SubmissionType::kCreateImages;
-      break;
-    default:
-      submission_type = contextual_search::SubmissionType::kDefault;
-      break;
-  }
-
   if (auto* metrics_recorder = GetMetricsRecorder()) {
-    metrics_recorder->RecordToolsSubmissionType(submission_type);
+    // Record AIM tool and model mode on query submission.
+    const auto& input_state = GetInputState();
+    metrics_recorder->RecordModesOnSubmission(
+        mojo::EnumTraits<composebox_query::mojom::ToolMode,
+                         omnibox::ToolMode>::ToMojom(input_state.active_tool),
+        mojo::EnumTraits<composebox_query::mojom::ModelMode,
+                         omnibox::ModelMode>::ToMojom(input_state
+                                                          .active_model));
   }
 
   ComputeAndOpenQueryUrl(query_text, disposition, aim_entrypoint,
                          std::move(additional_params));
 }
 
-void ComposeboxHandler::UpdateSuggestedTabContext(
-    searchbox::mojom::TabInfoPtr tab_info) {
-  has_suggested_tab_context_ = !tab_info.is_null();
-  SearchboxHandler::page_->UpdateAutoSuggestedTabContext(std::move(tab_info));
-}
+std::string ComposeboxHandler::AutocompleteIconToResourceName(
+    const gfx::VectorIcon& icon) const {
+  // TODO(crbug.com/476137316): Update vector icons returned by server.
+  // The default icon for contextual suggestions is the subdirectory arrow right
+  // icon. For the Lens composebox and realbox, we want to stay consistent with
+  // the search loupe instead.
+  if (icon.name == omnibox::kSubdirectoryArrowRightIcon.name) {
+    return searchbox_internal::kSearchIconResourceName;
+  }
 
-std::optional<lens::LensOverlayInvocationSource>
-ComposeboxHandler::GetInvocationSource() const {
-  return lens::LensOverlayInvocationSource::kNtpContextualQuery;
+  return SearchboxHandler::AutocompleteIconToResourceName(icon);
 }

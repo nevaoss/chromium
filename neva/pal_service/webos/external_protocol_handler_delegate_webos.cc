@@ -46,7 +46,7 @@ void ExternalProtocolHandlerDelegateWebOS::HandleExternalProtocol(
 
 void ExternalProtocolHandlerDelegateWebOS::LaunchEnactBrowserWithUrl(
     const std::string& url) {
-  base::Value::Dict value, params;
+  base::DictValue value, params;
   params.Set("target", url);
   value.Set("id", kEnactBrowserApplicationId);
   value.Set("params", std::move(params));

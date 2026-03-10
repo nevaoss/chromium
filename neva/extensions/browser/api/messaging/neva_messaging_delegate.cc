@@ -28,7 +28,7 @@ namespace neva {
 NevaMessagingDelegate::NevaMessagingDelegate() = default;
 NevaMessagingDelegate::~NevaMessagingDelegate() = default;
 
-std::optional<base::Value::Dict> NevaMessagingDelegate::MaybeGetTabInfo(
+std::optional<base::DictValue> NevaMessagingDelegate::MaybeGetTabInfo(
     content::WebContents* web_contents) {
   // Add info about the opener's tab (if it was a tab).
   if (!web_contents) {
@@ -41,7 +41,7 @@ std::optional<base::Value::Dict> NevaMessagingDelegate::MaybeGetTabInfo(
 
   if (tab_helper) {
     // Give only id and url from the Tab properties(tabs.json), at the moment.
-    base::Value::Dict tab_info;
+    base::DictValue tab_info;
     tab_info.Set(
         "id", static_cast<int>(tab_helper->GetIdFromWebContents(web_contents)));
     tab_info.Set("url", web_contents->GetLastCommittedURL().spec());

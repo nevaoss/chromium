@@ -6,7 +6,6 @@
 
 #include <limits>
 
-#include "base/containers/contains.h"
 #include "base/memory/raw_ptr.h"
 #include "base/no_destructor.h"
 #include "base/strings/string_number_conversions.h"
@@ -145,6 +144,18 @@ class AXFragmentRootPlatformNodeWin : public AXPlatformNodeWin,
             static_cast<AXFragmentRootWin*>(GetDelegate())->IsControlElement()
                 ? VARIANT_TRUE
                 : VARIANT_FALSE;
+        break;
+
+      case UIA_AutomationIdPropertyId:
+        // Use the fragment root's AXUniqueId for a deterministic
+        // (process-lifetime) identifier that doesn't depend on Windows' proxy
+        // heuristics. GetUniqueId() returns AXPlatformNodeId; for
+        // AXFragmentRootWin it's an AXUniqueId, which is convertible to an
+        // integer type.
+        result->vt = VT_BSTR;
+        result->bstrVal = ::SysAllocString(
+            std::to_wstring(static_cast<int32_t>(GetDelegate()->GetUniqueId()))
+                .c_str());
         break;
     }
 
@@ -463,11 +474,11 @@ void AXFragmentRootWin::OnEventListenerRemoved(
 }
 
 bool AXFragmentRootWin::HasEventListenerForEvent(EVENTID event_id) {
-  return base::Contains(event_listener_count_, event_id);
+  return event_listener_count_.contains(event_id);
 }
 
 bool AXFragmentRootWin::HasEventListenerForProperty(PROPERTYID property_id) {
-  return base::Contains(property_listener_count_, property_id);
+  return property_listener_count_.contains(property_id);
 }
 
 IRawElementProviderSimple* AXFragmentRootWin::GetProvider() {

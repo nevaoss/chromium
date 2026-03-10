@@ -129,7 +129,7 @@ void AppRuntimeContentRendererClient::PrepareErrorPage(
     if (template_html.empty()) {
       LOG(ERROR) << "unable to load template.";
     } else {
-      base::Value::Dict error_strings;
+      base::DictValue error_strings;
       AppRuntimeLocalizedError::GetErrorStrings(error.reason(), error_strings);
       // "t" is the id of the template's root node.
       *error_html = webui::GetLocalizedHtml(template_html, error_strings);

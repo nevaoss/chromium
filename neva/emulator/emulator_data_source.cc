@@ -88,7 +88,8 @@ EmulatorDataSource::EmulatorDataSource()
 
   auto url_loader_factory_params =
       network::mojom::URLLoaderFactoryParams::New();
-  url_loader_factory_params->process_id = network::mojom::kBrowserProcessId;
+  url_loader_factory_params->process_id =
+      network::OriginatingProcess::browser();
   url_loader_factory_params->is_orb_enabled = false;
   url_loader_factory_params->is_trusted = true;
   network_context_remote_->CreateURLLoaderFactory(
@@ -223,15 +224,14 @@ void EmulatorDataSource::SetExpectationAsync(const std::string& url,
 }
 
 std::string EmulatorDataSource::PrepareRequestParams(RequestArgs &args) {
-  base::Value::Dict request;
+  base::DictValue request;
   for (auto arg: args) {
     request.Set(arg.name, *arg.value);
   }
   return PrepareRequestParams(request);
 }
 
-std::string EmulatorDataSource::PrepareRequestParams(
-    base::Value::Dict& request) {
+std::string EmulatorDataSource::PrepareRequestParams(base::DictValue& request) {
   std::string params;
   base::JSONWriter::Write(request, &params);
   std::string esc_params;

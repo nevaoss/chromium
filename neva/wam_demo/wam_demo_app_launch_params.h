@@ -32,8 +32,7 @@ struct AppLaunchParams {
   AppLaunchParams();
   ~AppLaunchParams();
 
-  static std::unique_ptr<base::Value::Dict> AsDict(
-      const AppLaunchParams& params);
+  static std::unique_ptr<base::DictValue> AsDict(const AppLaunchParams& params);
 
   std::string appid;
   std::string appurl;

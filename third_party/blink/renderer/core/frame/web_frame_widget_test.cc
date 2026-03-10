@@ -16,10 +16,10 @@
 #include "cc/test/property_tree_test_utils.h"
 #include "cc/trees/scroll_source_type.h"
 #include "components/viz/common/surfaces/parent_local_surface_id_allocator.h"
-#include "testing/gmock/include/gmock/gmock.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/common/input/synthetic_web_input_event_builders.h"
 #include "third_party/blink/public/mojom/page/widget.mojom-shared.h"
+#include "third_party/blink/public/web/web_script_source.h"
 #include "third_party/blink/renderer/core/css/properties/css_property_ref.h"
 #include "third_party/blink/renderer/core/css/properties/longhands.h"
 #include "third_party/blink/renderer/core/css/style_engine.h"
@@ -50,6 +50,7 @@
 #include "third_party/blink/renderer/platform/widget/widget_base.h"
 #include "third_party/blink/renderer/platform/wtf/functional.h"
 #include "ui/base/mojom/window_show_state.mojom-blink.h"
+#include "ui/display/screen_info.h"
 
 #if BUILDFLAG(IS_WIN)
 #include "components/stylus_handwriting/win/features.h"
@@ -58,7 +59,6 @@
 namespace blink {
 
 using testing::_;
-using testing::ContainerEq;
 
 bool operator==(const InputHandlerProxy::DidOverscrollParams& lhs,
                 const InputHandlerProxy::DidOverscrollParams& rhs) {
@@ -128,6 +128,55 @@ TEST_F(WebFrameWidgetSimTest, AutoResizeAllocatedLocalSurfaceId) {
                   .MainFrameViewWidget()
                   ->LayerTreeHostForTesting()
                   ->new_local_surface_id_request_for_testing());
+}
+
+TEST_F(WebFrameWidgetSimTest, ColorGamutChangeTriggersMediaQuery) {
+  SimRequest request("https://example.com/test.html", "text/html");
+  LoadURL("https://example.com/test.html");
+  request.Complete(R"HTML(
+    <script>
+      window.__changed = false;
+      const mq = window.matchMedia("(color-gamut: p3)");
+      mq.addEventListener("change", () => { window.__changed = true; });
+    </script>
+  )HTML");
+
+  viz::ParentLocalSurfaceIdAllocator allocator;
+  allocator.GenerateId();
+
+  VisualProperties visual_properties;
+  visual_properties.local_surface_id = allocator.GetCurrentLocalSurfaceId();
+
+  display::ScreenInfo screen_info;
+  screen_info.display_color_spaces =
+      gfx::DisplayColorSpaces(gfx::ColorSpace::CreateSRGB());
+  visual_properties.screen_infos = display::ScreenInfos(screen_info);
+
+  WebView().MainFrameWidget()->ApplyVisualProperties(visual_properties);
+  WebView().MainFrameViewWidget()->UpdateSurfaceAndScreenInfo(
+      visual_properties.local_surface_id.value(),
+      visual_properties.compositor_viewport_pixel_rect,
+      visual_properties.screen_infos);
+
+  Compositor().BeginFrame();
+  test::RunPendingTasks();
+
+  screen_info.display_color_spaces =
+      gfx::DisplayColorSpaces(gfx::ColorSpace::CreateDisplayP3D65());
+  visual_properties.screen_infos = display::ScreenInfos(screen_info);
+
+  WebView().MainFrameViewWidget()->UpdateSurfaceAndScreenInfo(
+      visual_properties.local_surface_id.value(),
+      visual_properties.compositor_viewport_pixel_rect,
+      visual_properties.screen_infos);
+
+  Compositor().BeginFrame();
+  test::RunPendingTasks();
+
+  v8::HandleScope handle_scope(Window().GetIsolate());
+  v8::Local<v8::Value> changed = MainFrame().ExecuteScriptAndReturnValue(
+      WebScriptSource("window.__changed"));
+  EXPECT_TRUE(changed->BooleanValue(Window().GetIsolate()));
 }
 
 TEST_F(WebFrameWidgetSimTest, FrameSinkIdHitTestAPI) {
@@ -1836,50 +1885,6 @@ TEST_F(WebFrameWidgetSimTest, TestLineBoundsAreCorrectAfterFocusChange) {
   for (wtf_size_t i = 0; i < expected.size(); ++i) {
     EXPECT_EQ(expected.at(i), actual.at(i));
   }
-}
-
-TEST_F(WebFrameWidgetSimTest, TestLineBoundsAreCorrectForContenteditable) {
-  WebView().ResizeVisualViewport(gfx::Size(1000, 1000));
-  auto* widget = WebView().MainFrameViewWidget();
-  SimRequest request("https://example.com/test.html", "text/html");
-  SimSubresourceRequest font_resource("https://example.com/Ahem.woff2",
-                                      "font/woff2");
-  LoadURL("https://example.com/test.html");
-  request.Complete(
-      R"HTML(
-      <!doctype html>
-      <style>
-        @font-face {
-          font-family: custom-font;
-          src: url(https://example.com/Ahem.woff2) format("woff2");
-        }
-        body {
-          margin: 0;
-          padding: 0;
-          border: 0;
-        }
-        .target {
-          font: 10px/1 custom-font, monospace;
-          margin: 0;
-          padding: 0;
-          border: none;
-        }
-      </style>
-      <div contenteditable id='first' class='target'>ABCD</div>
-      )HTML");
-  Compositor().BeginFrame();
-  // Finish font loading, and trigger invalidations.
-  font_resource.Complete(
-      *test::ReadFromFile(test::CoreTestDataPath("Ahem.woff2")));
-  Compositor().BeginFrame();
-  Element* first = GetDocument().getElementById(AtomicString("first"));
-  first->Focus();
-  widget->UpdateAllLifecyclePhases(DocumentUpdateReason::kTest);
-
-  Vector<gfx::Rect> expected = {gfx::Rect(0, 0, 40, 10)};
-  Vector<gfx::Rect> actual =
-      widget->GetLastCursorAnchorInfoForTesting()->visible_line_bounds;
-  EXPECT_THAT(expected, ContainerEq(actual));
 }
 
 TEST_F(WebFrameWidgetSimTest, DisplayStateMatchesWindowShowState) {

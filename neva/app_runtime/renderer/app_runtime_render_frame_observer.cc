@@ -37,9 +37,6 @@
 #include "third_party/blink/public/web/web_navigation_control.h"
 #include "third_party/blink/public/web/web_settings.h"
 #include "third_party/blink/public/web/web_view.h"
-#include "third_party/blink/renderer/bindings/core/v8/serialization/serialized_script_value.h"
-#include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
-#include "third_party/blink/renderer/platform/weborigin/kurl.h"
 #include "ui/base/resource/resource_bundle.h"
 
 namespace neva_app_runtime {
