@@ -64,13 +64,6 @@ declare_args() {
   # Requires profiling to be set to true.
   enable_full_stack_frames_for_profiling = false
 
-  # TODO(neva): Remove this when Neva GCC can remove use_gold logic.
-  # When we are going to use gold we need to find it.
-  # This is initialized below, after use_gold might have been overridden.
-  if (use_neva_appruntime) {
-    gold_path = ""
-  }
-
   # Enable fatal linker warnings. Building Chromium with certain versions
   # of binutils can cause linker warning.
   fatal_linker_warnings = true
@@ -221,16 +214,9 @@ declare_args() {
 
 declare_args() {
   # Set to true to use icf, Identical Code Folding.
-  # TODO(neva): Remove this when Neva GCC can remove use_gold logic.
-  if (use_neva_appruntime) {
-    use_icf = (is_posix || is_fuchsia) && !is_debug && !using_sanitizer &&
-              !use_clang_coverage && !(is_android && use_order_profiling) &&
-              (use_lld || use_gold) && !is_wasm
-  } else {
-    use_icf = (is_posix || is_fuchsia) && !is_debug && !using_sanitizer &&
-              !use_clang_coverage && !(is_android && use_order_profiling) &&
-              use_lld && !is_wasm
-  }
+  use_icf = (is_posix || is_fuchsia) && !is_debug && !using_sanitizer &&
+            !use_clang_coverage && !(is_android && use_order_profiling) &&
+            use_lld && !is_wasm
 }
 
 if (is_android) {
