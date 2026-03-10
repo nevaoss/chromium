@@ -373,7 +373,8 @@ CreateMemoryPressureMonitor(const base::CommandLine& command_line) {
   std::unique_ptr<memory_pressure::MultiSourceMemoryPressureMonitor> monitor;
 
 #if BUILDFLAG(IS_APPLE) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_FUCHSIA) || \
-    BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID)
+    BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID) || \
+    BUILDFLAG(IS_NEVA_APPRUNTIME)
   monitor =
       std::make_unique<memory_pressure::MultiSourceMemoryPressureMonitor>();
 #endif
@@ -382,7 +383,7 @@ CreateMemoryPressureMonitor(const base::CommandLine& command_line) {
   if (monitor)
     monitor->MaybeStartPlatformVoter();
 
-#if BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_NEVA_APPRUNTIME)
   if (auto evaluator = UserLevelMemoryPressureSignalGenerator::MaybeCreate(
           monitor->CreateVoter())) {
     monitor->SetSystemEvaluator(std::move(evaluator));
