@@ -1,4 +1,4 @@
-# Checklist
+## Checklist
 - [ ] CLA has been signed
 - [ ] Code follows the project's style guidelines
 - [ ] PR title tags are in the proper category
@@ -7,7 +7,7 @@
 <!-- PR Title: [TagName] followed by a brief summary of the change -->
 <!-- Example: [browsershell] Change to FreezingPolicy for suspend/resume request -->
 
-# Detailed Notes
+## Detailed Notes
 <!-- Carefully describe the details of this change below -->
 <!-- Example:
 This commit applies the FreezingPolicy to Neva PageContents.
@@ -16,7 +16,7 @@ It was using blink::WebPagePauser to suspend the page, this commit changes it to
 When the tab becomes active again, the page will be resumed from the frozen state.
 -->
 
-# Test Scenario
+## Test Scenario
 <!-- Write the test steps starting from this line -->
 <!-- If there are multiple test scenarios, write the most representative one -->
 <!-- Example:
@@ -29,7 +29,7 @@ When the tab becomes active again, the page will be resumed from the frozen stat
 5. Verify that the web app #1's state has changed to "frozen" and became "active".
 -->
 
-# Issue: N/A
+## Issue: N/A
 <!-- Write "Issue:" followed by a space and then the Jira ticket number -->
 <!-- If there are multiple issues, separate them with commas -->
 <!-- If there is no related issue, enter "N/A" -->
