@@ -4393,13 +4393,6 @@ hooks = [
     'action': ['git', '-C', 'src/v8', 'am',
               '../neva/patches/0007-Prevent-crash-with-std-isprint-usage-in-serialization.patch']
   },
-  # Apply 'Restore-GN-use_gold-logic-in-V8' patch
-  {
-    'name': 'Restore-GN-use_gold-logic-in-V8',
-    'pattern': '.',
-    'action': ['git', '-C', 'src/v8', 'am',
-              '../neva/patches/0008-v8-build-Restore-GN-use_gold-logic-in-V8.patch']
-  },
   # Apply 'Set-using-local-dynamic-for-webOS' patch
   {
     'name': 'Set-using-local-dynamic-for-webOS',

@@ -109,12 +109,6 @@ declare_args() {
   use_debug_fission =
       !is_android && !is_fuchsia && !is_apple && !is_win && use_lld
 
-  # TODO(neva): Remove this when Neva GCC can remove use_gold logic.
-  if (use_neva_appruntime) {
-    use_debug_fission = !is_android && !is_fuchsia && !is_apple && !is_win &&
-                        (use_gold || use_lld) && cc_wrapper == ""
-  }
-
   # Enables support for ThinLTO, which links 3x-10x faster than full LTO. See
   # also http://blog.llvm.org/2016/06/thinlto-scalable-and-incremental-lto.html
   # Use it by default on official-optimized android and Chrome OS builds, but
