@@ -121,13 +121,9 @@
 #include "content/child/child_process_sandbox_support_impl_win.h"
 #endif
 
-<<<<<<< HEAD
 // TODO(neva_rust): Remove this workaround once Neva supports Rust build.
 #if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX)
-=======
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
->>>>>>> 147.0.7714.0~1
 #include "content/child/font_data/font_data_manager.h"
 #include "skia/ext/font_utils.h"
 #include "third_party/blink/public/web/win/web_font_rendering.h"
@@ -231,13 +227,9 @@ RendererBlinkPlatformImpl::RendererBlinkPlatformImpl(
     SkFontConfigInterface::SetGlobal(font_loader);
 #endif
 
-<<<<<<< HEAD
 // TODO(neva_rust): Remove this workaround once Neva supports Rust build.
 #if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX)
-=======
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
->>>>>>> 147.0.7714.0~1
     // Create a FontDataManager if it's enabled, and if we're not in a
     // single-process environment. In single process, the SkFontMgr is already
     // installed by browser process code at this point.
