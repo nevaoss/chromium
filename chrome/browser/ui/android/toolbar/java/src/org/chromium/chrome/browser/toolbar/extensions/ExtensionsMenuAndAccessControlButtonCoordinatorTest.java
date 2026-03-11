@@ -76,7 +76,8 @@ public class ExtensionsMenuAndAccessControlButtonCoordinatorTest {
                         "toggle_text",
                         "accessible_name",
                         "tooltip",
-                        true);
+                        true,
+                        /* icon= */ null);
         ExtensionsMenuTypes.SiteSettingsState siteSettingsState =
                 new ExtensionsMenuTypes.SiteSettingsState("label", false, toggleState);
         when(mExtensionsMenuBridgeJniMock.getSiteSettings(anyLong())).thenReturn(siteSettingsState);
@@ -88,7 +89,7 @@ public class ExtensionsMenuAndAccessControlButtonCoordinatorTest {
 
         when(mTask.getOrCreateNativeBrowserWindowPtr(mProfile)).thenReturn(BROWSER_WINDOW_POINTER);
         when(mExtensionsToolbarBridge.getExtensionsMenuButtonState(any()))
-                .thenReturn(ExtensionsToolbarBridge.ExtensionsToolbarButtonState.DEFAULT);
+                .thenReturn(ExtensionsToolbarBridge.ExtensionsMenuButtonState.DEFAULT);
         mBridgeRule.getFakeBridge().getOrCreateTaskModel(mTask, mProfile).setInitialized(true);
 
         mCoordinator =

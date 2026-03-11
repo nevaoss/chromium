@@ -124,6 +124,8 @@
 }
 - (void)setRemainingAttachmentCapacity:(NSUInteger)capacity {
 }
+- (void)setServerStrings:(ComposeboxServerStrings*)serverStrings {
+}
 - (void)setModelOption:(ComposeboxModelOption)modelOption {
 }
 - (void)updateVisibleControls:(ComposeboxInputPlateControls)visibleControls {
@@ -132,6 +134,9 @@
 
 - (BOOL)showsControls:(ComposeboxInputPlateControls)controls {
   return (_visibleControls & controls) != ComposeboxInputPlateControls::kNone;
+}
+
+- (void)updatePreferredContentSizeForNewTextFieldHeight {
 }
 
 @end

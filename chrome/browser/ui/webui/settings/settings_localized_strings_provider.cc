@@ -538,7 +538,11 @@ void AddAppearanceStrings(content::WebUIDataSource* html_source,
       {"uiFeatureAlignLeft", IDS_SETTINGS_UI_FEATURE_ALIGN_LEFT},
       {"uiFeatureAlignRight", IDS_SETTINGS_UI_FEATURE_ALIGN_RIGHT},
       {"uiFeatureAlignSide", IDS_SETTINGS_UI_FEATURE_ALIGN_SIDE},
+      {"uiFeatureAlignSideSearchHint",
+       IDS_SETTINGS_UI_FEATURE_ALIGN_SIDE_SEARCH_HINT},
       {"uiFeatureAlignTop", IDS_SETTINGS_UI_FEATURE_ALIGN_TOP},
+      {"uiFeatureAlignTopSearchHint",
+       IDS_SETTINGS_UI_FEATURE_ALIGN_TOP_SEARCH_HINT},
       {"resetToDefault", IDS_SETTINGS_RESET_TO_DEFAULT},
 #if BUILDFLAG(IS_LINUX)
       {"gtkTheme", IDS_SETTINGS_GTK_THEME},
@@ -580,11 +584,6 @@ void AddAppearanceStrings(content::WebUIDataSource* html_source,
   html_source->AddBoolean(
       "showEverythingMenuEnabled",
       tab_groups::SavedTabGroupUtils::IsEnabledForProfile(profile));
-
-  html_source->AddBoolean(
-      "tabSearchIsRightAlignedAtStartup",
-      tabs::GetTabSearchPosition(profile) ==
-          tabs::TabSearchPosition::kTrailingHorizontalTabstrip);
 
 #if BUILDFLAG(IS_LINUX)
   bool show_custom_chrome_frame = ui::OzonePlatform::GetInstance()
@@ -824,6 +823,8 @@ void AddGlicStrings(content::WebUIDataSource* html_source, Profile* profile) {
       {"glicKeyboardShortcut", IDS_SETTINGS_GLIC_KEYBOARD_SHORTCUT},
       {"glicKeyboardShortcutEditLabel",
        IDS_SETTINGS_GLIC_KEYBOARD_SHORTCUT_EDIT_LABEL},
+      {"glicKeyboardShortcutClearLabel",
+       IDS_SETTINGS_GLIC_KEYBOARD_SHORTCUT_CLEAR_LABEL},
       {"glicKeyboardShortcutSublabel",
        IDS_SETTINGS_GLIC_KEYBOARD_SHORTCUT_SUBLABEL},
       {"glicKeyboardShortcutLearnMoreLabel",
@@ -831,6 +832,8 @@ void AddGlicStrings(content::WebUIDataSource* html_source, Profile* profile) {
       {"glicNavigationShortcut", IDS_SETTINGS_GLIC_NAVIGATION_SHORTCUT},
       {"glicNavigationShortcutEditLabel",
        IDS_SETTINGS_GLIC_NAVIGATION_SHORTCUT_EDIT_LABEL},
+      {"glicNavigationShortcutClearLabel",
+       IDS_SETTINGS_GLIC_NAVIGATION_SHORTCUT_CLEAR_LABEL},
       {"glicNavigationShortcutSublabel",
        IDS_SETTINGS_GLIC_NAVIGATION_SHORTCUT_SUBLABEL},
       {"glicKeyboardShortcutLearnMoreAriaLabel",
@@ -1373,9 +1376,9 @@ bool IsWalletServerStorageEnabled() {
          base::FeatureList::IsEnabled(syncer::kSyncWalletVehicleRegistrations);
 }
 
-bool AutofillAiIgnoresWhetherAddressFillingIsEnabled() {
+bool AutofillAddOtherDatatypesPrefIsEnabled() {
   return base::FeatureList::IsEnabled(
-      autofill::features::kAutofillAiIgnoresWhetherAddressPrefIsEnabled);
+      autofill::features::kAutofillAddOtherDatatypesPref);
 }
 
 void AddAutofillStrings(content::WebUIDataSource* html_source,
@@ -1668,6 +1671,8 @@ void AddAutofillStrings(content::WebUIDataSource* html_source,
        IDS_SETTINGS_HOME_AND_WORK_ADDRESS_REMOVED_MESSAGE},
       {"nameEmailAddressRemovedMessage",
        IDS_SETTINGS_NAME_EMAIL_ADDRESS_REMOVED_MESSAGE},
+      {"saveToWalletLoadingStateA11y",
+       IDS_AUTOFILL_AI_WALLET_UPLOAD_THROBBER_ACCESSIBLE_NAME},
       {"walletablePassDetectionToggleLabel",
        IDS_SETTINGS_WALLETABLE_PASS_DETECTION_TOGGLE_LABEL},
       {"walletablePassDetectionToggleSubLabel",
@@ -1805,8 +1810,8 @@ void AddAutofillStrings(content::WebUIDataSource* html_source,
           autofill::features::kAutofillAiAvailableByDefault));
   html_source->AddBoolean("isWalletServerStorageEnabled",
                           IsWalletServerStorageEnabled());
-  html_source->AddBoolean("AutofillAiIgnoresWhetherAddressFillingIsEnabled",
-                          AutofillAiIgnoresWhetherAddressFillingIsEnabled());
+  html_source->AddBoolean("AutofillAddOtherDatatypesPrefIsEnabled",
+                          AutofillAddOtherDatatypesPrefIsEnabled());
 
   html_source->AddBoolean(
       "isUserEligibleForWalletablePassDetection",
@@ -4183,6 +4188,7 @@ void AddShortcutInputStrings(content::WebUIDataSource* html_source) {
       {"shortcutNeedCharacter", IDS_SHORTCUT_NEED_CHARACTER},
       {"shortcutSet", IDS_SHORTCUT_SET},
       {"shortcutNotSet", IDS_SHORTCUT_NOT_SET},
+      {"shortcutClear", IDS_SHORTCUT_CLEAR},
       {"shortcutTypeAShortcut", IDS_TYPE_A_SHORTCUT},
   };
   html_source->AddLocalizedStrings(kShortcutInputStrings);

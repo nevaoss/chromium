@@ -5,18 +5,11 @@
 #ifndef REMOTING_SIGNALING_SIGNAL_STRATEGY_H_
 #define REMOTING_SIGNALING_SIGNAL_STRATEGY_H_
 
-#include <memory>
+#include <optional>
 #include <string>
-#include <variant>
 
 #include "base/observer_list_types.h"
-#include "remoting/proto/ftl/v1/chromoting_message.pb.h"
-#include "remoting/proto/messaging_service.h"
 #include "remoting/signaling/signaling_message.h"
-
-namespace jingle_xmpp {
-class XmlElement;
-}  // namespace jingle_xmpp
 
 namespace remoting {
 
@@ -70,12 +63,6 @@ class SignalStrategy {
 
   virtual ~SignalStrategy() = default;
 
-  // Extracts an XMPP stanza from the |message|. Returns nullptr if the message
-  // does not contain an XMPP stanza.
-  // TODO: joedow - Remove this function when XML conversions are not needed.
-  static std::unique_ptr<jingle_xmpp::XmlElement> GetXmlStanza(
-      const SignalingMessage& message);
-
   // Starts connection attempt. If connection is currently active
   // disconnects it and opens a new connection (implicit disconnect
   // triggers CLOSED notification). Connection is finished
@@ -103,9 +90,6 @@ class SignalStrategy {
   // Remove a |listener| previously added with AddListener().
   virtual void RemoveListener(Listener* listener) = 0;
 
-  // Sends a raw XMPP stanza. Returns false if the stanza couldn't be sent.
-  virtual bool SendStanza(std::unique_ptr<jingle_xmpp::XmlElement> stanza) = 0;
-
   // Sends a message. Returns false if the message couldn't be sent.
   virtual bool SendMessage(const SignalingAddress& destination_address,
                            SignalingMessage&& message) = 0;
@@ -118,6 +102,11 @@ class SignalStrategy {
   // to sign in. You can get back the actual error by calling GetError().
   // The default implementation always returns false.
   virtual bool IsSignInError() const;
+
+  // Generates a SignalingMessage from an XMPP stanza serialized to |xml|.
+  // Returns nullopt if |xml| does not contain an XMPP stanza.
+  // TODO: joedow - Remove this function when XML conversions are not needed.
+  static std::optional<SignalingMessage> ParseStanzaXml(const std::string& xml);
 };
 
 }  // namespace remoting

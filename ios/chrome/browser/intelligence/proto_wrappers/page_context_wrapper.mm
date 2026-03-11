@@ -218,6 +218,9 @@ result.links = linksArray;
   // Whether the PageContext should be detached. Likely a protected page.
   BOOL _forceDetachPageContext;
 
+  // Whether the PageContext is not extractable.
+  BOOL _notExtractable;
+
   // The callback to execute once all async work is complete, whichs
   // relinquishes ownership of the PageContext proto to the callback's handler.
   base::OnceCallback<void(PageContextWrapperCallbackResponse)>
@@ -239,6 +242,9 @@ result.links = linksArray;
 
   // Whether the registration wait has completed or timed out.
   BOOL _registrationCompletedOrTimedOut;
+
+  // Enforces that execution only happens once.
+  BOOL _executionStarted;
 }
 
 - (instancetype)initWithWebState:(web::WebState*)webState
@@ -288,6 +294,9 @@ result.links = linksArray;
 }
 
 - (void)populatePageContextFieldsAsyncWithTimeout:(base::TimeDelta)timeout {
+  CHECK(!_executionStarted) << "A PageContextWrapper should only be used once.";
+  _executionStarted = YES;
+
   if (_isLowPriorityExtraction) {
     __weak PageContextWrapper* weakSelf = self;
     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
@@ -396,17 +405,24 @@ result.links = linksArray;
 - (void)populateAsyncFields:(base::TimeDelta)timeout {
   CHECK_GE(_asyncTasksToComplete, 0);
   _pageContextMetrics = [[PageContextWrapperMetrics alloc] init];
+
+  if (!_webState || _asyncTasksToComplete == 0) {
+    [self asyncWorkCompletedForPageContext];
+    return;
+  }
+
+  if (!CanExtractPageContextForWebState(_webState.get())) {
+    _notExtractable = YES;
+    [self asyncWorkCompletedForPageContext];
+    return;
+  }
+
   __weak PageContextWrapper* weakSelf = self;
 
   // Start the timer.
   _timeoutTimer.Start(FROM_HERE, timeout, base::BindOnce(^{
                         [weakSelf onTimeout];
                       }));
-
-  if (_asyncTasksToComplete == 0 || !_webState) {
-    [self asyncWorkCompletedForPageContext];
-    return;
-  }
 
   // Use a `BarrierClosure` to ensure all async tasks are completed before
   // executing the overall completion callback. The BarrierClosure will wait
@@ -715,6 +731,10 @@ result.links = linksArray;
   if (!_webState) {
     response = base::unexpected(PageContextWrapperError::kGenericError);
     completionStatus = PageContextCompletionStatus::kFailure;
+  } else if (_notExtractable) {
+    response =
+        base::unexpected(PageContextWrapperError::kPageNotExtractableError);
+    completionStatus = PageContextCompletionStatus::kNotExtractable;
   } else if (_forceDetachPageContext) {
     response = base::unexpected(PageContextWrapperError::kForceDetachError);
     completionStatus = PageContextCompletionStatus::kProtected;

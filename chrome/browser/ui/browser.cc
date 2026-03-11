@@ -123,6 +123,7 @@
 #include "chrome/browser/ui/page_action/page_action_icon_type.h"
 #include "chrome/browser/ui/sad_tab.h"
 #include "chrome/browser/ui/search/search_tab_helper.h"
+#include "chrome/browser/ui/side_panel/side_panel_ui.h"
 #include "chrome/browser/ui/singleton_tabs.h"
 #include "chrome/browser/ui/status_bubble.h"
 #include "chrome/browser/ui/tab_contents/core_tab_helper.h"
@@ -140,7 +141,6 @@
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/contents_web_view.h"
 #include "chrome/browser/ui/views/frame/multi_contents_view.h"
-#include "chrome/browser/ui/views/side_panel/side_panel_ui.h"
 #include "chrome/browser/ui/views/status_bubble_views.h"
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
 #include "chrome/browser/ui/webui/signin/login_ui_service.h"
@@ -413,7 +413,14 @@ base::FunctionRef<bool(const Browser*)> MaybeLazyIsFullscreen(
                                               : &AlwaysReturnFalse;
 }
 
-bool HasActorTask(Profile* profile, content::RenderFrameHost* rfh) {
+// The actor framework is currently fixed to a single tab (see
+// https://crbug.com/420669167 ). We mostly prevent new WebContents creation in
+// favour of forcing navigations to happen in the same tab, despite the breakage
+// this causes, while an actor task is operating on the tab. Though there are
+// some special cases where the actor task still allows regular new WebContents
+// creation.
+bool HasActorTaskPreventingNewWebContents(Profile* profile,
+                                          content::RenderFrameHost* rfh) {
   auto* actor_service = actor::ActorKeyedService::Get(profile);
   if (!actor_service) {
     return false;
@@ -429,7 +436,12 @@ bool HasActorTask(Profile* profile, content::RenderFrameHost* rfh) {
     return false;
   }
 
-  return !actor_service->GetTaskFromTab(*tab_interface).is_null();
+  const actor::ActorTask* task = actor_service->GetTaskFromTab(*tab_interface);
+  if (!task) {
+    return false;
+  }
+
+  return !task->GetExecutionEngine().TabsCanOpenNewWebContents();
 }
 
 }  // namespace
@@ -2282,7 +2294,7 @@ bool Browser::IsWebContentsCreationOverridden(
     const GURL& opener_url,
     const std::string& frame_name,
     const GURL& target_url) {
-  if (HasActorTask(profile(), opener)) {
+  if (HasActorTaskPreventingNewWebContents(profile(), opener)) {
     // If an ExecutionEngine is acting on the opener, prevent it from creating a
     // new WebContents. We'll instead force the navigation to happen in the same
     // tab. Note, we do this even if the task isn't active (e.g. paused) so that
@@ -2309,7 +2321,7 @@ WebContents* Browser::CreateCustomWebContents(
     const content::StoragePartitionConfig& partition_config,
     content::SessionStorageNamespace* session_storage_namespace) {
   if (auto* opener_contents = content::WebContents::FromRenderFrameHost(opener);
-      HasActorTask(profile(), opener)) {
+      HasActorTaskPreventingNewWebContents(profile(), opener)) {
     // If an ExecutionEngine is acting on the opener, we force the navigation
     // to happen in the same tab.
     content::NavigationController::LoadURLParams params(target_url);

@@ -15,6 +15,7 @@
 #include "build/branding_buildflags.h"
 #include "build/build_config.h"
 #include "chrome/browser/background/glic/glic_launcher_configuration.h"
+#include "chrome/browser/browser_process.h"
 #include "chrome/browser/devtools/features.h"
 #include "chrome/browser/feature_engagement/tracker_factory.h"
 #include "chrome/browser/performance_manager/public/user_tuning/user_performance_tuning_manager.h"
@@ -60,7 +61,6 @@
 #include "chrome/browser/ui/views/user_education/browser_ntp_promos.h"
 #include "chrome/browser/ui/views/user_education/custom_webui_help_bubble.h"
 #include "chrome/browser/ui/views/user_education/impl/browser_feature_promo_controller.h"
-#include "chrome/browser/ui/views/user_education/impl/browser_feature_promo_controller_25.h"
 #include "chrome/browser/ui/views/user_education/impl/browser_feature_promo_preconditions.h"
 #include "chrome/browser/ui/views/user_education/impl/browser_user_education_context.h"
 #include "chrome/browser/ui/views/user_education/ios_promo_bubble_view.h"
@@ -98,6 +98,7 @@
 #include "components/strings/grit/components_strings.h"
 #include "components/strings/grit/privacy_sandbox_strings.h"
 #include "components/supervised_user/core/common/supervised_user_constants.h"
+#include "components/sync/base/features.h"
 #include "components/user_education/common/feature_promo/feature_promo_controller.h"
 #include "components/user_education/common/feature_promo/feature_promo_handle.h"
 #include "components/user_education/common/feature_promo/feature_promo_precondition.h"
@@ -1300,7 +1301,11 @@ void MaybeRegisterChromeFeaturePromos(
   registry.RegisterFeature(std::move(
       FeaturePromoSpecification::CreateForCustomAction(
           feature_engagement::kIPHSignInBenefitsFeature,
-          kToolbarAvatarButtonElementId, IDS_SIGN_IN_BENEFITS_IPH_TEXT,
+          kToolbarAvatarButtonElementId,
+          (syncer::kExplicitSigninForBookmarks.Get() ||
+           syncer::kExplicitSigninForExtensions.Get())
+              ? IDS_SIGN_IN_BENEFITS_WITHOUT_BOOKMARKS_AND_EXTENSIONS_IPH_TEXT
+              : IDS_SIGN_IN_BENEFITS_IPH_TEXT,
           IDS_PROMO_MANAGE_BUTTON,
           base::BindRepeating(
               [](ContextPtr ctx,
@@ -2149,7 +2154,7 @@ CreateUserEducationResources(UserEducationService& user_education_service) {
     MaybeRegisterNtpPromos(*user_education_service.ntp_promo_registry());
   }
 
-  auto result = std::make_unique<BrowserFeaturePromoController25>(
+  auto result = std::make_unique<BrowserFeaturePromoController>(
       feature_engagement::TrackerFactory::GetForBrowserContext(profile),
       &user_education_service.feature_promo_registry(),
       &user_education_service.help_bubble_factory_registry(),
@@ -2168,4 +2173,12 @@ void QueueLegalAndPrivacyNotices(Profile* profile) {
     privacy_sandbox_service->GetPrivacySandboxNoticeQueueManager()
         .MaybeQueueNotice();
   }
+}
+
+bool DoesEnterprisePolicyBlockPromotions() {
+  PrefService* local_state = g_browser_process->local_state();
+  if (local_state && !local_state->GetBoolean(prefs::kPromotionsEnabled)) {
+    return true;
+  }
+  return false;
 }

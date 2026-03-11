@@ -1456,6 +1456,11 @@ IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
 }
 
 IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
+                       AccessibilityMenuItemDisabled) {
+  RunHtmlTest(FILE_PATH_LITERAL("menuitem-disabled.html"));
+}
+
+IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
                        AccessibilityMenuListPopover) {
   RunHtmlTest(FILE_PATH_LITERAL("menulist-popover.html"));
 }
@@ -2269,9 +2274,6 @@ IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
 
 IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
                        AccessibilitySelectListboxActivateOptions) {
-  base::CommandLine::ForCurrentProcess()->AppendSwitchASCII(
-      switches::kEnableBlinkFeatures,
-      blink::features::kSelectMobileDesktopParity.name);
   RunHtmlTest(FILE_PATH_LITERAL("select-multiple-activate-options.html"));
 }
 
@@ -2427,6 +2429,11 @@ IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
 IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
                        AccessibilityContenteditableOnDisallowedElement) {
   RunHtmlTest(FILE_PATH_LITERAL("contenteditable-on-disallowed-element.html"));
+}
+
+IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
+                       AccessibilityContenteditableMultiNode) {
+  RunHtmlTest(FILE_PATH_LITERAL("contenteditable-multi-node.html"));
 }
 
 IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest, AccessibilityCustomElement) {
@@ -3724,9 +3731,6 @@ IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
 
 IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
                        AccessibilitySelectListboxModes) {
-  base::CommandLine::ForCurrentProcess()->AppendSwitchASCII(
-      switches::kEnableBlinkFeatures,
-      blink::features::kSelectMobileDesktopParity.name);
   RunHtmlTest(FILE_PATH_LITERAL("select-listbox-modes.html"));
 }
 

@@ -289,6 +289,15 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
                                         .tabClosingSource(TabClosingSource.TABLET_TAB_STRIP)
                                         .build(),
                                 /* allowDialog= */ true);
+            } else if (menuId == R.id.close_all_tabs_menu_id
+                    || menuId == R.id.close_all_incognito_tabs_menu_id) {
+                tabModel.getTabRemover()
+                        .closeTabs(
+                                TabClosureParams.closeAllTabs()
+                                        .hideTabGroups(true)
+                                        .tabClosingSource(TabClosingSource.TABLET_TAB_STRIP)
+                                        .build(),
+                                /* allowDialog= */ true);
             }
         };
     }
@@ -396,6 +405,7 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
             itemList.add(createMuteUnmuteSiteItem(tabs, isIncognito));
         }
         itemList.add(createCloseItem(isIncognito));
+        itemList.add(createCloseAllTabsItem(isIncognito));
     }
 
     private void buildMenuActionItemsForMultipleTabs(
@@ -432,18 +442,27 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
     }
 
     private ListItem createMoveToTabGroupItem(List<Tab> tabs, boolean isIncognito) {
-        String title =
-                mActivity
-                        .getResources()
-                        .getQuantityString(R.plurals.add_tab_to_group_menu_item, tabs.size());
-        if (!ChromeFeatureList.isEnabled(
-                ChromeFeatureList.SUBMENUS_TAB_CONTEXT_MENU_LFF_TAB_STRIP)) {
+        // Available tab groups.
+        @Nullable Token groupToNotBeIncluded = tabs.get(0).getTabGroupId();
+        List<ListItem> potentialGroups =
+                isIncognito
+                        ? getIncognitoTabGroups(tabs, groupToNotBeIncluded)
+                        : getRegularTabGroups(tabs, groupToNotBeIncluded);
+
+        if (!ChromeFeatureList.isEnabled(ChromeFeatureList.SUBMENUS_TAB_CONTEXT_MENU_LFF_TAB_STRIP)
+                || potentialGroups.isEmpty()) {
+            String title =
+                    mActivity
+                            .getResources()
+                            .getQuantityString(
+                                    R.plurals.add_tab_to_new_group_menu_item, tabs.size());
             return new ListItemBuilder()
                     .withTitle(title)
-                    .withMenuId(R.id.add_to_tab_group)
+                    .withMenuId(R.id.add_to_new_tab_group)
                     .withIsIncognito(isIncognito)
                     .build();
         }
+
         List<ListItem> submenuItems = new ArrayList<>();
         // "Add to new group" item
         submenuItems.add(
@@ -465,16 +484,13 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
                                                     mTabGroupCreationCallback);
                                         })
                                 .build()));
-        // Available tab groups.
-        @Nullable Token groupToNotBeIncluded = tabs.get(0).getTabGroupId();
-        List<ListItem> potentialGroups =
-                isIncognito
-                        ? getIncognitoTabGroups(tabs, groupToNotBeIncluded)
-                        : getRegularTabGroups(tabs, groupToNotBeIncluded);
-        if (!potentialGroups.isEmpty()) {
-            submenuItems.addAll(potentialGroups);
-        }
+        // Add all the potential groups to the list afterwards.
+        submenuItems.addAll(potentialGroups);
 
+        String title =
+                mActivity
+                        .getResources()
+                        .getQuantityString(R.plurals.add_tab_to_group_menu_item, tabs.size());
         return new ListItem(
                 MENU_ITEM_WITH_SUBMENU,
                 new PropertyModel.Builder(ListMenuSubmenuItemProperties.ALL_KEYS)
@@ -575,6 +591,14 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
         return buildListItem(R.string.close, R.id.close_tab, isIncognito);
     }
 
+    private ListItem createCloseAllTabsItem(boolean isIncognito) {
+        int stringRes =
+                isIncognito ? R.string.menu_close_all_incognito_tabs : R.string.menu_close_all_tabs;
+        int menuRes =
+                isIncognito ? R.id.close_all_incognito_tabs_menu_id : R.id.close_all_tabs_menu_id;
+        return buildListItem(stringRes, menuRes, isIncognito);
+    }
+
     private static void recordMenuAction(int menuId, boolean isMultipleTabs) {
         if (menuId == R.id.add_to_tab_group) {
             recordUserAction("AddToTabGroup", isMultipleTabs);
@@ -610,6 +634,10 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
             recordUserAction("UnmuteSite", isMultipleTabs);
         } else if (menuId == R.id.duplicate_tab_menu_id) {
             recordUserAction("DuplicateTab", isMultipleTabs);
+        } else if (menuId == R.id.close_all_tabs_menu_id) {
+            recordUserAction("CloseAllTabs", /* isMultipleTabs= */ false);
+        } else if (menuId == R.id.close_all_incognito_tabs_menu_id) {
+            recordUserAction("CloseAllIncognitoTabs", /* isMultipleTabs= */ false);
         } else {
             assert false : "Unknown menu id: " + menuId;
         }
@@ -769,7 +797,8 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
         if (tabs.isEmpty()) return;
         ungroupTabs(tabs);
         recordMenuAction(R.id.move_to_new_window_sub_menu_id, tabs.size() > 1);
-        assumeNonNull(mMultiInstanceManager).moveTabsToNewWindow(tabs, NewWindowAppSource.MENU);
+        assumeNonNull(mMultiInstanceManager)
+                .moveTabsToNewWindow(tabs, /* finalizeCallback= */ null, NewWindowAppSource.MENU);
     }
 
     @Override

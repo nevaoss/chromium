@@ -214,7 +214,7 @@ void VerticalDraggedTabsContainer::InitializeDragStartAnimation(
 
   const auto& drag_handler = GetDragHandler();
   base::TimeDelta drag_time_elapsed =
-      base::TimeTicks::Now() - drag_handler.GetDragStartTime();
+      base::TimeTicks::Now() - controller.GetSessionData().drag_start_time;
   if (drag_time_elapsed >= kDragStartAnimationDuration) {
     return;
   }
@@ -394,6 +394,15 @@ gfx::Rect VerticalDraggedTabsContainer::GetDraggingViewsBoundsAtPoint(
   gfx::Rect bounding_box_for_point = dragging_views_bounds_;
   bounding_box_for_point.Offset(point_in_container.OffsetFromOrigin());
   return bounding_box_for_point;
+}
+
+gfx::Rect VerticalDraggedTabsContainer::GetDraggingViewsBounds() const {
+  gfx::Rect box_for_point = dragging_views_bounds_;
+  box_for_point.Offset(
+      views::View::ConvertPointFromScreen(base::to_address(host_view_),
+                                          last_drag_point_in_screen_)
+          .OffsetFromOrigin());
+  return box_for_point;
 }
 
 gfx::Vector2d VerticalDraggedTabsContainer::GetDraggingViewPositionForBounds(

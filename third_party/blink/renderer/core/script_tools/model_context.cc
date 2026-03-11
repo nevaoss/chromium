@@ -6,6 +6,7 @@
 
 #include "base/task/single_thread_task_runner.h"
 #include "third_party/blink/public/platform/browser_interface_broker_proxy.h"
+#include "third_party/blink/renderer/bindings/core/v8/capture_source_location.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_annotations_dict.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_script_runner.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_tool_function.h"
@@ -16,10 +17,12 @@
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/html/html_script_element.h"
+#include "third_party/blink/renderer/platform/bindings/source_location.h"
 #include "third_party/blink/renderer/platform/json/json_parser.h"
 #include "third_party/blink/renderer/platform/json/json_values.h"
 #include "third_party/blink/renderer/platform/wtf/functional.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
+#include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 
 namespace blink {
 
@@ -159,14 +162,8 @@ ModelContext::ModelContext(
 
 void ModelContext::ForEachScriptTool(
     base::FunctionRef<void(const mojom::blink::ScriptTool&)> func) const {
-  for (const auto& tool : tool_map_) {
-    auto tool_data = tool.value;
-    // Always update the input schema, since the DOM might have changed.
-    if (auto declarative_tool = tool_data->declarative_tool) {
-      tool_data->script_tool->input_schema =
-          declarative_tool->ComputeInputSchema();
-    }
-    func(*tool_data->script_tool);
+  for (const ToolData* tool_data : ListTools()) {
+    func(tool_data->ScriptTool());
   }
 }
 
@@ -196,11 +193,11 @@ void ModelContext::SetScriptToolDeclaration(
     WebDocument::ScriptToolDeclaration* tool_declaration) const {
   auto it = tool_map_.find(name);
   if (it != tool_map_.end()) {
-    tool_declaration->description = it->value->script_tool->description;
-    tool_declaration->input_schema = it->value->script_tool->input_schema;
-    if (it->value->script_tool->annotations) {
-      tool_declaration->read_only =
-          it->value->script_tool->annotations->read_only;
+    const mojom::blink::ScriptTool& script_tool = it->value->ScriptTool();
+    tool_declaration->description = script_tool.description;
+    tool_declaration->input_schema = script_tool.input_schema;
+    if (script_tool.annotations) {
+      tool_declaration->read_only = script_tool.annotations->read_only;
     }
   }
 }
@@ -241,15 +238,14 @@ std::optional<uint32_t> ModelContext::ExecuteTool(
   }
 
   std::optional<uint32_t> execution_id;
-  if (it->value->v8_tool_function) {
-    execution_id =
-        ExecuteV8Tool(it->value->v8_tool_function, name, input_arguments,
-                      signal, std::move(tool_executed_cb));
+  if (V8ToolFunction* v8_tool_function = it->value->GetV8ToolFunction()) {
+    execution_id = ExecuteV8Tool(v8_tool_function, name, input_arguments,
+                                 signal, std::move(tool_executed_cb));
   } else {
     // TODO(479598776): Add support for tracking execution of
     // declarative tools, so that they can be cancelled.
     // TODO(481899636): Add signal support for declarative tools.
-    ExecuteDeclarativeTool(it->value->declarative_tool, input_arguments,
+    ExecuteDeclarativeTool(it->value->DeclarativeTool(), input_arguments,
                            std::move(tool_executed_cb));
   }
 
@@ -351,6 +347,7 @@ std::optional<uint32_t> ModelContext::ExecuteV8Tool(
     const String& input_arguments,
     AbortSignal* signal,
     ScriptToolExecutedCallback tool_executed_cb) {
+  UseCounter::Count(document_, WebFeature::kModelContextExecuteTool);
   ScriptState* script_state = tool_function->CallbackRelevantScriptState();
   ScriptState::Scope scope(script_state);
   v8::TryCatch try_catch(script_state->GetIsolate());
@@ -452,8 +449,6 @@ bool ModelContext::RegisterTool(ScriptState* script_state,
     }
   }
 
-  auto* tool_data = MakeGarbageCollected<ToolData>();
-
   auto script_tool = mojom::blink::ScriptTool::New();
   script_tool->name = params->name();
   script_tool->description = params->description();
@@ -464,26 +459,28 @@ bool ModelContext::RegisterTool(ScriptState* script_state,
     script_tool->annotations->read_only = params->annotations()->readOnlyHint();
   }
 
-  tool_data->script_tool = std::move(script_tool);
-  tool_data->v8_tool_function = params->execute();
+  auto* tool_data = MakeGarbageCollected<ToolData>(
+      base::PassKey<ModelContext>(), std::move(script_tool),
+      /*v8_tool_function=*/params->execute(),
+      CaptureSourceLocation(ExecutionContext::From(script_state)));
 
-  tool_map_.insert(params->name(), std::move(tool_data));
+  tool_map_.insert(params->name(), tool_data);
   OnToolsChanged();
   UseCounter::Count(document_, WebFeature::kModelContextRegisterTool);
   return true;
 }
 
-void ModelContext::RegisterDeclarativeTool(String name,
-                                           String description,
-                                           DeclarativeWebMCPTool* tool) {
+void ModelContext::RegisterDeclarativeTool(
+    String name,
+    String description,
+    DeclarativeWebMCPTool* declarative_tool) {
   auto script_tool = mojom::blink::ScriptTool::New();
-  auto* tool_data = MakeGarbageCollected<ToolData>();
   script_tool->name = name;
   script_tool->description = description;
   script_tool->input_schema = "{}";  // For now
-  tool_data->script_tool = std::move(script_tool);
-  tool_data->declarative_tool = tool;
 
+  auto* tool_data = MakeGarbageCollected<ToolData>(
+      base::PassKey<ModelContext>(), std::move(script_tool), declarative_tool);
   tool_map_.insert(name, std::move(tool_data));
   OnToolsChanged();
   UseCounter::Count(document_,
@@ -521,6 +518,32 @@ void ModelContext::PauseExecution() {
   script_tool_host_remote_->PauseExecution();
 }
 
+HeapVector<Member<const ModelContext::ToolData>> ModelContext::ListTools()
+    const {
+  HeapVector<Member<const ToolData>> tools;
+  tools.ReserveInitialCapacity(tool_map_.size());
+
+  for (const auto& entry : tool_map_) {
+    ToolData* tool_data = entry.value;
+    CHECK(tool_data);
+    // Always update the input schema of declarative tools,
+    // since the DOM might have changed.
+    tool_data->RefreshDeclarativeInputSchema();
+    tools.push_back(tool_data);
+  }
+
+  std::sort(tools.begin(), tools.end(),
+            [](const ToolData* a, const ToolData* b) {
+              return CodeUnitCompareLessThan(a->Name(), b->Name());
+            });
+
+  return tools;
+}
+
+ExecutionContext* ModelContext::GetExecutionContext() const {
+  return document_ ? document_->GetExecutionContext() : nullptr;
+}
+
 void ModelContext::Trace(Visitor* visitor) const {
   ScriptWrappable::Trace(visitor);
   visitor->Trace(tool_map_);
@@ -528,9 +551,28 @@ void ModelContext::Trace(Visitor* visitor) const {
   visitor->Trace(script_tool_host_remote_);
 }
 
+const String& ModelContext::ToolData::Name() const {
+  return script_tool_->name;
+}
+
+SourceLocation* ModelContext::ToolData::GetSourceLocation() const {
+  return source_location_;
+}
+
+Element* ModelContext::ToolData::BackingFormElement() const {
+  return declarative_tool_ ? declarative_tool_->FormElement() : nullptr;
+}
+
 void ModelContext::ToolData::Trace(Visitor* visitor) const {
-  visitor->Trace(v8_tool_function);
-  visitor->Trace(declarative_tool);
+  visitor->Trace(v8_tool_function_);
+  visitor->Trace(declarative_tool_);
+  visitor->Trace(source_location_);
+}
+
+void ModelContext::ToolData::RefreshDeclarativeInputSchema() {
+  if (declarative_tool_) {
+    script_tool_->input_schema = declarative_tool_->ComputeInputSchema();
+  }
 }
 
 }  // namespace blink

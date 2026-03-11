@@ -670,7 +670,7 @@ static void* OpenFunc(const char* uri) {
   DCHECK(document);
   CHECK(IsMainThread());
 
-  KURL url(NullURL(), uri);
+  KURL url(NullUrl(), uri);
 
   // If the document has no ExecutionContext, it's detached. Detached documents
   // aren't allowed to fetch.
@@ -1270,7 +1270,7 @@ void XMLDocumentParser::Characters(base::span<const xmlChar> chars) {
   }
 
   CreateLeafTextNodeIfNeeded();
-  buffered_text_.AppendSpan(chars);
+  buffered_text_.append_range(chars);
 }
 
 void XMLDocumentParser::GetError(XMLErrors::ErrorType type,

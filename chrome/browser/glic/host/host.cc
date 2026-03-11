@@ -30,7 +30,7 @@
 #include "chrome/browser/glic/widget/glic_window_controller.h"
 #include "chrome/common/actor_webui.mojom.h"
 #include "chrome/common/chrome_features.h"
-#include "components/autofill/core/browser/integrators/glic/actor_form_filling_types.h"
+#include "components/autofill/core/browser/integrators/actor/actor_form_filling_types.h"
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/render_process_host.h"
@@ -465,6 +465,12 @@ void Host::NotifyWindowIntentToShow() {
   }
 }
 
+void Host::Zoom(mojom::ZoomAction zoom_action) {
+  if (GlicPageHandler* handler = page_handler()) {
+    handler->Zoom(zoom_action);
+  }
+}
+
 void Host::UnsetWebClient(GlicWebClientAccess* web_client) {
   if (!handler_info_ || handler_info_->web_client != web_client) {
     return;
@@ -657,6 +663,11 @@ content::RenderProcessHost* Host::GetWebClientRenderProcessHost() const {
 void Host::OnInteractionModeChange(GlicPageHandler* page_handler,
                                    mojom::WebClientMode new_mode) {
   instance_delegate_->OnInteractionModeChange(new_mode);
+}
+
+void Host::OnMicrophoneStatusChanged(mojom::MicrophoneStatus status) {
+  microphone_status_ = status;
+  delegate_->OnMicrophoneStatusChanged(status);
 }
 
 void Host::ResizePanel(GlicPageHandler* page_handler,

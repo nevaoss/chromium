@@ -15,6 +15,7 @@
 #include "ash/accelerators/shortcut_input_handler.h"
 #include "ash/constants/ash_features.h"
 #include "ash/constants/ash_paths.h"
+#include "ash/constants/ash_pref_names.h"
 #include "ash/constants/ash_switches.h"
 #include "ash/keyboard/ui/resources/keyboard_resource_util.h"
 #include "ash/public/ash_interfaces.h"
@@ -93,6 +94,7 @@
 #include "chrome/browser/ash/dbus/vm/plugin_vm_service_provider.h"
 #include "chrome/browser/ash/dbus/vm/vm_applications_service_provider.h"
 #include "chrome/browser/ash/dbus/vm/vm_launch_service_provider.h"
+#include "chrome/browser/ash/dbus/vm/vm_management_service_provider.h"
 #include "chrome/browser/ash/dbus/vm/vm_permission_service_provider.h"
 #include "chrome/browser/ash/dbus/vm/vm_sk_forwarding_service_provider.h"
 #include "chrome/browser/ash/dbus/vm/vm_wl_service_provider.h"
@@ -443,6 +445,12 @@ class DBusServices {
         CrosDBusService::CreateServiceProviderList(
             std::make_unique<VmApplicationsServiceProvider>()));
 
+    vm_management_service_ = CrosDBusService::Create(
+        system_bus, chromeos::kVmManagementServiceName,
+        dbus::ObjectPath(chromeos::kVmManagementServicePath),
+        CrosDBusService::CreateServiceProviderList(
+            std::make_unique<VmManagementServiceProvider>()));
+
     vm_launch_service_ = CrosDBusService::Create(
         system_bus, vm_tools::launch::kVmLaunchServiceName,
         dbus::ObjectPath(vm_tools::launch::kVmLaunchServicePath),
@@ -603,6 +611,7 @@ class DBusServices {
     component_updater_service_.reset();
     chrome_features_service_.reset();
     vm_applications_service_.reset();
+    vm_management_service_.reset();
     vm_launch_service_.reset();
     vm_sk_forwarding_service_.reset();
     vm_permission_service_.reset();
@@ -637,6 +646,7 @@ class DBusServices {
   std::unique_ptr<CrosDBusService> component_updater_service_;
   std::unique_ptr<CrosDBusService> chrome_features_service_;
   std::unique_ptr<CrosDBusService> vm_applications_service_;
+  std::unique_ptr<CrosDBusService> vm_management_service_;
   std::unique_ptr<CrosDBusService> vm_launch_service_;
   std::unique_ptr<CrosDBusService> vm_sk_forwarding_service_;
   std::unique_ptr<CrosDBusService> vm_permission_service_;
@@ -1029,7 +1039,10 @@ void ChromeBrowserMainPartsAsh::PreProfileInit() {
       base::BindOnce(&ChromeOSVersionCallback));
 
   kiosk_controller_ = std::make_unique<KioskControllerImpl>(
-      CHECK_DEREF(g_browser_process->local_state()),
+      g_browser_process->local_state(),
+      g_browser_process->platform_part()
+          ->browser_policy_connector_ash()
+          ->GetPolicyService(),
       g_browser_process->shared_url_loader_factory(),
       user_manager::UserManager::Get());
 
@@ -1223,7 +1236,7 @@ void GuestLanguageSetCallbackData::Callback(
           result.loaded_locale);
   if (!locale_default_input_method.empty()) {
     PrefService* user_prefs = self->profile->GetPrefs();
-    user_prefs->SetString(prefs::kLanguagePreviousInputMethod,
+    user_prefs->SetString(ash::prefs::kLanguagePreviousInputMethod,
                           locale_default_input_method);
     ime_state->EnableInputMethod(locale_default_input_method);
   }
@@ -1329,6 +1342,7 @@ void ChromeBrowserMainPartsAsh::PostProfileInit(Profile* profile,
             g_browser_process->local_state());
 
     g_browser_process->platform_part()->chrome_session_manager()->Initialize(
+        g_browser_process->GetFeatures()->application_locale_storage(),
         g_browser_process->shared_url_loader_factory(),
         *base::CommandLine::ForCurrentProcess(), profile,
         is_integration_test());

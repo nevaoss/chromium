@@ -153,6 +153,10 @@ class TestContextualTasksComposeboxHandler
     mock_contextual_tasks_service_ = contextual_tasks_service;
   }
 
+  contextual_search::InputStateModel* GetInputStateModelForTesting() {
+    return input_state_model_.get();
+  }
+
  private:
   raw_ptr<contextual_tasks::ContextualTasksService>
       mock_contextual_tasks_service_ = nullptr;
@@ -269,7 +273,9 @@ class ContextualTasksComposeboxHandlerTest
         mojo::PendingReceiver<searchbox::mojom::PageHandler>(),
         base::BindRepeating(
             &ContextualTasksUI::GetOrCreateContextualSessionHandle,
-            base::Unretained(mock_ui_.get())));
+            base::Unretained(mock_ui_.get())),
+        base::BindRepeating(&ContextualTasksUI::GetInputStateModel,
+                            base::Unretained(mock_ui_.get())));
     handler_->SetMockContextualTasksService(mock_contextual_tasks_service_ptr_);
 
     auto searchbox_page_remote =
@@ -2320,6 +2326,65 @@ TEST_F(ContextualTasksComposeboxHandlerTest,
 }
 
 TEST_F(ContextualTasksComposeboxHandlerTest,
+       CreateAndSendQueryMessage_WithVisualSelection_AndUploadedTokens) {
+  std::string kQuery = "overlay query with tokens";
+  base::Uuid task_id = base::Uuid::GenerateRandomV4();
+  base::UnguessableToken overlay_token = base::UnguessableToken::Create();
+
+  // Set task ID.
+  EXPECT_CALL(*mock_ui_, GetTaskId())
+      .WillRepeatedly(
+          testing::ReturnRefOfCopy(std::optional<base::Uuid>(task_id)));
+
+  // Set up uploaded tokens in the session handle used by the handler.
+  ContextualSearchWebContentsHelper::GetOrCreateForWebContents(web_contents())
+      ->session_handle()
+      ->CreateContextToken();
+
+  // Mock GetLensOverlayToken.
+  EXPECT_CALL(*handler_, GetLensOverlayToken())
+      .WillOnce(testing::Return(overlay_token));
+
+  // Expect CloseLensSync.
+  EXPECT_CALL(
+      *mock_lens_controller_,
+      CloseLensSync(
+          lens::LensOverlayDismissalSource::kContextualTasksQuerySubmitted));
+
+  // Expect GetContextForTask TO BE CALLED.
+  contextual_tasks::ContextualTask task(task_id);
+  auto context =
+      std::make_unique<contextual_tasks::ContextualTaskContext>(task);
+
+  EXPECT_CALL(*mock_contextual_tasks_service_ptr_,
+              GetContextForTask(task_id, testing::_, testing::_, testing::_))
+      .WillOnce(
+          [&context](
+              const base::Uuid& task_id,
+              const std::set<contextual_tasks::ContextualTaskContextSource>&
+                  sources,
+              std::unique_ptr<contextual_tasks::ContextDecorationParams> params,
+              base::OnceCallback<void(
+                  std::unique_ptr<contextual_tasks::ContextualTaskContext>)>
+                  callback) { std::move(callback).Run(std::move(context)); });
+
+  // Expect CreateClientToAimRequest to be called eventually.
+  EXPECT_CALL(*mock_controller_, CreateClientToAimRequest(testing::_))
+      .WillOnce([&](std::unique_ptr<
+                    contextual_search::ContextualSearchContextController::
+                        CreateClientToAimRequestInfo> info) {
+        EXPECT_EQ(info->query_text, kQuery);
+        EXPECT_EQ(info->file_tokens.size(), 2ul);
+        EXPECT_THAT(info->file_tokens, testing::Contains(overlay_token));
+        EXPECT_TRUE(info->force_include_latest_interaction_request_data);
+        return lens::ClientToAimMessage();
+      });
+  EXPECT_CALL(*mock_ui_, PostMessageToWebview(testing::_));
+
+  handler_->CreateAndSendQueryMessage(kQuery);
+}
+
+TEST_F(ContextualTasksComposeboxHandlerTest,
        CreateAndSendQueryMessage_NoVisualSelection) {
   std::string kQuery = "normal query";
   base::Uuid task_id = base::Uuid::GenerateRandomV4();
@@ -2596,8 +2661,9 @@ TEST_F(ContextualTasksComposeboxHandlerTest, AddFileContext_NullSessionHandle) {
       base::BindRepeating(
           []() -> contextual_search::ContextualSearchSessionHandle* {
             return nullptr;
-          }));
-
+          }),
+      base::BindRepeating(&ContextualTasksUI::GetInputStateModel,
+                          base::Unretained(mock_ui_.get())));
   auto file_info = searchbox::mojom::SelectedFileInfo::New();
   std::vector<uint8_t> data = {0x1};
   mojo_base::BigBuffer file_bytes(data);
@@ -2641,4 +2707,41 @@ TEST_F(ContextualTasksComposeboxHandlerTest,
   handler_->OnFileUploadStatusChanged(
       other_token, lens::MimeType::kUnknown,
       contextual_search::FileUploadStatus::kUploadSuccessful, std::nullopt);
+}
+
+TEST_F(ContextualTasksComposeboxHandlerTest, ActiveModelIsPassed) {
+  // 1. Arrange: Setup a mock callback to simulate ContextualTasksUI returning a
+  // model. We explicitly set a distinct state (MODEL_MODE_GEMINI_PRO) to verify
+  // it gets passed correctly.
+  auto mock_callback = base::BindLambdaForTesting(
+      [this]() -> std::unique_ptr<contextual_search::InputStateModel> {
+        omnibox::SearchboxConfig config;
+        auto model = std::make_unique<contextual_search::InputStateModel>(
+            *session_handle_, config, false);
+        model->setActiveModel(omnibox::ModelMode::MODEL_MODE_GEMINI_PRO);
+        return model;
+      });
+
+  mojo::PendingRemote<composebox::mojom::Page> page_remote;
+  auto custom_handler = std::make_unique<TestContextualTasksComposeboxHandler>(
+      mock_ui_.get(), profile(), web_contents(),
+      mojo::PendingReceiver<composebox::mojom::PageHandler>(),
+      std::move(page_remote),
+      mojo::PendingReceiver<searchbox::mojom::PageHandler>(),
+      base::BindRepeating(
+          &ContextualTasksUI::GetOrCreateContextualSessionHandle,
+          base::Unretained(mock_ui_.get())),
+      std::move(mock_callback));
+
+  // 2. Act: Trigger the handler to fetch the model via the callback.
+  custom_handler->InitializeInputStateModel();
+
+  // 3. Assert: Verify the handler successfully took ownership of the model
+  // and the internal state matches exactly what the callback provided.
+  contextual_search::InputStateModel* handler_model =
+      custom_handler->GetInputStateModelForTesting();
+
+  ASSERT_NE(handler_model, nullptr);
+  EXPECT_EQ(handler_model->get_state_for_testing().active_model,
+            omnibox::ModelMode::MODEL_MODE_GEMINI_PRO);
 }

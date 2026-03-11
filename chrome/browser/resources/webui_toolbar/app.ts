@@ -13,11 +13,10 @@ import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 
 import {getCss} from './app.css.js';
 import {getHtml} from './app.html.js';
-import type {LayoutConstants} from './browser_controls_api_data_model.mojom-webui.js';
-import {SplitTabActiveLocation} from './browser_controls_api_data_model.mojom-webui.js';
 import {BrowserProxyImpl, INVALID_NAVIGATION_CONTROLS_STATE_LISTENER_HANDLE} from './browser_proxy.js';
 import type {BrowserProxy, NavigationControlsState, NavigationControlsStateListenerHandle} from './browser_proxy.js';
 import {MetricsRecorder} from './metrics_recorder.js';
+import {SplitTabActiveLocation} from './toolbar_ui_api_data_model.mojom-webui.js';
 
 export class ToolbarAppElement extends CrLitElement {
   static get is() {
@@ -59,12 +58,7 @@ export class ToolbarAppElement extends CrLitElement {
       isPinned: false,
       isContextMenuVisible: false,
     },
-    layoutConstants: {
-      toolbarButtonHeight: 34,
-      toolbarButtonIconSize: 20,
-      locationBarHeight: 34,
-      locationBarMargin: 9,
-    },
+    layoutConstantsVersion: 0,
   };
 
   private browserProxy_: BrowserProxy;
@@ -90,14 +84,6 @@ export class ToolbarAppElement extends CrLitElement {
     super.connectedCallback();
 
     // Initial setup of CSS variables
-    const gap = loadTimeData.getInteger('toolbarIconDefaultMargin');
-    this.style.setProperty('--toolbar-icon-default-margin', `${gap}px`);
-    this.style.setProperty(
-        '--toolbar-button-height',
-        `${loadTimeData.getInteger('toolbarButtonHeight')}px`);
-    this.style.setProperty(
-        '--toolbar-button-icon-size',
-        `${loadTimeData.getInteger('toolbarButtonIconSize')}px`);
     this.style.setProperty(
         '--split-tabs-indicator-width',
         `${loadTimeData.getInteger('splitTabsIndicatorWidth')}px`);
@@ -107,12 +93,6 @@ export class ToolbarAppElement extends CrLitElement {
     this.style.setProperty(
         '--split-tabs-indicator-spacing',
         `${loadTimeData.getInteger('splitTabsIndicatorSpacing')}px`);
-    this.style.setProperty(
-        '--location-bar-height',
-        `${loadTimeData.getInteger('locationBarHeight')}px`);
-    this.style.setProperty(
-        '--location-bar-margin',
-        `${loadTimeData.getInteger('locationBarMargin')}px`);
 
     this.setFontVariables('omniboxPrimary');
 
@@ -120,7 +100,6 @@ export class ToolbarAppElement extends CrLitElement {
         this.browserProxy_.addNavigationStateListener(
             (state: NavigationControlsState) => {
               this.navigationControlsState_ = state;
-              this.onLayoutChanged_(state.layoutConstants);
             });
 
     this.metricsRecorder_.startObserving();
@@ -174,17 +153,6 @@ export class ToolbarAppElement extends CrLitElement {
     }
   }
 
-  private onLayoutChanged_(constants: LayoutConstants) {
-    this.style.setProperty(
-        '--toolbar-button-height', `${constants.toolbarButtonHeight}px`);
-    this.style.setProperty(
-        '--toolbar-button-icon-size', `${constants.toolbarButtonIconSize}px`);
-    this.style.setProperty(
-        '--location-bar-height', `${constants.locationBarHeight}px`);
-    this.style.setProperty(
-        '--location-bar-margin', `${constants.locationBarMargin}px`);
-  }
-
   override firstUpdated(changedProperties: PropertyValues<this>) {
     super.firstUpdated(changedProperties);
     const promises = [];
@@ -198,7 +166,7 @@ export class ToolbarAppElement extends CrLitElement {
       promises.push(splitTabs.updateComplete);
     }
     Promise.all(promises).then(() => {
-      this.browserProxy_.handler.onPageInitialized();
+      this.browserProxy_.toolbarUIHandler.onPageInitialized();
     });
   }
 }

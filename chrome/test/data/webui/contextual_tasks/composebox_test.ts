@@ -9,7 +9,7 @@ import {BrowserProxyImpl} from 'chrome://contextual-tasks/contextual_tasks_brows
 import type {ComposeboxFile} from 'chrome://resources/cr_components/composebox/common.js';
 import {PageCallbackRouter as ComposeboxPageCallbackRouter, PageHandlerRemote as ComposeboxPageHandlerRemote} from 'chrome://resources/cr_components/composebox/composebox.mojom-webui.js';
 import {ComposeboxProxyImpl} from 'chrome://resources/cr_components/composebox/composebox_proxy.js';
-import {FileUploadStatus} from 'chrome://resources/cr_components/composebox/composebox_query.mojom-webui.js';
+import {FileUploadStatus, ToolMode} from 'chrome://resources/cr_components/composebox/composebox_query.mojom-webui.js';
 import {GlowAnimationState} from 'chrome://resources/cr_components/search/constants.js';
 import {createAutocompleteMatch, createAutocompleteResultForTesting} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
@@ -156,34 +156,12 @@ suite('ContextualTasksComposeboxTest', () => {
     mockTimer.uninstall();
   });
 
-  /* Get file from `imageInput` if `fileType` is image;
-   * otherwise if pdf, then from files.
-   */
-  function getInputBasedOnFileType(fileType: string): HTMLInputElement {
-    return fileType === 'application/pdf' ? composebox.$.context.$.fileInput :
-                                            composebox.$.context.$.imageInput;
-  }
-
-  function getMockFileChangeEventForFileType(fileType: string): Event {
-    if (fileType === 'application/pdf') {
-      return new Event('change');
-    }
-
-    const mockFileChange = new Event('change', {bubbles: true});
-    // Read only.
-    Object.defineProperty(mockFileChange, 'target', {
-      writable: false,
-      value: composebox.$.context.$.imageInput,
-    });
-    return mockFileChange;
-  }
-
   async function uploadFileAndVerify(
       token: Object, file: File, expectedInitialFilesCount: number = 0) {
     // Assert initial file count if 0 -> carousel should not render.
     if (expectedInitialFilesCount === 0) {
       assertFalse(
-          !!composebox.$.context.shadowRoot.querySelector('#carousel'),
+          !!composebox.shadowRoot.querySelector('#carousel'),
           'Files should be empty and carousel should not render.');
     }
 
@@ -193,15 +171,18 @@ suite('ContextualTasksComposeboxTest', () => {
     const dataTransfer = new DataTransfer();
     dataTransfer.items.add(file);
 
-    const input: HTMLInputElement = getInputBasedOnFileType(file.type);
-    input.files = dataTransfer.files;
-    input.dispatchEvent(getMockFileChangeEventForFileType(file.type));
+    composebox.$.fileInputs.dispatchEvent(
+      new CustomEvent('on-file-change', {
+          detail: {files: dataTransfer.files},
+          bubbles: true,
+          composed: true,
+        }));
+
     // Must call to upload. Await -> wait for it to be called once.
     await mockSearchboxPageHandler.whenCalled(ADD_FILE_CONTEXT_FN);
 
     // Must await for file carousel to re-render since are adding files.
     await composebox.updateComplete;
-    await composebox.$.context.updateComplete;
     await microtasksFinished();
     await verifyFileCarouselMatchesUploaded(file, expectedInitialFilesCount);
   }
@@ -211,7 +192,7 @@ suite('ContextualTasksComposeboxTest', () => {
     // Assert one file.
 
     // Avoid using $.carousel since may be cached.
-    const carousel = composebox.$.context.shadowRoot.querySelector('#carousel');
+    const carousel = composebox.shadowRoot.querySelector('#carousel');
 
     assertTrue(!!carousel, 'Carousel should be in the DOM');
     const files = carousel.files;
@@ -241,9 +222,9 @@ suite('ContextualTasksComposeboxTest', () => {
   }
 
   async function deleteLastFile() {
-    const files = composebox.$.context.$.carousel.files;
+    const files = composebox.$.carousel.files;
     const deletedId = files[files.length - 1]!.uuid;
-    composebox.$.context.$.carousel.dispatchEvent(
+    composebox.$.carousel.dispatchEvent(
         new CustomEvent('delete-file', {
           detail: {
             uuid: deletedId,
@@ -268,6 +249,53 @@ suite('ContextualTasksComposeboxTest', () => {
         submitContainer.querySelector('#submitIcon');
     return submitButton;
   }
+
+  test('submit enabled when tool is Deep Search', async () => {
+    const submitContainer = getSubmitContainer();
+    assertFalse(
+        isVisible(submitContainer), 'Submit container should be hidden');
+
+    // Ensure we start in Zero State (disabled).
+    contextualTasksApp.setIsZeroStateForTesting(true);
+    await microtasksFinished();
+
+    // Verify submit button is disabled and clicking it does nothing.
+    const submitButton = getSubmitButton();
+    assertTrue(submitButton!.disabled, 'Submit button should be disabled');
+    submitButton!.click();
+    await microtasksFinished();
+    assertEquals(
+        mockSearchboxPageHandler.getCallCount('submitQuery'), 0,
+        'Submit query should not be called when button is disabled');
+
+    // Change tool to Deep Search
+    const inputState = Object.assign({}, mockInputState, {
+      activeTool: ToolMode.kDeepSearch,
+    });
+    searchboxCallbackRouterRemote.onInputStateChanged(inputState);
+    await searchboxCallbackRouterRemote.$.flushForTesting();
+
+    await microtasksFinished();
+
+    // Verify submit button is disabled and clicking it still does nothing.
+    assertTrue(submitButton!.disabled, 'Submit button should be disabled');
+    submitButton!.click();
+    await microtasksFinished();
+    assertEquals(
+        mockSearchboxPageHandler.getCallCount('submitQuery'), 0,
+        'Submit query should not be called when button is disabled');
+
+    // Set isZeroState to false (simulating follow-up) to allow empty query
+    // for Deep Search.
+    contextualTasksApp.setIsZeroStateForTesting(false);
+    await microtasksFinished();
+    await composebox.updateComplete;
+
+    // Submit should be enabled now, clicking triggers the action.
+    submitButton!.click();
+    await microtasksFinished();
+    assertEquals(mockSearchboxPageHandler.getCallCount('submitQuery'), 1);
+  });
 
   test('ComposeboxSubmitSendsQueryAndClearsInput', async () => {
     mockTimer.install();
@@ -453,7 +481,7 @@ suite('ContextualTasksComposeboxTest', () => {
         /*error_type=*/ null,
     );
     await microtasksFinished();
-    await composebox.$.context.updateComplete;
+    await composebox.updateComplete;
 
     assertEquals(
         1, composebox.getRemainingFilesToUpload().size,
@@ -467,7 +495,7 @@ suite('ContextualTasksComposeboxTest', () => {
         /*error_type=*/ null,
     );
     await microtasksFinished();
-    await composebox.$.context.updateComplete;
+    await composebox.updateComplete;
 
     assertEquals(
         1, composebox.getRemainingFilesToUpload().size,
@@ -484,7 +512,7 @@ suite('ContextualTasksComposeboxTest', () => {
 
     await searchboxCallbackRouterRemote.$.flushForTesting();
     await microtasksFinished();
-    await composebox.$.context.updateComplete;
+    await composebox.updateComplete;
 
     assertEquals(
         1, composebox.getRemainingFilesToUpload().size,
@@ -500,7 +528,7 @@ suite('ContextualTasksComposeboxTest', () => {
     );
     await searchboxCallbackRouterRemote.$.flushForTesting();
     await microtasksFinished();
-    await composebox.$.context.updateComplete;
+    await composebox.updateComplete;
 
     const submitButton: HTMLButtonElement|null = getSubmitButton();
     assertTrue(!!submitButton, 'Submit button should exist');
@@ -526,7 +554,7 @@ suite('ContextualTasksComposeboxTest', () => {
     await composebox.updateComplete;
     await microtasksFinished();
 
-    assertEquals(0, composebox.$.context.files_.size);
+    assertEquals(0, composebox.files_.size);
 
     // Should be no longer `EXPANDING` after successful upload and submit click.
     assertNotEquals(composebox.animationState, GlowAnimationState.EXPANDING);
@@ -544,7 +572,7 @@ suite('ContextualTasksComposeboxTest', () => {
     composebox.input_ = 'test';
     await searchboxCallbackRouterRemote.$.flushForTesting();
     await microtasksFinished();
-    await composebox.$.context.updateComplete;
+    await composebox.updateComplete;
 
     assertEquals(
         1, composebox.getRemainingFilesToUpload().size,
@@ -581,7 +609,6 @@ suite('ContextualTasksComposeboxTest', () => {
 
     await searchboxCallbackRouterRemote.$.flushForTesting();
     await microtasksFinished();
-    await composebox.$.context.updateComplete;
     await composebox.updateComplete;
     await microtasksFinished();
 
@@ -609,7 +636,7 @@ suite('ContextualTasksComposeboxTest', () => {
 
     await searchboxCallbackRouterRemote.$.flushForTesting();
     await microtasksFinished();
-    await composebox.$.context.updateComplete;
+    await composebox.updateComplete;
 
     assertEquals(
         1, composebox.getRemainingFilesToUpload().size,
@@ -638,7 +665,7 @@ suite('ContextualTasksComposeboxTest', () => {
 
     await searchboxCallbackRouterRemote.$.flushForTesting();
     await microtasksFinished();
-    await composebox.$.context.updateComplete;
+    await composebox.updateComplete;
 
     assertEquals(
         0, composebox.getRemainingFilesToUpload().size,
@@ -666,7 +693,7 @@ suite('ContextualTasksComposeboxTest', () => {
     );
 
     await microtasksFinished();
-    await composebox.$.context.updateComplete;
+    await composebox.updateComplete;
 
     assertEquals(
         1, composebox.getRemainingFilesToUpload().size,
@@ -726,7 +753,7 @@ suite('ContextualTasksComposeboxTest', () => {
     await composebox.updateComplete;
     await microtasksFinished();
 
-    assertEquals(0, composebox.$.context.files_.size);
+    assertEquals(0, composebox.files_.size);
 
     // Should be no longer `EXPANDING` after successful upload and submit click.
     assertNotEquals(composebox.animationState, GlowAnimationState.EXPANDING);
@@ -734,10 +761,10 @@ suite('ContextualTasksComposeboxTest', () => {
 
   test('Composebox submit button disabled when uploading tabs', async () => {
     const callback = (file: ComposeboxFile) => {
-      composebox.$.context.files_.set(file.uuid, file);
+      composebox.files_.set(file.uuid, file);
       composebox.contextFilesSize_ += 1;
       composebox.submitEnabled_ = composebox.computeSubmitEnabled_();
-      composebox.$.context.requestUpdate();
+      composebox.requestUpdate();
     };
     mockSearchboxPageHandler.setResultFor(
         ADD_TAB_CONTEXT_FN, Promise.resolve(FAKE_TOKEN_STRING));
@@ -758,7 +785,7 @@ suite('ContextualTasksComposeboxTest', () => {
     );
 
     await microtasksFinished();
-    await composebox.$.context.updateComplete;
+    await composebox.updateComplete;
 
     assertEquals(
         1, composebox.getRemainingFilesToUpload().size,
@@ -802,7 +829,7 @@ suite('ContextualTasksComposeboxTest', () => {
         /*error_type=*/ null,
     );
     await microtasksFinished();
-    await composebox.$.context.updateComplete;
+    await composebox.updateComplete;
 
     assertFalse(submitButton?.disabled, 'Submit button should not be disabled');
 
@@ -822,7 +849,7 @@ suite('ContextualTasksComposeboxTest', () => {
     await composebox.updateComplete;
     await microtasksFinished();
 
-    assertEquals(0, composebox.$.context.files_.size);
+    assertEquals(0, composebox.files_.size);
 
     // Should be no longer `EXPANDING` after successful upload and submit click.
     assertNotEquals(composebox.animationState, GlowAnimationState.EXPANDING);
@@ -846,7 +873,7 @@ suite('ContextualTasksComposeboxTest', () => {
             /*error_type=*/ null,
         );
 
-        await composebox.$.context.updateComplete;
+        await composebox.updateComplete;
         await microtasksFinished();
 
         const remaining = composebox.getRemainingFilesToUpload();
@@ -871,12 +898,11 @@ suite('ContextualTasksComposeboxTest', () => {
             /*error_type=*/ null,
         );
 
-        await composebox.$.context.updateComplete;
+        await composebox.updateComplete;
         await microtasksFinished();
 
         await microtasksFinished();
         await composebox.updateComplete;
-        await composebox.$.context.updateComplete;
         const submitContainer: HTMLElement|null = getSubmitContainer();
         assertTrue(!!submitContainer, 'Submit container button should exist');
         assertFalse(
@@ -897,7 +923,7 @@ suite('ContextualTasksComposeboxTest', () => {
         await composebox.updateComplete;
         await microtasksFinished();
 
-        assertEquals(0, composebox.$.context.files_.size);
+        assertEquals(0, composebox.files_.size);
 
         // Should be no longer `EXPANDING` after successful upload and submit
         // click.
@@ -918,7 +944,7 @@ suite('ContextualTasksComposeboxTest', () => {
             /*error_type=*/ null,
         );
 
-        await composebox.$.context.updateComplete;
+        await composebox.updateComplete;
         await microtasksFinished();
 
         assertEquals(
@@ -934,7 +960,7 @@ suite('ContextualTasksComposeboxTest', () => {
             /*error_type=*/ null,
         );
 
-        await composebox.$.context.updateComplete;
+        await composebox.updateComplete;
         await microtasksFinished();
 
         assertEquals(
@@ -953,7 +979,7 @@ suite('ContextualTasksComposeboxTest', () => {
             /*error_type=*/ null,
         );
 
-        await composebox.$.context.updateComplete;
+        await composebox.updateComplete;
         await microtasksFinished();
 
         assertEquals(
@@ -976,10 +1002,10 @@ suite('ContextualTasksComposeboxTest', () => {
 
   test('delayed tabs do not delay submission', async () => {
     const callback = (file: any) => {
-      composebox.$.context.files_.set(file.uuid, file);
+      composebox.files_.set(file.uuid, file);
       composebox.contextFilesSize_ = 1;
       composebox.submitEnabled_ = composebox.computeSubmitEnabled_();
-      composebox.$.context.requestUpdate();
+      composebox.requestUpdate();
     };
 
     mockSearchboxPageHandler.setResultFor(
@@ -994,7 +1020,6 @@ suite('ContextualTasksComposeboxTest', () => {
       },
     } as CustomEvent);
     await microtasksFinished();
-    await composebox.$.context.updateComplete;
     await composebox.updateComplete;
     await microtasksFinished();
 
@@ -1032,7 +1057,7 @@ suite('ContextualTasksComposeboxTest', () => {
         token, FileUploadStatus.kProcessing, null);
 
     await searchboxCallbackRouterRemote.$.flushForTesting();
-    await composebox.$.context.updateComplete;
+    await composebox.updateComplete;
     await microtasksFinished();
 
     assertEquals(1, composebox.getRemainingFilesToUpload().size);
@@ -1057,7 +1082,6 @@ suite('ContextualTasksComposeboxTest', () => {
             even when disabled.');
     searchboxCallbackRouterRemote.onContextualInputStatusChanged(
         token, FileUploadStatus.kUploadFailed, null);
-    await composebox.$.context.updateComplete;
     await composebox.updateComplete;
 
     await microtasksFinished();
@@ -1085,7 +1109,6 @@ suite('ContextualTasksComposeboxTest', () => {
 
     searchboxCallbackRouterRemote.onContextualInputStatusChanged(
         token, FileUploadStatus.kProcessing, null);
-    await composebox.$.context.updateComplete;
     await composebox.updateComplete;
     await microtasksFinished();
 
@@ -1113,7 +1136,7 @@ suite('ContextualTasksComposeboxTest', () => {
         token, FileUploadStatus.kValidationFailed, null);
 
     await searchboxCallbackRouterRemote.$.flushForTesting();
-    await composebox.$.context.updateComplete;
+    await composebox.updateComplete;
     await microtasksFinished();
     assertEquals(0, composebox.getRemainingFilesToUpload().size);
 
@@ -1139,7 +1162,6 @@ suite('ContextualTasksComposeboxTest', () => {
 
     searchboxCallbackRouterRemote.onContextualInputStatusChanged(
         token, FileUploadStatus.kProcessing, null);
-    await composebox.$.context.updateComplete;
     await composebox.updateComplete;
     await microtasksFinished();
 
@@ -1165,7 +1187,6 @@ suite('ContextualTasksComposeboxTest', () => {
             even when disabled.');
     searchboxCallbackRouterRemote.onContextualInputStatusChanged(
         token, FileUploadStatus.kUploadExpired, null);
-    await composebox.$.context.updateComplete;
     await composebox.updateComplete;
     await microtasksFinished();
     assertEquals(0, composebox.getRemainingFilesToUpload().size);
@@ -1194,7 +1215,7 @@ suite('ContextualTasksComposeboxTest', () => {
         token, FileUploadStatus.kProcessingSuggestSignalsReady, null);
 
     await searchboxCallbackRouterRemote.$.flushForTesting();
-    await composebox.$.context.updateComplete;
+    await composebox.updateComplete;
     await microtasksFinished();
 
     const submitButton: HTMLButtonElement|null = getSubmitButton();
@@ -1220,25 +1241,24 @@ suite('ContextualTasksComposeboxTest', () => {
     await uploadFileAndVerify(
         token, new File(['foo'], 'foo.jpg', {type: 'image/jpeg'}));
 
-    await composebox.$.context.updateComplete;
+    await composebox.updateComplete;
     await microtasksFinished();
 
     searchboxCallbackRouterRemote.onContextualInputStatusChanged(
         token, FileUploadStatus.kUploadSuccessful, null);
 
     await searchboxCallbackRouterRemote.$.flushForTesting();
-    await composebox.$.context.updateComplete;
+    await composebox.updateComplete;
     await microtasksFinished();
 
     composebox.clearAllInputs(false);
 
     await Promise.all([
       composebox.updateComplete,
-      composebox.$.context.updateComplete,
       microtasksFinished(),
     ]);
 
-    assertEquals(0, composebox.$.context.files_.size);
+    assertEquals(0, composebox.files_.size);
 
     const submitButton: HTMLButtonElement|null = getSubmitButton();
     assertTrue(!!submitButton, 'Submit button should exist');
@@ -1265,14 +1285,14 @@ suite('ContextualTasksComposeboxTest', () => {
         await uploadFileAndVerify(
             token1, new File(['foo'], 'foo.jpg', {type: 'image/jpeg'}));
 
-        const currentFiles = composebox.$.context.files_;
+        const currentFiles = composebox.files_;
         currentFiles.forEach((file: ComposeboxFile) => {
           file.isDeletable = false;
         });
 
-        composebox.$.context.requestUpdate();
+        composebox.requestUpdate();
 
-        await composebox.$.context.updateComplete;
+        await composebox.updateComplete;
         await microtasksFinished();
 
         // Now file 1 is not deletable while file 2 is.
@@ -1287,12 +1307,12 @@ suite('ContextualTasksComposeboxTest', () => {
             token2, FileUploadStatus.kUploadSuccessful, null);
         await searchboxCallbackRouterRemote.$.flushForTesting();
 
-        await composebox.$.context.updateComplete;
+        await composebox.updateComplete;
         await microtasksFinished();
 
         // Clear all inputs (only deletes file 2).
         composebox.clearAllInputs(false);
-        await composebox.$.context.updateComplete;
+        await composebox.updateComplete;
         await microtasksFinished();
 
         assertEquals(1, composebox.getRemainingFilesToUpload().size);
@@ -1321,22 +1341,22 @@ suite('ContextualTasksComposeboxTest', () => {
         searchboxCallbackRouterRemote.onContextualInputStatusChanged(
             token2, FileUploadStatus.kUploadSuccessful, null);
         await searchboxCallbackRouterRemote.$.flushForTesting();
-        await composebox.$.context.updateComplete;
+        await composebox.updateComplete;
         await microtasksFinished();
 
-        const currentFiles2 = composebox.$.context.files_;
+        const currentFiles2 = composebox.files_;
         currentFiles2.forEach((file: ComposeboxFile) => {
           file.isDeletable = false;
         });
 
-        composebox.$.context.requestUpdate();
+        composebox.requestUpdate();
 
-        await composebox.$.context.updateComplete;
+        await composebox.updateComplete;
         await microtasksFinished();
 
         // Clear all inputs (deletes no files).
         composebox.clearAllInputs(false);
-        await composebox.$.context.updateComplete;
+        await composebox.updateComplete;
         await microtasksFinished();
         assertEquals(2, composebox.getRemainingFilesToUpload().size);
 
@@ -1710,7 +1730,7 @@ suite('ContextualTasksComposeboxTest', () => {
 
     await searchboxCallbackRouterRemote.$.flushForTesting();
     await microtasksFinished();
-    await composebox.$.context.updateComplete;
+    await composebox.updateComplete;
 
     assertEquals(
         1, composebox.getRemainingFilesToUpload().size,
@@ -1727,7 +1747,7 @@ suite('ContextualTasksComposeboxTest', () => {
 
     await searchboxCallbackRouterRemote.$.flushForTesting();
     await microtasksFinished();
-    await composebox.$.context.updateComplete;
+    await composebox.updateComplete;
 
     const submitButton: HTMLButtonElement|null = getSubmitButton();
     assertTrue(!!submitButton, 'Submit button should exist');
@@ -1749,18 +1769,104 @@ suite('ContextualTasksComposeboxTest', () => {
         composebox.animationState, GlowAnimationState.SUBMITTING,
         'Query is submitted via submitQuery_()');
 
-    assertEquals(0, composebox.$.context.files_.size);
+    assertEquals(0, composebox.files_.size);
+  });
+
+  test('EnterKeyAfterSubmitDoesNotAddNewLine', async () => {
+    mockTimer.install();
+    const TEST_QUERY = 'test query';
+
+    const inputElement = composebox.$.input;
+    assertTrue(
+        isVisible(inputElement), 'Composebox input element should be visible');
+
+    // 1. Setup: Input text.
+    simulateUserInput(inputElement, TEST_QUERY);
+
+    // Advance timer to trigger the debounced autocomplete query.
+    mockTimer.tick(300);
+
+    // Wait for the component to actually request autocomplete
+    // before we mock the response, otherwise the response is ignored.
+    await mockSearchboxPageHandler.whenCalled('queryAutocomplete');
+
+    // 2. Mock Autocomplete Results.
+    await setupAutocompleteResults(searchboxCallbackRouterRemote, TEST_QUERY);
+
+    // Wait for the matches to be populated in the dropdown.
+    while (!composebox.getMatchesElement().result) {
+      mockTimer.tick(10);
+      await Promise.resolve();
+    }
+
+    const submitButton = getSubmitButton();
+    assertTrue(!!submitButton);
+    assertFalse(submitButton.disabled, 'Submit should be enabled');
+
+    // 3. Action: Simulate Enter press to submit
+    mockSearchboxPageHandler.reset();
+    pressEnter(inputElement);
+
+    await mockSearchboxPageHandler.whenCalled('openAutocompleteMatch');
+    assertEquals(
+        1, mockSearchboxPageHandler.getCallCount('openAutocompleteMatch'));
+
+    // Tick timer to allow Lit's update lifecycle to process the submit.
+    mockTimer.tick(0);
+
+    // 4. Wait for the UI to clear the input after submission.
+    await composebox.updateComplete;
+    await contextualTasksApp.updateComplete;
+    assertEquals(
+        '', inputElement.value, 'Input should be cleared after submit');
+
+    // 5. Action: Press Enter again on empty input.
+    mockSearchboxPageHandler.reset();
+    pressEnter(inputElement);
+
+    // Tick timer again for Lit updates.
+    mockTimer.tick(0);
+    await composebox.updateComplete;
+
+    // 6. Assert: No newline added, submit not called again.
+    assertFalse(inputElement.value.includes('\n'));
+    assertEquals(0, mockSearchboxPageHandler.getCallCount('submitQuery'));
+    assertEquals(
+        0, mockSearchboxPageHandler.getCallCount('openAutocompleteMatch'));
+  });
+
+
+  test('EnterKeyOnEmptyInputDoesNotAddNewLineOrSubmit', async () => {
+    const innerComposebox = contextualTasksApp.$.composebox.$.composebox;
+    const inputElement = innerComposebox.$.input;
+    const keydownDiv =
+        innerComposebox.shadowRoot.querySelector<HTMLElement>('#composebox');
+    assertTrue(!!keydownDiv);
+
+    assertEquals('', inputElement.value);
+    mockSearchboxPageHandler.reset();
+
+    // Action: Press Enter on empty input.
+    pressEnter(keydownDiv);
+    await microtasksFinished();
+
+    // Assert: No newline and no submission.
+    assertFalse(inputElement.value.includes('\n'));
+    assertEquals(0, mockSearchboxPageHandler.getCallCount('submitQuery'));
   });
 
   test('Composebox upload disabled when uploading files', async () => {
-    composebox.$.context.searchboxLayoutMode = '';
-    composebox.$.context.contextMenuEnabled_ = true;
+    composebox.searchboxLayoutMode = '';
+    composebox.contextMenuEnabled_ = true;
     await composebox.updateComplete;
-    await composebox.$.context.updateComplete;
+    await composebox.updateComplete;
     await microtasksFinished();
 
+    const contextEntrypoint =
+        composebox.shadowRoot.querySelector('#contextEntrypoint');
+    assertTrue(!!contextEntrypoint);
     assertFalse(
-        composebox.$.context.$.contextEntrypoint.uploadButtonDisabled,
+        contextEntrypoint.uploadButtonDisabled,
         'Upload button should be enabled');
 
     await uploadFileAndVerify(
@@ -1774,7 +1880,6 @@ suite('ContextualTasksComposeboxTest', () => {
     );
 
     await microtasksFinished();
-    await composebox.$.context.updateComplete;
     await composebox.updateComplete;
     assertEquals(
         1, composebox.getRemainingFilesToUpload().size,
@@ -1783,7 +1888,7 @@ suite('ContextualTasksComposeboxTest', () => {
         composebox.fileUploadsComplete,
         'Files should not be finished uploading');
     assertTrue(
-        composebox.$.context.$.contextEntrypoint.uploadButtonDisabled,
+        contextEntrypoint.uploadButtonDisabled,
         'Upload button should be disabled while uploading');
 
     searchboxCallbackRouterRemote.onContextualInputStatusChanged(
@@ -1793,7 +1898,6 @@ suite('ContextualTasksComposeboxTest', () => {
     );
 
     await microtasksFinished();
-    await composebox.$.context.updateComplete;
     await composebox.updateComplete;
 
     assertEquals(
@@ -1802,20 +1906,21 @@ suite('ContextualTasksComposeboxTest', () => {
     assertTrue(
         composebox.fileUploadsComplete, 'Files should be finished uploading');
     assertFalse(
-        composebox.$.context.$.contextEntrypoint.uploadButtonDisabled,
+        contextEntrypoint.uploadButtonDisabled,
         'Upload button should be re-enabled after upload');
   });
 
   test(
       'Composebox upload disabled when uploading files with contextMenu',
       async () => {
-        composebox.$.context.searchboxLayoutMode = '';
-        composebox.$.context.contextMenuEnabled_ = true;
+        composebox.searchboxLayoutMode = '';
+        composebox.contextMenuEnabled_ = true;
         await composebox.updateComplete;
-        await composebox.$.context.updateComplete;
         await microtasksFinished();
-        const entrypointMenu =
-            composebox.$.context.$.contextEntrypoint.$.entrypointMenu;
+        const contextEntrypoint =
+            composebox.shadowRoot.querySelector('#contextEntrypoint');
+        assertTrue(!!contextEntrypoint);
+        const entrypointMenu = contextEntrypoint.$.entrypointMenu;
         assertTrue(!!entrypointMenu, 'Context menu should exist');
         const button = entrypointMenu.shadowRoot?.querySelector('#entrypoint');
         assertTrue(!!button, 'Context menu button should exist');
@@ -1833,7 +1938,6 @@ suite('ContextualTasksComposeboxTest', () => {
         );
 
         await microtasksFinished();
-        await composebox.$.context.updateComplete;
         await composebox.updateComplete;
 
         assertEquals(
@@ -1852,13 +1956,16 @@ suite('ContextualTasksComposeboxTest', () => {
         );
 
         await microtasksFinished();
-        await composebox.$.context.updateComplete;
+        await composebox.updateComplete;
 
         assertFalse(!!button.disabled);
       });
 
   test('image upload calls handler for image', async () => {
-    composebox.$.context.dispatchEvent(
+    const contextEntrypoint =
+        composebox.shadowRoot.querySelector('#contextEntrypoint');
+    assertTrue(!!contextEntrypoint);
+    contextEntrypoint.dispatchEvent(
         new CustomEvent('open-image-upload', {
           detail: {isImage: true},
           bubbles: true,
@@ -1872,7 +1979,10 @@ suite('ContextualTasksComposeboxTest', () => {
   });
 
   test('file upload calls handler for file', async () => {
-    composebox.$.context.dispatchEvent(
+    const contextEntrypoint =
+        composebox.shadowRoot.querySelector('#contextEntrypoint');
+    assertTrue(!!contextEntrypoint);
+    contextEntrypoint.dispatchEvent(
         new CustomEvent('open-file-upload', {
           detail: {isImage: false},
           bubbles: true,
@@ -2047,7 +2157,7 @@ suite('ContextualTasksComposeboxTest', () => {
     const inputElement = innerComposebox.$.input;
 
     // Initially false, placeholder override should be empty.
-    assertFalse(contextualComposebox.isLensOverlayShowing);
+    assertFalse(contextualComposebox.maybeShowOverlayHintText);
     await contextualComposebox.updateComplete;
     await innerComposebox.updateComplete;
     assertEquals('', innerComposebox.inputPlaceholderOverride);
@@ -2055,20 +2165,20 @@ suite('ContextualTasksComposeboxTest', () => {
     const initialPlaceholder = inputElement.placeholder;
 
     // Set to true.
-    contextualComposebox.isLensOverlayShowing = true;
+    contextualComposebox.maybeShowOverlayHintText = true;
     await contextualComposebox.updateComplete;
     await innerComposebox.updateComplete;
 
-    assertTrue(contextualComposebox.isLensOverlayShowing);
+    assertTrue(contextualComposebox.maybeShowOverlayHintText);
     assertEquals('Test Lens Hint', innerComposebox.inputPlaceholderOverride);
     assertEquals('Test Lens Hint', inputElement.placeholder);
 
     // Set back to false.
-    contextualComposebox.isLensOverlayShowing = false;
+    contextualComposebox.maybeShowOverlayHintText = false;
     await contextualComposebox.updateComplete;
     await innerComposebox.updateComplete;
 
-    assertFalse(contextualComposebox.isLensOverlayShowing);
+    assertFalse(contextualComposebox.maybeShowOverlayHintText);
     assertEquals('', innerComposebox.inputPlaceholderOverride);
     assertEquals(initialPlaceholder, inputElement.placeholder);
   });
@@ -2137,4 +2247,45 @@ suite('ContextualTasksComposeboxTest', () => {
         'none', getComputedStyle(suggestionsContainer).display,
         'Suggestions should be hidden via CSS when dropdown is hidden');
   });
+
+  test('Injected input can be added, then deleted from AIM', async () => {
+    composebox.injectInput('title', 'thumbnail.jpg', FAKE_TOKEN_STRING);
+    await composebox.$.context.updateComplete;
+    await microtasksFinished();
+
+    // Avoid using $.carousel since may be cached.
+    const carousel = composebox.$.context.shadowRoot.querySelector('#carousel');
+    assertTrue(!!carousel, 'Carousel should be in the DOM');
+    const files = carousel.files;
+    assertEquals(1, files.length);
+
+    composebox.deleteFile(FAKE_TOKEN_STRING);
+    await composebox.$.context.updateComplete;
+    await microtasksFinished();
+    assertFalse(
+        !!composebox.$.context.shadowRoot.querySelector('#carousel'),
+        'Carousel should be removed from the DOM');
+  });
+
+  test(
+      'Injected input can be added, then deleted from composebox', async () => {
+        composebox.injectInput('title', 'thumbnail.jpg', FAKE_TOKEN_STRING);
+        await composebox.$.context.updateComplete;
+        await microtasksFinished();
+
+        // Avoid using $.carousel since may be cached.
+        const carousel =
+            composebox.$.context.shadowRoot.querySelector('#carousel');
+        assertTrue(!!carousel, 'Carousel should be in the DOM');
+        const files = carousel.files;
+        assertEquals(1, files.length);
+
+        await deleteLastFile();
+        await composebox.$.context.updateComplete;
+        await microtasksFinished();
+
+        assertFalse(
+            !!composebox.$.context.shadowRoot.querySelector('#carousel'),
+            'Carousel should be removed from the DOM');
+      });
 });

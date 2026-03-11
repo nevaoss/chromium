@@ -5,9 +5,8 @@
 #include <memory>
 
 #include "base/callback_list.h"
-#include "base/run_loop.h"
-#include "base/task/single_thread_task_runner.h"
 #include "base/test/run_until.h"
+#include "base/test/scoped_feature_list.h"
 #include "base/time/time.h"
 #include "build/build_config.h"
 #include "build/buildflag.h"
@@ -29,27 +28,30 @@
 #include "components/send_tab_to_self/send_tab_to_self_model.h"
 #include "components/send_tab_to_self/send_tab_to_self_sync_service.h"
 #include "components/signin/public/identity_manager/account_info.h"
+#include "components/sync/base/data_type.h"
 #include "components/sync/base/features.h"
 #include "components/sync/base/time.h"
+#include "components/sync/engine/loopback_server/persistent_unique_client_entity.h"
 #include "components/sync/protocol/entity_specifics.pb.h"
 #include "components/sync/protocol/send_tab_to_self_specifics.pb.h"
 #include "components/sync/protocol/sync_entity.pb.h"
+#include "components/sync/protocol/user_event_specifics.pb.h"
 #include "components/sync_user_events/user_event_service.h"
+#include "content/public/browser/render_frame_host.h"
+#include "content/public/browser/web_contents.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
+#include "content/public/test/hit_test_region_observer.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "url/gurl.h"
+#include "url/origin.h"
 
 namespace {
 
 using send_tab_to_self_helper::GetFormFieldValueById;
-using send_tab_to_self_helper::PopulateFormField;
-using testing::AllOf;
 using testing::Eq;
-using testing::Property;
-using testing::UnorderedElementsAre;
 
 class SingleClientSendTabToSelfSyncTest
     : public SyncTest,
@@ -115,6 +117,29 @@ IN_PROC_BROWSER_TEST_P(SingleClientSendTabToSelfSyncTest,
                   .Wait());
 }
 
+// TODO(crbug.com/485145029): Remove this test once the flakiness issue with
+// content::WaitForHitTestData() is resolved.
+IN_PROC_BROWSER_TEST_P(SingleClientSendTabToSelfSyncTest,
+                       ShouldWaitForHitTestData) {
+  const GURL kUrl =
+      embedded_test_server()->GetURL("/autofill/autofill_test_form.html");
+  ASSERT_TRUE(SetupSync());
+
+  // Open tab and fill form.
+  content::WebContents* web_contents =
+      chrome::AddAndReturnTabAt(GetBrowser(0), kUrl, -1, true);
+  ASSERT_TRUE(content::WaitForLoadStop(web_contents));
+
+  // TODO(crbug.com/485145029): Add a second call to WaitForHitTestData() to
+  // verify it doesn't time out.
+  content::SimulateEndOfPaintHoldingOnPrimaryMainFrame(web_contents);
+
+  // Ensure that WaitForHitTestData() completes reliably. This was added
+  // temporarily to debug some test flakiness that motivated the revert
+  // https://crrev.com/c/7604051.
+  content::WaitForHitTestData(web_contents->GetPrimaryMainFrame());
+}
+
 IN_PROC_BROWSER_TEST_P(SingleClientSendTabToSelfSyncTest,
                        ShouldReceiveFormFields) {
   const std::string kName = "John";
@@ -178,78 +203,6 @@ IN_PROC_BROWSER_TEST_P(SingleClientSendTabToSelfSyncTest,
     return GetFormFieldValueById(web_contents, "NAME_FIRST") == kName &&
            GetFormFieldValueById(web_contents, "EMAIL_ADDRESS") == kEmail;
   }));
-}
-
-IN_PROC_BROWSER_TEST_P(SingleClientSendTabToSelfSyncTest,
-                       ShouldSendFormFields) {
-  const std::string kName = "John";
-  const std::string kEmail = "john@example.com";
-  const GURL kUrl =
-      embedded_test_server()->GetURL("/autofill/autofill_test_form.html");
-  ASSERT_TRUE(SetupSync());
-
-  // Open tab and fill form.
-  content::WebContents* web_contents =
-      chrome::AddAndReturnTabAt(GetBrowser(0), kUrl, -1, true);
-  ASSERT_TRUE(content::WaitForLoadStop(web_contents));
-
-  // Wait for Autofill to cache the form fields.
-  ASSERT_TRUE(send_tab_to_self_helper::AutofillFieldsSeenChecker(
-                  web_contents, {{"NAME_FIRST", ""}, {"EMAIL_ADDRESS", ""}})
-                  .Wait());
-
-  ASSERT_TRUE(PopulateFormField(web_contents, "NAME_FIRST", kName));
-  ASSERT_TRUE(PopulateFormField(web_contents, "EMAIL_ADDRESS", kEmail));
-
-  // Wait for Autofill to catch up with the values.
-  ASSERT_TRUE(
-      send_tab_to_self_helper::AutofillFieldsSeenChecker(
-          web_contents, {{"NAME_FIRST", kName}, {"EMAIL_ADDRESS", kEmail}})
-          .Wait());
-
-  // Wait for Autofill to parse the fields.
-  // TODO(crbug.com/485145029): Remove the waiting logic here and instead assert
-  // synchronously what the result of extraction is expected to be.
-  ASSERT_TRUE(
-      send_tab_to_self_helper::SendTabToSelfFormFieldsParsedChecker(
-          web_contents, {{"NAME_FIRST", kName}, {"EMAIL_ADDRESS", kEmail}})
-          .Wait());
-
-  // Trigger sending.
-  const std::string target_guid = "target_guid";
-  SendTabToSelfSyncServiceFactory::GetForProfile(GetProfile(0))
-      ->GetSendTabToSelfModel()
-      ->AddEntry(
-          kUrl, "example", target_guid,
-          send_tab_to_self::ExtractFormFieldsFromWebContents(web_contents));
-
-  // Wait for the entry to be committed to the server.
-  ASSERT_TRUE(
-      ServerCountMatchStatusChecker(syncer::SEND_TAB_TO_SELF, 1).Wait());
-
-  // Read the proto from the fake server and verify.
-  const std::vector<sync_pb::SyncEntity> entities =
-      fake_server_->GetSyncEntitiesByDataType(syncer::SEND_TAB_TO_SELF);
-  ASSERT_EQ(entities.size(), 1u);
-  const sync_pb::SendTabToSelfSpecifics& specifics =
-      entities[0].specifics().send_tab_to_self();
-
-  ASSERT_EQ(specifics.url(), kUrl.spec());
-  ASSERT_EQ(specifics.target_device_sync_cache_guid(), target_guid);
-  ASSERT_TRUE(specifics.has_page_context());
-  ASSERT_TRUE(specifics.page_context().has_form_field_info());
-
-  const sync_pb::FormFieldInfo& form_field_info =
-      specifics.page_context().form_field_info();
-
-  EXPECT_THAT(
-      form_field_info.fields(),
-      UnorderedElementsAre(
-          AllOf(Property(&sync_pb::FormField::id_attribute, Eq("NAME_FIRST")),
-                Property(&sync_pb::FormField::value, Eq(kName))),
-          AllOf(
-              Property(&sync_pb::FormField::id_attribute, Eq("EMAIL_ADDRESS")),
-              Property(&sync_pb::FormField::value, Eq(kEmail)))));
 }
 
 IN_PROC_BROWSER_TEST_P(SingleClientSendTabToSelfSyncTest, IsActive) {

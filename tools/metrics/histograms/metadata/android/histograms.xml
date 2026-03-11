@@ -523,6 +523,16 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Android.AppLaunchDrawBlocker.ActiveTabAvailable" units="ms"
+    expires_after="2026-07-05">
+  <owner>mfiaz@google.com</owner>
+  <owner>clank-tab-dev@google.com</owner>
+  <summary>
+    Records the time taken for ActiveTabAvailable() to be called after the app
+    is launched.
+  </summary>
+</histogram>
+
 <histogram
     name="Android.ApplicationState.TimeInBackgroundBeforeForegroundedAgain"
     units="ms" expires_after="2026-07-05">
@@ -3663,7 +3673,7 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Android.MultiWindowMode.InactiveInstanceRestore.AppSource"
+<histogram name="Android.MultiWindowMode.InactiveInstanceRestore.AppSource2"
     enum="NewWindowAppSource" expires_after="2026-07-10">
   <owner>aishwaryarj@google.com</owner>
   <owner>clank-large-form-factors@google.com</owner>
@@ -3672,8 +3682,9 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Android.MultiWindowMode.NewWindow.AppSource2"
+<histogram name="Android.MultiWindowMode.NewWindow.AppSource3"
     enum="NewWindowAppSource" expires_after="2026-09-01">
+  <owner>aishwaryarj@google.com</owner>
   <owner>rathomas@google.com</owner>
   <owner>clank-large-form-factors@google.com</owner>
   <summary>
@@ -4473,17 +4484,6 @@ chromium-metrics-reviews@google.com.
     Recorded when the user clicks the Open in App item in the App Menu. A true
     value indicates OpenInAppInfo was non-null for the current tab when the item
     was clicked, and vice versa.
-  </summary>
-</histogram>
-
-<histogram name="Android.OverscrollFromBottom.BottomControlsStatus"
-    enum="BottomControlsStatus" expires_after="2026-02-24">
-  <owner>wenyufu@chromium.org</owner>
-  <owner>src/chrome/browser/ui/android/edge_to_edge/OWNERS</owner>
-  <summary>
-    Records when user starts a overscroll from the bottom on a tab, the status
-    of the bottom browser controls. This only records when the content is
-    scrollable, and the scroll starts from the bottom of the content page.
   </summary>
 </histogram>
 
@@ -5708,16 +5708,6 @@ chromium-metrics-reviews@google.com.
   <summary>
     Measures the amount of time due to a StrictMode violation from fetching for
     the thumbnail cache directory.
-  </summary>
-</histogram>
-
-<histogram name="Android.StyleUtils.FontLoadingOutcome"
-    enum="FontLoadingOutcome" expires_after="2026-04-05">
-  <owner>wenyufu@chromium.org</owner>
-  <owner>clank-app-team@google.com</owner>
-  <summary>
-    Records the outcome for loading font using applyTextAppearanceToTextPaint.
-    Recorded during layout initialization on tablets.
   </summary>
 </histogram>
 
@@ -9314,6 +9304,20 @@ chromium-metrics-reviews@google.com.
     <variant name="MetricsBridgeService"/>
     <variant name="VariationsSeedServer"/>
   </token>
+</histogram>
+
+<histogram
+    name="Android.WebView.Static.GetDefaultUserAgentCalledOnUiThreadIfChromiumNotStarted"
+    enum="Boolean" expires_after="2026-07-01">
+  <owner>abhijithnair@chromium.org</owner>
+  <owner>src/android_webview/OWNERS</owner>
+  <summary>
+    Records whether getDefaultUserAgent was called on the UI thread or not.
+    Emitted only if browser startup has not been started during the time of the
+    call.
+
+    This is only logged in Android WebView.
+  </summary>
 </histogram>
 
 <histogram name="Android.WebView.SupervisedUser.UrlCheckResult"

@@ -11,22 +11,53 @@
 #include "base/functional/callback_helpers.h"
 #include "base/task/sequenced_task_runner.h"
 #include "chrome/browser/glic/host/host.h"
+#include "chrome/browser/glic/service/glic_instance_helper.h"
 #include "chrome/browser/glic/service/glic_instance_impl.h"
 
 namespace glic {
 
+constexpr base::TimeDelta kDefaultTimeout = base::Minutes(1);
+
 GlicInvokeHandler::GlicInvokeHandler(GlicInstanceImpl& instance,
+                                     tabs::TabInterface* tab,
                                      GlicInvokeOptions options,
                                      CompletionCallback completion_callback)
     : instance_(instance),
       options_(std::move(options)),
-      completion_callback_(std::move(completion_callback)) {}
+      completion_callback_(std::move(completion_callback)) {
+  if (tab && GlicInstanceHelper::From(tab)) {
+    tab_destruction_subscription_ =
+        GlicInstanceHelper::From(tab)->SubscribeToDestruction(
+            base::BindRepeating(&GlicInvokeHandler::OnTabClosed,
+                                weak_ptr_factory_.GetWeakPtr()));
+  }
+}
 
 GlicInvokeHandler::~GlicInvokeHandler() = default;
 
 void GlicInvokeHandler::Invoke() {
-  // TODO(crbug.com/483387751): Add readiness delay and timeout handling.
-  // For now, fail immediately if not ready.
+  timeout_timer_.Start(FROM_HERE, options_.timeout.value_or(kDefaultTimeout),
+                       base::BindOnce(&GlicInvokeHandler::OnError,
+                                      weak_ptr_factory_.GetWeakPtr(),
+                                      GlicInvokeError::kTimeout));
+
+  // If we weren't able to set up tab destruction subscription, we should
+  // treat this as an error.
+  if (!tab_destruction_subscription_) {
+    OnError(GlicInvokeError::kInvalidTab);
+    return;
+  }
+
+  if (instance_->host().IsReady()) {
+    SendToClient();
+    return;
+  }
+
+  host_observation_.Observe(&instance_->host());
+}
+
+void GlicInvokeHandler::ClientReadyToShow(const mojom::OpenPanelInfo&) {
+  host_observation_.Reset();
   SendToClient();
 }
 
@@ -41,7 +72,13 @@ void GlicInvokeHandler::SendToClient() {
                                           weak_ptr_factory_.GetWeakPtr()));
 }
 
+void GlicInvokeHandler::OnTabClosed(tabs::TabInterface* tab) {
+  OnError(GlicInvokeError::kTabClosed);
+}
+
 void GlicInvokeHandler::OnSuccess() {
+  timeout_timer_.Stop();
+
   if (options_.on_success) {
     std::move(options_.on_success).Run();
   }
@@ -51,6 +88,8 @@ void GlicInvokeHandler::OnSuccess() {
 }
 
 void GlicInvokeHandler::OnError(GlicInvokeError error) {
+  timeout_timer_.Stop();
+
   if (options_.on_error) {
     std::move(options_.on_error).Run(error);
   }

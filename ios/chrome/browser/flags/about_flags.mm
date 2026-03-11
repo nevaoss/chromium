@@ -94,7 +94,6 @@
 #import "ios/chrome/browser/autofill/model/features.h"
 #import "ios/chrome/browser/badges/model/features.h"
 #import "ios/chrome/browser/composebox/public/features.h"
-#import "ios/chrome/browser/content_suggestions/default_browser/public/features.h"
 #import "ios/chrome/browser/crash_report/model/features.h"
 #import "ios/chrome/browser/credential_provider/model/features.h"
 #import "ios/chrome/browser/default_browser/model/features.h"
@@ -1192,17 +1191,6 @@ const FeatureEntry::FeatureVariation kMobilePromoOnDesktopVariations[] = {
     {" - Price Tracking with push notification",
      kMobilePromoOnDesktopPriceTrackingNotification, nullptr},
 };
-
-const FeatureEntry::FeatureParam kDefaultBrowserMagicStackIosDeviceSettings[] =
-    {{kDefaultBrowserMagicStackIosVariation, "1"}};
-const FeatureEntry::FeatureParam kDefaultBrowserMagicStackIosInAppSettings[] = {
-    {kDefaultBrowserMagicStackIosVariation, "2"}};
-
-const FeatureEntry::FeatureVariation kDefaultBrowserMagicStackIosVariations[] =
-    {{" - Tap to Device Settings", kDefaultBrowserMagicStackIosDeviceSettings,
-      nullptr},
-     {" - Tap to In App Settings", kDefaultBrowserMagicStackIosInAppSettings,
-      nullptr}};
 
 const FeatureEntry::FeatureParam kTaiyakiChoiceScreenSurfaceParamAll[] = {
     {"choice_screen_surface", "all"}};
@@ -2401,14 +2389,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      FEATURE_WITH_PARAMS_VALUE_TYPE(kMobilePromoOnDesktopWithReminder,
                                     kMobilePromoOnDesktopVariations,
                                     "MobilePromoOnDesktopWithReminder")},
-    {"ios-default-browser-magic-stack",
-     flag_descriptions::kDefaultBrowserMagicStackIosName,
-     flag_descriptions::kDefaultBrowserMagicStackIosDescription,
-     flags_ui::kOsIos,
-     FEATURE_WITH_PARAMS_VALUE_TYPE(
-         segmentation_platform::features::kDefaultBrowserMagicStackIos,
-         kDefaultBrowserMagicStackIosVariations,
-         "DefaultBrowserMagicStackIos")},
     {"lens-search-headers-check-enabled",
      flag_descriptions::kLensSearchHeadersCheckEnabledName,
      flag_descriptions::kLensSearchHeadersCheckEnabledDescription,
@@ -2512,6 +2492,9 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
     {"ios-synced-set-up", flag_descriptions::kIOSSyncedSetUpName,
      flag_descriptions::kIOSSyncedSetUpDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kIOSSyncedSetUp)},
+    {"gemini-floaty-all-pages", flag_descriptions::kGeminiFloatyAllPagesName,
+     flag_descriptions::kGeminiFloatyAllPagesDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kGeminiFloatyAllPages)},
     {"gemini-full-chat-history", flag_descriptions::kGeminiFullChatHistoryName,
      flag_descriptions::kGeminiFullChatHistoryDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kGeminiFullChatHistory)},
@@ -2654,9 +2637,9 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kAutofillEnableWalletBrandingDescription,
      flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(autofill::features::kAutofillEnableWalletBranding)},
-    {"assistant-sheet", flag_descriptions::kAssistantSheetName,
-     flag_descriptions::kAssistantSheetDescription, flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(kAssistantSheet)},
+    {"assistant-container", flag_descriptions::kAssistantContainerName,
+     flag_descriptions::kAssistantContainerDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kAssistantContainer)},
     {"composebox-ipad", flag_descriptions::kComposeboxIpadName,
      flag_descriptions::kComposeboxIpadDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kComposeboxIpad)},
@@ -2757,6 +2740,9 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
     {"sync-themes-ios", flag_descriptions::kSyncThemesIosName,
      flag_descriptions::kSyncThemesIosDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(syncer::kSyncThemesIos)},
+    {"disable-u18-feedback-ios", flag_descriptions::kDisableU18FeedbackIosName,
+     flag_descriptions::kDisableU18FeedbackIosDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kDisableU18FeedbackIos)},
 });
 
 bool SkipConditionalFeatureEntry(const flags_ui::FeatureEntry& entry) {

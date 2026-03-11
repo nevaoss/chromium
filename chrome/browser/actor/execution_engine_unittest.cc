@@ -41,7 +41,7 @@
 #include "chrome/common/chrome_render_frame.mojom.h"
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/test/base/chrome_render_view_host_test_harness.h"
-#include "components/autofill/core/browser/integrators/glic/actor_form_filling_types.h"
+#include "components/autofill/core/browser/integrators/actor/actor_form_filling_types.h"
 #include "components/optimization_guide/content/browser/page_content_proto_provider.h"
 #include "components/tabs/public/mock_tab_interface.h"
 #include "components/tabs/public/tab_interface.h"
@@ -219,7 +219,7 @@ class MockActorTaskDelegate : public ActorTaskDelegate {
   MOCK_METHOD(void,
               RequestToShowUserConfirmationDialog,
               (TaskId task_id,
-               const url::Origin& navigation_origin,
+               const url::Origin& destination,
                bool for_blocklisted_origin,
                UserConfirmationDialogCallback callback),
               (override));
@@ -227,7 +227,7 @@ class MockActorTaskDelegate : public ActorTaskDelegate {
   MOCK_METHOD(void,
               RequestToConfirmNavigation,
               (TaskId task_id,
-               const url::Origin& navigation_origin,
+               const url::Origin& destination,
                NavigationConfirmationCallback callback),
               (override));
 
@@ -1106,12 +1106,15 @@ TEST_F(ExecutionEngineNavigationGatingTest,
       "Actor.NavigationGating.GatingDecision",
       /*sample=*/ExecutionEngine::GatingDecision::kAllowSameOrigin,
       /*expected_bucket_count=*/1);
-  // The navigation is cross-origin and cross-site since initiator !=
-  // destination.
-  histograms_.ExpectUniqueSample("Actor.NavigationGating.CrossOrigin2",
+
+  histograms_.ExpectUniqueSample("Actor.NavigationGating.SameOriginSource",
                                  /*sample=*/true, /*expected_bucket_count=*/1);
-  histograms_.ExpectUniqueSample("Actor.NavigationGating.CrossSite2",
+  histograms_.ExpectUniqueSample("Actor.NavigationGating.SameSiteSource",
                                  /*sample=*/true, /*expected_bucket_count=*/1);
+  histograms_.ExpectUniqueSample("Actor.NavigationGating.SameOriginInitiator",
+                                 /*sample=*/false, /*expected_bucket_count=*/1);
+  histograms_.ExpectUniqueSample("Actor.NavigationGating.SameSiteInitiator",
+                                 /*sample=*/false, /*expected_bucket_count=*/1);
 }
 
 }  // namespace

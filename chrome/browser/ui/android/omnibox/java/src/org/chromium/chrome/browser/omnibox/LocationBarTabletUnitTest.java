@@ -26,7 +26,9 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.robolectric.Robolectric;
+import org.robolectric.RuntimeEnvironment;
 import org.robolectric.annotation.Config;
+import org.robolectric.shadows.ShadowLooper;
 import org.robolectric.shadows.ShadowToast;
 
 import org.chromium.base.MathUtils;
@@ -176,7 +178,7 @@ public class LocationBarTabletUnitTest {
         mLocationBarTablet.onFuseboxStateChanged(FuseboxState.DISABLED);
         int currentLeft = 300;
         mLocationBarTablet.setLeft(currentLeft);
-        mLocationBarTablet.onFuseboxStateChanged(FuseboxState.EXPANDED);
+        mLocationBarTablet.onFuseboxStateChanged(FuseboxState.COMPACT);
         int windowWidth =
                 DisplayUtil.dpToPx(
                         mDisplay,
@@ -184,6 +186,17 @@ public class LocationBarTabletUnitTest {
         float centeredLeft = (float) (windowWidth - prefocusWidth) / 2;
         float delta = currentLeft - centeredLeft;
 
+        assertEquals(expectedMargin - delta, layoutParams.leftMargin, MathUtils.EPSILON);
+        assertEquals(expectedMargin + delta, layoutParams.rightMargin, MathUtils.EPSILON);
+
+        // Update width + position to reflect the newly expanded view
+        mLocationBarTablet.measure(
+                MeasureSpec.makeMeasureSpec(
+                        prefocusWidth - layoutParams.leftMargin, MeasureSpec.EXACTLY),
+                MeasureSpec.makeMeasureSpec(100, MeasureSpec.EXACTLY));
+        mLocationBarTablet.setLeft(currentLeft + layoutParams.leftMargin);
+
+        mLocationBarTablet.onFuseboxStateChanged(FuseboxState.EXPANDED);
         assertEquals(expectedMargin - delta, layoutParams.leftMargin, MathUtils.EPSILON);
         assertEquals(expectedMargin + delta, layoutParams.rightMargin, MathUtils.EPSILON);
     }
@@ -243,6 +256,43 @@ public class LocationBarTabletUnitTest {
         assertEquals(translationY, urlBar.getTranslationY(), MathUtils.EPSILON);
         assertEquals(translationY, deleteButton.getTranslationY(), MathUtils.EPSILON);
         assertEquals(-translationY, micButton.getTranslationY(), MathUtils.EPSILON);
+    }
+
+    @Test
+    @EnableFeatures(OmniboxFeatureList.OMNIBOX_MULTIMODAL_INPUT)
+    @Config(qualifiers = "w800dp-mdpi")
+    public void testWindowWidthChangedMarginCalcs() {
+        int prefocusWidth = 400;
+        mLocationBarTablet.measure(
+                MeasureSpec.makeMeasureSpec(prefocusWidth, MeasureSpec.EXACTLY),
+                MeasureSpec.makeMeasureSpec(100, MeasureSpec.EXACTLY));
+        mLocationBarTablet.onFuseboxStateChanged(FuseboxState.EXPANDED);
+        int minWidthPx =
+                mLocationBarTablet
+                        .getResources()
+                        .getDimensionPixelSize(R.dimen.fusebox_min_tablet_width);
+        LinearLayout.LayoutParams layoutParams =
+                (LinearLayout.LayoutParams) mLocationBarTablet.getLayoutParams();
+        int expectedMargin = -((minWidthPx - prefocusWidth) / 2);
+        assertEquals(expectedMargin, layoutParams.leftMargin);
+        assertEquals(expectedMargin, layoutParams.rightMargin);
+
+        RuntimeEnvironment.setQualifiers("w599dp-mdpi");
+        mLocationBarTablet.measure(
+                MeasureSpec.makeMeasureSpec(prefocusWidth, MeasureSpec.EXACTLY),
+                MeasureSpec.makeMeasureSpec(100, MeasureSpec.EXACTLY));
+        mLocationBarTablet.layout(
+                0,
+                0,
+                mLocationBarTablet.getMeasuredWidth(),
+                mLocationBarTablet.getMeasuredHeight());
+        ShadowLooper.idleMainLooper();
+        layoutParams = (LinearLayout.LayoutParams) mLocationBarTablet.getLayoutParams();
+        assertEquals(expectedMargin, layoutParams.leftMargin);
+        assertEquals(
+                expectedMargin - (599 * DIP_SCALE - mLocationBarTablet.getMeasuredWidth()),
+                layoutParams.rightMargin,
+                MathUtils.EPSILON);
     }
 
     private void longClickAndVerifyToast(int viewId, int stringId) {

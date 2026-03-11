@@ -110,6 +110,7 @@ class ReadAnythingUntrustedPageHandler::DistillerDelegate
 
   void StartDistillation(dom_distiller::DomDistillerService* service,
                          content::WebContents* contents) {
+    start_time_ = base::TimeTicks::Now();
     // If existing distillation request, cancel it. This removes delegate as
     // observer of previous request and allow it to observe new request.
     viewer_handle_.reset();
@@ -125,6 +126,10 @@ class ReadAnythingUntrustedPageHandler::DistillerDelegate
   // dom_distiller::ViewRequestDelegate:
   void OnArticleReady(
       const dom_distiller::DistilledArticleProto* article_proto) override {
+    CHECK(!start_time_.is_null());
+    base::UmaHistogramMediumTimes(
+        "Accessibility.ReadAnything.TimeFromStartDistillationToOnArticleReady",
+        base::TimeTicks::Now() - start_time_);
     handler_->ProcessDistilledArticle(article_proto);
     viewer_handle_.reset();
   }
@@ -137,6 +142,7 @@ class ReadAnythingUntrustedPageHandler::DistillerDelegate
  private:
   raw_ptr<ReadAnythingUntrustedPageHandler> handler_;
   std::unique_ptr<dom_distiller::ViewerHandle> viewer_handle_;
+  base::TimeTicks start_time_;
 };
 
 namespace {
@@ -499,11 +505,11 @@ bool ReadAnythingUntrustedPageHandler::CheckForPdfContentAfterLoad() {
   // If this page was previously recognized as not a pdf from the original
   // call to PrimaryPageChanged() but it's now recognized as a PDF after the
   // page has finished loaded, notify the page of the new tree as a PDF.
-  if (!is_pdf_) {
+  if (!is_pdf_with_frame_) {
     SetUpPdfObserver();
     CheckIfActiveAXTreeChangedToPdf();
   }
-  return is_pdf_;
+  return is_pdf_with_frame_;
 }
 
 void ReadAnythingUntrustedPageHandler::DidUpdateAudioMutingState(bool muted) {
@@ -1192,16 +1198,20 @@ void ReadAnythingUntrustedPageHandler::CheckIfActiveAXTreeChangedToPdf() {
           ? pdf_frame_util::FindFullPagePdfExtensionHost(contents)
           : pdf_frame_util::FindPdfChildFrame(contents->GetPrimaryMainFrame());
   if (pdf_rfh) {
-    is_pdf_ = true;
+    is_pdf_with_frame_ = true;
+    is_waiting_for_pdf_frame_ = false;
     VLOG(1) << "Sending pdf tree with id " << pdf_rfh->GetAXTreeID();
     page_->OnActiveAXTreeIDChanged(
         pdf_rfh->GetAXTreeID(), pdf_rfh->GetPageUkmSourceId(), /*is_pdf=*/true);
+  } else {
+    VLOG(1) << "Page is a pdf, but has no pdf frame yet";
+    is_waiting_for_pdf_frame_ = true;
   }
 #endif  // BUILDFLAG(ENABLE_PDF)
 }
 
 void ReadAnythingUntrustedPageHandler::OnActiveAXTreeIDChanged() {
-  is_pdf_ = false;
+  is_pdf_with_frame_ = false;
   // If the side panel is not active, we should not send the active tree id.
   // This check is skipped when immersive read anything is enabled because
   // there are times when the side panel is inactive but the Reading Mode
@@ -1251,7 +1261,10 @@ void ReadAnythingUntrustedPageHandler::OnActiveAXTreeIDChanged() {
 
 #if BUILDFLAG(ENABLE_PDF)
   CheckIfActiveAXTreeChangedToPdf();
-  if (is_pdf_) {
+  // If is_waiting_for_pdf_frame_ is true, we know the current page is a pdf,
+  // but we don't have the necessary info to call OnActiveAXTreeIDChanged
+  // accurately, so wait until the pdf frame is loaded.
+  if (is_pdf_with_frame_ || is_waiting_for_pdf_frame_) {
     return;
   }
 #endif  // BUILDFLAG(ENABLE_PDF)
@@ -1268,7 +1281,7 @@ void ReadAnythingUntrustedPageHandler::OnActiveAXTreeIDChanged() {
 
 void ReadAnythingUntrustedPageHandler::RequestDomDistillerDistillation(
     content::WebContents* content) {
-  if (!features::IsReadAnythingWithReadabilityEnabled() || is_pdf_) {
+  if (!features::IsReadAnythingWithReadabilityEnabled() || is_pdf_with_frame_) {
     return;
   }
 
@@ -1335,7 +1348,8 @@ void ReadAnythingUntrustedPageHandler::RecordDistillationSchemeHistogram(
 
 void ReadAnythingUntrustedPageHandler::ProcessDistilledArticle(
     const dom_distiller::DistilledArticleProto* article_proto) {
-  CHECK(features::IsReadAnythingWithReadabilityEnabled() && !is_pdf_);
+  CHECK(features::IsReadAnythingWithReadabilityEnabled() &&
+        !is_pdf_with_frame_);
   if (article_proto && article_proto->pages_size() > 0) {
     dom_distiller_title_ = article_proto->title();
 

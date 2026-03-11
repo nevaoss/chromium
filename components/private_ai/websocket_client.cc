@@ -31,16 +31,16 @@ namespace {
 constexpr size_t kMaxIncomingMessageSize = 1 << 20;
 
 constexpr net::NetworkTrafficAnnotationTag kTrafficAnnotation =
-    net::DefineNetworkTrafficAnnotation("legion_client", R"(
+    net::DefineNetworkTrafficAnnotation("private_ai_client", R"(
         semantics {
-          sender: "Legion Client"
+          sender: "PrivateAI Client"
           description:
             "This traffic creates an encrypted session with the "
-            "legion service and carries the request and response over that "
+            "PrivateAI service and carries the request and response over that "
             "session. "
             "The feature is under development and behind a feature flag."
           trigger:
-            "A feature that uses the legion component is triggered. "
+            "A feature that uses the PrivateAI component is triggered. "
             "The feature determines which data to send."
           user_data {
             type: PROFILE_DATA
@@ -198,7 +198,7 @@ void WebSocketClient::OnFailure(const std::string& message,
                                 int response_code) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   logger_->LogError(
-      FROM_HERE, base::StrCat({"Legion service connection failed ", message,
+      FROM_HERE, base::StrCat({"PrivateAI service connection failed ", message,
                                " (net error:", base::NumberToString(net_error),
                                ", response code:",
                                base::NumberToString(response_code), ")"}));
@@ -295,12 +295,12 @@ void WebSocketClient::OnDropChannel(bool was_clean,
                                              base::NumberToString(code),
                                              ", reason:", reason, ")"}));
 
-  base::UmaHistogramSparse("Legion.Client.WebSocketCloseCode", code);
+  base::UmaHistogramSparse("PrivateAi.Client.WebSocketCloseCode", code);
 
   // If there is a reason, it indicates an error from the server.
   if (!reason.empty()) {
     base::UmaHistogramEnumeration(
-        "Legion.Client.ServerErrorCode", ParseGoogleRpcCode(reason),
+        "PrivateAi.Client.ServerErrorCode", ParseGoogleRpcCode(reason),
         static_cast<rpc::GoogleRpcCode>(rpc::GoogleRpcCode_MAX + 1));
   }
   ClosePipe(TransportError::kSocketClosed);

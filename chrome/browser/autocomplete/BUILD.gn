@@ -82,6 +82,7 @@ source_set("impl") {
     "//chrome/browser:browser_process",
     "//chrome/browser:global_features",
     "//chrome/browser/bitmap_fetcher",
+    "//chrome/browser/bookmarks",
     "//chrome/browser/custom_handlers",
     "//chrome/browser/history",
     "//chrome/browser/prefs",
@@ -171,6 +172,8 @@ source_set("impl") {
 
 source_set("aim_eligibility_service") {
   sources = [
+    "aim_eligibility_refresh_navigation_throttle.cc",
+    "aim_eligibility_refresh_navigation_throttle.h",
     "aim_eligibility_service_factory.cc",
     "aim_eligibility_service_factory.h",
     "chrome_aim_eligibility_service.cc",
@@ -184,6 +187,8 @@ source_set("aim_eligibility_service") {
     "//chrome/browser/search_engines",
     "//chrome/browser/signin",
     "//components/application_locale_storage",
+    "//components/contextual_tasks/public:feature_list",
+    "//components/embedder_support:user_agent",
     "//components/keyed_service/core",
     "//components/omnibox/browser",
     "//components/prefs",
@@ -191,6 +196,7 @@ source_set("aim_eligibility_service") {
     "//components/variations/service",
     "//content/public/browser",
     "//services/network/public/cpp",
+    "//third_party/blink/public/common:headers",
   ]
 }
 
@@ -253,6 +259,7 @@ if (!is_android) {
 source_set("unit_tests") {
   testonly = true
   sources = [
+    "aim_eligibility_refresh_navigation_throttle_unittest.cc",
     "chrome_autocomplete_scheme_classifier_unittest.cc",
     "provider_state_service_factory_unittest.cc",
     "remote_suggestions_service_factory_unittest.cc",
@@ -260,6 +267,7 @@ source_set("unit_tests") {
     "shortcuts_provider_extension_unittest.cc",
   ]
   deps = [
+    ":aim_eligibility_service",
     ":autocomplete",
     "//base",
     "//chrome/browser",

@@ -137,6 +137,7 @@ android_library("content_main_dex_java") {
     "java/src/org/chromium/content_public/browser/ContentFeatureList.java",
     "java/src/org/chromium/content_public/browser/ContentFeatureMap.java",
     "java/src/org/chromium/content_public/browser/DeviceUtils.java",
+    "java/src/org/chromium/content_public/browser/JavalessRenderersFeatureList.java",
     "java/src/org/chromium/content_public/browser/TracingControllerAndroid.java",
     "java/src/org/chromium/content_public/common/ContentProcessInfo.java",
     "java/src/org/chromium/content_public/common/ContentUrlConstants.java",
@@ -579,6 +580,7 @@ android_library("content_javatests") {
     "//base:process_launcher_java",
     "//cc/mojom:mojom_java",
     "//components/payments/mojom:mojom_java",
+    "//content/common:common_java",
     "//content/public/common:common_java",
     "//content/public/test/android:content_java_test_support",
     "//content/shell/android:content_shell_apk_java",
@@ -716,6 +718,7 @@ android_library("content_javatests") {
     "//content/test/data/media/",
   ]
   data_deps = [ "//net:test_support" ]
+  srcjar_deps = [ "//ui/accessibility/android:accessibility_test_service_aidl" ]
 }
 
 robolectric_binary("content_junit_tests") {

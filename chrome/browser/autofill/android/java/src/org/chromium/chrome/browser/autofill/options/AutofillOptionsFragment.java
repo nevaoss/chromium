@@ -16,7 +16,6 @@ import androidx.preference.Preference;
 
 import org.chromium.base.Callback;
 import org.chromium.base.ResettersForTesting;
-import org.chromium.base.supplier.MonotonicObservableSupplier;
 import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.SettableMonotonicObservableSupplier;
 import org.chromium.build.annotations.NullMarked;
@@ -48,6 +47,8 @@ public class AutofillOptionsFragment extends ChromeBaseSettingsFragment {
     public static final String PREF_AUTOFILL_AI_AUTHENTICATION_SWITCH =
             "autofill_ai_authentication_switch";
     public static final String PREF_AUTOFILL_AI_CATEGORY = "autofill_ai_category";
+    public static final String PREF_AUTOFILL_SERVICE_PROVIDER_CETEGORY =
+            "autofill_service_provider_category";
 
     private @AutofillOptionsReferrer int mReferrer;
 
@@ -117,15 +118,18 @@ public class AutofillOptionsFragment extends ChromeBaseSettingsFragment {
         return findPreference(PREF_AUTOFILL_AI_CATEGORY);
     }
 
+    @Nullable Preference getAutofillServiceProviderCategory() {
+        return findPreference(PREF_AUTOFILL_SERVICE_PROVIDER_CETEGORY);
+    }
+
     @Override
     public void onCreatePreferences(@Nullable Bundle savedInstanceState, @Nullable String rootKey) {
-        mPageTitle.set(getString(R.string.autofill_options_title));
         setHasOptionsMenu(true);
         SettingsUtils.addPreferencesFromResource(this, R.xml.autofill_options_preferences);
     }
 
     @Override
-    public MonotonicObservableSupplier<String> getPageTitle() {
+    public SettableMonotonicObservableSupplier<String> getPageTitle() {
         return mPageTitle;
     }
 
@@ -224,6 +228,7 @@ public class AutofillOptionsFragment extends ChromeBaseSettingsFragment {
                     if (!isAutofillAiEnabled()) {
                         indexData.removeEntry(getUniqueId(PREF_AUTOFILL_AI_SWITCH));
                         indexData.removeEntry(getUniqueId(PREF_AUTOFILL_AI_AUTHENTICATION_SWITCH));
+                        indexData.removeEntry(getUniqueId(PREF_AUTOFILL_SERVICE_PROVIDER_CETEGORY));
                     }
                 }
             };

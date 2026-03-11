@@ -263,6 +263,7 @@
 #include "third_party/blink/renderer/core/html/html_unknown_element.h"
 #include "third_party/blink/renderer/core/html/media/lazy_load_media_observer.h"
 #include "third_party/blink/renderer/core/html/nesting_level_incrementer.h"
+#include "third_party/blink/renderer/core/html/parser/fragment_parser_options.h"
 #include "third_party/blink/renderer/core/html/parser/html_document_parser.h"
 #include "third_party/blink/renderer/core/html/parser/html_document_parser_fastpath.h"
 #include "third_party/blink/renderer/core/html/parser/html_parser_idioms.h"
@@ -336,6 +337,7 @@
 #include "third_party/blink/renderer/core/resize_observer/resize_observer_entry.h"
 #include "third_party/blink/renderer/core/resize_observer/resize_observer_size.h"
 #include "third_party/blink/renderer/core/route_matching/route_map.h"
+#include "third_party/blink/renderer/core/sanitizer/sanitizer.h"
 #include "third_party/blink/renderer/core/sanitizer/sanitizer_api.h"
 #include "third_party/blink/renderer/core/script/detect_javascript_frameworks.h"
 #include "third_party/blink/renderer/core/script/script_runner.h"
@@ -3399,6 +3401,15 @@ void Document::Shutdown() {
   execution_context_ = nullptr;
 }
 
+void Document::AddedEventListener(
+    const AtomicString& event_type,
+    RegisteredEventListener& registered_listener) {
+  ContainerNode::AddedEventListener(event_type, registered_listener);
+  if (event_type == event_type_names::kAutofill) {
+    UseCounter::Count(*this, WebFeature::kAutofillEvent);
+  }
+}
+
 void Document::RemovedEventListener(
     const AtomicString& event_type,
     const RegisteredEventListener& registered_listener) {
@@ -4583,13 +4594,6 @@ void Document::DispatchUnloadEvents(UnloadEventTimingInfo* unload_timing_info) {
     parser_->StopParsing();
   }
 
-  if (!base::FeatureList::IsEnabled(features::kPageHideEventForPrerender2)) {
-    if (IsPrerendering()) {
-      // We do not dispatch unload event while prerendering.
-      return;
-    }
-  }
-
   if (load_event_progress_ == kLoadEventNotRun ||
       // TODO(dcheng): We should consider if we can make this conditional check
       // stronger with a DCHECK() that this isn't called if the unload event is
@@ -4679,7 +4683,7 @@ void Document::DispatchAutofillEvent(
     HeapVector<std::pair<Member<Element>, String>> autofill_values,
     const base::UnguessableToken& fill_id,
     bool supports_refill) {
-  if (!RuntimeEnabledFeatures::AutofillEventEnabled()) {
+  if (!RuntimeEnabledFeatures::AutofillEventEnabled(GetExecutionContext())) {
     return;
   }
 
@@ -5343,7 +5347,7 @@ MouseEventWithHitTestResults Document::PerformMouseEventHitTest(
 
   if (!request.ReadOnly()) {
     UpdateHoverActiveState(request.Active(), !request.Move(),
-                           result.InnerElement());
+                           result.InnerPossiblyPseudoElement());
   }
 
   return MouseEventWithHitTestResults(event, location, result);
@@ -5756,9 +5760,16 @@ void Document::RemoveFocusedElementOfSubtree(Node& node,
   const auto& focused_element = *node.GetTreeScope().AdjustedFocusedElement();
   if (focused_element.IsDescendantOf(&node) ||
       (!among_children_only && node == focused_element)) {
-    bool omit_blur_events =
-        RuntimeEnabledFeatures::OmitBlurEventOnElementRemovalEnabled();
-    ClearFocusedElement(omit_blur_events);
+    if (StatePreservingAtomicMoveInProgress()) {
+      // With state-preserving atomic move (moveBefore), we don't actually
+      // unfocus the element, but we have to make sure the selection UI catches
+      // up with the new node's position in the DOM.
+      SetShouldUpdateSelectionAfterLayout(true);
+    } else {
+      bool omit_blur_events =
+          RuntimeEnabledFeatures::OmitBlurEventOnElementRemovalEnabled();
+      ClearFocusedElement(omit_blur_events);
+    }
   }
 }
 
@@ -10138,8 +10149,10 @@ Document* Document::parseHTMLUnsafe(ExecutionContext* context,
     return nullptr;
   }
   Document* doc = parseHTMLInternal(context, compliant_html, exception_state);
-  SanitizerAPI::SanitizeUnsafeInternal(
-      /*context_element*/ doc, /*root_element*/ doc, options, exception_state);
+  SanitizerAPI::SanitizeInternal(Sanitizer::Mode::kUnsafe,
+                                 /*context_element*/ doc, /*root_element*/ doc,
+                                 FragmentParserOptions(options),
+                                 exception_state);
   return doc;
 }
 
@@ -10150,8 +10163,10 @@ Document* Document::parseHTML(ExecutionContext* context,
                               ExceptionState& exception_state) {
   CHECK(RuntimeEnabledFeatures::SanitizerAPIEnabled());
   Document* doc = parseHTMLInternal(context, html, exception_state);
-  SanitizerAPI::SanitizeSafeInternal(
-      /*context_element*/ doc, /*root_element*/ doc, options, exception_state);
+  SanitizerAPI::SanitizeInternal(Sanitizer::Mode::kSafe,
+                                 /*context_element*/ doc, /*root_element*/ doc,
+                                 FragmentParserOptions(options),
+                                 exception_state);
   return doc;
 }
 

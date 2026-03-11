@@ -250,7 +250,7 @@ BASE_FEATURE_PARAM(double,
                    0.2);
 
 BASE_FEATURE(kHandleNonDamagingInputsInScrollJankV4Metric,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 constexpr const char kEmitForAllScrolls[] = "emit_for_all_scrolls";
 constexpr const char kEmitForDamagingScrolls[] = "emit_for_damaging_scrolls";
@@ -277,8 +277,6 @@ BASE_FEATURE(kBrowserControlsSmoothScroll, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kBrowserControlsHeightChangeCancelAnimations,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
-// Killswitch for disabling Headless scheduler state machine.
-BASE_FEATURE(kHeadlessSchedulerStateMachine, base::FEATURE_ENABLED_BY_DEFAULT);
 // Killswitch for disabling Webview scheduler state machine.
 BASE_FEATURE(kWebviewSchedulerStateMachine, base::FEATURE_ENABLED_BY_DEFAULT);
 

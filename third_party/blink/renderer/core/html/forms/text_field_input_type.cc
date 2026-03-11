@@ -44,6 +44,7 @@
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/html/forms/html_data_list_element.h"
 #include "third_party/blink/renderer/core/html/forms/html_input_element.h"
+#include "third_party/blink/renderer/core/html/forms/html_select_element.h"
 #include "third_party/blink/renderer/core/html/forms/text_control_inner_elements.h"
 #include "third_party/blink/renderer/core/html/shadow/shadow_element_names.h"
 #include "third_party/blink/renderer/core/html_names.h"
@@ -241,13 +242,18 @@ void TextFieldInputType::HandleKeydownEvent(KeyboardEvent& event) {
     if (HandleKeydownForCustomizableCombobox(event)) {
       event.SetDefaultHandled();
     }
+    // If this is a base appearance combobox, then we should never call into
+    // ChromeClient to do stuff with the "native" datalist popup, so return
+    // early here.
+    return;
+  }
+  if (HandleKeydownForFilterableSelect(event)) {
+    event.SetDefaultHandled();
     return;
   }
   if (ChromeClient* chrome_client = GetChromeClient()) {
     chrome_client->HandleKeyboardEventOnTextField(GetElement(), event);
-    return;
   }
-  event.SetDefaultHandled();
 }
 
 bool TextFieldInputType::HandleKeydownForCustomizableCombobox(
@@ -257,9 +263,10 @@ bool TextFieldInputType::HandleKeydownForCustomizableCombobox(
   CHECK(datalist);
   const AtomicString key(event.key());
   // These modifiers are copied from HTMLOptionElement::DefaultEventHandler.
-  int tab_ignore_modifiers = WebInputEvent::kControlKey |
-                             WebInputEvent::kAltKey | WebInputEvent::kMetaKey;
-  int ignore_modifiers = WebInputEvent::kShiftKey | tab_ignore_modifiers;
+  const int tab_ignore_modifiers = WebInputEvent::kControlKey |
+                                   WebInputEvent::kAltKey |
+                                   WebInputEvent::kMetaKey;
+  const int ignore_modifiers = WebInputEvent::kShiftKey | tab_ignore_modifiers;
 
   if (datalist->popoverOpen() && !(event.GetModifiers() & ignore_modifiers)) {
     CHECK(datalist->ActiveOption());
@@ -286,6 +293,36 @@ bool TextFieldInputType::HandleKeydownForCustomizableCombobox(
     }
     // TODO(crbug.com/453705243): Handle PageUp and PageDown like
     // HTMLOptionElement::DefaultEventHandler does.
+  }
+  return false;
+}
+
+bool TextFieldInputType::HandleKeydownForFilterableSelect(
+    KeyboardEvent& event) {
+  HTMLSelectElement* select = GetElement().FilterTarget();
+  if (!select) {
+    return false;
+  }
+
+  // These modifiers are copied from HTMLOptionElement::DefaultEventHandler.
+  const int tab_ignore_modifiers = WebInputEvent::kControlKey |
+                                   WebInputEvent::kAltKey |
+                                   WebInputEvent::kMetaKey;
+  const int ignore_modifiers = WebInputEvent::kShiftKey | tab_ignore_modifiers;
+  const AtomicString key(event.key());
+  if (!(event.GetModifiers() & ignore_modifiers)) {
+    if (key == keywords::kCapitalEnter) {
+      select->ToggleActiveOption(event);
+    } else if (key == keywords::kArrowUp) {
+      select->MoveActiveOptionBackwards();
+    } else if (key == keywords::kArrowDown) {
+      select->MoveActiveOptionForwards();
+    } else {
+      return false;
+    }
+    // TODO(crbug.com/453705243): Handle PageUp and PageDown like
+    // HTMLOptionElement::DefaultEventHandler does.
+    return true;
   }
   return false;
 }
@@ -369,6 +406,10 @@ void TextFieldInputType::HandleBlurEvent() {
           HidePopoverTransitionBehavior::kNoEventsNoWaiting,
           /*exception_state=*/nullptr);
     }
+  }
+
+  if (HTMLSelectElement* select = input.FilterTarget()) {
+    select->StopFiltering();
   }
 }
 
@@ -775,6 +816,12 @@ void TextFieldInputType::HandleFocusInEvent(
     if (auto* datalist = input.DataList()) {
       datalist->ShowPopoverInternal(&input, /*exception_state=*/nullptr);
     }
+  } else if (HTMLSelectElement* select = input.FilterTarget()) {
+    select->StartFiltering();
+
+    // TODO(crbug.com/453705243): Track the target select element like we are
+    // already doing for the list attribute in order to remove the
+    // :active-option pseudo.
   }
 }
 

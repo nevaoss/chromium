@@ -15,6 +15,7 @@
 #include "base/task/sequenced_task_runner.h"
 #include "base/task/task_traits.h"
 #include "base/task/thread_pool.h"
+#include "components/accessibility_annotator/core/storage/accessibility_annotator_backend.h"
 #include "components/autofill/core/browser/payments/autofill_wallet_data_type_controller.h"
 #include "components/autofill/core/browser/webdata/account_settings/account_setting_service.h"
 #include "components/autofill/core/browser/webdata/addresses/autofill_profile_sync_bridge.h"
@@ -213,6 +214,12 @@ bool ArePreferencesAllowedInTransportMode() {
 CommonControllerBuilder::CommonControllerBuilder() = default;
 
 CommonControllerBuilder::~CommonControllerBuilder() = default;
+
+void CommonControllerBuilder::SetAccessibilityAnnotatorBackend(
+    accessibility_annotator::AccessibilityAnnotatorBackend*
+        accessibility_annotator_backend) {
+  accessibility_annotator_backend_.Set(accessibility_annotator_backend);
+}
 
 void CommonControllerBuilder::SetAccountSettingService(
     autofill::AccountSettingService* account_setting_service) {
@@ -950,6 +957,25 @@ CommonControllerBuilder::Build(syncer::DataTypeSet disabled_types,
     }
   }
 
+  if (!disabled_types.Has(syncer::ACCESSIBILITY_ANNOTATION) &&
+      base::FeatureList::IsEnabled(syncer::kSyncAccessibilityAnnotation) &&
+      accessibility_annotator_backend_.value()) {
+    syncer::DataTypeControllerDelegate* delegate =
+        accessibility_annotator_backend_.value()
+            ->GetAccessibilityAnnotationControllerDelegate()
+            .get();
+    if (delegate) {
+      controllers.push_back(std::make_unique<DataTypeController>(
+          /*type= */ syncer::ACCESSIBILITY_ANNOTATION,
+          /*delegate_for_full_sync_mode= */
+          std::make_unique<syncer::ForwardingDataTypeControllerDelegate>(
+              delegate),
+          /*delegate_for_transport_mode= */
+          std::make_unique<syncer::ForwardingDataTypeControllerDelegate>(
+              delegate)));
+    }
+  }
+
   if (!disabled_types.Has(syncer::CONTEXTUAL_TASK) &&
       base::FeatureList::IsEnabled(syncer::kSyncContextualTask)) {
     // TODO(crbug.com/445840788): In CL #4, register the type, i.e. instantiate
@@ -1042,7 +1068,9 @@ CommonControllerBuilder::Build(syncer::DataTypeSet disabled_types,
   }
 
   return controllers;
-}
+  // TODO(crbug.com/487347673): Cleanup: Split CommonControllerBuilder::Build()
+  // into smaller functions.
+}  // NOLINT(readability/fn_size)
 
 std::unique_ptr<DataTypeController>
 CommonControllerBuilder::CreateWalletDataTypeController(

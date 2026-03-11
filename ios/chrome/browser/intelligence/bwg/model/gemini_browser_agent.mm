@@ -32,7 +32,7 @@
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_suggestion_delegate.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_suggestion_handler.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_view_state_change_handler.h"
-#import "ios/chrome/browser/intelligence/bwg/utils/bwg_constants.h"
+#import "ios/chrome/browser/intelligence/bwg/utils/gemini_constants.h"
 #import "ios/chrome/browser/intelligence/features/features.h"
 #import "ios/chrome/browser/intelligence/proto_wrappers/page_context_wrapper.h"
 #import "ios/chrome/browser/shared/coordinator/layout_guide/layout_guide_util.h"
@@ -231,26 +231,24 @@ void GeminiBrowserAgent::OnKeyboardStateChanged(bool is_visible) {
     // If the floaty is expanded or temporarily hidden, the floaty should not be
     // re-shown on keyboard updates.
     if (last_shown_view_state_ == ios::provider::GeminiViewState::kExpanded ||
-        is_floaty_temporarily_hidden_) {
+        IsFloatyTemporarilyHidden()) {
       return;
     }
 
-    is_hidden_by_keyboard_ = true;
     HideFloatyIfInvoked(/*animated=*/false,
                         gemini::FloatyUpdateSource::Keyboard);
     return;
   }
 
-  if (is_hidden_by_keyboard_) {
+  if (IsOnlyHiddenByKeyboard()) {
     ShowFloatyIfInvoked(/*animated=*/false,
                         gemini::FloatyUpdateSource::Keyboard);
-    is_hidden_by_keyboard_ = false;
   }
 }
 
 void GeminiBrowserAgent::StartGeminiFlow(UIViewController* base_view_controller,
-                                         UIImage* image_attachment,
-                                         gemini::EntryPoint entry_point) {
+                                         GeminiStartupState* startup_state) {
+  gemini::EntryPoint entry_point = startup_state.entryPoint;
   bool will_show_first_run = !HasCompletedFirstRun();
   RecordGeminiEntryPointClick(entry_point, will_show_first_run);
 
@@ -260,7 +258,7 @@ void GeminiBrowserAgent::StartGeminiFlow(UIViewController* base_view_controller,
                       BWGPromoConsentVariations::kSkipConsent;
 
   if (!will_show_first_run || skip_consent) {
-    PresentFloaty(base_view_controller, image_attachment, entry_point,
+    PresentFloaty(base_view_controller, startup_state,
                   /*was_first_run_shown=*/false);
     return;
   }
@@ -272,8 +270,7 @@ void GeminiBrowserAgent::StartGeminiFlow(UIViewController* base_view_controller,
       startGeminiFREWithCompletion:^(BOOL success) {
         if (success) {
           if (weak_ptr) {
-            weak_ptr->PresentFloaty(base_view_controller, image_attachment,
-                                    entry_point,
+            weak_ptr->PresentFloaty(base_view_controller, startup_state,
                                     /*first_run_shown=*/true);
           }
         }
@@ -332,7 +329,6 @@ void GeminiBrowserAgent::ForceShowFloatyIfInvoked() {
   CGFloat offset =
       GetFloatyOffsetFromFullscreenController(fullscreen_controller_);
   ios::provider::UpdateOverlayOffsetWithOpacity(offset, kFloatyShownOpacity);
-  is_floaty_temporarily_hidden_ = false;
 }
 
 bool GeminiBrowserAgent::ShouldShowFloatyForSource(
@@ -341,8 +337,8 @@ bool GeminiBrowserAgent::ShouldShowFloatyForSource(
       source == gemini::FloatyUpdateSource::ForcedFromQueryResponse;
 
   // Re-show the floaty if a user receives a query response.
-  return is_floaty_temporarily_hidden_ ? !is_source_query_response
-                                       : is_source_query_response;
+  return IsFloatyTemporarilyHidden() ? !is_source_query_response
+                                     : is_source_query_response;
 }
 
 GeminiPageContext* GeminiBrowserAgent::CreateGeminiPageContext(
@@ -370,7 +366,7 @@ void GeminiBrowserAgent::UpdateActiveTabHelperWithPresentedSource(
 
 void GeminiBrowserAgent::UpdateForTraitCollection(
     UITraitCollection* traitCollection) {
-  if (is_floaty_temporarily_hidden_) {
+  if (IsFloatyTemporarilyHidden()) {
     return;
   }
 
@@ -382,8 +378,7 @@ void GeminiBrowserAgent::UpdateForTraitCollection(
 }
 
 void GeminiBrowserAgent::PresentFloaty(UIViewController* base_view_controller,
-                                       UIImage* image_attachment,
-                                       gemini::EntryPoint entry_point,
+                                       GeminiStartupState* startup_state,
                                        bool first_run_shown) {
   base::TimeTicks start_time = base::TimeTicks::Now();
 
@@ -404,8 +399,7 @@ void GeminiBrowserAgent::PresentFloaty(UIViewController* base_view_controller,
   base::WeakPtr<GeminiBrowserAgent> weak_ptr = weak_factory_.GetWeakPtr();
 
   // Present the overlay immediately without page context.
-  PresentFloatyWithPendingContext(base_view_controller, entry_point,
-                                  image_attachment);
+  PresentFloatyWithPendingContext(base_view_controller, startup_state);
 
   // Configure the callback to be executed once the page context is ready.
   base::RepeatingCallback<void(PageContextWrapperCallbackResponse)>
@@ -439,16 +433,16 @@ void GeminiBrowserAgent::PresentFloaty(UIViewController* base_view_controller,
 void GeminiBrowserAgent::PresentFloatyWithPendingContext(
     UIViewController* base_view_controller,
     std::unique_ptr<optimization_guide::proto::PageContext> page_context,
-    gemini::EntryPoint entry_point) {
+    GeminiStartupState* startup_state) {
   PresentFloatyWithState(
       base_view_controller, std::move(page_context),
-      ios::provider::GeminiPageContextComputationState::kPending, entry_point);
+      ios::provider::GeminiPageContextComputationState::kPending,
+      startup_state);
 }
 
 void GeminiBrowserAgent::PresentFloatyWithPendingContext(
     UIViewController* base_view_controller,
-    gemini::EntryPoint entry_point,
-    UIImage* image_attachment) {
+    GeminiStartupState* startup_state) {
   web::WebState* active_web_state =
       browser_->GetWebStateList()->GetActiveWebState();
   if (!active_web_state) {
@@ -463,8 +457,8 @@ void GeminiBrowserAgent::PresentFloatyWithPendingContext(
 
   PresentFloatyWithState(
       base_view_controller, std::move(partial_page_context),
-      ios::provider::GeminiPageContextComputationState::kPending, entry_point,
-      image_attachment);
+      ios::provider::GeminiPageContextComputationState::kPending,
+      startup_state);
 }
 
 void GeminiBrowserAgent::UpdateFloatyPageContext(
@@ -584,16 +578,14 @@ void GeminiBrowserAgent::DismissFloaty() {
   // shown underneath the Gemini floaty, don't clean up and reset internal
   // Gemini properties. Clean up should occur if a user taps the floaty to
   // dismiss it or the browser agent destructing.
-  if (is_floaty_temporarily_hidden_) {
+  if (IsFloatyTemporarilyHidden()) {
     return;
   }
 
-  if (last_shown_view_state_ == ios::provider::GeminiViewState::kCollapsed) {
-    RecordFloatyDismissedWhileCollapsed();
-  }
+  RecordFloatyDismissedState(last_shown_view_state_);
 
   is_floaty_invoked_ = false;
-  is_hidden_by_keyboard_ = false;
+  active_hiding_sources_.clear();
   // TODO(crbug.com/484045717): Refactor to merge these two provider calls.
   if (IsGeminiCopresenceEnabled()) {
     ios::provider::UpdateGeminiViewState(
@@ -615,11 +607,12 @@ void GeminiBrowserAgent::HideFloatyIfInvoked(
 
   UpdateActiveTabHelperWithPresentedSource(source, /*is_presented=*/true);
 
-  if (is_floaty_temporarily_hidden_) {
+  bool was_temporarily_hidden = IsFloatyTemporarilyHidden();
+  active_hiding_sources_.insert(source);
+  if (was_temporarily_hidden) {
     return;
   }
 
-  is_floaty_temporarily_hidden_ = true;
   ios::provider::GeminiViewState current_view_state =
       ios::provider::GetCurrentGeminiViewState();
   SetLastShownViewState(current_view_state);
@@ -660,9 +653,17 @@ void GeminiBrowserAgent::ShowFloatyIfInvoked(
     return;
   }
 
+  active_hiding_sources_.erase(source);
+  if (is_web_navigation) {
+    active_hiding_sources_.clear();
+  }
+
+  if (IsFloatyTemporarilyHidden()) {
+    return;
+  }
+
   RecordGeminiViewStateHiddenToShown(last_shown_view_state_);
   RecordFloatyShownFromSource(source);
-  is_floaty_temporarily_hidden_ = false;
 
   // Exit fullscreen to prepare floaty for incoming response stream.
   if (source == gemini::FloatyUpdateSource::ForcedFromQueryResponse) {
@@ -714,6 +715,14 @@ void GeminiBrowserAgent::OnActiveWebStateChanged(web::WebState* old_active,
     }
     [new_active->GetWebViewProxy().scrollViewProxy
         addObserver:scroll_observer_];
+
+    if (!IsGeminiCopresenceZeroStateWithChatHistoryEnabled() ||
+        !is_floaty_invoked_) {
+      return;
+    }
+
+    ios::provider::RequestUIChange(
+        ios::provider::GeminiUIElementType::kZeroState);
   }
 }
 
@@ -727,7 +736,7 @@ void GeminiBrowserAgent::OnScrollEvent() {
   // therefore we should force-show the floaty if invoked. Uses the command
   // handler to do eligibility checks outside of this browser agent before
   // showing the floaty.
-  if (is_floaty_temporarily_hidden_) {
+  if (IsFloatyTemporarilyHidden()) {
     id<BWGCommands> gemini_handler =
         HandlerForProtocol(browser_->GetCommandDispatcher(), BWGCommands);
     [gemini_handler
@@ -762,7 +771,7 @@ void GeminiBrowserAgent::OnGeminiTabHelperDestroyed(BwgTabHelper* tab_helper) {
 void GeminiBrowserAgent::FullscreenProgressUpdated(
     FullscreenController* controller,
     CGFloat progress) {
-  if (!is_floaty_invoked_ || is_floaty_temporarily_hidden_) {
+  if (!is_floaty_invoked_ || IsFloatyTemporarilyHidden()) {
     return;
   }
 
@@ -799,6 +808,15 @@ void GeminiBrowserAgent::FullscreenDidAnimate(FullscreenController* controller,
   }
 }
 
+bool GeminiBrowserAgent::IsFloatyTemporarilyHidden() const {
+  return !active_hiding_sources_.empty();
+}
+
+bool GeminiBrowserAgent::IsOnlyHiddenByKeyboard() const {
+  return active_hiding_sources_.size() == 1 &&
+         active_hiding_sources_.contains(gemini::FloatyUpdateSource::Keyboard);
+}
+
 void GeminiBrowserAgent::FullscreenControllerWillShutDown(
     FullscreenController* controller) {
   controller->RemoveObserver(this);
@@ -818,8 +836,10 @@ void GeminiBrowserAgent::PresentFloatyWithState(
     UIViewController* base_view_controller,
     std::unique_ptr<optimization_guide::proto::PageContext> page_context_proto,
     ios::provider::GeminiPageContextComputationState computation_state,
-    gemini::EntryPoint entry_point,
-    UIImage* image_attachment) {
+    GeminiStartupState* startup_state) {
+  gemini::EntryPoint entry_point = startup_state.entryPoint;
+  UIImage* image_attachment = startup_state.imageAttachment;
+  NSString* prepopulated_prompt = startup_state.prepopulatedPrompt;
   // If floaty is invoked, update the persisted floaty instead of restarting the
   // Gemini instance.
   if (IsGeminiCopresenceEnabled() && is_floaty_invoked_) {
@@ -863,7 +883,7 @@ void GeminiBrowserAgent::PresentFloatyWithState(
       gemini_tab_helper->IsLastInteractionUrlDifferent();
   config.shouldShowSuggestionChips =
       gemini_tab_helper->ShouldShowSuggestionChips();
-  config.contextualCueChipLabel = gemini_tab_helper->GetContextualCueLabel();
+  config.contextualCueChipLabel = prepopulated_prompt;
   config.entryPoint = entry_point;
   config.imageRemixIPHShouldShow =
       entry_point == gemini::EntryPoint::ImageRemixIPH;
@@ -918,15 +938,15 @@ void GeminiBrowserAgent::ApplyUserPrefsToPageContext(
   // Disable the page context attachment state based on user prefs.
   PrefService* pref_service = browser_->GetProfile()->GetPrefs();
   if (!pref_service->GetBoolean(prefs::kIOSBWGPageContentSetting)) {
-    gemini_page_context.BWGPageContextAttachmentState =
-        ios::provider::BWGPageContextAttachmentState::kUserDisabled;
+    gemini_page_context.geminiPageContextAttachmentState =
+        ios::provider::GeminiPageContextAttachmentState::kUserDisabled;
   } else {
     // If page context is not disabled by the user, page context is always
     // available and should be attached. Note page context is only partially
     // available (e.g. title, url, favicon) while
     // `GeminiPageContextComputationState` is pending.
-    gemini_page_context.BWGPageContextAttachmentState =
-        ios::provider::BWGPageContextAttachmentState::kAttached;
+    gemini_page_context.geminiPageContextAttachmentState =
+        ios::provider::GeminiPageContextAttachmentState::kAttached;
   }
 }
 

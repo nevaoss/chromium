@@ -9,6 +9,9 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import androidx.test.filters.SmallTest;
@@ -17,12 +20,12 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.robolectric.annotation.Config;
 
-import org.chromium.base.ContextUtils;
 import org.chromium.base.FakeTimeTestRule;
 import org.chromium.base.FeatureOverrides;
 import org.chromium.base.TimeUtils;
@@ -47,6 +50,7 @@ import org.chromium.components.regional_capabilities.RegionalProgram;
 import org.chromium.components.search_engines.SearchEngineChoiceService;
 import org.chromium.components.signin.identitymanager.ConsentLevel;
 import org.chromium.components.signin.identitymanager.IdentityManager;
+import org.chromium.components.signin.identitymanager.PrimaryAccountChangeEvent;
 import org.chromium.components.sync.SyncService;
 import org.chromium.components.sync.UserSelectableType;
 import org.chromium.ui.shadows.ShadowAppCompatResources;
@@ -313,42 +317,79 @@ public class SetupListManagerUnitTest {
 
     @Test
     @SmallTest
-    public void testGetRankedModuleTypes_ReordersAfterAnimation() {
+    public void testModuleCompletion_Silent() {
         SetupListManager.setInstanceForTesting(new SetupListManager());
         SetupListManager manager = SetupListManager.getInstance();
-        manager.maybePrimeCompletionStatus(mProfile); // Ensure we have a primed list
+        manager.maybePrimeCompletionStatus(mProfile);
 
+        int moduleType = ModuleType.DEFAULT_BROWSER_PROMO;
+        assertFalse(manager.isModuleCompleted(moduleType));
+        assertTrue(
+                manager.getRankedModuleTypes().indexOf(moduleType) == 0); // Should be at the start
+
+        manager.setModuleCompleted(moduleType, /* silent= */ true);
+
+        assertTrue(manager.isModuleCompleted(moduleType));
+        assertFalse(manager.isModuleAwaitingCompletionAnimation(moduleType));
+        // Check it moved to the end immediately
         List<Integer> rankedModules = manager.getRankedModuleTypes();
-        assertFalse("Ranked modules should not be empty", rankedModules.isEmpty());
+        assertEquals(moduleType, (int) rankedModules.get(rankedModules.size() - 1));
 
-        // Initially, pick the first item.
-        int firstModuleType = rankedModules.get(0);
-        String prefKey = SetupListModuleUtils.getCompletionKeyForModule(firstModuleType);
-
-        // Mark the first item as completed.
-        mSharedPreferencesManager.writeBoolean(prefKey, true);
-
-        // Notify manager of the change.
-        manager.onSharedPreferenceChanged(ContextUtils.getAppSharedPreferences(), prefKey);
-
-        // The item should STILL be at its initial position because it's awaiting animation.
-        assertEquals(firstModuleType, (int) manager.getRankedModuleTypes().get(0));
-        assertEquals(1, (int) manager.getManualRank(firstModuleType));
-        assertTrue(manager.isModuleAwaitingCompletionAnimation(firstModuleType));
-
-        manager.onCompletionAnimationFinished(firstModuleType);
-
-        // Now the item should be at the end of the list and its rank updated.
-        rankedModules = manager.getRankedModuleTypes();
-        int expectedRank = rankedModules.size(); // index + 1
-        assertEquals(firstModuleType, (int) rankedModules.get(expectedRank - 1));
-        assertEquals(expectedRank, (int) manager.getManualRank(firstModuleType));
-        assertFalse(manager.isModuleAwaitingCompletionAnimation(firstModuleType));
+        // Test double write
+        int oldSize = rankedModules.size();
+        manager.setModuleCompleted(moduleType, /* silent= */ true);
+        assertEquals(oldSize, manager.getRankedModuleTypes().size());
     }
 
     @Test
     @SmallTest
-    public void testRefresh_MaxLimit() {
+    public void testModuleCompletion_WithAnimation() {
+        SetupListManager.setInstanceForTesting(new SetupListManager());
+        SetupListManager manager = SetupListManager.getInstance();
+        manager.maybePrimeCompletionStatus(mProfile);
+
+        int moduleType = ModuleType.DEFAULT_BROWSER_PROMO;
+        assertFalse(manager.isModuleCompleted(moduleType));
+        assertTrue(manager.getRankedModuleTypes().indexOf(moduleType) == 0);
+
+        // Mark for animation
+        manager.setModuleCompleted(moduleType, /* silent= */ false);
+        assertTrue(manager.isModuleCompleted(moduleType));
+        assertTrue(manager.isModuleAwaitingCompletionAnimation(moduleType));
+        assertEquals(moduleType, (int) manager.getRankedModuleTypes().get(0)); // Still at start
+
+        // Finish animation
+        manager.onCompletionAnimationFinished(moduleType);
+        assertFalse(manager.isModuleAwaitingCompletionAnimation(moduleType));
+        List<Integer> rankedModules = manager.getRankedModuleTypes();
+        assertEquals(moduleType, (int) rankedModules.get(rankedModules.size() - 1)); // Moved to end
+
+        // Test double write after animation
+        int oldSize = rankedModules.size();
+        manager.setModuleCompleted(moduleType, /* silent= */ false);
+        assertEquals(oldSize, manager.getRankedModuleTypes().size());
+        assertFalse(manager.isModuleAwaitingCompletionAnimation(moduleType));
+    }
+
+    @Test
+    @SmallTest
+    public void testMaybePrimeCompletionStatus() {
+        when(mIdentityManager.hasPrimaryAccount(ConsentLevel.SIGNIN)).thenReturn(true);
+        SetupListManager.setInstanceForTesting(new SetupListManager());
+        SetupListManager manager = SetupListManager.getInstance();
+
+        assertFalse(manager.isModuleCompleted(ModuleType.SIGN_IN_PROMO));
+        manager.maybePrimeCompletionStatus(mProfile);
+
+        assertTrue(manager.isModuleCompleted(ModuleType.SIGN_IN_PROMO));
+        assertFalse(
+                manager.isModuleAwaitingCompletionAnimation(
+                        ModuleType.SIGN_IN_PROMO)); // Silently completed
+    }
+
+    @Test
+    @SmallTest
+    public void testReconcileState_MaxLimit() {
         // Mock 6 eligible promos.
         // SIGN_IN will be automatically detected as completed because user is signed in.
         when(mIdentityManager.hasPrimaryAccount(ConsentLevel.SIGNIN)).thenReturn(true);
@@ -390,6 +431,95 @@ public class SetupListManagerUnitTest {
                 TimeUtils.currentTimeMillis() - SetupListManager.SETUP_LIST_ACTIVE_WINDOW_MILLIS);
         SetupListManager.setInstanceForTesting(new SetupListManager());
         assertNull(SetupListManager.getInstance().getManualRank(firstModule));
+    }
+
+    @Test
+    @SmallTest
+    public void testCelebratoryPromo_ShownWhenAllBaseModulesCompleted() {
+        // Mark all base modules as completed BEFORE creating the manager.
+        for (int moduleType : SetupListManager.BASE_SETUP_LIST_ORDER) {
+            String prefKey = SetupListModuleUtils.getCompletionKeyForModule(moduleType);
+            if (prefKey != null) {
+                mSharedPreferencesManager.writeBoolean(prefKey, true);
+            }
+        }
+
+        SetupListManager.setInstanceForTesting(new SetupListManager());
+        SetupListManager manager = SetupListManager.getInstance();
+
+        assertTrue(manager.isSetupListActive());
+        assertTrue(manager.shouldShowCelebratoryPromo());
+        List<Integer> rankedModules = manager.getRankedModuleTypes();
+        assertEquals(1, rankedModules.size());
+        assertEquals(ModuleType.SETUP_LIST_CELEBRATORY_PROMO, (int) rankedModules.get(0));
+    }
+
+    @Test
+    @SmallTest
+    public void testSetupListInactive_AfterCelebratoryPromoCompleted() {
+        // 1. Mark all base modules as completed BEFORE creating the manager -> Celebration state.
+        for (int moduleType : SetupListManager.BASE_SETUP_LIST_ORDER) {
+            String prefKey = SetupListModuleUtils.getCompletionKeyForModule(moduleType);
+            if (prefKey != null) {
+                mSharedPreferencesManager.writeBoolean(prefKey, true);
+            }
+        }
+        SetupListManager.setInstanceForTesting(new SetupListManager());
+        SetupListManager manager = SetupListManager.getInstance();
+        assertTrue(manager.isSetupListActive());
+        assertTrue(manager.shouldShowCelebratoryPromo());
+
+        // 2. Mark celebratory promo as completed.
+        String celebratoryKey =
+                SetupListModuleUtils.getCompletionKeyForModule(
+                        ModuleType.SETUP_LIST_CELEBRATORY_PROMO);
+        mSharedPreferencesManager.writeBoolean(celebratoryKey, true);
+
+        // 3. Reconcile -> Should become INACTIVE.
+        manager.reconcileState();
+        assertFalse(manager.isSetupListActive());
+        assertFalse(manager.shouldShowCelebratoryPromo());
+        assertTrue(manager.getRankedModuleTypes().isEmpty());
+    }
+
+    @Test
+    @SmallTest
+    public void testReconcileState_HandlesAllTransitions() {
+        // Start: Fresh installation (after first run).
+        SetupListManager.setInstanceForTesting(new SetupListManager());
+        SetupListManager manager = SetupListManager.getInstance();
+
+        // Phase 1: SINGLE_CELL (0-3 days).
+        assertTrue(manager.isSetupListActive());
+        assertFalse(manager.shouldShowTwoCellLayout());
+        assertFalse(manager.shouldShowCelebratoryPromo());
+
+        // Phase 2: TWO_CELL (after 3 days).
+        mFakeTime.advanceMillis(
+                SetupListManager.TWO_CELL_LAYOUT_ACTIVE_WINDOW_MILLIS + ONE_MINUTE_IN_MILLIS);
+        manager.reconcileState();
+        assertTrue(manager.isSetupListActive());
+        assertTrue(manager.shouldShowTwoCellLayout());
+
+        // Phase 3: CELEBRATION (all tasks done).
+        // Use a loop that also calls onCompletionAnimationFinished to simulate real-time
+        // completion.
+        for (int moduleType : SetupListManager.BASE_SETUP_LIST_ORDER) {
+            String prefKey = SetupListModuleUtils.getCompletionKeyForModule(moduleType);
+            mSharedPreferencesManager.writeBoolean(prefKey, true);
+            manager.onCompletionAnimationFinished(moduleType);
+        }
+        assertTrue(manager.isSetupListActive());
+        assertTrue(manager.shouldShowCelebratoryPromo());
+        assertFalse(manager.shouldShowTwoCellLayout());
+
+        // Phase 4: INACTIVE (celebration dismissed or window expired).
+        String celebratoryKey =
+                SetupListModuleUtils.getCompletionKeyForModule(
+                        ModuleType.SETUP_LIST_CELEBRATORY_PROMO);
+        mSharedPreferencesManager.writeBoolean(celebratoryKey, true);
+        manager.reconcileState();
+        assertFalse(manager.isSetupListActive());
     }
 
     @Test
@@ -465,5 +595,57 @@ public class SetupListManagerUnitTest {
         assertTrue(rankedModules.contains(ModuleType.ADDRESS_BAR_PLACEMENT_PROMO));
         assertTrue(rankedModules.contains(ModuleType.SAVE_PASSWORDS_PROMO));
         assertTrue(rankedModules.contains(ModuleType.PASSWORD_CHECKUP_PROMO));
+    }
+
+    @Test
+    @SmallTest
+    public void testOnPrimaryAccountChanged_CompletesSignIn() {
+        // 1. Setup: User is signed out.
+        when(mIdentityManager.hasPrimaryAccount(ConsentLevel.SIGNIN)).thenReturn(false);
+
+        SetupListManager.setInstanceForTesting(new SetupListManager());
+        SetupListManager manager = SetupListManager.getInstance();
+
+        // Capture the observer registered by the manager.
+        ArgumentCaptor<IdentityManager.Observer> observerCaptor =
+                ArgumentCaptor.forClass(IdentityManager.Observer.class);
+        manager.maybePrimeCompletionStatus(mProfile);
+        verify(mIdentityManager).addObserver(observerCaptor.capture());
+        IdentityManager.Observer observer = observerCaptor.getValue();
+
+        assertFalse(manager.isModuleCompleted(ModuleType.SIGN_IN_PROMO));
+
+        // 2. Act: Trigger a sign-in event via the captured observer.
+        PrimaryAccountChangeEvent event =
+                new PrimaryAccountChangeEvent(
+                        PrimaryAccountChangeEvent.Type.SET, ConsentLevel.SIGNIN);
+        observer.onPrimaryAccountChanged(event);
+
+        // 3. Assert: Sign-In should be completed and awaiting animation.
+        assertTrue(manager.isModuleCompleted(ModuleType.SIGN_IN_PROMO));
+        assertTrue(manager.isModuleAwaitingCompletionAnimation(ModuleType.SIGN_IN_PROMO));
+    }
+
+    @Test
+    @SmallTest
+    public void testObserver_NotifiedOnPrimaryAccountChanged() {
+        SetupListManager.setInstanceForTesting(new SetupListManager());
+        SetupListManager manager = SetupListManager.getInstance();
+        SetupListManager.Observer observer = mock(SetupListManager.Observer.class);
+        manager.addObserver(observer);
+
+        // Sign-in event
+        PrimaryAccountChangeEvent signInEvent =
+                new PrimaryAccountChangeEvent(
+                        PrimaryAccountChangeEvent.Type.SET, ConsentLevel.SIGNIN);
+        manager.onPrimaryAccountChanged(signInEvent);
+        verify(observer).onSetupListStateChanged();
+
+        // Sign-out event
+        PrimaryAccountChangeEvent signOutEvent =
+                new PrimaryAccountChangeEvent(
+                        PrimaryAccountChangeEvent.Type.CLEARED, ConsentLevel.SIGNIN);
+        manager.onPrimaryAccountChanged(signOutEvent);
+        verify(observer, times(2)).onSetupListStateChanged();
     }
 }

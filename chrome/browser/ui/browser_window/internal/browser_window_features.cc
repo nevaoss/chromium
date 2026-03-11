@@ -49,6 +49,7 @@
 #include "chrome/browser/ui/call_to_action/call_to_action_lock.h"
 #include "chrome/browser/ui/context_highlight/context_highlight_window_feature.h"
 #include "chrome/browser/ui/contextual_search/searchbox_context_data.h"
+#include "chrome/browser/ui/desktop_to_mobile_promos/ios_promo_controller.h"
 #include "chrome/browser/ui/exclusive_access/exclusive_access_manager.h"
 #include "chrome/browser/ui/extensions/extension_installed_watcher.h"
 #include "chrome/browser/ui/extensions/mv2_disabled_dialog_controller.h"
@@ -58,7 +59,7 @@
 #include "chrome/browser/ui/omnibox/ai_mode_page_action_controller.h"
 #include "chrome/browser/ui/performance_controls/memory_saver_bubble_controller.h"
 #include "chrome/browser/ui/performance_controls/memory_saver_opt_in_iph_controller.h"
-#include "chrome/browser/ui/promos/ios_promo_controller.h"
+#include "chrome/browser/ui/side_panel/side_panel_registry.h"
 #include "chrome/browser/ui/signin/signin_view_controller.h"
 #include "chrome/browser/ui/sync/browser_synced_window_delegate.h"
 #include "chrome/browser/ui/tab_search_feature.h"
@@ -76,6 +77,7 @@
 #include "chrome/browser/ui/tabs/tab_list_bridge.h"
 #include "chrome/browser/ui/tabs/tab_strip_api/tab_strip_service_mojo_handler.h"
 #include "chrome/browser/ui/tabs/tab_strip_prefs.h"
+#include "chrome/browser/ui/tabs/vertical_tab_iph_controller.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
 #include "chrome/browser/ui/toasts/toast_controller.h"
 #include "chrome/browser/ui/toasts/toast_features.h"
@@ -113,7 +115,6 @@
 #include "chrome/browser/ui/views/side_panel/history_clusters/history_clusters_side_panel_coordinator.h"
 #include "chrome/browser/ui/views/side_panel/reading_list/reading_list_side_panel_coordinator.h"
 #include "chrome/browser/ui/views/side_panel/side_panel_coordinator.h"
-#include "chrome/browser/ui/views/side_panel/side_panel_registry.h"
 #include "chrome/browser/ui/views/tabs/recent_activity_bubble_dialog_view.h"
 #include "chrome/browser/ui/views/tabs/tab_strip_action_container.h"
 #include "chrome/browser/ui/views/toolbar/chrome_labs/chrome_labs_coordinator.h"
@@ -153,6 +154,7 @@
 #include "components/search/search.h"
 #include "content/public/common/content_constants.h"
 #include "extensions/common/extension_features.h"
+#include "ui/views/interaction/element_highlighter_views.h"
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
 #include "chrome/browser/extensions/extension_browser_window_helper.h"
@@ -259,6 +261,9 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
         GetUserDataFactory().CreateInstance<BrowserElementsViewsImpl>(*browser,
                                                                       *browser);
   }
+
+  ui::ElementHighlighter::GetElementHighlighter()
+      ->MaybeRegisterBackend<views::ElementHighlighterViews>();
 
   // Initialize bookmark bar controller for all browser types.
   bookmark_bar_controller_ =
@@ -598,6 +603,13 @@ void BrowserWindowFeatures::InitPostWindowConstruction(Browser* browser) {
       split_view_iph_controller_ =
           GetUserDataFactory().CreateInstance<SplitViewIphController>(*browser,
                                                                       browser);
+    }
+
+    if (base::FeatureList::IsEnabled(
+            feature_engagement::kIPHVerticalTabstripTutorialFeature)) {
+      vertical_tab_iph_controller_ =
+          GetUserDataFactory().CreateInstance<VerticalTabIphController>(
+              *browser, browser);
     }
   }
 

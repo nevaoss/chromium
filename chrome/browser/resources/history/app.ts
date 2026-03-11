@@ -15,7 +15,7 @@ import './history_sync_promo.js';
 // </if>
 import './history_list.js';
 import './history_toolbar.js';
-import './filter_chips.js';
+import './history_filter_chips.js';
 import './query_manager.js';
 import './router.js';
 import './side_bar.js';
@@ -183,8 +183,7 @@ export class HistoryAppElement extends HistoryAppElementBase {
   accessor footerInfo: FooterInfo = {
     managed: loadTimeData.getBoolean('isManaged'),
     otherFormsOfHistory: false,
-    geminiAppsActivity: loadTimeData.getBoolean('isGlicEnabled') &&
-        loadTimeData.getBoolean('enableBrowsingHistoryActorIntegrationM1'),
+    geminiAppsActivity: loadTimeData.getBoolean('isGlicEnabled'),
   };
   protected accessor enableHistoryEmbeddings_: boolean =
       loadTimeData.getBoolean('enableHistoryEmbeddings');

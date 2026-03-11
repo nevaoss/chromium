@@ -51,8 +51,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 import org.robolectric.annotation.Config;
-import org.robolectric.annotation.LooperMode;
-import org.robolectric.annotation.LooperMode.Mode;
 import org.robolectric.shadows.ShadowLooper;
 
 import org.chromium.base.BaseSwitches;
@@ -72,11 +70,10 @@ import org.chromium.components.embedder_support.view.ContentView;
 
 import java.util.concurrent.TimeUnit;
 
-/** Tests for {@link PartialCustomTabHandleStrategy}. */
+/** Tests for {@link PartialCustomTabBottomSheetStrategy}. */
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(manifest = Config.NONE)
 @EnableFeatures({ChromeFeatureList.CCT_RESIZABLE_FOR_THIRD_PARTIES})
-@LooperMode(Mode.PAUSED)
 public class PartialCustomTabBottomSheetStrategyTest {
     @Rule public final PartialCustomTabTestRule mPCCTTestRule = new PartialCustomTabTestRule();
 

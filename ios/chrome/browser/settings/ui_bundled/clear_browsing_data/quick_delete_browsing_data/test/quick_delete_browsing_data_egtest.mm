@@ -27,8 +27,6 @@
 #import "ios/testing/earl_grey/earl_grey_test.h"
 #import "ui/base/l10n/l10n_util_mac.h"
 
-namespace {
-
 using browsing_data::DeleteBrowsingDataDialogAction;
 using chrome_test_util::BrowsingDataButtonMatcher;
 using chrome_test_util::BrowsingDataConfirmButtonMatcher;
@@ -42,25 +40,33 @@ using chrome_test_util::ClearSavedPasswordsButton;
 using chrome_test_util::ContainsPartialText;
 using chrome_test_util::ContextMenuItemWithAccessibilityLabel;
 
+namespace {
+
 // GURL inserted into the history service to mock history entries.
 const GURL kMockURL("http://not-a-real-site.test/");
 
 // Returns a matcher for the title of the Quick Delete Browsing Data page.
-id<GREYMatcher> quickDeleteBrowsingDataPageTitleMatcher() {
+id<GREYMatcher> QuickDeleteBrowsingDataPageTitleMatcher() {
   return chrome_test_util::NavigationBarTitleWithAccessibilityLabelId(
       IDS_IOS_DELETE_BROWSING_DATA_TITLE);
 }
 
+// Returns a matcher for the title of the Quick Delete Other Data page.
+id<GREYMatcher> QuickDeleteOtherDataPageTitleMatcher() {
+  return chrome_test_util::NavigationBarTitleWithAccessibilityLabelId(
+      IDS_SETTINGS_OTHER_GOOGLE_DATA_TITLE);
+}
+
 // Returns matcher for an element with or without the
 // UIAccessibilityTraitSelected accessibility trait depending on `selected`.
-id<GREYMatcher> elementIsSelectedMatcher(bool selected) {
+id<GREYMatcher> ElementIsSelectedMatcher(bool selected) {
   return selected
              ? grey_accessibilityTrait(UIAccessibilityTraitSelected)
              : grey_not(grey_accessibilityTrait(UIAccessibilityTraitSelected));
 }
 
 // Returns a matcher for the tabs cell.
-id<GREYMatcher> tabsCellMatcher() {
+id<GREYMatcher> TabsCellMatcher() {
   return grey_allOf(
       grey_accessibilityID(kQuickDeleteBrowsingDataTabsIdentifier),
       grey_sufficientlyVisible(), nil);
@@ -69,7 +75,7 @@ id<GREYMatcher> tabsCellMatcher() {
 // Matcher for sign out link in the footer.
 id<GREYMatcher> SignOutLinkMatcher() {
   return grey_allOf(
-      // The link is within the browsing data page footer with ID
+      // The link is within the Quick Delete Browsing Data page footer with ID
       // `kQuickDeleteBrowsingDataFooterIdentifier`.
       grey_ancestor(
           grey_accessibilityID(kQuickDeleteBrowsingDataFooterIdentifier)),
@@ -85,6 +91,15 @@ id<GREYMatcher> ManageOtherDataCellMatcher() {
   return grey_allOf(
       grey_accessibilityID(kQuickDeleteManageOtherDataCellIdentifier),
       grey_accessibilityTrait(UIAccessibilityTraitButton), nil);
+}
+
+// Returns a matcher for the "Manage other data" cell with a specific title
+// and subtitle.
+id<GREYMatcher> GetManageOtherDataCellWithStrings(NSString* title,
+                                                  NSString* subtitle) {
+  return grey_allOf(ManageOtherDataCellMatcher(),
+                    grey_descendant(grey_text(title)),
+                    grey_descendant(grey_text(subtitle)), nil);
 }
 
 // Returns a matcher for the actual button with the `timeRange` inside the time
@@ -180,7 +195,7 @@ void NoDeleteBrowsingDataDialogHistogram(
   return config;
 }
 
-// Opens Quick Delete browsing data page.
+// Opens the Quick Delete Browsing Data page.
 - (void)openQuickDeleteBrowsingDataPage {
   [ChromeEarlGreyUI openToolsMenu];
 
@@ -192,7 +207,7 @@ void NoDeleteBrowsingDataDialogHistogram(
       performAction:grey_tap()];
 
   [ChromeEarlGrey waitForUIElementToAppearWithMatcher:
-                      quickDeleteBrowsingDataPageTitleMatcher()];
+                      QuickDeleteBrowsingDataPageTitleMatcher()];
 }
 
 // Opens Quick Delete from the three dot menu for the specified window.
@@ -210,7 +225,7 @@ void NoDeleteBrowsingDataDialogHistogram(
       performAction:grey_tap()];
 
   [ChromeEarlGrey waitForUIElementToAppearWithMatcher:
-                      quickDeleteBrowsingDataPageTitleMatcher()];
+                      QuickDeleteBrowsingDataPageTitleMatcher()];
 }
 
 - (void)signIn {
@@ -219,7 +234,7 @@ void NoDeleteBrowsingDataDialogHistogram(
   [SigninEarlGreyUI signinWithFakeIdentity:fakeIdentity];
 }
 
-// Tests the cancel button dismisses the browsing data page.
+// Tests that the cancel button dismisses the Quick Delete Browsing Data page.
 - (void)testPageNavigationCancelButton {
   // At the beginning of the test, the Delete Browsing Data dialog metric should
   // be empty.
@@ -228,7 +243,7 @@ void NoDeleteBrowsingDataDialogHistogram(
   NoDeleteBrowsingDataDialogHistogram(
       DeleteBrowsingDataDialogAction::kCancelDataTypesSelected);
 
-  // Open quick delete browsing data page.
+  // Open the Quick Delete Browsing Data page.
   [self openQuickDeleteBrowsingDataPage];
 
   // Tap cancel button.
@@ -236,9 +251,9 @@ void NoDeleteBrowsingDataDialogHistogram(
       selectElementWithMatcher:chrome_test_util::NavigationBarCancelButton()]
       performAction:grey_tap()];
 
-  // Ensure the browsing data page is closed while quick delete bottom sheet is
-  // still open.
-  [[EarlGrey selectElementWithMatcher:quickDeleteBrowsingDataPageTitleMatcher()]
+  // Ensure the Quick Delete Browsing Data page is closed while the quick delete
+  // bottom sheet is still open.
+  [[EarlGrey selectElementWithMatcher:QuickDeleteBrowsingDataPageTitleMatcher()]
       assertWithMatcher:grey_nil()];
   [[EarlGrey selectElementWithMatcher:ClearBrowsingDataView()]
       assertWithMatcher:grey_notNil()];
@@ -250,7 +265,7 @@ void NoDeleteBrowsingDataDialogHistogram(
       DeleteBrowsingDataDialogAction::kCancelDataTypesSelected);
 }
 
-// Tests the confirm button dismisses the browsing data page.
+// Tests the confirm button dismisses the Quick Delete Browsing Data page.
 - (void)testPageNavigationConfirmButton {
   // At the beginning of the test, the Delete Browsing Data dialog metrics
   // should be empty.
@@ -259,7 +274,7 @@ void NoDeleteBrowsingDataDialogHistogram(
   NoDeleteBrowsingDataDialogHistogram(
       DeleteBrowsingDataDialogAction::kUpdateDataTypesSelected);
 
-  // Open quick delete browsing data page.
+  // Open the Quick Delete Browsing Data page.
   [self openQuickDeleteBrowsingDataPage];
 
   // Tap confirm button.
@@ -267,7 +282,7 @@ void NoDeleteBrowsingDataDialogHistogram(
       performAction:grey_tap()];
 
   // Ensure the page is closed while quick delete bottom sheet is still open.
-  [[EarlGrey selectElementWithMatcher:quickDeleteBrowsingDataPageTitleMatcher()]
+  [[EarlGrey selectElementWithMatcher:QuickDeleteBrowsingDataPageTitleMatcher()]
       assertWithMatcher:grey_nil()];
   [[EarlGrey selectElementWithMatcher:ClearBrowsingDataView()]
       assertWithMatcher:grey_notNil()];
@@ -325,29 +340,29 @@ void NoDeleteBrowsingDataDialogHistogram(
   [ChromeEarlGrey setBoolValue:NO
                    forUserPref:browsing_data::prefs::kDeleteFormData];
 
-  // Open quick delete browsing data page.
+  // Open the Quick Delete Browsing Data page.
   [self openQuickDeleteBrowsingDataPage];
 
   // Assert all browsing data rows are not selected.
   [[EarlGrey selectElementWithMatcher:ClearBrowsingHistoryButton()]
-      assertWithMatcher:elementIsSelectedMatcher(false)];
-  [[EarlGrey selectElementWithMatcher:tabsCellMatcher()]
-      assertWithMatcher:elementIsSelectedMatcher(false)];
+      assertWithMatcher:ElementIsSelectedMatcher(false)];
+  [[EarlGrey selectElementWithMatcher:TabsCellMatcher()]
+      assertWithMatcher:ElementIsSelectedMatcher(false)];
   [[EarlGrey selectElementWithMatcher:ClearCookiesButton()]
-      assertWithMatcher:elementIsSelectedMatcher(false)];
+      assertWithMatcher:ElementIsSelectedMatcher(false)];
   [[EarlGrey selectElementWithMatcher:ClearCacheButton()]
-      assertWithMatcher:elementIsSelectedMatcher(false)];
+      assertWithMatcher:ElementIsSelectedMatcher(false)];
   [[EarlGrey selectElementWithMatcher:ClearSavedPasswordsButton()]
       assertWithMatcher:[self shouldEnablePasswordRemovalFeature]
                             ? grey_nil()
-                            : elementIsSelectedMatcher(false)];
+                            : ElementIsSelectedMatcher(false)];
   [[EarlGrey selectElementWithMatcher:ClearAutofillButton()]
-      assertWithMatcher:elementIsSelectedMatcher(false)];
+      assertWithMatcher:ElementIsSelectedMatcher(false)];
 
   // Tap on the browsing data cells to toggle the selection.
   [[EarlGrey selectElementWithMatcher:ClearBrowsingHistoryButton()]
       performAction:grey_tap()];
-  [[EarlGrey selectElementWithMatcher:tabsCellMatcher()]
+  [[EarlGrey selectElementWithMatcher:TabsCellMatcher()]
       performAction:grey_tap()];
   [[EarlGrey selectElementWithMatcher:ClearCookiesButton()]
       performAction:grey_tap()];
@@ -362,28 +377,28 @@ void NoDeleteBrowsingDataDialogHistogram(
 
   // Assert all browsing data rows are selected.
   [[EarlGrey selectElementWithMatcher:ClearBrowsingHistoryButton()]
-      assertWithMatcher:elementIsSelectedMatcher(true)];
-  [[EarlGrey selectElementWithMatcher:tabsCellMatcher()]
-      assertWithMatcher:elementIsSelectedMatcher(true)];
+      assertWithMatcher:ElementIsSelectedMatcher(true)];
+  [[EarlGrey selectElementWithMatcher:TabsCellMatcher()]
+      assertWithMatcher:ElementIsSelectedMatcher(true)];
   [[EarlGrey selectElementWithMatcher:ClearCookiesButton()]
-      assertWithMatcher:elementIsSelectedMatcher(true)];
+      assertWithMatcher:ElementIsSelectedMatcher(true)];
   [[EarlGrey selectElementWithMatcher:ClearCacheButton()]
-      assertWithMatcher:elementIsSelectedMatcher(true)];
+      assertWithMatcher:ElementIsSelectedMatcher(true)];
   [[EarlGrey selectElementWithMatcher:ClearSavedPasswordsButton()]
       assertWithMatcher:[self shouldEnablePasswordRemovalFeature]
                             ? grey_nil()
-                            : elementIsSelectedMatcher(true)];
+                            : ElementIsSelectedMatcher(true)];
   [[EarlGrey selectElementWithMatcher:ClearAutofillButton()]
-      assertWithMatcher:elementIsSelectedMatcher(true)];
+      assertWithMatcher:ElementIsSelectedMatcher(true)];
 
   // Tap cancel button.
   [[EarlGrey
       selectElementWithMatcher:chrome_test_util::NavigationBarCancelButton()]
       performAction:grey_tap()];
 
-  // Ensure the browsing data page is closed while quick delete bottom sheet is
-  // still open.
-  [[EarlGrey selectElementWithMatcher:quickDeleteBrowsingDataPageTitleMatcher()]
+  // Ensure the Quick Delete Browsing Data page is closed while the quick delete
+  // bottom sheet is still open.
+  [[EarlGrey selectElementWithMatcher:QuickDeleteBrowsingDataPageTitleMatcher()]
       assertWithMatcher:grey_nil()];
   [[EarlGrey selectElementWithMatcher:ClearBrowsingDataView()]
       assertWithMatcher:grey_notNil()];
@@ -431,7 +446,7 @@ void NoDeleteBrowsingDataDialogHistogram(
   [ChromeEarlGrey setBoolValue:NO
                    forUserPref:browsing_data::prefs::kDeleteFormData];
 
-  // Open quick delete browsing data page.
+  // Open the Quick Delete Browsing Data page.
   [self openQuickDeleteBrowsingDataPage];
 
   // At the beginning of the test, the Delete Browsing Data dialog metric should
@@ -451,24 +466,24 @@ void NoDeleteBrowsingDataDialogHistogram(
 
   // Assert all browsing data rows are not selected.
   [[EarlGrey selectElementWithMatcher:ClearBrowsingHistoryButton()]
-      assertWithMatcher:elementIsSelectedMatcher(false)];
-  [[EarlGrey selectElementWithMatcher:tabsCellMatcher()]
-      assertWithMatcher:elementIsSelectedMatcher(false)];
+      assertWithMatcher:ElementIsSelectedMatcher(false)];
+  [[EarlGrey selectElementWithMatcher:TabsCellMatcher()]
+      assertWithMatcher:ElementIsSelectedMatcher(false)];
   [[EarlGrey selectElementWithMatcher:ClearCookiesButton()]
-      assertWithMatcher:elementIsSelectedMatcher(false)];
+      assertWithMatcher:ElementIsSelectedMatcher(false)];
   [[EarlGrey selectElementWithMatcher:ClearCacheButton()]
-      assertWithMatcher:elementIsSelectedMatcher(false)];
+      assertWithMatcher:ElementIsSelectedMatcher(false)];
   [[EarlGrey selectElementWithMatcher:ClearSavedPasswordsButton()]
       assertWithMatcher:[self shouldEnablePasswordRemovalFeature]
                             ? grey_nil()
-                            : elementIsSelectedMatcher(false)];
+                            : ElementIsSelectedMatcher(false)];
   [[EarlGrey selectElementWithMatcher:ClearAutofillButton()]
-      assertWithMatcher:elementIsSelectedMatcher(false)];
+      assertWithMatcher:ElementIsSelectedMatcher(false)];
 
   // Tap on the browsing data cells to toggle the selection.
   [[EarlGrey selectElementWithMatcher:ClearBrowsingHistoryButton()]
       performAction:grey_tap()];
-  [[EarlGrey selectElementWithMatcher:tabsCellMatcher()]
+  [[EarlGrey selectElementWithMatcher:TabsCellMatcher()]
       performAction:grey_tap()];
   [[EarlGrey selectElementWithMatcher:ClearCookiesButton()]
       performAction:grey_tap()];
@@ -483,27 +498,27 @@ void NoDeleteBrowsingDataDialogHistogram(
 
   // Assert all browsing data rows are selected.
   [[EarlGrey selectElementWithMatcher:ClearBrowsingHistoryButton()]
-      assertWithMatcher:elementIsSelectedMatcher(true)];
-  [[EarlGrey selectElementWithMatcher:tabsCellMatcher()]
-      assertWithMatcher:elementIsSelectedMatcher(true)];
+      assertWithMatcher:ElementIsSelectedMatcher(true)];
+  [[EarlGrey selectElementWithMatcher:TabsCellMatcher()]
+      assertWithMatcher:ElementIsSelectedMatcher(true)];
   [[EarlGrey selectElementWithMatcher:ClearCookiesButton()]
-      assertWithMatcher:elementIsSelectedMatcher(true)];
+      assertWithMatcher:ElementIsSelectedMatcher(true)];
   [[EarlGrey selectElementWithMatcher:ClearCacheButton()]
-      assertWithMatcher:elementIsSelectedMatcher(true)];
+      assertWithMatcher:ElementIsSelectedMatcher(true)];
   [[EarlGrey selectElementWithMatcher:ClearSavedPasswordsButton()]
       assertWithMatcher:[self shouldEnablePasswordRemovalFeature]
                             ? grey_nil()
-                            : elementIsSelectedMatcher(true)];
+                            : ElementIsSelectedMatcher(true)];
   [[EarlGrey selectElementWithMatcher:ClearAutofillButton()]
-      assertWithMatcher:elementIsSelectedMatcher(true)];
+      assertWithMatcher:ElementIsSelectedMatcher(true)];
 
   // Tap confirm button.
   [[EarlGrey selectElementWithMatcher:BrowsingDataConfirmButtonMatcher()]
       performAction:grey_tap()];
 
-  // Ensure the browsing data page is closed while quick delete bottom sheet is
-  // still open.
-  [[EarlGrey selectElementWithMatcher:quickDeleteBrowsingDataPageTitleMatcher()]
+  // Ensure the Quick Delete Browsing Data page is closed while quick delete
+  // bottom sheet is still open.
+  [[EarlGrey selectElementWithMatcher:QuickDeleteBrowsingDataPageTitleMatcher()]
       assertWithMatcher:grey_nil()];
   [[EarlGrey selectElementWithMatcher:ClearBrowsingDataView()]
       assertWithMatcher:grey_notNil()];
@@ -562,7 +577,7 @@ void NoDeleteBrowsingDataDialogHistogram(
   // Sign in is required to show the footer.
   [self signIn];
 
-  // Open quick delete browsing data page.
+  // Open the Quick Delete Browsing Data page.
   [self openQuickDeleteBrowsingDataPage];
 
   // Check that the footer is presented.
@@ -639,25 +654,25 @@ void NoDeleteBrowsingDataDialogHistogram(
   // Focus the first window for the subsequent interactions.
   [EarlGrey setRootMatcherForSubsequentInteractions:chrome_test_util::
                                                         WindowWithNumber(0)];
-  // Open browsing data page in the first window.
+  // Open the Quick Delete Browsing Data page in the first window.
   [self openQuickDeleteBrowsingDataPageInWindowWithNumber:0];
 
   // Focus the second window for the subsequent interactions.
   [EarlGrey setRootMatcherForSubsequentInteractions:chrome_test_util::
                                                         WindowWithNumber(1)];
-  // Open browsing data page in the second window.
+  // Open the Quick Delete Browsing Data page in the second window.
   [self openQuickDeleteBrowsingDataPageInWindowWithNumber:1];
 
   // Assert history row is not selected in the second window.
   [[EarlGrey selectElementWithMatcher:ClearBrowsingHistoryButton()]
-      assertWithMatcher:elementIsSelectedMatcher(false)];
+      assertWithMatcher:ElementIsSelectedMatcher(false)];
 
   // Focus the first window for the subsequent interactions.
   [EarlGrey setRootMatcherForSubsequentInteractions:chrome_test_util::
                                                         WindowWithNumber(0)];
   // Assert history row is not selected in the first window.
   [[EarlGrey selectElementWithMatcher:ClearBrowsingHistoryButton()]
-      assertWithMatcher:elementIsSelectedMatcher(false)];
+      assertWithMatcher:ElementIsSelectedMatcher(false)];
 
   // Tap on the history cell to toggle the selection on the first window.
   [[EarlGrey selectElementWithMatcher:ClearBrowsingHistoryButton()]
@@ -665,7 +680,7 @@ void NoDeleteBrowsingDataDialogHistogram(
 
   // Assert history row is selected in the first window.
   [[EarlGrey selectElementWithMatcher:ClearBrowsingHistoryButton()]
-      assertWithMatcher:elementIsSelectedMatcher(true)];
+      assertWithMatcher:ElementIsSelectedMatcher(true)];
 
   // Focus the first window for the subsequent interactions.
   [EarlGrey setRootMatcherForSubsequentInteractions:chrome_test_util::
@@ -673,7 +688,7 @@ void NoDeleteBrowsingDataDialogHistogram(
 
   // Assert history row remains not selected on the second window.
   [[EarlGrey selectElementWithMatcher:ClearBrowsingHistoryButton()]
-      assertWithMatcher:elementIsSelectedMatcher(false)];
+      assertWithMatcher:ElementIsSelectedMatcher(false)];
 
   // Focus the first window for the subsequent interactions.
   [EarlGrey setRootMatcherForSubsequentInteractions:chrome_test_util::
@@ -689,7 +704,7 @@ void NoDeleteBrowsingDataDialogHistogram(
 
   // Assert history row is selected in the second window after the pref update.
   [[EarlGrey selectElementWithMatcher:ClearBrowsingHistoryButton()]
-      assertWithMatcher:elementIsSelectedMatcher(true)];
+      assertWithMatcher:ElementIsSelectedMatcher(true)];
 
   // Assert that the Delete Browsing Data dialog metric is populated only once,
   // when the selection is saved.
@@ -697,8 +712,8 @@ void NoDeleteBrowsingDataDialogHistogram(
       DeleteBrowsingDataDialogAction::kBrowsingHistoryToggledOn);
 }
 
-// Tests if the selected time range in the UI is used for the browsing data
-// page instead of the time range saved in the pref.
+// Tests if the selected time range in the UI is used for the Quick Delete
+// Browsing Data page instead of the time range saved in the pref.
 - (void)testSelectedTimeRangeUsed {
   // Set pref to the last hour.
   [ChromeEarlGrey
@@ -752,11 +767,11 @@ void NoDeleteBrowsingDataDialogHistogram(
                      IDS_IOS_DELETE_BROWSING_DATA_SUMMARY_SITES, 1))]
       assertWithMatcher:grey_nil()];
 
-  // Go to the browsing data page.
+  // Go to the Quick Delete Browsing Data page.
   [[EarlGrey selectElementWithMatcher:BrowsingDataButtonMatcher()]
       performAction:grey_tap()];
   [ChromeEarlGrey waitForUIElementToAppearWithMatcher:
-                      quickDeleteBrowsingDataPageTitleMatcher()];
+                      QuickDeleteBrowsingDataPageTitleMatcher()];
 
   // Confirm that the history row also shows no entries in scope of the
   // deletion.
@@ -774,7 +789,7 @@ void NoDeleteBrowsingDataDialogHistogram(
 // Tests that the "Manage other data" cell is only present when the
 // `kPasswordRemovalFromDeleteBrowsingData` feature is enabled.
 - (void)testManageOtherDataCellVisibility {
-  // Open quick delete browsing data page.
+  // Open the Quick Delete Browsing Data page.
   [self openQuickDeleteBrowsingDataPage];
 
   [[EarlGrey selectElementWithMatcher:ManageOtherDataCellMatcher()]
@@ -804,11 +819,71 @@ void NoDeleteBrowsingDataDialogHistogram(
 // Tests that the password cell is not present when the
 // `kPasswordRemovalFromDeleteBrowsingData` feature is enabled.
 - (void)testPasswordCellIsNotPresentWhenThePasswordRemovalFeatureIsEnabled {
-  // Open quick delete browsing data page.
+  // Open the Quick Delete Browsing Data page.
   [self openQuickDeleteBrowsingDataPage];
 
   [[EarlGrey selectElementWithMatcher:ClearSavedPasswordsButton()]
       assertWithMatcher:grey_nil()];
+}
+
+// Tests that the title and subtitle of the "Manage other data" cell are
+// visible.
+- (void)testManageOtherDataStringsVisibility {
+  // Open the Quick Delete Browsing Data page.
+  [self openQuickDeleteBrowsingDataPage];
+
+  // Check that the "Manage other data" cell is visible with the expected title
+  // and subtitle.
+  [[EarlGrey selectElementWithMatcher:
+                 GetManageOtherDataCellWithStrings(
+                     /*title=*/l10n_util::GetNSString(
+                         IDS_SETTINGS_MANAGE_OTHER_GOOGLE_DATA_LABEL),
+                     /*subtitle=*/l10n_util::GetNSString(
+                         IDS_SETTINGS_MANAGE_PASSWORDS_SUB_LABEL))]
+      assertWithMatcher:grey_sufficientlyVisible()];
+}
+
+// Tests that the subtitle of the "Manage other data" cell is updated when the
+// sign-in status changes while the user is still on the Quick Delete Browsing
+// Data page.
+- (void)testManageOtherDataSubtitleChange {
+  // Open the Quick Delete Browsing Data page.
+  [self openQuickDeleteBrowsingDataPage];
+
+  NSString* expectedTitle =
+      l10n_util::GetNSString(IDS_SETTINGS_MANAGE_OTHER_GOOGLE_DATA_LABEL);
+  // Check that the "Manage other data" cell is visible with the expected title
+  // and subtitle.
+  [[EarlGrey selectElementWithMatcher:
+                 GetManageOtherDataCellWithStrings(
+                     expectedTitle,
+                     /*subtitle=*/l10n_util::GetNSString(
+                         IDS_SETTINGS_MANAGE_PASSWORDS_SUB_LABEL))]
+      assertWithMatcher:grey_sufficientlyVisible()];
+
+  // Sign in to trigger a sign-in status update.
+  [self signIn];
+
+  // Check that the "Manage other data" cell's subtitle has changed.
+  [[EarlGrey selectElementWithMatcher:
+                 GetManageOtherDataCellWithStrings(
+                     expectedTitle,
+                     /*subtitle=*/l10n_util::GetNSString(
+                         IDS_SETTINGS_MANAGE_OTHER_DATA_SUB_LABEL))]
+      assertWithMatcher:grey_sufficientlyVisible()];
+}
+
+// Tests that tapping the "Manage other data" cell opens the Quick Delete Other
+// Data page.
+- (void)testManageOtherDataCellOpensOtherDataPage {
+  // Open the Quick Delete Browsing Data page.
+  [self openQuickDeleteBrowsingDataPage];
+
+  [[EarlGrey selectElementWithMatcher:ManageOtherDataCellMatcher()]
+      performAction:grey_tap()];
+
+  [[EarlGrey selectElementWithMatcher:QuickDeleteOtherDataPageTitleMatcher()]
+      assertWithMatcher:grey_sufficientlyVisible()];
 }
 
 @end

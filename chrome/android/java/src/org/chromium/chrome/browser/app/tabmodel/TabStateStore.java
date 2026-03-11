@@ -108,7 +108,21 @@ public class TabStateStore implements TabPersistentStore {
 
                 @Override
                 public void onCancelled() {
+                    assumeNonNull(mModelTrackingManager).onRestoreCancelled();
                     deleteDbIfNonAuthoritative();
+                }
+
+                @Override
+                public void onRestoredForModel(boolean incognito) {
+                    if (!mIsAuthoritative) return;
+                    assumeNonNull(mModelTrackingManager).onRestoredForModel(incognito);
+                }
+
+                @Override
+                public void onActiveTabRestored(boolean incognito) {
+                    for (TabPersistentStoreObserver observer : mObservers) {
+                        observer.onActiveTabLoaded(incognito);
+                    }
                 }
 
                 @Override
@@ -200,7 +214,11 @@ public class TabStateStore implements TabPersistentStore {
         }
         mModelTrackingManager =
                 mOrchestratorFactory.build(
-                        mWindowTag, mMigrationManager, mTabModelSelector, mHasCipherFactory);
+                        mWindowTag,
+                        mMigrationManager,
+                        mTabModelSelector,
+                        mHasCipherFactory,
+                        mIsAuthoritative);
 
         mTabModelSelector.getModel(false).addObserver(mTabModelObserver);
         mTabModelSelector.getModel(true).addObserver(mTabModelObserver);
@@ -251,6 +269,7 @@ public class TabStateStore implements TabPersistentStore {
                         !ignoreIncognitoFiles,
                         mCombinedTabRestorerDelegate,
                         mTabCreatorManager,
+                        mTabStateStorageService::createBatch,
                         /* logRestoreDuration= */ true);
 
         boolean[] restoreOrder =
@@ -307,6 +326,7 @@ public class TabStateStore implements TabPersistentStore {
                         /* restoreIncognitoTabs= */ true,
                         delegate,
                         mTabCreatorManager,
+                        mTabStateStorageService::createBatch,
                         /* logRestoreDuration= */ false);
 
         for (boolean incognito : new boolean[] {false, true}) {
@@ -512,7 +532,9 @@ public class TabStateStore implements TabPersistentStore {
                             assumeNonNull(data.getErrorMessage()));
             Log.e(TAG, formattedErrorMessage);
 
-            // TODO(crbug.com/476447678): reset migration manager catch up status for this window.
+            if (!mIsAuthoritative) {
+                mMigrationManager.onShadowStoreRazed();
+            }
             fullyDestroyLoadedData(data);
 
             // Leave to guarantee failures are caught in debug.
@@ -602,6 +624,7 @@ public class TabStateStore implements TabPersistentStore {
     }
 
     private void fullyDestroyLoadedData(StorageLoadedData data) {
+        assumeNonNull(mModelTrackingManager).onRestoreCancelled();
         StorageLoadedData.LoadedTabState[] loadedTabStates = data.getLoadedTabStates();
         for (StorageLoadedData.LoadedTabState loadedTabState : loadedTabStates) {
             WebContentsState contentsState = loadedTabState.tabState.contentsState;

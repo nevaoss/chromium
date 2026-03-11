@@ -19,7 +19,7 @@
 #include "chrome/browser/glic/host/host_metrics.h"
 #include "chrome/browser/glic/public/glic_instance.h"
 #include "chrome/common/actor/task_id.h"
-#include "components/autofill/core/browser/integrators/glic/actor_form_filling_types.h"
+#include "components/autofill/core/browser/integrators/actor/actor_form_filling_types.h"
 #include "components/tabs/public/tab_interface.h"
 
 namespace actor {
@@ -80,6 +80,9 @@ class Host : public GlicSharingManagerProvider {
     virtual void SwitchConversation(
         glic::mojom::ConversationInfoPtr info,
         mojom::WebClientHandler::SwitchConversationCallback callback) = 0;
+
+    // Called when the microphone status changes in the web client.
+    virtual void OnMicrophoneStatusChanged(mojom::MicrophoneStatus status) = 0;
   };
 
   // Functions that are on either GlicInstance or GlidKeyedService.
@@ -237,6 +240,9 @@ class Host : public GlicSharingManagerProvider {
   // Signals the glic WebUI that the glic window will be shown soon.
   void NotifyWindowIntentToShow();
 
+  // Signals the glic WebUI to adjust the zoom level of its hosted webview.
+  void Zoom(mojom::ZoomAction zoom_action);
+
   // GlicSharingManagerProvider Implementation.
   GlicSharingManager& sharing_manager() override;
 
@@ -287,6 +293,10 @@ class Host : public GlicSharingManagerProvider {
 
   void SetInvocationSource(mojom::InvocationSource invocation_source) {
     invocation_source_ = invocation_source;
+  }
+
+  mojom::MicrophoneStatus microphone_status() const {
+    return microphone_status_;
   }
 
   void AddObserver(Observer* observer);
@@ -341,6 +351,9 @@ class Host : public GlicSharingManagerProvider {
   // Called when the web client changes its mode.
   void OnInteractionModeChange(GlicPageHandler* page_handler,
                                mojom::WebClientMode new_mode);
+
+  // Called when the microphone status changes in the web client.
+  void OnMicrophoneStatusChanged(mojom::MicrophoneStatus status);
 
   // Sets the size of the glic window to the specified dimensions. Callback
   // runs when the animation finishes or is destroyed, or soon if the window
@@ -485,6 +498,9 @@ class Host : public GlicSharingManagerProvider {
 
   base::WeakPtr<content::WebContents> web_client_contents_;
 
+  mojom::MicrophoneStatus microphone_status_ =
+      mojom::MicrophoneStatus::kUnknown;
+
   HostMetrics metrics_;
 
   base::WeakPtrFactory<Host> weak_ptr_factory_{this};
@@ -511,6 +527,7 @@ class EmptyEmbedderDelegate : public Host::EmbedderDelegate {
   void SwitchConversation(
       glic::mojom::ConversationInfoPtr info,
       mojom::WebClientHandler::SwitchConversationCallback callback) override;
+  void OnMicrophoneStatusChanged(mojom::MicrophoneStatus status) override {}
 
  private:
   mojom::PanelState panel_state_ =

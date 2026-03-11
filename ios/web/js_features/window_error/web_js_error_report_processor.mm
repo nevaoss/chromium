@@ -14,6 +14,7 @@
 #import "base/strings/escape.h"
 #import "base/strings/strcat.h"
 #import "base/strings/string_number_conversions.h"
+#import "base/strings/string_split.h"
 #import "base/strings/sys_string_conversions.h"
 #import "base/system/sys_info.h"
 #import "build/branding_buildflags.h"
@@ -35,6 +36,8 @@ constexpr int kCrashEndpointResponseMaxSizeInBytes = 1024;
 
 // The url of the crash report upload endpoint.
 constexpr char kCrashEndpointUrl[] = "https://clients2.google.com/cr/report";
+
+constexpr char kNewlineSeparator[] = "\n";
 
 const char kWebJsErrorReportProcessorKeyName[] =
     "web_js_error_report_processor";
@@ -140,6 +143,19 @@ void AddStandardReportParams(ParameterMap& report_params) {
                        general_params.get()->end());
 }
 
+// Removes stack frames which are not from injected feature scripts.
+std::string RedactStack(std::string stack) {
+  std::vector<std::string_view> kept_frames;
+  for (const auto& frame :
+       base::SplitStringPiece(stack, kNewlineSeparator, base::KEEP_WHITESPACE,
+                              base::SPLIT_WANT_NONEMPTY)) {
+    if (frame.find("@user-script:") != std::string::npos) {
+      kept_frames.push_back(frame);
+    }
+  }
+  return base::JoinString(kept_frames, kNewlineSeparator);
+}
+
 }  // namespace
 
 namespace web {
@@ -179,8 +195,18 @@ void WebJsErrorReportProcessor::ReportJavaScriptError(
   report.from_main_frame = details.is_main_frame;
   report.api = details.api;
   report.error_message = details.message;
-  report.stack_trace = details.stack;
+  report.stack_trace = RedactStack(details.stack);
+  report.crash_keys = details.crash_keys;
   report.page_url = details.url.GetWithEmptyPath().spec();
+
+  std::string filename = details.url.ExtractFileName();
+  if (filename.length()) {
+    std::optional<std::pair<std::string_view, std::string_view>> parts =
+        base::RSplitStringOnce(filename, '.');
+    if (parts.has_value()) {
+      report.page_url_file_extension = std::string(parts->second);
+    }
+  }
 
   SendErrorReport(std::move(report));
 }
@@ -188,15 +214,25 @@ void WebJsErrorReportProcessor::ReportJavaScriptError(
 void WebJsErrorReportProcessor::ReportJavaScriptExecutionFailed(
     std::string api,
     url::Origin origin,
-    std::string error,
+    NSError* error,
     bool from_main_frame) {
   IOSJavaScriptErrorReport report;
   report.source_system =
       IOSJavaScriptErrorReport::SourceSystem::kNativeScriptExecutionFailed;
   report.api = api;
   report.from_main_frame = from_main_frame;
-  report.error_message = error;
   report.page_url = origin.Serialize();
+
+  std::string exception =
+      base::SysNSStringToUTF8(error.userInfo[@"WKJavaScriptExceptionMessage"]);
+  if (!exception.empty()) {
+    report.error_message = exception;
+  } else {
+    report.error_message =
+        base::SysNSStringToUTF8(error.userInfo[NSLocalizedDescriptionKey]);
+  }
+  report.error_domain = base::SysNSStringToUTF8(error.domain);
+  report.error_code = error.code;
 
   SendErrorReport(std::move(report));
 }
@@ -241,10 +277,30 @@ void WebJsErrorReportProcessor::SendErrorReport(
       break;
   }
 
-  if (error_report.page_url &&
-      web::GetWebClient()->GetJSErrorReportLoggingLevel(browser_state_) ==
-          JSErrorReportLoggingLevel::FULL) {
-    params["url"] = error_report.page_url.value();
+  if (web::GetWebClient()->GetJSErrorReportLoggingLevel(browser_state_) ==
+      JSErrorReportLoggingLevel::FULL) {
+    if (error_report.page_url) {
+      params["url0"] = error_report.page_url.value();
+    }
+    if (error_report.page_url_file_extension) {
+      params["url0_file_extension"] =
+          error_report.page_url_file_extension.value();
+    }
+  }
+
+  if (error_report.error_domain) {
+    params["error_domain"] = error_report.error_domain.value();
+  }
+  if (error_report.error_code) {
+    params["error_code"] =
+        base::NumberToString(error_report.error_code.value());
+  }
+
+  if (error_report.crash_keys) {
+    for (auto ck = error_report.crash_keys->begin();
+         ck != error_report.crash_keys->end(); ++ck) {
+      params[base::StrCat({"JS_", ck->first})] = ck->second;
+    }
   }
 
   AddExperimentIds(params);

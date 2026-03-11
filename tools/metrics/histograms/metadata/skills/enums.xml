@@ -35,6 +35,17 @@ chromium-metrics-reviews@google.com.
 
 <!-- LINT.ThenChange(//components/skills/public/skills_metrics.h:SkillsDialogAction) -->
 
+<!-- LINT.IfChange(SkillsDownloadRequestStatus) -->
+
+<enum name="SkillsDownloadRequestStatus">
+  <int value="0" label="Download Request Sent"/>
+  <int value="1" label="Download Response Received"/>
+  <int value="2" label="Download Already Running"/>
+  <int value="3" label="Download Timed Out"/>
+</enum>
+
+<!-- LINT.ThenChange(//components/skills/public/skills_metrics.h:SkillsDownloadRequestStatus) -->
+
 <!-- LINT.IfChange(SkillsFetchResult) -->
 
 <enum name="SkillsFetchResult">
@@ -56,6 +67,52 @@ chromium-metrics-reviews@google.com.
 </enum>
 
 <!-- LINT.ThenChange(//components/skills/public/skills_metrics.h:SkillsInvokeAction) -->
+
+<!-- LINT.IfChange(SkillsInvokeResult) -->
+
+<enum name="SkillsInvokeResult">
+  <int value="0" label="Success"/>
+  <int value="1" label="Skill Not Found"/>
+  <int value="2" label="Timeout"/>
+</enum>
+
+<!-- LINT.ThenChange(//components/skills/public/skills_metrics.h:SkillsInvokeResult) -->
+
+<!-- LINT.IfChange(SkillsManagementError) -->
+
+<enum name="SkillsManagementError">
+  <int value="0" label="Tab Controller Does Not Exist"/>
+  <int value="1" label="Skills Service Not Ready"/>
+  <int value="2" label="1P Skill Does Not Exist"/>
+</enum>
+
+<!-- LINT.ThenChange(//components/skills/public/skills_metrics.h:SkillsManagementError) -->
+
+<!-- LINT.IfChange(SkillsRefineResult) -->
+
+<enum name="SkillsRefineResult">
+  <int value="0" label="Success"/>
+  <int value="1" label="Model Execution Failed"/>
+  <int value="2" label="Parse Error"/>
+  <int value="3" label="No Suggestions"/>
+  <int value="4" label="Service Unavailable"/>
+  <int value="5" label="Invalid Request"/>
+</enum>
+
+<!-- LINT.ThenChange(//components/skills/public/skills_metrics.h:SkillsRefineResult) -->
+
+<!-- LINT.IfChange(SkillsSaveResult) -->
+
+<enum name="SkillsSaveResult">
+  <int value="0" label="Success"/>
+  <int value="1" label="UI Context Lost"/>
+  <int value="2" label="Skill Not Found"/>
+  <int value="3" label="Write Failed"/>
+  <int value="4" label="Service Not Found"/>
+  <int value="5" label="Service Not Ready"/>
+</enum>
+
+<!-- LINT.ThenChange(//components/skills/public/skills_metrics.h:SkillsSaveResult) -->
 
 </enums>
 

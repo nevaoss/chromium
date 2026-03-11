@@ -26,6 +26,7 @@
 #include "chrome/browser/ui/tabs/tab_strip_api/tab_strip_service.h"
 #include "chrome/browser/ui/tabs/tab_strip_api/tab_strip_service_feature.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
+#include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/custom_corners_background.h"
 #include "chrome/browser/ui/views/frame/tab_strip_region_view.h"
@@ -61,6 +62,8 @@
 
 namespace {
 constexpr int kRegionVerticalPadding = 5;
+constexpr int kResizeAreaWidth = 5;
+constexpr int kCollapsedResizeAreaWidth = 2;
 }  // namespace
 
 VerticalTabStripRegionView::VerticalTabStripRegionView(
@@ -68,6 +71,7 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
     actions::ActionItem* root_action_item,
     BrowserView* browser_view)
     : browser_view_(browser_view),
+      resize_area_width_(kResizeAreaWidth),
       tab_strip_model_(browser_view->browser()->GetTabStripModel()),
       state_controller_(state_controller),
       root_action_item_(root_action_item),
@@ -112,9 +116,13 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
   resize_area_ = AddChildView(std::make_unique<views::ResizeArea>(this));
   resize_area_->SetProperty(views::kViewIgnoredByLayoutKey, true);
 
-  resize_animation_.SetSlideDuration(
-      gfx::Animation::RichAnimationDuration(base::Milliseconds(450)));
-  resize_animation_.SetTweenType(gfx::Tween::Type::EASE_IN_OUT_EMPHASIZED);
+  resize_animation_.SetSlideDuration(gfx::Animation::RichAnimationDuration(
+      features::UseSidePanelFlyoverAnimation() ? base::Milliseconds(350)
+                                               : base::Milliseconds(450)));
+  resize_animation_.SetTweenType(
+      features::UseSidePanelFlyoverAnimation()
+          ? gfx::Tween::Type::ACCEL_30_DECEL_20_85
+          : gfx::Tween::Type::EASE_IN_OUT_EMPHASIZED);
   resize_animation_.Reset(!state_controller_->IsCollapsed());
 
   target_collapse_state_ = state_controller_->GetState();
@@ -167,8 +175,9 @@ void VerticalTabStripRegionView::Layout(PassKey) {
 
   // Manually position the resize area as it overlaps views handled by the flex
   // layout.
-  resize_area_->SetBoundsRect(gfx::Rect(bounds().right() - kResizeAreaWidth, 0,
-                                        kResizeAreaWidth, bounds().height()));
+  resize_area_->SetBoundsRect(gfx::Rect(bounds().right() - resize_area_width_,
+                                        0, resize_area_width_,
+                                        bounds().height()));
 }
 
 views::View* VerticalTabStripRegionView::GetDefaultFocusableChild() {
@@ -398,6 +407,17 @@ views::View* VerticalTabStripRegionView::GetViewForDrop() {
 
 std::optional<BrowserRootView::DropIndex>
 VerticalTabStripRegionView::GetDropIndex(const ui::DropTargetEvent& event) {
+  // Check pinned tabs.
+  VerticalPinnedTabContainerView* pinned_container = GetPinnedTabsContainer();
+  if (pinned_container) {
+    gfx::Point loc_in_pinned = views::View::ConvertPointToTarget(
+        this, pinned_container, event.location());
+    if (loc_in_pinned.y() >= 0 &&
+        loc_in_pinned.y() < pinned_container->height()) {
+      return pinned_container->GetLinkDropIndex(loc_in_pinned);
+    }
+  }
+
   // Check unpinned tabs.
   VerticalUnpinnedTabContainerView* unpinned_container =
       GetUnpinnedTabsContainer();
@@ -417,7 +437,6 @@ VerticalTabStripRegionView::GetDropIndex(const ui::DropTargetEvent& event) {
         gfx::Point(0, unpinned_container->height()));
   }
 
-  // TODO(crbug.com/485262103): Handle dragging over pinned tabs.
   return std::nullopt;
 }
 
@@ -613,6 +632,10 @@ void VerticalTabStripRegionView::OnCollapsedStateChanged(
           GetLayoutConstant(LayoutConstant::kVerticalTabStripCollapsedPadding),
           padding, 0, padding));
 
+  resize_area_width_ = state_controller->IsCollapsed()
+                           ? kCollapsedResizeAreaWidth
+                           : kResizeAreaWidth;
+
   flex_layout_->SetInteriorMargin(gfx::Insets::TLBR(
       0, 0,
       GetLayoutConstant(LayoutConstant::kVerticalTabStripUncollapsedPadding),
@@ -652,6 +675,19 @@ bool VerticalTabStripRegionView::IsFrameActive() const {
   return GetWidget() ? GetWidget()->ShouldPaintAsActive() : true;
 }
 
+gfx::Rect VerticalTabStripRegionView::GetTabStripDraggableBounds() const {
+  // Tabs should be draggable from the top of the tab strip to the bottom of the
+  // tab strip's max size, saving space for the bottom button container and
+  // padding.
+  gfx::Rect tab_strip_draggable_bounds = tab_strip_view_->GetBoundsInScreen();
+  tab_strip_draggable_bounds.set_height(
+      GetBoundsInScreen().bottom() -
+      bottom_button_container_->GetMinimumSize().height() -
+      flex_layout_->interior_margin().height() -
+      tab_strip_draggable_bounds.y());
+  return tab_strip_draggable_bounds;
+}
+
 void VerticalTabStripRegionView::RecordNewTabButtonPressed() {
   new_tab_button_pressed_start_time_ = base::TimeTicks::Now();
 
@@ -672,7 +708,8 @@ TabDragTarget* VerticalTabStripRegionView::GetTabDragTarget(
   if (!drag_handler_) {
     return nullptr;
   }
-  if (!tab_strip_view_->GetBoundsInScreen().Contains(point_in_screen)) {
+  gfx::Rect tab_strip_draggable_bounds = GetTabStripDraggableBounds();
+  if (!tab_strip_draggable_bounds.Contains(point_in_screen)) {
     return nullptr;
   }
 

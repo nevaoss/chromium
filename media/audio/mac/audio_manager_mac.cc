@@ -2,11 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifdef UNSAFE_BUFFERS_BUILD
-// TODO(crbug.com/40285824): Remove this and convert code to safer constructs.
-#pragma allow_unsafe_buffers
-#endif
-
 #include "media/audio/mac/audio_manager_mac.h"
 
 #include <algorithm>
@@ -20,12 +15,14 @@
 #include "base/apple/osstatus_logging.h"
 #include "base/apple/scoped_cftyperef.h"
 #include "base/command_line.h"
+#include "base/compiler_specific.h"
 #include "base/containers/flat_set.h"
 #include "base/containers/heap_array.h"
 #include "base/functional/bind.h"
 #include "base/mac/mac_util.h"
 #include "base/memory/free_deleter.h"
 #include "base/metrics/histogram_functions.h"
+#include "base/notreached.h"
 #include "base/power_monitor/power_monitor.h"
 #include "base/power_monitor/power_observer.h"
 #include "base/strings/string_split.h"
@@ -35,7 +32,6 @@
 #include "base/threading/thread_checker.h"
 #include "base/time/time.h"
 #include "media/audio/apple/audio_auhal.h"
-#include "media/audio/apple/audio_input.h"
 #include "media/audio/apple/audio_low_latency_input.h"
 #include "media/audio/apple/scoped_audio_unit.h"
 #include "media/audio/audio_device_description.h"
@@ -303,7 +299,7 @@ static bool GetDeviceTotalChannelCount(AudioDeviceID device,
   // If the number is 1, the buffer is noninterleaved.
   *channels = 0;
   for (UInt32 i = 0; i < buffer_list->mNumberBuffers; ++i) {
-    *channels += buffer_list->mBuffers[i].mNumberChannels;
+    *channels += UNSAFE_TODO(buffer_list->mBuffers[i]).mNumberChannels;
   }
 
   DVLOG(1) << __FUNCTION__
@@ -427,7 +423,7 @@ static bool GetOutputDeviceChannelsAndLayout(AudioUnit audio_unit,
   std::vector<Channels> channels_to_match;
   for (UInt32 i = 0; i < device_layout->mNumberChannelDescriptions; i++) {
     AudioChannelLabel label =
-        device_layout->mChannelDescriptions[i].mChannelLabel;
+        UNSAFE_TODO(device_layout->mChannelDescriptions[i]).mChannelLabel;
     if (label == kAudioChannelLabel_Unknown) {
       continue;
     }
@@ -877,11 +873,8 @@ AudioInputStream* AudioManagerMac::MakeLinearInputStream(
     const AudioParameters& params,
     const std::string& device_id,
     const LogCallback& log_callback) {
-  DCHECK(GetTaskRunner()->BelongsToCurrentThread());
-  DCHECK_EQ(AudioParameters::AUDIO_PCM_LINEAR, params.format());
-  AudioInputStream* stream = new PCMQueueInAudioInputStream(this, params);
-  basic_input_streams_.insert(stream);
-  return stream;
+  DUMP_WILL_BE_NOTREACHED();
+  return nullptr;
 }
 
 AudioInputStream* AudioManagerMac::MakeLowLatencyInputStream(

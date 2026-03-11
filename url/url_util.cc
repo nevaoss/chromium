@@ -16,6 +16,7 @@
 #include "base/compiler_specific.h"
 #include "base/no_destructor.h"
 #include "base/strings/string_util.h"
+#include "base/strings/utf_string_conversions.h"
 #include "url/url_canon_internal.h"
 #include "url/url_constants.h"
 #include "url/url_features.h"
@@ -898,7 +899,14 @@ void DecodeUrlEscapeSequences(std::string_view input,
   }
 }
 
-void EncodeURIComponent(std::string_view input, CanonOutput* output) {
+std::string DecodeUrlEscapeSequences(std::string_view input,
+                                     DecodeUrlMode mode) {
+  RawCanonOutputW<1024> output;
+  DecodeUrlEscapeSequences(input, mode, &output);
+  return base::UTF16ToUTF8(output.view());
+}
+
+void EncodeUriComponent(std::string_view input, CanonOutput* output) {
   if (output->capacity() - output->length() < input.length() * 3) {
     size_t required_size = 0;
     for (unsigned char c : input) {

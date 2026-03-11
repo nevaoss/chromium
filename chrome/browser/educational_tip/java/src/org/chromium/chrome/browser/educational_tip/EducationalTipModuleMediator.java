@@ -120,28 +120,37 @@ public class EducationalTipModuleMediator {
 
     /** Called when the educational tip module is visible to users on the magic stack. */
     void onViewCreated() {
+        if (mEducationalTipCardProvider != null) {
+            mEducationalTipCardProvider.onViewCreated();
+        }
+
         if (mModuleType == ModuleType.DEFAULT_BROWSER_PROMO) {
             // For the Setup List version, we notify the system immediately to ensure mutual
             // exclusion with other surfaces (banners on Messages/Settings pages).
             if (SetupListModuleUtils.isSetupListModule(getModuleType())) {
                 notifyDefaultBrowserPromoVisible();
-                return;
-            }
-
-            if (mTracker.isInitialized()) {
-                boolean shouldDisplay =
-                        mTracker.shouldTriggerHelpUi(
-                                FeatureConstants.DEFAULT_BROWSER_PROMO_MAGIC_STACK);
-                if (shouldDisplay) {
-                    notifyDefaultBrowserPromoVisible();
-                }
             } else {
-                notifyDefaultBrowserPromoVisible();
-                mTracker.addOnInitializedCallback(
-                        (T) ->
-                                mTracker.shouldTriggerHelpUi(
-                                        FeatureConstants.DEFAULT_BROWSER_PROMO_MAGIC_STACK));
+                if (mTracker.isInitialized()) {
+                    boolean shouldDisplay =
+                            mTracker.shouldTriggerHelpUi(
+                                    FeatureConstants.DEFAULT_BROWSER_PROMO_MAGIC_STACK);
+                    if (shouldDisplay) {
+                        notifyDefaultBrowserPromoVisible();
+                    }
+                } else {
+                    notifyDefaultBrowserPromoVisible();
+                    mTracker.addOnInitializedCallback(
+                            (T) ->
+                                    mTracker.shouldTriggerHelpUi(
+                                            FeatureConstants.DEFAULT_BROWSER_PROMO_MAGIC_STACK));
+                }
             }
+        }
+
+        if (SetupListModuleUtils.isSetupListModule(mModuleType)) {
+            SetupListModuleUtils.recordSetupListImpression();
+            SetupListModuleUtils.recordSetupListItemImpression(
+                    mModuleType, SetupListModuleUtils.isModuleCompleted(mModuleType));
         }
     }
 
@@ -174,7 +183,10 @@ public class EducationalTipModuleMediator {
                 mCallbackController.makeCancelable(
                         () -> {
                             SetupListModuleUtils.finishCompletionAnimation(mModuleType);
-                            mModuleDelegate.updateModuleRanking(mModuleType);
+                            mModuleDelegate.maybeMoveModuleToTheEnd(mModuleType);
+                            if (SetupListManager.getInstance().shouldShowCelebratoryPromo()) {
+                                mModuleDelegate.refreshModules();
+                            }
                         }),
                 SetupListManager.STRIKETHROUGH_DURATION_MS + SetupListManager.HIDE_DURATION_MS);
     }
@@ -213,7 +225,10 @@ public class EducationalTipModuleMediator {
 
         if (SetupListModuleUtils.isSetupListModule(mModuleType)) {
             // Considered complete if the user clicks on the promo
-            SetupListModuleUtils.setModuleCompleted(mModuleType);
+            SetupListModuleUtils.setModuleCompleted(mModuleType, /* silent= */ false);
+
+            SetupListModuleUtils.recordSetupListClick();
+            SetupListModuleUtils.recordSetupListItemClick(mModuleType);
         }
     }
 

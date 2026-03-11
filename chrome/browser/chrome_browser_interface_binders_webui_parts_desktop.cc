@@ -39,11 +39,11 @@
 #include "chrome/browser/ui/webui/data_sharing/data_sharing_ui.h"
 #include "chrome/browser/ui/webui/downloads/downloads.mojom.h"
 #include "chrome/browser/ui/webui/downloads/downloads_ui.h"
+#include "chrome/browser/ui/webui/feedback/feedback_ui.h"
+#include "chrome/browser/ui/webui/feedback/report_unsafe_site/report_unsafe_site.mojom.h"
 #include "chrome/browser/ui/webui/history/history_ui.h"
 #include "chrome/browser/ui/webui/infobar_internals/infobar_internals.mojom.h"
 #include "chrome/browser/ui/webui/infobar_internals/infobar_internals_ui.h"
-#include "chrome/browser/ui/webui/legion_internals/legion_internals.mojom.h"
-#include "chrome/browser/ui/webui/legion_internals/legion_internals_ui.h"
 #include "chrome/browser/ui/webui/metrics_reporter/metrics_reporter_service.h"
 #include "chrome/browser/ui/webui/new_tab_footer/new_tab_footer.mojom.h"
 #include "chrome/browser/ui/webui/new_tab_footer/new_tab_footer_ui.h"
@@ -62,6 +62,8 @@
 #include "chrome/browser/ui/webui/privacy_sandbox/privacy_sandbox_internals_ui.h"
 #include "chrome/browser/ui/webui/privacy_sandbox/private_state_tokens/private_state_tokens.mojom.h"
 #include "chrome/browser/ui/webui/privacy_sandbox/related_website_sets/related_website_sets.mojom.h"
+#include "chrome/browser/ui/webui/private_ai_internals/private_ai_internals.mojom.h"
+#include "chrome/browser/ui/webui/private_ai_internals/private_ai_internals_ui.h"
 #include "chrome/browser/ui/webui/search_engine_choice/search_engine_choice.mojom.h"  // nogncheck crbug.com/1125897
 #include "chrome/browser/ui/webui/search_engine_choice/search_engine_choice_ui.h"
 #include "chrome/browser/ui/webui/settings/settings_ui.h"
@@ -91,6 +93,7 @@
 #include "chrome/common/chrome_features.h"
 #include "components/autofill/core/browser/ml_model/logging/autofill_ml_internals.mojom.h"
 #include "components/browser_apis/browser_controls/browser_controls_api.mojom.h"
+#include "components/browser_apis/ui_controllers/toolbar/toolbar_ui_api.mojom.h"
 #include "components/commerce/core/mojom/shopping_service.mojom.h"  // nogncheck crbug.com/1125897
 #include "components/contextual_tasks/public/features.h"
 #include "components/data_sharing/public/features.h"
@@ -201,6 +204,10 @@
 #include "components/surface_embed/browser/surface_embed_host.h"
 #include "components/surface_embed/common/features.h"
 #include "components/surface_embed/common/surface_embed.mojom.h"
+#endif
+
+#if BUILDFLAG(ENABLE_GLIC)
+#include "chrome/browser/glic/selection/selection_overlay_untrusted_ui.h"
 #endif
 
 namespace chrome::internal {
@@ -589,8 +596,8 @@ void PopulateChromeWebUIFrameBindersPartsDesktop(
 
   if (base::FeatureList::IsEnabled(private_ai::kPrivateAi)) {
     RegisterWebUIControllerInterfaceBinder<
-        legion_internals::mojom::LegionInternalsPageHandler, LegionInternalsUI>(
-        map);
+        private_ai_internals::mojom::PrivateAiInternalsPageHandler,
+        PrivateAiInternalsUI>(map);
   }
 
   auto* contextual_tasks_context_service =
@@ -622,6 +629,9 @@ void PopulateChromeWebUIFrameBindersPartsDesktop(
         DefaultBrowserModalUI>(map);
   }
 #endif
+
+  RegisterWebUIControllerInterfaceBinder<
+      feedback::report_unsafe_site::mojom::PageHandlerFactory, FeedbackUI>(map);
 }
 
 void PopulateChromeWebUIFrameInterfaceBrokersTrustedPartsDesktop(
@@ -672,6 +682,7 @@ void PopulateChromeWebUIFrameInterfaceBrokersTrustedPartsDesktop(
   if (features::IsWebUIToolbarEnabled()) {
     registry.ForWebUI<WebUIToolbarUI>()
         .Add<browser_controls_api::mojom::BrowserControlsService>()
+        .Add<toolbar_ui_api::mojom::ToolbarUIService>()
         .Add<tracked_element::mojom::TrackedElementHandler>();
   }
 
@@ -710,6 +721,13 @@ void PopulateChromeWebUIFrameInterfaceBrokersUntrustedPartsDesktop(
   registry.ForWebUI<NtpMicrosoftAuthUntrustedUI>()
       .Add<new_tab_page::mojom::
                MicrosoftAuthUntrustedDocumentInterfacesFactory>();
+
+#if BUILDFLAG(ENABLE_GLIC)
+  if (base::FeatureList::IsEnabled(features::kGlicRegionSelectionNew)) {
+    registry.ForWebUI<glic::SelectionOverlayUntrustedUI>()
+        .Add<glic::selection::SelectionOverlayPageHandlerFactory>();
+  }
+#endif
 }
 
 }  // namespace chrome::internal

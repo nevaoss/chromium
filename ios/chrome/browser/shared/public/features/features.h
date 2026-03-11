@@ -887,11 +887,11 @@ BASE_DECLARE_FEATURE(kCloseOtherTabs);
 // Returns true if the CloseOtherTabs feature is enabled.
 bool IsCloseOtherTabsEnabled();
 
-// Enables the AssistantSheet feature.
-BASE_DECLARE_FEATURE(kAssistantSheet);
+// Feature flag to enable the Assistant Container.
+BASE_DECLARE_FEATURE(kAssistantContainer);
 
-// Returns true if the AssistantSheet feature is enabled.
-bool IsAssistantSheetEnabled();
+// Returns true if the Assistant Container is enabled.
+bool IsAssistantContainerEnabled();
 
 // Enables the ComposeboxIpad feature.
 BASE_DECLARE_FEATURE(kComposeboxIpad);
@@ -957,5 +957,11 @@ BASE_DECLARE_FEATURE(kAimCobrowse);
 
 // Returns true if the AimCobrowse feature is enabled.
 bool IsAimCobrowseEnabled();
+
+// Enables the DisableU18FeedbackIos feature.
+BASE_DECLARE_FEATURE(kDisableU18FeedbackIos);
+
+// Returns true if the DisableU18FeedbackIos feature is enabled.
+bool IsDisableU18FeedbackIosEnabled();
 
 #endif  // IOS_CHROME_BROWSER_SHARED_PUBLIC_FEATURES_FEATURES_H_

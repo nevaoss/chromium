@@ -161,6 +161,7 @@ const std::string GetErrorReasonString(
     STRINGIFY(kFailedToInitDCompTextureWrapper);
     STRINGIFY(kFailedToSetPlaybackRate);
     STRINGIFY(kFailedToGetMediaEngineEx);
+    STRINGIFY(kFailedToSetOutputRect);
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
     // "This return value is no longer used, but may occur in older versions of
@@ -1086,6 +1087,8 @@ void MediaFoundationRenderer::SetOutputRect(const gfx::Rect& output_rect,
       !::SetWindowPos(virtual_video_window_, HWND_BOTTOM, output_rect.x(),
                       output_rect.y(), output_rect.width(),
                       output_rect.height(), SWP_NOACTIVATE)) {
+    // DRM_E_TEE_INVALID_HWDRM_STATE error is not expected here since the
+    // SetWindowPos API itself does not interact with video and HWDRM state.
     DLOG(ERROR) << "Failed to SetWindowPos: "
                 << PrintHr(HRESULT_FROM_WIN32(GetLastError()));
     std::move(callback).Run(false);
@@ -1103,7 +1106,15 @@ void MediaFoundationRenderer::SetOutputRect(const gfx::Rect& output_rect,
                      dxgi_device_manager_.Get(), virtual_video_window_);
   }
 
-  if (FAILED(UpdateVideoStream(output_rect.size()))) {
+  HRESULT hr = UpdateVideoStream(output_rect.size());
+  if (FAILED(hr)) {
+    DVLOG_FUNC(1) << "Failed to update video stream: " << PrintHr(hr);
+    if (hr == DRM_E_TEE_INVALID_HWDRM_STATE) {
+      // Fail early to handle hardware context reset cases, which can cause
+      // MediaEngine to enter a bad state and fail all subsequent calls.
+      OnError(PIPELINE_ERROR_HARDWARE_CONTEXT_RESET,
+              ErrorReason::kFailedToSetOutputRect, hr);
+    }
     std::move(callback).Run(false);
     return;
   }
@@ -1367,6 +1378,11 @@ void MediaFoundationRenderer::SetGpuProcessAdapterLuid(
   gpu_process_adapter_luid_ = gpu_process_adapter_luid;
 }
 
+MediaEngineNotifyImpl* MediaFoundationRenderer::GetMediaEngineNotifyForTesting()
+    const {
+  return mf_media_engine_notify_.Get();
+}
+
 base::TimeDelta MediaFoundationRenderer::GetMediaTime() {
 // GetCurrentTime is expanded as GetTickCount in base/win/windows_types.h
 #undef GetCurrentTime
@@ -1577,18 +1593,13 @@ void MediaFoundationRenderer::OnError(PipelineStatus status,
                                       ErrorReason reason,
                                       HRESULT hresult,
                                       PipelineStatusCallback status_cb) {
-  const std::string error =
-      "MediaFoundationRenderer error: " + GetErrorReasonString(reason) + " (" +
-      PrintHr(hresult) + ")";
+  if (had_error_) {
+    DVLOG_FUNC(1) << "Error already reported, ignore all subsequent errors!";
+    CHECK(!status_cb);
+    return;
+  }
 
-  DLOG(ERROR) << error;
-
-  // Report to MediaLog so the error will show up in media internals and
-  // MediaError.message.
-  MEDIA_LOG(ERROR, media_log_) << error;
-
-  // Report the error to UMA.
-  ReportErrorReason(reason);
+  had_error_ = true;
 
   // DRM_E_TEE_INVALID_HWDRM_STATE can happen during OS sleep/resume, or moving
   // video to different graphics adapters. This is not an error, so special case
@@ -1606,6 +1617,20 @@ void MediaFoundationRenderer::OnError(PipelineStatus status,
       hresult = DRM_E_TEE_INVALID_HWDRM_STATE;
     }
   }
+
+  // Log the error with details after adjusting the error code.
+  const std::string error =
+      "MediaFoundationRenderer error: " + GetErrorReasonString(reason) + " (" +
+      PrintHr(hresult) + ")";
+
+  DLOG(ERROR) << error;
+
+  // Report to MediaLog so the error will show up in media internals and
+  // MediaError.message.
+  MEDIA_LOG(ERROR, media_log_) << error;
+
+  // Report the error to UMA.
+  ReportErrorReason(reason);
 
   if (hresult == DRM_E_TEE_INVALID_HWDRM_STATE) {
     // TODO(crbug.com/40870069): Remove these after the investigation is done.

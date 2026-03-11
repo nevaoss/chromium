@@ -22,6 +22,16 @@ chromium-metrics-reviews@google.com.
 
 <histograms>
 
+<variants name="DomStorageBackingStoreLifetime">
+  <variant name="InMemory" summary="in-memory database"/>
+  <variant name="OnDisk" summary="on-disk database"/>
+</variants>
+
+<variants name="DomStorageType">
+  <variant name="LocalStorage" summary="local storage"/>
+  <variant name="SessionStorage" summary="session storage"/>
+</variants>
+
 <variants name="IndexedDBBackingStoreType">
   <variant name="InMemory"/>
   <variant name="OnDisk"/>
@@ -138,20 +148,6 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="API.StorageAccess.RequestStorageAccess2"
-    enum="RequestStorageResult" expires_after="2026-03-22">
-  <owner>mkwst@chromium.org</owner>
-  <owner>cfredric@chromium.org</owner>
-  <owner>brandm@microsoft.com</owner>
-  <summary>
-    Records requests to use document.requestStorageAccess and reasons the
-    request may be approved or rejected.
-
-    Recorded by the renderer exactly once for each invocation of
-    document.requestStorageAccess.
-  </summary>
-</histogram>
-
 <histogram name="API.StorageAccessHeader.ActivateStorageAccessLoadOutcome"
     enum="ActivateStorageAccessLoadOutcome" expires_after="2027-01-04">
   <owner>sledoux@chromium.org</owner>
@@ -181,19 +177,6 @@ chromium-metrics-reviews@google.com.
 
     Recorded for each HTTP response received that contains a
     `Activate-Storage-Access` header with a well-formed retry value.
-  </summary>
-</histogram>
-
-<histogram name="API.StorageAccessHeader.SecFetchStorageAccessOutcome"
-    enum="SecFetchStorageAccessOutcome" expires_after="2026-03-22">
-  <owner>sledoux@chromium.org</owner>
-  <owner>cfredric@chromium.org</owner>
-  <summary>
-    Records the outcome of appending the Sec-Fetch-Storage-Access header to an
-    outgoing network request. If no header was appended, this records the reason
-    why not; if a header was appended, this records the value that was appended.
-
-    Recorded whenever an HTTP request is sent to a potentially trustworthy URL.
   </summary>
 </histogram>
 
@@ -338,6 +321,7 @@ chromium-metrics-reviews@google.com.
     <variant name="PutRecord"/>
     <variant name="RenameIndex"/>
     <variant name="RenameObjectStore"/>
+    <variant name="RunIdleTasks"/>
     <variant name="SetIndexKeys"/>
   </token>
 </histogram>
@@ -529,6 +513,23 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram
+    name="IndexedDB.IdleTasksCompletionToNextActivity.{IndexedDBBackingStoreType}"
+    units="ms" expires_after="2026-10-01">
+  <owner>leimy@chromium.org</owner>
+  <owner>evanstade@microsoft.com</owner>
+  <owner>abhishek.shanthkumar@microsoft.com</owner>
+  <owner>chrome-owp-storage@google.com</owner>
+  <summary>
+    The time between the completion of idle maintenance tasks and the next
+    client-initiated activity in a bucket with an {IndexedDBBackingStoreType}
+    backing store. Logged when the first activity occurs after idle tasks were
+    scheduled and completed. Used to evaluate whether the idle timeout is
+    well-tuned: very small values indicate the timeout may be too short and
+    maintenance is delaying active work.
+  </summary>
+</histogram>
+
 <histogram name="IndexedDB.LargeValueReadResult" enum="FileErrorCode"
     expires_after="2026-05-24">
   <owner>leimy@chromium.org</owner>
@@ -680,6 +681,18 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="IndexedDB.NumPendingConnections.RequestQueueSize"
+    units="connections" expires_after="2026-08-02">
+  <owner>etienneb@chromium.org</owner>
+  <owner>fdoray@chromium.org</owner>
+  <owner>catan-team@chromium.org</owner>
+  <summary>
+    Number of content::indexed_db::PendingConnection objects pending in the
+    ConnectionCoordinator request queue. Will be used to diagnose
+    crbug.com/381086791.
+  </summary>
+</histogram>
+
 <histogram
     name="IndexedDB.NumTransactionsInIDBDatabaseOnTransactionCreated.10kTransactions"
     units="transactions" expires_after="2026-08-02">
@@ -761,6 +774,19 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="IndexedDB.SQLite.FreelistPercentageAtClose" units="%"
+    expires_after="2026-09-01">
+  <owner>leimy@chromium.org</owner>
+  <owner>evanstade@microsoft.com</owner>
+  <owner>abhishek.shanthkumar@microsoft.com</owner>
+  <owner>chrome-owp-storage@google.com</owner>
+  <summary>
+    The percentage of pages in the SQLite database that are on the freelist
+    (unused) at the time the database connection is closed. Logged once per
+    on-disk database close.
+  </summary>
+</histogram>
+
 <histogram name="IndexedDB.SQLite.OpenRetryResult" enum="IndexedDbStatusType"
     expires_after="2026-10-01">
   <owner>leimy@chromium.org</owner>
@@ -769,6 +795,17 @@ chromium-metrics-reviews@google.com.
   <summary>
     Logs the result when the SQLite backing store automatically retries opening
     a DB after the first attempt fails. This only happens for on-disk DBs.
+  </summary>
+</histogram>
+
+<histogram name="IndexedDB.SQLite.OpenToReadMetadataResult"
+    enum="IndexedDbStatusType" expires_after="2026-10-01">
+  <owner>leimy@chromium.org</owner>
+  <owner>evanstade@microsoft.com</owner>
+  <owner>chrome-owp-storage@google.com</owner>
+  <summary>
+    Logs the result when the SQLite backing store opens a DB for the sole
+    purpose of reading metadata (i.e. name and version).
   </summary>
 </histogram>
 
@@ -823,6 +860,20 @@ chromium-metrics-reviews@google.com.
     <variant name="InMemory"/>
     <variant name="OnDisk"/>
   </token>
+</histogram>
+
+<histogram name="IndexedDB.SQLite.VacuumEvent"
+    enum="IndexedDbSqliteVacuumEvent" expires_after="2026-09-01">
+  <owner>leimy@chromium.org</owner>
+  <owner>evanstade@microsoft.com</owner>
+  <owner>abhishek.shanthkumar@microsoft.com</owner>
+  <owner>chrome-owp-storage@google.com</owner>
+  <summary>
+    Tracks the vacuum funnel for SQLite-backed IndexedDB databases. The first
+    event is logged when a database is closed and the conditions for vacuuming
+    are met. Multiple events may be logged subsequently as the funnel
+    progresses.
+  </summary>
 </histogram>
 
 <histogram name="IndexedDB.SqliteMigration.RenameBlobResult"
@@ -1032,16 +1083,6 @@ chromium-metrics-reviews@google.com.
     Profile. This is reported when the DomStorageContextWrapper is created in
     the Browser process and binds the LocalStorage endpoint in the Storage
     process.
-  </summary>
-</histogram>
-
-<histogram name="LocalStorage.DatabaseOpen" enum="LevelDBStatus"
-    expires_after="2026-09-22">
-  <owner>arichiv@chromium.org</owner>
-  <owner>tamartol@microsoft.com</owner>
-  <summary>
-    Emitted when the local storage database fails to open. Using to investigate
-    distribution of various types of local storage corruption.
   </summary>
 </histogram>
 
@@ -2868,6 +2909,34 @@ chromium-metrics-reviews@google.com.
     user did not click on the positive button before the bubble is closed
     (either manually closed or when the browser closes).
   </summary>
+</histogram>
+
+<histogram
+    name="Storage.{DomStorageType}.{Operation}.{DomStorageBackingStoreLifetime}"
+    enum="DomStorageDbStatusType" expires_after="2027-02-10">
+  <owner>leimy@chromium.org</owner>
+  <owner>fergal@chromium.org</owner>
+  <owner>rahsin@microsoft.com</owner>
+  <owner>chrome-owp-storage@google.com</owner>
+  <summary>
+    Records the database status result for {Operation} operations in
+    {DomStorageType} using {DomStorageBackingStoreLifetime} database. This helps
+    track the success and failure rates of database operations calculated using
+    the OK and non-OK results. The non-OK results are not comparable across
+    backends. For OpenDatabase, any non-OK result leads to the database getting
+    clobbered.
+  </summary>
+  <token key="Operation">
+    <variant name="CloneMap"/>
+    <variant name="DeleteSessions"/>
+    <variant name="DeleteStorageKeysFromSession"/>
+    <variant name="OpenDatabase"/>
+    <variant name="PurgeOrigins"/>
+    <variant name="PutMetadata"/>
+    <variant name="ReadAllMetadata"/>
+    <variant name="ReadMapKeyValues"/>
+    <variant name="UpdateMaps"/>
+  </token>
 </histogram>
 
 </histograms>

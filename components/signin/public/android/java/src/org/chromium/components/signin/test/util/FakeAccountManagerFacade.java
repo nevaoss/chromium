@@ -4,6 +4,8 @@
 
 package org.chromium.components.signin.test.util;
 
+import static org.chromium.build.NullUtil.assertNonNull;
+
 import android.accounts.Account;
 import android.accounts.AccountManager;
 import android.app.Activity;
@@ -20,6 +22,7 @@ import org.chromium.base.ContextUtils;
 import org.chromium.base.Log;
 import org.chromium.base.Promise;
 import org.chromium.base.ThreadUtils;
+import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.components.signin.AccountManagerFacade;
 import org.chromium.components.signin.AccountManagerFacadeProvider;
@@ -46,6 +49,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
 /** FakeAccountManagerFacade is an {@link AccountManagerFacade} stub intended for testing. */
+@NullMarked
 public class FakeAccountManagerFacade implements AccountManagerFacade {
     /**
      * Can be closed to unblock updates to the list of accounts. See {@link
@@ -127,7 +131,7 @@ public class FakeAccountManagerFacade implements AccountManagerFacade {
             new Intent(ContextUtils.getApplicationContext(), AddAccountActivityStub.class);
 
     /** The account that will be added by AddAccountActivityStub. */
-    private AccountInfo mAccountToAdd;
+    private @Nullable AccountInfo mAccountToAdd;
 
     /** Used as the result of {@link #didAccountFetchSucceed()}. */
     private boolean mDidAccountFetchingSucceed = true;
@@ -270,34 +274,30 @@ public class FakeAccountManagerFacade implements AccountManagerFacade {
     public void checkIsSubjectToParentalControls(
             CoreAccountInfo coreAccountInfo, ChildAccountStatusListener listener) {
 
+        final AccountCapabilities accountCapabilities;
         if (!SigninFeatureMap.sMigrateAccountManagerDelegate.isEnabled()) {
             AccountHolder accountHolder = getAccountHolder(coreAccountInfo.getId());
-            if (accountHolder.getAccountCapabilities().isSubjectToParentalControls()
-                    == Tribool.TRUE) {
-                listener.onStatusReady(true, coreAccountInfo);
-            } else {
-                listener.onStatusReady(false, /* childAccount= */ null);
-            }
-            return;
+            accountCapabilities = assertNonNull(accountHolder).getAccountCapabilities();
+        } else {
+            FakePlatformAccount account = getPlatformAccount(coreAccountInfo.getGaiaId());
+            accountCapabilities = assertNonNull(account).getAccountInfo().getAccountCapabilities();
         }
 
-        FakePlatformAccount account = getPlatformAccount(coreAccountInfo.getGaiaId());
-        if (account.getAccountInfo().getAccountCapabilities().isSubjectToParentalControls()
-                == Tribool.TRUE) {
-            listener.onStatusReady(true, coreAccountInfo);
-        } else {
-            listener.onStatusReady(false, /* childAccount= */ null);
-        }
+        boolean isChild = accountCapabilities.isSubjectToParentalControls() == Tribool.TRUE;
+        // Emulate the same behavior as production code and post on the UI thread.
+        ThreadUtils.postOnUiThread(
+                () -> listener.onStatusReady(isChild, isChild ? coreAccountInfo : null));
     }
 
     @Override
     public Promise<AccountCapabilities> getAccountCapabilities(CoreAccountInfo coreAccountInfo) {
         if (!SigninFeatureMap.sMigrateAccountManagerDelegate.isEnabled()) {
-            AccountHolder accountHolder = getAccountHolder(coreAccountInfo.getId());
+            AccountHolder accountHolder = assertNonNull(getAccountHolder(coreAccountInfo.getId()));
             return Promise.fulfilled(accountHolder.getAccountCapabilities());
         }
 
-        FakePlatformAccount account = getPlatformAccount(coreAccountInfo.getGaiaId());
+        FakePlatformAccount account =
+                assertNonNull(getPlatformAccount(coreAccountInfo.getGaiaId()));
         return Promise.fulfilled(account.getAccountInfo().getAccountCapabilities());
     }
 
@@ -312,7 +312,10 @@ public class FakeAccountManagerFacade implements AccountManagerFacade {
             CoreAccountInfo accountInfo, Activity activity, @Nullable Callback<Boolean> callback) {}
 
     @Override
-    public void confirmCredentials(Account account, Activity activity, Callback<Bundle> callback) {
+    public void confirmCredentials(
+            CoreAccountId accountId,
+            @Nullable Activity activity,
+            Callback<@Nullable Bundle> callback) {
         callback.onResult(new Bundle());
     }
 
@@ -511,18 +514,6 @@ public class FakeAccountManagerFacade implements AccountManagerFacade {
     }
 
     /**
-     * @deprecated Please use {@link #blockGetAccounts()} or {@link
-     *     #blockGetAccountsAndPopulateCache()} below.
-     */
-    @Deprecated
-    public UpdateBlocker blockGetAccounts(boolean populateCache) {
-        if (populateCache) {
-            return blockGetAccountsAndPopulateCache();
-        }
-        return blockGetAccounts();
-    }
-
-    /**
      * Blocks updates to the account lists returned by and {@link #getAccounts}. After this method
      * is called, subsequent calls to {@link #getAccounts} will return promises that won't be
      * updated until the returned {@link AutoCloseable} is closed. Any account addition/removal
@@ -685,13 +676,13 @@ public class FakeAccountManagerFacade implements AccountManagerFacade {
         assert accountId != null;
         boolean capabilitiesChanged;
         if (SigninFeatureMap.sMigrateAccountManagerDelegate.isEnabled()) {
-            FakePlatformAccount account = getPlatformAccount(accountId.getId());
+            FakePlatformAccount account = assertNonNull(getPlatformAccount(accountId.getId()));
             capabilitiesChanged =
                     account.getAccountInfo()
                             .getAccountCapabilities()
                             .updateWith(accountCapabilities);
         } else {
-            AccountHolder accountHolder = getAccountHolder(accountId);
+            AccountHolder accountHolder = assertNonNull(getAccountHolder(accountId));
             capabilitiesChanged =
                     accountHolder.getAccountCapabilities().updateWith(accountCapabilities);
         }

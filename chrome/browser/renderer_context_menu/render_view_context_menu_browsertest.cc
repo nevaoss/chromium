@@ -64,6 +64,8 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/exclusive_access/exclusive_access_manager.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
+#include "chrome/browser/ui/side_panel/side_panel_entry_id.h"
+#include "chrome/browser/ui/side_panel/side_panel_ui.h"
 #include "chrome/browser/ui/startup/startup_types.h"
 #include "chrome/browser/ui/tabs/public/tab_features.h"
 #include "chrome/browser/ui/tabs/split_tab_metrics.h"
@@ -71,8 +73,6 @@
 #include "chrome/browser/ui/toasts/toast_controller.h"
 #include "chrome/browser/ui/toasts/toast_features.h"
 #include "chrome/browser/ui/ui_features.h"
-#include "chrome/browser/ui/views/side_panel/side_panel_entry_id.h"
-#include "chrome/browser/ui/views/side_panel/side_panel_ui.h"
 #include "chrome/browser/ui/web_applications/test/web_app_browsertest_util.h"
 #include "chrome/browser/web_applications/os_integration/os_integration_manager.h"
 #include "chrome/browser/web_applications/test/os_integration_test_override_impl.h"
@@ -466,18 +466,14 @@ class ContextMenuBrowserTest
     if (IsPreviewEnabled()) {
       scoped_feature_list_.InitWithFeatures(
           {blink::features::kLinkPreview,
-#if BUILDFLAG(ENABLE_GLIC)
            features::kGlic,
-#endif  // BUILDFLAG(ENABLE_GLIC)
            media::kContextMenuSaveVideoFrameAs,
            media::kContextMenuSearchForVideoFrame},
           {omnibox::kWebUIOmniboxPopup});
     } else {
       scoped_feature_list_.InitWithFeatures(
           {
-#if BUILDFLAG(ENABLE_GLIC)
               features::kGlic,
-#endif  // BUILDFLAG(ENABLE_GLIC)
               media::kContextMenuSaveVideoFrameAs,
               media::kContextMenuSearchForVideoFrame},
           {blink::features::kLinkPreview, omnibox::kWebUIOmniboxPopup});

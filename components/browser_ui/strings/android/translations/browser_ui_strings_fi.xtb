@@ -183,7 +183,7 @@ Lisäsuojaus ohjaa näitä Chromen asetuksia:
 <translation id="2713106313042589954">Sammuta kamera</translation>
 <translation id="2717722538473713889">Sähköpostiosoitteet</translation>
 <translation id="2726059656860238749">Käynnistä Chrome niin, että omniboxi on tarkennettuna, jolloin käynnistysaika on lyhyempi edullisemmilla laitteilla.</translation>
-<translation id="2750481671343847896">Sivustot voivat näyttää henkilöllisyyspalveluiden sisäänkirjautumiskehotteita.</translation>
+<translation id="2750481671343847896">Sivustot voivat näyttää identiteettipalveluiden sisäänkirjautumiskehotteita.</translation>
 <translation id="2787357173144933081">Omniboxin pikakäynnistys</translation>
 <translation id="2789132527330338807">Sivustot voivat pyytää lupaa luoda 3D-kartan ympäristöstäsi tai seurata kameran asentoa</translation>
 <translation id="2790501146643349491">Kun tämä on päällä, äskettäin suljetut sivustot voivat viimeistellä datan lähettämistä tai vastaanottamista. Kun tämä ei ole päällä, äskettäin suljetut sivustot eivät voi viimeistellä datan lähettämistä tai vastaanottamista.</translation>
@@ -193,6 +193,7 @@ Lisäsuojaus ohjaa näitä Chromen asetuksia:
 <translation id="2802908157808345702">Älä salli sivustojen lähettää ponnahdusikkunoita ja käyttää uudelleenohjauksia</translation>
 <translation id="2814830417943086299">Chrome näyttää nyt äskettäiset välilehdet laitteen sovelluslistalla ja hakutuloksissa. Voit laittaa tämän pois päältä milloin tahansa Chromen asetuksista.</translation>
 <translation id="2822354292072154809">Haluatko varmasti nollata kaikki sivuston käyttöoikeudet (<ph name="CHOSEN_OBJECT_NAME" />)?</translation>
+<translation id="2848335882304088250">Saat nyt enemmän irti Chromesta laitteella.</translation>
 <translation id="2850913818900871965">Pyydä mobiilinäkymää</translation>
 <translation id="2870560284913253234">Sivusto</translation>
 <translation id="2874939134665556319">Edellinen kappale</translation>
@@ -211,6 +212,7 @@ Lisäsuojaus ohjaa näitä Chromen asetuksia:
 <translation id="3065787901655140044">Lisäsuojaus on päällä</translation>
 <translation id="3069226013421428034">Salli kolmannen osapuolen sisäänkirjautuminen tietylle sivustolle.</translation>
 <translation id="310297983047869047">Edellinen dia</translation>
+<translation id="3108122610701115301">Aseta oletukseksi</translation>
 <translation id="3109724472072898302">Tiivistetty</translation>
 <translation id="310979712355504754">Poista kaikki</translation>
 <translation id="311394601889664316">Älä salli sivustojen muokata laitteen tiedostoja tai kansioita</translation>
@@ -458,7 +460,7 @@ Lisäsuojaus ohjaa näitä Chromen asetuksia:
 <translation id="5690795753582697420">Kamera laitettiin pois päältä Androidin asetuksista</translation>
 <translation id="5700761515355162635">Kolmannen osapuolen evästeet sallittu</translation>
 <translation id="5706552988683188916">Tämä poistaa evästeet ja muun sivustodatan täällä: <ph name="WEBSITE" /></translation>
-<translation id="571222594670061844">Sivustot voivat näyttää henkilöllisyyspalveluiden sisäänkirjautumiskehotteita</translation>
+<translation id="571222594670061844">Sivustot voivat näyttää identiteettipalveluiden sisäänkirjautumiskehotteita</translation>
 <translation id="5740126560802162366">Sivustot voivat tallentaa dataa laitteellesi</translation>
 <translation id="5743425052258407233">Historia löytyy kaikilta laitteilta, joten voit helposti jatkaa siitä, mihin jäit</translation>
 <translation id="5749158352074143502">Jatka tällä välilehdellä</translation>
@@ -479,7 +481,7 @@ Lisäsuojaus ohjaa näitä Chromen asetuksia:
 <translation id="5860491529813859533">Ota käyttöön</translation>
 <translation id="5876056640971328065">Keskeytä video</translation>
 <translation id="5877248419911025165">Tiivistä kaikki pyynnöt</translation>
-<translation id="5878945009165002849">Estä henkilöllisyyspalveluiden sisäänkirjautumiskehotteet</translation>
+<translation id="5878945009165002849">Estä identiteettipalveluiden sisäänkirjautumiskehotteet</translation>
 <translation id="588258955323874662">Koko näyttö</translation>
 <translation id="5884085660368669834">Sivustotoivomus</translation>
 <translation id="5887687176710214216">Avattu viimeksi eilen</translation>
@@ -560,7 +562,7 @@ Lisäsuojaus ohjaa näitä Chromen asetuksia:
 <translation id="6689172468748959065">Profiilikuvat</translation>
 <translation id="6697925417670533197">Aktiiviset lataukset</translation>
 <translation id="6709432001666529933">Kysy, saavatko sivustot seurata käsiäsi (suositus)</translation>
-<translation id="6722828510648505498">Estä henkilöllisyyspalveluiden sisäänkirjautumiskehotteet.</translation>
+<translation id="6722828510648505498">Estä identiteettipalveluiden sisäänkirjautumiskehotteet.</translation>
 <translation id="6746124502594467657">Siirrä alas</translation>
 <translation id="6749077623962119521">Nollataanko luvat?</translation>
 <translation id="6766622839693428701">Sulje pyyhkäisemällä alas.</translation>

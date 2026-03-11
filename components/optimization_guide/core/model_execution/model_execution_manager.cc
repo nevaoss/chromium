@@ -214,14 +214,16 @@ void ModelExecutionManager::ExecuteModel(
     fetchers_for_feature.erase(fetchers_for_feature.begin());
   }
   FetcherId fetcher_id = next_model_execution_fetcher_id++;
-  // Currently only ZSS is supported by legion. Update or remove this CHECK when
-  // other features are supported too.
+  // Currently only ZSS is supported by PrivateAI. Update or remove this CHECK
+  // when other features are supported too.
   CHECK(service_type != ModelExecutionServiceType::kPrivateAi ||
         feature == ModelBasedCapabilityKey::kZeroStateSuggestions)
       << feature;
   base::TimeTicks start_time = base::TimeTicks::Now();
-  auto fetcher_it = fetchers_for_feature.emplace(
-      fetcher_id, CreateModelExecutionFetcher(service_type));
+  auto fetcher = CreateModelExecutionFetcher(service_type);
+  CHECK(fetcher);
+  auto fetcher_it =
+      fetchers_for_feature.emplace(fetcher_id, std::move(fetcher));
   fetcher_it.first->second->ExecuteModel(
       feature, identity_manager_, request_metadata, timeout,
       base::BindOnce(&ModelExecutionManager::OnModelExecuteResponse,
@@ -240,7 +242,7 @@ ModelExecutionManager::CreateModelExecutionFetcher(
           optimization_guide_logger_);
     case ModelExecutionServiceType::kPrivateAi:
       CHECK(delegate_);
-      return delegate_->CreateLegionFetcher();
+      return delegate_->CreatePrivateAiFetcher();
   }
 }
 

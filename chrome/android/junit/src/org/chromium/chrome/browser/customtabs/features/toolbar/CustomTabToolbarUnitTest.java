@@ -64,8 +64,6 @@ import org.mockito.junit.MockitoRule;
 import org.robolectric.Robolectric;
 import org.robolectric.Shadows;
 import org.robolectric.annotation.Config;
-import org.robolectric.annotation.LooperMode;
-import org.robolectric.annotation.LooperMode.Mode;
 import org.robolectric.shadows.ShadowLooper;
 
 import org.chromium.base.Callback;
@@ -74,6 +72,7 @@ import org.chromium.base.UserDataHost;
 import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.SettableMonotonicObservableSupplier;
 import org.chromium.base.test.BaseRobolectricTestRunner;
+import org.chromium.base.test.RobolectricUtil;
 import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.base.test.util.HistogramWatcher;
@@ -129,7 +128,6 @@ import java.util.function.BooleanSupplier;
 @Config(
         manifest = Config.NONE,
         shadows = {ShadowLooper.class})
-@LooperMode(Mode.PAUSED)
 @DisableFeatures(ChromeFeatureList.CCT_TOOLBAR_REFACTOR)
 public class CustomTabToolbarUnitTest {
     private static final GURL TEST_URL = JUnitTestGURLs.INITIAL_URL;
@@ -227,7 +225,7 @@ public class CustomTabToolbarUnitTest {
                 null,
                 null,
                 null,
-                /* homeButtonDisplay= */ null,
+                /* homeButtonCoordinator= */ null,
                 mThemeColorProvider,
                 mIncognitoStateProvider,
                 /* incognitoWindowCountSupplier= */ null);
@@ -380,7 +378,7 @@ public class CustomTabToolbarUnitTest {
     @Test
     public void testAboutBlankUrlIsShown() {
         setUpForAboutBlank();
-        ShadowLooper.idleMainLooper();
+        RobolectricUtil.runAllBackgroundAndUi();
         mLocationBar.onUrlChanged(false);
         assertEquals("The url bar should be visible.", View.VISIBLE, mUrlBar.getVisibility());
         assertEquals(
@@ -393,7 +391,7 @@ public class CustomTabToolbarUnitTest {
     public void testTitleIsHiddenForAboutBlank() {
         setUpForAboutBlank();
         mLocationBar.setShowTitle(true);
-        ShadowLooper.idleMainLooper();
+        RobolectricUtil.runAllBackgroundAndUi();
         mLocationBar.onUrlChanged(false);
         assertEquals("The title should be gone.", View.GONE, mTitleBar.getVisibility());
     }
@@ -402,7 +400,7 @@ public class CustomTabToolbarUnitTest {
     public void testCannotHideUrlForAboutBlank() {
         setUpForAboutBlank();
         mLocationBar.setUrlBarHidden(true);
-        ShadowLooper.idleMainLooper();
+        RobolectricUtil.runAllBackgroundAndUi();
         mLocationBar.onUrlChanged(false);
         assertEquals("The url bar should be visible.", View.VISIBLE, mUrlBar.getVisibility());
         assertEquals(

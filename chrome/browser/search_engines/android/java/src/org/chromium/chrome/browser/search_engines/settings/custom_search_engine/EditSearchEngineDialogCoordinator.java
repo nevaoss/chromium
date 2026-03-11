@@ -36,7 +36,7 @@ public class EditSearchEngineDialogCoordinator {
 
     public void show(TemplateUrl templateUrl) {
         LayoutInflater inflater = LayoutInflater.from(mContext);
-        View view = inflater.inflate(R.layout.edit_site_search_dialog, null);
+        View view = inflater.inflate(R.layout.site_search_dialog, null);
         EditText nameInput = view.findViewById(R.id.name_input);
         EditText shortcutInput = view.findViewById(R.id.shortcut_input);
         EditText urlInput = view.findViewById(R.id.url_input);

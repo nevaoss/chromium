@@ -9,9 +9,11 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import static org.chromium.chrome.browser.autofill.editors.common.EditorComponentsProperties.ItemType.DATE;
 import static org.chromium.chrome.browser.autofill.editors.common.EditorComponentsProperties.ItemType.DROPDOWN;
 import static org.chromium.chrome.browser.autofill.editors.common.EditorComponentsProperties.ItemType.NOTICE;
 import static org.chromium.chrome.browser.autofill.editors.common.EditorComponentsProperties.ItemType.TEXT_INPUT;
@@ -36,7 +38,6 @@ import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.mockito.quality.Strictness;
@@ -45,6 +46,7 @@ import org.robolectric.annotation.Config;
 
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.Batch;
+import org.chromium.base.test.util.HistogramWatcher;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.autofill.AutofillProfileBridge;
 import org.chromium.chrome.browser.autofill.AutofillProfileBridgeJni;
@@ -100,18 +102,33 @@ public class EntityEditorModuleTest {
                     /* typeNameAsString= */ "Passport number",
                     /* dataType= */ DataType.STRING,
                     /* fieldType= */ FieldType.PASSPORT_NUMBER);
+    private static final AttributeType PASSPORT_ISSUE_DATE_TYPE =
+            new AttributeType(
+                    /* typeName= */ AttributeTypeName.PASSPORT_ISSUE_DATE,
+                    /* typeNameAsString= */ "Issue date",
+                    /* dataType= */ DataType.DATE,
+                    /* fieldType= */ FieldType.PASSPORT_ISSUE_DATE);
+    private static final AttributeType PASSPORT_EXPIRATION_DATE_TYPE =
+            new AttributeType(
+                    /* typeName= */ AttributeTypeName.PASSPORT_EXPIRATION_DATE,
+                    /* typeNameAsString= */ "Expiration date",
+                    /* dataType= */ DataType.DATE,
+                    /* fieldType= */ FieldType.PASSPORT_EXPIRATION_DATE);
     private static final EntityType PASSPORT_TYPE =
             new EntityType(
                     /* typeName= */ EntityTypeName.PASSPORT,
                     /* isReadOnly= */ false,
                     /* typeNameAsString= */ "Passport",
+                    /* typeNameAsMetricsString= */ "Passport",
                     /* addEntityTypeString= */ "Add passport",
                     /* editEntityTypeString= */ "Edit passport",
                     /* deleteEntityTypeString= */ "Delete passport",
                     /* attributeTypes= */ List.of(
                             PASSPORT_NAME_ATTRIBUTE_TYPE,
                             PASSPORT_COUNTRY_ATTRIBUTE_TYPE,
-                            PASSPORT_NUMBER_ATTRIBUTE_TYPE));
+                            PASSPORT_NUMBER_ATTRIBUTE_TYPE,
+                            PASSPORT_ISSUE_DATE_TYPE,
+                            PASSPORT_EXPIRATION_DATE_TYPE));
 
     private static final EntityInstance LOCAL_PASSPORT =
             new EntityInstance.Builder(PASSPORT_TYPE)
@@ -122,6 +139,17 @@ public class EntityEditorModuleTest {
                     .addAttribute(
                             new AttributeInstance(
                                     PASSPORT_NUMBER_ATTRIBUTE_TYPE, /* value= */ "AA123456"))
+                    .addAttribute(
+                            new AttributeInstance(
+                                    PASSPORT_ISSUE_DATE_TYPE, /* value= */ "2026-02-15"))
+                    .build();
+
+    private static final EntityInstance NEW_LOCAL_PASSPORT =
+            new EntityInstance.Builder(PASSPORT_TYPE)
+                    .setGUID("")
+                    .setRecordType(RecordType.LOCAL)
+                    .setModifiedDate(LocalDate.now(ZoneId.systemDefault()))
+                    .setUseCount(0)
                     .build();
 
     private static final EntityInstance WALLET_PASSPORT =
@@ -165,7 +193,6 @@ public class EntityEditorModuleTest {
 
     @Before
     public void setUp() {
-        MockitoAnnotations.openMocks(this);
 
         IdentityServicesProvider.setIdentityManagerForTesting(mIdentityManager);
         when(mAutofillProfileBridgeJni.getSupportedCountries()).thenReturn(mSupportedCountries);
@@ -177,11 +204,21 @@ public class EntityEditorModuleTest {
 
     @Test
     @SmallTest
-    public void testShowEditorDialog() {
+    public void testShowEditorDialogForNewEntity() {
+        when(mPersonalDataManager.getDefaultCountryCodeForNewAddress()).thenReturn("US");
+        showEditorDialog(NEW_LOCAL_PASSPORT);
+        EditorDialogToolbar toolbar = mContainerView.findViewById(R.id.action_bar);
+        assertEquals(PASSPORT_TYPE.getAddEntityTypeString(), toolbar.getTitle());
+        assertTrue(mCoordinator.getEditorModelForTest().get(EntityEditorProperties.VISIBLE));
+    }
+
+    @Test
+    @SmallTest
+    public void testShowEditorDialogForExistingEntity() {
         when(mPersonalDataManager.getDefaultCountryCodeForNewAddress()).thenReturn("US");
         showEditorDialog(LOCAL_PASSPORT);
         EditorDialogToolbar toolbar = mContainerView.findViewById(R.id.action_bar);
-        assertEquals(PASSPORT_TYPE.getAddEntityTypeString(), toolbar.getTitle());
+        assertEquals(PASSPORT_TYPE.getEditEntityTypeString(), toolbar.getTitle());
         assertTrue(mCoordinator.getEditorModelForTest().get(EntityEditorProperties.VISIBLE));
     }
 
@@ -212,7 +249,44 @@ public class EntityEditorModuleTest {
                 model.get(EntityEditorProperties.DELETE_CONFIRMATION_PRIMARY_BUTTON_TEXT_ID),
                 R.string.autofill_delete_suggestion_button);
 
-        model.get(EntityEditorProperties.DELETE_RUNNABLE).run();
+        HistogramWatcher deletionCancelledHistogramWatcher =
+                HistogramWatcher.newBuilder()
+                        .expectBooleanRecordTimes(
+                                EntityEditorMediator.ENTITY_DELETED_HISTOGRAM
+                                        + LOCAL_PASSPORT
+                                                .getEntityType()
+                                                .getTypeNameAsMetricsString(),
+                                /* value= */ true,
+                                /* times= */ 1)
+                        .expectBooleanRecordTimes(
+                                EntityEditorMediator.ENTITY_DELETED_SETTINGS_HISTOGRAM
+                                        + LOCAL_PASSPORT
+                                                .getEntityType()
+                                                .getTypeNameAsMetricsString(),
+                                /* value= */ true,
+                                /* times= */ 1)
+                        .build();
+        model.get(EntityEditorProperties.DELETE_CALLBACK).onResult(false);
+        verify(mDelegate, never()).onDelete(LOCAL_PASSPORT);
+
+        HistogramWatcher deletionConfirmedHistogramWatcher =
+                HistogramWatcher.newBuilder()
+                        .expectBooleanRecordTimes(
+                                EntityEditorMediator.ENTITY_DELETED_HISTOGRAM
+                                        + LOCAL_PASSPORT
+                                                .getEntityType()
+                                                .getTypeNameAsMetricsString(),
+                                /* value= */ true,
+                                /* times= */ 1)
+                        .expectBooleanRecordTimes(
+                                EntityEditorMediator.ENTITY_DELETED_SETTINGS_HISTOGRAM
+                                        + LOCAL_PASSPORT
+                                                .getEntityType()
+                                                .getTypeNameAsMetricsString(),
+                                /* value= */ true,
+                                /* times= */ 1)
+                        .build();
+        model.get(EntityEditorProperties.DELETE_CALLBACK).onResult(true);
         verify(mDelegate).onDelete(LOCAL_PASSPORT);
     }
 
@@ -329,6 +403,8 @@ public class EntityEditorModuleTest {
                 /* fieldType= */ FieldType.PASSPORT_NUMBER,
                 /* label= */ "Passport number",
                 /* value= */ "AA123456");
+        verifyDateFieldContent(editorFields.get(3), /* label= */ "Issue date");
+        verifyDateFieldContent(editorFields.get(4), /* label= */ "Expiration date");
     }
 
     private void verifyTextFieldContent(
@@ -351,6 +427,12 @@ public class EntityEditorModuleTest {
         assertFalse(item.model.get(IS_REQUIRED));
         assertEquals(label, item.model.get(LABEL));
         assertEquals(value, item.model.get(VALUE));
+    }
+
+    private void verifyDateFieldContent(EditorItem item, String label) {
+        assertEquals(DATE, item.type);
+        assertFalse(item.model.get(IS_REQUIRED));
+        assertEquals(label, item.model.get(LABEL));
     }
 
     private void verifySourceNotice(ListModel<EditorItem> editorFields, String expectedNoticeText) {

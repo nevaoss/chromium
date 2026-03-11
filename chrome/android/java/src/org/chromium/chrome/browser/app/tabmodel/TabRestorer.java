@@ -8,6 +8,7 @@ import static org.chromium.build.NullUtil.assumeNonNull;
 import static org.chromium.chrome.browser.tabmodel.TabPersistenceUtils.shouldSkipTab;
 
 import androidx.annotation.IntDef;
+import androidx.core.util.Supplier;
 
 import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.base.task.PostTask;
@@ -15,6 +16,7 @@ import org.chromium.base.task.TaskTraits;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
+import org.chromium.chrome.browser.tab.ScopedStorageBatch;
 import org.chromium.chrome.browser.tab.StorageLoadedData;
 import org.chromium.chrome.browser.tab.StorageLoadedData.LoadedTabState;
 import org.chromium.chrome.browser.tab.Tab;
@@ -94,6 +96,13 @@ class TabRestorer {
         void onFinished(boolean incognito);
 
         /**
+         * Called when the active tab has been restored.
+         *
+         * @param incognito Whether the active tab is incognito.
+         */
+        void onActiveTabRestored(boolean incognito);
+
+        /**
          * Called when the details of a tab have been read {@see
          * TabPersistentStoreObserver#onDetailsRead}.
          */
@@ -110,6 +119,7 @@ class TabRestorer {
     private final boolean mIncognito;
     private final TabRestorerDelegate mDelegate;
     private final TabCreator mTabCreator;
+    private final Supplier<ScopedStorageBatch> mBatchFactory;
     private final List<Integer> mTabIdsToIgnore = new ArrayList<>();
 
     private @State int mState = State.EMPTY;
@@ -128,11 +138,17 @@ class TabRestorer {
      * @param incognito Whether the tab restorer is for incognito tabs.
      * @param delegate The delegate to notify when the tab restorer for certain events.
      * @param tabCreator The tab creator to use to create tabs.
+     * @param batchFactory The factory to create scoped storage batches.
      */
-    TabRestorer(boolean incognito, TabRestorerDelegate delegate, TabCreator tabCreator) {
+    TabRestorer(
+            boolean incognito,
+            TabRestorerDelegate delegate,
+            TabCreator tabCreator,
+            Supplier<ScopedStorageBatch> batchFactory) {
         mIncognito = incognito;
         mDelegate = delegate;
         mTabCreator = tabCreator;
+        mBatchFactory = batchFactory;
     }
 
     /**
@@ -255,8 +271,9 @@ class TabRestorer {
 
     private void cancelInternal() {
         if (mData != null) {
-            cleanupStorageLoadedData();
+            // Delegate still needs access to the StorageLoadedData before it is cleaned up.
             mDelegate.onCancelled(mIncognito);
+            cleanupStorageLoadedData();
         }
     }
 
@@ -271,8 +288,10 @@ class TabRestorer {
 
         assert mState == State.FINISHING;
         mState = State.FINISHED;
-        cleanupStorageLoadedData();
+
+        // Delegate still needs access to the StorageLoadedData before it is cleaned up.
         mDelegate.onFinished(mIncognito);
+        cleanupStorageLoadedData();
 
         RecordHistogram.recordCount1000Histogram(
                 "Tabs.TabStateStore.FilteredTabCount", mRestoreFilteredTabCount);
@@ -381,14 +400,16 @@ class TabRestorer {
         LoadedTabState[] loadedTabStates = mData.getLoadedTabStates();
         int finalIndex = loadedTabStates.length;
 
-        while (batchSize > 0 && mIndex < finalIndex) {
-            LoadedTabState loadedTabState = loadedTabStates[mIndex];
-            if (!mTabIdsToIgnore.contains(loadedTabState.tabId)) {
-                restoreTab(loadedTabState, mIndex, /* isActive= */ false);
-            }
+        try (ScopedStorageBatch batch = mBatchFactory.get()) {
+            while (batchSize > 0 && mIndex < finalIndex) {
+                LoadedTabState loadedTabState = loadedTabStates[mIndex];
+                if (!mTabIdsToIgnore.contains(loadedTabState.tabId)) {
+                    restoreTab(loadedTabState, mIndex, /* isActive= */ false);
+                }
 
-            mIndex++;
-            batchSize--;
+                mIndex++;
+                batchSize--;
+            }
         }
 
         if (mIndex < finalIndex) {
@@ -404,11 +425,24 @@ class TabRestorer {
         if (!isActiveTab && shouldSkipTab(tabState)) {
             mRestoreFilteredTabCount++;
             return null;
-        } else if (isActiveTab && tabState.contentsState == null && tabState.url != null) {
-            // Use fallback url if no contents state is available.
-            return mTabCreator.createNewTab(
-                    new LoadUrlParams(tabState.url), TabLaunchType.FROM_RESTORE, null, index);
         }
-        return mTabCreator.createFrozenTab(tabState, tabId, index);
+
+        @Nullable Tab tab = null;
+        if (isActiveTab && tabState.contentsState == null && tabState.url != null) {
+            // Use fallback url if no contents state is available.
+            tab =
+                    mTabCreator.createNewTab(
+                            new LoadUrlParams(tabState.url),
+                            TabLaunchType.FROM_RESTORE,
+                            null,
+                            index);
+        } else {
+            tab = mTabCreator.createFrozenTab(tabState, tabId, index);
+        }
+
+        if (isActiveTab && tab != null) {
+            mDelegate.onActiveTabRestored(mIncognito);
+        }
+        return tab;
     }
 }

@@ -41,6 +41,7 @@
 #include "chrome/app/chrome_command_ids.h"
 #include "chrome/browser/content_settings/host_content_settings_map_factory.h"
 #include "chrome/browser/extensions/tab_helper.h"
+#include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/lifetime/browser_shutdown.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/reading_list/reading_list_model_factory.h"
@@ -76,6 +77,7 @@
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/user_education/browser_user_education_interface.h"
 #include "chrome/browser/ui/views/tabs/dragging/tab_drag_controller.h"
+#include "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_metrics.h"
 #include "chrome/browser/ui/web_applications/web_app_dialog_utils.h"
 #include "chrome/browser/ui/web_applications/web_app_launch_utils.h"
 #include "chrome/browser/ui/web_applications/web_app_tabbed_utils.h"
@@ -116,11 +118,6 @@
 #include "ui/base/models/list_selection_model.h"
 #include "ui/base/page_transition_types.h"
 #include "ui/gfx/range/range.h"
-
-#if BUILDFLAG(ENABLE_GLIC)
-#include "chrome/browser/glic/public/glic_enabling.h"
-#endif
-
 using base::UserMetricsAction;
 using content::WebContents;
 
@@ -2532,7 +2529,6 @@ bool TabStripModel::IsContextMenuCommandEnabled(
     case CommandOrganizeTabs:
       return true;
 
-#if BUILDFLAG(ENABLE_GLIC)
     case CommandGlicShareLimit:
       return false;
     case CommandGlicStartShare:
@@ -2546,7 +2542,6 @@ bool TabStripModel::IsContextMenuCommandEnabled(
       return true;
     case CommandGlicUnshare:
       return true;
-#endif
 
     case CommandCopyURL:
       DCHECK(delegate()->IsForWebApp());
@@ -3040,10 +3035,12 @@ void TabStripModel::ExecuteContextMenuCommand(int context_index,
           selection_model_.size());
       const Browser* const browser =
           chrome::FindBrowserWithTab(GetWebContentsAt(context_index));
-      base::RecordAction(UserMetricsAction(
-          tabs::VerticalTabStripStateController::From(browser)
-              ? "SwitchToHorizontalTabStrip_FromTabContextMenu"
-              : "SwitchToVerticalTabStrip_FromTabContextMenu"));
+      if (auto* controller =
+              tabs::VerticalTabStripStateController::From(browser)) {
+        const bool is_vertical = !controller->ShouldDisplayVerticalTabs();
+        tabs::RecordVerticalTabStripModeChanged(
+            is_vertical, tabs::VerticalTabStripEntryPoint::kTabContextMenu);
+      }
       browser->GetFeatures().browser_command_controller()->ExecuteCommand(
           IDC_TOGGLE_VERTICAL_TABS);
       break;

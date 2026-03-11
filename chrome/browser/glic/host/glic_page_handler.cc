@@ -54,6 +54,7 @@
 #include "chrome/browser/glic/host/page_metadata_manager.h"
 #include "chrome/browser/glic/media/glic_media_link_helper.h"
 #include "chrome/browser/glic/public/context/glic_sharing_manager.h"
+#include "chrome/browser/glic/public/features.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/glic/public/glic_keyed_service.h"
 #include "chrome/browser/glic/public/glic_keyed_service_factory.h"
@@ -82,7 +83,7 @@
 #include "chrome/common/channel_info.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/common/webui_url_constants.h"
-#include "components/autofill/core/browser/integrators/glic/actor_form_filling_types.h"
+#include "components/autofill/core/browser/integrators/actor/actor_form_filling_types.h"
 #include "components/content_settings/core/common/content_settings_types.h"
 #include "components/feature_engagement/public/event_constants.h"
 #include "components/feedback/content/content_tracing_manager.h"
@@ -125,12 +126,14 @@
 #include "chrome/browser/glic/host/context/glic_focused_browser_manager.h"
 #include "chrome/browser/skills/skills_service_factory.h"
 #include "chrome/browser/ui/browser.h"
+#include "chrome/browser/ui/browser_list.h"
 #include "chrome/browser/ui/tabs/tab_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "components/skills/features.h"
 #include "components/skills/public/skill.h"
 #include "components/skills/public/skills_service.h"
 #include "extensions/browser/guest_view/web_view/web_view_guest.h"
+#include "ui/base/base_window.h"
 #endif
 
 namespace mojo {
@@ -988,6 +991,10 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
       state->host_capabilities.push_back(mojom::HostCapability::kMultiInstance);
     }
 
+    if (base::FeatureList::IsEnabled(features::kAutoOpenGlicForPdf)) {
+      state->host_capabilities.push_back(mojom::HostCapability::kPdfZeroState);
+    }
+
     const mojom::InvocationSource invocation_source =
         host().invocation_source().value_or(
             mojom::InvocationSource::kUnsupported);
@@ -1035,6 +1042,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
         base::FeatureList::IsEnabled(
             features::kGlicOpenPasswordManagerSettingsPageApi);
     state->enable_trust_first_onboarding =
+        !should_bypass_fre_ui &&
         GlicEnabling::IsTrustFirstOnboardingEnabledForProfile(profile_);
     state->onboarding_completed =
         GlicEnabling::HasConsentedForProfile(profile_);
@@ -1163,7 +1171,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
   }
 
   void OnMicrophoneStatusChange(glic::mojom::MicrophoneStatus status) override {
-    // TODO(crbug.com/472338366): Plumb microphone status to the Glic Instance.
+    host().OnMicrophoneStatusChanged(status);
   }
 
   void ResizeWidget(const gfx::Size& size,
@@ -1440,10 +1448,8 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
           "ShowManageSkillsUi cannot be called without Skills enabled.");
       return;
     }
-    NavigateParams params(profile_, GURL(chrome::kChromeUISkillsURL),
-                          ui::PAGE_TRANSITION_AUTO_TOPLEVEL);
-    params.disposition = WindowOpenDisposition::SINGLETON_TAB;
-    Navigate(&params);
+
+    host().skills_manager().ShowManageSkillsUi();
 #else
     receiver_.ReportBadMessage(
         "ShowManageSkillsUi isn't supported on Android.");
@@ -1464,6 +1470,13 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
 #else
     receiver_.ReportBadMessage("GetSkill isn't supported on Android.");
 #endif  //  !BUILDFLAG(IS_ANDROID)
+  }
+
+  void RecordSkillsWebClientEvent(
+      glic::mojom::SkillsWebClientEvent action) override {
+    if (auto* instance_metrics = host().instance_metrics()) {
+      instance_metrics->RecordSkillsWebClientEvent(action);
+    }
   }
 
   void CreateActorTab(int32_t task_id,
@@ -2080,12 +2093,21 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
 // from Skills backend.
 #if !BUILDFLAG(IS_ANDROID)
   // SkillsService::Observer implementation.
-  void OnSkillUpdated(
-      std::string_view skill_id,
-      skills::SkillsService::UpdateSource update_source) override {
+  void OnSkillUpdated(std::string_view skill_id,
+                      skills::SkillsService::UpdateSource update_source,
+                      bool is_position_changed) override {
     if (!web_client_) {
       return;
     }
+
+    if (is_position_changed) {
+      // Update all the skill previews for simplicity as updating the position
+      // is not frequent.
+      host().skills_manager().UpdateSkillPreviews(std::nullopt);
+      web_client_->NotifySkillPreviewsChanged(GetSkillPreviewsList());
+      return;
+    }
+
     mojom::SkillPtr skill = GetSkillById(skill_id);
     if (!skill) {
       web_client_->NotifySkillDeleted(skill_id.data());
@@ -2250,6 +2272,15 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
       const base::flat_map<std::string, gfx::Image>& icons,
       const std::vector<actor_login::Credential>& credentials,
       actor::ActorTaskDelegate::CredentialSelectedCallback callback) override {
+    auto cred_type_to_mojo = [](actor_login::CredentialType type) {
+      switch (type) {
+        case actor_login::CredentialType::kPassword:
+          return actor::webui::mojom::CredentialType::kPassword;
+        case actor_login::CredentialType::kFederated:
+          return actor::webui::mojom::CredentialType::kFederated;
+      }
+    };
+
     // Note: mojom::<Type>Ptr is not copyable, meaning it can't be passed to the
     // argument of base::RepeatingCallbackList::Notify (who makes a copy of the
     // argument). All of the mojom::<Type>Ptr will be constructed locally before
@@ -2260,7 +2291,8 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
           credential.id.value(), base::UTF16ToUTF8(credential.username),
           base::UTF16ToUTF8(credential.source_site_or_app),
           credential.request_origin,
-          base::UTF16ToUTF8(credential.display_origin)));
+          base::UTF16ToUTF8(credential.display_origin),
+          cred_type_to_mojo(credential.type)));
     }
     base::flat_map<std::string, SkBitmap> mojo_icons;
     for (const auto& [site_or_app, image] : icons) {
@@ -2509,6 +2541,10 @@ void GlicPageHandler::WebviewCommitted(const GURL& url) {
 
 void GlicPageHandler::NotifyWindowIntentToShow() {
   page_->IntentToShow();
+}
+
+void GlicPageHandler::Zoom(mojom::ZoomAction zoom_action) {
+  page_->Zoom(zoom_action);
 }
 
 content::RenderFrameHost* GlicPageHandler::GetGuestMainFrame() {

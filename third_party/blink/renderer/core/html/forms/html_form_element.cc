@@ -167,8 +167,14 @@ bool HTMLFormElement::MatchesToolFormActivePseudoClass() const {
 void HTMLFormElement::HTMLFormMcpTool::ExecuteTool(
     String input_arguments,
     base::OnceCallback<void(McpToolCallbackResult)> done_callback) {
+  UseCounter::Count(form_->GetDocument(),
+                    WebFeature::kModelContextExecuteDeclarativeTool);
   bool require_submit_button =
       !form_->FastHasAttribute(html_names::kToolautosubmitAttr);
+  if (!require_submit_button) {
+    UseCounter::Count(form_->GetDocument(),
+                      WebFeature::kModelContextExecuteDeclarativeAutosubmit);
+  }
   HTMLFormControlElement* submit_button = nullptr;
 
   std::optional<WebDocument::ScriptToolError> error;
@@ -1380,7 +1386,7 @@ bool HTMLFormElement::HasNamedElements(const AtomicString& name) {
 }
 
 bool HTMLFormElement::ShouldAutocomplete() const {
-  return !EqualIgnoringASCIICase(
+  return !EqualIgnoringAsciiCase(
       FastGetAttribute(html_names::kAutocompleteAttr), "off");
 }
 

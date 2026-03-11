@@ -94,14 +94,16 @@ class DatabaseConnectionTest : public testing::Test {
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
 
-    // Create a mock backing store for testing
     backing_store_ = std::make_unique<BackingStoreImpl>(
         temp_dir_.GetPath(), blob_context_,
         base::BindRepeating(&DatabaseConnectionTest::AcquireDatabaseLocks,
                             base::Unretained(this)));
   }
 
-  void TearDown() override { backing_store_.reset(); }
+  void TearDown() override {
+    backing_store_->FlushForTesting();
+    backing_store_.reset();
+  }
 
   DatabaseConnection* GetDatabaseConnection(const std::u16string& name) {
     auto it = backing_store()->open_connections_.find(name);

@@ -996,13 +996,6 @@ void LocalDOMWindow::DispatchPersistedPageshowEvent(
 
 void LocalDOMWindow::DispatchPagehideEvent(
     PageTransitionEventPersistence persistence) {
-  if (!base::FeatureList::IsEnabled(features::kPageHideEventForPrerender2)) {
-    if (document_->IsPrerendering()) {
-      // Do not dispatch the event while prerendering.
-      return;
-    }
-  }
-
   if (document_->UnloadStarted()) {
     // We've already dispatched pagehide (since it's the first thing we do when
     // starting unload) and shouldn't dispatch it again. We might get here on
@@ -1026,12 +1019,8 @@ void LocalDOMWindow::EnqueueHashchangeEvent(const String& old_url,
 
 void LocalDOMWindow::DispatchPopstateEvent(
     scoped_refptr<SerializedScriptValue> state_object,
-    scheduler::TaskAttributionInfo* task_state,
     bool has_ua_visual_transition) {
   DCHECK(GetFrame());
-  std::optional<scheduler::TaskAttributionTracker::TaskScope>
-      task_attribution_scope(SetCurrentTaskStateIfTopLevel(
-          task_state, this, TaskScopeType::kPopState));
   DispatchEvent(*PopStateEvent::Create(std::move(state_object), history(),
                                        has_ua_visual_transition));
 }

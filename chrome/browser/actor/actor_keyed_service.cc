@@ -314,6 +314,10 @@ const std::map<TaskId, const ActorTask*> ActorKeyedService::GetActiveTasks()
   return active_tasks;
 }
 
+size_t ActorKeyedService::GetActiveTasksCount() const {
+  return active_tasks_.size();
+}
+
 void ActorKeyedService::ResetForTesting() {
   for (auto it = active_tasks_.begin(); it != active_tasks_.end();) {
     StopTask((it++)->first, ActorTask::StoppedReason::kTaskComplete);
@@ -598,15 +602,16 @@ bool ActorKeyedService::IsActiveOnTab(const tabs::TabInterface& tab) const {
   return false;
 }
 
-TaskId ActorKeyedService::GetTaskFromTab(const tabs::TabInterface& tab) const {
+ActorTask* ActorKeyedService::GetTaskFromTab(
+    const tabs::TabInterface& tab) const {
   tabs::TabHandle handle = tab.GetHandle();
-  for (auto [task_id, task] : GetActiveTasks()) {
+  for (const auto& [task_id, task] : active_tasks_) {
     if (task->HasTab(handle)) {
-      return task_id;
+      return task.get();
     }
   }
 
-  return TaskId();
+  return nullptr;
 }
 
 Profile* ActorKeyedService::GetProfile() {

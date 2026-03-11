@@ -22,6 +22,7 @@
 #include "third_party/blink/renderer/core/script_tools/model_context_supplement.h"
 #include "third_party/blink/renderer/core/testing/sim/sim_request.h"
 #include "third_party/blink/renderer/core/testing/sim/sim_test.h"
+#include "third_party/blink/renderer/platform/bindings/source_location.h"
 #include "third_party/blink/renderer/platform/heap/thread_state.h"
 #include "third_party/blink/renderer/platform/testing/runtime_enabled_features_test_helpers.h"
 
@@ -1052,6 +1053,7 @@ class MockDeclarativeTool : public GarbageCollected<MockDeclarativeTool>,
                        done_callback) override {}
 
   String ComputeInputSchema() override { return "{}"; }
+  Element* FormElement() const override { return nullptr; }
   void Trace(Visitor* visitor) const override {}
 };
 
@@ -1095,6 +1097,113 @@ TEST_F(ModelContextTest, ForEachScriptToolGC) {
     }
   });
   EXPECT_FALSE(found);
+}
+
+TEST_F(ModelContextTest, ListTools) {
+  SimRequest main_resource("https://example.com/", "text/html");
+  LoadURL("https://example.com/");
+
+  main_resource.Complete(R"(<!DOCTYPE html>
+    <script>
+    navigator.modelContext.registerTool({
+      execute: () => "true",
+      name: "delete",
+      description: "Delete everything",
+    });
+    navigator.modelContext.registerTool({
+      execute: () => "true",
+      name: "squash",
+      description: "Squash history",
+    });
+    navigator.modelContext.registerTool({
+      execute: () => "true",
+      name: "append",
+      description: "Append something",
+    });
+    </script>
+  )");
+
+  auto* model_context =
+      ModelContextSupplement::modelContext(*Window().navigator());
+  ASSERT_TRUE(model_context);
+
+  HeapVector<Member<const ModelContext::ToolData>> tools =
+      model_context->ListTools();
+  ASSERT_EQ(3u, tools.size());
+
+  EXPECT_EQ("append", tools[0]->Name());
+  EXPECT_EQ("delete", tools[1]->Name());
+  EXPECT_EQ("squash", tools[2]->Name());
+}
+
+TEST_F(ModelContextTest, SourceLocation) {
+  SimRequest main_resource("https://example.com/", "text/html");
+  LoadURL("https://example.com/");
+
+  main_resource.Complete(R"(<!DOCTYPE html>
+    <script>
+    navigator.modelContext.registerTool({
+      execute: () => "true",
+      name: "append",
+      description: "Append something",
+    });
+    navigator.modelContext.registerTool({
+      execute: () => "true",
+      name: "delete",
+      description: "Delete everything",
+    });
+    </script>
+  )");
+
+  auto* model_context =
+      ModelContextSupplement::modelContext(*Window().navigator());
+  ASSERT_TRUE(model_context);
+
+  HeapVector<Member<const ModelContext::ToolData>> tools =
+      model_context->ListTools();
+  ASSERT_EQ(2u, tools.size());
+
+  EXPECT_EQ("append", tools[0]->Name());
+  ASSERT_TRUE(tools[0]->GetSourceLocation());
+  EXPECT_EQ(3u, tools[0]->GetSourceLocation()->LineNumber());
+
+  EXPECT_EQ("delete", tools[1]->Name());
+  ASSERT_TRUE(tools[1]->GetSourceLocation());
+  EXPECT_EQ(8u, tools[1]->GetSourceLocation()->LineNumber());
+}
+
+TEST_F(ModelContextTest, BackingFormElement) {
+  SimRequest main_resource("https://example.com/", "text/html");
+  LoadURL("https://example.com/");
+
+  main_resource.Complete(R"(<!DOCTYPE html>
+    <form
+      id=book-table
+      toolname=book-table
+      tooldescription="Book a table">
+    </form>
+    <form
+      id=leave-feedback
+      toolname=leave-feedback
+      tooldescription="leave-feedback">
+    </form>
+  )");
+
+  auto* model_context =
+      ModelContextSupplement::modelContext(*Window().navigator());
+  ASSERT_TRUE(model_context);
+
+  HeapVector<Member<const ModelContext::ToolData>> tools =
+      model_context->ListTools();
+  ASSERT_EQ(2u, tools.size());
+
+  EXPECT_EQ("book-table", tools[0]->Name());
+  ASSERT_TRUE(tools[0]->BackingFormElement());
+  EXPECT_EQ("book-table", tools[0]->BackingFormElement()->GetIdAttribute());
+
+  EXPECT_EQ("leave-feedback", tools[1]->Name());
+  ASSERT_TRUE(tools[1]->BackingFormElement());
+  EXPECT_EQ("leave-feedback", tools[1]->BackingFormElement()->GetIdAttribute());
 }
 
 }  // namespace blink

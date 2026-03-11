@@ -23,11 +23,18 @@ class ContextualTasksBrowserTest : public WebUIMochaBrowserTest {
   base::test::ScopedFeatureList scoped_feature_list_;
 };
 
-IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest, App) {
+// TODO(crbug.com/487802136): Flaky on Linux.
+#if BUILDFLAG(IS_LINUX)
+#define MAYBE_App DISABLED_App
+#else
+#define MAYBE_App App
+#endif
+IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest, MAYBE_App) {
   RunTest("contextual_tasks/app_test.js", "mocha.run();");
 }
 
-IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest, Composebox) {
+// TODO(crbug.com/480689282): Test disabled because it is flaky.
+IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest, DISABLED_Composebox) {
   RunTest("contextual_tasks/composebox_test.js", "mocha.run();");
 }
 

@@ -92,18 +92,21 @@ class IdentityDialogController
       content::RelyingPartyData rp_data,
       const std::vector<IdentityProviderDataPtr>& identity_provider_data,
       const std::vector<IdentityRequestAccountPtr>& accounts,
+      const std::vector<IdentityRequestAccountPtr>& filtered_accounts,
       blink::mojom::RpMode rp_mode,
       AccountSelectionCallback on_selected,
       LoginToIdPCallback on_add_account,
       DismissCallback dismiss_callback,
       AccountsDisplayedCallback accounts_displayed_callback) override;
-  bool ShowFailureDialog(const content::RelyingPartyData& rp_data,
-                         const std::string& idp_for_display,
-                         blink::mojom::RpContext rp_context,
-                         blink::mojom::RpMode rp_mode,
-                         const content::IdentityProviderMetadata& idp_metadata,
-                         DismissCallback dismiss_callback,
-                         LoginToIdPCallback login_callback) override;
+  bool ShowFailureDialog(
+      const content::RelyingPartyData& rp_data,
+      const std::string& idp_for_display,
+      blink::mojom::RpContext rp_context,
+      blink::mojom::RpMode rp_mode,
+      const content::IdentityProviderMetadata& idp_metadata,
+      const std::vector<IdentityRequestAccountPtr>& filtered_accounts,
+      DismissCallback dismiss_callback,
+      LoginToIdPCallback login_callback) override;
   bool ShowErrorDialog(const content::RelyingPartyData& rp_data,
                        const std::string& idp_for_display,
                        blink::mojom::RpContext rp_context,

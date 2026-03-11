@@ -4,6 +4,9 @@
 
 #include "chrome/browser/skills/skills_ui_tab_controller.h"
 
+#include "chrome/browser/glic/host/glic.mojom.h"
+#include "chrome/browser/glic/public/glic_keyed_service.h"
+#include "chrome/browser/glic/public/glic_keyed_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/skills/skills_ui_window_controller.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
@@ -19,12 +22,6 @@
 #include "content/public/browser/web_contents.h"
 #include "ui/views/window/dialog_delegate.h"
 
-#if BUILDFLAG(ENABLE_GLIC)
-#include "chrome/browser/glic/host/glic.mojom.h"
-#include "chrome/browser/glic/public/glic_keyed_service.h"
-#include "chrome/browser/glic/public/glic_keyed_service_factory.h"
-#endif  // BUILDFLAG(ENABLE_GLIC)
-
 DEFINE_USER_DATA(skills::SkillsUiTabController);
 
 namespace {
@@ -33,7 +30,6 @@ constexpr base::TimeDelta kNotifyTimeoutSeconds = base::Seconds(60);
 constexpr base::TimeDelta kGlicPanelPollIntervalMilliseconds =
     base::Milliseconds(60);
 
-#if BUILDFLAG(ENABLE_GLIC)
 using glic::mojom::SkillSource;
 
 glic::mojom::SkillPreviewPtr GetPreviewFromSkill(const skills::Skill& skill) {
@@ -54,7 +50,6 @@ glic::mojom::SkillPreviewPtr GetPreviewFromSkill(const skills::Skill& skill) {
   }
   return skill_preview;
 }
-#endif  // BUILDFLAG(ENABLE_GLIC)
 
 }  // namespace
 
@@ -184,37 +179,28 @@ void SkillsUiTabController::InvokeSkill(std::string_view skill_id) {
 }
 
 glic::GlicKeyedService* SkillsUiTabController::GetGlicService() {
-#if BUILDFLAG(ENABLE_GLIC)
   content::WebContents* contents = tab_->GetContents();
   if (!contents) {
     return nullptr;
   }
   return glic::GlicKeyedServiceFactory::GetGlicKeyedService(
       contents->GetBrowserContext());
-#else
-  return nullptr;
-#endif  // BUILDFLAG(ENABLE_GLIC)
 }
 
 void SkillsUiTabController::ShowGlicPanel() {
-#if BUILDFLAG(ENABLE_GLIC)
   if (auto* service = GetGlicService()) {
     service->ToggleUI(tab_->GetBrowserWindowInterface(),
                       /*prevent_close=*/true,
                       glic::mojom::InvocationSource::kSkills);
   }
-#endif  // BUILDFLAG(ENABLE_GLIC)
 }
 
 void SkillsUiTabController::NotifySkillToInvokeChangedWhenReady() {
   if (IsClientReady()) {
-    // TODO(https://crbug.com/475549806): Add metrics for successful skill
-    // invocation.
     NotifySkillToInvokeChanged();
   } else if (base::TimeTicks::Now() - glic_panel_open_time_ >
              kNotifyTimeoutSeconds) {
-    // TODO(https://crbug.com/475549806): Add metrics for skill invocation
-    // timeout and provide user feedback.
+    RecordSkillsInvokeResult(SkillsInvokeResult::kTimeout);
     Reset();
   } else if (!glic_panel_ready_timer_.IsRunning()) {
     glic_panel_ready_timer_.Start(
@@ -246,11 +232,12 @@ void SkillsUiTabController::NotifySkillToInvokeChanged() {
   const skills::Skill* skill = GetSkill(skill_id_to_invoke);
 
   if (!skill) {
-    // TODO(https://crbug.com/475549806): Add metrics for skill invocation
-    // failure and provide user feedback.
+    // TODO(https://crbug.com/475549806): provide user feedback.
+    RecordSkillsInvokeResult(SkillsInvokeResult::kSkillNotFound);
     return;
   }
 
+  RecordSkillsInvokeResult(SkillsInvokeResult::kSuccess);
   switch (skill->source) {
     case sync_pb::SkillSource::SKILL_SOURCE_FIRST_PARTY:
       RecordSkillsInvokeAction(SkillsInvokeAction::kFirstParty);
@@ -262,10 +249,9 @@ void SkillsUiTabController::NotifySkillToInvokeChanged() {
       RecordSkillsInvokeAction(SkillsInvokeAction::kDerivedFromFirstParty);
       break;
     default:
-      break;
+      NOTREACHED();
   }
 
-#if BUILDFLAG(ENABLE_GLIC)
   auto mojo_skill = glic::mojom::Skill::New();
   mojo_skill->prompt = skill->prompt;
   mojo_skill->preview = GetPreviewFromSkill(*skill);
@@ -275,7 +261,6 @@ void SkillsUiTabController::NotifySkillToInvokeChanged() {
       instance->host().NotifySkillToInvokeChanged(std::move(mojo_skill));
     }
   }
-#endif  // BUILDFLAG(ENABLE_GLIC)
 }
 
 void SkillsUiTabController::Reset() {
@@ -285,16 +270,12 @@ void SkillsUiTabController::Reset() {
 }
 
 bool SkillsUiTabController::IsClientReady() {
-#if BUILDFLAG(ENABLE_GLIC)
   if (auto* service = GetGlicService()) {
     if (auto* instance = service->GetInstanceForTab(&tab_.get())) {
       return instance->host().IsReady();
     }
   }
   return false;
-#else
-  return false;
-#endif  // BUILDFLAG(ENABLE_GLIC)
 }
 
 }  // namespace skills

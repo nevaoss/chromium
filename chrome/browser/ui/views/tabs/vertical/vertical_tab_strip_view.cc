@@ -98,8 +98,7 @@ views::ProposedLayout VerticalTabStripView::CalculateProposedLayout(
   int remaining_height = 0;
   if (size_bounds.height().is_bounded()) {
     remaining_height = size_bounds.height().value();
-    if (!pinned_tabs_container_view_->children().empty() &&
-        !unpinned_tabs_container_view_->children().empty()) {
+    if (pinned_preferred_height != 0 && unpinned_preferred_height != 0) {
       remaining_height -= region_vertical_padding;
     }
     if (should_show_separator) {
@@ -345,8 +344,9 @@ void VerticalTabStripView::SetScrollViewProperties(
       views::ScrollView::ScrollBarMode::kDisabled);
   scroll_view->SetOverflowGradientMask(
       views::ScrollView::GradientDirection::kVertical);
-  scroll_view->SetVerticalScrollBar(
-      std::make_unique<VerticalTabStripScrollBar>());
+  CHECK(collection_node_);
+  scroll_view->SetVerticalScrollBar(std::make_unique<VerticalTabStripScrollBar>(
+      collection_node_->GetController()->GetStateController()));
   callback_subscriptions_.emplace_back(scroll_view->AddContentsScrolledCallback(
       base::BindRepeating(&VerticalTabStripView::HideHoverCardOnScroll,
                           base::Unretained(this))));
@@ -363,6 +363,12 @@ void VerticalTabStripView::DidPresentFramePostActivation(
 
   // Guard against views being removed from the tree between frames.
   if (!activated_view || !Contains(activated_view)) {
+    return;
+  }
+
+  // Dragging a view out of the visible bounds will trigger a scroll naturally.
+  if (collection_node_ &&
+      collection_node_->GetController()->GetDragHandler().IsDragging()) {
     return;
   }
 

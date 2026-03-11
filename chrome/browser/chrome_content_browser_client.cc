@@ -2969,8 +2969,8 @@ void ChromeContentBrowserClient::AppendExtraCommandLineSwitches(
 #endif
         switches::kAllowInsecureLocalhost,
         switches::kDisableJavaScriptHarmonyShipping,
-        variations::switches::kEnableBenchmarking,
         variations::switches::kEnableBenchmarkingApi,
+        switches::kEnableBenchmarking,
         switches::kEnableDistillabilityService,
         switches::kEnableNetBenchmarking,
         switches::kExtensionAiDataCollection,
@@ -8881,10 +8881,6 @@ ChromeContentBrowserClient::GetClipboardTypesIfPolicyApplied(
 bool ChromeContentBrowserClient::UsePrefetchPrerenderIntegration() {
   return base::FeatureList::IsEnabled(features::kBookmarkTriggerForPrefetch) ||
          base::FeatureList::IsEnabled(features::kNewTabPageTriggerForPrefetch);
-}
-
-bool ChromeContentBrowserClient::UsePreloadServingMetrics() {
-  return features::kDsePreload2UsePreloadServingMetrics.Get();
 }
 
 #if !BUILDFLAG(IS_ANDROID)

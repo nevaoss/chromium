@@ -56,9 +56,11 @@
 #include "chrome/browser/glic/host/glic_web_contents_warming_pool.h"
 #include "chrome/browser/glic/host/host.h"
 #include "chrome/browser/glic/host/webui_contents_container.h"
+#include "chrome/browser/glic/public/features.h"
 #include "chrome/browser/glic/public/glic_keyed_service.h"
 #include "chrome/browser/glic/public/glic_keyed_service_factory.h"
 #include "chrome/browser/glic/public/glic_side_panel_coordinator.h"
+#include "chrome/browser/glic/service/glic_instance_impl.h"
 #include "chrome/browser/glic/service/metrics/glic_instance_coordinator_metrics.h"
 #include "chrome/browser/glic/service/metrics/glic_instance_helper_metrics.h"
 #include "chrome/browser/glic/test_support/glic_api_test.h"
@@ -66,6 +68,7 @@
 #include "chrome/browser/glic/test_support/glic_test_util.h"
 #include "chrome/browser/glic/test_support/interactive_test_util.h"
 #include "chrome/browser/glic/test_support/non_interactive_glic_test.h"
+#include "chrome/browser/glic/widget/glic_floating_ui.h"
 #include "chrome/browser/glic/widget/glic_window_controller.h"
 #include "chrome/browser/media/audio_ducker.h"
 #include "chrome/browser/permissions/system/mock_platform_handle.h"
@@ -190,6 +193,7 @@ std::vector<std::string> GetTestSuiteNames() {
       "GlicApiTestHibernateOnMemoryUsage",
       "GlicApiTestWithDaisyChain",
       "GlicApiTestWithSkills",
+      "GlicApiTestWithDragAndDrop",
   };
 }
 
@@ -200,6 +204,7 @@ struct TestParams {
   bool enable_scroll_to_pdf = false;
   bool trust_first_onboarding_arm1 = false;
   bool trust_first_onboarding_arm2 = false;
+  bool auto_open_pdf = false;
 };
 
 class WithTestParams : public testing::WithParamInterface<TestParams> {
@@ -226,6 +231,9 @@ class WithTestParams : public testing::WithParamInterface<TestParams> {
     }
     if (info.param.trust_first_onboarding_arm2) {
       result.push_back("TrustFirstOnboardingArm2");
+    }
+    if (info.param.auto_open_pdf) {
+      result.push_back("AutoOpenPdf");
     }
     if (result.empty()) {
       return "Default";
@@ -260,6 +268,8 @@ class GlicApiTest : public NonInteractiveGlicApiTest, public WithTestParams {
         /*disabled_features=*/
         {
             features::kGlicWarming,
+            contextual_cueing::kGlicZeroStateSuggestions,
+            features::kGlicDaisyChainNewTabs,
         });
     SetUseElementIdentifiers(false);
   }
@@ -1725,6 +1735,44 @@ IN_PROC_BROWSER_TEST_P(GlicApiTestWithOneTab, testPanelActive) {
   params.disposition = WindowOpenDisposition::NEW_WINDOW;
   base::WeakPtr<content::NavigationHandle> navigation_handle =
       Navigate(&params);
+
+  ContinueJsTest();
+}
+
+IN_PROC_BROWSER_TEST_P(GlicApiTest, testPanelActiveWithMicrophone) {
+  if (!GetParam().multi_instance) {
+    GTEST_SKIP()
+        << "Live Mode Floaty is only tested for focus in multi-instance mode";
+  }
+  TrackFloatingGlicInstance();
+  // Add another tab and open Floaty.
+  ASSERT_TRUE(AddTabAtIndex(1, GURL("about:blank"), ui::PAGE_TRANSITION_TYPED));
+
+  RunTestSequence(InstrumentTab(kFirstTab),
+                  NavigateWebContents(kFirstTab, page_url()),
+                  OpenGlicFloatingWindow(GlicInstrumentMode::kHostAndContents));
+
+  ExecuteJsTest();
+
+  GetHost()->OnMicrophoneStatusChanged(mojom::MicrophoneStatus::kListening);
+
+  // Activating the other tab should take focus away from Floaty. Floaty should
+  // still remain active.
+  browser()->tab_strip_model()->ActivateTabAt(1);
+  browser()->window()->Activate();
+
+  EXPECT_TRUE(GetGlicInstance()->IsActive());
+
+  ContinueJsTest();
+
+  // Pause the microphone and focus on the window. Floaty should not be
+  // considered active.
+  GetHost()->OnMicrophoneStatusChanged(mojom::MicrophoneStatus::kNotListening);
+  browser()->tab_strip_model()->ActivateTabAt(1);
+  browser()->window()->Activate();
+
+  ASSERT_TRUE(
+      base::test::RunUntil([&]() { return !GetGlicInstance()->IsActive(); }));
 
   ContinueJsTest();
 }
@@ -3573,6 +3621,10 @@ class GlicGetHostCapabilityApiTest : public GlicApiTestWithOneTab {
       disabled_features.push_back(features::kGlicTrustFirstOnboarding);
     }
 
+    if (GetParam().auto_open_pdf) {
+      enabled_features.push_back({features::kAutoOpenGlicForPdf, {}});
+    }
+
     scoped_feature_list_.InitWithFeaturesAndParameters(enabled_features,
                                                        disabled_features);
   }
@@ -3598,6 +3650,10 @@ IN_PROC_BROWSER_TEST_P(GlicGetHostCapabilityApiTest, testGetHostCapabilities) {
   if (GetParam().trust_first_onboarding_arm2) {
     expected_capabilities.Append(
         std::to_underlying(mojom::HostCapability::kTrustFirstOnboardingArm2));
+  }
+  if (GetParam().auto_open_pdf) {
+    expected_capabilities.Append(
+        std::to_underlying(mojom::HostCapability::kPdfZeroState));
   }
   ExecuteJsTest({.params = base::Value(std::move(expected_capabilities))});
 }
@@ -3962,13 +4018,74 @@ IN_PROC_BROWSER_TEST_P(GlicApiTestWithSkills,
   ContinueJsTest();
 }
 
+class GlicApiTestWithDragAndDrop : public GlicApiTest {
+ public:
+  GlicApiTestWithDragAndDrop() {
+    feature_list_.InitAndEnableFeature(features::kGlicDragAndDropFileUpload);
+  }
+
+ private:
+  base::test::ScopedFeatureList feature_list_;
+};
+
+IN_PROC_BROWSER_TEST_P(GlicApiTestWithDragAndDrop, testDragAndDrop) {
+  RunTestSequence(OpenGlic(GlicInstrumentMode::kHostAndContents));
+
+  ExecuteJsTest();
+
+  Host* glic_host = GetHost();
+  ASSERT_TRUE(glic_host);
+  content::WebContents* guest_contents = glic_host->web_client_contents();
+  ASSERT_TRUE(guest_contents);
+
+  content::DropData drop_data;
+  GURL drop_url = page_url();
+  drop_data.url_infos.emplace_back(drop_url, std::u16string());
+  drop_data.operation = ui::mojom::DragOperation::kCopy;
+  drop_data.document_is_handling_drag = true;
+
+  content::RenderWidgetHost* rwh =
+      glic_host->GetGuestMainFrame()->GetRenderWidgetHost();
+
+  // Filter the data to authorize the renderer.
+  rwh->FilterDropData(&drop_data);
+  drop_data.view_id = rwh->GetRoutingID();
+
+  // Verify that the delegate bridge correctly authorizes the drag.
+  EXPECT_TRUE(guest_contents->GetDelegate()->CanDragEnter(
+      guest_contents, drop_data, blink::kDragOperationCopy));
+
+  guest_contents->Focus();
+
+  // Use the center of the guest view for the drop.
+  gfx::Rect view_bounds = rwh->GetView()->GetViewBounds();
+  gfx::PointF client_pt(view_bounds.width() / 2, view_bounds.height() / 2);
+  gfx::PointF screen_pt =
+      rwh->GetView()->TransformPointToRootCoordSpaceF(client_pt);
+
+  // Simulate the full sequence. Using DragOperationsMask::kDragOperationEvery
+  // matches standard browser behavior.
+  rwh->DragTargetDragEnter(drop_data, client_pt, screen_pt,
+                           blink::kDragOperationEvery, 0, base::DoNothing());
+  rwh->DragTargetDragOver(client_pt, screen_pt, blink::kDragOperationEvery, 0,
+                          base::DoNothing());
+  rwh->DragTargetDrop(drop_data, client_pt, screen_pt, 0, base::DoNothing());
+
+  ContinueJsTest();
+  // Verify that the guest received the drop event with the correct data.
+  EXPECT_EQ(step_data()->GetString(), drop_url.spec());
+
+  ContinueJsTest();
+}
+
 INSTANTIATE_TEST_SUITE_P(
     ,
     GlicGetHostCapabilityApiTest,
     testing::Values(TestParams{},
                     TestParams{.enable_scroll_to_pdf = true},
                     TestParams{.trust_first_onboarding_arm1 = true},
-                    TestParams{.trust_first_onboarding_arm2 = true}),
+                    TestParams{.trust_first_onboarding_arm2 = true},
+                    TestParams{.auto_open_pdf = true}),
     &WithTestParams::PrintTestVariant);
 
 auto DefaultTestParamSet() {
@@ -4079,6 +4196,10 @@ INSTANTIATE_TEST_SUITE_P(,
                          &WithTestParams::PrintTestVariant);
 INSTANTIATE_TEST_SUITE_P(,
                          GlicApiTestWithSkills,
+                         DefaultTestParamSet(),
+                         &WithTestParams::PrintTestVariant);
+INSTANTIATE_TEST_SUITE_P(,
+                         GlicApiTestWithDragAndDrop,
                          DefaultTestParamSet(),
                          &WithTestParams::PrintTestVariant);
 }  // namespace

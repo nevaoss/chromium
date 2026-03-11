@@ -8,8 +8,13 @@
 
 #include "base/check.h"
 #include "base/functional/bind.h"
+#include "base/location.h"
 #include "base/logging.h"
 #include "base/metrics/histogram_functions.h"
+#include "base/strings/strcat.h"
+#include "base/strings/string_number_conversions.h"
+#include "base/task/sequenced_task_runner.h"
+#include "components/private_ai/common/private_ai_logger.h"
 #include "components/private_ai/phosphor/token_manager.h"
 #include "components/private_ai/proto/private_ai.pb.h"
 
@@ -35,16 +40,22 @@ ConnectionTokenAttestation::PendingRequest::operator=(PendingRequest&&) =
 ConnectionTokenAttestation::ConnectionTokenAttestation(
     std::unique_ptr<Connection> inner_connection,
     phosphor::TokenManager* token_manager,
+    PrivateAiLogger* logger,
     base::OnceCallback<void(ErrorCode)> on_disconnect)
     : inner_connection_(std::move(inner_connection)),
       token_manager_(token_manager),
+      logger_(logger),
       on_disconnect_(std::move(on_disconnect)) {
   CHECK(inner_connection_);
   CHECK(token_manager_);
+  CHECK(logger_);
   CHECK(on_disconnect_);
 
-  // Sending attestation request as soon as possible.
-  FetchToken();
+  // Sending attestation request asynchronously to avoid failures
+  // during construction of this object.
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE, base::BindOnce(&ConnectionTokenAttestation::FetchToken,
+                                weak_factory_.GetWeakPtr()));
 }
 
 ConnectionTokenAttestation::~ConnectionTokenAttestation() = default;
@@ -76,7 +87,7 @@ void ConnectionTokenAttestation::FetchToken() {
 void ConnectionTokenAttestation::OnTokenFetched(
     std::optional<phosphor::BlindSignedAuthToken> auth_token) {
   if (!auth_token.has_value()) {
-    LOG(ERROR) << "Failed to get anonymous auth token";
+    logger_->LogError(FROM_HERE, "Failed to get anonymous auth token");
     CallOnDisconnect(ErrorCode::kClientAttestationFailed);
     return;
   }
@@ -89,6 +100,7 @@ void ConnectionTokenAttestation::OnTokenFetched(
   request_proto.mutable_anonymous_token_request()->set_encoded_extensions(
       auth_token->encoded_extensions);
 
+  logger_->LogInfo(FROM_HERE, "Sending auth token");
   inner_connection_->Send(
       std::move(request_proto), base::Seconds(60),
       base::BindOnce(&ConnectionTokenAttestation::OnAttestationResponse,
@@ -98,25 +110,28 @@ void ConnectionTokenAttestation::OnTokenFetched(
 void ConnectionTokenAttestation::OnAttestationResponse(
     base::expected<proto::PrivateAiResponse, ErrorCode> result) {
   if (!result.has_value()) {
-    LOG(ERROR) << "Client attestation request failed with error: "
-               << static_cast<int>(result.error());
-    base::UmaHistogramEnumeration("Legion.Client.RequestErrorCode",
+    logger_->LogError(
+        FROM_HERE,
+        base::StrCat({"Client attestation request failed with error: ",
+                      base::NumberToString(static_cast<int>(result.error()))}));
+    base::UmaHistogramEnumeration("PrivateAi.Client.RequestErrorCode",
                                   result.error());
     CallOnDisconnect(ErrorCode::kClientAttestationFailed);
     return;
   }
 
   attestation_state_ = AttestationState::kSuccess;
-  for (auto& pending_request : pending_requests_) {
+  auto pending_requests = std::move(pending_requests_);
+  for (auto& pending_request : pending_requests) {
     inner_connection_->Send(std::move(pending_request.request),
                             pending_request.timeout,
                             std::move(pending_request.callback));
   }
-  pending_requests_.clear();
 }
 
 void ConnectionTokenAttestation::OnDestroy(ErrorCode error) {
   attestation_state_ = AttestationState::kFailed;
+  on_disconnect_.Reset();
 
   auto pending_requests = std::move(pending_requests_);
   for (auto& pending_request : pending_requests) {
@@ -124,6 +139,10 @@ void ConnectionTokenAttestation::OnDestroy(ErrorCode error) {
   }
 
   inner_connection_->OnDestroy(error);
+
+  token_manager_ = nullptr;
+  logger_ = nullptr;
+  weak_factory_.InvalidateWeakPtrsAndDoom();
 }
 
 void ConnectionTokenAttestation::CallOnDisconnect(ErrorCode error_code) {

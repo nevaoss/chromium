@@ -65,6 +65,7 @@ void TabSearchToolbarButtonController::UpdateBubbleHost(
 
   auto scoped_update = action_item->BeginUpdate();
   if (new_tab_search_bubble_host) {
+    action_item->SetVisible(true);
     action_item->SetImage(
         ui::ImageModel::FromVectorIcon(kTabSearchToolbarIcon));
     action_item->SetProperty(

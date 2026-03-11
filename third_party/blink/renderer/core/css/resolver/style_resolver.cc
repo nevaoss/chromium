@@ -1823,7 +1823,7 @@ void StyleResolver::ApplyBaseStyleNoCache(
         style_request.matching_behavior != kMatchAllRulesExcludingSMIL);
   }
 
-  const MatchResult& match_result = collector.MatchedResult();
+  const MatchResult& match_result = cascade.GetMatchResult();
 
   if (IsForPseudoElement(*element, style_request)) {
     if (!match_result.HasMatchedProperties()) {
@@ -1831,8 +1831,8 @@ void StyleResolver::ApplyBaseStyleNoCache(
     }
   }
 
-  const MatchResult& result = cascade.GetMatchResult();
-  CacheSuccess cache_success = ApplyMatchedCache(state, style_request, result);
+  CacheSuccess cache_success =
+      ApplyMatchedCache(state, style_request, match_result);
   ComputedStyleBuilder& builder = state.StyleBuilder();
 
   if (style_recalc_context.is_ensuring_style &&
@@ -3195,7 +3195,7 @@ void StyleResolver::UpdateMediaType() {
   if (LocalFrameView* view = GetDocument().View()) {
     bool was_print = print_media_type_;
     print_media_type_ =
-        EqualIgnoringASCIICase(view->MediaType(), media_type_names::kPrint);
+        EqualIgnoringAsciiCase(view->MediaType(), media_type_names::kPrint);
     if (was_print != print_media_type_) {
       matched_properties_cache_.ClearViewportDependent();
     }

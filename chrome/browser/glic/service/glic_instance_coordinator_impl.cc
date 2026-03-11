@@ -132,6 +132,15 @@ GlicInstanceCoordinatorImpl::GlicInstanceCoordinatorImpl(
 }
 
 GlicInstanceCoordinatorImpl::~GlicInstanceCoordinatorImpl() {
+  // Delete all open invoke handlers, first triggering error handling.
+  auto handlers = std::exchange(invoke_handlers_, {});
+  for (auto& [instance, handler] : handlers) {
+    // Will result in erase from invoke_handlers_, which is safe because we
+    // exchanged.
+    handler->OnError(GlicInvokeError::kInstanceDestroyed);
+  }
+  handlers.clear();
+
   // Delete all instances before destruction. Destroying web contents can result
   // in various calls to dependencies.
   active_instance_ = nullptr;
@@ -283,7 +292,10 @@ void GlicInstanceCoordinatorImpl::Close(const CloseOptions& options) {
 void GlicInstanceCoordinatorImpl::Invoke(tabs::TabInterface* tab,
                                          GlicInvokeOptions options) {
   if (!tab || !GlicInstanceHelper::From(tab)) {
-    // TODO(crbug.com/483387751): Add error handling for empty tab case.
+    if (options.on_error) {
+      std::move(options.on_error).Run(GlicInvokeError::kInvalidTab);
+    }
+    // TODO(crbug.com/483387751): Show default toast here once implemented.
     return;
   }
 
@@ -314,7 +326,10 @@ void GlicInstanceCoordinatorImpl::Invoke(tabs::TabInterface* tab,
   }
 
   if (invoke_handlers_.contains(instance)) {
-    // TODO(crbug.com/483387751): Don't just fail silently here.
+    if (options.on_error) {
+      std::move(options.on_error).Run(GlicInvokeError::kInvokeInProgress);
+    }
+    // TODO(crbug.com/483387751): Show default toast here once implemented.
     return;
   }
 
@@ -322,7 +337,7 @@ void GlicInstanceCoordinatorImpl::Invoke(tabs::TabInterface* tab,
       *tab, GlicPinTrigger::kInstanceCreation, options.invocation_source));
 
   invoke_handlers_[instance] = std::make_unique<GlicInvokeHandler>(
-      *instance, std::move(options),
+      *instance, tab, std::move(options),
       base::BindOnce(&GlicInstanceCoordinatorImpl::OnInvokeHandlerComplete,
                      base::Unretained(this)));
   invoke_handlers_[instance]->Invoke();
@@ -731,6 +746,12 @@ void GlicInstanceCoordinatorImpl::ToggleSidePanel(
 }
 
 void GlicInstanceCoordinatorImpl::RemoveInstance(GlicInstanceImpl* instance) {
+  if (invoke_handlers_.contains(instance)) {
+    // OnError will trigger the completion callback which will remove the invoke
+    // handler from the map.
+    invoke_handlers_[instance]->OnError(GlicInvokeError::kInstanceDestroyed);
+  }
+
   if (!instances_.contains(instance->id())) {
     // This instance has already been removed, so there's no work to do.
     return;

@@ -2459,9 +2459,12 @@ protocol::Response InspectorCSSAgent::resolveValues(
     }
   }
 
-  if (property_name && CSSProperty::Get(property_name->Id()).IsShorthand()) {
-    return protocol::Response::ServerError(
-        "Property name should not be a shorthand.");
+  if (property_name) {
+    const CSSProperty& property = CSSProperty::Get(property_name->Id());
+    if (!property.IsProperty() || property.IsShorthand()) {
+      return protocol::Response::ServerError(
+          "Property name must be a longhand property.");
+    }
   }
 
   CSSParserLocalContext local_context =
@@ -4574,8 +4577,9 @@ protocol::Response InspectorCSSAgent::setEffectivePropertyValueForNode(
     String new_property_text =
         StrCat({"\n", longhand, ": ", value,
                 (force_important ? " !important" : ""), ";"});
-    if (!style_text.empty() && !style_text.StripWhiteSpace().EndsWith(';'))
+    if (!style_text.empty() && !style_text.StripWhiteSpace().ends_with(';')) {
       new_property_text = StrCat({";", new_property_text});
+    }
     style_text = StrCat({style_text, new_property_text});
     change_range.start = body_range.end;
     change_range.end = body_range.end + new_property_text.length();

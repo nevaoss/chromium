@@ -39,6 +39,7 @@ import org.chromium.base.Callback;
 import org.chromium.base.CallbackController;
 import org.chromium.base.ContextUtils;
 import org.chromium.base.JavaExceptionReporter;
+import org.chromium.base.Log;
 import org.chromium.base.TimeUtils;
 import org.chromium.base.TraceEvent;
 import org.chromium.base.ValueChangedCallback;
@@ -169,7 +170,6 @@ import org.chromium.chrome.browser.toolbar.menu_button.MenuButtonState;
 import org.chromium.chrome.browser.toolbar.optional_button.ButtonDataProvider;
 import org.chromium.chrome.browser.toolbar.top.ActionModeController;
 import org.chromium.chrome.browser.toolbar.top.ActionModeController.ActionBarDelegate;
-import org.chromium.chrome.browser.toolbar.top.HomeButtonDisplay;
 import org.chromium.chrome.browser.toolbar.top.NavigationPopup;
 import org.chromium.chrome.browser.toolbar.top.NavigationPopup.HistoryDelegate;
 import org.chromium.chrome.browser.toolbar.top.OptionalBrowsingModeButtonController;
@@ -253,6 +253,8 @@ public class ToolbarManager
                 TintObserver,
                 MenuButtonDelegate,
                 TabObscuringHandler.Observer {
+    private static final String TAG = "ToolbarManager";
+
     private final IncognitoStateProvider mIncognitoStateProvider;
     private final TopUiThemeColorProvider mTopUiThemeColorProvider;
     private @Nullable final AdjustedTopUiThemeColorProvider mAdjustedTopUiThemeColorProvider;
@@ -345,7 +347,7 @@ public class ToolbarManager
     private final StatusBarColorController mStatusBarColorController;
     private final ActivityLifecycleDispatcher mActivityLifecycleDispatcher;
     private final BottomSheetController mBottomSheetController;
-    private final DataSharingTabManager mDataSharingTabManager;
+    private final @Nullable DataSharingTabManager mDataSharingTabManager;
     private final TabContentManager mTabContentManager;
     private final TabCreatorManager mTabCreatorManager;
     private final TabObscuringHandler mTabObscuringHandler;
@@ -360,6 +362,7 @@ public class ToolbarManager
     private final SettableNonNullObservableSupplier<@ControlsPosition Integer>
             mToolbarPositionSupplier = ObservableSuppliers.createNonNull(ControlsPosition.NONE);
     private final OneshotSupplier<ChromeAndroidTask> mChromeAndroidTaskSupplier;
+    private final boolean mEnableLogs;
 
     private @MonotonicNonNull HomeButtonCoordinator mHomeButtonCoordinator;
     private @MonotonicNonNull ToggleTabStackButtonCoordinator mTabSwitcherButtonCoordinator;
@@ -435,7 +438,6 @@ public class ToolbarManager
     private CustomTabCount mCustomTabCount;
     private int mIncognitoNtpViewIdForA11y = View.NO_ID;
     private @Nullable OverscrollGlowCoordinator mOverscrollGlowCoordinator;
-    private final NewTabPageDelegate mNtpDelegate;
     private final NullableObservableSupplier<Profile> mProfileSupplier;
     private final Callback<Boolean> mOnXrSpaceModeChanged = this::onXrSpaceModeChanged;
     private final NonNullObservableSupplier<Boolean> mXrSpaceModeObservableSupplier;
@@ -803,7 +805,7 @@ public class ToolbarManager
             AppMenuDelegate appMenuDelegate,
             ActivityLifecycleDispatcher activityLifecycleDispatcher,
             BottomSheetController bottomSheetController,
-            DataSharingTabManager dataSharingTabManager,
+            @Nullable DataSharingTabManager dataSharingTabManager,
             TabContentManager tabContentManager,
             TabCreatorManager tabCreatorManager,
             Supplier<MerchantTrustSignalsCoordinator> merchantTrustSignalsCoordinatorSupplier,
@@ -865,13 +867,14 @@ public class ToolbarManager
         mChromeAndroidTaskSupplier = chromeAndroidTaskSupplier;
 
         mToolbarLayout = mActivity.findViewById(R.id.toolbar);
-        mNtpDelegate = createNewTabPageDelegate();
+        NewTabPageDelegate ntpDelegate = createNewTabPageDelegate();
         mIsCustomTab = mToolbarLayout instanceof CustomTabToolbar;
+        mEnableLogs = ChromeFeatureList.sNewTabPageCustomizationV2EnableLogs.getValue();
 
         mLocationBarModel =
                 new LocationBarModel(
                         activity,
-                        mNtpDelegate,
+                        ntpDelegate,
                         DomDistillerTabUtils::getFormattedUrlFromOriginalDistillerUrl,
                         new LocationBarModel.OfflineStatus() {
                             @Override
@@ -1057,7 +1060,24 @@ public class ToolbarManager
                     new HomeButtonCoordinator(
                             mActivity,
                             homeButton,
-                            this::onHomePageButtonClick,
+                            (view) -> {
+                                if (ntpDelegate.isCurrentlyVisible()) {
+                                    // Record the clicking action on the home button.
+                                    BrowserUiUtils.recordModuleClickHistogram(
+                                            ModuleTypeOnStartAndNtp.HOME_BUTTON);
+                                }
+                                setUrlBarFocus(false, OmniboxFocusReason.UNFOCUS);
+                                mToolbarTabController.openHomepage();
+                                Tracker tracker =
+                                        TrackerFactory.getTrackerForProfile(mProfileSupplier);
+                                boolean isPartnerHomepageEnabled =
+                                        PartnerBrowserCustomizations.getInstance()
+                                                .isHomepageProviderAvailableAndEnabled();
+                                if (tracker != null && isPartnerHomepageEnabled) {
+                                    tracker.notifyEvent(
+                                            EventConstants.PARTNER_HOME_PAGE_BUTTON_PRESSED);
+                                }
+                            },
                             this::onHomeButtonMenuClick,
                             HomepagePolicyManager::isHomepageLocationManaged,
                             browsingModeThemeColorProviderWithAdjustableTint,
@@ -1147,9 +1167,9 @@ public class ToolbarManager
                         ToolbarPositionController.isToolbarPositionCustomizationEnabled(
                                 mActivity, mIsCustomTab));
 
-        HomeButtonDisplay homeButtonDisplay = mHomeButtonCoordinator;
-        if (homeButtonDisplay != null) {
-            browsingModeThemeColorProviderWithAdjustableTint.addTintObserver(homeButtonDisplay);
+        if (mHomeButtonCoordinator != null) {
+            browsingModeThemeColorProviderWithAdjustableTint.addTintObserver(
+                    mHomeButtonCoordinator);
         }
         mTabStripTopControlLayer =
                 new TabStripTopControlLayer(
@@ -1171,7 +1191,6 @@ public class ToolbarManager
                         historyDelegate,
                         topControlsStacker,
                         mTabStripTopControlLayer,
-                        homeButtonDisplay,
                         profileSupplier);
         mActionModeController =
                 new ActionModeController(
@@ -1804,21 +1823,6 @@ public class ToolbarManager
         }
     }
 
-    private void onHomePageButtonClick(View v) {
-        if (mNtpDelegate.isCurrentlyVisible()) {
-            // Record the clicking action on the home button.
-            BrowserUiUtils.recordModuleClickHistogram(ModuleTypeOnStartAndNtp.HOME_BUTTON);
-        }
-        setUrlBarFocus(false, OmniboxFocusReason.UNFOCUS);
-        mToolbarTabController.openHomepage();
-        Tracker tracker = TrackerFactory.getTrackerForProfile(mProfileSupplier);
-        boolean isPartnerHomepageEnabled =
-                PartnerBrowserCustomizations.getInstance().isHomepageProviderAvailableAndEnabled();
-        if (tracker != null && isPartnerHomepageEnabled) {
-            tracker.notifyEvent(EventConstants.PARTNER_HOME_PAGE_BUTTON_PRESSED);
-        }
-    }
-
     private void initializeToolbarPositionController() {
         if (!ToolbarPositionController.isToolbarPositionCustomizationEnabled(
                 mActivity, mIsCustomTab)) {
@@ -1871,10 +1875,10 @@ public class ToolbarManager
                         mActivity,
                         mToolbarPositionSupplier,
                         (MonotonicObservableSupplier<Profile>) mProfileSupplier,
+                        mActivityTabProvider,
                         assertNonNull(mWindowAndroid.getInsetObserver())
                                 .getSupplierForKeyboardInset(),
-                        mWindowAndroid,
-                        mActivityTabProvider);
+                        mWindowAndroid);
 
         mMiniOriginBarController =
                 new MiniOriginBarController(
@@ -1938,7 +1942,6 @@ public class ToolbarManager
             HistoryDelegate historyDelegate,
             TopControlsStacker topControlsStacker,
             TabStripTopControlLayer tabStripTopControlLayer,
-            @Nullable HomeButtonDisplay homeButtonDisplay,
             MonotonicObservableSupplier<Profile> profileSupplier) {
         TopToolbarCoordinator toolbar =
                 new TopToolbarCoordinator(
@@ -1973,7 +1976,7 @@ public class ToolbarManager
                         mToolbarNavControlsEnabledSupplier,
                         mBackButtonCoordinator,
                         mForwardButtonCoordinator,
-                        homeButtonDisplay,
+                        mHomeButtonCoordinator,
                         topControlsStacker,
                         mBrowserControlsSizer,
                         () -> MultiWindowUtils.getIncognitoInstanceCount(/* activeOnly= */ true),
@@ -2234,6 +2237,7 @@ public class ToolbarManager
         assert mUndoBarThrottle != null;
         assert mLayoutManager != null;
         assert mTabModelSelector != null;
+        assert mDataSharingTabManager != null;
         ThemeColorProvider bottomUiThemeColorProvider =
                 new BottomUiThemeColorProvider(
                         mTopUiThemeColorProvider,
@@ -3196,7 +3200,20 @@ public class ToolbarManager
      * the new page.
      */
     private void checkIfNtpShowingWithNoPendingLoad() {
-        boolean isNtpUrl = UrlUtilities.isNtpUrl(mLocationBarModel.getCurrentGurl());
+        GURL url = mLocationBarModel.getCurrentGurl();
+        boolean isNtpUrl = UrlUtilities.isNtpUrl(url);
+
+        if (mEnableLogs) {
+            Log.i(
+                    TAG,
+                    "Get NewTabPage for the current tab: [null: %b] [isNtpUrl: %b] [isEmpty: %b]"
+                            + " [isValid: %b]",
+                    getNewTabPageForCurrentTab() == null,
+                    isNtpUrl,
+                    url.isEmpty(),
+                    url.isValid());
+        }
+
         if (isNtpUrl && getNewTabPageForCurrentTab() != null) {
             mIsNtpWithFakeboxShowingSupplier.set(NewTabPage.isInSingleUrlBarMode(mIsTablet));
         } else {
@@ -3215,6 +3232,12 @@ public class ToolbarManager
             mLocationBarModel.notifyNtpStartedLoading();
         }
 
+        if (mEnableLogs) {
+            Log.i(
+                    TAG,
+                    "Check if Ntp loaded with current tab %s a NTP.",
+                    ntp != null ? "is" : "isn't");
+        }
         checkIfNtpShowingWithNoPendingLoad();
 
         if (mToolbarPositionController != null) {
@@ -3264,6 +3287,9 @@ public class ToolbarManager
         if (updateUrl) {
             mLocationBarModel.notifyUrlChanged(false);
             updateButtonStatus();
+            if (mEnableLogs) {
+                Log.i(TAG, "Update tab loading state to check if NTP showing.");
+            }
             checkIfNtpShowingWithNoPendingLoad();
         }
     }

@@ -59,8 +59,9 @@ const char kApplyClientsideModelPredictionsForPasswordTypesDescription[] =
 const char kAskGeminiChipName[] = "Ask Gemini Chip";
 const char kAskGeminiChipDescription[] = "Enables the Ask Gemini Chip feature.";
 
-const char kAssistantSheetName[] = "AssistantSheet";
-const char kAssistantSheetDescription[] = "Enables the assistantSheet feature.";
+const char kAssistantContainerName[] = "Assistant Container";
+const char kAssistantContainerDescription[] =
+    "Enables the Assistant Container feature.";
 
 const char kAutofillAcrossIframesName[] = "Enables Autofill across iframes";
 const char kAutofillAcrossIframesDescription[] =
@@ -432,11 +433,6 @@ const char kDataSharingVersioningStatesName[] =
 const char kDataSharingVersioningStatesDescription[] =
     "Testing multiple scenarios for versioning.";
 
-const char kDefaultBrowserMagicStackIosName[] =
-    "Default Browser Magic Stack card.";
-const char kDefaultBrowserMagicStackIosDescription[] =
-    "When enabled, display the Default Browser module in the Magic Stack.";
-
 const char kDefaultBrowserOffCyclePromoName[] =
     "Default Browser off-cycle promo";
 const char kDefaultBrowserOffCyclePromoDescription[] =
@@ -490,6 +486,13 @@ const char kDisableLensCameraDescription[] =
 const char kDisableShareButtonName[] = "Disable Share Button in Toolbar";
 const char kDisableShareButtonDescription[] =
     "Hides the share button in toolbar.";
+
+const char kDisableU18FeedbackIosName[] = "DisableU18FeedbackIos";
+const char kDisableU18FeedbackIosDescription[] =
+    "When enabled, the primary identity is set to the feedback UI when opened. "
+    "The user is free add it to the feedback or not. Also the feedback cannot "
+    "be sent if the primary user is under 18. When disabled, the feedback is "
+    "anoymous";
 
 const char kDownloadAutoDeletionClearFilesOnEveryStartupName[] =
     "Enable Download Auto-Deletion Testing Mode";
@@ -655,6 +658,10 @@ const char kGeminiCopresenceDescription[] =
 const char kGeminiDynamicSettingsName[] = "Gemini Dynamic Settings";
 const char kGeminiDynamicSettingsDescription[] =
     "Enables loading Gemini settings dynamically using the Gemini SDK.";
+
+const char kGeminiFloatyAllPagesName[] = "Gemini Floaty All Pages";
+const char kGeminiFloatyAllPagesDescription[] =
+    "Enables the Gemini floaty on all pages.";
 
 const char kGeminiFullChatHistoryName[] = "GeminiFullChatHistory";
 const char kGeminiFullChatHistoryDescription[] =

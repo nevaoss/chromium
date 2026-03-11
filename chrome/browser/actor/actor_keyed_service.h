@@ -69,6 +69,8 @@ class ActorKeyedService : public KeyedService,
 
   const std::map<TaskId, const ActorTask*> GetActiveTasks() const;
 
+  size_t GetActiveTasksCount() const;
+
   std::vector<TaskId> FindTaskIdsInActive(
       base::FunctionRef<bool(const ActorTask&)> predicate) const;
 
@@ -118,9 +120,9 @@ class ActorKeyedService : public KeyedService,
   // in the given `tab`.
   bool IsActiveOnTab(const tabs::TabInterface& tab) const;
 
-  // Returns the id of an ActorTask which has the given tab in its set. Returns
-  // a null TaskId if no task has `tab`. Note: a returned task may be paused.
-  TaskId GetTaskFromTab(const tabs::TabInterface& tab) const;
+  // Returns an ActorTask which has the given tab in its set. Returns null if no
+  // task has `tab`. Note: a returned task may be paused.
+  ActorTask* GetTaskFromTab(const tabs::TabInterface& tab) const;
 
   Profile* GetProfile();
 

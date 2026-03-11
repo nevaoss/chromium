@@ -5,16 +5,20 @@
 package org.chromium.chrome.browser.toolbar.extensions;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.anyLong;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.view.View;
 
 import androidx.test.core.app.ApplicationProvider;
@@ -29,11 +33,11 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
-import org.robolectric.annotation.LooperMode;
 
 import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.SettableNullableObservableSupplier;
 import org.chromium.base.test.BaseRobolectricTestRunner;
+import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.extensions.ContextMenuSource;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.tab.MockTab;
@@ -47,6 +51,7 @@ import org.chromium.chrome.browser.ui.extensions.ExtensionsMenuBridgeJni;
 import org.chromium.chrome.browser.ui.extensions.ExtensionsMenuTypes;
 import org.chromium.chrome.browser.ui.extensions.FakeExtensionActionsBridgeRule;
 import org.chromium.chrome.browser.ui.extensions.FakeExtensionUiBackendRule;
+import org.chromium.chrome.browser.ui.extensions.R;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.ui.hierarchicalmenu.HierarchicalMenuController;
 import org.chromium.ui.listmenu.ListMenuButton;
@@ -61,13 +66,17 @@ import java.util.List;
 
 /** Tests for {@link ExtensionsMenuMediator}. */
 @RunWith(BaseRobolectricTestRunner.class)
-@LooperMode(LooperMode.Mode.PAUSED)
 public class ExtensionsMenuMediatorTest {
-    // Constants identifying the tabs and pointers used in the test environment.
+    // Constants identifying elements used in the test environment.
     private static final int TAB_ID = 111;
     private static final long ACTION_CONTEXT_MENU_BRIDGE_POINTER = 10000L;
     private static final long EXTENSIONS_MENU_BRIDGE_POINTER = 10001L;
     private static final long BROWSER_WINDOW_POINTER = 1000L;
+    private static final Bitmap ICON_RED = ExtensionTestUtils.createSimpleIcon(Color.RED);
+    private static final Bitmap ICON_BLUE = ExtensionTestUtils.createSimpleIcon(Color.BLUE);
+    private static final Bitmap ICON_GREEN = ExtensionTestUtils.createSimpleIcon(Color.GREEN);
+    private static final int ICON_MORE = R.drawable.ic_more_vert;
+    private static final int ICON_KEEP = R.drawable.ic_keep_24dp;
 
     @Rule public final MockitoRule mMockitoRule = MockitoJUnit.rule();
 
@@ -167,8 +176,12 @@ public class ExtensionsMenuMediatorTest {
     public void testOnReady_Actions() {
         // Mock the bridge to return menu entries.
         List<ExtensionsMenuTypes.MenuEntryState> entries = new ArrayList<>();
-        entries.add(ExtensionTestUtils.createSimpleMenuEntry("id_a", "Extension A"));
-        entries.add(ExtensionTestUtils.createSimpleMenuEntry("id_b", "Extension B"));
+        entries.add(
+                ExtensionTestUtils.createSimpleMenuEntry(
+                        "id_a", "Extension A", ICON_RED, /* isPinned= */ true));
+        entries.add(
+                ExtensionTestUtils.createSimpleMenuEntry(
+                        "id_b", "Extension B", ICON_BLUE, /* isPinned= */ false));
         when(mExtensionsMenuBridgeJniMock.getMenuEntries(anyLong())).thenReturn(entries);
 
         // Simulate the native callback triggering onReady.
@@ -177,8 +190,8 @@ public class ExtensionsMenuMediatorTest {
         // Verify action models are populated, property model is updated to hide zero state and the
         // onReady runnable is called.
         assertEquals(2, mActionModels.size());
-        assertItemAt(0, "Extension A");
-        assertItemAt(1, "Extension B");
+        assertItemAt(0, "Extension A", ICON_RED, ICON_KEEP);
+        assertItemAt(1, "Extension B", ICON_BLUE, ICON_MORE);
         verify(mMenuPropertyModel).set(ExtensionsMenuProperties.IS_ZERO_STATE, false);
         verify(mOnReadyRunnable).run();
     }
@@ -189,7 +202,9 @@ public class ExtensionsMenuMediatorTest {
         when(mExtensionsMenuBridgeJniMock.isReady(anyLong())).thenReturn(true);
 
         List<ExtensionsMenuTypes.MenuEntryState> entries = new ArrayList<>();
-        entries.add(ExtensionTestUtils.createSimpleMenuEntry("id_a", "Extension A"));
+        entries.add(
+                ExtensionTestUtils.createSimpleMenuEntry(
+                        "id_a", "Extension A", ICON_RED, /* isPinned= */ false));
         when(mExtensionsMenuBridgeJniMock.getMenuEntries(anyLong())).thenReturn(entries);
 
         mActionModels.clear();
@@ -208,10 +223,93 @@ public class ExtensionsMenuMediatorTest {
 
         // Verify it should have populated immediately without needing a callback.
         assertEquals(1, mActionModels.size());
-        assertItemAt(0, "Extension A");
+        assertItemAt(0, "Extension A", ICON_RED, ICON_MORE);
         verify(mMenuPropertyModel).set(ExtensionsMenuProperties.IS_ZERO_STATE, false);
 
         mediator.destroy();
+    }
+
+    @Test
+    public void testOnActionIconUpdated() {
+        // Initialize the action models.
+        List<ExtensionsMenuTypes.MenuEntryState> entries = new ArrayList<>();
+        entries.add(
+                ExtensionTestUtils.createSimpleMenuEntry(
+                        "id_a", "Extension A", null, /* isPinned= */ false));
+        entries.add(
+                ExtensionTestUtils.createSimpleMenuEntry(
+                        "id_b", "Extension B", null, /* isPinned= */ false));
+        when(mExtensionsMenuBridgeJniMock.getMenuEntries(anyLong())).thenReturn(entries);
+
+        mBridgeCaptor.getValue().onReady();
+
+        // Verify icons are correct.
+        assertItemAt(0, "Extension A", null, ICON_MORE);
+        assertItemAt(1, "Extension B", null, ICON_MORE);
+
+        // Simulate the native callback triggered when the icon for the first item is updated.
+        int entryIndex = 0;
+        when(mExtensionsMenuBridgeJniMock.getActionIcon(anyLong(), eq(entryIndex)))
+                .thenReturn(ICON_GREEN);
+        mBridgeCaptor.getValue().onActionIconUpdated(entryIndex);
+
+        // Verify the firstaction model's icon has been updated to the green one.
+        assertItemAt(0, "Extension A", ICON_GREEN, ICON_MORE);
+        assertItemAt(1, "Extension B", null, ICON_MORE);
+    }
+
+    /**
+     * Tests that removing an extension action from the menu correctly updates the action models.
+     */
+    @Test
+    public void testOnActionRemoved() {
+        // Initialize the action models.
+        List<ExtensionsMenuTypes.MenuEntryState> entries = new ArrayList<>();
+        entries.add(
+                ExtensionTestUtils.createSimpleMenuEntry(
+                        "id_a", "Extension A", ICON_RED, /* isPinned= */ false));
+        entries.add(
+                ExtensionTestUtils.createSimpleMenuEntry(
+                        "id_b", "Extension B", ICON_BLUE, /* isPinned= */ false));
+        when(mExtensionsMenuBridgeJniMock.getMenuEntries(anyLong())).thenReturn(entries);
+
+        // Open extensions menu by simulating the native callback triggering onReady.
+        mBridgeCaptor.getValue().onReady();
+        clearInvocations(mMenuPropertyModel);
+
+        assertEquals(2, mActionModels.size());
+
+        // Simulate the native callback triggered when the first item is removed.
+        mBridgeCaptor.getValue().onActionRemoved(0);
+
+        // Verify that the first item is removed and the second item shifted to index 0.
+        assertEquals(1, mActionModels.size());
+        assertItemAt(0, "Extension B", ICON_BLUE, ICON_MORE);
+        verify(mMenuPropertyModel).set(ExtensionsMenuProperties.IS_ZERO_STATE, false);
+    }
+
+    /** Tests that removing the last extension action from the menu shows the zero state. */
+    @Test
+    public void testOnActionRemoved_ZeroState() {
+        // Initialize with one item.
+        List<ExtensionsMenuTypes.MenuEntryState> entries = new ArrayList<>();
+        entries.add(
+                ExtensionTestUtils.createSimpleMenuEntry(
+                        "id_a", "Extension A", ICON_RED, /* isPinned= */ false));
+        when(mExtensionsMenuBridgeJniMock.getMenuEntries(anyLong())).thenReturn(entries);
+
+        // Open extensions menu by simulating the native callback triggering onReady.
+        mBridgeCaptor.getValue().onReady();
+        clearInvocations(mMenuPropertyModel);
+
+        assertEquals(1, mActionModels.size());
+
+        // Simulate removal of the only action.
+        mBridgeCaptor.getValue().onActionRemoved(0);
+
+        // Verify zero state is shown.
+        assertEquals(0, mActionModels.size());
+        verify(mMenuPropertyModel).set(ExtensionsMenuProperties.IS_ZERO_STATE, true);
     }
 
     /**
@@ -221,7 +319,9 @@ public class ExtensionsMenuMediatorTest {
     public void testContextClick_showMenu() {
         // Initialize the action models.
         List<ExtensionsMenuTypes.MenuEntryState> entries = new ArrayList<>();
-        entries.add(ExtensionTestUtils.createSimpleMenuEntry("id_a", "Extension A"));
+        entries.add(
+                ExtensionTestUtils.createSimpleMenuEntry(
+                        "id_a", "Extension A", ICON_RED, /* isPinned= */ true));
         when(mExtensionsMenuBridgeJniMock.getMenuEntries(anyLong())).thenReturn(entries);
 
         mBridgeCaptor.getValue().onReady();
@@ -229,7 +329,7 @@ public class ExtensionsMenuMediatorTest {
         // Click on the context menu button.
         ListItem item = mActionModels.get(0);
         View.OnClickListener contextMenuButtonListener =
-                item.model.get(ExtensionsMenuItemProperties.CLICK_LISTENER);
+                item.model.get(ExtensionsMenuItemProperties.CONTEXT_MENU_BUTTON_ON_CLICK);
         ListMenuButton mockContextMenuButton = createMockMenuButton();
         contextMenuButtonListener.onClick(mockContextMenuButton);
 
@@ -261,13 +361,6 @@ public class ExtensionsMenuMediatorTest {
         return mockButton;
     }
 
-    /** Helper to assert that the item at the given index has the correct title. */
-    private void assertItemAt(int index, String title) {
-        ListItem item = mActionModels.get(index);
-        assertEquals(0, item.type);
-        assertEquals(title, item.model.get(ExtensionsMenuItemProperties.TITLE));
-    }
-
     @Test
     public void testUpdateSiteSettingsToggle() {
         ExtensionsMenuTypes.SiteSettingsState siteSettingsState =
@@ -295,6 +388,21 @@ public class ExtensionsMenuMediatorTest {
                 .onSiteSettingsToggleChanged(EXTENSIONS_MENU_BRIDGE_POINTER, true);
     }
 
+    /** Helper to assert that the item at the given index has the correct information. */
+    private void assertItemAt(int index, String title, @Nullable Bitmap icon, int contextMenuIcon) {
+        ListItem item = mActionModels.get(index);
+        assertEquals(0, item.type);
+        assertEquals(title, item.model.get(ExtensionsMenuItemProperties.TITLE));
+        if (icon == null) {
+            assertNull(item.model.get(ExtensionsMenuItemProperties.ICON));
+        } else {
+            assertTrue(icon.sameAs(item.model.get(ExtensionsMenuItemProperties.ICON)));
+        }
+        assertEquals(
+                contextMenuIcon,
+                item.model.get(ExtensionsMenuItemProperties.CONTEXT_MENU_BUTTON_ICON));
+    }
+
     private ExtensionsMenuTypes.SiteSettingsState createSiteSettingsState(
             String label, boolean isOn) {
         ExtensionsMenuTypes.ControlState toggleState =
@@ -303,7 +411,8 @@ public class ExtensionsMenuMediatorTest {
                         "toggle_text",
                         "accessible_name",
                         "tooltip",
-                        isOn);
+                        isOn,
+                        /* icon= */ null);
         return new ExtensionsMenuTypes.SiteSettingsState(
                 label, /* hasTooltip= */ false, toggleState);
     }

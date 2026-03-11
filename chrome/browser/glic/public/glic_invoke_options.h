@@ -41,6 +41,14 @@ enum class GlicInvokeError {
   kTimeout,
   // The provided conversation ID was invalid (e.g. empty).
   kInvalidConversationId,
+  // The provided tab was invalid (e.g. null).
+  kInvalidTab,
+  // The tab was closed before the invocation could complete.
+  kTabClosed,
+  // The instance was destroyed before the invocation could complete.
+  kInstanceDestroyed,
+  // The instance is already handling an invocation.
+  kInvokeInProgress,
 };
 
 // Configuration options for invoking Glic.

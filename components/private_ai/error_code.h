@@ -7,7 +7,7 @@
 
 namespace private_ai {
 
-// Represents errors that can occur during a legion client operation.
+// Represents errors that can occur during a PrivateAI client operation.
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
 //
@@ -41,7 +41,7 @@ enum class ErrorCode {
   kDestroyed = 12,
   kMaxValue = kDestroyed,
 };
-// LINT.ThenChange(//tools/metrics/histograms/enums.xml:LegionErrorCode)
+// LINT.ThenChange(//tools/metrics/histograms/enums.xml:PrivateAiErrorCode)
 
 }  // namespace private_ai
 

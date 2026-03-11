@@ -4,6 +4,7 @@
 
 package org.chromium.chrome.browser.tasks.tab_management;
 
+import static org.chromium.chrome.browser.multiwindow.UiUtils.getItemTitle;
 import static org.chromium.ui.listmenu.ListItemType.MENU_ITEM;
 import static org.chromium.ui.listmenu.ListItemType.MENU_ITEM_WITH_SUBMENU;
 import static org.chromium.ui.listmenu.ListMenuItemProperties.CLICK_LISTENER;
@@ -461,8 +462,10 @@ public abstract class TabOverflowMenuCoordinator<T>
     protected ListItem createMoveToWindowItem(
             T id, boolean isIncognito, @PluralsRes int pluralsRes, @IdRes int menuId) {
         // TODO(crbug.com/437418051): Clean up move_tab_to_another_window strings.
-        if (!ChromeFeatureList.isEnabled(
-                ChromeFeatureList.SUBMENUS_TAB_CONTEXT_MENU_LFF_TAB_STRIP)) {
+        List<InstanceInfo> activeInstances =
+                mMultiInstanceManager.getInstanceInfo(PersistedInstanceType.ACTIVE);
+        if (!ChromeFeatureList.isEnabled(ChromeFeatureList.SUBMENUS_TAB_CONTEXT_MENU_LFF_TAB_STRIP)
+                || activeInstances.size() <= 1) {
             return new ListItemBuilder()
                     .withTitle(
                             mActivity
@@ -488,17 +491,12 @@ public abstract class TabOverflowMenuCoordinator<T>
                                             moveToNewWindow(id);
                                         })
                                 .build()));
-        List<InstanceInfo> activeInstances =
-                mMultiInstanceManager.getInstanceInfo(PersistedInstanceType.ACTIVE);
         if (activeInstances.size() > 1) {
             for (InstanceInfo instanceInfo : activeInstances) {
                 if (mMultiInstanceManager.getCurrentInstanceId() == instanceInfo.instanceId) {
                     continue;
                 }
-                String windowDisplayName =
-                        instanceInfo.title.isBlank()
-                                ? mActivity.getString(R.string.instance_switcher_entry_empty_window)
-                                : instanceInfo.title;
+                String windowDisplayName = getItemTitle(mActivity, instanceInfo);
                 submenuItems.add(
                         new ListItem(
                                 MENU_ITEM,

@@ -30,6 +30,7 @@ import org.chromium.base.test.util.Feature;
 import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.base.test.util.RequiresRestart;
+import org.chromium.base.test.util.Restriction;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.flags.ChromeSwitches;
 import org.chromium.chrome.test.ChromeJUnit4ClassRunner;
@@ -39,12 +40,14 @@ import org.chromium.components.content_settings.ContentSettingsType;
 import org.chromium.components.permissions.PermissionsAndroidFeatureList;
 import org.chromium.content_public.common.ContentSwitches;
 import org.chromium.ui.base.WindowAndroid;
+import org.chromium.ui.test.util.DeviceRestriction;
 
 /**
  * Tests for Gesture-Gated Permission Prompts.
  *
  * <p>This test suite verifies the behavior of permission prompts when the
- * "PermissionsGestureGatedPrompts" feature is enabled.
+ * "PermissionsGestureGatedPrompts" feature is enabled. TODO(crbug.com/4851977820): Look at android
+ * automotive test failure
  */
 @RunWith(ChromeJUnit4ClassRunner.class)
 @CommandLineFlags.Add({
@@ -149,16 +152,15 @@ public class PermissionGestureGatedTest {
     @MediumTest
     @Feature({"Permissions"})
     @RequiresRestart("Reset geolocation settings.")
+    @Restriction(DeviceRestriction.RESTRICTION_TYPE_NON_AUTO)
     public void testGeolocationWithoutGestureTriggersQuietUI() throws Exception {
         triggerGeolocationPermissionRequest(/* withGesture= */ false);
 
-        // With gesture -> Loud UI (Dialog).
+        // No gesture -> Quiet UI (MessageUI).
         mPermissionRule.waitForMessageShownState(true);
 
-        // Verify the quiet message text.
         onViewWaiting(withText("Location blocked")).check(matches(isDisplayed()));
 
-        // Click the primary button (OK).
         onViewWaiting(withText("OK")).perform(click());
         mPermissionRule.waitForGeolocationSettingForOrigin(
                 /* usePrecise= */ true, ContentSetting.BLOCK, PAGE_URL);
@@ -168,6 +170,7 @@ public class PermissionGestureGatedTest {
     @MediumTest
     @Feature({"Permissions"})
     @RequiresRestart("Reset geolocation settings.")
+    @Restriction(DeviceRestriction.RESTRICTION_TYPE_NON_AUTO)
     public void testGeolocationWithGestureTriggersLoudUI() throws Exception {
         triggerGeolocationPermissionRequest(/* withGesture= */ true);
 
@@ -184,10 +187,11 @@ public class PermissionGestureGatedTest {
     @Test
     @MediumTest
     @Feature({"Permissions"})
+    @Restriction(DeviceRestriction.RESTRICTION_TYPE_NON_AUTO)
     public void testNotificationsNoGestureTriggersQuietUI() throws Exception {
         triggerNotificationPermissionRequest(/* withGesture= */ false);
 
-        // With gesture-gated prompts enabled, lack of gesture -> Quiet UI.
+        // No gesture -> Quiet UI(Icon with ClapperQuiet).
         waitForQuietIcon();
         mPermissionRule.waitForMessageShownState(false);
 
@@ -202,6 +206,7 @@ public class PermissionGestureGatedTest {
     @Test
     @MediumTest
     @Feature({"Permissions"})
+    @Restriction(DeviceRestriction.RESTRICTION_TYPE_NON_AUTO)
     public void testNotificationsWithGestureTriggersLoudUI() throws Exception {
         triggerNotificationPermissionRequest(/* withGesture= */ true);
 

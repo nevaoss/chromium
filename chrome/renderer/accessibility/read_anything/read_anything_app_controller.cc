@@ -535,7 +535,8 @@ void ReadAnythingAppController::OnStringAttributeChanged(
     const std::string& old_value,
     const std::string& new_value) {
   // Return early when the images flag is disabled to avoid potential crashes.
-  if (!features::IsReadAnythingImagesViaAlgorithmEnabled()) {
+  if (!features::IsReadAnythingImagesViaAlgorithmEnabled() ||
+      attr != ax::mojom::StringAttribute::kUrl) {
     return;
   }
 
@@ -546,14 +547,14 @@ void ReadAnythingAppController::OnStringAttributeChanged(
   // When the src for an image changes (e.g if an image was lazy loaded and
   // previously had a placeholder image), request the updated image. The info
   // will be returned via OnImageDataDownloaded.
-  if (attr == ax::mojom::StringAttribute::kUrl &&
-      rm_node->GetRole() == ax::mojom::Role::kImage) {
+  if (rm_node->GetRole() == ax::mojom::Role::kImage) {
     RequestImageData(node->id());
   }
 }
 
 bool ReadAnythingAppController::IsUpdateProcessingPaused() const {
-  if (model_.distillation_in_progress() || read_aloud_model_.speech_playing()) {
+  if (model_.screen2x_distiller_running() ||
+      read_aloud_model_.speech_playing()) {
     return true;
   }
 
@@ -573,7 +574,7 @@ bool ReadAnythingAppController::IsUpdateProcessingPaused() const {
 }
 
 void ReadAnythingAppController::ProcessPendingUpdatesIfAllowed() {
-  if (IsUpdateProcessingPaused()) {
+  if (IsUpdateProcessingPaused() || !model_.ContainsActiveTree()) {
     return;
   }
 
@@ -813,7 +814,7 @@ void ReadAnythingAppController::DistillNewTree() {
 
 void ReadAnythingAppController::RecordDistillationSuccess() {
   read_anything::mojom::DistillationStatus distillationStatus;
-  if (model_.distillation_in_progress()) {
+  if (model_.screen2x_distiller_running()) {
     distillationStatus =
         distillationsCompleted_ > 0
             ? read_anything::mojom::DistillationStatus::kRestarted
@@ -918,7 +919,7 @@ void ReadAnythingAppController::Distill(bool for_training_data) {
                         : tree_lang);
   }
   CHECK(serializer.SerializeChanges(tree->root(), &snapshot));
-  model_.set_distillation_in_progress(true);
+  model_.set_screen2x_distiller_running(true);
   if (features::IsImmersiveReadAnythingEnabled()) {
     SetDistillationState(read_anything::mojom::ReadAnythingDistillationState::
                              kDistillationInProgress);
@@ -936,8 +937,8 @@ void ReadAnythingAppController::OnAXTreeDistilled(
   // happen after a long time of inactivity. In this case, we shouldn't reset
   // the model since the last state is still the correct state and clearing the
   // model causes issues for read aloud.
-  if (!model_.distillation_in_progress() && tree_id == ui::AXTreeIDUnknown() &&
-      content_node_ids.empty()) {
+  if (!model_.screen2x_distiller_running() &&
+      tree_id == ui::AXTreeIDUnknown() && content_node_ids.empty()) {
     VLOG(1) << "Distillation terminated after the main content extractor "
                "disconnected";
     return;
@@ -946,7 +947,7 @@ void ReadAnythingAppController::OnAXTreeDistilled(
   // Reset distillation in progress, because distillation just finished. This
   // is needed for the IsUpdateProcessingPaused check below, because it will
   // consider the processing pipeline paused if distillation is in progress.
-  model_.set_distillation_in_progress(false);
+  model_.set_screen2x_distiller_running(false);
 
   // Update active distillation method now that screen2x distillation has
   // finished.
@@ -1234,11 +1235,10 @@ gin::ObjectTemplateBuilder ReadAnythingAppController::GetObjectTemplateBuilder(
       .SetProperty("blueTheme", &ReadAnythingAppController::BlueTheme)
       .SetProperty("highContrastTheme",
                    &ReadAnythingAppController::HighContrastTheme)
-      .SetProperty("lowContrastTheme",
-                   &ReadAnythingAppController::LowContrastTheme)
-      .SetProperty("sepiaLightTheme",
-                   &ReadAnythingAppController::SepiaLightTheme)
-      .SetProperty("sepiaDarkTheme", &ReadAnythingAppController::SepiaDarkTheme)
+      .SetProperty("lowContrastLightTheme",
+                   &ReadAnythingAppController::LowContrastLightTheme)
+      .SetProperty("lowContrastDarkTheme",
+                   &ReadAnythingAppController::LowContrastDarkTheme)
       .SetProperty("autoHighlighting",
                    &ReadAnythingAppController::AutoHighlighting)
       .SetProperty("wordHighlighting",
@@ -1601,16 +1601,12 @@ int ReadAnythingAppController::HighContrastTheme() const {
   return std::to_underlying(read_anything::mojom::Colors::kHighContrast);
 }
 
-int ReadAnythingAppController::LowContrastTheme() const {
-  return std::to_underlying(read_anything::mojom::Colors::kLowContrast);
+int ReadAnythingAppController::LowContrastLightTheme() const {
+  return std::to_underlying(read_anything::mojom::Colors::kLowContrastLight);
 }
 
-int ReadAnythingAppController::SepiaLightTheme() const {
-  return std::to_underlying(read_anything::mojom::Colors::kSepiaLight);
-}
-
-int ReadAnythingAppController::SepiaDarkTheme() const {
-  return std::to_underlying(read_anything::mojom::Colors::kSepiaDark);
+int ReadAnythingAppController::LowContrastDarkTheme() const {
+  return std::to_underlying(read_anything::mojom::Colors::kLowContrastDark);
 }
 
 bool ReadAnythingAppController::IsHighlightOn() {
@@ -2146,6 +2142,12 @@ void ReadAnythingAppController::OnNoTextContent() {
 
 void ReadAnythingAppController::OnDistilled(int word_count) {
   model_.set_words_distilled(word_count);
+  if (model_.current_content_distillation_method() ==
+      ReadAnythingAppModel::DistillationMethod::kReadability) {
+    base::UmaHistogramCustomCounts(
+        "Accessibility.ReadAnything.WordsDistilledByReadability", word_count, 1,
+        kMaxWordsConsumed, kWordsConsumedBuckets);
+  }
 }
 
 void ReadAnythingAppController::UpdateWordsSeen(int words_seen) {
@@ -2186,7 +2188,7 @@ void ReadAnythingAppController::OnLinkClicked(ui::AXNodeID ax_node_id) const {
   // the tree may have changed in an unexpected way.
   // TODO(crbug.com/40802192): Consider how to show this in a more
   // user-friendly way.
-  if (model_.distillation_in_progress()) {
+  if (model_.screen2x_distiller_running()) {
     return;
   }
   page_handler_->OnLinkClicked(model_.active_tree_id(), ax_node_id);
@@ -2310,7 +2312,7 @@ void ReadAnythingAppController::OnSelectionChange(ui::AXNodeID anchor_node_id,
   // the tree may have changed in an unexpected way.
   // TODO(crbug.com/40802192): Consider how to show this in a more
   // user-friendly way.
-  if (model_.distillation_in_progress()) {
+  if (model_.screen2x_distiller_running()) {
     return;
   }
 
@@ -2856,10 +2858,10 @@ void ReadAnythingAppController::UpdateContent(const std::string& title,
     model_.set_next_distillation_method(
         ReadAnythingAppModel::DistillationMethod::kScreen2x);
 
-    // Only update distillation required if we have an active tree, otherwise
-    // wait for event to distill.
+    // Only attempt distillation if we have an active tree, otherwise only
+    // update the model and wait for event to distill.
+    model_.set_requires_distillation(true);
     if (model_.ContainsActiveTree()) {
-      model_.set_requires_distillation(true);
       DistillNewTree();
     }
     return;

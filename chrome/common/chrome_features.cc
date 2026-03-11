@@ -315,20 +315,21 @@ BASE_FEATURE(kGlicHandoffButtonResetFocusAndHoverStatus,
 BASE_FEATURE(kGlicHandoffButtonHideWhenOmniboxPopupOpened,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
-// If enabled, the magic cursor in the actor overlay is shown.
-BASE_FEATURE(kGlicActorUiOverlayMagicCursor, base::FEATURE_DISABLED_BY_DEFAULT);
+// If enabled, the magic cursor is shown during actuation for mouse movements
+// and clicks.
+BASE_FEATURE(kGlicActorUiMagicCursor, base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Default: 0.667 pixels per millisecond
-const base::FeatureParam<double> kGlicActorUiOverlayMagicCursorSpeed{
-    &kGlicActorUiOverlayMagicCursor, "magic-cursor-speed-px-per-ms", 0.667};
+// Default: 1.5 pixels per millisecond
+const base::FeatureParam<double> kGlicActorUiMagicCursorSpeed{
+    &kGlicActorUiMagicCursor, "magic-cursor-speed-px-per-ms", 1.5};
 
 // Default: 50ms
-const base::FeatureParam<int> kGlicActorUiOverlayMagicCursorMinDuration{
-    &kGlicActorUiOverlayMagicCursor, "magic-cursor-min-duration-ms", 50};
+const base::FeatureParam<int> kGlicActorUiMagicCursorMinDuration{
+    &kGlicActorUiMagicCursor, "magic-cursor-min-duration-ms", 50};
 
-// Default: 675ms
-const base::FeatureParam<int> kGlicActorUiOverlayMagicCursorMaxDuration{
-    &kGlicActorUiOverlayMagicCursor, "magic-cursor-max-duration-ms", 675};
+// Default: 300ms
+const base::FeatureParam<int> kGlicActorUiMagicCursorMaxDuration{
+    &kGlicActorUiMagicCursor, "magic-cursor-max-duration-ms", 300};
 
 // If enabled, tool execution is split into separate Validate and Execute steps.
 // The Validate step initializes the tool in the renderer and returns the
@@ -461,7 +462,7 @@ BASE_FEATURE_ENUM_PARAM(GlicActorEnterprisePrefDefault,
                         kGlicActorEnterprisePrefDefault,
                         &kGlicActor,
                         "glic_actor_enterprise_pref_default",
-                        GlicActorEnterprisePrefDefault::kForcedDisabled,
+                        GlicActorEnterprisePrefDefault::kDisabledByDefault,
                         &kGlicActorEnterprisePrefDefaultOptions);
 
 const base::FeatureParam<bool> kGlicActorPolicyControlExemption{
@@ -492,11 +493,6 @@ const base::FeatureParam<base::TimeDelta> kGlicActorMoveBeforeClickDelay{
     &kGlicActorMoveBeforeClick, "glic-actor-move-before-click-delay",
     base::Milliseconds(5)};
 
-// Controls whether the Glic's act-on-web capability is checked for managed
-// trial clients.
-BASE_FEATURE(kGlicActOnWebCapabilityForManagedTrials,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
 // Controls country and locale filtering for Glic.
 // See chrome/browser/glic/public/glic_enabling.cc for more details.
 // TODO(b/454431875): Re-enable after Finch configs are updated to allow
@@ -506,13 +502,7 @@ BASE_FEATURE(kGlicLocaleFiltering, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Controls whether the Glic FRE dialog is displayed in the same window as the
 // main app.
-BASE_FEATURE(kGlicUnifiedFreScreen,
-#if !BUILDFLAG(IS_ANDROID)
-             base::FEATURE_DISABLED_BY_DEFAULT
-#else  // Android only supports the unified FRE.
-             base::FEATURE_ENABLED_BY_DEFAULT
-#endif
-);
+BASE_FEATURE(kGlicUnifiedFreScreen, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Controls the bugfix where the unified FRE synchronizes cookies to the wrong
 // storage partition.
@@ -535,13 +525,7 @@ BASE_FEATURE(kGlic, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicDetached, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Controls whether the Glic feature uses multiple instances or not.
-BASE_FEATURE(kGlicMultiInstance,
-#if !BUILDFLAG(IS_ANDROID)
-             base::FEATURE_DISABLED_BY_DEFAULT
-#else  // Android only supports multi instance.
-             base::FEATURE_ENABLED_BY_DEFAULT
-#endif
-);
+BASE_FEATURE(kGlicMultiInstance, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Controls whether Glic warms up WebContents instead of a full instance.
 BASE_FEATURE(kGlicWebContentsWarming,
@@ -799,6 +783,8 @@ BASE_FEATURE(kGlicEnableCachedGetUserProfileInfo,
 
 BASE_FEATURE(kGlicUseShaderCache, base::FEATURE_ENABLED_BY_DEFAULT);
 
+BASE_FEATURE(kGlicDragAndDropFileUpload, base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE(kGlicKeyboardShortcutNewBadge, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicAppMenuNewBadge, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -857,7 +843,7 @@ BASE_FEATURE(kGlicIntro, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicLearnMore, base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kGlicUserStatusCheck, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGlicUserStatusCheck, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // When enabled, if GlicUserStatusFetcher receives an error when checking for
 // managed status, and the refresh token is missing, it will retry. This fixes
@@ -865,7 +851,7 @@ BASE_FEATURE(kGlicUserStatusCheck, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicUserStatusHandlesRefreshTokenLoss,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kGlicDefaultTabContextSetting, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGlicDefaultTabContextSetting, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicDefaultContextPinOnBind, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -909,6 +895,8 @@ extern const base::FeatureParam<std::string>
 
 BASE_FEATURE(kGlicRecordMemoryFootprintMetrics,
              base::FEATURE_ENABLED_BY_DEFAULT);
+
+BASE_FEATURE(kGlicRegionSelectionNew, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicWebClientUnresponsiveMetrics,
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -978,13 +966,13 @@ const base::FeatureParam<bool> kGlicEntrypointVariationsHighlightNudge{
     &kGlicEntrypointVariations, "glic-entrypoint-variations-highlight-nudge",
     false};
 
-BASE_FEATURE(kGlicButtonAltLabel, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGlicButtonAltLabel, base::FEATURE_ENABLED_BY_DEFAULT);
 const base::FeatureParam<int> kGlicButtonAltLabelVariant{
     &kGlicButtonAltLabel, "glic-button-alt-label-variant", 0};
 
-BASE_FEATURE(kGlicDaisyChainNewTabs, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGlicDaisyChainNewTabs, base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kGlicLiveModeOnlyGlow, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGlicLiveModeOnlyGlow, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicMITabContextMenu, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -1077,6 +1065,8 @@ const base::FeatureParam<int> kGlicGuestUrlPresetType{
     &kGlicGuestUrlPresets, "glic-guest-url-preset-type", 0};
 
 BASE_FEATURE(kGlicContextualCueBubble, base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kGlicClientZoomControl, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kActorFormFillingServiceEnableAddress,
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -1356,6 +1346,10 @@ BASE_FEATURE(kHttpsFirstModeIncognitoNewSettings,
 
 // Experimental image replacement feature. b/482792874
 BASE_FEATURE(kIndigo, base::FEATURE_DISABLED_BY_DEFAULT);
+const base::FeatureParam<std::string> kIndigoAlphaGenerateUrl{
+    &kIndigo, "indigo_alpha_generate_url", ""};
+const base::FeatureParam<std::string> kIndigoAlphaStatusUrl{
+    &kIndigo, "indigo_alpha_status_url", ""};
 
 #if !BUILDFLAG(IS_ANDROID)
 // A feature that controls whether Instant uses a spare renderer.
@@ -1880,11 +1874,11 @@ const base::FeatureParam<base::TimeDelta>
 #endif
 
 #if !BUILDFLAG(IS_ANDROID)
-BASE_FEATURE(kWebAppUsePrimaryIcon, base::FEATURE_ENABLED_BY_DEFAULT);
-
 BASE_FEATURE(kWebAppPeriodicPreinstallUpdate, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kWebAppMigratePreinstalledChat, base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kWebAppInstallDialog, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 BASE_FEATURE(kWebAppUpgradeToDatabaseVersion6,

@@ -47,6 +47,21 @@ function setupEventListeners() {
         assert(pageHandler);
         pageHandler.scheduleNotification('signin');
       });
+  getRequiredElement('create-tab-groups-notification')
+      .addEventListener('click', function() {
+        assert(pageHandler);
+        pageHandler.scheduleNotification('create_tab_groups');
+      });
+  getRequiredElement('customize-mvt-notification')
+      .addEventListener('click', function() {
+        assert(pageHandler);
+        pageHandler.scheduleNotification('customize_mvt');
+      });
+  getRequiredElement('recent-tabs-notification')
+      .addEventListener('click', function() {
+        assert(pageHandler);
+        pageHandler.scheduleNotification('recent_tabs');
+      });
 }
 
 document.addEventListener('DOMContentLoaded', function() {

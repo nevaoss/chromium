@@ -20,7 +20,6 @@
 #include "base/test/test_future.h"
 #include "base/time/time.h"
 #include "base/timer/elapsed_timer.h"
-#include "components/variations/scoped_variations_ids_provider.h"
 #include "content/browser/browser_context_impl.h"
 #include "content/browser/preloading/prefetch/mock_prefetch_service_delegate.h"
 #include "content/browser/preloading/prefetch/prefetch_container.h"
@@ -1095,10 +1094,8 @@ class PrefetchServiceTestBase : public PrefetchingMetricsTestBase {
     EXPECT_TRUE(serving_handle.HasPrefetchStatus());
     EXPECT_EQ(serving_handle.GetPrefetchStatus(),
               PrefetchStatus::kPrefetchSuccessful);
-    EXPECT_EQ(
-        serving_handle.GetMatchResolverActionForTesting(base::TimeDelta::Max())
-            .ToServableState(),
-        PrefetchServableState::kServable);
+    EXPECT_EQ(serving_handle.GetMatchResolverAction().ToServableState(),
+              PrefetchServableState::kServable);
     ASSERT_TRUE(serving_handle.GetPrefetchContainer()->GetNonRedirectHead());
     EXPECT_TRUE(serving_handle.GetPrefetchContainer()
                     ->GetNonRedirectHead()
@@ -1249,9 +1246,6 @@ class PrefetchServiceTestBase : public PrefetchingMetricsTestBase {
   std::map<GURL, mojo::ScopedDataPipeProducerHandle> producer_handle_for_gurl_;
 
   std::vector<PrefetchRequestHandler> request_handler_keep_alive_;
-
-  variations::test::ScopedVariationsIdsProvider scoped_variations_ids_provider_{
-      variations::VariationsIdsProvider::Mode::kIgnoreSignedInState};
 };
 
 class PrefetchServiceTest
@@ -3214,10 +3208,8 @@ TEST_P(PrefetchServiceTest, DISABLED_CHROMEOS(StreamingURLLoaderSuccessCase)) {
   EXPECT_TRUE(serving_handle.HasPrefetchStatus());
   EXPECT_EQ(serving_handle.GetPrefetchStatus(),
             PrefetchStatus::kPrefetchNotFinishedInTime);
-  EXPECT_EQ(
-      serving_handle.GetMatchResolverActionForTesting(base::TimeDelta::Max())
-          .ToServableState(),
-      PrefetchServableState::kServable);
+  EXPECT_EQ(serving_handle.GetMatchResolverAction().ToServableState(),
+            PrefetchServableState::kServable);
   EXPECT_TRUE(serving_handle.GetPrefetchContainer()->GetNonRedirectHead());
   EXPECT_TRUE(serving_handle.GetPrefetchContainer()
                   ->GetNonRedirectHead()
@@ -7448,9 +7440,7 @@ TEST_P(
 
   // Now `PrefetchServableState` should be `kNotServable` since we don't
   // have a non-redirect response but `PrefetchStreamingURLLoader` is gone.
-  EXPECT_EQ(prefetch_container
-                ->GetMatchResolverActionForTesting(base::TimeDelta::Max())
-                .ToServableState(),
+  EXPECT_EQ(prefetch_container->GetMatchResolverAction().ToServableState(),
             PrefetchServableState::kNotServable);
 
   // Start a navigation. The prefetch should not be served.
@@ -8219,7 +8209,6 @@ TEST_P(PrefetchServiceTest, PrefetchScheduler_RunsTwoConcurrentPrefetches) {
 // - A prefetch is triggered with high priority.
 // - `PrefetchScheduler` starts the later one.
 TEST_P(PrefetchServiceTest, PrefetchScheduler_Prioritize) {
-
   base::test::ScopedFeatureList scoped_feature_list;
   scoped_feature_list.InitWithFeaturesAndParameters(
       {{features::kPrefetchSchedulerTesting,

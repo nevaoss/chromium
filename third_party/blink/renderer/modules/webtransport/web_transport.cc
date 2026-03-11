@@ -234,7 +234,7 @@ class WebTransport::DatagramUnderlyingSink final : public UnderlyingSinkBase {
                          WrapWeakPersistent(this)));
     } else {
       Vector<uint8_t> datagram;
-      datagram.AppendSpan(data);
+      datagram.append_range(data);
       pending_datagrams_.push_back(std::move(datagram));
     }
     int high_water_mark = datagrams_->outgoingHighWaterMark();
@@ -827,7 +827,7 @@ WebTransport::WebTransport(ScriptState* script_state,
     : ActiveScriptWrappable<WebTransport>({}),
       ExecutionContextLifecycleObserver(context),
       script_state_(script_state),
-      url_(NullURL(), url),
+      url_(NullUrl(), url),
       connector_(context),
       transport_remote_(context),
       handshake_client_receiver_(this, context),

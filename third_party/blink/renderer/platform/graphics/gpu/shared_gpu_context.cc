@@ -4,6 +4,7 @@
 
 #include "third_party/blink/renderer/platform/graphics/gpu/shared_gpu_context.h"
 
+#include "base/command_line.h"
 #include "base/synchronization/waitable_event.h"
 #include "base/task/single_thread_task_runner.h"
 #include "build/build_config.h"
@@ -15,6 +16,7 @@
 #include "gpu/ipc/client/client_shared_image_interface.h"
 #include "gpu/ipc/client/gpu_channel_host.h"
 #include "third_party/blink/public/common/features.h"
+#include "third_party/blink/public/common/switches.h"
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/public/platform/web_graphics_context_3d_provider.h"
 #include "third_party/blink/public/platform/web_url.h"
@@ -24,6 +26,32 @@
 #include "third_party/blink/renderer/platform/wtf/cross_thread_functional.h"
 
 namespace blink {
+
+namespace {
+
+namespace {
+
+std::optional<bool>
+    g_native_mappable_shared_images_supported_for_canvas_2d_for_testing;
+
+}
+
+bool Canvas2dImageChromiumEnabled() {
+#if BUILDFLAG(IS_APPLE)
+  // NOTE: Canvas2D checks this feature only when GPU compositing is enabled
+  // (since the entire concept of creating accelerated overlays makes sense only
+  // when GPU compositing is enabled), so there is no need to explicitly guard
+  // by switches::kDisableGpu.
+  static const bool enable_canvas_2d_image_chromium =
+      base::CommandLine::ForCurrentProcess()->HasSwitch(
+          switches::kEnableGpuMemoryBufferCompositorResources);
+#else
+  constexpr bool enable_canvas_2d_image_chromium = false;
+#endif
+  return enable_canvas_2d_image_chromium;
+}
+
+}  // namespace
 
 SharedGpuContext* SharedGpuContext::GetInstanceForCurrentThread() {
   DEFINE_THREAD_SAFE_STATIC_LOCAL(ThreadSpecific<SharedGpuContext>,
@@ -231,6 +259,7 @@ void SharedGpuContext::Reset() {
   this_ptr->shared_image_interface_provider_.reset();
   this_ptr->context_provider_wrapper_.reset();
   this_ptr->context_provider_factory_.Reset();
+  g_native_mappable_shared_images_supported_for_canvas_2d_for_testing.reset();
 }
 
 bool SharedGpuContext::IsValidWithoutRestoringForTesting() {
@@ -272,5 +301,37 @@ bool SharedGpuContext::MaySupportImageChromium() {
   return ::features::IsAndroidSurfaceControlEnabled();
 }
 #endif  // BUILDFLAG(IS_ANDROID)
+
+bool SharedGpuContext::NativeMappableSharedImagesSupportedForCanvas2D() {
+  if (g_native_mappable_shared_images_supported_for_canvas_2d_for_testing) {
+    return g_native_mappable_shared_images_supported_for_canvas_2d_for_testing
+        .value();
+  }
+
+  return MaySupportImageChromium() && Canvas2dImageChromiumEnabled();
+}
+
+void SharedGpuContext::
+    SetNativeMappableSharedImagesSupportedForCanvas2DForTesting(bool enable) {
+  g_native_mappable_shared_images_supported_for_canvas_2d_for_testing = enable;
+}
+
+bool SharedGpuContext::OverlaysSupportedForCanvas2D() {
+  return MaySupportImageChromium() && Canvas2dImageChromiumEnabled();
+}
+
+bool SharedGpuContext::LowLatencyUsageSupportedForCanvas2D() {
+  bool can_use_swapchain = ContextProviderWrapper()
+                               ->ContextProvider()
+                               .SharedImageInterface()
+                               ->GetCapabilities()
+                               .shared_image_swap_chain;
+
+  return can_use_swapchain ||
+         (MaySupportImageChromium() &&
+          (Canvas2dImageChromiumEnabled() ||
+           base::FeatureList::IsEnabled(
+               features::kLowLatencyCanvas2dImageChromium)));
+}
 
 }  // namespace blink

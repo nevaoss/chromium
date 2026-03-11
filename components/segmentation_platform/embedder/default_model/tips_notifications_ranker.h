@@ -24,6 +24,9 @@ class TipsNotificationsRanker : public DefaultModelProvider {
     kBottomOmniboxTipIdx,
     kPasswordAutofillTipIdx,
     kSigninTipIdx,
+    kCreateTabGroupsTipIdx,
+    kCustomizeMVTTipIdx,
+    kRecentTabsTipIdx,
     kLabelCount
   };
 
@@ -49,8 +52,15 @@ class TipsNotificationsRanker : public DefaultModelProvider {
     kPasswordAutofillLocalPasswordsCountIdx,
     kIsUserSignedInIdx,
     kSigninMagicStackShownCountIdx,
+    kTabGroupsCreatedCountIdx,
+    kNTPShownCountIdx,
+    kMVTPinnedCountIdx,
+    kRecentTabsUsedCountIdx,
     kPasswordAutofillTipShownIdx,
     kSigninTipShownIdx,
+    kCreateTabGroupsTipShownIdx,
+    kCustomizeMVTTipShownIdx,
+    kRecentTabsTipShownIdx,
     kFeatureCount
   };
 

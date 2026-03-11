@@ -59,6 +59,8 @@
 #import "ios/chrome/browser/authentication/ui_bundled/signin_presenter.h"
 #import "ios/chrome/browser/autocomplete/model/autocomplete_browser_agent.h"
 #import "ios/chrome/browser/autofill/authentication/coordinator/card_unmask_authentication_coordinator.h"
+#import "ios/chrome/browser/autofill/autofill_ai/coordinator/autofill_ai_save_entity_coordinator.h"
+#import "ios/chrome/browser/autofill/autofill_ai/public/save_entity_params.h"
 #import "ios/chrome/browser/autofill/form_input_accessory/coordinator/form_input_accessory_coordinator.h"
 #import "ios/chrome/browser/autofill/model/bottom_sheet/autofill_bottom_sheet_tab_helper.h"
 #import "ios/chrome/browser/autofill/ui_bundled/address_editor/autofill_edit_profile_coordinator.h"
@@ -137,7 +139,7 @@
 #import "ios/chrome/browser/intelligence/bwg/model/bwg_service_factory.h"
 #import "ios/chrome/browser/intelligence/bwg/model/bwg_tab_helper.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_browser_agent.h"
-#import "ios/chrome/browser/intelligence/bwg/utils/bwg_constants.h"
+#import "ios/chrome/browser/intelligence/bwg/utils/gemini_constants.h"
 #import "ios/chrome/browser/intelligence/enhanced_calendar/coordinator/enhanced_calendar_coordinator.h"
 #import "ios/chrome/browser/intelligence/enhanced_calendar/model/enhanced_calendar_configuration.h"
 #import "ios/chrome/browser/intelligence/features/features.h"
@@ -530,6 +532,9 @@ const char kChromeAppStoreUrl[] =
 
 @property(nonatomic, strong)
     AutofillEditProfileCoordinator* autofillEditProfileCoordinator;
+
+@property(nonatomic, strong)
+    AutofillAISaveEntityCoordinator* autofillAISaveEntityCoordinator;
 
 @property(nonatomic, strong)
     SaveCardBottomSheetCoordinator* saveCardBottomSheetCoordinator;
@@ -1668,6 +1673,7 @@ const char kChromeAppStoreUrl[] =
   [self dismissAutofillErrorDialog];
 
   [self dismissAutofillProgressDialog];
+  [self dismissSaveEntityDialog];
 
   [self.printCoordinator stop];
   self.printCoordinator = nil;
@@ -2271,6 +2277,25 @@ const char kChromeAppStoreUrl[] =
 - (void)dismissAutofillProgressDialog {
   [self.autofillProgressDialogCoordinator stop];
   self.autofillProgressDialogCoordinator = nil;
+}
+
+- (void)showSaveEntityDialog:(autofill::SaveEntityParams)params {
+  if (_autofillAISaveEntityCoordinator) {
+    std::move(params.callback)
+        .Run(autofill::AutofillClient::AutofillAiBubbleResult::kUnknown);
+    return;
+  }
+
+  _autofillAISaveEntityCoordinator = [[AutofillAISaveEntityCoordinator alloc]
+      initWithBaseViewController:self.viewController
+                         browser:self.browser
+                          params:std::move(params)];
+  [_autofillAISaveEntityCoordinator start];
+}
+
+- (void)dismissSaveEntityDialog {
+  [_autofillAISaveEntityCoordinator stop];
+  _autofillAISaveEntityCoordinator = nil;
 }
 
 #pragma mark - IOSPasskeyClientCommands
@@ -3315,28 +3340,18 @@ const char kChromeAppStoreUrl[] =
 
 #pragma mark - BWGCommands
 
-- (void)startGeminiFlowWithEntryPoint:(gemini::EntryPoint)entryPoint {
-  [self startGeminiFlowWithImageAttachment:nil entryPoint:entryPoint];
-}
-
-- (void)startGeminiFlowWithImageAttachment:(UIImage*)image
-                                entryPoint:(gemini::EntryPoint)entryPoint {
-  if (IsGeminiRefactoredFREEnabled()) {
+- (void)startGeminiFlowWithStartupState:(GeminiStartupState*)startupState {
+  if (IsGeminiRefactoredFREEnabled() ||
+      startupState.entryPoint == gemini::EntryPoint::ImageContextMenu) {
     GeminiBrowserAgent::FromBrowser(self.browser)
-        ->StartGeminiFlow(self.viewController, image, entryPoint);
+        ->StartGeminiFlow(self.viewController, startupState);
     return;
   }
 
-  if (entryPoint == gemini::EntryPoint::ImageContextMenu) {
-    GeminiBrowserAgent::FromBrowser(self.browser)
-        ->StartGeminiFlow(self.viewController, image, entryPoint);
-    return;
-  }
-
-  _BWGCoordinator =
-      [[BWGCoordinator alloc] initWithBaseViewController:self.viewController
-                                                 browser:self.browser
-                                          fromEntryPoint:entryPoint];
+  _BWGCoordinator = [[BWGCoordinator alloc]
+      initWithBaseViewController:self.viewController
+                         browser:self.browser
+                  fromEntryPoint:startupState.entryPoint];
   [_BWGCoordinator start];
 }
 
@@ -3378,7 +3393,9 @@ const char kChromeAppStoreUrl[] =
 - (void)showBWGPromoIfPageIsEligible {
   BwgService* BWGService = BwgServiceFactory::GetForProfile(self.profile);
   if (BWGService->IsBwgAvailableForWebState(self.activeWebState)) {
-    [self startGeminiFlowWithEntryPoint:gemini::EntryPoint::Promo];
+    [self startGeminiFlowWithStartupState:
+              [[GeminiStartupState alloc]
+                  initWithEntryPoint:gemini::EntryPoint::Promo]];
   }
 }
 
@@ -3499,6 +3516,11 @@ const char kChromeAppStoreUrl[] =
     // here so it can do any necessary cleanup.
     [self.promosManagerCoordinator promoWasDismissed];
   }
+}
+
+- (void)dismissCurrentPromo {
+  [self.promosManagerCoordinator stop];
+  self.promosManagerCoordinator = nil;
 }
 
 - (void)showWhatsNewPromo {
@@ -4170,22 +4192,13 @@ const char kChromeAppStoreUrl[] =
 #pragma mark - WebContentCommands
 
 - (void)showAppStoreWithParameters:(NSDictionary*)productParameters {
-  // TODO (crbug.com/486139801): Start the StoreKitCoordinator with
-  // clearPresentedState regardless of whether the ComposeBox feature is
-  // enabled. This was originally restricted to the feature flag to ensure a
-  // safer cherry-pick.
-  if (IsComposeboxIOSEnabled()) {
-    __weak __typeof(self) weakSelf = self;
-
-    // Properly start the StoreKitCoordinator in a clean presented state.
-    [self
-        clearPresentedStateWithCompletion:^{
-          [weakSelf startStoreKitCoordinatorWithParameters:productParameters];
-        }
-                           dismissOmnibox:YES];
-  } else {
-    [self startStoreKitCoordinatorWithParameters:productParameters];
-  }
+  __weak __typeof(self) weakSelf = self;
+  // Properly start the StoreKitCoordinator in a clean presented state.
+  [self
+      clearPresentedStateWithCompletion:^{
+        [weakSelf startStoreKitCoordinatorWithParameters:productParameters];
+      }
+                         dismissOmnibox:YES];
 }
 
 - (void)showDialogForPassKitPasses:(NSArray<PKPass*>*)passes {

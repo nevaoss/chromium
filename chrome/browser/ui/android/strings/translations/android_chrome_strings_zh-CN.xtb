@@ -246,11 +246,12 @@
 <translation id="2047378580182589770">轻触并按住即可退出无痕模式</translation>
 <translation id="2049574241039454490"><ph name="FILE_SIZE_OF_TOTAL" /> <ph name="SEPARATOR" /> <ph name="DESCRIPTION" /></translation>
 <translation id="2051669996101374349">尽可能使用 HTTPS，并在加载不支持 HTTPS 的网站前收到警告。您无法更改此设置，因为您已启用“高级保护”。</translation>
+<translation id="2052723746739622752">取消固定 Gemini</translation>
 <translation id="2056878612599315956">网站已被暂停</translation>
 <translation id="2063047797624276601">您的组织已开启“增强型安全浏览”功能</translation>
 <translation id="2065944887543506430">{FILE_COUNT,plural, =1{1 项下载失败}other{# 项下载失败}}</translation>
 <translation id="2067805253194386918">文本</translation>
-<translation id="2079545284768500474">撤消</translation>
+<translation id="2079545284768500474">撤销</translation>
 <translation id="2082238445998314030">第 <ph name="RESULT_NUMBER" /> 条结果，共 <ph name="TOTAL_RESULTS" /> 条</translation>
 <translation id="2091863218454846791">当前显示的是精简视图</translation>
 <translation id="2093731487903423814">过去 15 分钟</translation>
@@ -280,6 +281,7 @@
 <translation id="2205701497928406883"><ph name="TAB_TITLE" />，已固定的标签页，正在共享内容</translation>
 <translation id="22091350895006575">添加用户名</translation>
 <translation id="221494669172414749">如果在不设置个人资料锁定的情况下打开 Chrome，您已保存的密码和付款方式将会从这部车载设备中移除。使用个人资料锁定功能可确保此类数据安全。</translation>
+<translation id="2226826835915474236">未使用的快捷字词</translation>
 <translation id="2227179592712503583">移除推荐内容</translation>
 <translation id="2227444325776770048">以<ph name="USER_FULL_NAME" />的身份继续</translation>
 <translation id="2230777942707397948">空白窗口</translation>
@@ -396,7 +398,6 @@
 <translation id="2702516483241149200">新功能：可分享能够定位到此文本的链接</translation>
 <translation id="2708226184420201102">在 <ph name="PRODUCT_NAME" /> 浏览器中打开</translation>
 <translation id="271033894570825754">新</translation>
-<translation id="2710883118091822664">登录后，即可在所有设备上无缝衔接，轻松继续</translation>
 <translation id="2718352093833049315">仅限使用 Wi-Fi 时</translation>
 <translation id="2718846868787000099">您访问的网站可查看您的偏好设置，以便能够以您的首选语言显示网页内容</translation>
 <translation id="2723001399770238859">音频</translation>
@@ -532,7 +533,6 @@
 <translation id="3268048651973962414">向上拖动即可查看搜索结果</translation>
 <translation id="3269093882174072735">加载图片</translation>
 <translation id="3280562213547448728">语音搜索</translation>
-<translation id="3282568296779691940">登录 Chrome</translation>
 <translation id="3285065882678541460">{TAB_COUNT,plural, =1{<ph name="TAB_GROUPS_PART" />、<ph name="TAB_COUNT_ONE" /> 个标签页}other{<ph name="TAB_GROUPS_PART" />、<ph name="TAB_COUNT_MANY" /> 个标签页}}</translation>
 <translation id="3286508210927575634">{PASSWORDS_COUNT,plural, =1{有 1 个密码只保存到此设备上。若要在其他设备上使用它，请将它保存到您的 Google 账号中。}other{有 # 个密码只保存到此设备上。若要在其他设备上使用它们，请将它们保存到您的 Google 账号中。}}</translation>
 <translation id="3293181007446299124">您的浏览记录会私密地保留在您的设备上，并且系统会延迟发送报告以保护您的身份信息</translation>
@@ -727,6 +727,7 @@
 <translation id="4137746084635924146">当前设备语言</translation>
 <translation id="414128724510021958">默认请求桌面版网站</translation>
 <translation id="4162867837470729563">分享选项列表已全屏打开。</translation>
+<translation id="4165077084524712774">更多工具</translation>
 <translation id="4170011742729630528">此服务目前无法使用，请稍后再试。</translation>
 <translation id="4170577491341606575">正在获取您的数据\u2026</translation>
 <translation id="4177222230309051052">获取您的所有书签</translation>
@@ -747,7 +748,7 @@
 <translation id="4225895483398857530">工具栏中的快捷方式</translation>
 <translation id="4232376164796433044">密码和自动填充</translation>
 <translation id="4242533952199664413">打开“设置”</translation>
-<translation id="424864128008805179">退出 Chrome？</translation>
+<translation id="424864128008805179">要在 Chrome 中退出账号吗？</translation>
 <translation id="4249955472157341256">按新近度排序</translation>
 <translation id="4255841059940367080">根据系统向 Google 发送的浏览数据，实时提供 AI 赋能的保护，防范危险的网站、下载内容和扩展程序</translation>
 <translation id="4256782883801055595">开源许可</translation>
@@ -923,6 +924,7 @@
 <translation id="4885273946141277891">Chrome 实例数量已超出上限。</translation>
 <translation id="4890973535105146893">您的 Google 账号中没有保存任何密码</translation>
 <translation id="4905823827770127520">包含页面链接</translation>
+<translation id="4908601375231458049">自定义标签页分组，然后点击“完成”</translation>
 <translation id="4908869848243824489">Google 探索</translation>
 <translation id="4910889077668685004">付款应用</translation>
 <translation id="4911042367886397055"><ph name="USER_NAME" />，欢迎回来！</translation>
@@ -1186,6 +1188,7 @@
 <translation id="6040143037577758943">关闭</translation>
 <translation id="604124094241169006">自动</translation>
 <translation id="6042308850641462728">更多</translation>
+<translation id="6047066316630165190">打开网格标签页切换器</translation>
 <translation id="604996488070107836">出现未知错误，未能下载 <ph name="FILE_NAME" />。</translation>
 <translation id="605721222689873409">YY</translation>
 <translation id="6059830886158432458">在此处控制您的报道和活动</translation>
@@ -1200,6 +1203,7 @@
 <translation id="610630277578876674">快速打开消息等内容中的链接</translation>
 <translation id="6108923351542677676">正在设置…</translation>
 <translation id="6112702117600201073">正在刷新页面</translation>
+<translation id="612221930823678863">网址格式（用“<ph name="QUERY" />”代替搜索字词）</translation>
 <translation id="6122831415929794347">要关闭“安全浏览”功能吗？</translation>
 <translation id="6124936178263837501">报告为非垃圾内容</translation>
 <translation id="6125202119952209826">加入<ph name="OWNER_FIRST_NAME" />所在的标签页分组</translation>
@@ -1258,6 +1262,7 @@
 <translation id="6301526076346731664">打开开发者工具</translation>
 <translation id="630308129961693966">选择地址栏的位置</translation>
 <translation id="6303969859164067831">退出账号并关闭同步功能</translation>
+<translation id="6305257382500066042">立即试用</translation>
 <translation id="6307241780749477694">请验证您的身份，以便在此设备上获取您的所有密码</translation>
 <translation id="6309082029962045994"><ph name="TAB_TITLE" />，已选择的多个固定标签页之一，正在播放音频</translation>
 <translation id="6312687380483398334">Web 应用（安静）</translation>
@@ -1359,6 +1364,7 @@
 <translation id="6661521899577697780">已半屏打开 Chrome 查找功能选择启用底部动作条</translation>
 <translation id="666731172850799929">在 <ph name="APP_NAME" />中打开</translation>
 <translation id="6669390930482049506">通知我</translation>
+<translation id="6670767097276846646">某些扩展程序可以向 Chrome 添加搜索引擎</translation>
 <translation id="6671495933530132209">复制图片</translation>
 <translation id="6672697278890207089">请输入口令</translation>
 <translation id="6672917148207387131">添加 <ph name="DOMAIN" /></translation>
@@ -1464,6 +1470,7 @@
 <translation id="6980258170429555165">“<ph name="MENU_NAME" />”菜单处于突出显示状态。</translation>
 <translation id="6983306615164277634">您也可轻触并按住地址栏来更改其位置。</translation>
 <translation id="6987047470128880212">无法在此设备上使用无痕模式</translation>
+<translation id="6989358895283601928">保存并打印</translation>
 <translation id="6996145122199359148">下载此网页</translation>
 <translation id="7013762323294215682">此通行密钥将保存到密码管理工具。任何有权访问密码管理工具的用户都能使用此通行密钥。</translation>
 <translation id="7020741890149022655">添加到阅读清单<ph name="BEGIN_NEW" />新功能<ph name="END_NEW" /></translation>
@@ -1557,6 +1564,7 @@
 <translation id="7363349185727752629">隐私控制选项指南</translation>
 <translation id="7364103838544876661">用于删除浏览数据的更多选项</translation>
 <translation id="7365073365123878797">如需开始使用 Google 密码管理工具保存和使用密码，请更新 Google Play 服务</translation>
+<translation id="7368927539449986686">修改网站搜索引擎</translation>
 <translation id="7375125077091615385">类型：</translation>
 <translation id="7376560087009844242">如果选择纳入相应页面上的更多文字，您便可能会在使用“轻触搜索”功能时看到相关性更高的结果。您随时可访问<ph name="BEGIN_LINK" />设置<ph name="END_LINK" />以更改此设置。</translation>
 <translation id="7379900596734708416">可为网站启用深色主题</translation>
@@ -1571,7 +1579,7 @@
 <translation id="7419565702166471774">一律使用安全连接</translation>
 <translation id="7421293530411019405">要退出标签页分组吗？</translation>
 <translation id="7435356471928173109">已被您的管理员关闭</translation>
-<translation id="7437998757836447326">退出 Chrome</translation>
+<translation id="7437998757836447326">在 Chrome 中退出账号</translation>
 <translation id="7439467816829380878">将标签页移至分组</translation>
 <translation id="7439749340204407129">打开书签管理器</translation>
 <translation id="7453810262525006706">合拢为侧边视图</translation>
@@ -1650,6 +1658,7 @@
 <translation id="7740287852186792672">搜索结果</translation>
 <translation id="774403695779169686"><ph name="TAB_TITLE" />，已选择的无痕式标签页，正在共享内容</translation>
 <translation id="774876555279732384">您也可以在 <ph name="BEGIN_LINK" />Android 设置<ph name="END_LINK" />中管理自动填充服务。</translation>
+<translation id="7758884017823246335">添加网站搜索引擎</translation>
 <translation id="7759809451544302770">选填</translation>
 <translation id="7762668264895820836">SD 卡 <ph name="SD_CARD_NUMBER" /></translation>
 <translation id="7764225426217299476">添加地址</translation>
@@ -1840,6 +1849,7 @@
 <translation id="8458341576712814616">快捷字词</translation>
 <translation id="8458413889418591446">如果想快速重新访问浏览过的网站，请同步您的历史记录和标签页</translation>
 <translation id="84594714173170813">请继续使用您的 Google 账号中的 Chrome 数据</translation>
+<translation id="8460008946585880786">将一个标签页拖放到另一个标签页上</translation>
 <translation id="8460448946170646641">检查重要的隐私控制设置和安全控件</translation>
 <translation id="8460932807646981183">管理搜索引擎和网站搜索</translation>
 <translation id="8473863474539038330">地址和其他信息</translation>
@@ -1881,6 +1891,7 @@
 <translation id="8634050254805484913">在窄屏设备上隐藏</translation>
 <translation id="8635399646025169806">要保留标签页分组吗？</translation>
 <translation id="8636825310635137004">要访问您从其他设备打开的标签页，请开启同步功能。</translation>
+<translation id="8639963783467694461">自动填充设置</translation>
 <translation id="8662474268934425487">登录 <ph name="SITE_ETLD_PLUS_ONE" /></translation>
 <translation id="8664979001105139458">文件名已存在</translation>
 <translation id="8676276370198826499">通过 <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> 注册 <ph name="SITE_ETLD_PLUS_ONE" /></translation>
@@ -1929,6 +1940,7 @@
 <translation id="8865415417596392024">您账号中的 Chrome 数据</translation>
 <translation id="8872506776304248286">在应用中打开</translation>
 <translation id="8890668505403261809">搜索无痕式标签页</translation>
+<translation id="8892234476517513962">您已登录</translation>
 <translation id="8894890673032951011"><ph name="TAB_TITLE" />，已选择的无痕式标签页，正在录制内容</translation>
 <translation id="8898822736010347272">向 Google 发送您访问过的部分网页的网址、有限的系统信息以及部分网页内容，以便帮助我们发现新威胁并保护网络上的所有用户。</translation>
 <translation id="8903921497873541725">放大</translation>
@@ -1948,6 +1960,7 @@
 <translation id="8969796057708736017">如果该文件符合您所在组织的政策，下载将会完成</translation>
 <translation id="8970887620466824814">出了点问题。</translation>
 <translation id="8972098258593396643">是否下载到默认文件夹？</translation>
+<translation id="8987736167266086032">从上次停下的地方继续</translation>
 <translation id="8992769679401294069">系统将使用您的口令加密您的数据。请输入该口令，以便将 Chrome 数据保存在您的 Google 账号中并使用这些数据。</translation>
 <translation id="8993760627012879038">在无痕模式下打开新标签页</translation>
 <translation id="8995521496079646922">系统将默认使用您选择的应用。如果此设备上尚未安装某个应用，系统会很快下载该应用。</translation>

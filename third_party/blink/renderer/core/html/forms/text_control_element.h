@@ -208,9 +208,9 @@ class CORE_EXPORT TextControlElement : public HTMLFormControlElementWithState {
 
   // Creates and returns a new OpaqueRange for this element's value.
   // Throws if offsets are out of bounds.
-  virtual OpaqueRange* getValueRange(unsigned start_offset,
-                                     unsigned end_offset,
-                                     ExceptionState&);
+  virtual OpaqueRange* createValueRange(unsigned start_offset,
+                                        unsigned end_offset,
+                                        ExceptionState&);
 
   // Use the pre-edit baseline to compute and apply the edit once an observable
   // value mutation occurs, before 'input' listeners run.
@@ -276,6 +276,9 @@ class CORE_EXPORT TextControlElement : public HTMLFormControlElementWithState {
     }
     return inner_editor_.Get();
   }
+
+  // https://html.spec.whatwg.org/multipage/form-control-infrastructure.html#barred-from-constraint-validation
+  bool ReadOnlyPreventsConstraintValidation() const final { return true; }
 
  private:
   // Used by ComputeSelection() to specify which values are needed.

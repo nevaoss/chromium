@@ -47,6 +47,7 @@ class Origin;
 
 namespace content {
 
+class AssertPrefetchContainerObserver;
 class PrefetchIsolatedNetworkContext;
 class PrefetchKey;
 class PrefetchMatchResolverAction;
@@ -354,9 +355,6 @@ class CONTENT_EXPORT PrefetchContainer {
   void UpdateResourceRequest(const net::RedirectInfo& redirect_info,
                              PrefetchUpdateHeadersParams params);
 
-  // The length of the redirect chain for this prefetch.
-  size_t GetRedirectChainSize() const { return redirect_chain_.size(); }
-
   // Whether this prefetch is a decoy. Decoy prefetches will not store the
   // response, and not serve any prefetched resources.
   void SetIsDecoy(bool is_decoy) { is_decoy_ = is_decoy; }
@@ -402,11 +400,23 @@ class CONTENT_EXPORT PrefetchContainer {
 
   bool IsStreamingURLLoaderDeletionScheduledForTesting() const;
 
-  // Returns the PrefetchResponseReader of the prefetched non-redirect response
-  // if already received its head. Ruturns nullptr otherwise.
+  // `GetNonRedirect*()` methods return the `PrefetchResponseReader` or
+  // `ResponseHead` of the prefetched non-redirect response, respectively, if
+  // already received its head. Ruturns nullptr otherwise.
+  // Note: These can return null even on `PrefetchContainerLoadState::kFailed`.
+  //
+  // More precisely, returns non-null on:
+  // - `PrefetchContainerLoadState::kDeterminedHead` (always)
+  // - `PrefetchContainerLoadState::kCompleted` (always)
+  // - `PrefetchContainerLoadState::kFailedDeterminedHead` (in some cases)
+  // - `PrefetchContainerLoadState::kFailed` (in some cases)
+  // (See also the comment of `PrefetchResponseReader::GetHead()`)
+  //
+  // Note: When `GetNonRedirect*()` methods return non-null, it always points to
+  // the final `PrefetchResponseReader` and isn't affected by
+  // https://crbug.com/432518638, because when the non-redirect response is
+  // received all redirects are already completed.
   const PrefetchResponseReader* GetNonRedirectResponseReader() const;
-  // Returns the head of the prefetched non-redirect response if already
-  // received. Ruturns nullptr otherwise.
   const network::mojom::URLResponseHead* GetNonRedirectHead() const;
 
   // Clears |streaming_loader_| and cancels its loading, if any of its
@@ -430,9 +440,6 @@ class CONTENT_EXPORT PrefetchContainer {
   // final checks. See also the comment for
   // `PrefetchResponseReader::CreateRequestHandler()`.
   PrefetchMatchResolverAction GetMatchResolverAction() const;
-  // Allows to pass `cacheable_duration` for testing.
-  PrefetchMatchResolverAction GetMatchResolverActionForTesting(
-      base::TimeDelta cacheable_duration) const;
 
   // Starts blocking `PrefetchMatchResolver` until non-redirect response header
   // is determined or timeouted. `on_maybe_determined_head_callback` will be
@@ -721,9 +728,6 @@ class CONTENT_EXPORT PrefetchContainer {
   void OnPrefetchCompleteInternal(
       const network::URLLoaderCompletionStatus& completion_status);
 
-  PrefetchMatchResolverAction GetMatchResolverActionInternal(
-      base::TimeDelta cacheable_duration) const;
-
   // The prefetch request parameters of the very first initiator/requester of
   // this prefetch at the time of request creation.
   // This should be immutable. If we need to have modified parameters updated
@@ -862,6 +866,8 @@ class CONTENT_EXPORT PrefetchContainer {
   std::optional<base::TimeTicks> time_prefetch_match_missed_;
 
   PrefetchContainerMetrics prefetch_container_metrics_;
+
+  std::unique_ptr<AssertPrefetchContainerObserver> assert_observer_;
 
   base::WeakPtrFactory<PrefetchContainer> weak_method_factory_{this};
 };

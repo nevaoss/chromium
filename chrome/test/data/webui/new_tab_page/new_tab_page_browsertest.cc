@@ -26,6 +26,20 @@ class NewTabPageBrowserTest : public WebUIMochaBrowserTest {
   base::test::ScopedFeatureList scoped_feature_list_;
 };
 
+class NewTabPageNextBrowserTest : public WebUIMochaBrowserTest {
+ protected:
+  NewTabPageNextBrowserTest() {
+    set_test_loader_host(chrome::kChromeUINewTabPageHost);
+    scoped_feature_list_.InitWithFeatures(
+        /*enabled_features=*/{omnibox::kAimServerEligibilityEnabled,
+                              ntp_realbox::kNtpRealboxNext},
+        /*disabled_features=*/{});
+  }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
+
 using NewTabPageTest = NewTabPageBrowserTest;
 
 IN_PROC_BROWSER_TEST_F(NewTabPageTest, MetricsUtils) {
@@ -34,6 +48,12 @@ IN_PROC_BROWSER_TEST_F(NewTabPageTest, MetricsUtils) {
 
 IN_PROC_BROWSER_TEST_F(NewTabPageTest, VoiceSearchOverlay) {
   RunTest("new_tab_page/voice_search_overlay_test.js", "mocha.run()");
+}
+
+using NewTabPageNextTest = NewTabPageNextBrowserTest;
+
+IN_PROC_BROWSER_TEST_F(NewTabPageNextTest, Realbox) {
+  RunTest("new_tab_page/realbox_test.js", "mocha.run()");
 }
 
 // TODO(crbug.com/40933410):  Re-enable once no longer fails.
@@ -92,10 +112,8 @@ IN_PROC_BROWSER_TEST_F(NewTabPageTest, ComposeboxFileThumbnail) {
   RunTest("new_tab_page/composebox/file_thumbnail_test.js", "mocha.run()");
 }
 
-// TODO(crbug.com/452644435): Test is flaky on no_field_trial.
-IN_PROC_BROWSER_TEST_F(NewTabPageTest,
-                       DISABLED_ContextualEntrypointAndCarousel) {
-  RunTest("new_tab_page/composebox/contextual_entrypoint_and_carousel_test.js",
+IN_PROC_BROWSER_TEST_F(NewTabPageTest, ComposeboxFileInputs) {
+  RunTest("new_tab_page/composebox/composebox_file_inputs_test.js",
           "mocha.run()");
 }
 

@@ -1277,6 +1277,9 @@ void GpuInit::SetSkiaBackendType() {
         case wgpu::BackendType::Metal:
           skia_backend_type = SkiaBackendType::kGraphiteDawnMetal;
           break;
+        case wgpu::BackendType::OpenGLES:
+          skia_backend_type = SkiaBackendType::kGraphiteDawnOpenGLES;
+          break;
         default:
           break;
       }

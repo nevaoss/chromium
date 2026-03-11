@@ -621,9 +621,6 @@ class CORE_EXPORT StyleEngine final : public GarbageCollected<StyleEngine>,
   void MarkLastSuccessfulPositionFallbackDirtyForElement(Element& element) {
     anchored_element_dirty_set_.insert(&element);
   }
-  void MarkForDefaultAnchorScrollShift(Element& element) {
-    anchored_element_dirty_set_.insert(&element);
-  }
   void MarkAnchorRememberedOffsetsChanged(Element& element) {
     anchored_element_dirty_set_.insert(&element);
   }
@@ -748,6 +745,7 @@ class CORE_EXPORT StyleEngine final : public GarbageCollected<StyleEngine>,
 
   void SetPageColorSchemes(const CSSValue* color_scheme);
   ColorSchemeFlags GetPageColorSchemes() const { return page_color_schemes_; }
+  bool SupportsDarkColorScheme() const;
   mojom::blink::PreferredColorScheme GetPreferredColorScheme() const {
     return preferred_color_scheme_;
   }
@@ -942,7 +940,6 @@ class CORE_EXPORT StyleEngine final : public GarbageCollected<StyleEngine>,
   CounterStyleMap& EnsureUserCounterStyleMap();
 
   void UpdateColorScheme();
-  bool SupportsDarkColorScheme();
   void UpdateForcedBackgroundColor();
 
   void UpdateColorSchemeMetrics();

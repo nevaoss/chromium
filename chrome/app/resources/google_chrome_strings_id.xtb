@@ -687,6 +687,7 @@
 <translation id="8041795619940733262">Tanya Google<ph name="LINE_BREAK" />tentang tab ini</translation>
 <translation id="80471789339884597">Terima kasih telah menginstal. Anda harus memulai ulang semua browser sebelum menggunakan <ph name="BUNDLE_NAME" />.</translation>
 <translation id="8064015586118426197">ChromeOS Flex</translation>
+<translation id="8064965390968184078">1. Klik <ph name="BUTTON_LABEL" /> di bawah Klik <ph name="BUTTON_2" /> di setelan Windows Klik <ph name="BUTTON_3" /> di notifikasi Windows untuk menyematkan Chrome ke taskbar agar dapat diakses dengan cepat</translation>
 <translation id="8077579734294125741">Profil Chrome lainnya</translation>
 <translation id="8086881907087796310">Penginstalan gagal karena komputer Anda tidak memenuhi persyaratan hardware minimum.</translation>
 <translation id="8113883687556086139">Verifikasi diri Anda untuk menggunakan dan menyimpan data Chrome di akun Anda, <ph name="ACCOUNT_EMAIL" /></translation>
@@ -765,6 +766,7 @@ Bookmark baru tidak dapat disimpan di akun hingga Anda menghapus beberapa bookma
 <translation id="8914504000324227558">Luncurkan Ulang Chrome</translation>
 <translation id="8922193594870374009">Untuk mengirimkan nomor dari <ph name="ORIGIN" /> ke ponsel Android Anda, login ke Chrome di kedua perangkat.</translation>
 <translation id="8922998289262614701">Hapus data aplikasi ini dari Chrome</translation>
+<translation id="8925636929359899517">Kami menggunakan info untuk meningkatkan kualitas layanan ini. Lihat <ph name="BEGIN_LINK1" />Kebijakan Privasi<ph name="END_LINK1" /> dan <ph name="BEGIN_LINK2" />Persyaratan Layanan<ph name="END_LINK2" />.</translation>
 <translation id="8936233353620149764">Aktifkan/nonaktifkan Gemini di Chrome</translation>
 <translation id="8948460679427074738">Ekstensi ini belum memublikasikan praktik privasi, seperti cara ekstensi mengumpulkan dan menggunakan data. Chrome merekomendasikan agar Anda menghapusnya.</translation>
 <translation id="8958307504142971576">Anda kini memiliki lebih banyak fitur yang tersedia di Chrome</translation>

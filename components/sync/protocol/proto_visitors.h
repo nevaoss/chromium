@@ -739,7 +739,7 @@ VISIT_PROTO_FIELDS(
 }
 
 VISIT_PROTO_FIELDS(const sync_pb::EntitySpecifics& proto) {
-  static_assert(62 == GetNumDataTypes(),
+  static_assert(63 == GetNumDataTypes(),
                 "When adding a new protocol type, you will likely need to add "
                 "it here as well.");
   VISIT(encrypted);
@@ -806,6 +806,7 @@ VISIT_PROTO_FIELDS(const sync_pb::EntitySpecifics& proto) {
   VISIT(contextual_task);
   VISIT(skill);
   VISIT(gemini_thread);
+  VISIT(accessibility_annotation);
 }
 
 VISIT_PROTO_FIELDS(const sync_pb::ExtensionSettingSpecifics& proto) {
@@ -1399,7 +1400,6 @@ VISIT_PROTO_FIELDS(const sync_pb::FormFieldInfo& proto) {
 VISIT_PROTO_FIELDS(const sync_pb::FormField& proto) {
   VISIT(id_attribute);
   VISIT(name_attribute);
-  VISIT(label);
   VISIT(form_control_type);
   VISIT(value);
 }
@@ -2288,6 +2288,96 @@ VISIT_PROTO_FIELDS(const sync_pb::GeminiThreadSpecifics& proto) {
   VISIT(conversation_id);
   VISIT(title);
   VISIT(last_turn_time_unix_epoch_millis);
+}
+
+VISIT_PROTO_FIELDS(
+    const sync_pb::AccessibilityAnnotationSpecifics::Order& proto) {
+  VISIT(order_id);
+  VISIT(account);
+  VISIT(order_date);
+  VISIT(merchant_name);
+  VISIT(merchant_domain);
+  VISIT_REP(product_names);
+  VISIT(grand_total);
+}
+
+VISIT_PROTO_FIELDS(
+    const sync_pb::AccessibilityAnnotationSpecifics::Shipment& proto) {
+  VISIT(tracking_number);
+  VISIT_REP(associated_order_ids);
+  VISIT(delivery_address);
+  VISIT(carrier_name);
+  VISIT(carrier_domain);
+  VISIT(estimated_delivery_date);
+}
+
+VISIT_PROTO_FIELDS(
+    const sync_pb::AccessibilityAnnotationSpecifics::DriversLicense& proto) {
+  VISIT(name);
+  VISIT(number);
+  VISIT(expiration_date);
+  VISIT(issue_date);
+  VISIT(state);
+}
+
+VISIT_PROTO_FIELDS(
+    const sync_pb::AccessibilityAnnotationSpecifics::Passport& proto) {
+  VISIT(name);
+  VISIT(number);
+  VISIT(expiration_date);
+  VISIT(issue_date);
+  VISIT(issuing_country);
+}
+
+VISIT_PROTO_FIELDS(
+    const sync_pb::AccessibilityAnnotationSpecifics::NationalId& proto) {
+  VISIT(name);
+  VISIT(number);
+  VISIT(expiration_date);
+  VISIT(issue_date);
+  VISIT(issuing_country);
+}
+
+VISIT_PROTO_FIELDS(
+    const sync_pb::AccessibilityAnnotationSpecifics::FlightReservation& proto) {
+  VISIT(flight_number);
+  VISIT(flight_ticket_number);
+  VISIT(flight_confirmation_code);
+  VISIT(passenger_name);
+  VISIT(departure_airport);
+  VISIT(arrival_airport);
+  VISIT(departure_date_unix_epoch_seconds);
+  VISIT(arrival_date_unix_epoch_seconds);
+}
+
+VISIT_PROTO_FIELDS(
+    const sync_pb::AccessibilityAnnotationSpecifics::Vehicle& proto) {
+  VISIT(vehicle_make);
+  VISIT(vehicle_model);
+  VISIT(vehicle_year);
+  VISIT(vehicle_identification_number);
+  VISIT(vehicle_license_plate);
+  VISIT(license_plate_region);
+  VISIT(license_plate_country);
+  VISIT(owner_name);
+}
+
+VISIT_PROTO_FIELDS(
+    const sync_pb::AccessibilityAnnotationSpecifics::NaiveDate& proto) {
+  VISIT(day);
+  VISIT(month);
+  VISIT(year);
+}
+
+VISIT_PROTO_FIELDS(const sync_pb::AccessibilityAnnotationSpecifics& proto) {
+  VISIT(id);
+  VISIT(order);
+  VISIT(shipment);
+  VISIT(drivers_license);
+  VISIT(passport);
+  VISIT(national_id);
+  VISIT(flight_reservation);
+  VISIT(vehicle);
 }
 
 VISIT_PROTO_FIELDS(const sync_pb::AiThreadSpecifics& proto) {

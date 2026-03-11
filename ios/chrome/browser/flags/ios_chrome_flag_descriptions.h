@@ -53,8 +53,8 @@ extern const char kApplyClientsideModelPredictionsForPasswordTypesDescription[];
 extern const char kAskGeminiChipName[];
 extern const char kAskGeminiChipDescription[];
 
-extern const char kAssistantSheetName[];
-extern const char kAssistantSheetDescription[];
+extern const char kAssistantContainerName[];
+extern const char kAssistantContainerDescription[];
 
 extern const char kAutofillAcrossIframesName[];
 extern const char kAutofillAcrossIframesDescription[];
@@ -267,9 +267,6 @@ extern const char kDataSharingSharedDataTypesEnabledWithUi[];
 extern const char kDataSharingVersioningStatesName[];
 extern const char kDataSharingVersioningStatesDescription[];
 
-extern const char kDefaultBrowserMagicStackIosName[];
-extern const char kDefaultBrowserMagicStackIosDescription[];
-
 extern const char kDefaultBrowserOffCyclePromoName[];
 extern const char kDefaultBrowserOffCyclePromoDescription[];
 
@@ -299,6 +296,9 @@ extern const char kDisableLensCameraDescription[];
 
 extern const char kDisableShareButtonName[];
 extern const char kDisableShareButtonDescription[];
+
+extern const char kDisableU18FeedbackIosName[];
+extern const char kDisableU18FeedbackIosDescription[];
 
 extern const char kDownloadAutoDeletionClearFilesOnEveryStartupName[];
 extern const char kDownloadAutoDeletionClearFilesOnEveryStartupDescription[];
@@ -401,6 +401,9 @@ extern const char kGeminiCopresenceDescription[];
 
 extern const char kGeminiDynamicSettingsName[];
 extern const char kGeminiDynamicSettingsDescription[];
+
+extern const char kGeminiFloatyAllPagesName[];
+extern const char kGeminiFloatyAllPagesDescription[];
 
 extern const char kGeminiFullChatHistoryName[];
 extern const char kGeminiFullChatHistoryDescription[];

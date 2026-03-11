@@ -177,6 +177,8 @@ std::string GetRequestTypeName(
       return "CreditCardForm";
     case safe_browsing::ClientSideDetectionType::IMAGE_EMBEDDING_MATCH:
       return "ImageEmbeddingMatch";
+    case safe_browsing::ClientSideDetectionType::USER_REPORT:
+      return "UserReport";
   }
 }
 
@@ -207,6 +209,8 @@ safe_browsing::mojom::ClientSideDetectionType GetClientSideDetectionMojomType(
           kImageEmbeddingMatch;
     case safe_browsing::ClientSideDetectionType::
         CLIENT_SIDE_DETECTION_TYPE_UNSPECIFIED:
+    case safe_browsing::ClientSideDetectionType::USER_REPORT:
+      return safe_browsing::mojom::ClientSideDetectionType::kUserReport;
     default:
       NOTREACHED();
   }
@@ -871,6 +875,16 @@ void ClientSideDetectionHost::RegisterAutofillManager() {
           kObservePreexistingManagers);
 }
 
+void ClientSideDetectionHost::ReportUnsafeSite(
+    std::optional<int> screenshot_width,
+    std::optional<int> screenshot_height,
+    const std::optional<std::string>& screenshot_data) {
+  screenshot_width_ = screenshot_width;
+  screenshot_height_ = screenshot_height;
+  screenshot_data_ = screenshot_data;
+  MaybeStartPreClassification(ClientSideDetectionType::USER_REPORT);
+}
+
 void ClientSideDetectionHost::MaybeStartPreClassification(
     ClientSideDetectionType request_type) {
   if (base::FeatureList::IsEnabled(kClientSideDetectionKillswitch)) {
@@ -1106,6 +1120,29 @@ void ClientSideDetectionHost::OnCreditCardFormVisitCount(
   }
 
   MaybeStartPreClassification(ClientSideDetectionType::CREDIT_CARD_FORM);
+}
+
+void ClientSideDetectionHost::MaybeFillScreenshotData(
+    ClientPhishingRequest* request) {
+  if (request->client_side_detection_type() !=
+      ClientSideDetectionType::USER_REPORT) {
+    return;
+  }
+
+  if (screenshot_width_.has_value()) {
+    request->mutable_visual_features()
+        ->mutable_high_res_screenshot()
+        ->set_width(screenshot_width_.value());
+  }
+  if (screenshot_height_.has_value()) {
+    request->mutable_visual_features()
+        ->mutable_high_res_screenshot()
+        ->set_height(screenshot_height_.value());
+  }
+  if (screenshot_data_.has_value()) {
+    request->mutable_visual_features()->mutable_high_res_screenshot()->set_data(
+        screenshot_data_.value());
+  }
 }
 
 void ClientSideDetectionHost::KeyboardLockRequested() {
@@ -1547,9 +1584,11 @@ void ClientSideDetectionHost::MaybeSendClientPhishingRequest(
   visual_utils::CanExtractVisualFeaturesResult
       can_extract_visual_features_result = DetermineVisualFeaturesExtraction();
 
+  // Clear the blurred image from the visual features if we should not extract
+  // visual features.
   if (can_extract_visual_features_result !=
       visual_utils::CanExtractVisualFeaturesResult::kCanExtractVisualFeatures) {
-    verdict->clear_visual_features();
+    verdict->mutable_visual_features()->clear_image();
   } else {
     base::UmaHistogramBoolean("SBClientPhishing.HasVisualFeaturesImage2",
                               verdict->has_visual_features() &&
@@ -2185,6 +2224,8 @@ void ClientSideDetectionHost::AddMiscellaneousMetadataToClientPhishingRequest(
           ExtractClipboardData(last_copied_text_);
     }
   }
+
+  MaybeFillScreenshotData(verdict);
 
   if (IsEnhancedProtectionEnabled(*delegate_->GetPrefs())) {
     delegate_->AddReferrerChain(verdict, current_url_,

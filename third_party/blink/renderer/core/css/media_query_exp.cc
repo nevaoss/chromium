@@ -254,8 +254,7 @@ static inline bool FeatureWithValidIdent(const String& media_feature,
     }
   }
 
-  if (RuntimeEnabledFeatures::CSSFallbackContainerQueriesEnabled() &&
-      media_feature == media_feature_names::kFallbackMediaFeature) {
+  if (media_feature == media_feature_names::kFallbackMediaFeature) {
     return ident == CSSValueID::kNone;
   }
 
@@ -555,7 +554,10 @@ std::optional<MediaQueryExpValue> MediaQueryExpValue::Consume(
     return std::nullopt;
   }
 
-  if (!supports_element_dependent && value->IsElementDependent()) {
+  // TODO(crbug.com/475808971): We don't support random() outside element
+  // context except container style queries for now.
+  if (value->HasRandomFunctions() ||
+      (!supports_element_dependent && value->IsElementDependent())) {
     return std::nullopt;
   }
 

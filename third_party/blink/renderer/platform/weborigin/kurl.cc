@@ -212,7 +212,7 @@ bool KURL::IsAboutSrcdocURL() const {
   return IsAboutURL(url::kAboutSrcdocPath);
 }
 
-const KURL& NullURL() {
+const KURL& NullUrl() {
   DEFINE_THREAD_SAFE_STATIC_LOCAL(KURL, static_null_url, ());
   return static_null_url;
 }
@@ -236,7 +236,7 @@ KURL::KURL() : is_valid_(false), protocol_is_in_http_family_(false) {}
 // UTF-8 just in case.
 KURL::KURL(const StringView& url) {
   if (!url.IsNull()) {
-    Init(NullURL(), url, nullptr);
+    Init(NullUrl(), url, nullptr);
     AssertStringSpecIsASCII();
   } else {
     // WebCore expects us to preserve the nullness of strings when this
@@ -249,7 +249,7 @@ KURL::KURL(const StringView& url) {
 
 // Initializes with a GURL. This is used to covert from a GURL to a KURL.
 KURL::KURL(const GURL& gurl) {
-  Init(NullURL() /* base */, String(gurl.spec()) /* relative */,
+  Init(NullUrl() /* base */, String(gurl.spec()) /* relative */,
        nullptr /* query_encoding */);
   AssertStringSpecIsASCII();
 }
@@ -774,8 +774,7 @@ void KURL::SetPath(const String& input) {
 
 String DecodeUrlEscapeSequences(const StringView& string, DecodeUrlMode mode) {
   StringUtf8Adaptor string_utf8(string);
-  url::RawCanonOutputT<char16_t> unescaped;
-  url::DecodeUrlEscapeSequences(string_utf8.AsStringView(), mode, &unescaped);
+  url::UrlEscapeDecoder unescaped(string_utf8.AsStringView(), mode);
   return StringImpl::Create8BitIfPossible(unescaped.view());
 }
 

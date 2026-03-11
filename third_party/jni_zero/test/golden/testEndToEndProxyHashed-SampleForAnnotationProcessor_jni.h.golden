@@ -184,7 +184,10 @@ JNI_ZERO_BOUNDARY_EXPORT jobject Java_org_jni_1zero_GEN_1JNI_org_1jni_11zero_1Sa
     }
   };
   auto return_value = dependent_context(0);
-  auto converted_ret = jni_zero::ToJniArray(env, return_value, static_cast<jclass>(__arrayClazz)).Release();
+  auto converted_ret = jni_zero::ToJniArray(
+      env,
+      std::move(return_value),
+      static_cast<jclass>(__arrayClazz)).Release();
   return converted_ret;
 }
 
@@ -210,7 +213,7 @@ JNI_ZERO_BOUNDARY_EXPORT jobject Java_org_jni_1zero_GEN_1JNI_org_1jni_11zero_1Sa
     }
   };
   auto return_value = dependent_context(0);
-  auto converted_ret = jni_zero::ToJniArray(env, return_value).Release();
+  auto converted_ret = jni_zero::ToJniArray(env, std::move(return_value)).Release();
   return converted_ret;
 }
 
@@ -236,7 +239,7 @@ JNI_ZERO_BOUNDARY_EXPORT jobject Java_org_jni_1zero_GEN_1JNI_org_1jni_11zero_1Sa
     }
   };
   auto return_value = dependent_context(0);
-  auto converted_ret = jni_zero::ToJniType(env, return_value).Release();
+  auto converted_ret = jni_zero::ToJniType(env, std::move(return_value)).Release();
   return converted_ret;
 }
 
@@ -263,7 +266,10 @@ JNI_ZERO_BOUNDARY_EXPORT jobject Java_org_jni_1zero_GEN_1JNI_org_1jni_11zero_1Sa
     }
   };
   auto return_value = dependent_context(0);
-  auto converted_ret = jni_zero::ToJniArray(env, return_value, jni_zero::g_string_class).Release();
+  auto converted_ret = jni_zero::ToJniArray(
+      env,
+      std::move(return_value),
+      jni_zero::g_string_class).Release();
   return converted_ret;
 }
 
@@ -622,13 +628,13 @@ JNI_ZERO_BOUNDARY_EXPORT jobject Java_org_jni_1zero_GEN_1JNI_org_1jni_11zero_1Sa
     };
     if constexpr (requires { func_wrapper(
         env,
-        std::move(zint_converted),
+        zint_converted,
         ints_converted,
         zlong,
         longs_ref,
         zshort,
         shorts_ref,
-        std::move(zchar_converted),
+        zchar_converted,
         chars_ref,
         zbyte,
         bytes_ref,
@@ -640,13 +646,13 @@ JNI_ZERO_BOUNDARY_EXPORT jobject Java_org_jni_1zero_GEN_1JNI_org_1jni_11zero_1Sa
         bools_ref); }) {
       return func_wrapper(
           env,
-          std::move(zint_converted),
+          zint_converted,
           ints_converted,
           zlong,
           longs_ref,
           zshort,
           shorts_ref,
-          std::move(zchar_converted),
+          zchar_converted,
           chars_ref,
           zbyte,
           bytes_ref,
@@ -657,13 +663,13 @@ JNI_ZERO_BOUNDARY_EXPORT jobject Java_org_jni_1zero_GEN_1JNI_org_1jni_11zero_1Sa
           zbool,
           bools_ref);
     } else if constexpr (requires { func_wrapper(
-        std::move(zint_converted),
+        zint_converted,
         ints_converted,
         zlong,
         longs_ref,
         zshort,
         shorts_ref,
-        std::move(zchar_converted),
+        zchar_converted,
         chars_ref,
         zbyte,
         bytes_ref,
@@ -674,13 +680,13 @@ JNI_ZERO_BOUNDARY_EXPORT jobject Java_org_jni_1zero_GEN_1JNI_org_1jni_11zero_1Sa
         zbool,
         bools_ref); }) {
       return func_wrapper(
-          std::move(zint_converted),
+          zint_converted,
           ints_converted,
           zlong,
           longs_ref,
           zshort,
           shorts_ref,
-          std::move(zchar_converted),
+          zchar_converted,
           chars_ref,
           zbyte,
           bytes_ref,
@@ -695,7 +701,7 @@ JNI_ZERO_BOUNDARY_EXPORT jobject Java_org_jni_1zero_GEN_1JNI_org_1jni_11zero_1Sa
     }
   };
   auto return_value = dependent_context(0);
-  auto converted_ret = jni_zero::ToJniArray(env, return_value).Release();
+  auto converted_ret = jni_zero::ToJniArray(env, std::move(return_value)).Release();
   return converted_ret;
 }
 
@@ -797,7 +803,7 @@ JNI_ZERO_BOUNDARY_EXPORT void Java_org_jni_1zero_GEN_1JNI_org_1jni_11zero_1Sampl
         tStruct_ref,
         structs_ref,
         obj_ref,
-        std::move(convertedObj_converted),
+        convertedObj_converted,
         objects_ref,
         nestedInterface_ref,
         view_ref,
@@ -818,7 +824,7 @@ JNI_ZERO_BOUNDARY_EXPORT void Java_org_jni_1zero_GEN_1JNI_org_1jni_11zero_1Sampl
           tStruct_ref,
           structs_ref,
           obj_ref,
-          std::move(convertedObj_converted),
+          convertedObj_converted,
           objects_ref,
           nestedInterface_ref,
           view_ref,
@@ -838,7 +844,7 @@ JNI_ZERO_BOUNDARY_EXPORT void Java_org_jni_1zero_GEN_1JNI_org_1jni_11zero_1Sampl
         tStruct_ref,
         structs_ref,
         obj_ref,
-        std::move(convertedObj_converted),
+        convertedObj_converted,
         objects_ref,
         nestedInterface_ref,
         view_ref,
@@ -858,7 +864,7 @@ JNI_ZERO_BOUNDARY_EXPORT void Java_org_jni_1zero_GEN_1JNI_org_1jni_11zero_1Sampl
           tStruct_ref,
           structs_ref,
           obj_ref,
-          std::move(convertedObj_converted),
+          convertedObj_converted,
           objects_ref,
           nestedInterface_ref,
           view_ref,

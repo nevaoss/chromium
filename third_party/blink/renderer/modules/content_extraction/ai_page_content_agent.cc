@@ -69,6 +69,7 @@
 #include "third_party/blink/renderer/core/style/computed_style.h"
 #include "third_party/blink/renderer/modules/accessibility/ax_object.h"
 #include "third_party/blink/renderer/modules/content_extraction/ai_page_content_debug_utils.h"
+#include "third_party/blink/renderer/modules/content_extraction/ai_page_content_redaction_heuristics.h"
 #include "third_party/blink/renderer/platform/geometry/infinite_int_rect.h"
 #include "third_party/blink/renderer/platform/geometry/layout_unit.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
@@ -181,6 +182,41 @@ class AutoBuildHelper final : public NativeEventListener {
 #endif  // DCHECK_IS_ON()
 
 namespace {
+
+String ReplaceUnpairedSurrogates(const String& node_text) {
+  if (!RuntimeEnabledFeatures::AIPageContentConvertNodeTextToUtf8Enabled()) {
+    return node_text;
+  }
+
+  if (node_text.IsNull() || node_text.empty()) {
+    return node_text;
+  }
+
+  // These strings need to be converted between formats (mojom, protobuf, etc)
+  // that might have varying tolerances for encoding jank, so we should
+  // sanitize them as much as possible. DOM strings may contain unpaired
+  // surrogates, which are a UTF-16 construct and not technically valid
+  // Unicode. Calling Utf8() here with kStrictReplacingErrors will replace
+  // unpaired surrogates with the default Unicode replacement character, which
+  // means that downstream consumers can correctly move between encodings
+  // (UTF-8, etc).
+  //
+  // But Utf8() conversion returns a std::string, so we need to convert back
+  // to a WTF::String for Blink usage.
+  //
+  // Strings that are already in 8 bit representation (like Latin1 encoding)
+  // can't contain unpaired surrogates, so we can return those transparently.
+  if (node_text.Is8Bit()) {
+    return node_text;
+  }
+
+  return String::FromUTF8(
+      node_text.Utf8(Utf8ConversionMode::kStrictReplacingErrors));
+}
+
+String ConvertNodeTextToUtf8(const AtomicString& node_text) {
+  return ReplaceUnpairedSurrogates(node_text.GetString());
+}
 
 // Coordinate mapping flags
 // - Viewport mapping: positions relative to the window/viewport origin.
@@ -803,7 +839,8 @@ void ProcessTextNode(const LayoutText& layout_text,
   text_style->color = GetColor(*layout_text.Style());
 
   auto text_info = mojom::blink::AIPageContentTextInfo::New();
-  text_info->text_content = layout_text.TransformedText();
+  text_info->text_content =
+      ReplaceUnpairedSurrogates(layout_text.TransformedText());
   text_info->text_style = std::move(text_style);
   attributes.text_info = std::move(text_info);
 }
@@ -826,7 +863,8 @@ void ProcessImageNode(const LayoutObject& layout_image,
           DynamicTo<HTMLImageElement>(layout_image.GetNode())) {
     // TODO(crbug.com/383127202): A11y stack generates alt text using image
     // data which could be reused for this.
-    image_info->image_caption = image_element->AltText();
+    image_info->image_caption =
+        ReplaceUnpairedSurrogates(image_element->AltText());
   }
 
   // TODO(crbug.com/382558422): Include image source origin.
@@ -847,7 +885,8 @@ void ProcessSVGRoot(const LayoutSVGRoot& layout_svg,
   auto svg_root_data = mojom::blink::AIPageContentSvgRootData::New();
   // TODO(b/452908424): Consider removing this given that the inner text is
   // available in the text nodes.
-  svg_root_data->inner_text = element->GetInnerTextWithoutUpdate();
+  svg_root_data->inner_text =
+      ReplaceUnpairedSurrogates(element->GetInnerTextWithoutUpdate());
   attributes.svg_root_data = std::move(svg_root_data);
 }
 
@@ -908,7 +947,7 @@ void ProcessTableNode(const LayoutTable& layout_table,
           table_name.Append(layout_text->TransformedText());
         }
       }
-      table_data->table_name = table_name.ToString();
+      table_data->table_name = ReplaceUnpairedSurrogates(table_name.ToString());
     }
   }
   attributes.table_data = std::move(table_data);
@@ -922,7 +961,7 @@ void ProcessFormNode(const HTMLFormElement& form_element,
   }
   auto form_data = mojom::blink::AIPageContentFormData::New();
   if (const auto& name = form_element.GetName()) {
-    form_data->form_name = name;
+    form_data->form_name = ReplaceUnpairedSurrogates(name);
   }
   form_data->action_url = KURL(form_element.action());
 
@@ -1042,7 +1081,7 @@ bool ProcessAriaFormControlNode(
       mojom::blink::AIPageContentRedactionDecision::kNoRedactionNecessary;
 
   if (!aria_placeholder.empty()) {
-    form_control_data.placeholder = aria_placeholder;
+    form_control_data.placeholder = ReplaceUnpairedSurrogates(aria_placeholder);
   }
 
   if (has_aria_checked) {
@@ -1062,7 +1101,8 @@ void ProcessFormControlNode(const HTMLFormControlElement& form_control_element,
       mojom::blink::AIPageContentFormControlData::New();
   auto* form_control_data = attributes.form_control_data.get();
   form_control_data->form_control_type = form_control_element.FormControlType();
-  form_control_data->field_name = form_control_element.GetName();
+  form_control_data->field_name =
+      ConvertNodeTextToUtf8(form_control_element.GetName());
   form_control_data->is_required = form_control_element.IsRequired();
   form_control_data->is_readonly = form_control_element.IsReadOnly();
 
@@ -1097,7 +1137,8 @@ void ProcessFormControlNode(const HTMLFormControlElement& form_control_element,
     if (form_control_data->redaction_decision !=
         mojom::blink::AIPageContentRedactionDecision::
             kRedacted_HasBeenPassword) {
-      form_control_data->field_value = text_control_element->Value();
+      form_control_data->field_value =
+          ReplaceUnpairedSurrogates(text_control_element->Value());
     }
     String placeholder_value = text_control_element->GetPlaceholderValue();
     if (placeholder_value.empty()) {
@@ -1107,7 +1148,8 @@ void ProcessFormControlNode(const HTMLFormControlElement& form_control_element,
         placeholder_value = aria_placeholder;
       }
     }
-    form_control_data->placeholder = placeholder_value;
+    form_control_data->placeholder =
+        ReplaceUnpairedSurrogates(placeholder_value);
 
     if (!form_control_data->is_readonly &&
         AXObject::IsAriaAttributeTrue(form_control_element,
@@ -1123,10 +1165,11 @@ void ProcessFormControlNode(const HTMLFormControlElement& form_control_element,
           DynamicTo<HTMLSelectElement>(form_control_element)) {
     for (auto& option_element : select_element->GetOptionList()) {
       auto select_option = mojom::blink::AIPageContentSelectOption::New();
-      select_option->value = option_element.value();
-      select_option->text = option_element.text();
+      select_option->value = ReplaceUnpairedSurrogates(option_element.value());
+      select_option->text = ReplaceUnpairedSurrogates(option_element.text());
       if (select_option->text.empty()) {
-        select_option->text = option_element.DisplayLabel();
+        select_option->text =
+            ReplaceUnpairedSurrogates(option_element.DisplayLabel());
       }
       select_option->is_selected = option_element.Selected();
       select_option->disabled = option_element.IsDisabledFormControl();
@@ -1551,113 +1594,6 @@ AIPageContentAgent::ExistingCustomPasswordReason(
 
 namespace {
 
-bool IsCSSSecurityMaskingEnabled(const LayoutObject& object) {
-  // Checks the computed value of the non-standard CSS property
-  // `-webkit-text-security`. Authors sometimes use this on non-password
-  // elements to create custom masked "password-like" fields.
-  const ComputedStyle* style = object.Style();
-  if (!style) {
-    return false;
-  }
-  return style->TextSecurity() != ETextSecurity::kNone;
-}
-
-bool IsSecurityMaskCharacter(UChar c) {
-  switch (c) {
-    // Standard Asterisks & Stars.
-    case '*':     // U+002A
-    case 0x2731:  // Heavy Asterisk (✱)
-    case 0x2732:  // Open Centre Asterisk (✲)
-    case 0x2733:  // Eight Spoked Asterisk (✳)
-    case 0xFF0A:  // Fullwidth Asterisk (＊)
-
-    // Standard Bullets & Circles.
-    case 0x2022:  // Bullet (•)
-    case 0x25CF:  // Black Circle (●)
-    case 0x25CB:  // White Circle (○)
-    case 0x25EF:  // Large Circle (◯)
-    case 0x26AB:  // Medium Black Circle (⚫)
-    case 0x2B24:  // Black Large Circle (⬤)
-    case 0x25E6:  // White Bullet (◦)
-    case 0x25C9:  // Fisheye (◉)
-
-    // Dots & Mathematical Operators.
-    case 0x00B7:  // Middle Dot (·)
-    case 0x2219:  // Bullet Operator (∙)
-    case 0x22C5:  // Dot Operator (⋅)
-    case 0x2802:  // Braille Dot-2 (⠂)
-    case 0x2812:  // Braille Dots-2-5 (⠒)
-    case 0x2836:  // Braille Dots-2-3-5-6 (⠶)
-
-    // Squares, Blocks & Diamonds.
-    case 0x25A0:  // Black Square (■)
-    case 0x25A1:  // White Square (□)
-    case 0x25AA:  // Black Small Square (▪)
-    case 0x25AB:  // White Small Square (▫)
-    case 0x25AE:  // Black Vertical Rectangle (▮)
-    case 0x2588:  // Full Block (█)
-    case 0x2589:  // Left Seven Eighths Block (▉)
-    case 0x25C6:  // Black Diamond (◆)
-    case 0x25C7:  // White Diamond (◇)
-      return true;
-
-    default:
-      return false;
-  }
-}
-
-bool IsLikelyJSCustomPasswordField(const String& value) {
-  // Heuristic for JS-masked values where most characters are replaced by
-  // bullet-like mask characters but one character (often the last typed
-  // character) remains visible.
-  //
-  // Example: "••••a"
-  //
-  // This intentionally errs on the side of privacy: if a field *looks* like a
-  // password field, we redact it to prevent credential leakage.
-  if (value.length() < 2) {
-    return false;
-  }
-
-  wtf_size_t mask_count = 0;
-  bool has_visible_last_character = false;
-  for (wtf_size_t index = 0; index < value.length(); ++index) {
-    const UChar ch = value[index];
-    // Whitespace is a strong signal this is not a password field (e.g. a bullet
-    // used as a list marker: "• item"). Bail out early to reduce false
-    // positives and improve performance on large editor-like fields.
-    if (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r') {
-      return false;
-    }
-    if (IsSecurityMaskCharacter(ch)) {
-      ++mask_count;
-    } else {
-      // If a non-mask character appears before the final character, this is
-      // unlikely to be a password-style control (typical patterns reveal at
-      // most the last typed character). Bail out early.
-      if (index + 1 < value.length()) {
-        return false;
-      }
-      has_visible_last_character = true;
-    }
-  }
-
-  // Prefer classifying early once masking begins to prevent leaking typed
-  // characters during initial entry. For example, some JS-masked fields show:
-  // - "•b" when the user has typed 2 characters.
-  // - "••c" when the user has typed 3 characters.
-  if (has_visible_last_character) {
-    if (mask_count >= 1) {
-      return true;
-    }
-    return value.length() == 2;
-  }
-
-  // Typical patterns show only one character (often the last). Require that
-  // the value is "mostly masked" to reduce false positives.
-  return mask_count >= value.length() - 1;
-}
-
 DOMNodeId GetAccessibilityFocusedDOMNodeId(const LocalFrame& frame) {
   const Document* document = frame.GetDocument();
   if (!document) {
@@ -1813,12 +1749,12 @@ void AIPageContentAgent::ContentBuilder::AddMetaData(
       continue;
     }
     auto meta = mojom::blink::AIPageContentMeta::New();
-    meta->name = name;
+    meta->name = ConvertNodeTextToUtf8(name);
     auto content = meta_element.Content();
     if (content.empty()) {
       meta->content = "";
     } else {
-      meta->content = content;
+      meta->content = ConvertNodeTextToUtf8(content);
     }
     meta_data.push_back(std::move(meta));
     count++;
@@ -2266,7 +2202,8 @@ void AIPageContentAgent::ContentBuilder::
   if (value.empty()) {
     attributes.form_control_data->redaction_decision = mojom::blink::
         AIPageContentRedactionDecision::kUnredacted_EmptyCustomPassword;
-    attributes.form_control_data->field_value = value;
+    attributes.form_control_data->field_value =
+        ReplaceUnpairedSurrogates(value);
     return;
   }
 
@@ -2310,7 +2247,7 @@ void AIPageContentAgent::ContentBuilder::AddLabel(
       element->ElementsFromAttributeOrInternals(
           html_names::kAriaLabelledbyAttr);
   if (!aria_labelledby_elements) {
-    attributes.label = accumulated_text.ToString();
+    attributes.label = ReplaceUnpairedSurrogates(accumulated_text.ToString());
     return;
   }
 
@@ -2329,7 +2266,7 @@ void AIPageContentAgent::ContentBuilder::AddLabel(
     accumulated_text.Append(text_content);
   }
 
-  attributes.label = accumulated_text.ToString();
+  attributes.label = ReplaceUnpairedSurrogates(accumulated_text.ToString());
 }
 
 void AIPageContentAgent::ContentBuilder::PopulateLabelForDomNodeId(
@@ -2651,7 +2588,7 @@ void AIPageContentAgent::ContentBuilder::AddFrameData(
     mojom::blink::AIPageContentFrameData& frame_data) {
   frame_data.frame_interaction_info =
       mojom::blink::AIPageContentFrameInteractionInfo::New();
-  frame_data.title = frame.GetDocument()->title();
+  frame_data.title = ReplaceUnpairedSurrogates(frame.GetDocument()->title());
   AddFrameInteractionInfo(frame, *frame_data.frame_interaction_info);
   AddMetaData(frame, frame_data.meta_data);
 
@@ -2682,7 +2619,7 @@ void AIPageContentAgent::ContentBuilder::AddFrameInteractionInfo(
         mojom::blink::AIPageContentSelection::New();
     mojom::blink::AIPageContentSelection& selection =
         *frame_interaction_info.selection;
-    selection.selected_text = frame.SelectedText();
+    selection.selected_text = ReplaceUnpairedSurrogates(frame.SelectedText());
 
     const SelectionInDOMTree& frame_selection =
         frame.Selection().GetSelectionInDOMTree();

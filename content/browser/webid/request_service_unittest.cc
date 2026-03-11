@@ -640,6 +640,7 @@ class TestDialogController
       content::RelyingPartyData rp_data,
       const std::vector<IdentityProviderDataPtr>& idp_list,
       const std::vector<IdentityRequestAccountPtr>& accounts,
+      const std::vector<IdentityRequestAccountPtr>& filtered_accounts,
       blink::mojom::RpMode rp_mode,
       IdentityRequestDialogController::AccountSelectionCallback on_selected,
       IdentityRequestDialogController::LoginToIdPCallback on_add_account,
@@ -714,6 +715,8 @@ class TestDialogController
       blink::mojom::RpContext rp_context,
       blink::mojom::RpMode rp_mode,
       const IdentityProviderMetadata& idp_metadata,
+      const std::vector<scoped_refptr<IdentityRequestAccount>>&
+          filtered_accounts,
       IdentityRequestDialogController::DismissCallback dismiss_callback,
       IdentityRequestDialogController::LoginToIdPCallback
           identity_registry_callback) override {
@@ -3794,6 +3797,7 @@ class DisableApiWhenDialogShownDialogController : public TestDialogController {
       content::RelyingPartyData rp_data,
       const std::vector<IdentityProviderDataPtr>& idp_list,
       const std::vector<IdentityRequestAccountPtr>& accounts,
+      const std::vector<IdentityRequestAccountPtr>& filtered_accounts,
       blink::mojom::RpMode rp_mode,
       IdentityRequestDialogController::AccountSelectionCallback on_selected,
       IdentityRequestDialogController::LoginToIdPCallback on_add_account,
@@ -3806,9 +3810,9 @@ class DisableApiWhenDialogShownDialogController : public TestDialogController {
 
     // Call parent class method in order to store callback parameters.
     return TestDialogController::ShowAccountsDialog(
-        std::move(rp_data), idp_list, accounts, rp_mode, std::move(on_selected),
-        std::move(on_add_account), std::move(dismiss_callback),
-        std::move(accounts_displayed_callback));
+        std::move(rp_data), idp_list, accounts, filtered_accounts, rp_mode,
+        std::move(on_selected), std::move(on_add_account),
+        std::move(dismiss_callback), std::move(accounts_displayed_callback));
   }
 
  private:
@@ -7829,6 +7833,7 @@ class TestDialogControllerWithImmediateDismiss : public TestDialogController {
       content::RelyingPartyData rp_data,
       const std::vector<IdentityProviderDataPtr>& idp_list,
       const std::vector<IdentityRequestAccountPtr>& accounts,
+      const std::vector<IdentityRequestAccountPtr>& filtered_accounts,
       blink::mojom::RpMode rp_mode,
       IdentityRequestDialogController::AccountSelectionCallback on_selected,
       IdentityRequestDialogController::LoginToIdPCallback on_add_account,
@@ -7845,6 +7850,8 @@ class TestDialogControllerWithImmediateDismiss : public TestDialogController {
       blink::mojom::RpContext rp_context,
       blink::mojom::RpMode rp_mode,
       const IdentityProviderMetadata& idp_metadata,
+      const std::vector<scoped_refptr<IdentityRequestAccount>>&
+          filtered_accounts,
       IdentityRequestDialogController::DismissCallback dismiss_callback,
       IdentityRequestDialogController::LoginToIdPCallback
           identity_registry_callback) override {
@@ -8539,6 +8546,7 @@ class TestDialogControllerWithIdentityCredentialSource
       content::RelyingPartyData rp_data,
       const std::vector<IdentityProviderDataPtr>& idp_list,
       const std::vector<IdentityRequestAccountPtr>& accounts,
+      const std::vector<IdentityRequestAccountPtr>& filtered_accounts,
       blink::mojom::RpMode rp_mode,
       IdentityRequestDialogController::AccountSelectionCallback on_selected,
       IdentityRequestDialogController::LoginToIdPCallback on_add_account,
@@ -8553,6 +8561,7 @@ class TestDialogControllerWithIdentityCredentialSource
         {GURL(kProviderUrlFull)},
         base::BindOnce(
             [](const std::vector<IdentityRequestAccountPtr>& all_accounts,
+               const std::vector<IdentityRequestAccountPtr>& filtered_accounts,
                const std::optional<
                    std::vector<scoped_refptr<content::IdentityRequestAccount>>>&
                    actual_accounts) {
@@ -8565,14 +8574,21 @@ class TestDialogControllerWithIdentityCredentialSource
                   expected_signin_accounts.push_back(account);
                 }
               }
+
               EXPECT_EQ(expected_signin_accounts.size(),
                         actual_accounts->size());
               for (size_t i = 0; i < expected_signin_accounts.size(); ++i) {
                 EXPECT_EQ(expected_signin_accounts[i]->id,
                           (*actual_accounts)[i]->id);
               }
+              // Check that the actual accounts are not from the filtered list.
+              for (const auto& account : *actual_accounts) {
+                ASSERT_TRUE(std::find(filtered_accounts.begin(),
+                                      filtered_accounts.end(),
+                                      account) == filtered_accounts.end());
+              }
             },
-            accounts));
+            accounts, filtered_accounts));
     // Now, check that selecting the account works. Find the first sign-in
     // account.
     std::string signin_account_id;
@@ -8619,6 +8635,46 @@ TEST_F(
   RunAuthTest(kDefaultRequestParameters, kExpectationSuccess, configuration);
 
   // Check that GetIdentityCredentialSuggestions did not fetch new accounts.
+  EXPECT_EQ(1u, NumFetched(FetchedEndpoint::ACCOUNTS));
+  EXPECT_EQ(1u, NumFetched(FetchedEndpoint::TOKEN));
+}
+
+TEST_F(RequestServiceTest,
+       IdentityCredentialSourceReturnsFilteredSigninAccounts) {
+  MockConfiguration configuration = kConfigurationValid;
+
+  // Use Nicolas (SignUp), Peter (SignIn), and Zach (SignIn).
+  configuration.idp_info[kProviderUrlFull].accounts = {
+      base::MakeRefCounted<IdentityRequestAccount>(
+          kAccountIdNicolas, kAccountEmailNicolas, "Nicolas P",
+          kAccountEmailNicolas, "Nicolas P", "Nicolas", GURL(),
+          "(650) 312-3223", "npm", std::vector<std::string>(), kNicolasHints,
+          std::vector<std::string>(), std::vector<std::string>(),
+          LoginState::kSignUp, LoginState::kSignUp),
+      base::MakeRefCounted<IdentityRequestAccount>(
+          kAccountIdPeter, kAccountEmailPeter, "Peter K", kAccountEmailPeter,
+          "Peter K", "Peter", GURL(), "(650) 312-3223", "peter",
+          std::vector<std::string>(), kPeterHints, std::vector<std::string>(),
+          std::vector<std::string>(), LoginState::kSignIn, LoginState::kSignIn),
+      base::MakeRefCounted<IdentityRequestAccount>(
+          kAccountIdZach, kAccountEmailZach, "Zachary T", kAccountEmailZach,
+          "Zachary T", "Zach", GURL(), "(650) 312-3223", "zacht",
+          std::vector<std::string>(), kZachHints, std::vector<std::string>(),
+          std::vector<std::string>(), LoginState::kSignIn,
+          LoginState::kSignIn)};
+
+  RequestParameters parameters = kDefaultRequestParameters;
+  // Only Peter matches this hint.
+  parameters.identity_providers[0].login_hint = kAccountIdPeter;
+
+  SetDialogController(
+      std::make_unique<TestDialogControllerWithIdentityCredentialSource>(
+          configuration, web_contents()));
+
+  RunAuthTest(parameters, kExpectationSuccess, configuration);
+
+  // Suggestions should have returned just Peter since Zach was filtered out of
+  // the FedCM dialog by the login hint.
   EXPECT_EQ(1u, NumFetched(FetchedEndpoint::ACCOUNTS));
   EXPECT_EQ(1u, NumFetched(FetchedEndpoint::TOKEN));
 }

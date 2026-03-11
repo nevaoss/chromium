@@ -16,9 +16,9 @@
 #include "chrome/browser/signin/identity_test_environment_profile_adaptor.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+#include "chrome/browser/ui/side_panel/side_panel_ui.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/contextual_tasks/contextual_tasks_button.h"
-#include "chrome/browser/ui/views/side_panel/side_panel_ui.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/interaction/interactive_browser_test.h"
@@ -51,7 +51,7 @@ class TestingAimEligibilityService : public ChromeAimEligibilityService {
                                     template_url_service,
                                     /*url_loader_factory=*/nullptr,
                                     /*identity_manager=*/nullptr,
-                                    /*is_off_the_record=*/false) {}
+                                    /*configuration=*/{}) {}
 
   ~TestingAimEligibilityService() override = default;
 

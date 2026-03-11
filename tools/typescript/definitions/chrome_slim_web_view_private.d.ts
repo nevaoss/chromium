@@ -7,11 +7,13 @@
 // and is used to implement SlimWebViewElement.
 declare namespace chrome {
   export namespace slimWebViewPrivate {
+    export function allowGuestViewElementDefinition(callback: () => void): void;
     export function getNextId(): number;
     export function registerView(viewInstanceId: number, view: object): void;
     export function getViewFromId(instanceId: number): object|null;
     export function attachIframeGuest(
-        elementInstanceId: number, guestInstanceId: number, params: object,
+        containerId: number, guestInstanceId: number, params: object,
         contentWindow: WindowProxy, callback: () => void): void;
+    export function destroyContainer(containerId: number): void;
   }
 }

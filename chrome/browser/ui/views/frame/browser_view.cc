@@ -43,6 +43,7 @@
 #include "chrome/browser/app_mode/app_mode_utils.h"
 #include "chrome/browser/ash/boca/on_task/on_task_locked_controller.h"
 #include "chrome/browser/browser_process.h"
+#include "chrome/browser/desktop_to_mobile_promos/promos_utils.h"
 #include "chrome/browser/devtools/devtools_ui_controller.h"
 #include "chrome/browser/devtools/devtools_window.h"
 #include "chrome/browser/enterprise/data_protection/data_protection_navigation_observer.h"
@@ -61,7 +62,6 @@
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/profiles/profile_window.h"
 #include "chrome/browser/profiles/profiles_state.h"
-#include "chrome/browser/promos/promos_utils.h"
 #include "chrome/browser/sessions/tab_restore_service_factory.h"
 #include "chrome/browser/sharing_hub/sharing_hub_features.h"
 #include "chrome/browser/signin/chrome_signin_helper.h"
@@ -103,6 +103,8 @@
 #include "chrome/browser/ui/sad_tab_helper.h"
 #include "chrome/browser/ui/sharing_hub/sharing_hub_bubble_controller.h"
 #include "chrome/browser/ui/sharing_hub/sharing_hub_bubble_view.h"
+#include "chrome/browser/ui/side_panel/side_panel_registry.h"
+#include "chrome/browser/ui/side_panel/side_panel_ui.h"
 #include "chrome/browser/ui/tabs/alert/tab_alert.h"
 #include "chrome/browser/ui/tabs/alert/tab_alert_controller.h"
 #include "chrome/browser/ui/tabs/features.h"
@@ -192,8 +194,6 @@
 #include "chrome/browser/ui/views/sharing_hub/sharing_hub_icon_view.h"
 #include "chrome/browser/ui/views/side_panel/side_panel.h"
 #include "chrome/browser/ui/views/side_panel/side_panel_coordinator.h"
-#include "chrome/browser/ui/views/side_panel/side_panel_registry.h"
-#include "chrome/browser/ui/views/side_panel/side_panel_ui.h"
 #include "chrome/browser/ui/views/side_panel/side_panel_util.h"
 #include "chrome/browser/ui/views/status_bubble_views.h"
 #include "chrome/browser/ui/views/tab_contents/chrome_web_contents_view_focus_helper.h"
@@ -1402,7 +1402,7 @@ bool BrowserView::ShouldDrawTabStrip() const {
 bool BrowserView::ShouldDrawVerticalTabStrip() const {
   auto* controller = tabs::VerticalTabStripStateController::From(browser_);
   return ShouldDrawTabStrip() && controller &&
-         controller->ShouldDisplayVerticalTabs();
+         controller->ShouldDisplayVerticalTabs() && browser_->is_type_normal();
 }
 
 bool BrowserView::ShouldDrawWebAppFrameToolbar() const {
@@ -1545,9 +1545,8 @@ void BrowserView::Show() {
   }
 
   if (auto* manager = InitialWebUIManager::From(browser())) {
-    if (manager->RequestDeferShow(
-            base::BindOnce(&BrowserView::OnInitialWebUIReady,
-                           weak_ptr_factory_.GetWeakPtr()))) {
+    if (manager->RequestDeferShow(base::BindOnce(
+            &BrowserView::Show, weak_ptr_factory_.GetWeakPtr()))) {
       return;
     }
   }
@@ -1630,6 +1629,13 @@ void BrowserView::Close() {
 }
 
 void BrowserView::Activate() {
+  if (auto* manager = InitialWebUIManager::From(browser())) {
+    if (manager->RequestDeferShow(base::BindOnce(
+            &BrowserView::Activate, weak_ptr_factory_.GetWeakPtr()))) {
+      return;
+    }
+  }
+
 #if !BUILDFLAG(IS_WIN) && !BUILDFLAG(IS_CHROMEOS)
   // Update the list managed by `BrowserList` synchronously the same way
   // `BrowserView::Show()` does.
@@ -3008,7 +3014,7 @@ void BrowserView::MaybeShowTabStripToolbarButtonIPH() {
   }
 
   bool should_show =
-      tabs::GetTabSearchPosition(browser()->profile()) ==
+      tabs::GetTabSearchPosition(browser()) ==
           tabs::TabSearchPosition::kToolbarButton &&
       toolbar_->pinned_toolbar_actions_container()->IsActionPinned(
           kActionTabSearch);
@@ -4401,7 +4407,7 @@ void BrowserView::UpdateTabSearchBubbleHost() {
     tab_search_bubble_host_ = std::make_unique<TabSearchBubbleHost>(
         combo_button->end_button(), browser_.get());
     combo_button->SetTabSearchBubbleHost(tab_search_bubble_host_.get());
-  } else if (tabs::GetTabSearchPosition(browser_->profile()) ==
+  } else if (tabs::GetTabSearchPosition(browser_) ==
              tabs::TabSearchPosition::kToolbarButton) {
     tab_search_bubble_host_ = std::make_unique<TabSearchBubbleHost>(
         toolbar_->tab_search_button(), browser_.get());
@@ -6187,10 +6193,6 @@ void BrowserView::OnFirstPresentation(
     manager->OnBrowserWindowFirstPresentation(
         frame_timing_details.presentation_feedback.timestamp);
   }
-}
-
-void BrowserView::OnInitialWebUIReady() {
-  Show();
 }
 
 #if BUILDFLAG(ENTERPRISE_SCREENSHOT_PROTECTION)

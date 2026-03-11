@@ -2663,6 +2663,12 @@ data/accessibility/event/css-flex-text-update-expected-mac.txt
 data/accessibility/event/css-flex-text-update-expected-uia-win.txt
 data/accessibility/event/css-flex-text-update-expected-win.txt
 data/accessibility/event/css-flex-text-update.html
+data/accessibility/event/css-highlight-added-expected-uia-win.txt
+data/accessibility/event/css-highlight-added.html
+data/accessibility/event/css-highlight-grammar-error-expected-uia-win.txt
+data/accessibility/event/css-highlight-grammar-error.html
+data/accessibility/event/css-highlight-spelling-error-expected-uia-win.txt
+data/accessibility/event/css-highlight-spelling-error.html
 data/accessibility/event/css-visibility-collapse-expected-android.txt
 data/accessibility/event/css-visibility-collapse-expected-win.txt
 data/accessibility/event/css-visibility-collapse.html
@@ -3684,6 +3690,8 @@ data/accessibility/html/contenteditable-font-size-expected-blink.txt
 data/accessibility/html/contenteditable-font-size.html
 data/accessibility/html/contenteditable-li-contains-presentation-expected-blink.txt
 data/accessibility/html/contenteditable-li-contains-presentation.html
+data/accessibility/html/contenteditable-multi-node-expected-android-external.txt
+data/accessibility/html/contenteditable-multi-node.html
 data/accessibility/html/contenteditable-on-disallowed-element-expected-auralinux.txt
 data/accessibility/html/contenteditable-on-disallowed-element-expected-blink.txt
 data/accessibility/html/contenteditable-on-disallowed-element-expected-mac.txt
@@ -4994,6 +5002,9 @@ data/accessibility/html/menubar-element-roles.html
 data/accessibility/html/menuitem-checkbox-expected-auralinux.txt
 data/accessibility/html/menuitem-checkbox-expected-blink.txt
 data/accessibility/html/menuitem-checkbox.html
+data/accessibility/html/menuitem-disabled-expected-auralinux.txt
+data/accessibility/html/menuitem-disabled-expected-blink.txt
+data/accessibility/html/menuitem-disabled.html
 data/accessibility/html/menulist-popover-expected-auralinux.txt
 data/accessibility/html/menulist-popover-expected-blink.txt
 data/accessibility/html/menulist-popover.html
@@ -7659,6 +7670,8 @@ data/gpu/webcodecs/buffer-read-and-reply-worker.js
 data/gpu/webcodecs/convert-to-rgb.html
 data/gpu/webcodecs/convert-to-rgb.js
 data/gpu/webcodecs/copyTo.html
+data/gpu/webcodecs/crop-encode.html
+data/gpu/webcodecs/crop-encode.js
 data/gpu/webcodecs/draw-image.html
 data/gpu/webcodecs/encode-color-space.html
 data/gpu/webcodecs/encode-color-space.js

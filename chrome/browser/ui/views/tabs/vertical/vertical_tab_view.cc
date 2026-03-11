@@ -242,6 +242,16 @@ void VerticalTabView::StepLoadingAnimation(
   icon_->StepLoadingAnimation(elapsed_time);
 }
 
+void VerticalTabView::CreateFreezingVote() {
+  if (!freezing_vote_.has_value()) {
+    freezing_vote_.emplace(GetTabInterface()->GetContents());
+  }
+}
+
+void VerticalTabView::ReleaseFreezingVote() {
+  freezing_vote_.reset();
+}
+
 void VerticalTabView::UpdateHovered(bool hovered) {
   if (hovered_ == hovered) {
     return;
@@ -260,6 +270,18 @@ void VerticalTabView::UpdateHovered(bool hovered) {
   UpdateColors();
   UpdateThemeColors();
   InvalidateLayout();
+}
+
+bool VerticalTabView::IsHoverAnimationActive() const {
+  if (split_) {
+    auto* split_view = views::AsViewClass<VerticalSplitTabView>(parent());
+    // Ask the parent if its hover animation is running.
+    return split_view &&
+           (hovered_ || (split_view->hover_controller() &&
+                         split_view->hover_controller()->ShouldDraw()));
+  }
+
+  return hovered_ || (hover_controller_ && hover_controller_->ShouldDraw());
 }
 
 std::optional<SkColor> VerticalTabView::GetBackgroundColor() {
@@ -430,10 +452,6 @@ void VerticalTabView::OnGestureEvent(ui::GestureEvent* event) {
 }
 
 void VerticalTabView::OnPaint(gfx::Canvas* canvas) {
-  if (!collection_node_) {
-    return;
-  }
-
   // Split pinned tabs have a merged background that is rendered in
   // `VerticalSplitTabView`.
   if (pinned_ && split_) {
@@ -781,11 +799,17 @@ void VerticalTabView::ResetCollectionNode() {
     hover_card_controller->UpdateHoverCard(
         nullptr, TabSlotController::HoverCardUpdateType::kTabRemoved);
   }
-  collection_node_ = nullptr;
+
+  // Reset the active/selected/hovered states so the tab animates out without a
+  // background.
+  active_ = false;
+  selected_ = false;
 
   // Update the callbacks for the buttons so that we dont call anything that
   // needs the node.
   close_button_->SetCallback(base::RepeatingClosure(base::DoNothing()));
+
+  collection_node_ = nullptr;
 }
 
 void VerticalTabView::UpdateAccessibleName() {
@@ -992,18 +1016,6 @@ void VerticalTabView::RecordMousePressedInTab() {
   auto* tab_strip_view = views::AsViewClass<VerticalTabStripView>(parent_view);
   CHECK(tab_strip_view);
   tab_strip_view->RecordMousePressedInTab();
-}
-
-bool VerticalTabView::IsHoverAnimationActive() const {
-  if (split_) {
-    auto* split_view = views::AsViewClass<VerticalSplitTabView>(parent());
-    // Ask the parent if its hover animation is running.
-    return split_view &&
-           (hovered_ || (split_view->hover_controller() &&
-                         split_view->hover_controller()->ShouldDraw()));
-  }
-
-  return hovered_ || (hover_controller_ && hover_controller_->ShouldDraw());
 }
 
 double VerticalTabView::GetHoverAnimationValue() const {

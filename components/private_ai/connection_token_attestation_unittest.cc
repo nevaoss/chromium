@@ -11,6 +11,7 @@
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/task_environment.h"
 #include "base/test/test_future.h"
+#include "components/private_ai/common/private_ai_logger.h"
 #include "components/private_ai/error_code.h"
 #include "components/private_ai/proto/private_ai.pb.h"
 #include "components/private_ai/testing/fake_connection.h"
@@ -30,7 +31,7 @@ class ConnectionTokenAttestationTest : public testing::Test {
     auto fake_connection = std::make_unique<FakeConnection>(base::DoNothing());
     fake_connection_ = fake_connection.get();
     connection_attestation_ = std::make_unique<ConnectionTokenAttestation>(
-        std::move(fake_connection), &token_manager_,
+        std::move(fake_connection), &token_manager_, &logger_,
         base::BindOnce(&ConnectionTokenAttestationTest::OnDisconnect,
                        base::Unretained(this)));
   }
@@ -45,6 +46,7 @@ class ConnectionTokenAttestationTest : public testing::Test {
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 
   FakeTokenManager token_manager_;
+  PrivateAiLogger logger_;
 
   std::unique_ptr<ConnectionTokenAttestation> connection_attestation_;
   raw_ptr<FakeConnection> fake_connection_;
@@ -154,7 +156,7 @@ TEST_F(ConnectionTokenAttestationTest, AttestationFailed) {
   ASSERT_FALSE(result.has_value());
   EXPECT_EQ(result.error(), ErrorCode::kClientAttestationFailed);
 
-  histogram_tester.ExpectUniqueSample("Legion.Client.RequestErrorCode",
+  histogram_tester.ExpectUniqueSample("PrivateAi.Client.RequestErrorCode",
                                       ErrorCode::kError, 1);
 
   EXPECT_EQ(on_disconnect_counter_, 1);

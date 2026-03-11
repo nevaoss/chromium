@@ -78,6 +78,10 @@
 #include "ui/aura/window.h"
 #endif
 
+#if BUILDFLAG(IS_MAC)
+constexpr int kTabStripRegionInternalPaddingMac = 12;
+#endif
+
 namespace {
 
 class FrameGrabHandle : public views::View {
@@ -151,9 +155,9 @@ std::unique_ptr<TabStrip> CreateTabStrip(
 class TabSearchPositionMetricsLogger {
  public:
   explicit TabSearchPositionMetricsLogger(
-      const Profile* profile,
+      const BrowserWindowInterface* browser_window,
       base::TimeDelta logging_interval = base::Hours(1))
-      : profile_(profile),
+      : browser_window_(browser_window),
         logging_interval_(logging_interval),
         weak_ptr_factory_(this) {
     LogMetrics();
@@ -168,7 +172,7 @@ class TabSearchPositionMetricsLogger {
   // Logs the UMA metric for the tab search position.
   void LogMetrics() {
     const tabs::TabSearchPosition position =
-        tabs::GetTabSearchPosition(profile_);
+        tabs::GetTabSearchPosition(browser_window_);
     if (position == tabs::TabSearchPosition::kLeadingHorizontalTabstrip ||
         position == tabs::TabSearchPosition::kTrailingHorizontalTabstrip) {
       base::UmaHistogramEnumeration(
@@ -194,8 +198,8 @@ class TabSearchPositionMetricsLogger {
     ScheduleNextLog();
   }
 
-  // Profile for checking the pref value.
-  const raw_ptr<const Profile> profile_;
+  // Browser window for checking the pref value.
+  const raw_ptr<const BrowserWindowInterface> browser_window_;
 
   // Time in which this metric should be logged. Default is hourly.
   const base::TimeDelta logging_interval_;
@@ -207,10 +211,11 @@ HorizontalTabStripRegionView::HorizontalTabStripRegionView(
     BrowserView* browser_view)
     : profile_(browser_view->GetProfile()),
       render_tab_search_before_tab_strip_(
-          tabs::GetTabSearchPosition(profile_) ==
+          tabs::GetTabSearchPosition(browser_view->browser()) ==
           tabs::TabSearchPosition::kLeadingHorizontalTabstrip),
       tab_search_position_metrics_logger_(
-          std::make_unique<TabSearchPositionMetricsLogger>(profile_)),
+          std::make_unique<TabSearchPositionMetricsLogger>(
+              browser_view->browser())),
 #if BUILDFLAG(IS_CHROMEOS)
       tab_scrubber_(std::make_unique<ash::TabScrubber>(browser_view)),
 #endif
@@ -235,9 +240,6 @@ HorizontalTabStripRegionView::HorizontalTabStripRegionView(
         AddChildView(std::make_unique<TabStripComboButton>(browser));
     combo_button_->SetProperty(views::kCrossAxisAlignmentKey,
                                views::LayoutAlignment::kCenter);
-    combo_button_->SetPaintToLayer();
-    combo_button_->layer()->SetFillsBoundsOpaquely(false);
-    combo_button_->SetProperty(views::kViewIgnoredByLayoutKey, true);
   }
 
   if (base::FeatureList::IsEnabled(features::kTabGroupsFocusing)) {
@@ -685,6 +687,24 @@ views::View* HorizontalTabStripRegionView::GetTabStripView() {
   return tab_strip_;
 }
 
+bool HorizontalTabStripRegionView::HasLeadingButtons() const {
+  if (combo_button_ && combo_button_->GetVisible() &&
+      ((combo_button_->start_button() &&
+        combo_button_->start_button()->GetVisible()) ||
+       (combo_button_->end_button() &&
+        combo_button_->end_button()->GetVisible()))) {
+    return true;
+  }
+  if (unfocus_button_ && unfocus_button_->GetVisible()) {
+    return true;
+  }
+  if (tab_search_container_ && render_tab_search_before_tab_strip_ &&
+      tab_search_container_->GetVisible()) {
+    return true;
+  }
+  return false;
+}
+
 void HorizontalTabStripRegionView::LogTabSearchPositionForTesting() {
   tab_search_position_metrics_logger_->LogMetricsForTesting();  // IN-TEST
 }
@@ -741,6 +761,17 @@ void HorizontalTabStripRegionView::UpdateButtonBorders() {
 }
 
 void HorizontalTabStripRegionView::UpdateTabStripMargin() {
+#if BUILDFLAG(IS_MAC)
+  if (HasLeadingButtons()) {
+    // When leading buttons are present, maintain a consistent 12px gap from
+    // the caption buttons on Mac.
+    SetProperty(views::kInternalPaddingKey,
+                gfx::Insets::TLBR(0, kTabStripRegionInternalPaddingMac, 0, 0));
+  } else {
+    ClearProperty(views::kInternalPaddingKey);
+  }
+#endif
+
   // The new tab button overlaps the tabstrip. Render it to a layer and adjust
   // the tabstrip right margin to reserve space for it.
   std::optional<int> tab_strip_right_margin;
@@ -781,6 +812,9 @@ void HorizontalTabStripRegionView::UpdateTabStripMargin() {
   }
 
   if (combo_button_) {
+    combo_button_->SetPaintToLayer();
+    combo_button_->layer()->SetFillsBoundsOpaquely(false);
+    combo_button_->SetProperty(views::kViewIgnoredByLayoutKey, true);
     current_leading_width +=
         combo_button_->GetPreferredSize().width() +
         GetLayoutConstant(LayoutConstant::kTabStripPadding);

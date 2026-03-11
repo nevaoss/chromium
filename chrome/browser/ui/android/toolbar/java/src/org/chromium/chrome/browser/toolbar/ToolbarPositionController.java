@@ -37,6 +37,7 @@ import org.chromium.chrome.browser.browser_controls.BottomControlsStacker.LayerV
 import org.chromium.chrome.browser.browser_controls.BrowserControlsSizer;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider.ControlsPosition;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
+import org.chromium.chrome.browser.layouts.LayoutType;
 import org.chromium.chrome.browser.ntp_customization.NtpCustomizationUtils;
 import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
 import org.chromium.chrome.browser.profiles.Profile;
@@ -51,6 +52,7 @@ import org.chromium.ui.KeyboardVisibilityDelegate.KeyboardVisibilityListener;
 import org.chromium.ui.base.DeviceFormFactor;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.insets.InsetObserver;
+import org.chromium.url.GURL;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -162,6 +164,7 @@ public class ToolbarPositionController implements OnSharedPreferenceChangeListen
     private final WindowAndroid mWindowAndroid;
     private final int mHairlineHeight;
     private final boolean mEnableLogs;
+    private final boolean mIsNtpCustomizationV2Enabled;
 
     /**
      * @param browserControlsSizer {@link BrowserControlsSizer}, used to manipulate position of the
@@ -189,7 +192,6 @@ public class ToolbarPositionController implements OnSharedPreferenceChangeListen
      * @param topInsetProvider The {@link TopInsetProvider} instance.
      * @param controlsPosition Supplier to update whenever toolbar position changes.
      * @param profileSupplier Supplier of the currently applicable profile.
-     * @param activeTabSupplier Supplier of the currently active Tab.
      */
     public ToolbarPositionController(
             BrowserControlsSizer browserControlsSizer,
@@ -214,9 +216,9 @@ public class ToolbarPositionController implements OnSharedPreferenceChangeListen
             Context context,
             SettableNonNullObservableSupplier<Integer> controlsPosition,
             MonotonicObservableSupplier<Profile> profileSupplier,
+            Supplier<@Nullable Tab> activeTabSupplier,
             NonNullObservableSupplier<Integer> keyboardHeightSupplier,
-            WindowAndroid windowAndroid,
-            Supplier<@Nullable Tab> activeTabSupplier) {
+            WindowAndroid windowAndroid) {
         mBrowserControlsSizer = browserControlsSizer;
         mIsNtpWithFakeboxShowingSupplier = isNtpWithFakeboxShowingSupplier;
         mIsTabSwitcherFinishedShowingSupplier = isTabSwitcherFinishedShowingSupplier;
@@ -385,6 +387,7 @@ public class ToolbarPositionController implements OnSharedPreferenceChangeListen
         mKeyboardHeightSupplier.addSyncObserverAndPostIfNonNull(mKeyboardHeightProgressBarCallback);
 
         // Set up observer to handle edge-to-edge changes.
+        mIsNtpCustomizationV2Enabled = NtpCustomizationUtils.isNtpThemeCustomizationEnabled();
         mTopInsetProviderObserver = this::onToEdgeChange;
         mTopInsetProvider.addObserver(mTopInsetProviderObserver);
 
@@ -531,7 +534,7 @@ public class ToolbarPositionController implements OnSharedPreferenceChangeListen
                 progressBarChangeRunnable.run();
             }
         } else {
-            maybeForceBottomToolbarLayoutUpdateAndCapture();
+            maybeForceBottomToolbarLayoutUpdateAndCapture(ntpShowing);
 
             newTopHeight = mBrowserControlsSizer.getTopControlsHeight() - controlContainerHeight;
             mLayerVisibility = LayerVisibility.VISIBLE;
@@ -818,10 +821,21 @@ public class ToolbarPositionController implements OnSharedPreferenceChangeListen
      *     always bigger than 0.
      * @param consumeTopInset Determines if the toolbar should utilize this top inset, extending
      *     across the full height of both the status bar and itself.
+     * @param layoutType The current active layout type from {@link LayoutType}.
      * @return Whether the layout is changed.
      */
     @VisibleForTesting
-    boolean onToEdgeChange(int systemTopInset, boolean consumeTopInset) {
+    boolean onToEdgeChange(
+            int systemTopInset, boolean consumeTopInset, @LayoutType int layoutType) {
+        Tab tab = mActiveTabSupplier.get();
+        if (tab == null
+                // When swipe the toolbar inside NTP, currentTab == null. So the
+                // EdgeToEdgeLayoutCoordinator will add the top padding.
+                // We need to notify the observer of ToolbarPositionController to remove the top
+                // padding.
+                && layoutType != LayoutType.TOOLBAR_SWIPE) {
+            return false;
+        }
         // Exits early if the top padding doesn't need adjusting.
         if (NtpCustomizationUtils.shouldSkipTopInsetsChange(
                 mTopInset, systemTopInset, consumeTopInset)) {
@@ -842,15 +856,34 @@ public class ToolbarPositionController implements OnSharedPreferenceChangeListen
      * Tab is a NTP.
      */
     @VisibleForTesting
-    void maybeForceBottomToolbarLayoutUpdateAndCapture() {
+    void maybeForceBottomToolbarLayoutUpdateAndCapture(boolean isNtpShowing) {
+        if (!mIsNtpCustomizationV2Enabled) return;
+
         if (mIsFirstPositionChange) {
             // Skips forcing capture the first time when toolbar position is set.
             // The value of mIsFirstPositionChange will be updated in the updateCurrentPosition().
             return;
         }
 
-        Tab tab = mActiveTabSupplier.get();
-        if (tab != null && !tab.isOffTheRecord() && UrlUtilities.isNtpUrl(tab.getUrl())) {
+        if (mEnableLogs) {
+            Log.i(TAG, "Current %s showing a NTP", isNtpShowing ? "is" : "isn't");
+        }
+
+        boolean isEmptyUrl = false;
+        if (!isNtpShowing) {
+            Tab tab = mActiveTabSupplier.get();
+            if (tab != null) {
+                GURL url = tab.getUrl();
+                isEmptyUrl = url.isEmpty();
+                Log.i(
+                        TAG,
+                        "URL of the current tab: [isEmpty: %b] [isValid: %b]",
+                        isEmptyUrl,
+                        url.isValid());
+            }
+        }
+
+        if (isNtpShowing || isEmptyUrl) {
             // On certain devices, the toolbar position could switch from top to bottom, and then
             // back to the top when creating a NTP. Force calling onToEdgeChange() will reset the
             // correct top padding which has been set on the toolbar. Since the toolbar is always
@@ -862,7 +895,8 @@ public class ToolbarPositionController implements OnSharedPreferenceChangeListen
         // When the toolbar is at bottom, it shouldn't add any top inset. Calling
         // onToEdgeChange() immediately to remove the top padding of Toolbar if exists.
         boolean isLayoutChanged =
-                onToEdgeChange(/* systemTopInset= */ 0, /* consumeTopInset= */ false);
+                onToEdgeChange(
+                        /* systemTopInset= */ 0, /* consumeTopInset= */ false, LayoutType.BROWSING);
         // During toolbar swiping, it is possible that the toolbar's layout has been forced to
         // update before its position is moved to the bottom. In this case, skips calling
         // doSynchronousLayoutAndCapture() again.

@@ -316,7 +316,6 @@ component("net") {
     "base/sys_addrinfo.h",
     "base/task/task_runner.cc",
     "base/task/task_runner.h",
-    "base/trace_event_stub.h",
     "base/transport_info.cc",
     "base/transport_info.h",
     "base/upload_bytes_element_reader.cc",
@@ -1074,6 +1073,8 @@ component("net") {
     "socket/udp_socket_global_limits.h",
     "socket/websocket_endpoint_lock_manager.cc",
     "socket/websocket_endpoint_lock_manager.h",
+    "socket/websocket_stream_socket.cc",
+    "socket/websocket_stream_socket.h",
     "socket/websocket_transport_client_socket_pool.cc",
     "socket/websocket_transport_client_socket_pool.h",
     "spdy/alps_decoder.cc",
@@ -2748,6 +2749,16 @@ if (is_ios) {
     testonly = true
     filelist_name = "data/test_bundle_data.filelist"
   }
+
+  bundle_data("registry_controlled_domains_bundle_data") {
+    testonly = true
+    sources = [
+      "//net/base/registry_controlled_domains/effective_tld_names.dat",
+      "//net/base/registry_controlled_domains/effective_tld_names.gperf",
+    ]
+    outputs = [ "{{bundle_resources_dir}}/" +
+                "{{source_root_relative_dir}}/{{source_file_part}}" ]
+  }
 }
 
 # TODO(crbug.com/477528387): Consider enabling net_fuzztests for cronet builds.
@@ -3086,6 +3097,7 @@ target(_test_target_type, "net_unittests") {
     "socket/transport_connect_job_unittest.cc",
     "socket/udp_socket_unittest.cc",
     "socket/websocket_endpoint_lock_manager_unittest.cc",
+    "socket/websocket_stream_socket_unittest.cc",
     "socket/websocket_transport_client_socket_pool_unittest.cc",
     "spdy/alps_decoder_test.cc",
     "spdy/bidirectional_stream_spdy_impl_unittest.cc",
@@ -3324,6 +3336,7 @@ target(_test_target_type, "net_unittests") {
   }
 
   data = [
+    "base/registry_controlled_domains/",
     "data/cache_tests/",
     "data/cert_issuer_source_aia_unittest/",
     "data/cert_issuer_source_static_unittest/",
@@ -3458,7 +3471,10 @@ target(_test_target_type, "net_unittests") {
   }
 
   if (is_ios) {
-    bundle_deps = [ ":net_test_bundle_data" ]
+    bundle_deps = [
+      ":net_test_bundle_data",
+      ":registry_controlled_domains_bundle_data",
+    ]
   }
 
   if (enable_unix_sockets) {
@@ -4340,6 +4356,7 @@ if (is_apple) {
   fuzzer_test("net_url_conversions_fuzzer") {
     sources = [ "base/apple/url_conversions_fuzzer.mm" ]
     deps = [
+      ":net_fuzzer_test_support",
       "//base",
       "//net",
     ]

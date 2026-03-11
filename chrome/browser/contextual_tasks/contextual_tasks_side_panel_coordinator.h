@@ -12,8 +12,8 @@
 #include "base/memory/weak_ptr.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_panel_controller.h"
 #include "chrome/browser/tab_list/tab_list_interface_observer.h"
-#include "chrome/browser/ui/views/side_panel/side_panel_entry.h"
-#include "chrome/browser/ui/views/side_panel/side_panel_entry_observer.h"
+#include "chrome/browser/ui/side_panel/side_panel_entry.h"
+#include "chrome/browser/ui/side_panel/side_panel_entry_observer.h"
 #include "components/sessions/core/session_id.h"
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/web_contents_observer.h"
@@ -144,9 +144,13 @@ class ContextualTasksSidePanelCoordinator
   void SetSidePanelIdNotToOverrideForTesting(SidePanelEntry::Id side_panel_id);
 
   // TabListInterfaceObserver overrides:
-  void OnTabAdded(tabs::TabInterface* tab, int index) override;
-  void OnActiveTabChanged(tabs::TabInterface* tab) override;
-  void OnTabRemoved(tabs::TabInterface* tab,
+  void OnTabAdded(TabListInterface& tab_list,
+                  tabs::TabInterface* tab,
+                  int index) override;
+  void OnActiveTabChanged(TabListInterface& tab_list,
+                          tabs::TabInterface* tab) override;
+  void OnTabRemoved(TabListInterface& tab_list,
+                    tabs::TabInterface* tab,
                     TabRemovedReason removed_reason) override;
 
  private:

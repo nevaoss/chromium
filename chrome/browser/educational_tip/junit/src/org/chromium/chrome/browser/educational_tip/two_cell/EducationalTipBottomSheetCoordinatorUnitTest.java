@@ -34,6 +34,7 @@ import org.chromium.chrome.browser.educational_tip.EducationalTipCardProvider;
 import org.chromium.chrome.browser.educational_tip.EducationalTipCardProviderFactory;
 import org.chromium.chrome.browser.educational_tip.R;
 import org.chromium.chrome.browser.magic_stack.ModuleDelegate.ModuleType;
+import org.chromium.chrome.browser.setup_list.SetupListModuleUtils;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.ui.shadows.ShadowAppCompatResources;
@@ -52,30 +53,35 @@ public class EducationalTipBottomSheetCoordinatorUnitTest {
 
     @Mock private BottomSheetController mBottomSheetController;
     @Mock private EducationTipModuleActionDelegate mActionDelegate;
-    @Mock private Supplier<List<EducationalTipCardProvider>> mEducationalTipCardProviderSupplier;
+    @Mock private Supplier<List<EducationalTipBottomSheetItem>> mEducationalTipCardProviderSupplier;
 
     private Context mContext;
-    private EducationalTipBottomSheetCoordinator mEducationalTipBottomSheetCoordinator;
-    private List<EducationalTipCardProvider> mListOfEducationalTipCardProvider;
+    private List<EducationalTipBottomSheetItem> mListOfEducationalTipBottomSheetItem;
 
     @Before
     public void setUp() {
         mContext = ApplicationProvider.getApplicationContext();
         when(mActionDelegate.getContext()).thenReturn(ApplicationProvider.getApplicationContext());
         when(mActionDelegate.getBottomSheetController()).thenReturn(mBottomSheetController);
-        mListOfEducationalTipCardProvider = createListOfEducationalTipCardProvider();
+        mListOfEducationalTipBottomSheetItem = createListOfEducationalTipBottomSheetItem();
         when(mEducationalTipCardProviderSupplier.get())
-                .thenReturn(mListOfEducationalTipCardProvider);
+                .thenReturn(mListOfEducationalTipBottomSheetItem);
+
+        List<Integer> moduleTypeList = new ArrayList<>();
+        for (int i = 0; i < 5; i++) {
+            moduleTypeList.add(ModuleType.DEFAULT_BROWSER_PROMO);
+        }
+        SetupListModuleUtils.setRankedModuleTypesForTesting(moduleTypeList);
     }
 
     @Test
     @SmallTest
     public void testShowBottomSheet() {
-        mEducationalTipBottomSheetCoordinator =
+        EducationalTipBottomSheetCoordinator educationalTipBottomSheetCoordinator =
                 new EducationalTipBottomSheetCoordinator(
                         mActionDelegate, mEducationalTipCardProviderSupplier);
-        PropertyModel model = mEducationalTipBottomSheetCoordinator.getModelForTesting();
-        mEducationalTipBottomSheetCoordinator.showBottomSheet();
+        PropertyModel model = educationalTipBottomSheetCoordinator.getModelForTesting();
+        educationalTipBottomSheetCoordinator.showBottomSheet();
 
         Assert.assertEquals(
                 "Bottom sheet title should be default",
@@ -88,20 +94,21 @@ public class EducationalTipBottomSheetCoordinatorUnitTest {
         Assert.assertEquals(
                 "Bottom sheet list items should be set",
                 model.get(BOTTOM_SHEET_LIST_ITEMS),
-                mListOfEducationalTipCardProvider);
+                mListOfEducationalTipBottomSheetItem);
         verify(mBottomSheetController).requestShowContent(any(), /* animate= */ eq(true));
     }
 
-    private List<EducationalTipCardProvider> createListOfEducationalTipCardProvider() {
-        List<EducationalTipCardProvider> output = new ArrayList<>();
+    private List<EducationalTipBottomSheetItem> createListOfEducationalTipBottomSheetItem() {
+        List<EducationalTipBottomSheetItem> output = new ArrayList<>();
         for (int i = 0; i < 5; i++) {
-            output.add(
+            EducationalTipCardProvider provider =
                     EducationalTipCardProviderFactory.createInstance(
                             ModuleType.DEFAULT_BROWSER_PROMO,
                             () -> {},
                             null,
                             mActionDelegate,
-                            () -> {}));
+                            () -> {});
+            output.add(new EducationalTipBottomSheetItem(provider, null));
         }
         return output;
     }

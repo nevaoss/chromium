@@ -75,7 +75,10 @@ class MockPage : public mojom::Page {
   MOCK_METHOD(void, RestoreInput, (), (override));
   MOCK_METHOD(void, OnZeroStateChange, (bool is_zero_state), (override));
   MOCK_METHOD(void, OnAiPageStatusChanged, (bool is_ai_page), (override));
-  MOCK_METHOD(void, OnLensOverlayStateChanged, (bool is_showing), (override));
+  MOCK_METHOD(void,
+              OnLensOverlayStateChanged,
+              (bool is_showing, bool maybe_show_overlay_hint_text),
+              (override));
   MOCK_METHOD(void, ShowErrorPage, (), (override));
   MOCK_METHOD(void, HideErrorPage, (), (override));
   MOCK_METHOD(void, ShowOauthErrorDialog, (), (override));
@@ -138,6 +141,7 @@ class MockUiService : public ContextualTasksUiService {
               (const GURL&, BrowserWindowInterface*),
               (override));
   MOCK_METHOD(bool, IsAiUrl, (const GURL&), (override));
+  MOCK_METHOD(bool, IsPendingErrorPage, (const base::Uuid&), (override));
 };
 
 class TestContextualTasksUI : public ContextualTasksUI {
@@ -214,6 +218,33 @@ class ContextualTasksPageHandlerTest : public BrowserWithTestWindowTest {
   NiceMock<MockPage> page_;
   base::test::ScopedFeatureList feature_list_;
 };
+
+TEST_F(ContextualTasksPageHandlerTest, IsPendingErrorPage) {
+  base::Uuid task_id = base::Uuid::GenerateRandomV4();
+
+  EXPECT_CALL(*mock_contextual_tasks_ui_service_, IsPendingErrorPage(task_id))
+      .WillOnce(Return(true));
+
+  base::RunLoop run_loop;
+  page_handler_->IsPendingErrorPage(
+      task_id, base::BindLambdaForTesting([&](bool is_pending_error_page) {
+        EXPECT_TRUE(is_pending_error_page);
+        run_loop.Quit();
+      }));
+  run_loop.Run();
+}
+
+TEST_F(ContextualTasksPageHandlerTest, IsPendingErrorPage_TaskNotPending) {
+  base::Uuid task_id = base::Uuid::GenerateRandomV4();
+
+  base::RunLoop run_loop;
+  page_handler_->IsPendingErrorPage(
+      task_id, base::BindLambdaForTesting([&](bool is_pending_error_page) {
+        EXPECT_FALSE(is_pending_error_page);
+        run_loop.Quit();
+      }));
+  run_loop.Run();
+}
 
 TEST_F(ContextualTasksPageHandlerTest, GetThreadUrl) {
   GURL expected_url(kAiPageUrl);
@@ -629,6 +660,7 @@ TEST_F(ContextualTasksPageHandlerTest, GetCommonSearchParams) {
         /*is_dark_mode=*/false, /*is_side_panel=*/true,
         base::BindLambdaForTesting(
             [&](const base::flat_map<std::string, std::string>& params) {
+              EXPECT_EQ(params.at(lens::kLanguageCodeParameterKey), "en-US");
               EXPECT_EQ(params.at(lens::kDarkModeParameterKey),
                         lens::kDarkModeParameterLightValue);
               EXPECT_EQ(params.at(lens::kChromeSidePanelParameterKey), "2");
@@ -644,6 +676,7 @@ TEST_F(ContextualTasksPageHandlerTest, GetCommonSearchParams) {
         /*is_dark_mode=*/true, /*is_side_panel=*/false,
         base::BindLambdaForTesting(
             [&](const base::flat_map<std::string, std::string>& params) {
+              EXPECT_EQ(params.at(lens::kLanguageCodeParameterKey), "en-US");
               EXPECT_EQ(params.at(lens::kDarkModeParameterKey),
                         lens::kDarkModeParameterDarkValue);
               EXPECT_EQ(params.at(lens::kChromeSidePanelParameterKey), "");
@@ -663,6 +696,7 @@ TEST_F(ContextualTasksPageHandlerTest, GetCommonSearchParams) {
         /*is_dark_mode=*/false, /*is_side_panel=*/true,
         base::BindLambdaForTesting(
             [&](const base::flat_map<std::string, std::string>& params) {
+              EXPECT_EQ(params.at(lens::kLanguageCodeParameterKey), "US");
               EXPECT_EQ(params.at("gl"), "us");
               run_loop.Quit();
             }));

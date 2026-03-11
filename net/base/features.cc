@@ -351,13 +351,17 @@ BASE_FEATURE(kUseNetworkPathMonitorForNetworkChangeNotifier,
              base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_APPLE)
 
+#if BUILDFLAG(IS_WIN)
+BASE_FEATURE(kDeviceBoundSessions, base::FEATURE_ENABLED_BY_DEFAULT);
+#else
 BASE_FEATURE(kDeviceBoundSessions, base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kPersistDeviceBoundSessions, base::FEATURE_DISABLED_BY_DEFAULT);
+#endif
+BASE_FEATURE(kPersistDeviceBoundSessions, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE_PARAM(bool,
                    kDeviceBoundSessionsRequireOriginTrialTokens,
                    &kDeviceBoundSessions,
                    "RequireOriginTrialTokens",
-                   true);
+                   false);
 BASE_FEATURE_PARAM(bool,
                    kDeviceBoundSessionsRefreshQuota,
                    &kDeviceBoundSessions,
@@ -372,10 +376,10 @@ BASE_FEATURE_PARAM(int,
                    kDeviceBoundSessionsSchemaVersion,
                    &kDeviceBoundSessions,
                    "SchemaVersion",
-                   2);
+                   3);
 
 BASE_FEATURE(kDeviceBoundSessionsFederatedRegistration,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE_PARAM(bool,
                    kDeviceBoundSessionsFederatedRegistrationCheckWellKnown,
                    &kDeviceBoundSessionsFederatedRegistration,
@@ -511,6 +515,16 @@ BASE_FEATURE_PARAM(bool,
                    &kDiskCacheBackendExperiment,
                    "SqlDiskCacheSizeAndPriorityAwareEviction",
                    true);
+BASE_FEATURE_PARAM(bool,
+                   kSqlDiskCacheReleaseMemoryAfterWrites,
+                   &kDiskCacheBackendExperiment,
+                   "SqlDiskCacheReleaseMemoryAfterWrites",
+                   true);
+BASE_FEATURE_PARAM(int,
+                   kSqlDiskCacheCacheSize,
+                   &kDiskCacheBackendExperiment,
+                   "SqlDiskCacheCacheSize",
+                   0);
 #endif  // ENABLE_DISK_CACHE_SQL_BACKEND
 
 BASE_FEATURE(kIgnoreHSTSForLocalhost, base::FEATURE_ENABLED_BY_DEFAULT);

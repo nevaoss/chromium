@@ -12,7 +12,6 @@
 #include "base/test/scoped_feature_list.h"
 #include "components/ukm/test_ukm_recorder.h"
 #include "components/variations/net/variations_http_headers.h"
-#include "components/variations/scoped_variations_ids_provider.h"
 #include "components/variations/variations_ids_provider.h"
 #include "content/browser/preloading/prefetch/prefetch_document_manager.h"
 #include "content/browser/preloading/prefetch/prefetch_features.h"
@@ -188,10 +187,6 @@ class PrefetchContainerTest
       public ::testing::WithParamInterface<PrefetchRearchParam> {
  public:
   PrefetchContainerTest() : PrefetchContainerTestBase(GetParam()) {}
-
- private:
-  variations::test::ScopedVariationsIdsProvider scoped_variations_ids_provider_{
-      variations::VariationsIdsProvider::Mode::kIgnoreSignedInState};
 };
 
 class PrefetchContainerXClientDataHeaderTest
@@ -202,10 +197,6 @@ class PrefetchContainerXClientDataHeaderTest
  public:
   PrefetchContainerXClientDataHeaderTest()
       : PrefetchContainerTestBase(std::get<0>(GetParam())) {}
-
- private:
-  variations::test::ScopedVariationsIdsProvider scoped_variations_ids_provider_{
-      variations::VariationsIdsProvider::Mode::kIgnoreSignedInState};
 
  protected:
   bool IsIncognito() const { return std::get<1>(GetParam()); }
@@ -396,20 +387,19 @@ TEST_P(PrefetchContainerTest, Servable) {
       CreateSpeculationRulesPrefetchContainer(GURL("https://test.com"));
 
   prefetch_container->SimulatePrefetchEligibleForTest();
-  MakeServableStreamingURLLoaderForTest(prefetch_container.get(),
-                                        network::mojom::URLResponseHead::New(),
-                                        "test body");
+  MakeServableStreamingURLLoaderForTest(
+      prefetch_container.get(), SuccessfulPrefetchResponseHeadForTesting(),
+      "test body");
 
-  task_environment()->FastForwardBy(base::Minutes(2));
+  task_environment()->FastForwardBy(PrefetchCacheableDuration() -
+                                    base::Seconds(10));
+  EXPECT_EQ(prefetch_container->GetMatchResolverAction().ToServableState(),
+            PrefetchServableState::kServable);
+  // PrefetchCacheableDuration() + base::Seconds(10)
+  task_environment()->FastForwardBy(base::Seconds(20));
+  EXPECT_NE(prefetch_container->GetMatchResolverAction().ToServableState(),
+            PrefetchServableState::kServable);
 
-  EXPECT_NE(
-      prefetch_container->GetMatchResolverActionForTesting(base::Minutes(1))
-          .ToServableState(),
-      PrefetchServableState::kServable);
-  EXPECT_EQ(
-      prefetch_container->GetMatchResolverActionForTesting(base::Minutes(3))
-          .ToServableState(),
-      PrefetchServableState::kServable);
   EXPECT_TRUE(prefetch_container->GetNonRedirectHead());
 }
 
@@ -675,7 +665,7 @@ TEST_P(PrefetchContainerTest, PrefetchProxyPrefetchedResourceUkm) {
       base::TimeTicks() + base::Milliseconds(200);
 
   network::mojom::URLResponseHeadPtr head =
-      network::mojom::URLResponseHead::New();
+      SuccessfulPrefetchResponseHeadForTesting();
   head->load_timing.request_start = base::TimeTicks();
 
   MakeServableStreamingURLLoaderForTest(prefetch_container.get(),
@@ -1258,18 +1248,12 @@ TEST_P(PrefetchContainerTest, RecordRedirectChainSize) {
   auto prefetch_container =
       CreateSpeculationRulesPrefetchContainer(GURL("https://test.com"));
   prefetch_container->MakeInitialResourceRequest();
-
   prefetch_container->SimulatePrefetchEligibleForTest();
-  prefetch_container->SimulatePrefetchStartedForTest();
-
-  AddRedirectHop(prefetch_container.get(), GURL("https://redirect1.com"));
-  AddRedirectHop(prefetch_container.get(), GURL("https://redirect2.com"));
-  prefetch_container->OnDeterminedHead(/*is_successful_determined_head=*/true);
-  prefetch_container->OnPrefetchComplete(/*is_success=*/true,
-                                         network::URLLoaderCompletionStatus());
-
+  MakeServableStreamingURLLoaderWithRedirectForTest(
+      prefetch_container.get(), GURL("https://test.com"),
+      GURL("https://redirect1.com"));
   histogram_tester.ExpectUniqueSample(
-      "PrefetchProxy.Prefetch.RedirectChainSize", 3, 1);
+      "PrefetchProxy.Prefetch.RedirectChainSize", 2, 1);
 }
 
 TEST_P(PrefetchContainerTest, IsIsolatedNetworkRequired) {
@@ -1366,18 +1350,14 @@ TEST_P(PrefetchContainerTest, MultipleStreamingURLLoaders) {
 
   EXPECT_FALSE(prefetch_container->GetStreamingURLLoader());
 
-  EXPECT_NE(prefetch_container
-                ->GetMatchResolverActionForTesting(base::TimeDelta::Max())
-                .ToServableState(),
+  EXPECT_NE(prefetch_container->GetMatchResolverAction().ToServableState(),
             PrefetchServableState::kServable);
   EXPECT_FALSE(prefetch_container->GetNonRedirectHead());
 
   prefetch_container->SimulatePrefetchEligibleForTest();
   MakeServableStreamingURLLoadersWithNetworkTransitionRedirectForTest(
       prefetch_container.get(), kTestUrl1, kTestUrl2);
-  EXPECT_EQ(prefetch_container
-                ->GetMatchResolverActionForTesting(base::TimeDelta::Max())
-                .ToServableState(),
+  EXPECT_EQ(prefetch_container->GetMatchResolverAction().ToServableState(),
             PrefetchServableState::kServable);
   EXPECT_TRUE(prefetch_container->GetNonRedirectHead());
 
@@ -1403,9 +1383,7 @@ TEST_P(PrefetchContainerTest, MultipleStreamingURLLoaders) {
 
   // `CreateRequestHandler()` itself doesn't make the PrefetchContainer
   // non-servable.
-  EXPECT_EQ(prefetch_container
-                ->GetMatchResolverActionForTesting(base::TimeDelta::Max())
-                .ToServableState(),
+  EXPECT_EQ(prefetch_container->GetMatchResolverAction().ToServableState(),
             PrefetchServableState::kServable);
   EXPECT_TRUE(prefetch_container->GetNonRedirectHead());
 
@@ -1472,7 +1450,7 @@ TEST_P(PrefetchContainerTest, CancelAndClearStreamingLoader) {
   CHECK_EQ(mojo::CreateDataPipe(1024, producer_handle, consumer_handle),
            MOJO_RESULT_OK);
   pending_request.client->OnReceiveResponse(
-      network::mojom::URLResponseHead::New(), std::move(consumer_handle),
+      SuccessfulPrefetchResponseHeadForTesting(), std::move(consumer_handle),
       std::nullopt);
   task_environment()->RunUntilIdle();
 
@@ -1480,9 +1458,7 @@ TEST_P(PrefetchContainerTest, CancelAndClearStreamingLoader) {
   ASSERT_TRUE(prefetch_container->GetStreamingURLLoader());
   base::WeakPtr<PrefetchStreamingURLLoader> streaming_loader =
       prefetch_container->GetStreamingURLLoader();
-  EXPECT_EQ(prefetch_container
-                ->GetMatchResolverActionForTesting(base::TimeDelta::Max())
-                .ToServableState(),
+  EXPECT_EQ(prefetch_container->GetMatchResolverAction().ToServableState(),
             PrefetchServableState::kServable);
 
   prefetch_container->CancelStreamingURLLoaderIfNotServing();
@@ -1491,18 +1467,14 @@ TEST_P(PrefetchContainerTest, CancelAndClearStreamingLoader) {
   // `PrefetchContainer` is notified of a failure (prefetch cancellation).
   EXPECT_FALSE(prefetch_container->GetStreamingURLLoader());
   EXPECT_TRUE(streaming_loader);
-  EXPECT_EQ(prefetch_container
-                ->GetMatchResolverActionForTesting(base::TimeDelta::Max())
-                .ToServableState(),
+  EXPECT_EQ(prefetch_container->GetMatchResolverAction().ToServableState(),
             PrefetchServableState::kNotServable);
 
   task_environment()->RunUntilIdle();
 
   // `streaming_loader` itself is destroyed asynchronously.
   EXPECT_FALSE(streaming_loader);
-  EXPECT_EQ(prefetch_container
-                ->GetMatchResolverActionForTesting(base::TimeDelta::Max())
-                .ToServableState(),
+  EXPECT_EQ(prefetch_container->GetMatchResolverAction().ToServableState(),
             PrefetchServableState::kNotServable);
 }
 
@@ -1638,20 +1610,16 @@ TEST_P(PrefetchContainerLifetimeTest, Lifetime) {
                             std::move(producer), &producer_completed));
   }
 
-  EXPECT_NE(prefetch_container
-                ->GetMatchResolverActionForTesting(base::TimeDelta::Max())
-                .ToServableState(),
+  EXPECT_NE(prefetch_container->GetMatchResolverAction().ToServableState(),
             PrefetchServableState::kServable);
   EXPECT_FALSE(prefetch_container->GetNonRedirectHead());
 
   pending_request.client->OnReceiveResponse(
-      network::mojom::URLResponseHead::New(), std::move(consumer_handle),
+      SuccessfulPrefetchResponseHeadForTesting(), std::move(consumer_handle),
       std::nullopt);
   task_environment()->RunUntilIdle();
 
-  EXPECT_EQ(prefetch_container
-                ->GetMatchResolverActionForTesting(base::TimeDelta::Max())
-                .ToServableState(),
+  EXPECT_EQ(prefetch_container->GetMatchResolverAction().ToServableState(),
             PrefetchServableState::kServable);
   EXPECT_TRUE(prefetch_container->GetNonRedirectHead());
 
@@ -1691,10 +1659,9 @@ TEST_P(PrefetchContainerLifetimeTest, Lifetime) {
       case Event::kCreateRequestHandler:
         ASSERT_FALSE(request_handler);
         ASSERT_TRUE(prefetch_container);
-        EXPECT_EQ(prefetch_container
-                      ->GetMatchResolverActionForTesting(base::TimeDelta::Max())
-                      .ToServableState(),
-                  PrefetchServableState::kServable);
+        EXPECT_EQ(
+            prefetch_container->GetMatchResolverAction().ToServableState(),
+            PrefetchServableState::kServable);
         request_handler = serving_handle.CreateRequestHandler().first;
         ASSERT_TRUE(request_handler);
         break;
@@ -1741,10 +1708,9 @@ TEST_P(PrefetchContainerLifetimeTest, Lifetime) {
 
       case Event::kSecondClient:
         ASSERT_TRUE(prefetch_container);
-        EXPECT_EQ(prefetch_container
-                      ->GetMatchResolverActionForTesting(base::TimeDelta::Max())
-                      .ToServableState(),
-                  PrefetchServableState::kServable);
+        EXPECT_EQ(
+            prefetch_container->GetMatchResolverAction().ToServableState(),
+            PrefetchServableState::kServable);
 
         // The second request is servable if the body data pipe is finished and
         // the whole body fits within the data pipe tee size limit.

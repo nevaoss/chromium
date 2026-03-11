@@ -4,10 +4,12 @@
 
 #include "chrome/browser/ui/views/tabs/projects/projects_panel_view.h"
 
+#include <algorithm>
 #include <memory>
 #include <utility>
 
 #include "base/task/single_thread_task_runner.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_service_factory.h"
 #include "chrome/browser/tab_group_sync/tab_group_sync_service_factory.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
 #include "chrome/browser/ui/browser.h"
@@ -48,7 +50,6 @@
 
 namespace {
 constexpr int kClipRectRightMarginForShadow = 32;
-constexpr ui::ColorId kProjectPanelBackgroundColor = ui::kColorSysSurface2;
 constexpr int kProjectPanelRightCornerRadius = 16;
 constexpr gfx::Insets kRegionInteriorMargins = gfx::Insets::VH(12, 12);
 constexpr int kShadowElevation = 2;
@@ -68,7 +69,7 @@ void SetListTitleProperties(views::Label& label) {
 }
 
 void SetScrollViewProperties(views::ScrollView& scroll_view) {
-  scroll_view.SetBackgroundColor(kProjectPanelBackgroundColor);
+  scroll_view.SetBackgroundColor(projects_panel::kProjectsPanelBackgroundColor);
   scroll_view.SetHorizontalScrollBarMode(
       views::ScrollView::ScrollBarMode::kDisabled);
   scroll_view.SetVerticalScrollBarMode(
@@ -132,7 +133,12 @@ ProjectsPanelView::ProjectsPanelView(BrowserWindowInterface* browser,
 
   panel_controller_ = std::make_unique<ProjectsPanelController>(
       tab_groups::TabGroupSyncServiceFactory::GetForProfile(
-          browser->GetProfile()));
+          browser->GetProfile()),
+      tab_groups::IsThreadsInProjectsPanelEnabled()
+          ? contextual_tasks::ContextualTasksServiceFactory::GetForProfile(
+                browser->GetProfile())
+          : nullptr);
+  panel_controller_observer_.Observe(panel_controller_.get());
 
   controls_view_ = content_container_->AddChildView(
       std::make_unique<ProjectsPanelControlsView>(
@@ -156,10 +162,15 @@ ProjectsPanelView::ProjectsPanelView(BrowserWindowInterface* browser,
                               base::Unretained(this)),
           base::BindRepeating(&ProjectsPanelView::OnTabGroupMoreButtonPressed,
                               base::Unretained(this)),
+          base::BindRepeating(&ProjectsPanelView::OnTabGroupMoved,
+                              base::Unretained(this)),
           base::BindRepeating(
               &ProjectsPanelView::OnCreateNewTabGroupButtonPressed,
               base::Unretained(this))));
   SetScrollViewProperties(*tab_groups_scroll_view);
+  if (disable_animations_for_testing_) {
+    tab_groups_view_->disable_animations_for_testing();  // IN-TEST
+  }
 
   if (tab_groups::IsThreadsInProjectsPanelEnabled()) {
     auto* threads_list_title =
@@ -171,10 +182,9 @@ ProjectsPanelView::ProjectsPanelView(BrowserWindowInterface* browser,
     views::ScrollView* threads_scroll_view =
         content_container_->AddChildView(std::make_unique<views::ScrollView>(
             views::ScrollView::ScrollWithLayers::kEnabled));
-    // TODO(crbug.com/475300882): Fetch thread data from the controller once
-    // available.
-    threads_scroll_view->SetContents(
-        std::make_unique<ProjectsPanelRecentThreadsView>(threads_));
+    auto threads_view = std::make_unique<ProjectsPanelRecentThreadsView>(
+        panel_controller_->GetThreads());
+    threads_view_ = threads_scroll_view->SetContents(std::move(threads_view));
     SetScrollViewProperties(*threads_scroll_view);
   }
 
@@ -187,7 +197,12 @@ ProjectsPanelView::ProjectsPanelView(BrowserWindowInterface* browser,
   SetProperty(views::kElementIdentifierKey, kProjectsPanelViewElementId);
 }
 
-ProjectsPanelView::~ProjectsPanelView() = default;
+ProjectsPanelView::~ProjectsPanelView() {
+  // Owned by subviews which are cleaned up after ProjectsPanelView is
+  // cleaned up. Avoid dangling pointer.
+  tab_groups_view_ = nullptr;
+  threads_view_ = nullptr;
+}
 
 bool ProjectsPanelView::IsPositionInWindowCaption(const gfx::Point& point) {
   gfx::Point point_in_target = point;
@@ -216,6 +231,9 @@ void ProjectsPanelView::OnProjectsPanelStateChanged(
     // TODO(crbug.com/477602874): Have the panel view observe the controller and
     // pipe updates to the list.
     tab_groups_view_->SetTabGroups(panel_controller_->GetTabGroups());
+    if (threads_view_) {
+      threads_view_->SetThreads(panel_controller_->GetThreads());
+    }
   } else {
     event_monitor_.reset();
   }
@@ -268,7 +286,7 @@ void ProjectsPanelView::SetIsElevated(bool elevated) {
   content_container_->layer()->SetRoundedCornerRadius(
       gfx::RoundedCornersF(0, corner_radius, corner_radius, 0));
   content_container_->SetBackground(views::CreateRoundedRectBackground(
-      kProjectPanelBackgroundColor,
+      projects_panel::kProjectsPanelBackgroundColor,
       gfx::RoundedCornersF(0, corner_radius, corner_radius, 0)));
 
   InvalidateLayout();
@@ -305,6 +323,38 @@ void ProjectsPanelView::AnimationEnded(const gfx::Animation* animation) {
     if (on_close_animation_ended_callback_) {
       std::move(on_close_animation_ended_callback_).Run();
     }
+  }
+}
+
+void ProjectsPanelView::OnTabGroupsInitialized(
+    const std::vector<tab_groups::SavedTabGroup>& tab_groups) {
+  // TODO(crbug.com/477602874): Handle incremental data updates.
+}
+
+void ProjectsPanelView::OnTabGroupAdded(const tab_groups::SavedTabGroup& group,
+                                        int index) {
+  // TODO(crbug.com/477602874): Handle incremental data updates.
+}
+
+void ProjectsPanelView::OnTabGroupUpdated(
+    const tab_groups::SavedTabGroup& group) {
+  // TODO(crbug.com/477602874): Handle incremental data updates.
+}
+
+void ProjectsPanelView::OnTabGroupRemoved(const base::Uuid& sync_id,
+                                          int old_index) {
+  // TODO(crbug.com/477602874): Handle incremental data updates.
+}
+
+void ProjectsPanelView::OnTabGroupsReordered(
+    const std::vector<tab_groups::SavedTabGroup>& tab_groups) {
+  tab_groups_view_->SetTabGroups(tab_groups);
+}
+
+void ProjectsPanelView::OnThreadsInitialized(
+    const std::vector<contextual_tasks::Thread>& threads) {
+  if (threads_view_) {
+    threads_view_->SetThreads(threads);
   }
 }
 
@@ -360,6 +410,11 @@ void ProjectsPanelView::OnTabGroupMoreButtonPressed(
       button.GetWidget(), button.button_controller(),
       button.GetAnchorBoundsInScreen(), views::MenuAnchorPosition::kTopRight,
       ui::mojom::MenuSourceType::kMouse);
+}
+
+void ProjectsPanelView::OnTabGroupMoved(const base::Uuid& group_guid,
+                                        int new_index) {
+  panel_controller_->MoveTabGroup(group_guid, new_index);
 }
 
 void ProjectsPanelView::OnCreateNewTabGroupButtonPressed() {

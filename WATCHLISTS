@@ -487,6 +487,11 @@
       'filepath': 'third_party/blink/renderer/core/html/' \
                   '|third_party/blink/renderer/core/mathml/'
     },
+    'blink_html_menu': {
+      'filepath': 'third_party/blink/renderer/core/html/html_menu_.*[.](cc|h|idl)' \
+                  '|third_party/blink/renderer/core/html/menu_.*[.](cc|h)' \
+                  '|third_party/blink/web_tests/external/wpt/html/semantics/menu/'
+    },
     'blink_htmlparser': {
       'filepath': 'third_party/blink/renderer/core/html/parser/'
     },
@@ -1540,10 +1545,6 @@
                   'ios/chrome/browser/language|'\
                   'ios/web_view/internal/language'
     },
-    'legion': {
-      'filepath': 'components/private_ai|'\
-                  'chrome/browser/private_ai'
-    },
     'lens_desktop': {
       'filepath': 'components/lens/|'\
                   'chrome/browser/ui/lens/'
@@ -1980,6 +1981,10 @@
     },
     'private_aggregation': {
       'filepath': 'private.?aggregation|aggregation.?service',
+    },
+    'private_ai': {
+      'filepath': 'chrome/browser/private_ai|'\
+                  'components/private_ai'
     },
     'profile_keyed_service': {
       'filepath': 'chrome/browser/profiles/profile_keyed_service_browsertest.cc',
@@ -2735,6 +2740,8 @@
                    'kouhei+heap@chromium.org',
                    'oilpan-reviews+blink@chromium.org'],
     'blink_html': ['blink-reviews-html@chromium.org'],
+    'blink_html_menu': ['dbaron+menu@chromium.org',
+                        'dgrogan+menu@chromium.org'],
     'blink_htmlparser': ['kinuko+watch@chromium.org',
                          'loading-reviews+parser@chromium.org'],
     'blink_image_codecs': ['cblume+imagecodecs@chromium.org',
@@ -3106,7 +3113,6 @@
                                             'simonha@google.com'],
     'kiosk': ['chromeos-kiosk-eng+watch@google.com'],
     'language': ['language-reviews@chromium.org'],
-    'legion': ['heronyang@google.com', 'mghiware@google.com'],
     'lens_desktop': ['lens-chrome-eng+reviews@google.com',
                      'stanfield+watch@google.com',
                      'mercerd+watch@google.com'],
@@ -3270,6 +3276,7 @@
     'print_preview': ['print-reviews+preview@chromium.org'],
     'privacy_guide_desktop': ['rainhard+watch@chromium.org'],
     'private_aggregation': ['alexmt+watch@chromium.org'],
+    'private_ai': ['heronyang@google.com', 'mghiware@google.com'],
     'profile_keyed_service': ['rsult@google.com'],
     'proto_extras': ['drubery+watch@chromium.org'],
     'psm_libs': ['amraboelkher+watch@chromium.org'],

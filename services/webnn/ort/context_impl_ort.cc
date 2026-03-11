@@ -4,6 +4,7 @@
 
 #include "services/webnn/ort/context_impl_ort.h"
 
+#include "base/feature_list.h"
 #include "services/webnn/ort/graph_impl_ort.h"
 #include "services/webnn/ort/ort_data_type.h"
 #include "services/webnn/ort/ort_status.h"
@@ -97,6 +98,7 @@ ContextImplOrt::ContextImplOrt(
     : WebNNContextImpl(
           std::move(receiver),
           std::move(context_provider),
+          ContextBackendUma::kONNXRuntime,
           GetContextProperties(ep_workarounds.resample2d_limit_to_nchw),
           std::move(options),
           std::move(write_tensor_consumer),

@@ -13,7 +13,7 @@
 #include "components/headless/screen_info/headless_screen_info.h"
 #include "ui/display/display_finder.h"
 #include "ui/display/display_list.h"
-#include "ui/display/headless/headless_screen_manager.h"
+#include "ui/display/headless/headless_screen_util.h"
 #include "ui/display/util/display_util.h"
 
 #if defined(USE_AURA)
@@ -27,8 +27,6 @@ HeadlessScreen* HeadlessScreen::Create(const gfx::Size& window_size,
                                        std::string_view screen_info_spec) {
   return new HeadlessScreen(window_size, screen_info_spec);
 }
-
-HeadlessScreen::~HeadlessScreen() = default;
 
 gfx::Point HeadlessScreen::GetCursorScreenPoint() {
   return gfx::Point();
@@ -74,6 +72,17 @@ bool HeadlessScreen::IsHeadless() const {
 
 HeadlessScreen::HeadlessScreen(const gfx::Size& window_size,
                                std::string_view screen_info_spec) {
+  CreateDisplayList(window_size, screen_info_spec);
+
+  display::HeadlessScreenManager::Get()->SetDelegate(this);
+}
+
+HeadlessScreen::~HeadlessScreen() {
+  display::HeadlessScreenManager::Get()->SetDelegate(nullptr);
+}
+
+void HeadlessScreen::CreateDisplayList(const gfx::Size& window_size,
+                                       std::string_view screen_info_spec) {
   std::vector<HeadlessScreenInfo> screen_info;
   if (screen_info_spec.empty()) {
     screen_info.push_back(
@@ -90,8 +99,8 @@ HeadlessScreen::HeadlessScreen(const gfx::Size& window_size,
     display.set_label(it.label);
     display.set_color_depth(it.color_depth);
 
-    display::HeadlessScreenManager::SetDisplayGeometry(
-        display, it.bounds, it.work_area_insets, it.device_pixel_ratio);
+    headless::SetDisplayGeometry(display, it.bounds, it.work_area_insets,
+                                 it.device_pixel_ratio);
 
     if (it.rotation) {
       CHECK(display::Display::IsValidRotation(it.rotation));
@@ -178,28 +187,24 @@ void HeadlessScreen::UpdateScreenSizeForScreenOrientationImpl(
   ProcessDisplayChanged(display, is_primary);
 }
 
-// static
 int64_t HeadlessScreen::AddDisplay(const display::Display& display) {
-  auto& headless_screen =
-      CHECK_DEREF(static_cast<HeadlessScreen*>(display::Screen::Get()));
-
   display::Display new_display(display);
   new_display.set_id(display::HeadlessScreenManager::GetNewDisplayId());
 
-  bool is_primary = headless_screen.display_list().displays().empty();
-
-  headless_screen.display_list().AddDisplay(
+  bool is_primary = display_list().displays().empty();
+  display_list().AddDisplay(
       new_display, is_primary ? display::DisplayList::Type::PRIMARY
                               : display::DisplayList::Type::NOT_PRIMARY);
   return new_display.id();
 }
 
-// static
 void HeadlessScreen::RemoveDisplay(int64_t display_id) {
-  auto& headless_screen =
-      CHECK_DEREF(static_cast<HeadlessScreen*>(display::Screen::Get()));
-  headless_screen.display_list().RemoveDisplay(display_id);
+  display_list().RemoveDisplay(display_id);
   display::RemoveInternalDisplayId(display_id);
+}
+
+void HeadlessScreen::SetPrimaryDisplay(int64_t display_id) {
+  headless::SetPrimaryDisplay(display_list(), display_id);
 }
 
 display::Display HeadlessScreen::GetDisplayById(int64_t display_id) {

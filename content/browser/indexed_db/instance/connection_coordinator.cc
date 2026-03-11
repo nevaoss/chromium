@@ -25,9 +25,11 @@
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/notreached.h"
+#include "base/rand_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
 #include "base/timer/elapsed_timer.h"
+#include "base/trace_event/trace_event.h"
 #include "components/services/storage/indexed_db/locks/partitioned_lock.h"
 #include "components/services/storage/indexed_db/locks/partitioned_lock_manager.h"
 #include "components/services/storage/privileged/mojom/indexed_db_client_state_checker.mojom.h"
@@ -322,8 +324,7 @@ class ConnectionCoordinator::OpenRequest
     // fired at connections that have close_pending set. A "blocked" event
     // will be fired at the request when one of the connections acks that the
     // "versionchange" event was ignored.
-    DCHECK_NE(pending_->data_loss_info.status,
-              blink::mojom::IDBDataLoss::Total);
+    CHECK_NE(pending_->data_loss_info.status, blink::mojom::IDBDataLoss::Total);
     state_ = RequestState::kPendingNoConnections;
     db_->SendVersionChangeToAllConnections(old_version, new_version);
 
@@ -372,9 +373,9 @@ class ConnectionCoordinator::OpenRequest
   // VersionChangeOperation in order to kick the transaction into the correct
   // state.
   void StartUpgrade() {
-    DCHECK(state_ == RequestState::kPendingLocks);
+    CHECK(state_ == RequestState::kPendingLocks);
 
-    DCHECK(!lock_receiver_.locks.empty());
+    CHECK(!lock_receiver_.locks.empty());
     upgrade_connection_ = db_->CreateConnection(
         std::move(pending_->database_callbacks),
         std::move(pending_->client_state_checker), pending_->client_token,
@@ -416,8 +417,8 @@ class ConnectionCoordinator::OpenRequest
 
   // Called when the upgrade transaction has started executing.
   void UpgradeTransactionStarted(int64_t old_version) override {
-    DCHECK(state_ == RequestState::kPendingTransactionComplete);
-    DCHECK(upgrade_connection_);
+    CHECK(state_ == RequestState::kPendingTransactionComplete);
+    CHECK(upgrade_connection_);
 
     if (!factory_client_.is_connected()) {
       // Don't destroy the connection while the current transaction task queue
@@ -435,7 +436,7 @@ class ConnectionCoordinator::OpenRequest
   }
 
   void UpgradeTransactionFinished(bool committed) override {
-    DCHECK(state_ == RequestState::kPendingTransactionComplete);
+    CHECK(state_ == RequestState::kPendingTransactionComplete);
     // Ownership of connection was already passed along in `UpgradeNeeded`.
     if (committed) {
       CHECK_EQ(pending_->version, db_->version());
@@ -634,6 +635,19 @@ void ConnectionCoordinator::ScheduleOpenConnection(
       *bucket_context_, db_, std::move(connection), synchronous_duration,
       this));
   bucket_context_->QueueRunTasks();
+
+  // Reports metrics on pending connections.
+  // TODO(crbug.com/381086791): Remove after the bug is understood.
+  const size_t request_size = request_queue_.size();
+  if (base::ShouldRecordSubsampledMetric(0.0001)) {
+    base::UmaHistogramCounts100000(
+        "IndexedDB.NumPendingConnections.RequestQueueSize", request_size);
+  }
+  if (request_size > 1000) {
+    TRACE_EVENT_INSTANT(
+        "IndexedDB",
+        "ConnectionCoordinator::ScheduleOpenConnection - overflow");
+  }
 }
 
 void ConnectionCoordinator::ScheduleDeleteDatabase(

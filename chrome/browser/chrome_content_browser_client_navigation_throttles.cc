@@ -9,6 +9,7 @@
 #include "build/build_config.h"
 #include "build/buildflag.h"
 #include "chrome/browser/actor/actor_navigation_throttle.h"
+#include "chrome/browser/autocomplete/aim_eligibility_refresh_navigation_throttle.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/custom_handlers/chrome_protocol_handler_navigation_throttle.h"
 #include "chrome/browser/custom_handlers/protocol_handler_registry_factory.h"
@@ -97,6 +98,7 @@
 #include "chrome/browser/ui/search/new_tab_page_navigation_throttle.h"
 #include "chrome/browser/ui/web_applications/tabbed_web_app_navigation_throttle.h"
 #include "chrome/browser/ui/web_applications/webui_web_app_navigation_throttle.h"
+#include "chrome/browser/ui/webui/image/image_navigation_throttle.h"
 #include "chrome/browser/ui/webui/ntp_microsoft_auth/ntp_microsoft_auth_response_capture_navigation_throttle.h"
 #include "chrome/browser/web_applications/isolated_web_apps/isolated_web_app_throttle.h"
 #endif  // BUILDFLAG(IS_ANDROID)
@@ -457,8 +459,15 @@ void CreateAndAddChromeThrottlesForNavigation(
 #endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) ||
         // BUILDFLAG(IS_CHROMEOS)
 
+  // AimEligibilityRefreshNavigationThrottle must be registered before
+  // ContextualTasksNavigationThrottle so it can detect AIM URL navigations
+  // before ContextualTasksNavigationThrottle intercepts them.
+  AimEligibilityRefreshNavigationThrottle::MaybeCreateAndAdd(registry);
+
 #if !BUILDFLAG(IS_ANDROID)
-  if (base::FeatureList::IsEnabled(contextual_tasks::kContextualTasks)) {
+  if (base::FeatureList::IsEnabled(contextual_tasks::kContextualTasks) ||
+      base::FeatureList::IsEnabled(
+          contextual_tasks::kContextualTasksUrlRedirectToAimUrl)) {
     contextual_tasks::ContextualTasksNavigationThrottle::MaybeCreateAndAdd(
         registry);
   }
@@ -470,6 +479,8 @@ void CreateAndAddChromeThrottlesForNavigation(
   web_app::TabbedWebAppNavigationThrottle::MaybeCreateAndAdd(registry);
 
   web_app::WebUIWebAppNavigationThrottle::MaybeCreateAndAdd(registry);
+
+  ImageNavigationThrottle::MaybeCreateAndAdd(registry);
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(SAFE_BROWSING_AVAILABLE)

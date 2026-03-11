@@ -32,6 +32,27 @@ class ApiTests extends ApiTestFixtureBase {
         HostCapability.MULTI_INSTANCE);
   }
 
+  async testDragAndDrop() {
+    const {promise, resolve} = Promise.withResolvers<string>();
+
+    // Set up a drop event listener, and ignore dragover.
+    document.addEventListener('drop', (e: DragEvent) => {
+      e.preventDefault();
+      resolve(e.dataTransfer?.getData('text/uri-list') || '');
+    }, {once: true});
+
+    document.addEventListener('dragover', (e: DragEvent) => {
+      e.preventDefault();
+    });
+
+    await this.advanceToNextStep();
+
+    // Wait for drop event, and sent the result back to C++.
+    const droppedData = await waitFor(promise);
+
+    await this.advanceToNextStep(droppedData);
+  }
+
   // WARNING: Remember to update
   // chrome/browser/glic/host/glic_api_browsertest.cc if you add a new test!
 
@@ -437,6 +458,11 @@ class ApiTests extends ApiTestFixtureBase {
     assertTrue(await activeSequence.next());
     await this.advanceToNextStep();
     assertFalse(await activeSequence.next());
+  }
+
+  async testPanelActiveWithMicrophone() {
+    await this.advanceToNextStep();
+    await this.advanceToNextStep();
   }
 
   async testIsBrowserOpen() {
@@ -2734,6 +2760,10 @@ class ApiTests extends ApiTestFixtureBase {
         return 'TRUST_FIRST_ONBOARDING_ARM_1';
       case HostCapability.TRUST_FIRST_ONBOARDING_ARM2:
         return 'TRUST_FIRST_ONBOARDING_ARM_2';
+      case HostCapability.SHARE_ADDITIONAL_IMAGE_CONTEXT:
+        return 'SHARE_ADDITIONAL_IMAGE_CONTEXT';
+      case HostCapability.PDF_ZERO_STATE:
+        return 'PDF_ZERO_STATE';
       default:
         return 'NEW_ENUM_NOT_IMPLEMENTED';
     }
@@ -2871,9 +2901,9 @@ class ApiTestWithoutOpen extends ApiTestFixtureBase {
     assertDefined(this.host.getSkillPreviews);
     const skillPreviewsSequence = observeSequence(this.host.getSkillPreviews());
     let skills = await skillPreviewsSequence.waitFor(s => s.length === 2);
-    const user_skill_1 = skills.find(s => s.name === 'user_skill_1');
+    let user_skill_1 = skills.find(s => s.name === 'user_skill_1');
     assertDefined(user_skill_1);
-    const user_skill_2 = skills.find(s => s.name === 'user_skill_2');
+    let user_skill_2 = skills.find(s => s.name === 'user_skill_2');
     assertDefined(user_skill_2);
     await this.advanceToNextStep();
 
@@ -2892,8 +2922,15 @@ class ApiTestWithoutOpen extends ApiTestFixtureBase {
     assertEquals('contextual_skill_2', contextual_skill_2.name);
     assertEquals(
         'contextual_skill_description_2', contextual_skill_2.description);
-    assertDefined(skills.find(s => s.name === 'user_skill_1'));
-    assertDefined(skills.find(s => s.name === 'user_skill_2'));
+    user_skill_1 = skills.find(s => s.name === 'user_skill_1');
+    assertDefined(user_skill_1);
+    user_skill_2 = skills.find(s => s.name === 'user_skill_2');
+    assertDefined(user_skill_2);
+    // Verify that only the contextual skills are marked as contextual.
+    assertEquals(true, contextual_skill_1.isContextual);
+    assertEquals(true, contextual_skill_2.isContextual);
+    assertEquals(false, user_skill_1.isContextual);
+    assertEquals(false, user_skill_2.isContextual);
     await this.advanceToNextStep();
 
     // Verify that after a contextual skills update, the skills cache is updated
@@ -2906,8 +2943,14 @@ class ApiTestWithoutOpen extends ApiTestFixtureBase {
     assertEquals('contextual_skill_3', contextual_skill_3.name);
     assertEquals(
         'contextual_skill_description_3', contextual_skill_3.description);
-    assertDefined(skills.find(s => s.name === 'user_skill_1'));
-    assertDefined(skills.find(s => s.name === 'user_skill_2'));
+    user_skill_1 = skills.find(s => s.name === 'user_skill_1');
+    assertDefined(user_skill_1);
+    user_skill_2 = skills.find(s => s.name === 'user_skill_2');
+    assertDefined(user_skill_2);
+    // Verify that only the contextual skills are marked as contextual.
+    assertEquals(true, contextual_skill_3.isContextual);
+    assertEquals(false, user_skill_1.isContextual);
+    assertEquals(false, user_skill_2.isContextual);
   }
 }
 

@@ -19,6 +19,7 @@
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "components/favicon/core/test/mock_favicon_service.h"
 #include "components/password_manager/core/browser/features/password_features.h"
+#include "content/public/common/content_features.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
 #include "content/public/test/content_browser_test_utils.h"
@@ -75,7 +76,7 @@ class AttemptLoginToolInteractiveUiTestBase
 class AttemptLoginToolInteractiveUiTest
     : public glic::test::InteractiveGlicTestMixin<
           AttemptLoginToolInteractiveUiTestBase>,
-      public testing::WithParamInterface<bool> {
+      public testing::WithParamInterface<std::tuple<bool, bool>> {
  public:
   static constexpr char kActivateSurfaceIncompatibilityNotice[] =
       "Programmatic window activation does not work on the Weston reference "
@@ -85,29 +86,48 @@ class AttemptLoginToolInteractiveUiTest
       "use ActivateSurface() may be skipped on machine configurations which do "
       "not reliably support them.";
 
+  static std::string DescribeParams(
+      const testing::TestParamInfo<ParamType>& info) {
+    const auto [multi_instance, federation] = info.param;
+    return base::StringPrintf(
+        "%s_%s",
+        multi_instance ? "MultiInstanceEnabled" : "MultiInstanceDisabled",
+        federation ? "FederationEnabled" : "FederationDisabled");
+  }
+
   AttemptLoginToolInteractiveUiTest() {
+    std::vector<base::test::FeatureRef> enabled_features = {
+        password_manager::features::kActorLogin,
+        password_manager::features::kActorLoginReauthTaskRefocus,
+        actor::kGlicEnableAutoLoginDialogs};
+    std::vector<base::test::FeatureRef> disabled_features;
+
     if (multi_instance_enabled()) {
-      scoped_feature_list_.InitWithFeatures(
-          /*enabled_features=*/{password_manager::features::kActorLogin,
-                                password_manager::features::
-                                    kActorLoginReauthTaskRefocus,
-                                actor::kGlicEnableAutoLoginDialogs,
-                                features::kGlicMultiInstance,
-                                glic::mojom::features::kGlicMultiTab},
-          /*disabled_features=*/{});
+      enabled_features.push_back(features::kGlicMultiInstance);
+      enabled_features.push_back(glic::mojom::features::kGlicMultiTab);
     } else {
-      scoped_feature_list_.InitWithFeatures(
-          /*enabled_features=*/{password_manager::features::kActorLogin,
-                                password_manager::features::
-                                    kActorLoginReauthTaskRefocus,
-                                actor::kGlicEnableAutoLoginDialogs},
-          /*disabled_features=*/{features::kGlicMultiInstance,
-                                 glic::mojom::features::kGlicMultiTab});
+      disabled_features.push_back(features::kGlicMultiInstance);
+      disabled_features.push_back(glic::mojom::features::kGlicMultiTab);
     }
+
+    if (federation_enabled()) {
+      enabled_features.push_back(
+          password_manager::features::kActorLoginFederatedLoginSupport);
+      enabled_features.push_back(features::kFedCmEmbedderInitiatedLogin);
+      enabled_features.push_back(features::kFedCmNavigationInterception);
+    } else {
+      disabled_features.push_back(
+          password_manager::features::kActorLoginFederatedLoginSupport);
+      disabled_features.push_back(features::kFedCmEmbedderInitiatedLogin);
+      disabled_features.push_back(features::kFedCmNavigationInterception);
+    }
+
+    scoped_feature_list_.InitWithFeatures(enabled_features, disabled_features);
   }
   ~AttemptLoginToolInteractiveUiTest() override = default;
 
-  bool multi_instance_enabled() { return GetParam(); }
+  bool multi_instance_enabled() const { return std::get<0>(GetParam()); }
+  bool federation_enabled() const { return std::get<1>(GetParam()); }
 
   void SetUpOnMainThread() override {
     glic::test::InteractiveGlicTestMixin<
@@ -309,24 +329,28 @@ IN_PROC_BROWSER_TEST_P(AttemptLoginToolInteractiveUiTest, MAYBE_SmokeTest) {
       base::DictValue()
           .Set("taskId", actor_task().id().value())
           .Set("showDialog", true)
-          .Set("credentials",
-               base::ListValue()
-                   .Append(base::DictValue()
-                               .Set("id", GenerateCredentialId().value())
-                               .Set("username", "username1")
-                               .Set("sourceSiteOrApp",
-                                    url.GetWithEmptyPath().spec())
-                               .Set("requestOrigin", expected_request_origin)
-                               .Set("displayOrigin", expected_display_origin)
-                               .Set("icon", kExpectedIconDataUrl))
-                   .Append(base::DictValue()
-                               .Set("id", GenerateCredentialId().value())
-                               .Set("username", "username2")
-                               .Set("sourceSiteOrApp",
-                                    url.GetWithEmptyPath().spec())
-                               .Set("requestOrigin", expected_request_origin)
-                               .Set("displayOrigin", expected_display_origin)
-                               .Set("icon", kExpectedIconDataUrl)));
+          .Set(
+              "credentials",
+              base::ListValue()
+                  .Append(
+                      base::DictValue()
+                          .Set("id", GenerateCredentialId().value())
+                          .Set("username", "username1")
+                          .Set("sourceSiteOrApp", url.GetWithEmptyPath().spec())
+                          .Set("requestOrigin", expected_request_origin)
+                          .Set("displayOrigin", expected_display_origin)
+                          .Set("icon", kExpectedIconDataUrl)
+                          .Set("type", actor_login::CredentialType::kPassword))
+                  .Append(
+                      base::DictValue()
+                          .Set("id", GenerateCredentialId().value())
+                          .Set("username", "username2")
+                          .Set("sourceSiteOrApp", url.GetWithEmptyPath().spec())
+                          .Set("requestOrigin", expected_request_origin)
+                          .Set("displayOrigin", expected_display_origin)
+                          .Set("icon", kExpectedIconDataUrl)
+                          .Set("type",
+                               actor_login::CredentialType::kPassword)));
 
   // Verify the dialog request content.
   RunTestSequence(InAnyContext(WithElement(
@@ -431,8 +455,222 @@ IN_PROC_BROWSER_TEST_P(AttemptLoginToolInteractiveUiTest, MAYBE_HandleReauth) {
   ExpectOkResult(login_result);
 }
 
+// TODO(https://crbug.com/456675144): Flaky on asan.
+#if defined(ADDRESS_SANITIZER)
+#define MAYBE_MixedCredentialTypes DISABLED_MixedCredentialTypes
+#else
+#define MAYBE_MixedCredentialTypes MixedCredentialTypes
+#endif
+IN_PROC_BROWSER_TEST_P(AttemptLoginToolInteractiveUiTest,
+                       MAYBE_MixedCredentialTypes) {
+  const GURL url =
+      embedded_https_test_server().GetURL("example.com", "/actor/blank.html");
+  ASSERT_TRUE(content::NavigateToURL(web_contents(), url));
+
+  const bool immediately_available_to_login = true;
+  mock_login_service().SetCredentials(std::vector{
+      MakeTestCredentialFederated(u"username1", url),
+      MakeTestCredentialFederated(u"username2", url),
+      MakeTestCredential(u"username3", url, immediately_available_to_login),
+      // Intentionally using the same username with a different credential type.
+      MakeTestCredential(u"username1", url, immediately_available_to_login)});
+  // TODO(crbug.com/486835283): Use a more meaningful status.
+  mock_login_service().SetLoginStatus(
+      actor_login::LoginStatusResult::kSuccessUsernameAndPasswordFilled);
+
+  // Toggle the glic window.
+  RunTestSequence(InAnyContext(WithElement(
+      glic::test::kGlicContentsElementId, [](::ui::TrackedElement* el) {
+        static constexpr char kHandleDialogRequest[] =
+            R"js(
+      (() => {
+        window.credentialDialogRequestData = new Promise(resolve => {
+          client.browser.selectCredentialDialogRequestHandler().subscribe(
+            async (request) => {
+              // Respond to the request by selecting the first credential.
+              request.onDialogClosed({
+                response: {
+                  taskId: request.taskId,
+                  selectedCredentialId: request.credentials[0].id,
+                  // 1 corresponds to UserGrantedPermissionDuration.ALWAYS_ALLOW
+                  permissionDuration: 1,
+                }
+              });
+
+              // Resolve the promise with the request data to be verified in
+              // C++.
+              resolve({
+                taskId: request.taskId,
+                showDialog: request.showDialog,
+                credentials: request.credentials,
+              });
+            }
+          );
+        });
+      })();
+              )js";
+        content::WebContents* glic_contents =
+            AsInstrumentedWebContents(el)->web_contents();
+        ASSERT_TRUE(content::ExecJs(glic_contents, kHandleDialogRequest));
+      })));
+
+  std::unique_ptr<ToolRequest> action = MakeAttemptLoginRequest(*active_tab());
+  ActResultFuture result;
+  actor_task().Act(ToRequestList(action), result.GetCallback());
+  // The ActResultFuture `result` will be resolved in a RunLoop of kDefault. It
+  // shouldn't be placed inside `RunTestSequence()`.
+  ExpectOkResult(result);
+
+  const std::string expected_request_origin =
+      url::Origin::Create(url).Serialize();
+  const std::string expected_display_origin = "example.com:12345";
+  auto expected_request =
+      base::DictValue()
+          .Set("taskId", actor_task().id().value())
+          .Set("showDialog", true)
+          .Set(
+              "credentials",
+              base::ListValue()
+                  .Append(
+                      base::DictValue()
+                          .Set("id", GenerateCredentialId().value())
+                          .Set("username", "username1")
+                          .Set("sourceSiteOrApp", url.GetWithEmptyPath().spec())
+                          .Set("requestOrigin", expected_request_origin)
+                          .Set("displayOrigin", expected_display_origin)
+                          .Set("type", actor_login::CredentialType::kFederated))
+                  .Append(
+                      base::DictValue()
+                          .Set("id", GenerateCredentialId().value())
+                          .Set("username", "username2")
+                          .Set("sourceSiteOrApp", url.GetWithEmptyPath().spec())
+                          .Set("requestOrigin", expected_request_origin)
+                          .Set("displayOrigin", expected_display_origin)
+                          .Set("type", actor_login::CredentialType::kFederated))
+                  .Append(
+                      base::DictValue()
+                          .Set("id", GenerateCredentialId().value())
+                          .Set("username", "username3")
+                          .Set("sourceSiteOrApp", url.GetWithEmptyPath().spec())
+                          .Set("requestOrigin", expected_request_origin)
+                          .Set("displayOrigin", expected_display_origin)
+                          .Set("type", actor_login::CredentialType::kPassword))
+                  .Append(
+                      base::DictValue()
+                          .Set("id", GenerateCredentialId().value())
+                          .Set("username", "username1")
+                          .Set("sourceSiteOrApp", url.GetWithEmptyPath().spec())
+                          .Set("requestOrigin", expected_request_origin)
+                          .Set("displayOrigin", expected_display_origin)
+                          .Set("type",
+                               actor_login::CredentialType::kPassword)));
+
+  // Verify the dialog request content.
+  RunTestSequence(InAnyContext(WithElement(
+      glic::test::kGlicContentsElementId, [&](::ui::TrackedElement* el) {
+        content::WebContents* glic_contents =
+            AsInstrumentedWebContents(el)->web_contents();
+        static constexpr char kGetRequestData[] =
+            R"js(
+              (() => {
+                return window.credentialDialogRequestData;
+              })();
+            )js";
+        auto eval_result = content::EvalJs(glic_contents, kGetRequestData);
+        const auto& actual_request = eval_result.ExtractDict();
+        ASSERT_EQ(expected_request, actual_request);
+      })));
+
+  // We selected the first credential in the dialog.
+  const auto& last_credential_used =
+      mock_login_service().last_credential_used();
+  ASSERT_TRUE(last_credential_used.has_value());
+  EXPECT_EQ(u"username1", last_credential_used->username);
+  EXPECT_EQ(actor_login::CredentialType::kFederated,
+            last_credential_used->type);
+  EXPECT_TRUE(mock_login_service().last_permission_was_permanent());
+}
+
+// TODO(https://crbug.com/456675144): Flaky on asan.
+#if defined(ADDRESS_SANITIZER)
+#define MAYBE_PopupNavigation DISABLED_PopupNavigation
+#else
+#define MAYBE_PopupNavigation PopupNavigation
+#endif
+IN_PROC_BROWSER_TEST_P(AttemptLoginToolInteractiveUiTest,
+                       MAYBE_PopupNavigation) {
+  const GURL url =
+      embedded_https_test_server().GetURL("example.com", "/actor/blank.html");
+  const GURL popup_url =
+      embedded_https_test_server().GetURL("example.com", "/actor/simple.html");
+  ASSERT_TRUE(content::NavigateToURL(web_contents(), url));
+
+  mock_login_service().SetCredentials(
+      std::vector{MakeTestCredentialFederated(u"username1", url)});
+  // TODO(crbug.com/486835283): Use a more meaningful status.
+  mock_login_service().SetLoginStatus(
+      actor_login::LoginStatusResult::kSuccessUsernameAndPasswordFilled);
+
+  RunTestSequence(InAnyContext(WithElement(
+      glic::test::kGlicContentsElementId, [](::ui::TrackedElement* el) {
+        static constexpr char kHandleDialogRequest[] =
+            R"js(
+        (() => {
+          window.awaitCredentialSelection = new Promise(resolve => {
+            client.browser.selectCredentialDialogRequestHandler().subscribe(
+                (request) => {
+                  // Intentionally never reply.
+
+                  // Continue the test while an attempt login is in progress.
+                  resolve();
+                }
+            );
+          });
+        })();
+              )js";
+        content::WebContents* glic_contents =
+            AsInstrumentedWebContents(el)->web_contents();
+        ASSERT_TRUE(content::ExecJs(glic_contents, kHandleDialogRequest));
+      })));
+
+  std::unique_ptr<ToolRequest> action = MakeAttemptLoginRequest(*active_tab());
+  ActResultFuture dont_care;
+  actor_task().Act(ToRequestList(action), dont_care.GetCallback());
+
+  RunTestSequence(InAnyContext(WithElement(
+      glic::test::kGlicContentsElementId, [](::ui::TrackedElement* el) {
+        content::WebContents* glic_contents =
+            AsInstrumentedWebContents(el)->web_contents();
+        EXPECT_TRUE(
+            content::ExecJs(glic_contents, "window.awaitCredentialSelection;"));
+      })));
+
+  // The timing of the following is contrived for ease of testing.
+  // Realistically, the auth window would only be triggered after the credential
+  // selection has completed.
+  //
+  // While an attempt login is ongoing, trigger a popup window. When federation
+  // is enabled, allow the popup. If disabled, preserve the popup behaviour of
+  // other tools. See also ExecutionEngineBrowserTest.ForceSameTabNavigation.
+
+  content::WebContentsAddedObserver web_contents_added_observer;
+  EXPECT_EQ(
+      federation_enabled(),
+      content::EvalJs(web_contents(),
+                      content::JsReplace(
+                          "!!window.open($1, 'my_cool_auth_window', 'popup');",
+                          popup_url)));
+
+  if (federation_enabled()) {
+    content::WebContents* new_contents =
+        web_contents_added_observer.GetWebContents();
+    EXPECT_EQ(true, content::EvalJs(new_contents, "!!window.opener;"));
+  }
+}
+
 INSTANTIATE_TEST_SUITE_P(All,
                          AttemptLoginToolInteractiveUiTest,
-                         testing::Bool());
+                         testing::Combine(testing::Bool(), testing::Bool()),
+                         AttemptLoginToolInteractiveUiTest::DescribeParams);
 
 }  // namespace actor

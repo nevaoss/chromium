@@ -16,12 +16,14 @@
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
+#include "base/timer/timer.h"
 #include "components/keyed_service/core/keyed_service.h"
 #include "components/omnibox/browser/aim_eligibility_service_features.h"
 #include "components/prefs/pref_change_registrar.h"
 #include "components/search_engines/template_url_service_observer.h"
 #include "components/signin/public/identity_manager/accounts_in_cookie_jar_info.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
+#include "google_apis/gaia/gaia_id.h"
 #include "google_apis/gaia/google_service_auth_error.h"
 #include "net/base/network_change_notifier.h"
 #include "third_party/omnibox_proto/aim_eligibility_client_request.pb.h"
@@ -97,6 +99,21 @@ class AimEligibilityService
     kPostWithProto = 2,
   };
 
+  // Configuration object for the service.
+  struct Configuration {
+    // Whether the profile is off-the-record.
+    bool is_off_the_record = false;
+
+    // The value for the `User-Agent` header when Co-Browse is enabled. The
+    // enabled / disabled state refers to the feature flag for Co-Browse, not
+    // whether this client is Co-Browse eligible.
+    std::string user_agent_with_cobrowse_suffix;
+
+    // The value for the `Sec-CH-UA-Full-Version-List` HTTP Header. The header
+    // is skipped if it is empty.
+    std::string full_version_list;
+  };
+
   // Returns the current server eligibility request mode based on the feature
   // flag configuration.
   static ServerEligibilityRequestMode GetServerEligibilityRequestMode();
@@ -106,8 +123,8 @@ class AimEligibilityService
       TemplateURLService* template_url_service,
       scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
       signin::IdentityManager* identity_manager,
-      bool is_off_the_record,
-      const std::string& locale);
+      const std::string& locale,
+      Configuration configuration);
   ~AimEligibilityService() override;
 
   // Checks if the application country matches the given country.
@@ -185,8 +202,12 @@ class AimEligibilityService
     kPrimaryAccountChange = 2,
     kNetworkChange = 3,
     kUser = 4,
-    kCoBrowseAimUrlDetection = 5,
-    kMaxValue = kCoBrowseAimUrlDetection,
+    kAimUrlNavigation = 5,
+    kRefreshTokenUpdated = 6,
+    kRefreshTokenRemoved = 7,
+    kRefreshTokenError = 8,
+    kOAuthFallbackCookieChange = 9,
+    kMaxValue = kOAuthFallbackCookieChange,
   };
   // LINT.ThenChange(//tools/metrics/histograms/metadata/omnibox/histograms.xml:AimEligibilityRequestSource)
 
@@ -224,6 +245,15 @@ class AimEligibilityService
   // signin::IdentityManager::Observer:
   void OnPrimaryAccountChanged(
       const signin::PrimaryAccountChangeEvent& event) override;
+  void OnRefreshTokenUpdatedForAccount(
+      const CoreAccountInfo& account_info) override;
+  void OnRefreshTokenRemovedForAccount(
+      const CoreAccountId& account_id) override;
+  void OnErrorStateOfRefreshTokenUpdatedForAccount(
+      const CoreAccountInfo& account_info,
+      const GoogleServiceAuthError& error,
+      signin_metrics::SourceForRefreshTokenOperation token_operation_source)
+      override;
   void OnAccountsInCookieUpdated(
       const signin::AccountsInCookieJarInfo& accounts_in_cookie_jar_info,
       const GoogleServiceAuthError& error) override;
@@ -253,14 +283,26 @@ class AimEligibilityService
   // Loads `most_recent_response_` from the prefs, if valid.
   void LoadMostRecentResponse();
 
-  // Returns whether the service should try to use OAuth for the eligibility
-  // request.
-  bool ShouldTryOAuth() const;
+  // Returns whether the primary account is valid and can be used for OAuth.
+  bool HasValidPrimaryAccount() const;
 
   // Configures the `request` credentials and cookies based on `use_oauth` and
-  // the `kAimEligibilityServiceOauth` feature.
+  // the `kAimEligibilityServiceIdentityImprovements` feature.
   void ConfigureRequestCookiesAndCredentials(network::ResourceRequest* request,
                                              bool use_oauth) const;
+
+  // Returns the active account (Primary or Cookie fallback) for eligibility
+  // checks.
+  GaiaId GetActiveAccount() const;
+
+  // Returns the first account in the cookie jar if valid and signed in.
+  GaiaId GetFirstAccountInCookieJarIfValid() const;
+
+  // Returns true if the request should be dropped.
+  bool ShouldDropRequest() const;
+
+  // Queues a request if the last active account changed.
+  void ScheduleServerEligibilityRequestIfNeeded(RequestSource source);
 
   // Returns the request URL or an empty GURL if a valid URL cannot be created;
   // e.g., Google is not the default search provider.
@@ -268,6 +310,12 @@ class AimEligibilityService
                      const TemplateURLService* template_url_service,
                      signin::IdentityManager* identity_manager,
                      const std::string& locale);
+
+  // Schedules the server request to execute after a fixed period to ensure that
+  // a burst of rapid calls results in only a single server request within the
+  // debounce period.
+  void ScheduleServerEligibilityRequest(RequestSource request_source,
+                                        const std::string& locale);
 
   // Starts a server eligibility request, first fetching an access token if
   // OAuth is enabled and the user is logged in.
@@ -277,6 +325,7 @@ class AimEligibilityService
   // Callback for when an access token is available.
   void OnAccessTokenAvailable(RequestSource request_source,
                               const std::string& locale,
+                              GaiaId pending_request_account,
                               std::unique_ptr<network::ResourceRequest> request,
                               GoogleServiceAuthError error,
                               signin::AccessTokenInfo access_token_info);
@@ -286,13 +335,14 @@ class AimEligibilityService
   void SendServerEligibilityRequest(
       RequestSource request_source,
       const std::string& locale,
+      GaiaId pending_request_account,
       std::unique_ptr<network::ResourceRequest> request);
-  void OnServerEligibilityResponse(
-      std::unique_ptr<network::SimpleURLLoader> loader,
-      RequestSource request_source,
-      std::optional<std::string> response_string);
+  void OnServerEligibilityResponse(RequestSource request_source,
+                                   GaiaId pending_request_account,
+                                   std::optional<std::string> response_string);
   void ProcessServerEligibilityResponse(
       RequestSource request_source,
+      GaiaId pending_request_account,
       int response_code,
       EligibilityRequestStatus request_status,
       int num_retries,
@@ -341,13 +391,22 @@ class AimEligibilityService
       const omnibox::AimEligibilityResponse& old_response,
       const omnibox::AimEligibilityResponse& new_response) const;
 
+  // Records histogram for eligibility request debounced.
+  void LogEligibilityRequestDebounced(bool is_debounced,
+                                      RequestSource request_source) const;
+
+  // Records histogram for whether the eligibility response account mismatches
+  // the current active account.
+  void LogEligibilityResponseAccountMismatch(
+      bool response_account_mismatch,
+      RequestSource request_source) const;
+
   const raw_ref<PrefService, DanglingUntriaged> pref_service_;
   // Outlives `this` due to BCKSF dependency. Can be nullptr in tests.
   raw_ptr<TemplateURLService> template_url_service_;
   const scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory_;
   // Outlives `this` due to BCKSF dependency. Can be nullptr in tests.
   const raw_ptr<signin::IdentityManager, DanglingUntriaged> identity_manager_;
-  const bool is_off_the_record_;
   bool is_dse_google_ = false;
 
   PrefChangeRegistrar pref_change_registrar_;
@@ -363,14 +422,26 @@ class AimEligibilityService
   EligibilityResponseSource most_recent_response_source_ =
       EligibilityResponseSource::kDefault;
 
+  // The account associated with the most recent response.
+  GaiaId most_recent_response_account_;
+
   std::unique_ptr<signin::PrimaryAccountAccessTokenFetcher>
       access_token_fetcher_;
+
+  // The active URL loader for the eligibility request.
+  std::unique_ptr<network::SimpleURLLoader> active_loader_;
 
   // Tracks whether the startup request has been sent.
   bool startup_request_sent_ = false;
 
+  // Used to debounce server eligibility requests to prevent multiple requests.
+  base::OneShotTimer request_debounce_timer_;
+
   // Used to store the default config when the response doesn't have one.
   mutable omnibox::SearchboxConfig fallback_config_;
+
+  // A configuration for the service.
+  const Configuration configuration_;
 
   // For binding the `OnServerEligibilityResponse()` callback.
   base::WeakPtrFactory<AimEligibilityService> weak_factory_{this};

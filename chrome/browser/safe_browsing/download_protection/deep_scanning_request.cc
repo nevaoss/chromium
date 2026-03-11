@@ -29,9 +29,6 @@
 #include "chrome/browser/safe_browsing/download_protection/download_request_maker.h"
 #include "chrome/browser/safe_browsing/safe_browsing_navigation_observer_manager_factory.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
-#include "chrome/browser/ui/browser.h"
-#include "chrome/browser/ui/browser_finder.h"
-#include "chrome/browser/ui/browser_window.h"
 #include "chrome/common/pref_names.h"
 #include "components/download/public/common/download_item.h"
 #include "components/enterprise/common/proto/connectors.pb.h"
@@ -492,7 +489,8 @@ void DeepScanningRequest::StartSingleFileScan() {
       /* delay_opening_file */ false,
       base::BindOnce(&DeepScanningRequest::OnScanComplete,
                      weak_ptr_factory_.GetWeakPtr(), metadata_->GetFullPath()),
-      base::DoNothing(), metadata_->IsObfuscated());
+      base::DoNothing(), metadata_->IsObfuscated(),
+      /* force_sync_hash_computation */ false);
 
   request->set_filename(metadata_->GetTargetFilePath().AsUTF8Unsafe());
 

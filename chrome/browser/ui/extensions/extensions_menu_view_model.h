@@ -16,6 +16,7 @@
 #include "extensions/buildflags/buildflags.h"
 #include "extensions/common/extension.h"
 #include "extensions/common/extension_id.h"
+#include "ui/base/models/image_model.h"
 
 static_assert(BUILDFLAG(ENABLE_EXTENSIONS_CORE));
 
@@ -273,6 +274,9 @@ class ExtensionsMenuViewModel : public extensions::PermissionsManager::Observer,
   ControlState GetActionButtonState(const extensions::ExtensionId& extension_id,
                                     const gfx::Size& icon_size);
 
+  // Returns the icon for an extension's action at `action_index`.
+  ui::ImageModel GetActionIcon(int action_index, const gfx::Size& icon_size);
+
   // Returns the state for the extension's context menu button.
   ControlState GetContextMenuButtonState(
       const extensions::ExtensionId& extension_id);
@@ -354,7 +358,8 @@ class ExtensionsMenuViewModel : public extensions::PermissionsManager::Observer,
   // Sometimes, menu can stay open when tab changes (e.g keyboard shortcuts) or
   // due to the extension (e.g extension switching the active tab). Thus, we
   // listen for active tab changes to properly update the menu content.
-  void OnActiveTabChanged(tabs::TabInterface* tab) override;
+  void OnActiveTabChanged(TabListInterface& tab_list,
+                          tabs::TabInterface* tab) override;
   void OnTabListDestroyed(TabListInterface& tab_list) override;
 
   // content::WebContentsObserver:

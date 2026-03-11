@@ -27,6 +27,7 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service_factory.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_utils.h"
 #include "chrome/browser/contextual_tasks/entry_point_eligibility_manager.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
@@ -57,6 +58,7 @@
 #include "components/contextual_tasks/public/prefs.h"
 #include "components/contextual_tasks/public/utils.h"
 #include "components/lens/lens_features.h"
+#include "components/lens/lens_overlay_invocation_source.h"
 #include "components/omnibox/browser/aim_eligibility_service.h"
 #include "components/omnibox/browser/searchbox.mojom-forward.h"
 #include "components/omnibox/common/logger.h"
@@ -378,6 +380,8 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
   source->AddBoolean(
       "forceBasicModeIfOpeningThreadHistory",
       contextual_tasks::ShouldForceBasicModeIfOpeningThreadHistory());
+  source->AddBoolean("enableBasicMode",
+                     contextual_tasks::GetIsBasicModeEnabled());
   source->AddBoolean("enableBasicModeZOrder",
                      contextual_tasks::ShouldEnableBasicModeZOrder());
   source->AddBoolean(
@@ -446,7 +450,8 @@ void ContextualTasksUI::CreatePageHandler(
   if (auto* browser = GetBrowser()) {
     if (auto* controller = LensSearchController::FromTabWebContents(
             browser->GetTabStripModel()->GetActiveWebContents())) {
-      OnLensOverlayStateChanged(controller->IsShowingUI());
+      OnLensOverlayStateChanged(controller->IsShowingUI(),
+                                controller->invocation_source());
     }
   }
 }
@@ -470,14 +475,9 @@ void ContextualTasksUI::OnTaskUpdated(
 }
 
 GURL ContextualTasksUI::GetAimUrl() {
-  std::string aim_url_str;
-  if (net::GetValueForKeyInQuery(
-          web_ui()->GetWebContents()->GetLastCommittedURL(), "aim_url",
-          &aim_url_str)) {
-    return GURL(aim_url_str);
-  } else {
-    return GURL();
-  }
+  return contextual_tasks::ContextualTasksUiService::
+      GetAimUrlFromContextualTasksUrl(
+          web_ui()->GetWebContents()->GetLastCommittedURL());
 }
 
 const std::optional<base::Uuid>& ContextualTasksUI::GetTaskId() {
@@ -487,6 +487,10 @@ const std::optional<base::Uuid>& ContextualTasksUI::GetTaskId() {
 void ContextualTasksUI::SetTaskId(std::optional<base::Uuid> id) {
   task_id_ = id;
   PushTaskDetailsToPage();
+  // Initialize input state once task id is available.
+  if (composebox_handler_) {
+    composebox_handler_->InitializeInputStateModel();
+  }
 }
 
 const std::optional<std::string>& ContextualTasksUI::GetThreadId() {
@@ -612,7 +616,9 @@ void ContextualTasksUI::CreatePageHandler(
       std::move(pending_searchbox_handler),
       base::BindRepeating(
           &ContextualTasksUI::GetOrCreateContextualSessionHandle,
-          base::Unretained(this)));
+          base::Unretained(this)),
+      base::BindRepeating(&ContextualTasksUI::GetInputStateModel,
+                          base::Unretained(this)));
   composebox_handler_->SetPage(std::move(pending_searchbox_page));
 }
 
@@ -665,6 +671,19 @@ ContextualTasksUI::GetOrCreateContextualSessionHandle() {
       /*browser_window=*/browser_window_interface, contextual_tasks_service_,
       controller, web_contents, task_id_.value());
   return helper->session_handle();
+}
+
+std::unique_ptr<contextual_search::InputStateModel>
+ContextualTasksUI::GetInputStateModel() {
+  if (!task_id_.has_value()) {
+    return nullptr;
+  }
+
+  content::WebContents* web_contents = web_ui()->GetWebContents();
+  auto* helper = ContextualSearchWebContentsHelper::GetOrCreateForWebContents(
+      web_contents);
+
+  return helper->GetInputStateModelForTask(task_id_.value());
 }
 
 void ContextualTasksUI::PostMessageToWebview(
@@ -778,10 +797,16 @@ void ContextualTasksUI::OnSidePanelStateChanged() {
   PostMessageToWebview(message);
 }
 
-void ContextualTasksUI::OnLensOverlayStateChanged(bool is_showing) {
+void ContextualTasksUI::OnLensOverlayStateChanged(
+    bool is_showing,
+    std::optional<lens::LensOverlayInvocationSource> invocation_source) {
   is_lens_overlay_showing_ = is_showing;
   if (page_) {
-    page_->OnLensOverlayStateChanged(is_showing);
+    bool maybe_show_overlay_hint_text =
+        is_showing && invocation_source.has_value() &&
+        invocation_source.value() ==
+            lens::LensOverlayInvocationSource::kContextualTasksComposebox;
+    page_->OnLensOverlayStateChanged(is_showing, maybe_show_overlay_hint_text);
   }
 }
 
@@ -855,14 +880,8 @@ void ContextualTasksUI::OnPageContextEligibilityChecked(
   if (is_page_context_eligible) {
     page_->HideErrorPage();
   } else {
-    page_->ShowErrorPage();
-    base::UmaHistogramEnumeration(
-        base::StrCat({"ContextualSearch.ErrorPageShown", ".",
-                      contextual_search::ContextualSearchMetricsRecorder::
-                          ContextualSearchSourceToString(
-                              contextual_search::ContextualSearchSource::
-                                  kContextualTasks)}),
-        contextual_search::ContextualSearchErrorPage::kPageContextNotEligible);
+    contextual_tasks::ShowAndRecordErrorPage(
+        page_, contextual_search::ContextualSearchSource::kContextualTasks);
   }
 }
 
@@ -947,9 +966,12 @@ void ContextualTasksUI::FrameNavObserver::DidFinishNavigation(
   // accordingly.
   const bool is_zero_state = ContextualTasksUI::IsZeroState(url, ui_service_);
 
-  if (!base::FeatureList::IsEnabled(
-          contextual_tasks::kEnableNotifyZeroStateRenderedCapability) ||
-      !navigation_handle->IsSameDocument()) {
+  // Check if the zero state status has changed since the last navigation.
+  const bool has_zero_state_changed =
+      is_zero_state !=
+      ContextualTasksUI::IsZeroState(last_committed_url_, ui_service_);
+
+  if (!navigation_handle->IsSameDocument() || has_zero_state_changed) {
     task_info_delegate_->OnZeroStateChange(is_zero_state);
   }
 

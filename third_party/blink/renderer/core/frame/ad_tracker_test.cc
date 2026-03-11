@@ -525,7 +525,7 @@ TEST_F(AdTrackerSimTest, ImageLoadedWhileExecutingAdScriptAsyncEnabled) {
   // Put the gif bytes in a Vector to avoid difficulty with
   // non null-terminated char*.
   Vector<char> gif;
-  gif.AppendSpan(base::span(kSmallGifData));
+  gif.append_range(kSmallGifData);
 
   vanilla_image.Complete(gif);
 
@@ -569,7 +569,7 @@ TEST_F(AdTrackerSimTest, PromiseResolveDetected) {
   // Put the gif bytes in a Vector to avoid difficulty with
   // non null-terminated char*.
   Vector<char> gif;
-  gif.AppendSpan(base::span(kSmallGifData));
+  gif.append_range(kSmallGifData);
 
   image.Complete(gif);
 
@@ -600,7 +600,7 @@ TEST_F(AdTrackerSimTest, PromiseRejectDetected) {
   // Put the gif bytes in a Vector to avoid difficulty with
   // non null-terminated char*.
   Vector<char> gif;
-  gif.AppendSpan(base::span(kSmallGifData));
+  gif.append_range(kSmallGifData);
 
   image.Complete(gif);
 
@@ -633,7 +633,7 @@ TEST_F(AdTrackerSimTest, PromiseChain) {
   // Put the gif bytes in a Vector to avoid difficulty with
   // non null-terminated char*.
   Vector<char> gif;
-  gif.AppendSpan(base::span(kSmallGifData));
+  gif.append_range(kSmallGifData);
 
   image.Complete(gif);
 
@@ -681,7 +681,7 @@ TEST_F(AdTrackerSimTest, BrokenPromiseScript) {
   // Put the gif bytes in a Vector to avoid difficulty with
   // non null-terminated char*.
   Vector<char> gif;
-  gif.AppendSpan(base::span(kSmallGifData));
+  gif.append_range(kSmallGifData);
 
   image.Complete(gif);
 
@@ -715,7 +715,7 @@ TEST_F(AdTrackerSimTest, VanillaPromiseNotDetected) {
   // Put the gif bytes in a Vector to avoid difficulty with
   // non null-terminated char*.
   Vector<char> gif;
-  gif.AppendSpan(base::span(kSmallGifData));
+  gif.append_range(kSmallGifData);
 
   image.Complete(gif);
 
@@ -2134,9 +2134,9 @@ TEST_F(AdTrackerSimTest, SelectivePermissionsInterventionOn) {
   )SCRIPT");
   EXPECT_TRUE(
       base::test::RunUntil([&]() { return ConsoleMessages().size() == 3; }));
-  EXPECT_TRUE(ConsoleMessages()[0].StartsWith(
+  EXPECT_TRUE(ConsoleMessages()[0].starts_with(
       "Blocked call to geolocation because ad-script"));
-  EXPECT_TRUE(ConsoleMessages()[1].StartsWith(
+  EXPECT_TRUE(ConsoleMessages()[1].starts_with(
       "Permissions policy violation: Geolocation"));
   EXPECT_EQ("Failed", ConsoleMessages()[2]);
 }
@@ -3168,6 +3168,54 @@ TEST_F(AdTrackerSimTest, IgnoreMonkeyPatchHeuristic_FirstProxiedCall_IsNotAd) {
   // The heuristic identifies the monkeypatch and, for this first call, assumes
   // the ad script is a proxy and returns false.
   EXPECT_FALSE(ad_tracker_->last_is_ad_script_in_stack_result());
+}
+
+// Tests that the monkey-patch heuristic correctly distinguishes between the
+// actual monkey-patched API function and a different function that happens
+// to share the same internal name and script ID.
+TEST_F(AdTrackerSimTest,
+       IgnoreMonkeyPatchHeuristic_DifferentFunctionSameName_IsAd) {
+  String ad_script_url = "https://example.com/script.js?ad=true";
+  String vanilla_script_url = "https://example.com/script.js";
+  SimSubresourceRequest ad_script(ad_script_url, "text/javascript");
+  SimSubresourceRequest vanilla_script(vanilla_script_url, "text/javascript");
+
+  main_resource_->Complete(R"HTML(
+    <body><script src="script.js?ad=true"></script>
+          <script src="script.js"></script></body>
+  )HTML");
+
+  // 1. The ad script monkey-patches history.pushState using a function
+  //    explicitly named "pushState".
+  // 2. The ad script also defines an unrelated function internally named
+  //    "pushState", exposed globally as `window.doAdWork`.
+  ad_script.Complete(R"SCRIPT(
+    const originalPushState = window.history.pushState;
+    window.history.pushState = function pushState(...args) {
+      originalPushState.apply(window.history, args);
+    };
+
+    window.doAdWork = function pushState() {
+      // Trigger AdTracker's stack inspection by calling the native API
+      // directly (bypassing the monkeypatch).
+      originalPushState.apply(window.history, [{}, '', '/ad-url']);
+    };
+  )SCRIPT");
+
+  // The vanilla script calls the unrelated ad function.
+  vanilla_script.Complete(R"SCRIPT(
+    window.doAdWork();
+  )SCRIPT");
+
+  base::RunLoop().RunUntilIdle();
+
+  // The heuristic inspects the stack at the ad/non-ad boundary and sees
+  // `window.doAdWork` (internally named "pushState"). By comparing function
+  // object identities rather than just names and script IDs, the AdTracker
+  // correctly recognizes that `doAdWork` is NOT the monkeypatch wrapper.
+  // Therefore, it does not ignore the ad script and correctly flags the
+  // call as ad-related.
+  EXPECT_TRUE(ad_tracker_->last_is_ad_script_in_stack_result());
 }
 
 // Tests that a call is flagged as an ad when an ad script calls an API that

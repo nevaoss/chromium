@@ -309,42 +309,15 @@ void PictureLayerImpl::ComputeCheckerboardedNeedsRecord(
   }
 }
 
-void PictureLayerImpl::WillAppendQuads() {
-  produced_tile_last_append_quads_ = false;
-}
-
-int PictureLayerImpl::AppendQuadsSpecialization(
-    const AppendQuadsContext& context,
-    viz::CompositorRenderPass* render_pass,
-    AppendQuadsData* append_quads_data,
-    viz::SharedQuadState* shared_quad_state,
-    const Occlusion& scaled_occlusion,
-    const gfx::Vector2d& quad_offset,
-    const std::optional<gfx::Rect>& scaled_cull_rect,
+std::unique_ptr<AppendQuadsCustomSharedData> PictureLayerImpl::WillAppendQuads(
     float max_contents_scale) {
-  // Ignore missing tiles outside of viewport for tile priority. This is
-  // normally the same as draw viewport but can be independently overridden by
-  // embedders like Android WebView with SetExternalTilePriorityConstraints.
-  gfx::Rect scaled_viewport_for_tile_priority = gfx::ScaleToEnclosingRect(
+  produced_tile_last_append_quads_ = false;
+
+  auto custom_data = std::make_unique<AppendQuadsCustomSharedDataImpl>();
+  custom_data->scaled_viewport_for_tile_priority_ = gfx::ScaleToEnclosingRect(
       viewport_rect_for_tile_priority_in_content_space_, max_contents_scale);
 
-  gfx::Rect scaled_recorded_bounds = gfx::ScaleToEnclosingRect(
-      raster_source_->recorded_bounds(), max_contents_scale);
-
-  int missing_tile_count = 0;
-  for (auto iter = Cover(shared_quad_state->visible_quad_layer_rect,
-                         max_contents_scale, GetIdealContentsScaleKey());
-       iter; ++iter) {
-    bool missing_tile = AppendQuadForTile(
-        iter, context, render_pass, append_quads_data, shared_quad_state,
-        scaled_occlusion, quad_offset, scaled_viewport_for_tile_priority,
-        scaled_cull_rect, scaled_recorded_bounds);
-    if (missing_tile) {
-      ++missing_tile_count;
-    }
-  }
-
-  return missing_tile_count;
+  return std::move(custom_data);
 }
 
 bool PictureLayerImpl::AppendQuadForTile(
@@ -354,26 +327,21 @@ bool PictureLayerImpl::AppendQuadForTile(
     AppendQuadsData* append_quads_data,
     viz::SharedQuadState* shared_quad_state,
     const Occlusion& scaled_occlusion,
-    const gfx::Vector2d& quad_offset,
-    const gfx::Rect& scaled_viewport_for_tile_priority,
+    const gfx::Rect& offset_geometry_rect,
+    const gfx::Rect& offset_visible_geometry_rect,
+    const gfx::Rect& visible_geometry_rect,
+    bool needs_blending,
     const std::optional<gfx::Rect>& scaled_cull_rect,
-    const gfx::Rect& scaled_recorded_bounds) {
+    float max_contents_scale,
+    AppendQuadsCustomSharedData* custom_data) {
+  // By contract, this data will have been populated via a call to
+  // WillAppendQuads().
+  CHECK(custom_data);
+  auto* shared_data =
+      static_cast<AppendQuadsCustomSharedDataImpl*>(custom_data);
+
   gfx::Rect geometry_rect = iter.geometry_rect();
-  gfx::Rect visible_geometry_rect;
-  if (ShouldSkipTile(geometry_rect, scaled_recorded_bounds, scaled_occlusion,
-                     visible_geometry_rect)) {
-    return /*tile_missing=*/false;
-  }
-
-  gfx::Rect offset_geometry_rect = geometry_rect;
-  offset_geometry_rect.Offset(quad_offset);
-  gfx::Rect offset_visible_geometry_rect = visible_geometry_rect;
-  offset_visible_geometry_rect.Offset(quad_offset);
-
-  bool needs_blending = !contents_opaque();
-
   uint64_t visible_geometry_area = visible_geometry_rect.size().Area64();
-  append_quads_data->visible_layer_area += visible_geometry_area;
 
   bool has_draw_quad = false;
   if (*iter && iter->draw_info().IsReadyToDraw()) {
@@ -394,7 +362,8 @@ bool PictureLayerImpl::AppendQuadForTile(
         // scale that is >= ideal, which may be < raster_contents_scale_.
         if (iter->contents_scale_key() != raster_contents_scale_key() &&
             iter->contents_scale_key() < GetIdealContentsScaleKey() &&
-            geometry_rect.Intersects(scaled_viewport_for_tile_priority)) {
+            geometry_rect.Intersects(
+                shared_data->scaled_viewport_for_tile_priority_)) {
           append_quads_data->checkerboarded_needs_raster = true;
         }
 
@@ -453,8 +422,9 @@ bool PictureLayerImpl::AppendQuadForTile(
           iter->HasMissingLCPCandidateImages());
     }
 
-    // Report the tile as missing iff it is in the viewport.
-    return geometry_rect.Intersects(scaled_viewport_for_tile_priority);
+    // Only report the tile as missing if it's in the viewport.
+    return /*tile_produced=*/!geometry_rect.Intersects(
+        shared_data->scaled_viewport_for_tile_priority_);
   }
 
   if (iter.resolution() != HIGH_RESOLUTION) {
@@ -466,7 +436,7 @@ bool PictureLayerImpl::AppendQuadForTile(
 
   AddScaleToLastAppendQuadsScales(iter.CurrentTiling()->contents_scale_key());
 
-  return /*tile_missing=*/false;
+  return /*tile_produced=*/true;
 }
 
 bool PictureLayerImpl::UpdateTiles() {
@@ -968,6 +938,10 @@ const PaintWorkletRecordMap& PictureLayerImpl::GetPaintWorkletRecords() const {
 
 bool PictureLayerImpl::IsDirectlyCompositedImage() const {
   return directly_composited_image_default_raster_scale_ > 0.f;
+}
+
+gfx::Rect PictureLayerImpl::RecordedBounds() const {
+  return raster_source_ ? raster_source_->recorded_bounds() : gfx::Rect();
 }
 
 std::vector<const DrawImage*> PictureLayerImpl::GetDiscardableImagesInRect(

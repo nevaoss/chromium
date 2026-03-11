@@ -198,6 +198,7 @@ class CC_EXPORT PictureLayerImpl
   TileUpdateSet TakeAllTiles();
 
   bool IsDirectlyCompositedImage() const override;
+  gfx::Rect RecordedBounds() const override;
   bool nearest_neighbor() const { return nearest_neighbor_; }
 
   void set_should_batch_updated_tiles() { should_batch_updated_tiles_ = true; }
@@ -395,16 +396,19 @@ class CC_EXPORT PictureLayerImpl
   gfx::Rect damage_rect_;
 
  private:
+  class AppendQuadsCustomSharedDataImpl : public AppendQuadsCustomSharedData {
+   public:
+    ~AppendQuadsCustomSharedDataImpl() override = default;
+
+    // Used to ignore missing tiles outside of viewport for tile priority. This
+    // is normally the same as draw viewport but can be independently overridden
+    // by embedders like Android WebView with
+    // SetExternalTilePriorityConstraints.
+    gfx::Rect scaled_viewport_for_tile_priority_;
+  };
+
   // TileBasedLayerImpl:
-  void WillAppendQuads() override;
-  int AppendQuadsSpecialization(
-      const AppendQuadsContext& context,
-      viz::CompositorRenderPass* render_pass,
-      AppendQuadsData* append_quads_data,
-      viz::SharedQuadState* shared_quad_state,
-      const Occlusion& scaled_occlusion,
-      const gfx::Vector2d& quad_offset,
-      const std::optional<gfx::Rect>& scaled_cull_rect,
+  std::unique_ptr<AppendQuadsCustomSharedData> WillAppendQuads(
       float max_contents_scale) override;
   float GetMaximumContentsScaleForUseInAppendQuads() const override;
   void AppendQuadsForResourcelessSoftwareDraw(
@@ -420,17 +424,19 @@ class CC_EXPORT PictureLayerImpl
   void ComputeCheckerboardedNeedsRecord(
       AppendQuadsData* append_quads_data) override;
 
-  // Returns whether the tile was missing.
   bool AppendQuadForTile(TilingSetCoverageIterator<PictureLayerTiling> iter,
                          const AppendQuadsContext& context,
                          viz::CompositorRenderPass* render_pass,
                          AppendQuadsData* append_quads_data,
                          viz::SharedQuadState* shared_quad_state,
                          const Occlusion& scaled_occlusion,
-                         const gfx::Vector2d& quad_offset,
-                         const gfx::Rect& scaled_viewport_for_tile_priority,
+                         const gfx::Rect& offset_geometry_rect,
+                         const gfx::Rect& offset_visible_geometry_rect,
+                         const gfx::Rect& visible_geometry_rect,
+                         bool needs_blending,
                          const std::optional<gfx::Rect>& scaled_cull_rect,
-                         const gfx::Rect& scaled_recorded_bounds);
+                         float max_contents_scale,
+                         AppendQuadsCustomSharedData* custom_data) override;
   TilingResolution GetTilingResolutionForDebugBorders(
       const PictureLayerTiling* tiling) const override;
 };

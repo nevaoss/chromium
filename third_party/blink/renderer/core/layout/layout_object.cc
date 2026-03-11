@@ -1826,6 +1826,15 @@ const LayoutBox* LayoutObject::ContainingScrollContainer(
   return nullptr;
 }
 
+LayoutObject* LayoutObject::NonAnonymousContainingBlock() const {
+  NOT_DESTROYED();
+  LayoutObject* block = ContainingBlock();
+  if (block && block->IsAnonymous()) {
+    block = block->Parent();
+  }
+  return block;
+}
+
 LayoutObject* LayoutObject::NearestAncestorForElement() const {
   NOT_DESTROYED();
   LayoutObject* ancestor = Parent();
@@ -4123,8 +4132,9 @@ void LayoutObject::WillBeRemovedFromTree() {
 void LayoutObject::SetNeedsPaintPropertyUpdate() {
   NOT_DESTROYED();
   DCHECK(!GetDocument().InvalidationDisallowed());
-  if (bitfields_.NeedsPaintPropertyUpdate())
+  if (bitfields_.NeedsPaintPropertyUpdate() || !GetDocument().IsActive()) {
     return;
+  }
 
   // If we're an overscroll container or an ::-internal-overscroll-area-parent,
   // then under a paint property update, we have to make sure that all of our

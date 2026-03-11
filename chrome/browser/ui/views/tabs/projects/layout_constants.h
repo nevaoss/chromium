@@ -10,6 +10,9 @@
 
 namespace projects_panel {
 
+// The corner radius of a list item.
+inline constexpr int kListItemCornerRadius = 8;
+
 // The focus ring halo inset for a list item. This contains the focus ring
 // within the bounds of the item so the halo isn't clipped by the container.
 inline constexpr float kListItemFocusRingHaloInset =
@@ -33,6 +36,10 @@ inline constexpr gfx::Insets kListPadding = gfx::Insets::VH(0, 4);
 
 // Minimum width of the projects panel.
 inline constexpr int kProjectsPanelMinWidth = 240;
+
+// Background color of the projects panel.
+inline constexpr ui::ColorId kProjectsPanelBackgroundColor =
+    ui::kColorSysSurface2;
 
 }  // namespace projects_panel
 

@@ -683,6 +683,8 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature("V8Flag_trim_descriptor_arrays_in_gc_with_stack"),
         Flag.baseFeature("V8Flag_memory_reducer"),
         Flag.baseFeature("V8Flag_verify_bytecode_light"),
+        Flag.baseFeature("V8Flag_enforce_global_heap_limit"),
+        Flag.baseFeature("V8Flag_turbolev"),
         Flag.baseFeature("V8FlushBaselineCode"),
         Flag.baseFeature("V8FlushCodeBasedOnTabVisibility"),
         Flag.baseFeature("V8FlushCodeBasedOnTime"),
@@ -1155,6 +1157,10 @@ public final class ProductionSupportedFlagList {
                         + " `CookieManager.getInstance()` will trigger WebView startup on the main"
                         + " looper and wait for startup to complete."),
         Flag.baseFeature(
+                AwFeatures.WEBVIEW_FASTER_GET_DEFAULT_USER_AGENT,
+                "When enabled, the default user agent string is fetched more quickly without"
+                        + " waiting for chromium startup to complete."),
+        Flag.baseFeature(
                 NetworkServiceFeatures.COMPRESSION_DICTIONARY_TTL,
                 "When enabled, adds support an explicit compression dictionary lifetime using the"
                         + " `ttl` parameter in the `use-as-dictionary` HTTP response header."),
@@ -1163,6 +1169,11 @@ public final class ProductionSupportedFlagList {
                 "If true, don't call NQE::NotifyStartTransaction asynchronously"
                         + " as a task but defers it until the next step like "
                         + "NotifyHeadersReceived."),
+        Flag.baseFeature(
+                "kNetworkQualityEstimatorAsyncNotifyHeadersReceived",
+                "If true, call NQE::NotifyHeadersReceived asynchronously or"
+                        + " defer it until the next step like"
+                        + " NotifyBytesRead, based on the parameter values."),
         Flag.baseFeature(
                 "WebViewFetchOriginTrialsComponent",
                 "Enable fetching the Origin Trials configuration update component."),
@@ -1302,6 +1313,12 @@ public final class ProductionSupportedFlagList {
                 BlinkFeatures.UNTHROTTLE_ASYNC_TOUCH_MOVES,
                 "When enabled, touch move events to javascript handlers are unthrottled if "
                         + "they are sent as async to Renderer."),
+        Flag.baseFeature(
+                BlinkFeatures.RUSTY_BMP_FEATURE,
+                "When enabled, uses Rust `image` crate to decode BMP images."),
+        Flag.baseFeature(
+                "NoSequenceForLevelDBCleanupTasks",
+                "When enabled, LevelDB cleanup tasks are run concurrently instead of in sequence."),
 
         // Add new commandline switches and features above. The final entry should have a
         // trailing comma for cleaner diffs.

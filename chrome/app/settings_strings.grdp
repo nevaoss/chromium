@@ -308,8 +308,14 @@
   <message name="IDS_SETTINGS_UI_FEATURE_ALIGN_SIDE" desc="Label for the button that configures a feature to appear on the side of the browser.">
     Side
   </message>
+  <message name="IDS_SETTINGS_UI_FEATURE_ALIGN_SIDE_SEARCH_HINT" desc="Search hint for an option that configures a feature to appear vertically on the side of the browser." is_accessibility_with_no_ui="true">
+    Vertical
+  </message>
   <message name="IDS_SETTINGS_UI_FEATURE_ALIGN_TOP" desc="Label for the button that configures a feature to appear on the top of the browser.">
     Top
+  </message>
+  <message name="IDS_SETTINGS_UI_FEATURE_ALIGN_TOP_SEARCH_HINT" desc="Search hint for an option that configures a feature to appear horizontally on the top of the browser." is_accessibility_with_no_ui="true">
+    Horizontal
   </message>
   <message name="IDS_SETTINGS_HOME_PAGE_NTP" desc="Description of the New Tab Page when set as the home page.">
     New Tab page
@@ -893,9 +899,6 @@
   </message>
   <message name="IDS_SETTINGS_CLEAR_GOOGLE_SEARCH_HISTORY_NON_GOOGLE_DSE" desc="A description explaining that other forms of activity can be cleared through the Google account.">
     <ph name="BEGIN_LINK_GOOGLE">&lt;a target="_blank" href="$1"&gt;</ph>Other forms of activity<ph name="END_LINK_GOOGLE">&lt;/a&gt;</ph> may be saved in your Google Account when you're signed in. You can delete them anytime.
-  </message>
-  <message name="IDS_SETTINGS_CLEAR_NON_GOOGLE_SEARCH_HISTORY_NON_PREPOPULATED_DSE" desc="A description informing the user about the way to clear their search history when their Default Search Engine is not Google.">
-    See your search engine's instructions for deleting your search history, if applicable
   </message>
   <message name="IDS_SETTINGS_CLEAR_DOWNLOAD_HISTORY" desc="Checkbox for deleting Download History">
     Download history

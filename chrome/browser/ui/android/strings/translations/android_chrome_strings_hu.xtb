@@ -246,6 +246,7 @@ Csak az Ön összetett jelszava ismeretében tudja bárki is megtekinteni a titk
 <translation id="2047378580182589770">Tartsa lenyomva az ujját az inkognitó módból való kilépéshez</translation>
 <translation id="2049574241039454490"><ph name="FILE_SIZE_OF_TOTAL" /> <ph name="SEPARATOR" /> <ph name="DESCRIPTION" /></translation>
 <translation id="2051669996101374349">HTTPS használata, amikor csak lehetséges, és figyelmeztetés megjelenítése a protokollt nem támogató webhelyek betöltése előtt. Ezt a beállítást nem módosíthatja, mert be van kapcsolva a Speciális védelem.</translation>
+<translation id="2052723746739622752">A Gemini rögzítésének megszüntetése</translation>
 <translation id="2056878612599315956">A webhely szüneteltetve van</translation>
 <translation id="2063047797624276601">Szervezete bekapcsolta a Biztonságos Böngészés fokozott védelemmel funkciót</translation>
 <translation id="2065944887543506430">{FILE_COUNT,plural, =1{1 letöltés nem sikerült}other{# letöltés nem sikerült}}</translation>
@@ -280,6 +281,7 @@ Csak az Ön összetett jelszava ismeretében tudja bárki is megtekinteni a titk
 <translation id="2205701497928406883"><ph name="TAB_TITLE" />, rögzített, tartalmat megosztó lap</translation>
 <translation id="22091350895006575">Felhasználónév megadása</translation>
 <translation id="221494669172414749">Ha profilzárolás nélkül nyitja meg a Chrome-ot, azzal eltávolítja a mentett jelszavakat és fizetési módokat az autóból. A profilzárolással biztonságban tudhatja adatait.</translation>
+<translation id="2226826835915474236">Inaktív gyorsparancsok</translation>
 <translation id="2227179592712503583">Javaslat eltávolítása</translation>
 <translation id="2227444325776770048">Folytatás mint <ph name="USER_FULL_NAME" /></translation>
 <translation id="2230777942707397948">Üres ablak</translation>
@@ -396,7 +398,6 @@ Csak az Ön összetett jelszava ismeretében tudja bárki is megtekinteni a titk
 <translation id="2702516483241149200">Új: az ehhez a szöveghez gördülő linket oszthat meg</translation>
 <translation id="2708226184420201102">Megnyitás a(z) <ph name="PRODUCT_NAME" /> böngészőben</translation>
 <translation id="271033894570825754">Új gyűjtemény</translation>
-<translation id="2710883118091822664">Jelentkezzen be, hogy az összes eszközén könnyen folytathassa, amit elkezdett</translation>
 <translation id="2718352093833049315">Csak Wi-Fi-n</translation>
 <translation id="2718846868787000099">A felkeresett webhelyek láthatják az Ön preferenciáit, hogy a kívánt nyelveken jeleníthessék meg a tartalmakat</translation>
 <translation id="2723001399770238859">audio</translation>
@@ -532,7 +533,6 @@ Csak az Ön összetett jelszava ismeretében tudja bárki is megtekinteni a titk
 <translation id="3268048651973962414">Húzza felfelé a keresési találatok megtekintéséhez</translation>
 <translation id="3269093882174072735">Kép betöltése</translation>
 <translation id="3280562213547448728">Hangalapú keresés</translation>
-<translation id="3282568296779691940">Bejelentkezés a Chrome-ba</translation>
 <translation id="3285065882678541460">{TAB_COUNT,plural, =1{<ph name="TAB_GROUPS_PART" />, <ph name="TAB_COUNT_ONE" /> lap}other{<ph name="TAB_GROUPS_PART" />, <ph name="TAB_COUNT_MANY" /> lap}}</translation>
 <translation id="3286508210927575634">{PASSWORDS_COUNT,plural, =1{1 jelszót csak erre az eszközre ment a rendszer. Ha szeretné más eszközökön is használni, mentse Google-fiókjába.}other{# jelszót csak erre az eszközre ment a rendszer. Ha a többi eszközén is használni szeretné őket, mentse őket Google-fiókjába.}}</translation>
 <translation id="3293181007446299124">Böngészési előzményeit privát módon tárolja a rendszer az eszközén, és személyazonosságának védelme érdekében késleltetve küldi el a rendszer a jelentéseket.</translation>
@@ -727,6 +727,7 @@ Csak az Ön összetett jelszava ismeretében tudja bárki is megtekinteni a titk
 <translation id="4137746084635924146">Eszköz jelenlegi nyelve</translation>
 <translation id="414128724510021958">Asztali webhelyek kérve alapértelmezés szerint</translation>
 <translation id="4162867837470729563">A megosztási lehetőségek listája teljes magasságban van megnyitva.</translation>
+<translation id="4165077084524712774">További eszközök</translation>
 <translation id="4170011742729630528">A szolgáltatás nem érhető el, próbálja újra később.</translation>
 <translation id="4170577491341606575">Adatok lekérése…</translation>
 <translation id="4177222230309051052">Az összes könyvjelző megtekintése</translation>
@@ -923,6 +924,7 @@ Előfordulhat, hogy Google-fiókjában (a <ph name="BEGIN_LINK" />myactivity.goo
 <translation id="4885273946141277891">Ilyen sok Chrome-példány nem futhat egyszerre.</translation>
 <translation id="4890973535105146893">Nincsenek mentett jelszavak a Google-fiókjában</translation>
 <translation id="4905823827770127520">Az oldalra mutató link hozzáfűzése</translation>
+<translation id="4908601375231458049">Szabja személyre a lapcsoportot, majd válassza a Kész gombot</translation>
 <translation id="4908869848243824489">Discover by Google</translation>
 <translation id="4910889077668685004">Fizetési alkalmazások</translation>
 <translation id="4911042367886397055">Üdvözöljük ismét, <ph name="USER_NAME" />!</translation>
@@ -1186,6 +1188,7 @@ Előfordulhat, hogy Google-fiókjában (a <ph name="BEGIN_LINK" />myactivity.goo
 <translation id="6040143037577758943">Bezárás</translation>
 <translation id="604124094241169006">Automatikus</translation>
 <translation id="6042308850641462728">Továbbiak</translation>
+<translation id="6047066316630165190">Nyissa meg a rácsos lapváltót</translation>
 <translation id="604996488070107836">A következő fájl letöltése ismeretlen hiba miatt nem sikerült: <ph name="FILE_NAME" />.</translation>
 <translation id="605721222689873409">ÉÉ</translation>
 <translation id="6059830886158432458">Itt kezelheti a híreket és a tevékenységeket</translation>
@@ -1200,6 +1203,7 @@ Előfordulhat, hogy Google-fiókjában (a <ph name="BEGIN_LINK" />myactivity.goo
 <translation id="610630277578876674">Gyorsan megnyithatja az üzenetekben lévő linkeket, stb.</translation>
 <translation id="6108923351542677676">A telepítés folyamatban...</translation>
 <translation id="6112702117600201073">Oldal frissítése</translation>
+<translation id="612221930823678863">URL, ahol a lekérdezést a(z) <ph name="QUERY" /> helyettesíti</translation>
 <translation id="6122831415929794347">Kikapcsolja a Biztonságos Böngészést?</translation>
 <translation id="6124936178263837501">Bejelentés nem spamként</translation>
 <translation id="6125202119952209826">Csatlakozás <ph name="OWNER_FIRST_NAME" /> lapcsoportjához</translation>
@@ -1258,6 +1262,7 @@ Egyes webhelyek például válaszolhatnak rá úgy, hogy olyan hirdetéseket jel
 <translation id="6301526076346731664">A Fejlesztői eszközök megnyitása</translation>
 <translation id="630308129961693966">A címsáv helyének kiválasztása</translation>
 <translation id="6303969859164067831">Kijelentkezés, és a szinkronizálás kikapcsolása</translation>
+<translation id="6305257382500066042">Próbálja ki most</translation>
 <translation id="6307241780749477694">Igazolja személyazonosságát, hogy hozzáférhessen az összes jelszavához ezen az eszközön</translation>
 <translation id="6309082029962045994"><ph name="TAB_TITLE" />, több kiválasztott rögzített, hangot lejátszó lap</translation>
 <translation id="6312687380483398334">Webalkalmazások (csendes)</translation>
@@ -1359,6 +1364,7 @@ Egyes webhelyek például válaszolhatnak rá úgy, hogy olyan hirdetéseket jel
 <translation id="6661521899577697780">A Chrome Keresés funkciójára való feliratkozás félmagasságban megnyitva</translation>
 <translation id="666731172850799929">Megnyitás itt: <ph name="APP_NAME" /></translation>
 <translation id="6669390930482049506">Értesítést kérek</translation>
+<translation id="6670767097276846646">Egyes bővítmények keresőmotorokkal bővíthetik ki a Chrome-ot</translation>
 <translation id="6671495933530132209">Kép másolása</translation>
 <translation id="6672697278890207089">Adja meg összetett jelszavát</translation>
 <translation id="6672917148207387131">A(z) <ph name="DOMAIN" /> hozzáadása</translation>
@@ -1464,6 +1470,7 @@ Egyes webhelyek például válaszolhatnak rá úgy, hogy olyan hirdetéseket jel
 <translation id="6980258170429555165">A(z) <ph name="MENU_NAME" /> menü ki van emelve.</translation>
 <translation id="6983306615164277634">A pozíció módosítására lehetőség van a címsáv lenyomva tartásával is.</translation>
 <translation id="6987047470128880212">Az inkognitó nem használható ezen az eszközön.</translation>
+<translation id="6989358895283601928">Mentés és nyomtatás</translation>
 <translation id="6996145122199359148">Az oldal letöltése</translation>
 <translation id="7013762323294215682">Ezt az azonosítókulcsot az Ön jelszókezelőjébe menti a rendszer. Bárki, aki hozzáfér a jelszókezelőhöz, használhatja majd ezt az azonosítókulcsot.</translation>
 <translation id="7020741890149022655">Felvétel olvasólistára <ph name="BEGIN_NEW" />Új<ph name="END_NEW" /></translation>
@@ -1559,6 +1566,7 @@ A beállítás módosításához <ph name="BEGIN_LINK" />törölje a fiókjában
 <translation id="7363349185727752629">Az adatvédelmi lehetőségek bemutatója</translation>
 <translation id="7364103838544876661">További lehetőségek a böngészési adatok törlésére</translation>
 <translation id="7365073365123878797">Ha szeretne jelszavakat menteni és használni a Google Jelszókezelővel, frissítse a Google Play-szolgáltatásokat.</translation>
+<translation id="7368927539449986686">Webhelyről indított keresés szerkesztése</translation>
 <translation id="7375125077091615385">Típus:</translation>
 <translation id="7376560087009844242">Hasznosabb találatokat kaphat az Érintéssel keresés funkció használatakor, ha nagyobb részt jelöl ki az oldal szövegéből. Bármikor módosíthatja ezt a <ph name="BEGIN_LINK" />Beállításokban<ph name="END_LINK" />.</translation>
 <translation id="7379900596734708416">A sötét téma rendelkezésre áll a webhelyeknél</translation>
@@ -1652,6 +1660,7 @@ A beállítás módosításához <ph name="BEGIN_LINK" />törölje a fiókjában
 <translation id="7740287852186792672">Keresés eredménye</translation>
 <translation id="774403695779169686"><ph name="TAB_TITLE" />, kiválasztott, tartalmat megosztó inkognitó lap</translation>
 <translation id="774876555279732384">Az automatikus kitöltési szolgáltatásokat az <ph name="BEGIN_LINK" />Android-beállításokban<ph name="END_LINK" /> is kezelheti.</translation>
+<translation id="7758884017823246335">Webhelyről indított keresés hozzáadása</translation>
 <translation id="7759809451544302770">Nem kötelező</translation>
 <translation id="7762668264895820836">SD-kártya (<ph name="SD_CARD_NUMBER" />)</translation>
 <translation id="7764225426217299476">Cím hozzáadása</translation>
@@ -1842,6 +1851,7 @@ A beállítás módosításához <ph name="BEGIN_LINK" />törölje a fiókjában
 <translation id="8458341576712814616">Gyorsparancs</translation>
 <translation id="8458413889418591446">Ha szeretne gyorsan visszatérni a felkeresett webhelyekre, szinkronizálja az előzményeit és a lapjait.</translation>
 <translation id="84594714173170813">Továbbra is használhatja a Google-fiókjában lévő Chrome-adatokat</translation>
+<translation id="8460008946585880786">Húzza az egyik lapot a másikra</translation>
 <translation id="8460448946170646641">A legfontosabb adatvédelmi és biztonsági beállítások áttekintése</translation>
 <translation id="8460932807646981183">Keresőmotorok és webhelyeken történő keresés kezelése</translation>
 <translation id="8473863474539038330">Címek és egyebek</translation>
@@ -1883,6 +1893,7 @@ A beállítás módosításához <ph name="BEGIN_LINK" />törölje a fiókjában
 <translation id="8634050254805484913">Elrejtve keskeny képernyőkön</translation>
 <translation id="8635399646025169806">Megtartja a lapcsoportot?</translation>
 <translation id="8636825310635137004">Ha a többi eszközén is szeretné elérni lapjait, kapcsolja be a szinkronizálást</translation>
+<translation id="8639963783467694461">Automatikus kitöltési beállítások</translation>
 <translation id="8662474268934425487">Bejelentkezés ide: <ph name="SITE_ETLD_PLUS_ONE" /></translation>
 <translation id="8664979001105139458">Már van ilyen nevű fájl</translation>
 <translation id="8676276370198826499">Regisztráljon a(z) <ph name="SITE_ETLD_PLUS_ONE" /> webhelyre a következővel: <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /></translation>
@@ -1931,6 +1942,7 @@ A beállítás módosításához <ph name="BEGIN_LINK" />törölje a fiókjában
 <translation id="8865415417596392024">A fiókjában található Chrome-adatok</translation>
 <translation id="8872506776304248286">Megnyitás alkalmazásban</translation>
 <translation id="8890668505403261809">Keresés az inkognitó lapokon</translation>
+<translation id="8892234476517513962">Már be van jelentkezve</translation>
 <translation id="8894890673032951011"><ph name="TAB_TITLE" />, kiválasztott, felvételt készítő inkognitó lap</translation>
 <translation id="8898822736010347272">Egyes felkeresett oldalak URL-jeit, korlátozott rendszer-információkat és bizonyos oldaltartalmakat küld el a Google-nak, hogy könnyebben felfedezhetők legyenek az internetezőkre leselkedő új veszélyek, és meg lehessen védeni a felhasználókat.</translation>
 <translation id="8903921497873541725">Nagyítás</translation>
@@ -1950,6 +1962,7 @@ A beállítás módosításához <ph name="BEGIN_LINK" />törölje a fiókjában
 <translation id="8969796057708736017">A letöltés akkor fejeződik be, ha a fájl megfelel a szervezete irányelveinek</translation>
 <translation id="8970887620466824814">Hiba történt.</translation>
 <translation id="8972098258593396643">Letölti az alapértelmezett mappába?</translation>
+<translation id="8987736167266086032">Ott folytathatja, ahol abbahagyta</translation>
 <translation id="8992769679401294069">Adatai az összetett jelszavával vannak titkosítva. Adja meg, ha Google-fiókjában Chrome-adatokat szeretne használni és menteni.</translation>
 <translation id="8993760627012879038">Új lap megnyitása inkognitó módban</translation>
 <translation id="8995521496079646922">Alapértelmezés szerint a kiválasztott alkalmazások lesznek használva. Ha valamelyik alkalmazás még nincs az eszközön, hamarosan letöltődik.</translation>

@@ -2690,7 +2690,7 @@ void LocalFrame::ForceSynchronousDocumentInstall(const AtomicString& mime_type,
   // around this problem.
   Vector<char> current_chunk;
   for (const auto& segment : data) {
-    current_chunk.AppendSpan(base::span(segment));
+    current_chunk.append_range(segment);
     if (current_chunk.size() > kMaxDocumentChunkSize) {
       parser->AppendBytes(base::as_byte_span(current_chunk));
       current_chunk.clear();
@@ -3260,7 +3260,7 @@ void LocalFrame::RequestExecuteScript(
   }
 
   Vector<WebScriptSource> script_sources;
-  script_sources.AppendSpan(sources);
+  script_sources.append_range(sources);
 
   ScriptState* script_state = ToScriptState(this, *world);
   // TODO(https://crbug.com/435149285): Remove this block and revert back to
@@ -3688,8 +3688,9 @@ void LocalFrame::SaveImageAt(const gfx::Point& window_point) {
     return;
 
   String url = To<Element>(*node).ImageSourceURL();
-  if (!KURL(NullURL(), url).ProtocolIsData())
+  if (!KURL(NullUrl(), url).ProtocolIsData()) {
     return;
+  }
 
   auto params = mojom::blink::DownloadURLParams::New();
   params->is_context_menu_save = true;
@@ -4151,8 +4152,8 @@ void LocalFrame::ScheduleNextServiceForPostLayoutSnapshotClients() {
 
 void LocalFrame::CheckPositionAnchorsForCssVisibilityChanges() {
   for (auto& client : post_layout_snapshot_clients_) {
-    if (AnchorPositionScrollData* scroll_data =
-            DynamicTo<AnchorPositionScrollData>(client.Get())) {
+    auto* scroll_data = DynamicTo<AnchorPositionScrollData>(client.Get());
+    if (scroll_data && scroll_data->IsActive()) {
       if (auto* observer = scroll_data->GetAnchorPositionVisibilityObserver()) {
         observer->UpdateForCssAnchorVisibility();
       }
