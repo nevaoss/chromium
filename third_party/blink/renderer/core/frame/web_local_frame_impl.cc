@@ -2855,8 +2855,8 @@ void WebLocalFrameImpl::UpdateForSameDocumentNavigation(
       frame_->DomWindow()->GetSecurityOrigin(),
       /*is_browser_initiated=*/true,
       /*is_synchronously_committed=*/true, HasTransientUserActivation(),
-      /*has_ua_visual_transition=*/false,
-      /*should_skip_screenshot=*/false);
+      UserNavigationInvolvement::kNone, /*has_ua_visual_transition=*/false,
+      /*should_skip_screenshot=*/false, PerformanceTimelineEntryIdInfo::kNone);
 }
 #endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
 
