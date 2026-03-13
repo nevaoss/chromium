@@ -11,34 +11,6 @@
 
 namespace switches {
 
-<<<<<<< HEAD
-extern const char kDisableBestEffortTasks[];
-extern const char kDisableBreakpad[];
-extern const char kDisableFeatures[];
-extern const char kDisableLowEndDeviceMode[];
-extern const char kEnableCrashReporter[];
-extern const char kEnableFeatures[];
-extern const char kEnableLowEndDeviceMode[];
-extern const char kBackgroundThreadPoolFieldTrial[];
-extern const char kFieldTrialHandle[];
-extern const char kForceFieldTrials[];
-#if BUILDFLAG(IS_NEVA_APPRUNTIME)
-extern const char kForceLowEndDeviceMode[];
-#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
-extern const char kFullMemoryCrashReport[];
-extern const char kLogBestEffortTasks[];
-extern const char kMetricsSharedMemoryHandle[];
-extern const char kNoErrorDialogs[];
-extern const char kProfilingAtStart[];
-extern const char kProfilingFile[];
-extern const char kProfilingFlush[];
-extern const char kTestChildProcess[];
-extern const char kTraceToFile[];
-extern const char kTraceToFileName[];
-extern const char kV[];
-extern const char kVModule[];
-extern const char kWaitForDebugger[];
-=======
 // Delays execution of TaskPriority::BEST_EFFORT tasks until shutdown.
 inline constexpr char kDisableBestEffortTasks[] = "disable-best-effort-tasks";
 
@@ -86,6 +58,13 @@ inline constexpr char kFieldTrialHandle[] = "field-trial-handle";
 // non-browser process, using the same format. See
 // FieldTrialList::CreateTrialsFromString() in field_trial.h for details.
 inline constexpr char kForceFieldTrials[] = "force-fieldtrials";
+
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+// Force low-end device mode, but without faking physical memory as
+// --enable-low-end-device mode, which is used for unit tests and fakes
+// 512 MB physical memory.
+inline constexpr char kForceLowEndDeviceMode[] = "force-low-end-device-mode";
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
 
 // Generates full memory crash dump.
 inline constexpr char kFullMemoryCrashReport[] = "full-memory-crash-report";
@@ -154,7 +133,6 @@ inline constexpr char kVModule[] = "vmodule";
 
 // Will wait for 60 seconds for a debugger to come to attach to the process.
 inline constexpr char kWaitForDebugger[] = "wait-for-debugger";
->>>>>>> 147.0.7720.0~1
 
 // See flag_descriptions.cc for more details.
 inline constexpr char kEnableBenchmarking[] = "enable-benchmarking";

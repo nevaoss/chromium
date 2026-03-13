@@ -75,39 +75,26 @@ constexpr base::ByteCount kMemoryThresholdOf4GbDevices = base::MiB(458);
 // system memory were 6GB.
 constexpr base::ByteCount kMemoryThresholdOf6GbDevices = base::MiB(494);
 
-<<<<<<< HEAD
 #endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
-=======
+
 UserLevelMemoryPressureSignalGenerator* g_instance = nullptr;
->>>>>>> 147.0.7720.0~1
 
 }  // namespace
 
 // static
-<<<<<<< HEAD
-void UserLevelMemoryPressureSignalGenerator::Initialize() {
-#if BUILDFLAG(IS_NEVA_APPRUNTIME)
-  if (features::IsUserLevelMemoryPressureSignalEnabled()) {
-    UserLevelMemoryPressureSignalGenerator::Get().Start(
-        MemoryThresholdParam(), MeasurementInterval(),
-        features::MinUserMemoryPressureInterval());
-    return;
-  }
-#else   // BUILDFLAG(IS_NEVA_APPRUNTIME)
-=======
 std::unique_ptr<UserLevelMemoryPressureSignalGenerator>
 UserLevelMemoryPressureSignalGenerator::MaybeCreate(
     std::unique_ptr<memory_pressure::MemoryPressureVoter> voter) {
   std::unique_ptr<UserLevelMemoryPressureSignalGenerator> generator;
 
->>>>>>> 147.0.7720.0~1
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  if (features::IsUserLevelMemoryPressureSignalEnabled()) {
+#else   // !BUILDFLAG(IS_NEVA_APPRUNTIME)
   if (base::SysInfo::Is4GbDevice() || base::SysInfo::Is6GbDevice()) {
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
     generator = base::WrapUnique(
         new UserLevelMemoryPressureSignalGenerator(std::move(voter)));
   }
-<<<<<<< HEAD
-#endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
-=======
 
   return generator;
 }
@@ -117,7 +104,6 @@ UserLevelMemoryPressureSignalGenerator::
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   CHECK_EQ(g_instance, this);
   g_instance = nullptr;
->>>>>>> 147.0.7720.0~1
 }
 
 // static
@@ -129,11 +115,17 @@ UserLevelMemoryPressureSignalGenerator::GetLatestMemoryMetrics() {
 UserLevelMemoryPressureSignalGenerator::UserLevelMemoryPressureSignalGenerator(
     std::unique_ptr<memory_pressure::MemoryPressureVoter> voter)
     : memory_pressure::SystemMemoryPressureEvaluator(std::move(voter)),
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+      memory_threshold_(MemoryThresholdParam()),
+      measure_interval_(MeasurementInterval()),
+      minimum_interval_(features::MinUserMemoryPressureInterval()) {
+#else   // !BUILDFLAG(IS_NEVA_APPRUNTIME)
       memory_threshold_(base::SysInfo::Is4GbDevice()
                             ? kMemoryThresholdOf4GbDevices
                             : kMemoryThresholdOf6GbDevices),
       measure_interval_(kDefaultMeasurementInterval),
       minimum_interval_(kDefaultMinimumInterval) {
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
   CHECK(!g_instance);
   g_instance = this;
 
