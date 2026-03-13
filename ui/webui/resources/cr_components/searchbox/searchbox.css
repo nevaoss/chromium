@@ -150,7 +150,7 @@
 }
 
 :host-context([multi-line-enabled][searchbox-layout-mode='Compact']) textarea {
-  padding-bottom: 10px;
+  padding-bottom: 16px;
   padding-top: 16px;
 }
 
@@ -333,7 +333,6 @@ cr-searchbox-icon,
 }
 
 :host([ntp-realbox-next-enabled]) :is(input, textarea)::placeholder {
-  font-size: 18px;
   color: var(--cr-composebox-input-placeholder-color, var(--color-composebox-type-ahead));
   font-weight: 400;
 }

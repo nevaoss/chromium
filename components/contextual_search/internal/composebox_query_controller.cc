@@ -342,6 +342,8 @@ ComposeboxQueryController::GetRequestIdForViewportImage(
     return lens::LensOverlayRequestId();
   }
   if (use_separate_request_ids_for_viewport_images_) {
+    // Viewport images always come from tab data.
+    request_id_generator_.SetHasChromeTabData(true);
     // Create a new request id for the viewport image upload request.
     file_info->viewport_request_id_ = request_id_generator_.GetNextRequestId(
         lens::RequestIdUpdateMode::kMultiContextUploadRequest,
@@ -485,6 +487,8 @@ void ComposeboxQueryController::CreateSearchUrl(
     if (num_valid_lens_files > 0) {
       DCHECK(last_active_lens_file != nullptr);
       DCHECK(last_active_lens_file->request_id.has_value());
+      request_id_generator_.SetHasChromeTabData(
+          last_active_lens_file->tab_session_id.has_value());
       // Trigger the interaction request on the last file if needed.
       // TODO(crbug.com/462509148): Determine how to support interaction
       // requests for multi-context input flow.
@@ -813,6 +817,8 @@ void ComposeboxQueryController::StartFileUploadFlow(
                              ? contextual_input_data->context_id.value()
                              : RandInt64();
     request_id_generator_.SetContextId(context_id);
+    request_id_generator_.SetHasChromeTabData(
+        current_file_info.tab_session_id.has_value());
     current_file_info.request_id = *request_id_generator_.GetNextRequestId(
         lens::RequestIdUpdateMode::kMultiContextUploadRequest,
         lens::MimeTypeToMediaType(current_file_info.mime_type,
@@ -1364,7 +1370,7 @@ void ComposeboxQueryController::ProcessDecodedImageAndContinue(
 
 void ComposeboxQueryController::CreateImageUploadRequest(
     lens::LensOverlayRequestId request_id,
-    const std::vector<uint8_t>& image_data,
+    std::vector<uint8_t> image_data,
     std::optional<lens::ImageEncodingOptions> image_options,
     std::optional<std::string> file_name,
     RequestBodyProtoCreatedCallback callback) {

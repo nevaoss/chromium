@@ -307,6 +307,7 @@ namespace content {
 
 namespace {
 
+<<<<<<< HEAD
 // Feature to combine the UpdateState IPC that's sent during commit time with
 // the DidCommit* IPCs. See: http://crbug.com/424829233
 BASE_FEATURE(kReducePageStateIpcs, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -314,6 +315,8 @@ BASE_FEATURE(kReducePageStateIpcs, base::FEATURE_ENABLED_BY_DEFAULT);
 #if BUILDFLAG(IS_WEBOS)
 const int kExtraCharsBeforeAndAfterSelection = 500;
 #else
+=======
+>>>>>>> 147.0.7720.0~1
 const int kExtraCharsBeforeAndAfterSelection = 100;
 #endif  // BUILDFLAG(IS_WEBOS)
 const size_t kMaxURLLogChars = 1024;
@@ -606,7 +609,8 @@ blink::mojom::CommonNavigationParamsPtr MakeCommonNavigationParams(
   // because it is loaded immediately by the FrameLoader.
   blink::mojom::NavigationType navigation_type =
       blink::mojom::NavigationType::DIFFERENT_DOCUMENT;
-  if (info->navigation_type == blink::kWebNavigationTypeReload) {
+  if (info->navigation_type == blink::kWebNavigationTypeReload ||
+      info->navigation_type == blink::kWebNavigationTypeFormResubmittedReload) {
     if (load_flags & net::LOAD_BYPASS_CACHE)
       navigation_type = blink::mojom::NavigationType::RELOAD_BYPASSING_CACHE;
     else
@@ -5217,12 +5221,6 @@ void RenderFrameImpl::UpdateStateForCommit(
     blink::WebHistoryCommitType commit_type,
     ui::PageTransition transition,
     NavigationState* navigation_state) {
-  if (!base::FeatureList::IsEnabled(kReducePageStateIpcs)) {
-    // We need to update the last committed session history entry with state for
-    // the previous page. Do this before updating the current history item.
-    SendUpdateState();
-  }
-
   UpdateNavigationHistory(commit_type, navigation_state);
 
   if (!frame_->Parent()) {  // Only for top frames.
@@ -5269,8 +5267,7 @@ void RenderFrameImpl::DidCommitNavigationInternal(
   // UpdateStateForCommit() since that call will update the current history
   // item.
   std::optional<blink::PageState> previous_page_state = std::nullopt;
-  if (base::FeatureList::IsEnabled(kReducePageStateIpcs) &&
-      !GetWebFrame()->GetCurrentHistoryItem().IsNull()) {
+  if (!GetWebFrame()->GetCurrentHistoryItem().IsNull()) {
     previous_page_state = GetWebFrame()->CurrentHistoryItemToPageState();
   }
   UpdateStateForCommit(commit_type, transition, navigation_state);

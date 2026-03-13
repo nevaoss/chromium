@@ -18,17 +18,17 @@ import type {Origin} from '//resources/mojo/url/mojom/origin.mojom-webui.js';
 import type {Url} from '//resources/mojo/url/mojom/url.mojom-webui.js';
 
 import type {PageMetadata as PageMetadataMojo} from '../../ai_page_content_metadata.mojom-webui.js';
-import type {AdditionalContext as AdditionalContextMojo, AdditionalContextPart as AdditionalContextPartMojo, AnnotatedPageData as AnnotatedPageDataMojo, CaptureRegionResult as CaptureRegionResultMojo, ContextData as ContextDataMojo, ConversationInfo as ConversationInfoMojo, FocusedTabData as FocusedTabDataMojo, FormFactor as FormFactorMojo, GetPinCandidatesOptions as GetPinCandidatesOptionsMojo, GetTabContextOptions as TabContextOptionsMojo, HostCapability as HostCapabilityMojo, InvokeOptions as InvokeOptionsMojo, PanelOpeningData as PanelOpeningDataMojo, PanelState as PanelStateMojo, PdfDocumentData as PdfDocumentDataMojo, PinTabsOptions as PinTabsOptionsMojo, Platform as PlatformMojo, Screenshot as ScreenshotMojo, TabContext as TabContextMojo, TabData as TabDataMojo, UnpinTabsOptions as UnpinTabsOptionsMojo, WebPageData as WebPageDataMojo, ZeroStateSuggestionsV2 as ZeroStateSuggestionsV2Mojo} from '../../glic.mojom-webui.js';
-import {MicrophoneStatus as MicrophoneStatusMojo, PinTrigger as PinTriggerMojo, UnpinTrigger as UnpinTriggerMojo, WebClientMode as WebClientModeMojo} from '../../glic.mojom-webui.js';
-import type {AdditionalContextSource, CaptureRegionResult, ConversationInfo, CredentialType, FeatureMode, FormFactor, GetPinCandidatesOptions, HostCapability, InvocationSource, PageMetadata, PanelOpeningData, PanelState, PinTabsOptions, PinTrigger, Platform, Screenshot, TabContextOptions, TaskOptions, UnpinTabsOptions, UnpinTrigger, WebPageData, ZeroStateSuggestionsV2} from '../../glic_api/glic_api.js';
+import type {AdditionalContext as AdditionalContextMojo, AdditionalContextPart as AdditionalContextPartMojo, AnnotatedPageData as AnnotatedPageDataMojo, CaptureRegionResult as CaptureRegionResultMojo, ContextData as ContextDataMojo, ConversationInfo as ConversationInfoMojo, FocusedTabData as FocusedTabDataMojo, GetPinCandidatesOptions as GetPinCandidatesOptionsMojo, GetTabContextOptions as TabContextOptionsMojo, HostCapability as HostCapabilityMojo, InvokeOptions as InvokeOptionsMojo, PanelOpeningData as PanelOpeningDataMojo, PanelState as PanelStateMojo, PdfDocumentData as PdfDocumentDataMojo, PinTabsOptions as PinTabsOptionsMojo, Screenshot as ScreenshotMojo, ScreenshotCollectionOptions as ScreenshotCollectionOptionsMojo, TabContext as TabContextMojo, TabData as TabDataMojo, UnpinTabsOptions as UnpinTabsOptionsMojo, WebPageData as WebPageDataMojo, ZeroStateSuggestionsV2 as ZeroStateSuggestionsV2Mojo} from '../../glic.mojom-webui.js';
+import {MicrophoneStatus as MicrophoneStatusMojo, PinTrigger as PinTriggerMojo, ScreenshotCompressionQuality as ScreenshotCompressionQualityMojo, ScreenshotImageFormat as ScreenshotImageFormatMojo, UnpinTrigger as UnpinTriggerMojo, WebClientMode as WebClientModeMojo} from '../../glic.mojom-webui.js';
+import type {CaptureRegionResult, ConversationInfo, GetPinCandidatesOptions, HostCapability, PageMetadata, PanelOpeningData, PanelState, PinTabsOptions, PinTrigger, Screenshot, ScreenshotCollectionOptions, TabContextOptions, TaskOptions, UnpinTabsOptions, UnpinTrigger, WebPageData, ZeroStateSuggestionsV2} from '../../glic_api/glic_api.js';
 import {DEFAULT_INNER_TEXT_BYTES_LIMIT, DEFAULT_PDF_SIZE_LIMIT, MicrophoneStatus, WebClientMode} from '../../glic_api/glic_api.js';
+import {enumFromClient, enumToClient} from '../enum_conversions.js';
 
-import type {ConfirmationRequestErrorReason as ConfirmationRequestErrorReasonMojo, CredentialType as CredentialTypeMojo, NavigationConfirmationRequest as NavigationConfirmationRequestMojo, NavigationConfirmationResponse as NavigationConfirmationResponseMojo, SelectAutofillSuggestionsDialogErrorReason as SelectAutofillSuggestionsDialogErrorReasonMojo, SelectAutofillSuggestionsDialogRequest as SelectAutofillSuggestionsDialogRequestMojo, SelectAutofillSuggestionsDialogResponse as SelectAutofillSuggestionsDialogResponseMojo, SelectCredentialDialogErrorReason as SelectCredentialDialogErrorReasonMojo, SelectCredentialDialogRequest as SelectCredentialDialogRequestMojo, SelectCredentialDialogResponse as SelectCredentialDialogResponseMojo, TaskOptions as TaskOptionsMojo, UserConfirmationDialogRequest as UserConfirmationDialogRequestMojo, UserConfirmationDialogResponse as UserConfirmationDialogResponseMojo, UserGrantedPermissionDuration as UserGrantedPermissionDurationMojo} from './../../actor_webui.mojom-webui.js';
+import type {ConfirmationRequestErrorReason as ConfirmationRequestErrorReasonMojo, NavigationConfirmationRequest as NavigationConfirmationRequestMojo, NavigationConfirmationResponse as NavigationConfirmationResponseMojo, SelectAutofillSuggestionsDialogErrorReason as SelectAutofillSuggestionsDialogErrorReasonMojo, SelectAutofillSuggestionsDialogRequest as SelectAutofillSuggestionsDialogRequestMojo, SelectAutofillSuggestionsDialogResponse as SelectAutofillSuggestionsDialogResponseMojo, SelectCredentialDialogErrorReason as SelectCredentialDialogErrorReasonMojo, SelectCredentialDialogRequest as SelectCredentialDialogRequestMojo, SelectCredentialDialogResponse as SelectCredentialDialogResponseMojo, TaskOptions as TaskOptionsMojo, UserConfirmationDialogRequest as UserConfirmationDialogRequestMojo, UserConfirmationDialogResponse as UserConfirmationDialogResponseMojo, UserGrantedPermissionDuration as UserGrantedPermissionDurationMojo} from './../../actor_webui.mojom-webui.js';
 import {replaceProperties} from './../conversions.js';
 import type {ResponseExtras} from './../post_message_transport.js';
 import type {AdditionalContextPartPrivate, AdditionalContextPrivate, AnnotatedPageDataPrivate, FocusedTabDataPrivate, InvokeOptionsPrivate, NavigationConfirmationRequestPrivate, NavigationConfirmationResponsePrivate, PdfDocumentDataPrivate, ResumeActorTaskResultPrivate, RgbaImage, SelectAutofillSuggestionsDialogRequestPrivate, SelectAutofillSuggestionsDialogResponsePrivate, SelectCredentialDialogRequestPrivate, SelectCredentialDialogResponsePrivate, TabContextResultPrivate, TabDataPrivate, UserConfirmationDialogRequestPrivate, UserConfirmationDialogResponsePrivate} from './../request_types.js';
 import {ImageAlphaType, ImageColorType} from './../request_types.js';
-
 
 export function idToClient(windowId: number): string;
 export function idToClient(windowId: number|null): string|undefined;
@@ -286,7 +286,7 @@ export function panelOpeningDataToClient(
       conversationInfoToClient(panelOpeningData.conversationInfo);
   return {
     panelState: panelStateToClient(panelOpeningData.panelState),
-    invocationSource: panelOpeningData.invocationSource as number,
+    invocationSource: enumToClient(panelOpeningData.invocationSource),
     conversationId: conversationInfo?.conversationId || undefined,
     promptSuggestion: optionalToClient(panelOpeningData.promptSuggestion),
     autoSend: panelOpeningData.autoSend && !!panelOpeningData.promptSuggestion,
@@ -324,7 +324,7 @@ export function conversationInfoFromClient(conversationInfo: ConversationInfo):
 
 export function panelStateToClient(panelState: PanelStateMojo): PanelState {
   return {
-    kind: panelState.kind as number,
+    kind: enumToClient(panelState.kind),
     windowId: idToClient(panelState.windowId),
   };
 }
@@ -397,7 +397,8 @@ export function tabContextOptionsFromClient(options: TabContextOptions):
     includeInnerText: options.innerText ?? false,
     innerTextBytesLimit:
         options.innerTextBytesLimit ?? DEFAULT_INNER_TEXT_BYTES_LIMIT,
-    includeViewportScreenshot: options.viewportScreenshot ?? false,
+    includeViewportScreenshot: options.viewportScreenshot === true ||
+        options.screenshotCollectionOptions !== undefined,
     includePdf: options.pdfData ?? false,
     includeAnnotatedPageContent: options.annotatedPageContent ?? false,
     maxMetaTags: options.maxMetaTags ?? 0,
@@ -407,6 +408,8 @@ export function tabContextOptionsFromClient(options: TabContextOptions):
     annotatedPageContentMode: options.annotatedPageContentMode === undefined ?
         0 :
         options.annotatedPageContentMode,
+    screenshotCollectionOptions: screenshotCollectionOptionsFromClient(
+        options.screenshotCollectionOptions),
   };
 }
 
@@ -456,15 +459,7 @@ export function byteArrayFromClient(buffer: ArrayBuffer): number[] {
 
 export function hostCapabilitiesToClient(capabilities: HostCapabilityMojo[]):
     HostCapability[] {
-  return capabilities.map(capability => capability as number as HostCapability);
-}
-
-export function platformToClient(platform: PlatformMojo): Platform {
-  return platform as number as Platform;
-}
-
-export function formFactorToClient(formFactor: FormFactorMojo): FormFactor {
-  return formFactor as number as FormFactor;
+  return capabilities.map(capability => enumToClient(capability));
 }
 
 export function selectCredentialDialogResponseToMojo(
@@ -488,11 +483,6 @@ export function selectCredentialDialogResponseToMojo(
       };
 }
 
-function credentialTypeToClient(credentialType: CredentialTypeMojo):
-    CredentialType {
-  return credentialType as number as CredentialType;
-}
-
 export function selectCredentialDialogRequestToClient(
     request: SelectCredentialDialogRequestMojo):
     SelectCredentialDialogRequestPrivate {
@@ -511,7 +501,7 @@ export function selectCredentialDialogRequestToClient(
         credential => ({
           ...credential,
           requestOrigin: originToClient(credential.requestOrigin),
-          type: credentialTypeToClient(credential.type),
+          type: enumToClient(credential.type),
         })),
     icons,
   };
@@ -662,21 +652,20 @@ export function zeroStateSuggestionsToClient(
   return {
     suggestions: zeroStateSuggestions.suggestions,
     isPending: zeroStateSuggestions.isPending,
-    invocationSource: zeroStateSuggestions.invocationSource as number as
-        InvocationSource,
+    invocationSource: enumToClient(zeroStateSuggestions.invocationSource),
   };
 }
 
 export function invokeOptionsToClient(
     options: InvokeOptionsMojo, extras: ResponseExtras): InvokeOptionsPrivate {
   return {
-    invocationSource: options.invocationSource as number as InvocationSource,
+    invocationSource: enumToClient(options.invocationSource),
     prompts: options.prompts || undefined,
     context: options.context ?
         additionalContextToClient(options.context, extras) :
         undefined,
     autoSubmit: options.autoSubmit,
-    featureMode: options.featureMode as number as FeatureMode,
+    featureMode: enumToClient(options.featureMode),
     disableZeroStateSuggestions: options.disableZeroStateSuggestions,
     skillId: options.skillId || undefined,
   };
@@ -697,7 +686,7 @@ export function additionalContextToClient(
   }
 
   return {
-    source: context.source as number as AdditionalContextSource,
+    source: enumToClient(context.source),
     name: context.name || undefined,
     tabId: idToClient(context.tabId),
     origin: context.origin ? originToClient(context.origin) : undefined,
@@ -738,4 +727,19 @@ export function additionalContextPartToClient(
     }
   }
   return result;
+}
+
+export function screenshotCollectionOptionsFromClient(
+    options: ScreenshotCollectionOptions|
+    undefined): ScreenshotCollectionOptionsMojo {
+  return {
+    maxWidth: options?.maxWidth ?? 0,
+    maxHeight: options?.maxHeight ?? 0,
+    screenshotImageFormat: options?.screenshotImageFormat ?
+        enumFromClient(options.screenshotImageFormat) :
+        ScreenshotImageFormatMojo.kJpeg,
+    screenshotCompressionQuality: options?.screenshotCompressionQuality ?
+        enumFromClient(options.screenshotCompressionQuality) :
+        ScreenshotCompressionQualityMojo.kMedium,
+  };
 }

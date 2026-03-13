@@ -259,6 +259,12 @@ public class WebContentsAccessibilityTreeTest {
 
     @Test
     @SmallTest
+    public void test_ariaAccordion() {
+        performAriaTest("aria-accordion.html");
+    }
+
+    @Test
+    @SmallTest
     public void test_ariaAlertdialog() {
         performAriaTest("aria-alertdialog.html");
     }
@@ -297,6 +303,12 @@ public class WebContentsAccessibilityTreeTest {
     @SmallTest
     public void test_ariaBanner() {
         performAriaTest("aria-banner.html");
+    }
+
+    @Test
+    @SmallTest
+    public void test_ariaBreadcrumb() {
+        performAriaTest("aria-breadcrumb.html");
     }
 
     @Test

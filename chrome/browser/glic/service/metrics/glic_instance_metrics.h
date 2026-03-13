@@ -185,8 +185,10 @@ class GlicInstanceMetrics : public GlicInstanceMetricsBackwardsCompatibility {
   // Called when the floaty is hidden.
   void OnFloatyClosed();
 
+  enum class CloseReason { kExplicitlyClosed, kTabSwitched };
+
   // Called when the side panel is closed.
-  void OnSidePanelClosed(tabs::TabInterface* tab);
+  void OnSidePanelClosed(tabs::TabInterface* tab, CloseReason reason);
 
   // Called when an embedder is unbound from this instance.
   void OnUnbindEmbedder(EmbedderKey key);
@@ -311,6 +313,9 @@ class GlicInstanceMetrics : public GlicInstanceMetricsBackwardsCompatibility {
   // Called by the session manager when it starts and ends.
   void OnSessionStarted();
   void OnSessionFinished();
+
+  // Called when the instance is opened from a closed state.
+  void OnOpen(glic::mojom::InvocationSource source, const ShowOptions& options);
 
   void OnPinnedTabsChanged(
       const std::vector<content::WebContents*>& pinned_contents);

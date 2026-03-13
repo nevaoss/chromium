@@ -553,6 +553,7 @@
 #include "chrome/browser/web_applications/locks/app_lock.h"
 #include "chrome/browser/web_applications/policy/web_app_policy_manager.h"
 #include "chrome/browser/web_applications/proto/web_app_install_state.pb.h"
+#include "chrome/browser/web_applications/web_app_filter.h"
 #include "chrome/browser/web_applications/web_app_helpers.h"
 #include "chrome/browser/web_applications/web_app_provider.h"
 #include "chrome/browser/web_applications/web_app_registrar.h"
@@ -876,6 +877,56 @@ bool IsAutoplayAllowedByPolicy(content::WebContents* contents,
                                      prefs::kAutoplayAllowlist,
                                      prefs::kAutoplayAllowed);
 }
+
+blink::mojom::AutoplayPolicy DetermineWebContentsAutoplayPolicy(
+    content::WebContents* web_contents,
+    blink::mojom::AutoplayPolicy current_policy) {
+  Profile* profile =
+      Profile::FromBrowserContext(web_contents->GetBrowserContext());
+  PrefService* prefs = profile->GetPrefs();
+
+  if (IsAutoplayAllowedByPolicy(web_contents, prefs)) {
+    return blink::mojom::AutoplayPolicy::kNoUserGestureRequired;
+  }
+
+  // If we can show a setting to disable autoplay policy and are currently set
+  // to `kDocumentUserActivationRequired`, return the user preference.
+  if (base::FeatureList::IsEnabled(media::kAutoplayDisableSettings) &&
+      current_policy ==
+          blink::mojom::AutoplayPolicy::kDocumentUserActivationRequired) {
+    return UnifiedAutoplayConfig::ShouldBlockAutoplay(profile)
+               ? blink::mojom::AutoplayPolicy::kDocumentUserActivationRequired
+               : blink::mojom::AutoplayPolicy::kNoUserGestureRequired;
+  }
+
+  // If the domain policy allows autoplay and has delegated that to an iframe,
+  // allow autoplay within the iframe. Only allow a nesting of single depth.
+  if (web_contents->GetPrimaryMainFrame()->IsFeatureEnabled(
+          network::mojom::PermissionsPolicyFeature::kAutoplay) &&
+      IsAutoplayAllowedByPolicy(web_contents->GetOuterWebContents(), prefs)) {
+    return blink::mojom::AutoplayPolicy::kNoUserGestureRequired;
+  }
+
+  // Allow Autoplay if the user provided mic/cam access. This is for cases such
+  // as received-video-call rings occurring before the user interacted with the
+  // page.
+  if (base::FeatureList::IsEnabled(media::kAutoplayBypassForMicCamera)) {
+    const HostContentSettingsMap* const content_settings =
+        HostContentSettingsMapFactory::GetForProfile(profile);
+    const GURL& url = web_contents->GetLastCommittedURL();
+
+    if (content_settings->GetContentSetting(
+            url, url, ContentSettingsType::MEDIASTREAM_MIC) ==
+            CONTENT_SETTING_ALLOW ||
+        content_settings->GetContentSetting(
+            url, url, ContentSettingsType::MEDIASTREAM_CAMERA) ==
+            CONTENT_SETTING_ALLOW) {
+      return blink::mojom::AutoplayPolicy::kNoUserGestureRequired;
+    }
+  }
+
+  return current_policy;
+}
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 blink::mojom::AutoplayPolicy GetAutoplayPolicyForWebContents(
@@ -899,28 +950,7 @@ blink::mojom::AutoplayPolicy GetAutoplayPolicyForWebContents(
   }
 
 #if !BUILDFLAG(IS_ANDROID)
-  Profile* profile =
-      Profile::FromBrowserContext(web_contents->GetBrowserContext());
-  PrefService* prefs = profile->GetPrefs();
-
-  // Override autoplay policy used in internal switch in case of enabling
-  // features such as policy, allowlisting or disabling from settings.
-  if (IsAutoplayAllowedByPolicy(web_contents, prefs)) {
-    result = blink::mojom::AutoplayPolicy::kNoUserGestureRequired;
-  } else if (base::FeatureList::IsEnabled(media::kAutoplayDisableSettings) &&
-             result == blink::mojom::AutoplayPolicy::
-                           kDocumentUserActivationRequired) {
-    result = UnifiedAutoplayConfig::ShouldBlockAutoplay(profile)
-                 ? blink::mojom::AutoplayPolicy::kDocumentUserActivationRequired
-                 : blink::mojom::AutoplayPolicy::kNoUserGestureRequired;
-  } else if (web_contents->GetPrimaryMainFrame()->IsFeatureEnabled(
-                 network::mojom::PermissionsPolicyFeature::kAutoplay) &&
-             IsAutoplayAllowedByPolicy(web_contents->GetOuterWebContents(),
-                                       prefs)) {
-    // If the domain policy allows autoplay and has delegated that to an iframe,
-    // allow autoplay within the iframe. Only allow a nesting of single depth.
-    result = blink::mojom::AutoplayPolicy::kNoUserGestureRequired;
-  }
+  result = DetermineWebContentsAutoplayPolicy(web_contents, result);
 #else   // !BUILDFLAG(IS_ANDROID)
   // TWAs don't require a user gesture for unmuted autoplay.
   if (base::FeatureList::IsEnabled(features::kAllowUnmutedAutoplayForTWA)) {
@@ -1823,11 +1853,18 @@ void ChromeContentBrowserClient::OnRendererProcessLockedStateUpdated(
   if (!base::FeatureList::IsEnabled(features::kInstantUsesSpareRenderer)) {
     return;
   }
-  chrome::mojom::StaticParamsPtr params = chrome::mojom::StaticParams::New();
   Profile* profile = Profile::FromBrowserContext(host->GetBrowserContext());
-  if (search::ShouldAssignURLToInstantRenderer(site_url, profile)) {
-    params->is_instant_process = true;
+  const bool is_instant_process =
+      search::ShouldAssignURLToInstantRenderer(site_url, profile);
+  if (is_instant_process) {
+    // Grant commit scheme access to chrome-search for instant processes.
+    // Browser-side enforcement ensures non-instant processes cannot access
+    // chrome-search URLs.
+    content::ChildProcessSecurityPolicy::GetInstance()->GrantCommitScheme(
+        host->GetDeprecatedID(), chrome::kChromeSearchScheme);
   }
+  chrome::mojom::StaticParamsPtr params = chrome::mojom::StaticParams::New();
+  params->is_instant_process = is_instant_process;
   auto renderer_configuration = GetRendererConfiguration(host);
   renderer_configuration->SetConfigurationOnProcessLockUpdate(
       std::move(params));
@@ -4702,9 +4739,8 @@ void ChromeContentBrowserClient::OverrideWebPreferences(
         const webapps::AppId& app_id = browser->app_controller()->app_id();
         const web_app::WebAppRegistrar& registrar =
             web_app_provider->registrar_unsafe();
-        if (registrar.IsInstallState(
-                app_id, {web_app::proto::INSTALLED_WITH_OS_INTEGRATION,
-                         web_app::proto::INSTALLED_WITHOUT_OS_INTEGRATION})) {
+        if (registrar.AppMatches(app_id,
+                                 web_app::WebAppFilter::InstalledInChrome())) {
           web_prefs->web_app_scope = registrar.GetAppScope(app_id);
         }
 
@@ -6508,7 +6544,7 @@ ChromeContentBrowserClient::WillCreateURLLoaderRequestInterceptors(
 
 content::ContentBrowserClient::URLLoaderRequestHandler
 ChromeContentBrowserClient::
-    CreateURLLoaderHandlerForServiceWorkerNavigationPreload(
+    CreateURLLoaderHandlerForServiceWorkerInitiatedNavigationRequest(
         content::FrameTreeNodeId frame_tree_node_id,
         const network::ResourceRequest& resource_request) {
   SearchPrefetchURLLoader::RequestHandler prefetch_handler =
@@ -8707,9 +8743,8 @@ void ChromeContentBrowserClient::QueryInstalledWebAppsByManifestId(
                                          .Set("manifest_id", manifest_id.spec())
                                          .Set("frame_url", frame_url.spec()));
 
-            if (!lock.registrar().IsInstallState(
-                    app_id, {web_app::proto::INSTALLED_WITHOUT_OS_INTEGRATION,
-                             web_app::proto::INSTALLED_WITH_OS_INTEGRATION})) {
+            if (!lock.registrar().AppMatches(
+                    app_id, web_app::WebAppFilter::InstalledInChrome())) {
               debug_value.Set("did_find_application", false);
               return std::nullopt;
             }

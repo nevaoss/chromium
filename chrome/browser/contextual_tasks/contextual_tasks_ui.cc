@@ -205,7 +205,9 @@ void AddZeroStateStrings(content::WebUIDataSource* source, Profile* profile) {
 }
 
 ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
-    : ui::MojoWebUIController(web_ui),
+    : ui::MojoWebUIController(web_ui,
+                              /*enable_chrome_send=*/false,
+                              /*enable_chrome_histograms=*/true),
       ui_service_(contextual_tasks::ContextualTasksUiServiceFactory::
                       GetForBrowserContext(
                           web_ui->GetWebContents()->GetBrowserContext())),
@@ -416,9 +418,14 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
                        ","));
 
   // Expand button experiment state.
-  source->AddBoolean("expandButtonEnabled",
+  source->AddBoolean(
+      "expandButtonEnabled",
+      contextual_tasks::GetExpandButtonOption() ==
+          contextual_tasks::ExpandButtonOption::kSidePanelExpandButton);
+
+  source->AddBoolean("caretAnimationEnabled",
                      base::FeatureList::IsEnabled(
-                         contextual_tasks::kContextualTasksExpandButton));
+                         contextual_tasks::kContextualTasksAnimatedCaret));
 
   // Set up chrome://contextual-tasks/internals debug UI.
   source->AddResourcePath(
@@ -541,6 +548,11 @@ void ContextualTasksUI::SetIsAiPage(bool is_ai_page) {
     }
   }
   was_ai_page_ = is_ai_page;
+
+  auto* panel_controller = GetPanelController();
+  if (panel_controller) {
+    panel_controller->NotifyExpandToFullTabStateChanged();
+  }
 }
 
 const GURL& ContextualTasksUI::GetInnerFrameUrl() const {
@@ -591,6 +603,11 @@ bool ContextualTasksUIConfig::IsWebUIEnabled(
   return base::FeatureList::IsEnabled(contextual_tasks::kContextualTasks);
 }
 
+bool ContextualTasksUIConfig::ShouldCrashOnJavascriptErrorInDevelopmentBuild()
+    const {
+  return true;
+}
+
 std::unique_ptr<content::WebUIController>
 ContextualTasksUIConfig::CreateWebUIController(content::WebUI* web_ui,
                                                const GURL& url) {
@@ -617,7 +634,7 @@ void ContextualTasksUI::CreatePageHandler(
       base::BindRepeating(
           &ContextualTasksUI::GetOrCreateContextualSessionHandle,
           base::Unretained(this)),
-      base::BindRepeating(&ContextualTasksUI::GetInputStateModel,
+      base::BindRepeating(&ContextualTasksUI::TakeInputStateModel,
                           base::Unretained(this)));
   composebox_handler_->SetPage(std::move(pending_searchbox_page));
 }
@@ -674,7 +691,7 @@ ContextualTasksUI::GetOrCreateContextualSessionHandle() {
 }
 
 std::unique_ptr<contextual_search::InputStateModel>
-ContextualTasksUI::GetInputStateModel() {
+ContextualTasksUI::TakeInputStateModel() {
   if (!task_id_.has_value()) {
     return nullptr;
   }
@@ -683,7 +700,18 @@ ContextualTasksUI::GetInputStateModel() {
   auto* helper = ContextualSearchWebContentsHelper::GetOrCreateForWebContents(
       web_contents);
 
-  return helper->GetInputStateModelForTask(task_id_.value());
+  return helper->TakeInputStateModelForTask(task_id_.value());
+}
+
+void ContextualTasksUI::MoveTaskUiToNewTab() {
+  auto* browser = GetBrowser();
+  if (!task_id_.has_value()) {
+    LOG(ERROR) << "Attempted to open in new tab with no valid task ID.";
+    return;
+  }
+
+  ui_service_->MoveTaskUiToNewTab(task_id_.value(), browser,
+                                  GetInnerFrameUrl());
 }
 
 void ContextualTasksUI::PostMessageToWebview(
@@ -909,6 +937,10 @@ bool ContextualTasksUI::IsActiveTabContextSuggestionShowing() const {
 void ContextualTasksUI::PushTaskDetailsToPage() {
   page_->SetTaskDetails(task_id_.value_or(base::Uuid()),
                         thread_id_.value_or(""), thread_turn_id_.value_or(""));
+}
+
+bool ContextualTasksUI::CanExpandToFullTab() const {
+  return was_ai_page_;
 }
 
 mojo::Remote<contextual_tasks::mojom::Page>&

@@ -11,6 +11,7 @@
 #include <utility>
 
 #include "base/containers/flat_set.h"
+#include "base/debug/dump_without_crashing.h"
 #include "base/feature_list.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
@@ -5285,6 +5286,33 @@ TEST_F(SqlPersistentStoreTest, ResumePendingEvictionInternalNotFound) {
   EXPECT_FALSE(store_->HasPendingEviction());
 }
 
+// Regression test for crbug.com/488877236.
+TEST_F(SqlPersistentStoreTest, ResumePendingEvictionDoomedEntry) {
+  const int64_t kMaxBytes = 100 * 1024;
+  CreateStore(kMaxBytes);
+  ASSERT_EQ(Init(), SqlPersistentStore::Error::kOk);
+
+  const int kEntrySize = 1024;
+  const int kNumEntries = 100;
+  std::vector<SqlPersistentStore::ResId> res_ids;
+  PopulateCache(kNumEntries, kEntrySize, &res_ids);
+
+  // Setup pause.
+  StartAndPauseEviction();
+
+  // Doom an entry that is likely to be next in eviction.
+  CacheEntryKey existing_key;
+  int index;
+  FindNextEntryToEvict(kNumEntries, existing_key, index);
+  ASSERT_EQ(DoomEntry(existing_key, res_ids[index]),
+            SqlPersistentStore::Error::kOk);
+
+  // Resume eviction. This would have previously triggered the DCHECK failure
+  // because the entry count was double-decremented.
+  ASSERT_EQ(StartEviction({}, false), SqlPersistentStore::Error::kOk);
+  EXPECT_FALSE(store_->HasPendingEviction());
+}
+
 TEST_F(SqlPersistentStoreTest,
        ResumeEvictionWithMultipleShardsBiasedToShardZero) {
   // Add another task runner to enable multiple shards.
@@ -5804,5 +5832,85 @@ TEST_F(SqlPersistentStoreTest, StartEvictionPrioritizesHighPriorityEntries) {
   }
   EXPECT_EQ(gone_count, 1);
 }
+
+#if DCHECK_IS_ON()
+TEST_F(SqlPersistentStoreTest, DetectAndFixEntryCountMetadataInconsistency) {
+  CreateAndCloseInitializedStore();
+
+  // Manually set the entry count to 1 to cause an inconsistency
+  // (the actual entry count is 0).
+  {
+    auto db_handle = ManuallyOpenDatabase();
+    auto meta_table = ManuallyOpenMetaTable(db_handle.get());
+    ASSERT_TRUE(meta_table->SetValue(kSqlBackendMetaTableKeyEntryCount, 1));
+  }
+
+  // Re-open the store.
+  CreateStore();
+  ASSERT_EQ(Init(), SqlPersistentStore::Error::kOk);
+
+  // The store loads the incorrect metadata.
+  EXPECT_EQ(GetEntryCount(), 1);
+
+  // Set up the DumpWithoutCrashing callback.
+  static bool g_dump_called = false;
+  base::debug::SetDumpWithoutCrashingFunction([]() { g_dump_called = true; });
+
+  // Trigger a transaction that updates the store status.
+  const CacheEntryKey kKey("my-key");
+  CreateEntryAndGetResId(kKey);
+
+  // DumpWithoutCrashing should have been called due to the inconsistency.
+  EXPECT_TRUE(g_dump_called);
+
+  // The metadata should be corrected to 1.
+  // We added 1 entry to an actually empty database.
+  EXPECT_EQ(GetEntryCount(), 1);
+
+  // Clean up the callback and the throttling.
+  base::debug::SetDumpWithoutCrashingFunction(nullptr);
+  base::debug::ResetDumpWithoutCrashingThrottlingForTesting();
+}
+
+TEST_F(SqlPersistentStoreTest, DetectAndFixTotalSizeMetadataInconsistency) {
+  CreateAndCloseInitializedStore();
+
+  // Manually set the total size to 1000 to cause an inconsistency
+  // (the actual total size is 0).
+  {
+    auto db_handle = ManuallyOpenDatabase();
+    auto meta_table = ManuallyOpenMetaTable(db_handle.get());
+    ASSERT_TRUE(meta_table->SetValue(kSqlBackendMetaTableKeyTotalSize, 1000));
+  }
+
+  // Re-open the store.
+  CreateStore();
+  ASSERT_EQ(Init(), SqlPersistentStore::Error::kOk);
+
+  // The store loads the incorrect metadata.
+  EXPECT_EQ(GetSizeOfAllEntries(), 1000);
+
+  // Set up the DumpWithoutCrashing callback.
+  static bool g_dump_called = false;
+  base::debug::SetDumpWithoutCrashingFunction([]() { g_dump_called = true; });
+
+  // Trigger a transaction that updates the store status.
+  const CacheEntryKey kKey("my-key");
+  CreateEntryAndGetResId(kKey);
+
+  // DumpWithoutCrashing should have been called due to the inconsistency.
+  EXPECT_TRUE(g_dump_called);
+
+  // The metadata should be corrected to the actual size.
+  // We added 1 entry to an actually empty database.
+  // Total size is just the static resource size + key size.
+  EXPECT_EQ(GetSizeOfAllEntries(),
+            kSqlBackendStaticResourceSize + kKey.string().size());
+
+  // Clean up the callback and the throttling.
+  base::debug::SetDumpWithoutCrashingFunction(nullptr);
+  base::debug::ResetDumpWithoutCrashingThrottlingForTesting();
+}
+#endif  // DCHECK_IS_ON()
 
 }  // namespace disk_cache

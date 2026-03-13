@@ -16,7 +16,6 @@
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/commerce/discounts_bubble_dialog_view.h"
 #include "chrome/browser/ui/views/commerce/discounts_coupon_code_label_view.h"
-#include "chrome/browser/ui/views/commerce/discounts_icon_view.h"
 #include "chrome/browser/ui/views/controls/subpage_view.h"
 #include "chrome/browser/ui/views/interaction/browser_elements_views.h"
 #include "chrome/browser/ui/views/location_bar/icon_label_bubble_view.h"
@@ -36,8 +35,10 @@
 #include "net/test/embedded_test_server/embedded_test_server.h"
 #include "services/metrics/public/cpp/ukm_builders.h"
 #include "ui/base/clipboard/clipboard.h"
+#include "ui/base/clipboard/test/clipboard_test_util.h"
 #include "ui/base/interaction/interactive_test.h"
 #include "ui/base/l10n/l10n_util.h"
+#include "ui/base/ui_base_features.h"
 #include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/controls/button/md_text_button.h"
 #include "ui/views/controls/styled_label.h"
@@ -61,7 +62,6 @@ struct TestData {
   std::string name;
   commerce::DiscountClusterType type;
   std::optional<base::test::FeatureRefAndParams> enabled_feature;
-  bool page_action_migration_enabled;
 };
 
 std::string GetTestParamName(const ::testing::TestParamInfo<TestData>& info) {
@@ -79,18 +79,14 @@ class DiscountsInteractiveTest
          {{commerce::kMerchantWideBehaviorParam, "2"},
           {commerce::kNonMerchantWideBehaviorParam, "2"}}}};
 
-    enabled_features.push_back(
-        {features::kPageActionsMigration,
-         {{features::kPageActionsMigrationDiscounts.name,
-           GetParam().page_action_migration_enabled ? "true" : "false"}}});
-
     if (GetParam().enabled_feature.has_value()) {
       enabled_features.emplace_back(GetParam().enabled_feature.value());
     }
 
     feature_list_.InitWithFeaturesAndParameters(
         enabled_features,
-        /*disabled_features=*/{commerce::kPriceInsights});
+        /*disabled_features=*/{commerce::kPriceInsights,
+                               features::kNonBlockingOsClipboardReads});
   }
 
   void SetUp() override {
@@ -134,12 +130,6 @@ class DiscountsInteractiveTest
 
   using PageActionInteractiveTestMixin::WaitForPageActionButtonVisible;
 
-  auto WaitForPageActionButtonVisible() {
-    MultiStep steps;
-    steps += WaitForPageActionButtonVisible(kActionCommerceDiscounts);
-    return steps;
-  }
-
   commerce::DiscountClusterType test_discount_cluster_type_;
 
  private:
@@ -181,38 +171,19 @@ INSTANTIATE_TEST_SUITE_P(
     DiscountsIconViewInteractiveTest,
     testing::Values(
         TestData{
-            .name = "OfferLevelDiscountsWithPageActionsMigrationDisabled",
+            .name = "OfferLevelDiscounts",
             .type = commerce::DiscountClusterType::kOfferLevel,
             .enabled_feature =
                 std::make_optional<base::test::FeatureRefAndParams>(
                     {commerce::kEnableDiscountInfoApi, {}}),
-            .page_action_migration_enabled = false,
         },
         TestData{
-            .name = "OfferLevelDiscountsWithPageActionsMigrationEnabled",
-            .type = commerce::DiscountClusterType::kOfferLevel,
-            .enabled_feature =
-                std::make_optional<base::test::FeatureRefAndParams>(
-                    {commerce::kEnableDiscountInfoApi, {}}),
-            .page_action_migration_enabled = true,
-        },
-        TestData{
-            .name = "PageLevelDiscountsWithPageActionsMigrationDisabled",
+            .name = "PageLevelDiscounts",
             .type = commerce::DiscountClusterType::kPageLevel,
             .enabled_feature =
                 std::make_optional<base::test::FeatureRefAndParams>(
                     {commerce::kEnableDiscountInfoApi,
                      {{commerce::kDiscountOnShoppyPageParam, "true"}}}),
-            .page_action_migration_enabled = false,
-        },
-        TestData{
-            .name = "PageLevelDiscountsWithPageActionsMigrationEnabled",
-            .type = commerce::DiscountClusterType::kPageLevel,
-            .enabled_feature =
-                std::make_optional<base::test::FeatureRefAndParams>(
-                    {commerce::kEnableDiscountInfoApi,
-                     {{commerce::kDiscountOnShoppyPageParam, "true"}}}),
-            .page_action_migration_enabled = true,
         }),
     GetTestParamName);
 
@@ -222,7 +193,7 @@ IN_PROC_BROWSER_TEST_P(DiscountsIconViewInteractiveTest,
       InstrumentTab(kShoppingTab),
       NavigateWebContents(kShoppingTab,
                           embedded_test_server()->GetURL(kShoppingURL)),
-      WaitForPageActionButtonVisible(),
+      WaitForPageActionButtonVisible(kActionCommerceDiscounts),
       EnsureNotPresent(kDiscountsBubbleDialogId),
       PressButton(kDiscountsChipElementId),
       WaitForShow(kDiscountsBubbleDialogId));
@@ -236,7 +207,7 @@ IN_PROC_BROWSER_TEST_P(DiscountsIconViewInteractiveTest,
       InstrumentTab(kShoppingTab),
       NavigateWebContents(kShoppingTab,
                           embedded_test_server()->GetURL(kShoppingURL)),
-      WaitForPageActionButtonVisible(),
+      WaitForPageActionButtonVisible(kActionCommerceDiscounts),
       EnsureNotPresent(kDiscountsBubbleDialogId),
       PressButton(kDiscountsChipElementId), Do([&]() {
         histogram_tester.ExpectBucketCount(
@@ -267,7 +238,7 @@ IN_PROC_BROWSER_TEST_P(DiscountsIconViewInteractiveTest,
       InstrumentTab(kShoppingTab),
       NavigateWebContents(kShoppingTab,
                           embedded_test_server()->GetURL(kShoppingURL)),
-      WaitForPageActionButtonVisible(),
+      WaitForPageActionButtonVisible(kActionCommerceDiscounts),
       EnsureNotPresent(kDiscountsBubbleDialogId),
       PressButton(kDiscountsChipElementId), Do([&]() {
         entries = test_ukm_recorder.GetEntriesByName(
@@ -303,7 +274,7 @@ IN_PROC_BROWSER_TEST_P(DiscountsIconViewInteractiveTest,
       InstrumentTab(kShoppingTab),
       NavigateWebContents(kShoppingTab,
                           embedded_test_server()->GetURL(kShoppingURL)),
-      WaitForPageActionButtonVisible(),
+      WaitForPageActionButtonVisible(kActionCommerceDiscounts),
       EnsureNotPresent(kDiscountsBubbleDialogId),
       PressButton(kDiscountsChipElementId), Check([&]() {
         return user_action_tester.GetActionCount(
@@ -338,38 +309,19 @@ INSTANTIATE_TEST_SUITE_P(
     DiscountsBubbleDialogInteractiveTest,
     testing::Values(
         TestData{
-            .name = "OfferLevelDiscountsWithPageActionsMigrationDisabled",
+            .name = "OfferLevelDiscounts",
             .type = commerce::DiscountClusterType::kOfferLevel,
             .enabled_feature =
                 std::make_optional<base::test::FeatureRefAndParams>(
                     {commerce::kEnableDiscountInfoApi, {}}),
-            .page_action_migration_enabled = false,
         },
         TestData{
-            .name = "OfferLevelDiscountsWithPageActionsMigrationEnabled",
-            .type = commerce::DiscountClusterType::kOfferLevel,
-            .enabled_feature =
-                std::make_optional<base::test::FeatureRefAndParams>(
-                    {commerce::kEnableDiscountInfoApi, {}}),
-            .page_action_migration_enabled = true,
-        },
-        TestData{
-            .name = "PageLevelDiscountsWithPageActionsMigrationDisabled",
+            .name = "PageLevelDiscounts",
             .type = commerce::DiscountClusterType::kPageLevel,
             .enabled_feature =
                 std::make_optional<base::test::FeatureRefAndParams>(
                     {commerce::kEnableDiscountInfoApi,
                      {{commerce::kDiscountOnShoppyPageParam, "true"}}}),
-            .page_action_migration_enabled = false,
-        },
-        TestData{
-            .name = "PageLevelDiscountsWithPageActionsMigrationEnabled",
-            .type = commerce::DiscountClusterType::kPageLevel,
-            .enabled_feature =
-                std::make_optional<base::test::FeatureRefAndParams>(
-                    {commerce::kEnableDiscountInfoApi,
-                     {{commerce::kDiscountOnShoppyPageParam, "true"}}}),
-            .page_action_migration_enabled = true,
         }),
     GetTestParamName);
 
@@ -379,14 +331,15 @@ IN_PROC_BROWSER_TEST_P(DiscountsBubbleDialogInteractiveTest,
       InstrumentTab(kShoppingTab),
       NavigateWebContents(kShoppingTab,
                           embedded_test_server()->GetURL(kShoppingURL)),
-      WaitForPageActionButtonVisible(), PressButton(kDiscountsChipElementId),
+      WaitForPageActionButtonVisible(kActionCommerceDiscounts),
+      PressButton(kDiscountsChipElementId),
       WaitForShow(kDiscountsBubbleDialogId),
       InSameContext(
           PressButton(kDiscountsBubbleCopyButtonElementId), Check([&]() {
             ui::Clipboard* clipboard = ui::Clipboard::GetForCurrentThread();
-            std::u16string clipboard_text;
-            clipboard->ReadText(ui::ClipboardBuffer::kCopyPaste,
-                                /* data_dst = */ nullptr, &clipboard_text);
+            std::u16string clipboard_text = ui::clipboard_test_util::ReadText(
+                clipboard, ui::ClipboardBuffer::kCopyPaste,
+                /* data_dst = */ nullptr);
             return clipboard_text == u"WELCOME10";
           })));
 }
@@ -397,7 +350,8 @@ IN_PROC_BROWSER_TEST_P(DiscountsBubbleDialogInteractiveTest,
       InstrumentTab(kShoppingTab),
       NavigateWebContents(kShoppingTab,
                           embedded_test_server()->GetURL(kShoppingURL)),
-      WaitForPageActionButtonVisible(), PressButton(kDiscountsChipElementId),
+      WaitForPageActionButtonVisible(kActionCommerceDiscounts),
+      PressButton(kDiscountsChipElementId),
       WaitForShow(kDiscountsBubbleDialogId),
       InSameContext(
           CheckViewProperty(kDiscountsBubbleCopyButtonElementId,
@@ -425,7 +379,8 @@ IN_PROC_BROWSER_TEST_P(DiscountsBubbleDialogInteractiveTest,
       InstrumentTab(kShoppingTab),
       NavigateWebContents(kShoppingTab,
                           embedded_test_server()->GetURL(kShoppingURL)),
-      WaitForPageActionButtonVisible(), PressButton(kDiscountsChipElementId),
+      WaitForPageActionButtonVisible(kActionCommerceDiscounts),
+      PressButton(kDiscountsChipElementId),
       WaitForShow(kDiscountsBubbleDialogId),
       CheckView(kDiscountsBubbleCopyButtonElementId,
                 base::BindOnce([&](views::MdTextButton* copy_button) {
@@ -456,7 +411,8 @@ IN_PROC_BROWSER_TEST_P(DiscountsBubbleDialogInteractiveTest,
       InstrumentTab(kShoppingTab),
       NavigateWebContents(kShoppingTab,
                           embedded_test_server()->GetURL(kShoppingURL)),
-      WaitForPageActionButtonVisible(), PressButton(kDiscountsChipElementId),
+      WaitForPageActionButtonVisible(kActionCommerceDiscounts),
+      PressButton(kDiscountsChipElementId),
       WaitForShow(kDiscountsBubbleDialogId), Do([&]() {
         entries = test_ukm_recorder.GetEntriesByName(
             ukm::builders::Shopping_ShoppingAction::Shopping_ShoppingAction::
@@ -490,7 +446,8 @@ IN_PROC_BROWSER_TEST_P(DiscountsBubbleDialogInteractiveTest,
       InstrumentTab(kShoppingTab),
       NavigateWebContents(kShoppingTab,
                           embedded_test_server()->GetURL(kShoppingURL)),
-      WaitForPageActionButtonVisible(), PressButton(kDiscountsChipElementId),
+      WaitForPageActionButtonVisible(kActionCommerceDiscounts),
+      PressButton(kDiscountsChipElementId),
       WaitForShow(kDiscountsBubbleDialogId),
       InSameContext(
           HideDiscountBubbleDialog(), WaitForHide(kDiscountsBubbleDialogId),
@@ -514,7 +471,8 @@ IN_PROC_BROWSER_TEST_P(DiscountsBubbleDialogInteractiveTest,
       InstrumentTab(kShoppingTab),
       NavigateWebContents(kShoppingTab,
                           embedded_test_server()->GetURL(kShoppingURL)),
-      WaitForPageActionButtonVisible(), PressButton(kDiscountsChipElementId),
+      WaitForPageActionButtonVisible(kActionCommerceDiscounts),
+      PressButton(kDiscountsChipElementId),
       WaitForShow(kDiscountsBubbleDialogId),
       InSameContext(
           PressButton(kDiscountsBubbleCopyButtonElementId),
@@ -537,7 +495,8 @@ IN_PROC_BROWSER_TEST_P(DiscountsBubbleDialogInteractiveTest,
       InstrumentTab(kShoppingTab),
       NavigateWebContents(kShoppingTab,
                           embedded_test_server()->GetURL(kShoppingURL)),
-      WaitForPageActionButtonVisible(), PressButton(kDiscountsChipElementId),
+      WaitForPageActionButtonVisible(kActionCommerceDiscounts),
+      PressButton(kDiscountsChipElementId),
       WaitForShow(kDiscountsBubbleDialogId),
       EnsurePresent(kDiscountsBubbleTermsAndConditionLabelId),
       EnsureNotPresent(kDiscountsBubbleTermsAndConditionPageId),
@@ -555,7 +514,8 @@ IN_PROC_BROWSER_TEST_P(DiscountsBubbleDialogInteractiveTest,
       InstrumentTab(kShoppingTab),
       NavigateWebContents(kShoppingTab,
                           embedded_test_server()->GetURL(kShoppingURL)),
-      WaitForPageActionButtonVisible(), PressButton(kDiscountsChipElementId),
+      WaitForPageActionButtonVisible(kActionCommerceDiscounts),
+      PressButton(kDiscountsChipElementId),
       WaitForShow(kDiscountsBubbleDialogId),
       WithElement(kDiscountsBubbleTermsAndConditionLabelId,
                   [](ui::TrackedElement* el) {
@@ -576,11 +536,6 @@ class DiscountDialogAutoPopupCounterfactual : public DiscountsInteractiveTest {
          {{commerce::kMerchantWideBehaviorParam, "2"},
           {commerce::kNonMerchantWideBehaviorParam, "1"}}}};
 
-    enabled_features.push_back(
-        {features::kPageActionsMigration,
-         {{"discounts",
-           GetParam().page_action_migration_enabled ? "true" : "false"}}});
-
     if (GetParam().enabled_feature.has_value()) {
       is_counterfactual_enabled = true;
       enabled_features.emplace_back(GetParam().enabled_feature.value());
@@ -600,30 +555,15 @@ INSTANTIATE_TEST_SUITE_P(
     DiscountDialogAutoPopupCounterfactual,
     testing::Values(
         TestData{
-            .name = "CounterfactualDisabledWithPageActionsMigrationDisabled",
+            .name = "CounterfactualDisabled",
             .type = commerce::DiscountClusterType::kOfferLevel,
-            .page_action_migration_enabled = false,
         },
         TestData{
-            .name = "CounterfactualDisabledWithPageActionsMigrationEnabled",
-            .type = commerce::DiscountClusterType::kOfferLevel,
-            .page_action_migration_enabled = true,
-        },
-        TestData{
-            .name = "CounterfactualEnabledWithPageActionsMigrationDisabled",
+            .name = "CounterfactualEnabled",
             .type = commerce::DiscountClusterType::kOfferLevel,
             .enabled_feature =
                 std::make_optional<base::test::FeatureRefAndParams>(
                     {commerce::kDiscountDialogAutoPopupCounterfactual, {}}),
-            .page_action_migration_enabled = false,
-        },
-        TestData{
-            .name = "CounterfactualEnabledWithPageActionsMigrationEnabled",
-            .type = commerce::DiscountClusterType::kOfferLevel,
-            .enabled_feature =
-                std::make_optional<base::test::FeatureRefAndParams>(
-                    {commerce::kDiscountDialogAutoPopupCounterfactual, {}}),
-            .page_action_migration_enabled = true,
         }),
     GetTestParamName);
 
@@ -639,11 +579,8 @@ IN_PROC_BROWSER_TEST_P(DiscountDialogAutoPopupCounterfactual,
       NavigateWebContents(kShoppingTab,
                           embedded_test_server()->GetURL(kShoppingURL)),
       WaitForPageActionChipVisible(kActionCommerceDiscounts),
-      If([&]() { return IsPageActionMigrated(PageActionIconType::kDiscounts); },
-         Then(WaitForViewProperty(kDiscountsChipElementId, views::LabelButton,
-                                  Visible, true)),
-         Else(WaitForViewProperty(kDiscountsChipElementId, DiscountsIconView,
-                                  IsLabelExpanded, true))),
+      WaitForViewProperty(kDiscountsChipElementId, views::LabelButton, Visible,
+                          true),
       If([&]() { return is_counterfactual_enabled; },
          Then(EnsureNotPresent(kDiscountsBubbleDialogId)),
          Else(WaitForShow(kDiscountsBubbleDialogId))),

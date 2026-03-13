@@ -32,6 +32,8 @@ class ExtensionsMenuDelegateAndroid : public ExtensionsMenuViewModel::Delegate,
   void Destroy(JNIEnv* env);
   base::android::ScopedJavaLocalRef<jobject> GetActionIcon(JNIEnv* env,
                                                            int action_index);
+  base::android::ScopedJavaLocalRef<jobject> GetMenuEntry(JNIEnv* env,
+                                                          int action_index);
   std::vector<base::android::ScopedJavaLocalRef<jobject>> GetMenuEntries(
       JNIEnv* env);
   base::android::ScopedJavaLocalRef<jobject> GetSiteSettings(JNIEnv* env);
@@ -46,16 +48,17 @@ class ExtensionsMenuDelegateAndroid : public ExtensionsMenuViewModel::Delegate,
   void OnPageNavigation() override;
   void OnActionAdded(ExtensionActionViewModel* action_model,
                      int index) override;
+  void OnActionIconUpdated(const ToolbarActionsModel::ActionId& action_id,
+                           int index) override;
   void OnActionRemoved(const ToolbarActionsModel::ActionId& action_id,
                        int index) override;
-  void OnActionUpdated(const ToolbarActionsModel::ActionId& action_id) override;
+  void OnActionUpdated(const ToolbarActionsModel::ActionId& action_id,
+                       int index) override;
   void OnActionsInitialized() override;
   void OnHostAccessRequestAdded(const extensions::ExtensionId& extension_id,
                                 int index) override;
   void OnHostAccessRequestUpdated(const extensions::ExtensionId& extension_id,
                                   int index) override;
-  void OnActionIconUpdated(
-      const ToolbarActionsModel::ActionId& action_id) override;
   void OnHostAccessRequestsCleared() override;
   void OnHostAccessRequestRemoved(const extensions::ExtensionId& extension_id,
                                   int index) override;

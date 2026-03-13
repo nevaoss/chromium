@@ -216,6 +216,7 @@ source_set("ui_impl") {
     "//chrome/browser/autocomplete:aim_eligibility_service",
     "//chrome/browser/companion/text_finder",
     "//chrome/browser/contextual_search",
+    "//chrome/browser/devtools",
     "//chrome/browser/feedback:feedback_enum",
     "//chrome/browser/optimization_guide",
     "//chrome/browser/profiles:profile",
@@ -307,6 +308,7 @@ if (!is_android) {
       "//chrome/browser/signin",
       "//chrome/browser/tab_list",
       "//chrome/browser/ui",
+      "//chrome/browser/ui/hats:test_support",
       "//chrome/browser/ui/lens",
       "//chrome/test:test_support",
       "//chrome/test:test_support_ui",
@@ -389,6 +391,7 @@ source_set("unit_tests") {
       "//chrome/browser/search_engines",
       "//chrome/browser/ui/browser_window",
       "//chrome/browser/ui/contextual_search",
+      "//chrome/browser/ui/hats:test_support",
       "//chrome/browser/ui/lens",
       "//chrome/browser/ui/tabs:tab_list_bridge",
       "//chrome/browser/ui/tabs:test_support",
@@ -461,9 +464,12 @@ source_set("test_support") {
   sources = [
     "mock_contextual_tasks_panel_controller.cc",
     "mock_contextual_tasks_panel_controller.h",
+    "mock_contextual_tasks_ui_service.cc",
+    "mock_contextual_tasks_ui_service.h",
   ]
   deps = [
     ":contextual_tasks",
+    ":ui",
     "//base",
     "//components/contextual_search:public",
     "//components/contextual_tasks/public",

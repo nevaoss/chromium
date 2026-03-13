@@ -6,9 +6,11 @@ package org.chromium.chrome.browser.search_engines.settings.custom_site_search;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.content.Context;
@@ -23,16 +25,23 @@ import org.mockito.junit.MockitoRule;
 import org.robolectric.RuntimeEnvironment;
 import org.robolectric.annotation.Config;
 
+import org.chromium.base.Callback;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.chrome.browser.profiles.Profile;
+import org.chromium.chrome.browser.search_engines.R;
 import org.chromium.chrome.browser.search_engines.TemplateUrlServiceFactory;
 import org.chromium.chrome.browser.search_engines.settings.common.SiteSearchProperties;
 import org.chromium.components.favicon.LargeIconBridgeJni;
+import org.chromium.components.search_engines.StarterPackId;
 import org.chromium.components.search_engines.TemplateUrl;
 import org.chromium.components.search_engines.TemplateUrlCategory;
 import org.chromium.components.search_engines.TemplateUrlService;
+import org.chromium.ui.listmenu.BasicListMenu;
+import org.chromium.ui.listmenu.ListMenuDelegate;
+import org.chromium.ui.listmenu.ListMenuItemProperties;
 import org.chromium.ui.modelutil.MVCListAdapter.ListItem;
 import org.chromium.ui.modelutil.MVCListAdapter.ModelList;
+import org.chromium.ui.modelutil.ModelListAdapter;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.url.GURL;
 
@@ -49,6 +58,7 @@ public class CustomSiteSearchMediatorUnitTest {
     @Mock private TemplateUrlService mTemplateUrlService;
     @Mock private LargeIconBridgeJni mLargeIconBridgeJni;
     @Mock private Runnable mOnAddSearchEngine;
+    @Mock private Callback<TemplateUrl> mOnEditSearchEngine;
 
     private Context mContext;
     private CustomSiteSearchMediator mMediator;
@@ -93,7 +103,8 @@ public class CustomSiteSearchMediatorUnitTest {
     public void testSiteSearchList_underMaxRows() {
         setUpTemplateUrlService(/* searchEngineCount= */ 3);
         mMediator =
-                new CustomSiteSearchMediator(mContext, mModelList, mProfile, mOnAddSearchEngine);
+                new CustomSiteSearchMediator(
+                        mContext, mModelList, mProfile, mOnAddSearchEngine, mOnEditSearchEngine);
 
         verifyCollapsedModelListView(/* searchEngineCount= */ 3);
     }
@@ -102,7 +113,8 @@ public class CustomSiteSearchMediatorUnitTest {
     public void testSiteSearchList_exactMaxRows() {
         setUpTemplateUrlService(/* searchEngineCount= */ 5);
         mMediator =
-                new CustomSiteSearchMediator(mContext, mModelList, mProfile, mOnAddSearchEngine);
+                new CustomSiteSearchMediator(
+                        mContext, mModelList, mProfile, mOnAddSearchEngine, mOnEditSearchEngine);
 
         verifyCollapsedModelListView(/* searchEngineCount= */ 5);
     }
@@ -111,7 +123,8 @@ public class CustomSiteSearchMediatorUnitTest {
     public void testSiteSearchList_overMaxRows() {
         setUpTemplateUrlService(/* searchEngineCount= */ 7);
         mMediator =
-                new CustomSiteSearchMediator(mContext, mModelList, mProfile, mOnAddSearchEngine);
+                new CustomSiteSearchMediator(
+                        mContext, mModelList, mProfile, mOnAddSearchEngine, mOnEditSearchEngine);
 
         verifyCollapsedModelListView(/* searchEngineCount= */ 7);
 
@@ -142,7 +155,8 @@ public class CustomSiteSearchMediatorUnitTest {
     public void testSiteSearchList_templateUrlServiceChanged() {
         setUpTemplateUrlService(7);
         mMediator =
-                new CustomSiteSearchMediator(mContext, mModelList, mProfile, mOnAddSearchEngine);
+                new CustomSiteSearchMediator(
+                        mContext, mModelList, mProfile, mOnAddSearchEngine, mOnEditSearchEngine);
 
         verifyCollapsedModelListView(/* searchEngineCount= */ 7);
 
@@ -155,6 +169,119 @@ public class CustomSiteSearchMediatorUnitTest {
 
         assertFalse(mMediator.isExpandedForTesting());
         verifyCollapsedModelListView(/* searchEngineCount= */ 7);
+    }
+
+    @Test
+    public void testMenuDelegate_NormalUrl() {
+        TemplateUrl templateUrl = createMockTemplateUrl("keyword", "shortName");
+        when(mTemplateUrlService.getTemplateUrlsByCategory(TemplateUrlCategory.ACTIVE_SITE_SEARCH))
+                .thenReturn(List.of(templateUrl));
+        when(templateUrl.getStarterPackId()).thenReturn(StarterPackId.NONE);
+
+        mMediator =
+                new CustomSiteSearchMediator(
+                        mContext, mModelList, mProfile, mOnAddSearchEngine, mOnEditSearchEngine);
+
+        PropertyModel model = mModelList.get(0).model;
+        ListMenuDelegate delegate = model.get(SiteSearchProperties.MENU_DELEGATE);
+        assertNotNull(delegate);
+
+        BasicListMenu listMenu = (BasicListMenu) delegate.getListMenu();
+        ModelListAdapter adapter = listMenu.getContentAdapter();
+        assertEquals(4, adapter.getCount());
+
+        ListItem editItem = (ListItem) adapter.getItem(0);
+        assertEquals(
+                R.string.site_search_list_menu_edit,
+                editItem.model.get(ListMenuItemProperties.TITLE_ID));
+
+        ListItem makeDefaultItem = (ListItem) adapter.getItem(1);
+        assertEquals(
+                R.string.site_search_list_menu_make_default,
+                makeDefaultItem.model.get(ListMenuItemProperties.TITLE_ID));
+
+        ListItem deactivateItem = (ListItem) adapter.getItem(2);
+        assertEquals(
+                R.string.site_search_list_menu_deactivate,
+                deactivateItem.model.get(ListMenuItemProperties.TITLE_ID));
+
+        ListItem deleteItem = (ListItem) adapter.getItem(3);
+        assertEquals(
+                R.string.site_search_list_menu_delete,
+                deleteItem.model.get(ListMenuItemProperties.TITLE_ID));
+    }
+
+    @Test
+    public void testMenuDelegate_StarterPackUrl() {
+        TemplateUrl templateUrl = createMockTemplateUrl("keyword", "shortName");
+        when(mTemplateUrlService.getTemplateUrlsByCategory(TemplateUrlCategory.ACTIVE_SITE_SEARCH))
+                .thenReturn(List.of(templateUrl));
+        when(templateUrl.getStarterPackId()).thenReturn(StarterPackId.GEMINI);
+
+        mMediator =
+                new CustomSiteSearchMediator(
+                        mContext, mModelList, mProfile, mOnAddSearchEngine, mOnEditSearchEngine);
+
+        PropertyModel model = mModelList.get(0).model;
+        ListMenuDelegate delegate = model.get(SiteSearchProperties.MENU_DELEGATE);
+        assertNotNull(delegate);
+
+        BasicListMenu listMenu = (BasicListMenu) delegate.getListMenu();
+        ModelListAdapter adapter = listMenu.getContentAdapter();
+        assertEquals(1, adapter.getCount());
+
+        ListItem deactivateItem = (ListItem) adapter.getItem(0);
+        assertEquals(
+                R.string.site_search_list_menu_deactivate,
+                deactivateItem.model.get(ListMenuItemProperties.TITLE_ID));
+    }
+
+    @Test
+    public void testEditClicked() {
+        mMediator =
+                new CustomSiteSearchMediator(
+                        mContext, mModelList, mProfile, mOnAddSearchEngine, mOnEditSearchEngine);
+        TemplateUrl templateUrl = createMockTemplateUrl("keyword", "shortName");
+
+        mMediator.onMenuItemClicked(R.string.site_search_list_menu_edit, templateUrl);
+
+        verify(mOnEditSearchEngine).onResult(templateUrl);
+    }
+
+    @Test
+    public void testMakeDefaultClicked() {
+        mMediator =
+                new CustomSiteSearchMediator(
+                        mContext, mModelList, mProfile, mOnAddSearchEngine, mOnEditSearchEngine);
+        TemplateUrl templateUrl = createMockTemplateUrl("keyword", "shortName");
+
+        mMediator.onMenuItemClicked(R.string.site_search_list_menu_make_default, templateUrl);
+
+        verify(mTemplateUrlService).setSearchEngine("keyword");
+    }
+
+    @Test
+    public void testDeactivateClicked() {
+        mMediator =
+                new CustomSiteSearchMediator(
+                        mContext, mModelList, mProfile, mOnAddSearchEngine, mOnEditSearchEngine);
+        TemplateUrl templateUrl = createMockTemplateUrl("keyword", "shortName");
+
+        mMediator.onMenuItemClicked(R.string.site_search_list_menu_deactivate, templateUrl);
+
+        verify(mTemplateUrlService).deactivateSearchEngine("keyword");
+    }
+
+    @Test
+    public void testDeleteClicked() {
+        mMediator =
+                new CustomSiteSearchMediator(
+                        mContext, mModelList, mProfile, mOnAddSearchEngine, mOnEditSearchEngine);
+        TemplateUrl templateUrl = createMockTemplateUrl("keyword", "shortName");
+
+        mMediator.onMenuItemClicked(R.string.site_search_list_menu_delete, templateUrl);
+
+        verify(mTemplateUrlService).removeSearchEngine("keyword");
     }
 
     private void verifyCollapsedModelListView(int searchEngineCount) {

@@ -265,6 +265,7 @@ test("components_unittests") {
     "//components/memory_pressure:unit_tests",
     "//components/metrics:unit_tests",
     "//components/metrics/demographics:unit_tests",
+    "//components/multistep_filter:unit_tests",
     "//components/named_mojo_ipc_server:unit_tests",
     "//components/navigation_metrics:unit_tests",
     "//components/net_log:unit_tests",
@@ -412,6 +413,7 @@ test("components_unittests") {
       "//components/enterprise/common:unit_tests",
       "//components/enterprise/connectors/core:cloud_content_scanning_unittests",
       "//components/enterprise/connectors/core:unit_tests",
+      "//components/enterprise/data_protection:unit_tests",
       "//components/enterprise/obfuscation/core:unit_tests",
     ]
   }
@@ -443,7 +445,6 @@ test("components_unittests") {
     deps += [
       "//components/fullscreen_control:unit_tests",
       "//components/global_media_controls:unit_tests",
-      "//components/media_message_center:unit_tests",
       "//components/ui_devtools:unit_tests",
       "//components/user_education/views:unit_tests",
       "//components/user_education/webui:unit_tests",

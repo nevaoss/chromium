@@ -305,6 +305,14 @@ inline constexpr char kWebKitCursiveFontFamilySimplifiedHan[] =
 inline constexpr char kWebKitCursiveFontFamilyTraditionalHan[] =
     "webkit.webprefs.fonts.cursive.Hant";
 #endif
+inline constexpr char kWebKitStandardFontFamilyDevanagari[] =
+    "webkit.webprefs.fonts.standard.Deva";
+inline constexpr char kWebKitFixedFontFamilyDevanagari[] =
+    "webkit.webprefs.fonts.fixed.Deva";
+inline constexpr char kWebKitSerifFontFamilyDevanagari[] =
+    "webkit.webprefs.fonts.serif.Deva";
+inline constexpr char kWebKitSansSerifFontFamilyDevanagari[] =
+    "webkit.webprefs.fonts.sansserif.Deva";
 
 // WebKit preferences.
 inline constexpr char kWebKitWebSecurityEnabled[] =
@@ -389,16 +397,6 @@ inline constexpr char kContextualSearchPromoCardShownCount[] =
 inline constexpr char kContextualSearchWasFullyPrivacyEnabled[] =
     "search.contextual_search_fully_opted_in";
 #endif  // BUILDFLAG(IS_ANDROID)
-
-#if BUILDFLAG(IS_CHROMEOS)
-// Boolean pref recording whether cookie and data would be used only for
-// essential purposes.
-inline constexpr char kEssentialSearchEnabled[] = "essential_search_enabled";
-// Boolean pref recording the last applied value for kEssentialSearchEnabled
-// prefs.
-inline constexpr char kLastEssentialSearchValue[] =
-    "last_essential_search_value";
-#endif  // BUILDFLAG(IS_CHROMEOS)
 
 #if BUILDFLAG(IS_MAC)
 // Boolean that indicates whether the browser should put up a confirmation
@@ -498,23 +496,6 @@ inline constexpr char kInsightsExtensionEnabled[] =
 // Boolean controlling whether showing Sync Consent during sign-in is enabled.
 // Controlled by policy.
 inline constexpr char kEnableSyncConsent[] = "sync_consent.enabled";
-
-// A boolean pref set to true if time should be displayed in 24-hour clock.
-inline constexpr char kUse24HourClock[] = "settings.clock.use_24hour_clock";
-
-// A string pref containing Timezone ID for this user.
-inline constexpr char kUserTimezone[] = "settings.timezone";
-
-// This setting controls what information is sent to the server to get
-// device location to resolve time zone in user session. Values must
-// match TimeZoneResolverManager::TimeZoneResolveMethod enum.
-inline constexpr char kResolveTimezoneByGeolocationMethod[] =
-    "settings.resolve_timezone_by_geolocation_method";
-
-// This setting is true when kResolveTimezoneByGeolocation value
-// has been migrated to kResolveTimezoneByGeolocationMethod.
-inline constexpr char kResolveTimezoneByGeolocationMigratedToMethod[] =
-    "settings.resolve_timezone_by_geolocation_migrated_to_method";
 
 // A boolean pref which turns on Advanced Filesystem
 // (USB support, SD card, etc).
@@ -1654,84 +1635,6 @@ inline constexpr char kPrintPreviewUseSystemDefaultPrinter[] =
 inline constexpr char kUserDataSnapshotRetentionLimit[] =
     "downgrade.snapshot_retention_limit";
 #endif  // !BUILDFLAG(IS_CHROMEOS) && !BUILDFLAG(IS_ANDROID)
-
-#if BUILDFLAG(IS_CHROMEOS)
-// List of print servers ids that are allowed in the user policy. List of
-// strings. Note that this used to be `kExternalPrintServersWhitelist`, hence
-// the difference between the variable name and the string value.
-inline constexpr char kExternalPrintServersAllowlist[] =
-    "native_printing.external_print_servers_whitelist";
-
-// List of print servers ids that are allowed in the device policy. List of
-// strings.
-inline constexpr char kDeviceExternalPrintServersAllowlist[] =
-    "native_printing.device_external_print_servers_allowlist";
-
-// List of printers configured by policy.
-inline constexpr char kRecommendedPrinters[] =
-    "native_printing.recommended_printers";
-
-// Enum designating the type of restrictions bulk printers are using.
-inline constexpr char kRecommendedPrintersAccessMode[] =
-    "native_printing.recommended_printers_access_mode";
-
-// List of printer ids which are explicitly disallowed.  List of strings. Note
-// that this used to be `kRecommendedPrintersBlacklist`, hence the difference
-// between the variable name and the string value.
-inline constexpr char kRecommendedPrintersBlocklist[] =
-    "native_printing.recommended_printers_blacklist";
-
-// List of printer ids that are allowed.  List of strings. Note that this
-// used to be `kRecommendedNativePrintersWhitelist`, hence the difference
-// between the variable name and the string value.
-inline constexpr char kRecommendedPrintersAllowlist[] =
-    "native_printing.recommended_printers_whitelist";
-
-// A Boolean flag which represents whether or not users are allowed to configure
-// and use their own printers.
-inline constexpr char kUserPrintersAllowed[] =
-    "native_printing.user_native_printers_allowed";
-
-// A pref holding the list of allowed printing color mode as a bitmask composed
-// of |printing::ColorModeRestriction| values. 0 is no restriction.
-inline constexpr char kPrintingAllowedColorModes[] =
-    "printing.allowed_color_modes";
-
-// A pref holding the list of allowed printing duplex mode as a bitmask composed
-// of |printing::DuplexModeRestriction| values. 0 is no restriction.
-inline constexpr char kPrintingAllowedDuplexModes[] =
-    "printing.allowed_duplex_modes";
-
-// A pref holding the allowed PIN printing modes.
-inline constexpr char kPrintingAllowedPinModes[] = "printing.allowed_pin_modes";
-
-// A pref holding the default color mode.
-inline constexpr char kPrintingColorDefault[] = "printing.color_default";
-
-// A pref holding the default duplex mode.
-inline constexpr char kPrintingDuplexDefault[] = "printing.duplex_default";
-
-// A pref holding the default PIN mode.
-inline constexpr char kPrintingPinDefault[] = "printing.pin_default";
-
-// Boolean flag which represents whether username and filename should be sent
-// to print server.
-inline constexpr char kPrintingSendUsernameAndFilenameEnabled[] =
-    "printing.send_username_and_filename_enabled";
-
-// Indicates how many sheets is allowed to use for a single print job.
-inline constexpr char kPrintingMaxSheetsAllowed[] =
-    "printing.max_sheets_allowed";
-
-// Indicates how long print jobs metadata is stored on the device, in days.
-inline constexpr char kPrintJobHistoryExpirationPeriod[] =
-    "printing.print_job_history_expiration_period";
-
-// Boolean flag which represents whether the user's print job history can be
-// deleted.
-inline constexpr char kDeletePrintJobHistoryAllowed[] =
-    "printing.delete_print_job_history_allowed";
-#endif  // BUILDFLAG(IS_CHROMEOS)
 
 // List pref containing the users supervised by this user.
 inline constexpr char kSupervisedUsers[] = "profile.managed_users";
@@ -3169,19 +3072,6 @@ inline constexpr char kDiskCacheSize[] = "browser.disk_cache_size";
 inline constexpr char kPerformanceTracingEnabled[] =
     "feedback.performance_tracing_enabled";
 
-// Indicates that factory reset was requested from options page or reset screen.
-inline constexpr char kFactoryResetRequested[] = "FactoryResetRequested";
-
-// Indicates that when a factory reset is requested by setting
-// |kFactoryResetRequested|, the user should only have the option to powerwash
-// and cannot cancel the dialog otherwise.
-inline constexpr char kForceFactoryReset[] = "ForceFactoryReset";
-
-// Presence of this value indicates that a TPM firmware update has been
-// requested. The value indicates the requested update mode.
-inline constexpr char kFactoryResetTPMFirmwareUpdateMode[] =
-    "FactoryResetTPMFirmwareUpdateMode";
-
 // Indicates that debugging features were requested from oobe screen.
 inline constexpr char kDebuggingFeaturesRequested[] =
     "DebuggingFeaturesRequested";
@@ -3189,25 +3079,6 @@ inline constexpr char kDebuggingFeaturesRequested[] =
 // Indicates that the user has requested that ARC APK Sideloading be enabled.
 inline constexpr char kEnableAdbSideloadingRequested[] =
     "EnableAdbSideloadingRequested";
-
-#if BUILDFLAG(IS_CHROMEOS)
-// This setting controls initial device timezone that is used before user
-// session started. It is controlled by device owner.
-inline constexpr char kSigninScreenTimezone[] =
-    "settings.signin_screen_timezone";
-
-// This setting controls what information is sent to the server to get
-// device location to resolve time zone outside of user session. Values must
-// match TimeZoneResolverManager::TimeZoneResolveMethod enum.
-inline constexpr char kResolveDeviceTimezoneByGeolocationMethod[] =
-    "settings.resolve_device_timezone_by_geolocation_method";
-
-// This is policy-controlled preference.
-// It has values defined in policy enum
-// SystemTimezoneAutomaticDetectionProto_AutomaticTimezoneDetectionType;
-inline constexpr char kSystemTimezoneAutomaticDetectionPolicy[] =
-    "settings.resolve_device_timezone_by_geolocation_policy";
-#endif  // BUILDFLAG(IS_CHROMEOS)
 
 // Pref name for the policy controlling whether to enable Media Router.
 inline constexpr char kEnableMediaRouter[] = "media_router.enable_media_router";
@@ -3265,35 +3136,6 @@ inline constexpr char kHardwareSecureDecryptionDisabledTimes[] =
 #endif  // BUILDFLAG(IS_WIN)
 
 #if BUILDFLAG(IS_CHROMEOS)
-// A dictionary containing kiosk metrics latest session related information.
-// For example, kiosk session start times, number of network drops.
-// This setting resides in local state.
-inline constexpr char kKioskMetrics[] = "kiosk-metrics";
-
-// A boolean pref which determines whether kiosk troubleshooting tools are
-// enabled.
-inline constexpr char kKioskTroubleshootingToolsEnabled[] =
-    "kiosk_troubleshooting_tools_enabled";
-
-// Pref name for providing additional urls which can access browser permissions
-// already available to the kiosk web apps.
-inline constexpr char kKioskBrowserPermissionsAllowedForOrigins[] =
-    "policy.kiosk_browser_permissions_allowed_for_origins";
-
-// Pref name to toggle the network prompt at web app kiosk launch when the
-// device is offline and the web app is not offline enabled.
-inline constexpr char kKioskWebAppOfflineEnabled[] =
-    "policy.kiosk_web_app_offline_enabled";
-
-// A boolean pref to change the kiosk active WiFi credentials scope from in
-// session level to the device level.
-inline constexpr char kKioskActiveWiFiCredentialsScopeChangeEnabled[] =
-    "kiosk_active_wifi_credentials_scope_change_enabled";
-
-// A boolean pref which determines whether a Web Kiosk can open more than one
-// browser window.
-inline constexpr char kNewWindowsInKioskAllowed[] =
-    "new_windows_in_kiosk_allowed";
 
 // A boolean pref which determines whether a remote admin can start a CRD
 // connection through the 'start crd session' remote command.
@@ -3307,20 +3149,6 @@ inline constexpr char
 inline constexpr char kDeviceAllowEnterpriseRemoteAccessConnections[] =
     "device_allow_enterprise_remote_access_connections";
 
-// A dictionary containing weekly time intervals to automatically sleep and wake
-// up the device.
-inline constexpr char kDeviceWeeklyScheduledSuspend[] =
-    "device_weekly_scheduled_suspend";
-
-// A boolean pref which determines whether Chrome Apps are allowed in Kiosk
-// sessions.
-inline constexpr char kKioskChromeAppsForceAllowed[] =
-    "kiosk_chrome_apps_force_allowed";
-
-// A boolean pref which determines whether kiosk application level logs would be
-// collected and stored.
-inline constexpr char kKioskApplicationLogCollectionEnabled[] =
-    "kiosk_application_log_collection_enabled";
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || \
@@ -3571,6 +3399,11 @@ inline constexpr char kCloudExtensionRequestEnabled[] =
 // denied.
 inline constexpr char kCloudExtensionRequestIds[] =
     "enterprise_reporting.extension_request.ids";
+
+// Boolean pref indicating whether extension DOM activity logging is enabled
+// for enterprise telemetry.
+inline constexpr char kExtensionDOMActivityLoggingEnabled[] =
+    "enterprise_reporting.extension_dom_activity_logging_enabled";
 
 // A list of URLs (for U2F) or domains (for webauthn) that automatically permit
 // direct attestation of a Security Key.

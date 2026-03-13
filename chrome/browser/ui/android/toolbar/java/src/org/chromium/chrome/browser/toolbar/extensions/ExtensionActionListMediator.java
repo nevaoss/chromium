@@ -4,6 +4,7 @@
 
 package org.chromium.chrome.browser.toolbar.extensions;
 
+import android.app.Activity;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.view.View;
@@ -27,6 +28,7 @@ import org.chromium.chrome.browser.ui.extensions.ExtensionActionContextMenuBridg
 import org.chromium.chrome.browser.ui.extensions.ExtensionActionPopupContents;
 import org.chromium.chrome.browser.ui.extensions.ExtensionsToolbarBridge;
 import org.chromium.chrome.browser.ui.toolbar.InvocationSource;
+import org.chromium.components.embedder_support.contextmenu.ContextMenuPopulatorFactory;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.listmenu.ListMenuButton;
@@ -88,6 +90,7 @@ class ExtensionActionListMediator implements Destroyable {
     private final Profile mProfile;
     private final NullableObservableSupplier<Tab> mCurrentTabSupplier;
     private final ExtensionActionListCoordinator.ActionAnchorViewProvider mActionAnchorViewProvider;
+    private final @Nullable ContextMenuPopulatorFactory mContextMenuPopulatorFactory;
 
     private final ExtensionsToolbarBridge mExtensionsToolbarBridge;
     private final ToolbarDelegate mToolbarDelegate = new ToolbarDelegate();
@@ -109,7 +112,8 @@ class ExtensionActionListMediator implements Destroyable {
             Profile profile,
             NullableObservableSupplier<Tab> currentTabSupplier,
             ExtensionActionListCoordinator.ActionAnchorViewProvider actionAnchorViewProvider,
-            ExtensionsToolbarBridge extensionsToolbarBridge) {
+            ExtensionsToolbarBridge extensionsToolbarBridge,
+            @Nullable ContextMenuPopulatorFactory contextMenuPopulatorFactory) {
         mContext = context;
         mWindowAndroid = windowAndroid;
         mModels = models;
@@ -118,6 +122,7 @@ class ExtensionActionListMediator implements Destroyable {
         mCurrentTabSupplier = currentTabSupplier;
         mActionAnchorViewProvider = actionAnchorViewProvider;
         mExtensionsToolbarBridge = extensionsToolbarBridge;
+        mContextMenuPopulatorFactory = contextMenuPopulatorFactory;
 
         mExtensionsToolbarBridge.setDelegate(mToolbarDelegate);
         mExtensionsToolbarBridge.addObserver(mToolbarObserver);
@@ -180,7 +185,7 @@ class ExtensionActionListMediator implements Destroyable {
                 break;
             }
 
-            ExtensionAction action = mExtensionsToolbarBridge.getAction(actionId);
+            ExtensionAction action = mExtensionsToolbarBridge.getAction(actionId, webContents);
             if (action == null) {
                 continue;
             }
@@ -218,6 +223,9 @@ class ExtensionActionListMediator implements Destroyable {
         return new ListItem(
                 ListItemType.EXTENSION_ACTION,
                 new PropertyModel.Builder(ExtensionActionButtonProperties.ALL_KEYS)
+                        .with(
+                                ExtensionActionButtonProperties.ACCESSIBLE_NAME,
+                                action.getAccessibleName())
                         .with(ExtensionActionButtonProperties.ICON, icon)
                         .with(ExtensionActionButtonProperties.ID, actionId)
                         .with(
@@ -229,7 +237,7 @@ class ExtensionActionListMediator implements Destroyable {
                                     requestShowContextMenu(actionId);
                                     return true;
                                 })
-                        .with(ExtensionActionButtonProperties.TITLE, action.getTitle())
+                        .with(ExtensionActionButtonProperties.TOOLTIP, action.getTooltip())
                         .build());
     }
 
@@ -258,7 +266,7 @@ class ExtensionActionListMediator implements Destroyable {
 
     private void updateActionPropertiesForIndex(
             int index, String actionId, @Nullable WebContents webContents) {
-        ExtensionAction action = mExtensionsToolbarBridge.getAction(actionId);
+        ExtensionAction action = mExtensionsToolbarBridge.getAction(actionId, webContents);
         if (action == null) {
             return;
         }
@@ -266,7 +274,10 @@ class ExtensionActionListMediator implements Destroyable {
         Bitmap icon = getIconForAction(actionId, webContents);
         mModels.get(index).model.set(ExtensionActionButtonProperties.ICON, icon);
 
-        mModels.get(index).model.set(ExtensionActionButtonProperties.TITLE, action.getTitle());
+        mModels.get(index)
+                .model
+                .set(ExtensionActionButtonProperties.ACCESSIBLE_NAME, action.getAccessibleName());
+        mModels.get(index).model.set(ExtensionActionButtonProperties.TOOLTIP, action.getTooltip());
     }
 
     private void updateActionPropertiesForAll() {
@@ -338,9 +349,21 @@ class ExtensionActionListMediator implements Destroyable {
             return;
         }
 
+        Activity activity = mWindowAndroid.getActivity().get();
+        if (activity == null) {
+            contents.destroy();
+            return;
+        }
+
         assert mActionState instanceof ActionState.Idle;
         ExtensionActionPopup popup =
-                new ExtensionActionPopup(mContext, mWindowAndroid, buttonView, actionId, contents);
+                new ExtensionActionPopup(
+                        activity,
+                        mWindowAndroid,
+                        buttonView,
+                        actionId,
+                        contents,
+                        mContextMenuPopulatorFactory);
         popup.loadInitialPage();
         popup.addOnDismissListener(this::closePopup);
         mActionState = new ActionState.PopupActive(popup, actionId);
@@ -398,8 +421,7 @@ class ExtensionActionListMediator implements Destroyable {
                 buttonView,
                 bridge,
                 MenuBuilderHelper.getRectProvider(buttonView),
-                this::closeContextMenu,
-                /* rootView= */ null);
+                this::closeContextMenu);
         mActionState = new ActionState.ContextMenuActive(actionId);
     }
 

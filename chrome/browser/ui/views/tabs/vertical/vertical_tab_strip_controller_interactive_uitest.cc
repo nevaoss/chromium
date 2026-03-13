@@ -29,6 +29,7 @@
 #include "ui/menus/simple_menu_model.h"
 #include "ui/views/controls/scroll_view.h"
 #include "ui/views/interaction/interactive_views_test.h"
+#include "ui/views/view_utils.h"
 
 namespace {
 
@@ -136,6 +137,39 @@ IN_PROC_BROWSER_TEST_F(VerticalTabStripControllerInteractiveUiTest,
       CheckResult([this]() { return browser()->tab_strip_model()->count(); },
                   1),
       WaitForHide(kFirstTabName));
+}
+
+IN_PROC_BROWSER_TEST_F(
+    VerticalTabStripControllerInteractiveUiTest,
+    VerifyNotClosingTabWhenMiddleMouseButtonReleasedElsewhere) {
+  RunTestSequence(
+      // Verify Vertical Tabs is showing.
+      WaitForShow(kVerticalTabStripBottomContainerElementId),
+      // Create a second tab.
+      EnsurePresent(kNewTabButtonElementId),
+      PressButton(kNewTabButtonElementId,
+                  ui::test::InteractionTestUtil::InputType::kDontCare),
+      CheckResult([this]() { return browser()->tab_strip_model()->count(); },
+                  2),
+      // Name views so we can interact with them.
+      NameDescendantViewByType<VerticalTabView>(kBrowserViewElementId,
+                                                kFirstTabName, 0),
+      // Move mouse to tab at index 0.
+      MoveMouseTo(kFirstTabName),
+      // We pass a point outside the view's local bounds so that HitTestPoint()
+      // fails.
+      WithView(kFirstTabName,
+               [](views::View* view) {
+                 gfx::Point off_tab_point(-10, -10);
+                 ui::MouseEvent event(
+                     ui::EventType::kMouseReleased, off_tab_point,
+                     off_tab_point, ui::EventTimeForNow(),
+                     ui::EF_MIDDLE_MOUSE_BUTTON, ui::EF_MIDDLE_MOUSE_BUTTON);
+                 view->OnMouseReleased(event);
+               }),
+      // Verify that the tab count is still 2 (the tab did not close).
+      CheckResult([this]() { return browser()->tab_strip_model()->count(); },
+                  2));
 }
 
 // TODO(crbug.com/469912247): Fails on mac-rel-ready and linux-rel-ready bots.
@@ -469,7 +503,7 @@ IN_PROC_BROWSER_TEST_F(VerticalTabStripControllerInteractiveUiTest,
                 ->vertical_tab_strip_region_view_for_testing()
                 ->GetTabStripView();
         VerticalTabStripView* vertical_tab_strip_view =
-            static_cast<VerticalTabStripView*>(tab_strip_view);
+            views::AsViewClass<VerticalTabStripView>(tab_strip_view);
         vertical_tab_strip_view->unpinned_tabs_scroll_view_for_testing()
             ->ScrollByOffset({0, -100});
       }),

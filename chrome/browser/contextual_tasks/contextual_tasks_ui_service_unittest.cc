@@ -109,6 +109,10 @@ class MockUiServiceForUrlIntercept : public ContextualTasksUiService {
               (override));
   MOCK_METHOD(bool, IsUrlForPrimaryAccount, (const GURL& url), (override));
   MOCK_METHOD(bool, IsSignedInToBrowserWithValidCredentials, (), (override));
+  MOCK_METHOD(void,
+              LoadUrlInWebContents,
+              (const GURL& url, content::WebContents* web_contents),
+              (override));
 
   // Make the impl method public for this test.
   bool HandleNavigationImpl(content::OpenURLParams url_params,
@@ -343,14 +347,76 @@ TEST_F(ContextualTasksUiServiceTest, HandleNavigation_AiPage_ChecksCobrowse) {
   auto web_contents = content::WebContentsTester::CreateTestWebContents(
       profile_.get(), content::SiteInstance::Create(profile_.get()));
 
-  EXPECT_CALL(*aim_eligibility_service_, IsCobrowseEligible())
-      .WillOnce(Return(true));
   base::RunLoop run_loop;
   EXPECT_CALL(*service_for_nav_, OnNavigationToAiPageIntercepted(ai_url, _, _))
       .WillOnce(testing::InvokeWithoutArgs(&run_loop, &base::RunLoop::Quit));
 
   EXPECT_TRUE(service_for_nav_->HandleNavigation(
       CreateOpenUrlParams(ai_url, false), web_contents.get(),
+      /*is_from_embedded_page=*/false, /*is_to_new_tab=*/false));
+
+  run_loop.Run();
+}
+
+TEST_F(ContextualTasksUiServiceTest, HandleNavigation_AiPage_DebugParam) {
+  GURL ai_url(kAiPageUrl);
+  ai_url = net::AppendQueryParameter(ai_url, "deb", "nocobrowse1");
+  auto web_contents = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), content::SiteInstance::Create(profile_.get()));
+
+  EXPECT_CALL(*service_for_nav_, OnNavigationToAiPageIntercepted(_, _, _))
+      .Times(0);
+
+  EXPECT_FALSE(service_for_nav_->HandleNavigation(
+      CreateOpenUrlParams(ai_url, false), web_contents.get(),
+      /*is_from_embedded_page=*/false, /*is_to_new_tab=*/false));
+
+  base::RunLoop run_loop;
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE, run_loop.QuitClosure());
+  run_loop.Run();
+}
+
+TEST_F(ContextualTasksUiServiceTest,
+       HandleNavigation_AiPage_DebugParam_Substring) {
+  GURL ai_url(kAiPageUrl);
+  // Have the known debug value be a substring of the broader value.
+  ai_url = net::AppendQueryParameter(ai_url, "deb", "nocobrowse1moredebug1");
+  auto web_contents = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), content::SiteInstance::Create(profile_.get()));
+
+  EXPECT_CALL(*service_for_nav_, OnNavigationToAiPageIntercepted(_, _, _))
+      .Times(0);
+
+  EXPECT_FALSE(service_for_nav_->HandleNavigation(
+      CreateOpenUrlParams(ai_url, false), web_contents.get(),
+      /*is_from_embedded_page=*/false, /*is_to_new_tab=*/false));
+
+  base::RunLoop run_loop;
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE, run_loop.QuitClosure());
+  run_loop.Run();
+}
+
+TEST_F(ContextualTasksUiServiceTest,
+       HandleNavigation_AiPage_DebugParam_VirtualUrl) {
+  GURL virtual_url("chrome://google.com/search?udm=50&q=test&deb=nocobrowse1");
+  auto web_contents = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), content::SiteInstance::Create(profile_.get()));
+
+  EXPECT_CALL(*service_for_nav_, OnNavigationToAiPageIntercepted(_, _, _))
+      .Times(0);
+  base::RunLoop run_loop;
+  ON_CALL(*service_for_nav_, LoadUrlInWebContents(_, _))
+      .WillByDefault([&](const GURL& url, content::WebContents* web_contents) {
+        std::string value;
+        EXPECT_TRUE(net::GetValueForKeyInQuery(url, "deb", &value));
+        EXPECT_EQ("nocobrowse1", value);
+        run_loop.Quit();
+      });
+
+  EXPECT_TRUE(service_for_nav_->HandleNavigation(
+      CreateOpenUrlParams(virtual_url, false), web_contents.get(),
       /*is_from_embedded_page=*/false, /*is_to_new_tab=*/false));
 
   run_loop.Run();
@@ -1128,8 +1194,8 @@ TEST_F(ContextualTasksUiServiceTest, GetAimUrlFromContextualTasksUrl) {
                 "contextual-tasks?aim_url=https%3A%2F%2Fgoogle.com%2Fsearch")));
 }
 
-TEST_F(ContextualTasksUiServiceTest, HandleNavigation_VirtualUrlRewritten) {
-  GURL virtual_url("chrome://googlesearch/?udm=50&q=test+query");
+TEST_F(ContextualTasksUiServiceTest, HandleNavigation_DisplayUrlRewritten) {
+  GURL display_url("chrome://google.com/search?udm=50&q=test+query");
   auto web_contents = content::WebContentsTester::CreateTestWebContents(
       profile_.get(), content::SiteInstance::Create(profile_.get()));
 
@@ -1144,12 +1210,12 @@ TEST_F(ContextualTasksUiServiceTest, HandleNavigation_VirtualUrlRewritten) {
         EXPECT_EQ(url.path(), "/search");
 
         // Verify that the entire query string is copied verbatim.
-        EXPECT_EQ(url.query(), virtual_url.query());
+        EXPECT_EQ(url.query(), display_url.query());
       });
 
   // Simulate navigation to the virtual URL.
   EXPECT_TRUE(service_for_nav_->HandleNavigation(
-      CreateOpenUrlParams(virtual_url, false), web_contents.get(),
+      CreateOpenUrlParams(display_url, false), web_contents.get(),
       /*is_from_embedded_page=*/false, /*is_to_new_tab=*/false));
 
   base::RunLoop run_loop;

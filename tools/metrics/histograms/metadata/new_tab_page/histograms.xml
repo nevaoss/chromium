@@ -494,7 +494,7 @@ chromium-metrics-reviews@google.com.
   </token>
 </histogram>
 
-<histogram name="NewTabPage.Count" units="count" expires_after="2026-06-28">
+<histogram name="NewTabPage.Count" units="count" expires_after="2026-08-30">
   <owner>kawasin@google.com</owner>
   <owner>clank-performance-team@google.com</owner>
   <summary>
@@ -517,7 +517,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="NewTabPage.Customization.BottomSheet.Shown"
-    enum="NtpCustomizationBottomSheetType" expires_after="2026-06-28">
+    enum="NtpCustomizationBottomSheetType" expires_after="2026-08-30">
   <owner>hanxi@chromium.org</owner>
   <owner>yanlinghu@google.com</owner>
   <owner>clank-start@google.com</owner>
@@ -543,7 +543,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="NewTabPage.Customization.OpenBottomSheetEntry"
-    enum="NtpCustomizationEntryPoint" expires_after="2026-06-28">
+    enum="NtpCustomizationEntryPoint" expires_after="2026-08-30">
   <owner>hanxi@chromium.org</owner>
   <owner>xinyiji@chromium.org</owner>
   <owner>yanlinghu@google.com</owner>
@@ -737,7 +737,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="NewTabPage.CustomizeChromeSidePanelAction"
-    enum="NTPCustomizeChromeSidePanelAction" expires_after="2026-06-28">
+    enum="NTPCustomizeChromeSidePanelAction" expires_after="2026-08-30">
   <owner>pauladedeji@google.com</owner>
   <owner>tiborg@chromium.org</owner>
   <owner>rtatum@google.com</owner>
@@ -1077,6 +1077,11 @@ chromium-metrics-reviews@google.com.
 
     Note: This is only recorded when the OmniboxAutofocusOnIncognitoNtp feature
     flag is enabled.
+
+    Historical caveats: Starting from 146.0.7680.16 (for M146) and 147.0.7692.0
+    (for M147+), measurements are considered valid and recorded only if the tab
+    height has decreased to a non-zero value (see
+    `NewTabPage.Incognito.OmniboxAutofocus.OnFocus.TabHeightChange`).
   </summary>
 </histogram>
 
@@ -1094,6 +1099,11 @@ chromium-metrics-reviews@google.com.
 
     Note: This is only recorded when the OmniboxAutofocusOnIncognitoNtp feature
     flag is enabled.
+
+    Historical caveats: Starting from 146.0.7680.16 (for M146) and 147.0.7692.0
+    (for M147+), measurements are considered valid and recorded only if the tab
+    height has decreased to a non-zero value (see
+    `NewTabPage.Incognito.OmniboxAutofocus.OnFocus.TabHeightChange`).
   </summary>
 </histogram>
 
@@ -1111,11 +1121,16 @@ chromium-metrics-reviews@google.com.
 
     Note: This is only recorded when the OmniboxAutofocusOnIncognitoNtp feature
     flag is enabled.
+
+    Historical caveats: Starting from 146.0.7680.16 (for M146) and 147.0.7692.0
+    (for M147+), measurements are considered valid and recorded only if the tab
+    height has decreased to a non-zero value (see
+    `NewTabPage.Incognito.OmniboxAutofocus.OnFocus.TabHeightChange`).
   </summary>
 </histogram>
 
 <histogram name="NewTabPage.Incognito.OmniboxAutofocus.OnFocus.TabHeightChange"
-    enum="OmniboxAutofocusTabHeightChange" expires_after="2026-05-01">
+    enum="OmniboxAutofocusTabHeightChange" expires_after="2026-08-30">
   <owner>kalinino@google.com</owner>
   <owner>polonium@google.com</owner>
   <summary>
@@ -1187,6 +1202,11 @@ chromium-metrics-reviews@google.com.
 
     Note: This is only recorded when the OmniboxAutofocusOnIncognitoNtp feature
     flag is enabled.
+
+    Historical caveats: Starting from 146.0.7680.16 (for M146) and 147.0.7692.0
+    (for M147+), measurements are considered valid and recorded only if the tab
+    height has decreased to a non-zero value (see
+    `NewTabPage.Incognito.OmniboxAutofocus.OnFocus.TabHeightChange`).
   </summary>
   <token key="FocusEvent">
     <variant name="OnAutofocus"
@@ -1211,6 +1231,11 @@ chromium-metrics-reviews@google.com.
 
     Note: This is only recorded when the OmniboxAutofocusOnIncognitoNtp feature
     flag is enabled.
+
+    Historical caveats: Starting from 146.0.7680.16 (for M146) and 147.0.7692.0
+    (for M147+), measurements are considered valid and recorded only if the tab
+    height has decreased to a non-zero value (see
+    `NewTabPage.Incognito.OmniboxAutofocus.OnFocus.TabHeightChange`).
   </summary>
   <token key="FocusEvent">
     <variant name="OnAutofocus"
@@ -1581,7 +1606,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="NewTabPage.Modules.AutoRemoval" units="count"
-    expires_after="2026-06-30">
+    expires_after="2026-08-30">
   <owner>romanarora@chromium.org</owner>
   <owner>tiborg@chromium.org</owner>
   <owner>chrome-desktop-ntp@google.com</owner>
@@ -1595,7 +1620,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="NewTabPage.Modules.AutoRemovalModuleId" enum="NtpModules"
-    expires_after="2026-06-30">
+    expires_after="2026-08-30">
   <owner>romanarora@chromium.org</owner>
   <owner>tiborg@chromium.org</owner>
   <owner>chrome-desktop-ntp@google.com</owner>
@@ -1608,7 +1633,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="NewTabPage.Modules.AutoRemovalUndone" units="count"
-    expires_after="2026-06-30">
+    expires_after="2026-08-30">
   <owner>romanarora@chromium.org</owner>
   <owner>tiborg@chromium.org</owner>
   <owner>chrome-desktop-ntp@google.com</owner>
@@ -1622,7 +1647,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="NewTabPage.Modules.AutoRemovalUndoneModuleId"
-    enum="NtpModules" expires_after="2026-06-30">
+    enum="NtpModules" expires_after="2026-08-30">
   <owner>romanarora@chromium.org</owner>
   <owner>tiborg@chromium.org</owner>
   <owner>chrome-desktop-ntp@google.com</owner>
@@ -2211,7 +2236,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="NewTabPage.OutlookCalendar.RequestResult"
-    enum="OutlookCalendarRequestResult" expires_after="2026-06-07">
+    enum="OutlookCalendarRequestResult" expires_after="2026-08-30">
   <owner>jennserrano@google.com</owner>
   <owner>rtatum@google.com</owner>
   <owner>chrome-desktop-ntp@google.com</owner>
@@ -2429,7 +2454,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="NewTabPage.SuggestTiles.DeletedTileType"
-    enum="SuggestTileType" expires_after="2026-07-01">
+    enum="SuggestTileType" expires_after="2026-08-30">
   <owner>ender@google.com</owner>
   <owner>mahmadi@chromium.org</owner>
   <owner>chrome-omnibox-team@google.com</owner>
@@ -2444,7 +2469,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="NewTabPage.SuggestTiles.SelectedTileType"
-    enum="SuggestTileType" expires_after="2026-07-01">
+    enum="SuggestTileType" expires_after="2026-08-30">
   <owner>ender@google.com</owner>
   <owner>mahmadi@chromium.org</owner>
   <owner>chrome-omnibox-team@google.com</owner>
@@ -2553,7 +2578,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="NewTabPage.TabResumption.Visit.ClickSource"
-    enum="NtpURLVisitAggregateTypes" expires_after="2026-06-28">
+    enum="NtpURLVisitAggregateTypes" expires_after="2026-08-30">
   <owner>mfacey@google.com</owner>
   <owner>romanarora@google.com</owner>
   <owner>chrome-desktop-ntp@google.com</owner>
@@ -2820,7 +2845,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="NewTabPage.WallpaperSearch.Status"
-    enum="NtpWallpaperSearchStatus" expires_after="2026-06-28">
+    enum="NtpWallpaperSearchStatus" expires_after="2026-08-30">
   <owner>pauladedeji@google.com</owner>
   <owner>tiborg@chromium.org</owner>
   <owner>rtatum@google.com</owner>

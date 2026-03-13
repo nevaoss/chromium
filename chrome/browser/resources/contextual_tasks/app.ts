@@ -24,7 +24,7 @@ import {getCss} from './app.css.js';
 import {getHtml} from './app.html.js';
 // <if expr="not is_android">
 import type {ContextualTasksComposeboxElement} from './composebox.js';
-import type {ComposeboxPosition} from './contextual_tasks.mojom-webui.js';
+import type {ComposeboxPosition, IconType} from './contextual_tasks.mojom-webui.js';
 // </if>
 import type {BrowserProxy} from './contextual_tasks_browser_proxy.js';
 import {BrowserProxyImpl} from './contextual_tasks_browser_proxy.js';
@@ -32,6 +32,7 @@ import {PostMessageHandler} from './post_message_handler.js';
 // <if expr="not is_android">
 import type {Rect} from './post_message_handler.js';
 import {getNonOccludedClipPath} from './utils/clip_path.js';
+
 // </if>
 
 declare global {
@@ -194,6 +195,10 @@ export class ContextualTasksAppElement extends CrLitElement {
       isInputLocked_: {
         type: Boolean,
       },
+      isLoadingZeroStateFromResults_: {
+        type: Boolean,
+        reflect: true,
+      },
       // <if expr="not is_android">
       forcedComposeboxBounds_: {type: Object},
       // </if>
@@ -235,6 +240,7 @@ export class ContextualTasksAppElement extends CrLitElement {
       loadTimeData.getBoolean('enableNativeZeroStateSuggestions');
   protected accessor isGhostLoaderVisible_: boolean = false;
   protected accessor isInputLocked_: boolean = false;
+  protected accessor isLoadingZeroStateFromResults_: boolean = false;
   // The bounds of the composebox that are forced by the embedded page. These
   // bounds are relative to the <webview> and not the viewport.
   // <if expr="not is_android">
@@ -348,6 +354,10 @@ export class ContextualTasksAppElement extends CrLitElement {
                 title, 'chrome://image?url=' + encodeURIComponent(thumbnail),
                 fileToken);
           }),
+      callbackRouter.injectInputWithIcon.addListener(
+          (title: string, iconId: IconType, fileToken: UnguessableToken) => {
+            this.$.composebox.injectInputWithIcon(title, iconId, fileToken);
+          }),
       callbackRouter.removeInjectedInput.addListener(
           (fileToken: UnguessableToken) => {
             this.$.composebox.deleteFile(fileToken);
@@ -370,11 +380,6 @@ export class ContextualTasksAppElement extends CrLitElement {
           this.forcedComposeboxBounds_ = null;
           // </if>
         }
-
-        if (this.isZeroState_) {
-          this.playZeroStateAnimations_();
-        }
-
       }),
       callbackRouter.onLensOverlayStateChanged.addListener(
           (isOverlayShowing: boolean, maybeShowOverlayHintText: boolean) => {
@@ -596,7 +601,9 @@ export class ContextualTasksAppElement extends CrLitElement {
     // Set frame loading to true initially to avoid race conditions.
     this.isFrameLoading = true;
     const wasAiPage = this.isAiPage_;
+    const wasZeroState = this.isZeroState_;
     const {isAiPage} = await this.browserProxy_.handler.isAiPage(ev.url);
+    const {isZeroState} = await this.browserProxy_.handler.isZeroState(ev.url);
 
     // If the frame is no longer loading after waiting for isAiPage,
     // then exit early to prevent racind.
@@ -607,8 +614,20 @@ export class ContextualTasksAppElement extends CrLitElement {
       return;
     }
 
+    if (isAiPage && isZeroState) {
+      this.isZeroState_ = true;
+      this.playZeroStateAnimations_();
+    }
+
+    if (!wasZeroState && isZeroState) {
+      this.isLoadingZeroStateFromResults_ = true;
+    }
+
     if (!isAiPage) {
       // If this is not an AI page, show the ghost loader.
+      // Update the isAiPage_ property so the ghost loader doesn't jump when
+      // the property is updated later.
+      this.isAiPage_ = isAiPage;
       this.setIsGhostLoaderVisible(true);
     } else if (this.enableBasicMode_ && wasAiPage) {
       // Since this is a navigation from one AI page to another,
@@ -641,12 +660,14 @@ export class ContextualTasksAppElement extends CrLitElement {
 
   private onThreadFrameContentLoad() {
     this.isFrameLoading = false;
+    this.isLoadingZeroStateFromResults_ = false;
     this.setIsGhostLoaderVisible(false);
     this.updateBasicModeAfterNavigation();
   }
 
   private onThreadFrameLoadAbort() {
     this.isFrameLoading = false;
+    this.isLoadingZeroStateFromResults_ = false;
     this.setIsGhostLoaderVisible(false);
     this.updateBasicModeAfterNavigation();
   }
@@ -838,6 +859,7 @@ export class ContextualTasksAppElement extends CrLitElement {
     const {params} = await this.browserProxy_.handler.getCommonSearchParams(
         /*isDarkMode=*/ this.darkMode_,
         /*isSidePanel=*/ !this.isShownInTab_);
+    this.updateBackgroundColor_();
     this.commonSearchParams_ = params;
     this.maybeLoadPendingUrl_();
   }
@@ -984,6 +1006,14 @@ export class ContextualTasksAppElement extends CrLitElement {
 
   setIsZeroStateForTesting(isZeroState: boolean) {
     this.isZeroState_ = isZeroState;
+  }
+
+  private updateBackgroundColor_() {
+    if (this.darkMode_) {
+      document.body.style.backgroundColor = 'rgba(16, 18, 23, 1)';
+    } else {
+      document.body.style.backgroundColor = 'rgba(255, 255, 255, 1)';
+    }
   }
 }
 

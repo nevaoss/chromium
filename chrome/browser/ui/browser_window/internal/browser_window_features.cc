@@ -12,6 +12,7 @@
 #include "base/no_destructor.h"
 #include "chrome/browser/actor/ui/actor_border_view_controller.h"
 #include "chrome/browser/actor/ui/actor_ui_window_controller.h"
+#include "chrome/browser/actor/ui/task_list_bubble/actor_task_list_bubble_controller.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/collaboration/collaboration_service_factory.h"
 #include "chrome/browser/commerce/shopping_service_factory.h"
@@ -24,6 +25,10 @@
 #include "chrome/browser/extensions/browser_extension_window_controller.h"
 #include "chrome/browser/extensions/manifest_v2_experiment_manager.h"
 #include "chrome/browser/extensions/mv2_experiment_stage.h"
+#include "chrome/browser/glic/browser_ui/glic_button_controller.h"
+#include "chrome/browser/glic/browser_ui/glic_iph_controller.h"
+#include "chrome/browser/glic/public/glic_enabling.h"
+#include "chrome/browser/glic/public/glic_keyed_service.h"
 #include "chrome/browser/lens/region_search/lens_region_search_controller.h"
 #include "chrome/browser/media/router/media_router_feature.h"
 #include "chrome/browser/profiles/profile.h"
@@ -64,8 +69,8 @@
 #include "chrome/browser/ui/sync/browser_synced_window_delegate.h"
 #include "chrome/browser/ui/tab_search_feature.h"
 #include "chrome/browser/ui/tabs/features.h"
+#include "chrome/browser/ui/tabs/glic_actor_nudge_controller.h"
 #include "chrome/browser/ui/tabs/glic_nudge_controller.h"
-#include "chrome/browser/ui/tabs/organization/tab_declutter_controller.h"
 #include "chrome/browser/ui/tabs/projects/projects_panel_state_controller.h"
 #include "chrome/browser/ui/tabs/saved_tab_groups/most_recent_shared_tab_update_store.h"
 #include "chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_utils.h"
@@ -86,6 +91,7 @@
 #include "chrome/browser/ui/toolbar/pinned_toolbar/tab_search_toolbar_button_controller.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/color_provider_browser_helper.h"
+#include "chrome/browser/ui/views/contextual_tasks/contextual_tasks_close_button_controller.h"
 #include "chrome/browser/ui/views/contextual_tasks/contextual_tasks_ephemeral_button_controller.h"
 #include "chrome/browser/ui/views/data_sharing/data_sharing_bubble_controller.h"
 #include "chrome/browser/ui/views/extensions/extension_keybinding_registry_views.h"
@@ -188,16 +194,6 @@
 #include "chrome/browser/ui/views/download/bubble/download_toolbar_ui_controller.h"
 #endif
 
-#if BUILDFLAG(ENABLE_GLIC)
-#include "chrome/browser/actor/ui/task_list_bubble/actor_task_list_bubble_controller.h"
-#include "chrome/browser/glic/browser_ui/glic_button_controller.h"
-#include "chrome/browser/glic/browser_ui/glic_iph_controller.h"
-#include "chrome/browser/glic/public/glic_enabling.h"
-#include "chrome/browser/glic/public/glic_keyed_service.h"
-#include "chrome/browser/ui/tabs/glic_actor_nudge_controller.h"
-#include "chrome/browser/ui/views/side_panel/glic/glic_legacy_side_panel_coordinator.h"
-#endif
-
 #if defined(USE_AURA)
 #include "chrome/browser/ui/overscroll_pref_manager.h"
 #endif  // defined(USE_AURA)
@@ -296,20 +292,12 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
           std::make_unique<tab_groups::MostRecentSharedTabUpdateStore>(browser);
     }
 
-    if (features::IsTabstripDeclutterEnabled() &&
-        (profile->IsRegularProfile() || profile->IsGuestSession())) {
-      tab_declutter_controller_ =
-          std::make_unique<tabs::TabDeclutterController>(browser);
-    }
-
-#if BUILDFLAG(ENABLE_GLIC)
     if (glic::GlicEnabling::IsProfileEligible(profile)) {
       glic_iph_controller_ = std::make_unique<glic::GlicIphController>(
           browser, *glic::GlicKeyedService::Get(profile));
       glic_nudge_controller_ =
           std::make_unique<tabs::GlicNudgeController>(browser);
     }
-#endif  // BUILDFLAG(ENABLE_GLIC)
 
     if (tabs::IsVerticalTabsFeatureEnabled()) {
       const std::optional<bool>& restored_state_collapsed =
@@ -469,6 +457,7 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
   embedder_browser_window_features_ =
       GetUserDataFactory().CreateInstance<EmbedderBrowserWindowFeatures>(
           *browser, browser);
+  embedder_browser_window_features_->Init(browser);
 }
 
 void BrowserWindowFeatures::InitPostWindowConstruction(Browser* browser) {
@@ -730,14 +719,6 @@ void BrowserWindowFeatures::InitPostBrowserViewConstruction(
     comments_side_panel_coordinator_ =
         std::make_unique<CommentsSidePanelCoordinator>(browser_view->browser());
   }
-#if BUILDFLAG(ENABLE_GLIC)
-  if (!glic::GlicEnabling::IsMultiInstanceEnabled() &&
-      glic::GlicKeyedService::Get(browser_view->GetProfile())) {
-    glic_side_panel_coordinator_ =
-        std::make_unique<glic::GlicLegacySidePanelCoordinator>(
-            browser_view->browser());
-  }
-#endif  // BUILDFLAG(ENABLE_GLIC)
 
   if (base::FeatureList::IsEnabled(contextual_tasks::kContextualTasks)) {
     contextual_tasks_active_task_context_provider_ =
@@ -764,6 +745,13 @@ void BrowserWindowFeatures::InitPostBrowserViewConstruction(
               .CreateInstance<ContextualTasksEphemeralButtonController>(
                   *browser_, browser_);
     }
+
+    contextual_tasks_close_button_controller_ =
+        GetUserDataFactory()
+            .CreateInstance<ContextualTasksCloseButtonController>(
+                *browser_, browser_,
+                contextual_tasks_entry_point_eligibility_manager_.get(),
+                contextual_tasks_side_panel_coordinator_.get());
   }
 
   side_panel_coordinator_->Init(browser_view->browser());
@@ -777,7 +765,6 @@ void BrowserWindowFeatures::InitPostBrowserViewConstruction(
           *browser_, &chrome::CreateImmersiveModeController, browser_view);
 
   if (browser_view->GetIsNormalType()) {
-#if BUILDFLAG(ENABLE_GLIC)
     glic::GlicKeyedService* glic_service =
         glic::GlicKeyedService::Get(browser_view->GetProfile());
     if (glic_service) {
@@ -808,7 +795,6 @@ void BrowserWindowFeatures::InitPostBrowserViewConstruction(
                         kTabStripActionContainerElementId));
       }
     }
-#endif  // BUILDFLAG(ENABLE_GLIC)
 
     // Memory Saver mode is default off but is available to turn on.
     // The controller relies on performance manager which isn't initialized in
@@ -920,13 +906,11 @@ void BrowserWindowFeatures::TearDownPreBrowserWindowDestruction() {
   toast_service_.reset();
   extension_window_controller_.reset();
   actor_border_view_controller_.reset();
-
-#if BUILDFLAG(ENABLE_GLIC)
   glic_button_controller_.reset();
   glic_actor_nudge_controller_.reset();
   actor_task_list_bubble_controller_.reset();
-#endif
 
+  contextual_tasks_close_button_controller_.reset();
   contextual_tasks_side_panel_coordinator_.reset();
   contextual_tasks_entry_point_eligibility_manager_.reset();
 

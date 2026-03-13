@@ -1995,6 +1995,19 @@ int StyleBuilderConverter::ConvertBorderWidth(const StyleResolverState& state,
   return ClampTo<int>(floor(result), 0, LayoutUnit::Max().ToInt());
 }
 
+int StyleBuilderConverter::ConvertOutlineOffset(const StyleResolverState& state,
+                                                const CSSValue& value) {
+  double result = To<CSSPrimitiveValue>(value).ComputeLength<double>(
+      state.CssToLengthConversionData());
+  double abs_result = std::abs(result);
+  if (abs_result > 0.0 && abs_result < 1.0) {
+    return result > 0.0 ? 1 : -1;
+  }
+  int int_result =
+      ClampTo<int>(std::floor(abs_result), 0, LayoutUnit::Max().ToInt());
+  return result < 0.0 ? -int_result : int_result;
+}
+
 Superellipse StyleBuilderConverter::ConvertCornerShape(
     const StyleResolverState& state,
     const CSSValue& value) {
@@ -2209,6 +2222,16 @@ float StyleBuilderConverter::ConvertNumberOrPercentage(
   const auto& primitive_value = To<CSSPrimitiveValue>(value);
   DCHECK(primitive_value.IsNumber() || primitive_value.IsPercentage());
   return primitive_value.ConvertTo<float>(state.CssToLengthConversionData());
+}
+
+float StyleBuilderConverter::ConvertPathLength(StyleResolverState& state,
+                                               const CSSValue& value) {
+  if (auto* identifier_value = DynamicTo<CSSIdentifierValue>(value)) {
+    DCHECK_EQ(identifier_value->GetValueID(), CSSValueID::kNone);
+    return -1.0;
+  }
+  return To<CSSPrimitiveValue>(value).ConvertTo<float>(
+      state.CssToLengthConversionData());
 }
 
 int StyleBuilderConverter::ConvertInteger(StyleResolverState& state,
@@ -3544,7 +3567,7 @@ static const CSSValue& ComputeRegisteredPropertyValue(
   }
 
   if (const auto* uri_value = DynamicTo<cssvalue::CSSURIValue>(value)) {
-    const KURL& base_url = context ? context->BaseURL() : KURL();
+    const KURL& base_url = context ? context->BaseURL() : NullUrl();
     const TextEncoding& charset = context ? context->Charset() : TextEncoding();
     return *uri_value->ComputedCSSValue(base_url, charset);
   }

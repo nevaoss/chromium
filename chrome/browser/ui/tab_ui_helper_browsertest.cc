@@ -13,6 +13,7 @@
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/performance_controls/test_support/memory_saver_browser_test_mixin.h"
 #include "chrome/browser/ui/tabs/public/tab_features.h"
+#include "chrome/browser/ui/tabs/tab_network_state.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "components/tabs/public/tab_interface.h"
@@ -139,6 +140,54 @@ IN_PROC_BROWSER_TEST_F(TabUIHelperBrowserTest, PinningTabIsNotified) {
   ASSERT_TRUE(tab_interface->IsPinned());
 }
 
+IN_PROC_BROWSER_TEST_F(TabUIHelperBrowserTest, NetworkStateChangeIsNotified) {
+  tabs::TabInterface* const tab_interface =
+      browser()->tab_strip_model()->GetActiveTab();
+  TabUIHelper* const tab_ui_helper = TabUIHelper::From(tab_interface);
+  ASSERT_EQ(tab_ui_helper->GetTabNetworkState(), TabNetworkState::kNone);
+
+  // Pinning the tab will trigger a callback.
+  auto tab_ui_change_waiter =
+      std::make_unique<MockTabUIHelperSubscriber>(tab_ui_helper);
+  EXPECT_CALL(*tab_ui_change_waiter, OnTabUIChange())
+      .Times(testing::AnyNumber());
+  ui_test_utils::NavigateToURLWithDisposition(
+      browser(), GetURL(), WindowOpenDisposition::CURRENT_TAB,
+      ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP);
+  EXPECT_EQ(tab_ui_helper->GetTabNetworkState(), TabNetworkState::kNone);
+}
+
+IN_PROC_BROWSER_TEST_F(TabUIHelperBrowserTest, TabCrashStateChangeIsNotified) {
+  tabs::TabInterface* const tab_interface =
+      browser()->tab_strip_model()->GetActiveTab();
+  TabUIHelper* const tab_ui_helper = TabUIHelper::From(tab_interface);
+  ASSERT_FALSE(tab_ui_helper->IsCrashed());
+
+  auto tab_ui_change_waiter =
+      std::make_unique<MockTabUIHelperSubscriber>(tab_ui_helper);
+  EXPECT_CALL(*tab_ui_change_waiter, OnTabUIChange())
+      .Times(testing::AnyNumber());
+  content::CrashTab(tab_interface->GetContents());
+  EXPECT_TRUE(tab_ui_helper->IsCrashed());
+}
+
+IN_PROC_BROWSER_TEST_F(TabUIHelperBrowserTest, ShouldHideThrobberIsNotified) {
+  ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
+      browser(), GURL(url::kAboutBlankURL),
+      WindowOpenDisposition::NEW_BACKGROUND_TAB,
+      ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
+  tabs::TabInterface* const tab_interface =
+      browser()->GetTabStripModel()->GetTabAtIndex(1);
+  TabUIHelper* const tab_ui_helper = TabUIHelper::From(tab_interface);
+  ASSERT_FALSE(tab_ui_helper->ShouldHideThrobber());
+
+  auto tab_ui_change_waiter =
+      std::make_unique<MockTabUIHelperSubscriber>(tab_ui_helper);
+  EXPECT_CALL(*tab_ui_change_waiter, OnTabUIChange());
+  tab_ui_helper->SetCreatedBySessionRestore(true);
+  EXPECT_TRUE(tab_ui_helper->ShouldHideThrobber());
+}
+
 class TabUIHelperWithPrerenderingTest : public InProcessBrowserTest {
  public:
   TabUIHelperWithPrerenderingTest()
@@ -189,7 +238,7 @@ IN_PROC_BROWSER_TEST_F(TabUIHelperWithPrerenderingTest,
   // Set |create_by_session_restore_| to true to check if the value is changed
   // after prerendering. It should not be changed because DidStopLoading is not
   // called during the prerendering.
-  tab_ui_helper->set_created_by_session_restore(true);
+  tab_ui_helper->SetCreatedBySessionRestore(true);
 
   // Prerender to another site.
   prerender_test_helper().AddPrerender(prerender_url);

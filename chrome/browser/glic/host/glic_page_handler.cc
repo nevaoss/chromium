@@ -995,6 +995,10 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
       state->host_capabilities.push_back(mojom::HostCapability::kPdfZeroState);
     }
 
+    if (base::FeatureList::IsEnabled(features::kGlicInvoke)) {
+      state->host_capabilities.push_back(mojom::HostCapability::kInvoke);
+    }
+
     const mojom::InvocationSource invocation_source =
         host().invocation_source().value_or(
             mojom::InvocationSource::kUnsupported);
@@ -2375,8 +2379,13 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
       int32_t task_id,
       actor::webui::mojom::AutofillSuggestionDialogOnFormPresentedParamsPtr
           params) override {
-    if (autofill_selection_event_handler_) {
-      autofill_selection_event_handler_->OnFormPresented(std::move(params));
+    if (!autofill_selection_event_handler_) {
+      return;
+    }
+    if (!autofill_selection_event_handler_->OnFormPresented(
+            std::move(params))) {
+      receiver_.ReportBadMessage(
+          "Tried calling OnFormPresented with incorrect params.");
     }
   }
 
@@ -2394,8 +2403,13 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
       int32_t task_id,
       actor::webui::mojom::AutofillSuggestionDialogOnFormConfirmedParamsPtr
           params) override {
-    if (autofill_selection_event_handler_) {
-      autofill_selection_event_handler_->OnFormConfirmed(std::move(params));
+    if (!autofill_selection_event_handler_) {
+      return;
+    }
+    if (!autofill_selection_event_handler_->OnFormConfirmed(
+            std::move(params))) {
+      receiver_.ReportBadMessage(
+          "Tried calling OnFormConfirmed with incorrect params.");
     }
   }
 

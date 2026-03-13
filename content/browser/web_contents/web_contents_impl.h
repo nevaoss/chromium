@@ -309,6 +309,10 @@ class CONTENT_EXPORT WebContentsImpl
 
   void OnScreenOrientationChange();
 
+  ScreenOrientationProvider* GetScreenOrientationProvider() const {
+    return screen_orientation_provider_.get();
+  }
+
   ScreenOrientationProvider* GetScreenOrientationProviderForTesting() const {
     return screen_orientation_provider_.get();
   }

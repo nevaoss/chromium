@@ -84,7 +84,7 @@ VerticalUnpinnedTabContainerView::VerticalUnpinnedTabContainerView(
       layout_manager_(*SetLayoutManager(
           std::make_unique<TabCollectionAnimatingLayoutManager>(
               std::make_unique<views::DelegatingLayoutManager>(this),
-              /*delegate=*/this,
+              /*delegate=*/*this,
               /*animation_axis=*/
               TabCollectionAnimatingLayoutManager::AnimationAxis::kVertical,
               /*animate_host_size=*/true))) {
@@ -194,7 +194,7 @@ VerticalUnpinnedTabContainerView::GetLinkDropIndex(
     }
 
     if (child_node->type() == TabCollectionNode::Type::GROUP) {
-      auto* group_view = static_cast<VerticalTabGroupView*>(view);
+      auto* group_view = views::AsViewClass<VerticalTabGroupView>(view);
       if (group_view->IsCollapsed()) {
         gfx::Point loc_in_group = views::View::ConvertPointToTarget(
             this, group_view, loc_in_container);
@@ -225,7 +225,7 @@ VerticalUnpinnedTabContainerView::GetLinkDropIndex(
     } else if (child_node->type() == TabCollectionNode::Type::SPLIT) {
       // If landing in the middle of the split, let the split view decide which
       // tab to replace.
-      auto* split_view = static_cast<VerticalSplitTabView*>(view);
+      auto* split_view = views::AsViewClass<VerticalSplitTabView>(view);
       gfx::Point loc_in_split =
           views::View::ConvertPointToTarget(this, split_view, loc_in_container);
       return split_view->GetLinkDropIndex(loc_in_split);
@@ -246,6 +246,12 @@ bool VerticalUnpinnedTabContainerView::IsViewDragging(
     return false;
   }
   return GetDragHandler().IsViewDragging(child_view);
+}
+
+bool VerticalUnpinnedTabContainerView::ShouldAnimateOpacityForAddAndRemove(
+    const views::View& child_view) const {
+  // Only animate opacity for tab views.
+  return views::IsViewClass<VerticalTabView>(&child_view);
 }
 
 bool VerticalUnpinnedTabContainerView::ShouldSnapToTarget(

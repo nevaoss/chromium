@@ -208,37 +208,6 @@ BASE_FEATURE_PARAM(bool,
                    "trigger_demo_mode",
                    false);
 
-BASE_FEATURE(kTabstripDeclutter, base::FEATURE_DISABLED_BY_DEFAULT);
-
-bool IsTabstripDeclutterEnabled() {
-  return base::FeatureList::IsEnabled(features::kTabstripDeclutter);
-}
-
-BASE_FEATURE_PARAM(base::TimeDelta,
-                   kTabstripDeclutterStaleThresholdDuration,
-                   &kTabstripDeclutter,
-                   "stale_threshold_duration",
-                   base::Days(7));
-
-BASE_FEATURE_PARAM(base::TimeDelta,
-                   kTabstripDeclutterTimerInterval,
-                   &kTabstripDeclutter,
-                   "declutter_timer_interval",
-                   base::Minutes(10));
-
-BASE_FEATURE_PARAM(base::TimeDelta,
-                   kTabstripDeclutterNudgeTimerInterval,
-                   &kTabstripDeclutter,
-                   "nudge_timer_interval",
-                   base::Minutes(6 * 60));
-
-BASE_FEATURE(kTabstripDedupe, base::FEATURE_DISABLED_BY_DEFAULT);
-
-bool IsTabstripDedupeEnabled() {
-  return IsTabstripDeclutterEnabled() &&
-         base::FeatureList::IsEnabled(features::kTabstripDedupe);
-}
-
 BASE_FEATURE(kTabOrganizationAppMenuItem, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kTabOrganizationModelStrategy, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -275,22 +244,6 @@ bool UseSidePanelFlyoverAnimation() {
 // a badge in the profile menu.
 BASE_FEATURE(kEnterpriseProfileBadgingForMenu,
              base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Enables enterprise badging for managed browsers on the new tab page footer.
-// On managed browsers, a building icon and "Managed by <domain>" string will be
-// shown in the footer, unless the icon and label are customized by the admin.
-BASE_FEATURE(kEnterpriseBadgingForNtpFooter, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Enables enterprise badging for managed browsers with local management only on
-// the new tab page footer. On managed browsers, a building icon and "Managed by
-// your organization" string will be shown in the footer.
-BASE_FEATURE(kEnterpriseBadgingForLocalManagemenetNtpFooter,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Enables enterprise badging for managed browsers with local management only
-// AND 3 or more policies on the new tab page footer.
-BASE_FEATURE(kEnterpriseBadgingForNtpFooterWithOverThreePolicies,
-             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables the management notice in the NTP footer if the custom policies are
 // set. This acts as a kill switch for "EnterpriseCustomLabelForBrowser" and
@@ -384,18 +337,6 @@ BASE_FEATURE_PARAM(bool,
                    true);
 
 BASE_FEATURE_PARAM(bool,
-                   kPageActionsMigrationPriceInsights,
-                   &kPageActionsMigration,
-                   "price_insights",
-                   true);
-
-BASE_FEATURE_PARAM(bool,
-                   kPageActionsMigrationDiscounts,
-                   &kPageActionsMigration,
-                   "discounts",
-                   true);
-
-BASE_FEATURE_PARAM(bool,
                    kPageActionsMigrationManagePasswords,
                    &kPageActionsMigration,
                    "manage_passwords",
@@ -423,12 +364,6 @@ BASE_FEATURE_PARAM(bool,
                    kPageActionsMigrationCollaborationMessaging,
                    &kPageActionsMigration,
                    "collaboration_messaging",
-                   true);
-
-BASE_FEATURE_PARAM(bool,
-                   kPageActionsMigrationPriceTracking,
-                   &kPageActionsMigration,
-                   "price_tracking",
                    true);
 
 BASE_FEATURE_PARAM(bool,

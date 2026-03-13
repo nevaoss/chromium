@@ -331,6 +331,7 @@
 #import "ios/chrome/browser/tips_manager/model/tips_manager_ios_factory.h"
 #import "ios/chrome/browser/tips_notifications/coordinator/enhanced_safe_browsing_promo_coordinator.h"
 #import "ios/chrome/browser/tips_notifications/coordinator/lens_promo_coordinator.h"
+#import "ios/chrome/browser/tips_notifications/coordinator/price_tracking_promo_coordinator.h"
 #import "ios/chrome/browser/tips_notifications/coordinator/search_what_you_see_promo_coordinator.h"
 #import "ios/chrome/browser/toolbar/coordinator/toolbar_coordinator.h"
 #import "ios/chrome/browser/toolbar/legacy/ui_bundled/accessory/toolbar_accessory_presenter.h"
@@ -353,6 +354,7 @@
 #import "ios/chrome/browser/web/model/web_state_delegate_browser_agent.h"
 #import "ios/chrome/browser/web_state_list/model/web_usage_enabler/web_usage_enabler_browser_agent.h"
 #import "ios/chrome/browser/web_state_list/model/web_usage_enabler/web_usage_enabler_browser_agent_observer_bridge.h"
+#import "ios/chrome/browser/webauthn/coordinator/passkey_incognito_interstitial_coordinator.h"
 #import "ios/chrome/browser/webauthn/coordinator/passkey_welcome_screen_coordinator.h"
 #import "ios/chrome/browser/webui/model/net_export_tab_helper_delegate.h"
 #import "ios/chrome/browser/webui/ui_bundled/net_export_coordinator.h"
@@ -751,6 +753,7 @@ const char kChromeAppStoreUrl[] =
   QuickDeleteCoordinator* _quickDeleteCoordinator;
   LensPromoCoordinator* _lensPromoCoordinator;
   EnhancedSafeBrowsingPromoCoordinator* _enhancedSafeBrowsingPromoCoordinator;
+  PriceTrackingPromoCoordinator* _priceTrackingPromoCoordinator;
   AutoDeletionCoordinator* _autoDeletionCoordinator;
   TrustedVaultReauthenticationCoordinator*
       _trustedVaultReauthenticationCoordinator;
@@ -797,6 +800,9 @@ const char kChromeAppStoreUrl[] =
 
   // Block to run after the Synced Set Up UI has finished dismissing.
   ProceduralBlock _runAfterSyncedSetUpDismissal;
+
+  // The coordinator for the passkey incognito interstitial.
+  PasskeyIncognitoInterstitialCoordinator* _passkeyIncognitoCoordinator;
 }
 
 #pragma mark - ReaderModeBrowserAgentDelegate
@@ -1776,6 +1782,9 @@ const char kChromeAppStoreUrl[] =
   [_passkeyCreationBottomSheetCoordinator stop];
   _passkeyCreationBottomSheetCoordinator = nil;
 
+  [_passkeyIncognitoCoordinator stop];
+  _passkeyIncognitoCoordinator = nil;
+
   if (IsSyncedSetUpEnabled()) {
     [self stopSyncedSetUpCoordinator];
   }
@@ -1790,6 +1799,7 @@ const char kChromeAppStoreUrl[] =
   [self dismissEditAddressBottomSheet];
   [self dismissLensPromo];
   [self dismissEnhancedSafeBrowsingPromo];
+  [self dismissPriceTrackingPromo];
   [self dismissAutoDeletionActionSheet];
   [self hideGoogleOne];
   [self stopTrustedVaultReauthentication];
@@ -2343,6 +2353,29 @@ const char kChromeAppStoreUrl[] =
   [self stopPasskeyWelcomeScreenCoordinator];
 }
 
+- (void)showPasskeyIncognitoInterstitial:
+    (webauthn::IOSPasskeyClient::InterstitialCallback)callback {
+  if (_passkeyIncognitoCoordinator) {
+    return;
+  }
+
+  _passkeyIncognitoCoordinator =
+      [[PasskeyIncognitoInterstitialCoordinator alloc]
+          initWithBaseViewController:self.viewController
+                             browser:self.browser
+                            callback:std::move(callback)];
+
+  _passkeyIncognitoCoordinator.passkeyClientHandler =
+      HandlerForProtocol(self.dispatcher, IOSPasskeyClientCommands);
+
+  [_passkeyIncognitoCoordinator start];
+}
+
+- (void)dismissPasskeyIncognitoInterstitial {
+  [_passkeyIncognitoCoordinator stop];
+  _passkeyIncognitoCoordinator = nil;
+}
+
 #pragma mark - BrowserCoordinatorCommands
 
 - (void)printTabWithBaseViewController:(UIViewController*)baseViewController {
@@ -2689,6 +2722,19 @@ const char kChromeAppStoreUrl[] =
   _searchWhatYouSeePromoCoordinator = nil;
 }
 
+- (void)showPriceTrackingPromo {
+  [_priceTrackingPromoCoordinator stop];
+  _priceTrackingPromoCoordinator = [[PriceTrackingPromoCoordinator alloc]
+      initWithBaseViewController:self.viewController
+                         browser:self.browser];
+  [_priceTrackingPromoCoordinator start];
+}
+
+- (void)dismissPriceTrackingPromo {
+  [_priceTrackingPromoCoordinator stop];
+  _priceTrackingPromoCoordinator = nil;
+}
+
 - (void)showNotificationsOptInFromAccessPoint:
             (NotificationOptInAccessPoint)accessPoint
                            baseViewController:
@@ -2710,7 +2756,8 @@ const char kChromeAppStoreUrl[] =
 }
 
 - (void)forceFullscreenMode {
-  _fullscreenController->EnterForceFullscreenMode(YES);
+  _fullscreenController->EnterForceFullscreenMode(
+      /* insets_update_enabled */ true);
 }
 
 - (void)showAddAccountWithAccessPoint:(signin_metrics::AccessPoint)accessPoint
@@ -2883,6 +2930,9 @@ const char kChromeAppStoreUrl[] =
   [_passkeyWelcomeScreenCoordinator stop];
   _passkeyWelcomeScreenCoordinator = nil;
 
+  [_passkeyIncognitoCoordinator stop];
+  _passkeyIncognitoCoordinator = nil;
+
   if (IsSyncedSetUpEnabled()) {
     [self stopSyncedSetUpCoordinator];
   }
@@ -2894,6 +2944,7 @@ const char kChromeAppStoreUrl[] =
   [self dismissEnhancedSafeBrowsingPromo];
   [self dismissAutoDeletionActionSheet];
   [self dismissSearchWhatYouSeePromo];
+  [self dismissPriceTrackingPromo];
   [self dismissNotificationsOptIn];
   [self hideWelcomeBackPromo];
 
@@ -3391,8 +3442,11 @@ const char kChromeAppStoreUrl[] =
 }
 
 - (void)showBWGPromoIfPageIsEligible {
-  BwgService* BWGService = BwgServiceFactory::GetForProfile(self.profile);
-  if (BWGService->IsBwgAvailableForWebState(self.activeWebState)) {
+  BwgService* geminiService = BwgServiceFactory::GetForProfile(self.profile);
+  BwgTabHelper* geminiTabHelper =
+      BwgTabHelper::FromWebState(self.activeWebState);
+  if (geminiTabHelper && geminiTabHelper->IsGeminiAvailableForWebState() &&
+      geminiService && geminiService->IsProfileEligibleForGemini()) {
     [self startGeminiFlowWithStartupState:
               [[GeminiStartupState alloc]
                   initWithEntryPoint:gemini::EntryPoint::Promo]];
@@ -3443,28 +3497,30 @@ const char kChromeAppStoreUrl[] =
 - (void)updateFloatyVisibilityIfEligibleAnimated:(BOOL)animated
                                       fromSource:
                                           (gemini::FloatyUpdateSource)source {
+  if (!self.activeWebState) {
+    return;
+  }
+
   GeminiBrowserAgent* geminiBrowserAgent =
       GeminiBrowserAgent::FromBrowser(self.browser);
   BwgService* geminiService = BwgServiceFactory::GetForProfile(self.profile);
-  if (!IsGeminiCopresenceEnabled() || !geminiBrowserAgent || !geminiService ||
-      !self.activeWebState) {
+  BwgTabHelper* geminiTabHelper =
+      BwgTabHelper::FromWebState(self.activeWebState);
+  if (!IsGeminiCopresenceEnabled() || !geminiBrowserAgent || !geminiTabHelper ||
+      !geminiService) {
     return;
   }
 
   // Don't show the floaty if the page is ineligible or the active WebState
   // isn't visible.
   // TODO(crbug.com/476145805): Move WebState related checks to tab helper.
-  bool eligibleSite =
-      geminiService->IsBwgAvailableForWebState(self.activeWebState);
+  bool eligibleSite = geminiTabHelper->IsGeminiAvailableForWebState() &&
+                      geminiService->IsProfileEligibleForGemini();
   bool isWebStateVisible = self.activeWebState->IsVisible();
   if (!eligibleSite || !isWebStateVisible) {
     // Reset presented sources before hiding the floaty due to an ineligible
     // site.
-    BwgTabHelper* tabHelper = BwgTabHelper::FromWebState(self.activeWebState);
-    if (tabHelper) {
-      tabHelper->UpdatePresentedSource(source, /*is_presented=*/false);
-    }
-
+    geminiTabHelper->UpdatePresentedSource(source, /*is_presented=*/false);
     geminiBrowserAgent->HideFloatyIfInvoked(
         animated, gemini::FloatyUpdateSource::IneligibleSite);
     return;
@@ -4984,8 +5040,7 @@ const char kChromeAppStoreUrl[] =
 #pragma mark - ReminderNotificationsCommands
 
 - (void)showSetTabReminderUI:(SetTabReminderEntryPoint)entryPoint {
-  CHECK(
-      send_tab_to_self::IsSendTabIOSPushNotificationsEnabledWithTabReminders());
+  CHECK(send_tab_to_self::AreIOSTabRemindersEnabled());
 
   _reminderNotificationsCoordinator = [[ReminderNotificationsCoordinator alloc]
       initWithBaseViewController:self.viewController
@@ -4995,8 +5050,7 @@ const char kChromeAppStoreUrl[] =
 }
 
 - (void)dismissSetTabReminderUI {
-  CHECK(
-      send_tab_to_self::IsSendTabIOSPushNotificationsEnabledWithTabReminders());
+  CHECK(send_tab_to_self::AreIOSTabRemindersEnabled());
 
   [self stopReminderNotificationsCoordinator];
 }

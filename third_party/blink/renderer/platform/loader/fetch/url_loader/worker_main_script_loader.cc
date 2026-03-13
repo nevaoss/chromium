@@ -180,7 +180,7 @@ void WorkerMainScriptLoader::OnComplete(
   // scheme, then return.
   //
   // i.e. call `AddResourceTiming()` only if the URL's scheme is HTTP(S).
-  if (initial_request_url_.ProtocolIsInHTTPFamily()) {
+  if (initial_request_url_.ProtocolIsInHttpFamily()) {
     mojom::blink::ResourceTimingInfoPtr timing_info = CreateResourceTimingInfo(
         start_time_, initial_request_url_, &resource_response_);
     timing_info->response_end = status.completion_time;
@@ -218,9 +218,14 @@ CachedMetadataHandler* WorkerMainScriptLoader::CreateCachedMetadataHandler() {
   if (!CanCreateCachedMetadataHandler()) {
 #else
   // Currently we support the metadata caching only for HTTP family.
+<<<<<<< HEAD
   if (!initial_request_url_.ProtocolIsInHTTPFamily() ||
       !resource_response_.CurrentRequestUrl().ProtocolIsInHTTPFamily()) {
 #endif
+=======
+  if (!initial_request_url_.ProtocolIsInHttpFamily() ||
+      !resource_response_.CurrentRequestUrl().ProtocolIsInHttpFamily()) {
+>>>>>>> 147.0.7720.0~1
     return nullptr;
   }
 

@@ -1533,10 +1533,6 @@ BASE_FEATURE(kOrcaResizingSupport, base::FEATURE_DISABLED_BY_DEFAULT);
 // Enables or disables Orca on Demo mode.
 BASE_FEATURE(kOrcaSupportDemoMode, base::FEATURE_ENABLED_BY_DEFAULT);
 
-// If enabled, OsSyncConsent Revamp will be shown.
-// enabling this without enabling Lacros flag will have no effect
-BASE_FEATURE(kOsSyncConsentRevamp, base::FEATURE_ENABLED_BY_DEFAULT);
-
 // Enables Jelly colors and components to appear in the Parent Access Widget
 // if jelly-colors is also enabled.
 BASE_FEATURE(kParentAccessJelly, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -1733,9 +1729,6 @@ BASE_FEATURE(kShelfAutoHideSeparation, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables or disables the OS update page in the Shimless RMA flow.
 BASE_FEATURE(kShimlessRMAOsUpdate, base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Enables 3p diagnostics in the Shimless RMA flow.
-BASE_FEATURE(kShimlessRMA3pDiagnostics, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables 3p diagnostics dev mode in the Shimless RMA flow. This will skip some
 // checks to allow developers to use dev-signed extensions for development
@@ -2944,10 +2937,6 @@ bool IsOobeSplitModifierKeyboardInfoEnabled() {
   return base::FeatureList::IsEnabled(kOobeSplitModifierKeyboardInfo);
 }
 
-bool IsOsSyncConsentRevampEnabled() {
-  return base::FeatureList::IsEnabled(kOsSyncConsentRevamp);
-}
-
 bool IsParentAccessJellyEnabled() {
   return base::FeatureList::IsEnabled(kParentAccessJelly);
 }
@@ -3104,10 +3093,6 @@ bool IsSettingsAppThemeChangeAnimationEnabled() {
 
 bool IsShimlessRMAOsUpdateEnabled() {
   return base::FeatureList::IsEnabled(kShimlessRMAOsUpdate);
-}
-
-bool IsShimlessRMA3pDiagnosticsEnabled() {
-  return base::FeatureList::IsEnabled(kShimlessRMA3pDiagnostics);
 }
 
 bool IsShimlessRMA3pDiagnosticsDevModeEnabled() {

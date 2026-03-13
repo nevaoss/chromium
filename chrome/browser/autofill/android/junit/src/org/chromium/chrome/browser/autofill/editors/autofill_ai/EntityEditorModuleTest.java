@@ -8,8 +8,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -25,9 +27,11 @@ import static org.chromium.chrome.browser.autofill.editors.common.field.FieldPro
 import static org.chromium.chrome.browser.autofill.editors.common.field.FieldProperties.LABEL;
 import static org.chromium.chrome.browser.autofill.editors.common.field.FieldProperties.VALUE;
 import static org.chromium.chrome.browser.autofill.editors.common.text_field.TextFieldProperties.TEXT_FIELD_TYPE;
+import static org.chromium.chrome.browser.autofill.editors.utils.TestUtils.setDropdownValue;
 
 import android.app.Activity;
 import android.view.View;
+import android.view.ViewGroup;
 
 import androidx.test.filters.SmallTest;
 
@@ -55,6 +59,7 @@ import org.chromium.chrome.browser.autofill.PersonalDataManagerFactory;
 import org.chromium.chrome.browser.autofill.editors.autofill_ai.EntityEditorCoordinator.Delegate;
 import org.chromium.chrome.browser.autofill.editors.common.EditorComponentsProperties.EditorItem;
 import org.chromium.chrome.browser.autofill.editors.common.EditorDialogToolbar;
+import org.chromium.chrome.browser.autofill.editors.common.date_field.DateFieldView;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.signin.services.IdentityServicesProvider;
 import org.chromium.components.autofill.DropdownKeyValue;
@@ -76,7 +81,6 @@ import org.chromium.ui.modelutil.ListModel;
 import org.chromium.ui.modelutil.PropertyModel;
 
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.List;
 
 @RunWith(BaseRobolectricTestRunner.class)
@@ -118,6 +122,7 @@ public class EntityEditorModuleTest {
             new EntityType(
                     /* typeName= */ EntityTypeName.PASSPORT,
                     /* isReadOnly= */ false,
+                    /* isEnabled= */ true,
                     /* typeNameAsString= */ "Passport",
                     /* typeNameAsMetricsString= */ "Passport",
                     /* addEntityTypeString= */ "Add passport",
@@ -134,21 +139,22 @@ public class EntityEditorModuleTest {
             new EntityInstance.Builder(PASSPORT_TYPE)
                     .setGUID("guid")
                     .setRecordType(RecordType.LOCAL)
-                    .setModifiedDate(LocalDate.now(ZoneId.systemDefault()))
+                    .setModifiedDate(LocalDate.of(2026, 2, 15))
                     .setUseCount(0)
                     .addAttribute(
                             new AttributeInstance(
                                     PASSPORT_NUMBER_ATTRIBUTE_TYPE, /* value= */ "AA123456"))
                     .addAttribute(
                             new AttributeInstance(
-                                    PASSPORT_ISSUE_DATE_TYPE, /* value= */ "2026-02-15"))
+                                    PASSPORT_ISSUE_DATE_TYPE,
+                                    /* date= */ LocalDate.of(2026, 2, 15)))
                     .build();
 
     private static final EntityInstance NEW_LOCAL_PASSPORT =
             new EntityInstance.Builder(PASSPORT_TYPE)
                     .setGUID("")
                     .setRecordType(RecordType.LOCAL)
-                    .setModifiedDate(LocalDate.now(ZoneId.systemDefault()))
+                    .setModifiedDate(LocalDate.of(2026, 2, 15))
                     .setUseCount(0)
                     .build();
 
@@ -156,7 +162,7 @@ public class EntityEditorModuleTest {
             new EntityInstance.Builder(PASSPORT_TYPE)
                     .setGUID("guid")
                     .setRecordType(RecordType.SERVER_WALLET)
-                    .setModifiedDate(LocalDate.now(ZoneId.systemDefault()))
+                    .setModifiedDate(LocalDate.of(2026, 2, 15))
                     .setUseCount(0)
                     .addAttribute(
                             new AttributeInstance(
@@ -200,6 +206,16 @@ public class EntityEditorModuleTest {
         PersonalDataManagerFactory.setInstanceForTesting(mPersonalDataManager);
 
         mActivity = Robolectric.setupActivity(TestActivity.class);
+    }
+
+    @Test
+    @SmallTest
+    public void testValidateOnShow() {
+        when(mPersonalDataManager.getDefaultCountryCodeForNewAddress()).thenReturn("US");
+        showEditorDialog(NEW_LOCAL_PASSPORT);
+
+        PropertyModel model = mCoordinator.getEditorModelForTest();
+        assertFalse(model.get(EntityEditorProperties.VALIDATE_ON_SHOW));
     }
 
     @Test
@@ -342,7 +358,7 @@ public class EntityEditorModuleTest {
                 new EntityInstance.Builder(PASSPORT_TYPE)
                         .setGUID("guid")
                         .setRecordType(RecordType.LOCAL)
-                        .setModifiedDate(LocalDate.now(ZoneId.systemDefault()))
+                        .setModifiedDate(LocalDate.of(2026, 2, 15))
                         .setUseCount(0)
                         .addAttribute(
                                 new AttributeInstance(
@@ -382,6 +398,53 @@ public class EntityEditorModuleTest {
         assertEquals(new StringValue("AA123456"), passportNumber.getAttributeValue());
     }
 
+    @Test
+    @SmallTest
+    public void testCommitChangesWithInvalidDate() {
+        EntityInstance entity =
+                new EntityInstance.Builder(PASSPORT_TYPE)
+                        .setGUID("guid")
+                        .setRecordType(RecordType.LOCAL)
+                        .setModifiedDate(LocalDate.of(2026, 2, 15))
+                        .setUseCount(0)
+                        .addAttribute(
+                                new AttributeInstance(
+                                        PASSPORT_COUNTRY_ATTRIBUTE_TYPE, /* value= */ "Cuba"))
+                        .addAttribute(
+                                new AttributeInstance(
+                                        PASSPORT_NUMBER_ATTRIBUTE_TYPE, /* value= */ "AA123456"))
+                        .build();
+        showEditorDialog(entity);
+
+        ViewGroup content = mCoordinator.getEntityEditorViewForTest().getContentView();
+        DateFieldView issueDate = (DateFieldView) content.getChildAt(3);
+
+        setDropdownValue(
+                issueDate.getMonthPickerForTest(),
+                DateFieldView.getMonthName(mActivity, /* month= */ 6));
+        mContainerView.findViewById(R.id.editor_dialog_done_button).performClick();
+        // Only the month is set, the date is not valid yet.
+        verify(mDelegate, times(0)).onDone(any());
+
+        setDropdownValue(issueDate.getDayPickerForTest(), "20");
+        mContainerView.findViewById(R.id.editor_dialog_done_button).performClick();
+        // Only the month and day are set, the date is not valid yet.
+        verify(mDelegate, times(0)).onDone(any());
+
+        setDropdownValue(issueDate.getYearPickerForTest(), "2026");
+        mContainerView.findViewById(R.id.editor_dialog_done_button).performClick();
+        // The date is completely valid, the editor should be closed now.
+        verify(mDelegate).onDone(mEntityInstanceCaptor.capture());
+
+        EntityInstance updatedEntityInstance = mEntityInstanceCaptor.getValue();
+        AttributeInstance passportIssueDate =
+                updatedEntityInstance.getAttribute(PASSPORT_ISSUE_DATE_TYPE);
+        assertTrue(passportIssueDate.getAttributeValue() instanceof AttributeInstance.DateValue);
+        assertEquals(
+                LocalDate.of(2026, 6, 20),
+                ((AttributeInstance.DateValue) passportIssueDate.getAttributeValue()).getDate());
+    }
+
     private void showEditorDialog(EntityInstance entityInstance) {
         mCoordinator = new EntityEditorCoordinator(mActivity, mDelegate, mProfile, entityInstance);
         mContainerView = mCoordinator.getEntityEditorViewForTest().getContainerView();
@@ -403,8 +466,12 @@ public class EntityEditorModuleTest {
                 /* fieldType= */ FieldType.PASSPORT_NUMBER,
                 /* label= */ "Passport number",
                 /* value= */ "AA123456");
-        verifyDateFieldContent(editorFields.get(3), /* label= */ "Issue date");
-        verifyDateFieldContent(editorFields.get(4), /* label= */ "Expiration date");
+        verifyDateFieldContent(
+                editorFields.get(3),
+                /* label= */ "Issue date",
+                /* value= */ LocalDate.of(2026, 2, 15).toString());
+        verifyDateFieldContent(
+                editorFields.get(4), /* label= */ "Expiration date", /* value= */ "");
     }
 
     private void verifyTextFieldContent(
@@ -429,10 +496,11 @@ public class EntityEditorModuleTest {
         assertEquals(value, item.model.get(VALUE));
     }
 
-    private void verifyDateFieldContent(EditorItem item, String label) {
+    private void verifyDateFieldContent(EditorItem item, String label, String value) {
         assertEquals(DATE, item.type);
         assertFalse(item.model.get(IS_REQUIRED));
         assertEquals(label, item.model.get(LABEL));
+        assertEquals(value, item.model.get(VALUE));
     }
 
     private void verifySourceNotice(ListModel<EditorItem> editorFields, String expectedNoticeText) {

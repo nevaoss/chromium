@@ -67,7 +67,9 @@
 #include "url/gurl.h"
 
 namespace searchbox_internal {
-const char* kSearchIconResourceName = "//resources/images/icon_search.svg";
+
+const char* kSearchSparkIconResourceName =
+    "//resources/cr_components/searchbox/icons/search_spark.svg";
 }  // namespace searchbox_internal
 
 namespace {
@@ -149,8 +151,7 @@ const char* kNotesSparkIconResourceName =
 const char* kPageIconResourceName =
     "//resources/cr_components/searchbox/icons/page.svg";
 const char* kPedalsIconResourceName = "//theme/current-channel-logo";
-const char* kSearchSparkIconResourceName =
-    "//resources/cr_components/searchbox/icons/search_spark.svg";
+const char* kSearchIconResourceName = "//resources/images/icon_search.svg";
 const char* kSparkIconResourceName =
     "//resources/cr_components/searchbox/icons/spark.svg";
 const char* kStarActiveIconResourceName =
@@ -215,7 +216,7 @@ static void DefineChromeRefreshRealboxIcons() {
       "//resources/cr_components/searchbox/icons/page_cr23.svg";
   kPedalsIconResourceName =
       "//resources/cr_components/searchbox/icons/chrome_product_cr23.svg";
-  searchbox_internal::kSearchIconResourceName =
+  kSearchIconResourceName =
       "//resources/cr_components/searchbox/icons/search_cr23.svg";
   kTabIconResourceName =
       "//resources/cr_components/searchbox/icons/tab_cr23.svg";
@@ -396,6 +397,14 @@ void SearchboxHandler::SetupWebUIDataSource(content::WebUIDataSource* source,
       {"canvas", IDS_NTP_COMPOSE_CANVAS},
       {"geminiModelAuto", IDS_NTP_COMPOSE_AUTO_MODEL},
       {"geminiModelThinking", IDS_NTP_COMPOSE_THINKING_3_PRO},
+      {"composeboxHintTextAskAboutThese",
+       IDS_COMPOSE_HINT_TEXT_ASK_ABOUT_THESE},
+      {"composeboxHintTextAskAboutThisImage",
+       IDS_COMPOSE_HINT_TEXT_ASK_ABOUT_THIS_IMAGE},
+      {"composeboxHintTextAskAboutThisTab",
+       IDS_COMPOSE_HINT_TEXT_ASK_ABOUT_THIS_TAB},
+      {"composeboxHintTextAskAboutThisDoc",
+       IDS_COMPOSE_HINT_TEXT_ASK_ABOUT_THIS_DOC},
   };
   source->AddLocalizedStrings(kStrings);
   source->AddString("searchboxComposePlaceholder",
@@ -416,9 +425,9 @@ void SearchboxHandler::SetupWebUIDataSource(content::WebUIDataSource* source,
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
           ? kGoogleGIconResourceName
 #else
-          ? searchbox_internal::kSearchIconResourceName
+          ? kSearchIconResourceName
 #endif
-          : searchbox_internal::kSearchIconResourceName);
+          : kSearchIconResourceName);
 
   source->AddBoolean("searchboxVoiceSearch", enable_voice_search);
   source->AddBoolean("searchboxLensSearch", enable_lens_search);
@@ -551,7 +560,7 @@ std::string SearchboxHandler::AutocompleteIconToResourceName(
   } else if (icon.name == omnibox::kProductChromeRefreshIcon.name) {
     return kPedalsIconResourceName;
   } else if (icon.name == omnibox::kSearchSparkIcon.name) {
-    return kSearchSparkIconResourceName;
+    return searchbox_internal::kSearchSparkIconResourceName;
   } else if (icon.name == omnibox::kSparkIcon.name) {
     return kSparkIconResourceName;
   } else if (icon.name == omnibox::kStarActiveChromeRefreshIcon.name) {
@@ -565,7 +574,7 @@ std::string SearchboxHandler::AutocompleteIconToResourceName(
   } else if (icon.name == vector_icons::kHistoryChromeRefreshIcon.name) {
     return kHistoryIconResourceName;
   } else if (icon.name == vector_icons::kSearchChromeRefreshIcon.name) {
-    return searchbox_internal::kSearchIconResourceName;
+    return kSearchIconResourceName;
   }
 
   // Don't add new icons here. Add them alphabetically by `if` predicate. E.g.
@@ -1081,12 +1090,8 @@ void SearchboxHandler::ActivateKeyword(
     const GURL& url,
     base::TimeTicks match_selection_timestamp,
     bool is_mouse_event) {
-  // Generic searchbox should not show keywords.
-  NOTREACHED();
-}
-
-void SearchboxHandler::ShowContextMenu(const gfx::Point& point) {
-  // Generic searchbox should not have a context menu.
+  // TODO(b/449785444): Allow embedders other than the Omnibox to activate
+  // keyword mode.
   NOTREACHED();
 }
 

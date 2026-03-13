@@ -1323,7 +1323,7 @@ void LayerPropertiesUpdater::UpdateWheelEventRegion(
 #if BUILDFLAG(IS_ANDROID)
 void LayerPropertiesUpdater::UpdateXrTargetRegion(
     const HitTestData& hit_test_data) {
-  xr_hit_test_order_.AppendVector(hit_test_data.xr_regions);
+  xr_hit_test_order_.append_range(hit_test_data.xr_regions);
 }
 #endif
 
@@ -1368,9 +1368,14 @@ void LayerPropertiesUpdater::UpdateScrollHitTestData(const PaintChunk& chunk) {
 
   if (RuntimeEnabledFeatures::RasterInducingScrollEnabled() &&
       hit_test_data.scroll_translation) {
-    CHECK_EQ(chunk.id.type, DisplayItem::Type::kScrollHitTest);
-    AddNonCompositedScroll(chunk);
-    return;
+    if (!RuntimeEnabledFeatures::CanvasDrawElementEnabled() ||
+        hit_test_data.scroll_translation->ScrollNode()
+                ->GetCompositedScrollingPreference() !=
+            CompositedScrollingPreference::kNotPreferred) {
+      CHECK_EQ(chunk.id.type, DisplayItem::Type::kScrollHitTest);
+      AddNonCompositedScroll(chunk);
+      return;
+    }
   }
 
   gfx::Rect rect =

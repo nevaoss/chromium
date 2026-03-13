@@ -48,6 +48,8 @@ class TabCollectionAnimatingLayoutManager : public views::LayoutManagerBase,
    public:
     virtual bool IsViewDragging(const views::View& child_view) const;
     virtual bool ShouldSnapToTarget(const views::View& child_view) const;
+    virtual bool ShouldAnimateOpacityForAddAndRemove(
+        const views::View& child_view) const;
     virtual void OnAnimationEnded();
 
    protected:
@@ -56,7 +58,7 @@ class TabCollectionAnimatingLayoutManager : public views::LayoutManagerBase,
 
   explicit TabCollectionAnimatingLayoutManager(
       std::unique_ptr<LayoutManagerBase> target_layout_manager,
-      Delegate* delegate = nullptr,
+      Delegate& delegate,
       AnimationAxis animation_axis = AnimationAxis::kVertical,
       bool animate_host_size = false);
   TabCollectionAnimatingLayoutManager(
@@ -66,6 +68,7 @@ class TabCollectionAnimatingLayoutManager : public views::LayoutManagerBase,
   ~TabCollectionAnimatingLayoutManager() override;
 
   // LayoutManagerBase:
+  bool OnViewAdded(views::View* host, views::View* view) override;
   bool OnViewRemoved(views::View* host, views::View* view) override;
   gfx::Size GetPreferredSize(const views::View* host) const override;
   gfx::Size GetPreferredSize(
@@ -165,7 +168,7 @@ class TabCollectionAnimatingLayoutManager : public views::LayoutManagerBase,
   // The current animation progress.
   double current_offset_ = 1.0;
 
-  const raw_ptr<Delegate> delegate_;
+  const raw_ref<Delegate> delegate_;
 
   // The axis along which bounds for animate-in and animate-out transitions are
   // interpolated.

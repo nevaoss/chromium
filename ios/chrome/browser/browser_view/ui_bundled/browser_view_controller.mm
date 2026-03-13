@@ -35,7 +35,6 @@
 #import "ios/chrome/browser/fullscreen/ui_bundled/fullscreen_reason.h"
 #import "ios/chrome/browser/fullscreen/ui_bundled/fullscreen_ui_element.h"
 #import "ios/chrome/browser/fullscreen/ui_bundled/fullscreen_ui_updater.h"
-#import "ios/chrome/browser/incognito_reauth/ui_bundled/features.h"
 #import "ios/chrome/browser/incognito_reauth/ui_bundled/incognito_reauth_constants.h"
 #import "ios/chrome/browser/incognito_reauth/ui_bundled/incognito_reauth_scene_agent.h"
 #import "ios/chrome/browser/incognito_reauth/ui_bundled/incognito_reauth_view.h"
@@ -249,6 +248,8 @@ const CGFloat kTopDynamicIslandInset = 24;
 
   __weak id<BrowserCoordinatorCommands> _browserCoordinatorHandler;
   __weak id<ToolbarCommands> _toolbarHandler;
+
+  NSArray<NSLayoutConstraint*>* _NTPConstraints;
 }
 
 // Activates/deactivates the object. This will enable/disable the ability for
@@ -859,7 +860,13 @@ const CGFloat kTopDynamicIslandInset = 24;
   self.view.autoresizingMask = initialViewAutoresizing;
 
   [self addChildViewController:self.browserContentViewController];
-  [self.view addSubview:self.contentArea];
+  if (IsChromeNextIaEnabled()) {
+    self.contentArea.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.view addSubview:self.contentArea];
+    AddSameConstraints(self.view, self.contentArea);
+  } else {
+    [self.view addSubview:self.contentArea];
+  }
   [self.browserContentViewController didMoveToParentViewController:self];
   if (!IsComposeboxIpadEnabled()) {
     [self.view addSubview:self.typingShield];
@@ -923,10 +930,12 @@ const CGFloat kTopDynamicIslandInset = 24;
     [self updateToolbarState];
   }
 
-  if (self.ntpCoordinator.isNTPActiveForCurrentWebState &&
-      self.webUsageEnabled) {
-    self.ntpCoordinator.viewController.view.frame =
-        [self ntpFrameForCurrentWebState];
+  if (!IsChromeNextIaEnabled()) {
+    if (self.ntpCoordinator.isNTPActiveForCurrentWebState &&
+        self.webUsageEnabled) {
+      self.ntpCoordinator.viewController.view.frame =
+          [self ntpFrameForCurrentWebState];
+    }
   }
 }
 
@@ -1376,9 +1385,23 @@ const CGFloat kTopDynamicIslandInset = 24;
       self.currentWebState->GetNavigationManager()->LoadIfNecessary();
       self.browserContentViewController.contentView = nil;
       self.browserContentViewController.contentViewController = viewController;
+      if (IsChromeNextIaEnabled()) {
+        viewController.view.translatesAutoresizingMaskIntoConstraints = NO;
+        [self updateNTPConstraints];
+      }
       [NTPCoordinator constrainNamedGuideForFeedIPH];
     } else {
       self.browserContentViewController.contentView = view;
+      if (IsChromeNextIaEnabled()) {
+        if (ios::provider::IsFullscreenSmoothScrollingSupported()) {
+          view.translatesAutoresizingMaskIntoConstraints = NO;
+          AddSameConstraints(self.browserContentViewController.view, view);
+        } else {
+          // TODO(crbug.com/483998779): Handle the rotation of the web content
+          // in a better way.
+          view.autoresizingMask = UIViewAutoresizingFlexibleWidth;
+        }
+      }
     }
     // Resize horizontal viewport if Smooth Scrolling is on.
     if (ios::provider::IsFullscreenSmoothScrollingSupported()) {
@@ -1458,6 +1481,31 @@ const CGFloat kTopDynamicIslandInset = 24;
   [self.popupMenuCommandsHandler dismissPopupMenuAnimated:NO];
   [self.helpHandler hideAllHelpBubbles];
   [_browserCoordinatorHandler hideComposebox];
+}
+
+// Updates the constraints for the NTP view.
+- (void)updateNTPConstraints {
+  CHECK(IsChromeNextIaEnabled());
+  [NSLayoutConstraint deactivateConstraints:_NTPConstraints];
+  DCHECK(self.ntpCoordinator.isNTPActiveForCurrentWebState);
+  UIViewController* NTPViewController = self.ntpCoordinator.viewController;
+  NSLayoutYAxisAnchor* topAnchor =
+      (CanShowTabStrip(self) || !IsSplitToolbarMode(self) || _isOffTheRecord)
+          ? self.self.toolbarCoordinator.primaryToolbarViewController.view
+                .bottomAnchor
+          : self.view.topAnchor;
+  _NTPConstraints = @[
+    [NTPViewController.view.topAnchor constraintEqualToAnchor:topAnchor],
+    [NTPViewController.view.bottomAnchor
+        constraintEqualToAnchor:self.toolbarCoordinator
+                                    .secondaryToolbarViewController.view
+                                    .topAnchor],
+    [NTPViewController.view.leadingAnchor
+        constraintEqualToAnchor:self.view.leadingAnchor],
+    [NTPViewController.view.trailingAnchor
+        constraintEqualToAnchor:self.view.trailingAnchor],
+  ];
+  [NSLayoutConstraint activateConstraints:_NTPConstraints];
 }
 
 // Returns the appropriate frame for the NTP.
@@ -1541,6 +1589,12 @@ const CGFloat kTopDynamicIslandInset = 24;
       self.traitCollection.verticalSizeClass ==
           previousTraitCollection.verticalSizeClass) {
     return;
+  }
+
+  if (IsChromeNextIaEnabled() &&
+      self.ntpCoordinator.isNTPActiveForCurrentWebState &&
+      self.webUsageEnabled) {
+    [self updateNTPConstraints];
   }
 
   self.fullscreenController->BrowserTraitCollectionChangedBegin();
@@ -1738,6 +1792,10 @@ const CGFloat kTopDynamicIslandInset = 24;
   self.visibilityState = BrowserViewVisibilityState::kVisible;
   self.toolbarCoordinator.secondaryToolbarViewController.view
       .accessibilityElementsHidden = NO;
+  [self.geminiHandler
+      updateFloatyVisibilityIfEligibleAnimated:NO
+                                    fromSource:gemini::FloatyUpdateSource::
+                                                   ViewTransition];
 }
 
 #pragma mark - FullscreenUIElement methods

@@ -378,14 +378,9 @@ bool PictureLayerImpl::AppendQuadForTile(
         break;
       }
       case TileDrawInfo::SOLID_COLOR_MODE: {
-        float alpha = draw_info.solid_color().fA * shared_quad_state->opacity;
-        if (alpha >= std::numeric_limits<float>::epsilon()) {
-          auto* quad =
-              render_pass->CreateAndAppendDrawQuad<viz::SolidColorDrawQuad>();
-          quad->SetNew(
-              shared_quad_state, offset_geometry_rect,
-              offset_visible_geometry_rect, draw_info.solid_color(),
-              !layer_tree_impl()->settings().enable_edge_anti_aliasing);
+        if (auto* quad = AppendSolidColorQuad(
+                render_pass, shared_quad_state, offset_geometry_rect,
+                offset_visible_geometry_rect, draw_info.solid_color())) {
           ValidateQuadResources(quad);
         }
         has_draw_quad = true;
@@ -403,15 +398,9 @@ bool PictureLayerImpl::AppendQuadForTile(
 
   if (!has_draw_quad) {
     // Checkerboard due to missing raster.
-    SkColor4f color = safe_opaque_background_color();
-    if (ShowDebugBorders(DebugBorderType::LAYER)) {
-      // Fill the whole tile with the missing tile color.
-      color = DebugColors::DefaultCheckerboardColor();
-    }
-    auto* quad =
-        render_pass->CreateAndAppendDrawQuad<viz::SolidColorDrawQuad>();
-    quad->SetNew(shared_quad_state, offset_geometry_rect,
-                 offset_visible_geometry_rect, color, false);
+    auto* quad = AppendCheckerboardQuad(render_pass, shared_quad_state,
+                                        offset_geometry_rect,
+                                        offset_visible_geometry_rect);
     ValidateQuadResources(quad);
 
     // Report data on any missing images that might be the largest

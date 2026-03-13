@@ -18,6 +18,7 @@
 #include "base/files/scoped_file.h"
 #include "base/functional/bind.h"
 #include "base/memory/memory_pressure_listener_registry.h"
+#include "base/memory/ptr_util.h"
 #include "base/metrics/field_trial_params.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/histogram_macros.h"
@@ -74,11 +75,16 @@ constexpr base::ByteCount kMemoryThresholdOf4GbDevices = base::MiB(458);
 // system memory were 6GB.
 constexpr base::ByteCount kMemoryThresholdOf6GbDevices = base::MiB(494);
 
+<<<<<<< HEAD
 #endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
+=======
+UserLevelMemoryPressureSignalGenerator* g_instance = nullptr;
+>>>>>>> 147.0.7720.0~1
 
 }  // namespace
 
 // static
+<<<<<<< HEAD
 void UserLevelMemoryPressureSignalGenerator::Initialize() {
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
   if (features::IsUserLevelMemoryPressureSignalEnabled()) {
@@ -88,46 +94,54 @@ void UserLevelMemoryPressureSignalGenerator::Initialize() {
     return;
   }
 #else   // BUILDFLAG(IS_NEVA_APPRUNTIME)
+=======
+std::unique_ptr<UserLevelMemoryPressureSignalGenerator>
+UserLevelMemoryPressureSignalGenerator::MaybeCreate(
+    std::unique_ptr<memory_pressure::MemoryPressureVoter> voter) {
+  std::unique_ptr<UserLevelMemoryPressureSignalGenerator> generator;
+
+>>>>>>> 147.0.7720.0~1
   if (base::SysInfo::Is4GbDevice() || base::SysInfo::Is6GbDevice()) {
-    auto memory_threshold = base::SysInfo::Is4GbDevice()
-                                ? kMemoryThresholdOf4GbDevices
-                                : kMemoryThresholdOf6GbDevices;
-    UserLevelMemoryPressureSignalGenerator::Get().Start(
-        memory_threshold, kDefaultMeasurementInterval, kDefaultMinimumInterval);
+    generator = base::WrapUnique(
+        new UserLevelMemoryPressureSignalGenerator(std::move(voter)));
   }
+<<<<<<< HEAD
 #endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
+=======
+
+  return generator;
+}
+
+UserLevelMemoryPressureSignalGenerator::
+    ~UserLevelMemoryPressureSignalGenerator() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  CHECK_EQ(g_instance, this);
+  g_instance = nullptr;
+>>>>>>> 147.0.7720.0~1
 }
 
 // static
 std::optional<UserLevelMemoryPressureMetrics>
 UserLevelMemoryPressureSignalGenerator::GetLatestMemoryMetrics() {
-  return Get().latest_metrics_;
+  return g_instance ? g_instance->GetLatestMemoryMetricsImpl() : std::nullopt;
 }
 
-// static
-UserLevelMemoryPressureSignalGenerator&
-UserLevelMemoryPressureSignalGenerator::Get() {
-  static base::NoDestructor<UserLevelMemoryPressureSignalGenerator> instance;
-  return *instance.get();
-}
+UserLevelMemoryPressureSignalGenerator::UserLevelMemoryPressureSignalGenerator(
+    std::unique_ptr<memory_pressure::MemoryPressureVoter> voter)
+    : memory_pressure::SystemMemoryPressureEvaluator(std::move(voter)),
+      memory_threshold_(base::SysInfo::Is4GbDevice()
+                            ? kMemoryThresholdOf4GbDevices
+                            : kMemoryThresholdOf6GbDevices),
+      measure_interval_(kDefaultMeasurementInterval),
+      minimum_interval_(kDefaultMinimumInterval) {
+  CHECK(!g_instance);
+  g_instance = this;
 
-UserLevelMemoryPressureSignalGenerator::
-    UserLevelMemoryPressureSignalGenerator() = default;
-UserLevelMemoryPressureSignalGenerator::
-    ~UserLevelMemoryPressureSignalGenerator() = default;
-
-void UserLevelMemoryPressureSignalGenerator::Start(
-    base::ByteCount memory_threshold,
-    base::TimeDelta measure_interval,
-    base::TimeDelta minimum_interval) {
-  memory_threshold_ = memory_threshold;
-  measure_interval_ = measure_interval;
-  minimum_interval_ = minimum_interval;
-  UserLevelMemoryPressureSignalGenerator::Get().StartPeriodicTimer(
-      kFirstMeasurementInterval);
+  StartPeriodicTimer(kFirstMeasurementInterval);
 }
 
 void UserLevelMemoryPressureSignalGenerator::StartMetricsCollection() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   periodic_measuring_timer_.Start(
       FROM_HERE, kDefaultMeasurementInterval,
       base::BindRepeating(
@@ -136,6 +150,7 @@ void UserLevelMemoryPressureSignalGenerator::StartMetricsCollection() {
 }
 
 void UserLevelMemoryPressureSignalGenerator::CollectMemoryMetrics() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   base::SystemMemoryInfo meminfo;
   base::GetSystemMemoryInfo(&meminfo);
 
@@ -170,7 +185,22 @@ void UserLevelMemoryPressureSignalGenerator::CollectMemoryMetrics() {
   };
 }
 
+void UserLevelMemoryPressureSignalGenerator::StartPeriodicTimer(
+    base::TimeDelta interval) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  // Don't try to start the timer in tests that don't support it.
+  if (!base::SequencedTaskRunner::HasCurrentDefault()) {
+    return;
+  }
+  periodic_measuring_timer_.Start(
+      FROM_HERE, interval,
+      base::BindOnce(&UserLevelMemoryPressureSignalGenerator::OnTimerFired,
+                     // Unretained is safe because |this| owns this timer.
+                     base::Unretained(this)));
+}
+
 void UserLevelMemoryPressureSignalGenerator::OnTimerFired() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   base::TimeDelta interval = measure_interval_;
   base::ByteCount total_pmf =
       GetTotalPrivateFootprintVisibleOrHigherPriorityRenderers();
@@ -192,20 +222,8 @@ void UserLevelMemoryPressureSignalGenerator::OnTimerFired() {
   StartPeriodicTimer(interval);
 }
 
-void UserLevelMemoryPressureSignalGenerator::StartPeriodicTimer(
-    base::TimeDelta interval) {
-  // Don't try to start the timer in tests that don't support it.
-  if (!base::SequencedTaskRunner::HasCurrentDefault()) {
-    return;
-  }
-  periodic_measuring_timer_.Start(
-      FROM_HERE, interval,
-      base::BindOnce(&UserLevelMemoryPressureSignalGenerator::OnTimerFired,
-                     // Unretained is safe because |this| owns this timer.
-                     base::Unretained(this)));
-}
-
 void UserLevelMemoryPressureSignalGenerator::StartReportingTimer() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   // Don't try to start the timer in tests that don't support it.
   if (!base::SequencedTaskRunner::HasCurrentDefault()) {
     return;
@@ -218,6 +236,7 @@ void UserLevelMemoryPressureSignalGenerator::StartReportingTimer() {
 }
 
 void UserLevelMemoryPressureSignalGenerator::OnReportingTimerFired() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   base::ByteCount total_pmf =
       GetTotalPrivateFootprintVisibleOrHigherPriorityRenderers();
   ReportBeforeAfterMetrics(total_pmf, "After");
@@ -293,6 +312,7 @@ base::ByteCount UserLevelMemoryPressureSignalGenerator::
 
 void UserLevelMemoryPressureSignalGenerator::HandleMemoryPressureLevel(
     base::MemoryPressureLevel level) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   // MODERATE level is not used.
   CHECK_NE(level, base::MEMORY_PRESSURE_LEVEL_MODERATE);
 
@@ -304,7 +324,8 @@ void UserLevelMemoryPressureSignalGenerator::HandleMemoryPressureLevel(
   }
 
   current_level_ = level;
-  base::MemoryPressureListenerRegistry::NotifyMemoryPressure(level);
+  SetCurrentVote(level);
+  SendCurrentVote(true);
 }
 
 // static
@@ -394,6 +415,12 @@ UserLevelMemoryPressureSignalGenerator::GetPrivateFootprint(
     return std::nullopt;
 
   return CalculateProcessMemoryFootprint(statm_file, status_file);
+}
+
+std::optional<content::UserLevelMemoryPressureMetrics>
+UserLevelMemoryPressureSignalGenerator::GetLatestMemoryMetricsImpl() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return latest_metrics_;
 }
 
 }  // namespace content

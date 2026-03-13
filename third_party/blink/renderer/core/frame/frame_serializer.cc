@@ -1100,7 +1100,7 @@ function main(metadata) {
   }
 
   void SerializeCSSFile(Document& document, const KURL& url) {
-    if (!url.IsValid() || !url.ProtocolIsInHTTPFamily()) {
+    if (!url.IsValid() || !url.ProtocolIsInHttpFamily()) {
       return;
     }
 
@@ -1143,7 +1143,7 @@ function main(metadata) {
       // that case.
       css_text.Append("@charset \"");
       css_text.Append(charset.IsValid()
-                          ? charset.GetName().GetString().DeprecatedLower()
+                          ? charset.GetName().GetString().LowerASCII()
                           : "utf-8");
       css_text.Append("\";\n\n");
 

@@ -148,9 +148,11 @@
 #include "ui/base/resource/resource_bundle.h"
 #include "ui/compositor/test/draw_waiter_for_test.h"
 #include "ui/events/base_event_utils.h"
+#include "ui/events/event_constants.h"
 #include "ui/events/gesture_detection/gesture_configuration.h"
 #include "ui/events/keycodes/dom/dom_code.h"
 #include "ui/events/keycodes/dom/keycode_converter.h"
+#include "ui/events/keycodes/keyboard_code_conversion.h"
 #include "ui/gfx/geometry/point_f.h"
 #include "ui/gfx/geometry/rect.h"
 #include "ui/latency/latency_info.h"
@@ -2962,10 +2964,24 @@ RenderFrameSubmissionObserver::~RenderFrameSubmissionObserver() {
   }
 }
 
+void RenderFrameSubmissionObserver::SetWaitForNextFrame() {
+  wait_for_render_frame_count_ = (render_frame_count_ + 1);
+  LOG(ERROR) << "SetWaitForNextFrame";
+}
+
 void RenderFrameSubmissionObserver::WaitForAnyFrameSubmission() {
-  break_on_any_frame_ = true;
+  CHECK(!wait_for_render_frame_count_.has_value());
+  wait_for_render_frame_count_ = render_frame_count_;
   Wait();
-  break_on_any_frame_ = false;
+  wait_for_render_frame_count_.reset();
+}
+
+void RenderFrameSubmissionObserver::WaitForNextFrameSubmission() {
+  CHECK(wait_for_render_frame_count_.has_value());
+  while (render_frame_count_ < wait_for_render_frame_count_.value()) {
+    Wait();
+  }
+  wait_for_render_frame_count_.reset();
 }
 
 void RenderFrameSubmissionObserver::WaitForMetadataChange() {
@@ -3056,7 +3072,7 @@ void RenderFrameSubmissionObserver::OnRenderFrameMetadataChangedAfterActivation(
 
 void RenderFrameSubmissionObserver::OnRenderFrameSubmission() {
   render_frame_count_++;
-  if (break_on_any_frame_) {
+  if (wait_for_render_frame_count_.has_value()) {
     Quit();
   }
 }
@@ -5158,5 +5174,39 @@ RequestCloseWidgetInterceptor::GetForwardingInterface() {
 }
 
 void RequestCloseWidgetInterceptor::RequestClosePopup() {}
+
+void SimulateCharTyped(WebContents* web_contents, char16_t character) {
+  ui::DomKey dom_key;
+  ui::DomCode dom_code;
+  ui::KeyboardCode key_code;
+
+  if (character == '\t') {
+    dom_key = ui::DomKey::TAB;
+    dom_code = ui::DomCode::TAB;
+    key_code = ui::VKEY_TAB;
+  } else if (character == '\b') {
+    dom_key = ui::DomKey::BACKSPACE;
+    dom_code = ui::DomCode::BACKSPACE;
+    key_code = ui::VKEY_BACK;
+  } else if (character == '\n') {
+    dom_key = ui::DomKey::ENTER;
+    dom_code = ui::DomCode::ENTER;
+    key_code = ui::VKEY_RETURN;
+  } else {
+    dom_key = ui::DomKey::FromCharacter(character);
+    dom_code = ui::UsLayoutDomKeyToDomCode(dom_key);
+    key_code = ui::DomCodeToUsLayoutKeyboardCode(dom_code);
+  }
+
+  CHECK_NE(dom_code, ui::DomCode::NONE)
+      << "Unsupported character: " << static_cast<int>(character);
+
+  bool shift =
+      (character != ui::DomCodeToUsLayoutCharacter(dom_code, ui::EF_NONE));
+
+  SimulateKeyPress(web_contents, dom_key, dom_code, key_code,
+                   /*control=*/false, shift, /*alt=*/false,
+                   /*command=*/false);
+}
 
 }  // namespace content

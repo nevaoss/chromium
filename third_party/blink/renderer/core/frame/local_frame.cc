@@ -379,7 +379,7 @@ mojom::blink::BlockingDetailsPtr CreateBlockingDetailsMojom(
       blocking_details.ColumnNumber() > 0) {
     // `Url()` and `Function()` may return nullptr.
     auto source_location = mojom::blink::ScriptSourceLocation::New(
-        blocking_details.Url() ? KURL(blocking_details.Url()) : KURL(),
+        blocking_details.Url() ? KURL(blocking_details.Url()) : NullUrl(),
         blocking_details.Function() ? blocking_details.Function() : "",
         blocking_details.LineNumber(), blocking_details.ColumnNumber());
     feature_location_to_report->source = std::move(source_location);
@@ -3477,7 +3477,7 @@ void LocalFrame::EvictFromBackForwardCache(
   mojom::blink::ScriptSourceLocationPtr source = nullptr;
   if (source_location) {
     source = mojom::blink::ScriptSourceLocation::New(
-        source_location->Url() ? KURL(source_location->Url()) : KURL(),
+        source_location->Url() ? KURL(source_location->Url()) : NullUrl(),
         source_location->Function() ? source_location->Function() : "",
         source_location->LineNumber(), source_location->ColumnNumber());
   }
@@ -3688,7 +3688,7 @@ void LocalFrame::SaveImageAt(const gfx::Point& window_point) {
     return;
 
   String url = To<Element>(*node).ImageSourceURL();
-  if (!KURL(NullUrl(), url).ProtocolIsData()) {
+  if (!ProtocolIs(url, "data")) {
     return;
   }
 
@@ -3793,8 +3793,7 @@ void LocalFrame::RequestVideoFrameAtWithBoundsHint(
     size = gfx::Size(width, height);
   }
 
-  auto image =
-      video->CreateStaticBitmapImage(/*allow_accelerated_images=*/true, size);
+  auto image = video->CreateStaticBitmapImage(size);
   if (!image) {
     std::move(callback).Run(SkBitmap(), gfx::Rect());
     return;

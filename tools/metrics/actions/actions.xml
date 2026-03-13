@@ -894,7 +894,7 @@ should be able to be added at any place in this file.
   <variant name=".SidePanelPinning" summary="Side Panel Pinning"/>
   <variant name=".SyncAccountSettings"
       summary="Wallet integration in Autofill"/>
-  <variant name=".TabGroupsSync" summary="Tab Groups Sync"/>
+  <variant name=".TabGroupsSync" summary="Tab Groups Sync (obsolete)"/>
   <variant name=".TabOrganizer" summary="Tab Organizer"/>
   <variant name=".TestDefaultModule" summary="Test default module"/>
   <variant name=".TestModule" summary="Test module"/>
@@ -30435,6 +30435,14 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="MobileSettingsCleanupStarted">
+  <owner>cheickcisse@google.com</owner>
+  <owner>gambard@chromium.org</owner>
+  <description>
+    Reported when the settings cleanup started. iOS only.
+  </description>
+</action>
+
 <action name="MobileSettingsClose">
   <owner>edchin@chromium.org</owner>
   <owner>gambard@chromium.org</owner>
@@ -45375,6 +45383,15 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="Signin_Signin_FromAvatarPillExpandPromo">
+  <owner>rsult@google.com</owner>
+  <owner>chrome-signin-desktop-team@google.com</owner>
+  <description>
+    Recorded on sign in start from access point
+    signin_metrics::AccessPoint::kAvatarPillExpandPromo. Desktop only.
+  </description>
+</action>
+
 <action name="Signin_Signin_FromBookmarkBubble">
   <owner>gogerald@chromium.org</owner>
   <description>
@@ -45915,10 +45932,11 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Signin_Signin_FromUnknownAccessPoint">
+  <obsolete>kUnknown AccessPoint has been removed.</obsolete>
   <owner>gogerald@chromium.org</owner>
   <description>
     Recorded on sign in start from access point
-    signin_metrics::AccessPoint::kUnknown.
+    signin_metrics::AccessPoint::kUnknown (obsolete).
   </description>
 </action>
 

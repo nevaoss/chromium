@@ -565,13 +565,6 @@ void HTMLCapabilityElementBase::SetPreciseLocation(bool is_precise_location) {
   UpdateAppearance();
 }
 
-mojom::blink::EmbeddedPermissionRequestDescriptorPtr
-HTMLCapabilityElementBase::CreateEmbeddedPermissionRequestDescriptor() {
-  auto descriptor = EmbeddedPermissionRequestDescriptor::New();
-  descriptor->element_position = BoundsInWidget();
-  return descriptor;
-}
-
 void HTMLCapabilityElementBase::UpdatePermissionStatus() {
   if (std::ranges::any_of(permission_status_map_, [](const auto& status) {
         return status.value == MojoPermissionStatus::DENIED;
@@ -796,7 +789,7 @@ void HTMLCapabilityElementBase::AdjustStyle(ComputedStyleBuilder& builder) {
     return;
   }
 
-  builder.SetOutlineOffset(builder.OutlineOffset().ClampNegativeToZero());
+  builder.SetOutlineOffset(std::max(0, builder.OutlineOffset()));
 
   // Check and modify (if needed) properties related to the font.
   std::optional<FontDescription> new_font_description;

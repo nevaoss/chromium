@@ -79,6 +79,7 @@ class PaintLayer;
 class ProgrammaticScrollAnimator;
 class ScrollAnchor;
 class ScrollAnimatorBase;
+class ScrollResult;
 struct SerializedAnchor;
 class ScrollMarkerGroupPseudoElement;
 class TextOverflowPostLayoutSnapshot;
@@ -141,7 +142,7 @@ class CORE_EXPORT ScrollableArea : public GarbageCollectedMixin {
   bool SetProgrammaticScrollOffset(const ScrollOffset&,
                                    cc::ScrollSourceType,
                                    mojom::blink::ScrollBehavior,
-                                   ScriptPromiseResolver<IDLUndefined>*);
+                                   ScriptPromiseResolver<ScrollResult>*);
 
   void ScrollBy(
       const ScrollOffset&,
@@ -172,7 +173,7 @@ class CORE_EXPORT ScrollableArea : public GarbageCollectedMixin {
   // Register the promise resolver to handle it later at the end of the
   // requested scroll. This interrupts the pending resolver, if any, by
   // resolving it.
-  void RegisterPromiseResolver(ScriptPromiseResolver<IDLUndefined>*);
+  void RegisterPromiseResolver(ScriptPromiseResolver<ScrollResult>*);
 
   // Resolve the registered promise, if any.
   void SettlePendingPromiseResolver(ScrollCompletionMode);
@@ -716,10 +717,11 @@ class CORE_EXPORT ScrollableArea : public GarbageCollectedMixin {
 
   void SetScrollbarsHiddenIfOverlayInternal(bool);
 
-  bool ProgrammaticScrollHelper(const ScrollOffset&,
-                                mojom::blink::ScrollBehavior,
-                                gfx::Vector2d animation_adjustment,
-                                cc::ScrollSourceType);
+  bool InitiateScrollAnimation(const ScrollOffset&,
+                               mojom::blink::ScrollType,
+                               mojom::blink::ScrollBehavior,
+                               gfx::Vector2d animation_adjustment,
+                               cc::ScrollSourceType);
   void UserScrollHelper(const ScrollOffset&,
                         mojom::blink::ScrollBehavior,
                         cc::ScrollSourceType);
@@ -804,7 +806,7 @@ class CORE_EXPORT ScrollableArea : public GarbageCollectedMixin {
 
   // Holds on to the `ScriptPromiseResolver` from a JS scroll request to be able
   // to resolve it at dtor if not resolved explicitly earlier.
-  Member<ScriptPromiseResolver<IDLUndefined>> promise_resolver_;
+  Member<ScriptPromiseResolver<ScrollResult>> promise_resolver_;
 
   ScrollOffset pending_scroll_anchor_adjustment_;
 

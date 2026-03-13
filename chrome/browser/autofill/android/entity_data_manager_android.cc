@@ -55,7 +55,9 @@ EntityDataManagerAndroid::EntityDataManagerAndroid(
       sync_service_(sync_service),
       account_setting_service_(account_setting_service),
       is_off_the_record_(is_off_the_record),
-      entity_data_manager_(CHECK_DEREF(entity_data_manager)) {}
+      entity_data_manager_(CHECK_DEREF(entity_data_manager)) {
+  entity_data_manager_observer_.Observe(entity_data_manager);
+}
 
 EntityDataManagerAndroid::~EntityDataManagerAndroid() = default;
 
@@ -84,13 +86,13 @@ void EntityDataManagerAndroid::Destroy(JNIEnv* env) {
 }
 
 bool EntityDataManagerAndroid::IsEligibleToAutofillAi(JNIEnv* env) {
-  const bool is_wallet_storage_enabled =
+  const bool is_wallet_public_pass_storage_enabled =
       account_setting_service_ &&
       account_setting_service_->IsWalletPrivacyContextualSurfacingEnabled();
 
   return MayPerformAutofillAiAction(
       google_groups_manager_, prefs_, &entity_data_manager(), identity_manager_,
-      sync_service_, is_wallet_storage_enabled, is_off_the_record_,
+      sync_service_, is_wallet_public_pass_storage_enabled, is_off_the_record_,
       entity_data_manager_->GetVariationCountryCode(),
       AutofillAiAction::kOptIn);
 }
@@ -102,13 +104,13 @@ bool EntityDataManagerAndroid::GetAutofillAiOptInStatus(JNIEnv* env) {
 bool EntityDataManagerAndroid::SetAutofillAiOptInStatus(
     JNIEnv* env,
     AutofillAiOptInStatus opt_in_status) {
-  const bool is_wallet_storage_enabled =
+  const bool is_wallet_public_pass_storage_enabled =
       account_setting_service_ &&
       account_setting_service_->IsWalletPrivacyContextualSurfacingEnabled();
 
   return autofill::SetAutofillAiOptInStatus(
       google_groups_manager_, prefs_, &entity_data_manager(), identity_manager_,
-      sync_service_, is_wallet_storage_enabled, is_off_the_record_,
+      sync_service_, is_wallet_public_pass_storage_enabled, is_off_the_record_,
       entity_data_manager_->GetVariationCountryCode(), opt_in_status);
 }
 
@@ -121,7 +123,10 @@ EntityDataManagerAndroid::GetEntityInstance(JNIEnv* env,
     return nullptr;
   }
 
-  return EntityInstanceAndroid::Create(env, EntityInstanceAndroid(*entity));
+  return EntityInstanceAndroid::Create(
+      env, EntityInstanceAndroid(
+               *entity, entity->type().enabled(
+                            entity_data_manager_->GetVariationCountryCode())));
 }
 
 void EntityDataManagerAndroid::RemoveEntityInstance(JNIEnv* env,
@@ -166,7 +171,11 @@ EntityDataManagerAndroid::GetEntitiesWithLabels(JNIEnv* env) {
 
     for (const auto [entity, label] : base::zip(entities_of_type, labels)) {
       entities_with_labels.emplace_back(
-          entity->guid().value(), entity->type().GetNameForI18n(),
+          entity->guid().value(),
+          EntityTypeAndroid(
+              type,
+              type.enabled(entity_data_manager_->GetVariationCountryCode())),
+          entity->type().GetNameForI18n(),
           base::JoinString(label, kLabelSeparator),
           entity->record_type() == EntityInstance::RecordType::kServerWallet);
     }
@@ -179,7 +188,9 @@ std::vector<EntityTypeAndroid> EntityDataManagerAndroid::GetWritableEntityTypes(
   std::vector<EntityTypeAndroid> entity_types;
   for (EntityType entity_type : autofill::GetWritableEntityTypes(
            entity_data_manager_->GetVariationCountryCode())) {
-    entity_types.emplace_back(EntityTypeAndroid(entity_type));
+    entity_types.emplace_back(
+        entity_type,
+        entity_type.enabled(entity_data_manager_->GetVariationCountryCode()));
   }
   return entity_types;
 }
@@ -190,8 +201,9 @@ EntityDataManagerAndroid::GetSortedEntityTypesForListDisplay(
   std::vector<EntityType> all_types =
       base::ToVector(DenseSet<EntityType>::all());
   std::ranges::sort(all_types, EntityType::ListOrder);
-  return base::ToVector(all_types, [](const EntityType& type) {
-    return EntityTypeAndroid(type);
+  return base::ToVector(all_types, [this](const EntityType& type) {
+    return EntityTypeAndroid(
+        type, type.enabled(entity_data_manager_->GetVariationCountryCode()));
   });
 }
 

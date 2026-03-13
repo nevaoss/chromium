@@ -8,8 +8,10 @@
 #include <optional>
 
 #include "base/files/file_path.h"
+#include "third_party/blink/public/mojom/devtools/inspector_issue.mojom-blink.h"
 #include "third_party/blink/public/mojom/forms/form_control_type.mojom-blink-forward.h"
 #include "third_party/blink/public/platform/file_path_conversion.h"
+#include "third_party/blink/renderer/core/dom/dom_node_ids.h"
 #include "third_party/blink/renderer/core/dom/element.h"
 #include "third_party/blink/renderer/core/dom/live_node_list.h"
 #include "third_party/blink/renderer/core/html/custom/custom_element.h"
@@ -24,6 +26,7 @@
 #include "third_party/blink/renderer/core/html/forms/listed_element.h"
 #include "third_party/blink/renderer/core/html/forms/step_range.h"
 #include "third_party/blink/renderer/core/html_names.h"
+#include "third_party/blink/renderer/core/inspector/inspector_audits_issue.h"
 #include "third_party/blink/renderer/platform/json/json_parser.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 #include "third_party/blink/renderer/platform/wtf/text/atomic_string.h"
@@ -83,7 +86,7 @@ bool ToBoolean(const JSONValue& value, bool& out) {
 
 using mojom::blink::FormControlType;
 
-FormMCPSchema::FormMCPSchema(HTMLFormElement& form) {
+FormMCPSchema::FormMCPSchema(HTMLFormElement& form) : form_(&form) {
   ProcessForm(form);
 }
 
@@ -102,11 +105,13 @@ std::unique_ptr<JSONObject> FormMCPSchema::ComputeJSON() {
     // is not supported, for whatever reason.
     if (std::unique_ptr<JSONObject> parameter_schema =
             ComputeParameterSchema(name, is_required)) {
+      ReportParameterIssueIfNeeded(name, *parameter_schema);
       properties->SetObject(name, std::move(parameter_schema));
       if (is_required) {
         required->PushString(name);
       }
     }
+    name_to_controls_.erase(name);  // Emit this parameter once.
   }
 
   out->SetObject("properties", std::move(properties));
@@ -115,7 +120,28 @@ std::unique_ptr<JSONObject> FormMCPSchema::ComputeJSON() {
   return out;
 }
 
-std::optional<WebDocument::ScriptToolError> FormMCPSchema::FillData(
+void FormMCPSchema::ReportParameterIssueIfNeeded(
+    const String& name,
+    const JSONObject& parameter_schema) {
+  if (parameter_schema.Get("title") || parameter_schema.Get("description")) {
+    return;
+  }
+  // With both "title" and "description" missing, the agent just has
+  // the parameter name to go on, which not be descriptive enough.
+  auto it = name_to_controls_.find(name);
+  CHECK_NE(it, name_to_controls_.end());
+  const ControlVector& controls = *it->value;
+  CHECK(!controls.empty());
+  DOMNodeId violating_node_id =
+      DOMNodeIds::IdForNode(&controls.front()->ToHTMLElement());
+  AuditsIssue::ReportGenericIssue(
+      form_->GetDocument().GetFrame(),
+      mojom::blink::GenericIssueErrorType::
+          kFormModelContextParameterMissingTitleAndDescription,
+      violating_node_id);
+}
+
+std::optional<ScriptToolError> FormMCPSchema::FillData(
     const JSONObject& json_obj) {
   // If the data isn't valid, form control states remain unchanged.
   for (wtf_size_t i = 0; i < json_obj.size(); ++i) {
@@ -123,21 +149,20 @@ std::optional<WebDocument::ScriptToolError> FormMCPSchema::FillData(
     const String parameter_name = String(entry.first);
     auto it = name_to_controls_.find(parameter_name);
     if (it == name_to_controls_.end()) {
-      return WebDocument::ScriptToolError(
-          WebDocument::ScriptToolError::kInvalidInputArguments,
+      return ScriptToolError(
+          ScriptToolErrorCode::kInvalidInputArguments,
           String("Input contains a parameter \"" + parameter_name +
                  "\" but there is no such parameter for the tool"));
     }
     if (!ValidateParameterData(parameter_name, *entry.second)) {
       String string_value;
       if (ToString(*entry.second, string_value)) {
-        return WebDocument::ScriptToolError(
-            WebDocument::ScriptToolError::kInvalidInputArguments,
-            String("Invalid value \"" + string_value + "\" for parameter " +
-                   parameter_name));
+        return ScriptToolError(ScriptToolErrorCode::kInvalidInputArguments,
+                               String("Invalid value \"" + string_value +
+                                      "\" for parameter " + parameter_name));
       }
-      return WebDocument::ScriptToolError(
-          WebDocument::ScriptToolError::kInvalidInputArguments,
+      return ScriptToolError(
+          ScriptToolErrorCode::kInvalidInputArguments,
           String("Invalid value for parameter " + parameter_name));
     }
   }
@@ -416,8 +441,6 @@ std::unique_ptr<JSONObject> FormMCPSchema::ComputeParameterSchema(
   }
   ControlVector* controls_for_name = it->value;
   CHECK(controls_for_name);
-
-  name_to_controls_.erase(name);  // Emit this parameter once.
 
   if (IsText(*controls_for_name)) {
     return ComputeTextParameterSchema(*controls_for_name, required);

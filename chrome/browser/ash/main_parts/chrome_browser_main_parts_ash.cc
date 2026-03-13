@@ -18,7 +18,6 @@
 #include "ash/constants/ash_pref_names.h"
 #include "ash/constants/ash_switches.h"
 #include "ash/keyboard/ui/resources/keyboard_resource_util.h"
-#include "ash/public/ash_interfaces.h"
 #include "ash/public/cpp/event_rewriter_controller.h"
 #include "ash/public/cpp/keyboard/keyboard_controller.h"
 #include "ash/public/cpp/session/session_controller.h"
@@ -167,7 +166,6 @@
 #include "chrome/browser/ash/video_conference/video_conference_manager_ash.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/browser_process_platform_part_ash.h"
-#include "chrome/browser/chromeos/printing/print_preview/print_preview_webcontents_manager.h"
 #include "chrome/browser/chromeos/video_conference/video_conference_manager_client.h"
 #include "chrome/browser/component_updater/cros_component_installer_chromeos.h"
 #include "chrome/browser/defaults.h"
@@ -1603,10 +1601,6 @@ void ChromeBrowserMainPartsAsh::PostBrowserStart() {
   if (chromeos::features::IsMahiEnabled()) {
     mahi_web_contents_manager_ =
         std::make_unique<mahi::MahiWebContentsManagerImpl>();
-  }
-
-  if (base::FeatureList::IsEnabled(::features::kPrintPreviewCrosPrimary)) {
-    chromeos::PrintPreviewWebcontentsManager::Get()->Initialize();
   }
 
   ChromeBrowserMainPartsLinux::PostBrowserStart();

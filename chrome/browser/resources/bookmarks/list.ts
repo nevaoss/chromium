@@ -87,6 +87,8 @@ export class BookmarksListElement extends BookmarksListElementBase {
     super.disconnectedCallback();
 
     this.eventTracker_.remove(document, 'highlight-items');
+    this.eventTracker_.remove(document, 'import-began');
+    this.eventTracker_.remove(document, 'import-ended');
   }
 
   override willUpdate(changedProperties: PropertyValues<this>) {
@@ -397,8 +399,9 @@ export class BookmarksListElement extends BookmarksListElementBase {
     return this.selectedItems_.has(id);
   }
 
-  protected updateShouldShowPromoCard_(e: Event) {
-    this.shouldShowPromoCard_ = (e as CustomEvent).detail.shouldShowPromoCard;
+  protected onShouldShowPromoCard_(
+      e: CustomEvent<{shouldShowPromoCard: boolean}>) {
+    this.shouldShowPromoCard_ = e.detail.shouldShowPromoCard;
   }
 
   setDisplayedIdsForTesting(ids: string[]) {

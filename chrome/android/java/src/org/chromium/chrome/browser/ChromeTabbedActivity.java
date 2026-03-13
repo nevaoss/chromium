@@ -115,6 +115,8 @@ import org.chromium.chrome.browser.compositor.layouts.LayoutManagerChromePhone;
 import org.chromium.chrome.browser.compositor.layouts.LayoutManagerChromeTablet;
 import org.chromium.chrome.browser.compositor.overlays.strip.StripLayoutHelperManager;
 import org.chromium.chrome.browser.compositor.overlays.strip.StripLayoutHelperManager.TabModelStartupInfo;
+import org.chromium.chrome.browser.contextmenu.ChromeContextMenuPopulator;
+import org.chromium.chrome.browser.contextmenu.ChromeContextMenuPopulatorFactory;
 import org.chromium.chrome.browser.cookies.CookiesFetcher;
 import org.chromium.chrome.browser.crypto.CipherFactory;
 import org.chromium.chrome.browser.data_sharing.DataSharingIntentUtils;
@@ -343,6 +345,7 @@ import org.chromium.components.browser_ui.util.ComposedBrowserControlsVisibility
 import org.chromium.components.browser_ui.util.FirstDrawDetector;
 import org.chromium.components.browser_ui.util.motion.MotionEventInfo;
 import org.chromium.components.browser_ui.widget.gesture.BackPressHandler;
+import org.chromium.components.embedder_support.contextmenu.ContextMenuPopulatorFactory;
 import org.chromium.components.embedder_support.util.UrlConstants;
 import org.chromium.components.embedder_support.util.UrlUtilities;
 import org.chromium.components.external_intents.ExternalNavigationHandler;
@@ -1259,7 +1262,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                 this,
                 getSnackbarManager(),
                 mRootUiCoordinator::getBottomSheetController,
-                getModalDialogManagerSupplier(),
+                getModalDialogManagerSupplier().asNonNull(),
                 getActivityResultTracker(),
                 getCurrentTabModel().getCurrentTabSupplier());
     }
@@ -1332,6 +1335,12 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
             Profile profile = mTabModelProfileSupplier.get();
             NonNullObservableSupplier<Integer> archivedTabCountSupplier =
                     ArchivedTabModelOrchestrator.getForProfile(profile).getTabCountSupplier();
+            ContextMenuPopulatorFactory contextMenuPopulatorFactory =
+                    new ChromeContextMenuPopulatorFactory(
+                            /* itemDelegate= */ null,
+                            getShareDelegateSupplier(),
+                            ChromeContextMenuPopulator.ContextMenuMode.THIN_WEB_VIEW,
+                            /* customContentActions= */ Collections.emptyList());
             getToolbarManager()
                     .initializeWithNative(
                             mLayoutManager,
@@ -1341,7 +1350,8 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                             /* customTabsBackClickHandler= */ null,
                             archivedTabCountSupplier,
                             mTabModelNotificationDotManager.getNotificationDotObservableSupplier(),
-                            mUndoBarPopupController);
+                            mUndoBarPopupController,
+                            contextMenuPopulatorFactory);
 
             // TODO(crbug.com/40828084): Fix this assert which is tripping on unrelated
             // tests.
@@ -2651,6 +2661,26 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                 if (fromAppWidget && UrlConstants.CHROME_DINO_URL.equals(url)) {
                     RecordUserAction.record("QuickActionSearchWidget.StartDinoGame");
                 }
+
+                // Launch the tips promo, tied with the intent extra set in TipsAgent.java.
+                if (fromTipsNotifications != INVALID_TIPS_NOTIFICATION_FEATURE_TYPE) {
+                    mTipsPromoCoordinator =
+                            new TipsPromoCoordinator(
+                                    this,
+                                    mRootUiCoordinator.getBottomSheetController(),
+                                    getQuickDeleteController(),
+                                    createBottomSheetSigninCoordinator(
+                                            new BottomSheetSigninAndHistorySyncCoordinator
+                                                    .Delegate() {},
+                                            SigninAccessPoint.SET_UP_LIST),
+                                    getTabCreator(/* incognito= */ false),
+                                    getWindowAndroid(),
+                                    getCurrentTabModel().isIncognito(),
+                                    getProfileProviderSupplier().get().getOriginalProfile(),
+                                    mLayoutManager,
+                                    fromTipsNotifications);
+                    mTipsPromoCoordinator.showBottomSheet();
+                }
                 break;
             case TabOpenType.BRING_TAB_TO_FRONT:
                 // Hub search will allow archived tabs to be passed through here. In this case, CTA
@@ -2756,24 +2786,6 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                 }
 
                 resultTab = launchIntent(loadUrlParams, externalAppId, true, intent);
-                if (fromTipsNotifications != INVALID_TIPS_NOTIFICATION_FEATURE_TYPE) {
-                    mTipsPromoCoordinator =
-                            new TipsPromoCoordinator(
-                                    this,
-                                    mRootUiCoordinator.getBottomSheetController(),
-                                    getQuickDeleteController(),
-                                    createBottomSheetSigninCoordinator(
-                                            new BottomSheetSigninAndHistorySyncCoordinator
-                                                    .Delegate() {},
-                                            SigninAccessPoint.SET_UP_LIST),
-                                    getTabCreator(/* incognito= */ false),
-                                    getWindowAndroid(),
-                                    getCurrentTabModel().isIncognito(),
-                                    getProfileProviderSupplier().get().getOriginalProfile(),
-                                    mLayoutManager,
-                                    fromTipsNotifications);
-                    mTipsPromoCoordinator.showBottomSheet();
-                }
                 break;
             case TabOpenType.OPEN_NEW_INCOGNITO_TAB:
                 if (!TextUtils.equals(externalAppId, getPackageName())) {
@@ -3064,7 +3076,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                 getLayoutManagerSupplier(),
                 /* menuOrKeyboardActionController= */ this,
                 this::getActivityThemeColor,
-                getModalDialogManagerSupplier(),
+                getModalDialogManagerSupplier().asNonNull(),
                 /* appMenuBlocker= */ this,
                 this::supportsAppMenu,
                 this::supportsFindInPage,
@@ -3479,7 +3491,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                         DeviceLockActivityLauncherImpl.get(),
                         profileSupplier,
                         mRootUiCoordinator::getBottomSheetController,
-                        getModalDialogManagerSupplier(),
+                        getModalDialogManagerSupplier().get(),
                         getSnackbarManager(),
                         accessPoint);
     }
@@ -3667,7 +3679,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                             /* tabCreatorManager= */ this,
                             getTabModelSelectorSupplier(),
                             getCompositorViewHolderSupplier(),
-                            getModalDialogManagerSupplier(),
+                            getModalDialogManagerSupplier().asNonNull(),
                             this::getSnackbarManager,
                             getActivityResultTracker(),
                             getBrowserControlsManager(),

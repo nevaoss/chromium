@@ -5808,6 +5808,13 @@ void WebContentsImpl::ShowCreatedWidget(int process_id,
   }
 
   RenderWidgetHostImpl* render_widget_host_impl = widget_host_view->host();
+
+  // A background tab cannot show a popup over the active tab.
+  if (GetVisibility() != Visibility::VISIBLE) {
+    render_widget_host_impl->ShutdownAndDestroyWidget(true);
+    return;
+  }
+
   auto permission_exclusion_area_bounds =
       PermissionControllerImpl::FromBrowserContext(GetBrowserContext())
           ->GetExclusionAreaBoundsInScreen(outermost_web_contents);
@@ -10680,15 +10687,6 @@ bool WebContentsImpl::CreateRenderViewForRenderManager(
   // committing the speculative RenderFrameHost it's associated with.
   if (!proxy_host && render_view_host == GetRenderViewHost()) {
     ReattachOuterDelegateIfNeeded();
-  }
-
-  // With SetHistoryInfoOnViewCreation enabled, the history and index length are
-  // sent as part of the the CreateView() IPC via the CreateViewParams.
-  if (!base::FeatureList::IsEnabled(features::kSetHistoryInfoOnViewCreation)) {
-    SetHistoryIndexAndLengthForView(
-        render_view_host,
-        rvh_impl->frame_tree()->controller().GetLastCommittedEntryIndex(),
-        rvh_impl->frame_tree()->controller().GetEntryCount());
   }
 
 #if BUILDFLAG(IS_POSIX) && !BUILDFLAG(IS_MAC) && !BUILDFLAG(IS_ANDROID)

@@ -75,6 +75,7 @@
 #include "chrome/browser/serial/serial_policy_allowed_ports.h"
 #include "chrome/browser/sharing_hub/sharing_hub_features.h"
 #include "chrome/browser/signin/chrome_signin_client.h"
+#include "chrome/browser/signin/signin_promo_util.h"
 #include "chrome/browser/ssl/ssl_config_service_manager.h"
 #include "chrome/browser/subscription_eligibility/subscription_eligibility_prefs.h"
 #include "chrome/browser/themes/theme_service.h"
@@ -995,6 +996,12 @@ constexpr char kDiceMigrationRestoredFromBackup[] =
 // Deprecated 02/2026.
 inline constexpr char kTabSearchOpened[] = "tab_search.opened";
 
+// Deprecated 02/2026.
+constexpr char kTabOrganizationFeature[] = "tab_organization.feature";
+
+// Deprecated 03/2026.
+constexpr char kTabDeclutterUsageCount[] = "tab_declutter.usage_count";
+
 // Register local state used only for migration (clearing or moving to a new
 // key).
 void RegisterLocalStatePrefsForMigration(PrefRegistrySimple* registry) {
@@ -1387,6 +1394,12 @@ void RegisterProfilePrefsForMigration(
 
   // Deprecated 02/2026.
   registry->RegisterBooleanPref(kTabSearchOpened, false);
+
+  // Deprecated 02/2026.
+  registry->RegisterIntegerPref(kTabOrganizationFeature, 0);
+
+  // Deprecated 03/2026.
+  registry->RegisterIntegerPref(kTabDeclutterUsageCount, 0);
 }
 
 }  // namespace
@@ -1817,6 +1830,9 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
       registry);
   SessionStartupPref::RegisterProfilePrefs(registry);
   SharingSyncPreference::RegisterProfilePrefs(registry);
+#if BUILDFLAG(ENABLE_DICE_SUPPORT)
+  signin::AvatarButtonPromoManager::RegisterProfilePrefs(registry);
+#endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
   SigninPrefs::RegisterProfilePrefs(registry);
   site_engagement::SiteEngagementService::RegisterProfilePrefs(registry);
   subscription_eligibility::prefs::RegisterProfilePrefs(registry);
@@ -1961,8 +1977,8 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
   registry->RegisterBooleanPref(prefs::kDeskAPIDeskSaveAndShareEnabled, false);
   registry->RegisterListPref(prefs::kDeskAPIThirdPartyAllowlist);
   registry->RegisterBooleanPref(prefs::kInsightsExtensionEnabled, false);
-  registry->RegisterBooleanPref(prefs::kEssentialSearchEnabled, false);
-  registry->RegisterBooleanPref(prefs::kLastEssentialSearchValue, false);
+  registry->RegisterBooleanPref(ash::prefs::kEssentialSearchEnabled, false);
+  registry->RegisterBooleanPref(ash::prefs::kLastEssentialSearchValue, false);
   // By default showing Sync Consent is set to true. It can changed by policy.
   registry->RegisterBooleanPref(prefs::kEnableSyncConsent, true);
   registry->RegisterListPref(
@@ -2682,6 +2698,9 @@ void MigrateObsoleteProfilePrefs(PrefService* profile_prefs,
 
   // Added 02/2026.
   profile_prefs->ClearPref(kTabSearchOpened);
+
+  // Added 03/2026.
+  profile_prefs->ClearPref(kTabDeclutterUsageCount);
 
 #if !BUILDFLAG(IS_ANDROID)
   // Added 02/2026.

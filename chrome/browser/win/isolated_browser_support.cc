@@ -8,8 +8,9 @@
 
 #include <windows.h>
 
+#include <utility>
+
 #include "base/command_line.h"
-#include "base/logging.h"
 #include "base/memory/ptr_util.h"
 #include "base/process/process.h"
 #include "base/strings/strcat.h"
@@ -28,15 +29,8 @@
 
 namespace chrome {
 
-IsolatedBrowser::~IsolatedBrowser() = default;
-
-IsolatedBrowser::IsolatedBrowser(base::Process process,
-                                 base::win::ScopedHandle job)
-    : job_(std::move(job)), process_(std::move(process)) {}
-
-// static
-base::expected<std::unique_ptr<IsolatedBrowser>, HRESULT>
-IsolatedBrowser::Launch(const base::CommandLine& command_line) {
+base::expected<base::Process, HRESULT> LaunchIsolatedBrowser(
+    const base::CommandLine& command_line) {
   base::win::ScopedCOMInitializer com_init;
 
   base::win::AssertComInitialized();
@@ -47,7 +41,6 @@ IsolatedBrowser::Launch(const base::CommandLine& command_line) {
       install_static::GetElevatorIid(), IID_PPV_ARGS_Helper(&elevator));
 
   if (FAILED(hr)) {
-    PLOG(ERROR) << "Failed to create instance.";
     return base::unexpected(hr);
   }
 
@@ -56,7 +49,6 @@ IsolatedBrowser::Launch(const base::CommandLine& command_line) {
       COLE_DEFAULT_PRINCIPAL, RPC_C_AUTHN_LEVEL_PKT_PRIVACY,
       RPC_C_IMP_LEVEL_IMPERSONATE, nullptr, EOAC_DYNAMIC_CLOAKING);
   if (FAILED(hr)) {
-    PLOG(ERROR) << "Failed to create security blanket.";
     return base::unexpected(hr);
   }
 
@@ -64,7 +56,6 @@ IsolatedBrowser::Launch(const base::CommandLine& command_line) {
 
   job.Set(::CreateJobObjectW(nullptr, nullptr));
   if (!job.is_valid()) {
-    PLOG(ERROR) << "Failed to create job object.";
     return base::unexpected(HRESULT_FROM_WIN32(::GetLastError()));
   }
 
@@ -75,14 +66,18 @@ IsolatedBrowser::Launch(const base::CommandLine& command_line) {
   if (!::SetInformationJobObject(job.get(), JobObjectExtendedLimitInformation,
                                  &limit_information,
                                  sizeof(limit_information))) {
-    PLOG(ERROR) << "Failed to set extended job limit information.";
     return base::unexpected(HRESULT_FROM_WIN32(::GetLastError()));
   }
 
   if (!::AssignProcessToJobObject(job.get(), ::GetCurrentProcess())) {
-    PLOG(ERROR) << "Failed to place current process in job.";
     return base::unexpected(HRESULT_FROM_WIN32(::GetLastError()));
   }
+
+  // Leak the job handle. This is because closing the Job before the owning
+  // process terminates will terminate all processes in the tree including this
+  // one. The Job object will be closed when this process terminates,
+  // immediately terminating all other processes.
+  std::ignore = job.release();
 
   DWORD last_error = 0;
   ULONG_PTR proc_handle;
@@ -91,25 +86,34 @@ IsolatedBrowser::Launch(const base::CommandLine& command_line) {
       /*flags=*/0, command_line.GetCommandLineString().c_str(),
       /*log=*/log.Receive(), &proc_handle, &last_error);
   if (FAILED(hr)) {
-    PLOG(ERROR) << "Failed to launch isolated browser.";
     return base::unexpected(hr);
   }
 
-  return base::WrapUnique<IsolatedBrowser>(new IsolatedBrowser(
-      base::Process(reinterpret_cast<base::ProcessHandle>(proc_handle)),
-      std::move(job)));
-}
-
-int IsolatedBrowser::WaitForExit() const {
-  int exit_code;
-  process_.WaitForExit(&exit_code);
-  return exit_code;
+  return base::Process(reinterpret_cast<base::ProcessHandle>(proc_handle));
 }
 
 bool IsIsolationEnabled(const base::CommandLine& command_line) {
   if (!install_static::IsSystemInstall()) {
     return false;
   }
+
+  // Set of switches that will never result in an attempt to launch an isolated
+  // browser.
+  const char* const kNoIsolationSwitches[] = {
+      // Custom user data dir always runs uninsolated as it's not possible to
+      // determine the isolation state of any cryptographic data.
+      ::switches::kUserDataDir,
+      // If this browser is running isolated, never attempt to launch isolated
+      // again.
+      ::switches::kIsolated,
+  };
+
+  for (const auto* no_isolation_switch : kNoIsolationSwitches) {
+    if (command_line.HasSwitch(no_isolation_switch)) {
+      return false;
+    }
+  }
+
   // TODO(crbug.com/433545123): Replace with a persistent backed config.
   return command_line.HasSwitch(::switches::kLaunchIsolated);
 }

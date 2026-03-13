@@ -136,29 +136,17 @@ void BnplManager::OnDidAcceptBnplSuggestion(
                                   weak_factory_.GetWeakPtr()),
               base::BindOnce(&BnplManager::Reset, weak_factory_.GetWeakPtr()),
               HasSeenAmountExtractionAiTerms());
-
-      if (base::FeatureList::IsEnabled(
-              features::kAutofillEnableAiBasedAmountExtraction)) {
-        if (HasSeenAmountExtractionAiTerms()) {
-          // On BNPL suggestion acceptance, if the user has seen the AI terms,
-          // server-side amount extraction call should be made directly.
-          browser_autofill_manager_->GetAmountExtractionManager()
-              .TriggerCheckoutAmountExtractionWithAi();
-        } else {
-          // On BNPL suggestion acceptance, if the user has not seen the AI
-          // terms, record the user has seen the AI terms after the dialog has
-          // been shown.
-          payments_autofill_client()
-              .GetPaymentsDataManager()
-              .SetAutofillAmountExtractionAiTermsSeen();
-        }
-      }
       break;
     }
     case kCheckAmountExtractionBeforeContinuingFlowForAndroid: {
       // Shows the issuer selection screen when amount extraction returns a
-      // valid amount.
-      if (ongoing_flow_state_->final_checkout_amount.has_value()) {
+      // valid amount, or when AI-based amount extraction is enabled and the
+      // user must see the AI terms before running the extraction for the first
+      // time.
+      if (ongoing_flow_state_->final_checkout_amount.has_value() ||
+          (base::FeatureList::IsEnabled(
+               features::kAutofillEnableAiBasedAmountExtraction) &&
+           !HasSeenAmountExtractionAiTerms())) {
         CHECK_DEREF(payments_autofill_client().GetBnplUiDelegate())
             .ShowSelectBnplIssuerUi(
                 GetSortedBnplIssuerContext(
@@ -181,6 +169,22 @@ void BnplManager::OnDidAcceptBnplSuggestion(
                                                    weak_factory_.GetWeakPtr()));
       }
       break;
+    }
+  }
+  if (base::FeatureList::IsEnabled(
+          features::kAutofillEnableAiBasedAmountExtraction)) {
+    if (HasSeenAmountExtractionAiTerms()) {
+      // On BNPL suggestion acceptance, if the user has seen the AI terms,
+      // server-side amount extraction call should be made directly.
+      browser_autofill_manager_->GetAmountExtractionManager()
+          .TriggerCheckoutAmountExtractionWithAi();
+    } else {
+      // On BNPL suggestion acceptance, if the user has not seen the AI
+      // terms, record the user has seen the AI terms after the dialog has
+      // been shown.
+      payments_autofill_client()
+          .GetPaymentsDataManager()
+          .SetAutofillAmountExtractionAiTermsSeen();
     }
   }
 
@@ -317,9 +321,21 @@ void BnplManager::OnAmountExtractionReturned(
 void BnplManager::OnAmountExtractionReturnedFromAi(
     const AiAmountExtractionResult::ResultType result) {
   if (!result.has_value()) {
-    payments_autofill_client()
-        .GetBnplUiDelegate()
-        ->RemoveSelectBnplIssuerOrProgressUi();
+    CHECK(payments_autofill_client().GetBnplUiDelegate());
+    CHECK(payments_autofill_client().GetBnplStrategy());
+    using enum BnplStrategy::BeforeSwitchingViewAction;
+    switch (payments_autofill_client()
+                .GetBnplStrategy()
+                ->GetBeforeViewSwitchAction()) {
+      // This case is for platforms (i.e. Android) that will flip to the error
+      // screen within the same view, so no need to remove the current view.
+      case kDoNothing:
+        break;
+      case kCloseCurrentUi:
+        payments_autofill_client()
+            .GetBnplUiDelegate()
+            ->RemoveSelectBnplIssuerOrProgressUi();
+    }
 
     switch (result.error()) {
       case AiAmountExtractionResult::Error::kFailureToGenerateApc:

@@ -72,7 +72,8 @@ TabContainerImpl::RemoveTabDelegate::RemoveTabDelegate(
 void TabContainerImpl::RemoveTabDelegate::AnimationEnded(
     const gfx::Animation* animation) {
   StopObserving();
-  tab_container()->OnTabCloseAnimationCompleted(static_cast<Tab*>(slot_view()));
+  tab_container()->OnTabCloseAnimationCompleted(
+      views::AsViewClass<Tab>(slot_view()));
 }
 
 void TabContainerImpl::RemoveTabDelegate::AnimationCanceled(
@@ -332,6 +333,14 @@ void TabContainerImpl::OnGroupEditorOpened(
   }
 }
 
+void TabContainerImpl::OnGroupMoved(const tab_groups::TabGroupId& group) {
+  DCHECK(group_views_[group]);
+
+  layout_helper_->UpdateGroupHeaderIndex(group);
+
+  OrderTabSlotView(group_views_[group]->header());
+}
+
 void TabContainerImpl::OnGroupContentsChanged(
     const tab_groups::TabGroupId& group) {
   // If a tab was removed, the underline bounds might be stale.
@@ -363,14 +372,6 @@ void TabContainerImpl::OnGroupVisualsChanged(
   if (active_index.has_value()) {
     GetTabAtModelIndex(active_index.value())->SchedulePaint();
   }
-}
-
-void TabContainerImpl::OnGroupMoved(const tab_groups::TabGroupId& group) {
-  DCHECK(group_views_[group]);
-
-  layout_helper_->UpdateGroupHeaderIndex(group);
-
-  OrderTabSlotView(group_views_[group]->header());
 }
 
 void TabContainerImpl::ToggleTabGroup(
@@ -621,6 +622,22 @@ void TabContainerImpl::OnTabSlotAnimationProgressed(TabSlotView* view) {
   }
 }
 
+void TabContainerImpl::OnTabCloseAnimationCompleted(Tab* tab) {
+  DCHECK(tab->closing());
+  OnTabRemoved(tab);
+
+  // The ZOrder cache holds pointers to the tab view, however on deletion the
+  // views in the cache will have to be recalculated and reordered. Marking the
+  // cache dirty does not evict the tab view pointer, and so a dangling pointer
+  // would be created if the cache were not also cleared. This is why the cache
+  // must also be evicted.
+  MarkZOrderCacheDirty();
+  z_ordered_children_cache_.clear();
+
+  // Delete `tab`.
+  tab->parent()->RemoveChildViewT(tab);
+}
+
 void TabContainerImpl::InvalidateIdealBounds() {
   // Invalidation of ideal bounds is handled dynamically by the parent
   // container or other mechanisms.
@@ -832,10 +849,6 @@ void TabContainerImpl::PaintChildren(const views::PaintInfo& paint_info) {
   }
 }
 
-void TabContainerImpl::UpdateZOrderCacheForTesting() {
-  UpdateZOrderCacheIfDirty();
-}
-
 gfx::Size TabContainerImpl::GetMinimumSize() const {
   // During animations, our minimum width tightly hugs the current bounds of our
   // children.
@@ -926,7 +939,7 @@ std::optional<BrowserRootView::DropIndex> TabContainerImpl::GetDropIndex(
     }
 
     if (view->GetTabSlotViewType() == TabSlotView::ViewType::kTab) {
-      Tab* const tab = static_cast<Tab*>(view);
+      Tab* const tab = views::AsViewClass<Tab>(view);
       // Closing tabs should be skipped.
       if (tab->closing()) {
         continue;
@@ -984,7 +997,8 @@ std::optional<BrowserRootView::DropIndex> TabContainerImpl::GetDropIndex(
         }
       }
     } else {
-      TabGroupHeader* const group_header = static_cast<TabGroupHeader*>(view);
+      TabGroupHeader* const group_header =
+          views::AsViewClass<TabGroupHeader>(view);
       const int first_tab_index =
           controller_->GetFirstTabInGroup(group_header->group().value())
               .value();
@@ -1009,10 +1023,6 @@ std::optional<BrowserRootView::DropIndex> TabContainerImpl::GetDropIndex(
                                     .group_inclusion = kDontIncludeInGroup};
 }
 
-views::View* TabContainerImpl::GetViewForDrop() {
-  return this;
-}
-
 BrowserRootView::DropTarget* TabContainerImpl::GetDropTarget(
     gfx::Point loc_in_local_coords) {
   if (IsDrawn()) {
@@ -1024,6 +1034,10 @@ BrowserRootView::DropTarget* TabContainerImpl::GetDropTarget(
   }
 
   return nullptr;
+}
+
+views::View* TabContainerImpl::GetViewForDrop() {
+  return this;
 }
 
 void TabContainerImpl::HandleDragUpdate(
@@ -1084,6 +1098,10 @@ void TabContainerImpl::OnBoundsAnimatorDone(views::BoundsAnimator* animator) {
   }
 
   PreferredSizeChanged();
+}
+
+void TabContainerImpl::UpdateZOrderCacheForTesting() {
+  UpdateZOrderCacheIfDirty();
 }
 
 views::ViewModelT<Tab>* TabContainerImpl::GetTabsViewModel() {
@@ -1307,22 +1325,6 @@ void TabContainerImpl::CloseTabInViewModel(int index) {
 void TabContainerImpl::OnTabRemoved(Tab* tab) {
   // Remove `tab` from `layout_helper_` so we don't try to lay it out later.
   layout_helper_->RemoveTab(tab);
-}
-
-void TabContainerImpl::OnTabCloseAnimationCompleted(Tab* tab) {
-  DCHECK(tab->closing());
-  OnTabRemoved(tab);
-
-  // The ZOrder cache holds pointers to the tab view, however on deletion the
-  // views in the cache will have to be recalculated and reordered. Marking the
-  // cache dirty does not evict the tab view pointer, and so a dangling pointer
-  // would be created if the cache were not also cleared. This is why the cache
-  // must also be evicted.
-  MarkZOrderCacheDirty();
-  z_ordered_children_cache_.clear();
-
-  // Delete `tab`.
-  tab->parent()->RemoveChildViewT(tab);
 }
 
 void TabContainerImpl::UpdateClosingModeOnRemovedTab(int model_index,
@@ -1593,11 +1595,10 @@ bool TabContainerImpl::ShouldTabBeVisible(const Tab* tab) const {
   return right_edge + active_tab_width - tab->width() <= tabstrip_right;
 }
 
-gfx::Rect TabContainerImpl::GetDropBounds(int drop_index,
-                                          bool drop_before,
-                                          bool drop_in_group,
-                                          bool* is_beneath) {
-  DCHECK_NE(drop_index, -1);
+gfx::Rect TabContainerImpl::GetDropBounds(
+    const BrowserRootView::DropIndex& drop_index,
+    DropArrow::Direction* direction) {
+  DCHECK_NE(drop_index.index, -1);
 
   // The X location the indicator points to.
   int center_x = -1;
@@ -1608,19 +1609,25 @@ gfx::Rect TabContainerImpl::GetDropBounds(int drop_index,
     return gfx::Rect();
   }
 
-  Tab* tab = GetTabAtModelIndex(std::min(drop_index, GetTabCount() - 1));
+  Tab* tab = GetTabAtModelIndex(std::min(drop_index.index, GetTabCount() - 1));
   const bool first_in_group =
-      drop_index < GetTabCount() && tab->group().has_value() &&
+      drop_index.index < GetTabCount() && tab->group().has_value() &&
       GetModelIndexOf(tab) ==
           controller_->GetFirstTabInGroup(tab->group().value());
 
   const int overlap = tab->tab_style()->GetTabOverlap();
+  const bool drop_before =
+      drop_index.relative_to_index ==
+      BrowserRootView::DropIndex::RelativeToIndex::kInsertBeforeIndex;
+  const bool drop_in_group =
+      drop_index.group_inclusion ==
+      BrowserRootView::DropIndex::GroupInclusion::kIncludeInGroup;
   if (!drop_before || !first_in_group || drop_in_group) {
     // Dropping between tabs, or between a group header and the group's first
     // tab.
     center_x = tab->x();
     const int width = tab->width();
-    if (drop_index < GetTabCount()) {
+    if (drop_index.index < GetTabCount()) {
       center_x += drop_before ? (overlap / 2) : (width / 2);
     } else {
       center_x += width - (overlap / 2);
@@ -1645,8 +1652,10 @@ gfx::Rect TabContainerImpl::GetDropBounds(int drop_index,
   // If the rect doesn't fit on the monitor, push the arrow to the bottom.
   display::Screen* screen = display::Screen::Get();
   display::Display display = screen->GetDisplayMatching(drop_bounds);
-  *is_beneath = !display.bounds().Contains(drop_bounds);
-  if (*is_beneath) {
+  const bool is_beneath = !display.bounds().Contains(drop_bounds);
+  *direction =
+      is_beneath ? DropArrow::Direction::kUp : DropArrow::Direction::kDown;
+  if (is_beneath) {
     drop_bounds.Offset(0, drop_bounds.height() + height());
   }
 
@@ -1665,28 +1674,20 @@ void TabContainerImpl::SetDropArrow(
   const bool drop_before =
       index->relative_to_index ==
       BrowserRootView::DropIndex::RelativeToIndex::kInsertBeforeIndex;
-  const bool group_inclusion =
-      index->group_inclusion ==
-      BrowserRootView::DropIndex::GroupInclusion::kIncludeInGroup;
   controller_->OnDropIndexUpdate(index->index, drop_before);
 
   if (drop_arrow_ && (index == drop_arrow_->index())) {
     return;
   }
 
-  bool is_beneath;
-  gfx::Rect drop_bounds =
-      GetDropBounds(index->index, drop_before, group_inclusion, &is_beneath);
-
   if (!drop_arrow_) {
-    drop_arrow_ = std::make_unique<DropArrow>(*index, !is_beneath, GetWidget());
+    drop_arrow_ = std::make_unique<DropArrow>(
+        *index, GetWidget()->GetNativeWindow(),
+        base::BindRepeating(&TabContainerImpl::GetDropBounds,
+                            base::Unretained(this)));
   } else {
-    drop_arrow_->set_index(*index);
-    drop_arrow_->SetPointDown(!is_beneath);
+    drop_arrow_->SetIndex(*index);
   }
-
-  // Reposition the window.
-  drop_arrow_->SetWindowBounds(drop_bounds);
 }
 
 void TabContainerImpl::UpdateAccessibleTabIndices() {

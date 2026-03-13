@@ -55,11 +55,11 @@ namespace blink {
 
 namespace {
 bool IsCSS(const AtomicString& type) {
-  return type.empty() || EqualIgnoringASCIICase(type, keywords::kTextCss);
+  return type.empty() || EqualIgnoringAsciiCase(type, keywords::kTextCss);
 }
 
 bool IsCSSModule(const AtomicString& type) {
-  return EqualIgnoringASCIICase(type, keywords::kModule);
+  return EqualIgnoringAsciiCase(type, keywords::kModule);
 }
 }  // namespace
 
@@ -289,7 +289,7 @@ void StyleElement::AddImportMapEntry(Element& element, const String& text) {
   if (use_data_uri) {
     // TODO(crbug.com/448174611) - consider encoding in base64 to decrease
     // string size in memory (at the expense of decoding on the CPU).
-    url_string = StrCat({"data:text/css,", EncodeWithURLEscapeSequences(text)});
+    url_string = StrCat({"data:text/css,", EncodeWithUrlEscapeSequences(text)});
   } else {
     StringUtf8Adaptor utf8(text, Utf8ConversionMode::kLenient);
     auto* blob = Blob::Create(base::as_byte_span(utf8), "text/css");

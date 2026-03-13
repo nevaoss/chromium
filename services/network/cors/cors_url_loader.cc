@@ -299,6 +299,7 @@ CorsURLLoader::CorsURLLoader(
     scoped_refptr<SharedDictionaryStorage> shared_dictionary_storage,
     raw_ptr<mojom::SharedDictionaryAccessObserver> shared_dictionary_observer,
     NetworkContext* context,
+    std::optional<base::UnguessableToken> network_restrictions_id,
     net::CookieSettingOverrides factory_cookie_setting_overrides,
     net::CookieSettingOverrides devtools_cookie_setting_overrides)
     : receiver_(this, std::move(loader_receiver)),
@@ -324,6 +325,7 @@ CorsURLLoader::CorsURLLoader(
       net_log_(net::NetLogWithSource::Make(net::NetLog::Get(),
                                            net::NetLogSourceType::URL_REQUEST)),
       context_(context),
+      network_restrictions_id_(network_restrictions_id),
       shared_dictionary_storage_(std::move(shared_dictionary_storage)),
       shared_dictionary_observer_(shared_dictionary_observer),
       factory_cookie_setting_overrides_(factory_cookie_setting_overrides),
@@ -659,6 +661,15 @@ void CorsURLLoader::OnReceiveRedirect(const net::RedirectInfo& redirect_info,
   DCHECK(forwarding_client_);
   DCHECK(!deferred_redirect_url_);
 
+  if (redirect_count_ == 0 && network_restrictions_id_) {
+    if (!context_->IsNetworkForNonceAndUrlAllowed(*network_restrictions_id_,
+                                                  request_.url,
+                                                  /*is_redirect=*/true)) {
+      HandleComplete(URLLoaderCompletionStatus(net::ERR_UNSAFE_REDIRECT));
+      return;
+    }
+  }
+
   // If `CORS flag` is set and a CORS check for `request` and `response` returns
   // failure, then return a network error.
   if (fetch_cors_flag_ && IsCorsEnabledRequestMode(request_.mode)) {
@@ -896,12 +907,23 @@ void CorsURLLoader::StartRequest() {
   };
 
   if (should_include_origin_header()) {
-    if (tainted_) {
-      request_.headers.SetHeader(net::HttpRequestHeaders::kOrigin,
-                                 url::Origin().Serialize());
-    } else {
-      request_.headers.SetHeader(net::HttpRequestHeaders::kOrigin,
-                                 request_.request_initiator->Serialize());
+    // If the Origin header is given, check if the initiator has a permission to
+    // override unsafe headers for the target URL. This Allowlist is given from
+    // a trustworthy process per factory, and safe to trust as a secondary
+    // security check here in the network service.
+    const bool has_custom_origin_header_with_bypass =
+        request_.headers.HasHeader(net::HttpRequestHeaders::kOrigin) &&
+        cors::ShouldAllowUnsafeHeaders(
+            *origin_access_list_, request_.request_initiator, request_.url);
+
+    if (!has_custom_origin_header_with_bypass) {
+      if (tainted_) {
+        request_.headers.SetHeader(net::HttpRequestHeaders::kOrigin,
+                                   url::Origin().Serialize());
+      } else {
+        request_.headers.SetHeader(net::HttpRequestHeaders::kOrigin,
+                                   request_.request_initiator->Serialize());
+      }
     }
   }
 

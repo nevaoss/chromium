@@ -7,6 +7,7 @@
 #include <optional>
 
 #include "base/containers/adapters.h"
+#include "base/feature_list.h"
 #include "base/logging.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/user_metrics.h"
@@ -111,6 +112,8 @@ constexpr net::BackoffEntry::Policy
 constexpr char kAiPageHost[] = "https://google.com";
 constexpr char kTaskQueryParam[] = "task";
 constexpr char kAimUrlQueryParam[] = "aim_url";
+constexpr char kDebugParam[] = "deb";
+constexpr char kDebugNoCobrowseValue[] = "nocobrowse1";
 
 // Parameters that the search results page must contain at least one of to be
 // considered a valid search results page.
@@ -203,7 +206,7 @@ GURL AppendAimEntryPointParams(GURL url,
 
 ContextualTasksUiService::ContextualTasksUiService(
     Profile* profile,
-    contextual_tasks::ContextualTasksService* contextual_tasks_service,
+    ContextualTasksService* contextual_tasks_service,
     signin::IdentityManager* identity_manager,
     AimEligibilityService* aim_eligibility_service)
     : profile_(profile),
@@ -458,30 +461,38 @@ void ContextualTasksUiService::OnThreadLinkClicked(
       if (task_id.is_valid()) {
         AssociateWebContentsToTask(new_contents_ptr, task_id);
       }
-#if BUILDFLAG(IS_ANDROID)
-      // Insert the WebContents after the current active.
-      int active_tab_index = tab_list->GetActiveIndex();
-      tabs::TabInterface* active_tab = tab_list->GetActiveTab();
-      tabs::TabInterface* new_tab = tab_list->InsertWebContentsAt(
-          active_tab_index + 1, std::move(new_contents),
-          /*should_pin=*/false,
-          /*group=*/active_tab->GetGroup());
-      tab_list->SetOpenerForTab(new_tab->GetHandle(), active_tab->GetHandle());
-      tab_list->ActivateTab(new_tab->GetHandle());
-#else
-      // TODO(crbug.com/483442073): Remove TabStripModel once we address the
-      // loss of ui::PAGE_TRANSITION_LINK upon migrating from
-      // TabStripModel::AddTab() to TabListInterface::InsertWebContentsAt().
-      TabStripModel* tab_strip_model = browser->GetTabStripModel();
-      // Creates the Tab so session ID is created for the WebContents.
-      auto tab_to_insert = std::make_unique<tabs::TabModel>(
-          std::move(new_contents), tab_strip_model);
-      // Insert the WebContents after the current active.
-      int active_tab_index = tab_strip_model->active_index();
-      tab_strip_model->AddTab(std::move(tab_to_insert), active_tab_index + 1,
-                              ui::PAGE_TRANSITION_LINK,
-                              AddTabTypes::ADD_ACTIVE);
+
+      bool use_insert_web_contents_at = base::FeatureList::IsEnabled(
+          contextual_tasks::kContextualTasksInsertWebContentsAt);
+      if (use_insert_web_contents_at) {
+        // Insert the WebContents after the current active.
+        int active_tab_index = tab_list->GetActiveIndex();
+        tabs::TabInterface* active_tab = tab_list->GetActiveTab();
+        tabs::TabInterface* new_tab = tab_list->InsertWebContentsAt(
+            active_tab_index + 1, std::move(new_contents),
+            /*should_pin=*/false,
+            /*group=*/active_tab ? active_tab->GetGroup() : std::nullopt);
+        if (active_tab) {
+          tab_list->SetOpenerForTab(new_tab->GetHandle(),
+                                    active_tab->GetHandle());
+        }
+        tab_list->ActivateTab(new_tab->GetHandle());
+      } else {
+#if !BUILDFLAG(IS_ANDROID)
+        // TODO(crbug.com/483442073): Remove TabStripModel once we address the
+        // loss of ui::PAGE_TRANSITION_LINK upon migrating from
+        // TabStripModel::AddTab() to TabListInterface::InsertWebContentsAt().
+        TabStripModel* tab_strip_model = browser->GetTabStripModel();
+        // Creates the Tab so session ID is created for the WebContents.
+        auto tab_to_insert = std::make_unique<tabs::TabModel>(
+            std::move(new_contents), tab_strip_model);
+        // Insert the WebContents after the current active.
+        int active_tab_index = tab_strip_model->active_index();
+        tab_strip_model->AddTab(std::move(tab_to_insert), active_tab_index + 1,
+                                ui::PAGE_TRANSITION_LINK,
+                                AddTabTypes::ADD_ACTIVE);
 #endif
+      }
     } else {
       // If the tab was found, check if there was a text fragment to search for
       // in the URL. If so, highlight them to be shown to the user.
@@ -499,8 +510,7 @@ void ContextualTasksUiService::OnThreadLinkClicked(
     }
 
     if (auto* controller =
-            contextual_tasks::ContextualTasksPanelController::From(
-                browser.get())) {
+            ContextualTasksPanelController::From(browser.get())) {
       // Count as part of a cobrowsing session if the user interacted with the
       // AI response.
       controller->OnAiInteraction();
@@ -733,7 +743,9 @@ bool ContextualTasksUiService::HandleNavigationImpl(
 
   // If the target URL is a contextual tasks "display URL", then replace it with
   // the proper AIM URL.
+  bool original_url_is_virtual = false;
   if (IsContextualTasksDisplayUrl(url_params.url)) {
+    original_url_is_virtual = true;
     const GURL aim_url =
         GetUrlForAim(TemplateURLServiceFactory::GetForProfile(profile_.get()),
                      omnibox::UNKNOWN_AIM_ENTRY_POINT, base::Time::Now(), u"",
@@ -753,6 +765,31 @@ bool ContextualTasksUiService::HandleNavigationImpl(
   }
 
   bool is_nav_to_ai = IsAiUrl(url_params.url);
+
+  // The "deb" param is a debugging tool that allows a client to specify whether
+  // the browser intercepts an AI navigation, optionally allowing it to be shown
+  // in a top-level tab. In this case, if "nocobrowse1" is the value of this
+  // param and if set on a "virtual" URL, will cause a new navigation to the AI
+  // URL. If specified on a non-virtual AI URL, the navigation is simply allowed
+  // to proceed.
+  std::string debug_param_value;
+  if (is_nav_to_ai &&
+      net::GetValueForKeyInQuery(url_params.url, kDebugParam,
+                                 &debug_param_value) &&
+      debug_param_value.contains(kDebugNoCobrowseValue)) {
+    if (original_url_is_virtual) {
+      base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+          FROM_HERE,
+          base::BindOnce(&ContextualTasksUiService::LoadUrlInWebContents,
+                         weak_ptr_factory_.GetWeakPtr(),
+                         net::AppendQueryParameter(url_params.url, kDebugParam,
+                                                   kDebugNoCobrowseValue),
+                         source_contents));
+      return true;
+    } else {
+      return false;
+    }
+  }
 
   // If the user is not signed in to Chrome, do not intercept.
   if (!IsSignedInToBrowserWithValidCredentials()) {
@@ -875,6 +912,14 @@ bool ContextualTasksUiService::HandleNavigationImpl(
 
   // Allow anything else.
   return false;
+}
+
+void ContextualTasksUiService::LoadUrlInWebContents(
+    const GURL& url,
+    content::WebContents* web_contents) {
+  content::NavigationController::LoadURLParams params(url);
+  params.transition_type = ::ui::PAGE_TRANSITION_AUTO_TOPLEVEL;
+  web_contents->GetController().LoadURLWithParams(params);
 }
 
 bool ContextualTasksUiService::IsUrlForPrimaryAccount(const GURL& url) {
@@ -1072,8 +1117,7 @@ void ContextualTasksUiService::MoveTaskUiToNewTab(
     const base::Uuid& task_id,
     BrowserWindowInterface* browser,
     const GURL& inner_frame_url) {
-  auto* controller =
-      contextual_tasks::ContextualTasksPanelController::From(browser);
+  auto* controller = ContextualTasksPanelController::From(browser);
   CHECK(controller);
 
   // If the side panel wasn't showing an AI page, don't embed the page in the
@@ -1112,8 +1156,7 @@ void ContextualTasksUiService::MoveTaskUiToNewTab(
   controller->Close();
 
   ContextualTasksService* task_service =
-      contextual_tasks::ContextualTasksServiceFactory::GetForProfile(
-          browser->GetProfile());
+      ContextualTasksServiceFactory::GetForProfile(browser->GetProfile());
   CHECK(task_service);
   task_service->DisassociateAllTabsFromTask(task_id);
 }
@@ -1185,8 +1228,7 @@ void ContextualTasksUiService::StartTaskUiInSidePanelWithErrorPage(
 
   if (!panel_was_closed) {
     if (auto* web_ui_interface = GetWebUiInterface(web_contents)) {
-      contextual_tasks::ShowAndRecordErrorPage(
-          web_ui_interface->GetPageRemote(), source);
+      ShowAndRecordErrorPage(web_ui_interface->GetPageRemote(), source);
     }
   }
 }
@@ -1203,7 +1245,7 @@ bool ContextualTasksUiService::IsPendingErrorPage(const base::Uuid& task_id) {
   if (!pending_error_page_tasks_.contains(task_id)) {
     return false;
   }
-  contextual_tasks::RecordErrorPageShown(pending_error_page_tasks_[task_id]);
+  RecordErrorPageShown(pending_error_page_tasks_[task_id]);
   return true;
 }
 
@@ -1213,10 +1255,9 @@ bool ContextualTasksUiService::IsContextualTasksUrl(const GURL& url) {
 }
 
 bool ContextualTasksUiService::IsContextualTasksDisplayUrl(const GURL& url) {
-  return url.scheme() ==
-             contextual_tasks::kContextualTasksDisplayUrlScheme.Get() &&
-         url.host() == contextual_tasks::kContextualTasksDisplayUrlHost.Get() &&
-         url.path() == contextual_tasks::kContextualTasksDisplayUrlPath.Get();
+  return url.scheme() == GetContextualTasksDisplayUrlScheme() &&
+         url.host() == GetContextualTasksDisplayUrlHost() &&
+         url.path() == GetContextualTasksDisplayUrlPath();
 }
 
 bool ContextualTasksUiService::IsSearchResultsUrl(const GURL& url) {
@@ -1379,7 +1420,7 @@ bool ContextualTasksUiService::IsAllowedHost(const GURL& url) {
   if (net::SchemefulSite::IsSameSite(url, GURL(kAiPageHost))) {
     return true;
   }
-  std::string forced_host = contextual_tasks::GetForcedEmbeddedPageHost();
+  std::string forced_host = GetForcedEmbeddedPageHost();
   if (!forced_host.empty() &&
       net::SchemefulSite::IsSameSite(
           url,

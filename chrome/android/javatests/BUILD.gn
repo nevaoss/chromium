@@ -61,6 +61,7 @@ android_library("chrome_test_java_helper") {
     "//base:base_java_test_support",
     "//base:base_java_test_support_uncommon",
     "//base:content_uri_utils_java",
+    "//base:holder_java",
     "//base:service_loader_java",
     "//base/test:public_transit_java",
     "//base/test:test_support_java",
@@ -542,10 +543,12 @@ android_library("chrome_test_java_org.chromium.chrome.browser.app") {
     "src/org/chromium/chrome/browser/app/flags/ChromeCachedFlagsTest.java",
     "src/org/chromium/chrome/browser/app/metrics/TabbedActivityLaunchCauseMetricsTest.java",
     "src/org/chromium/chrome/browser/app/tab_activity_glue/TabletPhoneLayoutChangeTest.java",
+    "src/org/chromium/chrome/browser/app/tabmodel/ActiveTabCacheTest.java",
     "src/org/chromium/chrome/browser/app/tabmodel/AllTabObserverTest.java",
     "src/org/chromium/chrome/browser/app/tabmodel/ArchivedTabModelOrchestratorTest.java",
     "src/org/chromium/chrome/browser/app/tabmodel/ArchivedTabsTest.java",
     "src/org/chromium/chrome/browser/app/tabmodel/ChromeNextTabPolicySupplierTest.java",
+    "src/org/chromium/chrome/browser/app/tabmodel/PersistentStoreCleanerTest.java",
   ]
 
   deps = [
@@ -649,6 +652,7 @@ android_library("chrome_test_java_org.chromium.chrome.browser.compositor") {
   deps = [
     ":chrome_test_java_helper",
     "//base:holder_java",
+    "//chrome/browser/educational_tip:java",
     "//chrome/browser/ntp_customization:java",
   ]
 }
@@ -937,6 +941,7 @@ android_library("chrome_test_java_org.chromium.chrome.browser.ntp") {
     ":chrome_test_java_helper",
     "//chrome/android/feed:chrome_feed_java_resources",
     "//chrome/browser/composeplate/android:java",
+    "//chrome/browser/educational_tip:java",
     "//chrome/browser/ntp_customization:java",
     "//chrome/browser/ui/android/logo:utils_java",
   ]
@@ -1491,6 +1496,7 @@ android_library("chrome_test_java_org.chromium.chrome.browser.tasks") {
   deps = [
     ":chrome_test_java_helper",
     "//base:holder_java",
+    "//chrome/browser/educational_tip:java",
   ]
 }
 
@@ -1507,6 +1513,7 @@ android_library("chrome_test_java_org.chromium.chrome.browser.toolbar") {
     "src/org/chromium/chrome/browser/toolbar/adaptive/AdaptiveButtonActionMenuRenderTest.java",
     "src/org/chromium/chrome/browser/toolbar/adaptive/OptionalNewTabButtonControllerPhoneTest.java",
     "src/org/chromium/chrome/browser/toolbar/adaptive/OptionalNewTabButtonControllerTabletTest.java",
+    "src/org/chromium/chrome/browser/toolbar/signin_button/SigninButtonCoordinatorTest.java",
     "src/org/chromium/chrome/browser/toolbar/top/BrandColorTest.java",
     "src/org/chromium/chrome/browser/toolbar/top/NavigationPopupTest.java",
     "src/org/chromium/chrome/browser/toolbar/top/TabSwitcherActionMenuBatchedPTTest.java",
@@ -1664,6 +1671,7 @@ android_library("chrome_test_java_various") {
     "//base:base_java_test_support",
     "//base:holder_java",
     "//base/test:leak_canary_java",
+    "//chrome/browser/educational_tip:java",
     "//chrome/browser/ntp_customization:java",
     "//components/browser_ui/http_auth/android:java",
     "//third_party/androidx:androidx_test_ext_junit_java",

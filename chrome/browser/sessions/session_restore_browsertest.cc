@@ -17,6 +17,7 @@
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
+#include "base/memory/memory_pressure_listener_registry.h"
 #include "base/memory/raw_ptr.h"
 #include "base/path_service.h"
 #include "base/process/launch.h"
@@ -100,7 +101,6 @@
 #include "components/collaboration/public/messaging/empty_messaging_backend_service.h"
 #include "components/keep_alive_registry/keep_alive_types.h"
 #include "components/keep_alive_registry/scoped_keep_alive.h"
-#include "components/memory_pressure/fake_memory_pressure_monitor.h"
 #include "components/prefs/pref_service.h"
 #include "components/saved_tab_groups/internal/saved_tab_group_model.h"
 #include "components/saved_tab_groups/public/features.h"
@@ -378,16 +378,8 @@ class SessionRestoreTest : public InProcessBrowserTest {
 
     // Stop loading anything more if we are running out of space.
     if (!no_memory_pressure) {
-      fake_memory_pressure_monitor_.SetAndNotifyMemoryPressure(
+      base::MemoryPressureListenerRegistry::SimulatePressureNotification(
           base::MEMORY_PRESSURE_LEVEL_CRITICAL);
-      // Wait for async memory notifications to be delivered to Performance
-      // Manager on the main thread.
-      // TODO(crbug.com/436324601): Remove once memory pressure notifications
-      // are synchronous.
-      base::RunLoop run_loop;
-      base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-          FROM_HERE, run_loop.QuitClosure());
-      run_loop.Run();
     }
     restore_observer.Wait();
 
@@ -458,9 +450,6 @@ class SessionRestoreTest : public InProcessBrowserTest {
 #if !BUILDFLAG(GOOGLE_CHROME_BRANDING)
   base::test::ScopedFeatureList scoped_feature_list_;
 #endif  // !BUILDFLAG(GOOGLE_CHROME_BRANDING)
-
-  memory_pressure::test::FakeMemoryPressureMonitor
-      fake_memory_pressure_monitor_;
 
   base::CallbackListSubscription dependency_manager_subscription_;
 };
@@ -846,13 +835,12 @@ IN_PROC_BROWSER_TEST_F(SessionRestoreTest, RestoreForeignTab) {
 
   // Restore in the current tab.
   content::WebContents* tab_content = nullptr;
-  {
-    content::CreateAndLoadWebContentsObserver observer;
-    tab_content = SessionRestore::RestoreForeignSessionTab(
-        browser()->tab_strip_model()->GetActiveWebContents(), tab,
-        WindowOpenDisposition::CURRENT_TAB);
-    observer.Wait();
-  }
+  tab_content = SessionRestore::RestoreForeignSessionTab(
+      browser()->tab_strip_model()->GetActiveWebContents(), tab,
+      WindowOpenDisposition::CURRENT_TAB);
+  ASSERT_TRUE(tab_content);
+  content::WaitForLoadStop(tab_content);
+
   ASSERT_EQ(1, browser()->tab_strip_model()->count());
   content::WebContents* web_contents =
       browser()->tab_strip_model()->GetWebContentsAt(0);
@@ -863,13 +851,12 @@ IN_PROC_BROWSER_TEST_F(SessionRestoreTest, RestoreForeignTab) {
 
   // Restore in a new tab.
   tab_content = nullptr;
-  {
-    content::CreateAndLoadWebContentsObserver observer;
-    tab_content = SessionRestore::RestoreForeignSessionTab(
-        browser()->tab_strip_model()->GetActiveWebContents(), tab,
-        WindowOpenDisposition::NEW_BACKGROUND_TAB);
-    observer.Wait();
-  }
+  tab_content = SessionRestore::RestoreForeignSessionTab(
+      browser()->tab_strip_model()->GetActiveWebContents(), tab,
+      WindowOpenDisposition::NEW_BACKGROUND_TAB);
+  ASSERT_TRUE(tab_content);
+  content::WaitForLoadStop(tab_content);
+
   ASSERT_EQ(2, browser()->tab_strip_model()->count());
   ASSERT_EQ(0, browser()->tab_strip_model()->active_index());
   web_contents = browser()->tab_strip_model()->GetWebContentsAt(1);
@@ -882,12 +869,12 @@ IN_PROC_BROWSER_TEST_F(SessionRestoreTest, RestoreForeignTab) {
   Browser* new_browser = nullptr;
   tab_content = nullptr;
   {
-    content::CreateAndLoadWebContentsObserver observer;
     ui_test_utils::BrowserCreatedObserver browser_created_observer;
     tab_content = SessionRestore::RestoreForeignSessionTab(
         browser()->tab_strip_model()->GetActiveWebContents(), tab,
         WindowOpenDisposition::NEW_WINDOW);
-    observer.Wait();
+    ASSERT_TRUE(tab_content);
+    content::WaitForLoadStop(tab_content);
     new_browser = browser_created_observer.Wait();
     ui_test_utils::WaitForBrowserSetLastActive(new_browser);
     EXPECT_NE(new_browser, browser());

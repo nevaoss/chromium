@@ -5,7 +5,6 @@
 #include "chrome/browser/ui/views/tabs/tab_strip_action_container.h"
 
 #include "base/feature_list.h"
-#include "base/memory/memory_pressure_monitor.h"
 #include "base/path_service.h"
 #include "base/test/bind.h"
 #include "base/test/metrics/histogram_tester.h"
@@ -65,6 +64,7 @@
 #include "ui/events/base_event_utils.h"
 #include "ui/events/test/event_generator.h"
 #include "ui/gfx/animation/slide_animation.h"
+#include "ui/views/view_utils.h"
 
 #if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/private_ai/private_ai_service.h"
@@ -89,7 +89,6 @@ class TabStripActionContainerBrowserTest : public InProcessBrowserTest {
     feature_list_.InitWithFeaturesAndParameters(
         {
             {features::kGlicRollout, {}},
-            {features::kGlicFreWarming, {}},
             {features::kGlicActorUi,
              { {features::kGlicActorUiTaskIconName, "true"} }},
             {contextual_cueing::kContextualCueing, {}},
@@ -143,7 +142,7 @@ class TabStripActionContainerBrowserTest : public InProcessBrowserTest {
 
  protected:
   glic::TabStripGlicButton* GlicNudgeButton() {
-    return static_cast<glic::TabStripGlicButton*>(
+    return views::AsViewClass<glic::TabStripGlicButton>(
         tab_strip_action_container()->GetGlicButton());
   }
 

@@ -17,6 +17,7 @@
 #include "chrome/browser/background/glic/glic_launcher_configuration.h"
 #include "chrome/browser/glic/browser_ui/glic_button_controller_delegate.h"
 #include "chrome/browser/glic/browser_ui/glic_vector_icon_manager.h"
+#include "chrome/browser/glic/fre/glic_fre.mojom.h"
 #include "chrome/browser/glic/glic_pref_names.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
@@ -46,17 +47,12 @@
 #include "ui/views/layout/fill_layout.h"
 #include "ui/views/view_class_properties.h"
 
-#if BUILDFLAG(ENABLE_GLIC)
-#include "chrome/browser/glic/fre/glic_fre.mojom.h"
-#endif  // BUILDFLAG(ENABLE_GLIC)
-
 class BrowserWindowInterface;
 class Profile;
 class TabStripNudgeButton;
 class ToolbarButton;
 
 namespace views {
-class LabelButton;
 class MenuModelAdapter;
 class MenuRunner;
 }  // namespace views
@@ -1004,9 +1000,7 @@ class GlicButton : public GlicBaseShim<T>,
   views::View* highlight_view() { return highlight_view_; }
   WidthState width_state() { return width_state_; }
 
-#if BUILDFLAG(ENABLE_GLIC)
   virtual void OnLabelVisibilityChanged() {}
-#endif  // BUILDFLAG(ENABLE_GLIC)
 
   static bool EntrypointVariationsEnabled() {
     return base::FeatureList::IsEnabled(features::kGlicEntrypointVariations);

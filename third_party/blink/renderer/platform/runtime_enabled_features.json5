@@ -1461,7 +1461,7 @@
     {
       // https://drafts.csswg.org/css-color-5/#contrast-color
       name: "CSSContrastColor",
-      status: "experimental",
+      status: "stable",
     },
     {
       // https://drafts.csswg.org/css-borders-4/#corner-shaping
@@ -1585,7 +1585,6 @@
     {
       name: "CSSLineClampLineBreakingEllipsis",
       depends_on: ["CSSLineClamp"],
-      status: "experimental",
     },
     {
       // This flag makes `(-webkit-)line-clamp: <integer>` clamp by both lines
@@ -1663,7 +1662,7 @@
     },
     {
       name: "CSSPseudoElementInterface",
-      status: "experimental",
+      status: "stable",
     },
     {
       // Enables the :has-slotted pseudo-selector.
@@ -1890,6 +1889,14 @@
     {
       name: "CSSUserSelectContain",
       status: "test",
+    },
+    {
+      // https://crbug.com/488305665: Support :user-valid/:user-invalid for radio buttons.
+      // This lands in M147, and the flag can be removed in M149.
+      //
+      // https://drafts.csswg.org/selectors-4/#user-valid-pseudo
+      name: "CSSUserValidAndUserInvalidForRadio",
+      status: "stable",
     },
     {
       name: "CSSVideoDynamicRangeMediaQueries",
@@ -2229,6 +2236,11 @@
       name: "DocumentPolicyIncludeJSCallStacksInCrashReports",
       status: "stable",
     },
+    // Enables Document Policy for DedicatedWorkers.
+    {
+      name: "DocumentPolicyInDedicatedWorker",
+      status: "experimental",
+    },
     {
       name: "DocumentPolicyNegotiation",
       origin_trial_feature_name: "DocumentPolicyNegotiation",
@@ -2348,7 +2360,7 @@
     {
       // `event.pseudoTarget` property to represent pseudo-elements in events. Returns `CSSPseudoElement` or null.
       name: "EventPseudoTargetProperty",
-      status: "experimental",
+      status: "stable",
       depends_on: ["CSSPseudoElementInterface"],
     },
     {
@@ -3032,6 +3044,13 @@
       status: "experimental",
     },
     {
+      // Kill switch for setting `display: none` on the media controls
+      // container when it is not needed.
+      // Lands in M147 and can be removed in M149. https://crbug.com/40591804
+      name: "HideVideoControlsWhenUnneeded",
+      status: "stable",
+    },
+    {
       name: "HighlightPointerEvents",
     },
     {
@@ -3478,8 +3497,9 @@
       status: "test",
     },
     {
-      // Add styleDuration to PerformanceLongAnimationFrameTiming and
-      // forcedStyleDuration to PerformanceScriptTiming
+      // Add styleDuration and layoutDuration to
+      // PerformanceLongAnimationFrameTiming and forcedStyleDuration and
+      // forcedLayoutDuration to PerformanceScriptTiming
       name: "LongAnimationFrameStyleDuration",
       status: "experimental",
     },
@@ -3881,7 +3901,7 @@
       // for encapsulated content within <textarea> and <input> elements.
       // crbug.com/421421332
       name: "OpaqueRange",
-      status: "test",
+      status: "experimental",
     },
     {
       // Restrict popover invoker lookup to the same TreeScope as the element.
@@ -4354,6 +4374,15 @@
       status: "test",
       base_feature: "none",
     },
+    {
+      name: "ProfilerAPI",
+      status: "stable",
+    },
+    {
+      // When enabled, dedicated workers can use profiler API
+      name: "ProfilerAPIForDedicatedWorker",
+      status: "experimental",
+    },
     // Promisify programmatic scroll methods in Element and Window.
     // https://crbug.com/41406914
     {
@@ -4409,7 +4438,7 @@
       // Support hit-testing for ::after, ::before, ::marker
       // (e.g. for CSSPseudoElement).
       name: "PseudoElementsHitTestable",
-      status: "experimental",
+      status: "stable",
     },
     {
       // Support :hover on ::after, ::before, ::marker.
@@ -4585,6 +4614,10 @@
     {
       name: "ReportLayoutShiftRectsInCssPixels",
       status: "stable",
+    },
+    {
+      name: "RequestIsReloadNavigation",
+      status: "experimental",
     },
     {
       name: "RequestMainFrameAfterFirstVideoFrame",
@@ -4859,9 +4892,11 @@
     {
       name: "SecurePaymentConfirmationCapabilities",
       status: {
-        "Android": "test",
-        "Mac": "test",
-        "Win": "test",
+        "Android": "experimental",
+        "Mac": "experimental",
+        "Win": "experimental",
+        "iOS": "",
+        "default": "test",
       },
     },
     {
@@ -5284,6 +5319,12 @@
       base_feature: "none",
     },
     {
+      // Kill switch for falsifying IsStacked() for non-stacked
+      // stacking contexts. https://crbug.com/40208685
+      name: "StackingContextIsNotStacked",
+      status: "stable",
+    },
+    {
       // See https://github.com/w3c/csswg-drafts/issues/9398
       name: "StandardizedBrowserZoom",
       status: "stable",
@@ -5350,6 +5391,10 @@
       status: "stable",
     },
     {
+      name: "SvgAnimateMotionDiscreteCalcMode",
+      status: "stable",
+    },
+    {
       name: "SvgAvoidCullingElementsWithTransformOperations",
       status: "stable",
     },
@@ -5396,6 +5441,10 @@
       status: "stable",
     },
     {
+      name: "SvgPathLengthCssProperty",
+      status: "experimental",
+    },
+    {
       name: "SvgScriptElementAsyncAttribute",
       status: "stable",
     },
@@ -5418,6 +5467,10 @@
     {
       name: "SynthesizedKeyboardEventsForAccessibilityActions",
       status: "experimental",
+    },
+    {
+      name: "SyntheticMouseHoverOverInactivePage",
+      status: "stable",
     },
     {
       name: "SystemDefaultAccentColors",
@@ -6515,6 +6568,11 @@
     // no problems are encountered.
     {
       name: "WindowDefaultStatus",
+    },
+    {
+      // Fixes an issue where Ctrl+Right Arrow skips punctuation before a newline.
+      name: "WordSkipSpacesPunctuationFix",
+      status: "stable",
     },
     {
       name: "WordSpacingWhiteSpacePre",

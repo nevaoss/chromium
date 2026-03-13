@@ -1527,17 +1527,9 @@ class Vector : private VectorBuffer<T, INLINE_CAPACITY, Allocator> {
   }
   template <typename U>
   void Append(const U*, wtf_size_t);
-  // TODO(crbug.com/487938766): Remove after all uses are migrated to
-  // append_range().
-  template <typename U, wtf_size_t otherCapacity, typename V>
-  void AppendVector(const Vector<U, otherCapacity, V>&);
   // TODO(crbug.com/487938766): Rename to `Append()`?
   template <typename Iterator>
   void AppendRange(Iterator begin, Iterator end);
-  // TODO(crbug.com/487938766): Remove after all uses are migrated to
-  // append_range().
-  template <typename U, size_t N, typename Ptr>
-  void AppendSpan(base::span<U, N, Ptr>);
   template <typename R>
     requires(std::ranges::input_range<R>)
   void append_range(R&& range);
@@ -2297,13 +2289,6 @@ Vector<T, InlineCapacity, Allocator>::AppendSlowCase(U&& val) {
 }
 
 template <typename T, wtf_size_t InlineCapacity, typename Allocator>
-template <typename U, wtf_size_t otherCapacity, typename OtherAllocator>
-inline void Vector<T, InlineCapacity, Allocator>::AppendVector(
-    const Vector<U, otherCapacity, OtherAllocator>& val) {
-  Append(val.data(), val.size());
-}
-
-template <typename T, wtf_size_t InlineCapacity, typename Allocator>
 template <typename Iterator>
 void Vector<T, InlineCapacity, Allocator>::AppendRange(Iterator begin,
                                                        Iterator end) {
@@ -2321,13 +2306,6 @@ inline void Vector<T, InlineCapacity, Allocator>::append_range(R&& r) {
   } else {
     AppendRange(std::ranges::begin(r), std::ranges::end(r));
   }
-}
-
-template <typename T, wtf_size_t InlineCapacity, typename Allocator>
-template <typename U, size_t N, typename Ptr>
-void Vector<T, InlineCapacity, Allocator>::AppendSpan(
-    base::span<U, N, Ptr> data) {
-  Append(data.data(), base::checked_cast<wtf_size_t>(data.size()));
 }
 
 // This version of append saves a branch in the case where you know that the

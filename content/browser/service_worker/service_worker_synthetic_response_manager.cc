@@ -48,6 +48,10 @@ constexpr char kHistogramReceiveResponseToComplete[] =
     "ServiceWorker.SyntheticResponse.ReceiveResponseToComplete";
 constexpr char kHistogramSyntheticResponseReloadReason[] =
     "ServiceWorker.SyntheticResponse.ReloadReason";
+constexpr char kHistogramSyntheticResponseIsValidBodyStreamProvided[] =
+    "ServiceWorker.SyntheticResponse.IsValidBodyStreamProvided";
+constexpr char kHistogramSyntheticResponseIsSharedProducerPipeValid[] =
+    "ServiceWorker.SyntheticResponse.IsSharedProducerPipeValid";
 
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
@@ -241,6 +245,7 @@ void ServiceWorkerSyntheticResponseManager::InitiateRequest(
       ServiceWorkerClient::CreateNetworkURLLoaderFactoryType::
           kSyntheticNetworkRequest,
       storage_partition, request);
+  is_initiated_by_prefetch_ = service_worker_client->is_initiated_by_prefetch();
 
   StartRequest(
       GlobalRequestID::MakeBrowserInitiated().request_id,
@@ -448,6 +453,8 @@ void ServiceWorkerSyntheticResponseManager::OnReceiveResponse(
   response_received_time_ = base::TimeTicks::Now();
   base::UmaHistogramTimes(kHistogramStartRequestToReceiveResponse,
                           response_received_time_ - request_start_time_);
+  base::UmaHistogramBoolean(
+      kHistogramSyntheticResponseIsValidBodyStreamProvided, body.is_valid());
   switch (status_) {
     case SyntheticResponseStatus::kReady: {
       CHECK(write_buffer_manager_.has_value());
@@ -462,6 +469,9 @@ void ServiceWorkerSyntheticResponseManager::OnReceiveResponse(
           // `shared_producer_` and write a fallback body (meta refresh) to
           // trigger a reload.
           CHECK(shared_producer_);
+          base::UmaHistogramBoolean(
+              kHistogramSyntheticResponseIsSharedProducerPipeValid,
+              shared_producer_->pipe.is_valid());
           version_->ResetResponseHeadForSyntheticResponse();
           NotifyReloading(std::move(shared_producer_->pipe));
           RecordReloadReason(SyntheticResponseReloadReason::kIntercepted);
@@ -586,7 +596,19 @@ void ServiceWorkerSyntheticResponseManager::NotifyReloading(
     mojo::ScopedDataPipeProducerHandle producer) {
   TRACE_EVENT("ServiceWorker",
               "ServiceWorkerSyntheticResponseManager::NotifyReloading");
-  CHECK(producer.is_valid());
+  if (!producer.is_valid()) {
+    SCOPED_CRASH_KEY_BOOL("SWSR", "did_start_synthetic_response",
+                          did_start_synthetic_response_);
+    SCOPED_CRASH_KEY_BOOL("SWSR", "is_network_service_mode",
+                          IsServiceWorkerSyntheticResponseNetworkService());
+    SCOPED_CRASH_KEY_BOOL("SWSR", "is_initiated_by_prefetch",
+                          is_initiated_by_prefetch_);
+    base::debug::DumpWithoutCrashing();
+    if (auto callback = std::exchange(stream_callback_, {})) {
+      callback->OnAborted();
+    }
+    return;
+  }
   auto [result, written_bytes] =
       network::WriteSyntheticResponseFallbackBody(producer);
   if (result != MOJO_RESULT_OK) {

@@ -15,8 +15,6 @@
 #include "base/task/single_thread_task_runner.h"
 #include "remoting/signaling/jingle_message_xml_converter.h"
 #include "remoting/signaling/signaling_id_util.h"
-#include "remoting/signaling/xmpp_constants.h"
-#include "third_party/libjingle_xmpp/xmllite/xmlelement.h"
 
 namespace remoting {
 
@@ -203,27 +201,6 @@ void FakeSignalStrategy::NotifyListeners(SignalingMessage message) {
   SignalingMessage message_to_dispatch = std::move(message);
   SignalingAddress from;
   SignalingAddress to;
-
-  std::optional<std::string> xml;
-  if (const auto* ftl =
-          std::get_if<ftl::ChromotingMessage>(&message_to_dispatch)) {
-    if (ftl->has_xmpp() && ftl->xmpp().has_stanza()) {
-      xml = ftl->xmpp().stanza();
-    }
-  } else if (const auto* corp = std::get_if<internal::PeerMessageStruct>(
-                 &message_to_dispatch)) {
-    if (const auto* iq =
-            std::get_if<internal::IqStanzaStruct>(&corp->payload)) {
-      xml = iq->xml;
-    }
-  }
-
-  if (xml) {
-    auto parsed_message = SignalStrategy::ParseStanzaXml(*xml);
-    if (parsed_message) {
-      message_to_dispatch = std::move(*parsed_message);
-    }
-  }
 
   if (const auto* jm = std::get_if<JingleMessage>(&message_to_dispatch)) {
     from = jm->from;

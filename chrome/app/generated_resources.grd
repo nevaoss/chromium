@@ -290,9 +290,7 @@ are declared in tools/grit/grit_args.gni.
       <part file="bookmarks_strings.grdp" />
 
       <!-- Glic specific strings -->
-      <if expr="enable_glic">
-        <part file="glic_strings.grdp" />
-      </if>
+      <part file="glic_strings.grdp" />
 
       <!-- Global Media Controls specific strings -->
       <part file="gmc_strings.grdp" />
@@ -916,6 +914,10 @@ are declared in tools/grit/grit_args.gni.
           <message name="IDS_CONTENT_CONTEXT_AUTOFILL_FEEDBACK" desc="The name of the Autofill Feedback command in the content area context menu">
             Help improve autofill
           </message>
+          <!-- TODO(481979475): remove non translateable flag  -->
+          <message name="IDS_CONTENT_CONTEXT_AUTOFILL_FALLBACK_AT_MEMORY" desc="In Title Case: The name of Search and Fill From Anywhere command in the content area context menu" translateable="false">
+            Search and fill from anywhere
+          </message>
           <message name="IDS_CONTENT_CONTEXT_AUTOFILL_FALLBACK_PASSWORDS_SELECT_PASSWORD" desc="This is a context menu entry in the passwords submenu. It triggers the password selection bubble.">
             Select password
           </message>
@@ -1245,6 +1247,10 @@ are declared in tools/grit/grit_args.gni.
           </message>
           <message name="IDS_CONTENT_CONTEXT_AUTOFILL_FEEDBACK" desc="In Title Case: The name of the Autofill Feedback command in the content area context menu">
             Help Improve Autofill
+          </message>
+          <!-- TODO(481979475): remove non translateable flag  -->
+          <message name="IDS_CONTENT_CONTEXT_AUTOFILL_FALLBACK_AT_MEMORY" desc="In Title Case: The name of Search and Fill From Anywhere command in the content area context menu" translateable="false">
+            Search and Fill From Anywhere
           </message>
           <!-- TODO(359570730): remove non translateable flag  -->
           <message name="IDS_CONTENT_CONTEXT_AUTOFILL_PREDICTION_IMPROVEMENTS" desc="In Title Case: The name of the Autofill manual fallback for payment methods attribute command in the content area context menu." translateable="false">
@@ -8801,6 +8807,22 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_COMPOSE_CREATE_IMAGE_PLACEHOLDER" desc="Placeholder text for the composebox when in create image mode.">
         Describe your image
       </message>
+      <message name="IDS_COMPOSE_HINT_TEXT_ASK_ABOUT_THESE"
+        desc="Placeholder text for the composebox when there are multiple files in the carousel.">
+        Ask about these
+      </message>
+      <message name="IDS_COMPOSE_HINT_TEXT_ASK_ABOUT_THIS_IMAGE"
+        desc="Placeholder text for the composebox when there is exactly one image in the carousel.">
+        Ask about this image
+      </message>
+      <message name="IDS_COMPOSE_HINT_TEXT_ASK_ABOUT_THIS_TAB"
+        desc="Placeholder text for the composebox when there is exactly one tab in the carousel.">
+        Ask about this tab
+      </message>
+      <message name="IDS_COMPOSE_HINT_TEXT_ASK_ABOUT_THIS_DOC"
+        desc="Placeholder text for the composebox when there is exactly one document (PDF) in the carousel.">
+        Ask about this doc
+      </message>
       <message name="IDS_NTP_ACTION_CHIP_TAB_HEADING_1" translateable="true" desc="Heading of the tab action chip on the NTP." >
         Ask about previous tab
       </message>
@@ -8827,6 +8849,12 @@ Keep your key file in a safe place. You will need it to create new versions of y
       </message>
       <message name="IDS_NTP_ACTION_CHIP_DEEP_SEARCH_BODY" translateable="true" desc="Body text in the deep search action chip describing the use of the chip.">
         Dive deep into something new
+      </message>
+      <message name="IDS_NTP_ACTION_CHIP_CANVAS_HEADING" translateable="true" desc="Heading of the canvas action chip on the NTP.">
+        Canvas
+      </message>
+      <message name="IDS_NTP_ACTION_CHIP_CANVAS_BODY" translateable="true" desc="Body text in the canvas action chip describing the use of the chip.">
+        Write, plan, code, and more
       </message>
       <message name="IDS_COMPOSE_REMOVE_TOOL_CHIP_A11Y_LABEL" desc="A11y text for removing a tool in the composebox.">
         Remove <ph name="TOOL_NAME">$1<ex>Deep Search</ex></ph>
@@ -10227,109 +10255,6 @@ Keep your key file in a safe place. You will need it to create new versions of y
         Search tabs
       </message>
 
-      <!-- Strings for tab declutter -->
-      <message name="IDS_DECLUTTER_SELECTOR_HEADING_NO_DEDUPE" desc="Heading for the declutter button in the tab organization selector when dedupe is disabled.">
-        {NUM_TABS, plural,
-          =0 {No inactive tabs}
-          =1 {Review 1 inactive tab}
-          other {Review # inactive tabs}}
-      </message>
-      <message name="IDS_DECLUTTER_SELECTOR_HEADING" desc="Heading for the declutter button in the tab organization selector.">
-        {NUM_TABS, plural,
-          =0 {No unused tabs}
-          =1 {Review 1 unused tab}
-          other {Review # unused tabs}}
-      </message>
-      <message name="IDS_DECLUTTER_SELECTOR_SUBHEADING" desc="Subheading for the declutter button in the tab organization selector.">
-        Keep your tabs clutter-free
-      </message>
-      <message name="IDS_DECLUTTER_TITLE" desc="The header text for the declutter UI">
-        Clean up unused tabs
-      </message>
-      <message name="IDS_DECLUTTER_INACTIVE_TITLE_NO_DEDUPE" desc="The header text for the declutter inactive tab UI when dedupe is disabled">
-        Review inactive tabs
-      </message>
-      <message name="IDS_DECLUTTER_INACTIVE_TITLE" desc="The header text for the declutter inactive tab UI">
-        Inactive tabs
-      </message>
-      <message name="IDS_DECLUTTER_INACTIVE_BODY" desc="The body text for the declutter inactive tab UI">
-        Tabs you haven't used in <ph name="COUNT">$1<ex>7</ex></ph> or more days
-      </message>
-      <message name="IDS_DECLUTTER_DUPLICATE_TITLE" desc="The header text for the declutter duplicate tab UI">
-        Duplicate tabs
-      </message>
-      <message name="IDS_DECLUTTER_DUPLICATE_BODY" desc="The body text for the declutter duplicate tab UI">
-        Oldest copy kept when you close duplicates
-      </message>
-      <message name="IDS_DECLUTTER_EMPTY_TITLE" desc="The header text for the declutter empty state UI">
-        Things look neat!
-      </message>
-      <message name="IDS_DECLUTTER_EMPTY_BODY_NO_DEDUPE" desc="The body text for the declutter empty state UI when dedupe is disabled">
-        No inactive tabs right now
-      </message>
-      <message name="IDS_DECLUTTER_EMPTY_BODY" desc="The body text for the declutter empty state UI">
-        No unused tabs right now
-      </message>
-      <message name="IDS_DUPLICATE_ITEM_TITLE_SINGLE" desc="The title for an item in the duplicate tabs list with 1 duplicate">
-        <ph name="URL">$1<ex>google.com</ex></ph> • 1 duplicate
-      </message>
-      <message name="IDS_DUPLICATE_ITEM_TITLE_MULTI" desc="The title for an item in the duplicate tabs list with multiple duplicates">
-        <ph name="URL">$1<ex>google.com</ex></ph> • <ph name="DUPLICATE_COUNT">$2<ex>2</ex></ph> duplicates
-      </message>
-      <message name="IDS_TOOLTIP_TAB_DECLUTTER_NO_DEDUPE" desc="The tooltip for the Tab Declutter button when dedupe is disabled.">
-        Review inactive tabs?
-      </message>
-      <message name="IDS_TAB_DECLUTTER_NO_DEDUPE" desc="The text label of the Tab Declutter button when dedupe is disabled.">
-        Review inactive tabs?
-      </message>
-      <message name="IDS_ACCNAME_TAB_DECLUTTER_NO_DEDUPE" desc="The accessible name for the Tab Declutter button when dedupe is disabled." is_accessibility_with_no_ui="true">
-        Review inactive tabs
-      </message>
-      <message name="IDS_TOOLTIP_TAB_DECLUTTER" desc="The tooltip for the Tab Declutter button.">
-        Clean up unused tabs?
-      </message>
-      <message name="IDS_TAB_DECLUTTER" desc="The text label of the Tab Declutter button.">
-        Clean up unused tabs?
-      </message>
-      <message name="IDS_ACCNAME_TAB_DECLUTTER" desc="The accessible name for the Tab Declutter button." is_accessibility_with_no_ui="true">
-        Clean up unused tabs
-      </message>
-      <message name="IDS_DECLUTTER_TIMESTAMP" desc="The description of when a tab was last accessed, for use in a declutter row.">
-        {NUM_DAYS, plural,
-          =0 {Visited 0 days ago}
-          =1 {Visited 1 day ago}
-          other {Visited # days ago}}
-      </message>
-      <if expr="use_titlecase">
-        <then>
-          <message name="IDS_DECLUTTER_MENU_NO_DEDUPE" desc="In Title Case: The text label for the declutter app menu item when dedupe is disabled.">
-            Review Inactive Tabs
-          </message>
-          <message name="IDS_DECLUTTER_MENU" desc="In Title Case: The text label for the declutter app menu item.">
-            Clean Up Unused Tabs
-          </message>
-        </then>
-        <else>
-          <message name="IDS_DECLUTTER_MENU_NO_DEDUPE" desc="The text label for the declutter app menu item when dedupe is disabled.">
-            Review inactive tabs
-          </message>
-          <message name="IDS_DECLUTTER_MENU" desc="The text label for the declutter app menu item.">
-            Clean up unused tabs
-          </message>
-        </else>
-      </if>
-      <message name="IDS_DECLUTTER_CLOSE_TABS" desc="The text label of the action button in the Tab Declutter UI.">
-        Close all
-      </message>
-      <message name="IDS_DECLUTTER_CLOSE_TAB_ARIA_LABEL" desc="The accessible label declutter for the button which excludes a tab from the list" is_accessibility_with_no_ui="true">
-        Remove <ph name="TAB_TITLE">$1<ex>New Tab</ex></ph>, <ph name="LAST_ACTIVE">$2<ex>Visited 9 days ago</ex></ph> from list
-      </message>
-      <message name="IDS_DECLUTTER_CLOSE_TAB_TOOLTIP" desc="The declutter tooltip for the button which excludes a tab from the list">
-        Remove tab from list
-      </message>
-      <message name="IDS_DECLUTTER_A11Y_TAB_EXCLUDED" desc="A11y message after user clicks on the close tab button in the declutter list item." is_accessibility_with_no_ui="true">
-        Tab excluded from list
-      </message>
       <!-- Strings for tab organization -->
       <message name="IDS_TOOLTIP_TAB_ORGANIZE" desc="The tooltip for the Tab Organization button.">
         Organize tabs?
@@ -10358,9 +10283,6 @@ Keep your key file in a safe place. You will need it to create new versions of y
       </message>
       <message name="IDS_TAB_ORGANIZATION_SUCCESS_IPH_SCREENREADER" desc="The screen reader text of the IPH describing how to interact with a tab group resulting from tab organization." is_accessibility_with_no_ui="true">
         Select the tab group and activate the context menu to edit
-      </message>
-      <message name="IDS_TAB_ORGANIZATION_SELECTOR_ARIA_LABEL" desc="The screen reader text describing the tab organization selector button" is_accessibility_with_no_ui="true">
-        <ph name="HEADING">$1<ex>Group tabs with AI</ex></ph>. <ph name="SUBHEADING">$2<ex>Get your tabs sorted</ex></ph>
       </message>
 
       <!-- Strings for split view -->
@@ -12550,15 +12472,6 @@ Check your passwords anytime in <ph name="GOOGLE_PASSWORD_MANAGER">$1<ex>Google 
       </message>
       <message name="IDS_TAB_ORGANIZATION_THUMBS_UP" desc="Accessibility label for the thumbs up icon that a user can click to provide positive feedback about a tab organization." is_accessibility_with_no_ui="true">
         Thumbs up submits feedback that you like this tab group suggestion
-      </message>
-      <message name="IDS_AUTO_TAB_GROUPS_SELECTOR_HEADING" desc="Heading for the auto tab groups button in the tab organization selector.">
-        Group tabs with AI
-      </message>
-      <message name="IDS_AUTO_TAB_GROUPS_SELECTOR_SUBHEADING" desc="Subheading for the auto tab groups button in the tab organization selector.">
-        Get your tabs sorted
-      </message>
-      <message name="IDS_TAB_ORGANIZATION_BACK_BUTTON_ARIA_LABEL" desc="Accessibility label for the back button within a tab organization subpage." is_accessibility_with_no_ui="true">
-        Click to navigate away from <ph name="TITLE">$1<ex>Auto Tab Groups</ex></ph>
       </message>
       <message name="IDS_TAB_ORGANIZATION_A11Y_TAB_EXCLUDED" desc="A11y message after user clicks on the close tab button in the tab organization list item." is_accessibility_with_no_ui="true">
         Tab excluded from suggested group
@@ -19865,7 +19778,7 @@ Please help our engineers fix this problem. Tell us what happened right before y
     </if>
 
     <!-- Chrome-specific PDF strings -->
-    <if expr="enable_glic and enable_pdf">
+    <if expr="enable_pdf">
       <message name="IDS_PDF_GLIC_SUMMARIZE" desc="Button label for the button to summarize PDFs.">
         Summarize
       </message>
@@ -19967,7 +19880,7 @@ Please help our engineers fix this problem. Tell us what happened right before y
       Autofill your passwords
     </message>
     <message name="IDS_TIPS_NOTIFICATIONS_PASSWORD_AUTOFILL_SUBTITLE" desc="Subtitle for the password autofill tip notification.">
-      Create, save, and manage your passwords so you can easily sign in to sites and apps using Chrome
+      Create, save, and manage your passwords so you can easily sign in
     </message>
     <message name="IDS_TIPS_NOTIFICATIONS_SIGNIN_TITLE" desc="Title for the sign-in tip notification. [CHAR_LIMIT=32]">
       Make Chrome your own

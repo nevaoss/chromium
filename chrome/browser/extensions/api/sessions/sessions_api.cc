@@ -390,12 +390,11 @@ ExtensionFunction::ResponseAction SessionsGetRecentlyClosedFunction::Run() {
   JNIEnv* env = base::android::AttachCurrentThread();
   // Don't filter by instance id.
   constexpr int instance_id = kInvalidWindowId;
-  base::OnceCallback<void(const base::android::JavaRef<jobject>&)> j_callback =
+  base::OnceCallback<void(const base::android::JavaRef<jobject>&)> callback =
       base::BindOnce(
           &SessionsGetRecentlyClosedFunction::OnGetRecentlyClosedWindow, this);
   Java_RecentlyClosedEntriesManager_getRecentlyClosedWindow(
-      env, instance_id,
-      base::android::ToJniCallback(env, std::move(j_callback)));
+      env, instance_id, std::move(callback));
   if (did_respond()) {
     // The callback may be invoked immediately for errors, in which case
     // we have already responded.
@@ -763,7 +762,7 @@ SessionsRestoreFunction::QueryRecentlyClosedEntitiesManager(int instance_id) {
   base::OnceCallback<void(const base::android::JavaRef<jobject>&)> callback =
       base::BindOnce(&SessionsRestoreFunction::OnGetRecentlyClosedWindow, this);
   Java_RecentlyClosedEntriesManager_getRecentlyClosedWindow(
-      env, instance_id, base::android::ToJniCallback(env, std::move(callback)));
+      env, instance_id, std::move(callback));
 
   // Check if the callback already ran and responded to the extension.
   if (did_respond()) {
@@ -1061,12 +1060,12 @@ SessionsEventRouter::SessionsEventRouter(Profile* profile)
 #if BUILDFLAG(IS_ANDROID)
   JNIEnv* env = base::android::AttachCurrentThread();
   // Unretained is safe because the callback is cleared during destruction.
-  auto callback = base::BindRepeating(
+  base::RepeatingCallback<void(int64_t)> callback = base::BindRepeating(
       &SessionsEventRouter::OnRecentlyClosedUpdated, base::Unretained(this));
   // Register a callback for updates to Java RecentlyClosedEntriesManager.
   // Limit the updates to the current profile.
   Java_RecentlyClosedEntriesManager_setNativeUpdatedCallback(
-      env, profile_, base::android::ToJniCallback(env, std::move(callback)));
+      env, profile_, std::move(callback));
 #endif  // BUILDFLAG(IS_ANDROID)
 }
 
@@ -1078,8 +1077,7 @@ SessionsEventRouter::~SessionsEventRouter() {
 #if BUILDFLAG(IS_ANDROID)
   // Clear the Java callback for this profile.
   JNIEnv* env = base::android::AttachCurrentThread();
-  Java_RecentlyClosedEntriesManager_setNativeUpdatedCallback(env, profile_,
-                                                             nullptr);
+  Java_RecentlyClosedEntriesManager_clearNativeUpdatedCallback(env, profile_);
 #endif  // BUILDFLAG(IS_ANDROID)
 }
 

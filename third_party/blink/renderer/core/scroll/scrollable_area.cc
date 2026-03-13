@@ -44,6 +44,7 @@
 #include "cc/input/snap_selection_strategy.h"
 #include "third_party/blink/public/mojom/scroll/scroll_into_view_params.mojom-blink-forward.h"
 #include "third_party/blink/public/platform/platform.h"
+#include "third_party/blink/renderer/bindings/core/v8/v8_scroll_result.h"
 #include "third_party/blink/renderer/core/animation/scroll_timeline.h"
 #include "third_party/blink/renderer/core/css/properties/longhands.h"
 #include "third_party/blink/renderer/core/dom/scroll_marker_group_pseudo_element.h"
@@ -344,8 +345,9 @@ bool ScrollableArea::SetScrollOffsetInternal(
                        "SetScrollOffset", TRACE_EVENT_SCOPE_THREAD, "behavior",
                        behavior);
 
-  if (behavior == mojom::blink::ScrollBehavior::kAuto)
+  if (behavior == mojom::blink::ScrollBehavior::kAuto) {
     behavior = ScrollBehaviorStyle();
+  }
 
   gfx::Vector2d animation_adjustment = gfx::ToRoundedVector2d(clamped_offset) -
                                        gfx::ToRoundedVector2d(previous_offset);
@@ -360,44 +362,39 @@ bool ScrollableArea::SetScrollOffsetInternal(
     case mojom::blink::ScrollType::kCompositor:
       ScrollOffsetChanged(clamped_offset, scroll_type, source_type);
       break;
+
     case mojom::blink::ScrollType::kClamping:
       DCHECK_EQ(source_type, cc::ScrollSourceType::kStationaryScroll);
       ScrollOffsetChanged(clamped_offset, scroll_type,
                           cc::ScrollSourceType::kNone);
       GetScrollAnimator().AdjustAnimation(animation_adjustment);
       break;
+
     case mojom::blink::ScrollType::kAnchoring:
       DCHECK_EQ(source_type, cc::ScrollSourceType::kStationaryScroll);
       ScrollOffsetChanged(clamped_offset, scroll_type, source_type);
       GetScrollAnimator().AdjustAnimation(animation_adjustment);
       pending_scroll_anchor_adjustment_ += clamped_offset - previous_offset;
       break;
+
     case mojom::blink::ScrollType::kScrollStart:
       DCHECK_EQ(source_type, cc::ScrollSourceType::kAbsoluteScroll);
       ScrollOffsetChanged(clamped_offset, scroll_type, source_type);
       GetScrollAnimator().AdjustAnimation(animation_adjustment);
       break;
+
     case mojom::blink::ScrollType::kProgrammatic:
-      if (ProgrammaticScrollHelper(clamped_offset, behavior,
-                                   animation_adjustment, source_type)) {
-        if (behavior == mojom::blink::ScrollBehavior::kSmooth) {
-          active_smooth_scroll_type_ = scroll_type;
-        }
-        return true;
-      }
-      return false;
+      return InitiateScrollAnimation(clamped_offset, scroll_type, behavior,
+                                     animation_adjustment, source_type);
+
     case mojom::blink::ScrollType::kUser:
       if (behavior == mojom::blink::ScrollBehavior::kSmooth) {
-        if (ProgrammaticScrollHelper(clamped_offset, behavior,
-                                     animation_adjustment, source_type)) {
-          active_smooth_scroll_type_ = scroll_type;
-          return true;
-        }
-        return false;
-      } else {
-        UserScrollHelper(clamped_offset, behavior, source_type);
-        break;
+        return InitiateScrollAnimation(clamped_offset, scroll_type, behavior,
+                                       animation_adjustment, source_type);
       }
+      UserScrollHelper(clamped_offset, behavior, source_type);
+      break;
+
     default:
       NOTREACHED();
   }
@@ -411,7 +408,7 @@ bool ScrollableArea::SetProgrammaticScrollOffset(
     const ScrollOffset& offset,
     cc::ScrollSourceType source_type,
     mojom::blink::ScrollBehavior behavior,
-    ScriptPromiseResolver<IDLUndefined>* resolver) {
+    ScriptPromiseResolver<ScrollResult>* resolver) {
   RegisterPromiseResolver(resolver);
   return SetScrollOffsetInternal(offset,
                                  mojom::blink::ScrollType::kProgrammatic,
@@ -500,8 +497,9 @@ void ScrollableArea::ScrollBy(const ScrollOffset& delta,
                   cc::ScrollSourceType::kRelativeScroll, behavior);
 }
 
-bool ScrollableArea::ProgrammaticScrollHelper(
+bool ScrollableArea::InitiateScrollAnimation(
     const ScrollOffset& offset,
+    mojom::blink::ScrollType scroll_type,
     mojom::blink::ScrollBehavior scroll_behavior,
     gfx::Vector2d animation_adjustment,
     cc::ScrollSourceType source_type) {
@@ -546,10 +544,17 @@ bool ScrollableArea::ProgrammaticScrollHelper(
     // cancel) a user scroll animation already in progress (crbug.com/1264266).
     GetScrollAnimator().AdjustAnimation(animation_adjustment);
 
-    if (callback)
+    if (callback) {
       std::move(callback).Run(ScrollCompletionMode::kFinished);
+    }
   }
   UpdateScrollMarkers();
+
+  // TODO(mustaq@chromium.org): It is not clear why the `if` condition below
+  // does not rely on `should_use_animation` instead.
+  if (scroll_behavior == mojom::blink::ScrollBehavior::kSmooth) {
+    active_smooth_scroll_type_ = scroll_type;
+  }
   return true;
 }
 
@@ -657,7 +662,7 @@ mojom::blink::ScrollBehavior ScrollableArea::V8EnumToScrollBehavior(
 }
 
 void ScrollableArea::RegisterPromiseResolver(
-    ScriptPromiseResolver<IDLUndefined>* resolver) {
+    ScriptPromiseResolver<ScrollResult>* resolver) {
   if (promise_resolver_) {
     promise_resolver_->Resolve();
   }
@@ -1133,12 +1138,12 @@ CompositorElementId ScrollableArea::GetScrollbarElementId(
                                           element_id_namespace);
 }
 
-void ScrollableArea::OnScrollFinished(bool scroll_did_end) {
+void ScrollableArea::OnScrollFinished(bool enqueue_scrollend) {
   if (!GetLayoutBox()) {
     return;
   }
 
-  if (scroll_did_end) {
+  if (enqueue_scrollend) {
     active_smooth_scroll_type_.reset();
     UpdateSnappedTargetsAndEnqueueScrollSnapChange();
     if (Node* node = EventTargetNode()) {

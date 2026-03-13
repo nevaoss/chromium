@@ -105,6 +105,14 @@ NET_EXPORT extern const base::FeatureParam<base::TimeDelta>
 // transactions complete.
 NET_EXPORT BASE_DECLARE_FEATURE(kUseHostResolverCache);
 
+// Enables Happy Eyeballs V2 by using TcpConnectJobs in place of
+// TransportConnectJobs. TcpConnectJobs start establishing TCP connections even
+// while only partial DNS results are available.
+//
+// `kHappyEyeballsV3` takes precedence over this, though this will still affect
+// proxy connections if both are enabled.
+NET_EXPORT BASE_DECLARE_FEATURE(kHappyEyeballsV2);
+
 // Enables the Happy Eyeballs v3, where we use intermediate DNS resolution
 // results to make connection attempts as soon as possible.
 NET_EXPORT BASE_DECLARE_FEATURE(kHappyEyeballsV3);
@@ -759,6 +767,9 @@ NET_EXPORT BASE_DECLARE_FEATURE_PARAM(std::string, kQuicOptions);
 
 NET_EXPORT BASE_DECLARE_FEATURE(kDnsResponseDiscardPartialQuestions);
 
+// When enabled, allows DoH upgrade even if there are local nameservers.
+NET_EXPORT BASE_DECLARE_FEATURE(kDohFallbackAllowedWithLocalNameservers);
+
 // When enabled, users can make Secure DNS in AUTOMATIC mode fallback to a
 // well-known DoH provider before using insecure DNS.
 NET_EXPORT BASE_DECLARE_FEATURE(kAddAutomaticWithDohFallbackMode);
@@ -775,11 +786,21 @@ NET_EXPORT BASE_DECLARE_FEATURE(kEnableBootstrapIPRandomizationForDoh);
 // lock-free certificate verification mechanism.
 NET_EXPORT BASE_DECLARE_FEATURE(kUseLockFreeX509Verification);
 
+// When enabled, at the same time that DoH probes are started, a canary domain
+// will be probed to check whether Secure DNS is allowed by the network.
+NET_EXPORT BASE_DECLARE_FEATURE(kProbeSecureDnsCanaryDomain);
+NET_EXPORT BASE_DECLARE_FEATURE_PARAM(std::string, kSecureDnsCanaryDomainHost);
+
 #if BUILDFLAG(IS_APPLE)
 // If enabled, the GURL conversion for NSURLs will use the data representation
 // of the URL if it differs from the absolute string.
 NET_EXPORT BASE_DECLARE_FEATURE(kUseNSURLDataForGURLConversion);
 #endif  // BUILDFLAG(IS_APPLE)
+
+// Enables logical HTTP cache clearing, which adds a filter to the cache
+// to immediately treat entries as invalid, while they are physically deleted
+// in the background.
+NET_EXPORT BASE_DECLARE_FEATURE(kLogicalClearHttpCache);
 
 // If enabled, SPDY sessions will be synchronously drained when the underlying
 // transport socket is detected to be disconnected in GetRemoteEndpoint().

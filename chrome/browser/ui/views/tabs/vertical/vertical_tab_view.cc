@@ -13,6 +13,9 @@
 #include "base/metrics/user_metrics_action.h"
 #include "base/notimplemented.h"
 #include "base/strings/utf_string_conversions.h"
+#include "chrome/browser/glic/browser_ui/tab_underline_view.h"
+#include "chrome/browser/glic/browser_ui/tab_underline_view_controller_impl.h"
+#include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/themes/theme_properties.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
@@ -43,6 +46,7 @@
 #include "chrome/common/buildflags.h"
 #include "chrome/grit/generated_resources.h"
 #include "chrome/grit/theme_resources.h"
+#include "components/contextual_tasks/public/features.h"
 #include "components/tabs/public/tab_interface.h"
 #include "third_party/skia/include/core/SkPathBuilder.h"
 #include "third_party/skia/include/core/SkRRect.h"
@@ -67,13 +71,7 @@
 #include "ui/views/layout/proposed_layout.h"
 #include "ui/views/view.h"
 #include "ui/views/view_class_properties.h"
-
-#if BUILDFLAG(ENABLE_GLIC)
-#include "chrome/browser/glic/browser_ui/tab_underline_view.h"
-#include "chrome/browser/glic/browser_ui/tab_underline_view_controller_impl.h"
-#include "chrome/browser/glic/public/glic_enabling.h"
-#include "components/contextual_tasks/public/features.h"
-#endif
+#include "ui/views/view_utils.h"
 
 namespace {
 constexpr int kIconDesignWidth = 16;
@@ -150,7 +148,6 @@ VerticalTabView::VerticalTabView(TabCollectionNode* collection_node)
       hover_controller_(gfx::Animation::ShouldRenderRichAnimation()
                             ? std::make_unique<GlowHoverController>(this)
                             : nullptr) {
-#if BUILDFLAG(ENABLE_GLIC)
   tabs::TabInterface* tab = const_cast<tabs::TabInterface*>(GetTabInterface());
   BrowserWindowInterface* browser_window = tab->GetBrowserWindowInterface();
   if (browser_window &&
@@ -170,7 +167,6 @@ VerticalTabView::VerticalTabView(TabCollectionNode* collection_node)
         gfx::Rect(0, 0, 2 * glic::TabUnderlineView::kEffectThickness,
                   GetLayoutConstant(LayoutConstant::kVerticalTabHeight)));
   }
-#endif
 
   // Ordered vector of children to be rendered in the tab.
   tab_children_configs_ = {
@@ -367,7 +363,9 @@ void VerticalTabView::OnMouseReleased(const ui::MouseEvent& event) {
   auto* controller = collection_node_->GetController();
   base::WeakPtr<VerticalTabView> self = weak_ptr_factory_.GetWeakPtr();
   if (event.IsOnlyMiddleMouseButton()) {
-    controller->CloseTab(GetTabInterface());
+    if (HitTestPoint(event.location())) {
+      controller->CloseTab(GetTabInterface());
+    }
   } else if (event.IsOnlyLeftMouseButton() &&
              !(event.IsShiftDown() || shift_pressed_on_mouse_down_) &&
              !IsSelectionModifierDown(event)) {
@@ -608,8 +606,9 @@ gfx::Rect VerticalTabView::GetChildBounds(const gfx::Rect& container,
     preferred_width = container.width() - config.padding;
     // The only expandable view is the views::Label. Just get the line height to
     // make calculating bounds cheaper.
-    CHECK(views::IsViewClass<views::Label>(config.view));
-    preferred_height = static_cast<views::Label*>(config.view)->GetLineHeight();
+    views::Label* label = views::AsViewClass<views::Label>(config.view);
+    CHECK(label);
+    preferred_height = label->GetLineHeight();
   } else {
     const gfx::Size preferred_size = config.view->GetPreferredSize();
     preferred_width = preferred_size.width();
@@ -642,14 +641,12 @@ VerticalTabView::CalculateChildVisibilities() const {
 
   child_visibility_map[alert_indicator_] =
       alert_indicator_->showing_alert_state().has_value();
-#if BUILDFLAG(ENABLE_GLIC)
   if (glic_tab_underline_view_ && (alert_indicator_->showing_alert_state() ==
                                        tabs::TabAlert::kGlicAccessing ||
                                    alert_indicator_->showing_alert_state() ==
                                        tabs::TabAlert::kGlicSharing)) {
     child_visibility_map[alert_indicator_] = false;
   }
-#endif
 
   child_visibility_map[icon_] =
       !pinned_ || !child_visibility_map[alert_indicator_];
@@ -913,7 +910,7 @@ void VerticalTabView::UpdateBorder() {
       SetBorder(views::CreateRoundedRectBorder(
           GetLayoutConstant(LayoutConstant::kVerticalTabPinnedBorderThickness),
           GetLayoutConstant(LayoutConstant::kVerticalTabCornerRadius),
-          IsFrameActive() ? kColorTabDividerFrameActive
+          IsFrameActive() ? kColorVerticalTabPinnedOutline
                           : kColorTabDividerFrameInactive));
     }
   } else if (GetBorder()) {

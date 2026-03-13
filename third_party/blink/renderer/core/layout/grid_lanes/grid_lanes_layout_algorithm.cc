@@ -72,10 +72,11 @@ MinMaxSizesResult GridLanesLayoutAlgorithm::ComputeMinMaxSizes(
   const bool is_for_columns =
       style.GridLanesTrackSizingDirection() == kForColumns;
 
+  GridItems grid_lanes_items;
+
   auto ComputeIntrinsicInlineSize = [&](SizingConstraint sizing_constraint) {
     bool needs_intrinsic_track_size = false;
     wtf_size_t start_offset;
-    GridItems grid_lanes_items;
     Vector<wtf_size_t> collapsed_track_indexes;
 
     // TODO(almaher): Do we need to do something special for subgrid
@@ -154,9 +155,9 @@ MinMaxSizesResult GridLanesLayoutAlgorithm::ComputeMinMaxSizes(
   }
   intrinsic_sizes += BorderScrollbarPadding().InlineSum();
 
-  // TODO(ethavar): Compute `depends_on_block_constraints` by checking if any
-  // grid-lanes item has `is_sizing_dependent_on_block_size` set to true.
-  return {intrinsic_sizes, /*depends_on_block_constraints=*/false};
+  return {intrinsic_sizes,
+          /*depends_on_block_constraints=*/HasBlockSizeDependentGridItem(
+              grid_lanes_items)};
 }
 
 const LayoutResult* GridLanesLayoutAlgorithm::Layout() {
@@ -522,13 +523,15 @@ void GridLanesLayoutAlgorithm::RunGridLanesPlacementPhase(
 
     // Margins can affect the visual placement of the item, but should not cause
     // the running position to move backwards. If the margin size is greater
-    // than the size of the fragment, we should clamp the fragment size to 0.
+    // than the size of the fragment and the stacking axis gap, then the
+    // placement of the item should not contribute anything at all to the
+    // stacking axis.
     auto margins = ComputeMarginsFor(space, item_style, container_space);
     LayoutUnit fragment_size =
         is_for_columns ? fragment.BlockSize() + margins.BlockSum()
                        : fragment.InlineSize() + margins.InlineSum();
     const LayoutUnit fragment_stacking_axis_contribution =
-        fragment_size.ClampNegativeToZero();
+        (fragment_size + stacking_axis_gap).ClampNegativeToZero();
 
     // If dense packing is set, we need to figure out if the item can possibly
     // fit into any previous track openings. If it can, then we need to adjust
@@ -542,7 +545,7 @@ void GridLanesLayoutAlgorithm::RunGridLanesPlacementPhase(
           running_positions.GetEligibleTrackOpeningAndUpdateGridLanesItemSpan(
               start_offset,
               /*item_stacking_axis_contribution=*/
-              fragment_stacking_axis_contribution + stacking_axis_gap,
+              fragment_stacking_axis_contribution,
               /*auto_placement_stacking_axis_offset=*/
               start_offset_in_stacking_axis, track_collection, grid_lanes_item);
 
@@ -632,7 +635,6 @@ void GridLanesLayoutAlgorithm::RunGridLanesPlacementPhase(
     // margin.
     if (!item_moved_to_earlier_opening) {
       auto new_running_position = start_offset_in_stacking_axis +
-                                  stacking_axis_gap +
                                   fragment_stacking_axis_contribution;
 
       // If dense packing is enabled, we need to input the maximum running
@@ -684,11 +686,9 @@ void GridLanesLayoutAlgorithm::RunGridLanesPlacementPhase(
       // baselines without adding items, since baseline information is needed
       // before items can be properly aligned and placed.
       container_builder_.AddResult(*result, containing_rect.offset, margins);
-      // TODO(yanlingwang): Update negative margin handling if needed once we
-      // resolve on https://github.com/w3c/csswg-drafts/issues/13165.
-      baseline_accumulator->Accumulate(grid_lanes_item, fragment,
-                                       containing_rect.offset.block_offset,
-                                       start_offset_in_stacking_axis);
+      baseline_accumulator->Accumulate(
+          grid_lanes_item, fragment, containing_rect.offset.block_offset,
+          start_offset_in_stacking_axis, item_moved_to_earlier_opening);
     }
   }
 }
@@ -780,7 +780,7 @@ GridItems GridLanesLayoutAlgorithm::BuildVirtualGridLanesItems(
     CHECK_GT(span_size, 0u);
 
     for (const Member<GridItemData>& group_item : group_items) {
-      const GridItemData& item_data = *group_item;
+      GridItemData& item_data = *group_item;
       has_baseline_aligned_items_ |=
           item_data.IsBaselineSpecified(grid_axis_direction);
 
@@ -788,7 +788,7 @@ GridItems GridLanesLayoutAlgorithm::BuildVirtualGridLanesItems(
       const auto space = CreateConstraintSpaceForMeasure(item_data);
       const ComputedStyle& item_style = item_node.Style();
 
-      const bool is_parallel_with_track_direction =
+      const bool use_item_inline_contribution =
           is_for_columns == item_data.is_parallel_with_root_grid;
 
       // TODO(almaher): Subgrids have extra margin to handle unique gap sizes.
@@ -800,9 +800,27 @@ GridItems GridLanesLayoutAlgorithm::BuildVirtualGridLanesItems(
           is_for_columns ? margins.InlineSum() : margins.BlockSum();
 
       MinMaxSizes min_max_contribution;
-      if (is_parallel_with_track_direction) {
-        min_max_contribution =
-            ComputeMinAndMaxContentContributionForSelf(item_node, space).sizes;
+      if (use_item_inline_contribution) {
+        // The min/max contribution may depend on the block-size of the
+        // grid-area: <div id="target" style="height: 200px; width: 600px;">
+        //   <div style="display: inline-grid-lanes; width: min-content;
+        //   grid-template-rows: auto; height: 100%;">
+        //     <canvas width=60 height=60 style="height: 100%;"></canvas>
+        //   </div>
+        // </div>
+        // <script>
+        //   document.body.offsetTop;
+        //   document.getElementById('target').style.height = '100px';
+        // </script>
+        // Mark the item as dependent on the block size in these cases; if the
+        // block size changes, we'll need to re-run min/max calculations to get
+        // the correct contribution from this item.
+        const MinMaxSizesResult result =
+            ComputeMinAndMaxContentContributionForSelf(item_node, space);
+        if (result.depends_on_block_constraints) {
+          item_data.is_sizing_dependent_on_block_size = true;
+        }
+        min_max_contribution = result.sizes;
       } else {
         LayoutUnit block_contribution = ComputeGridLanesItemBlockContribution(
             grid_axis_direction, sizing_constraint, space, &item_data,
@@ -827,7 +845,7 @@ GridItems GridLanesLayoutAlgorithm::BuildVirtualGridLanesItems(
       bool maybe_clamp = false;
       LayoutUnit contribution_assuming_tracks =
           CalculateIntrinsicMinimumContribution(
-              is_parallel_with_track_direction,
+              use_item_inline_contribution,
               /*special_spanning_criteria=*/true, min_max_contribution.min_size,
               min_max_contribution.max_size, space,
               /*subgrid_minmax_sizes=*/MinMaxSizesResult(), &item_data,
@@ -843,7 +861,7 @@ GridItems GridLanesLayoutAlgorithm::BuildVirtualGridLanesItems(
       // potentially clamping.
       LayoutUnit contribution_ignoring_tracks =
           CalculateIntrinsicMinimumContribution(
-              is_parallel_with_track_direction,
+              use_item_inline_contribution,
               /*special_spanning_criteria=*/false,
               min_max_contribution.min_size, min_max_contribution.max_size,
               space, /*subgrid_minmax_sizes=*/MinMaxSizesResult(), &item_data,
@@ -869,7 +887,7 @@ GridItems GridLanesLayoutAlgorithm::BuildVirtualGridLanesItems(
 
         const auto border_padding = ComputeBorders(space, item_node) +
                                     ComputePadding(space, item_style);
-        const auto border_padding_sum = is_parallel_with_track_direction
+        const auto border_padding_sum = use_item_inline_contribution
                                             ? border_padding.InlineSum()
                                             : border_padding.BlockSum();
 
@@ -1079,7 +1097,7 @@ LayoutUnit GridLanesLayoutAlgorithm::ComputeGridLanesItemBlockContribution(
     GridTrackSizingDirection track_direction,
     SizingConstraint sizing_constraint,
     const ConstraintSpace space_for_measure,
-    const GridItemData* grid_lanes_item,
+    GridItemData* grid_lanes_item,
     const bool needs_intrinsic_track_size) const {
   DCHECK(grid_lanes_item);
 
@@ -1100,9 +1118,27 @@ LayoutUnit GridLanesLayoutAlgorithm::ComputeGridLanesItemBlockContribution(
   if (space_for_measure.AvailableSize().inline_size == kIndefiniteSize) {
     // If we are orthogonal virtual item, resolving against an indefinite
     // size, set our inline size to our max-content contribution.
-    const MinMaxSizes sizes = ComputeMinAndMaxContentContributionForSelf(
-                                  grid_lanes_item->node, space_for_measure)
-                                  .sizes;
+    const MinMaxSizesResult min_max_sizes_result =
+        ComputeMinAndMaxContentContributionForSelf(grid_lanes_item->node,
+                                                   space_for_measure);
+    // The min/max contribution may depend on the block-size of the
+    // grid-area: <div id="target" style="height: 200px; width: 600px;">
+    //   <div style="display: inline-grid-lanes; width: min-content;
+    //   grid-template-clumns: auto; height: 100%;">
+    //     <canvas width=60 height=60 style="height: 100%;"></canvas>
+    //   </div>
+    // </div>
+    // <script>
+    //   document.body.offsetTop;
+    //   document.getElementById('target').style.height = '100px';
+    // </script>
+    // Mark `grid_lanes_item` as dependent on the block size in these cases; if
+    // the block size changes, we'll need to re-run min/max calculations to get
+    // the correct contribution from this item.
+    if (min_max_sizes_result.depends_on_block_constraints) {
+      grid_lanes_item->is_sizing_dependent_on_block_size = true;
+    }
+    const MinMaxSizes sizes = min_max_sizes_result.sizes;
     const auto fallback_space = CreateConstraintSpaceForMeasure(
         *grid_lanes_item, /*opt_fixed_inline_size=*/sizes.max_size);
 

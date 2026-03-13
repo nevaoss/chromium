@@ -38,6 +38,9 @@ android_library("java") {
     "java/src/org/chromium/chrome/browser/search_engines/settings/extensions/ExtensionSearchEngineAdapter.java",
     "java/src/org/chromium/chrome/browser/search_engines/settings/extensions/ExtensionSearchEngineCoordinator.java",
     "java/src/org/chromium/chrome/browser/search_engines/settings/extensions/ExtensionSearchEngineMediator.java",
+    "java/src/org/chromium/chrome/browser/search_engines/settings/inactive_shortcut/InactiveShortcutAdapter.java",
+    "java/src/org/chromium/chrome/browser/search_engines/settings/inactive_shortcut/InactiveShortcutCoordinator.java",
+    "java/src/org/chromium/chrome/browser/search_engines/settings/inactive_shortcut/InactiveShortcutMediator.java",
   ]
 
   srcjar_deps = [ ":jni_headers" ]
@@ -74,6 +77,7 @@ android_library("java") {
     "//content/public/android:content_java",
     "//net/android:net_java",
     "//third_party/android_deps:guava_android_java",
+    "//third_party/android_deps:material_design_java",
     "//third_party/androidx:androidx_activity_activity_java",
     "//third_party/androidx:androidx_annotation_annotation_java",
     "//third_party/androidx:androidx_fragment_fragment_java",
@@ -140,6 +144,7 @@ robolectric_library("junit") {
     "junit/src/org/chromium/chrome/browser/search_engines/settings/custom_site_search/AddSearchEngineDialogCoordinatorUnitTest.java",
     "junit/src/org/chromium/chrome/browser/search_engines/settings/custom_site_search/CustomSiteSearchMediatorUnitTest.java",
     "junit/src/org/chromium/chrome/browser/search_engines/settings/extensions/ExtensionSearchEngineMediatorUnitTest.java",
+    "junit/src/org/chromium/chrome/browser/search_engines/settings/inactive_shortcut/InactiveShortcutMediatorUnitTest.java",
   ]
   deps = [
     ":java",
@@ -165,6 +170,7 @@ robolectric_library("junit") {
     "//components/user_prefs/android:java",
     "//content/public/android:content_full_java",
     "//third_party/android_deps:guava_android_java",
+    "//third_party/android_deps:material_design_java",
     "//third_party/androidx:androidx_annotation_annotation_java",
     "//third_party/androidx:androidx_fragment_fragment_java",
     "//third_party/androidx:androidx_preference_preference_java",

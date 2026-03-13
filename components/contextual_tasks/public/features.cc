@@ -63,6 +63,17 @@ BASE_FEATURE(kContextualTasksSendFullVersionListEnabled,
 BASE_FEATURE(kContextualTasksUrlRedirectToAimUrl,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+// If enabled, animates the caret.
+BASE_FEATURE(kContextualTasksAnimatedCaret, base::FEATURE_ENABLED_BY_DEFAULT);
+
+#if BUILDFLAG(IS_ANDROID)
+BASE_FEATURE(kContextualTasksInsertWebContentsAt,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+#else
+BASE_FEATURE(kContextualTasksInsertWebContentsAt,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+#endif
+
 const base::FeatureParam<bool> kContextualTasksLockAndUnlockInputCapability(
     &kContextualTasks,
     "ContextualTasksLockAndUnlockInputCapability",
@@ -137,7 +148,7 @@ constexpr base::FeatureParam<ExpandButtonOption>::Option kExpandButtonOption[] =
 const base::FeatureParam<ExpandButtonOption> kExpandButtonOptions(
     &kContextualTasks,
     "ContextualTasksExpandButtonOptions",
-    ExpandButtonOption::kSidePanelExpandButton,
+    ExpandButtonOption::kToolbarCloseButton,
     &kExpandButtonOption);
 
 const base::FeatureParam<bool> kTaskScopedSidePanel(
@@ -245,17 +256,17 @@ const base::FeatureParam<std::string> kContextualTasksDisplayUrlScheme(
 const base::FeatureParam<std::string> kContextualTasksDisplayUrlHost(
     &kContextualTasks,
     "ContextualTasksDisplayUrlHost",
-    "googlesearch");
+    "google.com");
 
 const base::FeatureParam<std::string> kContextualTasksDisplayUrlPath(
     &kContextualTasks,
     "ContextualTasksDisplayUrlPath",
-    "/");
+    "/search");
 
 const base::FeatureParam<bool> kContextualTasksShowExpandedSecurityChip(
     &kContextualTasks,
     "ContextualTasksShowExpandedSecurityChip",
-    false);
+    true);
 
 const base::FeatureParam<bool>
     kContextualTasksForceBasicModeIfOpeningThreadHistory(
@@ -322,6 +333,22 @@ bool ShouldForceCountryCodeUS() {
 
 std::string GetContextualTasksAiPageUrl() {
   return kContextualTasksAiPageUrl.Get();
+}
+
+std::string GetContextualTasksDisplayUrlScheme() {
+  return kContextualTasksDisplayUrlScheme.Get();
+}
+
+std::string GetContextualTasksDisplayUrlHost() {
+  return kContextualTasksDisplayUrlHost.Get();
+}
+
+std::string GetContextualTasksDisplayUrlPath() {
+  return kContextualTasksDisplayUrlPath.Get();
+}
+
+bool ShouldShowExpandedSecurityChip() {
+  return kContextualTasksShowExpandedSecurityChip.Get();
 }
 
 std::string GetForcedEmbeddedPageHost() {

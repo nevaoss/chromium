@@ -657,7 +657,7 @@ BASE_FEATURE(kEnableDevtoolsDeepLinkViaExtensibilityApi,
 // Whether to respect loading=lazy attribute for images when they are on
 // invisible pages.
 BASE_FEATURE(kEnableLazyLoadImageForInvisiblePage,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 const base::FeatureParam<EnableLazyLoadImageForInvisiblePageType>::Option
     enable_lazy_load_image_for_invisible_page_types[] = {
         {EnableLazyLoadImageForInvisiblePageType::kAllInvisiblePage,
@@ -1931,9 +1931,6 @@ BASE_FEATURE_PARAM(int,
                    &kDedicatedWorkerAblationStudyEnabled,
                    "DedicatedWorkerStartDelayInMs",
                    0);
-
-BASE_FEATURE(kDocumentPolicyInDedicatedWorker,
-             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Fix for https://crbug.com/454354290.
 BASE_FEATURE(kUpdatedDeviceMemoryLimitsFor2026,

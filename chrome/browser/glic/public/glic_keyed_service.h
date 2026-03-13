@@ -25,6 +25,8 @@
 #include "chrome/browser/glic/public/context/glic_sharing_manager.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/glic/public/glic_instance.h"
+#include "chrome/browser/glic/public/glic_invoke_options.h"
+#include "chrome/browser/glic/public/glic_passkeys.h"
 #include "chrome/common/actor.mojom-forward.h"
 #include "chrome/common/actor/task_id.h"
 #include "chrome/common/actor_webui.mojom-forward.h"
@@ -71,16 +73,6 @@ class GlicWebContentsWarmingPool;
 
 enum class GlicPrewarmingChecksResult;
 
-// LINT.IfChange(GlicPrewarmingFreSource)
-enum class GlicPrewarmingFreSource {
-  kWhatsNew = 0,
-  kNudge = 1,
-  kIph = 2,
-  kTest = 3,
-  kBrowserCommand = 4,
-  kMaxValue = kBrowserCommand,
-};
-// LINT.ThenChange(//tools/metrics/histograms/metadata/glic/enums.xml:GlicPrewarmingFreSource)
 
 #if !BUILDFLAG(IS_ANDROID)  // Single instance only
 class GlicActorTaskManager;
@@ -143,6 +135,12 @@ class GlicKeyedService : public KeyedService,
   void ToggleUI(BrowserWindowInterface* bwi,
                 bool prevent_close,
                 mojom::InvocationSource source);
+
+  // Invokes Glic with the given options and automatically submits the prompt.
+  // Access is restricted to authorized callers via InvokeWithAutoSubmitPasskey.
+  void InvokeWithAutoSubmit(InvokeWithAutoSubmitPasskey auto_submit_passkey,
+                            tabs::TabInterface* tab,
+                            GlicInvokeOptions options);
 
   // Show the panel with the given conversation id. Used only by web continuity.
   // Deprecated: See go/gic:invoke for full solution, this existing version will
@@ -333,7 +331,6 @@ class GlicKeyedService : public KeyedService,
 
   virtual void TryPreload();
   void TryPreloadAfterDelay();
-  virtual void TryPreloadFre(GlicPrewarmingFreSource source);
   void Reload(content::RenderFrameHost* render_frame_host);
   // Close the active embedder for an instance associated with this render frame
   // host.
@@ -441,8 +438,6 @@ class GlicKeyedService : public KeyedService,
                         std::optional<std::string> conversation_id);
 
   void FinishPreload(GlicPrewarmingChecksResult reason);
-  void FinishPreloadFre(GlicPrewarmingFreSource source,
-                        GlicPrewarmingChecksResult result);
 
   // List of callbacks to be notified when the client requests a change to the
   // context access indicator status.

@@ -7,12 +7,16 @@
 #include <optional>
 #include <utility>
 
+#include "base/check.h"
 #include "base/check_is_test.h"
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
+#include "base/metrics/field_trial.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/user_metrics.h"
 #include "base/metrics/user_metrics_action.h"
+#include "base/no_destructor.h"
+#include "base/strings/string_number_conversions.h"
 #include "base/task/single_thread_task_runner.h"
 #include "chrome/browser/contextual_search/contextual_search_service_factory.h"
 #include "chrome/browser/contextual_search/contextual_search_web_contents_helper.h"
@@ -26,6 +30,8 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_utils.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_web_view.h"
 #include "chrome/browser/contextual_tasks/entry_point_eligibility_manager.h"
+#include "chrome/browser/devtools/devtools_ui_bindings.h"
+#include "chrome/browser/devtools/devtools_window.h"
 #include "chrome/browser/media/webrtc/media_capture_devices_dispatcher.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
@@ -75,6 +81,44 @@
 #include "ui/views/controls/webview/webview.h"
 
 namespace {
+
+// LINT.IfChange(GetContextualTasksArmShortName)
+std::string GetContextualTasksArmShortName() {
+  using contextual_tasks::ExpandButtonOption;
+  ExpandButtonOption expand_button = contextual_tasks::GetExpandButtonOption();
+  bool open_on_link = contextual_tasks::kOpenSidePanelOnLinkClicked.Get();
+  bool lens_enabled = contextual_tasks::GetEnableLensInContextualTasks();
+  bool tab_auto_chip = contextual_tasks::GetIsTabAutoSuggestionChipEnabled();
+
+  if (expand_button == ExpandButtonOption::kSidePanelExpandButton) {
+    if (open_on_link && lens_enabled && tab_auto_chip) {
+      return "Arm 1";
+    }
+    if (!open_on_link && lens_enabled && tab_auto_chip) {
+      return "Arm 2";
+    }
+    if (open_on_link && !lens_enabled && tab_auto_chip) {
+      return "Arm 3";
+    }
+    if (open_on_link && lens_enabled && !tab_auto_chip) {
+      return "Arm 4";
+    }
+  } else if (expand_button == ExpandButtonOption::kToolbarCloseButton) {
+    if (open_on_link && lens_enabled && tab_auto_chip) {
+      return "Arm 5";
+    }
+    if (open_on_link && !lens_enabled && tab_auto_chip) {
+      return "Arm 6";
+    }
+    if (open_on_link && lens_enabled && !tab_auto_chip) {
+      return "Arm 7";
+    }
+  }
+
+  return "Default";
+}
+// LINT.ThenChange(chrome/browser/about_flags.cc)
+
 inline constexpr int kSidePanelPreferredDefaultWidth = 440;
 
 std::unique_ptr<content::WebContents> CreateWebContents(
@@ -239,9 +283,25 @@ void ContextualTasksSidePanelCoordinator::Show(
         HatsServiceFactory::GetForProfile(browser_window_->GetProfile(),
                                           /* create_if_necessary = */ true);
     if (hats_service) {
+      std::string experiment_id = GetContextualTasksArmShortName();
+
       hats_service->LaunchDelayedSurvey(
           kHatsSurveyTriggerNextPanel, 90000, {},
-          {{"Experiment ID", "4R1Q1L4GennVNwyF88Ccc6"}});
+          {{"Experiment ID", experiment_id},
+           {"ContextualTasksExpandButtonOptions",
+            contextual_tasks::GetExpandButtonOption() ==
+                    contextual_tasks::ExpandButtonOption::kSidePanelExpandButton
+                ? "side-panel-expand-button"
+                : "toolbar-close-button"},
+           {"ContextualTasksOpenSidePanelOnLinkClicked",
+            contextual_tasks::kOpenSidePanelOnLinkClicked.Get() ? "true"
+                                                                : "false"},
+           {"ContextualTasksEnableLensInContextualTasks",
+            contextual_tasks::GetEnableLensInContextualTasks() ? "true"
+                                                               : "false"},
+           {"ContextualTasksTabAutoSuggestionChipEnabled",
+            contextual_tasks::GetIsTabAutoSuggestionChipEnabled() ? "true"
+                                                                  : "false"}});
     }
   }
   pref_service_->SetInteger(prefs::kContextualTasksNextPanelOpenCount,
@@ -320,6 +380,16 @@ void ContextualTasksSidePanelCoordinator::TransferWebContentsFromTab(
   // This helps prevent any unintended back/forward navigation.
   if (web_contents->GetController().CanPruneAllButLastCommitted()) {
     web_contents->GetController().PruneAllButLastCommitted();
+  }
+
+  // If dev tools were open, close them. This prevents issues where the tab
+  // backing the WebContents disappears and confuses the dev tools.
+  // TODO(489511091): Ideally an event is triggered that allows dev tools to
+  //                  react by popping the tools out into their own window.
+  DevToolsUIBindings::Delegate* dev_tools_delegate =
+      DevToolsWindow::GetInstanceForInspectedWebContents(web_contents.get());
+  if (dev_tools_delegate) {
+    dev_tools_delegate->CloseWindow();
   }
 
   SetBrowserWindowInterface(web_contents.get(), browser_window_);
@@ -631,6 +701,10 @@ bool ContextualTasksSidePanelCoordinator::UpdateWebContentsForActiveTab() {
   content::WebContents* web_contents = GetSidePanelWebContentsForActiveTab();
   if (web_contents) {
     web_view_->SetWebContents(web_contents);
+  }
+
+  if (prev_web_contents != web_contents) {
+    NotifyExpandToFullTabStateChanged();
   }
 
   return prev_web_contents != web_contents;
@@ -968,6 +1042,15 @@ size_t ContextualTasksSidePanelCoordinator::GetNumberOfActiveTasks() const {
   return task_id_to_web_contents_cache_.size();
 }
 
+void ContextualTasksSidePanelCoordinator::MoveTaskUiToNewTab() {
+  if (!web_view_ || !web_view_->web_contents()) {
+    return;
+  }
+  if (auto* web_ui_interface = GetWebUiInterface(web_view_->web_contents())) {
+    web_ui_interface->MoveTaskUiToNewTab();
+  }
+}
+
 std::optional<tabs::TabHandle>
 ContextualTasksSidePanelCoordinator::GetAutoSuggestedTabHandle() {
   auto* web_ui_interface = GetWebUiInterface(web_view_->web_contents());
@@ -1006,6 +1089,28 @@ void ContextualTasksSidePanelCoordinator::OnEligibilityChange(
     }
     task_id_to_web_contents_cache_.clear();
   }
+}
+
+void ContextualTasksSidePanelCoordinator::AddObserver(Observer* observer) {
+  observers_.AddObserver(observer);
+}
+
+void ContextualTasksSidePanelCoordinator::RemoveObserver(Observer* observer) {
+  observers_.RemoveObserver(observer);
+}
+
+void ContextualTasksSidePanelCoordinator::NotifyExpandToFullTabStateChanged() {
+  for (auto& observer : observers_) {
+    observer.ExpandToFullTabStateChanged();
+  }
+}
+
+bool ContextualTasksSidePanelCoordinator::CanExpandToFullTab() const {
+  if (!web_view_ || !web_view_->web_contents()) {
+    return false;
+  }
+  auto* web_ui_interface = GetWebUiInterface(web_view_->web_contents());
+  return web_ui_interface ? web_ui_interface->CanExpandToFullTab() : false;
 }
 
 }  // namespace contextual_tasks

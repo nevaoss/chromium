@@ -11,7 +11,7 @@ import("//extensions/buildflags/buildflags.gni")
 # TODO(https://crbug.com/356905053): Continue moving more here.
 extensions_api_schema_files_ = [
   "alarms.webidl",
-  "declarative_net_request.idl",
+  "declarative_net_request.webidl",
   "dns.webidl",
   "events.json",
   "extension_types.json",
@@ -83,8 +83,8 @@ if (enable_extensions) {
     "mime_handler_view_guest_internal.json",
     "mojo_private.webidl",
     "networking_private.webidl",
-    "printer_provider_internal.idl",
-    "printer_provider.idl",
+    "printer_provider_internal.webidl",
+    "printer_provider.webidl",
     "scripts_internal.idl",
     "socket.idl",
     "sockets_tcp_server.idl",

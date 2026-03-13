@@ -61,6 +61,8 @@ class VerticalTabGroupView
 
   // TabCollectionAnimatingLayoutManager::Delegate:
   bool IsViewDragging(const views::View& child_view) const override;
+  bool ShouldAnimateOpacityForAddAndRemove(
+      const views::View& child_view) const override;
   void OnAnimationEnded() override;
 
   bool IsCollapsed() const;
@@ -83,6 +85,10 @@ class VerticalTabGroupView
   const views::ProposedLayout& GetLayoutForDrag() const override;
   void HandleTabDragInContainer(const gfx::Rect& dragged_tab_bounds) override;
   void OnTabDragExited(const gfx::Point& point_in_screen) override;
+
+  void AttachChildView(std::unique_ptr<views::View> child_view,
+                       const gfx::Rect& previous_bounds_in_screen);
+  std::unique_ptr<views::View> DetachChildView(views::View* child_view);
 
   void ResetCollectionNode();
   void OnDataChanged();

@@ -1311,6 +1311,8 @@
 <translation id="3102312643185441063">बचत खाता</translation>
 <translation id="3103188521861412364">स्टॉक और बॉन्ड</translation>
 <translation id="3105172416063519923">एसेट आईडी:</translation>
+<translation id="3105223248029915046">बिलिंग प्लान, ज़रूरी शर्तें पूरी करने पर ही उपलब्ध होते हैं.
+बाद में पेमेंट करने के विकल्प छिपाने के लिए, <ph name="BEGIN_LINK" />पेमेंट सेटिंग<ph name="END_LINK" /> पर जाएं</translation>
 <translation id="3107591622054137333"><ph name="BEGIN_LINK" />सुरक्षित डीएनएस कॉन्फ़िगरेशन की जांच करना<ph name="END_LINK" /></translation>
 <translation id="3108943290502734357">बीच की ट्रे</translation>
 <translation id="3109061346635850169">चेहरे और शरीर की देखभाल से जुड़े प्रॉडक्ट और सेवाएं</translation>
@@ -1612,6 +1614,7 @@
 <translation id="3575121482199441727">इस साइट के लिए सूचनाओं को अनुमति दें</translation>
 <translation id="3575168918110434329">A4x7</translation>
 <translation id="3575589330755445706">सड़क के नाम का विकल्प चुना गया</translation>
+<translation id="3576315803647905285">औपचारिक बनाओ</translation>
 <translation id="3576616784287504635"><ph name="SITE" /> पर एम्बेड किए गए पेज का कहना है कि</translation>
 <translation id="3577473026931028326">कोई गड़बड़ी हुई. फिर से कोशिश करें.</translation>
 <translation id="3577902790357386792">जिमनास्टिक</translation>
@@ -2355,7 +2358,6 @@
 <translation id="4750671009706599284">यह फ़ोन</translation>
 <translation id="4750917950439032686">आपकी जानकारी (जैसे- पासवर्ड या क्रेडिट कार्ड नंबर वगैरह) जब इस साइट पर भेजी जाती है, तब वह निजी होती है.</translation>
 <translation id="4751249061288707459">सहमति से जुड़ी नीति में पिछली बार बदलाव किए जाने की तारीख:</translation>
-<translation id="4751476147751820511">गति या लाइट सेंसर</translation>
 <translation id="4754461935447132332">सिर्फ़ सुरक्षित साइटों को ही अनुमति है</translation>
 <translation id="4756501505996488486">PRC 16K</translation>
 <translation id="4757740693289347881">कोड अमान्य है</translation>
@@ -2635,6 +2637,7 @@
 <translation id="5190835502935405962">बुकमार्क बार</translation>
 <translation id="5191315092027169558">आपकी प्रोफ़ाइल को <ph name="DOMAIN" /> मैनेज करता है</translation>
 <translation id="51918995459521422"><ph name="ORIGIN" /> को एक से ज़्यादा फ़ाइलें डाउनलोड करनी हैं</translation>
+<translation id="5199121357983849992">क्या आपको आईडी कार्ड सेव करना है?</translation>
 <translation id="5200063972779787617">खाते में पता सेव करें</translation>
 <translation id="5201306358585911203">इस पेज पर एम्बेड किए गए पेज का कहना है कि</translation>
 <translation id="5203716867500274632">एडमिन ने ChromeOS डिवाइसों पर आपके पिछले और मौजूदा सेशन के बीच, इन चीज़ों को सिंक करने की सुविधा चालू कर दी है:</translation>
@@ -2683,6 +2686,7 @@
 <translation id="5266128565379329178">सबसे ऊपर बाइंड</translation>
 <translation id="5269225904387178860">नीचे की ओर क्वाड पंच</translation>
 <translation id="5271381225185906340">"<ph name="DATA_CONTROLS_RESTRICTION" />" के लिए, "<ph name="DATA_CONTROLS_ATTRIBUTE" />" वाली स्थिति का इस्तेमाल नहीं किया जा सकता</translation>
+<translation id="527191520368130807">बेहतर बनाओ</translation>
 <translation id="5273658854610202413">चेतावनी: इस नीति को PolicyDictionaryMultipleSourceMergeList नीति में बताए अनुसार नहीं मिलाया जा सकता, क्योंकि यह शब्दकोश की उन नीतियों का हिस्सा नहीं है जिन्हें मिलाया जा सकता है.</translation>
 <translation id="5278778426231952189">अभी अपलोड करें</translation>
 <translation id="5279286380302340275">डाउनलोड मैनेज करें</translation>
@@ -3583,6 +3587,7 @@
 <translation id="6698097747703777657">क्या आपको कोड नहीं मिला? <ph name="BEGIN_LINK" />नया कोड पाएं<ph name="END_LINK" /></translation>
 <translation id="6698381487523150993">निर्मित:</translation>
 <translation id="6698769547327354196">Chrome में Pix की सुविधा बंद करने के लिए, अपनी <ph name="BEGIN_LINK1" />पेमेंट सेटिंग<ph name="END_LINK1" /> पर जाएं</translation>
+<translation id="669903922988126943">अपनी जानकारी सेव करें और Google के सभी प्रॉडक्ट पर, फ़ॉर्म भरने जैसे काम तेज़ी से करें. <ph name="ACCOUNT" /> के लिए, <ph name="IDS_AUTOFILL_GOOGLE_WALLET_TITLE" /> में <ph name="MANAGE_INFO_LINK" /> को सेव किया जा सकता है.</translation>
 <translation id="67007264085648978">टाइम स्क्रबर</translation>
 <translation id="6702851555558236418">ऑडियो और म्यूज़िक सॉफ़्टवेयर</translation>
 <translation id="6702919718839027939">प्रज़ेंट</translation>
@@ -4074,6 +4079,7 @@
 <translation id="746412105358554870">JavaScript ऑप्टिमाइज़ेशन और सुरक्षा</translation>
 <translation id="7465036432780054056"><ph name="EMBEDDED_URL" /> को पता चल जाएगा कि आपने <ph name="TOP_LEVEL_URL" /> पर विज़िट किया है</translation>
 <translation id="7465963048299965912">10 x 13 इंच</translation>
+<translation id="7467332121947433617">क्या आपको आईडी कार्ड की जानकारी अपडेट करनी है?</translation>
 <translation id="7469935732330206581">यह फ़ॉर्म सुरक्षित नहीं है</translation>
 <translation id="7470854469646445678">कॉपी करने की वजह बताएं (ज़रूरी है)</translation>
 <translation id="7471007961486718967">ट्रांसफ़र करने की वजह बताएं (ज़रूरी है)</translation>
@@ -4095,6 +4101,7 @@
 <translation id="7499188644237027195">Chrome पर खरीदारी करते समय, विकल्पों के तौर पर इलेक्ट्रॉनिक वॉलेट और Pix को जोड़ें</translation>
 <translation id="7500917112031739411">ग्रुप के हिसाब से दिखाएं</translation>
 <translation id="7501663406926337752">आपको जिस साइट पर जाना है उसे आपके संगठन ने फ़्लैग किया है</translation>
+<translation id="7502044688973049724">अपनी जानकारी मैनेज करें</translation>
 <translation id="7507075214339298899">#9 साइज़ का लिफ़ाफ़ा</translation>
 <translation id="7508255263130623398">वापस लौटाया हुआ नीति डिवाइस आईडी खाली है या उसका मिलान वर्तमान डिवाइस आईडी से नहीं होता है</translation>
 <translation id="7508577201115425418">दस्तावेज़ और प्रिंटिंग सेवाएं</translation>
@@ -4360,6 +4367,7 @@
 <translation id="7908648876066812348">वर्चुअल कार्ड चालू किया जा रहा है</translation>
 <translation id="7909498058929404306"><ph name="RUN_CHROME_SAFETY_CHECK_FOCUSED_FRIENDLY_MATCH_TEXT" />, सेटिंग में Chrome की सुरक्षा जांच वाले पेज पर जाने के लिए, Tab और फिर Enter बटन दबाएं</translation>
 <translation id="791107458486222637">नतीजे को फिर से जोड़ा जा रहा है</translation>
+<translation id="7911651285409665023">इसे बंद करें और "<ph name="TAB_TITLE" />" पर वापस जाएं</translation>
 <translation id="7912924955815015552">Safari से इंपोर्ट किया गया</translation>
 <translation id="791551905239004656">ड्रॉइंग और कलरिंग</translation>
 <translation id="7916162853251942238">फ़्लेक्सो बेस</translation>
@@ -5147,6 +5155,7 @@
 <translation id="9191834167571392248">नीचे बाईं ओर पंच</translation>
 <translation id="9192361865877479444">मेटल (मैट)</translation>
 <translation id="9192947025498305328">पर्यावरण और स्वास्थ्य को ध्यान में रखकर बनाए गए प्रॉडक्ट</translation>
+<translation id="9193018794001479794">बड़ा करो</translation>
 <translation id="9195969368671142407">जब आपका संगठन, Google खाते में डेटा सेव करने की सुविधा को सीमित कर देता है, तब आपके पास टैब ग्रुप शेयर करने या उनमें शामिल होने का विकल्प नहीं होता</translation>
 <translation id="9198613052465150219">आपके Google खाते में <ph name="BEGIN_LINK_GMA" />myactivity.google.com<ph name="END_LINK_GMA" /> पर कुछ तरह का ब्राउज़िंग इतिहास अब भी सेव हो सकता है</translation>
 <translation id="9199905725844810519">प्रिंट करने की सुविधा को ब्लॉक किया गया है</translation>
@@ -5213,7 +5222,6 @@
 <translation id="987264212798334818">सामान्य</translation>
 <translation id="988159990683914416">डेवलपर बिल्ड</translation>
 <translation id="989988560359834682">पते में बदलाव करें</translation>
-<translation id="991413375315957741">मोशन या लाइट सेंसर</translation>
 <translation id="991936891556421157">फ़ुटवेयर</translation>
 <translation id="992110854164447044">वर्चुअल कार्ड आपके असली कार्ड की पहचान ज़ाहिर नहीं होने देता है. इससे, आपको धोखाधड़ी से बचने में मदद मिलती है. <ph name="IDS_AUTOFILL_VIRTUAL_CARD_ENROLLMENT_LEARN_MORE_LINK_LABEL" /></translation>
 <translation id="992115559265932548"><ph name="MICROSOFT_ACTIVE_DIRECTORY" /></translation>

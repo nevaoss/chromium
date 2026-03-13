@@ -44,6 +44,7 @@
 #include "testing/gmock/include/gmock/gmock.h"
 #include "ui/gfx/image/image_skia.h"
 #include "ui/gfx/paint_vector_icon.h"
+#include "ui/native_theme/mock_os_settings_provider.h"
 #include "ui/views/view.h"
 #include "ui/views/widget/widget.h"
 #include "url/gurl.h"
@@ -294,13 +295,15 @@ class SettingsOverriddenExplicitChoiceDialogInteractiveUiTest
 };
 
 IN_PROC_BROWSER_TEST_F(SettingsOverriddenExplicitChoiceDialogInteractiveUiTest,
-                       WhenPreviouslyGoogleChoosingPreviousRestoresGoogle) {
+                       ChoosingPreviousSettingRestoresPrevious) {
   RunTestSequence(InstrumentTab(kWebContentsId),
                   SetNewSearchProvider(DefaultSearch::kUseDefault),
                   LoadExtensionOverridingSearch(), PerformSearchFromOmnibox(),
-                  WaitForDialogToShow(), CheckActiveUrl(GURL("about:blank")),
-                  ScreenshotDialog(), PressButton(kPreviousSettingButtonId),
-                  // Click Save.
+                  WaitForDialogToShow(),
+                  // Ensure navigation hasn't happened yet.
+                  CheckActiveUrl(GURL("about:blank")),
+                  // Select previous search setting.
+                  PressButton(kPreviousSettingButtonId),
                   PressButton(kSaveButtonId),
                   WaitForHide(kSettingsOverriddenDialogId),
                   // Verify navigation proceeds to the default search URL
@@ -309,16 +312,16 @@ IN_PROC_BROWSER_TEST_F(SettingsOverriddenExplicitChoiceDialogInteractiveUiTest,
                   CheckWebContentsNavigateToGoogle());
 }
 
-IN_PROC_BROWSER_TEST_F(
-    SettingsOverriddenExplicitChoiceDialogInteractiveUiTest,
-    WhenPreviouslyNonGoogleChoosingPreviousRestoresNonGoogle) {
+IN_PROC_BROWSER_TEST_F(SettingsOverriddenExplicitChoiceDialogInteractiveUiTest,
+                       ChoosingNewSettingSearchesWithExtension) {
   RunTestSequence(
       InstrumentTab(kWebContentsId),
       SetNewSearchProvider(DefaultSearch::kUseNonGoogleFromDefaultList),
       LoadExtensionOverridingSearch(), PerformSearchFromOmnibox(),
-      WaitForDialogToShow(), CheckActiveUrl(GURL("about:blank")),
-      ScreenshotDialog(),
-      // Select previous search setting.
+      WaitForDialogToShow(),
+      // Ensure navigation hasn't happened yet.
+      CheckActiveUrl(GURL("about:blank")),
+      // Select new search setting.
       PressButton(kNewSettingButtonId), PressButton(kSaveButtonId),
       WaitForHide(kSettingsOverriddenDialogId),
       // Verify navigation proceeds to the extension's search URL.
@@ -326,11 +329,47 @@ IN_PROC_BROWSER_TEST_F(
 }
 
 IN_PROC_BROWSER_TEST_F(SettingsOverriddenExplicitChoiceDialogInteractiveUiTest,
-                       WhenPreviouslyOldExtension) {
+                       ScreenshotPreviouslyGoogle) {
+  RunTestSequence(InstrumentTab(kWebContentsId),
+                  SetNewSearchProvider(DefaultSearch::kUseDefault),
+                  LoadExtensionOverridingSearch(), PerformSearchFromOmnibox(),
+                  WaitForDialogToShow(), ScreenshotDialog());
+}
+
+IN_PROC_BROWSER_TEST_F(SettingsOverriddenExplicitChoiceDialogInteractiveUiTest,
+                       ScreenshotPreviouslyNonGoogle) {
+  RunTestSequence(
+      InstrumentTab(kWebContentsId),
+      SetNewSearchProvider(DefaultSearch::kUseNonGoogleFromDefaultList),
+      LoadExtensionOverridingSearch(), PerformSearchFromOmnibox(),
+      WaitForDialogToShow(), ScreenshotDialog());
+}
+
+IN_PROC_BROWSER_TEST_F(SettingsOverriddenExplicitChoiceDialogInteractiveUiTest,
+                       ScreenshotPreviouslyOldExtension) {
   RunTestSequence(SetNewSearchProvider(DefaultSearch::kUseNewSearch),
                   LoadExtensionOverridingSearch(), PerformSearchFromOmnibox(),
-                  WaitForDialogToShow(), CheckActiveUrl(GURL("about:blank")),
-                  ScreenshotDialog());
+                  WaitForDialogToShow(), ScreenshotDialog());
+}
+
+IN_PROC_BROWSER_TEST_F(SettingsOverriddenExplicitChoiceDialogInteractiveUiTest,
+                       ScreenshotRtlLayout) {
+  base::i18n::SetRTLForTesting(true);
+  RunTestSequence(InstrumentTab(kWebContentsId),
+                  SetNewSearchProvider(DefaultSearch::kUseDefault),
+                  LoadExtensionOverridingSearch(), PerformSearchFromOmnibox(),
+                  WaitForDialogToShow(), ScreenshotDialog());
+}
+
+IN_PROC_BROWSER_TEST_F(SettingsOverriddenExplicitChoiceDialogInteractiveUiTest,
+                       ScreenshotDarkMode) {
+  ui::MockOsSettingsProvider os_settings_provider;
+  os_settings_provider.SetPreferredColorScheme(
+      ui::NativeTheme::PreferredColorScheme::kDark);
+  RunTestSequence(InstrumentTab(kWebContentsId),
+                  SetNewSearchProvider(DefaultSearch::kUseDefault),
+                  LoadExtensionOverridingSearch(), PerformSearchFromOmnibox(),
+                  WaitForDialogToShow(), ScreenshotDialog());
 }
 
 IN_PROC_BROWSER_TEST_F(SettingsOverriddenExplicitChoiceDialogInteractiveUiTest,
@@ -363,19 +402,54 @@ IN_PROC_BROWSER_TEST_F(SettingsOverriddenExplicitChoiceDialogInteractiveUiTest,
 IN_PROC_BROWSER_TEST_F(SettingsOverriddenExplicitChoiceDialogInteractiveUiTest,
                        EscapeDoesNotCloseDialog) {
   // This test verifies that pressing Escape does not close the dialog.
+  RunTestSequence(InstrumentTab(kWebContentsId),
+                  SetNewSearchProvider(DefaultSearch::kUseDefault),
+                  LoadExtensionOverridingSearch(), PerformSearchFromOmnibox(),
+                  WaitForDialogToShow(),
+                  // Send Escape.
+                  SendKeyPress(kSettingsOverriddenDialogId, ui::VKEY_ESCAPE),
+                  // Verify dialog is still present.
+                  EnsurePresent(kSettingsOverriddenDialogId),
+                  // Ensure we can still close it via interaction.
+                  PressButton(kNewSettingButtonId), PressButton(kSaveButtonId),
+                  WaitForHide(kSettingsOverriddenDialogId));
+}
+
+class SettingsOverriddenExplicitChoiceDialogEscapableInteractiveUiTest
+    : public SettingsOverriddenExplicitChoiceDialogInteractiveUiTest {
+ public:
+  SettingsOverriddenExplicitChoiceDialogEscapableInteractiveUiTest() {
+    feature_list_.InitAndEnableFeatureWithParameters(
+        extensions_features::kSearchEngineExplicitChoiceDialog,
+        {{"escapable", "true"}});
+  }
+
+ private:
+  base::test::ScopedFeatureList feature_list_;
+};
+
+// TODO(crbug.com/489293133): Re-enable the test
+#if BUILDFLAG(IS_MAC)
+#define MAYBE_EscapeClosesDialog DISABLED_EscapeClosesDialog
+#else
+#define MAYBE_EscapeClosesDialog EscapeClosesDialog
+#endif
+IN_PROC_BROWSER_TEST_F(
+    SettingsOverriddenExplicitChoiceDialogEscapableInteractiveUiTest,
+    MAYBE_EscapeClosesDialog) {
+  // This test verifies that pressing Escape closes the dialog when the
+  // "escapable" feature parameter is set.
   RunTestSequence(
       InstrumentTab(kWebContentsId),
       SetNewSearchProvider(DefaultSearch::kUseDefault),
       LoadExtensionOverridingSearch(), PerformSearchFromOmnibox(),
       WaitForDialogToShow(),
-      // Send Escape.
       SendKeyPress(kSettingsOverriddenDialogId, ui::VKEY_ESCAPE),
-      // Verify dialog is still present (Wait a bit or just ensure present).
-      EnsurePresent(kSettingsOverriddenDialogId),
-      // Clean up by choosing an option so the dialog closes and the navigation
-      // finishes.
-      PressButton(kNewSettingButtonId), PressButton(kSaveButtonId),
+      // Verify dialog is dismissed.
       WaitForHide(kSettingsOverriddenDialogId),
+      // Verify navigation proceeds to the extension's search URL since the
+      // dialog was dismissed without saving changes (default behavior is to
+      // keep new settings).
       WaitForWebContentsNavigation(kWebContentsId, GURL(kExtensionSearchUrl)));
 }
 
@@ -492,15 +566,6 @@ IN_PROC_BROWSER_TEST_F(SettingsOverriddenExplicitChoiceDialogInteractiveUiTest,
 
       // Finish the dialog to clean up.
       PressButton(kSaveButtonId), WaitForHide(kSettingsOverriddenDialogId));
-}
-
-IN_PROC_BROWSER_TEST_F(SettingsOverriddenExplicitChoiceDialogInteractiveUiTest,
-                       RtlLayout) {
-  base::i18n::SetRTLForTesting(true);
-  RunTestSequence(InstrumentTab(kWebContentsId),
-                  SetNewSearchProvider(DefaultSearch::kUseDefault),
-                  LoadExtensionOverridingSearch(), PerformSearchFromOmnibox(),
-                  WaitForDialogToShow(), ScreenshotDialog());
 }
 
 }  // namespace

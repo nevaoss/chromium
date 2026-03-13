@@ -150,10 +150,13 @@ class ContextualTasksUI
   bool IsLensOverlayShowing() const override;
   void OnPageContextEligibilityChecked(bool is_page_context_eligible) override;
   bool IsActiveTabContextSuggestionShowing() const override;
+  void MoveTaskUiToNewTab() override;
+  bool CanExpandToFullTab() const override;
   void PostMessageToWebview(const lens::ClientToAimMessage& message) override;
   contextual_search::ContextualSearchSessionHandle*
   GetOrCreateContextualSessionHandle() override;
-  std::unique_ptr<contextual_search::InputStateModel> GetInputStateModel();
+  std::unique_ptr<contextual_search::InputStateModel> TakeInputStateModel()
+      override;
   mojo::Remote<contextual_tasks::mojom::Page>& GetPageRemote() override;
   const GURL& GetInnerFrameUrl() const override;
 
@@ -268,6 +271,8 @@ class ContextualTasksUI
   // Update the task's details in the WebUI.
   void PushTaskDetailsToPage();
 
+  bool CanExpandToFullTab();
+
   contextual_tasks::ContextualTasksPanelController* GetPanelController();
 
   std::unique_ptr<ContextualTasksComposeboxHandler> composebox_handler_;
@@ -351,6 +356,7 @@ class ContextualTasksUIConfig
                                     chrome::kChromeUIContextualTasksHost) {}
 
   bool IsWebUIEnabled(content::BrowserContext* browser_context) override;
+  bool ShouldCrashOnJavascriptErrorInDevelopmentBuild() const override;
 
   std::unique_ptr<content::WebUIController> CreateWebUIController(
       content::WebUI* web_ui,

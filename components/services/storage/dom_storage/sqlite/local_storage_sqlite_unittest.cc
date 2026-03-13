@@ -111,9 +111,9 @@ void LocalStorageSqliteTest::OpenOnDisk(
   std::unique_ptr<LocalStorageSqlite> instance =
       std::make_unique<LocalStorageSqlite>(GetPassKey());
 
-  DbStatus status = instance->Open(GetPassKey(),
-                                   /*database_path=*/database_path,
-                                   /*memory_dump_id=*/std::nullopt);
+  DbStatus status = instance->Open(
+      /*database_path=*/database_path,
+      /*memory_dump_id=*/std::nullopt);
 
   ASSERT_TRUE(status.ok()) << status.ToString();
   *result = std::move(instance);
@@ -124,9 +124,9 @@ void LocalStorageSqliteTest::OpenInMemory(
   std::unique_ptr<LocalStorageSqlite> instance =
       std::make_unique<LocalStorageSqlite>(GetPassKey());
 
-  DbStatus status = instance->Open(GetPassKey(),
-                                   /*database_path=*/base::FilePath(),
-                                   /*memory_dump_id=*/std::nullopt);
+  DbStatus status = instance->Open(
+      /*database_path=*/base::FilePath(),
+      /*memory_dump_id=*/std::nullopt);
 
   ASSERT_TRUE(status.ok()) << status.ToString();
   *result = std::move(instance);
@@ -215,9 +215,9 @@ TEST_F(LocalStorageSqliteTest, VersionTooNew) {
 
   // Opening the database with the wrong version must fail.
   database = std::make_unique<LocalStorageSqlite>(GetPassKey());
-  DbStatus status = database->Open(GetPassKey(),
-                                   /*database_path=*/database_path,
-                                   /*memory_dump_id=*/std::nullopt);
+  DbStatus status = database->Open(
+      /*database_path=*/database_path,
+      /*memory_dump_id=*/std::nullopt);
   EXPECT_TRUE(status.IsNotFound());
 }
 
@@ -870,6 +870,51 @@ TEST_F(LocalStorageSqliteTest, PurgeOriginsWithMatchingThirdPartyContext) {
       actual_entries, database->ReadMapKeyValues(DomStorageDatabase::MapLocator(
                           kFirstPartyStorageKey)));
   EXPECT_EQ(actual_entries, kFirstPartyMapEntries);
+}
+
+TEST_F(LocalStorageSqliteTest, RewriteDB) {
+  std::unique_ptr<LocalStorageSqlite> database;
+  ASSERT_NO_FATAL_FAILURE(OpenOnDisk(&database));
+
+  // Add one metadata row to the database, which includes `kFirstStorageKey`.
+  const DomStorageDatabase::MapMetadata kExpectedMapMetadata{
+      .map_locator{kFirstMapLocator.Clone()},
+      .last_accessed{kMapLastAccessed},
+  };
+  ASSERT_NO_FATAL_FAILURE(
+      UpdateMapWithMetadata(*database, kExpectedMapMetadata));
+
+  // Add one key/value pair to the database.
+  const std::map<DomStorageDatabase::Key, DomStorageDatabase::Value>
+      kFirstMapEntries{
+          {ToBytes("key_1"), ToBytes("value_1")},
+      };
+  ASSERT_NO_FATAL_FAILURE(
+      InsertMapEntries(*database, kFirstMapLocator.Clone(), kFirstMapEntries));
+
+  // Delete the storage key's metadata and key/value pair from the database.
+  std::vector<DomStorageDatabase::MapLocator> maps_to_delete;
+  maps_to_delete.push_back(kFirstMapLocator.Clone());
+
+  DbStatus status = database->DeleteStorageKeysFromSession(
+      /*session_id=*/std::string(), {kFirstStorageKey},
+      std::move(maps_to_delete));
+  EXPECT_TRUE(status.ok()) << status.ToString();
+
+  // After deletion, `kFirstStorageKey` still exists in SQLite's WAL file.
+  const std::string kSerializedFirstStorageKey = kFirstStorageKey.Serialize();
+  ASSERT_NO_FATAL_FAILURE(SearchDirectoryContent(
+      temp_dir_.GetPath(), /*query=*/kSerializedFirstStorageKey,
+      /*expected_is_found=*/true));
+
+  // Use `RewriteDB()` to checkpoint and truncate the WAL file.
+  status = database->RewriteDB();
+  EXPECT_TRUE(status.ok()) << status.ToString();
+
+  // `kFirstStorageKey` must not exist on disk.
+  ASSERT_NO_FATAL_FAILURE(SearchDirectoryContent(
+      temp_dir_.GetPath(), /*query=*/kSerializedFirstStorageKey,
+      /*expected_is_found=*/false));
 }
 
 }  // namespace storage

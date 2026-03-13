@@ -101,6 +101,11 @@ struct ActorSuggestionWithFillData {
   ActorFormFillingServiceImpl::FillData filling_payload;
 };
 
+struct ActorSuggestions {
+  FieldGlobalId trigger_field_id;
+  std::vector<ActorSuggestionWithFillData> suggestions_with_fill_data;
+};
+
 // Attempts to generate an `ActorSuggestion` and the data needed for filling
 // a suggestion. Returns `std::nullopt` if the suggestion does not contain an
 // address payload.
@@ -204,7 +209,7 @@ std::optional<ActorSuggestionWithFillData> GetActorCreditCardSuggestion(
 //
 // TODO(crbug.com/455788947): Improve suggestion generation.
 // TODO(crbug.com/455788947): Check that address Autofill is not turned off.
-[[nodiscard]] std::vector<ActorSuggestionWithFillData> GetAddressSuggestions(
+[[nodiscard]] ActorSuggestions GetAddressSuggestions(
     base::span<const FieldGlobalId> fields,
     const AutofillManager& autofill_manager,
     LogManager* log_manager,
@@ -260,7 +265,7 @@ std::optional<ActorSuggestionWithFillData> GetActorCreditCardSuggestion(
   generator.FetchSuggestionData(form, *autofill_field, form_structure,
                                 autofill_field, autofill_manager.client(),
                                 generate_suggestions);
-  return result;
+  return {autofill_field->global_id(), result};
 }
 
 // Returns the first credit card number field in the same section as
@@ -303,7 +308,7 @@ std::optional<FieldGlobalId> GetSafeCreditCardNumberField(
 //   exist.
 //
 // TODO(crbug.com/455788947): Improve suggestion generation.
-[[nodiscard]] std::vector<ActorSuggestionWithFillData> GetCreditCardSuggestions(
+[[nodiscard]] ActorSuggestions GetCreditCardSuggestions(
     base::span<const FieldGlobalId> fields,
     const AutofillManager& autofill_manager,
     LogManager* log_manager) {
@@ -401,7 +406,7 @@ std::optional<FieldGlobalId> GetSafeCreditCardNumberField(
                                 form_structure, autofill_field_for_labels,
                                 autofill_manager.client(),
                                 generate_suggestions);
-  return result;
+  return {autofill_field_for_labels->global_id(), result};
 }
 
 // Retrieves the `AutofillManager` of the `tab`'s primary main frame.
@@ -437,22 +442,6 @@ GetAutofillManager(const tabs::TabInterface& tab) {
     return static_cast<BrowserAutofillManager&>(*autofill_manager);
   }
   return base::unexpected(kAutofillNotAvailable);
-}
-
-// Converts the `FillData::Payload` into a payload that can be used by
-// `BrowserAutofillManager`. Note that it does so by taking the addresses of
-// `payload`'s contents, so `payload` must outlive the return value.
-// Returns `std::nullopt` is `payload` contains `std::monostate`.
-std::optional<FillingPayload> GetAutofillFillingPayload(
-    const ActorFormFillingServiceImpl::FillData::Payload& payload
-        LIFETIME_BOUND) {
-  return std::visit(
-      absl::Overload(
-          [](std::monostate) { return std::optional<FillingPayload>(); },
-          [](auto& payload) {
-            return std::optional<FillingPayload>(&payload);
-          }),
-      payload);
 }
 
 }  // namespace
@@ -515,6 +504,7 @@ void ActorFormFillingServiceImpl::GetSuggestions(
     return;
   }
 
+  suggestion_trigger_field_id_.clear();
   std::vector<ActorFormFillingRequest> requests;
   requests.reserve(fill_requests.size());
   for (const auto& [requested_data, trigger_fields] : fill_requests) {
@@ -589,7 +579,7 @@ void ActorFormFillingServiceImpl::GetSuggestions(
         tab.GetContents()->GetPrimaryMainFrame()->GetLastCommittedOrigin();
 
     for (const SubRequest& sub_request : sub_requests) {
-      std::vector<ActorSuggestionWithFillData> suggestion_data;
+      ActorSuggestions suggestion_data;
       switch (sub_request.requested_data) {
         case FormFillingRequest_RequestedData_ADDRESS:
         case FormFillingRequest_RequestedData_SHIPPING_ADDRESS:
@@ -614,7 +604,7 @@ void ActorFormFillingServiceImpl::GetSuggestions(
 
       // For now, we require that every form is fillable.
       // TODO(crbug.com/455788947): Consider weakening this condition.
-      if (suggestion_data.empty()) {
+      if (suggestion_data.suggestions_with_fill_data.empty()) {
         LOG_AF(log_manager)
             << LoggingScope::kAutofillActor << "No suggestions were generated.";
         std::move(callback_with_metrics).Run(base::unexpected(kNoSuggestions));
@@ -624,8 +614,12 @@ void ActorFormFillingServiceImpl::GetSuggestions(
       requests.emplace_back();
       requests.back().requested_data = sub_request.requested_data;
       requests.back().request_origin = origin;
-      requests.back().suggestions.reserve(suggestion_data.size());
-      for (ActorSuggestionWithFillData& entry : suggestion_data) {
+      requests.back().suggestions.reserve(
+          suggestion_data.suggestions_with_fill_data.size());
+      suggestion_trigger_field_id_.emplace_back(
+          suggestion_data.trigger_field_id);
+      for (ActorSuggestionWithFillData& entry :
+           suggestion_data.suggestions_with_fill_data) {
         entry.suggestion.id =
             ActorSuggestionId(suggestion_id_generator_.GenerateNextId());
         fill_data_[entry.suggestion.id] = std::move(entry.filling_payload);
@@ -683,30 +677,10 @@ void ActorFormFillingServiceImpl::FillSuggestions(
     return;
   }
 
-  // Re-determine the forms because in case they changed since the suggestions
-  // were generated.
-  std::vector<std::vector<FormData>> form_datas;
-  form_datas.reserve(chosen_suggestions.size());
   std::vector<FieldGlobalId> all_field_ids;
   for (const ActorFormFillingSelection& selection : chosen_suggestions) {
-    const FillData& fill_data_for_form =
-        fill_data_[selection.selected_suggestion_id];
-    form_datas.emplace_back().reserve(fill_data_for_form.field_ids.size());
-    for (FieldGlobalId field_id : fill_data_for_form.field_ids) {
-      all_field_ids.push_back(field_id);
-      if (const FormStructure* form_structure =
-              autofill_manager.FindCachedFormById(field_id)) {
-        form_datas.back().emplace_back(form_structure->ToFormData());
-      } else {
-        // TODO(crbug.com/455788947): Consider being more lenient and complying
-        // with partial form fills.
-        LOG_AF(log_manager)
-            << LoggingScope::kAutofillActor
-            << "Could not find form structure for field: " << field_id;
-        post_error(FROM_HERE, kNoForm);
-        return;
-      }
-    }
+    base::Extend(all_field_ids,
+                 fill_data_[selection.selected_suggestion_id].field_ids);
   }
 
   // Create a filling observer and keep it around until the maximum timeout is
@@ -719,35 +693,41 @@ void ActorFormFillingServiceImpl::FillSuggestions(
       ActorFillingObserver::GetMaximumTimeout());
 
   // Fill.
-  for (const auto [selection, form_datas_for_suggestion] :
-       base::zip(chosen_suggestions, form_datas)) {
-    const FillData& fill_data_for_form =
-        fill_data_[selection.selected_suggestion_id];
-    for (const auto [field_id, form_data] :
-         base::zip(fill_data_for_form.field_ids, form_datas_for_suggestion)) {
-      std::optional<FillingPayload> filling_payload =
-          GetAutofillFillingPayload(fill_data_for_form.filling_payload);
-      if (!filling_payload) {
-        continue;
-      }
-      autofill_manager.FillOrPreviewForm(mojom::ActionPersistence::kFill,
-                                         form_data, field_id, *filling_payload,
-                                         AutofillTriggerSource::kGlic);
-    }
+  for (const ActorFormFillingSelection& selection : chosen_suggestions) {
+    FillOrPreviewFormImpl(tab, selection.selected_suggestion_id,
+                          mojom::ActionPersistence::kFill);
   }
 }
 
 void ActorFormFillingServiceImpl::ScrollToForm(const tabs::TabInterface& tab,
                                                int form_index) {
-  // TODO(crbug.com/481379667): Implement scrolling to a form.
-  NOTIMPLEMENTED();
+  base::expected<std::reference_wrapper<BrowserAutofillManager>,
+                 ActorFormFillingError>
+      maybe_manager = GetAutofillManager(tab);
+  if (!maybe_manager.has_value()) {
+    return;
+  }
+  AutofillManager& autofill_manager = maybe_manager.value();
+
+  // TODO(crbug.com/448398227): Consider making `form_index` a `size_t`
+  // everywhere instead of `int`.
+  if (static_cast<size_t>(form_index) >= suggestion_trigger_field_id_.size() ||
+      !suggestion_trigger_field_id_[form_index]) {
+    LogManager* const log_manager =
+        autofill_manager.client().GetCurrentLogManager();
+    LOG_AF(log_manager) << LoggingScope::kAutofillActor
+                        << "Fill/Preview aborted: `form_index` does not "
+                           "correspond to any trigger field";
+    return;
+  }
+  autofill_manager.driver().ScrollFieldIntoView(
+      suggestion_trigger_field_id_[form_index]);
 }
 
 void ActorFormFillingServiceImpl::PreviewForm(const tabs::TabInterface& tab,
                                               int form_index,
                                               ActorSuggestionId suggestion_id) {
-  // TODO(crbug.com/481379523): Implement previewing a form.
-  NOTIMPLEMENTED();
+  FillOrPreviewFormImpl(tab, suggestion_id, mojom::ActionPersistence::kPreview);
 }
 
 void ActorFormFillingServiceImpl::ClearFormPreview(
@@ -767,8 +747,67 @@ void ActorFormFillingServiceImpl::FillForm(
     const tabs::TabInterface& tab,
     int form_index,
     ActorFormFillingSelection selection) {
-  // TODO(crbug.com/482010699): Implement filling a single form.
-  NOTIMPLEMENTED();
+  FillOrPreviewFormImpl(tab, selection.selected_suggestion_id,
+                        mojom::ActionPersistence::kFill);
+}
+
+void ActorFormFillingServiceImpl::FillOrPreviewFormImpl(
+    const tabs::TabInterface& tab,
+    ActorSuggestionId suggestion_id,
+    mojom::ActionPersistence action_persistence) {
+  // TODO(crbug.com/448398227): Consider changing some of these early returns
+  // into CHECKs.
+  base::expected<std::reference_wrapper<BrowserAutofillManager>,
+                 ActorFormFillingError>
+      maybe_manager = GetAutofillManager(tab);
+  if (!maybe_manager.has_value()) {
+    return;
+  }
+  BrowserAutofillManager& autofill_manager = maybe_manager.value();
+  LogManager* const log_manager =
+      autofill_manager.client().GetCurrentLogManager();
+
+  const FillData* fill_data = base::FindOrNull(fill_data_, suggestion_id);
+  if (!fill_data) {
+    LOG_AF(log_manager) << LoggingScope::kAutofillActor
+                        << "Fill/Preview aborted: Could not find the "
+                           "`FillData` with the given `ActorSuggestionId`.";
+    return;
+  }
+
+  if (fill_data->field_ids.empty()) {
+    LOG_AF(log_manager) << LoggingScope::kAutofillActor
+                        << "Fill/Preview aborted: The corresponding `FillData` "
+                           "had no associated fields.";
+    return;
+  }
+
+  for (FieldGlobalId trigger_field_id : fill_data->field_ids) {
+    if (const FormStructure* const form_structure =
+            autofill_manager.FindCachedFormById(trigger_field_id)) {
+      std::visit(absl::Overload{
+                     [&](const AutofillProfile& autofill_profile) {
+                       autofill_manager.FillOrPreviewForm(
+                           action_persistence, form_structure->ToFormData(),
+                           trigger_field_id, &autofill_profile,
+                           AutofillTriggerSource::kGlic);
+                     },
+                     [&](const CreditCard& credit_card) {
+                       autofill_manager.FillOrPreviewForm(
+                           action_persistence, form_structure->ToFormData(),
+                           trigger_field_id, &credit_card,
+                           AutofillTriggerSource::kGlic);
+                     },
+                     [&](const std::monostate&) {
+                       LOG_AF(log_manager)
+                           << LoggingScope::kAutofillActor
+                           << "Fill/Preview aborted: Could not fill/preview "
+                              "because the suggestion had empty payload.";
+                       return;
+                     }},
+                 fill_data->filling_payload);
+    }
+  }
 }
 
 }  // namespace autofill

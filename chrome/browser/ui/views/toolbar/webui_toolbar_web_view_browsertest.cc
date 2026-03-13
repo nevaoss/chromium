@@ -190,12 +190,13 @@ class WebUIToolbarWebViewPixelBrowserTest : public InProcessBrowserTest {
   void SetUpWebUI(const ui::ElementIdentifier& element_id,
                   ui::TrackedElement** element_out,
                   WebUIToolbarWebView** webui_toolbar_view_out,
-                  views::WebView** web_view_out) {
+                  views::WebView** web_view_out,
+                  Browser* browser) {
     // Wait for the WebUIToolbarWebView to be available.
     *webui_toolbar_view_out = nullptr;
     ASSERT_TRUE(base::test::RunUntil([&]() {
       BrowserView* browser_view =
-          BrowserView::GetBrowserViewForBrowser(browser());
+          BrowserView::GetBrowserViewForBrowser(browser);
       if (!browser_view || !browser_view->toolbar()) {
         return false;
       }
@@ -213,7 +214,7 @@ class WebUIToolbarWebViewPixelBrowserTest : public InProcessBrowserTest {
               *webui_toolbar_view_out);
     } else {
       ASSERT_TRUE(base::test::RunUntil([&]() {
-        *element_out = BrowserElements::From(browser())->GetElement(element_id);
+        *element_out = BrowserElements::From(browser)->GetElement(element_id);
         return *element_out != nullptr;
       }));
       ASSERT_TRUE(*element_out);
@@ -249,31 +250,44 @@ class WebUIToolbarWebViewPixelBrowserTest : public InProcessBrowserTest {
     return image.getColor(image.width() / 2, image.height() / 2);
   }
 
+  void BasicPixelTest(Browser* browser, const std::string& screenshot_name) {
+    ui::TrackedElement* element = nullptr;
+    WebUIToolbarWebView* webui_toolbar_view = nullptr;
+    views::WebView* web_view = nullptr;
+    ASSERT_NO_FATAL_FAILURE(SetUpWebUI(kWebUIToolbarElementIdentifier, &element,
+                                       &webui_toolbar_view, &web_view,
+                                       browser));
+
+    // Assert that WebContents is not loading, as it affects the state of the
+    // reload button.
+    ASSERT_FALSE(web_view->GetWebContents()->IsLoading());
+    // The WebView should be using the light color mode for regular windows,
+    // and dark color mode for incognito windows.
+    ASSERT_EQ(web_view->GetWidget()->GetColorMode(),
+              browser->profile()->IsIncognitoProfile()
+                  ? ui::ColorProviderKey::ColorMode::kDark
+                  : ui::ColorProviderKey::ColorMode::kLight);
+
+    // Pixel test
+    if (base::CommandLine::ForCurrentProcess()->HasSwitch(
+            switches::kVerifyPixels)) {
+      views::ViewSkiaGoldPixelDiff pixel_diff(
+          "WebUIToolbarWebViewPixelBrowserTest");
+      EXPECT_TRUE(pixel_diff.CompareViewScreenshot(screenshot_name,
+                                                   webui_toolbar_view));
+    }
+  }
+
  private:
   base::test::ScopedFeatureList feature_list_;
 };
 
 IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewPixelBrowserTest, Basic) {
-  ui::TrackedElement* element = nullptr;
-  WebUIToolbarWebView* webui_toolbar_view = nullptr;
-  views::WebView* web_view = nullptr;
-  ASSERT_NO_FATAL_FAILURE(SetUpWebUI(kWebUIToolbarElementIdentifier, &element,
-                                     &webui_toolbar_view, &web_view));
+  BasicPixelTest(browser(), "Basic");
+}
 
-  // Assert that WebContents is not loading, as it affects the state of the
-  // reload button.
-  ASSERT_FALSE(web_view->GetWebContents()->IsLoading());
-  // The WebView should be using the light color mode.
-  ASSERT_EQ(web_view->GetWidget()->GetColorMode(),
-            ui::ColorProviderKey::ColorMode::kLight);
-
-  // Pixel test
-  if (base::CommandLine::ForCurrentProcess()->HasSwitch(
-          switches::kVerifyPixels)) {
-    views::ViewSkiaGoldPixelDiff pixel_diff(
-        "WebUIToolbarWebViewPixelBrowserTest");
-    EXPECT_TRUE(pixel_diff.CompareViewScreenshot("Basic", webui_toolbar_view));
-  }
+IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewPixelBrowserTest, IncognitoBasic) {
+  BasicPixelTest(CreateIncognitoBrowser(), "IncognitoBasic");
 }
 
 IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewPixelBrowserTest, Accessibility) {
@@ -282,7 +296,8 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewPixelBrowserTest, Accessibility) {
   WebUIToolbarWebView* webui_toolbar_view = nullptr;
   views::WebView* web_view = nullptr;
   ASSERT_NO_FATAL_FAILURE(SetUpWebUI(kWebUIToolbarElementIdentifier, &element,
-                                     &webui_toolbar_view, &web_view));
+                                     &webui_toolbar_view, &web_view,
+                                     browser()));
 
   // Find accessibility node for reload button.
   content::WaitForAccessibilityTreeToContainNodeWithName(
@@ -303,7 +318,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewPixelBrowserTest, Accessibility) {
                                     ax::mojom::StringAttribute::kDescription));
   EXPECT_EQ(0, reload.GetIntAttribute(ax::mojom::IntAttribute::kHasPopup));
 
-  // Verify enabling menu is reflected in HasPopup attribute.
+  // Verify enabling devtools is reflected in HasPopup attribute.
   webui_toolbar_view->GetReloadControl()->SetDevToolsStatus(true);
   content::WaitForAccessibilityTreeToChange(web_view->GetWebContents());
   content::WaitForAccessibilityTreeToContainNodeWithName(
@@ -313,6 +328,39 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewPixelBrowserTest, Accessibility) {
   ASSERT_TRUE(reload_node);
   EXPECT_EQ(2, reload_node->GetData().GetIntAttribute(
                    ax::mojom::IntAttribute::kHasPopup));
+  EXPECT_EQ("Reload this page, hold to see more options",
+            reload_node->GetData().GetStringAttribute(
+                ax::mojom::StringAttribute::kDescription));
+
+  // Verify that setting mode to kStop is reflected in HasPopup attribute.
+  webui_toolbar_view->GetReloadControl()->ChangeMode(ReloadControl::Mode::kStop,
+                                                     true);
+  content::WaitForAccessibilityTreeToChange(web_view->GetWebContents());
+  content::WaitForAccessibilityTreeToContainNodeWithName(
+      web_view->GetWebContents(), "Reload");
+  reload_node =
+      content::FindAccessibilityNode(web_view->GetWebContents(), find_criteria);
+  ASSERT_TRUE(reload_node);
+  EXPECT_EQ(0, reload_node->GetData().GetIntAttribute(
+                   ax::mojom::IntAttribute::kHasPopup));
+  EXPECT_EQ("Stop loading this page",
+            reload_node->GetData().GetStringAttribute(
+                ax::mojom::StringAttribute::kDescription));
+
+  // Verify it works when returning to kReload mode.
+  webui_toolbar_view->GetReloadControl()->ChangeMode(
+      ReloadControl::Mode::kReload, true);
+  content::WaitForAccessibilityTreeToChange(web_view->GetWebContents());
+  content::WaitForAccessibilityTreeToContainNodeWithName(
+      web_view->GetWebContents(), "Reload");
+  reload_node =
+      content::FindAccessibilityNode(web_view->GetWebContents(), find_criteria);
+  ASSERT_TRUE(reload_node);
+  EXPECT_EQ(2, reload_node->GetData().GetIntAttribute(
+                   ax::mojom::IntAttribute::kHasPopup));
+  EXPECT_EQ("Reload this page, hold to see more options",
+            reload_node->GetData().GetStringAttribute(
+                ax::mojom::StringAttribute::kDescription));
 }
 
 IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewPixelBrowserTest,
@@ -321,7 +369,8 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewPixelBrowserTest,
   WebUIToolbarWebView* webui_toolbar_view = nullptr;
   views::WebView* web_view = nullptr;
   ASSERT_NO_FATAL_FAILURE(SetUpWebUI(kReloadButtonElementId, &element,
-                                     &webui_toolbar_view, &web_view));
+                                     &webui_toolbar_view, &web_view,
+                                     browser()));
 
   WebUIReloadControl* reload_control =
       static_cast<WebUIReloadControl*>(webui_toolbar_view->GetReloadControl());
@@ -365,7 +414,8 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewPixelBrowserTest,
   WebUIToolbarWebView* webui_toolbar_view = nullptr;
   views::WebView* web_view = nullptr;
   ASSERT_NO_FATAL_FAILURE(SetUpWebUI(kToolbarSplitTabsToolbarButtonElementId,
-                                     &element, &webui_toolbar_view, &web_view));
+                                     &element, &webui_toolbar_view, &web_view,
+                                     browser()));
 
   WebUISplitTabsControl* split_tabs_control =
       &webui_toolbar_view->split_tabs_control_;
@@ -1053,11 +1103,11 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewSplitTabsBrowserTest,
   ASSERT_TRUE(base::test::RunUntil(
       [&]() { return tab_strip_model->GetActiveTab()->IsSplit(); }));
 
-  // Now split. aria-haspopup should be 'menu'.
+  // Now split. aria-haspopup should be 'true'.
   // The state update is async from the browser back to the WebUI.
   EXPECT_TRUE(base::test::RunUntil([&]() {
     return content::EvalJs(web_contents, kGetAriaHasPopup).ExtractString() ==
-           "menu";
+           "true";
   }));
 }
 

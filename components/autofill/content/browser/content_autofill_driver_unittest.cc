@@ -215,8 +215,9 @@ class FakeAutofillAgent : public mojom::AutofillAgent {
 
  private:
   void CallDone() {
-    if (!quit_closure_.is_null())
+    if (!quit_closure_.is_null()) {
       std::move(quit_closure_).Run();
+    }
   }
 
   // mojom::AutofillAgent:
@@ -242,8 +243,6 @@ class FakeAutofillAgent : public mojom::AutofillAgent {
                         mojom::ActionPersistence action_persistence,
                         FieldRendererId field,
                         const std::u16string& value) override {
-    CHECK_EQ(action_type, mojom::FieldActionType::kReplaceAll)
-        << "FakeAutofillAgent only supports kReplaceAll";
     value_renderer_id_ = field;
     switch (action_persistence) {
       case mojom::ActionPersistence::kPreview:
@@ -301,6 +300,8 @@ class FakeAutofillAgent : public mojom::AutofillAgent {
 
   void PreviewPasswordGenerationSuggestion(
       const std::u16string& password) override {}
+
+  void ScrollFieldIntoView(FieldRendererId field_id) override {}
 
   mojo::AssociatedReceiverSet<mojom::AutofillAgent> receivers_;
 

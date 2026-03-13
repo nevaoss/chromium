@@ -4,6 +4,8 @@
 
 #include "chrome/browser/ui/webui/skills/skills_ui.h"
 
+#include "base/i18n/number_formatting.h"
+#include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
@@ -14,16 +16,17 @@
 #include "chrome/grit/skills_resources_map.h"
 #include "components/skills/features.h"
 #include "components/skills/public/skill.h"
+#include "components/skills/public/skills_metrics.h"
 #include "components/strings/grit/components_strings.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_ui_data_source.h"
+#include "ui/base/l10n/l10n_util.h"
 #include "ui/webui/webui_util.h"
 
-#if BUILDFLAG(ENABLE_GLIC)
-#include "chrome/browser/glic/public/glic_enabling.h"
-#endif
-
 namespace skills {
+
+constexpr int kMaxNameCharCount = 100;
+constexpr int kMaxPromptCharCount = 20000;
 
 SkillsUI::SkillsUI(content::WebUI* web_ui) : ui::MojoWebUIController(web_ui) {
   Profile* profile = Profile::FromWebUI(web_ui);
@@ -31,11 +34,10 @@ SkillsUI::SkillsUI(content::WebUI* web_ui) : ui::MojoWebUIController(web_ui) {
       profile, chrome::kChromeUISkillsHost);
   webui::SetupWebUIDataSource(source, kSkillsResources, IDR_SKILLS_SKILLS_HTML);
   source->AddResourcePath("dialog", IDR_SKILLS_SKILLS_DIALOG_HTML);
-  bool isGlicEnabled = false;
-#if BUILDFLAG(ENABLE_GLIC)
-  isGlicEnabled = glic::GlicEnabling::IsEnabledForProfile(profile);
-#endif
+  bool isGlicEnabled = glic::GlicEnabling::IsEnabledForProfile(profile);
   source->AddBoolean("isGlicEnabled", isGlicEnabled);
+  source->AddInteger("MAX_NAME_CHAR_COUNT", kMaxNameCharCount);
+  source->AddInteger("MAX_PROMPT_CHAR_COUNT", kMaxPromptCharCount);
   static constexpr webui::LocalizedString kStrings[] = {
       {"cancel", IDS_CANCEL},
       {"edit", IDS_EDIT2},
@@ -81,12 +83,22 @@ SkillsUI::SkillsUI(content::WebUI* web_ui) : ui::MojoWebUIController(web_ui) {
   };
 
   source->AddLocalizedStrings(kStrings);
+  source->AddString(
+      "nameCharLimitError",
+      l10n_util::GetStringFUTF16(IDS_SKILLS_DIALOG_CHAR_LIMIT_ERROR,
+                                 base::FormatNumber(kMaxNameCharCount)));
+  source->AddString(
+      "charLimitError",
+      l10n_util::GetStringFUTF16(IDS_SKILLS_DIALOG_CHAR_LIMIT_ERROR,
+                                 base::FormatNumber(kMaxPromptCharCount)));
 }
 
 void SkillsUI::InitializeDialog(base::WeakPtr<SkillsDialogDelegate> delegate,
-                                Skill skill) {
+                                Skill skill,
+                                SkillsDialogEntryPoint entrypoint) {
   delegate_ = delegate;
   initial_skill_ = std::move(skill);
+  entrypoint_ = entrypoint;
 }
 
 void SkillsUI::BindInterface(
@@ -108,7 +120,7 @@ void SkillsUI::CreateDialogHandler(
       std::move(receiver), web_ui()->GetWebContents(),
       OptimizationGuideKeyedServiceFactory::GetForProfile(
           Profile::FromWebUI(web_ui())),
-      initial_skill_, delegate_);
+      initial_skill_, entrypoint_, delegate_);
 }
 
 WEB_UI_CONTROLLER_TYPE_IMPL(SkillsUI)

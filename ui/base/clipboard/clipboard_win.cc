@@ -286,19 +286,21 @@ ClipboardWin::~ClipboardWin() {
 
 void ClipboardWin::OnPreShutdown() {}
 
-std::optional<DataTransferEndpoint> ClipboardWin::GetSource(
-    ClipboardBuffer buffer) const {
+void ClipboardWin::GetSource(ClipboardBuffer buffer,
+                             GetSourceCallback callback) const {
   DCHECK_EQ(buffer, ClipboardBuffer::kCopyPaste);
 
   ScopedClipboard clipboard;
   if (!clipboard.Acquire(GetClipboardWindow())) {
-    return std::nullopt;
+    std::move(callback).Run(std::nullopt);
+    return;
   }
 
   HANDLE data = GetClipboardDataWithLimit(
       ClipboardFormatType::InternalSourceUrlType().ToFormatEtc().cfFormat);
   if (!data) {
-    return std::nullopt;
+    std::move(callback).Run(std::nullopt);
+    return;
   }
 
   std::string source_string;
@@ -309,10 +311,11 @@ std::optional<DataTransferEndpoint> ClipboardWin::GetSource(
 
   GURL source_url(source_string);
   if (!source_url.is_valid()) {
-    return std::nullopt;
+    std::move(callback).Run(std::nullopt);
+    return;
   }
 
-  return DataTransferEndpoint(std::move(source_url));
+  std::move(callback).Run(DataTransferEndpoint(std::move(source_url)));
 }
 
 const ClipboardSequenceNumberToken& ClipboardWin::GetSequenceNumber(
@@ -381,10 +384,18 @@ void ClipboardWin::Clear(ClipboardBuffer buffer) {
   }
 }
 
-std::vector<std::u16string> ClipboardWin::GetStandardFormats(
+void ClipboardWin::GetStandardFormats(
     ClipboardBuffer buffer,
-    const DataTransferEndpoint* data_dst) const {
-  return GetStandardFormatsInternal(buffer, base::OptionalFromPtr(data_dst));
+    const std::optional<DataTransferEndpoint>& data_dst,
+    GetStandardFormatsCallback callback) const {
+  ReadAsync(base::BindOnce(
+                [](ClipboardBuffer buffer,
+                   const std::optional<DataTransferEndpoint>& data_dst,
+                   HWND owner_window) {
+                  return GetStandardFormatsInternal(buffer, data_dst);
+                },
+                buffer, data_dst),
+            std::move(callback));
 }
 
 // static
@@ -523,17 +534,6 @@ void ClipboardWin::ReadFilenames(
       std::move(callback));
 }
 
-// |data_dst| is not used. It's only passed to be consistent with other
-// platforms.
-void ClipboardWin::ReadAvailableTypes(
-    ClipboardBuffer buffer,
-    const DataTransferEndpoint* data_dst,
-    std::vector<std::u16string>* types) const {
-  CHECK(types);
-  *types = ReadAvailableTypesInternal(buffer, base::OptionalFromPtr(data_dst),
-                                      GetClipboardWindow());
-}
-
 // static
 // |data_dst| is not used, but is kept as it may be used in the future.
 std::vector<std::u16string> ClipboardWin::ReadAvailableTypesInternal(
@@ -567,16 +567,6 @@ std::vector<std::u16string> ClipboardWin::ReadAvailableTypesInternal(
   return types;
 }
 
-// |data_dst| is not used. It's only passed to be consistent with other
-// platforms.
-void ClipboardWin::ReadText(ClipboardBuffer buffer,
-                            const DataTransferEndpoint* data_dst,
-                            std::u16string* result) const {
-  CHECK(result);
-  *result = ReadTextInternal(buffer, base::OptionalFromPtr(data_dst),
-                             GetClipboardWindow());
-}
-
 // static
 // |data_dst| is not used, but is kept as it may be used in the future.
 std::u16string ClipboardWin::ReadTextInternal(
@@ -604,16 +594,6 @@ std::u16string ClipboardWin::ReadTextInternal(
   ::GlobalUnlock(data);
   TrimAfterNull(&result);
   return result;
-}
-
-// |data_dst| is not used. It's only passed to be consistent with other
-// platforms.
-void ClipboardWin::ReadAsciiText(ClipboardBuffer buffer,
-                                 const DataTransferEndpoint* data_dst,
-                                 std::string* result) const {
-  CHECK(result);
-  *result = ReadAsciiTextInternal(buffer, base::OptionalFromPtr(data_dst),
-                                  GetClipboardWindow());
 }
 
 // static
@@ -873,42 +853,35 @@ std::vector<ui::FileInfo> ClipboardWin::ReadFilenamesInternal(
 
 // |data_dst| is not used. It's only passed to be consistent with other
 // platforms.
-void ClipboardWin::ReadBookmark(const DataTransferEndpoint* data_dst,
-                                std::u16string* title,
-                                std::string* url) const {
+void ClipboardWin::ReadBookmark(
+    const std::optional<DataTransferEndpoint>& data_dst,
+    ReadBookmarkCallback callback) const {
   RecordRead(ClipboardFormatMetric::kBookmark);
-  if (title)
-    title->clear();
 
-  if (url)
-    url->clear();
+  std::u16string title;
+  std::string url;
 
   // Acquire the clipboard.
   ScopedClipboard clipboard;
-  if (!clipboard.Acquire(GetClipboardWindow()))
+  if (!clipboard.Acquire(GetClipboardWindow())) {
+    std::move(callback).Run(std::move(title), GURL(url));
     return;
+  }
 
   HANDLE data = GetClipboardDataWithLimit(
       ClipboardFormatType::UrlType().ToFormatEtc().cfFormat);
-  if (!data)
+  if (!data) {
+    std::move(callback).Run(std::move(title), GURL(url));
     return;
+  }
 
   std::u16string bookmark(static_cast<const char16_t*>(::GlobalLock(data)),
                           ::GlobalSize(data) / sizeof(char16_t));
   ::GlobalUnlock(data);
   TrimAfterNull(&bookmark);
 
-  *url = base::UTF16ToUTF8(bookmark);
-}
-
-// |data_dst| is not used. It's only passed to be consistent with other
-// platforms.
-void ClipboardWin::ReadData(const ClipboardFormatType& format,
-                            const DataTransferEndpoint* data_dst,
-                            std::string* result) const {
-  CHECK(result);
-  *result = ReadDataInternal(format, base::OptionalFromPtr(data_dst),
-                             GetClipboardWindow());
+  url = base::UTF16ToUTF8(bookmark);
+  std::move(callback).Run(std::move(title), GURL(url));
 }
 
 // static

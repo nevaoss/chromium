@@ -1312,7 +1312,7 @@ scoped_refptr<DrawingBuffer> WebGLRenderingContextBase::CreateDrawingBuffer(
   // non-WebGLImageChromium for OffscreenCanvas.
   // See detailed discussion in crbug.com/649668.
   DrawingBuffer::ChromiumImageUsage chromium_image_usage =
-      SharedGpuContext::MaySupportImageChromium() &&
+      SharedGpuContext::MaySupportWebGLImageChromium() &&
               !Host()->IsOffscreenCanvas()
           ? DrawingBuffer::kAllowChromiumImage
           : DrawingBuffer::kDisallowChromiumImage;
@@ -1987,7 +1987,7 @@ WebGLRenderingContextBase::GetSharedImageResourceProvider() {
     gpu::SharedImageUsageSet shared_image_usage_flags =
         gpu::SHARED_IMAGE_USAGE_DISPLAY_READ;
 
-    if (SharedGpuContext::MaySupportImageChromium() &&
+    if (SharedGpuContext::MaySupportWebGLImageChromium() &&
         RuntimeEnabledFeatures::WebGLImageChromiumEnabled()) {
       shared_image_usage_flags |= gpu::SHARED_IMAGE_USAGE_SCANOUT;
     }
@@ -6458,28 +6458,26 @@ void WebGLRenderingContextBase::TexImageHelperMediaVideoFrame(
     return;
   }
 
-  std::optional<CanvasSnapshotProvider::Info> sw_draw_info;
-  CanvasNon2DResourceProviderSharedImage* snapshot_provider_si = nullptr;
-  sk_sp<SkSurface> sw_draw_surface;
-
-  if (snapshot_provider->IsExternalBitmapProvider()) {
-    sw_draw_info = info;
-    if (base::FeatureList::IsEnabled(kWebGLVideoFrameDrawCacheSkSurface)) {
-      sw_draw_surface =
-          static_cast<CanvasNon2DSnapshotProviderBitmap*>(snapshot_provider)
-              ->GetCachedSurface();
-    }
-  } else {
-    snapshot_provider_si =
-        static_cast<CanvasNon2DResourceProviderSharedImage*>(snapshot_provider);
-  }
-
   // Since TexImageStaticBitmapImage() and TexImageGPU() don't know how to
   // handle tagged orientation, we set |prefer_tagged_orientation| to false.
-  scoped_refptr<StaticBitmapImage> image = CreateImageFromVideoFrame(
-      std::move(media_video_frame), snapshot_provider_si,
-      std::move(sw_draw_info), sw_draw_surface, video_renderer,
-      /*prefer_tagged_orientation=*/false, reinterpret_video_as_srgb);
+  const bool kPreferTaggedOrientation = false;
+  scoped_refptr<StaticBitmapImage> image;
+  if (snapshot_provider->IsExternalBitmapProvider()) {
+    sk_sp<SkSurface> draw_surface =
+        base::FeatureList::IsEnabled(kWebGLVideoFrameDrawCacheSkSurface)
+            ? static_cast<CanvasNon2DSnapshotProviderBitmap*>(snapshot_provider)
+                  ->GetCachedSurface()
+            : nullptr;
+    image = CreateUnacceleratedImageFromVideoFrame(
+        std::move(media_video_frame), info, draw_surface, video_renderer,
+        kPreferTaggedOrientation, reinterpret_video_as_srgb);
+  } else {
+    image = CreateAcceleratedImageFromVideoFrame(
+        std::move(media_video_frame),
+        static_cast<CanvasNon2DResourceProviderSharedImage*>(snapshot_provider),
+        video_renderer, kPreferTaggedOrientation, reinterpret_video_as_srgb);
+  }
+
   if (!image) {
     return;
   }

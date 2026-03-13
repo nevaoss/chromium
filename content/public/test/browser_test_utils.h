@@ -588,6 +588,14 @@ void SimulateKeyPress(WebContents* web_contents,
                       bool alt,
                       bool command);
 
+// Sends a key press asynchronously for the given |character|.
+// Figures out the appropriate |key|, |code|, |key_code| and |shift| modifier
+// for the US layout.
+//
+// Note: Input event to a page may not work right after a page load, see
+// `SimulateEndOfPaintHoldingOnPrimaryMainFrame` for a workaround.
+void SimulateCharTyped(WebContents* web_contents, char16_t character);
+
 // Like SimulateKeyPress(), but does not send the char (AKA keypress) event.
 // This is useful for arrow keys and other key presses that do not generate
 // characters.
@@ -1530,8 +1538,17 @@ class RenderFrameSubmissionObserver
   // Resets the current |render_frame_count|;
   void ResetCounter() { render_frame_count_ = 0; }
 
-  // Blocks the browser ui thread until the next OnRenderFrameSubmission.
+  // Blocks the browser ui thread until the next OnRenderFrameSubmission
+  // or OnRenderFrameMetadataChangedAfterActivation.
   void WaitForAnyFrameSubmission();
+
+  // Tell observer to explicitly wait for next frame submission in
+  // WaitForNextFrameSubmission.
+  void SetWaitForNextFrame();
+
+  // Blocks the browser ui thread until a new frame is submitted since
+  // the frame count is recorded in SetWaitForNextFrame.
+  void WaitForNextFrameSubmission();
 
   // Blocks the browser ui thread until the next
   // OnRenderFrameMetadataChangedAfterActivation.
@@ -1579,17 +1596,18 @@ class RenderFrameSubmissionObserver
   void OnLocalSurfaceIdChanged(
       const cc::RenderFrameMetadata& metadata) override;
 
-  // If true then the next OnRenderFrameSubmission will cancel the blocking
-  // |run_loop_| otherwise the blocking will continue until the next
-  // OnRenderFrameMetadataChangedAfterActivation.
-  bool break_on_any_frame_ = false;
-
   const base::WeakPtr<RenderFrameMetadataProviderImpl>
       render_frame_metadata_provider_;
   base::OnceClosure quit_closure_;
   // If non-null, run when metadata changes.
   base::OnceClosure metadata_change_closure_;
   int render_frame_count_ = 0;
+
+  // Used to wait for render frame submission. In WaitForNextFrameSubmission, it
+  // is used as a target render frame count. In WaitForAnyFrameSubmission, it is
+  // used to block until one of OnRenderFrameSubmission or
+  // OnRenderFrameMetadataChangedAfterActivation is called.
+  std::optional<int> wait_for_render_frame_count_;
 };
 
 // This class is intended to synchronize the renderer main thread, renderer impl

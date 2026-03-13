@@ -68,6 +68,15 @@ const char kAutofillAcrossIframesDescription[] =
     "When enabled, Autofill will fill and save information on forms that "
     "spread across multiple iframes.";
 
+const char kAutofillAiCreateEntityDataManagerName[] =
+    "Autofill AI Create Entity Data Manager";
+const char kAutofillAiCreateEntityDataManagerDescription[] =
+    "Enables Autofill AI Create Entity Data Manager.";
+
+const char kAutofillAiWithDataSchemaName[] = "Autofill AI With Data Schema";
+const char kAutofillAiWithDataSchemaDescription[] =
+    "Enables Autofill AI With Data Schema.";
+
 const char kAutofillBottomSheetNewBlurName[] =
     "New Blur Method for Autofill Bottom Sheet";
 const char kAutofillBottomSheetNewBlurDescription[] =
@@ -200,12 +209,6 @@ const char kAutofillPruneSuggestionsName[] = "Autofill Prune Suggestions";
 const char kAutofillPruneSuggestionsDescription[] =
     "Further limits the number of suggestions in the Autofill dropdown.";
 
-const char kAutofillShowManualFillForVirtualCardsName[] =
-    "Show Manual Fill for Virtual Cards";
-const char kAutofillShowManualFillForVirtualCardsDescription[] =
-    "When enabled, Autfoill will show the manual fill view directly on form "
-    "focusing events for virtual cards.";
-
 const char kAutofillThrottleDocumentFormScanName[] =
     "Throttle Autofill Document Form Scans";
 const char kAutofillThrottleDocumentFormScanDescription[] =
@@ -245,13 +248,6 @@ const char kBWGPromoConsentName[] = "BWG Promo Consent";
 const char kBWGPromoConsentDescription[] =
     "Whether the promo consent flow is composed of a single or a double screen "
     "view.";
-
-const char kBeginCursorAtPointTentativeFixName[] =
-    "Begin cursor at point tentative fix";
-const char kBeginCursorAtPointTentativeFixDescription[] =
-    "A tentative fix for crbug.com/361003475. When enabled, it prevents a call "
-    "to "
-    "setSelectedTextRange.";
 
 const char kBestFeaturesScreenInFirstRunName[] =
     "Display Best Features screen in the FRE";
@@ -627,6 +623,10 @@ const char kForceStartupSigninPromoDescription[] =
     "When enabled, the startup sign-in promo is always displayed when starting "
     "Chrome.";
 
+const char kFullscreenRefactoringName[] = "FullscreenRefactoring";
+const char kFullscreenRefactoringDescription[] =
+    "Enables the FullscreenRefactoring feature.";
+
 const char kFullscreenScrollThresholdName[] = "Fullscreen Scroll Threshold";
 const char kFullscreenScrollThresholdDescription[] =
     "When enabled, scrolling must exceed a small threshold before the web view "
@@ -649,6 +649,14 @@ const char kGeminiActorDescription[] = "Enables the Gemini Actor.";
 const char kGeminiBackendMigrationName[] = "Gemini Backend Migration";
 const char kGeminiBackendMigrationDescription[] =
     "Enables the backend migration for Gemini.";
+
+const char kGeminiBinaryMigrationName[] = "Gemini Binary Migration";
+const char kGeminiBinaryMigrationDescription[] =
+    "Enables the binary network migration for Gemini.";
+
+const char kGeminiChatPersistenceName[] = "Gemini Chat Persistence";
+const char kGeminiChatPersistenceDescription[] =
+    "Enables improvements to Gemini Chat persistence.";
 
 const char kGeminiCopresenceName[] = "Gemini Copresence";
 const char kGeminiCopresenceDescription[] =
@@ -682,6 +690,10 @@ const char kGeminiLoadingStateRedesignName[] = "GeminiLoadingStateRedesign";
 const char kGeminiLoadingStateRedesignDescription[] =
     "Enables the redesigned UI for the floaty's loading state.";
 
+const char kGeminiMapsRichUIName[] = "Gemini Maps Rich UI";
+const char kGeminiMapsRichUIDescription[] =
+    "Enables the rich Maps UI in Gemini.";
+
 const char kGeminiNavigationPromoName[] = "GeminiNavigationPromo";
 const char kGeminiNavigationPromoDescription[] =
     "Enables the automatic promo for Gemini on navigation.";
@@ -702,6 +714,10 @@ const char kGeminiResponseViewDynamicResizingDescription[] =
 const char kGeminiRichAPCExtractionName[] = "Gemini Rich APC Extraction";
 const char kGeminiRichAPCExtractionDescription[] =
     "Enables rich APC extraction for Gemini.";
+
+const char kGeminiUnaryMigrationName[] = "Gemini Unary Migration";
+const char kGeminiUnaryMigrationDescription[] =
+    "Enables the unary network migration for Gemini.";
 
 const char kGeminiUpdatedEligibilityName[] = "Gemini Updated Eligibility";
 const char kGeminiUpdatedEligibilityDescription[] =
@@ -863,6 +879,10 @@ const char kIOSSyncedSetUpName[] = "Synced Set Up";
 const char kIOSSyncedSetUpDescription[] =
     "Enables the Synced Set Up experience, allowing the user to locally apply "
     "settings from their synced devices.";
+
+const char kIOSTabRemindersName[] = "Tab Reminders";
+const char kIOSTabRemindersDescription[] =
+    "Enables the Tab Reminder notifications feature on iOS.";
 
 const char kIOSTipsNotificationsStringAlternativesName[] =
     "Tips notifications alternative string experiment";
@@ -1295,12 +1315,6 @@ const char kPageContentAnnotationsRemotePageMetadataName[] =
 const char kPageContentAnnotationsRemotePageMetadataDescription[] =
     "Enables fetching of page load metadata to be persisted on-device.";
 
-const char kPageVisibilityPageContentAnnotationsName[] =
-    "Page visibility content annotations";
-const char kPageVisibilityPageContentAnnotationsDescription[] =
-    "Enables annotating the page visibility model for each page load "
-    "on-device.";
-
 const char kPasswordFormClientsideClassifierName[] =
     "Clientside password form classifier.";
 const char kPasswordFormClientsideClassifierDescription[] =
@@ -1465,12 +1479,6 @@ const char kSendTabToSelfEnhancedHandoffName[] =
 const char kSendTabToSelfEnhancedHandoffDescription[] =
     "Enables an enhanced version of Send Tab To Self that propagates more "
     "information, such as form fields.";
-
-const char kSendTabToSelfIOSPushNotificationsName[] =
-    "Send tab to self iOS push notifications";
-const char kSendTabToSelfIOSPushNotificationsDescription[] =
-    "Feature to allow users to send tabs to their iOS device through a system "
-    "push notitification.";
 
 const char kShareInOmniboxLongPressName[] = "Share in Omnibox Long Press";
 const char kShareInOmniboxLongPressDescription[] =

@@ -49,6 +49,7 @@
 #include "third_party/blink/renderer/bindings/core/v8/v8_pointer_lock_options.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_scroll_container.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_scroll_into_view_options.h"
+#include "third_party/blink/renderer/bindings/core/v8/v8_scroll_result.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_scroll_to_options.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_set_html_options.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_set_html_unsafe_options.h"
@@ -2165,7 +2166,7 @@ namespace {
 
 // TODO(https://crbug.com/41406914): Ad-hoc method until we hook up with scroll
 // animation end.
-ScriptPromise<IDLUndefined> CreateScrollResolvedPromise(
+ScriptPromise<ScrollResult> CreateScrollResolvedPromise(
     ScriptState* script_state) {
   // Legacy binary tests pass a null `script_state`.
   if (!script_state ||
@@ -2174,21 +2175,21 @@ ScriptPromise<IDLUndefined> CreateScrollResolvedPromise(
   }
 
   auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolver<IDLUndefined>>(script_state);
-  resolver->Resolve();
+      MakeGarbageCollected<ScriptPromiseResolver<ScrollResult>>(script_state);
+  resolver->Resolve(ScrollResult::Create());
   return resolver->Promise();
 }
 
 }  // namespace
 
-ScriptPromise<IDLUndefined> Element::scrollIntoView(ScriptState* script_state,
+ScriptPromise<ScrollResult> Element::scrollIntoView(ScriptState* script_state,
                                                     bool align_to_top) {
   auto* arg =
       MakeGarbageCollected<V8UnionBooleanOrScrollIntoViewOptions>(align_to_top);
   return scrollIntoView(script_state, arg);
 }
 
-ScriptPromise<IDLUndefined> Element::scrollIntoView(
+ScriptPromise<ScrollResult> Element::scrollIntoView(
     ScriptState* script_state,
     const V8UnionBooleanOrScrollIntoViewOptions* arg) {
   ScrollIntoViewOptions* options = nullptr;
@@ -2910,7 +2911,7 @@ int Element::scrollHeight() {
   return 0;
 }
 
-ScriptPromise<IDLUndefined> Element::scrollBy(ScriptState* script_state,
+ScriptPromise<ScrollResult> Element::scrollBy(ScriptState* script_state,
                                               double x,
                                               double y) {
   ScrollToOptions* scroll_to_options = ScrollToOptions::Create();
@@ -2919,7 +2920,7 @@ ScriptPromise<IDLUndefined> Element::scrollBy(ScriptState* script_state,
   return scrollBy(script_state, scroll_to_options);
 }
 
-ScriptPromise<IDLUndefined> Element::scrollBy(
+ScriptPromise<ScrollResult> Element::scrollBy(
     ScriptState* script_state,
     const ScrollToOptions* scroll_to_options) {
   if (!InActiveDocument()) {
@@ -2935,11 +2936,11 @@ ScriptPromise<IDLUndefined> Element::scrollBy(
   GetDocument().UpdateStyleAndLayoutForNode(this,
                                             DocumentUpdateReason::kJavaScript);
 
-  ScriptPromiseResolver<IDLUndefined>* resolver = nullptr;
+  ScriptPromiseResolver<ScrollResult>* resolver = nullptr;
   if (script_state &&
       RuntimeEnabledFeatures::ProgrammaticScrollPromiseEnabled()) {
     resolver =
-        MakeGarbageCollected<ScriptPromiseResolver<IDLUndefined>>(script_state);
+        MakeGarbageCollected<ScriptPromiseResolver<ScrollResult>>(script_state);
   }
 
   if (GetDocument().ScrollingElementNoLayout() == this) {
@@ -2951,7 +2952,7 @@ ScriptPromise<IDLUndefined> Element::scrollBy(
   return resolver ? resolver->Promise() : EmptyPromise();
 }
 
-ScriptPromise<IDLUndefined> Element::scrollTo(ScriptState* script_state,
+ScriptPromise<ScrollResult> Element::scrollTo(ScriptState* script_state,
                                               double x,
                                               double y) {
   ScrollToOptions* scroll_to_options = ScrollToOptions::Create();
@@ -2960,14 +2961,14 @@ ScriptPromise<IDLUndefined> Element::scrollTo(ScriptState* script_state,
   return scrollTo(script_state, scroll_to_options);
 }
 
-ScriptPromise<IDLUndefined> Element::scrollTo(
+ScriptPromise<ScrollResult> Element::scrollTo(
     ScriptState* script_state,
     const ScrollToOptions* scroll_to_options) {
-  ScriptPromiseResolver<IDLUndefined>* resolver = nullptr;
+  ScriptPromiseResolver<ScrollResult>* resolver = nullptr;
   if (script_state &&
       RuntimeEnabledFeatures::ProgrammaticScrollPromiseEnabled()) {
     resolver =
-        MakeGarbageCollected<ScriptPromiseResolver<IDLUndefined>>(script_state);
+        MakeGarbageCollected<ScriptPromiseResolver<ScrollResult>>(script_state);
   }
 
   ScrollTo(scroll_to_options, resolver);
@@ -2975,7 +2976,7 @@ ScriptPromise<IDLUndefined> Element::scrollTo(
 }
 
 bool Element::ScrollTo(const ScrollToOptions* scroll_to_options,
-                       ScriptPromiseResolver<IDLUndefined>* resolver) {
+                       ScriptPromiseResolver<ScrollResult>* resolver) {
   if (!InActiveDocument()) {
     if (resolver) {
       resolver->Resolve();
@@ -3017,7 +3018,7 @@ void Element::scrollToForTesting(double x, double y) {
 }
 
 bool Element::ScrollLayoutBoxBy(const ScrollToOptions* scroll_to_options,
-                                ScriptPromiseResolver<IDLUndefined>* resolver) {
+                                ScriptPromiseResolver<ScrollResult>* resolver) {
   gfx::Vector2dF displacement;
   if (scroll_to_options->hasLeft()) {
     displacement.set_x(
@@ -3060,7 +3061,7 @@ bool Element::ScrollLayoutBoxBy(const ScrollToOptions* scroll_to_options,
 }
 
 bool Element::ScrollLayoutBoxTo(const ScrollToOptions* scroll_to_options,
-                                ScriptPromiseResolver<IDLUndefined>* resolver) {
+                                ScriptPromiseResolver<ScrollResult>* resolver) {
   mojom::blink::ScrollBehavior scroll_behavior =
       ScrollableArea::V8EnumToScrollBehavior(
           scroll_to_options->behavior().AsEnum());
@@ -3130,7 +3131,7 @@ bool Element::ScrollLayoutBoxTo(const ScrollToOptions* scroll_to_options,
 }
 
 bool Element::ScrollFrameBy(const ScrollToOptions* scroll_to_options,
-                            ScriptPromiseResolver<IDLUndefined>* resolver) {
+                            ScriptPromiseResolver<ScrollResult>* resolver) {
   gfx::Vector2dF displacement;
   if (scroll_to_options->hasLeft()) {
     displacement.set_x(
@@ -3171,7 +3172,7 @@ bool Element::ScrollFrameBy(const ScrollToOptions* scroll_to_options,
 }
 
 bool Element::ScrollFrameTo(const ScrollToOptions* scroll_to_options,
-                            ScriptPromiseResolver<IDLUndefined>* resolver) {
+                            ScriptPromiseResolver<ScrollResult>* resolver) {
   mojom::blink::ScrollBehavior scroll_behavior =
       ScrollableArea::V8EnumToScrollBehavior(
           scroll_to_options->behavior().AsEnum());
@@ -5883,6 +5884,7 @@ void Element::RebuildLayoutTree(WhitespaceAttacher& whitespace_attacher) {
       child_attacher = &whitespace_attacher;
     }
     RebuildTransitionLayoutTree(*child_attacher);
+    RebuildOverscrollAreaLayoutTree(*child_attacher);
     RebuildPseudoElementLayoutTree(kPseudoIdAfter, *child_attacher);
     RebuildPseudoElementLayoutTree(kPseudoIdPickerIcon, *child_attacher);
     RebuildPseudoElementLayoutTree(kPseudoIdInterestHint, *child_attacher);
@@ -5977,6 +5979,22 @@ void Element::RebuildTransitionLayoutTree(
       };
   ViewTransitionUtils::ForEachTransitionPseudo(
       *this, rebuild_pseudo_tree, ViewTransitionUtils::Filter::kDirectChildren);
+}
+
+void Element::RebuildOverscrollAreaLayoutTree(
+    WhitespaceAttacher& whitespace_attacher) {
+  OverscrollAreaTracker* overscroll_area_tracker = GetOverscrollAreaTracker();
+  if (!overscroll_area_tracker) {
+    return;
+  }
+
+  for (Element* overscroll_area :
+       overscroll_area_tracker->DOMSortedElements()) {
+    PseudoElement* pseudo_element =
+        overscroll_area->GetPseudoElement(kPseudoIdOverscrollAreaParent);
+    pseudo_element->RebuildLayoutTree(whitespace_attacher);
+    CHECK(pseudo_element->GetLayoutObject());
+  }
 }
 
 void Element::AttachOverscrollPseudoElements(AttachContext& context) {
@@ -6180,7 +6198,7 @@ bool Element::RecalcSelfOrAncestorHasDirAuto() {
   if (IsHTMLElement()) {
     AtomicString dir_attribute_value = FastGetAttribute(html_names::kDirAttr);
     if (HTMLElement::IsValidDirAttribute(dir_attribute_value)) {
-      return EqualIgnoringASCIICase(dir_attribute_value, "auto");
+      return EqualIgnoringAsciiCase(dir_attribute_value, "auto");
     }
   }
   Node* parent = parentNode();
@@ -7348,9 +7366,9 @@ const char* Element::ErrorMessageForAttachShadow(
       return "attachShadow() is disabled by disabledFeatures static field.";
     }
   }
-  if (EqualIgnoringASCIICase(mode, keywords::kOpen)) {
+  if (EqualIgnoringAsciiCase(mode, keywords::kOpen)) {
     mode_out = ShadowRootMode::kOpen;
-  } else if (EqualIgnoringASCIICase(mode, keywords::kClosed)) {
+  } else if (EqualIgnoringAsciiCase(mode, keywords::kClosed)) {
     mode_out = ShadowRootMode::kClosed;
   } else {
     CHECK(for_declarative);
@@ -9333,7 +9351,7 @@ void Element::setOuterHTML(
 Node* Element::InsertAdjacent(const String& where,
                               Node* new_child,
                               ExceptionState& exception_state) {
-  if (EqualIgnoringASCIICase(where, "beforeBegin")) {
+  if (EqualIgnoringAsciiCase(where, "beforeBegin")) {
     if (ContainerNode* parent = parentNode()) {
       parent->InsertBefore(new_child, this, exception_state);
       if (!exception_state.HadException()) {
@@ -9343,17 +9361,17 @@ Node* Element::InsertAdjacent(const String& where,
     return nullptr;
   }
 
-  if (EqualIgnoringASCIICase(where, "afterBegin")) {
+  if (EqualIgnoringAsciiCase(where, "afterBegin")) {
     InsertBefore(new_child, firstChild(), exception_state);
     return exception_state.HadException() ? nullptr : new_child;
   }
 
-  if (EqualIgnoringASCIICase(where, "beforeEnd")) {
+  if (EqualIgnoringAsciiCase(where, "beforeEnd")) {
     AppendChild(new_child, exception_state);
     return exception_state.HadException() ? nullptr : new_child;
   }
 
-  if (EqualIgnoringASCIICase(where, "afterEnd")) {
+  if (EqualIgnoringAsciiCase(where, "afterEnd")) {
     if (ContainerNode* parent = parentNode()) {
       parent->InsertBefore(new_child, nextSibling(), exception_state);
       if (!exception_state.HadException()) {
@@ -9493,8 +9511,8 @@ bool Element::SkippedContainerStyleRecalc() const {
 static Node* ContextNodeForInsertion(const String& where,
                                      Element* element,
                                      ExceptionState& exception_state) {
-  if (EqualIgnoringASCIICase(where, "beforeBegin") ||
-      EqualIgnoringASCIICase(where, "afterEnd")) {
+  if (EqualIgnoringAsciiCase(where, "beforeBegin") ||
+      EqualIgnoringAsciiCase(where, "afterEnd")) {
     Node* parent = element->parentNode();
     if (!parent || IsA<Document>(parent)) {
       exception_state.ThrowDOMException(
@@ -9504,8 +9522,8 @@ static Node* ContextNodeForInsertion(const String& where,
     }
     return parent;
   }
-  if (EqualIgnoringASCIICase(where, "afterBegin") ||
-      EqualIgnoringASCIICase(where, "beforeEnd")) {
+  if (EqualIgnoringAsciiCase(where, "afterBegin") ||
+      EqualIgnoringAsciiCase(where, "beforeEnd")) {
     return element;
   }
   exception_state.ThrowDOMException(
@@ -9994,6 +10012,16 @@ bool Element::ShouldStoreComputedStyle(const ComputedStyle& style) const {
     // from its `::column`.
     return true;
   }
+
+  if (IsPseudoElement() && style.Display() == EDisplay::kNone) {
+    if (const ComputedStyle* base = style.GetBaseComputedStyle()) {
+      if (base->Display() != EDisplay::kNone) {
+        // Store the computed style  if animating to or from display:none.
+        return true;
+      }
+    }
+  }
+
   if (auto* svg_element = DynamicTo<SVGElement>(this)) {
     if (!svg_element->HasSVGParent()) {
       return false;
@@ -10312,16 +10340,28 @@ PseudoElement* Element::UpdatePseudoElement(
         cache->RemoveSubtree(this, /*remove_root*/ false);
       }
       element->RecalcStyle(change.ForPseudoElement(), style_recalc_context);
+      const ComputedStyle* style = element->GetComputedStyle();
+      if (!style) {
+        generate_pseudo = false;
+      }
       if (element->NeedsReattachLayoutTree() &&
           !PseudoElementLayoutObjectIsNeeded(
               pseudo_id, element->GetComputedStyle(), this)) {
-        generate_pseudo = false;
-        // If the content property is relying on attr() we should add the
-        // originating element's ComputedStyle to the pseudo-element style
-        // cache, so that when attribute value changes it will force style
-        // invalidation.
-        if (element->GetComputedStyle() &&
-            element->GetComputedStyle()->HasAttrFunction() &&
+        if (!element->HasAnimations()) {
+          // Pseudo-element still needed even if no layout object required
+          // in cases where there is a running animation. Otherwise the
+          // pseudo popping back into existence would cause animations to
+          // restart. Display:none is explicitly called out in the spec that
+          // it should not cancel the animation. Similarly, the content property
+          // can be animated (discrete animation type).
+          generate_pseudo = false;
+        }
+        // If the content property is relying on attr(), we should add the
+        // pseudo-element's ComputedStyle to the originating element's style
+        // cache, so that when the attribute value changes we will cause a
+        // pseudo-element update via
+        // ComputedStyle::Difference::kPseudoElementStyle.
+        if (style && style->HasAttrFunction() &&
             !GetComputedStyle()->GetCachedPseudoElementStyle(pseudo_id,
                                                              g_null_atom)) {
           GetComputedStyle()->AddCachedPseudoElementStyle(
@@ -10383,9 +10423,10 @@ bool Element::SetAssociatedPseudoElement(
       pseudo_element->StyleForLayoutObject(style_recalc_context);
   if (!PseudoElementLayoutObjectIsNeeded(pseudo_id, pseudo_style, this)) {
     data_ = RareData()->SetPseudoElement(pseudo_id, nullptr, pseudo_argument);
-    // If the content property is relying on attr() we should add the
-    // originating element's ComputedStyle to the pseudo-element style cache, so
-    // that when attribute value changes it will force style invalidation.
+    // If the content property is relying on attr(), we add the pseudo-element's
+    // ComputedStyle to the originating element's style cache, so that when the
+    // attribute value changes we will cause a pseudo-element update via
+    // ComputedStyle::Difference::kPseudoElementStyle.
     if (pseudo_style && pseudo_style->HasAttrFunction() &&
         !GetComputedStyle()->GetCachedPseudoElementStyle(pseudo_id,
                                                          g_null_atom)) {
@@ -11134,11 +11175,11 @@ SpellcheckAttributeState Element::GetSpellcheckAttributeState() const {
   if (value == g_null_atom) {
     return kSpellcheckAttributeDefault;
   }
-  if (EqualIgnoringASCIICase(value, "true") ||
-      EqualIgnoringASCIICase(value, "")) {
+  if (EqualIgnoringAsciiCase(value, "true") ||
+      EqualIgnoringAsciiCase(value, "")) {
     return kSpellcheckAttributeTrue;
   }
-  if (EqualIgnoringASCIICase(value, "false")) {
+  if (EqualIgnoringAsciiCase(value, "false")) {
     return kSpellcheckAttributeFalse;
   }
 

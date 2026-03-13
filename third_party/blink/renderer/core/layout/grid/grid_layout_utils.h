@@ -20,6 +20,7 @@ class BlockNode;
 class BoxFragmentBuilder;
 class ConstraintSpace;
 class GridLayoutData;
+class GridItems;
 class GridLayoutTrackCollection;
 class GridLineResolver;
 class GridSizingTrackCollection;
@@ -46,7 +47,8 @@ class BaselineAccumulator {
   virtual void Accumulate(const GridItemData& item,
                           const LogicalBoxFragment& fragment,
                           const LayoutUnit block_offset,
-                          LayoutUnit item_stacking_position) = 0;
+                          LayoutUnit item_stacking_position,
+                          bool item_moved_to_earlier_opening) = 0;
 
   virtual std::optional<LayoutUnit> FirstBaseline() const = 0;
   virtual std::optional<LayoutUnit> LastBaseline() const = 0;
@@ -256,6 +258,10 @@ void InitializeTrackCollection(const SubgriddedItemData& opt_subgrid_data,
                                const LogicalSize grid_available_size,
                                GridTrackSizingDirection track_direction,
                                GridLayoutData* layout_data);
+
+// Checks if any of the items within `grid_items` have block-size dependent
+// sizing.
+bool HasBlockSizeDependentGridItem(const GridItems& grid_items);
 
 }  // namespace blink
 

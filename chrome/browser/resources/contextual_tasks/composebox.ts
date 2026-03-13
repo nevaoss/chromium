@@ -16,7 +16,7 @@ import {I18nMixinLit} from '//resources/cr_elements/i18n_mixin_lit.js';
 import {assert} from '//resources/js/assert.js';
 import {EventTracker} from '//resources/js/event_tracker.js';
 import {loadTimeData} from '//resources/js/load_time_data.js';
-import type {AutocompleteMatch, AutocompleteResult, PageCallbackRouter as SearchboxPageCallbackRouter} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import type {AutocompleteMatch, AutocompleteResult, PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerRemote as SearchboxPageHandlerRemote} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import {ToolMode} from '//resources/mojo/components/omnibox/composebox/composebox_query.mojom-webui.js';
 import type {UnguessableToken} from '//resources/mojo/mojo/public/mojom/base/unguessable_token.mojom-webui.js';
 import {CrLitElement} from 'chrome://resources/lit/v3_0/lit.rollup.js';
@@ -25,7 +25,17 @@ import type {PropertyValues} from 'chrome://resources/lit/v3_0/lit.rollup.js';
 import {getCss} from './composebox.css.js';
 import {getHtml} from './composebox.html.js';
 import {VoiceSearchState} from './constants.js';
+import {IconType} from './contextual_tasks.mojom-webui.js';
 import type {ContextualTasksOnboardingTooltipElement} from './onboarding_tooltip.js';
+
+const ICON_TYPE_TO_NAME: {[id: number]: string} = {
+  [IconType.kUnspecified]: 'unspecified',
+  [IconType.kAdd]: 'add',
+  [IconType.kFormatQuoteFilled]: 'quoteFilled',
+  [IconType.kImage]: 'image',
+  [IconType.kDrivePdf]: 'drivePdf',
+  [IconType.kCheck]: 'check',
+};
 
 function recordVoiceSearchAction(voiceSearchState: VoiceSearchState) {
   // Safety return statement in rare case chrome metrics is not available.
@@ -119,6 +129,7 @@ export class ContextualTasksComposeboxElement extends I18nMixinLit
         type: Boolean,
         reflect: true,
       },
+      selectedMatchIndex_: {type: Number},
     };
   }
 
@@ -151,6 +162,8 @@ export class ContextualTasksComposeboxElement extends I18nMixinLit
       loadTimeData.getBoolean('showOnboardingTooltip');
   protected accessor activeToolMode_: ToolMode = ToolMode.kUnspecified;
   protected accessor showSuggestionsActivityLink_: boolean = false;
+  protected accessor selectedMatchIndex_: number = -1;
+  protected searchboxHandler_: SearchboxPageHandlerRemote;
   private eventTracker_: EventTracker = new EventTracker();
   private pageHandler_: PageHandlerRemote;
   private searchboxCallbackRouter_: SearchboxPageCallbackRouter;
@@ -166,12 +179,15 @@ export class ContextualTasksComposeboxElement extends I18nMixinLit
   private tooltipImpressionTimer_: number|null = null;
   private readonly tooltipImpressionDelay_: number =
       loadTimeData.getInteger('composeboxShowOnboardingTooltipImpressionDelay');
+  protected caretAnimationsEnabled_: boolean =
+      loadTimeData.getBoolean('caretAnimationEnabled');
 
   constructor() {
     super();
     this.pageHandler_ = ComposeboxProxyImpl.getInstance().handler;
     this.searchboxCallbackRouter_ =
         ComposeboxProxyImpl.getInstance().searchboxCallbackRouter;
+    this.searchboxHandler_ = ComposeboxProxyImpl.getInstance().searchboxHandler;
   }
 
   override connectedCallback() {
@@ -294,7 +310,7 @@ export class ContextualTasksComposeboxElement extends I18nMixinLit
   }
 
   protected getInputPlaceholder_() {
-    return this.maybeShowOverlayHintText ?
+    return this.maybeShowOverlayHintText && !this.$.composebox.hasFiles() ?
         loadTimeData.getString('composeboxHintTextLensOverlay') :
         '';
   }
@@ -356,16 +372,51 @@ export class ContextualTasksComposeboxElement extends I18nMixinLit
         !this.userDismissedTooltip_;
   }
 
-  protected onTooltipDismissed_() {
+  protected onOnboardingTooltipDismissed_() {
     this.userDismissedTooltip_ = true;
     this.onboardingTooltipIsVisible_ = false;
     this.stopObservingResize_();
     this.clearTooltipImpressionTimer_();
   }
 
-  protected onSuggestionsResultReceived_(e: CustomEvent<AutocompleteResult>) {
+  protected onSuggestionsResultChanged_(e: CustomEvent<AutocompleteResult>) {
     this.isLoading_ = false;
     this.zeroStateSuggestions_ = e.detail;
+  }
+
+  // Handle keyboard events on the suggestions dropdown.
+  protected onDropdownKeydown_(e: KeyboardEvent) {
+    if (e.key === 'Enter') {
+      this.navigateToMatch_(this.selectedMatchIndex_);
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }
+
+  private updateSelection_(index: number) {
+    this.selectedMatchIndex_ = index;
+  }
+
+  protected onMatchFocusin_(e: CustomEvent<{index: number}>) {
+    this.updateSelection_(e.detail.index);
+  }
+
+  private navigateToMatch_(index: number) {
+    const match = this.zeroStateSuggestions_?.matches[index];
+
+    if (match) {
+      this.searchboxHandler_.openAutocompleteMatch(
+          /*line=*/ index,
+          /*url=*/ match.destinationUrl,
+          /*areMatchesShowing=*/ true,
+          /*mouseButton=*/ 0,
+          /*altKey=*/ false,
+          /*ctrlKey=*/ false,
+          /*metaKey=*/ false,
+          /*shiftKey=*/ false);
+    }
+    this.clearInputAndFocus(/* querySubmitted= */ true);
+    this.selectedMatchIndex_ = -1;
   }
 
   private clearTooltipImpressionTimer_() {
@@ -392,11 +443,11 @@ export class ContextualTasksComposeboxElement extends I18nMixinLit
     composebox.animationState = GlowAnimationState.EXPANDING;
   }
 
-  protected handleImageUpload_() {
+  protected onOpenImageUpload_() {
     this.pageHandler_.handleFileUpload(true);
   }
 
-  protected handleFileUpload_() {
+  protected onOpenFileUpload_() {
     this.pageHandler_.handleFileUpload(false);
   }
 
@@ -425,6 +476,13 @@ export class ContextualTasksComposeboxElement extends I18nMixinLit
 
   injectInput(title: string, thumbnail: string, fileToken: UnguessableToken) {
     this.$.composebox.injectInput(title, thumbnail, fileToken);
+  }
+
+  injectInputWithIcon(
+      title: string, iconId: IconType, fileToken: UnguessableToken) {
+    this.$.composebox.injectInput(
+        title, '', fileToken,
+        ICON_TYPE_TO_NAME[iconId as number] ?? 'unspecified');
   }
 
   deleteFile(fileToken: UnguessableToken) {

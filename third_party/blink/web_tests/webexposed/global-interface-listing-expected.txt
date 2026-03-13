@@ -2087,6 +2087,7 @@ interface Document : Node
     getter onmouseover
     getter onmouseup
     getter onmousewheel
+    getter onoverscroll
     getter onpaste
     getter onpause
     getter onplay
@@ -2314,6 +2315,7 @@ interface Document : Node
     setter onmouseover
     setter onmouseup
     setter onmousewheel
+    setter onoverscroll
     setter onpaste
     setter onpause
     setter onplay
@@ -3054,7 +3056,6 @@ interface Float16Array : TypedArray
     method constructor
 interface FocusEvent : UIEvent
     attribute @@toStringTag
-    getter pseudoTarget
     getter relatedTarget
     method constructor
 interface FontData
@@ -4002,6 +4003,7 @@ interface HTMLElement : Element
     getter onmouseover
     getter onmouseup
     getter onmousewheel
+    getter onoverscroll
     getter onpaste
     getter onpause
     getter onplay
@@ -4142,6 +4144,7 @@ interface HTMLElement : Element
     setter onmouseover
     setter onmouseup
     setter onmousewheel
+    setter onoverscroll
     setter onpaste
     setter onpause
     setter onplay
@@ -5888,7 +5891,6 @@ interface KeyboardEvent : UIEvent
     getter keyCode
     getter location
     getter metaKey
-    getter pseudoTarget
     getter repeat
     getter shiftKey
     method constructor
@@ -6146,6 +6148,7 @@ interface MathMLElement : Element
     getter onmouseover
     getter onmouseup
     getter onmousewheel
+    getter onoverscroll
     getter onpaste
     getter onpause
     getter onplay
@@ -6261,6 +6264,7 @@ interface MathMLElement : Element
     setter onmouseover
     setter onmouseup
     setter onmousewheel
+    setter onoverscroll
     setter onpaste
     setter onpause
     setter onplay
@@ -6719,7 +6723,6 @@ interface MouseEvent : UIEvent
     getter offsetY
     getter pageX
     getter pageY
-    getter pseudoTarget
     getter relatedTarget
     getter screenX
     getter screenY
@@ -6977,7 +6980,6 @@ interface Navigator
     method updateAdInterestGroups
     method vibrate
     method webkitGetUserMedia
-    setter modelContext
     setter modelContextTesting
 interface NavigatorLogin
     attribute @@toStringTag
@@ -7349,6 +7351,10 @@ interface OverconstrainedError : DOMException
     attribute @@toStringTag
     getter constraint
     method constructor
+interface OverscrollEvent : Event
+    attribute @@toStringTag
+    getter overscrollElement
+    method constructor
 interface PageRevealEvent : Event
     attribute @@toStringTag
     getter viewTransition
@@ -7435,6 +7441,7 @@ interface PaymentMethodChangeEvent : PaymentRequestUpdateEvent
     getter methodName
     method constructor
 interface PaymentRequest : EventTarget
+    static method getSecurePaymentConfirmationCapabilities
     static method securePaymentConfirmationAvailability
     attribute @@toStringTag
     getter id
@@ -7545,6 +7552,7 @@ interface PerformanceLongAnimationFrameTiming : PerformanceEntry
     attribute @@toStringTag
     getter blockingDuration
     getter firstUIEventTimestamp
+    getter layoutDuration
     getter paintTime
     getter presentationTime
     getter renderStart
@@ -7650,6 +7658,7 @@ interface PerformanceResourceTiming : PerformanceEntry
 interface PerformanceScriptTiming : PerformanceEntry
     attribute @@toStringTag
     getter executionStart
+    getter forcedLayoutDuration
     getter forcedStyleAndLayoutDuration
     getter forcedStyleDuration
     getter invoker
@@ -8362,6 +8371,7 @@ interface Request
     getter headers
     getter integrity
     getter isHistoryNavigation
+    getter isReloadNavigation
     getter keepalive
     getter method
     getter mode
@@ -8717,6 +8727,7 @@ interface SVGElement : Element
     getter onmouseover
     getter onmouseup
     getter onmousewheel
+    getter onoverscroll
     getter onpaste
     getter onpause
     getter onplay
@@ -8834,6 +8845,7 @@ interface SVGElement : Element
     setter onmouseover
     setter onmouseup
     setter onmousewheel
+    setter onoverscroll
     setter onpaste
     setter onpause
     setter onplay
@@ -9987,6 +9999,7 @@ interface SnapEvent : Event
     method constructor
 interface SoftNavigationEntry : PerformanceEntry
     attribute @@toStringTag
+    getter largestInteractionContentfulPaint
     getter navigationType
     getter paintTime
     getter presentationTime
@@ -10539,7 +10552,6 @@ interface TouchEvent : UIEvent
     getter changedTouches
     getter ctrlKey
     getter metaKey
-    getter pseudoTarget
     getter shiftKey
     getter targetTouches
     getter touches
@@ -10660,6 +10672,7 @@ interface TrustedTypePolicyFactory
 interface UIEvent : Event
     attribute @@toStringTag
     getter detail
+    getter pseudoTarget
     getter sourceCapabilities
     getter view
     getter which
@@ -13592,6 +13605,7 @@ namespace console
     getter onmove
     getter onoffline
     getter ononline
+    getter onoverscroll
     getter onpagehide
     getter onpagereveal
     getter onpageshow
@@ -13827,6 +13841,7 @@ namespace console
     setter onmove
     setter onoffline
     setter ononline
+    setter onoverscroll
     setter onpagehide
     setter onpagereveal
     setter onpageshow

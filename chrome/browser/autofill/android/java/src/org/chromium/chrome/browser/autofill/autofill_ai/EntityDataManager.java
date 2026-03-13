@@ -21,8 +21,12 @@ import org.chromium.components.autofill.autofill_ai.EntityInstance;
 import org.chromium.components.autofill.autofill_ai.EntityInstanceWithLabels;
 import org.chromium.components.autofill.autofill_ai.EntityType;
 
+import java.text.Collator;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Android wrapper of the EntityDataManager which provides access from the Java layer.
@@ -115,6 +119,48 @@ public class EntityDataManager implements Destroyable {
         ThreadUtils.assertOnUiThread();
         return EntityDataManagerJni.get()
                 .getSortedEntityTypesForListDisplay(mNativeEntityDataManagerAndroid);
+    }
+
+    /**
+     * Returns a map of {@link EntityType} to a list of {@link EntityInstanceWithLabels}. The map is
+     * sorted based on the order of entity types returned by {@link
+     * #getSortedEntityTypesForListDisplay()}.
+     */
+    public LinkedHashMap<EntityType, List<EntityInstanceWithLabels>> getInstancesToList() {
+        ThreadUtils.assertOnUiThread();
+        List<EntityInstanceWithLabels> allInstances = getEntitiesWithLabels();
+
+        Map<Integer, List<EntityInstanceWithLabels>> instancesByType = new HashMap<>();
+        for (EntityInstanceWithLabels instance : allInstances) {
+            int typeName = instance.getEntityType().getTypeName();
+            instancesByType.computeIfAbsent(typeName, k -> new ArrayList<>()).add(instance);
+        }
+
+        Collator collator = Collator.getInstance();
+        collator.setStrength(Collator.PRIMARY);
+
+        List<EntityType> sortedTypes = getSortedEntityTypesForListDisplay();
+        LinkedHashMap<EntityType, List<EntityInstanceWithLabels>> result = new LinkedHashMap<>();
+        for (EntityType type : sortedTypes) {
+            List<EntityInstanceWithLabels> typeInstances =
+                    instancesByType.getOrDefault(type.getTypeName(), new ArrayList<>());
+            typeInstances.sort(
+                    (a, b) -> {
+                        int labelComparison =
+                                collator.compare(
+                                        a.getEntityInstanceLabel(), b.getEntityInstanceLabel());
+
+                        if (labelComparison != 0) {
+                            return labelComparison;
+                        }
+
+                        // If the primary labels are the same, compare the sub-labels.
+                        return collator.compare(
+                                a.getEntityInstanceSubLabel(), b.getEntityInstanceSubLabel());
+                    });
+            result.put(type, typeInstances);
+        }
+        return result;
     }
 
     /** Called by C++ when there is a change in the instances. */

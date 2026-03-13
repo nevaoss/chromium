@@ -46,7 +46,6 @@ import org.chromium.base.supplier.SettableNonNullObservableSupplier;
 import org.chromium.base.supplier.SupplierUtils;
 import org.chromium.base.version_info.VersionInfo;
 import org.chromium.build.BuildConfig;
-import org.chromium.build.annotations.NonNull;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.ActivityTabProvider;
@@ -170,6 +169,7 @@ import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabAssociatedApp;
 import org.chromium.chrome.browser.tab.TabFavicon;
 import org.chromium.chrome.browser.tab.TabLaunchType;
+import org.chromium.chrome.browser.tab_bottom_sheet.CoBrowseViewFactory;
 import org.chromium.chrome.browser.tab_bottom_sheet.TabBottomSheetFusebox.TabBottomSheetFuseboxConfig;
 import org.chromium.chrome.browser.tab_bottom_sheet.TabBottomSheetManager;
 import org.chromium.chrome.browser.tab_bottom_sheet.TabBottomSheetUtils;
@@ -313,10 +313,10 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
     private @Nullable LoadingFullscreenCoordinator mLoadingFullscreenCoordinator;
     private @Nullable BookmarkOpener mBookmarkOpener;
     private @Nullable TabBottomSheetManager mTabBottomSheetManager;
-    private final @NonNull MonotonicObservableSupplier<BookmarkManagerOpener>
-            mBookmarkManagerOpenerSupplier;
-    private @NonNull AdvancedProtectionCoordinator mAdvancedProtectionCoordinator;
-    private final @NonNull KeyboardFocusRowManager mKeyboardFocusRowManager;
+    private @Nullable CoBrowseViewFactory mCoBrowseViewFactory;
+    private final MonotonicObservableSupplier<BookmarkManagerOpener> mBookmarkManagerOpenerSupplier;
+    private AdvancedProtectionCoordinator mAdvancedProtectionCoordinator;
+    private final KeyboardFocusRowManager mKeyboardFocusRowManager;
     private CharSequence mApplicationLabel;
     private TipsOptInCoordinator mTipsOptInCoordinator;
     private final OneshotSupplier<ChromeInactivityTracker> mInactivityTrackerSupplier;
@@ -435,65 +435,60 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
      *     space mode, false otherwise.
      */
     public TabbedRootUiCoordinator(
-            @NonNull AppCompatActivity activity,
+            AppCompatActivity activity,
             @Nullable Callback<Boolean> onOmniboxFocusChangedListener,
-            @NonNull MonotonicObservableSupplier<ShareDelegate> shareDelegateSupplier,
-            @NonNull ActivityTabProvider tabProvider,
-            @NonNull MonotonicObservableSupplier<Profile> profileSupplier,
-            @NonNull NullableObservableSupplier<BookmarkModel> bookmarkModelSupplier,
-            @NonNull MonotonicObservableSupplier<TabBookmarker> tabBookmarkerSupplier,
-            @NonNull MonotonicObservableSupplier<TabModelSelector> tabModelSelectorSupplier,
-            @NonNull OneshotSupplier<TabSwitcher> tabSwitcherSupplier,
-            @NonNull OneshotSupplier<TabSwitcher> incognitoTabSwitcherSupplier,
-            @NonNull OneshotSupplier<HubManager> hubManagerSupplier,
-            @NonNull OneshotSupplier<ToolbarIntentMetadata> intentMetadataOneshotSupplier,
-            @NonNull OneshotSupplier<LayoutStateProvider> layoutStateProviderOneshotSupplier,
-            @NonNull BrowserControlsManager browserControlsManager,
-            @NonNull ActivityWindowAndroid windowAndroid,
-            @NonNull ActivityResultTracker activityResultTracker,
-            @NonNull OneshotSupplier chromeAndroidTaskSupplier,
-            @NonNull ActivityLifecycleDispatcher activityLifecycleDispatcher,
-            @NonNull MonotonicObservableSupplier<LayoutManagerImpl> layoutManagerSupplier,
-            @NonNull MenuOrKeyboardActionController menuOrKeyboardActionController,
-            @NonNull Supplier<Integer> activityThemeColorSupplier,
-            @NonNull MonotonicObservableSupplier<ModalDialogManager> modalDialogManagerSupplier,
-            @NonNull AppMenuBlocker appMenuBlocker,
-            @NonNull BooleanSupplier supportsAppMenuSupplier,
-            @NonNull BooleanSupplier supportsFindInPage,
-            @NonNull Supplier<TabCreatorManager> tabCreatorManagerSupplier,
-            @NonNull FullscreenManager fullscreenManager,
-            @NonNull Supplier<CompositorViewHolder> compositorViewHolderSupplier,
-            @NonNull Supplier<TabContentManager> tabContentManagerSupplier,
-            @NonNull MonotonicObservableSupplier<SnackbarManager> snackbarManagerSupplier,
-            @NonNull SettableMonotonicObservableSupplier<EdgeToEdgeController> edgeToEdgeSupplier,
-            @NonNull TopInsetProvider topInsetProvider,
-            @NonNull OneshotSupplierImpl<SystemBarColorHelper> systemBarColorHelperSupplier,
+            MonotonicObservableSupplier<ShareDelegate> shareDelegateSupplier,
+            ActivityTabProvider tabProvider,
+            MonotonicObservableSupplier<Profile> profileSupplier,
+            NullableObservableSupplier<BookmarkModel> bookmarkModelSupplier,
+            MonotonicObservableSupplier<TabBookmarker> tabBookmarkerSupplier,
+            MonotonicObservableSupplier<TabModelSelector> tabModelSelectorSupplier,
+            OneshotSupplier<TabSwitcher> tabSwitcherSupplier,
+            OneshotSupplier<TabSwitcher> incognitoTabSwitcherSupplier,
+            OneshotSupplier<HubManager> hubManagerSupplier,
+            OneshotSupplier<ToolbarIntentMetadata> intentMetadataOneshotSupplier,
+            OneshotSupplier<LayoutStateProvider> layoutStateProviderOneshotSupplier,
+            BrowserControlsManager browserControlsManager,
+            ActivityWindowAndroid windowAndroid,
+            ActivityResultTracker activityResultTracker,
+            OneshotSupplier chromeAndroidTaskSupplier,
+            ActivityLifecycleDispatcher activityLifecycleDispatcher,
+            MonotonicObservableSupplier<LayoutManagerImpl> layoutManagerSupplier,
+            MenuOrKeyboardActionController menuOrKeyboardActionController,
+            Supplier<Integer> activityThemeColorSupplier,
+            MonotonicObservableSupplier<ModalDialogManager> modalDialogManagerSupplier,
+            AppMenuBlocker appMenuBlocker,
+            BooleanSupplier supportsAppMenuSupplier,
+            BooleanSupplier supportsFindInPage,
+            Supplier<TabCreatorManager> tabCreatorManagerSupplier,
+            FullscreenManager fullscreenManager,
+            Supplier<CompositorViewHolder> compositorViewHolderSupplier,
+            Supplier<TabContentManager> tabContentManagerSupplier,
+            MonotonicObservableSupplier<SnackbarManager> snackbarManagerSupplier,
+            SettableMonotonicObservableSupplier<EdgeToEdgeController> edgeToEdgeSupplier,
+            TopInsetProvider topInsetProvider,
+            OneshotSupplierImpl<SystemBarColorHelper> systemBarColorHelperSupplier,
             @ActivityType int activityType,
-            @NonNull Supplier<Boolean> isInOverviewModeSupplier,
-            @NonNull AppMenuDelegate appMenuDelegate,
-            @NonNull StatusBarColorProvider statusBarColorProvider,
-            @NonNull
-                    SettableMonotonicObservableSupplier<EphemeralTabCoordinator>
-                            ephemeralTabCoordinatorSupplier,
-            @NonNull IntentRequestTracker intentRequestTracker,
-            @NonNull InsetObserver insetObserver,
-            @NonNull Function<Tab, Boolean> backButtonShouldCloseTabFn,
-            @NonNull Callback<Tab> sendToBackground,
+            Supplier<Boolean> isInOverviewModeSupplier,
+            AppMenuDelegate appMenuDelegate,
+            StatusBarColorProvider statusBarColorProvider,
+            SettableMonotonicObservableSupplier<EphemeralTabCoordinator>
+                    ephemeralTabCoordinatorSupplier,
+            IntentRequestTracker intentRequestTracker,
+            InsetObserver insetObserver,
+            Function<Tab, Boolean> backButtonShouldCloseTabFn,
+            Callback<Tab> sendToBackground,
             boolean initializeUiWithIncognitoColors,
-            @NonNull BackPressManager backPressManager,
+            BackPressManager backPressManager,
             @Nullable Bundle savedInstanceState,
             @Nullable PersistableBundle persistentState,
             @Nullable MultiInstanceManager multiInstanceManager,
-            @NonNull NonNullObservableSupplier<Integer> overviewColorSupplier,
-            @NonNull
-                    MonotonicObservableSupplier<ManualFillingComponent>
-                            manualFillingComponentSupplier,
-            @NonNull EdgeToEdgeManager edgeToEdgeManager,
-            @NonNull
-                    MonotonicObservableSupplier<BookmarkManagerOpener>
-                            bookmarkManagerOpenerSupplier,
+            NonNullObservableSupplier<Integer> overviewColorSupplier,
+            MonotonicObservableSupplier<ManualFillingComponent> manualFillingComponentSupplier,
+            EdgeToEdgeManager edgeToEdgeManager,
+            MonotonicObservableSupplier<BookmarkManagerOpener> bookmarkManagerOpenerSupplier,
             NonNullObservableSupplier<Boolean> xrSpaceModeObservableSupplier,
-            @NonNull OneshotSupplier<ChromeInactivityTracker> inactivityTrackerSupplier) {
+            OneshotSupplier<ChromeInactivityTracker> inactivityTrackerSupplier) {
         super(
                 activity,
                 onOmniboxFocusChangedListener,
@@ -515,7 +510,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                 layoutManagerSupplier,
                 menuOrKeyboardActionController,
                 activityThemeColorSupplier,
-                modalDialogManagerSupplier,
+                modalDialogManagerSupplier.asNonNull(),
                 appMenuBlocker,
                 supportsAppMenuSupplier,
                 supportsFindInPage,
@@ -632,7 +627,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                         compositorViewHolderSupplier,
                         modalDialogManagerSupplier,
                         () -> mLayoutManager.getStripLayoutHelperManager(), // Gets current SLHM
-                        getTabObscuringHandler(),
+                        mTabObscuringHandlerSupplier.get(),
                         () -> mToolbarManager // Gets current value of mToolbarManager
                         );
 
@@ -823,6 +818,11 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
             mTabBottomSheetManager = null;
         }
 
+        if (mCoBrowseViewFactory != null) {
+            mCoBrowseViewFactory.destroy();
+            mCoBrowseViewFactory = null;
+        }
+
         if (mCrossDeviceSettingImporter != null) {
             mCrossDeviceSettingImporter.destroy();
         }
@@ -964,18 +964,18 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                     new TabbedOpenInAppEntryPoint(
                             mActivityTabProvider.asObservable(),
                             assumeNonNull(mOmniboxChipManager),
-                            mActivity);
+                            mActivity,
+                            mTabModelSelectorSupplier);
         }
 
-        if (ChromeFeatureList.sGlicActorUi.isEnabled()
-                && ChromeFeatureList.sGlicActorUiOverlay.getValue()) {
+        if (ChromeFeatureList.sGlic.isEnabled()) {
             ViewStub stub = mActivity.findViewById(R.id.actor_overlay_stub);
             mActorOverlayCoordinator =
                     new ActorOverlayCoordinator(
                             stub,
                             assumeNonNull(mTabModelSelectorSupplier.get()),
                             mBrowserControlsManager,
-                            assumeNonNull(mTabObscuringHandlerSupplier.get()),
+                            mTabObscuringHandlerSupplier.get(),
                             assumeNonNull(mSnackbarManagerSupplier.get()));
         }
     }
@@ -1141,7 +1141,8 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                 mTabModelSelectorSupplier,
                 mModalDialogManagerSupplier,
                 // TODO(agrieve): See if this can be changed to a NonNullObservableSupplier.
-                (MonotonicObservableSupplier<Integer>) mTabStripVisibilitySupplier);
+                (MonotonicObservableSupplier<Integer>) mTabStripVisibilitySupplier,
+                () -> toggleGlic());
     }
 
     @Override
@@ -1570,6 +1571,12 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                         if (hubManager != null) {
                             hubManager.setStatusIndicatorHeight(indicatorHeight);
                         }
+                        // Disable edge-to-edge on top when the status indicator is visible
+                        // to avoid the indicator being obscured by the status bar in e2e
+                        // mode.
+                        if (mTopInsetCoordinator != null) {
+                            mTopInsetCoordinator.setStatusIndicatorVisible(indicatorHeight > 0);
+                        }
                     }
                 };
         mStatusIndicatorCoordinator.addObserver(mStatusIndicatorObserver);
@@ -1671,15 +1678,16 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                             contentView.findViewById(R.id.control_container),
                             contentView.findViewById(R.id.bottom_container),
                             omniboxActionDelegate);
-            mTabBottomSheetManager =
-                    new TabBottomSheetManager(
+            mCoBrowseViewFactory =
+                    new CoBrowseViewFactory(
                             mActivity,
                             fuseboxConfig,
                             mProfileSupplier.asNonNull(),
                             mWindowAndroid,
                             mActivityLifecycleDispatcher,
-                            mSnackbarManagerSupplier.get(),
-                            getBottomSheetController());
+                            mSnackbarManagerSupplier.get());
+            mTabBottomSheetManager =
+                    new TabBottomSheetManager(mWindowAndroid, getBottomSheetController());
         }
     }
 
@@ -1862,6 +1870,8 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         if (mSidePanelContainerCoordinator != null) {
             mSidePanelContainerCoordinator.init();
         }
+
+        mCompositorViewHolderSupplier.get().setSideUiStateProvider(mSideUiCoordinator);
     }
 
     private void destroySideUi() {
@@ -1869,6 +1879,10 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         //
         // Each SideUiContainer implementation that's registered with SideUiCoordinator should be
         // destroyed before SideUiCoordinator.
+
+        // The CompositorViewHolder itself is a SideUiObserver and queries its reference of the
+        // SideUiCoordinator. It's expected to be null by this point.
+        assert mCompositorViewHolderSupplier.get() == null;
 
         if (mSidePanelContainerCoordinator != null) {
             mSidePanelContainerCoordinator.destroy();
@@ -2017,8 +2031,12 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         // any promo that you want to trigger at every startup (temporarily for debugging and/or
         // development).
         if (FullscreenSigninPromoLauncher.launchPromoIfForced(
-                mActivity, profile, SigninAndHistorySyncActivityLauncherImpl.get())) return true;
-        if (PwaRestorePromoUtils.maybeForceShowPromo(profile, mWindowAndroid)) return true;
+                mActivity, profile, SigninAndHistorySyncActivityLauncherImpl.get())) {
+            return true;
+        }
+        if (PwaRestorePromoUtils.maybeForceShowPromo(profile, mWindowAndroid)) {
+            return true;
+        }
 
         return false;
     }
@@ -2057,7 +2075,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         return AppLanguagePromoDialog.maybeShowPrompt(
                 mActivity,
                 profile,
-                mModalDialogManagerSupplier.asNonNull().get(),
+                mModalDialogManagerSupplier.get(),
                 () -> ApplicationLifetime.terminate(true));
     }
 

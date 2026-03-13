@@ -273,7 +273,7 @@ static std::unique_ptr<TextResourceDecoder> CreateResourceTextDecoder(
     options.SetUseLenientXMLDecoding();
     return std::make_unique<TextResourceDecoder>(options);
   }
-  if (EqualIgnoringASCIICase(mime_type, "text/html")) {
+  if (EqualIgnoringAsciiCase(mime_type, "text/html")) {
     return std::make_unique<TextResourceDecoder>(TextResourceDecoderOptions(
         TextResourceDecoderOptions::kHTMLContent, Utf8Encoding()));
   }
@@ -814,7 +814,7 @@ protocol::Response InspectorPageAgent::getAdScriptAncestry(
     for (const auto& ad_script_identifier : ad_script_ancestry.ancestry_chain) {
       ancestry_chain.push_back(
           protocol::Page::AdScriptId::create()
-              .setScriptId(String::Number(ad_script_identifier.id))
+              .setScriptId(String::Number(ad_script_identifier.id.value()))
               .setDebuggerId(ToCoreString(
                   ad_script_identifier.context_id.toString()->string()))
               .build());
@@ -1310,7 +1310,7 @@ void InspectorPageAgent::WindowOpen(const KURL& url,
                                     const AtomicString& window_name,
                                     const WebWindowFeatures& window_features,
                                     bool user_gesture) {
-  GetFrontend()->windowOpen(url.IsEmpty() ? BlankURL() : url, window_name,
+  GetFrontend()->windowOpen(url.IsEmpty() ? BlankUrl() : url, window_name,
                             GetEnabledWindowFeatures(window_features),
                             user_gesture);
   GetFrontend()->flush();

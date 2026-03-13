@@ -473,22 +473,18 @@ public final class ChromePreferenceKeys {
     /**
      * When the user is shown a badge that the current Android OS version is unsupported, and they
      * tap it to display the menu (which has additional information), we store the current version
-     * of Chrome to this preference to ensure we only show the badge once. The value is cleared
-     * if the Chrome version later changes.
+     * of Chrome to this preference to ensure we only show the badge once. The value is cleared if
+     * the Chrome version later changes.
      */
     public static final String LATEST_UNSUPPORTED_VERSION = "android_os_unsupported_chrome_version";
 
-    /** The previous browser process PID, updated when crash reporting is initialized. */
+    /** The previous browser process exit reason, recorded when the process is created. */
+    public static final String LAST_SESSION_BROWSER_EXIT_REASON =
+            "Chrome.CrashReporting.LastSessionBrowserExitReason";
+
+    /** The previous browser process PID, updated on deferred Startup for any ChromeActivity. */
     public static final String LAST_SESSION_BROWSER_PID =
             "Chrome.CrashReporting.LastSessionBrowserPid";
-
-    /**
-     * The application state last recorded by browser in previous session, updated when crash
-     * reporting is initialized and when current application state changes henceforth. If read after
-     * crash reporting is initialized, then the value would hold current session state.
-     */
-    public static final String LAST_SESSION_APPLICATION_STATE =
-            "Chrome.CrashReporting.LastSessionApplicationState";
 
     public static final String LOCALE_MANAGER_AUTO_SWITCH = "LocaleManager_PREF_AUTO_SWITCH";
     public static final String LOCALE_MANAGER_MISSING_TIMEZONES =
@@ -923,10 +919,6 @@ public final class ChromePreferenceKeys {
     // Segmentation platform related prefs.
     public static final String SEGMENTATION_FEED_ACTIVE_USER = "Chrome.Segmentation.FeedActiveUser";
 
-    /** Timestamp for when the user first saw the Setup List on the New Tab Page. */
-    public static final String SETUP_LIST_FIRST_SHOWN_TIMESTAMP =
-            "Chrome.SetupList.FirstShownTimestamp";
-
     /**
      * Key prefix for boolean preferences indicating whether a specific Setup List item has been
      * completed by the user. The ModuleType integer is appended to this prefix to form the unique
@@ -1279,8 +1271,8 @@ public final class ChromePreferenceKeys {
                 IS_LAST_VISITED_TAB_SRP,
                 IS_DSE_GOOGLE,
                 IS_MVT_VISIBLE,
+                LAST_SESSION_BROWSER_EXIT_REASON,
                 LAST_SESSION_BROWSER_PID,
-                LAST_SESSION_APPLICATION_STATE,
                 LOCALE_MANAGER_PROMO_V3_CHECKED,
                 MULTI_WINDOW_START_TIME,
                 MULTI_INSTANCE_CLOSE_WINDOW_SKIP_CONFIRM,
@@ -1357,7 +1349,6 @@ public final class ChromePreferenceKeys {
                 SEARCH_ENGINE_CHOICE_PENDING_OS_CHOICE_DIALOG_SHOWN_ATTEMPTS,
                 SEGMENTATION_FEED_ACTIVE_USER,
                 SERIAL_NOTIFICATION_IDS,
-                SETUP_LIST_FIRST_SHOWN_TIMESTAMP,
                 SETUP_LIST_COMPLETED_KEY_PREFIX.pattern(),
                 SETTINGS_SAFETY_CHECK_LAST_RUN_TIMESTAMP,
                 SETTINGS_SAFETY_CHECK_RUN_COUNTER,

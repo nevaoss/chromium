@@ -539,6 +539,14 @@
   E_CPONLY(kColorProfileMenuPromoButtonsBackground) \
   /* Profiles colors. */ \
   E_CPONLY(kColorProfilesReauthDialogBorder) \
+  /* Projects Panel colors. */ \
+  E_CPONLY(kColorProjectsPanelBackground) \
+  E_CPONLY(kColorProjectsPanelButtonIcon) \
+  E_CPONLY(kColorProjectsPanelButtonHoverBackground) \
+  E_CPONLY(kColorProjectsPanelListsSeparator) \
+  E_CPONLY(kColorProjectsPanelNoTabGroupsText) \
+  E_CPONLY(kColorProjectsPanelTabGroupsDragPlaceholder) \
+  E_CPONLY(kColorProjectsPanelTabGroupsDropIndicator) \
   /* PWA colors. */ \
   E_CPONLY(kColorPwaBackground) \
   E_CPONLY(kColorPwaMenuButtonIcon) \
@@ -1012,6 +1020,7 @@
   E_CPONLY(kColorToolbarTopSeparatorFrameInactive) \
   /* Vertical tabstrip colors. */ \
   E_CPONLY(kColorVerticalTabStripShadow) \
+  E_CPONLY(kColorVerticalTabPinnedOutline) \
   /* WebAuthn colors. */ \
   E_CPONLY(kColorWebAuthnHoverButtonForeground) \
   E_CPONLY(kColorWebAuthnHoverButtonForegroundDisabled) \

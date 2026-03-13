@@ -488,6 +488,18 @@ bool ManifestParser::Parse() {
   if (base::FeatureList::IsEnabled(blink::features::kWebAppMigrationApi)) {
     manifest_->migrate_from = ParseMigrateFrom(root_object.get());
     manifest_->migrate_to = ParseMigrateTo(root_object.get());
+    if (!manifest_->migrate_from.empty()) {
+      UseCounter::Count(execution_context_,
+                        WebFeature::kWebAppManifestMigrateFrom);
+    }
+    if (manifest_->migrate_to) {
+      UseCounter::Count(execution_context_,
+                        WebFeature::kWebAppManifestMigrateTo);
+    }
+    if (!manifest_->migrate_from.empty() || manifest_->migrate_to) {
+      UseCounter::CountWebDXFeature(execution_context_,
+                                    WebDXFeature::kDRAFT_WebAppMigration);
+    }
   }
 
   manifest_->theme_color = ParseThemeColor(root_object.get());
@@ -2384,7 +2396,7 @@ void ManifestParser::CheckIsolatedAppPermissions(const JSONObject* object) {
 
 std::optional<KURL> ManifestParser::ParseIsolatedAppUpdateManifestUrl(
     const JSONObject* object) {
-  KURL url = ParseURL(object, "update_manifest_url", /*base_url=*/KURL(),
+  KURL url = ParseURL(object, "update_manifest_url", /*base_url=*/NullUrl(),
                       ParseURLRestrictions::kNoRestrictions);
   if (!url.IsValid()) {
     return std::nullopt;
@@ -2761,7 +2773,7 @@ ManifestParser::MaybeCreatePatternInit(const JSONObject* pattern_object) {
   KURL base_url;
 
   if (pattern_object->Get("baseURL")) {
-    base_url = ParseURL(pattern_object, "baseURL", KURL(),
+    base_url = ParseURL(pattern_object, "baseURL", NullUrl(),
                         ParseURLRestrictions::kNoRestrictions);
     if (!base_url.IsValid()) {
       return std::nullopt;

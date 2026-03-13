@@ -525,6 +525,13 @@ IN_PROC_BROWSER_TEST_F(ReadAnythingControllerBrowserTest,
   content::WebContents* web_contents1 = web_view->GetWebContents();
   ASSERT_TRUE(web_contents1);
 
+  // Simulate the UI being fully shown. If we don't do this, the controller
+  // will think the UI failed to load and will recreate the wrapper upon
+  // closing.
+  EmitWebUIShowEvent(overlay_view);
+  ASSERT_TRUE(
+      base::test::RunUntil([&]() { return controller->has_shown_ui(); }));
+
   // Close immersive mode
   controller->CloseImmersiveUI();
 
@@ -665,9 +672,43 @@ IN_PROC_BROWSER_TEST_F(ReadAnythingControllerBrowserTest,
   EXPECT_EQ(controller->GetPresentationState(),
             ReadAnythingController::PresentationState::kInSidePanel);
 
+  // Fake that the UI was shown so that the wrapper isn't automatically
+  // recreated (which is tested in
+  // TransferWebUiOwnership_ForcesRecreationIfUiNotShown).
+  controller->OnEntryShown(ReadAnythingOpenTrigger::kOmniboxChip);
+
   controller->TransferWebUiOwnership(std::move(wrapper));
   EXPECT_EQ(controller->GetPresentationState(),
             ReadAnythingController::PresentationState::kInactive);
+}
+
+IN_PROC_BROWSER_TEST_F(ReadAnythingControllerBrowserTest,
+                       TransferWebUiOwnership_ForcesRecreationIfUiNotShown) {
+  tabs::TabInterface* tab = browser()->tab_strip_model()->GetActiveTab();
+  ASSERT_TRUE(tab);
+  auto* controller = ReadAnythingController::From(tab);
+  ASSERT_TRUE(controller);
+
+  // 1. Create the WebUI wrapper.
+  // We do NOT show it, so `has_shown_ui_` remains false (default).
+  std::unique_ptr<WebUIContentsWrapperT<ReadAnythingUntrustedUI>> wrapper =
+      controller->GetOrCreateWebUIWrapper(
+          ReadAnythingController::PresentationState::kInSidePanel);
+  content::WebContents* original_contents = wrapper->web_contents();
+  ASSERT_TRUE(original_contents);
+
+  // 2. Transfer ownership back to the controller.
+  // Because `has_shown_ui_` is false, this should trigger
+  // `RecreateWebUIWrapper()`.
+  controller->TransferWebUiOwnership(std::move(wrapper));
+
+  // 3. Request the wrapper again.
+  std::unique_ptr<WebUIContentsWrapperT<ReadAnythingUntrustedUI>> new_wrapper =
+      controller->GetOrCreateWebUIWrapper(
+          ReadAnythingController::PresentationState::kInSidePanel);
+
+  // 4. Verify that we got a FRESH wrapper (different WebContents).
+  EXPECT_NE(original_contents, new_wrapper->web_contents());
 }
 
 IN_PROC_BROWSER_TEST_F(ReadAnythingControllerBrowserTest,
@@ -1044,6 +1085,8 @@ IN_PROC_BROWSER_TEST_F(ReadAnythingControllerBrowserTest,
   // Open Immersive UI
   controller->ShowImmersiveUI(ReadAnythingOpenTrigger::kOmniboxChip);
   EmitWebUIShowEvent();
+  ASSERT_TRUE(
+      base::test::RunUntil([&]() { return controller->has_shown_ui(); }));
   EXPECT_EQ(controller->GetPresentationState(),
             ReadAnythingController::PresentationState::kInImmersiveOverlay);
 
@@ -1081,6 +1124,8 @@ IN_PROC_BROWSER_TEST_F(ReadAnythingControllerBrowserTest,
   // Open Immersive UI
   controller->ShowImmersiveUI(ReadAnythingOpenTrigger::kOmniboxChip);
   EmitWebUIShowEvent();
+  ASSERT_TRUE(
+      base::test::RunUntil([&]() { return controller->has_shown_ui(); }));
   EXPECT_EQ(controller->GetPresentationState(),
             ReadAnythingController::PresentationState::kInImmersiveOverlay);
 
@@ -1337,6 +1382,7 @@ IN_PROC_BROWSER_TEST_F(ReadAnythingControllerBrowserTest,
 
 IN_PROC_BROWSER_TEST_F(ReadAnythingControllerBrowserTest,
                        OnEntryShownAndHidden_NotifiesService) {
+  base::HistogramTester histogram_tester;
   auto* service = static_cast<MockReadAnythingService*>(
       ReadAnythingServiceFactory::GetInstance()->SetTestingFactoryAndUse(
           browser()->profile(),
@@ -1359,7 +1405,84 @@ IN_PROC_BROWSER_TEST_F(ReadAnythingControllerBrowserTest,
   // Expect service to be notified of hide.
   EXPECT_CALL(*service, OnReadAnythingHidden()).Times(1);
   controller->OnEntryHidden();
+  histogram_tester.ExpectTotalCount(
+      "Accessibility.ReadAnything.ShownDurationMax1Day", 1);
   testing::Mock::VerifyAndClearExpectations(service);
+}
+
+IN_PROC_BROWSER_TEST_F(
+    ReadAnythingControllerBrowserTest,
+    SwitchBetweenImmersiveAndSidePanel_DoesNotRecordHistogram) {
+  base::HistogramTester histogram_tester;
+  tabs::TabInterface* tab = browser()->tab_strip_model()->GetActiveTab();
+  ASSERT_TRUE(tab);
+  auto* controller = ReadAnythingController::From(tab);
+  ASSERT_TRUE(controller);
+  auto* side_panel_ui = browser()->GetFeatures().side_panel_ui();
+
+  controller->ShowImmersiveUI(ReadAnythingOpenTrigger::kOmniboxChip);
+  EmitWebUIShowEvent();
+  AssertOverlayVisibility(/*visible=*/true);
+
+  controller->ShowSidePanelUI(SidePanelOpenTrigger::kAppMenu);
+
+  // Verify Side Panel is open and Immersive UI is closed.
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return side_panel_ui->IsSidePanelEntryShowing(
+        SidePanelEntryKey(SidePanelEntryId::kReadAnything));
+  }));
+  AssertOverlayVisibility(/*visible=*/false);
+
+  histogram_tester.ExpectTotalCount(
+      "Accessibility.ReadAnything.ShownDurationMax1Day", 0);
+
+  side_panel_ui->Close(SidePanelEntry::PanelType::kContent);
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return !side_panel_ui->IsSidePanelEntryShowing(
+        SidePanelEntryKey(SidePanelEntryId::kReadAnything));
+  }));
+
+  histogram_tester.ExpectTotalCount(
+      "Accessibility.ReadAnything.ShownDurationMax1Day", 1);
+}
+
+IN_PROC_BROWSER_TEST_F(
+    ReadAnythingControllerBrowserTest,
+    SwitchBetweenSidePanelAndImmersive_DoesNotRecordHistogram) {
+  base::HistogramTester histogram_tester;
+  tabs::TabInterface* tab = browser()->tab_strip_model()->GetActiveTab();
+  ASSERT_TRUE(tab);
+  auto* controller = ReadAnythingController::From(tab);
+  ASSERT_TRUE(controller);
+  auto* side_panel_ui = browser()->GetFeatures().side_panel_ui();
+
+  controller->ShowSidePanelUI(SidePanelOpenTrigger::kReadAnythingOmniboxChip);
+
+  // Verify Side Panel is open and Immersive UI is closed.
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return side_panel_ui->IsSidePanelEntryShowing(
+        SidePanelEntryKey(SidePanelEntryId::kReadAnything));
+  }));
+  AssertOverlayVisibility(/*visible=*/false);
+
+  controller->ShowImmersiveUI(ReadAnythingOpenTrigger::kAppMenu);
+  EmitWebUIShowEvent();
+
+  // Verify Side Panel is closed and Immersive UI is open.
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return !side_panel_ui->IsSidePanelEntryShowing(
+        SidePanelEntryKey(SidePanelEntryId::kReadAnything));
+  }));
+  AssertOverlayVisibility(/*visible=*/true);
+
+  histogram_tester.ExpectTotalCount(
+      "Accessibility.ReadAnything.ShownDurationMax1Day", 0);
+
+  controller->CloseImmersiveUI();
+  AssertOverlayVisibility(/*visible=*/false);
+
+  histogram_tester.ExpectTotalCount(
+      "Accessibility.ReadAnything.ShownDurationMax1Day", 1);
 }
 
 IN_PROC_BROWSER_TEST_F(ReadAnythingControllerBrowserTest,

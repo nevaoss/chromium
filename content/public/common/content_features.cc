@@ -16,6 +16,10 @@
 #include "content/public/common/buildflags.h"
 #include "media/base/media_switches.h"
 
+#if BUILDFLAG(IS_ANDROID)
+#include "base/android/device_info.h"
+#endif
+
 namespace features {
 
 // All features in alphabetical order.
@@ -771,11 +775,6 @@ BASE_FEATURE(kRenderDocument, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kRestrictThreadPoolInBackground,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Feature that stops broadcasting the history index and length when
-// CreateRenderViewForRenderManager() is invoked, and instead passes the
-// information in the CreateViewParams, saving some IPC calls.
-BASE_FEATURE(kSetHistoryInfoOnViewCreation, base::FEATURE_ENABLED_BY_DEFAULT);
-
 // When enabled, sends the spare renderer information when setting the
 // priority of renderers. Currently only Android handles the spare renderer
 // information in priority.
@@ -1284,6 +1283,9 @@ BASE_FEATURE(kAccessibilityRequestScopedContentChangedEvents,
              "AccessibilityRequestScopedContentChangedEvents",
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+const base::FeatureParam<int> kMaxContentChangedEventsToFireParam{
+    &kAccessibilityRequestScopedContentChangedEvents, "max_events", 30};
+
 // When enabled, supports atomic announcements, meaning that when
 // aria-atomic=true, the entire live region will be announced not just the node
 // that changed.
@@ -1461,5 +1463,18 @@ bool IsPushSubscriptionChangeEventEnabled() {
          base::FeatureList::IsEnabled(
              features::kPushSubscriptionChangeEventOnResubscribe);
 }
+
+#if BUILDFLAG(IS_ANDROID)
+bool IsFluidResizeEnabled() {
+  // On phones, resizes are almost exclusively discrete transitions, such as
+  // orientation swaps. For these events, the standard immediate synchronization
+  // path is more efficient and results in fewer artifacts.
+  // By contrast, the continuous resize logic is optimized for the "live" window
+  // dragging seen on tablets and desktops.
+  return base::FeatureList::IsEnabled(features::kFluidResize) &&
+         (base::android::device_info::is_tablet() ||
+          base::android::device_info::is_desktop());
+}
+#endif
 
 }  // namespace features

@@ -14,6 +14,7 @@ import static org.chromium.chrome.browser.autofill.editors.autofill_ai.EntityEdi
 import static org.chromium.chrome.browser.autofill.editors.autofill_ai.EntityEditorProperties.DONE_RUNNABLE;
 import static org.chromium.chrome.browser.autofill.editors.autofill_ai.EntityEditorProperties.EDITOR_FIELDS;
 import static org.chromium.chrome.browser.autofill.editors.autofill_ai.EntityEditorProperties.EDITOR_TITLE;
+import static org.chromium.chrome.browser.autofill.editors.autofill_ai.EntityEditorProperties.VALIDATE_ON_SHOW;
 import static org.chromium.chrome.browser.autofill.editors.common.EditorComponentsProperties.ItemType.DATE;
 import static org.chromium.chrome.browser.autofill.editors.common.EditorComponentsProperties.ItemType.DROPDOWN;
 import static org.chromium.chrome.browser.autofill.editors.common.EditorComponentsProperties.ItemType.NOTICE;
@@ -22,11 +23,13 @@ import static org.chromium.chrome.browser.autofill.editors.common.EditorComponen
 import static org.chromium.chrome.browser.autofill.editors.common.EditorComponentsProperties.NoticeProperties.NOTICE_ALL_KEYS;
 import static org.chromium.chrome.browser.autofill.editors.common.EditorComponentsProperties.NoticeProperties.NOTICE_TEXT;
 import static org.chromium.chrome.browser.autofill.editors.common.EditorComponentsProperties.NoticeProperties.SHOW_BACKGROUND;
+import static org.chromium.chrome.browser.autofill.editors.common.EditorComponentsProperties.validateForm;
 import static org.chromium.chrome.browser.autofill.editors.common.date_field.DateFieldProperties.DATE_ALL_KEYS;
 import static org.chromium.chrome.browser.autofill.editors.common.dropdown_field.DropdownFieldProperties.DROPDOWN_ALL_KEYS;
 import static org.chromium.chrome.browser.autofill.editors.common.dropdown_field.DropdownFieldProperties.DROPDOWN_KEY_VALUE_LIST;
 import static org.chromium.chrome.browser.autofill.editors.common.field.FieldProperties.IS_REQUIRED;
 import static org.chromium.chrome.browser.autofill.editors.common.field.FieldProperties.LABEL;
+import static org.chromium.chrome.browser.autofill.editors.common.field.FieldProperties.VALIDATOR;
 import static org.chromium.chrome.browser.autofill.editors.common.field.FieldProperties.VALUE;
 import static org.chromium.chrome.browser.autofill.editors.common.text_field.TextFieldProperties.TEXT_ALL_KEYS;
 import static org.chromium.chrome.browser.autofill.editors.common.text_field.TextFieldProperties.TEXT_FIELD_TYPE;
@@ -44,6 +47,7 @@ import org.chromium.chrome.browser.autofill.PersonalDataManager;
 import org.chromium.chrome.browser.autofill.R;
 import org.chromium.chrome.browser.autofill.editors.autofill_ai.EntityEditorCoordinator.Delegate;
 import org.chromium.chrome.browser.autofill.editors.common.EditorComponentsProperties.EditorItem;
+import org.chromium.chrome.browser.autofill.editors.common.date_field.DateFieldValidator;
 import org.chromium.components.autofill.autofill_ai.AttributeInstance;
 import org.chromium.components.autofill.autofill_ai.AttributeType;
 import org.chromium.components.autofill.autofill_ai.DataType;
@@ -114,6 +118,7 @@ class EntityEditorMediator {
                         R.string.autofill_delete_suggestion_button)
                 .with(DELETE_CALLBACK, this::onDelete)
                 .with(ALLOW_DELETE, mEntityInstance.getRecordType() == RecordType.LOCAL)
+                .with(VALIDATE_ON_SHOW, false)
                 .with(EDITOR_FIELDS, getEditorFields())
                 .build();
     }
@@ -136,6 +141,9 @@ class EntityEditorMediator {
     }
 
     private void onDone() {
+        if (!validateForm(mEditorModel.get(EDITOR_FIELDS))) {
+            return;
+        }
         assumeNonNull(mEditorModel).set(EntityEditorProperties.VISIBLE, false);
         commitChanges();
         mDelegate.onDone(mEntityInstance);
@@ -165,7 +173,9 @@ class EntityEditorMediator {
                     mAttributeFields.put(attributeType, countryItem.model);
                     break;
                 case DataType.DATE:
-                    editorFields.add(getDateDropdown(attributeType));
+                    EditorItem dateItem = getDateDropdown(mEntityInstance, attributeType);
+                    editorFields.add(dateItem);
+                    mAttributeFields.put(attributeType, dateItem.model);
                     break;
                 default:
                     assert false
@@ -208,12 +218,26 @@ class EntityEditorMediator {
                         .build());
     }
 
-    private EditorItem getDateDropdown(AttributeType attributeType) {
+    private EditorItem getDateDropdown(EntityInstance entityInstance, AttributeType attributeType) {
+        @Nullable AttributeInstance attribute = entityInstance.getAttribute(attributeType);
+        String attributeValue = "";
+        if (attribute != null) {
+            assert attribute.getAttributeValue() instanceof AttributeInstance.DateValue;
+            attributeValue =
+                    ((AttributeInstance.DateValue) attribute.getAttributeValue()).toString();
+        }
         return new EditorItem(
                 DATE,
                 new PropertyModel.Builder(DATE_ALL_KEYS)
                         .with(LABEL, attributeType.getTypeNameAsString())
                         .with(IS_REQUIRED, false)
+                        .with(VALUE, attributeValue)
+                        .with(
+                                VALIDATOR,
+                                new DateFieldValidator(
+                                        mContext.getString(
+                                                R.string
+                                                        .autofill_ai_entity_editor_invalid_date_error_message)))
                         .build(),
                 /* isFullLine= */ true);
     }

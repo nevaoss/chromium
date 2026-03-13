@@ -12,6 +12,7 @@
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/page.h"
 #include "content/public/browser/render_frame_host.h"
+#include "content/public/browser/webid/federated_embedder_login_request.h"
 #include "third_party/blink/public/mojom/webid/federated_auth_request.mojom.h"
 
 namespace content::webid {
@@ -128,6 +129,11 @@ void IdentityCredentialSourceImpl::GetIdentityCredentialSuggestions(
       /*filter_accounts_callback=*/base::DoNothing());
 }
 
+bool IdentityCredentialSourceImpl::HasPendingRequest() {
+  RequestPageData* page_data = GetPageData(render_frame_host().GetPage());
+  return page_data && page_data->PendingWebIdentityRequest();
+}
+
 bool IdentityCredentialSourceImpl::SelectAccount(
     const url::Origin& idp_origin,
     const std::string& account_id) {
@@ -158,6 +164,15 @@ bool IdentityCredentialSourceImpl::SelectAccount(
   return false;
 }
 
+void IdentityCredentialSourceImpl::SetEmbedderLoginRequest(
+    const url::Origin& idp_origin,
+    const std::string& account_id,
+    base::RepeatingCallback<void(FederatedLoginResult)> callback) {
+  FederatedEmbedderLoginRequest::Set(
+      WebContents::FromRenderFrameHost(&render_frame_host()), idp_origin,
+      account_id, std::move(callback));
+}
+
 void IdentityCredentialSourceImpl::SetNetworkManagerForTests(
     std::unique_ptr<IdpNetworkRequestManager> network_manager) {
   network_manager_ = std::move(network_manager);
@@ -186,8 +201,7 @@ void IdentityCredentialSourceImpl::OnAccountsFetchCompleted(
 }
 
 // static
-IdentityCredentialSource* IdentityCredentialSource::FromPage(
-    content::Page& page) {
+IdentityCredentialSource* IdentityCredentialSource::FromPage(Page& page) {
   return IdentityCredentialSourceImpl::GetOrCreateForCurrentDocument(
       &page.GetMainDocument());
 }

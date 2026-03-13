@@ -157,7 +157,9 @@ public class RecentlyClosedEntriesManager {
      */
     @CalledByNative
     public static void setNativeUpdatedCallback(
-            @JniType("Profile*") Profile profile, @Nullable JniRepeatingCallback<Long> callback) {
+            @JniType("Profile*") Profile profile,
+            @JniType("base::RepeatingCallback<void(int64_t)>")
+                    JniRepeatingCallback<Long> callback) {
         // All managers are notified about each window update, so just use the first one that
         // matches the browser context.
         Set<RecentlyClosedEntriesManager> managers =
@@ -170,6 +172,19 @@ public class RecentlyClosedEntriesManager {
         }
     }
 
+    /** Clears the callback to be fired on updates. */
+    @CalledByNative
+    public static void clearNativeUpdatedCallback(@JniType("Profile*") Profile profile) {
+        Set<RecentlyClosedEntriesManager> managers =
+                RecentlyClosedEntriesManagerTrackerImpl.getInstance().getManagers();
+        for (RecentlyClosedEntriesManager manager : managers) {
+            if (manager.mProfile == profile && manager.mNativeUpdatedCallback != null) {
+                manager.mNativeUpdatedCallback.destroy();
+                manager.mNativeUpdatedCallback = null;
+            }
+        }
+    }
+
     /**
      * Returns the TabModel and other metadata via callback for a recently closed window with the
      * given instance ID. If the instance ID is {@code TabWindowManager.INVALID_WINDOW_ID}, the most
@@ -177,7 +192,9 @@ public class RecentlyClosedEntriesManager {
      */
     @CalledByNative
     public static void getRecentlyClosedWindow(
-            int instanceId, JniOnceCallback<@Nullable RecentlyClosedWindowMetadata> callback) {
+            int instanceId,
+            @JniType("base::OnceCallback<void(const jni_zero::JavaRef<jobject>&)>&&")
+                    JniOnceCallback<@Nullable RecentlyClosedWindowMetadata> callback) {
         // This function requires the kRecentlyClosedTabsAndWindows feature.
         if (!UiUtils.isRecentlyClosedTabsAndWindowsEnabled()) {
             callback.onResult(null);

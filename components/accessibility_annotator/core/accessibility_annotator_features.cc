@@ -7,6 +7,7 @@
 namespace accessibility_annotator {
 
 BASE_FEATURE(kContentAnnotator, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kAccessibilityAnnotator, base::FEATURE_DISABLED_BY_DEFAULT);
 
 const base::FeatureParam<int> kContentAnnotatorMaxPendingUrls{
     &kContentAnnotator, "content_annotator_max_pending_urls", 10};
@@ -24,5 +25,10 @@ const base::FeatureParam<double> kContentAnnotatorSensitivityThreshold{
     &kContentAnnotator, "content_annotator_sensitivity_threshold", 0.5};
 const base::FeatureParam<std::string> kContentAnnotatorSupportedLanguages{
     &kContentAnnotator, "content_annotator_supported_languages", "en,en-US"};
+const base::FeatureParam<base::TimeDelta> kContentAnnotatorAnnotationTimeout{
+    &kContentAnnotator, "content_annotator_annotation_timeout",
+    base::Seconds(10)};
+const base::FeatureParam<bool> kContentAnnotatorEnableFullAnnotation{
+    &kContentAnnotator, "content_annotator_enable_full_annotation", false};
 
 }  // namespace accessibility_annotator

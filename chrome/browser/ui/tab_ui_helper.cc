@@ -22,6 +22,7 @@
 #include "chrome/browser/ui/tabs/public/tab_features.h"
 #include "chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_web_contents_listener.h"
 #include "chrome/browser/ui/tabs/split_tab_metrics.h"
+#include "chrome/browser/ui/tabs/tab_network_state.h"
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/grit/generated_resources.h"
@@ -299,6 +300,14 @@ void TabUIHelper::DidFinishNavigation(
   tab_ui_change_callbacks_.Notify();
 }
 
+void TabUIHelper::PrimaryMainFrameRenderProcessGone(
+    base::TerminationStatus status) {
+  // The tab's main frame was crashed so observers should be notified.
+  if (IsCrashed()) {
+    tab_ui_change_callbacks_.Notify();
+  }
+}
+
 #if !BUILDFLAG(IS_ANDROID)
 void TabUIHelper::PrimaryPageChanged(content::Page& page) {
   if (tab().IsSplit()) {
@@ -308,6 +317,14 @@ void TabUIHelper::PrimaryPageChanged(content::Page& page) {
   }
 }
 #endif
+
+void TabUIHelper::SetCreatedBySessionRestore(bool created_by_session_restore) {
+  const bool was_hiding_throbber = ShouldHideThrobber();
+  created_by_session_restore_ = created_by_session_restore;
+  if (was_hiding_throbber != ShouldHideThrobber()) {
+    tab_ui_change_callbacks_.Notify();
+  }
+}
 
 void TabUIHelper::SetNeedsAttention(bool needs_attention) {
   if (needs_attention == needs_attention_) {
@@ -342,6 +359,18 @@ std::optional<base::ByteSize> TabUIHelper::GetDiscardedMemorySavings() {
                    memory_saver::GetDiscardedMemorySavings(web_contents))
              : std::nullopt;
 }
+
+TabNetworkState TabUIHelper::GetTabNetworkState() {
+  return TabNetworkStateForWebContents(tab().GetContents());
+}
+
+#if !BUILDFLAG(IS_ANDROID)
+void TabUIHelper::NotifyTabUIChanged(base::PassKey<Browser> pass_key) {
+  // Notify subscribers because data might have updated since the browser is
+  // batching updates.
+  tab_ui_change_callbacks_.Notify();
+}
+#endif
 
 void TabUIHelper::OnTabPinnedStatusChange(tabs::TabInterface* tab_interface,
                                           bool new_pinned_state) {

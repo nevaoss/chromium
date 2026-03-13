@@ -8,13 +8,22 @@
 #import "ios/chrome/browser/assistant/coordinator/assistant_container_commands.h"
 #import "ios/chrome/browser/assistant/ui/assistant_container_animator.h"
 #import "ios/chrome/browser/assistant/ui/assistant_container_delegate.h"
+#import "ios/chrome/browser/assistant/ui/assistant_container_detent_utils.h"
 #import "ios/chrome/browser/assistant/ui/assistant_container_view_controller.h"
 #import "ios/chrome/browser/shared/coordinator/layout_guide/layout_guide_util.h"
 #import "ios/chrome/browser/shared/model/browser/browser.h"
 #import "ios/chrome/browser/shared/public/commands/command_dispatcher.h"
+#import "ios/chrome/browser/shared/public/features/features.h"
 #import "ios/chrome/browser/shared/ui/util/layout_guide_names.h"
 #import "ios/chrome/browser/shared/ui/util/named_guide.h"
 #import "ios/chrome/browser/shared/ui/util/util_swift.h"
+
+namespace {
+
+// The minimal height of the Assistant container.
+constexpr CGFloat kDebugSmallDetentHeight = 60.0;
+
+}  // namespace
 
 @implementation AssistantContainerCoordinator {
   // The view controller for the assistant container.
@@ -35,6 +44,16 @@
   [self.browser->GetCommandDispatcher()
       startDispatchingToTarget:self
                    forProtocol:@protocol(AssistantContainerCommands)];
+  if (ShouldShowAssistantContainerDebugElements()) {
+    AssistantContainerDetent* smallDetent = AssistantContainerFixedDetent(
+        kDebugSmallDetentHeight, kAssistantContainerMinimizedDetentIdentifier);
+    AssistantContainerDetent* mediumDetent =
+        AssistantContainerMediumDetent(self.baseViewController.view);
+    AssistantContainerDetent* largeDetent =
+        AssistantContainerLargeDetent(self.baseViewController.view);
+
+    _detents = @[ smallDetent, mediumDetent, largeDetent ];
+  }
 }
 
 - (void)stop {
@@ -67,8 +86,12 @@
   }
 
   // Resolve layout guide.
-  GuideName* guideName = kAppBarGuide;
-  LayoutGuideCenter* center = LayoutGuideCenterForBrowser(nil);
+  GuideName* guideName = kSecondaryToolbarGuide;
+  LayoutGuideCenter* center = LayoutGuideCenterForBrowser(self.browser);
+  if (IsChromeNextIaEnabled()) {
+    guideName = kAppBarGuide;
+    center = LayoutGuideCenterForBrowser(nil);
+  }
   _containerViewController.anchorView = [center referencedViewUnderName:guideName];
 
   // Add the view controller as a child view controller.
@@ -97,8 +120,19 @@
 
 - (void)setAssistantContainerDetents:
     (NSArray<AssistantContainerDetent*>*)detents {
+  if (ShouldShowAssistantContainerDebugElements()) {
+    return;
+  }
   _detents = detents;
   [_containerViewController setDetents:detents];
+}
+
+- (void)animateAssistantContainerToDetent:(NSString*)detentIdentifier
+                                 duration:(NSTimeInterval)duration
+                                    curve:(UIViewAnimationCurve)curve {
+  [_containerViewController animateToDetent:detentIdentifier
+                                   duration:duration
+                                      curve:curve];
 }
 
 - (void)dismissAssistantContainerAnimated:(BOOL)animated

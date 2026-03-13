@@ -229,24 +229,6 @@ BASE_DECLARE_FEATURE_PARAM(double, kTabOrganizationTriggerSensitivityThreshold);
 // predictably and frequently.
 BASE_DECLARE_FEATURE_PARAM(bool, KTabOrganizationTriggerDemoMode);
 
-BASE_DECLARE_FEATURE(kTabstripDeclutter);
-bool IsTabstripDeclutterEnabled();
-
-// Duration of inactivity after which a tab is considered stale for declutter.
-BASE_DECLARE_FEATURE_PARAM(base::TimeDelta,
-                           kTabstripDeclutterStaleThresholdDuration);
-
-// Interval between a recomputation of stale tabs for declutter.
-BASE_DECLARE_FEATURE_PARAM(base::TimeDelta, kTabstripDeclutterTimerInterval);
-
-// Default interval after showing a nudge to prevent another nudge from being
-// shown for declutter.
-BASE_DECLARE_FEATURE_PARAM(base::TimeDelta,
-                           kTabstripDeclutterNudgeTimerInterval);
-
-BASE_DECLARE_FEATURE(kTabstripDedupe);
-bool IsTabstripDedupeEnabled();
-
 BASE_DECLARE_FEATURE(kTabOrganizationAppMenuItem);
 
 BASE_DECLARE_FEATURE(kTabOrganizationModelStrategy);
@@ -279,9 +261,6 @@ bool UseSidePanelFlyoverAnimation();
 
 // TODO(crbug.com/460764864): Cleanup all the enterprise badging feature flags.
 BASE_DECLARE_FEATURE(kEnterpriseProfileBadgingForMenu);
-BASE_DECLARE_FEATURE(kEnterpriseBadgingForNtpFooter);
-BASE_DECLARE_FEATURE(kEnterpriseBadgingForLocalManagemenetNtpFooter);
-BASE_DECLARE_FEATURE(kEnterpriseBadgingForNtpFooterWithOverThreePolicies);
 BASE_DECLARE_FEATURE(kNTPFooterBadgingPolicies);
 
 BASE_DECLARE_FEATURE(kEnterpriseManagementDisclaimerUsesCustomLabel);
@@ -330,14 +309,11 @@ BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationEnableAll);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationIntentPicker);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationZoom);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationFileSystemAccess);
-BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationPriceInsights);
-BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationDiscounts);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationManagePasswords);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationCookieControls);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationAutofillAddress);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationFind);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationCollaborationMessaging);
-BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationPriceTracking);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationAutofillMandatoryReauth);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationClickToCall);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationSharingHub);

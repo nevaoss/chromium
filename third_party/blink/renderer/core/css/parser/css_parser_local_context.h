@@ -72,11 +72,8 @@ class CORE_EXPORT CSSParserLocalContext {
     return CSSParserLocalContext();
   }
 
-  // TODO(crbug.com/413385732): This is used for parsing colors without element
-  // context in `blink/renderer/modules/canvas/canvas2d/canvas_style.cc`. We
-  // don't have property context there, so will use empty string as property
-  // name for property-dependent random() values. We might want to disallow
-  // random() at parse time for setting values on the canvas contexts.
+  // This constructor is used for canvas context. Since we don't have property
+  // context there, we don't allow random() values there.
   static CSSParserLocalContext CreateWithoutPropertyForCanvas() {
     return CSSParserLocalContext();
   }
@@ -86,13 +83,6 @@ class CORE_EXPORT CSSParserLocalContext {
   // Since we don't support resolution of random() functions in DevTools for now
   // we don't need property context for random() in there.
   static CSSParserLocalContext CreateWithoutPropertyForInspector() {
-    return CSSParserLocalContext();
-  }
-
-  // TODO(crbug.com/413385732): Used to create a local context to parse input
-  // arguments against syntax for CSSPaintValue. Figure out if we actually need
-  // the property context for property dependent random() values there.
-  static CSSParserLocalContext CreateWithoutPropertyForPaintValue() {
     return CSSParserLocalContext();
   }
 
@@ -188,7 +178,7 @@ class CORE_EXPORT CSSParserLocalContext {
   std::optional<CSSPropertyName> unresolved_property_name_;
   HeapVector<CSSValueID> functions_stack_;
 
-  // TODO(crbug.com/413385732): We might have the same function name between
+  // TODO(crbug.com/489688671): We might have the same function name between
   // different tree scopes, then we need to make CSSParserLocalContext aware
   // of tree scope name.
   AtomicString custom_function_name_ = g_null_atom;

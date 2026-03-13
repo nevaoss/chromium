@@ -22,6 +22,7 @@
 #include "ui/views/layout/proposed_layout.h"
 #include "ui/views/view.h"
 #include "ui/views/view_class_properties.h"
+#include "ui/views/view_utils.h"
 
 namespace {
 constexpr int kTabPadding = 4;
@@ -37,7 +38,7 @@ VerticalPinnedTabContainerView::VerticalPinnedTabContainerView(
       layout_manager_(*SetLayoutManager(std::make_unique<
                                         TabCollectionAnimatingLayoutManager>(
           std::make_unique<views::DelegatingLayoutManager>(this),
-          this,
+          *this,
           TabCollectionAnimatingLayoutManager::AnimationAxis::kHorizontal))) {
   collection_node->set_remove_child_from_node(base::BindRepeating(
       &TabCollectionAnimatingLayoutManager::AnimateAndDestroyChildView,
@@ -167,10 +168,16 @@ bool VerticalPinnedTabContainerView::IsViewDragging(
   return GetDragHandler().IsViewDragging(child_view);
 }
 
+bool VerticalPinnedTabContainerView::ShouldAnimateOpacityForAddAndRemove(
+    const views::View& child_view) const {
+  // Only animate opacity for tab views.
+  return views::IsViewClass<VerticalTabView>(&child_view);
+}
+
 std::optional<BrowserRootView::DropIndex>
 VerticalPinnedTabContainerView::GetLinkDropIndex(
     const gfx::Point& loc_in_container) {
-  if (!collection_node_) {
+  if (!collection_node_ || collection_node_->children().size() == 0) {
     return std::nullopt;
   }
 
@@ -182,9 +189,9 @@ VerticalPinnedTabContainerView::GetLinkDropIndex(
     return index;
   }
 
-  // Fallback to the end of the container.
-  return GetDragHandler().GetLinkDropIndexForNode(*collection_node_,
-                                                  std::nullopt);
+  // Fallback to the end of the pinned container.
+  return GetDragHandler().GetLinkDropIndexForNode(
+      *collection_node_->children().back(), DragPositionHint::kAfter);
 }
 
 std::optional<BrowserRootView::DropIndex>
@@ -212,7 +219,7 @@ VerticalPinnedTabContainerView::GetLinkDropIndexForCollapsed(
     } else if (child_node->type() == TabCollectionNode::Type::SPLIT) {
       // If landing in the middle of the split, let the split view decide
       // which tab to replace.
-      auto* split_view = static_cast<VerticalSplitTabView*>(view);
+      auto* split_view = views::AsViewClass<VerticalSplitTabView>(view);
       gfx::Point loc_in_split =
           views::View::ConvertPointToTarget(this, split_view, loc_in_container);
       return split_view->GetLinkDropIndex(loc_in_split);
@@ -228,6 +235,7 @@ VerticalPinnedTabContainerView::GetLinkDropIndexForCollapsed(
 std::optional<BrowserRootView::DropIndex>
 VerticalPinnedTabContainerView::GetLinkDropIndexForExpanded(
     const gfx::Point& loc_in_container) {
+  const int logical_x = GetMirroredXInView(loc_in_container.x());
   for (auto& child_node : collection_node_->children()) {
     auto* view = child_node->view();
     CHECK(view);
@@ -244,7 +252,7 @@ VerticalPinnedTabContainerView::GetLinkDropIndexForExpanded(
     // The x-based calculation uses a margin to determine if the link should
     // be inserted before/after, so the cutoff point between tabs in a row
     // doesn't have to be exact.
-    if (loc_in_container.x() >= view->bounds().right() + kTabPadding) {
+    if (logical_x >= view->bounds().right() + kTabPadding) {
       continue;
     }
 
@@ -254,16 +262,18 @@ VerticalPinnedTabContainerView::GetLinkDropIndexForExpanded(
     constexpr double kDragOverMargins = 0.2;
     std::optional<DragPositionHint> hint;
 
+    const int logical_x_in_child = view->GetMirroredXInView(loc_in_child.x());
+
     // Determine whether the drag is to the right, left, or above the tab/tab
     // split.
-    if (loc_in_child.x() < view->width() * kDragOverMargins) {
+    if (logical_x_in_child < view->width() * kDragOverMargins) {
       hint = DragPositionHint::kBefore;
-    } else if (loc_in_child.x() > view->width() * (1 - kDragOverMargins)) {
+    } else if (logical_x_in_child > view->width() * (1 - kDragOverMargins)) {
       hint = DragPositionHint::kAfter;
     } else if (child_node->type() == TabCollectionNode::Type::SPLIT) {
       // If landing in the middle of the split, let the split view decide
       // which tab to replace.
-      auto* split_view = static_cast<VerticalSplitTabView*>(view);
+      auto* split_view = views::AsViewClass<VerticalSplitTabView>(view);
       gfx::Point loc_in_split =
           views::View::ConvertPointToTarget(this, split_view, loc_in_container);
       return split_view->GetLinkDropIndex(loc_in_split);

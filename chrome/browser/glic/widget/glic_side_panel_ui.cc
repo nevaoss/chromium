@@ -72,12 +72,7 @@ GlicSidePanelUi::GlicSidePanelUi(Profile* profile,
 
   // Add capability to show web modal dialogs (e.g. Data Controls Dialogs for
   // enterprise users) via constrained_window APIs.
-  web_modal::WebContentsModalDialogManager::CreateForWebContents(
-      delegate_->host().webui_contents());
-  web_modal::WebContentsModalDialogManager::FromWebContents(
-      delegate_->host().webui_contents())
-      ->SetDelegate(this);
-
+  SetModalDialogDelegate(this);
   panel_state_.kind = mojom::PanelStateKind::kAttached;
 }
 
@@ -95,15 +90,7 @@ GlicSidePanelUi::~GlicSidePanelUi() {
   if (glic_view_) {
     glic_view_->SetWebContents(nullptr);
   }
-  auto* webui_contents = delegate_->host().webui_contents();
-  if (!webui_contents) {
-    return;
-  }
-  auto* dialog_manager =
-      web_modal::WebContentsModalDialogManager::FromWebContents(webui_contents);
-  if (dialog_manager) {
-    dialog_manager->SetDelegate(nullptr);
-  }
+  SetModalDialogDelegate(nullptr);
 }
 
 void GlicSidePanelUi::OnClientReady() {
@@ -183,7 +170,11 @@ void GlicSidePanelUi::SidePanelStateChanged(
   // Showing only happens through glic entrypoint, hiding can also be triggered
   // by side panel coordinator when replacing glic with another entry.
   if (state != GlicSidePanelCoordinator::State::kShown && tab_) {
-    instance_metrics_->OnSidePanelClosed(tab_.get());
+    GlicInstanceMetrics::CloseReason reason =
+        state == GlicSidePanelCoordinator::State::kBackgrounded
+            ? GlicInstanceMetrics::CloseReason::kTabSwitched
+            : GlicInstanceMetrics::CloseReason::kExplicitlyClosed;
+    instance_metrics_->OnSidePanelClosed(tab_.get(), reason);
     panel_state_.kind = mojom::PanelStateKind::kHidden;
     delegate_->NotifyPanelStateChanged();
     // NOTE: `this` will be destroyed after this call.
@@ -249,10 +240,26 @@ void GlicSidePanelUi::ClosePanel() {
   Close(CloseOptions());
 }
 
-void GlicSidePanelUi::OnReload() {
-  if (glic_view_) {
-    glic_view_->SetWebContents(delegate_->host().webui_contents());
+void GlicSidePanelUi::SetModalDialogDelegate(
+    web_modal::WebContentsModalDialogManagerDelegate* delegate) {
+  content::WebContents* web_contents = delegate_->host().webui_contents();
+  if (!web_contents) {
+    return;
   }
+  if (glic_view_) {
+    glic_view_->SetWebContents(web_contents);
+  }
+  if (auto* dialog_manager =
+          web_modal::WebContentsModalDialogManager::FromWebContents(
+              web_contents)) {
+    if (delegate || dialog_manager->delegate() == this) {
+      dialog_manager->SetDelegate(delegate);
+    }
+  }
+}
+
+void GlicSidePanelUi::OnReload() {
+  SetModalDialogDelegate(this);
 }
 
 std::unique_ptr<GlicUiEmbedder> GlicSidePanelUi::CreateInactiveEmbedder()

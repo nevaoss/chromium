@@ -121,14 +121,6 @@ proto_library("amount_extraction_heuristic_regexes_proto") {
   sources = [ "payments/amount_extraction_heuristic_regexes.proto" ]
 }
 
-source_set("unique_ids") {
-  sources = [ "../common/unique_ids.h" ]
-  deps = [
-    "//base",
-    "//components/autofill/core/common",
-  ]
-}
-
 static_library("browser") {
   sources = [
     "at_memory/at_memory_data_type.cc",
@@ -145,6 +137,8 @@ static_library("browser") {
     "autofill_feedback_data.h",
     "autofill_field.cc",
     "autofill_field.h",
+    "autofill_format_string.cc",
+    "autofill_format_string.h",
     "autofill_server_prediction.cc",
     "autofill_server_prediction.h",
     "autofill_shared_storage_handler.h",
@@ -1011,7 +1005,6 @@ static_library("browser") {
     ":country_data",
     ":legal_message_line",
     ":payments_sync_utils",
-    ":unique_ids",
     "//components/autofill/core/browser/payments:card_unmask_challenge_option",
     "//components/autofill/core/browser/proto",
     "//components/autofill/core/browser/proto:autofill_ai_proto",
@@ -1597,6 +1590,8 @@ source_set("unit_tests") {
     "form_import/addresses/address_form_data_importer_unittest.cc",
     "form_import/addresses/address_profile_save_manager_unittest.cc",
     "form_import/addresses/autofill_profile_import_process_unittest.cc",
+    "form_import/form_data_importer_test_utils.cc",
+    "form_import/form_data_importer_test_utils.h",
     "form_import/form_data_importer_unittest.cc",
     "form_import/form_data_importer_utils_unittest.cc",
     "form_import/payments/payments_form_data_importer_unittest.cc",

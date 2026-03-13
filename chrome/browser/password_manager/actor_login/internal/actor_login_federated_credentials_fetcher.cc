@@ -51,11 +51,22 @@ void ActorLoginFederatedCredentialsFetcher::Fetch(
     return;
   }
 
+  if (metrics_helper_) {
+    metrics_helper_->RecordFederatedHangingFedCmRequestExists(
+        source->HasPendingRequest());
+  }
+
   std::vector<GURL> supported_idps = {GURL(kSupportedIdentityProvider)};
+
   source->GetIdentityCredentialSuggestions(
       supported_idps, base::BindOnce(&ActorLoginFederatedCredentialsFetcher::
                                          OnGetIdentityCredentialSuggestions,
                                      weak_ptr_factory_.GetWeakPtr()));
+}
+
+void ActorLoginFederatedCredentialsFetcher::SetMetricsHelper(
+    ActorLoginMetricsHelper* metrics_helper) {
+  metrics_helper_ = metrics_helper;
 }
 
 void ActorLoginFederatedCredentialsFetcher::OnGetIdentityCredentialSuggestions(
@@ -71,14 +82,13 @@ void ActorLoginFederatedCredentialsFetcher::OnGetIdentityCredentialSuggestions(
   }
   std::vector<Credential> result;
   for (const auto& account : *accounts) {
-    // TODO(crbug.com/479069886): Go over all displayed fields and check their
-    // use in credential picker.
     Credential credential;
     credential.type = CredentialType::kFederated;
-    // TODO(crbug.com/479069886): properly format the username
-    credential.username =
-        base::UTF8ToUTF16(account->display_name + " " +
-                          account->identity_provider->idp_for_display);
+    // At this point, the only IdP(s) we support for actor login use email as an
+    // identifier. We'll fallback to the `display_identifier` in anticipation of
+    // generalizing to other IdPs.
+    credential.username = base::UTF8ToUTF16(
+        !account->email.empty() ? account->email : account->display_identifier);
     credential.source_site_or_app =
         base::UTF8ToUTF16(account->identity_provider->idp_for_display);
     credential.request_origin = request_origin_;

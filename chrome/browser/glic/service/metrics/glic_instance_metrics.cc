@@ -315,6 +315,16 @@ void GlicInstanceMetrics::OnShowInSidePanel(tabs::TabInterface* tab) {
   base::RecordAction(base::UserMetricsAction("Glic.Instance.Show.SidePanel"));
   LogEvent(GlicInstanceEvent::kSidePanelShown);
   LogEvent(GlicInstanceEvent::kShown);
+
+  if (auto* helper = GlicInstanceHelper::From(tab)) {
+    if (last_invocation_source_ ==
+        mojom::InvocationSource::kNavigationCapture) {
+      helper->SetIsDaisyChained(DaisyChainSource::kWebHandoff);
+    } else if (last_invocation_source_ ==
+               mojom::InvocationSource::kAutoOpenedForPdf) {
+      helper->SetIsDaisyChained(DaisyChainSource::kAutoOpenPdf);
+    }
+  }
 }
 
 void GlicInstanceMetrics::OnShowInFloaty(const ShowOptions& options) {
@@ -352,13 +362,19 @@ void GlicInstanceMetrics::OnFloatyClosed() {
   floaty_open_time_ = base::TimeTicks();
 }
 
-void GlicInstanceMetrics::OnSidePanelClosed(tabs::TabInterface* tab) {
+void GlicInstanceMetrics::OnSidePanelClosed(
+    tabs::TabInterface* tab,
+    GlicInstanceMetrics::CloseReason reason) {
   if (!tab) {
     return;
   }
 
   if (auto* helper = GlicInstanceHelper::From(tab)) {
-    helper->OnDaisyChainAction(DaisyChainFirstAction::kSidePanelClosed);
+    if (reason == GlicInstanceMetrics::CloseReason::kTabSwitched) {
+      helper->OnDaisyChainAction(DaisyChainFirstAction::kTabSwitched);
+    } else {
+      helper->OnDaisyChainAction(DaisyChainFirstAction::kSidePanelClosed);
+    }
   }
 
   tabs::TabHandle tab_handle = tab->GetHandle();
@@ -476,12 +492,22 @@ void GlicInstanceMetrics::OnClose() {
                                 last_web_ui_state_);
 }
 
+void GlicInstanceMetrics::OnOpen(glic::mojom::InvocationSource source,
+                                 const ShowOptions& options) {
+  invocation_start_time_ = base::TimeTicks::Now();
+  last_invocation_source_ = source;
+  if (std::holds_alternative<FloatingShowOptions>(options.embedder_options)) {
+    base::UmaHistogramEnumeration("Glic.Instance.Floaty.OpenSource", source);
+  } else {
+    base::UmaHistogramEnumeration("Glic.Instance.SidePanel.OpenSource", source);
+  }
+}
+
 void GlicInstanceMetrics::OnToggle(glic::mojom::InvocationSource source,
                                    const ShowOptions& options,
                                    bool is_showing) {
   if (!is_showing) {
-    invocation_start_time_ = base::TimeTicks::Now();
-    last_invocation_source_ = source;
+    OnOpen(source, options);
   }
   base::RecordAction(base::UserMetricsAction("Glic.Instance.Toggle"));
   if (std::holds_alternative<FloatingShowOptions>(options.embedder_options)) {
@@ -984,6 +1010,7 @@ void GlicInstanceMetrics::RecordSkillsWebClientEvent(
     // --- Dialog Metrics ---
     case kClickedAddFromMenu:
     case kClickedSaveAsSkillHoverChip:
+    case kClickedEditSkillHoverChip:
     case kClickedAddOn1pSkill:
     case kClickedEditFromMenu:
       // TODO(crbug.com/483411707): Add routing for dialog metrics.

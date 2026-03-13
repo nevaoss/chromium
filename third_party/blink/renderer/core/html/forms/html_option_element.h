@@ -144,6 +144,10 @@ class CORE_EXPORT HTMLOptionElement final : public HTMLElement {
   // select's picker, and set default handled on the event.
   void ChooseOption(Event&);
 
+  // Gets and sets whether this element matches the :filtered pseudo-class.
+  bool IsFiltered() const { return is_filtered_; }
+  void SetFiltered(bool);
+
   // This constant is a distance in pixels (post zoom, page-relative). It is
   // used in multiple cases (select popups, submenu popups) where we support
   // mousedown -> popup opens -> drag into popup -> mouseup on item in popup
@@ -172,6 +176,19 @@ class CORE_EXPORT HTMLOptionElement final : public HTMLElement {
   void UpdateAncestors();
 
   void DefaultEventHandlerInternal(Event&);
+
+  enum Direction {
+    kNext,
+    kPrevious,
+  };
+  // This is called when the left, right, up, or down arrow keys are pressed on
+  // an option in a select element which is a customizable select or is a
+  // desktop <select multiple size=1>. If kNext is returned, then the next
+  // focusable option should be focused. If kPrevious is returned, then the
+  // previous focusable option should be focused. If nullopt is returned, then
+  // focus should not change and this event should not be handled.
+  std::optional<Direction> GetFocusDirectionFromKeyboardEvent(
+      const AtomicString& key);
 
   void RecalcOwnerSelectElement() const;
 
@@ -228,6 +245,10 @@ class CORE_EXPORT HTMLOptionElement final : public HTMLElement {
   // Gets set to true when a child element is inserted into this option
   // element. Never gets set back to false once set to true.
   bool was_element_inserted_ = false;
+  // is_filtered_ corresponds to the :filtered pseudo-class. If this is true,
+  // then this element will match :filtered. Otherwise, it won't. Only used for
+  // customizable combobox and filterable select.
+  bool is_filtered_ = false;
 
   friend class HTMLOptionElementTest;
 };

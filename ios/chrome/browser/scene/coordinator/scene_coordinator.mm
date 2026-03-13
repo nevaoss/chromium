@@ -24,10 +24,10 @@
 #import "ios/chrome/app/application_delegate/tab_opening.h"
 #import "ios/chrome/app/deferred_initialization_runner.h"
 #import "ios/chrome/app/deferred_initialization_task_names.h"
+#import "ios/chrome/app/profile/first_run_profile_agent.h"
 #import "ios/chrome/app/profile/profile_state.h"
 #import "ios/chrome/browser/ai_prototyping/coordinator/ai_prototyping_coordinator.h"
 #import "ios/chrome/browser/app_bar/coordinator/app_bar_coordinator.h"
-#import "ios/chrome/browser/assistant/aim/coordinator/assistant_aim_coordinator.h"
 #import "ios/chrome/browser/assistant/coordinator/assistant_container_coordinator.h"
 #import "ios/chrome/browser/authentication/account_menu/coordinator/account_menu_coordinator.h"
 #import "ios/chrome/browser/authentication/account_menu/coordinator/account_menu_coordinator_delegate.h"
@@ -37,6 +37,7 @@
 #import "ios/chrome/browser/authentication/ui_bundled/signin/signin_coordinator.h"
 #import "ios/chrome/browser/authentication/ui_bundled/signin/signin_utils.h"
 #import "ios/chrome/browser/authentication/ui_bundled/signin_notification_infobar_delegate.h"
+#import "ios/chrome/browser/cobrowse/coordinator/assistant_aim_coordinator.h"
 #import "ios/chrome/browser/default_browser/model/utils.h"
 #import "ios/chrome/browser/feature_engagement/model/tracker_factory.h"
 #import "ios/chrome/browser/history/ui_bundled/history_coordinator_factory.h"
@@ -56,6 +57,7 @@
 #import "ios/chrome/browser/scene/ui/scene_view_controller.h"
 #import "ios/chrome/browser/settings/ui_bundled/password/password_checkup/password_checkup_coordinator.h"
 #import "ios/chrome/browser/settings/ui_bundled/settings_navigation_controller.h"
+#import "ios/chrome/browser/shared/coordinator/layout_guide/layout_guide_util.h"
 #import "ios/chrome/browser/shared/coordinator/scene/scene_state.h"
 #import "ios/chrome/browser/shared/coordinator/scene/state/incognito_state.h"
 #import "ios/chrome/browser/shared/model/application_context/application_context.h"
@@ -234,6 +236,7 @@ void OnListFamilyMembersResponse(
   [_tabGridCoordinator start];
   if (IsUseSceneViewControllerEnabled()) {
     _viewController = [[SceneViewController alloc] init];
+    _viewController.layoutGuideCenter = LayoutGuideCenterForBrowser(nil);
     UIViewController* tabGridViewController =
         _tabGridCoordinator.viewController;
     [_viewController addChildViewController:tabGridViewController];
@@ -1710,6 +1713,12 @@ void OnListFamilyMembersResponse(
   configuration.sceneHandler = self;
   configuration.singleSignOnService =
       GetApplicationContext()->GetSingleSignOnService();
+  if (IsDisableU18FeedbackIosEnabled()) {
+    AuthenticationService* authenticationService =
+        AuthenticationServiceFactory::GetForProfile(self.profile);
+    configuration.primaryIdentity = authenticationService->GetPrimaryIdentity(
+        signin::ConsentLevel::kSignin);
+  }
 
   NSError* error;
   ios::provider::StartUserFeedbackFlow(configuration, baseViewController,
@@ -1914,6 +1923,13 @@ void OnListFamilyMembersResponse(
 
   // If the Safari data import workflow is active, stop it.
   [self stopSafariDataImportCoordinator];
+
+  // If the guided tour is active, stop it.
+  FirstRunProfileAgent* firstRunAgent =
+      [FirstRunProfileAgent agentFromProfile:self.sceneState.profileState];
+  if (firstRunAgent) {
+    [firstRunAgent stopGuidedTour];
+  }
 
   __weak __typeof(self) weakSelf = self;
   ProceduralBlock resetAndDismiss = ^{

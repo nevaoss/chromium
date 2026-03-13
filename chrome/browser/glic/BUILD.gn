@@ -8,8 +8,6 @@ import("//chrome/common/features.gni")
 import("//components/guest_view/buildflags/buildflags.gni")
 import("//mojo/public/tools/bindings/mojom.gni")
 
-assert(enable_glic)
-
 # TODO(b/430371855): This target should eventually become Glic's public target,
 # to be imported from external BUILD files. The "impl" source set below would
 # then list resources only needed internally for the implementation. In the
@@ -53,6 +51,7 @@ source_set("glic") {
     "public/glic_invoke_options.h",
     "public/glic_keyed_service.h",
     "public/glic_keyed_service_factory.h",
+    "public/glic_passkeys.h",
     "public/glic_side_panel_coordinator.cc",
     "public/glic_side_panel_coordinator.h",
     "service/glic_instance_helper.cc",
@@ -423,6 +422,7 @@ source_set("impl") {
       "//chrome/browser/ui/views/frame/",
       "//chrome/browser/ui/views/interaction",
       "//chrome/browser/ui/views/side_panel",
+      "//components/web_modal",
     ]
   } else {  # is_android
     deps += [
@@ -481,6 +481,30 @@ mojom("mojo_bindings") {
   overridden_deps = [ "//third_party/blink/public/mojom:mojom_platform" ]
 
   component_deps = [ "//content/public/common" ]
+  cpp_typemaps = [
+    {
+      types = [
+        {
+          mojom = "glic.mojom.ScreenshotCollectionOptions"
+          cpp = "::page_content_annotations::ScreenshotOptions::ScreenshotCollectionOptions"
+        },
+        {
+          mojom = "glic.mojom.ScreenshotImageFormat"
+          cpp = "::page_content_annotations::ScreenshotOptions::ScreenshotImageFormat"
+        },
+        {
+          mojom = "glic.mojom.ScreenshotCompressionQuality"
+          cpp = "::page_content_annotations::ScreenshotOptions::ScreenshotCompressionQuality"
+        },
+      ]
+      traits_headers = [
+        "//components/page_content_annotations/content/page_context_fetcher.h",
+        "host/glic_mojom_traits.h",
+      ]
+      traits_sources = [ "host/glic_mojom_traits.cc" ]
+      traits_public_deps = [ "//components/page_content_annotations/content" ]
+    },
+  ]
 }
 
 source_set("unit_tests") {
@@ -533,6 +557,7 @@ source_set("unit_tests") {
       "//chrome/test:test_support",
       "//components/live_caption",
       "//components/live_caption:constants",
+      "//components/skills/public:metrics",
       "//components/tabs:test_support",
     ]
   } else {
@@ -579,6 +604,7 @@ source_set("browser_tests") {
   deps = [
     ":glic",
     ":impl",
+    "//chrome/app:command_ids",
     "//chrome/browser/background/glic",
     "//chrome/browser/glic/actor",
     "//chrome/browser/glic/common",

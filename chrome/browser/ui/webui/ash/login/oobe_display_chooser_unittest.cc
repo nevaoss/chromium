@@ -7,6 +7,7 @@
 #include <memory>
 #include <vector>
 
+#include "ash/display/cros_display_config.h"
 #include "ash/display/display_configuration_controller.h"
 #include "ash/shell.h"
 #include "base/run_loop.h"
@@ -30,23 +31,15 @@ namespace ash {
 
 namespace {
 
-class TestCrosDisplayConfig
-    : public crosapi::mojom::CrosDisplayConfigController {
+class TestCrosDisplayConfig final : public ash::CrosDisplayConfig {
  public:
   TestCrosDisplayConfig() = default;
-
   TestCrosDisplayConfig(const TestCrosDisplayConfig&) = delete;
   TestCrosDisplayConfig& operator=(const TestCrosDisplayConfig&) = delete;
 
-  mojo::PendingRemote<crosapi::mojom::CrosDisplayConfigController>
-  CreateRemoteAndBind() {
-    return receiver_.BindNewPipeAndPassRemote();
-  }
-
-  // crosapi::mojom::CrosDisplayConfigController:
-  void AddObserver(
-      mojo::PendingAssociatedRemote<crosapi::mojom::CrosDisplayConfigObserver>
-          observer) override {}
+  // CrosDisplayConfig:
+  void AddObserver(Observer* observer) override {}
+  void RemoveObserver(Observer* observer) override {}
   void GetDisplayLayoutInfo(GetDisplayLayoutInfoCallback callback) override {}
   void SetDisplayLayoutInfo(crosapi::mojom::DisplayLayoutInfoPtr info,
                             SetDisplayLayoutInfoCallback callback) override {}
@@ -78,14 +71,11 @@ class TestCrosDisplayConfig
   void DragDisplayDelta(int64_t display_id,
                         int32_t delta_x,
                         int32_t delta_y) override {}
-
- private:
-  mojo::Receiver<crosapi::mojom::CrosDisplayConfigController> receiver_{this};
 };
 
 class OobeDisplayChooserTest : public ChromeAshTestBase {
  public:
-  OobeDisplayChooserTest() : ChromeAshTestBase() {}
+  OobeDisplayChooserTest() = default;
 
   OobeDisplayChooserTest(const OobeDisplayChooserTest&) = delete;
   OobeDisplayChooserTest& operator=(const OobeDisplayChooserTest&) = delete;
@@ -99,9 +89,8 @@ class OobeDisplayChooserTest : public ChromeAshTestBase {
     ChromeAshTestBase::SetUp();
 
     cros_display_config_ = std::make_unique<TestCrosDisplayConfig>();
-    display_chooser_ = std::make_unique<OobeDisplayChooser>();
-    display_chooser_->set_cros_display_config_for_test(
-        cros_display_config_->CreateRemoteAndBind());
+    display_chooser_ =
+        std::make_unique<OobeDisplayChooser>(cros_display_config_.get());
 
     ui::DeviceDataManagerTestApi().OnDeviceListsComplete();
   }

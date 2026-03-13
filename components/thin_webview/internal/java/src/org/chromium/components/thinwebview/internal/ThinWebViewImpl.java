@@ -47,6 +47,7 @@ public class ThinWebViewImpl extends FrameLayout implements ThinWebView {
 
     /**
      * Creates a {@link ThinWebViewImpl} backed by a {@link Surface}.
+     *
      * @param context The Context to create this view.
      * @param constraints A set of constraints associated with this view.
      * @param intentRequestTracker The {@link IntentRequestTracker} of the current activity.
@@ -162,6 +163,12 @@ public class ThinWebViewImpl extends FrameLayout implements ThinWebView {
     }
 
     @Override
+    public void setInsets(int top, int left, int bottom, int right) {
+        if (mNativeThinWebViewImpl == 0) return;
+        ThinWebViewImplJni.get().setInsets(mNativeThinWebViewImpl, top, left, bottom, right);
+    }
+
+    @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         if (mNativeThinWebViewImpl == 0) return;
         if (w != oldw || h != oldh) {
@@ -186,6 +193,8 @@ public class ThinWebViewImpl extends FrameLayout implements ThinWebView {
         long init(ThinWebViewImpl self, CompositorView compositorView, WindowAndroid windowAndroid);
 
         void destroy(long nativeThinWebView);
+
+        void setInsets(long nativeThinWebView, int top, int left, int bottom, int right);
 
         void setWebContents(
                 long nativeThinWebView,

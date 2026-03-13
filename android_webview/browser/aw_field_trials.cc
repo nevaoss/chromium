@@ -140,6 +140,11 @@ void AwFieldTrials::RegisterFeatureOverrides(base::FeatureList* feature_list) {
   aw_feature_overrides.DisableFeature(
       blink::features::kSecurePaymentConfirmationAvailabilityAPI);
 
+  // WebView does not support Secure Payment Confirmation, and thus should not
+  // expose the PaymentRequest.securePaymentConfirmationCapabilities API.
+  aw_feature_overrides.DisableFeature(
+      blink::features::kSecurePaymentConfirmationCapabilities);
+
   // WebView does not support handling payment links.
   aw_feature_overrides.DisableFeature(blink::features::kPaymentLinkDetection);
 
@@ -324,4 +329,9 @@ void AwFieldTrials::RegisterFeatureOverrides(base::FeatureList* feature_list) {
   // Disable No-Vary-Search in disk cache on WebView.
   // See https://crbug.com/382394774.
   aw_feature_overrides.DisableFeature(net::features::kHttpCacheNoVarySearch);
+
+  // TODO(crbug.com/489450060): Disable DirectReceiver on Viz for WebView until
+  // its Viz thread is updated to handle IO.
+  aw_feature_overrides.DisableFeature(
+      ::features::kVizDirectCompositorThreadIpcFrameSinkManager);
 }

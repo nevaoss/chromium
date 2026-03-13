@@ -93,6 +93,8 @@ class ProjectsPanelView : public views::View,
       const std::vector<contextual_tasks::Thread>& threads) override;
 
   views::View* content_container_for_testing() { return content_container_; }
+  views::View* threads_container_for_testing() { return threads_container_; }
+  views::Separator* separator_for_testing() { return separator_; }
 
   static void disable_animations_for_testing();
 
@@ -124,13 +126,17 @@ class ProjectsPanelView : public views::View,
                                    views::MenuButton& button);
   void OnTabGroupMoved(const base::Uuid& group_guid, int new_index);
   void OnCreateNewTabGroupButtonPressed();
+  void OnThreadButtonPressed(const std::string& thread_server_id);
 
   const raw_ptr<BrowserWindowInterface> browser_;
   raw_ptr<actions::ActionItem> root_action_item_ = nullptr;
   raw_ptr<views::View> content_container_ = nullptr;
   raw_ptr<ProjectsPanelControlsView> controls_view_ = nullptr;
+  raw_ptr<views::View> tab_groups_container_ = nullptr;
   raw_ptr<ProjectsPanelTabGroupsView> tab_groups_view_ = nullptr;
+  raw_ptr<views::View> threads_container_ = nullptr;
   raw_ptr<ProjectsPanelRecentThreadsView> threads_view_ = nullptr;
+  raw_ptr<views::Separator> separator_ = nullptr;
 
   std::unique_ptr<views::ViewShadow> content_shadow_;
 

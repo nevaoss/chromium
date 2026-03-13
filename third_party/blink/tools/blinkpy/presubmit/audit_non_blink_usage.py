@@ -108,6 +108,7 @@ _CONFIG = [
             'base::IdType64',
             'base::IdTypeU32',
             'base::IdTypeU64',
+            'base::InheritThreadType',
             'base::JobDelegate',
             'base::JobHandle',
             'base::KiB',
@@ -118,6 +119,7 @@ _CONFIG = [
             'base::MakeRefCounted',
             'base::MatcherStringPattern',
             'base::MatchPattern',
+            'base::MaxThreadType',
             'base::MemoryPressureListener',
             'base::MemoryPressureListenerTag',
             'base::MessagePump',
@@ -2251,7 +2253,10 @@ _CONFIG = [
             'third_party/blink/renderer/modules/ai/',
         ],
         'allowed': [
+            'base::DictValue',
+            'base::ListValue',
             'base::MakeFixedFlatSet',
+            'base::Value',
         ],
     },
     {

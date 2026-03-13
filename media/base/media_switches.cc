@@ -985,6 +985,10 @@ BASE_FEATURE(kUsePostBodyForUrlProvisionFetcher,
 // recovery point with `recovery_frame_cnt=0` has been found.
 BASE_FEATURE(kParseSEIRecoveryPoints, base::FEATURE_ENABLED_BY_DEFAULT);
 
+// Allows media to autoplay without a user gesture if the site has been
+// granted microphone or camera permissions.
+BASE_FEATURE(kAutoplayBypassForMicCamera, base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Whether we should show a setting to disable autoplay policy.
 BASE_FEATURE(kAutoplayDisableSettings, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -1039,6 +1043,10 @@ BASE_FEATURE(kEnableAudioMonitoringOnAndroid,
 // Enables Picture-in-Picture menu item on the video context menu on Android.
 BASE_FEATURE(kContextMenuPictureInPictureAndroid,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Enables fullscreen video Picture-in-Picture on Android.
+BASE_FEATURE(kFullscreenVideoPictureInPicture,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables the use of a Surface (ANativeWindow) as the input for the
 // NdkVideoEncodeAccelerator on Android.

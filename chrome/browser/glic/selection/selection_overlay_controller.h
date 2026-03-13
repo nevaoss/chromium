@@ -10,6 +10,7 @@
 #include "base/unguessable_token.h"
 #include "chrome/browser/glic/selection/selection_overlay.mojom.h"
 #include "chrome/browser/ui/lens/overlay_base_controller.h"
+#include "components/page_content_annotations/content/page_context_fetcher.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "mojo/public/cpp/bindings/receiver.h"
@@ -50,7 +51,7 @@ class SelectionOverlayController
       mojo::PendingRemote<selection::SelectionOverlayPage> page);
 
   void Show();
-  void Hide();
+  void Close();
 
   std::optional<std::vector<uint8_t>>& GetEncodedData() { return encoded_; }
 
@@ -79,14 +80,21 @@ class SelectionOverlayController
   void DismissOverlay(selection::DismissOverlayReason reason) override;
   void AdjustRegion(selection::SelectedRegionPtr target) override;
   void DeleteRegion(const base::UnguessableToken& id) override;
+  void ClosePreselectionBubble() override;
+  void AddBackgroundBlur() override;
+  void SetLiveBlur(bool enabled) override;
 
  private:
-  void OnScreenshotTaken(const content::CopyFromSurfaceResult& result);
+  void OnScreenshotTaken(const SkBitmap& bitmap);
+  void OnScreenshotRedacted(const SkBitmap& bitmap);
+  void PageAnnotationReady(
+      page_content_annotations::FetchPageContextResultCallbackArg result);
 
   void SetScreenshot(const SkBitmap& screenshot, SkBitmap rgb_screenshot);
 
-  // Render all the `selected_regions_` on top of `initial_screenshot_`.
+  // Render all the `selected_regions_` on top of `redacted_screenshot_`.
   void RenderRegions();
+  void RegionsRendererd(std::optional<std::vector<uint8_t>> encoded);
 
   void Reset();
 
@@ -98,9 +106,10 @@ class SelectionOverlayController
 
   // Stateful members. They should be added to Reset().
   bool screenshot_available_ = false;
-  SkBitmap initial_screenshot_;
   SkBitmap initial_rgb_screenshot_;
+  SkBitmap redacted_screenshot_;
   std::optional<std::vector<uint8_t>> encoded_;
+  optimization_guide::proto::AnnotatedPageContent ai_page_content_;
   // Caches the user-selected region. To be renderer on top of
   // `initial_screenshot_`.
   base::flat_map<base::UnguessableToken, selection::SelectedRegionPtr>

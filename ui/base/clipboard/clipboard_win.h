@@ -47,13 +47,13 @@ class ClipboardWin : public Clipboard, public ClipboardChangeNotifier {
 
   // Clipboard overrides:
   void OnPreShutdown() override;
-  std::optional<DataTransferEndpoint> GetSource(
-      ClipboardBuffer buffer) const override;
+  void GetSource(ClipboardBuffer buffer,
+                 GetSourceCallback callback) const override;
   const ClipboardSequenceNumberToken& GetSequenceNumber(
       ClipboardBuffer buffer) const override;
-  std::vector<std::u16string> GetStandardFormats(
-      ClipboardBuffer buffer,
-      const DataTransferEndpoint* data_dst) const override;
+  void GetStandardFormats(ClipboardBuffer buffer,
+                          const std::optional<DataTransferEndpoint>& data_dst,
+                          GetStandardFormatsCallback callback) const override;
   bool IsFormatAvailable(const ClipboardFormatType& format,
                          ClipboardBuffer buffer,
                          const DataTransferEndpoint* data_dst) const override;
@@ -88,24 +88,11 @@ class ClipboardWin : public Clipboard, public ClipboardChangeNotifier {
                 const std::optional<DataTransferEndpoint>& data_dst,
                 ReadDataCallback callback) const override;
 
-  void ReadAvailableTypes(ClipboardBuffer buffer,
-                          const DataTransferEndpoint* data_dst,
-                          std::vector<std::u16string>* types) const override;
-  void ReadText(ClipboardBuffer buffer,
-                const DataTransferEndpoint* data_dst,
-                std::u16string* result) const override;
-  void ReadAsciiText(ClipboardBuffer buffer,
-                     const DataTransferEndpoint* data_dst,
-                     std::string* result) const override;
   void ReadPng(ClipboardBuffer buffer,
                const std::optional<DataTransferEndpoint>& data_dst,
                ReadPngCallback callback) const override;
-  void ReadBookmark(const DataTransferEndpoint* data_dst,
-                    std::u16string* title,
-                    std::string* url) const override;
-  void ReadData(const ClipboardFormatType& format,
-                const DataTransferEndpoint* data_dst,
-                std::string* result) const override;
+  void ReadBookmark(const std::optional<DataTransferEndpoint>& data_dst,
+                    ReadBookmarkCallback callback) const override;
   void WritePortableAndPlatformRepresentations(
       ClipboardBuffer buffer,
       const ObjectMap& objects,

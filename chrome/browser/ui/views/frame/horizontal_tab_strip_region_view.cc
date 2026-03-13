@@ -73,11 +73,6 @@
 #include "ui/views/view_class_properties.h"
 #include "ui/views/view_utils.h"
 
-#if BUILDFLAG(IS_CHROMEOS)
-#include "chrome/browser/ui/ash/shell_delegate/tab_scrubber.h"
-#include "ui/aura/window.h"
-#endif
-
 #if BUILDFLAG(IS_MAC)
 constexpr int kTabStripRegionInternalPaddingMac = 12;
 #endif
@@ -216,9 +211,6 @@ HorizontalTabStripRegionView::HorizontalTabStripRegionView(
       tab_search_position_metrics_logger_(
           std::make_unique<TabSearchPositionMetricsLogger>(
               browser_view->browser())),
-#if BUILDFLAG(IS_CHROMEOS)
-      tab_scrubber_(std::make_unique<ash::TabScrubber>(browser_view)),
-#endif
       action_view_controller_(std::make_unique<views::ActionViewController>()) {
   views::SetCascadingColorProviderColor(
       this, views::kCascadingBackgroundColor,
@@ -489,28 +481,6 @@ void HorizontalTabStripRegionView::Layout(PassKey) {
   }
 }
 
-void HorizontalTabStripRegionView::AddedToWidget() {
-  TabStripRegionView::AddedToWidget();
-#if BUILDFLAG(IS_CHROMEOS)
-  if (tab_scrubber_ && GetWidget() && GetWidget()->GetNativeWindow()) {
-    GetWidget()->GetNativeWindow()->AddPreTargetHandler(tab_scrubber_.get());
-  }
-#endif
-}
-
-void HorizontalTabStripRegionView::RemovedFromWidget() {
-#if BUILDFLAG(IS_CHROMEOS)
-  if (tab_scrubber_) {
-    tab_scrubber_->FinishScrub(false);
-    if (GetWidget() && GetWidget()->GetNativeWindow()) {
-      GetWidget()->GetNativeWindow()->RemovePreTargetHandler(
-          tab_scrubber_.get());
-    }
-  }
-#endif
-  TabStripRegionView::RemovedFromWidget();
-}
-
 bool HorizontalTabStripRegionView::CanDrop(const OSExchangeData& data) {
   return TabDragController::IsSystemDnDSessionRunning() &&
          data.HasCustomFormat(ui::ClipboardFormatType::CustomPlatformType(
@@ -583,11 +553,9 @@ TabStripFlatEdgeButton* HorizontalTabStripRegionView::GetTabSearchButton() {
   return nullptr;
 }
 
-#if BUILDFLAG(ENABLE_GLIC)
 views::LabelButton* HorizontalTabStripRegionView::GetGlicButton() {
   return tab_strip_action_container_->GetGlicButton();
 }
-#endif  // BUILDFLAG(ENABLE_GLIC)
 
 void HorizontalTabStripRegionView::InitializeTabStrip() {
   if (tab_strip_set_) {
@@ -750,11 +718,6 @@ void HorizontalTabStripRegionView::UpdateButtonBorders() {
 
     if (tab_search_container_->auto_tab_group_button()) {
       UpdateBorderInsetsIfNeeded(tab_search_container_->auto_tab_group_button(),
-                                 border_insets);
-    }
-
-    if (tab_search_container_->tab_declutter_button()) {
-      UpdateBorderInsetsIfNeeded(tab_search_container_->tab_declutter_button(),
                                  border_insets);
     }
   }

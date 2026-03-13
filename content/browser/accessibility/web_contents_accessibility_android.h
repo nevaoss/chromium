@@ -153,6 +153,7 @@ class CONTENT_EXPORT WebContentsAccessibilityAndroid
 
   // Tree methods.
   int32_t GetRootId(JNIEnv* env);
+  size_t GetAccessibilityTreeSizeForTesting(JNIEnv* env);
   bool IsNodeValid(JNIEnv* env, int32_t id);
 
   void HitTest(JNIEnv* env, int32_t x, int32_t y);
@@ -403,7 +404,9 @@ class CONTENT_EXPORT WebContentsAccessibilityAndroid
   BrowserAccessibilityAndroid* GetAccessibilityFocus() const;
 
   void HandlePageLoaded(int32_t unique_id);
-  void HandleContentChanged(int32_t unique_id);
+  // If |set_subtree_changed| is true, the TYPE_WINDOW_CONTENT_CHANGED event
+  // will signal that this change is affecting its underlying subtree.
+  void HandleContentChanged(int32_t unique_id, bool set_subtree_changed);
   void HandleFocusChanged(int32_t unique_id, bool is_root_or_frame_root);
   void HandleCheckStateChanged(int32_t unique_id);
   void HandleClicked(int32_t unique_id);

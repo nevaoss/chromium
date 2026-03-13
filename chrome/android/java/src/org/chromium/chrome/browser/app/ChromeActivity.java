@@ -1371,8 +1371,11 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         }
     }
 
-    protected FullscreenVideoPictureInPictureController
+    protected @Nullable FullscreenVideoPictureInPictureController
             ensureFullscreenVideoPictureInPictureController() {
+        if (!ChromeFeatureList.sFullscreenVideoPictureInPicture.isEnabled()) {
+            return null;
+        }
         if (mFullscreenVideoPictureInPictureController == null) {
             mFullscreenVideoPictureInPictureController =
                     new FullscreenVideoPictureInPictureController(
@@ -1383,7 +1386,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
     }
 
     private @Nullable ActorPictureInPictureController maybeCreateActorPipController() {
-        if (mActorPipController == null && ChromeFeatureList.sGlicActorUi.isEnabled()) {
+        if (mActorPipController == null && ChromeFeatureList.sGlic.isEnabled()) {
             mActorPipController =
                     new ActorPictureInPictureController(this, () -> mTabModelProfileSupplier.get());
         }
@@ -1408,8 +1411,11 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
             return;
         }
 
-        ensureFullscreenVideoPictureInPictureController();
-        mFullscreenVideoPictureInPictureController.attemptPictureInPicture();
+        FullscreenVideoPictureInPictureController controller =
+                ensureFullscreenVideoPictureInPictureController();
+        if (controller != null) {
+            controller.attemptPictureInPicture();
+        }
         // The attempt might not be successful.  If it is, then `onPictureInPictureModeChanged` will
         // let us know later.  Note that the activity might report that it is in PictureInPicture
         // mode at any point after this, which might be before we finish setup after receiving
@@ -1421,7 +1427,11 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         super.onPictureInPictureUiStateChanged(pipState);
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return;
         if (isActivityFinishingOrDestroyed()) return;
-        ensureFullscreenVideoPictureInPictureController().onStashReported(pipState.isStashed());
+        FullscreenVideoPictureInPictureController controller =
+                ensureFullscreenVideoPictureInPictureController();
+        if (controller != null) {
+            controller.onStashReported(pipState.isStashed());
+        }
     }
 
     /**
@@ -1437,12 +1447,15 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
                 " custom tabs: " + wasInPictureInPictureForMinimizedCustomTabs());
         if (wasInPictureInPictureForMinimizedCustomTabs()) return;
         if (inPicture) {
-            maybeCreateActorPipController();
-            if (mActorPipController == null || !mActorPipController.shouldEnterPip()) {
-                ensureFullscreenVideoPictureInPictureController();
-                mFullscreenVideoPictureInPictureController.onEnteredPictureInPictureMode();
-            }
             mLastPictureInPictureModeForTesting = true;
+            maybeCreateActorPipController();
+            if (mActorPipController != null && mActorPipController.shouldEnterPip()) return;
+
+            FullscreenVideoPictureInPictureController controller =
+                    ensureFullscreenVideoPictureInPictureController();
+            if (controller != null) {
+                controller.onEnteredPictureInPictureMode();
+            }
         } else {
             if (mActorPipController != null) {
                 mActorPipController.onFrameworkExitedPictureInPicture();
@@ -1805,6 +1818,18 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
     @SuppressLint("NewApi")
     @Override
     protected final void onDestroy() {
+        // Destroy all ChromeAndroidTaskFeatures scoped to this ChromeActivity.
+        // For one ChromeAndroidTaskFeature, its native code may hold pointers
+        // to other native objects that are destroyed later in this method,
+        // such as the native TabListInterface, the native BrowserWindowInterface, etc.
+        // Therefore, ChromeAndroidTaskFeatures should be destroyed first to
+        // prevent issues like dereferencing a non-null but invalid pointer.
+        ChromeAndroidTask chromeAndroidTask = mChromeAndroidTaskSupplier.get();
+        if (chromeAndroidTask != null) {
+            var activityWindowAndroid = getWindowAndroid();
+            chromeAndroidTask.removeAllFeaturesForActivity(activityWindowAndroid);
+        }
+
         SnackbarManager snackbarManager = mSnackbarManagerSupplier.get();
         if (snackbarManager != null) {
             SnackbarManagerProvider.detach(snackbarManager);
@@ -3106,7 +3131,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
     }
 
     public ReadAloudController getReadAloudControllerForTesting() {
-        return mRootUiCoordinator.getReadAloudControllerSupplier().get();
+        return mRootUiCoordinator.getReadAloudControllerSupplier().asNonNull().get();
     }
 
     // NightModeStateProvider.Observer implementation.

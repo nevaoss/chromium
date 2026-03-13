@@ -41,6 +41,14 @@ class MockIdentityCredentialSource
               SelectAccount,
               (const url::Origin&, const std::string&),
               (override));
+  MOCK_METHOD(
+      void,
+      SetEmbedderLoginRequest,
+      (const url::Origin&,
+       const std::string&,
+       base::RepeatingCallback<void(content::webid::FederatedLoginResult)>),
+      (override));
+  MOCK_METHOD(bool, HasPendingRequest, (), (override));
 };
 
 scoped_refptr<content::IdentityRequestAccount> CreateTestIdentityRequestAccount(
@@ -106,7 +114,7 @@ TEST_F(ActorLoginFederatedCredentialsFetcherTest, GetCredentialsSuccess) {
   const auto& [credentials, status] = future.Get();
   ASSERT_EQ(credentials.size(), 1u);
   EXPECT_EQ(credentials[0].type, CredentialType::kFederated);
-  EXPECT_EQ(credentials[0].username, u"Display Name idp");
+  EXPECT_EQ(credentials[0].username, u"test@example.com");
   EXPECT_EQ(credentials[0].source_site_or_app, u"idp");
   EXPECT_EQ(credentials[0].request_origin, request_origin);
   EXPECT_EQ(credentials[0].display_origin, u"example.com");

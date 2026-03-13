@@ -290,7 +290,7 @@ void DetectFrameworkVersions(Document& document,
   if (document.head()) {
     for (HTMLMetaElement& meta_element :
          Traversal<HTMLMetaElement>::DescendantsOf(*document.head())) {
-      if (EqualIgnoringASCIICase(meta_element.GetName(), "generator")) {
+      if (EqualIgnoringAsciiCase(meta_element.GetName(), "generator")) {
         generator_meta = &meta_element;
         break;
       }
@@ -364,8 +364,8 @@ void TraverseTreeForFrameworks(Document& document,
 void DetectJavascriptFrameworksOnLoad(Document& document) {
   LocalFrame* const frame = document.GetFrame();
   if (!frame || !frame->IsOutermostMainFrame() ||
-      !document.Url().ProtocolIsInHTTPFamily() ||
-      !document.BaseURL().ProtocolIsInHTTPFamily()) {
+      !document.Url().ProtocolIsInHttpFamily() ||
+      !document.BaseURL().ProtocolIsInHttpFamily()) {
     return;
   }
 

@@ -2231,7 +2231,7 @@ WebLocalFrameImpl* WebLocalFrameImpl::CreateProvisional(
       previous_web_frame->Opener(), DocumentToken(),
       std::move(interface_broker),
       /*policy_container=*/nullptr, StorageKey(),
-      /*creator_base_url=*/KURL(), sandbox_flags);
+      /*creator_base_url=*/NullUrl(), sandbox_flags);
 
   LocalFrame* new_frame = web_frame->GetFrame();
 
@@ -2819,7 +2819,7 @@ void WebLocalFrameImpl::CommitNavigation(
     if (navigation_params->is_synchronous_commit_for_bug_778318 &&
         // Explicitly check for about:blank or about:srcdoc to prevent things
         // like about:mumble propagating the base url.
-        (url.IsAboutBlankURL() || url.IsAboutSrcdocURL())) {
+        (url.IsAboutBlankUrl() || url.IsAboutSrcdocUrl())) {
       navigation_params->fallback_base_url =
           GetFrame()->GetDocument()->BaseURL();
     }

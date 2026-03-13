@@ -137,7 +137,7 @@ base::span<const T> CastConstSpan(base::span<const uint8_t> span) {
                                    span.size() / sizeof(T)));
 }
 
-gpu::SyncToken CopySharedImageToTexture(
+gpu::SyncToken CopySharedImageToGLTextureViaTextureCopy(
     gpu::gles2::GLES2Interface* gl,
     const gfx::Size& coded_size,
     const gfx::Rect& visible_rect,
@@ -629,17 +629,20 @@ VideoPixelFormatAsSkYUVAInfoValues(VideoPixelFormat format) {
   }
 }
 
-// Checks support before attempting one copy upload to GL texture.
-bool SupportsOneCopyUploadToGLTexture(VideoPixelFormat video_frame_format,
-                                      uint32_t shared_image_target,
-                                      unsigned int dst_target,
-                                      unsigned int dst_internal_format,
-                                      unsigned int dst_type,
-                                      int dst_level,
-                                      SkAlphaType dst_alpha_type) {
-  // NOTE: The direct upload path is not supported on Android (see comment on
-  // CopyVideoFrameTexturesToGLTexture()).
-  // TODO(crbug.com/40075313): Enable on Android.
+// Checks support before attempting a service-side copy of a SharedImage to a
+// GL texture via Skia.
+bool CanCopySharedImageToGLTextureViaSkia(VideoPixelFormat video_frame_format,
+                                          uint32_t shared_image_target,
+                                          unsigned int dst_target,
+                                          unsigned int dst_internal_format,
+                                          unsigned int dst_type,
+                                          int dst_level,
+                                          SkAlphaType dst_alpha_type) {
+  // NOTE: CopySharedImageToGLTextureINTERNAL() is implemented only in the
+  // passthrough command decoder, which is not yet fully rolled out on Android.
+  // Hence, disable this codepath on Android.
+  // TODO(crbug.com/40075313): Enable on Android once the passthrough command
+  // decoder is used universally there.
 #if BUILDFLAG(IS_ANDROID)
   return false;
 #else
@@ -1406,7 +1409,7 @@ bool PaintCanvasVideoRenderer::CopyVideoFrameTexturesToGLTexture(
   bool can_obtain_texture_from_shared_image =
       si_format_has_single_texture && si_usable_by_gles2_interface;
   if (can_obtain_texture_from_shared_image) {
-    CopySharedImageToTexture(
+    CopySharedImageToGLTextureViaTextureCopy(
         destination_gl, video_frame->coded_size(), video_frame->visible_rect(),
         shared_image.get(), video_frame->acquire_sync_token(), target, texture,
         internal_format, format, type, level, dst_alpha_type, dst_origin);
@@ -1415,7 +1418,7 @@ bool PaintCanvasVideoRenderer::CopyVideoFrameTexturesToGLTexture(
     SynchronizeVideoFrameRead(std::move(video_frame), destination_gl,
                               raster_context_provider->ContextSupport());
     return true;
-  } else if (SupportsOneCopyUploadToGLTexture(
+  } else if (CanCopySharedImageToGLTextureViaSkia(
                  video_frame->format(), shared_image->GetTextureTarget(),
                  target, internal_format, type, level, dst_alpha_type)) {
     // Do a service-side copy from the SharedImage to the destination texture
@@ -1448,75 +1451,79 @@ bool PaintCanvasVideoRenderer::CopyVideoFrameTexturesToGLTexture(
                               raster_context_provider->ContextSupport(),
                               std::move(destination_access));
     return true;
+  } else {
+    // Take the two-copy path:
+    // * Copy the source SharedImage to a single-planar SI that's usable by GL
+    // * Perform a direct texture-to-texture copy from the intermediate SI
+    //   to the destination GL texture
+    DCHECK_EQ(shared_image->surface_origin(), kTopLeft_GrSurfaceOrigin);
+    gpu::raster::RasterInterface* canvas_ri =
+        raster_context_provider->RasterInterface();
+    DCHECK(canvas_ri);
+
+    // Create the intermediate rgb shared image cache if not already present.
+    if (!rgb_shared_image_cache_) {
+      rgb_shared_image_cache_ = std::make_unique<VideoFrameSharedImageCache>();
+    }
+
+    // This SI is used to cache the VideoFrame. We copy the contents of the
+    // source VideoFrame into the cached SI over the raster interface and will
+    // eventually read out its contents into a destination GL texture via the
+    // GLES2 interface.
+    gpu::SharedImageUsageSet src_usage = gpu::SHARED_IMAGE_USAGE_GLES2_READ |
+                                         gpu::SHARED_IMAGE_USAGE_RASTER_WRITE;
+    auto [rgb_shared_image, rgb_sync_token, status] =
+        rgb_shared_image_cache_->GetOrCreateSharedImage(
+            video_frame.get(), raster_context_provider, src_usage,
+            SHARED_IMAGE_FORMAT, kPremul_SkAlphaType,
+            video_frame->CompatRGBColorSpace());
+    CHECK(rgb_shared_image);
+
+    // Wait on the `rgb_sync_token` passed from the cache that may have been
+    // updated from the previous frame.
+    std::unique_ptr<gpu::RasterScopedAccess> dst_ri_access =
+        rgb_shared_image->BeginRasterAccess(canvas_ri, rgb_sync_token,
+                                            /*readonly=*/false);
+
+    // If there's no cache hit, perform a copy.
+    if (status != VideoFrameSharedImageCache::Status::kMatchedVideoFrameId) {
+      // Copy into the shared image backing of the cached copy.
+      std::unique_ptr<gpu::RasterScopedAccess> src_ri_access =
+          shared_image->BeginRasterAccess(canvas_ri,
+                                          video_frame->acquire_sync_token(),
+                                          /*readonly=*/true);
+      canvas_ri->CopySharedImage(shared_image->mailbox(),
+                                 rgb_shared_image->mailbox(), 0, 0, 0, 0,
+                                 video_frame->coded_size().width(),
+                                 video_frame->coded_size().height());
+
+      // Ensure that |video_frame| not be deleted until the above copy is
+      // completed.
+      SynchronizeVideoFrameRead(video_frame, canvas_ri,
+                                raster_context_provider->ContextSupport(),
+                                std::move(src_ri_access));
+    }
+
+    // Wait for mailbox creation on canvas context before consuming it and
+    // copying from it on the consumer context.
+    gpu::SyncToken sync_token =
+        gpu::RasterScopedAccess::EndAccess(std::move(dst_ri_access));
+
+    gpu::SyncToken dest_sync_token = CopySharedImageToGLTextureViaTextureCopy(
+        destination_gl, video_frame->coded_size(), video_frame->visible_rect(),
+        rgb_shared_image.get(), sync_token, target, texture, internal_format,
+        format, type, level, dst_alpha_type, dst_origin);
+
+    // Update the `rgb_sync_token` to be waited upon based on gles tasks
+    // performed earlier.
+    rgb_shared_image_cache_->UpdateSyncToken(dest_sync_token);
+
+    // We do not need to synchronize video frame read here since it's already
+    // taken care of earlier.
+    // Kick off a timer to release the cache.
+    cache_deleting_timer_.Reset();
+    return true;
   }
-
-  DCHECK_EQ(shared_image->surface_origin(), kTopLeft_GrSurfaceOrigin);
-  gpu::raster::RasterInterface* canvas_ri =
-      raster_context_provider->RasterInterface();
-  DCHECK(canvas_ri);
-
-  // Take the two-copy path.
-  // Create the intermediate rgb shared image cache if not already present.
-  if (!rgb_shared_image_cache_) {
-    rgb_shared_image_cache_ = std::make_unique<VideoFrameSharedImageCache>();
-  }
-
-  // This SI is used to cache the VideoFrame. We copy the contents of the source
-  // VideoFrame into the cached SI over the raster interface and will eventually
-  // read out its contents into a destination GL texture via the GLES2
-  // interface.
-  gpu::SharedImageUsageSet src_usage =
-      gpu::SHARED_IMAGE_USAGE_GLES2_READ | gpu::SHARED_IMAGE_USAGE_RASTER_WRITE;
-  auto [rgb_shared_image, rgb_sync_token, status] =
-      rgb_shared_image_cache_->GetOrCreateSharedImage(
-          video_frame.get(), raster_context_provider, src_usage,
-          SHARED_IMAGE_FORMAT, kPremul_SkAlphaType,
-          video_frame->CompatRGBColorSpace());
-  CHECK(rgb_shared_image);
-
-  // Wait on the `rgb_sync_token` passed from the cache that may have been
-  // updated from the previous frame.
-  std::unique_ptr<gpu::RasterScopedAccess> dst_ri_access =
-      rgb_shared_image->BeginRasterAccess(canvas_ri, rgb_sync_token,
-                                          /*readonly=*/false);
-
-  // If there's no cache hit, perform a copy.
-  if (status != VideoFrameSharedImageCache::Status::kMatchedVideoFrameId) {
-    // Copy into the shared image backing of the cached copy.
-    std::unique_ptr<gpu::RasterScopedAccess> src_ri_access =
-        shared_image->BeginRasterAccess(canvas_ri,
-                                        video_frame->acquire_sync_token(),
-                                        /*readonly=*/true);
-    canvas_ri->CopySharedImage(
-        shared_image->mailbox(), rgb_shared_image->mailbox(), 0, 0, 0, 0,
-        video_frame->coded_size().width(), video_frame->coded_size().height());
-
-    // Ensure that |video_frame| not be deleted until the above copy is
-    // completed.
-    SynchronizeVideoFrameRead(video_frame, canvas_ri,
-                              raster_context_provider->ContextSupport(),
-                              std::move(src_ri_access));
-  }
-
-  // Wait for mailbox creation on canvas context before consuming it and
-  // copying from it on the consumer context.
-  gpu::SyncToken sync_token =
-      gpu::RasterScopedAccess::EndAccess(std::move(dst_ri_access));
-
-  gpu::SyncToken dest_sync_token = CopySharedImageToTexture(
-      destination_gl, video_frame->coded_size(), video_frame->visible_rect(),
-      rgb_shared_image.get(), sync_token, target, texture, internal_format,
-      format, type, level, dst_alpha_type, dst_origin);
-
-  // Update the `rgb_sync_token` to be waited upon based on gles tasks performed
-  // earlier.
-  rgb_shared_image_cache_->UpdateSyncToken(dest_sync_token);
-
-  // We do not need to synchronize video frame read here since it's already
-  // taken care of earlier.
-  // Kick off a timer to release the cache.
-  cache_deleting_timer_.Reset();
-  return true;
 }
 
 bool PaintCanvasVideoRenderer::CopyVideoFrameYUVDataToGLTexture(
@@ -1595,15 +1602,13 @@ bool PaintCanvasVideoRenderer::CopyVideoFrameYUVDataToGLTexture(
   // On the source Raster context, do the YUV->RGB conversion.
   // Pass the rgb sync token here to be waited upon before performing raster
   // tasks.
-  gpu::SyncToken post_conversion_sync_token =
-      internals::ConvertYuvVideoFrameToRgbSharedImage(
-          video_frame.get(), raster_context_provider, rgb_shared_image,
-          rgb_sync_token, /*use_visible_rect=*/false,
-          yuv_shared_image_cache_.get());
+  gpu::SyncToken post_conversion_sync_token = CopyVideoFrameToSharedImage(
+      raster_context_provider, video_frame, rgb_shared_image, rgb_sync_token,
+      /*use_visible_rect=*/false, yuv_shared_image_cache_.get());
 
   // On the destination GL context, do a copy (with cropping) into the
   // destination texture.
-  rgb_sync_token = CopySharedImageToTexture(
+  rgb_sync_token = CopySharedImageToGLTextureViaTextureCopy(
       destination_gl, video_frame->coded_size(), video_frame->visible_rect(),
       rgb_shared_image.get(), post_conversion_sync_token, target, texture,
       internal_format, format, type, level, dst_alpha_type, dst_origin);
@@ -1806,7 +1811,8 @@ gpu::SyncToken PaintCanvasVideoRenderer::CopyVideoFrameToSharedImage(
     scoped_refptr<VideoFrame> video_frame,
     scoped_refptr<gpu::ClientSharedImage> dest_shared_image,
     const gpu::SyncToken& dest_sync_token,
-    bool use_visible_rect) {
+    bool use_visible_rect,
+    VideoFrameSharedImageCache* shared_image_cache /*=nullptr*/) {
   auto* ri = raster_context_provider->RasterInterface();
 
   gpu::SyncToken sync_token;
@@ -1833,10 +1839,9 @@ gpu::SyncToken PaintCanvasVideoRenderer::CopyVideoFrameToSharedImage(
                               raster_context_provider->ContextSupport(),
                               std::move(src_ri_access));
   } else {
-    // TODO(vasilyt): Add caching support
     sync_token = internals::ConvertYuvVideoFrameToRgbSharedImage(
         video_frame.get(), raster_context_provider, dest_shared_image,
-        dest_sync_token, use_visible_rect, /*shared_image_cache=*/nullptr);
+        dest_sync_token, use_visible_rect, shared_image_cache);
   }
 
   return sync_token;

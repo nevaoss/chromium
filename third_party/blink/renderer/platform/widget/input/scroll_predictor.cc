@@ -32,6 +32,10 @@ ScrollPredictor::ScrollPredictor()
       PredictorFactory::GetPredictorTypeFromName(predictor_name);
   predictor_ = PredictorFactory::GetPredictor(predictor_type);
 
+  // Initialize the synthetic predictor. In this base refactor, it uses
+  // the same predictor type as real events.
+  synthetic_predictor_ = PredictorFactory::GetPredictor(predictor_type);
+
   filtering_enabled_ =
       base::FeatureList::IsEnabled(blink::features::kFilteringScrollPrediction);
 
@@ -113,7 +117,8 @@ std::unique_ptr<EventWithCallback> ScrollPredictor::ResampleScrollEvents(
 
     if (should_resample_scroll_events_) {
       ResampleEvent(frame_time, frame_interval,
-                    event_with_callback->event_pointer(), trace_id);
+                    event_with_callback->event_pointer(), trace_id,
+                    /*use_synthetic_predictor=*/false);
       // Sync the predicted `delta_y` to `metrics` for AverageLag metric.
       auto* metrics = event_with_callback->metrics()
                           ? event_with_callback->metrics()->AsScrollUpdate()
@@ -150,7 +155,7 @@ ScrollPredictor::GenerateSyntheticScrollUpdate(
   ui::LatencyInfo latency_info;
   latency_info.set_trace_id(base::trace_event::GetNextGlobalTraceId());
   ResampleEvent(frame_time, frame_interval, &gesture_event,
-                latency_info.trace_id());
+                latency_info.trace_id(), /*use_synthetic_predictor=*/true);
 
   // TODO(b/329346768): We should also add a new `BEGIN` stage, instead of
   // re-using the one that is explicitly about the `content::RenderWidgetHost`.
@@ -209,20 +214,22 @@ bool ScrollPredictor::HasPrediction(base::TimeTicks frame_time,
 
   if (!last_prediction_update_timestamp_.is_null() &&
       prediction_time - last_prediction_update_timestamp_ >
-          predictor_->MaxResampleTime()) {
+          synthetic_predictor_->MaxResampleTime()) {
     return false;
   }
 
-  return predictor_->HasPrediction();
+  return synthetic_predictor_->HasPrediction();
 }
 
 void ScrollPredictor::Reset() {
   predictor_->Reset();
+  synthetic_predictor_->Reset();
   if (filtering_enabled_) {
     filter_ = filter_factory_->CreateFilter();
   }
   current_event_accumulated_delta_ = gfx::PointF();
   last_predicted_accumulated_delta_ = gfx::PointF();
+  last_real_delta_ = gfx::Vector2dF();
   last_prediction_update_timestamp_ = base::TimeTicks();  // Reset the timestamp
   metrics_handler_.Reset();
 }
@@ -244,11 +251,13 @@ void ScrollPredictor::UpdatePredictionForEventAfterSampleTime(
   }
 
   if (last_prediction_update_timestamp_ < gesture_event.TimeStamp()) {
-    predictor_->Update(
-        {current_event_accumulated_delta_ +
-             gfx::Vector2dF(gesture_event.data.scroll_update.delta_x,
-                            gesture_event.data.scroll_update.delta_y),
-         gesture_event.TimeStamp()});
+    ui::InputPredictor::InputData data = {
+        current_event_accumulated_delta_ +
+            gfx::Vector2dF(gesture_event.data.scroll_update.delta_x,
+                           gesture_event.data.scroll_update.delta_y),
+        gesture_event.TimeStamp()};
+    predictor_->Update(data);
+    synthetic_predictor_->Update(data);
     last_prediction_update_timestamp_ = gesture_event.TimeStamp();
   }
 }
@@ -279,6 +288,7 @@ void ScrollPredictor::UpdatePrediction(const WebInputEvent& event,
   // each event once.
   if (last_prediction_update_timestamp_ < gesture_event.TimeStamp()) {
     predictor_->Update(data);
+    synthetic_predictor_->Update(data);
     last_prediction_update_timestamp_ = gesture_event.TimeStamp();
   }
 
@@ -290,9 +300,16 @@ void ScrollPredictor::UpdatePrediction(const WebInputEvent& event,
 void ScrollPredictor::ResampleEvent(base::TimeTicks frame_time,
                                     base::TimeDelta frame_interval,
                                     WebInputEvent* event,
-                                    int64_t trace_id) {
+                                    int64_t trace_id,
+                                    bool use_synthetic_predictor) {
+  ui::InputPredictor* predictor =
+      use_synthetic_predictor ? synthetic_predictor_.get() : predictor_.get();
+  DCHECK(predictor);
   DCHECK(event->GetType() == WebInputEvent::Type::kGestureScrollUpdate);
   WebGestureEvent* gesture_event = static_cast<WebGestureEvent*>(event);
+
+  float original_delta_x = gesture_event->data.scroll_update.delta_x;
+  float original_delta_y = gesture_event->data.scroll_update.delta_y;
 
   TRACE_EVENT_BEGIN(
       "input", "ScrollPredictor::ResampleScrollEvents",
@@ -300,15 +317,12 @@ void ScrollPredictor::ResampleEvent(base::TimeTicks frame_time,
         auto* event = ctx.event<perfetto::protos::pbzero::ChromeTrackEvent>();
         auto* scroll_data = event->set_scroll_deltas();
         scroll_data->set_trace_id(trace_id);
-        scroll_data->set_original_delta_x(
-            gesture_event->data.scroll_update.delta_x);
-        scroll_data->set_original_delta_y(
-            gesture_event->data.scroll_update.delta_y);
+        scroll_data->set_original_delta_x(original_delta_x);
+        scroll_data->set_original_delta_y(original_delta_y);
       });
   gfx::PointF predicted_accumulated_delta =
       last_predicted_accumulated_delta_ +
-      gfx::Vector2dF(gesture_event->data.scroll_update.delta_x,
-                     gesture_event->data.scroll_update.delta_y);
+      gfx::Vector2dF(original_delta_x, original_delta_y);
 
   base::TimeDelta prediction_delta = frame_time - gesture_event->TimeStamp();
   bool predicted = false;
@@ -316,12 +330,16 @@ void ScrollPredictor::ResampleEvent(base::TimeTicks frame_time,
   // For resampling, we don't want to predict too far away because the result
   // will likely be inaccurate in that case. We cut off the prediction to the
   // maximum available for the current predictor
-  prediction_delta = std::min(prediction_delta, predictor_->MaxResampleTime());
+  prediction_delta = std::min(prediction_delta, predictor->MaxResampleTime());
 
   base::TimeTicks prediction_time =
       gesture_event->TimeStamp() + prediction_delta;
 
-  auto result = predictor_->GeneratePrediction(prediction_time, frame_interval);
+  if (!use_synthetic_predictor) {
+    last_real_delta_ = gfx::Vector2dF(original_delta_x, original_delta_y);
+  }
+
+  auto result = predictor->GeneratePrediction(prediction_time, frame_interval);
   if (result) {
     predicted_accumulated_delta = result->pos;
     gesture_event->SetTimeStamp(result->time_stamp);
@@ -341,14 +359,16 @@ void ScrollPredictor::ResampleEvent(base::TimeTicks frame_time,
   // direction to the original event.
   gfx::Vector2dF new_delta =
       predicted_accumulated_delta - last_predicted_accumulated_delta_;
+
+  const gfx::Vector2dF& reference_delta =
+      !use_synthetic_predictor
+          ? gfx::Vector2dF(original_delta_x, original_delta_y)
+          : last_real_delta_;
+
   gesture_event->data.scroll_update.delta_x =
-      (new_delta.x() * gesture_event->data.scroll_update.delta_x < 0)
-          ? 0
-          : new_delta.x();
+      (new_delta.x() * reference_delta.x() < 0) ? 0 : new_delta.x();
   gesture_event->data.scroll_update.delta_y =
-      (new_delta.y() * gesture_event->data.scroll_update.delta_y < 0)
-          ? 0
-          : new_delta.y();
+      (new_delta.y() * reference_delta.y() < 0) ? 0 : new_delta.y();
   TRACE_EVENT_END("input", [&](perfetto::EventContext ctx) {
     auto* event = ctx.event<perfetto::protos::pbzero::ChromeTrackEvent>();
     auto* scroll_data = event->set_scroll_deltas();

@@ -1617,6 +1617,7 @@
 <translation id="3575121482199441727">អនុញ្ញាត​សម្រាប់​គេហទំព័រ​នេះ</translation>
 <translation id="3575168918110434329">A4x7</translation>
 <translation id="3575589330755445706">បានជ្រើសរើសជម្រើសឈ្មោះផ្លូវ</translation>
+<translation id="3576315803647905285">ធ្វើឱ្យមានលក្ខណៈផ្លូវការ</translation>
 <translation id="3576616784287504635">ទំព័រ​បង្កប់​នៅ <ph name="SITE" /> និយាយ​ថា</translation>
 <translation id="3577473026931028326">មានអ្វីមួយខុសប្រក្រតី។ សូមព្យាយាមម្ដងទៀត។</translation>
 <translation id="3577902790357386792">កាយសម្ព័ន្ធ</translation>
@@ -1912,6 +1913,7 @@
 <translation id="4031179711345676612">បាន​អនុញ្ញាត​ឱ្យប្រើ​មីក្រូហ្វូន</translation>
 <translation id="4036753017940930924">ដីឡូត៍ និងដី</translation>
 <translation id="403724377879219932">អាច​ស្នើសុំ​ចូលប្រើ​ឧបករណ៍​ផ្សេងទៀត​នៅលើ​បណ្ដាញ​មូលដ្ឋាន​របស់អ្នក​បាន</translation>
+<translation id="4038863931942689384"><ph name="ATTRIBUTE_VALUE" />, ថ្មី</translation>
 <translation id="4039506337798853114">ដើម្បី​បង្ហាញ​ទស្សន៍ទ្រនិច​របស់អ្នក សូមចុច |<ph name="ACCELERATOR" />|</translation>
 <translation id="4042597221652780603">ប្រហាក់ប្រហែល</translation>
 <translation id="4045070493270310437">បើក​ផ្ទាំង​ឡើងវិញ</translation>
@@ -2361,7 +2363,6 @@
 <translation id="4750671009706599284">ទូរសព្ទនេះ</translation>
 <translation id="4750917950439032686">ព័ត៌មានរបស់អ្នក (ឧទារហរណ៍៖ ពាក្យសម្ងាត់ ឬលេខកាតឥណទាន) ស្ថិតក្នុងលក្ខណៈឯកជននៅពេលដែលវាត្រូវបានផ្ញើទៅគេហទំព័រនេះ។</translation>
 <translation id="4751249061288707459">បានធ្វើបច្ចុប្បន្នភាពការយល់ព្រមចុងក្រោយនៅ៖</translation>
-<translation id="4751476147751820511">ឧបករណ៍​ចាប់​សញ្ញាពន្លឺ ឬ​ចលនា</translation>
 <translation id="4754461935447132332">មិនអនុញ្ញាត​សម្រាប់គេហទំព័រ​ដែលគ្មានសុវត្ថិភាពទេ</translation>
 <translation id="4756501505996488486">PRC 16K</translation>
 <translation id="4757740693289347881">លេខកូដ​មិនត្រឹមត្រូវ​ទេ</translation>
@@ -2641,6 +2642,7 @@
 <translation id="5190835502935405962">របាចំណាំ</translation>
 <translation id="5191315092027169558">កម្រងព័ត៌មាន​របស់​អ្នក​ស្ថិត​ក្រោម​ការគ្រប់គ្រង​របស់ <ph name="DOMAIN" /></translation>
 <translation id="51918995459521422"><ph name="ORIGIN" /> ចង់ទាញយកឯកសារច្រើន</translation>
+<translation id="5199121357983849992">រក្សាទុកកាតសម្គាល់ខ្លួនឬ?</translation>
 <translation id="5200063972779787617">រក្សាទុក​អាសយដ្ឋាន​នៅក្នុង​គណនី</translation>
 <translation id="5201306358585911203">ទំព័របង្កប់​នៅលើ​ទំព័រ​នេះ​និយាយ​ថា</translation>
 <translation id="5203716867500274632">អ្នកគ្រប់គ្រង​របស់អ្នក​បានផ្ដល់​លទ្ធភាពឱ្យ​ធ្វើសម​កាលកម្ម​ទិន្នន័យ​ខាងក្រោម​រវាងវគ្គ​បច្ចុប្បន្ន និង​វគ្គមុន​របស់អ្នក​នៅលើ​ឧបករណ៍ ChromeOS៖</translation>
@@ -2689,6 +2691,7 @@
 <translation id="5266128565379329178">ភ្ជាប់​ខាងលើ</translation>
 <translation id="5269225904387178860">ចោះ​បួនរន្ធ​ខាងក្រោម</translation>
 <translation id="5271381225185906340">"<ph name="DATA_CONTROLS_ATTRIBUTE" />" មិនមែនជា​លក្ខខណ្ឌ​ដែលអាច​ប្រើបាន​សម្រាប់ "<ph name="DATA_CONTROLS_RESTRICTION" />" ទេ</translation>
+<translation id="527191520368130807">ដុសខាត់</translation>
 <translation id="5273658854610202413">ការព្រមាន៖ គោលការណ៍​នេះ​មិន​ត្រូវបាន​ដាក់បញ្ចូល​គ្នា​ដូច​ដែលបាន​បញ្ជាក់​នៅ​ក្នុង​គោលការណ៍ PolicyDictionaryMultipleSourceMergeList ទេ ដោយសារ​វាមិនមែន​ជាផ្នែកនៃ​គោលការណ៍​វចនានុក្រម ដែលអាច​បញ្ចូលគ្នា​បានទេ។</translation>
 <translation id="5278778426231952189">បង្ហោះឥឡូវនេះ</translation>
 <translation id="5279286380302340275">គ្រប់គ្រង​ការទាញយក</translation>
@@ -2798,6 +2801,7 @@
           <ph name="END_LIST" /></translation>
 <translation id="5434803328547504573">ដើម្បី​បង់ប្រាក់ចេញ​កាន់តែរហ័ស សូម​រក្សាទុក CVC នេះ​នៅក្នុង Google Wallet (<ph name="ACCOUNT_EMAIL" />)</translation>
 <translation id="5436307623797390637">កម្មវិធី​នៅលើ​ឧបករណ៍</translation>
+<translation id="5441409130426352029"><ph name="ATTRIBUTE_VALUE" />, ពីមុន <ph name="PREVIOUS_VALUE" /></translation>
 <translation id="5443468954631487277">ផ្ងារឡើងតាមលំដាប់លំដោយ​បញ្ច្រាស</translation>
 <translation id="5447235695608032700">អនុញ្ញាត​ឱ្យ <ph name="SITE" /> ប្រើ​ព័ត៌មាន​ដែល​ពួកគេ​បាន​រក្សាទុក​អំពី​អ្នក</translation>
 <translation id="5447973833955560753">ពាក្យ​សម្ងាត់​សម្រាប់​ការស្ដារ​ឡើងវិញ</translation>
@@ -3589,6 +3593,7 @@
 <translation id="6698097747703777657">មិនបាន​ទទួល​លេខកូដ​របស់អ្នក​ឬ? <ph name="BEGIN_LINK" />យកលេខកូដថ្មី<ph name="END_LINK" /></translation>
 <translation id="6698381487523150993">បានបង្កើត៖</translation>
 <translation id="6698769547327354196">ដើម្បីបិទ Pix នៅក្នុង Chrome សូមចូលទៅកាន់<ph name="BEGIN_LINK1" />ការកំណត់​ការបង់ប្រាក់<ph name="END_LINK1" />របស់អ្នក</translation>
+<translation id="669903922988126943">រក្សាទុក​ព័ត៌មាន​របស់អ្នក និង​បំពេញ​កិច្ចការ​បានកាន់តែ​លឿន ដូចជា​ការបំពេញ​ទម្រង់បែបបទ​នៅលើ​ផលិតផល Google ជាដើម។ អ្នកអាច<ph name="MANAGE_INFO_LINK" />នៅក្នុង <ph name="IDS_AUTOFILL_GOOGLE_WALLET_TITLE" /> សម្រាប់ <ph name="ACCOUNT" />។</translation>
 <translation id="67007264085648978">ដុំរំកិល​ពេលវេលា</translation>
 <translation id="6702851555558236418">កម្មវិធីសំឡេង និងតន្ត្រី</translation>
 <translation id="6702919718839027939">បង្ហាញ</translation>
@@ -4079,6 +4084,7 @@
 <translation id="746412105358554870">សុវត្ថិភាព និង​ការបង្កើន​ប្រសិទ្ធភាព JavaScript</translation>
 <translation id="7465036432780054056"><ph name="EMBEDDED_URL" /> នឹងដឹងថា​អ្នកបាន​ចូលទៅកាន់ <ph name="TOP_LEVEL_URL" /></translation>
 <translation id="7465963048299965912">10 x 13 in</translation>
+<translation id="7467332121947433617">ធ្វើបច្ចុប្បន្នភាពកាតសម្គាល់ខ្លួនឬ?</translation>
 <translation id="7469935732330206581">ទម្រង់មិនមាន​សុវត្ថិភាពទេ</translation>
 <translation id="7470854469646445678">ផ្ដល់​មូលហេតុ​នៃការចម្លង (តម្រូវ)</translation>
 <translation id="7471007961486718967">ផ្ដល់​មូលហេតុ​នៃការផ្ទេរ (តម្រូវ)</translation>
@@ -4100,6 +4106,7 @@
 <translation id="7499188644237027195">នៅពេល​អ្នកទិញ​នៅក្នុង Chrome សូមមើល​កាបូប​អេឡិចត្រូនិក និង Pix ជាជម្រើស</translation>
 <translation id="7500917112031739411">បង្ហាញតាមក្រុម</translation>
 <translation id="7501663406926337752">គេហទំព័រ​ដែលទៅកាន់ ត្រូវបានសម្គាល់ដោយស្ថាប័នរបស់អ្នក</translation>
+<translation id="7502044688973049724">គ្រប់គ្រងព័ត៌មានរបស់អ្នក</translation>
 <translation id="7507075214339298899">ស្រោមសំបុត្រ #9</translation>
 <translation id="7508255263130623398">លេខសម្គាល់ឧបករណ៍គោលការណ៍ប្រគល់ត្រឡប់វិញគឺទទេ ឬមិនត្រូវគ្នាជាមួយលេខសម្គាល់ឧបករណ៍បច្ចុប្បន្ន</translation>
 <translation id="7508577201115425418">សេវាកម្ម​បោះពុម្ព និងឯកសារ</translation>
@@ -5153,6 +5160,7 @@
 <translation id="9191834167571392248">ចោះ​ខាងក្រោម​ផ្នែកខាងឆ្វេង</translation>
 <translation id="9192361865877479444">លោហៈ (គ្រើម)</translation>
 <translation id="9192947025498305328">គ្រឿងថែរក្សាសម្ផស្សគ្មានសារធាតុគ្រោះថ្នាក់</translation>
+<translation id="9193018794001479794">បរិយាយ</translation>
 <translation id="9195969368671142407">នៅពេល​ស្ថាប័ន​របស់អ្នក​ដាក់កំហិតលើ​ការរក្សាទុក​ទៅគណនី Google របស់អ្នក អ្នក​មិនអាច​ចែករំលែក ឬ​ចូលរួម​ក្រុមផ្ទាំង​បានទេ</translation>
 <translation id="9198613052465150219">គណនី Google របស់អ្នក​អាចមាន​ទម្រង់​ផ្សេងទៀត​នៃប្រវត្តិ​រុករក​តាមអ៊ីនធឺណិត​នៅ <ph name="BEGIN_LINK_GMA" />myactivity.google.com<ph name="END_LINK_GMA" /></translation>
 <translation id="9199905725844810519">ការបោះពុម្ពត្រូវបានទប់ស្កាត់។</translation>
@@ -5219,7 +5227,6 @@
 <translation id="987264212798334818">ទូទៅ</translation>
 <translation id="988159990683914416">លេខកំណែអ្នកអភិវឌ្ឍន៍</translation>
 <translation id="989988560359834682">កែអាសយដ្ឋាន</translation>
-<translation id="991413375315957741">ឧបករណ៍​ចាប់ពន្លឺ ឬ​ចាប់ចលនា</translation>
 <translation id="991936891556421157">ស្បែកជើង</translation>
 <translation id="992110854164447044">កាត​និម្មិត​លាក់​កាត​ពិតប្រាកដ​របស់អ្នក ដើម្បីជួយ​ការពារ​អ្នក​ពី​ការគៃបន្លំ​ដែលអាចកើតមាន។ <ph name="IDS_AUTOFILL_VIRTUAL_CARD_ENROLLMENT_LEARN_MORE_LINK_LABEL" /></translation>
 <translation id="992115559265932548"><ph name="MICROSOFT_ACTIVE_DIRECTORY" /></translation>

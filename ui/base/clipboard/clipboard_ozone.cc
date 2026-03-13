@@ -473,9 +473,9 @@ void ClipboardOzone::OnPreShutdown() {
   async_clipboard_ozone_->OnPreShutdown();
 }
 
-std::optional<DataTransferEndpoint> ClipboardOzone::GetSource(
-    ClipboardBuffer buffer) const {
-  return async_clipboard_ozone_->ReadSourceAndWait(buffer);
+void ClipboardOzone::GetSource(ClipboardBuffer buffer,
+                               GetSourceCallback callback) const {
+  async_clipboard_ozone_->ReadSourceAsync(buffer, std::move(callback));
 }
 
 const ClipboardSequenceNumberToken& ClipboardOzone::GetSequenceNumber(
@@ -489,8 +489,10 @@ bool ClipboardOzone::IsFormatAvailable(
     const DataTransferEndpoint* data_dst) const {
   DCHECK(CalledOnValidThread());
 
-  if (!IsReadAllowed(GetSource(buffer), data_dst, base::span<uint8_t>()))
+  if (!IsReadAllowed(async_clipboard_ozone_->ReadSourceAndWait(buffer),
+                     data_dst, base::span<uint8_t>())) {
     return false;
+  }
 
   auto available_types = async_clipboard_ozone_->RequestMimeTypes(buffer);
   return std::ranges::contains(available_types, format.GetName());
@@ -500,11 +502,18 @@ void ClipboardOzone::Clear(ClipboardBuffer buffer) {
   async_clipboard_ozone_->Clear(buffer);
 }
 
-std::vector<std::u16string> ClipboardOzone::GetStandardFormats(
+void ClipboardOzone::GetStandardFormats(
     ClipboardBuffer buffer,
-    const DataTransferEndpoint* data_dst) const {
-  auto available_types = async_clipboard_ozone_->RequestMimeTypes(buffer);
-  return GetStandardFormatsFromMimeTypes(available_types);
+    const std::optional<DataTransferEndpoint>& data_dst,
+    GetStandardFormatsCallback callback) const {
+  async_clipboard_ozone_->GetAvailableMimeTypesAsync(
+      buffer, base::BindOnce(
+                  [](GetStandardFormatsCallback callback,
+                     const std::vector<std::string>& available_types) {
+                    std::move(callback).Run(
+                        GetStandardFormatsFromMimeTypes(available_types));
+                  },
+                  std::move(callback)));
 }
 
 void ClipboardOzone::ReadAvailableTypes(
@@ -514,13 +523,14 @@ void ClipboardOzone::ReadAvailableTypes(
   DCHECK(CalledOnValidThread());
 
   async_clipboard_ozone_->GetAvailableMimeTypesAsync(
-      buffer,
-      base::BindOnce(&ClipboardOzone::OnReadAvailableTypes,
-                     weak_factory_.GetWeakPtr(), buffer, std::move(callback)));
+      buffer, base::BindOnce(&ClipboardOzone::OnReadAvailableTypes,
+                             weak_factory_.GetWeakPtr(), buffer, data_dst,
+                             std::move(callback)));
 }
 
 void ClipboardOzone::OnReadAvailableTypes(
     ClipboardBuffer buffer,
+    const std::optional<DataTransferEndpoint>& data_dst,
     ReadAvailableTypesCallback callback,
     const std::vector<std::string>& available_types) const {
   std::vector<std::u16string> types =
@@ -751,88 +761,6 @@ void ClipboardOzone::ReadData(
               std::move(callback).Run(
                   data ? std::string(data->begin(), data->end()) : "");
             });
-}
-
-void ClipboardOzone::ReadAvailableTypes(
-    ClipboardBuffer buffer,
-    const DataTransferEndpoint* data_dst,
-    std::vector<std::u16string>* types) const {
-  DCHECK(CalledOnValidThread());
-  DCHECK(types);
-
-  if (!IsReadAllowed(GetSource(buffer), data_dst, base::span<uint8_t>()))
-    return;
-
-  types->clear();
-
-  for (const auto& mime_type : GetStandardFormats(buffer, data_dst)) {
-    types->push_back(mime_type);
-  }
-  // Special handling for chromium/x-web-custom-data.
-  // We must read the data and deserialize it to find the list
-  // of mime types to report.
-  if (IsFormatAvailable(ClipboardFormatType::DataTransferCustomType(), buffer,
-                        data_dst)) {
-    auto data = async_clipboard_ozone_->ReadClipboardDataAndWait(
-        buffer, ClipboardFormatType::DataTransferCustomType().GetName());
-    ReadCustomDataTypes(data, types);
-  }
-}
-
-void ClipboardOzone::ReadText(ClipboardBuffer buffer,
-                              const DataTransferEndpoint* data_dst,
-                              std::u16string* result) const {
-  DCHECK(CalledOnValidThread());
-  auto clipboard_data = async_clipboard_ozone_->ReadClipboardDataAndWait(
-      buffer, kMimeTypePlainText);
-
-  if (!IsReadAllowed(GetSource(buffer), data_dst, clipboard_data))
-    return;
-
-  RecordRead(ClipboardFormatMetric::kText);
-  *result = base::UTF8ToUTF16(std::string_view(
-      reinterpret_cast<char*>(clipboard_data.data()), clipboard_data.size()));
-}
-
-void ClipboardOzone::ReadAsciiText(ClipboardBuffer buffer,
-                                   const DataTransferEndpoint* data_dst,
-                                   std::string* result) const {
-  DCHECK(CalledOnValidThread());
-
-  auto clipboard_data = async_clipboard_ozone_->ReadClipboardDataAndWait(
-      buffer, kMimeTypePlainText);
-
-  if (!IsReadAllowed(GetSource(buffer), data_dst, clipboard_data)) {
-    return;
-  }
-
-  RecordRead(ClipboardFormatMetric::kText);
-  result->assign(clipboard_data.begin(), clipboard_data.end());
-}
-
-void ClipboardOzone::ReadBookmark(const DataTransferEndpoint* data_dst,
-                                  std::u16string* title,
-                                  std::string* url) const {
-  DCHECK(CalledOnValidThread());
-  // TODO(msisov): This was left NOTIMPLEMENTED() in all the Linux platforms.
-  // |data_dst| should be supported for DLP when ReadBookmark() is implemented.
-  NOTIMPLEMENTED();
-}
-
-void ClipboardOzone::ReadData(const ClipboardFormatType& format,
-                              const DataTransferEndpoint* data_dst,
-                              std::string* result) const {
-  DCHECK(CalledOnValidThread());
-
-  auto clipboard_data = async_clipboard_ozone_->ReadClipboardDataAndWait(
-      ClipboardBuffer::kCopyPaste, format.GetName());
-
-  if (!IsReadAllowed(GetSource(ClipboardBuffer::kCopyPaste), data_dst,
-                     clipboard_data))
-    return;
-
-  RecordRead(ClipboardFormatMetric::kData);
-  result->assign(clipboard_data.begin(), clipboard_data.end());
 }
 
 bool ClipboardOzone::IsSelectionBufferAvailable() const {

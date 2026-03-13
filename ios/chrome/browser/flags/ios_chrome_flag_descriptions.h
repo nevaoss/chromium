@@ -59,6 +59,12 @@ extern const char kAssistantContainerDescription[];
 extern const char kAutofillAcrossIframesName[];
 extern const char kAutofillAcrossIframesDescription[];
 
+extern const char kAutofillAiCreateEntityDataManagerName[];
+extern const char kAutofillAiCreateEntityDataManagerDescription[];
+
+extern const char kAutofillAiWithDataSchemaName[];
+extern const char kAutofillAiWithDataSchemaDescription[];
+
 extern const char kAutofillBottomSheetNewBlurName[];
 extern const char kAutofillBottomSheetNewBlurDescription[];
 
@@ -127,9 +133,6 @@ extern const char kAutofillPaymentsSheetV2Description[];
 extern const char kAutofillPruneSuggestionsName[];
 extern const char kAutofillPruneSuggestionsDescription[];
 
-extern const char kAutofillShowManualFillForVirtualCardsName[];
-extern const char kAutofillShowManualFillForVirtualCardsDescription[];
-
 extern const char kAutofillThrottleDocumentFormScanName[];
 extern const char kAutofillThrottleDocumentFormScanDescription[];
 
@@ -150,9 +153,6 @@ extern const char kBWGPreciseLocationDescription[];
 
 extern const char kBWGPromoConsentName[];
 extern const char kBWGPromoConsentDescription[];
-
-extern const char kBeginCursorAtPointTentativeFixName[];
-extern const char kBeginCursorAtPointTentativeFixDescription[];
 
 extern const char kBestFeaturesScreenInFirstRunName[];
 extern const char kBestFeaturesScreenInFirstRunDescription[];
@@ -381,6 +381,9 @@ extern const char kFeedSwipeInProductHelpDescription[];
 extern const char kForceStartupSigninPromoName[];
 extern const char kForceStartupSigninPromoDescription[];
 
+extern const char kFullscreenRefactoringName[];
+extern const char kFullscreenRefactoringDescription[];
+
 extern const char kFullscreenScrollThresholdName[];
 extern const char kFullscreenScrollThresholdDescription[];
 
@@ -395,6 +398,12 @@ extern const char kGeminiActorDescription[];
 
 extern const char kGeminiBackendMigrationName[];
 extern const char kGeminiBackendMigrationDescription[];
+
+extern const char kGeminiBinaryMigrationName[];
+extern const char kGeminiBinaryMigrationDescription[];
+
+extern const char kGeminiChatPersistenceName[];
+extern const char kGeminiChatPersistenceDescription[];
 
 extern const char kGeminiCopresenceName[];
 extern const char kGeminiCopresenceDescription[];
@@ -420,6 +429,9 @@ extern const char kGeminiLiveDescription[];
 extern const char kGeminiLoadingStateRedesignName[];
 extern const char kGeminiLoadingStateRedesignDescription[];
 
+extern const char kGeminiMapsRichUIName[];
+extern const char kGeminiMapsRichUIDescription[];
+
 extern const char kGeminiNavigationPromoName[];
 extern const char kGeminiNavigationPromoDescription[];
 
@@ -434,6 +446,9 @@ extern const char kGeminiResponseViewDynamicResizingDescription[];
 
 extern const char kGeminiRichAPCExtractionName[];
 extern const char kGeminiRichAPCExtractionDescription[];
+
+extern const char kGeminiUnaryMigrationName[];
+extern const char kGeminiUnaryMigrationDescription[];
 
 extern const char kGeminiUpdatedEligibilityName[];
 extern const char kGeminiUpdatedEligibilityDescription[];
@@ -533,6 +548,9 @@ extern const char kIOSSoftLockDescription[];
 
 extern const char kIOSSyncedSetUpName[];
 extern const char kIOSSyncedSetUpDescription[];
+
+extern const char kIOSTabRemindersName[];
+extern const char kIOSTabRemindersDescription[];
 
 extern const char kIOSTipsNotificationsStringAlternativesName[];
 extern const char kIOSTipsNotificationsStringAlternativesDescription[];
@@ -792,9 +810,6 @@ extern const char kPageContentAnnotationsDescription[];
 extern const char kPageContentAnnotationsRemotePageMetadataName[];
 extern const char kPageContentAnnotationsRemotePageMetadataDescription[];
 
-extern const char kPageVisibilityPageContentAnnotationsName[];
-extern const char kPageVisibilityPageContentAnnotationsDescription[];
-
 extern const char kPasswordFormClientsideClassifierName[];
 extern const char kPasswordFormClientsideClassifierDescription[];
 
@@ -888,9 +903,6 @@ extern const char
 
 extern const char kSendTabToSelfEnhancedHandoffName[];
 extern const char kSendTabToSelfEnhancedHandoffDescription[];
-
-extern const char kSendTabToSelfIOSPushNotificationsName[];
-extern const char kSendTabToSelfIOSPushNotificationsDescription[];
 
 extern const char kShareInOmniboxLongPressName[];
 extern const char kShareInOmniboxLongPressDescription[];
