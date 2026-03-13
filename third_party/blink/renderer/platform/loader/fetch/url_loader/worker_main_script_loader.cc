@@ -195,8 +195,8 @@ void WorkerMainScriptLoader::OnComplete(
 
 #if defined(USE_FILESCHEME_CODECACHE)
 bool WorkerMainScriptLoader::CanCreateCachedMetadataHandler() {
-  if (initial_request_url_.ProtocolIsInHTTPFamily() &&
-      resource_response_.CurrentRequestUrl().ProtocolIsInHTTPFamily()) {
+  if (initial_request_url_.ProtocolIsInHttpFamily() &&
+      resource_response_.CurrentRequestUrl().ProtocolIsInHttpFamily()) {
     return true;
   }
   // In the case of cache busting, codecache will be created but not used
@@ -218,14 +218,9 @@ CachedMetadataHandler* WorkerMainScriptLoader::CreateCachedMetadataHandler() {
   if (!CanCreateCachedMetadataHandler()) {
 #else
   // Currently we support the metadata caching only for HTTP family.
-<<<<<<< HEAD
-  if (!initial_request_url_.ProtocolIsInHTTPFamily() ||
-      !resource_response_.CurrentRequestUrl().ProtocolIsInHTTPFamily()) {
-#endif
-=======
   if (!initial_request_url_.ProtocolIsInHttpFamily() ||
       !resource_response_.CurrentRequestUrl().ProtocolIsInHttpFamily()) {
->>>>>>> 147.0.7720.0~1
+#endif
     return nullptr;
   }
 

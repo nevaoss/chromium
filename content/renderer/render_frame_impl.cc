@@ -307,16 +307,9 @@ namespace content {
 
 namespace {
 
-<<<<<<< HEAD
-// Feature to combine the UpdateState IPC that's sent during commit time with
-// the DidCommit* IPCs. See: http://crbug.com/424829233
-BASE_FEATURE(kReducePageStateIpcs, base::FEATURE_ENABLED_BY_DEFAULT);
-
 #if BUILDFLAG(IS_WEBOS)
 const int kExtraCharsBeforeAndAfterSelection = 500;
 #else
-=======
->>>>>>> 147.0.7720.0~1
 const int kExtraCharsBeforeAndAfterSelection = 100;
 #endif  // BUILDFLAG(IS_WEBOS)
 const size_t kMaxURLLogChars = 1024;

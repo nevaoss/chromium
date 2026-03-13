@@ -786,12 +786,6 @@ int BrowserMainLoop::PreCreateThreads() {
   }
 
   InitializeMemoryManagementComponent();
-<<<<<<< HEAD
-#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_NEVA_APPRUNTIME)
-  content::UserLevelMemoryPressureSignalGenerator::Initialize();
-#endif
-=======
->>>>>>> 147.0.7720.0~1
 
 #if BUILDFLAG(ENABLE_PLUGINS)
   // Prior to any processing happening on the IO thread, we create the
