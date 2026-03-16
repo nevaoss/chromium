@@ -9,17 +9,6 @@
 #include "base/check.h"
 #include "base/compiler_specific.h"
 #include "base/containers/span.h"
-<<<<<<< HEAD
-#include "base/feature_list.h"
-#include "third_party/blink/renderer/platform/image-decoders/jpeg/jpeg_image_decoder.h"
-// TODO(neva_rust): Remove this when Neva supports rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-#include "third_party/blink/renderer/platform/image-decoders/png/png_image_decoder.h"
-#else   // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-#include "third_party/blink/renderer/platform/image-decoders/png/legacy/png_image_decoder.h"
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-=======
->>>>>>> 147.0.7727.0~1
 #include "third_party/skia/include/core/SkColorSpace.h"
 
 namespace {
@@ -529,55 +518,6 @@ bool BMPImageReader::IsInfoHeaderValid() const {
   return true;
 }
 
-<<<<<<< HEAD
-bool BMPImageReader::DecodeAlternateFormat() {
-  CHECK(
-      !base::FeatureList::IsEnabled(kRemoveBmpExtensionForEmbeddingJpegOrPng));
-
-  // Create decoder if necessary.
-  if (!alternate_decoder_) {
-    if (info_header_.compression == JPEG) {
-      alternate_decoder_ = std::make_unique<JPEGImageDecoder>(
-          parent_->GetAlphaOption(), parent_->GetColorBehavior(),
-          parent_->GetAuxImage(), parent_->GetMaxDecodedBytes(),
-          img_data_offset_);
-    } else {
-// TODO(neva_rust): Remove this when Neva supports rust build.
-#if !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-      alternate_decoder_ = std::make_unique<PNGImageDecoder>(
-          parent_->GetAlphaOption(), ImageDecoder::kDefaultBitDepth,
-          parent_->GetColorBehavior(), parent_->GetMaxDecodedBytes(),
-          img_data_offset_);
-#else   // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-      alternate_decoder_ = std::make_unique<PngImageDecoder>(
-          parent_->GetAlphaOption(), parent_->GetColorBehavior(),
-          parent_->GetMaxDecodedBytes(), img_data_offset_);
-#endif  // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-    }
-    alternate_decoder_->SetData(data_.get(), parent_->IsAllDataReceived());
-  }
-
-  // Decode the image.
-  if (alternate_decoder_->IsSizeAvailable()) {
-    if (alternate_decoder_->Size() != parent_->Size()) {
-      return parent_->SetFailed();
-    }
-
-    alternate_decoder_->SetMemoryAllocator(buffer_->GetAllocator());
-    const auto* frame = alternate_decoder_->DecodeFrameBufferAtIndex(0);
-    alternate_decoder_->SetMemoryAllocator(nullptr);
-
-    if (frame) {
-      *buffer_ = *frame;
-    }
-  }
-  return alternate_decoder_->Failed()
-             ? parent_->SetFailed()
-             : (buffer_->GetStatus() == ImageFrame::kFrameComplete);
-}
-
-=======
->>>>>>> 147.0.7727.0~1
 bool BMPImageReader::ProcessEmbeddedColorProfile() {
   // Ensure we have received the whole profile.
   if ((info_header_.profile_data > data_->size()) ||
