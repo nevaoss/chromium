@@ -45,14 +45,13 @@ class IqSender : public SignalStrategy::Listener {
   // |callback| is called when a response to |message| is received. Destroying
   // the IqRequest instance will cancel the callback. The IqRequest instance
   // must be destroyed before the IqSender instance is destroyed.
-  std::unique_ptr<IqRequest> SendIq(const JingleMessage& message,
+  std::unique_ptr<IqRequest> SendIq(JingleMessage&& message,
                                     ReplyCallback callback);
 
   // SignalStrategy::Listener implementation.
-  void OnSignalStrategyStateChange(SignalStrategy::State state) override;
-  bool OnSignalStrategyIncomingMessage(
-      const SignalingAddress& sender_address,
-      const SignalingMessage& message) override;
+  void OnSignalingStateChanged(SignalStrategy::State state) override;
+  bool OnSignalingReply(const SignalingAddress& sender_address,
+                        const JingleMessageReply& message) override;
 
  private:
   typedef std::map<std::string, raw_ptr<IqRequest, CtnExperimental>>

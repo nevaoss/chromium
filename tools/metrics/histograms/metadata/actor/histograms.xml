@@ -218,6 +218,20 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Actor.Login.DeduplicationOccurred" enum="Boolean"
+    expires_after="2027-02-25">
+  <owner>npm@google.com</owner>
+  <owner>ioanap@google.com</owner>
+  <owner>otara@google.com</owner>
+  <owner>web-identity-eng@google.com</owner>
+  <summary>
+    Recorded when there was some deduplication performed in order to show the
+    accounts. Recorded at most once per actor request to show accounts to sign
+    in (if multiple accounts are deduplicated in the same request, only one
+    record is made).
+  </summary>
+</histogram>
+
 <histogram name="Actor.Login.Federated.ContinuationShown" enum="Boolean"
     expires_after="2027-02-25">
   <owner>npm@google.com</owner>
@@ -886,6 +900,46 @@ chromium-metrics-reviews@google.com.
     tool's validation logic is invoked as part of the InitializeTool method, and
     we need to validate a second time during execution to make sure that we are
     executing the tool as close to validation as possible.
+  </summary>
+</histogram>
+
+<histogram name="Actor.Tools.ScriptTool.ActionResultCode"
+    enum="ActionResultCode" expires_after="2027-03-05">
+  <owner>mfoltz@google.com</owner>
+  <owner>agentic-web-platform-team@google.com</owner>
+  <summary>
+    Recorded for every script tool invocation. Reports the outcome of the script
+    tool, using the ActionResultCode from the ActionResult.
+  </summary>
+</histogram>
+
+<histogram name="Actor.Tools.ScriptTool.InputSizeBytes" units="bytes"
+    expires_after="2027-03-05">
+  <owner>mfoltz@google.com</owner>
+  <owner>agentic-web-platform-team@google.com</owner>
+  <summary>
+    Recorded for every script tool invocation. Measures the size of the input
+    arguments string in bytes.
+  </summary>
+</histogram>
+
+<histogram name="Actor.Tools.ScriptTool.InvocationResult" enum="BooleanSuccess"
+    expires_after="2027-03-05">
+  <owner>mfoltz@google.com</owner>
+  <owner>agentic-web-platform-team@google.com</owner>
+  <summary>
+    Recorded whenever a script tool is invoked. Indicates whether the invocation
+    succeeded or failed. Success means ActionResult.code is kOk.
+  </summary>
+</histogram>
+
+<histogram name="Actor.Tools.ScriptTool.OutputSizeBytes" units="bytes"
+    expires_after="2027-03-05">
+  <owner>mfoltz@google.com</owner>
+  <owner>agentic-web-platform-team@google.com</owner>
+  <summary>
+    Recorded for successful script tool invocations. Measures the size of the
+    result string returned by the script tool in bytes.
   </summary>
 </histogram>
 

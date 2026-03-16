@@ -31,11 +31,6 @@ class ServiceWorkerState
     kNotActive,
     // Worker has started (i.e. has seen DidStartWorkerForScope).
     kActive,
-    // Worker has completed starting (i.e. has seen DidStartWorkerForScope and
-    // DidStartServiceWorkerContext).
-    // TODO(crbug.com/447640764): Remove this once
-    // `OptimizeServiceWorkerStateRequests` is the default behavior.
-    kReady,
   };
 
   // Render process worker state of an activated extension.
@@ -104,7 +99,8 @@ class ServiceWorkerState
   // global JavaScript scope, and all its global event listeners have been
   // registered with the //extensions layer. It is considered the
   // "renderer-side" signal that the worker is ready.
-  // NOTE: this can be called before or after `DidStartWorkerForScope`.
+  // NOTE: this can be called before or after `DidStartWorkerForScope` and
+  // before or after `RendererDidInitializeServiceWorkerContext`.
   void RendererDidStartServiceWorkerContext(
       const SequencedContextId& context_id,
       const WorkerId& worker_id);

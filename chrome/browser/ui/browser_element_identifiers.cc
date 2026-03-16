@@ -116,6 +116,11 @@ DEFINE_ELEMENT_IDENTIFIER_VALUE(
     kProjectsPanelTabGroupsItemViewSharedIconElementId);
 DEFINE_ELEMENT_IDENTIFIER_VALUE(kProjectsPanelTabGroupsViewElementId);
 DEFINE_ELEMENT_IDENTIFIER_VALUE(kProjectsPanelThreadListItemViewElementId);
+DEFINE_ELEMENT_IDENTIFIER_VALUE(
+    kProjectsPanelThreadsActivityAiModeItemElementId);
+DEFINE_ELEMENT_IDENTIFIER_VALUE(kProjectsPanelThreadsActivityButtonElementId);
+DEFINE_ELEMENT_IDENTIFIER_VALUE(
+    kProjectsPanelThreadsActivityGeminiItemElementId);
 DEFINE_ELEMENT_IDENTIFIER_VALUE(kProjectsPanelViewElementId);
 DEFINE_ELEMENT_IDENTIFIER_VALUE(kReadLaterSidePanelWebViewElementId);
 DEFINE_ELEMENT_IDENTIFIER_VALUE(kRecordButtonElementId);
@@ -171,6 +176,7 @@ DEFINE_ELEMENT_IDENTIFIER_VALUE(kTabStripComboButtonElementId);
 DEFINE_ELEMENT_IDENTIFIER_VALUE(kTabStripElementId);
 DEFINE_ELEMENT_IDENTIFIER_VALUE(kTabStripRegionElementId);
 DEFINE_ELEMENT_IDENTIFIER_VALUE(kTabStripFrameGrabHandleElementId);
+DEFINE_ELEMENT_IDENTIFIER_VALUE(kTabStripFrameDialogAnchorId);
 DEFINE_ELEMENT_IDENTIFIER_VALUE(kToastElementId);
 DEFINE_ELEMENT_IDENTIFIER_VALUE(kToolbarActionViewElementId);
 DEFINE_ELEMENT_IDENTIFIER_VALUE(kToolbarAppMenuButtonElementId);
@@ -213,3 +219,4 @@ DEFINE_CUSTOM_ELEMENT_EVENT_TYPE(kSidePanelComboboxChangedCustomEventId);
 DEFINE_CUSTOM_ELEMENT_EVENT_TYPE(kSidePanelReadingMarkedAsReadEventId);
 DEFINE_CUSTOM_ELEMENT_EVENT_TYPE(kTabGroupedCustomEventId);
 DEFINE_CUSTOM_ELEMENT_EVENT_TYPE(kTabGroupSavedCustomEventId);
+DEFINE_CUSTOM_ELEMENT_EVENT_TYPE(kVerticalTabStripCollapsedCustomEventId);

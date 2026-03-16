@@ -21,6 +21,7 @@
 #include "third_party/blink/public/platform/web_graphics_context_3d_provider.h"
 #include "third_party/blink/public/platform/web_url.h"
 #include "third_party/blink/renderer/platform/graphics/gpu/webgraphics_shared_image_interface_provider_impl.h"
+#include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 #include "third_party/blink/renderer/platform/scheduler/public/main_thread.h"
 #include "third_party/blink/renderer/platform/scheduler/public/post_cross_thread_task.h"
 #include "third_party/blink/renderer/platform/wtf/bind_post_task.h"
@@ -32,6 +33,7 @@ namespace {
 
 std::optional<bool> g_use_mappable_shared_images_for_canvas_2d_for_testing;
 std::optional<bool> g_low_latency_usage_supported_for_canvas_2d_for_testing;
+std::optional<bool> g_webgl_image_chromium_enabled_for_testing;
 
 #if BUILDFLAG(IS_APPLE)
 bool IsDelegatedCompositingEnabled() {
@@ -321,6 +323,7 @@ void SharedGpuContext::Reset() {
   this_ptr->context_provider_factory_.Reset();
   g_use_mappable_shared_images_for_canvas_2d_for_testing.reset();
   g_low_latency_usage_supported_for_canvas_2d_for_testing.reset();
+  g_webgl_image_chromium_enabled_for_testing.reset();
 }
 
 bool SharedGpuContext::IsValidWithoutRestoringForTesting() {
@@ -434,6 +437,27 @@ bool SharedGpuContext::LowLatencyUsageSupportedForCanvas2D(
   // IsDelegatedCompositingEnabled() holds.
   return base::FeatureList::IsEnabled(
       features::kLowLatencyCanvas2dImageChromium);
+}
+
+bool SharedGpuContext::WebGLImageChromiumEnabled() {
+  if (g_webgl_image_chromium_enabled_for_testing) {
+    return g_webgl_image_chromium_enabled_for_testing.value();
+  }
+
+#if BUILDFLAG(IS_APPLE)
+  static const bool enable_web_gl_image_chromium =
+      base::CommandLine::ForCurrentProcess()->HasSwitch(
+          blink::switches::kEnableGpuMemoryBufferCompositorResources);
+#else
+  static const bool enable_web_gl_image_chromium =
+      base::CommandLine::ForCurrentProcess()->HasSwitch(
+          blink::switches::kEnableWebGLImageChromium);
+#endif
+  return enable_web_gl_image_chromium;
+}
+
+void SharedGpuContext::SetWebGLImageChromiumEnabledForTesting(bool enable) {
+  g_webgl_image_chromium_enabled_for_testing = enable;
 }
 
 }  // namespace blink

@@ -424,6 +424,10 @@ void ContextualTasksPageHandler::OnboardingTooltipDismissed() {
       count + 1);
 }
 
+void ContextualTasksPageHandler::ReopenTabs() {
+  // TODO(crbug.com/489832161): Implement tab restoration logic.
+}
+
 void ContextualTasksPageHandler::PostMessageToWebview(
     const lens::ClientToAimMessage& message) {
   DCHECK(web_ui_controller_->GetPageRemote());
@@ -531,11 +535,11 @@ void ContextualTasksPageHandler::OnReceivedInjectInput(
   if (modality->has_icon_id()) {
     web_ui_controller_->GetPageRemote()->InjectInputWithIcon(
         std::string(modality->title()), IconTypeToMojom(modality->icon_id()),
-        token);
+        token, modality->is_unimodal());
   } else {
     web_ui_controller_->GetPageRemote()->InjectInput(
         std::string(modality->title()), std::string(modality->thumbnail_src()),
-        token);
+        token, modality->is_unimodal());
   }
   // This does not actually upload anything, but allows the injected input to be
   // shown in the chip carousel in the UI.

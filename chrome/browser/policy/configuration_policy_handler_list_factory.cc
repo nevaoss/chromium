@@ -289,6 +289,12 @@ using ::ash::MagnifierType;
 // clang-format off
 const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
 // Policies for all platforms - Start
+  { key::kAutoplayAllowed,
+    prefs::kAutoplayAllowed,
+    base::Value::Type::BOOLEAN },
+  { key::kAutoplayAllowlist,
+    prefs::kAutoplayAllowlist,
+    base::Value::Type::LIST },
   { key::kClipboardAllowedForUrls,
     prefs::kManagedClipboardAllowedForUrls,
     base::Value::Type::LIST },
@@ -536,9 +542,6 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
     base::Value::Type::LIST },
   { key::kAutoOpenAllowedForURLs,
     prefs::kDownloadAllowedURLsForOpenByPolicy,
-    base::Value::Type::LIST },
-  { key::kAutoplayAllowlist,
-    prefs::kAutoplayAllowlist,
     base::Value::Type::LIST },
   { key::kScreenCaptureWithoutGestureAllowedForOrigins,
     prefs::kScreenCaptureWithoutGestureAllowedForOrigins,
@@ -1490,7 +1493,7 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
     prefs::kArcAppInstallEventLoggingEnabled,
     base::Value::Type::BOOLEAN },
   { key::kNetworkFileSharesAllowed,
-    prefs::kNetworkFileSharesAllowed,
+    ash::prefs::kNetworkFileSharesAllowed,
     base::Value::Type::BOOLEAN },
   { key::kPowerSmartDimEnabled,
     ash::prefs::kPowerSmartDimEnabled,
@@ -1823,7 +1826,7 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
     ash::prefs::kUserGeolocationAccessLevel,
     base::Value::Type::INTEGER },
   { key::kLocalUserFilesAllowed,
-    prefs::kLocalUserFilesAllowed,
+    ash::prefs::kLocalUserFilesAllowed,
     base::Value::Type::BOOLEAN },
   { key::kGenAIWallpaperSettings,
     ash::prefs::kGenAIWallpaperSettings,
@@ -1832,7 +1835,7 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
     ash::prefs::kGenAIVcBackgroundSettings,
     base::Value::Type::INTEGER },
   { key::kLocalUserFilesMigrationDestination,
-    prefs::kLocalUserFilesMigrationDestination,
+    ash::prefs::kLocalUserFilesMigrationDestination,
     base::Value::Type::STRING },
   { key::kFocusModeSoundsEnabled,
     ash::prefs::kFocusModeSoundsEnabled,
@@ -1977,9 +1980,6 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) \
     || BUILDFLAG(IS_CHROMEOS)
-  { key::kAutoplayAllowed,
-    prefs::kAutoplayAllowed,
-    base::Value::Type::BOOLEAN },
   { key::kAutomatedPasswordChangeSettings,
     optimization_guide::prefs::kAutomatedPasswordChangeEnterprisePolicyAllowed,
     base::Value::Type::INTEGER },

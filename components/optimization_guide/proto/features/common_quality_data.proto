@@ -768,7 +768,7 @@ message FrameData {
   repeated ScriptTool script_tools = 9;
 
   // The results of executing script tools.
-  // TODO(khushalsagar): Remove this field once all consumers move to using
+  // TODO: crbug.com/489841640 - Remove this field once all consumers move to using
   // the field in ActionsResult.
   repeated ScriptToolResult script_tool_results = 11;
 
@@ -897,7 +897,7 @@ message ScriptToolAnnotations {
 
 // Result of executing a script tool.
 // Next ID: 6
-// TODO(khushalsagar): Move this to actions_data.proto.
+// TODO: crbug.com/489841640 - Move this to actions_data.proto.
 message ScriptToolResult {
   // The index of the ScriptToolAction in the Actions proto. This is used to
   // match the result to the corresponding action.
@@ -1203,12 +1203,14 @@ message MetaTag {
 }
 
 // Metadata about a frame.
-// Next ID: 3
+// Next ID: 4
 message FrameMetadata {
   // The URL of the frame.
   string url = 1 [features = { field_presence: EXPLICIT }];
 
   repeated MetaTag meta_tags = 2;
+
+  bool has_media_transcripts = 3 [features = { field_presence: EXPLICIT }];
 }
 
 // Metadata (URL and meta tags) from page content. Includes data from meta tags
@@ -2333,6 +2335,23 @@ enum RedactionDecision {
   // Is a non-empty field that autofill recognized as a sensitive payment field
   // type and so must be redacted.
   REDACTION_DECISION_REDACTED_IS_SENSITIVE_PAYMENT_FIELD = 4;
+
+  // Empty inputs which have been classified as password-like by heuristic
+  // redaction (e.g. `-webkit-text-security`). These are not redacted since they
+  // contain no sensitive content, but the classification is preserved.
+  REDACTION_DECISION_UNREDACTED_EMPTY_CUSTOM_PASSWORD = 5;
+
+  // Is a password-like input detected by heuristic redaction based on CSS
+  // masking (e.g. `-webkit-text-security` set to a masking value, not `none`).
+  REDACTION_DECISION_REDACTED_CUSTOM_PASSWORD_CSS = 6;
+
+  // Is a password-like input detected by heuristic redaction based on a
+  // JavaScript-masked value (e.g. mostly bullet-like masking characters).
+  REDACTION_DECISION_REDACTED_CUSTOM_PASSWORD_JS = 7;
+
+  // Is a non-empty field that autofill recognized as an OTP field and so must
+  // be redacted.
+  REDACTION_DECISION_REDACTED_IS_OTP = 8;
 }
 
 // The type of data that can be autofilled into a form.

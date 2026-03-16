@@ -46,8 +46,10 @@ class FtlSignalStrategy::Core {
   const SignalingAddress& GetLocalAddress() const;
   void AddListener(Listener* listener);
   void RemoveListener(Listener* listener);
-  bool SendMessage(const SignalingAddress& destination_address,
-                   SignalingMessage&& message);
+  bool SendMessage(JingleMessage&& message);
+  bool SendReply(JingleMessageReply&& message);
+  void AddFtlListener(FtlListener* listener);
+  void RemoveFtlListener(FtlListener* listener);
   bool SendFtlMessage(const SignalingAddress& destination_address,
                       ftl::ChromotingMessage&& message);
   void OnMessageReceived(const SignalingAddress& sender_address,
@@ -55,6 +57,8 @@ class FtlSignalStrategy::Core {
   bool IsSignInError() const;
 
  private:
+  template <typename T>
+  bool Send(T&& message, const char* message_type);
   // Methods are called in the order below when Connect() is called.
   void OnGetOAuthTokenResponse(OAuthTokenGetter::Status status,
                                const OAuthTokenInfo& token_info);
@@ -88,6 +92,7 @@ class FtlSignalStrategy::Core {
   bool is_sign_in_error_ = false;
 
   base::ObserverList<Listener, true> listeners_;
+  base::ObserverList<FtlListener, true> ftl_listeners_;
 
   SEQUENCE_CHECKER(sequence_checker_);
 
@@ -130,7 +135,7 @@ void FtlSignalStrategy::Core::Connect() {
           &Core::OnMessageReceived, weak_factory_.GetWeakPtr()));
 
   for (auto& observer : listeners_) {
-    observer.OnSignalStrategyStateChange(CONNECTING);
+    observer.OnSignalingStateChanged(CONNECTING);
   }
 
   StartReceivingMessages();
@@ -145,7 +150,7 @@ void FtlSignalStrategy::Core::Disconnect() {
     messaging_client_->StopReceivingMessages();
 
     for (auto& observer : listeners_) {
-      observer.OnSignalStrategyStateChange(DISCONNECTED);
+      observer.OnSignalingStateChanged(DISCONNECTED);
     }
   }
 }
@@ -183,32 +188,40 @@ void FtlSignalStrategy::Core::RemoveListener(Listener* listener) {
   listeners_.RemoveObserver(listener);
 }
 
-bool FtlSignalStrategy::Core::SendMessage(
-    const SignalingAddress& destination_address,
-    SignalingMessage&& message) {
+void FtlSignalStrategy::Core::AddFtlListener(FtlListener* listener) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  ftl_listeners_.AddObserver(listener);
+}
+
+void FtlSignalStrategy::Core::RemoveFtlListener(FtlListener* listener) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  ftl_listeners_.RemoveObserver(listener);
+}
+
+bool FtlSignalStrategy::Core::SendMessage(JingleMessage&& message) {
+  return Send(std::move(message), "message");
+}
+
+bool FtlSignalStrategy::Core::SendReply(JingleMessageReply&& message) {
+  return Send(std::move(message), "reply");
+}
+
+template <typename T>
+bool FtlSignalStrategy::Core::Send(T&& message, const char* message_type) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   if (GetState() != CONNECTED) {
-    HOST_LOG << "Dropping message because FTL is not connected.";
+    HOST_LOG << "Dropping " << message_type << " because FTL is not connected.";
     return false;
   }
 
-  std::string message_id;
+  // Synthesizing the from attribute in the message.
+  message.from = local_address_;
+
+  std::string message_id = message.message_id;
+  SignalingAddress destination_address = message.to;
   ftl::ChromotingMessage crd_message;
-  if (auto* jingle_message = std::get_if<JingleMessage>(&message)) {
-    // Synthesizing the from attribute in the message.
-    jingle_message->from = local_address_;
-
-    message_id = jingle_message->message_id;
-    crd_message.mutable_xmpp()->set_stanza(jingle_message->ToSerializedXml());
-  } else if (auto* jingle_reply = std::get_if<JingleMessageReply>(&message)) {
-    jingle_reply->from = local_address_;
-
-    message_id = jingle_reply->message_id;
-    crd_message.mutable_xmpp()->set_stanza(jingle_reply->ToSerializedXml());
-  } else {
-    NOTREACHED() << "Unsupported message type.";
-  }
+  crd_message.mutable_xmpp()->set_stanza(message.ToSerializedXml());
 
   SendMessageImpl(
       destination_address, std::move(crd_message),
@@ -308,7 +321,7 @@ void FtlSignalStrategy::Core::OnReceiveMessagesStreamStarted() {
       user_email_, registration_manager_->GetRegistrationId());
 
   for (auto& observer : listeners_) {
-    observer.OnSignalStrategyStateChange(CONNECTED);
+    observer.OnSignalingStateChanged(CONNECTED);
   }
 }
 
@@ -331,8 +344,8 @@ void FtlSignalStrategy::Core::OnMessageReceived(
     return;
   }
 
-  for (auto& listener : listeners_) {
-    if (listener.OnSignalStrategyIncomingFtlMessage(sender_address, message)) {
+  for (auto& listener : ftl_listeners_) {
+    if (listener.OnIncomingFtlMessage(sender_address, message)) {
       return;
     }
   }
@@ -373,9 +386,15 @@ void FtlSignalStrategy::Core::OnMessageReceived(
   }
 
   for (auto& listener : listeners_) {
-    if (listener.OnSignalStrategyIncomingMessage(sender_address,
-                                                 *parsed_message)) {
-      return;
+    if (const auto* jm = std::get_if<JingleMessage>(&*parsed_message)) {
+      if (listener.OnSignalingMessage(sender_address, *jm)) {
+        return;
+      }
+    } else {
+      if (listener.OnSignalingReply(
+              sender_address, std::get<JingleMessageReply>(*parsed_message))) {
+        return;
+      }
     }
   }
 }
@@ -532,9 +551,20 @@ void FtlSignalStrategy::RemoveListener(Listener* listener) {
   core_->RemoveListener(listener);
 }
 
-bool FtlSignalStrategy::SendMessage(const SignalingAddress& destination_address,
-                                    SignalingMessage&& message) {
-  return core_->SendMessage(destination_address, std::move(message));
+void FtlSignalStrategy::AddFtlListener(FtlListener* listener) {
+  core_->AddFtlListener(listener);
+}
+
+void FtlSignalStrategy::RemoveFtlListener(FtlListener* listener) {
+  core_->RemoveFtlListener(listener);
+}
+
+bool FtlSignalStrategy::SendMessage(JingleMessage&& message) {
+  return core_->SendMessage(std::move(message));
+}
+
+bool FtlSignalStrategy::SendReply(JingleMessageReply&& message) {
+  return core_->SendReply(std::move(message));
 }
 
 bool FtlSignalStrategy::SendFtlMessage(
@@ -559,5 +589,7 @@ void FtlSignalStrategy::CreateCore(
                                  std::move(registration_manager),
                                  std::move(messaging_client));
 }
+
+FtlSignalStrategy::FtlSignalStrategy() = default;
 
 }  // namespace remoting

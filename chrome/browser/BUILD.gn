@@ -444,8 +444,6 @@ static_library("browser") {
     "enterprise/reporting/prefs.h",
     "enterprise/reporting/profile_report_generator_delegate_base.cc",
     "enterprise/reporting/profile_report_generator_delegate_base.h",
-    "enterprise/reporting/reporting_features.cc",
-    "enterprise/reporting/reporting_features.h",
     "enterprise/signals/profile_signals_collector.cc",
     "enterprise/signals/profile_signals_collector.h",
     "enterprise/signin/interstitials/managed_profile_required_controller_client.cc",
@@ -496,8 +494,6 @@ static_library("browser") {
     "icon_manager.h",
     "idle/idle_detection_permission_context.cc",
     "idle/idle_detection_permission_context.h",
-    "invalidation/profile_invalidation_provider_factory.cc",
-    "invalidation/profile_invalidation_provider_factory.h",
     "language/accept_languages_service_factory.cc",
     "language/accept_languages_service_factory.h",
     "language/language_model_manager_factory.cc",
@@ -553,6 +549,8 @@ static_library("browser") {
     "media/media_storage_id_salt.h",
     "media/output_protection_proxy.cc",
     "media/output_protection_proxy.h",
+    "media/unified_autoplay_config.cc",
+    "media/unified_autoplay_config.h",
     "memory/chrome_browser_main_extra_parts_memory.cc",
     "memory/chrome_browser_main_extra_parts_memory.h",
     "memory/enterprise_memory_limit_evaluator.cc",
@@ -1382,7 +1380,7 @@ static_library("browser") {
     # c/b/browser_process_platform_part.h
     "//chrome/browser/enterprise/browser_management:management_identity_impl",
     "//chrome/browser/devtools",
-    "//chrome/browser/favicon",
+    "//chrome/browser/favicon:impl",
     "//chrome/browser/feedback",
     "//chrome/browser/feedback:feedback_impl",
     "//chrome/browser/file_system_access:impl",
@@ -1443,9 +1441,6 @@ static_library("browser") {
     # Circular dependency due to SystemNetworkContextManager.
     "//chrome/browser/image_fetcher",
     "//chrome/browser/profiling_host",
-
-    # TODO(crbug.com/40228447): break this dep when favicon is in its own target
-    "//chrome/browser/share",
 
     # TODO(crbug.com/417228688): Remove this circular dependency when c/b/profiles/profile_manager.h
     # gets modularized.
@@ -1585,6 +1580,12 @@ static_library("browser") {
     "//chrome/browser/background/glic:impl",
   ]
 
+  if (is_android) {
+    # TODO(crbug.com/353332589): Remove this circular dependency when
+    # profiles/profile_manager.h gets componentized.
+    allow_circular_includes_from += [ "//chrome/browser/share" ]
+  }
+
   public_deps = [
     # WARNING WARNING WARNING
     # New dependencies outside of //chrome/browser should be added to
@@ -1708,13 +1709,15 @@ static_library("browser") {
     "//chrome/browser/enterprise/browser_management:management_identity",
     "//chrome/browser/enterprise/browser_management:management_identity_impl",
     "//chrome/browser/enterprise/platform_auth:features",
-    "//chrome/browser/favicon",
+    "//chrome/browser/favicon:impl",
     "//chrome/browser/feature_engagement",
     "//chrome/browser/feature_engagement:impl",
     "//chrome/browser/feedback",
     "//chrome/browser/feedback:feedback_impl",
     "//chrome/browser/file_system_access",
     "//chrome/browser/file_system_access:impl",
+    "//chrome/browser/finds",
+    "//chrome/browser/finds/core",
     "//chrome/browser/first_party_sets",
     "//chrome/browser/gcm",
     "//chrome/browser/geolocation",
@@ -1734,6 +1737,8 @@ static_library("browser") {
     "//chrome/browser/image_decoder",
     "//chrome/browser/image_fetcher",
     "//chrome/browser/interstitials:impl",
+    "//chrome/browser/invalidation",
+    "//chrome/browser/invalidation:impl",
     "//chrome/browser/k_anonymity_service",
     "//chrome/browser/k_anonymity_service:impl",
     "//chrome/browser/lifetime:termination_notification",
@@ -2566,6 +2571,9 @@ static_library("browser") {
       "android/compositor/resources/resource_factory.cc",
       "android/compositor/resources/toolbar_resource.cc",
       "android/compositor/resources/toolbar_resource.h",
+      "android/compositor/retry_strategy.cc",
+      "android/compositor/retry_strategy.h",
+      "android/compositor/retryable_task.h",
       "android/compositor/scene_layer/bookmark_bar_scene_layer.cc",
       "android/compositor/scene_layer/bookmark_bar_scene_layer.h",
       "android/compositor/scene_layer/contextual_search_scene_layer.cc",
@@ -3239,6 +3247,7 @@ static_library("browser") {
       "//chrome/browser/feed/android:jni_headers",
       "//chrome/browser/feedback/android",
       "//chrome/browser/feedback/android:jni_headers",
+      "//chrome/browser/finds/android",
       "//chrome/browser/flags:flags_android",
       "//chrome/browser/flags:flags_android_impl",
       "//chrome/browser/gesturenav/android:gesturenav",
@@ -3723,8 +3732,6 @@ static_library("browser") {
       "media/mirroring_service_host.h",
       "media/offscreen_tab.cc",
       "media/offscreen_tab.h",
-      "media/unified_autoplay_config.cc",
-      "media/unified_autoplay_config.h",
       "memory/oom_memory_details.cc",
       "memory/oom_memory_details.h",
       "metrics/browser_activity_watcher.cc",
@@ -5404,6 +5411,10 @@ static_library("browser") {
       "//chrome/browser/enterprise/connectors/device_trust/attestation/common/proto:google_key_proto",
       "//chrome/browser/enterprise/connectors/device_trust/attestation/common/proto:interface_proto",
       "//chrome/browser/extensions/api/enterprise_networking_attributes",
+
+      # TODO(crbug.com/353332589): Remove this circular dependency when
+      # c/b/browser_process_platform_part_ash.h gets modularized.
+      "//chrome/browser/invalidation:impl",
       "//chrome/browser/metrics/perf",
       "//chrome/browser/nearby_sharing:share_target",
       "//chrome/browser/nearby_sharing/certificates",
@@ -5915,6 +5926,10 @@ static_library("browser") {
       "//chrome/browser/chromeos/tablet_mode",
       "//chrome/browser/chromeos/upload_office_to_cloud",
       "//chrome/browser/extensions/api/enterprise_networking_attributes",
+
+      # TODO(crbug.com/353332589): Remove this circular dependency when
+      # c/b/browser_process_platform_part_ash.h gets modularized.
+      "//chrome/browser/invalidation:impl",
       "//chrome/browser/policy:onc",
       "//chrome/browser/support_tool/ash",
       "//chrome/browser/ui/ash/accelerator",

@@ -19,6 +19,7 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/omnibox/omnibox_edit_model.h"
 #include "chrome/browser/ui/omnibox/omnibox_popup_view.h"
+#include "chrome/browser/ui/tabs/tab_data.h"
 #include "chrome/browser/ui/tabs/tab_style.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/chrome_widget_sublevel.h"
@@ -29,7 +30,6 @@
 #include "chrome/browser/ui/views/tabs/tab_hover_card_bubble_view.h"
 #include "chrome/browser/ui/views/tabs/tab_hover_card_thumbnail_observer.h"
 #include "chrome/browser/ui/views/tabs/tab_strip.h"
-#include "chrome/browser/ui/views/tabs/tab_strip_controller.h"
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
 #include "chrome/common/pref_names.h"
 #include "components/user_education/common/help_bubble/help_bubble_factory_registry.h"
@@ -239,7 +239,7 @@ bool TabHoverCardController::IsHoverCardVisible() const {
 bool TabHoverCardController::IsHoverCardShowingForTab(
     HoverCardAnchorTarget* anchor_target) const {
   return IsHoverCardVisible() && !fade_animator_->IsFadingOut() &&
-         GetTargetAnchorView() == anchor_target->GetAnchorView();
+         target_tab_ == anchor_target;
 }
 
 void TabHoverCardController::UpdateHoverCard(
@@ -257,6 +257,9 @@ void TabHoverCardController::UpdateHoverCard(
     delayed_show_timer_.Stop();
     target_tab_observation_.Reset();
     if (anchor_target) {
+      // If the hover card is transitioning between tabs, we need to do a
+      // cross-fade.
+      start_hover_card_fade_ = target_tab_ != nullptr;
       target_tab_observation_.Observe(anchor_target->GetAnchorView());
     }
     target_tab_ = anchor_target;
@@ -322,8 +325,7 @@ bool TabHoverCardController::UseAnimations() {
 void TabHoverCardController::OnViewIsDeleting(views::View* observed_view) {
   if (hover_card_ == observed_view) {
     OnCardClosing();
-  } else if (target_tab_ && HoverCardAnchorTarget::FromAnchorView(
-                                observed_view) == target_tab_) {
+  } else if (target_tab_ && target_tab_->GetAnchorView() == observed_view) {
     UpdateHoverCard(nullptr,
                     TabSlotController::HoverCardUpdateType::kTabRemoved);
     // These postconditions should always be met after calling
@@ -337,8 +339,7 @@ void TabHoverCardController::OnViewVisibilityChanged(views::View* observed_view,
                                                      views::View* starting_view,
                                                      bool visible) {
   // Only care about target tab becoming invisible.
-  if (!target_tab_ ||
-      HoverCardAnchorTarget::FromAnchorView(observed_view) != target_tab_) {
+  if (!target_tab_ || target_tab_->GetAnchorView() != observed_view) {
     return;
   }
   // If visibility anywhere in the hierarchy changed to false, then the target
@@ -398,10 +399,9 @@ void TabHoverCardController::CreateHoverCard(
 
 void TabHoverCardController::UpdateCardContent(
     HoverCardAnchorTarget* anchor_target) {
-  // If the hover card is transitioning between tabs, we need to do a
-  // cross-fade.
-  if (hover_card_->GetAnchorView() != anchor_target->GetAnchorView()) {
+  if (start_hover_card_fade_) {
     hover_card_->SetTextFade(0.0);
+    start_hover_card_fade_ = false;
   }
 
   hover_card_->UpdateCardContent(anchor_target);
@@ -423,7 +423,7 @@ void TabHoverCardController::MaybeStartThumbnailObservation(
   }
 
   // Discarded tabs that don't already have a thumbnail won't get one.
-  const TabRendererData& tab_data = anchor_target->data();
+  const tabs::TabData& tab_data = anchor_target->data();
   bool has_thumbnail = tab_data.thumbnail && tab_data.thumbnail->has_data();
   if (tab_data.is_tab_discarded && !has_thumbnail) {
     thumbnail_observer_->Observe(nullptr);
@@ -753,6 +753,7 @@ void TabHoverCardController::OnSlideAnimationProgressed(
     double value) {
   if (hover_card_) {
     hover_card_->SetTextFade(value);
+    hover_card_->SetSliding(value > 0);
   }
   if (thumbnail_wait_state_ == ThumbnailWaitState::kWaitingWithoutPlaceholder) {
     const auto crossfade_start =
@@ -769,6 +770,7 @@ void TabHoverCardController::OnSlideAnimationComplete(
   // Make sure we're displaying the new text at 100% opacity, and none of the
   // old text.
   hover_card_->SetTextFade(1.0);
+  hover_card_->SetSliding(false);
 
   // If we were waiting for a preview image with data to load, we don't want to
   // keep showing the old image while hovering on the new tab, so clear it. This

@@ -25,7 +25,6 @@
 
 static_assert(BUILDFLAG(ENABLE_EXTENSIONS_CORE));
 
-class Browser;
 class BrowserWindowInterface;
 class GURL;
 class Profile;
@@ -94,10 +93,6 @@ class ExtensionTabUtil {
   static int GetWindowId(BrowserWindowInterface* browser);
   static int GetTabId(const content::WebContents* web_contents);
   static int GetWindowIdOfTab(const content::WebContents* web_contents);
-
-  static base::ListValue CreateTabList(BrowserWindowInterface* browser,
-                                       const Extension* extension,
-                                       mojom::ContextType context);
 
   static WindowController* GetControllerFromWindowID(
       const ChromeExtensionFunctionDetails& details,
@@ -291,15 +286,6 @@ class ExtensionTabUtil {
   static WindowController* GetWindowControllerOfTab(
       content::WebContents* web_contents);
 
-#if BUILDFLAG(ENABLE_EXTENSIONS)
-  // Open the extension's options page. Returns true if an options page was
-  // successfully opened (though it may not necessarily *load*, e.g. if the
-  // URL does not exist). This call to open the options page is initiated by
-  // the extension via chrome.runtime.openOptionsPage.
-  static bool OpenOptionsPageFromAPI(const Extension* extension,
-                                     content::BrowserContext* browser_context);
-#endif  // BUILDFLAG(ENABLE_EXTENSIONS)
-
   // Open the extension's options page. Returns true if an options page was
   // successfully opened (though it may not necessarily *load*, e.g. if the
   // URL does not exist).
@@ -319,10 +305,11 @@ class ExtensionTabUtil {
   // contexts.
   static void ClearBackForwardCache();
 
-  // Check TabStripModel editability in every browser because a drag session
-  // could be running in another browser that reverts to the current browser. Or
-  // a drag could be mid-handoff if from one browser to another.
-  static bool IsTabStripEditable();
+  // Check TabStripModel editability in every browser in the given profile
+  // because a drag session could be running in another browser that reverts to
+  // the current browser or a drag could be mid-handoff if from one browser to
+  // another (but tabs can't be dragged between different profiles).
+  static bool IsTabStripEditable(Profile& profile);
 
   // Retrieve the corresponding TabListInterface for the specified `browser` if
   // and only if every browser's tab list is editable. See comments above

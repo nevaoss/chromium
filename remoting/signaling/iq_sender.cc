@@ -28,32 +28,21 @@ IqSender::~IqSender() {
   signal_strategy_->RemoveListener(this);
 }
 
-std::unique_ptr<IqRequest> IqSender::SendIq(const JingleMessage& message,
+std::unique_ptr<IqRequest> IqSender::SendIq(JingleMessage&& message,
                                             ReplyCallback callback) {
+  if (message.message_id.empty()) {
+    message.message_id = signal_strategy_->GetNextId();
+  }
   std::string id = message.message_id;
-  // TODO: joedow - Update SendMessage to grab the 'to' JID from the message.
-  auto destination = message.to;
-  if (id.empty()) {
-    // message_id is not const, but message is. We need a mutable copy or
-    // handle this differently.
-    JingleMessage message_copy = message;
-    id = signal_strategy_->GetNextId();
-    message_copy.message_id = id;
-    if (!signal_strategy_->SendMessage(
-            destination, SignalingMessage(std::move(message_copy)))) {
-      return nullptr;
-    }
-  } else {
-    if (!signal_strategy_->SendMessage(destination,
-                                       SignalingMessage(message))) {
-      return nullptr;
-    }
+  std::string to = message.to.id();
+
+  if (!signal_strategy_->SendMessage(std::move(message))) {
+    return nullptr;
   }
 
   DCHECK(requests_.find(id) == requests_.end());
   bool callback_exists = !callback.is_null();
-  auto request =
-      std::make_unique<IqRequest>(this, std::move(callback), message.to.id());
+  auto request = std::make_unique<IqRequest>(this, std::move(callback), to);
   if (callback_exists) {
     requests_[id] = request.get();
   }
@@ -72,21 +61,11 @@ void IqSender::RemoveRequest(IqRequest* request) {
   }
 }
 
-void IqSender::OnSignalStrategyStateChange(SignalStrategy::State state) {}
+void IqSender::OnSignalingStateChanged(SignalStrategy::State state) {}
 
-bool IqSender::OnSignalStrategyIncomingMessage(
-    const SignalingAddress& sender_address,
-    const SignalingMessage& message) {
-  // Currently JingleMessageFromXml only returns JingleMessage for 'set' IQs.
-  // IQ results and errors are parsed into JingleMessageReply by the signal
-  // strategy and handled above. If this changes in the future, we might need
-  // to handle JingleMessage responses here.
-  const auto* jingle_reply = std::get_if<JingleMessageReply>(&message);
-  if (!jingle_reply) {
-    return false;
-  }
-
-  auto it = requests_.find(jingle_reply->message_id);
+bool IqSender::OnSignalingReply(const SignalingAddress& sender_address,
+                                const JingleMessageReply& message) {
+  auto it = requests_.find(message.message_id);
   if (it == requests_.end()) {
     return false;
   }
@@ -94,15 +73,15 @@ bool IqSender::OnSignalStrategyIncomingMessage(
   IqRequest* request = it->second;
 
   if (NormalizeSignalingId(request->addressee_) !=
-      NormalizeSignalingId(jingle_reply->from.id())) {
+      NormalizeSignalingId(message.from.id())) {
     LOG(ERROR) << "Received IQ response from an invalid JID. Ignoring it."
-               << " Message received from: " << jingle_reply->from.id()
+               << " Message received from: " << message.from.id()
                << " Original JID: " << request->addressee_;
     return false;
   }
 
   requests_.erase(it);
-  request->OnResponse(*jingle_reply);
+  request->OnResponse(message);
 
   return true;
 }

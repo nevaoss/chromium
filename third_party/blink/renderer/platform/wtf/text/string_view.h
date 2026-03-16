@@ -319,6 +319,11 @@ class WTF_EXPORT StringView {
   // `StringView(*this, offset, len)`.
   StringView substr(size_type offset, size_type len = npos) const;
 
+  // This is an alias for `substr()`.
+  StringView subview(size_type offset, size_type len = npos) const {
+    return substr(offset, len);
+  }
+
   // Returns `true` if `this` string starts with `other`.
   bool starts_with(const StringView& other) const;
   // Returns `true` if `this` string starts with `c`.
@@ -369,8 +374,8 @@ class WTF_EXPORT StringView {
 
   // Functions to analyze the content -------------------------------
 
-  bool IsLowerASCII() const;
-  bool ContainsOnlyASCIIOrEmpty() const;
+  bool ContainsNoAsciiUpper() const;
+  bool ContainsOnlyAsciiOrEmpty() const;
   // Returns true if the string is empty or contains only Latin-1 characters.
   bool ContainsOnlyLatin1OrEmpty() const;
 

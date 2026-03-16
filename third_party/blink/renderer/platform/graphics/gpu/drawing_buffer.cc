@@ -89,12 +89,7 @@ namespace {
 // feature would prevent flickering in some cases where desynchronized canvas
 // are periodically refreshed on Windows.
 BASE_FEATURE(kUseNonEmptySyncTokenForLowLatencyCanvas,
-#if BUILDFLAG(IS_WIN)
-             base::FEATURE_ENABLED_BY_DEFAULT
-#else
-             base::FEATURE_DISABLED_BY_DEFAULT
-#endif
-);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 const float kResourceAdjustedRatio = 0.5;
 
@@ -2005,7 +2000,7 @@ scoped_refptr<DrawingBuffer::ColorBuffer> DrawingBuffer::CreateColorBuffer(
     if (SharedGpuContext::IsGpuCompositingEnabled() &&
         chromium_image_usage_ == kAllowChromiumImage) {
       should_use_chromium_image =
-          RuntimeEnabledFeatures::WebGLImageChromiumEnabled() ||
+          SharedGpuContext::WebGLImageChromiumEnabled() ||
           (low_latency_enabled() &&
            base::FeatureList::IsEnabled(
                features::kLowLatencyWebGLImageChromium));

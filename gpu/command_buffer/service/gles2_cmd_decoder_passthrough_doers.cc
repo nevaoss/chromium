@@ -5082,6 +5082,12 @@ error::Error GLES2DecoderPassthroughImpl::DoEndPixelLocalStorageANGLE(
   return error::kNoError;
 }
 
+error::Error
+GLES2DecoderPassthroughImpl::DoEndPixelLocalStorageImplicitANGLE() {
+  api()->glEndPixelLocalStorageImplicitANGLEFn();
+  return error::kNoError;
+}
+
 error::Error GLES2DecoderPassthroughImpl::DoPixelLocalStorageBarrierANGLE() {
   if (IsEmulatedFramebufferBound(GL_DRAW_FRAMEBUFFER)) {
     InsertError(GL_INVALID_OPERATION, kPLSDefaultFramebufferBound);

@@ -751,6 +751,24 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<!-- LINT.IfChange(CrossDeviceSettingImportOutcome) -->
+
+<histogram name="Sync.CrossDeviceSettingImportOutcome"
+    enum="CrossDeviceSettingImportOutcome" expires_after="2026-12-30">
+  <owner>jhimawan@google.com</owner>
+  <owner>bwwilliams@google.com</owner>
+  <owner>treib@chromium.org</owner>
+  <owner>src/components/sync/OWNERS</owner>
+  <summary>
+    Records the possible outcomes after checking for settings to import from a
+    remote device. Recorded when we conclude that the user has no settings to
+    import (which can happen for several reasons) or when we show a snackbar
+    allowing the user to undo/redo.
+  </summary>
+</histogram>
+
+<!-- LINT.ThenChange() -->
+
 <histogram
     name="Sync.Crypto.CustomPassphraseKeyDerivationMethodOnSuccessfulDecryption"
     enum="SyncCustomPassphraseKeyDerivationMethodState"
@@ -1305,6 +1323,16 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Sync.DeviceStatistics.RequestOutcome"
+    enum="SyncDeviceStatisticsRequestOutcome" expires_after="2026-06-30">
+  <owner>treib@chromium.org</owner>
+  <owner>src/components/sync/OWNERS</owner>
+  <summary>
+    Device statistics: The outcome of an individual statistics request, recorded
+    when a request completes.
+  </summary>
+</histogram>
+
 <histogram name="Sync.DeviceStatistics.RequestsCompletedSuccess"
     enum="SyncDeviceStatisticsSuccess" expires_after="2026-06-30">
   <owner>treib@chromium.org</owner>
@@ -1325,6 +1353,17 @@ chromium-metrics-reviews@google.com.
     of device statistics metrics, records the number of requests (= the number
     of accounts in the profile). This happens at most once per day, 30 seconds
     after profile initialization.
+  </summary>
+</histogram>
+
+<histogram name="Sync.DeviceStatistics.RequestUrlFetchResponse"
+    enum="CombinedHttpResponseAndNetErrorCode" expires_after="2026-06-30">
+  <owner>treib@chromium.org</owner>
+  <owner>src/components/sync/OWNERS</owner>
+  <summary>
+    Device statistics: The fetch response to an individual statistics network
+    request, i.e. the network error if any, and the HTTP response code
+    otherwise. Recorded when a network request completes.
   </summary>
 </histogram>
 

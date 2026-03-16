@@ -1531,8 +1531,12 @@ PaintLayer* PaintLayer::HitTestLayer(
                                         layer_fragments, temp_result,
                                         recursion_data.location,
                                         inside_fragment_foreground_rect) &&
-          IsHitCandidateForDepthOrder(this, false, z_offset_for_contents_ptr,
-                                      local_transform_state) &&
+          IsHitCandidateForDepthOrder(
+              this, false, z_offset_for_contents_ptr,
+              RuntimeEnabledFeatures::
+                      HitTestContainerTransformStateForPreserve3dEnabled()
+                  ? container_transform_state
+                  : local_transform_state) &&
           IsHitCandidateForStopNode(GetLayoutObject(), stop_node)) {
         if (result.GetHitTestRequest().ListBased())
           result.Append(temp_result);
@@ -1571,8 +1575,12 @@ PaintLayer* PaintLayer::HitTestLayer(
                                   recursion_data.location,
                                   HitTestPhase::kSelfBlockBackground,
                                   inside_fragment_background_rect) &&
-        IsHitCandidateForDepthOrder(this, false, z_offset_for_contents_ptr,
-                                    local_transform_state) &&
+        IsHitCandidateForDepthOrder(
+            this, false, z_offset_for_contents_ptr,
+            RuntimeEnabledFeatures::
+                    HitTestContainerTransformStateForPreserve3dEnabled()
+                ? container_transform_state
+                : local_transform_state) &&
         IsHitCandidateForStopNode(GetLayoutObject(), stop_node)) {
       if (result.GetHitTestRequest().ListBased())
         result.Append(temp_result);
@@ -1861,7 +1869,10 @@ PaintLayer* PaintLayer::HitTestChildren(
   auto hit_test_child =
       [&](PaintLayer* child_layer, bool overflow_controls_only,
           const HitTestRecursionData& recursion_data) -> bool {
-    if (child_layer->IsReplacedNormalFlowStackingContext()) {
+    // Hit-testing of the whole subtree of an SVG foreignObject, including
+    // stacked children, is handled by LayoutSVGForeignObject, so don't hit
+    // test stacked children here.
+    if (child_layer->GetLayoutObject().IsSVGForeignObject()) {
       return false;
     }
 

@@ -9,6 +9,7 @@
 #include "base/check.h"
 #include "base/compiler_specific.h"
 #include "base/containers/span.h"
+<<<<<<< HEAD
 #include "base/feature_list.h"
 #include "third_party/blink/renderer/platform/image-decoders/jpeg/jpeg_image_decoder.h"
 // TODO(neva_rust): Remove this when Neva supports rust build.
@@ -17,14 +18,11 @@
 #else   // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "third_party/blink/renderer/platform/image-decoders/png/legacy/png_image_decoder.h"
 #endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
+=======
+>>>>>>> 147.0.7727.0~1
 #include "third_party/skia/include/core/SkColorSpace.h"
 
 namespace {
-
-// See https://crbug.com/456842524 for more details about the plan to
-// remove the support for JPG-or-PNG-embedded-in-BMP feature.
-BASE_FEATURE(kRemoveBmpExtensionForEmbeddingJpegOrPng,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // See comments on lookup_table_spans_ in the header.
 constexpr auto nBitTo8BitlookupTable = std::to_array<uint8_t>({
@@ -78,9 +76,6 @@ BMPImageReader::~BMPImageReader() = default;
 void BMPImageReader::SetData(scoped_refptr<SegmentReader> data) {
   data_ = data;
   fast_reader_.SetData(std::move(data));
-  if (alternate_decoder_) {
-    alternate_decoder_->SetData(data_.get(), parent_->IsAllDataReceived());
-  }
 }
 
 bool BMPImageReader::DecodeBMP(bool only_size) {
@@ -104,10 +99,7 @@ bool BMPImageReader::DecodeBMP(bool only_size) {
   // space is as well.  Unfortunately, since the profile appears after
   // everything else, this may delay processing until all data is received.
   // Luckily, few BMPs have an embedded color profile.
-  const bool use_alternate_decoder =
-      (info_header_.compression == JPEG) || (info_header_.compression == PNG);
-  if (!use_alternate_decoder && info_header_.profile_data &&
-      !ProcessEmbeddedColorProfile()) {
+  if (info_header_.profile_data && !ProcessEmbeddedColorProfile()) {
     return false;
   }
 
@@ -123,10 +115,6 @@ bool BMPImageReader::DecodeBMP(bool only_size) {
 
   if (only_size) {
     return true;
-  }
-
-  if (use_alternate_decoder) {
-    return DecodeAlternateFormat();
   }
 
   // Read and process the bitmasks, if needed.
@@ -324,15 +312,11 @@ bool BMPImageReader::ReadInfoHeader() {
     } else if ((compression == 4) && (info_header_.bit_count == 24)) {
       info_header_.compression = RLE24;
       is_os22x_ = true;
-    } else if (compression > ALPHABITFIELDS) {
+    } else if ((compression > ALPHABITFIELDS) || (compression == JPEG) ||
+               (compression == PNG)) {
       return parent_->SetFailed();  // Some type we don't understand.
     } else {
       info_header_.compression = static_cast<CompressionType>(compression);
-      if ((compression == JPEG || compression == PNG) &&
-          base::FeatureList::IsEnabled(
-              kRemoveBmpExtensionForEmbeddingJpegOrPng)) {
-        return parent_->SetFailed();  // Some type we don't understand.
-      }
     }
   }
 
@@ -507,16 +491,6 @@ bool BMPImageReader::IsInfoHeaderValid() const {
       }
       break;
 
-    case JPEG:
-    case PNG:
-      // Only valid for Windows V3+.  We don't support embedding these inside
-      // ICO files.
-      if (is_os21x_ || is_os22x_ || info_header_.bit_count ||
-          !img_data_offset_) {
-        return false;
-      }
-      break;
-
     case HUFFMAN1D:
       // Only valid for OS/2 2.x.
       if (!is_os22x_ || (info_header_.bit_count != 1)) {
@@ -555,6 +529,7 @@ bool BMPImageReader::IsInfoHeaderValid() const {
   return true;
 }
 
+<<<<<<< HEAD
 bool BMPImageReader::DecodeAlternateFormat() {
   CHECK(
       !base::FeatureList::IsEnabled(kRemoveBmpExtensionForEmbeddingJpegOrPng));
@@ -601,6 +576,8 @@ bool BMPImageReader::DecodeAlternateFormat() {
              : (buffer_->GetStatus() == ImageFrame::kFrameComplete);
 }
 
+=======
+>>>>>>> 147.0.7727.0~1
 bool BMPImageReader::ProcessEmbeddedColorProfile() {
   // Ensure we have received the whole profile.
   if ((info_header_.profile_data > data_->size()) ||

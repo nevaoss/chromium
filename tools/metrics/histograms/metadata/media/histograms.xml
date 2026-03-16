@@ -106,6 +106,18 @@ chromium-metrics-reviews@google.com.
       summary="Software secure Widevine key system"/>
 </variants>
 
+<variants name="MediaFoundationCodecPackage">
+  <variant name="AC4"/>
+  <variant name="AV1"/>
+  <variant name="DolbyVision"/>
+  <variant name="EAC3"/>
+<!-- NOTE: H264 is always supported. Do not remove this. -->
+
+  <variant name="H264"/>
+  <variant name="HEVC"/>
+  <variant name="VP9"/>
+</variants>
+
 <variants name="MediaRebufferingCategories">
   <variant name=".Audio.EME"
       summary="Metric for EME media with an audio track."/>
@@ -4018,7 +4030,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Media.EME.MediaFoundationService.HardwareContextReset.MultiGpuNvidiaActiveWithExternalDisplay"
-    enum="Boolean" expires_after="2026-08-30">
+    enum="Boolean" expires_after="2026-12-09">
   <owner>sangbaekpark@chromium.org</owner>
   <owner>media-dev-uma@chromium.org</owner>
   <summary>
@@ -4030,7 +4042,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Media.EME.MediaFoundationService.HardwareContextReset.MultiGpuWithExternalDisplay"
-    enum="Boolean" expires_after="2026-04-05">
+    enum="Boolean" expires_after="2026-12-09">
   <owner>sangbaekpark@chromium.org</owner>
   <owner>media-dev-uma@chromium.org</owner>
   <summary>
@@ -5229,6 +5241,51 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Media.MediaFoundation.MediaEngineError.SubsequentError"
+    enum="MediaEngineErrorType" expires_after="2026-12-09">
+  <owner>sangbaekpark@chromium.org</owner>
+  <owner>media-dev-uma@chromium.org</owner>
+  <summary>
+    Recorded when any subsequent {MediaEngineErrorType} after the first error
+    has occurred in MediaFoundationRenderer::MediaEngineNotifyImpl.
+  </summary>
+</histogram>
+
+<histogram
+    name="Media.MediaFoundation.MediaEngineError.SubsequentError.{MF_MEDIA_ENGINE_ERR}.Hresult"
+    enum="Hresult" expires_after="2026-12-09">
+  <owner>sangbaekpark@chromium.org</owner>
+  <owner>media-dev-uma@chromium.org</owner>
+  <summary>
+    Hresult corresponding to a subsequent {MF_MEDIA_ENGINE_ERR} after the first
+    error has occurred in MediaFoundationRenderer::MediaEngineNotifyImpl.
+    Recorded only when the first subsequent error happens.
+  </summary>
+  <token key="MF_MEDIA_ENGINE_ERR" variants="MF_MEDIA_ENGINE_ERR"/>
+</histogram>
+
+<histogram name="Media.MediaFoundation.MediaEngineError.SubsequentEvent"
+    enum="MediaEngineEventType" expires_after="2026-12-09">
+  <owner>sangbaekpark@chromium.org</owner>
+  <owner>media-dev-uma@chromium.org</owner>
+  <summary>
+    Recorded when any subsequent {MF_MEDIA_ENGINE_EVENT} after the first error
+    has occurred in MediaFoundationRenderer::MediaEngineNotifyImpl.
+  </summary>
+</histogram>
+
+<histogram
+    name="Media.MediaFoundation.MediaEngineError.SubsequentEventOrErrorReported"
+    enum="Boolean" expires_after="2026-12-09">
+  <owner>sangbaekpark@chromium.org</owner>
+  <owner>media-dev-uma@chromium.org</owner>
+  <summary>
+    Whether or not any subsequent event or error occurs after the first error
+    has occurred in MediaFoundationRenderer::MediaEngineNotifyImpl. Recorded
+    only when the first subsequent event or error happens.
+  </summary>
+</histogram>
+
 <histogram
     name="Media.MediaFoundation.MediaEngineError.{MF_MEDIA_ENGINE_ERR}.Hresult"
     enum="Hresult" expires_after="2026-12-09">
@@ -5253,6 +5310,19 @@ chromium-metrics-reviews@google.com.
     occurs.
   </summary>
   <token key="VideoCodec" variants="VideoCodec"/>
+</histogram>
+
+<histogram
+    name="Media.MediaFoundationPackageDecoder.{MediaFoundationCodecPackage}"
+    enum="Boolean" expires_after="2026-12-09">
+  <owner>sangbaekpark@chromium.org</owner>
+  <owner>media-dev-uma@chromium.org</owner>
+  <summary>
+    Whether or not a {MediaFoundationCodecPackage} was found. Recorded once when
+    the MediaFoundation Renderer is initialized.
+  </summary>
+  <token key="MediaFoundationCodecPackage"
+      variants="MediaFoundationCodecPackage"/>
 </histogram>
 
 <histogram name="Media.MediaFoundationRenderer.CreateMediaEngineError"
@@ -5382,7 +5452,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Media.MediaFoundationRenderer.MultiGpu.MultiGpuNvidiaActiveWithExternalDisplay"
-    enum="Boolean" expires_after="2026-04-05">
+    enum="Boolean" expires_after="2026-12-09">
   <owner>sangbaekpark@chromium.org</owner>
   <owner>media-dev-uma@chromium.org</owner>
   <summary>
@@ -5394,7 +5464,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Media.MediaFoundationRenderer.MultiGpu.MultiGpuWithExternalDisplay"
-    enum="Boolean" expires_after="2026-08-30">
+    enum="Boolean" expires_after="2026-12-09">
   <owner>sangbaekpark@chromium.org</owner>
   <owner>media-dev-uma@chromium.org</owner>
   <summary>

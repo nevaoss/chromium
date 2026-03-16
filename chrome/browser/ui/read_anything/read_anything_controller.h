@@ -133,16 +133,13 @@ class ReadAnythingController : public tabs::ContentsObservingTabFeature {
   void ShowImmersiveUI(ReadAnythingOpenTrigger trigger);
 
   // Closes the Immersive Reading Mode UI.
-  void CloseImmersiveUI(bool closed_by_tab_switch = false);
+  void CloseImmersiveUI(ReadAnythingCloseReason reason);
 
   // Toggles the Immersive Reading Mode UI.
   void ToggleUI(ReadAnythingOpenTrigger trigger);
 
   // Toggles between the Immersive Reading Mode UI and the Side Panel UI.
   void TogglePresentation();
-
-  // Toggles the Reading Mode Side Panel UI.
-  void ToggleReadAnythingSidePanel(SidePanelOpenTrigger trigger);
 
   // Returns the current presentation_state_ of the Reading Mode feature. This
   // refers to the current host of the WebUI, but does not guarantee that the
@@ -197,11 +194,6 @@ class ReadAnythingController : public tabs::ContentsObservingTabFeature {
   }
 
  private:
-  // tabs::ContentsObservingTabFeature:
-  void OnDiscardContents(tabs::TabInterface* tab,
-                         content::WebContents* old_contents,
-                         content::WebContents* new_contents) override;
-
   // Called when the tab will detach.
   void TabWillDetach(tabs::TabInterface* tab,
                      tabs::TabInterface::DetachReason reason);
@@ -219,9 +211,15 @@ class ReadAnythingController : public tabs::ContentsObservingTabFeature {
   // (e.g. due to being unresponsive).
   void OnRendererCrashed();
 
+  // Helper function to record OnEntryHidden metrics.
+  void RecordEntryHiddenMetrics();
+
   // Returns the SidePanelUI for the active tab if it can be shown.
   // Otherwise, returns nullptr.
   SidePanelUI* GetSidePanelUI();
+
+  // Closes the Reading mode side panel UI.
+  void CloseSidePanelUI(ReadAnythingCloseReason reason);
 
   raw_ptr<tabs::TabInterface> tab_ = nullptr;
   raw_ptr<SidePanelRegistry> side_panel_registry_ = nullptr;
@@ -264,10 +262,10 @@ class ReadAnythingController : public tabs::ContentsObservingTabFeature {
 
   // When the Immersive Reading Mode overlay is shown, it covers the main web
   // contents, changing it's visibility to Visibility::OCCLUDED. This causes
-  // the renderer to make optimizations that break Reading Mode (namely, that it
-  // can stop generating accessibility events). This method tells the renderer
-  // that even though the webpage is technically occluded, we want it treated as
-  // if it were visible.
+  // the renderer to make optimizations that break Reading Mode (namely, that
+  // it can stop generating accessibility events). This method tells the
+  // renderer that even though the webpage is technically occluded, we want it
+  // treated as if it were visible.
   void CaptureMainContentsAsVisible();
   // Reset the main contents capturer handle_ when we no longer need to force
   // the main webpage to be treated as visible for IRM purposes.
@@ -276,8 +274,8 @@ class ReadAnythingController : public tabs::ContentsObservingTabFeature {
   DistillationState distillation_state_ = DistillationState::kUndefined;
   bool distillation_state_locked_for_testing_ = false;
 
-  // The handle returned by web_contents_->IncrementCapturerCount. This is used
-  // to release the capture when the ReadAnythingController is destroyed.
+  // The handle returned by web_contents_->IncrementCapturerCount. This is
+  // used to release the capture when the ReadAnythingController is destroyed.
   // Note: Do not access this directly. Use CaptureMainContentsAsVisible() and
   // ReleaseMainContentsCapture() instead to ensure the handle is correctly
   // managed.

@@ -32,29 +32,31 @@ class CONTENT_EXPORT IdentityCredentialSourceImpl
  public:
   DOCUMENT_USER_DATA_KEY_DECL();
 
-  explicit IdentityCredentialSourceImpl(RenderFrameHost* rfh);
   ~IdentityCredentialSourceImpl() override;
 
+  // IdentityCredentialSource:
   void GetIdentityCredentialSuggestions(
       const std::vector<GURL>& embedder_requested_idps,
       GetIdentityCredentialSuggestionsCallback callback) override;
-
   bool HasPendingRequest() override;
-
   bool SelectAccount(const url::Origin& idp_origin,
                      const std::string& account_id) override;
-
   void SetEmbedderLoginRequest(
       const url::Origin& idp_origin,
       const std::string& account_id,
-      base::RepeatingCallback<void(FederatedLoginResult)> callback) override;
+      base::OnceCallback<void(FederatedLoginResult)> callback) override;
 
   void SetNetworkManagerForTests(
       std::unique_ptr<IdpNetworkRequestManager> network_manager);
   void SetPermissionDelegateForTests(
       FederatedIdentityPermissionContextDelegate* permission_delegate);
 
+ protected:
+  explicit IdentityCredentialSourceImpl(RenderFrameHost* rfh);
+
  private:
+  friend class DocumentUserData<IdentityCredentialSourceImpl>;
+
   void OnAccountsFetchCompleted(base::TimeTicks,
                                 std::vector<AccountsFetcher::Result> results);
 

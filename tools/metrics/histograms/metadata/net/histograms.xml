@@ -6353,13 +6353,17 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Net.QuicSession.PendingStreamsWaitTime" units="ms"
-    expires_after="2023-02-12">
-  <owner>dschinazi@chromium.org</owner>
+    expires_after="2026-09-08">
+  <owner>bashi@chromium.org</owner>
   <owner>src/net/quic/OWNERS</owner>
   <summary>
     The wait time of the pending stream when it is finally serviced. Pending
     streams are those which could not be created immediately because there were
-    too many active streams.
+    too many active streams. Recorded when a QUIC session is ready open a new
+    stream on top of the session.
+
+    Warning: this histogram was expired from 2023-02-12 to 2026-03-09; data may
+    be missing.
   </summary>
 </histogram>
 
@@ -7567,7 +7571,7 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Net.SharedDictionaryManagerOnDisk.CacheMaxSize" units="MB"
+<histogram name="Net.SharedDictionaryManagerOnDisk.CacheMaxSize2" units="MB"
     expires_after="2026-07-01">
   <owner>pmeenan@chromium.org</owner>
   <owner>src/net/extras/shared_dictionary/OWNERS</owner>
@@ -7575,7 +7579,9 @@ chromium-metrics-reviews@google.com.
     The maximum total size of dictionaries that can be stored in the Shared
     Dictionary cache, calculated based on available disk space in the browser
     process and notified to the network service. This is recorded once per a
-    netwrok context only if the DiskCacheSize enterprise policy is not set.
+    netwrok context only if the DiskCacheSize enterprise policy is not set. The
+    original histogram &quot;CacheMaxSize&quot; didn't correctly recorded the
+    actual maximum total size.
   </summary>
 </histogram>
 
@@ -7827,15 +7833,19 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram
-    name="Net.SharedDictionaryTransaction.DictionaryReadLatency.{SuccessOrFailure}"
+    name="Net.SharedDictionaryTransaction.DictionaryReadLatency.{RequestType}.{SuccessOrFailure}"
     units="ms" expires_after="2026-08-30">
   <owner>pmeenan@chromium.org</owner>
   <owner>src/net/extras/shared_dictionary/OWNERS</owner>
   <summary>
     The delay of SharedDictionaryTransaction caused by reading a shared
-    dictionary. Recorded when the dictionary is read in the
+    dictionary for a {RequestType}. Recorded when the dictionary is read in the
     SharedDictionaryTransaction.
   </summary>
+  <token key="RequestType">
+    <variant name="Document" summary="document load (main frame or subframe)"/>
+    <variant name="Subresource" summary="subresource load"/>
+  </token>
   <token key="SuccessOrFailure" variants="SuccessOrFailure"/>
 </histogram>
 

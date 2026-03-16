@@ -205,7 +205,7 @@ class Tab::TabCloseButtonObserver : public views::ViewObserver {
   void OnViewFocused(views::View* observed_view) override {
     controller_->UpdateHoverCard(
         tab_, TabSlotController::HoverCardUpdateType::kFocus);
-    if (base::FeatureList::IsEnabled(features::kDesktopGlowUp)) {
+    if (base::FeatureList::IsEnabled(features::kTabStripDeclutter)) {
       tab_->InvalidateLayout();
     }
   }
@@ -216,7 +216,7 @@ class Tab::TabCloseButtonObserver : public views::ViewObserver {
       controller_->UpdateHoverCard(
           nullptr, TabSlotController::HoverCardUpdateType::kFocus);
     }
-    if (base::FeatureList::IsEnabled(features::kDesktopGlowUp)) {
+    if (base::FeatureList::IsEnabled(features::kTabStripDeclutter)) {
       tab_->InvalidateLayout();
     }
   }
@@ -380,10 +380,21 @@ void Tab::Layout(PassKey) {
   if (glic_tab_underline_view_) {
     gfx::Rect glic_bounds =
         contents_rect + gfx::Vector2d(0, kGlicUnderlineYOffset);
-    // Use the full width of the tab in order to accommodate small tab sizes
-    // where the width of the contents bounds is 0.
-    glic_bounds.set_x(0);
-    glic_bounds.set_width(size().width());
+    if (base::FeatureList::IsEnabled(features::kDetachedTabs)) {
+      // For detached tabs, the glow should align with the bottom of the tab
+      // body.
+      const int tab_bottom =
+          GetLayoutConstant(LayoutConstant::kTabHeight) -
+          GetLayoutConstant(LayoutConstant::kTabstripToolbarOverlap);
+      const int glow_height = 8;
+      glic_bounds =
+          gfx::Rect(0, tab_bottom - glow_height, size().width(), glow_height);
+    } else {
+      // Use the full width of the tab in order to accommodate small tab sizes
+      // where the width of the contents bounds is 0.
+      glic_bounds.set_x(0);
+      glic_bounds.set_width(size().width());
+    }
     glic_tab_underline_view_->SetBoundsRect(glic_bounds);
   }
 
@@ -783,7 +794,7 @@ void Tab::OnFocus() {
   controller_->TabKeyboardFocusChangedTo(tab_handle_.Get());
   controller_->UpdateHoverCard(this,
                                TabSlotController::HoverCardUpdateType::kFocus);
-  if (base::FeatureList::IsEnabled(features::kDesktopGlowUp)) {
+  if (base::FeatureList::IsEnabled(features::kTabStripDeclutter)) {
     InvalidateLayout();
   }
 }
@@ -797,7 +808,7 @@ void Tab::OnBlur() {
     controller_->UpdateHoverCard(
         nullptr, TabSlotController::HoverCardUpdateType::kFocus);
   }
-  if (base::FeatureList::IsEnabled(features::kDesktopGlowUp)) {
+  if (base::FeatureList::IsEnabled(features::kTabStripDeclutter)) {
     InvalidateLayout();
   }
 }
@@ -891,7 +902,7 @@ bool Tab::IsValid() const {
   return !closing() && !detached() && !dragging() && GetVisible();
 }
 
-const TabRendererData& Tab::data() const {
+const tabs::TabData& Tab::data() const {
   return data_;
 }
 
@@ -945,14 +956,14 @@ bool Tab::HasThumbnail() const {
   return data().thumbnail && data().thumbnail->has_data();
 }
 
-void Tab::SetData(TabRendererData data) {
+void Tab::SetData(tabs::TabData data) {
   DCHECK(GetWidget());
 
   if (data_ == data) {
     return;
   }
 
-  TabRendererData old(std::move(data_));
+  tabs::TabData old(std::move(data_));
   data_ = std::move(data);
 
   icon_->SetData(data_);
@@ -972,10 +983,8 @@ void Tab::SetData(TabRendererData data) {
   }
   title_->SetText(title);
 
-  const auto new_alert_state =
-      tabs::TabAlertController::GetAlertStateToShow(data_.alert_state);
-  const auto old_alert_state =
-      tabs::TabAlertController::GetAlertStateToShow(old.alert_state);
+  const auto new_alert_state = data_.alert_state;
+  const auto old_alert_state = old.alert_state;
   if (new_alert_state != old_alert_state) {
     alert_indicator_button_->TransitionToAlertState(new_alert_state);
   }
@@ -1100,11 +1109,10 @@ void Tab::UpdateIconVisibility() {
     return;
   }
 
-  const bool has_favicon = data().show_icon;
+  const bool has_favicon = data().should_display_favicon;
   bool has_alert_icon =
-      (alert_indicator_button_
-           ? alert_indicator_button_->showing_alert_state()
-           : tabs::TabAlertController::GetAlertStateToShow(data().alert_state))
+      (alert_indicator_button_ ? alert_indicator_button_->showing_alert_state()
+                               : data().alert_state)
           .has_value();
   std::optional<tabs::TabAlert> current_alert_state =
       alert_indicator_button_->showing_alert_state();
@@ -1187,8 +1195,9 @@ void Tab::UpdateIconVisibility() {
     }
 
     const bool is_decluttered =
-        base::FeatureList::IsEnabled(features::kDesktopGlowUp) &&
-        controller_->GetTabCount() >= TabStyle::kTabStripDeclutterMinTabs;
+        base::FeatureList::IsEnabled(features::kTabStripDeclutter) &&
+        controller_->GetTabCount() >=
+            TabStyle::kTabStripDeclutterMinTabsForCloseHide;
     showing_close_button_ =
 #if BUILDFLAG(IS_CHROMEOS)
         should_show_close_button &&
@@ -1296,10 +1305,8 @@ void Tab::CloseButtonPressed(const ui::Event& event) {
 
   if (!alert_indicator_button_ || !alert_indicator_button_->GetVisible()) {
     base::RecordAction(UserMetricsAction("CloseTab_NoAlertIndicator"));
-  } else if (auto alert_state = tabs::TabAlertController::GetAlertStateToShow(
-                 data_.alert_state);
-             alert_state.has_value()) {
-    tabs::TabAlertController::RecordCloseTabMetrics(alert_state.value());
+  } else if (data_.alert_state.has_value()) {
+    tabs::TabAlertController::RecordCloseTabMetrics(data_.alert_state.value());
   }
 
   const std::vector<Tab*>& tabs_in_split = controller()->GetTabsInSplit(this);

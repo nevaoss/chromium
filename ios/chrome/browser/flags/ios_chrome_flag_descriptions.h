@@ -50,6 +50,9 @@ extern const char kAppleCalendarExperienceKitDescription[];
 extern const char kApplyClientsideModelPredictionsForPasswordTypesName[];
 extern const char kApplyClientsideModelPredictionsForPasswordTypesDescription[];
 
+extern const char kAskAboutThisPageName[];
+extern const char kAskAboutThisPageDescription[];
+
 extern const char kAskGeminiChipName[];
 extern const char kAskGeminiChipDescription[];
 
@@ -61,6 +64,9 @@ extern const char kAutofillAcrossIframesDescription[];
 
 extern const char kAutofillAiCreateEntityDataManagerName[];
 extern const char kAutofillAiCreateEntityDataManagerDescription[];
+
+extern const char kAutofillAiReauthRequiredName[];
+extern const char kAutofillAiReauthRequiredDescription[];
 
 extern const char kAutofillAiWithDataSchemaName[];
 extern const char kAutofillAiWithDataSchemaDescription[];
@@ -321,6 +327,9 @@ extern const char kEnableACPrefetchDescription[];
 extern const char kEnableAutofillAddressSavePromptName[];
 extern const char kEnableAutofillAddressSavePromptDescription[];
 
+extern const char kEnableClientCertificateProvisioningOnIOSName[];
+extern const char kEnableClientCertificateProvisioningOnIOSDescription[];
+
 extern const char kEnableCompromisedPasswordsMutingName[];
 extern const char kEnableCompromisedPasswordsMutingDescription[];
 
@@ -479,6 +488,9 @@ extern const char kIOSChooseFromDriveDescription[];
 
 extern const char kIOSChooseFromDriveSignedOutName[];
 extern const char kIOSChooseFromDriveSignedOutDescription[];
+
+extern const char kIOSCobaltName[];
+extern const char kIOSCobaltDescription[];
 
 extern const char kIOSCustomFileUploadMenuName[];
 extern const char kIOSCustomFileUploadMenuDescription[];
@@ -1028,15 +1040,6 @@ extern const char kWaitThresholdMillisecondsForCapabilitiesApiDescription[];
 
 extern const char kWalletServiceUseSandboxName[];
 extern const char kWalletServiceUseSandboxDescription[];
-
-extern const char kWebPageAlternativeTextZoomName[];
-extern const char kWebPageAlternativeTextZoomDescription[];
-
-extern const char kWebPageDefaultZoomFromDynamicTypeName[];
-extern const char kWebPageDefaultZoomFromDynamicTypeDescription[];
-
-extern const char kWebPageTextZoomIPadName[];
-extern const char kWebPageTextZoomIPadDescription[];
 
 extern const char kWelcomeBackName[];
 extern const char kWelcomeBackDescription[];

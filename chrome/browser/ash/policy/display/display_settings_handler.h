@@ -8,12 +8,11 @@
 #include <memory>
 #include <vector>
 
-#include "ash/display/cros_display_config.h"
 #include "base/memory/weak_ptr.h"
-#include "base/scoped_observation.h"
 #include "chromeos/ash/components/settings/cros_settings.h"
 #include "chromeos/crosapi/mojom/cros_display_config.mojom.h"
 #include "mojo/public/cpp/bindings/associated_receiver.h"
+#include "mojo/public/cpp/bindings/remote.h"
 
 namespace policy {
 
@@ -35,19 +34,20 @@ class DisplaySettingsPolicyHandler {
   // Applies settings enforced by the policy to each display from |info_list|.
   // Is called on each configuration change or settings update.
   virtual void ApplyChanges(
-      ash::CrosDisplayConfig& cros_display_config,
+      crosapi::mojom::CrosDisplayConfigController* cros_display_config,
       const std::vector<crosapi::mojom::DisplayUnitInfoPtr>& info_list) = 0;
 };
 
 // Enforces the settings controlled by device policies related to display
 // configuration (i.e. DisplayRotationDefault, DeviceDisplayResolution)
 // On construction this class registers itself with
-// ash::CrosDisplayConfig::Observer for display changes and with
+// crosapi::mojom::CrosDisplayConfigObserver for display changes and with
 // CrosSettings for settings changes. Every display configuration policy
 // provides a handler class inherited from |DisplaySettingsPolicyHandler|
 // and is registered in |DisplaySettingsHandler| instance.
 // see |DisplayResolutionHandler| and |DisplayRotationDefaultHandler|
-class DisplaySettingsHandler : public ash::CrosDisplayConfig::Observer {
+class DisplaySettingsHandler
+    : public crosapi::mojom::CrosDisplayConfigObserver {
  public:
   // This class must be constructed after CrosSettings is initialized.
   DisplaySettingsHandler();
@@ -57,7 +57,7 @@ class DisplaySettingsHandler : public ash::CrosDisplayConfig::Observer {
 
   ~DisplaySettingsHandler() override;
 
-  // ash::CrosDisplayConfig::Observer
+  // crosapi::mojom::CrosDisplayConfigObserver
   void OnDisplayConfigChanged() override;
 
   // Registers handler for some policy-controlled setting. All handlers must be
@@ -93,11 +93,13 @@ class DisplaySettingsHandler : public ash::CrosDisplayConfig::Observer {
       DisplaySettingsPolicyHandler* handler,
       std::vector<crosapi::mojom::DisplayUnitInfoPtr> info_list);
 
-  const raw_ptr<ash::CrosDisplayConfig> cros_display_config_;
+  // Provides access to the current display configurations, both for reading and
+  // updating.
+  mojo::Remote<crosapi::mojom::CrosDisplayConfigController>
+      cros_display_config_;
   std::vector<std::unique_ptr<DisplaySettingsPolicyHandler>> handlers_;
-  base::ScopedObservation<ash::CrosDisplayConfig,
-                          ash::CrosDisplayConfig::Observer>
-      cros_display_config_observation_{this};
+  mojo::AssociatedReceiver<crosapi::mojom::CrosDisplayConfigObserver>
+      cros_display_config_observer_receiver_{this};
   std::vector<base::CallbackListSubscription> settings_subscriptions_;
   bool started_ = false;
 

@@ -26,7 +26,6 @@ source_set("model") {
     "web_navigation_util.mm",
   ]
   deps = [
-    ":feature_flags",
     ":page_placeholder",
     ":tab_helper_delegates",
     "//base",
@@ -172,7 +171,6 @@ source_set("unit_tests") {
   ]
   deps = [
     ":delegate",
-    ":feature_flags",
     ":model",
     ":page_placeholder",
     ":tab_helper_delegates",
@@ -236,7 +234,6 @@ source_set("web_internal") {
     "//ios/web/public/init",
   ]
   deps = [
-    ":feature_flags",
     ":model",
     "//base/allocator:buildflags",
     "//build:blink_buildflags",
@@ -352,6 +349,7 @@ source_set("web_internal") {
     "//ios/net",
     "//ios/public/provider/chrome/browser/additional_features:additional_features_api",
     "//ios/public/provider/chrome/browser/bwg:bwg_api",
+    "//ios/public/provider/chrome/browser/fullscreen:fullscreen_api",
     "//ios/public/provider/chrome/browser/url_rewriters:url_rewriters_api",
     "//ios/web/common",
     "//ios/web/common:user_agent",
@@ -384,7 +382,6 @@ source_set("unit_tests_internal") {
     "chrome_web_client_unittest.mm",
   ]
   deps = [
-    ":feature_flags",
     ":web_internal",
     "//base",
     "//base/test:test_support",
@@ -536,12 +533,4 @@ source_set("eg2_tests") {
   ]
 
   frameworks = [ "UIKit.framework" ]
-}
-
-source_set("feature_flags") {
-  sources = [
-    "features.cc",
-    "features.h",
-  ]
-  deps = [ "//base" ]
 }

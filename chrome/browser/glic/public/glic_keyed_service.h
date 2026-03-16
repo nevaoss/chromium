@@ -130,8 +130,7 @@ class GlicKeyedService : public KeyedService,
   virtual void ToggleUI(BrowserWindowInterface* bwi,
                         bool prevent_close,
                         mojom::InvocationSource source,
-                        std::optional<std::string> prompt_suggestion,
-                        bool auto_send = false);
+                        std::optional<std::string> prompt_suggestion);
   void ToggleUI(BrowserWindowInterface* bwi,
                 bool prevent_close,
                 mojom::InvocationSource source);
@@ -141,6 +140,8 @@ class GlicKeyedService : public KeyedService,
   void InvokeWithAutoSubmit(InvokeWithAutoSubmitPasskey auto_submit_passkey,
                             tabs::TabInterface* tab,
                             GlicInvokeOptions options);
+
+  void Invoke(tabs::TabInterface* tab, GlicInvokeOptions options);
 
   // Show the panel with the given conversation id. Used only by web continuity.
   // Deprecated: See go/gic:invoke for full solution, this existing version will

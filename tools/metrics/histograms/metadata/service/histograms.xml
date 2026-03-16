@@ -2020,19 +2020,6 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="ServiceWorker.SyntheticResponse.IsHeaderConsistent"
-    enum="Boolean" expires_after="2026-07-19">
-  <owner>sisidovski@chromium.org</owner>
-  <owner>chrome-worker@google.com</owner>
-  <summary>
-    Records whether the committed response headers are consistent with the
-    headers from the network.
-
-    This is recorded in navigation, when the browser receives the response from
-    the network, while committed the navigation with locally stored headers.
-  </summary>
-</histogram>
-
 <histogram name="ServiceWorker.SyntheticResponse.IsHeaderStored" enum="Boolean"
     expires_after="2026-07-05">
   <owner>sisidovski@chromium.org</owner>
@@ -2061,7 +2048,8 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="ServiceWorker.SyntheticResponse.IsValidBodyStreamProvided"
+<histogram
+    name="ServiceWorker.SyntheticResponse.IsValidBodyStreamProvided.{Status}"
     enum="Boolean" expires_after="2026-07-19">
   <owner>sisidovski@chromium.org</owner>
   <owner>chrome-worker@google.com</owner>
@@ -2072,6 +2060,14 @@ chromium-metrics-reviews@google.com.
     the network, while committed the navigation with locally stored headers. If
     this is true, the URLLoader provided a valid response body handle.
   </summary>
+  <token key="Status">
+    <variant name="NotReady"
+        summary="Required data pipes are not created yet, or there is no
+                 local response header."/>
+    <variant name="Ready"
+        summary="Required data pipes are all created, and there is a local
+                 response header."/>
+  </token>
 </histogram>
 
 <histogram name="ServiceWorker.SyntheticResponse.ReceiveResponseToComplete"
@@ -2133,6 +2129,18 @@ chromium-metrics-reviews@google.com.
     should have a sha256 cehcksum hash string in the database, and that will be
     updated when there is a change in ServiceWorker scripts, or the field is
     empty.
+  </summary>
+</histogram>
+
+<histogram name="ServiceWorker.URLLoaderFactoryInterceptorCountForMainResource"
+    units="count" expires_after="2027-03-06">
+  <owner>sisidovski@chromium.org</owner>
+  <owner>chrome-worker@google.com</owner>
+  <summary>
+    Records the number of interceptors involved in the URLLoaderFactory creation
+    for the main resource request in ServiceWorkerClient. This is recorded when
+    a navigation request is initiated by the service worker (e.g., navigation
+    preload, synthetic response).
   </summary>
 </histogram>
 

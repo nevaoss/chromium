@@ -346,7 +346,13 @@ export class ComposeboxElement extends I18nMixinLit
   protected accessor showContextMenuDescription_: boolean =
       this.contextMenuDescriptionEnabled_;
   protected accessor isOmniboxInCompactMode_: boolean = false;
-  protected autoActiveTabUploadingTitle_: string = '';
+  // Synchronous immediate guard used to deduplicate processing
+  // autochips being added, not fully processed chips.
+  protected pendingAutomaticActiveTabUrl_: string = '';
+
+  // Retains the latest version of the pending automatic active tab's title.
+  protected pendingAutomaticActiveTabTitle_: string = '';
+
   protected dragAndDropHandler_: DragAndDropHandler;
   private showTypedSuggest_: boolean =
       loadTimeData.getBoolean('composeboxShowTypedSuggest');
@@ -385,6 +391,7 @@ export class ComposeboxElement extends I18nMixinLit
   private pendingUploads_: Set<string> = new Set<string>([]);
   private contextMenuOpened_: boolean = false;
   private automaticActiveTab_: ComposeboxFile|null = null;
+
   private composeboxSource_: string =
       loadTimeData.getString('composeboxSource');
   private maxFileCount_: number =
@@ -475,13 +482,14 @@ export class ComposeboxElement extends I18nMixinLit
 
     this.searchboxHandler_.notifySessionStarted();
 
-    if (this.ntpRealboxNextEnabled) {
-      this.fire('composebox-initialized', {
-        initializeComposeboxState: this.initializeState_.bind(this),
-      });
-    } else {
-      this.inputState_ = (await this.searchboxHandler_.getInputState()).state;
+    const inputState = await this.searchboxHandler_.getInputState();
+      if (inputState) {
+        this.inputState_ = inputState.state;
     }
+    await this.updateComplete;
+    this.fire('composebox-initialized', {
+      initializeComposeboxState: this.initializeState_.bind(this),
+    });
 
     this.setupResizeObservers_();
   }
@@ -714,11 +722,14 @@ export class ComposeboxElement extends I18nMixinLit
     return this.files_.size > 0;
   }
 
+  getSelectedMatchIndexForTesting() {
+    return this.selectedMatchIndex_;
+  }
+
   protected async initializeState_(
       text: string = '', files: ContextualUpload[] = [],
       mode: ComposeboxToolMode = ComposeboxToolMode.kUnspecified,
-      model: ModelMode = ModelMode.kUnspecified,
-      inputState: InputState|null = null) {
+      model: ModelMode = ModelMode.kUnspecified) {
     if (text) {
       this.input_ = text;
       this.lastQueriedInput_ = text;
@@ -726,9 +737,6 @@ export class ComposeboxElement extends I18nMixinLit
     if (this.showZps && files.length === 0) {
       this.queryAutocomplete_(/* clearMatches= */ false);
     }
-    this.inputState_ = inputState ?
-        inputState :
-        (await this.searchboxHandler_.getInputState()).state;
     if (files.length > 0) {
       const dataTransfer = new DataTransfer();
       for (const file of files) {
@@ -760,11 +768,12 @@ export class ComposeboxElement extends I18nMixinLit
     if (mode !== ComposeboxToolMode.kUnspecified) {
       this.handleToolClick_(mode);
     }
-    if (model !== ModelMode.kUnspecified) {
-      this.searchboxHandler_.setActiveModelMode(model);
-    } else if (this.inputState_ && this.inputState_.allowedModels.length > 0) {
-      this.searchboxHandler_.setActiveModelMode(this.inputState_.allowedModels[0]!);
+
+    if (!!this.inputState_ && model === ModelMode.kUnspecified &&
+        this.inputState_.allowedModels.length > 0) {
+      model = this.inputState_.allowedModels[0]!;
     }
+    this.searchboxHandler_.setActiveModelMode(model);
     this.updateInputPlaceholder_();
 
     await this.updateComplete;
@@ -853,10 +862,15 @@ export class ComposeboxElement extends I18nMixinLit
   }
 
   private hasValidQuery_() {
-    // If there are files or an autocomplete match is selected, it's a valid
-    // query.
-    if (this.files_.size > 0 ||
-        (this.selectedMatchIndex_ >= 0 && !!this.result_)) {
+    // If there is at least one file that supports unimodal search, query is
+    // valid.
+    if (this.files_.values().find(
+            (file: ComposeboxFile) => file.supportsUnimodal)) {
+      return true;
+    }
+
+    // If an autocomplete match is selected, it's a valid query.
+    if (this.selectedMatchIndex_ >= 0 && !!this.result_) {
       return true;
     }
 
@@ -934,10 +948,6 @@ export class ComposeboxElement extends I18nMixinLit
 
     this.files_ = new Map([...this.files_.entries()].filter(
         ([uuid, _]) => uuid !== uuidToDelete));
-    // If we're in create image mode, notify that image is gone.
-    if (this.activeToolMode_ === ComposeboxToolMode.kImageGen) {
-      this.handleToolModeUpdate_();
-    }
     this.pendingUploads_.delete(uuidToDelete);
     this.fileUploadsComplete = this.pendingUploads_.size === 0;
     this.searchboxHandler_.deleteContext(uuidToDelete, fromAutoSuggestedChip);
@@ -1002,6 +1012,7 @@ export class ComposeboxElement extends I18nMixinLit
         tabId: null,
         isDeletable: true,
         iconName: null,
+        supportsUnimodal: true,
       };
       composeboxFiles.set(token, attachment);
       const announcer = getAnnouncerInstance();
@@ -1027,6 +1038,7 @@ export class ComposeboxElement extends I18nMixinLit
       tabId: null,
       isDeletable: fileInfo.isDeletable,
       iconName: null,
+      supportsUnimodal: true,
     };
 
     this.onFileContextAdded_(attachment);
@@ -1034,7 +1046,7 @@ export class ComposeboxElement extends I18nMixinLit
 
   injectInput(
       title: string, thumbnail: string, fileToken: UnguessableToken,
-      iconName?: string) {
+      supportsUnimodal: boolean, iconName?: string) {
     const attachment: ComposeboxFile = {
       uuid: fileToken,
       name: title,
@@ -1046,44 +1058,52 @@ export class ComposeboxElement extends I18nMixinLit
       tabId: null,
       isDeletable: true,
       iconName: iconName ?? null,
+      supportsUnimodal: supportsUnimodal,
     };
 
     this.onFileContextAdded_(attachment);
   }
 
   private updateAutoSuggestedTabContext_(tab: TabInfo|null) {
-    const shouldDeleteAutomaticActiveTab = this.automaticActiveTab_ &&
-        (!tab || this.automaticActiveTab_.url !== tab.url);
-    if (shouldDeleteAutomaticActiveTab) {
-      this.autoActiveTabUploadingTitle_ = '';
-      this.deleteFile(this.automaticActiveTab_!.uuid);
-      this.automaticActiveTab_ = null;
-
-      // TODO(crbug.com/482150500): Correctly query for url based suggestions
-      // when delayed tab is present. Right now, while url-based suggestions are
-      // not set-up, clear the autocomplete matches.
-      if (!tab) {
+    if (!tab) {
+      if (this.automaticActiveTab_) {
+        this.deleteFile(this.automaticActiveTab_.uuid);
+        this.automaticActiveTab_ = null;
+        // TODO(crbug.com/482150500): Correctly query for url based suggestions
+        // when delayed tab is present. Right now, while url-based suggestions
+        // are not set-up, clear autocomplete matches if current autochip is
+        // being cleared.
         this.queryAutocomplete_(/* clearMatches= */ true);
       }
+      return;
     }
 
-    if (tab) {
-      // Ignore the `TabInfo` update if there is a matching
-      // `automaticActiveTab_`.
-      if (this.automaticActiveTab_ &&
-          tab.url === this.automaticActiveTab_.url &&
-          tab.tabId === this.automaticActiveTab_.tabId) {
+    // If the last fully uploaded tab is the same as the current potential
+    // auto chip, do not update the auto chip or its title. Note that
+    // last uploading tab != last uploaded tab. Tabs can be uploading AND not
+    // be stored in `automaticActiveTab_`, as `automaticActiveTab_` is async
+    // state (runs too late) & represents the last fully uploaded auto chip.
+    const tabDifferentfromLastUploaded =
+        !this.automaticActiveTab_ || (this.automaticActiveTab_.url !== tab.url);
+    if (tabDifferentfromLastUploaded) {
+      if (this.automaticActiveTab_) {
+        this.deleteFile(this.automaticActiveTab_.uuid);
+        this.automaticActiveTab_ = null;
+      }
+      // If current tab is the same as the currently uploading tab (same url),
+      // allow updates to the uploading tab's title from this update,
+      // but do not upload it again.
+      if (this.pendingAutomaticActiveTabUrl_ === tab.url) {
+        this.pendingAutomaticActiveTabTitle_ = tab.title;
         return;
       }
+      // Otherwise, prepare to replace the auto chip:
+      this.pendingAutomaticActiveTabUrl_ = tab.url;
+      this.pendingAutomaticActiveTabTitle_ = tab.title;
 
-      // If an autochip is currently being uploaded but carousel attachment has
-      // not been created yet, allow updates to its title. Absence of this
-      // chip means that there is no currently no auto active tab uploading.
-      if (this.autoActiveTabUploadingTitle_) {
-        this.autoActiveTabUploadingTitle_ = tab.title;
-        return;
-      }
-
+      // Do not reset above pending states in this async callback since
+      // later requests make any older async callback updates irrelevant.
+      // Add the `TabInfo` as `ComposeboxFile` in carousel.
       this.addTabContextHandleCallback_(
           {
             tabId: tab.tabId,
@@ -1133,19 +1153,19 @@ export class ComposeboxElement extends I18nMixinLit
   private async addTabContextHandleCallback_(
       tabUpload: TabUpload, replaceAutoActiveTabToken: boolean = false) {
     try {
-      this.autoActiveTabUploadingTitle_ =
-          replaceAutoActiveTabToken ? tabUpload.title : '';
-
       const token = await this.searchboxHandler_.addTabContext(
           tabUpload.tabId, tabUpload.delayUpload);
-
+      if (!token) {
+        return;
+      }
       const attachment: ComposeboxFile = {
         uuid: token,
         // Adding a tab is asynchronous. For auto active tabs, a title update
         // might be received after the upload process has been started. In order
         // to prevent adding duplicate chips from this update, simply update the
-        // title of the initial upload instead.
-        name: replaceAutoActiveTabToken ? this.autoActiveTabUploadingTitle_ :
+        // title of the initial upload instead based on whatever the latest
+        // title update received is.
+        name: replaceAutoActiveTabToken ? this.pendingAutomaticActiveTabTitle_ :
                                           tabUpload.title,
         dataUrl: null,
         objectUrl: null,
@@ -1155,17 +1175,22 @@ export class ComposeboxElement extends I18nMixinLit
         tabId: tabUpload.tabId,
         isDeletable: true,
         iconName: null,
+        supportsUnimodal: true,
       };
 
       this.files_ = new Map(
           [...this.files_.entries(), [attachment.uuid, attachment]]);
       this.addedTabsIds_ = new Map(
           [...this.addedTabsIds_.entries(), [tabUpload.tabId, attachment.uuid]]);
+
+      // Do not reset pending active tab to avoid overwriting
+      // synchronous "pending statuses" that are queued (since this function
+      // is asynchronous and can run much later).
       if (replaceAutoActiveTabToken) {
         this.automaticActiveTab_ =
             Object.assign(attachment, {uuid: attachment.uuid});
-        this.autoActiveTabUploadingTitle_ = '';
       }
+
       this.focusInput();
 
     } catch (e) {
@@ -1352,7 +1377,11 @@ export class ComposeboxElement extends I18nMixinLit
       return;
     }
 
+    // The file hint should only be shown when there is context that was
+    // deliberately added by the user (i.e. not the automatic active tab).
+    const isOnlyAutoTab = this.files_.size === 1 && !!this.automaticActiveTab_;
     const shouldUseFileHint = this.enableFileHint && this.hasFiles() &&
+        !isOnlyAutoTab &&
         this.activeToolMode_ === ComposeboxToolMode.kUnspecified;
     if (shouldUseFileHint) {
       if (this.files_.size > 1) {
@@ -1621,63 +1650,27 @@ export class ComposeboxElement extends I18nMixinLit
     this.$.caret.style.transform = `translate(${originX}px, ${originY}px)`;
   }
 
-  protected onKeydown_(e: KeyboardEvent) {
-    const KEYDOWN_HANDLED_KEYS = [
-      'ArrowDown',
-      'ArrowUp',
-      'Enter',
-      'Escape',
-      'PageDown',
-      'PageUp',
-      'Tab',
-    ];
+  private isFocusInInput_(): boolean {
+    return this.shadowRoot.activeElement === this.$.input;
+  }
 
-    if (!KEYDOWN_HANDLED_KEYS.includes(e.key)) {
+  private hasMatches_(): boolean {
+    return !!(this.result_ && this.result_.matches.length > 0);
+  }
+
+  private finalizeMatchSelection_(e: KeyboardEvent) {
+    this.smartComposeInlineHint_ = '';
+    e.preventDefault();
+    if (this.shadowRoot.activeElement === this.$.matches) {
+      this.$.matches.focusSelected();
+    }
+  }
+
+  private handleArrowKey_(e: KeyboardEvent) {
+    if (this.isFocusInInput_() && !this.showDropdown_) {
       return;
     }
-
-    if (this.shadowRoot.activeElement === this.$.input) {
-      if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') &&
-          !this.showDropdown_) {
-        return;
-      }
-
-      if (e.key === 'Tab') {
-        // If focus leaves the input, unselect the first match.
-        if (e.shiftKey) {
-          this.$.matches.unselect();
-        } else if (this.smartComposeEnabled_ && this.smartComposeInlineHint_) {
-          this.input_ = this.input_ + this.smartComposeInlineHint_;
-          this.smartComposeInlineHint_ = '';
-          e.preventDefault();
-          this.queryAutocomplete_(/* clearMatches= */ true);
-        }
-        return;
-      }
-    }
-
-    if (e.key === 'Enter' &&
-        (this.shadowRoot.activeElement === this.$.matches || !e.shiftKey)) {
-      e.preventDefault();
-      if (this.canSubmitFilesAndInput_) {
-        this.submitQuery_(e);
-      }
-    }
-
-    if (e.key === 'Escape') {
-      this.handleEscapeKeyLogic();
-      e.stopPropagation();
-      e.preventDefault();
-      return;
-    }
-
-    // Do not handle the following keys if there are no matches available.
-    if (!this.result_ || this.result_.matches.length === 0) {
-      return;
-    }
-
-    // Do not handle the following keys if there are key modifiers.
-    if (hasKeyModifiers(e)) {
+    if (!this.hasMatches_() || hasKeyModifiers(e)) {
       return;
     }
 
@@ -1685,13 +1678,27 @@ export class ComposeboxElement extends I18nMixinLit
       this.$.matches.selectNext();
     } else if (e.key === 'ArrowUp') {
       this.$.matches.selectPrevious();
-    } else if (e.key === 'Escape' || e.key === 'PageUp') {
-      this.selectFirstMatch();
-    } else if (e.key === 'PageDown') {
-      this.$.matches.selectLast();
-    } else if (e.key === 'Tab') {
+    }
+    this.finalizeMatchSelection_(e);
+  }
+
+  private handleTab_(e: KeyboardEvent) {
+    if (this.isFocusInInput_()) {
+      // If focus leaves the input, unselect the first match.
+      if (e.shiftKey) {
+        this.$.matches.unselect();
+      } else if (this.smartComposeEnabled_ && this.smartComposeInlineHint_) {
+        this.input_ = this.input_ + this.smartComposeInlineHint_;
+        this.smartComposeInlineHint_ = '';
+        e.preventDefault();
+        this.queryAutocomplete_(/* clearMatches= */ true);
+      }
+      return;
+    }
+
+    if (this.hasMatches_() && !hasKeyModifiers(e)) {
       // If focus goes past the last match, unselect the last match.
-      if (this.selectedMatchIndex_ === this.result_.matches.length - 1) {
+      if (this.selectedMatchIndex_ === this.result_!.matches.length - 1) {
         if (this.selectedMatch_!.supportsDeletion) {
           const focusedMatchElem =
               this.shadowRoot.activeElement?.shadowRoot?.activeElement;
@@ -1703,15 +1710,63 @@ export class ComposeboxElement extends I18nMixinLit
           this.$.matches.unselect();
         }
       }
+    }
+  }
+
+  private handleEnter_(e: KeyboardEvent) {
+    if (this.shadowRoot.activeElement === this.$.matches || !e.shiftKey) {
+      e.preventDefault();
+      if (this.canSubmitFilesAndInput_) {
+        this.submitQuery_(e);
+      }
+    }
+    this.finalizeMatchSelection_(e);
+  }
+
+  private handleEscape_(e: KeyboardEvent) {
+    this.handleEscapeKeyLogic();
+    e.stopPropagation();
+    e.preventDefault();
+  }
+
+  private handlePageNavigation_(e: KeyboardEvent) {
+    if (!this.hasMatches_() || hasKeyModifiers(e)) {
       return;
     }
-    this.smartComposeInlineHint_ = '';
-    e.preventDefault();
 
-    // Focus the selected match if focus is currently in the matches.
-    if (this.shadowRoot.activeElement === this.$.matches) {
-      this.$.matches.focusSelected();
+    if (e.key === 'PageUp') {
+      this.selectFirstMatch();
+    } else {
+      this.$.matches.selectLast();
     }
+    this.finalizeMatchSelection_(e);
+  }
+
+  protected onKeydown_(e: KeyboardEvent) {
+    const HANDLED_KEYS = [
+      'ArrowDown',
+      'ArrowUp',
+      'Enter',
+      'Escape',
+      'PageDown',
+      'PageUp',
+      'Tab',
+    ];
+    if (!HANDLED_KEYS.includes(e.key)) {
+      return;
+    }
+
+    const handlers: Record<string, (e: KeyboardEvent) => void> = {
+      'ArrowDown': (e) => this.handleArrowKey_(e),
+      'ArrowUp': (e) => this.handleArrowKey_(e),
+      'Enter': (e) => this.handleEnter_(e),
+      'Escape': (e) => this.handleEscape_(e),
+      'Tab': (e) => this.handleTab_(e),
+      'PageUp': (e) => this.handlePageNavigation_(e),
+      'PageDown': (e) => this.handlePageNavigation_(e),
+    };
+
+    handlers[e.key]!(e);
   }
 
   protected onInputFocusin_() {
@@ -2016,10 +2071,7 @@ export class ComposeboxElement extends I18nMixinLit
       // For image files:
       if (status === ContextUploadStatus.kProcessingSuggestSignalsReady &&
           file.type.includes('image')) {
-        // If we're in create image mode, update the aim tool mode.
-        if (this.activeToolMode_ === ComposeboxToolMode.kImageGen) {
-          this.handleToolModeUpdate_();
-        } else if (this.enableImageContextualSuggestions_) {
+        if (this.enableImageContextualSuggestions_) {
           // Query autocomplete to get contextual suggestions for files.
           this.queryAutocomplete_(/* clearMatches= */ true);
         } else {
@@ -2078,6 +2130,9 @@ export class ComposeboxElement extends I18nMixinLit
   clearAllInputs(
       querySubmitted: boolean, shouldBlockAutoSuggestedTabs: boolean) {
     this.clearInput();
+    this.automaticActiveTab_ = null;
+    this.pendingAutomaticActiveTabUrl_ = '';
+    this.pendingAutomaticActiveTabTitle_ = '';
     // Let `querySubmit_` handle clearing files if the tool mode is a tool mode
     // that should be cleared after submitting. For all other general
     // clearing, clear input here.
@@ -2283,6 +2338,7 @@ export class ComposeboxElement extends I18nMixinLit
           tabId: null,
           isDeletable: true,
           iconName: null,
+          supportsUnimodal: true,
         };
         // Update pending uploads in 'composebox.ts' to disable
         // submit button.
@@ -2422,6 +2478,7 @@ export class ComposeboxElement extends I18nMixinLit
       tabId: null,
       isDeletable: true,
       iconName: null,
+      supportsUnimodal: true,
     };
     this.onFileContextAdded_(composeboxFile);
   }
@@ -2485,8 +2542,16 @@ export class ComposeboxElement extends I18nMixinLit
     this.onFileContextAdded_(file);
   }
 
+  setAutomaticActiveTabForTesting(file: ComposeboxFile) {
+    this.automaticActiveTab_ = file;
+  }
+
   onToolClickForTesting(toolMode: ComposeboxToolMode) {
     this.handleToolClick_(toolMode);
+  }
+
+  updateAutoSuggestedTabContextForTesting(tab: TabInfo|null) {
+    this.updateAutoSuggestedTabContext_(tab);
   }
 }
 

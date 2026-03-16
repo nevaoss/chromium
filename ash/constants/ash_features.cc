@@ -59,6 +59,11 @@ BASE_FEATURE(kAnnotatorMode, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kApnRevamp, base::FEATURE_ENABLED_BY_DEFAULT);
 
+// Controls whether to enable ARC ADB sideloading support.
+BASE_FEATURE(kArcAdbSideloadingFeature,
+             "ArcAdbSideloading",
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Controls whether to defer loading of active tabs of background (occluded)
 // browser windows during session restore.
 BASE_FEATURE(kAshSessionRestoreDeferOccludedActiveTabLoad,
@@ -759,6 +764,10 @@ BASE_FEATURE(kFilesTrashDrive, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables the v2 version of the Firmware Updates app.
 BASE_FEATURE(kFirmwareUpdateUIV2, base::FEATURE_ENABLED_BY_DEFAULT);
+
+// Fix manual ip address persistence on managed device with 2 ethernet ports.
+BASE_FEATURE(kFixStaticIpForTwoManagedEthPorts,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Controls if the Fjord variant of OOBE is shown.
 BASE_FEATURE(kFjordOobe, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -2524,6 +2533,10 @@ bool IsFingerprintAuthFactorEnabled() {
 
 bool IsFirmwareUpdateUIV2Enabled() {
   return base::FeatureList::IsEnabled(kFirmwareUpdateUIV2);
+}
+
+bool IsFixStaticIpForTwoManagedEthPortsEnabled() {
+  return base::FeatureList::IsEnabled(kFixStaticIpForTwoManagedEthPorts);
 }
 
 bool IsFjordOobeEnabled() {

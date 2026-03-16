@@ -2942,11 +2942,13 @@ ScriptPromise<ScrollResult> Element::scrollBy(
     resolver =
         MakeGarbageCollected<ScriptPromiseResolver<ScrollResult>>(script_state);
   }
+  auto scoped_resolver =
+      std::make_unique<ScopedScrollPromiseResolver>(resolver);
 
   if (GetDocument().ScrollingElementNoLayout() == this) {
-    ScrollFrameBy(scroll_to_options, resolver);
+    ScrollFrameBy(scroll_to_options, std::move(scoped_resolver));
   } else {
-    ScrollLayoutBoxBy(scroll_to_options, resolver);
+    ScrollLayoutBoxBy(scroll_to_options, std::move(scoped_resolver));
   }
 
   return resolver ? resolver->Promise() : EmptyPromise();
@@ -2970,17 +2972,17 @@ ScriptPromise<ScrollResult> Element::scrollTo(
     resolver =
         MakeGarbageCollected<ScriptPromiseResolver<ScrollResult>>(script_state);
   }
+  auto scoped_resolver =
+      std::make_unique<ScopedScrollPromiseResolver>(resolver);
 
-  ScrollTo(scroll_to_options, resolver);
+  ScrollTo(scroll_to_options, std::move(scoped_resolver));
   return resolver ? resolver->Promise() : EmptyPromise();
 }
 
-bool Element::ScrollTo(const ScrollToOptions* scroll_to_options,
-                       ScriptPromiseResolver<ScrollResult>* resolver) {
+bool Element::ScrollTo(
+    const ScrollToOptions* scroll_to_options,
+    std::unique_ptr<ScopedScrollPromiseResolver> scoped_resolver) {
   if (!InActiveDocument()) {
-    if (resolver) {
-      resolver->Resolve();
-    }
     return false;
   }
 
@@ -2994,9 +2996,9 @@ bool Element::ScrollTo(const ScrollToOptions* scroll_to_options,
                                             DocumentUpdateReason::kJavaScript);
 
   if (GetDocument().ScrollingElementNoLayout() == this) {
-    return ScrollFrameTo(scroll_to_options, resolver);
+    return ScrollFrameTo(scroll_to_options, std::move(scoped_resolver));
   } else {
-    return ScrollLayoutBoxTo(scroll_to_options, resolver);
+    return ScrollLayoutBoxTo(scroll_to_options, std::move(scoped_resolver));
   }
 }
 
@@ -3017,8 +3019,9 @@ void Element::scrollToForTesting(double x, double y) {
   scrollTo(nullptr, x, y);
 }
 
-bool Element::ScrollLayoutBoxBy(const ScrollToOptions* scroll_to_options,
-                                ScriptPromiseResolver<ScrollResult>* resolver) {
+bool Element::ScrollLayoutBoxBy(
+    const ScrollToOptions* scroll_to_options,
+    std::unique_ptr<ScopedScrollPromiseResolver> scoped_resolver) {
   gfx::Vector2dF displacement;
   if (scroll_to_options->hasLeft()) {
     displacement.set_x(
@@ -3036,9 +3039,6 @@ bool Element::ScrollLayoutBoxBy(const ScrollToOptions* scroll_to_options,
   PaintLayerScrollableArea* scrollable_area =
       box ? box->GetScrollableArea() : nullptr;
   if (!scrollable_area) {
-    if (resolver) {
-      resolver->Resolve();
-    }
     return false;
   }
 
@@ -3057,11 +3057,13 @@ bool Element::ScrollLayoutBoxBy(const ScrollToOptions* scroll_to_options,
 
   return scrollable_area->SetProgrammaticScrollOffset(
       ScrollOffset(new_position - gfx::PointF(scrollable_area->ScrollOrigin())),
-      cc::ScrollSourceType::kRelativeScroll, scroll_behavior, resolver);
+      cc::ScrollSourceType::kRelativeScroll, scroll_behavior,
+      std::move(scoped_resolver));
 }
 
-bool Element::ScrollLayoutBoxTo(const ScrollToOptions* scroll_to_options,
-                                ScriptPromiseResolver<ScrollResult>* resolver) {
+bool Element::ScrollLayoutBoxTo(
+    const ScrollToOptions* scroll_to_options,
+    std::unique_ptr<ScopedScrollPromiseResolver> scoped_resolver) {
   mojom::blink::ScrollBehavior scroll_behavior =
       ScrollableArea::V8EnumToScrollBehavior(
           scroll_to_options->behavior().AsEnum());
@@ -3071,9 +3073,6 @@ bool Element::ScrollLayoutBoxTo(const ScrollToOptions* scroll_to_options,
       box ? box->GetScrollableArea() : nullptr;
 
   if (!scrollable_area) {
-    if (resolver) {
-      resolver->Resolve();
-    }
     return false;
   }
 
@@ -3127,11 +3126,12 @@ bool Element::ScrollLayoutBoxTo(const ScrollToOptions* scroll_to_options,
 
   return scrollable_area->SetProgrammaticScrollOffset(
       new_offset, cc::ScrollSourceType::kAbsoluteScroll, scroll_behavior,
-      resolver);
+      std::move(scoped_resolver));
 }
 
-bool Element::ScrollFrameBy(const ScrollToOptions* scroll_to_options,
-                            ScriptPromiseResolver<ScrollResult>* resolver) {
+bool Element::ScrollFrameBy(
+    const ScrollToOptions* scroll_to_options,
+    std::unique_ptr<ScopedScrollPromiseResolver> scoped_resolver) {
   gfx::Vector2dF displacement;
   if (scroll_to_options->hasLeft()) {
     displacement.set_x(
@@ -3148,9 +3148,6 @@ bool Element::ScrollFrameBy(const ScrollToOptions* scroll_to_options,
   LocalFrame* frame = GetDocument().GetFrame();
   if (!frame || !frame->View() || !frame->View()->LayoutViewport() ||
       !GetDocument().GetPage()) {
-    if (resolver) {
-      resolver->Resolve();
-    }
     return false;
   }
 
@@ -3168,20 +3165,19 @@ bool Element::ScrollFrameBy(const ScrollToOptions* scroll_to_options,
 
   return viewport->SetProgrammaticScrollOffset(
       viewport->ScrollPositionToOffset(new_position),
-      cc::ScrollSourceType::kRelativeScroll, scroll_behavior, resolver);
+      cc::ScrollSourceType::kRelativeScroll, scroll_behavior,
+      std::move(scoped_resolver));
 }
 
-bool Element::ScrollFrameTo(const ScrollToOptions* scroll_to_options,
-                            ScriptPromiseResolver<ScrollResult>* resolver) {
+bool Element::ScrollFrameTo(
+    const ScrollToOptions* scroll_to_options,
+    std::unique_ptr<ScopedScrollPromiseResolver> scoped_resolver) {
   mojom::blink::ScrollBehavior scroll_behavior =
       ScrollableArea::V8EnumToScrollBehavior(
           scroll_to_options->behavior().AsEnum());
   LocalFrame* frame = GetDocument().GetFrame();
   if (!frame || !frame->View() || !frame->View()->LayoutViewport() ||
       !GetDocument().GetPage()) {
-    if (resolver) {
-      resolver->Resolve();
-    }
     return false;
   }
 
@@ -3211,7 +3207,7 @@ bool Element::ScrollFrameTo(const ScrollToOptions* scroll_to_options,
 
   return viewport->SetProgrammaticScrollOffset(
       new_offset, cc::ScrollSourceType::kAbsoluteScroll, scroll_behavior,
-      resolver);
+      std::move(scoped_resolver));
 }
 
 bool Element::HandleScrollByPageCommand(CommandEventType command) {
@@ -3777,7 +3773,8 @@ void Element::AttributeChanged(const AttributeModificationParams& params) {
   const QualifiedName& name = params.name;
   if (name == html_names::kIdAttr) {
     AtomicString lowercase_id;
-    if (GetDocument().InQuirksMode() && !params.new_value.IsLowerASCII()) {
+    if (GetDocument().InQuirksMode() &&
+        !params.new_value.ContainsNoAsciiUpper()) {
       lowercase_id = params.new_value.LowerASCII();
     }
     const AtomicString& new_id = lowercase_id ? lowercase_id : params.new_value;
@@ -4028,7 +4025,7 @@ bool Element::IsExcludedAttribute(
   }
   // HTML elements in an html doc use the lower case name.
   if (attributes_to_exclude == kExcludeLowercaseLazilySynchronizedAttributes ||
-      qname.LocalName().IsLowerASCII()) {
+      qname.LocalName().ContainsNoAsciiUpper()) {
     return false;
   }
   const QualifiedName lower_local_qname(qname.LocalName().LowerASCII());
@@ -7437,7 +7434,7 @@ ShadowRoot* Element::attachShadow(const ShadowRootInit* shadow_root_init_dict,
       shadow_root_init_dict->hasCustomElementRegistry();
   auto* registry = scoped_registry
                        ? shadow_root_init_dict->customElementRegistry()
-                       : GetTreeScope().customElementRegistry();
+                       : GetDocument().customElementRegistry();
   // 2-1. If registry is non-null, and registry's "is scoped" is false and
   // registry is not this's node document's custom element registry, then
   // throw a "NotSupportedError" DOMException.
@@ -9190,14 +9187,12 @@ String Element::GetOuterHTMLString() const {
   return CreateMarkup(this);
 }
 
-V8UnionStringLegacyNullToEmptyStringOrTrustedHTML* Element::innerHTML() const {
-  return MakeGarbageCollected<
-      V8UnionStringLegacyNullToEmptyStringOrTrustedHTML>(GetInnerHTMLString());
+String Element::innerHTML() const {
+  return GetInnerHTMLString();
 }
 
-V8UnionStringLegacyNullToEmptyStringOrTrustedHTML* Element::outerHTML() const {
-  return MakeGarbageCollected<
-      V8UnionStringLegacyNullToEmptyStringOrTrustedHTML>(GetOuterHTMLString());
+String Element::outerHTML() const {
+  return GetOuterHTMLString();
 }
 
 namespace {
@@ -11468,13 +11463,13 @@ void Element::DidMoveToNewDocument(Document& old_document) {
     // element should point to the shareable one.
 
     if (const AtomicString& id_attr = GetIdAttribute()) {
-      if (!id_attr.IsLowerASCII()) {
+      if (!id_attr.ContainsNoAsciiUpper()) {
         EnsureUniqueElementData();
         SetIdAttribute(id_attr);
       }
     }
     if (const AtomicString& class_attr = GetClassAttribute()) {
-      if (!class_attr.IsLowerASCII()) {
+      if (!class_attr.ContainsNoAsciiUpper()) {
         EnsureUniqueElementData();
         // Going through setAttribute() to synchronize the attribute is only
         // required when setting the "style" attribute (this sets the "class"
@@ -12047,20 +12042,12 @@ void Element::MapLanguageAttributeToLocale(
     } else if (IsA<HTMLBodyElement>(this)) {
       UseCounter::Count(GetDocument(), WebFeature::kLangAttributeOnBody);
     }
-    String html_language = value.GetString();
-    wtf_size_t first_separator = html_language.find('-');
-    if (first_separator != kNotFound) {
-      html_language = html_language.Left(first_separator);
-    }
-    String ui_language = DefaultLanguage();
-    first_separator = ui_language.find('-');
-    if (first_separator != kNotFound) {
-      ui_language = ui_language.Left(first_separator);
-    }
-    first_separator = ui_language.find('_');
-    if (first_separator != kNotFound) {
-      ui_language = ui_language.Left(first_separator);
-    }
+    StringView html_language(value);
+    html_language = html_language.substr(0, html_language.find('-'));
+    String ui_language_string = DefaultLanguage();
+    StringView ui_language(ui_language_string);
+    ui_language = ui_language.substr(0, ui_language.find('-'))
+                      .substr(0, ui_language.find('_'));
     if (!DeprecatedEqualIgnoringCase(html_language, ui_language)) {
       UseCounter::Count(GetDocument(),
                         WebFeature::kLangAttributeDoesNotMatchToUILocale);
@@ -12878,7 +12865,7 @@ bool Element::checkVisibility(CheckVisibilityOptions* options) const {
 
 AtomicStringTable::WeakResult Element::WeakLowercaseIfNecessary(
     const AtomicString& name) const {
-  if (name.IsLowerASCII()) [[likely]] {
+  if (name.ContainsNoAsciiUpper()) [[likely]] {
     return AtomicStringTable::WeakResult(name);
   }
   if (IsHTMLElement() && IsA<HTMLDocument>(GetDocument())) [[likely]] {

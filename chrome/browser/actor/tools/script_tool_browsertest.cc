@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "base/test/metrics/histogram_tester.h"
 #include "base/test/run_until.h"
 #include "base/test/test_future.h"
 #include "base/test/values_test_util.h"
@@ -90,60 +91,6 @@ IN_PROC_BROWSER_TEST_F(ActorToolsTestScriptTool, BadToolName) {
   ActResultFuture result;
   actor_task().Act(ToRequestList(action), result.GetCallback());
   ExpectErrorResult(result, mojom::ActionResultCode::kScriptToolInvalidName);
-}
-
-IN_PROC_BROWSER_TEST_F(ActorToolsTestScriptTool, ProvideContext) {
-  const GURL url =
-      embedded_test_server()->GetURL("/actor/script_tool_provide_context.html");
-  ASSERT_TRUE(content::NavigateToURL(web_contents(), url));
-
-  const std::string echo_input =
-      R"JSON(
-        { "text": "Hello World" }
-      )JSON";
-  auto echo_action = MakeScriptToolRequest(*main_frame(), "echo", echo_input);
-  auto echo_action_response = RunScriptTool(std::move(echo_action));
-
-  EXPECT_EQ(echo_action_response->tool->name, "echo");
-  EXPECT_EQ(echo_action_response->input_arguments, echo_input);
-  EXPECT_EQ(echo_action_response->result, "Hello World");
-
-  const std::string reverse_input =
-      R"JSON(
-        { "text": "abc123" }
-      )JSON";
-  auto reverse_action =
-      MakeScriptToolRequest(*main_frame(), "reverse", reverse_input);
-  auto reverse_action_response = RunScriptTool(std::move(reverse_action));
-  EXPECT_EQ(reverse_action_response->tool->name, "reverse");
-  EXPECT_EQ(reverse_action_response->input_arguments, reverse_input);
-  EXPECT_EQ(reverse_action_response->result, "321cba");
-}
-
-IN_PROC_BROWSER_TEST_F(ActorToolsTestScriptTool, ClearContext) {
-  const GURL url =
-      embedded_test_server()->GetURL("/actor/script_tool_provide_context.html");
-  ASSERT_TRUE(content::NavigateToURL(web_contents(), url));
-
-  const std::string echo_input =
-      R"JSON(
-        { "text": "test" }
-      )JSON";
-  auto echo_action = MakeScriptToolRequest(*main_frame(), "echo", echo_input);
-  ActResultFuture echo_result;
-  actor_task().Act(ToRequestList(echo_action), echo_result.GetCallback());
-  ExpectOkResult(echo_result);
-
-  ASSERT_TRUE(content::ExecJs(web_contents(),
-                              "navigator.modelContext.clearContext();"));
-
-  auto echo_action_after_clear =
-      MakeScriptToolRequest(*main_frame(), "echo", echo_input);
-  ActResultFuture echo_result_after_clear;
-  actor_task().Act(ToRequestList(echo_action_after_clear),
-                   echo_result_after_clear.GetCallback());
-  ExpectErrorResult(echo_result_after_clear,
-                    mojom::ActionResultCode::kScriptToolInvalidName);
 }
 
 IN_PROC_BROWSER_TEST_F(ActorToolsTestScriptTool, DeclarativeTool) {
@@ -278,6 +225,42 @@ IN_PROC_BROWSER_TEST_F(ActorToolsTestScriptTool,
   // Verify that the task can be stopped cleanly.
   actor_task().Stop(ActorTask::StoppedReason::kTaskComplete);
   EXPECT_EQ(actor_keyed_service().GetTask(task_id_), nullptr);
+}
+
+IN_PROC_BROWSER_TEST_F(ActorToolsTestScriptTool, Histograms) {
+  base::HistogramTester histogram_tester;
+  const GURL url = embedded_test_server()->GetURL("/actor/script_tool.html");
+  ASSERT_TRUE(content::NavigateToURL(web_contents(), url));
+
+  const std::string valid_input_arguments = R"JSON({"text": "test"})JSON";
+  auto action =
+      MakeScriptToolRequest(*main_frame(), "echo", valid_input_arguments);
+  auto response = RunScriptTool(std::move(action));
+
+  histogram_tester.ExpectUniqueSample("Actor.Tools.ScriptTool.InputSizeBytes",
+                                      valid_input_arguments.size(), 1);
+  histogram_tester.ExpectUniqueSample("Actor.Tools.ScriptTool.InvocationResult",
+                                      true, 1);
+  histogram_tester.ExpectUniqueSample("Actor.Tools.ScriptTool.ActionResultCode",
+                                      mojom::ActionResultCode::kOk, 1);
+  histogram_tester.ExpectUniqueSample("Actor.Tools.ScriptTool.OutputSizeBytes",
+                                      std::string("test").size(), 1);
+
+  // Test a failure case.
+  const std::string input_arguments = R"JSON({})JSON";
+  auto bad_action =
+      MakeScriptToolRequest(*main_frame(), "invalid", input_arguments);
+  ActResultFuture result;
+  actor_task().Act(ToRequestList(bad_action), result.GetCallback());
+  ExpectErrorResult(result, mojom::ActionResultCode::kScriptToolInvalidName);
+
+  histogram_tester.ExpectBucketCount("Actor.Tools.ScriptTool.InputSizeBytes",
+                                     input_arguments.size(), 1);
+  histogram_tester.ExpectBucketCount("Actor.Tools.ScriptTool.InvocationResult",
+                                     false, 1);
+  histogram_tester.ExpectBucketCount(
+      "Actor.Tools.ScriptTool.ActionResultCode",
+      mojom::ActionResultCode::kScriptToolInvalidName, 1);
 }
 
 }  // namespace

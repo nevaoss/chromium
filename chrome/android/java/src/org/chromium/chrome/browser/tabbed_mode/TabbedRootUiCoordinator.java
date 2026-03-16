@@ -211,6 +211,8 @@ import org.chromium.chrome.browser.ui.edge_to_edge.TopInsetProvider;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.chrome.browser.ui.side_panel_container.SidePanelContainerCoordinator;
 import org.chromium.chrome.browser.ui.side_panel_container.SidePanelContainerCoordinatorFactory;
+import org.chromium.chrome.browser.ui.side_panel_container.dev.SidePanelDevFeature;
+import org.chromium.chrome.browser.ui.side_panel_container.dev.SidePanelDevFeatureFactory;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinatorFactory;
 import org.chromium.chrome.browser.ui.signin.FullscreenSigninPromoLauncher;
@@ -325,6 +327,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
     private final @Nullable CrossDeviceSettingImporter mCrossDeviceSettingImporter;
     private @Nullable SideUiCoordinator mSideUiCoordinator;
     private @Nullable SidePanelContainerCoordinator mSidePanelContainerCoordinator;
+    private @Nullable SidePanelDevFeature mSidePanelDevFeature;
     private final OneshotSupplierImpl<Boolean> mTrackerInitializedOneshotSupplier =
             new OneshotSupplierImpl<>();
     private ContextualTasksBridge mContextualTasksBridge;
@@ -1869,6 +1872,11 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                 SidePanelContainerCoordinatorFactory.create(mActivity, mSideUiCoordinator);
         if (mSidePanelContainerCoordinator != null) {
             mSidePanelContainerCoordinator.init();
+
+            // TODO(crbug.com/489548570): Remove SidePanelDevFeature when it's not needed.
+            mSidePanelDevFeature =
+                    SidePanelDevFeatureFactory.create(
+                            mProfileSupplier, mSidePanelContainerCoordinator, mWindowAndroid);
         }
 
         mCompositorViewHolderSupplier.get().setSideUiStateProvider(mSideUiCoordinator);
@@ -1884,6 +1892,12 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         // SideUiCoordinator. It's expected to be null by this point.
         assert mCompositorViewHolderSupplier.get() == null;
 
+        // TODO(crbug.com/489548570): Remove SidePanelDevFeature when it's not needed.
+        if (mSidePanelDevFeature != null) {
+            mSidePanelDevFeature.destroy();
+            mSidePanelDevFeature = null;
+        }
+
         if (mSidePanelContainerCoordinator != null) {
             mSidePanelContainerCoordinator.destroy();
             mSidePanelContainerCoordinator = null;
@@ -1897,6 +1911,10 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
 
     public @Nullable SidePanelContainerCoordinator getSidePanelContainerCoordinatorForTesting() {
         return mSidePanelContainerCoordinator;
+    }
+
+    public @Nullable SidePanelDevFeature getSidePanelDevFeatureForTesting() {
+        return mSidePanelDevFeature;
     }
 
     /** Returns the {@link TabGroupSyncControllerImpl} if it has been created yet. */
@@ -2212,6 +2230,12 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
     }
 
     public boolean toggleGlic() {
+        // TODO(crbug.com/489548570): Remove this entry point into SidePanelDevFeature.
+        if (mSidePanelDevFeature != null) {
+            mSidePanelDevFeature.toggle();
+            return true;
+        }
+
         Profile profile = mTabModelSelectorSupplier.get().getCurrentModel().getProfile();
         assert profile != null;
 

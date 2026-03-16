@@ -69,6 +69,7 @@
 #include "third_party/blink/renderer/core/paint/timing/paint_timing_detector.h"
 #include "third_party/blink/renderer/core/scroll/mac_scrollbar_animator.h"
 #include "third_party/blink/renderer/core/scroll/programmatic_scroll_animator.h"
+#include "third_party/blink/renderer/core/scroll/scoped_scroll_promise_resolver.h"
 #include "third_party/blink/renderer/core/scroll/scroll_alignment.h"
 #include "third_party/blink/renderer/core/scroll/scroll_animator_base.h"
 #include "third_party/blink/renderer/core/scroll/scroll_into_view_util.h"
@@ -78,6 +79,7 @@
 #include "third_party/blink/renderer/platform/graphics/color.h"
 #include "third_party/blink/renderer/platform/graphics/compositing/paint_artifact_compositor.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
+#include "third_party/blink/renderer/platform/heap/persistent.h"
 #include "third_party/blink/renderer/platform/instrumentation/tracing/trace_event.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 #include "third_party/blink/renderer/platform/scheduler/public/thread_scheduler.h"
@@ -132,10 +134,6 @@ void ScrollableArea::Dispose() {
   DisposeImpl();
   fade_overlay_scrollbars_timer_ = nullptr;
   has_been_disposed_ = true;
-  if (promise_resolver_) {
-    promise_resolver_->Resolve();
-    promise_resolver_ = nullptr;
-  }
 }
 
 void ScrollableArea::ClearScrollableArea() {
@@ -408,11 +406,18 @@ bool ScrollableArea::SetProgrammaticScrollOffset(
     const ScrollOffset& offset,
     cc::ScrollSourceType source_type,
     mojom::blink::ScrollBehavior behavior,
-    ScriptPromiseResolver<ScrollResult>* resolver) {
-  RegisterPromiseResolver(resolver);
-  return SetScrollOffsetInternal(offset,
-                                 mojom::blink::ScrollType::kProgrammatic,
-                                 source_type, behavior, false);
+    std::unique_ptr<ScopedScrollPromiseResolver> resolver) {
+  // If the last `promise_resolver_` is pending, it has been passed on to
+  // `ProgrammaticScrollAnimator` already and the `SetScrollOffsetInternal` call
+  // below "interrupts" the animator to resolve the pending promise.
+  promise_resolver_ = std::move(resolver);
+
+  if (!SetScrollOffsetInternal(offset, mojom::blink::ScrollType::kProgrammatic,
+                               source_type, behavior, false)) {
+    promise_resolver_ = nullptr;
+    return false;
+  }
+  return true;
 }
 
 const LayoutObject* ScrollableArea::GetScrollInitialTarget() const {
@@ -519,13 +524,17 @@ bool ScrollableArea::InitiateScrollAnimation(
   }
 
   ScrollCallback callback = ScrollCallback(blink::BindOnce(
-      [](WeakPersistent<ScrollableArea> area, ScrollCompletionMode mode) {
+      [](WeakPersistent<ScrollableArea> area,
+         std::unique_ptr<ScopedScrollPromiseResolver> promise_resolver,
+         ScrollCompletionMode mode) {
         if (area) {
           area->OnScrollFinished(/*enqueue_scrollend=*/mode ==
                                  ScrollCompletionMode::kFinished);
         }
+        // The promise in `promise_resolver` is implicitly resolved when this
+        // callback is destroyed.
       },
-      WrapWeakPersistent(this)));
+      WrapWeakPersistent(this), std::move(promise_resolver_)));
 
   // Enqueue scrollsnapchanging if necessary.
   if (auto* snap_container = GetSnapContainerData()) {
@@ -659,20 +668,6 @@ mojom::blink::ScrollBehavior ScrollableArea::V8EnumToScrollBehavior(
       return mojom::blink::ScrollBehavior::kSmooth;
   }
   NOTREACHED();
-}
-
-void ScrollableArea::RegisterPromiseResolver(
-    ScriptPromiseResolver<ScrollResult>* resolver) {
-  if (promise_resolver_) {
-    promise_resolver_->Resolve();
-  }
-  promise_resolver_ = resolver;
-}
-
-void ScrollableArea::SettlePendingPromiseResolver(ScrollCompletionMode mode) {
-  if (promise_resolver_) {
-    promise_resolver_->Resolve();
-  }
 }
 
 void ScrollableArea::MouseEnteredScrollbar(Scrollbar& scrollbar) {
@@ -1159,8 +1154,6 @@ void ScrollableArea::OnScrollFinished(bool enqueue_scrollend) {
     }
   }
 
-  SettlePendingPromiseResolver(ScrollCompletionMode::kFinished);
-
   GetLayoutBox()
       ->GetFrame()
       ->LocalFrameRoot()
@@ -1337,7 +1330,6 @@ void ScrollableArea::Trace(Visitor* visitor) const {
   visitor->Trace(programmatic_scroll_animator_);
   visitor->Trace(fade_overlay_scrollbars_timer_);
   visitor->Trace(text_overflow_snapshot_);
-  visitor->Trace(promise_resolver_);
 }
 
 void ScrollableArea::InjectScrollbarGestureScroll(
@@ -1478,8 +1470,9 @@ ScrollableArea* GetNearestScrollableArea(LayoutBox* current_box) {
     if (next_box->IsGlobalRootScroller() ||
         (next_box->IsScrollContainer() &&
          (next_box->GetScrollableArea()->ScrollsOverflow() ||
-          !next_box->GetScrollableArea()->CanPropagateScroll() ||
-          next_box->IsOverscrollContainer()))) {
+          !next_box->GetScrollableArea()->CanPropagateScroll())) ||
+        next_box->IsOverscrollContainer()) {
+      CHECK(next_box->GetScrollableArea());
       return next_box->GetScrollableArea();
     }
 

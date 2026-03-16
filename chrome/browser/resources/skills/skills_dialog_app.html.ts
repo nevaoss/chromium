@@ -117,6 +117,10 @@ ${this.shouldShowErrorPage_ ? html`<error-page></error-page>` : html`
         <div id="saveErrorMessage" class="error-message">$i18n{saveError}</div>
       </div>
       <div class="buttons-group">
+        <cr-button id="deleteButton" ?hidden="${this.isAddDialog_()}"
+            @click="${this.onDeleteSkillClick_}">
+          $i18n{delete}
+        </cr-button>
         <cr-button id="cancelButton" class="cancel-button"
             @click="${this.onCancelClick_}">
           $i18n{cancel}
@@ -129,10 +133,7 @@ ${this.shouldShowErrorPage_ ? html`<error-page></error-page>` : html`
       </div>
     </div>
     <div slot="footer">
-      <div id="accountInfo">
-        <span id="accountLabel">$i18n{accountInfo}</span>
-        <span id="accountEmail">${this.signedInEmail_}</span>
-      </div>
+      <div id="accountInfo">$i18n{accountInfo} ${this.signedInEmail_}</div>
     </div>
   </cr-dialog>
 `}

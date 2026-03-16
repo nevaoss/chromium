@@ -153,7 +153,7 @@ class CONTENT_EXPORT WebContentsAccessibilityAndroid
 
   // Tree methods.
   int32_t GetRootId(JNIEnv* env);
-  size_t GetAccessibilityTreeSizeForTesting(JNIEnv* env);
+  size_t GetAccessibilityTreeSizeForExperiment(JNIEnv* env);
   bool IsNodeValid(JNIEnv* env, int32_t id);
 
   void HitTest(JNIEnv* env, int32_t x, int32_t y);
@@ -190,7 +190,7 @@ class CONTENT_EXPORT WebContentsAccessibilityAndroid
                          int32_t id,
                          const base::android::JavaRef<jstring>& value);
   void SetSelection(JNIEnv* env, int32_t id, int32_t start, int32_t end);
-  void SetExtendedSelection(JNIEnv* env,
+  bool SetExtendedSelection(JNIEnv* env,
                             int32_t id,
                             int32_t start_node_id,
                             int32_t start_node_offset,
@@ -430,14 +430,20 @@ class CONTENT_EXPORT WebContentsAccessibilityAndroid
   bool OnHoverEvent(const ui::MotionEventAndroid& event);
   void HandleHover(int32_t unique_id);
   void HandleNavigate(int32_t root_id);
+  void HandleInitialLoadComplete(int32_t root_id);
   void UpdateMaxNodesInCache();
   void ClearNodeInfoCacheForGivenId(int32_t unique_id);
+  void ValidateA11yCacheForExperiment();
   void HandleEndOfTestSignal();
   std::u16string GenerateAccessibilityNodeInfoString(int32_t unique_id);
 
   base::WeakPtr<WebContentsAccessibilityAndroid> GetWeakPtr();
 
   base::android::ScopedJavaLocalRef<jintArray> GetChildIdsForTesting(
+      JNIEnv* env,
+      int32_t unique_id);
+
+  base::android::ScopedJavaLocalRef<jintArray> GetChildIdsForExperiment(
       JNIEnv* env,
       int32_t unique_id);
 

@@ -32,6 +32,7 @@
 #include "chrome/browser/ui/tabs/glic_actor_nudge_controller.h"
 #include "chrome/browser/ui/tabs/glic_actor_task_icon_manager.h"
 #include "chrome/browser/ui/tabs/glic_actor_task_icon_manager_factory.h"
+#include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/tabs/tab_style.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/user_education/browser_user_education_interface.h"
@@ -51,6 +52,7 @@
 #include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/background.h"
 #include "ui/views/controls/button/button.h"
+#include "ui/views/controls/button/menu_button_controller.h"
 #include "ui/views/layout/flex_layout.h"
 #include "ui/views/mouse_watcher.h"
 #include "ui/views/mouse_watcher_view_host.h"
@@ -342,7 +344,9 @@ void TabStripActionContainer::OnTriggerGlicNudgeUI(std::string label) {
   CHECK(glic_button_);
   if (!label.empty()) {
     glic_button_->SetNudgeLabel(std::move(label));
-    ShowTabStripNudge(glic_button_);
+    if (!glic_button_->GetIsShowingNudge()) {
+      ShowTabStripNudge(glic_button_);
+    }
   }
 }
 
@@ -651,6 +655,19 @@ TabStripActionContainer::CreateGlicActorTaskIcon() {
               &TabStripActionContainer::OnGlicActorTaskIconClicked,
               base::Unretained(this)));
 
+  // Add a MenuButtonController in order to keep the task icon pressed while the
+  // bubble is visible.
+  // LINT.IfChange(SetMenuButtonController)
+  glic_actor_task_icon->SetButtonController(
+      std::make_unique<views::MenuButtonController>(
+          glic_actor_task_icon.get(),
+          base::BindRepeating(
+              &TabStripActionContainer::OnGlicActorTaskIconClicked,
+              base::Unretained(this)),
+          std::make_unique<views::Button::DefaultButtonControllerDelegate>(
+              glic_actor_task_icon.get())));
+  // LINT.ThenChange(//chrome/browser/ui/views/tabs/glic/tab_strip_glic_actor_task_icon.cc:UseMenuButtonController)
+
   glic_actor_task_icon->SetProperty(views::kCrossAxisAlignmentKey,
                                     views::LayoutAlignment::kCenter);
 
@@ -663,9 +680,13 @@ void TabStripActionContainer::OnGlicActorTaskIconClicked() {
       tabs::GlicActorTaskIconManagerFactory::GetForProfile(profile);
   CHECK(icon_manager);
 
-  ActorTaskListBubbleController* controller =
-      ActorTaskListBubbleController::From(browser_window_interface_);
-  controller->ShowBubble(glic_actor_task_icon_);
+  // Only show the bubble if the button is not currently pressed. Clicking on
+  // the pressed button should dismiss the nudge.
+  if (!glic_actor_task_icon_->GetIsPressed()) {
+    ActorTaskListBubbleController* controller =
+        ActorTaskListBubbleController::From(browser_window_interface_);
+    controller->ShowBubble(glic_actor_task_icon_);
+  }
 
   auto current_task_nudge_state = icon_manager->GetCurrentActorTaskNudgeState();
   actor::ui::LogGlobalTaskIndicatorClick(current_task_nudge_state);
@@ -836,6 +857,11 @@ void TabStripActionContainer::ExecuteHideTabStripNudge(
   if (!is_actor_nudge_mode) {
     button->SetIsShowingNudge(false);
   }
+
+  // Reset the modal UI lock immediately when hiding starts, so that subsequent
+  // show requests (e.g. from a quick selection change) aren't blocked by
+  // CanAcquireLock checks.
+  scoped_tab_strip_modal_ui_.reset();
 
   // Stop the timer since the chip might be getting hidden on user actions like
   // dismissal or click and not timeout.

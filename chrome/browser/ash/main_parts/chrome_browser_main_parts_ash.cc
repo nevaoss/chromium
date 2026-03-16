@@ -18,6 +18,7 @@
 #include "ash/constants/ash_pref_names.h"
 #include "ash/constants/ash_switches.h"
 #include "ash/keyboard/ui/resources/keyboard_resource_util.h"
+#include "ash/public/ash_interfaces.h"
 #include "ash/public/cpp/event_rewriter_controller.h"
 #include "ash/public/cpp/keyboard/keyboard_controller.h"
 #include "ash/public/cpp/session/session_controller.h"
@@ -1181,7 +1182,9 @@ void ChromeBrowserMainPartsAsh::PreProfileInit() {
     // profile starts initialization so browser context keyed services created
     // with the browser context (for example ExtensionService) can use
     // DemoSession::started().
-    DemoSession::StartIfInDemoMode();
+    DemoSession::StartIfInDemoMode(
+        g_browser_process->local_state(),
+        g_browser_process->GetFeatures()->application_locale_storage());
 
     VLOG(1) << "Relaunching browser for user: " << account_id.Serialize()
             << " with hash: " << username_hash;

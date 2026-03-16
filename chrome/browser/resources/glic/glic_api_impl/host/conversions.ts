@@ -502,6 +502,9 @@ export function selectCredentialDialogRequestToClient(
           ...credential,
           requestOrigin: originToClient(credential.requestOrigin),
           type: enumToClient(credential.type),
+          accountPicture: credential.accountPicture ?
+              bitmapN32ToRGBAImage(credential.accountPicture) :
+              undefined,
         })),
     icons,
   };
@@ -570,6 +573,7 @@ export function selectAutofillSuggestionsDialogRequestToClient(
         r => ({
           ...r,
           requestedData: Number(r.requestedData),
+          formattedRequestOrigin: r.formattedRequestOrigin,
           suggestions: r.suggestions.map(
               s => ({
                 ...s,

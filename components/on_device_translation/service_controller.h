@@ -21,7 +21,6 @@
 #include "components/prefs/pref_change_registrar.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "mojo/public/cpp/bindings/remote.h"
-#include "third_party/blink/public/mojom/on_device_translation/translation_manager.mojom-forward.h"
 
 class PrefService;
 
@@ -30,60 +29,90 @@ namespace on_device_translation {
 class FileOperationProxyImpl;
 enum class LanguagePackKey;
 
+class OnDeviceTranslationController {
+ public:
+  virtual ~OnDeviceTranslationController() = default;
+
+  enum class CreateTranslatorError {
+    kInvalidBinary,
+    kInvalidFunctionPointer,
+    kFailedToInitialize,
+    kFailedToCreateTranslator,
+    kInvalidVersion,
+    kServiceCrashed,
+    kNotSupportedLanguage,
+    kExceedsServiceCountLimitation,
+    kExceedsPendingTaskCountLimitation,
+  };
+
+  enum class CanTranslateResult {
+    kReadily,
+    kAfterDownloadLibraryNotReady,
+    kAfterDownloadLibraryAndLanguagePackNotReady,
+    kAfterDownloadLanguagePackNotReady,
+    kNoNotSupportedLanguage,
+    kNoExceedsServiceCountLimitation,
+    kNoServiceCrashed,
+  };
+
+  using CreateTranslatorCallback = base::OnceCallback<void(
+      base::expected<mojo::PendingRemote<mojom::Translator>,
+                     CreateTranslatorError>)>;
+  using CanTranslateCallback = base::OnceCallback<void(CanTranslateResult)>;
+
+  virtual bool IsServiceRunning() const = 0;
+  // Creates a translator class that implements `mojom::Translator` for the
+  // given language pair.
+  virtual void CreateTranslator(const std::string& source_lang,
+                                const std::string& target_lang,
+                                CreateTranslatorCallback callback) = 0;
+
+  // Checks if the translate service can do translation from `source_lang` to
+  // `target_lang`.
+  virtual void CanTranslate(const std::string& source_lang,
+                            const std::string& target_lang,
+                            CanTranslateCallback callback) = 0;
+};
+
 // This class is the controller that launches the on-device translation service
 // and delegates the functionalities. It is designed to be shared by multiple
 // `TranslationManagerImpl` instances.  A single instance of this class is
 // created for each pair of browser context and origin.
 // TODO(crbug.com/364795294): This class does not support Android yet.
 class OnDeviceTranslationServiceController
-    : public base::RefCounted<OnDeviceTranslationServiceController>,
+    : public OnDeviceTranslationController,
       public OnDeviceTranslationInstaller::Observer {
  public:
-  OnDeviceTranslationServiceController(
-      PrefService* local_state,
-      base::RepeatingCallback<bool()> can_start_service_check,
-      base::OnceClosure on_deleted_callback,
-      const std::string& service_display_name_suffix);
+  OnDeviceTranslationServiceController(PrefService* local_state,
+                                       std::string service_display_name_prefix);
+  ~OnDeviceTranslationServiceController() override;
 
   OnDeviceTranslationServiceController(
       const OnDeviceTranslationServiceController&) = delete;
   OnDeviceTranslationServiceController& operator=(
       const OnDeviceTranslationServiceController&) = delete;
 
+  bool IsServiceRunning() const override;
   // Creates a translator class that implements `mojom::Translator` for the
   // given language pair.
-  virtual void CreateTranslator(
-      const std::string& source_lang,
-      const std::string& target_lang,
-      base::OnceCallback<
-          void(base::expected<mojo::PendingRemote<mojom::Translator>,
-                              blink::mojom::CreateTranslatorError>)> callback);
+  void CreateTranslator(const std::string& source_lang,
+                        const std::string& target_lang,
+                        CreateTranslatorCallback callback) override;
 
   // Checks if the translate service can do translation from `source_lang` to
   // `target_lang`.
-  virtual void CanTranslate(
-      const std::string& source_lang,
-      const std::string& target_lang,
-      base::OnceCallback<void(blink::mojom::CanCreateTranslatorResult)>
-          callback);
+  void CanTranslate(const std::string& source_lang,
+                    const std::string& target_lang,
+                    CanTranslateCallback callback) override;
 
   // Sets the service idle timeout for testing. This must be called before the
   // service is started.
   void SetServiceIdleTimeoutForTesting(base::TimeDelta service_idle_timeout);
 
-  // Returns true if the service is running.
-  bool IsServiceRunning() const { return !!service_remote_; }
-  // The information of a language pack.
-  struct LanguagePackInfo;
-
- protected:
-  ~OnDeviceTranslationServiceController() override;
   // OnDeviceTranslationInstaller::Observer
   void OnLanguagePackInstalled(const LanguagePackKey lang_pack) override;
-  // OnDeviceTranslationInstaller::Observer
   void OnLanguagePackInstallationChanged(
       const LanguagePackKey lang_pack) override;
-  // OnDeviceTranslationInstaller::Observer
   void OnInstallationChanged() override;
 
  private:
@@ -108,17 +137,13 @@ class OnDeviceTranslationServiceController
 
   // Checks if the translate service can do translation from `source_lang` to
   // `target_lang`.
-  blink::mojom::CanCreateTranslatorResult CanTranslateImpl(
-      const std::string& source_lang,
-      const std::string& target_lang);
+  CanTranslateResult CanTranslateImpl(const std::string& source_lang,
+                                      const std::string& target_lang);
 
   // Send the CreateTranslator IPC call to the OnDeviceTranslationService.
-  void CreateTranslatorImpl(
-      const std::string& source_lang,
-      const std::string& target_lang,
-      base::OnceCallback<
-          void(base::expected<mojo::PendingRemote<mojom::Translator>,
-                              blink::mojom::CreateTranslatorError>)> callback);
+  void CreateTranslatorImpl(const std::string& source_lang,
+                            const std::string& target_lang,
+                            CreateTranslatorCallback callback);
 
   // Called when the TranslateKitBinaryPath pref is changed.
   void OnTranslateKitBinaryPathChanged(const std::string& pref_name);
@@ -138,9 +163,8 @@ class OnDeviceTranslationServiceController
   base::RepeatingCallback<bool()> can_start_service_check_;
   base::OnceClosure on_deleted_callback_;
 
-  // The suffix of the service display name.
-  const std::string service_display_name_suffix_;
-
+  // This gets appended to the display name of the service.
+  std::string service_display_name_suffix_;
   // The idle timeout for the translation service. When the service is idle for
   // this amount of time, the service will be terminated.
   base::TimeDelta service_idle_timeout_;
@@ -151,10 +175,6 @@ class OnDeviceTranslationServiceController
       file_operation_proxy_;
   // The pending tasks that are waiting for the language packs to be installed.
   std::vector<PendingTask> pending_tasks_;
-  // The LanguagePackInfo from the command line. This is nullopt if the command
-  // line flag `--translate-kit-packages` is not set.
-  const std::optional<std::vector<LanguagePackInfo>>
-      language_packs_from_command_line_;
 };
 
 }  // namespace on_device_translation

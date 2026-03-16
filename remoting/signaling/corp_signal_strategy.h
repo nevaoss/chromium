@@ -50,8 +50,8 @@ class CorpSignalStrategy : public SignalStrategy {
   const SignalingAddress& GetLocalAddress() const override;
   void AddListener(Listener* listener) override;
   void RemoveListener(Listener* listener) override;
-  bool SendMessage(const SignalingAddress& destination_address,
-                   SignalingMessage&& message) override;
+  bool SendMessage(JingleMessage&& message) override;
+  bool SendReply(JingleMessageReply&& message) override;
   std::string GetNextId() override;
   bool IsSignInError() const override;
 

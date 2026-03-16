@@ -305,10 +305,7 @@ public class WebContentsImpl
         long nativeWebContentsAndroid = mNativeWebContentsAndroid;
         assert nativeWebContentsAndroid != 0;
         mNativeWebContentsAndroid = 0;
-        if (mObserverProxy != null) {
-            mObserverProxy.webContentsDestroyed();
-            mObserverProxy = null;
-        }
+        clearJavaWebContentsObservers();
         UserDataHost userDataHost = getUserDataHost();
         if (userDataHost != null) {
             userDataHost.destroy();
@@ -402,10 +399,14 @@ public class WebContentsImpl
         }
 
         if (mNativeWebContentsAndroid != 0) {
-            sWebContentsMap.remove(mNativeWebContentsAndroid);
-            mNativeWebContentsAndroid = 0;
-
             WebContentsImplJni.get().destroyWebContents(mNativeWebContentsAndroid);
+
+            if (mNativeWebContentsAndroid != 0) {
+                // Normally the native object would have been destroyed by clearNativePtr() being
+                // called from destroyWebContents(). However, if JNI is mocked it will not have been
+                // invoked so invoke it explicitly here.
+                clearNativePtr();
+            }
         }
     }
 
@@ -1319,6 +1320,10 @@ public class WebContentsImpl
     public @Nullable WebContents getDocumentPictureInPictureOpener() {
         return WebContentsImplJni.get()
                 .getDocumentPictureInPictureOpener(mNativeWebContentsAndroid);
+    }
+
+    /*package*/ @Nullable WebContentsObserverProxy getWebContentsObserverProxy() {
+        return mObserverProxy;
     }
 
     @VisibleForTesting(otherwise = VisibleForTesting.PACKAGE_PRIVATE)

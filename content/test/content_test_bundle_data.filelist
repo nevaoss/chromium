@@ -3469,6 +3469,8 @@ data/accessibility/html/br-expected-fuchsia.txt
 data/accessibility/html/br-expected-mac.txt
 data/accessibility/html/br-expected-uia-win.txt
 data/accessibility/html/br-expected-win.txt
+data/accessibility/html/br-statictext-expected-mac.txt
+data/accessibility/html/br-statictext.html
 data/accessibility/html/br-with-child-expected-blink.txt
 data/accessibility/html/br-with-child.html
 data/accessibility/html/br.html
@@ -5160,6 +5162,8 @@ data/accessibility/html/node-changed-crash-in-editable-text-expected-fuchsia.txt
 data/accessibility/html/node-changed-crash-in-editable-text-expected-mac.txt
 data/accessibility/html/node-changed-crash-in-editable-text-expected-uia-win.txt
 data/accessibility/html/node-changed-crash-in-editable-text-expected-win.txt
+data/accessibility/html/non-text-selection-expected-android-external.txt
+data/accessibility/html/non-text-selection.html
 data/accessibility/html/noscript-expected-android.txt
 data/accessibility/html/noscript-expected-auralinux.txt
 data/accessibility/html/noscript-expected-fuchsia.txt
@@ -7154,13 +7158,10 @@ data/devtools/worker_imported_classic.js
 data/devtools/worker_imported_module.js
 data/devtools/zoom.html
 data/direct_sockets/open.html
-data/direct_sockets/open.html.mock-http-headers
 data/direct_sockets/open.js
 data/direct_sockets/tcp.html
-data/direct_sockets/tcp.html.mock-http-headers
 data/direct_sockets/tcp.js
 data/direct_sockets/udp.html
-data/direct_sockets/udp.html.mock-http-headers
 data/direct_sockets/udp.js
 data/div_with_touch_action_auto.html
 data/div_with_touch_action_none.html

@@ -40,6 +40,7 @@
 #include "chrome/browser/ash/login/wizard_controller.h"
 #include "chrome/browser/ash/multidevice_setup/multidevice_setup_service_factory.h"
 #include "chrome/browser/ash/policy/enrollment/enrollment_requisition_manager.h"
+#include "chrome/browser/ash/profiles/profile_helper.h"
 #include "chrome/browser/ash/system/input_device_settings.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/browser_process_platform_part.h"
@@ -608,8 +609,7 @@ void OobeUI::ConfigureOobeDisplay() {
   }
 
   if (policy::EnrollmentRequisitionManager::IsMeetDevice()) {
-    oobe_display_chooser_ = std::make_unique<OobeDisplayChooser>(
-        ash::Shell::Get()->cros_display_config());
+    oobe_display_chooser_ = std::make_unique<OobeDisplayChooser>();
   }
 }
 

@@ -13,6 +13,7 @@
 #include "base/containers/span.h"
 #include "base/functional/callback_helpers.h"
 #include "base/metrics/histogram_functions.h"
+#include "base/metrics/user_metrics.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/types/expected.h"
@@ -32,11 +33,14 @@
 #include "chrome/browser/ui/webui/new_tab_page/composebox/variations/composebox_fieldtrial.h"
 #include "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_web_contents_helper.h"
 #include "chrome/browser/ui/webui/webui_embedding_context.h"
+#include "chrome/common/webui_url_constants.h"
 #include "components/contextual_search/contextual_search_metrics_recorder.h"
 #include "components/contextual_search/contextual_search_service.h"
 #include "components/contextual_search/contextual_search_session_handle.h"
 #include "components/google/core/common/google_util.h"
 #include "components/lens/contextual_input.h"
+#include "components/omnibox/browser/autocomplete_input.h"
+#include "components/omnibox/browser/page_classification_functions.h"
 #include "components/omnibox/browser/vector_icons.h"
 #include "components/omnibox/composebox/contextual_search_mojom_traits.h"
 #include "components/prefs/pref_service.h"
@@ -111,11 +115,14 @@ void ContextualSearchboxHandler::GetRecentTabs(GetRecentTabsCallback callback) {
     for (tabs::TabInterface* tab : *tab_strip_model) {
       content::WebContents* web_contents = tab->GetContents();
       const auto& last_committed_url = web_contents->GetLastCommittedURL();
-      // Skip tabs that are still loading, and skip webui.
+      // Skip tabs that are still loading, and skip webui that are not the
+      // contextual tasks webui.
       const bool is_invalid_url = !last_committed_url.is_valid();
       const bool is_internal_page =
-          last_committed_url.SchemeIs(content::kChromeUIScheme) ||
-          last_committed_url.SchemeIs(content::kChromeUIUntrustedScheme);
+          (last_committed_url.SchemeIs(content::kChromeUIScheme) ||
+           last_committed_url.SchemeIs(content::kChromeUIUntrustedScheme)) &&
+          !last_committed_url.spec().starts_with(
+              chrome::kChromeUIContextualTasksURL);
 
       if (is_invalid_url || is_internal_page) {
         continue;
@@ -135,6 +142,7 @@ void ContextualSearchboxHandler::GetRecentTabs(GetRecentTabsCallback callback) {
       tab_data->show_in_previous_tab_chip =
           !google_util::IsGoogleSearchUrl(last_committed_url) &&
           tab_context_controller->GetInitialPageContextEligibility() &&
+          last_committed_url == chrome::kChromeUINewTabURL &&
           !show_in_current_tab_chip;
       tab_data->last_active =
           std::max(web_contents->GetLastActiveTimeTicks(),
@@ -184,9 +192,13 @@ void ContextualSearchboxHandler::GetRecentTabs(GetRecentTabsCallback callback) {
     for (tabs::TabInterface* tab : *tab_strip_model) {
       content::WebContents* web_contents = tab->GetContents();
       const GURL& url = web_contents->GetLastCommittedURL();
+      // Skip tabs that are still loading, and skip webui (internal pages)
+      // except contextual tasks webui.
       // Skip tabs that are still loading, and skip webui (internal pages).
-      if (url.is_valid() && !url.SchemeIs(content::kChromeUIScheme) &&
-          !url.SchemeIs(content::kChromeUIUntrustedScheme)) {
+      if (url.is_valid() &&
+          ((!url.SchemeIs(content::kChromeUIScheme) &&
+            !url.SchemeIs(content::kChromeUIUntrustedScheme)) ||
+           url.spec().starts_with(chrome::kChromeUIContextualTasksURL))) {
         tab_times.push_back({
             .tab = tab,
             .time = std::max(web_contents->GetLastActiveTimeTicks(),
@@ -227,6 +239,8 @@ void ContextualSearchboxHandler::GetRecentTabs(GetRecentTabsCallback callback) {
       tab_data->show_in_previous_tab_chip =
           !google_util::IsGoogleSearchUrl(last_committed_url) &&
           tab_context_controller->GetInitialPageContextEligibility() &&
+          tab_strip_model->GetActiveWebContents()->GetLastCommittedURL() ==
+              chrome::kChromeUINewTabURL &&
           !show_in_current_tab_chip;
       tab_data->last_active = tab_time.time;
       tabs.push_back(std::move(tab_data));
@@ -413,14 +427,14 @@ void ContextualSearchboxHandler::AddFileContext(
   if (!contextual_search::ContextualSearchService::IsContextSharingEnabled(
           profile_->GetPrefs())) {
     std::move(callback).Run(base::unexpected(
-        contextual_search::FileUploadErrorType::kBrowserProcessingError));
+        contextual_search::ContextUploadErrorType::kBrowserProcessingError));
     return;
   }
 
   auto* contextual_session_handle = GetContextualSessionHandle();
   if (!contextual_session_handle) {
     std::move(callback).Run(base::unexpected(
-        contextual_search::FileUploadErrorType::kBrowserProcessingError));
+        contextual_search::ContextUploadErrorType::kBrowserProcessingError));
     return;
   }
 
@@ -445,14 +459,14 @@ void ContextualSearchboxHandler::AddFileContextFromBrowser(
   if (!contextual_search::ContextualSearchService::IsContextSharingEnabled(
           profile_->GetPrefs())) {
     std::move(callback).Run(base::unexpected(
-        contextual_search::FileUploadErrorType::kBrowserProcessingError));
+        contextual_search::ContextUploadErrorType::kBrowserProcessingError));
     return;
   }
 
   auto* contextual_session_handle = GetContextualSessionHandle();
   if (!contextual_session_handle) {
     std::move(callback).Run(base::unexpected(
-        contextual_search::FileUploadErrorType::kBrowserProcessingError));
+        contextual_search::ContextUploadErrorType::kBrowserProcessingError));
     return;
   }
 
@@ -478,7 +492,7 @@ void ContextualSearchboxHandler::ContinueAddTabContext(
   tabs::TabInterface* const tab = handle.Get();
   if (!tab) {
     std::move(callback).Run(base::unexpected(
-        contextual_search::FileUploadErrorType::kBrowserProcessingError));
+        contextual_search::ContextUploadErrorType::kBrowserProcessingError));
     return;
   }
 
@@ -499,13 +513,13 @@ void ContextualSearchboxHandler::AddTabContext(int32_t tab_id,
   if (!contextual_search::ContextualSearchService::IsContextSharingEnabled(
           profile_->GetPrefs())) {
     std::move(callback).Run(base::unexpected(
-        contextual_search::FileUploadErrorType::kBrowserProcessingError));
+        contextual_search::ContextUploadErrorType::kBrowserProcessingError));
     return;
   }
   auto* contextual_session_handle = GetContextualSessionHandle();
   if (!contextual_session_handle) {
     std::move(callback).Run(base::unexpected(
-        contextual_search::FileUploadErrorType::kBrowserProcessingError));
+        contextual_search::ContextUploadErrorType::kBrowserProcessingError));
     return;
   }
   auto context_token = contextual_session_handle->CreateContextToken();
@@ -734,6 +748,35 @@ void ContextualSearchboxHandler::ClearFiles(
   }
 }
 
+void ContextualSearchboxHandler::OpenAutocompleteMatch(uint8_t line,
+                                                       const GURL& url,
+                                                       bool are_matches_showing,
+                                                       uint8_t mouse_button,
+                                                       bool alt_key,
+                                                       bool ctrl_key,
+                                                       bool meta_key,
+                                                       bool shift_key) {
+  const AutocompleteMatch* match = GetMatchWithUrl(line, url);
+
+  // Record zero suggest clicks for composebox matches.
+  bool record_zero_suggest =
+      autocomplete_controller()->input().IsZeroSuggest() &&
+      omnibox::IsComposebox(
+          omnibox_controller()->client()->GetPageClassification(
+              /*is_prefetch=*/false)) &&
+      match;
+
+  if (record_zero_suggest) {
+    if (auto* recorder = GetMetricsRecorder()) {
+      recorder->RecordZeroSuggestClick(match->IsContextualSearchSuggestion());
+    }
+  }
+
+  SearchboxHandler::OpenAutocompleteMatch(line, url, are_matches_showing,
+                                          mouse_button, alt_key, ctrl_key,
+                                          meta_key, shift_key);
+}
+
 void ContextualSearchboxHandler::SubmitQuery(const std::string& query_text,
                                              uint8_t mouse_button,
                                              bool alt_key,
@@ -756,8 +799,9 @@ void ContextualSearchboxHandler::SubmitQuery(const std::string& query_text,
 void ContextualSearchboxHandler::OnFileUploadStatusChanged(
     const base::UnguessableToken& file_token,
     lens::MimeType mime_type,
-    contextual_search::FileUploadStatus file_upload_status,
-    const std::optional<contextual_search::FileUploadErrorType>& error_type) {
+    contextual_search::ContextUploadStatus file_upload_status,
+    const std::optional<contextual_search::ContextUploadErrorType>&
+        error_type) {
   if (IsRemoteBound()) {
     page_->OnContextualInputStatusChanged(file_token, file_upload_status,
                                           error_type);
@@ -871,7 +915,7 @@ void ContextualSearchboxHandler::SnapshotTabContext(
   tab_context_snapshot_.emplace(context_token, std::move(page_content_data));
 
   page_->OnContextualInputStatusChanged(
-      context_token, contextual_search::FileUploadStatus::kProcessing,
+      context_token, contextual_search::ContextUploadStatus::kProcessing,
       std::nullopt);
 }
 
@@ -891,6 +935,10 @@ void ContextualSearchboxHandler::UploadTabContext(
 void ContextualSearchboxHandler::OpenUrl(
     GURL url,
     const WindowOpenDisposition disposition) {
+  if (!url.is_valid()) {
+    return;
+  }
+
   auto* contextual_session_handle = GetContextualSessionHandle();
 
   auto* contextual_session_service =

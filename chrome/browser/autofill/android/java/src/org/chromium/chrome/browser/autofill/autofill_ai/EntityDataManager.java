@@ -196,6 +196,21 @@ public class EntityDataManager implements Destroyable {
                 .setAutofillAiOptInStatus(mNativeEntityDataManagerAndroid, optInStatus);
     }
 
+    /** Returns whether Autofill AI is disabled by enterprise policy. */
+    public boolean getIsAutofillAiDisabledByEnterprisePolicy() {
+        ThreadUtils.assertOnUiThread();
+        return EntityDataManagerJni.get()
+                .getIsAutofillAiDisabledByEnterprisePolicy(mNativeEntityDataManagerAndroid);
+    }
+
+    /** Returns whether Autofill AI is enabled by enterprise policy but without logging. */
+    public boolean getIsAutofillAiEnabledByEnterprisePolicyWithoutLogging() {
+        ThreadUtils.assertOnUiThread();
+        return EntityDataManagerJni.get()
+                .getIsAutofillAiEnabledByEnterprisePolicyWithoutLogging(
+                        mNativeEntityDataManagerAndroid);
+    }
+
     @NativeMethods
     @VisibleForTesting(otherwise = VisibleForTesting.PACKAGE_PRIVATE)
     public interface Natives {
@@ -211,10 +226,17 @@ public class EntityDataManager implements Destroyable {
                 long nativeEntityDataManagerAndroid,
                 @JniType("autofill::AutofillAiOptInStatus") @AutofillAiOptInStatus int optInStatus);
 
+        boolean getIsAutofillAiDisabledByEnterprisePolicy(long nativeEntityDataManagerAndroid);
+
+        boolean getIsAutofillAiEnabledByEnterprisePolicyWithoutLogging(
+                long nativeEntityDataManagerAndroid);
+
         void removeEntityInstance(
                 long nativeEntityDataManagerAndroid, @JniType("std::string") String guid);
 
-        @Nullable EntityInstance getEntityInstance(
+        @Nullable
+        @JniType("autofill::EntityInstanceAndroid")
+        EntityInstance getEntityInstance(
                 long nativeEntityDataManagerAndroid, @JniType("std::string") String guid);
 
         void addOrUpdateEntityInstance(long nativeEntityDataManagerAndroid, EntityInstance entity);

@@ -314,6 +314,7 @@ source_set("profiles_extra_parts_impl") {
     "//chrome/browser/favicon",
     "//chrome/browser/feature_engagement",
     "//chrome/browser/file_system_access",
+    "//chrome/browser/finds",
     "//chrome/browser/glic",
     "//chrome/browser/heavy_ad_intervention",
     "//chrome/browser/history",
@@ -475,6 +476,10 @@ source_set("profiles_extra_parts_impl") {
 
   if (!is_chromeos && !is_android) {
     deps += [ ":profile_util" ]
+  }
+
+  if (is_win || is_mac || is_linux || is_chromeos) {
+    deps += [ "//chrome/browser/multistep_filter" ]
   }
 
   if (is_win || is_mac || is_linux) {

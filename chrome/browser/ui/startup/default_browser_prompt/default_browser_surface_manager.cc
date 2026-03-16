@@ -13,6 +13,38 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 
+#if BUILDFLAG(IS_WIN)
+#include "chrome/browser/win/taskbar_manager.h"
+#include "chrome/installer/util/install_util.h"
+#include "chrome/installer/util/shell_util.h"
+#endif
+
+namespace {
+
+#if BUILDFLAG(IS_WIN)
+browser_util::PinAppToTaskbarChannel EntrypointToPinToTaskbarChannel(
+    default_browser::DefaultBrowserEntrypointType entrypoint_type) {
+  switch (entrypoint_type) {
+    case default_browser::DefaultBrowserEntrypointType::kBubbleDialog:
+      return browser_util::PinAppToTaskbarChannel::kDefaultBrowserBubbleDialog;
+    case default_browser::DefaultBrowserEntrypointType::
+        kModalDialogWithSettingsIllustration:
+      return browser_util::PinAppToTaskbarChannel::
+          kDefaultBrowserModalDialogWithSettingsImage;
+    case default_browser::DefaultBrowserEntrypointType::
+        kModalDialogWithoutSettingsIllustration:
+      return browser_util::PinAppToTaskbarChannel::
+          kDefaultBrowserModalDialogWithoutSettingsImage;
+    case default_browser::DefaultBrowserEntrypointType::kStartupInfobar:
+      return browser_util::PinAppToTaskbarChannel::kDefaultBrowserInfoBar;
+    default:
+      NOTREACHED();
+  }
+}
+#endif  // BUILDFLAG(IS_WIN)
+
+}  // namespace
+
 DefaultBrowserSurfaceManager::DefaultBrowserSurfaceManager() = default;
 
 DefaultBrowserSurfaceManager::~DefaultBrowserSurfaceManager() {
@@ -73,6 +105,25 @@ void DefaultBrowserSurfaceManager::OnBrowserClosed(
 void DefaultBrowserSurfaceManager::HandleAccept() {
   if (!controller_) {
     return;
+  }
+
+  if (can_pin_to_taskbar()) {
+#if BUILDFLAG(IS_WIN)
+    // Attempt the pin to taskbar in parallel with bringing up the Windows
+    // settings UI. Serializing the operations is an option, but since the user
+    // might not complete the first operation, serializing would probably make
+    // the second operation less likely to happen.
+    //
+    // TODO(crbug.com/343734031): Emit a metric with the pin result. Initially,
+    // taskbar_manager.cc metrics will suffice, but taskbar_manager will most
+    // likely get used by other code.
+    browser_util::PinAppToTaskbar(
+        ShellUtil::GetBrowserModelId(InstallUtil::IsPerUserInstall()),
+        EntrypointToPinToTaskbarChannel(GetEntrypointType()),
+        base::DoNothing());
+#else
+    NOTREACHED();
+#endif  // BUILDFLAG(IS_WIN)
   }
 
   controller_->OnAccepted(base::DoNothingWithBoundArgs(std::move(controller_)));

@@ -46,6 +46,7 @@ export function createComposeboxFile(
         tabId: null,
         isDeletable: true,
         iconName: null,
+        supportsUnimodal: true,
       },
       override);
 }
@@ -116,6 +117,10 @@ export function setupComposeboxTest(): ComposeboxTestElement {
       'searchboxComposePlaceholder': 'Placeholder',
     });
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
+
+    testProxy.element = new ComposeboxElement();
+    document.body.appendChild(testProxy.element);
+
     const handler = installMock(
         PageHandlerRemote,
         mock => ComposeboxProxyImpl.setInstance(new ComposeboxProxyImpl(

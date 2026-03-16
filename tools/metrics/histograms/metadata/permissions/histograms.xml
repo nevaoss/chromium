@@ -154,6 +154,7 @@ chromium-metrics-reviews@google.com.
   <variant name=".Quota" summary="Quota permission"/>
   <variant name=".RegisterProtocolHandler"
       summary="registerProtocolHandler permission"/>
+  <variant name=".Sensors" summary="Sensors permission"/>
   <variant name=".SmartCard" summary="Smart card connection permission"/>
   <variant name=".StorageAccess" summary="Storage Access API permission"/>
   <variant name=".TopLevelStorageAccess"
@@ -753,6 +754,17 @@ chromium-metrics-reviews@google.com.
     Records, each time a Safe Browsing request is made in response to a website
     requesting the notification permission, the Safe Browsing verdict regarding
     the notification prompt experience on that site.
+  </summary>
+</histogram>
+
+<histogram name="Permissions.DSE.EffectiveSetting.Geolocation.Accuracy"
+    enum="GeolocationAccuracy" expires_after="2026-09-01">
+  <owner>antoniosartori@chromium.org</owner>
+  <owner>src/components/permissions/PERMISSIONS_OWNERS</owner>
+  <summary>
+    Recorded whenever &quot;Permissions.DSE.EffectiveSetting.Geolocation&quot;
+    is recorded with value ALLOW. Tracks the Geolocation Accuracy granted to the
+    Default Search Engine origin.
   </summary>
 </histogram>
 

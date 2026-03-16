@@ -17,6 +17,10 @@ class SharedURLLoaderFactory;
 
 namespace remoting {
 
+namespace ftl {
+class ChromotingMessage;
+}  // namespace ftl
+
 class FtlDeviceIdProvider;
 class FtlMessagingClient;
 class RegistrationManager;
@@ -28,6 +32,16 @@ class OAuthTokenGetter;
 // (when Connect() is called).
 class FtlSignalStrategy : public SignalStrategy {
  public:
+  class FtlListener : public base::CheckedObserver {
+   public:
+    ~FtlListener() override = default;
+
+    // Must return true if the message was handled, false otherwise.
+    virtual bool OnIncomingFtlMessage(
+        const SignalingAddress& sender_address,
+        const ftl::ChromotingMessage& message) = 0;
+  };
+
   // We take unique_ptr<OAuthTokenGetter> here so that we still have a chance to
   // send out pending requests after the instance is deleted.
   // |signaling_tracker| is nullable; if it's non-null, it must outlive |this|.
@@ -54,15 +68,23 @@ class FtlSignalStrategy : public SignalStrategy {
   const SignalingAddress& GetLocalAddress() const override;
   void AddListener(Listener* listener) override;
   void RemoveListener(Listener* listener) override;
-  bool SendMessage(const SignalingAddress& destination_address,
-                   SignalingMessage&& message) override;
-  bool SendFtlMessage(const SignalingAddress& destination_address,
-                      ftl::ChromotingMessage&& message) override;
+  bool SendMessage(JingleMessage&& message) override;
+  bool SendReply(JingleMessageReply&& message) override;
+
+  // Sends an FTL message. Returns false if the message couldn't be sent.
+  virtual bool SendFtlMessage(const SignalingAddress& destination_address,
+                              ftl::ChromotingMessage&& message);
+
+  virtual void AddFtlListener(FtlListener* listener);
+  virtual void RemoveFtlListener(FtlListener* listener);
+
   std::string GetNextId() override;
   bool IsSignInError() const override;
 
- private:
+ protected:
   friend class FtlSignalStrategyTest;
+
+  FtlSignalStrategy();
 
   FtlSignalStrategy(std::unique_ptr<OAuthTokenGetter> oauth_token_getter,
                     std::unique_ptr<RegistrationManager> registration_manager,
@@ -73,7 +95,7 @@ class FtlSignalStrategy : public SignalStrategy {
                   std::unique_ptr<FtlMessagingClient> messaging_client);
 
   // This ensures that even if a Listener deletes the current instance during
-  // OnSignalStrategyIncomingMessage(), we can delete |core_| asynchronously.
+  // OnSignalingMessage(), we can delete |core_| asynchronously.
   class Core;
 
   std::unique_ptr<Core> core_;

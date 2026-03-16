@@ -21,7 +21,6 @@
 <translation id="1008261151167010035"><ph name="BRAND" /> помни как сте влезли в профила си и след това автоматично влиза в него, когато е възможно. Ако настройката е изключена, всеки път ще се иска потвърждение от вас.</translation>
 <translation id="1008557486741366299">Не сега</translation>
 <translation id="100881991356161927">Име на сайта</translation>
-<translation id="1009663062402466586">Вече се предлагат контроли за игри</translation>
 <translation id="1010136228650201057">Шифроване на потребителските данни</translation>
 <translation id="1010225406377140704">Свържете се с подателя, за да поискате нова връзка</translation>
 <translation id="1010833424573920260">{NUM_PAGES,plural, =1{Блокирала страница}other{Блокирали страници}}</translation>
@@ -172,6 +171,7 @@
 <translation id="110850812463801904">Ръчно свързване с OneDrive</translation>
 <translation id="1108600514891325577">&amp;Стоп</translation>
 <translation id="1108938384783527433">Синхронизиране на историята</translation>
+<translation id="1109482864356262001">Функциите, които изискват достъп до сензорите за движение или светлина, няма да работят</translation>
 <translation id="1110155001042129815">Изчакване</translation>
 <translation id="1110965959145884739">Изберете кои езици да бъдат инсталирани на това устройство. Езиковите файлове се споделят между потребителите с цел пестене на място на диска. <ph name="BEGIN_LINK_LEARN_MORE" />Научете повече<ph name="END_LINK_LEARN_MORE" /></translation>
 <translation id="1111932478203988717">Детето ви може да използва този ПИН код, за да влиза в профила си на устройството си</translation>
@@ -265,7 +265,6 @@
 <translation id="1168704243733734901">Наскоро създадена от AI тема <ph name="INDEX" /> с(ъс) <ph name="SUBJECT" /> в стил „<ph name="STYLE" />“ и настроение „<ph name="MOOD" />“.</translation>
 <translation id="1168799042879144934">Попитайте Google за предишната страница</translation>
 <translation id="116896278675803795">Автоматична промяна на езика, за да съответства на избраното съдържание</translation>
-<translation id="1169266963600477608">Игрови контроли</translation>
 <translation id="1169435433292653700">Файлът <ph name="FILE_NAME" /> съдържа поверителни или опасни данни. Съобщение от администратора ви: „<ph name="CUSTOM_MESSAGE" />“</translation>
 <translation id="1171515578268894665"><ph name="ORIGIN" /> иска да се свърже с HID устройство</translation>
 <translation id="1172750555846831341">Обръщане по късата страна</translation>
@@ -809,7 +808,6 @@
 <translation id="1543284117603151572">Импортирани от Edge</translation>
 <translation id="1543538514740974167">Стигайте дотук по-бързо</translation>
 <translation id="1544588554445317666">Запазете файла с по-кратко име или в друга папка</translation>
-<translation id="1545177026077493356">Автоматичен павилионен режим</translation>
 <translation id="1545749641540134597">Сканирайте код за бърза реакция</translation>
 <translation id="1545775234664667895">Инсталирана тема: <ph name="THEME_NAME" /></translation>
 <translation id="1546031833947068368">{COUNT,plural, =1{Прозорецът ви в режим „инкогнито“ няма да бъде отворен отново.}other{Вашите # прозореца в режим „инкогнито“ няма да бъдат отворени отново.}}</translation>
@@ -1200,7 +1198,6 @@
 <translation id="1795438342141780114">Преместване на курсора в центъра</translation>
 <translation id="1796460466266263589">За да продължите да използвате Gemini, потвърдете, че сте вие</translation>
 <translation id="1796588414813960292">Функциите, за които е нужен звук, няма да работят</translation>
-<translation id="1797117170091578105">Играйте с клавиатурата на своя Chromebook. Можете да персонализирате клавишите за конкретни действия.</translation>
 <translation id="1798726622311813209">Кредитни и дебитни карти</translation>
 <translation id="1799852120691957794">Прозорците от предходната ви сесия не могат да бъдат възстановени</translation>
 <translation id="180203835522132923">Клавиш „търсене“ + O, след това W</translation>
@@ -1228,7 +1225,6 @@
 <translation id="1813828404076816564">Изберете бутона за отзиви, за да изпратите отзиви относно функцията за споделени групи раздели</translation>
 <translation id="18139523105317219">Име на EDI страна</translation>
 <translation id="1815083418640426271">Поставяне като неформатиран текст</translation>
-<translation id="1815097521077272760">Получихте покана да изпробвате управлението чрез клавиатура за тази игра.</translation>
 <translation id="181577467034453336">Още <ph name="NUMBER_OF_VIEWS" />...</translation>
 <translation id="1816036116994822943">Скорост на сканиране за клавиатурата</translation>
 <translation id="1817871734039893258">Възстановяване на файл от Microsoft</translation>
@@ -1430,7 +1426,6 @@
 <translation id="1941553344801134989">Версия: <ph name="APP_VERSION" /></translation>
 <translation id="1941685451584875710">Администраторът е конфигурирал профила ви така, че автоматично да се свърже с Microsoft OneDrive, но нещо се обърка.</translation>
 <translation id="194174710521904357">Временно разрешихте на този сайт да използва „бисквитки“ на трети страни. Това ще понижи нивото на защита при сърфиране, но е по-вероятно функциите на сайта да работят по очаквания начин.</translation>
-<translation id="1941995177877935582">Показване на съпоставянето на клавишите</translation>
 <translation id="1942128823046546853">да чете и променя всичките ви данни в уебсайтовете</translation>
 <translation id="1944528062465413897">Код за сдвояване през Bluetooth:</translation>
 <translation id="1944535645109964458">Няма налични кодове за достъп</translation>
@@ -1916,12 +1911,12 @@ https://www.chromium.org/chromium-os/how-tos-and-troubleshooting/debugging-featu
 <translation id="2275193525496879616">Разрешено. Свържете камера към устройството си.</translation>
 <translation id="2275352532065325930">Позиция при търсене на раздели</translation>
 <translation id="2276503375879033601">Добавяне на още приложения</translation>
+<translation id="227763434929139750">Да не се разрешава на сайтовете да използват сензорите за движение или светлина</translation>
 <translation id="2278193750452754829">Разширения, разрешени в този сайт. Изберете, за да отворите менюто</translation>
 <translation id="2278562042389100163">Отваряне на прозореца на браузъра</translation>
 <translation id="2278668501808246459">Мениджърът на контейнерите се стартира</translation>
 <translation id="2280486287150724112">Дясно поле</translation>
 <translation id="228059581448666199">Кликване с левия бутон на мишката</translation>
-<translation id="2281863813036651454">Кликване с левия бутон на мишката</translation>
 <translation id="2282146716419988068">Процес на графичния процесор</translation>
 <translation id="228293613124499805">Повечето посещавани от вас сайтове вероятно запазват данни на устройството ви, често с цел подобряване на практическата ви работа, като съхраняват предпочитанията ви или информацията, която споделяте със сайта. Препоръчваме ви да оставите тази настройка включена.</translation>
 <translation id="2283599456633275070">Пътувания</translation>
@@ -2510,7 +2505,6 @@ https://www.chromium.org/chromium-os/how-tos-and-troubleshooting/debugging-featu
 <translation id="2665394472441560184">Добавяне на нова дума</translation>
 <translation id="2665647207431876759">Изтекла валидност</translation>
 <translation id="2665919335226618153">Ужас! При форматирането възникна грешка.</translation>
-<translation id="2666092431469916601">Най-горе</translation>
 <translation id="2666247341166669829">Нивото на батерията на лявата слушалка е <ph name="PERCENTAGE" />%.</translation>
 <translation id="2667144577800272420">За другите приложения е зададено да отварят същите връзки като <ph name="APP_NAME" />. Това действие ще деактивира отварянето на поддържаните връзки от <ph name="APP_NAME_2" /> и <ph name="APP_NAME_3" />.</translation>
 <translation id="2667463864537187133">Управление на проверката на правописа</translation>
@@ -2579,7 +2573,6 @@ https://www.chromium.org/chromium-os/how-tos-and-troubleshooting/debugging-featu
 <translation id="2714180132046334502">Тъмен фон</translation>
 <translation id="2714393097308983682">Google Play Магазин</translation>
 <translation id="2714617928488200509">Модели</translation>
-<translation id="2715293433233060993">Преместване на разделите отстрани</translation>
 <translation id="2715751256863167692">С тази надстройка ще нулирате настройките на своя Chromebook и ще премахнете текущите потребителски данни.</translation>
 <translation id="2715934493766003251">Изчистването на хранилището не е възможно, докато синхронизирането на файловете е включено</translation>
 <translation id="2716986496990888774">Тази настройка се управлява от родител.</translation>
@@ -2711,7 +2704,6 @@ https://www.chromium.org/chromium-os/how-tos-and-troubleshooting/debugging-featu
 <translation id="2789486458103222910">OK</translation>
 <translation id="2790112944253231361">Променихте този раздел</translation>
 <translation id="2791529110887957050">Премахване на Linux</translation>
-<translation id="2791952154587244007">Възникна грешка. Павилионното приложение няма да може да стартира автоматично на това устройство.</translation>
 <translation id="2792465461386711506">Включете функцията за синхронизиране в Chrome, за да прегледате скорошните раздели на браузъра от телефона си</translation>
 <translation id="2792697226874849938">Изображение за ограничение</translation>
 <translation id="2794522004398861033">Свържете се с Wi-Fi или Ethernet, за да настроите електронна SIM карта</translation>
@@ -2719,6 +2711,7 @@ https://www.chromium.org/chromium-os/how-tos-and-troubleshooting/debugging-featu
 <translation id="2795716239552913152">Сайтовете обикновено използват местоположението ви за осигуряване на подходящи функции или информация, като например местни новини или магазини в района</translation>
 <translation id="2797712124653482791">Да се скрие ли за <ph name="DISMISS_DAYS" /> дни?</translation>
 <translation id="2798347533012571708">Получаване на актуализациите</translation>
+<translation id="2798481792334355468">Сайтове с разрешение за използване на сензорите за движение и светлина</translation>
 <translation id="2799223571221894425">Стартиране отново</translation>
 <translation id="2800760947029405028">Качване на изображение</translation>
 <translation id="2800996978423439835">Получете своите отметки и др. на всичките си устройства</translation>
@@ -2986,7 +2979,6 @@ https://www.chromium.org/chromium-os/how-tos-and-troubleshooting/debugging-featu
 <translation id="2983311431122838216">Попитайте режима с AI в Google Търсене</translation>
 <translation id="2983373101216420412">Нивото на батерията на калъфа е <ph name="PERCENTAGE" />%.</translation>
 <translation id="2983818520079887040">Настройки...</translation>
-<translation id="2984384421572259426">Изчистване на неизползваните раздели</translation>
 <translation id="2984727013951557074">Файлът още се синхронизира с Диск.</translation>
 <translation id="2984923316661218534">Получете ключовете си за достъп на това устройство с Google Мениджър на пароли</translation>
 <translation id="2985348301114641460">Да се изпрати ли заявка до администратора ви за инсталиране на <ph name="EXTENSION_NAME" />?</translation>
@@ -3257,7 +3249,6 @@ https://www.chromium.org/chromium-os/how-tos-and-troubleshooting/debugging-featu
 <translation id="3167562202484086668">Изтриване на всички данни от <ph name="BRAND" /></translation>
 <translation id="3169930038976362151">Изберете темата, която отговаря на нуждите ви. За да промените темата, тапета, скрийнсейвъра и др., трябва само да докоснете и да задържите работния плот.</translation>
 <translation id="3170072451822350649">Може също да пропуснете влизането и <ph name="LINK_START" />да сърфирате като гост<ph name="LINK_END" />.</translation>
-<translation id="3172642937040465677">Преместване на разделите в горната част</translation>
 <translation id="3175067642577044620">Основен текст</translation>
 <translation id="3175862692832442091">Гора</translation>
 <translation id="3176347586396987181">Използвайте клавиша z, за да натиснете и задържите бутон на мишката</translation>
@@ -3419,6 +3410,7 @@ https://www.chromium.org/chromium-os/how-tos-and-troubleshooting/debugging-featu
 <translation id="3289668031376215426">Автоматично поставяне на главни букви</translation>
 <translation id="3289856944988573801">За да проверите за актуализации, моля, използвайте Ethernet или Wi-Fi.</translation>
 <translation id="3290249595466894471">Също така се изпраща малка извадка от страници, изтеглени файлове, активност на разширенията и системна информация, за да се подпомогне откриването на нови заплахи</translation>
+<translation id="3292966601422448005">Разрешенията, които дадете на <ph name="APP_NAME" />, ще бъдат предоставени и на инсталираните от него приложения.</translation>
 <translation id="3293181007446299124">Историята ви на сърфиране остава частна на устройството ви, а отчетите се изпращат със закъснение, за да защитим самоличността ви.</translation>
 <translation id="329324683265785818">Пускане/поставяне на пауза, активира се с клавиш k на клавиатурата</translation>
 <translation id="3293644607209440645">Изпращане на тази страница</translation>
@@ -3653,7 +3645,6 @@ https://www.chromium.org/chromium-os/how-tos-and-troubleshooting/debugging-featu
 <translation id="3445925074670675829">USB-C устройство</translation>
 <translation id="3446274660183028131">Моля, стартирайте Parallels Desktop, за да инсталирате Windows.</translation>
 <translation id="344630545793878684">Четене на данните ви от редица уебсайтове</translation>
-<translation id="3447644827015694497">Искате ли да прегледате неактивните раздели?</translation>
 <translation id="3447797901512053632"><ph name="TAB_NAME" /> се предава към <ph name="DEVICE_NAME" /></translation>
 <translation id="3448492834076427715">Актуализиране на профила</translation>
 <translation id="3449393517661170867">Нов прозорец с раздели</translation>
@@ -3750,7 +3741,6 @@ https://www.chromium.org/chromium-os/how-tos-and-troubleshooting/debugging-featu
 <translation id="3512465804715993309">Адаптивно открояване</translation>
 <translation id="3513019849832307207">Присъединяване и отваряне</translation>
 <translation id="3513563267917474897">Плъзгач за цветови тон от <ph name="MIN_VALUE" /> до <ph name="MAX_VALUE" /></translation>
-<translation id="3514335087372914653">Контролиране на играта</translation>
 <translation id="3514647716686280777">Разполагате със стандартно ниво на защита. За да получите повече защита срещу опасни уебсайтове, изтеглени файлове и разширения, включете подобрената защита от „Безопасно сърфиране“ в настройките на Chrome.</translation>
 <translation id="3514681096978190000">Този архивен файл съдържа други файлове, които може да крият злонамерен софтуер</translation>
 <translation id="3515983984924808886">Докоснете отново ключа си за сигурност, за да потвърдите нулирането. Цялата съхранявана в ключа информация, включително ПИН кодът му, ще бъде изтрита.</translation>
@@ -3790,6 +3780,7 @@ https://www.chromium.org/chromium-os/how-tos-and-troubleshooting/debugging-featu
 <translation id="354060433403403521">Адаптер за променлив ток (AC)</translation>
 <translation id="354068948465830244">Може да чете и променя данните за сайта</translation>
 <translation id="3541823293333232175">Зададено</translation>
+<translation id="354323442562085715">Пишете, планирайте, генерирайте код и др.</translation>
 <translation id="3543296862747913985">Какво върши</translation>
 <translation id="3543298914473315872">Процес на актуализиране</translation>
 <translation id="3543393733900874979">Актуализацията не бе успешна (грешка: <ph name="ERROR_NUMBER" />)</translation>
@@ -4551,7 +4542,6 @@ https://www.chromium.org/chromium-os/how-tos-and-troubleshooting/debugging-featu
 <translation id="4014432863917027322">Да се поправи ли <ph name="EXTENSION_NAME" />?</translation>
 <translation id="4015163439792426608">Използвате разширения? <ph name="BEGIN_LINK" />Управлявайте ги<ph name="END_LINK" /> от едно лесно място.</translation>
 <translation id="4015250302257349679">Натиснете <ph name="ACCELERATOR" />, за да поставите фокуса върху това балонче, след което го натиснете отново, за да поставите фокуса върху елемента, към който сочи то.</translation>
-<translation id="4016762287427926315">Разрешенията, които дадете на <ph name="APP_NAME" />, ще бъдат предоставени и на това приложение. <ph name="BEGIN_LINK" />Управление<ph name="END_LINK" /></translation>
 <translation id="4017225831995090447">Създаване на QR код за тази връзка</translation>
 <translation id="4018953474106733212">Тази функция трябва да се включва само от уеб програмисти и да се използва само с надеждни приложения.</translation>
 <translation id="4019983356493507433">Редактиране на списъка с отметки</translation>
@@ -4789,7 +4779,6 @@ https://www.chromium.org/chromium-os/how-tos-and-troubleshooting/debugging-featu
 <translation id="4193575319002689239">Показване на картите</translation>
 <translation id="419427585139779713">Въвеждане сричка по сричка</translation>
 <translation id="4195001808989442226">Steam за Chromebook (бета) не може да се отвори</translation>
-<translation id="4195378859392041564">Кликнете върху който и да е клавиш с мишката, след което натиснете клавиш от клавиатурата, за да персонализирате</translation>
 <translation id="4195643157523330669">Отваряне в нов раздел</translation>
 <translation id="4195814663415092787">Продължаване оттам, откъдето сте прекъснали</translation>
 <translation id="4198268995694216131">Допълнителни сайтове</translation>
@@ -4835,7 +4824,6 @@ https://www.chromium.org/chromium-os/how-tos-and-troubleshooting/debugging-featu
 <translation id="4228209296591583948">{NUM_EXTENSIONS,plural, =1{Това разширение не е разрешено}other{Някои разширения не са разрешени}}</translation>
 <translation id="4231053948789591973">Предаването е поставено на пауза. Можете да го възобновите или спрете по всяко време.</translation>
 <translation id="4231095370974836764">Инсталирайте приложения и игри от Google Play на своя <ph name="DEVICE_TYPE" />. <ph name="LINK_BEGIN" />Научете повече<ph name="LINK_END" /></translation>
-<translation id="4231141543165771749">Затваряне на игровите контроли</translation>
 <translation id="4231231258999726714">Steam за Chromebook се настройва</translation>
 <translation id="4232375817808480934">Конфигуриране на Kerberos</translation>
 <translation id="4232376164796433044">Пароли и автоматично попълване</translation>
@@ -4864,6 +4852,7 @@ https://www.chromium.org/chromium-os/how-tos-and-troubleshooting/debugging-featu
 <translation id="4249373718504745892">Достъпът на тази страница до камерата и микрофона ви е блокиран.</translation>
 <translation id="4249785854468467847">Преоткрийте Chrome с разширени възможности, базирани на AI</translation>
 <translation id="4250229828105606438">Eкранна снимка</translation>
+<translation id="4250596587221570622">Изберете тема за потребителския си профил</translation>
 <translation id="4250680216510889253">Не</translation>
 <translation id="4251243704979202079"><ph name="ORIGIN" /> ще може да преглежда и да прави свои собствени копия на файловете в(ъв) „<ph name="FOLDERNAME" />“</translation>
 <translation id="4251377547188244181">Регистриране на устройство за павилионен режим или режим за дигитални знаци и надписи</translation>
@@ -4883,7 +4872,6 @@ https://www.chromium.org/chromium-os/how-tos-and-troubleshooting/debugging-featu
 <translation id="4258348331913189841">Файлови системи</translation>
 <translation id="4258860425202724393">{NUM_GROUPS,plural, =1{Запазване на групата}other{Запазване на групите}}</translation>
 <translation id="4259388776256904261">Това може да отнеме известно време</translation>
-<translation id="4260699894265914672">Натиснете клавиш от клавиатурата, за да персонализирате</translation>
 <translation id="4261429981378979799">Разрешения за приложението</translation>
 <translation id="4262004481148703251">Отхвърляне на предупреждението</translation>
 <translation id="4263223596040212967">Проверете клавиатурната си подредба и опитайте отново.</translation>
@@ -4944,7 +4932,6 @@ https://www.chromium.org/chromium-os/how-tos-and-troubleshooting/debugging-featu
 <translation id="429344752071832554">Премахване на фокуса от групата</translation>
 <translation id="4294392694389031609">Файлът <ph name="FILE_NAME" /> бе изтрит от историята на изтеглянията, но все още е на устройството ви</translation>
 <translation id="4295979599050707005">Моля, влезте отново, за да потвърдите, че профилът ви <ph name="USER_EMAIL" /> може да се използва с уебсайтове, приложения и разширения в Chrome и Google Play. Имате възможност също да го премахнете. <ph name="LINK_BEGIN" />Научете повече<ph name="LINK_END" /></translation>
-<translation id="4296424230850377304">Приложения, които са инсталирани и поточно предавани от <ph name="APP_NAME" /></translation>
 <translation id="4296632172536745000">Първоначалната ви парола за този сайт бе открита при обществено нарушение на сигурността на данните. На <ph name="DATE" /> помолихте <ph name="BRAND" /> да промени автоматично паролата ви вместо вас.</translation>
 <translation id="4297219207642690536">Рестартиране и нулиране</translation>
 <translation id="4297813521149011456">Завъртане на дисплея</translation>
@@ -5165,7 +5152,6 @@ https://www.chromium.org/chromium-os/how-tos-and-troubleshooting/debugging-featu
 <translation id="4437947179446780764">Добавяне на персонализиран доставчик на DNS услуги</translation>
 <translation id="4438043733494739848">Прозрачно</translation>
 <translation id="4439157218765614426">Забранено от правило.</translation>
-<translation id="4441124369922430666">Искате ли това приложение да стартира автоматично при включването на компютъра?</translation>
 <translation id="4441147046941420429">За да продължите, премахнете ключа за сигурност от устройството си, след което го поставете отново и го докоснете</translation>
 <translation id="444134486829715816">Разгъване...</translation>
 <translation id="4441928470323187829">Фиксирано от администратора ви</translation>
@@ -5422,7 +5408,6 @@ https://www.chromium.org/chromium-os/how-tos-and-troubleshooting/debugging-featu
 <translation id="4628762811416793313">Настройването на контейнера за Linux не завърши. Моля, опитайте отново.</translation>
 <translation id="4629521233550547305">Отваряне на потребителския профил <ph name="PROFILE_NAME" /></translation>
 <translation id="4629803160911640220">Надеждно</translation>
-<translation id="4631572301265416783">Скорошни разговори</translation>
 <translation id="4631637535315947773">Преките пътища към най-посещаваните от вас сайтове бяха премахнати, защото не сте ги използвали скоро</translation>
 <translation id="4631955550884380853">Фокусиран глас</translation>
 <translation id="4632655012900268062">Персонализиране на картите</translation>
@@ -5538,7 +5523,6 @@ https://www.chromium.org/chromium-os/how-tos-and-troubleshooting/debugging-featu
 <translation id="4699473989647132421">Брегова линия</translation>
 <translation id="4701025263201366865">Влизане в профила на родител</translation>
 <translation id="4701335814944566468">Прегледано вчера</translation>
-<translation id="4702504834785592287">Страна</translation>
 <translation id="470644585772471629">Инвертиране на цветовете</translation>
 <translation id="4707337002099455863">Винаги на всички сайтове</translation>
 <translation id="4708849949179781599">Изход от <ph name="PRODUCT_NAME" /></translation>
@@ -5554,6 +5538,7 @@ https://www.chromium.org/chromium-os/how-tos-and-troubleshooting/debugging-featu
 <translation id="4716715661140829720">Няма достатъчно място в хранилището</translation>
 <translation id="471759229191973607">Промяна на темата</translation>
 <translation id="4719276504493791870">На приложенията е забранено да използват местоположението ви</translation>
+<translation id="4722332387043141878">Сайтовете обикновено използват сензорите за движение и светлина на устройството ви, за да осигуряват функции като виртуална реалност или проследяване на физическата активност</translation>
 <translation id="4722676601353983425">{GROUP_COUNT,plural, =1{Изтриване на групата}other{Изтриване на групите}}</translation>
 <translation id="4722735765955348426">Парола за <ph name="USERNAME" /></translation>
 <translation id="4722920479021006856"><ph name="APP_NAME" /> споделя екрана ви.</translation>
@@ -5654,6 +5639,7 @@ https://www.chromium.org/chromium-os/how-tos-and-troubleshooting/debugging-featu
 <translation id="4794910597689955457">Искате ли да преместите <ph name="NUM_OF_FILES" /> файла в <ph name="CLOUD_PROVIDER" />, за да ги отворите?</translation>
 <translation id="479536056609751218">Уеб страница, само HTML</translation>
 <translation id="4795670271446126525">Разбиващи се вълни</translation>
+<translation id="479664067938200069">Инсталирани приложения от <ph name="APP_NAME" /></translation>
 <translation id="4797314204379834752">Използвайте групи раздели с цел организиране на задачи, при онлайн пазаруване и др.</translation>
 <translation id="4799574323027833817">Няма действащи правила.</translation>
 <translation id="479989351350248267">search</translation>
@@ -5849,7 +5835,6 @@ Chrome Root Program има доверие, и постоянно се подла
 <translation id="491779113051926205">Броячи за трафика в ChromeOS</translation>
 <translation id="4918021164741308375"><ph name="ORIGIN" /> иска да комуникира с разширението „<ph name="EXTENSION_NAME" />“</translation>
 <translation id="4918086044614829423">Приемам</translation>
-<translation id="4918134162946436591">Показване на слоя за подсказки</translation>
 <translation id="4918762404810341788">Копиране и отваряне</translation>
 <translation id="4918844574251943176">Изображението е копирано</translation>
 <translation id="4921348630401250116">Синтезиран говор</translation>
@@ -6207,6 +6192,7 @@ Chrome Root Program има доверие, и постоянно се подла
 <translation id="5181140330217080051">Изтегля се</translation>
 <translation id="5181172023548002891">Към мениджъра на паролите в Google за <ph name="ACCOUNT" /></translation>
 <translation id="5181551096188687373">Паролата е запазена само на това устройство. За да я използвате на другите си устройства, запазете я в профила си в Google (<ph name="USER_EMAIL" />).</translation>
+<translation id="5182671122927417841">Деактивиране на разширението</translation>
 <translation id="5183344263225877832">Да се нулират ли разрешенията за всички HID устройства?</translation>
 <translation id="5184063094292164363">&amp;Конзола на JavaScript</translation>
 <translation id="5184209580557088469">Вече съществува пропуск с това потребителско име</translation>
@@ -6745,7 +6731,6 @@ Chrome Root Program има доверие, и постоянно се подла
 <translation id="5551573675707792127">Клавиатура и въвеждане на текст</translation>
 <translation id="5551753770140674714">Данните са шифровани с пропуска ви за синхронизиране. Това не включва начините на плащане и адресите от Google Pay.</translation>
 <translation id="5553089923092577885">Съответствия на правилата за сертификата</translation>
-<translation id="5554240068773209752">Кликнете тук за персонализиране на контролите</translation>
 <translation id="5554403733534868102">Повече няма да чакате актуализации</translation>
 <translation id="5554489410841842733">Тази икона ще се показва, когато разширението може да изпълнява действия върху текущата страница.</translation>
 <translation id="5554720593229208774">Сертифициращ орган за имейл</translation>
@@ -6776,7 +6761,6 @@ Chrome Root Program има доверие, и постоянно се подла
 <translation id="5571066253365925590">Bluetooth е активиран</translation>
 <translation id="5571092938913434726">Глобални контроли за мултимедия</translation>
 <translation id="5571832155627049070">Персонализиране на потребителския ви профил</translation>
-<translation id="5572000034319109899">Изчистване на неизползваните раздели</translation>
 <translation id="5572166921642484567">Избиране на режим на цветовата схема</translation>
 <translation id="5572252023412311448">Показване на подробностите за сайта за <ph name="SITE_GROUP" /></translation>
 <translation id="557506220935336383">Преглед на разрешенията за разширенията за други сайтове</translation>
@@ -7233,7 +7217,6 @@ Chrome Root Program има доверие, и постоянно се подла
 <translation id="5888889603768021126">Влезли сте със:</translation>
 <translation id="5889282057229379085">Максимален брой междинни сертифициращи органи: <ph name="NUM_INTERMEDIATE_CA" /></translation>
 <translation id="5889629805140803638">Шифроване на синхронизираните данни със собствения ви <ph name="BEGIN_LINK" />пропуск за синхронизиране<ph name="END_LINK" />. Начините на плащане и адресите от Google Pay няма да бъдат шифровани. Историята на сърфиране от Chrome няма да се синхронизира.</translation>
-<translation id="5890072287476934834">Преместване на разделите отстрани</translation>
 <translation id="5891688036610113830">Предпочитани Wi-Fi мрежи</translation>
 <translation id="5894056653502215961">Премахване на избора от папката „<ph name="FOLDER_TITLE" />“</translation>
 <translation id="5895138241574237353">Рестартиране</translation>
@@ -7509,7 +7492,6 @@ Chrome Root Program има доверие, и постоянно се подла
 <translation id="6078752646384677957">Моля, проверете микрофона си и нивата на звука.</translation>
 <translation id="608029822688206592">Няма намерена мрежа. Моля, поставете SIM карта и опитайте отново.</translation>
 <translation id="6080689532560039067">Проверете системния си час</translation>
-<translation id="6082877069782862752">Задаване на функции за клавишите</translation>
 <translation id="608531959444400877"><ph name="WINDOW_TITLE" /> е част от група без име</translation>
 <translation id="6086004606538989567">Профилът, който потвърдихте, не е упълномощен да използва това устройство.</translation>
 <translation id="6086350918562605938">Инсталиране на инструмента за актуализиране на система</translation>
@@ -7695,6 +7677,7 @@ Chrome Root Program има доверие, и постоянно се подла
 <translation id="6209908325007204267">Устройството ви включва надстройка за Chrome Enterprise, но потребителското ви име не е свързано с корпоративен профил. Моля, създайте си такъв, като посетите g.co/ChromeEnterpriseAccount на алтернативно устройство.</translation>
 <translation id="6210282067670792090">В адресната лента използвайте тази клавишна комбинация заедно с преки пътища за търсещи машини и търсене в сайтове</translation>
 <translation id="6211067089253408231">Включване на мигновената точка за достъп</translation>
+<translation id="6211409961905616543">Сайтовете могат да използват сензорите за движение и светлина</translation>
 <translation id="6211659910592825123">Проверете камерата си</translation>
 <translation id="621172521139737651">{COUNT,plural, =0{Отваряне на всички в &amp;нова група с раздели}=1{Отваряне в &amp;нова група с раздели}other{Отваряне на всички ({COUNT}) в &amp;нова група с раздели}}</translation>
 <translation id="6212039847102026977">Показване на разширените свойства на мрежата</translation>
@@ -7994,7 +7977,6 @@ Chrome Root Program има доверие, и постоянно се подла
 <translation id="641899100123938294">Сканиране за нови устройства</translation>
 <translation id="6419524191360800346">Налице е надстройка до Debian 11 (Bullseye)</translation>
 <translation id="6419546358665792306">Зареждане на разпакетираното</translation>
-<translation id="6422467884169339421">Скорошни разговори</translation>
 <translation id="6423685703035190381">Получавайте сигнали за проследяване на цените на телефона си</translation>
 <translation id="642469772702851743">Това устройство (сериен № <ph name="SERIAL_NUMBER" />) бе заключено от собственика.</translation>
 <translation id="6425556984042222041">Скорост на синтезирания говор</translation>
@@ -8131,6 +8113,7 @@ Chrome Root Program има доверие, и постоянно се подла
 <translation id="6520115099532274511"><ph name="SITE" /> иска да потвърди, че това сте вие. Въведете буквено-цифрения си ПИН код за Google Мениджър на пароли</translation>
 <translation id="6520876759015997832">Резултат от търсенето <ph name="LIST_POSITION" /> от <ph name="LIST_SIZE" />: <ph name="SEARCH_RESULT_TEXT" />. Натиснете Enter, за да се придвижите до секцията.</translation>
 <translation id="6521214596282732365">Сайтовете обикновено използват шрифтовете ви, така че да можете да създавате съдържание с висока прецизност посредством онлайн инструменти за дизайн и работа с графика</translation>
+<translation id="6521218807522232085">Създавайте, запазвайте и управлявайте паролите си, за да можете лесно да влизате в профила си</translation>
 <translation id="652492607360843641">Свързани сте с(ъс) <ph name="NETWORK_TYPE" /> мрежа.</translation>
 <translation id="6525767484449074555">Кликнете върху „Инсталиране“</translation>
 <translation id="6527303717912515753">Споделяне</translation>
@@ -8429,7 +8412,6 @@ Chrome Root Program има доверие, и постоянно се подла
 <translation id="6723946439672043591">Избиране на друг потребителски профил</translation>
 <translation id="6725073593266469338">Услуга за управление на ПИ</translation>
 <translation id="6725206449694821596">Internet Printing Protocol (IPP)</translation>
-<translation id="6725627354629889015">Да се изчистят ли неизползваните раздели?</translation>
 <translation id="6725970970008349185">Брой на предложенията, които да се показват на страница</translation>
 <translation id="672609503628871915">Вижте новите неща</translation>
 <translation id="6726800386221816228">Специални знаци</translation>
@@ -8598,6 +8580,7 @@ Chrome Root Program има доверие, и постоянно се подла
 <ph name="BREAK" />
 Можете да управлявате настройките от менюто на картата или да видите още опции в „Персонализиране на Chrome“.</translation>
 <translation id="6831043979455480757">Превод</translation>
+<translation id="6831989891148852199">Сайтове без разрешение за използване на сензорите за движение или светлина</translation>
 <translation id="6832218595502288407">Подравняване вляво</translation>
 <translation id="6832815922179448173">{MULTI_GROUP_TAB_COUNT,plural, =0{Искате ли да премахнете раздела и да изтриете групата?}=1{Искате ли да премахнете разделите и да изтриете групата?}other{Искате ли да премахнете разделите и да изтриете групите?}}</translation>
 <translation id="6833479554815567477">Разделът бе премахнат от групата „<ph name="GROUP_NAME" />“ – <ph name="GROUP_CONTENTS" /></translation>
@@ -8691,7 +8674,6 @@ Chrome Root Program има доверие, и постоянно се подла
 <translation id="6897756054229464646">С Gemini</translation>
 <translation id="6897972855231767338">Научете повече за сърфирането като гост</translation>
 <translation id="6898438890765871056">Отваряне на папката на OneDrive</translation>
-<translation id="6898440773573063262">Сега приложенията в павилионен режим могат да се конфигурират да стартират автоматично на това устройство.</translation>
 <translation id="6898524422976162959">Стартиране на урок за групите раздели</translation>
 <translation id="6898926986978115885">В момента не можете да използвате функцията „Четене на глас“.</translation>
 <translation id="6899427698619335650">Разрешаване на гъвкаво задаване на диакритични знаци. Можете например да въведете anh1 или a1nh, за да получите ánh.</translation>
@@ -8746,6 +8728,7 @@ Chrome Root Program има доверие, и постоянно се подла
 <translation id="6929126689972602640">Родителските контроли не се поддържат за училищни профили. За да добавите училищен профил за достъп до Google Classroom и други уебсайтове за изпълнение на училищни задачи у дома, първо влезте с личния профил на детето. Можете да добавите училищния профил по-късно при настройването.</translation>
 <translation id="6930161297841867798">{NUM_EXTENSIONS,plural, =1{Разширение бе отхвърлено}other{# разширения бяха отхвърлени}}</translation>
 <translation id="6930337524857202955">Налице е ново изтегляне</translation>
+<translation id="6930477763029357444">Разрешенията, които дадете на <ph name="APP_NAME" />, ще бъдат предоставени и на <ph name="PARENT_APP_NAME" /> и инсталираните от него приложения.</translation>
 <translation id="6931539787433490713"><ph name="USER_NAME" /> • <ph name="PROFILE_NAME" /></translation>
 <translation id="6931690462168617033">Сила на кликване</translation>
 <translation id="6933321725007230600">Включване на &amp;синхронизирането...</translation>
@@ -8755,6 +8738,7 @@ Chrome Root Program има доверие, и постоянно се подла
 <translation id="6935286146439255109">Липсва тава за хартия</translation>
 <translation id="6938386202199793006">Имате 1 запазен принтер.</translation>
 <translation id="6938606182859551396">За да получавате на устройството си <ph name="DEVICE_TYPE" /> известия от телефона си, изпълнете инструкциите на телефона, така че да предоставите на услугите за Google Play достъп до известията.</translation>
+<translation id="6941514251635934269">Задайте въпрос за този документ</translation>
 <translation id="694168622559714949">Основният език е зададен от администратора ви и не може да се променя.</translation>
 <translation id="6941937518557314510">Моля, влезте в(ъв) <ph name="TOKEN_NAME" />, за да удостоверите самоличността си пред <ph name="HOST_NAME" /> със сертификата си.</translation>
 <translation id="6943060957016121200">Активиране на функцията за незабавен тетъринг</translation>
@@ -8853,7 +8837,6 @@ Chrome Root Program има доверие, и постоянно се подла
 <translation id="7003339318920871147">Уеб бази от данни</translation>
 <translation id="7003454175711353260">{COUNT,plural, =1{{COUNT} файл}other{{COUNT} файла}}</translation>
 <translation id="7003644704445046755">Изтеглени са гласови файлове на <ph name="LANGUAGE" /> с високо качество</translation>
-<translation id="7003705861991657723">Алфа-версия</translation>
 <translation id="7003723821785740825">Настройте по-бърз начин да отключвате устройството си</translation>
 <translation id="7003844668372540529">Неизвестен продукт <ph name="PRODUCT_ID" /> от <ph name="VENDOR_NAME" /></translation>
 <translation id="7004402701596653846">Сайтът може да използва MIDI</translation>
@@ -9321,7 +9304,6 @@ Chrome Root Program има доверие, и постоянно се подла
 <translation id="7340179705876485790">За да се върнете назад с повече от 1 страница, кликнете върху бутона за връщане назад и го задръжте.</translation>
 <translation id="7340650977506865820">Сайтът споделя екрана ви</translation>
 <translation id="7340757554212515731">Автоматично изпращане до Google на сигнали за сривове, диагностична информация и данни за използването</translation>
-<translation id="7340886226071938450">Позиция на лентата с раздели</translation>
 <translation id="734088800888587319">Показатели за мрежата</translation>
 <translation id="7341834142292923918">Иска достъп до този сайт</translation>
 <translation id="7343372807593926528">Моля, опишете проблема, преди да изпратите отзивите</translation>
@@ -9650,7 +9632,6 @@ Chrome Root Program има доверие, и постоянно се подла
 <translation id="7560756177962144929">Синхронизиране на вашия <ph name="DEVICE_TYPE" /></translation>
 <translation id="7561196759112975576">Винаги</translation>
 <translation id="7561759921596375678">Включване на звука</translation>
-<translation id="7561982940498449837">Затваряне на менюто</translation>
 <translation id="7563576896417108627">Персонализиране и управление на <ph name="APP_NAME" />. Налице е актуализация.</translation>
 <translation id="756445078718366910">Отваряне на прозореца на браузъра</translation>
 <translation id="7564847347806291057">Прекратяване на процеса</translation>
@@ -9969,7 +9950,6 @@ Chrome Root Program има доверие, и постоянно се подла
 <translation id="7769709635093101687">Клавишна комбинация за поставяне на пауза</translation>
 <translation id="7769748505895274502">Свиване на наскоро затворените</translation>
 <translation id="7770072242481632881">Инструмент за избор на елемент в страничния панел</translation>
-<translation id="7770450735129978837">Кликване с десния бутон на мишката</translation>
 <translation id="7770612696274572992">Изображение, копирано от друго устройство</translation>
 <translation id="7770827449915784217">Фърмуерът е актуален</translation>
 <translation id="7771452384635174008">Ориентация</translation>
@@ -10148,7 +10128,6 @@ Chrome Root Program има доверие, и постоянно се подла
 <translation id="7900950034255258543">За да се обезпечи безопасното използване на това устройство, организацията ви може да вижда информация за операционната система, браузъра и настройките му, както и какъв софтуер е инсталиран на него</translation>
 <translation id="7901405293566323524">Център за телефоните</translation>
 <translation id="7901728443188947649">Създаване на изображения</translation>
-<translation id="7903429136755645827">Кликнете, за да персонализирате контролите си за игри</translation>
 <translation id="7903481341948453971">Използване на опцията ви за заключване на екрана при попълване на пароли</translation>
 <translation id="7903925330883316394">Помощен процес: <ph name="UTILITY_TYPE" /></translation>
 <translation id="7903984238293908205">катакана</translation>
@@ -10600,7 +10579,6 @@ Chrome Root Program има доверие, и постоянно се подла
 <translation id="8192944472786724289"><ph name="APP_NAME" /> иска да сподели съдържанието на екрана ви.</translation>
 <translation id="8193195501228940758">Премахване на <ph name="WEBSITE" /></translation>
 <translation id="8193953846147532858"><ph name="BEGIN_LINK" />Вашите устройства<ph name="END_LINK" /> · <ph name="EMAIL" /></translation>
-<translation id="8194788147118885421">Преглед на неактивните раздели</translation>
 <translation id="8195265224453131880">Наситеност</translation>
 <translation id="8195854162863398249">Деактивиране на „<ph name="FEATURE_NAME" />“</translation>
 <translation id="8195920051450756553">Забавяне преди повторно активиране на същия клавиш</translation>
@@ -10850,6 +10828,7 @@ Chrome Root Program има доверие, и постоянно се подла
 <translation id="8353420862507374944">Предаване, запазване и споделяне</translation>
 <translation id="8353683614194668312">То има възможност за:</translation>
 <translation id="8354034204605718473">ПИН кодът на детето ви е добавен</translation>
+<translation id="8354125743472063725">Разрешенията, които дадете на <ph name="APP_NAME" />, ще бъдат предоставени и на това приложение. <ph name="BEGIN_LINK" />Управление на разрешенията за родителското приложение<ph name="END_LINK" /></translation>
 <translation id="8356197132883132838">„<ph name="TITLE" />“ – <ph name="COUNT" /></translation>
 <translation id="8356409598322585307">Вече сте регистрирали това устройство. Няма нужда да го правите отново.</translation>
 <translation id="8357388086258943206">Грешка при инсталирането на Linux</translation>
@@ -11042,6 +11021,7 @@ Chrome Root Program има доверие, и постоянно се подла
 <translation id="8480869669560681089">Неизвестно устройство от <ph name="VENDOR_NAME" /></translation>
 <translation id="8481187309597259238">Потвърждаване на разрешението за USB</translation>
 <translation id="8482077254400484047">Управлявайте облика на неактивните раздели оттук</translation>
+<translation id="8482446859919078896">Задайте въпрос за тези файлове</translation>
 <translation id="8486666913807228950">Причина: Инвертираното правило <ph name="REVERT_RULE" /> бе намерено в списъка „Задължително отваряне във“.</translation>
 <translation id="8487678622945914333">Увеличаване</translation>
 <translation id="8487699605742506766">Точка за достъп</translation>
@@ -11329,7 +11309,6 @@ Chrome Root Program има доверие, и постоянно се подла
 <translation id="8685540043423825702">Вашият потребителски профил в Chrome</translation>
 <translation id="8685882652128627032">Кликнете, за да отворите диалоговия прозорец за добавяне на функцията за търсене в сайта</translation>
 <translation id="8686142379631285985">Влезли сте като <ph name="BEGIN_BOLD" /><ph name="DRIVE_ACCOUNT_EMAIL" /><ph name="END_BOLD" /></translation>
-<translation id="8686578183956518912">Преместване на разделите в горната част</translation>
 <translation id="8687103160920393343">Анулиране на <ph name="FILE_NAME" /></translation>
 <translation id="8687527282898211955">Задаване на ПИН кода ви</translation>
 <translation id="8687774873995698516">Използването на идентификатори с цел възпроизвеждане на защитено съдържание да е забранено винаги за <ph name="HOST" /></translation>
@@ -11417,7 +11396,6 @@ Chrome Root Program има доверие, и постоянно се подла
 <translation id="8732212173949624846">Четене и промяна на историята на сърфирането ви на всички устройства, на които сте влезли в профила си</translation>
 <translation id="8732844209475700754">Още настройки за поверителността, сигурността и събирането на данни</translation>
 <translation id="8733779588180110397">⌥ + кликване</translation>
-<translation id="8734073480934656039">С активирането на тази настройка се разрешава павилионните приложения да се изпълняват автоматично при стартиране.</translation>
 <translation id="8734755021067981851">Няма свързани USB устройства.</translation>
 <translation id="8736288397686080465">Този сайт бе актуализиран на заден план.</translation>
 <translation id="8737709691285775803">Shill</translation>
@@ -11645,7 +11623,6 @@ Chrome Root Program има доверие, и постоянно се подла
 <translation id="8884264823507872907">Искате ли да създадете нов потребителски профил за работа?</translation>
 <translation id="8884570509232205463">Устройството ви вече ще се заключи в <ph name="UNLOCK_TIME" />.</translation>
 <translation id="8885449336974696155">Помогнете за подобряването на ChromeOS, като подадете сигнал за <ph name="BEGIN_LINK" />текущите настройки<ph name="END_LINK" /></translation>
-<translation id="8886745493279779790">Преглед на неактивните раздели</translation>
 <translation id="8888253246822647887">Приложението ще се отвори, щом надстройването завърши. Това може да отнеме няколко минути.</translation>
 <translation id="8888459276890791557">Можете да фиксирате този страничен панел за лесен достъп</translation>
 <translation id="8888621340860433230">Показване на опциите</translation>
@@ -11941,7 +11918,6 @@ Chrome Root Program има доверие, и постоянно се подла
 <translation id="9068598199622656904">Последователно натискане на клавишите в клавишните комбинации вместо едновременното им натискане и задържане</translation>
 <translation id="9068878141610261315">Неподдържан файлов тип</translation>
 <translation id="9069417381769492963">Няма отметки, съответстващи на търсенето ви</translation>
-<translation id="9070231741075992882">Разрешенията, които предоставите на приложението <ph name="APP_NAME" />, ще бъдат разрешени и за инсталираните и поточно предаваните от него приложения.</translation>
 <translation id="9070342919388027491">Разделът бе преместен наляво</translation>
 <translation id="9072220108592671115">Инсталирана версия: <ph name="VERSION" /></translation>
 <translation id="9072918088200875065">Предоставихте на Gemini разрешение да влиза в профила ви в тези сайтове, за да изпълнява задачи вместо вас</translation>

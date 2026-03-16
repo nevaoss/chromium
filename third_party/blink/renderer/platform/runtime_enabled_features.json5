@@ -320,6 +320,16 @@
       status: "test",
       base_feature: "none",
     },
+        {
+      name: "AIClassifierAPI",
+      status: {
+        "Win": "experimental",
+        "Mac": "experimental",
+        "Linux": "experimental",
+        "ChromeOS": "experimental",
+        "default": "",
+      },
+    },
     // Whether to automatically build an APC content_extraction tree on load.
     {
       name: "AIPageContentBuildOnLoadForTesting",
@@ -1407,7 +1417,7 @@
     {
       // https://chromestatus.com/feature/5125388091260928
       name: "CSSBorderShape",
-      status: "experimental",
+      status: "stable",
     },
     {
       // Support CSS Values Level 4 calc simplification and serialization
@@ -1937,6 +1947,11 @@
       // https://chromestatus.com/feature/5134293578285056
       name: "Database",
     },
+    {
+      // crbug.com/40153320
+      name: "DateTimeLocalArabicCommaWorkaround",
+      status: "stable",
+    },
     // https://crbug.com/448174611
     {
       name: "DeclarativeCSSModules",
@@ -2308,16 +2323,6 @@
     {
       name: "ElementInnerTextHandleFirstLineStyle",
       status: "stable",
-    },
-    {
-      // ElementInternals.type allows web authors to create autonomous
-      // custom elements that inherit specific behaviors from native
-      // HTML elements, while maintaining the ability to use shadow DOM
-      // and custom rendering.
-      // crbug.com/422947646
-      // https://github.com/MicrosoftEdge/MSEdgeExplainers/blob/main/ElementInternalsType/explainer.md
-      name: "ElementInternalsDotType",
-      status: "experimental",
     },
     {
       // When enabled, the readonly attribute will prevent constraint validation
@@ -2829,6 +2834,10 @@
       status: "experimental",
     },
     {
+      name: "FocusRingRespectExplicitOutlineColorInDarkMode",
+      status: "stable",
+    },
+    {
       name: "FontAccess",
       status: {"Android": "", "default": "stable"},
     },
@@ -3060,6 +3069,14 @@
     {
       // Removed status stable due to https://crbug.com/456164629.
       name: "HitTestBorderRadiusForStackingContext",
+    },
+    {
+      // Use container_transform_state instead of local_transform_state when
+      // computing z-depth for depth ordering in preserve-3d hit testing.
+      // Fixes incorrect hit-test results for layers without CSS transforms.
+      // https://crbug.com/464173566
+      name: "HitTestContainerTransformStateForPreserve3d",
+      status: "stable",
     },
     {
       name: "HrefTranslate",
@@ -3523,6 +3540,8 @@
     },
     {
       name: "MachineLearningNeuralNetwork",
+      origin_trial_feature_name: "WebMachineLearningNeuralNetwork",
+      origin_trial_os: ["win", "mac", "linux", "chromeos"],
       // Enabled by webnn::mojom::features::kWebMachineLearningNeuralNetwork.
       base_feature: "none",
     },
@@ -3746,13 +3765,6 @@
       status: "stable",
     },
     {
-      // Multicast in Direct Sockets API.
-      // https://github.com/WICG/direct-sockets/blob/main/docs/multicast-explainer.md
-      name: "MulticastInDirectSockets",
-      status: "stable",
-      depends_on: ["DirectSockets"]
-    },
-    {
       name: "MulticolColumnWrapping",
       status: "stable",
     },
@@ -3778,6 +3790,9 @@
     {
       name: "NavigateEventSourceElement",
       status: "stable",
+    },
+    {
+      name: "NavigationEventTiming",
     },
     {
       name: "NavigationId",
@@ -4684,6 +4699,12 @@
       status: "experimental",
     },
     {
+      name: "RTCDiagnosticLogging",
+      status: "test",
+      base_feature_status: "enabled",
+      copied_from_base_feature_if: "overridden",
+    },
+    {
       name: "RTCEncodedFrameAudioLevel",
       status: "stable",
     },
@@ -5280,7 +5301,7 @@
       // Source-specific multicast support in the Direct Sockets API.
       name: "SourceSpecificMulticastInDirectSockets",
       status: "test",
-      depends_on: ["MulticastInDirectSockets"],
+      depends_on: ["DirectSockets"],
     },
     {
       // Whether spatial navigation should use cursor inheritance to exclude
@@ -5379,10 +5400,6 @@
       status: "experimental",
     },
     {
-      name: "Svg2Cascade",
-      status: "stable",
-    },
-    {
       name: "SvgAnchorElementAttributes",
       status: "stable",
     },
@@ -5429,11 +5446,19 @@
       status: "test",
     },
     {
+      name: "SvgLengthListClearOnParsingFailure",
+      status: "stable",
+    },
+    {
       name: "SvgLengthResolveUnparsedValue",
       status: "stable",
     },
     {
       name: "SvgNonScalingStrokePrecisionFix",
+      status: "stable",
+    },
+    {
+      name: "SvgNumberListClearOnParsingFailure",
       status: "stable",
     },
     {
@@ -6250,11 +6275,6 @@
     {
       name: "WebGLDrawingBufferStorage",
       status: "stable",
-    },
-    {
-      name: "WebGLImageChromium",
-      base_feature: "none",
-      public: true,
     },
     {
       // Switch WebGL to use an experimental implementation where WebGL calls

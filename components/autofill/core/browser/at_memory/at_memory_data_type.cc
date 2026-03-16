@@ -6,22 +6,22 @@
 
 #include <optional>
 
-#include "components/accessibility_annotator/annotation_reducer/query_intent_type.h"
-#include "components/autofill/core/browser/data_model/autofill_ai/entity_type.h"
+#include "components/accessibility_annotator/core/annotation_reducer/query_intent_type.h"
+#include "components/autofill/core/browser/data_model/autofill_ai/entity_type_names.h"
 #include "components/autofill/core/browser/field_types.h"
 
 namespace autofill {
 
 std::optional<AtMemoryDataType> ToAtMemoryDataType(
-    annotation_reducer::QueryIntentType query_intent_type) {
-#define INTENT_TO_FIELD_TYPE(intent, field_type)    \
-  case annotation_reducer::QueryIntentType::intent: \
+    accessibility_annotator::QueryIntentType query_intent_type) {
+#define INTENT_TO_FIELD_TYPE(intent, field_type)         \
+  case accessibility_annotator::QueryIntentType::intent: \
     return field_type
-#define INTENT_TO_ENTITY_TYPE(intent, entity_type)  \
-  case annotation_reducer::QueryIntentType::intent: \
+#define INTENT_TO_ENTITY_TYPE(intent, entity_type)       \
+  case accessibility_annotator::QueryIntentType::intent: \
     return EntityType(EntityTypeName::entity_type)
-#define INTENT_TO_ATTRIBUTE_TYPE(intent_and_attribute_type)            \
-  case annotation_reducer::QueryIntentType::intent_and_attribute_type: \
+#define INTENT_TO_ATTRIBUTE_TYPE(intent_and_attribute_type)                 \
+  case accessibility_annotator::QueryIntentType::intent_and_attribute_type: \
     return AttributeType(AttributeTypeName::intent_and_attribute_type)
 
   switch (query_intent_type) {
@@ -34,6 +34,7 @@ std::optional<AtMemoryDataType> ToAtMemoryDataType(
     INTENT_TO_FIELD_TYPE(kAddressCountry, ADDRESS_HOME_COUNTRY);
     INTENT_TO_FIELD_TYPE(kPhone, PHONE_HOME_WHOLE_NUMBER);
     INTENT_TO_FIELD_TYPE(kEmail, EMAIL_ADDRESS);
+    INTENT_TO_FIELD_TYPE(kCompanyName, COMPANY_NAME);
     INTENT_TO_FIELD_TYPE(kIban, IBAN_VALUE);
     INTENT_TO_ENTITY_TYPE(kVehicle, kVehicle);
     INTENT_TO_ATTRIBUTE_TYPE(kVehicleMake);
@@ -84,7 +85,7 @@ std::optional<AtMemoryDataType> ToAtMemoryDataType(
     INTENT_TO_ATTRIBUTE_TYPE(kOrderMerchantDomain);
     INTENT_TO_ATTRIBUTE_TYPE(kOrderProductNames);
     INTENT_TO_ATTRIBUTE_TYPE(kOrderGrandTotal);
-    case annotation_reducer::QueryIntentType::kUnknown:
+    case accessibility_annotator::QueryIntentType::kUnknown:
       return std::nullopt;
   }
 

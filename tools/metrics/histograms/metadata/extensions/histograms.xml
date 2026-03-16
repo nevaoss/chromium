@@ -1094,18 +1094,6 @@ This is emitted for two scenarios when a worker may be unregistered:
   </summary>
 </histogram>
 
-<histogram name="Extensions.Debugger.UserIsInDeveloperMode"
-    enum="InDeveloperMode" expires_after="2023-01-15">
-  <owner>ghazale@chromium.org</owner>
-  <owner>extensions-core@chromium.org</owner>
-  <summary>
-    Reports whether the debugger API is called while the user has extensions
-    developer mode enabled. This excludes extensions installed by the enterprise
-    policy and component extensions. The stat is emitted when the
-    debugger.attach extension function is called.
-  </summary>
-</histogram>
-
 <histogram name="Extensions.DeclarativeAPIFunctionCalls"
     enum="DeclarativeAPIFunctionType" expires_after="never">
 <!-- expires-never: For monitoring usage of declarative APIs. -->
@@ -1518,17 +1506,6 @@ This is emitted for two scenarios when a worker may be unregistered:
 
     This is also used as the &quot;Extensions Developer Mode Status&quot; filter
     in the UMA dashboard.
-  </summary>
-</histogram>
-
-<histogram name="Extensions.DevTools.UserIsInDeveloperMode"
-    enum="InDeveloperMode" expires_after="2023-07-02">
-  <owner>ghazale@chromium.org</owner>
-  <owner>extensions-core@chromium.org</owner>
-  <summary>
-    Reports whether DevTools extensions are being loaded while the user has
-    extensions developer mode enabled. This excludes extensions installed by the
-    enterprise policy and component extensions.
   </summary>
 </histogram>
 
@@ -4232,35 +4209,6 @@ This is emitted for two scenarios when a worker may be unregistered:
   </token>
 </histogram>
 
-<histogram
-    name="Extensions.ServiceWorkerBackground.ProcessManagerFinishedExternalRequestResultWithSuccessfulStart"
-    enum="ServiceWorkerExternalRequestResult" expires_after="2026-02-01">
-  <owner>rdevlin.cronin@chromium.org</owner>
-  <owner>extensions-core@chromium.org</owner>
-  <summary>
-    The result from the extension process manager notifying the
-    ServiceWorkerContext of a service worker-based extension that an external
-    request that started with a result of &quot;OK&quot; has finished. Emitted
-    immediately after the call to notify the ServiceWorkerContext is made as
-    part of decrementing the service worker keepalive count.
-  </summary>
-</histogram>
-
-<histogram
-    name="Extensions.ServiceWorkerBackground.ProcessManagerFinishedExternalRequestResultWithUnsuccessfulStart"
-    enum="ServiceWorkerExternalRequestResult" expires_after="2025-12-01">
-  <owner>rdevlin.cronin@chromium.org</owner>
-  <owner>extensions-core@chromium.org</owner>
-  <summary>
-    The result from the extension process manager notifying the
-    ServiceWorkerContext of a service worker-based extension that an external
-    request that started with a result of anything other than &quot;OK&quot; has
-    finished. Emitted immediately after the call to notify the
-    ServiceWorkerContext is made as part of decrementing the service worker
-    keepalive count.
-  </summary>
-</histogram>
-
 <histogram name="Extensions.ServiceWorkerBackground.Registration_FailStatus"
     enum="ServiceWorkerStatusCode" expires_after="2026-07-05">
   <owner>jlulejian@chromium.org</owner>
@@ -4829,43 +4777,6 @@ This is emitted for two scenarios when a worker may be unregistered:
     request if and only if at least one declarativeNetRequest rule is present.
     This is only emitted for users with high resolution clocks.
   </summary>
-</histogram>
-
-<histogram
-    name="Extensions.WebRequest.BeforeRequestListenerEvaluationTime.{HandlerTypes}"
-    units="ms" expires_after="2025-11-15">
-  <owner>rdevlin.cronin@chromium.org</owner>
-  <owner>src/extensions/OWNERS</owner>
-  <summary>
-    The total amount of time, measured in milliseconds, between when an event is
-    dispatched to webRequest listeners and when all responses are received and
-    handled for an onBeforeRequest event. Emitted when there are {HandlerTypes}
-    for the request. Recorded once per request if the request completes.
-  </summary>
-  <token key="HandlerTypes">
-    <variant name="WebRequestAndDeclarativeNetRequest"
-        summary="both webRequest listeners and declarativeNetRequest rules"/>
-    <variant name="WebRequestOnly" summary="only webRequest listeners"/>
-  </token>
-</histogram>
-
-<histogram
-    name="Extensions.WebRequest.BeforeRequestListenerEvaluationTimeInMicroseconds.{HandlerTypes}"
-    units="microseconds" expires_after="2025-09-07">
-  <owner>rdevlin.cronin@chromium.org</owner>
-  <owner>src/extensions/OWNERS</owner>
-  <summary>
-    The total amount of time, measured in microseconds, between when an event is
-    dispatched to webRequest listeners and when all responses are received and
-    handled for an onBeforeRequest event. Emitted when there are {HandlerTypes}
-    for the request. Recorded once per request if the request completes. This is
-    only emitted for users with high resolution clocks.
-  </summary>
-  <token key="HandlerTypes">
-    <variant name="WebRequestAndDeclarativeNetRequest"
-        summary="both webRequest listeners and declarativeNetRequest rules"/>
-    <variant name="WebRequestOnly" summary="only webRequest listeners"/>
-  </token>
 </histogram>
 
 <histogram

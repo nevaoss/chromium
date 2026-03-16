@@ -30,7 +30,7 @@ BASE_DECLARE_FEATURE(kDseIntegrity);
 BASE_DECLARE_FEATURE(kFewerUpdateConfirmations);
 #endif
 
-BASE_DECLARE_FEATURE(kDesktopGlowUp);
+BASE_DECLARE_FEATURE(kTabStripDeclutter);
 BASE_DECLARE_FEATURE(kGlassToolbar);
 
 BASE_DECLARE_FEATURE(kDetachedTabs);
@@ -56,11 +56,6 @@ BASE_DECLARE_FEATURE(kOfferPinToTaskbarInSettings);
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
 BASE_DECLARE_FEATURE(kOfferPinToTaskbarInfoBar);
 BASE_DECLARE_FEATURE(kPdfInfoBar);
-
-enum class PdfInfoBarTrigger { kPdfLoad = 0, kStartup = 1 };
-
-BASE_DECLARE_FEATURE_PARAM(PdfInfoBarTrigger, kPdfInfoBarTrigger);
-
 BASE_DECLARE_FEATURE(kSeparateDefaultAndPinPrompt);
 BASE_DECLARE_FEATURE_PARAM(int, kSeparateDefaultAndPinPromptRandSeed);
 BASE_DECLARE_FEATURE_PARAM(int, kSeparateDefaultAndPinPromptPinMaxCount);
@@ -352,6 +347,8 @@ bool IsWebUIReloadButtonEnabled();
 bool IsWebUIHomeButtonEnabled();
 
 bool IsWebUIBackForwardButtonEnabled();
+
+bool IsWebUIPinnedToolbarActionsEnabled();
 
 bool IsWebUISplitTabsButtonEnabled();
 

@@ -7,6 +7,12 @@
 
 #include "base/types/pass_key.h"
 
+namespace extensions {
+class PdfViewerPrivateGlicSummarizeFunction;
+}
+
+class PasswordChangeFromCheckupDelegate;
+
 namespace glic {
 
 // Passkey for invoking glic with auto submit. Reach out to OWNERS before
@@ -21,6 +27,8 @@ class InvokeWithAutoSubmitPasskeyProvider {
   // Example of how to add new friends:
   // friend class SomeClassThatNeedsAutoSubmit;
   // friend void SomeClass::SomeFunctionThatNeedsAutoSubmit();
+  friend class extensions::PdfViewerPrivateGlicSummarizeFunction;
+  friend class ::PasswordChangeFromCheckupDelegate;
 };
 
 using InvokeWithAutoSubmitPasskey =

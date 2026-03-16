@@ -23,6 +23,7 @@ import static org.chromium.chrome.browser.autofill.editors.common.EditorComponen
 import static org.chromium.chrome.browser.autofill.editors.common.EditorComponentsProperties.NoticeProperties.NOTICE_TEXT;
 import static org.chromium.chrome.browser.autofill.editors.common.EditorComponentsProperties.NoticeProperties.SHOW_BACKGROUND;
 import static org.chromium.chrome.browser.autofill.editors.common.dropdown_field.DropdownFieldProperties.DROPDOWN_KEY_VALUE_LIST;
+import static org.chromium.chrome.browser.autofill.editors.common.field.FieldProperties.ERROR_MESSAGE;
 import static org.chromium.chrome.browser.autofill.editors.common.field.FieldProperties.IS_REQUIRED;
 import static org.chromium.chrome.browser.autofill.editors.common.field.FieldProperties.LABEL;
 import static org.chromium.chrome.browser.autofill.editors.common.field.FieldProperties.VALUE;
@@ -30,6 +31,7 @@ import static org.chromium.chrome.browser.autofill.editors.common.text_field.Tex
 import static org.chromium.chrome.browser.autofill.editors.utils.TestUtils.setDropdownValue;
 
 import android.app.Activity;
+import android.text.TextUtils;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -133,7 +135,8 @@ public class EntityEditorModuleTest {
                             PASSPORT_COUNTRY_ATTRIBUTE_TYPE,
                             PASSPORT_NUMBER_ATTRIBUTE_TYPE,
                             PASSPORT_ISSUE_DATE_TYPE,
-                            PASSPORT_EXPIRATION_DATE_TYPE));
+                            PASSPORT_EXPIRATION_DATE_TYPE),
+                    /* requiredAttributes= */ List.of(PASSPORT_NUMBER_ATTRIBUTE_TYPE));
 
     private static final EntityInstance LOCAL_PASSPORT =
             new EntityInstance.Builder(PASSPORT_TYPE)
@@ -443,6 +446,56 @@ public class EntityEditorModuleTest {
         assertEquals(
                 LocalDate.of(2026, 6, 20),
                 ((AttributeInstance.DateValue) passportIssueDate.getAttributeValue()).getDate());
+    }
+
+    @Test
+    @SmallTest
+    public void testCommitChangesWithWhitespaces() {
+        EntityInstance entity =
+                new EntityInstance.Builder(PASSPORT_TYPE)
+                        .setGUID("guid")
+                        .setRecordType(RecordType.LOCAL)
+                        .setModifiedDate(LocalDate.of(2026, 2, 15))
+                        .setUseCount(0)
+                        .addAttribute(
+                                new AttributeInstance(
+                                        PASSPORT_COUNTRY_ATTRIBUTE_TYPE, /* value= */ "Cuba"))
+                        .addAttribute(
+                                new AttributeInstance(
+                                        PASSPORT_NUMBER_ATTRIBUTE_TYPE, /* value= */ "AA123456"))
+                        .build();
+        showEditorDialog(entity);
+
+        ViewGroup content = mCoordinator.getEntityEditorViewForTest().getContentView();
+        DateFieldView issueDate = (DateFieldView) content.getChildAt(3);
+
+        PropertyModel model = mCoordinator.getEditorModelForTest();
+        ListModel<EditorItem> editorFields = model.get(EntityEditorProperties.EDITOR_FIELDS);
+        // Make sure that the fields order is correct before editing them.
+        EditorItem passportNameItem = editorFields.get(0);
+        EditorItem passportNumberItem = editorFields.get(2);
+
+        // Update some fields to values with whitespaces.
+        passportNameItem.model.set(VALUE, "     ");
+        passportNumberItem.model.set(VALUE, "    ");
+
+        mContainerView.findViewById(R.id.editor_dialog_done_button).performClick();
+        // The passport number field is required, it's not possible to leave it empty.
+        verify(mDelegate, times(0)).onDone(any());
+        assertFalse(TextUtils.isEmpty(passportNumberItem.model.get(ERROR_MESSAGE)));
+
+        passportNumberItem.model.set(VALUE, "  BB123456  ");
+        mContainerView.findViewById(R.id.editor_dialog_done_button).performClick();
+        verify(mDelegate).onDone(mEntityInstanceCaptor.capture());
+
+        EntityInstance updatedEntityInstance = mEntityInstanceCaptor.getValue();
+        // The name attribute should not be added to the entity because it wasn't set before.
+        assertFalse(updatedEntityInstance.hasAttribute(PASSPORT_NAME_ATTRIBUTE_TYPE));
+        assertEquals(
+                new StringValue("BB123456"),
+                updatedEntityInstance
+                        .getAttribute(PASSPORT_NUMBER_ATTRIBUTE_TYPE)
+                        .getAttributeValue());
     }
 
     private void showEditorDialog(EntityInstance entityInstance) {

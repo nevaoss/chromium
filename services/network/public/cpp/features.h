@@ -354,6 +354,14 @@ BASE_DECLARE_FEATURE_PARAM(size_t, kSharedDictionaryCacheSize);
 COMPONENT_EXPORT(NETWORK_CPP_FLAGS_AND_SWITCHES)
 BASE_DECLARE_FEATURE_PARAM(size_t, kSharedDictionaryCacheMaxSizeBytes);
 
+// When enabled, the network service will restrict the early matching and
+// loading of compression dictionaries. By default, it will start an async
+// task to find a matching compression dictionary and start to load it even
+// before checking if the resource is in the cache (in which case a dictionary
+// is not needed and the extra work is wasteful).
+COMPONENT_EXPORT(NETWORK_CPP_FLAGS_AND_SWITCHES)
+BASE_DECLARE_FEATURE(kCompressionDictionaryLimitEarlyMatching);
+
 // When enabled, Network Service Task Scheduler is enabled on the Network
 // Service's IO Thread.
 COMPONENT_EXPORT(NETWORK_CPP_FLAGS_AND_SWITCHES)
@@ -410,9 +418,8 @@ COMPONENT_EXPORT(NETWORK_CPP_FLAGS_AND_SWITCHES)
 BASE_DECLARE_FEATURE_PARAM(int, kDurableMessagesGlobalBufferSize);
 
 // If enabled, the forbidden header checks for requests can be bypassed. This is
-// the network service side of the feature. The renderer side feature is
-// `blink::features::kBypassRequestForbiddenHeadersCheck`. Both features must be
-// enabled for the bypass to work end-to-end.
+// the network service side of the feature. The renderer side uses this same
+// feature via the cors::IsBypassRequestForbiddenHeadersCheckEnabled() function.
 //
 // This feature allows specific contexts to bypass the standard forbidden header
 // restrictions (currently only for the 'Origin' header) if they have explicit

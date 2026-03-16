@@ -524,26 +524,12 @@ IN_PROC_BROWSER_TEST_F(
 
 using ServiceWorkerStopTrackingBrowserTest = ServiceWorkerTrackingBrowserTest;
 
-class ServiceWorkerStopTrackingBrowserTestWithOptimizeServiceWorkerStart
-    : public ServiceWorkerStopTrackingBrowserTest,
-      public base::test::WithFeatureOverride {
- public:
-  ServiceWorkerStopTrackingBrowserTestWithOptimizeServiceWorkerStart()
-      : WithFeatureOverride(
-            extensions_features::kOptimizeServiceWorkerStartRequests) {}
-};
-
 // Test that if a browser stop notification is received before the render stop
 // notification (since these things can be triggered independently) the worker's
 // browser and renderer state are both set to not ready.
-IN_PROC_BROWSER_TEST_P(
-    ServiceWorkerStopTrackingBrowserTestWithOptimizeServiceWorkerStart,
+IN_PROC_BROWSER_TEST_F(
+    ServiceWorkerStopTrackingBrowserTest,
     OnStoppedUpdatesBrowserAndRendererState_BeforeRenderStopNotification) {
-  const bool wakeup_optimization_enabled = IsParamFeatureEnabled();
-  const auto kExpectedBrowserState =
-      wakeup_optimization_enabled ? ServiceWorkerState::BrowserState::kActive
-                                  : ServiceWorkerState::BrowserState::kReady;
-
   ASSERT_NO_FATAL_FAILURE(LoadServiceWorkerExtension());
 
   // Get information about worker for extension that will be stopped soon.
@@ -558,7 +544,8 @@ IN_PROC_BROWSER_TEST_P(
   std::optional<base::UnguessableToken> activation_token =
       task_queue->GetCurrentActivationToken(extension()->id());
   ASSERT_TRUE(activation_token);
-  ASSERT_EQ(worker_state->browser_state(), kExpectedBrowserState);
+  ASSERT_EQ(worker_state->browser_state(),
+            ServiceWorkerState::BrowserState::kActive);
 
   // Setup intercept of `ServiceWorkerHost::DidStopServiceWorkerContext()` mojom
   // call. This simulates the worker renderer thread being very slow/never
@@ -607,14 +594,9 @@ IN_PROC_BROWSER_TEST_P(
 // Test that if a browser stop notification is received after the render stop
 // notification (since these things can be triggered independently)
 // the worker's browser and renderer readiness information remains not ready.
-IN_PROC_BROWSER_TEST_P(
-    ServiceWorkerStopTrackingBrowserTestWithOptimizeServiceWorkerStart,
+IN_PROC_BROWSER_TEST_F(
+    ServiceWorkerStopTrackingBrowserTest,
     OnStoppedUpdatesBrowserAndRendererState_AfterRenderStopNotification) {
-  const bool wakeup_optimization_enabled = IsParamFeatureEnabled();
-  const auto kExpectedBrowserState =
-      wakeup_optimization_enabled ? ServiceWorkerState::BrowserState::kActive
-                                  : ServiceWorkerState::BrowserState::kReady;
-
   ASSERT_NO_FATAL_FAILURE(LoadServiceWorkerExtension());
 
   // Get information about worker for extension that will be stopped soon.
@@ -634,7 +616,8 @@ IN_PROC_BROWSER_TEST_P(
   ServiceWorkerTaskQueue* task_queue = ServiceWorkerTaskQueue::Get(profile());
   ASSERT_TRUE(task_queue);
   // Confirm the worker is browser state ready.
-  ASSERT_EQ(worker_state->browser_state(), kExpectedBrowserState);
+  ASSERT_EQ(worker_state->browser_state(),
+            ServiceWorkerState::BrowserState::kActive);
 
   // Remove the worker state as an observer of `ServiceWorkerContext` so that
   // the browser stop notification will not run immediately.
@@ -673,14 +656,8 @@ IN_PROC_BROWSER_TEST_P(
 
 // Test that if an extension and its worker are deactivated, the worker is
 // untracked from both ServiceWorkerTaskQueue and ProcessManager.
-IN_PROC_BROWSER_TEST_P(
-    ServiceWorkerStopTrackingBrowserTestWithOptimizeServiceWorkerStart,
-    DisablingExtensionUntracksWorker) {
-  const bool wakeup_optimization_enabled = IsParamFeatureEnabled();
-  const auto kExpectedBrowserState =
-      wakeup_optimization_enabled ? ServiceWorkerState::BrowserState::kActive
-                                  : ServiceWorkerState::BrowserState::kReady;
-
+IN_PROC_BROWSER_TEST_F(ServiceWorkerStopTrackingBrowserTest,
+                       DisablingExtensionUntracksWorker) {
   ASSERT_NO_FATAL_FAILURE(LoadServiceWorkerExtension());
 
   // Get information about worker for extension that will be deactivated soon.
@@ -696,7 +673,8 @@ IN_PROC_BROWSER_TEST_P(
       deactivated_service_worker_id->version_id));
 
   // Confirm the worker is browser state ready.
-  ASSERT_EQ(worker_state->browser_state(), kExpectedBrowserState);
+  ASSERT_EQ(worker_state->browser_state(),
+            ServiceWorkerState::BrowserState::kActive);
 
   // Deactivate extension.
   extensions::ExtensionRegistrar::Get(profile())->DisableExtension(
@@ -712,10 +690,6 @@ IN_PROC_BROWSER_TEST_P(
           extension()->id());
   EXPECT_EQ(workers_for_extension.size(), 0ul);
 }
-
-// Toggle `extensions_features::OptimizeServiceWorkerStartRequests`.
-INSTANTIATE_FEATURE_OVERRIDE_TEST_SUITE(
-    ServiceWorkerStopTrackingBrowserTestWithOptimizeServiceWorkerStart);
 
 // Test that if a renderer process exit notification is received before
 // a browser stop notification (since these things can be triggered
@@ -882,15 +856,8 @@ IN_PROC_BROWSER_TEST_F(ServiceWorkerRendererTrackingBrowserTest,
 // Tests tracking behavior of the main extension service worker when an
 // additional service worker is registered by the extension for a sub-scope
 // via `navigator.serviceWorker.register()` from an extension page.
-class
-    ServiceWorkerSubScopeWorkerTrackingBrowserTestWithOptimizeServiceWorkerStart
-    : public ServiceWorkerIdTrackingBrowserTest,
-      public base::test::WithFeatureOverride {
- public:
-  ServiceWorkerSubScopeWorkerTrackingBrowserTestWithOptimizeServiceWorkerStart()
-      : WithFeatureOverride(
-            extensions_features::kOptimizeServiceWorkerStartRequests) {}
-
+class ServiceWorkerSubScopeWorkerTrackingBrowserTest
+    : public ServiceWorkerIdTrackingBrowserTest {
  protected:
   std::string GetExtensionPageContent() const override {
     return R"(<script src="/page.js"></script>)";
@@ -936,14 +903,8 @@ class
 // than being declared in the extension's manifest does not influence the
 // tracking of the main extension service worker. Regression test for
 // crbug.com/395536907.
-IN_PROC_BROWSER_TEST_P(
-    ServiceWorkerSubScopeWorkerTrackingBrowserTestWithOptimizeServiceWorkerStart,
-    StoppingSubScopeWorkerDoesNotAffectExtensionWorker) {
-  const bool wakeup_optimization_enabled = IsParamFeatureEnabled();
-  const auto kExpectedBrowserState =
-      wakeup_optimization_enabled ? ServiceWorkerState::BrowserState::kActive
-                                  : ServiceWorkerState::BrowserState::kReady;
-
+IN_PROC_BROWSER_TEST_F(ServiceWorkerSubScopeWorkerTrackingBrowserTest,
+                       StoppingSubScopeWorkerDoesNotAffectExtensionWorker) {
   // Load the extension service worker. This method will wait for its
   // registration to be stored and the service worker to be running.
   ASSERT_NO_FATAL_FAILURE(LoadServiceWorkerExtension());
@@ -975,15 +936,12 @@ IN_PROC_BROWSER_TEST_P(
   // Verify that the main extension service worker is still tracked as running
   // by the task queue.
   ServiceWorkerState* worker_state = GetWorkerState();
-  EXPECT_EQ(worker_state->browser_state(), kExpectedBrowserState);
+  EXPECT_EQ(worker_state->browser_state(),
+            ServiceWorkerState::BrowserState::kActive);
   EXPECT_EQ(worker_state->renderer_state(),
             ServiceWorkerState::RendererState::kActive);
   EXPECT_TRUE(worker_state->worker_id());
 }
-
-// Toggle `extensions_features::OptimizeServiceWorkerStartRequests`.
-INSTANTIATE_FEATURE_OVERRIDE_TEST_SUITE(
-    ServiceWorkerSubScopeWorkerTrackingBrowserTestWithOptimizeServiceWorkerStart);
 
 class ServiceWorkerNotFullyRunBrowserTest : public ExtensionBrowserTest {
  protected:
@@ -1204,6 +1162,85 @@ IN_PROC_BROWSER_TEST_F(ServiceWorkerTrackingBrowserTest,
             ServiceWorkerState::RendererState::kNotActive);
   EXPECT_EQ(worker_state->browser_state(),
             ServiceWorkerState::BrowserState::kNotActive);
+}
+
+// Test that if a renderer start notification is received before the "renderer
+// initialized" notification, it correctly updates the worker's browser and
+// renderer active state to active. If the renderer initialize notification then
+// arrives late (and stale), everything works ok anyway.
+// Regression test for crbug.com/490089576 and crbug.com/490049530.
+IN_PROC_BROWSER_TEST_F(ServiceWorkerTrackingBrowserTest,
+                       StartArrivesBeforeInitialize) {
+  // Prevent both renderer initialize and start notifications from firing.
+  auto sw_host_factory_callback = base::BindRepeating(
+      [](content::RenderProcessHost* render_process_host,
+         mojo::PendingAssociatedReceiver<mojom::ServiceWorkerHost> receiver)
+          -> std::unique_ptr<ServiceWorkerHost> {
+        return std::make_unique<
+            ServiceWorkerHostNoInitializeAndStartNotification>(
+            render_process_host, std::move(receiver));
+      });
+  base::AutoReset<ServiceWorkerHost::FactoryCallback*> sw_host_factory =
+      ServiceWorkerHost::SetFactoryForTesting(&sw_host_factory_callback);
+
+  ServiceWorkerTaskQueue* task_queue = ServiceWorkerTaskQueue::Get(profile());
+  service_worker_test_utils::TestServiceWorkerContextObserver sw_observer(
+      profile());
+
+  // Load the extension.
+  auto test_dir = std::make_unique<TestExtensionDir>();
+  test_dir->WriteManifest(R"({
+      "name": "Test Extension",
+      "manifest_version": 3,
+      "version": "0.1",
+      "background": {
+        "service_worker" : "background.js"
+      }
+  })");
+  test_dir->WriteFile(FILE_PATH_LITERAL("background.js"), "");
+  const Extension* extension = LoadExtension(
+      test_dir->UnpackedPath(),
+      {.wait_for_renderers = false, .wait_for_registration_stored = true});
+  ASSERT_TRUE(extension);
+  extension_ = extension;
+
+  // Wait for the worker to start (via `OnVersionStartedRunning`).
+  int64_t version_id = sw_observer.WaitForWorkerStarted();
+
+  // The worker has started in the browser but renderer IPCs have not arrived.
+  ServiceWorkerState* worker_state = GetWorkerState();
+  ASSERT_TRUE(worker_state);
+  EXPECT_TRUE(worker_state->worker_id());
+  EXPECT_EQ(worker_state->worker_id()->version_id, version_id);
+  EXPECT_EQ(worker_state->browser_state(),
+            ServiceWorkerState::BrowserState::kActive);
+  EXPECT_EQ(worker_state->renderer_state(),
+            ServiceWorkerState::RendererState::kNotActive);
+
+  WorkerId worker_id = *worker_state->worker_id();
+  SequencedContextId context_id{
+      extension->id(), profile()->UniqueId(),
+      *task_queue->GetCurrentActivationToken(extension->id())};
+
+  // Simulate `RendererDidStartServiceWorkerContext` arriving first.
+  worker_state->RendererDidStartServiceWorkerContext(context_id, worker_id);
+
+  // Confirm state is active.
+  EXPECT_EQ(worker_state->renderer_state(),
+            ServiceWorkerState::RendererState::kActive);
+  EXPECT_EQ(worker_state->browser_state(),
+            ServiceWorkerState::BrowserState::kActive);
+
+  // Simulate a delayed `RendererDidInitializeServiceWorkerContext` IPC.
+  // It should be dropped, because the worker is already active.
+  worker_state->RendererDidInitializeServiceWorkerContext(context_id,
+                                                          worker_id);
+
+  // Confirm state remains active.
+  EXPECT_EQ(worker_state->renderer_state(),
+            ServiceWorkerState::RendererState::kActive);
+  EXPECT_EQ(worker_state->browser_state(),
+            ServiceWorkerState::BrowserState::kActive);
 }
 
 // Test that if the content layer restarts a stopping service worker (because it

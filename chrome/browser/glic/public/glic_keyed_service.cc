@@ -236,6 +236,7 @@ GlicKeyedService::GlicKeyedService(
   // TODO(crbug.com/450026474): Consider not constructing this metrics
   // instance for multi-instance
   metrics_->ClearControllers();
+  metrics_->RecordGlicProfilePreferences();
 
 #if !BUILDFLAG(IS_ANDROID)  // Single instance only
   if (UseDefaultWindowController()) {
@@ -263,7 +264,8 @@ GlicKeyedService::GlicKeyedService(
         prefs::kGlicCompletedFre,
         static_cast<int>(prefs::FreStatus::kNotStarted));
     // or if automation is enabled, skip FRE
-  } else if (command_line->HasSwitch(::switches::kGlicAutomation)) {
+  } else if (command_line->HasSwitch(::switches::kGlicAutomation) ||
+             command_line->HasSwitch(::switches::kGlicAlwaysSkipFre)) {
     profile_->GetPrefs()->SetInteger(
         prefs::kGlicCompletedFre,
         static_cast<int>(prefs::FreStatus::kCompleted));
@@ -316,16 +318,15 @@ void GlicKeyedService::Shutdown() {
 void GlicKeyedService::ToggleUI(BrowserWindowInterface* bwi,
                                 bool prevent_close,
                                 mojom::InvocationSource source,
-                                std::optional<std::string> prompt_suggestion,
-                                bool auto_send) {
+                                std::optional<std::string> prompt_suggestion) {
   ToggleUIInternal(bwi, prevent_close, source, std::move(prompt_suggestion),
-                   auto_send, std::nullopt);
+                   false, std::nullopt);
 }
 
 void GlicKeyedService::ToggleUI(BrowserWindowInterface* bwi,
                                 bool prevent_close,
                                 mojom::InvocationSource source) {
-  ToggleUI(bwi, prevent_close, source, std::nullopt, false);
+  ToggleUI(bwi, prevent_close, source, std::nullopt);
 }
 
 #pragma clang diagnostic push
@@ -397,6 +398,19 @@ void GlicKeyedService::InvokeWithAutoSubmit(
 
   static_cast<GlicInstanceCoordinatorImpl&>(window_controller())
       .InvokeWithAutoSubmit(auto_submit_passkey, tab, std::move(options));
+}
+
+void GlicKeyedService::Invoke(tabs::TabInterface* tab,
+                              GlicInvokeOptions options) {
+  CHECK(GlicEnabling::IsEnabledForProfile(profile_));
+
+  GlicProfileManager* glic_profile_manager = GlicProfileManager::GetInstance();
+  if (glic_profile_manager) {
+    glic_profile_manager->SetActiveGlic(this);
+  }
+
+  static_cast<GlicInstanceCoordinatorImpl&>(window_controller())
+      .Invoke(tab, std::move(options));
 }
 
 void GlicKeyedService::OpenFreDialogInNewTab(BrowserWindowInterface* bwi,

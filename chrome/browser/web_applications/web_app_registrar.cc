@@ -13,7 +13,6 @@
 #include <variant>
 #include <vector>
 
-#include "ash/constants/web_app_id_constants.h"
 #include "base/check_deref.h"
 #include "base/check_op.h"
 #include "base/containers/enum_set.h"
@@ -55,7 +54,6 @@
 #include "chrome/browser/web_applications/web_app_translation_manager.h"
 #include "chrome/browser/web_applications/web_app_utils.h"
 #include "chrome/common/chrome_features.h"
-#include "chrome/common/pref_names.h"
 #include "components/webapps/common/web_app_id.h"
 #include "content/public/browser/isolated_web_apps_policy.h"
 #include "content/public/browser/storage_partition_config.h"
@@ -66,6 +64,8 @@
 #include "url/gurl.h"
 
 #if BUILDFLAG(IS_CHROMEOS)
+#include "ash/constants/ash_pref_names.h"
+#include "ash/constants/web_app_id_constants.h"
 #include "chrome/browser/web_applications/chromeos_web_app_experiments.h"
 #endif
 
@@ -1376,13 +1376,8 @@ std::optional<webapps::AppId> WebAppRegistrar::FindAppThatCapturesLinksInScope(
     if (!CanCaptureLinksInScope(app_id)) {
       continue;
     }
-    int score;
-    if (base::FeatureList::IsEnabled(
-            features::kPwaNavigationCapturingWithScopeExtensions)) {
-      score = GetAppExtendedScopeScore(url, app_id);
-    } else {
-      score = GetUrlInAppScopeScore(url, app_id);
-    }
+    int score = GetAppExtendedScopeScore(url, app_id);
+
     // A score of 0 means it doesn't apply at all.
     if (score == 0 || score < top_score) {
       continue;
@@ -1408,20 +1403,14 @@ std::optional<webapps::AppId> WebAppRegistrar::FindAppThatCapturesLinksInScope(
 bool WebAppRegistrar::IsLinkCapturableByApp(const webapps::AppId& app,
                                             const GURL& url) const {
   CHECK(url.is_valid());
-  auto app_score = [&](const webapps::AppId& app_id) {
-    if (base::FeatureList::IsEnabled(
-            features::kPwaNavigationCapturingWithScopeExtensions)) {
-      return GetAppExtendedScopeScore(url, app_id);
-    } else {
-      return GetUrlInAppScopeScore(url, app_id);
-    }
-  };
-
-  int score = app_score(app);
-  return score > 0 &&
-         std::ranges::none_of(GetAppIds(WebAppFilter::InstalledInChrome()),
+  int app_score = GetAppExtendedScopeScore(url, app);
+  if (app_score == 0) {
+    return false;
+  }
+  return std::ranges::none_of(GetAppIds(WebAppFilter::InstalledInChrome()),
                               [&](const webapps::AppId& app_id) {
-                                return app_score(app_id) > score;
+                                return GetAppExtendedScopeScore(url, app_id) >
+                                       app_score;
                               });
 }
 
@@ -1616,7 +1605,7 @@ bool WebAppRegistrar::IsAppPolicyDefinedHandlerForFileExtension(
 #if BUILDFLAG(IS_CHROMEOS)
   const std::string* file_extension_policy_id =
       profile_->GetPrefs()
-          ->GetDict(prefs::kDefaultHandlersForFileExtensions)
+          ->GetDict(ash::prefs::kDefaultHandlersForFileExtensions)
           .FindString(file_extension);
   if (!file_extension_policy_id) {
     return false;
@@ -1641,8 +1630,8 @@ bool WebAppRegistrar::IsAppPolicyDefinedHandlerForFileExtension(
 bool WebAppRegistrar::IsAppSetAsPolicyDefinedFileHandlerForAnyFileExtension(
     const webapps::AppId& app_id) const {
 #if BUILDFLAG(IS_CHROMEOS)
-  const base::DictValue& default_handlers =
-      profile_->GetPrefs()->GetDict(prefs::kDefaultHandlersForFileExtensions);
+  const base::DictValue& default_handlers = profile_->GetPrefs()->GetDict(
+      ash::prefs::kDefaultHandlersForFileExtensions);
 
   const WebApp* web_app = GetAppById(app_id);
   if (!web_app) {

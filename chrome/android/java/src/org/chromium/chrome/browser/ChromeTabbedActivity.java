@@ -228,6 +228,7 @@ import org.chromium.chrome.browser.reengagement.ReengagementNotificationControll
 import org.chromium.chrome.browser.safety_hub.SafetyHubMagicStackBuilder;
 import org.chromium.chrome.browser.search_engines.SearchEngineChoiceNotification;
 import org.chromium.chrome.browser.searchwidget.SearchActivityClientImpl;
+import org.chromium.chrome.browser.selection.ChromeSelectionDropdownMenuDelegate;
 import org.chromium.chrome.browser.settings.SettingsCustomTabLauncherImpl;
 import org.chromium.chrome.browser.settings.SettingsNavigationFactory;
 import org.chromium.chrome.browser.setup_list.SetupListModuleUtils;
@@ -1094,7 +1095,8 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                             mXrSceneCoreSessionManagerSupplier.get(),
                             mBackPressManager,
                             getSnackbarManager(),
-                            () -> ((TabbedRootUiCoordinator) mRootUiCoordinator).toggleGlic());
+                            /* glicClickHandler= */ () ->
+                                    ((TabbedRootUiCoordinator) mRootUiCoordinator).toggleGlic());
             mLayoutStateProviderSupplier.set(mLayoutManager);
         }
     }
@@ -1351,7 +1353,8 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                             archivedTabCountSupplier,
                             mTabModelNotificationDotManager.getNotificationDotObservableSupplier(),
                             mUndoBarPopupController,
-                            contextMenuPopulatorFactory);
+                            contextMenuPopulatorFactory,
+                            new ChromeSelectionDropdownMenuDelegate());
 
             // TODO(crbug.com/40828084): Fix this assert which is tripping on unrelated
             // tests.
@@ -2202,6 +2205,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
         return mInactivityTrackerSupplier.get();
     }
 
+    @SuppressWarnings("UnsafeIntentLaunch")
     @Override
     public void initializeState() {
         // This method goes through 3 steps:

@@ -56,6 +56,10 @@ const char kApplyClientsideModelPredictionsForPasswordTypesName[] =
 const char kApplyClientsideModelPredictionsForPasswordTypesDescription[] =
     "Enable using clientside model predictions to fill password forms.";
 
+const char kAskAboutThisPageName[] = "AskAboutThisPage";
+const char kAskAboutThisPageDescription[] =
+    "Enables the AskAboutThisPage feature.";
+
 const char kAskGeminiChipName[] = "Ask Gemini Chip";
 const char kAskGeminiChipDescription[] = "Enables the Ask Gemini Chip feature.";
 
@@ -72,6 +76,10 @@ const char kAutofillAiCreateEntityDataManagerName[] =
     "Autofill AI Create Entity Data Manager";
 const char kAutofillAiCreateEntityDataManagerDescription[] =
     "Enables Autofill AI Create Entity Data Manager.";
+
+const char kAutofillAiReauthRequiredName[] = "Autofill AI Reauth Required";
+const char kAutofillAiReauthRequiredDescription[] =
+    "Enables Autofill AI Reauth Required.";
 
 const char kAutofillAiWithDataSchemaName[] = "Autofill AI With Data Schema";
 const char kAutofillAiWithDataSchemaDescription[] =
@@ -525,6 +533,12 @@ const char kEnableAutofillAddressSavePromptName[] =
 const char kEnableAutofillAddressSavePromptDescription[] =
     "Enable the Autofill address save prompts.";
 
+const char kEnableClientCertificateProvisioningOnIOSName[] =
+    "Enable client certificate provisioning on iOS";
+const char kEnableClientCertificateProvisioningOnIOSDescription[] =
+    "When enabled, client certificate provisioning from the cloud is allowed "
+    "for enterprise users on iOS.";
+
 const char kEnableCompromisedPasswordsMutingName[] =
     "Enable the muting of compromised passwords in the Password Manager";
 const char kEnableCompromisedPasswordsMutingDescription[] =
@@ -766,6 +780,9 @@ const char kIOSChooseFromDriveDescription[] =
 const char kIOSChooseFromDriveSignedOutName[] = "Choose from Drive Signed Out";
 const char kIOSChooseFromDriveSignedOutDescription[] =
     "Enables the Choose from Drive feature to signed out users.";
+
+const char kIOSCobaltName[] = "IOS Cobalt";
+const char kIOSCobaltDescription[] = "Enables the Cobalt feature on iOS.";
 
 const char kIOSCustomFileUploadMenuName[] = "Custom file upload menu";
 const char kIOSCustomFileUploadMenuDescription[] =
@@ -1685,21 +1702,6 @@ const char kWaitThresholdMillisecondsForCapabilitiesApiDescription[] =
 const char kWalletServiceUseSandboxName[] = "Use Google Payments sandbox";
 const char kWalletServiceUseSandboxDescription[] =
     "Uses the sandbox service for Google Payments API calls.";
-
-const char kWebPageAlternativeTextZoomName[] =
-    "Use different method for zooming web pages";
-const char kWebPageAlternativeTextZoomDescription[] =
-    "When enabled, switches the method used to zoom web pages.";
-
-const char kWebPageDefaultZoomFromDynamicTypeName[] =
-    "Use dynamic type size for default text zoom level";
-const char kWebPageDefaultZoomFromDynamicTypeDescription[] =
-    "When enabled, the default text zoom level for a website comes from the "
-    "current dynamic type setting.";
-
-const char kWebPageTextZoomIPadName[] = "Enable text zoom on iPad";
-const char kWebPageTextZoomIPadDescription[] =
-    "When enabled, text zoom works again on iPad";
 
 const char kWelcomeBackName[] = "Enable Welcome Back screen";
 const char kWelcomeBackDescription[] =

@@ -38,8 +38,6 @@
 
 namespace {
 
-constexpr char kHistogramIsHeaderConsistent[] =
-    "ServiceWorker.SyntheticResponse.IsHeaderConsistent";
 constexpr char kHistogramIsHeaderStored[] =
     "ServiceWorker.SyntheticResponse.IsHeaderStored";
 constexpr char kHistogramStartRequestToReceiveResponse[] =
@@ -246,6 +244,9 @@ void ServiceWorkerSyntheticResponseManager::InitiateRequest(
           kSyntheticNetworkRequest,
       storage_partition, request);
   is_initiated_by_prefetch_ = service_worker_client->is_initiated_by_prefetch();
+  factory_interceptor_count_ =
+      service_worker_client->factory_interceptor_count();
+  is_guest_ = storage_partition->is_guest();
 
   StartRequest(
       GlobalRequestID::MakeBrowserInitiated().request_id,
@@ -413,7 +414,8 @@ void ServiceWorkerSyntheticResponseManager::CloneBufferInBackground(
 }
 
 void ServiceWorkerSyntheticResponseManager::TransferResponseBody(
-    mojo::ScopedDataPipeConsumerHandle body) {
+    mojo::ScopedDataPipeConsumerHandle consumer,
+    mojo::ScopedDataPipeProducerHandle producer) {
   if (IsServiceWorkerSyntheticResponseOffMainThread()) {
     // Offload the buffer cloning to a background thread.
     base::OnceCallback<void()> callback = base::BindPostTaskToCurrentDefault(
@@ -424,21 +426,20 @@ void ServiceWorkerSyntheticResponseManager::TransferResponseBody(
             FROM_HERE,
             base::BindOnce(
                 &ServiceWorkerSyntheticResponseManager::CloneBufferInBackground,
-                std::move(body), write_buffer_manager_->ReleaseProducerHandle(),
-                std::move(callback)));
+                std::move(consumer), std::move(producer), std::move(callback)));
     return;
   }
   if (IsServiceWorkerSyntheticResponseSkipUnnecessaryBuffering()) {
-    data_pipe_connector_.emplace(std::move(body));
+    data_pipe_connector_.emplace(std::move(consumer));
     data_pipe_connector_->Transfer(
-        write_buffer_manager_->ReleaseProducerHandle(),
+        std::move(producer),
         base::BindOnce(&ServiceWorkerSyntheticResponseManager::OnCloneCompleted,
                        weak_factory_.GetWeakPtr()));
     return;
   }
-  simple_buffer_manager_.emplace(std::move(body));
+  simple_buffer_manager_.emplace(std::move(consumer));
   simple_buffer_manager_->Clone(
-      write_buffer_manager_->ReleaseProducerHandle(),
+      std::move(producer),
       base::BindOnce(&ServiceWorkerSyntheticResponseManager::OnCloneCompleted,
                      weak_factory_.GetWeakPtr()));
 }
@@ -454,7 +455,10 @@ void ServiceWorkerSyntheticResponseManager::OnReceiveResponse(
   base::UmaHistogramTimes(kHistogramStartRequestToReceiveResponse,
                           response_received_time_ - request_start_time_);
   base::UmaHistogramBoolean(
-      kHistogramSyntheticResponseIsValidBodyStreamProvided, body.is_valid());
+      base::StrCat({kHistogramSyntheticResponseIsValidBodyStreamProvided,
+                    status_ == SyntheticResponseStatus::kReady ? ".Ready"
+                                                               : ".NotReady"}),
+      body.is_valid());
   switch (status_) {
     case SyntheticResponseStatus::kReady: {
       CHECK(write_buffer_manager_.has_value());
@@ -490,11 +494,10 @@ void ServiceWorkerSyntheticResponseManager::OnReceiveResponse(
         }
         return;
       }
-      bool is_header_consistent = false;
       if (version_->GetResponseHeadForSyntheticResponse()) {
-        is_header_consistent = CheckHeaderConsistency(response_head->headers);
-        if (is_header_consistent) {
-          TransferResponseBody(std::move(body));
+        if (CheckHeaderConsistency(response_head->headers)) {
+          TransferResponseBody(std::move(body),
+                               write_buffer_manager_->ReleaseProducerHandle());
         } else {
           // Clear the stored header when it's inconsistent with the header from
           // the network so that the next navigation won't get the header
@@ -516,8 +519,6 @@ void ServiceWorkerSyntheticResponseManager::OnReceiveResponse(
         RecordReloadReason(
             SyntheticResponseReloadReason::kCachedResponseHeadCleared);
       }
-      base::UmaHistogramBoolean(kHistogramIsHeaderConsistent,
-                                is_header_consistent);
       break;
     }
     case SyntheticResponseStatus::kNotReady:
@@ -537,6 +538,16 @@ void ServiceWorkerSyntheticResponseManager::OnReceiveRedirect(
               perfetto::Flow::FromPointer(this));
   if (did_start_synthetic_response_) {
     if (IsServiceWorkerSyntheticResponseNetworkService()) {
+      CHECK(shared_producer_);
+      SCOPED_CRASH_KEY_BOOL("SWSR", "did_start_synthetic_response",
+                            did_start_synthetic_response_);
+      SCOPED_CRASH_KEY_BOOL("SWSR", "is_initiated_by_prefetch",
+                            is_initiated_by_prefetch_);
+      SCOPED_CRASH_KEY_BOOL("SWSR", "is_shared_producer_pipe_valid",
+                            shared_producer_->pipe.is_valid());
+      SCOPED_CRASH_KEY_BOOL("SWSR", "is_guest", is_guest_);
+      SCOPED_CRASH_KEY_NUMBER("SWSR", "interceptor_count",
+                              factory_interceptor_count_);
       // In the NetworkService mode, the redirect response is managed in the
       // network service. Instead of calling `OnReceiveRedirect()`, the network
       // service sends a fallback trigger (e.g. <meta refresh>) with the

@@ -2679,7 +2679,6 @@ interface ElementInternals
     getter role
     getter shadowRoot
     getter states
-    getter type
     getter validationMessage
     getter validity
     getter willValidate
@@ -2742,7 +2741,6 @@ interface ElementInternals
     setter ariaValueText
     setter ariaVirtualContent
     setter role
-    setter type
 interface EncodedAudioChunk
     attribute @@toStringTag
     getter byteLength
@@ -5573,6 +5571,7 @@ interface InteractionContentfulPaint : PerformanceEntry
     attribute @@toStringTag
     getter element
     getter id
+    getter interactionId
     getter loadTime
     getter paintTime
     getter presentationTime
@@ -6314,9 +6313,7 @@ interface MimeTypeArray
     method namedItem
 interface ModelContext
     attribute @@toStringTag
-    method clearContext
     method constructor
-    method provideContext
     method registerTool
     method unregisterTool
 interface Mojo
@@ -6591,6 +6588,7 @@ interface Navigator
     getter preferences
     getter product
     getter productSub
+    getter rtc
     getter scheduling
     getter serviceWorker
     getter storage
@@ -7399,6 +7397,13 @@ interface ProcessingInstruction : CharacterData
     getter sheet
     getter target
     method constructor
+    method getAttribute
+    method getAttributeNames
+    method hasAttribute
+    method hasAttributes
+    method removeAttribute
+    method setAttribute
+    method toggleAttribute
 interface Profiler : EventTarget
     attribute @@toStringTag
     getter sampleInterval
@@ -7425,6 +7430,12 @@ interface QuotaExceededError : DOMException
     getter quota
     getter requested
     method constructor
+interface RTC : EventTarget
+    attribute @@toStringTag
+    method cancelDiagnosticLogging
+    method constructor
+    method finishDiagnosticLogging
+    method startDiagnosticLogging
 interface RTCCertificate
     attribute @@toStringTag
     getter expires
@@ -9397,6 +9408,7 @@ interface SnapEvent : Event
     method constructor
 interface SoftNavigationEntry : PerformanceEntry
     attribute @@toStringTag
+    getter interactionId
     getter largestInteractionContentfulPaint
     getter navigationType
     getter paintTime

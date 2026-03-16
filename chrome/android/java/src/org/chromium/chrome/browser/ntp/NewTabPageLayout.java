@@ -58,7 +58,6 @@ import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.setup_list.SetupListModuleUtils;
 import org.chromium.chrome.browser.signin.SigninAndHistorySyncActivityLauncherImpl;
 import org.chromium.chrome.browser.suggestions.tile.MostVisitedTilesCoordinator;
-import org.chromium.chrome.browser.suggestions.tile.MostVisitedTilesLayout;
 import org.chromium.chrome.browser.suggestions.tile.TileGroup;
 import org.chromium.chrome.browser.suggestions.tile.TileGroup.Delegate;
 import org.chromium.chrome.browser.tab_ui.InvalidationAwareThumbnailProvider;
@@ -93,9 +92,7 @@ import java.util.function.Supplier;
  * There are no separate phone and tablet UIs; this layout adapts based on the available space.
  */
 @NullMarked
-public class NewTabPageLayout extends LinearLayout
-        implements SearchEngineUtils.SearchBoxHintTextObserver,
-                SearchEngineUtils.SearchEngineIconObserver {
+public class NewTabPageLayout extends LinearLayout {
     private static final String TAG = "NewTabPageLayout";
 
     private int mSearchBoxTwoSideMargin;
@@ -103,8 +100,7 @@ public class NewTabPageLayout extends LinearLayout
     private LogoCoordinator mLogoCoordinator;
     private LogoView mLogoView;
     private SearchBoxCoordinator mSearchBoxCoordinator;
-    private ViewGroup mMvTilesContainerLayout;
-    private MostVisitedTilesCoordinator mMostVisitedTilesCoordinator;
+    private @Nullable MostVisitedTilesCoordinator mMostVisitedTilesCoordinator;
 
     private @Nullable OnSearchBoxScrollListener mSearchBoxScrollListener;
 
@@ -119,10 +115,12 @@ public class NewTabPageLayout extends LinearLayout
     private UiConfig mUiConfig;
     private @Nullable DisplayStyleObserver mDisplayStyleObserver;
     private CallbackController mCallbackController = new CallbackController();
+    private SearchEngineUtils.@Nullable SearchEngineIconObserver mSearchEngineIconObserver;
+    private SearchEngineUtils.@Nullable SearchBoxHintTextObserver mSearchBoxHintTextObserver;
 
     /**
-     * Whether the tiles shown in the layout have finished loading.
-     * With {@link #mHasShownView}, it's one of the 2 flags used to track initialisation progress.
+     * Whether the tiles shown in the layout have finished loading. With {@link #mHasShownView},
+     * it's one of the 2 flags used to track initialisation progress.
      */
     private boolean mTilesLoaded;
 
@@ -155,7 +153,6 @@ public class NewTabPageLayout extends LinearLayout
 
     private FeedSurfaceScrollDelegate mScrollDelegate;
 
-    private boolean mMvtContentFits;
     private boolean mIsTablet;
     private @Nullable Supplier<Integer> mTabStripHeightSupplier;
     // This variable is only valid when the NTP surface is in tablet mode.
@@ -305,7 +302,12 @@ public class NewTabPageLayout extends LinearLayout
         setSearchProviderInfo(searchProviderHasLogo, searchProviderIsGoogle);
         initializeMostVisitedTilesCoordinator(
                 mProfile, lifecycleDispatcher, tileGroupDelegate, touchEnabledDelegate);
+
         initializeDseIconView();
+        mSearchEngineIconObserver = this::onSearchEngineIconChanged;
+        mSearchEngineUtils.addIconObserver(mSearchEngineIconObserver);
+        setSearchBoxTextAppearance();
+
         initializeSearchBoxTextView();
         initializeVoiceSearchButton();
         initializeLensButton();
@@ -330,7 +332,8 @@ public class NewTabPageLayout extends LinearLayout
         }
 
         // Initialize Searchbox observers
-        mSearchEngineUtils.addSearchBoxHintTextObserver(this);
+        mSearchBoxHintTextObserver = this::onSearchBoxHintTextChanged;
+        mSearchEngineUtils.addSearchBoxHintTextObserver(mSearchBoxHintTextObserver);
 
         manager.addDestructionObserver(NewTabPageLayout.this::onDestroy);
         mInitialized = true;
@@ -424,12 +427,10 @@ public class NewTabPageLayout extends LinearLayout
                                                 R.dimen.omnibox_search_engine_logo_composed_size)
                                 / 2));
         mDseIconView.setClipToOutline(true);
-        mSearchEngineUtils.addIconObserver(this);
         ImageViewCompat.setImageTintList(mDseIconView, null);
         setDseIconViewVisibility();
     }
 
-    @Override
     public void onSearchEngineIconChanged(StatusProperties.@Nullable StatusIconResource newIcon) {
         if (mDseIconView == null) return;
         if (newIcon == null) {
@@ -448,7 +449,6 @@ public class NewTabPageLayout extends LinearLayout
         mDseIconView.setImageDrawable(newIcon.getDrawable(mContext, mContext.getResources()));
     }
 
-    @Override
     public void onSearchBoxHintTextChanged() {
         mSearchBoxCoordinator.setSearchBoxHintText(
                 mSearchEngineUtils.getOmniboxHintText(AutocompleteRequestType.SEARCH));
@@ -460,10 +460,13 @@ public class NewTabPageLayout extends LinearLayout
         if (mDseIconView.getVisibility() == VISIBLE) return;
 
         mDseIconView.setVisibility(VISIBLE);
+        mSearchBoxCoordinator.setStartPadding(mFakeSearchBoxStartPaddingWithDseLogo);
+    }
+
+    private void setSearchBoxTextAppearance() {
         boolean shouldApplyWhiteBackground =
                 NtpCustomizationUtils.shouldApplyWhiteBackgroundOnSearchBox();
 
-        mSearchBoxCoordinator.setStartPadding(mFakeSearchBoxStartPaddingWithDseLogo);
         if (shouldApplyWhiteBackground) {
             mSearchBoxCoordinator.setSearchBoxTextAppearance(
                     R.style.TextAppearance_FakeSearchBoxTextMediumDark);
@@ -652,13 +655,14 @@ public class NewTabPageLayout extends LinearLayout
             ActivityLifecycleDispatcher activityLifecycleDispatcher,
             TileGroup.Delegate tileGroupDelegate,
             TouchEnabledDelegate touchEnabledDelegate) {
-        assert mMvTilesContainerLayout != null;
+        View mvTilesContainerLayout = findViewById(R.id.mv_tiles_container);
+        assert mvTilesContainerLayout != null;
 
         mMostVisitedTilesCoordinator =
                 new MostVisitedTilesCoordinator(
                         mActivity,
                         activityLifecycleDispatcher,
-                        mMvTilesContainerLayout,
+                        mvTilesContainerLayout,
                         () -> mSnapshotTileGridChanged = true,
                         () -> {
                             if (mUrlFocusChangePercent == 1f) mTileCountChanged = true;
@@ -719,9 +723,9 @@ public class NewTabPageLayout extends LinearLayout
     }
 
     private void initializeSiteSectionView() {
-        mMvTilesContainerLayout =
+        var mvTilesContainerLayout =
                 (ViewGroup) ((ViewStub) findViewById(R.id.mv_tiles_layout_stub)).inflate();
-        mMvTilesContainerLayout.setVisibility(View.VISIBLE);
+        mvTilesContainerLayout.setVisibility(View.VISIBLE);
         // The page contents are initially hidden; otherwise they'll be drawn centered on the
         // page before the tiles are available and then jump upwards to make space once the
         // tiles are available.
@@ -737,21 +741,14 @@ public class NewTabPageLayout extends LinearLayout
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        if (mIsTablet) {
-            calculateTabletMvtWidth(MeasureSpec.getSize(widthMeasureSpec));
+        int width = MeasureSpec.getSize(widthMeasureSpec);
+        if (mIsTablet && mMostVisitedTilesCoordinator != null) {
+            mMostVisitedTilesCoordinator.calculateTabletMvtWidth(width);
         }
 
+        unifyElementWidths(width);
+
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-        unifyElementWidths();
-    }
-
-    /** Updates the width of the MV tiles container when used in NTP on the tablet. */
-    private void calculateTabletMvtWidth(int totalWidth) {
-        if (mMvTilesContainerLayout.getVisibility() == GONE) return;
-
-        MostVisitedTilesLayout mvTilesLayout = findViewById(R.id.mv_tiles_layout);
-        mMvtContentFits = mvTilesLayout.contentFitsOnTablet(totalWidth);
-        updateMvtOnTablet();
     }
 
     public void onSwitchToForeground() {
@@ -817,6 +814,7 @@ public class NewTabPageLayout extends LinearLayout
         // visibility of Logo is handled by LogoCoordinator.
         if (mDseIconView != null) {
             setDseIconViewVisibility();
+            setSearchBoxTextAppearance();
         }
 
         // Skips if the flag hasn't been initialized since the initialization of the following
@@ -851,8 +849,9 @@ public class NewTabPageLayout extends LinearLayout
 
     /** Updates the margins for the most visited tiles layout based on what is shown above it. */
     private void updateTilesLayoutMargins() {
-        NewTabPageUtils.updateTilesLayoutTopMargin(
-                mMvTilesContainerLayout,
+        if (mMostVisitedTilesCoordinator == null) return;
+
+        mMostVisitedTilesCoordinator.updateTilesLayoutMargins(
                 shouldShowLogo(),
                 mIsWhiteBackgroundOnSearchBoxApplied == null
                         ? false
@@ -1146,8 +1145,6 @@ public class NewTabPageLayout extends LinearLayout
 
     @SuppressWarnings("NullAway")
     private void onDestroy() {
-        SearchEngineUtils.getForProfile(mProfile).removeSearchBoxHintTextObserver(this);
-
         if (mCallbackController != null) {
             mCallbackController.destroy();
             mCallbackController = null;
@@ -1172,8 +1169,14 @@ public class NewTabPageLayout extends LinearLayout
         }
 
         if (mSearchEngineUtils != null) {
-            mSearchEngineUtils.removeSearchBoxHintTextObserver(this);
-            mSearchEngineUtils.removeIconObserver(this);
+            if (mSearchBoxHintTextObserver != null) {
+                mSearchEngineUtils.removeSearchBoxHintTextObserver(mSearchBoxHintTextObserver);
+                mSearchBoxHintTextObserver = null;
+            }
+            if (mSearchEngineIconObserver != null) {
+                mSearchEngineUtils.removeIconObserver(mSearchEngineIconObserver);
+                mSearchEngineIconObserver = null;
+            }
             mSearchEngineUtils = null;
         }
 
@@ -1197,32 +1200,20 @@ public class NewTabPageLayout extends LinearLayout
         mComposeplateUrlSupplier = null;
     }
 
-    MostVisitedTilesCoordinator getMostVisitedTilesCoordinatorForTesting() {
-        return mMostVisitedTilesCoordinator;
-    }
-
     /** Makes the Search Box and Logo as wide as Most Visited. */
-    private void unifyElementWidths() {
-        View searchBoxView = getSearchBoxView();
-        final int width = getMeasuredWidth();
+    private void unifyElementWidths(int width) {
         int searchBoxWidth = width - mSearchBoxTwoSideMargin;
-        measureExactly(searchBoxView, searchBoxWidth, searchBoxView.getMeasuredHeight());
+        if (mSearchBoxCoordinator != null) {
+            mSearchBoxCoordinator.setLayoutWidth(searchBoxWidth);
+        }
 
-        if (mLogoCoordinator != null) mLogoCoordinator.measureExactlyLogoView(width);
+        if (mLogoCoordinator != null) {
+            mLogoCoordinator.setLayoutWidth(width);
+        }
 
         if (mComposeplateCoordinator != null) {
-            mComposeplateCoordinator.measureExactlyComposeplateView(searchBoxWidth);
+            mComposeplateCoordinator.setLayoutWidth(searchBoxWidth);
         }
-    }
-
-    /**
-     * Convenience method to call measure() on the given View with MeasureSpecs converted from the
-     * given dimensions (in pixels) with MeasureSpec.EXACTLY.
-     */
-    private static void measureExactly(View view, int widthPx, int heightPx) {
-        view.measure(
-                MeasureSpec.makeMeasureSpec(widthPx, MeasureSpec.EXACTLY),
-                MeasureSpec.makeMeasureSpec(heightPx, MeasureSpec.EXACTLY));
     }
 
     LogoCoordinator getLogoCoordinatorForTesting() {
@@ -1233,7 +1224,9 @@ public class NewTabPageLayout extends LinearLayout
         if (!mIsTablet) return;
 
         updateDoodleOnTablet();
-        updateMvtOnTablet();
+        if (mMostVisitedTilesCoordinator != null) {
+            mMostVisitedTilesCoordinator.updateMvtOnTablet();
+        }
         updateSearchBoxTwoSideMargin();
     }
 
@@ -1260,27 +1253,6 @@ public class NewTabPageLayout extends LinearLayout
                 LogoUtils.setLogoViewLayoutParamsForDoodle(mLogoView, getResources(), doodleSize);
             }
         }
-    }
-
-    /**
-     * Updates whether the MV tiles layout stays in the center of the container when used in NTP on
-     * the tablet by changing the width of its container. Also updates the lateral margins.
-     */
-    private void updateMvtOnTablet() {
-        MarginLayoutParams marginLayoutParams =
-                (MarginLayoutParams) mMvTilesContainerLayout.getLayoutParams();
-        marginLayoutParams.width =
-                mMvtContentFits
-                        ? ViewGroup.LayoutParams.WRAP_CONTENT
-                        : ViewGroup.LayoutParams.MATCH_PARENT;
-
-        int lateralPaddingId =
-                NtpCustomizationUtils.isInNarrowWindowOnTablet(mIsTablet, mUiConfig)
-                        ? R.dimen.ntp_search_box_lateral_margin_narrow_window_tablet
-                        : R.dimen.mvt_container_lateral_margin;
-        int lateralPaddingsForNtp = getResources().getDimensionPixelSize(lateralPaddingId);
-        marginLayoutParams.leftMargin = lateralPaddingsForNtp;
-        marginLayoutParams.rightMargin = lateralPaddingsForNtp;
     }
 
     private void updateSearchBoxTwoSideMargin() {

@@ -109,6 +109,7 @@ enum class RequestTypeForUma {
   PERMISSION_LOCAL_NETWORK_ACCESS = 42,
   PERMISSION_LOCAL_NETWORK = 43,
   PERMISSION_LOOPBACK_NETWORK = 44,
+  PERMISSION_SENSORS = 45,
   // NUM must be the last value in the enum.
   NUM,
 };
@@ -764,7 +765,7 @@ class PermissionUmaUtil {
                                                      base::TimeDelta delta);
 
   static void RecordDSEEffectiveSetting(ContentSettingsType permission_type,
-                                        ContentSetting setting);
+                                        PermissionSetting setting);
 
   static void RecordPermissionPredictionConcurrentRequests(
       RequestType request_type);
