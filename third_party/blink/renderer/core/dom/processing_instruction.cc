@@ -147,12 +147,17 @@ void ProcessingInstruction::ProcessAttributesIfNeeded() {
     // document
     // ### make sure this gets called when adding from javascript
     bool attrs_ok;
+    // TODO(neva_rust): Remove this workaround once Neva supports Rust build.
+#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
     HashMap<String, String> attrs;
     if (RuntimeEnabledFeatures::XMLParsingRustEnabled()) {
       attrs = ParseAttributesRust(data_, attrs_ok);
     } else {
       attrs = ParseAttributes(data_, attrs_ok);
     }
+#else   // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
+    const HashMap<String, String> attrs = ParseAttributes(data_, attrs_ok);
+#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
     if (!attrs_ok) {
       return;
     }
@@ -318,32 +323,7 @@ bool ProcessingInstruction::IsXMLStylesheet() const {
 bool ProcessingInstruction::CheckStyleSheet(String& href, String& charset) {
   if (!IsXMLStylesheet()) {
     return false;
-<<<<<<< HEAD
-
-  // see http://www.w3.org/TR/xml-stylesheet/
-  // ### support stylesheet included in a fragment of this (or another) document
-  // ### make sure this gets called when adding from javascript
-  bool attrs_ok;
-  // TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-  HashMap<String, String> attrs;
-  if (RuntimeEnabledFeatures::XMLParsingRustEnabled()) {
-    attrs = ParseAttributesRust(data_, attrs_ok);
-  } else {
-    attrs = ParseAttributes(data_, attrs_ok);
   }
-#else   // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-  const HashMap<String, String> attrs = ParseAttributes(data_, attrs_ok);
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-  if (!attrs_ok)
-    return false;
-  HashMap<String, String>::const_iterator i = attrs.find("type");
-  String type;
-  if (i != attrs.end())
-    type = i->value;
-=======
-  }
->>>>>>> 147.0.7727.0~1
 
   ProcessAttributesIfNeeded();
 
