@@ -35,7 +35,15 @@ struct BLINK_COMMON_EXPORT RendererPreferences {
   bool should_antialias_text{true};
   float text_contrast = SK_GAMMA_CONTRAST;
   float text_gamma = SK_GAMMA_EXPONENT;
+  // TODO(neva_rust): For some unknown reason OCR cannot recognize text in
+  // autotests when Neva is built with Rust enabled. As a temporary workaround,
+  // use HINTING_SLIGHT instead of HINTING_MEDIUM for fonts rendering until this
+  // issue investigated.
+#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
+  gfx::FontRenderParams::Hinting hinting{gfx::FontRenderParams::HINTING_SLIGHT};
+#else  // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   gfx::FontRenderParams::Hinting hinting{gfx::FontRenderParams::HINTING_MEDIUM};
+#endif // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   bool use_autohinter{false};
   bool use_bitmaps{false};
   gfx::FontRenderParams::SubpixelRendering subpixel_rendering{
