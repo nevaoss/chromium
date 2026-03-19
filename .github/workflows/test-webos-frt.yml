@@ -9,8 +9,9 @@ on:
   workflow_dispatch:
   
 jobs:
-  build:
+  test-webos-frt:
     name: test-webos-frt
+    if: ${{ ! startsWith(github.ref_name, 'neva-main-rolling') }}
     runs-on: self-hosted
     env:
       CI_TOKEN: ${{ secrets.CI_TOKEN }}
@@ -23,3 +24,19 @@ jobs:
       - name: Run FRT tests for webOS/OSE target
         run: |
           ./test-webos-frt.py
+
+  rolling-test-webos-frt:
+    name: rolling-test-webos-frt
+    if: ${{ startsWith(github.ref_name, 'neva-main-rolling') }}
+    runs-on: self-hosted
+    env:
+      CI_TOKEN: ${{ secrets.CI_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          repository: nevaoss/ci
+          ref: main
+      - name: Run FRT tests for webOS/OSE target
+        run: |
+          ./rolling/test-webos-frt.py
