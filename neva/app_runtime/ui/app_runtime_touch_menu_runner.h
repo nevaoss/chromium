@@ -31,13 +31,14 @@ class AppRuntimeTouchSelectionMenuRunner : public ui::TouchSelectionMenuRunner {
 
   ~AppRuntimeTouchSelectionMenuRunner() override;
 
-  bool IsMenuAvailable(
-      const ui::TouchSelectionMenuClient* client) const override;
+  bool IsMenuAvailable(const ui::TouchSelectionMenuClient* client,
+                       bool can_paste) const override;
 
   void OpenMenu(base::WeakPtr<ui::TouchSelectionMenuClient> client,
                 const gfx::Rect& anchor_rect,
                 const gfx::Size& handle_image_size,
-                aura::Window* context) override;
+                aura::Window* context,
+                bool can_paste) override;
 
   void CloseMenu() override;
 
