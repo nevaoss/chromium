@@ -29,6 +29,7 @@ class NevaExtensionHostDelegate : public extensions::ExtensionHostDelegate {
   void OnExtensionHostCreated(content::WebContents* web_contents) override;
 
   void CreateTab(std::unique_ptr<content::WebContents> web_contents,
+                 const GURL& target_url,
                  const std::string& extension_id,
                  WindowOpenDisposition disposition,
                  const blink::mojom::WindowFeatures& window_features,
