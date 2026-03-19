@@ -9,8 +9,9 @@ on:
   workflow_dispatch:
   
 jobs:
-  build:
+  test-pc-bvt:
     name: test-pc-bvt
+    if: ${{ ! startsWith(github.ref_name, 'neva-main-rolling') }}
     runs-on: self-hosted
     env:
       CI_TOKEN: ${{ secrets.CI_TOKEN }}
@@ -23,3 +24,19 @@ jobs:
       - name: Run BVT tests for PC target
         run: |
           ./test-pc-bvt.py
+
+  rolling-test-pc-bvt:
+    name: rolling-test-pc-bvt
+    if: ${{ startsWith(github.ref_name, 'neva-main-rolling') }}
+    runs-on: self-hosted
+    env:
+      CI_TOKEN: ${{ secrets.CI_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          repository: nevaoss/ci
+          ref: main
+      - name: Run BVT tests for PC target
+        run: |
+          ./rolling/test-pc-bvt.py
