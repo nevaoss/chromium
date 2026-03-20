@@ -388,18 +388,11 @@ source_set("headers") {
   if (is_mac) {
     sources += [ "sandbox_support/sandbox_support_mac.h" ]
   }
-<<<<<<< HEAD
 
   # Neva features in blink
   if (use_neva_appruntime) {
     sources += [ "neva/neva_blink_features.h"]
   }
-
-  # TODO(crbug.com/40031409): Fix code that adds exit-time destructors and
-  # enable the diagnostic by removing this line.
-  configs += [ "//build/config/compiler:no_exit_time_destructors" ]
-=======
->>>>>>> 148.0.7733.0~1
 }
 
 if (is_android || is_win) {
