@@ -358,17 +358,10 @@ source_set("common") {
       is_webos) {
     defines = [ "ENABLE_PROTECTED_MEDIA_IDENTIFIER_PERMISSION" ]
   }
-<<<<<<< HEAD
 
   if (use_neva_appruntime) {
     sources += [ "neva/neva_blink_features.cc" ]
   }
-
-  # TODO(crbug.com/40031409): Fix code that adds exit-time destructors and
-  # enable the diagnostic by removing this line.
-  configs += [ "//build/config/compiler:no_exit_time_destructors" ]
-=======
->>>>>>> 148.0.7733.0~1
 }
 
 test("blink_common_unittests") {

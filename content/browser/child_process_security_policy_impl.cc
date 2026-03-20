@@ -1324,19 +1324,9 @@ void ChildProcessSecurityPolicyImpl::ClearRegisteredSchemeForTesting(
       rust::child_process_security_policy::clear_web_safe_scheme_for_testing(
           scheme),                                   // IN-TEST
       ClearRegisteredSchemeForTesting_Cpp(scheme));  // IN-TEST
-<<<<<<< HEAD
-
-  // TODO(crbug.com/482216433): Remove when pseudo_schemes_ is handled in Rust.
-  // For now, this C++ set still gets populated in RustOnly mode.
-  if (GetRustPolicy() == RustPolicy::kRustOnly) {
-    base::AutoLock lock(schemes_lock_);
-    pseudo_schemes_.erase(scheme);
-  }
 #else  // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   ClearRegisteredSchemeForTesting_Cpp(scheme);
 #endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-=======
->>>>>>> 148.0.7733.0~1
 }
 
 void ChildProcessSecurityPolicyImpl::ClearRegisteredSchemeForTesting_Cpp(
