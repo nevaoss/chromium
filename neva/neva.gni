@@ -123,5 +123,5 @@ declare_args() {
   # enabled by default and can`t be disabled at all. disable_rust_for_neva used
   # only as a temporary workaround until Neva doesn`t support Rust. After Neva
   # fully support Rust, this should be removed out to facilitate the upgrade.
-  disable_rust_for_neva = true && use_neva_appruntime
+  disable_rust_for_neva = false
 }
