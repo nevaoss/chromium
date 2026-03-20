@@ -51,8 +51,8 @@ Reviewed-on: http://gpro.lge.com/c/webosose/chromium-v8/+/284058
  include/v8-isolate.h         | 36 +++++++++++++++++
  src/api/api.cc               | 22 +++++++++++
  src/flags/flag-definitions.h | 14 +++++++
- src/heap/heap-controller.cc  | 30 ++++++++++++++
- src/heap/heap-controller.h   | 55 ++++++++++++++++++++++++++
+ src/heap/heap-controller.cc  | 34 ++++++++++++++
+ src/heap/heap-controller.h   | 58 ++++++++++++++++++++++++++
  src/heap/heap.cc             | 77 ++++++++++++++++++++++++++++++++++++
  src/heap/heap.h              |  7 ++++
  7 files changed, 241 insertions(+)
@@ -177,13 +177,13 @@ index aab9435dbb5..38644f8d9dc 100644
              "use high priority threads for concurrent Marking")
  
 diff --git a/src/heap/heap-controller.cc b/src/heap/heap-controller.cc
-index 0fae55b4694..62caee432fe 100644
+index 6dab6c9dbae..dde6e7a4752 100644
 --- a/src/heap/heap-controller.cc
 +++ b/src/heap/heap-controller.cc
-@@ -144,10 +144,23 @@ double MemoryController<Trait>::DynamicGrowingFactor(
+@@ -141,21 +141,43 @@ double MemoryController<Trait>::DynamicGrowingFactor(
+ }
  
- template <typename Trait>
- size_t MemoryController<Trait>::MinimumAllocationLimitGrowingStep(
+ size_t V8HeapTrait::MinimumAllocationLimitGrowingStep(
 +#if defined(USE_NEVA_APPRUNTIME)
 +    Heap* heap, Heap::HeapGrowingMode growing_mode) {
 +#else
@@ -204,69 +204,84 @@ index 0fae55b4694..62caee432fe 100644
    return limit * (growing_mode == Heap::HeapGrowingMode::kConservative
                        ? kLowMemoryAllocationLimitGrowingStep
                        : kRegularAllocationLimitGrowingStep);
-@@ -160,7 +173,11 @@ size_t MemoryController<Trait>::BoundAllocationLimit(
-     Heap::HeapGrowingMode growing_mode) {
+ }
+ 
++#if defined(USE_NEVA_APPRUNTIME)
++size_t V8HeapTrait::BoundAllocationLimit(Isolate* isolate, uint64_t current_size, uint64_t limit,
++#else
+ size_t V8HeapTrait::BoundAllocationLimit(uint64_t current_size, uint64_t limit,
++#endif // defined(USE_NEVA_APPRUNTIME)
+                                          size_t min_size, size_t max_size,
+                                          Heap::HeapGrowingMode growing_mode) {
    CHECK_LT(0, current_size);
-   limit = std::max(limit, static_cast<uint64_t>(current_size) +
+   limit = std::max(
 +#if defined(USE_NEVA_APPRUNTIME)
-+                              MinimumAllocationLimitGrowingStep(isolate->heap(), growing_mode)) +
++      limit, current_size + MinimumAllocationLimitGrowingStep(isolate->heap(),
++                                                              growing_mode));
 +#else
-                               MinimumAllocationLimitGrowingStep(growing_mode)) +
+       limit, current_size + MinimumAllocationLimitGrowingStep(growing_mode));
 +#endif // defined(USE_NEVA_APPRUNTIME)
-           new_space_capacity;
-   const uint64_t halfway_to_the_max =
-       (static_cast<uint64_t>(current_size) + max_size) / 2;
-@@ -322,12 +339,20 @@ Heap::LimitsComputationResult HeapLimits::UpdateAllocationLimits(
+   const uint64_t halfway_to_the_max = (current_size + max_size) / 2;
+   return base::saturated_cast<size_t>(
+       std::clamp<uint64_t>(limit, min_size, halfway_to_the_max));
+@@ -245,7 +267,11 @@ Heap::LimitsComputationResult HeapLimits::UpdateAllocationLimits(
+   const size_t computed_old_generation_allocation_limit =
+       old_gen_consumed_bytes_at_last_gc * v8_growing_factor;
+   const size_t preliminary_old_generation_allocation_limit =
++#if defined(USE_NEVA_APPRUNTIME)
++      V8HeapTrait::BoundAllocationLimit(isolate(),
++#else
+       V8HeapTrait::BoundAllocationLimit(
++#endif // defined(USE_NEVA_APPRUNTIME)
+           old_gen_consumed_bytes_at_last_gc,
+           computed_old_generation_allocation_limit + new_space_capacity,
+           min_old_generation_size_, max_old_generation_size(), mode);
+@@ -318,7 +344,11 @@ Heap::LimitsComputationResult HeapLimits::UpdateAllocationLimits(
+         dict.Add("external_memory_low_since_last_gc",
                   external_memory_low_since_last_gc());
-         dict.Add(
-             "v8_min_allocation_limit_growing_step",
+         dict.Add("v8_min_allocation_limit_growing_step",
 +#if defined(USE_NEVA_APPRUNTIME)
-+            MemoryController<V8HeapTrait>::MinimumAllocationLimitGrowingStep(heap_,
++                 V8HeapTrait::MinimumAllocationLimitGrowingStep(heap_, mode));
 +#else // defined(USE_NEVA_APPRUNTIME)
-             MemoryController<V8HeapTrait>::MinimumAllocationLimitGrowingStep(
+                  V8HeapTrait::MinimumAllocationLimitGrowingStep(mode));
 +#endif // !defined(USE_NEVA_APPRUNTIME)
-                 mode));
-         dict.Add(
-             "global_min_allocation_limit_growing_step",
-             MemoryController<
-+#if defined(USE_NEVA_APPRUNTIME)
-+                GlobalMemoryTrait>::MinimumAllocationLimitGrowingStep(heap_, mode));
-+#else // defined(USE_NEVA_APPRUNTIME)
-                 GlobalMemoryTrait>::MinimumAllocationLimitGrowingStep(mode));
-+#endif // !defined(USE_NEVA_APPRUNTIME)
+         dict.Add("global_min_allocation_limit_growing_step",
+                  GlobalMemoryTrait::kMinimumAllocationLimitGrowingStep);
          dict.Add("max_old_generation_size", max_old_generation_size());
-         dict.Add("max_global_memory_size", max_global_memory_size());
-         dict.Add("boundary_min_old_gen_allocation_limit",
-@@ -357,7 +382,12 @@ void HeapLimits::ShrinkAllocationLimitIfNotConfigured(
-     return;
+@@ -351,7 +381,11 @@ void HeapLimits::ShrinkAllocationLimitIfNotConfigured(
    }
-   const size_t minimum_growing_step =
-+#if defined(USE_NEVA_APPRUNTIME)
-+      MemoryController<V8HeapTrait>::MinimumAllocationLimitGrowingStep(
-+        heap_, mode);
-+#else
-       MemoryController<V8HeapTrait>::MinimumAllocationLimitGrowingStep(mode);
-+#endif // defined(USE_NEVA_APPRUNTIME)
    size_t new_old_generation_allocation_limit =
-       std::max(old_generation_consumed + minimum_growing_step,
+       std::max(old_generation_consumed +
++#if defined(USE_NEVA_APPRUNTIME)
++                   V8HeapTrait::MinimumAllocationLimitGrowingStep(heap_, mode),
++#else // defined(USE_NEVA_APPRUNTIME)
+                    V8HeapTrait::MinimumAllocationLimitGrowingStep(mode),
++#endif // !defined(USE_NEVA_APPRUNTIME)
                 static_cast<size_t>(
+                    static_cast<double>(old_generation_allocation_limit()) *
+                    (tracer()->AverageSurvivalRatio() / 100)));
 diff --git a/src/heap/heap-controller.h b/src/heap/heap-controller.h
-index 40f020f0564..8e6e07059d6 100644
+index 1f023964d99..5d173163331 100644
 --- a/src/heap/heap-controller.h
 +++ b/src/heap/heap-controller.h
-@@ -36,7 +36,11 @@ class V8_EXPORT_PRIVATE MemoryController : public AllStatic {
-  public:
-   // Computes the growing step when the limit increases.
+@@ -26,9 +26,16 @@ struct BaseControllerTrait {
+ struct V8_EXPORT_PRIVATE V8HeapTrait : public BaseControllerTrait {
+   static constexpr char kName[] = "HeapController";
    static size_t MinimumAllocationLimitGrowingStep(
 +#if defined(USE_NEVA_APPRUNTIME)
 +      Heap* heap, Heap::HeapGrowingMode growing_mode);
++
++  static size_t BoundAllocationLimit(Isolate* isolate, uint64_t current_size,
++                                     uint64_t limit,
 +#else
        Heap::HeapGrowingMode growing_mode);
-+#endif // defined(USE_NEVA_APPRUNTIME)
  
-   static double GrowingFactor(Isolate* isolate, uint64_t physical_memory,
-                               size_t max_heap_size,
-@@ -198,6 +202,48 @@ class V8_EXPORT_PRIVATE HeapLimits {
+   static size_t BoundAllocationLimit(uint64_t current_size, uint64_t limit,
++#endif // defined(USE_NEVA_APPRUNTIME)
+                                      size_t min_size, size_t max_size,
+                                      Heap::HeapGrowingMode growing_mode);
+ };
+@@ -212,6 +219,48 @@ class V8_EXPORT_PRIVATE HeapLimits {
      using_initial_limit_.store(value, std::memory_order_relaxed);
    }
  
@@ -315,7 +330,7 @@ index 40f020f0564..8e6e07059d6 100644
   private:
    static constexpr size_t kExternalAllocationLimitForInterrupt = 128 * KB;
  
-@@ -256,6 +302,15 @@ class V8_EXPORT_PRIVATE HeapLimits {
+@@ -270,6 +319,15 @@ class V8_EXPORT_PRIVATE HeapLimits {
    // generation and on every allocation in large object space.
    std::atomic<size_t> old_generation_allocation_limit_{0};
    std::atomic<size_t> global_allocation_limit_{0};
