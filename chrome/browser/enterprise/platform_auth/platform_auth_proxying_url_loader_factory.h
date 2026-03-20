@@ -9,11 +9,13 @@
 #include "base/containers/flat_set.h"
 #include "base/functional/callback_forward.h"
 #include "chrome/browser/chrome_content_browser_client.h"
+#include "content/public/browser/browser_context.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "mojo/public/cpp/bindings/receiver_set.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "services/network/public/cpp/resource_request.h"
 #include "services/network/public/cpp/url_loader_factory_builder.h"
+#include "services/network/public/mojom/network_service_test.mojom.h"
 #include "services/network/public/mojom/url_loader.mojom.h"
 #include "services/network/public/mojom/url_loader_factory.mojom.h"
 #include "url/origin.h"
@@ -35,9 +37,18 @@ class ProxyingURLLoaderFactory : public network::mojom::URLLoaderFactory {
   ProxyingURLLoaderFactory(const ProxyingURLLoaderFactory&) = delete;
   ProxyingURLLoaderFactory& operator=(const ProxyingURLLoaderFactory&) = delete;
 
+  // Injects this factory into the factory_builder if all apply:
+  //    - PlatformAuthProviderManager is enabled
+  //    - `type` is kDocumentSubresource
+  //    - `request_initiator.scheme()` is HTTPS
+  //    - prefs::kExtensibleEnterpriseSSOEnabledIdps contains
+  //      kOktaIdentityProvider
+  //    - prefs::kExtensibleEnterpriseSSOConfiguredHosts contains
+  //      `request_initiator.host()`
   static void MaybeProxyRequest(
       const url::Origin& request_initiator,
       ChromeContentBrowserClient::URLLoaderFactoryType type,
+      content::BrowserContext* context,
       network::URLLoaderFactoryBuilder& factory_builder);
 
   // While alive all requests executed by
@@ -48,6 +59,10 @@ class ProxyingURLLoaderFactory : public network::mojom::URLLoaderFactory {
    public:
     ScopedURLSessionOverrideForTesting();
     ~ScopedURLSessionOverrideForTesting();
+
+   private:
+    mojo::Remote<network::mojom::NetworkServiceTest> network_service_test_;
+    static bool instance_exists_;
   };
 
   // network::mojom::URLLoaderFactory:

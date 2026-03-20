@@ -66,8 +66,11 @@ class SkillsService : public KeyedService {
   class Observer : public base::CheckedObserver {
    public:
     // Called whenever a skill is created, updated or deleted.
+    // `is_position_changed` is true if the skill's position is changed (always
+    // false for deletions and true for creations).
     virtual void OnSkillUpdated(std::string_view skill_id,
-                                UpdateSource update_source) {}
+                                UpdateSource update_source,
+                                bool is_position_changed) {}
 
     // Called when the service status is changed.
     virtual void OnStatusChanged() {}
@@ -137,8 +140,8 @@ class SkillsService : public KeyedService {
   virtual const std::vector<std::unique_ptr<Skill>>& GetSkills() const = 0;
 
   // Returns a const reference to the currently loaded 1p skills. If skills have
-  // not been loaded yet, returns an empty map. Returns an empty map if the
-  // service is not in kReady state.
+  // not been loaded yet, returns an empty map. The service does not have to be
+  // in a kReady state since these skills are loaded from a SCS file.
   virtual const SkillsMap& Get1PSkills() const = 0;
 
   // Registers an observer for the service notifications.

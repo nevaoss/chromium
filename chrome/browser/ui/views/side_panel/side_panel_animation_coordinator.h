@@ -11,6 +11,7 @@
 #include "base/memory/raw_ptr.h"
 #include "base/observer_list_types.h"
 #include "base/time/time.h"
+#include "chrome/browser/ui/side_panel/side_panel_enums.h"
 #include "chrome/browser/ui/views/side_panel/side_panel_animation_ids.h"
 #include "ui/gfx/animation/animation.h"
 #include "ui/gfx/animation/slide_animation.h"
@@ -50,17 +51,14 @@ class Animation;
 //    coordinator when its visibility changes, driving the animation.
 class SidePanelAnimationCoordinator : public views::AnimationDelegateViews {
  public:
-  using SidePanelAnimationId = ui::ElementIdentifier;
-
-  // LINT.IfChange(AnimationType)
-  enum class AnimationType { kOpen, kOpenWithContentTransition, kClose };
-  // LINT.ThenChange(//tools/metrics/histograms/metadata/browser/enums.xml:SidePanelAnimationType)
+  using AnimationType = SidePanelAnimationType;
 
   // Represents a single animation sequence for a specific animation id.
   struct AnimationSequence {
     SidePanelAnimationId animation_id;
-    base::TimeDelta start;
-    base::TimeDelta duration;
+    base::TimeDelta start = base::Milliseconds(0);
+    base::TimeDelta duration = base::Milliseconds(0);
+    bool snap_to_final_value = false;
   };
 
   // Defines the overall specification for an animation, including its tween
@@ -87,12 +85,11 @@ class SidePanelAnimationCoordinator : public views::AnimationDelegateViews {
    public:
     // Called when the animation sequence for `animation_id` has progressed.
     virtual void OnAnimationSequenceProgressed(
-        const SidePanelAnimationId& animation_id,
+        SidePanelAnimationId animation_id,
         double animation_value) {}
 
     // Called when the animation sequence for `animation_id` has ended.
-    virtual void OnAnimationSequenceEnded(
-        const SidePanelAnimationId& animation_id) {}
+    virtual void OnAnimationSequenceEnded(SidePanelAnimationId animation_id) {}
   };
 
   // Used to observe changes to a particular animation type.

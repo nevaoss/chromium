@@ -125,6 +125,12 @@ suite('Composebox voice search', () => {
 
     windowProxy = installMock(WindowProxy);
     windowProxy.setResultFor('setTimeout', 0);
+    windowProxy.setResultMapperFor('matchMedia', () => ({
+                                                   addListener() {},
+                                                   addEventListener() {},
+                                                   removeListener() {},
+                                                   removeEventListener() {},
+                                                 }));
 
     composeboxElement = document.createElement('cr-composebox');
     document.body.appendChild(composeboxElement);
@@ -134,8 +140,7 @@ suite('Composebox voice search', () => {
 
   function getVoiceSearchButton(composeboxElement: ComposeboxElement):
       HTMLElement|null {
-    const contextElement = composeboxElement.$.context;
-    return contextElement.shadowRoot.querySelector<HTMLElement>(
+    return composeboxElement.shadowRoot.querySelector<HTMLElement>(
         '#voiceSearchButton');
   }
 
@@ -349,6 +354,8 @@ suite('Composebox voice search', () => {
   test(
       'on end submits and exits voice search if no final result is available',
       async () => {
+        (composeboxElement as any).autoSubmitVoiceSearch = true;
+
         const voiceSearchButton = getVoiceSearchButton(composeboxElement);
         voiceSearchButton!.click();
         await microtasksFinished();
@@ -390,10 +397,13 @@ suite('Composebox voice search', () => {
         assertEquals(searchboxHandler.getCallCount('submitQuery'), 1);
         assertStyle(composeboxElement.$.composebox, 'display', 'flex');
         assertStyle(composeboxElement.$.voiceSearch, 'display', 'none');
-        assertEquals(composeboxElement.animationState, GlowAnimationState.NONE);
+        assertEquals(
+            composeboxElement.animationState, GlowAnimationState.SUBMITTING);
       });
 
   test('transcript is cleared to avoid leftover past queries', async () => {
+    (composeboxElement as any).autoSubmitVoiceSearch = true;
+
     const voiceSearchButton = getVoiceSearchButton(composeboxElement);
     voiceSearchButton!.click();
     await microtasksFinished();
@@ -435,7 +445,8 @@ suite('Composebox voice search', () => {
     assertEquals(searchboxHandler.getCallCount('submitQuery'), 1);
     assertStyle(composeboxElement.$.composebox, 'display', 'flex');
     assertStyle(composeboxElement.$.voiceSearch, 'display', 'none');
-    assertEquals(composeboxElement.animationState, GlowAnimationState.NONE);
+    assertEquals(
+        composeboxElement.animationState, GlowAnimationState.SUBMITTING);
   });
 
   test('on error shows error container for NOT_ALLOWED', async () => {

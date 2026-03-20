@@ -28,6 +28,7 @@
 #include "chrome/browser/contextual_cueing/contextual_cueing_service_factory.h"
 #include "chrome/browser/glic/actor/glic_actor_policy_checker.h"
 #include "chrome/browser/glic/actor/glic_actor_task_manager.h"
+#include "chrome/browser/glic/common/application_hotkey_delegate.h"
 #include "chrome/browser/glic/common/future_browser_features.h"
 #include "chrome/browser/glic/fre/glic_fre_controller.h"
 #include "chrome/browser/glic/glic_enums.h"
@@ -45,6 +46,7 @@
 #include "chrome/browser/glic/host/glic_web_contents_warming_pool.h"
 #include "chrome/browser/glic/host/host.h"
 #include "chrome/browser/glic/host/webui_contents_container.h"
+#include "chrome/browser/glic/public/features.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/glic/public/glic_keyed_service_factory.h"
 #include "chrome/browser/glic/service/glic_instance_coordinator_impl.h"
@@ -53,9 +55,9 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_attributes_storage.h"
 #include "chrome/browser/profiles/profile_manager.h"
+#include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/ui/browser_navigator.h"
 #include "chrome/browser/ui/browser_navigator_params.h"
-#include "chrome/browser/ui/tabs/tab_list_interface.h"
 #include "chrome/common/actor/action_result.h"
 #include "chrome/common/actor/journal_details_builder.h"
 #include "chrome/common/chrome_features.h"
@@ -85,6 +87,11 @@
 #include "chrome/browser/glic/media/glic_media_integration.h"
 #include "chrome/browser/glic/widget/glic_widget.h"
 #include "chrome/browser/glic/widget/glic_window_controller_impl.h"
+
+#endif
+
+#if BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/glic/android/glic_keyed_service_android.h"
 #endif
 
 namespace glic {
@@ -163,6 +170,8 @@ void WriteGuestUrlPresetToPrefs(const char* switch_name,
 void SetupGuestUrlPresetPrefs() {
   WriteGuestUrlPresetToPrefs(::switches::kGlicGuestUrlPresetAutopush,
                              prefs::kGlicGuestUrlPresetAutopush);
+  WriteGuestUrlPresetToPrefs(::switches::kGlicGuestUrlPresetStaging,
+                             prefs::kGlicGuestUrlPresetStaging);
   WriteGuestUrlPresetToPrefs(::switches::kGlicGuestUrlPresetPreprod,
                              prefs::kGlicGuestUrlPresetPreprod);
   WriteGuestUrlPresetToPrefs(::switches::kGlicGuestUrlPresetProd,
@@ -179,12 +188,10 @@ GlicKeyedService::GlicKeyedService(
     contextual_cueing::ContextualCueingService* contextual_cueing_service,
     actor::ActorKeyedService* actor_keyed_service)
     : profile_(profile),
-#if !BUILDFLAG(IS_ANDROID)  // NEEDS_ANDROID_IMPL: Actor
       actor_policy_checker_(
           actor_keyed_service
               ? std::make_unique<GlicActorPolicyChecker>(*profile_)
               : nullptr),
-#endif
       enabling_(std::make_unique<GlicEnabling>(
           profile,
           &profile_manager->GetProfileAttributesStorage())),
@@ -229,6 +236,7 @@ GlicKeyedService::GlicKeyedService(
   // TODO(crbug.com/450026474): Consider not constructing this metrics
   // instance for multi-instance
   metrics_->ClearControllers();
+  metrics_->RecordGlicProfilePreferences();
 
 #if !BUILDFLAG(IS_ANDROID)  // Single instance only
   if (UseDefaultWindowController()) {
@@ -256,7 +264,8 @@ GlicKeyedService::GlicKeyedService(
         prefs::kGlicCompletedFre,
         static_cast<int>(prefs::FreStatus::kNotStarted));
     // or if automation is enabled, skip FRE
-  } else if (command_line->HasSwitch(::switches::kGlicAutomation)) {
+  } else if (command_line->HasSwitch(::switches::kGlicAutomation) ||
+             command_line->HasSwitch(::switches::kGlicAlwaysSkipFre)) {
     profile_->GetPrefs()->SetInteger(
         prefs::kGlicCompletedFre,
         static_cast<int>(prefs::FreStatus::kCompleted));
@@ -310,6 +319,36 @@ void GlicKeyedService::ToggleUI(BrowserWindowInterface* bwi,
                                 bool prevent_close,
                                 mojom::InvocationSource source,
                                 std::optional<std::string> prompt_suggestion) {
+  ToggleUIInternal(bwi, prevent_close, source, std::move(prompt_suggestion),
+                   false, std::nullopt);
+}
+
+void GlicKeyedService::ToggleUI(BrowserWindowInterface* bwi,
+                                bool prevent_close,
+                                mojom::InvocationSource source) {
+  ToggleUI(bwi, prevent_close, source, std::nullopt);
+}
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+void GlicKeyedService::ShowUiWithConversationID(BrowserWindowInterface* bwi,
+                                                mojom::InvocationSource source,
+                                                std::string conversation_id) {
+  CHECK(source == mojom::InvocationSource::kNavigationCapture);
+
+  ToggleUIInternal(
+      bwi, /*prevent_close=*/true, source, /*prompt_suggestion=*/std::nullopt,
+      /*auto_send=*/false, std::make_optional(std::move(conversation_id)));
+}
+#pragma clang diagnostic pop
+
+void GlicKeyedService::ToggleUIInternal(
+    BrowserWindowInterface* bwi,
+    bool prevent_close,
+    mojom::InvocationSource source,
+    std::optional<std::string> prompt_suggestion,
+    bool auto_send,
+    std::optional<std::string> conversation_id) {
   // Glic may be disabled for certain user profiles (the user is browsing in
   // incognito or guest mode, policy, etc). In those cases, the entry points to
   // this method should already have been removed.
@@ -321,7 +360,9 @@ void GlicKeyedService::ToggleUI(BrowserWindowInterface* bwi,
   }
 
   // Show the FRE if not yet completed, and if we have a browser to use.
-  if (fre_controller_->ShouldShowFreDialog()) {
+  // Ignore ShouldBypassFreUi if auto_send is true.
+  if ((!GlicEnabling::ShouldBypassFreUi(profile_, source) || auto_send) &&
+      fre_controller_->ShouldShowFreDialog()) {
     fre_controller_->MarkFreStartAttempt();
 #if !BUILDFLAG(IS_ANDROID)  // Single instance only
     if (!GlicEnabling::IsUnifiedFreEnabled(profile_)) {
@@ -340,13 +381,36 @@ void GlicKeyedService::ToggleUI(BrowserWindowInterface* bwi,
   }
 
   window_controller().Toggle(bwi ? bwi : GetActiveGlicEligibleBrowser(profile_),
-                             prevent_close, source, prompt_suggestion);
+                             prevent_close, source, prompt_suggestion,
+                             auto_send, conversation_id);
 }
 
-void GlicKeyedService::ToggleUI(BrowserWindowInterface* bwi,
-                                bool prevent_close,
-                                mojom::InvocationSource source) {
-  ToggleUI(bwi, prevent_close, source, std::nullopt);
+void GlicKeyedService::InvokeWithAutoSubmit(
+    InvokeWithAutoSubmitPasskey auto_submit_passkey,
+    tabs::TabInterface* tab,
+    GlicInvokeOptions options) {
+  CHECK(GlicEnabling::IsEnabledForProfile(profile_));
+
+  GlicProfileManager* glic_profile_manager = GlicProfileManager::GetInstance();
+  if (glic_profile_manager) {
+    glic_profile_manager->SetActiveGlic(this);
+  }
+
+  static_cast<GlicInstanceCoordinatorImpl&>(window_controller())
+      .InvokeWithAutoSubmit(auto_submit_passkey, tab, std::move(options));
+}
+
+void GlicKeyedService::Invoke(tabs::TabInterface* tab,
+                              GlicInvokeOptions options) {
+  CHECK(GlicEnabling::IsEnabledForProfile(profile_));
+
+  GlicProfileManager* glic_profile_manager = GlicProfileManager::GetInstance();
+  if (glic_profile_manager) {
+    glic_profile_manager->SetActiveGlic(this);
+  }
+
+  static_cast<GlicInstanceCoordinatorImpl&>(window_controller())
+      .Invoke(tab, std::move(options));
 }
 
 void GlicKeyedService::OpenFreDialogInNewTab(BrowserWindowInterface* bwi,
@@ -710,9 +774,9 @@ base::CallbackListSubscription GlicKeyedService::AddUserInputSubmittedCallback(
 
 #if !BUILDFLAG(IS_ANDROID)  // Single instance only
 void GlicKeyedService::CaptureRegion(
-    content::WebContents* web_contents,
+    tabs::TabInterface* tab,
     mojo::PendingRemote<mojom::CaptureRegionObserver> observer) {
-  region_capture_controller_->CaptureRegion(web_contents, std::move(observer));
+  region_capture_controller_->CaptureRegion(tab, std::move(observer));
 }
 #endif
 
@@ -765,14 +829,6 @@ void GlicKeyedService::TryPreloadAfterDelay() {
   }
 }
 
-void GlicKeyedService::TryPreloadFre(GlicPrewarmingFreSource source) {
-  GlicProfileManager* glic_profile_manager = GlicProfileManager::GetInstance();
-  CHECK(glic_profile_manager);
-
-  glic_profile_manager->ShouldPreloadFreForProfile(
-      profile_, base::BindOnce(&GlicKeyedService::FinishPreloadFre,
-                               GetWeakPtr(), source));
-}
 
 void GlicKeyedService::Reload(content::RenderFrameHost* render_frame_host) {
   if (fre_controller_->IsShowingDialog()) {
@@ -829,23 +885,6 @@ void GlicKeyedService::FinishPreload(GlicPrewarmingChecksResult result) {
   }
 }
 
-void GlicKeyedService::FinishPreloadFre(GlicPrewarmingFreSource source,
-                                        GlicPrewarmingChecksResult result) {
-  if (result != GlicPrewarmingChecksResult::kSuccess) {
-    // If FRE preloading was rejected, log error metrics and return.
-    base::UmaHistogramEnumeration(
-        "Glic.PrewarmingFre.ShouldNotPreloadFreForSource", source);
-    if (result == GlicPrewarmingChecksResult::kWarmingDisabled) {
-      base::UmaHistogramEnumeration(
-          "Glic.PrewarmingFre.DisabledShouldNotPreloadFreForSource", source);
-    }
-    return;
-  }
-
-  base::UmaHistogramEnumeration("Glic.PrewarmingFre.ShouldPreloadFreForSource",
-                                source);
-  fre_controller().TryPreload();
-}
 
 bool GlicKeyedService::IsProcessHostForGlic(
     content::RenderProcessHost* process_host) {
@@ -954,12 +993,14 @@ void GlicKeyedService::RequestToConfirmNavigation(
 void GlicKeyedService::RequestToShowAutofillSuggestionsDialog(
     actor::TaskId task_id,
     std::vector<autofill::ActorFormFillingRequest> requests,
+    base::WeakPtr<actor::AutofillSelectionDialogEventHandler> event_handler,
     AutofillSuggestionSelectedCallback callback) {
   CHECK(UseDefaultWindowController());
   auto* window_controller_impl =
       static_cast<GlicWindowControllerImpl*>(window_controller_.get());
   window_controller_impl->host().RequestToShowAutofillSuggestionsDialog(
-      task_id, std::move(requests), std::move(callback));
+      task_id, std::move(requests), std::move(event_handler),
+      std::move(callback));
 }
 #endif
 

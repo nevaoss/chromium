@@ -37,6 +37,8 @@ import org.chromium.chrome.browser.settings.ChromeBaseSettingsFragment;
 import org.chromium.chrome.browser.settings.ChromeManagedPreferenceDelegate;
 import org.chromium.chrome.browser.settings.SettingsNavigationFactory;
 import org.chromium.chrome.browser.settings.search.ChromeBaseSearchIndexProvider;
+import org.chromium.chrome.browser.signin.SigninAndHistorySyncActivityLauncherImpl;
+import org.chromium.chrome.browser.signin.services.BadgeConfig;
 import org.chromium.chrome.browser.signin.services.DisplayableProfileData;
 import org.chromium.chrome.browser.signin.services.IdentityServicesProvider;
 import org.chromium.chrome.browser.signin.services.ProfileDataCache;
@@ -252,6 +254,7 @@ public class AccountManagementFragment extends ChromeBaseSettingsFragment
                                 getActivity().getSupportFragmentManager(),
                                 ((ModalDialogManagerHolder) getActivity()).getModalDialogManager(),
                                 assertNonNull(assumeNonNull(mSnackbarManagerSupplier).get()),
+                                SigninAndHistorySyncActivityLauncherImpl.get(),
                                 SignoutReason.USER_CLICKED_SIGNOUT_SETTINGS,
                                 /* showConfirmDialog= */ false,
                                 CallbackUtils.emptyRunnable());
@@ -317,6 +320,7 @@ public class AccountManagementFragment extends ChromeBaseSettingsFragment
             }
         }
         accountsCategory.addPreference(createAddAccountPreference());
+        notifyPreferencesUpdated();
     }
 
     private Preference createAccountPreference(CoreAccountInfo coreAccountInfo) {
@@ -332,10 +336,7 @@ public class AccountManagementFragment extends ChromeBaseSettingsFragment
 
         accountPreference.setOnPreferenceClickListener(
                 SyncSettingsUtils.toOnClickListener(
-                        this,
-                        () ->
-                                SigninUtils.openSettingsForAccount(
-                                        getActivity(), coreAccountInfo.getEmail())));
+                        this, () -> SigninUtils.openSettingsForAllAccounts(getActivity())));
 
         return accountPreference;
     }
@@ -427,11 +428,10 @@ public class AccountManagementFragment extends ChromeBaseSettingsFragment
                                 Context context = getContext();
                                 if (isChild && context != null) {
                                     mProfileDataCache.setBadge(
-                                            assumeNonNull(childAccount).getEmail(),
-                                            ProfileDataCache
-                                                    .createDefaultSizeChildAccountBadgeConfig(
-                                                            context,
-                                                            R.drawable.ic_account_child_20dp));
+                                            assumeNonNull(childAccount).getId(),
+                                            BadgeConfig.create(R.drawable.ic_account_child_20dp)
+                                                    .withDefaultSizeChildAccountConfig()
+                                                    .build(context));
                                 }
                             });
         }
@@ -439,7 +439,7 @@ public class AccountManagementFragment extends ChromeBaseSettingsFragment
 
     // ProfileDataCache.Observer implementation:
     @Override
-    public void onProfileDataUpdated(String accountEmail) {
+    public void onProfileDataUpdated(DisplayableProfileData profileData) {
         AccountManagerFacadeProvider.getInstance().getAccounts().then(this::updateAccountsList);
     }
 
@@ -461,10 +461,7 @@ public class AccountManagementFragment extends ChromeBaseSettingsFragment
         switch (error) {
             case UserActionableError.SIGN_IN_NEEDS_UPDATE:
                 AccountManagerFacadeProvider.getInstance()
-                        .updateCredentials(
-                                CoreAccountInfo.getAndroidAccountFrom(mSignedInCoreAccountInfo),
-                                getActivity(),
-                                null);
+                        .updateCredentials(mSignedInCoreAccountInfo, getActivity(), null);
                 return;
             case UserActionableError.NEEDS_CLIENT_UPGRADE:
                 // Opens the client in play store for update.
@@ -501,6 +498,11 @@ public class AccountManagementFragment extends ChromeBaseSettingsFragment
             default:
                 return;
         }
+    }
+
+    @Override
+    public void onIdentityErrorCardVisibilityChanged() {
+        notifyPreferencesUpdated();
     }
 
     /**

@@ -12,14 +12,15 @@ namespace viz {
 enum class InputOnVizStateProcessingResult {
   kProcessedSuccessfully = 0,
   kCouldNotFindViewForFrameSinkId = 1,
-  kFrameSinkIdCorrespondsToChildView = 2,
+  // Obsolete: kFrameSinkIdCorrespondsToChildView = 2,
   kFrameSinkIdNotAttachedToRootCFS = 3,
   kDroppedOutOfOrderDownTime = 4,
   kDroppedTooManyPendingStates = 5,
   kDroppedUnusedOlderStates = 6,
   kTransferBackToBrowserSuccessfully = 7,
   kDroppedTransferBackToBrowserFailed = 8,
-  kMaxValue = kDroppedTransferBackToBrowserFailed,
+  kSpeculativeTransferStateReplaced = 9,
+  kMaxValue = kSpeculativeTransferStateReplaced,
 };
 
 void EmitStateProcessingResultHistogram(InputOnVizStateProcessingResult result);

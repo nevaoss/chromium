@@ -11,6 +11,7 @@
 
 #include "base/check_deref.h"
 #include "base/check_op.h"
+#include "base/containers/flat_map.h"
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
@@ -55,7 +56,7 @@
 #include "components/history_clusters/core/config.h"
 #include "components/history_clusters/core/features.h"
 #include "components/history_clusters/core/history_clusters_prefs.h"
-#include "components/history_embeddings/history_embeddings_features.h"
+#include "components/history_embeddings/core/history_embeddings_features.h"
 #include "components/keyed_service/core/service_access_type.h"
 #include "components/prefs/pref_service.h"
 #include "components/query_parser/snippet.h"
@@ -269,12 +270,17 @@ history::mojom::HistoryEntryPtr HistoryEntryToMojom(
 
   result_mojom->time = entry.time.InMillisecondsFSinceUnixEpoch();
 
-  // Pass the timestamps in a list.
-  std::vector<double> timestamps;
-  for (const base::Time& timestamp : entry.all_timestamps) {
-    timestamps.push_back(timestamp.InMillisecondsFSinceUnixEpoch());
+  // Pass the timestamps in a map.
+  base::flat_map<std::string, std::vector<double>> all_timestamps;
+  for (const auto& [url, timestamps] : entry.all_timestamps) {
+    std::vector<double> timestamps_for_url;
+    // Add all timestamps for this URL.
+    for (const base::Time& timestamp : timestamps) {
+      timestamps_for_url.push_back(timestamp.InMillisecondsFSinceUnixEpoch());
+    }
+    all_timestamps[url.spec()] = std::move(timestamps_for_url);
   }
-  result_mojom->all_timestamps = std::move(timestamps);
+  result_mojom->all_timestamps = std::move(all_timestamps);
 
   // Always pass the short date since it is needed both in the search and in
   // the monthly view.
@@ -528,7 +534,7 @@ void BrowsingHistoryHandler::RemoveVisits(
     for (const auto& timestamp : timestamps) {
       base::Time visit_time =
           base::Time::FromMillisecondsSinceUnixEpoch(timestamp);
-      entry.all_timestamps.insert(visit_time);
+      entry.all_timestamps[entry.url].insert(visit_time);
     }
 
     items_to_remove.push_back(entry);

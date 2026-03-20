@@ -4,10 +4,12 @@
 
 package org.chromium.chrome.browser.app.tabmodel;
 
+import static org.chromium.chrome.browser.tab.TabStateStorageFlagHelper.isStorageAuthoritative;
+import static org.chromium.chrome.browser.tab.TabStateStorageFlagHelper.isTabStorageEnabled;
+
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.crypto.CipherFactory;
-import org.chromium.chrome.browser.tab.TabStateStorageFlagHelper;
 import org.chromium.chrome.browser.tabmodel.AccumulatingTabCreator;
 import org.chromium.chrome.browser.tabmodel.PersistentStoreMigrationManager;
 import org.chromium.chrome.browser.tabmodel.PersistentStoreMigrationManager.StoreType;
@@ -29,42 +31,6 @@ import org.chromium.chrome.browser.tabwindow.TabWindowManager;
  */
 @NullMarked
 public class TabPersistentStoreFactory {
-    // A migration manager which always assumes no migration is required.
-    private static final PersistentStoreMigrationManager sDefaultManager =
-            new PersistentStoreMigrationManager() {
-                @Override
-                public @StoreType int getAuthoritativeStoreType() {
-                    return StoreType.LEGACY;
-                }
-
-                @Override
-                public @StoreType int getShadowStoreType() {
-                    return TabStateStorageFlagHelper.isTabStorageEnabled()
-                            ? StoreType.TAB_STATE_STORE
-                            : StoreType.INVALID;
-                }
-
-                @Override
-                public void onShadowStoreCreated(@StoreType int storeType) {}
-
-                @Override
-                public void onShadowStoreCaughtUp() {}
-
-                @Override
-                public boolean isShadowStoreCaughtUp() {
-                    return true;
-                }
-
-                @Override
-                public void onShadowStoreRazed() {}
-
-                @Override
-                public void onAllShadowStoresRazed() {}
-
-                @Override
-                public void onWindowCleared() {}
-            };
-
     /**
      * Builds an authoritative {@link TabPersistentStore}.
      *
@@ -92,7 +58,9 @@ public class TabPersistentStoreFactory {
             String windowTag,
             CipherFactory cipherFactory,
             boolean recordLegacyTabCountMetrics) {
-        if (migrationManager == null) migrationManager = sDefaultManager;
+        if (migrationManager == null) {
+            migrationManager = new DefaultPersistentStoreMigrationManager(windowTag);
+        }
 
         @StoreType int storeType = migrationManager.getAuthoritativeStoreType();
         if (storeType == StoreType.LEGACY) {
@@ -105,15 +73,19 @@ public class TabPersistentStoreFactory {
                     cipherFactory,
                     recordLegacyTabCountMetrics);
         } else if (storeType == StoreType.TAB_STATE_STORE) {
-            assert TabStateStorageFlagHelper.isTabStorageEnabled();
-            assert TabStateStorageFlagHelper.isStorageAuthoritative();
+            assert isTabStorageEnabled();
+            assert isStorageAuthoritative();
             return new TabStateStore(
-                    migrationManager,
                     tabModelSelector,
                     windowTag,
                     tabCreatorManager,
                     tabPersistencePolicy,
-                    cipherFactory);
+                    migrationManager,
+                    cipherFactory,
+                    new TabCountTracker(windowTag),
+                    ModelTrackingOrchestrator::new,
+                    ActiveTabCache::new,
+                    /* isAuthoritative= */ true);
         }
         throw new IllegalStateException();
     }
@@ -227,28 +199,35 @@ public class TabPersistentStoreFactory {
             @Nullable CipherFactory cipherFactory,
             AccumulatingTabCreator regularShadowTabCreator,
             String orchestratorTag) {
-        if (migrationManager == null) migrationManager = sDefaultManager;
+        if (migrationManager == null) {
+            migrationManager = new DefaultPersistentStoreMigrationManager(windowTag);
+        }
 
         @StoreType int shadowStoreType = migrationManager.getShadowStoreType();
         if (shadowStoreType != StoreType.TAB_STATE_STORE) return null;
-        assert TabStateStorageFlagHelper.isTabStorageEnabled();
+        assert isTabStorageEnabled();
 
         TabPersistentStore shadowTabPersistentStore =
                 new TabStateStore(
-                        migrationManager,
                         selector,
                         windowTag,
                         shadowTabCreatorManager,
                         tabPersistencePolicy,
-                        cipherFactory);
+                        migrationManager,
+                        cipherFactory,
+                        new TabCountTracker(windowTag),
+                        ModelTrackingOrchestrator::new,
+                        ActiveTabCache::new,
+                        /* isAuthoritative= */ false);
 
         new ShadowTabStoreValidator(
                 authoritativeStore,
-                migrationManager,
                 shadowTabPersistentStore,
                 selector.getModel(/* incognito= */ false),
                 regularShadowTabCreator,
+                migrationManager,
                 orchestratorTag);
+
         migrationManager.onShadowStoreCreated(shadowStoreType);
         return shadowTabPersistentStore;
     }

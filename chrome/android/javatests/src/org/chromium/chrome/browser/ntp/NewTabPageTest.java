@@ -27,6 +27,7 @@ import android.graphics.Point;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
+import android.text.TextUtils;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -64,6 +65,7 @@ import org.chromium.base.test.util.Feature;
 import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.base.test.util.HistogramWatcher;
+import org.chromium.base.test.util.Matchers;
 import org.chromium.base.test.util.Restriction;
 import org.chromium.base.test.util.UrlUtils;
 import org.chromium.chrome.browser.ChromeTabbedActivity;
@@ -249,7 +251,6 @@ public class NewTabPageTest {
         int[] toolbarContentIds =
                 new int[] {
                     R.id.home_button,
-                    R.id.home_page_buttons_stub,
                     R.id.location_bar_background_view,
                     R.id.location_bar,
                     R.id.toolbar_buttons
@@ -266,6 +267,8 @@ public class NewTabPageTest {
     @MediumTest
     @Feature({"NewTabPage", "FeedNewTabPage", "RenderTest"})
     @DisableFeatures({"FeedHeaderRemoval", "WebFeedKillSwitch"})
+    // Restrict to Phones and Tablets because Desktop Android does not show feed in NTP.
+    @Restriction({DeviceFormFactor.PHONE_OR_TABLET})
     public void testRender_ArticleSectionHeader() throws Exception {
         // Scroll to the article section header in case it is not visible.
         onView(withId(R.id.feed_stream_recycler_view))
@@ -900,6 +903,7 @@ public class NewTabPageTest {
     @Test
     @SmallTest
     @Feature({"NewTabPage"})
+    @DisableFeatures({OmniboxFeatureList.OMNIBOX_MULTIMODAL_INPUT})
     public void testAiModeButton() {
         NewTabPageLayout ntpLayout = mNtp.getNewTabPageLayout();
         TouchCommon.singleClickView(
@@ -907,7 +911,7 @@ public class NewTabPageTest {
                         .findViewById(
                                 org.chromium.chrome.browser.composeplate.R.id.composeplate_view)
                         .findViewById(R.id.composeplate_button));
-        mOmnibox.checkFocus(false);
+        verifyComposeplateUrlNavigation();
     }
 
     @Test
@@ -944,7 +948,23 @@ public class NewTabPageTest {
                         .findViewById(
                                 org.chromium.chrome.browser.composeplate.R.id.composeplate_view)
                         .findViewById(R.id.composeplate_button));
-        mOmnibox.checkFocus(false);
+        verifyComposeplateUrlNavigation();
+    }
+
+    private void verifyComposeplateUrlNavigation() {
+        CriteriaHelper.pollUiThread(
+                () -> {
+                    GURL actual = mTab.getUrl();
+                    GURL expected = mTemplateUrlService.getComposeplateUrl();
+                    Criteria.checkThat(
+                            "Expected host and path to match between tab's URL "
+                                    + actual
+                                    + " and template URL service "
+                                    + expected,
+                            TextUtils.equals(actual.getHost(), expected.getHost())
+                                    && TextUtils.equals(actual.getPath(), expected.getPath()),
+                            Matchers.is(true));
+                });
     }
 
     private void verifyMostVisitedTileMargin() {

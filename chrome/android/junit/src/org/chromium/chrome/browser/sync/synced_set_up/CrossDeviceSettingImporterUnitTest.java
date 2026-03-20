@@ -7,11 +7,15 @@ package org.chromium.chrome.browser.sync.synced_set_up;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import static org.chromium.chrome.browser.flags.ChromeFeatureList.CROSS_DEVICE_PREF_TRACKER_EXTRA_LOGS;
 import static org.chromium.chrome.browser.flags.ChromeFeatureList.XPLAT_SYNCED_SETUP;
 import static org.chromium.chrome.browser.ntp_customization.ntp_cards.NtpCardsMediator.MODULE_TYPE_TO_USER_PREFS_KEY;
 
@@ -37,8 +41,8 @@ import org.chromium.base.library_loader.LibraryLoader;
 import org.chromium.base.shared_preferences.SharedPreferencesManager;
 import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.SettableNullableObservableSupplier;
-import org.chromium.base.test.BaseRobolectricTestRule;
 import org.chromium.base.test.BaseRobolectricTestRunner;
+import org.chromium.base.test.RobolectricUtil;
 import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.base.test.util.UserActionTester;
@@ -55,6 +59,7 @@ import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.sync.prefs.CrossDevicePrefTrackerFactory;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabObserver;
+import org.chromium.chrome.browser.toolbar.ToolbarPositionController.ToolbarPositionAndSource;
 import org.chromium.chrome.browser.ui.messages.snackbar.Snackbar;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.components.prefs.PrefService;
@@ -69,12 +74,14 @@ import org.chromium.url.JUnitTestGURLs;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
 /** Unit tests for {@link CrossDeviceSettingImporter}. */
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(manifest = Config.NONE)
 @EnableFeatures(XPLAT_SYNCED_SETUP)
+@DisableFeatures(CROSS_DEVICE_PREF_TRACKER_EXTRA_LOGS)
 public class CrossDeviceSettingImporterUnitTest {
     @Rule
     public ActivityScenarioRule<TestActivity> mActivityScenarioRule =
@@ -152,7 +159,7 @@ public class CrossDeviceSettingImporterUnitTest {
         when(mLibraryLoader.isInitialized()).thenReturn(true);
 
         mUserActionTester = new UserActionTester();
-        BaseRobolectricTestRule.runAllBackgroundAndUi();
+        RobolectricUtil.runAllBackgroundAndUi();
     }
 
     private CrossDeviceSettingImporter initializeCrossDeviceSettingImporter() {
@@ -365,7 +372,8 @@ public class CrossDeviceSettingImporterUnitTest {
         snackbar.getController().onAction(null);
 
         // Verify that only the local state preference is changed.
-        verify(mLocalPrefService).setBoolean(Pref.IS_OMNIBOX_IN_BOTTOM_POSITION, false);
+        verify(mLocalPrefService, atLeastOnce())
+                .setBoolean(Pref.IS_OMNIBOX_IN_BOTTOM_POSITION, false);
         verify(mHomeModulesConfigManager, never()).setPrefAllCardsEnabled(any(Boolean.class));
         assertTrue(
                 "The 'Apply' user action for Omnibox position should be recorded.",
@@ -406,7 +414,7 @@ public class CrossDeviceSettingImporterUnitTest {
     }
 
     @Test
-    public void testRecordUma_UndoRedo() {
+    public void testRecordAction_UndoRedo() {
         Map<String, Object> preferencesToApply = new HashMap<>();
         preferencesToApply.put(Pref.IS_OMNIBOX_IN_BOTTOM_POSITION, false);
         when(mLocalPrefService.getBoolean(Pref.IS_OMNIBOX_IN_BOTTOM_POSITION)).thenReturn(true);
@@ -703,15 +711,60 @@ public class CrossDeviceSettingImporterUnitTest {
     }
 
     @Test
+    public void testApplyLocalStateSettings_UpdatesAddressBarPreference() {
+        when(mLocalPrefService.hasPrefPath(Pref.IS_OMNIBOX_IN_BOTTOM_POSITION)).thenReturn(true);
+
+        Map<String, Object> preferencesToApply = new HashMap<>();
+        preferencesToApply.put(Pref.IS_OMNIBOX_IN_BOTTOM_POSITION, true);
+        // Local state is currently TOP (false).
+        AtomicBoolean isOmniboxInBottomPosition = new AtomicBoolean(false);
+        doAnswer(
+                        (inv) -> {
+                            isOmniboxInBottomPosition.set(inv.getArgument(1));
+                            return null;
+                        })
+                .when(mLocalPrefService)
+                .setBoolean(any(String.class), anyBoolean());
+        when(mLocalPrefService.getBoolean(Pref.IS_OMNIBOX_IN_BOTTOM_POSITION))
+                .thenAnswer((inv) -> isOmniboxInBottomPosition.get());
+        // ChromeSharedPref is currently TOP_SETTINGS.
+        ChromeSharedPreferences.getInstance()
+                .writeInt(
+                        ChromePreferenceKeys.TOOLBAR_TOP_ANCHORED,
+                        ToolbarPositionAndSource.TOP_SETTINGS);
+
+        initializeCrossDeviceSettingImporter()
+                .askToApplyNtpSettingImportIfNeeded(
+                        preferencesToApply, /* onlyOmniboxPosition= */ true);
+
+        verify(mSnackbarManager).showSnackbar(mSnackbarCaptor.capture());
+        Snackbar snackbar = mSnackbarCaptor.getValue();
+
+        // Simulate clicking the action button.
+        snackbar.getController().onAction(null);
+
+        // Verify that the local state preference is changed.
+        verify(mLocalPrefService, atLeastOnce())
+                .setBoolean(Pref.IS_OMNIBOX_IN_BOTTOM_POSITION, true);
+
+        // Verify that AddressBarPreference was updated.
+        assertEquals(
+                "Expected toolbar position to be set to BOTTOM_SETTINGS",
+                ToolbarPositionAndSource.BOTTOM_SETTINGS,
+                ChromeSharedPreferences.getInstance()
+                        .readInt(ChromePreferenceKeys.TOOLBAR_TOP_ANCHORED));
+    }
+
+    @Test
     public void testTabObserverManagement() {
         initializeCrossDeviceSettingImporter();
-        BaseRobolectricTestRule.runAllBackgroundAndUi();
+        RobolectricUtil.runAllBackgroundAndUi();
 
         verify(mTab).addObserver(any(TabObserver.class));
 
         // Simulate tab change.
         mActivityTabSupplier.set(mTab2);
-        BaseRobolectricTestRule.runAllBackgroundAndUi();
+        RobolectricUtil.runAllBackgroundAndUi();
         verify(mTab).removeObserver(any(TabObserver.class));
         verify(mTab2).addObserver(any(TabObserver.class));
 

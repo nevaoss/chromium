@@ -38,12 +38,12 @@ import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.robolectric.Shadows;
 import org.robolectric.annotation.Config;
-import org.robolectric.shadows.ShadowLooper;
 import org.robolectric.shadows.ShadowPackageManager;
 
 import org.chromium.base.ContextUtils;
 import org.chromium.base.shared_preferences.SharedPreferencesManager;
 import org.chromium.base.test.BaseRobolectricTestRunner;
+import org.chromium.base.test.RobolectricUtil;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
@@ -122,7 +122,7 @@ public class AddressBarSettingsFragmentUnitTest {
                 initialBackground.getColor());
 
         // Run delayed animation that reverts the color.
-        ShadowLooper.runUiThreadTasksIncludingDelayedTasks();
+        RobolectricUtil.runAllBackgroundAndUiIncludingDelayed();
 
         ColorDrawable finalBackground = (ColorDrawable) mBottomButton.getBackground();
         assertEquals(SemanticColorUtils.getDefaultBgColor(mActivity), finalBackground.getColor());
@@ -241,6 +241,31 @@ public class AddressBarSettingsFragmentUnitTest {
                 mSharedPreferencesManager.readInt(ChromePreferenceKeys.TOOLBAR_TOP_ANCHORED));
         assertTrue(mToolbarPositionImage.isSelected());
         verify(mLocalStatePrefsNatives, never()).getPrefService();
+    }
+
+    @Test
+    @SmallTest
+    public void testComputeToolbarPositionAndSource_prefsDontAgree() {
+        // ChromeSharedPref says TOP
+        mSharedPreferencesManager.writeInt(
+                ChromePreferenceKeys.TOOLBAR_TOP_ANCHORED, ToolbarPositionAndSource.TOP_SETTINGS);
+        // LocalState says BOTTOM.
+        when(mLocalPrefService.hasPrefPath(Pref.IS_OMNIBOX_IN_BOTTOM_POSITION)).thenReturn(true);
+        when(mLocalPrefService.getBoolean(Pref.IS_OMNIBOX_IN_BOTTOM_POSITION)).thenReturn(true);
+
+        @ToolbarPositionAndSource
+        int result = AddressBarPreference.computeToolbarPositionAndSource();
+
+        // Should return BOTTOM because LocalState is source of truth
+        assertEquals(
+                "Expected computed position to be BOTTOM_SETTINGS",
+                ToolbarPositionAndSource.BOTTOM_SETTINGS,
+                result);
+        // And should have updated ChromeSharedPref
+        assertEquals(
+                "Expected BOTTOM_SETTINGS to have been written to shared preferences manager",
+                ToolbarPositionAndSource.BOTTOM_SETTINGS,
+                mSharedPreferencesManager.readInt(ChromePreferenceKeys.TOOLBAR_TOP_ANCHORED));
     }
 
     @Test

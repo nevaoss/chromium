@@ -63,7 +63,8 @@ class ScopedPixelUnpackBufferOverride {
 
 bool IsWebGLDrawBuffersSupported(bool webglCompatibilityContext,
                                  GLenum depth_texture_internal_format,
-                                 GLenum depth_stencil_texture_internal_format) {
+                                 GLenum depth_stencil_texture_internal_format,
+                                 GLuint complete_fbo_for_workarounds) {
   // This is called after we make sure GL_EXT_draw_buffers is supported.
   GLint max_draw_buffers = 0;
   GLint max_color_attachments = 0;
@@ -80,6 +81,9 @@ bool IsWebGLDrawBuffersSupported(bool webglCompatibilityContext,
 
   GLuint fbo;
   glGenFramebuffersEXT(1, &fbo);
+  if (complete_fbo_for_workarounds) {
+    glBindFramebufferEXT(GL_FRAMEBUFFER, complete_fbo_for_workarounds);
+  }
   glBindFramebufferEXT(GL_FRAMEBUFFER, fbo);
 
   GLuint depth_stencil_texture = 0;
@@ -156,6 +160,9 @@ bool IsWebGLDrawBuffersSupported(bool webglCompatibilityContext,
     }
   }
 
+  if (complete_fbo_for_workarounds) {
+    glBindFramebufferEXT(GL_FRAMEBUFFER, complete_fbo_for_workarounds);
+  }
   glBindFramebufferEXT(GL_FRAMEBUFFER, static_cast<GLuint>(fb_binding));
   glDeleteFramebuffersEXT(1, &fbo);
 
@@ -177,17 +184,7 @@ size_t GetNumAttachments(GLenum attachment) {
 
 }  // anonymous namespace.
 
-FeatureInfo::FeatureFlags::FeatureFlags() {
-  mappable_formats = base::MakeFlatSet<viz::SharedImageFormat>(std::vector({
-      viz::SinglePlaneFormat::kBGR_565,
-      viz::SinglePlaneFormat::kRGBA_4444,
-      viz::SinglePlaneFormat::kRGBA_8888,
-      viz::SinglePlaneFormat::kRGBX_8888,
-      viz::MultiPlaneFormat::kYV12,
-      viz::MultiPlaneFormat::kNV12,
-  }));
-}
-
+FeatureInfo::FeatureFlags::FeatureFlags() = default;
 FeatureInfo::FeatureFlags::~FeatureFlags() = default;
 
 FeatureInfo::FeatureInfo() {
@@ -203,20 +200,6 @@ FeatureInfo::FeatureInfo(
   InitializeBasicState(base::CommandLine::InitializedForCurrentProcess()
                            ? base::CommandLine::ForCurrentProcess()
                            : nullptr);
-
-#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FUCHSIA)
-  feature_flags_.chromium_image_ycbcr_420v =
-      gpu_feature_info.supports_nv12_for_allocation_and_texturing;
-#elif BUILDFLAG(IS_APPLE)
-  feature_flags_.chromium_image_ycbcr_420v = true;
-#endif
-
-#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FUCHSIA)
-  feature_flags_.chromium_image_ycbcr_p010 =
-      gpu_feature_info.supports_p010_for_allocation_and_texturing;
-#elif BUILDFLAG(IS_APPLE)
-  feature_flags_.chromium_image_ycbcr_p010 = true;
-#endif
 }
 
 void FeatureInfo::InitializeBasicState(const base::CommandLine* command_line) {
@@ -225,14 +208,6 @@ void FeatureInfo::InitializeBasicState(const base::CommandLine* command_line) {
 
   feature_flags_.enable_shader_name_hashing =
       !command_line->HasSwitch(switches::kDisableShaderNameHashing);
-
-  const auto useGL = command_line->GetSwitchValueASCII(switches::kUseGL);
-  const auto useANGLE = command_line->GetSwitchValueASCII(switches::kUseANGLE);
-
-  feature_flags_.is_software_webgl =
-      (useGL == gl::kGLImplementationANGLEName) &&
-      (useANGLE == gl::kANGLEImplementationSwiftShaderForWebGLName ||
-       useANGLE == gl::kANGLEImplementationD3D11WarpForWebGLName);
 
   // The shader translator is needed to translate from WebGL-conformant GLES SL
   // to normal GLES SL, enforce WebGL conformance, translate from GLES SL 1.0 to
@@ -246,6 +221,15 @@ void FeatureInfo::InitializeBasicState(const base::CommandLine* command_line) {
 void FeatureInfo::Initialize(ContextType context_type,
                              bool is_passthrough_cmd_decoder,
                              const DisallowedFeatures& disallowed_features) {
+  InitializeWithCompleteFramebufferForWorkarounds(
+      context_type, is_passthrough_cmd_decoder, disallowed_features, 0);
+}
+
+void FeatureInfo::InitializeWithCompleteFramebufferForWorkarounds(
+    ContextType context_type,
+    bool is_passthrough_cmd_decoder,
+    const DisallowedFeatures& disallowed_features,
+    unsigned complete_fbo_for_workarounds) {
   if (initialized_) {
     DCHECK_EQ(context_type, context_type_);
     DCHECK_EQ(is_passthrough_cmd_decoder, is_passthrough_cmd_decoder_);
@@ -256,14 +240,14 @@ void FeatureInfo::Initialize(ContextType context_type,
   disallowed_features_ = disallowed_features;
   context_type_ = context_type;
   is_passthrough_cmd_decoder_ = is_passthrough_cmd_decoder;
-  InitializeFeatures();
+  InitializeFeatures(complete_fbo_for_workarounds);
   initialized_ = true;
 }
 
 void FeatureInfo::ForceReinitialize() {
   CHECK(initialized_);
   CHECK(is_passthrough_cmd_decoder_);
-  InitializeFeatures();
+  InitializeFeatures(0);
 }
 
 void FeatureInfo::InitializeForTesting(
@@ -285,7 +269,7 @@ void FeatureInfo::InitializeForTesting(ContextType context_type) {
              DisallowedFeatures());
 }
 
-bool IsGL_REDSupportedOnFBOs() {
+bool IsGL_REDSupportedOnFBOs(uint32_t complete_fbo_for_workarounds) {
 #if BUILDFLAG(IS_MAC)
   // The glTexImage2D call below can hang on Mac so skip this since it's only
   // really needed to workaround a Mesa issue. See https://crbug.com/1158744.
@@ -319,6 +303,9 @@ bool IsGL_REDSupportedOnFBOs() {
                GL_UNSIGNED_BYTE, nullptr);
   GLuint textureFBOID = 0;
   glGenFramebuffersEXT(1, &textureFBOID);
+  if (complete_fbo_for_workarounds) {
+    glBindFramebufferEXT(GL_FRAMEBUFFER, complete_fbo_for_workarounds);
+  }
   glBindFramebufferEXT(GL_FRAMEBUFFER, textureFBOID);
   glFramebufferTexture2DEXT(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
                             textureId, 0);
@@ -327,6 +314,9 @@ bool IsGL_REDSupportedOnFBOs() {
   glDeleteFramebuffersEXT(1, &textureFBOID);
   glDeleteTextures(1, &textureId);
 
+  if (complete_fbo_for_workarounds) {
+    glBindFramebufferEXT(GL_FRAMEBUFFER, complete_fbo_for_workarounds);
+  }
   glBindFramebufferEXT(GL_FRAMEBUFFER, static_cast<GLuint>(fb_binding));
   glBindTexture(GL_TEXTURE_2D, static_cast<GLuint>(tex_binding));
 
@@ -364,7 +354,6 @@ void FeatureInfo::EnableEXTColorBufferFloat() {
       GL_RGBA32F);
   validators_.texture_sized_color_renderable_internal_format.AddValue(
       GL_R11F_G11F_B10F);
-  feature_flags_.enable_color_buffer_float = true;
 }
 
 void FeatureInfo::EnableEXTColorBufferHalfFloat() {
@@ -381,7 +370,6 @@ void FeatureInfo::EnableEXTColorBufferHalfFloat() {
       GL_RGB16F);
   validators_.texture_sized_color_renderable_internal_format.AddValue(
       GL_RGBA16F);
-  feature_flags_.enable_color_buffer_half_float = true;
 }
 
 void FeatureInfo::EnableEXTTextureFilterAnisotropic() {
@@ -447,12 +435,6 @@ void FeatureInfo::EnableOESTextureHalfFloatLinear() {
     return;
   AddExtensionString("GL_OES_texture_half_float_linear");
   feature_flags_.enable_texture_half_float_linear = true;
-
-  // TODO(capn) : Re-enable this once we have ANGLE+SwiftShader supporting
-  // IOSurfaces.
-  if (workarounds_.disable_half_float_for_gmb)
-    return;
-  feature_flags_.mappable_formats.insert(viz::SinglePlaneFormat::kRGBA_F16);
 }
 
 void FeatureInfo::EnableANGLEInstancedArrayIfPossible(
@@ -484,7 +466,7 @@ void FeatureInfo::EnableWEBGLMultiDrawIfPossible(
   }
 }
 
-void FeatureInfo::InitializeFeatures() {
+void FeatureInfo::InitializeFeatures(uint32_t complete_fbo_for_workarounds) {
   // Figure out what extensions to turn on.
   std::string extensions_string(gl::GetGLExtensionsFromCurrentContext());
   gfx::ExtensionSet extensions(gfx::MakeExtensionSet(extensions_string));
@@ -578,8 +560,6 @@ void FeatureInfo::InitializeFeatures() {
   }
 
   if (enable_dxt1) {
-    feature_flags_.ext_texture_format_dxt1 = true;
-
     AddExtensionString("GL_ANGLE_texture_compression_dxt1");
     validators_.compressed_texture_format.AddValue(
         GL_COMPRESSED_RGB_S3TC_DXT1_EXT);
@@ -604,8 +584,6 @@ void FeatureInfo::InitializeFeatures() {
   }
 
   if (enable_dxt5) {
-    feature_flags_.ext_texture_format_dxt5 = true;
-
     // The difference between GL_EXT_texture_compression_s3tc and
     // GL_ANGLE_texture_compression_dxt5 is that the former
     // requires on the fly compression. The latter does not.
@@ -619,7 +597,6 @@ void FeatureInfo::InitializeFeatures() {
   bool have_bptc =
       gfx::HasExtension(extensions, "GL_EXT_texture_compression_bptc");
   if (have_bptc) {
-    feature_flags_.ext_texture_compression_bptc = true;
     AddExtensionString("GL_EXT_texture_compression_bptc");
     validators_.compressed_texture_format.AddValue(
         GL_COMPRESSED_RGBA_BPTC_UNORM_EXT);
@@ -642,7 +619,6 @@ void FeatureInfo::InitializeFeatures() {
   bool have_rgtc =
       gfx::HasExtension(extensions, "GL_EXT_texture_compression_rgtc");
   if (have_rgtc) {
-    feature_flags_.ext_texture_compression_rgtc = true;
     AddExtensionString("GL_EXT_texture_compression_rgtc");
     validators_.compressed_texture_format.AddValue(GL_COMPRESSED_RED_RGTC1_EXT);
     validators_.compressed_texture_format.AddValue(
@@ -664,7 +640,6 @@ void FeatureInfo::InitializeFeatures() {
   bool have_astc =
       gfx::HasExtension(extensions, "GL_KHR_texture_compression_astc_ldr");
   if (have_astc) {
-    feature_flags_.ext_texture_format_astc = true;
     AddExtensionString("GL_KHR_texture_compression_astc_ldr");
 
     bool have_astc_hdr =
@@ -695,8 +670,6 @@ void FeatureInfo::InitializeFeatures() {
       gfx::HasExtension(extensions, "GL_AMD_compressed_ATC_texture") ||
       gfx::HasExtension(extensions, "GL_ATI_texture_compression_atitc");
   if (have_atc) {
-    feature_flags_.ext_texture_format_atc = true;
-
     AddExtensionString("GL_AMD_compressed_ATC_texture");
     validators_.compressed_texture_format.AddValue(GL_ATC_RGB_AMD);
     validators_.compressed_texture_format.AddValue(
@@ -755,7 +728,6 @@ void FeatureInfo::InitializeFeatures() {
       gfx::HasExtension(extensions, "GL_OES_packed_depth_stencil") ||
       gl_version_info_->is_es3) {
     AddExtensionString("GL_OES_packed_depth_stencil");
-    feature_flags_.packed_depth24_stencil8 = true;
     if (enable_depth_texture) {
       if (gl_version_info_->is_es3) {
         depth_stencil_texture_format = GL_DEPTH24_STENCIL8;
@@ -956,8 +928,6 @@ void FeatureInfo::InitializeFeatures() {
         GL_BGRA8_EXT);
     validators_.texture_sized_texture_filterable_internal_format.AddValue(
         GL_BGRA8_EXT);
-    feature_flags_.mappable_formats.insert(viz::SinglePlaneFormat::kBGRA_8888);
-    feature_flags_.mappable_formats.insert(viz::SinglePlaneFormat::kBGRX_8888);
   }
 
 #if BUILDFLAG(IS_MAC)
@@ -969,8 +939,6 @@ void FeatureInfo::InitializeFeatures() {
   // emulation.
   if (gl_version_info_->is_angle_swiftshader) {
     feature_flags_.disable_mac_swangle_rgbx = true;
-    feature_flags_.mappable_formats.erase(viz::SinglePlaneFormat::kBGRX_8888);
-    feature_flags_.mappable_formats.erase(viz::SinglePlaneFormat::kRGBX_8888);
   }
 #endif
 
@@ -999,7 +967,6 @@ void FeatureInfo::InitializeFeatures() {
       gfx::HasExtension(extensions, "GL_EXT_read_format_bgra");
 
   if (enable_read_format_bgra) {
-    feature_flags_.ext_read_format_bgra = true;
     AddExtensionString("GL_EXT_read_format_bgra");
     validators_.read_pixel_format.AddValue(GL_BGRA_EXT);
   }
@@ -1191,11 +1158,6 @@ void FeatureInfo::InitializeFeatures() {
     validators_.g_l_state.AddValue(GL_TEXTURE_BINDING_RECTANGLE_ANGLE);
   }
 
-  if (feature_flags_.chromium_image_ycbcr_420v) {
-    AddExtensionString("GL_CHROMIUM_ycbcr_420v_image");
-    feature_flags_.mappable_formats.insert(viz::MultiPlaneFormat::kNV12);
-  }
-
 #if BUILDFLAG(IS_APPLE)
   // Macs can create SharedImages out of AR30 IOSurfaces. iOS based devices seem
   // to handle well also.
@@ -1215,24 +1177,6 @@ void FeatureInfo::InitializeFeatures() {
     validators_.texture_internal_format_storage.AddValue(GL_RGB10_A2_EXT);
     validators_.pixel_type.AddValue(GL_UNSIGNED_INT_2_10_10_10_REV);
   }
-  if (feature_flags_.chromium_image_ar30) {
-    feature_flags_.mappable_formats.insert(
-        viz::SinglePlaneFormat::kBGRA_1010102);
-  }
-  if (feature_flags_.chromium_image_ab30) {
-    feature_flags_.mappable_formats.insert(
-        viz::SinglePlaneFormat::kRGBA_1010102);
-  }
-
-  if (feature_flags_.chromium_image_ycbcr_p010) {
-    AddExtensionString("GL_CHROMIUM_ycbcr_p010_image");
-    feature_flags_.mappable_formats.insert(viz::MultiPlaneFormat::kP010);
-  }
-
-#if BUILDFLAG(IS_MAC)
-  feature_flags_.mappable_formats.insert(viz::SinglePlaneFormat::kRGBA_F16);
-  feature_flags_.mappable_formats.insert(viz::MultiPlaneFormat::kNV12A);
-#endif  // BUILDFLAG(IS_MAC)
 
   // TODO(gman): Add support for these extensions.
   //     GL_OES_depth32
@@ -1268,9 +1212,9 @@ void FeatureInfo::InitializeFeatures() {
        can_emulate_es2_draw_buffers_on_es3_nv) &&
       (context_type_ == CONTEXT_TYPE_OPENGLES2 ||
        (context_type_ == CONTEXT_TYPE_WEBGL1 &&
-        IsWebGLDrawBuffersSupported(is_webgl_compatibility_context,
-                                    depth_texture_format,
-                                    depth_stencil_texture_format)));
+        IsWebGLDrawBuffersSupported(
+            is_webgl_compatibility_context, depth_texture_format,
+            depth_stencil_texture_format, complete_fbo_for_workarounds)));
   if (have_es2_draw_buffers) {
     AddExtensionString("GL_EXT_draw_buffers");
     feature_flags_.ext_draw_buffers = true;
@@ -1384,14 +1328,12 @@ void FeatureInfo::InitializeFeatures() {
 
       AddExtensionString("GL_KHR_blend_equation_advanced");
       feature_flags_.blend_equation_advanced = true;
-      feature_flags_.blend_equation_advanced_coherent =
-          blend_equation_advanced_coherent;
     }
   }
 
   if ((gl_version_info_->is_es3 ||
        gfx::HasExtension(extensions, "GL_EXT_texture_rg")) &&
-      IsGL_REDSupportedOnFBOs()) {
+      IsGL_REDSupportedOnFBOs(complete_fbo_for_workarounds)) {
     feature_flags_.ext_texture_rg = true;
     AddExtensionString("GL_EXT_texture_rg");
 
@@ -1414,9 +1356,6 @@ void FeatureInfo::InitializeFeatures() {
 
     validators_.texture_internal_format_storage.AddValue(GL_R8_EXT);
     validators_.texture_internal_format_storage.AddValue(GL_RG8_EXT);
-
-    feature_flags_.mappable_formats.insert(viz::SinglePlaneFormat::kR_8);
-    feature_flags_.mappable_formats.insert(viz::SinglePlaneFormat::kRG_88);
   }
 
   const bool is_texture_norm16_supported_for_webgl2_or_es3 =
@@ -1472,11 +1411,6 @@ void FeatureInfo::InitializeFeatures() {
         GL_RG16_EXT);
     validators_.texture_sized_color_renderable_internal_format.AddValue(
         GL_RGBA16_EXT);
-
-    // TODO(shrekshao): mappable_formats is not used by WebGL
-    // So didn't expose all buffer formats here.
-    feature_flags_.mappable_formats.insert(viz::SinglePlaneFormat::kR_16);
-    feature_flags_.mappable_formats.insert(viz::SinglePlaneFormat::kRG_1616);
   }
 
   if (enable_es3 && gfx::HasExtension(extensions, "GL_EXT_window_rectangles")) {
@@ -1526,21 +1460,12 @@ void FeatureInfo::InitializeFeatures() {
   feature_flags_.angle_webgl_compatibility = is_webgl_compatibility_context;
   feature_flags_.chromium_copy_texture =
       gfx::HasExtension(extensions, "GL_CHROMIUM_copy_texture");
-  feature_flags_.chromium_copy_compressed_texture =
-      gfx::HasExtension(extensions, "GL_CHROMIUM_copy_compressed_texture");
   feature_flags_.angle_client_arrays =
       gfx::HasExtension(extensions, "GL_ANGLE_client_arrays");
   feature_flags_.angle_request_extension =
       gfx::HasExtension(extensions, "GL_ANGLE_request_extension");
   feature_flags_.ext_pixel_buffer_object =
       gfx::HasExtension(extensions, "GL_NV_pixel_buffer_object");
-  feature_flags_.ext_unpack_subimage =
-      gfx::HasExtension(extensions, "GL_EXT_unpack_subimage");
-  feature_flags_.oes_rgb8_rgba8 =
-      gfx::HasExtension(extensions, "GL_OES_rgb8_rgba8");
-  feature_flags_.angle_robust_resource_initialization =
-      gfx::HasExtension(extensions, "GL_ANGLE_robust_resource_initialization");
-  feature_flags_.nv_fence = gfx::HasExtension(extensions, "GL_NV_fence");
 
   if (gfx::HasExtension(extensions, "GL_EXT_debug_marker")) {
     feature_flags_.ext_debug_marker = true;
@@ -1585,7 +1510,6 @@ void FeatureInfo::InitializeFeatures() {
 
   if (gfx::HasExtension(extensions, "GL_KHR_robust_buffer_access_behavior")) {
     AddExtensionString("GL_KHR_robust_buffer_access_behavior");
-    feature_flags_.khr_robust_buffer_access_behavior = true;
   }
 
   EnableWEBGLMultiDrawIfPossible(extensions);

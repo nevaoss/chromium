@@ -54,11 +54,6 @@ std::optional<uint32_t> ConvertToHashInteger(std::string_view chars) {
 
 static constexpr char kTriggerPrefix[] = "trigger:";
 
-bool MarkNameIsTrigger(StringView mark_name) {
-  return StringView(mark_name, 0, std::size(kTriggerPrefix) - 1) ==
-         kTriggerPrefix;
-}
-
 std::string GenerateFullTrigger(std::string_view site,
                                 std::string_view mark_name) {
   return base::StrCat({site, "-", mark_name});
@@ -103,7 +98,7 @@ BackgroundTracingHelper::BackgroundTracingHelper(ExecutionContext* context) {
   // Get the hash of the domain in an encoded format (friendly for converting to
   // ASCII, and matching the format in which URLs will be encoded prior to
   // hashing in the Finch list).
-  String this_site = EncodeWithURLEscapeSequences(origin->Domain());
+  String this_site = EncodeWithUrlEscapeSequences(origin->Domain());
   std::string this_site_ascii = this_site.Ascii();
   uint32_t this_site_hash = MD5Hash32(this_site_ascii);
 
@@ -210,6 +205,11 @@ size_t BackgroundTracingHelper::GetIdSuffixPos(StringView string) {
   return cursor - 1;
 }
 
+bool BackgroundTracingHelper::MarkNameIsTrigger(StringView mark_name) {
+  return mark_name.starts_with(kTriggerPrefix) &&
+         mark_name.length() >= std::size(kTriggerPrefix);
+}
+
 std::pair<StringView, std::optional<uint32_t>>
 BackgroundTracingHelper::SplitMarkNameAndId(StringView mark_name) {
   DCHECK(MarkNameIsTrigger(mark_name));
@@ -221,12 +221,7 @@ BackgroundTracingHelper::SplitMarkNameAndId(StringView mark_name) {
   }
   auto suffix = StringView(mark_name, sequence_number_pos + 1);
   mark_name = StringView(mark_name, 0, sequence_number_pos);
-  bool result = false;
-  int seq_num = CharactersToInt(suffix, NumberParsingOptions(), &result);
-  if (!result) {
-    return std::make_pair(mark_name, std::nullopt);
-  }
-  return std::make_pair(mark_name, seq_num);
+  return std::make_pair(mark_name, StringToUint(suffix, {}));
 }
 
 // static

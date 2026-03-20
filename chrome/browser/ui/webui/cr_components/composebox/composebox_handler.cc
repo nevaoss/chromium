@@ -207,18 +207,12 @@ void ComposeboxHandler::OnThumbnailRemoved() {
   mojo::ReportBadMessage("No thumbnails in composebox input");
 }
 
-void ComposeboxHandler::ClearFiles() {
-  ContextualSearchboxHandler::ClearFiles();
+void ComposeboxHandler::ClearFiles(bool should_block_auto_suggested_tabs) {
+  ContextualSearchboxHandler::ClearFiles(should_block_auto_suggested_tabs);
   // Reset the AIM tool mode to not include file upload if it currently does.
   if (GetInputState().active_tool ==
       omnibox::ToolMode::TOOL_MODE_IMAGE_GEN_UPLOAD) {
     input_state_model_->setActiveTool(omnibox::ToolMode::TOOL_MODE_IMAGE_GEN);
-  }
-}
-
-void ComposeboxHandler::ShowContextMenu(const gfx::Point& point) {
-  if (embedder_) {
-    embedder_->ShowContextMenu(point, /*menu_model=*/nullptr);
   }
 }
 
@@ -264,9 +258,9 @@ std::string ComposeboxHandler::AutocompleteIconToResourceName(
   // TODO(crbug.com/476137316): Update vector icons returned by server.
   // The default icon for contextual suggestions is the subdirectory arrow right
   // icon. For the Lens composebox and realbox, we want to stay consistent with
-  // the search loupe instead.
+  // the search spark loupe instead.
   if (icon.name == omnibox::kSubdirectoryArrowRightIcon.name) {
-    return searchbox_internal::kSearchIconResourceName;
+    return searchbox_internal::kSearchSparkIconResourceName;
   }
 
   return SearchboxHandler::AutocompleteIconToResourceName(icon);

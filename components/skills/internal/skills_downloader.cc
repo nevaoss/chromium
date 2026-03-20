@@ -6,6 +6,7 @@
 
 #include "base/functional/bind.h"
 #include "components/skills/proto/skill.pb.h"
+#include "components/skills/public/skills_metrics.h"
 #include "mojo/public/cpp/bindings/callback_helpers.h"
 #include "net/base/load_flags.h"
 #include "net/http/http_request_headers.h"
@@ -55,9 +56,6 @@ constexpr net::NetworkTrafficAnnotationTag kSkillsDownloaderNetworkTag =
         "downloaded to be displayed on all Chrome accounts."
       })");
 
-inline constexpr char kSkillsDownloaderGstaticUrl[] =
-    "https://www.gstatic.com/chrome/skills/first_party_skills_binary";
-
 std::unique_ptr<network::SimpleURLLoader> CreateSimpleURLLoader(
     const GURL& url,
     const std::string_view last_modified_header) {
@@ -105,23 +103,34 @@ void SkillsDownloader::OnUrlDownloadComplete(
   std::unique_ptr<network::SimpleURLLoader> request =
       std::move(pending_request_);
 
-  if (!request || request->NetError() != net::OK) {
+  if (!request) {
     return;
   }
 
-  // Response code is not 200 or `response_body` is empty.
-  if (!request->ResponseInfo() || !request->ResponseInfo()->headers ||
-      request->ResponseInfo()->headers->response_code() != net::HTTP_OK ||
-      !response_body.has_value() || response_body->empty()) {
-    // TODO(crbug.com/478924560): Add metrics to track network failures and
-    // other error cases.
+  if (!request->ResponseInfo() || !request->ResponseInfo()->headers) {
+    RecordSkillsFetchResult(SkillsFetchResult::kEmptyResponseHeader);
+    return;
+  }
+
+  int response_code = request->ResponseInfo()->headers->response_code();
+  RecordSkillsHttpCode(response_code);
+  if (response_code != net::HTTP_OK) {
+    RecordSkillsFetchResult(SkillsFetchResult::kNetworkError);
+    return;
+  }
+
+  if (!response_body.has_value() || response_body->empty()) {
+    RecordSkillsFetchResult(SkillsFetchResult::kEmptyResponseBody);
     return;
   }
 
   auto skills_list = std::make_unique<skills::proto::SkillsList>();
   if (!skills_list->ParseFromString(response_body.value())) {
+    RecordSkillsFetchResult(SkillsFetchResult::kProtoParseFailure);
     return;
   }
+
+  RecordSkillsFetchResult(SkillsFetchResult::kSuccess);
 
   std::string last_modified_value;
   if (request->ResponseInfo()->headers->EnumerateHeader(

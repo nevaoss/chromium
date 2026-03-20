@@ -59,6 +59,7 @@
 }
 
 #end {
+  align-items: center;
   display: flex;
   justify-content: flex-end;
   padding-inline-start: 20px;
@@ -166,6 +167,32 @@ cr-progress,
 #end {
   opacity: 1;
   visibility: visible;
+}
+
+#glic-controls {
+  align-items: center;
+  display: flex;
+}
+
+#glic-controls .vertical-separator {
+  margin-inline: 6px;
+}
+
+#glic-controls cr-icon {
+  margin-bottom: 1px;
+}
+
+#glic-summarize-button {
+  --cr-button-text-color: #e3e3e3;
+  --cr-focus-outline-color:var(--viewer-icon-focus-outline-color);
+  --cr-hover-background-color: rgba(253, 252, 251, 0.10);
+  border: none;
+  font-weight: 400;
+  gap: 4px;
+  height: 32px;
+  margin-left: 2px;
+  padding-inline-end: 12px;
+  padding-inline-start: 8px;
 }
 
 <if expr="enable_pdf_ink2">

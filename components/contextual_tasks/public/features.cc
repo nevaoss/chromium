@@ -19,13 +19,13 @@ BASE_FEATURE(kContextualTasks, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables the use of the kSearchResultsOAuth2Scope instead of the
 // kChromeSyncOAuth2Scope.
-BASE_FEATURE(kContextualTasksScopeChange, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kContextualTasksScopeChange, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables relevant context determination for contextual tasks.
 BASE_FEATURE(kContextualTasksContext, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables integration with the server side context library.
-BASE_FEATURE(kContextualTasksContextLibrary, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kContextualTasksContextLibrary, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables quality logging for relevant context determination for contextual
 // tasks.
@@ -36,10 +36,6 @@ BASE_FEATURE(kContextualTasksContextMenu, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables suggestions for contextual tasks.
 BASE_FEATURE(kContextualTasksSuggestionsEnabled,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Enables auto-suggestions for contextual tasks.
-BASE_FEATURE(kContextualTasksAutoSuggestionEnabled,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kContextualTasksShowOnboardingTooltip,
@@ -59,10 +55,36 @@ BASE_FEATURE(kContextualTasksRemoveTasksWithoutThreadsOrTabAssociations,
 BASE_FEATURE(kEnableNotifyZeroStateRenderedCapability,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kContextualTasksTabListInterfaceObserver,
+BASE_FEATURE(kContextualTasksExpandButton, base::FEATURE_ENABLED_BY_DEFAULT);
+
+BASE_FEATURE(kContextualTasksSendFullVersionListEnabled,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kContextualTasksExpandButton, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kContextualTasksUrlRedirectToAimUrl,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+// If enabled, animates the caret.
+BASE_FEATURE(kContextualTasksAnimatedCaret, base::FEATURE_ENABLED_BY_DEFAULT);
+
+BASE_FEATURE(kContextualTasksEnableFileHint, base::FEATURE_ENABLED_BY_DEFAULT);
+
+#if BUILDFLAG(IS_ANDROID)
+BASE_FEATURE(kContextualTasksInsertWebContentsAt,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+#else
+BASE_FEATURE(kContextualTasksInsertWebContentsAt,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+#endif
+
+const base::FeatureParam<bool> kContextualTasksLockAndUnlockInputCapability(
+    &kContextualTasks,
+    "ContextualTasksLockAndUnlockInputCapability",
+    true);
+
+const base::FeatureParam<bool> kContextualTasksEnableBasicMode(
+    &kContextualTasks,
+    "ContextualTasksEnableBasicMode",
+    true);
 
 const base::FeatureParam<bool> kContextualTasksBasicModeZOrder(
     &kContextualTasks,
@@ -91,6 +113,10 @@ const base::FeatureParam<double> kContextualTasksContextLoggingSampleRate{
     &kContextualTasksContextLogging, "ContextualTasksContextLoggingSampleRate",
     1.0};
 
+// Enables tab auto-chip for contextual tasks.
+const base::FeatureParam<bool> kContextualTasksTabAutoSuggestionChipEnabled(
+    &kContextualTasks, "ContextualTasksTabAutoSuggestionChipEnabled", true);
+
 // The base URL for the AI page.
 const base::FeatureParam<std::string> kContextualTasksAiPageUrl{
     &kContextualTasks, "contextual-tasks-ai-page-url",
@@ -114,8 +140,18 @@ constexpr base::FeatureParam<EntryPointOption>::Option kEntryPointOptions[] = {
 const base::FeatureParam<EntryPointOption> kShowEntryPoint(
     &kContextualTasks,
     "ContextualTasksEntryPoint",
-    EntryPointOption::kToolbarPermanent,
+    EntryPointOption::kToolbarRevisit,
     &kEntryPointOptions);
+
+constexpr base::FeatureParam<ExpandButtonOption>::Option kExpandButtonOption[] =
+    {{ExpandButtonOption::kSidePanelExpandButton, "side-panel-expand-button"},
+     {ExpandButtonOption::kToolbarCloseButton, "toolbar-close-button"}};
+
+const base::FeatureParam<ExpandButtonOption> kExpandButtonOptions(
+    &kContextualTasks,
+    "ContextualTasksExpandButtonOptions",
+    ExpandButtonOption::kToolbarCloseButton,
+    &kExpandButtonOption);
 
 const base::FeatureParam<bool> kTaskScopedSidePanel(
     &kContextualTasks,
@@ -138,8 +174,13 @@ const base::FeatureParam<bool> kForceGscInTabMode(
     false);
 
 // The user agent suffix to use for requests from the contextual tasks UI.
+// Version 1.0: Initial version/implementation.
+// Version 1.1: Client is capable of native suggestions.
+// Version 1.2: Client is capable of composebox camouflage.
+// Version 1.3: Bug fix for privacy notice on composebox camouflage.
 const base::FeatureParam<std::string> kContextualTasksUserAgentSuffix{
-    &kContextualTasks, "contextual-tasks-user-agent-suffix", "Cobrowsing/1.0"};
+    &kContextualTasks, "contextual-tasks-user-agent-suffix",
+    "Cobrowsing/1.3"};
 
 const base::FeatureParam<bool> kEnableSteadyComposeboxVoiceSearch(
     &kContextualTasks,
@@ -207,7 +248,27 @@ const base::FeatureParam<bool> kEnableContextualTasksSmartCompose(
 const base::FeatureParam<bool> kContextualTasksEnableNativeZeroStateSuggestions(
     &kContextualTasks,
     "ContextualTasksEnableNativeZeroStateSuggestions",
-    false);
+    true);
+
+const base::FeatureParam<std::string> kContextualTasksDisplayUrlScheme(
+    &kContextualTasks,
+    "ContextualTasksDisplayUrlScheme",
+    "chrome");
+
+const base::FeatureParam<std::string> kContextualTasksDisplayUrlHost(
+    &kContextualTasks,
+    "ContextualTasksDisplayUrlHost",
+    "google.com");
+
+const base::FeatureParam<std::string> kContextualTasksDisplayUrlPath(
+    &kContextualTasks,
+    "ContextualTasksDisplayUrlPath",
+    "/search");
+
+const base::FeatureParam<bool> kContextualTasksShowExpandedSecurityChip(
+    &kContextualTasks,
+    "ContextualTasksShowExpandedSecurityChip",
+    true);
 
 const base::FeatureParam<bool>
     kContextualTasksForceBasicModeIfOpeningThreadHistory(
@@ -276,6 +337,22 @@ std::string GetContextualTasksAiPageUrl() {
   return kContextualTasksAiPageUrl.Get();
 }
 
+std::string GetContextualTasksDisplayUrlScheme() {
+  return kContextualTasksDisplayUrlScheme.Get();
+}
+
+std::string GetContextualTasksDisplayUrlHost() {
+  return kContextualTasksDisplayUrlHost.Get();
+}
+
+std::string GetContextualTasksDisplayUrlPath() {
+  return kContextualTasksDisplayUrlPath.Get();
+}
+
+bool ShouldShowExpandedSecurityChip() {
+  return kContextualTasksShowExpandedSecurityChip.Get();
+}
+
 std::string GetForcedEmbeddedPageHost() {
   std::string host = kContextualTasksForcedEmbeddedPageHost.Get();
 
@@ -319,6 +396,10 @@ bool GetIsContextualTasksSuggestionsEnabled() {
   return base::FeatureList::IsEnabled(kContextualTasksSuggestionsEnabled);
 }
 
+bool GetIsTabAutoSuggestionChipEnabled() {
+  return kContextualTasksTabAutoSuggestionChipEnabled.Get();
+}
+
 bool GetEnableLensInContextualTasks() {
   return base::FeatureList::IsEnabled(kContextualTasks) &&
          kEnableLensInContextualTasks.Get();
@@ -356,12 +437,29 @@ bool ShouldUseSearchResultsScope() {
   return base::FeatureList::IsEnabled(kContextualTasksScopeChange);
 }
 
+bool GetIsBasicModeEnabled() {
+  return kContextualTasksEnableBasicMode.Get();
+}
+
 bool ShouldEnableBasicModeZOrder() {
   return kContextualTasksBasicModeZOrder.Get();
 }
 
 bool ShouldEnableCookieSync() {
   return kContextualTasksEnableCookieSync.Get();
+}
+
+bool ShouldEnableLockAndUnlockInputCapability() {
+  return base::FeatureList::IsEnabled(kContextualTasks) &&
+         kContextualTasksLockAndUnlockInputCapability.Get();
+}
+
+bool GetEnableFileHint() {
+  return base::FeatureList::IsEnabled(kContextualTasksEnableFileHint);
+}
+
+ExpandButtonOption GetExpandButtonOption() {
+  return kExpandButtonOptions.Get();
 }
 
 namespace flag_descriptions {

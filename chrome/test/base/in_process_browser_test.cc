@@ -50,6 +50,7 @@
 #include "chrome/browser/profiles/profile_attributes_storage.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/profiles/profile_test_util.h"
+#include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_finder.h"
@@ -60,7 +61,6 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
-#include "chrome/browser/ui/tabs/tab_list_interface.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/toolbar_controller_util.h"
 #include "chrome/browser/ui/views/toolbar/webui_test_utils.h"
@@ -320,8 +320,18 @@ void InProcessBrowserTest::RunScheduledLayouts() {
   widgets_to_layout = views::test::WidgetTest::GetAllWidgets();
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
+  // Collect WeakPtrs to handle cases where a widget is destroyed
+  // synchronously during another widget's layout (e.g. Tooltips on
+  // Linux).
+  std::vector<base::WeakPtr<views::Widget>> widgets_to_layout_weak;
   for (views::Widget* widget : widgets_to_layout) {
-    widget->LayoutRootViewIfNecessary();
+    widgets_to_layout_weak.push_back(widget->GetWeakPtr());
+  }
+
+  for (base::WeakPtr<views::Widget> widget : widgets_to_layout_weak) {
+    if (widget) {
+      widget->LayoutRootViewIfNecessary();
+    }
   }
 #endif  // defined(TOOLKIT_VIEWS)
 }

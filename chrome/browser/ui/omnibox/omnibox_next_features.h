@@ -29,8 +29,6 @@ BASE_DECLARE_FEATURE(kWebUIOmniboxAimPopup);
 }  // namespace internal
 
 enum class AddContextButtonVariant {
-  // No "Add Context" button.
-  kNone = 0,
   // Variant 1.
   kBelowResults = 1,
   // Variant 2.
@@ -47,6 +45,7 @@ BASE_DECLARE_FEATURE(kWebUIOmniboxAimPopupDisableAnimation);
 BASE_DECLARE_FEATURE(kWebUIOmniboxFullPopup);
 BASE_DECLARE_FEATURE(kWebUIOmniboxPopup);
 BASE_DECLARE_FEATURE(kWebUIOmniboxPopupDebug);
+BASE_DECLARE_FEATURE(kWebUIOmniboxPopupSelectionControl);
 extern const base::FeatureParam<bool> kWebUIOmniboxPopupDebugSxSParam;
 
 // The serialized base64 encoded `omnibox::NTPComposeboxConfig`.

@@ -26,11 +26,14 @@ import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.ui.edge_to_edge.EdgeToEdgeControllerFactory;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetControllerFactory;
 import org.chromium.components.browser_ui.bottomsheet.ManagedBottomSheetController;
+import org.chromium.components.browser_ui.modaldialog.AppModalPresenter;
 import org.chromium.components.browser_ui.widget.scrim.ScrimManager;
 import org.chromium.components.browser_ui.widget.scrim.ScrimManager.ScrimClient;
 import org.chromium.ui.base.ActivityWindowAndroid;
 import org.chromium.ui.base.IntentRequestTracker;
 import org.chromium.ui.edge_to_edge.EdgeToEdgePadAdjuster;
+import org.chromium.ui.modaldialog.ModalDialogManager;
+import org.chromium.ui.modaldialog.ModalDialogManager.ModalDialogType;
 
 import java.util.function.Function;
 
@@ -40,6 +43,15 @@ public class HistoryActivity extends SnackbarActivity {
     private @Nullable HistoryManager mHistoryManager;
     private @Nullable ManagedBottomSheetController mBottomSheetController;
     private @Nullable ActivityWindowAndroid mWindowAndroid;
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent intent) {
+        super.onActivityResult(requestCode, resultCode, intent);
+        if (mWindowAndroid != null) {
+            assumeNonNull(mWindowAndroid.getIntentRequestTracker())
+                    .onActivityResult(requestCode, resultCode, intent);
+        }
+    }
 
     @Override
     protected void onProfileAvailable(Profile profile) {
@@ -76,7 +88,7 @@ public class HistoryActivity extends SnackbarActivity {
                         true,
                         getSnackbarManager(),
                         () -> assertNonNull(mBottomSheetController),
-                        getModalDialogManagerSupplier(),
+                        getModalDialogManagerSupplier().asNonNull(),
                         getActivityResultTracker(),
                         /* Supplier<@Nullable Tab>= */ null,
                         new BrowsingHistoryBridge(profile.getOriginalProfile()),
@@ -113,6 +125,11 @@ public class HistoryActivity extends SnackbarActivity {
         // layout enclosing the history list layout so they'll be siblings. HistoryPage doesn't
         // need this since it may share the one from tabbed browser activity.
         contentView.addView(sheetContainer);
+    }
+
+    @Override
+    protected ModalDialogManager createModalDialogManager() {
+        return new ModalDialogManager(new AppModalPresenter(this), ModalDialogType.APP);
     }
 
     @Override

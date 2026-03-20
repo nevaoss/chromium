@@ -9,6 +9,7 @@
 #include <string_view>
 #include <vector>
 
+#include "base/containers/span.h"
 #include "base/functional/bind.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/numerics/byte_conversions.h"
@@ -517,7 +518,7 @@ NetworkSpeechRecognitionEngineImpl::ConnectBothStreams(const FSMEventArgs&) {
     preamble_encoder_->Flush();
     scoped_refptr<AudioChunk> encoded_data(
         preamble_encoder_->GetEncodedDataAndClear());
-    UploadAudioChunk(encoded_data->AsString(), FRAME_PREAMBLE_AUDIO, false);
+    UploadAudioChunk(encoded_data->AsStringView(), FRAME_PREAMBLE_AUDIO, false);
   }
   return STATE_BOTH_STREAMS_CONNECTED;
 }
@@ -536,7 +537,8 @@ NetworkSpeechRecognitionEngineImpl::TransmitAudioUpstream(
   DCHECK_EQ(audio.bytes_per_sample(), config_.audio_num_bits_per_sample / 8);
   encoder_->Encode(audio);
   scoped_refptr<AudioChunk> encoded_data(encoder_->GetEncodedDataAndClear());
-  UploadAudioChunk(encoded_data->AsString(), FRAME_RECOGNITION_AUDIO, false);
+  UploadAudioChunk(encoded_data->AsStringView(), FRAME_RECOGNITION_AUDIO,
+                   false);
   return state_;
 }
 
@@ -651,7 +653,7 @@ NetworkSpeechRecognitionEngineImpl::CloseUpstreamAndWaitForResults(
   DCHECK(!encoded_dummy_data->IsEmpty());
   encoder_.reset();
 
-  UploadAudioChunk(encoded_dummy_data->AsString(), FRAME_RECOGNITION_AUDIO,
+  UploadAudioChunk(encoded_dummy_data->AsStringView(), FRAME_RECOGNITION_AUDIO,
                    true);
   got_last_definitive_result_ = false;
   return STATE_WAITING_DOWNSTREAM_RESULTS;
@@ -714,13 +716,12 @@ std::string NetworkSpeechRecognitionEngineImpl::GenerateRequestKey() const {
   // probability of collisions.
   int64_t key = (base::Time::Now().ToInternalValue() & kKeepLowBytes) |
                 (base::RandUint64() & kKeepHighBytes);
-  return base::HexEncode(reinterpret_cast<void*>(&key), sizeof(key));
+  return base::HexEncode(base::byte_span_from_ref(key));
 }
 
-void NetworkSpeechRecognitionEngineImpl::UploadAudioChunk(
-    const std::string& data,
-    FrameType type,
-    bool is_final) {
+void NetworkSpeechRecognitionEngineImpl::UploadAudioChunk(std::string_view data,
+                                                          FrameType type,
+                                                          bool is_final) {
   if (use_framed_post_data_) {
     std::string frame(data.size() + 8u, char{0});
     auto frame_span = base::as_writable_byte_span(frame);

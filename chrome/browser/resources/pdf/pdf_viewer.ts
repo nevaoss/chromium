@@ -1486,6 +1486,10 @@ export class PdfViewerElement extends PdfViewerBaseElement {
   }
   // </if> enable_pdf_save_to_drive
 
+  protected onRotateLeft_() {
+    this.rotateCounterclockwise();
+  }
+
   protected onChangePage_(e: CustomEvent<ChangePageDetail>) {
     this.viewport.goToPage(e.detail.page);
     if (e.detail.origin === ChangePageOrigin.BOOKMARK) {
@@ -1865,6 +1869,10 @@ export class PdfViewerElement extends PdfViewerBaseElement {
       default:
         assertNotReachedCase(requestType);
     }
+  }
+
+  protected onGlicSummarize_() {
+    PdfViewerPrivateProxyImpl.getInstance().glicSummarize();
   }
 
   protected onPrint_() {

@@ -23,6 +23,7 @@
 #include "base/observer_list.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/sequenced_task_runner.h"
+#include "base/types/strong_alias.h"
 #include "components/password_manager/core/browser/features/password_features.h"
 #include "components/password_manager/core/browser/passkey_credential.h"
 #include "components/password_manager/core/browser/password_form.h"
@@ -368,8 +369,7 @@ SavedPasswordsPresenter::EditSavedCredentials(
 }
 
 void SavedPasswordsPresenter::MoveCredentialsToAccount(
-    const std::vector<CredentialUIEntry>& credentials,
-    metrics_util::MoveToAccountStoreTrigger trigger) {
+    const std::vector<CredentialUIEntry>& credentials) {
   for (const auto& credential : credentials) {
     std::vector<PasswordForm> move_form_candidates =
         GetCorrespondingPasswordForms(credential);
@@ -394,10 +394,6 @@ void SavedPasswordsPresenter::MoveCredentialsToAccount(
       profile_store_->RemoveLogin(FROM_HERE, form);
     }
   }
-
-  base::UmaHistogramEnumeration(
-      "PasswordManager.AccountStorage.MoveToAccountStoreFlowAccepted2",
-      trigger);
 }
 
 std::vector<CredentialUIEntry> SavedPasswordsPresenter::GetSavedCredentials()

@@ -41,9 +41,9 @@
 static_assert(BUILDFLAG(ENABLE_DESKTOP_ANDROID_EXTENSIONS));
 #include "base/functional/callback_forward.h"
 #include "chrome/browser/android/tab_android.h"
+#include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/ui/android/tab_model/tab_model.h"
 #include "chrome/browser/ui/android/tab_model/tab_model_list.h"
-#include "chrome/browser/ui/tabs/tab_list_interface.h"
 #endif
 
 static_assert(BUILDFLAG(ENABLE_EXTENSIONS_CORE));
@@ -293,8 +293,9 @@ void WebAuthFlow::WebContentsDestroyed() {
 }
 
 void WebAuthFlow::TitleWasSet(content::NavigationEntry* entry) {
-  if (delegate_)
+  if (delegate_) {
     delegate_->OnAuthFlowTitleChange(base::UTF16ToUTF8(entry->GetTitle()));
+  }
 }
 
 void WebAuthFlow::DidStopLoading() {
@@ -327,8 +328,9 @@ void WebAuthFlow::DidFinishNavigation(
   // Websites may create and remove <iframe> during the auth flow. In
   // particular, to integrate CAPTCHA tests. Chrome shouldn't abort the auth
   // flow if a navigation failed in a sub-frame. https://crbug.com/1049565.
-  if (!navigation_handle->IsInPrimaryMainFrame())
+  if (!navigation_handle->IsInPrimaryMainFrame()) {
     return;
+  }
 
   if (delegate_) {
     delegate_->OnNavigationFinished(navigation_handle);

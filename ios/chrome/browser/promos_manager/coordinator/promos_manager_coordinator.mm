@@ -57,7 +57,7 @@
 #import "ios/chrome/browser/shared/model/profile/profile_ios.h"
 #import "ios/chrome/browser/shared/public/commands/command_dispatcher.h"
 #import "ios/chrome/browser/shared/public/commands/credential_provider_promo_commands.h"
-#import "ios/chrome/browser/shared/public/commands/docking_promo_commands.h"
+#import "ios/chrome/browser/shared/public/commands/picture_in_picture_commands.h"
 #import "ios/chrome/browser/shared/public/commands/promos_manager_commands.h"
 #import "ios/chrome/browser/shared/public/commands/scene_commands.h"
 #import "ios/chrome/browser/shared/public/features/features.h"
@@ -107,9 +107,6 @@
 
   // The handler for the CredentialProviderPromoCommands.
   id<CredentialProviderPromoCommands> _credentialProviderPromoCommandHandler;
-
-  // The handler for the DockingPromoCommands.
-  id<DockingPromoCommands> _dockingPromoCommandHandler;
 }
 
 // A mediator that observes when it's a good time to display a promo.
@@ -137,9 +134,7 @@
                                    browser:(Browser*)browser
                               sceneHandler:(id<SceneCommands>)sceneHandler
             credentialProviderPromoHandler:(id<CredentialProviderPromoCommands>)
-                                               credentialProviderPromoHandler
-                       dockingPromoHandler:
-                           (id<DockingPromoCommands>)dockingPromoHandler {
+                                               credentialProviderPromoHandler {
   DCHECK(ShouldPromoManagerDisplayPromos());
   if ((self = [super initWithBaseViewController:viewController
                                         browser:browser])) {
@@ -147,7 +142,6 @@
     CHECK(browser, base::NotFatalUntil::M140);
     _sceneHandler = sceneHandler;
     _credentialProviderPromoCommandHandler = credentialProviderPromoHandler;
-    _dockingPromoCommandHandler = dockingPromoHandler;
 
     [self registerPromos];
 
@@ -589,14 +583,10 @@
           initWithHandler:_credentialProviderPromoCommandHandler];
 
   // Docking promo handler.
-  _displayHandlerPromos[promos_manager::Promo::DockingPromo] =
-      [[DockingPromoDisplayHandler alloc]
-                   initWithHandler:_dockingPromoCommandHandler
-          showRemindMeLaterVersion:NO];
-  _displayHandlerPromos[promos_manager::Promo::DockingPromoRemindMeLater] =
-      [[DockingPromoDisplayHandler alloc]
-                   initWithHandler:_dockingPromoCommandHandler
-          showRemindMeLaterVersion:YES];
+  if (IsDockingPromoV2Enabled()) {
+    _displayHandlerPromos[promos_manager::Promo::DockingPromo] =
+        [[DockingPromoDisplayHandler alloc] init];
+  }
 
   // Default browser promo handler.
   _displayHandlerPromos[promos_manager::Promo::DefaultBrowser] =
@@ -633,12 +623,31 @@
 }
 
 - (void)registerStandardPromoViewProviderPromos {
-  _viewProviderPromos[promos_manager::Promo::AllTabsDefaultBrowser] =
+  id<PictureInPictureCommands> PIPHandler = HandlerForProtocol(
+      self.browser->GetCommandDispatcher(), PictureInPictureCommands);
+  id<PromosManagerCommands> promosManagerHandler = HandlerForProtocol(
+      self.browser->GetCommandDispatcher(), PromosManagerCommands);
+
+  AllTabsDefaultBrowserPromoViewProvider* allTabsProvider =
       [[AllTabsDefaultBrowserPromoViewProvider alloc] init];
-  _viewProviderPromos[promos_manager::Promo::MadeForIOSDefaultBrowser] =
+  allTabsProvider.PIPHandler = PIPHandler;
+  allTabsProvider.promosManagerHandler = promosManagerHandler;
+  _viewProviderPromos[promos_manager::Promo::AllTabsDefaultBrowser] =
+      allTabsProvider;
+
+  MadeForIOSDefaultBrowserPromoViewProvider* madeForIOSProvider =
       [[MadeForIOSDefaultBrowserPromoViewProvider alloc] init];
-  _viewProviderPromos[promos_manager::Promo::StaySafeDefaultBrowser] =
+  madeForIOSProvider.PIPHandler = PIPHandler;
+  madeForIOSProvider.promosManagerHandler = promosManagerHandler;
+  _viewProviderPromos[promos_manager::Promo::MadeForIOSDefaultBrowser] =
+      madeForIOSProvider;
+
+  StaySafeDefaultBrowserPromoViewProvider* staySafeProvider =
       [[StaySafeDefaultBrowserPromoViewProvider alloc] init];
+  staySafeProvider.PIPHandler = PIPHandler;
+  staySafeProvider.promosManagerHandler = promosManagerHandler;
+  _viewProviderPromos[promos_manager::Promo::StaySafeDefaultBrowser] =
+      staySafeProvider;
 }
 
 - (void)registerBanneredPromoViewProviderPromos {
@@ -650,8 +659,14 @@
   _alertProviderPromos[promos_manager::Promo::PostRestoreSignInAlert] =
       [[PostRestoreSignInProvider alloc] initForBrowser:self.browser];
 
-  _alertProviderPromos[promos_manager::Promo::PostRestoreDefaultBrowserAlert] =
+  PostRestoreDefaultBrowserPromoProvider* postRestoreProvider =
       [[PostRestoreDefaultBrowserPromoProvider alloc] init];
+  postRestoreProvider.PIPHandler = HandlerForProtocol(
+      self.browser->GetCommandDispatcher(), PictureInPictureCommands);
+  postRestoreProvider.promosManagerHandler = HandlerForProtocol(
+      self.browser->GetCommandDispatcher(), PromosManagerCommands);
+  _alertProviderPromos[promos_manager::Promo::PostRestoreDefaultBrowserAlert] =
+      postRestoreProvider;
 
   // Post-default browser abandonment promo handler.
   if (IsPostDefaultAbandonmentPromoEnabled()) {

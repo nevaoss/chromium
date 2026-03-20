@@ -36,7 +36,7 @@
 <translation id="1982637982196732906">Mou a la secció inactiva</translation>
 <translation id="2050597508048557928">{TABS_COUNT,plural, =1{Afegeix <ph name="TABS_COUNT_ONE" /> pestanya seleccionada a les adreces d'interès}other{Afegeix <ph name="TABS_COUNT_MANY" /> pestanyes seleccionades a les adreces d'interès}}</translation>
 <translation id="2055057176188061528">Selecciona un grup de pestanyes o crea'n un de nou</translation>
-<translation id="2074527029802029717">No fixis la pestanya</translation>
+<translation id="2074527029802029717">Deixa de fixar la pestanya</translation>
 <translation id="2118649612461486615">Informació de la botiga</translation>
 <translation id="2123073051266141035">{INCOGNITO_TABS_COUNT,plural, =1{Pots tornar a obrir la pestanya i el grup tancats des de les seccions Pestanyes recents i Grups de pestanyes. La pestanya d'incògnit no estarà disponible.}other{Pots tornar a obrir les pestanyes i els grups tancats des de les seccions Pestanyes recents i Grups de pestanyes. # pestanyes d'incògnit no estaran disponibles.}}</translation>
 <translation id="2153899164605463849">{TAB_COUNT,plural, =1{Deixa de silenciar el lloc web}other{Deixa de silenciar els llocs web}}</translation>
@@ -83,7 +83,6 @@
 <translation id="3619255692378312441">Gestiona l'accés</translation>
 <translation id="3649471731638882002">{TAB_COUNT,plural, =1{Tanca l'element}other{Tanca els elements}}</translation>
 <translation id="3652027618765638838"><ph name="CURRENT_RATING" />/<ph name="RATING_BASELINE" /></translation>
-<translation id="3714430408451673233">Full inferior de la pestanya a mitja alçada.</translation>
 <translation id="374923079891132274">Miniatura del full de compartició.</translation>
 <translation id="3776329373944672717">Títol del grup de pestanyes <ph name="TITLE_OF_GROUP" /></translation>
 <translation id="3810973564298564668">Gestiona</translation>
@@ -127,7 +126,6 @@
 <translation id="5339733443032484186">La teva darrera pestanya</translation>
 <translation id="5380159289133845234">Arxiva les pestanyes duplicades</translation>
 <translation id="5446043142172831860">Suprimeix la pestanya i surt del grup</translation>
-<translation id="5465437530117042974">El full inferior de la pestanya ha canviat a Tancat.</translation>
 <translation id="5490235265819901748">El grup de pestanyes s'ha desplegat</translation>
 <translation id="5494920125229734069">Selecciona-ho tot</translation>
 <translation id="5505998972479309757">{LIMIT_COUNT,plural, =1{Afegeix fins a <ph name="LIMIT_COUNT_ONE" /> fitxer, pestanya o imatge}other{Afegeix fins a <ph name="LIMIT_COUNT_MANY" /> fitxers, pestanyes o imatges}}</translation>
@@ -143,7 +141,6 @@
 <translation id="6040143037577758943">Tanca</translation>
 <translation id="6051432659151380973">Els teus grups de pestanyes es desen automàticament</translation>
 <translation id="6054741997831917303">El preu d'aquest article fa poc ha baixat de <ph name="PREVIOUS_PRICE" /> a <ph name="NEW_PRICE" /></translation>
-<translation id="606985262342505139">Full inferior de la pestanya a alçada completa</translation>
 <translation id="6109251075362363230">Ara també s'arxivaran totes les pestanyes duplicades, a excepció de la còpia que s'hagi utilitzat més recentment.</translation>
 <translation id="612596694132302162">Deixa de silenciar el lloc web</translation>
 <translation id="6149218574440723463">{TABS_COUNT,plural, =1{Tanca <ph name="TABS_COUNT_ONE" /> element seleccionat}other{Tanca els <ph name="TABS_COUNT_MANY" /> elements seleccionats}}</translation>

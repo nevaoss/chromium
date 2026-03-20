@@ -6,13 +6,14 @@
 #define CHROME_BROWSER_UI_ANDROID_TAB_MODEL_TAB_MODEL_H_
 
 #include <memory>
+#include <optional>
 
 #include "base/android/scoped_java_ref.h"
 #include "base/memory/raw_ptr.h"
 #include "build/android_buildflags.h"
 #include "chrome/browser/flags/android/chrome_session_state.h"
+#include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/ui/android/tab_model/android_live_tab_context.h"
-#include "chrome/browser/ui/tabs/tab_list_interface.h"
 #include "components/omnibox/browser/location_bar_model.h"
 #include "components/omnibox/browser/location_bar_model_delegate.h"
 #include "components/sessions/core/session_id.h"
@@ -42,8 +43,6 @@ class TabModelObserver;
 // with Android's Tabs and Tab Model.
 class TabModel : public TabListInterface {
  public:
-  DECLARE_USER_DATA(TabModel);
-
   // LINT.IfChange(kInvalidIndex)
   // Keep this in sync with
   // chrome/browser/tabmodel/android/java/src/org/chromium/chrome/browser/tabmodel/TabList.java
@@ -307,12 +306,23 @@ class TabModel : public TabListInterface {
   virtual void CloseTabsNavigatedInTimeWindow(const base::Time& begin_time,
                                               const base::Time& end_time) = 0;
 
+  // Returns the tab strip collection for this tab model.
+  virtual tabs::TabCollection* GetTabStripCollection() const = 0;
+
   chrome::android::ActivityType activity_type() const { return activity_type_; }
+  const std::optional<chrome::android::CustomTabProfileType>&
+  custom_tab_profile_type() const {
+    return custom_tab_profile_type_;
+  }
   TabModelType GetTabModelType() const { return tab_model_type_; }
+
+  static bool EnableBrowserWindowInterfaceMobile();
 
  protected:
   TabModel(Profile* profile,
            chrome::android::ActivityType activity_type,
+           std::optional<chrome::android::CustomTabProfileType>
+               custom_tab_profile_type,
            TabModelType tab_model_type);
   ~TabModel() override;
 
@@ -322,22 +332,18 @@ class TabModel : public TabListInterface {
 
   LocationBarModel* GetLocationBarModel();
 
-#if BUILDFLAG(IS_DESKTOP_ANDROID)
-  // Sets the |SessionID|.
+  // Sets the `SessionID`.
   //
-  // This is only needed on desktop Android, where |BrowserWindowInterface|
-  // should be the source of truth for |SessionID|. This function will be
-  // called when |TabModel| is associated with a |BrowserWindowInterface|.
-  //
-  // TODO(http://crbug.com/444518651): remove the if-def when
-  // |BrowserWindowInterface| is compiled into all Android builds.
+  // `BrowserWindowInterface` is the source of truth for `SessionID`. This
+  // method will be called when the `TabModel` becomes associated or dissociated
+  // with a `BrowserWindowInterface`.
   void SetSessionId(SessionID sessionId);
-#endif
 
  private:
   raw_ptr<Profile, DanglingUntriaged> profile_;
 
   chrome::android::ActivityType activity_type_;
+  std::optional<chrome::android::CustomTabProfileType> custom_tab_profile_type_;
   TabModelType tab_model_type_;
 
   // The LiveTabContext associated with TabModel.

@@ -57,6 +57,7 @@
 #include "chrome/browser/ui/chrome_pages.h"
 #include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/layout_constants.h"
+#include "chrome/browser/ui/side_panel/side_panel_ui.h"
 #include "chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_utils.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/ui_features.h"
@@ -72,8 +73,8 @@
 #include "chrome/browser/ui/views/event_utils.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/themed_background.h"
-#include "chrome/browser/ui/views/side_panel/side_panel_ui.h"
 #include "chrome/browser/ui/views/side_panel/side_panel_util.h"
+#include "chrome/browser/ui/views/toolbar/live_toolbar_background.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_ink_drop_util.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
 #include "chrome/common/chrome_switches.h"
@@ -88,6 +89,7 @@
 #include "components/bookmarks/browser/bookmark_utils.h"
 #include "components/bookmarks/common/bookmark_pref_names.h"
 #include "components/bookmarks/managed/managed_bookmark_service.h"
+#include "components/feature_engagement/public/feature_constants.h"
 #include "components/metrics/metrics_service.h"
 #include "components/prefs/pref_service.h"
 #include "components/profile_metrics/browser_profile_type.h"
@@ -421,7 +423,12 @@ BookmarkBarView::BookmarkBarView(Browser* browser, BrowserView* browser_view)
 
   // May be null for tests.
   if (browser_view) {
-    SetBackground(std::make_unique<ThemedBackground>(browser_view));
+    if (base::FeatureList::IsEnabled(features::kGlassToolbar)) {
+      SetBackground(
+          std::make_unique<LiveToolbarBackground>(browser_view, this));
+    } else {
+      SetBackground(std::make_unique<ThemedBackground>(browser_view));
+    }
   }
 
   views::SetCascadingColorProviderColor(this, views::kCascadingBackgroundColor,
@@ -797,8 +804,8 @@ void BookmarkBarView::Layout(PassKey) {
     // of `saved_tab_group_bar_` below. Later the overflow button will be laid
     // out with both width and height the same as `button_height` (i.e. the
     // height of `saved_tab_group_bar_`).
-    if (saved_tab_group_bar_->overflow_button()) {
-      saved_tab_group_bar_->overflow_button()->SetPreferredSize(
+    if (saved_tab_group_bar_->everything_menu_button()) {
+      saved_tab_group_bar_->everything_menu_button()->SetPreferredSize(
           gfx::Size(button_height, button_height));
     }
     // Calculate the save tab group width without any restriction.

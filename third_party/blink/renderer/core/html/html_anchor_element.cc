@@ -134,6 +134,11 @@ FocusableState HTMLAnchorElementBase::SupportsFocus(
 }
 
 bool HTMLAnchorElementBase::ShouldHaveFocusAppearance() const {
+  if (RuntimeEnabledFeatures::AnchorFocusRingFixEnabled()) {
+    // When this flag is removed, we can remove
+    // HTMLAnchorElementBase::ShouldHaveFocusAppearance.
+    return HTMLElement::ShouldHaveFocusAppearance();
+  }
   // TODO(crbug.com/1444450): Can't this be done with focus-visible now?
   return (GetDocument().LastFocusType() != mojom::blink::FocusType::kMouse) ||
          HTMLElement::SupportsFocus(UpdateBehavior::kNoneForFocusManagement) !=
@@ -352,10 +357,12 @@ bool HTMLAnchorElementBase::CanStartSelection() const {
 bool HTMLAnchorElementBase::draggable() const {
   // Should be draggable if we have an href attribute.
   const AtomicString& value = FastGetAttribute(html_names::kDraggableAttr);
-  if (EqualIgnoringASCIICase(value, "true"))
+  if (EqualIgnoringAsciiCase(value, "true")) {
     return true;
-  if (EqualIgnoringASCIICase(value, "false"))
+  }
+  if (EqualIgnoringAsciiCase(value, "false")) {
     return false;
+  }
   return FastHasAttribute(html_names::kHrefAttr);
 }
 

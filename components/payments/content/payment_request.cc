@@ -575,9 +575,11 @@ void PaymentRequest::CanMakePayment() {
   }
 
   if (!can_make_payment_allowed_by_pref) {
-    CanMakePaymentCallback(
-        /*can_make_payment=*/PaymentsExperimentalFeatures::IsEnabled(
-            features::kCanMakePaymentTrueWhenPrivate));
+    // When the pref is disabled, we lie and always tell the website that the
+    // payment method is supported. This reduces data leakage, by requiring the
+    // site to call show() (which should show UX if the app is available) if it
+    // wants to know if the user can make a payment.
+    CanMakePaymentCallback(true);
   } else {
     state_->CanMakePayment(
         base::BindOnce(&PaymentRequest::CanMakePaymentCallback,
@@ -865,6 +867,24 @@ void PaymentRequest::OnShippingAddressSelected(
 
 void PaymentRequest::OnPayerInfoSelected(mojom::PayerDetailPtr payer_info) {
   client_->OnPayerDetailChange(std::move(payer_info));
+}
+
+void PaymentRequest::OnInternalError(const std::string& error_message) {
+  // If |client_| is not bound, then the object is already being destroyed as
+  // a result of a renderer event.
+  if (!client_.is_bound()) {
+    return;
+  }
+
+  RecordFirstAbortReason(JourneyLogger::ABORT_REASON_INTERNAL_ERROR);
+
+  client_->OnError(mojom::PaymentErrorReason::NOT_SUPPORTED, error_message);
+
+  if (observer_for_testing_) {
+    observer_for_testing_->OnInternalError();
+  }
+
+  ResetAndDeleteThis();
 }
 
 void PaymentRequest::OnUserAuthAnotherWay() {

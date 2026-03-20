@@ -4,8 +4,6 @@
 
 package org.chromium.chrome.browser.ntp_customization;
 
-import static androidx.annotation.VisibleForTesting.PACKAGE_PRIVATE;
-
 import static org.chromium.build.NullUtil.assumeNonNull;
 import static org.chromium.chrome.browser.ntp_customization.NtpCustomizationCoordinator.BottomSheetType.CHROME_COLORS;
 import static org.chromium.chrome.browser.ntp_customization.NtpCustomizationCoordinator.BottomSheetType.FEED;
@@ -38,6 +36,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.ColorStateList;
+import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -49,7 +48,6 @@ import android.net.Uri;
 import android.os.Build;
 import android.provider.Browser;
 import android.text.TextUtils;
-import android.util.DisplayMetrics;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.FrameLayout;
@@ -723,7 +721,6 @@ public class NtpCustomizationUtils {
      *
      * @param themeColorId The new color theme id.
      */
-    @VisibleForTesting(otherwise = PACKAGE_PRIVATE)
     public static void setNtpThemeColorIdToSharedPreference(@NtpThemeColorId int themeColorId) {
         SharedPreferencesManager prefsManager = ChromeSharedPreferences.getInstance();
         prefsManager.writeInt(ChromePreferenceKeys.NTP_CUSTOMIZATION_THEME_COLOR_ID, themeColorId);
@@ -976,21 +973,21 @@ public class NtpCustomizationUtils {
      * @param context Used to look up current day/night mode status.
      * @param defaultGoogleLogoDrawable The drawable instance for default Google Logo.
      */
-    public static void setTintForDefaultGoogleLogo(
+    public static @Nullable Integer setTintForDefaultGoogleLogo(
             Context context, @Nullable Drawable defaultGoogleLogoDrawable) {
         if (defaultGoogleLogoDrawable == null) {
-            return;
+            return null;
         }
 
         @NtpBackgroundType
         int backgroundType = NtpCustomizationConfigManager.getInstance().getBackgroundType();
+        Integer primaryColor =
+                NtpCustomizationUtils.getPrimaryColorFromCustomizedThemeColor(
+                        context, /* checkDailyRefresh= */ false);
+
         getTintedGoogleLogoDrawableImpl(
-                context,
-                defaultGoogleLogoDrawable,
-                backgroundType,
-                () ->
-                        NtpCustomizationUtils.getPrimaryColorFromCustomizedThemeColor(
-                                context, /* checkDailyRefresh= */ false));
+                context, defaultGoogleLogoDrawable, backgroundType, () -> primaryColor);
+        return primaryColor;
     }
 
     /**
@@ -1225,26 +1222,30 @@ public class NtpCustomizationUtils {
     }
 
     /**
-     * Calculates the initial center-crop matrices for both portrait and landscape orientations.
+     * Generates the default background image information, including center-crop matrices and screen
+     * dimensions for both device orientations. The dimensions for the alternate orientation are
+     * estimated by swapping the current width and height.
      *
      * @param context The application context to access resources like display metrics.
      * @param bitmap The source bitmap for which the matrices are to be calculated.
      */
-    public static BackgroundImageInfo calculateInitialThemeCollectionImageMatrices(
+    public static BackgroundImageInfo getDefaultBackgroundImageInfo(
             Context context, Bitmap bitmap) {
-        DisplayMetrics displayMetrics = context.getResources().getDisplayMetrics();
-        int screenWidth = displayMetrics.widthPixels;
-        int screenHeight = displayMetrics.heightPixels;
+        Resources resources = context.getResources();
+        Point windowSize = CropImageUtils.getCurrentWindowDimensions(context);
 
-        // Robustly determine portrait and landscape dimensions
-        int portraitWidth = Math.min(screenWidth, screenHeight);
-        int portraitHeight = Math.max(screenWidth, screenHeight);
+        // If the device is portrait, use the current width/height; otherwise, swap them.
+        boolean isPortrait =
+                resources.getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT;
+        int portraitWidth = isPortrait ? windowSize.x : windowSize.y;
+        int portraitHeight = isPortrait ? windowSize.y : windowSize.x;
 
         Matrix portraitMatrix = new Matrix();
         CropImageUtils.calculateInitialCenterCropMatrix(
                 portraitMatrix, portraitWidth, portraitHeight, bitmap);
 
-        // For landscape, the width and height are swapped
+        // The landscape dimensions are the inverse of the portrait dimensions.
+        // Calculate the landscape matrix using these swapped values.
         Matrix landscapeMatrix = new Matrix();
         CropImageUtils.calculateInitialCenterCropMatrix(
                 landscapeMatrix, portraitHeight, portraitWidth, bitmap);

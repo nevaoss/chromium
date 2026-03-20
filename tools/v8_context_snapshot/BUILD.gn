@@ -13,7 +13,6 @@ import("//build/buildflag_header.gni")
 import("//build/config/c++/c++.gni")
 import("//build/config/compiler/compiler.gni")
 import("//v8/gni/snapshot_toolchain.gni")
-import("//neva/neva.gni")
 
 if (is_android) {
   import("//build/config/android/rules.gni")
@@ -30,10 +29,12 @@ group("v8_context_snapshot") {
 
 buildflag_header("buildflags") {
   header = "buildflags.h"
+  _android_is_multilib = defined(android_app_secondary_abi)
   flags = [
     "USE_V8_CONTEXT_SNAPSHOT=$use_v8_context_snapshot",
     "INCLUDE_BOTH_V8_SNAPSHOTS=$include_both_v8_snapshots",
     "V8_CONTEXT_SNAPSHOT_FILENAME=\"$v8_context_snapshot_filename\"",
+    "ANDROID_IS_MULTILIB=$_android_is_multilib",
   ]
 }
 
@@ -121,8 +122,7 @@ if (use_v8_context_snapshot) {
       ldflags = [ "/OPT:NOICF" ]  # link.exe, but also lld-link.exe.
     } else if (is_apple && !use_lld) {
       ldflags = [ "-Wl,-no_deduplicate" ]  # ld64.
-    # TODO(neva): Restore to 'use_lld' condition when Neva GCC can remove use_gold logic.
-    } else if (use_lld || (use_neva_appruntime && use_gold)) {
+    } else if (use_lld) {
       ldflags = [ "-Wl,--icf=none" ]
     }
   }

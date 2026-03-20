@@ -8,6 +8,7 @@
 #include "base/time/time.h"
 #include "build/build_config.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/safe_browsing/generated_security_settings_bundle_pref.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/sync/sync_service_factory.h"
 #include "chrome/browser/ui/browser_finder.h"
@@ -143,10 +144,26 @@ void ChromeTailoredSecurityService::OnSyncNotificationMessageRequest(
     }
     return;
   }
-  SetSafeBrowsingState(profile_->GetPrefs(),
-                       is_enabled ? SafeBrowsingState::ENHANCED_PROTECTION
-                                  : SafeBrowsingState::STANDARD_PROTECTION,
-                       /*is_esb_enabled_by_account_integration=*/is_enabled);
+  // TODO(crbug.com/483786422): Register preference change handlers in each
+  // relevant generated.*pref class that acts whenever the settings bundle
+  // setting changes.
+  if (base::FeatureList::IsEnabled(safe_browsing::kBundledSecuritySettings)) {
+    PrefService* profile_pref = profile_->GetPrefs();
+    bool tailored_security_pref_registered = profile_pref->FindPreference(
+        prefs::kEnhancedProtectionEnabledViaTailoredSecurity);
+    if (tailored_security_pref_registered) {
+      SetSecurityBundleSetting(
+          *profile_pref, is_enabled ? SecuritySettingsBundleSetting::ENHANCED
+                                    : SecuritySettingsBundleSetting::STANDARD);
+      profile_pref->SetBoolean(
+          prefs::kEnhancedProtectionEnabledViaTailoredSecurity, is_enabled);
+    }
+  } else {
+    SetSafeBrowsingState(profile_->GetPrefs(),
+                         is_enabled ? SafeBrowsingState::ENHANCED_PROTECTION
+                                    : SafeBrowsingState::STANDARD_PROTECTION,
+                         /*is_esb_enabled_by_account_integration=*/is_enabled);
+  }
 
   if (base::FeatureList::IsEnabled(safe_browsing::kNoticeQueueForEsb)) {
     QueueNotice(is_enabled);

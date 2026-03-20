@@ -10,8 +10,8 @@
  * #css_wrapper_metadata_end */
 
 :host {
+  --tab-select-color_: rgba(23, 112, 216, 1);
   --input-inline-spacing: 12px;
-  --tab-select-color_: rgba(153, 200, 255, 1);
   outline: none;
   height: var(--cr-composebox-match-height, 44px);
   display: block;
@@ -29,7 +29,7 @@
   display: flex;
   font-size: 16px;
   height: var(--cr-composebox-match-height, 44px);
-  line-height: 24px;
+  line-height: var(--cr-composebox-match-line-height, 24px);
   position: relative;
 }
 
@@ -44,8 +44,7 @@
   /* Optional match border if '--match-border-size' is set
    * via ::part. Otherwise, keep it as 0px. */
   border: var(--match-border-size, 0) solid
-      var(--color-searchbox-results-icon-focused-outline,
-      var(--tab-select-color_));
+      var(--color-searchbox-results-icon-focused-outline);
 }
 
 @media (forced-colors: active) {
@@ -89,10 +88,19 @@
   align-content: center;
   color: var(--color-composebox-font-light);
   font-size: var(--cr-composebox-match-text-container-font-size, 16px);
+  flex-grow: 1;
   overflow: hidden;
-  padding-inline: var(--input-inline-spacing) 64px;
+  padding-inline: var(--cr-searchbox-match-text-padding-inline-start, 12px) 4px;
   text-overflow: ellipsis;
+  /* Default one line if not clamping lines
+   * (from non-deep-search, or not overriding
+   * forced clamp lines)
+   */
   white-space: nowrap;
+}
+
+:host(:not([override-clamp-line-num='-1'])) #textContainer {
+  white-space: normal;
 }
 
 :host(:is(:focus-visible, [selected])) #textContainer {
@@ -100,21 +108,23 @@
       var(--color-composebox-font-light));
 }
 
+.container:hover:has(#remove:not([hidden])) #textContainer {
+  padding-inline-end: var(--cr-composebox-match-text-padding-inline-end, 4px);
+}
+
 #remove {
   --cr-icon-button-fill-color:
       var(--color-searchbox-results-icon-selected);
-  --cr-icon-button-icon-size: 16px;
+  --cr-icon-button-icon-size:
+      var(--cr-composebox-dropdown-match-icon-size, 16px);
   --cr-icon-button-hover-background-color:
       var(--color-searchbox-results-button-hover);
+  --cr-icon-button-margin-end:
+      var(--cr-composebox-dropdown-match-margin-end, 4px);
+  --cr-icon-button-margin-start:
+      var(--cr-composebox-dropdown-match-margin-start, 0);
   display: none;
-  position: absolute;
   top: var(--cr-composebox-match-remove-button-top, 6px);
-  right: 12px;
-}
-
-:host-context([dir='rtl']) #remove {
-  left: 12px;
-  right: unset;
 }
 
 .container:hover #remove:not([hidden]),
@@ -122,6 +132,7 @@
   display: inline-flex;
 }
 
+/* Enum 1 is deepSearch. */
 :host([tool-mode='1']) #textContainer {
   overflow: hidden;
   white-space: normal;
@@ -134,11 +145,13 @@
   height: auto;
 }
 
+/* Enum 1 is deepSearch. */
 :host([tool-mode='1']) {
   height: auto;
   min-height: var(--cr-composebox-match-height, 44px);
 }
 
+/* Enum 1 is deepSearch. */
 :host([tool-mode='1']) .container {
   height: auto;
   min-height: 24px;

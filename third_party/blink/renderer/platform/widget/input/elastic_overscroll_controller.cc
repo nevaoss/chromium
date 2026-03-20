@@ -106,7 +106,17 @@ void ElasticOverscrollController::ObserveScrollUpdate(
     entry.received_overscroll_update = true;
   }
 
-  UpdateVelocity(entry, event_delta, event_timestamp);
+  // On macOS, scroll events sent when transitioning between phases
+  // (e.g., normal -> momentum) can be sent in very quick succession with a
+  // scroll delta larger than what would be expected for the time delta
+  // between events. Don't update velocity when transitioning to avoid giving
+  // the entry a bogus velocity.
+  if (!has_momentum || entry.is_in_momentum_phase) {
+    UpdateVelocity(entry, event_delta, event_timestamp);
+  }
+
+  entry.is_in_momentum_phase = has_momentum;
+
   Overscroll(entry, unused_scroll_delta);
   if (has_momentum &&
       !helper_->StretchAmount(entry.target_scroller_id).IsZero()) {
@@ -228,7 +238,7 @@ void ElasticOverscrollController::Overscroll(
   adjusted_overscroll_delta += entry.pending_overscroll_delta;
   entry.pending_overscroll_delta = gfx::Vector2dF();
 
-  // TODO (arakeri): Make this prefer the writing mode direction instead.
+  // TODO (gastonr): Make this prefer the writing mode direction instead.
   // Only allow one direction to overscroll at a time, and slightly prefer
   // scrolling vertically by applying the equal case to delta_y.
   if (fabsf(overscroll_delta.y()) >= fabsf(overscroll_delta.x()))

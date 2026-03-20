@@ -14,9 +14,10 @@
 #include "base/test/scoped_feature_list.h"
 #include "base/test/task_environment.h"
 #include "base/timer/timer.h"
+#include "chrome/browser/ui/browser_window/test/mock_browser_window_interface.h"
 #include "chrome/browser/ui/layout_constants.h"
 #include "chrome/browser/ui/tabs/features.h"
-#include "chrome/browser/ui/tabs/tab_renderer_data.h"
+#include "chrome/browser/ui/tabs/tab_data.h"
 #include "chrome/browser/ui/tabs/tab_style.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/frame/browser_root_view.h"
@@ -27,6 +28,7 @@
 #include "chrome/browser/ui/views/tabs/tab_group_highlight.h"
 #include "chrome/browser/ui/views/tabs/tab_group_underline.h"
 #include "chrome/browser/ui/views/tabs/tab_group_views.h"
+#include "chrome/browser/ui/views/tabs/tab_hover_card_controller.h"
 #include "chrome/browser/ui/views/tabs/tab_strip_controller.h"
 #include "chrome/browser/ui/views/tabs/tab_strip_observer.h"
 #include "chrome/browser/ui/views/tabs/tab_strip_types.h"
@@ -36,6 +38,7 @@
 #include "components/data_sharing/public/features.h"
 #include "components/saved_tab_groups/public/features.h"
 #include "components/tab_groups/tab_group_id.h"
+#include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/base/pointer/touch_ui_controller.h"
 #include "ui/base/ui_base_features.h"
@@ -55,6 +58,8 @@
 #include "ui/views/view_targeter.h"
 #include "ui/views/view_utils.h"
 #include "ui/views/widget/widget.h"
+
+using ::testing::NiceMock;
 
 namespace {
 
@@ -115,7 +120,9 @@ class TabStripTestBase : public ChromeViewsTestBase {
     ChromeViewsTestBase::SetUp();
 
     controller_ = new FakeBaseTabStripController;
-    tab_strip_ = new TabStrip(std::unique_ptr<TabStripController>(controller_));
+    tab_strip_ =
+        new TabStrip(std::unique_ptr<TabStripController>(controller_),
+                     std::unique_ptr<NiceMock<TabHoverCardController>>());
     tab_strip_->Initialize();
     controller_->set_tab_strip(tab_strip_);
     // Do this to force TabStrip to create the buttons.
@@ -140,7 +147,7 @@ class TabStripTestBase : public ChromeViewsTestBase {
         tab_strip_parent.get()));
 
     widget_ =
-        CreateTestWidget(views::Widget::InitParams::WIDGET_OWNS_NATIVE_WIDGET);
+        CreateTestWidget(views::Widget::InitParams::CLIENT_OWNS_WIDGET);
     tab_strip_parent_ = widget_->SetContentsView(std::move(tab_strip_parent));
 
     // Prevent hover cards from appearing when the mouse is over the tab. Tests
@@ -525,7 +532,7 @@ TEST_P(TabStripTest, TabNeedsAttentionBlocked) {
   Tab* tab1 = tab_strip_->tab_at(1);
 
   // Block tab1.
-  TabRendererData data;
+  tabs::TabData data;
   data.blocked = true;
   tab1->SetData(data);
 
@@ -544,7 +551,7 @@ TEST_P(TabStripTest, TabNeedsAttentionGeneric) {
   Tab* tab1 = tab_strip_->tab_at(1);
 
   // Set needs attention.
-  TabRendererData data;
+  tabs::TabData data;
   data.needs_attention = true;
   tab1->SetData(data);
 

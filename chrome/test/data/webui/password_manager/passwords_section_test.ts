@@ -626,8 +626,7 @@ suite('PasswordsSectionTest', function() {
 
     // Click the button to open the dialog.
     const cloudUploadButton =
-        listEntry.shadowRoot!.querySelector<HTMLButtonElement>(
-            '#cloudUploadButton');
+        listEntry.shadowRoot!.querySelector<HTMLElement>('#cloudUploadButton');
     assertTrue(!!cloudUploadButton);
     cloudUploadButton.click();
     await flushTasks();
@@ -640,7 +639,7 @@ suite('PasswordsSectionTest', function() {
     assertTrue(movePasswordsDialog.$.dialog.open);
   });
 
-  test('Upload icon tooltip text', async function() {
+  test('Upload icon tooltip and accessibility text', async function() {
     passwordManager.setAccountStorageEnabled(true);
     passwordManager.data.groups = [
       createCredentialGroup({
@@ -655,10 +654,67 @@ suite('PasswordsSectionTest', function() {
     const listEntry =
         section.shadowRoot!.querySelector<HTMLElement>('password-list-item');
     assertTrue(!!listEntry);
+
     assertEquals(
         listEntry.shadowRoot!.querySelector<HTMLElement>(
                                  'cr-tooltip')!.innerHTML,
         'Save in your Google Account');
+    assertEquals(
+        listEntry.shadowRoot!.querySelector<HTMLElement>(
+                                 '#cloudUploadButton')!.ariaLabel,
+        'Save in your Google Account');
+  });
+
+  test('Dialog closes when account storage is disabled', async function() {
+    passwordManager.setAccountStorageEnabled(true);
+    passwordManager.data.groups = [createCredentialGroup({
+      name: 'test.com',
+      credentials: [
+        createPasswordEntry({id: 0, inProfileStore: true}),
+        createPasswordEntry({id: 1, inAccountStore: true}),
+      ],
+    })];
+    passwordManager.setRequestCredentialsDetailsResponse(
+        passwordManager.data.groups[0]!.entries.slice());
+
+    const section = await createPasswordsSection();
+    const listEntry =
+        section.shadowRoot!.querySelector<PasswordListItemElement>(
+            'password-list-item');
+    assertTrue(!!listEntry);
+
+    // Initially, the dialog should not exist.
+    assertFalse(
+        !!listEntry.shadowRoot!.querySelector<MovePasswordsDialogElement>(
+            '#movePasswordsDialog'));
+
+    // Click the button to open the dialog.
+    listEntry.shadowRoot!.querySelector<HTMLElement>(
+                             '#cloudUploadButton')!.click();
+    await flushTasks();
+
+    // Now the dialog should have opened.
+    const movePasswordsDialog =
+        listEntry.shadowRoot!.querySelector<MovePasswordsDialogElement>(
+            '#movePasswordsDialog');
+    assertTrue(!!movePasswordsDialog);
+    assertTrue(movePasswordsDialog.$.dialog.open);
+
+    // Now disable account storage and trigger that the item changed.
+    listEntry.isAccountStoreUser = false;
+    passwordManager.data.groups = [createCredentialGroup({
+      name: 'test.com',
+      credentials: [
+        createPasswordEntry({id: 0, inProfileStore: true}),
+      ],
+    })];
+    listEntry.item = passwordManager.data.groups[0]!;
+    await flushTasks();
+
+    // The dialog should no longer exist.
+    assertFalse(
+        !!listEntry.shadowRoot!.querySelector<MovePasswordsDialogElement>(
+            '#movePasswordsDialog'));
   });
 });
 

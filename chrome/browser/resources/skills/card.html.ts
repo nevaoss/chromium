@@ -16,38 +16,50 @@ export function getHtml(this: SkillCardElement) {
     <div id="infoContainer">
       <div id="icon">${this.skill.icon}</div>
       <div id="name">${this.skill.name}</div>
+      <cr-tooltip for="infoContainer" position="bottom" offset="0"
+          fit-to-visible-bounds>
+        ${this.skill.name}
+      </cr-tooltip>
     </div>
     <!-- Only show the menu button for user-created skills. -->
     ${this.isDiscoverCard_() ? html`` : html`
       <cr-icon-button id="moreButton" iron-icon="cr:more-vert"
+          aria-label="${this.ariaLabelForSkill_('skillCardActionMenuLabel')}"
           @click="${this.onMoreButtonClick_}">
       </cr-icon-button>
-      <cr-action-menu id="menu">
+      <cr-action-menu id="menu"
+          accessibility-label="$i18n{skillCardActionMenuLabel}"
+          role-description="$i18n{menu}">
         <cr-button class="dropdown-item" id="deleteButton"
-            @click="${this.onDeleteButtonClick_}">
+            @click="${this.onDeleteButtonClick_}"
+            aria-label="${this.ariaLabelForSkill_('delete')}">
           <cr-icon icon="cr:delete" slot="prefix-icon"></cr-icon>
           $i18n{delete}
         </cr-button>
         <cr-button class="dropdown-item" id="copyButton"
-            @click="${this.onCopyButtonClick_}">
+            @click="${this.onCopyButtonClick_}"
+            aria-label="${this.ariaLabelForSkill_('copyInstructions')}">
           <cr-icon icon="skills:copy" slot="prefix-icon"></cr-icon>
           $i18n{copyInstructions}
         </cr-button>
       </cr-action-menu>
     `}
   </div>
-  <div id="cardBody">${this.skill.prompt}</div>
+  <div id="${this.cardType}Body" class="card-body">${this.getCardBodyText_()}
+  </div>
   <div id="cardFooter">
-    <!-- Show save button for discover cards and edit button for user-created skills. -->
+    <!-- Show add for discoverable skills and edit for user skills. -->
     ${this.isDiscoverCard_() ? html`
       <cr-button id="saveButton" ?disabled="${this.saveDisabled}"
-          @click="${this.onSaveButtonClick_}">
+          @click="${this.onSaveButtonClick_}"
+          aria-label="${this.ariaLabelForSkill_('add')}">
         <cr-icon icon="cr:add" slot="prefix-icon"></cr-icon>
-        $i18n{save}
+        $i18n{add}
       </cr-button>
     ` : html`
-      <cr-button id="editButton" @click="${this.onEditButtonClick_}">
-        <cr-icon icon="cr:create" slot="prefix-icon"></cr-icon>
+      <cr-button id="editButton" @click="${this.onEditButtonClick_}"
+          aria-label="${this.ariaLabelForSkill_('edit')}">
+        <cr-icon id="editIcon" icon="skills:create" slot="prefix-icon"></cr-icon>
         $i18n{edit}
       </cr-button>
     `}

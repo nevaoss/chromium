@@ -7,6 +7,7 @@
 #include "base/i18n/message_formatter.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/utf_string_conversions.h"
+#include "build/branding_buildflags.h"
 #include "build/build_config.h"
 #include "chrome/browser/extensions/api/passwords_private/passwords_private_delegate.h"
 #include "chrome/browser/extensions/api/passwords_private/passwords_private_delegate_factory.h"
@@ -500,6 +501,8 @@ content::WebUIDataSource* CreateAndAddPasswordsUIHTMLSource(
        IDS_PASSWORD_MANAGER_SAVE_IN_ACCOUNT_BUBBLE_SAVE_BUTTON},
       {"movePasswordToAccountIconTooltip",
        IDS_PASSWORD_MANAGER_UI_MOVE_TO_ACCOUNT_ICON_TOOLTIP},
+      {"movePasswordsToAccountDetailsCardSubtitle",
+       IDS_PASSWORD_MANAGER_SAVE_IN_ACCOUNT_BUBBLE_DESCRIPTION},
 #if BUILDFLAG(IS_MAC)
       {"biometricAuthenticationForFillingLabel",
        IDS_PASSWORD_MANAGER_UI_BIOMETRIC_AUTHENTICATION_FOR_FILLING_TOGGLE_LABEL_MAC},
@@ -673,6 +676,10 @@ content::WebUIDataSource* CreateAndAddPasswordsUIHTMLSource(
       "enablePasswordManagerMojoApi",
       base::FeatureList::IsEnabled(
           password_manager::features::kEnablePasswordManagerMojoApi));
+
+  source->AddBoolean("enablePasswordCheckup",
+                     base::FeatureList::IsEnabled(
+                         password_manager::features::kPasswordCheckup));
 
   bool passwordUploadUiUpdateEnabled = false;
 #if !BUILDFLAG(IS_CHROMEOS)

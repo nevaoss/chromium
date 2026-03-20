@@ -59,6 +59,16 @@ namespace glic {
 // PNG.
 BASE_FEATURE(kGlicBitmapsEnabled, base::FEATURE_ENABLED_BY_DEFAULT);
 
+// Sets the maximum number of in-flight requests to the guest.
+BASE_FEATURE(kGlicMaxInFlightRequests, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE_PARAM(int,
+                   kGlicMaxInFlightRequestLimit,
+                   &kGlicMaxInFlightRequests,
+                   "max_in_flight_request_limit",
+                   200);
+BASE_FEATURE(kGlicSendResponsesForAllRequests,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 class GlicPreloadHandler : public glic::mojom::GlicPreloadHandler {
  public:
   explicit GlicPreloadHandler(
@@ -115,7 +125,10 @@ bool GlicUIConfig::IsWebUIEnabled(content::BrowserContext* browser_context) {
 }
 
 GlicUI::GlicUI(content::WebUI* web_ui)
-    : ui::MojoWebUIController(web_ui), preload_factory_receiver_{this} {
+    : ui::MojoWebUIController(web_ui,
+                              /*enable_chrome_send=*/false,
+                              /*enable_chrome_histograms=*/true),
+      preload_factory_receiver_{this} {
   static constexpr webui::LocalizedString kStrings[] = {
       {"closeButtonLabel", IDS_GLIC_NOTICE_CLOSE_BUTTON_LABEL},
       {"errorNotice", IDS_GLIC_ERROR_NOTICE},
@@ -184,6 +197,14 @@ GlicUI::GlicUI(content::WebUI* web_ui)
 
   source->AddBoolean("loggingEnabled",
                      command_line->HasSwitch(::switches::kGlicHostLogging));
+
+  source->AddInteger("maxInFlightRequests",
+                     base::FeatureList::IsEnabled(kGlicMaxInFlightRequests)
+                         ? kGlicMaxInFlightRequestLimit.Get()
+                         : INT_MAX);
+  source->AddBoolean(
+      "sendResponsesForAllRequests",
+      base::FeatureList::IsEnabled(kGlicSendResponsesForAllRequests));
 
   // Set up guest URL via cli flag or default to finch param value.
   const GURL guest_url = GetGuestURL();
@@ -368,5 +389,11 @@ void GlicUI::CreatePreloadHandler(
       web_ui()->GetWebContents()->GetBrowserContext(), std::move(receiver),
       std::move(page));
 }
+
+#if !BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+content::RenderFrameHost* GlicUI::GetWebUiRenderFrameHost() {
+  return web_ui()->GetRenderFrameHost();
+}
+#endif  // !BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 
 }  // namespace glic

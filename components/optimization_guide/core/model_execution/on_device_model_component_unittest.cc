@@ -104,8 +104,12 @@ class OnDeviceModelComponentTest : public testing::Test {
   }
 
   void DoStartup() {
+    base::HistogramTester startup_histograms;
     broker_.GetOrCreateBrokerState();  // Force instantiation.
     task_environment_.FastForwardBy(base::Seconds(1));
+    startup_histograms.ExpectUniqueSample(
+        "OptimizationGuide.OnDeviceModel.OnDeviceModelComponentInstantiated",
+        true, 1);
   }
 
   void SimulateShutdown() { broker_.SimulateShutdown(); }
@@ -548,6 +552,8 @@ TEST_F(OnDeviceModelComponentTest, SetReady) {
   const OnDeviceModelComponentState* state = manager().GetState();
   ASSERT_TRUE(state);
 
+  histograms_.ExpectTotalCount("OptimizationGuide.OnDeviceModel.InstalledModel",
+                               1);
   EXPECT_FALSE(state->GetInstallDirectory().empty());
   EXPECT_EQ(state->GetComponentVersion(), base::Version("0.0.1"));
 
@@ -565,7 +571,7 @@ TEST_F(OnDeviceModelComponentTest, InstallAfterEligibleFeatureWasUsed) {
   broker_.GetOrCreateBrokerState().usage_tracker().OnDeviceEligibleFeatureUsed(
       mojom::OnDeviceFeature::kCompose);
   EXPECT_TRUE(WaitUntilInstallerRegistered());
-  EXPECT_TRUE(broker_.component_state().request_update_called());
+  EXPECT_TRUE(broker_.component_state().requested_foreground_update());
 }
 
 TEST_F(OnDeviceModelComponentTest, LogsStatusOnUse) {
@@ -752,7 +758,6 @@ TEST_F(OnDeviceModelComponentTest,
   DoStartup();
   EnsurePerformanceClassAvailable();
   ASSERT_TRUE(WaitUntilInstallerRegistered());
-  EXPECT_FALSE(broker_.component_state().request_update_called());
   histograms_.ExpectUniqueSample(
       "OptimizationGuide.ModelExecution.OnDeviceModelInstallCriteria."
       "InitialInstall.IsBackground",
@@ -803,10 +808,12 @@ TEST_F(OnDeviceModelComponentTest, FeatureUseUpgradesToOnDemand) {
   EnsurePerformanceClassAvailable();
   ASSERT_TRUE(WaitUntilInstallerRegistered());
 
+  EXPECT_FALSE(broker_.component_state().requested_foreground_update());
+
   broker_.GetOrCreateBrokerState().usage_tracker().OnDeviceEligibleFeatureUsed(
       mojom::OnDeviceFeature::kCompose);
   task_environment_.RunUntilIdle();
-  EXPECT_TRUE(broker_.component_state().request_update_called());
+  EXPECT_TRUE(broker_.component_state().requested_foreground_update());
 }
 
 TEST_F(OnDeviceModelComponentTest, FeatureUseSkipsUpdateIfAlreadyInstalled) {
@@ -824,7 +831,7 @@ TEST_F(OnDeviceModelComponentTest, FeatureUseSkipsUpdateIfAlreadyInstalled) {
   broker_.GetOrCreateBrokerState().usage_tracker().OnDeviceEligibleFeatureUsed(
       mojom::OnDeviceFeature::kCompose);
   task_environment_.RunUntilIdle();
-  EXPECT_FALSE(broker_.component_state().request_update_called());
+  EXPECT_FALSE(broker_.component_state().requested_foreground_update());
 }
 
 TEST_F(OnDeviceModelComponentTest, UninstallWhileRegistrationPending) {

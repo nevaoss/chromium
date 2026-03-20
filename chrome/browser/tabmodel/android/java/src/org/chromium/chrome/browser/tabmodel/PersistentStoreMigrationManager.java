@@ -1,7 +1,6 @@
 // Copyright 2026 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-
 package org.chromium.chrome.browser.tabmodel;
 
 import androidx.annotation.IntDef;
@@ -59,8 +58,22 @@ public interface PersistentStoreMigrationManager {
     /** Called when a shadow store has caught up to the authoritative store. */
     void onShadowStoreCaughtUp();
 
+    /**
+     * Called when an authoritative store has been initialized.
+     *
+     * @param type The type of store that was initialized.
+     */
+    void onAuthoritativeStoreInitialized(@StoreType int type);
+
     /** Whether the shadow store is caught up. */
     boolean isShadowStoreCaughtUp();
+
+    /**
+     * Whether the given store should be razed for the current window before a load occurs.
+     *
+     * @param isAuthoritative Whether the store to be razed is authoritative for the window.
+     */
+    boolean shouldRazeStoreForWindow(boolean isAuthoritative);
 
     /**
      * Called upon the permanent destruction of a window's persisted shadow store data, such as upon
@@ -68,8 +81,8 @@ public interface PersistentStoreMigrationManager {
      */
     void onShadowStoreRazed();
 
-    /** Called upon the permanent destruction of all windows' persisted shadow store tab data. */
-    void onAllShadowStoresRazed();
+    /** Called upon the permanent destruction of all windows' persisted store tab data. */
+    void onAllStoresRazed();
 
     /** Called upon the permanent destruction of a window's persisted data. */
     void onWindowCleared();

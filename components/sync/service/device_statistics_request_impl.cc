@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include "base/metrics/histogram_functions.h"
 #include "components/signin/public/base/oauth_consumer_id.h"
 #include "components/signin/public/identity_manager/access_token_fetcher.h"
 #include "components/signin/public/identity_manager/access_token_info.h"
@@ -38,11 +39,7 @@ DeviceStatisticsRequestImpl::DeviceStatisticsRequestImpl(
       user_agent_(user_agent) {
   CHECK(identity_manager_);
   CHECK(url_loader_factory_);
-
-  // This class must only be used if there is a primary account (though it's
-  // allowed that `account` isn't the primary one). If this ever changes, also
-  // update the network traffic annotation.
-  CHECK(identity_manager_->HasPrimaryAccount(signin::ConsentLevel::kSignin));
+  CHECK(identity_manager_->HasAccountWithRefreshToken(account.account_id));
 }
 
 DeviceStatisticsRequestImpl::~DeviceStatisticsRequestImpl() = default;
@@ -79,7 +76,7 @@ void DeviceStatisticsRequestImpl::AccessTokenFetchComplete(
   access_token_fetcher_.reset();
 
   if (error.state() != GoogleServiceAuthError::NONE) {
-    UpdateStateAndNotify(State::kFailed);
+    UpdateStateAndNotify(Outcome::kAuthError);
 
     // It is valid for the callback to delete `this`, so do not access any
     // members below here.
@@ -92,10 +89,11 @@ void DeviceStatisticsRequestImpl::AccessTokenFetchComplete(
         semantics {
           sender: "Chrome Sync"
           description:
-            "Chrome sends this on profile startup, to collect metrics on both "
-            "the primary and any non-primary accounts."
+            "Chrome sends this on profile startup, and periodically once per "
+            "day, to collect metrics on all signed-in accounts."
           trigger:
-            "Sign-in to Chrome, or profile startup while already signed-in."
+            "Profile startup while already signed-in, and periodically once "
+            "per day."
           data: "The user identifier."
           destination: GOOGLE_OWNED_SERVICE
           internal {
@@ -109,18 +107,17 @@ void DeviceStatisticsRequestImpl::AccessTokenFetchComplete(
           user_data {
             type: ACCESS_TOKEN
           }
-          last_reviewed: "2025-12-15"
+          last_reviewed: "2026-02-10"
         }
         policy {
           cookies_allowed: NO
           setting:
             "Users can disable these requests by turning off 'Help improve "
-            "Chrome's features and performance' in Chrome settings, or by "
-            "signing out of Chrome."
+            "Chrome's features and performance' in Chrome settings."
           chrome_policy {
-            SyncDisabled {
+            MetricsReportingEnabled {
               policy_options {mode: MANDATORY}
-              SyncDisabled: true
+              MetricsReportingEnabled: false
             }
           }
         })");
@@ -186,17 +183,21 @@ void DeviceStatisticsRequestImpl::AccessTokenFetchComplete(
 void DeviceStatisticsRequestImpl::SimpleLoaderComplete(
     signin::AccessTokenInfo access_token_info,
     std::optional<std::string> response_body) {
-  int response_code = -1;
+  const int net_error_code = simple_url_loader_->NetError();
+  CHECK_LE(net_error_code, 0);
+
+  int http_response_code = -1;
   if (simple_url_loader_->ResponseInfo() &&
       simple_url_loader_->ResponseInfo()->headers) {
-    response_code =
+    http_response_code =
         simple_url_loader_->ResponseInfo()->headers->response_code();
   }
   simple_url_loader_.reset();
 
   // If the response code indicates that the token might not be valid,
   // invalidate the token and try again.
-  if (response_code == net::HTTP_UNAUTHORIZED && !has_retried_authorization_) {
+  if (http_response_code == net::HTTP_UNAUTHORIZED &&
+      !has_retried_authorization_) {
     identity_manager_->RemoveAccessTokenFromCache(
         account_.account_id, signin::OAuthConsumerId::kWebHistoryService,
         access_token_info.token);
@@ -206,19 +207,28 @@ void DeviceStatisticsRequestImpl::SimpleLoaderComplete(
     return;
   }
 
-  if (response_code != net::HTTP_OK) {
-    UpdateStateAndNotify(State::kFailed);
+  base::UmaHistogramSparse(
+      "Sync.DeviceStatistics.RequestUrlFetchResponse",
+      net_error_code != net::OK ? net_error_code : http_response_code);
+
+  if (net_error_code != net::OK) {
+    UpdateStateAndNotify(Outcome::kNetworkError);
+    return;
+  }
+
+  if (http_response_code != net::HTTP_OK) {
+    UpdateStateAndNotify(Outcome::kHttpError);
     return;
   }
 
   if (!response_body) {
-    UpdateStateAndNotify(State::kFailed);
+    UpdateStateAndNotify(Outcome::kEmptyResponse);
     return;
   }
 
   sync_pb::ClientToServerResponse response;
   if (!response.ParseFromString(response_body.value())) {
-    UpdateStateAndNotify(State::kFailed);
+    UpdateStateAndNotify(Outcome::kInvalidResponse);
     return;
   }
 
@@ -226,15 +236,16 @@ void DeviceStatisticsRequestImpl::SimpleLoaderComplete(
     results_.push_back(entity);
   }
 
-  UpdateStateAndNotify(State::kComplete);
+  UpdateStateAndNotify(Outcome::kSuccess);
   // It is valid for the callback to delete `this`, so do not access any
   // members below here.
 }
 
-void DeviceStatisticsRequestImpl::UpdateStateAndNotify(State state) {
-  CHECK(state == State::kComplete || state == State::kFailed);
+void DeviceStatisticsRequestImpl::UpdateStateAndNotify(Outcome outcome) {
   CHECK(callback_);
-  state_ = state;
+  base::UmaHistogramEnumeration("Sync.DeviceStatistics.RequestOutcome",
+                                outcome);
+  state_ = (outcome == Outcome::kSuccess) ? State::kComplete : State::kFailed;
   std::move(callback_).Run();
 }
 

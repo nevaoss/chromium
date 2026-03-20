@@ -135,17 +135,21 @@ CookiesGetAllFunction::~CookiesGetAllFunction() {}
 void CookiesGetAllFunction::GetAllCookiesCallback(
     const net::CookieList& cookie_list) {
   auto domain = parsed_args_->details.domain;
-  auto it = cookie_list | std::views::filter([&domain](const auto& cookie) {
-              return !domain || cookie.Domain() == domain;
-            }) |
-            std::views::transform([](const auto& cookie) {
-              return cookies_helpers::CreateCookie(cookie);
-            });
+
+  std::vector<extensions::api::cookies::Cookie> cookies;
+  cookies.reserve(cookie_list.size());
+
+  for (const auto& cookie : cookie_list) {
+    if (!domain || cookie.Domain() == domain) {
+      cookies.push_back(cookies_helpers::CreateCookie(cookie));
+    }
+  }
 
   base::ListValue result;
-  for (const auto& cookie : it) {
+  for (const auto& cookie : cookies) {
     result.Append(cookie.ToValue());
   }
+
   Respond(WithArguments(std::move(result)));
 }
 

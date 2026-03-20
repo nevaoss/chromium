@@ -55,6 +55,7 @@ const char kGlicOnboardingCompleted[] = "glic_onboarding_completed";
 
 #if BUILDFLAG(IS_IOS)
 const char kChromeOpened[] = "chrome_opened";
+const char kChromeActiveSessionDay[] = "chrome_active_session_day";
 const char kIncognitoTabOpened[] = "incognito_tab_opened";
 const char kClearedBrowsingData[] = "cleared_browsing_data";
 const char kViewedReadingList[] = "viewed_reading_list";
@@ -147,6 +148,8 @@ const char kGenericDefaultBrowserPromoTrigger[] =
 const char kAllTabsPromoTrigger[] = "all_tabs_promo_trigger";
 const char kMadeForIOSPromoTrigger[] = "made_for_ios_promo_trigger";
 const char kStaySafePromoTrigger[] = "stay_safe_promo_trigger";
+const char kDefaultBrowserPromosGroupTrigger[] =
+    "default_browser_promos_group_trigger";
 const char kTailoredDefaultBrowserPromosGroupTrigger[] =
     "tailored_default_browser_promos_group_trigger";
 const char kIOSContextualPanelSampleModelEntrypointUsed[] =
@@ -211,11 +214,14 @@ const char kIOSGeminiConsentGiven[] = "ios_gemini_consent_given";
 const char kIOSGeminiImageRemixIPHTrigger[] =
     "ios_gemini_image_remix_iph_trigger";
 const char kIOSPinMVTSiteUsed[] = "ios_pin_mvt_site_used";
+const char kIOSChromeOpenedFromIcon[] = "ios_chrome_opened_from_icon";
 #endif  // BUILDFLAG(IS_IOS)
 
 #if BUILDFLAG(IS_ANDROID)
 const char kPwaInstallMenuSelected[] = "pwa_install_menu_clicked";
 #endif  // BUILDFLAG(IS_ANDROID)
+
+const char kTabSearchComboButtonUsed[] = "tab_search_combo_button_used";
 
 }  // namespace events
 

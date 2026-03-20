@@ -65,18 +65,18 @@ Reviewed-by: Lokesh Kumar Goel <lokeshkumar.goel@lge.com>
  1 file changed, 5 insertions(+)
 
 diff --git a/BUILD.gn b/BUILD.gn
-index cc9e9b7a190..c6983731e91 100644
+index a5c7d847781..6e63bae980b 100644
 --- a/BUILD.gn
 +++ b/BUILD.gn
-@@ -12,6 +12,7 @@ import("//build/config/riscv.gni")
+@@ -13,6 +13,7 @@ import("//build/config/riscv.gni")
  import("//build/config/sanitizers/sanitizers.gni")
  import("//build_overrides/build.gni")
  import("//third_party/icu/config.gni")
 +import("//neva/neva.gni")
  
+ import("gni/cluster_build.gni")
  import("gni/snapshot_toolchain.gni")
- import("gni/v8.gni")
-@@ -7338,6 +7339,10 @@ if (current_toolchain == v8_snapshot_toolchain) {
+@@ -7936,6 +7937,10 @@ if (current_toolchain == v8_snapshot_toolchain) {
        ":v8_tracing",
        "//build/win:default_exe_manifest",
      ]
@@ -85,7 +85,7 @@ index cc9e9b7a190..c6983731e91 100644
 +      deps += [ "//base/trace_event/neva/lttng:chromium_lttng_provider", ]
 +    }
    }
-
+ 
    # This config disables a link time optimization "ICF", which may merge
 -- 
 2.45.2

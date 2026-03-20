@@ -15,10 +15,15 @@
 #include "chrome/test/base/in_process_browser_test.h"
 #include "content/public/test/browser_test.h"
 #include "testing/gmock/include/gmock/gmock.h"
+#include "ui/base/identifier/unique_identifier.h"
 #include "ui/base/interaction/element_identifier.h"
 #include "ui/gfx/animation/animation_test_api.h"
 #include "ui/views/layout/animating_layout_manager_test_util.h"
 #include "ui/views/test/views_test_utils.h"
+
+#define DEFINE_LOCAL_SIDE_PANEL_ANIMATION_ID(Name)               \
+  DEFINE_MACRO_LOCAL_UNIQUE_IDENTIFIER_VALUE(__FILE__, __LINE__, \
+                                             SidePanelAnimationId, Name)
 
 using ::testing::_;
 
@@ -26,17 +31,14 @@ class MockSidePanelAnimationObserver
     : public SidePanelAnimationCoordinator::AnimationIdObserver,
       public SidePanelAnimationCoordinator::AnimationTypeObserver {
  public:
-  MOCK_METHOD(
-      void,
-      OnAnimationSequenceProgressed,
-      (const SidePanelAnimationCoordinator::SidePanelAnimationId& animation_id,
-       double animation_value),
-      (override));
-  MOCK_METHOD(
-      void,
-      OnAnimationSequenceEnded,
-      (const SidePanelAnimationCoordinator::SidePanelAnimationId& animation_id),
-      (override));
+  MOCK_METHOD(void,
+              OnAnimationSequenceProgressed,
+              (SidePanelAnimationId animation_id, double animation_value),
+              (override));
+  MOCK_METHOD(void,
+              OnAnimationSequenceEnded,
+              (SidePanelAnimationId animation_id),
+              (override));
   MOCK_METHOD(void,
               OnAnimationTypeEnded,
               (const SidePanelAnimationCoordinator::AnimationType),
@@ -69,7 +71,7 @@ IN_PROC_BROWSER_TEST_F(SidePanelAnimationCoordinatorBrowserTest,
   SidePanelAnimationCoordinator* animation_coordinator =
       GetAnimationCoordinator();
 
-  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kTestAnimationId);
+  DEFINE_LOCAL_SIDE_PANEL_ANIMATION_ID(kTestAnimationId);
 
   // Add a test animation that only exists for the kOpen animation type.
   AddAnimationSequence(SidePanelAnimationCoordinator::AnimationType::kOpen,
@@ -133,7 +135,7 @@ IN_PROC_BROWSER_TEST_F(SidePanelAnimationCoordinatorBrowserTest,
   SidePanelAnimationCoordinator* animation_coordinator =
       GetAnimationCoordinator();
 
-  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kTestAnimationId);
+  DEFINE_LOCAL_SIDE_PANEL_ANIMATION_ID(kTestAnimationId);
   AddAnimationSequence(SidePanelAnimationCoordinator::AnimationType::kOpen,
                        {.animation_id = kTestAnimationId,
                         .start = base::Milliseconds(0),
@@ -229,7 +231,7 @@ IN_PROC_BROWSER_TEST_F(SidePanelAnimationCoordinatorBrowserTest,
   SidePanelAnimationCoordinator* animation_coordinator =
       GetAnimationCoordinator();
 
-  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kTestAnimationId);
+  DEFINE_LOCAL_SIDE_PANEL_ANIMATION_ID(kTestAnimationId);
 
   // Add a test animation for open and close animation type.
   AddAnimationSequence(SidePanelAnimationCoordinator::AnimationType::kOpen,
@@ -296,7 +298,7 @@ IN_PROC_BROWSER_TEST_F(SidePanelAnimationCoordinatorBrowserTest,
   SidePanelAnimationCoordinator* animation_coordinator =
       GetAnimationCoordinator();
 
-  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kTestAnimationId);
+  DEFINE_LOCAL_SIDE_PANEL_ANIMATION_ID(kTestAnimationId);
 
   // Add a test animation for open animation type.
   AddAnimationSequence(SidePanelAnimationCoordinator::AnimationType::kOpen,
@@ -336,8 +338,8 @@ IN_PROC_BROWSER_TEST_F(SidePanelAnimationCoordinatorBrowserTest,
   SidePanelAnimationCoordinator* animation_coordinator =
       GetAnimationCoordinator();
 
-  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kFirstAnimationId);
-  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSecondAnimationId);
+  DEFINE_LOCAL_SIDE_PANEL_ANIMATION_ID(kFirstAnimationId);
+  DEFINE_LOCAL_SIDE_PANEL_ANIMATION_ID(kSecondAnimationId);
 
   // Add two test animations for the open animation type with different start
   // times.
@@ -467,4 +469,34 @@ IN_PROC_BROWSER_TEST_F(SidePanelAnimationCoordinatorBrowserTest,
   test_api.IncrementTime(duration * 0.05);
   EXPECT_EQ(animation_coordinator->animation_for_testing()->GetCurrentValue(),
             1.0);
+}
+
+IN_PROC_BROWSER_TEST_F(SidePanelAnimationCoordinatorBrowserTest,
+                       AnimationUsesFinalValueOnly) {
+  SidePanelAnimationCoordinator* animation_coordinator =
+      GetAnimationCoordinator();
+
+  DEFINE_LOCAL_SIDE_PANEL_ANIMATION_ID(kTestAnimationId);
+
+  // Add a test animation for open animation type that uses final value only.
+  AddAnimationSequence(SidePanelAnimationCoordinator::AnimationType::kOpen,
+                       {.animation_id = kTestAnimationId,
+                        .start = base::Milliseconds(0),
+                        .duration = base::Milliseconds(100),
+                        .snap_to_final_value = true});
+
+  // Start animation
+  animation_coordinator->Start(
+      SidePanelAnimationCoordinator::AnimationType::kOpen);
+
+  // Value should be 1.0 immediately (since it's opening)
+  EXPECT_EQ(1.0, animation_coordinator->GetAnimationValueFor(kTestAnimationId));
+
+  // Progress animation
+  auto* animation = static_cast<gfx::SlideAnimation*>(
+      animation_coordinator->animation_for_testing());
+  animation->SetCurrentValue(0.5);
+
+  // Value should still be 1.0
+  EXPECT_EQ(1.0, animation_coordinator->GetAnimationValueFor(kTestAnimationId));
 }

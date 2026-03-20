@@ -629,6 +629,17 @@ Color LayoutTheme::DefaultSystemColor(CSSValueID css_value_id,
                  : Color::FromRGBA32(0xFF000000);
     case CSSValueID::kCanvas:
     // The following system colors were deprecated to default to Canvas.
+    case CSSValueID::kActivecaption:
+      if (RuntimeEnabledFeatures::CSSActiveCaptionMapsToCanvasEnabled()) {
+        return color_scheme == mojom::blink::ColorScheme::kDark
+                   ? Color::FromRGBA32(0xFF121212)
+                   : Color::FromRGBA32(0xFFFFFFFF);
+      } else {
+        // The old behavior maps to CanvasText
+        return color_scheme == mojom::blink::ColorScheme::kDark
+                   ? Color::FromRGBA32(0xFFFFFFFF)
+                   : Color::FromRGBA32(0xFF000000);
+      }
     case CSSValueID::kAppworkspace:
     case CSSValueID::kBackground:
     case CSSValueID::kInactivecaption:
@@ -641,7 +652,6 @@ Color LayoutTheme::DefaultSystemColor(CSSValueID css_value_id,
                  : Color::FromRGBA32(0xFFFFFFFF);
     case CSSValueID::kCanvastext:
     // The following system colors were deprecated to default to CanvasText.
-    case CSSValueID::kActivecaption:
     case CSSValueID::kCaptiontext:
     case CSSValueID::kInfotext:
     case CSSValueID::kMenutext:
@@ -778,6 +788,12 @@ Color LayoutTheme::SystemColorFromColorProvider(
       break;
     case CSSValueID::kCanvas:
     // Deprecated colors, see DefaultSystemColor().
+    case CSSValueID::kActivecaption:
+      system_theme_color = color_provider->GetColor(
+          RuntimeEnabledFeatures::CSSActiveCaptionMapsToCanvasEnabled()
+              ? ui::kColorCssSystemWindow
+              : ui::kColorCssSystemWindowText);
+      break;
     case CSSValueID::kAppworkspace:
     case CSSValueID::kBackground:
     case CSSValueID::kInactivecaption:
@@ -789,7 +805,6 @@ Color LayoutTheme::SystemColorFromColorProvider(
       break;
     case CSSValueID::kCanvastext:
     // Deprecated colors, see DefaultSystemColor().
-    case CSSValueID::kActivecaption:
     case CSSValueID::kCaptiontext:
     case CSSValueID::kInfotext:
     case CSSValueID::kMenutext:
@@ -858,16 +873,19 @@ void LayoutTheme::SetCustomFocusRingColor(const Color& c) {
 
 Color LayoutTheme::FocusRingColor(
     mojom::blink::ColorScheme color_scheme) const {
-  return has_custom_focus_ring_color_ ? custom_focus_ring_color_
-                                      : GetTheme().PlatformFocusRingColor();
-}
-
-bool LayoutTheme::DelegatesMenuListRendering() const {
-  return delegates_menu_list_rendering_;
-}
-
-void LayoutTheme::SetDelegatesMenuListRenderingForTesting(bool flag) {
-  delegates_menu_list_rendering_ = flag;
+#if !BUILDFLAG(IS_MAC)
+  // Keep focus rings visible in dark mode even when embedders provide a dark
+  // custom color (e.g. renderer prefs defaulting to 0x101010).
+  if (color_scheme == mojom::blink::ColorScheme::kDark &&
+      RuntimeEnabledFeatures::
+          FocusRingRespectExplicitOutlineColorInDarkModeEnabled()) {
+    return Color::kWhite;
+  }
+#endif
+  if (has_custom_focus_ring_color_) {
+    return custom_focus_ring_color_;
+  }
+  return GetTheme().PlatformFocusRingColor();
 }
 
 String LayoutTheme::DisplayNameForFile(const File& file) const {

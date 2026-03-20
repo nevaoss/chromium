@@ -274,6 +274,7 @@ const char kLensOAuth2Scope[] = "https://www.googleapis.com/auth/lens";
 
 // OAuth2 scope for DevTools GenAI features.
 const char kAidaOAuth2Scope[] = "https://www.googleapis.com/auth/aida";
+const char kAiCodeOAuth2Scope[] = "https://www.googleapis.com/auth/aicode";
 
 // OAuth2 scope for Google Developer Program <-> DevTools integration features.
 const char kGdpOAuth2Scope[] =
@@ -295,8 +296,12 @@ const char kMantaOAuth2Scope[] = "https://www.googleapis.com/auth/mdi.aratea";
 const char kWebHistoryOAuth2Scope[] =
     "https://www.googleapis.com/auth/webhistory";
 
-// OAuth2 scope for Legion.
-const char kLegionAuthScope[] = "https://www.googleapis.com/auth/paic";
+// OAuth2 scope for Private AI.
+const char kPrivateAiAuthScope[] = "https://www.googleapis.com/auth/paic";
+
+// OAuth2 scope for access to wallet passes.
+const char kWalletPassesOAuth2Scope[] =
+    "https://www.googleapis.com/auth/wallet_1p_passes";
 
 // Used to build ClientOAuth requests.  These are the names of keys used when
 // building base::DictionaryValue that represent the json data that makes up

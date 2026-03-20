@@ -31,6 +31,7 @@ BASE_DECLARE_FEATURE(kDynamicMaxAutocomplete);
 // Local history zero-prefix (aka zero-suggest) and prefix suggestions.
 BASE_DECLARE_FEATURE(kFocusTriggersWebAndSRPZeroSuggest);
 BASE_DECLARE_FEATURE(kOnClobberSuggestIOS);
+BASE_DECLARE_FEATURE(kHideContextualGroupHeaders);
 BASE_DECLARE_FEATURE(kHideSuggestionGroupHeaders);
 BASE_DECLARE_FEATURE(kLocalHistoryZeroSuggestBeyondNTP);
 BASE_DECLARE_FEATURE(kZeroSuggestPrefetchDebouncing);
@@ -82,9 +83,6 @@ BASE_DECLARE_FEATURE(kMlUrlScoring);
 BASE_DECLARE_FEATURE(kMlUrlSearchBlending);
 BASE_DECLARE_FEATURE(kUrlScoringModel);
 
-// Animate appearance of suggestions list.
-BASE_DECLARE_FEATURE(kAnimateSuggestionsListAppearance);
-
 // Allows for touch down events to send a signal to |SearchPrefetchService| to
 // start prefetching the suggestion. The feature only applies to search
 // suggestions and only controls whether the signal is sent.
@@ -105,6 +103,7 @@ BASE_DECLARE_FEATURE(kUseFusedLocationProvider);
 
 BASE_DECLARE_FEATURE(kOmniboxMobileParityUpdate);
 BASE_DECLARE_FEATURE(kOmniboxMobileParityUpdateV2);
+BASE_DECLARE_FEATURE(kOmniboxXGeoPermissionGranularity);
 
 // Omnibox suggestions tuning
 BASE_DECLARE_FEATURE(kNumNtpZpsRecentSearches);
@@ -114,6 +113,9 @@ BASE_DECLARE_FEATURE(kNumWebZpsRelatedSearches);
 BASE_DECLARE_FEATURE(kNumWebZpsMostVisitedUrls);
 BASE_DECLARE_FEATURE(kNumSrpZpsRecentSearches);
 BASE_DECLARE_FEATURE(kNumSrpZpsRelatedSearches);
+
+// Caret animation for omnibox
+BASE_DECLARE_FEATURE(kOmniboxAnimatedCaret);
 
 // Enterprise search aggregators features.
 BASE_DECLARE_FEATURE(kEnableSearchAggregatorPolicy);
@@ -151,6 +153,10 @@ inline constexpr base::FeatureParam<std::string> kAimUrlInterceptionParams{
 
 // Enable debug logs that can be read from an internals page.
 BASE_DECLARE_FEATURE(kOmniboxDebugLogs);
+
+// Feature flag to enable the "Astrophotography Mode" (Sparkles) icon for the
+// Thinking Pro model when multiple Pro models are available.
+BASE_DECLARE_FEATURE(kThinkingModelIconUpdate);
 
 #if BUILDFLAG(IS_ANDROID)
 BASE_DECLARE_FEATURE(kDiagnostics);

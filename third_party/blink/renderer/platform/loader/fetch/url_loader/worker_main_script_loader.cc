@@ -180,7 +180,7 @@ void WorkerMainScriptLoader::OnComplete(
   // scheme, then return.
   //
   // i.e. call `AddResourceTiming()` only if the URL's scheme is HTTP(S).
-  if (initial_request_url_.ProtocolIsInHTTPFamily()) {
+  if (initial_request_url_.ProtocolIsInHttpFamily()) {
     mojom::blink::ResourceTimingInfoPtr timing_info = CreateResourceTimingInfo(
         start_time_, initial_request_url_, &resource_response_);
     timing_info->response_end = status.completion_time;
@@ -195,8 +195,8 @@ void WorkerMainScriptLoader::OnComplete(
 
 #if defined(USE_FILESCHEME_CODECACHE)
 bool WorkerMainScriptLoader::CanCreateCachedMetadataHandler() {
-  if (initial_request_url_.ProtocolIsInHTTPFamily() &&
-      resource_response_.CurrentRequestUrl().ProtocolIsInHTTPFamily()) {
+  if (initial_request_url_.ProtocolIsInHttpFamily() &&
+      resource_response_.CurrentRequestUrl().ProtocolIsInHttpFamily()) {
     return true;
   }
   // In the case of cache busting, codecache will be created but not used
@@ -218,8 +218,8 @@ CachedMetadataHandler* WorkerMainScriptLoader::CreateCachedMetadataHandler() {
   if (!CanCreateCachedMetadataHandler()) {
 #else
   // Currently we support the metadata caching only for HTTP family.
-  if (!initial_request_url_.ProtocolIsInHTTPFamily() ||
-      !resource_response_.CurrentRequestUrl().ProtocolIsInHTTPFamily()) {
+  if (!initial_request_url_.ProtocolIsInHttpFamily() ||
+      !resource_response_.CurrentRequestUrl().ProtocolIsInHttpFamily()) {
 #endif
     return nullptr;
   }

@@ -13,6 +13,7 @@
 #include "third_party/blink/public/mojom/devtools/inspector_issue.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/fetch/fetch_api_request.mojom-blink-forward.h"
 #include "third_party/blink/renderer/core/core_export.h"
+#include "third_party/blink/renderer/core/frame/ad_tracker.h"
 #include "third_party/blink/renderer/core/frame/csp/content_security_policy_violation_type.h"
 #include "third_party/blink/renderer/core/inspector/protocol/audits.h"
 #include "third_party/blink/renderer/platform/graphics/dom_node_id.h"
@@ -105,6 +106,9 @@ class CORE_EXPORT AuditsIssue {
                                     String url,
                                     String frame_id,
                                     String loader_id);
+
+  static void ReportDocumentCookiePerformanceIssue(
+      ExecutionContext* execution_context);
 
   static void ReportCorsIssue(ExecutionContext* execution_context,
                               RendererCorsIssueCode code,
@@ -222,8 +226,13 @@ class CORE_EXPORT AuditsIssue {
       const String& occluderParentNodeInfo = String(),
       const String& disableReason = String());
 
- private:
+  static void ReportSelectivePermissionsInterventionIssue(
+      ExecutionContext* execution_context,
+      const String& api_name,
+      const AdTracker::AdScriptAncestry& ad_ancestry,
+      const SourceLocation& source_location);
 
+ private:
   std::unique_ptr<protocol::Audits::InspectorIssue> issue_;
 };
 

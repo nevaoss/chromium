@@ -7,10 +7,10 @@
 
 #include "base/containers/flat_map.h"
 #include "base/scoped_observation.h"
+#include "chrome/browser/tab_list/tab_list_interface_observer.h"
 #include "chrome/browser/ui/extensions/extension_action_delegate.h"
 #include "chrome/browser/ui/extensions/extension_action_view_model.h"
 #include "chrome/browser/ui/extensions/extensions_container.h"
-#include "chrome/browser/ui/tabs/tab_list_interface_observer.h"
 #include "chrome/browser/ui/toolbar/toolbar_action_view_model.h"
 #include "chrome/browser/ui/toolbar/toolbar_actions_model.h"
 #include "content/public/browser/web_contents_observer.h"
@@ -83,8 +83,9 @@ class ExtensionsToolbarViewModel
     virtual void OnPinnedActionsChanged() = 0;
 
     // Called when the active WebContents is changed (e.g. tab change or page
-    // navigation).
-    virtual void OnActiveWebContentsChanged() = 0;
+    // navigation). `is_same_document` is true if the change was due to a
+    // same-document navigation.
+    virtual void OnActiveWebContentsChanged(bool is_same_document) = 0;
 
     // Called when the extensions that should be displayed in the request
     // access button to be recomputed.
@@ -182,7 +183,8 @@ class ExtensionsToolbarViewModel
   void DidFinishNavigation(content::NavigationHandle* handle) override;
 
   // TabListInterfaceObserver:
-  void OnActiveTabChanged(tabs::TabInterface* tab) override;
+  void OnActiveTabChanged(TabListInterface& tab_list,
+                          tabs::TabInterface* tab) override;
   void OnTabListDestroyed(TabListInterface& tab_list) override;
 
   // extensions::PermissionsManager::Observer:

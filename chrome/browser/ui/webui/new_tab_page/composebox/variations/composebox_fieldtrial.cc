@@ -254,7 +254,7 @@ const base::FeatureParam<bool>
 const base::FeatureParam<int> kContextMenuMaxTabSuggestions(
     &kNtpComposebox,
     "NtpComposeboxContextMenuMaxTabSuggestions",
-    5);
+    3);
 
 const base::FeatureParam<bool> kContextMenuEnableMultiTabSelection(
     &kNtpComposebox,
@@ -345,7 +345,7 @@ const base::FeatureParam<PlaceholderText>::Option kSteadyPlaceholderOptions[] =
 const base::FeatureParam<PlaceholderText> kSteadyPlaceholder(
     &kNtpRealboxNext,
     "SteadyPlaceholder",
-    PlaceholderText::ASK_OR_TYPE,
+    PlaceholderText::ASK,
     &kSteadyPlaceholderOptions);
 
 const base::FeatureParam<bool> kCyclingPlaceholders(&kNtpRealboxNext,

@@ -121,6 +121,7 @@ DEFINE_VARIATION_PARAM(kIPHFeedCardMenuFeature, "IPH_FeedCardMenu");
 DEFINE_VARIATION_PARAM(kIPHFuseboxAttachmentFeature, "IPH_FuseboxAttachment");
 DEFINE_VARIATION_PARAM(kIPHGenericAlwaysTriggerHelpUiFeature,
                        "IPH_GenericAlwaysTriggerHelpUiFeature");
+DEFINE_VARIATION_PARAM(kIPHGlicPromoAndroidFeature, "IPH_GlicPromoAndroid");
 DEFINE_VARIATION_PARAM(kIPHIdentityDiscFeature, "IPH_IdentityDisc");
 DEFINE_VARIATION_PARAM(kIPHInstanceSwitcherFeature, "IPH_InstanceSwitcher");
 DEFINE_VARIATION_PARAM(kIPHKeyboardAccessoryAddressFillingFeature,
@@ -237,6 +238,8 @@ DEFINE_VARIATION_PARAM(kIPHBottomToolbarTipFeature, "IPH_BottomToolbarTip");
 #endif  // BUILDFLAG(IS_IOS) || BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(IS_IOS)
+DEFINE_VARIATION_PARAM(kIPHiOSActiveDaysTrackingFeature,
+                       "IPH_iOSActiveDaysTrackingFeature");
 DEFINE_VARIATION_PARAM(kIPHiOSLensOverlayEntrypointTipFeature,
                        "IPH_iOSLensOverlayEntrypointTip");
 DEFINE_VARIATION_PARAM(kIPHiOSLensOverlayEscapeHatchTipFeature,
@@ -302,6 +305,8 @@ DEFINE_VARIATION_PARAM(kIPHiOSReplaceSyncPromosWithSignInPromos,
 DEFINE_VARIATION_PARAM(kIPHiOSTabGridSwipeRightForIncognito,
                        "IPH_iOSTabGridSwipeRightForIncognito");
 DEFINE_VARIATION_PARAM(kIPHiOSDockingPromoFeature, "IPH_iOSDockingPromo");
+DEFINE_VARIATION_PARAM(kIPHiOSDockingPromoEligibilityFeature,
+                       "IPH_iOSDockingPromoEligibility");
 DEFINE_VARIATION_PARAM(kIPHiOSDockingPromoRemindMeLaterFeature,
                        "IPH_iOSDockingPromoRemindMeLater");
 DEFINE_VARIATION_PARAM(kIPHiOSPromoAllTabsFeature, "IPH_iOSPromoAllTabs");
@@ -467,11 +472,17 @@ DEFINE_VARIATION_PARAM(kIPHSideSearchAutoTriggeringFeature,
                        "IPH_SideSearchAutoTriggering");
 DEFINE_VARIATION_PARAM(kIPHSideSearchPageActionLabelFeature,
                        "IPH_SideSearchPageActionLabel");
+
+DEFINE_VARIATION_PARAM(kIPHVerticalTabstripTutorialFeature,
+                       "IPH_VerticalTabstripTutorialFeature");
+
 DEFINE_VARIATION_PARAM(kIPHPwaQuietNotificationFeature,
                        "IPH_PwaQuietNotification");
 DEFINE_VARIATION_PARAM(kIPHTabAudioMutingFeature, "IPH_TabAudioMuting");
 DEFINE_VARIATION_PARAM(kIPHTabOrganizationSuccessFeature,
                        "IPH_TabOrganizationSuccess");
+DEFINE_VARIATION_PARAM(kIPHTabSearchComboButtonFeature,
+                       "IPH_TabSearchComboButton");
 DEFINE_VARIATION_PARAM(kIPHTabSearchToolbarButtonFeature,
                        "IPH_TabSearchToolbarButton");
 DEFINE_VARIATION_PARAM(kIPHDesktopPwaInstallFeature, "IPH_DesktopPwaInstall");
@@ -557,6 +568,10 @@ DEFINE_VARIATION_PARAM(kIPHiOSLensPromoDesktopFeature,
                        "IPH_iOSLensPromoDesktop");
 DEFINE_VARIATION_PARAM(kIPHiOSEnhancedBrowsingDesktopFeature,
                        "IPH_iOSEnhancedBrowsingDesktop");
+DEFINE_VARIATION_PARAM(kIPHiOSTabGroupsDesktopFeature,
+                       "IPH_iOSTabGroupsDesktop");
+DEFINE_VARIATION_PARAM(kIPHiOSPriceTrackingDesktopFeature,
+                       "IPH_iOSPriceTrackingDesktop");
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 #if !BUILDFLAG(IS_IOS)
@@ -799,6 +814,7 @@ inline constexpr flags_ui::FeatureEntry::FeatureVariation
         VARIATION_ENTRY(kIPHSideSearchAutoTriggeringFeature),
         VARIATION_ENTRY(kIPHSideSearchPageActionLabelFeature),
         VARIATION_ENTRY(kIPHTabAudioMutingFeature),
+        VARIATION_ENTRY(kIPHTabSearchComboButtonFeature),
         VARIATION_ENTRY(kIPHTabSearchToolbarButtonFeature),
         VARIATION_ENTRY(kIPHTabGroupsSharedTabChangedFeature),
         VARIATION_ENTRY(kIPHTabGroupsSharedTabFeedbackFeature),
@@ -850,6 +866,8 @@ inline constexpr flags_ui::FeatureEntry::FeatureVariation
         VARIATION_ENTRY(kIPHiOSPaymentPromoDesktopFeature),
         VARIATION_ENTRY(kIPHiOSLensPromoDesktopFeature),
         VARIATION_ENTRY(kIPHiOSEnhancedBrowsingDesktopFeature),
+        VARIATION_ENTRY(kIPHiOSTabGroupsDesktopFeature),
+        VARIATION_ENTRY(kIPHiOSPriceTrackingDesktopFeature),
 #endif  // !BUILDFLAG(IS_ANDROID)
 };
 

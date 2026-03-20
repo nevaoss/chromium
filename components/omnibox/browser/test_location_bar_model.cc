@@ -38,6 +38,14 @@ GURL TestLocationBarModel::GetURL() const {
   return url_;
 }
 
+bool TestLocationBarModel::IsContextualTasksPage() const {
+  return false;
+}
+
+GURL TestLocationBarModel::GetContextualTasksInnerFrameURL() const {
+  return GURL();
+}
+
 security_state::SecurityLevel TestLocationBarModel::GetSecurityLevel() const {
   return security_level_;
 }
@@ -48,7 +56,7 @@ net::CertStatus TestLocationBarModel::GetCertStatus() const {
 
 metrics::OmniboxEventProto::PageClassification
 TestLocationBarModel::GetPageClassification(bool is_prefetch) const {
-  return metrics::OmniboxEventProto::OTHER;
+  return page_classification_;
 }
 
 metrics::OmniboxEventProto::PageClassification

@@ -23,29 +23,30 @@
 
 namespace {
 /// The padding for the close button.
-const CGFloat kCloseButtonTopMargin = 6.0f;
+const CGFloat kCloseButtonTopMargin = 7.0f;
 const CGFloat kCloseButtonDefaultPadding = 10.0f;
 /// The trailing and top padding for the input plate container.
 const CGFloat kInputPlateTrailingPadding = 8.0f;
 const CGFloat kInputPlateTopPadding = 4.0f;
 /// The size for the close button.
 const CGFloat kCloseButtonSize = 30.0f;
-/// The alpha for the close button.
-const CGFloat kCloseButtonAlpha = 0.6f;
 /// The ammount of padding to add vertically to the incognito view content.
 const CGFloat kIncognitoVerticalPadding = 24.0f;
 /// The bottom margin between the composebox and the container.
 const CGFloat kBlurBottomMargin = 20.0f;
+/// Margin between the composebox and the container when reduced transparency is
+/// enabled.
+const CGFloat kReducedTransparencyInputPlateBottomMargin = 4.0f;
+
 /// The image for the close button.
 UIImage* CloseButtonImage(UIColor* backgroundColor, BOOL highlighted) {
-  NSArray<UIColor*>* palette = @[
-    [UIColor.tertiaryLabelColor colorWithAlphaComponent:kCloseButtonAlpha],
-    backgroundColor
-  ];
+  NSArray<UIColor*>* palette =
+      @[ [UIColor colorNamed:kTextfieldPlaceholderColor], backgroundColor ];
 
   if (highlighted) {
     palette = @[
-      [UIColor.tertiaryLabelColor colorWithAlphaComponent:0.3],
+      [[UIColor colorNamed:kTextfieldPlaceholderColor]
+          colorWithAlphaComponent:0.3],
       [backgroundColor colorWithAlphaComponent:0.6]
     ];
   }
@@ -95,6 +96,9 @@ UIImage* CloseButtonImage(UIColor* backgroundColor, BOOL highlighted) {
   // Helpers for tracking the incognito scrolling position.
   BOOL _incognitoScrolledAtTop;
   BOOL _scrollIncognitoToTopOnNextLayout;
+
+  // Last known preferred content height of the omnibox view controller.
+  CGFloat _omniboxPreferredContentHeight;
 }
 
 - (instancetype)initWithTheme:(ComposeboxTheme*)theme {
@@ -155,6 +159,12 @@ UIImage* CloseButtonImage(UIColor* backgroundColor, BOOL highlighted) {
 
     [self.view insertSubview:_incognitoView atIndex:0];
   }
+
+  [[NSNotificationCenter defaultCenter]
+      addObserver:self
+         selector:@selector(setupConstraints)
+             name:UIAccessibilityReduceTransparencyStatusDidChangeNotification
+           object:nil];
 
   [self registerForTraitChanges:@[ UITraitUserInterfaceStyle.class ]
                      withAction:@selector(userInterfaceStyleChanged)];
@@ -355,7 +365,11 @@ UIImage* CloseButtonImage(UIColor* backgroundColor, BOOL highlighted) {
                   aboveSubview:_omniboxPopupContainer];
       AddSameConstraintsToSidesWithInsets(
           _progressiveBlurEffect, _inputViewController.view, LayoutSides::kTop,
-          NSDirectionalEdgeInsetsMake(-kBlurBottomMargin, 0, 0, 0));
+          NSDirectionalEdgeInsetsMake(
+              UIAccessibilityIsReduceTransparencyEnabled()
+                  ? -kReducedTransparencyInputPlateBottomMargin
+                  : -kBlurBottomMargin,
+              0, 0, 0));
       AddSameConstraintsToSides(_progressiveBlurEffect, safeAreaGuide,
                                 LayoutSides::kLeading | LayoutSides::kTrailing);
 
@@ -398,7 +412,12 @@ UIImage* CloseButtonImage(UIColor* backgroundColor, BOOL highlighted) {
       AddSameConstraintsToSidesWithInsets(
           _progressiveBlurEffect, _inputViewController.view,
           LayoutSides::kBottom,
-          NSDirectionalEdgeInsetsMake(0, 0, -kBlurBottomMargin, 0));
+          NSDirectionalEdgeInsetsMake(
+              0, 0,
+              UIAccessibilityIsReduceTransparencyEnabled()
+                  ? -kReducedTransparencyInputPlateBottomMargin
+                  : -kBlurBottomMargin,
+              0));
       AddSameConstraintsToSides(
           _progressiveBlurEffect, safeAreaGuide,
           LayoutSides::kTop | LayoutSides::kLeading | LayoutSides::kTrailing);
@@ -449,7 +468,12 @@ UIImage* CloseButtonImage(UIColor* backgroundColor, BOOL highlighted) {
       AddSameConstraintsToSidesWithInsets(
           _progressiveBlurEffect, _inputViewController.view,
           LayoutSides::kBottom,
-          NSDirectionalEdgeInsetsMake(0, 0, -kBlurBottomMargin, 0));
+          NSDirectionalEdgeInsetsMake(
+              0, 0,
+              UIAccessibilityIsReduceTransparencyEnabled()
+                  ? -kReducedTransparencyInputPlateBottomMargin
+                  : -kBlurBottomMargin,
+              0));
       AddSameConstraintsToSides(
           _progressiveBlurEffect, safeAreaGuide,
           LayoutSides::kTop | LayoutSides::kLeading | LayoutSides::kTrailing);
@@ -495,8 +519,17 @@ UIImage* CloseButtonImage(UIColor* backgroundColor, BOOL highlighted) {
 
 - (UIView*)fadeViewForPosition:(ComposeboxInputPlatePosition)positon {
   UIView* fadeView = [[UIView alloc] init];
+  fadeView.userInteractionEnabled = NO;
+  fadeView.translatesAutoresizingMaskIntoConstraints = NO;
   fadeView.backgroundColor = _theme.composeboxBackgroundColor;
 
+  _fadeGradient = nil;
+  // When reduced transparency is enabled, show a solid background color.
+  if (UIAccessibilityIsReduceTransparencyEnabled()) {
+    return fadeView;
+  }
+
+  // Otherwise add a gradient to the background color.
   CAGradientLayer* gradientLayer = [[CAGradientLayer alloc] init];
   gradientLayer.locations = @[ @(0.0), @(0.5), @(1.0) ];
   gradientLayer.colors = @[
@@ -519,9 +552,6 @@ UIImage* CloseButtonImage(UIColor* backgroundColor, BOOL highlighted) {
   }
 
   fadeView.layer.mask = gradientLayer;
-  fadeView.userInteractionEnabled = NO;
-  fadeView.translatesAutoresizingMaskIntoConstraints = NO;
-
   _fadeGradient = gradientLayer;
   return fadeView;
 }
@@ -532,6 +562,14 @@ UIImage* CloseButtonImage(UIColor* backgroundColor, BOOL highlighted) {
   containerView.translatesAutoresizingMaskIntoConstraints = NO;
   containerView.userInteractionEnabled = NO;
 
+  _blurEffectView = nil;
+  // When reduced transparency is enabled, container view will show a solid
+  // background color.
+  if (UIAccessibilityIsReduceTransparencyEnabled()) {
+    return containerView;
+  }
+
+  // Otherwise add a blur effect.
   UIBlurEffect* blurEffect =
       [UIBlurEffect effectWithStyle:UIBlurEffectStyleRegular];
   UIVisualEffectView* blurEffectView =
@@ -596,19 +634,18 @@ UIImage* CloseButtonImage(UIColor* backgroundColor, BOOL highlighted) {
   CGFloat contentHeight = 0;
   if ([container isKindOfClass:[ComposeboxInputPlateViewController class]]) {
     // If omnibox has no results suggestions, then the input plate should be the
-    // tallest content. Use _omniboxPopupContainer since no way to access
-    // content size of the omnibox popup table view.
+    // tallest content.
     CGFloat tallestHeight =
         _omniboxPopupContainer.hidden
             ? containerHeight + kBlurBottomMargin
-            : std::max(_omniboxPopupContainer.bounds.size.height,
-                       containerHeight + kBlurBottomMargin);
+            : containerHeight + _omniboxPreferredContentHeight;
     contentHeight = tallestHeight;
   } else {
     // Calculate content height knowing the content size of the omnibox popup
     // table view.
+    _omniboxPreferredContentHeight = containerHeight;
     contentHeight = _inputViewController.inputHeight +
-                    std::max(containerHeight, kBlurBottomMargin);
+                    std::max(_omniboxPreferredContentHeight, kBlurBottomMargin);
   }
   CGFloat totalHeight = contentHeight + kInputPlateMargin;
   if (self.preferredContentSize.height != totalHeight) {
@@ -641,6 +678,10 @@ UIImage* CloseButtonImage(UIColor* backgroundColor, BOOL highlighted) {
 
 #pragma mark - OmniboxPopupPresenterDelegate
 
+- (void)popupDidInitializePresenter:(OmniboxPopupPresenter*)presenter {
+  _presenter = presenter;
+}
+
 - (UIView*)popupParentViewForPresenter:(OmniboxPopupPresenter*)presenter {
   return _omniboxPopupContainer;
 }
@@ -651,7 +692,6 @@ UIImage* CloseButtonImage(UIColor* backgroundColor, BOOL highlighted) {
 }
 
 - (UIColor*)popupBackgroundColorForPresenter:(OmniboxPopupPresenter*)presenter {
-  _presenter = presenter;
   return self.view.backgroundColor;
 }
 

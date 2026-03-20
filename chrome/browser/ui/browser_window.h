@@ -11,7 +11,6 @@
 #include <vector>
 
 #include "base/functional/callback_forward.h"
-#include "build/branding_buildflags.h"
 #include "build/build_config.h"
 #include "chrome/browser/apps/link_capturing/intent_picker_info.h"
 #include "chrome/browser/lifetime/browser_close_manager.h"
@@ -593,15 +592,10 @@ class BrowserWindow : public ui::BaseWindow {
   virtual void ShowCaretBrowsingDialog() = 0;
 
   // Create and open the tab search bubble. Optionally force it to open to the
-  // given section and organization feature.
+  // given section.
   virtual void CreateTabSearchBubble(
-      tab_search::mojom::TabSearchSection section,
-      tab_search::mojom::TabOrganizationFeature organization_feature) = 0;
-  void CreateTabSearchBubble(tab_search::mojom::TabSearchSection section =
-                                 tab_search::mojom::TabSearchSection::kSearch) {
-    CreateTabSearchBubble(section,
-                          tab_search::mojom::TabOrganizationFeature::kNone);
-  }
+      tab_search::mojom::TabSearchSection section =
+          tab_search::mojom::TabSearchSection::kSearch) = 0;
 
   // Closes the tab search bubble if open for the given browser instance.
   virtual void CloseTabSearchBubble() = 0;
@@ -612,9 +606,9 @@ class BrowserWindow : public ui::BaseWindow {
   // Shows an Incognito history disclaimer dialog.
   virtual void ShowIncognitoHistoryDisclaimerDialog() = 0;
 
-  // Returns true when the borderless mode should be displayed instead
-  // of a full titlebar. This is only supported for desktop web apps.
-  virtual bool IsBorderlessModeEnabled() const = 0;
+  // Returns true when the window should be in unframed display mode. Only
+  // supported in IWAs.
+  virtual bool IsUnframedModeEnabled() const = 0;
 
   // Returns the overall resizability of the `BrowserView` when considering
   // both the value set by the `window.setResizable(bool)` API and browser's

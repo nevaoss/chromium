@@ -8,8 +8,6 @@ import("//chrome/common/features.gni")
 import("//components/guest_view/buildflags/buildflags.gni")
 import("//mojo/public/tools/bindings/mojom.gni")
 
-assert(enable_glic)
-
 # TODO(b/430371855): This target should eventually become Glic's public target,
 # to be imported from external BUILD files. The "impl" source set below would
 # then list resources only needed internally for the implementation. In the
@@ -24,6 +22,7 @@ source_set("glic") {
     "glic_net_log.h",
     "glic_pref_names.h",
     "glic_profile_manager.h",
+    "glic_selection_observer.h",
     "glic_settings_util.h",
     "glic_user_status_code.h",
     "glic_user_status_fetcher.h",
@@ -50,8 +49,10 @@ source_set("glic") {
     "public/glic_enabling.h",
     "public/glic_instance.h",
     "public/glic_instance_metrics_backwards_compatibility.h",
+    "public/glic_invoke_options.h",
     "public/glic_keyed_service.h",
     "public/glic_keyed_service_factory.h",
+    "public/glic_passkeys.h",
     "public/glic_side_panel_coordinator.cc",
     "public/glic_side_panel_coordinator.h",
     "service/glic_instance_helper.cc",
@@ -98,7 +99,7 @@ source_set("glic") {
     "//chrome/browser/permissions/system",
     "//chrome/browser/profiles:profile",
     "//chrome/browser/ui/browser_window",
-    "//components/autofill/core/browser/integrators/glic:actor_form_filling_types",
+    "//components/autofill/core/browser/integrators/actor:actor_form_filling_types",
     "//components/content_extraction/content/browser",
     "//components/favicon/core",
     "//components/feature_engagement/public",
@@ -138,7 +139,7 @@ source_set("glic") {
   } else {  # is_android
     deps += [
       ":actor_types_for_migration",
-      "//chrome/android/features/tab_ui:jni_headers",
+      "//chrome/browser/context_sharing/tab_bottom_sheet/android:jni_headers",
     ]
   }
 
@@ -147,6 +148,29 @@ source_set("glic") {
   }
   if (is_chromeos) {
     public_deps += [ "//chromeos/ash/components/browser_context_helper" ]
+  }
+
+  if (!enable_extensions_core) {
+    public_deps +=
+        [ "//components/guest_view/browser/slim_web_view:page_handler" ]
+  }
+}
+
+if (is_android) {
+  android_library("public_java") {
+    sources = [
+      "public/android/java/src/org/chromium/chrome/browser/glic/GlicKeyedService.java",
+      "public/android/java/src/org/chromium/chrome/browser/glic/GlicKeyedServiceFactory.java",
+      "public/android/java/src/org/chromium/chrome/browser/glic/GlicKeyedServiceHandler.java",
+    ]
+    deps = [
+      "//base:log_java",
+      "//base:supplier_java",
+      "//chrome/browser/glic/android:jni_headers_java",
+      "//chrome/browser/profiles/android:java",
+      "//chrome/browser/ui/browser_window/public/android:java",
+      "//third_party/jni_zero:jni_zero_java",
+    ]
   }
 }
 
@@ -169,9 +193,12 @@ source_set("impl") {
     "glic_metrics.cc",
     "glic_metrics_provider.cc",
     "glic_metrics_provider.h",
+    "glic_navigation_throttle.cc",
+    "glic_navigation_throttle.h",
     "glic_net_log.cc",
     "glic_pref_names.cc",
     "glic_profile_manager.cc",
+    "glic_selection_observer.cc",
     "glic_settings_util.cc",
     "glic_user_status_fetcher.cc",
     "glic_user_status_request.cc",
@@ -226,12 +253,15 @@ source_set("impl") {
     "host/webui_contents_container.h",
     "public/context/glic_sharing_manager.cc",
     "public/glic_enabling.cc",
+    "public/glic_invoke_options.cc",
     "public/glic_keyed_service.cc",
     "public/glic_keyed_service_factory.cc",
     "service/glic_instance_coordinator_impl.cc",
     "service/glic_instance_coordinator_impl.h",
     "service/glic_instance_impl.cc",
     "service/glic_instance_impl.h",
+    "service/glic_invoke_handler.cc",
+    "service/glic_invoke_handler.h",
     "service/glic_state_tracker.cc",
     "service/glic_state_tracker.h",
     "service/glic_ui_embedder.h",
@@ -244,6 +274,8 @@ source_set("impl") {
     "service/metrics/glic_instance_metrics.h",
     "service/metrics/glic_metrics_session_manager.cc",
     "service/metrics/glic_metrics_session_manager.h",
+    "suggestions/caching_zero_state_suggestions_manager.cc",
+    "suggestions/caching_zero_state_suggestions_manager.h",
     "widget/browser_conditions.cc",
     "widget/browser_conditions.h",
   ]
@@ -328,6 +360,7 @@ source_set("impl") {
     "//chrome/browser/resources/glic/fre:resources",
     "//chrome/browser/signin",
     "//chrome/browser/subscription_eligibility",
+    "//chrome/browser/tab_list",
     "//chrome/browser/ui",
     "//chrome/browser/ui:browser_element_identifiers",
     "//chrome/browser/ui:browser_navigator_params_headers",
@@ -336,11 +369,10 @@ source_set("impl") {
     "//chrome/browser/ui:ui_features",
     "//chrome/browser/ui/passwords",
     "//chrome/browser/ui/profiles",
-    "//chrome/browser/ui/tabs:tab_list_interface",
     "//chrome/browser/ui/tabs:tabs_public",
     "//chrome/common",
     "//components/application_locale_storage",
-    "//components/autofill/core/browser/integrators/glic:actor_form_filling_types",
+    "//components/autofill/core/browser/integrators/actor:actor_form_filling_types",
     "//components/favicon/content",
     "//components/feature_engagement/public:feature_constants",
     "//components/feedback",
@@ -354,10 +386,12 @@ source_set("impl") {
     "//components/sessions",
     "//components/skills:features",
     "//components/skills/public",
+    "//components/url_formatter",
     "//components/variations/service",
     "//components/webui/chrome_urls",
     "//third_party/metrics_proto",
     "//ui/base/interaction",
+    "//ui/gfx",
     "//ui/snapshot",
     "//ui/webui",
     "//url",
@@ -367,11 +401,13 @@ source_set("impl") {
     deps += [
       "//chrome/browser/actor/ui",
       "//chrome/browser/glic/browser_ui",
+      "//chrome/browser/glic/selection",
       "//chrome/browser/lens/region_search",
       "//chrome/browser/skills",
       "//chrome/browser/skills:public",
       "//chrome/browser/skills:ui",
       "//chrome/browser/themes",
+      "//chrome/browser/ui/tabs:glic",
       "//chrome/browser/ui/views/glic",
       "//chrome/browser/ui/views/tabs/glic",
       "//components/password_manager/core/browser/actor_login:common",
@@ -383,6 +419,7 @@ source_set("impl") {
       "//chrome/browser/ui:browser_list",
       "//chrome/browser/ui:browser_tab_strip",
       "//chrome/browser/ui/browser_window",
+      "//chrome/browser/ui/side_panel:side_panel_views_dependent",
       "//chrome/browser/ui/tabs:tab_strip",
       "//chrome/browser/ui/toasts",
       "//chrome/browser/ui/user_education",
@@ -390,11 +427,14 @@ source_set("impl") {
       "//chrome/browser/ui/views/frame/",
       "//chrome/browser/ui/views/interaction",
       "//chrome/browser/ui/views/side_panel",
+      "//components/web_modal",
     ]
   } else {  # is_android
     deps += [
       ":actor_types_for_migration",
-      "//chrome/android/features/tab_ui:jni_headers",
+      "//chrome/browser/context_sharing/tab_bottom_sheet/android:jni_headers",
+      "//chrome/browser/glic/android",
+      "//ui/android",
     ]
   }
 
@@ -402,10 +442,7 @@ source_set("impl") {
     deps += [ "//components/guest_view/browser" ]
 
     if (!enable_extensions_core) {
-      deps += [
-        "//chrome/browser/resources/guest_view_shared:resources",
-        "//components/guest_view/browser/slim_web_view",
-      ]
+      deps += [ "//chrome/browser/resources/guest_view_shared:resources" ]
     }
   }
 
@@ -449,6 +486,30 @@ mojom("mojo_bindings") {
   overridden_deps = [ "//third_party/blink/public/mojom:mojom_platform" ]
 
   component_deps = [ "//content/public/common" ]
+  cpp_typemaps = [
+    {
+      types = [
+        {
+          mojom = "glic.mojom.ScreenshotCollectionOptions"
+          cpp = "::page_content_annotations::ScreenshotOptions::ScreenshotCollectionOptions"
+        },
+        {
+          mojom = "glic.mojom.ScreenshotImageFormat"
+          cpp = "::page_content_annotations::ScreenshotOptions::ScreenshotImageFormat"
+        },
+        {
+          mojom = "glic.mojom.ScreenshotCompressionQuality"
+          cpp = "::page_content_annotations::ScreenshotOptions::ScreenshotCompressionQuality"
+        },
+      ]
+      traits_headers = [
+        "//components/page_content_annotations/content/page_context_fetcher.h",
+        "host/glic_mojom_traits.h",
+      ]
+      traits_sources = [ "host/glic_mojom_traits.cc" ]
+      traits_public_deps = [ "//components/page_content_annotations/content" ]
+    },
+  ]
 }
 
 source_set("unit_tests") {
@@ -459,6 +520,7 @@ source_set("unit_tests") {
       "common/glic_panel_hotkey_delegate_unittest.cc",
       "common/local_hotkey_manager_unittest.cc",
       "glic_metrics_unittest.cc",
+      "glic_selection_observer_unittest.cc",
       "host/context/glic_pin_candidate_comparator_unittest.cc",
       "host/context/glic_screenshot_capturer_unittest.cc",
       "host/context/glic_tab_data_unittest.cc",
@@ -469,6 +531,8 @@ source_set("unit_tests") {
       "service/metrics/glic_instance_coordinator_metrics_unittest.cc",
       "service/metrics/glic_instance_metrics_unittest.cc",
       "service/metrics/glic_metrics_session_manager_unittest.cc",
+      "suggestions/caching_zero_state_suggestions_manager_unittest.cc",
+      "widget/glic_view_unittest.cc",
     ]
   } else {
     sources += [ "common/glic_tab_observer_android_unittest.cc" ]
@@ -492,7 +556,6 @@ source_set("unit_tests") {
       "//chrome/browser/glic/media:unit_tests",
       "//chrome/browser/glic/test_support",
       "//chrome/browser/prefs",
-      "//chrome/browser/startup",
       "//chrome/browser/status_icons",
       "//chrome/browser/ui",
       "//chrome/browser/ui:ui_features",
@@ -500,6 +563,7 @@ source_set("unit_tests") {
       "//chrome/test:test_support",
       "//components/live_caption",
       "//components/live_caption:constants",
+      "//components/skills/public:metrics",
       "//components/tabs:test_support",
     ]
   } else {
@@ -525,12 +589,14 @@ source_set("browser_tests") {
       "actor/glic_actor_policy_checker_browsertest.cc",
       "glic_browsertest.cc",
       "glic_metrics_browsertest.cc",
+      "glic_navigation_throttle_browsertest.cc",
       "glic_net_log_browsertest.cc",
       "glic_policy_browsertest.cc",
       "glic_profile_manager_browsertest.cc",
       "glic_tab_restore_helper_browsertest.cc",
       "glic_user_status_browsertest.cc",
       "host/context/glic_active_instance_sharing_manager_browsertest.cc",
+      "host/context/glic_active_pinned_focused_tab_manager_browsertest.cc",
       "host/context/glic_delegating_sharing_manager_browsertest.cc",
       "host/context/glic_pinned_tab_manager_browsertest.cc",
       "host/context/glic_tab_data_browsertest.cc",
@@ -540,9 +606,11 @@ source_set("browser_tests") {
       "widget/application_hotkey_delegate_browsertest.cc",
     ]
   }
+
   deps = [
     ":glic",
     ":impl",
+    "//chrome/app:command_ids",
     "//chrome/browser/background/glic",
     "//chrome/browser/glic/actor",
     "//chrome/browser/glic/common",
@@ -550,7 +618,7 @@ source_set("browser_tests") {
     "//chrome/browser/glic/fre",
     "//chrome/browser/glic/test_support",
     "//chrome/browser/profiles:profile",
-    "//chrome/browser/ui/tabs:tab_list_interface",
+    "//chrome/browser/tab_list",
     "//chrome/common:chrome_features",
     "//chrome/test:test_support",
     "//components/prefs",
@@ -574,7 +642,6 @@ source_set("browser_tests") {
       "//chrome/browser/extensions",
       "//chrome/browser/glic/common",
       "//chrome/browser/glic/common:browser_tests",
-      "//chrome/browser/glic/fre:browser_tests",
       "//chrome/browser/glic/test_support",
       "//chrome/browser/permissions:test_support",
       "//chrome/browser/policy:test_support",
@@ -615,9 +682,7 @@ source_set("browser_tests") {
     deps += [ "//ui/ozone" ]
   }
 
-  if (!is_android) {
-    data_deps = [ "//chrome/test/data/webui/glic:generate_test_files" ]
-  }
+  data_deps = [ "//chrome/test/data/webui/glic:generate_test_files" ]
 
   # TODO(crbug.com/432285114): Fix code that adds exit-time destructors and
   # enable the diagnostic by removing this line.
@@ -679,6 +744,7 @@ if (!is_android) {
       "//chrome/browser/glic/browser_ui:interactive_ui_tests",
       "//chrome/browser/glic/fre",
       "//chrome/browser/glic/fre:interactive_ui_tests",
+      "//chrome/browser/glic/selection:interactive_ui_tests",
       "//chrome/browser/glic/test_support",
       "//chrome/browser/optimization_guide",
       "//chrome/browser/permissions:test_support",
@@ -727,7 +793,7 @@ if (is_android) {
     deps = [
       "//base",
       "//chrome/common:actor_webui_mojom",
-      "//components/autofill/core/browser/integrators/glic:actor_form_filling_types",
+      "//components/autofill/core/browser/integrators/actor:actor_form_filling_types",
       "//components/password_manager/core/browser/actor_login:common",
       "//components/tabs:public",
       "//ui/gfx",

@@ -77,6 +77,10 @@ constexpr base::FeatureParam<int> kCsdClipboardCopyApiMinLength{
 const base::FeatureParam<bool> kCSDClipboardCopyApiProcessPayload{
     &kClientSideDetectionClipboardCopyApi, "ProcessPayload",
     /*default_value=*/false};
+
+const base::FeatureParam<bool> kCSDClipboardCopyApiIncludeFullPayload{
+    &kClientSideDetectionClipboardCopyApi, "IncludeFullPayload",
+    /*default_value=*/false};
 const base::FeatureParam<std::string> kCsdClipboardCopyApiLoaders{
     &kClientSideDetectionClipboardCopyApi, "Loaders",
     /*default_value=*/"curl,wget,invoke-webrequest,iwr"};
@@ -128,6 +132,11 @@ BASE_FEATURE(kClientSideDetectionKillswitch, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kClientSideDetectionLlamaForcedTriggerInfoForScamDetection,
              base::FEATURE_ENABLED_BY_DEFAULT);
+
+BASE_FEATURE(kClientSideDetectionNewObservers,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+constexpr base::FeatureParam<double> kCsdClassificationDelay{
+    &kClientSideDetectionNewObservers, "ClassificationDelay", 0.0};
 
 #if BUILDFLAG(IS_ANDROID)
 BASE_FEATURE(kClientSideDetectionOnDeviceModelLazyDownloadAndroid,
@@ -246,6 +255,8 @@ constexpr base::FeatureParam<int>
 BASE_FEATURE(kExternalAppRedirectTelemetry,
              "SafeBrowsingExternalAppRedirectTelemetry",
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kForceSecureDnsDohFallback, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGeminiAntiscamProtectionForMetricsCollection,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -388,7 +399,7 @@ constexpr base::FeatureParam<int>
     kShowWarningsForSuspiciousNotificationsScoreThreshold{
         &kShowWarningsForSuspiciousNotifications,
         "ShowWarningsForSuspiciousNotificationsScoreThreshold",
-        /*default_value=*/70};
+        /*default_value=*/90};
 constexpr base::FeatureParam<bool>
     kShowWarningsForSuspiciousNotificationsShouldSwapButtons{
         &kShowWarningsForSuspiciousNotifications,
@@ -434,6 +445,7 @@ base::ListValue GetFeatureStatusList() {
       &kEnterprisePasswordReuseUiRefresh,
       &kEsbAsASyncedSetting,
       &kExternalAppRedirectTelemetry,
+      &kForceSecureDnsDohFallback,
       &kHashPrefixRealTimeLookups,
       &kLocalListsUseSBv5,
       &kMigrateEnhancedSbUserToEnhancedBundle,

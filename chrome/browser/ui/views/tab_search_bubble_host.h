@@ -58,12 +58,9 @@ class TabSearchBubbleHost : public views::WidgetObserver,
   // This returns true if the method call results in the creation of a new Tab
   // Search bubble. Optionally use section to force the bubble to open to the
   // given tab, even if the bubble is already showing.
-  bool ShowTabSearchBubble(
-      bool triggered_by_keyboard_shortcut = false,
-      tab_search::mojom::TabSearchSection section =
-          tab_search::mojom::TabSearchSection::kSearch,
-      tab_search::mojom::TabOrganizationFeature organization_feature =
-          tab_search::mojom::TabOrganizationFeature::kNone);
+  bool ShowTabSearchBubble(bool triggered_by_keyboard_shortcut = false,
+                           tab_search::mojom::TabSearchSection section =
+                               tab_search::mojom::TabSearchSection::kSearch);
   void CloseTabSearchBubble();
 
   Browser* GetBrowser();
@@ -82,10 +79,14 @@ class TabSearchBubbleHost : public views::WidgetObserver,
  private:
   void ButtonPressed(const ui::Event& event);
 
+  TabSearchUI* GetTabSearchUI();
+
   // The anchor button for the tab search bubble.
   const raw_ptr<views::Button> button_;
 
   const raw_ptr<Profile> profile_;
+
+  const raw_ptr<BrowserWindowInterface> browser_window_interface_;
 
   std::unique_ptr<WebUIBubbleManager> webui_bubble_manager_;
 

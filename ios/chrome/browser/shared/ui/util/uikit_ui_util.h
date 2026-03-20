@@ -126,6 +126,9 @@ UIImage* ImageWithColor(UIColor* color);
 // down. If the source image is not square, the image is first cropped.
 UIImage* CircularImageFromImage(UIImage* image, CGFloat width);
 
+// Returns a copy of `image` with rounded corner.
+UIImage* ImageWithCornerRadius(UIImage* image, CGFloat cornerRadius);
+
 // Returns true if the window is in portrait orientation or if orientation is
 // unknown.
 bool IsPortrait(UIWindow* window);
@@ -204,9 +207,10 @@ UIActivityIndicatorView* GetMediumUIActivityIndicatorView();
 // version.
 UIActivityIndicatorView* GetLargeUIActivityIndicatorView();
 
-// Whether the given scroll view is considered scrolled to its top/bottom.
-bool IsScrollViewScrolledToTop(UIScrollView* scroll_view);
-bool IsScrollViewScrolledToBottom(UIScrollView* scroll_view);
+// The remaining distance to scroll for the scroll_view to be considered
+// scrolled to its top/bottom.
+CGFloat RemainingScrollDistanceToTop(UIScrollView* scroll_view);
+CGFloat RemainingScrollDistanceToBottom(UIScrollView* scroll_view);
 
 // Returns the approximate corner radius of the current device.
 CGFloat DeviceCornerRadius();

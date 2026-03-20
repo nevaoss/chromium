@@ -19,6 +19,7 @@
 #include "base/check_is_test.h"
 #include "base/check_op.h"
 #include "base/strings/string_number_conversions.h"
+#include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
 #include "components/country_codes/country_codes.h"
 #include "components/google/core/common/google_util.h"
@@ -26,16 +27,19 @@
 #include "components/lens/lens_overlay_mime_type.h"
 #include "components/lens/lens_url_utils.h"
 #include "components/prefs/pref_service.h"
+#include "components/regional_capabilities/regional_capabilities_switches.h"
 #include "components/regional_capabilities/regional_capabilities_utils.h"
 #include "components/search_engines/keyword_web_data_service.h"
 #include "components/search_engines/search_engine_choice/search_engine_choice_service.h"
 #include "components/search_engines/search_engine_choice/search_engine_choice_utils.h"
 #include "components/search_engines/search_engines_pref_names.h"
 #include "components/search_engines/template_url.h"
+#include "components/search_engines/template_url_data_util.h"
 #include "components/search_engines/template_url_prepopulate_data.h"
 #include "components/search_engines/template_url_prepopulate_data_resolver.h"
 #include "components/search_engines/template_url_service.h"
 #include "components/search_engines/template_url_starter_pack_data.h"
+#include "components/url_formatter/url_fixer.h"
 #include "net/base/url_util.h"
 #include "third_party/lens_server_proto/lens_overlay_contextual_inputs.pb.h"
 #include "third_party/lens_server_proto/lens_overlay_request_id.pb.h"
@@ -87,7 +91,6 @@ WDKeywordsResult::Metadata ComputeMergeEnginesRequirements(
 GURL GetBaseSearchUrl(TemplateURLService* turl_service,
                       omnibox::ChromeAimEntryPoint aim_entrypoint,
                       bool is_aim_search,
-                      omnibox::ModelMode model_mode,
                       const base::Time& query_start_time,
                       const std::u16string& query_text,
                       std::map<std::string, std::string> additional_params) {
@@ -97,20 +100,23 @@ GURL GetBaseSearchUrl(TemplateURLService* turl_service,
       TemplateURLRef::SearchTermsArgs(query_text);
   GURL result_url = GURL(url_ref.ReplaceSearchTerms(
       search_term_args, turl_service->search_terms_data()));
+
+  if (is_aim_search) {
+    // For AIM queries, add udm=50 as a fallback if no udm or nem param is
+    // present.
+    if (additional_params.count("udm") == 0 &&
+        additional_params.count("nem") == 0) {
+      additional_params["udm"] = kAimUdmQueryParameterValue;
+    }
+  }
+
   // Append all additional params.
   for (auto const& param : additional_params) {
     result_url = net::AppendOrReplaceQueryParameter(result_url, param.first,
                                                     param.second);
   }
 
-  if (is_aim_search) {
-    if (model_mode == omnibox::ModelMode::MODEL_MODE_GEMINI_PRO) {
-      result_url = net::AppendOrReplaceQueryParameter(result_url, "nem", "143");
-    } else {
-      result_url = net::AppendOrReplaceQueryParameter(
-          result_url, "udm", kAimUdmQueryParameterValue);
-    }
-  } else {
+  if (!is_aim_search) {
     std::string udm_value = query_text.empty()
                                 ? kUnimodalUdmQueryParameterValue
                                 : kMultimodalUdmQueryParameterValue;
@@ -139,6 +145,94 @@ GURL GetBaseSearchUrl(TemplateURLService* turl_service,
 }
 
 }  // namespace
+
+bool IsSearchEngineNameValidToUse(const std::u16string& name_input) {
+  return !base::CollapseWhitespace(name_input, true).empty();
+}
+
+bool IsSearchEngineKeywordValidToUse(const std::u16string& keyword_input,
+                                     const TemplateURLService* service,
+                                     const TemplateURL* existing_url) {
+  std::u16string keyword_input_trimmed(
+      base::CollapseWhitespace(keyword_input, true));
+  if (keyword_input_trimmed.empty()) {
+    return false;  // Do not allow empty keyword.
+  }
+
+  // The omnibox doesn't properly handle search keywords with whitespace,
+  // so do not allow such keywords.
+  if (keyword_input_trimmed.find_first_of(base::kWhitespaceUTF16) !=
+      std::u16string::npos) {
+    return false;
+  }
+
+  const TemplateURL* turl_with_keyword =
+      service->GetTemplateURLForKeyword(keyword_input_trimmed);
+  return (!turl_with_keyword || turl_with_keyword == existing_url);
+}
+
+std::string GetFixedUpSearchEngineUrl(
+    const std::string& url_input,
+    const SearchTermsData& search_terms_data) {
+  std::u16string url16;
+  base::TrimWhitespace(base::UTF8ToUTF16(url_input), base::TRIM_ALL, &url16);
+  if (url16.empty()) {
+    return std::string();
+  }
+  std::string url = TemplateURLRef::DisplayURLToURLRef(url16);
+
+  // Parse the string as a URL to determine the scheme. If we need to, add the
+  // scheme. As the scheme may be expanded (as happens with {google:baseURL})
+  // we need to replace the search terms before testing for the scheme.
+  TemplateURLData data;
+  data.SetURL(url);
+  TemplateURL t_url(data);
+  std::string expanded_url(t_url.url_ref().ReplaceSearchTerms(
+      TemplateURLRef::SearchTermsArgs(u"x"), search_terms_data));
+  url::Parsed parts;
+  std::string scheme(url_formatter::SegmentURL(expanded_url, &parts));
+  if (!parts.scheme.is_valid()) {
+    url.insert(0, scheme + "://");
+  }
+
+  return url;
+}
+
+bool IsSearchEngineURLValidToUse(const std::string& url_input,
+                                 const TemplateURLService* service,
+                                 const TemplateURL* existing_url) {
+  std::string url =
+      GetFixedUpSearchEngineUrl(url_input, service->search_terms_data());
+  if (url.empty()) {
+    return false;
+  }
+
+  // Convert |url| to a TemplateURLRef so we can check its validity even if it
+  // contains replacement strings.  We do this by constructing a dummy
+  // TemplateURL owner because |existing_url| might be nullptr and we can't
+  // call TemplateURLRef::IsValid() when its owner is nullptr.
+  TemplateURLData data;
+  data.SetURL(url);
+  TemplateURL t_url(data);
+  const TemplateURLRef& template_ref = t_url.url_ref();
+  if (!template_ref.IsValid(service->search_terms_data())) {
+    return false;
+  }
+
+  // If this is going to be the default search engine, it must support
+  // replacement.
+  if (!template_ref.SupportsReplacement(service->search_terms_data()) &&
+      existing_url && existing_url == service->GetDefaultSearchProvider()) {
+    return false;
+  }
+
+  // Replace any search term with a placeholder string and make sure the
+  // resulting URL is valid.
+  return GURL(template_ref.ReplaceSearchTerms(
+                  TemplateURLRef::SearchTermsArgs(u"x"),
+                  service->search_terms_data()))
+      .is_valid();
+}
 
 std::u16string GetDefaultSearchEngineName(TemplateURLService* service) {
   DCHECK(service);
@@ -302,39 +396,83 @@ TemplateURL* FindURLByPrepopulateID(
   return nullptr;
 }
 
-void MergeIntoEngineData(const TemplateURL* original_turl,
-                         TemplateURLData* url_to_update,
+void MergeIntoEngineData(const TemplateURLData& original_turl,
+                         TemplateURLData& data_to_update,
                          TemplateURLMergeOption merge_option) {
-  DCHECK(original_turl->prepopulate_id() == 0 ||
-         original_turl->prepopulate_id() == url_to_update->prepopulate_id);
-  DCHECK(original_turl->starter_pack_id() ==
-             template_url_starter_pack_data::StarterPackId::kNone ||
-         static_cast<int>(original_turl->starter_pack_id()) ==
-             url_to_update->starter_pack_id);
-  // When the user modified search engine's properties or search engine is
-  // imported from regulatory extensions we need to preserve certain search
-  // engine properties from overriding with prepopulated data.
-  bool preserve_user_edits =
-      merge_option != TemplateURLMergeOption::kOverwriteUserEdits &&
-      (!original_turl->safe_for_autoreplace() ||
-       original_turl->CreatedByRegulatoryProgram());
-  if (preserve_user_edits) {
-    url_to_update->safe_for_autoreplace = original_turl->safe_for_autoreplace();
-    url_to_update->SetShortName(original_turl->short_name());
-    url_to_update->SetKeyword(original_turl->keyword());
-    if (original_turl->CreatedByRegulatoryProgram()) {
-      // TODO(crbug.com/40646573): Search url from Play API might contain
+  bool is_id_migration =
+      original_turl.prepopulate_id != 0 &&
+      data_to_update.prepopulate_id != original_turl.prepopulate_id &&
+      base::FeatureList::IsEnabled(switches::kPrepopulatedEnginesMigration);
+
+  if (merge_option == TemplateURLMergeOption::kSplitPrepopulatedEntry) {
+    CHECK(is_id_migration);
+  } else if (merge_option ==
+             TemplateURLMergeOption::kSettingAsDefaultProvider) {
+    CHECK(original_turl.prepopulate_id != 0 &&
+              data_to_update.prepopulate_id == original_turl.prepopulate_id ||
+          // The pair of engines to merge was selected based on keywords, but
+          // due to keyword-based migration, they might not be matching. See
+          // `ReconcilingTemplateURLDataHolder::GetOrComputeKeyword`.
+          original_turl.CreatedByRegulatoryProgram() || is_id_migration);
+  } else {
+    CHECK(!is_id_migration);
+    CHECK(original_turl.prepopulate_id == 0 ||
+          original_turl.prepopulate_id == data_to_update.prepopulate_id);
+
+    CHECK(original_turl.starter_pack_id ==
+              static_cast<int>(
+                  template_url_starter_pack_data::StarterPackId::kNone) ||
+          original_turl.starter_pack_id == data_to_update.starter_pack_id);
+  }
+
+  if (merge_option != TemplateURLMergeOption::kOverwriteUserEdits) {
+    // Preserve key fields from being overwritten with prepopulated data.
+
+    data_to_update.safe_for_autoreplace = original_turl.safe_for_autoreplace;
+
+    bool preserve_program_properties =
+        original_turl.CreatedByRegulatoryProgram() &&
+        merge_option != TemplateURLMergeOption::kSettingAsDefaultProvider;
+    bool preserve_user_edits =
+        !original_turl.safe_for_autoreplace || preserve_program_properties;
+
+    if (preserve_user_edits) {
+      data_to_update.SetShortName(original_turl.short_name());
+      data_to_update.SetKeyword(original_turl.keyword());
+    }
+
+    if (preserve_program_properties) {
+      // TODO(crbug.com/480856411): Search url from Play API might contain
       // attribution info and therefore should be preserved through prepopulated
-      // data update. In the future we might decide to take different approach
-      // to pass attribution info to search providers.
-      url_to_update->SetURL(original_turl->url());
+      // data update (see crbug.com/40646573).
+      // Feb 2026 update: This might not be necessary, as the "regulatory
+      // extensions" mechanisms allows to do this while supporting updates.
+      data_to_update.SetURL(original_turl.url());
     }
   }
-  url_to_update->id = original_turl->id();
-  url_to_update->sync_guid = original_turl->sync_guid();
-  url_to_update->date_created = original_turl->date_created();
-  url_to_update->last_modified = original_turl->last_modified();
-  url_to_update->regulatory_origin = original_turl->data().regulatory_origin;
+
+  if (is_id_migration) {
+    // The data from `original_turl` has been merged into `data_to_update`, but
+    // `data_to_update` has a different `prepopulate_id`. This could lead to
+    // reconciliation issues on clients which don't have the latest data yet,
+    // and future confusion about how the GUID for this entry was generated.
+    // Reset it to limit such issues.
+    // For the `kSettingAsDefaultProvider` flow, this will also trigger the
+    // prefs to be updated.
+    data_to_update.GenerateSyncGUID();
+  } else {
+    data_to_update.sync_guid = original_turl.sync_guid;
+  }
+
+  if (merge_option == TemplateURLMergeOption::kSettingAsDefaultProvider) {
+    data_to_update.last_visited = original_turl.last_visited;
+    data_to_update.favicon_url = original_turl.favicon_url;
+  }
+
+  data_to_update.id = original_turl.id;
+  data_to_update.date_created = original_turl.date_created;
+  data_to_update.last_modified = original_turl.last_modified;
+  data_to_update.regulatory_origin = original_turl.regulatory_origin;
 }
 
 ActionsFromCurrentData::ActionsFromCurrentData() = default;
@@ -349,21 +487,67 @@ void MergeEnginesFromPrepopulateData(
     std::vector<std::unique_ptr<TemplateURLData>>* prepopulated_urls,
     TemplateURLService::OwnedTemplateURLVector* template_urls,
     TemplateURL* default_search_provider,
+    const TemplateURLPrepopulateData::Resolver& template_url_data_resolver,
     std::set<std::string>* removed_keyword_guids) {
   DCHECK(prepopulated_urls);
   DCHECK(template_urls);
 
   ActionsFromCurrentData actions(CreateActionsFromCurrentPrepopulateData(
-      prepopulated_urls, *template_urls, default_search_provider));
+      prepopulated_urls, *template_urls, default_search_provider,
+      template_url_data_resolver));
 
   ApplyActionsFromCurrentData(actions, service, template_urls,
                               default_search_provider, removed_keyword_guids);
 }
 
+std::pair<int, TemplateURLMergeOption> MatchIncomingPrepopulatedEntry(
+    const TemplateURLPrepopulateData::Resolver& template_url_data_resolver,
+    const std::unique_ptr<TemplateURLData>& prepopulated_url,
+    std::map<int, TemplateURL*> id_to_existing_turl) {
+  const int prepopulated_id = prepopulated_url->prepopulate_id;
+  DCHECK_NE(0, prepopulated_id);
+
+  if (auto existing_url_iter = id_to_existing_turl.find(prepopulated_id);
+      existing_url_iter != id_to_existing_turl.end()) {
+    // `prepopulated_url` matches one of the existing Template URLs. Ensure the
+    // entries are merged.
+    return {existing_url_iter->first, TemplateURLMergeOption::kDefault};
+  }
+
+  if (base::FeatureList::IsEnabled(switches::kPrepopulatedEnginesMigration)) {
+    // `prepopulated_url` does not match, but if the prepopulated engines
+    // migration feature was enabled, it's possible that it represents a newer
+    // version of the same entry.
+    const auto& migrated_engines =
+        regional_capabilities::GetMigratingPrepopulatedEngines();
+    if (migrated_engines.contains(prepopulated_id)) {
+      // Confirmed that `prepopulated_url` is a migration target. Find whether
+      // there is an existing Template URL matching the old version of the
+      // engine.
+      const auto* deprecated_engine = migrated_engines.at(prepopulated_id);
+
+      auto existing_url_iter = id_to_existing_turl.find(deprecated_engine->id);
+      if (existing_url_iter != id_to_existing_turl.end() &&
+          template_url_data_resolver.MatchesEngineUnderMigration(
+              existing_url_iter->second->data(), deprecated_engine)) {
+        // The old variant has some matching local data, return the ID for this
+        // matching entry that will be merged with `prepopulated_url`.
+        return {existing_url_iter->first,
+                TemplateURLMergeOption::kSplitPrepopulatedEntry};
+      }
+    }
+  }
+
+  // `prepopulated_url` does not match anything in the local data. It can then
+  // me added as net new engine.
+  return {0, TemplateURLMergeOption::kDefault};
+}
+
 ActionsFromCurrentData CreateActionsFromCurrentPrepopulateData(
     std::vector<std::unique_ptr<TemplateURLData>>* prepopulated_urls,
     const TemplateURLService::OwnedTemplateURLVector& existing_urls,
-    const TemplateURL* default_search_provider) {
+    const TemplateURL* default_search_provider,
+    const TemplateURLPrepopulateData::Resolver& template_url_data_resolver) {
   // Create a map to hold all provided |template_urls| that originally came from
   // prepopulate data (i.e. have a non-zero prepopulate_id()).
   std::map<std::u16string_view, TemplateURL*> regulatory_entries;
@@ -387,25 +571,31 @@ ActionsFromCurrentData CreateActionsFromCurrentPrepopulateData(
     const int prepopulated_id = prepopulated_url->prepopulate_id;
     DCHECK_NE(0, prepopulated_id);
 
-    auto existing_url_iter = id_to_turl.find(prepopulated_id);
     TemplateURL* existing_url = nullptr;
-    if (existing_url_iter != id_to_turl.end()) {
-      existing_url = existing_url_iter->second;
-      id_to_turl.erase(existing_url_iter);
+    TemplateURLMergeOption merge_option;
+    if (auto [matched_existing_id, computed_merge_option] =
+            MatchIncomingPrepopulatedEntry(template_url_data_resolver,
+                                           prepopulated_url, id_to_turl);
+        matched_existing_id > 0) {
+      existing_url = id_to_turl.at(matched_existing_id);
+      merge_option = computed_merge_option;
+      id_to_turl.erase(matched_existing_id);
     } else if (auto iter = regulatory_entries.find(prepopulated_url->keyword());
                iter != regulatory_entries.end()) {
       existing_url = iter->second;
+      merge_option = TemplateURLMergeOption::kDefault;
     }
 
     if (existing_url != nullptr) {
       // Update the data store with the new prepopulated data. Preserve user
       // edits to the name and keyword.
-      MergeIntoEngineData(existing_url, prepopulated_url.get());
+      MergeIntoEngineData(existing_url->data(), *prepopulated_url.get(),
+                          merge_option);
       // Update last_modified to ensure that if this entry is later merged with
       // entries from Sync, the conflict resolution logic knows that this was
       // updated and propagates the new values to the server.
       prepopulated_url->last_modified = base::Time::Now();
-      actions.edited_engines.push_back({existing_url, *prepopulated_url});
+      actions.edited_engines.emplace_back(existing_url, *prepopulated_url);
     } else {
       actions.added_engines.push_back(*prepopulated_url);
     }
@@ -429,7 +619,7 @@ ActionsFromCurrentData CreateActionsFromCurrentPrepopulateData(
         // prepopulate_id for it.
         TemplateURLData data = template_url->data();
         data.prepopulate_id = 0;
-        actions.edited_engines.push_back({template_url, data});
+        actions.edited_engines.emplace_back(template_url, data);
       } else {
         actions.removed_engines.push_back(template_url);
       }
@@ -493,12 +683,12 @@ ActionsFromCurrentData CreateActionsFromCurrentStarterPackData(
       // Update the data store with the new prepopulated data. Preserve user
       // edits to the name and keyword unless `merge_option` is set to
       // kOverwriteUserEdits.
-      MergeIntoEngineData(existing_url, url.get(), merge_option);
+      MergeIntoEngineData(existing_url->data(), *url.get(), merge_option);
       // Update last_modified to ensure that if this entry is later merged with
       // entries from Sync, the conflict resolution logic knows that this was
       // updated and propagates the new values to the server.
       url->last_modified = base::Time::Now();
-      actions.edited_engines.push_back({existing_url, *url});
+      actions.edited_engines.emplace_back(existing_url, *url);
     } else {
       actions.added_engines.push_back(*url);
     }
@@ -625,9 +815,9 @@ void GetSearchProvidersUsingLoadedEngines(
                                       in_out_keywords_metadata);
 
   if (required_metadata.HasBuiltinKeywordData()) {
-    MergeEnginesFromPrepopulateData(service, &prepopulated_urls, template_urls,
-                                    default_search_provider,
-                                    removed_keyword_guids);
+    MergeEnginesFromPrepopulateData(
+        service, &prepopulated_urls, template_urls, default_search_provider,
+        template_url_data_resolver, removed_keyword_guids);
   }
 
   if (required_metadata.HasStarterPackData()) {
@@ -671,17 +861,28 @@ bool IsAimURL(const GURL& url) {
   return has_udm && udm == kAimUdmQueryParameterValue;
 }
 
+bool IsAimZeroStateURL(const GURL& url) {
+  if (!google_util::IsGoogleDomainUrl(
+          url, google_util::ALLOW_SUBDOMAIN,
+          google_util::DISALLOW_NON_STANDARD_PORTS)) {
+    return false;
+  }
+  std::string udm;
+  bool has_udm = net::GetValueForKeyInQuery(url, "udm", &udm);
+  return has_udm && udm == kAimUdmQueryParameterValue &&
+         !google_util::IsGoogleSearchUrl(url);
+}
+
 GURL GetUrlForAim(
     TemplateURLService* turl_service,
     omnibox::ChromeAimEntryPoint aim_entrypoint,
     const base::Time& query_start_time,
     const std::u16string& query_text,
     const std::optional<lens::LensOverlayInvocationSource> invocation_source,
-    std::map<std::string, std::string> additional_params,
-    omnibox::ModelMode model_mode) {
-  GURL result_url = GetBaseSearchUrl(
-      turl_service, aim_entrypoint, /*is_aim_search=*/true, model_mode,
-      query_start_time, query_text, additional_params);
+    std::map<std::string, std::string> additional_params) {
+  GURL result_url = GetBaseSearchUrl(turl_service, aim_entrypoint,
+                                     /*is_aim_search=*/true, query_start_time,
+                                     query_text, additional_params);
   if (invocation_source.has_value()) {
     // If the invocation source is set, send the contextual tasks invocation
     // source, as only the unmigrated LensOverlay flow, which uses a different
@@ -706,16 +907,20 @@ GURL GetUrlForMultimodalSearch(
     const std::string& lns_surface,
     const std::u16string& query_text,
     std::map<std::string, std::string> additional_params) {
-  GURL result_url = GetBaseSearchUrl(
-      turl_service, aim_entrypoint, is_aim_search,
-      /*model_mode=*/omnibox::ModelMode::MODEL_MODE_UNSPECIFIED,
-      query_start_time, query_text, additional_params);
-  std::string serialized_request_id;
-  CHECK(request_id->SerializeToString(&serialized_request_id));
-  std::string encoded_request_id;
-  base::Base64UrlEncode(serialized_request_id,
-                        base::Base64UrlEncodePolicy::OMIT_PADDING,
-                        &encoded_request_id);
+  GURL result_url =
+      GetBaseSearchUrl(turl_service, aim_entrypoint, is_aim_search,
+                       query_start_time, query_text, additional_params);
+  if (request_id) {
+    std::string serialized_request_id;
+    CHECK(request_id->SerializeToString(&serialized_request_id));
+    std::string encoded_request_id;
+    base::Base64UrlEncode(serialized_request_id,
+                          base::Base64UrlEncodePolicy::OMIT_PADDING,
+                          &encoded_request_id);
+    result_url = net::AppendOrReplaceQueryParameter(
+        result_url, kVisualRequestIdQueryParameter, encoded_request_id);
+  }
+
   if (invocation_source.has_value()) {
     // If the invocation source is set, this is a Lens query that is migrated
     // to the common ContextualSearchSessionHandle, which is only used for the
@@ -723,8 +928,6 @@ GURL GetUrlForMultimodalSearch(
     result_url = lens::AppendInvocationSourceParamToURL(
         result_url, *invocation_source, /*is_contextual_tasks=*/true);
   }
-  result_url = net::AppendOrReplaceQueryParameter(
-      result_url, kVisualRequestIdQueryParameter, encoded_request_id);
   result_url = net::AppendOrReplaceQueryParameter(
       result_url, kSearchSessionIdParameterKey, search_session_id);
   result_url = net::AppendOrReplaceQueryParameter(
@@ -743,10 +946,9 @@ GURL GetUrlForMultimodalSearch(
     const std::string& lns_surface,
     const std::u16string& query_text,
     std::map<std::string, std::string> additional_params) {
-  GURL result_url = GetBaseSearchUrl(
-      turl_service, aim_entrypoint, is_aim_search,
-      /*model_mode=*/omnibox::ModelMode::MODEL_MODE_UNSPECIFIED,
-      query_start_time, query_text, additional_params);
+  GURL result_url =
+      GetBaseSearchUrl(turl_service, aim_entrypoint, is_aim_search,
+                       query_start_time, query_text, additional_params);
   std::string serialized_contextual_inputs;
   CHECK(contextual_inputs->SerializeToString(&serialized_contextual_inputs));
   std::string encoded_contextual_inputs;

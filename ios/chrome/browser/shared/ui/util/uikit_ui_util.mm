@@ -228,6 +228,23 @@ UIImage* CircularImageFromImage(UIImage* image, CGFloat width) {
       }];
 }
 
+UIImage* ImageWithCornerRadius(UIImage* image, CGFloat cornerRadius) {
+  CGRect rect = CGRectMake(0, 0, image.size.width, image.size.height);
+
+  UIGraphicsImageRenderer* renderer =
+      [[UIGraphicsImageRenderer alloc] initWithSize:rect.size];
+
+  UIImage* roundedImage = [renderer
+      imageWithActions:^(UIGraphicsImageRendererContext* rendererContext) {
+        UIBezierPath* path =
+            [UIBezierPath bezierPathWithRoundedRect:rect
+                                       cornerRadius:cornerRadius];
+        [path addClip];
+        [image drawInRect:rect];
+      }];
+  return roundedImage;
+}
+
 bool IsPortrait(UIWindow* window) {
   UIInterfaceOrientation orient = GetInterfaceOrientation(window);
   return UIInterfaceOrientationIsPortrait(orient) ||
@@ -435,15 +452,15 @@ UIView* ViewHierarchyRootForView(UIView* view) {
   return ViewHierarchyRootForView(view.superview);
 }
 
-bool IsScrollViewScrolledToTop(UIScrollView* scroll_view) {
-  return scroll_view.contentOffset.y <= -scroll_view.adjustedContentInset.top;
+CGFloat RemainingScrollDistanceToTop(UIScrollView* scroll_view) {
+  return scroll_view.contentOffset.y + scroll_view.adjustedContentInset.top;
 }
 
-bool IsScrollViewScrolledToBottom(UIScrollView* scroll_view) {
+CGFloat RemainingScrollDistanceToBottom(UIScrollView* scroll_view) {
   CGFloat scrollable_height = scroll_view.contentSize.height +
                               scroll_view.adjustedContentInset.bottom -
                               scroll_view.bounds.size.height;
-  return scroll_view.contentOffset.y >= scrollable_height;
+  return scrollable_height - scroll_view.contentOffset.y;
 }
 
 CGFloat DeviceCornerRadius() {

@@ -470,7 +470,11 @@ static const base::TimeDelta kDelayUntilReadyToRemoveLoadingIndicatorsMs =
         [self.tableViewModel itemAtIndexPath:indexPath]);
     BrowsingHistoryService::HistoryEntry entry;
     entry.url = object.URL;
-    entry.all_timestamps.insert(object.timestamp);
+    // Since the similar visits grouping logic does not exist on iOS, we only
+    // need to pass the timestamp for the current URL. See b/460405414 for more
+    // details.
+    // TODO(b/483287809): Enable similar visits grouping for iOS.
+    entry.all_timestamps[object.URL].insert(object.timestamp);
     entries.push_back(entry);
   }
   self.historyService->RemoveVisits(entries);
@@ -663,7 +667,10 @@ static const base::TimeDelta kDelayUntilReadyToRemoveLoadingIndicatorsMs =
                         indexPath:(NSIndexPath*)indexPath {
   item.faviconAttributes = attributes;
   if (!cached && attributes.faviconImage) {
-    if ([self.tableViewModel itemAtIndexPath:indexPath] != item) {
+    // Since the favicon fetch is asynchronous, `self.tableViewModel` may have
+    // updated. Ensure `indexPath` is still valid for this item before updating.
+    if (![self.tableViewModel hasItemAtIndexPath:indexPath] ||
+        [self.tableViewModel itemAtIndexPath:indexPath] != item) {
       return;
     }
     LegacyTableViewCell* cell =

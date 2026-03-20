@@ -18,6 +18,7 @@
 class BrowserView;
 class TabCollectionNode;
 class TabGroup;
+class TabHoverCardController;
 
 namespace tabs {
 class TabInterface;
@@ -39,6 +40,7 @@ class VerticalTabStripController : public TabContextMenuController::Delegate {
   VerticalTabStripController(TabStripModel* model,
                              BrowserView* browser_view,
                              VerticalTabDragHandler& drag_handler,
+                             TabHoverCardController* hover_card_controller,
                              std::unique_ptr<TabMenuModelFactory>
                                  menu_model_factory_override = nullptr);
   VerticalTabStripController(const VerticalTabStripController&) = delete;
@@ -51,6 +53,10 @@ class VerticalTabStripController : public TabContextMenuController::Delegate {
                               const gfx::Point& point,
                               ui::mojom::MenuSourceType source_type);
 
+  void ShiftTabNext(const tabs::TabInterface* tab_interface);
+  void ShiftTabPrevious(const tabs::TabInterface* tab_interface);
+  void MoveTabFirst(const tabs::TabInterface* tab_interface);
+  void MoveTabLast(const tabs::TabInterface* tab_interface);
   void SelectTab(const tabs::TabInterface* tab_interface,
                  const TabStripUserGestureDetails& event);
   void CloseTab(const tabs::TabInterface* tab_interface);
@@ -74,6 +80,13 @@ class VerticalTabStripController : public TabContextMenuController::Delegate {
   }
 
   VerticalTabDragHandler& GetDragHandler() { return drag_handler_.get(); }
+  const VerticalTabDragHandler& GetDragHandler() const {
+    return drag_handler_.get();
+  }
+
+  TabHoverCardController* GetHoverCardController() {
+    return hover_card_controller_.get();
+  }
 
   // Notifies BrowserCommandController that the tab with keyboard focus has
   // changed.
@@ -101,12 +114,18 @@ class VerticalTabStripController : public TabContextMenuController::Delegate {
   void RecordMetricsOnTabSelectionChange(
       std::optional<tab_groups::TabGroupId> group);
 
+  void ShiftTabRelative(const tabs::TabInterface* tab_interface, int offset);
+
+  void AnnounceTabAddedToGroup(tab_groups::TabGroupId group_id);
+  void AnnounceTabRemovedFromGroup(tab_groups::TabGroupId group_id);
+
   std::unique_ptr<TabContextMenuController> context_menu_controller_;
   std::unique_ptr<TabMenuModelFactory> menu_model_factory_;
 
   raw_ptr<TabStripModel> model_;
   raw_ptr<BrowserView> browser_view_;
   const raw_ref<VerticalTabDragHandler> drag_handler_;
+  raw_ptr<TabHoverCardController> hover_card_controller_;
 };
 
 #endif  // CHROME_BROWSER_UI_VIEWS_TABS_VERTICAL_VERTICAL_TAB_STRIP_CONTROLLER_H_

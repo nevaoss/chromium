@@ -27,10 +27,10 @@
 #include "chrome/browser/policy/developer_tools_policy_handler.h"
 #include "chrome/browser/policy/profile_policy_connector.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/chrome_pages.h"
-#include "chrome/browser/ui/tabs/tab_list_interface.h"
 #include "chrome/browser/ui/toolbar/toolbar_actions_model.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/common/pref_names.h"
@@ -73,9 +73,9 @@
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/extensions/extension_side_panel_utils.h"
 #include "chrome/browser/ui/extensions/extensions_container.h"
-#include "chrome/browser/ui/views/side_panel/side_panel_entry_id.h"
-#include "chrome/browser/ui/views/side_panel/side_panel_entry_key.h"
-#include "chrome/browser/ui/views/side_panel/side_panel_ui.h"
+#include "chrome/browser/ui/side_panel/side_panel_entry_id.h"
+#include "chrome/browser/ui/side_panel/side_panel_entry_key.h"
+#include "chrome/browser/ui/side_panel/side_panel_ui.h"
 #include "chrome/common/extensions/api/side_panel.h"
 #endif
 
@@ -126,9 +126,18 @@ bool IsExtensionInspectionAllowed(const Extension& extension,
   policy::DeveloperToolsPolicyChecker* checker =
       policy::DeveloperToolsPolicyCheckerFactory::GetForBrowserContext(profile);
   if (checker) {
-    if (auto url_check =
-            checker->CheckDevToolsAvailabilityForUrl(extension.url())) {
-      return *url_check;
+    auto url_availability =
+        checker->GetDevToolsAvailabilityForUrl(extension.url());
+    switch (url_availability) {
+      case policy::DeveloperToolsPolicyChecker::DevToolsAvailability::kAllowed:
+        return true;
+      case policy::DeveloperToolsPolicyChecker::DevToolsAvailability::
+          kDisallowed:
+        return false;
+      case policy::DeveloperToolsPolicyChecker::DevToolsAvailability::kNotSet:
+        // The URL is not covered by the URL-based policies, so we fall back to
+        // the general enum-based policy.
+        break;
     }
   }
   using Availability = policy::DeveloperToolsPolicyHandler::Availability;

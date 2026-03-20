@@ -144,7 +144,12 @@ class OmniboxEditModel {
 
   // Adjusts the copied text before writing it to the clipboard. If the copied
   // text is a URL with the scheme elided, this method reattaches the scheme.
+  //
   // Copied text that looks like a search query will not be modified.
+  //
+  // Copied text that looks like a "contextual tasks" URL will have
+  // "origin-swapping" logic applied to it, in order to ensure that users copy a
+  // valid, shareable URL.
   //
   // |sel_min| gives the minimum of the selection, e.g. min(sel_start, sel_end).
   // |text| is the currently selected text, and may be modified by this method.
@@ -281,7 +286,7 @@ class OmniboxEditModel {
 
   // A simplified version of `OpenSelection()` that opens the model's current
   // selection.
-  void OpenSelectionForTesting(
+  void OpenCurrentSelection(
       base::TimeTicks timestamp = base::TimeTicks(),
       WindowOpenDisposition disposition = WindowOpenDisposition::CURRENT_TAB,
       bool via_keyboard = false);
@@ -485,9 +490,11 @@ class OmniboxEditModel {
   // as well as updating the textfield with the new temporary text.
   // |reset_to_default| restores the original inline autocompletion.
   // |force_update_ui| updates the UI even if the selection has not changed.
+  // |native_update| cancels autocomplete query and notifies observers.
   void SetPopupSelection(OmniboxPopupSelection new_selection,
                          bool reset_to_default = false,
-                         bool force_update_ui = false);
+                         bool force_update_ui = false,
+                         bool native_update = true);
 
   // Returns true if popup selection is on the initial line, which is usually
   // the default match (except in the no-default-match case).
@@ -642,6 +649,15 @@ class OmniboxEditModel {
                  const GURL& alternate_nav_url,
                  const std::u16string& pasted_text,
                  base::TimeTicks match_selection_timestamp = base::TimeTicks());
+
+  void OnDefaultSearchExtensionDialogDone(
+      OmniboxPopupSelection selection,
+      AutocompleteMatch match,
+      WindowOpenDisposition disposition,
+      const GURL& alternate_nav_url,
+      const std::u16string& pasted_text,
+      base::TimeTicks match_selection_timestamp,
+      bool proceed);
 
   // Updates the feedback type on the match at the given index and schedules a
   // repaint to update the suggestion view. On negative feedback, also shows the

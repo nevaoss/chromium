@@ -340,6 +340,7 @@ using base::UserMetricsAction;
                                   customizationEventHandler:self];
 
   LayoutGuideCenter* layoutGuideCenter = LayoutGuideCenterForBrowser(browser);
+  mediator.layoutGuideCenter = layoutGuideCenter;
   UILayoutGuide* layoutGuide =
       [layoutGuideCenter makeLayoutGuideNamed:kToolsMenuGuide];
   [self.baseViewController.view addLayoutGuide:layoutGuide];
@@ -490,8 +491,7 @@ using base::UserMetricsAction;
 }
 
 - (void)displayPopupMenuTabRemindersIPH {
-  CHECK(
-      send_tab_to_self::IsSendTabIOSPushNotificationsEnabledWithTabReminders());
+  CHECK(send_tab_to_self::AreIOSTabRemindersEnabled());
 
   [self.popupMenuHelpCoordinator displayPopupMenuTabRemindersIPH];
 }

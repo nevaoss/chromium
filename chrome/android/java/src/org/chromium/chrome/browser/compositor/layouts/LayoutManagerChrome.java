@@ -113,7 +113,7 @@ public class LayoutManagerChrome extends LayoutManagerImpl implements Accessibil
                 createToolbarSwipeHandler(/* supportsSwipeToShowTabSwitcher= */ true);
 
         mTabContentManagerSupplier = tabContentManagerSupplier;
-        mTabContentManagerSupplier.addObserver(mOnTabContentManager);
+        mTabContentManagerSupplier.addSyncObserverAndPostIfNonNull(mOnTabContentManager);
 
         mTabSwitcherSupplier = tabSwitcherSupplier;
         mTabModelSelectorSupplier = tabModelSelectorSupplier;
@@ -192,7 +192,12 @@ public class LayoutManagerChrome extends LayoutManagerImpl implements Accessibil
                             this,
                             topUiColorProvider,
                             bottomControlsOffsetSupplier,
-                            getContentContainer());
+                            getContentContainer(),
+                            () -> {
+                                if (controlContainer != null) {
+                                    controlContainer.doSynchronousLayoutAndCapture();
+                                }
+                            });
         }
 
         super.init(

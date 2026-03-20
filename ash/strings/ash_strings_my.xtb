@@ -9,7 +9,6 @@
 <translation id="101823271612280837">မှတ်တမ်းတင်ခြင်း ရပ်လိုက်သည်။ တက်ဘလက်မုဒ်တွင် ‘ဂိမ်း ဒက်ရှ်ဘုတ်’ ကို သုံး၍မရပါ။</translation>
 <translation id="1024364763893396229">သင့် <ph name="NAME" /> ကို သိမ်းရန်</translation>
 <translation id="1032891413405719768">စတိုင်လပ်စ် ဓာတ်ခဲ အားနည်းနေသည်</translation>
-<translation id="1036073649888683237">အကြောင်းကြားချက်များ စီမံရန် ‘ဆက်တင်များ’ သို့သွားပါ</translation>
 <translation id="1036348656032585052">ပိတ်ရန်</translation>
 <translation id="1037492556044956303"><ph name="DEVICE_NAME" /> ကို ထည့်ထားသည်</translation>
 <translation id="1038106730571050514">အကြံပြုချက်များ ပြရန်</translation>
@@ -290,7 +289,7 @@
 <translation id="1957958912175573503">သင်၏ ဘာသာစကားကို သတ်မှတ်ရန်</translation>
 <translation id="1961239773406905488">ကင်မရာအစမ်းကြည့်ရှုခြင်း ဖျောက်ထားသည်</translation>
 <translation id="1961832440516943645"><ph name="DATE" />၊ <ph name="TIME" /></translation>
-<translation id="1962969542251276847">လော့ခ်မျက်နှာပြင်</translation>
+<translation id="1962969542251276847">လော့ခ်စခရင်</translation>
 <translation id="1967970931040389207">ဟော့စပေါ့ ဖွင့်ရန်</translation>
 <translation id="1969011864782743497"><ph name="DEVICE_NAME" /> (USB)</translation>
 <translation id="1971815855639997522">မျက်နှာပြင်နှင့် ဝင်းဒိုးများကို ဖယ်ရှားလိုက်သည်။ နောက်ပြန်ရန် Control + Z နှိပ်ပါ။</translation>
@@ -427,6 +426,7 @@
 <translation id="2478076885740497414">အက်ပ် ထည့်သွင်းရန်</translation>
 <translation id="2482878487686419369">အကြောင်းကြားစာ</translation>
 <translation id="2484513351006226581">ကီးဘုတ်လက်ကွက် ပြောင်းရန် <ph name="KEYBOARD_SHORTCUT" /> ကို နှိပ်ပါ။</translation>
+<translation id="2485422356828889247">ဖြုတ်ရန်</translation>
 <translation id="2486214324139475545"><ph name="DESK_NAME" /> အစမ်းပြကွက်။ သုံးနေသည့် မျက်နှာပြင်။</translation>
 <translation id="2486405091093637109">“<ph name="DISPLAY_NAME" />” ကို <ph name="RESOLUTION" /> (<ph name="REFRESH_RATE" /> Hz) ပုံရိပ်ပြတ်သားကိန်းသို့ ပြောင်းလိုက်သည်။ အတည်မပြုဘဲ ယခင်ဆက်တင်များကို <ph name="TIMEOUT_SECONDS" /> အကြာတွင် ပြန်ပြောင်းပါမည်။</translation>
 <translation id="2487915095798731898">ချိတ်ဆက်ပါ</translation>
@@ -1188,7 +1188,7 @@
 <translation id="4952936045814352993">သတိပေးချက်အသံများ ပိတ်ထားပါက ဖုန်းရှာဖွေခြင်းကို အသုံးပြု၍မရပါ</translation>
 <translation id="4953585991029886728">စာသား တည်းဖြတ်ရန်</translation>
 <translation id="4960324571663582548">သင့် <ph name="DEVICE_TYPE" /> ကိုနောက်ပြန်ဆုတ်ရန် <ph name="MANAGER" /> ကသတ်မှတ်ထားသည်။ စက်ပြင်ဆင်သတ်မှတ်မည်ဖြစ်ပြီး ဒေတာအားလုံးကို ဖျက်ပါမည်။</translation>
-<translation id="4961318399572185831">Cast ဖန်မျက်နှာပြင်</translation>
+<translation id="4961318399572185831">ကာစ်စခရင်</translation>
 <translation id="4964188651935955085">ဘလူးတုသ် ပိတ်လိုက်သောအခါ ဤပြင်ပစက်ကို သင့် <ph name="DEVICE_TYPE" /> နှင့် ချိတ်ဆက်မှုဖြုတ်ပါမည်-</translation>
 <translation id="4966431234408005599">အသံချဲ့ရန်</translation>
 <translation id="496999337731226334">လမ်းညွှန်အဆင့် <ph name="TOTAL_STEPS" /> ဆင့်အနက် <ph name="STEP" />။ Wi-Fi၊ ဘလူးတုသ်နှင့် အသံအတိုးအကျယ်ကဲ့သို့ မကြာခဏသုံးသည့် သတ်မှတ်ချက်များသည် ‘အမြန်ဆက်တင်များ’ တွင်ရှိသည်။ ဖန်သားပြင်ဓာတ်ပုံရိုက်ရန် ဤနေရာသို့လည်း သွားနိုင်သည်။ ‘အမြန်ဆက်တင်များ’ ဖွင့်ရန် Alt + Shift + S နှိပ်ပါ။</translation>

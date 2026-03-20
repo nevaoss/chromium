@@ -17,6 +17,7 @@ class AuthenticationService;
 @class GeminiPageContext;
 @class GeminiSettingsAction;
 @class GeminiSettingsMetadata;
+@class GeminiStartupConfiguration;
 @protocol BWGGatewayProtocol;
 
 typedef NS_ENUM(NSInteger, GeminiSettingsContext);
@@ -65,13 +66,10 @@ enum class GeminiPageContextComputationState {
   kPending,
 };
 
-// TODO(crbug.com/467341090): Remove this alias once all callers have migrated.
-using BWGPageContextComputationState = GeminiPageContextComputationState;
-
-// Enum representing the page context attachment state of the BWG experience.
+// Enum representing the page context attachment state of the Gemini experience.
 // This needs to stay in sync with GCRGeminiPageContextAttachmentState (and its
 // SDK counterpart).
-enum class BWGPageContextAttachmentState {
+enum class GeminiPageContextAttachmentState {
   // The attach state is unknown.
   kUnknown,
   // Page context should be attached.
@@ -86,16 +84,23 @@ enum class BWGPageContextAttachmentState {
 
 // Enum representing the Gemini view state.
 // This needs to stay in sync with GCRGeminiViewState (and its SDK counterpart).
+// LINT.IfChange(GeminiViewState)
 enum class GeminiViewState {
   // The Gemini view state is unknown.
   kUnknown,
-  // The Gemini view is hidden.
+  // The Gemini view is hidden. When the floaty is set to `kHidden`, the floaty
+  // is destructed and properties are stored in the view manager in the Gemini
+  // SDK. After this, setting the `GeminiViewState` to another state
+  // will reinitialize the floaty with stored properties from when the floaty
+  // was initially hidden.
   kHidden,
   // The Gemini view is collapsed (minimized) into a circle.
   kCollapsed,
   // The Gemini view is expanded.
   kExpanded,
+  kMaxValue = kExpanded,
 };
+// LINT.ThenChange(/tools/metrics/histograms/metadata/ios/enums.xml:GeminiViewState)
 
 // Enum representing the UI element type for which a change is requested.
 // This needs to stay in sync with GCRGeminiUIElementType (and its SDK
@@ -108,6 +113,28 @@ enum class GeminiUIElementType {
   // The zero state element.
   kZeroState,
 };
+
+// Enum representing the Gemini client mode.
+// This needs to stay in sync with GCRGeminiClientMode (and its SDK
+// counterpart).
+enum class GeminiClientMode {
+  // The Gemini client is unknown.
+  kUnknown,
+  // The Gemini client is dormant.
+  kDormant,
+  // The Gemini client is listening.
+  kListening,
+  // The Gemini client is thinking.
+  kThinking,
+  // The Gemini client is responding.
+  kResponding,
+  // The Gemini client is loading the previous conversation.
+  kPreviousConversationLoading,
+};
+
+// Configures Gemini with the given startup configuration.
+void ConfigureWithStartupConfiguration(
+    GeminiStartupConfiguration* startup_configuration);
 
 // Starts the overlay experience with the given configuration.
 void StartBwgOverlay(GeminiConfiguration* gemini_configuration);
@@ -129,7 +156,7 @@ void ResetGemini();
 
 // Updates the page attachment state of the floaty if it's invoked.
 void UpdatePageAttachmentState(
-    BWGPageContextAttachmentState bwg_attachment_state);
+    GeminiPageContextAttachmentState gemini_attachment_state);
 
 // Returns true if a URL is protected.
 bool IsProtectedUrl(std::string url);
@@ -166,6 +193,12 @@ void RequestUIChange(GeminiUIElementType ui_element_type);
 
 // Attaches an image to the Gemini floaty.
 void AttachImage(UIImage* image);
+
+// Returns the current `GeminiClientMode` of the floaty.
+GeminiClientMode GetCurrentClientMode();
+
+// Returns the current `GeminiPageContextAttachmentState` of the floaty.
+GeminiPageContextAttachmentState GetCurrentPageContextAttachmentState();
 
 }  // namespace ios::provider
 

@@ -6,6 +6,7 @@
 #define CHROME_BROWSER_GLIC_TEST_SUPPORT_GLIC_BROWSER_TEST_H_
 
 #include <map>
+#include <memory>
 #include <sstream>
 #include <string_view>
 
@@ -25,8 +26,8 @@
 #include "chrome/browser/glic/test_support/glic_test_environment.h"
 #include "chrome/browser/glic/test_support/glic_test_util.h"
 #include "chrome/browser/glic/widget/glic_window_controller.h"
+#include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
-#include "chrome/browser/ui/tabs/tab_list_interface.h"
 #include "chrome/common/chrome_switches.h"
 #include "chrome/test/base/platform_browser_test.h"
 #include "components/tabs/public/tab_interface.h"
@@ -34,6 +35,14 @@
 
 #if BUILDFLAG(IS_ANDROID)
 #include "base/android/device_info.h"
+#endif
+
+#if defined(TOOLKIT_VIEWS)
+#include "ui/views/buildflags.h"
+
+#if BUILDFLAG(ENABLE_DESKTOP_AURA) || BUILDFLAG(IS_MAC)
+#include "ui/views/test/mock_activation_controller.h"
+#endif
 #endif
 
 namespace glic {
@@ -89,10 +98,25 @@ class GlicBrowserTestMixin : public T {
 
   void SetUpOnMainThread() override {
     T::SetUpOnMainThread();
+#if defined(TOOLKIT_VIEWS)
+#if BUILDFLAG(ENABLE_DESKTOP_AURA) || BUILDFLAG(IS_MAC)
+    activation_controller_ =
+        std::make_unique<views::test::MockActivationController>();
+#endif
+#endif
 
     CHECK(glic_test_environment_.SetupEmbeddedTestServers(
         T::embedded_test_server(), &T::embedded_https_test_server()));
     LOG(INFO) << "GlicBrowserTest: done setting up";
+  }
+
+  void TearDownOnMainThread() override {
+#if defined(TOOLKIT_VIEWS)
+#if BUILDFLAG(ENABLE_DESKTOP_AURA) || BUILDFLAG(IS_MAC)
+    activation_controller_.reset();
+#endif
+#endif
+    T::TearDownOnMainThread();
   }
 
   // Toggles the Glic UI.
@@ -240,6 +264,11 @@ class GlicBrowserTestMixin : public T {
  private:
   GlicTestEnvironment glic_test_environment_;
   base::test::ScopedFeatureList scoped_feature_list_;
+#if defined(TOOLKIT_VIEWS)
+#if BUILDFLAG(ENABLE_DESKTOP_AURA) || BUILDFLAG(IS_MAC)
+  std::unique_ptr<views::test::MockActivationController> activation_controller_;
+#endif
+#endif
 };
 
 using GlicBrowserTest = GlicBrowserTestMixin<PlatformBrowserTest>;

@@ -24,6 +24,9 @@
 - (void)showPromo {
 }
 
+- (void)dismissCurrentPromo {
+}
+
 - (void)showAppStoreReviewPrompt {
 }
 
@@ -53,6 +56,9 @@
 }
 
 - (void)showHomeBackgroundCustomizationPromo {
+}
+
+- (void)showDockingPromo {
 }
 
 @end

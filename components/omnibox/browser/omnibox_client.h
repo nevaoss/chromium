@@ -90,6 +90,13 @@ class OmniboxClient {
   // Returns the session ID of the current page.
   virtual SessionID GetSessionID() const = 0;
 
+  // Checks if the default search engine is extension controlled and if so,
+  // shows a confirmation dialog. Returns true if the dialog is shown.
+  // |callback| is run when the dialog is closed.
+  virtual bool ShowConfirmationDialogIfDefaultSearchExtensionControlled(
+      const GURL& url,
+      base::OnceCallback<void(bool)> callback);
+
   // Called when the user changes the selected |index| in the result list via
   // mouse down or arrow key down. |match| is the suggestion corresponding to
   // that index. |navigation_predictor| represents the event indicated
@@ -155,6 +162,13 @@ class OmniboxClient {
 
   // Returns the URL of the current navigation entry.
   virtual GURL GetNavigationEntryURL() const = 0;
+
+  // Returns true if the current page is a contextual tasks UI page (i.e.
+  // chrome://contextual-tasks/).
+  virtual bool IsContextualTasksPage() const;
+
+  // Returns the inner frame URL for the current contextual tasks page.
+  virtual GURL GetContextualTasksInnerFrameURL() const;
 
   // Classify the current page being viewed as, for example, the new tab
   // page or a normal web page.  Used for logging omnibox events for

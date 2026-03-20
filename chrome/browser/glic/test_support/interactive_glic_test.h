@@ -439,7 +439,9 @@ class InteractiveGlicTestMixin : public T {
           Api::Do([this]() {
             GetInstanceCoordinator().Toggle(
                 /*browser=*/nullptr, true, mojom::InvocationSource::kOsButton,
-                /*prompt_suggestion=*/std::nullopt);
+                /*prompt_suggestion=*/std::nullopt,
+                /*auto_send=*/false,
+                /*conversation_id=*/std::nullopt);
           }),
           WaitForAndInstrumentGlic(instrument_mode), WaitForGlicOpen());
       Api::AddDescriptionPrefix(steps, "OpenGlicFloatingWindow");
@@ -477,7 +479,9 @@ class InteractiveGlicTestMixin : public T {
       case GlicWindowMode::kDetached:
         return Api::Do([this, invocation_source] {
           window_controller().Toggle(browser(), false, invocation_source,
-                                     /*prompt_suggestion=*/std::nullopt);
+                                     /*prompt_suggestion=*/std::nullopt,
+                                     /*auto_send=*/false,
+                                     /*conversation_id=*/std::nullopt);
         });
     }
   }

@@ -30,13 +30,15 @@ class ImageSkia;
 class HoverCardAnchorTarget;
 class TabHoverCardBubbleView;
 class TabHoverCardThumbnailObserver;
-class TabStrip;
+class TabStripRegionView;
+class BrowserWindowInterface;
 
 // Controls how hover cards are shown and hidden for tabs.
 class TabHoverCardController : public views::ViewObserver,
                                public TabResourceUsageCollector::Observer {
  public:
-  explicit TabHoverCardController(TabStrip* tab_strip);
+  TabHoverCardController(TabStripRegionView* tab_strip,
+                         BrowserWindowInterface* browser_window_interface);
   ~TabHoverCardController() override;
 
   bool IsHoverCardVisible() const;
@@ -44,6 +46,8 @@ class TabHoverCardController : public views::ViewObserver,
   void UpdateHoverCard(HoverCardAnchorTarget* anchor_target,
                        TabSlotController::HoverCardUpdateType update_type);
   void PreventImmediateReshow();
+
+  const HoverCardAnchorTarget* target_tab() const { return target_tab_.get(); }
 
   TabHoverCardBubbleView* hover_card_for_testing() { return hover_card_.get(); }
 
@@ -55,6 +59,9 @@ class TabHoverCardController : public views::ViewObserver,
       bool disable_animations_for_testing) {
     disable_animations_for_testing_ = disable_animations_for_testing;
   }
+
+ protected:
+  TabHoverCardController();  // For testing only
 
  private:
   FRIEND_TEST_ALL_PREFIXES(TabHoverCardControllerTest, ShowWrongTabDoesntCrash);
@@ -152,13 +159,16 @@ class TabHoverCardController : public views::ViewObserver,
   //  Resets controller state associated with a HoverCard widget.
   void OnCardClosing();
 
+  bool start_hover_card_fade_ = false;
+
   // Timestamp of the last time the hover card is hidden by the mouse leaving
   // the tab strip. This is used for reshowing the hover card without delay if
   // the mouse reenters within a given amount of time.
   base::TimeTicks last_mouse_exit_timestamp_;
 
   raw_ptr<HoverCardAnchorTarget> target_tab_ = nullptr;
-  const raw_ptr<TabStrip> tab_strip_;
+  const raw_ptr<TabStripRegionView> tab_strip_;
+  raw_ptr<BrowserWindowInterface> browser_window_interface_;
   raw_ptr<TabHoverCardBubbleView> hover_card_ = nullptr;
   base::ScopedObservation<views::View, views::ViewObserver>
       hover_card_observation_{this};

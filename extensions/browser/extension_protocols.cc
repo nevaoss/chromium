@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "base/base64.h"
+#include "base/callback_list.h"
 #include "base/compiler_specific.h"
 #include "base/containers/span.h"
 #include "base/files/file_path.h"
@@ -517,6 +518,35 @@ class FileLoaderObserver : public content::FileURLLoaderObserver {
 
 class ExtensionURLLoaderFactory;
 
+class ExtensionProtocolShutdownNotifierFactory
+    : public BrowserContextKeyedServiceShutdownNotifierFactory {
+ public:
+  static ExtensionProtocolShutdownNotifierFactory* GetInstance() {
+    static base::NoDestructor<ExtensionProtocolShutdownNotifierFactory>
+        s_factory;
+    return s_factory.get();
+  }
+
+  ExtensionProtocolShutdownNotifierFactory(
+      const ExtensionProtocolShutdownNotifierFactory&) = delete;
+  ExtensionProtocolShutdownNotifierFactory& operator=(
+      const ExtensionProtocolShutdownNotifierFactory&) = delete;
+
+ private:
+  friend class base::NoDestructor<ExtensionProtocolShutdownNotifierFactory>;
+  ExtensionProtocolShutdownNotifierFactory()
+      : BrowserContextKeyedServiceShutdownNotifierFactory(
+            "ExtensionProtocolShutdownNotifierFactory") {
+    DependsOn(ExtensionRegistryFactory::GetInstance());
+    DependsOn(ProcessMapFactory::GetInstance());
+  }
+
+  content::BrowserContext* GetBrowserContextToUse(
+      content::BrowserContext* context) const override {
+    return ExtensionsBrowserClient::Get()->GetContextOwnInstance(context);
+  }
+};
+
 class ExtensionURLLoader : public network::mojom::URLLoader {
  public:
   static void CreateAndStart(
@@ -552,6 +582,9 @@ class ExtensionURLLoader : public network::mojom::URLLoader {
 
     Start();
   }
+
+  void OnBrowserContextDestroyed() { browser_context_ = nullptr; }
+
   void SetPriority(net::RequestPriority priority,
                    int32_t intra_priority_value) override {}
 
@@ -572,6 +605,12 @@ class ExtensionURLLoader : public network::mojom::URLLoader {
     loader_.Bind(std::move(loader));
     loader_.set_disconnect_handler(base::BindOnce(
         &ExtensionURLLoader::OnMojoDisconnect, weak_ptr_factory_.GetWeakPtr()));
+    shutdown_subscription_ =
+        ExtensionProtocolShutdownNotifierFactory::GetInstance()
+            ->Get(browser_context)
+            ->Subscribe(base::BindRepeating(
+                &ExtensionURLLoader::OnBrowserContextDestroyed,
+                base::Unretained(this)));
   }
 
   // `this` instance should only be `delete`ed after completing handling of the
@@ -587,14 +626,11 @@ class ExtensionURLLoader : public network::mojom::URLLoader {
   void Start() {
     // Owner of BrowserContext should ensure that all WebContents are closed
     // before starting BrowserContext destruction, but this doesn't stop
-    // incoming URLLoaderFactory IPCs which may still be in-flight until (as
-    // part of BrowserContext destruction sequence) OnBrowserContextDestroyed
-    // below is called (which will prevent future IPCs by calling
-    // DisconnectReceiversAndDestroy).  Note that DisconnectReceiversAndDestroy
-    // will only stop future ExtensionURLLoaderFactory IPCs, but it won't stop
-    // future ExtensionURLLoader IPCs - this is okay, because the loader doesn't
-    // directly interact with the BrowserContext.
-    if (browser_context_->ShutdownStarted()) {
+    // incoming IPCs which may still be in-flight. Both
+    // ExtensionURLLoaderFactory and ExtensionURLLoader implement
+    // OnBrowserContextDestroyed to get notified of the BrowserContext
+    // destruction and stop the execution of in-flight calls.
+    if (!browser_context_) {
       CompleteRequestAndDeleteThis(net::ERR_FAILED);
       return;
     }
@@ -652,6 +688,15 @@ class ExtensionURLLoader : public network::mojom::URLLoader {
                           scoped_refptr<ContentVerifier> content_verifier,
                           const ResourceInfo& resource_info) {
     DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+
+    // If the BrowserContext is shutting down, keyed services (like
+    // ExtensionRegistry) may already be destroyed. Abort the request to avoid
+    // crashing.
+    if (!browser_context_) {
+      CompleteRequestAndDeleteThis(net::ERR_FAILED);
+      return;
+    }
+
     const auto& read_file_path = resource_info.file_path;
     const auto& last_modified_time = resource_info.last_modified_time;
     request_.url = net::FilePathToFileURL(read_file_path);
@@ -667,10 +712,9 @@ class ExtensionURLLoader : public network::mojom::URLLoader {
 
     bool should_verify_content =
         ShouldVerifyContent(resource, extension_version, resource_info);
-    bool is_shutdown_started = browser_context_->ShutdownStarted();
 
     scoped_refptr<ContentVerifyJob> verify_job;
-    if (content_verifier && should_verify_content && !is_shutdown_started) {
+    if (content_verifier && should_verify_content) {
       verify_job = ContentVerifier::CreateAndStartJobFor(
           resource.extension_id(), resource.extension_root(), extension_version,
           resource.relative_path(), content_verifier);
@@ -895,7 +939,7 @@ class ExtensionURLLoader : public network::mojom::URLLoader {
   mojo::Receiver<network::mojom::URLLoader> loader_{this};
   mojo::Remote<network::mojom::URLLoaderClient> client_;
   network::ResourceRequest request_;
-  const raw_ptr<content::BrowserContext, AcrossTasksDanglingUntriaged>
+  raw_ptr<content::BrowserContext, AcrossTasksDanglingUntriaged>
       browser_context_;
   const bool is_web_view_request_;
 
@@ -909,6 +953,8 @@ class ExtensionURLLoader : public network::mojom::URLLoader {
 
   // Used for determining if `target_url` is allowed to be requested.
   GURL upstream_url_;
+
+  base::CallbackListSubscription shutdown_subscription_;
 
   base::WeakPtrFactory<ExtensionURLLoader> weak_ptr_factory_{this};
 };
@@ -947,7 +993,7 @@ class ExtensionURLLoaderFactory : public network::SelfDeletingURLLoaderFactory {
   }
 
   static void EnsureShutdownNotifierFactoryBuilt() {
-    BrowserContextShutdownNotifierFactory::GetInstance();
+    ExtensionProtocolShutdownNotifierFactory::GetInstance();
   }
 
  private:
@@ -972,7 +1018,7 @@ class ExtensionURLLoaderFactory : public network::SelfDeletingURLLoaderFactory {
     // |browser_context_shutdown_subscription_| guarantees that
     // OnBrowserContextDestroyed won't be called after |this| is destroyed.
     browser_context_shutdown_subscription_ =
-        BrowserContextShutdownNotifierFactory::GetInstance()
+        ExtensionProtocolShutdownNotifierFactory::GetInstance()
             ->Get(browser_context)
             ->Subscribe(base::BindRepeating(
                 &ExtensionURLLoaderFactory::OnBrowserContextDestroyed,
@@ -1002,37 +1048,6 @@ class ExtensionURLLoaderFactory : public network::SelfDeletingURLLoaderFactory {
     // serve any more requests.
     DisconnectReceiversAndDestroy();
   }
-
-  class BrowserContextShutdownNotifierFactory
-      : public BrowserContextKeyedServiceShutdownNotifierFactory {
-   public:
-    static BrowserContextShutdownNotifierFactory* GetInstance() {
-      static base::NoDestructor<BrowserContextShutdownNotifierFactory>
-          s_factory;
-      return s_factory.get();
-    }
-
-    // No copying.
-    BrowserContextShutdownNotifierFactory(
-        const BrowserContextShutdownNotifierFactory&) = delete;
-    BrowserContextShutdownNotifierFactory& operator=(
-        const BrowserContextShutdownNotifierFactory&) = delete;
-
-   private:
-    friend class base::NoDestructor<BrowserContextShutdownNotifierFactory>;
-    BrowserContextShutdownNotifierFactory()
-        : BrowserContextKeyedServiceShutdownNotifierFactory(
-              "ExtensionURLLoaderFactory::"
-              "BrowserContextShutdownNotifierFactory") {
-      DependsOn(ExtensionRegistryFactory::GetInstance());
-      DependsOn(ProcessMapFactory::GetInstance());
-    }
-
-    content::BrowserContext* GetBrowserContextToUse(
-        content::BrowserContext* context) const override {
-      return ExtensionsBrowserClient::Get()->GetContextOwnInstance(context);
-    }
-  };
 
   raw_ptr<content::BrowserContext> browser_context_;
   bool is_web_view_request_;

@@ -31,6 +31,7 @@ namespace mojom {
 // allow_circular_includes_from. Our build rules should be refactored to avoid
 // this.
 enum class ProfileReadyState : int32_t;
+enum class InvocationSource : int32_t;
 }  // namespace mojom
 
 // This synthetic field trial is registered for users who are affected by the
@@ -68,7 +69,8 @@ class GlicGlobalEnabling {
     Delegate(const Delegate&) = delete;
     Delegate& operator=(const Delegate&) = delete;
 
-    virtual std::string GetCountryCode();
+    virtual std::string GetPermanentCountryCode();
+    virtual std::string GetSessionCountryCode();
     virtual std::string GetLocale();
   };
   explicit GlicGlobalEnabling(Delegate& delegate);
@@ -153,6 +155,11 @@ class GlicEnabling : public signin::IdentityManager::Observer {
   // Whether the Trust-First Onboarding flow should be shown.
   static bool IsTrustFirstOnboardingEnabledForProfile(Profile* profile);
 
+  // Returns true if the FRE UI (standard FRE or Trust-First Onboarding) should
+  // be bypassed for certain invocation sources for unconsented users.
+  static bool ShouldBypassFreUi(Profile* profile,
+                                mojom::InvocationSource invocation_source);
+
   // Whether the required feature flags for multi-instance - kGlicMultiInstance,
   // kGlicMultiTab, and kGlicMultitabUnderlines - are enabled. When calling, be
   // sure that IsMultiInstanceEnabled() should not be used instead.
@@ -204,6 +211,9 @@ class GlicEnabling : public signin::IdentityManager::Observer {
     // Whether live (audio) functionality is disallowed for this account type.
     bool live_disallowed : 1 = false;
 
+    // Whether share image functionality is disallowed for this account type.
+    bool share_image_disallowed : 1 = false;
+
     bool IsProfileEligible() const {
       return !feature_disabled && !not_regular_profile;
     }
@@ -234,6 +244,10 @@ class GlicEnabling : public signin::IdentityManager::Observer {
 
     bool EligibleForLive() const {
       return IsProfileEligible() && !live_disallowed;
+    }
+
+    bool EligibleForShareImage() const {
+      return IsProfileEligible() && !share_image_disallowed;
     }
 
     bool DisallowedByAdmin() const {

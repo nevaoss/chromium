@@ -11,11 +11,11 @@
 #include "chrome/browser/extensions/extension_tab_util.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/renderer_host/chrome_navigation_ui_data.h"
+#include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/ui/browser_navigator.h"
 #include "chrome/browser/ui/browser_navigator_params.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/create_browser_window.h"
-#include "chrome/browser/ui/tabs/tab_list_interface.h"
 #include "chrome/common/webui_url_constants.h"
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/site_instance.h"
@@ -85,7 +85,8 @@ OpenTabHelper::FindOrCreateBrowser(const GURL& validated_url,
     return base::unexpected(ExtensionTabUtil::kNoCurrentWindowError);
   }
 
-  BrowserWindowInterface* browser = controller->GetBrowserWindowInterface();
+  BrowserWindowInterface* browser =
+      controller ? controller->GetBrowserWindowInterface() : nullptr;
 
   // We can't load extension URLs into incognito windows unless the extension
   // uses split mode. Special case to fall back to a tabbed window or, if

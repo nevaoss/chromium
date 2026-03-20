@@ -96,13 +96,23 @@ void AndroidStateTransferHandler::StateOnTouchTransfer(
     return;
   }
 
+  for (auto& pending_state : pending_transferred_states_) {
+    if (pending_state.transfer_state->down_time_ms == state->down_time_ms) {
+      pending_state.transfer_state = std::move(state);
+      pending_state.rir_support = rir_support;
+      EmitStateProcessingResultHistogram(
+          InputOnVizStateProcessingResult::kSpeculativeTransferStateReplaced);
+      return;
+    }
+  }
+
   MaybeDropEventsFromEarlierSequences(state);
 
-  pending_transferred_states_.emplace(rir_support, std::move(state));
+  pending_transferred_states_.emplace_back(rir_support, std::move(state));
   if (pending_transferred_states_.size() > kMaxPendingTransferredStates) {
     EmitStateProcessingResultHistogram(
         InputOnVizStateProcessingResult::kDroppedTooManyPendingStates);
-    pending_transferred_states_.pop();
+    pending_transferred_states_.pop_front();
   }
 
   if (events_buffer_.empty()) {
@@ -217,7 +227,7 @@ bool AndroidStateTransferHandler::CanStartProcessingVizEvents(
           event_down_time)) {
     EmitStateProcessingResultHistogram(
         InputOnVizStateProcessingResult::kDroppedUnusedOlderStates);
-    pending_transferred_states_.pop();
+    pending_transferred_states_.pop_front();
   }
 
   if (pending_transferred_states_.empty()) {
@@ -249,7 +259,7 @@ bool AndroidStateTransferHandler::CanStartProcessingVizEvents(
           InputOnVizStateProcessingResult::kProcessedSuccessfully);
     }
     state_for_curr_sequence_.emplace(std::move(state));
-    pending_transferred_states_.pop();
+    pending_transferred_states_.pop_front();
     if (input::features::kForwardEventsSeenOnBrowserToViz.Get()) {
       HandleFirstDownEvent();
     }
@@ -383,7 +393,7 @@ void AndroidStateTransferHandler::HandleTouchEvent(
   auto event = ui::MotionEventAndroidFactory::CreateFromNative(
       std::move(input_event),
       1.f / state_for_curr_sequence_->transfer_state->dip_scale,
-      state_for_curr_sequence_->transfer_state->web_contents_y_offset_pix,
+      state_for_curr_sequence_->transfer_state->web_contents_offset,
       event_times);
 
   state_for_curr_sequence_->rir_support->OnTouchEvent(

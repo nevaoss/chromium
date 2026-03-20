@@ -18,6 +18,7 @@
 #include "components/signin/public/identity_manager/identity_manager.h"
 #include "components/skills/public/skill.h"
 #include "components/skills/public/skill.mojom.h"
+#include "components/skills/public/skills_metrics.h"
 #include "components/skills/public/skills_service.h"
 #include "content/public/browser/web_contents.h"
 #include "mojo/public/cpp/bindings/callback_helpers.h"
@@ -40,38 +41,91 @@ SkillsDialogHandler::SkillsDialogHandler(
     content::WebContents* web_contents,
     OptimizationGuideKeyedService* optimization_guide_keyed_service,
     skills::Skill initial_skill,
+    SkillsDialogEntryPoint entrypoint,
     base::WeakPtr<SkillsDialogDelegate> delegate)
     : receiver_(this, std::move(receiver)),
       web_contents_(CHECK_DEREF(web_contents)),
       optimization_guide_keyed_service_(optimization_guide_keyed_service),
       initial_skill_(std::move(initial_skill)),
+      entrypoint_(entrypoint),
       delegate_(delegate),
       profile_(CHECK_DEREF(
           Profile::FromBrowserContext(web_contents->GetBrowserContext()))) {}
 
 SkillsDialogHandler::~SkillsDialogHandler() = default;
 
-void SkillsDialogHandler::SubmitSkill(const skills::Skill& skill) {
-  if (auto* skills_service =
-          SkillsServiceFactory::GetForProfile(base::to_address(profile_))) {
-    const Skill* response =
-        skill.id.empty()
-            ? skills_service->AddSkill(skill.source_skill_id, skill.name,
-                                       skill.icon, skill.prompt)
-            : skills_service->UpdateSkill(skill.id, skill.name, skill.icon,
-                                          skill.prompt);
-    if (response && delegate_) {
-      // Triggers toast
-      delegate_->OnSkillSaved(response->id);
-      delegate_->CloseDialog();
+const skills::Skill* SkillsDialogHandler::SaveOrUpdateSkill(
+    const skills::Skill& skill) {
+  auto* skills_service =
+      SkillsServiceFactory::GetForProfile(base::to_address(profile_));
+  if (!skills_service) {
+    RecordSkillsSaveResult(SkillsSaveResult::kServiceNotFound);
+    return nullptr;
+  }
+  if (skills_service->GetServiceStatus() !=
+      SkillsService::ServiceStatus::kReady) {
+    RecordSkillsSaveResult(SkillsSaveResult::kServiceNotReady);
+    return nullptr;
+  }
+  const Skill* result = nullptr;
+  if (skill.id.empty()) {
+    result = skills_service->AddSkill(skill.source_skill_id, skill.name,
+                                      skill.icon, skill.prompt);
+    if (!result) {
+      RecordSkillsSaveResult(SkillsSaveResult::kWriteFailed);
     }
   } else {
-    // TODO(marissashen): Add error handling.
-    LOG(WARNING) << "SkillsPageHandler: SkillsService is null.";
+    result = skills_service->UpdateSkill(skill.id, skill.name, skill.icon,
+                                         skill.prompt);
+    if (!result) {
+      RecordSkillsSaveResult(SkillsSaveResult::kSkillNotFound);
+    }
   }
+  return result;
+}
+
+void SkillsDialogHandler::SubmitSkill(
+    const skills::Skill& skill,
+    DialogHandler::SubmitSkillCallback callback) {
+  auto wrapped_callback =
+      mojo::WrapCallbackWithDefaultInvokeIfNotRun(std::move(callback), false);
+  if (!delegate_) {
+    RecordSkillsSaveResult(SkillsSaveResult::kUiContextLost);
+    return;
+  }
+  const Skill* response = SaveOrUpdateSkill(skill);
+  if (!response) {
+    return;
+  }
+  // TODO(crbug.com/477385216): Update to use an enum for creation mode.
+  RecordSkillsDialogAction(SkillsDialogAction::kSaved, entrypoint_,
+                           /*is_edit_mode=*/IsEditMode(&initial_skill_));
+  // Triggers toast
+  delegate_->OnSkillSaved(response->id);
+  delegate_->CloseDialog();
+  RecordSkillsSaveResult(SkillsSaveResult::kSuccess);
+  std::move(wrapped_callback).Run(true);
+}
+
+void SkillsDialogHandler::DeleteSkill(const std::string& skill_id) {
+  auto* service =
+      SkillsServiceFactory::GetForProfile(base::to_address(profile_));
+  if (!delegate_ || !service) {
+    return;
+  }
+  // TODO(crbug.com/488408730): Remove once we have undo functionality.
+  service->DeleteSkill(skill_id, SkillsService::UpdateSource::kLocal);
+  // Triggers toast
+  delegate_->OnSkillDeleted();
+  delegate_->CloseDialog();
+  RecordSkillsDialogAction(SkillsDialogAction::kDeleted, entrypoint_,
+                           /*is_edit_mode=*/true);
 }
 
 void SkillsDialogHandler::CloseDialog() {
+  // TODO(crbug.com/477385216): Update to use an enum for creation mode.
+  RecordSkillsDialogAction(SkillsDialogAction::kCancelled, entrypoint_,
+                           /*is_edit_mode=*/IsEditMode(&initial_skill_));
   if (delegate_) {
     delegate_->CloseDialog();
   }
@@ -92,8 +146,8 @@ void SkillsDialogHandler::OnRefineSkillResponse(
   auto wrapped_callback = mojo::WrapCallbackWithDefaultInvokeIfNotRun(
       std::move(callback), std::nullopt);
 
-  // TODO(xinyuqian): UMA metrics for the response.
   if (!result.response.has_value()) {
+    RecordSkillsRefineResult(SkillsRefineResult::kModelExecutionFailed);
     return;
   }
 
@@ -101,7 +155,12 @@ void SkillsDialogHandler::OnRefineSkillResponse(
   auto response = optimization_guide::ParsedAnyMetadata<SkillsResponse>(
       result.response.value());
 
-  if (!response || response->suggestions_size() == 0) {
+  if (!response) {
+    RecordSkillsRefineResult(SkillsRefineResult::kParseError);
+    return;
+  }
+  if (response->suggestions_size() == 0) {
+    RecordSkillsRefineResult(SkillsRefineResult::kNoSuggestions);
     return;
   }
 
@@ -112,17 +171,27 @@ void SkillsDialogHandler::OnRefineSkillResponse(
   skills::Skill refined_skill;
   refined_skill.prompt = suggestion.prompt();  // The refined prompt
   refined_skill.name = suggestion.name();      // Suggested name
+  refined_skill.icon = suggestion.icon();      // Suggested icon/emoji
 
+  RecordSkillsRefineResult(SkillsRefineResult::kSuccess);
   std::move(wrapped_callback).Run(std::move(refined_skill));
 }
 
 void SkillsDialogHandler::RefineSkill(
     const skills::Skill& skill,
     DialogHandler::RefineSkillCallback callback) {
+  // TODO(crbug.com/477385216): Update to use an enum for creation mode.
+  RecordSkillsDialogAction(SkillsDialogAction::kRefined, entrypoint_,
+                           /*is_edit_mode=*/IsEditMode(&initial_skill_));
   auto wrapped_callback = mojo::WrapCallbackWithDefaultInvokeIfNotRun(
       std::move(callback), std::nullopt);
 
-  if (skill.prompt.empty() || !optimization_guide_keyed_service_) {
+  if (skill.prompt.empty()) {
+    RecordSkillsRefineResult(SkillsRefineResult::kInvalidRequest);
+    return;
+  }
+  if (!optimization_guide_keyed_service_) {
+    RecordSkillsRefineResult(SkillsRefineResult::kServiceUnavailable);
     return;
   }
 

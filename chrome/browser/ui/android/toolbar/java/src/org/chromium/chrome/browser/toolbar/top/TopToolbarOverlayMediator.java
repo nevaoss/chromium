@@ -298,9 +298,7 @@ public class TopToolbarOverlayMediator {
 
                     @Override
                     public void onCompositedLayersVisibilityChanged() {
-                        if (ChromeFeatureList.sAndroidAnimatedProgressBarInBrowser.isEnabled()) {
-                            updateProgress();
-                        }
+                        updateProgress();
                     }
                 };
         if (progressBar != null) {
@@ -585,7 +583,8 @@ public class TopToolbarOverlayMediator {
 
     private void applyContentOffsetToModel(float contentOffset) {
         if (BrowserControlsUtils.isTopControlsRefactorOffsetEnabled()
-                && getControlsPosition() == ControlsPosition.TOP) {
+                && getControlsPosition() == ControlsPosition.TOP
+                && !mIsVisibilityManuallyControlled) {
             contentOffset = INVALID_CONTENT_OFFSET;
         }
         mModel.set(TopToolbarOverlayProperties.LEGACY_CONTENT_OFFSET, contentOffset);

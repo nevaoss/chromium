@@ -5,6 +5,7 @@
 #include "components/contextual_search/contextual_search_metrics_recorder.h"
 
 #include "base/metrics/histogram_functions.h"
+#include "base/metrics/user_metrics.h"
 #include "base/strings/strcat.h"
 #include "base/timer/elapsed_timer.h"
 #include "components/lens/lens_overlay_mime_type.h"
@@ -40,21 +41,21 @@ const char kContextualSearchQueryCount[] =
     "ContextualSearch.Session.QueryCount";
 const char kContextualSearchFileSizePerType[] = "ContextualSearch.File.Size.";
 
-std::string UploadStatusToString(FileUploadStatus status) {
+std::string UploadStatusToString(ContextUploadStatus status) {
   switch (status) {
-    case FileUploadStatus::kNotUploaded:
+    case ContextUploadStatus::kNotUploaded:
       return "NotUploaded";
-    case FileUploadStatus::kProcessing:
+    case ContextUploadStatus::kProcessing:
       return "Processing";
-    case FileUploadStatus::kProcessingSuggestSignalsReady:
+    case ContextUploadStatus::kProcessingSuggestSignalsReady:
       return "ProcessingSuggestSignalsReady";
-    case FileUploadStatus::kValidationFailed:
+    case ContextUploadStatus::kValidationFailed:
       return "ValidationFailed";
-    case FileUploadStatus::kUploadStarted:
+    case ContextUploadStatus::kUploadStarted:
       return "UploadStarted";
-    case FileUploadStatus::kUploadSuccessful:
+    case ContextUploadStatus::kUploadSuccessful:
       return "UploadSuccessful";
-    case FileUploadStatus::kUploadFailed:
+    case ContextUploadStatus::kUploadFailed:
       return "UploadFailed";
     default:
       return "Unknown";
@@ -89,7 +90,6 @@ void ContextualSearchMetricsRecorder::NotifySessionStateChanged(
       NotifySessionStarted();
       break;
     case SessionState::kQuerySubmitted:
-      NotifyQuerySubmitted();
       break;
     case SessionState::kSessionAbandoned:
       RecordSessionAbandonedMetrics();
@@ -107,33 +107,33 @@ void ContextualSearchMetricsRecorder::NotifySessionStateChanged(
 
 void ContextualSearchMetricsRecorder::OnFileUploadStatusChanged(
     lens::MimeType file_mime_type,
-    FileUploadStatus file_upload_status,
-    const std::optional<FileUploadErrorType>& error_type) {
+    ContextUploadStatus file_upload_status,
+    const std::optional<ContextUploadErrorType>& error_type) {
   switch (file_upload_status) {
-    case FileUploadStatus::kProcessing:
+    case ContextUploadStatus::kProcessing:
       session_metrics_->file_upload_attempt_count_per_type[file_mime_type]++;
       break;
-    case FileUploadStatus::kUploadSuccessful:
+    case ContextUploadStatus::kUploadSuccessful:
       session_metrics_->file_upload_success_count_per_type[file_mime_type]++;
       break;
     // Every validation error will have an error type, but not every file status
     // has an error, hence safeguarding the error value.
-    case FileUploadStatus::kValidationFailed:
+    case ContextUploadStatus::kValidationFailed:
       if (error_type.has_value()) {
         session_metrics_
             ->file_validation_failure_count_per_type[file_mime_type]
                                                     [error_type.value()]++;
       }
       break;
-    case FileUploadStatus::kUploadFailed:
+    case ContextUploadStatus::kUploadFailed:
       session_metrics_->file_upload_failure_count_per_type[file_mime_type]++;
       break;
     // The following are not file upload success or failure statuses.
-    case FileUploadStatus::kNotUploaded:
-    case FileUploadStatus::kUploadStarted:
-    case FileUploadStatus::kUploadExpired:
-    case FileUploadStatus::kProcessingSuggestSignalsReady:
-    case FileUploadStatus::kUploadReplaced:
+    case ContextUploadStatus::kNotUploaded:
+    case ContextUploadStatus::kUploadStarted:
+    case ContextUploadStatus::kUploadExpired:
+    case ContextUploadStatus::kProcessingSuggestSignalsReady:
+    case ContextUploadStatus::kUploadReplaced:
       break;
   }
 }
@@ -187,7 +187,7 @@ void ContextualSearchMetricsRecorder::RecordFileSizeMetric(
 void ContextualSearchMetricsRecorder::RecordFileDeletedMetrics(
     bool success,
     lens::MimeType file_type,
-    FileUploadStatus file_status) {
+    ContextUploadStatus file_status) {
   base::UmaHistogramBoolean(
       base::StrCat({kContextualSearchFileDeleted, ".",
                     MimeTypeToString(file_type), ".",
@@ -248,7 +248,29 @@ void ContextualSearchMetricsRecorder::NotifySessionStarted() {
       std::make_unique<base::ElapsedTimer>();
 }
 
-void ContextualSearchMetricsRecorder::NotifyQuerySubmitted() {
+void ContextualSearchMetricsRecorder::NotifyQuerySubmitted(
+    bool has_tab_context,
+    bool has_non_tab_context) {
+  NotifySessionStateChanged(SessionState::kQuerySubmitted);
+  std::string context_state = "WithoutContext";
+  // It is possible for a query to have both, but in this case it is preferred
+  // to be recorded as including tab context.
+  if (has_tab_context) {
+    context_state = "WithTabContext";
+  } else if (has_non_tab_context) {
+    context_state = "WithNonTabContext";
+  }
+
+  base::RecordAction(base::UserMetricsAction(
+      base::StrCat({"ContextualSearch.UserAction.SubmitQuery.", context_state,
+                    ".", metrics_suffix_})
+          .c_str()));
+
+  base::UmaHistogramBoolean(
+      base::StrCat({"ContextualSearch.UserAction.SubmitQuery.", context_state,
+                    ".", metrics_suffix_}),
+      true);
+
   if (!session_metrics_->session_elapsed_timer) {
     base::UmaHistogramBoolean(
         base::StrCat(
@@ -415,7 +437,7 @@ void ContextualSearchMetricsRecorder::FinalizeSessionMetrics() {
   }
 
   // Log file validation errors.
-  std::map<FileUploadErrorType, int> total_errors_by_type;
+  std::map<ContextUploadErrorType, int> total_errors_by_type;
   for (const auto& file_info :
        session_metrics_->file_validation_failure_count_per_type) {
     for (const auto& error_info : file_info.second) {
@@ -450,21 +472,21 @@ void ContextualSearchMetricsRecorder::ResetSessionMetrics() {
 }
 
 std::string ContextualSearchMetricsRecorder::FileErrorToString(
-    FileUploadErrorType error) {
+    ContextUploadErrorType error) {
   switch (error) {
-    case FileUploadErrorType::kUnknown:
+    case ContextUploadErrorType::kUnknown:
       return "Unknown";
-    case FileUploadErrorType::kBrowserProcessingError:
+    case ContextUploadErrorType::kBrowserProcessingError:
       return "BrowserProcessingError";
-    case FileUploadErrorType::kNetworkError:
+    case ContextUploadErrorType::kNetworkError:
       return "NetworkError";
-    case FileUploadErrorType::kServerError:
+    case ContextUploadErrorType::kServerError:
       return "ServerError";
-    case FileUploadErrorType::kServerSizeLimitExceeded:
+    case ContextUploadErrorType::kServerSizeLimitExceeded:
       return "ServerLimitExceededError";
-    case FileUploadErrorType::kAborted:
+    case ContextUploadErrorType::kAborted:
       return "AbortedError";
-    case FileUploadErrorType::kImageProcessingError:
+    case ContextUploadErrorType::kImageProcessingError:
       return "ImageProcessingError";
   }
 }
@@ -535,6 +557,19 @@ void ContextualSearchMetricsRecorder::RecordModesOnSubmission(
       base::StrCat(
           {"ContextualSearch.Models.ModeOnSubmission", ".", metrics_suffix_}),
       model_mode);
+}
+
+void ContextualSearchMetricsRecorder::RecordZeroSuggestClick(
+    bool is_contextual) {
+  std::string suffix = is_contextual ? "Contextual" : "NonContextual";
+  base::RecordAction(base::UserMetricsAction(
+      base::StrCat(
+          {"ContextualSearch.ZeroSuggestClick.", suffix, ".", metrics_suffix_})
+          .c_str()));
+  base::UmaHistogramBoolean(
+      base::StrCat(
+          {"ContextualSearch.ZeroSuggestClick.IsContextual.", metrics_suffix_}),
+      is_contextual);
 }
 
 }  // namespace contextual_search

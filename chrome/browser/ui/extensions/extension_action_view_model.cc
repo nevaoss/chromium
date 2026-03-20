@@ -23,11 +23,11 @@
 #include "chrome/browser/extensions/extension_view_host.h"
 #include "chrome/browser/extensions/extension_view_host_factory.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/extensions/extension_action_delegate.h"
 #include "chrome/browser/ui/extensions/extension_popup_types.h"
 #include "chrome/browser/ui/extensions/icon_with_badge_image_source.h"
-#include "chrome/browser/ui/tabs/tab_list_interface.h"
 #include "chrome/browser/ui/toolbar/toolbar_actions_model.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/sessions/content/session_tab_helper.h"
@@ -266,6 +266,13 @@ std::u16string ExtensionActionViewModel::GetAccessibleName(
 
 std::u16string ExtensionActionViewModel::GetTooltip(
     content::WebContents* web_contents) const {
+  // On Android, `web_contents` might be null for native pages, e.g. new tab.
+  // TODO(crbug.com/448420873): Remove this workaround once we ensure that
+  // `web_contents` is always non-null for all tabs.
+  if (!web_contents) {
+    return GetActionName();
+  }
+
   if (base::FeatureList::IsEnabled(
           extensions_features::kExtensionsMenuAccessControl)) {
     std::u16string action_title = GetActionTitle(web_contents);

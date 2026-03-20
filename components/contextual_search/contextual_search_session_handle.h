@@ -16,6 +16,7 @@
 #include "components/contextual_search/contextual_search_metrics_recorder.h"
 #include "components/lens/lens_overlay_invocation_source.h"
 #include "mojo/public/cpp/base/big_buffer.h"
+#include "third_party/lens_server_proto/modality_chip_props.pb.h"
 
 class GURL;
 class PrefService;
@@ -104,6 +105,12 @@ class ContextualSearchSessionHandle {
       std::unique_ptr<lens::ContextualInputData> contextual_input_data,
       std::optional<lens::ImageEncodingOptions> image_options);
 
+  // Starts the Modality Chip upload flow for the given file token. The file
+  // token must have been previously returned by `CreateContextToken`.
+  virtual void StartModalityChipUploadFlow(
+      const base::UnguessableToken& file_token,
+      std::unique_ptr<lens::ModalityChipProps> modality_chip_props);
+
   // Removes file from context controller. Returns true if the file was found
   // and deleted.
   bool DeleteFile(const base::UnguessableToken& file_token);
@@ -113,7 +120,11 @@ class ContextualSearchSessionHandle {
   // controller, which may be shared with other session handles.
   void ClearFiles();
 
-  // Returns the search url for a new query for opening.
+  // Returns the search url for a new query for opening. If the request info
+  // contains file tokens, only those provided tokens are used. If the request
+  // info does not contain file tokens, the uploaded context tokens are moved to
+  // the request. In both cases, the files tokens that are used are considered
+  // submitted and will be cleared from the context controller.
   virtual void CreateSearchUrl(
       std::unique_ptr<contextual_search::ContextualSearchContextController::
                           CreateSearchUrlRequestInfo> search_url_request_info,
@@ -170,6 +181,11 @@ class ContextualSearchSessionHandle {
       base::WeakPtr<ContextualSearchService> service,
       const SessionId& session_id,
       std::optional<lens::LensOverlayInvocationSource> invocation_source);
+
+  // Notifies the metrics recorder that a query has been submitted, providing
+  // information about the presence of tab and non-tab context.
+  void NotifyQuerySubmittedSessionState(
+      const std::vector<FileInfo>& file_infos);
 
   // The list of uploaded but not yet committed context tokens for this
   // particular instance of the session. This list is unique to this instance of

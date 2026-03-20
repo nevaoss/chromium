@@ -91,8 +91,9 @@ bool SecurityOrigin::ShouldUseInnerURL(const KURL& url) {
 // that all the URL schemes we currently support that use inner URLs for their
 // security origin can be parsed using this algorithm.
 KURL SecurityOrigin::ExtractInnerURL(const KURL& url) {
-  if (url.InnerURL())
-    return *url.InnerURL();
+  if (url.InnerUrl()) {
+    return *url.InnerUrl();
+  }
   // FIXME: Update this callsite to use the innerURL member function when
   // we finish implementing it.
   return KURL(url.GetPath().ToString());
@@ -121,7 +122,7 @@ static bool ShouldTreatAsOpaqueOrigin(const KURL& url) {
   // URLs with schemes that require an authority, but which don't have one,
   // will have failed the isValid() test; e.g. valid HTTP URLs must have a
   // host.
-  DCHECK(!((relevant_url.ProtocolIsInHTTPFamily() ||
+  DCHECK(!((relevant_url.ProtocolIsInHttpFamily() ||
             relevant_url.ProtocolIs("ftp")) &&
            relevant_url.Host().empty()));
 
@@ -245,7 +246,7 @@ scoped_refptr<SecurityOrigin> SecurityOrigin::CreateWithReferenceOrigin(
       return origin;
   }
 
-  if (url.IsAboutBlankURL()) {
+  if (url.IsAboutBlankUrl()) {
     if (!reference_origin)
       return CreateUniqueOpaque();
     return reference_origin->IsolatedCopy();
@@ -287,8 +288,8 @@ scoped_refptr<SecurityOrigin> SecurityOrigin::CreateOpaque(
 scoped_refptr<SecurityOrigin> SecurityOrigin::CreateFromUrlOrigin(
     const url::Origin& origin) {
   const url::SchemeHostPort& tuple = origin.GetTupleOrPrecursorTupleIfOpaque();
-  DCHECK(String::FromUTF8(tuple.scheme()).ContainsOnlyASCIIOrEmpty());
-  DCHECK(String::FromUTF8(tuple.host()).ContainsOnlyASCIIOrEmpty());
+  DCHECK(String::FromUTF8(tuple.scheme()).ContainsOnlyAsciiOrEmpty());
+  DCHECK(String::FromUTF8(tuple.host()).ContainsOnlyAsciiOrEmpty());
 
   scoped_refptr<SecurityOrigin> tuple_origin;
   if (tuple.IsValid()) {
@@ -322,6 +323,21 @@ url::Origin SecurityOrigin::ToUrlOrigin() const {
       std::move(scheme), std::move(host), port);
   CHECK(!result.opaque());
   return result;
+}
+
+scoped_refptr<SecurityOrigin> SecurityOrigin::CreateWithNonce(
+    base::PassKey<SandboxedOpaqueSecurityOriginCreator>,
+    const base::UnguessableToken& nonce,
+    const SecurityOrigin* origin) {
+  CHECK(origin);
+  const SecurityOrigin* tuple_origin =
+      origin->GetOriginOrPrecursorOriginIfOpaque();
+
+  // Only use a non-opaque tuple origin as precursor. An opaque precursor
+  // provides no useful derivation information.
+  return CreateOpaque(
+      url::Origin::Nonce(nonce),
+      tuple_origin->IsOpaque() ? nullptr : tuple_origin->IsolatedCopy().get());
 }
 
 scoped_refptr<SecurityOrigin> SecurityOrigin::IsolatedCopy() const {
@@ -567,7 +583,7 @@ String SecurityOrigin::ToTokenForFastCheck() const {
 
 scoped_refptr<SecurityOrigin> SecurityOrigin::CreateFromString(
     const String& origin_string) {
-  return SecurityOrigin::Create(KURL(NullURL(), origin_string));
+  return SecurityOrigin::Create(KURL(NullUrl(), origin_string));
 }
 
 scoped_refptr<SecurityOrigin> SecurityOrigin::CreateFromValidTuple(

@@ -25,7 +25,9 @@
 #include "chrome/browser/enterprise/platform_auth/platform_auth_provider_manager.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/test/base/testing_browser_process.h"
+#include "chrome/test/base/testing_profile.h"
 #include "components/download/public/common/download_url_parameters.h"
+#include "components/enterprise/platform_auth/platform_auth_features.h"
 #include "components/policy/policy_constants.h"
 #include "components/prefs/pref_registry_simple.h"
 #include "components/prefs/testing_pref_service.h"
@@ -39,6 +41,7 @@
 #include "services/network/public/cpp/simple_url_loader.h"
 #include "services/network/public/cpp/url_loader_factory_builder.h"
 #include "services/network/public/cpp/weak_wrapper_shared_url_loader_factory.h"
+#include "services/network/public/mojom/fetch_api.mojom-shared.h"
 #include "services/network/public/mojom/url_loader.mojom.h"
 #include "services/network/public/mojom/url_loader_factory.mojom.h"
 #include "services/network/test/mock_url_loader_client.h"
@@ -66,12 +69,17 @@ class PlatformAuthProxyingURLLoaderFactoryTest : public testing::Test {
     test_request_.method = "GET";
   }
 
+  void SetUp() override {
+    PlatformAuthProviderManager::GetInstance().SetEnabled(true, {});
+  }
+
   void CreateProxyingFactory(
       mojo::PendingReceiver<network::mojom::URLLoaderFactory> receiver,
       mojo::PendingRemote<network::mojom::URLLoaderFactory> target_factory,
       base::OnceCallback<void()> dtor_callback,
       base::OnceCallback<void(const network::ResourceRequest&)>
-          request_intercepted_callback) {
+          request_intercepted_callback,
+      const url::Origin& request_initiator) {
     base::flat_set<std::string> configured_hosts_cache;
     const auto& configured_hosts =
         TestingBrowserProcess::GetGlobal()->GetTestingLocalState()->GetList(
@@ -81,8 +89,7 @@ class PlatformAuthProxyingURLLoaderFactoryTest : public testing::Test {
     }
     auto* res = new ProxyingURLLoaderFactory(
         std::move(receiver), std::move(target_factory),
-        std::move(configured_hosts_cache),
-        test_request_.request_initiator.value());
+        std::move(configured_hosts_cache), request_initiator);
     res->SetDestructionCallbackForTesting(std::move(dtor_callback));
     res->SetRequestInterceptedCallbackForTesting(
         std::move(request_intercepted_callback));
@@ -91,7 +98,8 @@ class PlatformAuthProxyingURLLoaderFactoryTest : public testing::Test {
   mojo::PendingRemote<network::mojom::URLLoaderFactory> SetupFactoryChain(
       base::OnceCallback<void()> dtor_callback,
       base::OnceCallback<void(const network::ResourceRequest&)>
-          request_intercepted_callback = {}) {
+          request_intercepted_callback,
+      const url::Origin& request_initiator) {
     // 1. Create the input pipe (Client -> Proxy).
     mojo::PendingRemote<network::mojom::URLLoaderFactory> proxy_remote;
     mojo::PendingReceiver<network::mojom::URLLoaderFactory> proxy_receiver =
@@ -107,7 +115,8 @@ class PlatformAuthProxyingURLLoaderFactoryTest : public testing::Test {
 
     CreateProxyingFactory(
         std::move(proxy_receiver), std::move(target_factory_remote),
-        std::move(dtor_callback), std::move(request_intercepted_callback));
+        std::move(dtor_callback), std::move(request_intercepted_callback),
+        request_initiator);
 
     return proxy_remote;
   }
@@ -143,20 +152,22 @@ class PlatformAuthProxyingURLLoaderFactoryTest : public testing::Test {
     return resulting_factory.get() != terminal_factory.get();
   }
 
+ private:
+  content::BrowserTaskEnvironment task_environment_;
+
+ protected:
   mojo::Receiver<network::mojom::URLLoaderFactory> test_factory_receiver_;
   network::TestURLLoaderFactory test_factory_;
   network::ResourceRequest test_request_;
-
- private:
-  content::BrowserTaskEnvironment task_environment_;
+  TestingProfile testing_profile_;
 };
 
 TEST_F(PlatformAuthProxyingURLLoaderFactoryTest,
        DestroysItselfAfterTargetFactoryDisconnects) {
   base::test::TestFuture<void> proxy_destroyed_future;
   mojo::Remote<network::mojom::URLLoaderFactory> client(
-      SetupFactoryChain(base::BindOnce(proxy_destroyed_future.GetCallback())));
-
+      SetupFactoryChain(base::BindOnce(proxy_destroyed_future.GetCallback()),
+                        {}, test_request_.request_initiator.value()));
   // Check that the factory works.
   CheckClient(client);
 
@@ -174,7 +185,8 @@ TEST_F(PlatformAuthProxyingURLLoaderFactoryTest,
 
   // Setup the chain with two clients.
   mojo::Remote<network::mojom::URLLoaderFactory> first_client(
-      SetupFactoryChain(base::BindOnce(proxy_destroyed_future.GetCallback())));
+      SetupFactoryChain(base::BindOnce(proxy_destroyed_future.GetCallback()),
+                        {}, test_request_.request_initiator.value()));
 
   mojo::PendingRemote<network::mojom::URLLoaderFactory> another_pending_remote;
   mojo::PendingReceiver<network::mojom::URLLoaderFactory> clone_receiver =
@@ -209,7 +221,6 @@ TEST_F(PlatformAuthProxyingURLLoaderFactoryTest,
 
 TEST_F(PlatformAuthProxyingURLLoaderFactoryTest,
        MaybeProxyRequest_ProxiesAppropriateRequests) {
-  PlatformAuthProviderManager::GetInstance().SetEnabled(true, {});
   base::ListValue hosts;
   hosts.Append("foobar.example.com");
   TestingBrowserProcess::GetGlobal()->GetTestingLocalState()->SetList(
@@ -224,7 +235,7 @@ TEST_F(PlatformAuthProxyingURLLoaderFactoryTest,
   ProxyingURLLoaderFactory::MaybeProxyRequest(
       url::Origin::Create(GURL("https://foobar.example.com/")),
       ChromeContentBrowserClient::URLLoaderFactoryType::kDocumentSubResource,
-      factory_builder);
+      &testing_profile_, factory_builder);
 
   scoped_refptr<network::SharedURLLoaderFactory> resulting_factory =
       std::move(factory_builder).Finish(terminal_shared_factory);
@@ -234,8 +245,6 @@ TEST_F(PlatformAuthProxyingURLLoaderFactoryTest,
 }
 
 TEST_F(PlatformAuthProxyingURLLoaderFactoryTest, MaybeProxyRequest_NoHTTPS) {
-  PlatformAuthProviderManager::GetInstance().SetEnabled(true, {});
-
   network::TestURLLoaderFactory terminal_factory;
   scoped_refptr<network::SharedURLLoaderFactory> terminal_shared_factory =
       terminal_factory.GetSafeWeakWrapper();
@@ -245,7 +254,7 @@ TEST_F(PlatformAuthProxyingURLLoaderFactoryTest, MaybeProxyRequest_NoHTTPS) {
   ProxyingURLLoaderFactory::MaybeProxyRequest(
       url::Origin::Create(GURL("file://foobar.example.com/")),
       ChromeContentBrowserClient::URLLoaderFactoryType::kDocumentSubResource,
-      factory_builder);
+      &testing_profile_, factory_builder);
 
   scoped_refptr<network::SharedURLLoaderFactory> resulting_factory =
       std::move(factory_builder).Finish(terminal_shared_factory);
@@ -256,8 +265,6 @@ TEST_F(PlatformAuthProxyingURLLoaderFactoryTest, MaybeProxyRequest_NoHTTPS) {
 
 TEST_F(PlatformAuthProxyingURLLoaderFactoryTest,
        MaybeProxyRequest_NoSubResource) {
-  PlatformAuthProviderManager::GetInstance().SetEnabled(true, {});
-
   network::TestURLLoaderFactory terminal_factory;
   scoped_refptr<network::SharedURLLoaderFactory> terminal_shared_factory =
       terminal_factory.GetSafeWeakWrapper();
@@ -267,7 +274,7 @@ TEST_F(PlatformAuthProxyingURLLoaderFactoryTest,
   ProxyingURLLoaderFactory::MaybeProxyRequest(
       url::Origin::Create(GURL("https://foobar.example.com/")),
       ChromeContentBrowserClient::URLLoaderFactoryType::kNavigation,
-      factory_builder);
+      &testing_profile_, factory_builder);
 
   scoped_refptr<network::SharedURLLoaderFactory> resulting_factory =
       std::move(factory_builder).Finish(terminal_shared_factory);
@@ -289,7 +296,7 @@ TEST_F(PlatformAuthProxyingURLLoaderFactoryTest,
   ProxyingURLLoaderFactory::MaybeProxyRequest(
       url::Origin::Create(GURL("https://foobar.example.com/")),
       ChromeContentBrowserClient::URLLoaderFactoryType::kDocumentSubResource,
-      factory_builder);
+      &testing_profile_, factory_builder);
 
   scoped_refptr<network::SharedURLLoaderFactory> resulting_factory =
       std::move(factory_builder).Finish(terminal_shared_factory);
@@ -300,8 +307,6 @@ TEST_F(PlatformAuthProxyingURLLoaderFactoryTest,
 
 TEST_F(PlatformAuthProxyingURLLoaderFactoryTest,
        MaybeProxyRequest_OktaIdpBlocked) {
-  PlatformAuthProviderManager::GetInstance().SetEnabled(true, {});
-
   base::ListValue enabled_idps;
   TestingBrowserProcess::GetGlobal()->GetTestingLocalState()->SetList(
       prefs::kExtensibleEnterpriseSSOEnabledIdps, std::move(enabled_idps));
@@ -315,7 +320,7 @@ TEST_F(PlatformAuthProxyingURLLoaderFactoryTest,
   ProxyingURLLoaderFactory::MaybeProxyRequest(
       url::Origin::Create(GURL("https://foobar.example.com/")),
       ChromeContentBrowserClient::URLLoaderFactoryType::kDocumentSubResource,
-      factory_builder);
+      &testing_profile_, factory_builder);
 
   scoped_refptr<network::SharedURLLoaderFactory> resulting_factory =
       std::move(factory_builder).Finish(terminal_shared_factory);
@@ -324,42 +329,130 @@ TEST_F(PlatformAuthProxyingURLLoaderFactoryTest,
       FactoryHasInterceptors(resulting_factory, terminal_shared_factory));
 }
 
-TEST_F(PlatformAuthProxyingURLLoaderFactoryTest, ChecksRequestInitiator) {
-  base::test::TestFuture<void> request_intercepted_future;
+class PlatformAuthProxyingURLLoaderFactoryInterceptTest
+    : public PlatformAuthProxyingURLLoaderFactoryTest {
+ protected:
+  void TestInterception(const network::ResourceRequest& request,
+                        bool interception_expected,
+                        const url::Origin& request_initiator) {
+    // This test is meant to verify pattern matching, so the host must be
+    // allowed.
+    base::ListValue hosts;
+    hosts.Append(request.url.host());
+    TestingBrowserProcess::GetGlobal()->GetTestingLocalState()->SetList(
+        prefs::kExtensibleEnterpriseSSOConfiguredHosts, std::move(hosts));
 
-  base::ListValue hosts;
-  hosts.Append(test_request_.url.host());
-  TestingBrowserProcess::GetGlobal()->GetTestingLocalState()->SetList(
-      prefs::kExtensibleEnterpriseSSOConfiguredHosts, std::move(hosts));
+    base::test::TestFuture<const network::ResourceRequest&>
+        request_intercepted_future;
 
-  base::OnceCallback<void(const network::ResourceRequest& request)>
-      request_itercepted_callback = base::BindOnce(
-          [](const GURL url, base::OnceCallback<void()> future_callback,
-             const network::ResourceRequest& request) {
-            EXPECT_EQ(url, request.url);
-            std::move(future_callback).Run();
-          },
-          test_request_.url, request_intercepted_future.GetCallback());
+    mojo::Remote<network::mojom::URLLoaderFactory> client(SetupFactoryChain(
+        {}, request_intercepted_future.GetCallback(), request_initiator));
+    mojo::PendingRemote<network::mojom::URLLoader> url_loader_pending_remote;
+    network::MockURLLoaderClient mock_client;
+    mojo::Receiver<network::mojom::URLLoaderClient> client_receiver(
+        &mock_client);
 
-  mojo::Remote<network::mojom::URLLoaderFactory> client(
-      SetupFactoryChain({}, std::move(request_itercepted_callback)));
-  mojo::PendingRemote<network::mojom::URLLoader> url_loader_pending_remote;
-  network::MockURLLoaderClient mock_client;
-  mojo::Receiver<network::mojom::URLLoaderClient> client_receiver(&mock_client);
-  network::ResourceRequest request = test_request_;
+    client->CreateLoaderAndStart(
+        url_loader_pending_remote.InitWithNewPipeAndPassReceiver(), 0,
+        network::mojom::kURLLoadOptionNone, request,
+        client_receiver.BindNewPipeAndPassRemote(),
+        net::MutableNetworkTrafficAnnotationTag(TRAFFIC_ANNOTATION_FOR_TESTS));
+
+    if (interception_expected) {
+      // The request was indeed intercepted.
+      EXPECT_TRUE(request_intercepted_future.Wait());
+      // The request was not received by the network bound factory.
+      EXPECT_EQ(test_factory_.NumPending(), 0);
+    } else {
+      // The request was not intercepted.
+      EXPECT_FALSE(request_intercepted_future.IsReady());
+      // The request has been received by the network bound factory.
+      EXPECT_EQ(test_factory_.NumPending(), 1);
+    }
+  }
+};
+
+TEST_F(PlatformAuthProxyingURLLoaderFactoryInterceptTest,
+       InterceptsValidRequest) {
+  const GURL url = GURL(
+      "https://foobar.example.com/idp/idx/authenticators/"
+      "sso_extension/transactions/123/verify");
+  network::ResourceRequest request;
+  request.url = url;
+  request.method = "POST";
+  request.request_initiator = url::Origin::Create(url);
+  request.mode = network::mojom::RequestMode::kCors;
+  request.headers.SetHeader("User-Agent", "header value");
+  request.headers.SetHeader("X-Okta-User-Agent-Extended", "header value");
+  request.headers.SetHeader("Accept", "header value");
+  TestInterception(request, true, url::Origin::Create(url));
+}
+
+TEST_F(PlatformAuthProxyingURLLoaderFactoryInterceptTest,
+       ChecksRequestInitiatorMissing) {
+  const GURL url = GURL(
+      "https://foobar.example.com/idp/idx/authenticators/"
+      "sso_extension/transactions/123/verify");
+  network::ResourceRequest request;
+  request.url = url;
+  request.method = "POST";
+  request.request_initiator = std::nullopt;
+  request.mode = network::mojom::RequestMode::kCors;
+  TestInterception(request, false, url::Origin::Create(url));
+}
+
+TEST_F(PlatformAuthProxyingURLLoaderFactoryInterceptTest,
+       ChecksRequestInitiatorInvalid) {
+  const GURL url = GURL(
+      "https://foobar.example.com/idp/idx/authenticators/"
+      "sso_extension/transactions/123/verify");
+  network::ResourceRequest request;
+  request.url = url;
+  request.method = "POST";
   request.request_initiator =
-      url::Origin::Create(GURL("https://other.host.com"));
+      url::Origin::Create(GURL("https://not.origin.com"));
+  request.mode = network::mojom::RequestMode::kCors;
+  TestInterception(request, false, url::Origin::Create(url));
+}
 
-  client->CreateLoaderAndStart(
-      url_loader_pending_remote.InitWithNewPipeAndPassReceiver(), 0,
-      network::mojom::kURLLoadOptionNone, request,
-      client_receiver.BindNewPipeAndPassRemote(),
-      net::MutableNetworkTrafficAnnotationTag(TRAFFIC_ANNOTATION_FOR_TESTS));
+TEST_F(PlatformAuthProxyingURLLoaderFactoryInterceptTest, ChecksSameOrigin) {
+  const GURL url = GURL(
+      "https://foobar.example.com/idp/idx/authenticators/"
+      "sso_extension/transactions/123/verify");
+  const GURL origin = GURL("https://not.same.origin.com");
+  network::ResourceRequest request;
+  request.url = url;
+  request.method = "POST";
+  request.request_initiator = url::Origin::Create(origin);
+  request.mode = network::mojom::RequestMode::kCors;
+  TestInterception(request, false, url::Origin::Create(origin));
+}
 
-  // The request was not intercepted.
-  EXPECT_FALSE(request_intercepted_future.IsReady());
-  // The request has been received by the network bound factory.
-  EXPECT_EQ(test_factory_.NumPending(), 1);
+TEST_F(PlatformAuthProxyingURLLoaderFactoryInterceptTest, ChecksRequestMode) {
+  const GURL url = GURL(
+      "https://foobar.example.com/idp/idx/authenticators/"
+      "sso_extension/transactions/123/verify");
+  network::ResourceRequest request;
+  request.url = url;
+  request.method = "POST";
+  request.request_initiator = url::Origin::Create(GURL(url));
+  request.mode = network::mojom::RequestMode::kNoCors;
+  TestInterception(request, false, url::Origin::Create(url));
+}
+
+TEST_F(PlatformAuthProxyingURLLoaderFactoryInterceptTest,
+       RejectsForbiddenHeaders) {
+  const GURL url = GURL(
+      "https://foobar.example.com/idp/idx/authenticators/"
+      "sso_extension/transactions/123/verify");
+  network::ResourceRequest request;
+  request.url = url;
+  request.method = "POST";
+  request.request_initiator = url::Origin::Create(GURL(url));
+  request.mode = network::mojom::RequestMode::kCors;
+  // access-control-request-headers is a forbidden request header.
+  request.headers.SetHeader("access-control-request-headers", "Content-Type");
+  TestInterception(request, false, url::Origin::Create(url));
 }
 
 struct InterceptTestParams {
@@ -368,70 +461,26 @@ struct InterceptTestParams {
   std::string method = "POST";
 };
 
-std::ostream& operator<<(std::ostream& os, const InterceptTestParams& param) {
-  os << "{\nurl: " << param.url << "\n";
-  os << "should_intercept: " << (param.should_intercept ? "true" : "false")
-     << "\n}\n";
-  return os;
-}
-
-class PlatformAuthProxyingURLLoaderFactoryInterceptTest
-    : public PlatformAuthProxyingURLLoaderFactoryTest,
+class PlatformAuthProxyingURLLoaderFactoryRequestMatchingTest
+    : public PlatformAuthProxyingURLLoaderFactoryInterceptTest,
       public testing::WithParamInterface<InterceptTestParams> {};
 
-TEST_P(PlatformAuthProxyingURLLoaderFactoryInterceptTest,
+TEST_P(PlatformAuthProxyingURLLoaderFactoryRequestMatchingTest,
        ShouldInterceptMatchingURLs) {
   const InterceptTestParams& params = GetParam();
-  base::test::TestFuture<void> request_intercepted_future;
   const GURL url = GURL(params.url);
 
-  // This test is meant to verify pattern matching, so the host must be allowed.
-  base::ListValue hosts;
-  hosts.Append(url.host());
-  TestingBrowserProcess::GetGlobal()->GetTestingLocalState()->SetList(
-      prefs::kExtensibleEnterpriseSSOConfiguredHosts, std::move(hosts));
-
-  base::OnceCallback<void(const network::ResourceRequest& request)>
-      request_itercepted_callback = base::BindOnce(
-          [](const GURL url, base::OnceCallback<void()> future_callback,
-             const network::ResourceRequest& request) {
-            EXPECT_EQ(url, request.url);
-            std::move(future_callback).Run();
-          },
-          url, request_intercepted_future.GetCallback());
-
-  mojo::Remote<network::mojom::URLLoaderFactory> client(
-      SetupFactoryChain({}, std::move(request_itercepted_callback)));
-  mojo::PendingRemote<network::mojom::URLLoader> url_loader_pending_remote;
-  network::MockURLLoaderClient mock_client;
-  mojo::Receiver<network::mojom::URLLoaderClient> client_receiver(&mock_client);
   network::ResourceRequest request;
   request.url = url;
   request.method = params.method;
-  request.request_initiator = url::Origin::Create(GURL(kRequestInitiator));
-
-  client->CreateLoaderAndStart(
-      url_loader_pending_remote.InitWithNewPipeAndPassReceiver(), 0,
-      network::mojom::kURLLoadOptionNone, request,
-      client_receiver.BindNewPipeAndPassRemote(),
-      net::MutableNetworkTrafficAnnotationTag(TRAFFIC_ANNOTATION_FOR_TESTS));
-
-  if (params.should_intercept) {
-    // The request was indeed intercepted.
-    EXPECT_TRUE(request_intercepted_future.Wait());
-    // The request was not received by the network bound factory.
-    EXPECT_EQ(test_factory_.NumPending(), 0);
-  } else {
-    // The request was not intercepted.
-    EXPECT_FALSE(request_intercepted_future.IsReady());
-    // The request has been received by the network bound factory.
-    EXPECT_EQ(test_factory_.NumPending(), 1);
-  }
+  request.request_initiator = url::Origin::Create(GURL(url));
+  request.mode = network::mojom::RequestMode::kCors;
+  TestInterception(request, params.should_intercept, url::Origin::Create(url));
 }
 
 INSTANTIATE_TEST_SUITE_P(
     All,
-    PlatformAuthProxyingURLLoaderFactoryInterceptTest,
+    PlatformAuthProxyingURLLoaderFactoryRequestMatchingTest,
     testing::Values(
         InterceptTestParams(
             {"https://foobar.example.com/idp/idx/authenticators/"

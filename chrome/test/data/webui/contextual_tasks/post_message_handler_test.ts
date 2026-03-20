@@ -23,6 +23,12 @@ function simulateLoadStart() {
   mockWebView.dispatchEvent(loadStartEvent);
 }
 
+function simulateLoadCommit(url: string = TARGET_ORIGIN + '/testPath') {
+  const loadCommitEvent = new Event('loadcommit');
+  Object.assign(loadCommitEvent, {isTopLevel: true, url: url});
+  mockWebView.dispatchEvent(loadCommitEvent);
+}
+
 function simulateMessage(data: any, origin: string) {
   const messageEvent = new MessageEvent('message', {
     data: data,
@@ -73,6 +79,7 @@ suite('PostMessageHandlerTest', () => {
 
   test('ignores message from wrong origin', async function() {
     simulateLoadStart();
+    simulateLoadCommit();
 
     simulateMessage(new ArrayBuffer(8), 'https://wrong.origin');
     await flushTasks();
@@ -80,6 +87,42 @@ suite('PostMessageHandlerTest', () => {
     assertEquals(
         0, browserProxy.handler.getCallCount('onWebviewMessage'),
         'onWebviewMessage should not be called for wrong origin');
+  });
+
+  test('handles input-plate-bounds-update message', async function() {
+    simulateLoadStart();
+    simulateLoadCommit();
+
+    let callbackCalled = false;
+    let receivedRect: any = null;
+    let receivedOccluders: any = null;
+    postMessageHandler.setInputPlateBoundsUpdateCallback((rect, occluders) => {
+      callbackCalled = true;
+      receivedRect = rect;
+      receivedOccluders = occluders;
+    });
+
+    const rect = {
+      top: 10,
+      left: 20,
+      width: 100,
+      height: 200,
+      right: 120,
+      bottom: 210,
+    };
+    const occluders = [rect];
+    const message = {
+      'type': 'input-plate-bounds-update',
+      'bounds-rect': rect,
+      'occluders': occluders,
+    };
+
+    simulateMessage(message, TARGET_ORIGIN);
+    await flushTasks();
+
+    assertTrue(callbackCalled, 'Callback should be called');
+    assertDeepEquals(rect, receivedRect, 'Rect should match');
+    assertDeepEquals(occluders, receivedOccluders, 'Occluders should match');
   });
 });
 
@@ -143,6 +186,7 @@ suite('PostMessageHandlerTestWithMockTimer', () => {
   test('handles HandshakeResponse', () => {
     // Initialize and start handshake process
     simulateLoadStart();
+    simulateLoadCommit();
 
     // Send a message to be queued
     const pendingMsg = new Uint8Array([4, 5, 6]);
@@ -196,6 +240,7 @@ suite('PostMessageHandlerTestWithMockTimer', () => {
   test('queues message across loadstart events', () => {
     // Initialize and start handshake process
     simulateLoadStart();
+    simulateLoadCommit();
 
     // Send a message to be queued
     const pendingMsg = new Uint8Array([7, 8, 9]);
@@ -209,6 +254,8 @@ suite('PostMessageHandlerTestWithMockTimer', () => {
     assertEquals(
         1, postMessageHandler.getPendingMessagesLengthForTesting(),
         'Message should still be queued after second loadstart');
+
+    simulateLoadCommit();
 
     // Trigger the handshake interval
     mockTimer.tick(HANDSHAKE_INTERVAL_MS);
@@ -238,6 +285,7 @@ suite('PostMessageHandlerTestWithMockTimer', () => {
   test('ignores non-top level loadstart events', () => {
     // Initialize and complete handshake
     simulateLoadStart();
+    simulateLoadCommit();
     mockTimer.tick(HANDSHAKE_INTERVAL_MS);
     simulateMessage(HANDSHAKE_RESPONSE_BYTES, TARGET_ORIGIN);
     assertTrue(
@@ -258,6 +306,7 @@ suite('PostMessageHandlerTestWithMockTimer', () => {
   test('receives message after handshake', () => {
     // Initial handshake
     simulateLoadStart();
+    simulateLoadCommit();
     mockTimer.tick(HANDSHAKE_INTERVAL_MS);
     simulateMessage(HANDSHAKE_RESPONSE_BYTES, TARGET_ORIGIN);
     assertTrue(
@@ -287,6 +336,7 @@ suite('PostMessageHandlerTestWithMockTimer', () => {
 
   test('handles postMessage error', () => {
     simulateLoadStart();
+    simulateLoadCommit();
 
     // Make postMessage throw an error
     mockWebView.contentWindow.postMessage = () => {
@@ -301,6 +351,7 @@ suite('PostMessageHandlerTestWithMockTimer', () => {
 
   test('stops handshake after max attempts', () => {
     simulateLoadStart();
+    simulateLoadCommit();
 
     for (let i = 0; i < TEST_MAX_HANDSHAKE_ATTEMPTS; i++) {
       mockTimer.tick(HANDSHAKE_INTERVAL_MS);
@@ -315,6 +366,17 @@ suite('PostMessageHandlerTestWithMockTimer', () => {
     assertEquals(
         TEST_MAX_HANDSHAKE_ATTEMPTS, postMessageSpy.calls.length,
         'Should stop sending handshake after max attempts');
+    assertFalse(
+        postMessageHandler.isHandshakeCompleteForTesting(),
+        'Handshake should not be complete');
+  });
+
+  test('does not start handshake if only loadstart is called', () => {
+    simulateLoadStart();
+    mockTimer.tick(HANDSHAKE_INTERVAL_MS);
+    assertEquals(
+        0, postMessageSpy.calls.length,
+        'Handshake should not start without loadcommit');
     assertFalse(
         postMessageHandler.isHandshakeCompleteForTesting(),
         'Handshake should not be complete');

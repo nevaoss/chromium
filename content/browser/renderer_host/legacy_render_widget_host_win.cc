@@ -4,6 +4,7 @@
 
 #include "content/browser/renderer_host/legacy_render_widget_host_win.h"
 
+#include <windows.h>
 #include <objbase.h>
 
 #include <memory>
@@ -27,6 +28,7 @@
 #include "ui/accessibility/platform/ax_fragment_root_win.h"
 #include "ui/accessibility/platform/ax_platform.h"
 #include "ui/accessibility/platform/ax_system_caret_win.h"
+#include "ui/accessibility/platform/ax_unique_id.h"
 #include "ui/accessibility/platform/browser_accessibility_manager_win.h"
 #include "ui/accessibility/platform/browser_accessibility_win.h"
 #include "ui/accessibility/platform/one_shot_accessibility_tree_search.h"
@@ -221,6 +223,12 @@ bool LegacyRenderWidgetHostHWND::InitOrDeleteSelf(HWND parent) {
     ax_fragment_root_ = std::make_unique<ui::AXFragmentRootWin>(hwnd(), this);
   }
 
+  // Ensure that the window has a unique ID for accessibility purposes. This is
+  // used by assistive technologies to distinguish this window from others.
+  ::SetWindowLongPtr(
+      hwnd(), GWLP_ID,
+      static_cast<LONG_PTR>(int32_t(ui::AXUniqueId::Create().Get())));
+
   // Continue to send honey pot events until we have kWebContents to
   // ensure screen readers have the opportunity to enable.
   ui::AXMode mode =
@@ -354,8 +362,14 @@ LRESULT LegacyRenderWidgetHostHWND::OnKeyboardRange(UINT message,
   }
 
   bool msg_handled = false;
+  base::WeakPtr<LegacyRenderWidgetHostHWND> ref(
+      msg_handler_weak_factory_.GetWeakPtr());
   LRESULT ret = event_target->HandleKeyboardMessage(message, w_param, l_param,
                                                     &msg_handled);
+  // HandleKeyboardMessage() may result in |this| being deleted.
+  if (!ref) {
+    return 0;
+  }
   SetMsgHandled(msg_handled);
   return ret;
 }
@@ -392,8 +406,14 @@ LRESULT LegacyRenderWidgetHostHWND::OnMouseRange(UINT message,
   }
 
   bool msg_handled = false;
+  base::WeakPtr<LegacyRenderWidgetHostHWND> ref(
+      msg_handler_weak_factory_.GetWeakPtr());
   LRESULT ret =
       event_target->HandleMouseMessage(message, w_param, l_param, &msg_handled);
+  // HandleMouseMessage() may result in |this| being deleted.
+  if (!ref) {
+    return 0;
+  }
   SetMsgHandled(msg_handled);
   // If the parent did not handle non-client mouse messages, call
   // DefWindowProc() on the message with the parent window handle. This ensures
@@ -438,8 +458,14 @@ LRESULT LegacyRenderWidgetHostHWND::OnMouseLeave(UINT message,
   }
 
   bool msg_handled = false;
+  base::WeakPtr<LegacyRenderWidgetHostHWND> ref(
+      msg_handler_weak_factory_.GetWeakPtr());
   LRESULT ret =
       event_target->HandleMouseMessage(message, w_param, l_param, &msg_handled);
+  // HandleMouseMessage() may result in |this| being deleted.
+  if (!ref) {
+    return 0;
+  }
   SetMsgHandled(msg_handled);
   return ret;
 }
@@ -499,8 +525,15 @@ LRESULT LegacyRenderWidgetHostHWND::OnPointer(UINT message,
   }
 
   bool msg_handled = false;
+  base::WeakPtr<LegacyRenderWidgetHostHWND> ref(
+      msg_handler_weak_factory_.GetWeakPtr());
   LRESULT ret = event_target->HandlePointerMessage(message, w_param, l_param,
                                                    &msg_handled);
+  // HandlePointerMessage() may result in |this| being deleted.
+  if (!ref) {
+    return 0;
+  }
+
   SetMsgHandled(msg_handled);
 
   if (message == WM_POINTERDOWN) {
@@ -523,8 +556,14 @@ LRESULT LegacyRenderWidgetHostHWND::OnTouch(UINT message,
   }
 
   bool msg_handled = false;
+  base::WeakPtr<LegacyRenderWidgetHostHWND> ref(
+      msg_handler_weak_factory_.GetWeakPtr());
   LRESULT ret =
       event_target->HandleTouchMessage(message, w_param, l_param, &msg_handled);
+  // HandleTouchMessage() may result in |this| being deleted.
+  if (!ref) {
+    return 0;
+  }
   SetMsgHandled(msg_handled);
   return ret;
 }
@@ -538,8 +577,14 @@ LRESULT LegacyRenderWidgetHostHWND::OnInput(UINT message,
   }
 
   bool msg_handled = false;
+  base::WeakPtr<LegacyRenderWidgetHostHWND> ref(
+      msg_handler_weak_factory_.GetWeakPtr());
   LRESULT ret =
       event_target->HandleInputMessage(message, w_param, l_param, &msg_handled);
+  // HandleInputMessage() may result in |this| being deleted.
+  if (!ref) {
+    return 0;
+  }
   SetMsgHandled(msg_handled);
   return ret;
 }
@@ -553,8 +598,14 @@ LRESULT LegacyRenderWidgetHostHWND::OnScroll(UINT message,
   }
 
   bool msg_handled = false;
+  base::WeakPtr<LegacyRenderWidgetHostHWND> ref(
+      msg_handler_weak_factory_.GetWeakPtr());
   LRESULT ret = event_target->HandleScrollMessage(message, w_param, l_param,
                                                   &msg_handled);
+  // HandleScrollMessage() may result in |this| being deleted.
+  if (!ref) {
+    return 0;
+  }
   SetMsgHandled(msg_handled);
   return ret;
 }
@@ -568,8 +619,14 @@ LRESULT LegacyRenderWidgetHostHWND::OnNCHitTest(UINT message,
   }
 
   bool msg_handled = false;
+  base::WeakPtr<LegacyRenderWidgetHostHWND> ref(
+      msg_handler_weak_factory_.GetWeakPtr());
   LRESULT hit_test = event_target->HandleNcHitTestMessage(
       message, w_param, l_param, &msg_handled);
+  // HandleNcHitTestMessage() may result in |this| being deleted.
+  if (!ref) {
+    return HTNOWHERE;
+  }
   if (hit_test == HTNOWHERE) {
     // If the parent returns HTNOWHERE which can happen for popup windows, etc,
     // return HTCLIENT.

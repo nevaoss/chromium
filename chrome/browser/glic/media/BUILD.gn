@@ -4,8 +4,6 @@
 
 import("//chrome/common/features.gni")
 
-assert(enable_glic)
-
 source_set("media") {
   sources = [
     "glic_media_link_helper.cc",
@@ -64,6 +62,7 @@ if (!is_android) {
       "//components/live_caption",
       "//components/live_caption:constants",
       "//components/optimization_guide/content/browser",
+      "//components/optimization_guide/content/browser:test_support",
       "//testing/gmock",
       "//testing/gtest",
     ]

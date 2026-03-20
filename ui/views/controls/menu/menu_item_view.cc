@@ -551,6 +551,11 @@ void MenuItemView::SetMinorText(const std::u16string& minor_text) {
   invalidate_dimensions();  // Triggers preferred size recalculation.
 }
 
+void MenuItemView::SetMinorTextIsUrl(bool is_url) {
+  minor_text_is_url_ = is_url;
+  invalidate_dimensions();  // Triggers preferred size recalculation.
+}
+
 void MenuItemView::SetMinorIcon(const ui::ImageModel& minor_icon) {
   minor_icon_ = minor_icon;
   invalidate_dimensions();  // Triggers preferred size recalculation.
@@ -1255,6 +1260,9 @@ void MenuItemView::PaintMinorIconAndText(gfx::Canvas* canvas, SkColor color) {
     render_text->SetDisplayRect(minor_text_bounds);
     render_text->SetHorizontalAlignment(base::i18n::IsRTL() ? gfx::ALIGN_LEFT
                                                             : gfx::ALIGN_RIGHT);
+    if (GetMinorTextIsUrl()) {
+      render_text->SetDirectionalityMode(gfx::DIRECTIONALITY_AS_URL);
+    }
     render_text->Draw(canvas);
   }
 
@@ -1526,6 +1534,10 @@ std::u16string MenuItemView::GetMinorText() const {
              : minor_text_;
 }
 
+bool MenuItemView::GetMinorTextIsUrl() const {
+  return minor_text_is_url_;
+}
+
 ui::ImageModel MenuItemView::GetMinorIcon() const {
   return minor_icon_;
 }
@@ -1612,12 +1624,24 @@ void MenuItemView::UpdateSelectionBasedState(bool paint_as_selected) {
           icon_color_.has_value() ? icon_color_.value() : colors.icon_color;
 
       if (!GetEnabledInViewsSubtree()) {
+        // Disabled color.
         icon_color = GetColorProvider()->GetColor(ui::kColorMenuIconDisabled);
-      } else if (foreground_color_id_.has_value() && paint_as_selected &&
-                 !selected_color_id_.has_value()) {
-        icon_color = GetColorProvider()->GetColor(foreground_color_id_.value());
       } else if (paint_as_selected) {
-        icon_color = colors.icon_color;
+        // Selected color.
+        if (foreground_color_id_.has_value() &&
+            !selected_color_id_.has_value()) {
+          // Use foreground color if selected color is unset.
+          icon_color =
+              GetColorProvider()->GetColor(foreground_color_id_.value());
+        } else {
+          // Use calculated icon color if icon color is unset or default.
+          const bool is_default_icon =
+              !icon_color_.has_value() ||
+              icon_color_.value() == ui::kColorMenuIcon;
+          if (is_default_icon) {
+            icon_color = colors.icon_color;
+          }
+        }
       }
       const ui::ImageModel& image_model =
           ui::ImageModel::FromVectorIcon(*icon, icon_color, model.icon_size());

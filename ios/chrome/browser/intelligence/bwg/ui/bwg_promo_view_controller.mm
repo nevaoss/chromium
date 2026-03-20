@@ -7,7 +7,7 @@
 #import "ios/chrome/browser/intelligence/bwg/metrics/gemini_metrics.h"
 #import "ios/chrome/browser/intelligence/bwg/ui/bwg_promo_view_controller_delegate.h"
 #import "ios/chrome/browser/intelligence/bwg/ui/gemini_consent_mutator.h"
-#import "ios/chrome/browser/intelligence/bwg/utils/bwg_constants.h"
+#import "ios/chrome/browser/intelligence/bwg/utils/gemini_constants.h"
 #import "ios/chrome/browser/intelligence/features/features.h"
 #import "ios/chrome/browser/shared/ui/symbols/symbols.h"
 #import "ios/chrome/browser/shared/ui/util/uikit_ui_util.h"
@@ -90,7 +90,7 @@ const CGFloat kBaselineAdjustment = 10.0;
   [super viewDidDisappear:animated];
 }
 
-#pragma mark - BWGFREViewControllerProtocol
+#pragma mark - GeminiFREViewControllerProtocol
 
 - (CGFloat)contentHeight {
   [self.view layoutIfNeeded];

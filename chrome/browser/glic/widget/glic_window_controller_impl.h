@@ -28,7 +28,7 @@
 #include "chrome/browser/glic/widget/glic_window_event_observer.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
-#include "chrome/browser/ui/views/side_panel/side_panel_entry.h"
+#include "chrome/browser/ui/side_panel/side_panel_entry.h"
 #include "components/web_modal/web_contents_modal_dialog_host.h"
 #include "components/web_modal/web_contents_modal_dialog_manager_delegate.h"
 #include "content/public/browser/web_contents.h"
@@ -81,7 +81,9 @@ class GlicWindowControllerImpl
   void Toggle(BrowserWindowInterface* browser,
               bool prevent_close,
               mojom::InvocationSource source,
-              std::optional<std::string> prompt_suggestion) override;
+              std::optional<std::string> deprecated_prompt_suggestion,
+              bool deprecated_auto_send,
+              std::optional<std::string> deprecated_conversation_id) override;
   void ShowAfterSignIn(base::WeakPtr<Browser> browser) override;
   void FocusIfOpen() override;
   void Shutdown() override;
@@ -156,6 +158,7 @@ class GlicWindowControllerImpl
   void Detach() override;
   void ClosePanel() override;
   void OnReload() override;
+  void OnMicrophoneStatusChanged(mojom::MicrophoneStatus status) override {}
   void SetMinimumWidgetSize(const gfx::Size& size) override;
   bool IsShowing() const override;
   void SwitchConversation(
@@ -175,6 +178,7 @@ class GlicWindowControllerImpl
   // LocalHotkeyManager::Panel:
   bool HasFocus() override;
   bool ActivateBrowser() override;
+  void Zoom(mojom::ZoomAction zoom_action) override;
   void ShowTitleBarContextMenuAt(gfx::Point event_loc) override;
 
   HostManager& host_manager() override;
@@ -200,6 +204,7 @@ class GlicWindowControllerImpl
   AddActiveInstanceChangedCallbackAndNotifyImmediately(
       ActiveInstanceChangedCallback callback) override;
   GlicInstance* GetActiveInstance() override;
+  void BindTabForTesting(tabs::TabInterface* tab) override;
 
   // Testing functionality.
   GlicWindowAnimator* GetWindowAnimatorForTesting();
@@ -210,11 +215,11 @@ class GlicWindowControllerImpl
  private:
   void CloseWithReason(views::Widget::ClosedReason reason);
   GlicView* GetGlicView() const;
-  void ToggleWhenNotAlwaysDetached(
-      Browser* new_attached_browser,
-      bool prevent_close,
-      mojom::InvocationSource source,
-      std::optional<std::string> prompt_suggestion);
+  void ToggleWhenNotAlwaysDetached(Browser* new_attached_browser,
+                                   bool prevent_close,
+                                   mojom::InvocationSource source,
+                                   std::optional<std::string> prompt_suggestion,
+                                   bool auto_send);
 
   // Sets the floating attributes of the glic window.
   //
@@ -236,13 +241,15 @@ class GlicWindowControllerImpl
   // attached to the browser. Otherwise glic will be detached.
   void Show(Browser* browser,
             mojom::InvocationSource source,
-            std::optional<std::string> prompt_suggestion);
+            std::optional<std::string> prompt_suggestion,
+            bool auto_send);
   // Performs necessary set up and initialization before creating GlicWidget or
   // GlicView. Must be called before it's shown.
   // Returns true if successful and view creation can continue.
   bool BeforeViewCreated(Browser* browser,
                          mojom::InvocationSource source,
-                         std::optional<std::string> prompt_suggestion);
+                         std::optional<std::string> prompt_suggestion,
+                         bool auto_send);
   // Additional set up and initialization that runs after Glic is shown.
   void AfterViewShown();
   void SetupAndShowGlicWidget(Browser* browser);
@@ -258,7 +265,6 @@ class GlicWindowControllerImpl
   void WebClientInitializeFailed() override;
   void LoginPageCommitted() override;
   void ClientReadyToShow(const mojom::OpenPanelInfo& open_info) override;
-  void OnViewChanged(mojom::CurrentView view) override;
   void ContextAccessIndicatorChanged(bool enabled) override;
 
   // Called once glic is completely loaded and any animations have finished.
@@ -325,8 +331,7 @@ class GlicWindowControllerImpl
   void AddObserver(web_modal::ModalDialogHostObserver* observer) override;
   void RemoveObserver(web_modal::ModalDialogHostObserver* observer) override;
 
-  using StateChangeCallbackList =
-      base::RepeatingCallbackList<void(bool, mojom::CurrentView view)>;
+  using StateChangeCallbackList = base::RepeatingCallbackList<void(bool)>;
   StateChangeCallbackList state_change_callback_list_;
 
   // Observes the glic widget.
@@ -391,7 +396,7 @@ class GlicWindowControllerImpl
 
   // Used by web modals to listens for glic window events, e.g. size change or
   // window close.
-  base::ObserverList<web_modal::ModalDialogHostObserver>::Unchecked
+  base::ObserverList<web_modal::ModalDialogHostObserver>
       modal_dialog_host_observers_;
 
   // The announcement should happen the first time focus is lost after the FRE.
@@ -411,6 +416,9 @@ class GlicWindowControllerImpl
   // String to be auto-filled in the user input text box as the web client is
   // shown to the user.
   std::optional<std::string> prompt_suggestion_;
+
+  // Whether the suggested query should be auto-sent after being shown.
+  bool auto_send_ = false;
 
   std::optional<gfx::Point> previous_position_ = std::nullopt;
 

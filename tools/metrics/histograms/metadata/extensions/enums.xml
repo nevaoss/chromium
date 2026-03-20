@@ -36,6 +36,15 @@ chromium-metrics-reviews@google.com.
       label="Assessment Assistant (gndmhdcefbhlchkhipcnnbkcmicncehk)"/>
 </enum>
 
+<enum name="BackingStoreRestoreStatus">
+  <int value="0" label="RESTORE_NONE"/>
+  <int value="1" label="DB_RESTORE_DELETE_SUCCESS"/>
+  <int value="2" label="DB_RESTORE_DELETE_FAILURE"/>
+  <int value="3" label="DB_RESTORE_REPAIR_SUCCESS"/>
+  <int value="4" label="VALUE_RESTORE_DELETE_SUCCESS"/>
+  <int value="5" label="VALUE_RESTORE_DELETE_FAILURE"/>
+</enum>
+
 <enum name="BadSyncDataReason">
   <int value="0" label="Bad extension ID"/>
   <int value="1" label="Bad version"/>
@@ -2876,6 +2885,7 @@ Called by update_extension_histograms.py.-->
   <int value="1958" label="AUTOFILLPRIVATE_TOGGLEAUTOFILLAIREAUTHREQUIREMENT"/>
   <int value="1959"
       label="AUTOFILLPRIVATE_GETREQUIREDATTRIBUTETYPESFORENTITYTYPENAME"/>
+  <int value="1960" label="PDFVIEWERPRIVATE_GLICSUMMARIZE"/>
 </enum>
 
 <!-- LINT.ThenChange(//extensions/browser/extension_function_histogram_value.h:HistogramValue) -->
@@ -3265,6 +3275,7 @@ Called by update_extension_permission.py.-->
   <int value="261" label="kOmniboxDirectInput"/>
   <int value="262" label="kExperimentalActor"/>
   <int value="263" label="kEnterpriseLogin"/>
+  <int value="264" label="kProxyOverrideRulesPrivate"/>
 </enum>
 
 <enum name="ExtensionPolicyReinstallReason">
@@ -3272,6 +3283,13 @@ Called by update_extension_permission.py.-->
   <int value="1" label="Corrupted Chrome Web Store extension"/>
   <int value="2" label="Corrupted non-webstore extension"/>
   <int value="4" label="Non-webstore extension without hashes skipped"/>
+</enum>
+
+<enum name="ExtensionsDatabaseOperation">
+  <int value="0" label="get"/>
+  <int value="1" label="set"/>
+  <int value="2" label="remove"/>
+  <int value="3" label="clear"/>
 </enum>
 
 <enum name="ExtensionType">
@@ -3515,7 +3533,7 @@ Called by update_extension_permission.py.-->
   <int value="5" label="Channel not opened (not externally connectable)"/>
   <int value="6" label="Worker started for channel open"/>
   <int value="7"
-      label="Channel not opened (source channel invalid, opener port invaid,
+      label="Channel not opened (source channel invalid, opener port invalid,
              no receiver port, or receiver port invalid)"/>
   <int value="8" label="Channel not opened (receiver port isn't valid)"/>
   <int value="9"
@@ -3536,6 +3554,9 @@ Called by update_extension_permission.py.-->
   <int value="17"
       label="Channel not opened (extension uninstalled/disabled while channel
              open in-flight)"/>
+  <int value="18"
+      label="Channel not opened (opener port using different message
+             serialization format)"/>
 </enum>
 
 <enum name="ReadDynamicRulesJSONStatus">
@@ -3620,6 +3641,14 @@ Called by update_extension_permission.py.-->
   <int value="16" label="kErrorSerializeToJson"/>
   <int value="17" label="kErrorWriteJson"/>
   <int value="18" label="kErrorWriteFlatbuffer"/>
+</enum>
+
+<enum name="ValueStoreStatusCode">
+  <int value="0" label="OK"/>
+  <int value="1" label="CORRUPTION"/>
+  <int value="2" label="READ_ONLY"/>
+  <int value="3" label="QUOTA_EXCEEDED"/>
+  <int value="4" label="OTHER_ERROR"/>
 </enum>
 
 <enum name="VerifiedFileType">

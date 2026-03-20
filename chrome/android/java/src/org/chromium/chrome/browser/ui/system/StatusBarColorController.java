@@ -273,7 +273,7 @@ public class StatusBarColorController
                 };
 
         if (layoutManagerSupplier != null) {
-            layoutManagerSupplier.addObserver(
+            layoutManagerSupplier.addSyncObserverAndPostIfNonNull(
                     mCallbackController.makeCancelable(
                             layoutManager -> {
                                 assert layoutManager != null;
@@ -320,7 +320,7 @@ public class StatusBarColorController
                     @Override
                     public void onBackgroundImageChanged(
                             Bitmap originalBitmap,
-                            @Nullable BackgroundImageInfo backgroundImageInfo,
+                            BackgroundImageInfo backgroundImageInfo,
                             boolean fromInitialization,
                             @NtpBackgroundType int oldType,
                             @NtpBackgroundType int newType) {
@@ -474,7 +474,9 @@ public class StatusBarColorController
         assert mTabModelSelector == null : "mTabModelSelector should only be set once.";
         mTabModelSelector = tabModelSelector;
         if (mTabModelSelector != null) {
-            mTabModelSelector.getCurrentTabModelSupplier().addObserver(mCurrentTabModelObserver);
+            mTabModelSelector
+                    .getCurrentTabModelSupplier()
+                    .addSyncObserverAndPostIfNonNull(mCurrentTabModelObserver);
             mIsIncognitoBranded = mTabModelSelector.isIncognitoBrandedModelSelected();
             updateStatusBarColor();
         }

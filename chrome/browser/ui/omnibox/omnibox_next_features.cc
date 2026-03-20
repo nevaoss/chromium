@@ -37,7 +37,6 @@ BASE_FEATURE(kWebUIOmniboxAimPopup, DISABLED);
 
 constexpr base::FeatureParam<AddContextButtonVariant>::Option
     kAddContextButtonVariantOptions[] = {
-        {AddContextButtonVariant::kNone, "none"},
         {AddContextButtonVariant::kBelowResults, "below_results"},
         {AddContextButtonVariant::kAboveResults, "above_results"},
         {AddContextButtonVariant::kInline, "inline"}};
@@ -46,7 +45,7 @@ constexpr base::FeatureParam<AddContextButtonVariant>::Option
 const base::FeatureParam<AddContextButtonVariant>
     kWebUIOmniboxAimPopupAddContextButtonVariantParam{
         &internal::kWebUIOmniboxAimPopup, "Omnibox_AddContextButtonVariant",
-        AddContextButtonVariant::kNone, &kAddContextButtonVariantOptions};
+        AddContextButtonVariant::kBelowResults, &kAddContextButtonVariantOptions};
 // When enabled, clicking aim button in omnibox always navigates directly to
 // g.com/aimode, e.g. instead of opening the AI Mode popup
 // (`omnibox::internal::kWebUIOmniboxAimPopup`).
@@ -66,6 +65,9 @@ BASE_FEATURE(kWebUIOmniboxPopupDebug, DISABLED);
 // Enables side-by-side comparison omnibox suggestions in WebUI and Views.
 const base::FeatureParam<bool> kWebUIOmniboxPopupDebugSxSParam{
     &kWebUIOmniboxPopupDebug, "SxS", false};
+// If enabled, the WebUIOmniboxPopup controls its own selection state instead of
+// following that of the OmniboxEditModel.
+BASE_FEATURE(kWebUIOmniboxPopupSelectionControl, DISABLED);
 
 // Decodes a proto object from its serialized Base64 string representation.
 // Returns true if decoding and parsing succeed, false otherwise.
@@ -183,9 +185,7 @@ bool ShouldShowAimContextMenuOption(Profile* profile) {
   }
 
   const bool is_aim_context_entrypoint_enabled =
-      omnibox::IsAimPopupEnabled(profile) &&
-      (omnibox::kWebUIOmniboxAimPopupAddContextButtonVariantParam.Get() !=
-       omnibox::AddContextButtonVariant::kNone);
+      omnibox::IsAimPopupEnabled(profile);
 
   return is_aim_context_entrypoint_enabled;
 }
@@ -225,10 +225,6 @@ bool IsCreateImagesEnabled(Profile* profile) {
     return false;
   }
 
-  if (kShowToolsAndModels.Get()) {
-    return true;
-  }
-
   AimEligibilityService* aim_eligibility_service =
       AimEligibilityServiceFactory::GetForProfile(profile);
   return kShowToolsAndModels.Get() && aim_eligibility_service &&
@@ -242,10 +238,6 @@ bool IsDeepSearchEnabled(Profile* profile) {
 
   if (!IsAimPopupFeatureEnabled()) {
     return false;
-  }
-
-  if (kShowToolsAndModels.Get()) {
-    return true;
   }
 
   AimEligibilityService* aim_eligibility_service =
@@ -282,7 +274,7 @@ const base::FeatureParam<bool> kContextMenuEnableMultiTabSelection(
 const base::FeatureParam<int> kContextMenuMaxTabSuggestions(
     &internal::kWebUIOmniboxAimPopup,
     "Omnibox_ContextMenuMaxTabSuggestions",
-    5);
+    3);
 const base::FeatureParam<int> kMaxNumFiles(&internal::kWebUIOmniboxAimPopup,
                                            "MaxNumFiles",
                                            10);

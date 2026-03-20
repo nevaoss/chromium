@@ -8,6 +8,7 @@
 #include "base/memory/raw_ptr.h"
 #include "base/scoped_observation.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/ui/contextual_search/tab_contextualization_controller.h"
 #include "chrome/browser/ui/lens/lens_overlay_query_controller.h"
 #include "chrome/browser/ui/lens/lens_search_controller.h"
 #include "components/contextual_search/contextual_search_session_handle.h"
@@ -72,9 +73,8 @@ class LensQueryFlowRouter
 
   // Returns the file token for the tab and full image viewport uploaded when
   // the overlay first opens.
-  std::optional<base::UnguessableToken> overlay_tab_context_file_token() const {
-    return overlay_tab_context_file_token_;
-  }
+  virtual std::optional<base::UnguessableToken> overlay_tab_context_file_token()
+      const;
 
   // Sets the callback for when the suggest inputs are ready.
   void SetSuggestInputsReadyCallback(base::RepeatingClosure callback);
@@ -122,13 +122,17 @@ class LensQueryFlowRouter
   void OnFileUploadStatusChangedForTesting(
       const base::UnguessableToken& file_token,
       lens::MimeType mime_type,
-      contextual_search::FileUploadStatus file_upload_status,
-      const std::optional<contextual_search::FileUploadErrorType>& error_type);
+      contextual_search::ContextUploadStatus file_upload_status,
+      const std::optional<contextual_search::ContextUploadErrorType>&
+          error_type);
 
   // Handles the interaction response from the server.
   void HandleInteractionResponse(
       std::optional<lens::ImageCrop> image_crop,
       lens::LensOverlayInteractionResponse interaction_response);
+
+  // Removes the contextual search context if no region selection was made.
+  void RemoveContextualSearchContextIfNecessary(bool has_region_selection);
 
   void reset_file_upload_status_observation() {
     file_upload_status_observation_.Reset();
@@ -147,14 +151,20 @@ class LensQueryFlowRouter
   virtual contextual_search::ContextualSearchSessionHandle*
   GetContextualSearchSessionHandle() const;
 
+  // Returns the tab contextualization controller. Virtual for testing.
+  virtual TabContextualizationController* GetTabContextualizationController()
+      const;
+
  private:
+  friend class LensQueryFlowRouterTestApi;
+
   // contextual_search::ContextualSearchContextController::FileUploadStatusObserver:
   void OnFileUploadStatusChanged(
       const base::UnguessableToken& file_token,
       lens::MimeType mime_type,
-      contextual_search::FileUploadStatus file_upload_status,
-      const std::optional<contextual_search::FileUploadErrorType>& error_type)
-      override;
+      contextual_search::ContextUploadStatus file_upload_status,
+      const std::optional<contextual_search::ContextUploadErrorType>&
+          error_type) override;
 
   LensOverlayQueryController* lens_overlay_query_controller() const {
     return lens_search_controller_->lens_overlay_query_controller();
@@ -201,6 +211,9 @@ class LensQueryFlowRouter
   // Opens the contextual tasks panel to a provided URL.
   void OpenContextualTasksPanel(GURL url);
 
+  // Opens the contextual tasks error page.
+  void ShowContextualTasksErrorPage();
+
   // Uploads the viewport and page context using the contextual search session
   // handle for the query router.
   void UploadContextualInputData(
@@ -236,6 +249,9 @@ class LensQueryFlowRouter
       std::map<std::string, std::string> additional_search_query_params,
       base::Time query_start_time,
       lens::LensOverlayInvocationSource invocation_source);
+
+  // Returns whether the current active tab is context eligible.
+  bool IsActiveTabContextEligible() const;
 
   // Stores a pending search request to be sent to contextual tasks after the
   // tab context is ready.

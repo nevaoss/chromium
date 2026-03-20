@@ -32,7 +32,6 @@
 #include "chrome/browser/apps/app_service/app_service_proxy_factory.h"
 #include "chrome/browser/apps/app_service/launch_utils.h"
 #include "chrome/browser/ash/file_manager/path_util.h"
-#include "chrome/browser/ash/policy/skyvault/policy_utils.h"
 #include "chrome/browser/ash/system_web_apps/apps/camera_app/camera_app_survey_handler.h"
 #include "chrome/browser/ash/system_web_apps/apps/camera_app/chrome_camera_app_ui_constants.h"
 #include "chrome/browser/ash/system_web_apps/system_web_app_manager.h"
@@ -47,14 +46,15 @@
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/screen_ai/public/optical_character_recognizer.h"
 #include "chrome/browser/ui/ash/system_web_apps/system_web_app_ui_utils.h"
-#include "chrome/browser/ui/settings_window_manager_chromeos.h"
 #include "chrome/browser/ui/webui/ash/internet/internet_config_dialog.h"
 #include "chrome/browser/web_applications/web_app_tab_helper.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/services/pdf/public/mojom/pdf_progressive_searchifier.mojom.h"
 #include "chrome/services/pdf/public/mojom/pdf_service.mojom.h"
 #include "chrome/services/pdf/public/mojom/pdf_thumbnailer.mojom.h"
+#include "chromeos/ash/components/browser_context_helper/browser_context_helper.h"
 #include "chromeos/ash/experiences/camera/camera_save_handler.h"
+#include "chromeos/ash/experiences/settings_ui/settings_app_manager.h"
 #include "chromeos/constants/chromeos_features.h"
 #include "chromeos/constants/devicetype.h"
 #include "chromeos/ui/base/window_properties.h"
@@ -523,18 +523,18 @@ void ChromeCameraAppUIDelegate::PopulateLoadTimeData(
   source->AddBoolean(
       "cca_disallowed",
       !prefs->GetBoolean(prefs::kVideoCaptureAllowed) && !url_allowed);
-  source->AddString("path_relative_to_root",
-                    CHECK_DEREF(CameraSaveHandler::Get(*profile))
-                        .GetWritablePathRelativeToRoot()
-                        .value());
-  auto camera_destination =
-      policy::local_user_files::GetCameraDestination(profile);
+  const auto& camera_save_handler =
+      CHECK_DEREF(CameraSaveHandler::Get(*profile));
+  source->AddString(
+      "path_relative_to_root",
+      camera_save_handler.GetWritablePathRelativeToRoot().value());
+  auto camera_destination = camera_save_handler.GetDestination();
   std::string cloud_destination;
   if (camera_destination ==
-      policy::local_user_files::FileSaveDestination::kGoogleDrive) {
+      CameraSaveHandler::FileSaveDestination::kGoogleDrive) {
     cloud_destination = kCloudDestinationGoogleDrive;
   } else if (camera_destination ==
-             policy::local_user_files::FileSaveDestination::kOneDrive) {
+             CameraSaveHandler::FileSaveDestination::kOneDrive) {
     cloud_destination = kCloudDestinationOnedrive;
   }
   source->AddString("cloud_destination", cloud_destination);
@@ -607,9 +607,9 @@ std::string ChromeCameraAppUIDelegate::GetFilePathInArcByName(
     return std::string();
   }
   if (requires_sharing &&
-      policy::local_user_files::GetCameraDestination(
-          Profile::FromWebUI(web_ui_)) ==
-          policy::local_user_files::FileSaveDestination::kNotSpecified) {
+      CHECK_DEREF(CameraSaveHandler::Get(*Profile::FromWebUI(web_ui_)))
+              .GetDestination() ==
+          CameraSaveHandler::FileSaveDestination::kLocal) {
     NOTREACHED()
         << "File path should be in MyFiles and not require any sharing";
   }
@@ -692,9 +692,15 @@ void ChromeCameraAppUIDelegate::StopStorageMonitor() {
 }
 
 void ChromeCameraAppUIDelegate::OpenStorageManagement() {
-  chrome::SettingsWindowManager::GetInstance()->ShowOSSettings(
-      Profile::FromWebUI(web_ui_),
-      chromeos::settings::mojom::kStorageSubpagePath);
+  auto* user = ash::BrowserContextHelper::Get()->GetUserByBrowserContext(
+      Profile::FromWebUI(web_ui_));
+  if (!user) {
+    // TODO(crbug.com/447287122): Revisit here to see if we always have the
+    // user.
+    return;
+  }
+  ash::SettingsAppManager::Get()->Open(
+      *user, {.sub_page = chromeos::settings::mojom::kStorageSubpagePath});
 }
 
 base::FilePath ChromeCameraAppUIDelegate::GetMyFilesFolder() {

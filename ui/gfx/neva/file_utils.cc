@@ -14,6 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+#include "base/containers/span.h"
 #include "base/logging.h"
 #include "base/memory/ref_counted_memory.h"
 #include "base/memory/scoped_refptr.h"
@@ -35,11 +36,14 @@ SkBitmap* DecodeSkBitmapFromPNG(const base::FilePath& path) {
   int64_t length = file.GetLength();
   if (length > 0 && length < INT_MAX) {
     int size = static_cast<int>(length);
-    std::vector<unsigned char> raw_data;
-    raw_data.resize(size);
-    char* data = reinterpret_cast<char*>(&(raw_data.front()));
-    if (file.ReadAtCurrentPos(data, size) == length)
+    std::vector<unsigned char> raw_data(size);
+
+    std::optional<size_t> data =
+        file.ReadAtCurrentPos(base::as_writable_byte_span(raw_data));
+
+    if (data.has_value() && *data == data) {
       memory = base::MakeRefCounted<base::RefCountedBytes>(std::move(raw_data));
+    }
   } else {
     return nullptr;
   }

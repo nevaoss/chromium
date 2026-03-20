@@ -2,9 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "base/check_deref.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/metrics/user_action_tester.h"
 #include "base/test/test_future.h"
+#include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_composebox_handler.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_panel_controller.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_service_factory.h"
@@ -12,10 +14,10 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_tabstrip.h"
-#include "chrome/browser/ui/tabs/tab_list_interface.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/test/base/interactive_test_utils.h"
@@ -23,6 +25,7 @@
 #include "chrome/test/interaction/interactive_browser_test.h"
 #include "components/contextual_tasks/public/contextual_tasks_service.h"
 #include "components/contextual_tasks/public/features.h"
+#include "components/omnibox/browser/mock_aim_eligibility_service.h"
 #include "components/sessions/content/session_tab_helper.h"
 #include "components/sessions/core/session_id.h"
 #include "content/public/test/browser_test.h"
@@ -127,6 +130,10 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksUiServiceInteractiveUiTest,
                                      browser()->GetWeakPtr());
 
         EXPECT_TRUE(observer.was_inserted());
+      }),
+      Do([&]() {
+        // Close side panel.
+        coordinator->Close();
       }));
   browser()->tab_strip_model()->RemoveObserver(&observer);
 
@@ -136,6 +143,8 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksUiServiceInteractiveUiTest,
                 "ContextualTasks.AiResponse.UserAction.LinkClicked.Panel"),
             1);
   histogram_tester.ExpectUniqueSample("ContextualTasks.ActiveTasksCount", 1, 1);
+  histogram_tester.ExpectUniqueSample("ContextualTasks.Session.Completed", true,
+                                      1);
 }
 
 IN_PROC_BROWSER_TEST_F(ContextualTasksUiServiceInteractiveUiTest,
@@ -210,6 +219,9 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksUiServiceInteractiveUiTest,
       ContextualTasksPanelController::From(browser());
   EXPECT_TRUE(coordinator->IsPanelOpenForContextualTask());
 
+  base::HistogramTester histogram_tester;
+  base::UserActionTester user_action_tester;
+
   // Verify the new tab can navigation back.
   EXPECT_TRUE(browser()
                   ->GetActiveTabInterface()
@@ -229,6 +241,15 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksUiServiceInteractiveUiTest,
 
   // Verify the side panel is closed.
   EXPECT_FALSE(coordinator->IsPanelOpenForContextualTask());
+
+  // Verify metrics recorded.
+  histogram_tester.ExpectUniqueSample(
+      "ContextualTasks.BackButton.UserAction.NavigatedFromSidePanelToFullTab",
+      true, 1);
+  EXPECT_EQ(
+      user_action_tester.GetActionCount("ContextualTasks.BackButton.UserAction."
+                                        "NavigatedFromSidePanelToFullTab"),
+      1);
 }
 
 IN_PROC_BROWSER_TEST_F(ContextualTasksUiServiceInteractiveUiTest,
@@ -706,6 +727,103 @@ IN_PROC_BROWSER_TEST_F(
   ContextualTasksPanelController* coordinator =
       ContextualTasksPanelController::From(browser());
   EXPECT_FALSE(coordinator->IsPanelOpenForContextualTask());
+}
+
+class DisabledContextualTasksUiServiceInteractiveUiTest
+    : public InteractiveBrowserTest {
+ public:
+  DisabledContextualTasksUiServiceInteractiveUiTest() {
+    scoped_feature_list_.InitWithFeatures({kContextualTasksUrlRedirectToAimUrl},
+                                          {kContextualTasks});
+  }
+
+ protected:
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
+
+IN_PROC_BROWSER_TEST_F(DisabledContextualTasksUiServiceInteractiveUiTest,
+                       RedirectToAimDefaultUrl) {
+  EXPECT_TRUE(ui_test_utils::NavigateToURL(
+      browser(), GURL(chrome::kChromeUIContextualTasksURL)));
+  TabListInterface* tab_list = TabListInterface::From(browser());
+  ASSERT_EQ(GURL(GetContextualTasksAiPageUrl()),
+            tab_list->GetActiveTab()->GetContents()->GetLastCommittedURL());
+}
+
+IN_PROC_BROWSER_TEST_F(DisabledContextualTasksUiServiceInteractiveUiTest,
+                       RedirectToAimUrlFromSearchParams) {
+  GURL contextual_tasks_url = GURL(
+      "chrome://contextual-tasks?aim_url=https%3A%2F%2Fgoogle.com%2Fsearch");
+  EXPECT_TRUE(
+      ui_test_utils::NavigateToURL(browser(), GURL(contextual_tasks_url)));
+  TabListInterface* tab_list = TabListInterface::From(browser());
+  ASSERT_EQ(GURL("https://google.com/search"),
+            tab_list->GetActiveTab()->GetContents()->GetLastCommittedURL());
+}
+
+class MockEligibilityServiceContextualTasksUiServiceInteractiveUiTest
+    : public InteractiveBrowserTest {
+ public:
+  MockEligibilityServiceContextualTasksUiServiceInteractiveUiTest() {
+    scoped_feature_list_.InitWithFeatures(
+        {kContextualTasksUrlRedirectToAimUrl, kContextualTasks}, {});
+  }
+
+ protected:
+  void SetUpBrowserContextKeyedServices(
+      content::BrowserContext* context) override {
+    InteractiveBrowserTest::SetUpBrowserContextKeyedServices(context);
+
+    AimEligibilityServiceFactory::GetInstance()->SetTestingFactory(
+        context,
+        base::BindRepeating(
+            &MockEligibilityServiceContextualTasksUiServiceInteractiveUiTest::
+                BuildMockAimServiceEligibilityServiceInstance,
+            base::Unretained(this)));
+  }
+
+  std::unique_ptr<KeyedService> BuildMockAimServiceEligibilityServiceInstance(
+      content::BrowserContext* context) {
+    Profile* profile = Profile::FromBrowserContext(context);
+    return std::make_unique<MockAimEligibilityService>(
+        CHECK_DEREF(profile->GetPrefs()), /*template_url_service=*/nullptr,
+        /*url_loader_factory=*/nullptr, /*identity_manager=*/nullptr);
+  }
+
+  MockAimEligibilityService* GetMockAimEligibilityService(Profile* profile) {
+    auto* service = AimEligibilityServiceFactory::GetForProfile(profile);
+    return static_cast<MockAimEligibilityService*>(service);
+  }
+
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
+
+IN_PROC_BROWSER_TEST_F(
+    MockEligibilityServiceContextualTasksUiServiceInteractiveUiTest,
+    RedirectToAimDefaultUrl) {
+  EXPECT_CALL(*GetMockAimEligibilityService(browser()->profile()),
+              IsCobrowseEligible())
+      .WillRepeatedly(testing::Return(false));
+
+  EXPECT_TRUE(ui_test_utils::NavigateToURL(
+      browser(), GURL(chrome::kChromeUIContextualTasksURL)));
+  TabListInterface* tab_list = TabListInterface::From(browser());
+  ASSERT_EQ(GURL(GetContextualTasksAiPageUrl()),
+            tab_list->GetActiveTab()->GetContents()->GetLastCommittedURL());
+}
+
+IN_PROC_BROWSER_TEST_F(
+    MockEligibilityServiceContextualTasksUiServiceInteractiveUiTest,
+    DoNotRedirectToAimDefaultUrl) {
+  EXPECT_CALL(*GetMockAimEligibilityService(browser()->profile()),
+              IsCobrowseEligible())
+      .WillRepeatedly(testing::Return(true));
+
+  EXPECT_TRUE(ui_test_utils::NavigateToURL(
+      browser(), GURL(chrome::kChromeUIContextualTasksURL)));
+  TabListInterface* tab_list = TabListInterface::From(browser());
+  ASSERT_EQ(GURL(chrome::kChromeUIContextualTasksURL),
+            tab_list->GetActiveTab()->GetContents()->GetLastCommittedURL());
 }
 
 }  // namespace contextual_tasks

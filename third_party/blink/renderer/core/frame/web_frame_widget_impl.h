@@ -465,6 +465,7 @@ class CORE_EXPORT WebFrameWidgetImpl
 
   // WidgetBaseClient overrides:
   void OnCommitRequested() override;
+  void WillBeginImplCommit() override;
   void BeginMainFrame(const viz::BeginFrameArgs& args) override;
   void UpdateLifecycle(WebLifecycleUpdate requested_update,
                        DocumentUpdateReason reason) override;
@@ -920,6 +921,9 @@ class CORE_EXPORT WebFrameWidgetImpl
   void CenterSelection() override;
   void Paste() override;
   void PasteAndMatchStyle() override;
+  void PasteFromImageBytes(mojo_base::BigBuffer image_bytes,
+                           const String& media_format,
+                           PasteFromImageBytesCallback callback) override;
   void Delete() override;
   void SelectAll() override;
   void CollapseSelection() override;
@@ -972,8 +976,6 @@ class CORE_EXPORT WebFrameWidgetImpl
   void ForEachRemoteFrameControlledByWidget(
       base::FunctionRef<void(RemoteFrame*)> callback);
 
-  void SendOverscrollEventFromImplSide(const gfx::Vector2dF& overscroll_delta,
-                                       cc::ElementId scroll_latched_element_id);
   void SendEndOfScrollEvents(const cc::CompositorCommitData& commit_data);
   void SendScrollSnapChangingEventIfNeeded(
       const cc::CompositorCommitData& commit_data);

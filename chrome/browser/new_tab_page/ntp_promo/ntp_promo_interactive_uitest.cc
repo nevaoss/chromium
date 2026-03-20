@@ -15,8 +15,12 @@
 #include "chrome/browser/new_tab_page/modules/modules_switches.h"
 #include "chrome/browser/new_tab_page/modules/test_support.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/interaction/browser_elements.h"
+#include "chrome/browser/ui/side_panel/side_panel_entry_id.h"
+#include "chrome/browser/ui/side_panel/side_panel_ui.h"
+#include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/omnibox/omnibox_view_views.h"
 #include "chrome/browser/ui/views/user_education/impl/browser_user_education_context.h"
 #include "chrome/browser/ui/webui/new_tab_page/composebox/variations/composebox_fieldtrial.h"
@@ -46,9 +50,10 @@
 #include "extensions/common/extension_urls.h"
 #include "testing/gmock/include/gmock/gmock-matchers.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "ui/base/identifier/typed_identifier.h"
 #include "ui/base/interaction/element_identifier.h"
 #include "ui/base/interaction/element_tracker.h"
-#include "ui/base/interaction/typed_identifier.h"
+#include "ui/base/interaction/interaction_sequence.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/native_theme/mock_os_settings_provider.h"
 #include "ui/views/interaction/polling_view_observer.h"
@@ -85,6 +90,7 @@ const std::u16string kLongPromoText =
 constexpr std::string_view kNtpURL = chrome::kChromeUINewTabURL;
 
 DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kNtpElementId);
+DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kBrowser2NtpElementId);
 DEFINE_LOCAL_CUSTOM_ELEMENT_EVENT_TYPE(kTestPromoShownEvent);
 DEFINE_LOCAL_CUSTOM_ELEMENT_EVENT_TYPE(kTestPromoClickedEvent);
 DEFINE_LOCAL_CUSTOM_ELEMENT_EVENT_TYPE(kMetricsRecordedEvent);
@@ -126,7 +132,7 @@ struct NtpPromoUiTestParams {
 
 using ObserverType =
     views::test::PollingViewPropertyObserver<std::u16string, OmniboxViewViews>;
-DEFINE_LOCAL_TYPED_IDENTIFIER_VALUE(ObserverType, kLocationBarTextValue);
+DEFINE_LOCAL_STATE_IDENTIFIER_VALUE(ObserverType, kLocationBarTextValue);
 MATCHER_P(OptionalStringContains, text, "Optional string contains") {
   return arg.has_value() && arg.value().find(text) != std::u16string::npos;
 }
@@ -257,26 +263,31 @@ class NtpPromoUiTest
 
   auto GetPromoIconPath() const { return GetFirstPromoPath() + kPromoIconId; }
 
-  auto WaitForPromoIcon(std::string_view expected_icon) {
+  auto WaitForPromoIcon(
+      std::string_view expected_icon,
+      const ui::ElementIdentifier& tab_element_id = kNtpElementId) {
     const auto path = GetPromoIconPath();
     auto steps = Steps(
-        WaitForAndScrollToElement(kNtpElementId, path),
+        WaitForAndScrollToElement(tab_element_id, path),
         // Verify the icon shows the correct image.
-        CheckJsResultAt(kNtpElementId, path, "el => el.icon", expected_icon));
+        CheckJsResultAt(tab_element_id, path, "el => el.icon", expected_icon));
     AddDescriptionPrefix(steps, __func__);
     return steps;
   }
 
-  auto WaitForPromoVisible(Eligibility eligibility,
-                           std::string_view expected_icon) {
+  auto WaitForPromoVisible(
+      Eligibility eligibility,
+      std::string_view expected_icon,
+      const ui::ElementIdentifier& tab_element_id = kNtpElementId) {
     MultiStep steps;
     switch (eligibility) {
       case Eligibility::kEligible:
-        steps += WaitForPromoIcon(std::string("ntp-promo:") +
-                                  std::string(expected_icon));
+        steps += WaitForPromoIcon(
+            std::string("ntp-promo:") + std::string(expected_icon),
+            tab_element_id);
         break;
       case Eligibility::kCompleted:
-        steps += WaitForPromoIcon("cr:check");
+        steps += WaitForPromoIcon("cr:check", tab_element_id);
         break;
       case Eligibility::kIneligible:
         NOTREACHED();
@@ -293,8 +304,8 @@ class NtpPromoUiTest
         .AddDescriptionPrefix(__func__);
   }
 
-  auto ClickPromo() {
-    auto steps = ClickElement(kNtpElementId, GetPromoIconPath());
+  auto ClickPromo(const ui::ElementIdentifier& tab_element_id = kNtpElementId) {
+    auto steps = ClickElement(tab_element_id, GetPromoIconPath());
     AddDescriptionPrefix(steps, __func__);
     return steps;
   }
@@ -536,6 +547,53 @@ IN_PROC_BROWSER_TEST_P(NtpPromoUiTest,
       ClickPromo(), WaitForShow(kSidePanelElementId));
 
   // TODD(https://crbug.com/433607240): Check model, histograms.
+}
+
+// Regression test for crbug.com/485875459. With a second browser window open,
+// ensure that a second-window promo click opens the customization side panel
+// in the correct window. This test fails without the associated fix.
+IN_PROC_BROWSER_TEST_P(NtpPromoUiTest,
+                       CustomizationPromoOpensInCorrectBrowser) {
+  ClearRegisteredPromosExcept(kNtpCustomizationPromoId);
+
+  // Create a second browser window.
+  Browser* browser2 = CreateBrowser(browser()->profile());
+
+  RunTestSequence(
+      // Set up the first browser.
+      InstrumentTab(kNtpElementId),
+      NavigateWebContents(kNtpElementId, GURL(kNtpURL)),
+      WaitForPromoVisible(Eligibility::kEligible, kCustomizationIconName,
+                          kNtpElementId),
+
+      // Set up the second browser.
+      InstrumentTab(kBrowser2NtpElementId, 0, browser2),
+      NavigateWebContents(kBrowser2NtpElementId, GURL(kNtpURL)),
+
+      // Target the interactions to the second browser's context.
+      InContext(
+          BrowserView::GetBrowserViewForBrowser(browser2)->GetElementContext(),
+          Steps(WaitForPromoVisible(Eligibility::kEligible,
+                                    kCustomizationIconName,
+                                    kBrowser2NtpElementId),
+                ClickPromo(kBrowser2NtpElementId),
+                // Wait for the side panel to show in the second browser.
+                WaitForShow(kSidePanelElementId))),
+
+      // Verify the side panel is showing in the second browser.
+      Check([browser2]() {
+        return browser2->GetFeatures().side_panel_ui()->IsSidePanelEntryShowing(
+            SidePanelEntry::Key(SidePanelEntry::Id::kCustomizeChrome));
+      }),
+
+      // Verify the side panel is NOT showing in the first browser.
+      Check([this]() {
+        return !browser()
+                    ->GetFeatures()
+                    .side_panel_ui()
+                    ->IsSidePanelEntryShowing(SidePanelEntry::Key(
+                        SidePanelEntry::Id::kCustomizeChrome));
+      }));
 }
 
 class NtpPromoVisualUiTest : public NtpPromoUiTest {

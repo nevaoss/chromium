@@ -7,12 +7,11 @@ import '/strings.m.js';
 
 import {ColorChangeUpdater} from '//resources/cr_components/color_change_listener/colors_css_updater.js';
 import type {ComposeboxElement} from '//resources/cr_components/composebox/composebox.js';
-import {SearchboxBrowserProxy} from '//resources/cr_components/searchbox/searchbox_browser_proxy.js';
 import {assert} from '//resources/js/assert.js';
 import {EventTracker} from '//resources/js/event_tracker.js';
 import {loadTimeData} from '//resources/js/load_time_data.js';
 import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
-import type {PageHandlerInterface as SearchboxPageHandlerInterface, SearchContext} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import type {SearchContext} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 
 import {getCss} from './aim_app.css.js';
 import {getHtml} from './aim_app.html.js';
@@ -44,9 +43,10 @@ export class OmniboxAimAppElement extends CrLitElement {
       loadTimeData.getBoolean('caretColorAnimationDisabled');
   protected disableComposeboxAnimation_: boolean =
       loadTimeData.getBoolean('composeboxAnimationDisabled');
+  protected caretAnimationsEnabled_: boolean =
+      loadTimeData.getBoolean('caretAnimationEnabled');
 
   private eventTracker_ = new EventTracker();
-  private searchboxPageHandler_: SearchboxPageHandlerInterface;
   private pageHandler_: PageHandlerInterface;
   private callbackRouter_: PageCallbackRouter;
   private listenerIds_: number[] = [];
@@ -55,7 +55,6 @@ export class OmniboxAimAppElement extends CrLitElement {
   constructor() {
     super();
     ColorChangeUpdater.forDocument().start();
-    this.searchboxPageHandler_ = SearchboxBrowserProxy.getInstance().handler;
     this.callbackRouter_ = BrowserProxy.getInstance().callbackRouter;
     this.pageHandler_ = BrowserProxy.getInstance().handler;
   }
@@ -67,8 +66,7 @@ export class OmniboxAimAppElement extends CrLitElement {
       this.callbackRouter_.onPopupShown.addListener(
           this.onPopupShown_.bind(this)),
       this.callbackRouter_.addContext.addListener(this.addContext_.bind(this)),
-      this.callbackRouter_.onPopupHidden.addListener(
-          this.onPopupHidden_.bind(this)),
+      this.callbackRouter_.clearPopup.addListener(this.clearPopup_.bind(this)),
       this.callbackRouter_.setPreserveContextOnClose.addListener(
           this.setPreserveContextOnClose_.bind(this)),
     ];
@@ -99,14 +97,14 @@ export class OmniboxAimAppElement extends CrLitElement {
     }
   }
 
-  protected onContextualEntryPointClicked_(
+  protected onContextMenuEntrypointClick_(
       e: CustomEvent<{x: number, y: number}>) {
     e.preventDefault();
     const point = {
       x: e.detail.x,
       y: e.detail.y,
     };
-    this.searchboxPageHandler_.showContextMenu(point);
+    this.pageHandler_.showContextMenu(point);
   }
 
   protected onCloseComposebox_() {
@@ -124,7 +122,9 @@ export class OmniboxAimAppElement extends CrLitElement {
       // context on close as this indicates that the user is returning to the
       // widget after adding context.
       this.$.composebox.playGlowAnimation();
+      this.$.composebox.setDefaultModel();
     }
+    this.$.composebox.resetCaret();
     this.$.composebox.addSearchContext(context);
     this.$.composebox.focusInput();
     this.preserveContextOnClose_ = false;
@@ -135,19 +135,24 @@ export class OmniboxAimAppElement extends CrLitElement {
     this.$.composebox.focusInput();
   }
 
-  private onPopupHidden_(): Promise<{input: string}> {
+  private async clearPopup_(): Promise<{input: string}> {
     const input = this.$.composebox.getInputText();
     if (!this.preserveContextOnClose_) {
-      this.$.composebox.clearAllInputs(/* querySubmitted= */ false);
+      this.$.composebox.clearAllInputs(
+          /* querySubmitted= */ false,
+          /* shouldBlockAutoSuggestedTabs= */ false);
       this.$.composebox.clearAutocompleteMatches();
       this.$.composebox.resetModes();
+      this.$.composebox.resetToolsAndModels();
     }
+    await this.updateComplete;
     // Transfer input text to the location bar.
     return Promise.resolve({input});
   }
 
   protected onComposeboxSubmit_() {
-    this.$.composebox.clearAllInputs(/* querySubmitted= */ true);
+    this.$.composebox.clearAllInputs(/* querySubmitted= */ true,
+                                     /* shouldBlockAutoSuggestedTabs= */ false);
   }
 
   private onLinkClick_(e: Event) {

@@ -120,6 +120,9 @@ const char kWebViewStopBrowserStartupInIsMultiProcessEnabled[] =
 const char kStartupNonBlockingWebViewConstructor[] =
     "startup-non-blocking-webview-constructor";
 
+// Defers GMS calls during startup.
+const char kWebViewDeferStartupGmsCalls[] = "webview-defer-startup-gms-calls";
+
 // Opts in WebView to GMSCore's bindService optimizations
 const char kWebViewOptInToGmsBindServiceOptimization[] =
     "webview-opt-in-to-gms-bind-service-optimization";
@@ -129,5 +132,11 @@ const char kWebViewRendererLibraryPrefetch[] =
     "webview-renderer-library-prefetch";
 const char kWebViewRendererLibraryPrefetchDisabled[] = "disabled";
 const char kWebViewRendererLibraryPrefetchEnabled[] = "enabled";
+
+// Enables different reductions of the user-agent.
+const char kWebViewReduceUserAgentMinorVersion[] =
+    "webview-reduce-user-agent-minor-version";
+const char kWebViewReduceUAAndroidVersionDeviceModel[] =
+    "webview-reduce-ua-android-version-device-model";
 
 }  // namespace switches

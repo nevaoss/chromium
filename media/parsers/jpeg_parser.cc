@@ -10,7 +10,13 @@
 #include "base/compiler_specific.h"
 #include "base/containers/span.h"
 #include "base/containers/span_reader.h"
+#include "base/feature_list.h"
 #include "base/logging.h"
+// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
+#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
+#include "media/base/media_switches.h"
+#include "media/parsers/parse_jpeg_wrapper.h"
+#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 
 #define READ_U8_OR_RETURN_FALSE(out)                                       \
   do {                                                                     \
@@ -531,8 +537,8 @@ static bool ParseSOI(base::span<const uint8_t> buffer,
   return true;
 }
 
-bool ParseJpegPicture(base::span<const uint8_t> buffer,
-                      JpegParseResult* result) {
+bool ParseJpegPictureLegacy(base::span<const uint8_t> buffer,
+                            JpegParseResult* result) {
   DCHECK(result);
 
   auto reader = base::SpanReader(buffer);
@@ -569,11 +575,40 @@ bool ParseJpegPicture(base::span<const uint8_t> buffer,
   return true;
 }
 
-// TODO(andrescj): this function no longer seems necessary. Fix call sites to
-// use ParseJpegPicture() directly.
-bool ParseJpegStream(base::span<const uint8_t> buffer,
-                     JpegParseResult* result) {
-  return ParseJpegPicture(buffer, result);
+bool ParseJpegPicture(base::span<const uint8_t> buffer,
+                      JpegParseResult* result) {
+  CHECK(result);
+  // TODO(neva_rust): Remove this workaround once Neva supports Rust build.
+#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
+  if (base::FeatureList::IsEnabled(kUseRustJpegParser)) {
+    return ParseJpegPictureRust(buffer, result);
+  }
+#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
+  return ParseJpegPictureLegacy(buffer, result);
+}
+
+bool JpegParseResult::operator==(const JpegParseResult& other) const {
+  return frame_header == other.frame_header &&
+         std::ranges::equal(dc_table, other.dc_table) &&
+         std::ranges::equal(ac_table, other.ac_table) &&
+         std::ranges::equal(q_table, other.q_table) &&
+         restart_interval == other.restart_interval && scan == other.scan &&
+         std::ranges::equal(data, other.data) && image_size == other.image_size;
+}
+
+std::ostream& operator<<(std::ostream& os, const JpegParseResult& result) {
+  os << "{ visible_width: " << result.frame_header.visible_width
+     << ", visible_height: " << result.frame_header.visible_height
+     << ", coded_width: " << result.frame_header.coded_width
+     << ", coded_height: " << result.frame_header.coded_height
+     << ", num_components: "
+     << static_cast<int>(result.frame_header.num_components)
+     << ", restart_interval: " << result.restart_interval
+     << ", scan_num_components: "
+     << static_cast<int>(result.scan.num_components)
+     << ", data_size: " << result.data.size()
+     << ", image_size: " << result.image_size << " }";
+  return os;
 }
 
 }  // namespace media

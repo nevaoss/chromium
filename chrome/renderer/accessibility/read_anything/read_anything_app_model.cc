@@ -10,6 +10,7 @@
 #include <utility>
 
 #include "base/check.h"
+#include "base/logging.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/strings/stringprintf.h"
 #include "base/time/time.h"
@@ -32,6 +33,7 @@
 #include "ui/accessibility/ax_tree_update_util.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "url/gurl.h"
+#include "url/url_util.h"
 
 namespace {
 
@@ -88,6 +90,12 @@ ReadAnythingAppModel::AXTreeInfo::AXTreeInfo(
 
 ReadAnythingAppModel::AXTreeInfo::~AXTreeInfo() = default;
 
+ReadAnythingAppModel::AnchorData::AnchorData() = default;
+ReadAnythingAppModel::AnchorData::AnchorData(const AnchorData& other) = default;
+ReadAnythingAppModel::AnchorData& ReadAnythingAppModel::AnchorData::operator=(
+    const AnchorData& other) = default;
+ReadAnythingAppModel::AnchorData::~AnchorData() = default;
+
 ReadAnythingAppModel::SelectionEndpoint::SelectionEndpoint(
     const ui::AXSelection& selection,
     Source source)
@@ -126,7 +134,8 @@ void ReadAnythingAppModel::OnSettingsRestoredFromPrefs(
     bool links_enabled,
     bool images_enabled,
     read_anything::mojom::Colors color,
-    read_anything::mojom::LineFocus line_focus) {
+    read_anything::mojom::LineFocus last_non_disabled_line_focus,
+    bool line_focus_enabled) {
   line_spacing_ = line_spacing;
   letter_spacing_ = letter_spacing;
   font_name_ = std::move(font_name);
@@ -134,13 +143,14 @@ void ReadAnythingAppModel::OnSettingsRestoredFromPrefs(
   links_enabled_ = links_enabled;
   images_enabled_ = images_enabled;
   color_theme_ = color;
-  line_focus_ = line_focus;
+  last_non_disabled_line_focus_ = last_non_disabled_line_focus;
+  line_focus_enabled_ = line_focus_enabled;
 }
 
 void ReadAnythingAppModel::Reset(std::vector<ui::AXNodeID> content_node_ids) {
   content_node_ids_ = std::move(content_node_ids);
   display_node_ids_.clear();
-  distillation_in_progress_ = false;
+  screen2x_distiller_running_ = false;
   requires_post_process_selection_ = false;
   selections_from_reading_mode_ = 0;
   ResetSelection();
@@ -900,8 +910,7 @@ void ReadAnythingAppModel::ProcessNonGeneratedEvents(
         // Closing ads sometimes sends this event but we also get this when
         // keyboard focus changes. Only try to redistill if we have no content
         // right now.
-        if (features::IsReadAnythingReadAloudEnabled() &&
-            content_node_ids_.size() == 0) {
+        if (content_node_ids_.size() == 0) {
           requires_distillation_ = true;
         }
         break;
@@ -1021,8 +1030,7 @@ void ReadAnythingAppModel::ProcessGeneratedEvents(
         requires_post_process_selection_ = true;
         break;
       case ui::AXEventGenerator::Event::DOCUMENT_TITLE_CHANGED:
-        if (!features::IsReadAnythingReadAloudEnabled() ||
-            event.event_params->event_from == ax::mojom::EventFrom::kUser) {
+        if (event.event_params->event_from == ax::mojom::EventFrom::kUser) {
           requires_distillation_ = true;
         }
         break;
@@ -1051,20 +1059,16 @@ void ReadAnythingAppModel::ProcessGeneratedEvents(
         }
         break;
       case ui::AXEventGenerator::Event::COLLAPSED:
-        if (features::IsReadAnythingReadAloudEnabled()) {
           ResetSelection();
           requires_post_process_selection_ = false;
           redraw_required_ = true;
-        }
         break;
       case ui::AXEventGenerator::Event::EXPANDED:
-        if (features::IsReadAnythingReadAloudEnabled()) {
           if (std::ranges::contains(content_node_ids_, event.node_id)) {
             redraw_required_ = true;
           } else {
             requires_distillation_ = true;
           }
-        }
         break;
       // Audit these events e.g. to trigger distillation.
       case ui::AXEventGenerator::Event::EDITABLE_TEXT_CHANGED:
@@ -1091,8 +1095,10 @@ void ReadAnythingAppModel::ProcessGeneratedEvents(
       case ui::AXEventGenerator::Event::FOCUS_CHANGED:
       case ui::AXEventGenerator::Event::FLOW_FROM_CHANGED:
       case ui::AXEventGenerator::Event::FLOW_TO_CHANGED:
+      case ui::AXEventGenerator::Event::GRAMMAR_MARKER_CHANGED:
       case ui::AXEventGenerator::Event::HASPOPUP_CHANGED:
       case ui::AXEventGenerator::Event::HIERARCHICAL_LEVEL_CHANGED:
+      case ui::AXEventGenerator::Event::HIGHLIGHT_MARKER_CHANGED:
       case ui::AXEventGenerator::Event::IGNORED_CHANGED:
       case ui::AXEventGenerator::Event::IMAGE_ANNOTATION_CHANGED:
       case ui::AXEventGenerator::Event::INVALID_STATUS_CHANGED:
@@ -1110,16 +1116,7 @@ void ReadAnythingAppModel::ProcessGeneratedEvents(
       case ui::AXEventGenerator::Event::MENU_POPUP_START:
       case ui::AXEventGenerator::Event::MULTILINE_STATE_CHANGED:
       case ui::AXEventGenerator::Event::MULTISELECTABLE_STATE_CHANGED:
-        break;
       case ui::AXEventGenerator::Event::NAME_CHANGED:
-        if (!features::IsReadAnythingReadAloudEnabled() &&
-            last_expanded_node_id_ == event.node_id) {
-          ResetSelection();
-          requires_post_process_selection_ = false;
-          reset_last_expanded_node_id();
-          redraw_required_ = true;
-        }
-        break;
       case ui::AXEventGenerator::Event::OBJECT_ATTRIBUTE_CHANGED:
       case ui::AXEventGenerator::Event::ORIENTATION_CHANGED:
       case ui::AXEventGenerator::Event::PARENT_CHANGED:
@@ -1140,6 +1137,7 @@ void ReadAnythingAppModel::ProcessGeneratedEvents(
       case ui::AXEventGenerator::Event::SELECTED_VALUE_CHANGED:
       case ui::AXEventGenerator::Event::SET_SIZE_CHANGED:
       case ui::AXEventGenerator::Event::SORT_CHANGED:
+      case ui::AXEventGenerator::Event::SPELLING_MARKER_CHANGED:
       case ui::AXEventGenerator::Event::STATE_CHANGED:
       case ui::AXEventGenerator::Event::TEXT_ATTRIBUTE_CHANGED:
       case ui::AXEventGenerator::Event::TEXT_SELECTION_CHANGED:
@@ -1253,4 +1251,132 @@ bool ReadAnythingAppModel::SelectionNodesContainedInDistilledContent() const {
   std::sort(sorted_content_ids.begin(), sorted_content_ids.end());
   return std::includes(sorted_content_ids.begin(), sorted_content_ids.end(),
                        selection_node_ids_.begin(), selection_node_ids_.end());
+}
+
+bool ReadAnythingAppModel::ProcessAXTreeAnchors() {
+  DUMP_WILL_BE_CHECK(
+      features::IsReadAnythingWithReadabilityAllowLinksEnabled());
+  if (!should_extract_anchors_from_tree_for_readability_) {
+    return false;
+  }
+
+  if (active_tree_id_ == ui::AXTreeIDUnknown() || !ContainsActiveTree()) {
+    return false;
+  }
+
+  ui::AXSerializableTree* tree = GetActiveTree();
+  if (!tree || !tree->root()) {
+    return false;
+  }
+
+  should_extract_anchors_from_tree_for_readability_ = false;
+  ax_tree_anchors_ = CollectAnchorsFromAXTree(tree);
+  return true;
+}
+
+std::map<std::string, std::vector<ReadAnythingAppModel::AnchorData>>
+ReadAnythingAppModel::CollectAnchorsFromAXTree(ui::AXSerializableTree* tree) {
+  std::map<std::string, std::vector<AnchorData>> grouped_links;
+  if (!tree || !tree->root()) {
+    return grouped_links;
+  }
+
+  std::stack<const ui::AXNode*> stack;
+  stack.push(tree->root());
+
+  // Do a DFS travserse of the tree
+  while (!stack.empty()) {
+    const ui::AXNode* node = stack.top();
+    stack.pop();
+
+    ax::mojom::Role role = node->GetRole();
+    // Ignore any portions of the web contents that Readability is supposed
+    // to remove the original content.
+    bool is_ignored_role =
+        role == ax::mojom::Role::kBanner || role == ax::mojom::Role::kButton ||
+        role == ax::mojom::Role::kComboBoxSelect ||
+        role == ax::mojom::Role::kComplementary ||
+        role == ax::mojom::Role::kContentInfo ||
+        role == ax::mojom::Role::kForm || role == ax::mojom::Role::kIframe ||
+        role == ax::mojom::Role::kIframePresentational ||
+        role == ax::mojom::Role::kMenu || role == ax::mojom::Role::kMenuBar ||
+        role == ax::mojom::Role::kNavigation ||
+        role == ax::mojom::Role::kSearch ||
+        role == ax::mojom::Role::kSearchBox ||
+        role == ax::mojom::Role::kTextField;
+
+    if (is_ignored_role) {
+      continue;
+    }
+
+    // Process the AX Node if it is an anchor.
+    if (role == ax::mojom::Role::kLink) {
+      std::string url =
+          node->GetStringAttribute(ax::mojom::StringAttribute::kUrl);
+      if (url.empty()) {
+        continue;
+      }
+
+      // Ignore any anchor that is not a regular website. E.g. mailto or
+      // javascript:void
+      if (!url::FindAndCompareScheme(url, "http", nullptr) &&
+          !url::FindAndCompareScheme(url, "https", nullptr)) {
+        continue;
+      }
+
+      AnchorData data;
+      data.id = node->id();
+      // HTML 'id' attribute.
+      if (node->HasStringAttribute(ax::mojom::StringAttribute::kHtmlId)) {
+        data.html_id =
+            node->GetStringAttribute(ax::mojom::StringAttribute::kHtmlId);
+      }
+
+      // HTML 'target' attribute (e.g., "_blank").
+      if (node->HasStringAttribute(ax::mojom::StringAttribute::kLinkTarget)) {
+        data.target =
+            node->GetStringAttribute(ax::mojom::StringAttribute::kLinkTarget);
+      }
+
+      // HTML 'title' attribute (hover tooltip).
+      if (node->HasStringAttribute(ax::mojom::StringAttribute::kTooltip)) {
+        data.title =
+            node->GetStringAttribute(ax::mojom::StringAttribute::kTooltip);
+      }
+
+      // Accessible name (the visible text or aria-label)
+      if (node->HasStringAttribute(ax::mojom::StringAttribute::kName)) {
+        data.name = node->GetStringAttribute(ax::mojom::StringAttribute::kName);
+      }
+
+      // Text context immediately before the link.
+      ui::AXNode* prev_node = node->GetPreviousUnignoredSibling();
+      if (prev_node &&
+          prev_node->HasStringAttribute(ax::mojom::StringAttribute::kName)) {
+        data.text_before =
+            prev_node->GetStringAttribute(ax::mojom::StringAttribute::kName);
+      }
+
+      // Text context immediately after the link.
+      ui::AXNode* next_node = node->GetNextUnignoredSibling();
+      if (next_node &&
+          next_node->HasStringAttribute(ax::mojom::StringAttribute::kName)) {
+        data.text_after =
+            next_node->GetStringAttribute(ax::mojom::StringAttribute::kName);
+      }
+
+      grouped_links[url].push_back(std::move(data));
+    }
+
+    for (auto it = node->UnignoredChildrenBegin();
+         it != node->UnignoredChildrenEnd(); ++it) {
+      stack.push(&*it);
+    }
+  }
+
+  return grouped_links;
+}
+
+void ReadAnythingAppModel::ResetAXTreeAnchors() {
+  ax_tree_anchors_.clear();
 }

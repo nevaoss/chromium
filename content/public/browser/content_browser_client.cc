@@ -20,6 +20,7 @@
 #include "base/supports_user_data.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/task/thread_pool/thread_pool_instance.h"
+#include "base/uuid.h"
 #include "base/values.h"
 #include "build/build_config.h"
 #include "build/buildflag.h"
@@ -325,11 +326,15 @@ size_t ContentBrowserClient::GetProcessCountToIgnoreForLimit() {
   return 0;
 }
 
-std::optional<std::vector<blink::mojom::IsolatedAppPermissionPolicyEntryPtr>>
-ContentBrowserClient::GetPermissionsPolicyForIsolatedWebApp(
+bool ContentBrowserClient::SupportsBaselinePermissionsPolicyForIsolatedApp() {
+  return false;
+}
+
+std::vector<blink::mojom::IsolatedAppPermissionPolicyEntryPtr>
+ContentBrowserClient::GetBaselinePermissionsPolicyForIsolatedApp(
     BrowserContext* browser_context,
-    const url::Origin& iwa_origin) {
-  return std::nullopt;
+    const url::Origin& app_origin) {
+  return {};
 }
 
 bool ContentBrowserClient::ShouldTryToUseExistingProcessHost(
@@ -420,6 +425,10 @@ bool ContentBrowserClient::IsInitialWebUIURL(const GURL& url) {
   return false;
 }
 #endif  // !BUILDFLAG(IS_ANDROID)
+
+bool ContentBrowserClient::IsTopChromeWebUIURL(const GURL& url) {
+  return false;
+}
 
 bool ContentBrowserClient::IsIsolatedContextAllowedForUrl(
     BrowserContext* browser_context,
@@ -1221,10 +1230,10 @@ ContentBrowserClient::WillCreateURLLoaderRequestInterceptors(
   return std::vector<std::unique_ptr<URLLoaderRequestInterceptor>>();
 }
 
-ContentBrowserClient::URLLoaderRequestHandler
-ContentBrowserClient::CreateURLLoaderHandlerForServiceWorkerNavigationPreload(
-    FrameTreeNodeId frame_tree_node_id,
-    const network::ResourceRequest& resource_request) {
+ContentBrowserClient::URLLoaderRequestHandler ContentBrowserClient::
+    CreateURLLoaderHandlerForServiceWorkerInitiatedNavigationRequest(
+        FrameTreeNodeId frame_tree_node_id,
+        const network::ResourceRequest& resource_request) {
   return ContentBrowserClient::URLLoaderRequestHandler();
 }
 
@@ -1473,6 +1482,26 @@ std::optional<gfx::ImageSkia> ContentBrowserClient::GetProductLogo() {
 bool ContentBrowserClient::IsBuiltinComponent(BrowserContext* browser_context,
                                               const url::Origin& origin) {
   return false;
+}
+
+void ContentBrowserClient::StartRtcDiagnosticLogging(
+    RenderFrameHost& frame_host,
+    bool should_upload_on_stop,
+    base::flat_map<std::string, std::string> metadata,
+    base::OnceCallback<void(const std::string&)> callback) {
+  std::move(callback).Run(base::Uuid::GenerateRandomV4().AsLowercaseString());
+}
+
+void ContentBrowserClient::FinishRtcDiagnosticLogging(
+    RenderFrameHost& frame_host,
+    base::OnceClosure callback) {
+  std::move(callback).Run();
+}
+
+void ContentBrowserClient::CancelRtcDiagnosticLogging(
+    RenderFrameHost& frame_host,
+    base::OnceClosure callback) {
+  std::move(callback).Run();
 }
 
 bool ContentBrowserClient::ShouldBlockRendererDebugURL(
@@ -1993,6 +2022,7 @@ std::vector<std::unique_ptr<KeepAliveRequestTracker>>
 ContentBrowserClient::MaybeCreateKeepAliveRequestTracker(
     const network::ResourceRequest& request,
     std::optional<ukm::SourceId> ukm_source_id,
+    content::BrowserContext* browser_context,
     KeepAliveRequestTracker::IsContextDetachedCallback
         is_context_detached_callback) {
   return {};
@@ -2005,10 +2035,6 @@ ContentBrowserClient::GetClipboardTypesIfPolicyApplied(
 }
 
 bool ContentBrowserClient::UsePrefetchPrerenderIntegration() {
-  return false;
-}
-
-bool ContentBrowserClient::UsePreloadServingMetrics() {
   return false;
 }
 
@@ -2047,6 +2073,15 @@ bool ContentBrowserClient::ShouldAllowPrefetchRedirection(
     const std::string& embedder_histogram_suffix) {
   return true;
 }
+
+void ContentBrowserClient::ModifyRequestHeadersForPrefetch(
+    const GURL& url,
+    std::vector<std::string>& removed_headers,
+    net::HttpRequestHeaders& modified_headers,
+    net::HttpRequestHeaders& modified_cors_exempt_headers) {}
+
+void ContentBrowserClient::UpdateCorsExemptHeaderForPrefetch(
+    network::mojom::NetworkContextParams* params) {}
 
 bool ContentBrowserClient::OriginSupportsConcreteCrossOriginIsolation(
     const url::Origin& origin) {

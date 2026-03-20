@@ -48,6 +48,9 @@ class ChromeOmniboxClient final : public OmniboxClient {
   bool IsPasteAndGoEnabled() const override;
   bool IsDefaultSearchProviderEnabled() const override;
   SessionID GetSessionID() const override;
+  bool ShowConfirmationDialogIfDefaultSearchExtensionControlled(
+      const GURL& url,
+      base::OnceCallback<void(bool)> callback) override;
   PrefService* GetPrefs() override;
   const PrefService* GetPrefs() const override;
   bookmarks::BookmarkModel* GetBookmarkModel() override;
@@ -67,6 +70,8 @@ class ChromeOmniboxClient final : public OmniboxClient {
   std::u16string GetFormattedFullURL() const override;
   std::u16string GetURLForDisplay() const override;
   GURL GetNavigationEntryURL() const override;
+  bool IsContextualTasksPage() const override;
+  GURL GetContextualTasksInnerFrameURL() const override;
   metrics::OmniboxEventProto::PageClassification GetPageClassification(
       bool is_prefetch) const override;
   metrics::OmniboxEventProto::PageClassification
@@ -135,6 +140,7 @@ class ChromeOmniboxClient final : public OmniboxClient {
   GetLensOverlaySuggestInputs() const override;
   void MaybePrewarmForDefaultSearchEngine(PrewarmTrigger trigger) override;
   base::WeakPtr<OmniboxClient> AsWeakPtr() override;
+  Profile* profile() { return profile_; }
 
   // Update shortcuts when a navigation succeeds.
   static void OnSuccessfulNavigation(Profile* profile,

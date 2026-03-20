@@ -21,9 +21,15 @@ namespace base {
 class Uuid;
 }
 
+namespace lens {
+class InputPlateParametersRequest;
+}
+
 namespace contextual_tasks {
 class ContextualTasksService;
 class ContextualTasksUiService;
+mojom::ComposeboxPositionPtr InputPlateConfigToMojo(
+    const lens::InputPlateParametersRequest& update_msg);
 }  // namespace contextual_tasks
 
 class ContextualTasksPageHandler
@@ -45,6 +51,8 @@ class ContextualTasksPageHandler
   void SetThreadTitle(const std::string& title) override;
   void IsZeroState(const GURL& url, IsZeroStateCallback callback) override;
   void IsAiPage(const GURL& url, IsAiPageCallback callback) override;
+  void IsPendingErrorPage(const base::Uuid& task_id,
+                          IsPendingErrorPageCallback callback) override;
   void CloseSidePanel() override;
   void ShowThreadHistory() override;
   void IsShownInTab(IsShownInTabCallback callback) override;
@@ -61,22 +69,34 @@ class ContextualTasksPageHandler
                              bool is_side_panel,
                              GetCommonSearchParamsCallback callback) override;
   void OnboardingTooltipDismissed() override;
+  void ReopenTabs() override;
   void PostMessageToWebview(const lens::ClientToAimMessage& message);
 
   // contextual_tasks::ContextualTasksService::Observer:
+  void OnTaskAdded(
+      const contextual_tasks::ContextualTask& task,
+      contextual_tasks::ContextualTasksService::TriggerSource source) override;
   void OnTaskUpdated(
       const contextual_tasks::ContextualTask& task,
       contextual_tasks::ContextualTasksService::TriggerSource source) override;
+
+  void set_skip_feedback_ui_for_testing(bool skip) {
+    skip_feedback_ui_for_testing_ = skip;
+  }
 
  private:
   void UpdateContextForTask(const base::Uuid& task_id);
   void OnReceivedUpdatedThreadContextLibrary(
       const lens::UpdateThreadContextLibrary& message);
+  void OnReceivedInjectInput(std::unique_ptr<lens::ModalityChipProps> modality);
+  void OnReceivedRemoveInjectedInput(const std::string& id);
 
   mojo::Receiver<contextual_tasks::mojom::PageHandler> receiver_;
   raw_ptr<contextual_tasks::ContextualTasksUIInterface> web_ui_controller_;
   raw_ptr<contextual_tasks::ContextualTasksUiService> ui_service_;
   raw_ptr<contextual_tasks::ContextualTasksService> contextual_tasks_service_;
+
+  bool skip_feedback_ui_for_testing_ = false;
 
   base::ScopedObservation<contextual_tasks::ContextualTasksService,
                           contextual_tasks::ContextualTasksService::Observer>

@@ -35,7 +35,9 @@ enum class AutocompleteRequestType {
   kSearchPrefetch = 1,
   kAIMode = 2,
   kImageGeneration = 3,
-  kMaxValue = kImageGeneration
+  kCanvas = 4,
+  kDeepSearch = 5,
+  kMaxValue = kDeepSearch
 };
 // LINT.ThenChange(//tools/metrics/histograms/metadata/omnibox/enums.xml:AutocompleteRequestType)
 
@@ -98,6 +100,10 @@ enum class ComposeboxDragAndDropType {
                                   withAttachments:(BOOL)hasAttachments
                                       requestType:
                                           (AutocompleteRequestType)requestType;
+
+- (void)recordVoiceSearchButtonUsed;
+- (void)recordLensSearchButtonUsed;
+- (void)recordQRScannerButtonUsed;
 
 @end
 

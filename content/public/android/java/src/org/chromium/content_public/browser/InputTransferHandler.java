@@ -28,21 +28,31 @@ public class InputTransferHandler implements WindowAndroid.SelectionHandlesObser
     private final InputTransferToken mBrowserToken;
     private @Nullable InputTransferToken mVizToken;
     private boolean mSelectionHandlesActive;
+    private boolean mHasActiveTouchInterceptors;
     private final WindowAndroid mWindowAndroid;
+    private boolean mIsInXr;
 
-    public InputTransferHandler(InputTransferToken browserToken, WindowAndroid windowAndroid) {
+    public InputTransferHandler(
+            InputTransferToken browserToken,
+            WindowAndroid windowAndroid,
+            boolean hasActiveTouchInterceptors) {
         if (sInitialBrowserToken == null) {
             sInitialBrowserToken = browserToken.hashCode();
         }
         mBrowserToken = browserToken;
         mWindowAndroid = windowAndroid;
         mWindowAndroid.addSelectionHandlesObserver(this);
+        mHasActiveTouchInterceptors = hasActiveTouchInterceptors;
     }
 
     // WindowAndroid.SelectionHandlesObserver impl
     @Override
     public void onSelectionHandlesStateChanged(boolean active) {
         mSelectionHandlesActive = active;
+    }
+
+    public void setHasActiveTouchInterceptors(boolean hasActiveTouchInterceptors) {
+        mHasActiveTouchInterceptors = hasActiveTouchInterceptors;
     }
 
     public void destroy() {
@@ -80,6 +90,12 @@ public class InputTransferHandler implements WindowAndroid.SelectionHandlesObser
             return TransferInputToVizResult.SELECTION_HANDLES_ACTIVE;
         }
 
+        // This allows touch event observers to intercept touch sequences. One current use case
+        // is the scroll-to-expand gesture for resizable Partial Custom Tabs.
+        if (mHasActiveTouchInterceptors) {
+            return TransferInputToVizResult.HAS_ACTIVE_TOUCH_INTERCEPTORS;
+        }
+
         // To prevent ordering issues between touch input and ime input. For e.g. if Viz is allowed
         // to handle touch input while IME is active we could see cases like these: where user typed
         // something and then moved the cursor, it might reach renderer as touch input coming before
@@ -93,12 +109,23 @@ public class InputTransferHandler implements WindowAndroid.SelectionHandlesObser
             return TransferInputToVizResult.IME_IS_ACTIVE;
         }
 
+        // WebXR sessions process the input and then forward it on to the page in certain scenarios.
+        // If we transfer this input to viz, then the WebXR session stops receiving that input,
+        // which can make it so that the user cannot interact with the WebXR content.
+        if (mIsInXr) {
+            return TransferInputToVizResult.XR_IS_ACTIVE;
+        }
+
         return null;
     }
 
     public void setVizToken(InputTransferToken token) {
         TraceEvent.instant("Storing InputTransferToken");
         mVizToken = token;
+    }
+
+    public void setIsInXr(boolean isInXr) {
+        mIsInXr = isInXr;
     }
 
     public @TransferInputToVizResult int transferInputToViz() {

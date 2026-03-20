@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 import {html, nothing} from '//resources/lit/v3_0/lit.rollup.js';
 
-import {type ActionChip} from '../action_chips.mojom-webui.js';
+import {type ActionChip, IconType} from '../action_chips.mojom-webui.js';
 
 import {type ActionChipsElement} from './action_chips.js';
 
@@ -25,20 +25,22 @@ export function getHtml(this: ActionChipsElement) {
                     this.isDeepDiveChip_(chip) ? 'deep-dive-chip' : ''}"
             data-index="${index}"
             title="${this.getChipTitle_(chip)}"
-            @click="${this.handleClick_}">
+            @click="${this.onClick_}">
             <div class="action-chip-icon-container ${
                     this.getAdditionalIconClasses_(chip)}">
               ${
-                    this.isRecentTabChip_(chip) ?
+                    chip.suggestTemplateInfo?.typeIcon === IconType.kFavicon ?
                         html`<img class='action-chip-recent-tab-favicon'
                     src="${this.getMostRecentTabFaviconUrl_(chip)}">` :
                         ''}
             </div>
             <div class="action-chip-text-container">
-              ${
-                  !this.isDeepDiveChip_(chip) ?
-                      html`<span class="chip-title">${chip.title}</span>` :
-                      ''}
+              ${!this.isDeepDiveChip_(chip) ?
+                  html`
+                  <span class="chip-title">
+                    ${chip.suggestTemplateInfo?.primaryText?.text ?? ''}
+                  </span>` :
+                  ''}
               <span
                 title="${this.getChipTitle_(chip)}"
                 class="chip-body">
@@ -48,7 +50,7 @@ export function getHtml(this: ActionChipsElement) {
             ${this.showDismissalUI_ ? html`
               <cr-icon-button
                 class="chip-remove-button" data-index="${index}"
-                @click="${this.removeChip_}">
+                @click="${this.onRemoveClick_}">
               </cr-icon-button>
                 ` : nothing}
           </button>
@@ -57,5 +59,5 @@ export function getHtml(this: ActionChipsElement) {
       ` : nothing}
   </div>
   <!--_html_template_end_-->`;
-                // clang-format on
+  // clang-format on
 }

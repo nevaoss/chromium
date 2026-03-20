@@ -15,6 +15,7 @@ import './sidebar.js';
 import {ColorChangeUpdater} from '//resources/cr_components/color_change_listener/colors_css_updater.js';
 import type {CrDrawerElement} from '//resources/cr_elements/cr_drawer/cr_drawer.js';
 import type {CrToolbarElement} from '//resources/cr_elements/cr_toolbar/cr_toolbar.js';
+import {assertNotReached} from '//resources/js/assert.js';
 import {CrRouter} from '//resources/js/cr_router.js';
 import {EventTracker} from '//resources/js/event_tracker.js';
 import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
@@ -23,8 +24,10 @@ import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 
 import {getCss} from './app.css.js';
 import {getHtml} from './app.html.js';
+import type {DiscoverSkillsPageElement} from './discover_skills_page.js';
 import type {SkillsSidebarElement} from './sidebar.js';
 import {Page} from './sidebar.js';
+import {SkillsManagementAction, SkillsManagementPage} from './skill_metrics.mojom-webui.js';
 import {SkillsPageBrowserProxy} from './skills_page_browser_proxy.js';
 import type {UserSkillsPageElement} from './user_skills_page.js';
 
@@ -33,6 +36,7 @@ export interface SkillsAppElement {
     menu: SkillsSidebarElement,
     toolbar: CrToolbarElement,
     userSkillsPage: UserSkillsPageElement,
+    discoverSkillsPage: DiscoverSkillsPageElement,
     drawer: CrDrawerElement,
   };
 }
@@ -67,15 +71,6 @@ export class SkillsAppElement extends CrLitElement {
   private eventTracker_: EventTracker = new EventTracker();
   private proxy_: SkillsPageBrowserProxy = SkillsPageBrowserProxy.getInstance();
 
-  override updated(changedProperties: PropertyValues) {
-    super.updated(changedProperties as PropertyValues<this>);
-
-    if (changedProperties.has('selectedPage_') &&
-        this.selectedPage_ === Page.DISCOVER_SKILLS) {
-      this.proxy_.handler.request1PSkills();
-    }
-  }
-
   override connectedCallback() {
     super.connectedCallback();
     ColorChangeUpdater.forDocument().start();
@@ -104,9 +99,18 @@ export class SkillsAppElement extends CrLitElement {
     this.eventTracker_.removeAll();
   }
 
+  override updated(changedProperties: PropertyValues) {
+    super.updated(changedProperties as PropertyValues<this>);
+
+    if (changedProperties.has('selectedPage_') &&
+        this.selectedPage_ === Page.DISCOVER_SKILLS) {
+      this.proxy_.handler.request1PSkills();
+    }
+  }
+
   // Called when the page is narrow & the menu button appears.
   // Clicking it should open a cr-drawer.
-  protected onMenuButtonClick_() {
+  protected onCrToolbarMenuClick_() {
     this.$.drawer.openDrawer();
     this.isDrawerOpen_ = this.$.drawer.open;
   }
@@ -115,8 +119,7 @@ export class SkillsAppElement extends CrLitElement {
   protected onSearchChanged_(e: CustomEvent<string>) {
     const searchTerm = e.detail;
     this.$.userSkillsPage.onSearchChanged(searchTerm);
-    // TODO(crbug.com/475604659): Implement onSearchChanged for
-    // discover skills page.
+    this.$.discoverSkillsPage.onSearchChanged(searchTerm);
   }
 
   // Called whenever the browser window drops below the defined
@@ -125,6 +128,11 @@ export class SkillsAppElement extends CrLitElement {
     this.narrow_ = e.detail.value;
     if (this.isDrawerOpen_ && !this.narrow_) {
       this.$.drawer.close();
+    }
+    if (this.narrow_) {
+      this.style.setProperty('--sidebar-width', '0px');
+    } else {
+      this.style.removeProperty('--sidebar-width');
     }
   }
 
@@ -150,6 +158,21 @@ export class SkillsAppElement extends CrLitElement {
       menuItem = this.$.menu.menuItems[0];
     }
     this.selectedPage_ = menuItem!.page;
+
+    // Record metrics
+    let pageType = SkillsManagementPage.kYourSkills;
+    switch (this.selectedPage_) {
+      case Page.DISCOVER_SKILLS:
+        pageType = SkillsManagementPage.kBrowseSkills;
+        break;
+      case Page.USER_SKILLS:
+        pageType = SkillsManagementPage.kYourSkills;
+        break;
+      default:
+        assertNotReached('Action for unknown page type');
+    }
+    this.proxy_.handler.recordSkillsManagementAction(
+        pageType, SkillsManagementAction.kPageOpened);
   }
 }
 

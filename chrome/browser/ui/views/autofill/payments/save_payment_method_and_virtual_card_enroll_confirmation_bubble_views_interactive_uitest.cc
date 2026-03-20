@@ -40,15 +40,12 @@ class SaveCardConfirmationBubbleViewsInteractiveUiTest
     std::vector<base::test::FeatureRefAndParams> enabled_features = {};
     std::vector<base::test::FeatureRef> disabled_features = {};
 
-    if (is_page_action_migration_enabled) {
-      enabled_features.push_back(
-          {::features::kPageActionsMigration,
-           {
-               {::features::kPageActionsMigrationSavePayments.name, "true"},
-           }});
-    } else {
-      disabled_features.emplace_back(::features::kPageActionsMigration);
-    }
+    enabled_features.push_back(
+        {::features::kPageActionsMigration,
+         {
+             {::features::kPageActionsMigrationSavePayments.name,
+              is_page_action_migration_enabled ? "true" : "false"},
+         }});
     if (is_wallet_branding_enabled) {
       enabled_features.push_back({features::kAutofillEnableWalletBranding, {}});
     } else {
@@ -322,20 +319,24 @@ INSTANTIATE_TEST_SUITE_P(
 
 class VirtualCardEnrollConfirmationBubbleViewsInteractiveUiTest
     : public InProcessBrowserTest,
-      public ::testing::WithParamInterface<bool> {
+      public ::testing::WithParamInterface<std::tuple<bool, bool>> {
  public:
   VirtualCardEnrollConfirmationBubbleViewsInteractiveUiTest() {
+    const bool is_page_action_migration_enabled = std::get<0>(GetParam());
+    const bool is_wallet_branding_enabled = IsWalletBrandingEnabled();
     std::vector<base::test::FeatureRefAndParams> enabled_features = {};
     std::vector<base::test::FeatureRef> disabled_features = {};
 
-    if (GetParam()) {
-      enabled_features.push_back(
-          {::features::kPageActionsMigration,
-           {
-               {::features::kPageActionsMigrationVirtualCard.name, "true"},
-           }});
+    enabled_features.push_back(
+        {::features::kPageActionsMigration,
+         {
+             {::features::kPageActionsMigrationVirtualCard.name,
+              is_page_action_migration_enabled ? "true" : "false"},
+         }});
+    if (is_wallet_branding_enabled) {
+      enabled_features.push_back({features::kAutofillEnableWalletBranding, {}});
     } else {
-      disabled_features.emplace_back(::features::kPageActionsMigration);
+      disabled_features.emplace_back(features::kAutofillEnableWalletBranding);
     }
 
     feature_list_.InitWithFeaturesAndParameters(enabled_features,
@@ -394,6 +395,8 @@ class VirtualCardEnrollConfirmationBubbleViewsInteractiveUiTest
                   kPermanentFailure);
   }
 
+  bool IsWalletBrandingEnabled() { return std::get<1>(GetParam()); }
+
  private:
   test::AutofillBrowserTestEnvironment autofill_test_environment_;
   base::test::ScopedFeatureList feature_list_;
@@ -443,6 +446,25 @@ IN_PROC_BROWSER_TEST_P(
   GetController()->HideIconAndBubble();
   EXPECT_EQ(BubbleView(), nullptr);
   EXPECT_FALSE(IconView()->GetVisible());
+}
+
+IN_PROC_BROWSER_TEST_P(
+    VirtualCardEnrollConfirmationBubbleViewsInteractiveUiTest,
+    ShowSuccessBubbleView_TitleIcon) {
+  ShowBubble(/*is_vcn_enrolled=*/true);
+
+  EXPECT_NE(BubbleView(), nullptr);
+  EXPECT_NE(BubbleView()->GetBubbleFrameView()->title(), nullptr);
+
+  if (IsWalletBrandingEnabled()) {
+    EXPECT_EQ(BubbleView()->GetBubbleFrameView()->title()->GetViewByID(
+                  DialogViewId::BUBBLE_TITLE_ICON),
+              nullptr);
+  } else {
+    EXPECT_NE(BubbleView()->GetBubbleFrameView()->title()->GetViewByID(
+                  DialogViewId::BUBBLE_TITLE_ICON),
+              nullptr);
+  }
 }
 
 IN_PROC_BROWSER_TEST_P(
@@ -509,11 +531,14 @@ IN_PROC_BROWSER_TEST_P(
 INSTANTIATE_TEST_SUITE_P(
     ,
     VirtualCardEnrollConfirmationBubbleViewsInteractiveUiTest,
-    ::testing::Bool(),
+    ::testing::Combine(testing::Bool(), testing::Bool()),
     [](const ::testing::TestParamInfo<
         VirtualCardEnrollConfirmationBubbleViewsInteractiveUiTest::ParamType>&
            info) {
-      return base::StrCat({info.param ? "NewPageAction" : "OldPageAction"});
+      return base::StrCat({
+          std::get<0>(info.param) ? "NewPageAction" : "OldPageAction",
+          std::get<1>(info.param) ? "BrandingFlagOn" : "BrandingFlagOff",
+      });
     });
 
 }  // namespace autofill

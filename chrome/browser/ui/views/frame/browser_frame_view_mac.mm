@@ -15,6 +15,7 @@
 #include "base/numerics/safe_conversions.h"
 #include "base/time/time.h"
 #include "base/timer/timer.h"
+#include "chrome/browser/picture_in_picture/picture_in_picture_window_manager.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/themes/theme_properties.h"
 #include "chrome/browser/themes/theme_service.h"
@@ -116,6 +117,11 @@ BrowserFrameViewMac::~BrowserFrameViewMac() {
 // BrowserFrameViewMac, BrowserFrameView implementation:
 
 void BrowserFrameViewMac::OnFullscreenStateChanged() {
+  if (GetBrowserView()->IsFullscreen()) {
+    PictureInPictureWindowManager::GetInstance()
+        ->OnAnyBrowserEnteredFullscreen();
+  }
+
   // Record the start of a browser fullscreen session. Content fullscreen is
   // ignored.
   if (GetBrowserView()->IsFullscreen() &&
@@ -299,6 +305,15 @@ views::LayoutAlignment BrowserFrameViewMac::GetWindowTitleAlignment() const {
   } else {
     return views::LayoutAlignment::kCenter;
   }
+}
+
+gfx::RoundedCornersF BrowserFrameViewMac::GetWindowRoundedCorners() const {
+  if (auto* const widget = GetWidget();
+      widget && !widget->IsFullscreen() && !widget->IsMaximized()) {
+    return gfx::RoundedCornersF(
+        GetLayoutConstant(LayoutConstant::kToolbarCornerRadius));
+  }
+  return gfx::RoundedCornersF();
 }
 
 ///////////////////////////////////////////////////////////////////////////////

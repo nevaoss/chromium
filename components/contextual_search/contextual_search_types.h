@@ -5,14 +5,15 @@
 #ifndef COMPONENTS_CONTEXTUAL_SEARCH_CONTEXTUAL_SEARCH_TYPES_H_
 #define COMPONENTS_CONTEXTUAL_SEARCH_CONTEXTUAL_SEARCH_TYPES_H_
 
+#include <optional>
 #include <string>
 
 #include "base/time/time.h"
 #include "base/unguessable_token.h"
+#include "components/lens/contextual_input.h"
 #include "components/sessions/core/session_id.h"
 #include "third_party/lens_server_proto/lens_overlay_request_id.pb.h"
 #include "url/gurl.h"
-#include "components/lens/contextual_input.h"
 
 namespace lens {
 enum class MimeType;
@@ -22,7 +23,7 @@ namespace contextual_search {
 
 // Upload status of a file.
 // GENERATED_JAVA_ENUM_PACKAGE: org.chromium.components.contextual_search
-enum class FileUploadStatus {
+enum class ContextUploadStatus {
   // Not uploaded.
   kNotUploaded = 0,
   // File being processed.
@@ -43,8 +44,10 @@ enum class FileUploadStatus {
   kUploadReplaced = 8,
 };
 
+using FileUploadStatus = ContextUploadStatus;
+
 // For upload error notifications and metrics.
-enum class FileUploadErrorType {
+enum class ContextUploadErrorType {
   // Unknown.
   kUnknown = 0,
   // Browser error before/during request, not covered by validation.
@@ -61,6 +64,8 @@ enum class FileUploadErrorType {
   kImageProcessingError = 6,
 };
 
+using FileUploadErrorType = ContextUploadErrorType;
+
 // Struct containing file information for a file upload.
 struct FileInfo {
  public:
@@ -70,7 +75,10 @@ struct FileInfo {
   virtual ~FileInfo();
 
   // Gets the context id for this request.
-  int64_t GetContextId() const { return request_id.context_id(); }
+  std::optional<int64_t> GetContextId() const;
+
+  // Gets the injected input id if it exists.
+  std::optional<std::string> GetInjectedInputId() const;
 
   // Client-side unique identifier.
   base::UnguessableToken file_token;
@@ -85,17 +93,17 @@ struct FileInfo {
   base::Time selection_time;
 
   // The mime type of the file.
-  lens::MimeType mime_type;
+  lens::MimeType mime_type = lens::MimeType::kUnknown;
 
   // The upload status of the file.
   // Do not modify this field directly.
-  contextual_search::FileUploadStatus upload_status =
-      contextual_search::FileUploadStatus::kNotUploaded;
+  contextual_search::ContextUploadStatus upload_status =
+      contextual_search::ContextUploadStatus::kNotUploaded;
 
   // The error type if the upload failed.
   // Do not modify this field directly.
-  contextual_search::FileUploadErrorType upload_error_type =
-      contextual_search::FileUploadErrorType::kUnknown;
+  contextual_search::ContextUploadErrorType upload_error_type =
+      contextual_search::ContextUploadErrorType::kUnknown;
 
   // If populated, the url of the tab corresponding to this uploaded file.
   std::optional<GURL> tab_url;
@@ -108,13 +116,20 @@ struct FileInfo {
 
   // The request ID for this request. Updated by the context
   // controller when the file upload is started.
-  lens::LensOverlayRequestId request_id;
+  std::optional<lens::LensOverlayRequestId> request_id;
 
   // The raw response bodies from the upload requests.
   std::vector<std::string> response_bodies;
 
   // The input data associated with this file.
   std::unique_ptr<lens::ContextualInputData> input_data;
+
+  // Whether or not this file was superceded by a new file upload with the same
+  // context id.
+  bool is_superceded = false;
+
+  // The mime type string of the file, if known.
+  std::optional<std::string> mime_type_string;
 };
 
 // LINT.IfChange(ContextualSearchErrorPage)

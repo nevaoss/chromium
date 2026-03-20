@@ -47,11 +47,14 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.robolectric.annotation.Config;
 
+import org.chromium.base.DeviceInfo;
 import org.chromium.base.UnownedUserDataHost;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.Features;
@@ -67,11 +70,13 @@ import org.chromium.chrome.browser.ntp_customization.theme.NtpThemeStateProvider
 import org.chromium.chrome.browser.ntp_customization.theme.chrome_colors.NtpThemeColorInfo;
 import org.chromium.chrome.browser.preferences.Pref;
 import org.chromium.chrome.browser.profiles.Profile;
+import org.chromium.chrome.browser.search_engines.TemplateUrlServiceFactory;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetContent;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetObserver;
-import org.chromium.components.browser_ui.widget.scrim.ScrimManager;
 import org.chromium.components.prefs.PrefService;
+import org.chromium.components.search_engines.TemplateUrlService;
+import org.chromium.components.search_engines.TemplateUrlService.TemplateUrlServiceObserver;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.edge_to_edge.EdgeToEdgeStateProvider;
 import org.chromium.ui.modelutil.PropertyModel;
@@ -96,8 +101,8 @@ public class NtpCustomizationMediatorUnitTest {
     @Mock private NtpCustomizationConfigManager mConfigManager;
     @Mock private NtpCustomizationPolicyManager mNtpCustomizationPolicyManager;
     @Mock private WindowAndroid mWindowAndroid;
-    @Mock private PropertyModel mScrimPropertyModel;
-    @Mock private ScrimManager mScrimManager;
+    @Mock private TemplateUrlService mTemplateUrlService;
+    @Captor private ArgumentCaptor<TemplateUrlServiceObserver> mTemplateUrlObserverCaptor;
 
     private NtpCustomizationMediator mMediator;
     private Map<Integer, Integer> mViewFlipperMap;
@@ -114,6 +119,7 @@ public class NtpCustomizationMediatorUnitTest {
         FeedServiceBridgeJni.setInstanceForTesting(mFeedServiceBridgeJniMock);
         FeedFeatures.setFakePrefsForTest(mPrefService);
         NtpCustomizationConfigManager.setInstanceForTesting(mConfigManager);
+        TemplateUrlServiceFactory.setInstanceForTesting(mTemplateUrlService);
         when(mNtpCustomizationPolicyManager.isNtpCustomBackgroundEnabled()).thenReturn(true);
         NtpCustomizationPolicyManager.setInstanceForTesting(mNtpCustomizationPolicyManager);
 
@@ -133,9 +139,6 @@ public class NtpCustomizationMediatorUnitTest {
         mE2EProvider = new EdgeToEdgeStateProvider(window);
         mE2EProvider.attach(mWindowAndroid);
         mE2EProvider.acquireSetDecorFitsSystemWindowToken();
-
-        when(mBottomSheetController.createScrimParams()).thenReturn(mScrimPropertyModel);
-        when(mBottomSheetController.getScrimManager()).thenReturn(mScrimManager);
 
         mMediator =
                 new NtpCustomizationMediator(
@@ -335,7 +338,6 @@ public class NtpCustomizationMediatorUnitTest {
         BottomSheetObserver observer = mMediator.getBottomSheetObserverForTesting();
         observer.onSheetOpened(0);
         verify(mBottomSheetContent).onSheetOpened();
-        verify(mScrimManager).showScrim(eq(mScrimPropertyModel));
 
         // Verifies the supplier is set to false when the sheet closes and the observer is removed.
         observer.onSheetClosed(3); // Closes the sheet by clicking the trim.
@@ -344,7 +346,6 @@ public class NtpCustomizationMediatorUnitTest {
         clearInvocations(mBottomSheetContent);
         clearInvocations(mBottomSheetController);
 
-        observer.onSheetOpened(0);
         observer.onSheetClosed(0); // Closes the sheet by clicking the system back button.
         verify(mBottomSheetContent).onSheetClosed();
         verify(mBottomSheetController).removeObserver(eq(observer));
@@ -359,7 +360,6 @@ public class NtpCustomizationMediatorUnitTest {
         NtpThemeStateProvider.setInstanceForTesting(ntpThemeStateProvider);
 
         // Verifies notifyApplyThemeChanges() is called when a different theme color is selected.
-        observer.onSheetOpened(0);
         mMediator.onNewColorSelected(/* isDifferentColor= */ true);
         observer.onSheetClosed(2);
         verify(ntpThemeStateProvider).notifyApplyThemeChanges();
@@ -367,7 +367,6 @@ public class NtpCustomizationMediatorUnitTest {
         clearInvocations(ntpThemeStateProvider);
 
         // Verifies notifyApplyThemeChanges() is NOT called when theme color isn't changed.
-        observer.onSheetOpened(0);
         mMediator.onNewColorSelected(/* isDifferentColor= */ false);
         observer.onSheetClosed(2);
         verify(ntpThemeStateProvider, never()).notifyApplyThemeChanges();
@@ -520,6 +519,27 @@ public class NtpCustomizationMediatorUnitTest {
     }
 
     @Test
+    public void testBuildListContent_ExcludesFeedOnAndroidDesktop() {
+        DeviceInfo.setIsDesktopForTesting(true);
+        when(mPrefService.getBoolean(Pref.ENABLE_SNIPPETS_BY_DSE)).thenReturn(true);
+        when(mFeedServiceBridgeJniMock.isEnabled()).thenReturn(true);
+
+        assertFalse(FeedFeatures.isFeedEnabled(mProfile));
+        assertFalse(mMediator.buildListContent(mContext).contains(FEED));
+    }
+
+    @Test
+    @Features.DisableFeatures({ChromeFeatureList.NTP_SIMPLIFICATION})
+    public void testBuildListContent_IncludesFeedOnAndroidDesktopWhenNtpSimplificationDisabled() {
+        DeviceInfo.setIsDesktopForTesting(true);
+        when(mPrefService.getBoolean(Pref.ENABLE_SNIPPETS_BY_DSE)).thenReturn(true);
+        when(mFeedServiceBridgeJniMock.isEnabled()).thenReturn(true);
+
+        assertTrue(FeedFeatures.isFeedEnabled(mProfile));
+        assertTrue(mMediator.buildListContent(mContext).contains(FEED));
+    }
+
+    @Test
     public void testUpdateFeedSectionSubtitle() {
         mMediator.updateFeedSectionSubtitle(/* isFeedVisible= */ true);
         verify(mContainerPropertyModel)
@@ -567,7 +587,6 @@ public class NtpCustomizationMediatorUnitTest {
 
         // Verifies pickAndSavePrimaryColor() is called when a new theme collection image is
         // selected and the background image type is THEME_COLLECTION.
-        observer.onSheetOpened(0);
         Bitmap bitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888);
         mMediator.onNewThemeCollectionImageSelected(bitmap);
         when(mConfigManager.getBackgroundType()).thenReturn(THEME_COLLECTION);
@@ -582,7 +601,6 @@ public class NtpCustomizationMediatorUnitTest {
         // THEME_COLLECTION.
         NtpCustomizationUtils.resetSharedPreferenceForTesting();
         when(mConfigManager.getBackgroundType()).thenReturn(NtpBackgroundType.IMAGE_FROM_DISK);
-        observer.onSheetOpened(0);
         mMediator.onNewThemeCollectionImageSelected(bitmap);
         observer.onSheetClosed(0);
         assertEquals(
@@ -590,7 +608,6 @@ public class NtpCustomizationMediatorUnitTest {
                 NtpCustomizationUtils.getCustomizedPrimaryColorFromSharedPreference());
 
         // Verifies pickAndSavePrimaryColor() is not called when mNewThemeCollectionImage is null.
-        observer.onSheetOpened(0);
         mMediator.onNewThemeCollectionImageSelected(null);
         // Clean up shared preference for the test.
         NtpCustomizationUtils.resetSharedPreferenceForTesting();
@@ -604,5 +621,139 @@ public class NtpCustomizationMediatorUnitTest {
         assertEquals(
                 NtpThemeColorInfo.COLOR_NOT_SET,
                 NtpCustomizationUtils.getCustomizedPrimaryColorFromSharedPreference());
+    }
+
+    @Test
+    public void testTemplateUrlServiceObserverRegistration() {
+        verify(mTemplateUrlService).addObserver(mMediator);
+    }
+
+    @Test
+    public void
+            testOnTemplateURLServiceChanged_OnMainBottomSheet_RemovesFeedWhenChangingDseFromGoogleToNonGoogle() {
+        when(mTemplateUrlService.isDefaultSearchEngineGoogle()).thenReturn(true);
+        when(mPrefService.getBoolean(Pref.ENABLE_SNIPPETS_BY_DSE)).thenReturn(true);
+        when(mFeedServiceBridgeJniMock.isEnabled()).thenReturn(true);
+
+        mMediator =
+                new NtpCustomizationMediator(
+                        mContext,
+                        mBottomSheetController,
+                        mBottomSheetContent,
+                        mViewFlipperPropertyModel,
+                        mContainerPropertyModel,
+                        mProfileSupplier,
+                        mWindowAndroid);
+        mListDelegate = mMediator.createListDelegate();
+        mMediator.setCurrentBottomSheetForTesting(MAIN);
+
+        assertTrue(mListDelegate.getListItems().contains(FEED));
+
+        when(mTemplateUrlService.isDefaultSearchEngineGoogle()).thenReturn(false);
+        when(mPrefService.getBoolean(Pref.ENABLE_SNIPPETS_BY_DSE)).thenReturn(false);
+        clearInvocations(mContainerPropertyModel);
+
+        mMediator.onTemplateURLServiceChanged();
+
+        assertFalse(mListDelegate.getListItems().contains(FEED));
+        verify(mContainerPropertyModel)
+                .set(eq(LIST_CONTAINER_VIEW_DELEGATE), any(ListContainerViewDelegate.class));
+    }
+
+    @Test
+    public void
+            testOnTemplateURLServiceChanged_OnMainBottomSheet_AddsFeedWhenChangingDseFromNonGoogleToGoogle() {
+        when(mTemplateUrlService.isDefaultSearchEngineGoogle()).thenReturn(false);
+        when(mPrefService.getBoolean(Pref.ENABLE_SNIPPETS_BY_DSE)).thenReturn(false);
+        when(mFeedServiceBridgeJniMock.isEnabled()).thenReturn(true);
+
+        mMediator =
+                new NtpCustomizationMediator(
+                        mContext,
+                        mBottomSheetController,
+                        mBottomSheetContent,
+                        mViewFlipperPropertyModel,
+                        mContainerPropertyModel,
+                        mProfileSupplier,
+                        mWindowAndroid);
+        mListDelegate = mMediator.createListDelegate();
+        mMediator.setCurrentBottomSheetForTesting(MAIN);
+
+        assertFalse(mListDelegate.getListItems().contains(FEED));
+
+        when(mTemplateUrlService.isDefaultSearchEngineGoogle()).thenReturn(true);
+        when(mPrefService.getBoolean(Pref.ENABLE_SNIPPETS_BY_DSE)).thenReturn(true);
+        clearInvocations(mContainerPropertyModel);
+
+        mMediator.onTemplateURLServiceChanged();
+
+        assertTrue(mListDelegate.getListItems().contains(FEED));
+        verify(mContainerPropertyModel)
+                .set(eq(LIST_CONTAINER_VIEW_DELEGATE), any(ListContainerViewDelegate.class));
+    }
+
+    @Test
+    public void
+            testOnTemplateURLServiceChanged_OnMainBottomSheet_DoesNotNotifyWhenChangingDseFromNonGoogleToAnotherNonGoogle() {
+        when(mTemplateUrlService.isDefaultSearchEngineGoogle()).thenReturn(false);
+        when(mFeedServiceBridgeJniMock.isEnabled()).thenReturn(true);
+
+        mMediator =
+                new NtpCustomizationMediator(
+                        mContext,
+                        mBottomSheetController,
+                        mBottomSheetContent,
+                        mViewFlipperPropertyModel,
+                        mContainerPropertyModel,
+                        mProfileSupplier,
+                        mWindowAndroid);
+        mListDelegate = mMediator.createListDelegate();
+        mMediator.setCurrentBottomSheetForTesting(MAIN);
+
+        when(mTemplateUrlService.isDefaultSearchEngineGoogle()).thenReturn(false);
+        clearInvocations(mContainerPropertyModel);
+
+        mMediator.onTemplateURLServiceChanged();
+
+        verify(mContainerPropertyModel, never()).set(eq(LIST_CONTAINER_VIEW_DELEGATE), any());
+    }
+
+    @Test
+    public void testOnTemplateURLServiceChanged_OnFeedBottomSheet_DismissesSheet() {
+        when(mTemplateUrlService.isDefaultSearchEngineGoogle()).thenReturn(true);
+        when(mFeedServiceBridgeJniMock.isEnabled()).thenReturn(true);
+
+        mMediator =
+                new NtpCustomizationMediator(
+                        mContext,
+                        mBottomSheetController,
+                        mBottomSheetContent,
+                        mViewFlipperPropertyModel,
+                        mContainerPropertyModel,
+                        mProfileSupplier,
+                        mWindowAndroid);
+        mMediator.setCurrentBottomSheetForTesting(FEED);
+
+        when(mTemplateUrlService.isDefaultSearchEngineGoogle()).thenReturn(false);
+
+        clearInvocations(mBottomSheetController);
+        mMediator.onTemplateURLServiceChanged();
+
+        verify(mBottomSheetController).hideContent(eq(mBottomSheetContent), eq(true));
+        assertNull(
+                "Current bottom sheet type should be reset", mMediator.getCurrentBottomSheetType());
+    }
+
+    @Test
+    public void testOnTemplateURLServiceChanged_NoChange_DoesNotNotify() {
+        clearInvocations(mContainerPropertyModel);
+        mMediator.onTemplateURLServiceChanged();
+        verify(mContainerPropertyModel, never()).set(eq(LIST_CONTAINER_VIEW_DELEGATE), any());
+    }
+
+    @Test
+    public void testTemplateUrlServiceObserverRemoval() {
+        mMediator.destroy();
+        verify(mTemplateUrlService).removeObserver(mMediator);
     }
 }

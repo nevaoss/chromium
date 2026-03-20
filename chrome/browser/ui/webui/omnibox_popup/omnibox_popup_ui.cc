@@ -20,6 +20,7 @@
 #include "chrome/browser/ui/webui/favicon_source.h"
 #include "chrome/browser/ui/webui/metrics_reporter/metrics_reporter_service.h"
 #include "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_aim_handler.h"
+#include "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_handler.h"
 #include "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_web_contents_helper.h"
 #include "chrome/browser/ui/webui/sanitized_image_source.h"
 #include "chrome/browser/ui/webui/searchbox/omnibox_composebox_handler.h"
@@ -44,8 +45,6 @@ using AddContextButtonVariant = omnibox::AddContextButtonVariant;
 std::string_view AddContextButtonVariantToSearchboxLayoutMode(
     AddContextButtonVariant variant) {
   switch (variant) {
-    case AddContextButtonVariant::kNone:
-      return "";
     case AddContextButtonVariant::kBelowResults:
       return "TallBottomContext";
     case AddContextButtonVariant::kAboveResults:
@@ -66,9 +65,15 @@ bool OmniboxPopupUIConfig::IsWebUIEnabled(
          base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxPopup);
 }
 
+bool OmniboxPopupUIConfig::ShouldCrashOnJavascriptErrorInDevelopmentBuild()
+    const {
+  return true;
+}
+
 OmniboxPopupUI::OmniboxPopupUI(content::WebUI* web_ui)
     : TopChromeWebUIController(web_ui,
-                               true /* Needed for webui browser tests */),
+                               /*enable_chrome_send=*/true,
+                               /*enable_chrome_histograms=*/true),
       profile_(Profile::FromWebUI(web_ui)) {
   content::WebUIDataSource* source = content::WebUIDataSource::CreateAndAdd(
       Profile::FromWebUI(web_ui), chrome::kChromeUIOmniboxPopupHost);
@@ -78,9 +83,14 @@ OmniboxPopupUI::OmniboxPopupUI(content::WebUI* web_ui)
                                          /*enable_lens_search=*/false);
 
   source->AddBoolean("isTopChromeSearchbox", true);
+  source->AddBoolean("omniboxAimPopupEnabled",
+                     omnibox::IsAimPopupFeatureEnabled());
   source->AddBoolean(
       "omniboxPopupDebugEnabled",
       base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxPopupDebug));
+  source->AddBoolean("webuiOmniboxPopupSelectionControlEnabled",
+                     base::FeatureList::IsEnabled(
+                         omnibox::kWebUIOmniboxPopupSelectionControl));
 
   source->AddBoolean("reportMetrics", true);
   source->AddString("charTypedToPaintMetricName",
@@ -116,6 +126,9 @@ OmniboxPopupUI::OmniboxPopupUI(content::WebUI* web_ui)
                          composebox_config.is_pdf_upload_enabled();
   source->AddBoolean("composeboxShowPdfUpload", show_pdf_upload);
 
+  source->AddBoolean(
+      "caretAnimationEnabled",
+      base::FeatureList::IsEnabled(omnibox::kOmniboxAnimatedCaret));
   source->AddBoolean("composeboxCloseByClickOutside",
                      omnibox::kCloseComposeboxByClickOutside.Get());
   source->AddBoolean("composeboxCloseByEscape",
@@ -217,7 +230,35 @@ void OmniboxPopupUI::BindInterface(
       web_ui(),
       base::BindRepeating(&OmniboxPopupUI::GetOrCreateContextualSessionHandle,
                           base::Unretained(this)));
-  omnibox_handler_->SetEmbedder(embedder());
+}
+
+void OmniboxPopupUI::BindInterface(
+    mojo::PendingReceiver<omnibox_popup::mojom::PageHandlerFactory> receiver) {
+  popup_page_factory_receiver_.reset();
+  popup_page_factory_receiver_.Bind(std::move(receiver));
+}
+
+void OmniboxPopupUI::CreatePageHandler(
+    mojo::PendingRemote<omnibox_popup::mojom::Page> page,
+    mojo::PendingReceiver<omnibox_popup::mojom::PageHandler> receiver) {
+  popup_handler_ = std::make_unique<OmniboxPopupHandler>(std::move(receiver),
+                                                         std::move(page));
+  popup_handler_->set_embedder(embedder());
+}
+
+void OmniboxPopupUI::BindInterface(
+    mojo::PendingReceiver<omnibox_popup_aim::mojom::PageHandlerFactory>
+        receiver) {
+  aim_page_factory_receiver_.reset();
+  aim_page_factory_receiver_.Bind(std::move(receiver));
+}
+
+void OmniboxPopupUI::CreatePageHandler(
+    mojo::PendingRemote<omnibox_popup_aim::mojom::Page> page,
+    mojo::PendingReceiver<omnibox_popup_aim::mojom::PageHandler> receiver) {
+  popup_aim_handler_ = std::make_unique<OmniboxPopupAimHandler>(
+      std::move(receiver), std::move(page), web_ui()->GetWebContents());
+  popup_aim_handler_->set_embedder(embedder());
 }
 
 void OmniboxPopupUI::BindInterface(
@@ -226,32 +267,6 @@ void OmniboxPopupUI::BindInterface(
     composebox_page_factory_receiver_.reset();
   }
   composebox_page_factory_receiver_.Bind(std::move(receiver));
-}
-
-contextual_search::ContextualSearchSessionHandle*
-OmniboxPopupUI::GetOrCreateContextualSessionHandle() {
-  if (!shared_session_handle_) {
-    auto* contextual_search_service =
-        ContextualSearchServiceFactory::GetForProfile(profile_);
-    if (contextual_search_service) {
-      shared_session_handle_ = contextual_search_service->CreateSession(
-          omnibox::CreateQueryControllerConfigParams(),
-          contextual_search::ContextualSearchSource::kOmnibox,
-          lens::LensOverlayInvocationSource::kOmniboxContextualQuery);
-      // TODO(crbug.com/469875271): Determine what to do with the return value
-      // of this call, or move this call to a different location.
-      shared_session_handle_->CheckSearchContentSharingSettings(
-          profile_->GetPrefs());
-    }
-  }
-  return shared_session_handle_.get();
-}
-
-void OmniboxPopupUI::BindInterface(
-    mojo::PendingReceiver<omnibox_popup_aim::mojom::PageHandlerFactory>
-        receiver) {
-  aim_page_factory_receiver_.reset();
-  aim_page_factory_receiver_.Bind(std::move(receiver));
 }
 
 void OmniboxPopupUI::CreatePageHandler(
@@ -271,12 +286,19 @@ void OmniboxPopupUI::CreatePageHandler(
 
   // TODO(crbug.com/435288212): Move searchbox mojom to use factory pattern.
   composebox_handler_->SetPage(std::move(pending_searchbox_page));
-  composebox_handler_->SetEmbedder(embedder());
 }
 
-void OmniboxPopupUI::CreatePageHandler(
-    mojo::PendingRemote<omnibox_popup_aim::mojom::Page> page,
-    mojo::PendingReceiver<omnibox_popup_aim::mojom::PageHandler> receiver) {
-  popup_aim_handler_ = std::make_unique<OmniboxPopupAimHandler>(
-      std::move(receiver), std::move(page), this);
+contextual_search::ContextualSearchSessionHandle*
+OmniboxPopupUI::GetOrCreateContextualSessionHandle() {
+  if (!shared_session_handle_) {
+    auto* contextual_search_service =
+        ContextualSearchServiceFactory::GetForProfile(profile_);
+    if (contextual_search_service) {
+      shared_session_handle_ = contextual_search_service->CreateSession(
+          omnibox::CreateQueryControllerConfigParams(),
+          contextual_search::ContextualSearchSource::kOmnibox,
+          lens::LensOverlayInvocationSource::kOmniboxContextualQuery);
+    }
+  }
+  return shared_session_handle_.get();
 }

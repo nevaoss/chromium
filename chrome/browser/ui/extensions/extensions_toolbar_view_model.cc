@@ -9,7 +9,7 @@
 #include "chrome/browser/extensions/extension_tab_util.h"
 #include "chrome/browser/extensions/extension_ui_util.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/ui/tabs/tab_list_interface.h"
+#include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/grit/generated_resources.h"
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/web_contents.h"
@@ -299,16 +299,20 @@ void ExtensionsToolbarViewModel::OnToolbarPinnedActionsChanged() {
 
 void ExtensionsToolbarViewModel::DidFinishNavigation(
     content::NavigationHandle* handle) {
+  if (!handle->IsInPrimaryMainFrame() || !handle->HasCommitted()) {
+    return;
+  }
   for (Observer& obs : observers_) {
-    obs.OnActiveWebContentsChanged();
+    obs.OnActiveWebContentsChanged(handle->IsSameDocument());
   }
 }
 
-void ExtensionsToolbarViewModel::OnActiveTabChanged(tabs::TabInterface* tab) {
+void ExtensionsToolbarViewModel::OnActiveTabChanged(TabListInterface& tab_list,
+                                                    tabs::TabInterface* tab) {
   content::WebContents* contents = tab->GetContents();
   WebContentsObserver::Observe(contents);
   for (Observer& obs : observers_) {
-    obs.OnActiveWebContentsChanged();
+    obs.OnActiveWebContentsChanged(/*is_same_document=*/false);
   }
 }
 

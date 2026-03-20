@@ -14,11 +14,13 @@
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_window/test/mock_browser_window_interface.h"
+#include "chrome/browser/ui/call_to_action/call_to_action_lock.h"
 #include "chrome/browser/ui/tabs/test_tab_strip_model_delegate.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/interaction/browser_elements_views.h"
 #include "chrome/browser/ui/views/tabs/fake_base_tab_strip_controller.h"
 #include "chrome/browser/ui/views/tabs/glic/tab_strip_glic_button.h"
+#include "chrome/browser/ui/views/tabs/tab_hover_card_controller.h"
 #include "chrome/browser/ui/views/tabs/tab_strip.h"
 #include "chrome/browser/ui/views/tabs/tab_strip_nudge_button.h"
 #include "chrome/common/chrome_features.h"
@@ -33,7 +35,9 @@
 #include "content/public/test/test_renderer_host.h"
 #include "content/public/test/test_web_contents_factory.h"
 #include "content/public/test/web_contents_tester.h"
+#include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "ui/base/unowned_user_data/scoped_unowned_user_data.h"
 #include "ui/gfx/animation/animation_test_api.h"
 #include "ui/views/test/views_test_utils.h"
 #include "ui/views/widget/widget.h"
@@ -42,14 +46,14 @@
 #include "chrome/browser/ash/test/glic_user_session_test_helper.h"
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
-static_assert(BUILDFLAG(ENABLE_GLIC));
-
 // TODO(crbug.com/461140208): Re-enable failing tests on ChromeOS.
 #if BUILDFLAG(IS_CHROMEOS)
 #define MAYBE(test_name) DISABLED_##test_name
 #else
 #define MAYBE(test_name) test_name
 #endif
+
+using ::testing::NiceMock;
 
 namespace {
 using testing::SizeIs;
@@ -148,7 +152,9 @@ class TabStripActionContainerTest : public ChromeViewsTestBase {
     auto controller = std::make_unique<FakeGlicTabStripController>(
         use_otr_profile, profile_.get());
 
-    tab_strip_ = std::make_unique<TabStrip>(std::move(controller));
+    tab_strip_ = std::make_unique<TabStrip>(
+        std::move(controller),
+        std::unique_ptr<NiceMock<TabHoverCardController>>());
 
     tab_strip_model_ = std::make_unique<TabStripModel>(
         &tab_strip_model_delegate_,
@@ -164,8 +170,12 @@ class TabStripActionContainerTest : public ChromeViewsTestBase {
             tab_strip_->GetBrowserWindowInterface()->GetProfile()));
     ON_CALL(*browser_window_interface_, GetActiveTabInterface)
         .WillByDefault(::testing::Return(tab_interface_.get()));
-    ON_CALL(*browser_window_interface_, CanShowCallToAction)
-        .WillByDefault(::testing::Return(true));
+    ON_CALL(*browser_window_interface_, GetUnownedUserDataHost())
+        .WillByDefault(testing::ReturnRef(data_host_));
+
+    call_to_action_ =
+        std::make_unique<CallToActionLock>(browser_window_interface_.get());
+
     ON_CALL(*tab_interface_, GetContents)
         .WillByDefault(::testing::Return(web_contents_.get()));
     ON_CALL(*browser_window_interface_, RegisterActiveTabDidChange)
@@ -193,6 +203,8 @@ class TabStripActionContainerTest : public ChromeViewsTestBase {
   std::unique_ptr<tabs::GlicNudgeController> glic_nudge_controller_;
   std::unique_ptr<tabs::MockTabInterface> tab_interface_;
   std::unique_ptr<MockBrowserWindowInterface> browser_window_interface_;
+  ui::UnownedUserDataHost data_host_;
+  std::unique_ptr<CallToActionLock> call_to_action_;
   TestTabStripModelDelegate tab_strip_model_delegate_;
   base::test::ScopedFeatureList scoped_feature_list_;
   std::unique_ptr<views::View> locked_expansion_view_;
@@ -306,5 +318,6 @@ TEST_F(TabStripActionContainerTest, MAYBE(GlicButtonHideNudgeOnTabChange)) {
 
   SimulateActiveTabChanged();
   ASSERT_FALSE(tab_strip_action_container_->GetIsShowingGlicNudge());
-  ASSERT_EQ(tab_strip_action_container_->GetGlicButton()->GetText(), u"Gemini");
+  ASSERT_EQ(tab_strip_action_container_->GetGlicButton()->GetText(),
+            u"Ask Gemini");
 }

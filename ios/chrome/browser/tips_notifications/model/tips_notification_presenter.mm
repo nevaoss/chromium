@@ -19,7 +19,7 @@
 #import "ios/chrome/browser/shared/public/commands/browser_coordinator_commands.h"
 #import "ios/chrome/browser/shared/public/commands/command_dispatcher.h"
 #import "ios/chrome/browser/shared/public/commands/credential_provider_promo_commands.h"
-#import "ios/chrome/browser/shared/public/commands/docking_promo_commands.h"
+#import "ios/chrome/browser/shared/public/commands/promos_manager_commands.h"
 #import "ios/chrome/browser/shared/public/commands/scene_commands.h"
 #import "ios/chrome/browser/shared/public/commands/settings_commands.h"
 #import "ios/chrome/browser/shared/public/commands/show_signin_command.h"
@@ -94,6 +94,12 @@ void TipsNotificationPresenter::Present(TipsNotificationType type) {
     case TipsNotificationType::kTrustedVaultKeyRetrieval:
       StartTrustedVaultKeyRetrievalFlow();
       break;
+    case TipsNotificationType::kTabGroups:
+      ShowTabGroupsPromo();
+      break;
+    case TipsNotificationType::kPriceTracking:
+      ShowPriceTrackingPromo();
+      break;
     case TipsNotificationType::kIncognitoLock:
     case TipsNotificationType::kError:
       NOTREACHED();
@@ -148,8 +154,8 @@ void TipsNotificationPresenter::ShowSetUpListContinuation() {
 }
 
 void TipsNotificationPresenter::ShowDocking() {
-  [HandlerForProtocol(browser_->GetCommandDispatcher(), DockingPromoCommands)
-      showDockingPromo:YES];
+  [HandlerForProtocol(browser_->GetCommandDispatcher(), PromosManagerCommands)
+      showDockingPromo];
 }
 
 void TipsNotificationPresenter::ShowOmniboxPosition() {
@@ -231,6 +237,16 @@ void TipsNotificationPresenter::ShowCPEPromo() {
 void TipsNotificationPresenter::ShowLensOverlayPromo() {
   [HandlerForProtocol(browser_->GetCommandDispatcher(),
                       BrowserCoordinatorCommands) showSearchWhatYouSeePromo];
+}
+
+void TipsNotificationPresenter::ShowTabGroupsPromo() {
+  [HandlerForProtocol(browser_->GetCommandDispatcher(),
+                      BrowserCoordinatorCommands) showTabGroupsPromo];
+}
+
+void TipsNotificationPresenter::ShowPriceTrackingPromo() {
+  [HandlerForProtocol(browser_->GetCommandDispatcher(),
+                      BrowserCoordinatorCommands) showPriceTrackingPromo];
 }
 
 bool TipsNotificationPresenter::HasIdentitiesOnDevice() {

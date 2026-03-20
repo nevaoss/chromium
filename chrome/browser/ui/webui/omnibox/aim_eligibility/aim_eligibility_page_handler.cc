@@ -73,12 +73,19 @@ AimEligibilityPageHandler::QueryEligibilityState() {
     response.SerializeToString(&response_string);
     state->eligibility_response_base64_encoded =
         base::Base64Encode(response_string);
-    base::Base64UrlEncode(response_string,
-                          base::Base64UrlEncodePolicy::OMIT_PADDING,
-                          &state->eligibility_response_base64_url_encoded);
     state->eligibility_response_source =
         AimEligibilityService::EligibilityResponseSourceToString(
             aim_eligibility_service_->GetMostRecentResponseSource());
+    switch (aim_eligibility_service_->GetMostRecentResponseAuthMethod()) {
+      case AimEligibilityService::AuthenticationMethod::kOauth:
+        state->eligibility_response_auth_type = "OAuth";
+        break;
+      case AimEligibilityService::AuthenticationMethod::kCookie:
+        state->eligibility_response_auth_type = "Cookie";
+        break;
+      case AimEligibilityService::AuthenticationMethod::kNone:
+        break;
+    }
     if (response.has_searchbox_config()) {
       std::string config_string;
       response.searchbox_config().SerializeToString(&config_string);

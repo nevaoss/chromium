@@ -14,11 +14,15 @@ class AuthenticationService;
 @class GeminiPageContext;
 @protocol SingleSignOnService;
 
+namespace gemini {
+enum class EntryPoint;
+}  // namespace gemini
+
 namespace ios::provider {
 enum class GeminiLocationPermissionState;
 enum class BWGPageContextState;
 enum class GeminiPageContextComputationState;
-enum class BWGPageContextAttachmentState;
+enum class GeminiPageContextAttachmentState;
 }  // namespace ios::provider
 
 namespace optimization_guide::proto {
@@ -57,9 +61,9 @@ class PageContext;
 @property(nonatomic, assign) ios::provider::GeminiPageContextComputationState
     BWGPageContextComputationState;
 
-// The state of the BWG PageContext attachment.
-@property(nonatomic, assign)
-    ios::provider::BWGPageContextAttachmentState BWGPageContextAttachmentState;
+// The state of the Gemini PageContext attachment.
+@property(nonatomic, assign) ios::provider::GeminiPageContextAttachmentState
+    geminiPageContextAttachmentState;
 
 // The favicon of the attached page. Uses a default icon if it's unavailable.
 @property(nonatomic, strong) UIImage* favicon;
@@ -100,13 +104,23 @@ class PageContext;
 
 // Whether to use the response ready interval to show the response ready
 // notification in the floaty.
-@property(nonatomic) double responseReadyInterval;
+@property(nonatomic, assign) double responseReadyInterval;
 
 // Whether to use the dynamic size for the response view in the floaty.
-@property(nonatomic) BOOL responseViewDynamicSizeEnabled;
+@property(nonatomic, assign) BOOL responseViewDynamicSizeEnabled;
+
+// Whether chat persistence is enabled.
+@property(nonatomic, assign) BOOL geminiChatPersistenceEnabled;
 
 // The initial bottom offset of the floaty.
-@property(nonatomic) CGFloat initialBottomOffset;
+@property(nonatomic, assign) CGFloat initialBottomOffset;
+
+// The window scene in which the Gemini view window is initialized and
+// presented.
+@property(nonatomic, strong) UIWindowScene* hostWindowScene;
+
+// The entry point where the floaty was triggered from.
+@property(nonatomic, assign) gemini::EntryPoint entryPoint;
 
 @end
 

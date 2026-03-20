@@ -721,6 +721,12 @@ bool CanEagerlySimplify(const CSSMathExpressionOperation::Operands& operands) {
   return true;
 }
 
+bool IsNoneKeywordLiteral(const CSSMathExpressionNode* exp_node) {
+  return exp_node->IsKeywordLiteral() &&
+         DynamicTo<CSSMathExpressionKeywordLiteral>(exp_node)->GetValue() ==
+             CSSValueID::kNone;
+}
+
 std::optional<CSSMathExpressionNode*> MaybeSimplifyComparisonFunction(
     const CSSMathExpressionOperation::Operands& operands) {
   DCHECK_EQ(operands.size(), 3u);
@@ -728,20 +734,20 @@ std::optional<CSSMathExpressionNode*> MaybeSimplifyComparisonFunction(
   const CSSMathExpressionNode* val = operands[1];
   const CSSMathExpressionNode* max = operands[2];
   // clamp(MIN, none, MAX) is not allowed
-  if (val->IsKeywordLiteral()) {
+  if (IsNoneKeywordLiteral(val)) {
     return nullptr;
   }
   // clamp(none, VAL, none) is equivalent to just calc(VAL)
-  if (min->IsKeywordLiteral() && max->IsKeywordLiteral()) {
+  if (IsNoneKeywordLiteral(min) && IsNoneKeywordLiteral(max)) {
     return val->Copy();
   }
   // clamp(none, VAL, MAX) is equivalent to min(VAL, MAX)
-  if (min->IsKeywordLiteral()) {
+  if (IsNoneKeywordLiteral(min)) {
     return CSSMathExpressionOperation::CreateComparisonFunction(
         {val->Copy(), max->Copy()}, CSSMathOperator::kMin);
   }
   // clamp(MIN, VAL, none) is equivalent to max(MIN, VAL)
-  if (max->IsKeywordLiteral()) {
+  if (IsNoneKeywordLiteral(max)) {
     return CSSMathExpressionOperation::CreateComparisonFunction(
         {min->Copy(), val->Copy()}, CSSMathOperator::kMax);
   }
@@ -1015,14 +1021,14 @@ UnitsVector CollectSumOrProductInOrder(const CSSMathExpressionOperation* root) {
   // to ret.
   if (auto it = numeric_children.find(CSSPrimitiveValue::UnitType::kNumber);
       it != numeric_children.end()) {
-    ret.AppendVector(*it->value);
+    ret.append_range(*it->value);
     numeric_children.erase(it);
   }
   // From spec: If nodes contains a percentage, remove it from nodes and append
   // it to ret.
   if (auto it = numeric_children.find(CSSPrimitiveValue::UnitType::kPercentage);
       it != numeric_children.end()) {
-    ret.AppendVector(*it->value);
+    ret.append_range(*it->value);
     numeric_children.erase(it);
   }
   // Now, sort the rest numeric values alphabatically.
@@ -1043,10 +1049,10 @@ UnitsVector CollectSumOrProductInOrder(const CSSMathExpressionOperation* root) {
   std::sort(keys.begin(), keys.end(), comp);
   // Now, add those numeric nodes in the sorted order.
   for (const auto& unit_type : keys) {
-    ret.AppendVector(*numeric_children.at(unit_type));
+    ret.append_range(*numeric_children.at(unit_type));
   }
   // Now, add all the complex (non-numerics with double value) values.
-  ret.AppendVector(complex_children);
+  ret.append_range(complex_children);
   return ret;
 }
 
@@ -2243,7 +2249,7 @@ inline bool CanArithmeticOperationBeSimplified(
 }
 
 bool IsClampKeywordLiteral(const CSSMathExpressionNode* exp_node) {
-  return exp_node->IsKeywordLiteral() &&
+  return IsNoneKeywordLiteral(exp_node) &&
          DynamicTo<CSSMathExpressionKeywordLiteral>(exp_node)->GetContext() ==
              CSSMathExpressionKeywordLiteral::Context::kClamp;
 }
@@ -2661,6 +2667,10 @@ CSSMathExpressionOperation::CSSMathExpressionOperation(
   if (!left_side->IsScopedValue() || !right_side->IsScopedValue()) {
     value_feature_flags_ |= kNeedsTreeScopePopulation;
   }
+  if (left_side->HasUnresolvablePercentages() ||
+      right_side->HasUnresolvablePercentages()) {
+    value_feature_flags_ |= kHasUnresolvablePercentages;
+  }
   has_nested_intermediate_result_ = type_.IsIntermediateResult();
   has_nested_intermediate_result_ |= NodeHasNestedIntermediateResult(left_side);
   has_nested_intermediate_result_ |=
@@ -2733,6 +2743,16 @@ static bool AnyOperandHasRandom(
   return false;
 }
 
+static bool AnyOperandHasUnresolvablePercentages(
+    CSSMathExpressionOperation::Operands& operands) {
+  for (const CSSMathExpressionNode* operand : operands) {
+    if (operand->HasUnresolvablePercentages()) {
+      return true;
+    }
+  }
+  return false;
+}
+
 static bool AnyOperandNeedsTreeScopePopulation(
     CSSMathExpressionOperation::Operands& operands) {
   for (const CSSMathExpressionNode* operand : operands) {
@@ -2764,6 +2784,9 @@ CSSMathExpressionOperation::CSSMathExpressionOperation(
   }
   if (AnyOperandNeedsTreeScopePopulation(operands_)) {
     value_feature_flags_ |= kNeedsTreeScopePopulation;
+  }
+  if (AnyOperandHasUnresolvablePercentages(operands_)) {
+    value_feature_flags_ |= kHasUnresolvablePercentages;
   }
   has_nested_intermediate_result_ = type_.IsIntermediateResult();
   if (IsArithmeticOperation()) {
@@ -3173,8 +3196,8 @@ bool CSSMathExpressionOperation::MayHaveRelativeUnit() const {
 static void SerializeTopLevelNode(const CSSMathExpressionNode* node,
                                   StringBuilder& result) {
   String text = node->CustomCSSText();
-  if (text.StartsWith('(')) {
-    DCHECK(text.EndsWith(')'));
+  if (text.starts_with('(')) {
+    DCHECK(text.ends_with(')'));
     result.Append(StringView(text, 1, text.length() - 2));
   } else {
     result.Append(text);
@@ -4709,11 +4732,15 @@ class CSSMathExpressionNodeParser {
         DCHECK(RuntimeEnabledFeatures::CSSRandomFunctionEnabled());
         DCHECK_GE(nodes.size(), 2u);
         DCHECK_LE(nodes.size(), 3u);
+        if (!context_.InElementContext()) {
+          return nullptr;
+        }
         local_context_.IncrementRandomValueCount();
         const auto& random_value_sharing =
             std::get<const RandomValueSharing*>(non_expr_argument);
-        return CSSMathExpressionRandomFunction::Create(random_value_sharing,
-                                                       std::move(nodes));
+        return CSSMathExpressionRandomFunction::Create(
+            random_value_sharing, std::move(nodes),
+            local_context_.PercentagesDependOnUsedValue());
       }
       // TODO(crbug.com/1284199): Support other math functions.
       default:
@@ -5274,9 +5301,11 @@ CSSMathExpressionNode* CSSMathExpressionNode::Create(
       CSSMathExpressionOperation::Operands operands;
       for (wtf_size_t i = 1; i < children.size(); ++i) {
         operands.push_back(Create(*children[i]));
+        DCHECK_NE(operands.back()->Category(), kCalcLengthFunction);
       }
-      return CSSMathExpressionRandomFunction::Create(random_value_sharing,
-                                                     std::move(operands));
+      // We shouldn't have unresolvable percentages by this point.
+      return CSSMathExpressionRandomFunction::Create(
+          random_value_sharing, std::move(operands), false);
     }
   }
 }
@@ -5378,7 +5407,7 @@ const CSSPrimitiveValue* RandomValueSharing::GetFixed() const {
 }
 bool RandomValueSharing::IsAuto() const {
   return !std::holds_alternative<NameAndElementShared>(value_) ||
-         !std::get<NameAndElementShared>(value_).name.StartsWith("--");
+         !std::get<NameAndElementShared>(value_).name.starts_with("--");
 }
 const AtomicString& RandomValueSharing::Name() const {
   if (!std::holds_alternative<NameAndElementShared>(value_)) {
@@ -5518,30 +5547,24 @@ CSSMathExpressionRandomFunction::CSSMathExpressionRandomFunction(
     const RandomValueSharing* random_value_sharing,
     const CSSMathExpressionNode* min,
     const CSSMathExpressionNode* max,
-    const CSSMathExpressionNode* step)
+    const CSSMathExpressionNode* step,
+    bool percentages_depend_on_used_value)
     : CSSMathExpressionNode(category),
       random_value_sharing_(random_value_sharing),
       min_(min),
       max_(max),
       step_(step) {
   value_feature_flags_ = kHasRandomFunctions;
+  if (category == kCalcPercent && percentages_depend_on_used_value) {
+    value_feature_flags_ |= kHasUnresolvablePercentages;
+  }
 }
 
 CSSMathExpressionRandomFunction* CSSMathExpressionRandomFunction::Create(
     const RandomValueSharing* random_value_sharing,
-    HeapVector<Member<const CSSMathExpressionNode>>&& nodes) {
+    HeapVector<Member<const CSSMathExpressionNode>>&& nodes,
+    bool percentages_depend_on_used_value) {
   CalculationResultCategory category = DetermineComparisonCategory(nodes);
-  // Currently the computed value for calc() expressions with category
-  // `kCalcPercent`, i.e. calc() with only percentages: min(10%, 30%)
-  // would be simplified to 10%. This is not correct, since percentages
-  // here can represent negative values. Same issue will happen with
-  // random() if `min`, `max` (and optionally `step`) parameters have only
-  // percentages values. To avoid that we will use `category
-  // `kCalcLengthPercent` for these expressions for now.
-  // TODO(crbug.com/463635948): Remove the following if check.
-  if (category == kCalcPercent) {
-    category = kCalcLengthFunction;
-  }
   if (category == CalculationResultCategory::kCalcOther) {
     return nullptr;
   }
@@ -5549,13 +5572,14 @@ CSSMathExpressionRandomFunction* CSSMathExpressionRandomFunction::Create(
   return MakeGarbageCollected<CSSMathExpressionRandomFunction>(
       base::PassKey<CSSMathExpressionRandomFunction>(), category,
       random_value_sharing,
-      /* min= */ nodes[0], /* max= */ nodes[1], /* step= */ step);
+      /* min= */ nodes[0], /* max= */ nodes[1], /* step= */ step,
+      percentages_depend_on_used_value);
 }
 
 CSSMathExpressionNode* CSSMathExpressionRandomFunction::Copy() const {
   return MakeGarbageCollected<CSSMathExpressionRandomFunction>(
       base::PassKey<CSSMathExpressionRandomFunction>(), category_,
-      random_value_sharing_, min_, max_, step_);
+      random_value_sharing_, min_, max_, step_, HasUnresolvablePercentages());
 }
 
 bool CSSMathExpressionRandomFunction::IsComputationallyIndependent() const {
@@ -5565,7 +5589,7 @@ bool CSSMathExpressionRandomFunction::IsComputationallyIndependent() const {
 }
 
 bool CSSMathExpressionRandomFunction::IsElementDependent() const {
-  return !random_value_sharing_->IsElementShared();
+  return true;
 }
 
 bool CSSMathExpressionRandomFunction::HasInvalidAnchorFunctions(

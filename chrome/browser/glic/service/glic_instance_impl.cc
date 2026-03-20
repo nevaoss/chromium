@@ -38,17 +38,18 @@
 #include "chrome/browser/glic/public/glic_side_panel_coordinator.h"
 #include "chrome/browser/glic/service/glic_ui_embedder.h"
 #include "chrome/browser/glic/service/glic_ui_types.h"
+#include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/browser/ui/tabs/public/tab_features.h"
-#include "chrome/browser/ui/tabs/tab_list_interface.h"
 #include "chrome/browser/ui/user_education/browser_user_education_interface.h"
 #include "chrome/common/actor_webui.mojom.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/grit/generated_resources.h"
+#include "components/feature_engagement/public/feature_constants.h"
 #include "components/prefs/pref_service.h"
 #include "components/tabs/public/tab_interface.h"
 #include "components/user_education/common/feature_promo/feature_promo_controller.h"
@@ -143,50 +144,71 @@ class GlicTabContentsObserver : public content::WebContentsObserver {
     tabs::TabInterface* tab_to_bind =
         tabs::TabInterface::MaybeGetFromContents(new_contents);
 
+    if (!tab_to_bind) {
+      LOG(ERROR) << "Invalid tab_to_bind, null";
+      return;
+    }
+    if (tab_to_bind->GetBrowserWindowInterface()->GetProfile() !=
+        instance_->profile()) {
+      LOG(ERROR) << "Invalid tab_to_bind, wrong profile";
+      return;
+    }
+    if (!GlicInstanceHelper::From(tab_to_bind)) {
+      LOG(ERROR) << "Invalid tab_to_bind, no GlicInstanceHelper in its "
+                    "UnownedUserData";
+      return;
+    }
+
     if (!tab_to_bind ||
         (tab_to_bind->GetBrowserWindowInterface()->GetProfile() !=
-         instance_->profile())) {
+         instance_->profile()) ||
+        !GlicInstanceHelper::From(tab_to_bind)) {
+      LOG(ERROR) << "Invalid tab_to_bind, null or wrong profile or no "
+                    "GlicInstanceHelper in its UnownedUserData";
       return;
     }
 
     tabs::TabInterface* source_tab = tabs::TabInterface::GetFromContents(
         content::WebContents::FromRenderFrameHost(source_render_frame_host));
-    auto* glic_embedder = instance_->GetEmbedderForTab(source_tab);
 
-    if (base::FeatureList::IsEnabled(kGlicRemoveDaisyChainingWhenFreShowing)) {
-      if (instance_->service()->IsFreShowing() ||
-          (IsTrustFirstOnboardingPending(instance_->profile()) &&
-           features::kGlicTrustFirstOnboardingArmParam.Get() != 1)) {
-        return;
-      }
-    }
-
-    // Only bind if the previous instance was active.
-    if (glic_embedder && glic_embedder->IsShowing()) {
-      SidePanelShowOptions side_panel_options{*tab_to_bind};
-      side_panel_options.suppress_opening_animation = true;
-      side_panel_options.pin_trigger = GlicPinTrigger::kDaisyChain;
-      auto show_options = ShowOptions{side_panel_options};
-      instance_->metrics()->OnDaisyChain(DaisyChainSource::kTabContents,
-                                         /*success=*/true, tab_to_bind,
-                                         source_tab);
-      instance_->Show(show_options);
-    } else {
-      // Record the failure.
-      instance_->metrics()->OnDaisyChain(DaisyChainSource::kTabContents,
-                                         /*success=*/false, tab_to_bind,
-                                         source_tab);
-    }
+    instance_->MaybeDaisyChainToTab(source_tab, tab_to_bind);
   }
 
  private:
   raw_ptr<GlicInstanceImpl> instance_ = nullptr;
 };
 
+void GlicInstanceImpl::MaybeDaisyChainToTab(tabs::TabInterface* source_tab,
+                                            tabs::TabInterface* target_tab) {
+  auto* glic_embedder = GetEmbedderForTab(source_tab);
+
+  if (base::FeatureList::IsEnabled(kGlicRemoveDaisyChainingWhenFreShowing)) {
+    if (service()->IsFreShowing() ||
+        (IsTrustFirstOnboardingPending(profile()) &&
+         features::kGlicTrustFirstOnboardingArmParam.Get() != 1)) {
+      return;
+    }
+  }
+
+  // Only bind if the previous instance was active.
+  if (glic_embedder && glic_embedder->IsShowing()) {
+    SidePanelShowOptions side_panel_options{*target_tab};
+    side_panel_options.suppress_opening_animation = true;
+    side_panel_options.pin_trigger = GlicPinTrigger::kDaisyChain;
+    auto show_options = ShowOptions{side_panel_options};
+    metrics()->OnDaisyChain(DaisyChainSource::kTabContents,
+                            /*success=*/true, target_tab, source_tab);
+    Show(show_options);
+  } else {
+    // Record the failure.
+    metrics()->OnDaisyChain(DaisyChainSource::kTabContents,
+                            /*success=*/false, target_tab, source_tab);
+  }
+}
+
 void GlicInstanceImpl::NotifyStateChange() {
   instance_metrics_.OnVisibilityChanged(IsShowing());
-  state_change_callback_list_.Notify(IsShowing(),
-                                     host().GetPrimaryCurrentView());
+  state_change_callback_list_.Notify(IsShowing());
   if (coordinator_delegate_) {
     coordinator_delegate_->OnInstanceVisibilityChanged(this, IsShowing());
   }
@@ -328,7 +350,8 @@ void GlicInstanceImpl::Show(const ShowOptions& options) {
     SetActiveEmbedderAndNotifyStateChange(new_key);
   }
 
-  MaybeShowHostUi(embedder_to_show, options.prompt_suggestion);
+  MaybeShowHostUi(embedder_to_show, options.invocation_source,
+                  options.prompt_suggestion, options.auto_send);
   embedder_to_show->Show(options);
   if (options.focus_on_show) {
     embedder_to_show->Focus();
@@ -387,11 +410,11 @@ void GlicInstanceImpl::Close(EmbedderKey key, const CloseOptions& options) {
 bool GlicInstanceImpl::Toggle(ShowOptions&& options,
                               bool prevent_close,
                               glic::mojom::InvocationSource source,
-                              std::optional<std::string> prompt_suggestion) {
+                              std::optional<std::string> prompt_suggestion,
+                              bool auto_send) {
   if (GlicEnabling::IsTrustFirstOnboardingEnabledForProfile(profile_)) {
     service_->metrics()->OnTrustFirstOnboardingShown();
   }
-
   instance_metrics_.OnToggle(source, options, IsShowing());
   EmbedderKey key = GetEmbedderKey(options);
   // Close instance on toggle when it has an active embedder.
@@ -404,6 +427,8 @@ bool GlicInstanceImpl::Toggle(ShowOptions&& options,
   // We assume that a toggle is user initiated so focus on show.
   options.focus_on_show = true;
   options.prompt_suggestion = prompt_suggestion;
+  options.auto_send = auto_send;
+  options.invocation_source = source;
   Show(options);
   return true;
 }
@@ -607,7 +632,8 @@ void GlicInstanceImpl::PrepareForOpen() {
   contextual_cueing::ContextualCueingService* contextual_cueing_service =
       contextual_cueing::ContextualCueingServiceFactory::GetForProfile(
           profile_);
-  if (contextual_cueing_service && active_web_contents) {
+  if (contextual_cueing_service && active_web_contents &&
+      GlicEnabling::HasConsentedForProfile(profile_)) {
     contextual_cueing_service->PrepareToFetchContextualGlicZeroStateSuggestions(
         active_web_contents);
   }
@@ -678,6 +704,10 @@ void GlicInstanceImpl::SetIdForRestoration(InstanceId id) {
 base::CallbackListSubscription GlicInstanceImpl::RegisterStateChange(
     StateChangeCallback callback) {
   return state_change_callback_list_.Add(std::move(callback));
+}
+
+void GlicInstanceImpl::BindTabForTesting(tabs::TabInterface* tab) {
+  BindTab(tab, GlicPinTrigger::kContextMenu, true);
 }
 
 void GlicInstanceImpl::FetchZeroStateSuggestions(
@@ -872,8 +902,8 @@ void GlicInstanceImpl::MaybeShowShortcutToastPromo() {
     // Hotkey might not be registered, skip the promo.
     return;
   }
-
-#if !BUILDFLAG(IS_ANDROID)  // NEEDS_ANDROID_IMPL
+// TODO(b/483455896): implement hotkey promo for android
+#if !BUILDFLAG(IS_ANDROID)
   Browser* browser = chrome::FindTabbedBrowser(profile_, false);
   if (!browser) {
     // If there is no browser window open for the profile, skip the promo.
@@ -899,7 +929,8 @@ void GlicInstanceImpl::MaybeShowShortcutSnoozePromo() {
     return;
   }
 
-#if !BUILDFLAG(IS_ANDROID)  // NEEDS_ANDROID_IMPL
+  // TODO(b/483455896): implement hotkey promo for android.
+#if !BUILDFLAG(IS_ANDROID)
   Browser* browser = chrome::FindTabbedBrowser(profile_, false);
   if (!browser) {
     // If there is no browser window open for the profile, skip the promo.
@@ -924,7 +955,9 @@ void GlicInstanceImpl::UpdateFloatingPanelCanAttach() {
 
 void GlicInstanceImpl::MaybeShowHostUi(
     GlicUiEmbedder* embedder,
-    std::optional<std::string> prompt_suggestion) {
+    mojom::InvocationSource invocation_source,
+    std::optional<std::string> prompt_suggestion,
+    bool auto_send) {
   Host::EmbedderDelegate* delegate = embedder->GetHostEmbedderDelegate();
   if (!delegate) {
     return;
@@ -935,9 +968,7 @@ void GlicInstanceImpl::MaybeShowHostUi(
       content::Visibility::VISIBLE);
   host_.NotifyWindowIntentToShow();
 
-  // TODO: pass in the correct invocation source
-  NotifyPanelWillOpen(mojom::InvocationSource::kTopChromeButton,
-                      prompt_suggestion);
+  NotifyPanelWillOpen(invocation_source, prompt_suggestion, auto_send);
 }
 
 void GlicInstanceImpl::OnBoundTabDestroyed(tabs::TabInterface* tab) {
@@ -1041,8 +1072,11 @@ GlicInstanceImpl::EmbedderEntry& GlicInstanceImpl::BindTab(
   new_entry.tab_activation_subscription = tab->RegisterDidActivate(
       base::BindRepeating(&GlicInstanceImpl::OnBoundTabActivated,
                           weak_ptr_factory_.GetWeakPtr()));
-  new_entry.tab_web_contents_observer =
-      std::make_unique<GlicTabContentsObserver>(tab->GetContents(), this);
+  if (!base::FeatureList::IsEnabled(features::kGlicDaisyChainViaCoordinator)) {
+    new_entry.tab_web_contents_observer =
+        std::make_unique<GlicTabContentsObserver>(tab->GetContents(), this);
+  }
+
   if (pin_on_bind && ShouldPinOnBind()) {
     // Auto-pin on bind.
     sharing_manager().PinTabs({tab->GetHandle()}, pin_trigger);
@@ -1275,7 +1309,8 @@ void GlicInstanceImpl::OnTabPinningStatusEvent(tabs::TabInterface* tab,
 
 void GlicInstanceImpl::NotifyPanelWillOpen(
     mojom::InvocationSource invocation_source,
-    std::optional<std::string> prompt_suggestion) {
+    std::optional<std::string> prompt_suggestion,
+    bool auto_send) {
   Host::PanelWillOpenOptions options;
   options.conversation_info = GetConversationInfo();
   if (coordinator_delegate_) {
@@ -1284,6 +1319,7 @@ void GlicInstanceImpl::NotifyPanelWillOpen(
             kMaxRecentConversationsForPanel);
   }
   options.prompt_suggestion = prompt_suggestion;
+  options.auto_send = auto_send;
   host_.PanelWillOpen(invocation_source, std::move(options));
 }
 
@@ -1291,7 +1327,8 @@ void GlicInstanceImpl::OnWebClientCleared() {
   if (actor_task_manager_) {
     actor_task_manager_->CancelTask();
   }
-  NotifyPanelWillOpen(mojom::InvocationSource::kDefaultValue, std::nullopt);
+  NotifyPanelWillOpen(mojom::InvocationSource::kDefaultValue, std::nullopt,
+                      /*auto_send=*/false);
 }
 
 void GlicInstanceImpl::CloseAllEmbedders() {
@@ -1373,8 +1410,10 @@ void GlicInstanceImpl::RequestToConfirmNavigation(
 void GlicInstanceImpl::RequestToShowAutofillSuggestionsDialog(
     actor::TaskId task_id,
     std::vector<autofill::ActorFormFillingRequest> requests,
+    base::WeakPtr<actor::AutofillSelectionDialogEventHandler> event_handler,
     AutofillSuggestionSelectedCallback callback) {
   host_.RequestToShowAutofillSuggestionsDialog(task_id, std::move(requests),
+                                               std::move(event_handler),
                                                std::move(callback));
 }
 

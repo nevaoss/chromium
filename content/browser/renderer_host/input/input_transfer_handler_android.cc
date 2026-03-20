@@ -179,6 +179,14 @@ bool InputTransferHandlerAndroid::OnTouchEvent(
     return false;
   }
 
+  // Speculatively send state to Viz before calling into system to transfer
+  // input.
+  if (base::FeatureList::IsEnabled(
+          input::features::kInputVizardSpeculativeTransfer)) {
+    client_->SendStateOnTouchTransfer(event,
+                                      /*browser_would_have_handled=*/false);
+  }
+
   auto transfer_result = static_cast<TransferInputToVizResult>(
       jni_delegate_->MaybeTransferInputToViz(client_->GetRootSurfaceHandle()));
 
@@ -187,6 +195,13 @@ bool InputTransferHandlerAndroid::OnTouchEvent(
   if (transfer_result == TransferInputToVizResult::kSuccessfullyTransferred) {
     OnTouchTransferredSuccessfully(event, /*browser_would_have_handled=*/false);
     return true;
+  }
+
+  if (transfer_result ==
+      TransferInputToVizResult::kHasActiveTouchInterceptors) {
+    // Do not forcefully transfer this sequence (in code below), since all the
+    // input events on these tabs are expected to be handled by Browser.
+    return false;
   }
 
   if (transfer_result ==
@@ -208,6 +223,14 @@ bool InputTransferHandlerAndroid::OnTouchEvent(
     // in which case Viz should continue to handle the sequence.
     // And if it was start of a new sequence, pass |browser_would_have_handled|
     // so that it can return the sequence to Browser.
+
+    // Speculatively send state to Viz with browser_would_have_handled set to
+    // true before retrying transfer.
+    if (base::FeatureList::IsEnabled(
+            input::features::kInputVizardSpeculativeTransfer)) {
+      client_->SendStateOnTouchTransfer(event,
+                                        /*browser_would_have_handled=*/true);
+    }
     auto retransfer_result = static_cast<TransferInputToVizResult>(
         jni_delegate_->TransferInputToViz(client_->GetRootSurfaceHandle()));
     if (retransfer_result ==
@@ -432,7 +455,10 @@ void InputTransferHandlerAndroid::OnTouchTransferredSuccessfully(
   cached_transferred_sequence_down_time_ms_ = event.GetRawDownTime();
   last_successful_transfer_time_ = base::TimeTicks::Now();
   last_sent_browser_would_have_handled_ = browser_would_have_handled;
-  client_->SendStateOnTouchTransfer(event, browser_would_have_handled);
+  if (!base::FeatureList::IsEnabled(
+          input::features::kInputVizardSpeculativeTransfer)) {
+    client_->SendStateOnTouchTransfer(event, browser_would_have_handled);
+  }
   // Corresponding to the `ACTION_DOWN` event which initiated the touch
   // transfer.
   num_events_in_dropped_sequence_ = 1;

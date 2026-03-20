@@ -67,6 +67,7 @@ void NevaExtensionsAPIProvider::RegisterPermissions(
       neva::api_permissions::GetPermissionAliases());
 }
 
-void NevaExtensionsAPIProvider::RegisterManifestHandlers() {}
+void NevaExtensionsAPIProvider::RegisterManifestHandlers(
+    extensions::ManifestHandlerRegistry* registry) {}
 
 }  // namespace neva

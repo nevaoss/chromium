@@ -41,7 +41,7 @@ FakeAutocompleteProviderClient::FakeAutocompleteProviderClient() {
       search_engines_test_enviroment_.template_url_service(),
       /*url_loader_factory=*/nullptr,
       /*identity_manager=*/nullptr,
-      /*is_off_the_record=*/false);
+      AimEligibilityService::Configuration{.is_off_the_record = false});
 }
 
 FakeAutocompleteProviderClient::~FakeAutocompleteProviderClient() {
@@ -84,9 +84,9 @@ FakeAutocompleteProviderClient::GetHistoryClustersService() {
   return history_clusters_service_;
 }
 
-history_embeddings::HistoryEmbeddingsService*
-FakeAutocompleteProviderClient::GetHistoryEmbeddingsService() {
-  return history_embeddings_service_.get();
+history_embeddings::HistoryEmbeddingsSearch*
+FakeAutocompleteProviderClient::GetHistoryEmbeddingsSearch() {
+  return history_embeddings_search_.get();
 }
 
 bookmarks::BookmarkModel* FakeAutocompleteProviderClient::GetBookmarkModel() {
