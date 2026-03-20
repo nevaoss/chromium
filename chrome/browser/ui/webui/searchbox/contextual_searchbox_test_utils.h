@@ -83,20 +83,20 @@ class MockQueryController
   }
 
   void AddObserver(contextual_search::ContextualSearchContextController::
-                       FileUploadStatusObserver* obs) override {
+                       ContextUploadStatusObserver* obs) override {
     observers_.AddObserver(obs);
     TestComposeboxQueryController::AddObserver(obs);
   }
 
   void RemoveObserver(contextual_search::ContextualSearchContextController::
-                          FileUploadStatusObserver* obs) override {
+                          ContextUploadStatusObserver* obs) override {
     observers_.RemoveObserver(obs);
     TestComposeboxQueryController::RemoveObserver(obs);
   }
 
   void NotifySuccess(const base::UnguessableToken& file_token) {
     for (auto& observer : observers_) {
-      observer.OnFileUploadStatusChanged(
+      observer.OnContextUploadStatusChanged(
           file_token, lens::MimeType::kHtml,
           contextual_search::ContextUploadStatus::kUploadSuccessful,
           std::nullopt);
@@ -105,7 +105,7 @@ class MockQueryController
 
  private:
   base::ObserverList<contextual_search::ContextualSearchContextController::
-                         FileUploadStatusObserver>
+                         ContextUploadStatusObserver>
       observers_;
 };
 

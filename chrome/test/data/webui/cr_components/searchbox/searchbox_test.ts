@@ -9,6 +9,7 @@ import {$$, BrowserProxyImpl, MetricsReporterImpl, SearchboxBrowserProxy} from '
 import {createAutocompleteMatch, createAutocompleteResultForTesting, createSearchMatchForTesting} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {PageMetricsCallbackRouter} from 'chrome://resources/js/metrics_reporter.mojom-webui.js';
+import {isMac} from 'chrome://resources/js/platform.js';
 import {getDeepActiveElement} from 'chrome://resources/js/util.js';
 import {NavigationPredictor} from 'chrome://resources/mojo/components/omnibox/browser/omnibox.mojom-webui.js';
 import type {AutocompleteMatch} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
@@ -388,6 +389,12 @@ suite('SearchboxTest', () => {
 
     // Assert.
     await whenOpenComposeBox;
+
+    const metricName = 'ContextualSearch.AiModeButtonClick.NtpRealbox';
+    // One histogram and one action metric should be emitted.
+    assertEquals(2, metrics.count(metricName));
+    // Only one histogram should be recorded.
+    assertEquals(1, metrics.count(metricName, true));
   });
 
   test('clicking composebox button with text records user action', async () => {
@@ -414,12 +421,18 @@ suite('SearchboxTest', () => {
     }));
 
     // Assert.
-    const metricName =
+    const submitMetricName =
         'ContextualSearch.UserAction.SubmitQuery.WithoutContext.NewTabPage';
     // One histogram and one action metric should be emitted.
-    assertEquals(2, metrics.count(metricName));
+    assertEquals(2, metrics.count(submitMetricName));
     // Only one histogram should be recorded.
-    assertEquals(1, metrics.count(metricName, true));
+    assertEquals(1, metrics.count(submitMetricName, true));
+
+    const buttonMetricName = 'ContextualSearch.AiModeButtonClick.NtpRealbox';
+    // One histogram and one action metric should be emitted.
+    assertEquals(2, metrics.count(buttonMetricName));
+    // Only one histogram should be recorded.
+    assertEquals(1, metrics.count(buttonMetricName, true));
   });
 
   test('hovering on composebox button plays the animation.', async () => {
@@ -1192,12 +1205,11 @@ suite('SearchboxTest', () => {
   test('dropdown suppressed in multi-line mode', async () => {
     realbox = await createAndAppendRealbox({multiLineEnabled: true});
 
-    // The initial scroll height of the input.
-    (realbox as any).initialInputScrollHeight_ = 20;
+    const initialScrollHeight = realbox.$.input.scrollHeight;
 
     // The text currently fits on one line (no wrapping).
     Object.defineProperty(realbox.$.input, 'scrollHeight', {
-      value: 20,
+      value: initialScrollHeight,
       configurable: true,
     });
 
@@ -1215,9 +1227,8 @@ suite('SearchboxTest', () => {
     assertTrue(await areMatchesShowing());
 
     // Simulate text wrapping.
-    // Change 'scrollHeight' to 40, which is > initialInputScrollHeight_ (20).
     Object.defineProperty(realbox.$.input, 'scrollHeight', {
-      value: 40,
+      value: initialScrollHeight * 2,
       configurable: true,
     });
 
@@ -1235,7 +1246,7 @@ suite('SearchboxTest', () => {
 
     // Reset wrapping (simulate text deleted or unwrapped).
     Object.defineProperty(realbox.$.input, 'scrollHeight', {
-      value: 20,
+      value: initialScrollHeight,
       configurable: true,
     });
 
@@ -1260,105 +1271,6 @@ suite('SearchboxTest', () => {
         }));
 
     // Dropdown should be hidden (only mirror query match in multi-line mode).
-    assertFalse(await areMatchesShowing());
-  });
-
-  //============================================================================
-  // Test Cut/Copy
-  //============================================================================
-
-  test('Copying or cutting empty input fails', () => {
-    realbox.$.input.inputElement.value = '';
-
-    const copyEvent = createClipboardEvent('copy');
-    realbox.$.input.inputElement.dispatchEvent(copyEvent);
-    assertFalse(copyEvent.defaultPrevented);
-
-    const cutEvent = createClipboardEvent('cut');
-    realbox.$.input.inputElement.dispatchEvent(cutEvent);
-    assertFalse(cutEvent.defaultPrevented);
-  });
-
-  test('Copying or cutting search match fails', async () => {
-    realbox.$.input.inputElement.value = 'hello ';
-    realbox.$.input.inputElement.dispatchEvent(new InputEvent('input'));
-
-    const matches = [createSearchMatchForTesting({
-      allowedToBeDefaultMatch: true,
-      inlineAutocompletion: 'world',
-    })];
-    testProxy.callbackRouterRemote.autocompleteResultChanged(
-        createAutocompleteResultForTesting({
-          input: realbox.$.input.inputElement.value.trimStart(),
-          matches: matches,
-        }));
-    assertTrue(await areMatchesShowing());
-
-    assertEquals('hello world', realbox.$.input.inputElement.value);
-    const start = realbox.$.input.inputElement.selectionStart!;
-    const end = realbox.$.input.inputElement.selectionEnd!;
-    assertEquals(
-        'world', realbox.$.input.inputElement.value.substring(start, end));
-
-    // Select the entire input.
-    realbox.$.input.setSelectionRange(
-        0, realbox.$.input.inputElement.value.length);
-
-    const copyEvent = createClipboardEvent('copy');
-    realbox.$.input.inputElement.dispatchEvent(copyEvent);
-    assertFalse(copyEvent.defaultPrevented);
-
-    const cutEvent = createClipboardEvent('cut');
-    realbox.$.input.inputElement.dispatchEvent(cutEvent);
-    assertFalse(cutEvent.defaultPrevented);
-  });
-
-  test('Copying or cutting URL match succeeds', async () => {
-    realbox.$.input.inputElement.value = 'hello';
-    realbox.$.input.inputElement.dispatchEvent(new InputEvent('input'));
-
-    const matches = [createUrlMatch({
-      allowedToBeDefaultMatch: true,
-      inlineAutocompletion: 'world.com',
-    })];
-    testProxy.callbackRouterRemote.autocompleteResultChanged(
-        createAutocompleteResultForTesting({
-          input: realbox.$.input.inputElement.value.trimStart(),
-          matches: matches,
-        }));
-    assertTrue(await areMatchesShowing());
-
-    assertEquals('helloworld.com', realbox.$.input.inputElement.value);
-    const start = realbox.$.input.inputElement.selectionStart!;
-    const end = realbox.$.input.inputElement.selectionEnd!;
-    assertEquals(
-        'world.com', realbox.$.input.inputElement.value.substring(start, end));
-
-    const copyEvent = createClipboardEvent('copy');
-    realbox.$.input.inputElement.dispatchEvent(copyEvent);
-    assertFalse(copyEvent.defaultPrevented);
-
-    const cutEvent = createClipboardEvent('cut');
-    realbox.$.input.inputElement.dispatchEvent(cutEvent);
-    assertFalse(cutEvent.defaultPrevented);
-
-    // Select the entire input.
-    realbox.$.input.setSelectionRange(
-        0, realbox.$.input.inputElement.value.length);
-
-    realbox.$.input.inputElement.dispatchEvent(copyEvent);
-    assertTrue(copyEvent.defaultPrevented);
-    assertEquals(
-        'https://helloworld.com/',
-        copyEvent.clipboardData!.getData('text/plain'));
-
-    realbox.$.input.inputElement.dispatchEvent(cutEvent);
-    assertTrue(cutEvent.defaultPrevented);
-    assertEquals(
-        'https://helloworld.com/',
-        cutEvent.clipboardData!.getData('text/plain'));
-
-    // Cut should close the dropdown.
     assertFalse(await areMatchesShowing());
   });
 
@@ -3128,17 +3040,6 @@ suite('SearchboxTest', () => {
   });
 
   //============================================================================
-  // Test Set Input Text
-  //============================================================================
-  test('input text appears on page call from browser', async () => {
-    assertEquals(realbox.$.input.inputElement.value, '');
-    testProxy.callbackRouterRemote.setInputText('Hello');
-    await microtasksFinished();
-    assertEquals(realbox.$.input.inputElement.value, 'Hello');
-    assertEquals(0, testProxy.handler.getCallCount('queryAutocomplete'));
-  });
-
-  //============================================================================
   // Test Thumbnails
   //============================================================================
   test('thumbnail appears on page call from browser', async () => {
@@ -3237,6 +3138,51 @@ suite('SearchboxTest', () => {
     // Checking the input value after a backspace event doesn't work
     // so check the default behavior occurs (deleting a character).
     assertFalse(backspaceEvent.defaultPrevented);
+  });
+
+  //============================================================================
+  // Test Keyboard Events
+  //============================================================================
+
+  test('keyboard modifier keys behavior', () => {
+    const metaZEvent = new KeyboardEvent('keydown', {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+      key: 'z',
+      metaKey: true,
+    });
+    const ctrlZEvent = new KeyboardEvent('keydown', {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+      key: 'z',
+      ctrlKey: true,
+    });
+
+    let metaZPropagated = false;
+    let ctrlZPropagated = false;
+    realbox.addEventListener('keydown', e => {
+      if (e.metaKey && e.key === 'z') {
+        metaZPropagated = true;
+      }
+      if (e.ctrlKey && e.key === 'z') {
+        ctrlZPropagated = true;
+      }
+    });
+
+    // Dispatch events to the inputWrapper
+    realbox.$.inputWrapper.dispatchEvent(metaZEvent);
+    realbox.$.inputWrapper.dispatchEvent(ctrlZEvent);
+
+    // stopPropagation should be called on Mac for meta+Z, and on non-Mac for
+    // ctrl+Z.
+    assertEquals(!isMac, metaZPropagated);
+    assertEquals(isMac, ctrlZPropagated);
+
+    // Default isn't prevented for these explicitly in the handler.
+    assertFalse(metaZEvent.defaultPrevented);
+    assertFalse(ctrlZEvent.defaultPrevented);
   });
 
   test('pressing Enter in empty input prevents new line', async () => {

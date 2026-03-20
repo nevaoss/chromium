@@ -33,6 +33,12 @@ class FakeTile {
   TileDrawInfo::Mode draw_mode() { return TileDrawInfo::SOLID_COLOR_MODE; }
 
   bool IsReadyToDraw() const { return true; }
+
+  std::optional<viz::ResourceId> GetResourceId() const { return std::nullopt; }
+
+  std::optional<SkColor4f> GetSolidColor() const { return std::nullopt; }
+
+  bool IsOOM() const { return false; }
 };
 
 class FakeTilingCoverageIterator;
@@ -96,8 +102,7 @@ class TestTileBasedLayerImpl : public TileBasedLayerImpl<FakeTiling> {
                          AppendQuadsCustomSharedData* custom_data) override {
     return true;
   }
-  void ComputeCheckerboardedNeedsRecord(
-      AppendQuadsData* append_quads_data) override {}
+  bool ComputeCheckerboardedNeedsRecord() override { return false; }
   float GetMaximumContentsScaleForUseInAppendQuads() const override {
     return 1.f;
   }

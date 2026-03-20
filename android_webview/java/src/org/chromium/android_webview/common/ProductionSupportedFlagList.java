@@ -869,8 +869,6 @@ public final class ProductionSupportedFlagList {
                 AwFeatures.WEBVIEW_HYPERLINK_CONTEXT_MENU,
                 "Enables hyperlink context menu in WebView"),
         Flag.baseFeature(
-                ContentFeatures.WEB_PERMISSIONS_API, "Enables navigator.permissions.query()"),
-        Flag.baseFeature(
                 BlinkFeatures.DEFER_RENDERER_TASKS_AFTER_INPUT,
                 "If enabled, some renderer tasks will be deferred after discrete input events, e.g."
                         + " keypress, and the subsequent frame"),
@@ -1257,11 +1255,6 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(
                 "VariationsStickyNoopTest", "No-op flag for testing sticky study activation."),
         Flag.baseFeature(
-                "VariationsStickyPersistence",
-                "Controls how prefs are written and persisted for tracking sticky study activation."
-                    + " Note: The actual behavior is controlled by a feature param, but disabling"
-                    + " the feature will use the default param value (no special persistence)."),
-        Flag.baseFeature(
                 BlinkFeatures.TEXT_SCALE_META_TAG,
                 "When enabled, <meta name=\"text-scale\" content=\"scale\"> takes effect"),
         Flag.baseFeature(
@@ -1336,6 +1329,9 @@ public final class ProductionSupportedFlagList {
                 "When enabled, the PaymentRequest will use the URL loader from the renderer instead"
                         + " of the browser process."),
         Flag.baseFeature(
+                ContentFeatures.PREVIEW_HANDWRITING_GESTURE,
+                "When enabled, it allows users to see a preview of their handwriting gestures"),
+        Flag.baseFeature(
                 BlinkFeatures.UNTHROTTLE_ASYNC_TOUCH_MOVES,
                 "When enabled, touch move events to javascript handlers are unthrottled if "
                         + "they are sent as async to Renderer."),
@@ -1346,9 +1342,19 @@ public final class ProductionSupportedFlagList {
                 "NoSequenceForLevelDBCleanupTasks",
                 "When enabled, LevelDB cleanup tasks are run concurrently instead of in sequence."),
         Flag.baseFeature(
+                "SQLitePersistentCookieStoreEarlyInit",
+                "When enabled, the cookie dababase is initialized immediately upon creation, rather"
+                        + " than waiting for the first load request."),
+        Flag.baseFeature(
                 AwFeatures.WEBVIEW_SAVE_STATE_INCLUDE_HEADERS,
                 "When enabled, navigation headers will be saved and restored as part of saved state"
                         + " for WebView"),
+        Flag.baseFeature(
+                "ThrottleSendingCustomUserTimings",
+                "Throttle sending custom user timing events via performance.mark() from the"
+                        + " renderer to the browser process, to reduce the number of IPCs to record"
+                        + " page load metrics."),
+
         // Add new commandline switches and features above. The final entry should have a
         // trailing comma for cleaner diffs.
     };

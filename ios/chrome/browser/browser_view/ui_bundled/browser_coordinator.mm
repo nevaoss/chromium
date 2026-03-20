@@ -128,7 +128,7 @@
 #import "ios/chrome/browser/find_in_page/model/find_tab_helper.h"
 #import "ios/chrome/browser/first_run/omnibox_position/coordinator/omnibox_position_choice_coordinator.h"
 #import "ios/chrome/browser/fullscreen/ui_bundled/fullscreen_controller.h"
-#import "ios/chrome/browser/fullscreen/ui_bundled/fullscreen_reason.h"
+#import "ios/chrome/browser/fullscreen/ui_bundled/fullscreen_metrics.h"
 #import "ios/chrome/browser/google_one/coordinator/google_one_coordinator.h"
 #import "ios/chrome/browser/incognito_reauth/ui_bundled/incognito_reauth_mediator.h"
 #import "ios/chrome/browser/incognito_reauth/ui_bundled/incognito_reauth_scene_agent.h"
@@ -2004,7 +2004,8 @@ const char kChromeAppStoreUrl[] =
   SharingParams* params = [[SharingParams alloc] initWithScenario:scenario];
 
   // Exit fullscreen if needed to make sure that share button is visible.
-  _fullscreenController->ExitFullscreen(FullscreenExitReason::kForcedByCode);
+  _fullscreenController->ExitFullscreen(
+      FullscreenModeTransitionTrigger::kForcedByCode);
 
   if (!shareButton) {
     shareButton = _toolbarCoordinator.shareButton;
@@ -2042,7 +2043,8 @@ const char kChromeAppStoreUrl[] =
                                 scenario:SharingScenario::ShareChrome];
 
   // Exit fullscreen if needed to make sure that share button is visible.
-  _fullscreenController->ExitFullscreen(FullscreenExitReason::kForcedByCode);
+  _fullscreenController->ExitFullscreen(
+      FullscreenModeTransitionTrigger::kForcedByCode);
 
   UIView* originView =
       [_layoutGuideCenter referencedViewUnderName:kToolsMenuGuide];
@@ -5143,6 +5145,22 @@ const char kChromeAppStoreUrl[] =
 - (void)stopQuickDelete {
   [_quickDeleteCoordinator stop];
   _quickDeleteCoordinator = nil;
+}
+
+- (void)stopQuickDeleteAndOpenPasswordSettingsPage {
+  __weak __typeof(self) weakSelf = self;
+  ProceduralBlock dismissalCompletion = ^{
+    [weakSelf stopQuickDeleteAndOpenPasswordSettingsPageAfterVCDismissed];
+  };
+  [self.viewController dismissViewControllerAnimated:YES
+                                          completion:dismissalCompletion];
+}
+
+// Stop quick delete and open the password settings after all the
+// VC on top of BrowserViewController have been dismissed.
+- (void)stopQuickDeleteAndOpenPasswordSettingsPageAfterVCDismissed {
+  [self stopQuickDelete];
+  [self openPasswordSettings];
 }
 
 - (void)stopQuickDeleteForAnimationWithCompletion:(ProceduralBlock)completion {

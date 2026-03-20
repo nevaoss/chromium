@@ -16,6 +16,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/byte_size.h"
 #include "base/compiler_specific.h"
 #include "base/memory/ptr_util.h"
 #include "base/no_destructor.h"
@@ -164,8 +165,12 @@ class MockWebSocketHandshakeStream : public WebSocketHandshakeStreamBase {
   bool IsConnectionReused() const override { return false; }
   void SetConnectionReused() override {}
   bool CanReuseConnection() const override { return false; }
-  int64_t GetTotalReceivedBytes() const override { return 0; }
-  int64_t GetTotalSentBytes() const override { return 0; }
+  base::ByteSize GetTotalReceivedBytes() const override {
+    return base::ByteSize(0);
+  }
+  base::ByteSize GetTotalSentBytes() const override {
+    return base::ByteSize(0);
+  }
   bool GetLoadTimingInfo(LoadTimingInfo* load_timing_info) const override {
     return false;
   }
@@ -518,7 +523,7 @@ class CapturePreconnectsTransportSocketPool : public TransportClientSocketPool {
       scoped_refptr<ClientSocketPool::SocketParams> socket_params,
       const std::optional<NetworkTrafficAnnotationTag>& proxy_annotation_tag,
       size_t num_sockets,
-      CompletionOnceCallback callback,
+      ClientSocketPool::PreconnectCompletionCallback callback,
       const NetLogWithSource& net_log) override {
     last_num_streams_ = num_sockets;
     last_group_id_ = group_id;

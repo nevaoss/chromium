@@ -7,8 +7,13 @@
 
 #include <GLES2/gl2.h>
 
+#include <cstdint>
+
 #include "base/compiler_specific.h"
 #include "gpu/command_buffer/client/interface_base.h"
+#include "gpu/command_buffer/common/sync_token.h"
+#include "third_party/skia/include/core/SkAlphaType.h"
+#include "third_party/skia/include/gpu/ganesh/GrTypes.h"
 
 namespace cc {
 class ClientTransferCacheEntry;
@@ -18,6 +23,7 @@ class ImageProvider;
 
 namespace gfx {
 class Rect;
+class Size;
 class Vector2d;
 class Vector2dF;
 }  // namespace gfx
@@ -31,6 +37,8 @@ extern "C" typedef struct _ClientGpuFence* ClientGpuFence;
 extern "C" typedef const struct _GLcolorSpace* GLcolorSpace;
 
 namespace gpu {
+class ClientSharedImage;
+
 namespace gles2 {
 
 // This class is the interface for all client side GL functions.
@@ -38,6 +46,27 @@ class GLES2Interface : public InterfaceBase {
  public:
   GLES2Interface() = default;
   virtual ~GLES2Interface() = default;
+
+  // Returns true if it's possible to do a copy of a SharedImage to a GL texture
+  // via CopyTexture().
+  virtual bool CanCopySharedImageToGLTextureViaTextureCopy(
+      ClientSharedImage* shared_image);
+
+  // Copies the contents of |source_shared_image| to |texture| of the current
+  // context.
+  virtual gpu::SyncToken CopySharedImageToGLTextureViaTextureCopy(
+      const gfx::Size& src_size,
+      const gfx::Rect& src_rect,
+      ClientSharedImage* source_shared_image,
+      const gpu::SyncToken& source_sync_token,
+      uint32_t target,
+      uint32_t texture,
+      uint32_t internal_format,
+      uint32_t format,
+      uint32_t type,
+      int32_t level,
+      SkAlphaType dst_alpha_type,
+      GrSurfaceOrigin dst_origin);
 
   virtual void FreeSharedMemory(void*) {}
 

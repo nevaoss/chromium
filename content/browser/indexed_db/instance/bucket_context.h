@@ -58,10 +58,18 @@ class Database;
 // `kIdbSqliteOnDiskRolloutStages` when adding new values.
 enum class SqliteRolloutStage {
   // Use LevelDB exclusively; delete SQLite stores if found.
+  // All on-disk stores emit metrics to the "OnDisk" variant.
   kUseLevelDbOnly,
-  // Use SQLite for new stores and existing LevelDB stores that are corrupted.
+  // Functionally, the same as `kUseLevelDbOnly`.
+  // On-disk stores created during this stage emit metrics to the "Experimental"
+  // variant and previously existing stores emit to the "OnDisk" variant.
+  kUseLevelDbAsControl,
+  // Use SQLite for new stores and corrupted LevelDB stores.
+  // On-disk SQLite stores emit metrics to the "Experimental" variant and
+  // on-disk LevelDB stores emit to the "OnDisk" variant.
   kUseSqliteForNewStores,
   // Use SQLite exclusively; delete LevelDB stores if found.
+  // All on-disk stores emit metrics to the "OnDisk" variant.
   kUseSqliteOnly,
 };
 
@@ -320,14 +328,12 @@ class CONTENT_EXPORT BucketContext
   friend class BackingStoreTestBase;
   friend class DatabaseTest;
   friend class IndexedDBTestBase;
+  friend class IndexedDBTestForSqliteMigration;
   friend class TransactionTestBase;
 
   FRIEND_TEST_ALL_PREFIXES(IndexedDBTest, CompactionKillSwitchWorks);
   FRIEND_TEST_ALL_PREFIXES(IndexedDBTest, TooLongOrigin);
   FRIEND_TEST_ALL_PREFIXES(IndexedDBTest, BasicFactoryCreationAndTearDown);
-  FRIEND_TEST_ALL_PREFIXES(IndexedDBTestWithBucketType,
-                           ChangingEngineDeletesOtherEngineFiles);
-  FRIEND_TEST_ALL_PREFIXES(IndexedDBTestWithBucketType, UseSqliteForNewStores);
   FRIEND_TEST_ALL_PREFIXES(BucketContextTest, BucketSpaceDecay);
   FRIEND_TEST_ALL_PREFIXES(BucketContextTest, MetadataRecordingStateHistory);
   FRIEND_TEST_ALL_PREFIXES(BucketContextTest,

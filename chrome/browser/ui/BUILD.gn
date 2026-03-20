@@ -299,6 +299,7 @@ static_library("ui") {
     "//chrome/browser/crash_upload_list",
     "//chrome/browser/data_sharing",
     "//chrome/browser/devtools",
+    "//chrome/browser/engagement",
     "//chrome/browser/enterprise/browser_management:management_identity",
     "//chrome/browser/favicon",
     "//chrome/browser/feedback:feedback_impl",
@@ -328,6 +329,7 @@ static_library("ui") {
     "//chrome/browser/optimization_guide",
     "//chrome/browser/page_content_annotations",
     "//chrome/browser/page_content_annotations:fetcher",
+    "//chrome/browser/page_image_service",
     "//chrome/browser/page_info",
     "//chrome/browser/permissions",
     "//chrome/browser/picture_in_picture",
@@ -351,6 +353,7 @@ static_library("ui") {
     "//chrome/browser/search_engine_choice",
     "//chrome/browser/search_engine_choice:impl",
     "//chrome/browser/search_engines",
+    "//chrome/browser/search_provider_logos",
     "//chrome/browser/segmentation_platform",
     "//chrome/browser/sessions",
     "//chrome/browser/share",
@@ -425,6 +428,7 @@ static_library("ui") {
     "//chrome/browser/ui/webui/accessibility:impl",
     "//chrome/browser/ui/webui/bluetooth_internals",
     "//chrome/browser/ui/zoom",
+    "//chrome/browser/undo",
     "//chrome/browser/updates/announcement_notification",
     "//chrome/browser/updates/announcement_notification:impl",
     "//chrome/browser/vr",
@@ -563,6 +567,7 @@ static_library("ui") {
     "//components/permissions",
     "//components/policy/content",
     "//components/policy/core/browser",
+    "//components/policy/resources/webui/mojom:mojo_bindings",
     "//components/pref_registry",
     "//components/privacy_sandbox",
     "//components/privacy_sandbox:privacy_sandbox_prefs",
@@ -1165,7 +1170,6 @@ static_library("ui") {
       "webui/data_sharing/data_sharing_page_handler.cc",
       "webui/data_sharing/data_sharing_page_handler.h",
       "webui/data_sharing/data_sharing_ui.cc",
-      "webui/data_sharing/data_sharing_ui.h",
       "webui/downloads/downloads_dom_handler.cc",
       "webui/downloads/downloads_dom_handler.h",
       "webui/downloads/downloads_list_tracker.cc",
@@ -1485,6 +1489,7 @@ static_library("ui") {
       "//chrome/browser/glic/selection",
       "//chrome/browser/indigo",
       "//chrome/browser/lifetime:termination_notification",
+      "//chrome/browser/password_manager/actor_login:actor_login_permission_service_factory",
       "//chrome/browser/password_manager/factories",
       "//chrome/browser/privacy_sandbox:countries",
       "//chrome/browser/privacy_sandbox/notice:desktop_entrypoint_handlers_helper",
@@ -1530,10 +1535,12 @@ static_library("ui") {
       "//chrome/browser/ui/web_applications:launch_utils",
       "//chrome/browser/ui/webui/access_code_cast",
       "//chrome/browser/ui/webui/access_code_cast:impl",
+      "//chrome/browser/ui/webui/data_sharing",
       "//chrome/browser/ui/webui/feedback/report_unsafe_site:mojo_bindings",
       "//chrome/browser/ui/webui/omnibox_popup/mojom",
       "//chrome/browser/usb",
       "//chrome/browser/webauthn:local_credential_management",
+      "//components/password_manager/core/browser/actor_login:permissions_manager_impl",
 
       # No reason for this dependencies be out of alphabetical order.
       "//chrome/browser/content_extraction",
@@ -1776,6 +1783,7 @@ static_library("ui") {
       "//chrome/browser/ui/waap",
       "//chrome/browser/ui/webui/feedback/report_unsafe_site",
       "//chrome/browser/ui/webui/on_device_internals",
+      "//components/page_image_service/mojom:mojo_bindings",
     ]
     if (use_aura) {
       public_deps += [ "//chrome/browser/ui:overscroll_pref_manager" ]
@@ -2159,7 +2167,6 @@ static_library("ui") {
       "//ash/webui/scanner_feedback_ui",
       "//ash/webui/scanning",
       "//ash/webui/settings/public/constants",
-      "//ash/webui/settings/public/constants:mojom",
       "//ash/webui/shimless_rma",
       "//ash/webui/shortcut_customization_ui",
       "//ash/webui/shortcut_customization_ui/backend/search:mojo_bindings",
@@ -2432,7 +2439,6 @@ static_library("ui") {
       "//chrome/browser/ui/webui/ash/print_preview_cros",
       "//chrome/browser/ui/webui/ash/sanitize_dialog",
       "//chrome/browser/ui/webui/ash/settings",
-      "//chrome/browser/ui/webui/ash/settings/app_management",
       "//chrome/browser/ui/webui/ash/settings/pages",
       "//chrome/browser/ui/webui/ash/settings/pages/a11y",
       "//chrome/browser/ui/webui/ash/settings/pages/about",
@@ -2574,7 +2580,6 @@ static_library("ui") {
       "//chromeos/components/sharesheet:constants",
       "//chromeos/constants",
       "//chromeos/crosapi/cpp:crosapi_constants",
-      "//chromeos/crosapi/mojom:structured_metrics_service",
       "//chromeos/dbus/dlp",
       "//chromeos/dbus/power",
       "//chromeos/dbus/tpm_manager",
@@ -2670,7 +2675,6 @@ static_library("ui") {
       "//chrome/browser/ash/usb",
       "//chrome/browser/ui/ash/login",
       "//chrome/browser/ui/webui/ash/login",
-      "//chrome/browser/ui/webui/ash/settings/app_management",
       "//ui/base/mojom:ui_base_types",
     ]
 
@@ -2928,8 +2932,6 @@ static_library("ui") {
 
   if (is_win || is_mac || is_linux || is_chromeos) {
     sources += [
-      "frame/window_frame_util.cc",
-      "frame/window_frame_util.h",
       "incognito_clear_browsing_data_dialog_interface.h",
       "views/autofill/payments/webauthn_dialog_view.cc",
       "views/autofill/payments/webauthn_dialog_view.h",
@@ -2955,6 +2957,8 @@ static_library("ui") {
       "//chrome/browser/themes",
       "//chrome/browser/ui/autofill/payments",
       "//chrome/browser/ui/context_highlight",
+      "//chrome/browser/ui/frame",
+      "//chrome/browser/ui/frame:impl",
       "//chrome/browser/ui/lens",
       "//chrome/browser/ui/lens:impl",
       "//chrome/browser/ui/wallet",
@@ -4529,8 +4533,6 @@ static_library("ui") {
       "views/tabs/tab_layout_state.h",
       "views/tabs/tab_search_button.cc",
       "views/tabs/tab_search_button.h",
-      "views/tabs/tab_search_container.cc",
-      "views/tabs/tab_search_container.h",
       "views/tabs/tab_slot_animation_delegate.cc",
       "views/tabs/tab_slot_animation_delegate.h",
       "views/tabs/tab_slot_controller.h",
@@ -4658,6 +4660,10 @@ static_library("ui") {
       "views/web_apps/web_app_identity_update_confirmation_view.h",
       "views/web_apps/web_app_install_dialog_delegate.cc",
       "views/web_apps/web_app_install_dialog_delegate.h",
+      "views/web_apps/web_app_install_dialog_flow_view.cc",
+      "views/web_apps/web_app_install_dialog_flow_view.h",
+      "views/web_apps/web_app_install_flow_dialog_delegate.cc",
+      "views/web_apps/web_app_install_flow_dialog_delegate.h",
       "views/web_apps/web_app_install_not_supported_dialog.cc",
       "views/web_apps/web_app_launch_dialog.cc",
       "views/web_apps/web_app_modal_dialog_delegate.cc",
@@ -5040,8 +5046,6 @@ static_library("ui") {
         "views/apps/app_window_native_widget_mac.mm",
         "views/apps/chrome_native_app_window_views_mac.h",
         "views/apps/chrome_native_app_window_views_mac.mm",
-        "views/apps/native_app_window_frame_view_mac_client.h",
-        "views/apps/native_app_window_frame_view_mac_client.mm",
         "views/chrome_views_delegate_mac.cc",
         "views/desktop_capture/audio_capture_permission_checker_mac.h",
         "views/desktop_capture/audio_capture_permission_checker_mac.mm",
@@ -5548,7 +5552,7 @@ static_library("ui") {
 # //chrome/browser. These are semantically a part of
 # //chrome/browser:browser_public_dependencies since //chrome/browser and
 # //chrome/browser/ui allow circular dependencies.
-static_library("ui_public_dependencies") {
+group("ui_public_dependencies") {
   visibility = [ "//chrome/browser:browser_public_dependencies" ]
   public_deps = [
     "//components/cross_device/logging",
@@ -5587,7 +5591,6 @@ static_library("ui_public_dependencies") {
     public_deps += [ "//chromeos/ash/services/multidevice_setup/public/mojom" ]
   }
   if (is_win) {
-    arflags = [ "/llvmlibempty" ]
     public_deps += [
       "//build:branding_buildflags",
       "//ui/views",

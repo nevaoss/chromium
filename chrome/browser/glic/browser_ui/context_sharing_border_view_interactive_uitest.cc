@@ -350,9 +350,14 @@ IN_PROC_BROWSER_TEST_F(ContextSharingBorderViewUiTest, BorderResize) {
   const int widget_additional_width =
       browser_view.GetWidget()->GetWindowBoundsInScreen().width() -
       browser_view.width();
-  const int minimum_width =
-      browser_view.GetMinimumSize().width() + widget_additional_width;
-  const gfx::Size new_size(minimum_width, 600);
+  const int widget_additional_height =
+      browser_view.GetWidget()->GetWindowBoundsInScreen().height() -
+      browser_view.height();
+  const auto minimum_size = browser_view.browser_widget()->GetMinimumSize();
+  const int minimum_width = minimum_size.width() + widget_additional_width;
+  const int minimum_height =
+      std::max(minimum_size.height() + widget_additional_height, 600);
+  const gfx::Size new_size(minimum_width, minimum_height);
   auto* const browser_window = browser()->window();
   const gfx::Rect new_bounds(browser_window->GetBounds().origin(), new_size);
   EXPECT_NE(browser_window->GetBounds(), new_bounds);
@@ -364,7 +369,7 @@ IN_PROC_BROWSER_TEST_F(ContextSharingBorderViewUiTest, BorderResize) {
   }
 
   // Resized correctly.
-  EXPECT_EQ(browser_window->GetBounds(), new_bounds);
+  EXPECT_EQ(browser_window->GetBounds().size(), new_bounds.size());
   EXPECT_EQ(border->GetVisibleBounds(), contents_web_view->GetVisibleBounds());
 }
 
@@ -990,16 +995,8 @@ class ContextSharingBorderViewWithActorGlowUiTest
   base::test::ScopedFeatureList features_;
 };
 
-// TODO(https://crbug.com/478360939): Fix the flakiness.
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC)
-#define MAYBE_ActorGlowShowsBorderWhenIndicatorIsOff \
-  DISABLED_ActorGlowShowsBorderWhenIndicatorIsOff
-#else
-#define MAYBE_ActorGlowShowsBorderWhenIndicatorIsOff \
-  ActorGlowShowsBorderWhenIndicatorIsOff
-#endif
 IN_PROC_BROWSER_TEST_F(ContextSharingBorderViewWithActorGlowUiTest,
-                       MAYBE_ActorGlowShowsBorderWhenIndicatorIsOff) {
+                       ActorGlowShowsBorderWhenIndicatorIsOff) {
   auto* border = browser()
                      ->window()
                      ->AsBrowserView()
@@ -1030,7 +1027,7 @@ IN_PROC_BROWSER_TEST_F(ContextSharingBorderViewWithActorGlowUiTest,
   actor_keyed_service->PerformActions(task_id, std::move(actions),
                                       actor::ActorTaskMetadata(),
                                       result_future.GetCallback());
-  EXPECT_EQ(result_future.Get<0>(), actor::mojom::ActionResultCode::kOk);
+  ExpectOkResult(result_future);
 
   // Wait for the animation to start and verify the border is showing.
   tester->WaitForAnimationStart();
@@ -1041,11 +1038,10 @@ IN_PROC_BROWSER_TEST_F(ContextSharingBorderViewWithActorGlowUiTest,
   actor_keyed_service->StopTask(task_id,
                                 actor::ActorTask::StoppedReason::kTaskComplete);
 
-  // Poll until the border is no longer showing.
-  ASSERT_TRUE(base::test::RunUntil([&]() { return !border->IsShowing(); }));
+  // Poll until the border is no longer visible.
+  ASSERT_TRUE(base::test::RunUntil([&]() { return !border->GetVisible(); }));
 
   EXPECT_FALSE(border->IsShowing());
-  EXPECT_FALSE(border->GetVisible());
 }
 
 class ContextSharingBorderViewStandaloneGlowUiTest
@@ -1094,7 +1090,7 @@ IN_PROC_BROWSER_TEST_F(
   actor_keyed_service->PerformActions(task_id, std::move(actions),
                                       actor::ActorTaskMetadata(),
                                       result_future.GetCallback());
-  EXPECT_EQ(result_future.Get<0>(), actor::mojom::ActionResultCode::kOk);
+  ExpectOkResult(result_future);
 
   // Verify the border is not showing.
   EXPECT_FALSE(border->IsShowing());

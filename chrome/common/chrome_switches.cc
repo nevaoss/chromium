@@ -64,11 +64,6 @@ const char kAppId[] = "app-id";
 const char kAppLaunchUrlForShortcutsMenuItem[] =
     "app-launch-url-for-shortcuts-menu-item";
 
-// Value of GAIA auth code for --force-app-mode.
-const char kAppModeAuthCode[] = "app-mode-auth-code";
-
-// Value of OAuth2 refresh token for --force-app-mode.
-const char kAppModeOAuth2Token[] = "app-mode-oauth-token";
 
 // This is used along with kAppId to indicate an app was launched during
 // OS login, and which mode the app was launched in.
@@ -444,10 +439,6 @@ const char kKioskModePrinting[] = "kiosk-printing";
 // Makes Chrome default browser
 const char kMakeDefaultBrowser[] = "make-default-browser";
 
-// Allows setting a different destination ID for connection-monitoring GCM
-// messages. Useful when running against a non-prod management server.
-const char kMonitoringDestinationID[] = "monitoring-destination-id";
-
 // Requests a native messaging connection be established between the native
 // messaging host named by this switch and the extension with ID specified by
 // kNativeMessagingConnectExtension.
@@ -677,10 +668,6 @@ const char kStoragePressureNotificationInterval[] =
 const char kSystemAudioCaptureDefaultChecked[] =
     "system-audio-capture-default_checked";
 
-// Frequency in Milliseconds for system log uploads. Should only be used for
-// testing purposes.
-const char kSystemLogUploadFrequency[] = "system-log-upload-frequency";
-
 // This flag sets the checkboxes for sharing audio during tab capture to off
 // by default. It is primarily intended to be used for tests.
 const char kTabCaptureAudioDefaultUnchecked[] =
@@ -697,8 +684,6 @@ const char kCaptureAutoReject[] = "auto-reject-capture";
 // Custom delay for memory log. This should be used only for testing purpose.
 const char kTestMemoryLogDelayInMinutes[] = "test-memory-log-delay-in-minutes";
 
-// Passes the name of the current running automated test to Chrome.
-const char kTestName[] = "test-name";
 
 // Identifies a list of download sources as trusted, but only if proper group
 // policy is set.
@@ -815,8 +800,6 @@ const char kCastMirroringTargetPlayoutDelay[] =
 #endif
 
 #if BUILDFLAG(IS_CHROMEOS)
-// Custom crosh command.
-const char kCroshCommand[] = "crosh-command";
 
 // Disables logging redirect for testing.
 const char kDisableLoggingRedirect[] = "disable-logging-redirect";

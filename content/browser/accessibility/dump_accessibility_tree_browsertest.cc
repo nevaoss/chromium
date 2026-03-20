@@ -836,6 +836,11 @@ IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
   RunAriaTest(FILE_PATH_LITERAL("aria-button-labeledby.html"));
 }
 
+IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
+                       AccessibilityAriaCarouselButtons) {
+  RunAriaTest(FILE_PATH_LITERAL("aria-carousel-buttons.html"));
+}
+
 IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest, AccessibilityAriaCaption) {
   RunAriaTest(FILE_PATH_LITERAL("aria-caption.html"));
 }
@@ -1476,6 +1481,32 @@ IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
 IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
                        AccessibilityMenuListPopover) {
   RunHtmlTest(FILE_PATH_LITERAL("menulist-popover.html"));
+}
+
+IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
+                       AccessibilityMenuListInvokedByButton) {
+  RunHtmlTest(FILE_PATH_LITERAL("menulist-invoked-by-button.html"));
+}
+
+IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
+                       AccessibilityMenuListInvokedByMenuItem) {
+  RunHtmlTest(FILE_PATH_LITERAL("menulist-invoked-by-menuitem.html"));
+}
+
+IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
+                       AccessibilityMenuListMultipleInvokers) {
+  RunHtmlTest(FILE_PATH_LITERAL("menulist-multiple-invokers.html"));
+}
+
+IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
+                       AccessibilityMenuListAriaLabelledbyOverridesLabel) {
+  RunHtmlTest(
+      FILE_PATH_LITERAL("menulist-aria-labelledby-overrides-label.html"));
+}
+
+IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
+                       AccessibilityMenuListAriaLabelOverridesImplicit) {
+  RunHtmlTest(FILE_PATH_LITERAL("menulist-aria-label-overrides-implicit.html"));
 }
 
 IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,

@@ -421,12 +421,12 @@ class WTF_EXPORT StringImpl {
       return Characters16()[i];
     });
   }
-  UChar32 CharacterStartingAt(wtf_size_t);
+  UChar32 CodePointAtOrZero(wtf_size_t);
 
   bool ContainsOnlyWhitespaceOrEmpty();
 
-  scoped_refptr<StringImpl> LowerASCII();
-  scoped_refptr<StringImpl> UpperASCII();
+  scoped_refptr<StringImpl> ToAsciiLower();
+  scoped_refptr<StringImpl> ToAsciiUpper();
 
   scoped_refptr<StringImpl> Fill(UChar);
   // FIXME: Do we need fill(char) or can we just do the right thing if UChar is
@@ -903,17 +903,6 @@ ALWAYS_INLINE bool EqualIgnoringAsciiCase(base::span<const UChar> a,
 #else
   return EqualIgnoringAsciiCase<UChar, UChar>(a, b);
 #endif  // HWY_TARGET != HWY_SCALAR
-}
-
-WTF_EXPORT int CodeUnitCompareIgnoringASCIICase(const StringImpl*,
-                                                const StringImpl*);
-WTF_EXPORT int CodeUnitCompareIgnoringASCIICase(const StringImpl*,
-                                                const LChar*);
-
-template <typename CharacterType1, typename CharacterType2>
-int CodeUnitCompareIgnoringAsciiCase(base::span<const CharacterType1> c1,
-                                     base::span<const CharacterType2> c2) {
-  return CodeUnitCompare(c1, c2, [](auto c) { return ToASCIILower(c); });
 }
 
 template <typename CharType>

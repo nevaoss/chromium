@@ -371,7 +371,7 @@ void AppBannerManager::OnDidGetManifest(const InstallableData& data) {
   if (IsManifestUrlChange(data)) {
     return;
   }
-  if (state() != State::FETCHING_MANIFEST) {
+  if (state_ != State::FETCHING_MANIFEST) {
     return;
   }
 
@@ -439,8 +439,11 @@ void AppBannerManager::PerformInstallableWebAppCheck() {
 
   // Fetch and verify the other required information.
   UpdateState(State::PENDING_INSTALLABLE_CHECK);
+
+  InstallableParams params = installable_params_for_testing_.value_or(
+      delegate_->ParamsToPerformInstallableWebAppCheck());
   manager_->GetData(
-      delegate_->ParamsToPerformInstallableWebAppCheck(),
+      params,
       base::BindOnce(&AppBannerManager::OnDidPerformInstallableWebAppCheck,
                      weak_factory_for_this_navigation_.GetWeakPtr()));
 }
@@ -542,6 +545,16 @@ void AppBannerManager::ResetCurrentPageData() {
   UpdateState(State::INACTIVE);
   SetInstallableWebAppCheckResult(InstallableWebAppCheckResult::kUnknown);
   delegate_->ResetCurrentPageData();
+}
+
+void AppBannerManager::ResetCurrentPageDataForTesting() {
+  Stop(InstallableStatusCode::PIPELINE_RESTARTED);
+  ResetCurrentPageData();
+}
+
+void AppBannerManager::OverrideInstallableParamsForTesting(
+    const InstallableParams& params) {
+  installable_params_for_testing_ = params;
 }
 
 void AppBannerManager::Terminate(InstallableStatusCode code) {
@@ -996,12 +1009,26 @@ void AppBannerManager::ShowBannerForCurrentPageState() {
   std::optional<InstallBannerConfig> config = GetCurrentBannerConfig();
   CHECK(config);
   TrackBeforeInstallEvent(BEFORE_INSTALL_EVENT_COMPLETE);
-  delegate_->ShowBannerUi(install_source, config.value());
-  ReportStatus(InstallableStatusCode::SHOWING_APP_INSTALLATION_DIALOG);
+  ShowBannerUiResult result =
+      delegate_->ShowBannerUi(install_source, config.value());
+  switch (result) {
+    case ShowBannerUiResult::kShownAppInstallationDialog:
+      ReportStatus(InstallableStatusCode::SHOWING_APP_INSTALLATION_DIALOG);
+      break;
+    case ShowBannerUiResult::kShownWebApp:
+      ReportStatus(InstallableStatusCode::SHOWING_WEB_APP_BANNER);
+      break;
+    case ShowBannerUiResult::kShownNativeApp:
+      ReportStatus(InstallableStatusCode::SHOWING_NATIVE_APP_BANNER);
+      break;
+    case ShowBannerUiResult::kFailed:
+      ReportStatus(InstallableStatusCode::FAILED_TO_CREATE_BANNER);
+      break;
+  }
   UpdateState(State::COMPLETE);
 
   for (Observer& observer : observer_list_) {
-    observer.OnComplete();
+    observer.OnBannerShown();
   }
 }
 

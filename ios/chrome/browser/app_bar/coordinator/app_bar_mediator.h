@@ -11,12 +11,15 @@
 
 @protocol AppBarConsumer;
 @class BrowserActionFactory;
+class FullscreenController;
+@protocol FullscreenUIElement;
 @class IncognitoState;
 class PrefService;
 @protocol SceneCommands;
 @protocol TabGridCommands;
 @class TabGridState;
 @protocol TabGroupsCommands;
+class TemplateURLService;
 class UrlLoadingBrowserAgent;
 class WebStateList;
 
@@ -33,7 +36,7 @@ class WebStateList;
 @property(nonatomic, weak) id<TabGroupsCommands> regularTabGroupsCommands;
 
 // The consumer of this mediator.
-@property(nonatomic, weak) id<AppBarConsumer> consumer;
+@property(nonatomic, weak) id<AppBarConsumer, FullscreenUIElement> consumer;
 
 // The regular actions factory.
 @property(nonatomic, strong) BrowserActionFactory* regularActionFactory;
@@ -44,7 +47,13 @@ class WebStateList;
 // Initializes the mediator with the two web state lists.
 - (instancetype)initWithRegularWebStateList:(WebStateList*)regularWebStateList
                       incognitoWebStateList:(WebStateList*)incognitoWebStateList
+                regularFullscreenController:
+                    (FullscreenController*)regularFullscreenController
+              incognitoFullscreenController:
+                  (FullscreenController*)incognitoFullscreenController
                                 prefService:(PrefService*)prefService
+                         templateURLService:
+                             (TemplateURLService*)templateURLService
                                   URLLoader:(UrlLoadingBrowserAgent*)URLLoader
                                tabGridState:(TabGridState*)tabGridState
                              incognitoState:(IncognitoState*)incognitoState
@@ -54,6 +63,10 @@ class WebStateList;
 
 // Resets the incognito web state list.
 - (void)setIncognitoWebStateList:(WebStateList*)incognitoWebStateList;
+
+// Resets the incognito fullscreen controller.
+- (void)setIncognitoFullscreenController:
+    (FullscreenController*)fullscreenController;
 
 // Disconnects the mediator from the coordinator.
 - (void)disconnect;

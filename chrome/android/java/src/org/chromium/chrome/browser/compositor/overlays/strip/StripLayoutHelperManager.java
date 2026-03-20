@@ -201,8 +201,8 @@ public class StripLayoutHelperManager
     private static final float GLIC_BUTTON_BACKGROUND_Y_OFFSET_DP = 5.f;
     private static final float GLIC_BUTTON_BACKGROUND_WIDTH_DP = 28.f;
     private static final float GLIC_BUTTON_BACKGROUND_HEIGHT_DP = 28.f;
-    private static final float GLIC_BUTTON_HOVER_BACKGROUND_PRESSED_OPACITY = 0.24f;
-    private static final float GLIC_BUTTON_HOVER_BACKGROUND_DEFAULT_OPACITY = 0.16f;
+    private static final float GLIC_BUTTON_HOVER_BACKGROUND_PRESSED_OPACITY = 0.30f;
+    private static final float GLIC_BUTTON_HOVER_BACKGROUND_DEFAULT_OPACITY = 0.20f;
     private static final float GLIC_BUTTON_CLICK_SLOP_DP =
             (BUTTON_DESIRED_TOUCH_TARGET_SIZE - GLIC_BUTTON_BACKGROUND_WIDTH_DP) / 2;
     private static final float GLIC_BUTTON_START_PADDING_DP = 6.f;
@@ -715,6 +715,7 @@ public class StripLayoutHelperManager
                 (LayerTitleCache layerTitleCache) -> {
                     mNormalHelper.setLayerTitleCache(layerTitleCache);
                     mIncognitoHelper.setLayerTitleCache(layerTitleCache);
+                    setGlicButtonText(mContext.getString(R.string.glic_button_entrypoint_label));
                 });
 
         if (mDesktopWindowStateManager != null) {
@@ -762,7 +763,9 @@ public class StripLayoutHelperManager
                         /* parentView= */ null,
                         GLIC_BUTTON_BACKGROUND_WIDTH_DP,
                         GLIC_BUTTON_BACKGROUND_HEIGHT_DP,
-                        /* tooltipHandler= */ null,
+                        (tooltipText) -> {
+                            mToolbarControlContainer.setTooltipText(tooltipText);
+                        },
                         selectorClickHandler,
                         keyboardFocusHandler,
                         R.drawable.ic_spark_16dp,
@@ -774,24 +777,20 @@ public class StripLayoutHelperManager
         mGlicButton.setVisible(false);
 
         @ColorInt
-        int backgroundDefaultColor =
-                TabUiThemeUtil.getTabStripSelectedTabColor(context, /* isIncognito= */ false);
+        int backgroundDefaultColor = SemanticColorUtils.getColorSurfaceContainerLow(context);
 
         @ColorInt
         int apsBackgroundHoveredColor =
                 ColorUtils.setAlphaComponentWithFloat(
-                        SemanticColorUtils.getDefaultTextColor(context),
+                        SemanticColorUtils.getColorPrimary(context),
                         GLIC_BUTTON_HOVER_BACKGROUND_DEFAULT_OPACITY);
         @ColorInt
         int backgroundPressedColor =
                 ColorUtils.setAlphaComponentWithFloat(
-                        SemanticColorUtils.getDefaultTextColor(context),
+                        SemanticColorUtils.getColorPrimary(context),
                         GLIC_BUTTON_HOVER_BACKGROUND_PRESSED_OPACITY);
 
-        @ColorInt
-        int iconDefaultColor =
-                AppCompatResources.getColorStateList(context, R.color.default_icon_color_tint_list)
-                        .getDefaultColor();
+        @ColorInt int iconDefaultColor = SemanticColorUtils.getDefaultIconColor(context);
 
         mGlicButton.setTint(
                 iconDefaultColor, iconDefaultColor, Color.TRANSPARENT, Color.TRANSPARENT);
@@ -806,7 +805,9 @@ public class StripLayoutHelperManager
                 Color.TRANSPARENT,
                 Color.TRANSPARENT);
 
-        // TODO(crbug.com/481101300): Set accessibility description.
+        mGlicButton.setAccessibilityDescription(
+                context.getString(R.string.glic_tab_strip_button_tooltip),
+                /* incognitoDescription= */ "");
     }
 
     private void createModelSelectorButton(

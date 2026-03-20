@@ -71,10 +71,26 @@ suite('TopToolbarTest', () => {
     });
 
     test('handles thread history button click', async () => {
+      topToolbar.isAiPage = true;
+      await microtasksFinished();
+
       const historyButton = topToolbar.$.threadHistoryButton;
       assertTrue(!!historyButton);
       historyButton.click();
       await proxy.handler.whenCalled('showThreadHistory');
+    });
+
+    test('hides thread history button on SRP', async () => {
+      const historyButton = topToolbar.$.threadHistoryButton;
+      assertTrue(!!historyButton);
+
+      topToolbar.isAiPage = false;
+      await microtasksFinished();
+      assertTrue(historyButton.hidden);
+
+      topToolbar.isAiPage = true;
+      await microtasksFinished();
+      assertFalse(historyButton.hidden);
     });
 
     test('handles close button click', async () => {
@@ -220,7 +236,7 @@ suite('TopToolbarTest', () => {
     });
 
     test('handles open in new tab click', async () => {
-      topToolbar.isAiPage = true;
+      topToolbar.enableOpenInNewTabButton = true;
       await microtasksFinished();
 
       const moreButton =
@@ -236,7 +252,7 @@ suite('TopToolbarTest', () => {
       openInNewTabButton.click();
       await proxy.handler.whenCalled('moveTaskUiToNewTab');
 
-      topToolbar.isAiPage = false;
+      topToolbar.enableOpenInNewTabButton = false;
       await microtasksFinished();
       assertTrue(openInNewTabButton.disabled);
       proxy.handler.reset();

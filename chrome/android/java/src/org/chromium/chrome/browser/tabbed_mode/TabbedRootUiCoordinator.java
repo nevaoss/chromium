@@ -54,6 +54,7 @@ import org.chromium.chrome.browser.ChromeInactivityTracker;
 import org.chromium.chrome.browser.ChromeInactivityTracker.InactivityObserver;
 import org.chromium.chrome.browser.SwipeRefreshHandler;
 import org.chromium.chrome.browser.accessibility.PageZoomIphController;
+import org.chromium.chrome.browser.actor.ui.ActorControlCoordinator;
 import org.chromium.chrome.browser.actor.ui.ActorOverlayCoordinator;
 import org.chromium.chrome.browser.app.tabwindow.TabWindowManagerSingleton;
 import org.chromium.chrome.browser.back_press.BackPressManager;
@@ -148,9 +149,7 @@ import org.chromium.chrome.browser.pdf.PdfPageIphController;
 import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
 import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
 import org.chromium.chrome.browser.privacy.settings.PrivacySettings;
-import org.chromium.chrome.browser.privacy_sandbox.ActivityTypeMapper;
 import org.chromium.chrome.browser.privacy_sandbox.PrivacySandbox3pcdRollbackMessageController;
-import org.chromium.chrome.browser.privacy_sandbox.PrivacySandboxBridge;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.read_later.ReadLaterIphController;
 import org.chromium.chrome.browser.readaloud.ReadAloudIphController;
@@ -332,6 +331,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
             new OneshotSupplierImpl<>();
     private ContextualTasksBridge mContextualTasksBridge;
     private @Nullable ActorOverlayCoordinator mActorOverlayCoordinator;
+    private @Nullable ActorControlCoordinator mActorControlCoordinator;
 
     // Activity tab observer that updates the current tab used by various UI components.
     private class RootUiTabObserver extends ActivityTabTabObserver {
@@ -840,6 +840,11 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
             mActorOverlayCoordinator = null;
         }
 
+        if (mActorControlCoordinator != null) {
+            mActorControlCoordinator.destroy();
+            mActorControlCoordinator = null;
+        }
+
         destroySideUi();
 
         super.onDestroy();
@@ -979,7 +984,8 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                             assumeNonNull(mTabModelSelectorSupplier.get()),
                             mBrowserControlsManager,
                             mTabObscuringHandlerSupplier.get(),
-                            assumeNonNull(mSnackbarManagerSupplier.get()));
+                            assumeNonNull(mSnackbarManagerSupplier.get()),
+                            mLayoutManagerSupplier);
         }
     }
 
@@ -1120,6 +1126,12 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
 
         initiateTabBottomSheetManagers();
         initializeSideUi();
+
+        if (ChromeFeatureList.sGlic.isEnabled()) {
+            mActorControlCoordinator =
+                    new ActorControlCoordinator(
+                            mActivity, (v) -> {}, (v) -> {}, mTabBottomSheetManager);
+        }
     }
 
     @Override
@@ -1273,18 +1285,6 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         controller.setNavigationBarScrimColor(color);
     }
 
-    // Package Private class methods
-    void recordPrivacySandboxActivityType(Profile profile) {
-        // Records the current ActivityType using a PrivacySandbox Bridge
-        if (ChromeFeatureList.isEnabled(ChromeFeatureList.PRIVACY_SANDBOX_ACTIVITY_TYPE_STORAGE)) {
-            int privacySandboxStorageActivityType =
-                    ActivityTypeMapper.toPrivacySandboxStorageActivityType(ActivityType.TABBED);
-
-            PrivacySandboxBridge privacySandboxBridge = new PrivacySandboxBridge(profile);
-            privacySandboxBridge.recordActivityType(privacySandboxStorageActivityType);
-        }
-    }
-
     // Private class methods
     private void initializeIph(Profile profile, boolean intentWithEffect) {
         if (mActivity == null) return;
@@ -1319,9 +1319,6 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                         profile,
                         getToolbarManager().getMenuButtonView(),
                         mAppMenuCoordinator.getAppMenuHandler()));
-
-        // Initializes Privacy Sandbox related logic
-        recordPrivacySandboxActivityType(profile);
 
         boolean didTriggerPromo =
                 maybeShowRequiredPromptsAndPromos(profile, intentWithEffect)
@@ -1805,16 +1802,14 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
             @Override
             public void getPreviewBitmap(
                     String collaborationId, int size, Callback<Bitmap> callback) {
-                @Nullable
-                TabGroupSyncService tabGroupSyncService =
+                @Nullable TabGroupSyncService tabGroupSyncService =
                         TabGroupSyncServiceFactory.getForProfile(mProfileSupplier.get());
                 if (tabGroupSyncService == null) {
                     callback.onResult(null);
                     return;
                 }
 
-                @Nullable
-                SavedTabGroup savedTabGroup =
+                @Nullable SavedTabGroup savedTabGroup =
                         DataSharingTabGroupUtils.getTabGroupForCollabIdFromSync(
                                 collaborationId, tabGroupSyncService);
                 if (savedTabGroup == null) {
@@ -2196,8 +2191,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
             mKeyboardFocusRowManager.onKeyboardFocusRowSwitch();
             return true;
         } else if (id == R.id.open_tab_strip_context_menu) {
-            @Nullable
-            StripLayoutHelperManager stripLayoutHelperManager =
+            @Nullable StripLayoutHelperManager stripLayoutHelperManager =
                     mLayoutManager.getStripLayoutHelperManager();
             if (stripLayoutHelperManager == null) return false;
             return stripLayoutHelperManager.openKeyboardFocusedContextMenu();

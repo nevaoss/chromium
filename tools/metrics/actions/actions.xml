@@ -109,6 +109,13 @@ should be able to be added at any place in this file.
   <variant name=".UnpinItem" summary="Remove a custom item."/>
 </variants>
 
+<variants name="ContextualSearchAiModeButtonSurface">
+  <variant name="NtpOmnibox" summary="NTP Omnibox"/>
+  <variant name="NtpRealbox" summary="NTP Realbox"/>
+  <variant name="SrpOmnibox" summary="SRP Omnibox"/>
+  <variant name="WebOmnibox" summary="Web Omnibox"/>
+</variants>
+
 <variants name="ContextualSearchContextState">
   <variant name="WithNonTabContext"
       summary="with non-tab context (e.g. files)"/>
@@ -177,6 +184,8 @@ should be able to be added at any place in this file.
   <variant name="_AdaptiveButtonInTopToolbarCustomization_AddToBookmarks"
       summary="For AdaptiveButtonInTopToolbarCustomization add to bookmarks
                feature."/>
+  <variant name="_AdaptiveButtonInTopToolbarCustomization_Glic"
+      summary="For AdaptiveButtonInTopToolbarCustomization glic feature"/>
   <variant name="_AdaptiveButtonInTopToolbarCustomization_NewTab"
       summary="For AdaptiveButtonInTopToolbarCustomization new tab feature."/>
   <variant name="_AdaptiveButtonInTopToolbarCustomization_PageSummary_Pdf"
@@ -856,6 +865,11 @@ should be able to be added at any place in this file.
   <variant name=".AddedToComparisonTable" summary="Added to comparison table"/>
   <variant name=".AddedToReadingList" summary="Added to reading list"/>
   <variant name=".DiceUserMigrated" summary="DICe user migrated"/>
+  <variant name=".EnhancedBundledSecuritySettings"
+      summary="Enhanced protection user migrated"/>
+  <variant name=".MultistepFilterSuggestion" summary="Filter suggested"/>
+  <variant name=".SkillDeleted" summary="Skill deleted"/>
+  <variant name=".SkillSaved" summary="Skill saved"/>
   <variant name=".SyncEsbOff"
       summary="Enhanced Protection setting has been synced to Off"/>
   <variant name=".SyncEsbOn"
@@ -902,6 +916,7 @@ should be able to be added at any place in this file.
   <variant name=".TestModule" summary="Test module"/>
   <variant name=".ToolbarPinning" summary="Toolbar Pinning"/>
   <variant name=".TranslationSettings" summary="Translation Settings"/>
+  <variant name=".VerticalTabsLaunch" summary="Vertical Tabs"/>
 </variants>
 
 <action name="AboutChrome">
@@ -10730,6 +10745,18 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action
+    name="ContextualSearch.AiModeButtonClick.{ContextualSearchAiModeButtonSurface}">
+  <owner>niharm@google.com</owner>
+  <owner>chrome-contextual-tasks-eng@google.com</owner>
+  <description>
+    Recorded when the AI mode button is clicked on the
+    {ContextualSearchAiModeButtonSurface}.
+  </description>
+  <token key="ContextualSearchAiModeButtonSurface"
+      variants="ContextualSearchAiModeButtonSurface"/>
+</action>
+
 <action name="ContextualSearch.BackPressClose">
   <owner>donnd@chromium.org</owner>
   <description>
@@ -10806,6 +10833,16 @@ should be able to be added at any place in this file.
     Contextual Search maximized when the user navigated to a search result in
     the expanded panel.
   </description>
+</action>
+
+<action name="ContextualSearch.RecentTabChipClick.{ContextualSearchSource}">
+  <owner>niharm@google.com</owner>
+  <owner>chrome-contextual-tasks-eng@google.com</owner>
+  <description>
+    Recorded when a recent tab chip is clicked in the composebox on
+    {ContextualSearchSource}.
+  </description>
+  <token key="ContextualSearchSource" variants="ContextualSearchSource"/>
 </action>
 
 <action name="ContextualSearch.SearchBarTapClose">
@@ -10940,6 +10977,17 @@ should be able to be added at any place in this file.
   </description>
   <token key="ContextualSearchContextState"
       variants="ContextualSearchContextState"/>
+  <token key="ContextualSearchSource" variants="ContextualSearchSource"/>
+</action>
+
+<action
+    name="ContextualSearch.UserAction.SubmitVoiceQuery.{ContextualSearchSource}">
+  <owner>niharm@google.com</owner>
+  <owner>chrome-contextual-tasks-eng@google.com</owner>
+  <description>
+    Recorded when a query is submitted through a voice query from
+    {ContextualSearchSource}.
+  </description>
   <token key="ContextualSearchSource" variants="ContextualSearchSource"/>
 </action>
 
@@ -11100,6 +11148,16 @@ should be able to be added at any place in this file.
     <variant name=".CloseSidePanel" summary="The user closed the side panel."/>
     <variant name=".OpenSidePanel" summary="The user opened the side panel."/>
   </token>
+</action>
+
+<action
+    name="ContextualTasks.ToolbarCloseTabButton.UserAction.CloseTabAndExpandSidePanel">
+  <owner>yuhengh@chromium.org</owner>
+  <owner>chrome-contextual-tasks-eng@google.com</owner>
+  <description>
+    The user interacted with the contextual tasks toolbar close tab button. The
+    current tab will be closed and side panel will expand to a new tab.
+  </description>
 </action>
 
 <action name="ContextualTasks.WebUI.UserAction{ActionType}">
@@ -27247,6 +27305,14 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="MobileGeminiEntryPointAvailable">
+  <owner>yasamans@google.com</owner>
+  <owner>bling-alchemy-eng@google.com</owner>
+  <description>
+    Reported when the Gemini entry point is available. iOS only.
+  </description>
+</action>
+
 <action name="MobileGeminiEntryPointImpression">
   <owner>kanouche@google.com</owner>
   <description>
@@ -28300,9 +28366,21 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="MobileMenuExtensions">
+  <obsolete>
+    This menu ended up being split into several different items in the menu.
+  </obsolete>
   <owner>massan@google.com</owner>
   <owner>nya@chromium.org</owner>
   <description>User pressed 'Extensions' in the app menu.</description>
+</action>
+
+<action name="MobileMenuExtensionsMenu">
+  <owner>massan@google.com</owner>
+  <owner>emiliapaz@chromium.org</owner>
+  <owner>nya@chromium.org</owner>
+  <description>
+    User pressed 'Open extensions menu' in the app menu.
+  </description>
 </action>
 
 <action name="MobileMenuFeedback">
@@ -28384,6 +28462,13 @@ should be able to be added at any place in this file.
   <description>
     User opened 'Listen to the feed' from the app overflow menu
   </description>
+</action>
+
+<action name="MobileMenuManageExtensions">
+  <owner>massan@google.com</owner>
+  <owner>emiliapaz@chromium.org</owner>
+  <owner>nya@chromium.org</owner>
+  <description>User pressed 'Manage extensions' in the app menu.</description>
 </action>
 
 <action name="MobileMenuMoveToOtherWindow">
@@ -32492,6 +32577,12 @@ should be able to be added at any place in this file.
     <variant name=".MoveTabToOtherWindow.MultiTab"
         summary="User moved multiple tabs to another window via the tab
                  context menu on tab strip on Android."/>
+    <variant name=".MuteSite"
+        summary="User muted a site via the tab context menu on tab strip on
+                 Android."/>
+    <variant name=".MuteSite.MultiTab"
+        summary="User muted site(s) from multiple selected tabs via the tab
+                 context menu on tab strip on Android."/>
     <variant name=".NewGroup"
         summary="User created a new tab group via the tab context menu on tab
                  strip on Android."/>
@@ -32518,6 +32609,12 @@ should be able to be added at any place in this file.
     <variant name=".Shown.MultiTab"
         summary="Recorded when the tab context menu is shown with multiple
                  tabs selected."/>
+    <variant name=".UnmuteSite"
+        summary="User unmuted a site via the tab context menu on tab strip on
+                 Android."/>
+    <variant name=".UnmuteSite.MultiTab"
+        summary="User unmuted site(s) from multiple selected tabs via the tab
+                 context menu on tab strip on Android."/>
     <variant name=".UnpinTab"
         summary="User unpinned a tab via the tab context menu on tab strip on
                  Android."/>
@@ -36606,6 +36703,36 @@ should be able to be added at any place in this file.
   <description>
     Recorded when a choice dialog to invite users to finish choosing their
     default browser app and search engine choice from OS is unblocked.
+  </description>
+</action>
+
+<action name="OtherDataPage_OpenLink_ToMyActivity">
+  <owner>novakovica@google.com</owner>
+  <owner>bling-transactions@google.com</owner>
+  <description>
+    Records when the user clicks on the &quot;My Activity&quot; cell in the
+    Quick Delete Other Data page to be redirected to the &quot;My Activity&quot;
+    page.
+  </description>
+</action>
+
+<action name="OtherDataPage_OpenLink_ToPasswordSettings">
+  <owner>novakovica@google.com</owner>
+  <owner>bling-transactions@google.com</owner>
+  <description>
+    Records when the user clicks on the &quot;Passwords and passkeys&quot; cell
+    in the Quick Delete Other Data page to be redirected to the Password
+    Settings page.
+  </description>
+</action>
+
+<action name="OtherDataPage_OpenLink_ToSearchHistory">
+  <owner>novakovica@google.com</owner>
+  <owner>bling-transactions@google.com</owner>
+  <description>
+    Records when the user clicks on the &quot;Search history&quot; cell in the
+    Quick Delete Other Data page to be redirected to the &quot;Search
+    history&quot; page.
   </description>
 </action>
 

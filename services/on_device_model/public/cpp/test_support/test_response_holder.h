@@ -78,11 +78,19 @@ class TestResponseHolder
   // mojom::StreamingResponder:
   void OnResponse(mojom::ResponseChunkPtr chunk) override;
   void OnComplete(mojom::ResponseSummaryPtr summary) override;
+  void OnToolCalls(std::vector<mojom::ToolCallPtr> tool_calls) override;
 
   void DisconnectOnMessage();
 
+  // Returns true if tool calls have been received.
+  bool has_tool_calls() const { return !tool_calls_.empty(); }
+  const std::vector<mojom::ToolCallPtr>& tool_calls() const {
+    return tool_calls_;
+  }
+
  private:
   std::vector<std::string> responses_;
+  std::vector<mojom::ToolCallPtr> tool_calls_;
   uint32_t output_token_count_ = 0;
   bool complete_ = false;
   bool disconnect_on_message_ = false;

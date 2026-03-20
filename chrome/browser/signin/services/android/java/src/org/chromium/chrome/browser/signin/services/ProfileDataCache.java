@@ -53,7 +53,7 @@ import java.util.function.Function;
  */
 @MainThread
 @NullMarked
-public class ProfileDataCache implements IdentityManager.Observer, AccountsChangeObserver {
+public class ProfileDataCache implements IdentityManager.Observer {
     /** Observer to get notifications about changes in profile data. */
     public interface Observer {
 
@@ -75,7 +75,14 @@ public class ProfileDataCache implements IdentityManager.Observer, AccountsChang
 
     private final Context mContext;
     private final AccountManagerFacade mAccountManagerFacade;
+    private final AccountManagerAccountsChangeObserver mAccountManagerAccountsChangeObserver;
     private final IdentityManager mIdentityManager;
+
+    // TODO(crbug.com/485773785) Remove when flag usage will be added
+    @SuppressWarnings("UnusedVariable")
+    private final @Nullable IdentityManagerAccountsChangeObserver
+            mIdentityManagerAccountsChangeObserver = null;
+
     private final int mImageSize;
     // The badge for a given account is selected as follows:
     // * If there is a config for that specific account, use that
@@ -97,6 +104,7 @@ public class ProfileDataCache implements IdentityManager.Observer, AccountsChang
         assert identityManager != null;
         mContext = context;
         mAccountManagerFacade = accountManagerFacade;
+        mAccountManagerAccountsChangeObserver = new AccountManagerAccountsChangeObserver();
         mIdentityManager = identityManager;
         mImageSize = imageSize;
         mDefaultBadgeConfig = badgeConfig;
@@ -199,9 +207,9 @@ public class ProfileDataCache implements IdentityManager.Observer, AccountsChang
 
         // TODO(https://crbug.com/483627535): Remove that fallback to AccountManagerFacade after
         // full migration to IdentityManager.
-        var accounts = mAccountManagerFacade.getAccounts();
-        if (accounts.isFulfilled()) {
-            for (var account : accounts.getResult()) {
+        var accounts = getCoreAccountsIfLoaded();
+        if (accounts != null) {
+            for (var account : accounts) {
                 if (account.getId().equals(accountId)) {
                     return createDefaultProfileData(account.getEmail());
                 }
@@ -256,7 +264,9 @@ public class ProfileDataCache implements IdentityManager.Observer, AccountsChang
         }
         mPerAccountBadgeConfig.put(accountId, badgeConfig);
         var accountInfo = mIdentityManager.findExtendedAccountInfoByAccountId(accountId);
-        onExtendedAccountInfoUpdated(accountInfo);
+        if (accountInfo != null) {
+            onExtendedAccountInfoUpdated(accountInfo);
+        }
     }
 
     /**
@@ -265,7 +275,7 @@ public class ProfileDataCache implements IdentityManager.Observer, AccountsChang
     public void addObserver(Observer observer) {
         ThreadUtils.assertOnUiThread();
         if (mObservers.isEmpty()) {
-            mAccountManagerFacade.addObserver(this);
+            mAccountManagerFacade.addObserver(mAccountManagerAccountsChangeObserver);
             mIdentityManager.addObserver(this);
         }
         mObservers.addObserver(observer);
@@ -278,24 +288,18 @@ public class ProfileDataCache implements IdentityManager.Observer, AccountsChang
         ThreadUtils.assertOnUiThread();
         mObservers.removeObserver(observer);
         if (mObservers.isEmpty()) {
-            mAccountManagerFacade.removeObserver(this);
             mIdentityManager.removeObserver(this);
+            mAccountManagerFacade.removeObserver(mAccountManagerAccountsChangeObserver);
         }
-    }
-
-    @Override
-    public void onCoreAccountInfosChanged() {
-        updateCache();
     }
 
     /** Implements {@link IdentityManager.Observer}. */
     @Override
-    public void onExtendedAccountInfoUpdated(@Nullable AccountInfo accountInfo) {
+    public void onExtendedAccountInfoUpdated(AccountInfo accountInfo) {
         // We don't update the cache if the account information and ProfileDataCache config mean
         // that we would just be returning the default profile data.
-        if (accountInfo != null
-                && (accountInfo.hasDisplayableInfo()
-                        || getBadgeConfigForAccount(accountInfo.getId()) != null)) {
+        if (accountInfo.hasDisplayableInfo()
+                || getBadgeConfigForAccount(accountInfo.getId()) != null) {
             var displayableProfileData = toDisplayableProfileData(accountInfo);
             mAccountsCache.putAccount(
                     new AccountsCache.AccountEntry(accountInfo.getId(), displayableProfileData));
@@ -311,15 +315,18 @@ public class ProfileDataCache implements IdentityManager.Observer, AccountsChang
     }
 
     private void updateCache() {
-        var accounts = mAccountManagerFacade.getAccounts();
-        if (!accounts.isFulfilled()) {
-            // When the list of accounts is ready - onCoreAccountInfosChanged will call
-            // updateCache again.
+        var accounts = getCoreAccountsIfLoaded();
+        if (accounts == null) {
+            // Accounts are not loaded yet, cache will be updated by the observer once they are
+            // available.
             return;
         }
+        updateCache(accounts);
+    }
 
+    private void updateCache(List<AccountInfo> accounts) {
         List<AccountsCache.AccountEntry> displayableAccounts = new ArrayList<>();
-        for (CoreAccountInfo account : accounts.getResult()) {
+        for (CoreAccountInfo account : accounts) {
             var accountInfo = mIdentityManager.findExtendedAccountInfoByAccountId(account.getId());
             if (accountInfo != null
                     && (accountInfo.hasDisplayableInfo()
@@ -377,6 +384,14 @@ public class ProfileDataCache implements IdentityManager.Observer, AccountsChang
         }
     }
 
+    private @Nullable List<AccountInfo> getCoreAccountsIfLoaded() {
+        var accounts = mAccountManagerFacade.getAccounts();
+        if (accounts.isFulfilled()) {
+            return accounts.getResult();
+        }
+        return null;
+    }
+
     // TODO(crbug.com/40944114): Consider using UiUtils.drawIconWithBadge instead.
     private Drawable overlayBadgeOnUserPicture(BadgeConfig badgeConfig, Drawable userPicture) {
         int badgeSize = badgeConfig.getBadgeSize();
@@ -429,6 +444,40 @@ public class ProfileDataCache implements IdentityManager.Observer, AccountsChang
         return mPerAccountBadgeConfig.get(accountId) != null
                 ? mPerAccountBadgeConfig.get(accountId)
                 : mDefaultBadgeConfig;
+    }
+
+    private class AccountManagerAccountsChangeObserver implements AccountsChangeObserver {
+
+        /** Implements {@link AccountsChangeObserver}. */
+        @Override
+        public void onCoreAccountInfosChanged() {
+            updateCache(mAccountManagerFacade.getAccounts().getResult());
+        }
+    }
+
+    private class IdentityManagerAccountsChangeObserver implements IdentityManager.Observer {
+
+        /** Implements {@link IdentityManager.Observer}. */
+        @Override
+        public void onRefreshTokensLoaded() {
+            updateCache(mIdentityManager.getExtendedAccountInfoForAccountsWithRefreshToken());
+        }
+
+        /** Implements {@link IdentityManager.Observer}. */
+        @Override
+        public void onRefreshTokenUpdatedForAccount(CoreAccountInfo coreAccountInfo) {
+            if (mIdentityManager.areRefreshTokensLoaded()) {
+                updateCache(mIdentityManager.getExtendedAccountInfoForAccountsWithRefreshToken());
+            }
+        }
+
+        /** Implements {@link IdentityManager.Observer}. */
+        @Override
+        public void onRefreshTokenRemovedForAccount(CoreAccountId accountId) {
+            if (mIdentityManager.areRefreshTokensLoaded()) {
+                updateCache(mIdentityManager.getExtendedAccountInfoForAccountsWithRefreshToken());
+            }
+        }
     }
 
     private static final class AccountsCache {

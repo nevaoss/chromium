@@ -43,6 +43,7 @@ class ViewShadow;
 class BrowserWindowInterface;
 
 class ProjectsPanelController;
+class ProjectsPanelRecentThreadsExpandButton;
 class ProjectsPanelRecentThreadsView;
 class ProjectsPanelStateController;
 class ProjectsPanelTabGroupsView;
@@ -102,6 +103,7 @@ class ProjectsPanelView : public views::View,
   // gfx::AnimationDelegate:
   void AnimationProgressed(const gfx::Animation* animation) override;
   void AnimationEnded(const gfx::Animation* animation) override;
+  void AnimationCanceled(const gfx::Animation* animation) override;
 
   // ProjectsPanelController::Observer:
   void OnTabGroupsInitialized(
@@ -163,6 +165,7 @@ class ProjectsPanelView : public views::View,
                              contextual_tasks::ThreadType thread_type);
   void OnTabGroupDragUpdated(const gfx::Point& location);
   void OnTabGroupDragExited();
+  void OnThreadExpandButtonPressed();
 
   const raw_ptr<BrowserWindowInterface> browser_;
   raw_ptr<actions::ActionItem> root_action_item_ = nullptr;
@@ -174,6 +177,8 @@ class ProjectsPanelView : public views::View,
   raw_ptr<ProjectsPanelTabGroupsView> tab_groups_view_ = nullptr;
   raw_ptr<views::View> threads_container_ = nullptr;
   raw_ptr<ProjectsPanelRecentThreadsView> threads_view_ = nullptr;
+  raw_ptr<ProjectsPanelRecentThreadsExpandButton> threads_expand_button_ =
+      nullptr;
   raw_ptr<views::Separator> separator_ = nullptr;
   raw_ptr<views::MenuButton> threads_activity_menu_button_ = nullptr;
   raw_ptr<views::Button> create_new_tab_group_button_ = nullptr;
@@ -215,6 +220,10 @@ class ProjectsPanelView : public views::View,
   // Prevents attempting to (un)observe the focus manager more than once if
   // OnProjectsPanelStateChanged is called twice with the same visibility value.
   bool observing_focus_manager_ = false;
+
+  // Records the last time the panel was opened. Used for recording how long the
+  // panel was open.
+  base::TimeTicks last_opened_time_;
 
   base::ScopedObservation<ProjectsPanelController,
                           ProjectsPanelController::Observer>

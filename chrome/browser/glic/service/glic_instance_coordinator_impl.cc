@@ -19,6 +19,7 @@
 #include "chrome/browser/glic/common/glic_tab_observer.h"
 #include "chrome/browser/glic/glic_pref_names.h"
 #include "chrome/browser/glic/host/glic.mojom.h"
+#include "chrome/browser/glic/host/glic_web_contents_warming_pool.h"
 #include "chrome/browser/glic/host/host.h"
 #include "chrome/browser/glic/host/webui_contents_container.h"
 #include "chrome/browser/glic/public/features.h"
@@ -155,6 +156,7 @@ void GlicInstanceCoordinatorImpl::OnInstanceActivationChanged(
   if (is_active && active_instance_ != instance) {
     active_instance_ = instance;
     last_active_instance_ = active_instance_;
+    MaybeStopListeningFloaty(instance);
   } else if (!is_active && active_instance_ == instance) {
     active_instance_ = nullptr;
   } else {
@@ -345,9 +347,6 @@ void GlicInstanceCoordinatorImpl::InvokeInternal(
     // TODO(crbug.com/483387751): Show default toast here once implemented.
     return;
   }
-
-  instance->Show(ShowOptions::ForSidePanel(
-      *tab, GlicPinTrigger::kInstanceCreation, options.invocation_source));
 
   invoke_handlers_[instance] = std::make_unique<GlicInvokeHandler>(
       *instance, tab, std::move(options), auto_submit_passkey,
@@ -992,6 +991,8 @@ void GlicInstanceCoordinatorImpl::OnMemoryPressure(
     return;
   }
 
+  service_->web_contents_warming_pool().Clear();
+
   if (base::FeatureList::IsEnabled(kGlicHibernateAllOnMemoryPressure)) {
     warmed_instance_.reset();
 
@@ -1157,6 +1158,24 @@ void GlicInstanceCoordinatorImpl::RestoreTab(
       pinned_instance->sharing_manager().PinTabs({tab->GetHandle()},
                                                  GlicPinTrigger::kRestore);
     }
+  }
+}
+
+void GlicInstanceCoordinatorImpl::MaybeStopListeningFloaty(
+    GlicInstanceImpl* instance) {
+  if (!instance) {
+    return;
+  }
+  auto* floaty_instance = GetInstanceWithFloaty();
+  if (!floaty_instance || instance == floaty_instance) {
+    return;
+  }
+
+  // Another instance has become active, so stop the floaty instance
+  // from listening to ensure a single active instance.
+  if (floaty_instance->host().microphone_status() ==
+      mojom::MicrophoneStatus::kListening) {
+    floaty_instance->host().StopMicrophone(base::DoNothing());
   }
 }
 

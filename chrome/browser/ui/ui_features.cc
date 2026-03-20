@@ -35,7 +35,7 @@ BASE_FEATURE(kCreateNewTabGroupAppMenuTopLevel,
 
 BASE_FEATURE(kTabStripDeclutter, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kGlassToolbar, base::FEATURE_DISABLED_BY_DEFAULT);
-
+BASE_FEATURE(kToolbarGlowUp, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kDetachedTabs, base::FEATURE_DISABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
@@ -121,10 +121,6 @@ BASE_FEATURE(kPressAndHoldEscToExitBrowserFullscreen,
 BASE_FEATURE(kShowTabGroupsMacSystemMenu, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_MAC)
 
-BASE_FEATURE(kSideBySide, base::FEATURE_ENABLED_BY_DEFAULT);
-
-BASE_FEATURE(kSideBySideLinkMenuNewBadge, base::FEATURE_ENABLED_BY_DEFAULT);
-
 BASE_FEATURE(kTabDuplicateMetrics, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables tabs to be frozen when collapsed.
@@ -196,8 +192,6 @@ BASE_FEATURE_PARAM(bool,
                    &kTabOrganization,
                    "trigger_demo_mode",
                    false);
-
-BASE_FEATURE(kTabOrganizationAppMenuItem, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kTabOrganizationModelStrategy, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -344,12 +338,6 @@ BASE_FEATURE_PARAM(bool,
                    true);
 
 BASE_FEATURE_PARAM(bool,
-                   kPageActionsMigrationFind,
-                   &kPageActionsMigration,
-                   "find",
-                   true);
-
-BASE_FEATURE_PARAM(bool,
                    kPageActionsMigrationCollaborationMessaging,
                    &kPageActionsMigration,
                    "collaboration_messaging",
@@ -360,12 +348,6 @@ BASE_FEATURE_PARAM(bool,
                    &kPageActionsMigration,
                    "mandatory_reauth",
                    false);
-
-BASE_FEATURE_PARAM(bool,
-                   kPageActionsMigrationClickToCall,
-                   &kPageActionsMigration,
-                   "click_to_call",
-                   true);
 
 BASE_FEATURE_PARAM(bool,
                    kPageActionsMigrationSharingHub,

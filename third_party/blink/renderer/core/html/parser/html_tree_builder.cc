@@ -360,7 +360,7 @@ void HTMLTreeBuilder::FragmentParsingContext::Init(
     ContainerNode* fragment_target,
     Element* context_element) {
   DCHECK(fragment_target);
-  DCHECK((RuntimeEnabledFeatures::DocumentPatchingEnabled() &&
+  DCHECK((RuntimeEnabledFeatures::NewHTMLSettingMethodsEnabled() &&
           ((fragment_target == context_element) ||
            fragment_target->IsShadowRoot() &&
                To<ShadowRoot>(fragment_target)->host() == context_element)) ||
@@ -574,7 +574,7 @@ void MapLoweredLocalNameToName(PrefixedNameToQualifiedNameMap* map,
   for (size_t i = 0; i < names.size(); ++i) {
     const QualifiedName& name = *names[i];
     const AtomicString& local_name = name.LocalName();
-    AtomicString lowered_local_name = local_name.LowerASCII();
+    AtomicString lowered_local_name = local_name.ToAsciiLower();
     if (lowered_local_name != local_name)
       map->insert(lowered_local_name, name);
   }
@@ -693,7 +693,6 @@ void HTMLTreeBuilder::ProcessStartTagForInBody(AtomicHTMLToken* token) {
     case HTMLTag::kBase:
     case HTMLTag::kBasefont:
     case HTMLTag::kBgsound:
-    case HTMLTag::kCommand:
     case HTMLTag::kLink:
     case HTMLTag::kMeta:
     case HTMLTag::kNoframes:
@@ -1081,6 +1080,13 @@ void HTMLTreeBuilder::ProcessStartTagForInBody(AtomicHTMLToken* token) {
     case HTMLTag::kTr:
       ParseError(token);
       break;
+    case HTMLTag::kCommand:
+      if (!RuntimeEnabledFeatures::HTMLCommandElementRemovalEnabled()) {
+        bool did_process = ProcessStartTagForInHead(token);
+        DCHECK(did_process);
+        break;
+      }
+      [[fallthrough]];
     default:
       if (token->GetName() == mathml_names::kMathTag.LocalName()) {
         tree_.ReconstructTheActiveFormattingElements();
@@ -2733,12 +2739,17 @@ bool HTMLTreeBuilder::ProcessStartTagForInHead(AtomicHTMLToken* token) {
     case HTMLTag::kBase:
     case HTMLTag::kBasefont:
     case HTMLTag::kBgsound:
-    case HTMLTag::kCommand:
     case HTMLTag::kLink:
     case HTMLTag::kMeta:
       tree_.InsertSelfClosingHTMLElementDestroyingToken(token);
       // Note: The custom processing for the <meta> tag is done in
       // HTMLMetaElement::process().
+      return true;
+    case html_names::HTMLTag::kCommand:
+      if (RuntimeEnabledFeatures::HTMLCommandElementRemovalEnabled()) {
+        return false;
+      }
+      tree_.InsertSelfClosingHTMLElementDestroyingToken(token);
       return true;
     case HTMLTag::kTitle:
       ProcessGenericRCDATAStartTag(token);

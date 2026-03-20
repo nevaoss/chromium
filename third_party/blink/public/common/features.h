@@ -709,6 +709,9 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kIgnoreInputWhileHidden);
 // applied. See https://crbug.com/1369823.
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kImageLoadingPrioritizationFix);
 
+// If enabled, allows the browser to render new content in place of an image.
+BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kImageReplacement);
+
 #if !BUILDFLAG(IS_ANDROID)
 // If enabled, the initial WebUI will not interact with extensions. This feature
 // intends to optimize performance by reducting extension related tasks.
@@ -1983,6 +1986,8 @@ BLINK_COMMON_EXPORT bool IsCanvas2DHibernationEnabled();
 BLINK_COMMON_EXPORT bool DisplayWarningDeprecateURNIframesUseFencedFrames();
 
 BLINK_COMMON_EXPORT bool IsFencedFramesEnabled();
+
+BLINK_COMMON_EXPORT bool IsMemoryPurgeOnBackgroundingEnabled();
 
 BLINK_COMMON_EXPORT bool IsParkableStringsToDiskEnabled();
 

@@ -21,7 +21,7 @@ import {TestMock} from 'chrome://webui-test/test_mock.js';
 import {microtasksFinished} from 'chrome://webui-test/test_util.js';
 
 import {TestContextualTasksBrowserProxy} from './test_contextual_tasks_browser_proxy.js';
-import {ADD_FILE_CONTEXT_FN, assertStyle, FAKE_TOKEN_STRING, getSubmitButton, getSubmitContainer, installMock, mockInputState, setupAutocompleteResults, simulateUserInput, uploadFileAndVerify} from './test_utils.js';
+import {ADD_FILE_CONTEXT_FN, assertStyle, FAKE_TOKEN_STRING, fixtureUrl, getSubmitButton, getSubmitContainer, installMock, mockInputState, setupAutocompleteResults, simulateUserInput, uploadFileAndVerify} from './test_utils.js';
 
 function disableAnimationsRecursively(element: Element) {
   const noAnimation = document.createElement('style');
@@ -91,9 +91,10 @@ suite('ContextualTasksComposeboxZeroStateTest', () => {
       composeboxShowZps: true,
       enableBasicModeZOrder: true,
       composeboxShowContextMenu: true,
+      forcedEmbeddedPageHost: '',
     });
 
-    testProxy = new TestContextualTasksBrowserProxy('https://google.com');
+    testProxy = new TestContextualTasksBrowserProxy(fixtureUrl);
     BrowserProxyImpl.setInstance(testProxy);
 
     mockComposeboxPageHandler = TestMock.fromClass(ComposeboxPageHandlerRemote);
@@ -460,7 +461,7 @@ suite('ContextualTasksComposeboxZeroStateTest', () => {
   test('TooltipImpressionTimerResetsOnHide', () => {
     mockTimer.install();
     const composeboxElement = contextualTasksApp.$.composebox;
-    const tooltip = composeboxElement.$.onboardingTooltip;
+    const tooltip = contextualTasksApp.$.onboardingTooltip;
 
     loadTimeData.overrideValues({
       showOnboardingTooltip: true,
@@ -468,8 +469,8 @@ suite('ContextualTasksComposeboxZeroStateTest', () => {
       composeboxShowOnboardingTooltipSessionImpressionCap: 10,
       composeboxShowOnboardingTooltipImpressionDelay: 3000,
     });
-    composeboxElement.numberOfTimesTooltipShownForTesting = 0;
-    composeboxElement.userDismissedTooltipForTesting = false;
+    contextualTasksApp.numberOfTimesTooltipShownForTesting = 0;
+    contextualTasksApp.userDismissedTooltipForTesting = false;
 
     const innerComposebox = composeboxElement.$.composebox;
     // Mock existence of chip.
@@ -478,22 +479,22 @@ suite('ContextualTasksComposeboxZeroStateTest', () => {
         document.createElement('div');
 
     // Show tooltip.
-    composeboxElement.updateTooltipVisibilityForTesting();
-    assertTrue(tooltip.shouldShow);
+    contextualTasksApp.updateTooltipVisibilityForTesting();
+    assertTrue(tooltip!.shouldShow);
 
     // Advance time partially.
     mockTimer.tick(1000);
-    assertEquals(0, composeboxElement.numberOfTimesTooltipShownForTesting);
+    assertEquals(0, contextualTasksApp.numberOfTimesTooltipShownForTesting);
 
     // Hide tooltip (e.g. chip disappears).
     innerComposebox.getHasAutomaticActiveTabChipToken = () => false;
-    composeboxElement.updateTooltipVisibilityForTesting();
-    assertFalse(tooltip.shouldShow);
+    contextualTasksApp.updateTooltipVisibilityForTesting();
+    assertFalse(tooltip!.shouldShow);
 
     // Advance past original deadline.
     mockTimer.tick(5000);
     // Should NOT have incremented because timer was cleared.
-    assertEquals(0, composeboxElement.numberOfTimesTooltipShownForTesting);
+    assertEquals(0, contextualTasksApp.numberOfTimesTooltipShownForTesting);
   });
 
   test(
@@ -722,6 +723,10 @@ suite('ContextualTasksComposeboxZeroStateTest', () => {
 
   test('deep search: thread change resets input', async () => {
     composebox.onToolClickForTesting(ComposeboxToolMode.kDeepSearch);
+    searchboxCallbackRouterRemote.onInputStateChanged({
+      ...mockInputState,
+      activeTool: ComposeboxToolMode.kDeepSearch,
+    });
 
     await composebox.updateComplete;
     await microtasksFinished();
@@ -747,6 +752,10 @@ suite('ContextualTasksComposeboxZeroStateTest', () => {
 
   test('image gen: thread change resets input', async () => {
     composebox.onToolClickForTesting(ComposeboxToolMode.kImageGen);
+    searchboxCallbackRouterRemote.onInputStateChanged({
+      ...mockInputState,
+      activeTool: ComposeboxToolMode.kImageGen,
+    });
 
     await composebox.updateComplete;
     await microtasksFinished();
@@ -773,6 +782,10 @@ suite('ContextualTasksComposeboxZeroStateTest', () => {
 
   test('canvas: thread change resets input', async () => {
     composebox.onToolClickForTesting(ComposeboxToolMode.kCanvas);
+    searchboxCallbackRouterRemote.onInputStateChanged({
+      ...mockInputState,
+      activeTool: ComposeboxToolMode.kCanvas,
+    });
 
     await composebox.updateComplete;
     await microtasksFinished();

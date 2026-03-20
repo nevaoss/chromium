@@ -8,7 +8,6 @@
 #include "chrome/browser/ui/actions/chrome_action_id.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/page_action/page_action_icon_type.h"
-#include "chrome/browser/ui/views/location_bar/find_bar_icon.h"
 #include "ui/actions/action_id.h"
 
 namespace {
@@ -170,9 +169,7 @@ constexpr auto kPageActionProperties =
             {
                 .histogram_name = "Find",
                 .type = PageActionIconType::kFind,
-                // TODO(crbug.com/376283618): Create a dedicated element ID once
-                // `FindBarIcon` is removed.
-                .element_identifier = FindBarIcon::kElementId,
+                .element_identifier = kFindPageActionElementId,
             },
         },
         {
@@ -239,6 +236,21 @@ constexpr auto kPageActionProperties =
                 .is_ephemeral = false,
                 .type = PageActionIconType::kBookmarkStar,
                 .element_identifier = kBookmarkStarViewElementId,
+            },
+        },
+        {
+            kActionFederation,
+            {
+                .histogram_name = "Federation",
+                .type = PageActionIconType::kFederation,
+                .element_identifier = kFederationElementId,
+            },
+        },
+        {
+            kActionGlicContextualCueing,
+            {
+                .histogram_name = "Glic",
+                .type = PageActionIconType::kGlic,
             },
         },
     });

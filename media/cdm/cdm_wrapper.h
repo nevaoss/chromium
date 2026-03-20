@@ -9,7 +9,6 @@
 
 #include "base/check.h"
 #include "base/memory/raw_ptr.h"
-#include "base/not_fatal_until.h"
 #include "media/base/media_switches.h"
 #if defined(USE_NEVA_CDM)
 #include "media/cdm/neva/webos/content_decryption_module_webos.h"

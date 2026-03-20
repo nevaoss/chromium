@@ -264,7 +264,7 @@ String HTMLElement::nodeName() const {
   if (IsA<HTMLDocument>(GetDocument())) {
     if (!TagQName().HasPrefix())
       return TagQName().LocalNameUpper();
-    return Element::nodeName().UpperASCII();
+    return Element::nodeName().ToAsciiUpper();
   }
   return Element::nodeName();
 }
@@ -378,7 +378,7 @@ void HTMLElement::CollectStyleForPresentationAttribute(
                                               value);
     }
   } else if (name == html_names::kContenteditableAttr) {
-    AtomicString lower_value = value.LowerASCII();
+    AtomicString lower_value = value.ToAsciiLower();
     if (lower_value.empty() || lower_value == keywords::kTrue) {
       AddPropertyToPresentationAttributeStyle(
           style, CSSPropertyID::kWebkitUserModify, CSSValueID::kReadWrite);
@@ -966,7 +966,7 @@ DocumentFragment* HTMLElement::TextToFragment(const String& text,
 
     if (i > start) {
       fragment->AppendChild(
-          Text::Create(GetDocument(), text.Substring(start, i - start)),
+          Text::Create(GetDocument(), text.substr(start, i - start)),
           exception_state);
       if (exception_state.HadException())
         return nullptr;
@@ -1162,7 +1162,7 @@ bool HTMLElement::HasCustomFocusLogic() const {
 
 ContentEditableType HTMLElement::contentEditableNormalized() const {
   AtomicString value =
-      FastGetAttribute(html_names::kContenteditableAttr).LowerASCII();
+      FastGetAttribute(html_names::kContenteditableAttr).ToAsciiLower();
 
   if (value.IsNull())
     return ContentEditableType::kInherit;
@@ -1194,7 +1194,7 @@ String HTMLElement::contentEditable() const {
 
 void HTMLElement::setContentEditable(const String& enabled,
                                      ExceptionState& exception_state) {
-  String lower_value = enabled.LowerASCII();
+  String lower_value = enabled.ToAsciiLower();
   if (lower_value == keywords::kTrue) {
     setAttribute(html_names::kContenteditableAttr, keywords::kTrue);
   } else if (lower_value == keywords::kFalse) {
@@ -1265,7 +1265,7 @@ void HTMLElement::setHidden(
 namespace {
 
 PopoverValueType GetPopoverTypeFromAttributeValue(const AtomicString& value) {
-  AtomicString lower_value = value.LowerASCII();
+  AtomicString lower_value = value.ToAsciiLower();
   if (lower_value == keywords::kAuto || (!value.IsNull() && value.empty())) {
     return PopoverValueType::kAuto;
   } else if (lower_value == keywords::kHint) {
@@ -2134,6 +2134,13 @@ PopoverHideResult HTMLElement::HidePopoverInternal(
         contains(document.AdjustedFocusedElement())) {
       FocusOptions* focus_options = FocusOptions::Create();
       focus_options->setPreventScroll(true);
+      if (InvokerData* data = previously_focused_element->GetInvokerData();
+          data && previously_focused_element->InterestForElement() == this) {
+        // If the previously focused element is an interest invoker for this
+        // popover, suppress the next focus, so we don't immediately (or after
+        // a delay) re-trigger the same popover.
+        data->SetSuppressNextFocusInterest(true);
+      }
       previously_focused_element->Focus(FocusParams(
           SelectionBehaviorOnFocus::kRestore, mojom::blink::FocusType::kScript,
           /*capabilities=*/nullptr, focus_options));
@@ -2616,7 +2623,11 @@ bool HTMLElement::HandleCommandInternal(HTMLElement& invoker,
     ScrollOffset old_offset =
         scrollable_area->GetScrollOffset() + scroll_origin;
     ScrollOffset new_offset;
-    if (previous_snap_targets.x == first_data.element_id) {
+
+    if (old_offset == scroll_origin) {
+      CHECK(previous_snap_targets.x == first_data.element_id ||
+            previous_snap_targets.y == first_data.element_id);
+
       gfx::RectF target_rect = second_data.rect;
 
       PhysicalSize box_size = overscroll_area_object->PhysicalContentBoxSize();
@@ -2649,6 +2660,8 @@ bool HTMLElement::HandleCommandInternal(HTMLElement& invoker,
       // absolute space though).
       new_offset += old_offset;
     } else {
+      CHECK(previous_snap_targets.x != first_data.element_id ||
+            previous_snap_targets.y != first_data.element_id);
       new_offset = scroll_origin;
     }
 
@@ -2831,7 +2844,7 @@ AtomicString HTMLElement::command() const {
     case CommandEventType::kCustom:
       return action;
     default: {
-      const AtomicString& lower_action = action.LowerASCII();
+      const AtomicString& lower_action = action.ToAsciiLower();
       DCHECK_EQ(GetCommandEventType(lower_action, GetExecutionContext()), type);
       return lower_action;
     }
@@ -3370,10 +3383,11 @@ static Color ParseColorStringWithCrazyLegacyRules(const String& color_string) {
   // "characters" in the String.
   for (; i < color_string.length() && digit_buffer.size() < kMaxColorLength;
        i++) {
-    if (!IsASCIIHexDigit(color_string[i]))
+    if (!IsAsciiHexDigit(color_string[i])) {
       digit_buffer.push_back('0');
-    else
+    } else {
       digit_buffer.push_back(color_string[i]);
+    }
   }
 
   if (!digit_buffer.size())
@@ -3384,9 +3398,9 @@ static Color ParseColorStringWithCrazyLegacyRules(const String& color_string) {
   digit_buffer.push_back('0');
 
   if (digit_buffer.size() < 6) {
-    return Color::FromRGB(ToASCIIHexValue(digit_buffer[0]),
-                          ToASCIIHexValue(digit_buffer[1]),
-                          ToASCIIHexValue(digit_buffer[2]));
+    return Color::FromRGB(ToAsciiHexValue(digit_buffer[0]),
+                          ToAsciiHexValue(digit_buffer[1]),
+                          ToAsciiHexValue(digit_buffer[2]));
   }
 
   // Split the digits into three components, then search the last 8 digits of
@@ -3415,11 +3429,11 @@ static Color ParseColorStringWithCrazyLegacyRules(const String& color_string) {
   SECURITY_DCHECK(blue_index + 1 < digit_buffer.size());
 
   int red_value =
-      ToASCIIHexValue(digit_buffer[red_index], digit_buffer[red_index + 1]);
+      ToAsciiHexValue(digit_buffer[red_index], digit_buffer[red_index + 1]);
   int green_value =
-      ToASCIIHexValue(digit_buffer[green_index], digit_buffer[green_index + 1]);
+      ToAsciiHexValue(digit_buffer[green_index], digit_buffer[green_index + 1]);
   int blue_value =
-      ToASCIIHexValue(digit_buffer[blue_index], digit_buffer[blue_index + 1]);
+      ToAsciiHexValue(digit_buffer[blue_index], digit_buffer[blue_index + 1]);
   return Color::FromRGB(red_value, green_value, blue_value);
 }
 

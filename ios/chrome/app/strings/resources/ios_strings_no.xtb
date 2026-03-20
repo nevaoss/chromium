@@ -298,7 +298,6 @@
 <translation id="2012723204723845092">Velkommen tilbake!</translation>
 <translation id="2015722694326466240">For å se passordene må du først angi en adgangskode på enheten din.</translation>
 <translation id="201759455285471444">Vis fanegruppen.</translation>
-<translation id="202070562065520783">Forklar dette for meg</translation>
 <translation id="2044394949148788042">Åpne fanerutenettet</translation>
 <translation id="2044681667265133332">Kontoen <ph name="USER_EMAIL" /> administreres av <ph name="HOSTED_DOMAIN" />, som kan se visse typer informasjon. <ph name="BEGIN_LINK" />Finn ut mer<ph name="END_LINK" /></translation>
 <translation id="20485545164632846">nytt element</translation>
@@ -527,6 +526,7 @@
 <translation id="286382692684806520">{COUNT,plural, =1{1 nettsted (flere på synkroniserte enheter)}other{# nettsteder (flere på synkroniserte enheter)}}</translation>
 <translation id="2870560284913253234">Nettsted</translation>
 <translation id="2876369937070532032">Sender Google nettadressene til noen av sidene du besøker, når sikkerheten din står i fare</translation>
+<translation id="2877733045396505765">Dette sletter den valgte informasjonen som er lagret på denne enheten og i Google-kontoen din (<ph name="USER_EMAIL" />).</translation>
 <translation id="2883151425485251736">Se og rediger emner du har skjult for kontoen din</translation>
 <translation id="288655811176831528">Lukk fane</translation>
 <translation id="2888631381369839306">Varsler om prissporing er slått på</translation>
@@ -1613,6 +1613,7 @@ Handoff må også være aktivert i Generelt-delen av Innstillinger, og enhetene 
 <translation id="672735642903863329">Få bokmerker, passord med mer på alle enhetene dine.</translation>
 <translation id="6729493062119577923">Aktivitet i delt fanegruppe</translation>
 <translation id="6732087373923685049">kamera</translation>
+<translation id="6736243959894955139">Adresse</translation>
 <translation id="6746338529702829275">Gjennomgå kontodataene dine</translation>
 <translation id="6750456911389438250">{count,plural, =1{Importerte {count} loggelement}other{Importerte {count} loggelementer}}</translation>
 <translation id="6755200887046212842">Administrer kontoer</translation>
@@ -1819,7 +1820,6 @@ Handoff må også være aktivert i Generelt-delen av Innstillinger, og enhetene 
 <translation id="7537586195939242955">Tillatelsen din kan for øyeblikket ikke installeres i Passbook.</translation>
 <translation id="754655535278952384">Sjekket <ph name="TIME" /></translation>
 <translation id="7554645225856321710">Lukk alle</translation>
-<translation id="7554791636758816595">Ny fane</translation>
 <translation id="7557508262441527045">Logget av</translation>
 <translation id="7561196759112975576">Alltid</translation>
 <translation id="7561982940498449837">Lukk menyen</translation>
@@ -1878,6 +1878,7 @@ Handoff må også være aktivert i Generelt-delen av Innstillinger, og enhetene 
 <translation id="775755486779745798">Autofyll utløpsmåneden <ph name="MONTH" /></translation>
 <translation id="7758789811447313947">Fiolett tema</translation>
 <translation id="7759809451544302770">Valgfritt</translation>
+<translation id="7763878244904387570">Dette sletter den valgte informasjonen som er lagret på denne enheten.</translation>
 <translation id="7765158879357617694">Flytt</translation>
 <translation id="7772032839648071052">Bekreft passord</translation>
 <translation id="7772948288262733182">Velkommen tilbake</translation>
@@ -2248,7 +2249,6 @@ Handoff må også være aktivert i Generelt-delen av Innstillinger, og enhetene 
 <translation id="8988107725234939347"><ph name="WEBSITE_TITLE" />, festet nettsted</translation>
 <translation id="8990960056509724223">Filen kunne ikke lagres på grunn av retningslinjene for organisasjonen din</translation>
 <translation id="8998289560386111590">Ikke tilgjengelig på enheten din</translation>
-<translation id="9000532564152265066">Alle faner</translation>
 <translation id="9003677638446136377">Sjekk på nytt</translation>
 <translation id="9006453925669499173">Meny → Ny inkognitofane</translation>
 <translation id="9008201768610948239">Ignorer</translation>

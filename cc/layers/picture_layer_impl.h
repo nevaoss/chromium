@@ -70,6 +70,8 @@ class CC_EXPORT PictureLayerImpl
   DamageReasonSet GetDamageReasons() const override;
   void DidDraw(viz::ClientResourceProvider* resource_provider) override;
 
+  bool ComputeCheckerboardedNeedsRecord() override;
+
   // PictureLayerTilingClient overrides.
   std::unique_ptr<Tile> CreateTile(const Tile::CreateInfo& info) override;
   gfx::Size CalculateTileSize(const gfx::Size& content_bounds) override;
@@ -343,7 +345,6 @@ class CC_EXPORT PictureLayerImpl
   }
 
   bool was_screen_space_transform_animating_ : 1 = false;
-  bool produced_tile_last_append_quads_ : 1 = true;
 
   bool nearest_neighbor_ : 1 = false;
 
@@ -421,8 +422,14 @@ class CC_EXPORT PictureLayerImpl
       const gfx::Rect& coverage_rect,
       float coverage_scale,
       float ideal_contents_scale) override;
-  void ComputeCheckerboardedNeedsRecord(
-      AppendQuadsData* append_quads_data) override;
+  void WillProcessReadyToDrawTile(
+      const TilingSetCoverageIterator<PictureLayerTiling>& iter) override;
+  bool ShouldUpdateApproximatedVisibleContentArea(
+      TileResolution resolution) const override;
+  void DidAppendQuad(viz::DrawQuad* quad,
+                     const TilingSetCoverageIterator<PictureLayerTiling>& iter,
+                     AppendQuadsData* append_quads_data,
+                     bool is_checkerboard) override;
 
   bool AppendQuadForTile(TilingSetCoverageIterator<PictureLayerTiling> iter,
                          const AppendQuadsContext& context,
@@ -437,6 +444,11 @@ class CC_EXPORT PictureLayerImpl
                          const std::optional<gfx::Rect>& scaled_cull_rect,
                          float max_contents_scale,
                          AppendQuadsCustomSharedData* custom_data) override;
+
+ private:
+  bool ShouldReportTileAsMissing(
+      const gfx::Rect& tile_geometry_rect,
+      AppendQuadsCustomSharedData* custom_data) const;
   TilingResolution GetTilingResolutionForDebugBorders(
       const PictureLayerTiling* tiling) const override;
 };

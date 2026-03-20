@@ -40,7 +40,7 @@ class GridLanesLayoutAlgorithmTest : public BaseLayoutAlgorithmTest {
     if (needs_intrinsic_track_size) {
       HashMap<GridTrackSize, LayoutUnit> intrinsic_repeat_track_sizes =
           algorithm.GetIntrinsicRepeaterTrackSizes(!grid_lanes_items.IsEmpty(),
-                                                   grid_axis_tracks_.value());
+                                                   *grid_axis_tracks_);
       grid_axis_tracks_ = algorithm.ComputeGridAxisTracks(
           SizingConstraint::kLayout, &intrinsic_repeat_track_sizes,
           /*should_apply_inline_size_containment=*/false, grid_lanes_items,
@@ -50,10 +50,12 @@ class GridLanesLayoutAlgorithmTest : public BaseLayoutAlgorithmTest {
     const auto grid_axis_direction = grid_axis_tracks_->Direction();
     ASSERT_EQ(grid_axis_direction, style.GridLanesTrackSizingDirection());
 
+    wtf_size_t start_offset = 0;
     for (const auto& grid_lanes_item : algorithm.BuildVirtualGridLanesItems(
              line_resolver, grid_lanes_items, needs_intrinsic_track_size,
              SizingConstraint::kLayout,
-             line_resolver.AutoRepetitions(grid_axis_direction))) {
+             line_resolver.AutoRepetitions(grid_axis_direction),
+             start_offset)) {
       GridLanesItemCachedData item_data;
 
       item_data.resolved_span =
@@ -121,7 +123,7 @@ class GridLanesLayoutAlgorithmTest : public BaseLayoutAlgorithmTest {
     return virtual_items_data_[index];
   }
 
-  std::optional<GridSizingTrackCollection> grid_axis_tracks_;
+  Persistent<GridSizingTrackCollection> grid_axis_tracks_;
 
   // Virtual items represent the contributions of item groups in track sizing
   // and are not directly related to any children of the container.

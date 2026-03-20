@@ -253,6 +253,8 @@ class ComposeboxInputPlateMediatorTest : public PlatformTest {
   void SetAIMEligible(bool AIMEligible) {
     EXPECT_CALL(*aim_eligibility_service_, IsAimEligible())
         .WillRepeatedly(testing::Return(AIMEligible));
+    EXPECT_CALL(*aim_eligibility_service_, IsFuseboxEligible())
+        .WillRepeatedly(testing::Return(AIMEligible));
   }
 
   void SetCreateImageEligible(bool createImagesEligible,
@@ -294,11 +296,11 @@ class ComposeboxInputPlateMediatorTest : public PlatformTest {
   }
 
   void SetToolAllowed(omnibox::ToolMode tool, bool add_tool_rule = true) {
-    auto* rule_set = searchbox_config_.mutable_rule_set();
-    rule_set->add_allowed_tools(tool);
+    auto* tool_config = searchbox_config_.add_tool_configs();
+    tool_config->set_tool(tool);
 
     if (add_tool_rule) {
-      auto* rule = rule_set->add_tool_rules();
+      auto* rule = tool_config->mutable_rule();
       rule->set_tool(tool);
       rule->set_allow_all_input_types(true);
     }

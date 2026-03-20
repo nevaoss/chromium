@@ -118,9 +118,6 @@ export function setupComposeboxTest(): ComposeboxTestElement {
     });
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
 
-    testProxy.element = new ComposeboxElement();
-    document.body.appendChild(testProxy.element);
-
     const handler = installMock(
         PageHandlerRemote,
         mock => ComposeboxProxyImpl.setInstance(new ComposeboxProxyImpl(

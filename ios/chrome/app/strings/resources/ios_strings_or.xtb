@@ -298,7 +298,6 @@
 <translation id="2012723204723845092">ଆପଣଙ୍କୁ ପୁଣି ସ୍ୱାଗତ!</translation>
 <translation id="2015722694326466240">ପାସ୍‍ୱାର୍ଡଗୁଡ଼ିକୁ ଦେଖିବା ପାଇଁ ଆପଣଙ୍କୁ ପ୍ରଥମରୁ ଆପଣଙ୍କ ଡିଭାଇସ୍‌ରେ ନିଶ୍ଚିତ ରୂପେ ଗୋଟିଏ ପାସକୋଡ୍ ସେଟ୍ କରିବାକୁ ହେବ।</translation>
 <translation id="201759455285471444">ଟାବ ଗ୍ରୁପକୁ ବିସ୍ତାର କରନ୍ତୁ।</translation>
-<translation id="202070562065520783">ମୋତେ ଏହାକୁ ବ୍ୟାଖ୍ୟା କରନ୍ତୁ</translation>
 <translation id="2044394949148788042">ଟାବ ଗ୍ରିଡ ଖୋଲନ୍ତୁ</translation>
 <translation id="2044681667265133332"><ph name="USER_EMAIL" /> ଆକାଉଣ୍ଟ <ph name="HOSTED_DOMAIN" /> ଦ୍ୱାରା ପରିଚାଳିତ ହେଉଛି, ଯାହା କିଛି ସୂଚନା ଭ୍ୟୁ କରିବାକୁ ସକ୍ଷମ ହୋଇପାରେ। <ph name="BEGIN_LINK" />ଅଧିକ ଜାଣନ୍ତୁ<ph name="END_LINK" /></translation>
 <translation id="20485545164632846">ନୂଆ ଆଇଟମ</translation>
@@ -527,6 +526,7 @@
 <translation id="286382692684806520">{COUNT,plural, =1{1 ସାଇଟ (ସିଙ୍କ ହୋଇଥିବା ଡିଭାଇସରେ ଅଧିକ)}other{# ସାଇଟ (ସିଙ୍କ ହୋଇଥିବା ଡିଭାଇସରେ ଅଧିକ)}}</translation>
 <translation id="2870560284913253234">ସାଇଟ୍</translation>
 <translation id="2876369937070532032">ଆପଣଙ୍କର ସୁରକ୍ଷା ବିପଦରେ ଥିବା ବେଳେ, Googleକୁ ଆପଣ ଯାଇଥିବା କିଛି ପୃଷ୍ଠାର URL ପଠାଏ</translation>
+<translation id="2877733045396505765">ଏହି ଡିଭାଇସରେ ଏବଂ ଆପଣଙ୍କ Google ଆକାଉଣ୍ଟ <ph name="USER_EMAIL" />ରେ ସେଭ ହୋଇଥିବା ଚୟନିତ ସୂଚନାକୁ ଏହା ଡିଲିଟ କରେ।</translation>
 <translation id="2883151425485251736">ଆପଣ ଆପଣଙ୍କ ଆକାଉଣ୍ଟରୁ ଲୁଚାଇଥିବା ବିଷୟଗୁଡ଼ିକୁ ଦେଖନ୍ତୁ ଏବଂ ଏଡିଟ କରନ୍ତୁ</translation>
 <translation id="288655811176831528">ଟାବ୍‌ ବନ୍ଦ କରନ୍ତୁ</translation>
 <translation id="2888631381369839306">ମୂଲ୍ୟ ଟ୍ରାକିଂ ବିଜ୍ଞପ୍ତିଗୁଡ଼ିକ ଚାଲୁ ଅଛି</translation>
@@ -1613,6 +1613,7 @@ Handoff, ନିଶ୍ଚିତ ରୂପେ ସେଟିଂସ୍‍ର ସା�
 <translation id="672735642903863329">ଆପଣଙ୍କର ସମସ୍ତ ଡିଭାଇସରେ ଆପଣଙ୍କ ବୁକମାର୍କ, ପାସୱାର୍ଡ ଏବଂ ଆହୁରି ଅନେକ କିଛି ପାଆନ୍ତୁ।</translation>
 <translation id="6729493062119577923">ସେୟାର କରାଯାଇଥିବା ଟାବ ଗ୍ରୁପ କାର୍ଯ୍ୟକଳାପ</translation>
 <translation id="6732087373923685049">କ୍ୟାମେରା</translation>
+<translation id="6736243959894955139">ଠିକଣା</translation>
 <translation id="6746338529702829275">ଆପଣଙ୍କ ଆକାଉଣ୍ଟ ଡାଟାକୁ ସମୀକ୍ଷା କରନ୍ତୁ</translation>
 <translation id="6750456911389438250">{count,plural, =1{{count} ଇତିହାସ ଆଇଟମ ଇମ୍ପୋର୍ଟ କରାଯାଇଛି}other{{count} ଇତିହାସ ଆଇଟମ ଇମ୍ପୋର୍ଟ କରାଯାଇଛି}}</translation>
 <translation id="6755200887046212842">ଆକାଉଣ୍ଟକୁ ପରିଚାଳନା କରନ୍ତୁ</translation>
@@ -1819,7 +1820,6 @@ Handoff, ନିଶ୍ଚିତ ରୂପେ ସେଟିଂସ୍‍ର ସା�
 <translation id="7537586195939242955">କ୍ଷମାକରନ୍ତୁ, ଏହି ସମୟରେ ପାସ୍‌ବୁକ୍‌ରେ ଆପଣଙ୍କର ପାସ୍ ଇନ୍‌ଷ୍ଟଲ୍ କରାଯାଇପାରିବ ନାହିଁ।</translation>
 <translation id="754655535278952384"><ph name="TIME" /> ଯାଞ୍ଚ କରାଯାଇଛି</translation>
 <translation id="7554645225856321710">ସବୁ ବନ୍ଦ କରନ୍ତୁ</translation>
-<translation id="7554791636758816595">ନୂଆ ଟାବ</translation>
 <translation id="7557508262441527045">ସାଇନ ଆଉଟ କରାଯାଇଛି</translation>
 <translation id="7561196759112975576">ସର୍ବଦା</translation>
 <translation id="7561982940498449837">ମେନୁ ବନ୍ଦ କରନ୍ତୁ</translation>
@@ -1878,6 +1878,7 @@ Handoff, ନିଶ୍ଚିତ ରୂପେ ସେଟିଂସ୍‍ର ସା�
 <translation id="775755486779745798">ମିଆଦ ଶେଷ ହେଉଥିବା ମାସ <ph name="MONTH" />କୁ ଅଟୋଫିଲ କରନ୍ତୁ</translation>
 <translation id="7758789811447313947">ବାଇଗଣୀ ଥିମ</translation>
 <translation id="7759809451544302770">ଇଚ୍ଛାଧୀନ</translation>
+<translation id="7763878244904387570">ଏହି ଡିଭାଇସରେ ସେଭ ହୋଇଥିବା ଚୟନିତ ସୂଚନାକୁ ଏହା ଡିଲିଟ କରେ।</translation>
 <translation id="7765158879357617694">ନିଅନ୍ତୁ</translation>
 <translation id="7772032839648071052">ପାସ୍‍‍ଫ୍ରେଜ୍ ସୁନିଶ୍ଚିତ କରନ୍ତୁ</translation>
 <translation id="7772948288262733182">ଆପଣଙ୍କୁ ପୁଣି ସ୍ୱାଗତ</translation>
@@ -2248,7 +2249,6 @@ Handoff, ନିଶ୍ଚିତ ରୂପେ ସେଟିଂସ୍‍ର ସା�
 <translation id="8988107725234939347"><ph name="WEBSITE_TITLE" />, ପିନ କରାଯାଇଥିବା ସାଇଟ</translation>
 <translation id="8990960056509724223">ଆପଣଙ୍କ ସଂସ୍ଥାର ନୀତି ଯୋଗୁଁ ଫାଇଲ ସେଭ ହୋଇପାରିଲା ନାହିଁ</translation>
 <translation id="8998289560386111590">ଆପଣଙ୍କ ଡିଭାଇସରେ ଉପଲବ୍ଧ ନାହିଁ</translation>
-<translation id="9000532564152265066">ସମସ୍ତ ଟାବ</translation>
 <translation id="9003677638446136377">ପୁଣି ଯାଞ୍ଚ କରନ୍ତୁ</translation>
 <translation id="9006453925669499173">ମେନୁ → ନୂଆ ଇନକଗ୍ନିଟୋ ଟାବ</translation>
 <translation id="9008201768610948239">ଅଣଦେଖା କରନ୍ତୁ</translation>

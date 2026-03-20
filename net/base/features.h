@@ -807,6 +807,15 @@ NET_EXPORT BASE_DECLARE_FEATURE(kLogicalClearHttpCache);
 NET_EXPORT BASE_DECLARE_FEATURE(
     kDrainSpdySessionSynchronouslyOnRemoteEndpointDisconnect);
 
+// When enabled, SQLitePersistentCookieStore is initialized upon creation,
+// rather than waiting for the first load request.
+NET_EXPORT BASE_DECLARE_FEATURE(kSQLitePersistentCookieStoreEarlyInit);
+NET_EXPORT extern const base::FeatureParam<bool>
+    kSQLitePersistentCookieStoreEarlyInitCheckDisk;
+
+// If enabled, the error code will be propagated for preconnect attempts.
+NET_EXPORT BASE_DECLARE_FEATURE(kEnableErrorCodePropagationForPreconnect);
+
 }  // namespace net::features
 
 #endif  // NET_BASE_FEATURES_H_

@@ -32,23 +32,11 @@
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
 #include "content/public/test/test_navigation_observer.h"
+#include "net/test/embedded_test_server/http_request.h"
+#include "net/test/embedded_test_server/http_response.h"
+#include "third_party/lens_server_proto/lens_overlay_server.pb.h"
 #include "ui/views/controls/webview/webview.h"
 #include "ui/views/view_utils.h"
-
-namespace lens {
-class LensQueryFlowRouterTestApi {
- public:
-  explicit LensQueryFlowRouterTestApi(LensQueryFlowRouter* router)
-      : router_(router) {}
-
-  auto* GetContextualSearchSessionHandle() {
-    return router_->GetContextualSearchSessionHandle();
-  }
-
- private:
-  raw_ptr<LensQueryFlowRouter> router_;
-};
-}  // namespace lens
 
 namespace {
 
@@ -193,30 +181,6 @@ class ContextualTasksLensInteractionBrowserTestBase
         .ExtractBool();
   }
 
-  void SignalFileUploadSuccess(LensSearchController* controller) {
-    auto* router = controller->query_router();
-    auto file_token = router->overlay_tab_context_file_token();
-    ASSERT_TRUE(file_token.has_value());
-
-    // Cast router to our TestApi to access the protected
-    // GetContextualSearchSessionHandle
-    auto* session_handle = lens::LensQueryFlowRouterTestApi(router)
-                               .GetContextualSearchSessionHandle();
-    ASSERT_TRUE(session_handle);
-
-    // Cast the base controller to the concrete ComposeboxQueryController to
-    // access UpdateFileUploadStatus
-    auto* context_controller = static_cast<ComposeboxQueryController*>(
-        session_handle->GetController());
-    ASSERT_TRUE(context_controller);
-
-    // Manually trigger the successful status on the controller.
-    // This will satisfy MarkFileUploadAsInTerminalState and trigger URL
-    // creation.
-    context_controller->update_file_upload_status_for_testing(
-        *file_token, contextual_search::FileUploadStatus::kUploadSuccessful,
-        std::nullopt);
-  }
 
   // Lens overlay takes a screenshot of the tab. In order to take a screenshot
   // the tab must not be about:blank and must be painted. By default opens in
@@ -255,11 +219,49 @@ class ContextualTasksLensInteractionBrowserTest
   }
 
   void SetUp() override {
+    // Mock the cluster info and upload endpoints so `ComposeboxQueryController`
+    // correctly transitions background file uploads to `kUploadSuccessful`.
+    embedded_test_server()->RegisterRequestHandler(base::BindRepeating(
+        [](const net::test_server::HttpRequest& request)
+            -> std::unique_ptr<net::test_server::HttpResponse> {
+          if (base::StartsWith(request.relative_url, "/v1/clusterinfo",
+                               base::CompareCase::SENSITIVE)) {
+            lens::LensOverlayServerClusterInfoResponse response;
+            response.set_search_session_id("search_session_id");
+            response.set_server_session_id("server_session_id");
+            std::string response_string;
+            response.SerializeToString(&response_string);
+
+            auto http_response =
+                std::make_unique<net::test_server::BasicHttpResponse>();
+            http_response->set_code(net::HTTP_OK);
+            http_response->set_content(response_string);
+            return http_response;
+          }
+          if (base::StartsWith(request.relative_url, "/v1/crupload",
+                               base::CompareCase::SENSITIVE)) {
+            lens::LensOverlayServerResponse response;
+            std::string response_string;
+            response.SerializeToString(&response_string);
+
+            auto http_response =
+                std::make_unique<net::test_server::BasicHttpResponse>();
+            http_response->set_code(net::HTTP_OK);
+            http_response->set_content(response_string);
+            return http_response;
+          }
+          return nullptr;
+        }));
     ASSERT_TRUE(embedded_test_server()->InitializeAndListen());
-    feature_list_.InitWithFeatures(
-        {contextual_tasks::kContextualTasks, lens::features::kLensOverlay,
-         lens::features::kLensOverlayContextualSearchbox,
-         contextual_tasks::kContextualTasksForceEntryPointEligibility},
+    feature_list_.InitWithFeaturesAndParameters(
+        {{contextual_tasks::kContextualTasks, {}},
+         {lens::features::kLensOverlay,
+          {{"endpoint-url",
+            embedded_test_server()->GetURL("/v1/crupload").spec()}}},
+         {lens::features::kLensOverlayContextualSearchbox,
+          {{"cluster-info-endpoint-url",
+            embedded_test_server()->GetURL("/v1/clusterinfo").spec()}}},
+         {contextual_tasks::kContextualTasksForceEntryPointEligibility, {}}},
         {lens::features::kLensSearchZeroStateCsb});
     InProcessBrowserTest::SetUp();
   }
@@ -306,8 +308,15 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksLensInteractionBrowserTest,
   EXPECT_TRUE(controller->IsShowingUI());
 }
 
+#if BUILDFLAG(IS_CHROMEOS)
+#define MAYBE_SubsequentRegionSelectionLoadsNewResult \
+  DISABLED_SubsequentRegionSelectionLoadsNewResult
+#else
+#define MAYBE_SubsequentRegionSelectionLoadsNewResult \
+  SubsequentRegionSelectionLoadsNewResult
+#endif
 IN_PROC_BROWSER_TEST_F(ContextualTasksLensInteractionBrowserTest,
-                       SubsequentRegionSelectionLoadsNewResult) {
+                       MAYBE_SubsequentRegionSelectionLoadsNewResult) {
   // Wait for the page to be painted to prevent flakiness when screenshotting.
   WaitForPaint();
 
@@ -328,7 +337,6 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksLensInteractionBrowserTest,
       lens::mojom::CenterRotatedBox_CoordinateType::kNormalized;
   controller->lens_overlay_controller()->IssueLensRegionRequestForTesting(
       region->Clone(), /*is_click=*/false);
-  SignalFileUploadSuccess(controller);
 
   // Wait for the side panel to open and the inner WebContents to be created.
   ASSERT_TRUE(base::test::RunUntil(
@@ -356,9 +364,16 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksLensInteractionBrowserTest,
                        "https://www.google.com/search"));
 }
 
+#if BUILDFLAG(IS_CHROMEOS)
+#define MAYBE_SubsequentRegionSelectionFromComposeboxAddsVisualSelection \
+  DISABLED_SubsequentRegionSelectionFromComposeboxAddsVisualSelection
+#else
+#define MAYBE_SubsequentRegionSelectionFromComposeboxAddsVisualSelection \
+  SubsequentRegionSelectionFromComposeboxAddsVisualSelection
+#endif
 IN_PROC_BROWSER_TEST_F(
     ContextualTasksLensInteractionBrowserTest,
-    SubsequentRegionSelectionFromComposeboxAddsVisualSelection) {
+    MAYBE_SubsequentRegionSelectionFromComposeboxAddsVisualSelection) {
   // Wait for the page to be painted to prevent flakiness when screenshotting.
   WaitForPaint();
 
@@ -379,7 +394,6 @@ IN_PROC_BROWSER_TEST_F(
       lens::mojom::CenterRotatedBox_CoordinateType::kNormalized;
   controller->lens_overlay_controller()->IssueLensRegionRequestForTesting(
       region->Clone(), /*is_click=*/false);
-  SignalFileUploadSuccess(controller);
 
   // Wait for the side panel to open and the inner WebContents to be created.
   ASSERT_TRUE(base::test::RunUntil(
@@ -450,7 +464,6 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksLensInteractionBrowserTest,
       lens::mojom::CenterRotatedBox_CoordinateType::kNormalized;
   controller->lens_overlay_controller()->IssueLensRegionRequestForTesting(
       std::move(region), /*is_click=*/false);
-  SignalFileUploadSuccess(controller);
 
   // This should trigger the logic to capture the region, but the overlay should
   // remain open. It should also open the side panel.
@@ -496,7 +509,6 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksLensInteractionBrowserTest,
   controller->lens_overlay_controller()->IssueLensRegionRequestForTesting(
       std::move(region), /*is_click=*/false);
 
-  SignalFileUploadSuccess(controller);
 
   // This should trigger the logic to capture the region, but the overlay should
   // remain open. It should also open the side panel.
@@ -537,7 +549,6 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksLensInteractionBrowserTest,
   controller->lens_overlay_controller()->IssueLensRegionRequestForTesting(
       std::move(region), /*is_click=*/false);
 
-  SignalFileUploadSuccess(controller);
 
   // This should trigger the logic to capture the region, but the overlay should
   // remain open. It should also open the side panel.

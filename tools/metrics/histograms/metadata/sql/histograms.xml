@@ -69,6 +69,7 @@ chromium-metrics-reviews@google.com.
   <variant name="LocalTraces" summary="LocalTraces"/>
   <variant name="MediaDeviceSalts" summary="MediaDeviceSalts"/>
   <variant name="MediaLicense" summary="MediaLicense"/>
+  <variant name="MultistepFilter" summary="MultistepFilter"/>
   <variant name="OfflinePageMetadata" summary="OfflinePageMetadata"/>
   <variant name="OptOutBlacklist" summary="OptOutBlacklist"/>
   <variant name="PageContentStore" summary="Page Content Store"/>
@@ -323,7 +324,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sql.Statement.{DatabaseTag}.VMSteps" units="count"
-    expires_after="2026-07-05">
+    expires_after="2026-09-06">
   <owner>etienneb@chromium.org</owner>
   <owner>estade@chromium.org</owner>
   <owner>chrome-catan@google.com</owner>

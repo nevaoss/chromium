@@ -9,6 +9,7 @@ import android.view.View;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController;
+import org.chromium.components.browser_ui.bottomsheet.BottomSheetController.SheetState;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController.StateChangeReason;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetObserver;
 import org.chromium.components.browser_ui.bottomsheet.EmptyBottomSheetObserver;
@@ -45,6 +46,8 @@ public class TabBottomSheetCoordinator {
         mModel = TabBottomSheetProperties.createDefaultModel(coBrowseViews);
 
         mMediator = new TabBottomSheetMediator(mModel, coBrowseViews);
+
+        coBrowseViews.setWebUiTouchHandler(mMediator.getWebUiTouchHandler());
     }
 
     /** Tries to show the bottom sheet. */
@@ -74,6 +77,15 @@ public class TabBottomSheetCoordinator {
             cleanupSheetResources();
             return false;
         }
+    }
+
+    /**
+     * Attaches the peek view to the bottom sheet.
+     *
+     * @param peekView The peek view to attach.
+     */
+    void attachPeekView(View peekView) {
+        mCoBrowseViews.attachPeekView(peekView);
     }
 
     void closeBottomSheet() {
@@ -117,6 +129,11 @@ public class TabBottomSheetCoordinator {
     // Observer methods.
     private BottomSheetObserver buildBottomSheetObserver() {
         return new EmptyBottomSheetObserver() {
+            @Override
+            public void onSheetStateChanged(@SheetState int state, @StateChangeReason int reason) {
+                mMediator.onSheetStateChanged(state);
+            }
+
             @Override
             public void onSheetOffsetChanged(float heightFraction, float offsetPx) {
                 if (!TabBottomSheetUtils.canResizeWebView()) return;

@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -573,20 +574,6 @@ bool ConvertToTextSelectionForAndroid(ui::BrowserAccessibility*& anchor_node,
       anchor_node->IsText() || anchor_node->IsTextField();
   bool focus_is_text_node = focus_node->IsText() || focus_node->IsTextField();
 
-  // If both anchor and offset node are text nodes, just update text positions
-  // to ensure they in Android accessibility tree.
-  if (anchor_is_text_node && focus_is_text_node) {
-    UpdateTextPositionForSelection(anchor_node, anchor_offset);
-    UpdateTextPositionForSelection(focus_node, focus_offset);
-    return true;
-  }
-
-  BrowserAccessibilityManagerAndroid* root_manager =
-      static_cast<BrowserAccessibilityManagerAndroid*>(anchor_node->manager());
-  if (!root_manager) {
-    return false;
-  }
-
   ui::BrowserAccessibility::AXPosition anchor_position =
       anchor_is_text_node
           ? anchor_node->CreatePositionForSelectionAt(anchor_offset)
@@ -601,42 +588,54 @@ bool ConvertToTextSelectionForAndroid(ui::BrowserAccessibility*& anchor_node,
 
   ui::BrowserAccessibility::AXRange range = ui::BrowserAccessibility::AXRange(
       anchor_position->Clone(), focus_position->Clone());
-  bool forward_range = ui::BrowserAccessibility::AXRange::CompareEndpoints(
-                           range.anchor(), range.focus())
-                           .value_or(0) <= 0;
+  std::optional<int> range_direction =
+      ui::BrowserAccessibility::AXRange::CompareEndpoints(range.anchor(),
+                                                          range.focus());
+  if (!range_direction.has_value()) {
+    return false;
+  }
+
+  BrowserAccessibilityManagerAndroid* manager =
+      static_cast<BrowserAccessibilityManagerAndroid*>(anchor_node->manager());
+  CHECK(manager);
 
   bool found = false;
   // Range iterator only moves in forward direction. Hence the text leaves in
   // the entire range are iterated, the first suitable leaf is selected for
   // anchor, and the last one for focus. Anchor and focus are swapped afterwards
   // if range direction is backward.
+  // TODO(crbug.com/443078007): Add a backward iterator for AxRange and optimize
+  // here.
   for (const auto& pos : range) {
     ui::BrowserAccessibility* android_node =
-        root_manager->GetFromAXNode(pos.anchor()->GetAnchor())
+        manager->GetFromAXNode(pos.anchor()->GetAnchor())
             ->PlatformGetLowestPlatformAncestor();
     if (DoesNodeSupportExtendedSelection(android_node)) {
       if (!found) {
         anchor_position = pos.anchor()->Clone();
+        found = true;
       }
       focus_position = pos.focus()->Clone();
-      found = true;
     }
   }
   if (!found) {
     return false;
   }
 
-  if (!forward_range) {
+  // Swap anchor and focus if original selection was backward.
+  if (range_direction.value() > 0) {
     std::swap(anchor_position, focus_position);
   }
 
   CHECK_EQ(ui::AXPositionKind::TEXT_POSITION, anchor_position->kind());
-  anchor_node = root_manager->GetFromAXNode(anchor_position->GetAnchor());
+  anchor_node = manager->GetFromAXNode(anchor_position->GetAnchor());
   anchor_offset = anchor_position->text_offset();
+  // TODO(crbug.com/490266495): Remove the following when range iterator returns
+  // platform leaf positions.
   UpdateTextPositionForSelection(anchor_node, anchor_offset);
 
   CHECK_EQ(ui::AXPositionKind::TEXT_POSITION, focus_position->kind());
-  focus_node = root_manager->GetFromAXNode(focus_position->GetAnchor());
+  focus_node = manager->GetFromAXNode(focus_position->GetAnchor());
   focus_offset = focus_position->text_offset();
   UpdateTextPositionForSelection(focus_node, focus_offset);
 
@@ -1856,8 +1855,8 @@ void WebContentsAccessibilityAndroid::
   if (node->IsCollection()) {
     Java_AccessibilityNodeInfoBuilder_setAccessibilityNodeInfoCollectionInfo(
         env, obj, info,
-        /* rowCount= */ node->RowCount(),
-        /* columnCount= */ node->ColumnCount(),
+        /* rowCount= */ node->RowCount().value_or(0),
+        /* columnCount= */ node->ColumnCount().value_or(0),
         /* isHierarchical= */ node->IsHierarchical(),
         /* selectionMode= */ node->GetSelectionMode());
   }
@@ -1874,10 +1873,10 @@ void WebContentsAccessibilityAndroid::
   if (node->IsCollectionItem() || node->IsTableHeader()) {
     Java_AccessibilityNodeInfoBuilder_setAccessibilityNodeInfoCollectionItemInfo(
         env, obj, info,
-        /* rowIndex= */ node->RowIndex(),
-        /* rowSpan= */ node->RowSpan(),
-        /* columnIndex= */ node->ColumnIndex(),
-        /* columnSpan= */ node->ColumnSpan(),
+        /* rowIndex= */ node->RowIndex().value_or(0),
+        /* rowSpan= */ node->RowSpan().value_or(0),
+        /* columnIndex= */ node->ColumnIndex().value_or(0),
+        /* columnSpan= */ node->ColumnSpan().value_or(0),
         /* sortDirection= */ node->GetSortDirection());
   }
 }
@@ -2046,10 +2045,10 @@ bool WebContentsAccessibilityAndroid::PopulateAccessibilityEvent(
   // We will always set boolean, classname, list and scroll attributes.
   Java_WebContentsAccessibilityImpl_setAccessibilityEventBaseAttributes(
       env, obj, event, node->IsChecked(), node->IsEnabled(),
-      node->IsPasswordField(), node->IsScrollable(), node->GetItemIndex(),
-      node->GetItemCount(), node->GetScrollX(), node->GetScrollY(),
-      node->GetMaxScrollX(), node->GetMaxScrollY(),
-      GetCanonicalJNIString(env, node->GetClassName()));
+      node->IsPasswordField(), node->IsScrollable(),
+      node->GetItemIndex().value_or(0), node->GetItemCount().value_or(0),
+      node->GetScrollX(), node->GetScrollY(), node->GetMaxScrollX(),
+      node->GetMaxScrollY(), GetCanonicalJNIString(env, node->GetClassName()));
 
   switch (event_type) {
     case ANDROID_ACCESSIBILITY_EVENT_TEXT_CHANGED: {

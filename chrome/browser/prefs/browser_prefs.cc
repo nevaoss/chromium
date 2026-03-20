@@ -1003,6 +1003,15 @@ constexpr char kTabOrganizationFeature[] = "tab_organization.feature";
 // Deprecated 03/2026.
 constexpr char kTabDeclutterUsageCount[] = "tab_declutter.usage_count";
 
+// Deprecated 03/2026.
+inline constexpr char kTabSearchTabIndex[] = "tab_search.tab_index";
+
+// Deprecated 03/2026
+constexpr char kSigninFromBookmarksBubbleSyntheticTrialGroupNamePref[] =
+    "UnoDesktopBookmarksEnabledInAccountFromBubbleGroup";
+constexpr char kBookmarksBubblePromoShownSyntheticTrialGroupNamePref[] =
+    "UnoDesktopBookmarksBubblePromoShownGroup";
+
 // Register local state used only for migration (clearing or moving to a new
 // key).
 void RegisterLocalStatePrefsForMigration(PrefRegistrySimple* registry) {
@@ -1401,6 +1410,15 @@ void RegisterProfilePrefsForMigration(
 
   // Deprecated 03/2026.
   registry->RegisterIntegerPref(kTabDeclutterUsageCount, 0);
+
+  // Deprecated 03/2026.
+  registry->RegisterIntegerPref(kTabSearchTabIndex, 1);
+
+  // Deprecated 03/2026.
+  registry->RegisterStringPref(
+      kSigninFromBookmarksBubbleSyntheticTrialGroupNamePref, std::string());
+  registry->RegisterStringPref(
+      kBookmarksBubblePromoShownSyntheticTrialGroupNamePref, std::string());
 }
 
 }  // namespace
@@ -1431,7 +1449,6 @@ void RegisterLocalState(PrefRegistrySimple* registry) {
   chrome_labs_prefs::RegisterLocalStatePrefs(registry);
   chrome_urls::RegisterPrefs(registry);
   ChromeMetricsServiceClient::RegisterPrefs(registry);
-  ChromeSigninClient::RegisterLocalStatePrefs(registry);
   enterprise_connectors::RegisterLocalStatePrefs(registry);
   enterprise_util::RegisterLocalStatePrefs(registry);
   component_updater::RegisterPrefs(registry);
@@ -2704,10 +2721,19 @@ void MigrateObsoleteProfilePrefs(PrefService* profile_prefs,
   // Added 03/2026.
   profile_prefs->ClearPref(kTabDeclutterUsageCount);
 
+  // Added 03/2026.
+  profile_prefs->ClearPref(kTabSearchTabIndex);
+
 #if !BUILDFLAG(IS_ANDROID)
   // Added 02/2026.
   tabs::MigrateTabSearchPref(profile_prefs);
 #endif  // !BUILDFLAG(IS_ANDROID)
+
+  // Added 03/2026
+  profile_prefs->ClearPref(
+      kSigninFromBookmarksBubbleSyntheticTrialGroupNamePref);
+  profile_prefs->ClearPref(
+      kBookmarksBubblePromoShownSyntheticTrialGroupNamePref);
 
   // Please don't delete the following line. It is used by PRESUBMIT.py.
   // END_MIGRATE_OBSOLETE_PROFILE_PREFS

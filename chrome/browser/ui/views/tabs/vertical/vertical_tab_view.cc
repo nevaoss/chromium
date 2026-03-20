@@ -178,7 +178,7 @@ VerticalTabView::VerticalTabView(TabCollectionNode* collection_node)
                      /*expand=*/false),
       TabChildConfig(alert_indicator_, kIconDesignWidth, kDefaultPadding,
                      /*align_leading=*/false,
-                     /*expand=*/false),
+                     /*expand=*/false, /*decorate_on_collapse=*/true),
       TabChildConfig(icon_, kIconDesignWidth, kHorizontalInset,
                      /*align_leading=*/true,
                      /*expand=*/false),
@@ -342,8 +342,6 @@ bool VerticalTabView::OnKeyPressed(const ui::KeyEvent& event) {
       break;
     }
   }
-
-  RequestFocus();
 
   return true;
 }
@@ -741,6 +739,10 @@ views::ProposedLayout VerticalTabView::CalculateProposedLayout(
       }
 
       placed_children += 1;
+    } else if (child.decorate_on_collapse) {
+      layouts.child_layouts.emplace_back(
+          child.view.get(), child_visibility_map[child.view],
+          gfx::Rect(width / 2, height / 2, 0, 0));
     } else {
       layouts.child_layouts.emplace_back(
           child.view.get(), child_visibility_map[child.view],
@@ -809,10 +811,6 @@ bool VerticalTabView::IsActive() const {
 
 bool VerticalTabView::IsValid() const {
   return collection_node_ && !IsDragging();
-}
-
-const tabs::TabData& VerticalTabView::data() const {
-  return tab_data_;
 }
 
 views::BubbleBorder::Arrow VerticalTabView::GetAnchorPosition() const {
@@ -925,7 +923,7 @@ void VerticalTabView::UpdateTabData(tabs::TabInterface* tab) {
   UpdateTitle();
 
   alert_indicator_->TransitionToAlertState(tab_data_.alert_state);
-  alert_indicator_->UpdateEnabledForMuteToggle();
+  SetHoverCardDataFrom(tab_data_);
 }
 
 void VerticalTabView::UpdateTitle() {

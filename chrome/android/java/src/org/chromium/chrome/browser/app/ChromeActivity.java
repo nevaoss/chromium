@@ -1098,7 +1098,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
                             pendingId);
 
             // 4. Add windowing features.
-            // TODO(crbug.com/475200706): Handle multiple profiles for mobile.
+            // TODO(crbug.com/491791326): Handle multiple profiles for mobile.
             Profile profile = tabModelSelector.getCurrentModel().getProfile();
             assert profile != null;
             chromeAndroidTask.addFeature(
@@ -1388,7 +1388,10 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
     private @Nullable ActorPictureInPictureController maybeCreateActorPipController() {
         if (mActorPipController == null && ChromeFeatureList.sGlic.isEnabled()) {
             mActorPipController =
-                    new ActorPictureInPictureController(this, () -> mTabModelProfileSupplier.get());
+                    new ActorPictureInPictureController(
+                            this,
+                            () -> mTabModelProfileSupplier.get(),
+                            () -> findViewById(android.R.id.content));
         }
         return mActorPipController;
     }
@@ -1506,10 +1509,6 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
 
     @CallSuper
     public void flushPersistentState() {
-        boolean flushSession =
-                ChromeFeatureList.getFieldTrialParamByFeatureAsBoolean(
-                        ChromeFeatureList.UMA_SESSION_CORRECTNESS_FIXES, "flush_session", true);
-        if (flushSession) mUmaActivityObserver.flushUmaSession();
         ProfileManagerUtils.flushPersistentDataForAllProfiles();
     }
 

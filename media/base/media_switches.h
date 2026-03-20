@@ -391,6 +391,7 @@ MEDIA_EXPORT BASE_DECLARE_FEATURE(kSurfaceInputForAndroidVEA);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kUseAudioLatencyFromHAL);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kUseAudioManagerMaxChannelLayout);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kUseSecurityLevelWhenCheckingMediaDrmVersion);
+MEDIA_EXPORT BASE_DECLARE_FEATURE(kNdkVideoEncodeAcceleratorNativeSvc);
 #endif  // BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(USE_LINUX_VIDEO_ACCELERATION)
@@ -441,7 +442,8 @@ MEDIA_EXPORT extern const base::FeatureParam<int> kBatchReadCount;
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kPlatformEncryptedDolbyVision);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(
     kAllowClearDolbyVisionInMseWhenPlatformEncryptedDvEnabled);
-#endif
+MEDIA_EXPORT BASE_DECLARE_FEATURE(kAllowClearDolbyVisionViaMFT);
+#endif  // ENABLE_PLATFORM_ENCRYPTED_DOLBY_VISION
 
 #if BUILDFLAG(IS_CHROMEOS)
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kBackgroundListening);

@@ -40,7 +40,6 @@
 #include "chrome/browser/chromeos/upload_office_to_cloud/upload_office_to_cloud.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/webui/ash/cloud_upload/hats_office_trigger.h"
-#include "chrome/common/chrome_features.h"
 #include "chrome/common/extensions/api/file_manager_private.h"
 #include "chromeos/ash/components/file_manager/app_id.h"
 #include "components/prefs/pref_service.h"
@@ -59,22 +58,21 @@
 namespace file_manager::file_tasks {
 
 extensions::api::file_manager_private::TaskResult
-ConvertLaunchResultToTaskResult(const apps::LaunchResult& result,
-                                TaskType task_type) {
+ConvertLaunchResultToTaskResult(apps::LaunchResult result, TaskType task_type) {
   // TODO(benwells): return the correct code here, depending
   // on how the app will be opened in multiprofile.
   namespace fmp = extensions::api::file_manager_private;
-  switch (result.state) {
-    case apps::State::kSuccess:
+  switch (result) {
+    case apps::LaunchResult::kSuccess:
       if (task_type == TASK_TYPE_WEB_APP) {
         return fmp::TaskResult::kOpened;
       } else {
         return fmp::TaskResult::kMessageSent;
       }
-    case apps::State::kFailedDirectoryNotShared:
+    case apps::LaunchResult::kFailedDirectoryNotShared:
       DCHECK(task_type == TASK_TYPE_PLUGIN_VM_APP);
       return fmp::TaskResult::kFailedPluginVmDirectoryNotShared;
-    case apps::State::kFailed:
+    case apps::LaunchResult::kFailed:
       return fmp::TaskResult::kFailed;
   }
 }
@@ -354,7 +352,7 @@ void ExecuteAppServiceTask(
       apps_util::kIntentActionView, std::move(intent_files));
   intent->activity_name = task.action_id;
 
-  if (base::FeatureList::IsEnabled(::features::kHappinessTrackingOffice) &&
+  if (base::FeatureList::IsEnabled(ash::features::kHappinessTrackingOffice) &&
       task.app_id == extension_misc::kQuickOfficeComponentExtensionId &&
       task.action_id == kActionIdQuickOffice) {
     auto survey_launching_app =
@@ -373,7 +371,7 @@ void ExecuteAppServiceTask(
       /*window_info=*/nullptr,
       base::BindOnce(
           [](FileTaskFinishedCallback done, TaskType task_type,
-             apps::LaunchResult&& result) {
+             apps::LaunchResult result) {
             std::move(done).Run(
                 ConvertLaunchResultToTaskResult(result, task_type), "");
           },

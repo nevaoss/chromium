@@ -44,7 +44,7 @@ class HTMLSink : public UnderlyingSinkBase {
             new_options.run_scripts() ==
                     FragmentParserOptions::RunScripts::kRunScripts
                 ? ParserContentPolicy::
-                      kAllowScriptingContentAndDoNotMarkAlreadyStarted
+                      kAllowScriptingContentAndMarkAsParserInserted
                 : ParserContentPolicy::kAllowScriptingContent) {
     CHECK(target->IsElementNode() || target->IsShadowRoot());
   }
@@ -128,7 +128,7 @@ WritableStream* HTMLStream::Create(ScriptState* script_state,
                                    FragmentParserOptions options,
                                    const AtomicString& property_name,
                                    ExceptionState& exception_state) {
-  CHECK(RuntimeEnabledFeatures::DocumentPatchingEnabled());
+  CHECK(RuntimeEnabledFeatures::NewHTMLSettingMethodsEnabled());
 
   std::optional<FragmentParserOptions> trusted_options =
       TrustedTypesCheckForParserOptions(

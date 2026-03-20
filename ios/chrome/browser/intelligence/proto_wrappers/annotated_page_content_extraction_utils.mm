@@ -47,6 +47,7 @@ constexpr char kContentKey[] = "content";
 constexpr char kLocalFrameDataKey[] = "localFrameData";
 constexpr char kSourceURLKey[] = "sourceUrl";
 constexpr char kTitleKey[] = "title";
+constexpr char kContainsPaidContentKey[] = "containsPaidContent";
 constexpr char kChildrenNodesKey[] = "childrenNodes";
 constexpr char kDomNodeIdKey[] = "domNodeId";
 constexpr char kFrameInteractionInfoKey[] = "frameInteractionInfo";
@@ -267,6 +268,13 @@ void PopulateFrameData(
 
   if (const std::string* title_ptr = local_frame_data.FindString(kTitleKey)) {
     destination_frame_data->set_title(*title_ptr);
+  }
+
+  std::optional<bool> contains_paid_content =
+      local_frame_data.FindBool(kContainsPaidContentKey);
+  if (contains_paid_content && *contains_paid_content) {
+    destination_frame_data->mutable_paid_content_metadata()
+        ->set_contains_paid_content(true);
   }
 
   const base::DictValue* interaction_info_dict =
@@ -719,5 +727,28 @@ void PopulatePageInteractionInfoNode(
           ReadJsNumber(page_interaction_info_content, kFocusedDomNodeIdKey)) {
     destination_page_interaction_info_node->set_focused_node_id(
         *focused_node_id);
+  }
+}
+
+void PopulateViewportGeometryNode(
+    const base::DictValue& viewport_geometry_content,
+    optimization_guide::proto::BoundingRect*
+        destination_viewport_geometry_node) {
+  // Check that the destination node is only populated once.
+  CHECK_EQ(destination_viewport_geometry_node->ByteSizeLong(), 0u);
+
+  if (std::optional<int> x = ReadJsNumber(viewport_geometry_content, kXKey)) {
+    destination_viewport_geometry_node->set_x(*x);
+  }
+  if (std::optional<int> y = ReadJsNumber(viewport_geometry_content, kYKey)) {
+    destination_viewport_geometry_node->set_y(*y);
+  }
+  if (std::optional<int> width =
+          ReadJsNumber(viewport_geometry_content, kWidthKey)) {
+    destination_viewport_geometry_node->set_width(*width);
+  }
+  if (std::optional<int> height =
+          ReadJsNumber(viewport_geometry_content, kHeightKey)) {
+    destination_viewport_geometry_node->set_height(*height);
   }
 }

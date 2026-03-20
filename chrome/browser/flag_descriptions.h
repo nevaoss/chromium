@@ -176,6 +176,10 @@ inline constexpr char kAndroidBookmarkBarFastFollowDescription[] =
     "functionality. This flag requires having the Android Bookmark Bar flag "
     "enabled as well.";
 
+inline constexpr char kAndroidBottomBarName[] = "Android Bottom Bar";
+inline constexpr char kAndroidBottomBarDescription[] =
+    "Enables the chrome android bottom bar.";
+
 inline constexpr char kAndroidMediaPickerName[] = "Android Media Picker";
 inline constexpr char kAndroidMediaPickerDescription[] =
     "Enables the Android media picker for media capture.";
@@ -668,7 +672,7 @@ inline constexpr char kPrerenderUntilScriptDescription[] =
 
 inline constexpr char kPrerenderActivationByFormSubmissionName[] =
     "Prerender Activation By Form Submission";
-inline constexpr char kPrerenderActivationByFormSubmissiontDescription[] =
+inline constexpr char kPrerenderActivationByFormSubmissionDescription[] =
     "Allow Prerender activations by form submission.";
 
 inline constexpr char kBookmarkBarPrefetchName[] = "BookmarkBarPrefetch";
@@ -754,11 +758,6 @@ inline constexpr char
         "When enabled, Autofill will suppress keyboard accessory when the form "
         "field is not a username/password field and does not have any autofill "
         "suggestions. ";
-
-inline constexpr char kAutofillAtMemoryName[] = "Autofill @memory";
-inline constexpr char kAutofillAtMemoryDescription[] =
-    "Enables the @memory feature which allows to recall and insert personal"
-    "information into editable fields by typing a special trigger '@@' ";
 
 inline constexpr char kAutofillDisableBnplCountryCheckForTestingName[] =
     "Disable the country check for BNPL testing";
@@ -929,12 +928,6 @@ inline constexpr char kAutofillEnableNewFopDisplayAndroidDescription[] =
     "When enabled, updates payment method Autofill suggestions and settings "
     "UI.";
 
-inline constexpr char kAutofillEnableNonAffiliatedLoyaltyCardsFillingName[] =
-    "Enable filling on non-affiliated loyalty cards";
-inline constexpr char
-    kAutofillEnableNonAffiliatedLoyaltyCardsFillingDescription[] =
-        "When enabled, Autofill will help users fill in non-affiliated loyalty "
-        "cards on loyalty card only fields";
 
 inline constexpr char kAutofillEnableOffersInClankKeyboardAccessoryName[] =
     "Enable Autofill offers in keyboard accessory";
@@ -942,6 +935,12 @@ inline constexpr char
     kAutofillEnableOffersInClankKeyboardAccessoryDescription[] =
         "When enabled, offers will be displayed in the keyboard accessory when "
         "available.";
+
+inline constexpr char kAutofillEnableOmniboxAutofillName[] =
+    "Enable Omnibox Autofill chip for payments";
+inline constexpr char kAutofillEnableOmniboxAutofillDescription[] =
+    "When enabled, an Autofill payments omnibox chip will appear for relevant "
+    "payment checkout forms.";
 
 inline constexpr char kAutofillEnablePaymentsMandatoryReauthChromeOsName[] =
     "Enable mandatory re-auth for payments autofill on ChromeOS";
@@ -1866,12 +1865,6 @@ inline constexpr char kDownloadNotificationServiceUnifiedAPIDescription[] =
     "Migrate download notification service to use new unified API based on "
     "offline item and native persistence";
 
-inline constexpr char kEnableNtpEnterpriseShortcutsName[] =
-    "Enables enterprise shortcuts for the New Tab Page";
-inline constexpr char kEnableNtpEnterpriseShortcutsDescription[] =
-    "Enables enterprise shortcuts for the New Tab Page set by the NTPShortcuts "
-    "policy.";
-
 inline constexpr char kEnablePerfettoSystemTracingName[] =
     "Enable Perfetto system tracing";
 inline constexpr char kEnablePerfettoSystemTracingDescription[] =
@@ -2210,6 +2203,10 @@ inline constexpr char kFractionalScrollOffsetsDescription[] =
 inline constexpr char kFedCmAutofillName[] = "FedCmAutofill";
 inline constexpr char kFedCmAutofillDescription[] =
     "Allows RPs to enhance autofill with FedCM.";
+
+inline constexpr char kFedCmAmbientUIName[] = "FedCm Ambient UI";
+inline constexpr char kFedCmAmbientUIDescription[] =
+    "Enables FedCM ambient UI in the omnibox.";
 
 inline constexpr char kFedCmDelegationName[] = "FedCM with delegation support";
 inline constexpr char kFedCmDelegationDescription[] =
@@ -2567,12 +2564,6 @@ inline constexpr char kHttpsFirstModeIncognitoName[] =
 inline constexpr char kHttpsFirstModeIncognitoDescription[] =
     "Enable HTTPS-First Mode in Incognito as default setting.";
 
-inline constexpr char kHttpsFirstModeIncognitoNewSettingsName[] =
-    "HTTPS-First Mode in Incognito new Settings UI";
-inline constexpr char kHttpsFirstModeIncognitoNewSettingsDescription[] =
-    "Enable new HTTPS-First Mode settings UI for HTTPS-First Mode in "
-    "Incognito. Must also enable #https-first-mode-incognito.";
-
 inline constexpr char kHttpsFirstModeV2ForEngagedSitesName[] =
     "HTTPS-First Mode V2 For Engaged Sites";
 inline constexpr char kHttpsFirstModeV2ForEngagedSitesDescription[] =
@@ -2860,17 +2851,33 @@ inline constexpr char kMobileNTPPromoOnDesktopName[] =
 inline constexpr char kMobileNTPPromoOnDesktopDescription[] =
     "Enables the Mobile NTP Promo on Desktop.";
 
+inline constexpr char kMobilePromoOnDesktopWithQRCodeName[] =
+    "Mobile Promo On Desktop - QRCode";
+inline constexpr char kMobilePromoOnDesktopWithQRCodeDescription[] =
+    "When enabled, shows a mobile promo with a QR code on desktop for eligible "
+    "users.";
+
+inline constexpr char kMobilePromoOnDesktopWithQRCodeWave1Name[] =
+    "Mobile Promo On Desktop - QR Code (Wave 1)";
+
+inline constexpr char kMobilePromoOnDesktopWithQRCodeWave1Description[] =
+    "When enabled, shows a mobile promo with a QR code on desktop for eligible "
+    "users. This version highlights features not included in the existing "
+    "Mobile promos.";
+
 inline constexpr char kMobilePromoOnDesktopWithReminderName[] =
     "Mobile Promo On Desktop - Reminder";
 inline constexpr char kMobilePromoOnDesktopWithReminderDescription[] =
     "When enabled, shows a mobile promo with a reminder flow on desktop for "
     "eligible users.";
 
-inline constexpr char kMobilePromoOnDesktopWithQRCodeName[] =
-    "Mobile Promo On Desktop - QRCode";
-inline constexpr char kMobilePromoOnDesktopWithQRCodeDescription[] =
-    "When enabled, shows a mobile promo with a QR code on desktop for eligible "
-    "users.";
+inline constexpr char kMobilePromoOnDesktopWithReminderWave1Name[] =
+    "Mobile Promo On Desktop - Reminder (Wave 1)";
+
+inline constexpr char kMobilePromoOnDesktopWithReminderWave1Description[] =
+    "When enabled, shows a mobile promo with a reminder flow on desktop for "
+    "eligible users. This version highlights features not included in the "
+    "existing mobile promos.";
 
 inline constexpr char kMojoUseEventFdName[] =
     "Notify about new Mojo Channel messages using eventfd";
@@ -3490,11 +3497,6 @@ inline constexpr char kPasskeyUnlockManagerDescription[] =
     "Enables the Passkey Unlock Manager, which tracks the state of passkeys "
     "and publishes the corresponding metrics.";
 
-inline constexpr char kPasswordFormClientsideClassifierName[] =
-    "Clientside password form classifier.";
-inline constexpr char kPasswordFormClientsideClassifierDescription[] =
-    "Enable usage of new password form classifier on the client.";
-
 inline constexpr char kPasswordFormGroupedAffiliationsName[] =
     "Grouped affiliation password suggestions";
 inline constexpr char kPasswordFormGroupedAffiliationsDescription[] =
@@ -3552,12 +3554,6 @@ inline constexpr char kLeftHandSideActivityIndicatorsDescription[] =
 inline constexpr char kPrivacyPolicyInsightsName[] = "Privacy Policy Insights";
 inline constexpr char kPrivacyPolicyInsightsDescription[] =
     "Enables the privacy policy insights UI in page info.";
-
-inline constexpr char kCrosSystemLevelPermissionBlockedWarningsName[] =
-    "Chrome OS block warnings";
-inline constexpr char kCrosSystemLevelPermissionBlockedWarningsDescription[] =
-    "Displays warnings in browser if camera, microphone or geolocation is "
-    "disabled in the OS.";
 
 inline constexpr char kPermissionsAIv4Name[] = "PermissionsAIv4";
 inline constexpr char kPermissionsAIv4Description[] =
@@ -4236,6 +4232,10 @@ inline constexpr char kTopControlsRefactorV2Name[] = "Top Controls Refactor V2";
 inline constexpr char kTopControlsRefactorV2Description[] =
     "Enables the alternative code path in Android for the top controls layout "
     "control, v2, including y-offsets.";
+
+inline constexpr char kToolbarGlowUpName[] = "Toolbar Glow Up";
+inline constexpr char kToolbarGlowUpDescription[] =
+    "Enables the Toolbar Glow Up feature.";
 
 inline constexpr char kToolbarPhoneAnimationRefactorName[] =
     "Toolbar Phone Animation Refactor";
@@ -5020,17 +5020,6 @@ inline constexpr char kAndroidNewMediaPickerName[] =
 inline constexpr char kAndroidNewMediaPickerDescription[] =
     "Enables the new media capture picker UI on Android.";
 
-inline constexpr char kAndroidPinnedTabsName[] = "Android pinned tabs";
-inline constexpr char kAndroidPinnedTabsDescription[] =
-    "Enables the ability to pin tabs through various entry points like context "
-    "menus and overflow menu items.";
-
-inline constexpr char kAndroidPinnedTabsTabletTabStripName[] =
-    "Android pinned tabs on tablet tab strip in the tabbed layout";
-inline constexpr char kAndroidPinnedTabsTabletTabStripDescription[] =
-    "Enables the ability to pin tabs through tab context menu on tablet tab "
-    "strip in the tabbed layout. This is M1 of Android Pinned Tabs";
-
 inline constexpr char kAndroidPkAutocorrectUnderlineName[] =
     "Enable Android physical keyboard autocorrect underline";
 inline constexpr char kAndroidPkAutocorrectUnderlineDescription[] =
@@ -5570,12 +5559,6 @@ inline constexpr char kMediaIndicatorsAndroidName[] =
 inline constexpr char kMediaIndicatorsAndroidDescription[] =
     "Enables media indicators on Android.";
 
-inline constexpr char kMediaPickerAdoptionStudyName[] =
-    "Android Media Picker Adoption";
-inline constexpr char kMediaPickerAdoptionStudyDescription[] =
-    "Controls how to launch the Android Media Picker (note: This flag is "
-    "ignored as of Android U)";
-
 inline constexpr char kMigrateAccountManagerDelegateName[] =
     "Migrate Account Manager Delegate";
 inline constexpr char kMigrateAccountManagerDelegateDescription[] =
@@ -6108,11 +6091,6 @@ inline constexpr char kReadAnythingImmersiveReadingModeName[] =
 inline constexpr char kReadAnythingImmersiveReadingModeDescription[] =
     "Enables the infrastructure for Immersive Reading Mode.";
 
-inline constexpr char kReadAnythingReadAloudTsTextSegmentationName[] =
-    "Reading Mode Read Aloud Experimental Text Segmentation";
-inline constexpr char kReadAnythingReadAloudTsTextSegmentationDescription[] =
-    "Enables the experimental text segmentation method for reading "
-    "mode.";
 
 inline constexpr char kReadAnythingOmniboxChipName[] =
     "Reading Mode Omnibox Chip";
@@ -6504,13 +6482,6 @@ inline constexpr char kMacPWAsNotificationAttributionDescription[] =
     "Route notifications for PWAs on Mac through the app shim, attributing "
     "notifications to the correct apps.";
 
-inline constexpr char kRetryGetVideoCaptureDeviceInfosName[] =
-    "Retry capture device enumeration on crash";
-inline constexpr char kRetryGetVideoCaptureDeviceInfosDescription[] =
-    "Enables retries when enumerating the available video capture devices "
-    "after a crash. The capture service is restarted without loading external "
-    "DAL plugins which could have caused the crash.";
-
 inline constexpr char kUnexportableKeyDeletionName[] =
     "Enable Unexportable Key Deletion";
 inline constexpr char kUnexportableKeyDeletionDescription[] =
@@ -6831,11 +6802,6 @@ inline constexpr char kComponentUpdaterTestRequestDescription[] =
     " Overrides any other component updater check request parameters that may "
     "have been specified.";
 
-inline constexpr char kEnableServiceWorkersForChromeUntrustedName[] =
-    "Enable chrome-untrusted:// Service Workers";
-inline constexpr char kEnableServiceWorkersForChromeUntrustedDescription[] =
-    "When enabled, allows chrome-untrusted:// WebUIs to use service workers.";
-
 inline constexpr char kEnterpriseReportingUIName[] =
     "Enable chrome://enterprise-reporting";
 inline constexpr char kEnterpriseReportingUIDescription[] =
@@ -7048,11 +7014,6 @@ inline constexpr char kTiledDisplaySupportName[] =
 inline constexpr char kTiledDisplaySupportDescription[] =
     "When enabled, tiled displays will be represented by a single display in "
     "ChromeOS, rather than each tile being a separate display.";
-
-inline constexpr char kEnableDozeModePowerSchedulerName[] =
-    "Enable doze mode power scheduler";
-inline constexpr char kEnableDozeModePowerSchedulerDescription[] =
-    "Enable doze mode power scheduler.";
 
 inline constexpr char kEnableExternalKeyboardsInDiagnosticsAppName[] =
     "Enable external keyboards in the Diagnostics App";
@@ -7549,12 +7510,6 @@ inline constexpr char kProjectorAppDebugName[] = "Enable Projector app debug";
 inline constexpr char kProjectorAppDebugDescription[] =
     "Adds more informative error messages to the Projector app for debugging";
 
-inline constexpr char kProjectorServerSideUsmName[] =
-    "Enable USM for Projector server side speech recognition";
-inline constexpr char kProjectorServerSideUsmDescription[] =
-    "Allows Screencast to use the latest model for server side speech "
-    "recognition.";
-
 inline constexpr char kReleaseNotesNotificationAllChannelsName[] =
     "Release Notes Notification All Channels";
 inline constexpr char kReleaseNotesNotificationAllChannelsDescription[] =
@@ -7967,11 +7922,6 @@ inline constexpr char kPrintPreviewCrosPrimaryName[] =
 inline constexpr char kPrintPreviewCrosPrimaryDescription[] =
     "Allows the ChromeOS print preview to be opened instead of the browser "
     " print preview.";
-
-inline constexpr char kDisableQuickAnswersV2TranslationName[] =
-    "Disable Quick Answers Translation";
-inline constexpr char kDisableQuickAnswersV2TranslationDescription[] =
-    "Disable translation services of the Quick Answers.";
 
 inline constexpr char kQuickAnswersRichCardName[] =
     "Enable Quick Answers Rich Card";

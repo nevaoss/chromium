@@ -9,6 +9,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityEvent;
 import android.widget.Button;
+import android.widget.TextView;
 
 import org.chromium.base.task.PostTask;
 import org.chromium.base.task.TaskTraits;
@@ -31,14 +32,20 @@ class FuseboxPopup {
     /* package */ final ViewGroup mViewGroup;
     /* package */ final Button mAddCurrentTab;
     /* package */ final Button mTabButton;
+    /* package */ final Button mClipboardButton;
     /* package */ final Button mCameraButton;
     /* package */ final Button mGalleryButton;
     /* package */ final Button mFileButton;
-    /* package */ final Button mClipboardButton;
+    /* package */ final View mToolsDivider;
+    /* package */ final TextView mToolsHeader;
     /* package */ final Button mAiModeButton;
     /* package */ final Button mCreateImageButton;
-    /* package */ final View mRequestTypeDivider;
-
+    /* package */ final Button mDeepSearchButton;
+    /* package */ final Button mCanvasButton;
+    /* package */ final View mModelsDivider;
+    /* package */ final TextView mModelsHeader;
+    /* package */ final Button mAutoButton;
+    /* package */ final Button mProButton;
     /* package */ final List<Button> mButtons;
     /* package */ final List<View> mDividers;
 
@@ -52,16 +59,26 @@ class FuseboxPopup {
                 context.getResources().getDimensionPixelSize(R.dimen.fusebox_popup_width), 0);
         mPopupWindow.setHorizontalOverlapAnchor(true);
         mPopupWindow.setVerticalOverlapAnchor(true);
-        mTabButton = contentView.findViewById(R.id.fusebox_pick_tabs_button);
         mViewGroup = contentView.findViewById(R.id.fusebox_view_group);
+
+        mAddCurrentTab = contentView.findViewById(R.id.fusebox_add_current_tab);
+        mTabButton = contentView.findViewById(R.id.fusebox_pick_tabs_button);
+        mClipboardButton = contentView.findViewById(R.id.fusebox_paste_from_clipboard_button);
         mCameraButton = contentView.findViewById(R.id.fusebox_camera_button);
         mGalleryButton = contentView.findViewById(R.id.fusebox_pick_picture_button);
         mFileButton = contentView.findViewById(R.id.fusebox_pick_file_button);
-        mClipboardButton = contentView.findViewById(R.id.fusebox_paste_from_clipboard_button);
+
+        mToolsDivider = contentView.findViewById(R.id.fusebox_tools_divider);
+        mToolsHeader = contentView.findViewById(R.id.fusebox_tools_header);
         mAiModeButton = contentView.findViewById(R.id.fusebox_ai_mode_button);
         mCreateImageButton = contentView.findViewById(R.id.fusebox_create_image_button);
-        mAddCurrentTab = contentView.findViewById(R.id.fusebox_add_current_tab);
-        mRequestTypeDivider = contentView.findViewById(R.id.fusebox_request_type_divider);
+        mDeepSearchButton = contentView.findViewById(R.id.fusebox_deep_search_button);
+        mCanvasButton = contentView.findViewById(R.id.fusebox_canvas_button);
+
+        mModelsDivider = contentView.findViewById(R.id.fusebox_models_divider);
+        mModelsHeader = contentView.findViewById(R.id.fusebox_models_header);
+        mAutoButton = contentView.findViewById(R.id.fusebox_auto_button);
+        mProButton = contentView.findViewById(R.id.fusebox_pro_button);
 
         mButtons =
                 List.of(
@@ -72,8 +89,12 @@ class FuseboxPopup {
                         mGalleryButton,
                         mFileButton,
                         mAiModeButton,
-                        mCreateImageButton);
-        mDividers = List.of(mRequestTypeDivider);
+                        mCreateImageButton,
+                        mDeepSearchButton,
+                        mCanvasButton,
+                        mAutoButton,
+                        mProButton);
+        mDividers = List.of(mToolsDivider, mModelsDivider);
     }
 
     void show() {

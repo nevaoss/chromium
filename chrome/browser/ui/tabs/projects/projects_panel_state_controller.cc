@@ -8,7 +8,9 @@
 #include "chrome/browser/ui/actions/chrome_action_id.h"
 #include "chrome/browser/ui/browser_actions.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/user_education/browser_user_education_interface.h"
 #include "chrome/grit/generated_resources.h"
+#include "components/feature_engagement/public/feature_constants.h"
 #include "ui/actions/actions.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/views/vector_icons.h"
@@ -20,7 +22,9 @@ ProjectsPanelStateController::ProjectsPanelStateController(
     actions::ActionItem* root_action_item)
     : root_action_item_(root_action_item),
       scoped_unowned_user_data_(browser_window->GetUnownedUserDataHost(),
-                                *this) {
+                                *this),
+      browser_window_(browser_window) {
+  CHECK(browser_window_);
   UpdateProjectsActionItem();
 }
 
@@ -37,10 +41,12 @@ bool ProjectsPanelStateController::IsProjectsPanelVisible() const {
 }
 
 void ProjectsPanelStateController::SetProjectsVisible(bool visible) {
-  if (is_visible_ != visible) {
-    is_visible_ = visible;
-    NotifyStateChanged();
+  if (is_visible_ == visible) {
+    return;
   }
+
+  is_visible_ = visible;
+  NotifyStateChanged();
 }
 
 base::CallbackListSubscription
@@ -55,9 +61,6 @@ void ProjectsPanelStateController::NotifyStateChanged() {
 }
 
 void ProjectsPanelStateController::UpdateProjectsActionItem() {
-  const gfx::VectorIcon& icon = IsProjectsPanelVisible()
-                                    ? kCloseChromeRefreshIcon
-                                    : kSavedTabGroupBarEverythingIcon;
   const auto& text = IsProjectsPanelVisible() ? IDS_HIDE_PROJECTS_PANEL
                                               : IDS_VIEW_PROJECTS_PANEL;
 
@@ -65,8 +68,6 @@ void ProjectsPanelStateController::UpdateProjectsActionItem() {
       actions::ActionManager::Get().FindAction(kActionToggleProjectsPanel,
                                                root_action_item_);
   if (projects_action) {
-    projects_action->SetImage(
-        ui::ImageModel::FromVectorIcon(icon, ui::kColorIcon));
     projects_action->SetText(BrowserActions::GetCleanTitleAndTooltipText(
         l10n_util::GetStringUTF16(text)));
     projects_action->SetTooltipText(BrowserActions::GetCleanTitleAndTooltipText(

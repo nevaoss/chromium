@@ -398,6 +398,9 @@ class CONTENT_EXPORT WebContentsImpl
   // WebContents ------------------------------------------------------
   WebContentsDelegate* GetDelegate() final;
   void SetDelegate(WebContentsDelegate* delegate) override;
+#if BUILDFLAG(ENABLE_SURFACE_EMBED)
+  SurfaceEmbedConnector* GetSurfaceEmbedConnector() const override;
+#endif  // BUILDFLAG(ENABLE_SURFACE_EMBED)
   NavigationControllerImpl& GetController() override;
 
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)

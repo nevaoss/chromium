@@ -65,6 +65,7 @@ public class AutocompleteInput implements UserData {
         }
     }
 
+    // LINT.IfChange(Members)
     private long mUrlFocusTime;
     private GURL mPageUrl;
     private int mPageClassification;
@@ -77,13 +78,17 @@ public class AutocompleteInput implements UserData {
     private @RefineActionUsage int mRefineActionUsage;
     private boolean mSuggestionsListScrolled;
     private @OmniboxFocusReason int mFocusReason;
+    private /* ModelMode */ int mModelMode;
+
     private final SettableNonNullObservableSupplier<@AutocompleteRequestType Integer>
             mRequestTypeSupplier =
                     ObservableSuppliers.createNonNull(AutocompleteRequestType.SEARCH);
-    private final SettableNonNullObservableSupplier<Integer> mToolModeSupplier =
+    private final SettableNonNullObservableSupplier</* ToolMode */ Integer> mToolModeSupplier =
             ObservableSuppliers.createNonNull(ToolMode.TOOL_MODE_UNSPECIFIED_VALUE);
     private final SettableNullableObservableSupplier<SiteSearchData> mSiteSearchData =
             ObservableSuppliers.createNullable();
+
+    // LINT.ThenChange(:CopyFrom)
 
     public AutocompleteInput() {
         reset();
@@ -99,6 +104,35 @@ public class AutocompleteInput implements UserData {
         mPageClassification = pageClassification;
         return this;
     }
+
+    /**
+     * Mutates this object to have the same values as {@code other}. Observers of the suppliers will
+     * not be copied, only the current values.
+     *
+     * @param other The {@link AutocompleteInput} to copy values from.
+     */
+    // LINT.IfChange(CopyFrom)
+    public void copyFrom(AutocompleteInput other) {
+        mUrlFocusTime = other.mUrlFocusTime;
+        mPageUrl = other.mPageUrl;
+        mPageClassification = other.mPageClassification;
+        mPageTitle = other.mPageTitle;
+        mUserText = other.mUserText;
+        mAllowExactKeywordMatch = other.mAllowExactKeywordMatch;
+        mHasAttachments = other.mHasAttachments;
+        mSuppressAutomaticSuggestionsUntilUserStartsTyping =
+                other.mSuppressAutomaticSuggestionsUntilUserStartsTyping;
+        mSelection = other.mSelection;
+        mRefineActionUsage = other.mRefineActionUsage;
+        mSuggestionsListScrolled = other.mSuggestionsListScrolled;
+        mFocusReason = other.mFocusReason;
+        mModelMode = other.mModelMode;
+        mRequestTypeSupplier.set(other.mRequestTypeSupplier.get());
+        mToolModeSupplier.set(other.mToolModeSupplier.get());
+        mSiteSearchData.set(other.mSiteSearchData.get());
+    }
+
+    // LINT.ThenChange(:Members)
 
     private int getComposeboxEquivalentOfPageClassification() {
         return switch (mPageClassification) {
@@ -279,7 +313,46 @@ public class AutocompleteInput implements UserData {
 
     /** Returns whether exact keyword match is allowed with current input. */
     public boolean allowExactKeywordMatch() {
-        return mAllowExactKeywordMatch;
+        return mAllowExactKeywordMatch || getSiteSearchData() != null;
+    }
+
+    /**
+     * Returns the user text formatted for autocomplete.
+     *
+     * <p>When the user is in Keyword mode (e.g., Site Search), this method concatenates the keyword
+     * and user text. This concatenation approach mirrors how Desktop/Views handles it: the UI
+     * separates the keyword into a chip visually, but silently prepends it to the query string
+     * right before passing it to the C++ controller. Doing it this way keeps the JNI boundary and
+     * cross-platform parsing logic unchanged.
+     *
+     * @return The text to be sent to the AutocompleteController.
+     */
+    public String getTextForAutocomplete() {
+        SiteSearchData siteSearchData = getSiteSearchData();
+        if (siteSearchData != null) {
+            return siteSearchData.keyword + " " + mUserText;
+        }
+        return mUserText;
+    }
+
+    /**
+     * Calculates the adjusted cursor position for autocomplete.
+     *
+     * <p>Adjusts the cursor position to account for the prepended keyword.
+     *
+     * @param currentCursorPosition The cursor position in the UI text field.
+     * @return The adjusted cursor position.
+     */
+    public int getCursorPositionForAutocomplete(int currentCursorPosition) {
+        SiteSearchData siteSearchData = getSiteSearchData();
+        if (siteSearchData != null && currentCursorPosition >= 0) {
+            // It's possible the UI text has not synchronously updated yet, meaning the reported
+            // cursor position is out of bounds for the logical text. Cap it to the length of the
+            // user text.
+            int safeCursorPosition = Math.min(currentCursorPosition, mUserText.length());
+            return safeCursorPosition + siteSearchData.keyword.length() + 1;
+        }
+        return currentCursorPosition;
     }
 
     /** Returns the text as currently typed by the User. */
@@ -397,6 +470,16 @@ public class AutocompleteInput implements UserData {
             boolean suppress) {
         mSuppressAutomaticSuggestionsUntilUserStartsTyping = suppress;
         return this;
+    }
+
+    /** Returns the current model mode or MODEL_MODE_UNSPECIFIED if never set. */
+    public /* ModelMode */ int getModelMode() {
+        return mModelMode;
+    }
+
+    /** Sets the ModelMode that should be used. */
+    public void setModelMode(int modelMode) {
+        mModelMode = modelMode;
     }
 
     private void updateToolMode() {

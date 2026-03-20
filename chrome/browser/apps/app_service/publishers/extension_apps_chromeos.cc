@@ -17,6 +17,7 @@
 #include "ash/public/cpp/app_menu_constants.h"
 #include "ash/public/cpp/shelf_types.h"
 #include "ash/shell.h"
+#include "ash/strings/grit/ash_strings.h"
 #include "base/containers/extend.h"
 #include "base/feature_list.h"
 #include "base/files/safe_base_name.h"
@@ -348,7 +349,7 @@ void ExtensionAppsChromeOs::LaunchAppWithArgumentsCallback(
     bool should_open) {
   // Exit early, while notifying, in case `Don't open` was chosen.
   if (!should_open) {
-    std::move(callback).Run(LaunchResult(State::kFailed));
+    std::move(callback).Run(LaunchResult::kFailed);
     return;
   }
 
@@ -367,7 +368,7 @@ void ExtensionAppsChromeOs::LaunchAppWithIntent(const std::string& app_id,
   // `extension` is required.
   const auto* extension = MaybeGetExtension(app_id);
   if (!extension) {
-    std::move(callback).Run(LaunchResult(State::kFailed));
+    std::move(callback).Run(LaunchResult::kFailed);
     return;
   }
 
@@ -378,7 +379,7 @@ void ExtensionAppsChromeOs::LaunchAppWithIntent(const std::string& app_id,
     // This vector cannot be empty because this is reached after explicitly
     // opening one or more files.
     if (base_names.empty()) {
-      std::move(callback).Run(LaunchResult(State::kFailed));
+      std::move(callback).Run(LaunchResult::kFailed);
       return;
     }
 
@@ -492,15 +493,14 @@ void ExtensionAppsChromeOs::LaunchExtension(const std::string& app_id,
   file_manager::file_browser_handlers::ExecuteFileBrowserHandler(
       profile(), extension, action_id, file_urls,
       base::BindOnce(
-          [](LaunchCallback callback,
-             extensions::api::file_manager_private::TaskResult result,
+          [](extensions::api::file_manager_private::TaskResult result,
              std::string error) {
             bool success =
                 result !=
                 extensions::api::file_manager_private::TaskResult::kFailed;
-            std::move(callback).Run(ConvertBoolToLaunchResult(success));
-          },
-          std::move(callback)));
+            return success ? LaunchResult::kSuccess : LaunchResult::kFailed;
+          })
+          .Then(std::move(callback)));
 }
 
 void ExtensionAppsChromeOs::PauseApp(const std::string& app_id) {

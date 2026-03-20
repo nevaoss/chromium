@@ -58,6 +58,7 @@
 #include "third_party/blink/renderer/platform/allow_discouraged_type.h"
 #include "third_party/blink/renderer/platform/graphics/gpu/shared_gpu_context.h"
 #include "third_party/blink/renderer/platform/graphics/web_graphics_context_3d_video_frame_pool.h"
+#include "third_party/blink/renderer/platform/peerconnection/rtc_video_encoder_media_log.h"
 #include "third_party/blink/renderer/platform/scheduler/public/post_cross_thread_task.h"
 #include "third_party/blink/renderer/platform/webrtc/convert_to_webrtc_video_frame_buffer.h"
 #include "third_party/blink/renderer/platform/webrtc/webrtc_video_frame_adapter.h"
@@ -191,6 +192,9 @@ class RefCountedWritableSharedMemoryMapping
       const RefCountedWritableSharedMemoryMapping&) = delete;
   RefCountedWritableSharedMemoryMapping& operator=(
       const RefCountedWritableSharedMemoryMapping&) = delete;
+
+  const base::span<const uint8_t> AsSpan() const { return mapping_; }
+  const base::span<uint8_t> AsSpan() { return mapping_; }
 
   const unsigned char* front() const {
     return static_cast<const unsigned char*>(mapping_.memory());
@@ -1030,6 +1034,8 @@ class RTCVideoEncoder::Impl : public media::VideoEncodeAccelerator::Client {
   // instead of SVC. Set only when simulcat config is emulated by SVC one.
   std::optional<webrtc::SimulcastToSvcConverter> simulcast_to_svc_converter_;
 
+  std::unique_ptr<media::MediaLog> media_log_;
+
   // They are bound to |gpu_task_runner_|, which is sequence checked by
   // |sequence_checker|.
   base::WeakPtr<Impl> weak_this_;
@@ -1112,8 +1118,13 @@ void RTCVideoEncoder::Impl::CreateAndInitializeVEA(
       /*is_hardware_encoder=*/true,
       ToSVCScalabilityMode(vea_config.spatial_layers,
                            vea_config.inter_layer_pred));
-  if (auto status = video_encoder_->Initialize(
-          vea_config, this, std::make_unique<media::NullMediaLog>());
+
+  if (!media_log_) {
+    media_log_ = std::make_unique<RTCVideoEncoderMediaLog>();
+  }
+
+  if (auto status =
+          video_encoder_->Initialize(vea_config, this, media_log_->Clone());
       !status.is_ok()) {
     NotifyErrorStatus(
         {media::EncoderStatus::Codes::kEncoderInitializationError,
@@ -1696,8 +1707,8 @@ void RTCVideoEncoder::Impl::BitstreamBufferReady(
 #if BUILDFLAG(RTC_USE_H265)
   if (ps_tracker_.get()) {
     H265ParameterSetsTracker::FixedBitstream fixed =
-        ps_tracker_->MaybeFixBitstream(webrtc::MakeArrayView(
-            output_mapping->front(), metadata.payload_size_bytes));
+        ps_tracker_->MaybeFixBitstream(
+            output_mapping->AsSpan().first(metadata.payload_size_bytes));
     if (fixed.action == H265ParameterSetsTracker::PacketAction::kInsert) {
       image.SetEncodedData(fixed.bitstream);
       BitstreamBufferAvailable(bitstream_buffer_id);

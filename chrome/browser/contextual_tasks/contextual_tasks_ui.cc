@@ -471,6 +471,16 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
       "internals/",
       IDR_CONTEXTUAL_TASKS_INTERNALS_CONTEXTUAL_TASKS_INTERNALS_HTML);
 
+  source->AddBoolean(
+      "useStratusDarkModeColors",
+      contextual_tasks::ShouldUseStratusDarkModeColors());
+  source->AddString(
+      "useStratusDarkModeColorsAttr",
+      contextual_tasks::ShouldUseStratusDarkModeColors() ? "true" : "false");
+
+  source->AddBoolean("smartTabSharingEnabled",
+                     contextual_tasks::GetIsSmartTabSharingEnabled());
+
   AddZeroStateStrings(source, profile);
   contextual_tasks_service_observation_.Observe(contextual_tasks_service_);
 }
@@ -670,6 +680,8 @@ void ContextualTasksUI::CreatePageHandler(
       base::BindRepeating(
           &ContextualTasksUI::GetOrCreateContextualSessionHandle,
           base::Unretained(this)),
+      base::BindRepeating(&ContextualTasksUI::ClearContextualSessionHandle,
+                          base::Unretained(this)),
       base::BindRepeating(&ContextualTasksUI::TakeInputStateModel,
                           base::Unretained(this)));
   composebox_handler_->SetPage(std::move(pending_searchbox_page));
@@ -725,6 +737,11 @@ ContextualTasksUI::GetOrCreateContextualSessionHandle() {
       controller, web_contents, task_id_.value());
   return helper->session_handle();
 }
+
+// Empty implementation, does not need to be cleared in contextual tasks. Only
+// needs to be cleared when transferring ownership to a new web contents / UI
+// controller which never happens for contextual tasks.
+void ContextualTasksUI::ClearContextualSessionHandle() {}
 
 std::unique_ptr<contextual_search::InputStateModel>
 ContextualTasksUI::TakeInputStateModel() {
@@ -929,7 +946,9 @@ void ContextualTasksUI::OnActiveTabContextStatusChanged() {
       GetOrCreateContextualSessionHandle()->AsWeakPtr();
   contextual_tasks_service_->GetContextForTask(
       GetTaskId().value(),
-      {contextual_tasks::ContextualTaskContextSource::kPendingContextDecorator},
+      {contextual_tasks::ContextualTaskContextSource::kUploadedContextDecorator,
+       contextual_tasks::ContextualTaskContextSource::
+           kSubmittedContextDecorator},
       std::move(context_decoration_params),
       base::BindOnce(&ContextualTasksUI::OnContextRetrievedForActiveTab,
                      weak_ptr_factory_.GetWeakPtr(),
@@ -1044,6 +1063,7 @@ void ContextualTasksUI::FrameNavObserver::DidFinishNavigation(
           << url;
   bool is_ai_page = ui_service_->IsAiUrl(url);
   task_info_delegate_->SetIsAiPage(is_ai_page);
+  task_info_delegate_->SetAimUrl(url);
 
   OMNIBOX_LOG("embedded_page_nav") << navigation_handle->GetURL().spec();
 
@@ -1196,8 +1216,6 @@ void ContextualTasksUI::FrameNavObserver::DidFinishNavigation(
       contextual_tasks::ThreadType::kAiMode, url_thread_id, mstk,
       task_info_delegate_->GetThreadTitle());
   task_info_delegate_->SetThreadTurnId(mstk);
-
-  task_info_delegate_->SetAimUrl(url);
 
   if (task_changed) {
     OMNIBOX_LOG("embedded_page_nav")

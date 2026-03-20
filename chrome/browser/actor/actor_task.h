@@ -62,9 +62,7 @@ struct ActionResultWithLatencyInfo;
 class ActorTask : public base::SupportsUserData {
  public:
   using ActCallback =
-      base::OnceCallback<void(mojom::ActionResultPtr,
-                              std::optional<size_t>,
-                              std::vector<ActionResultWithLatencyInfo>)>;
+      base::OnceCallback<void(std::vector<ActionResultWithLatencyInfo>)>;
 
   // Created only via ActorKeyedService::CreateTask or the CreateForTesting
   // method in this class.
@@ -224,6 +222,10 @@ class ActorTask : public base::SupportsUserData {
 
   Profile* GetProfile() const;
 
+  ActionTrackerForMetrics& action_tracker_for_metrics() const {
+    return *action_tracker_for_metrics_;
+  }
+
   ActorKeyedService& actor_keyed_service() const { return service_.get(); }
 
   // These observations will be added to the final ActionsResult returned by the
@@ -282,9 +284,7 @@ class ActorTask : public base::SupportsUserData {
                              content::WebContents* old_contents,
                              content::WebContents* new_contents);
 
-  void OnFinishedAct(mojom::ActionResultPtr result,
-                     std::optional<size_t> index_of_failed_action,
-                     std::vector<ActionResultWithLatencyInfo> action_results);
+  void OnFinishedAct(std::vector<ActionResultWithLatencyInfo> action_results);
 
   void OnTabWillDetach(tabs::TabInterface* tab,
                        tabs::TabInterface::DetachReason reason);

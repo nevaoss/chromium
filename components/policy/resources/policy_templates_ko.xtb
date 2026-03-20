@@ -1077,6 +1077,7 @@ Chrome 앱은 ID(예: <ph name="DEFAULT_HANDLERS_FOR_FILE_EXTENSIONS_POLICY_CHRO
       정책을 설정하지 않으면 사용자 화면 제어 또는 자동 밝기 기능에 어떠한 영향도 미치지 않습니다.
 
       참고: 이 정책의 값은 0부터 100까지의 비율로 지정해야 합니다.</translation>
+<translation id="1732435945666510577">확장 프로그램 DOM 활동의 로깅 사용 중지</translation>
 <translation id="1733092875104864334">Google 서비스에서 WebRTC 텍스트 로그 수집 허용 안함</translation>
 <translation id="1733768596873041559">기본적으로 SAML IdP로 리디렉션(<ph name="PRODUCT_NAME" /> 99 이전 버전에서는 사용자 확인 필요)</translation>
 <translation id="1736032188431871940">시크릿 모드에서 URL 목록에 대한 액세스 차단</translation>
@@ -1921,6 +1922,7 @@ URI 템플릿에 <ph name="HTTP_VARIABLE_DNS" /> 변수가 포함된 경우 리�
 <translation id="2290270645214705008">정책을 사용 안함으로 설정하면 수신되는 연결을 허용하도록 원격 액세스 호스트 서비스를 시작하거나 구성할 수 없습니다.  이 정책은 원격 지원 시나리오에 영향을 주지 않습니다.
 
           정책이 사용 설정되거나, 비어 있거나, 설정되지 않을 경우 아무런 영향을 미치지 않습니다.</translation>
+<translation id="2291341836547307786">확장 프로그램 DOM의 활동 로깅 사용 설정</translation>
 <translation id="2292482441027364457">정책을 설정하면 <ph name="PRODUCT_OS_NAME" /> 런처 바에 고정된 앱으로 표시되는 애플리케이션 식별자를 고정하며 사용자는 이를 변경할 수 없습니다.
 
 Chrome 앱은 ID(예: pjkljhegncpnkpknbcohdijeoejaedia)로, Android 앱은 패키지 이름(예: com.google.android.gm)으로, 웹 앱은 <ph name="WEB_APP_INSTALL_FORCE_LIST_POLICY_NAME" />에서 사용되는 URL(예: https://google.com/maps)로, 시스템 웹 앱은 스네이크 표기법 이름(예: <ph name="PINNED_LAUNCHER_APPS_POLICY_SYSTEM_WEB_APP_EXAMPLE" />)으로 지정합니다.
@@ -2190,6 +2192,51 @@ False로 설정하면 개인 정보 보호 화면은 항상 사용 중지됩니�
 <translation id="2489558694350871332">기기에서 가상 머신을 실행하도록 허용</translation>
 <translation id="2492240920793040106">세이프 브라우징 개선을 위한 시스템 정보 및 페이지 콘텐츠 보고 사용</translation>
 <translation id="2496180316473517155">방문 기록</translation>
+<translation id="2496898792336137342">도착 URL 및 특정 네트워크 조건에 따라 브라우저에서 사용할 프록시를 선택하는 규칙을 구성합니다.
+
+이 정책은 <ph name="PROXY_SETTINGS_POLICY_NAME" /> 정책, <ph name="PROXY_SETTINGS_EXTENSION_API" /> 확장 프로그램 API, 수동 사용자 설정보다 우선 적용됩니다. 이 정책의 규칙과 일치하는 항목이 없으면 브라우저가 <ph name="PROXY_SETTINGS_POLICY_NAME" />에 정의된 설정으로 폴백합니다.
+
+브라우저가 <ph name="PROXY_OVERRIDE_RULES_POLICY_NAME" /> 목록의 항목을 순서대로 평가합니다. 다음 기준이 모두 충족되는 경우에만 규칙이 적용됩니다.
+
+  * 일치: <ph name="PROXY_OVERRIDE_RULES_DESTINATION_MATCHERS" />의 URL 패턴 중 하나 이상이 일치합니다.
+
+  * 제외: <ph name="PROXY_OVERRIDE_RULES_EXCLUDE_DESTINATION_MATCHERS" />의 URL 패턴 중 일치하는 패턴이 없습니다.
+
+  * 조건: <ph name="PROXY_OVERRIDE_RULES_CONDITIONS" /> 조건이 지정된 경우 나열된 모든 조건을 충족해야 합니다. 설정되지 않은 경우 이 요구사항은 무시됩니다.
+
+일치 항목의 URL 패턴은 https://chromium.googlesource.com/chromium/src/+/HEAD/net/docs/proxy.md#proxy-config-url-patterns에 설명되어 있습니다.
+
+<ph name="PROXY_OVERRIDE_RULES_PROXY_LIST" /> 필드는 장애 조치 목록을 정의합니다. 연결 가능한 항목 중 첫 번째 항목이 사용되며 유효하지 않은 항목은 무시됩니다. PAC 스타일 문자열 또는 URL과 유사한 지정자를 사용할 수 있습니다.
+
+PAC 스타일 문자열:
+
+  * DIRECT
+
+  * PROXY host:port
+
+  * HTTPS host:port
+
+  * SOCKS4 host:port
+
+  * SOCKS5 host:port
+
+URL과 유사한 지정자:
+
+  * http://host:port
+
+  * https://host:port
+
+  * socks4://host:port
+
+  * socks5://host:port
+
+<ph name="PROXY_OVERRIDE_RULES_DNS_PROBE" /> 조건은 <ph name="PROXY_OVERRIDE_RULES_HOST" /> 호스트가 IP 주소로 확인되는지 검사합니다.
+
+* 호스트 이름(예: example.com) 또는 URI 스타일 문자열(예: https://example.com:123)을 지원합니다. 보안 스키마(https)를 사용하면 HTTPS 레코드 요청이 트리거될 수 있습니다. 자세한 내용은 RFC 9460을 참고하세요.
+
+* 확인이 성공하면 조건을 충족하도록 "<ph name="PROXY_OVERRIDE_RULES_RESOLVED" />"로 설정하세요. 혹은 확인이 실패하면 조건을 충족하도록 "<ph name="PROXY_OVERRIDE_RULES_NOT_FOUND" />"로 설정합니다.
+
+관리형 기기에 이 정책을 적용하는 것은 지원되는 플랫폼의 <ph name="ENABLE_PROXY_OVERRIDE_RULES_FOR_ALL_USERS_POLICY_NAME" /> 머신 수준 정책의 영향을 받습니다. 기본적으로 이는 연결되지 않은 사용자가 구성한 재정의 규칙이 사용되지 않도록 방지합니다.</translation>
 <translation id="2497751676088107779">사용자 스크립트</translation>
 <translation id="249798396824949930"> 브라우저가 <ph name="MAC_OS_NAME" />에서 필수 정책 범위를 감지할 수 있는지를 제어합니다.
 
@@ -6562,6 +6609,7 @@ False로 설정하면 <ph name="PRODUCT_NAME" />에서 시스템 알림을 사�
 <translation id="5309944663104291505">강제 설치된 분리형 웹 앱 및 키오스크 애플리케이션에서 Device Attributes API를 사용하도록 허용 안 함</translation>
 <translation id="5311275381462687162">기본 레거시 <ph name="ATTRIBUTE_SAMESITE_NAME" /> 쿠키 동작 설정</translation>
 <translation id="5312253627576569499">화면이 어두워졌거나 화면이 꺼진 후 얼마 지나지 않았을 때 사용자 활동이 감지될 경우 화면 어둡게 하기 지연 시간이 조정되는 비율입니다.</translation>
+<translation id="5313663675323027439">확장 프로그램 DOM의 활동 로깅 제어</translation>
 <translation id="5316856058059940708">큰 커서 사용 중지</translation>
 <translation id="5318185076587284965">원격 액세스 호스트에 의한 릴레이 서버 사용 설정</translation>
 <translation id="5321624917465764266">이 정책을 사용으로 설정하거나 설정하지 않으면 방문 기록 및 다운로드 기록이 Chrome에서 삭제될 수 있으며 사용자가 이 설정을 변경할 수 없습니다.
@@ -7098,21 +7146,6 @@ Microsoft SharePoint 및 OneDrive 카드에는 추가 관리자 구성이 필요
 <translation id="5625771176514429288">Chrome 앱이 이러한 플랫폼에서 실행됩니다.</translation>
 <translation id="5627270992026554674">교사가 Google 클래스룸 수업 출석부를 사용하지 못하도록 차단</translation>
 <translation id="5630352020869108293">마지막 세션 복원</translation>
-<translation id="5630952076819481843">정책을 설정하면 Chrome에서 클라이언트 인증서를 자동으로 선택할 사이트를 지정하는 URL 패턴 목록을 작성할 수 있습니다. 값은 각각 <ph name="AUTO_SELECT_CERTIFICATE_FOR_URLS_EXAMPLE" /> 형식의 stringified JSON 사전 배열이며, 여기에서 <ph name="URL_PATTERN_PLACEHOLDER" />은 콘텐츠 설정 패턴입니다. <ph name="FILTER_PLACEHOLDER" />는 브라우저에서 자동으로 선택할 클라이언트 인증서를 제한합니다. 필터와 관계없이 서버의 인증서 요청과 일치하는 인증서만 선택됩니다. Android에서 Chrome은 자체적으로 프로비저닝한 클라이언트 인증서만 선택할 수 있으며 운영체제 수준에서 설치된 인증서에는 액세스할 수 없습니다.
-
-      <ph name="FILTER_PLACEHOLDER" /> 섹션 사용의 예:
-
-      * <ph name="FILTER_PLACEHOLDER" />를 <ph name="AUTO_SELECT_CERTIFICATE_FOR_URLS_FILTER_EXAMPLE" />으로 설정하면 CommonName이 <ph name="ISSUER_CN_PLACEHOLDER" />인 인증서에서 발급한 클라이언트 인증서만 선택됩니다.
-
-      * <ph name="FILTER_PLACEHOLDER" />에 <ph name="ISSUER_STRING_VALUE" /> 및 <ph name="SUBJECT_STRING_VALUE" /> 섹션이 모두 포함된 경우 두 조건을 모두 만족하는 클라이언트 인증서만 선택됩니다.
-
-      * <ph name="FILTER_PLACEHOLDER" />에 <ph name="FILTER_STRING_ORGANIZATION" /> 값이 있는 <ph name="SUBJECT_STRING_VALUE" /> 섹션이 포함된 경우 선택되려면 인증서에 지정된 값과 일치하는 조직이 하나 이상 있어야 합니다.
-
-      * <ph name="FILTER_PLACEHOLDER" />에 <ph name="FILTER_STRING_ORGANIZATIONAL_UNIT" /> 값이 있는 <ph name="SUBJECT_STRING_VALUE" /> 섹션이 포함된 경우 선택되려면 인증서에 지정된 값과 일치하는 조직 단위가 하나 이상 있어야 합니다.
-
-      * <ph name="FILTER_PLACEHOLDER" />를 <ph name="EMPTY_DICTIONARY" />로 설정하면 클라이언트 인증서 선택에 추가로 적용되는 제한은 없습니다. 웹 서버에서 제공한 필터가 계속 적용됩니다.
-
-      정책을 설정하지 않으면 어느 사이트에서도 자동으로 인증서가 선택되지 않습니다.</translation>
 <translation id="5633871703004128675">캐럿 강조표시 접근성 기능 사용</translation>
 <translation id="5634032995857968056">렌더러 앱 컨테이너 샌드박스 사용</translation>
 <translation id="5638334542697444045">사용자가 인스턴트 테더링을 사용하도록 허용 안함</translation>
@@ -9907,6 +9940,14 @@ URL 패턴은 <ph name="WEB_PRINTING_ALLOWED_FOR_URLS_POLICY_NAME" /> 정책과 
       정책을 사용으로 설정하거나 설정하지 않으면 등록된 기기에서 네트워크 인터페이스 목록을 보고하며 유형 및 하드웨어 주소도 보고됩니다.
 
       정책을 사용 안함으로 설정하면 등록된 기기에서 네트워크 인터페이스를 보고하지 않습니다.</translation>
+<translation id="7387190801932161230">기업 사용자에 대해 확장 프로그램 DOM의 활동 로깅을 사용 설정할지를 제어합니다.
+
+정책을 사용 설정하면 확장 프로그램 DOM 활동에 대한 원격 분석이 사용 설정됩니다. 여기에는 확장 프로그램에 의한 코드 삽입 및 민감한 정보 액세스 모니터링이 포함됩니다.
+
+이 정책을 사용 설정하면 <ph name="PRODUCT_NAME" />에서 웹페이지와의 확장 프로그램 상호작용에 대한 신호를 수집하여 확장 프로그램 원격 분석 서비스로 전송합니다. 이렇게 전송된 신호는 보안 감사를 위해 사용됩니다.
+정책을 사용 중지하거나 사용 설정하지 않으면 기업 사용자를 대상으로 이러한 신호가 수집되거나 전송되지 않습니다.
+
+쿠키 또는 입력 값과 같은 민감한 정보의 실제 값은 수집되지 않으며, 액세스되었다는 사실만 수집됩니다.</translation>
 <translation id="7389872682701720082">이 설정을 사용하면 항상 최신 플러그인이 실행됩니다.
 
       이 설정을 사용하지 않거나 설정하지 않으면 승인이 필요한 플러그인을 실행해야 할 때 사용자에게 실행 여부를 묻게 됩니다. 이러한 플러그인은 보안에 문제를 일으킬 수 있습니다.</translation>

@@ -144,6 +144,10 @@ public final class ChromePreferenceKeys {
     /** Whether Chrome is set as the default browser. Default value is false. */
     public static final String CHROME_DEFAULT_BROWSER = "applink.chrome_default_browser";
 
+    // Whether the Chrome Finds opt-in promo has been declined.
+    public static final String CHROME_FINDS_OPT_IN_PROMO_DECLINED =
+            "Chrome.FindsNotifications.OptInDeclined";
+
     /**
      * The ID generated to represent the current browser installation in the DM Server for Cloud
      * Management.
@@ -397,18 +401,6 @@ public final class ChromePreferenceKeys {
 
     /** Whether the Glic button is pinned in the tab strip. */
     public static final String GLIC_BUTTON_PINNED = "Chrome.Glic.ButtonPinned";
-
-    /** Whether the precise location setting is enabled for Glic */
-    public static final String GLIC_PRECISE_LOCATION_SETTING_ENABLED =
-            "Chrome.Glic.PreciseLocationSettingEnabled";
-
-    /** Whether the share current tab default access is enabled for Glic */
-    public static final String GLIC_SHARE_CURRENT_TAB_DEFAULT_ACCESS_ENABLED =
-            "Chrome.Glic.ShareCurrentTabDefaultAccessEnabled";
-
-    /** Whether the auto-browse setting is enabled for Glic */
-    public static final String GLIC_AUTO_BROWSE_SETTING_ENABLED =
-            "Chrome.Glic.AutoBrowseSettingEnabled";
 
     public static final String HISTORY_SHOW_HISTORY_INFO = "history_home_show_info";
 
@@ -744,6 +736,12 @@ public final class ChromePreferenceKeys {
      */
     public static final String PIH_PRIVACY_NOTICE_SHOWN_TOTAL_COUNT =
             "Chrome.PageInsightsHub.NumberOfTimesPageInsightsHubOpenedByUser";
+
+    /**
+     * Track if user ever toggled on/off any magic stack module button inside ntp cards settings
+     * bottom sheet.
+     */
+    public static final String HOME_MODULE_CONFIGURED = "Chrome.HomeModules.Configured";
 
     /** Whether NTP magic stack cards are enabled (if false, no cards can show). */
     public static final String HOME_MODULE_CARDS_ENABLED = "Chrome.HomeModules.Enabled";
@@ -1212,6 +1210,7 @@ public final class ChromePreferenceKeys {
                 BLUETOOTH_NOTIFICATION_IDS,
                 BOOKMARKS_SORT_ORDER,
                 BOOKMARKS_VISUALS_PREF,
+                CHROME_FINDS_OPT_IN_PROMO_DECLINED,
                 CLIPBOARD_SHARED_URI,
                 CLIPBOARD_SHARED_URI_TIMESTAMP,
                 CLOUD_MANAGEMENT_CLIENT_ID,
@@ -1264,11 +1263,9 @@ public final class ChromePreferenceKeys {
                 FIRST_CTA_START_TIMESTAMP,
                 FLAGS_LAST_CACHED_MINIMAL_BROWSER_FLAGS_TIME_MILLIS,
                 GLIC_BUTTON_PINNED,
-                GLIC_PRECISE_LOCATION_SETTING_ENABLED,
-                GLIC_SHARE_CURRENT_TAB_DEFAULT_ACCESS_ENABLED,
-                GLIC_AUTO_BROWSE_SETTING_ENABLED,
                 HISTORY_APP_SPECIFIC_INFO_SEEN,
                 HOME_MODULE_CARDS_ENABLED,
+                HOME_MODULE_CONFIGURED,
                 HOME_MODULES_MODULE_TYPE.pattern(),
                 HOME_MODULES_FRESHNESS_COUNT.pattern(),
                 HOME_MODULES_FRESHNESS_TIMESTAMP_MS.pattern(),

@@ -120,7 +120,12 @@
   border-radius: var(--composebox-border-radius);
   box-sizing: border-box;
   pointer-events: none;
+  transition: opacity 2s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 2;
+}
+
+:host([in-voice-search-mode_]) #composebox::after {
+  opacity: 0;
 }
 
 #composebox {
@@ -176,10 +181,6 @@
 #composebox::part(file-thumbnail-title),
 #composebox::part(mirror) {
   font-family: var(--google-sans-font);
-}
-
-#onboardingTooltip {
-  pointer-events: all;
 }
 
 #composebox::part(input-container) {
@@ -590,6 +591,6 @@
 }
 
 /* Needed for space between header and composebox. */
-:host([is-side-panel]) #composebox:not([show-dropdown_]) #composebox {
+:host([is-side-panel]) #composebox:not([show-dropdown_]) {
   margin-top: 24px;
 }

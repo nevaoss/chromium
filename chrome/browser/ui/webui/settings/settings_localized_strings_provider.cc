@@ -82,6 +82,7 @@
 #include "components/dom_distiller/core/dom_distiller_features.h"
 #include "components/google/core/common/google_util.h"
 #include "components/history/core/common/pref_names.h"
+#include "components/password_manager/core/browser/features/password_features.h"
 #include "components/password_manager/core/browser/leak_detection_dialog_utils.h"
 #include "components/password_manager/core/browser/manage_passwords_referrer.h"
 #include "components/password_manager/core/common/password_manager_features.h"
@@ -827,10 +828,19 @@ void AddGlicStrings(content::WebUIDataSource* html_source, Profile* profile) {
        IDS_SETTINGS_GLIC_NAVIGATION_SHORTCUT_CLEAR_LABEL},
       {"glicNavigationShortcutSublabel",
        IDS_SETTINGS_GLIC_NAVIGATION_SHORTCUT_SUBLABEL},
+      {"glicSelectionShortcut", IDS_SETTINGS_GLIC_SELECTION_SHORTCUT},
+      {"glicSelectionShortcutEditLabel",
+       IDS_SETTINGS_GLIC_SELECTION_SHORTCUT_EDIT_LABEL},
+      {"glicSelectionShortcutClearLabel",
+       IDS_SETTINGS_GLIC_SELECTION_SHORTCUT_CLEAR_LABEL},
+      {"glicSelectionShortcutSublabel",
+       IDS_SETTINGS_GLIC_SELECTION_SHORTCUT_SUBLABEL},
       {"glicKeyboardShortcutLearnMoreAriaLabel",
        IDS_SETTINGS_GLIC_KEYBOARD_SHORTCUT_LEARN_MORE_ARIA_LABEL},
       {"glicNavigationShortcutLearnMoreAriaLabel",
        IDS_SETTINGS_GLIC_NAVIGATION_SHORTCUT_LEARN_MORE_ARIA_LABEL},
+      {"glicSelectionShortcutLearnMoreAriaLabel",
+       IDS_SETTINGS_GLIC_SELECTION_SHORTCUT_LEARN_MORE_ARIA_LABEL},
       {"glicClosedCaptionsToggle", IDS_SETTINGS_GLIC_CLOSED_CAPTIONING},
       {"glicClosedCaptionsToggleSublabel",
        IDS_SETTINGS_GLIC_CLOSED_CAPTIONING_SUBLABEL},
@@ -861,6 +871,22 @@ void AddGlicStrings(content::WebUIDataSource* html_source, Profile* profile) {
        IDS_SETTINGS_GLIC_PERMISSIONS_CHROME_WEB_ACTUATION_TOGGLE},
       {"glicWebActuationToggleSublabel",
        IDS_SETTINGS_GLIC_PERMISSIONS_CHROME_WEB_ACTUATION_TOGGLE_SUBLABEL},
+      {"glicActorLoginPermissionsSectionTitle",
+       IDS_SETTINGS_GLIC_ACTOR_LOGIN_PERMISSIONS_SECTION_TITLE},
+      {"glicActorLoginPermissionsSectionSublabel",
+       IDS_SETTINGS_GLIC_ACTOR_LOGIN_PERMISSIONS_SECTION_SUBLABEL},
+      {"glicLoginPermissionsPageTitle",
+       IDS_SETTINGS_GLIC_LOGIN_PERMISSIONS_PAGE_TITLE},
+      {"glicLoginPermissionsPageDescription",
+       IDS_SETTINGS_GLIC_LOGIN_PERMISSIONS_PAGE_DESCRIPTION},
+      {"glicLoginPermissionsNoSites",
+       IDS_SETTINGS_GLIC_LOGIN_PERMISSIONS_NO_SITES},
+      {"glicRevokeActorLoginPermissionAriaLabel",
+       IDS_SETTINGS_GLIC_REVOKE_ACTOR_LOGIN_PERMISSION_ARIA_LABEL},
+      {"glicRemoveActorLoginDialogTitle",
+       IDS_SETTINGS_GLIC_REMOVE_ACTOR_LOGIN_DIALOG_TITLE},
+      {"glicRemoveActorLoginDialogDescription",
+       IDS_SETTINGS_GLIC_REMOVE_ACTOR_LOGIN_DIALOG_DESCRIPTION},
       {"glicActivityButton", IDS_SETTINGS_GLIC_PERMISSIONS_ACTIVITY_BUTTON},
       {"glicActivityButtonSublabel",
        IDS_SETTINGS_GLIC_PERMISSIONS_ACTIVITY_BUTTON_SUBLABEL},
@@ -975,6 +1001,13 @@ void AddGlicStrings(content::WebUIDataSource* html_source, Profile* profile) {
   html_source->AddBoolean(
       "glicCanUseLive",
       glic::GlicEnabling::EnablementForProfile(profile).EligibleForLive());
+  html_source->AddBoolean(
+      "actorLoginFederatedLoginSupportEnabled",
+      base::FeatureList::IsEnabled(
+          password_manager::features::kActorLoginFederatedLoginSupport));
+  html_source->AddBoolean(
+      "glicSelectionFeatureEnabled",
+      base::FeatureList::IsEnabled(features::kGlicCaptureRegion));
 }
 
 void AddResetStrings(content::WebUIDataSource* html_source, Profile* profile) {
@@ -1207,7 +1240,6 @@ void AddPerformanceStrings(content::WebUIDataSource* html_source) {
                          chrome::kPreloadingLearnMoreUrl);
   html_source->AddString("performanceInterventionLearnMoreUrl",
                          chrome::kPerformanceInterventionLearnMoreUrl);
-  html_source->AddString("walletPassesPageUrl", chrome::kWalletPassesPageURL);
 
 #if BUILDFLAG(IS_CHROMEOS)
   html_source->AddString("osPowerSettingsUrl",

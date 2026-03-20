@@ -33,6 +33,8 @@ BASE_DECLARE_FEATURE(kFewerUpdateConfirmations);
 BASE_DECLARE_FEATURE(kTabStripDeclutter);
 BASE_DECLARE_FEATURE(kGlassToolbar);
 
+BASE_DECLARE_FEATURE(kToolbarGlowUp);
+
 BASE_DECLARE_FEATURE(kDetachedTabs);
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
@@ -152,10 +154,6 @@ BASE_DECLARE_FEATURE(kPressAndHoldEscToExitBrowserFullscreen);
 
 BASE_DECLARE_FEATURE(kScrimForBrowserWindowModal);
 
-BASE_DECLARE_FEATURE(kSideBySide);
-
-BASE_DECLARE_FEATURE(kSideBySideLinkMenuNewBadge);
-
 BASE_DECLARE_FEATURE(kTabDuplicateMetrics);
 
 BASE_DECLARE_FEATURE(kTabGroupsCollapseFreezing);
@@ -223,8 +221,6 @@ BASE_DECLARE_FEATURE_PARAM(double, kTabOrganizationTriggerSensitivityThreshold);
 // Enable 'demo mode' for Tab Organization triggering, which triggers much more
 // predictably and frequently.
 BASE_DECLARE_FEATURE_PARAM(bool, KTabOrganizationTriggerDemoMode);
-
-BASE_DECLARE_FEATURE(kTabOrganizationAppMenuItem);
 
 BASE_DECLARE_FEATURE(kTabOrganizationModelStrategy);
 
@@ -307,10 +303,8 @@ BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationFileSystemAccess);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationManagePasswords);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationCookieControls);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationAutofillAddress);
-BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationFind);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationCollaborationMessaging);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationAutofillMandatoryReauth);
-BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationClickToCall);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationSharingHub);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationAiMode);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationVirtualCard);

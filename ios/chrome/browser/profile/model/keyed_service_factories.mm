@@ -50,6 +50,7 @@
 #import "ios/chrome/browser/cross_platform_promos/model/cross_platform_promos_service_factory.h"
 #import "ios/chrome/browser/data_sharing/model/data_sharing_service_factory.h"
 #import "ios/chrome/browser/device_reauth/model/ios_device_authenticator_factory.h"
+#import "ios/chrome/browser/device_reauth/model/reauthentication_service_factory.h"
 #import "ios/chrome/browser/device_sharing/model/device_sharing_manager_factory.h"
 #import "ios/chrome/browser/discover_feed/model/discover_feed_service_factory.h"
 #import "ios/chrome/browser/dom_distiller/model/distiller_service_factory.h"
@@ -98,6 +99,7 @@
 #import "ios/chrome/browser/mailto_handler/model/mailto_handler_service_factory.h"
 #import "ios/chrome/browser/metrics/model/bookmark_model_metrics_service_factory.h"
 #import "ios/chrome/browser/metrics/model/google_groups_manager_factory.h"
+#import "ios/chrome/browser/metrics/model/ios_profile_metrics_service_factory.h"
 #import "ios/chrome/browser/metrics/model/ios_profile_session_durations_service_factory.h"
 #import "ios/chrome/browser/metrics/model/tab_usage_recorder_service_factory.h"
 #import "ios/chrome/browser/ntp/model/ntp_background_image_cache_service_factory.h"
@@ -343,6 +345,7 @@ void EnsureProfileKeyedServiceFactoriesBuilt() {
   IOSPasskeyModelFactory::GetInstance();
   IOSPasswordManagerSettingsServiceFactory::GetInstance();
   IOSPasswordRequirementsServiceFactory::GetInstance();
+  IOSProfileMetricsServiceFactory::GetInstance();
   IOSProfileSessionDurationsServiceFactory::GetInstance();
   IOSSharingMessageBridgeFactory::GetInstance();
   IOSSharingServiceFactory::GetInstance();
@@ -373,6 +376,7 @@ void EnsureProfileKeyedServiceFactoriesBuilt() {
   ReadingListDownloadServiceFactory::GetInstance();
   ReadingListModelFactory::GetInstance();
   RealTimeUrlLookupServiceFactory::GetInstance();
+  ReauthenticationServiceFactory::GetInstance();
   RemoteSuggestionsServiceFactory::GetInstance();
   SafeBrowsingClientFactory::GetInstance();
   SafeBrowsingHelperFactory::GetInstance();

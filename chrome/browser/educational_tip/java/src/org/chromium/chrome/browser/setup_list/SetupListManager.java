@@ -51,7 +51,9 @@ import java.util.concurrent.TimeUnit;
  */
 @NullMarked
 public class SetupListManager
-        implements SharedPreferences.OnSharedPreferenceChangeListener, IdentityManager.Observer {
+        implements SharedPreferences.OnSharedPreferenceChangeListener,
+                IdentityManager.Observer,
+                SyncService.SyncStateChangedListener {
     /** Interface for observing changes to the Setup List state. */
     public interface Observer {
         /** Called when the Setup List's state (eligibility, ranking, or layout) has changed. */
@@ -119,6 +121,7 @@ public class SetupListManager
     private @Nullable Profile mProfile;
     private final Set<Integer> mModulesAwaitingCompletionAnimation = new HashSet<>();
     private boolean mHasRegisteredIdentityObserver;
+    private boolean mHasRegisteredSyncObserver;
     private final ObserverList<Observer> mObservers = new ObserverList<>();
 
     /** The current UI layout phase of the Setup List. */
@@ -207,13 +210,23 @@ public class SetupListManager
     }
 
     private void unregisterObservers() {
-        if (mHasRegisteredIdentityObserver && mProfile != null) {
-            IdentityManager identityManager =
-                    IdentityServicesProvider.get().getIdentityManager(mProfile);
-            if (identityManager != null) {
-                identityManager.removeObserver(this);
+        if (mProfile != null) {
+            if (mHasRegisteredIdentityObserver) {
+                IdentityManager identityManager =
+                        IdentityServicesProvider.get().getIdentityManager(mProfile);
+                if (identityManager != null) {
+                    identityManager.removeObserver(this);
+                }
+                mHasRegisteredIdentityObserver = false;
             }
-            mHasRegisteredIdentityObserver = false;
+
+            if (mHasRegisteredSyncObserver) {
+                SyncService syncService = SyncServiceFactory.getForProfile(mProfile);
+                if (syncService != null) {
+                    syncService.removeSyncStateChangedListener(this);
+                }
+                mHasRegisteredSyncObserver = false;
+            }
         }
     }
 
@@ -419,7 +432,7 @@ public class SetupListManager
 
         Integer moduleType = mKeyToModuleMap.get(key);
         if (moduleType != null) {
-            setModuleCompleted(moduleType, /* silent= */ true);
+            setModuleCompleted(moduleType, /* silent= */ false);
         }
     }
 
@@ -439,10 +452,26 @@ public class SetupListManager
         int eventType = eventDetails.getEventTypeFor(ConsentLevel.SIGNIN);
         if (eventType == PrimaryAccountChangeEvent.Type.SET) {
             setModuleCompleted(ModuleType.SIGN_IN_PROMO, /* silent= */ false);
-        } else {
-            reconcileState();
         }
+        reconcileState();
         notifyStateChanged();
+    }
+
+    @Override
+    public void syncStateChanged() {
+        if (mProfile == null) return;
+
+        if (!isModuleCompleted(ModuleType.HISTORY_SYNC_PROMO)
+                && SetupListModuleUtils.checkIsTaskCompletedInSystem(
+                        ModuleType.HISTORY_SYNC_PROMO, mProfile)) {
+            setModuleCompleted(ModuleType.HISTORY_SYNC_PROMO, /* silent= */ false);
+        }
+
+        if (!isModuleCompleted(ModuleType.ENHANCED_SAFE_BROWSING_PROMO)
+                && SetupListModuleUtils.checkIsTaskCompletedInSystem(
+                        ModuleType.ENHANCED_SAFE_BROWSING_PROMO, mProfile)) {
+            setModuleCompleted(ModuleType.ENHANCED_SAFE_BROWSING_PROMO, /* silent= */ false);
+        }
     }
 
     private void notifyStateChanged() {
@@ -474,6 +503,14 @@ public class SetupListManager
             assertNonNull(identityManager);
             identityManager.addObserver(this);
             mHasRegisteredIdentityObserver = true;
+        }
+
+        if (!mHasRegisteredSyncObserver) {
+            SyncService syncService = SyncServiceFactory.getForProfile(mProfile);
+            if (syncService != null) {
+                syncService.addSyncStateChangedListener(this);
+                mHasRegisteredSyncObserver = true;
+            }
         }
 
         for (int moduleType : BASE_SETUP_LIST_ORDER) {
@@ -577,6 +614,7 @@ public class SetupListManager
     }
 
     /** Returns whether a module is awaiting its completion animation. */
+    @VisibleForTesting
     public boolean isModuleAwaitingCompletionAnimation(@ModuleType int moduleType) {
         return mModulesAwaitingCompletionAnimation.contains(moduleType);
     }
@@ -590,6 +628,7 @@ public class SetupListManager
      * Called when the completion animation for a module has finished. This moves the module from
      * the active section to the completed section.
      */
+    @VisibleForTesting
     public void onCompletionAnimationFinished(@ModuleType int moduleType) {
         if (mModulesAwaitingCompletionAnimation.remove(moduleType)) {
             reconcileState();

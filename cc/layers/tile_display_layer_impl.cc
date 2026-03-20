@@ -177,14 +177,14 @@ void TileDisplayLayerImpl::PushPropertiesTo(LayerImpl* layer) {
   NOTREACHED();
 }
 
-void TileDisplayLayerImpl::ComputeCheckerboardedNeedsRecord(
-    AppendQuadsData* append_quads_data) {
+bool TileDisplayLayerImpl::ComputeCheckerboardedNeedsRecord() {
   // NOTE: Currently it is not necessary to compute
-  // append_quads_data->checkerboarded_needs_recorded on the Viz side, as it is
-  // consumed only on the client side. However, it will become necessary when we
-  // introduce frames driven entirely by Viz. At that point, we should dedupe
-  // the relevant code into TileBasedLayerImpl.
+  // checkerboarded_needs_recorded on the Viz side, as it is consumed only on
+  // the client side. However, it will become necessary when we introduce
+  // frames driven entirely by Viz. At that point, we should dedupe the
+  // relevant code into TileBasedLayerImpl.
   // See crbug.com/482862751.
+  return false;
 }
 
 bool TileDisplayLayerImpl::AppendQuadForTile(
@@ -201,28 +201,16 @@ bool TileDisplayLayerImpl::AppendQuadForTile(
     const std::optional<gfx::Rect>& scaled_cull_rect,
     float max_contents_scale,
     AppendQuadsCustomSharedData* custom_data) {
-  bool has_draw_quad = false;
-  if (*iter) {
-    if (auto resource = iter->resource()) {
-      const gfx::RectF texture_rect = iter.texture_rect();
-      auto* quad = render_pass->CreateAndAppendDrawQuad<viz::TileDrawQuad>();
-      quad->SetNew(shared_quad_state, offset_geometry_rect,
-                   offset_visible_geometry_rect, needs_blending,
-                   resource->resource_id, texture_rect, nearest_neighbor_,
-                   !layer_tree_impl()->settings().enable_edge_anti_aliasing);
-      has_draw_quad = true;
-    } else if (auto color = iter->solid_color()) {
-      has_draw_quad = true;
-      AppendSolidColorQuad(render_pass, shared_quad_state, offset_geometry_rect,
-                           offset_visible_geometry_rect, *color);
-    } else if (iter->is_oom()) {
-      // Keep `has_draw_quad` false to end up checkerboarding below.
-    }
-  }
+  bool has_draw_quad =
+      AppendQuad(iter, render_pass, shared_quad_state, offset_geometry_rect,
+                 offset_visible_geometry_rect, visible_geometry_rect,
+                 needs_blending, nearest_neighbor_, append_quads_data);
+
   if (!has_draw_quad) {
     // Checkerboard due to missing raster.
     AppendCheckerboardQuad(render_pass, shared_quad_state, offset_geometry_rect,
-                           offset_visible_geometry_rect);
+                           offset_visible_geometry_rect, iter,
+                           append_quads_data);
 
     // NOTE: TileDisplayLayerImpl does not currently track missing tiles, as
     // that info is used only to pass to `AppendQuadsData::num_missing_tiles` on

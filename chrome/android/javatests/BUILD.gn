@@ -368,6 +368,7 @@ android_library("chrome_test_java_helper") {
     "//components/sync/protocol:protocol_java",
     "//components/sync_device_info:sync_device_info_java",
     "//components/tab_groups:tab_groups_java",
+    "//components/trusted_vault/android:java",
     "//components/ukm/android:java",
     "//components/url_formatter/android:url_formatter_java",
     "//components/user_prefs/android:java",
@@ -1155,7 +1156,10 @@ android_library("chrome_test_java_org.chromium.chrome.browser.privacy") {
     "src/org/chromium/chrome/browser/privacy/settings/PrivacySettingsFragmentTest.java",
   ]
 
-  deps = [ ":chrome_test_java_helper" ]
+  deps = [
+    ":chrome_test_java_helper",
+    "//base:flagged_apis_java",
+  ]
 }
 
 android_library("chrome_test_java_org.chromium.chrome.browser.prefs") {
@@ -1214,6 +1218,7 @@ android_library("chrome_test_java_org.chromium.chrome.browser.settings") {
     "src/org/chromium/chrome/browser/settings/MultiColumnSettingsUnitTest.java",
     "src/org/chromium/chrome/browser/settings/SettingsActivityTest.java",
     "src/org/chromium/chrome/browser/settings/search/SearchIndexProviderRegistryTest.java",
+    "src/org/chromium/chrome/browser/settings/search/SettingsSearchCoordinatorTest.java",
   ]
 
   deps = [ ":chrome_test_java_helper" ]
@@ -1235,6 +1240,7 @@ android_library("chrome_test_java_org.chromium.chrome.browser.share") {
     "src/org/chromium/chrome/browser/share/ShareButtonControllerTest.java",
     "src/org/chromium/chrome/browser/share/ShareDelegateImplIntegrationTest.java",
     "src/org/chromium/chrome/browser/share/ShareDelegateImplTest.java",
+    "src/org/chromium/chrome/browser/share/send_tab_to_self/SendTabToSelfNotificationTest.java",
   ]
 
   deps = [
@@ -1255,7 +1261,6 @@ android_library("chrome_test_java_org.chromium.chrome.browser.signin") {
     "src/org/chromium/chrome/browser/signin/SigninFirstRunFragmentRenderTest.java",
     "src/org/chromium/chrome/browser/signin/SigninFirstRunFragmentTest.java",
     "src/org/chromium/chrome/browser/signin/SigninHeaderTest.java",
-    "src/org/chromium/chrome/browser/signin/SigninManagerImplTest.java",
     "src/org/chromium/chrome/browser/signin/SigninManagerIntegrationTest.java",
     "src/org/chromium/chrome/browser/signin/SigninSignoutIntegrationTest.java",
     "src/org/chromium/chrome/browser/signin/SigninSurveyControllerTest.java",

@@ -181,6 +181,7 @@ public abstract class ChromeFeatureList {
     public static final String ANDROID_AUTO_MINTED_TWA = "AndroidAutoMintedTWA";
     public static final String ANDROID_BOOKMARK_BAR = "AndroidBookmarkBar";
     public static final String ANDROID_BOOKMARK_BAR_FAST_FOLLOW = "AndroidBookmarkBarFastFollow";
+    public static final String ANDROID_BOTTOM_BAR = "AndroidBottomBar";
     public static final String ANDROID_BOTTOM_TOOLBAR_V2 = "AndroidBottomToolbarV2";
     public static final String ANDROID_COMPOSEPLATE = "AndroidComposeplate";
     public static final String ANDROID_COMPOSEPLATE_LFF = "AndroidComposeplateLFF";
@@ -197,9 +198,6 @@ public abstract class ChromeFeatureList {
     public static final String ANDROID_OMNIBOX_FOCUSED_NEW_TAB_PAGE =
             "AndroidOmniboxFocusedNewTabPage";
     public static final String ANDROID_OPEN_INCOGNITO_AS_WINDOW = "AndroidOpenIncognitoAsWindow";
-    public static final String ANDROID_PINNED_TABS = "AndroidPinnedTabs";
-    public static final String ANDROID_PINNED_TABS_TABLET_TAB_STRIP =
-            "AndroidPinnedTabsTabletTabStrip";
     public static final String ANDROID_PROGRESS_BAR_VISUAL_UPDATE =
             "AndroidProgressBarVisualUpdate";
     public static final String ANDROID_SETTINGS_CONTAINMENT = "AndroidSettingsContainment";
@@ -235,6 +233,7 @@ public abstract class ChromeFeatureList {
     public static final String ASYNC_NOTIFICATION_MANAGER = "AsyncNotificationManager";
     public static final String ASYNC_NOTIFICATION_MANAGER_FOR_DOWNLOAD =
             "AsyncNotificationManagerForDownload";
+    public static final String AUTOFILL_AI_AVAILABLE_BY_DEFAULT = "AutofillAiAvailableByDefault";
     public static final String AUTOFILL_AI_CREATE_ENTITY_DATA_MANAGER =
             "AutofillAiCreateEntityDataManager";
     public static final String AUTOFILL_AI_REAUTH_REQUIRED = "AutofillAiReauthRequired";
@@ -552,8 +551,6 @@ public abstract class ChromeFeatureList {
     public static final String PRERENDER2 = "Prerender2";
     public static final String PRICE_ANNOTATIONS = "PriceAnnotations";
     public static final String PRICE_CHANGE_MODULE = "PriceChangeModule";
-    public static final String PRIVACY_SANDBOX_ACTIVITY_TYPE_STORAGE =
-            "PrivacySandboxActivityTypeStorage";
     public static final String PRIVACY_SANDBOX_ADS_API_UX_ENHANCEMENTS =
             "PrivacySandboxAdsApiUxEnhancements";
     public static final String PRIVACY_SANDBOX_AD_TOPICS_CONTENT_PARITY =
@@ -731,6 +728,8 @@ public abstract class ChromeFeatureList {
             newCachedFlag(ANDROID_APP_INTEGRATION_MULTI_DATA_SOURCE, true);
     public static final CachedFlag sAndroidAutoMintedTwa =
             newCachedFlag(ANDROID_AUTO_MINTED_TWA, false);
+    public static final CachedFlag sAndroidBottomBar =
+            newCachedFlag(ANDROID_BOTTOM_BAR, false, /* defaultValueInTests= */ false);
     public static final CachedFlag sAndroidBottomToolbarV2 =
             newCachedFlag(ANDROID_BOTTOM_TOOLBAR_V2, false, true);
     public static final CachedFlag sAndroidComposeplate = newCachedFlag(ANDROID_COMPOSEPLATE, true);
@@ -1145,6 +1144,7 @@ public abstract class ChromeFeatureList {
                     sAndroidAppIntegrationModule,
                     sAndroidAppIntegrationMultiDataSource,
                     sAndroidAutoMintedTwa,
+                    sAndroidBottomBar,
                     sAndroidBottomToolbarV2,
                     sAndroidComposeplate,
                     sAndroidComposeplateLFF,
@@ -1329,10 +1329,6 @@ public abstract class ChromeFeatureList {
             newMutableFlagWithSafeDefault(ANDROID_BOOKMARK_BAR_FAST_FOLLOW, true);
     public static final MutableFlagWithSafeDefault sAndroidContextMenuDuplicateTabs =
             newMutableFlagWithSafeDefault(ANDROID_CONTEXT_MENU_DUPLICATE_TABS, false);
-    public static final MutableFlagWithSafeDefault sAndroidPinnedTabs =
-            newMutableFlagWithSafeDefault(ANDROID_PINNED_TABS, true);
-    public static final MutableFlagWithSafeDefault sAndroidPinnedTabsTabletTabStrip =
-            newMutableFlagWithSafeDefault(ANDROID_PINNED_TABS_TABLET_TAB_STRIP, true);
     public static final MutableFlagWithSafeDefault sAndroidTipsNotifications =
             newMutableFlagWithSafeDefault(ANDROID_TIPS_NOTIFICATIONS, false);
     public static final MutableFlagWithSafeDefault sAndroidTipsNotificationsV2 =
@@ -1345,7 +1341,7 @@ public abstract class ChromeFeatureList {
     public static final MutableFlagWithSafeDefault sBrowserControlsRenderDrivenShowConstraint =
             newMutableFlagWithSafeDefault(BROWSER_CONTROLS_RENDER_DRIVEN_SHOW_CONSTRAINT, false);
     public static final MutableFlagWithSafeDefault sBrowserWindowInterfaceMobile =
-            newMutableFlagWithSafeDefault(BROWSER_WINDOW_INTERFACE_MOBILE, false);
+            newMutableFlagWithSafeDefault(BROWSER_WINDOW_INTERFACE_MOBILE, true);
     public static final MutableFlagWithSafeDefault sCompositorViewHolderObscuring =
             newMutableFlagWithSafeDefault(COMPOSITOR_VIEW_HOLDER_OBSCURING, true);
     public static final MutableFlagWithSafeDefault sControlsVisibilityFromNavigations =
@@ -1445,14 +1441,15 @@ public abstract class ChromeFeatureList {
     public static final BooleanCachedFeatureParam sAndroidBookmarkBarShowBookmarkBar =
             newBooleanCachedFeatureParam(ANDROID_BOOKMARK_BAR, "show_bookmark_bar", false);
 
+    public static final BooleanCachedFeatureParam sAndroidBottomBarKeepAppMenuInToolbar =
+            newBooleanCachedFeatureParam(ANDROID_BOTTOM_BAR, "keep_app_menu_in_toolbar", false);
+    public static final BooleanCachedFeatureParam sAndroidBottomBarKeepHomeButtonInToolbar =
+            newBooleanCachedFeatureParam(ANDROID_BOTTOM_BAR, "keep_home_button_in_toolbar", false);
+    public static final BooleanCachedFeatureParam sAndroidBottomBarShowBottomBarOnGts =
+            newBooleanCachedFeatureParam(ANDROID_BOTTOM_BAR, "show_bottom_bar_on_gts", false);
+
     public static final BooleanCachedFeatureParam sAndroidComposeplateSkipLocaleCheck =
             newBooleanCachedFeatureParam(ANDROID_COMPOSEPLATE, "skip_locale_check", false);
-
-    public static final BooleanCachedFeatureParam sAndroidComposeplateHideIncognitoButton =
-            newBooleanCachedFeatureParam(ANDROID_COMPOSEPLATE, "hide_incognito_button", false);
-
-    public static final BooleanCachedFeatureParam sAndroidComposeplateV2Enabled =
-            newBooleanCachedFeatureParam(ANDROID_COMPOSEPLATE, "v2_enabled", true);
 
     public static final BooleanCachedFeatureParam
             sAndroidBottomToolbarV2ForceBottomForFocusedOmnibox =
@@ -1623,14 +1620,6 @@ public abstract class ChromeFeatureList {
     public static final BooleanCachedFeatureParam sNewTabPageCustomizationV2EnableLogs =
             newBooleanCachedFeatureParam(NEW_TAB_PAGE_CUSTOMIZATION_V2, "enable_logs", false);
 
-    /**
-     * Param for the OEMs that need an exception for min versions. Its value should be a comma
-     * separated list of integers, and its index should match {@link #sEdgeToEdgeBottomChinOemList}.
-     */
-    public static final StringCachedFeatureParam sEdgeToEdgeBottomChinOemMinVersions =
-            newStringCachedFeatureParam(
-                    EDGE_TO_EDGE_BOTTOM_CHIN, "e2e_field_trial_oem_min_versions", "34,34");
-
     public static final StringCachedFeatureParam sEdgeToEdgeEverywhereOemMinVersions =
             newStringCachedFeatureParam(
                     EDGE_TO_EDGE_EVERYWHERE, "e2e_field_trial_oem_min_versions", "35");
@@ -1640,15 +1629,6 @@ public abstract class ChromeFeatureList {
                     EDGE_TO_EDGE_USE_BACKUP_NAVBAR_INSETS,
                     "e2e_backup_navbar_insets_oem_min_versions",
                     "");
-
-    /**
-     * Param for the OEMs that need an exception for min versions. Its value should be a comma
-     * separated list of manufacturer, and its index should match {@link
-     * #sEdgeToEdgeBottomChinOemMinVersions}.
-     */
-    public static final StringCachedFeatureParam sEdgeToEdgeBottomChinOemList =
-            newStringCachedFeatureParam(
-                    EDGE_TO_EDGE_BOTTOM_CHIN, "e2e_field_trial_oem_list", "oppo,xiaomi");
 
     public static final StringCachedFeatureParam sEdgeToEdgeEverywhereOemList =
             newStringCachedFeatureParam(
@@ -1789,11 +1769,12 @@ public abstract class ChromeFeatureList {
                     sAndroidAppIntegrationMultiDataSourceSkipDeviceCheck,
                     sAndroidAppIntegrationMultiDataSourceSkipSchemaCheck,
                     sAndroidBookmarkBarShowBookmarkBar,
+                    sAndroidBottomBarKeepAppMenuInToolbar,
+                    sAndroidBottomBarKeepHomeButtonInToolbar,
+                    sAndroidBottomBarShowBottomBarOnGts,
                     sAndroidBottomToolbarV2ForceBottomForFocusedOmnibox,
                     sAndroidBottomToolbarV2ReverseOrderSuggestionsList,
-                    sAndroidComposeplateHideIncognitoButton,
                     sAndroidComposeplateSkipLocaleCheck,
-                    sAndroidComposeplateV2Enabled,
                     sAndroidThemeModuleForceDependencies,
                     sAndroidThemeResourceProviderForceLight,
                     sAndroidTipsNotificationsAlwaysShowOptInPromo,
@@ -1821,8 +1802,6 @@ public abstract class ChromeFeatureList {
                     sDefaultBrowserPromoEntryPointShowAppMenu,
                     sDefaultBrowserPromoFreArm,
                     sDesktopUAAllowedOnExternalDisplayForOem,
-                    sEdgeToEdgeBottomChinOemList,
-                    sEdgeToEdgeBottomChinOemMinVersions,
                     sEdgeToEdgeEverywhereOemList,
                     sEdgeToEdgeEverywhereOemMinVersions,
                     sEdgeToEdgeTabletInvisibleBottomChinMinWidth,
@@ -1871,13 +1850,6 @@ public abstract class ChromeFeatureList {
 
     // Mutable*ParamWithSafeDefault instances.
     /* Alphabetical: */
-
-    public static final MutableBooleanParamWithSafeDefault sAndroidPinnedTabsSearchBoxMovement =
-            sAndroidPinnedTabs.newBooleanParam("search_box_movement", true);
-
-    public static final MutableBooleanParamWithSafeDefault
-            sAndroidPinnedTabsSearchBoxSquishAnimation =
-                    sAndroidPinnedTabs.newBooleanParam("search_box_squish_animation", true);
 
     public static final MutableBooleanParamWithSafeDefault
             sOmniboxAutofocusOnIncognitoNtpNotFirstTab =

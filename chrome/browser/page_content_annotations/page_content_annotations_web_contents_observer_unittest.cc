@@ -117,8 +117,6 @@ class FakePageContentAnnotationsService : public PageContentAnnotationsService {
                                       base::FilePath(),
                                       nullptr,
                                       nullptr,
-                                      nullptr,
-                                      nullptr,
                                       nullptr) {}
   ~FakePageContentAnnotationsService() override = default;
 
@@ -229,7 +227,6 @@ class PageContentAnnotationsWebContentsObserverTest
   }
 
   void TearDown() override {
-    history_service()->Shutdown();
     task_environment()->RunUntilIdle();
 
     DeleteContents();

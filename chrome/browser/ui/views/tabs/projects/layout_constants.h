@@ -49,6 +49,15 @@ inline constexpr auto kTabGroupIconMargins = gfx::Insets(6);
 // Margins for the lists separator.
 inline constexpr gfx::Insets kListsSeparatorMargins = gfx::Insets::VH(12, 20);
 
+// Maximum number of recent threads displayed in the UI.
+// This value affects how the `Projects.ProjectsPanel.Threads.CountOnPanelOpen`
+// histogram is recorded. If it needs to be changed, audit its uses and rename
+// any affected histograms.
+inline constexpr size_t kMaxNumberOfRecentThreads = 300;
+
+// Number of threads visible when the threads section when collapsed.
+inline constexpr int kNumThreadsVisibleWhenCollapsed = 3;
+
 // Minimum width of the projects panel.
 inline constexpr int kProjectsPanelMinWidth = 240;
 

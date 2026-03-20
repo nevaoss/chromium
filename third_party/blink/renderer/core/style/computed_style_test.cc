@@ -371,7 +371,12 @@ TEST_F(ComputedStyleTest,
   const ComputedStyle* style = InitialComputedStyle();
   ComputedStyleBuilder builder(*style);
   builder.SetBackfaceVisibility(EBackfaceVisibility::kHidden);
-  builder.SetWillChangeProperties({CSSPropertyID::kOpacity});
+
+  Vector<AtomicString> values({AtomicString("opacity")});
+  CSSBitset bitset({CSSPropertyID::kOpacity});
+  builder.SetWillChange(MakeGarbageCollected<StyleWillChangeData>(
+      std::move(values), std::move(bitset), false, false, false));
+
   const ComputedStyle* other = builder.TakeStyle();
 
   StyleDifference diff = style->VisualInvalidationDiff(GetDocument(), *other);

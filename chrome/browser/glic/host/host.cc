@@ -119,6 +119,7 @@ class EmptyInstanceDelegate : public Host::InstanceDelegate {
   }
   void OnWebClientCleared() override {}
   void PrepareForOpen() override {}
+  void OnUserInputSubmitted(mojom::WebClientMode mode) override {}
   void OnInteractionModeChange(mojom::WebClientMode new_mode) override {}
   GlicInstanceMetrics* instance_metrics() override { return nullptr; }
   GlicInstanceMetricsBackwardsCompatibility&
@@ -545,6 +546,8 @@ void Host::SetWebClient(GlicWebClientAccess* web_client) {
 #if !BUILDFLAG(IS_ANDROID)  // NEEDS_ANDROID_IMPL
   skills_manager().UpdateSkillPreviews(std::nullopt);
 #endif
+
+  observers_.Notify(&Observer::WebClientConnected);
 }
 
 void Host::WebClientInitializeFailed(GlicWebClientAccess* web_client) {

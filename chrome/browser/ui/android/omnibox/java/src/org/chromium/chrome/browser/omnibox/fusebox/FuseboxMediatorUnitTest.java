@@ -17,6 +17,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -56,6 +57,7 @@ import org.robolectric.annotation.Config;
 
 import org.chromium.base.Callback;
 import org.chromium.base.supplier.ObservableSuppliers;
+import org.chromium.base.supplier.SettableMonotonicObservableSupplier;
 import org.chromium.base.supplier.SettableNonNullObservableSupplier;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.RobolectricUtil;
@@ -68,6 +70,7 @@ import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxSta
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxMetrics.AiModeActivationSource;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxMetrics.FuseboxAttachmentButtonType;
 import org.chromium.chrome.browser.omnibox.styles.OmniboxResourceProvider;
+import org.chromium.chrome.browser.omnibox.suggestions.AutocompleteController;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.profiles.ProfileResolver;
 import org.chromium.chrome.browser.profiles.ProfileResolverJni;
@@ -77,8 +80,10 @@ import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.chrome.browser.ui.theme.BrandedColorScheme;
 import org.chromium.components.browser_ui.util.ChromeItemPickerExtras;
 import org.chromium.components.browser_ui.util.ChromeItemPickerUtils;
+import org.chromium.components.contextual_search.InputState;
 import org.chromium.components.feature_engagement.Tracker;
 import org.chromium.components.metrics.OmniboxEventProtos.OmniboxEventProto.PageClassification;
+import org.chromium.components.omnibox.AimModelsProto.ModelMode;
 import org.chromium.components.omnibox.AutocompleteInput;
 import org.chromium.components.omnibox.AutocompleteRequestType;
 import org.chromium.components.omnibox.OmniboxFeatures;
@@ -111,6 +116,7 @@ public class FuseboxMediatorUnitTest {
     @Mock private ComposeboxQueryControllerBridge mComposeboxQueryControllerBridge;
     @Mock private Clipboard mClipboard;
     @Mock private TabModelSelector mTabModelSelector;
+    @Mock private AutocompleteController mAutocompleteController;
     @Mock private Tab mTab1;
     @Mock private Tab mTab2;
     @Mock private WebContents mWebContents;
@@ -131,6 +137,8 @@ public class FuseboxMediatorUnitTest {
     private SettableNonNullObservableSupplier<TabModelSelector> mTabModelSelectorSupplier;
     private final SettableNonNullObservableSupplier<@FuseboxState Integer> mFuseboxStateSupplier =
             ObservableSuppliers.createNonNull(FuseboxState.DISABLED);
+    private final SettableMonotonicObservableSupplier<InputState> mInputStateSupplier =
+            ObservableSuppliers.createMonotonic();
     private boolean mCompactModeEnabled;
     private final Bitmap mBitmap = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888);
     private final AutocompleteInput mInput = new AutocompleteInput();
@@ -161,6 +169,8 @@ public class FuseboxMediatorUnitTest {
         Clipboard.setInstanceForTesting(mClipboard);
         OmniboxResourceProvider.setTabFaviconFactory(mTabFaviconFactory);
         doReturn(mBitmap).when(mTabFaviconFactory).apply(any());
+        when(mComposeboxQueryControllerBridge.getInputStateSupplier())
+                .thenReturn(mInputStateSupplier);
 
         mInput.setPageClassification(
                 PageClassification.INSTANT_NTP_WITH_OMNIBOX_AS_STARTING_FOCUS_VALUE);
@@ -194,7 +204,15 @@ public class FuseboxMediatorUnitTest {
     }
 
     private FuseboxSessionState createSession() {
-        return new FuseboxSessionState(mInput, mComposeboxQueryControllerBridge, mAttachments);
+        var session = mock(FuseboxSessionState.class);
+        lenient().doReturn(mAutocompleteController).when(session).getAutocompleteController();
+        lenient().doReturn(mInput).when(session).getAutocompleteInput();
+        lenient()
+                .doReturn(mComposeboxQueryControllerBridge)
+                .when(session)
+                .getComposeboxQueryControllerBridge();
+        lenient().doReturn(mAttachments).when(session).getFuseboxAttachmentModelList();
+        return session;
     }
 
     private void addTabAttachment(Tab tab) {
@@ -651,6 +669,40 @@ public class FuseboxMediatorUnitTest {
     }
 
     @Test
+    public void popupToolCanvasClicked_activatesCanvasMode() {
+        OmniboxFeatures.sShowModelPicker.setForTesting(true);
+        mInput.setRequestType(AutocompleteRequestType.SEARCH);
+        mModel.get(FuseboxProperties.POPUP_TOOL_CANVAS_CLICKED).run();
+        assertEquals(AutocompleteRequestType.CANVAS, mInput.getRequestType());
+    }
+
+    @Test
+    public void popupToolDeepSearchClicked_activatesDeepSearchMode() {
+        OmniboxFeatures.sShowModelPicker.setForTesting(true);
+        mInput.setRequestType(AutocompleteRequestType.SEARCH);
+        mModel.get(FuseboxProperties.POPUP_TOOL_DEEP_SEARCH_CLICKED).run();
+        assertEquals(AutocompleteRequestType.DEEP_SEARCH, mInput.getRequestType());
+    }
+
+    @Test
+    public void popupModelAutoClicked_setsModelMode() {
+        OmniboxFeatures.sShowModelPicker.setForTesting(true);
+        mModel.get(FuseboxProperties.POPUP_MODEL_AUTO_CLICKED).run();
+        assertEquals(ModelMode.MODEL_MODE_GEMINI_REGULAR_VALUE, mInput.getModelMode());
+        verify(mComposeboxQueryControllerBridge)
+                .setActiveTool(ModelMode.MODEL_MODE_GEMINI_REGULAR_VALUE);
+    }
+
+    @Test
+    public void popupModelProClicked_setsModelMode() {
+        OmniboxFeatures.sShowModelPicker.setForTesting(true);
+        mModel.get(FuseboxProperties.POPUP_MODEL_PRO_CLICKED).run();
+        assertEquals(ModelMode.MODEL_MODE_GEMINI_PRO_VALUE, mInput.getModelMode());
+        verify(mComposeboxQueryControllerBridge)
+                .setActiveTool(ModelMode.MODEL_MODE_GEMINI_PRO_VALUE);
+    }
+
+    @Test
     public void testUploadAndAddAttachment_integrationFlow_noCasting() {
         // Setup: Mock successful file upload
         when(mComposeboxQueryControllerBridge.addFile(anyString(), anyString(), any(byte[].class)))
@@ -1032,5 +1084,17 @@ public class FuseboxMediatorUnitTest {
         OmniboxFeatures.sShowImageGenerationButtonInIncognito.setForTesting(true);
         recreateMediator();
         assertTrue(mModel.get(FuseboxProperties.POPUP_TOOL_CREATE_IMAGE_VISIBLE));
+    }
+
+    @Test
+    public void testInputStateObserverSubscription() {
+        assertFalse(OmniboxFeatures.sShowModelPicker.getValue());
+        assertFalse(mInputStateSupplier.hasObservers());
+
+        OmniboxFeatures.sShowModelPicker.setForTesting(true);
+        recreateMediator();
+        assertTrue(mInputStateSupplier.hasObservers());
+        mMediator.endInput();
+        assertFalse(mInputStateSupplier.hasObservers());
     }
 }

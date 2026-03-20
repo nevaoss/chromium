@@ -1283,7 +1283,15 @@ bool ChildProcessSecurityPolicyImpl::IsWebSafeScheme_Cpp(
   base::AutoLock lock(schemes_lock_);
   return schemes_okay_to_request_in_any_process_.contains(scheme);
 }
+
 void ChildProcessSecurityPolicyImpl::RegisterPseudoScheme(
+    const std::string& scheme) {
+  RUST_CPP_VOID_FUNCTION(
+      rust::child_process_security_policy::register_pseudo_scheme(scheme),
+      RegisterPseudoScheme_Cpp(scheme));
+}
+
+void ChildProcessSecurityPolicyImpl::RegisterPseudoScheme_Cpp(
     const std::string& scheme) {
   base::AutoLock lock(schemes_lock_);
   DCHECK_EQ(0U, pseudo_schemes_.count(scheme)) << "Add schemes at most once.";
@@ -1296,6 +1304,13 @@ void ChildProcessSecurityPolicyImpl::RegisterPseudoScheme(
 }
 
 bool ChildProcessSecurityPolicyImpl::IsPseudoScheme(const std::string& scheme) {
+  RUST_CPP_RETURN_FUNCTION(
+      rust::child_process_security_policy::is_pseudo_scheme(scheme),
+      IsPseudoScheme_Cpp(scheme), bool);
+}
+
+bool ChildProcessSecurityPolicyImpl::IsPseudoScheme_Cpp(
+    const std::string& scheme) {
   base::AutoLock lock(schemes_lock_);
 
   return pseudo_schemes_.contains(scheme);
@@ -1309,6 +1324,7 @@ void ChildProcessSecurityPolicyImpl::ClearRegisteredSchemeForTesting(
       rust::child_process_security_policy::clear_web_safe_scheme_for_testing(
           scheme),                                   // IN-TEST
       ClearRegisteredSchemeForTesting_Cpp(scheme));  // IN-TEST
+<<<<<<< HEAD
 
   // TODO(crbug.com/482216433): Remove when pseudo_schemes_ is handled in Rust.
   // For now, this C++ set still gets populated in RustOnly mode.
@@ -1319,6 +1335,8 @@ void ChildProcessSecurityPolicyImpl::ClearRegisteredSchemeForTesting(
 #else  // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   ClearRegisteredSchemeForTesting_Cpp(scheme);
 #endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
+=======
+>>>>>>> 148.0.7733.0~1
 }
 
 void ChildProcessSecurityPolicyImpl::ClearRegisteredSchemeForTesting_Cpp(

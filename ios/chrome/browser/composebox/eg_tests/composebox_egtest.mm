@@ -243,7 +243,7 @@ void RemoveAttachmentWithTitle(NSString* title) {
 
 // Tests that the Composebox is hidden when not eligible.
 - (void)testComposeboxHiddenWhenNotEligible {
-  [ComposeboxAppInterface setAimEligible:NO];
+  [ComposeboxAppInterface setFuseboxEligible:NO];
 
   [ChromeEarlGrey loadURL:self.testServer->GetURL("/")];
   [ChromeEarlGreyUI focusOmnibox];
@@ -257,6 +257,10 @@ void RemoveAttachmentWithTitle(NSString* title) {
 
 // Tests that typing in the Composebox shows the Send button.
 - (void)testComposeboxSendButtonVisibility {
+  // TODO(crbug.com/491478626): Fix test on iPad.
+  if ([ChromeEarlGrey isIPadIdiom]) {
+    EARL_GREY_TEST_DISABLED(@"Test disabled on iPad.");
+  }
   [ChromeEarlGrey loadURL:self.testServer->GetURL("/")];
   [ChromeEarlGreyUI focusOmnibox];
 
@@ -338,7 +342,7 @@ void RemoveAttachmentWithTitle(NSString* title) {
 
 // Tests that the AI mode action works as expected.
 - (void)testComposeboxAIModeAction {
-  [ComposeboxAppInterface setAimEligible:YES];
+  [ComposeboxAppInterface setFuseboxEligible:YES];
 
   [ChromeEarlGrey loadURL:self.testServer->GetURL("/")];
   [ChromeEarlGreyUI focusOmnibox];

@@ -19,6 +19,7 @@
 #include "components/endpoint_fetcher/endpoint_fetcher.h"
 #include "components/lens/lens_overlay_request_id_generator.h"
 #include "components/lens/proto/server/lens_overlay_response.pb.h"
+#include "net/base/backoff_entry.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
 #include "third_party/lens_server_proto/added_inputs.pb.h"
 #include "third_party/lens_server_proto/aim_communication.pb.h"
@@ -86,8 +87,8 @@ class ComposeboxQueryController
   lens::ClientToAimMessage CreateClientToAimRequest(
       std::unique_ptr<CreateClientToAimRequestInfo>
           create_client_to_aim_request_info) override;
-  void AddObserver(FileUploadStatusObserver* obs) override;
-  void RemoveObserver(FileUploadStatusObserver* obs) override;
+  void AddObserver(ContextUploadStatusObserver* obs) override;
+  void RemoveObserver(ContextUploadStatusObserver* obs) override;
   void StartFileUploadFlow(
       const base::UnguessableToken& file_token,
       std::unique_ptr<lens::ContextualInputData> contextual_input_data,
@@ -136,8 +137,8 @@ class ComposeboxQueryController
 
   void update_file_upload_status_for_testing(
       const base::UnguessableToken& file_token,
-      contextual_search::FileUploadStatus status,
-      std::optional<contextual_search::FileUploadErrorType> error_type) {
+      contextual_search::ContextUploadStatus status,
+      std::optional<contextual_search::ContextUploadErrorType> error_type) {
     UpdateFileUploadStatus(file_token, status, error_type);
   }
 
@@ -385,7 +386,7 @@ class ComposeboxQueryController
   void SetQueryControllerState(QueryControllerState new_state);
 
   // Returns if file status is considered to be in the terminal state.
-  bool IsTerminalFileStatus(contextual_search::FileUploadStatus status);
+  bool IsTerminalFileStatus(contextual_search::ContextUploadStatus status);
 
   // Marks file upload as in terminal state (success, replaced, failed,
   // expired, validation failed) for given file token, and if
@@ -510,6 +511,9 @@ class ComposeboxQueryController
   // The last received cluster info.
   std::optional<lens::LensOverlayClusterInfo> cluster_info_ = std::nullopt;
 
+  // The number of times fetching cluster info has failed.
+  int cluster_info_retries_ = 0;
+
   // The endpoint fetcher used for the cluster info request.
   std::unique_ptr<endpoint_fetcher::EndpointFetcher>
       cluster_info_endpoint_fetcher_;
@@ -536,13 +540,16 @@ class ComposeboxQueryController
   lens::LensOverlayRequestIdGenerator request_id_generator_;
 
   // The observer list, managed via AddObserver() and RemoveObserver().
-  base::ObserverList<FileUploadStatusObserver> observers_;
+  base::ObserverList<ContextUploadStatusObserver> observers_;
 
   // Owned by the Profile, and thus guaranteed to outlive this instance.
   const raw_ptr<TemplateURLService> template_url_service_;
 
   // Owned by the Profile, and thus guaranteed to outlive this instance.
   const raw_ptr<variations::VariationsClient> variations_client_;
+
+  // Backoff entry used to control the retry logic for the cluster info request.
+  net::BackoffEntry cluster_info_backoff_;
 
   // Whether or not to send the lns_surface parameter.
   // TODO(crbug.com/430070871): Remove this once the server supports the

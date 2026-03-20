@@ -1049,6 +1049,7 @@ Chrome 政策的优先级高于此政策，例如：如果某个扩展程序已�
       如果此政策未设置，用户对屏幕的控制能力以及自动调节亮度功能都不会受到影响。
 
       注意：此政策的值应以百分比（介于 0-100 之间）的形式指定。</translation>
+<translation id="1732435945666510577">停用扩展程序 DOM 活动日志记录</translation>
 <translation id="1733092875104864334">不允许从 Google 服务收集 WebRTC 文本日志</translation>
 <translation id="1733768596873041559">默认重定向到 SAML IdP 页面（<ph name="PRODUCT_NAME" /> 99 版之前的版本需要用户确认）</translation>
 <translation id="1736032188431871940">禁止在无痕模式下访问一系列网址。</translation>
@@ -1345,6 +1346,23 @@ Chrome 政策的优先级高于此政策，例如：如果某个扩展程序已�
 <translation id="1954612656043024615">启用“共享剪贴板”功能</translation>
 <translation id="1955063069502242812">启用电量不足提示音</translation>
 <translation id="1955806069704957172">控制 Desk Connector API 相关设置。</translation>
+<translation id="1956346847126765379">通过设置 <ph name="URL_BLOCKLIST_POLICY_NAME" /> 政策，您可禁止加载已列入屏蔽名单的网址所对应的网页。管理员可以列出要屏蔽的网址格式。如果未设置此政策，浏览器将不会屏蔽任何网址。<ph name="URL_ALLOWLIST_POLICY_NAME" /> 中最多可定义 1,000 个例外网址。了解如何设置网址格式 (https://support.google.com/chrome/a?p=url_blocklist_filter_format)。
+
+注意：此政策不适用于通过页内 JavaScript 动态加载数据的网址。如果您屏蔽了 example.com/abc，example.com 仍可以使用 XMLHTTPRequest 加载该网页。另外，此政策不会阻止网页使用 JavaScript History API 将多功能框中显示的网址更新为已屏蔽的网址。
+
+从 <ph name="PRODUCT_NAME" /> 73 版开始，您可以屏蔽 javascript://* 网址。不过，这仅会影响在地址栏或小书签等处输入的 JavaScript 网址。
+
+从 <ph name="PRODUCT_NAME" /> 92 版开始，此政策在无头模式中也受支持。
+
+从 <ph name="PRODUCT_NAME" /> 147 版开始，单独的通配符 * 不适用于内部 chrome:// 网址。如需屏蔽这些网址，您必须明确使用 chrome://* 格式。
+
+注意：屏蔽内部 chrome://* 网址和 chrome-untrusted://* 网址可能会导致意外错误，在某些情况下也可能会被规避。您最好查看是否存在更具体的政策，而不是屏蔽某些内部网址。例如：
+
+- 不要屏蔽 chrome://settings/certificates，而是使用 <ph name="CA_CERTIFICATE_MANAGEMENT_ALLOWED_POLICY_NAME" />。
+
+- 不要屏蔽 chrome-untrusted://crosh，而是使用 <ph name="SYSTEM_FEATURES_DISABLE_LIST_POLICY_NAME" />。
+
+- 不要屏蔽 devtools://*，而是使用 <ph name="DEVELOPER_TOOLS_AVAILABILITY_POLICY_NAME" />、<ph name="DEVELOPER_TOOLS_AVAILABILITY_ALLOWLIST_POLICY_NAME" /> 或 <ph name="DEVELOPER_TOOLS_AVAILABILITY_BLOCKLIST_POLICY_NAME" /> 政策之一。</translation>
 <translation id="1957093168333856467">停用无障碍虚拟键盘</translation>
 <translation id="1958110911685486719">已启用 PDF XFA 表单支持</translation>
 <translation id="1960059835237529462">允许向用户显示弹出式提醒“<ph name="IOS_NAME" /> App Store 评分”</translation>
@@ -1889,6 +1907,7 @@ IPv4 地址的前缀为 0010；IPv6 地址的前缀为 0020。对于双栈网络
 <translation id="2290270645214705008">如果此政策已停用，系统将无法启动远程访问主机服务，也无法将该服务配置为接受传入连接。此政策不影响远程支持场景。
 
           如果已启用、留空或未设置，此政策将不会产生任何影响。</translation>
+<translation id="2291341836547307786">启用扩展程序 DOM 活动日志记录</translation>
 <translation id="2292482441027364457">设置此政策可确定 <ph name="PRODUCT_OS_NAME" /> 会将哪些应用标识符显示为启动器栏中的固定应用，而且用户无法做出更改。
 
 请按 ID（例如 pjkljhegncpnkpknbcohdijeoejaedia）指定 Chrome 应用，按软件包名称（例如 com.google.android.gm）指定 Android 应用，按 <ph name="WEB_APP_INSTALL_FORCE_LIST_POLICY_NAME" /> 中使用的网址（例如 https://google.com/maps）指定 Web 应用，按蛇形命名法名称（例如 <ph name="PINNED_LAUNCHER_APPS_POLICY_SYSTEM_WEB_APP_EXAMPLE" />）指定系统 Web 应用。
@@ -2153,6 +2172,51 @@ IPv4 地址的前缀为 0010；IPv6 地址的前缀为 0020。对于双栈网络
 <translation id="2489558694350871332">允许设备运行虚拟机</translation>
 <translation id="2492240920793040106">允许为帮助改进安全浏览功能而报告系统信息和网页内容</translation>
 <translation id="2496180316473517155">浏览记录</translation>
+<translation id="2496898792336137342">配置规则，根据目标网址和具体网络条件来选择浏览器使用的代理。
+
+此政策优先于 <ph name="PROXY_SETTINGS_POLICY_NAME" /> 政策、<ph name="PROXY_SETTINGS_EXTENSION_API" /> 扩展程序 API 和手动用户设置。如果此政策中的任何规则都不匹配，浏览器将回退到“<ph name="PROXY_SETTINGS_POLICY_NAME" />”中定义的设置。
+
+浏览器会按顺序评估 <ph name="PROXY_OVERRIDE_RULES_POLICY_NAME" /> 列表中的条目。仅当满足以下所有条件时，系统才会应用规则：
+
+  * 匹配：与 <ph name="PROXY_OVERRIDE_RULES_DESTINATION_MATCHERS" /> 中的至少 1 个网址格式匹配。
+
+  * 排除：与 <ph name="PROXY_OVERRIDE_RULES_EXCLUDE_DESTINATION_MATCHERS" /> 中的任何网址格式都不匹配。
+
+  * 条件：如果指定了 <ph name="PROXY_OVERRIDE_RULES_CONDITIONS" />，则必须满足列出的所有条件。如未设置，则忽略此要求。
+
+匹配器的网址格式记录在这里：https://chromium.googlesource.com/chromium/src/+/HEAD/net/docs/proxy.md#proxy-config-url-patterns。
+
+<ph name="PROXY_OVERRIDE_RULES_PROXY_LIST" /> 字段定义了故障切换列表。系统会忽略无效条目，使用第一个可访问的条目。您可以使用 PAC 样式的字符串或类似网址的说明符：
+
+PAC 样式的字符串：
+
+  * DIRECT
+
+  * PROXY host:port
+
+  * HTTPS host:port
+
+  * SOCKS4 host:port
+
+  * SOCKS5 host:port
+
+类似网址的说明符：
+
+  * http://host:port
+
+  * https://host:port
+
+  * socks4://host:port
+
+  * socks5://host:port
+
+<ph name="PROXY_OVERRIDE_RULES_DNS_PROBE" /> 条件会检查 <ph name="PROXY_OVERRIDE_RULES_HOST" /> 是否解析为 IP 地址。
+
+* 支持主机名（例如 example.com）或 URI 样式的字符串（例如 https://example.com:123）。使用安全方案 (https) 可能会触发 HTTPS 记录请求（请参阅 RFC 9460）。
+
+* 如果设为“<ph name="PROXY_OVERRIDE_RULES_RESOLVED" />”，则解析成功时满足条件；如果设为“<ph name="PROXY_OVERRIDE_RULES_NOT_FOUND" />”，则解析失败时满足条件。
+
+在受管设备上应用此政策时，会受到支持此政策的平台上的 <ph name="ENABLE_PROXY_OVERRIDE_RULES_FOR_ALL_USERS_POLICY_NAME" /> 计算机级政策的影响。默认情况下，它会禁止使用非关联用户配置的覆盖规则。</translation>
 <translation id="2497751676088107779">用户脚本</translation>
 <translation id="249798396824949930"> 控制浏览器是否可以在 <ph name="MAC_OS_NAME" /> 上检测到强制性政策范围。
 
@@ -6416,6 +6480,7 @@ JavaScript 优化政策的例外情况仅在网站级别 (eTLD+1) 上强制执�
 <translation id="5309944663104291505">不允许强制安装的独立式 Web 应用 (IWA) 和自助服务终端应用使用 Device Attributes API</translation>
 <translation id="5311275381462687162">默认旧版 <ph name="ATTRIBUTE_SAMESITE_NAME" /> Cookie 行为设置</translation>
 <translation id="5312253627576569499">在屏幕变暗后或在屏幕关闭不久后察觉到用户活动时，系统会对屏幕变暗延迟时间采取的调整幅度（百分比）</translation>
+<translation id="5313663675323027439">控制扩展程序 DOM 活动日志记录</translation>
 <translation id="5316856058059940708">停用大号光标</translation>
 <translation id="5318185076587284965">允许远程访问主机使用中继服务器</translation>
 <translation id="5321624917465764266">如果此政策已启用或未设置，系统将可以删除 Chrome 中的浏览器历史记录和下载记录，并且用户无法更改此设置。
@@ -6937,21 +7002,6 @@ Microsoft SharePoint 和 OneDrive 卡片需要由管理员进行额外配置。�
 <translation id="5625771176514429288">Chrome 应用可以在这些平台上运行。</translation>
 <translation id="5627270992026554674">禁止教师使用 Google 课堂课程学生名单。</translation>
 <translation id="5630352020869108293">恢复上次的会话</translation>
-<translation id="5630952076819481843">通过设置此政策，您可以罗列一系列网址格式，指定 Chrome 可为哪些网站自动选择客户端证书。此政策的值是一个由字符串化的 JSON 字典组成的数组，每个字典条目都必须采用 <ph name="AUTO_SELECT_CERTIFICATE_FOR_URLS_EXAMPLE" /> 格式，其中 <ph name="URL_PATTERN_PLACEHOLDER" /> 是内容设置格式。<ph name="FILTER_PLACEHOLDER" /> 会限制浏览器可自动从哪些客户端证书中进行选择。无论是否设置了过滤器，系统都只会选择与服务器的证书请求相匹配的证书。在 Android 上，Chrome 只能选择它自行配置的客户端证书，而无法访问在操作系统级别安装的证书。
-
-      <ph name="FILTER_PLACEHOLDER" /> 部分的用法示例：
-
-      * 如果 <ph name="FILTER_PLACEHOLDER" /> 设为 <ph name="AUTO_SELECT_CERTIFICATE_FOR_URLS_FILTER_EXAMPLE" />，系统便只会选择由 CommonName 为 <ph name="ISSUER_CN_PLACEHOLDER" /> 的证书颁发机构颁发的客户端证书。
-
-      * 如果 <ph name="FILTER_PLACEHOLDER" /> 既包含 <ph name="ISSUER_STRING_VALUE" /> 部分也包含 <ph name="SUBJECT_STRING_VALUE" /> 部分，系统便只会选择与这两项条件都相符的客户端证书。
-
-      * 如果 <ph name="FILTER_PLACEHOLDER" /> 包含值为 <ph name="FILTER_STRING_ORGANIZATION" /> 的 <ph name="SUBJECT_STRING_VALUE" /> 部分，证书便需要包含至少 1 个与指定值匹配的组织才会被选中。
-
-      * 如果 <ph name="FILTER_PLACEHOLDER" /> 包含值为 <ph name="FILTER_STRING_ORGANIZATIONAL_UNIT" /> 的 <ph name="SUBJECT_STRING_VALUE" /> 部分，证书便需要包含至少 1 个与指定值匹配的组织部门才会被选中。
-
-      * 如果 <ph name="FILTER_PLACEHOLDER" /> 设为 <ph name="EMPTY_DICTIONARY" />，系统在选择客户端证书时便不会受到额外限制。请注意，网络服务器提供的过滤条件仍然适用。
-
-      如果此政策未设置，系统将不会为任何网站自动选择证书。</translation>
 <translation id="5633871703004128675">启用“插入符号突出显示”无障碍功能</translation>
 <translation id="5634032995857968056">启用渲染程序应用容器沙盒</translation>
 <translation id="5638334542697444045">不允许用户使用“即时网络共享”功能</translation>
@@ -9656,6 +9706,12 @@ JavaScript 优化政策的例外情况仅在网站级别 (eTLD+1) 上强制执�
       如果此政策已启用或未设置，已注册的设备将会以列表形式报告网络接口及其类型和硬件地址。
 
       如果此政策已停用，已注册的设备不会报告网络接口。</translation>
+<translation id="7387190801932161230">控制是否为企业用户启用扩展程序 DOM 活动日志记录。
+
+启用此政策会对扩展程序 DOM 活动开启遥测，包括监控扩展程序的代码注入和敏感数据访问。如果启用此政策，“<ph name="PRODUCT_NAME" />”会收集有关扩展程序与网页互动的信号，并将其传输到扩展程序遥测服务以进行安全审核。
+如果停用或不设置此政策，系统不会为企业用户收集或传输这些信号。
+
+收集的内容并非敏感数据的实际值（例如 Cookie 或输入值），而是数据访问事件。</translation>
 <translation id="7389872682701720082">如果启用了此设置，则未过期的插件会一直运行。
 
       如果停用或未配置此设置，系统会用户提供权限才能运行需要授权的插件。这些插件可能会危及安全性。</translation>

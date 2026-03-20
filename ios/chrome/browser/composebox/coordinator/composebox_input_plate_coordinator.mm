@@ -18,6 +18,7 @@
 #import "components/search_engines/template_url_service.h"
 #import "components/signin/public/identity_manager/identity_manager.h"
 #import "ios/chrome/browser/aim/model/ios_chrome_aim_eligibility_service_factory.h"
+#import "ios/chrome/browser/composebox/coordinator/composebox_cobrowse_omnibox_client.h"
 #import "ios/chrome/browser/composebox/coordinator/composebox_entrypoint.h"
 #import "ios/chrome/browser/composebox/coordinator/composebox_input_plate_mediator.h"
 #import "ios/chrome/browser/composebox/coordinator/composebox_mode_holder.h"
@@ -157,21 +158,24 @@ const CGFloat kSnackbarBottomMargin = 10;
   _voiceSearchController =
       ios::provider::CreateVoiceSearchController(self.browser);
 
-  auto query_controller_config_params = std::make_unique<
-      contextual_search::ContextualSearchContextController::ConfigParams>();
-  query_controller_config_params->send_lns_surface = false;
-  query_controller_config_params->enable_viewport_images = true;
-  query_controller_config_params
-      ->prioritize_suggestions_for_the_first_attached_document = true;
-
-  _contextualService =
-      ContextualSearchServiceFactory::GetForProfile(self.profile);
-
   std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
-      contextualSearchSession = _contextualService->CreateSession(
-          std::move(query_controller_config_params),
-          contextual_search::ContextualSearchSource::kOmnibox,
-          lens::LensOverlayInvocationSource::kOmniboxContextualQuery);
+      contextualSearchSession = nullptr;
+  if (!IsComposeboxAIMDisabled()) {
+    auto query_controller_config_params = std::make_unique<
+        contextual_search::ContextualSearchContextController::ConfigParams>();
+    query_controller_config_params->send_lns_surface = false;
+    query_controller_config_params->enable_viewport_images = true;
+    query_controller_config_params
+        ->prioritize_suggestions_for_the_first_attached_document = true;
+
+    _contextualService =
+        ContextualSearchServiceFactory::GetForProfile(self.profile);
+
+    contextualSearchSession = _contextualService->CreateSession(
+        std::move(query_controller_config_params),
+        contextual_search::ContextualSearchSource::kOmnibox,
+        lens::LensOverlayInvocationSource::kOmniboxContextualQuery);
+  }
 
   FaviconLoader* faviconLoader =
       IOSChromeFaviconLoaderFactory::GetForProfile(self.profile);
@@ -209,16 +213,26 @@ const CGFloat kSnackbarBottomMargin = 10;
   _locationBarModel = std::make_unique<LocationBarModelImpl>(
       _locationBarModelDelegate.get(), kMaxURLDisplayChars);
 
-  auto omniboxClient = std::make_unique<ComposeboxOmniboxClient>(
-      _locationBar.get(), self.browser,
-      feature_engagement::TrackerFactory::GetForProfile(self.profile),
-      _mediator);
+  std::unique_ptr<OmniboxClient> omniboxClient;
+  if (_entrypoint == ComposeboxEntrypoint::kCobrowse) {
+    omniboxClient = std::make_unique<ComposeboxCobrowseOmniboxClient>(
+        self.browser,
+        feature_engagement::TrackerFactory::GetForProfile(self.profile),
+        _mediator);
+  } else {
+    omniboxClient = std::make_unique<ComposeboxOmniboxClient>(
+        _locationBar.get(), self.browser,
+        feature_engagement::TrackerFactory::GetForProfile(self.profile),
+        _mediator);
+  }
 
   _omniboxCoordinator = [[OmniboxCoordinator alloc]
       initWithBaseViewController:nil
                          browser:self.browser
                    omniboxClient:std::move(omniboxClient)
-             presentationContext:OmniboxPresentationContext::kComposebox];
+             presentationContext:_entrypoint == ComposeboxEntrypoint::kCobrowse
+                                     ? OmniboxPresentationContext::kCobrowse
+                                     : OmniboxPresentationContext::kComposebox];
   _omniboxCoordinator.presenterDelegate = self.omniboxPopupPresenterDelegate;
   _omniboxCoordinator.focusDelegate = self;
   [_omniboxCoordinator start];

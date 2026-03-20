@@ -42,7 +42,7 @@ public class ComposeboxQueryControllerBridge {
          * @param token Unique string identifier for the file.
          * @param status The status of the file's upload.
          */
-        void onFileUploadStatusChanged(String token, @ContextUploadStatus int status);
+        void onContextUploadStatusChanged(String token, @ContextUploadStatus int status);
     }
 
     private long mNativeInstance;
@@ -81,6 +81,13 @@ public class ComposeboxQueryControllerBridge {
      */
     void setFileUploadObserver(@Nullable FileUploadObserver observer) {
         mFileUploadObserver = observer;
+    }
+
+    @CalledByNative
+    void onContextUploadStatusChanged(String token, @ContextUploadStatus int contextUploadStatus) {
+        if (mFileUploadObserver != null) {
+            mFileUploadObserver.onContextUploadStatusChanged(token, contextUploadStatus);
+        }
     }
 
     /** Start a new Composebox session. An active session is required to upload files. */
@@ -140,6 +147,11 @@ public class ComposeboxQueryControllerBridge {
         ComposeboxQueryControllerBridgeJni.get().removeAttachment(mNativeInstance, token);
     }
 
+    /** Returns whether client is Fusebox eligible. */
+    boolean isFuseboxEligible() {
+        return ComposeboxQueryControllerBridgeJni.get().isFuseboxEligible(mNativeInstance);
+    }
+
     /** Returns whether the user is eligible for PDF uploads. */
     boolean isPdfUploadEligible() {
         return ComposeboxQueryControllerBridgeJni.get().isPdfUploadEligible(mNativeInstance);
@@ -153,14 +165,14 @@ public class ComposeboxQueryControllerBridge {
     /**
      * @param toolMode The active tool to set.
      */
-    void setActiveTool(int toolMode) {
+    public void setActiveTool(int toolMode) {
         ComposeboxQueryControllerBridgeJni.get().setActiveTool(mNativeInstance, toolMode);
     }
 
     /**
      * @param modelMode The active model to set.
      */
-    void setActiveModel(int modelMode) {
+    public void setActiveModel(int modelMode) {
         ComposeboxQueryControllerBridgeJni.get().setActiveModel(mNativeInstance, modelMode);
     }
 
@@ -183,12 +195,6 @@ public class ComposeboxQueryControllerBridge {
         sInstanceForTesting = null;
     }
 
-    @CalledByNative
-    void onFileUploadStatusChanged(String token, @ContextUploadStatus int fileUploadStatus) {
-        if (mFileUploadObserver != null) {
-            mFileUploadObserver.onFileUploadStatusChanged(token, fileUploadStatus);
-        }
-    }
 
     @CalledByNative
     private void onInputStateChanged(InputState inputState) {
@@ -231,6 +237,8 @@ public class ComposeboxQueryControllerBridge {
 
         void removeAttachment(
                 long nativeComposeboxQueryControllerBridge, @JniType("std::string") String token);
+
+        boolean isFuseboxEligible(long nativeComposeboxQueryControllerBridge);
 
         boolean isPdfUploadEligible(long nativeComposeboxQueryControllerBridge);
 

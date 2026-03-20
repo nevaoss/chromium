@@ -36,6 +36,10 @@ const char kAIMNTPEntrypointTabletDescription[] =
 const char kAimCobrowseName[] = "AimCobrowse";
 const char kAimCobrowseDescription[] = "Enables the AimCobrowse feature.";
 
+const char kAimUrlNavigationFetchEnabledName[] = "AimUrlNavigationFetchEnabled";
+const char kAimUrlNavigationFetchEnabledDescription[] =
+    "Enables the AimUrlNavigationFetchEnabled feature.";
+
 const char kAnimatedDefaultBrowserPromoInFREName[] =
     "Enable the animated Default Browser Promo in the FRE";
 const char kAnimatedDefaultBrowserPromoInFREDescription[] =
@@ -365,11 +369,6 @@ const char kComposeboxServerSideStateName[] =
 extern const char kComposeboxServerSideStateDescription[] =
     "When enabled, the server side state will be used in the composebox";
 
-const char kComposeboxTabPickerVariationName[] =
-    "Enable tab picker variation in the composebox";
-const char kComposeboxTabPickerVariationDescription[] =
-    "When enabled, the method of attaching tabs differs.";
-
 const char kConfirmationButtonSwapOrderName[] =
     "Swap Button Order in confirmation alerts";
 const char kConfirmationButtonSwapOrderDescription[] =
@@ -602,6 +601,12 @@ const char kEnableReadingListSignInPromoName[] =
 const char kEnableReadingListSignInPromoDescription[] =
     "Enable the sign-in promo view in the reading list screen.";
 
+const char kEnableScreenshotProtectionIOSName[] =
+    "Enable Screenshot Protection on iOS";
+const char kEnableScreenshotProtectionIOSDescription[] =
+    "Prevents the content of the app from appearing in screenshots and screen "
+    "recordings.";
+
 const char kEnableTraitCollectionRegistrationName[] =
     "Enable Customizable Trait Registration";
 const char kEnableTraitCollectionRegistrationDescription[] =
@@ -685,24 +690,12 @@ const char kGeminiFloatyAllPagesName[] = "Gemini Floaty All Pages";
 const char kGeminiFloatyAllPagesDescription[] =
     "Enables the Gemini floaty on all pages.";
 
-const char kGeminiFullChatHistoryName[] = "GeminiFullChatHistory";
-const char kGeminiFullChatHistoryDescription[] =
-    "Enables the full chat history being shown in the floaty.";
-
 const char kGeminiImageRemixToolName[] = "Gemini Image Remix Tool";
 const char kGeminiImageRemixToolDescription[] =
     "Enables the image remix tool in the Gemini floaty.";
 
-const char kGeminiLatencyImprovementName[] = "GeminiLatencyImprovement";
-const char kGeminiLatencyImprovementDescription[] =
-    "Enables the latency improvements for Gemini.";
-
 const char kGeminiLiveName[] = "GeminiLive";
 const char kGeminiLiveDescription[] = "Enables Gemini Live.";
-
-const char kGeminiLoadingStateRedesignName[] = "GeminiLoadingStateRedesign";
-const char kGeminiLoadingStateRedesignDescription[] =
-    "Enables the redesigned UI for the floaty's loading state.";
 
 const char kGeminiMapsRichUIName[] = "Gemini Maps Rich UI";
 const char kGeminiMapsRichUIDescription[] =
@@ -711,10 +704,6 @@ const char kGeminiMapsRichUIDescription[] =
 const char kGeminiNavigationPromoName[] = "GeminiNavigationPromo";
 const char kGeminiNavigationPromoDescription[] =
     "Enables the automatic promo for Gemini on navigation.";
-
-const char kGeminiPersonalizationName[] = "GeminiPersonalization";
-const char kGeminiPersonalizationDescription[] =
-    "Enables the GeminiPersonalization feature.";
 
 const char kGeminiRefactoredFREName[] = "Gemini Refactored FRE";
 const char kGeminiRefactoredFREDescription[] =
@@ -1109,6 +1098,13 @@ const char kMobilePromoOnDesktopRecordActiveDaysDescription[] =
     "When enabled, records the user's number of active days for the mobile "
     "promo on desktop.";
 
+const char kMobilePromoOnDesktopWave1Name[] =
+    "Mobile Promo On Desktop (Wave 1)";
+const char kMobilePromoOnDesktopWave1Description[] =
+    "When enabled, shows a mobile promo with a reminder flow on desktop for "
+    "eligible users. This version highlights features not included in the "
+    "existing mobile promos.";
+
 const char kModelBasedPageClassificationName[] =
     "Model Based Page Classification";
 const char kModelBasedPageClassificationDescription[] =
@@ -1139,10 +1135,6 @@ const char kNTPBackgroundCustomizationDescription[] =
 const char kNTPMIAEntrypointName[] = "Entrypoint for MIA in the new tab page";
 const char kNTPMIAEntrypointDescription[] =
     "Selects which variant of the MIA entrypoint is used in the new tab page";
-
-const char kNTPViewHierarchyRepairName[] = "NTP View Hierarchy Repair";
-const char kNTPViewHierarchyRepairDescription[] =
-    "Checks if NTP view hierarchy is broken and fixes it if necessary.";
 
 const char kNativeFindInPageName[] = "Native Find in Page";
 const char kNativeFindInPageDescription[] =
@@ -1332,11 +1324,6 @@ const char kPageContentAnnotationsRemotePageMetadataName[] =
 const char kPageContentAnnotationsRemotePageMetadataDescription[] =
     "Enables fetching of page load metadata to be persisted on-device.";
 
-const char kPasswordFormClientsideClassifierName[] =
-    "Clientside password form classifier.";
-const char kPasswordFormClientsideClassifierDescription[] =
-    "Enable usage of new password form classifier on the client.";
-
 const char kPasswordRemovalFromDeleteBrowsingDataName[] =
     "Removal of Passwords from Quick Delete Browsing Data";
 const char kPasswordRemovalFromDeleteBrowsingDataDescription[] =
@@ -1403,6 +1390,11 @@ const char kReaderModeContentSettingsForLinksName[] =
 const char kReaderModeContentSettingsForLinksDescription[] =
     "Enables Content Settings options for disabling/enabling links in Reading "
     "Mode.";
+
+const char kReaderModeIgnoreBadgeThresholdName[] =
+    "Reader Mode ignore badge threshold";
+const char kReaderModeIgnoreBadgeThresholdDescription[] =
+    "When enabled, the badge threshold is ignored for Reader Mode.";
 
 const char kReaderModeOmniboxEntrypointInUSName[] =
     "Reader Mode Omnibox Entrypoint In US";
@@ -1619,9 +1611,9 @@ const char kTabGroupInOverflowMenuDescription[] =
     "When enabled, a Tab Group button will appear in the overflow menu.";
 
 const char kTabGroupInTabIconContextMenuName[] =
-    "Enable the Tab Group button in the tab icon context menu";
+    "Enable the Tab Group button in the tab grid icon context menu";
 const char kTabGroupInTabIconContextMenuDescription[] =
-    "When enabled, a Tab Group button will appear in the tab icon context "
+    "When enabled, a Tab Group button will appear in the tab grid icon context "
     "menu.";
 
 const char kTabGroupIndicatorName[] = "Tab Group Indicator";

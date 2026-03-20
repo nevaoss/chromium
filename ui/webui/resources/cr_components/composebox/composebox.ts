@@ -50,6 +50,7 @@ import type {ComposeboxVoiceSearchElement} from './composebox_voice_search.js';
 import type {ContextualEntrypointAndMenuElement} from './contextual_entrypoint_and_menu.js';
 import type {ErrorScrimElement} from './error_scrim.js';
 import type {ComposeboxFileCarouselElement} from './file_carousel.js';
+import {WindowProxy} from './window_proxy.js';
 
 export enum VoiceSearchAction {
   ACTIVATE = 0,
@@ -76,7 +77,6 @@ export interface ComposeboxElement {
     fileInputs: ComposeboxFileInputsElement,
     matches: ComposeboxDropdownElement,
     errorScrim: ErrorScrimElement,
-    voiceSearch: ComposeboxVoiceSearchElement,
     caret: HTMLInputElement,
     mirror: HTMLDivElement,
   };
@@ -418,7 +418,7 @@ export class ComposeboxElement extends I18nMixinLit
     return this.showDropdown_ &&
         (this.showFileCarousel_ ||
          this.searchboxLayoutMode === 'TallTopContext' ||
-         this.shouldShowSubmitButton_ || this.inToolMode_);
+         this.shouldShowSubmitButton_);
   }
 
   protected get shouldShowSubmitButton_(): boolean {
@@ -467,6 +467,7 @@ export class ComposeboxElement extends I18nMixinLit
 
       this.eventTracker_.add(this.$.input, 'focus', () => {
         this.$.caret.classList.add('caret-visible');
+        this.updateCaret_();
       });
       this.eventTracker_.add(this.$.input, 'blur', () => {
         this.$.caret.classList.remove('caret-visible');
@@ -497,6 +498,9 @@ export class ComposeboxElement extends I18nMixinLit
   private setupResizeObservers_() {
     const composeboxResizeObserver = new ResizeObserver(debounce(this, () => {
       this.fire('composebox-resize', {height: this.offsetHeight});
+      if (!this.disableCaretColorAnimation) {
+        this.updateCaret_();
+      }
     }, DEBOUNCE_TIMEOUT_MS));
     this.resizeObservers_.push(composeboxResizeObserver);
     composeboxResizeObserver.observe(this);
@@ -722,6 +726,10 @@ export class ComposeboxElement extends I18nMixinLit
     return this.files_.size > 0;
   }
 
+  isExpanded(): boolean {
+    return this.expanding_;
+  }
+
   getSelectedMatchIndexForTesting() {
     return this.selectedMatchIndex_;
   }
@@ -906,8 +914,11 @@ export class ComposeboxElement extends I18nMixinLit
 
   protected shouldShowVoiceSearch_(): boolean {
     const isExpanded = this.showDropdown_ || this.files_.size > 0;
-    return isExpanded ? this.showVoiceSearchInExpandedComposebox_ :
-                        this.showVoiceSearchInSteadyComposebox_;
+    const isFeatureEnabled = isExpanded ?
+        this.showVoiceSearchInExpandedComposebox_ :
+        this.showVoiceSearchInSteadyComposebox_;
+    return isFeatureEnabled &&
+        WindowProxy.getInstance().hasWebkitSpeechRecognition();
   }
 
   protected shouldShowVoiceSearchAnimation_(): boolean {
@@ -1271,11 +1282,18 @@ export class ComposeboxElement extends I18nMixinLit
     e.stopPropagation();
     this.voiceSearchEndCleanup_();
     // For contextual tasks composebox voice metrics.
+    // TODO(crbug.com/466412331): Don't only fire this for composebox, this
+    // should be recorded for all.
     this.fire('composebox-voice-search-transcription-success');
     if (this.autoSubmitVoiceSearch) {
+      // TODO(crbug.com/466412331): Remove, only recorded for the NTP.
       this.fire(
           'voice-search-action', {value: VoiceSearchAction.QUERY_SUBMITTED});
       this.input_ = e.detail;
+      const metricName = `ContextualSearch.UserAction.SubmitVoiceQuery.${
+          this.composeboxSource_}`;
+      recordUserAction(metricName);
+      recordBoolean(metricName, true);
       this.searchboxHandler_.submitQuery(
           e.detail, /*mouse_button=*/ 0, /*alt_key=*/ false,
           /*ctrl_key=*/ false, /*meta_key=*/ false, /*shift_key=*/ false);
@@ -1298,7 +1316,9 @@ export class ComposeboxElement extends I18nMixinLit
     this.fire('voice-search-action', {value: VoiceSearchAction.ACTIVATE});
     // For contextual tasks composebox voice metrics.
     this.fire('composebox-voice-search-start');
-    this.$.voiceSearch.start();
+    this.shadowRoot
+        .querySelector<ComposeboxVoiceSearchElement>(
+            'cr-composebox-voice-search')!.start();
   }
 
   protected onVoiceSearchCancel_(e: CustomEvent<boolean>) {
@@ -1331,7 +1351,7 @@ export class ComposeboxElement extends I18nMixinLit
       this.queryAutocomplete_(/* clearMatches= */ true);
 
       if (!this.disableCaretColorAnimation) {
-        this.resetCaret();
+        this.resetCaret_();
       }
     } else {
       this.closeComposebox_();
@@ -1606,7 +1626,7 @@ export class ComposeboxElement extends I18nMixinLit
 
         caret.style.transform = `translate(${caretX}px, ${caretY}px)`;
       } else {
-        this.resetCaret();
+        this.resetCaret_();
       }
       return;
     }
@@ -1631,7 +1651,7 @@ export class ComposeboxElement extends I18nMixinLit
     }
   }
 
-  resetCaret() {
+  protected resetCaret_() {
     // 12 origin must be set as this fixes spacing to match the box padding
     // around the caret
     const isRtl = document.documentElement.dir === 'rtl';
@@ -1886,13 +1906,12 @@ export class ComposeboxElement extends I18nMixinLit
   }
 
   protected submitQuery_(e: KeyboardEvent|MouseEvent) {
-    // If the submit button is disabled, do nothing.
-    if (!this.canSubmitFilesAndInput_) {
+    // If we're unable to submit (e.g., still uploading files) or the query
+    // synchronously evaluates to invalid (e.g. state hasn't updated in Lit
+    // due to synchronous eventing), do nothing.
+    if (!this.canSubmitFilesAndInput_ || !this.hasValidQuery_()) {
       return;
     }
-
-    // Sanity check the query.
-    assert(this.hasValidQuery_(), 'Cannot submit query without a valid query.');
 
     // If there is a match that is selected, open that match, else follow the
     // non-autocomplete submission flow. The non-autocomplete submission flow
@@ -1911,6 +1930,12 @@ export class ComposeboxElement extends I18nMixinLit
     }
 
     this.submitCleanup_();
+    // We only close the composebox when opening in a new tab because doing
+    // so in the current tab causes a visual jitter where the composebox
+    // closes before the new results page finishes loading.
+    if (e.ctrlKey || e.metaKey || e.shiftKey) {
+      this.closeComposebox_();
+    }
   }
 
   /**
@@ -1921,14 +1946,29 @@ export class ComposeboxElement extends I18nMixinLit
     this.$.matches.selectIndex(e.detail.index);
   }
 
-  protected onMatchClick_() {
+  protected onMatchClick_(e: CustomEvent<{
+    ctrlKey: boolean,
+    metaKey: boolean,
+    shiftKey: boolean,
+  }>) {
     this.clearAutocompleteMatches();
+    // We only close the composebox when opening in a new tab because doing
+    // so in the current tab causes a visual jitter where the composebox
+    // closes before the new results page finishes loading.
+    if (e && e.detail &&
+        (e.detail.ctrlKey || e.detail.metaKey || e.detail.shiftKey)) {
+      this.closeComposebox_();
+    }
   }
 
   protected onSelectedMatchIndexChanged_(e: CustomEvent<{value: number}>) {
     this.selectedMatchIndex_ = e.detail.value;
     this.selectedMatch_ =
         this.result_?.matches[this.selectedMatchIndex_] || null;
+  }
+
+  getFilesForTesting(): ComposeboxFile[] {
+    return [...this.files_.values()];
   }
 
   getResultForTesting(): AutocompleteResult|null {
@@ -2164,6 +2204,10 @@ export class ComposeboxElement extends I18nMixinLit
     this.input_ = '';
     this.lastQueriedInput_ = '';
     this.$.matches.unselect();
+    if (!this.disableCaretColorAnimation) {
+      this.updateMirror_();
+      this.updateCaret_();
+    }
   }
 
   getInputText(): string {

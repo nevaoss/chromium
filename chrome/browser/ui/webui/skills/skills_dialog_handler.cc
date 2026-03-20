@@ -42,12 +42,14 @@ SkillsDialogHandler::SkillsDialogHandler(
     OptimizationGuideKeyedService* optimization_guide_keyed_service,
     skills::Skill initial_skill,
     SkillsDialogEntryPoint entrypoint,
+    mojom::SkillsDialogType dialog_type,
     base::WeakPtr<SkillsDialogDelegate> delegate)
     : receiver_(this, std::move(receiver)),
       web_contents_(CHECK_DEREF(web_contents)),
       optimization_guide_keyed_service_(optimization_guide_keyed_service),
       initial_skill_(std::move(initial_skill)),
       entrypoint_(entrypoint),
+      dialog_type_(dialog_type),
       delegate_(delegate),
       profile_(CHECK_DEREF(
           Profile::FromBrowserContext(web_contents->GetBrowserContext()))) {}
@@ -68,18 +70,18 @@ const skills::Skill* SkillsDialogHandler::SaveOrUpdateSkill(
     return nullptr;
   }
   const Skill* result = nullptr;
-  if (skill.id.empty()) {
-    result = skills_service->AddSkill(skill.source_skill_id, skill.name,
-                                      skill.icon, skill.prompt);
-    if (!result) {
-      RecordSkillsSaveResult(SkillsSaveResult::kWriteFailed);
-    }
-  } else {
-    result = skills_service->UpdateSkill(skill.id, skill.name, skill.icon,
-                                         skill.prompt);
-    if (!result) {
-      RecordSkillsSaveResult(SkillsSaveResult::kSkillNotFound);
-    }
+  switch (dialog_type_) {
+    case mojom::SkillsDialogType::kAdd:
+      result = skills_service->AddSkill(skill.source_skill_id, skill.name,
+                                        skill.icon, skill.prompt);
+      break;
+    case mojom::SkillsDialogType::kEdit:
+      result = skills_service->UpdateSkill(skill.id, skill.name, skill.icon,
+                                           skill.prompt);
+      break;
+  }
+  if (!result) {
+    RecordSkillsSaveResult(SkillsSaveResult::kSkillNotFound);
   }
   return result;
 }
@@ -108,15 +110,11 @@ void SkillsDialogHandler::SubmitSkill(
 }
 
 void SkillsDialogHandler::DeleteSkill(const std::string& skill_id) {
-  auto* service =
-      SkillsServiceFactory::GetForProfile(base::to_address(profile_));
-  if (!delegate_ || !service) {
+  if (!delegate_) {
     return;
   }
-  // TODO(crbug.com/488408730): Remove once we have undo functionality.
-  service->DeleteSkill(skill_id, SkillsService::UpdateSource::kLocal);
   // Triggers toast
-  delegate_->OnSkillDeleted();
+  delegate_->OnSkillDeleted(skill_id);
   delegate_->CloseDialog();
   RecordSkillsDialogAction(SkillsDialogAction::kDeleted, entrypoint_,
                            /*is_edit_mode=*/true);
@@ -135,8 +133,11 @@ void SkillsDialogHandler::ShowEmojiPicker() {
   ui::ShowEmojiPanel();
 }
 
-void SkillsDialogHandler::GetInitialSkill(GetInitialSkillCallback callback) {
-  std::move(callback).Run(initial_skill_);
+void SkillsDialogHandler::GetInitialState(GetInitialStateCallback callback) {
+  auto state = skills::mojom::InitialDialogState::New();
+  state->dialog_type = dialog_type_;
+  state->skill = initial_skill_;
+  std::move(callback).Run(std::move(state));
 }
 
 void SkillsDialogHandler::OnRefineSkillResponse(

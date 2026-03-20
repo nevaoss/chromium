@@ -288,60 +288,6 @@ base::span<const T> CastConstSpan(base::span<const uint8_t> span) {
                                    span.size() / sizeof(T)));
 }
 
-gpu::SyncToken CopySharedImageToGLTextureViaTextureCopy(
-    gpu::gles2::GLES2Interface* gl,
-    const gfx::Size& coded_size,
-    const gfx::Rect& visible_rect,
-    gpu::ClientSharedImage* source_shared_image,
-    const gpu::SyncToken& source_sync_token,
-    unsigned int target,
-    unsigned int texture,
-    unsigned int internal_format,
-    unsigned int format,
-    unsigned int type,
-    int level,
-    SkAlphaType dst_alpha_type,
-    GrSurfaceOrigin dst_origin) {
-  auto si_texture = source_shared_image->CreateGLTexture(gl);
-  auto scoped_si_access =
-      si_texture->BeginAccess(source_sync_token, /*readonly=*/true);
-
-  const bool do_premultiply_alpha =
-      dst_alpha_type == kPremul_SkAlphaType &&
-      source_shared_image->alpha_type() == kUnpremul_SkAlphaType;
-  const bool do_unpremultiply_alpha =
-      dst_alpha_type == kUnpremul_SkAlphaType &&
-      source_shared_image->alpha_type() == kPremul_SkAlphaType;
-
-  const bool do_flip_y = source_shared_image->surface_origin() != dst_origin;
-  if (visible_rect != gfx::Rect(coded_size)) {
-    // Must reallocate the destination texture and copy only a sub-portion.
-
-    // There should always be enough data in the source texture to
-    // cover this copy.
-    DCHECK_LE(visible_rect.width(), coded_size.width());
-    DCHECK_LE(visible_rect.height(), coded_size.height());
-
-    BindAndTexImage2D(gl, target, texture, internal_format, format, type, level,
-                      visible_rect.size());
-    // TODO(crbug.com/378688985): `visible_rect` is always in top-left
-    // coordinate space, but CopySubTextureCHROMIUM requires it to be in texture
-    // space, so this is incorrect if `source_shared_image` origin is bottom
-    // left.
-    gl->CopySubTextureCHROMIUM(scoped_si_access->texture_id(), 0, target,
-                               texture, level, 0, 0, visible_rect.x(),
-                               visible_rect.y(), visible_rect.width(),
-                               visible_rect.height(), do_flip_y,
-                               do_premultiply_alpha, do_unpremultiply_alpha);
-
-  } else {
-    gl->CopyTextureCHROMIUM(scoped_si_access->texture_id(), 0, target, texture,
-                            level, internal_format, type, do_flip_y,
-                            do_premultiply_alpha, do_unpremultiply_alpha);
-  }
-  return gpu::SharedImageTexture::ScopedAccess::EndAccess(
-      std::move(scoped_si_access));
-}
 
 // Update |video_frame|'s release sync token to reflect the work done in |ri|,
 // and ensure that |video_frame| be kept remain alive until |ri|'s commands have
@@ -780,26 +726,9 @@ VideoPixelFormatAsSkYUVAInfoValues(VideoPixelFormat format) {
   }
 }
 
-// Checks whether it's possible to do a copy of a SharedImage to a GL texture
-// via CopyTexture().
-bool CanCopySharedImageToGLTextureViaTextureCopy(
-    scoped_refptr<gpu::ClientSharedImage> shared_image) {
-  const auto si_format = shared_image->format();
-  const bool si_format_has_single_texture =
-      si_format.is_single_plane() || si_format.PrefersExternalSampler();
-  const bool si_usable_by_gles2_interface =
-      shared_image->GetTextureTarget() != 0;
-
-  // Copying the shared image to the destination texture via a direct
-  // texture-to-texture copy requires being able to obtain a client-side GL
-  // texture for the shared image, which in turn requires that the shared image
-  // be either single-plane or use external sampler and that it be usable by GL.
-  return si_format_has_single_texture && si_usable_by_gles2_interface;
-}
-
 // Checks support before attempting a service-side copy of a SharedImage to a
 // GL texture via Skia.
-bool CanCopySharedImageToGLTextureViaSkia(VideoPixelFormat video_frame_format,
+bool CanCopySharedImageToGLTextureViaSkia(bool is_opaque,
                                           uint32_t shared_image_target,
                                           unsigned int dst_target,
                                           unsigned int dst_internal_format,
@@ -815,13 +744,15 @@ bool CanCopySharedImageToGLTextureViaSkia(VideoPixelFormat video_frame_format,
   return false;
 #else
   bool si_usable_by_gles2_interface = shared_image_target != 0;
-  // Since skia always produces premultiply alpha outputs,
-  // trying direct uploading path when video format is opaque or premultiply
-  // alpha been requested.
+  // Since skia always produces premultiply alpha outputs, trying direct
+  // uploading path when the source is opaque or premultiply alpha been
+  // requested.
   // TODO(crbug.com/40159723): Figure out whether premultiply options here are
   // accurate.
-  bool is_premul = media::IsOpaque(video_frame_format) ||
-                   dst_alpha_type == kPremul_SkAlphaType;
+  // TODO(crbug.com/343011436): Remove the `is_opaque` param by querying the
+  // SharedImage's format directly after verifying that this doesn't change
+  // behavior for any existing callers.
+  bool is_premul = is_opaque || dst_alpha_type == kPremul_SkAlphaType;
   bool supports_one_copy_format = ValidFormatForDirectUploading(
       static_cast<GLenum>(dst_internal_format), dst_type);
   // dst texture mipLevel must be 0.
@@ -832,7 +763,8 @@ bool CanCopySharedImageToGLTextureViaSkia(VideoPixelFormat video_frame_format,
 #endif  // BUILDFLAG(IS_ANDROID)
 }
 
-bool CanCopyVideoFrameDirectlyToGLTexture(scoped_refptr<VideoFrame> video_frame,
+bool CanCopyVideoFrameDirectlyToGLTexture(gpu::gles2::GLES2Interface* gl,
+                                          scoped_refptr<VideoFrame> video_frame,
                                           unsigned int target,
                                           unsigned int internal_format,
                                           unsigned int type,
@@ -842,10 +774,11 @@ bool CanCopyVideoFrameDirectlyToGLTexture(scoped_refptr<VideoFrame> video_frame,
   CHECK(video_frame->HasSharedImage());
   const auto shared_image = video_frame->shared_image();
 
-  return CanCopySharedImageToGLTextureViaTextureCopy(shared_image) ||
+  return gl->CanCopySharedImageToGLTextureViaTextureCopy(shared_image.get()) ||
          CanCopySharedImageToGLTextureViaSkia(
-             video_frame->format(), shared_image->GetTextureTarget(), target,
-             internal_format, type, level, dst_alpha_type);
+             media::IsOpaque(video_frame->format()),
+             shared_image->GetTextureTarget(), target, internal_format, type,
+             level, dst_alpha_type);
 }
 
 void CopyVideoFrameDirectlyToGLTexture(
@@ -866,47 +799,45 @@ void CopyVideoFrameDirectlyToGLTexture(
   CHECK(raster_context_provider);
 
   const auto shared_image = video_frame->shared_image();
-  if (CanCopySharedImageToGLTextureViaTextureCopy(shared_image)) {
-    CopySharedImageToGLTextureViaTextureCopy(
-        destination_gl, video_frame->coded_size(), video_frame->visible_rect(),
+  std::unique_ptr<gpu::RasterScopedAccess> destination_access;
+  if (destination_gl->CanCopySharedImageToGLTextureViaTextureCopy(
+          shared_image.get())) {
+    destination_gl->CopySharedImageToGLTextureViaTextureCopy(
+        video_frame->coded_size(), video_frame->visible_rect(),
         shared_image.get(), video_frame->acquire_sync_token(), target, texture,
         internal_format, format, type, level, dst_alpha_type, dst_origin);
     destination_gl->ShallowFlushCHROMIUM();
+  } else {
+    CHECK(CanCopySharedImageToGLTextureViaSkia(
+        media::IsOpaque(video_frame->format()),
+        shared_image->GetTextureTarget(), target, internal_format, type, level,
+        dst_alpha_type));
+    // Do a service-side copy from the SharedImage to the destination texture
+    // via Skia wrapping the destination texture in an SkSurface. Note that
+    // this relies on the service-side GL implementation using a Ganesh/GL
+    // context. Currently this assumption is satisfied as the passthrough
+    // decoder always uses a Ganesh/GL context.
+    // TODO(crbug.com/40064510): Eliminate this reliance to enable one-copy
+    // upload to work for Graphite *without* depending on being able to create a
+    // Ganesh/GL context.
 
-    SynchronizeVideoFrameRead(std::move(video_frame), destination_gl,
-                              raster_context_provider->ContextSupport());
-    return;
+    // Trigger resource allocation for dst texture to back SkSurface.
+    // Dst texture size should equal to video frame visible rect.
+    BindAndTexImage2D(destination_gl, target, texture, internal_format, format,
+                      type, /*level=*/0, video_frame->visible_rect().size());
+
+    destination_access = shared_image->BeginGLAccessForCopySharedImage(
+        destination_gl, video_frame->acquire_sync_token(), /*readonly=*/true);
+
+    // Copy shared image to gl texture for hardware video decode with
+    // multiplanar shared image formats.
+    const bool is_dst_origin_top_left = dst_origin == kTopLeft_GrSurfaceOrigin;
+    destination_gl->CopySharedImageToTextureINTERNAL(
+        texture, target, internal_format, type, video_frame->visible_rect().x(),
+        video_frame->visible_rect().y(), video_frame->visible_rect().width(),
+        video_frame->visible_rect().height(), is_dst_origin_top_left,
+        shared_image->mailbox().name);
   }
-
-  CHECK(CanCopySharedImageToGLTextureViaSkia(
-      video_frame->format(), shared_image->GetTextureTarget(), target,
-      internal_format, type, level, dst_alpha_type));
-  // Do a service-side copy from the SharedImage to the destination texture
-  // via Skia wrapping the destination texture in an SkSurface. Note that
-  // this relies on the service-side GL implementation using a Ganesh/GL
-  // context. Currently this assumption is satisfied as the passthrough
-  // decoder always uses a Ganesh/GL context.
-  // TODO(crbug.com/40064510): Eliminate this reliance to enable one-copy
-  // upload to work for Graphite *without* depending on being able to create a
-  // Ganesh/GL context.
-
-  // Trigger resource allocation for dst texture to back SkSurface.
-  // Dst texture size should equal to video frame visible rect.
-  BindAndTexImage2D(destination_gl, target, texture, internal_format, format,
-                    type, /*level=*/0, video_frame->visible_rect().size());
-
-  auto destination_access = shared_image->BeginGLAccessForCopySharedImage(
-      destination_gl, video_frame->acquire_sync_token(), /*readonly=*/true);
-
-  // Copy shared image to gl texture for hardware video decode with
-  // multiplanar shared image formats.
-  const bool is_dst_origin_top_left = dst_origin == kTopLeft_GrSurfaceOrigin;
-  destination_gl->CopySharedImageToTextureINTERNAL(
-      texture, target, internal_format, type, video_frame->visible_rect().x(),
-      video_frame->visible_rect().y(), video_frame->visible_rect().width(),
-      video_frame->visible_rect().height(), is_dst_origin_top_left,
-      shared_image->mailbox().name);
-
   SynchronizeVideoFrameRead(std::move(video_frame), destination_gl,
                             raster_context_provider->ContextSupport(),
                             std::move(destination_access));
@@ -1645,8 +1576,9 @@ bool PaintCanvasVideoRenderer::CopyVideoFrameTexturesToGLTexture(
 
   const auto shared_image = video_frame->shared_image();
 
-  if (CanCopyVideoFrameDirectlyToGLTexture(video_frame, target, internal_format,
-                                           type, level, dst_alpha_type)) {
+  if (CanCopyVideoFrameDirectlyToGLTexture(destination_gl, video_frame, target,
+                                           internal_format, type, level,
+                                           dst_alpha_type)) {
     CopyVideoFrameDirectlyToGLTexture(
         raster_context_provider, destination_gl, video_frame, target, texture,
         internal_format, format, type, level, dst_alpha_type, dst_origin);
@@ -1694,10 +1626,11 @@ bool PaintCanvasVideoRenderer::CopyVideoFrameTexturesToGLTexture(
 
     // Wait for mailbox creation on canvas context before consuming it and
     // copying from it on the consumer context.
-    gpu::SyncToken dest_sync_token = CopySharedImageToGLTextureViaTextureCopy(
-        destination_gl, video_frame->coded_size(), video_frame->visible_rect(),
-        rgb_shared_image.get(), sync_token, target, texture, internal_format,
-        format, type, level, dst_alpha_type, dst_origin);
+    gpu::SyncToken dest_sync_token =
+        destination_gl->CopySharedImageToGLTextureViaTextureCopy(
+            video_frame->coded_size(), video_frame->visible_rect(),
+            rgb_shared_image.get(), sync_token, target, texture,
+            internal_format, format, type, level, dst_alpha_type, dst_origin);
 
     // Update the `rgb_sync_token` to be waited upon based on gles tasks
     // performed earlier.
@@ -1793,8 +1726,8 @@ bool PaintCanvasVideoRenderer::CopyVideoFrameYUVDataToGLTexture(
 
   // On the destination GL context, do a copy (with cropping) into the
   // destination texture.
-  rgb_sync_token = CopySharedImageToGLTextureViaTextureCopy(
-      destination_gl, video_frame->coded_size(), video_frame->visible_rect(),
+  rgb_sync_token = destination_gl->CopySharedImageToGLTextureViaTextureCopy(
+      video_frame->coded_size(), video_frame->visible_rect(),
       rgb_shared_image.get(), post_conversion_sync_token, target, texture,
       internal_format, format, type, level, dst_alpha_type, dst_origin);
 

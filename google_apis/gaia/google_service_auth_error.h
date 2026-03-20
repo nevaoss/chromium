@@ -185,12 +185,19 @@ class COMPONENT_EXPORT(GOOGLE_APIS) GoogleServiceAuthError {
   // Provided for convenience for clients needing to reset an instance to NONE.
   // (avoids err_ = GoogleServiceAuthError(GoogleServiceAuthError::NONE), due
   // to explicit class and State enum relation. Note: shouldn't be inlined!
+  // TODO(crbug.com/7633106): Rename to CreateNone().
   static GoogleServiceAuthError AuthErrorNone();
 
   // Create a GoogleServiceAuthError for DEVICE_MANAGEMENT_ERROR with the given
   // details
   static GoogleServiceAuthError FromDeviceManagementError(
-      std::unique_ptr<DeviceManagementErrorDetails> details);
+      std::unique_ptr<gaia::DeviceManagementErrorDetails> details);
+
+  // Construct an ACCOUNT_NOT_FOUND error.
+  static GoogleServiceAuthError CreateAccountNotFound();
+
+  // Construct a REQUEST_CANCELED error.
+  static GoogleServiceAuthError CreateRequestCanceled();
 
   static bool IsValid(State state);
 
@@ -295,14 +302,14 @@ class COMPONENT_EXPORT(GOOGLE_APIS) GoogleServiceAuthError {
 
   struct DeviceManagementError {
     explicit DeviceManagementError(
-        std::unique_ptr<DeviceManagementErrorDetails> detail);
+        std::unique_ptr<gaia::DeviceManagementErrorDetails> detail);
     ~DeviceManagementError();
     DeviceManagementError(const DeviceManagementError& other);
     DeviceManagementError& operator=(const DeviceManagementError& other);
     DeviceManagementError(DeviceManagementError&& other) noexcept;
     DeviceManagementError& operator=(DeviceManagementError&& other) noexcept;
 
-    std::unique_ptr<DeviceManagementErrorDetails> details;
+    std::unique_ptr<gaia::DeviceManagementErrorDetails> details;
 
     bool operator==(const DeviceManagementError& other) const;
   };

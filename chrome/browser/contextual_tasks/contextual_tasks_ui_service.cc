@@ -7,7 +7,6 @@
 #include <optional>
 
 #include "base/containers/adapters.h"
-#include "components/omnibox/common/logger.h"
 #include "base/feature_list.h"
 #include "base/logging.h"
 #include "base/metrics/histogram_functions.h"
@@ -46,8 +45,10 @@
 #include "components/contextual_tasks/public/contextual_task.h"
 #include "components/contextual_tasks/public/contextual_tasks_service.h"
 #include "components/contextual_tasks/public/features.h"
+#include "components/contextual_tasks/public/utils.h"
 #include "components/lens/lens_url_utils.h"
 #include "components/omnibox/browser/aim_eligibility_service.h"
+#include "components/omnibox/common/logger.h"
 #include "components/search_engines/template_url_service.h"
 #include "components/search_engines/util.h"
 #include "components/sessions/content/session_tab_helper.h"
@@ -171,38 +172,6 @@ EntrypointSource ConvertContextualSearchSourceToEntrypointSource(
   }
 }
 
-// Returns the Lens invocation source for the given AIM entry point, if it
-// is used for AIM zero-state invocations.
-std::optional<lens::LensOverlayInvocationSource>
-GetLensInvocationSourceForAimZeroState(
-    omnibox::ChromeAimEntryPoint entry_point) {
-  switch (entry_point) {
-    case omnibox::ChromeAimEntryPoint::DESKTOP_CHROME_COBROWSE_TOOLBAR_BUTTON:
-      return lens::LensOverlayInvocationSource::kCobrowseToolbarButton;
-    default:
-      return std::nullopt;
-  }
-}
-
-// Appends the AIM entry point and Lens invocation source query parameters to
-// the given URL, if the entry point is used for AIM zero-state invocations.
-GURL AppendAimEntryPointParams(GURL url,
-                               omnibox::ChromeAimEntryPoint entry_point) {
-  if (entry_point == omnibox::ChromeAimEntryPoint::UNKNOWN_AIM_ENTRY_POINT) {
-    return url;
-  }
-
-  GURL new_url = url;
-  auto invocation_source = GetLensInvocationSourceForAimZeroState(entry_point);
-  if (invocation_source.has_value()) {
-    new_url = lens::AppendInvocationSourceParamToURL(
-        new_url, invocation_source.value(), /*is_contextual_tasks=*/true);
-  }
-  new_url = net::AppendOrReplaceQueryParameter(
-      new_url, "aep", base::NumberToString(static_cast<int>(entry_point)));
-  return new_url;
-}
-
 }  // namespace
 
 ContextualTasksUiService::ContextualTasksUiService(
@@ -244,31 +213,8 @@ void ContextualTasksUiService::OnNavigationToAiPageIntercepted(
     auto* helper = ContextualSearchWebContentsHelper::FromWebContents(
         source_tab->GetContents());
     if (helper && helper->session_handle()) {
-      source = helper->session_handle()->GetMetricsRecorder()->source();
-
-      auto* service =
-          ContextualSearchServiceFactory::GetForProfile(profile_.get());
-      if (service) {
-        // Create a new handle for existing session. The session handle should
-        // not be moved because there can be cases where a user opens the WebUI
-        // in a new tab (and would therefore leave the source tab without a
-        // handle).
-        session_handle =
-            service->GetSession(helper->session_handle()->session_id(),
-                                helper->session_handle()->invocation_source());
-        if (session_handle) {
-          session_handle->set_submitted_context_tokens(
-              helper->session_handle()->GetSubmittedContextTokens());
-          // TODO(crbug.com/469877869): Determine what to do with the return
-          // value of this call, or move this call to a different location.
-          session_handle->CheckSearchContentSharingSettings(
-              profile_->GetPrefs());
-          // Now that fulfillment has been passed to contextual tasks, the
-          // original session handle should clear its submitted context. Not
-          // clearing leaves it in a faulty state for future queries.
-          helper->session_handle()->ClearSubmittedContextTokens();
-        }
-      }
+      session_handle = helper->TakeSessionHandle();
+      source = session_handle->GetMetricsRecorder()->source();
     }
   }
   base::UmaHistogramEnumeration(
@@ -1122,56 +1068,9 @@ std::optional<GURL> ContextualTasksUiService::GetInitialUrlForTask(
 void ContextualTasksUiService::GetThreadUrlFromTaskId(
     const base::Uuid& task_id,
     base::OnceCallback<void(GURL)> callback) {
-  OMNIBOX_LOG("nav_trace") << "ContextualTasks navigation trace: GetThreadUrlFromTaskId called";
-  contextual_tasks_service_->GetTaskById(
-      task_id,
-      base::BindOnce(
-          [](base::WeakPtr<ContextualTasksUiService> service,
-             const base::Uuid& task_id, base::OnceCallback<void(GURL)> callback,
-             std::optional<ContextualTask> task) {
-            OMNIBOX_LOG("nav_trace") << "ContextualTasks navigation trace: "
-                       "GetThreadUrlFromTaskId callback called";
-            if (!service) {
-              OMNIBOX_LOG("nav_trace") << "ContextualTasks navigation trace: "
-                         "GetThreadUrlFromTaskId returning early, no service";
-              std::move(callback).Run(GURL());
-              return;
-            }
-
-            GURL url = service->GetDefaultAiPageUrlForTask(task_id);
-            if (!task) {
-              OMNIBOX_LOG("nav_trace") << "ContextualTasks navigation trace: "
-                         "GetThreadUrlFromTaskId returning early, no task. "
-                         "Returning default: "
-              << url;
-              std::move(callback).Run(url);
-              return;
-            }
-
-            std::optional<Thread> thread = task->GetThread();
-            // Gemini Thread URL generation is not supported yet.
-            if (!thread || thread->type == ThreadType::kGemini) {
-              OMNIBOX_LOG("nav_trace") << "ContextualTasks navigation trace: "
-                         "GetThreadUrlFromTaskId returning early, no thread or "
-                         "Gemini thread. Returning default: " << url;
-              std::move(callback).Run(url);
-              return;
-            }
-
-            // Attach the thread ID and the most recent turn ID to the
-            // URL. A query parameter needs to be present, but its
-            // value is not used for continued threads.
-            url = net::AppendQueryParameter(url, "q", thread->title);
-            DCHECK(thread->conversation_turn_id.has_value());
-            url = net::AppendQueryParameter(
-                url, "mstk", thread->conversation_turn_id.value());
-            url = net::AppendQueryParameter(url, "mtid", thread->server_id);
-
-            OMNIBOX_LOG("nav_trace") << "ContextualTasks navigation trace: "
-                       "GetThreadUrlFromTaskId returning URL: " << url;
-            std::move(callback).Run(url);
-          },
-          weak_ptr_factory_.GetWeakPtr(), task_id, std::move(callback)));
+  contextual_tasks_service_->GetThreadUrlFromTaskId(
+      task_id, g_browser_process->GetApplicationLocale(),
+      GetInitialEntryPointForTask(task_id), std::move(callback));
 }
 
 GURL ContextualTasksUiService::GetDefaultAiPageUrl() {

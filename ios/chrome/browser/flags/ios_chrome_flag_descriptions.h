@@ -38,6 +38,9 @@ extern const char kAIMNTPEntrypointTabletDescription[];
 extern const char kAimCobrowseName[];
 extern const char kAimCobrowseDescription[];
 
+extern const char kAimUrlNavigationFetchEnabledName[];
+extern const char kAimUrlNavigationFetchEnabledDescription[];
+
 extern const char kAnimatedDefaultBrowserPromoInFREName[];
 extern const char kAnimatedDefaultBrowserPromoInFREDescription[];
 
@@ -231,9 +234,6 @@ extern const char kComposeboxMenuTitleDescription[];
 extern const char kComposeboxServerSideStateName[];
 extern const char kComposeboxServerSideStateDescription[];
 
-extern const char kComposeboxTabPickerVariationName[];
-extern const char kComposeboxTabPickerVariationDescription[];
-
 extern const char kConfirmationButtonSwapOrderName[];
 extern const char kConfirmationButtonSwapOrderDescription[];
 
@@ -366,6 +366,9 @@ extern const char kEnableReadingListAccountStorageDescription[];
 extern const char kEnableReadingListSignInPromoName[];
 extern const char kEnableReadingListSignInPromoDescription[];
 
+extern const char kEnableScreenshotProtectionIOSName[];
+extern const char kEnableScreenshotProtectionIOSDescription[];
+
 extern const char kEnableTraitCollectionRegistrationName[];
 extern const char kEnableTraitCollectionRegistrationDescription[];
 
@@ -423,29 +426,17 @@ extern const char kGeminiDynamicSettingsDescription[];
 extern const char kGeminiFloatyAllPagesName[];
 extern const char kGeminiFloatyAllPagesDescription[];
 
-extern const char kGeminiFullChatHistoryName[];
-extern const char kGeminiFullChatHistoryDescription[];
-
 extern const char kGeminiImageRemixToolName[];
 extern const char kGeminiImageRemixToolDescription[];
 
-extern const char kGeminiLatencyImprovementName[];
-extern const char kGeminiLatencyImprovementDescription[];
-
 extern const char kGeminiLiveName[];
 extern const char kGeminiLiveDescription[];
-
-extern const char kGeminiLoadingStateRedesignName[];
-extern const char kGeminiLoadingStateRedesignDescription[];
 
 extern const char kGeminiMapsRichUIName[];
 extern const char kGeminiMapsRichUIDescription[];
 
 extern const char kGeminiNavigationPromoName[];
 extern const char kGeminiNavigationPromoDescription[];
-
-extern const char kGeminiPersonalizationName[];
-extern const char kGeminiPersonalizationDescription[];
 
 extern const char kGeminiRefactoredFREName[];
 extern const char kGeminiRefactoredFREDescription[];
@@ -690,6 +681,9 @@ extern const char kMobilePromoOnDesktopDescription[];
 extern const char kMobilePromoOnDesktopRecordActiveDaysName[];
 extern const char kMobilePromoOnDesktopRecordActiveDaysDescription[];
 
+extern const char kMobilePromoOnDesktopWave1Name[];
+extern const char kMobilePromoOnDesktopWave1Description[];
+
 extern const char kModelBasedPageClassificationName[];
 extern const char kModelBasedPageClassificationDescription[];
 
@@ -707,9 +701,6 @@ extern const char kNTPBackgroundCustomizationDescription[];
 
 extern const char kNTPMIAEntrypointName[];
 extern const char kNTPMIAEntrypointDescription[];
-
-extern const char kNTPViewHierarchyRepairName[];
-extern const char kNTPViewHierarchyRepairDescription[];
 
 extern const char kNativeFindInPageName[];
 extern const char kNativeFindInPageDescription[];
@@ -822,9 +813,6 @@ extern const char kPageContentAnnotationsDescription[];
 extern const char kPageContentAnnotationsRemotePageMetadataName[];
 extern const char kPageContentAnnotationsRemotePageMetadataDescription[];
 
-extern const char kPasswordFormClientsideClassifierName[];
-extern const char kPasswordFormClientsideClassifierDescription[];
-
 extern const char kPasswordRemovalFromDeleteBrowsingDataName[];
 extern const char kPasswordRemovalFromDeleteBrowsingDataDescription[];
 
@@ -860,6 +848,9 @@ extern const char kRcapsDynamicProfileCountryDescription[];
 
 extern const char kReaderModeContentSettingsForLinksName[];
 extern const char kReaderModeContentSettingsForLinksDescription[];
+
+extern const char kReaderModeIgnoreBadgeThresholdName[];
+extern const char kReaderModeIgnoreBadgeThresholdDescription[];
 
 extern const char kReaderModeOmniboxEntrypointInUSName[];
 extern const char kReaderModeOmniboxEntrypointInUSDescription[];

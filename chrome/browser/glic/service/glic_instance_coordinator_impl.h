@@ -80,6 +80,8 @@ class GlicInstanceCoordinatorImpl
       contextual_cueing::ContextualCueingService* contextual_cueing_service);
   ~GlicInstanceCoordinatorImpl() override;
 
+  GlicKeyedService* service() { return service_; }
+
   // GlicInstanceImpl::InstanceCoordinatorDelegate implementation
   void OnInstanceVisibilityChanged(GlicInstanceImpl* instance,
                                    bool is_showing) override;
@@ -240,6 +242,10 @@ class GlicInstanceCoordinatorImpl
 
   void NotifyActiveInstanceChanged();
   void ComputeContentAccessIndicator();
+
+  // If a side panel instance becomes active, any separate floaty that is
+  // currently listening should stop.
+  void MaybeStopListeningFloaty(GlicInstanceImpl* active_instance);
 
   void OnTabsInserted(const TabStripModelChange::Insert* insert);
   void MaybeDaisyChainNewTab(const TabCreationEvent& event);

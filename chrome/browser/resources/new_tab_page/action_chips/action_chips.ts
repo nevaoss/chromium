@@ -2,9 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 import 'chrome://resources/cr_elements/cr_icon_button/cr_icon_button.js';
+import 'chrome://resources/cr_elements/cr_action_menu/cr_action_menu.js';
 
 import type {TabUpload} from 'chrome://resources/cr_components/composebox/common.js';
 import {TabUploadOrigin} from 'chrome://resources/cr_components/composebox/common.js';
+import type {CrActionMenuElement} from 'chrome://resources/cr_elements/cr_action_menu/cr_action_menu.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import type {PropertyValues} from 'chrome://resources/lit/v3_0/lit.rollup.js';
 import {CrLitElement} from 'chrome://resources/lit/v3_0/lit.rollup.js';
@@ -48,6 +50,12 @@ export enum ActionChipsRetrievalState {
 const kActionChipsRetrievalStateChangedEvent =
     'action-chips-retrieval-state-changed';
 
+export interface ActionChipsElement {
+  $: {
+    actionMenu: CrActionMenuElement,
+  };
+}
+
 /**
  * The element for displaying Action Chips.
  */
@@ -66,10 +74,6 @@ export class ActionChipsElement extends CrLitElement {
 
   static override get properties() {
     return {
-      reducedMotionPreferred: {
-        type: Boolean,
-        reflect: true,
-      },
       showBackground: {type: Boolean, reflect: true},
       actionChips_: {type: Array, state: true},
       showDismissalUI_: {
@@ -83,7 +87,6 @@ export class ActionChipsElement extends CrLitElement {
     };
   }
 
-  accessor reducedMotionPreferred: boolean = false;
   accessor showBackground: boolean = false;
 
   protected accessor actionChips_: ActionChip[] = [];
@@ -107,23 +110,12 @@ export class ActionChipsElement extends CrLitElement {
         return 'icon-type-globe-with-search-loop';
       case IconType.kSubArrowRight:
         return 'icon-type-sub-arrow-right';
+      case IconType.kDraftSpark:
+        return 'icon-type-draft-spark';
+      case IconType.kFavicon:
+        return 'icon-type-favicon';
       default:
         return '';
-    }
-  }
-
-  protected getId_(chip: ActionChip, index: number): string|null {
-    switch (chip.suggestTemplateInfo.typeIcon) {
-      case IconType.kBanana:
-        return 'nano-banana';
-      case IconType.kGlobeWithSearchLoop:
-        return 'deep-search';
-      case IconType.kFavicon:
-        return 'tab-context';
-      case IconType.kSubArrowRight:
-        return `deep-dive-${index}`;
-      default:
-        return null;
     }
   }
 
@@ -188,6 +180,10 @@ export class ActionChipsElement extends CrLitElement {
         this.handler.activateMetricsFunnel('DeepDiveChip');
         this.onActionChipClick_(chip, ToolMode.kUnspecified);
         break;
+      case IconType.kDraftSpark:
+        this.handler.activateMetricsFunnel('CanvasChip');
+        this.onActionChipClick_(chip, ToolMode.kCanvas);
+        break;
       default:
         // Do nothing yet...
     }
@@ -201,6 +197,18 @@ export class ActionChipsElement extends CrLitElement {
     this.actionChips_ =
         this.actionChips_.filter((c) => c.suggestion !== chip.suggestion);
   }
+
+  protected onContextmenu_(e: MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    this.$.actionMenu.showAt(e.target as HTMLElement);
+  }
+
+  protected onDisableSuggestionClick_() {
+    this.$.actionMenu.close();
+    this.handler.setActionChipsVisibility(false);
+  }
+
 
   protected getFaviconUrl_(url: string): string {
     const faviconUrl = new URL('chrome://favicon2/');
@@ -243,13 +251,6 @@ export class ActionChipsElement extends CrLitElement {
     return `${chip.suggestTemplateInfo.secondaryText?.text ?? ''} - ${domain}`;
   }
 
-  protected isDeepDiveChip_(chip: ActionChip) {
-    return chip.suggestTemplateInfo.typeIcon === IconType.kSubArrowRight;
-  }
-
-  protected isRecentTabChip_(chip: ActionChip) {
-    return chip.suggestTemplateInfo.typeIcon === IconType.kFavicon;
-  }
 
   protected showDashSimplifiedUI_(chip: ActionChip) {
     return chip.suggestTemplateInfo.typeIcon !== IconType.kSubArrowRight &&
@@ -275,11 +276,11 @@ export class ActionChipsElement extends CrLitElement {
     const url = new URL(chip.tab.url);
     const domain = url.hostname.replace(/^www\./, '');
 
-    if (this.isRecentTabChip_(chip)) {
+    if (chip.suggestTemplateInfo.typeIcon === IconType.kFavicon) {
       return `${tabTitle}\n${domain}`;
     }
 
-    if (this.isDeepDiveChip_(chip)) {
+    if (chip.suggestTemplateInfo.typeIcon === IconType.kSubArrowRight) {
       return `${suggestion}\n${domain}`;
     }
 

@@ -42,6 +42,7 @@
 #include "base/trace_event/trace_event.h"
 #include "build/build_config.h"
 #include "gpu/command_buffer/client/buffer_tracker.h"
+#include "gpu/command_buffer/client/client_shared_image.h"
 #include "gpu/command_buffer/client/gles2_cmd_helper.h"
 #include "gpu/command_buffer/client/gpu_control.h"
 #include "gpu/command_buffer/client/program_info_manager.h"
@@ -56,9 +57,12 @@
 #include "gpu/command_buffer/common/id_allocator.h"
 #include "gpu/command_buffer/common/swap_buffers_complete_params.h"
 #include "gpu/command_buffer/common/sync_token.h"
+#include "third_party/skia/include/core/SkAlphaType.h"
+#include "third_party/skia/include/gpu/ganesh/GrTypes.h"
 #include "ui/gfx/color_space.h"
 #include "ui/gfx/geometry/rect.h"
 #include "ui/gfx/geometry/rect_f.h"
+#include "ui/gfx/geometry/size.h"
 #include "ui/gl/gpu_preference.h"
 
 #if defined(GPU_CLIENT_DEBUG)
@@ -107,6 +111,19 @@ namespace gpu {
 namespace gles2 {
 
 namespace {
+
+void BindAndTexImage2D(gpu::gles2::GLES2Interface* gl,
+                       unsigned int target,
+                       unsigned int texture,
+                       unsigned int internal_format,
+                       unsigned int format,
+                       unsigned int type,
+                       int level,
+                       const gfx::Size& size) {
+  gl->BindTexture(target, texture);
+  gl->TexImage2D(target, level, internal_format, size.width(), size.height(), 0,
+                 format, type, nullptr);
+}
 
 void CopyRectToBuffer(const void* pixels,
                       uint32_t height,
@@ -374,6 +391,74 @@ GLboolean GLES2Implementation::DidGpuSwitch(gl::GpuPreference* active_gpu) {
   GLboolean result = gpu_switched_ ? GL_TRUE : GL_FALSE;
   gpu_switched_ = false;
   return result;
+}
+
+bool GLES2Implementation::CanCopySharedImageToGLTextureViaTextureCopy(
+    ClientSharedImage* shared_image) {
+  const bool si_format_has_single_texture =
+      shared_image->format().is_single_plane() ||
+      shared_image->format().PrefersExternalSampler();
+  const bool si_usable_by_gles2_interface =
+      shared_image->GetTextureTarget() != 0;
+
+  // Copying the shared image to the destination texture via a direct
+  // texture-to-texture copy requires being able to obtain a client-side GL
+  // texture for the shared image, which in turn requires that the shared image
+  // be either single-plane or use external sampler and that it be usable by GL.
+  return si_format_has_single_texture && si_usable_by_gles2_interface;
+}
+
+gpu::SyncToken GLES2Implementation::CopySharedImageToGLTextureViaTextureCopy(
+    const gfx::Size& src_size,
+    const gfx::Rect& src_rect,
+    ClientSharedImage* source_shared_image,
+    const gpu::SyncToken& source_sync_token,
+    uint32_t target,
+    uint32_t texture,
+    uint32_t internal_format,
+    uint32_t format,
+    uint32_t type,
+    int32_t level,
+    SkAlphaType dst_alpha_type,
+    GrSurfaceOrigin dst_origin) {
+  auto si_texture = source_shared_image->CreateGLTexture(this);
+  auto scoped_si_access =
+      si_texture->BeginAccess(source_sync_token, /*readonly=*/true);
+
+  const bool do_premultiply_alpha =
+      dst_alpha_type == kPremul_SkAlphaType &&
+      source_shared_image->alpha_type() == kUnpremul_SkAlphaType;
+  const bool do_unpremultiply_alpha =
+      dst_alpha_type == kUnpremul_SkAlphaType &&
+      source_shared_image->alpha_type() == kPremul_SkAlphaType;
+
+  const bool do_flip_y = source_shared_image->surface_origin() != dst_origin;
+  if (src_rect != gfx::Rect(src_size)) {
+    // Must reallocate the destination texture and copy only a sub-portion.
+
+    // There should always be enough data in the source texture to
+    // cover this copy.
+    GPU_CLIENT_DCHECK(src_rect.width() <= src_size.width());
+    GPU_CLIENT_DCHECK(src_rect.height() <= src_size.height());
+
+    BindAndTexImage2D(this, target, texture, internal_format, format, type,
+                      level, src_rect.size());
+    // TODO(crbug.com/378688985): `src_rect` is always in top-left
+    // coordinate space, but CopySubTextureCHROMIUM requires it to be in texture
+    // space, so this is incorrect if `source_shared_image` origin is bottom
+    // left.
+    CopySubTextureCHROMIUM(scoped_si_access->texture_id(), 0, target, texture,
+                           level, 0, 0, src_rect.x(), src_rect.y(),
+                           src_rect.width(), src_rect.height(), do_flip_y,
+                           do_premultiply_alpha, do_unpremultiply_alpha);
+
+  } else {
+    CopyTextureCHROMIUM(scoped_si_access->texture_id(), 0, target, texture,
+                        level, internal_format, type, do_flip_y,
+                        do_premultiply_alpha, do_unpremultiply_alpha);
+  }
+  return gpu::SharedImageTexture::ScopedAccess::EndAccess(
+      std::move(scoped_si_access));
 }
 
 void GLES2Implementation::SendErrorMessage(std::string message, int32_t id) {

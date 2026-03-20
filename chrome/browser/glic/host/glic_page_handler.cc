@@ -98,6 +98,7 @@
 #include "components/sessions/content/session_tab_helper.h"
 #include "components/sessions/core/session_id.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
+#include "components/skills/public/skill.mojom.h"
 #include "components/skills/public/skills_metrics.h"
 #include "components/sync/protocol/skill_specifics.pb.h"
 #include "components/tabs/public/tab_interface.h"
@@ -264,6 +265,9 @@ class ActiveStateCalculator : public PanelStateObserver {
     host_->AddPanelStateObserver(this);
     PanelStateChanged(host_->GetPanelState(nullptr),
                       {.attached_browser = nullptr, .glic_widget = nullptr});
+    // Calculate state immediately to avoid having an outdated state before
+    // calc_timer_ triggers recalculation and any observers are attached.
+    RecalculateAndNotify();
   }
   ~ActiveStateCalculator() override { host_->RemovePanelStateObserver(this); }
 
@@ -650,59 +654,6 @@ class JournalHandler {
       file_journal_serializer_;
   raw_ptr<actor::ActorKeyedService> actor_keyed_service_;
 };
-
-mojom::ProfileEnablementPtr BuildProfileEnablement(
-    content::BrowserContext* browser_context,
-    const GlicActorPolicyChecker& actor_policy_checker) {
-  Profile* profile = Profile::FromBrowserContext(browser_context);
-  GlicEnabling::ProfileEnablement enablement =
-      GlicEnabling::EnablementForProfile(profile);
-
-  auto result = mojom::ProfileEnablement::New();
-  result->feature_disabled = enablement.feature_disabled;
-  result->not_regular_profile = enablement.not_regular_profile;
-  result->not_rolled_out = enablement.not_rolled_out;
-  result->primary_account_not_capable = enablement.primary_account_not_capable;
-  result->primary_account_not_fully_signed_in =
-      enablement.primary_account_not_fully_signed_in;
-  result->disallowed_by_chrome_policy = enablement.disallowed_by_chrome_policy;
-  result->disallowed_by_remote_admin = enablement.disallowed_by_remote_admin;
-  result->disallowed_by_remote_other = enablement.disallowed_by_remote_other;
-  result->not_consented = enablement.not_consented;
-  result->live_disallowed = enablement.live_disallowed;
-  result->share_image_disallowed = enablement.share_image_disallowed;
-  result->actuation_not_consented =
-      profile->GetPrefs()->GetBoolean(prefs::kGlicUserEnabledActuationOnWeb) ==
-      false;
-
-  using CannotActReason = GlicActorPolicyChecker::CannotActReason;
-  if (actor_policy_checker.CanActOnWeb()) {
-    result->actuation_eligibility = mojom::ActuationEligibility::kEligible;
-  } else {
-    switch (actor_policy_checker.CannotActOnWebReason()) {
-      case CannotActReason::kAccountCapabilityIneligible:
-        result->actuation_eligibility =
-            mojom::ActuationEligibility::kMissingAccountCapability;
-        break;
-      case CannotActReason::kAccountMissingChromeBenefits:
-        result->actuation_eligibility =
-            mojom::ActuationEligibility::kMissingChromeBenefits;
-        break;
-      case CannotActReason::kDisabledByPolicy:
-        result->actuation_eligibility =
-            mojom::ActuationEligibility::kDisabledByPolicy;
-        break;
-      case CannotActReason::kEnterpriseWithoutManagement:
-        result->actuation_eligibility =
-            mojom::ActuationEligibility::kEnterpriseWithoutManagement;
-        break;
-      case CannotActReason::kNone:
-        NOTREACHED();
-    }
-  }
-
-  return result;
-}
 
 }  // namespace
 
@@ -1411,8 +1362,9 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
     skills::Skill skill(request->id, request->name, request->icon,
                         request->prompt, request->description,
                         FromMojomSkillSource(request->source));
-    host().skills_manager().LaunchSkillsDialog(profile_, std::move(skill),
-                                               std::move(scoped_callback));
+    host().skills_manager().LaunchSkillsDialog(
+        profile_, std::move(skill), skills::mojom::SkillsDialogType::kAdd,
+        std::move(scoped_callback));
 #else
     receiver_.ReportBadMessage("CreateSkill isn't supported on Android.");
 #endif  //  !BUILDFLAG(IS_ANDROID)
@@ -1436,8 +1388,9 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
         skills::SkillsServiceFactory::GetForProfile(profile_);
     if (const skills::Skill* skill =
             skills_service->GetSkillById(request->id)) {
-      host().skills_manager().LaunchSkillsDialog(profile_, *skill,
-                                                 std::move(scoped_callback));
+      host().skills_manager().LaunchSkillsDialog(
+          profile_, *skill, skills::mojom::SkillsDialogType::kEdit,
+          std::move(scoped_callback));
     }
 #else
     receiver_.ReportBadMessage("UpdateSkill isn't supported on Android.");
@@ -1765,6 +1718,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
 
     // TODO(crbug.com/462769104): move this to a non-metrics API.
     sharing_manager().OnConversationTurnSubmitted();
+    host().instance_delegate().OnUserInputSubmitted(mode);
   }
 
   void OnContextUploadStarted() override {
@@ -2118,6 +2072,25 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
       web_client_->NotifySkillDeleted(skill_id.data());
     } else {
       web_client_->NotifySkillPreviewChanged(std::move(skill->preview));
+    }
+  }
+
+  // SkillsService::Observer implementation.
+  void OnTemporarySkillDisplay(
+      std::string_view skill_id,
+      skills::SkillsService::DisplayState display_state) override {
+    if (!web_client_) {
+      return;
+    }
+    switch (display_state) {
+      case skills::SkillsService::DisplayState::kDeleted:
+        web_client_->NotifySkillDeleted(skill_id.data());
+        break;
+      case skills::SkillsService::DisplayState::kReshown:
+        mojom::SkillPtr skill = GetSkillById(skill_id);
+        CHECK(skill);
+        web_client_->NotifySkillPreviewChanged(std::move(skill->preview));
+        break;
     }
   }
 
@@ -2647,46 +2620,6 @@ void GlicPageHandler::EnableDragResize(bool enabled) {
 
 void GlicPageHandler::WebUiStateChanged(glic::mojom::WebUiState new_state) {
   host().WebUiStateChanged(this, new_state);
-}
-
-void GlicPageHandler::GetInternalsDataPayload(
-    GetInternalsDataPayloadCallback callback) {
-  mojom::InternalsDataPayloadPtr payload = mojom::InternalsDataPayload::New();
-
-  payload->enablement = BuildProfileEnablement(
-      browser_context_, GetGlicService()->actor_policy_checker());
-
-  mojom::ConfigInfoPtr config = mojom::ConfigInfo::New();
-  config->guest_url = GetGuestURL();
-  config->fre_guest_url =
-      GetFreURL(Profile::FromBrowserContext(browser_context_));
-
-  config->autopush_guest_url = GURL(g_browser_process->local_state()->GetString(
-      prefs::kGlicGuestUrlPresetAutopush));
-  config->staging_guest_url = GURL(g_browser_process->local_state()->GetString(
-      prefs::kGlicGuestUrlPresetStaging));
-  config->preprod_guest_url = GURL(g_browser_process->local_state()->GetString(
-      prefs::kGlicGuestUrlPresetPreprod));
-  config->prod_guest_url = GURL(g_browser_process->local_state()->GetString(
-      prefs::kGlicGuestUrlPresetProd));
-
-  payload->config = std::move(config);
-
-  std::move(callback).Run(std::move(payload));
-}
-
-void GlicPageHandler::SetGuestUrlPresets(const GURL& autopush_url,
-                                         const GURL& staging_url,
-                                         const GURL& preprod_url,
-                                         const GURL& prod_url) {
-  g_browser_process->local_state()->SetString(
-      prefs::kGlicGuestUrlPresetAutopush, autopush_url.spec());
-  g_browser_process->local_state()->SetString(prefs::kGlicGuestUrlPresetStaging,
-                                              staging_url.spec());
-  g_browser_process->local_state()->SetString(prefs::kGlicGuestUrlPresetPreprod,
-                                              preprod_url.spec());
-  g_browser_process->local_state()->SetString(prefs::kGlicGuestUrlPresetProd,
-                                              prod_url.spec());
 }
 
 void GlicPageHandler::PanelStateChanged(

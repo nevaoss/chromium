@@ -244,7 +244,6 @@ class TouchToFillDelegateAndroidImplUnitTest
   TouchToFillDelegateAndroidImplUnitTest() {
     features_.InitWithFeatures(
         {features::kAutofillEnableLoyaltyCardsFilling,
-         features::kAutofillEnableEmailOrLoyaltyCardsFilling,
          features::kAutofillEnableBuyNowPayLaterSyncing},
         {});
     // Some date after in the 2000s because Autofill doesn't allow expiration
@@ -379,7 +378,7 @@ TEST_F(TouchToFillDelegateAndroidImplUnitTest,
        BnplSuggestionSelected_WithValidAmount) {
   std::optional<int64_t> extracted_amount = 12345;
   EXPECT_CALL(*autofill_manager().GetPaymentsBnplManager(),
-              OnDidAcceptBnplSuggestion(extracted_amount, _));
+              OnUserDecisionToUseBnpl(extracted_amount, _));
 
   touch_to_fill_delegate_->BnplSuggestionSelected(extracted_amount);
 }
@@ -387,7 +386,7 @@ TEST_F(TouchToFillDelegateAndroidImplUnitTest,
 TEST_F(TouchToFillDelegateAndroidImplUnitTest,
        BnplSuggestionSelected_WithNullAmount) {
   EXPECT_CALL(*autofill_manager().GetPaymentsBnplManager(),
-              OnDidAcceptBnplSuggestion(testing::Eq(std::nullopt), _));
+              OnUserDecisionToUseBnpl(testing::Eq(std::nullopt), _));
 
   touch_to_fill_delegate_->BnplSuggestionSelected(
       /*extracted_amount=*/std::nullopt);
@@ -402,7 +401,7 @@ TEST_F(TouchToFillDelegateAndroidImplUnitTest,
 
   base::OnceCallback<void(const CreditCard&)> captured_callback;
   EXPECT_CALL(*autofill_manager().GetPaymentsBnplManager(),
-              OnDidAcceptBnplSuggestion(_, _))
+              OnUserDecisionToUseBnpl)
       .WillOnce([&](std::optional<uint64_t> amount,
                     base::OnceCallback<void(const CreditCard&)> callback) {
         captured_callback = std::move(callback);
@@ -432,7 +431,7 @@ TEST_F(TouchToFillDelegateAndroidImplUnitTest,
 
   base::OnceCallback<void(const CreditCard&)> captured_callback;
   EXPECT_CALL(*autofill_manager().GetPaymentsBnplManager(),
-              OnDidAcceptBnplSuggestion(_, _))
+              OnUserDecisionToUseBnpl)
       .WillOnce([&](std::optional<uint64_t> amount,
                     base::OnceCallback<void(const CreditCard&)> callback) {
         captured_callback = std::move(callback);

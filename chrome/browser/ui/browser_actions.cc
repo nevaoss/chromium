@@ -98,6 +98,7 @@
 #include "chrome/browser/ui/views/zoom/zoom_view_controller.h"
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
 #include "chrome/browser/ui/web_applications/web_app_dialog_utils.h"
+#include "chrome/browser/ui/webid/account_selection_view.h"
 #include "chrome/browser/ui/webui/side_panel/customize_chrome/customize_chrome_section.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/common/record_replay/record_replay_features.h"
@@ -400,6 +401,25 @@ void BrowserActions::InitializeBrowserActions() {
           .SetEnabled(true)
           .Build());
 
+  root_action_item_->AddChild(
+      actions::ActionItem::Builder(
+          base::BindRepeating(
+              [](BrowserWindowInterface* bwi, actions::ActionItem* item,
+                 actions::ActionInvocationContext context) {
+                if (!bwi) {
+                  return;
+                }
+                if (auto* fedcm_view = AccountSelectionView::Get(
+                        bwi->GetActiveTabInterface()
+                            ->GetUnownedUserDataHost())) {
+                  fedcm_view->OnPageActionClicked();
+                }
+              },
+              bwi))
+          .SetActionId(kActionFederation)
+          .SetEnabled(true)
+          .Build());
+
   if (base::FeatureList::IsEnabled(
           content_settings::features::
               kBlockV8OptimizerOnUnfamiliarSitesSetting)) {
@@ -686,6 +706,8 @@ void BrowserActions::InitializeBrowserActions() {
                 },
                 bwi))
             .SetActionId(kActionToggleProjectsPanel)
+            .SetImage(ui::ImageModel::FromVectorIcon(
+                kSavedTabGroupBarEverythingIcon, ui::kColorIcon))
             .Build());
   }
 
@@ -702,7 +724,8 @@ void BrowserActions::InitializeBrowserActions() {
               l10n_util::GetStringUTF16(IDS_NEW_TAB)))
           .SetTooltipText(BrowserActions::GetCleanTitleAndTooltipText(
               l10n_util::GetStringUTF16(IDS_NEW_TAB)))
-          .SetImage(ui::ImageModel::FromVectorIcon(kAddIcon, ui::kColorIcon))
+          .SetImage(ui::ImageModel::FromVectorIcon(vector_icons::kAddIcon,
+                                                   ui::kColorIcon))
           .Build());
 
   root_action_item_->AddChild(

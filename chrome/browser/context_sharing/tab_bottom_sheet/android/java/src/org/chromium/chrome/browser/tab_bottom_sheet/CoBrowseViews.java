@@ -4,15 +4,20 @@
 
 package org.chromium.chrome.browser.tab_bottom_sheet;
 
+import static org.chromium.build.NullUtil.assertNonNull;
+
 import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
 
+import org.jni_zero.CalledByNative;
+
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.context_sharing.R;
+import org.chromium.content_public.browser.WebContents;
 
 /** Class responsible for holding the co-browse view and its respective components. */
 @NullMarked
@@ -21,6 +26,7 @@ public class CoBrowseViews {
     private final @Nullable TabBottomSheetWebUi mWebUi;
     private final @Nullable TabBottomSheetFusebox mFusebox;
     private final View mView;
+    private @Nullable View mPeekView;
 
     /**
      * Constructor for CoBrowseViews.
@@ -41,6 +47,18 @@ public class CoBrowseViews {
         mView = buildView(context);
     }
 
+    /** Sets the touch handler for the Web UI container. */
+    public void setWebUiTouchHandler(TabBottomSheetWebUiContainer.TouchHandler touchHandler) {
+        TabBottomSheetWebUiContainer webUiContainer =
+                assertNonNull(mView.findViewById(R.id.web_ui_container));
+        webUiContainer.setTouchHandler(touchHandler);
+    }
+
+    /** Returns whether the toolbar is present. */
+    public boolean hasToolbar() {
+        return mToolbar != null;
+    }
+
     /** Returns the view for the co-browse content. */
     public View getView() {
         return mView;
@@ -50,6 +68,7 @@ public class CoBrowseViews {
         ViewGroup toolbarContainer = mView.findViewById(R.id.toolbar_container);
         ViewGroup webUiContainer = mView.findViewById(R.id.web_ui_container);
         ViewGroup fuseboxContainer = mView.findViewById(R.id.fusebox_container);
+        ViewGroup peekContainer = mView.findViewById(R.id.actor_control_container);
         if (mToolbar != null) {
             toolbarContainer.removeAllViews();
         }
@@ -60,6 +79,25 @@ public class CoBrowseViews {
         if (mFusebox != null) {
             fuseboxContainer.removeAllViews();
             mFusebox.destroy();
+        }
+        if (mPeekView != null) {
+            peekContainer.removeAllViews();
+        }
+    }
+
+    /** Attaches the peek view for the co-browse content. */
+    public void attachPeekView(View peekView) {
+        ViewGroup peekContainer = mView.findViewById(R.id.actor_control_container);
+        assert peekContainer.getChildCount() == 0;
+        mPeekView = peekView;
+        peekContainer.addView(mPeekView);
+    }
+
+    /** Sets the WebContents of the WebUi. */
+    @CalledByNative
+    public void setWebContents(@Nullable WebContents webContents) {
+        if (mWebUi != null) {
+            mWebUi.setWebContents(webContents);
         }
     }
 
@@ -95,6 +133,10 @@ public class CoBrowseViews {
         }
     }
 
+    @Nullable WebContents getWebContents() {
+        return mWebUi != null ? mWebUi.getWebContents() : null;
+    }
+
     int getThinWebViewHeight() {
         if (mWebUi != null) {
             return mWebUi.getWebUiView().getHeight();
@@ -121,6 +163,7 @@ public class CoBrowseViews {
         ViewGroup toolbarContainer = view.findViewById(R.id.toolbar_container);
         ViewGroup webUiContainer = view.findViewById(R.id.web_ui_container);
         ViewGroup fuseboxContainer = view.findViewById(R.id.fusebox_container);
+        ViewGroup peekContainer = view.findViewById(R.id.actor_control_container);
 
         if (mToolbar != null) {
             toolbarContainer.addView(mToolbar.getToolbarView());
@@ -130,6 +173,9 @@ public class CoBrowseViews {
         }
         if (mFusebox != null) {
             fuseboxContainer.addView(mFusebox.getFuseboxView());
+        }
+        if (mPeekView != null) {
+            peekContainer.addView(mPeekView);
         }
 
         return view;

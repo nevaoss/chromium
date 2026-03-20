@@ -418,7 +418,7 @@ bool IsRootEditableElementWithCounting(const Element& element) {
   }
   auto user_modify = style->UsedUserModify();
   AtomicString ce_value =
-      element.FastGetAttribute(html_names::kContenteditableAttr).LowerASCII();
+      element.FastGetAttribute(html_names::kContenteditableAttr).ToAsciiLower();
   if (ce_value.IsNull() || ce_value == keywords::kFalse) {
     if (user_modify == EUserModify::kReadWritePlaintextOnly) {
       UseCounter::Count(doc, WebFeature::kPlainTextEditingEffective);
@@ -1840,7 +1840,7 @@ bool Element::IsDialogInTopLayer() {
 // foo was opened with `foo.showPopover()` (no invoker specified), then this
 // function will return nullptr.
 HTMLElement* Element::GetOpenPopoverTarget() const {
-  if (!IsFocusable() || !IsInTreeScope()) {
+  if (!IsInTreeScope()) {
     return nullptr;
   }
   InvokerData* data = GetInvokerData();
@@ -2147,7 +2147,7 @@ const AtomicString& Element::getAttribute(const QualifiedName& name) const {
 
 AtomicString Element::LowercaseIfNecessary(AtomicString name) const {
   return IsHTMLElement() && IsA<HTMLDocument>(GetDocument())
-             ? AtomicString::LowerASCII(std::move(name))
+             ? AtomicString::ToAsciiLower(std::move(name))
              : std::move(name);
 }
 
@@ -3775,7 +3775,7 @@ void Element::AttributeChanged(const AttributeModificationParams& params) {
     AtomicString lowercase_id;
     if (GetDocument().InQuirksMode() &&
         !params.new_value.ContainsNoAsciiUpper()) {
-      lowercase_id = params.new_value.LowerASCII();
+      lowercase_id = params.new_value.ToAsciiLower();
     }
     const AtomicString& new_id = lowercase_id ? lowercase_id : params.new_value;
     if (new_id != GetElementData()->IdForStyleResolution()) {
@@ -3814,8 +3814,6 @@ void Element::AttributeChanged(const AttributeModificationParams& params) {
   } else if (name == html_names::kPartAttr) {
     part().DidUpdateAttributeValue(params.old_value, params.new_value);
     GetDocument().GetStyleEngine().PartChangedForElement(*this);
-  } else if (name == html_names::kMarkerAttr) {
-    marker().DidUpdateAttributeValue(params.old_value, params.new_value);
   } else if (name == html_names::kExportpartsAttr) {
     data_ = EnsureRareData().SetPartNamesMap(params.new_value);
     GetDocument().GetStyleEngine().ExportpartsChangedForElement(*this);
@@ -3864,6 +3862,10 @@ void Element::AttributeChanged(const AttributeModificationParams& params) {
       // figure out which elements are contained by it without doing a subtree
       // recalc.
       SetNeedsStyleRecalc(kSubtreeStyleChange,
+                          StyleChangeReasonForTracing::FromAttribute(name));
+    } else {
+      // Handle types of overscroll changes.
+      SetNeedsStyleRecalc(kLocalStyleChange,
                           StyleChangeReasonForTracing::FromAttribute(name));
     }
   } else if (IsStyledElement()) {
@@ -4028,7 +4030,7 @@ bool Element::IsExcludedAttribute(
       qname.LocalName().ContainsNoAsciiUpper()) {
     return false;
   }
-  const QualifiedName lower_local_qname(qname.LocalName().LowerASCII());
+  const QualifiedName lower_local_qname(qname.LocalName().ToAsciiLower());
   return lower_local_qname.IsDefinedName();
 }
 
@@ -4144,7 +4146,7 @@ AtomicString Element::LocalNameForSelectorMatching() const {
   if (IsHTMLElement() || !IsA<HTMLDocument>(GetDocument())) {
     return localName();
   }
-  return localName().LowerASCII();
+  return localName().ToAsciiLower();
 }
 
 const AtomicString& Element::LocateNamespacePrefix(
@@ -4199,6 +4201,11 @@ Node::InsertionNotificationRequest Element::InsertedInto(
   auto* parent = ParentOrShadowHostElement();
   if (parent && parent->IsCanvasOrInCanvasSubtree()) {
     SetIsCanvasOrInCanvasSubtree(true);
+  } else if (!parent && insertion_point.IsDocumentNode()) {
+    auto* owner = GetDocument().LocalOwner();
+    if (owner && owner->IsCanvasOrInCanvasSubtree()) {
+      SetIsCanvasOrInCanvasSubtree(true);
+    }
   }
 
   if (!insertion_point.IsInTreeScope()) {
@@ -5693,9 +5700,7 @@ StyleRecalcChange Element::RecalcOwnStyle(
     if (IsPseudoElement() && new_style->MayUseImplicitAnchor()) {
       UseCounter::Count(GetDocument(),
                         WebFeature::kCSSPseudoElementUsesImplicitAnchor);
-      if (RuntimeEnabledFeatures::OriginatingElementIsImplicitAnchorEnabled()) {
-        parentElement()->SetMayBeImplicitAnchor();
-      }
+      parentElement()->SetMayBeImplicitAnchor();
     }
   }
 
@@ -6473,10 +6478,9 @@ void Element::UpdateAncestorWithDirAuto(UpdateAncestorTraversal traversal) {
   }
 }
 
-ShadowRoot& Element::CreateAndAttachShadowRoot(
-    ShadowRootMode type,
-    SlotAssignmentMode mode,
-    const Vector<AtomicString>& markers) {
+ShadowRoot& Element::CreateAndAttachShadowRoot(ShadowRootMode type,
+                                               SlotAssignmentMode mode,
+                                               const AtomicString& marker) {
 #if DCHECK_IS_ON()
   NestingLevelIncrementer slot_assignment_recalc_forbidden_scope(
       GetDocument().SlotAssignmentRecalcForbiddenRecursionDepth());
@@ -6488,7 +6492,7 @@ ShadowRoot& Element::CreateAndAttachShadowRoot(
   DCHECK(!GetShadowRoot());
 
   auto* shadow_root =
-      MakeGarbageCollected<ShadowRoot>(GetDocument(), type, mode, markers);
+      MakeGarbageCollected<ShadowRoot>(GetDocument(), type, mode, marker);
 
   if (InActiveDocument()) {
     // We need to call child.RemovedFromFlatTree() before setting a shadow
@@ -7417,14 +7421,10 @@ ShadowRoot* Element::attachShadow(const ShadowRootInit* shadow_root_init_dict,
           ? AtomicString(shadow_root_init_dict->referenceTarget())
           : g_null_atom;
 
-  Vector<AtomicString> marker_list;
+  AtomicString marker = g_null_atom;
   if (shadow_root_init_dict->hasMarker()) {
     CHECK(RuntimeEnabledFeatures::DocumentPatchingEnabled());
-    const auto& marker_from_dict = shadow_root_init_dict->marker();
-    marker_list.ReserveInitialCapacity(marker_from_dict.size());
-    for (const auto& marker_string : marker_from_dict) {
-      marker_list.push_back(AtomicString(marker_string));
-    }
+    marker = AtomicString(shadow_root_init_dict->marker());
   }
 
   // 1. Let registry be this's custom element registry.
@@ -7480,7 +7480,7 @@ ShadowRoot* Element::attachShadow(const ShadowRootInit* shadow_root_init_dict,
 
   ShadowRoot& shadow_root = AttachShadowRootInternal(
       mode, focus_delegation, slot_assignment, registry, serializable, clonable,
-      reference_target, marker_list);
+      reference_target, marker);
 
   // Ensure that the returned shadow root is not marked as declarative so that
   // attachShadow() calls after the first one do not succeed for a shadow host
@@ -7499,7 +7499,7 @@ bool Element::AttachDeclarativeShadowRoot(
     const AtomicString& adopted_stylesheets,
     const AtomicString& reference_target,
     const bool waiting_for_scoped_registry,
-    const Vector<AtomicString>& markers) {
+    const AtomicString& marker) {
   // 12. Run attach a shadow root with shadow host equal to declarative shadow
   // host element, mode equal to declarative shadow mode, and delegates focus
   // equal to declarative shadow delegates focus. If an exception was thrown by
@@ -7529,7 +7529,7 @@ bool Element::AttachDeclarativeShadowRoot(
 
   ShadowRoot& shadow_root = AttachShadowRootInternal(
       mode, focus_delegation, slot_assignment, registry, serializable, clonable,
-      reference_target, markers);
+      reference_target, marker);
   // 10.8.5. Set declarative shadow host element's shadow host's "is declarative
   // shadow root" property to true.
   shadow_root.SetIsDeclarativeShadowRoot(true);
@@ -7553,7 +7553,7 @@ ShadowRoot& Element::CreateUserAgentShadowRoot(SlotAssignmentMode mode) {
   DCHECK(!GetShadowRoot());
   GetDocument().SetContainsShadowRoot();
   return CreateAndAttachShadowRoot(ShadowRootMode::kUserAgent, mode,
-                                   Vector<AtomicString>());
+                                   g_null_atom);
 }
 
 ShadowRoot& Element::AttachShadowRootInternal(
@@ -7564,7 +7564,7 @@ ShadowRoot& Element::AttachShadowRootInternal(
     bool serializable,
     bool clonable,
     const AtomicString& reference_target,
-    const Vector<AtomicString>& markers) {
+    const AtomicString& marker) {
   // SVG <use> is a special case for using this API to create a closed shadow
   // root.
   DCHECK(CanAttachShadowRoot() || IsA<SVGUseElement>(*this));
@@ -7589,7 +7589,7 @@ ShadowRoot& Element::AttachShadowRootInternal(
   // 5. Let shadow be a new shadow root whose node document is this’s node
   // document, host is this, and mode is init’s mode.
   ShadowRoot& shadow_root =
-      CreateAndAttachShadowRoot(type, slot_assignment_mode, markers);
+      CreateAndAttachShadowRoot(type, slot_assignment_mode, marker);
   // 6. Set shadow’s delegates focus to init’s delegatesFocus.
   shadow_root.SetDelegatesFocus(focus_delegation ==
                                 FocusDelegation::kDelegateFocus);
@@ -7625,7 +7625,7 @@ ShadowRoot& Element::AttachShadowRootForTesting(ShadowRootMode type) {
                                   /*serializable*/ false,
                                   /*clonable*/ false,
                                   /*reference_target*/ g_null_atom,
-                                  /*markers*/ Vector<AtomicString>());
+                                  /*marker*/ g_null_atom);
 }
 
 ShadowRoot* Element::OpenShadowRoot() const {
@@ -8844,10 +8844,11 @@ bool Element::ActivateDisplayLockIfNeeded(DisplayLockActivationReason reason) {
   return activated;
 }
 
-void Element::SetIsAdRelated() {
+void Element::SetIsAdRelated(AdProvenance ad_provenance) {
   DCHECK(!IsA<HTMLFrameOwnerElement>(this));
 
-  UnpackAndRefresh(EnsureRareData().EnsureDisplayAdElementMonitor(this));
+  UnpackAndRefresh(EnsureRareData().EnsureDisplayAdElementMonitor(
+      this, std::move(ad_provenance)));
 
   probe::UpdateAdRelatedState(*this, /*is_ad_related=*/true);
 }
@@ -10073,7 +10074,14 @@ bool Element::ShouldStoreComputedStyle(const ComputedStyle& style) const {
 
 bool Element::IsInCanvasSubtree() const {
   auto* parent = ParentOrShadowHostElement();
-  return parent && parent->IsCanvasOrInCanvasSubtree();
+  if (parent) {
+    return parent->IsCanvasOrInCanvasSubtree();
+  }
+  if (!isConnected()) {
+    return false;
+  }
+  auto* owner = GetDocument().LocalOwner();
+  return owner && owner->IsCanvasOrInCanvasSubtree();
 }
 
 AtomicString Element::ComputeInheritedLanguage() const {
@@ -10439,9 +10447,7 @@ bool Element::SetAssociatedPseudoElement(
   if (pseudo_style->MayUseImplicitAnchor()) {
     UseCounter::Count(GetDocument(),
                       WebFeature::kCSSPseudoElementUsesImplicitAnchor);
-    if (RuntimeEnabledFeatures::OriginatingElementIsImplicitAnchorEnabled()) {
-      SetMayBeImplicitAnchor();
-    }
+    SetMayBeImplicitAnchor();
   }
 
   // Since we just styled a new pseudo element, we have to inform its potential
@@ -12197,26 +12203,6 @@ DOMTokenList& Element::part() {
   return *part;
 }
 
-DOMTokenList* Element::GetMarker() const {
-  if (!RuntimeEnabledFeatures::DocumentPatchingEnabled()) {
-    return nullptr;
-  }
-  if (const ElementRareDataVector* data = RareData()) {
-    return data->GetMarker();
-  }
-  return nullptr;
-}
-
-DOMTokenList& Element::marker() {
-  ElementRareDataVector& rare_data = EnsureRareData();
-  DOMTokenList* marker = rare_data.GetMarker();
-  if (!marker) {
-    marker = MakeGarbageCollected<DOMTokenList>(*this, html_names::kMarkerAttr);
-    data_ = rare_data.SetMarker(marker);
-  }
-  return *marker;
-}
-
 bool Element::HasPartNamesMap() const {
   const NamesMap* names_map = PartNamesMap();
   return names_map && names_map->size() > 0;
@@ -12472,16 +12458,20 @@ void Element::ScheduleInterestChangesIfNeeded(InterestSource source) {
           upstream_invoker->GetInvokerData()->GetInterestState() !=
               InterestState::kNoInterest));
   if (source == InterestSource::kHover || source == InterestSource::kFocus) {
+    bool suppress_focus_interest = false;
     if (invoker_data) [[unlikely]] {
       invoker_data->CancelInterestLostTask();
+      suppress_focus_interest = source == InterestSource::kFocus &&
+                                invoker_data->SuppressNextFocusInterest();
+      invoker_data->SetSuppressNextFocusInterest(false);
     }
     for (Member<Element> upstream : AllSourceInterestInvokers(*this)) {
       upstream->GetInvokerData()->CancelInterestLostTask();
     }
     if (auto* target = InterestForElement();
-        target && (!invoker_data || invoker_data->GetInterestState() ==
-                                        InterestState::kNoInterest))
-        [[unlikely]] {
+        target && !suppress_focus_interest &&
+        (!invoker_data || invoker_data->GetInterestState() ==
+                              InterestState::kNoInterest)) [[unlikely]] {
       // This is an interest invoker that doesn't already have interest, and was
       // just hovered or focused. Schedule an InterestGained task.
       ScheduleInterestGainedTask();
@@ -13190,7 +13180,7 @@ Attr* Element::setAttributeNode(Attr* attr_node,
   }
 
   if (!IsHTMLElement() && IsA<HTMLDocument>(attr_node->GetDocument()) &&
-      attr_node->name() != attr_node->name().LowerASCII()) {
+      attr_node->name() != attr_node->name().ToAsciiLower()) {
     UseCounter::Count(
         GetDocument(),
         WebFeature::
@@ -13366,12 +13356,7 @@ Element* Element::ImplicitAnchorElement() const {
       case kPseudoIdScrollButtonInlineEnd:
       case kPseudoIdScrollButtonBlockEnd:
       case kPseudoIdOverscrollAreaParent:
-        if (RuntimeEnabledFeatures::
-                OriginatingElementIsImplicitAnchorEnabled()) {
-          return parentElement();
-        }
-        return pseudo_element->UltimateOriginatingElement()
-            .ImplicitAnchorElement();
+        return parentElement();
       default:
         return nullptr;
     }

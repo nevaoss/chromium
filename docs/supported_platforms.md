@@ -152,9 +152,26 @@ OS version supported is listed [here](https://support.google.com/chrome/a/answer
 The `is_desktop_android` GN arg configures a build of Chrome for Android that
 is customized for a desktop form factor.
 
+Chrome also runs on Android Automotive, shipping Chrome Beta on Intel-based
+chips and both Chrome Beta and Chrome Stable on ARM. Chrome's minimum
+supported OS version for Android Automotive is Android R.
+
 ### ChromeOS
 
-Chrome follows the [ChromeOS auto-update
+Chrome for ChromeOS supports both x86-64 and ARM architectures. For
+development and testing, the linux-chromeos build serves as an emulator,
+providing a functional ChromeOS environment on Linux.
+
+Unlike its counterparts on other platforms, Chrome for ChromeOS is not merely
+a web browser; it is a monolithic binary responsible for the System UI, Window
+Management, and core system services. While //ash currently encapsulates the
+System UIs and Window Manager and //chromeos houses platform-specific
+components, the //chrome directory still retains significant legacy
+system-level logic. Active refactoring is underway to migrate these
+non-browser concerns into //ash and //chromeos to improve modular isolation
+and reduce technical debt.
+
+Chrome for ChromeOS follows the [ChromeOS auto-update
 policy](https://support.google.com/chrome/a/answer/6220366).
 
 ### Linux
@@ -192,6 +209,11 @@ Android WebView is an Android system component for displaying web content.
 The embedder code for Android WebView lives in //android_webview. Details are
 [here](https://chromium.googlesource.com/chromium/src/+/main/android_webview/README.md).
 
+Currently (and for all past versions), WebView supports exactly the same
+architectures and Android OS versions as the same version of Chrome on Android
+does. It's theoretically possible that this may change in the future, but not
+that likely.
+
 ### Chromecast
 
 The embedder code for Chromecast lives in //chromecast. This code is used to
@@ -208,6 +230,15 @@ Details are [here](https://chromium.googlesource.com/chromium/src/chromecast/REA
 
 Cronet is an Android library that packages Chromium's network stack. The
 embedder code for Cronet lives in //components/cronet. Details are [here](https://chromium.googlesource.com/chromium/src/+/main/components/cronet/README.md).
+
+One particularity of Cronet is that at any given time it may be supported on a
+broader range of Android versions than Chrome on Android due to aligning
+with [Google Play Services minSDK](https://android-developers.googleblog.com/search/label/Google%20Play%20services). For example, as of
+March 2026, Cronet is supported on Android M+ whereas Chrome on Android is
+supported on Android Q+. This has the implication that Chromium code that is
+used as part of Cronet must be able to build and run with the minimum Android
+version that Cronet supports rather than just the minimum Android version that
+Chrome on Android supports.
 
 ### Fuchsia WebEngine
 

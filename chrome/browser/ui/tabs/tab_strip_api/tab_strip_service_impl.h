@@ -21,6 +21,11 @@ namespace events {
 class TabStripEventRecorder;
 }  // namespace events
 
+// To prevent re-entrancy, we use a session recorder to queue up all events
+// received during a subroutine. Once subroutine completes, we notify all
+// clients of the observed events before returning the result of the method
+// invocation. This behaviour is important for the mojo layer. See the tab
+// strip api mojo handler for more details.
 class TabStripServiceImpl : public TabStripService {
  public:
   TabStripServiceImpl(BrowserWindowInterface* browser,
@@ -58,6 +63,10 @@ class TabStripServiceImpl : public TabStripService {
   UpdateTabGroupVisual(
       const tabs_api::NodeId& id,
       const tab_groups::TabGroupVisualData& visual_data) override;
+  mojom::TabStripExperimentService::ReplaceTabInSplitResult ReplaceTabInSplit(
+      const tabs_api::NodeId& tab_to_replace,
+      const tabs_api::NodeId& tab_to_insert) override;
+
   mojom::TabStripExperimentService::ShowTabContextMenuResult ShowTabContextMenu(
       const tabs_api::NodeId& tab_id,
       const gfx::Point& location) override;

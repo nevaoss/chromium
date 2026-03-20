@@ -92,7 +92,7 @@ bool IsValidMimeType(const String& mime_type) {
 bool VerifyFiles(const Vector<mojom::blink::ManifestFileFilterPtr>& files) {
   for (const auto& file : files) {
     for (const auto& accept_type : file->accept) {
-      if (!IsValidMimeType(accept_type.LowerASCII())) {
+      if (!IsValidMimeType(accept_type.ToAsciiLower())) {
         return false;
       }
     }
@@ -1516,7 +1516,7 @@ ManifestParser::ParseShareTargetMethod(const JSONObject* share_target_object) {
     return std::nullopt;
   }
 
-  String method = value.UpperASCII();
+  String method = value.ToAsciiUpper();
   if (method == "GET") {
     return mojom::blink::ManifestShareTarget::Method::kGet;
   }
@@ -1542,7 +1542,7 @@ ManifestParser::ParseShareTargetEnctype(const JSONObject* share_target_object) {
     return std::nullopt;
   }
 
-  String enctype = value.LowerASCII();
+  String enctype = value.ToAsciiLower();
   if (enctype == "application/x-www-form-urlencoded") {
     return mojom::blink::ManifestShareTarget::Enctype::kFormUrlEncoded;
   }
@@ -1893,7 +1893,10 @@ ManifestParser::ParseProtocolHandler(const JSONObject* object) {
     const char kToken[] = "%s";
     String user_url = protocol_handler->url.GetString();
     String tokenless_url = protocol_handler->url.GetString();
-    tokenless_url.Remove(user_url.find(kToken), std::size(kToken) - 1);
+    string_size_t token_position = user_url.find(kToken);
+    if (token_position != String::npos) {
+      tokenless_url.erase(token_position, std::size(kToken) - 1);
+    }
     KURL full_url(manifest_url_, tokenless_url);
 
     if (!VerifyCustomHandlerURLSyntax(full_url, manifest_url_, user_url,
@@ -2030,7 +2033,7 @@ ManifestParser::ParseScopeExtensionOrigin(const String& origin_string) {
     scope_extension->has_origin_wildcard = true;
     // Trim the wildcard prefix to get the effective host. Minus one to exclude
     // the length of the null terminator.
-    host = host.Substring(sizeof(kOriginWildcardPrefix) - 1);
+    host = host.substr(sizeof(kOriginWildcardPrefix) - 1);
   } else {
     scope_extension->has_origin_wildcard = false;
   }

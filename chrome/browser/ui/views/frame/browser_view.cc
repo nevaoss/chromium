@@ -196,7 +196,6 @@
 #include "chrome/browser/ui/views/sharing_hub/sharing_hub_icon_view.h"
 #include "chrome/browser/ui/views/side_panel/side_panel.h"
 #include "chrome/browser/ui/views/side_panel/side_panel_coordinator.h"
-#include "chrome/browser/ui/views/side_panel/side_panel_util.h"
 #include "chrome/browser/ui/views/status_bubble_views.h"
 #include "chrome/browser/ui/views/tab_contents/chrome_web_contents_view_focus_helper.h"
 #include "chrome/browser/ui/views/tab_search_bubble_host.h"
@@ -1285,7 +1284,7 @@ bool BrowserView::UsesImmersiveFullscreenMode() const {
 bool BrowserView::UsesImmersiveFullscreenTabbedMode() const {
   const bool is_pwa = GetIsWebAppType();
   const bool is_tabbed_window = GetSupportsTabStrip();
-  return is_tabbed_window && !is_pwa && !ShouldDrawVerticalTabStrip();
+  return is_tabbed_window && !is_pwa;
 }
 #endif
 
@@ -1532,7 +1531,7 @@ void BrowserView::OnVerticalTabStripModeChanged(
     horizontal_tab_strip_region_view_->InitializeTabStrip();
   }
 
-  ImmersiveModeController::From(browser())->OnVerticalTabStripModeChanged();
+  GetFrameView()->OnTabStripStateChanged();
 
   UpdateTabSearchBubbleHost();
   InvalidateLayout();
@@ -1638,6 +1637,13 @@ void BrowserView::Close() {
 }
 
 void BrowserView::Activate() {
+  if (browser_widget_->IsClosed()) {
+    // Since the activation is asynchronous, it's possible that the browser has
+    // been closed before the activation is ready, in this case, we don't have
+    // to continue.
+    return;
+  }
+
   if (auto* manager = InitialWebUIManager::From(browser())) {
     if (manager->RequestDeferShow(base::BindOnce(
             &BrowserView::Activate, weak_ptr_factory_.GetWeakPtr()))) {
@@ -4346,8 +4352,7 @@ const views::Widget* BrowserView::GetWidget() const {
   return View::GetWidget();
 }
 
-void BrowserView::CreateTabSearchBubble(
-    const tab_search::mojom::TabSearchSection section) {
+void BrowserView::CreateTabSearchBubble() {
   // Do not spawn the bubble if using the WebUITabStrip.
 #if BUILDFLAG(ENABLE_WEBUI_TAB_STRIP)
   if (WebUITabStripContainerView::UseTouchableTabStrip(browser_.get())) {
@@ -4356,7 +4361,7 @@ void BrowserView::CreateTabSearchBubble(
 #endif  // BUILDFLAG(ENABLE_WEBUI_TAB_STRIP)
 
   if (auto* tab_search_host = GetTabSearchBubbleHost()) {
-    tab_search_host->ShowTabSearchBubble(true, section);
+    tab_search_host->ShowTabSearchBubble(true);
   }
 }
 

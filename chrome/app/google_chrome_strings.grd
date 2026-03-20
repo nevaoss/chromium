@@ -2605,9 +2605,6 @@ Google Chrome is unable to recover your settings.
         <message name="IDS_APP_MENU_TOOLTIP_DEFAULT_PROMPT" desc="The tooltip to show for the browser menu when the default browser prompt is displayed">
           Customize and control Chrome. Set Chrome as your default.
         </message>
-        <message name="IDS_APP_MENU_BUTTON_DEFAULT_PROMPT" desc="Text in the browser menu chip indicating that the user can change their default browser">
-          Set Chrome as your default
-        </message>
         <message name="IDS_SET_BROWSER_AS_DEFAULT_MENU_ITEM" desc="Menu item that prompts user to set Chrome as their default browser.">
           Set Chrome as your default browser
         </message>
@@ -3024,7 +3021,7 @@ Google Chrome is unable to recover your settings.
       <message name="IDS_GLIC_PROMO_TITLE" desc="Gemini promo title.">
         Try Gemini in Google Chrome
       </message>
-      <message name="IDS_GLIC_TAB_STRIP_BUTTON_TOOLTIP" desc="This is the tooltip shown when hovering over the Gemini entry button in the tab strip while the Gemini window is closed.">
+      <message name="IDS_GLIC_TAB_STRIP_BUTTON_TOOLTIP" desc="This is the tooltip shown when hovering over the Gemini entry button in the tab strip while the Gemini window is closed." formatter_data="android_java">
         Open Gemini in Chrome
       </message>
       <message name="IDS_GLIC_TAB_STRIP_BUTTON_TOOLTIP_CLOSE" desc="This is the tooltip shown when hovering over the Gemini entry button in the tab strip while the Gemini window is open.">

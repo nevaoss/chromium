@@ -73,7 +73,6 @@ class GlicWebContentsWarmingPool;
 
 enum class GlicPrewarmingChecksResult;
 
-
 #if !BUILDFLAG(IS_ANDROID)  // Single instance only
 class GlicActorTaskManager;
 #endif
@@ -299,7 +298,13 @@ class GlicKeyedService : public KeyedService,
   bool IsActive() override;
 #endif
 
-  void OnUserInputSubmitted(glic::mojom::WebClientMode mode);
+  void OnUserInputSubmitted(glic::mojom::WebClientMode mode)
+// Override is only needed for single instance
+#if !BUILDFLAG(IS_ANDROID)
+      override;
+#else
+      ;
+#endif
 
   // Registers a callback to be called any time user input is submitted in the
   // client. This is used to update UI effects on tabs that are being shared
@@ -454,8 +459,6 @@ class GlicKeyedService : public KeyedService,
 
   // Never null - GlicActorTaskManager and GlicInstanceCoordinatorImpl hold a
   // reference to this so it must be destroyed after them.
-  // NEEDS_ANDROID_IMPL: This is temporarily null on Android until
-  // ActorKeyedService stops crashing at runtime.
   std::unique_ptr<GlicActorPolicyChecker> actor_policy_checker_;
 
   std::unique_ptr<GlicEnabling> enabling_;

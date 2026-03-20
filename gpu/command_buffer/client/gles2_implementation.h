@@ -122,6 +122,21 @@ class GLES2_IMPL_EXPORT GLES2Implementation : public GLES2Interface,
   // GLES2Interface implementation
   void FreeSharedMemory(void*) override;
   GLboolean DidGpuSwitch(gl::GpuPreference* active_gpu) final;
+  bool CanCopySharedImageToGLTextureViaTextureCopy(
+      ClientSharedImage* shared_image) override;
+  gpu::SyncToken CopySharedImageToGLTextureViaTextureCopy(
+      const gfx::Size& src_size,
+      const gfx::Rect& src_rect,
+      ClientSharedImage* source_shared_image,
+      const gpu::SyncToken& source_sync_token,
+      uint32_t target,
+      uint32_t texture,
+      uint32_t internal_format,
+      uint32_t format,
+      uint32_t type,
+      int32_t level,
+      SkAlphaType dst_alpha_type,
+      GrSurfaceOrigin dst_origin) override;
 
   // Include the auto-generated part of this class. We split this because
   // it means we can easily edit the non-auto generated parts right here in

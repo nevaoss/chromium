@@ -312,6 +312,11 @@ BASE_FEATURE(kAutofillAiWalletFlightReservation,
 // If enabled, AutofillAi supports private passes entities from Google Wallet.
 BASE_FEATURE(kAutofillAiWalletPrivatePasses, base::FEATURE_DISABLED_BY_DEFAULT);
 
+// If enabled, Wallet private pass entries in settings link to their pass
+// details page rather than the generic pass overview page.
+BASE_FEATURE(kAutofillAiWalletPrivatePassesDeepLink,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // If enabled, AutofillAi supports vehicle registration entities from Google
 // Wallet.
 BASE_FEATURE(kAutofillAiWalletVehicleRegistration,
@@ -368,6 +373,10 @@ BASE_FEATURE(kAutofillAndroidKeyboardAccessoryDynamicPositioning,
 // If @memory is enabled, typing "@@" in an input field triggers search popup,
 // allowing to recall and insert the info anywhere using plain language.
 BASE_FEATURE(kAutofillAtMemory, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Controls whether the Autosuggest nudging logic is used. If enabled, user are
+// encouraged to use the AtMemory feature.
+BASE_FEATURE(kAutofillAutosuggestNudge, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // When enabled, the placeholder is not considered a label fallback on the
 // renderer side anymore. Instead, local heuristic will match regexes against
@@ -512,12 +521,6 @@ BASE_FEATURE_PARAM(int,
                    "cache_size",
                    1000);
 
-// When enabled, Autofill will display joined email and loyalty card Autofill
-// suggestions.
-// TODO(crbug.com/416664590): Remove once launched.
-BASE_FEATURE(kAutofillEnableEmailOrLoyaltyCardsFilling,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 // Enables a couple of improvements to credit card expiration date handling:
 // - The autocomplete attribute values are rationalized with format strings
 //   like MM/YY from placeholders and labels in mind.
@@ -565,7 +568,6 @@ BASE_FEATURE(kAutofillEnableKeyboardAccessoryChipRedesign,
 BASE_FEATURE(kAutofillEnableKeyboardAccessoryChipWidthAdjustment,
              base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_ANDROID)
-
 
 // When enabled, Autofill will help users fill in loyalty card details.
 // TODO(crbug.com/395831853): Remove once launched.

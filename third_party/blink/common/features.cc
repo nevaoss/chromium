@@ -1021,6 +1021,8 @@ BASE_FEATURE(kIgnoreInputWhileHidden,
 
 BASE_FEATURE(kImageLoadingPrioritizationFix, base::FEATURE_DISABLED_BY_DEFAULT);
 
+BASE_FEATURE(kImageReplacement, base::FEATURE_DISABLED_BY_DEFAULT);
+
 #if !BUILDFLAG(IS_ANDROID)
 BASE_FEATURE(kInitialWebUIWithoutExtensions, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // !BUILDFLAG(IS_ANDROID)
@@ -2627,7 +2629,7 @@ BASE_FEATURE(kWebAppEnableScopeExtensionsForIsolatedWebApps,
 // Controls parsing and usage of localized fields in web app manifests.
 // See spec for more information:
 // https://www.w3.org/TR/appmanifest/#x_localized-members
-BASE_FEATURE(kWebAppManifestLocalization, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kWebAppManifestLocalization, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Controls parsing of the "lock_screen" dictionary field and its "start_url"
 // entry in web app manifests.  See explainer for more information:
@@ -2728,6 +2730,21 @@ bool DisplayWarningDeprecateURNIframesUseFencedFrames() {
 
 bool IsFencedFramesEnabled() {
   return base::FeatureList::IsEnabled(blink::features::kFencedFrames);
+}
+
+// Purge on renderer backgrounding is disabled on Android. On mobile Android,
+// it's redundant with the purge that occurs on page freezing (unlike on
+// desktop, freezing is applied to most background pages on mobile Android). A
+// field trial confirmed that an additional purge is not necessary. See
+// https://bugs.chromium.org/p/chromium/issues/detail?id=1335069#c3.
+bool IsMemoryPurgeOnBackgroundingEnabled() {
+  return
+#if BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_DESKTOP_ANDROID)
+      false
+#else
+      true
+#endif
+      ;
 }
 
 bool IsParkableStringsToDiskEnabled() {

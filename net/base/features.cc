@@ -783,4 +783,13 @@ BASE_FEATURE(kDrainSpdySessionSynchronouslyOnRemoteEndpointDisconnect,
 
 BASE_FEATURE(kLogicalClearHttpCache, base::FEATURE_DISABLED_BY_DEFAULT);
 
+BASE_FEATURE(kSQLitePersistentCookieStoreEarlyInit,
+             "SQLitePersistentCookieStoreEarlyInit",
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+const base::FeatureParam<bool> kSQLitePersistentCookieStoreEarlyInitCheckDisk{
+    &kSQLitePersistentCookieStoreEarlyInit, "check_disk", true};
+
+BASE_FEATURE(kEnableErrorCodePropagationForPreconnect,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 }  // namespace net::features

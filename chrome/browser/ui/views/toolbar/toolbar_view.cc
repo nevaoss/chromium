@@ -288,12 +288,6 @@ auto& GetViewCommandMap() {
 constexpr int kBrowserAppMenuRefreshExpandedMargin = 5;
 constexpr int kBrowserAppMenuRefreshCollapsedMargin = 2;
 
-bool IsMigratedClickToCallBubble(
-    IntentPickerBubbleView::BubbleType bubble_type) {
-  return bubble_type == IntentPickerBubbleView::BubbleType::kClickToCall &&
-         IsPageActionMigrated(PageActionIconType::kClickToCall);
-}
-
 }  // namespace
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -486,6 +480,37 @@ void ToolbarView::Init() {
     location_bar_ = toolbar_webview_->GetLocationBar();
   }
 
+  if (glic::GlicEnabling::IsProfileEligible(browser_view_->GetProfile())) {
+    auto* vertical_tab_strip_state_controller =
+        tabs::VerticalTabStripStateController::From(browser_view_->browser());
+    if (base::FeatureList::IsEnabled(features::kGlicActorUi) &&
+        features::kGlicActorUiTaskIcon.Get()) {
+      glic_actor_button_container_ =
+          AddChildView(CreateGlicActorButtonContainer());
+      glic_actor_task_icon_ =
+          glic_actor_button_container_->AddChildView(CreateGlicActorTaskIcon());
+      glic_actor_button_container_->SetVisible(false);
+    }
+
+    glic_button_ = AddChildView(CreateGlicButton());
+    std::unique_ptr<ToolbarDivider> glic_button_divider =
+        std::make_unique<ToolbarDivider>();
+    glic_button_divider_ = AddChildView(std::move(glic_button_divider));
+    glic_button_divider_->SetProperty(
+        views::kMarginsKey,
+        gfx::Insets::VH(
+            0, GetLayoutConstant(LayoutConstant::kToolbarDividerSpacing)));
+    if (vertical_tab_strip_state_controller) {
+      vertical_tab_subscription_ =
+          vertical_tab_strip_state_controller->RegisterOnModeChanged(
+              base::BindRepeating(&ToolbarView::OnVerticalTabStripModeChanged,
+                                  base::Unretained(this)));
+      should_display_vertical_tabs_ =
+          vertical_tab_strip_state_controller->ShouldDisplayVerticalTabs();
+    }
+    UpdateGlicButtonVisibility();
+  }
+
   if (extensions_container) {
     extensions_container_ = AddChildView(std::move(extensions_container));
     extensions_toolbar_coordinator_ =
@@ -540,30 +565,6 @@ void ToolbarView::Init() {
 
   if (media_button) {
     media_button_ = AddChildView(std::move(media_button));
-  }
-
-  if (glic::GlicEnabling::IsProfileEligible(browser_view_->GetProfile())) {
-    auto* vertical_tab_strip_state_controller =
-        tabs::VerticalTabStripStateController::From(browser_view_->browser());
-    if (base::FeatureList::IsEnabled(features::kGlicActorUi) &&
-        features::kGlicActorUiTaskIcon.Get()) {
-      glic_actor_button_container_ =
-          AddChildView(CreateGlicActorButtonContainer());
-      glic_actor_task_icon_ =
-          glic_actor_button_container_->AddChildView(CreateGlicActorTaskIcon());
-      glic_actor_button_container_->SetVisible(false);
-    }
-
-    glic_button_ = AddChildView(CreateGlicButton());
-    if (vertical_tab_strip_state_controller) {
-      vertical_tab_subscription_ =
-          vertical_tab_strip_state_controller->RegisterOnModeChanged(
-              base::BindRepeating(&ToolbarView::OnVerticalTabStripModeChanged,
-                                  base::Unretained(this)));
-      should_display_vertical_tabs_ =
-          vertical_tab_strip_state_controller->ShouldDisplayVerticalTabs();
-    }
-    UpdateGlicButtonVisibility();
   }
 
   avatar_ = AddChildView(std::make_unique<AvatarToolbarButton>(browser_view_));
@@ -827,8 +828,11 @@ void ToolbarView::UpdateGlicButtonVisibility() {
     return;
   }
 
-  glic_button_->SetVisible(should_show_glic_button_ &&
-                           should_display_vertical_tabs_);
+  bool is_glic_visible =
+      should_show_glic_button_ && should_display_vertical_tabs_;
+
+  glic_button_->SetVisible(is_glic_visible);
+  glic_button_divider_->SetVisible(is_glic_visible);
 }
 
 void ToolbarView::SetGlicShowState(bool show) {
@@ -954,22 +958,22 @@ void ToolbarView::ShowIntentPickerBubble(
     const std::optional<url::Origin>& initiating_origin,
     IntentPickerResponse callback) {
   views::Button* highlighted_button = nullptr;
-  if (bubble_type == IntentPickerBubbleView::BubbleType::kClickToCall) {
-    highlighted_button =
-        GetPageActionIconView(PageActionIconType::kClickToCall);
-  } else if (highlighted_button = GetIntentChipButton(); !highlighted_button) {
-    highlighted_button = GetPageActionView(kActionShowIntentPicker);
+  if (bubble_type != IntentPickerBubbleView::BubbleType::kClickToCall) {
+    if (highlighted_button = GetIntentChipButton(); !highlighted_button) {
+      highlighted_button = GetPageActionView(kActionShowIntentPicker);
+    }
+
+    if (!highlighted_button) {
+      return;
+    }
   }
 
-  // Post migration, highlighted_button is a nullptr for ClickToCall
-  // BubbleType but the bubble still gets shown without a page action being
-  // shown/highlighted.
-  if (highlighted_button || IsMigratedClickToCallBubble(bubble_type)) {
-    IntentPickerBubbleView::ShowBubble(
-        location_bar_view(), highlighted_button, bubble_type, GetWebContents(),
-        std::move(app_info), show_stay_in_chrome, show_remember_selection,
-        initiating_origin, std::move(callback));
-  }
+  // At this point, we either have a highlighted_button or it's a ClickToCall
+  // bubble which doesn't have a corresponding page action button to highlight.
+  IntentPickerBubbleView::ShowBubble(
+      location_bar_view(), highlighted_button, bubble_type, GetWebContents(),
+      std::move(app_info), show_stay_in_chrome, show_remember_selection,
+      initiating_origin, std::move(callback));
 }
 
 void ToolbarView::ShowBookmarkBubble(const GURL& url, bool already_bookmarked) {
@@ -1477,10 +1481,11 @@ void ToolbarView::ZoomChangedForActiveTab(bool can_show_bubble) {
     return;
   }
 
-  CHECK(location_bar_view_)
-      << "Alternate location bar impls need to handle this.";
-  location_bar_view_->page_action_icon_controller()->ZoomChangedForActiveTab(
-      can_show_bubble);
+  // Other impls are expected to only launch after page action migration.
+  if (location_bar_view_) {
+    location_bar_view_->page_action_icon_controller()->ZoomChangedForActiveTab(
+        can_show_bubble);
+  }
 }
 
 AvatarToolbarButton* ToolbarView::GetAvatarToolbarButton() {

@@ -154,6 +154,7 @@ source_set("impl") {
     "//chrome/browser:browser_process",
     "//chrome/browser:flags",
     "//chrome/browser:primitives",
+    "//chrome/browser:resources",
     "//chrome/browser/actor/ui/task_list_bubble:controller",
     "//chrome/browser/bookmarks",
     "//chrome/browser/extensions",
@@ -196,7 +197,6 @@ source_set("impl") {
     "//chrome/browser/ui/views/glic",
     "//chrome/browser/ui/views/interaction",
     "//chrome/browser/ui/views/page_action",
-    "//chrome/browser/ui/views/side_panel",
     "//chrome/browser/ui/views/tabs/glic",
     "//chrome/browser/ui/waap",
     "//chrome/browser/ui/waap:window_metrics_manager",
@@ -242,6 +242,7 @@ source_set("impl") {
     "//ui/display",
     "//ui/events",
     "//ui/gfx/range",
+    "//ui/lottie",
     "//ui/native_theme",
     "//ui/views/controls/webview",
   ]

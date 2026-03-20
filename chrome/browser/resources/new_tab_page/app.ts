@@ -419,13 +419,9 @@ export class AppElement extends AppElementBase {
       loadTimeData.getInteger('maxTilesBeforeShowMore');
   protected accessor containerFocused_: boolean = false;
   protected accessor showScrim_: boolean = false;
-  private reducedMotionMediaQueryList_: MediaQueryList =
-      WindowProxy.getInstance().matchMedia('(prefers-reduced-motion: reduce)');
-  protected accessor reducedMotionPreferred_: boolean =
-      this.reducedMotionMediaQueryList_.matches;
+
   protected accessor contextMenuGlifAnimationState_: GlifAnimationState =
-      !this.reducedMotionPreferred_ && this.ntpNextFeaturesEnabled_ &&
-          this.isActionChipsVisible_ ?
+      this.ntpNextFeaturesEnabled_ && this.isActionChipsVisible_ ?
       GlifAnimationState.SPINNER_ONLY :
       GlifAnimationState.INELIGIBLE;
   protected accessor undoAutoRemovalCallback_: (() => void)|null = null;
@@ -515,8 +511,6 @@ export class AppElement extends AppElementBase {
     super.connectedCallback();
     realboxCanShowSecondarySideMediaQueryList.addEventListener(
         'change', this.onRealboxCanShowSecondarySideChanged_);
-    this.reducedMotionMediaQueryList_.addEventListener(
-        'change', this.onReducedMotionChanged_);
 
     // Listen for chrome-untrusted://ntp-microsoft-auth iframe trying to
     // connect to the NTP.
@@ -599,6 +593,13 @@ export class AppElement extends AppElementBase {
     this.eventTracker_.add(document, 'scroll', () => {
       this.scrolledToTop_ = document.documentElement.scrollTop <= 0;
     });
+    this.eventTracker_.add(
+        WindowProxy.getInstance().matchMedia('(prefers-color-scheme: dark)'),
+        'change', (e: MediaQueryListEvent) => {
+          if (e.matches) {
+            this.updateOneGoogleBarAppearance_();
+          }
+        });
     if (loadTimeData.getString('backgroundImageUrl')) {
       this.backgroundManager_.getBackgroundImageLoadTime().then(
           time => {
@@ -629,8 +630,7 @@ export class AppElement extends AppElementBase {
     super.disconnectedCallback();
     realboxCanShowSecondarySideMediaQueryList.removeEventListener(
         'change', this.onRealboxCanShowSecondarySideChanged_);
-    this.reducedMotionMediaQueryList_.removeEventListener(
-        'change', this.onReducedMotionChanged_);
+
     this.callbackRouter_.removeListener(
         this.connectMicrosoftAuthToParentDocumentListenerId_!);
     this.callbackRouter_.removeListener(this.setThemeListenerId_!);
@@ -732,8 +732,8 @@ export class AppElement extends AppElementBase {
 
     if (this.ntpRealboxNextEnabled_ && this.realboxLayoutMode_ !== '') {
       this.registerHelpBubble(
-          CONTEXTUAL_ENTRYPOINT_ELEMENT_ID,
-          ['#searchbox', '#context'], {fixed: true});
+          CONTEXTUAL_ENTRYPOINT_ELEMENT_ID, ['#searchbox', '#context'],
+          {fixed: true});
     }
   }
 
@@ -791,13 +791,8 @@ export class AppElement extends AppElementBase {
   // Called to update the OGB of relevant NTP state changes.
   private updateOneGoogleBarAppearance_() {
     if (this.oneGoogleBarLoaded_) {
-      let isNtpDarkTheme;
-      if (this.showComposebox_) {
-        isNtpDarkTheme = this.theme_ && this.theme_.isDark;
-      } else {
-        isNtpDarkTheme = this.theme_ &&
+      const isNtpDarkTheme = this.theme_ &&
             (!!this.theme_.backgroundImage || this.theme_.isDark);
-      }
       $$<IframeElement>(this, '#oneGoogleBar')!.postMessage({
         type: 'updateAppearance',
         // We should be using a light OGB for dark themes and vice versa.
@@ -840,10 +835,6 @@ export class AppElement extends AppElementBase {
 
   private onRealboxCanShowSecondarySideChanged_ = (e: MediaQueryListEvent) => {
     this.realboxCanShowSecondarySide = e.matches;
-  };
-
-  private onReducedMotionChanged_ = (e: MediaQueryListEvent) => {
-    this.reducedMotionPreferred_ = e.matches;
   };
 
   private onLazyRendered_() {
@@ -1455,10 +1446,6 @@ export class AppElement extends AppElementBase {
 
   protected onActionChipsRetrievalStateChanged_(
       e: CustomEvent<{state: ActionChipsRetrievalState}>) {
-    if (this.reducedMotionPreferred_) {
-      // The animation should not be started.
-      return;
-    }
     const state = e.detail.state;
     // Mapping of ActionChipsRetrievalState => GlifAnimationState:
     // REQUESTED => SPINNER_ONLY

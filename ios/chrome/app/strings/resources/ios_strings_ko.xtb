@@ -298,7 +298,6 @@
 <translation id="2012723204723845092">다시 방문해 주셔서 감사합니다</translation>
 <translation id="2015722694326466240">비밀번호를 보려면 먼저 기기에 비밀번호를 설정해야 합니다.</translation>
 <translation id="201759455285471444">탭 그룹을 펼칩니다.</translation>
-<translation id="202070562065520783">설명해 줘</translation>
 <translation id="2044394949148788042">탭 그리드 열기</translation>
 <translation id="2044681667265133332"><ph name="USER_EMAIL" /> 계정은 일부 정보를 볼 수 있는 <ph name="HOSTED_DOMAIN" />에서 관리합니다. <ph name="BEGIN_LINK" />자세히 알아보기<ph name="END_LINK" /></translation>
 <translation id="20485545164632846">새 항목</translation>
@@ -527,6 +526,7 @@
 <translation id="286382692684806520">{COUNT,plural, =1{사이트 1개(동기화된 기기에는 그 이상)}other{사이트 #개(동기화된 기기에는 그 이상)}}</translation>
 <translation id="2870560284913253234">사이트</translation>
 <translation id="2876369937070532032">보안상의 위험이 있을 때 일부 방문 페이지의 URL을 Google로 전송합니다.</translation>
+<translation id="2877733045396505765">선택된 정보가 이 기기와 Google 계정(<ph name="USER_EMAIL" />)에서 삭제됩니다</translation>
 <translation id="2883151425485251736">계정에서 숨긴 주제 확인 및 수정</translation>
 <translation id="288655811176831528">탭 닫기</translation>
 <translation id="2888631381369839306">가격 추적 알림이 사용 설정됨</translation>
@@ -1613,6 +1613,7 @@ Handoff는 설정의 일반 섹션에서도 사용 설정할 수 있으며, 이�
 <translation id="672735642903863329">모든 기기에 북마크, 비밀번호 등을 가져오세요.</translation>
 <translation id="6729493062119577923">공유 탭 그룹 활동</translation>
 <translation id="6732087373923685049">카메라</translation>
+<translation id="6736243959894955139">주소</translation>
 <translation id="6746338529702829275">계정 데이터 검토</translation>
 <translation id="6750456911389438250">{count,plural, =1{방문 기록 항목 {count}개 가져옴}other{방문 기록 항목 {count}개 가져옴}}</translation>
 <translation id="6755200887046212842">계정 관리</translation>
@@ -1819,7 +1820,6 @@ Handoff는 설정의 일반 섹션에서도 사용 설정할 수 있으며, 이�
 <translation id="7537586195939242955">현재 패스를 패스북에 설치할 수 없습니다.</translation>
 <translation id="754655535278952384">확인 시간: <ph name="TIME" /></translation>
 <translation id="7554645225856321710">모두 닫기</translation>
-<translation id="7554791636758816595">새 탭</translation>
 <translation id="7557508262441527045">로그아웃됨</translation>
 <translation id="7561196759112975576">항상</translation>
 <translation id="7561982940498449837">메뉴 닫기</translation>
@@ -1878,6 +1878,7 @@ Handoff는 설정의 일반 섹션에서도 사용 설정할 수 있으며, 이�
 <translation id="775755486779745798">만료 월(<ph name="MONTH" />) 자동 완성</translation>
 <translation id="7758789811447313947">보라색 테마</translation>
 <translation id="7759809451544302770">선택사항</translation>
+<translation id="7763878244904387570">선택된 정보가 이 기기에서 삭제됩니다</translation>
 <translation id="7765158879357617694">이동</translation>
 <translation id="7772032839648071052">암호 확인</translation>
 <translation id="7772948288262733182">다시 방문해 주셔서 감사합니다</translation>
@@ -2248,7 +2249,6 @@ Handoff는 설정의 일반 섹션에서도 사용 설정할 수 있으며, 이�
 <translation id="8988107725234939347"><ph name="WEBSITE_TITLE" />, 고정된 사이트</translation>
 <translation id="8990960056509724223">조직의 정책으로 인해 파일을 저장할 수 없습니다.</translation>
 <translation id="8998289560386111590">내 기기에서 사용할 수 없음</translation>
-<translation id="9000532564152265066">모든 탭</translation>
 <translation id="9003677638446136377">다시 확인</translation>
 <translation id="9006453925669499173">메뉴 → 새 시크릿 탭</translation>
 <translation id="9008201768610948239">무시</translation>

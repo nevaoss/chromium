@@ -19,7 +19,7 @@
   --card-horizontal-padding: 1.5rem;
   --card-horizontal-size:
       calc(var(--card-width) + 2 * var(--card-horizontal-padding));
-  --card-title-font-size: 1rem;
+  --card-title-font-size: 0.94rem;
   --card-top-padding: 1.5rem;
   --card-width: 11.75rem;
   --content-width:
@@ -147,7 +147,6 @@ h2 {
   flex-direction: row;
   justify-content: center;
   gap: var(--gap-between-cards);
-  height: 10rem;
 }
 
 .benefit-card {
@@ -170,9 +169,16 @@ h2 {
   line-height: 20px;
 }
 
+#buttonRow {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+}
+
 #buttonContainer {
   display: flex;
   gap: 12px;
+  justify-content: center;
   <if expr="not is_win">
   flex-direction: row;
   </if>
@@ -249,4 +255,16 @@ h2 {
 /* Prevent the icons from being flipped in RTL mode. */
 :host-context([dir=rtl]) .cr-icon {
   transform: scaleX(1);
+}
+
+#top-right-corner-container {
+  inset-inline-end: 1.5rem;
+  position: absolute;
+  top: 1.5rem;
+}
+
+#create-account-disclaimer {
+  color: var(--cr-secondary-text-color);
+  font-size: var(--card-description-font-size);
+  margin-top: 1rem;
 }

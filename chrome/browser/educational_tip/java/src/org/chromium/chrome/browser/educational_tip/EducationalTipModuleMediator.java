@@ -184,6 +184,7 @@ public class EducationalTipModuleMediator {
                         () -> {
                             SetupListModuleUtils.finishCompletionAnimation(mModuleType);
                             mModuleDelegate.maybeMoveModuleToTheEnd(mModuleType);
+                            mModuleDelegate.scrollTo(0);
                             if (SetupListManager.getInstance().shouldShowCelebratoryPromo()) {
                                 mModuleDelegate.refreshModules();
                             }
@@ -206,7 +207,9 @@ public class EducationalTipModuleMediator {
      * the educational tip module from the magic stack.
      */
     private void removeModule() {
-        mModuleDelegate.removeModule(mModuleType);
+        if (!SetupListModuleUtils.isSetupListModule(mModuleType)) {
+            mModuleDelegate.removeModule(mModuleType);
+        }
         removeDefaultBrowserPromoTriggerStateListener();
     }
 

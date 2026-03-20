@@ -902,10 +902,6 @@ bool Tab::IsValid() const {
   return !closing() && !detached() && !dragging() && GetVisible();
 }
 
-const tabs::TabData& Tab::data() const {
-  return data_;
-}
-
 views::BubbleBorder::Arrow Tab::GetAnchorPosition() const {
   return views::BubbleBorder::Arrow::TOP_LEFT;
 }
@@ -1002,6 +998,8 @@ void Tab::SetData(tabs::TabData data) {
   if (new_alert_state != old_alert_state || data_.title != old.title) {
     TooltipTextChanged();
   }
+
+  SetHoverCardDataFrom(data_);
 
   DeprecatedLayoutImmediately();
   SchedulePaint();

@@ -235,6 +235,7 @@ import org.chromium.chrome.browser.setup_list.SetupListModuleUtils;
 import org.chromium.chrome.browser.share.ShareDelegate;
 import org.chromium.chrome.browser.share.ShareHelper;
 import org.chromium.chrome.browser.share.send_tab_to_self.SendTabToSelfAndroidBridge;
+import org.chromium.chrome.browser.share.send_tab_to_self.SendTabToSelfMetricsRecorder;
 import org.chromium.chrome.browser.signin.SigninAndHistorySyncActivityLauncherImpl;
 import org.chromium.chrome.browser.single_tab.SingleTabModuleBuilder;
 import org.chromium.chrome.browser.survey.ChromeSurveyController;
@@ -2890,7 +2891,20 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
             // Hides the overview page to ensure proper layout change signals are sent.
             hideOverview(/* animate= */ false);
         }
+        maybeAttachSendTabToSelfScrollObserver(resultTab, intent, loadUrlParams);
+
         return resultTab;
+    }
+
+    private void maybeAttachSendTabToSelfScrollObserver(
+            @Nullable Tab resultTab, Intent intent, LoadUrlParams loadUrlParams) {
+        if (resultTab != null
+                && IntentUtils.safeGetBooleanExtra(
+                        intent, IntentHandler.EXTRA_FROM_SEND_TAB_TO_SELF, false)
+                && IntentUtils.isTrustedIntentFromSelf(intent)) {
+            SendTabToSelfMetricsRecorder.attachScrollObserverToTab(
+                    resultTab, loadUrlParams.getInternalScrollToTextFragment());
+        }
     }
 
     private boolean isProbablyFromChrome(Intent intent, String externalAppId) {
@@ -4102,7 +4116,12 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                 NewTabPageUma.recordAction(NewTabPageUma.ACTION_OPENED_RECENT_TABS_MANAGER);
             }
             RecordUserAction.record("MobileMenuRecentTabs");
-        } else if (id == R.id.extensions_menu_id) {
+        } else if (id == R.id.extensions_menu_menu_id) {
+            ExtensionToolbarCoordinator coordinator =
+                    getToolbarManager().getExtensionToolbarCoordinator();
+            coordinator.showExtensionsMenu();
+            RecordUserAction.record("MobileMenuExtensionsMenu");
+        } else if (id == R.id.manage_extensions_menu_id) {
             LoadUrlParams params =
                     new LoadUrlParams(
                             UrlConstants.CHROME_EXTENSIONS_URL, PageTransition.AUTO_TOPLEVEL);
@@ -4112,7 +4131,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
             } else {
                 currentTab.loadUrl(params);
             }
-            RecordUserAction.record("MobileMenuExtensions");
+            RecordUserAction.record("MobileMenuManageExtensions");
         } else if (id == R.id.extensions_webstore_menu_id) {
             LoadUrlParams params =
                     new LoadUrlParams(

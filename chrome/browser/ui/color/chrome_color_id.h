@@ -874,6 +874,7 @@
   E_CPONLY(kColorHoverCardTabAlertAudioPlayingIcon) \
   /* Tab colors. */ \
   E_CPONLY(kColorTabBackgroundActiveFrameActive) \
+  E_CPONLY(kColorDetachedTabBackgroundActiveFrameActive) \
   E_CPONLY(kColorTabBackgroundActiveFrameInactive) \
   E_CPONLY(kColorTabBackgroundInactiveFrameActive) \
   E_CPONLY(kColorTabBackgroundInactiveFrameInactive) \
@@ -1024,6 +1025,7 @@
   E_CPONLY(kColorToolbarButtonIconInactive) \
   E_CPONLY(kColorToolbarButtonIconPressed) \
   E_CPONLY(kColorToolbarButtonText) \
+  E_CPONLY(kColorToolbarCloseButtonBackgroundDefault) \
   E_CPONLY(kColorToolbarContentAreaSeparator) \
   E_CPONLY(kColorToolbarExtensionSeparatorDisabled) \
   E_CPONLY(kColorToolbarExtensionSeparatorEnabled) \

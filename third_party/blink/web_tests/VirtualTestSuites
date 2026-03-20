@@ -188,23 +188,6 @@
     "expires": "Sep 1, 2024"
   },
   {
-    "prefix": "canvas-draw-element-in-subtree",
-    "owners": [
-      "pdr@chromium.org",
-      "paint-dev@chromium.org"
-    ],
-    "platforms": [
-      "Linux",
-      "Mac",
-      "Win"
-    ],
-    "bases": [],
-    "args": [
-      "--enable-blink-features=CanvasDrawElementInSubtree"
-    ],
-    "expires": "Jul 15, 2026"
-  },
-  {
     "prefix": "content-extraction",
     "platforms": [
       "Linux",
@@ -4352,6 +4335,7 @@
     "bases": [
       "fast/css3-text/css3-text-decoration/stable",
       "fast/dom/Window",
+      "fast/parser/createContextualFragment-querySelector-crash.html",
       "http/tests/navigation",
       "http/tests/sendbeacon",
       "http/tests/serviceworker/webexposed",
@@ -6322,6 +6306,22 @@
     "args": ["--enable-blink-features=SingleAxisScrollContainers"],
     "owners": [
       "freedebreuil@google.com"
+    ],
+    "expires": "Jan 1, 2027"
+  },
+  {
+    "prefix": "css-argument-grammar-disabled",
+    "platforms": ["Linux"],
+    "bases": [
+      "external/wpt/css/css-values/attr-namespace-wildcard.html",
+      "external/wpt/css/cssom/serialize-values.html",
+      "fast/css/attr-parsing.html",
+      "wpt_internal/css/css-values/attr-type-url-invalid.html"
+    ],
+    "exclusive_tests": "ALL",
+    "args": ["--disable-blink-features=CSSArgumentGrammar"],
+    "owners": [
+      "moonira@google.com"
     ],
     "expires": "Jan 1, 2027"
   }

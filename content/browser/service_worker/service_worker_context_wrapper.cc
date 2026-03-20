@@ -1084,7 +1084,9 @@ bool ServiceWorkerContextWrapper::IsLiveServiceWorkerWithToken(
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   auto* version = GetLiveServiceWorker(service_worker_version_id);
   return version && version->worker_host() &&
-         version->worker_host()->token() == token;
+         version->worker_host()->token() == token &&
+         (version->running_status() == blink::EmbeddedWorkerStatus::kStarting ||
+          version->running_status() == blink::EmbeddedWorkerStatus::kRunning);
 }
 
 service_manager::InterfaceProvider&
@@ -1981,17 +1983,6 @@ ServiceWorkerContextWrapper::GetLoaderFactoryForBrowserInitiatedRequest(
           .emplace(kChromeUIScheme, CreateWebUIServiceWorkerLoaderFactory(
                                         browser_context(), kChromeUIScheme,
                                         base::flat_set<std::string>()));
-    } else if (base::FeatureList::IsEnabled(
-                   features::kEnableServiceWorkersForChromeUntrusted) &&
-               scope.scheme() == kChromeUIUntrustedScheme) {
-      config->RegisterURLDataSource(browser_context());
-      static_cast<blink::PendingURLLoaderFactoryBundle*>(
-          loader_factory_bundle_info.get())
-          ->pending_scheme_specific_factories()
-          .emplace(kChromeUIUntrustedScheme,
-                   CreateWebUIServiceWorkerLoaderFactory(
-                       browser_context(), kChromeUIUntrustedScheme,
-                       base::flat_set<std::string>()));
     }
   }
 
