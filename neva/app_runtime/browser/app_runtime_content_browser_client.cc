@@ -775,16 +775,15 @@ void AppRuntimeContentBrowserClient::
         blink::AssociatedInterfaceRegistry& associated_registry) {
   associated_registry.AddInterface<extensions::mojom::RendererHost>(
       base::BindRepeating(&extensions::RendererStartupHelper::BindForRenderer,
-                          content::ChildProcessId::FromUnsafeValue(
-                              service_worker_version_info.process_id)));
+                          service_worker_version_info.process_id));
 
   associated_registry.AddInterface<extensions::mojom::ServiceWorkerHost>(
-      base::BindRepeating(&extensions::ServiceWorkerHost::BindReceiver,
-                          service_worker_version_info.process_id));
+      base::BindRepeating(
+          &extensions::ServiceWorkerHost::BindReceiver,
+          service_worker_version_info.process_id.GetUnsafeValue()));
   associated_registry.AddInterface<extensions::mojom::EventRouter>(
       base::BindRepeating(&extensions::EventRouter::BindForRenderer,
-                          content::ChildProcessId::FromUnsafeValue(
-                              (service_worker_version_info.process_id))));
+                          service_worker_version_info.process_id));
 }
 #endif  // defined(USE_NEVA_CHROME_EXTENSIONS)
 
