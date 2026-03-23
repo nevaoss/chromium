@@ -75,8 +75,6 @@ class NevaExtensionSystem : public extensions::ExtensionSystem {
   const base::OneShotEvent& ready() const override;
   bool is_ready() const override;
   extensions::ContentVerifier* content_verifier() override;
-  std::unique_ptr<extensions::ExtensionSet> GetDependentExtensions(
-      const extensions::Extension* extension) override;
   void InstallUpdate(const std::string& extension_id,
                      const std::string& public_key,
                      const base::FilePath& temp_dir,
