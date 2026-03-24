@@ -4440,13 +4440,6 @@ hooks = [
     'action': ['git', '-C', 'src/third_party/skia', 'am',
               '../../neva/patches/0001-Add-work-around-code-for-invalidating-glBufferData.patch']
   },
-  # Support doubly linked timezone path used for webOS.
-  {
-    'name': 'Supported_doubly_linked_timezone_path',
-    'pattern': '.',
-    'action': ['git', '-C', 'src/third_party/icu', 'am',
-               '../../neva/patches/0001-Support-a-doubly-linked-timezone-file-path-use.patch']
-  },
   # Apply 'Disable Neon DotProduct and I8MM instructions in libyuv' patch
   {
     'name': 'Apply_Disable-Neon-DotProduct-and-I8MM-extensions-in-libyuv',
