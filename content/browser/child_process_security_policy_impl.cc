@@ -79,13 +79,8 @@ BASE_FEATURE(kDumpWithoutCrashingForMissingSecurityState,
 
 namespace content {
 
-<<<<<<< HEAD
-namespace {
-
 // TODO(neva_rust): Remove this workaround once Neva supports Rust build.
 #if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-=======
->>>>>>> 148.0.7740.0~1
 // When enabled, replaces certain ChildProcessSecurityPolicy functionality with
 // an experimental Rust implementation. See https://crbug.com/482216433.
 BASE_FEATURE(kChildProcessSecurityPolicyRust,
