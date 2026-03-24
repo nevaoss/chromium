@@ -29,7 +29,7 @@ jobs:
   rolling-test-pc-frt:
     name: rolling-test-pc-frt
     if: ${{ startsWith(github.ref_name, 'rolling/')
-            || githib.ref_name == 'neva-main-rolling' }}
+            || github.ref_name == 'neva-main-rolling' }}
     runs-on: self-hosted
     env:
       CI_TOKEN: ${{ secrets.CI_TOKEN }}
