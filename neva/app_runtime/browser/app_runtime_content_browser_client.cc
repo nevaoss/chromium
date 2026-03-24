@@ -778,9 +778,8 @@ void AppRuntimeContentBrowserClient::
                           service_worker_version_info.process_id));
 
   associated_registry.AddInterface<extensions::mojom::ServiceWorkerHost>(
-      base::BindRepeating(
-          &extensions::ServiceWorkerHost::BindReceiver,
-          service_worker_version_info.process_id.GetUnsafeValue()));
+      base::BindRepeating(&extensions::ServiceWorkerHost::BindReceiver,
+                          service_worker_version_info.process_id));
   associated_registry.AddInterface<extensions::mojom::EventRouter>(
       base::BindRepeating(&extensions::EventRouter::BindForRenderer,
                           service_worker_version_info.process_id));
