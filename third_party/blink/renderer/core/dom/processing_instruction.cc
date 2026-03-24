@@ -132,54 +132,11 @@ void ProcessingInstruction::UpdateStylesheetIfNeeded() {
   }
 }
 
-<<<<<<< HEAD
-void ProcessingInstruction::ProcessAttributesIfNeeded() {
-  if (!attributes_dirty_) {
-    return;
-  }
-
-  attributes_dirty_ = false;
-  attributes_.clear();
-
-  if (GetDocument().IsXMLDocument() ||
-      (IsXMLStylesheet() &&
-       !RuntimeEnabledFeatures::HTMLProcessingInstructionEnabled())) {
-    // see http://www.w3.org/TR/xml-stylesheet/
-    // ### support stylesheet included in a fragment of this (or another)
-    // document
-    // ### make sure this gets called when adding from javascript
-    bool attrs_ok;
-    // TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-    HashMap<String, String> attrs;
-    if (RuntimeEnabledFeatures::XMLParsingRustEnabled()) {
-      attrs = ParseAttributesRust(data_, attrs_ok);
-    } else {
-      attrs = ParseAttributes(data_, attrs_ok);
-    }
-#else   // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-    const HashMap<String, String> attrs = ParseAttributes(data_, attrs_ok);
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-    if (!attrs_ok) {
-      return;
-    }
-
-    for (const auto& pair : attrs) {
-      attributes_.push_back(
-          KeyValuePair<AtomicString, AtomicString>(pair.key, pair.value));
-    }
-    return;
-  }
-
-  CHECK(GetDocument().IsHTMLDocument());
-
-=======
 namespace {
 void ParseAttributesUsingHTML(
     Document& document,
     const String& data,
     Vector<KeyValuePair<AtomicString, AtomicString>>& attributes) {
->>>>>>> 148.0.7740.0~1
   StringBuilder fake_html;
   fake_html.Append("<attrs ");
   fake_html.Append(data);
