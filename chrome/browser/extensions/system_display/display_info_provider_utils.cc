@@ -4,50 +4,20 @@
 
 #include "chrome/browser/extensions/system_display/display_info_provider_utils.h"
 
+#include "ash/display/cros_display_config.h"
+#include "base/notreached.h"
 #include "base/strings/string_number_conversions.h"
 #include "chromeos/crosapi/mojom/cros_display_config.mojom.h"
 #include "ui/display/display.h"
+#include "ui/display/display_layout.h"
 #include "ui/display/screen.h"
 #include "ui/display/types/display_constants.h"
 
 namespace extensions {
 
 namespace {
-
 namespace system_display = api::system_display;
-
-system_display::LayoutPosition GetLayoutPositionFromMojo(
-    crosapi::mojom::DisplayLayoutPosition position) {
-  switch (position) {
-    case crosapi::mojom::DisplayLayoutPosition::kTop:
-      return system_display::LayoutPosition::kTop;
-    case crosapi::mojom::DisplayLayoutPosition::kRight:
-      return system_display::LayoutPosition::kRight;
-    case crosapi::mojom::DisplayLayoutPosition::kBottom:
-      return system_display::LayoutPosition::kBottom;
-    case crosapi::mojom::DisplayLayoutPosition::kLeft:
-      return system_display::LayoutPosition::kLeft;
-  }
-  NOTREACHED();
-}
 }  // namespace
-
-void OnGetDisplayLayoutResult(
-    base::OnceCallback<void(DisplayInfoProvider::DisplayLayoutList)> callback,
-    crosapi::mojom::DisplayLayoutInfoPtr info) {
-  DisplayInfoProvider::DisplayLayoutList result;
-  if (info->layouts) {
-    for (crosapi::mojom::DisplayLayoutPtr& layout : *info->layouts) {
-      api::system_display::DisplayLayout display_layout;
-      display_layout.id = layout->id;
-      display_layout.parent_id = layout->parent_id;
-      display_layout.position = GetLayoutPositionFromMojo(layout->position);
-      display_layout.offset = layout->offset;
-      result.emplace_back(std::move(display_layout));
-    }
-  }
-  std::move(callback).Run(std::move(result));
-}
 
 int64_t GetDisplayId(const std::string& display_id_str) {
   int64_t display_id;
@@ -64,18 +34,18 @@ display::Display GetDisplayForId(const std::string& display_id_str) {
   return display;
 }
 
-crosapi::mojom::DisplayLayoutPosition GetDisplayLayoutPosition(
+display::DisplayPlacement::Position GetDisplayLayoutPosition(
     system_display::LayoutPosition position) {
   switch (position) {
     case system_display::LayoutPosition::kTop:
-      return crosapi::mojom::DisplayLayoutPosition::kTop;
+      return display::DisplayPlacement::TOP;
     case system_display::LayoutPosition::kRight:
-      return crosapi::mojom::DisplayLayoutPosition::kRight;
+      return display::DisplayPlacement::RIGHT;
     case system_display::LayoutPosition::kBottom:
-      return crosapi::mojom::DisplayLayoutPosition::kBottom;
+      return display::DisplayPlacement::BOTTOM;
     case system_display::LayoutPosition::kLeft:
     case system_display::LayoutPosition::kNone:
-      return crosapi::mojom::DisplayLayoutPosition::kLeft;
+      return display::DisplayPlacement::LEFT;
   }
   NOTREACHED();
 }
@@ -241,25 +211,22 @@ system_display::DisplayUnitInfo GetDisplayUnitInfoFromMojo(
   return info;
 }
 
-crosapi::mojom::TouchCalibrationPairPtr GetTouchCalibrationPair(
+display::TouchCalibrationData::CalibrationPointPair GetTouchCalibrationPair(
     const system_display::TouchCalibrationPair& pair) {
-  auto result = crosapi::mojom::TouchCalibrationPair::New();
-  result->display_point =
-      gfx::Point(pair.display_point.x, pair.display_point.y);
-  result->touch_point = gfx::Point(pair.touch_point.x, pair.touch_point.y);
-  return result;
+  return {gfx::Point(pair.display_point.x, pair.display_point.y),
+          gfx::Point(pair.touch_point.x, pair.touch_point.y)};
 }
 
 void SetDisplayUnitInfoLayoutProperties(
-    const crosapi::mojom::DisplayLayoutInfo& layout,
+    const ash::DisplayLayoutInfo& layout,
     system_display::DisplayUnitInfo* display) {
-  display->is_unified =
-      layout.layout_mode == crosapi::mojom::DisplayLayoutMode::kUnified;
-  if (layout.mirror_source_id) {
-    display->mirroring_source_id = *layout.mirror_source_id;
-    if (layout.mirror_destination_ids) {
-      for (const std::string& id : *layout.mirror_destination_ids) {
-        display->mirroring_destination_ids.push_back(id);
+  display->is_unified = layout.layout_mode == ash::DisplayLayoutMode::kUnified;
+  if (layout.mirror_source_id.has_value()) {
+    display->mirroring_source_id =
+        base::NumberToString(*layout.mirror_source_id);
+    if (layout.mirror_destination_ids.has_value()) {
+      for (int64_t id : *layout.mirror_destination_ids) {
+        display->mirroring_destination_ids.push_back(base::NumberToString(id));
       }
     }
   }

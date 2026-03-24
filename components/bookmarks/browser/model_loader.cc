@@ -415,22 +415,33 @@ void RecordLoadMetrics(
   UserFolderLoadStats user_folder_stats = details->ComputeUserFolderStats();
   metrics::RecordUserFolderLoadStatsOnProfileLoad(user_folder_stats);
 
-  const uint64_t local_or_syncable_file_size =
-      GetFileSizeOrZero(local_or_syncable_file_path);
-  const uint64_t account_file_size =
-      account_file_path.empty() ? 0U : GetFileSizeOrZero(account_file_path);
+  // Only record clear text file size metrics when clear text file is used.
+  if (!ShouldUseEncryptedBookmarksAsPrimarySource() ||
+      ShouldVerifyBookmarksDataInSecondaryFileOnLoad()) {
+    const uint64_t local_or_syncable_file_size =
+        GetFileSizeOrZero(local_or_syncable_file_path);
+    const uint64_t account_file_size =
+        account_file_path.empty() ? 0U : GetFileSizeOrZero(account_file_path);
 
-  if (local_or_syncable_file_size != 0) {
-    metrics::RecordFileSizeAtStartup(StorageFileEncryptionType::kClearText,
-                                     local_or_syncable_file_size);
+    if (local_or_syncable_file_size != 0) {
+      metrics::RecordFileSizeAtStartup(StorageFileEncryptionType::kClearText,
+                                       local_or_syncable_file_size);
+    }
+
+    if (account_file_size != 0) {
+      metrics::RecordFileSizeAtStartup(StorageFileEncryptionType::kClearText,
+                                       account_file_size);
+    }
+
+    metrics::RecordAverageNodeSizeAtStartupIfNonZero(
+        StorageFileEncryptionType::kClearText,
+        url_stats.total_url_bookmark_count,
+        local_or_syncable_file_size + account_file_size);
   }
 
-  if (account_file_size != 0) {
-    metrics::RecordFileSizeAtStartup(StorageFileEncryptionType::kClearText,
-                                     account_file_size);
-  }
-
-  if (ShouldVerifyBookmarksDataInSecondaryFileOnLoad()) {
+  // Only record encrypted file size metrics when encrypted file is used.
+  if (ShouldUseEncryptedBookmarksAsPrimarySource() ||
+      ShouldVerifyBookmarksDataInSecondaryFileOnLoad()) {
     const uint64_t encrypted_local_or_syncable_file_size =
         GetFileSizeOrZero(encrypted_local_or_syncable_file_path);
     if (encrypted_local_or_syncable_file_size != 0) {
@@ -444,15 +455,11 @@ void RecordLoadMetrics(
       metrics::RecordFileSizeAtStartup(StorageFileEncryptionType::kEncrypted,
                                        encrypted_account_file_size);
     }
-  }
 
-  const uint64_t sum_file_size =
-      local_or_syncable_file_size + account_file_size;
-  if (sum_file_size > 0) {
-    metrics::RecordAverageNodeSizeAtStartup(
-        url_stats.total_url_bookmark_count == 0
-            ? 0
-            : sum_file_size / url_stats.total_url_bookmark_count);
+    metrics::RecordAverageNodeSizeAtStartupIfNonZero(
+        StorageFileEncryptionType::kEncrypted,
+        url_stats.total_url_bookmark_count,
+        encrypted_local_or_syncable_file_size + encrypted_account_file_size);
   }
 }
 

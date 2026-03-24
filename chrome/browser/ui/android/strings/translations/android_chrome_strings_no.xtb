@@ -239,6 +239,7 @@ Bare personer som har passordfrasen din, kan lese de krypterte dataene. Passordf
 <translation id="200114059308480249">Vil du inkludere omliggende tekst i Google-søk?</translation>
 <translation id="2004096469149679223"><ph name="TAB_TITLE" />, festet inkognitofane med dempet lyd</translation>
 <translation id="2021896219286479412">Navigering i full skjerm</translation>
+<translation id="2024195579772565064">Slett søkemotoren</translation>
 <translation id="2029669011553795746">Samtykke for varsler for tips er åpnet i halv høyde</translation>
 <translation id="2038563949887743358">Slå på Bruk skrivebordsversjon</translation>
 <translation id="204321170514947529"><ph name="APP_NAME" /> har også data i Chrome</translation>
@@ -413,6 +414,7 @@ Bare personer som har passordfrasen din, kan lese de krypterte dataene. Passordf
 <translation id="2789486458103222910">OK</translation>
 <translation id="2791129728587938169">{NUM_PASSWORDS,plural, =1{Chrome fant et gjenbrukt passord du kan forbedre}other{Chrome fant # gjenbrukte passord du kan forbedre}}</translation>
 <translation id="2794551654724114396">Slå på varsler for å få nyttige tips som hjelper deg med å få mest mulig ut av Chrome</translation>
+<translation id="2798977804328097977">Fortsett sømløst på hvilken som helst enhet</translation>
 <translation id="2805210243313393104">Få bokmerker, logg med mer på alle enhetene dine.</translation>
 <translation id="2805756323405976993">Apper</translation>
 <translation id="2819849308549746319">Meld deg av alle</translation>
@@ -468,6 +470,7 @@ Bare personer som har passordfrasen din, kan lese de krypterte dataene. Passordf
 <translation id="2977350910003566746">Sorteres etter sist åpnet</translation>
 <translation id="297771753501244313">Sorter etter sist åpnet</translation>
 <translation id="2979639724566107830">Åpne i nytt vindu</translation>
+<translation id="2980545254049127870">Åpne enkelt linker fra meldinger, dokumenter og andre apper</translation>
 <translation id="2983102365694924129">Basert på aktiviteten din på et nettsted. Denne innstillingen er slått av.</translation>
 <translation id="2983398917942897288">Inaktiv (<ph name="ITEM_COUNT" />)</translation>
 <translation id="2983835398644161987">Avslutt bilde-i-bilde</translation>
@@ -556,6 +559,7 @@ Bare personer som har passordfrasen din, kan lese de krypterte dataene. Passordf
 <translation id="3384347053049321195">Del bildet</translation>
 <translation id="3387650086002190359">Nedlastingen av <ph name="FILE_NAME" /> ble avbrutt på grunn av filsystemfeil.</translation>
 <translation id="3414952576877147120">Størrelse:</translation>
+<translation id="3417835166382867856">Søk i faner</translation>
 <translation id="3430670036890315772">Hvis du slår av profillåsen, fjernes den lagrede informasjonen din</translation>
 <translation id="3435465986463792564">Har du mange vinduer? Du kan administrere dem her</translation>
 <translation id="3435575784518354875">For å beholde tilgangen til passordene dine, eksporter dem nå, oppdater Google Play-tjenester, og importer dem til Google Passordlagring igjen. <ph name="BEGIN_LINK" />Se fullstendige instruksjoner.<ph name="END_LINK" /></translation>
@@ -728,6 +732,7 @@ Bare personer som har passordfrasen din, kan lese de krypterte dataene. Passordf
 <translation id="4137746084635924146">Nåværende enhetsspråk</translation>
 <translation id="414128724510021958">Nettsteder for datamaskiner blir forespurt som standard</translation>
 <translation id="4162867837470729563">Listen over delingsalternativer er åpnet i full høyde.</translation>
+<translation id="4164642020717536140">Rask og sikker nettlesing</translation>
 <translation id="4165077084524712774">Flere verktøy</translation>
 <translation id="4170011742729630528">Tjenesten er ikke tilgjengelig. Prøv på nytt senere.</translation>
 <translation id="4170577491341606575">Henter tingene dine\u2026</translation>
@@ -1348,6 +1353,7 @@ Noen nettsteder kan for eksempel svare på denne forespørselen ved å vise deg 
 <translation id="6593061639179217415">Side for datamaskiner</translation>
 <translation id="6594347733515723558">Alt. sort. og visning</translation>
 <translation id="6595046016124923392">Bildene blir sendt til Google for å gjøre beskrivelsene bedre.</translation>
+<translation id="6602173570135186741">Autofyll og passord</translation>
 <translation id="661266467055912436">Øker sikkerheten for deg og alle andre på nettet.</translation>
 <translation id="6621391692573306628">For å sende denne fanen til en annen enhet, logg på Chrome på begge enhetene</translation>
 <translation id="6627583120233659107">Rediger mappen</translation>
@@ -1439,6 +1445,7 @@ Noen nettsteder kan for eksempel svare på denne forespørselen ved å vise deg 
 <translation id="6896758677409633944">Kopiér</translation>
 <translation id="6898797562238201317">Bruk din egen passordfrase for å kryptere alle Chrome-dataene i Google-kontoen din</translation>
 <translation id="6900532703269623216">Økt beskyttelse</translation>
+<translation id="6900654715912436255">Er du sikker på at du vil slette denne søkemotoren?</translation>
 <translation id="6903907808598579934">Slå på synkronisering</translation>
 <translation id="6906448540340261898">Sørg for at du alltid kan bruke passordene i Google-kontoen din</translation>
 <translation id="6908230663105268638">Varsler er tillatt for <ph name="SITE_NAME" /></translation>

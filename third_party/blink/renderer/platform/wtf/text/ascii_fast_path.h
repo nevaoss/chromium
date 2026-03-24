@@ -105,7 +105,7 @@ CharacterAttributes(base::span<const CharacterType> chars) {
     contains_upper_case |= IsASCIIUpper(ch);
   }
 
-  return AsciiStringAttributes(IsASCII(all_char_bits), !contains_upper_case);
+  return AsciiStringAttributes(IsAscii(all_char_bits), !contains_upper_case);
 }
 
 // Fast-path specialization for LChar as it's called very frequently by
@@ -143,7 +143,7 @@ class LowerConverter {
 
   template <typename CharType>
   ALWAYS_INLINE static CharType Convert(CharType ch) {
-    return ToASCIILower(ch);
+    return ToAsciiLower(ch);
   }
 };
 
@@ -167,10 +167,8 @@ ALWAYS_INLINE typename Allocator::ResultStringType ConvertAsciiCase(
     Allocator&& allocator) {
   CHECK_LE(string.length(), std::numeric_limits<wtf_size_t>::max());
   return VisitCharacters(string, [&](auto chars) {
-    // First scan the string for the desired case.
-    if (converter.IsCorrectCase(chars)) {
-      return allocator.CoerceOriginal(string);
-    }
+    // Callers must ensure that the string needs conversion.
+    DCHECK(!converter.IsCorrectCase(chars));
 
     base::span<typename decltype(chars)::value_type> data;
     auto new_impl = allocator.Alloc(string.length(), data);

@@ -213,6 +213,7 @@
 <translation id="1900260903084164610">આગળ વધીને, તમે <ph name="BEGIN_TOS_LINK" />સેવાની શરતો<ph name="END_TOS_LINK" /> સાથે સંમત થાઓ છો.</translation>
 <translation id="1904580727789512086">તમે મુલાકાત લો છો તે URLsને તમારા Google એકાઉન્ટમાં સાચવવામાં આવે છે</translation>
 <translation id="1910950723001426294">શેરિંગના વિકલ્પોની સૂચિ બંધ છે.</translation>
+<translation id="1912367671208932516">એક્સ્ટેન્શન મેનૂ ખોલો</translation>
 <translation id="191726024256261717">પરવાનગીઓ રિવ્યૂ કરો</translation>
 <translation id="1917766536967060661">તમે તરત જ “<ph name="GROUP_NAME" />” ટૅબના ગ્રૂપનો ઍક્સેસ ગુમાવશો અને <ph name="BLOCKED_MEMBER_FULL_NAME" /> (<ph name="BLOCKED_MEMBER_EMAIL" />) Googleની બધી સેવાઓમાં તમારી સાથે ક્રિયાપ્રતિક્રિયા કરી શકશે નહીં.</translation>
 <translation id="1919130412786645364">Chromeમાં સાઇન-ઇનની મંજૂરી આપો</translation>
@@ -239,6 +240,7 @@
 <translation id="200114059308480249">શું Google Searchમાં શોધવા માટે આજુબાજુની ટેક્સ્ટ શામેલ કરીએ?</translation>
 <translation id="2004096469149679223"><ph name="TAB_TITLE" />, પિન કરેલું મ્યૂટ કરેલું છૂપું ટૅબ</translation>
 <translation id="2021896219286479412">પૂર્ણ સ્ક્રીન સાઇટ નિયંત્રણો</translation>
+<translation id="2024195579772565064">શોધ એન્જિન ડિલીટ કરો</translation>
 <translation id="2029669011553795746">ટિપ સંબંધિત નોટિફિકેશન પસંદ કરવાનો વિકલ્પ અડધી ઊંચાઈએ ખોલ્યો</translation>
 <translation id="2038563949887743358">વિનંતી ડેસ્કટૉપ સાઇટ ચાલુ કરો</translation>
 <translation id="204321170514947529"><ph name="APP_NAME" /> નો ડેટા Chromeમાં પણ છે</translation>
@@ -413,6 +415,7 @@
 <translation id="2789486458103222910">બરાબર, સમજાઇ ગયું</translation>
 <translation id="2791129728587938169">{NUM_PASSWORDS,plural, =1{Chromeને ફરીથી ઉપયોગમાં લેવાયેલો કોઈ પાસવર્ડ મળી આવ્યો છે જેને તમે બહેતર બનાવી શકો છો}one{Chromeને ફરીથી ઉપયોગમાં લેવાયેલો એવો # પાસવર્ડ મળી આવ્યો છે જેને તમે બહેતર બનાવી શકો છો}other{Chromeને ફરીથી ઉપયોગમાં લેવાયેલા એવા # પાસવર્ડ મળી આવ્યા છે જેમને તમે બહેતર બનાવી શકો છો}}</translation>
 <translation id="2794551654724114396">Chromeનો સૌથી વધુ લાભ મેળવવામાં તમારી મદદ કરવા માટે ઉપયોગી ટિપ માટે નોટિફિકેશન ચાલુ કરો</translation>
+<translation id="2798977804328097977">કોઈપણ ડિવાઇસ પર સરળતાથી ચાલુ રાખો</translation>
 <translation id="2805210243313393104">તમારા બધા ડિવાઇસ પર તમારા બુકમાર્ક અને બીજું ઘણું મેળવો</translation>
 <translation id="2805756323405976993">ઍપ</translation>
 <translation id="2819849308549746319">બધું અનસબ્સ્ક્રાઇબ કરો</translation>
@@ -468,6 +471,7 @@
 <translation id="2977350910003566746">'છેલ્લે ખોલાયા' અનુસાર સૉર્ટ કરી રહ્યાં છીએ</translation>
 <translation id="297771753501244313">છેલ્લે ખોલાયા મુજબ સૉર્ટ કરો</translation>
 <translation id="2979639724566107830">નવી વિંડોમાં ખોલો</translation>
+<translation id="2980545254049127870">મેસેજ, દસ્તાવેજો અને અન્ય ઍપમાંથી સરળતાથી લિંક ખોલો</translation>
 <translation id="2983102365694924129">કોઈ સાઇટ પરની તમારી પ્રવૃત્તિના આધારે. આ સેટિંગ બંધ છે.</translation>
 <translation id="2983398917942897288">નિષ્ક્રિય (<ph name="ITEM_COUNT" />)</translation>
 <translation id="2983835398644161987">ચિત્રમાં ચિત્રમાંથી બહાર નીકળો</translation>
@@ -556,6 +560,7 @@
 <translation id="3384347053049321195">છબી શેર કરો</translation>
 <translation id="3387650086002190359">ફાઇલ સિસ્ટમ ભૂલોના કારણે <ph name="FILE_NAME" /> ડાઉનલોડ નિષ્ફળ થયું.</translation>
 <translation id="3414952576877147120">કદ:</translation>
+<translation id="3417835166382867856">ટૅબ શોધો</translation>
 <translation id="3430670036890315772">તમારું પ્રોફાઇલ લૉક બંધ કરવાથી તમારી સાચવેલી માહિતી કાઢી નાખવામાં આવશે</translation>
 <translation id="3435465986463792564">શું ઘણી વિન્ડો ખોલી છે? તમે તેમને અહીંથી મેનેજ કરી શકો છો</translation>
 <translation id="3435575784518354875">તમારા પાસવર્ડનો ઍક્સેસ જાળવી રાખવા માટે, તેની હમણાં નિકાસ કરો, Google Play સેવાઓ અપડેટ કરો અને પછી તેમને પાછા Google Password Managerમાં આયાત કરો. <ph name="BEGIN_LINK" />સંપૂર્ણ સૂચના જુઓ<ph name="END_LINK" />.</translation>
@@ -728,6 +733,7 @@
 <translation id="4137746084635924146">ડિવાઇસની હાલની ભાષા</translation>
 <translation id="414128724510021958">ડિફૉલ્ટ તરીકે વિનંતી કરાયેલી ડેસ્કટૉપ સાઇટ</translation>
 <translation id="4162867837470729563">શેરિંગના વિકલ્પોની સૂચિ સંપૂર્ણ ઊંચાઈએ ખોલી છે.</translation>
+<translation id="4164642020717536140">ઝડપી અને સુરક્ષિત વેબ બ્રાઉઝિંગ</translation>
 <translation id="4165077084524712774">વધુ ટૂલ</translation>
 <translation id="4170011742729630528">સેવા ઉપલબ્ધ નથી; પછી ફરીથી પ્રયાસ કરો</translation>
 <translation id="4170577491341606575">તમારું કન્ટેન્ટ મેળવી રહ્યાં છીએ\u2026</translation>
@@ -852,6 +858,7 @@
 <translation id="4640331037679501949">{NUM_PASSWORDS,plural, =1{ચેડાં કરાયેલો 1 પાસવર્ડ}one{ચેડાં કરાયેલો # પાસવર્ડ}other{ચેડાં કરાયેલા # પાસવર્ડ}}</translation>
 <translation id="4641919525231168205">આગલા પેજ પર જાઓ</translation>
 <translation id="4642472735733036929">કિંમત ટ્રૅક કરવાનું બંધ કર્યું</translation>
+<translation id="4643661539340338954">Chrome Findsના નોટિફિકેશન ચાલુ કર્યા</translation>
 <translation id="4649493483932335039">તાજેતરના ટૅબ જુઓ</translation>
 <translation id="465657074423018424">Safe Browsing તમારું છેતરામણી વેબસાઇટથી રક્ષણ કરે છે. જો તમે તેને બંધ કરો, તો બ્રાઉઝ કરતી વખતે વધુ સાવધાન રહેજો, ખાસ કરીને પાસવર્ડ દાખલ કરતા પહેલાં.</translation>
 <translation id="4662373422909645029">ઉપનામમાં સંખ્યા ન હોઈ શકે</translation>
@@ -1348,6 +1355,7 @@
 <translation id="6593061639179217415">ડેસ્કટૉપ સાઇટ</translation>
 <translation id="6594347733515723558">સૉર્ટ અને જોવાના વિકલ્પો</translation>
 <translation id="6595046016124923392">તમારી માટે વર્ણનોને બહેતર બનાવવા માટે છબીઓને Google પર મોકલવામાં આવે છે.</translation>
+<translation id="6602173570135186741">ઑટોમૅટિક રીતે ભરવાની સુવિધા અને પાસવર્ડ</translation>
 <translation id="661266467055912436">વેબ પર તમારા માટે તેમજ પ્રત્યેક માટે સુરક્ષાને બહેતર બનાવે છે.</translation>
 <translation id="6621391692573306628">આ ટૅબને અન્ય ડિવાઇસ પર મોકલવા માટે, બન્ને ડિવાઇસ પર Chromeમાં સાઇન ઇન કરો</translation>
 <translation id="6627583120233659107">ફોલ્ડરમાં ફેરફાર કરો</translation>
@@ -1439,6 +1447,7 @@
 <translation id="6896758677409633944">કૉપિ કરો</translation>
 <translation id="6898797562238201317">તમારા Google એકાઉન્ટમાંનો Chromeનો બધો ડેટા એન્ક્રિપ્ટ કરવા માટે તમારા પોતાના પાસફ્રેઝનો ઉપયોગ કરો</translation>
 <translation id="6900532703269623216">વધારેલું સંરક્ષણ</translation>
+<translation id="6900654715912436255">શું તમે ખરેખર આ શોધ એન્જિન ડિલીટ કરવા માગો છો?</translation>
 <translation id="6903907808598579934">સમન્વયન ચાલુ કરો</translation>
 <translation id="6906448540340261898">ખાતરી કરો કે તમે હંમેશાં તમારા Google એકાઉન્ટમાં પાસવર્ડનો ઉપયોગ કરી શકો</translation>
 <translation id="6908230663105268638"><ph name="SITE_NAME" /> માટે નોટિફિકેશનની મંજૂરી આપેલી છે</translation>
@@ -1648,6 +1657,7 @@
 <translation id="7686086654630106285">સાઇટ દ્વારા સૂચિત જાહેરાતો વિશે વધુ વિગતો</translation>
 <translation id="7690596512217303514">તમારા ડિવાઇસ દ્વારા Chrome ખોલી શક્યું નથી. સમસ્યાને ઠીક કરવા માટે, તમારા ઍપ સ્ટોરમાંથી Chromeની નવીનતમ અપડેટ ડાઉનલોડ કરો.</translation>
 <translation id="7692761875510935111">ઝડપથી બ્રાઉઝરમાં ખોલો. આ શૉર્ટકટમાં ફેરફાર કરવા માટે, ટચ કરીને થોડીવાર દબાવી રાખો.</translation>
+<translation id="7695270712963178084">Chrome Finds</translation>
 <translation id="7697383401610880082">ઑબ્જેક્ટ ખેંચવાનું હૅન્ડલ</translation>
 <translation id="7698359219371678927"><ph name="APP_NAME" /> માં ઇમેઇલ બનાવો</translation>
 <translation id="7702420606070050505">તાજેતરની ઍક્ટિવિટી બોટમ શીટ સંપૂર્ણ ઊંચાઈએ ખોલી</translation>

@@ -116,10 +116,22 @@ BASE_FEATURE(kPreloadTopChromeWebUILessNavigations,
 BASE_FEATURE(kPressAndHoldEscToExitBrowserFullscreen,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+#if BUILDFLAG(IS_WIN)
+// Enables the UI for Process Isolation in chrome://settings/system.
+BASE_FEATURE(kProcessIsolationSettings, base::FEATURE_DISABLED_BY_DEFAULT);
+#endif  // BUILDFLAG(IS_WIN)
+
 #if BUILDFLAG(IS_MAC)
 // Add tab group colours when viewing tab groups using the top mac OS menu bar.
 BASE_FEATURE(kShowTabGroupsMacSystemMenu, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_MAC)
+
+BASE_FEATURE(kSplitViewTabDraggingUpdates, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE_PARAM(base::TimeDelta,
+                   kShowDropTargetForTabDelay,
+                   &kSplitViewTabDraggingUpdates,
+                   "show_drop_target_for_tab_delay",
+                   base::Milliseconds(1000));
 
 BASE_FEATURE(kTabDuplicateMetrics, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -278,12 +290,6 @@ BASE_FEATURE(kPageSpecificDataDialogRelatedInstalledAppsSection,
 
 BASE_FEATURE(kEnableManagementPromotionBanner,
              base::FEATURE_ENABLED_BY_DEFAULT);
-
-#if BUILDFLAG(IS_CHROMEOS)
-BASE_FEATURE(kEnablePolicyPromotionBanner, base::FEATURE_ENABLED_BY_DEFAULT);
-#else
-BASE_FEATURE(kEnablePolicyPromotionBanner, base::FEATURE_ENABLED_BY_DEFAULT);
-#endif
 
 BASE_FEATURE(kInlineFullscreenPerfExperiment, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -474,7 +480,14 @@ bool IsAndroidAnimatedProgressBarInBrowserEnabled() {
 }
 #endif  // BUILDFLAG(IS_ANDROID)
 
-BASE_FEATURE(kWhatsNewDesktopRefresh, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kWhatsNewDesktopRefresh, base::FEATURE_ENABLED_BY_DEFAULT);
+
+BASE_FEATURE(kAiOverlayDialog, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE_PARAM(std::string,
+                   kAiOverlayDialogApiKey,
+                   &kAiOverlayDialog,
+                   "api_key",
+                   "");
 
 BASE_FEATURE(kTabGroupsFocusing, base::FEATURE_DISABLED_BY_DEFAULT);
 

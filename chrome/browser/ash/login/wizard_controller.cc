@@ -81,6 +81,8 @@
 #include "chrome/browser/ash/login/screens/family_link_notice_screen.h"
 #include "chrome/browser/ash/login/screens/fingerprint_setup_screen.h"
 #include "chrome/browser/ash/login/screens/fjord_fw_update_screen.h"
+#include "chrome/browser/ash/login/screens/fjord_image_download_screen.h"
+#include "chrome/browser/ash/login/screens/fjord_image_selection_screen.h"
 #include "chrome/browser/ash/login/screens/fjord_station_setup_screen.h"
 #include "chrome/browser/ash/login/screens/fjord_touch_controller_screen.h"
 #include "chrome/browser/ash/login/screens/gaia_info_screen.h"
@@ -186,6 +188,8 @@
 #include "chrome/browser/ui/webui/ash/login/family_link_notice_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/fingerprint_setup_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/fjord_fw_update_screen_handler.h"
+#include "chrome/browser/ui/webui/ash/login/fjord_image_download_screen_handler.h"
+#include "chrome/browser/ui/webui/ash/login/fjord_image_selection_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/fjord_station_setup_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/fjord_touch_controller_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/gaia_info_screen_handler.h"
@@ -699,7 +703,8 @@ WizardController::CreateScreens() {
       base::BindRepeating(&WizardController::OnUpdateScreenExit,
                           weak_factory_.GetWeakPtr())));
   append(std::make_unique<EnrollmentScreen>(
-      shared_url_loader_factory_, browser_policy_connector_ash,
+      &local_state_.get(), shared_url_loader_factory_,
+      browser_policy_connector_ash,
       oobe_ui->GetView<EnrollmentScreenHandler>()->AsWeakPtr(),
       oobe_ui->GetErrorScreen(),
       base::BindRepeating(&WizardController::OnEnrollmentScreenExit,
@@ -1078,6 +1083,17 @@ WizardController::CreateScreens() {
         oobe_ui->GetView<FjordFwUpdateScreenHandler>()->AsWeakPtr(),
         base::BindRepeating(&WizardController::OnFjordFwUpdateScreenExit,
                             weak_factory_.GetWeakPtr())));
+    if (fjord_util::ShouldShowFjordOobeImageSwitch()) {
+      append(std::make_unique<FjordImageSelectionScreen>(
+          oobe_ui->GetView<FjordImageSelectionScreenHandler>()->AsWeakPtr(),
+          base::BindRepeating(
+              &WizardController::OnFjordImageSelectionScreenExit,
+              weak_factory_.GetWeakPtr())));
+      append(std::make_unique<FjordImageDownloadScreen>(
+          oobe_ui->GetView<FjordImageDownloadScreenHandler>()->AsWeakPtr(),
+          base::BindRepeating(&WizardController::OnFjordImageDownloadScreenExit,
+                              weak_factory_.GetWeakPtr())));
+    }
   }
 
   return result;
@@ -1453,6 +1469,14 @@ void WizardController::ShowFjordStationSetupScreen() {
 
 void WizardController::ShowFjordFwUpdateScreen() {
   SetCurrentScreen(GetScreen(FjordFwUpdateScreenView::kScreenId));
+}
+
+void WizardController::ShowFjordImageSelectionScreen() {
+  SetCurrentScreen(GetScreen(FjordImageSelectionScreenView::kScreenId));
+}
+
+void WizardController::ShowFjordImageDownloadScreen() {
+  SetCurrentScreen(GetScreen(FjordImageDownloadScreenView::kScreenId));
 }
 
 void WizardController::OnUserCreationScreenExit(
@@ -2303,6 +2327,11 @@ void WizardController::OnUpdateCompleted() {
   language_packs::LanguagePackManager::UpdatePacksForOobe(locale,
                                                           base::DoNothing());
 
+  if (fjord_util::ShouldShowFjordOobeImageSwitch()) {
+    ShowFjordImageSelectionScreen();
+    return;
+  }
+
   if (demo_setup_controller_) {
     ShowConsolidatedConsentScreen();
     return;
@@ -3056,6 +3085,17 @@ void WizardController::OnFjordFwUpdateScreenExit() {
   ShowFjordStationSetupScreen();
 }
 
+void WizardController::OnFjordImageSelectionScreenExit() {
+  OnScreenExit(FjordImageSelectionScreenView::kScreenId, kDefaultExitReason);
+  ShowFjordImageDownloadScreen();
+}
+
+void WizardController::OnFjordImageDownloadScreenExit() {
+  // Image download screen is a terminal state because the image install will
+  // reboot the device.
+  OnScreenExit(FjordImageDownloadScreenView::kScreenId, kDefaultExitReason);
+}
+
 bool WizardController::ExitFjordTouchControllerScreen() {
   // Return true if Station setup screen or FW update screen is showing because
   // this means the TC setup screen was shown before this. This ensures that if
@@ -3367,24 +3407,28 @@ void WizardController::UpdateOobeConfiguration() {
     VLOG(1) << "Using Device Requisition from configuration"
             << *requisition_value;
     policy::EnrollmentRequisitionManager::SetDeviceRequisition(
-        *requisition_value);
+        local_state_.get(), *requisition_value);
   } else if (policy::EnrollmentRequisitionManager::IsCuttlefishDevice()) {
     VLOG(1) << "Using default Device Requisition value for Cuttlefish build "
                "configuration"
             << policy::EnrollmentRequisitionManager::kCuttlefishRequisition;
     policy::EnrollmentRequisitionManager::SetDeviceRequisition(
+        local_state_.get(),
         policy::EnrollmentRequisitionManager::kCuttlefishRequisition);
   } else if (policy::EnrollmentRequisitionManager::IsSquidDevice()) {
     VLOG(1) << "Using default Device Requisition value for Squid build "
                "configuration"
             << policy::EnrollmentRequisitionManager::kSquidRequisition;
     policy::EnrollmentRequisitionManager::SetDeviceRequisition(
+        local_state_.get(),
         policy::EnrollmentRequisitionManager::kSquidRequisition);
-  } else if (policy::EnrollmentRequisitionManager::IsMeetDevice()) {
+  } else if (policy::EnrollmentRequisitionManager::IsMeetDevice(
+                 local_state_.get())) {
     VLOG(1) << "Using default Device Requisition value for CFM build "
                "configuration"
             << policy::EnrollmentRequisitionManager::kRemoraRequisition;
     policy::EnrollmentRequisitionManager::SetDeviceRequisition(
+        local_state_.get(),
         policy::EnrollmentRequisitionManager::kRemoraRequisition);
   }
 
@@ -3545,6 +3589,8 @@ void WizardController::AdvanceToScreen(OobeScreenId screen_id) {
              screen_id == QuickStartView::kScreenId ||
              screen_id == FjordStationSetupScreenView::kScreenId ||
              screen_id == FjordTouchControllerScreenView::kScreenId ||
+             screen_id == FjordImageSelectionScreenView::kScreenId ||
+             screen_id == FjordImageDownloadScreenView::kScreenId ||
              screen_id == FjordFwUpdateScreenView::kScreenId) {
     SetCurrentScreen(GetScreen(screen_id));
   } else {

@@ -6,8 +6,11 @@ package org.chromium.chrome.browser.search_engines.settings.common;
 
 import android.content.Context;
 
+import androidx.annotation.VisibleForTesting;
+
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.chrome.browser.profiles.Profile;
+import org.chromium.components.search_engines.TemplateUrl;
 import org.chromium.ui.modelutil.MVCListAdapter.ListItem;
 import org.chromium.ui.modelutil.MVCListAdapter.ModelList;
 import org.chromium.ui.modelutil.PropertyModel;
@@ -24,15 +27,17 @@ public abstract class ExpandableSiteSearchMediator extends BaseSiteSearchMediato
     /** The default maximum number of items to show before displaying a "More" button. */
     protected static final int DEFAULT_MAX_ROWS = 5;
 
-    // TODO(crbug.com/492061324): Make mIsExpanded and mHiddenItems private.
-    protected boolean mIsExpanded;
+    /** Tracks whether the list is currently expanded to show all items. */
+    private boolean mIsExpanded;
+
+    /** Staged URLs that are lazy-loaded into mExpandableItems when the list is expanded. */
+    private final List<TemplateUrl> mStagedUrls = new ArrayList<>();
 
     /**
-     * The items to display when the list is expanded. Subclasses are responsible for populating
-     * this list during {@link #refreshList()} or lazy-loading them via {@link
-     * #prepareHiddenItemsIfNeeded()}.
+     * The items to display when the list is expanded. These are controlled by {@link
+     * #onMoreButtonClicked(PropertyModel)}.
      */
-    protected final List<ListItem> mHiddenItems = new ArrayList<>();
+    private final List<ListItem> mExpandableItems = new ArrayList<>();
 
     /**
      * Constructs the expandable mediator.
@@ -50,6 +55,36 @@ public abstract class ExpandableSiteSearchMediator extends BaseSiteSearchMediato
         mIsExpanded = false;
         // Triggers refreshList() in the base class.
         super.onTemplateURLServiceChanged();
+    }
+
+    public boolean isExpandedForTesting() {
+        return mIsExpanded;
+    }
+
+    /**
+     * Clears all items from the model list, the expandable items list, and the staged urls list.
+     */
+    protected void clearAllItems() {
+        mModelList.clear();
+        mExpandableItems.clear();
+        mStagedUrls.clear();
+    }
+
+    /**
+     * Populates the model list with the given TemplateUrls, adding the default maximum number of
+     * rows directly and staging the remaining URLs for lazy-loading.
+     *
+     * @param urls The list of TemplateUrls to populate the model list with.
+     */
+    protected void populateTemplateUrls(List<TemplateUrl> urls) {
+        for (int i = 0; i < urls.size(); i++) {
+            TemplateUrl url = urls.get(i);
+            if (i < DEFAULT_MAX_ROWS) {
+                mModelList.add(createListItem(url));
+            } else {
+                mStagedUrls.add(url);
+            }
+        }
     }
 
     /**
@@ -77,32 +112,50 @@ public abstract class ExpandableSiteSearchMediator extends BaseSiteSearchMediato
      *
      * @param moreButtonModel The property model of the clicked button to update its UI state.
      */
-    protected void onMoreButtonClicked(PropertyModel moreButtonModel) {
+    @VisibleForTesting
+    void onMoreButtonClicked(PropertyModel moreButtonModel) {
         // TODO: We're using a single RecyclerView + ModelList to display the list + More button +
-        // the hidden list items. Consider splitting into one RecyclerView for the list + More
-        // button and another RecyclerView for the hidden list items.
+        // the expandable list items. Consider splitting into one RecyclerView for the list + More
+        // button and another RecyclerView for the expandable list items.
         mIsExpanded = !mIsExpanded;
         moreButtonModel.set(SiteSearchProperties.IS_EXPANDED, mIsExpanded);
 
         if (mIsExpanded) {
-            prepareHiddenItemsIfNeeded();
-            mModelList.addAll(mHiddenItems);
+            prepareExpandableItemsIfNeeded();
+            maybeAddExpandableItemsToModelList();
         } else {
-            // Dynamically calculate where the hidden items start by removing them from the tail.
-            // This safely accounts for any buttons (Add, More) that might precede the hidden items.
-            int startIndex = mModelList.size() - mHiddenItems.size();
-            mModelList.removeRange(startIndex, mHiddenItems.size());
+            // Dynamically calculate where the expandable items start by removing them from the
+            // tail. This safely accounts for any buttons (Add, More) that might precede the
+            // expandable items.
+            int startIndex = mModelList.size() - mExpandableItems.size();
+            mModelList.removeRange(startIndex, mExpandableItems.size());
         }
     }
 
     /**
-     * A lifecycle hook called right before the hidden items are added to the list. Subclasses can
-     * override this to lazy-load their hidden ListItems to save memory and processing time during
-     * the initial layout.
+     * Lazy-loads the staged URLs into list items when the list is expanded for the first time.
+     * Clears the staged URLs afterwards to free up memory.
      */
-    protected void prepareHiddenItemsIfNeeded() {}
+    private void prepareExpandableItemsIfNeeded() {
+        if (mExpandableItems.isEmpty()) {
+            for (TemplateUrl url : mStagedUrls) {
+                mExpandableItems.add(createListItem(url));
+            }
+            mStagedUrls.clear();
+        }
+    }
 
-    boolean isExpandedForTesting() {
-        return mIsExpanded;
+    private void maybeAddExpandableItemsToModelList() {
+        if (!mExpandableItems.isEmpty()) {
+            mModelList.addAll(mExpandableItems);
+        }
+    }
+
+    void addExpandableItemForTesting(ListItem item) {
+        mExpandableItems.add(item);
+    }
+
+    boolean areExpandableItemsEmptyForTesting() {
+        return mExpandableItems.isEmpty();
     }
 }

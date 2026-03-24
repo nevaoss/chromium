@@ -190,7 +190,7 @@ class CC_EXPORT TileDisplayLayerImpl
       const {
     return proposed_tiling_scales_for_deletion_;
   }
-  bool nearest_neighbor() const { return nearest_neighbor_; }
+  bool GetNearestNeighbor() const override;
 
   // LayerImpl overrides:
   mojom::LayerType GetLayerType() const override;
@@ -200,8 +200,6 @@ class CC_EXPORT TileDisplayLayerImpl
   void GetContentsResourceId(viz::ResourceId* resource_id,
                              gfx::Size* resource_size,
                              gfx::SizeF* resource_uv_size) const override;
-  gfx::Rect GetDamageRect() const override;
-  void ResetChangeTracking() override;
   gfx::ContentColorUsage GetContentColorUsage() const override;
 
   void SetContentColorUsage(gfx::ContentColorUsage content_color_usage) {
@@ -241,28 +239,11 @@ class CC_EXPORT TileDisplayLayerImpl
       const TileDisplayLayerTiling* tiling) const override;
   bool ComputeCheckerboardedNeedsRecord() override;
 
-  bool AppendQuadForTile(TilingSetCoverageIterator<TileDisplayLayerTiling> iter,
-                         const AppendQuadsContext& context,
-                         viz::CompositorRenderPass* render_pass,
-                         AppendQuadsData* append_quads_data,
-                         viz::SharedQuadState* shared_quad_state,
-                         const Occlusion& scaled_occlusion,
-                         const gfx::Rect& offset_geometry_rect,
-                         const gfx::Rect& offset_visible_geometry_rect,
-                         const gfx::Rect& visible_geometry_rect,
-                         bool needs_blending,
-                         const std::optional<gfx::Rect>& scaled_cull_rect,
-                         float max_contents_scale,
-                         AppendQuadsCustomSharedData* custom_data) override;
-
   bool is_directly_composited_image_ = false;
   bool nearest_neighbor_ = false;
   gfx::ContentColorUsage content_color_usage_ = gfx::ContentColorUsage::kSRGB;
   gfx::Rect recorded_bounds_;
 
-  // Denotes an area that is damaged and needs redraw. This is in the layer's
-  // space.
-  gfx::Rect damage_rect_;
   std::vector<std::unique_ptr<TileDisplayLayerTiling>> tilings_;
 
   // A list of tiling scale keys that the client has nominated for deletion.

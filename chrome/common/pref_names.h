@@ -622,33 +622,6 @@ inline constexpr char kPinUnlockFeatureNotificationShown[] =
 inline constexpr char kFingerprintUnlockFeatureNotificationShown[] =
     "fingerprint_unlock_feature_notification_shown";
 
-// Deprecated (crbug/998983) in favor of kEndOfLifeDate.
-// An integer pref. Holds one of several values:
-// 0: Supported. Device is in supported state.
-// 1: Security Only. Device is in Security-Only update (after initial 5 years).
-// 2: EOL. Device is End of Life(No more updates expected).
-// This value needs to be consistent with EndOfLifeStatus enum.
-inline constexpr char kEolStatus[] = "eol_status";
-
-// A Time pref.  Holds the last used Eol Date and is compared to the latest Eol
-// Date received to make changes to Eol notifications accordingly.
-inline constexpr char kEndOfLifeDate[] = "eol_date";
-
-// Boolean pref indicating that the first warning End Of Life month and year
-// notification was dismissed by the user.
-inline constexpr char kFirstEolWarningDismissed[] =
-    "first_eol_warning_dismissed";
-
-// Boolean pref indicating that the second warning End Of Life month and year
-// notification was dismissed by the user.
-inline constexpr char kSecondEolWarningDismissed[] =
-    "second_eol_warning_dismissed";
-
-// Boolean pref indicating that the End Of Life final update notification was
-// dismissed by the user.
-inline constexpr char kEolNotificationDismissed[] =
-    "eol_notification_dismissed";
-
 // A boolean pref that controls whether the PIN autosubmit feature is enabled.
 // This feature, when enabled, exposes the user's PIN length by showing how many
 // digits are necessary to unlock the device. Can be recommended.
@@ -918,6 +891,15 @@ inline constexpr char kShowHomeButton[] = "browser.show_home_button";
 // A boolean pref set to true if the Forward button should be visible on the
 // toolbar.
 inline constexpr char kShowForwardButton[] = "browser.show_forward_button";
+
+// An integer pref that records how many times a user hovers on a bookmark bar
+// button.
+inline constexpr char kBookmarkBarHoverCount[] = "bookmark_bar.hover_count";
+
+// An integer pref that records how many times a user navigates to a bookmark
+// bar link.
+inline constexpr char kBookmarkBarNavigationCount[] =
+    "bookmark_bar.navigation_count";
 
 // A boolean pref set to true if the Split Tab button should be pinned to the
 // toolbar.
@@ -2345,6 +2327,12 @@ inline constexpr char
 inline constexpr char kCloudApAuthEnabled[] = "auth.cloud_ap_auth.enabled";
 #endif  // BUILDFLAG(IS_WIN)
 
+#if BUILDFLAG(IS_ANDROID)
+// The integer value of the AndroidEntraSSOEnabled policy.
+inline constexpr char kAndroidEntraSSOEnabled[] =
+    "auth.android_entra_sso_enabled";
+#endif
+
 // Boolean that specifies whether to enable revocation checking (best effort)
 // by default.
 inline constexpr char kCertRevocationCheckingEnabled[] =
@@ -2514,17 +2502,6 @@ inline constexpr char kSameOriginTabCaptureAllowedByOrigins[] =
 // "xkb:us::eng".
 inline constexpr char kHardwareKeyboardLayout[] = "intl.hardware_keyboard";
 
-// An integer pref. Its valid values are defined in
-// enterprise_management::DeviceRegisterRequest::PsmExecutionResult enum which
-// indicates all possible PSM execution results in the Chrome OS enrollment
-// flow.
-inline constexpr char kEnrollmentPsmResult[] = "EnrollmentPsmResult";
-
-// An int64 pref to record the timestamp of PSM retrieving the device's
-// determination successfully in the Chrome OS enrollment flow.
-inline constexpr char kEnrollmentPsmDeterminationTime[] =
-    "EnrollmentPsmDeterminationTime";
-
 // The local state pref that stores device activity times before reporting
 // them to the policy server.
 inline constexpr char kDeviceActivityTimes[] = "device_status.activity_times";
@@ -2559,40 +2536,8 @@ inline constexpr char kDeviceRobotAnyApiRefreshTokenV2[] =
 inline constexpr char kDeviceRefreshTokenAnyApiIsV3Used[] =
     "device_refresh_token_is_v3_used.any-api";
 
-// Device requisition for enterprise enrollment.
-inline constexpr char kDeviceEnrollmentRequisition[] =
-    "enrollment.device_requisition";
-
-// Sub organization for enterprise enrollment.
-inline constexpr char kDeviceEnrollmentSubOrganization[] =
-    "enrollment.sub_organization";
-
-// Whether to automatically start the enterprise enrollment step during OOBE.
-inline constexpr char kDeviceEnrollmentAutoStart[] = "enrollment.auto_start";
-
-// Whether the user may exit enrollment.
-inline constexpr char kDeviceEnrollmentCanExit[] = "enrollment.can_exit";
-
 // A string pref with initial locale set in VPD or manifest.
 inline constexpr char kInitialLocale[] = "intl.initial_locale";
-
-// A boolean pref of the device registered flag (second part after first login).
-inline constexpr char kDeviceRegistered[] = "DeviceRegistered";
-
-// Boolean pref to signal corrupted enrollment to force the device through
-// enrollment recovery flow upon next boot.
-inline constexpr char kEnrollmentRecoveryRequired[] =
-    "EnrollmentRecoveryRequired";
-
-// String pref with the data about the OS version and browser version at the
-// time of enrollment. The format is established by release management team.
-// The Chrome OS version format is
-// [Milestone.]TIP_BUILD.BRANCH_BUILD.BRANCH_BRANCH_BUILD.
-// Example: 15711.0.0
-// For browser version the format is MAJOR.MINOR.BRANCH.BUILD.
-// Example: 122.0.6252.0
-inline constexpr char kEnrollmentVersionOS[] = "EnrollmentVersionOS";
-inline constexpr char kEnrollmentVersionBrowser[] = "EnrollmentVersionBrowser";
 
 // Pref name for whether we should show the Getting Started module in the Help
 // app.
@@ -2799,6 +2744,11 @@ inline constexpr char kBackgroundModeEnabled[] = "background_mode.enabled";
 // Set to true if hardware acceleration mode is enabled on this browser.
 inline constexpr char kHardwareAccelerationModeEnabled[] =
     "hardware_acceleration_mode.enabled";
+
+// Set to true if process isolation mode is enabled.
+#if BUILDFLAG(IS_WIN)
+inline constexpr char kProcessIsolationEnabled[] = "isolation_state.enabled";
+#endif  // BUILDFLAG(IS_WIN)
 
 // Hardware acceleration mode from previous browser launch.
 inline constexpr char kHardwareAccelerationModePrevious[] =

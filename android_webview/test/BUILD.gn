@@ -889,6 +889,7 @@ test("android_webview_unittests") {
 
 android_assets("android_webview_unittests_assets") {
   sources = [ "unittest/assets/asset_file.ogg" ]
+  deps = [ "//third_party/icu:icu_assets" ]
 }
 
 android_library("android_webview_unittests_java") {
@@ -929,6 +930,7 @@ robolectric_binary("android_webview_junit_tests") {
     "../junit/src/org/chromium/android_webview/robolectric/AwWebContentsMetricsRecorderTest.java",
     "../junit/src/org/chromium/android_webview/robolectric/FindAddressTest.java",
     "../junit/src/org/chromium/android_webview/robolectric/PlatformSelectionActionMenuDelegateTest.java",
+    "../junit/src/org/chromium/android_webview/robolectric/PrefetchOperationResultTest.java",
     "../junit/src/org/chromium/android_webview/robolectric/RectUtilsTest.java",
     "../junit/src/org/chromium/android_webview/robolectric/ShouldInterceptRequestMediatorTest.java",
     "../junit/src/org/chromium/android_webview/robolectric/SupportLibSpeculativeLoadingParametersAdapterTest.java",

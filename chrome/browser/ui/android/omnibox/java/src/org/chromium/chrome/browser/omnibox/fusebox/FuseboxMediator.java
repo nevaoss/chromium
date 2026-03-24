@@ -39,6 +39,7 @@ import org.chromium.chrome.browser.omnibox.fusebox.FuseboxAttachmentRecyclerView
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxState;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxMetrics.AiModeActivationSource;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxMetrics.FuseboxAttachmentButtonType;
+import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.PopupButtonData;
 import org.chromium.chrome.browser.omnibox.styles.OmniboxResourceProvider;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.profiles.ProfileIntentUtils;
@@ -52,11 +53,15 @@ import org.chromium.components.browser_ui.util.ChromeItemPickerExtras;
 import org.chromium.components.browser_ui.util.ChromeItemPickerUtils;
 import org.chromium.components.contextual_search.InputState;
 import org.chromium.components.feature_engagement.Tracker;
-import org.chromium.components.omnibox.AimModelsProto.ModelMode;
 import org.chromium.components.omnibox.AutocompleteInput;
 import org.chromium.components.omnibox.AutocompleteRequestType;
+import org.chromium.components.omnibox.IconResourceIdsProto.IconResourceIds;
+import org.chromium.components.omnibox.InputTypeProto.InputType;
+import org.chromium.components.omnibox.ModelConfigProto.ModelConfig;
 import org.chromium.components.omnibox.OmniboxFeatures;
 import org.chromium.components.omnibox.OmniboxFocusReason;
+import org.chromium.components.omnibox.ToolModeProto.ToolMode;
+import org.chromium.components.omnibox.ToolModeUtils;
 import org.chromium.ui.base.Clipboard;
 import org.chromium.ui.base.MimeTypeUtils;
 import org.chromium.ui.base.WindowAndroid;
@@ -150,8 +155,7 @@ public class FuseboxMediator implements FuseboxAttachmentChangeListener {
                 FuseboxProperties.POPUP_TOOL_CREATE_IMAGE_CLICKED, this::activateImageGeneration);
         mModel.set(FuseboxProperties.POPUP_TOOL_DEEP_SEARCH_CLICKED, this::onToolDeepSearchClicked);
         mModel.set(FuseboxProperties.POPUP_TOOL_CANVAS_CLICKED, this::onToolCanvasClicked);
-        mModel.set(FuseboxProperties.POPUP_MODEL_AUTO_CLICKED, this::onModelAutoClicked);
-        mModel.set(FuseboxProperties.POPUP_MODEL_PRO_CLICKED, this::onModelProClicked);
+        mModel.set(FuseboxProperties.POPUP_MODEL_BUTTON_DATA_LIST, List.of());
 
         mModel.set(
                 FuseboxProperties.POPUP_ATTACH_TAB_PICKER_VISIBLE,
@@ -168,8 +172,6 @@ public class FuseboxMediator implements FuseboxAttachmentChangeListener {
         mModel.set(FuseboxProperties.POPUP_TOOL_CANVAS_VISIBLE, false);
         mModel.set(FuseboxProperties.POPUP_MODEL_DIVIDER_VISIBLE, false);
         mModel.set(FuseboxProperties.POPUP_MODEL_HEADER_VISIBLE, false);
-        mModel.set(FuseboxProperties.POPUP_MODEL_AUTO_VISIBLE, false);
-        mModel.set(FuseboxProperties.POPUP_MODEL_PRO_VISIBLE, false);
     }
 
     public void destroy() {
@@ -203,11 +205,13 @@ public class FuseboxMediator implements FuseboxAttachmentChangeListener {
         mModel.set(
                 FuseboxProperties.POPUP_ATTACH_FILE_VISIBLE,
                 mComposeboxQueryControllerBridge.isPdfUploadEligible());
-        mModel.set(
-                FuseboxProperties.POPUP_TOOL_CREATE_IMAGE_VISIBLE,
-                mComposeboxQueryControllerBridge.isCreateImagesEligible()
-                        && (OmniboxFeatures.sShowImageGenerationButtonInIncognito.getValue()
-                                || !mProfile.isIncognitoBranded()));
+        if (!OmniboxFeatures.sShowModelPicker.getValue()) {
+            mModel.set(
+                    FuseboxProperties.POPUP_TOOL_CREATE_IMAGE_VISIBLE,
+                    mComposeboxQueryControllerBridge.isCreateImagesEligible()
+                            && (OmniboxFeatures.sShowImageGenerationButtonInIncognito.getValue()
+                                    || !mProfile.isIncognitoBranded()));
+        }
     }
 
     private void setModelList(@Nullable FuseboxAttachmentModelList modelList) {
@@ -305,15 +309,10 @@ public class FuseboxMediator implements FuseboxAttachmentChangeListener {
     private void onRequestTypeButtonClicked() {
         if (!isInInputSession()) return;
 
-        switch (mInput.getRequestType()) {
-            case AutocompleteRequestType.AI_MODE:
-            case AutocompleteRequestType.IMAGE_GENERATION:
-                activateSearchMode();
-                break;
-
-            default:
-                activateAiMode(AiModeActivationSource.DEDICATED_BUTTON);
-                break;
+        if (ToolModeUtils.isAimRequest(mInput.getRequestType())) {
+            activateSearchMode();
+        } else {
+            activateAiMode(AiModeActivationSource.DEDICATED_BUTTON);
         }
     }
 
@@ -323,6 +322,14 @@ public class FuseboxMediator implements FuseboxAttachmentChangeListener {
         if (trySetRequestType(AutocompleteRequestType.SEARCH)) {
             assert mModelList != null;
             mModelList.clear();
+            if (OmniboxFeatures.sShowModelPicker.getValue()
+                    && mComposeboxQueryControllerBridge != null) {
+                InputState inputState =
+                        mComposeboxQueryControllerBridge.getInputStateSupplier().get();
+                if (inputState != null) {
+                    mComposeboxQueryControllerBridge.setActiveModel(inputState.defaultModel);
+                }
+            }
         }
     }
 
@@ -477,10 +484,13 @@ public class FuseboxMediator implements FuseboxAttachmentChangeListener {
     private void onAttachmentsChanged() {
         if (!isInInputSession()) return;
         mModel.set(FuseboxProperties.ATTACHMENTS_VISIBLE, !mModelList.isEmpty());
-        mModel.set(
-                FuseboxProperties.POPUP_TOOL_CREATE_IMAGE_ENABLED,
-                areAttachmentsCompatibleWithCreateImage());
-        updatePopupButtonEnabledStates();
+
+        if (!OmniboxFeatures.sShowModelPicker.getValue()) {
+            mModel.set(
+                    FuseboxProperties.POPUP_TOOL_CREATE_IMAGE_ENABLED,
+                    areAttachmentsCompatibleWithCreateImage());
+            updatePopupButtonEnabledStates();
+        }
     }
 
     private boolean areAttachmentsCompatibleWithCreateImage() {
@@ -613,10 +623,20 @@ public class FuseboxMediator implements FuseboxAttachmentChangeListener {
                 type == AutocompleteRequestType.SEARCH
                         && OmniboxFeatures.sCompactFusebox.getValue());
         mModel.set(FuseboxProperties.AUTOCOMPLETE_REQUEST_TYPE, type);
-        updatePopupButtonEnabledStates();
+
+        if (OmniboxFeatures.sShowModelPicker.getValue()) {
+            if (!isInInputSession()) return;
+            InputState inputState = mComposeboxQueryControllerBridge.getInputStateSupplier().get();
+            if (inputState != null) {
+                onInputStateChange(inputState);
+            }
+        } else {
+            updatePopupButtonEnabledStates();
+        }
     }
 
     private void updatePopupButtonEnabledStates() {
+        assert !OmniboxFeatures.sShowModelPicker.getValue();
         if (!isInInputSession()) return;
 
         // Disable Camera and Gallery Selection popup buttons if no remaining attachments are left.
@@ -850,7 +870,76 @@ public class FuseboxMediator implements FuseboxAttachmentChangeListener {
 
     private void onInputStateChange(InputState inputState) {
         assert OmniboxFeatures.sShowModelPicker.getValue();
-        // TODO(https://crbug.com/480976526): Implement updates in response to input state.
+        // Note that some of the time that this method is called in the middle of beginInput(), so
+        // checking avoid checking isInInputSession() or using mModelList.
+
+        // TODO(https://crbug.com/480976526): Control visibility as well.
+        boolean tabsEnabled =
+                !inputState.disabledInputTypes.contains(InputType.INPUT_TYPE_BROWSER_TAB_VALUE);
+        boolean imagesEnabled =
+                !inputState.disabledInputTypes.contains(InputType.INPUT_TYPE_LENS_IMAGE_VALUE);
+        boolean filesEnabled =
+                !inputState.disabledInputTypes.contains(InputType.INPUT_TYPE_LENS_FILE_VALUE);
+        mModel.set(FuseboxProperties.POPUP_ATTACH_CURRENT_TAB_ENABLED, tabsEnabled);
+        mModel.set(FuseboxProperties.POPUP_ATTACH_TAB_PICKER_ENABLED, tabsEnabled);
+        mModel.set(FuseboxProperties.POPUP_ATTACH_CLIPBOARD_ENABLED, imagesEnabled);
+        mModel.set(FuseboxProperties.POPUP_ATTACH_CAMERA_ENABLED, imagesEnabled);
+        mModel.set(FuseboxProperties.POPUP_ATTACH_GALLERY_ENABLED, imagesEnabled);
+        mModel.set(FuseboxProperties.POPUP_ATTACH_FILE_ENABLED, filesEnabled);
+
+        boolean deepSearchVisible = inputState.isToolVisible(ToolMode.TOOL_MODE_DEEP_SEARCH_VALUE);
+        boolean canvasVisible = inputState.isToolVisible(ToolMode.TOOL_MODE_CANVAS_VALUE);
+
+        mModel.set(
+                FuseboxProperties.POPUP_TOOL_CREATE_IMAGE_VISIBLE,
+                inputState.isImageGenToolVisible()
+                        && (OmniboxFeatures.sShowImageGenerationButtonInIncognito.getValue()
+                                || !mProfile.isIncognitoBranded()));
+        mModel.set(
+                FuseboxProperties.POPUP_TOOL_CREATE_IMAGE_ENABLED,
+                inputState.isImageGenToolEnabled());
+
+        mModel.set(FuseboxProperties.POPUP_TOOL_DEEP_SEARCH_VISIBLE, deepSearchVisible);
+        mModel.set(
+                FuseboxProperties.POPUP_TOOL_DEEP_SEARCH_ENABLED,
+                inputState.isToolEnabled(ToolMode.TOOL_MODE_DEEP_SEARCH_VALUE));
+
+        mModel.set(FuseboxProperties.POPUP_TOOL_CANVAS_VISIBLE, canvasVisible);
+        mModel.set(
+                FuseboxProperties.POPUP_TOOL_CANVAS_ENABLED,
+                inputState.isToolEnabled(ToolMode.TOOL_MODE_CANVAS_VALUE));
+
+        // The InputState is always targeting an AI Mode request and what would be possible, but the
+        // user might not have activate AI Mode yet, in which case we do not want to show any
+        // selected model, even if we're going to automatically selected a default model as soon as
+        // we transition to AI Mode.
+        boolean isAimRequest =
+                mInput != null && ToolModeUtils.isAimRequest(mInput.getRequestType());
+
+        List<PopupButtonData> modelButtonDataList = new ArrayList<>();
+        for (ModelConfig modelConfig : inputState.modelConfigs) {
+            int modelMode = modelConfig.getModelValue();
+            if (inputState.isModelVisible(modelMode)) {
+                boolean selected = isAimRequest && inputState.activeModel == modelMode;
+                int iconId =
+                        modelConfig.hasIcon() && modelConfig.getIcon().hasIconId()
+                                ? modelConfig.getIcon().getIconId().getNumber()
+                                : IconResourceIds.PLACE_WHITE_VALUE;
+                modelButtonDataList.add(
+                        new PopupButtonData(
+                                () -> setModelMode(modelMode),
+                                modelConfig.getMenuLabel(),
+                                iconId,
+                                inputState.isModelEnabled(modelMode),
+                                selected));
+            }
+        }
+        boolean showModelPicker = modelButtonDataList.size() >= 2;
+        mModel.set(FuseboxProperties.POPUP_MODEL_DIVIDER_VISIBLE, showModelPicker);
+        mModel.set(FuseboxProperties.POPUP_MODEL_HEADER_VISIBLE, showModelPicker);
+        mModel.set(
+                FuseboxProperties.POPUP_MODEL_BUTTON_DATA_LIST,
+                showModelPicker ? modelButtonDataList : List.of());
     }
 
     private boolean trySetRequestType(@AutocompleteRequestType int requestType) {
@@ -862,20 +951,17 @@ public class FuseboxMediator implements FuseboxAttachmentChangeListener {
         return true;
     }
 
-    private void onModelAutoClicked() {
-        setModelMode(ModelMode.MODEL_MODE_GEMINI_REGULAR_VALUE);
-    }
-
-    private void onModelProClicked() {
-        setModelMode(ModelMode.MODEL_MODE_GEMINI_PRO_VALUE);
-    }
-
     private void setModelMode(int modelMode) {
         assert OmniboxFeatures.sShowModelPicker.getValue();
+        mPopup.dismiss();
         if (!isInInputSession()) return;
+
+        if (ToolModeUtils.isConventionalRequest(mInput.getRequestType())) {
+            mInput.setRequestType(AutocompleteRequestType.AI_MODE);
+        }
 
         mInput.setModelMode(modelMode);
         // TODO(https://crbug.com/476434460): Consider replacing with wiring in session state.
-        mComposeboxQueryControllerBridge.setActiveTool(modelMode);
+        mComposeboxQueryControllerBridge.setActiveModel(modelMode);
     }
 }

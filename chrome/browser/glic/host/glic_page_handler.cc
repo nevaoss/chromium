@@ -35,6 +35,7 @@
 #include "chrome/browser/enterprise/browser_management/management_service_factory.h"
 #include "chrome/browser/glic/actor/glic_actor_policy_checker.h"
 #include "chrome/browser/glic/common/future_browser_features.h"
+#include "chrome/browser/glic/common/glic_navigation.h"
 #include "chrome/browser/glic/fre/fre_util.h"
 #include "chrome/browser/glic/glic_metrics.h"
 #include "chrome/browser/glic/glic_pref_names.h"
@@ -63,16 +64,17 @@
 #include "chrome/browser/glic/widget/glic_window_controller.h"
 #include "chrome/browser/global_features.h"
 #include "chrome/browser/lens/region_search/lens_region_search_controller.h"
-#include "chrome/browser/media/audio_ducker.h"
 #include "chrome/browser/permissions/system/system_permission_settings.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_attributes_storage.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
+#include "chrome/browser/skills/skills_glic_mojom_util.h"
 #include "chrome/browser/skills/skills_ui_tab_controller_interface.h"
 #include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_navigator_params.h"
 #include "chrome/browser/ui/browser_window/public/browser_collection_observer.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
@@ -106,6 +108,7 @@
 #include "content/public/browser/devtools_agent_host.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_contents_delegate.h"
+#include "extensions/buildflags/buildflags.h"
 #include "media/base/media_switches.h"
 #include "mojo/public/cpp/bindings/callback_helpers.h"
 #include "mojo/public/cpp/bindings/message.h"
@@ -120,12 +123,19 @@
 #include "ui/gfx/geometry/size.h"
 #include "ui/views/widget/widget.h"
 
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+#include "extensions/browser/guest_view/web_view/web_view_guest.h"
+#else
+#include "components/guest_view/browser/slim_web_view/slim_web_view_guest.h"  // nogncheck
+#endif
+
 #if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/feedback/feedback_uploader_chrome.h"
 #include "chrome/browser/feedback/feedback_uploader_factory_chrome.h"
 #include "chrome/browser/feedback/system_logs/chrome_system_logs_fetcher.h"
 #include "chrome/browser/glic/glic_hotkey.h"
 #include "chrome/browser/glic/host/context/glic_focused_browser_manager.h"
+#include "chrome/browser/media/audio_ducker.h"
 #include "chrome/browser/skills/skills_service_factory.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_list.h"
@@ -214,39 +224,10 @@ GlicUnpinTrigger FromMojomUnpinTrigger(mojom::UnpinTrigger trigger) {
 // NEEDS_ANDROID_IMPL: (crbug.com/477622144) Remove desktop-only restrictions
 // from Skills backend.
 #if !BUILDFLAG(IS_ANDROID)
-mojom::SkillSource ToMojomSkillSource(sync_pb::SkillSource source) {
-  switch (source) {
-    case sync_pb::SkillSource::SKILL_SOURCE_UNKNOWN:
-      return mojom::SkillSource::kUnknown;
-    case sync_pb::SkillSource::SKILL_SOURCE_FIRST_PARTY:
-      return mojom::SkillSource::kFirstParty;
-    case sync_pb::SkillSource::SKILL_SOURCE_USER_CREATED:
-      return mojom::SkillSource::kUserCreated;
-    case sync_pb::SkillSource::SKILL_SOURCE_DERIVED_FROM_FIRST_PARTY:
-      return mojom::SkillSource::kDerivedFromFirstParty;
-  }
-}
-
-mojom::SkillPreviewPtr ToMojomSkillPreview(const skills::Skill* skill) {
-  if (!skill) {
-    return nullptr;
-  }
-  return mojom::SkillPreview::New(skill->id, skill->name, skill->icon,
-                                  ToMojomSkillSource(skill->source),
-                                  skill->description);
-}
-
-sync_pb::SkillSource FromMojomSkillSource(mojom::SkillSource source) {
-  switch (source) {
-    case mojom::SkillSource::kUnknown:
-      return sync_pb::SkillSource::SKILL_SOURCE_UNKNOWN;
-    case mojom::SkillSource::kFirstParty:
-      return sync_pb::SkillSource::SKILL_SOURCE_FIRST_PARTY;
-    case mojom::SkillSource::kUserCreated:
-      return sync_pb::SkillSource::SKILL_SOURCE_USER_CREATED;
-    case mojom::SkillSource::kDerivedFromFirstParty:
-      return sync_pb::SkillSource::SKILL_SOURCE_DERIVED_FROM_FIRST_PARTY;
-  }
+mojom::SkillPreviewPtr ToMojomSkillPreview(const skills::proto::Skill& skill) {
+  return mojom::SkillPreview::New(skill.id(), skill.name(), skill.icon(),
+                                  mojom::SkillSource::kFirstParty,
+                                  skill.description());
 }
 #endif  // !BUILDFLAG(IS_ANDROID)
 
@@ -655,6 +636,8 @@ class JournalHandler {
   raw_ptr<actor::ActorKeyedService> actor_keyed_service_;
 };
 
+
+
 }  // namespace
 
 // WARNING: One instance of this class is created per WebUI navigated to
@@ -738,11 +721,12 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
     const int x = work_area.x() + (work_area.width() - popup_width) / 2;
     const int y = work_area.y() + (work_area.height() - popup_height) / 2;
 
-    NavigateParams params(profile_, url, ui::PAGE_TRANSITION_LINK);
-    params.disposition = WindowOpenDisposition::NEW_POPUP;
-    params.opened_by_another_window = true;
-    params.window_features.bounds = gfx::Rect(x, y, popup_width, popup_height);
-    DoNavigate(&params);
+    std::unique_ptr<NavigateParams> params = std::make_unique<NavigateParams>(
+        profile_, url, ui::PAGE_TRANSITION_LINK);
+    params->disposition = WindowOpenDisposition::NEW_POPUP;
+    params->opened_by_another_window = true;
+    params->window_features.bounds = gfx::Rect(x, y, popup_width, popup_height);
+    glic::NavigateAsync(std::move(params), base::DoNothing());
   }
 
   void WebClientCreated(
@@ -943,7 +927,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
       state->host_capabilities.push_back(mojom::HostCapability::kMultiInstance);
     }
 
-    if (base::FeatureList::IsEnabled(features::kAutoOpenGlicForPdf)) {
+    if (GlicEnabling::IsAutoOpenForPdfEnabled(profile_)) {
       state->host_capabilities.push_back(mojom::HostCapability::kPdfZeroState);
     }
 
@@ -951,15 +935,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
       state->host_capabilities.push_back(mojom::HostCapability::kInvoke);
     }
 
-    const mojom::InvocationSource invocation_source =
-        host().invocation_source().value_or(
-            mojom::InvocationSource::kUnsupported);
-
-    const bool should_bypass_fre_ui =
-        GlicEnabling::ShouldBypassFreUi(profile_, invocation_source);
-
-    if (!should_bypass_fre_ui &&
-        GlicEnabling::IsTrustFirstOnboardingEnabledForProfile(profile_)) {
+    if (GlicEnabling::IsTrustFirstOnboardingEnabledForProfile(profile_)) {
       int arm = features::kGlicTrustFirstOnboardingArmParam.Get();
       if (arm == 1) {
         state->host_capabilities.push_back(
@@ -998,7 +974,6 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
         base::FeatureList::IsEnabled(
             features::kGlicOpenPasswordManagerSettingsPageApi);
     state->enable_trust_first_onboarding =
-        !should_bypass_fre_ui &&
         GlicEnabling::IsTrustFirstOnboardingEnabledForProfile(profile_);
     state->onboarding_completed =
         GlicEnabling::HasConsentedForProfile(profile_);
@@ -1029,6 +1004,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
       base::UmaHistogramBoolean("Glic.Host.OpenedInRegularTab", true);
       web_client_->NotifyPanelWillOpen(std::move(panel_opening_data),
                                        base::DoNothing());
+      host().skills_manager().NotifyPanelOpenedOrActivated();
     }
   }
 
@@ -1361,7 +1337,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
     // directly in skills::Skill..
     skills::Skill skill(request->id, request->name, request->icon,
                         request->prompt, request->description,
-                        FromMojomSkillSource(request->source));
+                        skills::GlicMojomToSyncPbSkillSource(request->source));
     host().skills_manager().LaunchSkillsDialog(
         profile_, std::move(skill), skills::mojom::SkillsDialogType::kAdd,
         std::move(scoped_callback));
@@ -1487,6 +1463,8 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
 
   void SetAudioDucking(bool enabled,
                        SetAudioDuckingCallback callback) override {
+    // NEEDS_ANDROID_IMPL: AudioDucking not in android build.
+#if !BUILDFLAG(IS_ANDROID)
     content::RenderFrameHost* guest_frame = page_handler_->GetGuestMainFrame();
     if (!guest_frame) {
       std::move(callback).Run(false);
@@ -1496,6 +1474,9 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
         AudioDucker::GetOrCreateForPage(guest_frame->GetPage());
     std::move(callback).Run(enabled ? audio_ducker->StartDuckingOtherAudio()
                                     : audio_ducker->StopDuckingOtherAudio());
+#else
+    std::move(callback).Run(false);
+#endif
   }
 
   void SetPanelDraggableAreas(
@@ -1718,7 +1699,6 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
 
     // TODO(crbug.com/462769104): move this to a non-metrics API.
     sharing_manager().OnConversationTurnSubmitted();
-    host().instance_delegate().OnUserInputSubmitted(mode);
   }
 
   void OnContextUploadStarted() override {
@@ -1843,7 +1823,8 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
 #if !BUILDFLAG(IS_ANDROID)  // NEEDS_ANDROID_IMPL
     GlicLauncherConfiguration::CheckDefaultBrowserToEnableLauncher();
 
-    Browser* browser = chrome::FindTabbedBrowser(profile_, false);
+    BrowserWindowInterface* browser =
+        chrome::FindTabbedBrowser(profile_, false);
     if (auto* interface = BrowserUserEducationInterface::From(browser)) {
       interface->NotifyAdditionalConditionEvent(
           feature_engagement::events::kGlicOnboardingCompleted);
@@ -1880,6 +1861,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
               std::move(done).Run(std::move(info));
             },
             std::move(done), glic_service_->metrics()));
+    host().skills_manager().NotifyPanelOpenedOrActivated();
   }
 
   void PanelWasClosed(base::OnceClosure done) override {
@@ -1920,6 +1902,9 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
   void ActiveStateChanged(bool is_active) override {
     if (web_client_) {
       web_client_->NotifyPanelActiveChange(is_active);
+      if (is_active) {
+        host().skills_manager().NotifyPanelOpenedOrActivated();
+      }
     }
   }
 
@@ -2100,6 +2085,24 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
     }
     host().skills_manager().UpdateSkillPreviews(std::nullopt);
     web_client_->NotifySkillPreviewsChanged(GetSkillPreviewsList());
+  }
+
+  void OnDiscoverySkillsUpdated(
+      const skills::SkillsService::SkillsMap* skills_map) override {
+    // If skills_map is null, this means we don't have an updated value so we
+    // shouldn't modify the stored 1p map.
+    if (skills_map == nullptr) {
+      return;
+    }
+    if (!web_client_) {
+      return;
+    }
+    host().skills_manager().UpdateSkillPreviews(std::nullopt);
+    web_client_->NotifySkillPreviewsChanged(GetSkillPreviewsList());
+  }
+
+  bool Require1PSkillRefresh() override {
+    return active_state_calculator_.IsActive();
   }
 #endif  // !BUILDFLAG(IS_ANDROID)
 
@@ -2402,14 +2405,10 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
 // NEEDS_ANDROID_IMPL: (crbug.com/477622144) Remove desktop-only restrictions
 // from Skills backend.
 #if !BUILDFLAG(IS_ANDROID)
-    glic::mojom::SkillPtr contextual_skill =
-        host().skills_manager().GetContextualSkill(skill_id);
-    if (contextual_skill) {
-      return contextual_skill;
-    }
     if (!skills_service_) {
       return nullptr;
     }
+
     const skills::Skill* skill = skills_service_->GetSkillById(skill_id);
     if (!skill) {
       return nullptr;
@@ -2417,7 +2416,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
     // We should only set the source_skill_id if the skill was derived from
     // another skill.
     return mojom::Skill::New(
-        ToMojomSkillPreview(skill), skill->prompt,
+        skills::SkillToGlicMojomSkillPreview(skill), skill->prompt,
         skill->source ==
                 sync_pb::SkillSource::SKILL_SOURCE_DERIVED_FROM_FIRST_PARTY
             ? skill->source_skill_id
@@ -2439,8 +2438,26 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
         skills_service_->GetSkills();
     skill_previews.reserve(skills.size());
     for (const auto& skill : skills) {
-      skill_previews.push_back(ToMojomSkillPreview(skill.get()));
+      skill_previews.push_back(
+          skills::SkillToGlicMojomSkillPreview(skill.get()));
     }
+
+    auto& first_party_skills_map = skills_service_->Get1PSkills();
+    std::vector<mojom::SkillPreviewPtr> first_party_skills;
+    for (const auto& it : first_party_skills_map) {
+      first_party_skills.push_back(ToMojomSkillPreview(it.second));
+    }
+
+    std::sort(first_party_skills.begin(), first_party_skills.end(),
+              [](const mojom::SkillPreviewPtr& skill_a,
+                 const mojom::SkillPreviewPtr& skill_b) {
+                return skill_a->name < skill_b->name;
+              });
+
+    skill_previews.reserve(skill_previews.size() + first_party_skills.size());
+    skill_previews.insert(skill_previews.end(),
+                          std::make_move_iterator(first_party_skills.begin()),
+                          std::make_move_iterator(first_party_skills.end()));
 #endif  //  !BUILDFLAG(IS_ANDROID)
     return skill_previews;
   }
@@ -2487,12 +2504,12 @@ GlicPageHandler::GlicPageHandler(
     Host* host,
     mojo::PendingReceiver<glic::mojom::PageHandler> receiver,
     mojo::PendingRemote<mojom::Page> page)
-    : host_(*host),
+    : host_(host),
       webui_contents_(webui_contents),
       browser_context_(webui_contents->GetBrowserContext()),
       receiver_(this, std::move(receiver)),
       page_(std::move(page)) {
-  GetGlicService()->host_manager().WebUIPageHandlerAdded(this, &host_.get());
+  GetGlicService()->host_manager().WebUIPageHandlerAdded(this, host_.get());
   host_->AddPanelStateObserver(this);
   UpdatePageState(host_->GetPanelState(web_client_handler_.get()).kind);
   if (!base::FeatureList::IsEnabled(features::kGlicWebContentsWarming)) {
@@ -2509,6 +2526,9 @@ GlicPageHandler::~GlicPageHandler() {
   WebUiStateChanged(glic::mojom::WebUiState::kUninitialized);
   // `GlicWebClientHandler` holds a pointer back to us, so delete it first.
   web_client_handler_.reset();
+  // Clear `host_` before unregistering so the Host can be deleted
+  // synchronously without leaving a dangling raw_ptr during teardown.
+  host_ = nullptr;
   GetGlicService()->host_manager().WebUIPageHandlerRemoved(this);
 }
 
@@ -2547,7 +2567,8 @@ void GlicPageHandler::Zoom(mojom::ZoomAction zoom_action) {
 }
 
 content::RenderFrameHost* GlicPageHandler::GetGuestMainFrame() {
-#if !BUILDFLAG(IS_ANDROID)  // NEEDS_ANDROID_IMPL
+  // Note: Eventually Glic will fully migrate to SlimWebView.
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
   extensions::WebViewGuest* web_view_guest = nullptr;
   content::RenderFrameHost* webui_frame =
       webui_contents_->GetPrimaryMainFrame();
@@ -2565,8 +2586,23 @@ content::RenderFrameHost* GlicPageHandler::GetGuestMainFrame() {
       });
   return web_view_guest ? web_view_guest->GetGuestMainFrame() : nullptr;
 #else
-  // TODO(b/470059315): Important to implement in Android.
-  return nullptr;
+  guest_view::SlimWebViewGuest* slim_web_view_guest = nullptr;
+  content::RenderFrameHost* webui_frame =
+      webui_contents_->GetPrimaryMainFrame();
+  if (!webui_frame) {
+    return nullptr;
+  }
+  webui_frame->ForEachRenderFrameHostWithAction(
+      [&slim_web_view_guest](content::RenderFrameHost* rfh) {
+        auto* web_view = guest_view::SlimWebViewGuest::FromRenderFrameHost(rfh);
+        if (web_view && web_view->attached()) {
+          slim_web_view_guest = web_view;
+          return content::RenderFrameHost::FrameIterationAction::kStop;
+        }
+        return content::RenderFrameHost::FrameIterationAction::kContinue;
+      });
+  return slim_web_view_guest ? slim_web_view_guest->GetGuestMainFrame()
+                             : nullptr;
 #endif
 }
 
@@ -2587,11 +2623,11 @@ void GlicPageHandler::OpenProfilePickerAndClosePanel() {
 
 void GlicPageHandler::OpenDisabledByAdminLinkAndClosePanel() {
   GURL disabled_by_admin_link_url = GURL(features::kGlicCaaLinkUrl.Get());
-  NavigateParams params(Profile::FromBrowserContext(browser_context_),
-                        disabled_by_admin_link_url,
-                        ui::PAGE_TRANSITION_AUTO_TOPLEVEL);
-  params.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
-  DoNavigate(&params);
+  std::unique_ptr<NavigateParams> params = std::make_unique<NavigateParams>(
+      Profile::FromBrowserContext(browser_context_), disabled_by_admin_link_url,
+      ui::PAGE_TRANSITION_AUTO_TOPLEVEL);
+  params->disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
+  glic::NavigateAsync(std::move(params), base::DoNothing());
   host().ClosePanel(this);
   base::RecordAction(
       base::UserMetricsAction("Glic.DisabledByAdminPanelLinkClicked"));

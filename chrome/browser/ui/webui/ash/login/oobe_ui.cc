@@ -21,6 +21,7 @@
 #include "ash/webui/common/backend/webui_syslog_emitter.h"
 #include "ash/webui/common/mojom/webui_syslog_emitter.mojom.h"
 #include "ash/webui/common/trusted_types_util.h"
+#include "base/check_deref.h"
 #include "base/command_line.h"
 #include "base/containers/fixed_flat_set.h"
 #include "base/functional/bind.h"
@@ -79,6 +80,8 @@
 #include "chrome/browser/ui/webui/ash/login/family_link_notice_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/fingerprint_setup_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/fjord_fw_update_screen_handler.h"
+#include "chrome/browser/ui/webui/ash/login/fjord_image_download_screen_handler.h"
+#include "chrome/browser/ui/webui/ash/login/fjord_image_selection_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/fjord_station_setup_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/fjord_touch_controller_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/gaia_info_screen_handler.h"
@@ -331,6 +334,8 @@ void CreateAndAddOobeUIDataSource(Profile* profile,
   source->AddBoolean("isDrivePinningEnabled",
                      drive::util::IsOobeDrivePinningScreenEnabled());
   source->AddBoolean("isFjordOobeEnabled", fjord_util::ShouldShowFjordOobe());
+  source->AddBoolean("isFjordOobeImageSwitchEnabled",
+                     fjord_util::ShouldShowFjordOobeImageSwitch());
 
   // Whether the timings in oobe_trace.js will be output to the console.
   source->AddBoolean(
@@ -404,7 +409,7 @@ const DisplayScaleFactor k4KDisplay = {3840, 1.5f},
 
 bool OobeUIConfig::IsWebUIEnabled(content::BrowserContext* browser_context) {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
-  bool is_running_test = command_line->HasSwitch(ash::switches::kTestName) ||
+  bool is_running_test = command_line->HasSwitch(::switches::kTestName) ||
                          command_line->HasSwitch(::switches::kTestType);
 
   return ash::ProfileHelper::IsSigninProfile(
@@ -591,6 +596,10 @@ void OobeUI::ConfigureOobeDisplay() {
     AddScreenHandler(std::make_unique<FjordTouchControllerScreenHandler>());
     AddScreenHandler(std::make_unique<FjordStationSetupScreenHandler>());
     AddScreenHandler(std::make_unique<FjordFwUpdateScreenHandler>());
+    if (fjord_util::ShouldShowFjordOobeImageSwitch()) {
+      AddScreenHandler(std::make_unique<FjordImageSelectionScreenHandler>());
+      AddScreenHandler(std::make_unique<FjordImageDownloadScreenHandler>());
+    }
   }
 
   Profile* const profile = Profile::FromWebUI(web_ui());
@@ -611,7 +620,9 @@ void OobeUI::ConfigureOobeDisplay() {
     UpScaleOobe();
   }
 
-  if (policy::EnrollmentRequisitionManager::IsMeetDevice()) {
+  // TODO(crbug.com/489929275): Avoid using g_browser_process.
+  if (policy::EnrollmentRequisitionManager::IsMeetDevice(
+          CHECK_DEREF(g_browser_process->local_state()))) {
     oobe_display_chooser_ = std::make_unique<OobeDisplayChooser>(
         ash::Shell::Get()->cros_display_config());
   }
@@ -619,8 +630,10 @@ void OobeUI::ConfigureOobeDisplay() {
 
 bool OobeUI::ShouldUpScaleOobe() {
   const int64_t display_id = display::Screen::Get()->GetPrimaryDisplay().id();
+  // TODO(crbug.com/489929275): Avoid using g_browser_process.
   return upscaled_display_id_ != display_id && switches::ShouldScaleOobe() &&
-         policy::EnrollmentRequisitionManager::IsMeetDevice();
+         policy::EnrollmentRequisitionManager::IsMeetDevice(
+             CHECK_DEREF(g_browser_process->local_state()));
 }
 
 void OobeUI::UpScaleOobe() {
@@ -711,10 +724,15 @@ OobeUI::OobeUI(content::WebUI* web_ui, const GURL& url)
   LOG(WARNING) << "OobeUI created";
   display_type_ = GetDisplayType(url);
 
+  // TODO(crbug.com/489929275): Avoid using g_browser_process.
+  policy::BrowserPolicyConnectorAsh* browser_policy_connector_ash =
+      g_browser_process->platform_part()->browser_policy_connector_ash();
+
   auto core_oobe_handler = std::make_unique<CoreOobeHandler>();
   core_handler_ = core_oobe_handler.get();
   core_oobe_ =
-      std::make_unique<CoreOobe>(display_type_, core_oobe_handler->AsWeakPtr());
+      std::make_unique<CoreOobe>(browser_policy_connector_ash, display_type_,
+                                 core_oobe_handler->AsWeakPtr());
   web_ui->AddMessageHandler(std::move(core_oobe_handler));
 
   ConfigureOobeDisplay();
@@ -770,7 +788,9 @@ void OobeUI::AddOobeComponents(content::WebUIDataSource* source) {
   // Add Gaia Authenticator resources
   source->AddResourcePaths(kGaiaAuthHostResources);
 
-  if (policy::EnrollmentRequisitionManager::IsMeetDevice() &&
+  // TODO(crbug.com/489929275): Avoid using g_browser_process.
+  if (policy::EnrollmentRequisitionManager::IsMeetDevice(
+          CHECK_DEREF(g_browser_process->local_state())) &&
       !fjord_util::ShouldShowFjordOobe()) {
     source->AddResourcePath(
         kOobeCustomVarsCssJs,

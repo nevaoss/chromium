@@ -18,6 +18,7 @@
 #import "components/search_engines/template_url_service.h"
 #import "components/signin/public/identity_manager/identity_manager.h"
 #import "ios/chrome/browser/aim/model/ios_chrome_aim_eligibility_service_factory.h"
+#import "ios/chrome/browser/cobrowse/model/cobrowse_context.h"
 #import "ios/chrome/browser/composebox/coordinator/composebox_cobrowse_omnibox_client.h"
 #import "ios/chrome/browser/composebox/coordinator/composebox_entrypoint.h"
 #import "ios/chrome/browser/composebox/coordinator/composebox_input_plate_mediator.h"
@@ -58,6 +59,7 @@
 #import "ios/chrome/browser/shared/public/commands/lens_commands.h"
 #import "ios/chrome/browser/shared/public/commands/open_lens_input_selection_command.h"
 #import "ios/chrome/browser/shared/public/commands/qr_scanner_commands.h"
+#import "ios/chrome/browser/shared/public/commands/scene_commands.h"
 #import "ios/chrome/browser/shared/public/features/features.h"
 #import "ios/chrome/browser/shared/ui/util/layout_guide_names.h"
 #import "ios/chrome/browser/shared/ui/util/util_swift.h"
@@ -149,6 +151,7 @@ const CGFloat kSnackbarBottomMargin = 10;
   _viewController =
       [[ComposeboxInputPlateViewController alloc] initWithTheme:_theme];
   _viewController.delegate = self;
+  _viewController.metricsRecorder = _metricsRecorder;
 
   if (_entrypoint == ComposeboxEntrypoint::kNTPAIMButton) {
     [_metricsRecorder
@@ -183,6 +186,9 @@ const CGFloat kSnackbarBottomMargin = 10;
       ios::TemplateURLServiceFactory::GetForProfile(self.profile);
   _aimEligibilityService =
       IOSChromeAimEligibilityServiceFactory::GetForProfile(self.profile);
+
+  CommandDispatcher* dispatcher = self.browser->GetCommandDispatcher();
+
   _mediator = [[ComposeboxInputPlateMediator alloc]
       initWithContextualSearchSession:std::move(contextualSearchSession)
                          webStateList:self.browser->GetWebStateList()
@@ -193,7 +199,13 @@ const CGFloat kSnackbarBottomMargin = 10;
                            modeHolder:_modeHolder
                    templateURLService:templateURLService
                 aimEligibilityService:_aimEligibilityService
-                          prefService:self.profile->GetPrefs()];
+                          prefService:self.profile->GetPrefs()
+            browserCoordinatorHandler:HandlerForProtocol(
+                                          dispatcher,
+                                          BrowserCoordinatorCommands)
+                         sceneHandler:HandlerForProtocol(dispatcher,
+                                                         SceneCommands)
+                           entrypoint:_entrypoint];
   _mediator.debugLogger = self.debugLogger;
   _mediator.URLLoader = _URLLoader;
   _mediator.consumer = _viewController;
@@ -289,6 +301,10 @@ const CGFloat kSnackbarBottomMargin = 10;
 /// Shows the debug UI.
 - (void)showOmniboxDebugUI {
   [_omniboxCoordinator toggleOmniboxDebuggerView];
+}
+
+- (void)endEditing {
+  [_omniboxCoordinator endEditing];
 }
 
 #pragma mark - ComposeboxInputPlateViewControllerDelegate

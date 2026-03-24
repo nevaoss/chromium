@@ -504,8 +504,6 @@ void LocationBarView::Init() {
     // first so that they appear on the left side of the icon container.
     // TODO(crbug.com/40835681): Improve the ordering heuristics for page action
     // icons and determine a way to handle simultaneous icon animations.
-    params.types_enabled.push_back(PageActionIconType::kDiscounts);
-    params.types_enabled.push_back(PageActionIconType::kPriceInsights);
 
     if (optimization_guide::features::ShouldEnableOptimizationGuideIconView()) {
       params.types_enabled.push_back(PageActionIconType::kOptimizationGuide);
@@ -1371,10 +1369,10 @@ bool LocationBarView::ShouldHidePageActionIcon(
     return false;
   }
 
-  PinnedToolbarActionsContainer* pinned_toolbar_actions_container =
-      browser_view->toolbar()->pinned_toolbar_actions_container();
-  return pinned_toolbar_actions_container &&
-         pinned_toolbar_actions_container->IsActionPinnedOrPoppedOut(
+  PinnedToolbarActions* pinned_toolbar_actions =
+      browser_view->toolbar()->pinned_toolbar_actions();
+  return pinned_toolbar_actions &&
+         pinned_toolbar_actions->IsActionPinnedOrPoppedOut(
              icon_view->action_id().value_or(-1));
 }
 

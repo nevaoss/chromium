@@ -381,6 +381,7 @@ component("base") {
     "memory/available_memory_monitor.cc",
     "memory/available_memory_monitor.h",
     "memory/free_deleter.h",
+    "memory/index_pointer.h",
     "memory/memory_pressure_level.h",
     "memory/memory_pressure_listener.cc",
     "memory/memory_pressure_listener.h",
@@ -444,6 +445,8 @@ component("base") {
     "memory_coordinator/memory_consumer_registry.cc",
     "memory_coordinator/memory_consumer_registry.h",
     "memory_coordinator/memory_consumer_registry_destruction_observer.h",
+    "memory_coordinator/memory_coordinator_features.cc",
+    "memory_coordinator/memory_coordinator_features.h",
     "memory_coordinator/traits.h",
     "memory_coordinator/utils.h",
     "message_loop/io_watcher.cc",
@@ -1469,7 +1472,10 @@ component("base") {
       ":metrics_jni($default_toolchain)",
       ":tasks_minimal_jni($default_toolchain)",
     ]
-    public_deps += [ "//third_party/jni_zero" ]
+    public_deps += [
+      ":uuid_jni($default_toolchain)",
+      "//third_party/jni_zero",
+    ]
   }  # is_android || is_robolectric
 
   # Chromeos.
@@ -4723,6 +4729,10 @@ if (is_android) {
       "java/lang/Runtime.class",
       "java/lang/Throwable.class",
     ]
+  }
+
+  generate_jar_jni("uuid_jni") {
+    classes = [ "java/util/UUID.class" ]
   }
 
   java_cpp_features("java_features_srcjar") {

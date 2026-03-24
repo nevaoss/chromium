@@ -356,11 +356,19 @@ class CORE_EXPORT TextControlElement : public HTMLFormControlElementWithState {
   unsigned cached_selection_end_;
   TextFieldSelectionDirection cached_selection_direction_;
 
+  // Value to display in the text element without actually changing its
+  // `Value()`. This is introduced to be able to display information on an
+  // element without leaking it to JavaScript. Reasons for that could be
+  // previewing a value to be filled before getting explicit user consent for
+  // filling.
   String suggested_value_;
+<<<<<<< HEAD
   String value_before_set_suggested_value_;
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
   Vector<double> input_panel_coords_;
 #endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
+=======
+>>>>>>> 148.0.7740.0~1
 
   // Snapshot taken at 'beforeinput' retained until the first observable change.
   // Selection defines the edit region; that change is treated as one replace

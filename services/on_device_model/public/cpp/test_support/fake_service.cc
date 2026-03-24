@@ -222,6 +222,13 @@ void FakeOnDeviceSession::GenerateImpl(
     mojom::GenerateOptionsPtr options,
     mojo::PendingRemote<mojom::StreamingResponder> responder) {
   mojo::Remote<mojom::StreamingResponder> remote(std::move(responder));
+
+  if (settings_->execute_error) {
+    remote.ResetWithReason(static_cast<uint32_t>(*settings_->execute_error),
+                           "Test error");
+    return;
+  }
+
   if (model_->backend_type() == ml::ModelBackendType::kCpuBackend) {
     auto chunk = mojom::ResponseChunk::New();
     chunk->text = "CPU backend";
@@ -535,6 +542,7 @@ void FakeOnDeviceModelService::GetDeviceAndPerformanceInfo(
     GetDeviceAndPerformanceInfoCallback callback) {
   auto performance_info = mojom::DevicePerformanceInfo::New();
   performance_info->performance_class = settings_->performance_class;
+  performance_info->vram_mb = settings_->vram_mb;
   auto device_info = mojom::DeviceInfo::New();
   base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,

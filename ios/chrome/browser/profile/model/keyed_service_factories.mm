@@ -62,6 +62,7 @@
 #import "ios/chrome/browser/enterprise/client_certificates/certificate_provisioning_service_factory_ios.h"
 #import "ios/chrome/browser/enterprise/client_certificates/certificate_store_factory.h"
 #import "ios/chrome/browser/enterprise/client_certificates/client_certificates_service_ios_factory.h"
+#import "ios/chrome/browser/enterprise/cloud_content_scanning/model/ios_cloud_binary_upload_service_factory.h"
 #import "ios/chrome/browser/enterprise/connectors/connectors_service_factory.h"
 #import "ios/chrome/browser/enterprise/connectors/reporting/ios_realtime_reporting_client_factory.h"
 #import "ios/chrome/browser/enterprise/connectors/reporting/ios_reporting_event_router_factory.h"
@@ -200,6 +201,8 @@
 #import "ios/chrome/browser/web/model/java_script_console/java_script_console_feature_factory.h"
 #import "ios/chrome/browser/webauthn/model/ios_passkey_model_factory.h"
 #import "ios/chrome/browser/webdata_services/model/web_data_service_factory.h"
+#import "ios/public/provider/chrome/browser/cobalt/cobalt_api.h"
+#import "ios/web/common/features.h"
 
 #if BUILDFLAG(BUILD_WITH_TFLITE_LIB)
 #import "ios/chrome/browser/autofill/model/ios_autofill_field_classification_model_handler_factory.h"
@@ -236,6 +239,7 @@ void EnsureProfileKeyedServiceFactoriesBuilt() {
   enterprise::ProfileIdServiceFactoryIOS::GetInstance();
   enterprise_reporting::CloudProfileReportingServiceFactoryIOS::GetInstance();
   enterprise_connectors::ConnectorsServiceFactory::GetInstance();
+  enterprise_connectors::IOSCloudBinaryUploadServiceFactory::GetInstance();
   enterprise_connectors::IOSRealtimeReportingClientFactory::GetInstance();
   enterprise_connectors::IOSReportingEventRouterFactory::GetInstance();
   enterprise_idle::IdleServiceFactory::GetInstance();
@@ -423,4 +427,8 @@ void EnsureProfileKeyedServiceFactoriesBuilt() {
 
   // Call other "Ensure...FactoriesBuilt" functions as necessary.
   EnsureSessionProtoDBFactoriesBuilt();
+
+  if (web::features::IsCobaltEnabled()) {
+    ios::provider::EnsureCobaltProfileKeyedServiceFactoriesBuilt();
+  }
 }

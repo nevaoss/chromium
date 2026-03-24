@@ -89,8 +89,6 @@ class ContextualSearchboxHandler
       public SearchboxHandler,
       public TabStripModelObserver {
  public:
-  DECLARE_FEATURE(kExhaustiveGetRecentTabs);
-
   explicit ContextualSearchboxHandler(
       mojo::PendingReceiver<searchbox::mojom::PageHandler>
           pending_searchbox_handler,
@@ -184,7 +182,9 @@ class ContextualSearchboxHandler
   // Resets `input_state_model_`.
   void ResetInputStateModel();
   void SetActiveToolMode(omnibox::ToolMode tool) override;
+  void RecordToolSelectionAction(omnibox::ToolMode tool) override;
   void SetActiveModelMode(omnibox::ModelMode model) override;
+  void RecordModelSelectionAction(omnibox::ModelMode model) override;
   void ActivateMetricsFunnel(const std::string& funnel_name) override;
 
   void OnInputStateChangedForTesting(
@@ -218,6 +218,8 @@ class ContextualSearchboxHandler
                            DeleteContext_DelayUpload);
   FRIEND_TEST_ALL_PREFIXES(ContextualSearchboxHandlerTest,
                            OpenAutocompleteMatch_ZeroSuggestClick);
+  FRIEND_TEST_ALL_PREFIXES(ContextualSearchboxHandlerTest,
+                           OpenAutocompleteMatch_TypedSuggestNavigation);
 
   std::optional<lens::ImageEncodingOptions> CreateTabPreviewEncodingOptions(
       content::WebContents* web_contents);

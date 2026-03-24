@@ -50,7 +50,7 @@
 namespace blink {
 
 template <typename CharType>
-constexpr inline bool IsASCII(CharType c) {
+constexpr inline bool IsAscii(CharType c) {
   return !(c & ~0x7F);
 }
 
@@ -60,19 +60,19 @@ inline bool IsASCIIAlpha(CharType c) {
 }
 
 template <typename CharType>
-inline bool IsASCIIDigit(CharType c) {
+inline bool IsAsciiDigit(CharType c) {
   return c >= '0' && c <= '9';
 }
 
 template <typename CharType>
 inline bool IsASCIIAlphanumeric(CharType c) {
-  return IsASCIIDigit(c) || IsASCIIAlpha(c);
+  return IsAsciiDigit(c) || IsASCIIAlpha(c);
 }
 
 // Returns true if the character is an ASCII hex digit (0-9, a-f, or A-F).
 template <typename CharType>
 inline bool IsAsciiHexDigit(CharType c) {
-  return IsASCIIDigit(c) || ((c | 0x20) >= 'a' && (c | 0x20) <= 'f');
+  return IsAsciiDigit(c) || ((c | 0x20) >= 'a' && (c | 0x20) <= 'f');
 }
 
 template <typename CharType>
@@ -142,15 +142,15 @@ inline constexpr std::array<LChar, 256> kASCIICaseFoldTable = {
     0xfc, 0xfd, 0xfe, 0xff};
 
 template <typename CharType>
-inline CharType ToASCIILower(CharType c) {
+inline CharType ToAsciiLower(CharType c) {
   return c | ((c >= 'A' && c <= 'Z') << 5);
 }
 
-inline LChar ToASCIILower(LChar c) {
+inline LChar ToAsciiLower(LChar c) {
   return kASCIICaseFoldTable[c];
 }
 
-inline char ToASCIILower(char c) {
+inline char ToAsciiLower(char c) {
   return static_cast<char>(kASCIICaseFoldTable[static_cast<LChar>(c)]);
 }
 

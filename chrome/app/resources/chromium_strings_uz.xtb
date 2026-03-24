@@ -195,6 +195,7 @@
 <translation id="3045032126857188731">Tarjima qilingan tili: <ph name="LANGUAGE" /></translation>
 <translation id="3047590466164881923">Fikr-mulohaza yuborish oynasini yopish</translation>
 <translation id="3068187312562070417">Boshqa Chromium profillari</translation>
+<translation id="3068290154869370196">Kengaytmalar – bu Chromium brauzerini moslash imkonini beruvchi plaginlardir. Tartiblashdan tortib, kundalik vazifalarni oson qilishgacha, kengaytmalar Chromiumni oʻzingizga moslashga yordam beradi.</translation>
 <translation id="3068515742935458733">Google‘ga ishdan chiqishlar hisoboti va <ph name="UMA_LINK" />‘ni jo‘natib Chromium yaxshilanishiga yordam berish.</translation>
 <translation id="3079753320517721795">{NUM_DEVICES,plural, =0{1 ta USB qurilma kamida bitta Chromium kengaytmasi tomonidan ochilmoqda}=1{1 ta USB qurilma kamida bitta Chromium kengaytmasi tomonidan ochilmoqda}other{# ta USB qurilma kamida bitta Chromium kengaytmasi tomonidan ochilmoqda}}</translation>
 <translation id="3095811995836568724">Chromium tarixi</translation>
@@ -427,6 +428,7 @@
 <translation id="5821520528363214608">Chromium maʼlumotlarini ishlatish va Google hisobingizda saqlash uchun Chromiumni yangilang</translation>
 <translation id="5824893331272123205">Bu panel yuklanmadi, qaytadan urining</translation>
 <translation id="5862307444128926510">Chromium brauzeriga xush kelibsiz</translation>
+<translation id="5867606647614813312">Chromiumning eng kuchli himoya tizimi bilan taʼminlash uchun qoʻshimcha funksiyalarni yoqadi</translation>
 <translation id="5871205389137001634">Rasm orqali qidiruvni yopish</translation>
 <translation id="5883558403894052917">Chromium tarkibida zararli dasturi bor quyidagi fayllarni aniqladi:</translation>
 <translation id="5889361821821684993">Chromium brauzer sozlamalari xavfsiz ekanini muntazam tekshiradi. Biror sozlamaga diqqat qilish kerak boʻlganda sizga xabar qilamiz.</translation>
@@ -586,6 +588,7 @@ Chromium sozlamalaringizni qaytadan tiklay olmadi.</translation>
 <translation id="7352651011704765696">Xatolik yuz berdi.</translation>
 <translation id="7368826207863345663">Chromium yangilanishlari macOS 13 yoki undan yuqori versiyalarda ishlaydi. Bu kompyuterdagi versiya: macOS 12.</translation>
 <translation id="7376384068949534168">Yaqinda ochmagansiz. Chromium olib tashladi: <ph name="PERMISSION_1" />, <ph name="PERMISSION_2" /></translation>
+<translation id="73786666777299047">Chrome internet-do‘konida ochish</translation>
 <translation id="7384121030444253939">Bu kengaytma endi dastaklanmaydi. Chromium uni olib tashlashni tavsiya qiladi.</translation>
 <translation id="7413153308467572558">Ishni kelgan joyidan davom ettiring: Chromium har safar qayta ishga tushganda oxirgi varaqlarni tiklashi mumkin. Faolsizlantirish uchun bu yerga kiring:</translation>
 <translation id="7427879960656355200">Chromiumga parollarni import qilish</translation>

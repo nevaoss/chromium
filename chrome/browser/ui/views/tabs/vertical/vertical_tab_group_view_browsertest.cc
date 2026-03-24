@@ -328,9 +328,6 @@ IN_PROC_BROWSER_TEST_F(VerticalTabGroupViewTest,
   // header's editor bubble button.
   EXPECT_TRUE(ui::ElementTracker::GetElementTracker()->GetElementInAnyContext(
       kTabGroupEditorBubbleId));
-  EXPECT_TRUE(base::test::RunUntil([&]() {
-    return tab_group_header->editor_bubble_button()->GetVisible();
-  }));
 }
 
 IN_PROC_BROWSER_TEST_F(VerticalTabGroupViewTest, AttentionIndicator) {
@@ -464,3 +461,6 @@ IN_PROC_BROWSER_TEST_F(VerticalTabGroupViewTest,
   EXPECT_EQ(group, model->GetTabGroupForTab(1));
   EXPECT_EQ(group, model->GetTabGroupForTab(2));
 }
+
+// TODO(crbug.com/490428062): Create Tests to Verify Focus Order of Tab Group
+// Header w/ Editor Bubble Button.

@@ -187,48 +187,16 @@ bool TileDisplayLayerImpl::ComputeCheckerboardedNeedsRecord() {
   return false;
 }
 
-bool TileDisplayLayerImpl::AppendQuadForTile(
-    TilingSetCoverageIterator<TileDisplayLayerTiling> iter,
-    const AppendQuadsContext& context,
-    viz::CompositorRenderPass* render_pass,
-    AppendQuadsData* append_quads_data,
-    viz::SharedQuadState* shared_quad_state,
-    const Occlusion& scaled_occlusion,
-    const gfx::Rect& offset_geometry_rect,
-    const gfx::Rect& offset_visible_geometry_rect,
-    const gfx::Rect& visible_geometry_rect,
-    bool needs_blending,
-    const std::optional<gfx::Rect>& scaled_cull_rect,
-    float max_contents_scale,
-    AppendQuadsCustomSharedData* custom_data) {
-  bool has_draw_quad =
-      AppendQuad(iter, render_pass, shared_quad_state, offset_geometry_rect,
-                 offset_visible_geometry_rect, visible_geometry_rect,
-                 needs_blending, nearest_neighbor_, append_quads_data);
-
-  if (!has_draw_quad) {
-    // Checkerboard due to missing raster.
-    AppendCheckerboardQuad(render_pass, shared_quad_state, offset_geometry_rect,
-                           offset_visible_geometry_rect, iter,
-                           append_quads_data);
-
-    // NOTE: TileDisplayLayerImpl does not currently track missing tiles, as
-    // that info is used only to pass to `AppendQuadsData::num_missing_tiles` on
-    // the client side.  TODO(crbug.com/401566175): Determine if we need to
-    // track `num_missing_tiles` on the Viz side in the longer term.
-    return true;
-  }
-
-  AddScaleToLastAppendQuadsScales(iter.CurrentTiling()->contents_scale_key());
-  return true;
-}
-
 float TileDisplayLayerImpl::GetMaximumContentsScaleForUseInAppendQuads() const {
   return tilings_.empty() ? 1.0 : tilings_.front()->contents_scale_key();
 }
 
 bool TileDisplayLayerImpl::IsDirectlyCompositedImage() const {
   return is_directly_composited_image_;
+}
+
+bool TileDisplayLayerImpl::GetNearestNeighbor() const {
+  return nearest_neighbor_;
 }
 
 gfx::Rect TileDisplayLayerImpl::RecordedBounds() const {
@@ -275,21 +243,12 @@ void TileDisplayLayerImpl::GetContentsResourceId(
                  requested_tile_size.height() / resource_size->height());
 }
 
-gfx::Rect TileDisplayLayerImpl::GetDamageRect() const {
-  return damage_rect_;
-}
-
-void TileDisplayLayerImpl::ResetChangeTracking() {
-  LayerImpl::ResetChangeTracking();
-  damage_rect_.SetRect(0, 0, 0, 0);
-}
-
 gfx::ContentColorUsage TileDisplayLayerImpl::GetContentColorUsage() const {
   return content_color_usage_;
 }
 
 void TileDisplayLayerImpl::RecordDamage(const gfx::Rect& damage_rect) {
-  damage_rect_.Union(damage_rect);
+  UnionWithExistingDamage(damage_rect);
 }
 
 void TileDisplayLayerImpl::DiscardResource(viz::ResourceId resource) {

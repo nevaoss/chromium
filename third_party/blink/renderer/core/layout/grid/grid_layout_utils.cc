@@ -12,8 +12,10 @@
 #include "third_party/blink/renderer/core/layout/geometry/static_position.h"
 #include "third_party/blink/renderer/core/layout/grid/grid_item.h"
 #include "third_party/blink/renderer/core/layout/grid/grid_line_resolver.h"
+#include "third_party/blink/renderer/core/layout/grid/grid_node.h"
 #include "third_party/blink/renderer/core/layout/grid/grid_track_collection.h"
 #include "third_party/blink/renderer/core/layout/grid/grid_track_sizing_algorithm.h"
+#include "third_party/blink/renderer/core/layout/grid_lanes/grid_lanes_layout_algorithm.h"
 #include "third_party/blink/renderer/core/layout/length_utils.h"
 #include "third_party/blink/renderer/core/layout/logical_box_fragment.h"
 #include "third_party/blink/renderer/core/style/grid_track_list.h"
@@ -685,7 +687,7 @@ void BuildGridSizingSubtree(const LayoutAlgorithmType& algorithm,
   const auto constraint_space = algorithm.GetConstraintSpace();
   const auto writing_mode = constraint_space.GetWritingMode();
 
-  GridItems grid_items;
+  GridItems* grid_items = MakeGarbageCollected<GridItems>();
   GridLayoutData* layout_data = MakeGarbageCollected<GridLayoutData>();
   bool has_nested_subgrid = false;
 
@@ -700,19 +702,23 @@ void BuildGridSizingSubtree(const LayoutAlgorithmType& algorithm,
   const bool has_standalone_columns = subgrid_area.columns.IsIndefinite();
   const bool has_standalone_rows = subgrid_area.rows.IsIndefinite();
 
+  GridItems* virtual_items = MakeGarbageCollected<GridItems>();
   if (has_standalone_columns) {
-    algorithm.BuildSizingCollection(kForColumns, line_resolver, grid_items,
+    algorithm.BuildSizingCollection(kForColumns, line_resolver, *grid_items,
                                     *layout_data, sizing_constraint,
-                                    needs_intrinsic_track_size);
+                                    needs_intrinsic_track_size, &virtual_items);
   }
   if (has_standalone_rows) {
-    algorithm.BuildSizingCollection(kForRows, line_resolver, grid_items,
+    algorithm.BuildSizingCollection(kForRows, line_resolver, *grid_items,
                                     *layout_data, sizing_constraint,
-                                    needs_intrinsic_track_size);
+                                    needs_intrinsic_track_size, &virtual_items);
   }
 
-  if (!has_nested_subgrid) {
-    sizing_tree->SetSizingNodeData(node, std::move(grid_items), layout_data);
+  // TODO(almaher): Remove the Grid Lanes check once more of the functionality
+  // is in place for subgrid support in Grid Lanes.
+  if (!has_nested_subgrid || style.IsDisplayGridLanesBox()) {
+    sizing_tree->SetSizingNodeData(node, grid_items, layout_data,
+                                   virtual_items);
     return;
   }
 
@@ -735,7 +741,7 @@ void BuildGridSizingSubtree(const LayoutAlgorithmType& algorithm,
 
   // `AppendSubgriddedItems` rely on the cached placement data of a subgrid to
   // construct its grid items, so we need to build their subtrees beforehand.
-  for (auto& grid_item : grid_items) {
+  for (auto& grid_item : *grid_items) {
     if (!grid_item.IsSubgrid()) {
       continue;
     }
@@ -779,28 +785,37 @@ void BuildGridSizingSubtree(const LayoutAlgorithmType& algorithm,
     grid_item.ResetPlacementIndices();
   }
 
-  node.AppendSubgriddedItems(&grid_items);
+  AppendSubgriddedItems(style, grid_items);
 
   // We need to recreate the track builder collections to ensure track coverage
   // for subgridded items; it would be ideal to have them accounted for already,
   // but we might need the track collections to compute a subgrid's automatic
   // repetitions, so we do this process twice to avoid a cyclic dependency.
   if (has_standalone_columns) {
-    algorithm.BuildSizingCollection(kForColumns, line_resolver, grid_items,
+    algorithm.BuildSizingCollection(kForColumns, line_resolver, *grid_items,
                                     *layout_data, sizing_constraint,
-                                    needs_intrinsic_track_size);
+                                    needs_intrinsic_track_size, &virtual_items);
   }
   if (has_standalone_rows) {
-    algorithm.BuildSizingCollection(kForRows, line_resolver, grid_items,
+    algorithm.BuildSizingCollection(kForRows, line_resolver, *grid_items,
                                     *layout_data, sizing_constraint,
-                                    needs_intrinsic_track_size);
+                                    needs_intrinsic_track_size, &virtual_items);
   }
 
-  sizing_tree->SetSizingNodeData(node, std::move(grid_items), layout_data);
+  sizing_tree->SetSizingNodeData(node, grid_items, layout_data, virtual_items);
 }
 
-// TODO(almaher): Need to add an instance for GridLanesLayoutAlgorithm.
 template void BuildGridSizingSubtree(const GridLayoutAlgorithm&,
+                                     const GridLineResolver&,
+                                     GridSizingTree*,
+                                     HeapVector<Member<LayoutBox>>*,
+                                     const SubgriddedItemData&,
+                                     const GridLineResolver*,
+                                     SizingConstraint,
+                                     bool,
+                                     bool,
+                                     bool);
+template void BuildGridSizingSubtree(const GridLanesLayoutAlgorithm&,
                                      const GridLineResolver&,
                                      GridSizingTree*,
                                      HeapVector<Member<LayoutBox>>*,
@@ -830,9 +845,14 @@ GridSizingTree BuildGridSizingTree(
   return sizing_tree;
 }
 
-// TODO(almaher): Need to add an instance for GridLanesLayoutAlgorithm.
 template CORE_EXPORT GridSizingTree
 BuildGridSizingTree(const GridLayoutAlgorithm&,
+                    const GridLineResolver&,
+                    HeapVector<Member<LayoutBox>>*,
+                    SizingConstraint,
+                    bool);
+template CORE_EXPORT GridSizingTree
+BuildGridSizingTree(const GridLanesLayoutAlgorithm&,
                     const GridLineResolver&,
                     HeapVector<Member<LayoutBox>>*,
                     SizingConstraint,
@@ -857,9 +877,13 @@ GridSizingTree BuildGridSizingTreeIgnoringChildren(
   return sizing_tree;
 }
 
-// TODO(almaher): Need to add an instance for GridLanesLayoutAlgorithm.
 template GridSizingTree BuildGridSizingTreeIgnoringChildren(
     const GridLayoutAlgorithm&,
+    const GridLineResolver&,
+    SizingConstraint,
+    bool);
+template GridSizingTree BuildGridSizingTreeIgnoringChildren(
+    const GridLanesLayoutAlgorithm&,
     const GridLineResolver&,
     SizingConstraint,
     bool);
@@ -971,6 +995,69 @@ bool HasBlockSizeDependentGridItem(const GridItems& grid_items) {
     }
   }
   return false;
+}
+
+void AppendSubgriddedItems(const ComputedStyle& root_grid_style,
+                           GridItems* grid_items) {
+  DCHECK(grid_items);
+
+  for (wtf_size_t i = 0; i < grid_items->Size(); ++i) {
+    auto& current_item = grid_items->At(i);
+
+    if (!current_item.must_consider_grid_items_for_column_sizing &&
+        !current_item.must_consider_grid_items_for_row_sizing) {
+      continue;
+    }
+
+    // TODO(almaher): This should eventually use a GridLanesNode if
+    // required once subgrids are supported for grid lanes items.
+    bool must_invalidate_placement_cache = false;
+    const auto subgrid = To<GridNode>(current_item.node);
+
+    auto* subgridded_items = subgrid.ConstructGridItems(
+        subgrid.CachedLineResolver(), root_grid_style, subgrid.Style(),
+        current_item.must_consider_grid_items_for_column_sizing,
+        current_item.must_consider_grid_items_for_row_sizing,
+        &must_invalidate_placement_cache);
+
+    DCHECK(!must_invalidate_placement_cache)
+        << "We shouldn't need to invalidate the placement cache if we relied "
+           "on the cached line resolver; it must produce the same placement.";
+
+    auto TranslateSubgriddedItem =
+        [&current_item](GridSpan& subgridded_item_span,
+                        GridTrackSizingDirection track_direction) {
+          if (current_item.MustConsiderGridItemsForSizing(track_direction)) {
+            // If a subgrid is in an opposite writing direction to the root
+            // grid, we should "reverse" the subgridded item's span.
+            if (current_item.IsOppositeDirectionInRootGrid(track_direction)) {
+              const wtf_size_t subgrid_span_size =
+                  current_item.SpanSize(track_direction);
+
+              DCHECK_LE(subgridded_item_span.EndLine(), subgrid_span_size);
+
+              subgridded_item_span = GridSpan::TranslatedDefiniteGridSpan(
+                  subgrid_span_size - subgridded_item_span.EndLine(),
+                  subgrid_span_size - subgridded_item_span.StartLine());
+            }
+            subgridded_item_span.Translate(
+                current_item.StartLine(track_direction));
+          }
+        };
+
+    for (auto& subgridded_item : *subgridded_items) {
+      subgridded_item.is_subgridded_to_parent_grid = true;
+      auto& item_position = subgridded_item.resolved_position;
+
+      if (!current_item.is_parallel_with_root_grid) {
+        std::swap(item_position.columns, item_position.rows);
+      }
+
+      TranslateSubgriddedItem(item_position.columns, kForColumns);
+      TranslateSubgriddedItem(item_position.rows, kForRows);
+    }
+    grid_items->Append(subgridded_items);
+  }
 }
 
 LayoutUnit GetSynthesizedLogicalBaseline(

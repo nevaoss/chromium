@@ -123,8 +123,6 @@ class GlicKeyedService : public KeyedService,
   // Show, summon or activate the panel, or close it if it's already active and
   // prevent_close is false. If `bwi` is non-null, attach the panel to its
   // Browser.
-  // If `auto_send` is true and `prompt_suggestion` is provided, the prompt will
-  // be automatically submitted after the panel opens.
   // TODO(b:448888544): remove `prevent_close` in favor of a Show method.
   virtual void ToggleUI(BrowserWindowInterface* bwi,
                         bool prevent_close,
@@ -140,15 +138,7 @@ class GlicKeyedService : public KeyedService,
                             tabs::TabInterface* tab,
                             GlicInvokeOptions options);
 
-  void Invoke(tabs::TabInterface* tab, GlicInvokeOptions options);
-
-  // Show the panel with the given conversation id. Used only by web continuity.
-  // Deprecated: See go/gic:invoke for full solution, this existing version will
-  // be removed in the future.
-  [[deprecated]] virtual void ShowUiWithConversationID(
-      BrowserWindowInterface* bwi,
-      mojom::InvocationSource source,
-      std::string conversation_id);
+  virtual void Invoke(tabs::TabInterface* tab, GlicInvokeOptions options);
 
   virtual void OpenFreDialogInNewTab(BrowserWindowInterface* bwi,
                                      mojom::InvocationSource source);
@@ -298,13 +288,7 @@ class GlicKeyedService : public KeyedService,
   bool IsActive() override;
 #endif
 
-  void OnUserInputSubmitted(glic::mojom::WebClientMode mode)
-// Override is only needed for single instance
-#if !BUILDFLAG(IS_ANDROID)
-      override;
-#else
-      ;
-#endif
+  void OnUserInputSubmitted(glic::mojom::WebClientMode mode);
 
   // Registers a callback to be called any time user input is submitted in the
   // client. This is used to update UI effects on tabs that are being shared

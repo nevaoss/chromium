@@ -22,6 +22,7 @@
 #include "components/autofill/core/browser/field_types.h"
 #include "components/autofill/core/browser/suggestions/suggestion_type.h"
 #include "components/autofill/core/browser/webdata/autocomplete/autocomplete_entry.h"
+#include "components/autofill/core/common/autofill_payments_features.h"
 #include "components/autofill/core/common/unique_ids.h"
 #include "ui/gfx/image/image.h"
 #include "url/gurl.h"
@@ -218,6 +219,7 @@ struct Suggestion {
 
   using IsLoading = base::StrongAlias<class IsLoadingTag, bool>;
   using InstrumentId = base::StrongAlias<class InstrumentIdTag, uint64_t>;
+  // TODO(crbug.com/477689220): Directly use BnplIssuer and remove the alias.
   using BnplIssuer = base::StrongAlias<class BnplIssuerTag, BnplIssuer>;
   using Payload = std::variant<Guid,
                                InstrumentId,
@@ -346,6 +348,7 @@ struct Suggestion {
     kLoyalty,
     kMagic,
     kOfferTag,
+    kPassport,
     kPenSpark,
     kPersonCheck,
     kPlusAddress,
@@ -477,8 +480,11 @@ struct Suggestion {
         return std::holds_alternative<Guid>(payload) ||
                std::holds_alternative<PaymentsPayload>(payload);
       case SuggestionType::kBnplEntry:
-        return std::holds_alternative<PaymentsPayload>(payload) ||
-               std::holds_alternative<BnplIssuer>(payload);
+        if (base::FeatureList::IsEnabled(
+                features::kAutofillEnablePayNowPayLaterTabs)) {
+          return std::holds_alternative<BnplIssuer>(payload);
+        }
+        return std::holds_alternative<PaymentsPayload>(payload);
       case SuggestionType::kAtMemorySearchResult:
         return std::holds_alternative<AtMemoryPayload>(payload);
       case SuggestionType::kDevtoolsTestAddressEntry:

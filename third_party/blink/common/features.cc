@@ -410,11 +410,14 @@ BASE_FEATURE(kClientHintsViewportWidth_DEPRECATED,
 
 BASE_FEATURE(kCompositedAnimationsForceMainFrames,
              base::FEATURE_ENABLED_BY_DEFAULT);
+// TODO(paint-dev): crbug.com/470127855#comment32. Enabling this parameter
+// causes a significant regression in power consumption. We need to make the
+// behavior more selective before re-enabling it.
 BASE_FEATURE_PARAM(bool,
                    kForceMainFramesForIntersectionObserver,
                    &kCompositedAnimationsForceMainFrames,
                    "intersection-observer",
-                   true);
+                   false);
 BASE_FEATURE_PARAM(bool,
                    kForceMainFramesForAnchorTransform,
                    &kCompositedAnimationsForceMainFrames,
@@ -1572,27 +1575,17 @@ BASE_FEATURE(kLocalResourceCodeCache, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kLogUnexpectedIPCPostedToBackForwardCachedDocuments,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+#if BUILDFLAG(IS_ANDROID)
 // Allow low latency canvas 2D to be in overlay (generally meaning scanned out
-// directly to display), even if regular canvas are not in overlay
-// (Canvas2DImageChromium is disabled).
-BASE_FEATURE(kLowLatencyCanvas2dImageChromium,
-#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID)
-             base::FEATURE_ENABLED_BY_DEFAULT
-#else
-             base::FEATURE_DISABLED_BY_DEFAULT
-#endif  // BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID)
-);
+// directly to display), even if regular canvases are not in overlay.
+BASE_FEATURE(kLowLatencyUsageSupportedForCanvas2D,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Allow low latency WebGL to be in overlay (generally meaning scanned out
-// directly to display), even if regular canvas are not in overlay
-// (WebGLImageChromium is disabled).
-BASE_FEATURE(kLowLatencyWebGLImageChromium,
-#if BUILDFLAG(IS_ANDROID)
-             base::FEATURE_ENABLED_BY_DEFAULT
-#else
-             base::FEATURE_DISABLED_BY_DEFAULT
+// directly to display), even if regular canvases are not in overlay.
+BASE_FEATURE(kLowLatencyUsageSupportedForWebGL,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 #endif
-);
 
 BASE_FEATURE(kLowPriorityAsyncScriptExecution,
 // TODO(crbug/429069717): Fix the high power consumption on ChromeOS.

@@ -181,6 +181,14 @@ public class ExtensionsToolbarBridge implements Destroyable {
     }
 
     @CalledByNative
+    void showContextMenu(@JniType("std::string") String actionId) {
+        // {@link mDelegate} should be set in {@code ExtensionActionListMediator}'s constructor.
+        assert mDelegate != null;
+
+        mDelegate.showContextMenu(actionId);
+    }
+
+    @CalledByNative
     public void onRequestAccessButtonParamsChanged() {
         for (Observer observer : mObservers) {
             observer.onRequestAccessButtonParamsChanged();
@@ -192,6 +200,22 @@ public class ExtensionsToolbarBridge implements Destroyable {
         for (Observer observer : mObservers) {
             observer.onToolbarControlStateUpdated();
         }
+    }
+
+    @CalledByNative
+    public boolean hasPoppedOutAction() {
+        // {@link mDelegate} should be set in {@code ExtensionActionListMediator}'s constructor.
+        assert mDelegate != null;
+
+        return mDelegate.hasPoppedOutAction();
+    }
+
+    @CalledByNative
+    public void hideActivePopup() {
+        // {@link mDelegate} should be set in {@code ExtensionActionListMediator}'s constructor.
+        assert mDelegate != null;
+
+        mDelegate.hideActivePopup();
     }
 
     @CalledByNative
@@ -230,9 +254,9 @@ public class ExtensionsToolbarBridge implements Destroyable {
     }
 
     @CalledByNative
-    public void onActiveWebContentsChanged() {
+    public void onActiveWebContentsChanged(WebContents webContents) {
         for (Observer observer : mObservers) {
-            observer.onActiveWebContentsChanged();
+            observer.onActiveWebContentsChanged(webContents);
         }
     }
 
@@ -253,7 +277,7 @@ public class ExtensionsToolbarBridge implements Destroyable {
         default void onPinnedActionsChanged() {}
 
         // Called when the active web contents changes due to e.g. navigation or tab change.
-        default void onActiveWebContentsChanged() {}
+        default void onActiveWebContentsChanged(WebContents webContents) {}
 
         // Called when the request access button parameters have changed.
         default void onRequestAccessButtonParamsChanged() {}
@@ -265,6 +289,15 @@ public class ExtensionsToolbarBridge implements Destroyable {
     public interface Delegate {
         // Called when the popup should be shown.
         void triggerPopup(String actionId, long nativeHostPtr);
+
+        // Called when the context menu should be shown.
+        void showContextMenu(String actionId);
+
+        // Returns whether there is a popped out action.
+        boolean hasPoppedOutAction();
+
+        // Called when active popup should be hidden.
+        void hideActivePopup();
     }
 
     @NativeMethods

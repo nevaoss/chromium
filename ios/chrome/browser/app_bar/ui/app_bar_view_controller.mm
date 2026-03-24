@@ -8,6 +8,7 @@
 #import "base/metrics/user_metrics_action.h"
 #import "ios/chrome/browser/app_bar/ui/app_bar_constants.h"
 #import "ios/chrome/browser/app_bar/ui/app_bar_mutator.h"
+#import "ios/chrome/browser/cobrowse/model/cobrowse_context.h"
 #import "ios/chrome/browser/intents/model/intents_donation_helper.h"
 #import "ios/chrome/browser/shared/public/commands/scene_commands.h"
 #import "ios/chrome/browser/shared/public/commands/tab_grid_commands.h"
@@ -116,6 +117,10 @@ UIImage* CustomAppBarSymbol(NSString* symbol_name) {
   // The positioning constraints for the tab count label in the tab group tab
   // grid button state.
   NSArray<NSLayoutConstraint*>* _tabGridButtonTabGroupStateConstraints;
+  // Cached state for the assistant button.
+  AppBarAssistantButtonState _assistantButtonState;
+  // Cached avatar for the assistant button.
+  UIImage* _assistantButtonAvatar;
 }
 
 - (void)updateForAngle:(CGFloat)angle {
@@ -181,11 +186,17 @@ UIImage* CustomAppBarSymbol(NSString* symbol_name) {
 }
 
 - (void)setTabGridVisible:(BOOL)tabGridVisible {
+  if (_isTabGridVisible == tabGridVisible) {
+    return;
+  }
   _isTabGridVisible = tabGridVisible;
   [self updateTabGridButtonForTabGridVisibility];
 }
 
 - (void)setInTabGroup:(BOOL)inTabGroup {
+  if (_inTabGroup == inTabGroup) {
+    return;
+  }
   _inTabGroup = inTabGroup;
   [self updateTabGridButtonForTabGridVisibility];
 }
@@ -240,22 +251,64 @@ UIImage* CustomAppBarSymbol(NSString* symbol_name) {
   [_tabGridButton setNeedsUpdateConfiguration];
 }
 
+- (void)setAssistantButtonState:(AppBarAssistantButtonState)state
+                         avatar:(UIImage*)avatar {
+  _assistantButtonState = state;
+  _assistantButtonAvatar = avatar;
+
+  [self updateAssistantButton];
+}
+
 #pragma mark - Private
+
+// Updates the assistant button configuration based on the current state.
+- (void)updateAssistantButton {
+  if (!_assistantButton) {
+    return;
+  }
+
+  NSString* title;
+  UIImage* image;
+  switch (_assistantButtonState) {
+    case AppBarAssistantButtonState::kSignedOut:
+      title =
+          l10n_util::GetNSString(IDS_IOS_NON_MODAL_SIGNIN_PROMO_SIGNIN_BUTTON);
+      image = DefaultAppBarSymbol(kPersonCropCircleSymbol);
+      break;
+    case AppBarAssistantButtonState::kAccount:
+      title = l10n_util::GetNSString(IDS_IOS_GOOGLE_ACCOUNT_SETTINGS_TITLE);
+      image = _assistantButtonAvatar;
+      break;
+    case AppBarAssistantButtonState::kAsk:
+      title = l10n_util::GetNSString(IDS_IOS_APP_BAR_ASK_GEMINI);
+#if BUILDFLAG(IOS_USE_BRANDED_ASSETS)
+      image = CustomAppBarSymbol(kGeminiBrandedLogoSymbol);
+#else
+      image = DefaultAppBarSymbol(kGeminiNonBrandedLogoSymbol);
+#endif
+      break;
+  }
+
+  UIButtonConfiguration* configuration = _assistantButton.configuration;
+  configuration.title = title;
+  configuration.image =
+      image ? image : DefaultAppBarSymbol(kPersonCropCircleSymbol);
+  _assistantButton.configuration = configuration;
+}
 
 // Returns a new "Assistant" button.
 - (UIButton*)createAssistantButton {
-  NSString* title = l10n_util::GetNSString(IDS_IOS_APP_BAR_ASK_GEMINI);
-#if BUILDFLAG(IOS_USE_BRANDED_ASSETS)
-  UIImage* image = CustomAppBarSymbol(kGeminiBrandedLogoSymbol);
-#else
-  UIImage* image = DefaultAppBarSymbol(kGeminiNonBrandedLogoSymbol);
-#endif
-  UIButton* button = [self buttonWithTitle:title image:image];
+  UIButton* button = [self buttonWithTitle:nil image:nil];
   button.menu = _assistantButtonMenu;
 
   [button addTarget:self
                 action:@selector(didTapAssistantButton)
       forControlEvents:UIControlEventTouchUpInside];
+  button.accessibilityIdentifier = kAppBarAssistantButtonId;
+
+  _assistantButton = button;
+  [self updateAssistantButton];
+
   return button;
 }
 
@@ -454,7 +507,7 @@ UIImage* CustomAppBarSymbol(NSString* symbol_name) {
 // Called when the Assistant button is tapped.
 - (void)didTapAssistantButton {
   base::RecordAction(base::UserMetricsAction("MobileToolbarAssistant"));
-  [self.sceneHandler showAssistant];
+  [self.mutator assistantButtonTappedWithState:_assistantButtonState];
 }
 
 // Called when the New Tab button is tapped.

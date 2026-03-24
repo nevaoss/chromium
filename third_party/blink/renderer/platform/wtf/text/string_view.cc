@@ -36,8 +36,6 @@ class StackStringViewAllocator {
     return StringView(buffer);
   }
 
-  StringView CoerceOriginal(StringView string) { return string; }
-
  private:
   StringView::StackBackingStore& backing_store_;
 };
@@ -45,13 +43,13 @@ class StackStringViewAllocator {
 template <typename CharType1, typename CharType2>
 int CodeUnitCompareIgnoringAsciiCase(base::span<const CharType1> c1,
                                      base::span<const CharType2> c2) {
-  return CodeUnitCompare(c1, c2, [](auto c) { return ToASCIILower(c); });
+  return CodeUnitCompare(c1, c2, [](auto c) { return ToAsciiLower(c); });
 }
 
 }  // namespace
 
 StringView::StringView(const UChar* chars)
-    // SAFETY: It's safe if `chars` points to a NUL-terminated string.
+    // SAFETY: length of `chars` determined by walking NUL-terminated string.
     : StringView(UNSAFE_BUFFERS(
           base::span(chars, chars ? LengthOfNullTerminatedString(chars) : 0))) {
 }
@@ -223,8 +221,8 @@ StringView::size_type StringView::rfind(UChar ch, size_type start) const {
   if (empty()) {
     return npos;
   }
-  return Is8Bit() ? blink::ReverseFind(Span8(), ch, start)
-                  : blink::ReverseFind(Span16(), ch, start);
+  return Is8Bit() ? internal::ReverseFind(Span8(), ch, start)
+                  : internal::ReverseFind(Span16(), ch, start);
 }
 
 StringView::size_type StringView::rfind(const StringView& value,
@@ -235,7 +233,7 @@ StringView::size_type StringView::rfind(const StringView& value,
   }
   return VisitCharacters(*this, [&](auto chars) {
     if (value_length == 1u) {
-      return blink::ReverseFind(chars, value[0], start);
+      return internal::ReverseFind(chars, value[0], start);
     }
     return VisitCharacters(value, [&](auto value_chars) {
       return internal::ReverseFind(chars, value_chars, start);
@@ -373,6 +371,9 @@ bool EqualIgnoringAsciiCase(const StringView& a, const StringView& b) {
 
 StringView StringView::LowerASCIIMaybeUsingBuffer(
     StackBackingStore& buffer) const {
+  if (ContainsNoAsciiUpper()) {
+    return *this;
+  }
   return ConvertAsciiCase(*this, LowerConverter(),
                           StackStringViewAllocator(buffer));
 }
@@ -387,7 +388,6 @@ int CodeUnitCompareIgnoringAsciiCase(const StringView& a, const StringView& b) {
 }
 
 UChar32 StringView::CodePointAt(size_type i) const {
-  SECURITY_DCHECK(i < length());
   if (Is8Bit())
     return (*this)[i];
   return blink::CodePointAt(Span16(), i);

@@ -372,14 +372,14 @@ WebInputEventResult MouseEventManager::DispatchMouseClickIfNeeded(
 }
 
 void MouseEventManager::RecomputeMouseHoverStateIfNeeded() {
-  // |RecomputeMouseHoverState| may set |hover_state_dirty_| to be true.
-  if (HoverStateDirty()) {
-    hover_state_dirty_ = false;
-    RecomputeMouseHoverState();
+  if (!HoverStateDirty()) {
+    return;
   }
-}
+  // JS listeners for this fake mouse event could force a re-layout, which calls
+  // `PerformPostLayoutTasks()` on completion, which unconditionally calls
+  // `MarkHoverStateDirty()` and sets `hover_state_dirty_` back to to `true`.
+  hover_state_dirty_ = false;
 
-void MouseEventManager::RecomputeMouseHoverState() {
   if (is_mouse_position_unknown_)
     return;
 
@@ -403,6 +403,12 @@ void MouseEventManager::RecomputeMouseHoverState() {
   // Don't dispatch a synthetic event if pointer is locked.
   if (frame_->GetPage()->GetPointerLockController().GetElement())
     return;
+
+  // Don't dispatch a synthetic event if a drag is ongoing.
+  if (RuntimeEnabledFeatures::SuppressPointerStreamAfterDragEnabled() &&
+      frame_->GetPage()->GetDragController().GetDragState().drag_src_) {
+    return;
+  }
 
   WebPointerEvent::Button button = WebPointerProperties::Button::kNoButton;
   int modifiers = KeyboardEventManager::GetCurrentModifierState() |

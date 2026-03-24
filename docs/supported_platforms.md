@@ -14,6 +14,10 @@ describing which products are officially supported on which platforms.
 **Note**: This document applies to Chromium. Some of Chromium's subcomponents like
 ANGLE or V8 currently support more platforms.
 
+**Note**: Any feedback/questions on this doc itself can go to the individuals
+listed as [per-file OWNERS of the
+doc](https://source.chromium.org/chromium/chromium/src/+/main:docs/OWNERS;l=1?q=docs%2FOWNERS&sq=&ss=chromium).
+
 Definitions of Terms
 --------------------
 
@@ -31,7 +35,7 @@ ships to users.
 engineers working in the Chromium codebase are accountable for regressions
 in that product.
 * **Officially supported platform**: A platform is officially supported if there
-are bots on [Chromium's waterfall](https://ci.chromium.org/p/chromium/g/main/console) and commit queue that build and run tests on that
+are bots on [Chromium's waterfall](https://build.chromium.org) and commit queue that build and run tests on that
 platform. Commit queue coverage means that no patches that land will break these
 platforms. Note that official platform support can and does vary by product,
 as detailed below.
@@ -179,6 +183,19 @@ policy](https://support.google.com/chrome/a/answer/6220366).
 [This page](https://support.google.com/chrome/a/answer/7100626) details
 minimum operating system and hardware requirements.
 
+As of March 2026, official support on ARM is
+[upcoming](https://blog.chromium.org/2026/03/bringing-chrome-to-arm64-linux-devices.html).
+
+Many more platforms/distributions are community-supported (per the definition
+in the [definitions of terms](#definitions-of-terms)), including Flatpak
+(alternative packaging format), Arch Linux (via AUR), and downstream Chromium
+packages. For example, there are packagers distributing Chromium in different
+configurations (Debian distributes amd64, arm64, armhf, i386) and some use
+different build configs (gcc instead of clang).  We occasionally get patches
+for different architectures, or for the gcc build, and we typically accept
+those patches. We do not support downstream forks of Chromium and we typically
+won't entertain patches for those.
+
 ### macOS
 
 [This page](https://support.google.com/chrome/a/answer/7100626) details
@@ -253,6 +270,11 @@ as a Cast Receiver). The embedder code for Fuchsia WebEngine lives in
 Headless Chromium allows running Chromium in a headless/server environment.
 The embedder code for Headless lives in //headless. Details are
 [here](https://chromium.googlesource.com/chromium/src/+/main/headless/README.md).
+Headless is supported on Linux, Windows, MacOS, ChromeOS and Fuchsia.
+On Linux, headless supports [numerous build settings for trimming down
+the dependencies and producing a binary capable of running in a minimal
+runtime environment](
+https://source.chromium.org/chromium/chromium/src/+/main:build/args/headless.gn).
 
 ### iOS WebView
 

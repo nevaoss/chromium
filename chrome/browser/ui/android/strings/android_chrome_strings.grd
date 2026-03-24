@@ -573,6 +573,18 @@ For more settings that use data to improve your Chrome experience, go to <ph nam
       <message name="IDS_SITE_SEARCH_DIALOG_INPUT_NOT_VALID_ERROR" desc="Error message shown when a required field is not valid in the Edit Site Search dialog.">
         Not valid
       </message>
+      <message name="IDS_DELETE_SEARCH_ENGINE_DIALOG_TITLE" desc="Title for the delete search engine dialog.">
+        Delete search engine
+      </message>
+      <message name="IDS_DELETE_SEARCH_ENGINE_DIALOG_MESSAGE" desc="Message for the delete search engine dialog.">
+        Are you sure you want to delete this search engine?
+      </message>
+      <message name="IDS_DELETE_SEARCH_ENGINE_DIALOG_DELETE" desc="Label used on a button to delete the search engine.">
+        Delete
+      </message>
+      <message name="IDS_DELETE_SEARCH_ENGINE_DIALOG_CANCEL" desc="Label used on a button to cancel action">
+        Cancel
+      </message>
 
 
 
@@ -4350,9 +4362,6 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       <message name="IDS_MENU_CHROME_WEBSTORE" desc="Menu item for opening the chrome webstore that allows the user to install extensions. [CHAR_LIMIT=27]">
         Visit Chrome Web Store
       </message>
-      <message name="IDS_MENU_TINKER_TANK" desc="Menu item for opening the tinker tank bottom sheet. [CHAR_LIMIT=27]" translateable="false">
-        Tinker tank
-      </message>
       <message name="IDS_CHROME_HISTORY" desc="Menu item for opening the CCT history page. [CHAR_LIMIT=27]">
         Chrome history
       </message>
@@ -5009,9 +5018,6 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
           =1 {See <ph name="TABS_COUNT_ONE">%1$d<ex>1</ex></ph> tab with new activity in shared tab groups}
           other {See <ph name="TABS_COUNT_MANY">%1$d<ex>2</ex></ph> tabs with new activity in shared tab groups}
         }
-      </message>
-      <message name="IDS_ACCESSIBILITY_TOOLBAR_BTN_IDENTITY_DISC" desc="The content description for a toolbar button displaying user profile picture. Tapping on this button navigates to 'Sync and Google services' page in settings">
-              Manage account
       </message>
       <message name="IDS_ACCESSIBILITY_TOOLBAR_BTN_IDENTITY_DISC_ERROR_WITH_NAME_AND_EMAIL" desc="The content description for a toolbar button displaying user profile picture with an error badge. Tapping on this button navigates to Settings page">
         Signed in as <ph name="USER_NAME">%1$s<ex>Peter Parker</ex></ph>. <ph name="USER_EMAIL">%2$s<ex>peter.parker@gmail.com</ex></ph>. Google Account error. Opens settings.
@@ -5836,6 +5842,9 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       </message>
       <message name="IDS_KEYBOARD_SHORTCUT_OPEN_NEW_TAB" desc="A text label that appears next to the keyboard shortcut to open a new tab in Chrome. The shortcut description is shown in a system dialog along with all other supported shortcuts. [CHAR_LIMIT=55]">
         Open a new tab
+      </message>
+      <message name="IDS_KEYBOARD_SHORTCUT_TAB_SEARCH" desc="A text label that appears next to the keyboard shortcut to search tabs in Chrome. The shortcut description is shown in a system dialog along with all other supported shortcuts. [CHAR_LIMIT=55]">
+        Search tabs
       </message>
       <message name="IDS_KEYBOARD_SHORTCUT_REOPEN_NEW_TAB" desc="A text label that appears next to the keyboard shortcut for reopening the last tab in the chrome app. The shortcut description is shown in a system dialog along with all other supported shortcuts. [CHAR_LIMIT=55]">
         Reopen closed tab

@@ -362,6 +362,10 @@ enum CreateTaskErrorReason {
 
   // The user's browser policy or account settings prevent creating actor tasks.
   [MinVersion=2] kBlockedByPolicy = 3,
+
+  // CreateTask was called on a Glic instance which does not have a registered
+  // conversation.
+  [MinVersion=3] kConversationNotRegistered = 4,
 };
 
 // @generate glic_api
@@ -1092,7 +1096,9 @@ interface WebClientHandler {
                            pending_remote<PinCandidatesObserver> observer);
 
   // Creates a new task in the actor framework and returns the new task's ID.
-  // `task_options` contains information used to initialize the task.
+  // `task_options` contains information used to initialize the task. A
+  // conversation must have been registered using RegisterConversation prior to
+  // creating an actor task.
   CreateTask(actor.webui.mojom.TaskOptions? task_options)
       => result<int32, CreateTaskErrorReason>;
 
@@ -1401,6 +1407,9 @@ struct ConversationInfo {
   // TODO(crbug.com/370820145): Replace ByteString with a more appropriate type
   // for opaque binary data once available.
   mojo_base.mojom.ByteString? client_data;
+  // Optional turn ID to open this conversation at. Empty or invalid turn IDs
+  // will result in the conversation being opened at the most recent turn.
+  string? turn_id;
 };
 
 // @generate glic_api
@@ -1527,7 +1536,7 @@ enum InvocationSource {
   [MinVersion=14] kAnchoredContextualCue = 22,
 };
 
-// LINT.ThenChange(//tools/metrics/histograms/metadata/glic/enums.xml:GlicInvocationSource, //chrome/browser/glic/glic_metrics.h:ResponseSegmentation)
+// LINT.ThenChange(//tools/metrics/histograms/metadata/glic/enums.xml:GlicInvocationSource, //chrome/browser/glic/glic_metrics.h:ResponseSegmentation, //chrome/browser/glic/service/metrics/metrics_types.h:GlicEntrypoint)
 
 // @generate glic_api
 // Mode for specific feature behaviors.

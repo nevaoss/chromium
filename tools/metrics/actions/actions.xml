@@ -117,10 +117,17 @@ should be able to be added at any place in this file.
 </variants>
 
 <variants name="ContextualSearchContextState">
+  <variant name="WithContextNoText" summary="with context but no typed text"/>
   <variant name="WithNonTabContext"
       summary="with non-tab context (e.g. files)"/>
   <variant name="WithoutContext" summary="without any context"/>
   <variant name="WithTabContext" summary="with tab context"/>
+</variants>
+
+<variants name="ContextualSearchInputStateDeletionType">
+  <variant name="File" summary="file"/>
+  <variant name="Tab" summary="tab"/>
+  <variant name="Tool" summary="tool"/>
 </variants>
 
 <variants name="ContextualSearchSource">
@@ -785,7 +792,7 @@ should be able to be added at any place in this file.
   <variant name="_TrackingProtectionOffboarding"
       summary="for tracking protection offboarding notice (obsolete)"/>
   <variant name="_TrackingProtectionOnboarding"
-      summary="for tracking protection onboarding notice"/>
+      summary="for tracking protection onboarding notice (obsolete)"/>
   <variant name="_TranslateMenuButton" summary="For translate menu button."/>
   <variant name="_UpdatedConnectionSecurityIndicators"
       summary="For updated omnibox connection security indicators."/>
@@ -843,7 +850,6 @@ should be able to be added at any place in this file.
   <variant name="ReadingList" summary="reading list"/>
   <variant name="ShoppingInsights" summary="shopping insights"/>
   <variant name="SideSearch" summary="side search"/>
-  <variant name="UserNotes" summary="user notes"/>
   <variant name="WebView" summary="web view"/>
 </variants>
 
@@ -10950,6 +10956,24 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action
+    name="ContextualSearch.TypedSuggestNavigation.{TypedSuggestType}.{ContextualSearchSource}">
+  <owner>niharm@google.com</owner>
+  <owner>chrome-desktop-search@google.com</owner>
+  <description>
+    Recorded when a user navigates to a {TypedSuggestType} suggestion in the
+    typed mode from {ContextualSearchSource}.
+  </description>
+  <token key="TypedSuggestType">
+    <variant name="SearchSuggest"
+        summary="The user selected a suggestion from the dropdown."/>
+    <variant name="Verbatim"
+        summary="The user submitted the query verbatim (e.g. typed out the
+                 entire query and then pressed enter)."/>
+  </token>
+  <token key="ContextualSearchSource" variants="ContextualSearchSource"/>
+</action>
+
 <action name="ContextualSearch.UncommonClose">
   <owner>donnd@chromium.org</owner>
   <description>
@@ -10968,12 +10992,26 @@ should be able to be added at any place in this file.
 </action>
 
 <action
-    name="ContextualSearch.UserAction.SubmitQuery.{ContextualSearchContextState}.{ContextualSearchSource}">
+    name="ContextualSearch.UserAction.InputStateDeletion.{ContextualSearchInputStateDeletionType}.{ContextualSearchSource}">
+  <owner>niharm@google.com</owner>
+  <owner>chrome-desktop-search@google.com</owner>
+  <description>
+    Recorded when a user deletes a {ContextualSearchInputStateDeletionType} from
+    the composebox on {ContextualSearchSource}.
+  </description>
+  <token key="ContextualSearchInputStateDeletionType"
+      variants="ContextualSearchInputStateDeletionType"/>
+  <token key="ContextualSearchSource" variants="ContextualSearchSource"/>
+</action>
+
+<action
+    name="ContextualSearch.UserAction.SubmitQueryV2.{ContextualSearchContextState}.{ContextualSearchSource}">
   <owner>niharm@google.com</owner>
   <owner>chrome-contextual-tasks-eng@google.com</owner>
   <description>
     Recorded when a query is submitted {ContextualSearchContextState} from
-    {ContextualSearchSource}.
+    {ContextualSearchSource}. Note that more than one entry can be submitted per
+    query submission if it overlaps with WithContextNoText.
   </description>
   <token key="ContextualSearchContextState"
       variants="ContextualSearchContextState"/>
@@ -28788,6 +28826,15 @@ should be able to be added at any place in this file.
   </token>
 </action>
 
+<action name="MobileMenuTabSearch">
+  <owner>wylieb@google.com</owner>
+  <owner>bjfong@google.com</owner>
+  <description>
+    User pressed 'Search tabs' in the app menu, or used the keyboard shortcut
+    Ctrl+Shift+A.
+  </description>
+</action>
+
 <action name="MobileMenuTaskManager">
   <owner>massan@google.com</owner>
   <description>User pressed 'Task manager' in the app menu.</description>
@@ -41564,6 +41611,9 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Settings.PrivacySandbox.AdPersonalization.LearnMoreClicked">
+  <obsolete>
+    Made obsolete 03/2026 with the privacy sandbox notices deprecation.
+  </obsolete>
   <owner>dullweber@google.com</owner>
   <owner>sauski@google.com</owner>
   <owner>kartoffel-core@google.com</owner>
@@ -41646,6 +41696,9 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Settings.PrivacySandbox.Consent.Accepted">
+  <obsolete>
+    Made obsolete 03/2026 with the privacy sandbox notices deprecation.
+  </obsolete>
   <owner>harrisonsean@chromium.org</owner>
   <owner>sauski@google.com</owner>
   <owner>msramek@chromium.org</owner>
@@ -41654,6 +41707,9 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Settings.PrivacySandbox.Consent.ClosedNoInteraction">
+  <obsolete>
+    Made obsolete 03/2026 with the privacy sandbox notices deprecation.
+  </obsolete>
   <owner>harrisonsean@chromium.org</owner>
   <owner>sauski@google.com</owner>
   <owner>msramek@chromium.org</owner>
@@ -41664,6 +41720,9 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Settings.PrivacySandbox.Consent.Declined">
+  <obsolete>
+    Made obsolete 03/2026 with the privacy sandbox notices deprecation.
+  </obsolete>
   <owner>harrisonsean@chromium.org</owner>
   <owner>sauski@google.com</owner>
   <owner>msramek@chromium.org</owner>
@@ -41672,6 +41731,9 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Settings.PrivacySandbox.Consent.LearnMoreClosed">
+  <obsolete>
+    Made obsolete 03/2026 with the privacy sandbox notices deprecation.
+  </obsolete>
   <owner>harrisonsean@chromium.org</owner>
   <owner>sauski@google.com</owner>
   <owner>msramek@chromium.org</owner>
@@ -41682,6 +41744,9 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Settings.PrivacySandbox.Consent.LearnMoreExpanded">
+  <obsolete>
+    Made obsolete 03/2026 with the privacy sandbox notices deprecation.
+  </obsolete>
   <owner>harrisonsean@chromium.org</owner>
   <owner>sauski@google.com</owner>
   <owner>msramek@chromium.org</owner>
@@ -41692,6 +41757,9 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Settings.PrivacySandbox.Consent.MoreButtonClicked">
+  <obsolete>
+    Made obsolete 03/2026 with the privacy sandbox notices deprecation.
+  </obsolete>
   <owner>olesiamarukhno@google.com</owner>
   <owner>sauski@google.com</owner>
   <owner>kartoffel-core-eng@google.com</owner>
@@ -41702,6 +41770,9 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Settings.PrivacySandbox.Consent.PrivacyPolicyLinkClicked">
+  <obsolete>
+    Made obsolete 03/2026 with the privacy sandbox notices deprecation.
+  </obsolete>
   <owner>chrstne@google.com</owner>
   <owner>koilos@google.com</owner>
   <description>
@@ -41711,6 +41782,9 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Settings.PrivacySandbox.Consent.Shown">
+  <obsolete>
+    Made obsolete 03/2026 with the privacy sandbox notices deprecation.
+  </obsolete>
   <owner>harrisonsean@chromium.org</owner>
   <owner>sauski@google.com</owner>
   <owner>msramek@chromium.org</owner>
@@ -41719,6 +41793,9 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Settings.PrivacySandbox.ConsentDialog.AckClicked">
+  <obsolete>
+    Made obsolete 03/2026 with the privacy sandbox notices deprecation.
+  </obsolete>
   <owner>aashnas@google.com</owner>
   <owner>koilos@google.com</owner>
   <description>
@@ -41727,6 +41804,9 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Settings.PrivacySandbox.ConsentDialog.NoClicked">
+  <obsolete>
+    Made obsolete 03/2026 with the privacy sandbox notices deprecation.
+  </obsolete>
   <owner>aashnas@google.com</owner>
   <owner>koilos@google.com</owner>
   <description>
@@ -41813,6 +41893,9 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Settings.PrivacySandbox.Notice.Acknowledged">
+  <obsolete>
+    Made obsolete 03/2026 with the privacy sandbox notices deprecation.
+  </obsolete>
   <owner>harrisonsean@chromium.org</owner>
   <owner>sauski@google.com</owner>
   <owner>msramek@chromium.org</owner>
@@ -41821,6 +41904,9 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Settings.PrivacySandbox.Notice.AdsMeasurementLearnMoreClosed">
+  <obsolete>
+    Made obsolete 03/2026 with the privacy sandbox notices deprecation.
+  </obsolete>
   <owner>jacobstanley@google.com</owner>
   <owner>koilos@google.com</owner>
   <description>
@@ -41830,6 +41916,9 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Settings.PrivacySandbox.Notice.AdsMeasurementLearnMoreExpanded">
+  <obsolete>
+    Made obsolete 03/2026 with the privacy sandbox notices deprecation.
+  </obsolete>
   <owner>jacobstanley@google.com</owner>
   <owner>koilos@google.com</owner>
   <description>
@@ -41839,6 +41928,9 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Settings.PrivacySandbox.Notice.ClosedNoInteraction">
+  <obsolete>
+    Made obsolete 03/2026 with the privacy sandbox notices deprecation.
+  </obsolete>
   <owner>harrisonsean@chromium.org</owner>
   <owner>sauski@google.com</owner>
   <owner>msramek@chromium.org</owner>
@@ -41849,6 +41941,9 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Settings.PrivacySandbox.Notice.Dismissed">
+  <obsolete>
+    Made obsolete 03/2026 with the privacy sandbox notices deprecation.
+  </obsolete>
   <owner>harrisonsean@chromium.org</owner>
   <owner>sauski@google.com</owner>
   <owner>msramek@chromium.org</owner>
@@ -41857,6 +41952,9 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Settings.PrivacySandbox.Notice.LearnMore">
+  <obsolete>
+    Made obsolete 03/2026 with the privacy sandbox notices deprecation.
+  </obsolete>
   <owner>olesiamarukhno@google.com</owner>
   <owner>sauski@google.com</owner>
   <owner>msramek@chromium.org</owner>
@@ -41869,6 +41967,9 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Settings.PrivacySandbox.Notice.LearnMoreClosed">
+  <obsolete>
+    Made obsolete 03/2026 with the privacy sandbox notices deprecation.
+  </obsolete>
   <owner>olesiamarukhno@google.com</owner>
   <owner>sauski@google.com</owner>
   <owner>tommasin@chromium.org</owner>
@@ -41879,6 +41980,9 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Settings.PrivacySandbox.Notice.LearnMoreExpanded">
+  <obsolete>
+    Made obsolete 03/2026 with the privacy sandbox notices deprecation.
+  </obsolete>
   <owner>olesiamarukhno@google.com</owner>
   <owner>sauski@google.com</owner>
   <owner>tommasin@chromium.org</owner>
@@ -41889,6 +41993,9 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Settings.PrivacySandbox.Notice.MoreButtonClicked">
+  <obsolete>
+    Made obsolete 03/2026 with the privacy sandbox notices deprecation.
+  </obsolete>
   <owner>olesiamarukhno@google.com</owner>
   <owner>sauski@google.com</owner>
   <owner>kartoffel-core-eng@google.com</owner>
@@ -41899,6 +42006,9 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Settings.PrivacySandbox.Notice.OpenedSettings">
+  <obsolete>
+    Made obsolete 03/2026 with the privacy sandbox notices deprecation.
+  </obsolete>
   <owner>harrisonsean@chromium.org</owner>
   <owner>sauski@google.com</owner>
   <owner>msramek@chromium.org</owner>
@@ -41909,6 +42019,9 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Settings.PrivacySandbox.Notice.PrivacyPolicyLinkClicked">
+  <obsolete>
+    Made obsolete 03/2026 with the privacy sandbox notices deprecation.
+  </obsolete>
   <owner>chrstne@google.com</owner>
   <owner>koilos@google.com</owner>
   <description>
@@ -41917,6 +42030,9 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Settings.PrivacySandbox.Notice.Shown">
+  <obsolete>
+    Made obsolete 03/2026 with the privacy sandbox notices deprecation.
+  </obsolete>
   <owner>harrisonsean@chromium.org</owner>
   <owner>sauski@google.com</owner>
   <owner>msramek@chromium.org</owner>
@@ -41925,6 +42041,9 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Settings.PrivacySandbox.Notice.SiteSuggestedAdsLearnMoreClosed">
+  <obsolete>
+    Made obsolete 03/2026 with the privacy sandbox notices deprecation.
+  </obsolete>
   <owner>jacobstanley@google.com</owner>
   <owner>koilos@google.com</owner>
   <description>
@@ -41934,6 +42053,9 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Settings.PrivacySandbox.Notice.SiteSuggestedAdsLearnMoreExpanded">
+  <obsolete>
+    Made obsolete 03/2026 with the privacy sandbox notices deprecation.
+  </obsolete>
   <owner>jacobstanley@google.com</owner>
   <owner>koilos@google.com</owner>
   <description>
@@ -41943,6 +42065,9 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Settings.PrivacySandbox.NoticeEeaDialog.AckClicked">
+  <obsolete>
+    Made obsolete 03/2026 with the privacy sandbox notices deprecation.
+  </obsolete>
   <owner>aashnas@google.com</owner>
   <owner>koilos@google.com</owner>
   <description>
@@ -41951,6 +42076,9 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Settings.PrivacySandbox.NoticeEeaDialog.OpenSettingsClicked">
+  <obsolete>
+    Made obsolete 03/2026 with the privacy sandbox notices deprecation.
+  </obsolete>
   <owner>aashnas@google.com</owner>
   <owner>koilos@google.com</owner>
   <description>
@@ -41959,6 +42087,9 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Settings.PrivacySandbox.NoticeRowDialog.AckClicked">
+  <obsolete>
+    Made obsolete 03/2026 with the privacy sandbox notices deprecation.
+  </obsolete>
   <owner>aashnas@google.com</owner>
   <owner>koilos@google.com</owner>
   <description>
@@ -41967,6 +42098,9 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Settings.PrivacySandbox.NoticeRowDialog.OpenSettingsClicked">
+  <obsolete>
+    Made obsolete 03/2026 with the privacy sandbox notices deprecation.
+  </obsolete>
   <owner>aashnas@google.com</owner>
   <owner>koilos@google.com</owner>
   <description>
@@ -42040,6 +42174,9 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Settings.PrivacySandbox.RestrictedNotice.Acknowledged">
+  <obsolete>
+    Made obsolete 03/2026 with the privacy sandbox notices deprecation.
+  </obsolete>
   <owner>djmitche@chromium.org</owner>
   <owner>kartoffel-core@google.com</owner>
   <owner>tommasin@chromium.org</owner>
@@ -42050,6 +42187,9 @@ should be able to be added at any place in this file.
 
 <action name="Settings.PrivacySandbox.RestrictedNotice.ClosedNoInteraction"
     not_user_triggered="true">
+  <obsolete>
+    Made obsolete 03/2026 with the privacy sandbox notices deprecation.
+  </obsolete>
   <owner>tommasin@chromium.org</owner>
   <owner>kartoffel-core@google.com</owner>
   <owner>kartoffel-core-eng@google.com</owner>
@@ -42059,6 +42199,9 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Settings.PrivacySandbox.RestrictedNotice.MoreButtonClicked">
+  <obsolete>
+    Made obsolete 03/2026 with the privacy sandbox notices deprecation.
+  </obsolete>
   <owner>tommasin@chromium.org</owner>
   <owner>kartoffel-core@google.com</owner>
   <owner>kartoffel-core-eng@google.com</owner>
@@ -42068,6 +42211,9 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Settings.PrivacySandbox.RestrictedNotice.OpenedSettings">
+  <obsolete>
+    Made obsolete 03/2026 with the privacy sandbox notices deprecation.
+  </obsolete>
   <owner>djmitche@chromium.org</owner>
   <owner>kartoffel-core@google.com</owner>
   <owner>tommasin@chromium.org</owner>
@@ -42078,6 +42224,9 @@ should be able to be added at any place in this file.
 
 <action name="Settings.PrivacySandbox.RestrictedNotice.Shown"
     not_user_triggered="true">
+  <obsolete>
+    Made obsolete 03/2026 with the privacy sandbox notices deprecation.
+  </obsolete>
   <owner>tommasin@chromium.org</owner>
   <owner>kartoffel-core@google.com</owner>
   <owner>kartoffel-core-eng@google.com</owner>
@@ -42085,6 +42234,9 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Settings.PrivacySandbox.RestrictedNoticeDialog.AckClicked">
+  <obsolete>
+    Made obsolete 03/2026 with the privacy sandbox notices deprecation.
+  </obsolete>
   <owner>aashnas@google.com</owner>
   <owner>koilos@google.com</owner>
   <description>
@@ -42094,6 +42246,9 @@ should be able to be added at any place in this file.
 
 <action
     name="Settings.PrivacySandbox.RestrictedNoticeDialog.OpenSettingsClicked">
+  <obsolete>
+    Made obsolete 03/2026 with the privacy sandbox notices deprecation.
+  </obsolete>
   <owner>aashnas@google.com</owner>
   <owner>koilos@google.com</owner>
   <description>
@@ -43980,24 +44135,6 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
-<action name="SidePanel.UserNotes.Pinned.BySidePanelHeaderButton">
-  <owner>corising@chromium.org</owner>
-  <owner>top-chrome-desktop-ui@google.com</owner>
-  <description>
-    Recorded when the user notes side panel entry is pinned via the pin button
-    in the side panel header.
-  </description>
-</action>
-
-<action name="SidePanel.UserNotes.Unpinned.BySidePanelHeaderButton">
-  <owner>corising@chromium.org</owner>
-  <owner>top-chrome-desktop-ui@google.com</owner>
-  <description>
-    Recorded when the user notes side panel entry is unpinned via the pin button
-    in the side panel header.
-  </description>
-</action>
-
 <action name="SidePanel_Bookmarks_ContextMenu_OpenAll">
   <owner>dpenning@chromium.org</owner>
   <owner>top-chrome-desktop-ui@google.com</owner>
@@ -44874,6 +45011,14 @@ should be able to be added at any place in this file.
   <owner>jlebel@chromium.org</owner>
   <description>
     Recorded when the sign-in promo in the Google services settings is shown.
+  </description>
+</action>
+
+<action name="Signin_Impression_FromIOSAppBar">
+  <owner>thegreenfrog@google.com</owner>
+  <owner>bling-pandamonium@google.com</owner>
+  <description>
+    Recorded when showing sign in that originates from App Bar. iOS only.
   </description>
 </action>
 
@@ -45821,6 +45966,15 @@ should be able to be added at any place in this file.
   <description>
     Recorded when a user taps on the identity pill to enable history sync after
     a profile startup.
+  </description>
+</action>
+
+<action name="Signin_Signin_FromIOSAppBar">
+  <owner>thegreenfrog@google.com</owner>
+  <owner>bling-pandamonium@google.com</owner>
+  <description>
+    Recorded on sign in start from access point
+    signin_metrics::AccessPoint::kIOSAppBar. iOS only.
   </description>
 </action>
 
@@ -52046,6 +52200,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="TrackingProtections.Bubble.FppActive.DisableProtections">
+  <obsolete>Deprecated 03/2026 because the project was discontinued.</obsolete>
   <owner>michelleabreo@google.com</owner>
   <owner>koilos@google.com</owner>
   <description>
@@ -52055,6 +52210,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="TrackingProtections.Bubble.FppActive.EnableProtections">
+  <obsolete>Deprecated 03/2026 because the project was discontinued.</obsolete>
   <owner>michelleabreo@google.com</owner>
   <owner>koilos@google.com</owner>
   <description>
@@ -52064,6 +52220,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="TrackingProtections.Bubble.IppActive.DisableProtections">
+  <obsolete>Deprecated 03/2026 because the project was discontinued.</obsolete>
   <owner>michelleabreo@google.com</owner>
   <owner>koilos@google.com</owner>
   <description>
@@ -52073,6 +52230,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="TrackingProtections.Bubble.IppActive.EnableProtections">
+  <obsolete>Deprecated 03/2026 because the project was discontinued.</obsolete>
   <owner>michelleabreo@google.com</owner>
   <owner>koilos@google.com</owner>
   <description>

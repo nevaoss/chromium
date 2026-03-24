@@ -152,7 +152,14 @@ BASE_DECLARE_FEATURE(kPreloadTopChromeWebUILessNavigations);
 
 BASE_DECLARE_FEATURE(kPressAndHoldEscToExitBrowserFullscreen);
 
+#if BUILDFLAG(IS_WIN)
+BASE_DECLARE_FEATURE(kProcessIsolationSettings);
+#endif  // BUILDFLAG(IS_WIN)
+
 BASE_DECLARE_FEATURE(kScrimForBrowserWindowModal);
+
+BASE_DECLARE_FEATURE(kSplitViewTabDraggingUpdates);
+BASE_DECLARE_FEATURE_PARAM(base::TimeDelta, kShowDropTargetForTabDelay);
 
 BASE_DECLARE_FEATURE(kTabDuplicateMetrics);
 
@@ -280,10 +287,6 @@ BASE_DECLARE_FEATURE(kPageSpecificDataDialogRelatedInstalledAppsSection);
 // Feature for the promotion banner on the top of chrome://management page
 BASE_DECLARE_FEATURE(kEnableManagementPromotionBanner);
 
-// Enable display for the Chrome Enterprise Core promotion banner on
-// the chrome://policy page.
-BASE_DECLARE_FEATURE(kEnablePolicyPromotionBanner);
-
 // Controls whether a performance improvement in browser feature support
 // checking is enabled.
 BASE_DECLARE_FEATURE(kInlineFullscreenPerfExperiment);
@@ -367,6 +370,9 @@ bool IsAndroidAnimatedProgressBarInBrowserEnabled();
 
 // Controls whether the updated What's New page is enabled.
 BASE_DECLARE_FEATURE(kWhatsNewDesktopRefresh);
+
+BASE_DECLARE_FEATURE(kAiOverlayDialog);
+BASE_DECLARE_FEATURE_PARAM(std::string, kAiOverlayDialogApiKey);
 
 BASE_DECLARE_FEATURE(kTabGroupsFocusing);
 BASE_DECLARE_FEATURE_PARAM(bool, kTabGroupsFocusingPinnedTabs);

@@ -6,13 +6,17 @@
 #include "base/strings/stringprintf.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/uuid.h"
+#include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
+#include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/tab_group_sync/tab_group_sync_service_factory.h"
 #include "chrome/browser/ui/bookmarks/bookmark_bar.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_window.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/tabs/features.h"
+#include "chrome/browser/ui/tabs/projects/projects_panel_state_controller.h"
 #include "chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_utils.h"
 #include "chrome/browser/ui/tabs/tab_group_theme.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
@@ -21,35 +25,85 @@
 #include "chrome/browser/ui/views/bookmarks/saved_tab_groups/saved_tab_group_everything_menu.h"
 #include "chrome/browser/ui/views/tabs/projects/projects_panel_view.h"
 #include "chrome/common/pref_names.h"
+#include "chrome/grit/generated_resources.h"
 #include "chrome/test/interaction/interactive_browser_test.h"
 #include "chrome/test/user_education/interactive_feature_promo_test.h"
 #include "components/bookmarks/common/bookmark_pref_names.h"
 #include "components/feature_engagement/public/feature_list.h"
+#include "components/keyed_service/content/browser_context_dependency_manager.h"
+#include "components/omnibox/browser/aim_eligibility_service.h"
 #include "components/prefs/pref_service.h"
 #include "components/saved_tab_groups/public/features.h"
 #include "components/saved_tab_groups/public/saved_tab_group.h"
 #include "components/saved_tab_groups/public/tab_group_sync_service.h"
 #include "components/tab_groups/tab_group_color.h"
 #include "components/tab_groups/tab_group_id.h"
+#include "components/user_education/views/help_bubble_view.h"
 #include "content/public/test/browser_test.h"
 #include "ui/base/interaction/element_identifier.h"
+#include "ui/base/l10n/l10n_util.h"
+#include "ui/views/controls/label.h"
 
 namespace {
 constexpr int kNumTabGroupsToForceOverflow = 30;
 }  // namespace
 
+class MockProjectsPanelStateController : public ProjectsPanelStateController {
+ public:
+  explicit MockProjectsPanelStateController(
+      BrowserWindowInterface* browser_window,
+      bool* can_show_aim,
+      bool* can_show_gemini)
+      : ProjectsPanelStateController(browser_window,
+                                     /*root_action_item=*/nullptr,
+                                     /*aim_eligibility_service=*/nullptr,
+                                     /*glic_enabling=*/nullptr),
+        can_show_aim_(can_show_aim),
+        can_show_gemini_(can_show_gemini) {}
+
+  bool CanShowAimThreads() override { return *can_show_aim_; }
+  bool CanShowGeminiThreads() override { return *can_show_gemini_; }
+
+ private:
+  raw_ptr<bool> can_show_aim_;
+  raw_ptr<bool> can_show_gemini_;
+};
+
 class ResumptionRailPromoTest : public InteractiveFeaturePromoTest {
  public:
   ResumptionRailPromoTest()
       : InteractiveFeaturePromoTest(UseDefaultTrackerAllowingPromos(
-            {feature_engagement::kIPHResumptionRailFeature})) {
+            {feature_engagement::kIPHResumptionRailFeature,
+             feature_engagement::kIPHReadingListDiscoveryFeature})) {
     feature_list_.InitWithFeatures(
         {feature_engagement::kIPHResumptionRailFeature,
+         feature_engagement::kIPHReadingListDiscoveryFeature,
          tab_groups::kProjectsPanel, tabs::kHorizontalTabStripComboButton},
         {});
   }
 
   ~ResumptionRailPromoTest() override = default;
+
+  void SetUpInProcessBrowserTestFixture() override {
+    InteractiveFeaturePromoTest::SetUpInProcessBrowserTestFixture();
+    projects_panel_override_ =
+        BrowserWindowFeatures::GetUserDataFactoryForTesting()
+            .AddOverrideForTesting<MockProjectsPanelStateController>(
+                base::BindRepeating(
+                    [](bool* can_show_aim, bool* can_show_gemini,
+                       BrowserWindowInterface& browser)
+                        -> std::unique_ptr<MockProjectsPanelStateController> {
+                      return std::make_unique<MockProjectsPanelStateController>(
+                          &browser, can_show_aim, can_show_gemini);
+                    },
+                    base::Unretained(&can_show_aim_),
+                    base::Unretained(&can_show_gemini_)));
+  }
+
+  void TearDownInProcessBrowserTestFixture() override {
+    projects_panel_override_ = ui::UserDataFactory::ScopedOverride();
+    InteractiveFeaturePromoTest::TearDownInProcessBrowserTestFixture();
+  }
 
   void SetUpOnMainThread() override {
     InteractiveFeaturePromoTest::SetUpOnMainThread();
@@ -87,11 +141,34 @@ class ResumptionRailPromoTest : public InteractiveFeaturePromoTest {
     });
   }
 
+ protected:
+  bool can_show_aim_ = false;
+  bool can_show_gemini_ = false;
+
  private:
   base::test::ScopedFeatureList feature_list_;
+  ui::UserDataFactory::ScopedOverride projects_panel_override_;
 };
 
-IN_PROC_BROWSER_TEST_F(ResumptionRailPromoTest, TriggerPromo) {
+struct ResumptionRailPromoBodyTestCase {
+  bool can_show_aim;
+  bool can_show_gemini;
+  int expected_string_id;
+  std::string test_name;
+};
+
+class ResumptionRailPromoBodyTest
+    : public ResumptionRailPromoTest,
+      public testing::WithParamInterface<ResumptionRailPromoBodyTestCase> {
+ public:
+  void SetUpOnMainThread() override {
+    can_show_aim_ = GetParam().can_show_aim;
+    can_show_gemini_ = GetParam().can_show_gemini;
+    ResumptionRailPromoTest::SetUpOnMainThread();
+  }
+};
+
+IN_PROC_BROWSER_TEST_P(ResumptionRailPromoBodyTest, CheckPromoString) {
   RunTestSequence(WaitForShow(kBookmarkBarElementId),
                   Do([this]() { RunScheduledLayouts(); }),
                   WaitForShow(kVerticalTabStripProjectsButtonElementId),
@@ -99,13 +176,51 @@ IN_PROC_BROWSER_TEST_F(ResumptionRailPromoTest, TriggerPromo) {
                   AddTabGroupsToForceOverflow(),
                   WaitForShow(kSavedTabGroupBarElementId),
                   WaitForShow(kSavedTabGroupOverflowButtonElementId),
+                  // Click the legacy Everything button.
                   PressButton(kSavedTabGroupOverflowButtonElementId),
+                  // The IPH SHOULD trigger, and the menu should not open.
                   WaitForPromo(feature_engagement::kIPHResumptionRailFeature),
+                  // Check the IPH body text.
+                  CheckViewProperty(
+                      user_education::HelpBubbleView::kBodyTextIdForTesting,
+                      &views::Label::GetText,
+                      l10n_util::GetStringUTF16(GetParam().expected_string_id)),
+                  // Click the new Projects button to dismiss the promo.
+                  PressButton(kVerticalTabStripProjectsButtonElementId),
+                  // Should hide the Everything menu button.
                   WaitForHide(kSavedTabGroupOverflowButtonElementId));
 }
 
+INSTANTIATE_TEST_SUITE_P(
+    All,
+    ResumptionRailPromoBodyTest,
+    testing::Values(
+        ResumptionRailPromoBodyTestCase{
+            .can_show_aim = false,
+            .can_show_gemini = false,
+            .expected_string_id = IDS_RESUMPTION_RAIL_IPH_BODY_NO_THREADS,
+            .test_name = "NoThreads"},
+        ResumptionRailPromoBodyTestCase{
+            .can_show_aim = true,
+            .can_show_gemini = false,
+            .expected_string_id = IDS_RESUMPTION_RAIL_IPH_BODY_ONLY_AI_MODE,
+            .test_name = "OnlyAim"},
+        ResumptionRailPromoBodyTestCase{
+            .can_show_aim = false,
+            .can_show_gemini = true,
+            .expected_string_id = IDS_RESUMPTION_RAIL_IPH_BODY_ONLY_GEMINI,
+            .test_name = "OnlyGemini"},
+        ResumptionRailPromoBodyTestCase{
+            .can_show_aim = true,
+            .can_show_gemini = true,
+            .expected_string_id = IDS_RESUMPTION_RAIL_IPH_BODY,
+            .test_name = "Both"}),
+    [](const testing::TestParamInfo<ResumptionRailPromoBodyTestCase>& info) {
+      return info.param.test_name;
+    });
+
 IN_PROC_BROWSER_TEST_F(ResumptionRailPromoTest,
-                       TriggerPromoProjectsButtonThenEverythingMenu) {
+                       OpenProjectsPanelThenTriggerPromo) {
   RunTestSequence(WaitForShow(kBookmarkBarElementId),
                   Do([this]() { RunScheduledLayouts(); }),
                   WaitForShow(kVerticalTabStripProjectsButtonElementId),
@@ -124,5 +239,65 @@ IN_PROC_BROWSER_TEST_F(ResumptionRailPromoTest,
                   PressButton(kSavedTabGroupOverflowButtonElementId),
                   // The IPH SHOULD trigger, and the menu should not open.
                   WaitForPromo(feature_engagement::kIPHResumptionRailFeature),
+                  // Click the new Projects button to dismiss the promo.
+                  PressButton(kVerticalTabStripProjectsButtonElementId),
+                  // Should hide the Everything menu button.
                   WaitForHide(kSavedTabGroupOverflowButtonElementId));
+}
+
+IN_PROC_BROWSER_TEST_F(ResumptionRailPromoTest,
+                       ClosePromoWhenProjectsPanelOpens) {
+  RunTestSequence(
+      WaitForShow(kBookmarkBarElementId),
+      Do([this]() { RunScheduledLayouts(); }),
+      WaitForShow(kVerticalTabStripProjectsButtonElementId),
+      // Add enough groups to force the overflow button to appear.
+      AddTabGroupsToForceOverflow(), WaitForShow(kSavedTabGroupBarElementId),
+      WaitForShow(kSavedTabGroupOverflowButtonElementId),
+      // Click the legacy Everything button.
+      PressButton(kSavedTabGroupOverflowButtonElementId),
+      // The IPH SHOULD trigger, and the menu should not open.
+      WaitForPromo(feature_engagement::kIPHResumptionRailFeature),
+      // Click the new Projects button.
+      PressButton(kVerticalTabStripProjectsButtonElementId),
+      // The projects panel should show.
+      WaitForShow(kProjectsPanelViewElementId),
+      // The promo should be dismissed.
+      CheckPromoActive(feature_engagement::kIPHResumptionRailFeature, false),
+      // Should hide the Everything menu button.
+      WaitForHide(kSavedTabGroupOverflowButtonElementId));
+}
+
+IN_PROC_BROWSER_TEST_F(ResumptionRailPromoTest, QueuePromoIfAnotherActive) {
+  RunTestSequence(
+      WaitForShow(kBookmarkBarElementId),
+      Do([this]() { RunScheduledLayouts(); }),
+      WaitForShow(kVerticalTabStripProjectsButtonElementId),
+      // Add enough groups to force the overflow button to appear.
+      AddTabGroupsToForceOverflow(), WaitForShow(kSavedTabGroupBarElementId),
+      WaitForShow(kSavedTabGroupOverflowButtonElementId),
+      // Show another promo first to block the resumption rail promo.
+      Do([this]() {
+        if (auto* interface = BrowserUserEducationInterface::From(browser())) {
+          interface->MaybeShowFeaturePromo(
+              feature_engagement::kIPHReadingListDiscoveryFeature);
+        }
+      }),
+      WaitForPromo(feature_engagement::kIPHReadingListDiscoveryFeature),
+      // Click the legacy Everything button. The resumption rail promo should be
+      // queued.
+      PressButton(kSavedTabGroupOverflowButtonElementId),
+      // The other promo should still be active.
+      CheckPromoActive(feature_engagement::kIPHReadingListDiscoveryFeature,
+                       true),
+      // The resumption rail promo should not be active yet.
+      CheckPromoActive(feature_engagement::kIPHResumptionRailFeature, false),
+      // Close the first promo.
+      PressClosePromoButton(),
+      // The resumption rail promo should now show.
+      WaitForPromo(feature_engagement::kIPHResumptionRailFeature),
+      // Click the new Projects button to dismiss the promo.
+      PressButton(kVerticalTabStripProjectsButtonElementId),
+      // Should hide the Everything menu button.
+      WaitForHide(kSavedTabGroupOverflowButtonElementId));
 }

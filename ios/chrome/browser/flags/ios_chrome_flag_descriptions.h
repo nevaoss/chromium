@@ -104,17 +104,6 @@ extern const char kAutofillEnableCardBenefitsSyncDescription[];
 extern const char kAutofillEnableCardInfoRuntimeRetrievalName[];
 extern const char kAutofillEnableCardInfoRuntimeRetrievalDescription[];
 
-extern const char kAutofillEnableCvcStorageAndFillingEnhancementName[];
-extern const char kAutofillEnableCvcStorageAndFillingEnhancementDescription[];
-
-extern const char kAutofillEnableCvcStorageAndFillingName[];
-extern const char kAutofillEnableCvcStorageAndFillingDescription[];
-
-extern const char
-    kAutofillEnableCvcStorageAndFillingStandaloneFormEnhancementName[];
-extern const char
-    kAutofillEnableCvcStorageAndFillingStandaloneFormEnhancementDescription[];
-
 extern const char kAutofillEnableFlatRateCardBenefitsFromCurinosName[];
 extern const char kAutofillEnableFlatRateCardBenefitsFromCurinosDescription[];
 
@@ -148,9 +137,6 @@ extern const char kAutofillThrottleDocumentFormScanDescription[];
 extern const char kAutofillThrottleFilteredDocumentFormScanName[];
 extern const char kAutofillThrottleFilteredDocumentFormScanDescription[];
 
-extern const char kAutofillUnmaskCardRequestTimeoutName[];
-extern const char kAutofillUnmaskCardRequestTimeoutDescription[];
-
 extern const char kAutofillUseRendererIDsName[];
 extern const char kAutofillUseRendererIDsDescription[];
 
@@ -180,9 +166,6 @@ extern const char kCacheIdentityListInChromeDescription[];
 
 extern const char kChromeNextIaName[];
 extern const char kChromeNextIaDescription[];
-
-extern const char kCloseOtherTabsName[];
-extern const char kCloseOtherTabsDescription[];
 
 extern const char kCollaborationMessagingName[];
 extern const char kCollaborationMessagingDescription[];
@@ -464,9 +447,6 @@ extern const char kHideToolbarsInOverflowMenuDescription[];
 
 extern const char kHttpsUpgradesName[];
 extern const char kHttpsUpgradesDescription[];
-
-extern const char kIOSAppBundlePromoEphemeralCardName[];
-extern const char kIOSAppBundlePromoEphemeralCardDescription[];
 
 extern const char kIOSBrowserEditMenuMetricsName[];
 extern const char kIOSBrowserEditMenuMetricsDescription[];
@@ -957,9 +937,6 @@ extern const char
 extern const char kSupervisedUserUseUrlFilteringServiceName[];
 extern const char kSupervisedUserUseUrlFilteringServiceDescription[];
 
-extern const char kSyncAutofillWalletCredentialDataName[];
-extern const char kSyncAutofillWalletCredentialDataDescription[];
-
 extern const char kSyncSandboxName[];
 extern const char kSyncSandboxDescription[];
 
@@ -1002,8 +979,8 @@ extern const char kTabResumptionDescription[];
 extern const char kTabSwitcherOverflowMenuName[];
 extern const char kTabSwitcherOverflowMenuDescription[];
 
-extern const char kTaiyakiName[];
-extern const char kTaiyakiDescription[];
+extern const char kTaiyakiAllSurfacesName[];
+extern const char kTaiyakiAllSurfacesDescription[];
 
 extern const char kUpdatedFRESequenceName[];
 extern const char kUpdatedFRESequenceDescription[];

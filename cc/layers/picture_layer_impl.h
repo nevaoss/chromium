@@ -58,7 +58,6 @@ class CC_EXPORT PictureLayerImpl
       LayerTreeImpl* tree_impl) const override;
   void PushPropertiesTo(LayerImpl* layer) override;
   void NotifyTileStateChanged(const Tile* tile, bool update_damage) override;
-  gfx::Rect GetDamageRect() const override;
   void ResetChangeTracking() override;
   void ResetRasterScale();
   void DidBeginTracing() override;
@@ -100,6 +99,8 @@ class CC_EXPORT PictureLayerImpl
   gfx::Size gpu_raster_max_texture_size() {
     return gpu_raster_max_texture_size_;
   }
+
+  float GetMaximumContentsScaleForUseInAppendQuads() const override;
 
   void UpdateRasterSource(scoped_refptr<RasterSource> raster_source,
                           Region* new_invalidation);
@@ -201,7 +202,7 @@ class CC_EXPORT PictureLayerImpl
 
   bool IsDirectlyCompositedImage() const override;
   gfx::Rect RecordedBounds() const override;
-  bool nearest_neighbor() const { return nearest_neighbor_; }
+  bool GetNearestNeighbor() const override;
 
   void set_should_batch_updated_tiles() { should_batch_updated_tiles_ = true; }
 
@@ -392,10 +393,6 @@ class CC_EXPORT PictureLayerImpl
 
   TileSizeCalculator tile_size_calculator_{this};
 
-  // Denotes an area that is damaged and needs redraw. This is in the layer's
-  // space.
-  gfx::Rect damage_rect_;
-
  private:
   class AppendQuadsCustomSharedDataImpl : public AppendQuadsCustomSharedData {
    public:
@@ -411,7 +408,6 @@ class CC_EXPORT PictureLayerImpl
   // TileBasedLayerImpl:
   std::unique_ptr<AppendQuadsCustomSharedData> WillAppendQuads(
       float max_contents_scale) override;
-  float GetMaximumContentsScaleForUseInAppendQuads() const override;
   void AppendQuadsForResourcelessSoftwareDraw(
       const AppendQuadsContext& context,
       viz::CompositorRenderPass* render_pass,
@@ -426,29 +422,15 @@ class CC_EXPORT PictureLayerImpl
       const TilingSetCoverageIterator<PictureLayerTiling>& iter) override;
   bool ShouldUpdateApproximatedVisibleContentArea(
       TileResolution resolution) const override;
+  bool ShouldReportTileAsMissing(
+      const gfx::Rect& tile_geometry_rect,
+      AppendQuadsCustomSharedData* custom_data) const override;
   void DidAppendQuad(viz::DrawQuad* quad,
                      const TilingSetCoverageIterator<PictureLayerTiling>& iter,
                      AppendQuadsData* append_quads_data,
                      bool is_checkerboard) override;
 
-  bool AppendQuadForTile(TilingSetCoverageIterator<PictureLayerTiling> iter,
-                         const AppendQuadsContext& context,
-                         viz::CompositorRenderPass* render_pass,
-                         AppendQuadsData* append_quads_data,
-                         viz::SharedQuadState* shared_quad_state,
-                         const Occlusion& scaled_occlusion,
-                         const gfx::Rect& offset_geometry_rect,
-                         const gfx::Rect& offset_visible_geometry_rect,
-                         const gfx::Rect& visible_geometry_rect,
-                         bool needs_blending,
-                         const std::optional<gfx::Rect>& scaled_cull_rect,
-                         float max_contents_scale,
-                         AppendQuadsCustomSharedData* custom_data) override;
-
  private:
-  bool ShouldReportTileAsMissing(
-      const gfx::Rect& tile_geometry_rect,
-      AppendQuadsCustomSharedData* custom_data) const;
   TilingResolution GetTilingResolutionForDebugBorders(
       const PictureLayerTiling* tiling) const override;
 };

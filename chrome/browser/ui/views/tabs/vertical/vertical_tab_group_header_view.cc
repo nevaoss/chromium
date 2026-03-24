@@ -34,6 +34,7 @@
 #include "ui/views/controls/highlight_path_generator.h"
 #include "ui/views/controls/image_view.h"
 #include "ui/views/controls/label.h"
+#include "ui/views/controls/scroll_view.h"
 #include "ui/views/layout/layout_types.h"
 #include "ui/views/view.h"
 #include "ui/views/view_class_properties.h"
@@ -47,6 +48,18 @@ constexpr int kFocusRingInset = 2;
 constexpr int kAttentionIndicatorWidth = 8;
 // The amount of padding between the label and any sync icon.
 constexpr int kSyncIconLabelPadding = 2;
+
+views::ScrollView* GetScrollView(views::View* view) {
+  views::View* ancestor = view;
+  while (ancestor) {
+    if (auto* scroll_view =
+            views::ScrollView::GetScrollViewForContents(ancestor)) {
+      return scroll_view;
+    }
+    ancestor = ancestor->parent();
+  }
+  return nullptr;
+}
 
 void ConfigureEditorBubbleButton(views::LabelButton* button) {
   button->SetHasInkDropActionOnClick(true);
@@ -70,6 +83,8 @@ void ConfigureEditorBubbleButton(views::LabelButton* button) {
       VerticalTabGroupHeaderView::FocusBehavior::ACCESSIBLE_ONLY);
   button->SetVisible(false);
   views::FocusRing::Install(button);
+  button->SetProperty(views::kElementIdentifierKey,
+                      kTabGroupEditorBubbleButtonElementId);
 }
 
 void UpdateEditorButtonColors(views::LabelButton* button,
@@ -247,17 +262,31 @@ void VerticalTabGroupHeaderView::OnMouseReleased(const ui::MouseEvent& event) {
 
 void VerticalTabGroupHeaderView::OnGestureEvent(ui::GestureEvent* event) {
   switch (event->type()) {
+    case ui::EventType::kGestureTapDown:
+      // Required to allow the touch system to know this is a gesture target
+      // for subsequent events like LongPress and Scroll.
+      event->SetHandled();
+      break;
+
     case ui::EventType::kGestureTap:
       delegate_->ToggleCollapsedState(
           ToggleTabGroupCollapsedStateOrigin::kGesture);
+      event->SetHandled();
       break;
+
+    case ui::EventType::kGestureLongPress:
+      delegate_->InitHeaderDrag(*event);
+      event->SetHandled();
+      break;
+
     case ui::EventType::kGestureLongTap:
       ShowEditorBubble();
+      event->SetHandled();
       break;
+
     default:
       break;
   }
-  event->SetHandled();
 }
 
 void VerticalTabGroupHeaderView::OnMouseMoved(const ui::MouseEvent& event) {
@@ -292,6 +321,7 @@ void VerticalTabGroupHeaderView::OnBlur() {
 void VerticalTabGroupHeaderView::AddedToWidget() {
   views::FlexLayoutView::AddedToWidget();
   GetFocusManager()->AddFocusChangeListener(this);
+  editor_bubble_tracker_.SetScrollView(GetScrollView(this));
 }
 
 void VerticalTabGroupHeaderView::RemovedFromWidget() {
@@ -306,13 +336,16 @@ void VerticalTabGroupHeaderView::OnWillChangeFocus(views::View* focused_before,
     // If navigating upward from below, the button is initially hidden and gets
     // skipped. We detect reverse focus traversal (from a view physically below
     // this one) and manually forward the focus to the button.
-    if (focused_now == this &&
+    if (focused_now == this && focused_before &&
         focused_before->GetBoundsInScreen().y() > GetBoundsInScreen().y()) {
       base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
           FROM_HERE, base::BindOnce(
                          [](base::WeakPtr<VerticalTabGroupHeaderView> view) {
                            if (view && view->editor_bubble_button_) {
-                             view->editor_bubble_button_->RequestFocus();
+                             view->GetFocusManager()->SetFocusedViewWithReason(
+                                 view->editor_bubble_button_,
+                                 views::FocusManager::FocusChangeReason::
+                                     kFocusTraversal);
                            }
                          },
                          weak_ptr_factory_.GetWeakPtr()));

@@ -250,6 +250,12 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(Profile* profile) {
   source->AddBoolean("logoEnabled",
                      base::FeatureList::IsEnabled(ntp_features::kNtpLogo));
   source->AddBoolean(
+      "animatedDoodlesEnabled",
+      base::FeatureList::IsEnabled(ntp_features::kNtpAnimatedDoodles));
+  source->AddBoolean(
+      "doodleMuralsEnabled",
+      base::FeatureList::IsEnabled(ntp_features::kNtpDoodleMurals));
+  source->AddBoolean(
       "middleSlotPromoEnabled",
       base::FeatureList::IsEnabled(ntp_features::kNtpMiddleSlotPromo) &&
           profile->GetPrefs()->GetBoolean(prefs::kNtpPromoVisible));
@@ -304,6 +310,8 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(Profile* profile) {
       {"undo", IDS_NEW_TAB_UNDO_THUMBNAIL_REMOVE},
       {"controlledSettingPolicy", IDS_CONTROLLED_SETTING_POLICY},
       {"disableSuggestion", IDS_NTP_ACTION_CHIP_DISABLE_TEXT},
+      {"actionChipsUndoDisablementToastMessage",
+       IDS_NTP_ACTION_CHIPS_UNDO_DISABLEMENT_TOAST_MESSAGE},
 
       // Custom Links.
       {"addLinkTitle", IDS_NTP_CUSTOM_LINKS_ADD_SHORTCUT_TITLE},
@@ -616,8 +624,6 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(Profile* profile) {
   source->AddString("composeboxAttachmentFileTypes", attachment_mime_types);
   source->AddInteger("composeboxFileMaxSize",
                      composebox_config.attachment_upload().max_size_bytes());
-  source->AddInteger("composeboxFileMaxCount",
-                     composebox_config.max_num_files());
   source->AddString(
       "composeboxSource",
       contextual_search::ContextualSearchMetricsRecorder::
@@ -737,11 +743,8 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(Profile* profile) {
   // Action Chips LoadTimeData
   bool action_chips_eligible =
       aim_eligibility_service && aim_eligibility_service->IsAimEligible() &&
-      (ntp_features::kNtpNextShowSimplificationUIParam.Get()
-           ? (aim_eligibility_service->IsDeepSearchEligible() ||
-              aim_eligibility_service->IsCreateImagesEligible())
-           : (aim_eligibility_service->IsDeepSearchEligible() &&
-              aim_eligibility_service->IsCreateImagesEligible()));
+      (aim_eligibility_service->IsDeepSearchEligible() ||
+       aim_eligibility_service->IsCreateImagesEligible());
   bool show_action_chips =
       action_chips_eligible &&
       profile->GetPrefs()->GetBoolean(prefs::kNtpToolChipsVisible);

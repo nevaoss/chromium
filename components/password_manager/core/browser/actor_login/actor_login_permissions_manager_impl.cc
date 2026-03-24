@@ -17,10 +17,9 @@
 namespace actor_login {
 
 namespace {
-void MergePermissions(
+base::flat_set<password_manager::ActorLoginPermission> MergePermissions(
     const base::flat_set<password_manager::ActorLoginPermission>&
         password_permissions,
-    ActorLoginPermissionsManager::GetAllPermissionsResult callback,
     std::vector<FederatedPermission> federated_permissions) {
   std::vector<password_manager::ActorLoginPermission> merged_permissions(
       password_permissions.begin(), password_permissions.end());
@@ -40,25 +39,26 @@ void MergePermissions(
        federated_permissions) {
     std::u16string username =
         base::UTF8ToUTF16(federated_permission.chosen_account_email);
-    if (!password_permissions_hash_set.contains(std::make_pair(
-            username, federated_permission.rp_embedder_origin))) {
+    if (!federated_permission.rp_embedder_origin.opaque() &&
+        !password_permissions_hash_set.contains(std::make_pair(
+            username,
+            federated_permission.rp_embedder_origin.GetURL().spec()))) {
       password_manager::ActorLoginPermission permission;
       permission.username = username;
       permission.domain_info.signon_realm =
-          federated_permission.rp_embedder_origin;
+          federated_permission.rp_embedder_origin.GetURL().spec();
       permission.domain_info.name = password_manager::GetShownOrigin(
-          url::Origin::Create(GURL(federated_permission.rp_embedder_origin)));
+          federated_permission.rp_embedder_origin);
       permission.domain_info.url =
-          GURL(federated_permission.rp_embedder_origin);
+          federated_permission.rp_embedder_origin.GetURL();
       // Favicon is not populated.
       merged_permissions.push_back(std::move(permission));
     }
   }
 
   // TODO(crbug.com/486089293): Clean permission username conflicts.
-  std::move(callback).Run(
-      base::flat_set<password_manager::ActorLoginPermission>(
-          std::move(merged_permissions)));
+  return base::flat_set<password_manager::ActorLoginPermission>(
+      std::move(merged_permissions));
 }
 }  // namespace
 
@@ -92,6 +92,14 @@ void ActorLoginPermissionsManagerImpl::RemoveObserver(
 void ActorLoginPermissionsManagerImpl::RevokePermission(
     const std::string& signon_realm) {
   presenter_.RevokeActorLoginPermission(signon_realm);
+  // The service is constructed via a factory that returns a nullptr for
+  // incognito and guest profiles. The settings page is not accessible for those
+  // profiles, so we can assert that the service is valid.
+  CHECK(actor_login_permission_service_);
+  actor_login_permission_service_->DeletePermission(
+      url::Origin::Create(GURL(signon_realm)),
+      base::BindOnce(&ActorLoginPermissionsManagerImpl::OnPermissionDeleted,
+                     weak_ptr_factory_.GetWeakPtr()));
 }
 
 void ActorLoginPermissionsManagerImpl::GetAllPermissions(
@@ -100,16 +108,30 @@ void ActorLoginPermissionsManagerImpl::GetAllPermissions(
   base::flat_set<password_manager::ActorLoginPermission>
       saved_passwords_permissions =
           presenter_.GetActorLoginPermissions(sync_service);
+  // The service is constructed via a factory that returns a nullptr for
+  // incognito and guest profiles. The settings page is not accessible for those
+  // profiles, so we can assert that the service is valid.
+  CHECK(actor_login_permission_service_);
   actor_login_permission_service_->ListAllPermissions(
-      base::BindOnce(&MergePermissions, std::move(saved_passwords_permissions),
-                     std::move(callback)));
+      base::BindOnce(&MergePermissions, std::move(saved_passwords_permissions))
+          .Then(std::move(callback)));
+}
+
+void ActorLoginPermissionsManagerImpl::NotifyObservers() {
+  for (ActorLoginPermissionsManager::Observer& observer : observers_) {
+    observer.OnPermissionsChanged();
+  }
+}
+
+void ActorLoginPermissionsManagerImpl::OnPermissionDeleted(bool success) {
+  if (success) {
+    NotifyObservers();
+  }
 }
 
 void ActorLoginPermissionsManagerImpl::OnSavedPasswordsChanged(
     const password_manager::PasswordStoreChangeList& changes) {
-  for (ActorLoginPermissionsManager::Observer& observer : observers_) {
-    observer.OnPermissionsChanged();
-  }
+  NotifyObservers();
 }
 
 }  // namespace actor_login

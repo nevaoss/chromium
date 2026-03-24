@@ -440,6 +440,42 @@ class EslintTsTest(unittest.TestCase):
       self.assertFalse(
           e in str(context.exception), f'Found unexpected error: {e}')
 
+  def testWebUiEslintPlugin_LitElementIncorrectFilenameSuffixCheck(self):
+    with self.assertRaises(RuntimeError) as context:
+      self._run_test(
+          ["with_webui_plugin_violations_incorrect_filename_suffix_element.ts"])
+
+    # Expected ESLint rule violation that should be part of the error output.
+    _EXPECTED_STRING = "@webui-eslint/lit-element-structure"
+    self.assertTrue(_EXPECTED_STRING in str(context.exception))
+
+    _EXPECTED_INCORRECT_FILE_NAME_SUFFIX_ERROR = "File name '%(filename)s' should not end with the '_element' suffix"
+    error = _EXPECTED_INCORRECT_FILE_NAME_SUFFIX_ERROR % {
+        'filename':
+            'with_webui_plugin_violations_incorrect_filename_suffix_element.ts',
+    }
+    self.assertTrue(
+        error in str(context.exception),
+        f'Didn\'t find expected error: {error}')
+
+  def testWebUiEslintPlugin_LitElementInconsistentFilenameCheck(self):
+    with self.assertRaises(RuntimeError) as context:
+      self._run_test(["with_webui_plugin_violations_inconsistent_file_name.ts"])
+
+    # Expected ESLint rule violation that should be part of the error output.
+    _EXPECTED_STRING = "@webui-eslint/lit-element-structure"
+    self.assertTrue(_EXPECTED_STRING in str(context.exception))
+
+    _EXPECTED_INCONSISTENT_FILE_NAME_ERROR = "Naming of file/%(referenceType)s pair %(filename)s ↔ %(referenceName)s is inconsistent"
+    error = _EXPECTED_INCONSISTENT_FILE_NAME_ERROR % {
+        'filename': 'with_webui_plugin_violations_inconsistent_file_name.ts',
+        'referenceType': 'DOM',
+        'referenceName': 'inconsistent-filename',
+    }
+    self.assertTrue(
+        error in str(context.exception),
+        f'Didn\'t find expected error: {error}')
+
   def testWebUiEslintPlugin_LitElementTemplateStructure(self):
     with self.assertRaises(RuntimeError) as context:
       self._run_test([
@@ -608,6 +644,10 @@ class EslintTsTest(unittest.TestCase):
 
     _INCORRECT_BOOLEAN_ERROR = "Incorrect assignment to property '%(propertyName)s' using boolean attribute expression '?%(attributeName)s='. Boolean attribute expressions should only be assigned to boolean properties. To bind to the truthiness of '%(propertyName)s', convert it to a boolean using '!!'"
 
+    _NO_TRUE_BINDING_ERROR = "Boolean attribute '%(attributeName)s' does not need to be bound to '${true}'. Use either '%(attributeName)s' or '.%(propertyName)s=\"${true}\"' instead"
+
+    _NO_FALSE_BINDING_ERROR = "Incorrect assignment to boolean attribute expression '?%(attributeName)s=' using '${false}'. Use property binding '.%(propertyName)s=\"${false}\"' instead"
+
     # The following strings *should* appear in the error output.
     errors = [
         _INCORRECT_ATTRIBUTE_ERROR % {
@@ -623,6 +663,18 @@ class EslintTsTest(unittest.TestCase):
         _INCORRECT_BOOLEAN_ERROR % {
             'attributeName': 'invalid',
             'propertyName': 'errorMessage',
+        },
+        _NO_TRUE_BINDING_ERROR % {
+            'attributeName': 'readonly',
+            'propertyName': 'readonly',
+        },
+        _NO_FALSE_BINDING_ERROR % {
+            'attributeName': 'disabled',
+            'propertyName': 'disabled',
+        },
+        _NO_FALSE_BINDING_ERROR % {
+            'attributeName': 'some-multi-word-attr',
+            'propertyName': 'someMultiWordAttr',
         },
     ]
     for e in errors:

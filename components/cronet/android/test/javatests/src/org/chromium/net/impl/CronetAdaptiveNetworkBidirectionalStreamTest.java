@@ -19,8 +19,10 @@ import static org.mockito.Mockito.when;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
+import android.net.Network;
 import android.os.Build;
 
+import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.SmallTest;
 
@@ -31,6 +33,7 @@ import org.mockito.ArgumentCaptor;
 
 import org.chromium.base.test.util.Batch;
 import org.chromium.net.BidirectionalStream;
+import org.chromium.net.ConnectivityManagerWrapper;
 import org.chromium.net.CronetException;
 import org.chromium.net.UrlResponseInfo;
 
@@ -494,5 +497,67 @@ public class CronetAdaptiveNetworkBidirectionalStreamTest {
         // Active stream failed, so we give up.
         verify(mMockCallback).onFailed(mAdaptiveStream, info, error);
         assertTrue(mAdaptiveStream.isDone());
+    }
+
+    @Test
+    @SmallTest
+    public void testComputeAlternativeNetwork_noNetworks_returnsDefault() {
+        // We need java.util.stream.Stream to be available for these tests.
+        assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N);
+        ConnectivityManagerWrapper mockConnectivityManagerWrapper =
+                mock(ConnectivityManagerWrapper.class);
+        when(mockConnectivityManagerWrapper.getAllNetworks(null)).thenReturn(new Network[0]);
+
+        CronetAdaptiveRequestContext adaptiveRequestContext =
+                new CronetAdaptiveRequestContext(ApplicationProvider.getApplicationContext());
+        adaptiveRequestContext.setConnectivityManagerWrapperForTest(mockConnectivityManagerWrapper);
+
+        assertEquals(
+                CronetEngineBase.DEFAULT_NETWORK_HANDLE,
+                adaptiveRequestContext.computeAlternativeNetwork());
+    }
+
+    @Test
+    @SmallTest
+    public void testComputeAlternativeNetwork_onlyDefaultNetwork_returnsDefault() {
+        // We need java.util.stream.Stream to be available for these tests.
+        assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N);
+        ConnectivityManagerWrapper mockConnectivityManagerWrapper =
+                mock(ConnectivityManagerWrapper.class);
+        Network defaultNetwork = mock(Network.class);
+        when(mockConnectivityManagerWrapper.getDefaultNetwork()).thenReturn(defaultNetwork);
+        when(mockConnectivityManagerWrapper.getAllNetworks(defaultNetwork))
+                .thenReturn(new Network[] {});
+
+        CronetAdaptiveRequestContext adaptiveRequestContext =
+                new CronetAdaptiveRequestContext(ApplicationProvider.getApplicationContext());
+        adaptiveRequestContext.setConnectivityManagerWrapperForTest(mockConnectivityManagerWrapper);
+
+        assertEquals(
+                CronetEngineBase.DEFAULT_NETWORK_HANDLE,
+                adaptiveRequestContext.computeAlternativeNetwork());
+    }
+
+    @Test
+    @SmallTest
+    public void testComputeAlternativeNetwork_alternativeNetworkAvailable_returnsAlternative() {
+        // We need java.util.stream.Stream to be available for these tests.
+        assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N);
+        ConnectivityManagerWrapper mockConnectivityManagerWrapper =
+                mock(ConnectivityManagerWrapper.class);
+        Network defaultNetwork = mock(Network.class);
+        Network alternativeNetwork = mock(Network.class);
+        long alternativeHandle = 12345L;
+
+        when(mockConnectivityManagerWrapper.getDefaultNetwork()).thenReturn(defaultNetwork);
+        when(mockConnectivityManagerWrapper.getAllNetworks(defaultNetwork))
+                .thenReturn(new Network[] {alternativeNetwork});
+        when(alternativeNetwork.getNetworkHandle()).thenReturn(alternativeHandle);
+
+        CronetAdaptiveRequestContext adaptiveRequestContext =
+                new CronetAdaptiveRequestContext(ApplicationProvider.getApplicationContext());
+        adaptiveRequestContext.setConnectivityManagerWrapperForTest(mockConnectivityManagerWrapper);
+
+        assertEquals(alternativeHandle, adaptiveRequestContext.computeAlternativeNetwork());
     }
 }

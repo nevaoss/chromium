@@ -31,43 +31,34 @@ import java.util.List;
 public class CustomSiteSearchMediator extends ExpandableSiteSearchMediator {
     private final Runnable mOnAddSearchEngine;
     private final Callback<TemplateUrl> mOnEditSearchEngine;
+    private final Callback<TemplateUrl> mOnRemoveSearchEngine;
 
     public CustomSiteSearchMediator(
             Context context,
             ModelList modelList,
             Profile profile,
             Runnable onAddSearchEngine,
-            Callback<TemplateUrl> onEditSearchEngine) {
+            Callback<TemplateUrl> onEditSearchEngine,
+            Callback<TemplateUrl> onRemoveSearchEngine) {
         super(context, modelList, profile);
         mOnAddSearchEngine = onAddSearchEngine;
         mOnEditSearchEngine = onEditSearchEngine;
+        mOnRemoveSearchEngine = onRemoveSearchEngine;
 
         initializeTemplateUrlService();
     }
 
     @Override
     protected void refreshList() {
-        mModelList.clear();
-        mHiddenItems.clear();
+        clearAllItems();
 
         List<TemplateUrl> urls =
                 mTemplateUrlService.getTemplateUrlsByCategory(
                         TemplateUrlCategory.ACTIVE_SITE_SEARCH);
 
-        setUpSiteSearchList(urls);
+        populateTemplateUrls(urls);
         setUpAddButton();
         setUpMoreButtonIfNeeded(urls.size());
-    }
-
-    private void setUpSiteSearchList(List<TemplateUrl> urls) {
-        for (int i = 0; i < urls.size(); i++) {
-            ListItem item = createListItem(urls.get(i));
-            if (i < DEFAULT_MAX_ROWS) {
-                mModelList.add(item);
-            } else {
-                mHiddenItems.add(item);
-            }
-        }
     }
 
     private void setUpAddButton() {
@@ -121,18 +112,14 @@ public class CustomSiteSearchMediator extends ExpandableSiteSearchMediator {
 
     @VisibleForTesting
     void onMenuItemClicked(int textId, TemplateUrl url) {
-        if (textId == R.string.site_search_list_menu_edit) {
+        if (R.string.site_search_list_menu_edit == textId) {
             mOnEditSearchEngine.onResult(url);
-        } else if (textId == R.string.site_search_list_menu_make_default) {
+        } else if (R.string.site_search_list_menu_make_default == textId) {
             mTemplateUrlService.setSearchEngine(url.getKeyword());
-        } else if (textId == R.string.site_search_list_menu_deactivate) {
+        } else if (R.string.site_search_list_menu_deactivate == textId) {
             mTemplateUrlService.deactivateSearchEngine(url.getKeyword());
-        } else if (textId == R.string.site_search_list_menu_delete) {
-            mTemplateUrlService.removeSearchEngine(url.getKeyword());
+        } else if (R.string.site_search_list_menu_delete == textId) {
+            mOnRemoveSearchEngine.onResult(url);
         }
-    }
-
-    boolean isExpandedForTesting() {
-        return mIsExpanded;
     }
 }

@@ -258,6 +258,11 @@ void VerticalTabStripController::ExtendSelectionTo(
   model_->ExtendSelectionTo(tab_index.value());
 }
 
+const ui::ListSelectionModel& VerticalTabStripController::GetSelectionModel()
+    const {
+  return model_->selection_model().GetListSelectionModel();
+}
+
 void VerticalTabStripController::ToggleTabGroupCollapsedState(
     const TabGroup* group,
     ToggleTabGroupCollapsedStateOrigin origin) {
@@ -373,6 +378,10 @@ VerticalTabStripController::GetTabGroupSyncService() {
 tabs::VerticalTabStripStateController*
 VerticalTabStripController::GetStateController() {
   return tabs::VerticalTabStripStateController::From(browser_view_->browser());
+}
+
+const tabs::TabInterface* VerticalTabStripController::GetActiveTab() const {
+  return model_->GetActiveTab();
 }
 
 bool VerticalTabStripController::IsContextMenuCommandChecked(

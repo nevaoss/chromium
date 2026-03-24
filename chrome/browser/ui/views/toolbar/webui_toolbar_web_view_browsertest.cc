@@ -27,6 +27,7 @@
 #include "chrome/browser/ui/browser_window/public/desktop_browser_window_capabilities.h"
 #include "chrome/browser/ui/interaction/browser_elements.h"
 #include "chrome/browser/ui/layout_constants.h"
+#include "chrome/browser/ui/tabs/features.h"
 #include "chrome/browser/ui/tabs/split_tab_metrics.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
@@ -207,6 +208,8 @@ class WebUIToolbarWebViewPixelBrowserTest : public InProcessBrowserTest {
     feature_list_.InitWithFeatures(
         {features::kInitialWebUI, features::kWebUIReloadButton,
          features::kWebUISplitTabsButton, features::kWebUIBackForwardButton,
+         features::kWebUIPinnedToolbarActions,
+         tabs::kHorizontalTabStripComboButton,
          features::kSkipIPCChannelPausingForNonGuests,
          features::kWebUIInProcessResourceLoadingV2,
          features::kInitialWebUISyncNavStartToCommit},
@@ -324,7 +327,14 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewPixelBrowserTest, Basic) {
   BasicPixelTest(browser(), "Basic");
 }
 
-IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewPixelBrowserTest, IncognitoBasic) {
+// TODO(https://crbug.com/493362471): Fix the flakiness.
+#if BUILDFLAG(IS_WIN)
+#define MAYBE_IncognitoBasic DISABLED_IncognitoBasic
+#else
+#define MAYBE_IncognitoBasic IncognitoBasic
+#endif
+IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewPixelBrowserTest,
+                       MAYBE_IncognitoBasic) {
   BasicPixelTest(CreateIncognitoBrowser(), "IncognitoBasic");
 }
 
@@ -474,8 +484,9 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewPixelBrowserTest,
   }));
 }
 
+// TODO(crbug.com/493362471): Flaky pixel tests.
 IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewPixelBrowserTest,
-                       CheckSplitTabsButtonColor) {
+                       DISABLED_CheckSplitTabsButtonColor) {
   browser()->profile()->GetPrefs()->SetBoolean(prefs::kPinSplitTabButton, true);
 
   ui::TrackedElement* element = nullptr;

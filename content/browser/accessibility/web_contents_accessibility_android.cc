@@ -538,11 +538,6 @@ ScopedJavaLocalRef<jobject> ToJavaStringRangesMap(
       ranges_count);
 }
 
-bool DoesNodeSupportExtendedSelection(ui::BrowserAccessibility* node) {
-  return node->IsText() || node->IsTextField() ||
-         static_cast<BrowserAccessibilityAndroid*>(node)->IsAndroidTextView();
-}
-
 // In case the `node` does not exist on Android, updates node and offset to the
 // highest leaf node (ancestor of node).
 void UpdateTextPositionForSelection(ui::BrowserAccessibility*& node,
@@ -610,7 +605,8 @@ bool ConvertToTextSelectionForAndroid(ui::BrowserAccessibility*& anchor_node,
     ui::BrowserAccessibility* android_node =
         manager->GetFromAXNode(pos.anchor()->GetAnchor())
             ->PlatformGetLowestPlatformAncestor();
-    if (DoesNodeSupportExtendedSelection(android_node)) {
+    if (static_cast<BrowserAccessibilityAndroid*>(android_node)
+            ->CanSetExtendedSelection()) {
       if (!found) {
         anchor_position = pos.anchor()->Clone();
         found = true;
@@ -1613,8 +1609,9 @@ void WebContentsAccessibilityAndroid::
       node->IsContentInvalid(), node->IsEnabled(), node->IsEditable(),
       node->IsFocusable(), node->IsFocused(), node->HasImage(),
       node->IsPasswordField(), node->IsScrollable(), node->IsSelected(),
-      node->IsVisibleToUser(), node->HasCharacterLocations(),
-      node->IsRequired(), node->IsHeading() || node->IsTableHeader(),
+      node->IsTextSelectable(), node->IsVisibleToUser(),
+      node->HasCharacterLocations(), node->IsRequired(),
+      node->IsHeading() || node->IsTableHeader(),
       node->HasLayoutBasedActions());
 }
 
@@ -1628,12 +1625,12 @@ void WebContentsAccessibilityAndroid::
 
   int32_t unique_id = node->GetUniqueId();
   Java_AccessibilityNodeInfoBuilder_addAccessibilityNodeInfoActions(
-      env, obj, info, unique_id, node->CanScrollForward(),
-      node->CanScrollBackward(), node->CanScrollUp(), node->CanScrollDown(),
-      node->CanScrollLeft(), node->CanScrollRight(), node->IsClickable(),
-      node->IsTextField(), node->IsEnabled(), node->IsEditable(),
-      node->IsFocusable(), node->IsFocused(), node->IsCollapsed(),
-      node->IsExpanded(), node->HasNonEmptyValue(),
+      env, obj, info, unique_id, node->CanSetExtendedSelection(),
+      node->CanScrollForward(), node->CanScrollBackward(), node->CanScrollUp(),
+      node->CanScrollDown(), node->CanScrollLeft(), node->CanScrollRight(),
+      node->IsClickable(), node->IsTextField(), node->IsEnabled(),
+      node->IsEditable(), node->IsFocusable(), node->IsFocused(),
+      node->IsCollapsed(), node->IsExpanded(), node->HasNonEmptyValue(),
       !node->GetTextContentUTF16().empty(), node->IsSeekControl(),
       node->IsFormDescendant());
 }
@@ -1917,6 +1914,36 @@ void WebContentsAccessibilityAndroid::PopulateAccessibilityNodeInfoPaneTitle(
   }
 }
 
+std::optional<ui::AXSelection>
+WebContentsAccessibilityAndroid::GetSelectionInternal(
+    BrowserAccessibilityManagerAndroid* root_manager) {
+  if (!root_manager) {
+    return std::nullopt;
+  }
+
+  ui::AXSelection selection = root_manager->ax_tree()->GetUnignoredSelection();
+
+  ui::BrowserAccessibility* anchor_node =
+      root_manager->GetFromID(selection.anchor_object_id);
+  ui::BrowserAccessibility* focus_node =
+      root_manager->GetFromID(selection.focus_object_id);
+
+  if (!anchor_node || !focus_node) {
+    return std::nullopt;
+  }
+
+  if (!ConvertToTextSelectionForAndroid(anchor_node, selection.anchor_offset,
+                                        focus_node, selection.focus_offset)) {
+    return std::nullopt;
+  }
+
+  // TODO(accessibility): awkward packing/unpacking of args everywhere; pick a
+  // firm representation.
+  selection.anchor_object_id = anchor_node->GetId();
+  selection.focus_object_id = focus_node->GetId();
+  return selection;
+}
+
 void WebContentsAccessibilityAndroid::PopulateAccessibilityNodeInfoSelection(
     JNIEnv* env,
     const JavaRef<jobject>& info,
@@ -1957,33 +1984,60 @@ void WebContentsAccessibilityAndroid::PopulateAccessibilityNodeInfoSelection(
     return;
   }
 
-  ui::AXSelection selection = root_manager->ax_tree()->GetUnignoredSelection();
+  std::optional<ui::AXSelection> selection = GetSelectionInternal(root_manager);
 
-  ui::BrowserAccessibility* anchor_node =
-      root_manager->GetFromID(selection.anchor_object_id);
-  ui::BrowserAccessibility* focus_node =
-      root_manager->GetFromID(selection.focus_object_id);
-
-  if (!anchor_node || !focus_node) {
+  if (!selection.has_value()) {
     Java_AccessibilityNodeInfoBuilder_clearAccessibilityNodeInfoExtendedSelectionAttrs(
         env, obj, info);
     return;
   }
 
-  int anchor_offset = selection.anchor_offset;
-  int focus_offset = selection.focus_offset;
-  if (!ConvertToTextSelectionForAndroid(anchor_node, anchor_offset, focus_node,
-                                        focus_offset)) {
-    return;
-  }
+  ui::BrowserAccessibility* anchor_node =
+      root_manager->GetFromID(selection->anchor_object_id);
+  CHECK(anchor_node);
+  ui::BrowserAccessibility* focus_node =
+      root_manager->GetFromID(selection->focus_object_id);
+  CHECK(focus_node);
 
   const int anchor_unique_id =
       static_cast<BrowserAccessibilityAndroid*>(anchor_node)->GetUniqueId();
   const int focus_unique_id =
       static_cast<BrowserAccessibilityAndroid*>(focus_node)->GetUniqueId();
   Java_AccessibilityNodeInfoBuilder_setAccessibilityNodeInfoExtendedSelectionAttrs(
-      env, obj, info, anchor_unique_id, anchor_offset, focus_unique_id,
-      focus_offset);
+      env, obj, info, anchor_unique_id, selection->anchor_offset,
+      focus_unique_id, selection->focus_offset);
+}
+
+ScopedJavaLocalRef<jintArray>
+WebContentsAccessibilityAndroid::GetExtendedSelection(JNIEnv* env,
+                                                      int32_t unique_id) {
+  BrowserAccessibilityAndroid* node = GetAXFromUniqueID(unique_id);
+  if (!node) {
+    return nullptr;
+  }
+
+  auto* root_manager =
+      static_cast<BrowserAccessibilityManagerAndroid*>(node->manager());
+  std::optional<ui::AXSelection> selection = GetSelectionInternal(root_manager);
+  if (!selection.has_value()) {
+    return nullptr;
+  }
+
+  ui::BrowserAccessibility* anchor_node =
+      root_manager->GetFromID(selection->anchor_object_id);
+  CHECK(anchor_node);
+  ui::BrowserAccessibility* focus_node =
+      root_manager->GetFromID(selection->focus_object_id);
+  CHECK(focus_node);
+
+  const int anchor_unique_id =
+      static_cast<BrowserAccessibilityAndroid*>(anchor_node)->GetUniqueId();
+  const int focus_unique_id =
+      static_cast<BrowserAccessibilityAndroid*>(focus_node)->GetUniqueId();
+
+  int selection_data[] = {anchor_unique_id, selection->anchor_offset,
+                          focus_unique_id, selection->focus_offset};
+  return ToJavaIntArray(env, selection_data);
 }
 
 bool WebContentsAccessibilityAndroid::PopulateAccessibilityNodeInfo(
@@ -2109,6 +2163,22 @@ void WebContentsAccessibilityAndroid::Click(JNIEnv* env, int32_t unique_id) {
   }
 }
 
+void WebContentsAccessibilityAndroid::Expand(JNIEnv* env, int32_t id) {
+  BrowserAccessibilityAndroid* node = GetAXFromUniqueID(id);
+  if (!node) {
+    return;
+  }
+  node->manager()->Expand(*node);
+}
+
+void WebContentsAccessibilityAndroid::Collapse(JNIEnv* env, int32_t id) {
+  BrowserAccessibilityAndroid* node = GetAXFromUniqueID(id);
+  if (!node) {
+    return;
+  }
+  node->manager()->Collapse(*node);
+}
+
 void WebContentsAccessibilityAndroid::Focus(JNIEnv* env, int32_t unique_id) {
   BrowserAccessibilityAndroid* node = GetAXFromUniqueID(unique_id);
   if (node) {
@@ -2177,10 +2247,8 @@ bool WebContentsAccessibilityAndroid::SetExtendedSelection(
     return false;
   }
 
-  // Extended selection is currently only supported for text nodes.
-  // TODO(crbug.com/488168548): Cover all node types.
-  if (!DoesNodeSupportExtendedSelection(start_node) ||
-      !DoesNodeSupportExtendedSelection(end_node)) {
+  if (!start_node->CanSetExtendedSelection() ||
+      !end_node->CanSetExtendedSelection()) {
     return false;
   }
 

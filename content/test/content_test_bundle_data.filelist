@@ -540,6 +540,12 @@ data/accessibility/aria/aria-carousel-buttons-expected-blink.txt
 data/accessibility/aria/aria-carousel-buttons-expected-mac.txt
 data/accessibility/aria/aria-carousel-buttons-expected-win.txt
 data/accessibility/aria/aria-carousel-buttons.html
+data/accessibility/aria/aria-carousel-tabs-expected-android-external.txt
+data/accessibility/aria/aria-carousel-tabs-expected-android.txt
+data/accessibility/aria/aria-carousel-tabs-expected-blink.txt
+data/accessibility/aria/aria-carousel-tabs-expected-mac.txt
+data/accessibility/aria/aria-carousel-tabs-expected-win.txt
+data/accessibility/aria/aria-carousel-tabs.html
 data/accessibility/aria/aria-cell-expected-android-assist-data.txt
 data/accessibility/aria/aria-cell-expected-android-external.txt
 data/accessibility/aria/aria-cell-expected-android.txt
@@ -7457,6 +7463,7 @@ data/forms/form_controls_browsertest_textarea_ios.png
 data/forms/form_controls_browsertest_textarea_linux.png
 data/forms/form_controls_browsertest_textarea_mac.png
 data/forms/form_controls_browsertest_textarea_win.png
+data/forms/form_controls_browsertest_textarea_with_desktop_scrollbars_android_T.png
 data/fragment.html
 data/frame-ancestors-none.html
 data/frame-ancestors-none.html.mock-http-headers

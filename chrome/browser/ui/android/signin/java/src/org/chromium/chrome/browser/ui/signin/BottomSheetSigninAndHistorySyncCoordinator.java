@@ -19,10 +19,11 @@ import androidx.annotation.ColorInt;
 import org.chromium.base.Callback;
 import org.chromium.base.supplier.OneshotSupplier;
 import org.chromium.base.supplier.SupplierUtils;
+import org.chromium.base.task.PostTask;
+import org.chromium.base.task.TaskTraits;
 import org.chromium.build.annotations.Initializer;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
-import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.profiles.ProfileProvider;
 import org.chromium.chrome.browser.signin.services.IdentityServicesProvider;
@@ -75,6 +76,7 @@ public class BottomSheetSigninAndHistorySyncCoordinator extends SigninAndHistory
                 ActivityResultTracker.ResultListener {
 
     private static final String ADD_ACCOUNT_ACTIVITY_KEY = "ADD_ACCOUNT_ACTIVITY_KEY";
+    private static final int HISTORY_SYNC_ENTER_ANIMATION_DELAY_MS = 100;
     private final WindowAndroid mWindowAndroid;
     private final Activity mActivity;
     private final ActivityResultTracker mActivityResultTracker;
@@ -476,8 +478,7 @@ public class BottomSheetSigninAndHistorySyncCoordinator extends SigninAndHistory
     /** Implements {@link SigninBottomSheetCoordinator.Delegate}. */
     @Override
     public void onSignInComplete() {
-        if (ChromeFeatureList.isEnabled(ChromeFeatureList.UNO_PHASE_2_FOLLOW_UP)
-                && mSigninAccessPoint == SigninAccessPoint.BOOKMARK_MANAGER) {
+        if (mSigninAccessPoint == SigninAccessPoint.BOOKMARK_MANAGER) {
             SyncService syncService =
                     assumeNonNull(SyncServiceFactory.getForProfile(assertNonNull(mProfile)));
             syncService.setSelectedType(UserSelectableType.BOOKMARKS, true);
@@ -494,7 +495,10 @@ public class BottomSheetSigninAndHistorySyncCoordinator extends SigninAndHistory
 
         mSigninBottomSheetCoordinator.destroy();
         mSigninBottomSheetCoordinator = null;
-        maybeShowHistoryOptInDialog();
+        PostTask.postDelayedTask(
+                TaskTraits.UI_DEFAULT,
+                this::maybeShowHistoryOptInDialog,
+                HISTORY_SYNC_ENTER_ANIMATION_DELAY_MS);
     }
 
     /** Implements {@link SigninBottomSheetCoordinator.Delegate}. */
@@ -664,19 +668,20 @@ public class BottomSheetSigninAndHistorySyncCoordinator extends SigninAndHistory
         }
 
         mSigninBottomSheetCoordinator =
-                new SigninBottomSheetCoordinator(
-                        mWindowAndroid,
-                        mActivity,
-                        this,
-                        mBottomSheetController.get(),
-                        mDeviceLockActivityLauncher,
-                        signinManager,
-                        mConfig.bottomSheetStrings,
-                        accountPickerMode,
-                        mConfig.withAccountSigninMode == WithAccountSigninMode.SEAMLESS_SIGNIN,
-                        mSigninAccessPoint,
-                        mConfig.selectedCoreAccountId,
-                        mDelegate.getSigninFlowVariant());
+                new SigninBottomSheetCoordinator(this, mDelegate.getSigninFlowVariant());
+        // show() is separate to ensure this instance is assigned before any synchronous callbacks
+        // run.
+        mSigninBottomSheetCoordinator.show(
+                mWindowAndroid,
+                mActivity,
+                mBottomSheetController.get(),
+                mDeviceLockActivityLauncher,
+                signinManager,
+                mConfig.bottomSheetStrings,
+                accountPickerMode,
+                mConfig.withAccountSigninMode == WithAccountSigninMode.SEAMLESS_SIGNIN,
+                mSigninAccessPoint,
+                mConfig.selectedCoreAccountId);
         mDidShowSigninStep = true;
     }
 

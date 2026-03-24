@@ -54,13 +54,14 @@ class ProjectsPanelView : public views::View,
                           public ui::SimpleMenuModel::Delegate,
                           public views::FocusChangeListener,
                           public views::FocusTraversable,
-                          gfx::AnimationDelegate,
+                          public gfx::AnimationDelegate,
                           ProjectsPanelController::Observer {
   METADATA_HEADER(ProjectsPanelView, views::View)
 
  public:
   ProjectsPanelView(BrowserWindowInterface* browser,
-                    actions::ActionItem* root_action_item);
+                    actions::ActionItem* root_action_item,
+                    ProjectsPanelStateController* state_controller);
   ProjectsPanelView(const ProjectsPanelView&) = delete;
   ProjectsPanelView& operator=(const ProjectsPanelView&) = delete;
   ~ProjectsPanelView() override;
@@ -128,6 +129,9 @@ class ProjectsPanelView : public views::View,
   views::Button* create_new_tab_group_button_for_testing() {
     return create_new_tab_group_button_;
   }
+  ProjectsPanelControlsView* controls_view_for_testing() {
+    return controls_view_;
+  }
 
   void set_on_close_animation_ended_callback_for_testing(
       base::OnceClosure on_close_animation_ended_callback) {
@@ -187,6 +191,7 @@ class ProjectsPanelView : public views::View,
 
   std::unique_ptr<views::ActionViewController> action_view_controller_;
   std::unique_ptr<ProjectsPanelController> panel_controller_;
+  const raw_ptr<ProjectsPanelStateController> state_controller_ = nullptr;
 
   // Animation when opening and closing the panel.
   gfx::SlideAnimation resize_animation_;

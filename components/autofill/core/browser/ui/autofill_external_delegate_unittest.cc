@@ -863,6 +863,57 @@ TEST_F(AutofillExternalDelegateTest, AcceptedBnplEntry_FormIsFilled) {
       {});
 }
 
+// Tests that accepting a BNPL entry when PayNowPayLater tabs are enabled
+// delegates to `BnplManager::OnIssuerAccepted` and does not hide the
+// suggestions popup immediately.
+TEST_F(AutofillExternalDelegateTest,
+       AcceptedBnplEntry_PayNowPayLaterEnabled_CallsOnIssuerAccepted) {
+  base::test::ScopedFeatureList scoped_feature_list{
+      features::kAutofillEnablePayNowPayLaterTabs};
+
+  IssueOnQuery();
+
+  Suggestion suggestion(SuggestionType::kBnplEntry);
+  BnplIssuer test_issuer = test::GetTestLinkedBnplIssuer();
+  suggestion.payload = Suggestion::BnplIssuer(test_issuer);
+
+  EXPECT_CALL(*autofill_manager().GetPaymentsBnplManager(),
+              OnIssuerAccepted(test_issuer));
+
+  EXPECT_CALL(autofill_client(), HideAutofillSuggestions).Times(0);
+
+  external_delegate().DidAcceptSuggestion(suggestion,
+                                          SuggestionPosition{.row = 0});
+}
+
+// Tests that accepting a BNPL entry when PayNowPayLater tabs are disabled
+// delegates to `BnplManager::OnUserDecisionToUseBnpl` and hides the suggestions
+// popup.
+TEST_F(AutofillExternalDelegateTest,
+       AcceptedBnplEntry_PayNowPayLaterEnabled_CallsOnUserDecisionToUseBnpl) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndDisableFeature(
+      features::kAutofillEnablePayNowPayLaterTabs);
+
+  IssueOnQuery();
+
+  const std::optional<int64_t> expected_amount = 50'000'000;
+  EXPECT_CALL(*autofill_manager().GetPaymentsBnplManager(),
+              OnUserDecisionToUseBnpl(expected_amount, _));
+  EXPECT_CALL(
+      autofill_client(),
+      HideAutofillSuggestions(SuggestionHidingReason::kAcceptSuggestion));
+
+  Suggestion::PaymentsPayload payments_payload;
+  payments_payload.extracted_amount_in_micros = expected_amount;
+  Suggestion suggestion = CreateAutofillSuggestion(
+      SuggestionType::kBnplEntry, /*main_text_value=*/u"BNPL suggestion",
+      payments_payload);
+
+  external_delegate().DidAcceptSuggestion(suggestion,
+                                          SuggestionPosition{.row = 0});
+}
+
 // Tests that `show_tabbed_popup` is false when the main filling
 // product is not a credit card (e.g., an Address field).
 TEST_F(AutofillExternalDelegateTest, ShowTabbedPopup_NotCreditCard) {
@@ -1020,6 +1071,49 @@ TEST_F(AutofillExternalDelegateTest, ShowTabbedPopup_FeatureDisabled) {
 
   OnSuggestionsReturned(queried_field().global_id(),
                         {Suggestion(SuggestionType::kCreditCardEntry)});
+}
+
+// Ensures the BNPL Manager is notified of the user deciding to use BNPL when a
+// pay later tab is opened.
+TEST_F(AutofillExternalDelegateTest, OnPayLaterTabOpened) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitWithFeatures(
+      /*enabled_features=*/{features::kAutofillEnableAmountExtraction,
+                            features::kAutofillEnableBuyNowPayLaterSyncing,
+                            features::kAutofillEnableBuyNowPayLater,
+                            features::kAutofillEnableAiBasedAmountExtraction,
+                            features::kAutofillEnablePayNowPayLaterTabs},
+      /*disabled_features=*/{});
+
+  base::OnceCallback<void(const CreditCard&)> captured_fill_callback;
+  EXPECT_CALL(*autofill_manager().GetPaymentsBnplManager(),
+              OnUserDecisionToUseBnpl(
+                  /*final_checkout_amount=*/testing::Eq(std::nullopt),
+                  /*on_bnpl_vcn_fetched_callback=*/testing::_))
+      .Times(1)
+      .WillOnce([&](std::optional<long>,
+                    base::OnceCallback<void(const CreditCard&)> callback) {
+        captured_fill_callback = std::move(callback);
+      });
+
+  external_delegate().OnPayLaterTabOpened();
+
+  ASSERT_FALSE(captured_fill_callback.is_null());
+
+  CreditCard test_card = test::GetCreditCard();
+
+  EXPECT_CALL(
+      autofill_manager(),
+      FillOrPreviewForm(
+          /*action_persistence=*/mojom::ActionPersistence::kFill,
+          /*form=*/testing::_,
+          /*field_id=*/testing::_,
+          /*filling_payload=*/
+          testing::VariantWith<const CreditCard*>(testing::Eq(&test_card)),
+          /*trigger_source=*/testing::_))
+      .Times(1);
+
+  std::move(captured_fill_callback).Run(test_card);
 }
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) ||
         // BUILDFLAG(IS_CHROMEOS)

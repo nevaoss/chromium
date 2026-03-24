@@ -415,30 +415,30 @@ bool SharedGpuContext::LowLatencyUsageSupportedForCanvas2D(
     return false;
   }
 
-  // Swapchain-backed SharedImages always support low-latency usages.
-  bool can_use_swapchain = ContextProviderWrapper()
-                               ->ContextProvider()
-                               .SharedImageInterface()
-                               ->GetCapabilities()
-                               .shared_image_swap_chain;
-  if (can_use_swapchain) {
-    return true;
-  }
-
-#if BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_WIN)
+  // Low-latency usages are supported on Windows if it's possible to back
+  // SharedImages by the D3D swapchain.
+  return ContextProviderWrapper()
+      ->ContextProvider()
+      .SharedImageInterface()
+      ->GetCapabilities()
+      .shared_image_swap_chain;
+#elif BUILDFLAG(IS_ANDROID)
   // Low-latency usage on Android is possible only with SurfaceControl.
-  if (!IsSurfaceControlEnabled()) {
-    return false;
-  }
-#endif
-
+  return IsSurfaceControlEnabled() &&
+         base::FeatureList::IsEnabled(
+             features::kLowLatencyUsageSupportedForCanvas2D);
+#elif BUILDFLAG(IS_CHROMEOS)
+  // Low-latency usage is always supported for Canvas2D on ChromeOS.
+  return true;
+#else
   // NOTE: crbug.com/41435781 would need to be resolved in order to support
   // low-latency usage on Mac (currently setting the desynchronized attribute
   // on a canvas is a no-op on Mac). If/once that bug is resolved, determine
   // whether this method can then return true on Apple if
   // IsDelegatedCompositingEnabled() holds.
-  return base::FeatureList::IsEnabled(
-      features::kLowLatencyCanvas2dImageChromium);
+  return false;
+#endif
 }
 
 bool SharedGpuContext::LowLatencyUsageSupportedForWebGL() {
@@ -448,28 +448,24 @@ bool SharedGpuContext::LowLatencyUsageSupportedForWebGL() {
 
 #if BUILDFLAG(IS_ANDROID)
   // Low-latency usage on Android is possible only with SurfaceControl.
-  if (!IsSurfaceControlEnabled()) {
-    return false;
-  }
-#endif  // BUILDFLAG(IS_ANDROID)
-
-#if BUILDFLAG(IS_CHROMEOS)
+  return IsSurfaceControlEnabled() &&
+         base::FeatureList::IsEnabled(
+             features::kLowLatencyUsageSupportedForWebGL);
+#elif BUILDFLAG(IS_CHROMEOS)
   // Whether WebGL canvases should be given low-latency usage is specified on a
   // per-board basis by passing (or not) the relevant command-line flag.
   static const bool enable_web_gl_image_chromium =
       base::CommandLine::ForCurrentProcess()->HasSwitch(
           blink::switches::kEnableWebGLImageChromium);
-  if (enable_web_gl_image_chromium) {
-    return true;
-  }
-#endif
-
+  return enable_web_gl_image_chromium;
+#else
   // NOTE: crbug.com/41435781 would need to be resolved in order to support
   // low-latency usage on Mac (currently setting the desynchronized attribute
   // on a canvas is a no-op on Mac). If/once that bug is resolved, determine
   // whether this method can then return true on Apple if
   // IsDelegatedCompositingEnabled() holds.
-  return base::FeatureList::IsEnabled(features::kLowLatencyWebGLImageChromium);
+  return false;
+#endif
 }
 
 bool SharedGpuContext::UseOverlaysForWebGL() {

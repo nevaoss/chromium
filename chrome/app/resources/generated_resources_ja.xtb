@@ -70,7 +70,6 @@
 <translation id="1041181446722933623">「<ph name="LOCAL_BOOKMARK" />」は、このデバイスのみに保存されます。他のデバイスで使用するには、アカウントの「<ph name="ACCOUNT_FOLDER" />」に保存してください。</translation>
 <translation id="1041263367839475438">使用可能なデバイス</translation>
 <translation id="1041607257468256895">Chrome でのウェブサイトに対する位置情報の利用許可を管理する</translation>
-<translation id="1042174272890264476">お使いのパソコンには <ph name="SHORT_PRODUCT_NAME" /> の RLZ ライブラリも組み込まれています。RLZ は、個人を特定できないタグを割り当てて、特定の販促キャンペーンで生じた検索や <ph name="SHORT_PRODUCT_NAME" /> の利用状況を計測します。これらのラベルは <ph name="PRODUCT_NAME" /> で Google 検索キーワード内に表示されることがあります。</translation>
 <translation id="1042248468362992359">アクセス ポイントを使用するには、モバイルデータに接続してください。<ph name="BEGIN_LINK_LEARN_MORE" />詳細<ph name="END_LINK_LEARN_MORE" /></translation>
 <translation id="104385770822424034">アクションを追加</translation>
 <translation id="1045487161760507186">パスワードは Google パスワード マネージャーに保存されるため、覚えておく必要はありません</translation>
@@ -121,7 +120,6 @@
 <translation id="1071917609930274619">データの暗号化</translation>
 <translation id="1072700771426194907">USB デバイスが検出されました</translation>
 <translation id="107278043869924952">パスワードに加えて PIN を使用する</translation>
-<translation id="107450319332239199">エラーが発生しました。ウィンドウを手動で開いてください。</translation>
 <translation id="1075920807995555452"><ph name="DEVICE_TYPE" /> 上で、企業が管理している環境でツール、エディタ、IDE を実行します。<ph name="LINK_BEGIN" />詳細<ph name="LINK_END" /></translation>
 <translation id="1076176485976385390">テキスト カーソルを使ってページ間を移動する</translation>
 <translation id="1076698951459398590">テーマを有効にする</translation>
@@ -189,7 +187,6 @@
 <translation id="1119447706177454957">内部エラー</translation>
 <translation id="1122068467107743258">職場</translation>
 <translation id="1122198203221319518">ツール(&amp;T)</translation>
-<translation id="1122242684574577509">認証できませんでした。クリックして、ご利用の Wi-Fi ネットワーク（<ph name="NETWORK_ID" />）のログインページにアクセスしてください。</translation>
 <translation id="1122587596907914265">ユニークな壁紙にカスタマイズ</translation>
 <translation id="1122656823581975100">{NUM_SITES,plural, =1{不正使用されたパスワードが 1 件見つかりました}other{不正使用されたパスワードが {NUM_SITES} 件見つかりました}}</translation>
 <translation id="1122913801042512795">アカウントのログイン情報が古くなっています。いったんログアウトしてからもう一度ログインしてください。</translation>
@@ -234,6 +231,7 @@
 <translation id="1148669835763563782">セキュリティが強化され、Chromebook の最新機能を利用できるソフトウェア アップデートをダウンロードしています。このアップデートでは、Chromebook をスムーズに開始できるようセットアップ プロセスが改善されています。</translation>
 <translation id="1149401351239820326">有効期限（月）</translation>
 <translation id="1149483087970735785">支援技術</translation>
+<translation id="1149706845443784281">検索エンジンとショートカットを管理(&amp;M)</translation>
 <translation id="1149725087019908252"><ph name="FILE_NAME" /> をスキャンしています</translation>
 <translation id="1150490752229770117">この <ph name="DEVICE_TYPE" /> でソフトウェアとセキュリティの自動アップデートが行われるのは今回が最後です。今後もアップデートを取得するには、新しいモデルにアップグレードしてください。<ph name="LINK_BEGIN" />詳細<ph name="LINK_END" /></translation>
 <translation id="1150565364351027703">サングラス</translation>
@@ -440,6 +438,7 @@
 <translation id="1281746473742296584">{NUM_OF_FILES,plural, =1{ファイルを開けません}other{ファイルを開けません}}</translation>
 <translation id="1282311502488501110">ログインしない</translation>
 <translation id="1282436639288565079">タブグループの詳細</translation>
+<translation id="1282577885428483870">サイトとアカウント</translation>
 <translation id="1283126956823499975">デバイスの設定中にエラーが発生しました</translation>
 <translation id="1284277788676816155">データの保存を許可しない</translation>
 <translation id="1285320974508926690">このサイトは翻訳しない</translation>
@@ -500,6 +499,7 @@
 <translation id="1327495825214193325">ADB デバッグを有効にするには、この <ph name="DEVICE_TYPE" /> を再起動する必要があります。ADB デバッグを無効にする場合は、出荷時の設定へのリセットが必要になります。</translation>
 <translation id="1327527584824210101">パスキーを使用する</translation>
 <translation id="1327794256477341646">位置情報を必要とする機能は動作しなくなります</translation>
+<translation id="1328041566565643371">垂直タブバーのサイズ変更ハンドル（ドラッグ可能）</translation>
 <translation id="1328364753167940710"><ph name="NUM_HR" /> 時間後</translation>
 <translation id="1328928545650070438">両眉を下げる</translation>
 <translation id="1329466763986822896">このアクセス ポイントのプライバシー保護を強化する</translation>
@@ -507,7 +507,6 @@
 <translation id="1331977651797684645">これは私です。</translation>
 <translation id="1333489022424033687">容量不足のため、<ph name="ORIGIN" /> の一部の機能が動作しない可能性があります。デバイスに保存された他のサイトのデータを削除してください</translation>
 <translation id="1333965224356556482">サイトに位置情報へのアクセスを許可しない</translation>
-<translation id="1335282218035876586">この Chromebook は、セキュリティ アップデートとソフトウェア アップデートの提供が終了しました。快適にご利用いただくには、Chromebook をアップグレードしてください。</translation>
 <translation id="133535873114485416">優先する入力</translation>
 <translation id="13356285923490863">ポリシー名</translation>
 <translation id="1335929031622236846">デバイスを登録する</translation>
@@ -520,6 +519,7 @@
 <translation id="13392265090583506">ユーザー補助設定</translation>
 <translation id="1340527397989195812">ファイルアプリを使用してデバイスからメディアをバックアップします。</translation>
 <translation id="1340839264183302272">グループから退出</translation>
+<translation id="1341002693404468853">整理機能を非表示</translation>
 <translation id="1341701348342335220">おつかれさまでした！</translation>
 <translation id="1342886103232377846">Google パスワード マネージャーに移動して、不正使用されたパスワードを確認してください。</translation>
 <translation id="1343920184519992513">前回中断したところから再開して、特定のページを開く</translation>
@@ -546,7 +546,6 @@
 <translation id="1359923111303110318">Smart Lock でデバイスのロックを解除できます。解除するには Enter キーを押してください。</translation>
 <translation id="1361164813881551742">手動で追加</translation>
 <translation id="1361655923249334273">使用されていない</translation>
-<translation id="1362829980946830670">現在のセッションをアクティブにしたまま、前のセッションを再開できます。</translation>
 <translation id="1362865166188278099">機械的な問題が発生しました。プリンタを確認してください</translation>
 <translation id="1363585519747660921">USB プリンタの設定が必要です</translation>
 <translation id="136378536198524553">省エネモードはオンです</translation>
@@ -555,6 +554,7 @@
 <translation id="1368603372088757436">Linux はお使いの <ph name="DEVICE_TYPE" /> ではサポートされていません。<ph name="LINK_BEGIN" />詳細<ph name="LINK_END" /></translation>
 <translation id="1370249617397887619">他のデバイスで使用するには、Google アカウントに保存してください</translation>
 <translation id="1370384480654163477">前回このサイトにアクセスしたときのファイルを表示、編集する。</translation>
+<translation id="1371253136879578532">Gemini でキーボード ショートカットを使用して画面の一部を選択できます。</translation>
 <translation id="1372259917802609049">制約の削除中にエラーが発生しました</translation>
 <translation id="1372841398847029212">アカウントに同期</translation>
 <translation id="1373176046406139583">デバイスの公開設定では、画面のロックが解除されているときに、あなたとファイルを共有できる相手を管理します。<ph name="LINK_BEGIN" />詳細<ph name="LINK_END" /></translation>
@@ -840,7 +840,6 @@
 <translation id="156793199942386351">「<ph name="CURRENTKEY" />」キーはすでに「<ph name="ACTION" />」に割り当てられています。<ph name="RESPONSE" />には、いずれかのキーを押してください。</translation>
 <translation id="1567993339577891801">JavaScript コンソール</translation>
 <translation id="1569466257325986920">次回 Google アカウントのパスワードを変更したときに、Google アカウントにログインした後でローカルデータが自動的に復元されます</translation>
-<translation id="1570235441606255261">Steam インストーラ</translation>
 <translation id="1570604804919108255">通知のミュートを解除する</translation>
 <translation id="1570990174567554976">ブックマーク フォルダ「<ph name="BOOKMARK_TITLE" />」が作成されました。</translation>
 <translation id="1571041387761170095">脆弱なパスワードや使い回されているパスワードはありません</translation>
@@ -860,9 +859,7 @@
 <translation id="1580772913177567930">管理者にお問い合わせください</translation>
 <translation id="1581962803218266616">Finder で表示</translation>
 <translation id="1582955169539260415">[<ph name="FINGERPRINT_NAME" />] を削除</translation>
-<translation id="1583082742220286248">セッションを再開しています</translation>
 <translation id="1583127975413389276"><ph name="LANGUAGE" /> はローカルで処理され、オフラインで使用できます</translation>
-<translation id="1584990664401018068">ご利用の Wi-Fi（<ph name="NETWORK_ID" />）では、認証が必要になる可能性があります。</translation>
 <translation id="1587275751631642843">JavaScript コンソール(&amp;J)</translation>
 <translation id="1587907146729660231">電源ボタンを指でタップしてください</translation>
 <translation id="1588438908519853928">ノーマル</translation>
@@ -966,13 +963,11 @@
 <translation id="1642299742557467312">このファイルはデバイスに危害を及ぼす可能性があります</translation>
 <translation id="1642492862748815878"><ph name="DEVICE" /> および <ph name="NUMBER_OF_DEVICES" /> 個の他の Bluetooth デバイスに接続しました</translation>
 <translation id="1642494467033190216">他のデバッグ機能を有効にするには、その前に rootfs の保護を削除して再起動する必要があります。</translation>
-<translation id="1642895994345928121">デバイスのストレージが不足しているため、このアプリを起動できません。空き容量を増やしてからもう一度お試しください。</translation>
 <translation id="1643072738649235303">X9.62 ECDSA 署名（SHA-1）</translation>
 <translation id="1643921258693943800">ニアバイシェアを使用するには、Bluetooth と Wi-Fi をオンにしてください</translation>
 <translation id="1644574205037202324">履歴</translation>
 <translation id="1644852018355792105">デバイス（<ph name="DEVICE" />）の Bluetooth パスキーを入力してください</translation>
 <translation id="1645004815457365098">不明な提供元</translation>
-<translation id="1645516838734033527"><ph name="DEVICE_TYPE" /> を安全に保つため、Smart Lock を使用するにはスマートフォンで画面ロックが設定されていることが要件となります。</translation>
 <translation id="1646045728251578877">ソフトウェア アップデートがあります</translation>
 <translation id="1647408325348388858"><ph name="FILE_NAME" /> をこのウェブアプリで開いて編集しますか？</translation>
 <translation id="1647986356840967552">前のページ</translation>
@@ -1318,6 +1313,7 @@
 <translation id="1885066963699478692">ポリシーの設定に使用されている XML ファイルです。</translation>
 <translation id="1885089541024391265">Google カレンダー</translation>
 <translation id="1885106732301550621">ディスク容量</translation>
+<translation id="188537499764410817">Gemini でログインできるサイトがここに表示されます</translation>
 <translation id="1886996562706621347">サイトからのプロトコルのデフォルト ハンドラとしての登録要求を許可する（推奨）</translation>
 <translation id="1887210448491286312"><ph name="DEVICE_NAME" /> へのタブのキャストを停止する</translation>
 <translation id="1887442540531652736">ログインエラー</translation>
@@ -1448,7 +1444,6 @@
 <translation id="1975841812214822307">削除...</translation>
 <translation id="1976150099241323601">セキュリティ デバイスへのログイン</translation>
 <translation id="1976823515278601587">大量の節約</translation>
-<translation id="1977965994116744507"><ph name="DEVICE_TYPE" /> のロックを解除するにはスマートフォンを近づけます。</translation>
 <translation id="1978249384651349182"><ph name="BEGIN_DESCRIPTION" />組織でデバイスを登録すると、デバイスを一元管理できるようになります。さまざまな理由により、組織から登録を求められる場合があります。<ph name="END_DESCRIPTION" />
     <ph name="BEGIN_SUBTITLE1" /><ph name="BEGIN_BOLD" />セキュリティの強化<ph name="END_BOLD" /><ph name="END_SUBTITLE1" />
     <ph name="BEGIN_DESCRIPTION1" />追加のセキュリティ設定を行うことにより、組織はユーザーやデバイスのデータの安全を確保できます。また、リモート リセットや紛失したデバイスの無効化などの操作も可能になります。<ph name="END_DESCRIPTION1" />
@@ -1458,6 +1453,7 @@
     <ph name="BEGIN_DESCRIPTION3" />トラブルシューティングのために、組織はリモートでデバイスのセッションにアクセスできます。<ph name="END_DESCRIPTION3" />
     <ph name="BEGIN_SUBTITLE4" /><ph name="BEGIN_BOLD" />アクセスの有効化<ph name="END_BOLD" /><ph name="END_SUBTITLE4" />
     <ph name="BEGIN_DESCRIPTION4" />組織のアプリ、サービス、ネットワークは登録済みデバイスでしか使用できないことがあります。<ph name="END_DESCRIPTION4" /></translation>
+<translation id="1979208610845113582">AI モードのスレッドをここで直接再開できるようになりました。固定はいつでも解除できます。</translation>
 <translation id="1979280758666859181">古いバージョンの <ph name="PRODUCT_NAME" /> のチャンネルに変更しようとしています。このチャンネル変更は、チャンネルのバージョンとお使いのデバイスにインストールされているバージョンとが一致したときに適用されます。</translation>
 <translation id="1979582938184524893">含める個人情報を手動で選択する</translation>
 <translation id="197989455406964291">KDC でサポートされていない暗号化タイプです</translation>
@@ -1471,6 +1467,7 @@
 <translation id="198507684520034826">ヘルプ</translation>
 <translation id="1986113927738155371">iPad</translation>
 <translation id="1986836014090708999">位置情報の詳細設定</translation>
+<translation id="1986880761497498129"><ph name="TEXT" /> について教えて</translation>
 <translation id="1987317783729300807">アカウント</translation>
 <translation id="1987574314042117472">人気のアプリを選択してインストール</translation>
 <translation id="1988259784461813694">要件</translation>
@@ -1546,7 +1543,6 @@
 <translation id="2040460856718599782">ユーザー認証時に問題が発生しました。ログイン情報をお確かめのうえ、もう一度お試しください。</translation>
 <translation id="2040822390690632244">更新、ヘルプ、デベロッパー オプション</translation>
 <translation id="2040894699575719559">位置情報をブロック中</translation>
-<translation id="2041246176170574368">まもなくセキュリティ アップデートの提供が終了します。新しい Chromebook を 50 ドル以上お得に手に入れましょう。</translation>
 <translation id="2042279886444479655">有効なプロファイル</translation>
 <translation id="2044014337866019681">セッションのロックを解除するには、<ph name="ACCOUNT" /> の確認を行ってください。</translation>
 <translation id="2044750031738659219">{0,plural, =1{ゲストモードを終了}other{ゲストモードを終了（# 個のウィンドウ）}}</translation>
@@ -1608,7 +1604,6 @@
 <translation id="2089925163047119068">または</translation>
 <translation id="2090165459409185032">アカウント情報を復旧するには google.com/accounts/recovery に移動します。</translation>
 <translation id="2090507354966565596">ログイン時に自動接続します</translation>
-<translation id="2090876986345970080">システム セキュリティの設定</translation>
 <translation id="2091523941449737894">タッチパッド上でより速く動かすとカーソルの移動幅が大きくなります</translation>
 <translation id="2091887806945687916">音声</translation>
 <translation id="2092356157625807382"><ph name="BEGIN_H3" />デバッグ機能<ph name="END_H3" />
@@ -1755,6 +1750,7 @@
 <translation id="2183570493397356669">続行ボタンは無効です</translation>
 <translation id="2184272387334793084">ログインすると、保存済みのパスワードなどをすべてのデバイスで使用できるようになります</translation>
 <translation id="2184515124301515068">サイトで音声が再生される可能性がある場合、Chrome で自動的に許可またはブロックする（推奨）</translation>
+<translation id="2184754597051264978">Gemini で <ph name="URL" /> にログインできなくなります</translation>
 <translation id="2186206192313702726">Google レンズ</translation>
 <translation id="2186539124645132614">Gemini との新しいチャットを開始</translation>
 <translation id="2186711480981247270">別のデバイスから共有されたページ</translation>
@@ -1916,6 +1912,7 @@
 <translation id="2297705863329999812">プリンタを検索</translation>
 <translation id="2297822946037605517">このページを共有</translation>
 <translation id="229871422646860597">ツールバーの固定を解除する</translation>
+<translation id="2298749511072894576">Gemini とのチャットをここで直接再開できるようになりました。固定はいつでも解除できます。</translation>
 <translation id="2299685119225839832">ユーザーによるレビューの要約を確認できます</translation>
 <translation id="2299734369537008228">スライダー: <ph name="MIN_LABEL" /> から <ph name="MAX_LABEL" /> まで</translation>
 <translation id="2299941608784654630">debugd で収集したすべてのログファイルを個別のアーカイブとして含める。</translation>
@@ -2060,11 +2057,9 @@
 <translation id="2390347491606624519">プロキシに接続できません。もう一度ログインしてください</translation>
 <translation id="2390782873446084770">Wi-Fi 同期</translation>
 <translation id="2391419135980381625">標準フォント</translation>
-<translation id="2391805183137601570">Steam を開く</translation>
 <translation id="239185270194776190">Gemini との会話は別のウィンドウに表示されます。このサイドパネルの任意の場所をクリックすると、チャットをここに移動します。</translation>
 <translation id="2392369802118427583">有効にする</translation>
 <translation id="2393136602862631930">Chromebook で <ph name="APP_NAME" /> を設定</translation>
-<translation id="2393313392064891208">Google ChromeOS Flex 利用規約コンテンツ</translation>
 <translation id="2393944685985256805"><ph name="MODULE_NAME" /> を非表示にしました</translation>
 <translation id="2395616325548404795">この <ph name="DEVICE_TYPE" /> は組織の管理対象として登録されましたが、アセットと位置情報を送信できませんでした。このデバイスの管理コンソールで、この情報を手動で入力してください。</translation>
 <translation id="2396593617786425274">履歴を同期しますか？</translation>
@@ -2083,7 +2078,6 @@
 <translation id="2408742686124047357">ツールバーに Google レンズを固定すると、次から簡単にアクセスできます</translation>
 <translation id="2408762424059547338">JavaScript の最適化を無効にして、攻撃からユーザーを保護します</translation>
 <translation id="2408955596600435184">PIN を入力してください</translation>
-<translation id="2409268599591722235">使ってみる</translation>
 <translation id="2409378541210421746">言語の選択を編集</translation>
 <translation id="2409709393952490731">スマートフォンまたはタブレットを使用する</translation>
 <translation id="2410079346590497630">ビルドの詳細</translation>
@@ -2123,7 +2117,6 @@
 <translation id="2434449159125086437">プリンタをセットアップできません。設定を確認してもう一度お試しください。</translation>
 <translation id="2434758125294431199">あなたとファイルを共有できる相手を選択してください</translation>
 <translation id="2434915728183570229">スマートフォンのアプリを表示できるようになりました</translation>
-<translation id="2435137177546457207">Google Chrome および ChromeOS Flex 追加利用規約</translation>
 <translation id="2435248616906486374">ネットワークが切断されました</translation>
 <translation id="2435457462613246316">パスワードを表示</translation>
 <translation id="2436385001956947090">リンクをコピー(&amp;L)</translation>
@@ -2139,14 +2132,12 @@
 <translation id="244231003699905658">無効なアドレスです。アドレスを確認してから、もう一度お試しください。</translation>
 <translation id="2442916515643169563">テキストの影</translation>
 <translation id="2443487764245141020">サイトで識別子を使用したデバイスの認識も必要となる場合があります</translation>
-<translation id="2444091518615234627">Google に限られたデータを送信します（URL の一部など）</translation>
 <translation id="244475495405467108">左側のタブを閉じる</translation>
 <translation id="2444874983932528148">前回中断したところから簡単に再開できます</translation>
 <translation id="2445081178310039857">拡張機能のルート ディレクトリを指定してください。</translation>
 <translation id="2445484935443597917">新しいプロファイルを作成</translation>
 <translation id="2445726032315793326">部分拡大鏡</translation>
 <translation id="244641233057214044">検索に関連</translation>
-<translation id="2447587550790814052">Steam for Chromebook（ベータ版）をご利用いただけるようになりました</translation>
 <translation id="2448312741937722512">種類</translation>
 <translation id="2448810255793562605">スイッチ アクセスの自動スキャン</translation>
 <translation id="2450021089947420533">ジャーニー</translation>
@@ -2173,7 +2164,6 @@
 <translation id="2460826998961521840">Google アカウントに保存されているパスキーを使用するには</translation>
 <translation id="2461550163693930491">共有タブのスクロールとズームをサイトに許可しない</translation>
 <translation id="2461593638794842577">この設定をオフにすると、パスワードをこのデバイスにのみ保存できます</translation>
-<translation id="2462332841984057083">Steam はすでに設定中です。セットアップが完了するまでお待ちください。</translation>
 <translation id="2462724976360937186">認証局キー ID</translation>
 <translation id="2462752602710430187"><ph name="PRINTER_NAME" /> を追加しました</translation>
 <translation id="2464075479326723132">Microsoft SharePoint と OneDrive の最近のアクティビティに簡単にアクセスできるよう、ファイル候補が表示されています。
@@ -2228,7 +2218,6 @@
 <translation id="2491587035099903063"><ph name="LANGUAGE" /> の音声をプレビュー</translation>
 <translation id="2492461744635776704">証明書の署名のリクエストを準備しています</translation>
 <translation id="249330843868392562">テキスト読み上げの設定を開く</translation>
-<translation id="2494555621641843783">Steam をインストールできません</translation>
 <translation id="2496180316473517155">閲覧履歴</translation>
 <translation id="2496616243169085015">写真</translation>
 <translation id="2497229222757901769">マウスの速度</translation>
@@ -2242,6 +2231,7 @@
 <translation id="2501797496290880632">ショートカットを入力する</translation>
 <translation id="2501920221385095727">固定キー</translation>
 <translation id="2502441965851148920">自動更新が有効になっています。手動更新は管理者によって無効になっています。</translation>
+<translation id="25025145341529353">ショートカットをオフにする</translation>
 <translation id="2502719318159902502">すべてのアクセス</translation>
 <translation id="2504801073028762184">安全に関する推奨事項</translation>
 <translation id="2505324914378689427">{SCREEN_INDEX,plural, =1{画面 #}other{画面 #}}</translation>
@@ -2279,6 +2269,7 @@
 <translation id="252418934079508528"><ph name="DEVICE_OS" /> をインストール</translation>
 <translation id="252513908494776481">このタブについて質問する</translation>
 <translation id="2525746158911982776">システムに十分な空き容量がないため、更新できませんでした。</translation>
+<translation id="2525842906387880861">今後このページで提案は表示されません</translation>
 <translation id="2526590354069164005">デスクトップ</translation>
 <translation id="2526619973349913024">アップデートを確認</translation>
 <translation id="2527167509808613699">あらゆる種類の接続</translation>
@@ -2326,6 +2317,7 @@
 <translation id="2555855727505718984">自動入力によるフォームの記入で、デバイスのこの情報は使用されなくなります</translation>
 <translation id="25568951186001797">フェンス付きフレーム: <ph name="FENCEDFRAME_SITE" /></translation>
 <translation id="2561211427862644160">すべてのブックマークをこちらで確認できます</translation>
+<translation id="2563924218974330506">ここでタブグループを管理できるようになりました。固定はいつでも解除できます。</translation>
 <translation id="2564520396658920462">AppleScript からの JavaScript の実行がオフになっています。オンにするには、メニューバーから [表示] &gt; [デベロッパー] &gt; [Apple Events からの JavaScript を許可] を選択してください。詳しくは、https://support.google.com/chrome/?p=applescript をご覧ください。</translation>
 <translation id="2564653188463346023">拡張スペルチェック</translation>
 <translation id="256481480019204378">Google アカウント ID</translation>
@@ -2415,6 +2407,7 @@
 <translation id="2628874386573004005">Gemini との新しいチャットを開始</translation>
 <translation id="2629227353894235473">Android アプリの開発</translation>
 <translation id="2629437048544561682">キャンバスを消去</translation>
+<translation id="2630703150574465936">あなたのアカウントを使用してこれらのサイトやアプリに自動でログインすることを Gemini に許可しています</translation>
 <translation id="2631498379019108537">シェルフに入力オプションを表示</translation>
 <translation id="2632176111713971407">サイトが共有タブのスクロールとズームを要求できる</translation>
 <translation id="2633212996805280240">「<ph name="EXTENSION_NAME" />」を削除しますか？</translation>
@@ -2580,7 +2573,6 @@
 <translation id="27349076983469322">明るい背景</translation>
 <translation id="2735712963799620190">スケジュール</translation>
 <translation id="2737363922397526254">折りたたむ...</translation>
-<translation id="2737538893171115082">Steam for Chromebook（ベータ版）は管理者によってブロックされています。管理者が次のポリシーを有効にする必要があります。</translation>
 <translation id="2737719817922589807">ブックマークとリスト(&amp;B)</translation>
 <translation id="2737916598897808047"><ph name="APP_NAME" /> が <ph name="TARGET_NAME" /> との画面コンテンツの共有をリクエストしています。</translation>
 <translation id="2738030019664645674">デバイスにインストールされたフォントの使用をサイトに許可しない</translation>
@@ -2626,7 +2618,6 @@
 <translation id="2757338480560142065">保存するパスワードが <ph name="WEBSITE" /> のパスワードと一致していることを確認してください</translation>
 <translation id="2761632996810146912"><ph name="HASHTAG_SETTINGS" />「<ph name="SEARCH_QUERY" />」に一致する検索結果はありませんでした</translation>
 <translation id="2762441749940182211">カメラがブロックされています</translation>
-<translation id="2763165257813209348"><ph name="FILE_NAME" /> には機密データまたは危険なデータが含まれています。組織の設定では、このデータをクラウド ストレージに保存するか破棄することができます。</translation>
 <translation id="2764786626780673772">VPN の詳細</translation>
 <translation id="2764920001292228569">プロファイルに名前を付けてください</translation>
 <translation id="2765100602267695013">ご利用の携帯通信会社にお問い合わせください。</translation>
@@ -2721,7 +2712,6 @@
 <translation id="2825758591930162672">サブジェクトの公開鍵</translation>
 <translation id="2826576843404243001">サイトで安全な接続がサポートされていない場合は、サイトにアクセスする前に警告が表示されます。高度な保護機能が有効になっているため、この設定は変更できません。</translation>
 <translation id="2828375943530438449">ログインページから戻る</translation>
-<translation id="2828650939514476812">Wi-Fi ネットワークへの接続</translation>
 <translation id="2828833307884755422"><ph name="MEMORY_SAVINGS" /> を解放しました</translation>
 <translation id="2831430281393059038">デバイスはサポートされています</translation>
 <translation id="2832124733806557606">お子様はデバイスのログインやロック解除に PIN を使用できます。</translation>
@@ -2735,6 +2725,7 @@
 <translation id="283669119850230892">ネットワーク <ph name="NETWORK_ID" /> を使用するには、まずインターネット接続を完了してください（下記参照）。</translation>
 <translation id="2837436785711770027">{NUM_GROUPS,plural, =1{グループを削除}other{グループを削除}}</translation>
 <translation id="2838379631617906747">インストール中</translation>
+<translation id="2838586216723890961">オンにする</translation>
 <translation id="2839032553903800133">通知をブロック中</translation>
 <translation id="2841013758207633010">時間</translation>
 <translation id="2841837950101800123">提供元</translation>
@@ -2762,6 +2753,7 @@
 <translation id="2855243985454069333">同期しているすべてのデバイスから履歴を削除します</translation>
 <translation id="2855812646048059450"><ph name="CREDENTIAL_PROVIDER" /> でログイン</translation>
 <translation id="2857047802954430547">ログインすると、すべてのデバイスで同じパスワード、ブックマーク、その他の設定を使用できます</translation>
+<translation id="2857195263461649321">Gemini の作業を続きから再開</translation>
 <translation id="2859741939921354763"><ph name="BRAND" /> にパスワードをインポートします</translation>
 <translation id="2860284453253554297">エンタープライズ ポリシー</translation>
 <translation id="2860710618359053450">あごを右に動かす</translation>
@@ -2897,7 +2889,6 @@
 <translation id="2948300991547862301"><ph name="PAGE_TITLE" /> へ移動</translation>
 <translation id="29488703364906173">最新のウェブ環境に対応した高速、シンプル、安全なウェブブラウザです。</translation>
 <translation id="2950666755714083615">登録</translation>
-<translation id="2953210795988451570">セキュリティ アップデートの提供は終了しました。新しい Chromebook にアップグレードしましょう。</translation>
 <translation id="2953218713108551165"><ph name="SITE" /> では通知が許可されていません。次回このサイトにアクセスすると、確認が再度表示されます。</translation>
 <translation id="2954777802959138493">アップデータの状態を取得できませんでした。</translation>
 <translation id="2955048943983973430">関連する Google サービス</translation>
@@ -2909,6 +2900,7 @@
 <translation id="2959842337402130152">ストレージの空き容量が不足しているため復元できません。デバイスの空き容量を <ph name="SPACE_REQUIRED" /> 確保して、もう一度お試しください。</translation>
 <translation id="2960208947600937804">Linux の設定中にエラーが発生しました。管理者にお問い合わせください。</translation>
 <translation id="2960942820860729477">リフレッシュ レート</translation>
+<translation id="2960950037335552881">スマートフォンでスキャンすると、ブックマークやパスワードなどを外出先でも利用できるようになります</translation>
 <translation id="2961090598421146107"><ph name="CERTIFICATE_NAME" />（期限延長済み）</translation>
 <translation id="2961695502793809356">クリックすると次に進みます。押したまま待つと履歴が表示されます。</translation>
 <translation id="29618148602069201">主題</translation>
@@ -3043,7 +3035,6 @@
 <translation id="3039491566278747710">オフライン ポリシーをデバイスにインストールできませんでした。</translation>
 <translation id="303955801043931176">タブを閉じました</translation>
 <translation id="3040435070100611531">Google ウォレットのパス</translation>
-<translation id="3040982432432547149">Chromebook の Steam の改善にご協力ください</translation>
 <translation id="304169924727249890"><ph name="OWNER_FIRST_NAME" /> さんのタブグループに参加</translation>
 <translation id="3042097545107738107">充電の最適化戦略を変更します。</translation>
 <translation id="3043016484125065343">ブックマークを表示するにはログインしてください</translation>
@@ -3252,7 +3243,6 @@
 <translation id="3201422919974259695">使用可能な USB デバイスがここに表示されます。</translation>
 <translation id="3202499879214571401"><ph name="DEVICE_NAME" /> への画面のキャストを一時停止する</translation>
 <translation id="3202578601642193415">新しい順</translation>
-<translation id="3204648577100496185">このアプリに関連付けられているデータがこのデバイスから削除される可能性があります</translation>
 <translation id="3206289903841621620">ユーザー辞書 <ph name="NUMBER" /></translation>
 <translation id="3207344462385471911">最近のアクティビティに基づいて、興味のありそうな検索候補とショッピングの割引が表示されています。
         <ph name="BREAK" />
@@ -3357,11 +3347,9 @@
 <translation id="3280237271814976245">名前を付けて保存(&amp;A)...</translation>
 <translation id="3280243678470289153">Chrome に留まる</translation>
 <translation id="3282210178675490297">タブを <ph name="APP_NAME" /> と共有します</translation>
-<translation id="328265255303378234">セッションを再開できません</translation>
 <translation id="3283148363895519428">スマートフォンの指示に沿って設定を続けます。スマートフォンが近くにあり、Bluetooth がオンになっていることをご確認ください。</translation>
 <translation id="3284050785966252943">自動入力メタデータのプレビュー</translation>
 <translation id="3285322247471302225">新しいタブ(&amp;T)</translation>
-<translation id="3285465040399788513">デバイスのストレージが不足しているため、設定を完了できません。空き容量を増やしてから、もう一度お試しください。</translation>
 <translation id="3285500645985761267">関連サイトにグループ内のアクティビティの確認を許可する</translation>
 <translation id="328571385944182268">パスワードを保存しますか？</translation>
 <translation id="3289668031376215426">自動大文字変換</translation>
@@ -3484,7 +3472,6 @@
 <translation id="3372602033006349389">その他のデバイス</translation>
 <translation id="337286756654493126">アプリケーションで開いたフォルダに書き込む</translation>
 <translation id="3373059063088819384">リーディング モードで開く</translation>
-<translation id="3373196968211632036">Steam for Chromebook（ベータ版）は、お子様の Google アカウントではご利用いただけません</translation>
 <translation id="3373701465337594448">この設定が有効な場合、閲覧履歴に基づいたウェブサイトのリストがここに表示されます。</translation>
 <translation id="3374294321938930390">「<ph name="BOOKMARK_TITLE" />」を「<ph name="NEW_FOLDER_TITLE" />」に移動しました。</translation>
 <translation id="3376035595160918049">アプリの更新を確認</translation>
@@ -3591,6 +3578,7 @@
 <translation id="3443744348829035122"><ph name="BRAND" /> がタイムアウトしました</translation>
 <translation id="3443754338602062261">これらのアカウントのパスワードはすでに <ph name="BRAND" /> に保存されています。下記のパスワードをインポートすると、既存のパスワードが置き換えられます。</translation>
 <translation id="344449859752187052">サードパーティ Cookie がブロックされています</translation>
+<translation id="3445140416168872040"><ph name="URL" /> の権限を削除</translation>
 <translation id="3445288400492335833"><ph name="MINUTES" />分</translation>
 <translation id="344537926140058498">このファイルには機密または危険なコンテンツが含まれているため、組織でブロックされました。所有者に修正するよう依頼してください。</translation>
 <translation id="3445465968953598059">フェイス コントロール</translation>
@@ -3666,7 +3654,6 @@
 <translation id="3496238553815913323"><ph name="LANGUAGE" />（未選択）</translation>
 <translation id="3496689104192986836">電池残量 <ph name="PERCENTAGE" />%</translation>
 <translation id="3496692428582464972">収集するデータソース</translation>
-<translation id="3496797737329654668">ゲームを始めましょう</translation>
 <translation id="3496995426334945408">インタラクティブなビデオゲームやウェブフォームなどを表示するために、サイトが JavaScript を使用する場合があります。</translation>
 <translation id="3497501929010263034"><ph name="VENDOR_NAME" /> 製 USB デバイス（製品 <ph name="PRODUCT_ID" />）</translation>
 <translation id="3497560059572256875">Doodle を共有</translation>
@@ -3761,7 +3748,6 @@
 <translation id="3562655211539199254">スマートフォンで最近使った Chrome タブを表示します</translation>
 <translation id="356268274299520831">サイトで変更</translation>
 <translation id="3563392617245068355">ムード</translation>
-<translation id="3564334271939054422">ご利用の Wi-Fi（<ph name="NETWORK_ID" />）では、ログインページへのアクセスが必要になる可能性があります。</translation>
 <translation id="3564456410937306182">アダプティブ充電の詳細。</translation>
 <translation id="3564659095423213915">このフォルダは、このデバイスのみに保存されます。「<ph name="ACCOUNT_FOLDER" />」に保存すると、このフォルダはアカウントにも保存されます。</translation>
 <translation id="3564848315152754834">USB セキュリティ キー</translation>
@@ -3841,6 +3827,7 @@
 <translation id="3615579745882581859"><ph name="FILE_NAME" /> をスキャンしています。</translation>
 <translation id="3615596877979647433">キーが設定されていません。カスタマイズするには、キーボードのキーを押してください</translation>
 <translation id="3616113530831147358">音声</translation>
+<translation id="3616658341000358527">Gemini で自動的にログインして、ウェブ上でタスクを完了できます</translation>
 <translation id="3617062258679844578">クリックするには、タッチパッドを押さずにタップします</translation>
 <translation id="3617891479562106823">背景を利用できません。しばらくしてからもう一度お試しください。</translation>
 <translation id="3618647122592024084"><ph name="RECIPIENT_NAME" /> が Google パスワード マネージャーを使用する際に、あなたのユーザー名とパスワードを使用できるようになりました。<ph name="WEBSITE" /> にアクセスしてログインするよう伝えてください。</translation>
@@ -3878,7 +3865,6 @@
 <translation id="3637203148990213388">追加のアカウント</translation>
 <translation id="3640347231390550691">フィッシングからパスワードを保護します</translation>
 <translation id="364100968401221170">同期しているすべてのデバイスと Google アカウントから閲覧履歴データを削除するには、<ph name="BEGIN_LINK" />ログイン<ph name="END_LINK" />してください。</translation>
-<translation id="3641070112313110357">Chromebook 向け Steam（ベータ版）を更新する必要があります。Chromebook を再起動してもう一度お試しください。</translation>
 <translation id="3641299252000913351">モデムのファームウェアの更新が進行中です。デバイスの電源を切らないでください。</translation>
 <translation id="3641456520301071208">サイトが位置情報を要求できるようにする</translation>
 <translation id="3642064270296434810">Google レンズを使用して、画面上のあらゆるコンテンツを検索できるようになりました</translation>
@@ -3932,6 +3918,7 @@
 <translation id="3673622964532248901">このデバイスにキャストできません。</translation>
 <translation id="367645871420407123">既定のテストイメージの値にルート パスワードを設定する場合は、空欄のままにします</translation>
 <translation id="3676777756440746804">サイトがあなたに関する保存済みの情報の使用を要求できないようにする</translation>
+<translation id="3677897809642449131">サイトがモーション センサーの使用を要求できるようにする</translation>
 <translation id="3677911431265050325">モバイルサイトをリクエスト</translation>
 <translation id="3678156199662914018">拡張機能: <ph name="EXTENSION_NAME" /></translation>
 <translation id="3678188444105291936">このウィンドウで開いたページはブラウザ履歴には記録されません。Cookie などの記録も、ログアウトするとパソコンから消去されます。ダウンロードしたファイルや追加したブックマークは保持されません。</translation>
@@ -3951,7 +3938,6 @@
 <translation id="3688794912214798596">言語を変更...</translation>
 <translation id="3690369331356918524">データ侵害によりパスワードが漏洩した場合に警告します</translation>
 <translation id="3691231116639905343">キーボード アプリ</translation>
-<translation id="369135240373237088">学校用アカウントでもう一度ログインしてください</translation>
 <translation id="3693415264595406141">パスワード:</translation>
 <translation id="3694027410380121301">前のタブを選択</translation>
 <translation id="3694122362646626770">ウェブサイト</translation>
@@ -4214,7 +4200,6 @@
 <translation id="383891835335927981">拡大縮小値を設定したサイトはありません</translation>
 <translation id="3839516600093027468"><ph name="HOST" /> によるクリップボードへのアクセスを常にブロックする</translation>
 <translation id="3840096463915153852">会話の履歴</translation>
-<translation id="3841282988425489367">Steam for Chromebook（ベータ版）を設定できません</translation>
 <translation id="3841319830220785495">デフォルトの自然な音声</translation>
 <translation id="3841356782900714251">スマートカード リーダー</translation>
 <translation id="3841964634449506551">パスワードが無効です</translation>
@@ -4227,7 +4212,6 @@
 <translation id="3848547754896969219">シークレット ウィンドウで開く(&amp;I)</translation>
 <translation id="3848688783623004960">分割ビューで開く</translation>
 <translation id="3849517590329855428">すべて閉じる</translation>
-<translation id="3850172593216628215">セキュリティ アップデートの提供は終了しました。新しい Chromebook を 50 ドル以上お得に手に入れましょう。</translation>
 <translation id="385051799172605136">戻る</translation>
 <translation id="3850989673553106152">パスワードを変更しました</translation>
 <translation id="3851428669031642514">安全でないスクリプトを読み込む</translation>
@@ -4255,6 +4239,7 @@
 <translation id="3861977424605124250">起動時に表示する</translation>
 <translation id="386239283124269513">グループを復元(&amp;R)</translation>
 <translation id="3863215163880213672">インポートして <ph name="CERT_GROUP" /> にバインド</translation>
+<translation id="3864481028928394786">サイトにアクセスしたときに作成するよう求められたショートカットで、有効にするよう選択できます。</translation>
 <translation id="3865414814144988605">解像度</translation>
 <translation id="3866142613641074814">セキュリティ上の問題があるパスワードがあります</translation>
 <translation id="3866249974567520381">説明</translation>
@@ -4326,7 +4311,6 @@
 <translation id="3914894336972817683">アップロードできません。ファイルが空のようです。</translation>
 <translation id="3915280005470252504">音声検索</translation>
 <translation id="3916445069167113093">この種類のファイルはコンピュータに損害を与える可能性があります。<ph name="FILE_NAME" /> のダウンロードを続けますか？</translation>
-<translation id="3917184139185490151">ご使用のパソコンにはセキュア モジュールが組み込まれています。これは ChromeOS の多くの重要なセキュリティ機能を実装するために使用されます。詳しくは、Chromebook ヘルプセンター（https://support.google.com/chromebook/?p=sm）をご覧ください。</translation>
 <translation id="3917644013202553949">空き容量が不足しているため、ファイルを同期できません。空き容量を増やしてみてください。</translation>
 <translation id="3919145445993746351">お使いのどのパソコンでも同じ拡張機能を使用するには、同期を有効にします</translation>
 <translation id="3919229493046408863">周辺にデバイスがあるときに通知をオフにする</translation>
@@ -4427,7 +4411,6 @@
 <translation id="3978732922947854545">Chrome で PDF が使いやすく</translation>
 <translation id="3979093622823535817">会議 <ph name="MEETING_TITLE" /> に参加</translation>
 <translation id="3979395879372752341">新しい拡張機能が追加されました（<ph name="EXTENSION_NAME" />）</translation>
-<translation id="3979748722126423326"><ph name="NETWORKDEVICE" /> を有効にする</translation>
 <translation id="398095528354975981">これらのタブを非表示にする</translation>
 <translation id="3981058120448670012"><ph name="REMAINING_TIME" />間、付近のデバイスに「<ph name="DEVICE_NAME" />」として表示されます...</translation>
 <translation id="3981760180856053153">入力された保存形式が無効です。</translation>
@@ -4456,7 +4439,6 @@
 <translation id="3992008114154328194"><ph name="FILE_NAME" /> をダウンロードしています、<ph name="STATUS" /></translation>
 <translation id="3994075804072562819"><ph name="SPECIFIC_NAME" /> に USB デバイスの制御を許可します。</translation>
 <translation id="3994318741694670028">パソコンに設定されているハードウェア ID の形式が正しくありません。このため、ChromeOS Flex に最新のセキュリティ修正を適用することができません。お使いのパソコンは、<ph name="BEGIN_BOLD" />悪意のある攻撃を受けやすくなる可能性があります<ph name="END_BOLD" />。</translation>
-<translation id="3994374631886003300"><ph name="DEVICE_TYPE" /> のロックを解除するには、スマートフォンのロックを解除してデバイスに近づけます。</translation>
 <translation id="3994522032746736727"><ph name="EMAIL" /> としてログイン</translation>
 <translation id="3994530503403062649">タブレットのボタン設定</translation>
 <translation id="3994708120330953242">パスワードの一部がデータ侵害で漏洩しました。これらのパスワードを今すぐ変更して、アカウントを保護してください。</translation>
@@ -4552,7 +4534,6 @@
 <translation id="4061374428807229313">共有するには、ファイルアプリでフォルダを右クリックし、[Parallels Desktop と共有] を選択します。</translation>
 <translation id="406213378265872299">動作のカスタマイズ</translation>
 <translation id="4062561150282203854"><ph name="DEVICE_TYPE" /> のアプリや設定などを同期します</translation>
-<translation id="4065876735068446555">ご利用のネットワーク（<ph name="NETWORK_ID" />）では、ログインページへのアクセスが必要な可能性があります。</translation>
 <translation id="4065910654823040256">右のビューを閉じる</translation>
 <translation id="4065931125325392744">この拡張機能はまもなくサポートされなくなる可能性があります</translation>
 <translation id="4066207411788646768">ネットワークで使用できるプリンタを表示するには、インターネット接続を確認してください</translation>
@@ -4664,7 +4645,6 @@
 <translation id="4148195018520464922">ログインを特定のユーザーに制限できます。制限すると、ログイン画面から [ユーザーを追加] オプションが削除されます。現在のユーザーを削除することもできます。</translation>
 <translation id="4148957013307229264">インストール中...</translation>
 <translation id="4150201353443180367">ディスプレイ</translation>
-<translation id="4151449637210235443">最近のゲームプレイについてお聞かせください</translation>
 <translation id="4151503145138736576">クリーンアップの必要なオフライン ストレージはありません</translation>
 <translation id="4152011295694446843">ブックマークはここに表示されます</translation>
 <translation id="4152670763139331043">{NUM_TABS,plural, =1{1 個のタブ}other{# 個のタブ}}</translation>
@@ -4672,6 +4652,7 @@
 <translation id="4154658846204884961">彗星</translation>
 <translation id="4154664944169082762">指紋</translation>
 <translation id="4156297721709710037"><ph name="WINDOW_TITLE" /> - 左ビュー</translation>
+<translation id="4156532396656021084">検索エンジンとショートカットを管理(&amp;M)</translation>
 <translation id="4157869833395312646">Microsoft SGC（Server Gated Cryptography）</translation>
 <translation id="4158315983204257156">ウェブサイトのテキストのサイズとフォント</translation>
 <translation id="4158364720893025815">合格</translation>
@@ -4687,6 +4668,7 @@
 <translation id="4168651806173792090"><ph name="NETWORK_NAME" />（末尾 4 桁: <ph name="LAST_FOUR_DIGITS" />）</translation>
 <translation id="4169535189173047238">許可しない</translation>
 <translation id="4170314459383239649">終了時に削除</translation>
+<translation id="4170685671197375581">ショートカットをオンにする</translation>
 <translation id="417112242673828206">{NUM_TABS,plural, =1{Gemini とタブを共有}other{Gemini と # 個のタブを共有}}</translation>
 <translation id="4172944993779635350">「<ph name="URL" />」のパスワードがこのデバイスのみに保存されています。他のデバイスで使用するには、アカウントに保存してください。</translation>
 <translation id="4173129130568053653">Gemini が予約やショッピング カートの作成など、さまざまなタスクをサポートします。</translation>
@@ -4712,7 +4694,6 @@
 <translation id="4193251682249731404">信頼できる CA</translation>
 <translation id="4193575319002689239">カードを表示</translation>
 <translation id="419427585139779713">音節単位で入力</translation>
-<translation id="4195001808989442226">Steam for Chromebook（ベータ版）を開けません</translation>
 <translation id="4195643157523330669">新しいタブで開く</translation>
 <translation id="4195814663415092787">前回開いていたページを開く</translation>
 <translation id="4198268995694216131">追加のサイト</translation>
@@ -4758,7 +4739,6 @@
 <translation id="4228209296591583948">{NUM_EXTENSIONS,plural, =1{この拡張機能は許可されていません}other{一部の拡張機能は許可されていません}}</translation>
 <translation id="4231053948789591973">キャストは現在一時停止しています。いつでも画面のキャストを再開または停止できます。</translation>
 <translation id="4231095370974836764">Google Play のアプリとゲームを <ph name="DEVICE_TYPE" /> にインストールします。<ph name="LINK_BEGIN" />詳細<ph name="LINK_END" /></translation>
-<translation id="4231231258999726714">Steam for Chromebook を設定しています</translation>
 <translation id="4232375817808480934">Kerberos の設定</translation>
 <translation id="4232376164796433044">パスワードと自動入力</translation>
 <translation id="4232484478444192782">Android スマートフォンがあなたをサポートします。Wi-Fi とパスワードを転送中です。</translation>
@@ -4813,11 +4793,11 @@
 <translation id="426564820080660648">アップデートの有無を確認するには、イーサネット、Wi-Fi、またはモバイル データを使用してください。</translation>
 <translation id="426652736638196239">この IBAN はこのデバイスにのみ保存されます</translation>
 <translation id="4266679478228765574">フォルダを削除した場合、共有は停止されますがファイルは削除されません。</translation>
-<translation id="4267455501101322486">教育リソースにアクセスするためのアカウントを追加するには、保護者の方に許可してもらってください</translation>
 <translation id="4267792239557443927">{COUNT,plural, =0{パスワードは見つかりませんでした}=1{1 件の結果が見つかりました}other{{COUNT} 件の結果が見つかりました}}</translation>
 <translation id="4267924571297947682">保護者に権限の付与を依頼する</translation>
 <translation id="4267953847983678297">モバイル ネットワークに自動接続する</translation>
 <translation id="4268025649754414643">キーの暗号化</translation>
+<translation id="4268168858499812335">利用可能なサイトのショートカット</translation>
 <translation id="4268516942564021145">お使いのアカウントではこの設定は使用できません。</translation>
 <translation id="4270393598798225102">バージョン <ph name="NUMBER" /></translation>
 <translation id="4274667386947315930">ログインデータ</translation>
@@ -5115,7 +5095,6 @@
 <translation id="4472533928615930332">生成画像 <ph name="INDEX" />/<ph name="SUBJECT" />、スタイル: <ph name="STYLE" /></translation>
 <translation id="4472575034687746823">始める</translation>
 <translation id="4473559657152613417">タブを右クリックして、[タブを新しいグループに追加] を選択します</translation>
-<translation id="4473996011558324141">所要時間の目安</translation>
 <translation id="4474155171896946103">すべてのタブをブックマークに追加...</translation>
 <translation id="4476198534886170024">許可。<ph name="LINK_BEGIN" />システムのカメラへのアクセス<ph name="LINK_END" />をオンにする。</translation>
 <translation id="4476590490540813026">競技選手</translation>
@@ -5151,7 +5130,6 @@
         <ph name="BREAK" />
         <ph name="BREAK" />
         カードメニューで設定を管理することや、[Chrome をカスタマイズ] でその他のオプションを見ることができます。</translation>
-<translation id="4503748371388753124">ご使用のパソコンには Trusted Platform Module（TPM）セキュリティ デバイスが組み込まれています。これは ChromeOS Flex の多くの重要なセキュリティ機能を実装するために使用されます。詳しくは Chromebook ヘルプセンター（https://support.google.com/chromebook/?p=tpm）をご覧ください。</translation>
 <translation id="4504940961672722399">この拡張機能を使用するには、このアイコンをクリックするか、<ph name="EXTENSION_SHORTCUT" /> を押します。</translation>
 <translation id="4505469832694348179">この QR コードを使用して Chrome をダウンロードし、Google アカウントにログインしてください。</translation>
 <translation id="450552327874992444">この語句はすでに追加されています</translation>
@@ -5164,7 +5142,6 @@
 <translation id="4509421746503122514">再起動して更新する</translation>
 <translation id="4509741852167209430">広告のパフォーマンスを測定するため、サイトにアクセスした後に購入したかどうかなど、限定的な種類のデータがサイト間で共有されます</translation>
 <translation id="4510195992002502722">フィードバックを送信できませんでした。再試行しています...</translation>
-<translation id="4510479820467554003">保護者のアカウント リスト</translation>
 <translation id="4511344327646819192">他のユーザーがパスワードを使用できないようにするには、<ph name="WEBSITE" /> でパスワードを変更します</translation>
 <translation id="4513072860957814107">閲覧履歴データを削除(&amp;D)...</translation>
 <translation id="4513872120116766993">予測入力</translation>
@@ -5220,6 +5197,7 @@
 <translation id="4551379727767354516">最近の AI テーマ</translation>
 <translation id="4551763574344810652">元に戻すには <ph name="MODIFIER_KEY_DESCRIPTION" /> を押します</translation>
 <translation id="4553526521109675518">デバイスの言語を変更するには Chromebook を再起動する必要があります。<ph name="BEGIN_LINK_LEARN_MORE" />詳細<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="4553807334824079753">このアプリの新しいバージョンが必要です</translation>
 <translation id="4555769855065597957">シャドウ</translation>
 <translation id="4555863373929230635">パスワードを Google アカウントに保存するには、ログインして同期を有効にします。</translation>
 <translation id="4556072422434361369"><ph name="SENDER_NAME" /> さんが <ph name="WEBSITE_NAME" /> のパスワードをあなたと共有しました。このパスワードはログイン フォームで使用できます。</translation>
@@ -5302,6 +5280,7 @@
 <translation id="4607763915939540711">{FILE_LIMIT,plural, =1{質問で使用するファイルを 1 個アップロードできます}other{質問で使用するファイルを # 個までアップロードできます}}</translation>
 <translation id="4608500690299898628">検索(&amp;F)...</translation>
 <translation id="4609164937357979319">アカウントを選択</translation>
+<translation id="4610022258080608778">選択ショートカットを編集</translation>
 <translation id="4610493438923139095">信頼不可</translation>
 <translation id="4610637590575890427">もしかして: <ph name="SITE" /></translation>
 <translation id="4611114513649582138">データ接続が可能です</translation>
@@ -5349,7 +5328,6 @@
 <translation id="4638930039313743000">ADB デバッグを有効にする</translation>
 <translation id="4639390152280993480">このページを簡易表示するには、[その他のツール] &gt; [リーディング モード] に移動します</translation>
 <translation id="4641539339823703554">Chrome はシステムの時刻を設定できませんでした。以下で時刻を確認し、必要に応じて修正してください。</translation>
-<translation id="4642587497923912728">Steam for Chromebook（ベータ版）は、この Chromebook で最初にログインしたアカウントでのみご利用いただけます。</translation>
 <translation id="4643612240819915418">動画を新しいタブで開く(&amp;O)</translation>
 <translation id="4643833688073835173">Chromebook では、内蔵センサーを使用してデバイスの前にいる人を検出します。すべてのデータがデバイス上ですぐに処理され、その後に削除されます。センサーデータは Google には一切送信されません。</translation>
 <translation id="4644205769234414680">シークレット モードでの実行を許可する</translation>
@@ -5596,6 +5574,7 @@
 <translation id="4816336393325437908">{COUNT,plural, =1{1 個のブックマークが削除されました}other{{COUNT} 個のブックマークが削除されました}}</translation>
 <translation id="481689174647911539">このファイルはウイルスや不正なソフトウェアの可能性があります。<ph name="LINE_BREAK" />Google セーフ ブラウジングに送信して、安全でないかどうかを確認できます。通常、スキャンには数秒かかります。</translation>
 <translation id="4816900689218414104">スマートフォンやタブレットでパスキーを作成する</translation>
+<translation id="481852950686014162">Gemini と AI モードの作業の続きを行うことができます</translation>
 <translation id="4819323978093861656">{0,plural, =0{まもなく終了します。}=1{1 秒後に終了します}other{# 秒後に終了します}}</translation>
 <translation id="4819818293886748542">サポートツールのリンクを取得</translation>
 <translation id="4820236583224459650">有効なチケットとして設定</translation>
@@ -5699,7 +5678,6 @@
 <translation id="4878634973244289103">フィードバックを送信できませんでした。しばらくしてからもう一度お試しください。</translation>
 <translation id="4878718769565915065">このセキュリティ キーにフィンガープリントを追加できませんでした</translation>
 <translation id="4879491255372875719">自動（デフォルト）</translation>
-<translation id="4880315242806573837">まもなくセキュリティ アップデートの提供が終了します。新しい Chromebook にアップグレードしましょう。</translation>
 <translation id="4880827082731008257">検索履歴</translation>
 <translation id="4881685975363383806">次回表示しない</translation>
 <translation id="4881695831933465202">開く</translation>
@@ -5786,6 +5764,7 @@
 <translation id="4940448324259979830">このアカウントは <ph name="PROFILE_NAME" /> によって管理されています</translation>
 <translation id="4940845626435830013">ディスクサイズを予約</translation>
 <translation id="4941246025622441835">エンタープライズ管理のためにデバイスを登録するときにこのデバイス利用申請を使用する:</translation>
+<translation id="4941391011436448776">Gemini でログインできるサイト</translation>
 <translation id="4941627891654116707">フォントサイズ</translation>
 <translation id="4941963255146903244">スマートフォンの写真、メディア、アプリを表示します</translation>
 <translation id="494286511941020793">プロキシ設定ヘルプ</translation>
@@ -5799,8 +5778,10 @@
 <translation id="495164417696120157">{COUNT,plural, =1{ファイル}other{# 件のファイル}}</translation>
 <translation id="495170559598752135">操作</translation>
 <translation id="4951966678293618079">今後このサイトのパスワードを保存しない</translation>
+<translation id="4952580838083306838">整理機能を非表示</translation>
 <translation id="4953808748584563296">デフォルトのオレンジのアバター</translation>
 <translation id="4954652437333037880">ファイル</translation>
+<translation id="4954831709600868883"><ph name="TEXT" /> について質問する</translation>
 <translation id="4955707703665801001"><ph name="FEATURE_NAME" /> の公開設定</translation>
 <translation id="4955710816792587366">PIN の選択</translation>
 <translation id="4956593309300508411">共有を停止しますか？</translation>
@@ -5871,6 +5852,7 @@
 <translation id="5006778209728626987">稲妻</translation>
 <translation id="5007392906805964215">内容を確認</translation>
 <translation id="50080882645628821">プロファイルを削除</translation>
+<translation id="5008587162781422067">タブバーの幅が <ph name="TAB_STRIP_PERCENT" />、コンテンツ領域の幅が <ph name="CONTENT_AREA_PERCENT" /> になりました。</translation>
 <translation id="5008936837313706385">アクティビティ名</translation>
 <translation id="5009463889040999939">プロファイルの名前を変更しています。この処理には数分かかることがあります。</translation>
 <translation id="5010886807652684893">ビジュアル表示</translation>
@@ -6205,10 +6187,10 @@
 <translation id="5244234799035360187">ファイル アプリに OneDrive が表示されるようになります</translation>
 <translation id="5244466461749935369">まだ削除しない</translation>
 <translation id="5244474230056479698"><ph name="EMAIL" /> に同期しています</translation>
-<translation id="5245610266855777041">学校用アカウントのご利用開始</translation>
 <translation id="5246282308050205996"><ph name="APP_NAME" /> がクラッシュしました。このバルーンをクリックして再起動してください。</translation>
 <translation id="5247051749037287028">表示名（省略可）</translation>
 <translation id="5247243947166567755"><ph name="BOOKMARK_TITLE" /> を選択</translation>
+<translation id="5248934139541843042">整理機能を表示</translation>
 <translation id="5249624017678798539">ダウンロードの完了前にブラウザで問題が発生しました。</translation>
 <translation id="5249818097095743806">セキュリティ キーを使用する</translation>
 <translation id="5250372599208556903"><ph name="SEARCH_ENGINE_NAME" /> は、ユーザーの現在地情報を使用して地域のコンテンツを提供します。この設定は [<ph name="SETTINGS_LINK" />] で変更できます。</translation>
@@ -6245,7 +6227,6 @@
 <translation id="5275352920323889391">犬</translation>
 <translation id="527605719918376753">タブをミュート</translation>
 <translation id="527605982717517565"><ph name="HOST" /> の JavaScript を常に許可する</translation>
-<translation id="5276288422515364908"><ph name="MONTH_AND_YEAR" /> 以降、この Chromebook ではセキュリティ アップデートとソフトウェア アップデートが提供されなくなります。快適にご利用いただくには、Chromebook をアップグレードしてください。</translation>
 <translation id="5276357196618041410">ログインしてからでないと設定を保存できません</translation>
 <translation id="5277127016695466621">サイドパネルを表示</translation>
 <translation id="5278823018825269962">ステータス ID</translation>
@@ -6346,7 +6327,6 @@
 <translation id="5353769147530541973"><ph name="SITE_NAME" /> をタブのリストから削除して無効にします</translation>
 <translation id="5355099869024327351">アシスタントによる通知の表示を許可する</translation>
 <translation id="5355191726083956201">保護強化機能がオンになっています</translation>
-<translation id="5355498626146154079">「Borealis Enabled」フラグをオンにする必要があります</translation>
 <translation id="5355501370336370394">企業のデバイスを登録</translation>
 <translation id="5357010010552553606">全画面表示への自動切り替えを許可しないサイト</translation>
 <translation id="5359910752122114278">検索結果 1 件</translation>
@@ -6360,7 +6340,6 @@
 <translation id="5365881113273618889">選択したフォルダには、機密ファイルが含まれています。このフォルダに対する永続的な書き込みアクセス権を「<ph name="APP_NAME" />」に付与してもよろしいですか？</translation>
 <translation id="536638840841140142">なし</translation>
 <translation id="5368246151595623328"><ph name="DEVICE_NAME" /> から「<ph name="NETWORK_NAME" />」を保存しました</translation>
-<translation id="5368720394188453070">スマートフォンがロックされています。ログインするにはロックを解除してしてください。</translation>
 <translation id="536882527576164740">{0,plural, =1{シークレット}other{シークレット（#）}}</translation>
 <translation id="5369694795837229225">Linux 開発環境をセットアップする</translation>
 <translation id="5370819323174483825">再読み込み(&amp;R)</translation>
@@ -6376,7 +6355,6 @@
 <translation id="5376931455988532197">ファイル サイズが大きすぎます</translation>
 <translation id="5377367976106153749">カメラへのアクセスをオンにしますか？</translation>
 <translation id="5379140238605961210">マイクへのアクセスを引き続きブロックする</translation>
-<translation id="5380526436444479273">数分待ってから、もう一度お試しください</translation>
 <translation id="5382591305415226340">サポートされているリンクを管理</translation>
 <translation id="5384401776498845256">共有を許可する対象</translation>
 <translation id="5385628342687007304">このパスワードは、このデバイスのみに保存されます。他のデバイスで使用するには、Google アカウントに保存してください。</translation>
@@ -6430,7 +6408,6 @@
 <translation id="5414198321558177633">プロファイル リストを更新しています。この処理には数分かかることがあります。</translation>
 <translation id="5414566801737831689">アクセスしたウェブサイトのアイコンの読み取り</translation>
 <translation id="5414836363063783498">確認しています…</translation>
-<translation id="5415328625985164836">これはベータ版プログラムです。Chromebook で Steam を使用して、一部のゲームをプレイできるようになりました。</translation>
 <translation id="5415497281076257439">語句</translation>
 <translation id="5415871492522952905">すべてのデバイスで履歴とタブにアクセスできるため、デバイスが替わっても作業を続けられます</translation>
 <translation id="5417293056300086453">このサイトでは、識別子の使用と保護されたコンテンツの再生が許可されています。</translation>
@@ -6491,6 +6468,7 @@
 <translation id="5450469615146335984">操作ごとにショートカットを選択</translation>
 <translation id="545133051331995777">ネットワーク接続がありません</translation>
 <translation id="5452446625764825792">スマートフォンの最近の写真、メディア、アプリを表示できるようになりました</translation>
+<translation id="5452716108542782563">「<ph name="NAME" />」拡張機能がこの設定を制御しています。既定の検索エンジンを変更するには、<ph name="BEGIN_LINK_DISABLE" />拡張機能を無効にする<ph name="END_LINK_DISABLE" />か、<ph name="BEGIN_LINK_MANAGE" />設定を管理<ph name="END_LINK_MANAGE" />します。</translation>
 <translation id="5452976525201205853"><ph name="LANGUAGE" />（オフラインで利用可能）</translation>
 <translation id="5453829744223920473">お子様は、学校のすべてのアプリ、ブックマーク、リソースを授業と同じように利用できます。基本ルールは学校が設定します。</translation>
 <translation id="5454166040603940656">- <ph name="PROVIDER" /></translation>
@@ -6505,6 +6483,7 @@
 <translation id="5460861858595506978">インスピレーション</translation>
 <translation id="5461050611724244538">スマートフォンとの接続が切断されました</translation>
 <translation id="5463275305984126951"><ph name="LOCATION" /> のインデックス</translation>
+<translation id="5463348003600590648">提案を無効にする</translation>
 <translation id="5463450804024056231"><ph name="DEVICE_TYPE" /> のメール通知に登録する</translation>
 <translation id="5463625433003343978">デバイスを検出しています...</translation>
 <translation id="5463856536939868464">非表示のブックマークを含むメニュー</translation>
@@ -6585,7 +6564,6 @@
 <translation id="5510775624736435856">Google から画像の説明を取得</translation>
 <translation id="5511379779384092781">特小</translation>
 <translation id="5511823366942919280">このデバイスを「Shark」として設定してもよろしいですか？</translation>
-<translation id="5512511240775436189">Google に一定のデータを送信します（URL、ページ コンテンツなど）</translation>
 <translation id="5512739112435045339">デバイスの空き容量を増やしてから、もう一度ダウンロードをお試しください</translation>
 <translation id="5513807280330619196">電卓</translation>
 <translation id="5514315914873062345">Tab</translation>
@@ -6612,7 +6590,6 @@
 <translation id="5533001281916885985"><ph name="SITE_NAME" /> が次の許可を求めています</translation>
 <translation id="5533343601674003130">PDF サービス</translation>
 <translation id="5535769176698670170">上のビューと入れ替え</translation>
-<translation id="5537395135310061418">Google の最高水準のセキュリティでウェブを利用するユーザーを保護します</translation>
 <translation id="5537725057119320332">キャスト</translation>
 <translation id="5539070192556911367">Google に接続できません</translation>
 <translation id="5541091577812545428">パスワードは変更されませんでした</translation>
@@ -6669,6 +6646,7 @@
 <translation id="557506220935336383">他のサイトに対する拡張機能の権限を確認する</translation>
 <translation id="5575473780076478375">シークレット モード拡張機能: <ph name="EXTENSION_NAME" /></translation>
 <translation id="5575528586625653441">デモ登録リクエストで問題が発生しました。</translation>
+<translation id="5576472948015790634">タブグループや Gemini とのチャットを 1 か所で管理できるようになりました。固定はいつでも解除できます。</translation>
 <translation id="557722062034137776">デバイスをリセットしても、お使いの Google アカウントや、これらのアカウントに同期されているデータには影響しません。ただし、デバイス上でローカルに保存されているすべてのファイルは削除されます。</translation>
 <translation id="5578059481725149024">自動ログイン</translation>
 <translation id="5578387000057347457">カスタムのプロンプトを入力するか、テキストをハイライト表示して画像を作成します。</translation>
@@ -6690,6 +6668,7 @@
 <translation id="558563010977877295">特定のページまたはページセットを開く</translation>
 <translation id="5585898376467608182">デバイスの空き容量が残り少なくなっています。<ph name="APP_NAME" /> を使用するには、少なくとも <ph name="MINIMUM_SPACE" /> の空き容量が必要です。空き容量を増やすには、デバイスからファイルを削除してください。</translation>
 <translation id="5585912436068747822">フォーマット エラー</translation>
+<translation id="5587592231724900065">拡張機能がこの設定を制御しています</translation>
 <translation id="5587765208077583036">共有するには、ファイルアプリ内でフォルダを右クリックし、[<ph name="SPECIFIC_NAME" /> と共有] を選択します。</translation>
 <translation id="5588033542900357244">（<ph name="RATING_COUNT" />）</translation>
 <translation id="5588712142463367677">ページ上のサイトをフィルタ</translation>
@@ -6804,7 +6783,7 @@
 <translation id="5669863904928111203">ChromeOS は古いバージョンです</translation>
 <translation id="5671641761787789573">画像がブロックされました</translation>
 <translation id="567210741546439261">ブックマークとリスト(&amp;B)</translation>
-<translation id="5674059598547281505">前のセッションを再開しますか？</translation>
+<translation id="5672475067418064339">アドレスバーで、すべてのショートカットとともにこのキーを使用します</translation>
 <translation id="567587836466137939">このデバイスでは、<ph name="MONTH_AND_YEAR" /> までソフトウェアとセキュリティが自動更新されます。<ph name="LINK_BEGIN" />詳細<ph name="LINK_END" /></translation>
 <translation id="567740581294087470">お送りいただくフィードバックの種類を選択してください。</translation>
 <translation id="5677503058916217575">ページの言語:</translation>
@@ -6813,7 +6792,6 @@
 <translation id="5678821117681811450"><ph name="WEB_DRIVE" /> に送信しています</translation>
 <translation id="5678888125599911373">Chrome を使用するどのデバイスからでも最近閉じたタブをもう一度開くことができます</translation>
 <translation id="5678955352098267522"><ph name="WEBSITE_1" /> でのユーザーデータの読み取り</translation>
-<translation id="5679785611070310751"><ph name="MONTH_AND_YEAR" /> 以降、この Chromebook ではセキュリティ アップデートが提供されなくなります。最新のセキュリティとソフトウェアにアップグレードしましょう。特典の利用規約が適用されます。</translation>
 <translation id="5680050361008726776">「<ph name="ESIM_PROFILE_NAME" />」を削除しますか？</translation>
 <translation id="5681586175480958839">ファイルはすでに開かれています</translation>
 <translation id="5684181005476681636">Wi-Fi の詳細</translation>
@@ -6838,6 +6816,7 @@
 <translation id="5698878456427040674">選択したアカウントがサポートされているかどうかを確認してください。</translation>
 <translation id="5698900765010620315">低コントラスト ダーク</translation>
 <translation id="5699227710146832453">取得元:</translation>
+<translation id="5700024700429259844">Gemini とのチャットと AI モードのスレッドをここで直接再開できるようになりました。固定はいつでも解除できます。</translation>
 <translation id="570043786759263127">Google Play のアプリとサービス</translation>
 <translation id="5700761515355162635">サードパーティ Cookie が許可されています</translation>
 <translation id="5700836101007545240">接続の追加機能は管理者によって無効にされています</translation>
@@ -6854,13 +6833,12 @@
 <translation id="5707674184620508665">組織（<ph name="ACCOUNT_MANAGER" />）は、既存のデータを確認または管理することはできません。このデータは既存のプロフィールに残ります。</translation>
 <translation id="5708171344853220004">Microsoft プリンシパル名</translation>
 <translation id="5711010025974903573">サービスログ</translation>
-<translation id="5711983031544731014">ロックを解除できません。パスワードを入力してください。</translation>
 <translation id="5712153969432126546">一部のサイトはドキュメント、契約、フォームなどの PDF を一般に提供しています</translation>
 <translation id="571222594670061844">サイトで ID サービスからのログイン メッセージを表示できるようにする</translation>
-<translation id="5713033452812927234">以前のデバイスからウィンドウを開いています</translation>
 <translation id="5713158217420111469"><ph name="DEVICE" /> に接続しました</translation>
 <translation id="5714100381896040477">画面上の動きを制限する</translation>
 <translation id="5719854774000914513">サイトが HID デバイスへの接続を要求できるようにする</translation>
+<translation id="5720729194423017301">サイトと検索エンジンのショートカット</translation>
 <translation id="572155275267014074">Android 設定</translation>
 <translation id="5722086096420375088">緑と白</translation>
 <translation id="572328651809341494">最近使ったタブ</translation>
@@ -6870,7 +6848,6 @@
 <translation id="5727728807527375859">拡張機能、アプリ、テーマはパソコンに悪影響を与える可能性があります。処理を続けてもよろしいですか？</translation>
 <translation id="5728072125198221967">リンクされている Google サービス</translation>
 <translation id="5728450728039149624">Smart Lock の画面ロックの方法</translation>
-<translation id="572914206753951782">Chromebook が最新バージョンであることを確認します。その後、Chromebook を再起動してもう一度お試しください。</translation>
 <translation id="5729712731028706266">表示(&amp;V)</translation>
 <translation id="5731247495086897348">貼り付けて実行(&amp;S)</translation>
 <translation id="5733109311583381874">よく使う単語を単語リストに登録して、変換候補をカスタマイズします</translation>
@@ -7034,6 +7011,7 @@
 <translation id="583673505367439042">サイトがデバイスのファイルやフォルダの編集を要求できるようにする</translation>
 <translation id="5836999627049108525">翻訳元の言語</translation>
 <translation id="583756221537636748">ケース</translation>
+<translation id="5839104899226944765">リーディング モードを閉じる</translation>
 <translation id="5840656138956959276">保護強化: 厳格</translation>
 <translation id="5840680448799937675">常にオフラインでファイルを共有します</translation>
 <translation id="5841270259333717135">イーサネットを設定する</translation>
@@ -7247,6 +7225,7 @@
 <translation id="5976780232488408272">文章作成のサポート</translation>
 <translation id="5977976211062815271">保存先: このデバイス</translation>
 <translation id="5978277834170881274">基本スペルチェックを使用(&amp;U)</translation>
+<translation id="597889390120790610">選択ショートカットの詳細</translation>
 <translation id="5979084224081478209">パスワードを確認</translation>
 <translation id="5979156418378918004">{NUM_EXTENSIONS,plural, =1{1 個の有害な可能性がある拡張機能を再度有効にしました}other{{NUM_EXTENSIONS} 個の有害な可能性がある拡張機能を再度有効にしました}}</translation>
 <translation id="5979353814339191480">このオプションは、データプランやモバイル ネットワーク ドングル、またはモバイル アクセス ポイントのテザリングを使用する Chromebook に適用されます。</translation>
@@ -7289,6 +7268,7 @@
 <translation id="6011193465932186973">指紋</translation>
 <translation id="6011308810877101166">検索候補の関連性を高める</translation>
 <translation id="6011908034087870826">リンクを <ph name="DEVICE_NAME" /> に送信しています</translation>
+<translation id="6013003831291591200">タスクが完了しました</translation>
 <translation id="6013027779243312217">音声と動画の字幕を生成します</translation>
 <translation id="6014293228235665243">未読</translation>
 <translation id="6015776718598175635">星</translation>
@@ -7431,7 +7411,6 @@
 <translation id="6112931163620622315">スマートフォンを確認してください</translation>
 <translation id="6113434369102685411">Chrome ブラウザと <ph name="DEVICE_TYPE" /> ランチャーに既定の検索エンジンを設定します</translation>
 <translation id="6113832060210023016">ランチャー+クリック</translation>
-<translation id="6113942107547980621">Smart Lock を使用するには、お使いのスマートフォンでメインユーザーのプロフィールに切り替えます</translation>
 <translation id="6116921718742659598">言語と入力の設定を変更</translation>
 <translation id="6119008366402292080">プリンタがありません</translation>
 <translation id="6119972796024789243">色補正</translation>
@@ -7728,7 +7707,6 @@
 <translation id="6314819609899340042">この <ph name="IDS_SHORT_PRODUCT_NAME" /> デバイスでデバッグ機能が有効になりました。</translation>
 <translation id="6315170314923504164">音声</translation>
 <translation id="6315493146179903667">すべてを手前に移動</translation>
-<translation id="6316432269411143858">Google ChromeOS 利用規約コンテンツ</translation>
 <translation id="6318125393809743217">ポリシー設定の policies.json ファイルを含める。</translation>
 <translation id="6318944945640833942">プリンタを検出できませんでした。プリンタのアドレスをもう一度入力してください。</translation>
 <translation id="6319278239690147683">同期しているすべてのデバイスと Google アカウントから閲覧履歴データを削除するには、<ph name="BEGIN_LINK" />同期設定に移動<ph name="END_LINK" />してください。</translation>
@@ -7799,6 +7777,7 @@
 <translation id="6368157733310917710">住所など(&amp;A)</translation>
 <translation id="6368276408895187373">有効 – <ph name="VARIATION_NAME" /></translation>
 <translation id="636850387210749493">企業の登録</translation>
+<translation id="6369420654782669629">機能と拡張機能のショートカット</translation>
 <translation id="6370021412472292592">マニフェストを読み込めませんでした。</translation>
 <translation id="6370551072524410110">検索+Shift+Backspace</translation>
 <translation id="637135143619858508">広くする</translation>
@@ -7838,7 +7817,6 @@
 <translation id="6400360390396538896"><ph name="ORIGIN" /> では常に許可</translation>
 <translation id="6401118106417399952">デバイスの EID は <ph name="EID_NUMBER" />、デバイスのシリアル番号は <ph name="SERIAL_NUMBER" /> です。これらの番号を使用して、サービスを有効にできます。</translation>
 <translation id="6401458660421980302">このタブを別のデバイスに送信するには、送信先のデバイスで Chrome にログインしてください</translation>
-<translation id="6401597285454423070">ご使用のパソコンには Trusted Platform Module（TPM）セキュリティ デバイスが組み込まれています。これは ChromeOS の多くの重要なセキュリティ機能を実装するために使用されます。詳しくは、Chromebook ヘルプセンター（https://support.google.com/chromebook/?p=tpm）をご覧ください。</translation>
 <translation id="6402921224457714577">サイトによる MIDI デバイスの操作と再プログラムを許可する</translation>
 <translation id="6404511346730675251">ブックマークを編集</translation>
 <translation id="640457954117263537">ChromeOS と Android のアプリやサービスで位置情報を使用する。</translation>
@@ -7912,6 +7890,7 @@
 <translation id="6453306703004115497"><ph name="LANGUAGE" /> に翻訳</translation>
 <translation id="6453687572758515877">すべてのタブをグループ化</translation>
 <translation id="6453921811609336127">次の入力方法に切り替えるには、<ph name="BEGIN_SHORTCUT" /><ph name="BEGIN_CTRL" />Ctrl<ph name="END_CTRL" /><ph name="SEPARATOR1" /><ph name="BEGIN_SHIFT" />Shift<ph name="END_SHIFT" /><ph name="SEPARATOR2" /><ph name="BEGIN_SPACE" />Space<ph name="END_SPACE" /><ph name="END_SHORTCUT" /> キーを押します</translation>
+<translation id="645433497989692531">このデバイスから閲覧データを完全に削除します。データを復元するには、次のユーザーとしてログインしてください:</translation>
 <translation id="6455264371803474013">特定のサイト</translation>
 <translation id="6455521402703088376">オフ • この拡張機能はデベロッパーにより非公開にされました</translation>
 <translation id="6455894534188563617">新しいフォルダ(&amp;N)</translation>
@@ -7969,7 +7948,6 @@
 <translation id="6494483173119160146">デバイスで修復不可能なエラーが発生しました。デバイスをリセットして（すべてのユーザーデータが消去されます）、もう一度お試しください。</translation>
 <translation id="6495266441917713704">Wi-Fi で転送できません</translation>
 <translation id="6495453178162183932">テーマが Chrome のデフォルトに更新されました</translation>
-<translation id="6496542321576111907">強力なセキュリティで保護します。追加機能を有効にすることもできます。</translation>
 <translation id="6496641546298525838">デバイス</translation>
 <translation id="6497784818439587832">画面上の項目のサイズを変えるには、表示サイズを変更します</translation>
 <translation id="6497789971060331894">マウスの逆スクロール</translation>
@@ -7984,7 +7962,6 @@
 <translation id="6507194767856842483">{NUM_SUB_APP_INSTALLS,plural, =1{「<ph name="APP_NAME" />」がこのデバイスに次のアプリをインストールしようとしています。}other{「<ph name="APP_NAME" />」がこのデバイスに次のアプリをインストールしようとしています。}}</translation>
 <translation id="6508248480704296122"><ph name="NAME_PH" /> に関連しています</translation>
 <translation id="6508261954199872201">アプリ: <ph name="APP_NAME" /></translation>
-<translation id="6511607461419653612">Chromebook を再起動してから、もう一度お試しください</translation>
 <translation id="6511827214781912955"><ph name="FILENAME" /> を削除して、このデバイスを使用する他のユーザーがパスワードを確認できないようにすることを検討してください</translation>
 <translation id="6512759338201777379">生成画像 <ph name="INDEX" />/<ph name="SUBJECT" />、ムード: <ph name="MOOD" />。</translation>
 <translation id="6513247462497316522">他のネットワークに接続していない場合、Google Chrome はモバイル データを使用します。</translation>
@@ -8071,6 +8048,7 @@
 <translation id="6564343790052433242"><ph name="APP_NAME" /> のパスキーを作成するには、Google パスワード マネージャーをオンにする必要があります</translation>
 <translation id="6565144332292237355">サイトはこの機能を使用して、ローカル ネットワーク上のデバイスを検索して接続できます</translation>
 <translation id="6565899972286925956">あらゆるものを作成できます</translation>
+<translation id="656679903990115526">スマートフォンでスキャンしてパスワードを保存すると、サイトやアプリで自動入力して簡単にログインできます</translation>
 <translation id="6568283005472142698">タブ検索</translation>
 <translation id="6569931898053264308">中量の節約</translation>
 <translation id="6570622975915850879">別のデバイスを使用</translation>
@@ -8091,7 +8069,6 @@
 <translation id="657866106756413002">ネットワーク健全性のスナップショット</translation>
 <translation id="6579369886355986318">すべてのコントロールを表示(&amp;C)</translation>
 <translation id="6579705087617859690"><ph name="WINDOW_TITLE" /> - パソコンのコンテンツが共有されています</translation>
-<translation id="6580060371127789208"><ph name="PERCENTAGE_COMPLETE" />% 完了しました</translation>
 <translation id="6580203076670148210">スキャンの速度</translation>
 <translation id="6580676117087365538">すべてのパソコンでこの拡張機能を使用するには、本人確認を行ってください</translation>
 <translation id="6581356304040102696">パスワードをインポートできません。ファイルサイズを 1 MB より小さくしてください。</translation>
@@ -8252,6 +8229,7 @@
 <translation id="6686878118106035853">カスタムの保護強化機能により、すべてのサイトで JavaScript の最適化が無効になります</translation>
 <translation id="6687008241368170505">Google パスワード マネージャーの PIN を変更</translation>
 <translation id="6687079240787935001"><ph name="MODULE_TITLE" /> を非表示にする</translation>
+<translation id="6689092196793298127">整理機能</translation>
 <translation id="6689948774466767379">マウスキー</translation>
 <translation id="6690659332373509948">ファイル <ph name="FILE_NAME" /> を解析できません</translation>
 <translation id="6691936601825168937">進む(&amp;F)</translation>
@@ -8274,7 +8252,6 @@
 <translation id="6707389671160270963">SSL クライアント証明書</translation>
 <translation id="6707671917294473995">ウェブサイトでカメラの使用は許可されていません</translation>
 <translation id="6709002550153567782">{NUM_PAGES,plural, =0{<ph name="PAGE_TITLE" />}=1{<ph name="PAGE_TITLE" />、他 1 個のタブ}other{<ph name="PAGE_TITLE" />、他 # 個のタブ}}</translation>
-<translation id="6709357832553498500">「<ph name="EXTENSIONNAME" />」を使用して接続</translation>
 <translation id="6710172959248731469">Google サービスの設定</translation>
 <translation id="6710213216561001401">前へ</translation>
 <translation id="6710394144992407503">ウェブページにテキストを入力するときにスペルミスがないか確認する</translation>
@@ -8288,6 +8265,7 @@
 <translation id="6716049856796700977">位置情報の利用を許可されているアプリやウェブサイトはありません。ただし、IP アドレスを通じて位置情報がアプリやウェブサイトに公開される場合があります。<ph name="LINK_BEGIN" />詳細<ph name="LINK_END" /></translation>
 <translation id="6716798148881908873">ネットワーク接続が切断されました。ネットワーク接続を確認するか、別の Wi-Fi ネットワークをお試しください。</translation>
 <translation id="671868032356459320">アップデータのスコープ: <ph name="OUTCOMES" /></translation>
+<translation id="6718728708077839052">親アプリの権限の管理について</translation>
 <translation id="671928215901716392">画面をロック</translation>
 <translation id="6719839880830057298">ファイルのアップロードが完了しました</translation>
 <translation id="6721744718589119342">Google から追加情報や最新情報についてメールを受け取る</translation>
@@ -8310,8 +8288,6 @@
 <translation id="6729280095610283088">森の上空を流れるように輝くオーロラ。</translation>
 <translation id="6729493062119577923">共有タブグループのアクティビティ</translation>
 <translation id="6730744976532805323">タブを切り替えても、現在のタブを Gemini と共有します</translation>
-<translation id="6731320427842222405">数分かかることがあります</translation>
-<translation id="6732956960067639542">代わりに新しい Chrome ブラウザ セッションを開きます。</translation>
 <translation id="6734178081670810314"><ph name="EXTENSION_OR_APP_NAME" />（ID: <ph name="EXTENSION_OR_APP_ID" />）</translation>
 <translation id="6736243959894955139">アドレス</translation>
 <translation id="6737663862851963468">Kerberos チケットの削除</translation>
@@ -8374,7 +8350,6 @@
 <translation id="6781284683813954823">Doodle リンク</translation>
 <translation id="6781658011335120230"><ph name="BEGIN_PARAGRAPH1" />アプリのデータとは、（デベロッパーの設定に基づいて）アプリが保存したデータのことで、連絡先、メッセージ、写真などのデータが含まれます。バックアップ データは、お子様のドライブの保存容量にはカウントされません。<ph name="END_PARAGRAPH1" /><ph name="BEGIN_PARAGRAPH2" />このサービスは [設定] で無効にできます。<ph name="END_PARAGRAPH2" /></translation>
 <translation id="6781978626986383437">Linux のバックアップがキャンセルされました</translation>
-<translation id="6782067259631821405">無効な PIN</translation>
 <translation id="6783036716881942511">このデバイスを削除しますか？</translation>
 <translation id="6783667414610055871">Microsoft OneDrive の設定</translation>
 <translation id="6784523122863989144">プロファイルはサポートされています</translation>
@@ -8420,7 +8395,6 @@
 <translation id="6805236548654699520">設定を安全なデフォルトにリセットして、不要なポップアップを削除したり、ネットワークの問題を修正したりできます。</translation>
 <translation id="6805478749741295868">これは試験運用版の AI 機能です。常に適切な結果が得られるとは限りません。</translation>
 <translation id="6805647936811177813"><ph name="HOST_NAME" /> からクライアント証明書をインポートするには <ph name="TOKEN_NAME" /> にログインしてください。</translation>
-<translation id="680572642341004180"><ph name="SHORT_PRODUCT_OS_NAME" /> での RLZ トラッキングを有効にする。</translation>
 <translation id="6805817411033102703">共有タブグループのフィードバック</translation>
 <translation id="6806089545527108739">許可しないが後で確認する</translation>
 <translation id="6806781719264274042">Google アカウントを利用している連絡先のみ。<ph name="LINK_BEGIN" />連絡先を表示<ph name="LINK_END" /></translation>
@@ -8501,7 +8475,6 @@
 <translation id="6850286078059909152">テキストの色</translation>
 <translation id="6850925512806464982">全員がこのタブグループに直ちにアクセスできなくなり、すべてのデバイスから削除されます</translation>
 <translation id="6851497530878285708">アプリは有効です</translation>
-<translation id="6852290167968069627">ネットワークの問題により、ChromeOS で前のセッションを再開できません。安定したネットワークに接続して、もう一度お試しください。</translation>
 <translation id="6852529053326738838">組織に問い合わせるか、仕事用メールアドレスを使用して登録を行い、アカウントが対象かどうかを確認します。</translation>
 <translation id="6853029310037965825"><ph name="BEGIN_LINK" /><ph name="INSTALL_SOURCE" /><ph name="END_LINK" /> から <ph name="APP_TYPE" /> をインストールしました</translation>
 <translation id="6853118789186721762"><ph name="DEVICE_TYPE" /> にリマインダーを送信しました</translation>
@@ -8513,7 +8486,6 @@
 <translation id="6856623341093082836">タッチスクリーンをを設定し、精度を調整します</translation>
 <translation id="6857145580237920905">Powerwash を実行する前に eSIM プロファイルを削除してください</translation>
 <translation id="6857725247182211756"><ph name="SECONDS" /> 秒</translation>
-<translation id="6860097299815761905">プロキシの設定...</translation>
 <translation id="68601584151169673">保存と共有(&amp;S)</translation>
 <translation id="6860427144121307915">タブで開く</translation>
 <translation id="6861179941841598556"><ph name="PROFILE_NAME" /> に対するその他の操作</translation>
@@ -8662,7 +8634,7 @@
 <translation id="6965607054907047032">タブがアクティブでないときにメモリを解放する</translation>
 <translation id="6965648386495488594">ポート</translation>
 <translation id="6965978654500191972">デバイス</translation>
-<translation id="6967112302799758487">Steam for Chromebook（ベータ版）を使用してインストールしたアプリやゲームは、このデバイスから削除されます。これらのアプリやゲームに関連付けられているデータも削除されます。アンインストールする前に、保存したアプリやゲームを必ずバックアップしてください。</translation>
+<translation id="6966831944134814478">オフにする</translation>
 <translation id="6967430741871315905">デバイスが許可されているかどうか確認できません</translation>
 <translation id="6968288415730398122">画面ロックを設定するにはパスワードを入力します</translation>
 <translation id="6969047215179982698">ニアバイシェアをオフにする</translation>
@@ -8783,7 +8755,6 @@
 <translation id="7039326228527141150"><ph name="VENDOR_NAME" /> の USB デバイスへのアクセス</translation>
 <translation id="7039912931802252762">Microsoft スマート カード ログオン</translation>
 <translation id="7039951224110875196">お子様用の Google アカウントを作成する</translation>
-<translation id="7039968672732182060">この Chromebook は、セキュリティ アップデートの提供が終了しました。最新のセキュリティとソフトウェアにアップグレードしましょう。特典の利用規約が適用されます。</translation>
 <translation id="7042116641003232070">デバイスへのデータの保存が許可されています</translation>
 <translation id="7044124535091449260">サイトアクセスの詳細</translation>
 <translation id="7044207729381622209">タブで表示中のものも含め、これらのサイトからログアウトします</translation>
@@ -8823,6 +8794,7 @@
 <translation id="7070484045139057854">サイトデータの読み取りと変更を行います</translation>
 <translation id="7072010813301522126">ショートカット名</translation>
 <translation id="7072078320324181561">位置情報へのアクセス権を持つアプリとウェブサイト、システム サービスは位置情報を使用できます。<ph name="LINK_BEGIN" />詳細<ph name="LINK_END" /></translation>
+<translation id="7072573590175540692">利用可能な機能と拡張機能のショートカット</translation>
 <translation id="7074703793383805632"><ph name="SHARED_STATE" /> <ph name="GROUP_NAME" /> グループ - <ph name="OPENED_STATE" /></translation>
 <translation id="7075513071073410194">PKCS #1 MD5 with RSA 暗号化</translation>
 <translation id="7075625805486468288">HTTPS / SSL の証明書と設定を管理します</translation>
@@ -8834,7 +8806,6 @@
 <translation id="7082568314107259011"><ph name="NETWORK_NAME" /> は管理者によって管理されています</translation>
 <translation id="7082850163410901674">Mac のシステム設定で通知がオフになっています</translation>
 <translation id="7083729794572207131">サイトは、ユーザーの利便性を向上させるためウェブアプリのインストールを要求することがあります</translation>
-<translation id="7083774521940805477">Steam for Chromebook（ベータ版）は、この Chromebook ではご利用いただけません。</translation>
 <translation id="7084095352418993433">このページについて Google に質問する: <ph name="PAGE_TITLE" /></translation>
 <translation id="708550780726587276">（設定されていません）</translation>
 <translation id="7086377898680121060">明るさを上げる</translation>
@@ -8873,7 +8844,6 @@
 <translation id="7113502843173351041">メールアドレスの読み取り</translation>
 <translation id="7113974454301513811">ここで現在のタブをリストに追加します</translation>
 <translation id="7114054701490058191">パスワードが一致しません</translation>
-<translation id="7114648273807173152">Smart Lock を使用して Google アカウントにログインするには、[設定] &gt; [接続済みのデバイス] &gt; [スマートフォン] &gt; [Smart Lock] に移動します。</translation>
 <translation id="7115361495406486998">連絡先が見つかりませんでした</translation>
 <translation id="7116554090938189816">プリンタの SSL 証明書の有効期限が切れています。プリンタを再起動してもう一度お試しください。</translation>
 <translation id="7117228822971127758">しばらくしてからもう一度お試しください</translation>
@@ -8913,11 +8883,9 @@
 <translation id="7141844554192012199">Checkup</translation>
 <translation id="714301620504747562">ブラウジングと検索が標準のプリロードよりも高速になります</translation>
 <translation id="7143207342074048698">接続中</translation>
-<translation id="7143409552554575716">ChromeOS フラグ</translation>
 <translation id="7144363643182336710">画面に通知は表示されません。画面の右下にあるサイレント モード アイコンをクリックすると、通知を確認できます。</translation>
 <translation id="7144856456372460176"><ph name="APP" /> をインストール(&amp;I)...</translation>
 <translation id="7144878232160441200">再読み込み</translation>
-<translation id="7145413760160421938">前のセッションを再開できません</translation>
 <translation id="7146882055510146554">Microsoft 365 では、Word、Excel、PowerPoint ファイルを開いて編集する際に OneDrive を使用します。これらのファイルは、ファイルアプリのサイド ナビゲーションの「Microsoft OneDrive」で確認できます。Microsoft アカウントにログインする必要があります。<ph name="LINK_BEGIN" />詳細<ph name="LINK_END" /></translation>
 <translation id="7148426638542880639">サイトが想定どおりに機能しない可能性があります。アクセスしたサイトに関する情報をデバイスに残したくない場合は、このオプションを選択します。</translation>
 <translation id="7149839598364933473">このデバイスを <ph name="DEVICE_OS" /> デバイスに変換します。</translation>
@@ -8925,7 +8893,6 @@
 <translation id="7152478047064750137">この拡張機能に特別な権限は必要ありません</translation>
 <translation id="7153101072880472645">高コントラストのオン / オフ</translation>
 <translation id="715396040729904728">ランチャー+Shift+<ph name="TOP_ROW_KEY" /></translation>
-<translation id="7154020516215182599">フィードバックまたは問題の内容を記入します。可能な場合は、問題の再現手順もお知らせください。</translation>
 <translation id="7154130902455071009">スタート ページを次に変更します: <ph name="START_PAGE" /></translation>
 <translation id="7155161204362351654">動画の品質を向上させ、バッテリー消費を抑えます。動画はキャスト対応のスクリーンでのみ再生されます。</translation>
 <translation id="7159695867335480590">再生または一時停止します</translation>
@@ -9097,6 +9064,7 @@
 <translation id="727441411541283857"><ph name="PERCENTAGE" />% - あと <ph name="TIME" />で充電完了</translation>
 <translation id="7275950084263610253">ローカル ネットワーク上の他のデバイスへのアクセスを許可するサイト</translation>
 <translation id="727595954130325265">今すぐ購入</translation>
+<translation id="7277275452721470458">AI モードのアクティビティ</translation>
 <translation id="727952162645687754">ダウンロード エラー</translation>
 <translation id="7280649757394340890">テキスト読み上げの音声の設定</translation>
 <translation id="7280683802406059877">キーボード ショートカットをカスタマイズ</translation>
@@ -9337,6 +9305,7 @@
 <translation id="7431991332293347422">検索などのパーソナライズに閲覧履歴がどのように使われるかを管理します</translation>
 <translation id="7432200167665670017">「<ph name="EXTENSION_NAME" />」（アプリ ID: <ph name="EXTENSION_ID" />）は管理者によってブロックされています</translation>
 <translation id="7433103263856598557">アーカイブ</translation>
+<translation id="7433333862363162673">選択ショートカットを解除</translation>
 <translation id="7433708794692032816"><ph name="DEVICE_TYPE" /> を引き続き使用するにはスマートカードを挿入してください</translation>
 <translation id="7433957986129316853">そのままにする</translation>
 <translation id="7434100547946193426">その他のアプリ</translation>
@@ -9352,7 +9321,6 @@
 <translation id="744366959743242014">データを読み込んでいます。これには数秒かかる場合があります。</translation>
 <translation id="7443806024147773267">Google アカウントにログインすれば、いつでもパスワードにアクセスできます。</translation>
 <translation id="7444176988908839653">{COUNT,plural, =0{今日から Cookie のブロックを再開します}=1{明日から Cookie のブロックを再開します}other{# 日後に Cookie のブロックを再開します}}</translation>
-<translation id="7444983668544353857"><ph name="NETWORKDEVICE" /> を無効にする</translation>
 <translation id="7446716846072322308"><ph name="SITE_NAME" /> と関連サイトにより保存された <ph name="TOTAL_USAGE" /> のデータを削除します</translation>
 <translation id="7448430327655618736">アプリの自動インストール</translation>
 <translation id="7448664748118305024">すべてのウィンドウを閉じるときに、サイトによりデバイスに保存されたデータを削除する</translation>
@@ -9508,7 +9476,7 @@
 <translation id="7553242001898162573">パスワードを入力してください</translation>
 <translation id="755472745191515939">この言語は管理者が許可していません</translation>
 <translation id="7554791636758816595">新しいタブ</translation>
-<translation id="7556033326131260574">Smart Lock でアカウントを確認できませんでした。ログインするにはパスワードを入力してください。</translation>
+<translation id="7556228616802995437">最近のチャットとスレッド</translation>
 <translation id="7556242789364317684"><ph name="SHORT_PRODUCT_NAME" /> ではユーザーの設定を回復することができません。エラーを修正するには、<ph name="SHORT_PRODUCT_NAME" /> が Powerwash でデバイスをリセットする必要があります。</translation>
 <translation id="7557194624273628371">Linux のポート転送</translation>
 <translation id="7557411183415085169">Linux ディスクの空き容量が少なくなっています</translation>
@@ -9564,6 +9532,7 @@
 <translation id="760197030861754408"><ph name="LANDING_PAGE" /> で接続してください。</translation>
 <translation id="7602079150116086782">他のデバイスからのタブなし</translation>
 <translation id="7602173054665172958">印刷の管理</translation>
+<translation id="7602805861133750578">タブグループ、Gemini とのチャット、AI モードのスレッドを 1 か所で管理できるようになりました。固定はいつでも解除できます。</translation>
 <translation id="7602868996817972616">このページについて Google に質問</translation>
 <translation id="7603785829538808504">次のサイトではカスタムの設定が使用されます</translation>
 <translation id="7604543761927773395">{NUM_PASSWORDS,plural, =1{1 件のパスワードをインポートできませんでした}other{{NUM_PASSWORDS} 件のパスワードをインポートできませんでした}}</translation>
@@ -9707,7 +9676,6 @@
 これには、インストールしたソフトウェア、ファイル、ブラウザ、デバイスのオペレーティング システム、IP アドレスに関する情報が含まれます。</translation>
 <translation id="7683834360226457448">ロービジョン表示ツール</translation>
 <translation id="7684212569183643648">管理者によりインストールされています</translation>
-<translation id="7684559058815332124">キャプティブ ポータルのログインページにアクセス</translation>
 <translation id="7684718995427157417">アプリを作成してテストするには、Android Debug Bridge（ADB）を有効にします。この操作を行うと、Google が確認していない Android アプリのインストールが許可されます。無効にする場合は、出荷時の設定へのリセットが必要になります。</translation>
 <translation id="7684803937028953000">このファイルのローカル ダウンロードは組織によってブロックされています。</translation>
 <translation id="7684913007876670600">このページの簡易版を表示するには、サイドパネルを開いて [リーディング モード] を選択します</translation>
@@ -9776,7 +9744,6 @@
 <translation id="7728668285692163452">チャンネルの変更は後で適用されます</translation>
 <translation id="7730449930968088409">画面のコンテンツをキャプチャする</translation>
 <translation id="7730683939467795481">このページは「<ph name="EXTENSION_NAME" />」拡張機能によって変更されました</translation>
-<translation id="7732702411411810416">インターネットに接続していることを確認してから、もう一度お試しください</translation>
 <translation id="773511996612364297">アクセント記号</translation>
 <translation id="7735558909644181051">中間証明書</translation>
 <translation id="7736119438443237821">このデバイスのパスキーへのアクセス権を削除しようとしています</translation>
@@ -9807,6 +9774,8 @@
 <translation id="7758143121000533418">ファミリー リンク</translation>
 <translation id="7758884017823246335">サイト内検索を追加</translation>
 <translation id="7759443981285558794">ChromeOS からインポートした証明書を表示する</translation>
+<translation id="7759606211476816416">サイトのショートカット</translation>
+<translation id="7759748248923439385">タブグループと AI モードのスレッドを 1 か所で管理できるようになりました。固定はいつでも解除できます。</translation>
 <translation id="7759809451544302770">省略可</translation>
 <translation id="7760176388948986635">位置情報へのアクセス権を持つ ChromeOS アプリ、Android アプリ、ウェブサイト、サービスに対して、このデバイスの位置情報の使用を許可します。[位置情報の精度] 設定では、Android アプリやサービスで使用される位置情報の精度を高めることができます。この設定では、クラウドソースのワイヤレス シグナルを利用した位置情報の向上に役立てるため、デバイスのセンサーに関する情報やこのデバイスから送信されるワイヤレス シグナルが Google で定期的に処理されます。この情報は、ユーザーを特定することなく、位置情報の精度と、位置情報を利用したサービスを改善する目的で使用されます。また、ユーザーのニーズに応えるうえでの Google とサードパーティの正当な利益に基づき、Google のサービスを改善、提供、維持する目的でも使用されます。</translation>
 <translation id="7762024824096060040">このアカウントを使用することはできません</translation>
@@ -9829,6 +9798,7 @@
 <translation id="7769709635093101687">一時停止のキーボード ショートカット</translation>
 <translation id="7769748505895274502">最近閉じたタブを折りたたむ</translation>
 <translation id="7770072242481632881">サイドパネル セレクタ</translation>
+<translation id="7770247511810814330">権限を削除</translation>
 <translation id="7770612696274572992">他のデバイスから画像がコピーされました</translation>
 <translation id="7770827449915784217">ファームウェアは最新の状態です</translation>
 <translation id="7771452384635174008">レイアウト</translation>
@@ -9949,7 +9919,6 @@
 <translation id="7853747251428735">その他のツール(&amp;L)</translation>
 <translation id="7855258394151767387">W キーを使用してマウスボタンを押す</translation>
 <translation id="7855678561139483478">タブを新しいウィンドウに移動</translation>
-<translation id="7857004848504343806">ご使用のパソコンにはセキュア モジュールが組み込まれています。これは ChromeOS Flex の多くの重要なセキュリティ機能を実装するために使用されます。詳しくは Chromebook ヘルプセンター（https://support.google.com/chromebook/?p=sm）をご覧ください。</translation>
 <translation id="7857093393627376423">テキスト候補</translation>
 <translation id="7858120906780498731">ChromeOS に接続されている入力デバイス</translation>
 <translation id="7858328180167661092"><ph name="APP_NAME" />（Windows）</translation>
@@ -9971,7 +9940,6 @@
 <translation id="7871691770940645922">仮想点字ディスプレイ</translation>
 <translation id="787268756490971083">オフ</translation>
 <translation id="7872758299142009420">ネストされたグループの数が多すぎます: <ph name="ERROR_LINE" /></translation>
-<translation id="7873386145597434863">Steam for Chromebook</translation>
 <translation id="7876027585589532670">ショートカットの編集はできません</translation>
 <translation id="7876243839304621966">すべて削除</translation>
 <translation id="7877126887274043657">同期の問題を修正(&amp;S)</translation>
@@ -9997,7 +9965,6 @@
 <translation id="7892005672811746207">[グループを保存する] をオンにする</translation>
 <translation id="7892384782944609022">ペア設定できませんでした。デバイスを選択して、もう一度お試しください。</translation>
 <translation id="7893008570150657497">パソコンから画像、音楽、その他のメディアにアクセスする</translation>
-<translation id="7893153962594818789">この <ph name="DEVICE_TYPE" /> では Bluetooth がオフになっています。パスワードを入力し、Bluetooth をオンにしてください。</translation>
 <translation id="7893393459573308604"><ph name="ENGINE_NAME" /> (既定)</translation>
 <translation id="7896292361319775586"><ph name="FILE" /> を保存しますか？</translation>
 <translation id="789722939441020330">サイトに複数のファイルの自動ダウンロードを許可しない</translation>
@@ -10126,7 +10093,6 @@
 <translation id="7973149423217802477">低く評価すると、気に入らなかったというフィードバックが送信されます。</translation>
 <translation id="7973776233567882054">ご利用のネットワークの説明として最も近いのは次のうちどれですか？</translation>
 <translation id="797394244396603170">ファイルを共有するデバイスを選択してください</translation>
-<translation id="7974566588408714340">「<ph name="EXTENSIONNAME" />」で再試行</translation>
 <translation id="7974713334845253259">デフォルト色</translation>
 <translation id="7974936243149753750">オーバースキャン</translation>
 <translation id="7975504106303186033">この Chrome Education デバイスを教育機関向けアカウントに登録する必要があります。新しいアカウントに登録する場合は、g.co/workspace/edusignup にアクセスしてください。</translation>
@@ -10192,7 +10158,6 @@
 <translation id="8015565302826764056">{NUM_OF_FILES,plural, =1{1 個のファイルをコピーしました}other{{NUM_OF_FILES} 個のファイルをコピーしました。}}</translation>
 <translation id="8017004049696748317">音声入力を開始または停止する</translation>
 <translation id="8017176852978888182">Linux の共有ディレクトリ</translation>
-<translation id="8017335670460187064"><ph name="LABEL" /></translation>
 <translation id="8017679124341497925">ショートカットを編集しました</translation>
 <translation id="8018298733481692628">このプロフィールを削除しますか？</translation>
 <translation id="8018313076035239964">ウェブサイトに使用を許可する情報や、表示してもよいコンテンツを管理します</translation>
@@ -10202,7 +10167,6 @@
 <translation id="8023801379949507775">拡張機能を今すぐ更新</translation>
 <translation id="8024161440284949905">これらのタブを続行</translation>
 <translation id="8025151549289123443">ロック画面とログイン</translation>
-<translation id="8025291188699172126">更新について</translation>
 <translation id="8026471514777758216">デバイス間で連携</translation>
 <translation id="8026700655446696031">「<ph name="ADDRESS_SUMMARY" />」の自宅の住所に関するその他のオプション</translation>
 <translation id="8026784703228858744">同期してブックマークやその他のデータを保存できます</translation>
@@ -10261,6 +10225,7 @@
 <translation id="8054609631325628928">これらの番号を使用して、サービスを有効にできます</translation>
 <translation id="8054883179223321715">特定の動画サイトで利用可能</translation>
 <translation id="8054921503121346576">USB キーボードが接続されました</translation>
+<translation id="8055975688427973864">整理機能のボタンを表示する</translation>
 <translation id="8058655154417507695">有効期限（年）</translation>
 <translation id="8058986560951482265">粗く、途切れがち</translation>
 <translation id="8059417245945632445">デバイスを検証(&amp;I)</translation>
@@ -10476,6 +10441,7 @@
 <translation id="8206713788440472560">画面を選択</translation>
 <translation id="8206745257863499010">ブルース</translation>
 <translation id="8206859287963243715">携帯電話</translation>
+<translation id="8207386708156457998">特定のサイトや検索エンジンを検索するには、アドレスバーに該当のショートカットを入力して、選択したキーボードキーを押します</translation>
 <translation id="8207404892907560325">パスキーを選択する</translation>
 <translation id="8207794858944505786">VM「<ph name="DEFAULT_VM_NAME" />」は存在しますが、有効な <ph name="VM_TYPE" /> VM ではないようです。管理者にお問い合わせください。</translation>
 <translation id="8207901006380134182">渦巻く海の大波と暗い森が広がる海岸。</translation>
@@ -10685,6 +10651,7 @@
 <translation id="8342221978608739536">試していない</translation>
 <translation id="8342387517402567689">シークレット モードではウェブアプリをインストールできません</translation>
 <translation id="8342861492835240085">コレクションを選択</translation>
+<translation id="8343578633847737325">最近のチャットとスレッド</translation>
 <translation id="8345848587667658367">スマートフォンの最近の写真、メディア、通知、アプリを表示できるようになりました</translation>
 <translation id="8347227221149377169">印刷ジョブ</translation>
 <translation id="8348430946834215779">可能な限り HTTPS を使用し、HTTPS をサポートしていないサイトは読み込む前に警告を表示します</translation>
@@ -10814,7 +10781,6 @@
 <translation id="8431190899827883166">タップを表示</translation>
 <translation id="843173223122814223">AI で背景を作成</translation>
 <translation id="8431977087510901105">カーソルの設定がリセットされました</translation>
-<translation id="8433186206711564395">ネットワーク設定</translation>
 <translation id="8434109185104929038">読書コーナー</translation>
 <translation id="8434837876193928924">タブグループの詳細</translation>
 <translation id="8435951291982398331">{NUM_TABS,plural, =1{このタブを修正}other{これらのタブを修正}}</translation>
@@ -10841,7 +10807,6 @@
 <translation id="8453400752347156012">このブックマークは、このデバイスのみに保存されます。「<ph name="ACCOUNT_FOLDER" />」に保存すると、このブックマークはアカウントにも保存されます。</translation>
 <translation id="8455775311562941553"><ph name="HOST_DEVICE_NAME" /> に接続しました</translation>
 <translation id="8456067150616457342">既定のブラウザの設定</translation>
-<translation id="845702320058262034">接続できません。スマートフォンの Bluetooth がオンになっていることを確認してください。</translation>
 <translation id="8457251154056341970">今後このページで <ph name="MODULE_NAME" /> は表示されません</translation>
 <translation id="8457451314607652708">ブックマークをインポート</translation>
 <translation id="8458341576712814616">ショートカット</translation>
@@ -10862,7 +10827,6 @@
 <translation id="8464132254133862871">このユーザー アカウントはサービスを利用できません。</translation>
 <translation id="8465252176946159372">無効です</translation>
 <translation id="8465444703385715657"><ph name="PLUGIN_NAME" /> が実行の許可を求めています</translation>
-<translation id="8466052016039127321">前のセッションを再開できません</translation>
 <translation id="8467326454809944210">別の言語を選択</translation>
 <translation id="8468087214092422866">Bluetooth デバイスの検出が許可されていないサイト</translation>
 <translation id="8470513973197838199"><ph name="ORIGIN" /> 用に保存されているパスワード</translation>
@@ -10956,6 +10920,7 @@
 <translation id="8535005006684281994">Netscape 証明書更新 URL</translation>
 <translation id="8536810348276651776">ほとんどのサイトからログアウトします。ただし、Google アカウントへのログイン状態は維持されるため、Chrome のファミリー リンクの設定は適用されます。</translation>
 <translation id="8536956381488731905">キー操作音</translation>
+<translation id="8537458941885662287">Gemini アプリ アクティビティ</translation>
 <translation id="8539727552378197395">いいえ（HTTP のみ）</translation>
 <translation id="8539766201049804895">アップグレード</translation>
 <translation id="8540136935098276800">正しい形式の URL を入力してください</translation>
@@ -11230,6 +11195,8 @@
 <translation id="8714838604780058252">背景のグラフィック</translation>
 <translation id="871515167518607670">デバイスを選択します。次に、デバイスで Chrome を開いてページを表示します。</translation>
 <translation id="8715480913140015283">バックグラウンドのタブでカメラが使用されています</translation>
+<translation id="8716050156658570300">サイトがモーション センサーと光センサーの使用を要求できるようにする</translation>
+<translation id="8716067129332848360">整理機能を表示</translation>
 <translation id="8716931980467311658">[Linux ファイル] フォルダのすべての Linux アプリケーションとデータをこの <ph name="DEVICE_TYPE" /> から削除しますか？</translation>
 <translation id="8717864919010420084">リンクをコピー</translation>
 <translation id="8718994464069323380">タッチスクリーンが検出されました</translation>
@@ -11370,7 +11337,6 @@
 <translation id="8808686172382650546">ネコ</translation>
 <translation id="8809147117840417135">明るい青緑</translation>
 <translation id="8811862054141704416">Crostini のマイクへのアクセス</translation>
-<translation id="8811881249098640048">一部の未知のサイトの動作を遅くします</translation>
 <translation id="8812180570908649670">{PASSWORD_COUNT,plural, =1{1 件のパスワードがこのデバイスのみに保存されています。他のデバイスで使用するには、Google アカウントに保存してください。保存時に重複する項目は整理されます。}other{{PASSWORD_COUNT} 件のパスワードがこのデバイスのみに保存されています。他のデバイスで使用するには、Google アカウントに保存してください。保存時に重複する項目は整理されます。}}</translation>
 <translation id="8813199641941291474">MIDI デバイスの操作と再プログラムがブロックされています</translation>
 <translation id="8813698869395535039"><ph name="USERNAME" /> にログインできません</translation>
@@ -11518,6 +11484,7 @@
 <translation id="8909298138148012791"><ph name="APP_NAME" /> のアンインストールが完了しました</translation>
 <translation id="8909833622202089127">サイトで現在地が追跡されています</translation>
 <translation id="8910222113987937043">ブックマーク、履歴、パスワードなどの設定に行った変更は Google アカウントと同期されなくなります。ただし、既存のデータは Google アカウントに保存され、<ph name="BEGIN_LINK" />Google ダッシュボード<ph name="END_LINK" />で管理できます。</translation>
+<translation id="8911478306361447917">機能と拡張機能のショートカット</translation>
 <translation id="8912362522468806198">Google アカウントを使用</translation>
 <translation id="8912810933860534797">自動スキャンを有効にする</translation>
 <translation id="8913485523736543337">アップデータ</translation>
@@ -11627,7 +11594,6 @@
 <translation id="8983018820925880511">この新しいプロフィールは <ph name="DOMAIN" /> によって管理されます。<ph name="BEGIN_LINK" />詳細<ph name="END_LINK" /></translation>
 <translation id="8983632908660087688"><ph name="ORIGIN" /> は「<ph name="FILENAME" />」を編集できます</translation>
 <translation id="8984694057134206124">あなたのデバイスは誰でも <ph name="MINUTES" /> 分間検出できるようになります。<ph name="LINK_BEGIN" />詳細<ph name="LINK_END" /></translation>
-<translation id="8985191021574400965">Chromebook 向け Steam へようこそ</translation>
 <translation id="8985264973231822211">最終同期: <ph name="DEVICE_LAST_ACTIVATED_TIME" /> 日前</translation>
 <translation id="8985561265504464578">検出しきい値</translation>
 <translation id="8985661493893822002">お使いの <ph name="DEVICE_TYPE" /> にログインするにはインターネットに接続してください。</translation>
@@ -11684,6 +11650,7 @@
 <translation id="9013037634206938463">Linux をインストールするには <ph name="INSTALL_SIZE" /> の空き容量が必要です。空き容量を増やすには、デバイスからファイルを削除してください。</translation>
 <translation id="9014206344398081366">ChromeVox チュートリアル</translation>
 <translation id="9014674417732091912">行 <ph name="ROW_NUMBER" /> に移動しました</translation>
+<translation id="9015849286924418538">タブをラベル付きの色分けされたグループに整理して、簡単にアクセスできます</translation>
 <translation id="901668144954885282">Google ドライブへのバックアップ</translation>
 <translation id="9016827136585652292">プライバシー画面の切り替え</translation>
 <translation id="90181708067259747">有効期限: <ph name="CARD" /></translation>
@@ -11758,7 +11725,6 @@
 <translation id="9058070466596314168">{NUM_NOTIFICATION,plural, =1{1 日あたり約 1 件の通知}other{1 日あたり約 {NUM_NOTIFICATION} 件の通知}}</translation>
 <translation id="9058760336383947367">プリンタの PPD を表示</translation>
 <translation id="9061521313218438086">一般に報告されているデータ侵害でパスワードが検出された場合、Google パスワード マネージャーによってログイン時にパスワードの変更を促すメッセージが表示されます。</translation>
-<translation id="9061694916020926968">Steam for Chromebook（ベータ版）を使用するには、Google アカウントにログインする必要があります。ログインしてから、もう一度お試しください。</translation>
 <translation id="9062468308252555888">14 倍</translation>
 <translation id="9062873887761404531">ナビゲーション ショートカットを消去</translation>
 <translation id="9063208415146866933"><ph name="ERROR_LINE_START" />～<ph name="ERROR_LINE_END" /> 行目にエラーがあります</translation>
@@ -11836,7 +11802,6 @@
 <translation id="9111102763498581341">ロック解除</translation>
 <translation id="9111305600911828693">ライセンスが設定されていません</translation>
 <translation id="9111330022786356709">マウスボタンの追加または指定</translation>
-<translation id="9111395131601239814"><ph name="NETWORKDEVICE" />: <ph name="STATUS" /></translation>
 <translation id="9111519254489533373">セーフ ブラウジングの設定に移動</translation>
 <translation id="9111668656364922873">新しいプロフィールへようこそ</translation>
 <translation id="9112517757103905964">このファイルには機密コンテンツが含まれているため、組織は削除することを推奨しています</translation>
@@ -11867,7 +11832,6 @@
 <translation id="9126149354162942022">カーソルの色</translation>
 <translation id="9128317794749765148">セットアップを完了できませんでした</translation>
 <translation id="9128335130883257666"><ph name="INPUT_METHOD_NAME" /> の設定ページを開く</translation>
-<translation id="9128870381267983090">ネットワークに接続する</translation>
 <translation id="9129562557082598582"><ph name="CERT_GROUP" /> をすべてエクスポート</translation>
 <translation id="9130015405878219958">入力されたモードが無効です。</translation>
 <translation id="9130135798965366513">続行すると、<ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> からこのサイトに<ph name="FIELDS_STRING" />が共有されます。このサイトの<ph name="BEGIN_LINK1" />プライバシー ポリシー<ph name="END_LINK1" />と<ph name="BEGIN_LINK2" />利用規約<ph name="END_LINK2" />をご確認ください。</translation>
@@ -12029,6 +11993,7 @@
 <translation id="950079950995628542">「<ph name="PHONE_NAME" />」から</translation>
 <translation id="950307215746360464">セットアップ ガイド</translation>
 <translation id="951273949038779544"><ph name="SITE_ACCESS" />。管理者によりインストールされました</translation>
+<translation id="95160010745047025">AI モードの作業を続きから再開</translation>
 <translation id="951991426597076286">同意しない</translation>
 <translation id="952137968828772361">画面に表示されている商品や場所、テキストの詳細を確認できます</translation>
 <translation id="952471655966876828">デバイスの電源がオンになったときや使用されているときは自動的に接続します</translation>

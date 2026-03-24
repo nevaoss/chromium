@@ -141,6 +141,7 @@ RecentActivityBubbleDialogViewInteractiveUiTest.*
 RelaunchRecommendedBubbleViewDialogTest.*
 RelaunchRequiredDialogViewDialogTest.*
 ReopenTabPromoControllerDialogBrowserTest.*
+ReportUnsafeSiteDialogInteractiveUiTest.ExcludeScreenshotPixelTest
 SafetyTipPageInfoBubbleViewDialogTest.*
 ScreenCaptureNotificationUiBrowserTest.*
 SearchEngineChoiceUIPixelTest.*
@@ -151,7 +152,8 @@ SettingsOverriddenExplicitChoiceDialogInteractiveUiTest.*
 *SharedPasswordsNotificationBubbleInteractiveUiTest.*
 SharedTabGroupInteractiveUiTest.SharedTabGroupIn*
 SingleBookmarkUploadDialogPixelTest.InvokeUi
-*SkillsPageInteractiveUITest*
+SearchAIModeSignInPromoViewPixelTest.*
+*SkillsPageScreenshotInteractiveUITest.*
 SplitTabButtonInteractiveTest.ButtonUpdatesOnSplit
 SyncConfirmationUIDialogPixelTest.*
 SyncConfirmationUIWindowPixelTest.*

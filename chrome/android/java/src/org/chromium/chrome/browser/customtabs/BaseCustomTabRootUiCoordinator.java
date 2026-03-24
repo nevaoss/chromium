@@ -291,7 +291,8 @@ public class BaseCustomTabRootUiCoordinator extends RootUiCoordinator {
                 ObservableSuppliers.createNonNull(Color.TRANSPARENT),
                 edgeToEdgeManager,
                 /* xrSpaceModeObservableSupplier= */ ObservableSuppliers.alwaysFalse(),
-                desktopWindowStateManager);
+                desktopWindowStateManager,
+                /* bottomBarHostManager= */ null);
         mCustomTabProvider = customTabProvider;
         mToolbarCoordinator = customTabToolbarCoordinator;
         mIntentDataProvider = intentDataProvider;
@@ -338,7 +339,7 @@ public class BaseCustomTabRootUiCoordinator extends RootUiCoordinator {
                     .addDelegate(browserControlsManager.getBrowserVisibilityDelegate());
         }
 
-        if (OpenInAppUtils.isOpenInAppAvailable()) {
+        if (OpenInAppUtils.isOpenInAppAvailable() && intentDataProvider.get().isOpenedByChrome()) {
             mOpenInAppEntryPoint =
                     new CustomTabOpenInAppEntryPoint(
                             mActivityTabProvider.asObservable(),

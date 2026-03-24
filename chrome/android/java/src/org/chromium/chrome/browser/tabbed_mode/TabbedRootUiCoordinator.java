@@ -200,6 +200,7 @@ import org.chromium.chrome.browser.toolbar.adaptive.AdaptiveToolbarBehavior;
 import org.chromium.chrome.browser.ui.RootUiCoordinator;
 import org.chromium.chrome.browser.ui.appmenu.AppMenuBlocker;
 import org.chromium.chrome.browser.ui.appmenu.AppMenuDelegate;
+import org.chromium.chrome.browser.ui.bottombar.BottomBarHostManager;
 import org.chromium.chrome.browser.ui.default_browser_promo.DefaultBrowserPromoUtils;
 import org.chromium.chrome.browser.ui.desktop_windowing.AppHeaderCoordinator;
 import org.chromium.chrome.browser.ui.desktop_windowing.AppHeaderUtils;
@@ -214,6 +215,7 @@ import org.chromium.chrome.browser.ui.side_panel_container.dev.SidePanelDevFeatu
 import org.chromium.chrome.browser.ui.side_panel_container.dev.SidePanelDevFeatureFactory;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinatorFactory;
+import org.chromium.chrome.browser.ui.side_ui.SideUiStateProvider;
 import org.chromium.chrome.browser.ui.signin.FullscreenSigninPromoLauncher;
 import org.chromium.chrome.browser.ui.system.StatusBarColorController.StatusBarColorProvider;
 import org.chromium.chrome.browser.webapps.PwaRestorePromoUtils;
@@ -328,6 +330,8 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
     private @Nullable SidePanelContainerCoordinator mSidePanelContainerCoordinator;
     private @Nullable SidePanelDevFeature mSidePanelDevFeature;
     private final OneshotSupplierImpl<Boolean> mTrackerInitializedOneshotSupplier =
+            new OneshotSupplierImpl<>();
+    private final OneshotSupplierImpl<SideUiStateProvider> mSideUiStateProviderSupplier =
             new OneshotSupplierImpl<>();
     private ContextualTasksBridge mContextualTasksBridge;
     private @Nullable ActorOverlayCoordinator mActorOverlayCoordinator;
@@ -491,7 +495,8 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
             EdgeToEdgeManager edgeToEdgeManager,
             MonotonicObservableSupplier<BookmarkManagerOpener> bookmarkManagerOpenerSupplier,
             NonNullObservableSupplier<Boolean> xrSpaceModeObservableSupplier,
-            OneshotSupplier<ChromeInactivityTracker> inactivityTrackerSupplier) {
+            OneshotSupplier<ChromeInactivityTracker> inactivityTrackerSupplier,
+            @Nullable BottomBarHostManager bottomBarHostManager) {
         super(
                 activity,
                 onOmniboxFocusChangedListener,
@@ -545,7 +550,8 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                         browserControlsManager,
                         insetObserver,
                         activityLifecycleDispatcher,
-                        multiInstanceManager));
+                        multiInstanceManager),
+                bottomBarHostManager);
         mInsetObserver = insetObserver;
         mBackButtonShouldCloseTabFn = backButtonShouldCloseTabFn;
         mSendToBackground = sendToBackground;
@@ -987,6 +993,12 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                             assumeNonNull(mSnackbarManagerSupplier.get()),
                             mLayoutManagerSupplier);
         }
+
+        if (ChromeFeatureList.sEnableAndroidSidePanel.isEnabled()) {
+            mCompositorViewHolderSupplier
+                    .get()
+                    .setSideUiStateProviderSupplier(mSideUiStateProviderSupplier);
+        }
     }
 
     @Override
@@ -1121,7 +1133,10 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         }
 
         if (ChromeFeatureList.isEnabled(ChromeFeatureList.CONTEXTUAL_TASKS)) {
-            mContextualTasksBridge = new ContextualTasksBridge();
+            mContextualTasksBridge =
+                    new ContextualTasksBridge(
+                            mProfileSupplier.get().getOriginalProfile(),
+                            mChromeAndroidTaskSupplier.get());
         }
 
         initiateTabBottomSheetManagers();
@@ -1293,7 +1308,6 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                         mActivity,
                         mWindowAndroid,
                         mAppMenuCoordinator,
-                        mActivityLifecycleDispatcher,
                         profile,
                         mActivityTabProvider.asObservable(),
                         mIsInOverviewModeSupplier,
@@ -1445,7 +1459,8 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         // before. The notifications toggle cannot enabled, or a testing param is enabled. The time
         // limit ensures that the promo only shows on a cold startup, defined as the app being
         // backgrounded by 4 hours or more and opening on an NTP to avoid clashes with other promos.
-        if (ChromeFeatureList.sAndroidTipsNotifications.isEnabled()) {
+        if (ChromeFeatureList.sAndroidTipsNotifications.isEnabled()
+                && TipsUtils.isSupportedDeviceType()) {
             TipsUtils.areTipsNotificationsEnabled(
                     (enabled) -> {
                         if ((!enabled
@@ -1874,7 +1889,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                             mProfileSupplier, mSidePanelContainerCoordinator, mWindowAndroid);
         }
 
-        mCompositorViewHolderSupplier.get().setSideUiStateProvider(mSideUiCoordinator);
+        mSideUiStateProviderSupplier.set(mSideUiCoordinator);
     }
 
     private void destroySideUi() {
@@ -2289,5 +2304,10 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                         mTrackerInitializedOneshotSupplier.set(true);
                     });
         }
+    }
+
+    /** Returns the {@link OneshotSupplier} for the {@link SideUiStateProvider}. */
+    public OneshotSupplier<SideUiStateProvider> getSideUiStateProviderSupplier() {
+        return mSideUiStateProviderSupplier;
     }
 }

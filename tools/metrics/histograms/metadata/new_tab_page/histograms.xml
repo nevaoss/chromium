@@ -726,7 +726,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="NewTabPage.CustomizeChromePromoEligibility"
-    enum="NTPCustomizeChromePromoEligibility" expires_after="2026-07-12">
+    enum="NTPCustomizeChromePromoEligibility" expires_after="2026-09-13">
   <owner>kbajkiewicz@google.com</owner>
   <owner>rsult@google.com</owner>
   <owner>chrome-signin-desktop-team@google.com</owner>
@@ -893,7 +893,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="NewTabPage.Footer.NoticeItem" enum="FooterNoticeItem"
-    expires_after="2026-07-12">
+    expires_after="2026-09-13">
   <owner>pauladedeji@google.com</owner>
   <owner>tiborg@chromium.org</owner>
   <owner>esalma@google.com</owner>
@@ -1850,7 +1850,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="NewTabPage.Modules.InfoButtonClicked" enum="NtpModules"
-    expires_after="2026-07-13">
+    expires_after="2026-09-13">
   <owner>pauladedeji@google.com</owner>
   <owner>danpeng@google.com</owner>
   <owner>chrome-desktop-ntp@google.com</owner>
@@ -2440,40 +2440,6 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="NewTabPage.SearchResumptionModule.NotShown"
-    enum="SearchResumptionModule.ModuleNotShownReason"
-    expires_after="2025-06-08">
-  <owner>hanxi@chromium.org</owner>
-  <owner>xinyiji@chromium.org</owner>
-  <summary>
-    Logs the reason why the search resumption module is enabled but not shown on
-    the NTP. Recorded when NewTabPage is created and the search resumption
-    module fails to show.
-  </summary>
-</histogram>
-
-<histogram name="NewTabPage.SearchResumptionModule.Show"
-    enum="SearchResumptionModule.ModuleShowStatus" expires_after="2025-06-08">
-  <owner>hanxi@chromium.org</owner>
-  <owner>xinyiji@chromium.org</owner>
-  <summary>
-    Logs whether the search resumption module is expanded or collapsed when the
-    module is shown on the NTP. Recorded when the NewTabPage is created and the
-    search resumption module is shown.
-  </summary>
-</histogram>
-
-<histogram name="NewTabPage.SearchResumptionModule.Show.Cached"
-    enum="SearchResumptionModule.ModuleShowStatus" expires_after="2025-06-08">
-  <owner>hanxi@chromium.org</owner>
-  <owner>xinyiji@chromium.org</owner>
-  <summary>
-    Logs whether the search resumption module is expanded or collapsed when the
-    module is shown on the NTP using cached results. Recorded when the
-    NewTabPage is created and the search resumption module is shown.
-  </summary>
-</histogram>
-
 <histogram name="NewTabPage.SuggestionsImpression{NewTabPageIconTypes}"
     enum="MostVisitedTileIndex" expires_after="2026-09-06">
   <owner>romanarora@chromium.org</owner>
@@ -2660,7 +2626,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="NewTabPage.ThreadsRail.Action" enum="NTPThreadsRailAction"
-    expires_after="2026-07-15">
+    expires_after="2026-09-13">
   <owner>romanarora@chromium.org</owner>
   <owner>chrome-desktop-ntp@google.com</owner>
   <summary>
@@ -2671,7 +2637,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="NewTabPage.ThreadsRail.Shown" enum="BooleanShown"
-    expires_after="2026-07-15">
+    expires_after="2026-09-13">
   <owner>romanarora@chromium.org</owner>
   <owner>chrome-desktop-ntp@google.com</owner>
   <summary>
@@ -2903,7 +2869,7 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="NewTabPage.Width" units="pixels" expires_after="2026-07-12">
+<histogram name="NewTabPage.Width" units="pixels" expires_after="2026-09-13">
   <owner>romanarora@chromium.org</owner>
   <owner>tiborg@chromium.org</owner>
   <owner>chrome-desktop-ntp@google.com</owner>

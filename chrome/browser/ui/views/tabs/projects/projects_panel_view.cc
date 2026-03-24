@@ -12,6 +12,7 @@
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/user_metrics.h"
 #include "base/task/single_thread_task_runner.h"
+#include "build/build_config.h"
 #include "chrome/app/vector_icons/vector_icons.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service_factory.h"
@@ -228,11 +229,14 @@ class STGTabsMenuModelWithCallback : public tab_groups::STGTabsMenuModel {
 };
 }  // namespace
 
-ProjectsPanelView::ProjectsPanelView(BrowserWindowInterface* browser,
-                                     actions::ActionItem* root_action_item)
+ProjectsPanelView::ProjectsPanelView(
+    BrowserWindowInterface* browser,
+    actions::ActionItem* root_action_item,
+    ProjectsPanelStateController* state_controller)
     : browser_(browser),
       root_action_item_(root_action_item),
       action_view_controller_(std::make_unique<views::ActionViewController>()),
+      state_controller_(state_controller),
       resize_animation_(this),
       focus_search_(std::make_unique<views::FocusSearch>(this,
                                                          /*cycle=*/true,
@@ -256,7 +260,7 @@ ProjectsPanelView::ProjectsPanelView(BrowserWindowInterface* browser,
 
   bool threads_enabled = tab_groups::IsThreadsInProjectsPanelEnabled();
   panel_controller_ = std::make_unique<ProjectsPanelController>(
-      browser_,
+      browser_, state_controller_,
       tab_groups::TabGroupSyncServiceFactory::GetForProfile(
           browser->GetProfile()),
       threads_enabled
@@ -383,31 +387,6 @@ ProjectsPanelView::ProjectsPanelView(BrowserWindowInterface* browser,
                                         kProjectsPanelRegionHorizontalMargins);
 
     threads_activity_menu_model_ = std::make_unique<ui::SimpleMenuModel>(this);
-    threads_activity_menu_model_->AddItemWithIcon(
-        kGeminiActivity,
-        l10n_util::GetStringUTF16(IDS_PROJECTS_PANEL_GEMINI_ACTIVITY),
-        ui::ImageModel::FromVectorIcon(
-            projects_panel::GetIconForThreadType(
-                contextual_tasks::ThreadType::kGemini),
-            ui::kColorIcon, kThreadsActivityMenuIconSize));
-    threads_activity_menu_model_->SetElementIdentifierAt(
-        threads_activity_menu_model_->GetItemCount() - 1,
-        kProjectsPanelThreadsActivityGeminiItemElementId);
-
-    threads_activity_menu_model_->AddItemWithIcon(
-        kAiModeActivity,
-        l10n_util::GetStringUTF16(IDS_PROJECTS_PANEL_AI_MODE_ACTIVITY),
-        ui::ImageModel::FromVectorIcon(
-            projects_panel::GetIconForThreadType(
-                contextual_tasks::ThreadType::kAiMode),
-            ui::kColorIcon, kThreadsActivityMenuIconSize));
-    threads_activity_menu_model_->SetElementIdentifierAt(
-        threads_activity_menu_model_->GetItemCount() - 1,
-        kProjectsPanelThreadsActivityAiModeItemElementId);
-
-    threads_activity_menu_runner_ = std::make_unique<views::MenuRunner>(
-        threads_activity_menu_model_.get(),
-        views::MenuRunner::CONTEXT_MENU | views::MenuRunner::IS_NESTED);
   }
 
   content_container_->SetLayoutManager(
@@ -627,6 +606,15 @@ views::View* ProjectsPanelView::GetFocusTraversableParentView() {
 }
 
 void ProjectsPanelView::AnimationProgressed(const gfx::Animation* animation) {
+#if BUILDFLAG(IS_MAC)
+  // On Mac, start fading in the close button when the panel has completed half
+  // of its opening animation. Similarly when closing, fade out the button until
+  // the panel has completed half of its closing animation.
+  if (controls_view_) {
+    const double value = animation->GetCurrentValue();
+    controls_view_->SetButtonOpacity(std::max(0.0, (value - 0.5) * 2.0));
+  }
+#endif
   InvalidateLayout();
 }
 
@@ -792,6 +780,37 @@ void ProjectsPanelView::OnThreadExpandButtonPressed() {
 }
 
 void ProjectsPanelView::OnThreadsActivityMenuButtonPressed() {
+  threads_activity_menu_model_->Clear();
+
+  if (state_controller_->CanShowGeminiThreads()) {
+    threads_activity_menu_model_->AddItemWithIcon(
+        kGeminiActivity,
+        l10n_util::GetStringUTF16(IDS_PROJECTS_PANEL_GEMINI_ACTIVITY),
+        ui::ImageModel::FromVectorIcon(
+            projects_panel::GetIconForThreadType(
+                contextual_tasks::ThreadType::kGemini),
+            ui::kColorIcon, kThreadsActivityMenuIconSize));
+    threads_activity_menu_model_->SetElementIdentifierAt(
+        threads_activity_menu_model_->GetItemCount() - 1,
+        kProjectsPanelThreadsActivityGeminiItemElementId);
+  }
+
+  if (state_controller_->CanShowAimThreads()) {
+    threads_activity_menu_model_->AddItemWithIcon(
+        kAiModeActivity,
+        l10n_util::GetStringUTF16(IDS_PROJECTS_PANEL_AI_MODE_ACTIVITY),
+        ui::ImageModel::FromVectorIcon(
+            projects_panel::GetIconForThreadType(
+                contextual_tasks::ThreadType::kAiMode),
+            ui::kColorIcon, kThreadsActivityMenuIconSize));
+    threads_activity_menu_model_->SetElementIdentifierAt(
+        threads_activity_menu_model_->GetItemCount() - 1,
+        kProjectsPanelThreadsActivityAiModeItemElementId);
+  }
+
+  threads_activity_menu_runner_ = std::make_unique<views::MenuRunner>(
+      threads_activity_menu_model_.get(),
+      views::MenuRunner::CONTEXT_MENU | views::MenuRunner::IS_NESTED);
   threads_activity_menu_runner_->RunMenuAt(
       GetWidget(), threads_activity_menu_button_->button_controller(),
       threads_activity_menu_button_->GetAnchorBoundsInScreen(),

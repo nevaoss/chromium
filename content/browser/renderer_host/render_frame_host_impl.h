@@ -3494,6 +3494,8 @@ class CONTENT_EXPORT RenderFrameHostImpl
   FRIEND_TEST_ALL_PREFIXES(SecurityExploitBrowserTest,
                            BindToWebUIFromWebViaMojo);
   FRIEND_TEST_ALL_PREFIXES(SecurityExploitBrowserTest,
+                           CreateNewWindowInvalidDisposition);
+  FRIEND_TEST_ALL_PREFIXES(SecurityExploitBrowserTest,
                            CreateNewWindowWithInaccessibleFile);
   FRIEND_TEST_ALL_PREFIXES(SecurityExploitBrowserTest,
                            WindowOpenDisallowedFromSandboxedFrame);

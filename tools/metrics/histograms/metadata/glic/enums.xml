@@ -162,6 +162,7 @@ chromium-metrics-reviews@google.com.
   <int value="3" label="Failure: CID too long"/>
   <int value="4" label="Failure: Target URL too long"/>
   <int value="5" label="Failure: No target URL"/>
+  <int value="6" label="Failure: Turn ID too long"/>
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/glic/glic_enums.h:GeminiNavigationCaptureResult) -->
@@ -848,6 +849,19 @@ chromium-metrics-reviews@google.com.
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/glic/public/context/glic_sharing_manager.h:GlicUnpinTrigger) -->
+
+<!-- LINT.IfChange(GlicWarmingPoolStatus) -->
+
+<enum name="GlicWarmingPoolStatus">
+  <int value="0" label="Hit: Container was pre-warmed."/>
+  <int value="1" label="Cold: Container was not pre-warmed (miss)."/>
+  <int value="2"
+      label="Expired: Container was pre-warmed but expired before use."/>
+  <int value="3"
+      label="Crashed: Container was pre-warmed but crashed before use."/>
+</enum>
+
+<!-- LINT.ThenChange(//chrome/browser/glic/host/glic_web_contents_warming_pool.h:GlicWarmingPoolStatus) -->
 
 <!-- LINT.IfChange(GlicWebClientMode) -->
 

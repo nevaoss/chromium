@@ -163,6 +163,7 @@ _CONFIG = [
             'base::span',
             'base::span(_with_nul)?_from_cstring',
             'base::Span(OrSize|Reader|Writer)',
+            'base::subtle::reinterpret_span',
             'base::StringPiece',
             'base::StrongAlias',
             'base::SubstringSetMatcher',
@@ -181,6 +182,7 @@ _CONFIG = [
             'base::ToString',
             'base::TrackEvent',
             'base::trace_event::.*',
+            'base::unchecked',
             'base::unexpected',
             'base::UnguessableToken',
             'base::UnguessableTokenHash',
@@ -1080,6 +1082,14 @@ _CONFIG = [
         ['third_party/blink/renderer/controller/oom_intervention_impl.cc'],
         'allowed': [
             'base::BindOnce',
+        ],
+    },
+    {
+        'paths': [
+            'third_party/blink/renderer/controller/memory_usage_monitor_posix.cc',
+        ],
+        'allowed': [
+            'base::StringToUint64',
         ],
     },
     {
@@ -2275,6 +2285,15 @@ _CONFIG = [
     },
     {
         'paths': [
+            'third_party/blink/renderer/modules/storage/cached_storage_area.cc',
+            'third_party/blink/renderer/modules/storage/cached_storage_area.h',
+        ],
+        'allowed': [
+            'absl::flat_hash_map',
+        ],
+    },
+    {
+        'paths': [
             'third_party/blink/renderer/modules/animationworklet/',
         ],
         'allowed': [
@@ -2788,6 +2807,15 @@ _CONFIG = [
     },
     {
         'paths': [
+            "third_party/blink/renderer/modules/ml/webnn/webnn_introspection_impl.cc",
+        ],
+        'allowed': [
+            'base::BindOnce',
+            'base::Unretained',
+        ]
+    },
+    {
+        'paths': [
             "third_party/blink/renderer/modules/ml/webnn/ml_graph_transform/utils/ml_graph_dump.h",
             "third_party/blink/renderer/modules/ml/webnn/ml_graph_transform/utils/ml_graph_dump.cc",
         ],
@@ -2918,16 +2946,6 @@ _CONFIG = [
             'GURL',
             'network::GetClientHintToPolicyFeatureMap',
             'network::PermissionsPolicy',
-        ]
-    },
-    {
-        # TODO(crbug.com/418169222): Remove this entry once the device
-        # bound session credentials origin trial is complete.
-        'paths': [
-            'third_party/blink/common/loader/throttling_url_loader.cc',
-        ],
-        'allowed': [
-            'mojom::OriginTrialFeature',
         ]
     },
     {

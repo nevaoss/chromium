@@ -132,7 +132,7 @@
   --cr-composebox-font-size: 16px;
   --expanded-border-radius: var(--composebox-border-radius);
   --input-bottom-spacing: 16px;
-  --text-input-left-spacing: 24px;
+  --text-input-inline-start-spacing: 20px;
   --text-input-top-spacing: 16px;
   --composebox-context-menu-entrypoint-button-color:
       var(--color-composebox-voice-lens-button);
@@ -229,7 +229,12 @@
 
 #composebox::part(input),
 #composebox::part(smart-compose) {
+  min-height: 48px;
   padding-inline-start: var(--g-input-left-spacing);
+}
+
+#composebox::part(context-menu-and-tools) {
+  min-height: var(--cr-icon-button-size);
 }
 
 #composebox::part(input)::placeholder {
@@ -239,6 +244,7 @@
 #composebox::part(context-menu-entrypoint-icon) {
   --cr-icon-button-fill-color: var(--composebox-context-menu-entrypoint-button-color);
   --cr-icon-button-icon-size: var(--icon-menu-icon-size);
+  --cr-icon-button-margin-start: 4px;
   --cr-icon-button-size: var(--icon-menu-button-size);
 }
 

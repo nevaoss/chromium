@@ -121,6 +121,9 @@ class WTF_EXPORT String {
 
   // Takes a printf format and args and prints into a String.
   // This function supports Latin-1 characters only.
+  // PRECONDITIONS: `format` must be compatible with subsequent args.
+  // Ideally, this would be UNSAFE_BUFFER_USAGE but there are too many
+  // callers at present to investigate.
   [[nodiscard]] PRINTF_FORMAT(1, 2) static String
       Format(const char* format, ...);
 
@@ -268,10 +271,6 @@ class WTF_EXPORT String {
       impl_ = impl_->Fill(c);
     }
   }
-
-  // Truncates the string to the given length. This function does nothing if
-  // `length` is greater than the string length.
-  void Truncate(size_type length);
 
   // [string.operations] --------------------------------------------
 

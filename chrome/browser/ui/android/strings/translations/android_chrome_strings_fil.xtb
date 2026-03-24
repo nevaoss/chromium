@@ -213,6 +213,7 @@ Ang taong may passphrase mo lang ang makakapagbasa ng iyong naka-encrypt na data
 <translation id="1900260903084164610">Sa pamamagitan ng pagpapatuloy, sumasang-ayon ka sa <ph name="BEGIN_TOS_LINK" />Mga Tuntunin ng Serbisyo<ph name="END_TOS_LINK" />.</translation>
 <translation id="1904580727789512086">Naka-save sa iyong Google Account ang mga URL na iyong binibisita</translation>
 <translation id="1910950723001426294">Nakasara ang listahan ng mga opsyon sa pagbabahagi.</translation>
+<translation id="1912367671208932516">Buksan ang extensions menu</translation>
 <translation id="191726024256261717">Suriin ang mga pahintulot</translation>
 <translation id="1917766536967060661">Mawawalan ka kaagad ng access sa grupo ng tab na “<ph name="GROUP_NAME" />,” at hindi na magagawa ni <ph name="BLOCKED_MEMBER_FULL_NAME" /> (<ph name="BLOCKED_MEMBER_EMAIL" />) na makipag-interact sa iyo sa mga serbisyo ng Google.</translation>
 <translation id="1919130412786645364">Pagayan ang pag-sign in sa Chrome</translation>
@@ -239,6 +240,7 @@ Ang taong may passphrase mo lang ang makakapagbasa ng iyong naka-encrypt na data
 <translation id="200114059308480249">Isama ang katabing text sa mga paghahanap sa Google?</translation>
 <translation id="2004096469149679223"><ph name="TAB_TITLE" />, Naka-pin at Naka-mute na Tab na Incognito</translation>
 <translation id="2021896219286479412">Control ng full screen sa site</translation>
+<translation id="2024195579772565064">I-delete ang search engine</translation>
 <translation id="2029669011553795746">Binuksan nang kalahati ang pag-opt in sa mga notification sa Mga Tip</translation>
 <translation id="2038563949887743358">I-on ang Hilingin ang site sa desktop</translation>
 <translation id="204321170514947529">May data rin ang <ph name="APP_NAME" /> sa Chrome</translation>
@@ -413,6 +415,7 @@ Ang taong may passphrase mo lang ang makakapagbasa ng iyong naka-encrypt na data
 <translation id="2789486458103222910">Okay</translation>
 <translation id="2791129728587938169">{NUM_PASSWORDS,plural, =1{Nakakita ang Chrome ng password na ginamit ulit na puwede mo pang palakasin}one{Nakakita ang Chrome ng # password na ginamit ulit na puwede mo pang palakasin}other{Nakakita ang Chrome ng # na password na ginamit ulit na puwede mo pang palakasin}}</translation>
 <translation id="2794551654724114396">I-on ang mga notification para sa mga kapaki-pakinabang na tip para matulungan kang masulit ang Chrome</translation>
+<translation id="2798977804328097977">Walang kahirap-hirap na magpatuloy sa anumang device</translation>
 <translation id="2805210243313393104">Makuha ang iyong mga bookmark at higit pa sa lahat ng device mo</translation>
 <translation id="2805756323405976993">Mga App</translation>
 <translation id="2819849308549746319">Mag-unsubscribe sa lahat</translation>
@@ -468,6 +471,7 @@ Ang taong may passphrase mo lang ang makakapagbasa ng iyong naka-encrypt na data
 <translation id="2977350910003566746">Ibinubukod-bukod ayon sa huling binuksan</translation>
 <translation id="297771753501244313">Ayon sa huling binuksan</translation>
 <translation id="2979639724566107830">Buksan ng bagong window</translation>
+<translation id="2980545254049127870">Madaling magbukas ng mga link mula sa mensahe, mga dokumento, at iba pang app</translation>
 <translation id="2983102365694924129">Batay sa iyong aktibidad sa isang site. Naka-off ang setting na ito.</translation>
 <translation id="2983398917942897288">Hindi Aktibo (<ph name="ITEM_COUNT" />)</translation>
 <translation id="2983835398644161987">Lumabas sa Picture in Picture</translation>
@@ -556,6 +560,7 @@ Ang taong may passphrase mo lang ang makakapagbasa ng iyong naka-encrypt na data
 <translation id="3384347053049321195">Magbahagi ng larawan</translation>
 <translation id="3387650086002190359">Hindi na-download ang <ph name="FILE_NAME" /> dahil sa mga error sa file system.</translation>
 <translation id="3414952576877147120">Laki:</translation>
+<translation id="3417835166382867856">Maghanap sa mga tab</translation>
 <translation id="3430670036890315772">Kapag in-off ang iyong lock ng profile, maaalis ang naka-save na impormasyon mo</translation>
 <translation id="3435465986463792564">Maraming window? Puwede mong pamahalaan ang mga ito mula rito</translation>
 <translation id="3435575784518354875">Para mapanatili ang access sa iyong mga password, i-export na ngayon ang mga ito, i-update ang Mga Serbisyo ng Google Play, at pagkatapos ay i-import ulit ang mga ito sa Google Password Manager. <ph name="BEGIN_LINK" />Tingnan ang mga kumpletong tagubilin<ph name="END_LINK" />.</translation>
@@ -728,6 +733,7 @@ Ang taong may passphrase mo lang ang makakapagbasa ng iyong naka-encrypt na data
 <translation id="4137746084635924146">Kasalukuyang wika ng device</translation>
 <translation id="414128724510021958">Hinihiling bilang default ang mga pang-desktop na site</translation>
 <translation id="4162867837470729563">Nakabukas nang buo ang taas ang listahan ng mga opsyon sa pagbabahagi.</translation>
+<translation id="4164642020717536140">Mabilis at secure na pag-browse sa web</translation>
 <translation id="4165077084524712774">Higit pang tool</translation>
 <translation id="4170011742729630528">Hindi available ang serbisyo; subukan ulit sa ibang pagkakataon.</translation>
 <translation id="4170577491341606575">Kinukuha ang iyong bagay-bagay\u2026</translation>
@@ -852,6 +858,7 @@ Maaaring may ibang uri ng history ng pag-browse ang iyong Google account tulad n
 <translation id="4640331037679501949">{NUM_PASSWORDS,plural, =1{1 nakompromisong password}one{# nakompromisong password}other{# na nakompromisong password}}</translation>
 <translation id="4641919525231168205">Pumunta sa susunod na page</translation>
 <translation id="4642472735733036929">Ihininto ang pagsubaybay sa presyo</translation>
+<translation id="4643661539340338954">Naka-on ang mga notification sa Chrome finds</translation>
 <translation id="4649493483932335039">Tingnan ang mga kamakailang tab</translation>
 <translation id="465657074423018424">Pinoprotektahan ka ng Ligtas na Pag-browse laban sa mga mapanlinlang na website. Kung io-off mo ito, maging mas maingat kapag nagba-browse, lalo na kapag maglalagay ng mga password.</translation>
 <translation id="4662373422909645029">Bawal numero sa nickname</translation>
@@ -1348,6 +1355,7 @@ Halimbawa, puwedeng tumugon ang ilang website sa kahilingang ito sa pamamagitan 
 <translation id="6593061639179217415">Desktop site</translation>
 <translation id="6594347733515723558">Mga pag-sort at pag-view</translation>
 <translation id="6595046016124923392">Ipinapadala sa Google ang mga larawan para mapahusay ang mga paglalarawan para sa iyo.</translation>
+<translation id="6602173570135186741">Autofill at mga password</translation>
 <translation id="661266467055912436">Pinapahusay ang seguridad para sa iyo at sa lahat ng tao sa web.</translation>
 <translation id="6621391692573306628">Para ipadala ang tab na ito sa ibang device, mag-sign in sa Chrome sa dalawang device</translation>
 <translation id="6627583120233659107">I-edit ang folder</translation>
@@ -1439,6 +1447,7 @@ Halimbawa, puwedeng tumugon ang ilang website sa kahilingang ito sa pamamagitan 
 <translation id="6896758677409633944">Copy</translation>
 <translation id="6898797562238201317">Gamitin ang iyong sariling passphrase para i-encrypt ang lahat ng data sa Chrome sa Google Account mo</translation>
 <translation id="6900532703269623216">Enhanced protection</translation>
+<translation id="6900654715912436255">Sigurado ka bang gusto mong i-delete ang search engine na ito?</translation>
 <translation id="6903907808598579934">I-on ang pag-sync</translation>
 <translation id="6906448540340261898">Tiyaking magagamit mo sa anumang oras ang mga password sa iyong Google Account</translation>
 <translation id="6908230663105268638">Pinapayagan ang mga notification para sa <ph name="SITE_NAME" /></translation>
@@ -1648,6 +1657,7 @@ Para baguhin ang setting na ito, <ph name="BEGIN_LINK" />i-delete ang data sa Ch
 <translation id="7686086654630106285">Higit pa tungkol sa mga ad na iminumungkahi ng site</translation>
 <translation id="7690596512217303514">Hindi mabuksan ng iyong device ang Chrome. Para ayusin ang isyu, i-download ang pinakabagong update sa Chrome sa iyong app store.</translation>
 <translation id="7692761875510935111">Mabilis na buksan sa browser. Para i-edit ang shortcut na ito, pindutin ito nang matagal.</translation>
+<translation id="7695270712963178084">Chrome finds</translation>
 <translation id="7697383401610880082">Handle sa pag-drag</translation>
 <translation id="7698359219371678927">Gumawa ng email sa <ph name="APP_NAME" /></translation>
 <translation id="7702420606070050505">Binuksan nang buo ang bottom sheet ng kamakailang aktibidad</translation>

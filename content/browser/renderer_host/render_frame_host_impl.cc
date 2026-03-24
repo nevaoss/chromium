@@ -4267,7 +4267,8 @@ void RenderFrameHostImpl::InitializePolicyContainerHost(
             network::mojom::WebSandboxFlags::kNone,
             /*is_credentialless=*/false,
             /*can_navigate_top_without_user_gesture=*/true,
-            parent_policies.cross_origin_isolation_enabled_by_dip)));
+            parent_policies.cross_origin_isolation_enabled_by_dip,
+            parent_policies.cross_origin_isolation_key_override)));
   } else if (owner_->GetOpener()) {
     // During a `window.open(...)` without `noopener`, a new popup is created
     // and always starts from the initial empty document. The opener has
@@ -10081,15 +10082,6 @@ void RenderFrameHostImpl::CreateNewWindow(
     return;
   }
 
-  // Filter out invalid UNKNOWN disposition to prevent renderer-triggered
-  // browser crashes.
-  if (params->disposition == WindowOpenDisposition::UNKNOWN) {
-    bad_message::ReceivedBadMessage(
-        GetProcess(), bad_message::RFH_CREATE_NEW_WINDOW_INVALID_DISPOSITION);
-    std::move(callback).Run(mojom::CreateNewWindowStatus::kBlocked, nullptr);
-    return;
-  }
-
   // Only top-most frames can open picture-in-picture windows.
   if (params->disposition == WindowOpenDisposition::NEW_PICTURE_IN_PICTURE &&
       !IsOutermostMainFrame()) {
@@ -14749,8 +14741,8 @@ void RenderFrameHostImpl::CreateCodeCacheHostWithKeys(
     const net::NetworkIsolationKey& nik,
     const blink::StorageKey& storage_key) {
   // Create a new CodeCacheHostImpl and bind it to the given receiver.
-  code_cache_host_receivers_.Add(GetProcess()->GetDeprecatedID(), nik,
-                                 storage_key, std::move(receiver),
+  code_cache_host_receivers_.Add(GetProcess()->GetID(), nik, storage_key,
+                                 std::move(receiver),
                                  GetCodeCacheHostReceiverHandler());
 }
 

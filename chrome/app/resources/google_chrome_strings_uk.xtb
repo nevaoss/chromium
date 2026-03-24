@@ -355,6 +355,7 @@ Google Chrome потрібен доступ до Bluetooth. <ph name="IDS_SERIAL
 <translation id="4756182432527369254">Прискорює роботу сайтів за допомогою системи V8 для Chrome, проте робить вебпереглядач трохи менш стійким до атак</translation>
 <translation id="479167709087336770">Використовується та сама технологія перевірки правопису, що й у Пошуку Google. Текст, який ви вводите у веб-переглядачі, надсилається в Google. Це завжди можна змінити в налаштуваннях.</translation>
 <translation id="4793679854893018356">Дізнайтесь, як Chrome дбає про вашу безпеку</translation>
+<translation id="4799870290441980300">Забезпечує найвищий рівень захисту в Chrome завдяки додатковим функціям</translation>
 <translation id="4828579605166583682">Google Chrome намагається замінити наявні паролі. Щоб дозволити це, введіть пароль Windows.</translation>
 <translation id="4842397268809523050">ОС Chrome Flex не змогла синхронізувати дані, оскільки ця функція недоступна для вашого домену.</translation>
 <translation id="4851866215237571846">Ви вже ввійшли в обліковий запис <ph name="EXISTING_USER" />.  Щоб переглядати вебсторінки окремо, увійдіть у свій профіль у Chrome як <ph name="USER_EMAIL_ADDRESS" />.</translation>
@@ -607,6 +608,7 @@ Google Chrome потрібен доступ до Bluetooth. <ph name="IDS_SERIAL
 <translation id="7308322188646931570">Chrome потрібен доступ до пам’яті, щоб завантажувати файли</translation>
 <translation id="7339898014177206373">Нове вікно</translation>
 <translation id="7352651011704765696">Виникли проблеми</translation>
+<translation id="73786666777299047">Відкрити Веб-магазин Chrome</translation>
 <translation id="7386878009611068389">Щоб користуватися безпечнішими налаштуваннями, які вибрали твої батьки, перейди в профіль Chrome, у який уже виконано вхід за допомогою електронної адреси <ph name="USER_EMAIL_ADDRESS" /></translation>
 <translation id="7398801000654795464">Ви ввійшли в Chrome як <ph name="USER_EMAIL_ADDRESS" />. Скористайтеся тим самим обліковим записом, щоб увійти знову.</translation>
 <translation id="7412494426921990001">Натисніть значок меню Chrome</translation>

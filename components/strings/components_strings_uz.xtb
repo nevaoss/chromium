@@ -608,6 +608,7 @@ Aks holda bu maxfiylik sozlamalaringiz tomonidan bloklanadi. Bunda siz ochgan sa
 <translation id="1960664692890490165">Chrome orqali kartasiz xarid qilish vaqtida Pix tanlovi chiqsin</translation>
 <translation id="196146181975453736">Tezroq toʻlash uchun bir martalik xavfsizlik tekshiruvini bajaring</translation>
 <translation id="1962204205936693436"><ph name="DOMAIN" /> xatcho‘plari</translation>
+<translation id="1966259577349514951">Hoziroq toʻlash</translation>
 <translation id="1973335181906896915">Seriyalashtirish amali bajarilmadi</translation>
 <translation id="1973785048533660168">Kanselyariya va administrativ vakansiyalar</translation>
 <translation id="1974060860693918893">Qo‘shimcha</translation>
@@ -752,6 +753,7 @@ Aks holda bu maxfiylik sozlamalaringiz tomonidan bloklanadi. Bunda siz ochgan sa
 <translation id="2184405333245229118">{COUNT,plural, =1{1 ta manzil}other{# ta manzil}}</translation>
 <translation id="2188375229972301266">Quyidan bir nechta teshik ochish</translation>
 <translation id="218940509700321686">Vergul bilan ajratilgan qiymatlar (CSV)</translation>
+<translation id="2190094353033916816">Bu siyosatda kompyuter va foydalanuvchi darajalari uchun turli qiymatlar belgilangan. Siyosat kutilganidek ishlayapti.</translation>
 <translation id="2191980191135734720">Keyingi ekranda ekranni qulfdan chiqaring, odatda barmoq izi ishlatiladi. Yana bajarish mumkin: <ph name="LINK_TEXT" />.</translation>
 <translation id="2194856509914051091">Bularni hisobga olish kerak</translation>
 <translation id="2198183835992354675">Tanish sayohatchi raqami (KTN)</translation>
@@ -1085,6 +1087,7 @@ Aks holda bu maxfiylik sozlamalaringiz tomonidan bloklanadi. Bunda siz ochgan sa
 <translation id="2696385693639654606">Chrome Enterprise Core brauzer qoidalarini, ilova va kengaytmalarni bulut orqali boshqarish imkonini beradi</translation>
 <translation id="2697248912349197812"><ph name="KEYWORD_SHORT_NAME" />dan soʻrash</translation>
 <translation id="2699273987028089219">Quyi menyusi mavjud. Qoʻshimcha parametrlarni ochish uchun <ph name="SHORTCUT" />ni bosing.</translation>
+<translation id="2700335762333112350">Keyinroq toʻlash</translation>
 <translation id="2701514975700770343">Orqa tomonida</translation>
 <translation id="2702592986366989640">Past narxdagi variant</translation>
 <translation id="2702801445560668637">Mutolaa ro‘yxati</translation>
@@ -1367,6 +1370,7 @@ Keyinroq toʻlash usullarini berkitish uchun <ph name="BEGIN_LINK" />toʻlov soz
 <translation id="3156511682997763015">10 soniya oldinga</translation>
 <translation id="3157931365184549694">Qayta tiklash</translation>
 <translation id="3158539265159265653">Disk</translation>
+<translation id="3159556963589020896">Pro</translation>
 <translation id="3162070126914310576">Bu qurilmani hozir qayd qilish imkonsiz, chunki tashkilot boʻlinmasi qayd qilishning boshlangʻich limitiga yetdi. Yordam olish uchun administratoringizga murojaat qiling.</translation>
 <translation id="3162559335345991374">Siz ulangan Wi-Fi tarmog‘i tizimga kirishingizni talab qilishi mumkin.</translation>
 <translation id="316638481603975524">Veb ilovalarni oʻrnatish uchun ruxsat soʻrashi mumkin</translation>
@@ -3185,6 +3189,7 @@ Keyinroq toʻlash usullarini berkitish uchun <ph name="BEGIN_LINK" />toʻlov soz
 <translation id="6042308850641462728">Yana</translation>
 <translation id="6043357981274314628">Tayyor!</translation>
 <translation id="6045164183059402045">Boshlangʻich chiziqlar andozasi</translation>
+<translation id="6046026831939367176"><ph name="URL" /> taxminiy joylashuvingizdan foydalanmoqchi</translation>
 <translation id="6046892054959167494"><ph name="SEARCH_AGGREGATOR_SHORT_NAME" /> orqali qidirish yoki savol berish uchun <ph name="SEARCH_AGGREGATOR_KEYWORD" /> deb yozing</translation>
 <translation id="6047927260846328439">Bu kontent zararli dastur o‘rnatishga yoki shaxsiy ma’lumotlaringizni o‘g‘irlashga urinishi mumkin. <ph name="BEGIN_LINK" />Baribir ko‘rsatilsin<ph name="END_LINK" /></translation>
 <translation id="6049056807983403918">Envelope B4</translation>
@@ -3633,7 +3638,6 @@ Keyinroq toʻlash usullarini berkitish uchun <ph name="BEGIN_LINK" />toʻlov soz
 <translation id="6727094998759448074">SRA4</translation>
 <translation id="6732087373923685049">kamera</translation>
 <translation id="6734506549556896534">Simulyatorlar</translation>
-<translation id="6735589846038045679">Toʻlov tariflari muvofiqlik asosida taqdim etiladi. <ph name="BEGIN_BOLD" />Ushbu variantlarni taklif qilish uchun hisob-kitob sahifasidagi kontent Googlega yuboriladi.<ph name="END_BOLD" /> Keyinroq toʻlash usullarini berkitish uchun <ph name="BEGIN_LINK" />toʻlov sozlamalarini<ph name="END_LINK" /> oching</translation>
 <translation id="6737708609449480586">Pishiriqlar</translation>
 <translation id="6738516213925468394">Maʼlumotlaringiz <ph name="TIME" /> sanasida <ph name="BEGIN_LINK" />kodli ibora<ph name="END_LINK" /> bilan shifrlangan. Sinxronizatsiyani boshlash uchun uni kiriting.</translation>
 <translation id="6740851646645036700">Matn yordamchisidan foydalanish kunlik limitiga yetdi. Keyinroq qayta urining.</translation>
@@ -4982,6 +4986,7 @@ Batafsil axborot:
 <translation id="8870700989640064057">Maxfiy fayl chop etilsinmi?</translation>
 <translation id="8871485335898060555">Antiqa buyumlar va toʻplamlar</translation>
 <translation id="8871553383647848643">Brauzer koʻrinishini moslash</translation>
+<translation id="887350038812854047">Bu siyosatda kompyuter va foydalanuvchi darajalari uchun bir xil qiymat belgilangan. Siyosat kutilganidek ishlayapti.</translation>
 <translation id="8874790741333031443">Tashqi cookie fayllarga vaqtincha ruxsat bering, bunda himoya pasayadi, lekin sayt funksiyalari kutilganidek ishlaydi.</translation>
 <translation id="8874824191258364635">Karta raqamini xatosiz kiriting</translation>
 <translation id="8877780815363510165">Baliq ovi</translation>

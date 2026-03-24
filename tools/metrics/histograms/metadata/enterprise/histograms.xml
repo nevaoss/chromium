@@ -653,6 +653,16 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Enterprise.CloudReportingReportGenerationError"
+    enum="EnterpriseCloudReportingReportGenerationError"
+    expires_after="2027-03-13">
+  <owner>hmare@google.com</owner>
+  <owner>cbe-eng@google.com</owner>
+  <summary>
+    The error status of an enterprise cloud report generation attempt.
+  </summary>
+</histogram>
+
 <histogram name="Enterprise.CloudReportingRequestCount" units="requests"
     expires_after="2026-12-01">
   <owner>zmin@chromium.org</owner>
@@ -2582,7 +2592,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Enterprise.File{Operation}Obfuscation.{Action}"
-    enum="EnterpriseObfuscationError" expires_after="2026-07-12">
+    enum="EnterpriseObfuscationError" expires_after="2026-09-13">
   <owner>haihan@google.com</owner>
   <owner>domfc@chromium.org</owner>
   <owner>thelex@google.com</owner>
@@ -2708,7 +2718,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Enterprise.InvalidDevicePolicyFilesStatus"
-    enum="InvalidDevicePolicyFilesStatus" expires_after="2026-07-12">
+    enum="InvalidDevicePolicyFilesStatus" expires_after="2026-09-13">
   <owner>emaxx@chromium.org</owner>
   <owner>igorcov@chromium.org</owner>
   <owner>vsavu@google.com</owner>
@@ -2750,7 +2760,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Enterprise.KeySignatureVerification"
-    enum="EnterpriseKeySignatureVerification" expires_after="2026-07-10">
+    enum="EnterpriseKeySignatureVerification" expires_after="2026-09-13">
   <owner>igorcov@chromium.org</owner>
   <owner>emaxx@chromium.org</owner>
   <owner>chromeos-commercial-remote-management@google.com</owner>

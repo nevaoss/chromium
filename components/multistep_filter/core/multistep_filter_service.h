@@ -6,11 +6,12 @@
 #define COMPONENTS_MULTISTEP_FILTER_CORE_MULTISTEP_FILTER_SERVICE_H_
 
 #include <memory>
+#include <optional>
 
-#include "base/functional/callback.h"
+#include "base/functional/callback_forward.h"
+#include "base/memory/raw_ptr.h"
 #include "components/keyed_service/core/keyed_service.h"
 #include "components/multistep_filter/core/data_models/url_filter_suggestion.h"
-#include "components/multistep_filter/core/suggestion/filter_suggestion_generator.h"
 
 class GURL;
 
@@ -19,6 +20,11 @@ class IdentityManager;
 }
 
 namespace multistep_filter {
+
+class AnnotationIndexClient;
+class FilterExtractor;
+class FilterStore;
+class FilterSuggestionGenerator;
 
 // Service to orchestrate Multistep Filter.
 //
@@ -29,6 +35,9 @@ namespace multistep_filter {
 class MultistepFilterService : public KeyedService {
  public:
   MultistepFilterService(
+      std::unique_ptr<AnnotationIndexClient> annotation_index_client,
+      std::unique_ptr<FilterStore> filter_store,
+      std::unique_ptr<FilterExtractor> filter_extractor,
       std::unique_ptr<FilterSuggestionGenerator> filter_suggestion_generator,
       signin::IdentityManager* identity_manager);
   MultistepFilterService(const MultistepFilterService&) = delete;
@@ -36,18 +45,37 @@ class MultistepFilterService : public KeyedService {
 
   ~MultistepFilterService() override;
 
+  // Parses the given url to extract a `FilterAnnotation`. A filter annotation
+  // is a set of normalized filter attributes.
+  virtual void ExtractAnnotation(const GURL& url);
+
   // Generates a filter suggestion for `url`. Based on URL analysis, the
   // suggestion may be stored for later use. Returns the result via `callback`.
   virtual void GenerateFilterSuggestions(
       const GURL& url,
       base::OnceCallback<void(std::optional<UrlFilterSuggestion>)> callback);
 
-  FilterSuggestionGenerator* filter_suggestion_generator() {
-    return filter_suggestion_generator_.get();
-  }
-
  private:
+  // Returns true if the user is currently signed in. The Multistep Filter
+  // feature is only available for signed-in users.
+  bool IsUserSignedIn() const;
+
+  // Client used to interact with the `SiteAutomationIndexServer` on the server
+  // side.
+  std::unique_ptr<AnnotationIndexClient> annotation_index_client_;
+
+  // Provides access to the underlying database that persists the user's
+  // filter suggestions.
+  std::unique_ptr<FilterStore> filter_store_;
+
+  // Extracts filter annotations from URLs and stores them. Never null.
+  std::unique_ptr<FilterExtractor> filter_extractor_;
+
+  // Responsible for generating filter suggestions.
   std::unique_ptr<FilterSuggestionGenerator> filter_suggestion_generator_;
+
+  // Used to check if the user is signed in, as the feature is only available
+  // for signed-in users.
   const raw_ptr<signin::IdentityManager> identity_manager_;
 };
 

@@ -31,30 +31,6 @@ class PdfInkUndoRedoModel {
     kRemove,
   };
 
-  // Set of IDs to add/remove. There are multiple types of IDs:
-  // - `InkStrokeId` is for strokes that are first drawn, and maybe removed
-  //   later.
-  // - `InkModeledShapeId` is for modeled shapes that are pre-existing and can
-  //   be removed.
-  using IdType = std::variant<InkStrokeId, InkModeledShapeId>;
-
-  // Used to enforce adding IDs in increasing order.
-  struct IdTypeComparator {
-    bool operator()(const IdType& lhs, const IdType& rhs) const {
-      const size_t lhs_value = GetValue(lhs);
-      const size_t rhs_value = GetValue(rhs);
-      if (lhs_value != rhs_value) {
-        return lhs_value < rhs_value;
-      }
-      return lhs.index() < rhs.index();
-    }
-
-   private:
-    static size_t GetValue(const IdType& id) {
-      return std::visit([](const auto& v) { return v.value(); }, id);
-    }
-  };
-
   using IdSet = std::set<IdType, IdTypeComparator>;
   using AddCommands = base::StrongAlias<class AddCommandsTag, IdSet>;
   using RemoveCommands = base::StrongAlias<class RemoveCommandsTag, IdSet>;
@@ -85,11 +61,9 @@ class PdfInkUndoRedoModel {
   // all elements with the same ID or larger IDs can be discarded. This does not
   // return `InkModeledShapeId`, because model shapes are pre-existing and
   // cannot be discarded.
-  // TODO(crbug.com/408976048): Use a different ID type to support text
-  // annotations.
   // Must be called before Add().
   // Must not be called while another add/remove has been started.
-  [[nodiscard]] base::expected<std::optional<InkStrokeId>, std::monostate>
+  [[nodiscard]] base::expected<std::optional<IdType>, std::monostate>
   StartAdd();
   // Records adding an annotation identified by `id`.
   // Must be called between StartAdd() and FinishAdd().
@@ -108,11 +82,9 @@ class PdfInkUndoRedoModel {
   // all elements with the same ID or larger IDs can be discarded. This does not
   // return `InkModeledShapeId`, because model shapes are pre-existing and
   // cannot be discarded.
-  // TODO(crbug.com/408976048): Use a different ID type to support text
-  // annotations.
   // Must be called before Remove().
   // Must not be called while another add/remove has been started.
-  [[nodiscard]] base::expected<std::optional<InkStrokeId>, std::monostate>
+  [[nodiscard]] base::expected<std::optional<IdType>, std::monostate>
   StartRemove();
   // Records erasing an annotation identified by `id`.
   // Must be called between StartRemove() and FinishRemove().
@@ -138,7 +110,7 @@ class PdfInkUndoRedoModel {
 
  private:
   template <typename T>
-  base::expected<std::optional<InkStrokeId>, std::monostate> StartImpl();
+  base::expected<std::optional<IdType>, std::monostate> StartImpl();
 
   bool IsAtTopOfStackWithGivenCommandType(CommandsType type) const;
   bool HasIdInAddCommands(IdType id) const;

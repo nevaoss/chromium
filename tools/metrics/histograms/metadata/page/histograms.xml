@@ -309,6 +309,7 @@ chromium-metrics-reviews@google.com.
   <variant name=".account-migration-welcome"/>
   <variant name=".actor-overlay"/>
   <variant name=".add-supervision"/>
+  <variant name=".ai-overlay-dialog"/>
   <variant name=".app-disabled"/>
   <variant name=".app-install-dialog"/>
   <variant name=".app-service-internals"/>
@@ -554,7 +555,6 @@ chromium-metrics-reviews@google.com.
   <variant name=".ShoppingInsightsSidePanel"/>
   <variant name=".TabSearch"/>
   <variant name=".UserEducation"/>
-  <variant name=".UserNotesSidePanel"/>
 </variants>
 
 <!-- LINT.ThenChange(//tools/metrics/histograms/metadata/ui/histograms.xml:TopChromeWebUIName) -->
@@ -750,7 +750,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.BackForwardCache.Event"
-    enum="PageLoadBackForwardCacheEvent" expires_after="2026-07-12">
+    enum="PageLoadBackForwardCacheEvent" expires_after="2026-09-13">
   <owner>bmcquade@chromium.org</owner>
   <owner>hajimehoshi@chromium.org</owner>
   <summary>
@@ -1907,7 +1907,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="PageLoad.Clients.GoogleSearch.NavigationTiming.InitializeStreamDelay"
-    units="ms" expires_after="2026-07-12">
+    units="ms" expires_after="2026-09-13">
   <owner>hayato@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
   <improvement direction="LOWER_IS_BETTER"/>

@@ -11,9 +11,10 @@
 #include "ash/shell_observer.h"
 #include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
+#include "base/types/optional_ref.h"
 #include "chromeos/crosapi/mojom/cros_display_config.mojom.h"
 #include "extensions/browser/display_info_provider_base.h"
-#include "mojo/public/cpp/bindings/associated_receiver.h"
+#include "ui/display/manager/touch_device_manager.h"
 
 namespace ash {
 class Shell;
@@ -38,14 +39,13 @@ class DisplayInfoProviderChromeOS : public DisplayInfoProviderBase,
       const std::string& display_id,
       const api::system_display::DisplayProperties& properties,
       ErrorCallback callback) override;
-  void SetDisplayLayout(const DisplayLayoutList& layouts,
-                        ErrorCallback callback) override;
+  base::expected<void, std::string> SetDisplayLayout(
+      const DisplayLayoutList& layouts) override;
   void EnableUnifiedDesktop(bool enable) override;
   void GetAllDisplaysInfo(
       bool single_unified,
       base::OnceCallback<void(DisplayUnitInfoList result)> callback) override;
-  void GetDisplayLayout(
-      base::OnceCallback<void(DisplayLayoutList result)> callback) override;
+  DisplayLayoutList GetDisplayLayout() override;
   bool OverscanCalibrationStart(const std::string& id) override;
   bool OverscanCalibrationAdjust(
       const std::string& id,
@@ -71,22 +71,11 @@ class DisplayInfoProviderChromeOS : public DisplayInfoProviderBase,
   void OnDisplayConfigChanged() override;
 
  private:
-  void CallSetDisplayLayoutInfo(
-      crosapi::mojom::DisplayLayoutInfoPtr layout_info,
-      ErrorCallback callback,
-      crosapi::mojom::DisplayLayoutInfoPtr cur_info);
-  void CallGetDisplayUnitInfoList(
-      bool single_unified,
-      base::OnceCallback<void(DisplayUnitInfoList result)> callback,
-      crosapi::mojom::DisplayLayoutInfoPtr layout);
-  void OnGetDisplayUnitInfoList(
-      crosapi::mojom::DisplayLayoutInfoPtr layout,
-      base::OnceCallback<void(DisplayUnitInfoList)> callback,
-      std::vector<crosapi::mojom::DisplayUnitInfoPtr> info_list);
-  void CallTouchCalibration(const std::string& id,
-                            crosapi::mojom::DisplayConfigOperation op,
-                            crosapi::mojom::TouchCalibrationPtr calibration,
-                            ErrorCallback callback);
+  void CallTouchCalibration(
+      const std::string& id,
+      crosapi::mojom::DisplayConfigOperation op,
+      base::optional_ref<const display::TouchCalibrationData> calibration,
+      ErrorCallback callback);
 
   raw_ptr<ash::CrosDisplayConfig> cros_display_config_;
   base::ScopedObservation<ash::Shell, ash::ShellObserver> shell_observation_{

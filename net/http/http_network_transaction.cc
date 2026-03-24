@@ -12,6 +12,7 @@
 
 #include "base/base64url.h"
 #include "base/compiler_specific.h"
+#include "base/debug/dump_without_crashing.h"
 #include "base/feature_list.h"
 #include "base/format_macros.h"
 #include "base/functional/bind.h"
@@ -731,6 +732,10 @@ bool HttpNetworkTransaction::GetLoadTimingInfo(
 
 void HttpNetworkTransaction::PopulateLoadTimingInternalInfo(
     LoadTimingInternalInfo* load_timing_internal_info) const {
+  if (stream_) {
+    stream_->PopulateLoadTimingInternalInfo(load_timing_internal_info);
+  }
+
   if (!create_stream_start_time_.is_null() &&
       !create_stream_end_time_.is_null()) {
     CHECK_LE(create_stream_start_time_, create_stream_end_time_);
@@ -2089,9 +2094,10 @@ int HttpNetworkTransaction::HandleIOError(int error) {
       if (ShouldResendRequest()) {
         if (retry_attempts_on_connection_errors_ >=
             kMaxRetryAttemptsOnConnectionErrors) {
-          NOTREACHED() << "Failed after "
-                       << retry_attempts_on_connection_errors_
-                       << " retry attempts for connection errors.";
+          base::UmaHistogramBoolean(
+              "Net.NetworkTransaction.TooManyRetriesOnConnectionErrors", true);
+          base::debug::DumpWithoutCrashing();
+          return ERR_TOO_MANY_RETRIES;
         }
         retry_attempts_on_connection_errors_++;
         net_log_.AddEventWithNetErrorCode(

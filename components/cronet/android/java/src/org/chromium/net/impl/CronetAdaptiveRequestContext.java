@@ -5,10 +5,12 @@
 package org.chromium.net.impl;
 
 import android.content.Context;
+import android.net.Network;
 
 import androidx.annotation.VisibleForTesting;
 
 import org.chromium.base.metrics.ScopedSysTraceEvent;
+import org.chromium.net.ConnectivityManagerWrapper;
 import org.chromium.net.httpflags.ResolvedFlags;
 
 import java.net.URI;
@@ -32,6 +34,7 @@ final class CronetAdaptiveRequestContext {
     private final String[] mAdaptiveNetworkHosts;
     private final Set<String> mAdaptiveNetworkPaths;
     private final AtomicReference<ScheduledExecutorService> mExecutor = new AtomicReference<>(null);
+    private ConnectivityManagerWrapper mConnectivityManagerWrapper;
 
     public CronetAdaptiveRequestContext(Context context) {
         Map<String, ResolvedFlags.Value> flags =
@@ -61,6 +64,7 @@ final class CronetAdaptiveRequestContext {
                 }
             }
         }
+        mConnectivityManagerWrapper = new ConnectivityManagerWrapper(context);
     }
 
     ScheduledExecutorService getOrCreateScheduledExecutor() {
@@ -82,5 +86,24 @@ final class CronetAdaptiveRequestContext {
             }
             return false;
         }
+    }
+
+    /**
+     * Returns an alternative network, or {@link CronetUrlRequestContext#DEFAULT_NETWORK_HANDLE} if
+     * none is available.
+     */
+    public long computeAlternativeNetwork() {
+        Network[] networks =
+                mConnectivityManagerWrapper.getAllNetworks(
+                        mConnectivityManagerWrapper.getDefaultNetwork());
+        if (networks.length > 0) {
+            return networks[0].getNetworkHandle();
+        }
+        return CronetEngineBase.DEFAULT_NETWORK_HANDLE;
+    }
+
+    void setConnectivityManagerWrapperForTest(
+            ConnectivityManagerWrapper connectivityManagerWrapper) {
+        mConnectivityManagerWrapper = connectivityManagerWrapper;
     }
 }

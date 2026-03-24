@@ -28,7 +28,6 @@
 #include "third_party/blink/renderer/core/layout/layout_input_node.h"
 #include "third_party/blink/renderer/core/layout/length_utils.h"
 #include "third_party/blink/renderer/core/layout/logical_box_fragment.h"
-#include "third_party/blink/renderer/core/layout/logical_fragment.h"
 #include "third_party/blink/renderer/core/layout/physical_box_fragment.h"
 #include "third_party/blink/renderer/core/layout/space_utils.h"
 #include "third_party/blink/renderer/core/layout/table/table_node.h"
@@ -1075,8 +1074,7 @@ void FlexLayoutAlgorithm::ConstructAndAppendFlexItems(
         // being greater than the specified-size.
         //
         // We'll never shrink a flex-item under the conditions specified below.
-        if (RuntimeEnabledFeatures::LayoutFlexCacheFixEnabled() &&
-            min_length_in_main_axis.IsAuto() &&
+        if (min_length_in_main_axis.IsAuto() &&
             specified_size_suggestion <= base_border_size) {
           // If flex-shrink is zero we can't shrink.
           if (flex_shrink == 0.f) {
@@ -2928,7 +2926,10 @@ MinMaxSizesResult FlexLayoutAlgorithm::ComputeMinMaxSizes(
     return ComputeMinMaxSizeOfMultilineColumnContainer();
   }
 
-  // Calculate for non-wrappable column items.
+  // Calculate for non-wrappable column items. Although the
+  // ComputeMinMaxSizeOfMultilineColumnContainer() machinery would be fully
+  // capable of handling this scenario as well, we have a fast-path for
+  // performance reasons. See crrev.com/c/7661041
   MinMaxSizes sizes;
   bool depends_on_block_constraints = false;
 

@@ -105,7 +105,8 @@ void FedCmAccountSelectionView::OnPageActionClicked() {
   }
 
   bool is_returning = accounts_.size() == 1u &&
-                      accounts_[0]->browser_trusted_login_state ==
+                      accounts_[0]->idp_claimed_login_state.value_or(
+                          accounts_[0]->browser_trusted_login_state) ==
                           content::IdentityRequestAccount::LoginState::kSignIn;
 
   auto* features = tab_->GetTabFeatures();
@@ -139,15 +140,13 @@ void FedCmAccountSelectionView::OnPageActionClicked() {
 
     // If the anchored message is still showing, we immediately trigger the
     // account selection.
+    controller->Hide(kActionFederation);
+    controller->HideAnchoredMessage(kActionFederation);
     state_ = State::VERIFYING;
     NotifyDelegateOfAccountSelection(*accounts_[0], *idp_list_[0]);
   } else {
     // For sign-up users, we show a full modal dialog that gathers the necessary
     // permission from the user (e.g. privacy policies and terms of services).
-    // We also hide the expanded suggestion chip (showing the
-    // "Sign up with idp.com") but keep the page action icon (with the user's
-    // profile picture) in the omnibox.
-    controller->HideSuggestionChip(kActionFederation);
     Show(*rp_data_, idp_list_, accounts_, blink::mojom::RpMode::kActive,
          new_accounts_);
   }
@@ -1440,7 +1439,8 @@ bool FedCmAccountSelectionView::ShowPageAction(
     return false;
   }
 
-  bool is_returning = accounts[0]->browser_trusted_login_state ==
+  bool is_returning = accounts[0]->idp_claimed_login_state.value_or(
+                          accounts[0]->browser_trusted_login_state) ==
                       content::IdentityRequestAccount::LoginState::kSignIn;
 
   std::u16string idp_name = base::UTF8ToUTF16(idp_list[0]->idp_for_display);

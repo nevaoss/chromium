@@ -633,13 +633,11 @@ bool WasEmailOverrideAppliedOnSuggestions(
 // Triggers the possible import of submitted data at submission time.
 void MaybeImportFromSubmittedForm(AutofillClient& client,
                                   ukm::SourceId ukm_source_id,
-                                  const FormStructure& form_structure,
-                                  const FormData& form_data) {
+                                  const FormStructure& form_structure) {
   // This intentionally happens prior to `ImportAndProcessFormData()`. See
   // crbug.com/381205586.
   ProfileTokenQuality::SaveObservationsForFilledFormForAllSubmittedProfiles(
-      form_structure, form_data,
-      client.GetPersonalDataManager().address_data_manager());
+      form_structure, client.GetPersonalDataManager().address_data_manager());
 
   AutofillAiManager* const ai_manager = client.GetAutofillAiManager();
   const bool autofill_ai_shows_bubble =
@@ -1032,7 +1030,7 @@ void BrowserAutofillManager::OnFormSubmittedImpl(const FormData& form,
   LogSubmissionMetrics(submitted_form.get(), form_submitted_timestamp);
 
   MaybeImportFromSubmittedForm(client(), driver().GetPageUkmSourceId(),
-                               *submitted_form, form);
+                               *submitted_form);
   MaybeAddAddressSuggestionStrikes(client(), *submitted_form);
   client().GetVotesUploader().MaybeStartVoteUploadProcess(
       std::move(submitted_form),
@@ -1963,10 +1961,30 @@ void BrowserAutofillManager::OnGenerateSuggestionsComplete(
          eligible_features) {
       switch (eligible_feature) {
         case AmountExtractionManager::EligibleFeature::kBnpl:
-          if (!base::FeatureList::IsEnabled(
-                  features::kAutofillEnableAiBasedAmountExtraction)) {
+          const bool ai_amount_extraction_disabled =
+              !base::FeatureList::IsEnabled(
+                  features::kAutofillEnableAiBasedAmountExtraction);
+          const bool pay_later_tabs_enabled = base::FeatureList::IsEnabled(
+              features::kAutofillEnablePayNowPayLaterTabs);
+
+          // Notifying BNPL manager of suggestion generation is only necessary
+          // for flows that do an update of the suggestions dropdown. In the
+          // regex-based amount extraction approach, the dropdown is updated to
+          // add the BNPL chip so suggestion generation notification is
+          // necessary. In the AI-based amount extraction case, no suggestion
+          // dropdown updates happen so it's not necessary. For pay later tabs,
+          // once again suggestions are updated (switching out progress
+          // suggestion with regular BNPL suggestions), so suggestion generation
+          // notification is necessary again.
+          if (ai_amount_extraction_disabled || pay_later_tabs_enabled) {
             GetPaymentsBnplManager()->NotifyOfSuggestionGeneration(
                 trigger_source);
+          }
+
+          // This is the entry point for regex-based amount extraction. If
+          // AI-based amount extraction is enabled, this should not be
+          // triggered.
+          if (ai_amount_extraction_disabled) {
             GetAmountExtractionManager().TriggerCheckoutAmountExtraction();
           }
       }
@@ -3516,14 +3534,11 @@ std::vector<Suggestion> BrowserAutofillManager::GetAvailableSuggestions(
       }
       break;
     case FillingProduct::kLoyaltyCard:
-      if (base::FeatureList::IsEnabled(
-              features::kAutofillEnableLoyaltyCardsFilling)) {
-        // Only loyalty card numbers filling is supported.
-        if (autofill_field->Type().GetLoyaltyCardType() ==
-            LOYALTY_MEMBERSHIP_ID) {
-          suggestions = GetLoyaltyCardSuggestions(form, form_structure, field,
-                                                  autofill_field);
-        }
+      // Only loyalty card numbers filling is supported.
+      if (autofill_field->Type().GetLoyaltyCardType() ==
+          LOYALTY_MEMBERSHIP_ID) {
+        suggestions = GetLoyaltyCardSuggestions(form, form_structure, field,
+                                                autofill_field);
       }
       break;
     case FillingProduct::kOneTimePassword:

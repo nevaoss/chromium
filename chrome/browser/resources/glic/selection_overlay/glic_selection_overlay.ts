@@ -12,6 +12,8 @@ import '//resources/cr_elements/cr_icon_button/cr_icon_button.js';
 import '//resources/cr_elements/cr_toast/cr_toast.js';
 
 import {assert} from '//resources/js/assert.js';
+import type {PropertyValues} from '//resources/lit/v3_0/lit.rollup.js';
+import {getFallbackTheme} from '/lens/color_utils.js';
 import type {OverlayBorderGlowElement} from '/lens/overlay_border_glow.js';
 import type {OverlayShimmerCanvasElement} from '/lens/overlay_shimmer_canvas.js';
 import type {PostSelectionRendererElement} from '/lens/post_selection_renderer.js';
@@ -67,6 +69,8 @@ export class SelectionOverlayElementElement extends
       ...super.properties,
       screenshotDataUri: {type: String},
       enableRegionSelectedGlow: {type: Boolean},
+      enableBorderGlow: {type: Boolean},
+      disableShimmer: {type: Boolean},
     };
   }
 
@@ -74,6 +78,11 @@ export class SelectionOverlayElementElement extends
   accessor enableRegionSelectedGlow: boolean = true;
   override accessor enableBorderGlow: boolean = true;
   override accessor disableShimmer: boolean = false;
+
+  constructor() {
+    super();
+    this.theme = getFallbackTheme();
+  }
 
   override get selectionElements() {
     return {
@@ -86,11 +95,37 @@ export class SelectionOverlayElementElement extends
       selectionOverlay: this.$.selectionOverlay,
     };
   }
+
+  override updated(changedProperties: PropertyValues<this>) {
+    super.updated(changedProperties);
+
+    if (changedProperties.has('theme' as any)) {
+      this.updateThemeColors();
+    }
+  }
+
   override firstUpdated() {
     super.firstUpdated();
     GLIC_BORDER_GLOW_COLORS.forEach((color, index) => {
       this.style.setProperty(`--overlay-border-glow-color-${index + 1}`, color);
     });
+    this.updateThemeColors();
+    this.resetCursor();
+  }
+
+  private updateThemeColors() {
+    const selectionColor = this.getSelectionElementColor();
+    if (selectionColor) {
+      this.style.setProperty('--color-selection-element', selectionColor);
+    }
+    const primaryColor = this.getPrimaryColor();
+    if (primaryColor) {
+      this.style.setProperty('--color-primary', primaryColor);
+    }
+  }
+
+  protected override get defaultCursorIconUrl() {
+    return 'url("/glic_region_selection_cursor_icon.svg")';
   }
 
   override handleGestureStart() {
@@ -98,6 +133,9 @@ export class SelectionOverlayElementElement extends
     if (this.selectionElements.postSelectionRenderer.handleGestureStart(
             this.currentGesture)) {
       this.draggingRespondent = DragFeature.POST_SELECTION;
+    } else {
+      this.activeRegionId = '';
+      this.selectionElements.postSelectionRenderer.clearSelection();
     }
   }
 
@@ -119,6 +157,8 @@ export class SelectionOverlayElementElement extends
     if (this.draggingRespondent === DragFeature.NONE) {
       this.setCursorToCrosshair();
       this.draggingRespondent = DragFeature.MANUAL_REGION;
+
+      this.activeRegionId = '';
       this.selectionElements.postSelectionRenderer.clearSelection();
 
       // TODO(crbug.com/421002691): follow the convention where the layer

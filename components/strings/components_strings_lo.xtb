@@ -609,6 +609,7 @@
 <translation id="1960664692890490165">ເມື່ອທ່ານດຳເນີນການຊື້ໃນ Chrome, ທ່ານຈະເຫັນວິທີການຈ່າຍເງິນທີ່ບໍ່ແມ່ນບັດເປັນຕົວເລືອກ</translation>
 <translation id="196146181975453736">ກວດສອບຄວາມປອດໄພແບບເທື່ອດຽວໃຫ້ສຳເລັດເພື່ອຈ່າຍເງິນໄດ້ໄວຂຶ້ນ</translation>
 <translation id="1962204205936693436">ບຸກມາກສ໌ ່<ph name="DOMAIN" /></translation>
+<translation id="1966259577349514951">ຈ່າຍເລີຍ</translation>
 <translation id="1973335181906896915">ຄວາມ​ຜິດ​ພາດການສ້າງລໍາດັບ</translation>
 <translation id="1973785048533660168">ວຽກສະໝຽນ ແລະ ບໍລິຫານ</translation>
 <translation id="1974060860693918893">ຂັ້ນສູງ</translation>
@@ -753,6 +754,7 @@
 <translation id="2184405333245229118">{COUNT,plural, =1{1 ທີ່ຢູ່}other{# ທີ່ຢູ່}}</translation>
 <translation id="2188375229972301266">ເຈາະຮູຢູ່ລຸ່ມສຸດຫຼາຍຮູ</translation>
 <translation id="218940509700321686">ຄ່າທີ່ຂັ້ນດ້ວຍເຄື່ອງໝາຍຈຸດ</translation>
+<translation id="2190094353033916816">ນະໂຍບາຍນີ້ມີຄ່າທີ່ແຕກຕ່າງກັນເຊິ່ງນຳໃຊ້ໃນລະດັບເຄື່ອງ ແລະ ລະດັບຜູ້ໃຊ້. ນະໂຍບາຍເຮັດວຽກຕາມທີ່ຕັ້ງໃຈໄວ້.</translation>
 <translation id="2191980191135734720">ປົດລັອກໜ້າຈໍຂອງທ່ານໃນຂັ້ນຕອນຕໍ່ໄປ, ໂດຍປົກກະຕິຈະໃຊ້ລາຍນິ້ວມືຂອງທ່ານ. ນອກຈາກນີ້, ທ່ານຍັງສາມາດ <ph name="LINK_TEXT" /> ໄດ້ນຳ.</translation>
 <translation id="2194856509914051091">ສິ່ງທີ່ຕ້ອງພິຈາລະນາ</translation>
 <translation id="2198183835992354675">ໝາຍເລກປະຈຳຕົວຜູ້ເດີນທາງທີ່ກວດສອບແລ້ວ (KTN)</translation>
@@ -1086,6 +1088,7 @@
 <translation id="2696385693639654606">Chrome Enterprise Core ໃຫ້ທ່ານຈັດການນະໂຍບາຍຂອງໂປຣແກຣມທ່ອງເວັບ, ແອັບ ແລະ ສ່ວນຂະຫຍາຍຈາກຄລາວ</translation>
 <translation id="2697248912349197812">ຖາມ <ph name="KEYWORD_SHORT_NAME" /></translation>
 <translation id="2699273987028089219">ສາມາດໃຊ້ເມນູຍ່ອຍໄດ້, ໃຊ້ <ph name="SHORTCUT" /> ເພື່ອນຳທາງໄປຫາຕົວເລືອກເພີ່ມເຕີມ.</translation>
+<translation id="2700335762333112350">ຈ່າຍພາຍຫຼັງ</translation>
 <translation id="2701514975700770343">ຂວ້າມລົງ</translation>
 <translation id="2702592986366989640">ຕົວເລືອກລາຄາຕ່ຳ</translation>
 <translation id="2702801445560668637">ລາຍການທີ່ຈະອ່ານ</translation>
@@ -1368,6 +1371,7 @@
 <translation id="3156511682997763015">ເລື່ອນໄປໜ້າ 10 ວິນາທີ</translation>
 <translation id="3157931365184549694">ເອົາຄືນມາ</translation>
 <translation id="3158539265159265653">ດິສ</translation>
+<translation id="3159556963589020896">Pro</translation>
 <translation id="3162070126914310576">ໃນເວລານີ້ບໍ່ສາມາດລົງທະບຽນອຸປະກອນນີ້ໄດ້ເນື່ອງຈາກຫົວໜ່ວຍອົງການຈັດຕັ້ງຂອງທ່ານຮອດຂີດຈໍາກັດການລົງທະບຽນເລີ່ມຕົ້ນຂອງຕົນແລ້ວ. ຕິດຕໍ່ຜູ້ເບິ່ງແຍງລະບົບຂອງທ່ານສໍາລັບການຊ່ວຍເຫຼືອ.</translation>
 <translation id="3162559335345991374">Wi-Fi ທີ່​ທ່ານ​ກຳ​ລັງ​ໃຊ້​ອາດ​ຈະ​ຕ້ອງ​ການ​ໃຫ້​ທ່ານ​ເຂົ້າ​ເບິ່ງ​ໜ້າ​ເຂົ້າ​ສູ່ລະ​ບົບ​ຂອງ​ມັນ.</translation>
 <translation id="316638481603975524">ສາມາດຂໍຕິດຕັ້ງເວັບແອັບໄດ້</translation>
@@ -3190,6 +3194,7 @@
 <translation id="6042308850641462728">ເພີ່ມເຕີມ</translation>
 <translation id="6043357981274314628">ແລ້ວໆ</translation>
 <translation id="6045164183059402045">ແມ່ແບບການຈັດຮຽງໜ້າກ່ອນພິມ</translation>
+<translation id="6046026831939367176"><ph name="URL" /> ຕ້ອງການໃຊ້ສະຖານທີ່ໂດຍປະມານຂອງທ່ານ</translation>
 <translation id="6046892054959167494">ພິມ <ph name="SEARCH_AGGREGATOR_KEYWORD" /> ເພື່ອຊອກຫາ ຫຼື ຖາມ <ph name="SEARCH_AGGREGATOR_SHORT_NAME" /></translation>
 <translation id="6047927260846328439">ເນື້ອຫານີ້ອາດຈະພະຍາຍາມຫຼອກໃຫ້ທ່ານຕິດຕັ້ງຊອບແວ ຫຼື ເປີດເຜີຍຂໍ້ມູນສ່ວນຕົວ. <ph name="BEGIN_LINK" />ຢືນຢັນໃຫ້ສະແດງ<ph name="END_LINK" /></translation>
 <translation id="6049056807983403918">Envelope B4</translation>
@@ -3639,7 +3644,6 @@
 <translation id="6727094998759448074">SRA4</translation>
 <translation id="6732087373923685049">ກ້ອງຖ່າຍຮູບ</translation>
 <translation id="6734506549556896534">ເກມຈຳລອງເຫດການ</translation>
-<translation id="6735589846038045679">ແພັກເກດການຈ່າຍເງິນຂຶ້ນຢູ່ກັບການມີສິດ. <ph name="BEGIN_BOLD" />ລະບົບຈະແບ່ງປັນເນື້ອຫາຈາກໜ້າຈ່າຍເງິນກັບ Google ເພື່ອສະເໜີຕົວເລືອກເຫຼົ່ານີ້.<ph name="END_BOLD" /> ເພື່ອເຊື່ອງຕົວເລືອກຈ່າຍພາຍຫຼັງ, ໃຫ້ເຂົ້າໄປ <ph name="BEGIN_LINK" />ການຕັ້ງຄ່າການຈ່າຍເງິນ<ph name="END_LINK" /></translation>
 <translation id="6737708609449480586">ເຂົ້າໜົມອົບ</translation>
 <translation id="6738516213925468394">ຂໍ້ມູນຂອງທ່ານຖືກເຂົ້າລະຫັດໄວ້ດ້ວຍ <ph name="BEGIN_LINK" />ລະຫັດຜ່ານການຊິ້ງຂໍ້ມູນ<ph name="END_LINK" /> ເມື່ອ <ph name="TIME" />. ກະລຸນາປ້ອນມັນເພື່ອເລີ່ມການຊິ້ງຂໍ້ມູນ</translation>
 <translation id="6740851646645036700">ທ່ານໄດ້ໃຊ້ຄວາມຊ່ວຍເຫຼືອໃນການຂຽນຂອງທ່ານຈົນຮອດຂີດຈຳກັດແລ້ວໃນຕອນນີ້. ກະລຸນາລອງໃໝ່ໃນພາຍຫຼັງ.</translation>
@@ -4988,6 +4992,7 @@
 <translation id="8870700989640064057">ພິມໄຟລ໌ທີ່ເປັນຄວາມລັບບໍ?</translation>
 <translation id="8871485335898060555">ວັດຖຸບູຮານ ແລະ ຂອງສະສົມ</translation>
 <translation id="8871553383647848643">ປັບແຕ່ງໜ້າຕາຂອງໂປຣແກຣມທ່ອງເວັບທ່ານ</translation>
+<translation id="887350038812854047">ນະໂຍບາຍນີ້ມີຄ່າດຽວກັນທີ່ນຳໃຊ້ໃນລະດັບເຄື່ອງ ແລະ ລະດັບຜູ້ໃຊ້. ນະໂຍບາຍເຮັດວຽກຕາມທີ່ຕັ້ງໃຈໄວ້.</translation>
 <translation id="8874790741333031443">ລອງອະນຸຍາດຄຸກກີ້ພາກສ່ວນທີສາມຊົ່ວຄາວ, ເຊິ່ງໝາຍຄວາມວ່າການປົກປ້ອງລະຫວ່າງທ່ອງເວັບຈະຫຼຸດລົງ ແຕ່ຄຸນສົມບັດຂອງເວັບໄຊມີແນວໂນ້ມທີ່ຈະເຮັດວຽກຕາມທີ່ຄາດໄດ້ຫຼາຍກວ່າ.</translation>
 <translation id="8874824191258364635">ປ້ອນເລກບັດທີ່ຖືກຕ້ອງ</translation>
 <translation id="8877780815363510165">ການຕຶກປາ</translation>

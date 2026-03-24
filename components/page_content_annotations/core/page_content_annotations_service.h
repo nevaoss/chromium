@@ -35,6 +35,7 @@
 #include "components/optimization_guide/proto/hints.pb.h"
 #include "components/optimization_guide/proto/page_entities_metadata.pb.h"
 #include "components/optimization_guide/proto/salient_image_metadata.pb.h"
+#include "components/page_content_annotations/core/on_device_category_classifier.h"
 #include "components/page_content_annotations/core/page_category_classifier_bridge.h"
 #include "components/page_content_annotations/core/page_content_annotations_common.h"
 #include "components/page_content_annotations/core/page_content_annotator.h"
@@ -51,6 +52,10 @@ namespace leveldb_proto {
 class ProtoDatabaseProvider;
 }  // namespace leveldb_proto
 
+namespace passage_embeddings {
+class EmbedderMetadataProvider;
+}  // namespace passage_embeddings
+
 namespace optimization_guide {
 class OptimizationGuideDecider;
 class OptimizationGuideModelProvider;
@@ -59,7 +64,6 @@ class OptimizationMetadata;
 
 namespace page_content_annotations {
 
-class OnDeviceCategoryClassifier;
 class PageContentAnnotationsModelManager;
 class PageContentAnnotationsServiceBrowserTest;
 class PageContentAnnotationsValidator;
@@ -123,7 +127,8 @@ enum class PageContentAnnotationsType {
 class PageContentAnnotationsService
     : public KeyedService,
       public history::HistoryServiceObserver,
-      public ZeroSuggestCacheServiceInterface::Observer {
+      public ZeroSuggestCacheServiceInterface::Observer,
+      public OnDeviceCategoryClassifier::Observer {
  public:
   // Observer interface to listen for PageContentAnnotations for page loads.
   // Annotations will be sent for each page load for the registered annotation
@@ -147,6 +152,7 @@ class PageContentAnnotationsService
       const base::FilePath& database_dir,
       OptimizationGuideLogger* optimization_guide_logger,
       optimization_guide::OptimizationGuideDecider* optimization_guide_decider,
+      passage_embeddings::EmbedderMetadataProvider* embedder_metadata_provider,
       scoped_refptr<base::SequencedTaskRunner> background_task_runner);
   ~PageContentAnnotationsService() override;
   PageContentAnnotationsService(const PageContentAnnotationsService&) = delete;
@@ -232,6 +238,13 @@ class PageContentAnnotationsService
     return nullptr;
 #endif
   }
+
+#if BUILDFLAG(BUILD_WITH_TFLITE_LIB)
+  // OnDeviceCategoryClassifier::Observer:
+  void OnCategoriesClassified(const GURL& url,
+                              ukm::SourceId source_id,
+                              const std::vector<Category>& categories) override;
+#endif
 
  private:
 #if BUILDFLAG(BUILD_WITH_TFLITE_LIB)
@@ -401,6 +414,11 @@ class PageContentAnnotationsService
   // is in the cache, the cached model annotations will be used.
   base::HashingLRUCache<std::string, history::VisitContentModelAnnotations>
       annotated_text_cache_;
+
+#if BUILDFLAG(BUILD_WITH_TFLITE_LIB)
+  // A LRU cache from URL to the latest history visit for that URL.
+  base::LRUCache<GURL, HistoryVisit> last_visit_for_url_;
+#endif
 
   // The set of visits to be annotated, this is added to by Annotate requests
   // from the web content observer. These will be annotated when the set is full

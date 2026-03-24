@@ -579,6 +579,29 @@ TEST_F(EventListenerMapTest, CorruptedExtensionPrefsShouldntCrash) {
   ASSERT_EQ(0u, targets.size());
 }
 
+// Helper class to ensure that OnListenerRemoved is called such that observers
+// see an intermediate state where some listeners might still be present.
+class MultipleRemovalDelegate : public EventListenerMap::Delegate {
+ public:
+  MultipleRemovalDelegate() = default;
+  void SetListeners(EventListenerMap* listeners) { listeners_ = listeners; }
+
+  void OnListenerAdded(const EventListener* listener) override {}
+  void OnListenerRemoved(const EventListener* listener) override {
+    if (!listeners_->HasListenerForExtension(listener->extension_id(),
+                                             listener->event_name())) {
+      final_removal_count_++;
+    }
+  }
+  int final_removal_count() const { return final_removal_count_; }
+
+ private:
+  raw_ptr<EventListenerMap> listeners_ = nullptr;
+  // Counts how many times OnListenerRemoved was called and the extension no
+  // longer has any event listeners left for that specific event.
+  int final_removal_count_ = 0;
+};
+
 // Helper class for the following tests to ensure that a listener is removed
 // from the EventListenerMap before the `OnListenerRemoved` function of the
 // delegate is called.
@@ -678,6 +701,37 @@ TEST_F(EventListenerMapTest, EventFilterNotStaleDuringRemoveListener) {
   listeners.RemoveListener(listener.get());
 
   EXPECT_FALSE(delegate.is_stale());
+
+  delegate.SetListeners(nullptr);  // Avoid dangling raw_ptr.
+}
+
+// Tests that when multiple listeners for the same extension/event are removed
+// in a batch (e.g. during process exit), the OnListenerRemoved callback is
+// called for each, and the map state is updated such that observers can
+// correctly identify the final removal.
+// This is a regression test for a crash where observers would see "0 listeners
+// left" multiple times and attempt to double-cleanup resources.
+TEST_F(EventListenerMapTest,
+       BatchRemovalCallsOnListenerRemovedOnceForSameExtension) {
+  MultipleRemovalDelegate delegate;
+  EventListenerMap listeners(&delegate);
+  delegate.SetListeners(&listeners);
+
+  // Add 2 listeners for the same extension and event.
+  listeners.AddListener(
+      EventListener::ForExtension(kEvent1Name, kExt1Id, process_.get(),
+                                  CreateHostSuffixFilter("google.com")));
+  listeners.AddListener(
+      EventListener::ForExtension(kEvent1Name, kExt1Id, process_.get(),
+                                  CreateHostSuffixFilter("yahoo.com")));
+
+  listeners.RemoveListenersForProcess(process_.get());
+
+  // Observers checking for the "final" removal should only see it once.
+  // First OnListenerRemoved: HasListenerForExtension returns true (1 left).
+  // Second OnListenerRemoved: HasListenerForExtension returns false (0 left).
+  // Total final_removal_count_ should be 1.
+  EXPECT_EQ(1, delegate.final_removal_count());
 
   delegate.SetListeners(nullptr);  // Avoid dangling raw_ptr.
 }

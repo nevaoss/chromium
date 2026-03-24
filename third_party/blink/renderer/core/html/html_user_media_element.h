@@ -7,10 +7,13 @@
 
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/html/html_capability_element_base.h"
+#include "third_party/blink/renderer/platform/supplementable.h"
 
 namespace blink {
 
-class CORE_EXPORT HTMLUserMediaElement : public HTMLCapabilityElementBase {
+class CORE_EXPORT HTMLUserMediaElement
+    : public HTMLCapabilityElementBase,
+      public Supplementable<HTMLUserMediaElement> {
   DEFINE_WRAPPERTYPEINFO();
 
  public:
@@ -28,7 +31,15 @@ class CORE_EXPORT HTMLUserMediaElement : public HTMLCapabilityElementBase {
   Vector<mojom::blink::PermissionDescriptorPtr> ParseType(
       const AtomicString& type);
 
+  // Migration branching logic: Returns true if the 'type' attribute is present.
+  // When the 'type' attribute is explicitly defined, the element falls back to
+  // legacy behavior the same as the legacy <permission> element.
+  // TODO(crbug.com/493632110): Deprecate `type` attribute once the adoption of
+  // <usermedia> element is stable.
+  bool IsLegacyMode() const;
+
   // HTMLCapabilityElementBase:
+  void Trace(Visitor*) const override;
   mojom::blink::EmbeddedPermissionRequestDescriptorPtr
   CreateEmbeddedPermissionRequestDescriptor() override;
 };

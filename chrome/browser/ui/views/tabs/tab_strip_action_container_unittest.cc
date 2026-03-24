@@ -184,7 +184,7 @@ class TabStripActionContainerTest : public ChromeViewsTestBase {
           return base::CallbackListSubscription();
         });
 
-    glic_nudge_controller_ = std::make_unique<tabs::GlicNudgeController>(
+    glic_nudge_controller_ = std::make_unique<glic::GlicNudgeController>(
         browser_window_interface_.get());
 
     tab_strip_action_container_ = std::make_unique<TabStripActionContainer>(
@@ -200,7 +200,7 @@ class TabStripActionContainerTest : public ChromeViewsTestBase {
   glic::GlicUnitTestEnvironment glic_test_environment_;
   std::unique_ptr<TabStrip> tab_strip_;
   std::unique_ptr<TabStripModel> tab_strip_model_;
-  std::unique_ptr<tabs::GlicNudgeController> glic_nudge_controller_;
+  std::unique_ptr<glic::GlicNudgeController> glic_nudge_controller_;
   std::unique_ptr<tabs::MockTabInterface> tab_interface_;
   std::unique_ptr<MockBrowserWindowInterface> browser_window_interface_;
   ui::UnownedUserDataHost data_host_;
@@ -300,18 +300,21 @@ TEST_F(TabStripActionContainerTest, MAYBE(GlicButtonUpdateLabel)) {
   BuildGlicContainer(/*use_otr_profile=*/false);
   glic_nudge_controller_->UpdateNudgeLabel(
       web_contents(), "TEST", /*prompt_suggestion=*/std::nullopt,
+      /*anchored_message_text=*/std::string(),
       /*activity=*/std::nullopt, base::NullCallback());
   ASSERT_EQ(tab_strip_action_container_->GetGlicButton()->GetText(), u"TEST");
 }
 
 TEST_F(TabStripActionContainerTest, MAYBE(GlicButtonHideNudgeOnTabChange)) {
   BuildGlicContainer(/*use_otr_profile=*/false);
-  glic_nudge_controller_->SetDelegate(tab_strip_action_container_.get());
+  glic_nudge_controller_->SetTabStripDelegate(
+      tab_strip_action_container_.get());
 
   ASSERT_FALSE(tab_strip_action_container_->GetIsShowingGlicNudge());
 
   glic_nudge_controller_->UpdateNudgeLabel(
       web_contents(), "TEST", /*prompt_suggestion=*/std::nullopt,
+      /*anchored_message_text=*/std::string(),
       /*activity=*/std::nullopt, base::NullCallback());
   ASSERT_TRUE(tab_strip_action_container_->GetIsShowingGlicNudge());
   ASSERT_EQ(tab_strip_action_container_->GetGlicButton()->GetText(), u"TEST");

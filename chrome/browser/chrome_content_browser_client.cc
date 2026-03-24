@@ -173,10 +173,10 @@
 #include "chrome/browser/ui/blocked_content/chrome_popup_navigation_delegate.h"
 #include "chrome/browser/ui/browser_navigator.h"
 #include "chrome/browser/ui/browser_navigator_params.h"
-#include "chrome/browser/ui/chrome_select_file_policy.h"
 #include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/login/http_auth_coordinator.h"
 #include "chrome/browser/ui/prefs/pref_watcher.h"
+#include "chrome/browser/ui/select_file_policy/chrome_select_file_policy.h"
 #include "chrome/browser/ui/startup/google_chrome_scheme_util.h"
 #include "chrome/browser/ui/tab_contents/chrome_web_contents_view_delegate.h"
 #include "chrome/browser/ui/ui_features.h"
@@ -936,10 +936,12 @@ blink::mojom::AutoplayPolicy DetermineWebContentsAutoplayPolicy(
 
   // Allow Autoplay if the user provided mic/cam access. This is for cases such
   // as received-video-call rings occurring before the user interacted with the
-  // page.
-  if (base::FeatureList::IsEnabled(media::kAutoplayBypassForMicCamera)) {
-    const HostContentSettingsMap* const content_settings =
-        HostContentSettingsMapFactory::GetForProfile(profile);
+  // page. If there is no content_settings, we cannot provide autoplay (e.g.
+  // System profile).
+  const HostContentSettingsMap* const content_settings =
+      HostContentSettingsMapFactory::GetForProfile(profile);
+  if (content_settings &&
+      base::FeatureList::IsEnabled(media::kAutoplayBypassForMicCamera)) {
     const GURL& url = web_contents->GetLastCommittedURL();
 
     if (content_settings->GetContentSetting(

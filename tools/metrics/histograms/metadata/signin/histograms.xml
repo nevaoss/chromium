@@ -250,7 +250,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Signin.AccountCapabilities.GetFromSystemLibraryResult"
     enum="AccountCapabilitiesGetFromSystemLibraryResult"
-    expires_after="2026-07-10">
+    expires_after="2026-09-13">
   <owner>fernandex@google.com</owner>
   <owner>msarda@chromium.org</owner>
   <owner>triploblastic@chromium.org</owner>
@@ -1917,7 +1917,7 @@ prefs when the profile is loaded.  -->
 </histogram>
 
 <histogram name="Signin.IdentityConfirmationSnackbarDecision"
-    enum="IdentityConfirmationSnackbarDecision" expires_after="2026-07-12">
+    enum="IdentityConfirmationSnackbarDecision" expires_after="2026-09-13">
   <owner>jlebel@chromium.org</owner>
   <owner>jood@google.com</owner>
   <owner>treib@chromium.org</owner>
@@ -3331,17 +3331,6 @@ OAuth Multilogin call. -->
   </summary>
 </histogram>
 
-<histogram name="Signin.SigninPending.Resolution"
-    enum="PendingResolutionSource" expires_after="2026-09-06">
-  <owner>rsult@google.com</owner>
-  <owner>chrome-signin-team@google.com</owner>
-  <summary>
-    Records the resolution method used when in Signin Pending, either Sign in
-    (reauth) or sign out of Chrome. The value is recorded when the resolution is
-    applied.
-  </summary>
-</histogram>
-
 <histogram name="Signin.SigninPending.ResolutionSource{Status}"
     enum="SigninAccessPoint" expires_after="2026-09-06">
   <owner>rsult@google.com</owner>
@@ -3372,6 +3361,20 @@ OAuth Multilogin call. -->
     <variant name="Reauth" summary="signing back in (reauth)"/>
     <variant name="Signout" summary="signing out"/>
   </token>
+</histogram>
+
+<histogram name="Signin.SigninPending.Resolution{Profile}"
+    enum="PendingResolutionSource" expires_after="2026-09-06">
+  <owner>rsult@google.com</owner>
+  <owner>chrome-signin-team@google.com</owner>
+  <summary>
+    Records the resolution method used when in Signin Pending, either Sign in
+    (reauth) or sign out of Chrome. The value is recorded when the resolution is
+    applied.
+
+    {Profile}
+  </summary>
+  <token key="Profile" variants="ProfileIndexSignin"/>
 </histogram>
 
 <histogram name="Signin.SignInPromo.{UserAction}" enum="SigninAccessPoint"
@@ -3577,7 +3580,7 @@ kept as long as profile signout is possible -->
 </histogram>
 
 <histogram name="Signin.SyncErrorMessage{SyncErrorReason}"
-    enum="SyncErrorPromptUIAction" expires_after="2026-07-12">
+    enum="SyncErrorPromptUIAction" expires_after="2026-09-13">
   <owner>triploblastic@chromium.org</owner>
   <owner>bsazonov@chromium.org</owner>
   <summary>
@@ -3805,7 +3808,7 @@ for as long as we store refresh tokens in an SQLite DB. -->
 
 <histogram name="Signin.TokenTable.GetAllWrappedBindingKeysResult"
     enum="SigninTokenTableGetAllWrappedBindingKeysResult"
-    expires_after="2026-06-08">
+    expires_after="2026-09-13">
   <owner>alexilin@chromium.org</owner>
   <owner>chrome-signin-team@google.com</owner>
   <summary>
@@ -3877,7 +3880,7 @@ should be kept for as long as we store refresh tokens in an SQLite DB. -->
 <!-- LINT.IfChange(WebSignintrackerLatency) -->
 
 <histogram name="Signin.WebSigninTracker.Latency.{Result}" units="ms"
-    expires_after="2026-07-12">
+    expires_after="2026-09-13">
   <owner>mlbipin@google.com</owner>
   <owner>chrome-signin-mobile-team@google.com</owner>
   <summary>

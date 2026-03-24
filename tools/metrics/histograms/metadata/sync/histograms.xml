@@ -385,7 +385,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.BookmarkEntityReuploadNeeded.On{UpdateType}"
-    enum="Boolean" expires_after="2026-04-26">
+    enum="Boolean" expires_after="2027-04-26">
   <owner>rushans@google.com</owner>
   <owner>mastiz@chromium.org</owner>
   <summary>
@@ -610,7 +610,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.CommitLatency{SyncDataType}" units="ms"
-    expires_after="2026-07-12">
+    expires_after="2026-09-13">
   <owner>rushans@google.com</owner>
   <owner>treib@chromium.org</owner>
   <summary>
@@ -796,7 +796,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.Crypto.NigoriKeyDerivationDuration.{Method}" units="ms"
-    expires_after="2026-04-28">
+    expires_after="2027-04-28">
   <owner>mmoskvitin@google.com</owner>
   <owner>treib@chromium.org</owner>
   <summary>
@@ -1237,6 +1237,33 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram
+    name="Sync.DeviceStatistics.Outcome.NonPrimaryAccount.NumberOfAdditionalPlatforms"
+    units="platforms" expires_after="2026-08-30">
+  <owner>treib@chromium.org</owner>
+  <owner>src/components/sync/OWNERS</owner>
+  <summary>
+    Device statistics: Records the number of distinct platforms among the
+    additional syncing clients (i.e. not counting this client) of a non-primary
+    account. Recorded at most once per day (30 seconds after profile
+    initialization) for every non-primary account.
+  </summary>
+</histogram>
+
+<histogram
+    name="Sync.DeviceStatistics.Outcome.NonPrimaryAccount.NumberOfAdditionalPlatformsWithHistoryOptIn"
+    units="platforms" expires_after="2026-08-30">
+  <owner>treib@chromium.org</owner>
+  <owner>src/components/sync/OWNERS</owner>
+  <summary>
+    Device statistics: Records the number of distinct platforms among the
+    additional syncing clients (i.e. not counting this client) of a non-primary
+    account where at least one client on that platform is opted in to history
+    sync. Recorded at most once per day (30 seconds after profile
+    initialization) for every non-primary account.
+  </summary>
+</histogram>
+
+<histogram
     name="Sync.DeviceStatistics.Outcome.NonPrimaryAccount.PlatformOfAdditionalClient"
     enum="SyncDeviceStatisticsPlatform" expires_after="2026-08-30">
   <owner>treib@chromium.org</owner>
@@ -1261,14 +1288,40 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Sync.DeviceStatistics.Outcome.OverallMultiPlatform"
+    enum="SyncDeviceStatisticsMultiPlatformOutcome" expires_after="2026-08-30">
+  <owner>treib@chromium.org</owner>
+  <owner>src/components/sync/OWNERS</owner>
+  <summary>
+    Device statistics: Records the overall outcome, i.e. whether primary and/or
+    non-primary accounts have other syncing clients on other platforms. Recorded
+    at most once per day (30 seconds after profile initialization).
+  </summary>
+</histogram>
+
 <histogram name="Sync.DeviceStatistics.Outcome.PrimaryAccount.HistoryOptIn"
-    enum="SyncDeviceStatisticsHistoryOptInSummary" expires_after="2026-06-30">
+    enum="SyncDeviceStatisticsHistoryOptInDevicesSummary"
+    expires_after="2026-06-30">
   <owner>treib@chromium.org</owner>
   <owner>src/components/sync/OWNERS</owner>
   <summary>
     Device statistics: Records the history opt-in status of the primary account,
     across this device and any other signed-in-to-Chrome devices. Recorded at
     most once per day (30 seconds after profile initialization).
+  </summary>
+</histogram>
+
+<histogram
+    name="Sync.DeviceStatistics.Outcome.PrimaryAccount.HistoryOptInMultiPlatform"
+    enum="SyncDeviceStatisticsHistoryOptInPlatformsSummary"
+    expires_after="2026-06-30">
+  <owner>treib@chromium.org</owner>
+  <owner>src/components/sync/OWNERS</owner>
+  <summary>
+    Device statistics: Records the history opt-in status of the primary account,
+    across this device and any other signed-in-to-Chrome devices *on different
+    platforms* only. Recorded at most once per day (30 seconds after profile
+    initialization).
   </summary>
 </histogram>
 
@@ -1281,6 +1334,20 @@ chromium-metrics-reviews@google.com.
     Device statistics: Records the multi-device readiness of the primary
     account, i.e. whether there are other signed-in-to-Chrome devices. Recorded
     at most once per day (30 seconds after profile initialization).
+  </summary>
+</histogram>
+
+<histogram
+    name="Sync.DeviceStatistics.Outcome.PrimaryAccount.MultiPlatformReadiness"
+    enum="SyncDeviceStatisticsMultiPlatformReadiness"
+    expires_after="2026-08-30">
+  <owner>treib@chromium.org</owner>
+  <owner>src/components/sync/OWNERS</owner>
+  <summary>
+    Device statistics: Records the multi-platform readiness of the primary
+    account, i.e. whether there are other signed-in-to-Chrome devices *on
+    different platforms*. Recorded at most once per day (30 seconds after
+    profile initialization).
   </summary>
 </histogram>
 
@@ -1305,6 +1372,33 @@ chromium-metrics-reviews@google.com.
     Device statistics: Records the number of additional syncing clients (i.e.
     not counting this client) of the primary account which are opted in to
     history sync. Recorded at most once per day (30 seconds after profile
+    initialization).
+  </summary>
+</histogram>
+
+<histogram
+    name="Sync.DeviceStatistics.Outcome.PrimaryAccount.NumberOfAdditionalPlatforms"
+    units="platforms" expires_after="2026-08-30">
+  <owner>treib@chromium.org</owner>
+  <owner>src/components/sync/OWNERS</owner>
+  <summary>
+    Device statistics: Records the number of distinct platforms among the
+    additional syncing clients (i.e. not counting this client) of the primary
+    account. Recorded at most once per day (30 seconds after profile
+    initialization).
+  </summary>
+</histogram>
+
+<histogram
+    name="Sync.DeviceStatistics.Outcome.PrimaryAccount.NumberOfAdditionalPlatformsWithHistoryOptIn"
+    units="platforms" expires_after="2026-08-30">
+  <owner>treib@chromium.org</owner>
+  <owner>src/components/sync/OWNERS</owner>
+  <summary>
+    Device statistics: Records the number of distinct platforms among the
+    additional syncing clients (i.e. not counting this client) of the primary
+    account where at least one client on that platform is opted in to history
+    sync. Recorded at most once per day (30 seconds after profile
     initialization).
   </summary>
 </histogram>
@@ -1499,7 +1593,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.IncomingInvalidationStatus"
-    enum="SyncIncomingInvalidationStatus" expires_after="2026-07-12">
+    enum="SyncIncomingInvalidationStatus" expires_after="2026-09-13">
   <owner>rushans@google.com</owner>
   <owner>treib@chromium.org</owner>
   <summary>
@@ -1571,7 +1665,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.KeystoreDecryptionFailed"
-    enum="SyncKeystoreDecryptionFailure" expires_after="2026-07-05">
+    enum="SyncKeystoreDecryptionFailure" expires_after="2026-09-13">
   <owner>mmoskvitin@google.com</owner>
   <owner>mastiz@chromium.org</owner>
   <summary>The reason for a failure decrypting the keystore Nigori.</summary>
@@ -1597,7 +1691,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.Local.ReadPlatformFileError" enum="PlatformFileError"
-    expires_after="2026-07-12">
+    expires_after="2026-09-13">
   <owner>igorruvinov@chromium.org</owner>
   <owner>pastarmovj@chromium.org</owner>
   <summary>
@@ -2460,6 +2554,22 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Sync.SyncToSigninMigration.StatsTableCleanupStep"
+    enum="SyncToSigninMigrationStatsTableCleanupStep"
+    expires_after="2027-01-28">
+  <owner>ankushkush@google.com</owner>
+  <owner>src/components/sync/OWNERS</owner>
+  <summary>
+    Within the wider Sync-to-Signin migration, this records various steps in the
+    Stats table cleanup process from the Account Password Store. The cleanup is
+    requested by the central Sync-to-Signin migration on profile initialization,
+    and happens at most once per browser session (and typically exactly once per
+    profile). &quot;Total count&quot; and &quot;Bucket proportion&quot; are not
+    really meaningful; instead compare the absolute sizes of the various
+    buckets.
+  </summary>
+</histogram>
+
 <histogram name="Sync.SyncToSigninMigration.ThemeMigrationStep"
     enum="SyncToSigninMigrationThemeStep" expires_after="2027-01-28">
   <owner>ankushkush@google.com</owner>
@@ -2690,7 +2800,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.TrustedVaultJavascriptAddRecoveryMethodIsIncognito"
-    enum="BooleanIncognito" expires_after="2026-04-13">
+    enum="BooleanIncognito" expires_after="2027-04-13">
   <owner>mmoskvitin@google.com</owner>
   <owner>mastiz@chromium.org</owner>
   <summary>
@@ -2701,7 +2811,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.TrustedVaultJavascriptAddRecoveryMethodSucceeded"
-    enum="BooleanSuccess" expires_after="2026-04-13">
+    enum="BooleanSuccess" expires_after="2027-04-13">
   <owner>mmoskvitin@google.com</owner>
   <owner>mastiz@chromium.org</owner>
   <summary>
@@ -2712,7 +2822,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.TrustedVaultJavascriptAddRecoveryMethodUserKnown"
-    enum="BooleanKnown" expires_after="2026-04-13">
+    enum="BooleanKnown" expires_after="2027-04-13">
   <owner>mmoskvitin@google.com</owner>
   <owner>mastiz@chromium.org</owner>
   <summary>
@@ -2723,7 +2833,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.TrustedVaultJavascriptAddRecoveryMethodValidArgs"
-    enum="BooleanValid" expires_after="2026-04-13">
+    enum="BooleanValid" expires_after="2027-04-13">
   <owner>mmoskvitin@google.com</owner>
   <owner>mastiz@chromium.org</owner>
   <summary>
@@ -2746,7 +2856,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.TrustedVaultJavascriptSetEncryptionKeysValidArgs"
-    enum="BooleanValid" expires_after="2026-04-13">
+    enum="BooleanValid" expires_after="2027-04-13">
   <owner>mmoskvitin@google.com</owner>
   <owner>mastiz@chromium.org</owner>
   <summary>

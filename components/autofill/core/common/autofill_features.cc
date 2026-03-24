@@ -296,6 +296,10 @@ BASE_FEATURE_PARAM(bool,
 BASE_FEATURE(kAutofillAiSetSyncablePrefFromAccountPref,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+// If enabled, the client may trigger the server model for AutofillAI type
+// predictions using Private AI Compute.
+BASE_FEATURE(kAutofillAiUsePrivateAi, base::FEATURE_DISABLED_BY_DEFAULT);
+
 // If enabled, votes for the format of flight number fields are uploaded. For
 // example, if there is a flight number "LH89" on file, a submitted value of
 // "89" on a field with type `FLIGHT_RESERVATION_FLIGHT_NUMBER` uploads "N".
@@ -360,6 +364,13 @@ BASE_FEATURE(kAutofillAndroidDesktopSuppressAccessoryOnEmpty,
 // TODO(crbug.com/40286775) Clean up autofill feature flag
 // `kAutofillAndroidDisableSuggestionsOnJSFocus`
 BASE_FEATURE(kAutofillAndroidDisableSuggestionsOnJSFocus,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+// If enabled, on Android, form fields are retrieved
+// by comparing FormFieldIds instead of the set of attributes. This flag affects
+// some of the logic in AndroidAutofillProvider.
+// TODO(crbug.com/456526604): Remove when launched.
+BASE_FEATURE(kAutofillAndroidFormDataCompareFieldGlobalId,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // If enabled, on Android, the Autofill keyboard accessory will not be
@@ -569,10 +580,6 @@ BASE_FEATURE(kAutofillEnableKeyboardAccessoryChipWidthAdjustment,
              base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_ANDROID)
 
-// When enabled, Autofill will help users fill in loyalty card details.
-// TODO(crbug.com/395831853): Remove once launched.
-BASE_FEATURE(kAutofillEnableLoyaltyCardsFilling,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // When enabled, Autofill will help users fill in non-affiliated loyalty cards
 // on loyalty card only fields.
@@ -605,7 +612,7 @@ BASE_FEATURE(kAutofillEnableStreetAddressMergeModes,
 // When enabled, chrome will support home and work addresses from account.
 // TODO: crbug.com/354706653 - Clean up when launched.
 BASE_FEATURE(kAutofillEnableSupportForHomeAndWork,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // When enabled, chrome will support name and email address profile.
 // TODO(crbug.com/356845298): Clean up when launched.

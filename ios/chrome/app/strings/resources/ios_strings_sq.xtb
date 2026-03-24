@@ -394,6 +394,7 @@
 <translation id="2360196772093551345">Kërko sajtin për celular</translation>
 <translation id="2362083820973145409">Identifikuar si <ph name="USER_NAME" />. <ph name="USER_EMAIL" />. Hap cilësimet.</translation>
 <translation id="2371084566192454134">Skedat dhe grupet e skedave</translation>
+<translation id="2371303771137626249">E re</translation>
 <translation id="2381405137052800939">Bazat</translation>
 <translation id="2384692388811649784">Fshih skedat "e fshehta"</translation>
 <translation id="2386793615875593361">1 e përzgjedhur</translation>
@@ -636,6 +637,7 @@
 <translation id="3324193307694657476">Adresa 2</translation>
 <translation id="3328801116991980348">Informacionet rreth sajtit</translation>
 <translation id="333229797575847124">Si ta aktivizosh këtë veçori</translation>
+<translation id="334004756946755423">Ma shpjego këtë:</translation>
 <translation id="3344233834747405775">Emër i pavlefshëm i mbajtësit të kartës</translation>
 <translation id="3344485292736684439">{count,plural, =1{Faqeshënuesi u ruajt te "{title}" në llogarinë tënde, {email}}other{Faqeshënuesit u ruajtën te "{title}" në llogarinë tënde, {email}}}</translation>
 <translation id="334690320928261823">Skedat e fundit</translation>
@@ -689,6 +691,7 @@
 <translation id="3530206579861815432">Gjej me shpejtësi skedat e hapura dhe skedat e mbyllura së fundi nëpër pajisjet e tua të sinkronizuara.</translation>
 <translation id="3530767473765895035">Menaxho llogaritë në këtë pajisje…</translation>
 <translation id="3533436815740441613">Skedë e re</translation>
+<translation id="3534738261102690620">Pyet Gemini</translation>
 <translation id="3540141921715814660">Shto te faqeshënuesit</translation>
 <translation id="3546122170015471515">"Variantet paraprake të Maps" në Google.com</translation>
 <translation id="3547356470684043247">Lexo vlerësimet e klientëve për produktet, shërbimet ose përvojat për të marrë informacione për vendimet e tua në lidhje me komentet</translation>
@@ -959,6 +962,7 @@
 <translation id="454217142158335225">Mund t'i hapësh përsëri artikujt e mbyllur nga seksionet e skedave të fundit ose grupeve të skedave. Skedat e tua të gozhduara nuk do të mbyllen.</translation>
 <translation id="4547181496285029457">Kthehu te skeda e fundit</translation>
 <translation id="4552042254369397518">Po kopjohet…</translation>
+<translation id="4553044860350038560">Më shumë çelësa kalimi</translation>
 <translation id="4564893319561643483">Fshih "<ph name="TITLE" />"</translation>
 <translation id="4565377596337484307">Fshih fjalëkalimin</translation>
 <translation id="4568230126482344545">Fshih "Skedat e fundit"</translation>
@@ -1087,6 +1091,7 @@
 <translation id="4944543191714094452">Gjej në faqe…</translation>
 <translation id="4945756290001680296">Qasu te cilësimet e fjalëkalimit</translation>
 <translation id="4949302115427722371">Menaxho cilësimet…</translation>
+<translation id="4952050521954075618">Fotografitë nga "Filmi i kamerës" nuk do të sinkronizohen nëpër pajisjet e tua</translation>
 <translation id="4958444002117714549">Zgjero listën</translation>
 <translation id="496392417432935267">Hapur diku tjetër</translation>
 <translation id="4970724460420203313">Përdorimi i Chrome me llogarinë tënde të menaxhuar të ndihmon ta mbash shfletimin në lidhje me organizatën tënde, (duke përfshirë skedat, historikun dhe fjalëkalimet) veçmas nga shfletime të tjera.</translation>
@@ -1286,6 +1291,7 @@ Handoff duhet gjithashtu të jetë i aktivizuar në seksionin "Të përgjithshme
 <translation id="5647702255748985085">Dëshiron të largohesh nga grupi?</translation>
 <translation id="5648166631817621825">7 ditët e fundit</translation>
 <translation id="5652623411397330904">Produktet që monitoron do të shfaqen këtu.</translation>
+<translation id="5653100054596780862">Skedat</translation>
 <translation id="5656431592348714536">Kalendari i përmirësuar</translation>
 <translation id="5659593005791499971">Mail-i</translation>
 <translation id="5665739277590037307">Zbatohen <ph name="GOOGLE_TERMS" /> dhe <ph name="GEMINI_APPS_PRIVACY" />. Gemini mund të bëjë gabime, kështu që kontrolloje përsëri.</translation>
@@ -1718,6 +1724,7 @@ Handoff duhet gjithashtu të jetë i aktivizuar në seksionin "Të përgjithshme
 <translation id="7149893636342594995">24 orët e fundit</translation>
 <translation id="7154417656353909837">Hiq adresat</translation>
 <translation id="7161230316646448869">Sinkronizo faqeshënuesit, historikun etj. në të gjitha pajisjet</translation>
+<translation id="7165323152084385463">Numri VIN</translation>
 <translation id="7173114856073700355">Hap cilësimet</translation>
 <translation id="7173721738069475737">{count,plural, =1{Faqeshënuesi u ruajt}other{{count} faqeshënues u ruajtën}}</translation>
 <translation id="7176183551031110427">Zvogëlo</translation>
@@ -1751,6 +1758,7 @@ Handoff duhet gjithashtu të jetë i aktivizuar në seksionin "Të përgjithshme
 <translation id="7300448350764260141">Shto një shtresë shtesë mbrojtjeje ndaj kërcënimeve online.</translation>
 <translation id="7311244614769792472">Nuk u gjet asnjë rezultat</translation>
 <translation id="7313347584264171202">Këtu do të gjesh skedat e tua "të fshehta"</translation>
+<translation id="7322186060879266048">{count,plural, =1{{count} opsion për plotësimin automatik është i disponueshëm mbi tastierën tënde.}other{{count} opsione për plotësimin automatik janë të disponueshme mbi tastierën tënde.}}</translation>
 <translation id="7328162502911382168">(<ph name="COUNT" />)</translation>
 <translation id="7336264872878993241"><ph name="PERCENT" /> përqind të shkarkuara</translation>
 <translation id="7345061034321640811">Importimi nuk lejohet</translation>

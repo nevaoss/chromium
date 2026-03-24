@@ -161,8 +161,8 @@ class Responder final {
     std::vector<on_device_model::mojom::ToolCallPtr> mojo_tool_calls;
     mojo_tool_calls.reserve(output->tool_calls_size);
     for (const auto& call : tool_calls_span) {
-      if (!call.call_id || !call.name) {
-        LOG(ERROR) << "Invalid tool call: missing call_id or name.";
+      if (!call.call_id || !call.name || !call.arguments_json) {
+        LOG(ERROR) << "Invalid tool call: missing call_id, name, or arguments.";
         task_runner->PostTask(FROM_HERE,
                               base::BindOnce(&Responder::Cancel, weak_ptr));
         return;
@@ -170,11 +170,8 @@ class Responder final {
       auto tc = on_device_model::mojom::ToolCall::New();
       tc->call_id = call.call_id;
       tc->name = call.name;
-      // TODO(crbug.com/422803232): Preserve null arguments_json as a nullable
-      // mojom field to distinguish "no args" from "empty args object".
-      std::string_view args_json =
-          call.arguments_json ? call.arguments_json : "{}";
-      auto parsed = base::JSONReader::Read(args_json, base::JSON_PARSE_RFC);
+      auto parsed =
+          base::JSONReader::Read(call.arguments_json, base::JSON_PARSE_RFC);
       if (!parsed.has_value() || !parsed->is_dict()) {
         LOG(ERROR) << "Invalid tool call arguments JSON.";
         task_runner->PostTask(FROM_HERE,
@@ -210,10 +207,11 @@ class Responder final {
           break;
         case ChromeMLExecutionStatus::kInvalidConstraint:
           DCHECK(!output->text);
-          // TODO(crbug.com/391919456): Propagate error.
-          if (weak_ptr) {
-            weak_ptr->Cancel();
-          }
+          task_runner->PostTask(
+              FROM_HERE,
+              base::BindOnce(
+                  &Responder::OnError, weak_ptr,
+                  on_device_model::mojom::GenerateError::kInvalidConstraint));
           return;
       }
 
@@ -225,6 +223,11 @@ class Responder final {
 
   base::WeakPtr<Responder> AsWeakPtr() {
     return weak_ptr_factory_.GetWeakPtr();
+  }
+
+  void OnError(on_device_model::mojom::GenerateError error) {
+    responder_.ResetWithReason(static_cast<uint32_t>(error), "Error");
+    Cancel();
   }
 
  private:

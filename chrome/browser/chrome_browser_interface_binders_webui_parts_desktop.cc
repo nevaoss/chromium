@@ -29,11 +29,14 @@
 #include "chrome/browser/ui/views/side_panel/history/history_side_panel_coordinator.h"
 #include "chrome/browser/ui/webui/access_code_cast/access_code_cast.mojom.h"
 #include "chrome/browser/ui/webui/access_code_cast/access_code_cast_ui.h"
+#include "chrome/browser/ui/webui/ai_overlay_dialog/ai_overlay_dialog.mojom.h"
+#include "chrome/browser/ui/webui/ai_overlay_dialog/ai_overlay_dialog_untrusted_ui.h"
 #include "chrome/browser/ui/webui/app_service_internals/app_service_internals.mojom.h"
 #include "chrome/browser/ui/webui/app_service_internals/app_service_internals_ui.h"
 #include "chrome/browser/ui/webui/autofill_ml_internals/autofill_ml_internals_ui.h"
 #include "chrome/browser/ui/webui/color_pipeline_internals/color_pipeline_internals_ui.h"
 #include "chrome/browser/ui/webui/commerce/shopping_insights_side_panel_ui.h"
+#include "chrome/browser/ui/webui/content_annotator_internals/content_annotator_internals_ui.h"
 #include "chrome/browser/ui/webui/customize_buttons/customize_buttons.mojom.h"
 #include "chrome/browser/ui/webui/data_sharing/data_sharing.mojom.h"
 #include "chrome/browser/ui/webui/data_sharing/data_sharing_ui.h"
@@ -91,6 +94,7 @@
 #include "chrome/browser/ui/webui_browser/webui_browser.h"
 #include "chrome/browser/ui/webui_browser/webui_browser_ui.h"
 #include "chrome/common/chrome_features.h"
+#include "components/accessibility_annotator/core/logging/accessibility_annotator_internals.mojom.h"
 #include "components/autofill/core/browser/ml_model/logging/autofill_ml_internals.mojom.h"
 #include "components/browser_apis/browser_controls/browser_controls_api.mojom.h"
 #include "components/browser_apis/ui_controllers/toolbar/toolbar_ui_api.mojom.h"
@@ -490,6 +494,10 @@ void PopulateChromeWebUIFrameBindersPartsDesktop(
       UserEducationInternalsUI>(map);
 
   RegisterWebUIControllerInterfaceBinder<
+      accessibility_annotator_internals::mojom::PageHandlerFactory,
+      content_annotator_internals::ContentAnnotatorInternalsUI>(map);
+
+  RegisterWebUIControllerInterfaceBinder<
       ::mojom::app_service_internals::AppServiceInternalsPageHandler,
       AppServiceInternalsUI>(map);
 
@@ -722,6 +730,11 @@ void PopulateChromeWebUIFrameInterfaceBrokersUntrustedPartsDesktop(
   if (base::FeatureList::IsEnabled(features::kGlicRegionSelectionNew)) {
     registry.ForWebUI<glic::SelectionOverlayUntrustedUI>()
         .Add<glic::selection::SelectionOverlayPageHandlerFactory>();
+  }
+
+  if (base::FeatureList::IsEnabled(features::kAiOverlayDialog)) {
+    registry.ForWebUI<AiOverlayDialogUntrustedUI>()
+        .Add<ai_overlay_dialog::mojom::PageHandlerFactory>();
   }
 }
 

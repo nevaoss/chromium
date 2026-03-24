@@ -275,11 +275,11 @@ CanvasResourceProviderSharedImage::CanvasResourceProviderSharedImage(
                              delegate),
       shared_image_usage_flags_(gpu::SHARED_IMAGE_USAGE_CPU_WRITE_ONLY),
       is_accelerated_(false),
+      is_software_(true),
       shared_image_interface_provider_(
           shared_image_interface_provider
               ? shared_image_interface_provider->GetWeakPtr()
-              : nullptr),
-      is_software_(true) {
+              : nullptr) {
   if (shared_image_interface_provider_) {
     shared_image_interface_provider_->AddGpuChannelLostObserver(this);
   }
@@ -584,7 +584,74 @@ void CanvasResourceProviderSharedImage::EndWriteAccess() {
 }
 
 std::unique_ptr<gpu::RasterScopedAccess>
-CanvasResourceProviderSharedImage::WillDrawInternal() {
+Canvas2DResourceProviderSharedImage::WillDrawInternal() {
+  DCHECK(resource_);
+
+  // Since the resource will be updated, the cached snapshot is no longer
+  // valid. Note that it is important to release this reference here to not
+  // trigger copy-on-write below from the resource ref in the snapshot.
+  // Note that this is valid for single buffered mode also, since while the
+  // resource/mailbox remains the same, the snapshot needs an updated sync
+  // token for these writes.
+  cached_snapshot_.reset();
+
+  // Determine if a copy is needed for accelerated resources. This could be
+  // for one of two reasons: (1) copy-on-write is required, or (2) the
+  // SharedImage usages with which this provider should create resources has
+  // changed since this resource was created (this can occur, for example,
+  // when a client requests the backing ClientSharedImage with a specific
+  // required set of usages for an external write). Note that for
+  // unaccelerated resources, neither of these apply: writes to the
+  // SharedImage are deferred to ProduceCanvasResource and hence
+  // copy-on-write is never needed here, and the set of SharedImage usages
+  // doesn't change over the lifetime of the provider.
+  std::unique_ptr<gpu::RasterScopedAccess> dst_access;
+  if (is_accelerated_ && (ShouldReplaceTargetBuffer(cached_content_id_) ||
+                          !IsResourceUsable(resource_.get()))) {
+    cached_content_id_ = PaintImage::kInvalidContentId;
+    DCHECK(!current_resource_has_write_access_)
+        << "Write access must be released before sharing the resource";
+
+    auto old_resource = std::move(resource_);
+    auto* old_resource_shared_image =
+        static_cast<CanvasResourceSharedImage*>(old_resource.get());
+
+    if (!IsResourceUsable(old_resource.get())) {
+      // If this resource has become unusable, all cached resources have also
+      // become unusable. Drop them to ensure that a new usable resource gets
+      // created in the below call to NewOrRecycledResource().
+      ClearUnusedResources();
+    }
+    resource_ = NewOrRecycledResource();
+    DCHECK(IsResourceUsable(resource_.get()));
+    dst_access = resource_->BeginAccess(/*readonly=*/false);
+    if (must_preserve_content_on_copy_on_write_) {
+      auto old_mailbox =
+          old_resource_shared_image->GetClientSharedImage()->mailbox();
+      auto mailbox = resource()->GetClientSharedImage()->mailbox();
+      auto src_access = old_resource->BeginAccess(/*readonly=*/true);
+      RasterInterface()->CopySharedImage(old_mailbox, mailbox, 0, 0, 0, 0,
+                                         Size().width(), Size().height());
+      gpu::RasterScopedAccess::EndAccess(std::move(src_access));
+    } else {
+      // If we're not copying over the previous contents, we need to ensure
+      // that the image is cleared on the next BeginRasterCHROMIUM.
+      is_cleared_ = false;
+    }
+
+    UMA_HISTOGRAM_BOOLEAN("Blink.Canvas.ContentChangeMode",
+                          must_preserve_content_on_copy_on_write_);
+    // By default, the contents of the new resource must be preserved on a
+    // subsequent CopyOnWrite.
+    must_preserve_content_on_copy_on_write_ = true;
+  } else {
+    dst_access = resource_->BeginAccess(/*readonly=*/false);
+  }
+  return dst_access;
+}
+
+std::unique_ptr<gpu::RasterScopedAccess>
+CanvasNon2DResourceProviderSharedImage::WillDrawInternal() {
   DCHECK(resource_);
 
   // Since the resource will be updated, the cached snapshot is no longer
@@ -666,7 +733,7 @@ void CanvasNon2DResourceProviderSharedImage::PrepareForWebGPUDummyMailbox() {
   }
 }
 
-bool CanvasResourceProviderSharedImage::WritePixels(
+bool Canvas2DResourceProviderSharedImage::WritePixels(
     const SkImageInfo& orig_info,
     const void* pixels,
     size_t row_bytes,
@@ -677,7 +744,50 @@ bool CanvasResourceProviderSharedImage::WritePixels(
     return UnacceleratedWritePixels(orig_info, pixels, row_bytes, x, y);
   }
 
-  TRACE_EVENT0("blink", "CanvasResourceProviderSharedImage::WritePixels");
+  TRACE_EVENT0("blink", "Canvas2DResourceProviderSharedImage::WritePixels");
+  if (IsGpuContextLost()) {
+    return false;
+  }
+
+  auto access = WillDrawInternal();
+
+  // The below  write to the resource's SharedImage will need to be preserved in
+  // the case of a subsequent CopyOnWrite.
+  // TODO(crbug.com/352263194): Logically this bool must already be true
+  // (see discussion here:
+  // https://chromium-review.googlesource.com/c/chromium/src/+/7557841/comment/bb38e497_ef1efdbc/).
+  // Verify that this is the case and update the code here.
+  must_preserve_content_on_copy_on_write_ = true;
+
+  auto client_si = resource()->GetClientSharedImage();
+  RasterInterface()->WritePixels(client_si->mailbox(), x, y,
+                                 client_si->GetTextureTarget(),
+                                 SkPixmap(orig_info, pixels, row_bytes));
+  resource()->EndAccess(std::move(access));
+
+  // If the overdraw optimization kicked in, we need to indicate that the
+  // pixels do not need to be cleared, otherwise the subsequent
+  // rasterizations will clobber canvas contents.
+  if (x <= 0 && y <= 0 && orig_info.width() >= Size().width() &&
+      orig_info.height() >= Size().height()) {
+    is_cleared_ = true;
+  }
+
+  return true;
+}
+
+bool CanvasNon2DResourceProviderSharedImage::WritePixels(
+    const SkImageInfo& orig_info,
+    const void* pixels,
+    size_t row_bytes,
+    int x,
+    int y) {
+  if (!is_accelerated_) {
+    WillDrawUnaccelerated();
+    return UnacceleratedWritePixels(orig_info, pixels, row_bytes, x, y);
+  }
+
+  TRACE_EVENT0("blink", "CanvasNon2DResourceProviderSharedImage::WritePixels");
   if (IsGpuContextLost()) {
     return false;
   }
@@ -923,7 +1033,63 @@ scoped_refptr<StaticBitmapImage> CanvasResourceProviderSharedImage::Snapshot(
   return cached_snapshot_;
 }
 
-void CanvasResourceProviderSharedImage::RasterRecord(
+void Canvas2DResourceProviderSharedImage::RasterRecord(
+    cc::PaintRecord last_recording) {
+  if (!is_accelerated_) {
+    WillDrawUnaccelerated();
+    UnacceleratedRasterRecord(std::move(last_recording));
+    return;
+  }
+
+  if (IsGpuContextLost()) {
+    return;
+  }
+
+  auto access = WillDrawInternal();
+  EnsureWriteAccess();
+
+  const bool needs_clear = !is_cleared_;
+  is_cleared_ = true;
+
+  gpu::raster::RasterInterface* ri = RasterInterface();
+  SkColor4f background_color = GetAlphaType() == kOpaque_SkAlphaType
+                                   ? SkColors::kBlack
+                                   : SkColors::kTransparent;
+
+  auto list = base::MakeRefCounted<cc::DisplayItemList>();
+  list->StartPaint();
+  list->push<cc::DrawRecordOp>(std::move(last_recording));
+  list->EndPaintOfUnpaired(gfx::Rect(Size().width(), Size().height()));
+  list->Finalize();
+
+  gfx::Size size(Size().width(), Size().height());
+  size_t max_op_size_hint = gpu::raster::RasterInterface::kDefaultMaxOpSizeHint;
+  gfx::Rect full_raster_rect(Size().width(), Size().height());
+  gfx::Rect playback_rect(Size().width(), Size().height());
+  gfx::Vector2dF post_translate(0.f, 0.f);
+  gfx::Vector2dF post_scale(1.f, 1.f);
+
+  const bool can_use_lcd_text = GetAlphaType() == kOpaque_SkAlphaType;
+  const auto& caps =
+      context_provider_wrapper_->ContextProvider().GetCapabilities();
+  bool use_msaa = !caps.msaa_is_slow && !caps.avoid_stencil_buffers;
+  ri->BeginRasterCHROMIUM(
+      background_color, needs_clear,
+      /*msaa_sample_count=*/use_msaa ? 1 : 0,
+      use_msaa ? gpu::raster::MsaaMode::kDMSAA : gpu::raster::MsaaMode::kNoMSAA,
+      can_use_lcd_text, /*visible=*/true, GetColorSpace(),
+      /*hdr_headroom=*/0.f, resource()->GetClientSharedImage()->mailbox().name);
+
+  ri->RasterCHROMIUM(
+      list.get(), GetOrCreateCanvasImageProvider(), size, full_raster_rect,
+      playback_rect, post_translate, post_scale, /*requires_clear=*/false,
+      /*raster_inducing_scroll_offsets=*/nullptr, &max_op_size_hint);
+
+  ri->EndRasterCHROMIUM();
+  resource()->EndAccess(std::move(access));
+}
+
+void CanvasNon2DResourceProviderSharedImage::RasterRecord(
     cc::PaintRecord last_recording) {
   if (!is_accelerated_) {
     WillDrawUnaccelerated();
@@ -1162,21 +1328,6 @@ CanvasNon2DResourceProviderSharedImage::Create(
     Delegate* delegate) {
   return CreateSharedImageProviderBase<CanvasNon2DResourceProviderSharedImage>(
       size, format, alpha_type, color_space, ShouldInitialize::kNo,
-      context_provider_wrapper, RasterMode::kGPU, shared_image_usage_flags,
-      delegate);
-}
-
-std::unique_ptr<CanvasNon2DResourceProviderSharedImage>
-CanvasNon2DResourceProviderSharedImage::CreateWithClear(
-    gfx::Size size,
-    viz::SharedImageFormat format,
-    SkAlphaType alpha_type,
-    const gfx::ColorSpace& color_space,
-    base::WeakPtr<WebGraphicsContext3DProviderWrapper> context_provider_wrapper,
-    gpu::SharedImageUsageSet shared_image_usage_flags,
-    Delegate* delegate) {
-  return CreateSharedImageProviderBase<CanvasNon2DResourceProviderSharedImage>(
-      size, format, alpha_type, color_space, ShouldInitialize::kCallClear,
       context_provider_wrapper, RasterMode::kGPU, shared_image_usage_flags,
       delegate);
 }

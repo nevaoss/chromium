@@ -948,28 +948,21 @@ IN_PROC_BROWSER_TEST_F(TopControlsSlideControllerTest, DisplayRotation) {
       crosapi::mojom::DisplayRotationOptions::kZeroDegrees,
   };
 
-  base::test::TestFuture<std::vector<crosapi::mojom::DisplayUnitInfoPtr>>
-      info_list_future;
   ash::CrosDisplayConfig* cros_display_config =
       ash::Shell::Get()->cros_display_config();
-  cros_display_config->GetDisplayUnitInfoList(false /* single_unified */,
-                                              info_list_future.GetCallback());
-  auto info_list = info_list_future.Take();
-  for (const crosapi::mojom::DisplayUnitInfoPtr& display_unit_info :
-       info_list) {
+  std::vector<crosapi::mojom::DisplayUnitInfoPtr> info_list =
+      cros_display_config->GetDisplayUnitInfoList(/*single_unified=*/false);
+  for (const auto& display_unit_info : info_list) {
     const std::string display_id = display_unit_info->id;
     for (const auto& rotation : rotations_to_try) {
       BrowserViewLayoutWaiter browser_view_layout_waiter(browser_view());
-      auto config_properties = crosapi::mojom::DisplayConfigProperties::New();
-      config_properties->rotation =
-          crosapi::mojom::DisplayRotation::New(rotation);
-      base::test::TestFuture<crosapi::mojom::DisplayConfigResult> result_future;
-      cros_display_config->SetDisplayProperties(
-          display_id, std::move(config_properties),
-          crosapi::mojom::DisplayConfigSource::kUser,
-          result_future.GetCallback());
-      EXPECT_EQ(result_future.Take(),
-                crosapi::mojom::DisplayConfigResult::kSuccess);
+      ash::DisplayConfigProperties config_properties;
+      config_properties.rotation = rotation;
+      ash::DisplayConfigResult result =
+          cros_display_config->SetDisplayProperties(
+              display_id, config_properties,
+              crosapi::mojom::DisplayConfigSource::kUser);
+      EXPECT_EQ(result, ash::DisplayConfigResult::kSuccess);
 
       // Wait for the browser view to change its bounds as a result of display
       // rotation.

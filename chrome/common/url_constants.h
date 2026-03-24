@@ -358,7 +358,7 @@ inline constexpr char16_t kMyActivityUrlInHistory[] =
 
 // The URL for the Gemini Personal Context page.
 inline constexpr char16_t kGeminiPersonalContextUrl[] =
-    u"https://gemini.google.com/saved-info";
+    u"https://gemini.google.com/personal_intelligence";
 
 // The URL for "Your Gemini Apps Activity" page.
 inline constexpr char16_t kMyActivityGeminiAppsUrl[] =
@@ -715,6 +715,10 @@ inline constexpr char kWindowsXPVistaDeprecationURL[] =
 // The URL for the Windows 7/8.1 deprecation help center article.
 inline constexpr char kWindows78DeprecationURL[] =
     "https://support.google.com/chrome?p=unsupported_windows";
+
+// The URL for the "Learn more" page for process isolation.
+inline constexpr char kProcessIsolationLearnMoreUrl[] =
+    "https://support.google.com/chrome?p=process_isolation";
 #endif
 
 #if BUILDFLAG(ENABLE_PLUGINS)

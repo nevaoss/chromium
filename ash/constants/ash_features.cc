@@ -779,6 +779,9 @@ BASE_FEATURE(kFjordOobeForSquid, base::FEATURE_DISABLED_BY_DEFAULT);
 // because the Fjord OOBE variant is buildflag dependent.
 BASE_FEATURE(kFjordOobeForceEnabled, base::FEATURE_DISABLED_BY_DEFAULT);
 
+// Controls if the Fjord image switch screen is shown during OOBE.
+BASE_FEATURE(kFjordOobeImageSwitch, base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Enables or disables the Flex Auto-Enrollment feature on ChromeOS
 BASE_FEATURE(kFlexAutoEnrollment, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -1562,16 +1565,6 @@ BASE_FEATURE(kPerDeskShelf, base::FEATURE_DISABLED_BY_DEFAULT);
 // Provides a UI for users to view information about their Android phone
 // and perform phone-side actions within ChromeOS.
 BASE_FEATURE(kPhoneHub, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Enables the Camera Roll feature in Phone Hub, which allows users to access
-// recent photos and videos taken on a connected Android device
-BASE_FEATURE(kPhoneHubCameraRoll, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Maximum number of seconds to wait before users can download the same photo
-// from Camera Roll again.
-const base::FeatureParam<base::TimeDelta> kPhoneHubCameraRollThrottleInterval{
-    &kPhoneHubCameraRoll, "PhoneHubCameraRollThrottleInterval",
-    base::Seconds(2)};
 
 // Enables the incoming/ongoing call notification feature in Phone Hub.
 BASE_FEATURE(kPhoneHubCallNotification, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -2704,6 +2697,10 @@ bool IsFjordOobeForceEnabled() {
   return base::FeatureList::IsEnabled(kFjordOobeForceEnabled);
 }
 
+bool IsFjordOobeImageSwitchEnabled() {
+  return base::FeatureList::IsEnabled(kFjordOobeImageSwitch);
+}
+
 bool IsFlexAutoEnrollmentEnabled() {
   return switches::IsRevenBranding() &&
          base::FeatureList::IsEnabled(kFlexAutoEnrollment);
@@ -3122,10 +3119,6 @@ bool IsPerDeskShelfEnabled() {
 bool IsPeripheralNotificationEnabled() {
   return base::FeatureList::IsEnabled(kPeripheralNotification) &&
          IsPeripheralCustomizationEnabled();
-}
-
-bool IsPhoneHubCameraRollEnabled() {
-  return base::FeatureList::IsEnabled(kPhoneHubCameraRoll);
 }
 
 bool IsPhoneHubMonochromeNotificationIconsEnabled() {

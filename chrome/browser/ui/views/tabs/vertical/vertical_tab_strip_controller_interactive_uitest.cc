@@ -307,8 +307,7 @@ IN_PROC_BROWSER_TEST_F(VerticalTabStripControllerInteractiveUiTest,
           1));
 }
 
-// TODO(crbug.com/466391046): Tab Group Accelerators are not defined on
-// ChromeOS.
+// Tab Group Accelerators are not defined on ChromeOS.
 #if BUILDFLAG(IS_CHROMEOS)
 #define MAYBE_KeyboardTabGroupCommands DISABLED_KeyboardTabGroupCommands
 #else
@@ -516,6 +515,29 @@ IN_PROC_BROWSER_TEST_F(VerticalTabStripControllerInteractiveUiTest,
             ->ScrollByOffset({0, -100});
       }),
       WaitForHide(TabHoverCardBubbleView::kHoverCardBubbleElementId));
+}
+
+IN_PROC_BROWSER_TEST_F(VerticalTabStripControllerInteractiveUiTest,
+                       ScrollingUnpinnedContainerClosesTabGroupEditorBubble) {
+  RunTestSequence(
+      WaitForShow(kVerticalTabStripBottomContainerElementId), Do([this]() {
+        browser()->tab_strip_model()->ExecuteContextMenuCommand(
+            browser()->tab_strip_model()->active_index(),
+            TabStripModel::ContextMenuCommand::
+                CommandAddToNewGroupFromMenuItem);
+      }),
+      WaitForShow(kTabGroupHeaderElementId),
+      WaitForShow(kTabGroupEditorBubbleId), Do([this]() {
+        views::View* tab_strip_view =
+            BrowserView::GetBrowserViewForBrowser(browser())
+                ->vertical_tab_strip_region_view_for_testing()
+                ->GetTabStripView();
+        VerticalTabStripView* vertical_tab_strip_view =
+            views::AsViewClass<VerticalTabStripView>(tab_strip_view);
+        vertical_tab_strip_view->unpinned_tabs_scroll_view_for_testing()
+            ->ScrollByOffset({0, -100});
+      }),
+      WaitForHide(kTabGroupEditorBubbleId));
 }
 
 #if BUILDFLAG(IS_WIN)

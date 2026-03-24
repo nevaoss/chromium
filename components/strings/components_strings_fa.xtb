@@ -609,6 +609,7 @@
 <translation id="1960664692890490165">‏هنگام خرید کردن در Chrome، روش‌های پرداخت بدون کارت را به‌عنوان یک گزینه می‌بینید</translation>
 <translation id="196146181975453736">برای پرداخت سریع‌تر، بررسی ایمن یک‌باره‌ای را تکمیل کنید</translation>
 <translation id="1962204205936693436">نشانک‌های <ph name="DOMAIN" /></translation>
+<translation id="1966259577349514951">اکنون پرداخت شود</translation>
 <translation id="1973335181906896915">خطای ترتیب</translation>
 <translation id="1973785048533660168">مشاغل دفتری و اداری</translation>
 <translation id="1974060860693918893">پیشرفته</translation>
@@ -753,6 +754,7 @@
 <translation id="2184405333245229118">{COUNT,plural, =1{۱ نشانی}one{# نشانی}other{# نشانی}}</translation>
 <translation id="2188375229972301266">چندین سوراخ در پایین</translation>
 <translation id="218940509700321686">مقادیر جداشده با کاما</translation>
+<translation id="2190094353033916816">این خط‌مشی مقادیر متفاوتی در سطح ماشین و کاربر دارد. خط‌مشی همان‌طور که درنظر گرفته شده است کار می‌کند.</translation>
 <translation id="2191980191135734720">در مرحله بعد، قفل صفحه را باز کنید که معمولاً بااستفاده از اثر انگشتتان انجام می‌شود. همچنین می‌توانید این کارها را انجام دهید:
     <ph name="LINK_TEXT" /></translation>
 <translation id="2194856509914051091">مواردی که باید درنظر داشت</translation>
@@ -1087,6 +1089,7 @@
 <translation id="2696385693639654606">‏با Chrome Enterprise Core می‌توانید خط‌مشی‌های مرورگر، برنامه‌ها، و افزونه‌های فضای ابری را مدیریت کنید</translation>
 <translation id="2697248912349197812">از <ph name="KEYWORD_SHORT_NAME" /> بپرسید</translation>
 <translation id="2699273987028089219">منوِ فرعی دردسترس است، برای پیمایش به گزینه‌های دیگر از <ph name="SHORTCUT" /> استفاده کنید.</translation>
+<translation id="2700335762333112350">بعداً پرداخت شود</translation>
 <translation id="2701514975700770343">روبه‌پایین</translation>
 <translation id="2702592986366989640">گزینه ارزان‌قیمت</translation>
 <translation id="2702801445560668637">فهرست خواندن</translation>
@@ -1369,6 +1372,7 @@
 <translation id="3156511682997763015">‫۱۰ ثانیه به جلو</translation>
 <translation id="3157931365184549694">بازگرداندن</translation>
 <translation id="3158539265159265653">دیسک</translation>
+<translation id="3159556963589020896">Pro</translation>
 <translation id="3162070126914310576">درحال‌حاضر نمی‌توان این دستگاه را ثبت‌نام کرد زیرا واحد سازمانی‌تان به حداکثر تعداد ثبت‌نام اولیه خود رسیده است. برای دریافت کمک با سرپرستتان تماس بگیرید.</translation>
 <translation id="3162559335345991374">‏شبکه Wi-Fi مورد استفاده‌تان احتمالاً نیاز دارد که به یک صفحه ورود به سیستم بروید.</translation>
 <translation id="316638481603975524">می‌تواند نصب کردن برنامه‌های وب را درخواست کند</translation>
@@ -3191,6 +3195,7 @@
 <translation id="6042308850641462728">بیشتر</translation>
 <translation id="6043357981274314628">تمام!</translation>
 <translation id="6045164183059402045">الگوی چاپ مضاعف</translation>
+<translation id="6046026831939367176">‫<ph name="URL" /> می‌خواهد از مکان تقریبی شما استفاده کند</translation>
 <translation id="6046892054959167494">برای جستجو کردن یا پرسیدن <ph name="SEARCH_AGGREGATOR_SHORT_NAME" />،‏ <ph name="SEARCH_AGGREGATOR_KEYWORD" /> را تایپ کنید</translation>
 <translation id="6047927260846328439">شاید محتوای این صفحه تلاش کند شما را فریب دهد تا نرم‌افزاری نصب کنید یا اطلاعات شخصی را افشا سازید. <ph name="BEGIN_LINK" />درهرصورت نمایش داده شود<ph name="END_LINK" /></translation>
 <translation id="6049056807983403918">پاکت بی۴</translation>
@@ -3577,7 +3582,7 @@
 <translation id="6648459603387803038">‏سرپرستتان می‌تواند تنظیم مرورگرتان را ازراه‌دور تغییر دهد. فعالیت انجام‌شده در این دستگاه می‌تواند از خارج از Chrome هم مدیریت شود.</translation>
 <translation id="6648524591329069940">‏قلم Serif</translation>
 <translation id="6649510485211003056">۲۷۰ × ۱۹۵ میلی‌متر</translation>
-<translation id="6651270836885078973">مدیریت توسط:</translation>
+<translation id="6651270836885078973">تحت مدیریت:</translation>
 <translation id="6652101503459149953">‏استفاده از Windows Hello</translation>
 <translation id="6654244995031366386">شیشه (مشجر)</translation>
 <translation id="6655085656059574817">حفظ پیوند حسابتان به پرداخت سریع‌تر با <ph name="BNPL_ISSUER_NAME" /> کمک می‌کند، اما می‌توانید با رفتن به <ph name="BEGIN_LINK" /><ph name="IDS_AUTOFILL_BNPL_TOS_LINK_TEXT_WALLET_LINK_TEXT" /><ph name="END_LINK" />، پیوند آن را لغو کنید.</translation>
@@ -3640,7 +3645,6 @@
 <translation id="6727094998759448074">SRA4</translation>
 <translation id="6732087373923685049">دوربین</translation>
 <translation id="6734506549556896534">بازی‌های شبیه‌سازی</translation>
-<translation id="6735589846038045679">‏طرح‌های پرداخت مشروط به واجدشرایط بودن هستند. <ph name="BEGIN_BOLD" />محتوای صفحه تسویه‌حساب برای ارائه این گزینه‌ها، با Google هم‌رسانی می‌شود.<ph name="END_BOLD" /> برای پنهان کردن گزینه‌های «بعداً پرداخت کنید»، به <ph name="BEGIN_LINK" />تنظیمات پرداخت<ph name="END_LINK" /> بروید</translation>
 <translation id="6737708609449480586">محصولات پخته</translation>
 <translation id="6738516213925468394">داده‌ها با  <ph name="BEGIN_LINK" />گذرعبارت همگام‌سازی<ph name="END_LINK" /> شما در <ph name="TIME" /> رمز می‌شود. برای شروع همگام‌سازی، آن را وارد کنید.</translation>
 <translation id="6740851646645036700">به سقف مجاز کمک در نوشتن رسیده‌اید. بعداً دوباره امتحان کنید.</translation>
@@ -4990,6 +4994,7 @@
 <translation id="8870700989640064057">فایل محرمانه چاپ شود؟</translation>
 <translation id="8871485335898060555">عتیقه و کلکسیون</translation>
 <translation id="8871553383647848643">سفارشی کردن ظاهر مرورگر</translation>
+<translation id="887350038812854047">این خط‌مشی مقدار یکسانی در سطح ماشین و کاربر دارد. خط‌مشی همان‌طور که درنظر گرفته شده است کار می‌کند.</translation>
 <translation id="8874790741333031443">کوکی‌های طرف سوم را به‌طور موقت مجاز کنید. این کار به‌معنی محافظت کمتر هنگام مرور است اما ویژگی‌های سایت به احتمال زیاد عملکرد موردنظر را خواهد داشت.</translation>
 <translation id="8874824191258364635">شماره کارت معتبری وارد کنید</translation>
 <translation id="8877780815363510165">ماهی‌گیری</translation>

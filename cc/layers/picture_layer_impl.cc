@@ -362,34 +362,26 @@ bool PictureLayerImpl::ComputeCheckerboardedNeedsRecord() {
     }
   }
 
-  const float max_contents_scale = GetMaximumContentsScaleForUseInAppendQuads();
-  std::optional<gfx::Rect> scaled_cull_rect =
-      CalculateScaledCullRect(max_contents_scale);
-  if (!scaled_cull_rect) {
+  std::optional<gfx::Rect> cull_rect_in_layer_space =
+      CalculateCullRectInLayerSpace();
+  if (!cull_rect_in_layer_space) {
     return false;
   }
 
-  const gfx::Transform quad_to_target_transform =
-      GetScaledDrawTransform(max_contents_scale);
-  const Occlusion scaled_occlusion =
-      draw_properties()
-          .occlusion_in_content_space.GetOcclusionWithGivenDrawTransform(
-              quad_to_target_transform);
-  const gfx::Rect scaled_recorded_bounds =
-      gfx::ScaleToEnclosingRect(RecordedBounds(), max_contents_scale);
+  // The unoccluded recorded visible rect is what we might want to record.
+  // We compute this in layer space (unscaled) to avoid unnecessary scaling
+  // operations and avoid expensive GetOcclusionWithGivenDrawTransform() which
+  // involves matrix multiplication and inversion.
+  gfx::Rect recorded_visible_layer_rect = visible_layer_rect();
+  recorded_visible_layer_rect.Intersect(gfx::Rect(bounds()));
+  recorded_visible_layer_rect.Intersect(RecordedBounds());
 
-  gfx::Size scaled_bounds =
-      gfx::ScaleToCeiledSize(bounds(), max_contents_scale);
-  gfx::Rect scaled_visible_layer_rect =
-      gfx::ScaleToEnclosingRect(visible_layer_rect(), max_contents_scale);
-  scaled_visible_layer_rect.Intersect(gfx::Rect(scaled_bounds));
-
-  gfx::Rect recorded_visible_layer_rect = scaled_visible_layer_rect;
-  recorded_visible_layer_rect.Intersect(scaled_recorded_bounds);
   gfx::Rect unoccluded_recorded_visible_rect =
-      scaled_occlusion.GetUnoccludedContentRect(recorded_visible_layer_rect);
+      draw_properties().occlusion_in_content_space.GetUnoccludedContentRect(
+          recorded_visible_layer_rect);
+
   if (!unoccluded_recorded_visible_rect.IsEmpty() &&
-      !scaled_cull_rect->Contains(unoccluded_recorded_visible_rect)) {
+      !cull_rect_in_layer_space->Contains(unoccluded_recorded_visible_rect)) {
     return true;
   }
   return false;
@@ -404,44 +396,6 @@ std::unique_ptr<AppendQuadsCustomSharedData> PictureLayerImpl::WillAppendQuads(
       viewport_rect_for_tile_priority_in_content_space_, max_contents_scale);
 
   return std::move(custom_data);
-}
-
-bool PictureLayerImpl::AppendQuadForTile(
-    TilingSetCoverageIterator<PictureLayerTiling> iter,
-    const AppendQuadsContext& context,
-    viz::CompositorRenderPass* render_pass,
-    AppendQuadsData* append_quads_data,
-    viz::SharedQuadState* shared_quad_state,
-    const Occlusion& scaled_occlusion,
-    const gfx::Rect& offset_geometry_rect,
-    const gfx::Rect& offset_visible_geometry_rect,
-    const gfx::Rect& visible_geometry_rect,
-    bool needs_blending,
-    const std::optional<gfx::Rect>& scaled_cull_rect,
-    float max_contents_scale,
-    AppendQuadsCustomSharedData* custom_data) {
-  gfx::Rect geometry_rect = iter.geometry_rect();
-
-  bool has_draw_quad =
-      AppendQuad(iter, render_pass, shared_quad_state, offset_geometry_rect,
-                 offset_visible_geometry_rect, visible_geometry_rect,
-                 needs_blending, nearest_neighbor_, append_quads_data);
-
-  if (!has_draw_quad) {
-    // Checkerboard due to missing raster.
-    AppendCheckerboardQuad(render_pass, shared_quad_state, offset_geometry_rect,
-                           offset_visible_geometry_rect, iter,
-                           append_quads_data);
-
-    return /*tile_produced=*/!ShouldReportTileAsMissing(geometry_rect,
-                                                        custom_data);
-  }
-
-  set_produced_tile_last_append_quads(true);
-
-  AddScaleToLastAppendQuadsScales(iter.CurrentTiling()->contents_scale_key());
-
-  return /*tile_produced=*/true;
 }
 
 bool PictureLayerImpl::UpdateTiles() {
@@ -800,7 +754,7 @@ void PictureLayerImpl::NotifyTileStateChanged(const Tile* tile,
                                               bool update_damage) {
   if (update_damage) {
     if (layer_tree_impl()->IsActiveTree()) {
-      damage_rect_.Union(tile->enclosing_layer_rect());
+      UnionWithExistingDamage(tile->enclosing_layer_rect());
     }
     if (tile->draw_info().NeedsRaster()) {
       PictureLayerTiling* tiling =
@@ -836,10 +790,6 @@ void PictureLayerImpl::NotifyTileStateChanged(const Tile* tile,
   }
 }
 
-gfx::Rect PictureLayerImpl::GetDamageRect() const {
-  return damage_rect_;
-}
-
 void PictureLayerImpl::DidDraw(viz::ClientResourceProvider* resource_provider) {
   LayerImpl::DidDraw(resource_provider);
 
@@ -852,8 +802,7 @@ void PictureLayerImpl::DidDraw(viz::ClientResourceProvider* resource_provider) {
 }
 
 void PictureLayerImpl::ResetChangeTracking() {
-  LayerImpl::ResetChangeTracking();
-  damage_rect_.SetRect(0, 0, 0, 0);
+  TileBasedLayerImpl<PictureLayerTiling>::ResetChangeTracking();
   has_animated_image_update_rect_ = false;
   has_non_animated_image_update_rect_ = false;
 }
@@ -947,6 +896,10 @@ bool PictureLayerImpl::IsDirectlyCompositedImage() const {
 
 gfx::Rect PictureLayerImpl::RecordedBounds() const {
   return raster_source_ ? raster_source_->recorded_bounds() : gfx::Rect();
+}
+
+bool PictureLayerImpl::GetNearestNeighbor() const {
+  return nearest_neighbor_;
 }
 
 std::vector<const DrawImage*> PictureLayerImpl::GetDiscardableImagesInRect(
@@ -2184,7 +2137,7 @@ DamageReasonSet PictureLayerImpl::GetDamageReasons() const {
   if (has_animated_image_update_rect_) {
     reasons.Put(DamageReason::kAnimatedImage);
   }
-  if (has_non_animated_image_update_rect_ || !damage_rect_.IsEmpty()) {
+  if (has_non_animated_image_update_rect_ || !GetDamageRect().IsEmpty()) {
     reasons.Put(DamageReason::kUntracked);
   }
   return reasons;

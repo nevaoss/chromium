@@ -379,6 +379,10 @@ public final class ProductionSupportedFlagList {
                         + "MergeMode::kMergeChildrenAndReformatIfNeeded will be also added to all"
                         + "the nodes where required."),
         Flag.baseFeature(
+                AutofillFeatures.AUTOFILL_ANDROID_FORM_DATA_COMPARE_FIELD_GLOBAL_ID,
+                "If enabled, form fields are retrieved by comparing FormFieldIds"
+                        + "instead of the set of attributes."),
+        Flag.baseFeature(
                 AutofillFeatures.AUTOFILL_SUPPORT_PHONETIC_NAME_FOR_JP,
                 "When enabled, Autofill will support phonetic name for Japan."),
         Flag.baseFeature(
@@ -1354,6 +1358,12 @@ public final class ProductionSupportedFlagList {
                 "Throttle sending custom user timing events via performance.mark() from the"
                         + " renderer to the browser process, to reduce the number of IPCs to record"
                         + " page load metrics."),
+        Flag.baseFeature(
+                "ConsolidateMetricsServiceLocales",
+                "Consolidate the source of locale used by MetricsService."),
+        Flag.baseFeature(
+                AwFeatures.PRERENDER2_WARM_UP_COMPOSITOR_FOR_WEBVIEW,
+                "Requests the compositor warm-up for the WebView prerender triggers."),
 
         // Add new commandline switches and features above. The final entry should have a
         // trailing comma for cleaner diffs.

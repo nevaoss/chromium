@@ -169,7 +169,10 @@ source_set("impl") {
     "//ui/gfx",
     "//url",
   ]
-  public_deps = [ "//chrome/browser:browser_public_dependencies" ]
+  public_deps = [
+    "//chrome/browser:browser_public_dependencies",
+    "//ui/base/unowned_user_data",
+  ]
 
   if (!is_android) {
     sources += [
@@ -219,7 +222,7 @@ source_set("impl") {
       "//chrome/browser/ui/tabs:tab_strip",
       "//chrome/browser/ui/toasts",
       "//chrome/browser/ui/toasts/api:toasts",
-      "//chrome/browser/ui/waap",
+      "//chrome/browser/ui/waap:manager",
       "//chrome/browser/ui/webui/whats_new",
       "//chrome/browser/web_applications",
       "//chrome/common",
@@ -523,6 +526,7 @@ if (!is_android && !is_chromeos_device) {
       "//chrome/browser/prefs:util",
       "//chrome/browser/sessions",
       "//chrome/browser/ui",
+      "//chrome/browser/ui/browser_window",
       "//chrome/browser/ui/tabs:tab_strip",
       "//chrome/common:constants",
       "//chrome/test:test_support",

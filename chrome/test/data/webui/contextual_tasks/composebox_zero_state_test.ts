@@ -14,7 +14,8 @@ import {ContextUploadStatus, ToolMode as ComposeboxToolMode} from 'chrome://reso
 import {WindowProxy} from 'chrome://resources/cr_components/composebox/window_proxy.js';
 import {GlowAnimationState} from 'chrome://resources/cr_components/search/constants.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
-import {PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerRemote as SearchboxPageHandlerRemote, type PageRemote as SearchboxPageRemote} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import {PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerRemote as SearchboxPageHandlerRemote} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import type {PageRemote as SearchboxPageRemote} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import {assertEquals, assertFalse, assertNotEquals, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {MockTimer} from 'chrome://webui-test/mock_timer.js';
 import {TestMock} from 'chrome://webui-test/test_mock.js';
@@ -712,7 +713,7 @@ suite('ContextualTasksComposeboxZeroStateTest', () => {
         await composebox.updateComplete;
         await microtasksFinished();
 
-        assertEquals(0, composebox.files_.size);
+        assertEquals(0, composebox.files.size);
 
         // Should be no longer `EXPANDING` after successful upload and submit
         // click.
@@ -721,92 +722,53 @@ suite('ContextualTasksComposeboxZeroStateTest', () => {
       });
 
 
-  test('deep search: thread change resets input', async () => {
-    composebox.onToolClickForTesting(ComposeboxToolMode.kDeepSearch);
-    searchboxCallbackRouterRemote.onInputStateChanged({
-      ...mockInputState,
-      activeTool: ComposeboxToolMode.kDeepSearch,
+
+  interface ToolModeInfo {
+    toolMode: ComposeboxToolMode;
+    text: string;
+  }
+
+  [{
+    toolMode: ComposeboxToolMode.kDeepSearch,
+    text: 'Deep Search',
+  },
+   {
+     toolMode: ComposeboxToolMode.kImageGen,
+     text: 'Create Images',
+   },
+   {
+     toolMode: ComposeboxToolMode.kCanvas,
+     text: 'Canvas',
+   }].forEach((toolModeInfo: ToolModeInfo) => {
+    test(toolModeInfo.text + ': thread change resets input', async () => {
+      composebox.onToolClickForTesting(toolModeInfo.toolMode);
+      searchboxCallbackRouterRemote.onInputStateChanged({
+        ...mockInputState,
+        activeTool: ComposeboxToolMode.kDeepSearch,
+      });
+
+      await composebox.updateComplete;
+      await microtasksFinished();
+
+      let toolChip =
+          composebox.shadowRoot.querySelector('cr-composebox-tool-chip');
+
+      assertTrue(!!toolChip, toolModeInfo.text + ' chip should be present');
+
+      testProxy.callbackRouterRemote.onZeroStateChange(/*isZeroState=*/ true);
+      await testProxy.callbackRouterRemote.$.flushForTesting();
+
+      await composebox.updateComplete;
+      await microtasksFinished();
+
+      toolChip = composebox.shadowRoot.querySelector('cr-composebox-tool-chip');
+      assertFalse(!!composebox.input, 'Input value should be cleared');
+      assertTrue(
+          composebox.fileUploadsComplete, 'File uploads should be complete');
+      assertFalse(
+          !!composebox.getResultForTesting(),
+          'Autocomplete result should be cleared');
     });
-
-    await composebox.updateComplete;
-    await microtasksFinished();
-
-    let deepSearchChip = composebox.shadowRoot.querySelector('#deepSearchChip');
-
-    assertTrue(!!deepSearchChip, 'Deep search chip should be present');
-
-    testProxy.callbackRouterRemote.onZeroStateChange(/*isZeroState=*/ true);
-    await testProxy.callbackRouterRemote.$.flushForTesting();
-
-    await composebox.updateComplete;
-    await microtasksFinished();
-
-    deepSearchChip = composebox.shadowRoot.querySelector('#deepSearchChip');
-    assertFalse(!!composebox.input_, 'Input value should be cleared');
-    assertTrue(
-        composebox.fileUploadsComplete, 'File uploads should be complete');
-    assertFalse(
-        !!composebox.getResultForTesting(),
-        'Autocomplete result should be cleared');
-  });
-
-  test('image gen: thread change resets input', async () => {
-    composebox.onToolClickForTesting(ComposeboxToolMode.kImageGen);
-    searchboxCallbackRouterRemote.onInputStateChanged({
-      ...mockInputState,
-      activeTool: ComposeboxToolMode.kImageGen,
-    });
-
-    await composebox.updateComplete;
-    await microtasksFinished();
-
-    let imageGenChip = composebox.shadowRoot.querySelector('#nanoBananaChip');
-
-    assertTrue(!!imageGenChip, 'Image gen chip should be present');
-
-    testProxy.callbackRouterRemote.onZeroStateChange(/*isZeroState=*/ true);
-    await testProxy.callbackRouterRemote.$.flushForTesting();
-
-
-    await composebox.updateComplete;
-    await microtasksFinished();
-
-    imageGenChip = composebox.shadowRoot.querySelector('#nanoBananaChip');
-    assertFalse(!!composebox.input_, 'Input value should be cleared');
-    assertTrue(
-        composebox.fileUploadsComplete, 'File uploads should be complete');
-    assertFalse(
-        !!composebox.getResultForTesting(),
-        'Autocomplete result should be cleared');
-  });
-
-  test('canvas: thread change resets input', async () => {
-    composebox.onToolClickForTesting(ComposeboxToolMode.kCanvas);
-    searchboxCallbackRouterRemote.onInputStateChanged({
-      ...mockInputState,
-      activeTool: ComposeboxToolMode.kCanvas,
-    });
-
-    await composebox.updateComplete;
-    await microtasksFinished();
-
-    let canvasChip = composebox.shadowRoot.querySelector('#canvasChip');
-
-    assertTrue(!!canvasChip, 'Canvas chip should be present');
-
-    testProxy.callbackRouterRemote.onZeroStateChange(/*isZeroState=*/ true);
-    await testProxy.callbackRouterRemote.$.flushForTesting();
-
-    await composebox.updateComplete;
-    await microtasksFinished();
-
-    canvasChip = composebox.shadowRoot.querySelector('#canvasChip');
-    assertFalse(!!composebox.input_, 'Input value should be cleared');
-    assertTrue(
-        composebox.fileUploadsComplete, 'File uploads should be complete');
-    assertFalse(
-        !!composebox.getResultForTesting(),
-        'Autocomplete result should be cleared');
   });
 
   test('Multiple files updates zero state placeholder', async () => {

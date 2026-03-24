@@ -870,18 +870,13 @@ BASE_DECLARE_FEATURE(kIOSWebContextMenuNewTitle);
 // Returns true if the IOSWebContextMenuNewTitle feature is enabled.
 bool IsIOSWebContextMenuNewTitleEnabled();
 
-// Enables the CloseOtherTabs feature.
-BASE_DECLARE_FEATURE(kCloseOtherTabs);
-
-// Returns true if the CloseOtherTabs feature is enabled.
-bool IsCloseOtherTabsEnabled();
-
 // Feature flag to enable the Assistant Container.
 BASE_DECLARE_FEATURE(kAssistantContainer);
 
 // Variations for the Assistant Container feature.
 extern const char kAssistantContainerParam[];
 extern const char kAssistantContainerParamDebug[];
+extern const char kAssistantContainerMediumDetentPercentParam[];
 
 // Returns true if the Assistant Container is enabled.
 bool IsAssistantContainerEnabled();
@@ -889,6 +884,10 @@ bool IsAssistantContainerEnabled();
 // Returns true if debug elements (like detents) should be added to the
 // Assistant Container.
 bool ShouldShowAssistantContainerDebugElements();
+
+// Returns the experimental percentage for the Assistant medium detent height.
+// Returns 0 if no experimental percentage is selected.
+NSInteger GetAssistantMediumDetentPercentage();
 
 // Enables the ComposeboxIpad feature.
 BASE_DECLARE_FEATURE(kComposeboxIpad);

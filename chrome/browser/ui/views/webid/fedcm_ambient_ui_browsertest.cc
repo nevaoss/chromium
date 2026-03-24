@@ -8,8 +8,13 @@
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/tabs/public/tab_features.h"
+#include "chrome/browser/ui/views/frame/browser_view.h"
+#include "chrome/browser/ui/views/location_bar/location_bar_view.h"
+#include "chrome/browser/ui/views/page_action/anchored_message_view.h"
+#include "chrome/browser/ui/views/page_action/page_action_container_view.h"
 #include "chrome/browser/ui/views/page_action/page_action_controller.h"
 #include "chrome/browser/ui/views/page_action/page_action_observer.h"
+#include "chrome/browser/ui/views/page_action/page_action_view.h"
 #include "chrome/browser/ui/views/webid/fedcm_account_selection_view_desktop.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/ui_test_utils.h"
@@ -18,6 +23,7 @@
 #include "content/public/test/browser_test.h"
 #include "content/public/test/test_navigation_observer.h"
 #include "testing/gmock/include/gmock/gmock.h"
+#include "ui/events/event.h"
 
 namespace webid {
 
@@ -77,8 +83,11 @@ class FedCmAmbientUiBrowserTest : public InProcessBrowserTest {
     InProcessBrowserTest::TearDownOnMainThread();
   }
 
-  void ShowAmbientUi(content::IdentityRequestAccount::LoginState login_state,
-                     size_t num_accounts = 1) {
+  void ShowAmbientUi(
+      content::IdentityRequestAccount::LoginState browser_login_state,
+      std::optional<content::IdentityRequestAccount::LoginState>
+          idp_login_state = std::nullopt,
+      size_t num_accounts = 1) {
     idps_ = {base::MakeRefCounted<content::IdentityProviderData>(
         "idp-example.com", content::IdentityProviderMetadata(),
         content::ClientMetadata(GURL(), GURL(), GURL(), gfx::Image()),
@@ -96,7 +105,8 @@ class FedCmAmbientUiBrowserTest : public InProcessBrowserTest {
           /*domain_hints=*/std::vector<std::string>(),
           /*labels=*/std::vector<std::string>());
       account->identity_provider = idps_[0];
-      account->browser_trusted_login_state = login_state;
+      account->browser_trusted_login_state = browser_login_state;
+      account->idp_claimed_login_state = idp_login_state;
 
       // Provide a dummy decoded picture to avoid image fetching.
       SkBitmap bitmap;
@@ -176,7 +186,8 @@ IN_PROC_BROWSER_TEST_F(FedCmAmbientUiBrowserTest, SignUpToActiveTransition) {
   page_actions::PageActionObserver observer(kActionFederation);
   observer.RegisterAsPageActionObserver(*controller);
 
-  ShowAmbientUi(content::IdentityRequestAccount::LoginState::kSignUp);
+  ShowAmbientUi(content::IdentityRequestAccount::LoginState::kSignUp,
+                content::IdentityRequestAccount::LoginState::kSignUp);
 
   // Verify chip is showing by checking that we didn't show the dialog widget
   // yet.
@@ -192,8 +203,11 @@ IN_PROC_BROWSER_TEST_F(FedCmAmbientUiBrowserTest, SignUpToActiveTransition) {
   EXPECT_TRUE(view()->GetDialogWidget());
   EXPECT_TRUE(view()->GetDialogWidget()->IsVisible());
 
-  // The Page Action icon should still be visible while the modal is shown.
+  // The Page Action icon should still be visible and expanded while the modal
+  // is shown.
   EXPECT_TRUE(observer.GetCurrentPageActionState().showing);
+  ASSERT_TRUE(base::test::RunUntil(
+      [&]() { return observer.GetCurrentPageActionState().chip_showing; }));
 
   // Closing the widget should hide the Page Action icon.
   view()->Close(/*notify_delegate=*/false, /*hide_widget=*/false);
@@ -209,7 +223,8 @@ IN_PROC_BROWSER_TEST_F(FedCmAmbientUiBrowserTest, SignInTransition) {
   page_actions::PageActionObserver observer(kActionFederation);
   observer.RegisterAsPageActionObserver(*controller);
 
-  ShowAmbientUi(content::IdentityRequestAccount::LoginState::kSignIn);
+  ShowAmbientUi(content::IdentityRequestAccount::LoginState::kSignIn,
+                content::IdentityRequestAccount::LoginState::kSignIn);
 
   ASSERT_TRUE(base::test::RunUntil(
       [&]() { return observer.GetCurrentPageActionState().chip_showing; }));
@@ -248,7 +263,8 @@ IN_PROC_BROWSER_TEST_F(FedCmAmbientUiBrowserTest, SignInCollapsedTransition) {
   page_actions::PageActionObserver observer(kActionFederation);
   observer.RegisterAsPageActionObserver(*controller);
 
-  ShowAmbientUi(content::IdentityRequestAccount::LoginState::kSignIn);
+  ShowAmbientUi(content::IdentityRequestAccount::LoginState::kSignIn,
+                content::IdentityRequestAccount::LoginState::kSignIn);
 
   ASSERT_TRUE(base::test::RunUntil(
       [&]() { return observer.GetCurrentPageActionState().chip_showing; }));
@@ -291,9 +307,59 @@ IN_PROC_BROWSER_TEST_F(FedCmAmbientUiBrowserTest, SignInCollapsedTransition) {
   ASSERT_TRUE(base::test::RunUntil([&]() { return account_selected; }));
 }
 
+IN_PROC_BROWSER_TEST_F(FedCmAmbientUiBrowserTest, SignInAnchoredMessageClick) {
+  auto* controller = browser()
+                         ->GetActiveTabInterface()
+                         ->GetTabFeatures()
+                         ->page_action_controller();
+
+  page_actions::PageActionObserver observer(kActionFederation);
+  observer.RegisterAsPageActionObserver(*controller);
+
+  ShowAmbientUi(content::IdentityRequestAccount::LoginState::kSignIn,
+                content::IdentityRequestAccount::LoginState::kSignIn);
+
+  ASSERT_TRUE(base::test::RunUntil(
+      [&]() { return observer.GetCurrentPageActionState().chip_showing; }));
+
+  // Simulate click on the omnibox chip to open the anchored message.
+  view()->OnPageActionClicked();
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return observer.GetCurrentPageActionState().anchored_message_showing;
+  }));
+
+  bool account_selected = false;
+  EXPECT_CALL(*delegate_, OnAccountSelected).WillOnce(InvokeWithoutArgs([&]() {
+    account_selected = true;
+  }));
+
+  // Find the anchored message view and simulate clicking its button.
+  BrowserView* browser_view = BrowserView::GetBrowserViewForBrowser(browser());
+  auto* page_action_view = browser_view->GetLocationBarView()
+                               ->page_action_container()
+                               ->GetPageActionView(kActionFederation);
+  ASSERT_TRUE(page_action_view);
+  auto* anchored_message = page_action_view->GetAnchoredMessageForTesting();
+  ASSERT_TRUE(anchored_message);
+
+  // The confirm button is the 3rd child (index 2) as seen in
+  // AnchoredMessageBubbleView constructor.
+  views::View* confirm_button = anchored_message->children()[2];
+  ASSERT_TRUE(confirm_button);
+
+  // Click the confirm button.
+  ui::MouseEvent click(ui::EventType::kMousePressed, gfx::Point(), gfx::Point(),
+                       base::TimeTicks(), ui::EF_LEFT_MOUSE_BUTTON,
+                       ui::EF_LEFT_MOUSE_BUTTON);
+  confirm_button->OnMousePressed(click);
+
+  ASSERT_TRUE(base::test::RunUntil([&]() { return account_selected; }));
+}
+
 IN_PROC_BROWSER_TEST_F(FedCmAmbientUiBrowserTest, MultiAccountFallback) {
   // Show passive UI with 2 accounts.
   ShowAmbientUi(content::IdentityRequestAccount::LoginState::kSignIn,
+                /*idp_login_state=*/std::nullopt,
                 /*num_accounts=*/2);
 
   // Currently, passive UI only supports single-account scenarios.
@@ -317,7 +383,8 @@ IN_PROC_BROWSER_TEST_F(FedCmAmbientUiBrowserTest, MultiIdpFallback) {
 
 IN_PROC_BROWSER_TEST_F(FedCmAmbientUiDisabledBrowserTest,
                        FeatureDisabledFallback) {
-  ShowAmbientUi(content::IdentityRequestAccount::LoginState::kSignUp);
+  ShowAmbientUi(content::IdentityRequestAccount::LoginState::kSignUp,
+                content::IdentityRequestAccount::LoginState::kSignUp);
 
   // When features::kFedCmAmbientUI is disabled, it should fall through to
   // standard UI (widget shown immediately).
@@ -327,7 +394,8 @@ IN_PROC_BROWSER_TEST_F(FedCmAmbientUiDisabledBrowserTest,
 }
 
 IN_PROC_BROWSER_TEST_F(FedCmAmbientUiBrowserTest, ReloadPage) {
-  ShowAmbientUi(content::IdentityRequestAccount::LoginState::kSignUp);
+  ShowAmbientUi(content::IdentityRequestAccount::LoginState::kSignUp,
+                content::IdentityRequestAccount::LoginState::kSignUp);
 
   bool dismissed = false;
   EXPECT_CALL(
@@ -348,7 +416,8 @@ IN_PROC_BROWSER_TEST_F(FedCmAmbientUiBrowserTest, ReloadPage) {
 }
 
 IN_PROC_BROWSER_TEST_F(FedCmAmbientUiBrowserTest, TabSwitching) {
-  ShowAmbientUi(content::IdentityRequestAccount::LoginState::kSignUp);
+  ShowAmbientUi(content::IdentityRequestAccount::LoginState::kSignUp,
+                content::IdentityRequestAccount::LoginState::kSignUp);
 
   // Add a new tab and switch to it.
   ASSERT_TRUE(AddTabAtIndex(1, GURL("about:blank"), ui::PAGE_TRANSITION_TYPED));
@@ -363,6 +432,61 @@ IN_PROC_BROWSER_TEST_F(FedCmAmbientUiBrowserTest, TabSwitching) {
   ASSERT_TRUE(
       base::test::RunUntil([&]() { return !!view()->GetDialogWidget(); }));
   EXPECT_TRUE(view()->GetDialogWidget());
+}
+
+IN_PROC_BROWSER_TEST_F(FedCmAmbientUiBrowserTest,
+                       IdpMissingApprovedClientsUsesBrowserSignIn) {
+  // Browser thinks it is a sign-in, and IdP is silent.
+  ShowAmbientUi(content::IdentityRequestAccount::LoginState::kSignIn,
+                /*idp_login_state=*/std::nullopt);
+
+  // Click on the chip.
+  view()->OnPageActionClicked();
+
+  // Anchored message should be shown (no widget yet) because we fallback to
+  // the browser's sign-in state.
+  EXPECT_FALSE(view()->GetDialogWidget());
+
+  auto* features = browser()->GetActiveTabInterface()->GetTabFeatures();
+  auto* controller = features->page_action_controller();
+  page_actions::PageActionObserver observer(kActionFederation);
+  observer.RegisterAsPageActionObserver(*controller);
+  EXPECT_TRUE(observer.GetCurrentPageActionState().anchored_message_showing);
+}
+
+IN_PROC_BROWSER_TEST_F(FedCmAmbientUiBrowserTest,
+                       IdpClaimedSignUpOverridesBrowserSignIn) {
+  // Browser thinks it is a sign-in, but IdP explicitly says sign-up.
+  ShowAmbientUi(content::IdentityRequestAccount::LoginState::kSignIn,
+                content::IdentityRequestAccount::LoginState::kSignUp);
+
+  // Click on the chip.
+  view()->OnPageActionClicked();
+
+  // The full UI (modal/bubble) should be shown because it's treated as a
+  // sign-up.
+  ASSERT_TRUE(
+      base::test::RunUntil([&]() { return !!view()->GetDialogWidget(); }));
+  EXPECT_TRUE(view()->GetDialogWidget());
+}
+
+IN_PROC_BROWSER_TEST_F(FedCmAmbientUiBrowserTest,
+                       IdpClaimedSignInOverridesBrowserSignUp) {
+  // Browser thinks it is a sign-up, but IdP says sign-in.
+  ShowAmbientUi(content::IdentityRequestAccount::LoginState::kSignUp,
+                content::IdentityRequestAccount::LoginState::kSignIn);
+
+  // Click on the chip.
+  view()->OnPageActionClicked();
+
+  // Anchored message should be shown (no widget yet).
+  EXPECT_FALSE(view()->GetDialogWidget());
+
+  auto* features = browser()->GetActiveTabInterface()->GetTabFeatures();
+  auto* controller = features->page_action_controller();
+  page_actions::PageActionObserver observer(kActionFederation);
+  observer.RegisterAsPageActionObserver(*controller);
+  EXPECT_TRUE(observer.GetCurrentPageActionState().anchored_message_showing);
 }
 
 }  // namespace webid

@@ -566,6 +566,7 @@ test("components_unittests") {
       "//components/url_rewrite:unit_tests",
       "//components/user_education/common:unit_tests",
       "//components/value_store:unit_tests",
+      "//components/visibility_timer:unit_tests",
       "//components/visited_url_ranking/public:unit_tests",
       "//components/visitedlink/test:unit_tests",
       "//components/wallet/content/browser:unit_tests",
@@ -791,6 +792,9 @@ test("components_unittests") {
 
   if (enable_guest_view) {
     deps += [ "//components/guest_view/browser:unit_tests" ]
+    if (!enable_extensions_core) {
+      deps += [ "//components/guest_view/browser/slim_web_view:unit_tests" ]
+    }
   }
 
   if (!is_android) {
@@ -859,6 +863,7 @@ test("components_unittests") {
       "//components/services/print_compositor:unit_tests",
     ]
   }
+
   if (enable_print_preview) {
     deps += [ "//components/pwg_encoder:unit_tests" ]
   }
@@ -1016,6 +1021,7 @@ test("components_unittests") {
     "CurrencyFormatterFuzzTest.FormatDoesNotCrash",
     "FilterDataTest.Matches",
     "OsRegistrationTest.Parses",
+    "PaymentCurrencyAmountFuzzTest.FromValueDictDoesNotCrash",
     "PrivacyMathTest.GetKCombinationAtIndexDoesNotCrash",
     "PrivacyMathTest.GetNumStatesDoesNotCrash",
     "RegistrationInfoTest.Parses",
@@ -1476,6 +1482,7 @@ if (is_android) {
       "//components/media_router/browser/android:junit",
       "//components/messages/android:junit",
       "//components/messages/android/internal:junit",
+      "//components/omnibox/browser:junit",
       "//components/one_time_tokens/android/backend/common:junit",
       "//components/optimization_guide/content/browser/android:junit",
       "//components/payments/content/android:junit",

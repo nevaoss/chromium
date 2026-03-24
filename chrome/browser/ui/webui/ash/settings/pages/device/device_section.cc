@@ -1235,32 +1235,22 @@ void DeviceSection::OnNightLightEnabledChanged(bool enabled) {
 }
 
 void DeviceSection::OnDisplayConfigChanged() {
-  if (cros_display_config_) {
-    cros_display_config_->GetDisplayUnitInfoList(
-        /*single_unified=*/true,
-        base::BindOnce(&DeviceSection::OnGetDisplayUnitInfoList,
-                       base::Unretained(this)));
+  if (!cros_display_config_) {
+    return;
   }
-}
 
-void DeviceSection::OnGetDisplayUnitInfoList(
-    std::vector<crosapi::mojom::DisplayUnitInfoPtr> display_unit_info_list) {
-  if (cros_display_config_) {
-    cros_display_config_->GetDisplayLayoutInfo(base::BindOnce(
-        &DeviceSection::OnGetDisplayLayoutInfo, base::Unretained(this),
-        std::move(display_unit_info_list)));
-  }
-}
+  std::vector<crosapi::mojom::DisplayUnitInfoPtr> display_unit_info_list =
+      cros_display_config_->GetDisplayUnitInfoList(
+          /*single_unified=*/true);
 
-void DeviceSection::OnGetDisplayLayoutInfo(
-    std::vector<crosapi::mojom::DisplayUnitInfoPtr> display_unit_info_list,
-    crosapi::mojom::DisplayLayoutInfoPtr display_layout_info) {
+  ash::DisplayLayoutInfo display_layout_info =
+      cros_display_config_->GetDisplayLayoutInfo();
   bool has_multiple_displays = display_unit_info_list.size() > 1u;
 
   // Mirroring mode is active if there's at least one display and if there's a
   // mirror source ID.
   bool is_mirrored = !display_unit_info_list.empty() &&
-                     display_layout_info->mirror_source_id.has_value();
+                     display_layout_info.mirror_source_id.has_value();
 
   bool has_internal_display = false;
   bool has_external_display = false;
@@ -1268,10 +1258,9 @@ void DeviceSection::OnGetDisplayLayoutInfo(
   for (const auto& display_unit_info : display_unit_info_list) {
     has_internal_display |= display_unit_info->is_internal;
     has_external_display |= !display_unit_info->is_internal;
-
-    unified_desktop_mode |= display_unit_info->is_primary &&
-                            display_layout_info->layout_mode ==
-                                crosapi::mojom::DisplayLayoutMode::kUnified;
+    unified_desktop_mode |=
+        display_unit_info->is_primary &&
+        display_layout_info.layout_mode == ash::DisplayLayoutMode::kUnified;
   }
 
   SearchTagRegistry::ScopedTagUpdater updater = registry()->StartUpdate();

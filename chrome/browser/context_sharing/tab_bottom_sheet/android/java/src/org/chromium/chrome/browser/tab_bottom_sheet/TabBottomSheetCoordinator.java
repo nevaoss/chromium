@@ -45,13 +45,13 @@ public class TabBottomSheetCoordinator {
 
         mModel = TabBottomSheetProperties.createDefaultModel(coBrowseViews);
 
-        mMediator = new TabBottomSheetMediator(mModel, coBrowseViews);
+        mMediator = new TabBottomSheetMediator();
 
         coBrowseViews.setWebUiTouchHandler(mMediator.getWebUiTouchHandler());
     }
 
     /** Tries to show the bottom sheet. */
-    boolean tryToShowBottomSheet() {
+    boolean tryToShowBottomSheet(boolean startsExpanded) {
         if (mIsSheetCurrentlyManagedByController) {
             return false;
         }
@@ -64,6 +64,9 @@ public class TabBottomSheetCoordinator {
         mSheetContent = new TabBottomSheetContent(mContentView);
 
         if (mBottomSheetController.requestShowContent(mSheetContent, true)) {
+            if (startsExpanded) {
+                mBottomSheetController.expandSheet();
+            }
             mSheetObserver = buildBottomSheetObserver();
             mBottomSheetController.addObserver(mSheetObserver);
             mIsSheetCurrentlyManagedByController = true;
@@ -132,13 +135,6 @@ public class TabBottomSheetCoordinator {
             @Override
             public void onSheetStateChanged(@SheetState int state, @StateChangeReason int reason) {
                 mMediator.onSheetStateChanged(state);
-            }
-
-            @Override
-            public void onSheetOffsetChanged(float heightFraction, float offsetPx) {
-                if (!TabBottomSheetUtils.canResizeWebView()) return;
-
-                mMediator.onSheetOffsetChanged(offsetPx);
             }
         };
     }

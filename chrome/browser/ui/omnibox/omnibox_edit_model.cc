@@ -818,9 +818,9 @@ void OmniboxEditModel::OpenAiMode(bool via_keyboard, bool via_context_menu) {
 
   // Queries from the AI mode button will never have context.
   base::RecordAction(base::UserMetricsAction(
-      "ContextualSearch.UserAction.SubmitQuery.WithoutContext.Omnibox"));
+      "ContextualSearch.UserAction.SubmitQueryV2.WithoutContext.Omnibox"));
   base::UmaHistogramBoolean(
-      "ContextualSearch.UserAction.SubmitQuery.WithoutContext.Omnibox", true);
+      "ContextualSearch.UserAction.SubmitQueryV2.WithoutContext.Omnibox", true);
 
   GURL ai_mode_url =
       GetUrlForAim(controller_->client()->GetTemplateURLService(),
@@ -875,6 +875,17 @@ void OmniboxEditModel::OpenSelection(OmniboxPopupSelection selection,
 
   const AutocompleteMatch& match =
       autocomplete_controller()->result().match_at(selection.line);
+
+  // Selecting a featured search match should enter keyword mode instead of
+  // navigating to the suggestion.
+  if (selection.state == OmniboxPopupSelection::NORMAL &&
+      AutocompleteMatch::IsFeaturedSearchType(match.type)) {
+    ClearKeyword();
+    SetPopupSelection(OmniboxPopupSelection(
+        selection.line, OmniboxPopupSelection::LineState::KEYWORD_MODE));
+    AcceptKeyword(metrics::OmniboxEventProto::TAB);
+    return;
+  }
 
   if (selection.state == OmniboxPopupSelection::FOCUSED_BUTTON_THUMBS_UP) {
     UpdateFeedbackOnMatch(selection.line, FeedbackType::kThumbsUp);

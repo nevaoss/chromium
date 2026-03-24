@@ -386,10 +386,6 @@ BASE_FEATURE(kDrawCutoutEdgeToEdge, base::FEATURE_ENABLED_BY_DEFAULT);
 // Enables canvas 2d methods BeginLayer and EndLayer.
 BASE_FEATURE(kEnableCanvas2DLayers, base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Enables service workers on chrome:// urls.
-BASE_FEATURE(kEnableServiceWorkersForChromeScheme,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
 // Ensures the renderer is not dead when getting the process host for a site
 // instance.
 BASE_FEATURE(kEnsureExistingRendererAlive, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -895,7 +891,7 @@ BASE_FEATURE(kServiceWorkerAutoPreload, base::FEATURE_DISABLED_BY_DEFAULT);
 // prioritize the response processing for the network request over the
 // processing for the fetch handler.
 BASE_FEATURE(kServiceWorkerStaticRouterRaceNetworkRequestPerformanceImprovement,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 #if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
 // Run video capture service in the Browser process as opposed to a dedicated

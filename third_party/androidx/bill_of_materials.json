@@ -2,17 +2,17 @@
     {
         "name": "activity",
         "group": "androidx.activity",
-        "version": "1.13.0-SNAPSHOT"
+        "version": "1.14.0-SNAPSHOT"
     },
     {
         "name": "activity-compose",
         "group": "androidx.activity",
-        "version": "1.13.0-SNAPSHOT"
+        "version": "1.14.0-SNAPSHOT"
     },
     {
         "name": "activity-ktx",
         "group": "androidx.activity",
-        "version": "1.13.0-SNAPSHOT"
+        "version": "1.14.0-SNAPSHOT"
     },
     {
         "name": "annotation",
@@ -357,7 +357,7 @@
     {
         "name": "core",
         "group": "androidx.core",
-        "version": "1.18.0-SNAPSHOT"
+        "version": "1.19.0-SNAPSHOT"
     },
     {
         "name": "core-animation",
@@ -372,7 +372,7 @@
     {
         "name": "core-ktx",
         "group": "androidx.core",
-        "version": "1.18.0-SNAPSHOT"
+        "version": "1.19.0-SNAPSHOT"
     },
     {
         "name": "core-pip",
@@ -542,7 +542,7 @@
     {
         "name": "graphics-core",
         "group": "androidx.graphics",
-        "version": "1.1.0-SNAPSHOT"
+        "version": "1.0.4"
     },
     {
         "name": "graphics-path",
@@ -560,6 +560,11 @@
         "version": "1.1.0"
     },
     {
+        "name": "graphics-shapes-desktop",
+        "group": "androidx.graphics",
+        "version": "1.0.1"
+    },
+    {
         "name": "gridlayout",
         "group": "androidx.gridlayout",
         "version": "1.1.0"
@@ -567,62 +572,62 @@
     {
         "name": "ink-authoring",
         "group": "androidx.ink",
-        "version": "1.1.0-SNAPSHOT"
+        "version": "1.0.0"
     },
     {
         "name": "ink-authoring-android",
         "group": "androidx.ink",
-        "version": "1.1.0-SNAPSHOT"
+        "version": "1.0.0"
     },
     {
         "name": "ink-brush",
         "group": "androidx.ink",
-        "version": "1.1.0-SNAPSHOT"
+        "version": "1.0.0"
     },
     {
         "name": "ink-brush-android",
         "group": "androidx.ink",
-        "version": "1.1.0-SNAPSHOT"
+        "version": "1.0.0"
     },
     {
         "name": "ink-geometry",
         "group": "androidx.ink",
-        "version": "1.1.0-SNAPSHOT"
+        "version": "1.0.0"
     },
     {
         "name": "ink-geometry-android",
         "group": "androidx.ink",
-        "version": "1.1.0-SNAPSHOT"
+        "version": "1.0.0"
     },
     {
         "name": "ink-nativeloader",
         "group": "androidx.ink",
-        "version": "1.1.0-SNAPSHOT"
+        "version": "1.0.0"
     },
     {
         "name": "ink-nativeloader-android",
         "group": "androidx.ink",
-        "version": "1.1.0-SNAPSHOT"
+        "version": "1.0.0"
     },
     {
         "name": "ink-rendering",
         "group": "androidx.ink",
-        "version": "1.1.0-SNAPSHOT"
+        "version": "1.0.0"
     },
     {
         "name": "ink-rendering-android",
         "group": "androidx.ink",
-        "version": "1.1.0-SNAPSHOT"
+        "version": "1.0.0"
     },
     {
         "name": "ink-strokes",
         "group": "androidx.ink",
-        "version": "1.1.0-SNAPSHOT"
+        "version": "1.0.0"
     },
     {
         "name": "ink-strokes-android",
         "group": "androidx.ink",
-        "version": "1.1.0-SNAPSHOT"
+        "version": "1.0.0"
     },
     {
         "name": "input-motionprediction",
@@ -942,22 +947,22 @@
     {
         "name": "pdf-document-service",
         "group": "androidx.pdf",
-        "version": "1.0.0-SNAPSHOT"
+        "version": "1.0.0-alpha13"
     },
     {
         "name": "pdf-ink",
         "group": "androidx.pdf",
-        "version": "1.0.0-SNAPSHOT"
+        "version": "1.0.0-alpha13"
     },
     {
         "name": "pdf-viewer",
         "group": "androidx.pdf",
-        "version": "1.0.0-SNAPSHOT"
+        "version": "1.0.0-alpha13"
     },
     {
         "name": "pdf-viewer-fragment",
         "group": "androidx.pdf",
-        "version": "1.0.0-SNAPSHOT"
+        "version": "1.0.0-alpha13"
     },
     {
         "name": "preference",
@@ -1220,6 +1225,11 @@
         "version": "1.16.0-SNAPSHOT"
     },
     {
+        "name": "core",
+        "group": "androidx.window.extensions.core",
+        "version": "1.0.0"
+    },
+    {
         "name": "sidecar",
         "group": "androidx.window.sidecar",
         "version": "1.0.0-SNAPSHOT"
@@ -1257,47 +1267,52 @@
     {
         "name": "arcore",
         "group": "androidx.xr.arcore",
-        "version": "1.0.0-alpha07"
+        "version": "1.0.0-alpha10"
     },
     {
         "name": "arcore-openxr",
         "group": "androidx.xr.arcore",
-        "version": "1.0.0-alpha07"
+        "version": "1.0.0-alpha10"
+    },
+    {
+        "name": "arcore-projected",
+        "group": "androidx.xr.arcore",
+        "version": "1.0.0-alpha10"
     },
     {
         "name": "arcore-runtime",
         "group": "androidx.xr.arcore",
-        "version": "1.0.0-alpha07"
+        "version": "1.0.0-alpha10"
     },
     {
         "name": "runtime",
         "group": "androidx.xr.runtime",
-        "version": "1.0.0-alpha07"
+        "version": "1.0.0-alpha10"
     },
     {
         "name": "runtime-manifest",
         "group": "androidx.xr.runtime",
-        "version": "1.0.0-alpha07"
+        "version": "1.0.0-alpha10"
     },
     {
         "name": "scenecore",
         "group": "androidx.xr.scenecore",
-        "version": "1.0.0-alpha08"
+        "version": "1.0.0-alpha11"
     },
     {
         "name": "scenecore-runtime",
         "group": "androidx.xr.scenecore",
-        "version": "1.0.0-alpha08"
+        "version": "1.0.0-alpha11"
     },
     {
         "name": "scenecore-spatial-core",
         "group": "androidx.xr.scenecore",
-        "version": "1.0.0-alpha08"
+        "version": "1.0.0-alpha11"
     },
     {
         "name": "scenecore-spatial-rendering",
         "group": "androidx.xr.scenecore",
-        "version": "1.0.0-alpha08"
+        "version": "1.0.0-alpha11"
     },
     {
         "name": "accessibility-test-framework",
@@ -1362,7 +1377,7 @@
     {
         "name": "impress",
         "group": "com.google.ar",
-        "version": "0.0.7"
+        "version": "0.0.10"
     },
     {
         "name": "auto-service-annotations",
@@ -1412,22 +1427,22 @@
     {
         "name": "okio",
         "group": "com.squareup.okio",
-        "version": "3.9.1"
+        "version": "3.17.0"
     },
     {
         "name": "okio-jvm",
         "group": "com.squareup.okio",
-        "version": "3.9.1"
+        "version": "3.17.0"
     },
     {
         "name": "wire-runtime",
         "group": "com.squareup.wire",
-        "version": "5.4.0"
+        "version": "6.0.0"
     },
     {
         "name": "wire-runtime-jvm",
         "group": "com.squareup.wire",
-        "version": "5.4.0"
+        "version": "6.0.0"
     },
     {
         "name": "javawriter",

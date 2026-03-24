@@ -30,6 +30,7 @@
 #include "chrome/browser/glic/host/context/glic_screenshot_capturer.h"
 #include "chrome/browser/glic/host/context/glic_sharing_manager_coordinator.h"
 #include "chrome/browser/glic/host/context/glic_sharing_manager_impl.h"
+#include "chrome/browser/glic/host/glic.mojom-shared.h"
 #include "chrome/browser/glic/host/host.h"
 #include "chrome/browser/glic/public/context/glic_sharing_manager.h"
 #include "chrome/browser/glic/public/features.h"
@@ -104,12 +105,6 @@ BASE_FEATURE(kGlicSuppressAnimationsOnDetach, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicRemoveDaisyChainingWhenFreShowing,
              base::FEATURE_ENABLED_BY_DEFAULT);
-
-#if BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_DESKTOP_ANDROID)
-BASE_FEATURE(kGlicUnbindOnClose, base::FEATURE_ENABLED_BY_DEFAULT);
-#else
-BASE_FEATURE(kGlicUnbindOnClose, base::FEATURE_DISABLED_BY_DEFAULT);
-#endif
 
 namespace {
 EmbedderKey CreateSidePanelEmbedderKey(tabs::TabInterface* tab) {
@@ -400,30 +395,13 @@ void GlicInstanceImpl::Attach(tabs::TabHandle tab) {
 }
 
 void GlicInstanceImpl::Close(EmbedderKey key, const CloseOptions& options) {
-  auto* entry = GetEmbedderEntry(key);
-  if (!entry || !entry->embedder) {
+  auto* embedder = GetEmbedderForKey(key);
+  if (!embedder) {
     return;
   }
-
-  if (base::FeatureList::IsEnabled(kGlicUnbindOnClose) &&
-      !entry->user_input_submitted_while_bound) {
-    UnbindEmbedder(key);
-    return;
-  }
-
-  CloseInternal(key, *entry, options);
-}
-
-void GlicInstanceImpl::CloseInternal(EmbedderKey key,
-                                     EmbedderEntry& entry,
-                                     const CloseOptions& options) {
-  if (GlicEnabling::IsTrustFirstOnboardingEnabledForProfile(profile_)) {
-    service_->metrics()->OnTrustFirstOnboardingDismissed();
-  }
+  service_->metrics()->OnInstanceClosed();
   instance_metrics_.OnClose();
-  if (entry.embedder) {
-    entry.embedder->Close(options);
-  }
+  embedder->Close(options);
 }
 
 bool GlicInstanceImpl::Toggle(ShowOptions&& options,
@@ -431,9 +409,6 @@ bool GlicInstanceImpl::Toggle(ShowOptions&& options,
                               glic::mojom::InvocationSource source,
                               std::optional<std::string> prompt_suggestion,
                               bool auto_send) {
-  if (GlicEnabling::IsTrustFirstOnboardingEnabledForProfile(profile_)) {
-    service_->metrics()->OnTrustFirstOnboardingShown();
-  }
   instance_metrics_.OnToggle(source, options, IsShowing());
   EmbedderKey key = GetEmbedderKey(options);
   // Close instance on toggle when it has an active embedder.
@@ -443,6 +418,9 @@ bool GlicInstanceImpl::Toggle(ShowOptions&& options,
     }
     return false;
   }
+
+  service_->metrics()->OnInstanceOpened();
+
   // We assume that a toggle is user initiated so focus on show.
   options.focus_on_show = true;
   options.prompt_suggestion = prompt_suggestion;
@@ -461,17 +439,9 @@ bool GlicInstanceImpl::ContextAccessIndicatorEnabled() {
 }
 
 GlicUiEmbedder* GlicInstanceImpl::GetEmbedderForKey(EmbedderKey key) {
-  if (auto* entry = GetEmbedderEntry(key)) {
-    return entry->embedder.get();
-  }
-  return nullptr;
-}
-
-GlicInstanceImpl::EmbedderEntry* GlicInstanceImpl::GetEmbedderEntry(
-    EmbedderKey key) {
   auto it = embedders_.find(key);
   if (it != embedders_.end()) {
-    return &it->second;
+    return it->second.embedder.get();
   }
   return nullptr;
 }
@@ -566,8 +536,19 @@ void GlicInstanceImpl::CreateTask(
         base::unexpected(mojom::CreateTaskErrorReason::kTaskSystemUnavailable));
     return;
   }
+
+  // Conversation ID must be available since a turn is required to create a task
+  // and an ID becomes available at first turn. If you hit this in a test you
+  // probably need to call RegisterConversation on your GlicInstance.
+  std::optional<std::string> id = conversation_id();
+  if (!id.has_value()) {
+    std::move(callback).Run(base::unexpected(
+        mojom::CreateTaskErrorReason::kConversationNotRegistered));
+    return;
+  }
+
   instance_metrics_.OnCreateTask();
-  actor_task_manager_->CreateTask(weak_ptr_factory_.GetWeakPtr(),
+  actor_task_manager_->CreateTask(weak_ptr_factory_.GetWeakPtr(), id.value(),
                                   std::move(options), std::move(callback));
 }
 
@@ -666,12 +647,6 @@ void GlicInstanceImpl::PrepareForOpen() {
   }
 }
 
-void GlicInstanceImpl::OnUserInputSubmitted(mojom::WebClientMode mode) {
-  for (auto& [key, entry] : embedders_) {
-    entry.user_input_submitted_while_bound = true;
-  }
-}
-
 void GlicInstanceImpl::OnInteractionModeChange(mojom::WebClientMode new_mode) {
   interaction_mode_ = new_mode;
   sharing_manager_coordinator_.UpdateState(GetPanelState().kind,
@@ -706,10 +681,7 @@ void GlicInstanceImpl::UnbindEmbedder(EmbedderKey key) {
     }
   }
 
-  if (auto* entry = GetEmbedderEntry(key)) {
-    CloseInternal(key, *entry, CloseOptions{});
-  }
-
+  Close(key);
   // Deactivate if this was the active embedder. This ensures predictable state
   // for the other embedders and also cleans up the host delegate reference to
   // avoid a dangling raw_ptr.
@@ -940,7 +912,7 @@ void GlicInstanceImpl::MaybeShowShortcutToastPromo() {
   }
 // TODO(b/483455896): implement hotkey promo for android
 #if !BUILDFLAG(IS_ANDROID)
-  Browser* browser = chrome::FindTabbedBrowser(profile_, false);
+  BrowserWindowInterface* browser = chrome::FindTabbedBrowser(profile_, false);
   if (!browser) {
     // If there is no browser window open for the profile, skip the promo.
     return;
@@ -967,7 +939,7 @@ void GlicInstanceImpl::MaybeShowShortcutSnoozePromo() {
 
   // TODO(b/483455896): implement hotkey promo for android.
 #if !BUILDFLAG(IS_ANDROID)
-  Browser* browser = chrome::FindTabbedBrowser(profile_, false);
+  BrowserWindowInterface* browser = chrome::FindTabbedBrowser(profile_, false);
   if (!browser) {
     // If there is no browser window open for the profile, skip the promo.
     return;

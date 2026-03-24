@@ -131,16 +131,18 @@ String EmailInputType::ConvertEmailAddressToUnicode(
 }
 
 static bool IsInvalidLocalPartCharacter(UChar ch) {
-  if (!IsASCII(ch))
+  if (!IsAscii(ch)) {
     return true;
+  }
   DEFINE_STATIC_LOCAL(const String, valid_characters, (kLocalPartCharacters));
-  return !valid_characters.contains(ToASCIILower(ch));
+  return !valid_characters.contains(ToAsciiLower(ch));
 }
 
 static bool IsInvalidDomainCharacter(UChar ch) {
-  if (!IsASCII(ch))
+  if (!IsAscii(ch)) {
     return true;
-  return !IsASCIILower(ch) && !IsASCIIUpper(ch) && !IsASCIIDigit(ch) &&
+  }
+  return !IsASCIILower(ch) && !IsASCIIUpper(ch) && !IsAsciiDigit(ch) &&
          ch != '.' && ch != '-';
 }
 

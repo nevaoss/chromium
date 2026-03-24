@@ -497,10 +497,13 @@
 #include "chrome/browser/webnn/webnn_prefs.h"
 #endif  // BUILDFLAG(IS_WIN)
 
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/enterprise/platform_auth/platform_auth_policy_observer.h"
+#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_ANDROID)
+
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
 #include "components/os_crypt/sync/os_crypt.h"  // nogncheck
-#endif
+#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
     BUILDFLAG(IS_CHROMEOS)
@@ -517,7 +520,7 @@
 #endif
 
 #if BUILDFLAG(ENABLE_DOWNGRADE_PROCESSING)
-#include "chrome/browser/downgrade/downgrade_prefs.h"
+#include "chrome/browser/downgrade/downgrade_prefs.h"  // nogncheck
 #endif
 
 #if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CHROMEOS)
@@ -1012,6 +1015,12 @@ constexpr char kSigninFromBookmarksBubbleSyntheticTrialGroupNamePref[] =
 constexpr char kBookmarksBubblePromoShownSyntheticTrialGroupNamePref[] =
     "UnoDesktopBookmarksBubblePromoShownGroup";
 
+#if BUILDFLAG(IS_ANDROID)
+// Deprecated 03/2026.
+constexpr char kPrivacySandboxActivityTypeRecord2[] =
+    "privacy_sandbox.activity_type.record2";
+#endif  // BUILDFLAG(IS_ANDROID)
+
 // Register local state used only for migration (clearing or moving to a new
 // key).
 void RegisterLocalStatePrefsForMigration(PrefRegistrySimple* registry) {
@@ -1419,6 +1428,11 @@ void RegisterProfilePrefsForMigration(
       kSigninFromBookmarksBubbleSyntheticTrialGroupNamePref, std::string());
   registry->RegisterStringPref(
       kBookmarksBubblePromoShownSyntheticTrialGroupNamePref, std::string());
+
+#if BUILDFLAG(IS_ANDROID)
+  // Deprecated 03/2026.
+  registry->RegisterListPref(kPrivacySandboxActivityTypeRecord2);
+#endif  // BUILDFLAG(IS_ANDROID)
 }
 
 }  // namespace
@@ -1685,9 +1699,9 @@ void RegisterLocalState(PrefRegistrySimple* registry) {
   screen_ai::RegisterLocalStatePrefs(registry);
 #endif  // !BUILDFLAG(IS_ANDROID)
 
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_ANDROID)
   PlatformAuthPolicyObserver::RegisterPrefs(registry);
-#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
+#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_ANDROID)
 
   // Platform-specific and compile-time conditional individual preferences.
   // If you have multiple preferences that should clearly be grouped together,
@@ -2734,6 +2748,11 @@ void MigrateObsoleteProfilePrefs(PrefService* profile_prefs,
       kSigninFromBookmarksBubbleSyntheticTrialGroupNamePref);
   profile_prefs->ClearPref(
       kBookmarksBubblePromoShownSyntheticTrialGroupNamePref);
+
+#if BUILDFLAG(IS_ANDROID)
+  // Added 03/2026.
+  profile_prefs->ClearPref(kPrivacySandboxActivityTypeRecord2);
+#endif  // BUILDFLAG(IS_ANDROID)
 
   // Please don't delete the following line. It is used by PRESUBMIT.py.
   // END_MIGRATE_OBSOLETE_PROFILE_PREFS

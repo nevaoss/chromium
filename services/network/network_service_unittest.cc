@@ -1130,19 +1130,18 @@ TEST_F(NetworkServiceTest, AuthAndroidNegotiateAccountType) {
 
 static size_t GetGlobalMaxConnectionsPerProxyChain() {
   return net::ClientSocketPoolManager::max_sockets_per_proxy_chain(
-      net::HttpNetworkSession::NORMAL_SOCKET_POOL);
+      net::HttpNetworkSession::SocketPoolType::kNormal);
 }
 
 // Tests that NetworkService::SetMaxConnectionsPerProxyChain() (1) modifies
 // globals in net::ClientSocketPoolManager (2) saturates out of bound values.
 TEST_F(NetworkServiceTest, SetMaxConnectionsPerProxyChain) {
-  const size_t kDefault = net::kDefaultMaxSocketsPerProxyChain;
+  const size_t kDefault = 32;
   const size_t kMin = 6;
   const size_t kMax = 99;
 
   // Starts off at default value.
-  EXPECT_EQ(net::kDefaultMaxSocketsPerProxyChain,
-            GetGlobalMaxConnectionsPerProxyChain());
+  EXPECT_EQ(kDefault, GetGlobalMaxConnectionsPerProxyChain());
 
   // Anything less than kMin saturates to kMin.
   service()->SetMaxConnectionsPerProxyChain(kMin - 1);

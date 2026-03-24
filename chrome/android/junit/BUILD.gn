@@ -166,7 +166,6 @@ if (is_android) {
       "//chrome/browser/regional_capabilities/android:java",
       "//chrome/browser/safety_check/android:java",
       "//chrome/browser/safety_hub/android:java",
-      "//chrome/browser/screenshot_monitor:java",
       "//chrome/browser/search_engines/android:java",
       "//chrome/browser/segmentation_platform:factory_java",
       "//chrome/browser/settings:factory_java",
@@ -191,6 +190,7 @@ if (is_android) {
       "//chrome/browser/thumbnail:java",
       "//chrome/browser/ui/android/actions:java",
       "//chrome/browser/ui/android/appmenu:java",
+      "//chrome/browser/ui/android/bottombar:java",
       "//chrome/browser/ui/android/default_browser_promo:java",
       "//chrome/browser/ui/android/desktop_windowing:java",
       "//chrome/browser/ui/android/edge_to_edge:java",
@@ -419,6 +419,7 @@ if (is_android) {
   # Partition tests into one target per-package to keep incremental build times down.
   robolectric_library("chrome_junit_tests_org.chromium.chrome.browser") {
     sources = [
+      "//chrome/android/java/src/org/chromium/chrome/browser/bottombar/BottomBarContainerCoordinatorUnitTest.java",
       "src/org/chromium/chrome/browser/ChromeActionModeHandlerUnitTest.java",
       "src/org/chromium/chrome/browser/ChromeActivityUnitTest.java",
       "src/org/chromium/chrome/browser/ChromeBaseAppCompatActivityUnitTest.java",

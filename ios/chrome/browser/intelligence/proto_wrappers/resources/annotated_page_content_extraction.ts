@@ -6,7 +6,7 @@ import {HAS_BEEN_PASSWORD_SYMBOL} from '//components/autofill/ios/form_util/reso
 import {APC_NODE_DEPTH_COST, getRemoteFrameRemoteToken, NONCE_ATTR} from '//ios/chrome/browser/intelligence/proto_wrappers/resources/common.js';
 import {getNodeId, getOrCreateNodeId} from '//ios/chrome/browser/intelligence/proto_wrappers/resources/dom_node_ids.js';
 import {FormControlType, PageContentAnchorRel, PageContentAnnotatedRole, PageContentAttributeType, PageContentClickabilityReason, PageContentInteractionDisabledReason, PageContentMediaType, PageContentRedactionDecision, PageContentTableRowType, PageContentTextSize} from '//ios/chrome/browser/intelligence/proto_wrappers/resources/page_content_types.js';
-import type {PageContent, PageContentAttributes, PageContentFormControlData, PageContentFormData, PageContentFrameData, PageContentFrameInteractionInfo, PageContentMediaData, PageContentNode, PageContentNodeInteractionInfo, PageContentPageInteractionInfo, PageContentScrollerInfo} from '//ios/chrome/browser/intelligence/proto_wrappers/resources/page_content_types.js';
+import type {PageContent, PageContentAttributes, PageContentFormControlData, PageContentFormData, PageContentFrameData, PageContentFrameInteractionInfo, PageContentMediaData, PageContentNode, PageContentNodeInteractionInfo, PageContentPageInteractionInfo, PageContentScrollerInfo, PageContentTableData} from '//ios/chrome/browser/intelligence/proto_wrappers/resources/page_content_types.js';
 
 // Set of DOM Node IDs that are considered interactive (focused, selection
 // start/end). These nodes should be included in the APC tree even if they are
@@ -36,9 +36,12 @@ const TAG_EMBED = 'EMBED';
 const TAG_OBJECT = 'OBJECT';
 const TAG_DATALIST = 'DATALIST';
 const TAG_HEAD = 'HEAD';
+const TAG_CAPTION = 'CAPTION';
 
 // Media tags.
 const TAG_SVG = 'SVG';
+const TAG_DESC = 'DESC';
+const TAG_TITLE = 'TITLE';
 const TAG_CANVAS = 'CANVAS';
 const TAG_VIDEO = 'VIDEO';
 
@@ -98,12 +101,10 @@ const TAGS_TO_REJECT = [
   TAG_OBJECT,
   TAG_DATALIST,
   TAG_HEAD,
+  TAG_CAPTION,
+  TAG_DESC,
+  TAG_TITLE,
 ];
-
-// Tags that contain valid content but are not yet extracted.
-// TODO(crbug.com/468852704): Remove tags from this list as they are
-// implemented.
-const TAGS_TO_SUPPORT_EVENTUALLY = [TAG_SVG];
 
 // Tags that should be strictly rejected if they are invisible,
 // because they are considered "leaf" nodes.
@@ -332,7 +333,7 @@ function getTextSizeCategory(
  * @return The corresponding FormControlType.
  */
 function getFormControlType(element: HTMLElement): FormControlType|undefined {
-  const tagName = element.tagName;
+  const tagName = getStandardTagName(element);
 
   if (tagName === TAG_BUTTON) {
     const type = (element as HTMLButtonElement).type;
@@ -474,7 +475,7 @@ function isRenderedInTopLayer(element: HTMLElement): boolean {
     // Fallback: check if it's an open dialog. Note: Without `:modal` support,
     // we cannot distinguish between `dialog.show()` (normal document flow) and
     // `dialog.showModal()` (top layer). This is a best-effort approximation.
-    if (element.tagName === TAG_DIALOG &&
+    if (getStandardTagName(element) === TAG_DIALOG &&
         element.hasAttribute(ATTRIBUTE_OPEN_DIALOG)) {
       return true;
     }
@@ -521,18 +522,19 @@ function isGenericContainer(
     interactionInfo: PageContentNodeInteractionInfo|undefined): boolean {
   // Check if the element is an interactive node.
   const nodeId = getNodeId(element);
+  const tagName = getStandardTagName(element);
   if (nodeId !== null && interactiveNodeIds.has(nodeId)) {
     return true;
   }
 
   // Elements with annotated roles are considered generic containers.
-  if (getAnnotatedRoleForTag(element.tagName) !== null) {
+  if (getAnnotatedRoleForTag(tagName) !== null) {
     return true;
   }
 
   // A <figure> element is a semantic container for self-contained content, like
   // images or diagrams, making it a generic container.
-  if (element.tagName === TAG_FIGURE) {
+  if (tagName === TAG_FIGURE) {
     return true;
   }
 
@@ -689,9 +691,9 @@ function getNodeInteractionInfo(element: HTMLElement, actionableMode: boolean):
 
   const clickabilityReasons = interactionInfo.clickabilityReasons;
 
+  const tagName = getStandardTagName(element);
   // Form Controls.
-  if ([TAG_BUTTON, TAG_INPUT, TAG_SELECT, TAG_TEXTAREA].includes(
-          element.tagName)) {
+  if ([TAG_BUTTON, TAG_INPUT, TAG_SELECT, TAG_TEXTAREA].includes(tagName)) {
     clickabilityReasons.push(PageContentClickabilityReason.CLICKABLE_CONTROL);
   }
 
@@ -721,8 +723,9 @@ function getNodeInteractionInfo(element: HTMLElement, actionableMode: boolean):
   }
 
   // Editable.
-  if (element.isContentEditable || element.tagName === TAG_TEXTAREA ||
-      (element.tagName === TAG_INPUT &&
+  if (element.isContentEditable ||
+      tagName === TAG_TEXTAREA ||
+      (tagName === TAG_INPUT &&
        ![CHECKBOX_TYPE, RADIO_TYPE, RANGE_TYPE, COLOR_TYPE, FILE_TYPE,
          IMAGE_TYPE, SUBMIT_TYPE, RESET_TYPE, BUTTON_TYPE]
             .includes((element as HTMLInputElement).type))) {
@@ -820,10 +823,11 @@ function extractMediaData(document: Document): PageContentMediaData|undefined {
     return undefined;
   }
 
+  const tagName = getStandardTagName(selectedMedia);
   let mediaDataType = PageContentMediaType.MEDIA_DATA_TYPE_UNKNOWN;
-  if (selectedMedia.tagName === TAG_VIDEO) {
+  if (tagName === TAG_VIDEO) {
     mediaDataType = PageContentMediaType.MEDIA_DATA_TYPE_VIDEO;
-  } else if (selectedMedia.tagName === TAG_AUDIO) {
+  } else if (tagName === TAG_AUDIO) {
     mediaDataType = PageContentMediaType.MEDIA_DATA_TYPE_AUDIO;
   }
 
@@ -1419,6 +1423,25 @@ function getFormControlData(
 }
 
 /**
+ * Extracts table name from a given table DOM Node.
+ *
+ * @param domNode The table element to process.
+ * @return The populated PageContentTableData.
+ */
+function getTableNameForTableNode(domNode: HTMLElement): PageContentTableData {
+  const tableData: PageContentTableData = {};
+  const tableElement = domNode as HTMLTableElement;
+  // NOTE: Table names will appear twice in the APC tree(once as a part of a
+  // table node and once as a part of a text node). This matches Blink's
+  // behavior.
+  const tableName = tableElement.caption?.innerText?.trim();
+  if (tableName) {
+    tableData.tableName = tableName;
+  }
+  return tableData;
+}
+
+/**
  * Returns basic content for an element node that is not a generic
  * container based on its tag name.
  *
@@ -1431,7 +1454,7 @@ function getBasicContentForNonGenericElement(
     domNode: HTMLElement, nonce: string, depth: number, maxDepth: number,
     actionableMode: boolean,
     paidContentContext: PaidContentExtractionContext): PageContentNode|null {
-  const tagName = domNode.tagName;
+  const tagName = getStandardTagName(domNode);
 
   switch (tagName) {
     // 1. Complex Elements.
@@ -1497,16 +1520,27 @@ function getBasicContentForNonGenericElement(
         },
       };
     }
+    case TAG_SVG: {
+      return {
+        childrenNodes: [],
+        contentAttributes: {
+          ...BASIC_CONTENT_ATTRIBUTES,
+          attributeType: PageContentAttributeType.SVG_ROOT,
+        },
+      };
+    }
 
     // 2. Structural & Layout Elements.
-    case TAG_TABLE:
+    case TAG_TABLE: {
       return {
         childrenNodes: [],
         contentAttributes: {
           ...BASIC_CONTENT_ATTRIBUTES,
           attributeType: PageContentAttributeType.TABLE,
+          tableData: getTableNameForTableNode(domNode),
         },
       };
+    }
     case TAG_TR: {
       let rowType = PageContentTableRowType.BODY;
       // Use closest to find the nearest table section or table ancestor.
@@ -1515,9 +1549,9 @@ function getBasicContentForNonGenericElement(
       // table boundary and don't match a section from an outer table if this
       // row is inside a nested table.
       const section = domNode.closest('thead, tfoot, table');
-      if (section && section.tagName === 'THEAD') {
+      if (section && getStandardTagName(section) === 'THEAD') {
         rowType = PageContentTableRowType.HEADER;
-      } else if (section && section.tagName === 'TFOOT') {
+      } else if (section && getStandardTagName(section) === 'TFOOT') {
         rowType = PageContentTableRowType.FOOTER;
       }
       return {
@@ -1684,7 +1718,7 @@ function getContentForElementNode(
 function addAnnotatedRoles(
     domNode: HTMLElement, attributesToPopulate: PageContentAttributes,
     paidContentContext: PaidContentExtractionContext) {
-  const role = getAnnotatedRoleForTag(domNode.tagName);
+  const role = getAnnotatedRoleForTag(getStandardTagName(domNode));
   const roles: PageContentAnnotatedRole[] = [];
   if (role !== null) {
     roles.push(role);
@@ -1734,7 +1768,7 @@ function maybeGenerateContentNode(
     }
   } else if (domNode.nodeType === Node.ELEMENT_NODE) {
     const element = domNode as HTMLElement;
-    const role = getAnnotatedRoleForTag(element.tagName);
+    const role = getAnnotatedRoleForTag(getStandardTagName(element));
     const annotatedRoles = (role == null) ? [] : [role];
     const interactionInfo = getNodeInteractionInfo(element, actionableMode);
 
@@ -1761,8 +1795,8 @@ function maybeGenerateContentNode(
 function shouldAcceptNode(node: Node): number {
   if (node.nodeType === Node.ELEMENT_NODE) {
     const element = node as Element;
-    if (TAGS_TO_REJECT.includes(element.tagName) ||
-        TAGS_TO_SUPPORT_EVENTUALLY.includes(element.tagName)) {
+    const tagName = getStandardTagName(element);
+    if (TAGS_TO_REJECT.includes(tagName)) {
       return NodeFilter.FILTER_REJECT;
     }
     const windowObj = element.ownerDocument?.defaultView;
@@ -1778,7 +1812,7 @@ function shouldAcceptNode(node: Node): number {
     }
     if (style.visibility === ATTR_VISIBILITY_HIDDEN) {
       // Strictly skip invisible leaf nodes.
-      if (TAGS_TO_STRICTLY_REJECT_IF_HIDDEN.includes(element.tagName)) {
+      if (TAGS_TO_STRICTLY_REJECT_IF_HIDDEN.includes(tagName)) {
         return NodeFilter.FILTER_REJECT;
       }
       // For containers, we OPTIMISTICALLY ACCEPT (FILTER_ACCEPT).
@@ -1927,6 +1961,16 @@ function getInteractiveNodeIds(document: Document): InteractiveNodeIds {
     }
   }
   return interactiveNodeIds;
+}
+
+/**
+ * Returns the standardized, uppercase tag name for an element.
+ *
+ * @param element The DOM element to evaluate.
+ * @return The uppercase tag name.
+ */
+function getStandardTagName(element: Element): string {
+  return element.tagName.toUpperCase();
 }
 
 // TODO(crbug.com/485796293): Wrap this in a class.

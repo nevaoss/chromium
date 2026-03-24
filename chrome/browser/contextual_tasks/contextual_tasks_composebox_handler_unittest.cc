@@ -302,14 +302,15 @@ class ContextualTasksComposeboxHandlerTest
                                                     testing::_, testing::_))
         .WillByDefault(
             [handler = handler_.get()](
-                const base::UnguessableToken& file_token,
+                const base::UnguessableToken& context_token,
                 lens::MimeType mime_type,
-                contextual_search::ContextUploadStatus file_upload_status,
+                contextual_search::ContextUploadStatus context_upload_status,
                 const std::optional<contextual_search::ContextUploadErrorType>&
                     error_type) {
               handler->ContextualTasksComposeboxHandler::
-                  OnContextUploadStatusChanged(file_token, mime_type,
-                                               file_upload_status, error_type);
+                  OnContextUploadStatusChanged(context_token, mime_type,
+                                               context_upload_status,
+                                               error_type);
             });
 
     auto searchbox_page_remote =
@@ -872,7 +873,7 @@ TEST_F(ContextualTasksComposeboxHandlerTest, AegcParameterDisablesTools) {
   auto session_handle =
       std::make_unique<contextual_search::MockContextualSearchSessionHandle>();
   auto input_state_model = std::make_unique<contextual_search::InputStateModel>(
-      *session_handle, config, /*is_off_the_record=*/false);
+      *session_handle, config, GURL(), /*is_off_the_record=*/false);
 
   EXPECT_CALL(*mock_ui_, TakeInputStateModel())
       .WillOnce(testing::Return(testing::ByMove(std::move(input_state_model))));
@@ -1165,6 +1166,7 @@ TEST_P(ContextualTasksComposeboxHandlerToolModeTest, SetsToolModeFlags) {
   const auto& param = GetParam();
 
   handler_->SetActiveToolMode(param.tool_mode);
+  handler_->RecordToolSelectionAction(param.tool_mode);
 
   EXPECT_CALL(*mock_controller_, CreateClientToAimRequest(testing::_))
       .WillOnce([&](std::unique_ptr<
@@ -2821,7 +2823,7 @@ TEST_F(ContextualTasksComposeboxHandlerTest, ActiveModelIsPassed) {
       [this]() -> std::unique_ptr<contextual_search::InputStateModel> {
         omnibox::SearchboxConfig config;
         auto model = std::make_unique<contextual_search::InputStateModel>(
-            *session_handle_, config, false);
+            *session_handle_, config, GURL(), false);
         model->setActiveModel(omnibox::ModelMode::MODEL_MODE_GEMINI_PRO);
         return model;
       });
@@ -2868,23 +2870,23 @@ TEST_F(ContextualTasksComposeboxHandlerTest,
 
   EXPECT_CALL(*handler_, OnContextUploadStatusChanged(testing::_, testing::_,
                                                       testing::_, testing::_))
-      .WillRepeatedly([&](const base::UnguessableToken& file_token,
+      .WillRepeatedly([&](const base::UnguessableToken& context_token,
                           lens::MimeType mime_type,
                           contextual_search::ContextUploadStatus
-                              file_upload_status,
+                              context_upload_status,
                           const std::optional<
                               contextual_search::ContextUploadErrorType>&
                               error_type) {
-        if (file_upload_status ==
+        if (context_upload_status ==
             contextual_search::ContextUploadStatus::kUploadSuccessful) {
-          successful_uploads.push_back(file_token);
-        } else if (file_upload_status ==
+          successful_uploads.push_back(context_token);
+        } else if (context_upload_status ==
                    contextual_search::ContextUploadStatus::kUploadReplaced) {
-          replaced_uploads.push_back(file_token);
+          replaced_uploads.push_back(context_token);
         }
         handler_
             ->ContextualTasksComposeboxHandler::OnContextUploadStatusChanged(
-                file_token, mime_type, file_upload_status, error_type);
+                context_token, mime_type, context_upload_status, error_type);
       });
 
   // 1. First selection.

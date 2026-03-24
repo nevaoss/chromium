@@ -89,8 +89,8 @@ void TestAppBannerManagerDesktop::SetCompleteCallback(
   on_complete_ = std::move(on_complete);
 }
 
-AppBannerManager::State TestAppBannerManagerDesktop::state_for_testing() const {
-  return app_banner_manager()->state_for_testing();
+AppBannerManager::State TestAppBannerManagerDesktop::state() {
+  return app_banner_manager()->state();
 }
 
 void TestAppBannerManagerDesktop::AwaitAppInstall() {
@@ -156,14 +156,6 @@ void TestAppBannerManagerDesktop::OnBannerPromptReply() {
   if (on_banner_prompt_reply_) {
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE, std::move(on_banner_prompt_reply_));
-  }
-}
-
-void TestAppBannerManagerDesktop::OnBannerShown() {
-  RunInstallableQuitClosureIfNeeded();
-  if (on_complete_) {
-    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE, std::move(on_complete_));
   }
 }
 

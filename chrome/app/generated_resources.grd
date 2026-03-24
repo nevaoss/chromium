@@ -7383,6 +7383,10 @@ Keep your key file in a safe place. You will need it to create new versions of y
         You are using an unsupported feature flag: <ph name="BAD_FLAG">$1<ex>SignedHTTPExchange</ex></ph>. Stability and security will suffer.
       </message>
 
+      <message name="IDS_BAD_FLAGS_FROM_FILE_WARNING_MESSAGE" desc="Message shown when command-line flags are loaded from a file. [Keep it short so it fits in the infobar.]">
+        Chrome is loading flags from a command-line file. Stability and security may be affected.
+      </message>
+
       <!-- Bad Environment Variables Infobar-->
       <message name="IDS_BAD_ENVIRONMENT_VARIABLES_WARNING_MESSAGE" desc="Message shown when an unsupported environment variable is used [Keep it short so it fits in the infobar.]">
         You are using an unsupported environment variable: <ph name="BAD_VAR">$1<ex>SSLKEYLOGFILE</ex></ph>. Stability and security will suffer.
@@ -10371,6 +10375,17 @@ Keep your key file in a safe place. You will need it to create new versions of y
       </message>
       <message name="IDS_SPLIT_VIEW_DRAG_ENTRYPOINT_LABEL" desc="A label for the drag entrypoint indicating it can create a split view.">
         Create split view
+      </message>
+      <message name="IDS_SPLIT_VIEW_RESIZE_ACCESSIBLE_ALERT" is_accessibility_with_no_ui="true" desc="Accessible alert announced after resizing a split view.">
+        <ph name="VIEW_ONE_ORIENTATION">$1<ex>Left</ex></ph> View now <ph name="VIEW_ONE_PERCENT">$2<ex>50%</ex></ph> wide, <ph name="VIEW_TWO_ORIENTATION">$3<ex>Right</ex></ph> View now <ph name="VIEW_TWO_PERCENT">$4<ex>50%</ex></ph> wide.
+      </message>
+      <message name="IDS_SPLIT_VIEW_RESIZE_LEFT_SIDE_ACCESSIBLE_ALERT" is_accessibility_with_no_ui="true"
+               desc="Accessible alert text used in IDS_SPLIT_VIEW_RESIZE_ACCESSIBLE_ALERT for which side the window/pane is seen on.">
+               Left
+      </message>
+      <message name="IDS_SPLIT_VIEW_RESIZE_RIGHT_SIDE_ACCESSIBLE_ALERT" is_accessibility_with_no_ui="true"
+               desc="Accessible alert text used in IDS_SPLIT_VIEW_RESIZE_ACCESSIBLE_ALERT for which side the window/pane is seen on.">
+               Right
       </message>
 
       <!-- Vertical Tab Strings -->
@@ -13568,28 +13583,28 @@ Check your passwords anytime in <ph name="GOOGLE_PASSWORD_MANAGER">$1<ex>Google 
       </message>
 
       <!-- NSS PKCS #11 password dialog -->
-      <message name="IDS_CRYPTO_MODULE_AUTH_DIALOG_TITLE" desc="The title in the dialog that prompts for security device password.">
-       Sign in to Security Device
+      <message name="IDS_CRYPTO_MODULE_AUTH_DIALOG_TITLE" desc="The title in the dialog that prompts for security device PIN.">
+       Unlock Security Device
       </message>
-      <message name="IDS_CRYPTO_MODULE_AUTH_DIALOG_TEXT_CERT_ENROLLMENT" desc="The text in the dialog that prompts for security device password for cert enrollment.">
-       Please sign in to <ph name="TOKEN_NAME">$1<ex>Software Security Device</ex></ph> to import client certificate from <ph name="HOST_NAME">$2<ex>www.google.com</ex></ph>.
+      <message name="IDS_CRYPTO_MODULE_AUTH_DIALOG_TEXT_CERT_ENROLLMENT" desc="The text in the dialog that prompts for security device PIN for cert enrollment.">
+       Please unlock <ph name="TOKEN_NAME">$1<ex>Software Security Device</ex></ph> to import client certificate from <ph name="HOST_NAME">$2<ex>www.google.com</ex></ph>.
       </message>
-      <message name="IDS_CRYPTO_MODULE_AUTH_DIALOG_TEXT_CLIENT_AUTH" desc="The text in the dialog that prompts for security device password when doing key generation.">
-       Please sign in to <ph name="TOKEN_NAME">$1<ex>Software Security Device</ex></ph> to authenticate to <ph name="HOST_NAME">$2<ex>www.google.com</ex></ph> with your certificate.
+      <message name="IDS_CRYPTO_MODULE_AUTH_DIALOG_TEXT_CLIENT_AUTH" desc="The text in the dialog that prompts for security device PIN when doing key generation.">
+       Please unlock <ph name="TOKEN_NAME">$1<ex>Software Security Device</ex></ph> to authenticate to <ph name="HOST_NAME">$2<ex>www.google.com</ex></ph> with your certificate.
       </message>
-      <message name="IDS_CRYPTO_MODULE_AUTH_DIALOG_TEXT_LIST_CERTS" desc="The text in the dialog that prompts for security device password when using the certificate manager without taking a specific action (eg, just loading the cert manager).">
-       Please sign in to <ph name="TOKEN_NAME">$1<ex>Software Security Device</ex></ph>.
+      <message name="IDS_CRYPTO_MODULE_AUTH_DIALOG_TEXT_LIST_CERTS" desc="The text in the dialog that prompts for security device PIN when using the certificate manager without taking a specific action (eg, just loading the cert manager).">
+       Please unlock <ph name="TOKEN_NAME">$1<ex>Software Security Device</ex></ph>.
       </message>
-      <message name="IDS_CRYPTO_MODULE_AUTH_DIALOG_TEXT_CERT_IMPORT" desc="The text in the dialog that prompts for security device password when using the certificate manager to import a client certificate.">
-       Please sign in to <ph name="TOKEN_NAME">$1<ex>Software Security Device</ex></ph> to import the client certificate.
+      <message name="IDS_CRYPTO_MODULE_AUTH_DIALOG_TEXT_CERT_IMPORT" desc="The text in the dialog that prompts for security device PIN when using the certificate manager to import a client certificate.">
+       Please unlock <ph name="TOKEN_NAME">$1<ex>Software Security Device</ex></ph> to import the client certificate.
       </message>
-      <message name="IDS_CRYPTO_MODULE_AUTH_DIALOG_TEXT_CERT_EXPORT" desc="The text in the dialog that prompts for security device password when using the certificate manager to export a client certificate.">
-       Please sign in to <ph name="TOKEN_NAME">$1<ex>Software Security Device</ex></ph> to export the client certificate.
+      <message name="IDS_CRYPTO_MODULE_AUTH_DIALOG_TEXT_CERT_EXPORT" desc="The text in the dialog that prompts for security device PIN when using the certificate manager to export a client certificate.">
+       Please unlock <ph name="TOKEN_NAME">$1<ex>Software Security Device</ex></ph> to export the client certificate.
       </message>
-      <message name="IDS_CRYPTO_MODULE_AUTH_DIALOG_PASSWORD_FIELD" desc="Label for password entry in the dialog that prompts for security device password.">
-       Password:
+      <message name="IDS_CRYPTO_MODULE_AUTH_DIALOG_PASSWORD_FIELD" desc="Label for PIN entry in the dialog that prompts for security device PIN.">
+       PIN:
       </message>
-      <message name="IDS_CRYPTO_MODULE_AUTH_DIALOG_OK_BUTTON_LABEL" desc="Label for OK button in the dialog that prompts for security device password.">
+      <message name="IDS_CRYPTO_MODULE_AUTH_DIALOG_OK_BUTTON_LABEL" desc="Label for OK button in the dialog that prompts for security device PIN.">
        Unlock
       </message>
 
@@ -18606,7 +18621,7 @@ Please help our engineers fix this problem. Tell us what happened right before y
       This file
     </message>
     <message name="IDS_DEEP_SCANNING_DIALOG_SAVE_TO_CLOUD_STORAGE_MESSAGE" desc="Button text to allow the user to save a file to cloud storage">
-      <ph name="FILE_NAME">$1<ex>foo.txt</ex></ph> has sensitive or dangerous data. Your organization will let you save it to cloud storage or discard it
+      <ph name="FILE_NAME">$1<ex>foo.txt</ex></ph> has sensitive data. Your organization will let you save it to cloud storage or discard it
     </message>
 
     <!-- Data sharing UI strings -->
@@ -19311,6 +19326,15 @@ Please help our engineers fix this problem. Tell us what happened right before y
       </message>
       <message name="IDS_COPIED_TO_CLIPBOARD_TOAST_BODY" desc="Text on a toast notification that is shown when an item has been copied to clipboard.">
         Copied to clipboard
+      </message>
+      <message name="IDS_SPLIT_VIEW_CREATED_TOAST_BODY" desc="Text on a toast notification that is shown when a split view is created.">
+        Split view created
+      </message>
+      <message name="IDS_SPLIT_VIEW_SEPARATE_VIEWS_ACTION_BUTTON" desc="Text for the action button on a split view toast notification to separate the views in the split view.">
+        Separate views
+      </message>
+      <message name="IDS_SPLIT_VIEW_UNDO_SPLIT_ACTION_BUTTON" desc="Text for the action button on a split view toast notification to undo creating the split view.">
+        Undo
       </message>
     </if>
 

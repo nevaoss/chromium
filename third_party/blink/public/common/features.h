@@ -1217,6 +1217,7 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kLoadingTasksUnfreezable);
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(
     kLogUnexpectedIPCPostedToBackForwardCachedDocuments);
 
+<<<<<<< HEAD
 #if defined(USE_FILESCHEME_CODECACHE)
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kLocalResourceCodeCache);
 #endif
@@ -1224,6 +1225,12 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kLocalResourceCodeCache);
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kLowLatencyCanvas2dImageChromium);
 
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kLowLatencyWebGLImageChromium);
+=======
+#if BUILDFLAG(IS_ANDROID)
+BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kLowLatencyUsageSupportedForCanvas2D);
+BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kLowLatencyUsageSupportedForWebGL);
+#endif
+>>>>>>> 148.0.7740.0~1
 
 // If enabled, async scripts will be run on a lower priority task queue.
 // See https://crbug.com/1348467.

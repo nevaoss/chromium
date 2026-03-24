@@ -16,7 +16,9 @@ import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
 import android.graphics.drawable.Drawable;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.TextView;
 
 import androidx.annotation.ColorInt;
 import androidx.annotation.DrawableRes;
@@ -29,15 +31,19 @@ import androidx.recyclerview.widget.RecyclerView.LayoutManager;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.omnibox.R;
+import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.PopupButtonData;
 import org.chromium.chrome.browser.omnibox.styles.OmniboxResourceProvider;
 import org.chromium.chrome.browser.ui.theme.BrandedColorScheme;
 import org.chromium.components.omnibox.AutocompleteRequestType;
+import org.chromium.components.omnibox.IconResourceIdsProto.IconResourceIds;
 import org.chromium.components.omnibox.OmniboxFeatures;
 import org.chromium.ui.modelutil.PropertyKey;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.ui.modelutil.PropertyModel.ReadableBooleanPropertyKey;
 import org.chromium.ui.widget.ButtonCompat;
 import org.chromium.ui.widget.ChromeImageView;
+
+import java.util.List;
 
 /** Binds the Fusebox properties to the view and component. */
 @NullMarked
@@ -156,15 +162,8 @@ class FuseboxViewBinder {
                     model,
                     FuseboxProperties.POPUP_ATTACH_TAB_PICKER_VISIBLE,
                     view.popup.mTabButton);
-        } else if (propertyKey == FuseboxProperties.POPUP_MODEL_AUTO_CLICKED) {
-            view.popup.mAutoButton.setOnClickListener(
-                    v -> model.get(FuseboxProperties.POPUP_MODEL_AUTO_CLICKED).run());
-        } else if (propertyKey == FuseboxProperties.POPUP_MODEL_AUTO_ENABLED) {
-            view.popup.mAutoButton.setEnabled(
-                    model.get(FuseboxProperties.POPUP_MODEL_AUTO_ENABLED));
-        } else if (propertyKey == FuseboxProperties.POPUP_MODEL_AUTO_VISIBLE) {
-            updateButtonVisibility(
-                    model, FuseboxProperties.POPUP_MODEL_AUTO_VISIBLE, view.popup.mAutoButton);
+        } else if (propertyKey == FuseboxProperties.POPUP_MODEL_BUTTON_DATA_LIST) {
+            updateModelButtons(model, view);
         } else if (propertyKey == FuseboxProperties.POPUP_MODEL_DIVIDER_VISIBLE) {
             view.popup.mModelsDivider.setVisibility(
                     model.get(FuseboxProperties.POPUP_MODEL_DIVIDER_VISIBLE)
@@ -175,14 +174,6 @@ class FuseboxViewBinder {
                     model.get(FuseboxProperties.POPUP_MODEL_HEADER_VISIBLE)
                             ? View.VISIBLE
                             : View.GONE);
-        } else if (propertyKey == FuseboxProperties.POPUP_MODEL_PRO_CLICKED) {
-            view.popup.mProButton.setOnClickListener(
-                    v -> model.get(FuseboxProperties.POPUP_MODEL_PRO_CLICKED).run());
-        } else if (propertyKey == FuseboxProperties.POPUP_MODEL_PRO_ENABLED) {
-            view.popup.mProButton.setEnabled(model.get(FuseboxProperties.POPUP_MODEL_PRO_ENABLED));
-        } else if (propertyKey == FuseboxProperties.POPUP_MODEL_PRO_VISIBLE) {
-            updateButtonVisibility(
-                    model, FuseboxProperties.POPUP_MODEL_PRO_VISIBLE, view.popup.mProButton);
         } else if (propertyKey == FuseboxProperties.POPUP_TOOL_AI_MODE_CLICKED) {
             view.popup.mAiModeButton.setOnClickListener(
                     v -> model.get(FuseboxProperties.POPUP_TOOL_AI_MODE_CLICKED).run());
@@ -289,7 +280,7 @@ class FuseboxViewBinder {
         Drawable canvasEndDrawable = null;
         if (autocompleteRequestType != AutocompleteRequestType.SEARCH
                 && autocompleteRequestType != AutocompleteRequestType.SEARCH_PREFETCH) {
-            Drawable checkmark = assumeNonNull(context.getDrawable(R.drawable.m3_ic_check_24px));
+            Drawable checkmark = context.getDrawable(R.drawable.m3_ic_check_24px);
             switch (autocompleteRequestType) {
                 case AutocompleteRequestType.AI_MODE -> {
                     aiModeButtonEndDrawable = checkmark;
@@ -326,6 +317,91 @@ class FuseboxViewBinder {
         Drawable canvasStartDrawable = context.getDrawable(R.drawable.draft_spark_24dp);
         view.popup.mCanvasButton.setCompoundDrawablesRelativeWithIntrinsicBounds(
                 canvasStartDrawable, null, canvasEndDrawable, null);
+    }
+
+    private static void updateModelButtons(PropertyModel model, FuseboxViewHolder view) {
+        List<PopupButtonData> buttonDataList =
+                model.get(FuseboxProperties.POPUP_MODEL_BUTTON_DATA_LIST);
+        ViewGroup group = view.popup.mViewGroup;
+        int headerIndex = group.indexOfChild(view.popup.mModelsHeader);
+        if (headerIndex == -1) {
+            assert false;
+            // TODO(https://crbung.com/493288340): Remove this return if this assert is never hit.
+            return;
+        }
+
+        int startIndex = headerIndex + 1;
+        int currentCount = group.getChildCount() - startIndex;
+        int targetCount = buttonDataList == null ? 0 : buttonDataList.size();
+
+        if (currentCount > targetCount) {
+            for (int i = startIndex + targetCount; i < group.getChildCount(); i++) {
+                view.popup.mButtons.remove(group.getChildAt(i));
+            }
+            group.removeViews(startIndex + targetCount, currentCount - targetCount);
+        }
+
+        @BrandedColorScheme int brandedColorScheme = model.get(FuseboxProperties.COLOR_SCHEME);
+        for (int i = 0; i < targetCount; i++) {
+            Button button;
+            if (i < currentCount) {
+                button = (Button) group.getChildAt(startIndex + i);
+            } else {
+                ButtonCompat buttonCompat =
+                        new ButtonCompat(group.getContext(), R.style.Fusebox_PopupMenu_Item);
+                buttonCompat.setAllCaps(false);
+                group.addView(buttonCompat);
+                view.popup.mButtons.add(buttonCompat);
+                button = buttonCompat;
+            }
+            bindDynamicButton(button, buttonDataList.get(i), brandedColorScheme);
+        }
+    }
+
+    private static void bindDynamicButton(
+            Button button, PopupButtonData data, @BrandedColorScheme int brandedColorScheme) {
+        button.setOnClickListener((v) -> data.onClicked.run());
+        button.setText(data.text);
+        button.setEnabled(data.enabled);
+
+        @StyleRes
+        int textAppearance = OmniboxResourceProvider.getPopupButtonTextRes(brandedColorScheme);
+        ColorStateList iconTint =
+                OmniboxResourceProvider.getPrimaryIconTintList(
+                        button.getContext(), brandedColorScheme);
+        themeButton(button, textAppearance, iconTint);
+
+        @DrawableRes int iconRes = getResIdForIconId(data.iconId);
+        setButtonDrawables(button, data.selected, iconRes);
+    }
+
+    private static void setButtonDrawables(
+            Button button, boolean selected, @DrawableRes int iconRes) {
+        Context context = button.getContext();
+        Drawable startDrawable = iconRes != Resources.ID_NULL ? context.getDrawable(iconRes) : null;
+        Drawable endDrawable = selected ? context.getDrawable(R.drawable.m3_ic_check_24px) : null;
+
+        button.setCompoundDrawablesRelativeWithIntrinsicBounds(
+                startDrawable, null, endDrawable, null);
+    }
+
+    /** Maps ids found in generated protos to local resources backed drawable ids. */
+    private static @DrawableRes int getResIdForIconId(int iconId) {
+        if (iconId == IconResourceIds.AUTORENEW_VALUE) {
+            return R.drawable.autorenew_24dp;
+        } else if (iconId == IconResourceIds.TIMER_VALUE) {
+            return R.drawable.ic_timer;
+        } else if (iconId == IconResourceIds.BOLT_VALUE) {
+            return R.drawable.bolt_24dp;
+        }
+        return Resources.ID_NULL;
+    }
+
+    private static void themeButton(
+            Button button, @StyleRes int textAppearance, ColorStateList iconTint) {
+        button.setTextAppearance(textAppearance);
+        // Color filters applied to drawables will take precedence over this tint.
+        button.setCompoundDrawableTintList(iconTint);
     }
 
     private static void updateButtonsA11yAnnouncements(
@@ -542,9 +618,14 @@ class FuseboxViewBinder {
         ColorStateList iconTint =
                 OmniboxResourceProvider.getPrimaryIconTintList(context, brandedColorScheme);
         for (Button button : view.popup.mButtons) {
-            button.setTextAppearance(textAppearance);
-            // Color filters applied to drawables will take precedence over this tint.
-            button.setCompoundDrawableTintList(iconTint);
+            themeButton(button, textAppearance, iconTint);
+        }
+
+        @StyleRes
+        int headerTextAppearance =
+                OmniboxResourceProvider.getPopupHeaderVisibilityTextRes(brandedColorScheme);
+        for (TextView header : view.popup.mHeaders) {
+            header.setTextAppearance(headerTextAppearance);
         }
 
         @ColorInt

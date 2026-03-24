@@ -24,6 +24,7 @@
 #include "ash/wm/window_util.h"
 #include "base/base_paths.h"
 #include "base/check_deref.h"
+#include "base/check_is_test.h"
 #include "base/check_op.h"
 #include "base/command_line.h"
 #include "base/debug/alias.h"
@@ -429,7 +430,7 @@ void LogCustomFeatureFlags(const std::set<std::string>& feature_flags) {
 
 bool IsRunningTest() {
   return base::CommandLine::ForCurrentProcess()->HasSwitch(
-             ash::switches::kTestName) ||
+             ::switches::kTestName) ||
          base::CommandLine::ForCurrentProcess()->HasSwitch(
              ::switches::kTestType);
 }
@@ -750,6 +751,7 @@ scoped_refptr<Authenticator> UserSessionManager::CreateAuthenticator(
 
   if (authenticator_.get() == nullptr) {
     if (injected_authenticator_builder_) {
+      CHECK_IS_TEST();
       authenticator_ = injected_authenticator_builder_->Create(consumer);
     } else {
       auto* user_manager = user_manager::UserManager::Get();
@@ -1063,18 +1065,6 @@ bool UserSessionManager::RestartToApplyPerSessionFlagsIfNeed(
   update.UpdateSessionManager();
   attempt_restart_closure_.Run();
   return true;
-}
-
-void UserSessionManager::AddSessionStateObserver(
-    ash::UserSessionStateObserver* observer) {
-  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
-  session_state_observer_list_.AddObserver(observer);
-}
-
-void UserSessionManager::RemoveSessionStateObserver(
-    ash::UserSessionStateObserver* observer) {
-  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
-  session_state_observer_list_.RemoveObserver(observer);
 }
 
 void UserSessionManager::AddUserAuthenticatorObserver(
@@ -2329,8 +2319,9 @@ void UserSessionManager::RestorePendingUserSessions() {
 void UserSessionManager::NotifyPendingUserSessionsRestoreFinished() {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   user_sessions_restored_ = true;
-  for (auto& observer : session_state_observer_list_)
-    observer.PendingUserSessionsRestoreFinished();
+  if (on_pending_user_session_restore_finished_for_testsing_) {
+    std::move(on_pending_user_session_restore_finished_for_testsing_).Run();
+  }
 }
 
 void UserSessionManager::OnChildPolicyReady(
@@ -2593,7 +2584,7 @@ void UserSessionManager::RemoveProfileForTesting(Profile* profile) {
   default_ime_states_.erase(profile);
 }
 
-void UserSessionManager::InjectAuthenticatorBuilder(
+void UserSessionManager::InjectAuthenticatorBuilderForTesting(
     std::unique_ptr<AuthenticatorBuilder> builder) {
   injected_authenticator_builder_ = std::move(builder);
   authenticator_.reset();
@@ -2668,6 +2659,13 @@ void UserSessionManager::SetEolNotificationHandlerFactoryForTesting(
     const EolNotificationHandlerFactoryCallback&
         eol_notification_handler_factory) {
   eol_notification_handler_test_factory_ = eol_notification_handler_factory;
+}
+
+void UserSessionManager::SetOnPendingUserSessionRestoreFinishedForTesting(
+    base::OnceClosure callback) {
+  CHECK(!UserSessionsRestored());
+  CHECK(!on_pending_user_session_restore_finished_for_testsing_);
+  on_pending_user_session_restore_finished_for_testsing_ = std::move(callback);
 }
 
 base::WeakPtr<UserSessionManager>

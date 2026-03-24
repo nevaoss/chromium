@@ -207,7 +207,7 @@ suite('SearchboxTest', () => {
     // Force a synchronous render.
     await testProxy.callbackRouterRemote.$.flushForTesting();
     await microtasksFinished();
-    return window.getComputedStyle(realbox.getSuggestionsElement()).display !==
+    return window.getComputedStyle(realbox.getDropdownElement()).display !==
         'none';
   }
 
@@ -422,7 +422,7 @@ suite('SearchboxTest', () => {
 
     // Assert.
     const submitMetricName =
-        'ContextualSearch.UserAction.SubmitQuery.WithoutContext.NewTabPage';
+        'ContextualSearch.UserAction.SubmitQueryV2.WithoutContext.NewTabPage';
     // One histogram and one action metric should be emitted.
     assertEquals(2, metrics.count(submitMetricName));
     // Only one histogram should be recorded.
@@ -551,9 +551,8 @@ suite('SearchboxTest', () => {
         }));
     assertTrue(await areMatchesShowing());
 
-    const matchEls =
-        realbox.getSuggestionsElement().shadowRoot.querySelectorAll(
-            'cr-searchbox-match');
+    const matchEls = realbox.getDropdownElement().shadowRoot.querySelectorAll(
+        'cr-searchbox-match');
     assertEquals(2, matchEls.length);
 
     // Left click does not query autocomplete when matches are showing.
@@ -606,7 +605,9 @@ suite('SearchboxTest', () => {
     let args = await testProxy.handler.whenCalled('queryAutocomplete');
     assertEquals(args.input, realbox.$.input.inputElement.value);
     assertFalse(args.preventInlineAutocomplete);
-    assertEquals(1, testProxy.handler.getCallCount('queryAutocomplete'));
+    assertEquals(
+        1, testProxy.handler.getCallCount('queryAutocomplete'),
+        'query autocomplete count');
 
     testProxy.handler.reset();
 
@@ -618,10 +619,9 @@ suite('SearchboxTest', () => {
         }));
     assertTrue(await areMatchesShowing());
 
-    const matchEls =
-        realbox.getSuggestionsElement().shadowRoot.querySelectorAll(
-            'cr-searchbox-match');
-    assertEquals(2, matchEls.length);
+    const matchEls = realbox.getDropdownElement().shadowRoot.querySelectorAll(
+        'cr-searchbox-match');
+    assertEquals(2, matchEls.length, 'match count');
 
     // Tabbing into input does not query autocomplete when matches are
     // showing.
@@ -631,7 +631,12 @@ suite('SearchboxTest', () => {
       composed: true,
       key: 'Tab',
     }));
-    assertEquals(0, testProxy.handler.getCallCount('queryAutocomplete'));
+    assertEquals(
+        0,
+        testProxy.handler.getCallCount(
+            'queryAutocomplete',
+            ),
+        'query autocomplete count when matches showing');
 
     // Hide the matches by focusing out.
     matchEls[0]!.dispatchEvent(new FocusEvent('focusout', {
@@ -686,9 +691,8 @@ suite('SearchboxTest', () => {
         }));
     assertTrue(await areMatchesShowing());
 
-    const matchEls =
-        realbox.getSuggestionsElement().shadowRoot.querySelectorAll(
-            'cr-searchbox-match');
+    const matchEls = realbox.getDropdownElement().shadowRoot.querySelectorAll(
+        'cr-searchbox-match');
     assertEquals(2, matchEls.length);
 
     // Arrow up/down keys do not query autocomplete when matches are showing.
@@ -726,7 +730,6 @@ suite('SearchboxTest', () => {
     assertEquals(0, testProxy.handler.getCallCount('queryAutocomplete'));
   });
 
-  // TODO: Fix before submitting.
   test('arrow up/down keys in non-empty input query autocomplete', async () => {
     // Query matches.
     realbox.$.input.inputElement.value = 'hello';
@@ -734,7 +737,9 @@ suite('SearchboxTest', () => {
     let args = await testProxy.handler.whenCalled('queryAutocomplete');
     assertEquals(args.input, realbox.$.input.inputElement.value);
     assertFalse(args.preventInlineAutocomplete);
-    assertEquals(1, testProxy.handler.getCallCount('queryAutocomplete'));
+    assertEquals(
+        1, testProxy.handler.getCallCount('queryAutocomplete'),
+        'autocomplete queried');
 
     testProxy.handler.reset();
 
@@ -745,11 +750,10 @@ suite('SearchboxTest', () => {
           input: 'hello',
           matches: matches,
         }));
-    assertTrue(await areMatchesShowing());
+    assertTrue(await areMatchesShowing(), 'matches showing');
 
-    const matchEls =
-        realbox.getSuggestionsElement().shadowRoot.querySelectorAll(
-            'cr-searchbox-match');
+    const matchEls = realbox.getDropdownElement().shadowRoot.querySelectorAll(
+        'cr-searchbox-match');
     assertEquals(2, matchEls.length);
 
     // Arrow up/down keys do not query autocomplete when matches are showing.
@@ -956,11 +960,9 @@ suite('SearchboxTest', () => {
         }));
     assertTrue(await areMatchesShowing());
 
-    assertEquals(
-        'listbox', realbox.getSuggestionsElement().getAttribute('role'));
-    const matchEls =
-        realbox.getSuggestionsElement().shadowRoot.querySelectorAll(
-            'cr-searchbox-match');
+    assertEquals('listbox', realbox.getDropdownElement().getAttribute('role'));
+    const matchEls = realbox.getDropdownElement().shadowRoot.querySelectorAll(
+        'cr-searchbox-match');
     assertEquals(2, matchEls.length);
     verifyMatch(matches[0]!, matchEls[0]!);
     verifyMatch(matches[1]!, matchEls[1]!);
@@ -995,9 +997,8 @@ suite('SearchboxTest', () => {
         }));
     assertTrue(await areMatchesShowing());
 
-    const matchEls =
-        realbox.getSuggestionsElement().shadowRoot.querySelectorAll(
-            'cr-searchbox-match');
+    const matchEls = realbox.getDropdownElement().shadowRoot.querySelectorAll(
+        'cr-searchbox-match');
     assertEquals(1, matchEls.length);
     verifyMatch(matches[0]!, matchEls[0]!);
 
@@ -1083,9 +1084,8 @@ suite('SearchboxTest', () => {
         }));
     assertFalse(await areMatchesShowing());
 
-    const matchEls =
-        realbox.getSuggestionsElement().shadowRoot.querySelectorAll(
-            'cr-searchbox-match');
+    const matchEls = realbox.getDropdownElement().shadowRoot.querySelectorAll(
+        'cr-searchbox-match');
     assertEquals(0, matchEls.length);
   });
 
@@ -1101,7 +1101,7 @@ suite('SearchboxTest', () => {
         }));
     assertTrue(await areMatchesShowing());
 
-    let matchEls = realbox.getSuggestionsElement().shadowRoot.querySelectorAll(
+    let matchEls = realbox.getDropdownElement().shadowRoot.querySelectorAll(
         'cr-searchbox-match');
     assertEquals(2, matchEls.length);
 
@@ -1114,7 +1114,7 @@ suite('SearchboxTest', () => {
         }));
     assertFalse(await areMatchesShowing());
 
-    matchEls = realbox.getSuggestionsElement().shadowRoot.querySelectorAll(
+    matchEls = realbox.getDropdownElement().shadowRoot.querySelectorAll(
         'cr-searchbox-match');
     assertEquals(0, matchEls.length);
 
@@ -1128,7 +1128,7 @@ suite('SearchboxTest', () => {
         }));
     assertTrue(await areMatchesShowing());
 
-    matchEls = realbox.getSuggestionsElement().shadowRoot.querySelectorAll(
+    matchEls = realbox.getDropdownElement().shadowRoot.querySelectorAll(
         'cr-searchbox-match');
     assertEquals(2, matchEls.length);
   });
@@ -1299,9 +1299,8 @@ suite('SearchboxTest', () => {
         }));
     assertTrue(await areMatchesShowing());
 
-    const matchEls =
-        realbox.getSuggestionsElement().shadowRoot.querySelectorAll(
-            'cr-searchbox-match');
+    const matchEls = realbox.getDropdownElement().shadowRoot.querySelectorAll(
+        'cr-searchbox-match');
     assertEquals(2, matchEls.length);
 
     // First match is selected.
@@ -1364,9 +1363,8 @@ suite('SearchboxTest', () => {
             }));
         assertTrue(await areMatchesShowing());
 
-        let matchEls =
-            realbox.getSuggestionsElement().shadowRoot.querySelectorAll(
-                'cr-searchbox-match');
+        let matchEls = realbox.getDropdownElement().shadowRoot.querySelectorAll(
+            'cr-searchbox-match');
         assertEquals(2, matchEls.length);
 
         // Select the first match.
@@ -1396,7 +1394,7 @@ suite('SearchboxTest', () => {
         assertFalse(await areMatchesShowing());
 
         // First match is still selected.
-        matchEls = realbox.getSuggestionsElement().shadowRoot.querySelectorAll(
+        matchEls = realbox.getDropdownElement().shadowRoot.querySelectorAll(
             'cr-searchbox-match');
         assertEquals(2, matchEls.length);
         assertTrue(matchEls[0]!.hasAttribute(Attributes.SELECTED));
@@ -1442,9 +1440,8 @@ suite('SearchboxTest', () => {
         }));
     assertTrue(await areMatchesShowing());
 
-    const matchEls =
-        realbox.getSuggestionsElement().shadowRoot.querySelectorAll(
-            'cr-searchbox-match');
+    const matchEls = realbox.getDropdownElement().shadowRoot.querySelectorAll(
+        'cr-searchbox-match');
     assertEquals(2, matchEls.length);
 
     // First match is not selected.
@@ -1482,9 +1479,8 @@ suite('SearchboxTest', () => {
             }));
         assertTrue(await areMatchesShowing());
 
-        let matchEls =
-            realbox.getSuggestionsElement().shadowRoot.querySelectorAll(
-                'cr-searchbox-match');
+        let matchEls = realbox.getDropdownElement().shadowRoot.querySelectorAll(
+            'cr-searchbox-match');
         assertEquals(2, matchEls.length);
 
         // Select the first match.
@@ -1514,7 +1510,7 @@ suite('SearchboxTest', () => {
         assertFalse(await areMatchesShowing());
 
         // Matches are cleared.
-        matchEls = realbox.getSuggestionsElement().shadowRoot.querySelectorAll(
+        matchEls = realbox.getDropdownElement().shadowRoot.querySelectorAll(
             'cr-searchbox-match');
         assertEquals(0, matchEls.length);
         // Input is cleared (zero-prefix case).
@@ -1558,9 +1554,8 @@ suite('SearchboxTest', () => {
         }));
     assertTrue(await areMatchesShowing());
 
-    const matchEls =
-        realbox.getSuggestionsElement().shadowRoot.querySelectorAll(
-            'cr-searchbox-match');
+    const matchEls = realbox.getDropdownElement().shadowRoot.querySelectorAll(
+        'cr-searchbox-match');
     assertEquals(2, matchEls.length);
 
     // First match is selected.
@@ -1626,9 +1621,8 @@ suite('SearchboxTest', () => {
         }));
     assertTrue(await areMatchesShowing());
 
-    const matchEls =
-        realbox.getSuggestionsElement().shadowRoot.querySelectorAll(
-            'cr-searchbox-match');
+    const matchEls = realbox.getDropdownElement().shadowRoot.querySelectorAll(
+        'cr-searchbox-match');
     assertEquals(2, matchEls.length);
 
     // First match is selected.
@@ -1672,9 +1666,8 @@ suite('SearchboxTest', () => {
         }));
     assertTrue(await areMatchesShowing());
 
-    const matchEls =
-        realbox.getSuggestionsElement().shadowRoot.querySelectorAll(
-            'cr-searchbox-match');
+    const matchEls = realbox.getDropdownElement().shadowRoot.querySelectorAll(
+        'cr-searchbox-match');
     assertEquals(2, matchEls.length);
 
     assertEquals(
@@ -1708,9 +1701,8 @@ suite('SearchboxTest', () => {
         }));
     assertTrue(await areMatchesShowing());
 
-    const matchEls =
-        realbox.getSuggestionsElement().shadowRoot.querySelectorAll(
-            'cr-searchbox-match');
+    const matchEls = realbox.getDropdownElement().shadowRoot.querySelectorAll(
+        'cr-searchbox-match');
     assertEquals(2, matchEls.length);
     // First match is selected.
     assertTrue(matchEls[0]!.hasAttribute(Attributes.SELECTED));
@@ -1768,7 +1760,7 @@ suite('SearchboxTest', () => {
         }));
     assertTrue(await areMatchesShowing());
 
-    let matchEls = realbox.getSuggestionsElement().shadowRoot.querySelectorAll(
+    let matchEls = realbox.getDropdownElement().shadowRoot.querySelectorAll(
         'cr-searchbox-match');
     assertEquals(1, matchEls.length);
 
@@ -1791,7 +1783,7 @@ suite('SearchboxTest', () => {
         }));
     assertTrue(await areMatchesShowing());
 
-    matchEls = realbox.getSuggestionsElement().shadowRoot.querySelectorAll(
+    matchEls = realbox.getDropdownElement().shadowRoot.querySelectorAll(
         'cr-searchbox-match');
     assertEquals(1, matchEls.length);
 
@@ -1828,7 +1820,7 @@ suite('SearchboxTest', () => {
         }));
     assertTrue(await areMatchesShowing());
 
-    matchEls = realbox.getSuggestionsElement().shadowRoot.querySelectorAll(
+    matchEls = realbox.getDropdownElement().shadowRoot.querySelectorAll(
         'cr-searchbox-match');
     assertEquals(1, matchEls.length);
 
@@ -1855,9 +1847,8 @@ suite('SearchboxTest', () => {
             }));
         assertTrue(await areMatchesShowing());
 
-        let matchEls =
-            realbox.getSuggestionsElement().shadowRoot.querySelectorAll(
-                'cr-searchbox-match');
+        let matchEls = realbox.getDropdownElement().shadowRoot.querySelectorAll(
+            'cr-searchbox-match');
         assertEquals(2, matchEls.length);
 
         // Select the second match.
@@ -1873,8 +1864,7 @@ suite('SearchboxTest', () => {
         assertEquals(
             'https://helloworld.com', realbox.$.input.inputElement.value);
         assertEquals(
-            matchEls[1],
-            realbox.getSuggestionsElement().shadowRoot.activeElement);
+            matchEls[1], realbox.getDropdownElement().shadowRoot.activeElement);
 
         let escapeEvent = new KeyboardEvent('keydown', {
           bubbles: true,
@@ -1890,8 +1880,7 @@ suite('SearchboxTest', () => {
         assertTrue(matchEls[0]!.hasAttribute(Attributes.SELECTED));
         assertEquals('hello world', realbox.$.input.inputElement.value);
         assertEquals(
-            matchEls[0],
-            realbox.getSuggestionsElement().shadowRoot.activeElement);
+            matchEls[0], realbox.getDropdownElement().shadowRoot.activeElement);
 
         escapeEvent = new KeyboardEvent('keydown', {
           bubbles: true,
@@ -1906,7 +1895,7 @@ suite('SearchboxTest', () => {
         assertFalse(await areMatchesShowing());
 
         // Matches are cleared.
-        matchEls = realbox.getSuggestionsElement().shadowRoot.querySelectorAll(
+        matchEls = realbox.getDropdownElement().shadowRoot.querySelectorAll(
             'cr-searchbox-match');
         assertEquals(0, matchEls.length);
         // Input is cleared.
@@ -1921,7 +1910,7 @@ suite('SearchboxTest', () => {
             }));
         assertTrue(await areMatchesShowing());
 
-        matchEls = realbox.getSuggestionsElement().shadowRoot.querySelectorAll(
+        matchEls = realbox.getDropdownElement().shadowRoot.querySelectorAll(
             'cr-searchbox-match');
         assertEquals(2, matchEls.length);
 
@@ -1939,7 +1928,7 @@ suite('SearchboxTest', () => {
         assertFalse(await areMatchesShowing());
 
         // Matches are cleared.
-        matchEls = realbox.getSuggestionsElement().shadowRoot.querySelectorAll(
+        matchEls = realbox.getDropdownElement().shadowRoot.querySelectorAll(
             'cr-searchbox-match');
         assertEquals(0, matchEls.length);
       });
@@ -1960,9 +1949,8 @@ suite('SearchboxTest', () => {
         }));
     assertTrue(await areMatchesShowing());
 
-    const matchEls =
-        realbox.getSuggestionsElement().shadowRoot.querySelectorAll(
-            'cr-searchbox-match');
+    const matchEls = realbox.getDropdownElement().shadowRoot.querySelectorAll(
+        'cr-searchbox-match');
     assertEquals(2, matchEls.length);
 
     let arrowDownEvent = arrowDown(realbox);
@@ -2015,7 +2003,7 @@ suite('SearchboxTest', () => {
     assertTrue(matchEls[1]!.hasAttribute(Attributes.SELECTED));
     assertEquals('https://helloworld.com', realbox.$.input.inputElement.value);
     assertEquals(
-        matchEls[1], realbox.getSuggestionsElement().shadowRoot.activeElement);
+        matchEls[1], realbox.getDropdownElement().shadowRoot.activeElement);
 
     const arrowUpEvent = new KeyboardEvent('keydown', {
       bubbles: true,
@@ -2031,7 +2019,7 @@ suite('SearchboxTest', () => {
     assertTrue(matchEls[0]!.hasAttribute(Attributes.SELECTED));
     assertEquals('hello world', realbox.$.input.inputElement.value);
     assertEquals(
-        matchEls[0], realbox.getSuggestionsElement().shadowRoot.activeElement);
+        matchEls[0], realbox.getDropdownElement().shadowRoot.activeElement);
 
     // Changing match selection doesn't result in another onFocusChanged call
     // because focus is for the whole realbox (including input container).
@@ -2062,9 +2050,8 @@ suite('SearchboxTest', () => {
         }));
     assertTrue(await areMatchesShowing());
 
-    const matchEls =
-        realbox.getSuggestionsElement().shadowRoot.querySelectorAll(
-            'cr-searchbox-match');
+    const matchEls = realbox.getDropdownElement().shadowRoot.querySelectorAll(
+        'cr-searchbox-match');
 
     const focusIndicator = matchEls[0]!.$.focusIndicator;
 
@@ -2198,7 +2185,7 @@ suite('SearchboxTest', () => {
         assertTrue(await areMatchesShowing());
 
         const matchEls =
-            realbox.getSuggestionsElement().shadowRoot.querySelectorAll(
+            realbox.getDropdownElement().shadowRoot.querySelectorAll(
                 'cr-searchbox-match');
         assertEquals(2, matchEls.length);
         assertIconMaskImageUrl(matchEls[0]!.$.icon, 'clock.svg');
@@ -2306,7 +2293,7 @@ suite('SearchboxTest', () => {
         assertTrue(await areMatchesShowing());
 
         const matchEls =
-            realbox.getSuggestionsElement().shadowRoot.querySelectorAll(
+            realbox.getDropdownElement().shadowRoot.querySelectorAll(
                 'cr-searchbox-match');
         assertEquals(2, matchEls.length);
         // TODO(crbug.com/328270499): Uncomment once flakiness is fixed.
@@ -2464,7 +2451,7 @@ suite('SearchboxTest', () => {
         assertTrue(await areMatchesShowing());
 
         const matchEls =
-            realbox.getSuggestionsElement().shadowRoot.querySelectorAll(
+            realbox.getDropdownElement().shadowRoot.querySelectorAll(
                 'cr-searchbox-match');
         assertEquals(2, matchEls.length);
 
@@ -2591,9 +2578,8 @@ suite('SearchboxTest', () => {
         }));
     assertTrue(await areMatchesShowing());
 
-    const matchEls =
-        realbox.getSuggestionsElement().shadowRoot.querySelectorAll(
-            'cr-searchbox-match');
+    const matchEls = realbox.getDropdownElement().shadowRoot.querySelectorAll(
+        'cr-searchbox-match');
     assertEquals(2, matchEls.length);
 
     let faviconImage = matchEls[0]!.$.icon.$.faviconImage;
@@ -2710,9 +2696,8 @@ suite('SearchboxTest', () => {
         }));
     assertTrue(await areMatchesShowing());
 
-    const matchEls =
-        realbox.getSuggestionsElement().shadowRoot.querySelectorAll(
-            'cr-searchbox-match');
+    const matchEls = realbox.getDropdownElement().shadowRoot.querySelectorAll(
+        'cr-searchbox-match');
     assertEquals(1, matchEls.length);
 
     // Select the first match.
@@ -2779,9 +2764,8 @@ suite('SearchboxTest', () => {
         }));
     assertTrue(await areMatchesShowing());
 
-    const matchEls =
-        realbox.getSuggestionsElement().shadowRoot.querySelectorAll(
-            'cr-searchbox-match');
+    const matchEls = realbox.getDropdownElement().shadowRoot.querySelectorAll(
+        'cr-searchbox-match');
     assertEquals(1, matchEls.length);
 
     verifyMatch(matches[0]!, matchEls[0]!);
@@ -2824,9 +2808,8 @@ suite('SearchboxTest', () => {
         }));
     assertTrue(await areMatchesShowing());
 
-    const matchEls =
-        realbox.getSuggestionsElement().shadowRoot.querySelectorAll(
-            'cr-searchbox-match');
+    const matchEls = realbox.getDropdownElement().shadowRoot.querySelectorAll(
+        'cr-searchbox-match');
     verifyMatch(matches[0]!, matchEls[0]!);
 
     // Separator is not displayed
@@ -2875,9 +2858,8 @@ suite('SearchboxTest', () => {
         }));
     assertTrue(await areMatchesShowing());
 
-    const matchEls =
-        realbox.getSuggestionsElement().shadowRoot.querySelectorAll(
-            'cr-searchbox-match');
+    const matchEls = realbox.getDropdownElement().shadowRoot.querySelectorAll(
+        'cr-searchbox-match');
     verifyMatch(matches[0]!, matchEls[0]!);
     verifyMatch(matches[1]!, matchEls[1]!);
 
@@ -2923,7 +2905,7 @@ suite('SearchboxTest', () => {
         }));
     assertTrue(await areMatchesShowing());
 
-    const matchEl = $$(realbox.getSuggestionsElement(), 'cr-searchbox-match')!;
+    const matchEl = $$(realbox.getDropdownElement(), 'cr-searchbox-match')!;
     verifyMatch(matches[0]!, matchEl);
 
     const pedalEl = $$($$(matchEl, 'cr-searchbox-action')!, '.contents')!;
@@ -2976,9 +2958,8 @@ suite('SearchboxTest', () => {
         }));
     assertTrue(await areMatchesShowing());
 
-    const matchEls =
-        realbox.getSuggestionsElement().shadowRoot.querySelectorAll(
-            'cr-searchbox-match');
+    const matchEls = realbox.getDropdownElement().shadowRoot.querySelectorAll(
+        'cr-searchbox-match');
     verifyMatch(matches[0]!, matchEls[0]!);
     verifyMatch(matches[1]!, matchEls[1]!);
 

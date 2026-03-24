@@ -549,6 +549,15 @@
       base_feature: "none",
     },
     {
+      // Instead of creating a new DOMStringList on every access to
+      // location.ancestorOrigins, return the ancestor origins list
+      // stored on Document.
+      // This was added in M147 and can be removed after M149.
+      // https://issues.chromium.org/issues/483610021
+      name: "AncestorOriginsStoredOnDocument",
+      status: "stable",
+    },
+    {
       // Enables the new behavior for this spec change:
       // https://github.com/whatwg/html/pull/11457
       // https://issues.chromium.org/issues/433545121
@@ -811,6 +820,12 @@
     {
       name: "BlinkExtensionChromeOS",
       browser_process_read_write_access: true,
+    },
+    {
+      name: "BlinkExtensionChromeOSIsolatedWebAppSetShape",
+      status: {"ChromeOS": "experimental", "default": ""},
+      browser_process_read_write_access: true,
+      depends_on: ["BlinkExtensionChromeOS"],
     },
     {
       name: "BlinkExtensionChromeOSKiosk",
@@ -1509,6 +1524,13 @@
       name: "CssFitWidthTextReshaping",
     },
     {
+      // crbug.com/483689942
+      // Serialize font-family names as space-separated idents when possible,
+      // per CSSWG resolution. See https://github.com/w3c/csswg-drafts/issues/5846.
+      name: "CSSFontFamilySerialization",
+      status: "experimental",
+    },
+    {
       name: "CSSFontSizeAdjust",
       status: "stable",
     },
@@ -1585,6 +1607,7 @@
     {
       name: "CSSLineClampLineBreakingEllipsis",
       depends_on: ["CSSLineClamp"],
+      status: "experimental",
     },
     {
       // This flag makes `(-webkit-)line-clamp: <integer>` clamp by both lines
@@ -1797,7 +1820,7 @@
     },
     {
       name: "CSSSupportsAtRuleFunction",
-      status: "experimental",
+      status: "stable",
     },
     {
       name: "CSSSupportsForImportRules",
@@ -1839,11 +1862,6 @@
     },
     {
       name: "CssTextIndentAsPrimitive",
-      status: "stable",
-    },
-    {
-      // crbug.com/40321528
-      name: "CssTextJustify",
       status: "stable",
     },
     {
@@ -2000,22 +2018,6 @@
         "ChromeOS": "stable",
         "default": "experimental",
       },
-    },
-    {
-      name: "DeviceBoundSessionCredentials",
-      origin_trial_feature_name: "DeviceBoundSessionCredentials",
-      origin_trial_os: ["win", "linux", "mac"],
-      status: "experimental",
-      // Killswitch is net::features::kDeviceBoundSessions
-      base_feature: "none",
-    },
-    {
-      name: "DeviceBoundSessionCredentials2",
-      origin_trial_feature_name: "DeviceBoundSessionCredentials2",
-      origin_trial_os: ["win", "linux", "mac"],
-      status: "experimental",
-      // Killswitch is net::features::kDeviceBoundSessions
-      base_feature: "none",
     },
     {
       name: "DeviceOrientationRequestPermission",
@@ -2399,6 +2401,10 @@
       name: "ExposeRenderTimeNonTaoDelayedImage",
     },
     {
+      name: "ExtendedShapeCache",
+      status: "stable",
+    },
+    {
       name: "ExtendedTextMetrics",
       origin_trial_feature_name: "ExtendedTextMetrics",
       origin_trial_allows_third_party: true,
@@ -2665,11 +2671,6 @@
       status: "stable"
     },
     {
-      // crbug.com/438220615
-      name: "FindAcrossParagraphsInTextarea",
-      status: "stable",
-    },
-    {
       name: "FindFirstMisspellingEndWhenNonEditable",
       status: "stable",
     },
@@ -2694,8 +2695,8 @@
       // This fixes the suppression of markers for <details> and
       // list items for appearance:auto.
       // This was added in M146 and can be removed after M148.
+      // Note that as-is, this flag triggers crbug.com/408002786.
       name: "FixMarkerSuppressionForAppearanceAuto",
-      status: "stable",
     },
     {
       // crbug.com/411739501
@@ -3070,6 +3071,13 @@
       status: "experimental",
       base_feature: "none",
     },
+    // Extra steps in HTML Agency Adoption algorithm to remove elements from the
+    // formatting list when the internal loop reached the maximum number of
+    // iterations. This shipped in M148 and the flag can be removed in M150.
+    {
+      name: "HTMLAdoptionAlgorithmNewSteps",
+      status: "stable",
+    },
     // Additional default command/commandfor actions that aren't part of v1 of
     // commands. When this flag is disabled only v1 actions (popover and dialog
     // defaults) will work.
@@ -3353,10 +3361,6 @@
       public: true,
     },
     {
-      name: "LayoutFlexCacheFix",
-      status: "stable",
-    },
-    {
       name: "LayoutIgnoreMarginsForSticky",
     },
     {
@@ -3500,6 +3504,7 @@
       // forcedLayoutDuration to PerformanceScriptTiming
       name: "LongAnimationFrameStyleDuration",
       origin_trial_feature_name: "LongAnimationFrameStyleDuration",
+      origin_trial_allows_third_party: true,
       status: "experimental",
     },
     {
@@ -4059,7 +4064,7 @@
     {
       // https://chromestatus.com/feature/5261280285949952
       name: "OverscrollGestures",
-      status: "test",
+      status: "experimental",
     },
     {
       name: "PagePopup",
@@ -4548,6 +4553,14 @@
       // re-applied to child elements during style removal.
       // See https://crbug.com/41438799
       name: "RemoveFormatFilterBackgroundColor",
+      status: "stable",
+    },
+    {
+      // Remove non-allowlisted event interfaces from document.createEvent().
+      // This was added in M148 and can be removed after M150.
+      // https://chromestatus.com/feature/5095987863486464
+      // https://issues.chromium.org/issues/41228793
+      name: "RemoveNonAllowlistedCreateEvent",
       status: "stable",
     },
     {
@@ -5069,7 +5082,7 @@
       // When enabled, sets the default drop effect as according to spec for
       // events like dragOver, dragLeave, etc. See https://crbug.com/434151262
       name: "SetDefaultDropEffect",
-      status: "test",
+      status: "stable",
     },
     {
       name: "SetHTMLCanRunScripts",
@@ -5383,10 +5396,6 @@
       status: "stable",
     },
     {
-      name: "SvgAvoidCullingElementsWithTransformOperations",
-      status: "stable",
-    },
-    {
       name: "SvgAvoidResettingFilterQualityForTiledPattern",
       status: "stable",
     },
@@ -5425,10 +5434,6 @@
       status: "stable",
     },
     {
-      name: "SvgNonScalingStrokePrecisionFix",
-      status: "stable",
-    },
-    {
       name: "SvgNumberListClearOnParsingFailure",
       status: "stable",
     },
@@ -5447,10 +5452,6 @@
     {
       name: "SvgSizingWithPreserveAspectRatioNone",
       status: "experimental",
-    },
-    {
-      name: "SvgSmilPruneInstanceTimes",
-      status: "stable",
     },
     {
       name: "SvgTextPathPathAttribute",
@@ -6632,4 +6633,3 @@
     ///@}
   ],
 }
-

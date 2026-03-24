@@ -50,7 +50,7 @@ InkStrokeId& operator-=(InkStrokeId& id, int amount) {
 // Shorthand for test setup that is expected to succeed.
 void DoAddCommandsCycle(PdfInkUndoRedoModel& undo_redo,
                         const std::set<InkStrokeId>& ids) {
-  base::expected<std::optional<InkStrokeId>, std::monostate> lowest_discard =
+  base::expected<std::optional<IdType>, std::monostate> lowest_discard =
       undo_redo.StartAdd();
   ASSERT_TRUE(lowest_discard.has_value());
   ASSERT_FALSE(lowest_discard.value().has_value());
@@ -62,7 +62,7 @@ void DoAddCommandsCycle(PdfInkUndoRedoModel& undo_redo,
 
 TEST(PdfInkUndoRedoModelTest, BadActionDoubleStartAdd) {
   PdfInkUndoRedoModel undo_redo;
-  base::expected<std::optional<InkStrokeId>, std::monostate> lowest_discard =
+  base::expected<std::optional<IdType>, std::monostate> lowest_discard =
       undo_redo.StartAdd();
   ASSERT_TRUE(lowest_discard.has_value());
   ASSERT_FALSE(lowest_discard.value().has_value());
@@ -81,7 +81,7 @@ TEST(PdfInkUndoRedoModelTest, BadActionSpuriousFinishAdd) {
 
 TEST(PdfInkUndoRedoModelTest, BadActionAddModeledShape) {
   PdfInkUndoRedoModel undo_redo;
-  base::expected<std::optional<InkStrokeId>, std::monostate> lowest_discard =
+  base::expected<std::optional<IdType>, std::monostate> lowest_discard =
       undo_redo.StartAdd();
   ASSERT_TRUE(lowest_discard.has_value());
   ASSERT_FALSE(lowest_discard.value().has_value());
@@ -90,7 +90,7 @@ TEST(PdfInkUndoRedoModelTest, BadActionAddModeledShape) {
 
 TEST(PdfInkUndoRedoModelTest, BadActionRemoveWhileAdding) {
   PdfInkUndoRedoModel undo_redo;
-  base::expected<std::optional<InkStrokeId>, std::monostate> lowest_discard =
+  base::expected<std::optional<IdType>, std::monostate> lowest_discard =
       undo_redo.StartAdd();
   ASSERT_TRUE(lowest_discard.has_value());
   ASSERT_FALSE(lowest_discard.value().has_value());
@@ -102,7 +102,7 @@ TEST(PdfInkUndoRedoModelTest, BadActionRemoveWhileAdding) {
 
 TEST(PdfInkUndoRedoModelTest, BadActionDoubleStartRemove) {
   PdfInkUndoRedoModel undo_redo;
-  base::expected<std::optional<InkStrokeId>, std::monostate> lowest_discard =
+  base::expected<std::optional<IdType>, std::monostate> lowest_discard =
       undo_redo.StartRemove();
   ASSERT_TRUE(lowest_discard.has_value());
   ASSERT_FALSE(lowest_discard.value().has_value());
@@ -124,7 +124,7 @@ TEST(PdfInkUndoRedoModelTest, BadActionAddWhileErasing) {
   PdfInkUndoRedoModel undo_redo;
   DoAddCommandsCycle(undo_redo, {InkStrokeId(1)});
 
-  base::expected<std::optional<InkStrokeId>, std::monostate> lowest_discard =
+  base::expected<std::optional<IdType>, std::monostate> lowest_discard =
       undo_redo.StartRemove();
   ASSERT_TRUE(lowest_discard.has_value());
   ASSERT_FALSE(lowest_discard.value().has_value());
@@ -186,7 +186,7 @@ TEST(PdfInkUndoRedoModelTest, BadActionRemoveUnknownId) {
   PdfInkUndoRedoModel undo_redo;
   DoAddCommandsCycle(undo_redo, {InkStrokeId(1)});
 
-  base::expected<std::optional<InkStrokeId>, std::monostate> lowest_discard =
+  base::expected<std::optional<IdType>, std::monostate> lowest_discard =
       undo_redo.StartRemove();
   ASSERT_TRUE(lowest_discard.has_value());
   ASSERT_FALSE(lowest_discard.value().has_value());
@@ -197,7 +197,7 @@ TEST(PdfInkUndoRedoModelTest, BadActionRemoveTwice) {
   PdfInkUndoRedoModel undo_redo;
   DoAddCommandsCycle(undo_redo, {InkStrokeId(0)});
 
-  base::expected<std::optional<InkStrokeId>, std::monostate> lowest_discard =
+  base::expected<std::optional<IdType>, std::monostate> lowest_discard =
       undo_redo.StartRemove();
   ASSERT_TRUE(lowest_discard.has_value());
   ASSERT_FALSE(lowest_discard.value().has_value());
@@ -235,7 +235,7 @@ TEST(PdfInkUndoRedoModelTest, EmptyAdd) {
 
 TEST(PdfInkUndoRedoModelTest, EmptyRemove) {
   PdfInkUndoRedoModel undo_redo;
-  base::expected<std::optional<InkStrokeId>, std::monostate> lowest_discard =
+  base::expected<std::optional<IdType>, std::monostate> lowest_discard =
       undo_redo.StartRemove();
   ASSERT_TRUE(lowest_discard.has_value());
   ASSERT_FALSE(lowest_discard.value().has_value());
@@ -253,7 +253,7 @@ TEST(PdfInkUndoRedoModelTest, AddEnforcesIncreasingOrder) {
   DoAddCommandsCycle(undo_redo,
                      {InkStrokeId(1), InkStrokeId(2), InkStrokeId(3)});
 
-  base::expected<std::optional<InkStrokeId>, std::monostate> lowest_discard =
+  base::expected<std::optional<IdType>, std::monostate> lowest_discard =
       undo_redo.StartAdd();
   ASSERT_TRUE(lowest_discard.has_value());
   ASSERT_FALSE(lowest_discard.value().has_value());
@@ -291,7 +291,7 @@ TEST(PdfInkUndoRedoModelTest, AddCanRepeatIdAfterUndo) {
       PdfInkUndoRedoModel::GetRemoveCommands(commands).value(),
       ElementsAreArray({InkStrokeId(1), InkStrokeId(2), InkStrokeId(3)}));
 
-  base::expected<std::optional<InkStrokeId>, std::monostate> lowest_discard =
+  base::expected<std::optional<IdType>, std::monostate> lowest_discard =
       undo_redo.StartAdd();
   ASSERT_TRUE(lowest_discard.has_value());
   ASSERT_THAT(lowest_discard.value(), Optional(InkStrokeId(1)));
@@ -329,7 +329,7 @@ TEST(PdfInkUndoRedoModelTest, AddAddRemoveUndoRedo) {
                      {InkStrokeId(1), InkStrokeId(2), InkStrokeId(3)});
   DoAddCommandsCycle(undo_redo, {InkStrokeId(4)});
 
-  base::expected<std::optional<InkStrokeId>, std::monostate> lowest_discard =
+  base::expected<std::optional<IdType>, std::monostate> lowest_discard =
       undo_redo.StartRemove();
   ASSERT_TRUE(lowest_discard.has_value());
   ASSERT_FALSE(lowest_discard.value().has_value());
@@ -390,7 +390,7 @@ TEST(PdfInkUndoRedoModelTest, AddAddUndoRemoveUndo) {
   EXPECT_THAT(PdfInkUndoRedoModel::GetRemoveCommands(commands).value(),
               ElementsAreArray({InkStrokeId(6), InkStrokeId(8)}));
 
-  base::expected<std::optional<InkStrokeId>, std::monostate> lowest_discard =
+  base::expected<std::optional<IdType>, std::monostate> lowest_discard =
       undo_redo.StartRemove();
   ASSERT_TRUE(lowest_discard.has_value());
   ASSERT_THAT(lowest_discard.value(), Optional(InkStrokeId(6)));
@@ -405,7 +405,7 @@ TEST(PdfInkUndoRedoModelTest, AddAddUndoRemoveUndo) {
 
 TEST(PdfInkUndoRedoModelTest, RemoveShapesUndoRedo) {
   PdfInkUndoRedoModel undo_redo;
-  base::expected<std::optional<InkStrokeId>, std::monostate> lowest_discard =
+  base::expected<std::optional<IdType>, std::monostate> lowest_discard =
       undo_redo.StartRemove();
   ASSERT_TRUE(lowest_discard.has_value());
   ASSERT_FALSE(lowest_discard.value().has_value());
@@ -429,7 +429,7 @@ TEST(PdfInkUndoRedoModelTest, AddAddRemoveStrokesAndShapesUndoRedo) {
   DoAddCommandsCycle(undo_redo, {InkStrokeId(5)});
   DoAddCommandsCycle(undo_redo, {InkStrokeId(6), InkStrokeId(8)});
 
-  base::expected<std::optional<InkStrokeId>, std::monostate> lowest_discard =
+  base::expected<std::optional<IdType>, std::monostate> lowest_discard =
       undo_redo.StartRemove();
   ASSERT_TRUE(lowest_discard.has_value());
   ASSERT_FALSE(lowest_discard.value().has_value());
@@ -449,6 +449,27 @@ TEST(PdfInkUndoRedoModelTest, AddAddRemoveStrokesAndShapesUndoRedo) {
   EXPECT_THAT(
       PdfInkUndoRedoModel::GetRemoveCommands(commands).value(),
       ElementsAre(InkModeledShapeId(0), InkModeledShapeId(1), InkStrokeId(6)));
+}
+
+TEST(PdfInkUndoRedoModelTest, AddRemoveAddUndoUndoStartAdd) {
+  PdfInkUndoRedoModel undo_redo;
+  DoAddCommandsCycle(undo_redo, {InkStrokeId(1)});
+
+  ASSERT_TRUE(undo_redo.StartRemove().has_value());
+  ASSERT_TRUE(undo_redo.Remove(InkStrokeId(1)));
+  ASSERT_TRUE(undo_redo.FinishRemove());
+
+  DoAddCommandsCycle(undo_redo, {InkStrokeId(2)});
+
+  ASSERT_EQ(kRemove, PdfInkUndoRedoModel::GetCommandsType(undo_redo.Undo()));
+  ASSERT_EQ(kAdd, PdfInkUndoRedoModel::GetCommandsType(undo_redo.Undo()));
+
+  // Discarded commands should be Remove(1), Add(2). The lowest discarded stroke
+  // ID is 2.
+  base::expected<std::optional<IdType>, std::monostate> lowest_discard =
+      undo_redo.StartAdd();
+  ASSERT_TRUE(lowest_discard.has_value());
+  EXPECT_THAT(lowest_discard.value(), Optional(InkStrokeId(2)));
 }
 
 TEST(PdfInkUndoRedoModelTest, Stress) {
@@ -471,7 +492,7 @@ TEST(PdfInkUndoRedoModelTest, Stress) {
 
   ASSERT_EQ(InkStrokeId(2 * kCycles), id);
   for (size_t i = 0; i < kCycles; ++i) {
-    base::expected<std::optional<InkStrokeId>, std::monostate> lowest_discard =
+    base::expected<std::optional<IdType>, std::monostate> lowest_discard =
         undo_redo.StartRemove();
     ASSERT_TRUE(lowest_discard.has_value());
     ASSERT_FALSE(lowest_discard.value().has_value());
@@ -498,7 +519,7 @@ TEST(PdfInkUndoRedoModelTest, Stress) {
                 ElementsAreArray({id, id + 1}));
   }
 
-  base::expected<std::optional<InkStrokeId>, std::monostate> lowest_discard =
+  base::expected<std::optional<IdType>, std::monostate> lowest_discard =
       undo_redo.StartAdd();
   ASSERT_TRUE(lowest_discard.has_value());
   ASSERT_THAT(lowest_discard.value(), Optional(InkStrokeId(0)));

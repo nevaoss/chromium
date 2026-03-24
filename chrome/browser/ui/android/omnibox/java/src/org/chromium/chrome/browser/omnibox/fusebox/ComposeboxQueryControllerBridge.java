@@ -19,6 +19,7 @@ import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.components.contextual_search.ContextUploadStatus;
 import org.chromium.components.contextual_search.InputState;
+import org.chromium.components.omnibox.OmniboxFeatures;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.url.GURL;
 
@@ -36,17 +37,17 @@ public class ComposeboxQueryControllerBridge {
     @SuppressWarnings("NullableOptional")
     private static @Nullable Optional<ComposeboxQueryControllerBridge> sInstanceForTesting;
 
-    /** Observer for file upload status changes. */
-    interface FileUploadObserver {
+    /** Observer for context upload status changes. */
+    interface ContextUploadObserver {
         /**
-         * @param token Unique string identifier for the file.
-         * @param status The status of the file's upload.
+         * @param token Unique string identifier for the context.
+         * @param status The status of the context's upload.
          */
         void onContextUploadStatusChanged(String token, @ContextUploadStatus int status);
     }
 
     private long mNativeInstance;
-    private @Nullable FileUploadObserver mFileUploadObserver;
+    private @Nullable ContextUploadObserver mContextUploadObserver;
     private final SettableMonotonicObservableSupplier<InputState> mInputStateSupplier =
             ObservableSuppliers.createMonotonic();
 
@@ -66,7 +67,7 @@ public class ComposeboxQueryControllerBridge {
     public void destroy() {
         ComposeboxQueryControllerBridgeJni.get().destroy(mNativeInstance);
         mNativeInstance = 0;
-        mFileUploadObserver = null;
+        mContextUploadObserver = null;
     }
 
     public long getNativeInstance() {
@@ -74,19 +75,19 @@ public class ComposeboxQueryControllerBridge {
     }
 
     /**
-     * Set the current file upload observer. If non-null, the observer will be notified of file
-     * upload status changes for all files, identified by token. Note that there are intermediate
-     * statuses (neither success nor failure), there is no guarantee of ordering between files, but
-     * a file upload will either succeed/fail at most once.
+     * Set the current context upload observer. If non-null, the observer will be notified of
+     * context upload status changes for all contexts, identified by token. Note that there are
+     * intermediate statuses (neither success nor failure), there is no guarantee of ordering
+     * between contexts, but a context upload will either succeed/fail at most once.
      */
-    void setFileUploadObserver(@Nullable FileUploadObserver observer) {
-        mFileUploadObserver = observer;
+    void setContextUploadObserver(@Nullable ContextUploadObserver observer) {
+        mContextUploadObserver = observer;
     }
 
     @CalledByNative
     void onContextUploadStatusChanged(String token, @ContextUploadStatus int contextUploadStatus) {
-        if (mFileUploadObserver != null) {
-            mFileUploadObserver.onContextUploadStatusChanged(token, contextUploadStatus);
+        if (mContextUploadObserver != null) {
+            mContextUploadObserver.onContextUploadStatusChanged(token, contextUploadStatus);
         }
     }
 
@@ -142,6 +143,12 @@ public class ComposeboxQueryControllerBridge {
                 .getImageGenerationUrl(mNativeInstance, url, callback);
     }
 
+    public void getAimUrlFromInputState(GURL url, Callback<GURL> callback) {
+        assert OmniboxFeatures.sShowModelPicker.getValue();
+        ComposeboxQueryControllerBridgeJni.get()
+                .getAimUrlFromInputState(mNativeInstance, url, callback);
+    }
+
     /** Remove the given file from the current session. */
     void removeAttachment(String token) {
         ComposeboxQueryControllerBridgeJni.get().removeAttachment(mNativeInstance, token);
@@ -182,7 +189,7 @@ public class ComposeboxQueryControllerBridge {
      * ContextualSearchSessionHandle, and may not be during other types of sessions. Callers should
      * be careful that updates may occur outside of when they expect.
      */
-    MonotonicObservableSupplier<InputState> getInputStateSupplier() {
+    public MonotonicObservableSupplier<InputState> getInputStateSupplier() {
         return mInputStateSupplier;
     }
 
@@ -231,6 +238,11 @@ public class ComposeboxQueryControllerBridge {
                 Callback<@JniType("GURL") GURL> callback);
 
         void getImageGenerationUrl(
+                long nativeComposeboxQueryControllerBridge,
+                @JniType("GURL") GURL url,
+                Callback<@JniType("GURL") GURL> callback);
+
+        void getAimUrlFromInputState(
                 long nativeComposeboxQueryControllerBridge,
                 @JniType("GURL") GURL url,
                 Callback<@JniType("GURL") GURL> callback);

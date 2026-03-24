@@ -115,11 +115,6 @@ BASE_FEATURE(kBorealis, base::FEATURE_DISABLED_BY_DEFAULT);
 // Enable project Crostini, Linux VMs on Chrome OS.
 BASE_FEATURE(kCrostini, base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Enables infrastructure for generating Ansible playbooks for the default
-// Crostini container from software configurations in JSON schema.
-BASE_FEATURE(kCrostiniAnsibleSoftwareManagement,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
 // Enables stricter cryptography settings for CNSA2 compliance. This is not
@@ -134,21 +129,10 @@ BASE_FEATURE(kPreinstalledWebAppInstallation,
 
 // Whether to force migrate preinstalled web apps whenever the old Chrome app
 // they're replacing is detected, even if the web app is already installed.
-BASE_FEATURE(kPreinstalledWebAppAlwaysMigrate,
+// Used by unit tests.
+BASE_FEATURE(kPreinstalledWebAppAlwaysMigrateForTesting,
              base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Whether to force migrate the calculator preinstalled web app whenever the
-// old Chrome app is detected, even if the calculator web app is already
-// installed.
-BASE_FEATURE(kPreinstalledWebAppAlwaysMigrateCalculator,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 #endif
-
-#if BUILDFLAG(IS_CHROMEOS)
-// If enabled, specified extensions cannot be closed via the task manager.
-BASE_FEATURE(kDesktopTaskManagerEndProcessDisabledForExtension,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-#endif  // BUILDFLAG(IS_CHROMEOS)
 
 // Enables the chrome://chrome-finds-internals page.
 BASE_FEATURE(kChromeFindsInternals, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -201,16 +185,6 @@ BASE_FEATURE(kShowResetProfileBannerV2, base::FEATURE_ENABLED_BY_DEFAULT);
 // If the feature is disabled, Chrome Apps continue to work. If enabled, Chrome
 // Apps will not launch and will be marked in the UI as deprecated.
 BASE_FEATURE(kChromeAppsDeprecation, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Enables the new create shortcut flow where fire and forget entities are
-// created from three dot menu > Save and Share > Create Shortcut instead of
-// PWAs.
-BASE_FEATURE(kShortcutsNotApps, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Enables the opening of the desktop and highlighting of the shortcut created
-// as part of the new Create Shortcut flow. Requires kShortcutsNotApps to be
-// enabled to work.
-BASE_FEATURE(kShortcutsNotAppsRevealDesktop, base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 
 #if BUILDFLAG(IS_CHROMEOS)
@@ -508,6 +482,12 @@ BASE_FEATURE(kGlicWebContentsWarming,
 const base::FeatureParam<base::TimeDelta> kGlicWebContentsWarmingDelay{
     &kGlicWebContentsWarming, "glic-web-contents-warming-delay",
     base::Seconds(20)};
+// Controls the delay before the WebContents is removed from the pool if it is
+// not used.
+const base::FeatureParam<base::TimeDelta>
+    kGlicWebContentsWarmingPoolExpiryDelay{
+        &kGlicWebContentsWarming, "glic-web-contents-warming-pool-expiry-delay",
+        base::Hours(23)};
 
 // Controls desired min width for the side panel. Not guaranteed to be respected
 // if user manually resizes.
@@ -954,9 +934,11 @@ const base::FeatureParam<std::string> kGlicWebContinuityUrl{
 const base::FeatureParam<std::string> kGlicWebContinuityOriginatingHost{
     &kGlicWebContinuity, "glic-web-continuity-originating-host", ""};
 const base::FeatureParam<int> kGlicWebContinuityMaxCIDLength{
-    &kGlicWebContinuity, "glic-web-continuity-max-cid-length", 32};
+    &kGlicWebContinuity, "glic-web-continuity-max-cid-length", 18};
 const base::FeatureParam<int> kGlicWebContinuityMaxTargetUrlLength{
     &kGlicWebContinuity, "glic-web-continuity-max-target-url-length", 1024};
+const base::FeatureParam<int> kGlicWebContinuityMaxTurnIdLength{
+    &kGlicWebContinuity, "glic-web-continuity-max-turn-id-length", 32};
 
 BASE_FEATURE(kGlicUseToolbarHeightSidePanel, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -1322,10 +1304,6 @@ BASE_FEATURE(kUseManagedPrintJobOptionsInPrintPreview,
 BASE_FEATURE(kUserValueDefaultBrowserStrings,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Enables or disables push subscriptions keeping Chrome running in the
-// background when closed.
-BASE_FEATURE(kPushMessagingBackgroundMode, base::FEATURE_DISABLED_BY_DEFAULT);
-
 // Shows a confirmation dialog when updates to a PWAs icon has been detected.
 BASE_FEATURE(kPwaUpdateDialogForIcon, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -1340,12 +1318,6 @@ BASE_FEATURE(kRecordWebAppDebugInfo, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAbusiveNotificationPermissionRevocation,
              "AbusiveOriginNotificationPermissionRevocation",
              base::FEATURE_ENABLED_BY_DEFAULT);
-
-#if BUILDFLAG(IS_CHROMEOS)
-// Enables permanent removal of Legacy Supervised Users on startup.
-BASE_FEATURE(kRemoveSupervisedUsersOnStartup,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-#endif
 
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 BASE_FEATURE(kSafetyHubExtensionsUwSTrigger, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -1448,18 +1420,6 @@ BASE_FEATURE(kSafetyHubTrustSafetySentimentSurvey,
              "TrustSafetySentimentSurveyForSafetyHub",
              base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // !BUILDFLAG(IS_ANDROID)
-
-// Controls whether SCT audit reports are queued and the rate at which they
-// should be sampled. Default sampling rate is 1/10,000 certificates.
-#if BUILDFLAG(GOOGLE_CHROME_BRANDING) && !BUILDFLAG(IS_ANDROID)
-BASE_FEATURE(kSCTAuditing, base::FEATURE_ENABLED_BY_DEFAULT);
-#else
-// This requires backend infrastructure and a data collection policy.
-// Non-Chrome builds should not use Chrome's infrastructure.
-BASE_FEATURE(kSCTAuditing, base::FEATURE_DISABLED_BY_DEFAULT);
-#endif
-constexpr base::FeatureParam<double> kSCTAuditingSamplingRate{
-    &kSCTAuditing, "sampling_rate", 0.0001};
 
 // SCT auditing hashdance allows Chrome clients who are not opted-in to Enhanced
 // Safe Browsing Reporting to perform a k-anonymous query to see if Google knows

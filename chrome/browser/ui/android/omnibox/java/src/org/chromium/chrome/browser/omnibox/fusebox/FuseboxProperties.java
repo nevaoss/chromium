@@ -18,6 +18,24 @@ import org.chromium.ui.modelutil.SimpleRecyclerViewAdapter;
 /** The properties associated with the Fusebox bar. */
 @NullMarked
 class FuseboxProperties {
+    /** Encapsulates the state for a button in the Fusebox popup. */
+    public static class PopupButtonData {
+        public final Runnable onClicked;
+        public final String text;
+        public final /*IconResourceIds*/ int iconId;
+        public final boolean enabled;
+        public final boolean selected;
+
+        public PopupButtonData(
+                Runnable onClicked, String text, int iconId, boolean enabled, boolean selected) {
+            this.onClicked = onClicked;
+            this.text = text;
+            this.iconId = iconId;
+            this.enabled = enabled;
+            this.selected = selected;
+        }
+    }
+
     /** The adapter for the attachments RecyclerView. */
     public static final WritableObjectPropertyKey<SimpleRecyclerViewAdapter> ADAPTER =
             new WritableObjectPropertyKey<>();
@@ -135,17 +153,9 @@ class FuseboxProperties {
     public static final WritableBooleanPropertyKey POPUP_ATTACH_TAB_PICKER_VISIBLE =
             new WritableBooleanPropertyKey();
 
-    /** Action to perform when the user clicks the auto model button in the popup. */
-    public static final WritableObjectPropertyKey<Runnable> POPUP_MODEL_AUTO_CLICKED =
-            new WritableObjectPropertyKey<>();
-
-    /** Whether the auto model button in the popup is enabled. */
-    public static final WritableBooleanPropertyKey POPUP_MODEL_AUTO_ENABLED =
-            new WritableBooleanPropertyKey();
-
-    /** Whether the auto model button in the popup is visible. */
-    public static final WritableBooleanPropertyKey POPUP_MODEL_AUTO_VISIBLE =
-            new WritableBooleanPropertyKey();
+    /** Holds button data objects for each model that is to be shown. */
+    public static final WritableObjectPropertyKey<java.util.List<PopupButtonData>>
+            POPUP_MODEL_BUTTON_DATA_LIST = new WritableObjectPropertyKey<>();
 
     /** Whether the models divider in the popup is visible. */
     public static final WritableBooleanPropertyKey POPUP_MODEL_DIVIDER_VISIBLE =
@@ -153,18 +163,6 @@ class FuseboxProperties {
 
     /** Whether the models header in the popup is visible. */
     public static final WritableBooleanPropertyKey POPUP_MODEL_HEADER_VISIBLE =
-            new WritableBooleanPropertyKey();
-
-    /** Action to perform when the user clicks the pro model button in the popup. */
-    public static final WritableObjectPropertyKey<Runnable> POPUP_MODEL_PRO_CLICKED =
-            new WritableObjectPropertyKey<>();
-
-    /** Whether the pro model button in the popup is enabled. */
-    public static final WritableBooleanPropertyKey POPUP_MODEL_PRO_ENABLED =
-            new WritableBooleanPropertyKey();
-
-    /** Whether the pro model button in the popup is visible. */
-    public static final WritableBooleanPropertyKey POPUP_MODEL_PRO_VISIBLE =
             new WritableBooleanPropertyKey();
 
     /** Action to perform when the user clicks the AI Mode button in the popup. */
@@ -257,14 +255,9 @@ class FuseboxProperties {
         POPUP_ATTACH_TAB_PICKER_CLICKED,
         POPUP_ATTACH_TAB_PICKER_ENABLED,
         POPUP_ATTACH_TAB_PICKER_VISIBLE,
-        POPUP_MODEL_AUTO_CLICKED,
-        POPUP_MODEL_AUTO_ENABLED,
-        POPUP_MODEL_AUTO_VISIBLE,
+        POPUP_MODEL_BUTTON_DATA_LIST,
         POPUP_MODEL_DIVIDER_VISIBLE,
         POPUP_MODEL_HEADER_VISIBLE,
-        POPUP_MODEL_PRO_CLICKED,
-        POPUP_MODEL_PRO_ENABLED,
-        POPUP_MODEL_PRO_VISIBLE,
         POPUP_TOOL_AI_MODE_CLICKED,
         POPUP_TOOL_AI_MODE_ENABLED,
         POPUP_TOOL_AI_MODE_VISIBLE,

@@ -21,6 +21,7 @@
 
 @interface AssistantAIMCoordinator () <AssistantAIMViewControllerDelegate,
                                        AssistantContainerDelegate,
+                                       AssistantAIMMediatorDelegate,
                                        TabGridStateObserver>
 @end
 
@@ -29,6 +30,17 @@
   AssistantAIMMediator* _mediator;
   ComposeboxInputPlateCoordinator* _inputPlateCoordinator;
   ComposeboxModeHolder* _modeHolder;
+  CobrowseContext* _context;
+}
+
+- (instancetype)initWithBaseViewController:(UIViewController*)viewController
+                                   browser:(Browser*)browser
+                                   context:(CobrowseContext*)context {
+  self = [super initWithBaseViewController:viewController browser:browser];
+  if (self) {
+    _context = context;
+  }
+  return self;
 }
 
 - (void)start {
@@ -37,18 +49,19 @@
   _viewController = [[AssistantAIMViewController alloc] init];
   _viewController.delegate = self;
 
-  web::WebState::CreateParams params(self.browser->GetProfile());
-  std::unique_ptr<web::WebState> webState = web::WebState::Create(params);
-
-  _mediator =
-      [[AssistantAIMMediator alloc] initWithWebState:std::move(webState)];
-  _mediator.consumer = _viewController;
-
   id<AssistantContainerCommands> containerHandler = HandlerForProtocol(
       self.browser->GetCommandDispatcher(), AssistantContainerCommands);
 
   [containerHandler showAssistantContainerWithContent:_viewController
                                              delegate:self];
+
+  web::WebState::CreateParams params(self.browser->GetProfile());
+  _mediator = [[AssistantAIMMediator alloc]
+      initWithWebState:web::WebState::Create(params)
+               context:_context
+      containerHandler:containerHandler];
+  _mediator.delegate = self;
+  _mediator.consumer = _viewController;
 
   _modeHolder = [[ComposeboxModeHolder alloc] init];
   ComposeboxTheme* theme = [[ComposeboxTheme alloc]
@@ -119,6 +132,26 @@
                                                completion:nil];
     }
   }
+}
+
+#pragma mark - AssistantContainerDelegate
+
+- (void)assistantContainer:(AssistantContainerViewController*)container
+    didUpdateExpandPercentage:(CGFloat)percentage {
+  [_viewController adjustForContainerOpenPercentage:percentage];
+}
+
+- (void)assistantContainer:(AssistantContainerViewController*)container
+    animateAlongsideTransitionToPercentage:(CGFloat)percentage {
+  // NOTE: This API is already called in a animation block so no need to
+  // animate.
+  [_viewController adjustForContainerOpenPercentage:percentage];
+}
+
+#pragma mark - AssistantAIMMediatorDelegate
+
+- (void)assistantAIMMediatorDidLoadQuery:(AssistantAIMMediator*)mediator {
+  [_inputPlateCoordinator endEditing];
 }
 
 @end

@@ -184,6 +184,8 @@ class MockWebSocketHandshakeStream : public WebSocketHandshakeStreamBase {
   }
   void Drain(HttpNetworkSession* session) override {}
   void PopulateNetErrorDetails(NetErrorDetails* details) override { return; }
+  void PopulateLoadTimingInternalInfo(
+      LoadTimingInternalInfo* load_timing_internal_info) const override {}
   void SetPriority(RequestPriority priority) override {}
   std::unique_ptr<HttpStream> RenewStreamForAuth() override { return nullptr; }
   const std::set<std::string>& GetDnsAliases() const override {
@@ -1294,7 +1296,7 @@ int GetPoolGroupCount(HttpNetworkSession* session,
                       HttpNetworkSession::SocketPoolType pool_type,
                       const ProxyChain& proxy_chain) {
   if (base::FeatureList::IsEnabled(features::kHappyEyeballsV3) &&
-      pool_type == HttpNetworkSession::NORMAL_SOCKET_POOL &&
+      pool_type == HttpNetworkSession::SocketPoolType::kNormal &&
       proxy_chain.is_direct()) {
     return GetHttpStreamPoolGroupCount(session);
   } else {
@@ -1329,7 +1331,7 @@ int GetHandedOutCount(HttpNetworkSession* session,
                       HttpNetworkSession::SocketPoolType pool_type,
                       const ProxyChain& proxy_chain) {
   if (base::FeatureList::IsEnabled(features::kHappyEyeballsV3) &&
-      pool_type == HttpNetworkSession::NORMAL_SOCKET_POOL &&
+      pool_type == HttpNetworkSession::SocketPoolType::kNormal &&
       proxy_chain.is_direct()) {
     return GetHttpStreamPoolHandedOutCount(session);
   } else {
@@ -1372,7 +1374,7 @@ TEST_P(HttpStreamFactoryTest, PrivacyModeUsesDifferentSocketPoolGroup) {
   std::unique_ptr<HttpNetworkSession> session(
       SpdySessionDependencies::SpdyCreateSession(&session_deps));
   ClientSocketPool* ssl_pool = session->GetSocketPool(
-      HttpNetworkSession::NORMAL_SOCKET_POOL, ProxyChain::Direct());
+      HttpNetworkSession::SocketPoolType::kNormal, ProxyChain::Direct());
 
   auto GetGroupCount = [&] {
     if (base::FeatureList::IsEnabled(features::kHappyEyeballsV3)) {
@@ -1442,7 +1444,7 @@ TEST_P(HttpStreamFactoryTest, DisableSecureDnsUsesDifferentSocketPoolGroup) {
   std::unique_ptr<HttpNetworkSession> session(
       SpdySessionDependencies::SpdyCreateSession(&session_deps));
   ClientSocketPool* ssl_pool = session->GetSocketPool(
-      HttpNetworkSession::NORMAL_SOCKET_POOL, ProxyChain::Direct());
+      HttpNetworkSession::SocketPoolType::kNormal, ProxyChain::Direct());
 
   auto GetGroupCount = [&] {
     if (base::FeatureList::IsEnabled(features::kHappyEyeballsV3)) {
@@ -1554,7 +1556,7 @@ TEST_P(HttpStreamFactoryTest, RequestHttpStream) {
 
   EXPECT_EQ(0, GetSpdySessionCount(session.get()));
   EXPECT_EQ(1, GetPoolGroupCount(session.get(),
-                                 HttpNetworkSession::NORMAL_SOCKET_POOL,
+                                 HttpNetworkSession::SocketPoolType::kNormal,
                                  ProxyChain::Direct()));
   EXPECT_TRUE(requester.used_proxy_info().is_direct());
 }
@@ -1653,7 +1655,7 @@ TEST_P(HttpStreamFactoryTest, RequestHttpStreamOverSSL) {
 
   EXPECT_EQ(0, GetSpdySessionCount(session.get()));
   EXPECT_EQ(1, GetPoolGroupCount(session.get(),
-                                 HttpNetworkSession::NORMAL_SOCKET_POOL,
+                                 HttpNetworkSession::SocketPoolType::kNormal,
                                  ProxyChain::Direct()));
   EXPECT_TRUE(requester.used_proxy_info().is_direct());
 }
@@ -1690,18 +1692,18 @@ TEST_P(HttpStreamFactoryTest, RequestHttpStreamOverProxy) {
 
   EXPECT_EQ(0, GetSpdySessionCount(session.get()));
   EXPECT_EQ(0, GetPoolGroupCount(session.get(),
-                                 HttpNetworkSession::NORMAL_SOCKET_POOL,
+                                 HttpNetworkSession::SocketPoolType::kNormal,
                                  ProxyChain::Direct()));
   EXPECT_EQ(1, GetPoolGroupCount(session.get(),
-                                 HttpNetworkSession::NORMAL_SOCKET_POOL,
+                                 HttpNetworkSession::SocketPoolType::kNormal,
                                  ProxyChain(ProxyServer::SCHEME_HTTP,
                                             HostPortPair("myproxy", 8888))));
   EXPECT_EQ(0, GetPoolGroupCount(session.get(),
-                                 HttpNetworkSession::NORMAL_SOCKET_POOL,
+                                 HttpNetworkSession::SocketPoolType::kNormal,
                                  ProxyChain(ProxyServer::SCHEME_HTTPS,
                                             HostPortPair("myproxy", 8888))));
   EXPECT_EQ(0, GetPoolGroupCount(session.get(),
-                                 HttpNetworkSession::WEBSOCKET_SOCKET_POOL,
+                                 HttpNetworkSession::SocketPoolType::kWebSocket,
                                  ProxyChain(ProxyServer::SCHEME_HTTP,
                                             HostPortPair("myproxy", 8888))));
   EXPECT_FALSE(requester.used_proxy_info().is_direct());
@@ -1740,7 +1742,7 @@ TEST_P(HttpStreamFactoryTest, RequestWebSocketBasicHandshakeStream) {
   EXPECT_EQ(MockWebSocketHandshakeStream::kStreamTypeBasic,
             requester.websocket_stream()->type());
   EXPECT_EQ(0, GetPoolGroupCount(session.get(),
-                                 HttpNetworkSession::NORMAL_SOCKET_POOL,
+                                 HttpNetworkSession::SocketPoolType::kNormal,
                                  ProxyChain::Direct()));
   EXPECT_TRUE(requester.used_proxy_info().is_direct());
 }
@@ -1783,7 +1785,7 @@ TEST_P(HttpStreamFactoryTest, RequestWebSocketBasicHandshakeStreamOverSSL) {
   EXPECT_EQ(MockWebSocketHandshakeStream::kStreamTypeBasic,
             requester.websocket_stream()->type());
   EXPECT_EQ(0, GetPoolGroupCount(session.get(),
-                                 HttpNetworkSession::NORMAL_SOCKET_POOL,
+                                 HttpNetworkSession::SocketPoolType::kNormal,
                                  ProxyChain::Direct()));
   EXPECT_TRUE(requester.used_proxy_info().is_direct());
 }
@@ -1824,14 +1826,14 @@ TEST_P(HttpStreamFactoryTest, RequestWebSocketBasicHandshakeStreamOverProxy) {
   EXPECT_EQ(MockWebSocketHandshakeStream::kStreamTypeBasic,
             requester.websocket_stream()->type());
   EXPECT_EQ(0, GetPoolGroupCount(session.get(),
-                                 HttpNetworkSession::WEBSOCKET_SOCKET_POOL,
+                                 HttpNetworkSession::SocketPoolType::kWebSocket,
                                  ProxyChain::Direct()));
   EXPECT_EQ(0, GetPoolGroupCount(session.get(),
-                                 HttpNetworkSession::NORMAL_SOCKET_POOL,
+                                 HttpNetworkSession::SocketPoolType::kNormal,
                                  ProxyChain(ProxyServer::SCHEME_HTTP,
                                             HostPortPair("myproxy", 8888))));
   EXPECT_EQ(1, GetPoolGroupCount(session.get(),
-                                 HttpNetworkSession::WEBSOCKET_SOCKET_POOL,
+                                 HttpNetworkSession::SocketPoolType::kWebSocket,
                                  ProxyChain(ProxyServer::SCHEME_HTTP,
                                             HostPortPair("myproxy", 8888))));
   EXPECT_FALSE(requester.used_proxy_info().is_direct());
@@ -1874,7 +1876,7 @@ TEST_P(HttpStreamFactoryTest, RequestSpdyHttpStreamHttpsURL) {
 
   EXPECT_EQ(1, GetSpdySessionCount(session.get()));
   EXPECT_EQ(1, GetPoolGroupCount(session.get(),
-                                 HttpNetworkSession::NORMAL_SOCKET_POOL,
+                                 HttpNetworkSession::SocketPoolType::kNormal,
                                  ProxyChain::Direct()));
   EXPECT_TRUE(requester.used_proxy_info().is_direct());
 }
@@ -1926,7 +1928,7 @@ TEST_P(HttpStreamFactoryTest, RequestSpdyHttpStreamHttpURL) {
 
   EXPECT_EQ(1, GetSpdySessionCount(session.get()));
   EXPECT_EQ(0, GetPoolGroupCount(session.get(),
-                                 HttpNetworkSession::NORMAL_SOCKET_POOL,
+                                 HttpNetworkSession::SocketPoolType::kNormal,
                                  ProxyChain::Direct()));
   EXPECT_FALSE(requester.used_proxy_info().is_direct());
   EXPECT_TRUE(http_server_properties->GetSupportsSpdy(
@@ -1999,7 +2001,7 @@ TEST_P(HttpStreamFactoryTest,
 
   EXPECT_EQ(1, GetSpdySessionCount(session.get()));
   EXPECT_EQ(0, GetPoolGroupCount(session.get(),
-                                 HttpNetworkSession::NORMAL_SOCKET_POOL,
+                                 HttpNetworkSession::SocketPoolType::kNormal,
                                  ProxyChain::Direct()));
   EXPECT_FALSE(requester.used_proxy_info().is_direct());
   EXPECT_TRUE(http_server_properties->GetSupportsSpdy(
@@ -2059,7 +2061,7 @@ TEST_P(HttpStreamFactoryTest, NewSpdySessionCloseIdleH2Sockets) {
         group_id, socket_params, std::nullopt /* proxy_annotation_tag */,
         MEDIUM, SocketTag(), ClientSocketPool::RespectLimits::ENABLED,
         callback.callback(), ClientSocketPool::ProxyAuthCallback(),
-        session->GetSocketPool(HttpNetworkSession::NORMAL_SOCKET_POOL,
+        session->GetSocketPool(HttpNetworkSession::SocketPoolType::kNormal,
                                ProxyChain::Direct()),
         NetLogWithSource());
     rv = callback.GetResult(rv);
@@ -2070,7 +2072,7 @@ TEST_P(HttpStreamFactoryTest, NewSpdySessionCloseIdleH2Sockets) {
   handles.clear();
   EXPECT_EQ(kNumIdleSockets,
             session
-                ->GetSocketPool(HttpNetworkSession::NORMAL_SOCKET_POOL,
+                ->GetSocketPool(HttpNetworkSession::SocketPoolType::kNormal,
                                 ProxyChain::Direct())
                 ->IdleSocketCount());
 
@@ -2100,7 +2102,7 @@ TEST_P(HttpStreamFactoryTest, NewSpdySessionCloseIdleH2Sockets) {
 
   // Establishing the SpdySession will close idle H2 sockets.
   EXPECT_EQ(0, session
-                   ->GetSocketPool(HttpNetworkSession::NORMAL_SOCKET_POOL,
+                   ->GetSocketPool(HttpNetworkSession::SocketPoolType::kNormal,
                                    ProxyChain::Direct())
                    ->IdleSocketCount());
   EXPECT_EQ(1, GetSpdySessionCount(session.get()));
@@ -2158,7 +2160,7 @@ TEST_P(HttpStreamFactoryTest, TwoSpdyConnects) {
 
   // Establishing the SpdySession will close the extra H2 socket.
   EXPECT_EQ(0, session
-                   ->GetSocketPool(HttpNetworkSession::NORMAL_SOCKET_POOL,
+                   ->GetSocketPool(HttpNetworkSession::SocketPoolType::kNormal,
                                    ProxyChain::Direct())
                    ->IdleSocketCount());
   EXPECT_EQ(1, GetSpdySessionCount(session.get()));
@@ -2210,7 +2212,7 @@ TEST_P(HttpStreamFactoryTest, RequestBidirectionalStreamImpl) {
   ASSERT_FALSE(requester.stream());
   ASSERT_TRUE(requester.bidirectional_stream_impl());
   EXPECT_EQ(1, GetPoolGroupCount(session.get(),
-                                 HttpNetworkSession::NORMAL_SOCKET_POOL,
+                                 HttpNetworkSession::SocketPoolType::kNormal,
                                  ProxyChain::Direct()));
   EXPECT_TRUE(requester.used_proxy_info().is_direct());
 }
@@ -2857,9 +2859,9 @@ TEST_P(HttpStreamFactoryBidirectionalQuicTest,
   EXPECT_THAT(stream_impl->ReadData(buffer.get(), 1), IsOk());
   EXPECT_EQ(NextProto::kProtoQUIC, stream_impl->GetProtocol());
   EXPECT_EQ("200", delegate.response_headers().find(":status")->second);
-  EXPECT_EQ(0,
-            GetPoolGroupCount(session(), HttpNetworkSession::NORMAL_SOCKET_POOL,
-                              ProxyChain::Direct()));
+  EXPECT_EQ(0, GetPoolGroupCount(session(),
+                                 HttpNetworkSession::SocketPoolType::kNormal,
+                                 ProxyChain::Direct()));
   EXPECT_TRUE(requester.used_proxy_info().is_direct());
 }
 
@@ -2957,9 +2959,9 @@ TEST_P(HttpStreamFactoryBidirectionalQuicTest,
   EXPECT_EQ(NextProto::kProtoQUIC, stream_impl->GetProtocol());
   EXPECT_EQ("200", delegate.response_headers().find(":status")->second);
   // There is no Http2 socket pool.
-  EXPECT_EQ(0,
-            GetPoolGroupCount(session(), HttpNetworkSession::NORMAL_SOCKET_POOL,
-                              ProxyChain::Direct()));
+  EXPECT_EQ(0, GetPoolGroupCount(session(),
+                                 HttpNetworkSession::SocketPoolType::kNormal,
+                                 ProxyChain::Direct()));
   EXPECT_TRUE(requester.used_proxy_info().is_direct());
 }
 
@@ -3010,7 +3012,7 @@ TEST_P(HttpStreamFactoryTest, RequestBidirectionalStreamImplFailure) {
   ASSERT_FALSE(requester.stream());
   ASSERT_FALSE(requester.bidirectional_stream_impl());
   EXPECT_EQ(1, GetPoolGroupCount(session.get(),
-                                 HttpNetworkSession::NORMAL_SOCKET_POOL,
+                                 HttpNetworkSession::SocketPoolType::kNormal,
                                  ProxyChain::Direct()));
 }
 
@@ -3081,12 +3083,12 @@ TEST_P(HttpStreamFactoryTest, Tag) {
   ASSERT_TRUE(nullptr != requester1.stream());
 
   EXPECT_EQ(1, GetSpdySessionCount(session.get()));
-  EXPECT_EQ(1,
-            GetSocketPoolGroupCount(session->GetSocketPool(
-                HttpNetworkSession::NORMAL_SOCKET_POOL, ProxyChain::Direct())));
-  EXPECT_EQ(1,
-            GetHandedOutSocketCount(session->GetSocketPool(
-                HttpNetworkSession::NORMAL_SOCKET_POOL, ProxyChain::Direct())));
+  EXPECT_EQ(1, GetSocketPoolGroupCount(session->GetSocketPool(
+                   HttpNetworkSession::SocketPoolType::kNormal,
+                   ProxyChain::Direct())));
+  EXPECT_EQ(1, GetHandedOutSocketCount(session->GetSocketPool(
+                   HttpNetworkSession::SocketPoolType::kNormal,
+                   ProxyChain::Direct())));
   // Verify socket tagged appropriately.
   EXPECT_TRUE(tag1 == socket_factory_ptr->GetLastProducedTCPSocket()->tag());
   EXPECT_TRUE(socket_factory_ptr->GetLastProducedTCPSocket()
@@ -3104,12 +3106,12 @@ TEST_P(HttpStreamFactoryTest, Tag) {
   ASSERT_TRUE(nullptr != requester2.stream());
 
   EXPECT_EQ(2, GetSpdySessionCount(session.get()));
-  EXPECT_EQ(1,
-            GetSocketPoolGroupCount(session->GetSocketPool(
-                HttpNetworkSession::NORMAL_SOCKET_POOL, ProxyChain::Direct())));
-  EXPECT_EQ(2,
-            GetHandedOutSocketCount(session->GetSocketPool(
-                HttpNetworkSession::NORMAL_SOCKET_POOL, ProxyChain::Direct())));
+  EXPECT_EQ(1, GetSocketPoolGroupCount(session->GetSocketPool(
+                   HttpNetworkSession::SocketPoolType::kNormal,
+                   ProxyChain::Direct())));
+  EXPECT_EQ(2, GetHandedOutSocketCount(session->GetSocketPool(
+                   HttpNetworkSession::SocketPoolType::kNormal,
+                   ProxyChain::Direct())));
   // Verify socket tagged appropriately.
   EXPECT_TRUE(tag2 == socket_factory_ptr->GetLastProducedTCPSocket()->tag());
   EXPECT_TRUE(socket_factory_ptr->GetLastProducedTCPSocket()
@@ -3127,12 +3129,12 @@ TEST_P(HttpStreamFactoryTest, Tag) {
   ASSERT_TRUE(nullptr != requester3.stream());
 
   EXPECT_EQ(2, GetSpdySessionCount(session.get()));
-  EXPECT_EQ(1,
-            GetSocketPoolGroupCount(session->GetSocketPool(
-                HttpNetworkSession::NORMAL_SOCKET_POOL, ProxyChain::Direct())));
-  EXPECT_EQ(2,
-            GetHandedOutSocketCount(session->GetSocketPool(
-                HttpNetworkSession::NORMAL_SOCKET_POOL, ProxyChain::Direct())));
+  EXPECT_EQ(1, GetSocketPoolGroupCount(session->GetSocketPool(
+                   HttpNetworkSession::SocketPoolType::kNormal,
+                   ProxyChain::Direct())));
+  EXPECT_EQ(2, GetHandedOutSocketCount(session->GetSocketPool(
+                   HttpNetworkSession::SocketPoolType::kNormal,
+                   ProxyChain::Direct())));
 }
 
 // Verify HttpStreamFactory::Job passes socket tag along properly to QUIC
@@ -3343,12 +3345,12 @@ TEST_P(HttpStreamFactoryTest, ChangeSocketTag) {
   ASSERT_TRUE(requester1.stream());
 
   EXPECT_EQ(1, GetSpdySessionCount(session.get()));
-  EXPECT_EQ(1,
-            GetSocketPoolGroupCount(session->GetSocketPool(
-                HttpNetworkSession::NORMAL_SOCKET_POOL, ProxyChain::Direct())));
-  EXPECT_EQ(1,
-            GetHandedOutSocketCount(session->GetSocketPool(
-                HttpNetworkSession::NORMAL_SOCKET_POOL, ProxyChain::Direct())));
+  EXPECT_EQ(1, GetSocketPoolGroupCount(session->GetSocketPool(
+                   HttpNetworkSession::SocketPoolType::kNormal,
+                   ProxyChain::Direct())));
+  EXPECT_EQ(1, GetHandedOutSocketCount(session->GetSocketPool(
+                   HttpNetworkSession::SocketPoolType::kNormal,
+                   ProxyChain::Direct())));
   // Verify socket tagged appropriately.
   MockTaggingStreamSocket* socket =
       socket_factory_ptr->GetLastProducedTCPSocket();
@@ -3366,12 +3368,12 @@ TEST_P(HttpStreamFactoryTest, ChangeSocketTag) {
   ASSERT_TRUE(requester2.stream());
   // Verify still have just one session.
   EXPECT_EQ(1, GetSpdySessionCount(session.get()));
-  EXPECT_EQ(1,
-            GetSocketPoolGroupCount(session->GetSocketPool(
-                HttpNetworkSession::NORMAL_SOCKET_POOL, ProxyChain::Direct())));
-  EXPECT_EQ(1,
-            GetHandedOutSocketCount(session->GetSocketPool(
-                HttpNetworkSession::NORMAL_SOCKET_POOL, ProxyChain::Direct())));
+  EXPECT_EQ(1, GetSocketPoolGroupCount(session->GetSocketPool(
+                   HttpNetworkSession::SocketPoolType::kNormal,
+                   ProxyChain::Direct())));
+  EXPECT_EQ(1, GetHandedOutSocketCount(session->GetSocketPool(
+                   HttpNetworkSession::SocketPoolType::kNormal,
+                   ProxyChain::Direct())));
   // Verify no new sockets created.
   EXPECT_EQ(socket, socket_factory_ptr->GetLastProducedTCPSocket());
   // Verify socket tag changed.
@@ -3398,12 +3400,12 @@ TEST_P(HttpStreamFactoryTest, ChangeSocketTag) {
   ASSERT_TRUE(requester3.stream());
   // Verify still have just one session.
   EXPECT_EQ(1, GetSpdySessionCount(session.get()));
-  EXPECT_EQ(1,
-            GetSocketPoolGroupCount(session->GetSocketPool(
-                HttpNetworkSession::NORMAL_SOCKET_POOL, ProxyChain::Direct())));
-  EXPECT_EQ(1,
-            GetHandedOutSocketCount(session->GetSocketPool(
-                HttpNetworkSession::NORMAL_SOCKET_POOL, ProxyChain::Direct())));
+  EXPECT_EQ(1, GetSocketPoolGroupCount(session->GetSocketPool(
+                   HttpNetworkSession::SocketPoolType::kNormal,
+                   ProxyChain::Direct())));
+  EXPECT_EQ(1, GetHandedOutSocketCount(session->GetSocketPool(
+                   HttpNetworkSession::SocketPoolType::kNormal,
+                   ProxyChain::Direct())));
   // Verify no new sockets created.
   EXPECT_EQ(socket, socket_factory_ptr->GetLastProducedTCPSocket());
   // Verify socket tag changed.
@@ -3430,12 +3432,12 @@ TEST_P(HttpStreamFactoryTest, ChangeSocketTag) {
   ASSERT_TRUE(requester4.stream());
   // Verify we now have two sessions.
   EXPECT_EQ(2, GetSpdySessionCount(session.get()));
-  EXPECT_EQ(1,
-            GetSocketPoolGroupCount(session->GetSocketPool(
-                HttpNetworkSession::NORMAL_SOCKET_POOL, ProxyChain::Direct())));
-  EXPECT_EQ(2,
-            GetHandedOutSocketCount(session->GetSocketPool(
-                HttpNetworkSession::NORMAL_SOCKET_POOL, ProxyChain::Direct())));
+  EXPECT_EQ(1, GetSocketPoolGroupCount(session->GetSocketPool(
+                   HttpNetworkSession::SocketPoolType::kNormal,
+                   ProxyChain::Direct())));
+  EXPECT_EQ(2, GetHandedOutSocketCount(session->GetSocketPool(
+                   HttpNetworkSession::SocketPoolType::kNormal,
+                   ProxyChain::Direct())));
   // Verify a new socket was created.
   MockTaggingStreamSocket* socket2 =
       socket_factory_ptr->GetLastProducedTCPSocket();
@@ -3523,12 +3525,12 @@ TEST_P(HttpStreamFactoryTest, ChangeSocketTagAvoidOverwrite) {
   ASSERT_TRUE(requester1.stream());
 
   EXPECT_EQ(1, GetSpdySessionCount(session.get()));
-  EXPECT_EQ(1,
-            GetSocketPoolGroupCount(session->GetSocketPool(
-                HttpNetworkSession::NORMAL_SOCKET_POOL, ProxyChain::Direct())));
-  EXPECT_EQ(1,
-            GetHandedOutSocketCount(session->GetSocketPool(
-                HttpNetworkSession::NORMAL_SOCKET_POOL, ProxyChain::Direct())));
+  EXPECT_EQ(1, GetSocketPoolGroupCount(session->GetSocketPool(
+                   HttpNetworkSession::SocketPoolType::kNormal,
+                   ProxyChain::Direct())));
+  EXPECT_EQ(1, GetHandedOutSocketCount(session->GetSocketPool(
+                   HttpNetworkSession::SocketPoolType::kNormal,
+                   ProxyChain::Direct())));
   // Verify socket tagged appropriately.
   MockTaggingStreamSocket* socket =
       socket_factory_ptr->GetLastProducedTCPSocket();
@@ -3554,12 +3556,12 @@ TEST_P(HttpStreamFactoryTest, ChangeSocketTagAvoidOverwrite) {
   ASSERT_TRUE(requester2.stream());
   // Verify we now have two sessions.
   EXPECT_EQ(2, GetSpdySessionCount(session.get()));
-  EXPECT_EQ(1,
-            GetSocketPoolGroupCount(session->GetSocketPool(
-                HttpNetworkSession::NORMAL_SOCKET_POOL, ProxyChain::Direct())));
-  EXPECT_EQ(2,
-            GetHandedOutSocketCount(session->GetSocketPool(
-                HttpNetworkSession::NORMAL_SOCKET_POOL, ProxyChain::Direct())));
+  EXPECT_EQ(1, GetSocketPoolGroupCount(session->GetSocketPool(
+                   HttpNetworkSession::SocketPoolType::kNormal,
+                   ProxyChain::Direct())));
+  EXPECT_EQ(2, GetHandedOutSocketCount(session->GetSocketPool(
+                   HttpNetworkSession::SocketPoolType::kNormal,
+                   ProxyChain::Direct())));
   // Verify a new socket was created.
   MockTaggingStreamSocket* socket2 =
       socket_factory_ptr->GetLastProducedTCPSocket();
@@ -3592,12 +3594,12 @@ TEST_P(HttpStreamFactoryTest, ChangeSocketTagAvoidOverwrite) {
   ASSERT_TRUE(requester3.stream());
   // Verify still have two sessions.
   EXPECT_EQ(2, GetSpdySessionCount(session.get()));
-  EXPECT_EQ(1,
-            GetSocketPoolGroupCount(session->GetSocketPool(
-                HttpNetworkSession::NORMAL_SOCKET_POOL, ProxyChain::Direct())));
-  EXPECT_EQ(2,
-            GetHandedOutSocketCount(session->GetSocketPool(
-                HttpNetworkSession::NORMAL_SOCKET_POOL, ProxyChain::Direct())));
+  EXPECT_EQ(1, GetSocketPoolGroupCount(session->GetSocketPool(
+                   HttpNetworkSession::SocketPoolType::kNormal,
+                   ProxyChain::Direct())));
+  EXPECT_EQ(2, GetHandedOutSocketCount(session->GetSocketPool(
+                   HttpNetworkSession::SocketPoolType::kNormal,
+                   ProxyChain::Direct())));
   // Verify no new sockets created.
   EXPECT_EQ(socket2, socket_factory_ptr->GetLastProducedTCPSocket());
   // Verify socket tag changed.
@@ -3690,10 +3692,10 @@ TEST_P(HttpStreamFactoryTest, MultiIPAliases) {
   // Verify just one session created.
   EXPECT_EQ(1, GetSpdySessionCount(session.get()));
   EXPECT_EQ(1, GetPoolGroupCount(session.get(),
-                                 HttpNetworkSession::NORMAL_SOCKET_POOL,
+                                 HttpNetworkSession::SocketPoolType::kNormal,
                                  ProxyChain::Direct()));
   EXPECT_EQ(1, GetHandedOutCount(session.get(),
-                                 HttpNetworkSession::NORMAL_SOCKET_POOL,
+                                 HttpNetworkSession::SocketPoolType::kNormal,
                                  ProxyChain::Direct()));
 
   // Open another session to same IP but with different privacy mode.
@@ -3709,10 +3711,10 @@ TEST_P(HttpStreamFactoryTest, MultiIPAliases) {
   // Verify two sessions are now open.
   EXPECT_EQ(2, GetSpdySessionCount(session.get()));
   EXPECT_EQ(2, GetPoolGroupCount(session.get(),
-                                 HttpNetworkSession::NORMAL_SOCKET_POOL,
+                                 HttpNetworkSession::SocketPoolType::kNormal,
                                  ProxyChain::Direct()));
   EXPECT_EQ(2, GetHandedOutCount(session.get(),
-                                 HttpNetworkSession::NORMAL_SOCKET_POOL,
+                                 HttpNetworkSession::SocketPoolType::kNormal,
                                  ProxyChain::Direct()));
 
   // Open a third session that IP aliases first session.
@@ -3731,10 +3733,10 @@ TEST_P(HttpStreamFactoryTest, MultiIPAliases) {
   // sessions aliasing a single IP.
   EXPECT_EQ(2, GetSpdySessionCount(session.get()));
   EXPECT_EQ(2, GetPoolGroupCount(session.get(),
-                                 HttpNetworkSession::NORMAL_SOCKET_POOL,
+                                 HttpNetworkSession::SocketPoolType::kNormal,
                                  ProxyChain::Direct()));
   EXPECT_EQ(2, GetHandedOutCount(session.get(),
-                                 HttpNetworkSession::NORMAL_SOCKET_POOL,
+                                 HttpNetworkSession::SocketPoolType::kNormal,
                                  ProxyChain::Direct()));
 
   // Open a fourth session that IP aliases the second session.
@@ -3752,10 +3754,10 @@ TEST_P(HttpStreamFactoryTest, MultiIPAliases) {
   // the session pool supports multiple sessions aliasing a single IP.
   EXPECT_EQ(2, GetSpdySessionCount(session.get()));
   EXPECT_EQ(2, GetPoolGroupCount(session.get(),
-                                 HttpNetworkSession::NORMAL_SOCKET_POOL,
+                                 HttpNetworkSession::SocketPoolType::kNormal,
                                  ProxyChain::Direct()));
   EXPECT_EQ(2, GetHandedOutCount(session.get(),
-                                 HttpNetworkSession::NORMAL_SOCKET_POOL,
+                                 HttpNetworkSession::SocketPoolType::kNormal,
                                  ProxyChain::Direct()));
 }
 
@@ -3817,10 +3819,10 @@ TEST_P(HttpStreamFactoryTest, SpdyIPPoolingWithDnsAliases) {
   // Verify just one session created.
   EXPECT_EQ(1, GetSpdySessionCount(session.get()));
   EXPECT_EQ(1, GetPoolGroupCount(session.get(),
-                                 HttpNetworkSession::NORMAL_SOCKET_POOL,
+                                 HttpNetworkSession::SocketPoolType::kNormal,
                                  ProxyChain::Direct()));
   EXPECT_EQ(1, GetHandedOutCount(session.get(),
-                                 HttpNetworkSession::NORMAL_SOCKET_POOL,
+                                 HttpNetworkSession::SocketPoolType::kNormal,
                                  ProxyChain::Direct()));
 
   // Open a session that IP aliases first session.
@@ -3840,10 +3842,10 @@ TEST_P(HttpStreamFactoryTest, SpdyIPPoolingWithDnsAliases) {
   // sessions aliasing a single IP.
   EXPECT_EQ(1, GetSpdySessionCount(session.get()));
   EXPECT_EQ(1, GetPoolGroupCount(session.get(),
-                                 HttpNetworkSession::NORMAL_SOCKET_POOL,
+                                 HttpNetworkSession::SocketPoolType::kNormal,
                                  ProxyChain::Direct()));
   EXPECT_EQ(1, GetHandedOutCount(session.get(),
-                                 HttpNetworkSession::NORMAL_SOCKET_POOL,
+                                 HttpNetworkSession::SocketPoolType::kNormal,
                                  ProxyChain::Direct()));
 
   // Open another session that IP aliases the first session.
@@ -3863,10 +3865,10 @@ TEST_P(HttpStreamFactoryTest, SpdyIPPoolingWithDnsAliases) {
   // sessions aliasing a single IP.
   EXPECT_EQ(1, GetSpdySessionCount(session.get()));
   EXPECT_EQ(1, GetPoolGroupCount(session.get(),
-                                 HttpNetworkSession::NORMAL_SOCKET_POOL,
+                                 HttpNetworkSession::SocketPoolType::kNormal,
                                  ProxyChain::Direct()));
   EXPECT_EQ(1, GetHandedOutCount(session.get(),
-                                 HttpNetworkSession::NORMAL_SOCKET_POOL,
+                                 HttpNetworkSession::SocketPoolType::kNormal,
                                  ProxyChain::Direct()));
 
   // Clear host resolver rules to ensure that cached values for DNS aliases
@@ -3890,10 +3892,10 @@ TEST_P(HttpStreamFactoryTest, SpdyIPPoolingWithDnsAliases) {
   // created.
   EXPECT_EQ(1, GetSpdySessionCount(session.get()));
   EXPECT_EQ(1, GetPoolGroupCount(session.get(),
-                                 HttpNetworkSession::NORMAL_SOCKET_POOL,
+                                 HttpNetworkSession::SocketPoolType::kNormal,
                                  ProxyChain::Direct()));
   EXPECT_EQ(1, GetHandedOutCount(session.get(),
-                                 HttpNetworkSession::NORMAL_SOCKET_POOL,
+                                 HttpNetworkSession::SocketPoolType::kNormal,
                                  ProxyChain::Direct()));
 
   // Re-request a resource using `request_info_b`, which had non-default DNS
@@ -3913,11 +3915,11 @@ TEST_P(HttpStreamFactoryTest, SpdyIPPoolingWithDnsAliases) {
   // created. This will fail unless the session pool supports multiple
   // sessions aliasing a single IP.
   EXPECT_EQ(1, GetPoolGroupCount(session.get(),
-                                 HttpNetworkSession::NORMAL_SOCKET_POOL,
+                                 HttpNetworkSession::SocketPoolType::kNormal,
                                  ProxyChain::Direct()));
   EXPECT_EQ(1, GetSpdySessionCount(session.get()));
   EXPECT_EQ(1, GetHandedOutCount(session.get(),
-                                 HttpNetworkSession::NORMAL_SOCKET_POOL,
+                                 HttpNetworkSession::SocketPoolType::kNormal,
                                  ProxyChain::Direct()));
 
   // Re-request a resource using `request_info_c`, which had only the default
@@ -3938,10 +3940,10 @@ TEST_P(HttpStreamFactoryTest, SpdyIPPoolingWithDnsAliases) {
   // sessions aliasing a single IP.
   EXPECT_EQ(1, GetSpdySessionCount(session.get()));
   EXPECT_EQ(1, GetPoolGroupCount(session.get(),
-                                 HttpNetworkSession::NORMAL_SOCKET_POOL,
+                                 HttpNetworkSession::SocketPoolType::kNormal,
                                  ProxyChain::Direct()));
   EXPECT_EQ(1, GetHandedOutCount(session.get(),
-                                 HttpNetworkSession::NORMAL_SOCKET_POOL,
+                                 HttpNetworkSession::SocketPoolType::kNormal,
                                  ProxyChain::Direct()));
 }
 
