@@ -16,6 +16,7 @@
 #include "chrome/browser/android/webapk/webapk_features.h"
 #include "chrome/browser/browser_features.h"
 #include "chrome/browser/contextmenu/context_menu_features.h"
+#include "chrome/browser/finds/core/finds_features.h"
 #include "chrome/browser/flags/android/chrome_session_state.h"
 #include "chrome/browser/notifications/chime/android/features.h"
 #include "chrome/browser/predictors/predictors_features.h"
@@ -211,6 +212,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &feed::kWebFeedOnboarding,
     &feed::kWebFeedSort,
     &feed::kXsurfaceMetricsReporting,
+    &finds::features::kChromeFinds,
     &history::kOrganicRepeatableQueries,
     &history_clusters::internal::kJourneys,
     &kAccountForSuppressedKeyboardInsets,
@@ -218,6 +220,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kAdaptiveButtonInTopToolbarPageSummary,
     &kAlwaysDrawCompositedToolbarHairline,
     &kAndroidAppIntegrationMultiDataSource,
+    &kAndroidAppRatingPrompt,
     &kAndroidAppearanceSettings,
     &kAndroidBookmarkBar,
     &kAndroidBookmarkBarFastFollow,
@@ -258,6 +261,9 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kApb144Patch1,
     &kApb144Patch2,
     &kApb144Patch3,
+    &kApb144Patch4,
+    &kApb144Patch5,
+    &kApb144Patch6,
     &kAppSpecificHistory,
     &kAppSpecificHistoryViewIntent,
     &kAsyncNotificationManager,
@@ -312,7 +318,6 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kCacheIsMultiInstanceApi31Enabled,
     &kCastDeviceFilter,
     &kChangeUnfocusedPriority,
-    &kChromeFinds,
     &kChromeItemPickerUi,
     &kChromeNativeUrlOverriding,
     &kChromeSurveyNextAndroid,
@@ -554,6 +559,7 @@ BASE_FEATURE(kAdaptiveButtonInTopToolbarCustomizationV2, base::FEATURE_ENABLED_B
 BASE_FEATURE(kAdaptiveButtonInTopToolbarPageSummary, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAlwaysDrawCompositedToolbarHairline, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidAppIntegrationMultiDataSource, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kAndroidAppRatingPrompt, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidAppearanceSettings, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidBookmarkBar, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidBookmarkBarFastFollow, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -596,6 +602,9 @@ BASE_FEATURE(kAnnotatedPageContentsVirtualStructure, base::FEATURE_DISABLED_BY_D
 BASE_FEATURE(kApb144Patch1, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kApb144Patch2, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kApb144Patch3, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kApb144Patch4, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kApb144Patch5, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kApb144Patch6, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAppSpecificHistory, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAppSpecificHistoryViewIntent, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAsyncNotificationManager, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -651,7 +660,6 @@ BASE_FEATURE(kCacheIsMultiInstanceApi31Enabled, base::FEATURE_ENABLED_BY_DEFAULT
 // Used in downstream code.
 BASE_FEATURE(kCastDeviceFilter, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kChangeUnfocusedPriority, base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kChromeFinds, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kChromeItemPickerUi, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kChromeNativeUrlOverriding, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kChromeSurveyNextAndroid, base::FEATURE_ENABLED_BY_DEFAULT);

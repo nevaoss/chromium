@@ -6476,6 +6476,12 @@ Called by update_use_counter_feature_enum.py.-->
   <int value="5835" label="CSSDiscardedAttrWithValidArgumentGrammar"/>
   <int value="5836" label="CSSDiscardedEnvWithValidArgumentGrammar"/>
   <int value="5837" label="CSSDiscardedIfWithValidArgumentGrammar"/>
+  <int value="5838" label="HttpOnlyCookieShadowedByNonHttpOnlyPartitioned"/>
+  <int value="5839" label="XRMeshDetection"/>
+  <int value="5840" label="XRFrameDetectedMeshes"/>
+  <int value="5841" label="CSSLightDarkImage"/>
+  <int value="5842" label="CSSTimelineLookupFoundNothing"/>
+  <int value="5843" label="CSSTimelineScopeAttachedMultiple"/>
 </enum>
 
 <!-- LINT.ThenChange(//third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom:WebFeature) -->
@@ -8893,11 +8899,12 @@ Called by update_use_counter_feature_enum.py.-->
   <int value="424" label="DRAFT_InstallElement"/>
   <int value="425" label="LanguageDetector"/>
   <int value="426" label="Translator"/>
-  <int value="427" label="DRAFT_WebMCP"/>
+  <int value="427" label="NavigatorModelcontext"/>
   <int value="428" label="DRAFT_LoadingLazyMedia"/>
   <int value="429" label="ManifestLocalization"/>
   <int value="430" label="ContrastColor"/>
   <int value="431" label="DRAFT_WebAppMigration"/>
+  <int value="432" label="DeclarativeWebmcp"/>
 </enum>
 
 <!-- LINT.ThenChange(//third_party/blink/public/mojom/use_counter/metrics/webdx_feature.mojom:WebDXFeature) -->

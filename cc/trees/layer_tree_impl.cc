@@ -161,8 +161,8 @@ LayerTreeImpl::LayerTreeImpl(
       hud_layer_(nullptr),
       background_color_(SkColors::kTransparent),
       page_scale_factor_(page_scale_factor),
-      min_page_scale_factor_(0),
-      max_page_scale_factor_(0),
+      min_page_scale_factor_(1.f),
+      max_page_scale_factor_(1.f),
       external_page_scale_factor_(1.f),
       device_scale_factor_(1.f),
       painted_device_scale_factor_(1.f),
@@ -392,8 +392,11 @@ bool LayerTreeImpl::LayerListIsEmpty() const {
 
 void LayerTreeImpl::SetRootLayerForTesting(std::unique_ptr<LayerImpl> layer) {
   DetachLayers();
-  if (layer)
+  if (layer) {
+    auto* layer_ptr = layer.get();
     AddLayer(std::move(layer));
+    AddLayerShouldPushProperties(layer_ptr);
+  }
   host_impl_->OnCanDrawStateChangedForTree();
 }
 
@@ -496,9 +499,8 @@ void LayerTreeImpl::UpdateViewportContainerSizes() {
       0.0f, max_safe_area_inset_bottom() - blink_bottom_content_offset);
   float transform_delta_by_safe_area_inset_bottom = -(real_saib - blink_saib);
 
-  if (min_page_scale_factor() > 0.f) {
-    transform_delta_by_safe_area_inset_bottom /= min_page_scale_factor();
-  }
+  DCHECK_GT(min_page_scale_factor(), 0.f);
+  transform_delta_by_safe_area_inset_bottom /= min_page_scale_factor();
 
   if (property_trees->transform_delta_by_safe_area_inset_bottom() !=
       transform_delta_by_safe_area_inset_bottom) {
@@ -617,6 +619,7 @@ gfx::PointF LayerTreeImpl::TotalMaxScrollOffset(ElementId element_id) const {
 }
 
 OwnedLayerImplList LayerTreeImpl::DetachLayers() {
+  ClearLayersThatShouldPushProperties();
   render_surface_list_.clear();
   set_needs_update_draw_properties();
   // Clear the HUD layer pointer since we're detaching all layers. If there is a
@@ -845,7 +848,8 @@ void LayerTreeImpl::PullLayerTreePropertiesFrom(CommitState& commit_state) {
 
   PushPageScaleFromMainThread(commit_state.page_scale_factor,
                               commit_state.min_page_scale_factor,
-                              commit_state.max_page_scale_factor);
+                              commit_state.max_page_scale_factor,
+                              commit_state.page_scale_factor_limits_set);
 
   SetBrowserControlsParams(commit_state.browser_controls_params);
   set_overscroll_behavior(commit_state.overscroll_behavior);
@@ -968,7 +972,8 @@ void LayerTreeImpl::PushPropertiesTo(LayerTreeImpl* target_tree) {
   // Active tree already shares the page_scale_factor object with pending
   // tree so only the limits need to be provided.
   target_tree->PushPageScaleFactorAndLimits(nullptr, min_page_scale_factor(),
-                                            max_page_scale_factor());
+                                            max_page_scale_factor(),
+                                            page_scale_factor_limits_set_);
   target_tree->SetExternalPageScaleFactor(external_page_scale_factor_);
 
   target_tree->SetBrowserControlsParams(browser_controls_params_);
@@ -1296,10 +1301,15 @@ void LayerTreeImpl::ClearCurrentlyScrollingNode() {
 
 float LayerTreeImpl::ClampPageScaleFactorToLimits(
     float page_scale_factor) const {
-  if (min_page_scale_factor_ && page_scale_factor < min_page_scale_factor_)
-    page_scale_factor = min_page_scale_factor_;
-  else if (max_page_scale_factor_ && page_scale_factor > max_page_scale_factor_)
-    page_scale_factor = max_page_scale_factor_;
+  if (!page_scale_factor_limits_set_) {
+    return page_scale_factor;
+  }
+  if (page_scale_factor < min_page_scale_factor_) {
+    return min_page_scale_factor_;
+  }
+  if (page_scale_factor > max_page_scale_factor_) {
+    return max_page_scale_factor_;
+  }
   return page_scale_factor;
 }
 
@@ -1400,9 +1410,10 @@ void LayerTreeImpl::SetPageScaleOnActiveTree(float active_page_scale) {
 
 void LayerTreeImpl::PushPageScaleFromMainThread(float page_scale_factor,
                                                 float min_page_scale_factor,
-                                                float max_page_scale_factor) {
+                                                float max_page_scale_factor,
+                                                bool limits_set) {
   PushPageScaleFactorAndLimits(&page_scale_factor, min_page_scale_factor,
-                               max_page_scale_factor);
+                               max_page_scale_factor, limits_set);
 }
 
 void LayerTreeImpl::SetPageScaleFactorAndLimitsForDisplayTree(
@@ -1411,8 +1422,8 @@ void LayerTreeImpl::SetPageScaleFactorAndLimitsForDisplayTree(
     float max_page_scale_factor) {
   DCHECK(settings().trees_in_viz_in_viz_process);
   bool changed_page_scale = page_scale_factor_->SetCurrent(page_scale_factor);
-  changed_page_scale |=
-      SetPageScaleFactorLimits(min_page_scale_factor, max_page_scale_factor);
+  changed_page_scale |= SetPageScaleFactorLimits(min_page_scale_factor,
+                                                 max_page_scale_factor, true);
 
   if (changed_page_scale) {
     DidUpdatePageScale();
@@ -1421,12 +1432,13 @@ void LayerTreeImpl::SetPageScaleFactorAndLimitsForDisplayTree(
 
 void LayerTreeImpl::PushPageScaleFactorAndLimits(const float* page_scale_factor,
                                                  float min_page_scale_factor,
-                                                 float max_page_scale_factor) {
+                                                 float max_page_scale_factor,
+                                                 bool limits_set) {
   DCHECK(page_scale_factor || IsActiveTree());
   bool changed_page_scale = false;
 
-  changed_page_scale |=
-      SetPageScaleFactorLimits(min_page_scale_factor, max_page_scale_factor);
+  changed_page_scale |= SetPageScaleFactorLimits(
+      min_page_scale_factor, max_page_scale_factor, limits_set);
 
   if (page_scale_factor) {
     DCHECK(!IsActiveTree() || !host_impl_->pending_tree());
@@ -1531,11 +1543,18 @@ void LayerTreeImpl::PushBrowserControls(
 }
 
 bool LayerTreeImpl::SetPageScaleFactorLimits(float min_page_scale_factor,
-                                             float max_page_scale_factor) {
-  if (min_page_scale_factor == min_page_scale_factor_ &&
-      max_page_scale_factor == max_page_scale_factor_)
-    return false;
+                                             float max_page_scale_factor,
+                                             bool limits_set) {
+  DCHECK_GT(min_page_scale_factor, 0.f);
+  DCHECK_GE(max_page_scale_factor, min_page_scale_factor);
 
+  if (page_scale_factor_limits_set_ == limits_set &&
+      min_page_scale_factor == min_page_scale_factor_ &&
+      max_page_scale_factor == max_page_scale_factor_) {
+    return false;
+  }
+
+  page_scale_factor_limits_set_ = limits_set;
   min_page_scale_factor_ = min_page_scale_factor;
   max_page_scale_factor_ = max_page_scale_factor;
 
@@ -1854,6 +1873,7 @@ bool LayerTreeImpl::UpdateDrawProperties(
   }
 
   if (update_image_animation_controller && image_animation_controller()) {
+    CHECK(!settings().trees_in_viz_in_viz_process);
     image_animation_controller()->UpdateStateFromDrivers();
   }
 
@@ -1919,8 +1939,8 @@ gfx::SizeF LayerTreeImpl::ScrollableSize() const {
 }
 
 LayerImpl* LayerTreeImpl::LayerById(int id) const {
-  auto iter = layer_id_map_.find(id);
-  return iter != layer_id_map_.end() ? iter->second : nullptr;
+  auto iter = layer_list_.find(id);
+  return iter != layer_list_.end() ? iter->get() : nullptr;
 }
 
 // TODO(masonf): If this shows up on profiles, this could use
@@ -1950,22 +1970,11 @@ void LayerTreeImpl::ClearSurfaceRanges() {
 }
 
 void LayerTreeImpl::AddLayerShouldPushProperties(LayerImpl* layer) {
-  layers_that_should_push_properties_.insert(layer);
+  layer_list_.SetShouldPushProperties(layer->id());
 }
 
 void LayerTreeImpl::ClearLayersThatShouldPushProperties() {
-  layers_that_should_push_properties_.clear();
-}
-
-void LayerTreeImpl::RegisterLayer(LayerImpl* layer) {
-  DCHECK(!LayerById(layer->id()));
-  layer_id_map_[layer->id()] = layer;
-}
-
-void LayerTreeImpl::UnregisterLayer(LayerImpl* layer) {
-  DCHECK(LayerById(layer->id()));
-  layers_that_should_push_properties_.erase(layer);
-  layer_id_map_.erase(layer->id());
+  layer_list_.ClearLayersShouldPushProperties();
 }
 
 void LayerTreeImpl::ReserveLayers(size_t count) {
@@ -1974,13 +1983,12 @@ void LayerTreeImpl::ReserveLayers(size_t count) {
 
 void LayerTreeImpl::AddLayer(std::unique_ptr<LayerImpl> layer) {
   DCHECK(layer);
-  DCHECK(!std::ranges::contains(layer_list_, layer));
   layer_list_.push_back(std::move(layer));
   set_needs_update_draw_properties();
 }
 
 size_t LayerTreeImpl::NumLayers() {
-  return layer_id_map_.size();
+  return layer_list_.size();
 }
 
 void LayerTreeImpl::DidBecomeActive() {
@@ -2430,10 +2438,16 @@ ScrollbarSet LayerTreeImpl::ScrollbarsFor(ElementId scroll_element_id) const {
   auto it = element_id_to_scrollbar_layer_ids_.find(scroll_element_id);
   if (it != element_id_to_scrollbar_layer_ids_.end()) {
     const ScrollbarLayerIds& layer_ids = it->second;
-    if (layer_ids.horizontal != Layer::INVALID_ID)
-      scrollbars.insert(ToScrollbarLayer(LayerById(layer_ids.horizontal)));
-    if (layer_ids.vertical != Layer::INVALID_ID)
-      scrollbars.insert(ToScrollbarLayer(LayerById(layer_ids.vertical)));
+    if (layer_ids.horizontal != Layer::INVALID_ID) {
+      if (auto* layer_impl = LayerById(layer_ids.horizontal)) {
+        scrollbars.insert(ToScrollbarLayer(layer_impl));
+      }
+    }
+    if (layer_ids.vertical != Layer::INVALID_ID) {
+      if (auto* layer_impl = LayerById(layer_ids.vertical)) {
+        scrollbars.insert(ToScrollbarLayer(layer_impl));
+      }
+    }
   }
   return scrollbars;
 }

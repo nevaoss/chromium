@@ -303,9 +303,6 @@
       <message name="IDS_QUICK_ANSWERS_VIEW_A11Y_INFO_ALERT_TEXT" desc="A11y alert text for the Quick Answers view.">
         Info related to your selection available. Use Up arrow key to access.
       </message>
-      <message name="IDS_QUICK_ANSWERS_VIEW_A11Y_INFO_DESC_TEMPLATE_V2" desc="A11y description template for the Quick Answers view (V2 version).">
-        <ph name="QUERY_TEXT">$1<ex>interested</ex></ph>; <ph name="RESULT_TEXT">$2<ex>showing curiosity or concern about something or someone; having a feeling of interest.</ex></ph>; Press Search plus Space to see result in Google Search.
-      </message>
       <message name="IDS_QUICK_ANSWERS_VIEW_A11Y_INFO_DESCRIPTION_WITH_INTENT_TEMPLATE" desc="A11y description template for the refreshed Quick Answers view. Note that this text is not rendered in UI but passed to a11y service.">
         <ph name="INTENT">$1<ex>Unit Conversion</ex></ph>; <ph name="QUERY_TEXT">$2<ex>10 kg</ex></ph>; <ph name="RESULT_TEXT">$3<ex>22.04 pounds</ex></ph>
       </message>
@@ -327,15 +324,6 @@
       </message>
       <message name="IDS_QUICK_ANSWERS_VIEW_A11Y_RETRY_LABEL_NAME_TEMPLATE" desc="A11y retry label name template for the Quick Answers view.">
         <ph name="DESC_TEXT">$1<ex>Cannot connect to the internet. Click to try again.</ex></ph>: Retry
-      </message>
-      <message name="IDS_QUICK_ANSWERS_VIEW_EXPANSION_INDICATOR_LABEL" desc="Description text of the expansion affordance indicator for the Quick Answers view.">
-        more
-      </message>
-      <message name="IDS_QUICK_ANSWERS_VIEW_REPORT_QUERY_INTERNAL_LABEL" desc="Description text of the report query button for the Quick Answers view.">
-        Internal only
-      </message>
-      <message name="IDS_QUICK_ANSWERS_VIEW_REPORT_QUERY_REPORT_LABEL" desc="Description text of the report query button for the Quick Answers view.">
-        Report this query
       </message>
       <message name="IDS_QUICK_ANSWERS_RESULT_HEADER_INTENT_DEFINITION" desc="Header text shown in a definition result card">
         Define
@@ -2959,7 +2947,7 @@
         <message name="IDS_PERSONALIZATION_APP_AVATAR_LAST_EXTERNAL_IMAGE" desc="Title for the existing photo from camera or file option.">
           Existing photo from camera or file
         </message>
-        <message name="IDS_PERSONALIZATION_APP_ARIA_LABEL_HOME" desc="Aria label for the home page of the hub.">
+        <message name="IDS_PERSONALIZATION_APP_ARIA_LABEL_HOME" desc="Aria label for the home page of the hub." meaning="'home' as in an internet location, a 'home page'">
           Home
         </message>
         <message name="IDS_PERSONALIZATION_APP_KEYBOARD_BACKLIGHT_TITLE" desc="Title for the keyboard backlight section of personalization hub.">
@@ -6904,9 +6892,6 @@
         <!-- End of APN -->
 
         <!-- Arc Input Overlay -->
-        <message name="IDS_INPUT_OVERLAY_SETTINGS_NUDGE_ALPHAV2" desc="Label displayed next to the Settings UI's entry point so the user is aware.">
-          Open menu to customize keys. Drag menu to move.
-        </message>
         <message name="IDS_INPUT_OVERLAY_KEYMAPPING_KEY" desc="Accessibility label for key label. Spoken by screen readers when the label 'w' control gets focus but not visually rendered.">
           Keymapping key
         </message>
@@ -6916,9 +6901,6 @@
         <message name="IDS_INPUT_OVERLAY_KEYMAPPING_TOUCH_POINT_CROSS" desc="Accessibility label for touch point which is cross shape. Spoken by screen readers when the cross-shaped touch point control gets focus but not visually rendered.">
           Keymapping D-pad
         </message>
-        <message name="IDS_INPUT_OVERLAY_LAYOUT_ACCTIONS_MENU" desc="Accessibility label for save and reset button group. Spoken by screen readers when the save and reset button group gets focus but not visually rendered.">
-          Layout actions menu
-        </message>
         <message name="IDS_INPUT_OVERLAY_KEY_LABEL_BACKSPACE" desc="Name for symbol of backspace key. Spoken by screen readers when symbol backspace renders in key label and gets focus but the symbol name not visually rendered.">
           backspace
         </message>
@@ -6927,12 +6909,6 @@
         </message>
         <message name="IDS_INPUT_OVERLAY_KEY_LABEL_SPACE" desc="Name for symbol of space key. Spoken by screen readers when symbol space renders in key label and gets focus but the symbol name not visually rendered.">
           space
-        </message>
-        <message name="IDS_INPUT_OVERLAY_EDIT_MENU_FOCUS" desc="Spoken by screen readers when action layout menu (save button group) is focused. The content is not rendered.">
-          Reposition with mouse or arrow keys.
-        </message>
-        <message name="IDS_INPUT_OVERLAY_EDIT_INSTRUCTIONS_ALPHAV2" desc="Text presented via a tooltip so the user knows how to interact and edit key-bindings.">
-          Click on any key to customize your button. Reposition key with mouse or arrow keys.
         </message>
         <message name="IDS_INPUT_OVERLAY_EDIT_INSTRUCTIONS_TOUCH_POINT_FOCUS" desc="Text presented via a tooltip so the user knows how to interact when the touch point is focused.">
           Move the blue touch point to an action. Select the associated key to customize.

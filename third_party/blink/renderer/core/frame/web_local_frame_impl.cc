@@ -2803,6 +2803,7 @@ bool WebLocalFrameImpl::DispatchBeforeUnloadEvent(
     return true;
 
   return GetFrame()->Loader().ShouldClose(is_reload,
+                                          /*force_to_proceed=*/false,
                                           out_before_unload_dialog_opened_time,
                                           out_before_unload_dialog_closed_time);
 }

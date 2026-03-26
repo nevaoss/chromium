@@ -348,6 +348,7 @@
 <translation id="2496180316473517155">ಬ್ರೌಸಿಂಗ್ ಇತಿಹಾಸ</translation>
 <translation id="2497852260688568942">ನಿಮ್ಮ ನಿರ್ವಾಹಕರು ಸಿಂಕ್ ಅನ್ನು ನಿಷ್ಕ್ರಿಯಗೊಳಿಸಿದ್ದಾರೆ</translation>
 <translation id="250020030759455918">ನಿಮ್ಮ <ph name="SITE_NAME" /> ಸೈನ್-ಇನ್ ಸ್ಥಿತಿ, ಬ್ರೌಸಿಂಗ್ ಡೇಟಾ ಮತ್ತು ಸೈಟ್ ಡೇಟಾವನ್ನು Chrome ನಲ್ಲಿ ನೋಡುವಿರಿ</translation>
+<translation id="2501278716633472235">ಹಿಂದಿರುಗಿ</translation>
 <translation id="2510106555128151389"><ph name="WEBAPK_NAME" /> ಅನ್ನು ಇನ್‌ಸ್ಟಾಲ್ ಮಾಡಲಾಗುತ್ತಿದೆ…</translation>
 <translation id="2512234228327349533">ಖರೀದಿ ಆಯ್ಕೆಗಳನ್ನು ಹುಡುಕಿ</translation>
 <translation id="2513403576141822879">ಗೌಪ್ಯತೆ, ಸುರಕ್ಷತೆ ಮತ್ತು ಡೇಟಾ ಸಂಗ್ರಹಕ್ಕೆ ಸಂಬಂಧಿಸಿದ ಹೆಚ್ಚಿನ ಸೆಟ್ಟಿಂಗ್‌ಗಳಿಗಾಗಿ <ph name="BEGIN_LINK" />ಸಿಂಕ್ ಮತ್ತು Google ಸೇವೆಗಳನ್ನು<ph name="END_LINK" /> ನೋಡಿ</translation>
@@ -1491,7 +1492,6 @@
 <translation id="7057969023583258980">ಪೂರ್ಣ Chrome ಇತಿಹಾಸವನ್ನು ತೆರೆಯಿರಿ</translation>
 <translation id="7063006564040364415">ಸಿಂಕ್ ಸರ್ವರ್‌ಗೆ ಸಂಪರ್ಕ ಹೊಂದಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.</translation>
 <translation id="7063106218165698546">ಟ್ಯಾಬ್ ಗುಂಪನ್ನು ಕಸ್ಟಮೈಸ್ ಮಾಡಿ ಮತ್ತು ಮುಗಿದಿದೆ ಎಂಬುದನ್ನು ಕ್ಲಿಕ್ ಮಾಡಿ</translation>
-<translation id="7071521146534760487">ಖಾತೆಯನ್ನು ನಿರ್ವಹಿಸಿ</translation>
 <translation id="707155805709242880">ಯಾವುದನ್ನು ಸಿಂಕ್ ಮಾಡಬೇಕು ಎಂಬುದಾಗಿ ಕೆಳಗೆ ಆಯ್ಕೆ ಮಾಡಿ</translation>
 <translation id="7072949719501323344"><ph name="TAB_TITLE" />, ಬಹು ಆಯ್ಕೆಮಾಡಿದ ಪಿನ್ ಮಾಡಿರುವ ಪಿಕ್ಚರ್-ಇನ್-ಪಿಕ್ಚರ್ ಅಜ್ಞಾತ ಟ್ಯಾಬ್</translation>
 <translation id="7077143737582773186">ಎಸ್‌ಡಿ ಕಾರ್ಡ್‌</translation>
@@ -1820,6 +1820,7 @@
 <translation id="8282950411412455249">ಭದ್ರತೆ ಸೆಟ್ಟಿಂಗ್‌ಗಳಿಗೆ ಹೋಗಿ</translation>
 <translation id="8288688997999490824">{NUM_WINDOWS,plural, =1{1 ಅಜ್ಞಾತ ವಿಂಡೋವನ್ನು ಮುಚ್ಚಿರಿ}one{# ಅಜ್ಞಾತ ವಿಂಡೋಗಳನ್ನು ಮುಚ್ಚಿರಿ}other{# ಅಜ್ಞಾತ ವಿಂಡೋಗಳನ್ನು ಮುಚ್ಚಿರಿ}}</translation>
 <translation id="831192587911042850">ನೀವು ಫಾಲೋ ಮಾಡುತ್ತಿರುವ ವೆಬ್ ಸೈಟ್‌ಗಳ ಪಟ್ಟಿಗೆ ಪ್ರಸ್ತುತ ವೆಬ್‌ ಸೈಟ್ ಅನ್ನು ಸೇರಿಸುತ್ತದೆ.</translation>
+<translation id="8313599942510782709">ನಿಮ್ಮ ಕಾರ್ಯವು ಇನ್ನೂ ಪ್ರಗತಿಯಲ್ಲಿದೆ</translation>
 <translation id="8317318757008452355">ಪ್ರಿಂಟ್ ಮಾಡಲು ಆಯ್ಕೆಗಳನ್ನು ತೆರೆಯಿರಿ</translation>
 <translation id="8320212361750431956">ಇತ್ತೀಚಿನ ಚಟುವಟಿಕೆ</translation>
 <translation id="832514020744584629"><ph name="PREF_TITLE" />  <ph name="BEGIN_NEW" />ಹೊಸತು<ph name="END_NEW" /></translation>

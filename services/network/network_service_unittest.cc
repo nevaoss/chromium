@@ -1138,7 +1138,7 @@ static size_t GetGlobalMaxConnectionsPerProxyChain() {
 TEST_F(NetworkServiceTest, SetMaxConnectionsPerProxyChain) {
   const size_t kDefault = 32;
   const size_t kMin = 6;
-  const size_t kMax = 99;
+  const size_t kMax = 256;
 
   // Starts off at default value.
   EXPECT_EQ(kDefault, GetGlobalMaxConnectionsPerProxyChain());
@@ -1266,7 +1266,7 @@ TEST_P(NetworkServiceCookieTest, CookieEncryptionProvider) {
       "TestCookie", kSecretValue, "www.test.com", "/", base::Time::Now(),
       base::Time::Now() + base::Days(1), base::Time(), base::Time(),
       /*secure=*/true, /*httponly=*/false, net::CookieSameSite::NO_RESTRICTION,
-      net::COOKIE_PRIORITY_DEFAULT);
+      net::COOKIE_PRIORITY_DEFAULT, net::CookieSourceType::kOther);
   base::test::TestFuture<net::CookieAccessResult> future;
   cookie_manager->SetCanonicalCookie(
       *cookie, net::cookie_util::SimulatedCookieSource(*cookie, "https"),
@@ -1634,14 +1634,14 @@ TEST_F(NetworkServiceTestWithService, SetsTrustTokenKeyCommitments) {
 
   auto expectation = mojom::TrustTokenKeyCommitmentResult::New();
   expectation->protocol_version =
-      mojom::TrustTokenProtocolVersion::kTrustTokenV3Pmb;
+      mojom::TrustTokenProtocolVersion::kPrivateStateTokenV1Voprf;
   expectation->id = 1;
   expectation->batch_size = 5;
 
   base::RunLoop run_loop;
   network_service_->SetTrustTokenKeyCommitments(
-      R"( { "https://issuer.example": { "PrivateStateTokenV3PMB": {
-        "protocol_version": "PrivateStateTokenV3PMB", "id": 1,
+      R"( { "https://issuer.example": { "PrivateStateTokenV1VOPRF": {
+        "protocol_version": "PrivateStateTokenV1VOPRF", "id": 1,
         "batchsize": 5 } } } )",
       run_loop.QuitClosure());
   run_loop.Run();

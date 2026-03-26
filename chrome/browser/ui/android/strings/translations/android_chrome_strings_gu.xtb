@@ -348,6 +348,7 @@
 <translation id="2496180316473517155">બ્રાઉઝિંગ ઇતિહાસ</translation>
 <translation id="2497852260688568942">સમન્વયન, તમારા વ્યવસ્થાપક દ્વારા અક્ષમ કરવામાં આવ્યું છે</translation>
 <translation id="250020030759455918">તમને Chromeમાં તમારું <ph name="SITE_NAME" />નું સાઇન ઇન સ્ટેટસ, બ્રાઉઝિંગ ડેટા અને સાઇટ ડેટા દેખાશે</translation>
+<translation id="2501278716633472235">પાછા જાઓ</translation>
 <translation id="2510106555128151389"><ph name="WEBAPK_NAME" /> ઇન્સ્ટૉલ કરી રહ્યાં છીએ...</translation>
 <translation id="2512234228327349533">ખરીદી કરવાના વિકલ્પો શોધો</translation>
 <translation id="2513403576141822879">ગોપનીયતા, સુરક્ષા, અને ડેટા સંગ્રહથી સંબંધિત વધુ સેટિંગ માટે, <ph name="BEGIN_LINK" />સિંક અને Google સેવાઓ<ph name="END_LINK" /> જુઓ</translation>
@@ -1492,7 +1493,6 @@
 <translation id="7057969023583258980">સંપૂર્ણ Chrome ઇતિહાસ ખોલો</translation>
 <translation id="7063006564040364415">સમન્વયન સર્વર સાથે કનેક્ટ કરી શકાયું નથી</translation>
 <translation id="7063106218165698546">ટૅબનું ગ્રૂપ કસ્ટમાઇઝ કરો અને 'થઈ ગયું' પર ક્લિક કરો</translation>
-<translation id="7071521146534760487">એકાઉન્ટને મેનેજ કરો</translation>
 <translation id="707155805709242880">શું સિંક કરવું તે નીચે પસંદ કરો</translation>
 <translation id="7072949719501323344"><ph name="TAB_TITLE" />, એકથી વધુ પસંદ કરેલું પિન કરેલું ચિત્ર-માં-ચિત્રનું છૂપું ટૅબ</translation>
 <translation id="7077143737582773186">SD કાર્ડ</translation>
@@ -1821,6 +1821,7 @@
 <translation id="8282950411412455249">સુરક્ષા સેટિંગ પર જાઓ</translation>
 <translation id="8288688997999490824">{NUM_WINDOWS,plural, =1{1 છૂપી વિન્ડો બંધ કરો}one{# છુપી વિન્ડો બંધ કરો}other{# છુપી વિન્ડો બંધ કરો}}</translation>
 <translation id="831192587911042850">તમે ફૉલો કરતા હો તે વેબસાઇટની સૂચિમાં હાલની વેબસાઇટને ઉમેરે છે.</translation>
+<translation id="8313599942510782709">તમારા કાર્ય પર હજી પણ પ્રક્રિયા થઈ રહી છે</translation>
 <translation id="8317318757008452355">પ્રિન્ટ કરવાના વિકલ્પો ખોલો</translation>
 <translation id="8320212361750431956">તાજેતરની ઍક્ટિવિટી</translation>
 <translation id="832514020744584629"><ph name="PREF_TITLE" />  <ph name="BEGIN_NEW" />નવું<ph name="END_NEW" /></translation>

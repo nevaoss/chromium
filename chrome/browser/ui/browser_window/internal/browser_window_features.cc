@@ -125,6 +125,7 @@
 #include "chrome/browser/ui/views/side_panel/history_clusters/history_clusters_side_panel_coordinator.h"
 #include "chrome/browser/ui/views/side_panel/reading_list/reading_list_side_panel_coordinator.h"
 #include "chrome/browser/ui/views/side_panel/side_panel_coordinator.h"
+#include "chrome/browser/ui/views/tabs/projects/projects_panel_utils.h"
 #include "chrome/browser/ui/views/tabs/recent_activity_bubble_dialog_view.h"
 #include "chrome/browser/ui/views/tabs/tab_strip_action_container.h"
 #include "chrome/browser/ui/views/toolbar/chrome_labs/chrome_labs_coordinator.h"
@@ -144,6 +145,7 @@
 #include "chrome/browser/ui/webui_browser/webui_browser_side_panel_ui.h"
 #include "chrome/browser/ui/webui_browser/webui_browser_window.h"
 #include "chrome/common/chrome_features.h"
+#include "chrome/common/pref_names.h"
 #include "components/breadcrumbs/core/breadcrumbs_status.h"
 #include "components/collaboration/public/collaboration_service.h"
 #include "components/commerce/core/commerce_feature_list.h"
@@ -274,6 +276,10 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
       GetUserDataFactory().CreateInstance<BookmarkBarController>(
           *browser, *browser, *browser->GetTabStripModel());
 
+  tab_strip_model_ = browser->GetTabStripModel();
+  tab_list_bridge_ = std::make_unique<TabListBridge>(
+      *tab_strip_model_, browser->GetUnownedUserDataHost());
+
   // Avoid passing `browser` directly to features. Instead, pass the minimum
   // necessary state or controllers necessary.
   // Ping erikchen for assistance. This comment will be deleted after there are
@@ -303,17 +309,26 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
     if (glic::GlicEnabling::IsProfileEligible(profile)) {
       glic_iph_controller_ = std::make_unique<glic::GlicIphController>(
           browser, *glic::GlicKeyedService::Get(profile));
-      glic_nudge_controller_ =
-          std::make_unique<glic::GlicNudgeController>(browser);
+      glic_nudge_controller_ = std::make_unique<glic::GlicNudgeController>(
+          browser, tab_list_bridge_.get());
     }
 
     if (tabs::IsVerticalTabsFeatureEnabled()) {
-      const std::optional<bool>& restored_state_collapsed =
-          browser->GetBrowserForMigrationOnly()
-              ->is_vertical_tabs_initially_collapsed();
-      const std::optional<int>& restored_state_uncollapsed_width =
-          browser->GetBrowserForMigrationOnly()
-              ->get_vertical_tabs_initial_uncollapsed_width();
+      Browser* raw_browser = browser->GetBrowserForMigrationOnly();
+
+      std::optional<bool> restored_state_collapsed =
+          raw_browser->is_vertical_tabs_initially_collapsed();
+      std::optional<int> restored_state_uncollapsed_width =
+          raw_browser->get_vertical_tabs_initial_uncollapsed_width();
+
+      if (!restored_state_collapsed.has_value() &&
+          !restored_state_uncollapsed_width.has_value() &&
+          !browser->CreatedBySessionRestore()) {
+        restored_state_collapsed =
+            profile->GetPrefs()->GetBoolean(prefs::kVerticalTabsCollapsedState);
+        restored_state_uncollapsed_width = profile->GetPrefs()->GetInteger(
+            prefs::kVerticalTabsUncollapsedWidth);
+      }
 
       vertical_tab_strip_state_controller_ =
           GetUserDataFactory()
@@ -325,15 +340,13 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
                   restored_state_uncollapsed_width);
     }
 
-    if (tab_groups::IsProjectsPanelFeatureEnabled()) {
+    if (projects_panel::IsProjectsPanelVisibleForProfile(profile)) {
       glic::GlicKeyedService* glic_service =
-          glic::GlicKeyedServiceFactory::GetGlicKeyedService(
-              browser->GetProfile());
+          glic::GlicKeyedServiceFactory::GetGlicKeyedService(profile);
       projects_panel_state_controller_ =
           GetUserDataFactory().CreateInstance<ProjectsPanelStateController>(
               *browser, browser, browser_actions_->root_action_item(),
-              AimEligibilityServiceFactory::GetForProfile(
-                  browser->GetProfile()),
+              AimEligibilityServiceFactory::GetForProfile(profile),
               glic_service ? &glic_service->enabling() : nullptr);
     }
 
@@ -351,8 +364,6 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
       std::make_unique<lens::LensOverlayEntryPointController>();
   lens_region_search_controller_ =
       std::make_unique<lens::LensRegionSearchController>();
-
-  tab_strip_model_ = browser->GetTabStripModel();
 
   tab_strip_service_feature_ = std::make_unique<TabStripServiceMojoHandler>(
       std::make_unique<tabs_api::tab_strip_model::TabStripModelInjector>(
@@ -411,7 +422,9 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
   }
   if (base::FeatureList::IsEnabled(features::kOfferPinToTaskbarInfoBar)) {
     pin_infobar_controller_ =
-        std::make_unique<default_browser::PinInfoBarController>(browser);
+        GetUserDataFactory()
+            .CreateInstance<default_browser::PinInfoBarController>(*browser,
+                                                                   browser);
   }
 #endif
 
@@ -421,9 +434,6 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
 
   content_setting_bubble_model_delegate_ =
       std::make_unique<BrowserContentSettingBubbleModelDelegate>(browser);
-
-  tab_list_bridge_ = std::make_unique<TabListBridge>(
-      *tab_strip_model_, browser->GetUnownedUserDataHost());
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
   extension_browser_window_helper_ =
@@ -537,14 +547,13 @@ void BrowserWindowFeatures::InitPostWindowConstruction(Browser* browser) {
 
     if (browser_view) {
       // The controller should only be created if the
-      // PinnedToolbarActionsContainer exists for the browser, this might not be
+      // PinnedToolbarActions exists for the browser, this might not be
       // the case for browsers with a custom tab toolbar.
-      if (auto* pinned_toolbar_actions_container =
-              browser_view->toolbar_button_provider()
-                  ->GetPinnedToolbarActionsContainer()) {
+      if (auto* pinned_toolbar_actions = browser_view->toolbar_button_provider()
+                                             ->GetPinnedToolbarActions()) {
         pinned_toolbar_actions_controller_ =
             std::make_unique<PinnedToolbarActionsController>(
-                pinned_toolbar_actions_container);
+                pinned_toolbar_actions);
       }
     }
 
@@ -825,8 +834,8 @@ void BrowserWindowFeatures::InitPostBrowserViewConstruction(
     // The controller relies on performance manager which isn't initialized in
     // some unit tests without browser view.
     memory_saver_opt_in_iph_controller_ =
-        std::make_unique<MemorySaverOptInIPHController>(
-            browser_view->browser());
+        GetUserDataFactory().CreateInstance<MemorySaverOptInIPHController>(
+            *browser_, browser_);
 
     if (media_router::MediaRouterEnabled(browser_view->browser()->profile())) {
       cast_browser_controller_ =

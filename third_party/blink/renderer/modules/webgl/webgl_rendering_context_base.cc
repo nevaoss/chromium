@@ -2091,7 +2091,8 @@ bool WebGLRenderingContextBase::CopyRenderingResultsFromDrawingBuffer(
     gpu::raster::RasterInterface* raster_interface =
         shared_context_wrapper->ContextProvider().RasterInterface();
     gpu::SyncToken sync_token;
-    auto client_si = resource_provider->BeginExternalWrite(sync_token);
+    auto client_si = resource_provider->BeginExternalWrite(
+        sync_token, /*is_overwrite=*/false);
     if (!client_si) {
       return false;
     }
@@ -2102,8 +2103,7 @@ bool WebGLRenderingContextBase::CopyRenderingResultsFromDrawingBuffer(
 
     std::optional<gpu::SyncToken> external_sync_token =
         GetDrawingBuffer()->CopyToPlatformSharedImage(
-            raster_interface, client_si, sync_token, gfx::Point(0, 0),
-            gfx::Rect(drawing_buffer_->Size()), source_buffer);
+            raster_interface, client_si, sync_token, source_buffer);
 
     if (external_sync_token) {
       resource_provider->EndExternalWrite(external_sync_token.value());
@@ -2236,7 +2236,6 @@ void WebGLRenderingContextBase::Reshape(int width, int height) {
 
   // We don't have to mark the canvas as dirty, since the newly created image
   // buffer will also start off clear (and this matches what reshape will do).
-  GetDrawingBuffer()->set_low_latency_enabled(Host()->LowLatencyEnabled());
   GetDrawingBuffer()->Resize(gfx::Size(width, height));
   GetDrawingBuffer()->MarkContentsChanged();
 

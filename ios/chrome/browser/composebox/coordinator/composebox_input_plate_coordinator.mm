@@ -266,6 +266,7 @@ const CGFloat kSnackbarBottomMargin = 10;
   _aimEligibilitySubscription = {};
   _aimEligibilityService = nullptr;
   [_snackbarPresenter dismissAllSnackbars];
+  [_snackbarPresenter stop];
   _snackbarPresenter = nil;
   if (_tabPickerCoordinator.started) {
     [_tabPickerCoordinator stop];
@@ -685,9 +686,14 @@ const CGFloat kSnackbarBottomMargin = 10;
     [_omniboxCoordinator insertTextToOmnibox:_query];
     _query = nil;
   }
+  [_mediator setOmniboxFocused:YES];
 }
 
 - (void)omniboxDidResignFirstResponder {
+  [_mediator setOmniboxFocused:NO];
+}
+
+- (void)omniboxDidEndEditing {
 }
 
 #pragma mark - Private helpers

@@ -25,7 +25,7 @@
 <translation id="1094555143448724771">如需查看您在其他设备中打开的标签页，请同步您的标签页和历史记录</translation>
 <translation id="1095761715416917775">确保您可以随时访问自己的同步数据</translation>
 <translation id="1096091316906284742">Chrome 查找功能选择启用底部动作条</translation>
-<translation id="1100066534610197918">在群组内的新标签页中打开</translation>
+<translation id="1100066534610197918">在分组内的新标签页中打开</translation>
 <translation id="1103142993930332957">帮助改进 Chrome？</translation>
 <translation id="1105960400813249514">屏幕截图</translation>
 <translation id="1108214977745280468">查看网页数据洞见</translation>
@@ -81,7 +81,7 @@
 <translation id="129553762522093515">最近关闭的标签页</translation>
 <translation id="1298077576058087471">节省高达 60% 的数据流量，阅读今日新闻</translation>
 <translation id="1303507811548703290"><ph name="DOMAIN" /> - 发送者：<ph name="DEVICE_NAME" /></translation>
-<translation id="1310482092992808703">组合标签页</translation>
+<translation id="1310482092992808703">将标签页分组</translation>
 <translation id="1318262688555255786">分享指向“<ph name="PAGE_TITLE" />”网页的链接。来源：<ph name="PAGE_URL" /></translation>
 <translation id="1320912611264252795">书签保存流程文件夹已全屏打开</translation>
 <translation id="1327257854815634930">导航历史记录已打开</translation>
@@ -348,6 +348,7 @@
 <translation id="2496180316473517155">浏览记录</translation>
 <translation id="2497852260688568942">您的管理员已停用同步</translation>
 <translation id="250020030759455918">您会在 Chrome 中看到自己的 <ph name="SITE_NAME" /> 登录状态、浏览数据和网站数据</translation>
+<translation id="2501278716633472235">返回</translation>
 <translation id="2510106555128151389">正在安装“<ph name="WEBAPK_NAME" />”…</translation>
 <translation id="2512234228327349533">搜索购买选项</translation>
 <translation id="2513403576141822879">若想了解更多与隐私、安全和数据收集相关的设置，请参阅<ph name="BEGIN_LINK" />同步功能和 Google 服务<ph name="END_LINK" /></translation>
@@ -1492,7 +1493,6 @@
 <translation id="7057969023583258980">打开完整的 Chrome 历史记录</translation>
 <translation id="7063006564040364415">无法连接到同步服务器。</translation>
 <translation id="7063106218165698546">自定义标签页分组，然后点按“完成”</translation>
-<translation id="7071521146534760487">管理账号</translation>
 <translation id="707155805709242880">请在下方选择要同步的内容</translation>
 <translation id="7072949719501323344"><ph name="TAB_TITLE" />，多选状态下固定的画中画无痕式标签页</translation>
 <translation id="7077143737582773186">SD 卡</translation>
@@ -1819,6 +1819,7 @@
 <translation id="8282950411412455249">前往安全设置</translation>
 <translation id="8288688997999490824">{NUM_WINDOWS,plural, =1{关闭 1 个无痕式窗口}other{关闭 # 个无痕式窗口}}</translation>
 <translation id="831192587911042850">将当前网站添加到您关注的网站的列表中。</translation>
+<translation id="8313599942510782709">您的任务仍在进行中</translation>
 <translation id="8317318757008452355">打开打印网页的选项</translation>
 <translation id="8320212361750431956">近期活动</translation>
 <translation id="832514020744584629"><ph name="PREF_TITLE" />  <ph name="BEGIN_NEW" />新<ph name="END_NEW" /></translation>

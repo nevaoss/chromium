@@ -348,6 +348,7 @@
 <translation id="2496180316473517155">История на сърфирането</translation>
 <translation id="2497852260688568942">Синхронизирането е деактивирано от администратора ви</translation>
 <translation id="250020030759455918">В Chrome ще виждате дали сте влезли в профила си в <ph name="SITE_NAME" />, както и съответните данни за сърфирането и сайта</translation>
+<translation id="2501278716633472235">Назад</translation>
 <translation id="2510106555128151389"><ph name="WEBAPK_NAME" /> се инсталира...</translation>
 <translation id="2512234228327349533">Търсене на опции за купуване</translation>
 <translation id="2513403576141822879">За още настройки за поверителността, сигурността и събирането на данни вижте <ph name="BEGIN_LINK" />Синхронизиране и услуги на Google<ph name="END_LINK" /></translation>
@@ -1492,7 +1493,6 @@
 <translation id="7057969023583258980">Отваряне на цялата история в Chrome</translation>
 <translation id="7063006564040364415">Не можа да се установи връзка със синхронизиращия сървър.</translation>
 <translation id="7063106218165698546">Персонализирайте групата раздели и изберете „Готово“</translation>
-<translation id="7071521146534760487">Управление на профила</translation>
 <translation id="707155805709242880">Изберете какво да синхронизирате по-долу</translation>
 <translation id="7072949719501323344"><ph name="TAB_TITLE" /> – фиксиран раздел „картина в картината“ в режим „инкогнито“, който е избран заедно с други</translation>
 <translation id="7077143737582773186">SD карта</translation>
@@ -1821,6 +1821,7 @@
 <translation id="8282950411412455249">Към настройките за сигурност</translation>
 <translation id="8288688997999490824">{NUM_WINDOWS,plural, =1{Затваряне на 1 прозорец в режим „инкогнито“}other{Затваряне на # прозореца в режим „инкогнито“}}</translation>
 <translation id="831192587911042850">Добавя текущия уебсайт към списъка с тези, които следвате.</translation>
+<translation id="8313599942510782709">Задачата ви все още се изпълнява</translation>
 <translation id="8317318757008452355">Отваряне на опциите за печат</translation>
 <translation id="8320212361750431956">Скорошна активност</translation>
 <translation id="832514020744584629"><ph name="PREF_TITLE" />  <ph name="BEGIN_NEW" />Ново<ph name="END_NEW" /></translation>

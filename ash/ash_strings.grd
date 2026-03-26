@@ -5455,6 +5455,9 @@ No devices connected.
       <message name="IDS_ASH_IN_SESSION_AUTH_TITLE" desc="Text shown in the auth dialog to indicate authentication is needed.">
         Verify your identity
       </message>
+      <message name="IDS_ASH_IN_SESSION_AUTH_CONFIRM_TITLE" desc="Title for the in-session auth dialog to confirm the user's identity.">
+        Confirm it's you
+      </message>
       <message name="IDS_ASH_IN_SESSION_AUTH_ORIGIN_NAME_PROMPT" desc="Text shown in the auth dialog to indicate which website / app we are authenticating for.">
         <ph name="ORIGIN_NAME">$1<ex>example.com</ex></ph> would like to confirm it's you
       </message>
@@ -8619,7 +8622,7 @@ To shut down the device, press and hold the power button on the device again.
       <message name="IDS_ASH_DEVICE_SETTINGS_SIX_PACK_KEY_INSERT" desc="Label for the Insert 6-pack key.">
         insert
       </message>
-      <message name="IDS_ASH_DEVICE_SETTINGS_SIX_PACK_KEY_HOME" desc="Label for the Home 6-pack key.">
+      <message name="IDS_ASH_DEVICE_SETTINGS_SIX_PACK_KEY_HOME" desc="Label for the Home 6-pack key." meaning="Home key on the keyboard">
         home
       </message>
       <message name="IDS_ASH_DEVICE_SETTINGS_SIX_PACK_KEY_END" desc="Label for the End 6-pack key.">
@@ -9768,6 +9771,37 @@ To shut down the device, press and hold the power button on the device again.
       </message>
       <message name="IDS_BRUSCHETTA_SHUT_DOWN_LINUX_MENU_ITEM" desc="Text shown in the context menu for the Bruschetta terminal app, allowing users to shut down the Linux virtual machine.">
         Shut down <ph name="VM_NAME">$1<ex>Bruschetta</ex></ph>
+      </message>
+
+      <!-- Floating Workspace -->
+      <message name="IDS_FLOATING_WORKSPACE_STARTUP_DIALOG_TITLE" desc="Title for floating workspace startup dialog.">
+        Restoring windows from your previous session...
+      </message>
+      <message name="IDS_FLOATING_WORKSPACE_STARTUP_DIALOG_LONG_RESPONSE_TITLE" desc="Title for floating workspace startup dialog when floating workspace is taking too long.">
+        Restoring windows is taking longer than expected
+      </message>
+      <message name="IDS_FLOATING_WORKSPACE_STARTUP_DIALOG_BUTTON" desc="Button for floating workspace dialog that closes the dialog without waiting for browser and app windows to be restored.">
+        Don't restore windows
+      </message>
+      <message name="IDS_FLOATING_WORKSPACE_NETWORK_DIALOG_TITLE" desc="Title for floating workspace network dialog which is shown when there is no network connection.">
+        Network not available
+      </message>
+      <message name="IDS_FLOATING_WORKSPACE_NETWORK_DIALOG_SUBTITLE" desc="Subtitle for floating workspace network dialog which is shown when there is no network connection.">
+        Internet connection is required.
+      </message>
+      <message name="IDS_FLOATING_WORKSPACE_ERROR_DIALOG_TITLE" desc="Title for floating dialog error screen which is shown when floating workspace can not restore the session.">
+        Can't restore windows from your previous session
+      </message>
+      <message name="IDS_FLOATING_WORKSPACE_ERROR_DIALOG_SUBTITLE" desc="Subtitle for floating dialog error screen which is shown when floating workspace can not restore the session.">
+        An error occured
+      </message>
+      <message name="IDS_FLOATING_WORKSPACE_ERROR_DIALOG_BUTTON" desc="Button for floating workspace error dialog that disables floating workspace and closes the dialog after the error screen is shown.">
+        Continue to new session
+      </message>
+
+      <!-- Status bar -->
+      <message name="IDS_STATUSBAR_NETWORK_DEVICE_ETHERNET" desc="Label for an ethernet network device.">
+        Ethernet
       </message>
     </messages>
   </release>

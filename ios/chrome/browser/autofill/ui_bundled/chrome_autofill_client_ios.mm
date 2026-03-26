@@ -51,6 +51,7 @@
 #import "components/sync/service/sync_service.h"
 #import "components/translate/core/browser/translate_manager.h"
 #import "components/ukm/ios/ukm_url_recorder.h"
+#import "ios/chrome/browser/autofill/autofill_ai/error_dialog/model/autofill_ai_error_dialog_context.h"
 #import "ios/chrome/browser/autofill/autofill_ai/public/save_entity_params.h"
 #import "ios/chrome/browser/autofill/model/address_normalizer_factory.h"
 #import "ios/chrome/browser/autofill/model/autocomplete_history_manager_factory.h"
@@ -61,11 +62,13 @@
 #import "ios/chrome/browser/autofill/model/ios_autofill_ai_model_cache_factory.h"
 #import "ios/chrome/browser/autofill/model/ios_autofill_ai_model_executor_factory.h"
 #import "ios/chrome/browser/autofill/model/ios_autofill_entity_data_manager_factory.h"
+#import "ios/chrome/browser/autofill/model/ios_wallet_pass_access_manager_factory.h"
 #import "ios/chrome/browser/autofill/model/personal_data_manager_factory.h"
 #import "ios/chrome/browser/autofill/model/strike_database_factory.h"
-#import "ios/chrome/browser/autofill/ui_bundled/scoped_autofill_payment_reauth_module_override.h"
 #import "ios/chrome/browser/device_reauth/model/ios_device_authenticator.h"
 #import "ios/chrome/browser/device_reauth/model/ios_device_authenticator_factory.h"
+#import "ios/chrome/browser/device_reauth/model/reauthentication_service.h"
+#import "ios/chrome/browser/device_reauth/model/reauthentication_service_factory.h"
 #import "ios/chrome/browser/history/model/history_service_factory.h"
 #import "ios/chrome/browser/infobars/model/infobar_ios.h"
 #import "ios/chrome/browser/infobars/model/infobar_utils.h"
@@ -198,6 +201,10 @@ ValuablesDataManager* ChromeAutofillClientIOS::GetValuablesDataManager() {
 
 EntityDataManager* ChromeAutofillClientIOS::GetEntityDataManager() {
   return IOSAutofillEntityDataManagerFactory::GetForProfile(profile_);
+}
+
+WalletPassAccessManager* ChromeAutofillClientIOS::GetWalletPassAccessManager() {
+  return IOSWalletPassAccessManagerFactory::GetForProfile(profile_);
 }
 
 FieldClassificationModelHandler*
@@ -503,10 +510,8 @@ ChromeAutofillClientIOS::GetDeviceAuthenticator(std::string histogram) {
   device_reauth::DeviceAuthParams params(
       base::Seconds(60), device_reauth::DeviceAuthSource::kAutofill, std::move(histogram));
   id<ReauthenticationProtocol> reauthModule =
-      ScopedAutofillPaymentReauthModuleOverride::Get();
-  if (!reauthModule) {
-    reauthModule = [[ReauthenticationModule alloc] init];
-  }
+      ReauthenticationServiceFactory::GetForProfile(profile_)
+          ->GetReauthModule();
   return CreateIOSDeviceAuthenticator(reauthModule, profile_, params);
 }
 
@@ -635,6 +640,27 @@ void ChromeAutofillClientIOS::CloseEntityImportBubble() {
   if (existing_infobar != infobar_manager_->infobars().cend()) {
     infobar_manager_->RemoveInfoBar(*existing_infobar);
   }
+}
+
+void ChromeAutofillClientIOS::ShowAutofillAiLocalSaveNotification() {
+  autofill::AutofillAiErrorDialogContext errorContext;
+  errorContext.type = autofill::AutofillAiErrorDialogType::kTypeLocalSave;
+  [commands_handler_ showAutofillAiErrorDialog:errorContext];
+}
+
+void ChromeAutofillClientIOS::ShowAutofillAiSaveToWalletFailureNotification() {
+  autofill::AutofillAiErrorDialogContext errorContext;
+  errorContext.type =
+      autofill::AutofillAiErrorDialogType::kTypeSaveToWalletFailure;
+  [commands_handler_ showAutofillAiErrorDialog:errorContext];
+}
+
+void ChromeAutofillClientIOS::
+    ShowAutofillAiFetchFromWalletFailureNotification() {
+  autofill::AutofillAiErrorDialogContext errorContext;
+  errorContext.type =
+      autofill::AutofillAiErrorDialogType::kTypeFetchFromWalletFailure;
+  [commands_handler_ showAutofillAiErrorDialog:errorContext];
 }
 
 AutofillAiSaveEntityInfoBarDelegateIOS*

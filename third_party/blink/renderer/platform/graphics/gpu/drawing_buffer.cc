@@ -282,14 +282,9 @@ DrawingBuffer::DrawingBuffer(
                                 : kOpaque_SkAlphaType),
       requested_format_(want_alpha_channel ? GL_RGBA8 : GL_RGB8),
       context_info_(context_info),
-#if BUILDFLAG(IS_WIN)
-      using_swap_chain_(ContextProvider()
-                            ->SharedImageInterface()
-                            ->GetCapabilities()
-                            .shared_image_swap_chain &&
-                        desynchronized),
-#endif
-      low_latency_enabled_(desynchronized),
+      can_use_low_latency_(desynchronized &&
+                           SharedGpuContext::LowLatencyUsageSupportedForWebGL(
+                               ContextProvider()->SharedImageInterface())),
       want_depth_(want_depth),
       want_stencil_(want_stencil),
       color_space_(PredefinedColorSpaceToGfxColorSpace(color_space)),
@@ -935,7 +930,8 @@ bool DrawingBuffer::Initialize(const gfx::Size& size, bool use_multisampling) {
 #if BUILDFLAG(IS_WIN)
   // We can't use anything other than explicit resolve for swap chain, as the
   // D3D11 texture backing the back buffer is single-sampled.
-  supports_implicit_resolve = supports_implicit_resolve && !using_swap_chain_;
+  supports_implicit_resolve =
+      supports_implicit_resolve && !can_use_low_latency_;
 #endif
 
   const auto& gpu_feature_info = ContextProvider()->GetGpuFeatureInfo();
@@ -1166,8 +1162,6 @@ std::optional<gpu::SyncToken> DrawingBuffer::CopyToPlatformSharedImage(
     gpu::raster::RasterInterface* dst_raster_interface,
     const scoped_refptr<gpu::ClientSharedImage>& dst_shared_image,
     const gpu::SyncToken& dst_sync_token,
-    const gfx::Point& dst_texture_offset,
-    const gfx::Rect& src_sub_rectangle,
     SourceDrawingBuffer src_buffer) {
   auto copy_function =
       [&](scoped_refptr<gpu::ClientSharedImage> src_shared_image,
@@ -1182,11 +1176,10 @@ std::optional<gpu::SyncToken> DrawingBuffer::CopyToPlatformSharedImage(
                                             produce_sync_token,
                                             /*readonly=*/true);
 
-    dst_raster_interface->CopySharedImage(
-        src_shared_image->mailbox(), dst_shared_image->mailbox(),
-        dst_texture_offset.x(), dst_texture_offset.y(), src_sub_rectangle.x(),
-        src_sub_rectangle.y(), src_sub_rectangle.width(),
-        src_sub_rectangle.height());
+    const gfx::Size size = Size();
+    dst_raster_interface->CopySharedImage(src_shared_image->mailbox(),
+                                          dst_shared_image->mailbox(), 0, 0, 0,
+                                          0, size.width(), size.height());
 
     gpu::SyncToken sync_token =
         gpu::RasterScopedAccess::EndAccess(std::move(src_access));
@@ -2005,13 +1998,12 @@ scoped_refptr<DrawingBuffer::ColorBuffer> DrawingBuffer::CreateColorBuffer(
   // First see if creating a SharedImage that can be used as an overlay is
   // feasible.
 #if BUILDFLAG(IS_WIN)
-  if (using_swap_chain_) {
+  if (SharedGpuContext::IsGpuCompositingEnabled() && can_use_low_latency_) {
     usage = usage | gpu::SHARED_IMAGE_USAGE_SCANOUT;
     usage = usage | gpu::SHARED_IMAGE_USAGE_CONCURRENT_READ_WRITE;
   }
 #else
   bool use_as_overlay = false;
-  bool low_latency_usage_supported = false;
 
   // On Mac OS, DrawingBuffer is using an IOSurface as its backing storage,
   // this allows WebGL-rendered canvases to be composited by the OS rather
@@ -2026,12 +2018,10 @@ scoped_refptr<DrawingBuffer::ColorBuffer> DrawingBuffer::CreateColorBuffer(
   if (SharedGpuContext::IsGpuCompositingEnabled() &&
       (!is_offscreen_canvas_ ||
        base::FeatureList::IsEnabled(kAllowOverlaysForOffscreenCanvas))) {
-    use_as_overlay = SharedGpuContext::UseOverlaysForWebGL();
-    low_latency_usage_supported =
-        low_latency_enabled() &&
-        SharedGpuContext::LowLatencyUsageSupportedForWebGL();
+    use_as_overlay =
+        SharedGpuContext::UseOverlaysForWebGL() || can_use_low_latency_;
   }
-  if (use_as_overlay || low_latency_usage_supported) {
+  if (use_as_overlay) {
 #if !BUILDFLAG(IS_ANDROID)
     // Android's SharedImage backing for ChromiumImage does not support BGRX.
 
@@ -2058,7 +2048,7 @@ scoped_refptr<DrawingBuffer::ColorBuffer> DrawingBuffer::CreateColorBuffer(
     if (GraphicsContext3DUtils::IsScanoutSupportedForCanvasWithFormat(
             color_buffer_format_, caps)) {
       usage = usage | gpu::SHARED_IMAGE_USAGE_SCANOUT;
-      if (low_latency_usage_supported) {
+      if (can_use_low_latency_) {
         usage = usage | gpu::SHARED_IMAGE_USAGE_CONCURRENT_READ_WRITE;
       }
     }

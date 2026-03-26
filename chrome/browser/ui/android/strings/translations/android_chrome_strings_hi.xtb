@@ -348,6 +348,7 @@ Chrome के अनुभव को बेहतर बनाने के ल�
 <translation id="2496180316473517155">ब्राउज़िंग इतिहास</translation>
 <translation id="2497852260688568942">सिंक को आपके व्यवस्थापक ने अक्षम कर दिया है</translation>
 <translation id="250020030759455918">आपको Chrome में अपनी <ph name="SITE_NAME" /> की साइन इन स्थिति, ब्राउज़िंग डेटा, और साइट डेटा दिखेगा</translation>
+<translation id="2501278716633472235">वापस जाएं</translation>
 <translation id="2510106555128151389"><ph name="WEBAPK_NAME" /> को इंस्टॉल किया जा रहा है...</translation>
 <translation id="2512234228327349533">खरीदारी करने के विकल्प खोजें</translation>
 <translation id="2513403576141822879">निजता, सुरक्षा और डेटा इकट्ठा करने से जुड़ी ज़्यादा सेटिंग के लिए, <ph name="BEGIN_LINK" />सिंक और Google सेवाएं<ph name="END_LINK" /> देखें</translation>
@@ -1492,7 +1493,6 @@ Chrome के अनुभव को बेहतर बनाने के ल�
 <translation id="7057969023583258980">पूरा Chrome इतिहास खोलें</translation>
 <translation id="7063006564040364415">समन्‍वयन सर्वर से कनेक्‍ट नहीं किया जा सका.</translation>
 <translation id="7063106218165698546">टैब ग्रुप को पसंद के मुताबिक बनाएं और 'हो गया' पर क्लिक करें</translation>
-<translation id="7071521146534760487">खाता प्रबंधित करें</translation>
 <translation id="707155805709242880">नीचे चुनें कि क्या सिंक करना है</translation>
 <translation id="7072949719501323344"><ph name="TAB_TITLE" />, चुने गए टैब में से एक ऐसा गुप्त टैब जिसे पिन किया गया है और पिक्चर में पिक्चर मोड में खुला है</translation>
 <translation id="7077143737582773186">SD कार्ड</translation>
@@ -1821,6 +1821,7 @@ Chrome के अनुभव को बेहतर बनाने के ल�
 <translation id="8282950411412455249">सुरक्षा से जुड़ी सेटिंग पर जाएं</translation>
 <translation id="8288688997999490824">{NUM_WINDOWS,plural, =1{1 गुप्त विंडो को बंद करें}one{# गुप्त विंडो को बंद करें}other{# गुप्त विंडो बंद करें}}</translation>
 <translation id="831192587911042850">यह मौजूदा वेबसाइट को उन वेबसाइटों की सूची से जोड़ता है जिन्हें आप फ़ॉलो कर रहे हैं.</translation>
+<translation id="8313599942510782709">आपका टास्क अब भी जारी है</translation>
 <translation id="8317318757008452355">प्रिंट करने के विकल्प देखें</translation>
 <translation id="8320212361750431956">हाल की गतिविधि</translation>
 <translation id="832514020744584629"><ph name="PREF_TITLE" />  <ph name="BEGIN_NEW" />नया<ph name="END_NEW" /></translation>

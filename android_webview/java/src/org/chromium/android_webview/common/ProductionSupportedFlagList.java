@@ -247,9 +247,6 @@ public final class ProductionSupportedFlagList {
                 AutofillFeatures.AUTOFILL_ADDRESS_IMPROVE_BUILDING_NUMBER_REGEX,
                 "Enables building number regex improvement."),
         Flag.baseFeature(
-                AutofillFeatures.AUTOFILL_AND_PASSWORDS_IN_SAME_SURFACE,
-                "Changes how password requests are passed to the embedder. Ideally a noop."),
-        Flag.baseFeature(
                 AutofillFeatures.AUTOFILL_BETTER_LOCAL_HEURISTIC_PLACEHOLDER_SUPPORT,
                 "Treats placeholders as a separate signal for Autofill local heuristics"),
         Flag.baseFeature(
@@ -1194,7 +1191,7 @@ public final class ProductionSupportedFlagList {
                         + " as a task but defers it until the next step like "
                         + "NotifyHeadersReceived."),
         Flag.baseFeature(
-                "kNetworkQualityEstimatorAsyncNotifyHeadersReceived",
+                "NetworkQualityEstimatorAsyncNotifyHeadersReceived",
                 "If true, call NQE::NotifyHeadersReceived asynchronously or"
                         + " defer it until the next step like"
                         + " NotifyBytesRead, based on the parameter values."),
@@ -1234,9 +1231,9 @@ public final class ProductionSupportedFlagList {
                 ContentFeatures.ANDROID_PK_AUTOCORRECT_UNDERLINE,
                 "When enabled, physical keyboard autocorrect underline will display"),
         Flag.baseFeature(
-                ContentFeatures.ANDROID_SPELLING_UNDERLINE_IN_COMPOSITION_MODE,
-                "When enabled, misspelling / grammar underline could be shown when entering"
-                        + " composition mode"),
+                ContentFeatures.ANDROID_BLOCK_MISSPELLING_SUGGESTION_SPAN_IN_COMPOSITION_MODE,
+                "When enabled, misspelling suggestion span will be blocked from showing in"
+                        + " composition mode."),
         Flag.baseFeature(
                 BaseFeatures.PARTITION_ALLOC_FREE_WITH_SIZE,
                 "Enables PartitionAlloc with the optimization of sized deallocation"),
@@ -1364,7 +1361,10 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(
                 AwFeatures.PRERENDER2_WARM_UP_COMPOSITOR_FOR_WEBVIEW,
                 "Requests the compositor warm-up for the WebView prerender triggers."),
-
+        Flag.baseFeature(
+                "UseDynamicBackingAllocations",
+                "Allows CompoundImageBacking to allocate backings during runtime if a compatible"
+                        + " backing to serve clients requested usage is not already present."),
         // Add new commandline switches and features above. The final entry should have a
         // trailing comma for cleaner diffs.
     };

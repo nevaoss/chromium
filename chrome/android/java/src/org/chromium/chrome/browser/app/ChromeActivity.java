@@ -141,6 +141,7 @@ import org.chromium.chrome.browser.metrics.StartupMetricsTracker;
 import org.chromium.chrome.browser.metrics.UmaActivityObserver;
 import org.chromium.chrome.browser.modaldialog.TabModalLifetimeHandler;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager;
+import org.chromium.chrome.browser.multiwindow.MultiInstanceManagerFactory;
 import org.chromium.chrome.browser.multiwindow.MultiWindowUtils;
 import org.chromium.chrome.browser.night_mode.SystemNightModeMonitor;
 import org.chromium.chrome.browser.night_mode.WebContentsDarkModeController;
@@ -483,6 +484,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         super.onPreCreate();
         initializeBackPressHandling();
         initializeThemeResourceWrapper();
+        MultiInstanceManagerFactory.initializeMultiInstanceOrchestrator();
     }
 
     @Override
@@ -1091,6 +1093,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
                             new ChromeAndroidTask.ActivityScopedObjects(
                                     activityWindowAndroid,
                                     tabModelSelector,
+                                    browserWindowType,
                                     supportedProfileType,
                                     desktopWindowStateManager,
                                     multiInstanceManager),
@@ -1831,6 +1834,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         SnackbarManager snackbarManager = mSnackbarManagerSupplier.get();
         if (snackbarManager != null) {
             SnackbarManagerProvider.detach(snackbarManager);
+            snackbarManager.destroy();
         }
 
         if (mBackPressManager != null) {
@@ -2763,6 +2767,15 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
 
         // All the code below assumes currentTab is not null, so return early if it is null.
         if (currentTab == null) {
+            return false;
+        }
+
+        if (id == R.id.back_menu_id) {
+            if (currentTab.canGoBack()) {
+                currentTab.goBack();
+                RecordUserAction.record("MobileMenuBack");
+                return true;
+            }
             return false;
         }
 

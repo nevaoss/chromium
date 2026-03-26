@@ -58,7 +58,6 @@ export function getHtml(this: ComposeboxElement) {
             @click="${this.onInputClick_}"
             @keyup="${this.onInputKeyup_}"
             @input="${this.onInputInput_}"
-            @scroll="${this.onInputScroll_}"
             @focusin="${this.onInputFocusin_}"></textarea>
           </textarea>
           ${this.shouldShowSmartComposeInlineHint_() ? html`
@@ -120,9 +119,6 @@ export function getHtml(this: ComposeboxElement) {
               getSubmitButtonHtml.bind(this)() :
               ''}
           </div>
-          ${this.searchboxLayoutMode === 'TallTopContext' ?
-            getContextMenuHtml.bind(this)()
-          : ''}
           ${this.shouldShowDivider_ ? html`
             <div class="carousel-divider" part="carousel-divider"></div>
           ` : ''}
@@ -134,11 +130,11 @@ export function getHtml(this: ComposeboxElement) {
               .result="${this.result_}"
               .selectedMatchIndex="${this.selectedMatchIndex_}"
               .maxSuggestions="${this.maxSuggestions}"
-              .toolMode="${this.activeToolMode}"
+              .toolMode="${this.inputState?.activeTool}"
               @selected-match-index-changed="${this.onSelectedMatchIndexChanged_}"
               @match-focusin="${this.onMatchFocusin_}"
               @match-click="${this.onMatchClick_}"
-              ?hidden="${!this.showDropdown_}"
+              ?hidden="${!this.showDropdown_ || !this.dropdownNeeded}"
               .lastQueriedInput="${this.lastQueriedInput_}">
           </cr-composebox-dropdown>
           ${this.searchboxLayoutMode === 'TallBottomContext' || this.searchboxLayoutMode === '' || this.isOmniboxInCompactMode_ ? html`

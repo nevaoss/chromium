@@ -14,7 +14,6 @@
 #include "base/run_loop.h"
 #include "base/strings/string_number_conversions.h"
 #include "chrome/test/base/chrome_ash_test_base.h"
-#include "chromeos/crosapi/mojom/cros_display_config.mojom.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/display/display.h"
 #include "ui/display/display_observer.h"
@@ -43,31 +42,29 @@ class TestCrosDisplayConfig final : public ash::CrosDisplayConfig {
       const ash::DisplayLayoutInfo& info) override {
     NOTREACHED();
   }
-  std::vector<crosapi::mojom::DisplayUnitInfoPtr> GetDisplayUnitInfoList(
+  std::vector<ash::DisplayUnitInfo> GetDisplayUnitInfoList(
       bool single_unified) override {
     NOTREACHED();
   }
   DisplayConfigResult SetDisplayProperties(
-      const std::string& id,
+      int64_t display_id,
       const DisplayConfigProperties& properties,
-      crosapi::mojom::DisplayConfigSource source) override {
+      DisplayConfigSource source) override {
     if (properties.set_primary) {
-      int64_t display_id;
-      base::StringToInt64(id, &display_id);
       Shell::Get()->window_tree_host_manager()->SetPrimaryDisplayId(display_id);
     }
     return DisplayConfigResult::kSuccess;
   }
   void SetUnifiedDesktopEnabled(bool enabled) override {}
   DisplayConfigResult OverscanCalibration(
-      const std::string& display_id,
-      crosapi::mojom::DisplayConfigOperation op,
+      int64_t display_id,
+      DisplayCalibrationOperation op,
       const std::optional<gfx::Insets>& delta) override {
     NOTREACHED();
   }
   void TouchCalibration(
-      const std::string& display_id,
-      crosapi::mojom::DisplayConfigOperation op,
+      int64_t display_id,
+      DisplayCalibrationOperation op,
       base::optional_ref<const display::TouchCalibrationData> calibration,
       TouchCalibrationCallback callback) override {
     NOTREACHED();

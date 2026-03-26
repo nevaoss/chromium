@@ -762,9 +762,6 @@ BASE_FEATURE(kFilesTrashAutoCleanup, base::FEATURE_DISABLED_BY_DEFAULT);
 // Enable files app trash for Drive.
 BASE_FEATURE(kFilesTrashDrive, base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Enables the v2 version of the Firmware Updates app.
-BASE_FEATURE(kFirmwareUpdateUIV2, base::FEATURE_ENABLED_BY_DEFAULT);
-
 // Fix manual ip address persistence on managed device with 2 ethernet ports.
 BASE_FEATURE(kFixStaticIpForTwoManagedEthPorts,
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -839,9 +836,6 @@ BASE_FEATURE(kGlanceablesTimeManagementTasksViewAssignedTasks,
 
 // Enables logging new Gaia account creation event.
 BASE_FEATURE(kGaiaRecordAccountCreation, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Enables Gamepad Support.
-BASE_FEATURE(kGameDashboardGamepadSupport, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables the Game Dashboard Main Menu utility views.
 BASE_FEATURE(kGameDashboardUtilities, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -1315,20 +1309,6 @@ BASE_FEATURE(kNotificationLimit, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables a bugfix for devices with a null custom top row property.
 BASE_FEATURE(kNullTopRowFix, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Feature Management flag for the Sys UI holdback experiment, used to avoid
-// certain devices.
-BASE_FEATURE(kFeatureManagementShouldExcludeFromSysUiHoldback,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Enables a holdback experiment for Drive integration.
-BASE_FEATURE(kSysUiShouldHoldbackDriveIntegration,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Enables a holdback experiment for Task Management
-// Glanceables.
-BASE_FEATURE(kSysUiShouldHoldbackTaskManagement,
-             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables the Night Light feature.
 BASE_FEATURE(kNightLight, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -1811,6 +1791,9 @@ BASE_FEATURE(kDemoModeSecondaryGoogleAccountSigninAllowedFalse,
 // to the demo server in signed-in experience.
 BASE_FEATURE(kSendDeviceInfoToDemoServer, base::FEATURE_ENABLED_BY_DEFAULT);
 
+// Whether or not to show the notification based on experiment.
+BASE_FEATURE(kShowFrozenUpdateNotification, base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Uses experimental component version for smart dim.
 BASE_FEATURE(kSmartDimExperimentalComponent, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -2070,10 +2053,6 @@ BASE_FEATURE(kWindowSplitting, base::FEATURE_DISABLED_BY_DEFAULT);
 // Enables an experimental feature that lets users easily layout, resize and
 // position their windows using only mouse and touch gestures.
 BASE_FEATURE(kWmMode, base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Enables an experimental feature that overrides the specific holdback
-// experiments on the M-129.
-BASE_FEATURE(kIgnoreM129Holdback, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables or disables PSM CheckMembership for 28 day device active pings
 // on ChromeOS.
@@ -2677,10 +2656,6 @@ bool IsFingerprintAuthFactorEnabled() {
   return base::FeatureList::IsEnabled(kFingerprintAuthFactor);
 }
 
-bool IsFirmwareUpdateUIV2Enabled() {
-  return base::FeatureList::IsEnabled(kFirmwareUpdateUIV2);
-}
-
 bool IsFixStaticIpForTwoManagedEthPortsEnabled() {
   return base::FeatureList::IsEnabled(kFixStaticIpForTwoManagedEthPorts);
 }
@@ -2817,14 +2792,6 @@ bool IsGlanceablesTimeManagementClassroomStudentViewEnabled() {
 }
 
 bool IsGlanceablesTimeManagementTasksViewEnabled() {
-  const bool device_enrolled_in_holdback =
-      !base::FeatureList::IsEnabled(
-          kFeatureManagementShouldExcludeFromSysUiHoldback) &&
-      base::FeatureList::IsEnabled(kSysUiShouldHoldbackTaskManagement);
-  if (device_enrolled_in_holdback) {
-    return false;
-  }
-
   return base::FeatureList::IsEnabled(kGlanceablesTimeManagementTasksView);
 }
 
@@ -2885,17 +2852,6 @@ bool IsJupiterScreensaverEnabled() {
 }
 
 bool IsLauncherContinueSectionWithRecentsEnabled() {
-  // If the holdback feature flag is enabled, the feature should be disabled,
-  // but only if the device is eligible for the study. Exclusion happens
-  // via hardware overlay, so it needs to be checked separately from the finch
-  // controlled holdback feature flag.
-  const bool device_excluded_from_holdback_study = base::FeatureList::IsEnabled(
-      kFeatureManagementShouldExcludeFromSysUiHoldback);
-  if (IsSysUiShouldHoldbackDriveIntegrationEnabled() &&
-      !device_excluded_from_holdback_study) {
-    return false;
-  }
-
   return base::FeatureList::IsEnabled(kLauncherContinueSectionWithRecents) ||
          base::FeatureList::IsEnabled(
              kLauncherContinueSectionWithRecentsRollout);
@@ -2942,10 +2898,6 @@ bool IsLobsterEnabledForManagedUsers() {
 bool IsLockScreenHideSensitiveNotificationsSupported() {
   return base::FeatureList::IsEnabled(
       kLockScreenHideSensitiveNotificationsSupport);
-}
-
-bool IsGameDashboardGamepadSupportEnabled() {
-  return base::FeatureList::IsEnabled(kGameDashboardGamepadSupport);
 }
 
 bool AreGameDashboardUtilitiesEnabled() {
@@ -3295,11 +3247,6 @@ bool IsSystemNudgeMigrationEnabled() {
 
 bool IsSystemTrayShadowEnabled() {
   return base::FeatureList::IsEnabled(kSystemTrayShadow);
-}
-
-bool IsSysUiShouldHoldbackDriveIntegrationEnabled() {
-  return base::FeatureList::IsEnabled(kSysUiShouldHoldbackDriveIntegration) &&
-         !base::FeatureList::IsEnabled(kIgnoreM129Holdback);
 }
 
 bool IsTetheringExperimentalFunctionalityEnabled() {

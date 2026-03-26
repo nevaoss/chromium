@@ -112,6 +112,7 @@
 #include "third_party/blink/renderer/core/html/html_object_element.h"
 #include "third_party/blink/renderer/core/html/html_script_element.h"
 #include "third_party/blink/renderer/core/html/html_slot_element.h"
+#include "third_party/blink/renderer/core/html/html_stream.h"
 #include "third_party/blink/renderer/core/html/parser/fragment_parser_options.h"
 #include "third_party/blink/renderer/core/html_names.h"
 #include "third_party/blink/renderer/core/input/event_handler.h"
@@ -425,6 +426,11 @@ Node* Node::PseudoAwarePreviousSibling() const {
       }
       [[fallthrough]];
     case kPseudoIdPickerIcon:
+      if (Node* next = parent->GetPseudoElement(kPseudoIdExpandIcon)) {
+        return next;
+      }
+      [[fallthrough]];
+    case kPseudoIdExpandIcon:
       if (Node* next = parent->GetPseudoElement(kPseudoIdAfter)) {
         return next;
       }
@@ -607,6 +613,11 @@ Node* Node::PseudoAwareNextSibling() const {
         return next;
       [[fallthrough]];
     case kPseudoIdAfter:
+      if (Node* next = parent->GetPseudoElement(kPseudoIdExpandIcon)) {
+        return next;
+      }
+      [[fallthrough]];
+    case kPseudoIdExpandIcon:
       if (Node* next = parent->GetPseudoElement(kPseudoIdPickerIcon)) {
         return next;
       }
@@ -740,6 +751,9 @@ Node* Node::PseudoAwareFirstChild() const {
     if (Node* first = current_element->GetPseudoElement(kPseudoIdAfter)) {
       return first;
     }
+    if (Node* first = current_element->GetPseudoElement(kPseudoIdExpandIcon)) {
+      return first;
+    }
     if (Node* first = current_element->GetPseudoElement(kPseudoIdPickerIcon)) {
       return first;
     }
@@ -807,6 +821,9 @@ Node* Node::PseudoAwareLastChild() const {
       return last;
     }
     if (Node* last = current_element->GetPseudoElement(kPseudoIdPickerIcon)) {
+      return last;
+    }
+    if (Node* last = current_element->GetPseudoElement(kPseudoIdExpandIcon)) {
       return last;
     }
     if (Node* last = current_element->GetPseudoElement(kPseudoIdAfter))
@@ -1332,6 +1349,68 @@ void Node::afterHTMLUnsafe(
                                config.interface_name, config.property_name,
                                exception_state),
       config, FragmentParserOptions::From(options), exception_state);
+}
+
+WritableStream* Node::streamBeforeHTMLUnsafe(
+    ScriptState* script_state,
+    V8UnionSetHTMLUnsafeOptionsOrTrustedParserOptions* options,
+    ExceptionState& exception_state) {
+  return HTMLStream::Create(
+      script_state, parentNode(), this, Sanitizer::Mode::kUnsafe,
+      FragmentParserOptions::From(options), trusted_types_names::kNode,
+      trusted_types_names::kStreamBeforeHTMLUnsafe, exception_state);
+}
+
+WritableStream* Node::streamBeforeHTML(
+    ScriptState* script_state,
+    V8UnionSetHTMLOptionsOrTrustedParserOptions* options,
+    ExceptionState& exception_state) {
+  return HTMLStream::Create(
+      script_state, parentNode(), this, Sanitizer::Mode::kSafe,
+      FragmentParserOptions::From(options), trusted_types_names::kNode,
+      trusted_types_names::kStreamBeforeHTML, exception_state);
+}
+
+WritableStream* Node::streamAfterHTMLUnsafe(
+    ScriptState* script_state,
+    V8UnionSetHTMLUnsafeOptionsOrTrustedParserOptions* options,
+    ExceptionState& exception_state) {
+  return HTMLStream::Create(
+      script_state, parentNode(), nextSibling(), Sanitizer::Mode::kUnsafe,
+      FragmentParserOptions::From(options), trusted_types_names::kNode,
+      trusted_types_names::kStreamAfterHTMLUnsafe, exception_state);
+}
+
+WritableStream* Node::streamAfterHTML(
+    ScriptState* script_state,
+    V8UnionSetHTMLOptionsOrTrustedParserOptions* options,
+    ExceptionState& exception_state) {
+  return HTMLStream::Create(
+      script_state, parentNode(), nextSibling(), Sanitizer::Mode::kSafe,
+      FragmentParserOptions::From(options), trusted_types_names::kNode,
+      trusted_types_names::kStreamAfterHTML, exception_state);
+}
+
+WritableStream* Node::streamReplaceWithHTMLUnsafe(
+    ScriptState* script_state,
+    V8UnionSetHTMLUnsafeOptionsOrTrustedParserOptions* options,
+    ExceptionState& exception_state) {
+  return HTMLStream::Create(
+      script_state, parentNode(), nextSibling(), Sanitizer::Mode::kUnsafe,
+      FragmentParserOptions::From(options), trusted_types_names::kNode,
+      trusted_types_names::kStreamReplaceWithHTMLUnsafe, exception_state,
+      [&]() { remove(); });
+}
+
+WritableStream* Node::streamReplaceWithHTML(
+    ScriptState* script_state,
+    V8UnionSetHTMLOptionsOrTrustedParserOptions* options,
+    ExceptionState& exception_state) {
+  return HTMLStream::Create(
+      script_state, parentNode(), nextSibling(), Sanitizer::Mode::kSafe,
+      FragmentParserOptions::From(options), trusted_types_names::kNode,
+      trusted_types_names::kStreamReplaceWithHTML, exception_state,
+      [&]() { remove(); });
 }
 
 void Node::replaceWith(
@@ -2931,6 +3010,10 @@ static void AppendMarkedTree(const String& base_indent,
       if (Element* pseudo = element->GetPseudoElement(kPseudoIdAfter))
         AppendMarkedTree(indent_string, pseudo, marked_node1, marked_label1,
                          marked_node2, marked_label2, builder);
+      if (Element* pseudo = element->GetPseudoElement(kPseudoIdExpandIcon)) {
+        AppendMarkedTree(indent_string, pseudo, marked_node1, marked_label1,
+                         marked_node2, marked_label2, builder);
+      }
       if (Element* pseudo = element->GetPseudoElement(kPseudoIdPickerIcon)) {
         AppendMarkedTree(indent_string, pseudo, marked_node1, marked_label1,
                          marked_node2, marked_label2, builder);

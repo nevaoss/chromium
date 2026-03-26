@@ -52,7 +52,6 @@ source_set("impl") {
     "//chrome/app:generated_resources",
     "//chrome/app/vector_icons",
     "//chrome/browser/contextual_tasks",
-    "//chrome/browser/contextual_tasks:ui",
     "//chrome/browser/tab_group_sync:factories",
     "//chrome/browser/ui",
     "//chrome/browser/ui:browser_element_identifiers",
@@ -84,6 +83,7 @@ source_set("unit_tests") {
     "projects_panel_tab_groups_item_view_unittest.cc",
     "projects_panel_tab_groups_view_unittest.cc",
     "projects_panel_thread_item_view_unittest.cc",
+    "projects_panel_utils_unittest.cc",
     "projects_panel_view_layout_unittest.cc",
     "projects_panel_view_unittest.cc",
   ]

@@ -429,7 +429,7 @@ void OffscreenCanvasRenderingContext2D::WillDraw(
   }
   if (layer_count_ == 0 && resource_provider_ != nullptr) [[likely]] {
     // TODO(crbug.com/1246486): Make auto-flushing layer friendly.
-    resource_provider_->FlushIfRecordingLimitExceeded();
+    resource_provider_->FlushIfRecordingLimitExceededForCanvas2D();
   }
 }
 
@@ -478,7 +478,8 @@ bool OffscreenCanvasRenderingContext2D::WritePixels(
     return false;
   }
 
-  return resource_provider_->WritePixels(orig_info, pixels, row_bytes, x, y);
+  return resource_provider_->WritePixelsForCanvas2D(orig_info, pixels,
+                                                    row_bytes, x, y);
 }
 
 bool OffscreenCanvasRenderingContext2D::ResolveFont(const String& new_font) {

@@ -264,14 +264,15 @@ void PictureLayerImpl::AppendQuadsForResourcelessSoftwareDraw(
                                                       : WhichTree::ACTIVE_TREE;
   for (const auto& image_data :
        discardable_image_map_->animated_images_metadata()) {
-    image_animation_map[image_data.paint_image_id] =
-        controller->GetFrameIndexForImage(image_data.paint_image_id, tree);
+    image_animation_map[image_data.second.paint_image_id] =
+        controller->GetFrameIndexForImage(image_data.second.paint_image_id,
+                                          tree);
   }
 
   auto* quad = render_pass->CreateAndAppendDrawQuad<viz::PictureDrawQuad>();
   quad->SetNew(
       shared_quad_state, geometry_rect, visible_geometry_rect, needs_blending,
-      texture_rect, nearest_neighbor_, quad_content_rect, max_contents_scale,
+      texture_rect, GetNearestNeighbor(), quad_content_rect, max_contents_scale,
       std::move(image_animation_map), raster_source_->GetDisplayItemList(),
       GetRasterInducingScrollOffsets());
   ValidateQuadResources(quad);
@@ -898,10 +899,6 @@ gfx::Rect PictureLayerImpl::RecordedBounds() const {
   return raster_source_ ? raster_source_->recorded_bounds() : gfx::Rect();
 }
 
-bool PictureLayerImpl::GetNearestNeighbor() const {
-  return nearest_neighbor_;
-}
-
 std::vector<const DrawImage*> PictureLayerImpl::GetDiscardableImagesInRect(
     const gfx::Rect& rect) const {
   return discardable_image_map_->GetDiscardableImagesInRect(rect);
@@ -962,6 +959,14 @@ bool PictureLayerImpl::ShouldAnimate(PaintImage::Id paint_image_id) const {
   //  paused once they are not visible.
   if (!HasValidTilePriorities())
     return false;
+
+  if (auto it = discardable_image_map_->animated_images_metadata().find(
+          paint_image_id);
+      it != discardable_image_map_->animated_images_metadata().end()) {
+    if (it->second.repetition_count == kAnimationPaused) {
+      return false;
+    }
+  }
 
   const auto& rects = discardable_image_map_->GetRectsForImage(paint_image_id);
   for (const auto& r : rects) {
@@ -1040,10 +1045,10 @@ void PictureLayerImpl::UpdateDirectlyCompositedImageFromRasterSource() {
       new_default_raster_scale !=
       directly_composited_image_default_raster_scale_;
 
-  if (new_nearest_neighbor != nearest_neighbor_ ||
+  if (new_nearest_neighbor != GetNearestNeighbor() ||
       directly_composited_image_default_raster_scale_changed_) {
     directly_composited_image_default_raster_scale_ = new_default_raster_scale;
-    nearest_neighbor_ = new_nearest_neighbor;
+    SetNearestNeighbor(new_nearest_neighbor);
     NoteLayerPropertyChanged();
   }
 }
@@ -2003,8 +2008,8 @@ void PictureLayerImpl::RegisterAnimatedImages() {
   for (const auto& data : discardable_image_map_->animated_images_metadata()) {
     // Only update the metadata from updated recordings received from a commit.
     if (layer_tree_impl()->IsSyncTree())
-      controller->UpdateAnimatedImage(data);
-    controller->RegisterAnimationDriver(data.paint_image_id, this);
+      controller->UpdateAnimatedImage(data.second);
+    controller->RegisterAnimationDriver(data.second.paint_image_id, this);
   }
 }
 
@@ -2015,7 +2020,7 @@ void PictureLayerImpl::UnregisterAnimatedImages() {
 
   auto* controller = layer_tree_impl()->image_animation_controller();
   for (const auto& data : discardable_image_map_->animated_images_metadata()) {
-    controller->UnregisterAnimationDriver(data.paint_image_id, this);
+    controller->UnregisterAnimationDriver(data.second.paint_image_id, this);
   }
 }
 

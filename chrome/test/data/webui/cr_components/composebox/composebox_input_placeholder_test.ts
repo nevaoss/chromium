@@ -15,6 +15,7 @@ import {WindowProxy} from 'chrome://resources/cr_components/composebox/window_pr
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import type {TabInfo} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import {PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerRemote as SearchboxPageHandlerRemote} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import type {PageRemote as SearchboxPageRemote} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import {assertEquals, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import type {TestMock} from 'chrome://webui-test/test_mock.js';
 import {microtasksFinished} from 'chrome://webui-test/test_util.js';
@@ -25,6 +26,8 @@ suite('ComposeboxInputPlaceholder', () => {
   let composebox: ComposeboxElement;
   let searchboxHandler: TestMock<SearchboxPageHandlerRemote>;
   let windowProxy: TestMock<WindowProxy>;
+  let searchboxCallbackRouter: SearchboxPageCallbackRouter;
+  let searchboxPageRemote: SearchboxPageRemote;
 
   async function setupComposeboxWithInputState(inputState: InputState) {
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
@@ -49,11 +52,13 @@ suite('ComposeboxInputPlaceholder', () => {
   setup(async () => {
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
 
+    searchboxCallbackRouter = new SearchboxPageCallbackRouter();
+    searchboxPageRemote = searchboxCallbackRouter.$.bindNewPipeAndPassRemote();
     installMock(
         PageHandlerRemote,
         mock => ComposeboxProxyImpl.setInstance(new ComposeboxProxyImpl(
             mock, new PageCallbackRouter(), new SearchboxPageHandlerRemote(),
-            new SearchboxPageCallbackRouter())));
+            searchboxCallbackRouter)));
 
     searchboxHandler = installMock(
         SearchboxPageHandlerRemote,
@@ -163,6 +168,13 @@ suite('ComposeboxInputPlaceholder', () => {
         detail: {toolMode: tool},
       }));
       await microtasksFinished();
+      searchboxPageRemote.onInputStateChanged({
+        ...mockInputState,
+        activeTool: tool,
+      });
+      await searchboxPageRemote.$.flushForTesting();
+      await microtasksFinished();
+
       assertEquals(hint, composebox.$.input.placeholder);
 
       // Disable tool mode.
@@ -172,6 +184,13 @@ suite('ComposeboxInputPlaceholder', () => {
         detail: {toolMode: tool},
       }));
       await microtasksFinished();
+      searchboxPageRemote.onInputStateChanged({
+        ...mockInputState,
+        activeTool: ComposeboxToolMode.kUnspecified,
+      });
+      await searchboxPageRemote.$.flushForTesting();
+      microtasksFinished();
+
       assertEquals(defaultApiHint, composebox.$.input.placeholder);
     });
   });
@@ -284,5 +303,111 @@ suite('ComposeboxInputPlaceholder', () => {
     assertTrue(
         !placeholder.includes('Ask about'),
         `Placeholder '${placeholder}' should not include 'Ask about'`);
+  });
+});
+
+suite('ComposeboxScrollCaret', () => {
+  let composebox: ComposeboxElement;
+
+  setup(async () => {
+    document.body.innerHTML = window.trustedTypes!.emptyHTML;
+
+    installMock(
+        PageHandlerRemote,
+        mock => ComposeboxProxyImpl.setInstance(new ComposeboxProxyImpl(
+            mock, new PageCallbackRouter(), new SearchboxPageHandlerRemote(),
+            new SearchboxPageCallbackRouter())));
+
+    const searchboxHandler = installMock(
+        SearchboxPageHandlerRemote,
+        mock => ComposeboxProxyImpl.getInstance().searchboxHandler = mock);
+
+    searchboxHandler.setResultFor('getRecentTabs', Promise.resolve({tabs: []}));
+    searchboxHandler.setResultFor(
+        'getInputState', Promise.resolve({state: createInputState()}));
+
+    const windowProxy = installMock(WindowProxy);
+    windowProxy.setResultFor('setTimeout', 0);
+    windowProxy.setResultMapperFor('matchMedia', () => ({
+                                                   addListener() {},
+                                                   addEventListener() {},
+                                                   removeListener() {},
+                                                   removeEventListener() {},
+                                                 }));
+    composebox = document.createElement('cr-composebox');
+    document.body.appendChild(composebox);
+    await microtasksFinished();
+  });
+
+  test('InputWrapperIsScrollContainer', () => {
+    const inputWrapper =
+        composebox.shadowRoot.querySelector<HTMLElement>('#inputWrapper');
+    assertTrue(!!inputWrapper);
+
+    const overflowY = window.getComputedStyle(inputWrapper).overflowY;
+    assertEquals('auto', overflowY);
+  });
+
+  test('TextareaDoesNotScrollInternally', () => {
+    const input = composebox.$.input;
+    assertTrue(!!input);
+
+    const maxHeight = window.getComputedStyle(input).maxHeight;
+    assertEquals('none', maxHeight);
+  });
+
+  test('CaretTransformStableDuringScroll', async () => {
+    const input = composebox.$.input;
+    const caret = composebox.$.caret;
+    const inputWrapper =
+        composebox.shadowRoot.querySelector<HTMLElement>('#inputWrapper');
+    assertTrue(!!input);
+    assertTrue(!!caret);
+    assertTrue(!!inputWrapper);
+
+    // Type engough texts to cause scrolling.
+    const longText = Array(100).fill('Let\'s keep typing longer...').join('\n');
+    input.value = longText;
+    input.dispatchEvent(new Event('input', {bubbles: true}));
+    await microtasksFinished();
+
+    // Place caret at the end.
+    input.setSelectionRange(longText.length, longText.length);
+    input.dispatchEvent(new Event('keyup', {bubbles: true}));
+    await microtasksFinished();
+
+    // Verify that the wrapper has scrollable content.
+    assertTrue(inputWrapper.scrollHeight > inputWrapper.clientHeight);
+
+    // Record the caret transform before scrolling.
+    const caretTransformBeforeScroll = caret.style.transform;
+    assertTrue(caretTransformBeforeScroll.length > 0);
+
+    // Scroll the wrapper to the top.
+    inputWrapper.scrollTop = 0;
+    await microtasksFinished();
+
+    // Verify that the caret transform is the same before and after scrolling.
+    assertEquals(caretTransformBeforeScroll, caret.style.transform);
+  });
+
+  test('MaskImageOnWrapper', () => {
+    const inputWrapper =
+        composebox.shadowRoot.querySelector<HTMLElement>('#inputWrapper');
+    assertTrue(!!inputWrapper);
+
+    // The mask-image should be on the input wrapper.
+    const wrapperMask =
+        window.getComputedStyle(inputWrapper).getPropertyValue('mask-image');
+    assertTrue(wrapperMask.length > 0 && wrapperMask !== 'none');
+  });
+
+  test('TextareaUsesFieldSizingContent', () => {
+    const input = composebox.$.input;
+    assertTrue(!!input);
+
+    const fieldSizing =
+        window.getComputedStyle(input).getPropertyValue('field-sizing');
+    assertEquals('content', fieldSizing);
   });
 });

@@ -348,6 +348,7 @@ Aðeins einstaklingar sem eru með aðgangsorðið þitt geta lesið dulkóðuð
 <translation id="2496180316473517155">Vafraferill</translation>
 <translation id="2497852260688568942">Kerfisstjóri hefur gert samstillingu óvirka</translation>
 <translation id="250020030759455918">Þú sérð innskráningarstöðu þína, vafragögn og vefsvæðagögn fyrir <ph name="SITE_NAME" /> í Chrome.</translation>
+<translation id="2501278716633472235">Fara til baka</translation>
 <translation id="2510106555128151389">Setur upp <ph name="WEBAPK_NAME" />…</translation>
 <translation id="2512234228327349533">Leita að kaupvalkostum</translation>
 <translation id="2513403576141822879">Frekari upplýsingar sem tengjast persónuvernd, öryggi og gagnasöfnun má finna í <ph name="BEGIN_LINK" />Samstilling og sérstillingar<ph name="END_LINK" /></translation>
@@ -1492,7 +1493,6 @@ Sum vefsvæði kunna til dæmis að bregðast við beiðninni með því að bir
 <translation id="7057969023583258980">Opna allan Chrome-feril</translation>
 <translation id="7063006564040364415">Ekki var hægt að tengjast samstillingarþjóninum.</translation>
 <translation id="7063106218165698546">Sérsníddu flipahóp og ýttu á „Lokið“</translation>
-<translation id="7071521146534760487">Stjórna reikningi</translation>
 <translation id="707155805709242880">Veldu hvað á að samstilla hér að neðan</translation>
 <translation id="7072949719501323344"><ph name="TAB_TITLE" />, margvalinn festur huliðsflipi með mynd í mynd</translation>
 <translation id="7077143737582773186">SD-kort</translation>
@@ -1821,6 +1821,7 @@ Til að breyta þessari stillingu skaltu <ph name="BEGIN_LINK" />eyða Chrome-g�
 <translation id="8282950411412455249">Opna öryggisstillingar</translation>
 <translation id="8288688997999490824">{NUM_WINDOWS,plural, =1{Loka einum huliðsglugga}one{Loka # huliðsglugga}other{Loka # huliðsgluggum}}</translation>
 <translation id="831192587911042850">Bætir núverandi vefsvæði á lista yfir vefsvæði sem þú fylgir.</translation>
+<translation id="8313599942510782709">Verkefnið þitt er enn í vinnslu</translation>
 <translation id="8317318757008452355">Opna valkosti til að prenta</translation>
 <translation id="8320212361750431956">Nýlegar aðgerðir</translation>
 <translation id="832514020744584629"><ph name="PREF_TITLE" />  <ph name="BEGIN_NEW" />Nýtt<ph name="END_NEW" /></translation>

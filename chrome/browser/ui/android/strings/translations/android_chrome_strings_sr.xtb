@@ -213,6 +213,7 @@
 <translation id="1900260903084164610">Ако наставите, прихватате <ph name="BEGIN_TOS_LINK" />Услове коришћења услуге<ph name="END_TOS_LINK" />.</translation>
 <translation id="1904580727789512086">URL-ови које посећујете се чувају на Google налогу</translation>
 <translation id="1910950723001426294">Листа опција за дељење је затворена.</translation>
+<translation id="1912367671208932516">Отвори мени са додацима</translation>
 <translation id="191726024256261717">Прегледајте дозволе</translation>
 <translation id="1917766536967060661">Одмах ћете изгубити приступ групи картица <ph name="GROUP_NAME" /> и <ph name="BLOCKED_MEMBER_FULL_NAME" /> (<ph name="BLOCKED_MEMBER_EMAIL" />) више неће моћи да комуницира са вама у Google услугама.</translation>
 <translation id="1919130412786645364">Дозволи пријављивање у Chrome</translation>
@@ -347,6 +348,7 @@
 <translation id="2496180316473517155">Историја прегледања</translation>
 <translation id="2497852260688568942">Администратор је онемогућио синхронизацију</translation>
 <translation id="250020030759455918">У Chrome-у ћете видети да ли сте пријављени, податке прегледања и податке о сајту за <ph name="SITE_NAME" /></translation>
+<translation id="2501278716633472235">Назад</translation>
 <translation id="2510106555128151389"><ph name="WEBAPK_NAME" /> се инсталира...</translation>
 <translation id="2512234228327349533">Претражите опције куповине</translation>
 <translation id="2513403576141822879">Више подешавања у вези са приватношћу, безбедношћу и прикупљањем података потражите у одељку <ph name="BEGIN_LINK" />Синхронизација и Google услуге<ph name="END_LINK" /></translation>
@@ -857,6 +859,7 @@ Google налог можда има друге облике историје п�
 <translation id="4640331037679501949">{NUM_PASSWORDS,plural, =1{1 угрожена лозинка}one{# угрожена лозинка}few{# угрожене лозинке}other{# угрожених лозинки}}</translation>
 <translation id="4641919525231168205">Идите на следећу страницу</translation>
 <translation id="4642472735733036929">Праћење цена је заустављено</translation>
+<translation id="4643661539340338954">Обавештења за Chrome проналаске су укључена</translation>
 <translation id="4649493483932335039">Прикажи недавне картице</translation>
 <translation id="465657074423018424">Безбедно прегледање вас штити од обмањујућих веб-сајтова. Ако га искључите, будите посебно пажљиви током прегледања, поготово пре уноса лозинки.</translation>
 <translation id="4662373422909645029">Надимак не сме да садржи бројеве</translation>
@@ -1490,7 +1493,6 @@ Google налог можда има друге облике историје п�
 <translation id="7057969023583258980">Отвори комплетну историју Chrome-а</translation>
 <translation id="7063006564040364415">Није могуће повезивање са сервером за синхронизацију.</translation>
 <translation id="7063106218165698546">Прилагодите групу картица и кликните на Готово</translation>
-<translation id="7071521146534760487">Управљајте налогом</translation>
 <translation id="707155805709242880">Одаберите ставке за синхронизацију у наставку</translation>
 <translation id="7072949719501323344"><ph name="TAB_TITLE" />, вишеструко изабрана закачена картица без архивирања у режиму слике у слици</translation>
 <translation id="7077143737582773186">SD картица</translation>
@@ -1655,6 +1657,7 @@ Google налог можда има друге облике историје п�
 <translation id="7686086654630106285">Више о огласима које предлажу сајтови</translation>
 <translation id="7690596512217303514">Уређај није могао да отвори Chrome. Да бисте решили овај проблем, преузмите најновије ажурирање Chrome-а из продавнице апликација.</translation>
 <translation id="7692761875510935111">Брзо отворите у прегледачу. Да бисте изменили ову пречицу, додирните и задржите.</translation>
+<translation id="7695270712963178084">Chrome проналасци</translation>
 <translation id="7697383401610880082">Идентификатор за превлачење</translation>
 <translation id="7698359219371678927">Напишите имејл у апликацији <ph name="APP_NAME" /></translation>
 <translation id="7702420606070050505">Доња табела са недавним активностима је отворена на целом екрану</translation>
@@ -1818,6 +1821,7 @@ Google налог можда има друге облике историје п�
 <translation id="8282950411412455249">Иди у Безбедносна подешавања</translation>
 <translation id="8288688997999490824">{NUM_WINDOWS,plural, =1{Затвори 1 прозор без архивирања}one{Затвори # прозор без архивирања}few{Затвори # прозора без архивирања}other{Затвори # прозора без архивирања}}</translation>
 <translation id="831192587911042850">Додаје актуелни веб-сајт на листу веб-сајтова које пратите.</translation>
+<translation id="8313599942510782709">Задатак је још увек у току</translation>
 <translation id="8317318757008452355">Отворите опције за штампање</translation>
 <translation id="8320212361750431956">Недавна активност</translation>
 <translation id="832514020744584629"><ph name="PREF_TITLE" />  <ph name="BEGIN_NEW" />Ново<ph name="END_NEW" /></translation>

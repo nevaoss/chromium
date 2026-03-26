@@ -348,6 +348,7 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="2496180316473517155">閲覧履歴</translation>
 <translation id="2497852260688568942">同期は管理者により無効にされています</translation>
 <translation id="250020030759455918">Chrome での <ph name="SITE_NAME" /> のログイン ステータス、閲覧データ、サイトデータが表示されます。</translation>
+<translation id="2501278716633472235">戻る</translation>
 <translation id="2510106555128151389">「<ph name="WEBAPK_NAME" />」をインストールしています...</translation>
 <translation id="2512234228327349533">購入オプションを検索</translation>
 <translation id="2513403576141822879">プライバシー、セキュリティ、データ収集に関連するその他の設定については、<ph name="BEGIN_LINK" />同期と Google サービス<ph name="END_LINK" />をご覧ください</translation>
@@ -1063,7 +1064,7 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="544776284582297024">タブを開いて複数のページに同時にアクセスするには、タブを開くボタンをタップします</translation>
 <translation id="5456381639095306749">ページをダウンロード</translation>
 <translation id="5465437530117042974">タブのボトムシートが閉じられました。</translation>
-<translation id="5469852975082458401">テキスト カーソルを使ってページ間を移動できます。オフにするには F7 キーを押します。</translation>
+<translation id="5469852975082458401">テキスト カーソルを使ってページ内を移動できます。オフにするには F7 キーを押します。</translation>
 <translation id="5471273988133666918">タブ <ph name="TAB_TITLE" /> を移動できません</translation>
 <translation id="548278423535722844">マップアプリで開く</translation>
 <translation id="5489222148748465285">Chrome で検索を続けますか？</translation>
@@ -1392,7 +1393,7 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="6738867403308150051">ダウンロードしています…</translation>
 <translation id="6745063744988317486">Mono</translation>
 <translation id="6746338529702829275">アカウントのデータを確認します</translation>
-<translation id="6746834324024491643">すべてのデバイスで同じパスワードやその他の設定を利用するには、<ph name="EMAIL" /> としてログインしてください</translation>
+<translation id="6746834324024491643">すべてのデバイスでパスワードやその他の設定を使用するには、<ph name="EMAIL" /> としてログインしてください</translation>
 <translation id="6751521182688001123">新しいタブをすばやく開きます。このショートカットを編集するには、長押ししてください。</translation>
 <translation id="6752130751133944215">新しいウィンドウを復元するには、アクティブなウィンドウとアクティブでないウィンドウの合計数を <ph name="MAX_WINDOW_COUNT_MINUS_ONE" /> 個以下に減らしてください。アクティブでないウィンドウは 6 か月後に削除されます。</translation>
 <translation id="6754359471209693699">新しい検索を開始</translation>
@@ -1492,7 +1493,6 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="7057969023583258980">Chrome の全履歴を開く</translation>
 <translation id="7063006564040364415">同期サーバーに接続できませんでした。</translation>
 <translation id="7063106218165698546">タブグループをカスタマイズして [完了] をクリック</translation>
-<translation id="7071521146534760487">アカウントを管理</translation>
 <translation id="707155805709242880">同期するデータを下から選択してください</translation>
 <translation id="7072949719501323344"><ph name="TAB_TITLE" />、複数選択されたピクチャー イン ピクチャーの固定シークレット タブ</translation>
 <translation id="7077143737582773186">SD カード</translation>
@@ -1821,6 +1821,7 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="8282950411412455249">セキュリティ設定に移動</translation>
 <translation id="8288688997999490824">{NUM_WINDOWS,plural, =1{1 個のシークレット ウィンドウを閉じる}other{# 個のシークレット ウィンドウを閉じる}}</translation>
 <translation id="831192587911042850">現在のウェブサイトを、フォローしているウェブサイトのリストに追加します。</translation>
+<translation id="8313599942510782709">タスクはまだ進行中です</translation>
 <translation id="8317318757008452355">印刷オプションを開く</translation>
 <translation id="8320212361750431956">最近のアクティビティ</translation>
 <translation id="832514020744584629"><ph name="PREF_TITLE" />  <ph name="BEGIN_NEW" />New<ph name="END_NEW" /></translation>

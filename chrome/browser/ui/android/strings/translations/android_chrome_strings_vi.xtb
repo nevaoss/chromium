@@ -348,6 +348,7 @@ Chỉ những người có cụm mật khẩu mới đọc được dữ liệu 
 <translation id="2496180316473517155">Nhật ký duyệt web</translation>
 <translation id="2497852260688568942">Quản trị viên của bạn đã tắt tính năng đồng bộ hóa</translation>
 <translation id="250020030759455918">Trong Chrome, bạn sẽ thấy trạng thái đăng nhập, dữ liệu duyệt web và dữ liệu trang web trên <ph name="SITE_NAME" /></translation>
+<translation id="2501278716633472235">Quay lại</translation>
 <translation id="2510106555128151389">Đang cài đặt <ph name="WEBAPK_NAME" />...</translation>
 <translation id="2512234228327349533">Tìm các lựa chọn mua sản phẩm</translation>
 <translation id="2513403576141822879">Bạn có thể xem thêm tùy chọn cài đặt liên quan đến quyền riêng tư, bảo mật và hoạt động thu thập dữ liệu trong phần <ph name="BEGIN_LINK" />Đồng bộ hóa và dịch vụ của Google<ph name="END_LINK" /></translation>
@@ -1492,7 +1493,6 @@ Ví dụ: một số trang web có thể phản hồi yêu cầu này bằng cá
 <translation id="7057969023583258980">Mở toàn bộ nhật ký duyệt web trên Chrome</translation>
 <translation id="7063006564040364415">Không thể kết nối với máy chủ đồng bộ hóa.</translation>
 <translation id="7063106218165698546">Tuỳ chỉnh nhóm thẻ rồi nhấn vào xong</translation>
-<translation id="7071521146534760487">Quản lý tài khoản</translation>
 <translation id="707155805709242880">Chọn loại dữ liệu sẽ đồng bộ hóa ở bên dưới</translation>
 <translation id="7072949719501323344"><ph name="TAB_TITLE" />: Thẻ ẩn danh được ghim, được chọn cùng với nhiều thẻ khác và đang ở chế độ hình trong hình</translation>
 <translation id="7077143737582773186">Thẻ SD</translation>
@@ -1821,6 +1821,7 @@ Ví dụ: một số trang web có thể phản hồi yêu cầu này bằng cá
 <translation id="8282950411412455249">Chuyển đến phần cài đặt bảo mật</translation>
 <translation id="8288688997999490824">{NUM_WINDOWS,plural, =1{Đóng 1 cửa sổ ẩn danh}other{Đóng # cửa sổ ẩn danh}}</translation>
 <translation id="831192587911042850">Thêm trang web hiện tại vào danh sách các trang web bạn đang theo dõi.</translation>
+<translation id="8313599942510782709">Nhiệm vụ của bạn vẫn đang được thực hiện</translation>
 <translation id="8317318757008452355">Mở các lựa chọn để in</translation>
 <translation id="8320212361750431956">Hoạt động gần đây</translation>
 <translation id="832514020744584629"><ph name="PREF_TITLE" />  <ph name="BEGIN_NEW" />Mới<ph name="END_NEW" /></translation>

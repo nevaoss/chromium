@@ -125,6 +125,8 @@ static_library("browser") {
   sources = [
     "at_memory/at_memory_data_type.cc",
     "at_memory/at_memory_data_type.h",
+    "at_memory/at_memory_funnel_metrics.cc",
+    "at_memory/at_memory_funnel_metrics.h",
     "at_memory/autofill_data_provider_impl.cc",
     "at_memory/autofill_data_provider_impl.h",
     "autofill_ai_form_rationalization.cc",
@@ -223,6 +225,8 @@ static_library("browser") {
     "data_model/autofill_ai/entity_instance.h",
     "data_model/autofill_ai/entity_type.cc",
     "data_model/autofill_ai/entity_type.h",
+    "data_model/autofill_ai/from_accessibility_annotator.cc",
+    "data_model/autofill_ai/from_accessibility_annotator.h",
     "data_model/data_model_utils.cc",
     "data_model/data_model_utils.h",
     "data_model/form_group.cc",
@@ -799,6 +803,8 @@ static_library("browser") {
     "ui/payments/card_unmask_prompt_options.cc",
     "ui/payments/card_unmask_prompt_options.h",
     "ui/payments/card_unmask_prompt_view.h",
+    "ui/payments/omnibox_autofill_delegate.cc",
+    "ui/payments/omnibox_autofill_delegate.h",
     "ui/payments/payments_ui_closed_reasons.h",
     "ui/payments/payments_window_user_consent_dialog.h",
     "ui/payments/payments_window_user_consent_dialog_controller.h",
@@ -1049,6 +1055,7 @@ static_library("browser") {
     "//components/affiliations/core/browser:affiliations",
     "//components/autofill/core/common:autofill_regex",
     "//components/autofill/core/common:credit_card_number_validation",
+    "//components/consent_auditor",
     "//components/device_reauth",
     "//components/feature_engagement",
     "//components/google/core/common",
@@ -1517,6 +1524,7 @@ source_set("unit_tests") {
   testonly = true
   sources = [
     "at_memory/at_memory_data_type_unittest.cc",
+    "at_memory/at_memory_funnel_metrics_unittest.cc",
     "at_memory/autofill_data_provider_impl_unittest.cc",
     "autofill_ai_form_rationalization_unittest.cc",
     "autofill_feedback_data_unittest.cc",
@@ -1559,6 +1567,7 @@ source_set("unit_tests") {
     "data_model/autofill_ai/date_info_unittest.cc",
     "data_model/autofill_ai/entity_instance_unittest.cc",
     "data_model/autofill_ai/entity_type_unittest.cc",
+    "data_model/autofill_ai/from_accessibility_annotator_unittest.cc",
     "data_model/data_model_utils_unittest.cc",
     "data_model/payments/bank_account_unittest.cc",
     "data_model/payments/bnpl_issuer_unittest.cc",
@@ -1851,7 +1860,7 @@ source_set("unit_tests") {
     ]
   }
 
-  if (!is_ios && !is_android && !is_fuchsia) {
+  if (!is_fuchsia) {
     sources += [
       "filling/autofill_ai/field_filling_entity_util_unittest.cc",
       "permissions/autofill_ai/autofill_ai_permission_utils_unittest.cc",
@@ -1879,6 +1888,7 @@ source_set("unit_tests") {
     "//components/accessibility_annotator/core/annotation_reducer",
     "//components/autofill/core/common:autofill_regex",
     "//components/autofill/core/common:credit_card_number_validation",
+    "//components/consent_auditor",
     "//components/device_reauth",
     "//components/device_reauth:test_support",
     "//components/feature_engagement",

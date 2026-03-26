@@ -15,7 +15,6 @@
 #include "build/build_config.h"
 #include "chrome/app/vector_icons/vector_icons.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_service_factory.h"
-#include "chrome/browser/contextual_tasks/contextual_tasks_ui_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/tab_group_sync/tab_group_sync_service_factory.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
@@ -266,9 +265,7 @@ ProjectsPanelView::ProjectsPanelView(
       threads_enabled
           ? contextual_tasks::ContextualTasksServiceFactory::GetForProfile(
                 browser->GetProfile())
-          : nullptr,
-      contextual_tasks::ContextualTasksUiServiceFactory::
-          GetForBrowserContextIfExists(browser->GetProfile()));
+          : nullptr);
   panel_controller_observer_.Observe(panel_controller_.get());
 
   controls_view_ = content_container_->AddChildView(
@@ -442,6 +439,8 @@ void ProjectsPanelView::OnProjectsPanelStateChanged(
 
     if (!observing_focus_manager_ && GetFocusManager()) {
       GetFocusManager()->AddFocusChangeListener(this);
+      last_focused_view_before_opening_.SetView(
+          GetFocusManager()->GetFocusedView());
       observing_focus_manager_ = true;
     }
 
@@ -484,6 +483,11 @@ void ProjectsPanelView::OnProjectsPanelStateChanged(
   } else {
     if (observing_focus_manager_ && GetFocusManager()) {
       GetFocusManager()->RemoveFocusChangeListener(this);
+      if (last_focused_view_before_opening_) {
+        GetFocusManager()->SetFocusedView(
+            last_focused_view_before_opening_.view());
+        last_focused_view_before_opening_.SetView(nullptr);
+      }
       observing_focus_manager_ = false;
     }
     event_monitor_.reset();
@@ -676,7 +680,14 @@ void ProjectsPanelView::disable_animations_for_testing() {
   disable_animations_for_testing_ = true;
 }
 
-void ProjectsPanelView::ClosePanel() {
+void ProjectsPanelView::ClosePanel(bool caused_by_focus_lost) {
+  // If the panel is closing due to focus being lost (e.g., a tab group was
+  // focused or a tab was activated), the last focused view before the panel was
+  // opened should not be refocused.
+  if (caused_by_focus_lost) {
+    last_focused_view_before_opening_.SetView(nullptr);
+  }
+
   // Ignore if the panel is already animating closed.
   if (!GetVisible() || resize_animation_.IsClosing()) {
     return;
@@ -712,7 +723,8 @@ void ProjectsPanelView::OnTabGroupMoreButtonPressed(
       browser_,
       tab_groups::TabGroupMenuContext::SAVED_TAB_GROUP_BUTTON_CONTEXT_MENU,
       base::BindRepeating(&ProjectsPanelView::ClosePanel,
-                          base::Unretained(this)));
+                          base::Unretained(this),
+                          /*closed_due_to_focus_lost=*/true));
   tab_group_menu_model_->Build(saved_group.value(), base::BindRepeating([]() {
                                  static int latest_command_id = 0;
                                  return latest_command_id++;

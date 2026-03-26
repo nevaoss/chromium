@@ -289,9 +289,16 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
 
 #if !BUILDFLAG(IS_ANDROID)
   // Add required resources for the searchbox.
+  bool session_allows_drag_and_drop = false;
+  if (auto* session_handle = GetOrCreateContextualSessionHandle()) {
+    session_allows_drag_and_drop =
+        session_handle->CheckSearchContentSharingSettings(profile->GetPrefs());
+  }
+
   SearchboxHandler::SetupWebUIDataSource(source, profile,
                                          /*enable_voice_search=*/true,
-                                         /*enable_lens_search=*/false);
+                                         /*enable_lens_search=*/false,
+                                         session_allows_drag_and_drop);
 #endif
   // Add strings.js
   source->UseStringsJs();
@@ -320,8 +327,6 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
       {"onboardingLink", IDS_CONTEXTUAL_TASKS_FIRST_RUN_EXPERIENCE_LEARN_MORE},
       {"onboardingAcceptButton",
        IDS_CONTEXTUAL_TASKS_FIRST_RUN_EXPERIENCE_ACCEPT_BUTTON},
-      {"permissionError", IDS_NEW_TAB_VOICE_PERMISSION_ERROR},
-      {"listening", IDS_NEW_TAB_VOICE_LISTENING},
       {"oauthErrorDialogTitle", IDS_CONTEXTUAL_TASKS_OAUTH_ERROR_DIALOG_TITLE},
       {"oauthErrorDialogBody", IDS_CONTEXTUAL_TASKS_OAUTH_ERROR_DIALOG_BODY},
       {"oauthErrorDialogReloadButton",
@@ -345,6 +350,8 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
   source->AddString(
       "composeboxAttachmentFileTypes",
       contextual_tasks::kContextualTasksNextboxAttachmentFileTypes.Get());
+  source->AddBoolean("lensSendRawFileMediaTypesEnabled",
+                     lens::features::IsLensSendRawFileMediaTypesEnabled());
   source->AddInteger(
       "composeboxFileMaxSize",
       contextual_tasks::kContextualTasksNextboxMaxFileSize.Get());
@@ -407,15 +414,9 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
 
   AddContextMenuItemEligibilityLoadTimeData(source, profile);
   source->AddBoolean("composeboxShowLensSearchChip", false);
-  source->AddBoolean("composeboxShowRecentTabChip", false);
+  // TODO(b/477969358): Remove `composeboxShowSubmit` boolean. This has the same
+  // value everywhere it is used.
   source->AddBoolean("composeboxShowSubmit", true);
-  source->AddBoolean("composeboxContextDragAndDropEnabled", true);
-  source->AddBoolean(
-      "steadyComposeboxShowVoiceSearch",
-      contextual_tasks::GetIsExpandedComposeboxVoiceSearchEnabled());
-  source->AddBoolean(
-      "expandedComposeboxShowVoiceSearch",
-      contextual_tasks::GetIsSteadyComposeboxVoiceSearchEnabled());
   source->AddBoolean("composeboxShowContextMenuTabPreviews", false);
   source->AddBoolean("composeboxContextMenuEnableMultiTabSelection", true);
   source->AddBoolean("clearAllInputsWhenSubmittingQuery", true);
@@ -434,6 +435,8 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
       "enableLockAndUnlockInputCapability",
       contextual_tasks::ShouldEnableLockAndUnlockInputCapability());
   source->AddBoolean("enableFileHint", contextual_tasks::GetEnableFileHint());
+  source->AddBoolean("enableComposeboxJumpFix",
+                     contextual_tasks::GetEnableComposeboxJumpFix());
 
   source->AddString(
       "composeboxSource",
@@ -450,6 +453,11 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
   source->AddLocalizedString(
       "protectedErrorPageBottomLine",
       IDS_SIDE_PANEL_LENS_OVERLAY_PROTECTED_PAGE_ERROR_SECOND_LINE);
+#else
+  // TODO(crbug.com/483442073): Replace the values with Android resources.
+  source->AddBoolean("darkMode", false);
+  source->AddString("protectedErrorPageTopLine", "string");
+  source->AddString("protectedErrorPageBottomLine", "string");
 #endif
 
   source->AddString("userAgentSuffix",

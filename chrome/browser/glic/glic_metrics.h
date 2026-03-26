@@ -225,7 +225,11 @@ enum class ResponseSegmentation {
   kAnchoredContextualCueAttachedAudio = 90,
   kAnchoredContextualCueDetachedText = 91,
   kAnchoredContextualCueDetachedAudio = 92,
-  kMaxValue = kAnchoredContextualCueDetachedAudio,
+  kWebContentsContextMenuAttachedText = 93,
+  kWebContentsContextMenuAttachedAudio = 94,
+  kWebContentsContextMenuDetachedText = 95,
+  kWebContentsContextMenuDetachedAudio = 96,
+  kMaxValue = kWebContentsContextMenuDetachedAudio,
 };
 // LINT.ThenChange(//tools/metrics/histograms/metadata/glic/enums.xml:GlicResponseSegmentation)
 
@@ -341,10 +345,6 @@ class GlicMetrics : public GlicInstanceMetricsBackwardsCompatibility {
   // ----Public API called by other glic classes-----
   // Called when the user completes the onboarding flow (consents).
   void OnTrustFirstOnboardingAccept();
-  // Called when any instance is opened. This method is used to track whether an
-  // FRE onboarding is going to be shown. If an FRE onboarding is already shown,
-  // this method is idempotent.
-  void OnInstanceOpened();
   // Called when any instance is closed. This method is idempotent. If
   // trust-first FRE was shown and not accepted, this metric logs a dismiss
   // metric, and then clears the bit tracking FRE open.
@@ -358,7 +358,7 @@ class GlicMetrics : public GlicInstanceMetricsBackwardsCompatibility {
   // reason (e.g, an error happened, reached a login page instead of the web
   // client, etc).
   void OnGlicWindowOpenInterrupted();
-  // Called just after the the glic window has been loaded into the UI.
+  // Called just after the glic window has been loaded into the UI.
   void OnGlicWindowShown(Browser* browser,
                          std::optional<display::Display> glic_display,
                          const gfx::Rect& glic_bounds);
@@ -422,10 +422,10 @@ class GlicMetrics : public GlicInstanceMetricsBackwardsCompatibility {
   void SetWebClientMode(mojom::WebClientMode mode);
 
  private:
-  // Called when the "Trust-First Onboarding" flow is shown (side panel). This
-  // relies on the assumption that the logic governing when this method is
-  // called matches the logic for showing the trust-first FRE.
-  void OnTrustFirstOnboardingShown();
+  // Called when any instance is opened. This method is used to track whether an
+  // FRE onboarding is going to be shown. If an FRE onboarding is already shown,
+  // this method is idempotent.
+  void OnInstanceOpened();
 
   // Called when `impression_timer_` fires.
   void OnImpressionTimerFired();

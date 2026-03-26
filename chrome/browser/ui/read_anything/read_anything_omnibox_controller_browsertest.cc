@@ -12,6 +12,8 @@
 #include "base/test/scoped_mock_time_message_loop_task_runner.h"
 #include "base/time/time.h"
 #include "chrome/app/chrome_command_ids.h"
+#include "chrome/browser/optimization_guide/optimization_guide_keyed_service.h"
+#include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
@@ -38,6 +40,7 @@
 #include "components/prefs/pref_service.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/test/browser_test.h"
+#include "testing/gtest/include/gtest/gtest.h"
 #include "ui/accessibility/accessibility_features.h"
 #include "ui/actions/action_id.h"
 #include "ui/base/window_open_disposition.h"
@@ -131,6 +134,10 @@ class ReadAnythingOmniboxControllerTestBase
       ASSERT_TRUE(embedded_test_server()->Start());
     }
     GURL url = embedded_test_server()->GetURL("/long_text_page.html");
+    OptimizationGuideKeyedServiceFactory::GetForProfile(browser()->GetProfile())
+        ->AddHintForTesting(
+            url, optimization_guide::proto::READER_MODE_ELIGIBLE,
+            std::optional<optimization_guide::OptimizationMetadata>());
     EXPECT_TRUE(NavigateToURL(browser(), url));
   }
 
@@ -220,26 +227,25 @@ class ReadAnythingOmniboxControllerBrowserTest
 };
 
 IN_PROC_BROWSER_TEST_P(ReadAnythingOmniboxControllerBrowserTest,
-                       PrimaryPageChanged_ImmediatelyHidesOnNonHttp) {
+                       PrimaryPageChanged_HidesOnNonHttp) {
   RegisterPageActionObserver();
   ShowPageAction();
   WaitForPageActionShowing(true);
 
   EXPECT_TRUE(NavigateToURL(browser(), GURL(url::kAboutBlankURL)));
 
-  ExpectPageActionStateImmediate(false);
+  WaitForPageActionShowing(false);
 }
 
-IN_PROC_BROWSER_TEST_P(
-    ReadAnythingOmniboxControllerBrowserTest,
-    PrimaryPageChanged_ImmediatelyHidesOnKnownPoorlyDistilledSites) {
+IN_PROC_BROWSER_TEST_P(ReadAnythingOmniboxControllerBrowserTest,
+                       PrimaryPageChanged_HidesOnKnownPoorlyDistilledSites) {
   RegisterPageActionObserver();
   ShowPageAction();
   WaitForPageActionShowing(true);
 
   EXPECT_TRUE(NavigateToURL(browser(), GURL("https://www.youtube.com")));
 
-  ExpectPageActionStateImmediate(false);
+  WaitForPageActionShowing(false);
 }
 
 IN_PROC_BROWSER_TEST_P(ReadAnythingOmniboxControllerBrowserTest,
@@ -324,34 +330,8 @@ IN_PROC_BROWSER_TEST_P(
       "Accessibility.ReadAnything.OpenedAfterOmniboxIPH", 0);
 }
 
-// TODO(https://crbug.com/491392993): Re-enable this test
-#if BUILDFLAG(IS_CHROMEOS) && \
-    (defined(LEAK_SANITIZER) || defined(ADDRESS_SANITIZER))
-#define MAYBE_DidStopLoadingIsDebounced DISABLED_DidStopLoadingIsDebounced
-#else
-#define MAYBE_DidStopLoadingIsDebounced DidStopLoadingIsDebounced
-#endif
 IN_PROC_BROWSER_TEST_P(ReadAnythingOmniboxControllerBrowserTest,
-                       MAYBE_DidStopLoadingIsDebounced) {
-  RegisterPageActionObserver();
-  NavigateToDistillablePage();
-  WaitForPageActionShowing(true);
-  ReadAnythingEntryPointController::ResetCheckCountForTesting();
-
-  // Navigate to new pages in quick succession.
-  EXPECT_TRUE(NavigateToURL(browser(), GURL("https://support.google.com/")));
-  NavigateToDistillablePage();
-  EXPECT_TRUE(NavigateToURL(browser(), GURL("https://support.google.com/")));
-
-  // After the last navigation, wait until the page action hides. It should have
-  // only hidden once despite navigating multiple times to a new non-distillable
-  // page.
-  WaitForPageActionShowing(false);
-  EXPECT_EQ(ReadAnythingEntryPointController::CheckCountForTesting(), 1);
-}
-
-IN_PROC_BROWSER_TEST_P(ReadAnythingOmniboxControllerBrowserTest,
-                       DidStopLoadingDoesNotCheckIfRMOpened) {
+                       PrimaryPageChanged_DoesNotCheckIfRMOpened) {
   RegisterPageActionObserver();
   OpenRMWithOmnibox();
   VerifyUIState();
@@ -371,6 +351,36 @@ IN_PROC_BROWSER_TEST_P(ReadAnythingOmniboxControllerBrowserTest,
 }
 
 IN_PROC_BROWSER_TEST_P(ReadAnythingOmniboxControllerBrowserTest,
+                       PageChangeWithLoadingIsDebounced) {
+  base::ScopedMockTimeMessageLoopTaskRunner mocked_task_runner;
+
+  // Navigate to a new page.
+  ui_test_utils::NavigateToURLWithDisposition(
+      browser(), GURL("https://www.example.com"),
+      WindowOpenDisposition::CURRENT_TAB, ui_test_utils::BROWSER_TEST_NO_WAIT);
+  mocked_task_runner->RunUntilIdle();
+
+  // Advance time by 500ms. The 1s timer should not have fired.
+  mocked_task_runner->FastForwardBy(base::Milliseconds(500));
+  EXPECT_EQ(ReadAnythingEntryPointController::CheckCountForTesting(), 0);
+
+  // Navigate again. This should restart the timer.
+  ui_test_utils::NavigateToURLWithDisposition(
+      browser(), GURL("https://www.support.google.com"),
+      WindowOpenDisposition::CURRENT_TAB, ui_test_utils::BROWSER_TEST_NO_WAIT);
+  mocked_task_runner->RunUntilIdle();
+
+  // Advance time by another 700ms. Total 1.2s since first nav, but only 700ms
+  // since second nav. Timer should still not have fired if it restarted.
+  mocked_task_runner->FastForwardBy(base::Milliseconds(700));
+  EXPECT_EQ(ReadAnythingEntryPointController::CheckCountForTesting(), 0);
+
+  // Advance remaining 300ms for the second navigation.
+  mocked_task_runner->FastForwardBy(base::Milliseconds(300));
+  EXPECT_EQ(ReadAnythingEntryPointController::CheckCountForTesting(), 1);
+}
+
+IN_PROC_BROWSER_TEST_P(ReadAnythingOmniboxControllerBrowserTest,
                        TabForegroundedIsDebounced) {
   RegisterPageActionObserver();
   NavigateToDistillablePage();
@@ -387,6 +397,24 @@ IN_PROC_BROWSER_TEST_P(ReadAnythingOmniboxControllerBrowserTest,
   // only shown once despite foregrounding the distillable page several times.
   WaitForPageActionShowing(true);
   EXPECT_EQ(ReadAnythingEntryPointController::CheckCountForTesting(), 1);
+}
+
+IN_PROC_BROWSER_TEST_P(ReadAnythingOmniboxControllerBrowserTest,
+                       TabForegroundedDoesNotCheckIfAlreadyChecked) {
+  RegisterPageActionObserver();
+  NavigateToDistillablePage();
+  WaitForPageActionShowing(true);
+  EXPECT_GT(ReadAnythingEntryPointController::CheckCountForTesting(), 0);
+  ReadAnythingEntryPointController::ResetCheckCountForTesting();
+
+  // Switch tabs in quick succession.
+  chrome::NewTab(browser());
+  browser()->tab_strip_model()->ActivateTabAt(1);
+  browser()->tab_strip_model()->ActivateTabAt(0);
+  browser()->tab_strip_model()->ActivateTabAt(1);
+  browser()->tab_strip_model()->ActivateTabAt(0);
+
+  EXPECT_EQ(ReadAnythingEntryPointController::CheckCountForTesting(), 0);
 }
 
 IN_PROC_BROWSER_TEST_P(ReadAnythingOmniboxControllerBrowserTest,
@@ -458,6 +486,29 @@ IN_PROC_BROWSER_TEST_P(
   browser()->tab_strip_model()->GetActiveTab()->Close();
 
   EXPECT_EQ(GetOmniboxIgnoredCount(), 0);
+}
+
+IN_PROC_BROWSER_TEST_P(
+    ReadAnythingOmniboxControllerBrowserTest,
+    TabDetached_DoesNotUpdateIgnoredCountIfPageWasNotChecked) {
+  chrome::NewTab(browser());
+  RegisterPageActionObserver();
+  NavigateToDistillablePage();
+  WaitForPageActionShowing(true);
+  MockLongDwellTime();
+
+  // Move to the next page without waiting for the load to finish. The ignored
+  // count should increment since the previous page was distillable.
+  ui_test_utils::NavigateToURLWithDisposition(
+      browser(), GURL("https://www.example.com"),
+      WindowOpenDisposition::CURRENT_TAB, ui_test_utils::BROWSER_TEST_NO_WAIT);
+  ASSERT_TRUE(
+      base::test::RunUntil([&]() { return GetOmniboxIgnoredCount() == 1; }));
+
+  // Close the tab before the new page is checked. The ignored count should not
+  // increase because it wasn't checked.
+  browser()->tab_strip_model()->GetActiveTab()->Close();
+  EXPECT_EQ(GetOmniboxIgnoredCount(), 1);
 }
 
 IN_PROC_BROWSER_TEST_P(

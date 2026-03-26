@@ -348,6 +348,7 @@
 <translation id="2496180316473517155">ब्राउझिंग इतिहास</translation>
 <translation id="2497852260688568942">तुमच्या ॲडमिनिस्ट्रेटरने सिंक अक्षम केले आहे</translation>
 <translation id="250020030759455918">तुम्हाला Chrome मध्ये तुमची <ph name="SITE_NAME" /> साइन-इन स्थिती, ब्राउझिंग डेटा आणि साइट डेटा दिसेल</translation>
+<translation id="2501278716633472235">परत जा</translation>
 <translation id="2510106555128151389"><ph name="WEBAPK_NAME" /> इंस्टॉल करत आहे…</translation>
 <translation id="2512234228327349533">खरेदी करण्याचे पर्याय शोधा</translation>
 <translation id="2513403576141822879">गोपनीयता, सुरक्षितता आणि डेटा संकलनाशी संबंधित अधिक सेटिंग्जसाठी, <ph name="BEGIN_LINK" />सिंक आणि Google सेवा<ph name="END_LINK" /> पहा</translation>
@@ -1492,7 +1493,6 @@
 <translation id="7057969023583258980">संपूर्ण Chrome इतिहास उघडा</translation>
 <translation id="7063006564040364415">संकालित सर्व्हरशी कनेक्ट करू शकलो नाही.</translation>
 <translation id="7063106218165698546">टॅब गट कस्टमाइझ करा आणि पूर्ण झाले वर क्लिक करा</translation>
-<translation id="7071521146534760487">खाते व्यवस्थापित करा</translation>
 <translation id="707155805709242880">काय सिंक करायचे आहे ते खाली निवडा</translation>
 <translation id="7072949719501323344"><ph name="TAB_TITLE" />, मल्टीसिलेक्ट केलेला पिन केलेला चित्रात-चित्र गुप्त टॅब</translation>
 <translation id="7077143737582773186">SD कार्ड</translation>
@@ -1821,6 +1821,7 @@
 <translation id="8282950411412455249">सुरक्षा सेटिंग्जवर जा</translation>
 <translation id="8288688997999490824">{NUM_WINDOWS,plural, =1{१ गुप्त विंडो बंद करा}other{# गुप्त विंडो बंद करा}}</translation>
 <translation id="831192587911042850">तुम्ही फॉलो करत असलेल्या वेबसाइटच्या सूचीमध्ये सध्याची वेबसाइट जोडते.</translation>
+<translation id="8313599942510782709">तुमची टास्क अजूनही प्रगतीपथावर आहे</translation>
 <translation id="8317318757008452355">प्रिंट करण्यासाठी पर्याय उघडा</translation>
 <translation id="8320212361750431956">अलीकडील अ‍ॅक्टिव्हिटी</translation>
 <translation id="832514020744584629"><ph name="PREF_TITLE" />  <ph name="BEGIN_NEW" />नवीन<ph name="END_NEW" /></translation>

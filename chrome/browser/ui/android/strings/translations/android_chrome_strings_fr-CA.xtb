@@ -348,6 +348,7 @@ Seule une personne connaissant votre phrase de passe peut lire vos données chif
 <translation id="2496180316473517155">Historique de navigation</translation>
 <translation id="2497852260688568942">La synchronisation est désactivée par votre administrateur</translation>
 <translation id="250020030759455918">Vous verrez votre état de connexion à <ph name="SITE_NAME" />, vos données de navigation et vos données de site dans Chrome</translation>
+<translation id="2501278716633472235">Retour</translation>
 <translation id="2510106555128151389">Installation de <ph name="WEBAPK_NAME" /> en cours…</translation>
 <translation id="2512234228327349533">Rechercher des options d'achat</translation>
 <translation id="2513403576141822879">Pour plus de paramètres relatifs à la confidentialité, à la sécurité et à la collecte de données, voir <ph name="BEGIN_LINK" />Synchronisation et services Google<ph name="END_LINK" /></translation>
@@ -1492,7 +1493,6 @@ Par exemple, certains sites Web peuvent répondre à cette demande en diffusant 
 <translation id="7057969023583258980">Ouvrir l'historique complet de Chrome</translation>
 <translation id="7063006564040364415">Échec de connexion au serveur de synchronisation.</translation>
 <translation id="7063106218165698546">Personnalisez le groupe d'onglets et touchez Terminé</translation>
-<translation id="7071521146534760487">Gérer le compte</translation>
 <translation id="707155805709242880">Choisissez les éléments à synchroniser ci-dessous</translation>
 <translation id="7072949719501323344"><ph name="TAB_TITLE" />, onglet de navigation privée épinglé et multisélectionné en mode Incrustation d'image</translation>
 <translation id="7077143737582773186">Carte SD</translation>
@@ -1821,6 +1821,7 @@ Pour modifier ce paramètre, <ph name="BEGIN_LINK" />supprimez les données Chro
 <translation id="8282950411412455249">Accéder aux paramètres de sécurité</translation>
 <translation id="8288688997999490824">{NUM_WINDOWS,plural, =1{Fermer 1 fenêtre de navigation privée}one{Fermer # fenêtre de navigation privée}other{Fermer # fenêtres de navigation privée}}</translation>
 <translation id="831192587911042850">Ajoute le site Web actuel à la liste des sites Web que vous suivez.</translation>
+<translation id="8313599942510782709">Votre tâche est toujours en cours</translation>
 <translation id="8317318757008452355">Ouvrir les options d'impression</translation>
 <translation id="8320212361750431956">Activité récente</translation>
 <translation id="832514020744584629"><ph name="PREF_TITLE" />  <ph name="BEGIN_NEW" />Nouveau<ph name="END_NEW" /></translation>

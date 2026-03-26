@@ -64,7 +64,7 @@ namespace blink {
 
 ScriptRegexp* EmailInputType::CreateEmailRegexp(v8::Isolate* isolate) {
   return MakeGarbageCollected<ScriptRegexp>(isolate, kEmailPattern,
-                                            kTextCaseASCIIInsensitive);
+                                            kTextCaseAsciiInsensitive);
 }
 
 Vector<StringView> EmailInputType::ParseMultipleValues(
@@ -142,7 +142,7 @@ static bool IsInvalidDomainCharacter(UChar ch) {
   if (!IsAscii(ch)) {
     return true;
   }
-  return !IsASCIILower(ch) && !IsASCIIUpper(ch) && !IsAsciiDigit(ch) &&
+  return !IsAsciiLower(ch) && !IsAsciiUpper(ch) && !IsAsciiDigit(ch) &&
          ch != '.' && ch != '-';
 }
 

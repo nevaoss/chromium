@@ -1241,6 +1241,9 @@
   <message name="IDS_FJORD_IMAGE_SELECTION_ZOOM_LABEL" desc="Label for the radio button option to enroll the device as Google Beam with Zoom.">
     Google Beam with Zoom
   </message>
+  <message name="IDS_FJORD_IMAGE_SELECTION_NEXT_BUTTON_TEXT" desc="Button shown to the user to go to the next step.">
+    Next
+  </message>
   <message name="IDS_FJORD_IMAGE_DOWNLOAD_TITLE" desc="Title of the OOBE screen shown while the device image download is in progress.">
     Installing software
   </message>
@@ -1703,18 +1706,6 @@
   </message>
   <message name="IDS_LOGIN_PASSWORD_CHANGED_FORGOT_OLD_PASSWORD_BUTTON" desc="Forgot old password button on the recover local data dialog.">
     Forgot old password
-  </message>
-  <message name="IDS_LOGIN_PASSWORD_CHANGED_RECOVERY_TITLE" desc="Screen title shown on the opt-in page to the user data recovery feature.">
-    Turn on local data recovery to protect your data?
-  </message>
-  <message name="IDS_LOGIN_PASSWORD_CHANGED_RECOVERY_SUBTITLE" desc="Screen subtitle shown on the opt-in page to the user data recovery feature.">
-    Next time your Google Account password changes, your local data will be recovered automatically after you sign in to your Google Account
-  </message>
-  <message name="IDS_LOGIN_PASSWORD_CHANGED_RECOVERY_NO_BUTTON" desc="Text button shown on the opt-in page to the user data recovery feature. The button skips the recovery opt-in.">
-    No thanks
-  </message>
-  <message name="IDS_LOGIN_PASSWORD_CHANGED_RECOVERY_ENABLE_BUTTON" desc="Text button shown on the opt-in page to the user data recovery feature. The button enables the recovery.">
-    Turn on
   </message>
 
   <message name="IDS_LOGIN_CRYPTOHOME_RECOVERY_SETUP_ERROR_TITLE" desc="The title message when Cryptohome recovery setup failed.">
@@ -2270,9 +2261,6 @@
   <message name="IDS_STATUSBAR_DISABLE_SPOKEN_FEEDBACK" desc="The menu option to disable spoken feedback accessibility feature.">
     Disable ChromeVox (spoken feedback)
   </message>
-  <message name="IDS_STATUSBAR_NETWORK_DEVICE_ETHERNET" desc="Label for an ethernet network device.">
-    Ethernet
-  </message>
 
   <!-- Status bar -->
   <message name="IDS_STATUSBAR_NO_NETWORKS_MESSAGE" desc="No networks are available">
@@ -2801,16 +2789,6 @@
   <message name="IDS_FILEMANAGER_APP_NAME" desc="Name for the File Manager app.">
     Files
   </message>
-  <if expr="reven">
-    <message name="IDS_FILEMANAGER_APP_DESCRIPTION" desc="Description for the File Manager app.">
-      The Files app provides quick access to files that you've saved on Google Drive, external storage, or your ChromeOS Flex device.
-    </message>
-  </if>
-  <if expr="not reven">
-    <message name="IDS_FILEMANAGER_APP_DESCRIPTION" desc="Description for the File Manager app.">
-      The Files app provides quick access to files that you've saved on Google Drive, external storage, or your ChromeOS device.
-    </message>
-  </if>
 
   <!-- Network portal notification -->
   <message name="IDS_NEW_PORTAL_DETECTION_NOTIFICATION_TITLE_WIRED" desc="Title for the new system notification that current wired network is behind captive portal">
@@ -2832,15 +2810,6 @@
   </message>
   <message name="IDS_3G_NOTIFICATION_MESSAGE" desc="Text of the 3G data notification telling that 3G data is enabled.">
     Google Chrome will use mobile data if you're not connected to another network.
-  </message>
-  <message name="IDS_3G_DATASAVER_TITLE" desc="Title of the 3G data notification prompting user to install Data Saver.">
-    You are using mobile data
-  </message>
-  <message name="IDS_3G_DATASAVER_MESSAGE" desc="Text of the 3G data notification prompting user to install Data Saver.">
-    Save data and browse faster using Google Data Saver. Click to learn more.
-  </message>
-  <message name="IDS_3G_DATASAVER_MESSAGE_LITE_MODE" desc="Text of the 3G data notification prompting user to install Lite mode.">
-    Browse faster and use less data with Lite mode. Click to learn more.
   </message>
 
   <!-- chrome://mobilesetup strings -->
@@ -6026,32 +5995,6 @@ Your <ph name="DEVICE_TYPE">{0}<ex>Chromebook</ex></ph> will be locked now.
   </message>
   <message name="IDS_GAIA_INFO_QUICK_START_FLOW" desc="Label for the option on the Gaia Info screen to use quick start to enter account and credentials.">
     Automatically get account from Android phone
-  </message>
-
-  <!-- Floating Workspace -->
-  <message name="IDS_FLOATING_WORKSPACE_STARTUP_DIALOG_TITLE" desc="Title for floating workspace startup dialog.">
-    Restoring windows from your previous session...
-  </message>
-  <message name="IDS_FLOATING_WORKSPACE_STARTUP_DIALOG_LONG_RESPONSE_TITLE" desc="Title for floating workspace startup dialog when floating workspace is taking too long.">
-    Restoring windows is taking longer than expected
-  </message>
-  <message name="IDS_FLOATING_WORKSPACE_STARTUP_DIALOG_BUTTON" desc="Button for floating workspace dialog that closes the dialog without waiting for browser and app windows to be restored.">
-    Don't restore windows
-  </message>
-  <message name="IDS_FLOATING_WORKSPACE_NETWORK_DIALOG_TITLE" desc="Title for floating workspace network dialog which is shown when there is no network connection.">
-    Network not available
-  </message>
-  <message name="IDS_FLOATING_WORKSPACE_NETWORK_DIALOG_SUBTITLE" desc="Subtitle for floating workspace network dialog which is shown when there is no network connection.">
-    Internet connection is required.
-  </message>
-  <message name="IDS_FLOATING_WORKSPACE_ERROR_DIALOG_TITLE" desc="Title for floating dialog error screen which is shown when floating workspace can not restore the session.">
-    Can't restore windows from your previous session
-  </message>
-  <message name="IDS_FLOATING_WORKSPACE_ERROR_DIALOG_SUBTITLE" desc="Subtitle for floating dialog error screen which is shown when floating workspace can not restore the session.">
-    An error occured
-  </message>
-  <message name="IDS_FLOATING_WORKSPACE_ERROR_DIALOG_BUTTON" desc="Button for floating workspace error dialog that disables floating workspace and closes the dialog after the error screen is shown.">
-    Continue to new session
   </message>
 
   <!-- Shortcut Accessibility Label-->

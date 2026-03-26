@@ -348,6 +348,7 @@
 <translation id="2496180316473517155">ബ്രൗസിംഗ് ചരിത്രം</translation>
 <translation id="2497852260688568942">നിങ്ങളുടെ അഡ്‌മിനിസ്‌ട്രേറ്റർ സമന്വയിപ്പിക്കൽ പ്രവർത്തനരഹിതമാക്കി</translation>
 <translation id="250020030759455918">നിങ്ങളുടെ <ph name="SITE_NAME" /> സൈൻ ഇൻ നില, ബ്രൗസിംഗ് ഡാറ്റ, സൈറ്റ് ഡാറ്റ എന്നിവ Chrome-ൽ കാണാം</translation>
+<translation id="2501278716633472235">പിന്നോട്ട് പോകുക</translation>
 <translation id="2510106555128151389"><ph name="WEBAPK_NAME" /> ഇൻസ്റ്റാൾ ചെയ്യുന്നു...</translation>
 <translation id="2512234228327349533">വാങ്ങൽ ഓപ്‌ഷനുകൾ തിരയുക</translation>
 <translation id="2513403576141822879">സ്വകാര്യത, സുരക്ഷ, ഡാറ്റാ ശേഖരണം എന്നിവയുമായി ബന്ധപ്പെട്ട കൂടുതൽ ക്രമീകരണത്തിന്, <ph name="BEGIN_LINK" />സമന്വയവും Google സേവനങ്ങളും<ph name="END_LINK" /> കാണുക</translation>
@@ -1492,7 +1493,6 @@
 <translation id="7057969023583258980">പൂർണമായ Chrome ചരിത്രം തുറക്കുക</translation>
 <translation id="7063006564040364415">സമന്വയ സെർവറിലേക്ക് കണക്‌റ്റ് ചെയ്യാനായില്ല.</translation>
 <translation id="7063106218165698546">ടാബ് ഗ്രൂപ്പ് ഇഷ്ടാനുസൃതമാക്കി 'പൂർത്തിയായി' അമർത്തുക</translation>
-<translation id="7071521146534760487">അക്കൗണ്ട് മാനേജ് ചെയ്യുക</translation>
 <translation id="707155805709242880">ചുവടെയുള്ളവയിൽ എന്താണ് സമന്വയിപ്പിക്കേണ്ടതെന്ന് തിരഞ്ഞെടുക്കുക</translation>
 <translation id="7072949719501323344"><ph name="TAB_TITLE" />, മൾട്ടിസെലക്റ്റ് ചെയ്ത, പിൻ ചെയ്ത, 'ചിത്രത്തിനുള്ളിൽ ചിത്രം' അദൃശ്യ ടാബ്</translation>
 <translation id="7077143737582773186">SD കാർഡ്</translation>
@@ -1821,6 +1821,7 @@
 <translation id="8282950411412455249">സുരക്ഷാ ക്രമീകരണത്തിലേക്ക് പോകുക</translation>
 <translation id="8288688997999490824">{NUM_WINDOWS,plural, =1{ഒരു അദൃശ്യ വിൻഡോ അടയ്ക്കുക}other{# അദൃശ്യ വിൻഡോകൾ അടയ്ക്കുക}}</translation>
 <translation id="831192587911042850">നിങ്ങൾ പിന്തുടരുന്ന വെബ് സൈറ്റുകളുടെ ലിസ്റ്റിലേക്ക് നിലവിലെ വെബ് സൈറ്റ് ചേർക്കുന്നു.</translation>
+<translation id="8313599942510782709">നിങ്ങളുടെ ടാസ്‌ക് ഇപ്പോഴും പുരോഗമിക്കുകയാണ്</translation>
 <translation id="8317318757008452355">പ്രിന്റ് ചെയ്യാനുള്ള ഓപ്ഷനുകൾ തുറക്കുക</translation>
 <translation id="8320212361750431956">സമീപകാല ആക്റ്റിവിറ്റി</translation>
 <translation id="832514020744584629"><ph name="PREF_TITLE" />  <ph name="BEGIN_NEW" />പുതിയത്<ph name="END_NEW" /></translation>

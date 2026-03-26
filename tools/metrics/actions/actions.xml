@@ -785,6 +785,8 @@ should be able to be added at any place in this file.
       summary="For tab switcher button switch to incognito."/>
   <variant name="_TabSwitcherFloatingActionButton"
       summary="For tab switcher new tab floating action button."/>
+  <variant name="_ThreeDotMenuBackButton"
+      summary="For the three dot menu back button."/>
   <variant name="_ToolbarManagementButton"
       summary="For the toolbar managmeent button."/>
   <variant name="_TouchToSearchCallout"
@@ -902,7 +904,7 @@ should be able to be added at any place in this file.
   <variant name=".iOSLensSWYS" summary="iOS Lens Search What You See"/>
   <variant name=".LensOverlayTranslateButton"
       summary="Lens Overlay Translate Button"/>
-  <variant name=".PdfInk2" summary="PDF Ink Signatures"/>
+  <variant name=".PdfInk2" summary="PDF Ink Signatures (obsolete)"/>
   <variant name=".PdfSaveToDrive" summary="PDF Save to Drive"/>
   <variant name=".PerformanceInterventionUI"
       summary="Performance Intervention"/>
@@ -6891,6 +6893,16 @@ should be able to be added at any place in this file.
   <description>
     Recorded when user edits IBAN with a new nickname via
     chrome://settings/payments page.
+  </description>
+</action>
+
+<action name="AutofillYourSavedInfoViewed">
+  <owner>josefraska@google.com</owner>
+  <owner>mikhe@google.com</owner>
+  <owner>chrome-autofill-team@google.com</owner>
+  <description>
+    Recorded when user visits Autofill and passwords settings via
+    chrome://settings/autofill page.
   </description>
 </action>
 
@@ -51840,12 +51852,6 @@ should be able to be added at any place in this file.
     The user selected the &quot;Share Highlight&quot; option in the Text
     Fragments popup menu.
   </description>
-</action>
-
-<action name="TextSelectionChanged">
-  <owner>mvanouwerkerk@chromium.org</owner>
-  <owner>wbjacksonjr@chromium.org</owner>
-  <description>The text selection changed.</description>
 </action>
 
 <action name="TextToSpeech.Pause">

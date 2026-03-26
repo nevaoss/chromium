@@ -46,6 +46,7 @@ source_set("contextual_tasks") {
     "//components/contextual_search:public",
     "//components/contextual_tasks/public",
     "//components/keyed_service/core",
+    "//components/lens",
     "//components/lens:lens_url_utils",
     "//components/page_content_annotations/content:page_embeddings",
     "//components/passage_embeddings/core:passage_embeddings_types",
@@ -90,6 +91,7 @@ source_set("impl") {
     "//chrome/browser/autocomplete:aim_eligibility_service",
     "//chrome/browser/contextual_search",
     "//chrome/browser/favicon",
+    "//chrome/browser/glic",
     "//chrome/browser/history",
     "//chrome/browser/optimization_guide",
     "//chrome/browser/page_content_annotations",
@@ -113,6 +115,7 @@ source_set("impl") {
     "//components/optimization_guide/proto:optimization_guide_proto",
     "//components/page_content_annotations/core",
     "//components/sessions:session_id",
+    "//components/sync/base",
     "//components/sync/model",
     "//components/tabs:public",
     "//components/url_deduplication",
@@ -186,6 +189,7 @@ source_set("ui") {
       "//chrome/browser/ui/webui/cr_components/composebox",
       "//chrome/browser/ui/webui/searchbox",
       "//components/contextual_tasks/public:feature_list",
+      "//components/contextual_tasks/public:query_contextualizer",
       "//content/public/browser",
       "//content/public/common",
       "//ui/webui",
@@ -238,6 +242,7 @@ source_set("ui_impl") {
     "//chrome/browser/contextual_search",
     "//chrome/browser/devtools",
     "//chrome/browser/feedback:feedback_enum",
+    "//chrome/browser/glic/browser_ui",
     "//chrome/browser/optimization_guide",
     "//chrome/browser/profiles:profile",
     "//chrome/browser/resources/contextual_tasks:resources",
@@ -264,10 +269,8 @@ source_set("ui_impl") {
     "//google_apis",
     "//net",
   ]
-
   if (!is_android) {
     deps += [
-      "//chrome/browser/glic/browser_ui",
       "//chrome/browser/resources/contextual_tasks:resources",
       "//chrome/browser/tab_list",
       "//chrome/browser/ui/contextual_search",

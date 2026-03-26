@@ -348,6 +348,7 @@
 <translation id="2496180316473517155">Դիտարկումների պատմություն</translation>
 <translation id="2497852260688568942">Ձեր ադմինիստրատորն անջատել է համաժամացումը</translation>
 <translation id="250020030759455918">Դուք կտեսնեք ձեր <ph name="SITE_NAME" /> հաշվի մուտքի կարգավիճակը, այցելությունների պատմությունը և կայքի տվյալները Chrome-ում</translation>
+<translation id="2501278716633472235">Վերադառնալ</translation>
 <translation id="2510106555128151389">«<ph name="WEBAPK_NAME" />» հավելվածը տեղադրվում է…</translation>
 <translation id="2512234228327349533">Որոնել գնման տարբերակներ</translation>
 <translation id="2513403576141822879"><ph name="BEGIN_LINK" />Համաժամացում և Google-ի ծառայություններ<ph name="END_LINK" /> բաժնում դուք կարող եք գտնել գաղտնիության, անվտանգության և տվյալների հավաքման հետ կապված լրացուցիչ կարգավորումներ։</translation>
@@ -1492,7 +1493,6 @@
 <translation id="7057969023583258980">Բացել Chrome-ի ամբողջ պատմությունը</translation>
 <translation id="7063006564040364415">Չհաջողվեց կապակցվել համաժամացման սերվերին:</translation>
 <translation id="7063106218165698546">Անհատականացրեք ներդիրների խումբը և սեղմեք «Պատրաստ է»</translation>
-<translation id="7071521146534760487">Կառավարել հաշիվը</translation>
 <translation id="707155805709242880">Ստորև ընտրեք, թե ինչ տվյալներ համաժամացնել</translation>
 <translation id="7072949719501323344"><ph name="TAB_TITLE" />, ընտրված մի քանի ինկոգնիտո ներդիրներից մեկը, որն ամրացված է, և որում նկարը նկարի մեջ է</translation>
 <translation id="7077143737582773186">SD քարտ</translation>
@@ -1821,6 +1821,7 @@
 <translation id="8282950411412455249">Բացել անվտանգության կարգավորումները</translation>
 <translation id="8288688997999490824">{NUM_WINDOWS,plural, =1{Փակել 1 ինկոգնիտո պատուհան}one{Փակել # ինկոգնիտո պատուհան}other{Փակել # ինկոգնիտո պատուհան}}</translation>
 <translation id="831192587911042850">Ավելացնում է ընթացիկ կայքը վեբ կայքերի ցանկում, որոնց հետևում եք։</translation>
+<translation id="8313599942510782709">Ձեր առաջադրանքը դեռ կատարման փուլում է</translation>
 <translation id="8317318757008452355">Բացել տպելու ընտրանքները</translation>
 <translation id="8320212361750431956">Վերջին գործողությունները</translation>
 <translation id="832514020744584629"><ph name="PREF_TITLE" />  <ph name="BEGIN_NEW" />Նորույթ<ph name="END_NEW" /></translation>

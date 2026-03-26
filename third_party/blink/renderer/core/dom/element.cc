@@ -149,6 +149,7 @@
 #include "third_party/blink/renderer/core/dom/slot_assignment.h"
 #include "third_party/blink/renderer/core/dom/space_split_string.h"
 #include "third_party/blink/renderer/core/dom/text.h"
+#include "third_party/blink/renderer/core/dom/user_action_element_traversal.h"
 #include "third_party/blink/renderer/core/dom/whitespace_attacher.h"
 #include "third_party/blink/renderer/core/editing/commands/undo_stack.h"
 #include "third_party/blink/renderer/core/editing/editing_utilities.h"
@@ -850,8 +851,12 @@ bool Element::WasLastFocusFromUserGestureInternal() const {
 
 const HeapVector<Member<Node>> Element::ReadingFlowChildren() const {
   HeapVector<Member<Node>> children;
+  bool is_non_container_slot =
+      RuntimeEnabledFeatures::ReadingFlowWithSlotsEnabled()
+          ? (IsA<HTMLSlotElement>(this) && !IsReadingFlowContainer())
+          : false;
   const Element* layout_parent =
-      HasDisplayContentsStyle()
+      HasDisplayContentsStyle() || is_non_container_slot
           ? LayoutTreeBuilderTraversal::LayoutParentElement(*this)
           : this;
   if (!layout_parent || !layout_parent->IsReadingFlowContainer()) {
@@ -865,7 +870,16 @@ const HeapVector<Member<Node>> Element::ReadingFlowChildren() const {
     // direct child of this. Loop the parents and only add the node if its
     // FlatTreeTraversal::ParentElement is this element.
     while (reading_flow_item) {
-      auto* parent = FlatTreeTraversal::ParentElement(*reading_flow_item);
+      Node* flat_parent_anchor = reading_flow_item;
+      if (RuntimeEnabledFeatures::ReadingFlowWithSlotsEnabled()) {
+        if (!is_non_container_slot && !reading_flow_item->IsPseudoElement()) {
+          auto* assigned_slot = reading_flow_item->AssignedSlot();
+          if (assigned_slot && !assigned_slot->IsReadingFlowContainer()) {
+            flat_parent_anchor = assigned_slot;
+          }
+        }
+      }
+      auto* parent = FlatTreeTraversal::ParentElement(*flat_parent_anchor);
       if (parent == this) {
         if (visited_children.insert(reading_flow_item).is_new_entry) {
           children.push_back(reading_flow_item);
@@ -4338,8 +4352,8 @@ void Element::MovedFrom(ContainerNode& old_parent) {
   Element* old_parent_element = &To<Element>(old_parent);
   if (focused_element && old_parent.HasFocusWithin() &&
       contains(focused_element) && old_parent != *new_parent_element) {
-    Element* common_ancestor = To<Element>(NodeTraversal::CommonAncestor(
-        *old_parent_element, *new_parent_element));
+    Element* common_ancestor = To<Element>(old_parent_element->CommonAncestor(
+        *new_parent_element, UserActionElementParent));
 
     // The "focus within" flag is set separately on each ancestor, and affects
     // the :focus-within CSS property. We set it to the right value here because
@@ -5159,40 +5173,50 @@ void Element::RecalcStyle(const StyleRecalcChange change,
     layout_sibling_recalc_context.size_container =
         local_style_recalc_context.size_container;
   }
+
+  // As an optimization, we can skip most UpdatePseudoElement() calls
+  // (and similar) if the ComputedStyle doesn't have any pseudo-element styles
+  // and there are no existing pseudo-elements to be updated.
+  const bool need_to_check_pseudos =
+      child_change.TraversePseudoElements(*this) &&
+      ((RareData() && RareData()->HasAnyPseudos()) ||
+       (GetComputedStyle() && GetComputedStyle()->HasAnyPseudoElementStyles()));
+
   if (child_change.TraversePseudoElements(*this)) {
+    // Backdrop handling depends on feature flags.
+    // TODO: When the OverlayProperty feature flag is removed,
+    // this can probably be moved inside the if.
     UpdateBackdropPseudoElement(child_change, child_recalc_context);
+
+    // ::marker ignores the ComputedStyle bits and checks IsDisplayListItem().
     UpdatePseudoElement(kPseudoIdMarker, child_change, child_recalc_context);
+
+    // Scroll markers have special rules for the document element.
     UpdatePseudoElement(kPseudoIdScrollMarkerGroupBefore, child_change,
                         layout_sibling_recalc_context);
-    UpdatePseudoElement(kPseudoIdScrollButtonBlockStart, child_change,
-                        layout_sibling_recalc_context);
-    UpdatePseudoElement(kPseudoIdScrollButtonInlineStart, child_change,
-                        layout_sibling_recalc_context);
-    UpdatePseudoElement(kPseudoIdScrollButtonInlineEnd, child_change,
-                        layout_sibling_recalc_context);
-    UpdatePseudoElement(kPseudoIdScrollButtonBlockEnd, child_change,
-                        layout_sibling_recalc_context);
-    UpdatePseudoElement(kPseudoIdScrollMarker, child_change,
-                        child_recalc_context);
-    UpdateColumnPseudoElements(child_change, child_recalc_context);
 
-    if (IsA<HTMLMenuItemElement>(this)) {
-      UpdatePseudoElement(kPseudoIdCheckMark, child_change,
+    if (need_to_check_pseudos) {
+      UpdatePseudoElement(kPseudoIdScrollButtonBlockStart, child_change,
+                          layout_sibling_recalc_context);
+      UpdatePseudoElement(kPseudoIdScrollButtonInlineStart, child_change,
+                          layout_sibling_recalc_context);
+      UpdatePseudoElement(kPseudoIdScrollButtonInlineEnd, child_change,
+                          layout_sibling_recalc_context);
+      UpdatePseudoElement(kPseudoIdScrollButtonBlockEnd, child_change,
+                          layout_sibling_recalc_context);
+      UpdatePseudoElement(kPseudoIdScrollMarker, child_change,
                           child_recalc_context);
-    }
+      UpdateColumnPseudoElements(child_change, child_recalc_context);
 
-    if (DynamicTo<HTMLOptionElement>(this)) {
-      UpdatePseudoElement(kPseudoIdCheckMark, child_change,
-                          child_recalc_context);
-    }
+      if (IsA<HTMLMenuItemElement>(this) || IsA<HTMLOptionElement>(this) ||
+          (IsA<HTMLInputElement>(this) &&
+           RuntimeEnabledFeatures::AppearanceBaseEnabled())) {
+        UpdatePseudoElement(kPseudoIdCheckMark, child_change,
+                            child_recalc_context);
+      }
 
-    if (DynamicTo<HTMLInputElement>(this) &&
-        RuntimeEnabledFeatures::AppearanceBaseEnabled()) {
-      UpdatePseudoElement(kPseudoIdCheckMark, child_change,
-                          child_recalc_context);
+      UpdatePseudoElement(kPseudoIdBefore, child_change, child_recalc_context);
     }
-
-    UpdatePseudoElement(kPseudoIdBefore, child_change, child_recalc_context);
   }
 
   if (child_change.TraverseChildren(*this)) {
@@ -5211,50 +5235,65 @@ void Element::RecalcStyle(const StyleRecalcChange change,
   }
 
   if (child_change.TraversePseudoElements(*this)) {
-    UpdatePseudoElement(kPseudoIdAfter, child_change, child_recalc_context);
-
-    if (IsA<HTMLSelectElement>(this)) {
-      UpdatePseudoElement(kPseudoIdPickerIcon, child_change,
-                          child_recalc_context);
-    }
-
-    if (RuntimeEnabledFeatures::HTMLInterestForInterestHintPseudoEnabled(
-            GetExecutionContext())) {
-      UpdatePseudoElement(kPseudoIdInterestHint, child_change,
-                          child_recalc_context);
-    }
-
+    // Scroll markers have special rules for the document element.
     UpdatePseudoElement(kPseudoIdScrollMarkerGroupAfter, child_change,
                         layout_sibling_recalc_context);
 
-    // If we are re-attaching us or any of our descendants, we need to attach
-    // the descendants before we know if this element generates a ::first-letter
-    // and which element the ::first-letter inherits style from.
-    //
-    // If style recalc was suppressed for this element, it means it's a size
-    // query container, and child_change.ReattachLayoutTree() comes from the
-    // skipped style recalc. In that case we haven't updated the style, and we
-    // will not update the ::first-letter style in the originating element's
-    // AttachLayoutTree().
-    if (child_change.ReattachLayoutTree() && !change.IsSuppressed()) {
-      // Make sure we reach this element during reattachment. There are cases
-      // where we compute and store the styles for a subtree but stop attaching
-      // layout objects at an element that does not allow child boxes. Marking
-      // dirty for re-attachment means we AttachLayoutTree() will still traverse
-      // down to all elements with a ComputedStyle which clears the
-      // NeedsStyleRecalc() flag.
-      if (PseudoElement* first_letter =
-              GetPseudoElement(kPseudoIdFirstLetter)) {
-        first_letter->SetNeedsReattachLayoutTree();
-      }
-    } else if (!ChildNeedsReattachLayoutTree()) {
-      UpdateFirstLetterPseudoElement(StyleUpdatePhase::kRecalc,
-                                     child_recalc_context);
-    }
-
+    // ::overscroll-area-parent ignores the ComputedStyle bits and checks
+    // GetOverscrollContainer().
     UpdatePseudoElement(kPseudoIdOverscrollAreaParent, child_change,
                         child_recalc_context);
+
+    // View transitions ignore the ComputedStyle bits and check
+    // ViewTransitionUtils::GetTransition(*this).
     UpdateTransitionPseudoElements(child_change, child_recalc_context);
+
+    if (need_to_check_pseudos) {
+      UpdatePseudoElement(kPseudoIdAfter, child_change, child_recalc_context);
+      if (IsA<HTMLSelectElement>(this)) {
+        UpdatePseudoElement(kPseudoIdPickerIcon, child_change,
+                            child_recalc_context);
+      }
+
+      if (auto* menuitem = DynamicTo<HTMLMenuItemElement>(this)) {
+        if (menuitem->ShouldHaveExpandIcon()) {
+          UpdatePseudoElement(kPseudoIdExpandIcon, child_change,
+                              child_recalc_context);
+        }
+      }
+
+      if (RuntimeEnabledFeatures::HTMLInterestForInterestHintPseudoEnabled(
+              GetExecutionContext())) {
+        UpdatePseudoElement(kPseudoIdInterestHint, child_change,
+                            child_recalc_context);
+      }
+
+      // If we are re-attaching us or any of our descendants, we need to attach
+      // the descendants before we know if this element generates a
+      // ::first-letter and which element the ::first-letter inherits style
+      // from.
+      //
+      // If style recalc was suppressed for this element, it means it's a size
+      // query container, and child_change.ReattachLayoutTree() comes from the
+      // skipped style recalc. In that case we haven't updated the style, and we
+      // will not update the ::first-letter style in the originating element's
+      // AttachLayoutTree().
+      if (child_change.ReattachLayoutTree() && !change.IsSuppressed()) {
+        // Make sure we reach this element during reattachment. There are cases
+        // where we compute and store the styles for a subtree but stop
+        // attaching layout objects at an element that does not allow child
+        // boxes. Marking dirty for re-attachment means we AttachLayoutTree()
+        // will still traverse down to all elements with a ComputedStyle which
+        // clears the NeedsStyleRecalc() flag.
+        if (PseudoElement* first_letter =
+                GetPseudoElement(kPseudoIdFirstLetter)) {
+          first_letter->SetNeedsReattachLayoutTree();
+        }
+      } else if (!ChildNeedsReattachLayoutTree()) {
+        UpdateFirstLetterPseudoElement(StyleUpdatePhase::kRecalc,
+                                       child_recalc_context);
+      }
+    }
   }
 
   ClearChildNeedsStyleRecalc();
@@ -5888,6 +5927,7 @@ void Element::RebuildLayoutTree(WhitespaceAttacher& whitespace_attacher) {
     RebuildTransitionLayoutTree(*child_attacher);
     RebuildOverscrollAreaLayoutTree(*child_attacher);
     RebuildPseudoElementLayoutTree(kPseudoIdAfter, *child_attacher);
+    RebuildPseudoElementLayoutTree(kPseudoIdExpandIcon, *child_attacher);
     RebuildPseudoElementLayoutTree(kPseudoIdPickerIcon, *child_attacher);
     RebuildPseudoElementLayoutTree(kPseudoIdInterestHint, *child_attacher);
     if (GetShadowRoot()) {
@@ -7132,11 +7172,12 @@ const RegionCaptureCropId* Element::GetRegionCaptureCropId() const {
   return nullptr;
 }
 
-void Element::SetTrackedElementRect(std::unique_ptr<TrackedElementRect> rect) {
+void Element::SetTrackedElementSubRect(cc::TrackedElementFeature feature,
+                                       const TrackedElementSubRect& rect) {
   ElementRareDataVector& rare_data = EnsureRareData();
-  CHECK(!rare_data.GetTrackedElementRect());
+  CHECK(!rare_data.GetTrackedElementSubRect(feature));
 
-  data_ = rare_data.SetTrackedElementRect(std::move(rect));
+  data_ = rare_data.SetTrackedElementSubRect(feature, rect);
 
   // If a LayoutObject does not yet exist, this full paint invalidation
   // will occur automatically after it is created.
@@ -7149,16 +7190,17 @@ void Element::SetTrackedElementRect(std::unique_ptr<TrackedElementRect> rect) {
   }
 }
 
-const TrackedElementRect* Element::GetTrackedElementRect() const {
+const TrackedElementSubRect* Element::GetTrackedElementSubRect(
+    cc::TrackedElementFeature feature) const {
   if (const ElementRareDataVector* data = RareData()) {
-    return data->GetTrackedElementRect();
+    return data->GetTrackedElementSubRect(feature);
   }
   return nullptr;
 }
 
-void Element::ClearTrackedElementRect() {
+void Element::ClearTrackedElementSubRect(cc::TrackedElementFeature feature) {
   if (ElementRareDataVector* data = RareData()) {
-    data->ClearTrackedElementRect();
+    data->ClearTrackedElementSubRect(feature);
   }
 
   // If a LayoutObject does not yet exist, this full paint invalidation
@@ -7170,6 +7212,13 @@ void Element::ClearTrackedElementRect() {
       layout_inline->UpdateShouldCreateBoxFragment();
     }
   }
+}
+
+const TrackedElementSubRects* Element::GetTrackedElementSubRects() const {
+  if (const ElementRareDataVector* data = RareData()) {
+    return data->GetTrackedElementSubRects();
+  }
+  return nullptr;
 }
 
 void Element::SetRestrictionTargetId(std::unique_ptr<RestrictionTargetId> id) {
@@ -8764,7 +8813,7 @@ void Element::SetHasFocusWithinUpToAncestor(bool has_focus_within,
   bool reached_ancestor = false;
   for (Element* element = this;
        element && (need_snap_container_search || !reached_ancestor);
-       element = FlatTreeTraversal::ParentElement(*element)) {
+       element = UserActionElementTraversal::Next(*element)) {
     if (!reached_ancestor && element != ancestor) {
       element->SetHasFocusWithin(has_focus_within);
       element->FocusWithinStateChanged();
@@ -8845,10 +8894,10 @@ bool Element::ActivateDisplayLockIfNeeded(DisplayLockActivationReason reason) {
 void Element::SetIsAdRelated(AdProvenance ad_provenance) {
   DCHECK(!IsA<HTMLFrameOwnerElement>(this));
 
-  UnpackAndRefresh(EnsureRareData().EnsureDisplayAdElementMonitor(
-      this, std::move(ad_provenance)));
+  UnpackAndRefresh(
+      EnsureRareData().EnsureDisplayAdElementMonitor(this, ad_provenance));
 
-  probe::UpdateAdRelatedState(*this, /*is_ad_related=*/true);
+  probe::UpdateAdRelatedState(*this, std::move(ad_provenance));
 }
 
 bool Element::IsAdRelated() const {
@@ -8856,6 +8905,16 @@ bool Element::IsAdRelated() const {
     return data->GetDisplayAdElementMonitor();
   }
   return false;
+}
+
+std::optional<AdProvenance> Element::GetAdProvenance() const {
+  if (const ElementRareDataVector* data = RareData()) {
+    if (const DisplayAdElementMonitor* monitor =
+            data->GetDisplayAdElementMonitor()) {
+      return monitor->GetAdProvenance();
+    }
+  }
+  return std::nullopt;
 }
 
 bool Element::ShouldHighlightAd() const {
@@ -10727,8 +10786,8 @@ const ComputedStyle* Element::StyleForPseudoElement(
 
   const bool is_before_or_after_like =
       pseudo_id == kPseudoIdCheckMark || pseudo_id == kPseudoIdBefore ||
-      pseudo_id == kPseudoIdAfter || pseudo_id == kPseudoIdPickerIcon ||
-      pseudo_id == kPseudoIdInterestHint;
+      pseudo_id == kPseudoIdAfter || pseudo_id == kPseudoIdExpandIcon ||
+      pseudo_id == kPseudoIdPickerIcon || pseudo_id == kPseudoIdInterestHint;
 
   if (is_before_or_after_like) {
     DCHECK(request.parent_override);
@@ -13335,6 +13394,7 @@ Element* Element::ImplicitAnchorElement() const {
       case kPseudoIdCheckMark:
       case kPseudoIdBefore:
       case kPseudoIdAfter:
+      case kPseudoIdExpandIcon:
       case kPseudoIdPickerIcon:
       case kPseudoIdInterestHint:
       case kPseudoIdBackdrop:
@@ -13482,7 +13542,7 @@ void Element::setHTMLUnsafe(const V8UnionStringOrTrustedHTML* html,
 void Element::setHTMLUnsafe(const V8UnionStringOrTrustedHTML* html,
                             TrustedParserOptions* options,
                             ExceptionState& exception_state) {
-  CHECK(RuntimeEnabledFeatures::DocumentPatchingEnabled());
+  CHECK(RuntimeEnabledFeatures::TrustedTypesCreateParserOptionsEnabled());
   UseCounter::Count(GetDocument(), WebFeature::kHTMLUnsafeMethods);
   SetInnerHTMLInternal(
       CheckTrustedTypes(html, trusted_types_names::kSetHTMLUnsafe,

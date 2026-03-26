@@ -348,6 +348,7 @@ Numai un utilizator care deține expresia ta de acces îți poate citi datele cr
 <translation id="2496180316473517155">Istoricul de navigare</translation>
 <translation id="2497852260688568942">Sincronizarea este dezactivată de administrator</translation>
 <translation id="250020030759455918">Vei vedea starea de conectare la <ph name="SITE_NAME" />, datele de navigare și datele privind site-ul în Chrome</translation>
+<translation id="2501278716633472235">Înapoi</translation>
 <translation id="2510106555128151389">Se instalează <ph name="WEBAPK_NAME" />...</translation>
 <translation id="2512234228327349533">Caută opțiuni de cumpărare</translation>
 <translation id="2513403576141822879">Pentru mai multe setări privind confidențialitatea, securitatea și colectarea datelor, consultă <ph name="BEGIN_LINK" />Sincronizare și servicii Google<ph name="END_LINK" /></translation>
@@ -1492,7 +1493,6 @@ De exemplu, unele site-uri pot răspunde la această solicitare afișând anunț
 <translation id="7057969023583258980">Deschide istoricul Chrome complet</translation>
 <translation id="7063006564040364415">Nu s-a putut stabili conexiunea cu serverul de sincronizare.</translation>
 <translation id="7063106218165698546">Personalizează grupul de file și apasă ca să finalizezi</translation>
-<translation id="7071521146534760487">Gestionează contul</translation>
 <translation id="707155805709242880">Alege elementele de sincronizat de mai jos</translation>
 <translation id="7072949719501323344"><ph name="TAB_TITLE" />, filă incognito picture-in-picture fixată cu selectare multiplă</translation>
 <translation id="7077143737582773186">Card SD</translation>
@@ -1821,6 +1821,7 @@ Pentru a modifica această setare, <ph name="BEGIN_LINK" />șterge datele Chrome
 <translation id="8282950411412455249">Accesează setările de securitate</translation>
 <translation id="8288688997999490824">{NUM_WINDOWS,plural, =1{Închide o fereastră incognito}few{Închide # ferestre incognito}other{Închide # de ferestre incognito}}</translation>
 <translation id="831192587911042850">Adaugă site-ul actual la lista de site-uri pe care le urmărești.</translation>
+<translation id="8313599942510782709">Sarcina ta este încă în desfășurare.</translation>
 <translation id="8317318757008452355">Deschide opțiunile de printare</translation>
 <translation id="8320212361750431956">Activitate recentă</translation>
 <translation id="832514020744584629"><ph name="PREF_TITLE" />  <ph name="BEGIN_NEW" />Nou<ph name="END_NEW" /></translation>

@@ -100,6 +100,23 @@ system_display::LayoutPosition GetLayoutPositionFromUi(
   NOTREACHED();
 }
 
+ash::DisplayRotationOptions GetDisplayRotationOptions(int rotation_value) {
+  switch (rotation_value) {
+    case -1:
+      return ash::DisplayRotationOptions::kAutoRotate;
+    case 0:
+      return ash::DisplayRotationOptions::kZeroDegrees;
+    case 90:
+      return ash::DisplayRotationOptions::k90Degrees;
+    case 180:
+      return ash::DisplayRotationOptions::k180Degrees;
+    case 270:
+      return ash::DisplayRotationOptions::k270Degrees;
+    default:
+      NOTREACHED();
+  }
+}
+
 }  // namespace
 
 DisplayInfoProviderChromeOS::DisplayInfoProviderChromeOS()
@@ -120,8 +137,9 @@ void DisplayInfoProviderChromeOS::SetDisplayProperties(
     const std::string& display_id_str,
     const api::system_display::DisplayProperties& properties,
     ErrorCallback callback) {
+  int64_t display_id = GetDisplayId(display_id_str);
   std::optional<std::string> error =
-      ValidateDisplayPropertiesInput(display_id_str, properties);
+      ValidateDisplayPropertiesInput(display_id, properties);
   if (error) {
     RunResultCallback(std::move(callback), std::move(*error));
     return;
@@ -142,19 +160,18 @@ void DisplayInfoProviderChromeOS::SetDisplayProperties(
 
   // Process the deprecated 'mirroringSourceId' property. Validation ensures
   // that no other properties are set.
-  if (properties.mirroring_source_id) {
+  if (properties.mirroring_source_id.has_value()) {
     bool mirror = !properties.mirroring_source_id->empty();
     if (mirror) {
       // A display with the given id should exist and if should not be the same
       // as the target display's id.
 
-      int64_t mirroring_id =
-          GetDisplayForId(*properties.mirroring_source_id).id();
+      int64_t mirroring_id = GetDisplayId(*properties.mirroring_source_id);
       if (mirroring_id == display::kInvalidDisplayId) {
         RunResultCallback(std::move(callback), "Invalid mirroring source id");
         return;
       }
-      if (mirroring_id == GetDisplayId(display_id_str)) {
+      if (mirroring_id == display_id) {
         RunResultCallback(std::move(callback), "Not allowed to mirror self");
         return;
       }
@@ -174,15 +191,15 @@ void DisplayInfoProviderChromeOS::SetDisplayProperties(
   }
   if (properties.rotation.has_value()) {
     config_properties.rotation =
-        GetMojomDisplayRotationOptions(*properties.rotation);
+        GetDisplayRotationOptions(*properties.rotation);
   }
   if (properties.bounds_origin_x || properties.bounds_origin_y) {
     gfx::Point bounds_origin;
-    display::Display display = GetDisplayForId(display_id_str);
+    display::Display display = GetDisplayForId(display_id);
     if (display.id() != display::kInvalidDisplayId) {
       bounds_origin = display.bounds().origin();
     } else {
-      DLOG(ERROR) << "Unable to get origin for display: " << display_id_str;
+      DLOG(ERROR) << "Unable to get origin for display: " << display_id;
     }
     if (properties.bounds_origin_x) {
       bounds_origin.set_x(*properties.bounds_origin_x);
@@ -200,28 +217,21 @@ void DisplayInfoProviderChromeOS::SetDisplayProperties(
 
   // Display mode.
   if (properties.display_mode) {
-    auto mojo_display_mode = crosapi::mojom::DisplayMode::New();
     const api::system_display::DisplayMode& api_display_mode =
         *properties.display_mode;
-    mojo_display_mode->size =
-        gfx::Size(api_display_mode.width, api_display_mode.height);
-    mojo_display_mode->size_in_native_pixels =
-        gfx::Size(api_display_mode.width_in_native_pixels,
-                  api_display_mode.height_in_native_pixels);
-    mojo_display_mode->device_scale_factor =
-        api_display_mode.device_scale_factor;
-    mojo_display_mode->refresh_rate = api_display_mode.refresh_rate;
-    mojo_display_mode->is_native = api_display_mode.is_native;
-    mojo_display_mode->is_interlaced =
-        api_display_mode.is_interlaced && *(api_display_mode.is_interlaced);
-    config_properties.display_mode = std::move(mojo_display_mode);
+    gfx::Size size_in_native_pixels(api_display_mode.width_in_native_pixels,
+                                    api_display_mode.height_in_native_pixels);
+    config_properties.display_mode = display::ManagedDisplayMode(
+        size_in_native_pixels, api_display_mode.refresh_rate,
+        api_display_mode.is_interlaced && *(api_display_mode.is_interlaced),
+        api_display_mode.is_native, api_display_mode.device_scale_factor);
   }
 
   if (cros_display_config_) {
     ash::DisplayConfigResult result =
         cros_display_config_->SetDisplayProperties(
-            display_id_str, std::move(config_properties),
-            crosapi::mojom::DisplayConfigSource::kUser);
+            display_id, std::move(config_properties),
+            ash::DisplayConfigSource::kUser);
     std::move(callback).Run(GetStringResult(std::move(result)));
   }
 }
@@ -270,12 +280,11 @@ void DisplayInfoProviderChromeOS::GetAllDisplaysInfo(
   if (cros_display_config_) {
     ash::DisplayLayoutInfo layout =
         cros_display_config_->GetDisplayLayoutInfo();
-    std::vector<crosapi::mojom::DisplayUnitInfoPtr> info_list =
+    std::vector<ash::DisplayUnitInfo> info_list =
         cros_display_config_->GetDisplayUnitInfoList(single_unified);
     DisplayUnitInfoList all_displays;
-    for (const crosapi::mojom::DisplayUnitInfoPtr& info : info_list) {
-      system_display::DisplayUnitInfo display =
-          GetDisplayUnitInfoFromMojo(*info);
+    for (const auto& info : info_list) {
+      system_display::DisplayUnitInfo display = GetDisplayUnitInfoFromAsh(info);
       SetDisplayUnitInfoLayoutProperties(layout, &display);
       all_displays.push_back(std::move(display));
     }
@@ -307,7 +316,8 @@ bool DisplayInfoProviderChromeOS::OverscanCalibrationStart(
     const std::string& id) {
   if (cros_display_config_) {
     ash::DisplayConfigResult result = cros_display_config_->OverscanCalibration(
-        id, crosapi::mojom::DisplayConfigOperation::kStart, std::nullopt);
+        GetDisplayId(id), ash::DisplayCalibrationOperation::kStart,
+        std::nullopt);
     LogErrorResult(result);
   }
   return true;
@@ -318,7 +328,8 @@ bool DisplayInfoProviderChromeOS::OverscanCalibrationAdjust(
     const system_display::Insets& delta) {
   if (cros_display_config_) {
     ash::DisplayConfigResult result = cros_display_config_->OverscanCalibration(
-        id, crosapi::mojom::DisplayConfigOperation::kAdjust, GetInsets(delta));
+        GetDisplayId(id), ash::DisplayCalibrationOperation::kAdjust,
+        GetInsets(delta));
     LogErrorResult(result);
   }
   return true;
@@ -328,7 +339,8 @@ bool DisplayInfoProviderChromeOS::OverscanCalibrationReset(
     const std::string& id) {
   if (cros_display_config_) {
     ash::DisplayConfigResult result = cros_display_config_->OverscanCalibration(
-        id, crosapi::mojom::DisplayConfigOperation::kReset, std::nullopt);
+        GetDisplayId(id), ash::DisplayCalibrationOperation::kReset,
+        std::nullopt);
     LogErrorResult(result);
   }
   return true;
@@ -338,7 +350,8 @@ bool DisplayInfoProviderChromeOS::OverscanCalibrationComplete(
     const std::string& id) {
   if (cros_display_config_) {
     ash::DisplayConfigResult result = cros_display_config_->OverscanCalibration(
-        id, crosapi::mojom::DisplayConfigOperation::kComplete, std::nullopt);
+        GetDisplayId(id), ash::DisplayCalibrationOperation::kComplete,
+        std::nullopt);
     LogErrorResult(result);
   }
   return true;
@@ -347,14 +360,14 @@ bool DisplayInfoProviderChromeOS::OverscanCalibrationComplete(
 void DisplayInfoProviderChromeOS::ShowNativeTouchCalibration(
     const std::string& id,
     ErrorCallback callback) {
-  CallTouchCalibration(id, crosapi::mojom::DisplayConfigOperation::kShowNative,
+  CallTouchCalibration(id, ash::DisplayCalibrationOperation::kShowNative,
                        std::nullopt, std::move(callback));
 }
 
 bool DisplayInfoProviderChromeOS::StartCustomTouchCalibration(
     const std::string& id) {
   touch_calibration_target_id_ = id;
-  CallTouchCalibration(id, crosapi::mojom::DisplayConfigOperation::kStart,
+  CallTouchCalibration(id, ash::DisplayCalibrationOperation::kStart,
                        std::nullopt, ErrorCallback());
   return true;
 }
@@ -369,25 +382,25 @@ bool DisplayInfoProviderChromeOS::CompleteCustomTouchCalibration(
   calibration.point_pairs[3] = GetTouchCalibrationPair(pairs.pair4);
   calibration.bounds = gfx::Size(bounds.width, bounds.height);
   CallTouchCalibration(touch_calibration_target_id_,
-                       crosapi::mojom::DisplayConfigOperation::kComplete,
-                       calibration, ErrorCallback());
+                       ash::DisplayCalibrationOperation::kComplete, calibration,
+                       ErrorCallback());
   return true;
 }
 
 bool DisplayInfoProviderChromeOS::ClearTouchCalibration(const std::string& id) {
-  CallTouchCalibration(id, crosapi::mojom::DisplayConfigOperation::kReset,
+  CallTouchCalibration(id, ash::DisplayCalibrationOperation::kReset,
                        std::nullopt, ErrorCallback());
   return true;
 }
 
 void DisplayInfoProviderChromeOS::CallTouchCalibration(
     const std::string& id,
-    crosapi::mojom::DisplayConfigOperation op,
+    ash::DisplayCalibrationOperation op,
     base::optional_ref<const display::TouchCalibrationData> calibration,
     ErrorCallback callback) {
   if (cros_display_config_) {
     cros_display_config_->TouchCalibration(
-        id, op, calibration,
+        GetDisplayId(id), op, calibration,
         base::BindOnce(
             [](ErrorCallback callback, ash::DisplayConfigResult result) {
               if (!callback) {

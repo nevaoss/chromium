@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "base/functional/callback.h"
+#include "base/gtest_prod_util.h"
 #include "base/memory/weak_ptr.h"
 #include "base/timer/timer.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks.mojom.h"
@@ -53,6 +54,9 @@ class ContextualTasksUIInterface;
 // thread. Events like tab switching and Intercepted navigations from both the
 // sidepanel and omnibox will be routed here.
 class ContextualTasksUiService : public KeyedService {
+  FRIEND_TEST_ALL_PREFIXES(ContextualTasksUiServiceTest,
+                           IsAllowedHost_WithOverride);
+
  public:
   ContextualTasksUiService(
       Profile* profile,
@@ -279,8 +283,6 @@ class ContextualTasksUiService : public KeyedService {
   // compared without text selection directives as they don't change the page
   // content and only tell the browser what text to highlight on the page. A
   // pointer to the selected tab is returned if found.
-  // TODO(crbug.com/483442073): Remove the ifdef block once we remove
-  // TabStripModel from MaybeFocusExistingOpenTab.
   tabs::TabInterface* MaybeFocusExistingOpenTab(const GURL& url,
                                                 TabListInterface* tab_list,
                                                 const base::Uuid& task_id);

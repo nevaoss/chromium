@@ -741,6 +741,16 @@ ToolbarView::CreateGlicActorTaskIcon() {
           base::BindRepeating(&ToolbarView::OnGlicActorTaskIconClicked,
                               base::Unretained(this)));
 
+  // Add a MenuButtonController in order to keep the task icon pressed while the
+  // bubble is visible.
+  glic_actor_task_icon->SetButtonController(
+      std::make_unique<views::MenuButtonController>(
+          glic_actor_task_icon.get(),
+          base::BindRepeating(&ToolbarView::OnGlicActorTaskIconClicked,
+                              base::Unretained(this)),
+          std::make_unique<views::Button::DefaultButtonControllerDelegate>(
+              glic_actor_task_icon.get())));
+
   glic_actor_task_icon->SetProperty(views::kCrossAxisAlignmentKey,
                                     views::LayoutAlignment::kCenter);
 
@@ -755,7 +765,11 @@ void ToolbarView::OnGlicActorTaskIconClicked() {
 
   ActorTaskListBubbleController* controller =
       ActorTaskListBubbleController::From(browser_view_->browser());
-  controller->ShowBubble(glic_actor_task_icon_);
+  // Only show the bubble if the button is not currently pressed. Clicking on
+  // the pressed button should dismiss the nudge.
+  if (!glic_actor_task_icon_->GetIsPressed()) {
+    controller->ShowBubble(glic_actor_task_icon_);
+  }
 
   auto current_task_nudge_state = icon_manager->GetCurrentActorTaskNudgeState();
   actor::ui::LogGlobalTaskIndicatorClick(current_task_nudge_state);
@@ -1260,21 +1274,21 @@ void ToolbarView::ShowIntentPickerBubble(
     IntentPickerBubbleView::BubbleType bubble_type,
     const std::optional<url::Origin>& initiating_origin,
     IntentPickerResponse callback) {
-  views::Button* highlighted_button = nullptr;
+  std::optional<ui::ElementIdentifier> higlighted_element;
   if (bubble_type != IntentPickerBubbleView::BubbleType::kClickToCall) {
-    if (highlighted_button = GetIntentChipButton(); !highlighted_button) {
-      highlighted_button = GetPageActionView(kActionShowIntentPicker);
-    }
-
-    if (!highlighted_button) {
+    if (GetIntentChipButton()) {
+      higlighted_element = kIntentChipElementId;
+    } else if (GetPageActionView(kActionShowIntentPicker)) {
+      higlighted_element = kIntentPickerPageActionElementId;
+    } else {
       return;
     }
   }
 
-  // At this point, we either have a highlighted_button or it's a ClickToCall
+  // At this point, we either have a highlighted_element or it's a ClickToCall
   // bubble which doesn't have a corresponding page action button to highlight.
   IntentPickerBubbleView::ShowBubble(
-      location_bar_view(), highlighted_button, bubble_type, GetWebContents(),
+      location_bar_view(), higlighted_element, bubble_type, GetWebContents(),
       std::move(app_info), show_stay_in_chrome, show_remember_selection,
       initiating_origin, std::move(callback));
 }
@@ -1305,13 +1319,8 @@ ExtensionsToolbarButton* ToolbarView::GetExtensionsButton() const {
 }
 
 ToolbarButton* ToolbarView::GetCastButton() const {
-  if (features::IsWebUIPinnedToolbarActionsEnabled()) {
-    NOTIMPLEMENTED();
-  }
-  return pinned_toolbar_actions_container_
-             ? pinned_toolbar_actions_container_->GetButtonFor(
-                   kActionRouteMedia)
-             : nullptr;
+  return pinned_toolbar_actions_ ? pinned_toolbar_actions_->GetCastButton()
+                                 : nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1673,8 +1682,8 @@ ExtensionsToolbarDesktop* ToolbarView::GetExtensionsToolbarDesktop() {
   return extensions_container_;
 }
 
-PinnedToolbarActionsContainer* ToolbarView::GetPinnedToolbarActionsContainer() {
-  return pinned_toolbar_actions_container_;
+PinnedToolbarActions* ToolbarView::GetPinnedToolbarActions() {
+  return pinned_toolbar_actions_;
 }
 
 gfx::Size ToolbarView::GetToolbarButtonSize() const {

@@ -73,10 +73,6 @@ const char kAppRunOnOsLoginMode[] = "app-run-on-os-login-mode";
 // See chrome/app_shim/app_shim_main_delegate.mm.
 const char kAppShim[] = "app-shim";
 
-// Overrides the URL that the webstore APIs download extensions from.
-// Note: the URL must contain one '%s' for the extension ID.
-const char kAppsGalleryDownloadURL[] = "apps-gallery-download-url";
-
 // Overrides the update url used by webstore extensions.
 const char kAppsGalleryUpdateURL[] = "apps-gallery-update-url";
 
@@ -949,14 +945,6 @@ const char kGlicAlwaysShowWebActuationToggle[] =
 // panel, as a space-separated list.
 const char kGlicAdminRedirectPatterns[] = "glic-admin-redirect-patterns";
 
-// Reset local state pref kGlicMultiInstanceEnabledBySubscriptionTier to false.
-// Intended for manual testing only.
-const char kGlicResetMultiInstanceEnabledByTier[] =
-    "glic-reset-mi-enabled-by-tier";
-
-// Override actual AI subscription tier by forcing G1 status, specifically for
-// multi-instance enablement. Intended for manual testing only.
-const char kGlicForceG1StatusForMultiInstance[] = "glic-force-g1-for-mi";
 
 // Configure preset guest URLs for manual testing. These are saved to local
 // state prefs and can be selected to override the default glic guest URL

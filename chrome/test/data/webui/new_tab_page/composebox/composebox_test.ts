@@ -68,7 +68,9 @@ suite('NewTabPageComposeboxTest', () => {
     await microtasksFinished();
 
     assertEquals('hello world', composebox.getText());
-    assertEquals(ComposeboxToolMode.kDeepSearch, composebox.activeToolMode);
+    const activeTool =
+        await testProxy.searchboxHandler.whenCalled('setActiveToolMode');
+    assertEquals(ComposeboxToolMode.kDeepSearch, activeTool);
     assertEquals(1, composebox.getNumOfFilesForTesting());
     const activeModel =
         await testProxy.searchboxHandler.whenCalled('setActiveModelMode');
@@ -813,7 +815,7 @@ suite('NewTabPageComposeboxTest', () => {
       toolsSectionConfig: null,
       modelSectionConfig: null,
       hintText: '',
-      maxInstances: {},
+      maxInputsByType: {},
       maxTotalInputs: 0,
     } as InputState;
     testProxy.searchboxCallbackRouterRemote.onInputStateChanged(inputState);
@@ -862,40 +864,25 @@ suite('NewTabPageComposeboxTest', () => {
     await microtasksFinished();
 
     // Set active tool mode to DeepSearch.
-    testProxy.element['activeToolMode'] = ComposeboxToolMode.kDeepSearch;
-    await testProxy.element.updateComplete;
+    const inputState = Object.assign({}, mockInputState, {
+      activeTool: ComposeboxToolMode.kDeepSearch,
+    });
+    testProxy.searchboxCallbackRouterRemote.onInputStateChanged(inputState);
+    await testProxy.searchboxCallbackRouterRemote.$.flushForTesting();
+    await microtasksFinished();
 
     // Click on the same tool mode to deselect/delete it.
     testProxy.element['handleToolClick_'](ComposeboxToolMode.kDeepSearch);
     await microtasksFinished();
 
     // Assert tool mode is reset.
-    assertEquals(
-        testProxy.element['activeToolMode'], ComposeboxToolMode.kUnspecified);
+    const activeTool =
+        await testProxy.searchboxHandler.whenCalled('setActiveToolMode');
+    assertEquals(ComposeboxToolMode.kUnspecified, activeTool);
 
     const metricName =
         'ContextualSearch.UserAction.InputStateDeletion.Tool.NewTabPage';
     assertEquals(1, testProxy.metrics.count(metricName, 0));
     assertEquals(1, testProxy.metrics.count(metricName, true));
-  });
-
-  test('recent tab chip click records user action', async () => {
-    loadTimeData.overrideValues({composeboxSource: 'NewTabPage'});
-    const recentTabChip =
-        document.createElement('composebox-recent-tab-chip') as any;
-    recentTabChip.recentTab = {
-      tabId: 1,
-      title: 'Sample Tab',
-      url: 'https://example.com',
-    };
-    document.body.appendChild(recentTabChip);
-    await microtasksFinished();
-
-    const button = recentTabChip.shadowRoot!.querySelector('#recentTabButton');
-    assertTrue(!!button);
-    (button as HTMLElement).click();
-
-    const metricName = 'ContextualSearch.RecentTabChipClick.NewTabPage';
-    assertEquals(1, testProxy.metrics.count(metricName, 0));
   });
 });

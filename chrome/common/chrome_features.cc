@@ -134,9 +134,6 @@ BASE_FEATURE(kPreinstalledWebAppAlwaysMigrateForTesting,
              base::FEATURE_DISABLED_BY_DEFAULT);
 #endif
 
-// Enables the chrome://chrome-finds-internals page.
-BASE_FEATURE(kChromeFindsInternals, base::FEATURE_DISABLED_BY_DEFAULT);
-
 // Controls the enablement of structured metrics on Windows, Linux, and Mac.
 BASE_FEATURE(kChromeStructuredMetrics, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -498,15 +495,6 @@ const base::FeatureParam<int> kGlicMultiInstanceFloatyWidth{
     &kGlicMultiInstance, "glic-multi-instance-floaty-width", 400};
 const base::FeatureParam<int> kGlicMultiInstanceFloatyHeight{
     &kGlicMultiInstance, "glic-multi-instance-floaty-height", 400};
-
-// Controls whether multiple instances for Glic should be enabled for users of
-// an eligible G1 subscription tier, regardless of whether `kGlicMultiInstance`
-// is enabled.
-BASE_FEATURE(kGlicEnableMultiInstanceBasedOnTier,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
-BASE_FEATURE(kGlicDefaultToLastActiveConversation,
-             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Controls whether the Glic feature's z order changes based on the webclient
 // mode.

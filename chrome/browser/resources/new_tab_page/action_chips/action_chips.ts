@@ -84,6 +84,10 @@ export class ActionChipsElement extends CrLitElement {
         type: Boolean,
         reflect: true,
       },
+      disablementContextMenuEnabled_: {
+        type: Boolean,
+        reflect: true,
+      },
     };
   }
 
@@ -94,6 +98,8 @@ export class ActionChipsElement extends CrLitElement {
       loadTimeData.getBoolean('ntpNextShowDismissalUIEnabled');
   protected accessor showSimplifiedUI_: boolean =
       loadTimeData.getBoolean('ntpNextShowSimplificationUIEnabled');
+  protected accessor disablementContextMenuEnabled_: boolean =
+      loadTimeData.getBoolean('ntpNextDisablementContextMenuEnabled');
 
   private callbackRouter: PageCallbackRouter;
   private delayTabUploads_: boolean =
@@ -114,6 +120,8 @@ export class ActionChipsElement extends CrLitElement {
         return 'icon-type-draft-spark';
       case IconType.kFavicon:
         return 'icon-type-favicon';
+      case IconType.kSearchLoopWithSparkle:
+        return 'icon-type-search-spark';
       default:
         return '';
     }
@@ -179,6 +187,10 @@ export class ActionChipsElement extends CrLitElement {
         } else if (
             chip.suggestTemplateInfo.typeIcon === IconType.kSubArrowRight) {
           this.handler.activateMetricsFunnel('DeepDiveChip');
+        } else if (
+            chip.suggestTemplateInfo.typeIcon ===
+            IconType.kSearchLoopWithSparkle) {
+          this.handler.activateMetricsFunnel('PromptSuggestionChip');
         }
         break;
       default:
@@ -240,8 +252,8 @@ export class ActionChipsElement extends CrLitElement {
       contextFiles.push(tabInfo);
     }
     this.fire('action-chip-click', {
-      searchboxText: chip.suggestion,
-      contextFiles,
+      text: chip.suggestion,
+      files: contextFiles,
       mode: chip.suggestTemplateInfo.preselectedTool,
     });
   }

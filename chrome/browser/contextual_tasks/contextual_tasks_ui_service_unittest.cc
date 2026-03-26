@@ -14,6 +14,7 @@
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/test/base/testing_profile.h"
 #include "components/contextual_tasks/public/contextual_tasks_service.h"
+#include "components/contextual_tasks/public/features.h"
 #include "components/contextual_tasks/public/mock_contextual_tasks_service.h"
 #include "components/omnibox/browser/mock_aim_eligibility_service.h"
 #include "components/prefs/testing_pref_service.h"
@@ -127,12 +128,15 @@ class MockUiServiceForUrlIntercept : public ContextualTasksUiService {
   }
 };
 
-content::OpenURLParams CreateOpenUrlParams(const GURL& url,
-                                           bool is_renderer_initiated) {
+content::OpenURLParams CreateOpenUrlParams(
+    const GURL& url,
+    bool is_renderer_initiated,
+    ui::PageTransition page_transition =
+        ui::PageTransition::PAGE_TRANSITION_AUTO_TOPLEVEL) {
   content::Referrer referrer;
-  return content::OpenURLParams(
-      url, referrer, WindowOpenDisposition::CURRENT_TAB,
-      ui::PageTransition::PAGE_TRANSITION_AUTO_TOPLEVEL, is_renderer_initiated);
+  return content::OpenURLParams(url, referrer,
+                                WindowOpenDisposition::CURRENT_TAB,
+                                page_transition, is_renderer_initiated);
 }
 
 // A matcher that checks that an OpenURLParams object has the specified URL.
@@ -184,6 +188,7 @@ class ContextualTasksUiServiceTest : public content::RenderViewHostTestHarness {
         .WillByDefault([]() {
           FeatureEligibility eligibility;
           eligibility.contextual_tasks_enabled = true;
+          eligibility.cobrowse_eligible = true;
           eligibility.aim_eligible = true;
           eligibility.context_sharing_enabled = true;
           return eligibility;
@@ -761,6 +766,40 @@ TEST_F(ContextualTasksUiServiceTest, AllowedHostNavigation_ViewedInTab) {
   run_loop.Run();
 }
 
+// If navigation to an allowed host is explicitly to a new tab (e.g.
+// target="_blank"), it should be treated as a thread link instead of navigating
+// the same tab.
+TEST_F(ContextualTasksUiServiceTest,
+       AllowedHostNavigation_ToNewTab_InterceptedAsThreadLink) {
+  GURL navigated_url("https://google.com");
+  GURL host_web_content_url(chrome::kChromeUIContextualTasksURL);
+
+  ON_CALL(*aim_eligibility_service_, HasAimUrlParams(_))
+      .WillByDefault(Return(false));
+
+  auto web_contents = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), content::SiteInstance::Create(profile_.get()));
+  content::WebContentsTester::For(web_contents.get())
+      ->SetLastCommittedURL(host_web_content_url);
+  tabs::MockTabInterface tab;
+  ON_CALL(tab, GetContents).WillByDefault(Return(web_contents.get()));
+
+  EXPECT_CALL(*service_for_nav_, OnThreadLinkClicked(navigated_url, _, _, _))
+      .Times(1);
+  EXPECT_CALL(*service_for_nav_, OnNonThreadNavigationInTab(_, _)).Times(0);
+  EXPECT_CALL(*service_for_nav_, OnNavigationToAiPageIntercepted(_, _, _))
+      .Times(0);
+  EXPECT_TRUE(service_for_nav_->HandleNavigationImpl(
+      CreateOpenUrlParams(navigated_url, true), web_contents.get(), &tab,
+      /*is_from_embedded_page=*/true,
+      /*is_to_new_tab=*/true));
+
+  base::RunLoop run_loop;
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE, run_loop.QuitClosure());
+  run_loop.Run();
+}
+
 // Any other link that isn't AI or an allowed host should be treated as a thread
 // link when viewed in a tab.
 TEST_F(ContextualTasksUiServiceTest, Navigation_ViewedInTab) {
@@ -1188,6 +1227,39 @@ TEST_F(ContextualTasksUiServiceTest, SignOutNavigation_OpenedInTab) {
       /*is_to_new_tab=*/false));
   run_loop.Run();
 }
+
+TEST_F(ContextualTasksUiServiceTest, ForcedEmbeddedPageHostOverride) {
+  // By default, there should be no override.
+  EXPECT_EQ("", contextual_tasks::GetForcedEmbeddedPageHost());
+
+  // Set an override and verify it's returned.
+  contextual_tasks::SetForcedEmbeddedPageHostOverride("test.google.com");
+  EXPECT_EQ("test.google.com", contextual_tasks::GetForcedEmbeddedPageHost());
+
+  // Clearing the override should return to the default state.
+  contextual_tasks::SetForcedEmbeddedPageHostOverride("");
+  EXPECT_EQ("", contextual_tasks::GetForcedEmbeddedPageHost());
+}
+
+TEST_F(ContextualTasksUiServiceTest, IsAllowedHost_WithOverride) {
+  // Without override, standard domains should be allowed.
+  EXPECT_TRUE(
+      ContextualTasksUiService::IsAllowedHost(GURL("https://google.com")));
+  EXPECT_TRUE(
+      ContextualTasksUiService::IsAllowedHost(GURL("https://www.google.com")));
+
+  // Set an override to a specific testing domain.
+  contextual_tasks::SetForcedEmbeddedPageHostOverride("test.c.googlers.com");
+
+  // The override domain should now be allowed.
+  EXPECT_TRUE(ContextualTasksUiService::IsAllowedHost(
+      GURL("https://test.c.googlers.com")));
+
+  // The standard domains should still be allowed.
+  EXPECT_TRUE(
+      ContextualTasksUiService::IsAllowedHost(GURL("https://google.com")));
+}
+
 TEST_F(ContextualTasksUiServiceTest, HandleNavigation_DisplayUrlRewritten) {
   GURL display_url("chrome://google.com/search?udm=50&q=test+query");
   auto web_contents = content::WebContentsTester::CreateTestWebContents(
@@ -1216,6 +1288,52 @@ TEST_F(ContextualTasksUiServiceTest, HandleNavigation_DisplayUrlRewritten) {
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE, run_loop.QuitClosure());
   run_loop.Run();
+}
+
+// Enter cobrowse if it's forward back navibation and is originally from link
+// click.
+TEST_F(ContextualTasksUiServiceTest,
+       HandleNavigation_ForwardButtonEnterCobrowseOnLink) {
+  auto web_contents = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), content::SiteInstance::Create(profile_.get()));
+  content::WebContentsTester::For(web_contents.get())
+      ->SetLastCommittedURL(GURL("chrome://contextual-tasks"));
+
+  base::RunLoop run_loop;
+  GURL navigated_url("https://example.com");
+  EXPECT_CALL(*service_for_nav_, OnThreadLinkClicked(navigated_url, _, _, _))
+      .WillOnce(testing::InvokeWithoutArgs(&run_loop, &base::RunLoop::Quit));
+
+  EXPECT_TRUE(service_for_nav_->HandleNavigation(
+      CreateOpenUrlParams(
+          navigated_url, false,
+          ui::PageTransitionFromInt(
+              ui::PageTransition::PAGE_TRANSITION_LINK |
+              ui::PageTransition::PAGE_TRANSITION_FORWARD_BACK)),
+      web_contents.get(),
+      /*is_from_embedded_page=*/false, /*is_to_new_tab=*/false));
+
+  run_loop.Run();
+}
+
+// Do not enter cobrowse if it's forward back navibation and is originally from
+// typed.
+TEST_F(ContextualTasksUiServiceTest,
+       HandleNavigation_ForwardButtonNotEnterCobrowseOnType) {
+  auto web_contents = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), content::SiteInstance::Create(profile_.get()));
+  content::WebContentsTester::For(web_contents.get())
+      ->SetLastCommittedURL(GURL("chrome://contextual-tasks"));
+
+  GURL navigated_url("https://example.com");
+  EXPECT_FALSE(service_for_nav_->HandleNavigation(
+      CreateOpenUrlParams(
+          navigated_url, false,
+          ui::PageTransitionFromInt(
+              ui::PageTransition::PAGE_TRANSITION_TYPED |
+              ui::PageTransition::PAGE_TRANSITION_FORWARD_BACK)),
+      web_contents.get(),
+      /*is_from_embedded_page=*/false, /*is_to_new_tab=*/false));
 }
 
 }  // namespace contextual_tasks

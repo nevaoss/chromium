@@ -122,19 +122,9 @@ class GLES2_IMPL_EXPORT GLES2Implementation : public GLES2Interface,
   // GLES2Interface implementation
   void FreeSharedMemory(void*) override;
   GLboolean DidGpuSwitch(gl::GpuPreference* active_gpu) final;
-  bool CanCopySharedImageToGLTextureViaTextureCopy(
-      ClientSharedImage* shared_image) override;
   bool CanCopySharedImageDirectlyToGLTexture(
       bool is_opaque,
       ClientSharedImage* shared_image,
-      uint32_t dst_target,
-      uint32_t dst_internal_format,
-      uint32_t dst_type,
-      int32_t dst_level,
-      SkAlphaType dst_alpha_type) override;
-  bool CanCopySharedImageToGLTextureViaSkia(
-      bool is_opaque,
-      uint32_t shared_image_target,
       uint32_t dst_target,
       uint32_t dst_internal_format,
       uint32_t dst_type,
@@ -607,6 +597,9 @@ class GLES2_IMPL_EXPORT GLES2Implementation : public GLES2Interface,
   bool GetFramebufferPixelLocalStorageParameterivANGLEHelper(GLint plane,
                                                              GLenum pname,
                                                              GLint* params);
+  bool GetFramebufferPixelLocalStorageParameteruivANGLEHelper(GLint plane,
+                                                              GLenum pname,
+                                                              GLuint* params);
   bool GetInteger64vHelper(GLenum pname, GLint64* params);
   bool GetIntegervHelper(GLenum pname, GLint* params);
   bool GetIntegeri_vHelper(GLenum pname, GLuint index, GLint* data);
@@ -892,6 +885,14 @@ GLES2Implementation::GetFramebufferPixelLocalStorageParameterivANGLEHelper(
     GLint /* plane */,
     GLenum /* pname */,
     GLint* /* params */) {
+  return false;
+}
+
+inline bool
+GLES2Implementation::GetFramebufferPixelLocalStorageParameteruivANGLEHelper(
+    GLint /* plane */,
+    GLenum /* pname */,
+    GLuint* /* params */) {
   return false;
 }
 

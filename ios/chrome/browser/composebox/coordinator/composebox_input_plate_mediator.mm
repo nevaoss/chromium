@@ -298,12 +298,18 @@ CreateInputDataFromAnnotatedPageContent(
   BOOL _isIncognito;
   // Whether the mediator is currently updating the compact mode.
   BOOL _isUpdatingCompactMode;
+  // Caches whether user input is in progress.
+  BOOL _userInputInProgress;
+  // Caches whether the current input is a search query.
+  BOOL _isSearchQuery;
   // Whether it is in compact mode.
   BOOL _compact;
   // Whether the omnibox has text inputted.
   BOOL _hasText;
   // Whether a successful navigation has started.
   BOOL _inNavigation;
+  // Whether the omnibox is focused.
+  BOOL _omniboxFocused;
   // Used to count the number of images added in the session.
   int _imageUploadCount;
   // The currrent choice of model.
@@ -462,7 +468,7 @@ CreateInputDataFromAnnotatedPageContent(
     if (!_inputStateModel) {
       return 0;
     }
-    auto limits = _inputState.max_instances;
+    auto limits = _inputState.max_inputs_by_type;
     auto type = omnibox::InputType::INPUT_TYPE_LENS_IMAGE;
     if (limits.count(type)) {
       int serverLimit = limits[type];
@@ -729,6 +735,14 @@ CreateInputDataFromAnnotatedPageContent(
   [self commitUIUpdates];
 }
 
+- (void)setOmniboxFocused:(bool)focused {
+  if (_omniboxFocused == focused) {
+    return;
+  }
+  _omniboxFocused = focused;
+  [self requestUIRefresh];
+}
+
 - (void)changeModeForInputState:
     (const contextual_search::InputState&)inputState {
   using enum ComposeboxMode;
@@ -855,7 +869,7 @@ CreateInputDataFromAnnotatedPageContent(
 
   if (EnableComposeboxServerSideState()) {
     CHECK(_inputStateModel);
-    auto limits = _inputState.max_instances;
+    auto limits = _inputState.max_inputs_by_type;
     auto type = omnibox::InputType::INPUT_TYPE_BROWSER_TAB;
     if (limits.count(type)) {
       int serverLimit = limits[type];
@@ -2004,6 +2018,13 @@ CreateInputDataFromAnnotatedPageContent(
   if (!IsComposeboxCompactModeEnabled()) {
     return NO;
   }
+
+  BOOL forceExpansionOnFocus =
+      _entrypoint == ComposeboxEntrypoint::kCobrowse && _omniboxFocused;
+  if (forceExpansionOnFocus) {
+    return NO;
+  }
+
   BOOL requiresExpansion =
       _isMultiline || _modeHolder.mode != ComposeboxMode::kRegularSearch;
   return !requiresExpansion;
@@ -2068,10 +2089,13 @@ CreateInputDataFromAnnotatedPageContent(
          userInputInProgress:(BOOL)userInputInProgress {
   DCHECK_CALLED_ON_VALID_SEQUENCE(_sequenceChecker);
   BOOL hasText = text.length() > 0;
-  if (hasText == _hasText) {
+  if (hasText == _hasText && _userInputInProgress == userInputInProgress &&
+      _isSearchQuery == isSearchQuery) {
     return;
   }
   _hasText = hasText;
+  _userInputInProgress = userInputInProgress;
+  _isSearchQuery = isSearchQuery;
 
   [self commitUIUpdates];
 }
@@ -2154,12 +2178,29 @@ CreateInputDataFromAnnotatedPageContent(
   BOOL eligibleToAIM = [self isEligibleToAIM];
   BOOL lensAvailable = lens_availability::CheckAvailabilityForLensEntryPoint(
       LensEntrypoint::Composebox, [self isDSEGoogle]);
-  BOOL allowsMultimodalActions = dseGoogle && eligibleToAIM;
+  BOOL isCobrowse = _entrypoint == ComposeboxEntrypoint::kCobrowse;
+  BOOL compactInCobrowse = compactMode && isCobrowse;
+  BOOL allowsMultimodalActions =
+      dseGoogle && eligibleToAIM && !compactInCobrowse;
   BOOL canSend = hasContent && !compactMode && allowsMultimodalActions;
   BOOL showShortcuts =
       !hasContent && !canSend &&
       !base::FeatureList::IsEnabled(kHideFuseboxVoiceLensActions);
-  BOOL showLeadingImage = !compactMode || !allowsMultimodalActions;
+
+  if (IsComposeboxConditionalPlusButtonEnabled() && !isCobrowse &&
+      _modeHolder.isRegularSearch && compactMode) {
+    BOOL isPreEditURL = !_userInputInProgress && _hasText;
+    BOOL isURLQuery = _userInputInProgress && _hasText && !_isSearchQuery;
+    allowsMultimodalActions = !isURLQuery;
+    if (GetComposeboxConditionalPlusButtonVariant() ==
+            ComposeboxConditionalPlusButtonVariant::kHideInPreEdit &&
+        isPreEditURL) {
+      allowsMultimodalActions = YES;
+    }
+  }
+
+  BOOL showLeadingImage =
+      !isCobrowse && (!compactMode || !allowsMultimodalActions);
   BOOL shouldPersistAIMButton =
       IsComposeboxAIMNudgeEnabled() && !compactMode && allowsMultimodalActions;
 

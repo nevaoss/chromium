@@ -9,25 +9,9 @@
 namespace gpu {
 namespace gles2 {
 
-bool GLES2Interface::CanCopySharedImageToGLTextureViaTextureCopy(
-    ClientSharedImage* shared_image) {
-  return false;
-}
-
 bool GLES2Interface::CanCopySharedImageDirectlyToGLTexture(
     bool is_opaque,
     ClientSharedImage* shared_image,
-    uint32_t dst_target,
-    uint32_t dst_internal_format,
-    uint32_t dst_type,
-    int32_t dst_level,
-    SkAlphaType dst_alpha_type) {
-  return false;
-}
-
-bool GLES2Interface::CanCopySharedImageToGLTextureViaSkia(
-    bool is_opaque,
-    uint32_t shared_image_target,
     uint32_t dst_target,
     uint32_t dst_internal_format,
     uint32_t dst_type,

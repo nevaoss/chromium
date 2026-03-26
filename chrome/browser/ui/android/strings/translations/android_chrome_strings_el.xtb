@@ -348,6 +348,7 @@
 <translation id="2496180316473517155">Ιστορικό περιήγησης</translation>
 <translation id="2497852260688568942">Ο συγχρονισμός έχει απενεργοποιηθεί από τον διαχειριστή σας</translation>
 <translation id="250020030759455918">Θα δείτε στο Chrome την κατάσταση σύνδεσής σας στον ιστότοπο <ph name="SITE_NAME" />, τα δεδομένα περιήγησης και τα δεδομένα ιστοτόπου.</translation>
+<translation id="2501278716633472235">Επιστροφή</translation>
 <translation id="2510106555128151389">Εγκατάσταση <ph name="WEBAPK_NAME" />…</translation>
 <translation id="2512234228327349533">Αναζήτηση επιλογών αγοράς</translation>
 <translation id="2513403576141822879">Για περισσότερες ρυθμίσεις που σχετίζονται με το απόρρητο, την ασφάλεια και τη συλλογή δεδομένων, ανατρέξτε στην ενότητα <ph name="BEGIN_LINK" />Συγχρονισμός και υπηρεσίες Google<ph name="END_LINK" /></translation>
@@ -1492,7 +1493,6 @@
 <translation id="7057969023583258980">Άνοιγμα πλήρους ιστορικού Chrome</translation>
 <translation id="7063006564040364415">Δεν ήταν δυνατή η σύνδεση στον διακομιστή συγχρονισμού.</translation>
 <translation id="7063106218165698546">Προσαρμόστε την ομάδα καρτελών και πατήστε Τέλος</translation>
-<translation id="7071521146534760487">Διαχείριση λογαριασμού</translation>
 <translation id="707155805709242880">Επιλέξτε παρακάτω τι θέλετε να συγχρονίσετε.</translation>
 <translation id="7072949719501323344"><ph name="TAB_TITLE" />, Καρφιτσωμένη καρτέλα ανώνυμης περιήγησης Picture-in-Picture με πολλαπλή επιλογή</translation>
 <translation id="7077143737582773186">Secure Digital</translation>
@@ -1821,6 +1821,7 @@
 <translation id="8282950411412455249">Μετάβαση στις ρυθμίσεις ασφαλείας</translation>
 <translation id="8288688997999490824">{NUM_WINDOWS,plural, =1{Κλείσιμο 1 παραθύρου για ανώνυμη περιήγηση}other{Κλείσιμο # παραθύρων για ανώνυμη περιήγηση}}</translation>
 <translation id="831192587911042850">Προσθέτει τον τρέχοντα ιστότοπο στη λίστα των ιστοτόπων που ακολουθείτε.</translation>
+<translation id="8313599942510782709">Η εργασία σας βρίσκεται ακόμη σε εξέλιξη</translation>
 <translation id="8317318757008452355">Άνοιγμα επιλογών για εκτύπωση</translation>
 <translation id="8320212361750431956">Πρόσφατη δραστηριότητα</translation>
 <translation id="832514020744584629"><ph name="PREF_TITLE" />  <ph name="BEGIN_NEW" />Νέο<ph name="END_NEW" /></translation>

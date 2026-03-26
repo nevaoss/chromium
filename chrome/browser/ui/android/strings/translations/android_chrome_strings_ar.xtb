@@ -348,6 +348,7 @@
 <translation id="2496180316473517155">سجلّ التصفّح</translation>
 <translation id="2497852260688568942">تم إيقاف المزامنة من قِبل المشرف</translation>
 <translation id="250020030759455918">‏ستظهر لك حالة تسجيل الدخول على <ph name="SITE_NAME" />، وبيانات التصفُّح وبيانات الموقع الإلكتروني في Chrome.</translation>
+<translation id="2501278716633472235">الرجوع</translation>
 <translation id="2510106555128151389">جارٍ تثبيت "<ph name="WEBAPK_NAME" />"...</translation>
 <translation id="2512234228327349533">البحث عن خيارات الشراء</translation>
 <translation id="2513403576141822879">‏لعرض مزيد من الإعدادات المتعلِّقة بالخصوصية والأمان وجمع البيانات، يُرجى الاطِّلاع على <ph name="BEGIN_LINK" />خدمات Google والمزامنة<ph name="END_LINK" /></translation>
@@ -1493,7 +1494,6 @@
 <translation id="7057969023583258980">‏فتح سجلّ Chrome بالكامل</translation>
 <translation id="7063006564040364415">تعذر الاتصال بخادم المزامنة.</translation>
 <translation id="7063106218165698546">خصِّص مجموعة علامات التبويب وانقر على "تم"</translation>
-<translation id="7071521146534760487">إدارة الحساب</translation>
 <translation id="707155805709242880">اختَر ما تريد مزامنته أدناه</translation>
 <translation id="7072949719501323344">‫"<ph name="TAB_TITLE" />"، علامة تبويب مثبَّتة تم اختيارها في "وضع التصفّح المتخفي" مع علامات تبويب أخرى وتعرض فيديو في وضع "نافذة ضمن النافذة"</translation>
 <translation id="7077143737582773186">‏بطاقة SD</translation>
@@ -1825,6 +1825,7 @@
 <translation id="8282950411412455249">الانتقال إلى إعدادات الأمان</translation>
 <translation id="8288688997999490824">{NUM_WINDOWS,plural, =1{إغلاق نافذة واحدة للتصفّح المتخفي}zero{إغلاق # نافذة للتصفّح المتخفي}two{إغلاق نافذتَي التصفّح المتخفي}few{إغلاق # نوافذ للتصفّح المتخفي}many{إغلاق # نافذة للتصفّح المتخفي}other{إغلاق # نافذة للتصفّح المتخفي}}</translation>
 <translation id="831192587911042850">تعمل هذه الميزة على إضافة الموقع الإلكتروني الحالي إلى قائمة المواقع الإلكترونية التي تتابعها.</translation>
+<translation id="8313599942510782709">لا تزال المَهمّة جارية</translation>
 <translation id="8317318757008452355">فتح الخيارات للطباعة</translation>
 <translation id="8320212361750431956">الأنشطة الحديثة</translation>
 <translation id="832514020744584629"><ph name="PREF_TITLE" />  <ph name="BEGIN_NEW" />إعداد جديد<ph name="END_NEW" /></translation>

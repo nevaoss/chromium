@@ -111,9 +111,7 @@ class OptimizationGuideKeyedService
   ~OptimizationGuideKeyedService() override;
 
 #if BUILDFLAG(IS_ANDROID)
-  base::android::ScopedJavaLocalRef<
-      optimization_guide::android::JOptimizationGuideBridge>
-  GetJavaObject();
+  base::android::ScopedJavaLocalRef<JOptimizationGuideBridge> GetJavaObject();
 #endif
 
   // Constructs a ModelBrokerClient with remote fallback capability.
@@ -166,7 +164,6 @@ class OptimizationGuideKeyedService
   void RemoveOnDeviceModelAvailabilityChangeObserver(
       optimization_guide::mojom::OnDeviceFeature feature,
       optimization_guide::OnDeviceModelAvailabilityObserver* observer) override;
-  on_device_model::Capabilities GetOnDeviceCapabilities() override;
   optimization_guide::OnDeviceModelEligibilityReason
   GetOnDeviceModelEligibility(
       optimization_guide::mojom::OnDeviceFeature feature) override;

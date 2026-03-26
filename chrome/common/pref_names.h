@@ -995,6 +995,13 @@ inline constexpr char kGrayscaleThemeEnabled[] = "browser.theme.is_grayscale2";
 inline constexpr char kExtensionsUIDeveloperMode[] =
     "extensions.ui.developer_mode";
 
+#if BUILDFLAG(IS_ANDROID) && BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+// A boolean pref set to true if the extensions menu button should be pinned to
+// the toolbar.
+inline constexpr char kPinExtensionsMenuButton[] =
+    "extensions.pin_extensions_menu_button";
+#endif
+
 // Dictionary pref that tracks which command belongs to which
 // extension + named command pair.
 inline constexpr char kExtensionCommands[] = "extensions.commands";
@@ -1507,6 +1514,16 @@ inline constexpr char kVerticalTabsEnabled[] = "vertical_tabs.enabled";
 // used for metrics reporting purposes.
 inline constexpr char kVerticalTabsEnabledFirstTime[] =
     "vertical_tabs.enabled_first_time";
+
+// Boolean representing the most recently used vertical tab strip collapse
+// state. Only used during startup when session restore is not used.
+inline constexpr char kVerticalTabsCollapsedState[] =
+    "vertical_tabs.collapsed_state";
+
+// Integer representing the most recently used vertical tab strip uncollapsed
+// width. Only used during startup when session restore is not used.
+inline constexpr char kVerticalTabsUncollapsedWidth[] =
+    "vertical_tabs.uncollapsed_width";
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(ENABLE_COMPOSE)
@@ -1574,6 +1591,10 @@ inline constexpr char kStaticStorageQuotaEnabled[] =
 
 // *************** LOCAL STATE ***************
 // These are attached to the machine/installation
+
+// A time pref storing the last time an audio input stream was created.
+inline constexpr char kAudioInputStreamLastTimeCreated[] =
+    "media.audio_input_stream_last_time_created";
 
 // Used to store the value of the SerialAllowAllPortsForUrls policy.
 inline constexpr char kManagedSerialAllowAllPortsForUrls[] =
@@ -2954,15 +2975,6 @@ inline constexpr char kCreatePasskeysInICloudKeychain[] =
     "webauthn.create_in_icloud_keychain";
 #endif
 
-// Records the last time the CWS Info Service downloaded information about
-// currently installed extensions from the Chrome Web Store, successfully
-// compared it with the information stored in extension_prefs and updated the
-// latter if necessary. The timestamp therefore represents the "freshness" of
-// the CWS information saved.
-inline constexpr char kCWSInfoTimestamp[] = "extensions.cws_info_timestamp";
-inline constexpr char kCWSInfoFetchErrorTimestamp[] =
-    "extensions.cws_info_fetch_error_timestamp";
-
 // A bool value for running GarbageCollectStoragePartitionCommand.
 inline constexpr char kShouldGarbageCollectStoragePartitions[] =
     "storage_partitions.should_garbage_collect";
@@ -3645,6 +3657,10 @@ inline constexpr char kServiceWorkerToControlSrcdocIframeEnabled[] =
 inline constexpr char kSharedWorkerBlobURLFixEnabled[] =
     "worker.shared_worker_blob_url_fix_enabled";
 
+// Boolean that specifies whether the shared worker has extended lifetime.
+inline constexpr char kSharedWorkerExtendedLifetimeEnabled[] =
+    "worker.shared_worker_extended_lifetime_enabled";
+
 // Boolean indicating whether clearing window.name when the navigation is
 // top-level, cross-site and swaps BrowsingContextGroup is allowed or not.
 inline constexpr char kClearWindowNameForNewBrowsingContextGroup[] =
@@ -3712,6 +3728,9 @@ inline constexpr char kAndroidTipNotificationShownRecentTabs[] =
 // history entry that is donated to AppSearch.
 inline constexpr char kAuxiliarySearchLastDonatedHistoryEntryVisitTime[] =
     "auxiliary_search.last_donated_history_entry_visit_time";
+
+// Boolean pref indicating whether the app rating prompt has been shown.
+inline constexpr char kAppRatingPromptShown[] = "app_rating_prompt_shown";
 #endif  // BUILDFLAG(IS_ANDROID)
 
 }  // namespace prefs

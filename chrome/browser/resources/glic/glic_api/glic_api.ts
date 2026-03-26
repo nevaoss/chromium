@@ -86,6 +86,7 @@ export declare interface AdditionalContextPart {
   pdf?: PdfDocumentData;
   tabContext?: TabContextResult;
   region?: CapturedRegion;
+  pendingRegion?: PendingCapturedRegion;
 }
 
 /** Options for invoking Glic. */
@@ -487,6 +488,14 @@ export declare interface GlicBrowserHost {
    * be terminated and a new one will begin.
    */
   captureRegion?(): ObservableValue<CaptureRegionResult>;
+
+  /**
+   * Deletes a captured region.
+   *
+   * @param tabId The ID of the tab from which the region was captured.
+   * @param id The ID of the captured region to delete.
+   */
+  deleteCapturedRegion?(tabId: string, id: string): void;
 
   /**
    * @todo All actuation should eventually be moved onto PerformActions.
@@ -1250,6 +1259,14 @@ export declare interface CapturedRegion {
   rect?: Rect;
 }
 
+/** The captured region with an ID. */
+export declare interface PendingCapturedRegion {
+  /** The ID of the captured region. */
+  id: string;
+  /** The captured region. */
+  region: CapturedRegion;
+}
+
 /** The result of a successful region capture. */
 export declare interface CaptureRegionResult {
   /** The ID of the tab from which the region was captured. */
@@ -1641,6 +1658,7 @@ export declare interface PageMetadata {
  * available while the page is being loaded or if not provided by the page
  * itself.
  */
+
 export declare interface TabData {
   /**
    * Unique ID of the tab that owns the page. These values are unique across
@@ -1720,6 +1738,8 @@ export declare interface TabData {
    * WARNING: This is not implemented on Android, and is always true.
    */
   isWindowActive?: boolean;
+  /** Lightweight page features detected on the page. */
+  lightweightPageFeatures?: LightweightPageFeature[];
 }
 
 /** A candidate for pinning. */
@@ -2140,6 +2160,8 @@ export declare interface SkillPreview {
   source: SkillSource;
   /** The description of the skill. */
   description?: string;
+  /** The image URL to show when rendering this skill. */
+  image_url?: string;
   /** Whether the skill is contextually relevant to the current tab. */
   isContextual?: boolean;
 }
@@ -2775,6 +2797,8 @@ export enum InvocationSource {
   IPH = 21,
   // User clicked an anchored contextual cue chip.
   ANCHORED_CONTEXTUAL_CUE = 22,
+  // From the context menu.
+  WEB_CONTENTS_CONTEXT_MENU = 23,
 }
 
 ///////////////////////////////////////////////
@@ -2833,6 +2857,15 @@ export enum AdditionalContextSource {
   SHARE_CONTEXT_MENU = 0,
   REGION_SELECTION = 1,
   TEXT_SELECTION = 3,
+}
+
+///////////////////////////////////////////////
+// WARNING - GENERATED FROM MOJOM, DO NOT EDIT.
+// Lightweight page features detected on the page.
+export enum LightweightPageFeature {
+  UNKNOWN = 0,
+  // The YouTube "Ask" button is visible.
+  YT_ASK_BUTTON_PRESENT = 1,
 }
 
 ///////////////////////////////////////////////

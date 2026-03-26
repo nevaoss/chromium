@@ -3808,7 +3808,8 @@ void LocalFrameView::ServiceScrollAnimations(base::TimeTicks start_time) {
           start_time.since_origin().InSecondsF());
     }
 
-    if (!RuntimeEnabledFeatures::RunSnapshotPostLayoutStateStepsEnabled()) {
+    if (!RuntimeEnabledFeatures::RunSnapshotPostLayoutStateStepsEnabled() ||
+        !RuntimeEnabledFeatures::SnapshotScrollTimelinesPostLayoutEnabled()) {
       GetFrame().UpdatePostLayoutSnapshotClientsForServiceAnimations();
     }
     if (SVGDocumentExtensions::ServiceSmilOnAnimationFrame(*document)) {

@@ -158,21 +158,21 @@ class PLATFORM_EXPORT CanvasResourceProvider
     return base::ByteSize(format_.EstimatedSizeInBytes(size_));
   }
 
-  virtual bool WritePixels(const SkImageInfo& orig_info,
-                           const void* pixels,
-                           size_t row_bytes,
-                           int x,
-                           int y) = 0;
+  virtual bool WritePixelsForCanvas2D(const SkImageInfo& orig_info,
+                                      const void* pixels,
+                                      size_t row_bytes,
+                                      int x,
+                                      int y) = 0;
 
   CanvasResourceProvider(const CanvasResourceProvider&) = delete;
   CanvasResourceProvider& operator=(const CanvasResourceProvider&) = delete;
   ~CanvasResourceProvider() override;
 
-  void RestoreBackBuffer(const cc::PaintImage&);
+  void RestoreBackBufferForCanvas2D(const cc::PaintImage&);
 
   ResourceProviderType GetType() const { return type_; }
 
-  void FlushIfRecordingLimitExceeded();
+  void FlushIfRecordingLimitExceededForCanvas2D();
 
   const MemoryManagedPaintRecorder& Recorder() const { return *recorder_; }
   MemoryManagedPaintRecorder& Recorder() { return *recorder_; }
@@ -189,19 +189,20 @@ class PLATFORM_EXPORT CanvasResourceProvider
     always_enable_raster_timers_for_testing_ = value;
   }
 
-  const std::optional<cc::PaintRecord>& LastRecording() {
-    return last_recording_;
+  const std::optional<cc::PaintRecord>& LastRecordingForCanvas2D() {
+    CHECK(IsCanvas2D());
+    return last_recording_for_canvas2d_;
   }
 
  protected:
   class CanvasImageProvider;
 
   SkSurface* GetSkSurface() const;
-  bool UnacceleratedWritePixels(const SkImageInfo& orig_info,
-                                const void* pixels,
-                                size_t row_bytes,
-                                int x,
-                                int y);
+  bool UnacceleratedWritePixelsForCanvas2D(const SkImageInfo& orig_info,
+                                           const void* pixels,
+                                           size_t row_bytes,
+                                           int x,
+                                           int y);
 
   scoped_refptr<UnacceleratedStaticBitmapImage> UnacceleratedSnapshot(
       ImageOrientation);
@@ -269,6 +270,9 @@ class PLATFORM_EXPORT CanvasResourceProvider
   // only needed for ganesh.
   virtual void DisableLineDrawingAsPathsIfNecessary() {}
 
+  // Whether this CanvasResourceProvider is for Canvas2D.
+  virtual bool IsCanvas2D() const = 0;
+
  protected:
   // Should only be called from static Create*() methods.
   // TODO(crbug.com/352263194): Eliminate this method by inlining its body at
@@ -301,7 +305,7 @@ class PLATFORM_EXPORT CanvasResourceProvider
   size_t max_pinned_image_bytes_;
 
   bool clear_frame_ = true;
-  std::optional<cc::PaintRecord> last_recording_;
+  std::optional<cc::PaintRecord> last_recording_for_canvas2d_;
 };
 
 // Renders canvas2D ops to a Skia RAM-backed bitmap. Mailboxing is not
@@ -320,11 +324,11 @@ class PLATFORM_EXPORT Canvas2DResourceProviderBitmap
       ImageOrientation = ImageOrientationEnum::kDefault) override;
 
   void RasterRecord(cc::PaintRecord last_recording) override;
-  bool WritePixels(const SkImageInfo& orig_info,
-                   const void* pixels,
-                   size_t row_bytes,
-                   int x,
-                   int y) override;
+  bool WritePixelsForCanvas2D(const SkImageInfo& orig_info,
+                              const void* pixels,
+                              size_t row_bytes,
+                              int x,
+                              int y) override;
 
   static std::unique_ptr<CanvasResourceProvider> CreateForTesting(
       gfx::Size size,
@@ -356,6 +360,7 @@ class PLATFORM_EXPORT Canvas2DResourceProviderBitmap
                                  Delegate* delegate);
 
   sk_sp<SkSurface> CreateSkSurface() const override;
+  bool IsCanvas2D() const override { return true; }
 };
 
 // * Renders to a SharedImage, which manages memory internally.
@@ -583,11 +588,11 @@ class PLATFORM_EXPORT Canvas2DResourceProviderSharedImage
   Canvas2DResourceProviderSharedImage* As2DSharedImageProvider() final {
     return this;
   }
-  bool WritePixels(const SkImageInfo& orig_info,
-                   const void* pixels,
-                   size_t row_bytes,
-                   int x,
-                   int y) override;
+  bool WritePixelsForCanvas2D(const SkImageInfo& orig_info,
+                              const void* pixels,
+                              size_t row_bytes,
+                              int x,
+                              int y) override;
 
   // Returns the ClientSharedImage backing this CanvasResourceProvider, if one
   // exists, after flushing the resource and signaling that an external write
@@ -611,6 +616,8 @@ class PLATFORM_EXPORT Canvas2DResourceProviderSharedImage
   void TransferBackFromWebGPU(const gpu::SyncToken& webgpu_write_sync_token);
 
  private:
+  bool IsCanvas2D() const override { return true; }
+
   std::unique_ptr<gpu::RasterScopedAccess> WillDrawInternal();
 };
 
@@ -651,15 +658,6 @@ class PLATFORM_EXPORT CanvasNon2DResourceProviderSharedImage
       WebGraphicsSharedImageInterfaceProvider* shared_image_interface_provider,
       Delegate* delegate = nullptr);
 
-  // The returned instance will have been cleared at creation.
-  static std::unique_ptr<CanvasNon2DResourceProviderSharedImage>
-  CreateWithClearForSoftwareCompositor(
-      gfx::Size size,
-      viz::SharedImageFormat format,
-      SkAlphaType alpha_type,
-      const gfx::ColorSpace& color_space,
-      WebGraphicsSharedImageInterfaceProvider* shared_image_interface_provider,
-      Delegate* delegate = nullptr);
   static std::unique_ptr<CanvasNon2DResourceProviderSharedImage>
   CreateForSoftwareCompositor(
       gfx::Size size,
@@ -686,11 +684,17 @@ class PLATFORM_EXPORT CanvasNon2DResourceProviderSharedImage
 
   // CanvasResourceProvider:
   void RasterRecord(cc::PaintRecord last_recording) override;
-  bool WritePixels(const SkImageInfo& orig_info,
-                   const void* pixels,
-                   size_t row_bytes,
-                   int x,
-                   int y) override;
+  bool WritePixelsForCanvas2D(const SkImageInfo& orig_info,
+                              const void* pixels,
+                              size_t row_bytes,
+                              int x,
+                              int y) override {
+    NOTREACHED();
+  }
+  bool UploadToBackingSharedImage(const SkPixmap& pixmap,
+                                  const SkImageInfo& src_info,
+                                  uint32_t src_x,
+                                  uint32_t src_y);
 
   // Drops the cached snapshot (if any) and invokes `draw_callback` on this
   // instance's canvas.
@@ -715,7 +719,8 @@ class PLATFORM_EXPORT CanvasNon2DResourceProviderSharedImage
   // before writing the contents. When the external write is complete, the
   // caller should call `EndExternalWrite()`.
   scoped_refptr<gpu::ClientSharedImage> BeginExternalWrite(
-      gpu::SyncToken& internal_access_sync_token);
+      gpu::SyncToken& internal_access_sync_token,
+      bool is_overwrite);
 
   // Copies the contents of the passed-in SharedImage at `copy_rect` into this
   // instance's SharedImage. Waits on `ready_sync_token` before copying; pass
@@ -723,7 +728,8 @@ class PLATFORM_EXPORT CanvasNon2DResourceProviderSharedImage
   // `completion_sync_token` which will satisfy after the image copy completes.
   bool CopyToBackingSharedImage(
       const scoped_refptr<gpu::ClientSharedImage>& shared_image,
-      const gfx::Rect& copy_rect,
+      uint32_t src_x,
+      uint32_t src_y,
       const gpu::SyncToken& ready_sync_token,
       gpu::SyncToken& completion_sync_token);
 
@@ -734,7 +740,9 @@ class PLATFORM_EXPORT CanvasNon2DResourceProviderSharedImage
   void EndExternalWrite(const gpu::SyncToken& external_write_sync_token);
 
  private:
-  std::unique_ptr<gpu::RasterScopedAccess> WillDrawInternal();
+  bool IsCanvas2D() const override { return false; }
+
+  std::unique_ptr<gpu::RasterScopedAccess> WillDrawInternal(bool is_overwrite);
 };
 
 }  // namespace blink

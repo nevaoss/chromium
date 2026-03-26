@@ -587,6 +587,10 @@ BASE_FEATURE(kCrOSEnforceMonoAudioCapture, base::FEATURE_DISABLED_BY_DEFAULT);
 // information on the quality of the session using RTCP logs.
 BASE_FEATURE(kEnableRtcpReporting, base::FEATURE_ENABLED_BY_DEFAULT);
 
+// Controls whether the OpusAudioDecoder is used for Opus audio decoding
+// (instead of the FFmpegAudioDecoder).
+BASE_FEATURE(kDirectOpusAudioDecoding, base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Approach original pre-REC MSE object URL autorevoking behavior, though await
 // actual attempt to use the object URL for attachment to perform revocation.
 // This will hopefully reduce runtime memory bloat for pages that do not
@@ -608,6 +612,8 @@ BASE_FEATURE(kRevokeMediaSourceObjectURLOnAttach,
 #if BUILDFLAG(ENABLE_SYMPHONIA)
 BASE_FEATURE(kSymphoniaAudioDecoding, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kSymphoniaMp3Decoding, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kSymphoniaPcmDecoding, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kSymphoniaVorbisDecoding, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif
 
 // Forces D3D11VideoDecoder to use one decoder texture per picture buffer.
@@ -996,7 +1002,7 @@ BASE_FEATURE(kParseSEIRecoveryPoints, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Allows media to autoplay without a user gesture if the site has been
 // granted microphone or camera permissions.
-BASE_FEATURE(kAutoplayBypassForMicCamera, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kAutoplayBypassForMicCamera, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Whether we should show a setting to disable autoplay policy.
 BASE_FEATURE(kAutoplayDisableSettings, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -1161,8 +1167,7 @@ BASE_FEATURE(kLimitConcurrentDecoderInstances,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Use SequencedTaskRunner for VideoEncodeAccelerator
-BASE_FEATURE(kUseSequencedTaskRunnerForVEA,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kUseSequencedTaskRunnerForVEA, base::FEATURE_DISABLED_BY_DEFAULT);
 
 #if defined(ARCH_CPU_ARM_FAMILY)
 // Experimental support for GL based scaling for NV12 on Trogdor.
@@ -1567,7 +1572,7 @@ BASE_FEATURE(kAomVpxUsePresentationThreadType,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables the Rust-based JPEG parser.
-BASE_FEATURE(kUseRustJpegParser, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kUseRustJpegParser, base::FEATURE_ENABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_WIN)
 // Controls whether to use D3D12 video decoder instead of D3D11 when supported.
@@ -1654,6 +1659,8 @@ bool IsChromeWideEchoCancellationEnabled() {
   return false;
 #endif
 }
+
+BASE_FEATURE(kMP4TimedMetadataTrack, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kWebRtcAudioNeuralResidualEchoEstimation,
              base::FEATURE_DISABLED_BY_DEFAULT);

@@ -167,12 +167,7 @@ BASE_FEATURE(kAutofillAiAvailableByDefault, base::FEATURE_DISABLED_BY_DEFAULT);
 // whether other features are enabled. This is necessary so that cleaning up the
 // browsing data also removes data if the user left the study.
 BASE_FEATURE(kAutofillAiCreateEntityDataManager,
-#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
-             base::FEATURE_DISABLED_BY_DEFAULT
-#else
-             base::FEATURE_ENABLED_BY_DEFAULT
-#endif
-);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // If enabled, AutofillAi entities will be deduped on every major milestone.
 BASE_FEATURE(kAutofillAiDedupeEntities,
@@ -336,12 +331,6 @@ BASE_FEATURE(kAutofillAiWithDataSchema,
 // value which was modified.
 BASE_FEATURE(kAutofillAllowFillingModifiedInitialValues,
              base::FEATURE_DISABLED_BY_DEFAULT);
-
-// TODO(crbug.com/460645840): Remove this feature flag once it is no longer
-// needed. Guards the refactoring to allow showing Autofill and Password
-// suggestions in the same surface instead of being mutually exclusive.
-BASE_FEATURE(kAutofillAndPasswordsInSameSurface,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // If enabled, on Android desktop, the Autofill keyboard accessory will have a
 // new behavior and design.
@@ -580,7 +569,6 @@ BASE_FEATURE(kAutofillEnableKeyboardAccessoryChipWidthAdjustment,
              base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_ANDROID)
 
-
 // When enabled, Autofill will help users fill in non-affiliated loyalty cards
 // on loyalty card only fields.
 BASE_FEATURE(kAutofillEnableNonAffiliatedLoyaltyCardsFilling,
@@ -658,10 +646,6 @@ BASE_FEATURE(kAutofillExtendZipCodeValidation,
 // TODO(crbug.com/40196220): Remove once launched.
 BASE_FEATURE(kAutofillExtractOnlyNonAdFrames,
              base::FEATURE_DISABLED_BY_DEFAULT);
-
-// When enabled, adds stricter conditions to trigger refills in order to avoid
-// trivial refill operations, which are refills that do not modify any field.
-BASE_FEATURE(kAutofillFewerTrivialRefills, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // If enabled, removes address field values that contain words "select",
 // "choose", or "optional" during profile import.

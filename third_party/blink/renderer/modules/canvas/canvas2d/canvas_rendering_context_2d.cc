@@ -362,7 +362,7 @@ bool CanvasRenderingContext2D::WritePixels(const SkImageInfo& orig_info,
     }
   }
 
-  return provider->WritePixels(orig_info, pixels, row_bytes, x, y);
+  return provider->WritePixelsForCanvas2D(orig_info, pixels, row_bytes, x, y);
 }
 
 bool CanvasRenderingContext2D::ShouldAntialias() const {
@@ -457,7 +457,7 @@ MemoryManagedPaintCanvas* CanvasRenderingContext2D::GetOrCreatePaintCanvas() {
     // the autoflush limit.
     if (layer_count_ == 0) [[likely]] {
       // TODO(crbug.com/1246486): Make auto-flushing layer friendly.
-      provider->FlushIfRecordingLimitExceeded();
+      provider->FlushIfRecordingLimitExceededForCanvas2D();
     }
   } else {
     // If we have no provider, try creating one.
@@ -516,7 +516,7 @@ void CanvasRenderingContext2D::WillDraw(
   if (CanvasResourceProvider* provider = GetResourceProvider();
       layer_count_ == 0 && provider != nullptr) [[likely]] {
     // TODO(crbug.com/1246486): Make auto-flushing layer friendly.
-    provider->FlushIfRecordingLimitExceeded();
+    provider->FlushIfRecordingLimitExceededForCanvas2D();
   }
 }
 
@@ -747,7 +747,7 @@ CanvasRenderingContext2D::GetLastRecordingForCanvas2D() {
   if (!provider) {
     return empty_recording_;
   }
-  return provider->LastRecording();
+  return provider->LastRecordingForCanvas2D();
 }
 
 bool CanvasRenderingContext2D::CanCreateResourceProvider() {
@@ -1481,7 +1481,8 @@ void CanvasRenderingContext2D::DropAndRecreateExistingResourceProvider() {
     return;
   }
 
-  resource_provider_->RestoreBackBuffer(image->PaintImageForCurrentFrame());
+  resource_provider_->RestoreBackBufferForCanvas2D(
+      image->PaintImageForCurrentFrame());
   resource_provider_->SetRecorder(std::move(recorder));
 
   canvas()->UpdateMemoryUsage();
@@ -1539,7 +1540,7 @@ void CanvasRenderingContext2D::WakeUpFromHibernation() {
   builder.set_image(hibernation_handler->GetImage(),
                     PaintImage::GetNextContentId());
   builder.set_id(PaintImage::GetNextId());
-  resource_provider_->RestoreBackBuffer(builder.TakePaintImage());
+  resource_provider_->RestoreBackBufferForCanvas2D(builder.TakePaintImage());
   resource_provider_->SetRecorder(hibernation_handler->ReleaseRecorder());
   // The hibernation image is no longer valid, clear it.
   hibernation_handler->Clear();
