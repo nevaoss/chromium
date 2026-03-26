@@ -4510,6 +4510,13 @@ hooks = [
     'action': ['bash', '-c',
               'src/neva/patches/0013-Remove-dl-linkage-from-rust-libc.bash']
   },
+  # Apply 'V8: Do not exit function while ICU is not initialized for webOS' patch
+  {
+    'name': 'V8-Do-not-exit-function-while-ICU-is-not-initialized-for-webOS',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/v8', 'am',
+              '../neva/patches/0001-V8-Do-not-exit-function-while-ICU-is-not-initialized-for-webOS.patch']
+  },
   #@}
   {
     'name': 'apache_win32',
