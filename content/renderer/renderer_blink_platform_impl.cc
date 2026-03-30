@@ -818,8 +818,13 @@ RendererBlinkPlatformImpl::CreateRasterGraphicsContextProvider(
   constexpr bool lose_context_when_out_of_memory = false;
 
   gpu::SchedulingPriority stream_priority =
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+      (base::FeatureList::IsEnabled(::features::kInitialWebUI) &&
+       ::features::kInitialWebUIHighStreamPriority.Get() &&
+#else   // !BUILDFLAG(IS_NEVA_APPRUNTIME)
       (base::FeatureList::IsEnabled(features::kInitialWebUI) &&
        features::kInitialWebUIHighStreamPriority.Get() &&
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
        base::CommandLine::ForCurrentProcess()->HasSwitch(
            switches::kTopChromeWebUI))
           ? kGpuStreamPriorityUI
