@@ -15,12 +15,6 @@ clang_toolchain("target") {
     sysroot = target_sysroot
   }
 
-  # TODO(neva): current_os changed from "chromeos" to target_os
-  # to support building webOS with CrOS toolchain.
-  if (is_webos) {
-    toolchain_args.current_os = target_os
-  }
-
   extra_cflags = cros_target_extra_cflags
   extra_cppflags = cros_target_extra_cppflags
   extra_cxxflags = cros_target_extra_cxxflags
