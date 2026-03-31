@@ -209,7 +209,10 @@ declare_args() {
   # warning serves as a flip switch to allow a gradual migration of targets
   # away from the opt-in wexit_time_destructors config, and into the default
   # compiler config.
-  is_wexit_time_destructors_default = build_with_chromium
+  # NOTE(neva): Disable is_wexit_time_destructors_default to avoid build error
+  # "declaration requires an exit-time destructor
+  # [-Werror,-Wexit-time-destructors]" because Neva uses "-Werror".
+  is_wexit_time_destructors_default = build_with_chromium && false
 }
 
 declare_args() {
