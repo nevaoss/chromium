@@ -13,11 +13,8 @@
 // TODO(neva_rust): Remove this workaround once Neva supports Rust build.
 #if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "third_party/blink/renderer/platform/fonts/opentype/format_check.rs.h"
-<<<<<<< HEAD
 #endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-=======
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
->>>>>>> 148.0.7756.0~1
 #include "third_party/blink/renderer/platform/wtf/vector.h"
 #include "third_party/skia/include/core/SkTypeface.h"
 

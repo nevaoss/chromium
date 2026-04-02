@@ -34,15 +34,11 @@
 #include "base/debug/task_trace.h"
 #include "base/functional/callback.h"
 #include "base/immediate_crash.h"
-#include "base/logging/logger.rs.h"
-#include "base/logging/logging_settings.h"
-<<<<<<< HEAD
 // TODO(neva_rust): Remove this workaround once Neva supports Rust build.
 #if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-#include "base/logging/rust_logger.rs.h"
+#include "base/logging/logger.rs.h"
 #endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-=======
->>>>>>> 148.0.7756.0~1
+#include "base/logging/logging_settings.h"
 #include "base/no_destructor.h"
 #include "base/path_service.h"
 #include "base/pending_task.h"
