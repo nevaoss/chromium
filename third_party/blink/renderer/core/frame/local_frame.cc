@@ -811,7 +811,6 @@ bool LocalFrame::DetachImpl(FrameDetachType type) {
   frame_visibility_observers_.clear();
 
   not_restored_reasons_.reset();
-  microtasks_pauser_.reset();
   prescient_networking_.reset();
   link_preview_triggerer_.reset();
 
@@ -3851,8 +3850,8 @@ void LocalFrame::AdvanceFocusForIME(mojom::blink::FocusType focus_type) {
     return;
 
   Element* next_element =
-      GetPage()->GetFocusController().NextFocusableElementForImeAndAutofill(
-          element, focus_type);
+      GetPage()->GetFocusController().NextFocusableElementForIme(element,
+                                                                 focus_type);
   if (!next_element)
     return;
 

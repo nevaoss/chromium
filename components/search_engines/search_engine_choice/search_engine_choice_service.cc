@@ -595,7 +595,8 @@ SearchEngineChoiceService::GetStaticChoiceScreenConditions(
 
   // Initially exclude users with this type of override. Consult b/302675777 for
   // next steps.
-  if (profile_prefs_->HasPrefPath(prefs::kSearchProviderOverrides)) {
+  if (!base::FeatureList::IsEnabled(switches::kIgnoreSearchProviderOverrides) &&
+      profile_prefs_->HasPrefPath(prefs::kSearchProviderOverrides)) {
     return SearchEngineChoiceScreenConditions::kSearchProviderOverride;
   }
 
@@ -853,7 +854,7 @@ void SearchEngineChoiceService::RecordChoiceMade(
 
   RecordChoiceScreenDefaultSearchProviderType(
       GetDefaultSearchEngineType(CHECK_DEREF(template_url_service)),
-      choice_location);
+      choice_location, profile_metrics_service_.get());
   SetChoiceCompletionMetadata(
       *profile_prefs_,
       search_engines::CreateChoiceCompletionMetadataForCurrentState(

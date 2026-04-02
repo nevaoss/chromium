@@ -17,15 +17,26 @@
 #include "components/history/core/browser/history_service.h"
 #include "components/history/core/browser/history_types.h"
 #include "components/sync/base/data_type.h"
-#include "components/sync/base/report_unrecoverable_error.h"
-#include "components/sync/model/client_tag_based_data_type_processor.h"
 
 namespace accessibility_annotator {
 
+AccessibilityAnnotatorBackend::ContentAnnotationsData::
+    ContentAnnotationsData() = default;
+
+AccessibilityAnnotatorBackend::ContentAnnotationsData::
+    ~ContentAnnotationsData() = default;
+
+AccessibilityAnnotatorBackend::ContentAnnotationsData::ContentAnnotationsData(
+    ContentAnnotationsData&& other) = default;
+
+AccessibilityAnnotatorBackend::ContentAnnotationsData&
+AccessibilityAnnotatorBackend::ContentAnnotationsData::operator=(
+    ContentAnnotationsData&& other) = default;
+
 AccessibilityAnnotatorBackend::AccessibilityAnnotatorBackend(
-    version_info::Channel channel,
     history::HistoryService* history_service,
     syncer::RepeatingDataTypeStoreFactory data_type_store_factory,
+    std::unique_ptr<syncer::DataTypeLocalChangeProcessor> change_processor,
     const base::FilePath& db_path)
     : db_path_(db_path),
       db_(base::ThreadPool::CreateSequencedTaskRunnerForResource(
@@ -33,12 +44,9 @@ AccessibilityAnnotatorBackend::AccessibilityAnnotatorBackend(
            base::TaskShutdownBehavior::BLOCK_SHUTDOWN},
           db_path_)),
       content_annotations_cache_(kContentAnnotatorMaxCacheAnnotations.Get()) {
-  auto processor = std::make_unique<syncer::ClientTagBasedDataTypeProcessor>(
-      syncer::ACCESSIBILITY_ANNOTATION,
-      base::BindRepeating(&syncer::ReportUnrecoverableError, channel));
   accessibility_annotation_sync_bridge_ =
       std::make_unique<AccessibilityAnnotationSyncBridge>(
-          std::move(processor), data_type_store_factory);
+          std::move(change_processor), data_type_store_factory);
   sync_bridge_observation_.Observe(accessibility_annotation_sync_bridge_.get());
   if (history_service) {
     history_service_observation_.Observe(history_service);
@@ -46,6 +54,10 @@ AccessibilityAnnotatorBackend::AccessibilityAnnotatorBackend(
 }
 
 AccessibilityAnnotatorBackend::~AccessibilityAnnotatorBackend() = default;
+
+void AccessibilityAnnotatorBackend::Shutdown() {
+  history_service_observation_.Reset();
+}
 
 void AccessibilityAnnotatorBackend::Init() {
   db_.AsyncCall(&AccessibilityAnnotatorDatabase::Init)
@@ -93,7 +105,7 @@ void AccessibilityAnnotatorBackend::OnHistoryServiceLoaded(
   // TODO(crbug.com/489690454): Query the history service for historical data.
 }
 
-std::optional<AccessibilityAnnotatorBackend::ContentAnnotationsData>
+base::optional_ref<const AccessibilityAnnotatorBackend::ContentAnnotationsData>
 AccessibilityAnnotatorBackend::GetContentAnnotationsCacheData(
     const GURL& url) const {
   auto it = content_annotations_cache_.Peek(url);
@@ -106,11 +118,12 @@ AccessibilityAnnotatorBackend::GetContentAnnotationsCacheData(
 void AccessibilityAnnotatorBackend::SetContentAnnotationsCacheData(
     const GURL& url,
     std::string page_title,
-    std::string annotations) {
+    base::DictValue annotations) {
   // This automatically handles eviction of the oldest entries if full.
-  content_annotations_cache_.Put(
-      url,
-      ContentAnnotationsData{std::move(page_title), std::move(annotations)});
+  ContentAnnotationsData data;
+  data.page_title = std::move(page_title);
+  data.annotations = std::move(annotations);
+  content_annotations_cache_.Put(url, std::move(data));
 }
 
 base::Value AccessibilityAnnotatorBackend::GetDebugUICacheData() const {
@@ -120,14 +133,7 @@ base::Value AccessibilityAnnotatorBackend::GetDebugUICacheData() const {
     base::DictValue entry;
     entry.Set("url", item.first.spec());
     entry.Set("title", item.second.page_title);
-
-    std::optional<base::Value> json =
-        base::JSONReader::Read(item.second.annotations, base::JSON_PARSE_RFC);
-    if (json) {
-      entry.Set("annotations", std::move(*json));
-    } else {
-      entry.Set("annotations", base::Value(item.second.annotations));
-    }
+    entry.Set("annotations", item.second.annotations.Clone());
     result.Append(std::move(entry));
   }
   return base::Value(std::move(result));

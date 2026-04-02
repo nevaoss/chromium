@@ -42,7 +42,7 @@ ${this.shouldShowErrorPage_ ? html`<error-page></error-page>` : html`
                 ?invalid="${this.hasNameCharLimitError_}">
               <div class="emoji-prefix-container" slot="inline-prefix">
                 <cr-icon id="emojiZeroStateIcon" icon="skills:add-reaction"
-                    ?hidden="${this.skill_.icon}" aria-hidden="true">
+                    ?hidden="${!!this.skill_.icon}" aria-hidden="true">
                 </cr-icon>
                 <input id="emojiTrigger" class="emoji-trigger" type="text"
                   .value="${this.skill_.icon}" @click="${this.onEmojiBtnClick_}"
@@ -72,11 +72,15 @@ ${this.shouldShowErrorPage_ ? html`<error-page></error-page>` : html`
             ?error="${this.hasPromptError_()}">
             ${this.isRefineLoading_ ? html`
               <cr-loading-gradient id="instructionsLoader">
-                <svg width="100%" height="90">
+                <svg width="100%" height="175">
                   <clipPath>
                     <rect x="10" y="14" width="90%" height="12" rx="4"></rect>
                     <rect x="10" y="38" width="90%" height="12" rx="4"></rect>
-                    <rect x="10" y="62" width="60%" height="12" rx="4"></rect>
+                    <rect x="10" y="62" width="90%" height="12" rx="4"></rect>
+                    <rect x="10" y="86" width="90%" height="12" rx="4"></rect>
+                    <rect x="10" y="110" width="90%" height="12" rx="4"></rect>
+                    <rect x="10" y="134" width="90%" height="12" rx="4"></rect>
+                    <rect x="10" y="158" width="60%" height="12" rx="4"></rect>
                   </clipPath>
                 </svg>
               </cr-loading-gradient>

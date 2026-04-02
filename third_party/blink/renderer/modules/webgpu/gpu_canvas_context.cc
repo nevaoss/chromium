@@ -78,6 +78,7 @@ GPUCanvasContext::GPUCanvasContext(
     const CanvasContextCreationAttributesCore& attrs)
     : CanvasRenderingContext(host, attrs, CanvasRenderingAPI::kWebgpu) {
   texture_descriptor_ = {};
+  dirty_rect_for_commit_.setEmpty();
 }
 
 GPUCanvasContext::~GPUCanvasContext() {
@@ -154,6 +155,9 @@ cc::Layer* GPUCanvasContext::CcLayer() const {
 }
 
 void GPUCanvasContext::Reshape(int width, int height) {
+  dirty_rect_for_commit_ =
+      SkIRect::MakeWH(Host()->Size().width(), Host()->Size().height());
+
   if (stopped_) {
     return;
   }
@@ -338,10 +342,10 @@ bool GPUCanvasContext::PushFrame() {
   if (!canvas_resource)
     return false;
 
-  const int width = canvas_resource->Size().width();
-  const int height = canvas_resource->Size().height();
-  return Host()->PushFrame(std::move(canvas_resource),
-                           SkIRect::MakeWH(width, height));
+  bool result =
+      Host()->PushFrame(std::move(canvas_resource), dirty_rect_for_commit_);
+  dirty_rect_for_commit_.setEmpty();
+  return result;
 }
 
 ImageBitmap* GPUCanvasContext::TransferToImageBitmap(
@@ -714,6 +718,8 @@ GPUTexture* GPUCanvasContext::getCurrentTexture(
 
   // Simply requesting a new canvas texture with WebGPU is enough to mark it as
   // "dirty", so always call DidDraw() when a new texture is created.
+  dirty_rect_for_commit_.join(
+      SkIRect::MakeWH(Host()->Size().width(), Host()->Size().height()));
   DidDraw(CanvasPerformanceMonitor::DrawType::kOther);
 
   SkAlphaType alpha_type = GetAlphaType();
@@ -743,12 +749,12 @@ GPUTexture* GPUCanvasContext::getCurrentTexture(
       device_, swap_texture_descriptor_.format,
       static_cast<wgpu::TextureUsage>(swap_texture_descriptor_.usage),
       std::move(mailbox_texture),
-      String::FromUTF8(swap_texture_descriptor_.label));
+      String::FromUtf8(swap_texture_descriptor_.label));
 
   if (copy_to_swap_texture_required_) {
     texture_ = MakeGarbageCollected<GPUTexture>(
         device_, device_->GetHandle().CreateTexture(&texture_descriptor_),
-        String::FromUTF8(texture_descriptor_.label));
+        String::FromUtf8(texture_descriptor_.label));
     // If the user manually destroys the texture before yielding control back
     // to the browser, do the copy just prior to the texture destruction.
     texture_->SetBeforeDestroyCallback(blink::BindOnce(
@@ -920,7 +926,7 @@ bool GPUCanvasContext::CopyTextureToResourceProvider(
 
   gpu::SyncToken sync_token;
   auto dst_client_si =
-      resource_provider->BeginExternalWrite(sync_token, /*is_overwrite=*/false);
+      resource_provider->BeginExternalWrite(sync_token, /*is_overwrite=*/true);
   if (!dst_client_si) {
     return false;
   }

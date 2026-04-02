@@ -33,7 +33,9 @@
 #include "components/accessibility_annotator/core/accessibility_query_service.h"
 #include "components/accessibility_annotator/core/annotation_reducer/memory_search_result.h"
 #include "components/autofill/content/browser/content_autofill_client.h"
+#include "components/autofill/core/browser/at_memory/at_memory_data_type.h"
 #include "components/autofill/core/browser/data_manager/personal_data_manager.h"
+#include "components/autofill/core/browser/data_model/autofill_ai/from_accessibility_annotator.h"
 #include "components/autofill/core/browser/filling/filling_product.h"
 #include "components/autofill/core/browser/foundations/autofill_manager.h"
 #include "components/autofill/core/browser/metrics/autofill_metrics.h"
@@ -43,6 +45,7 @@
 #include "components/autofill/core/browser/suggestions/suggestion_type.h"
 #include "components/autofill/core/browser/ui/autofill_suggestion_delegate.h"
 #include "components/autofill/core/browser/ui/popup_interaction.h"
+#include "components/autofill/core/browser/ui/tabbed_pane_enums.h"
 #include "components/autofill/core/common/aliases.h"
 #include "components/autofill/core/common/autofill_features.h"
 #include "components/autofill/core/common/autofill_util.h"
@@ -295,9 +298,9 @@ void AutofillPopupControllerImpl::Show(
         controller_common_.show_tabbed_popup
             ? std::make_optional<AutofillPopupView::TabbedPaneConfig>(
                   std::vector<AutofillPopupView::TabbedPaneConfig::Tab>{
-                      {AutofillPopupView::TabbedPaneConfig::TabType::kPayNow,
+                      {TabbedPaneTabType::kPayNow,
                        l10n_util::GetStringUTF16(IDS_AUTOFILL_PAY_NOW)},
-                      {AutofillPopupView::TabbedPaneConfig::TabType::kPayLater,
+                      {TabbedPaneTabType::kPayLater,
                        l10n_util::GetStringUTF16(IDS_AUTOFILL_PAY_LATER)}})
             : std::nullopt;
     view_ = has_parent
@@ -597,8 +600,7 @@ bool AutofillPopupControllerImpl::RemoveSuggestion(
           break;
         }
         case AutofillMetrics::SingleEntryRemovalMethod::kKeyboardAccessory:
-          NOTREACHED(base::NotFatalUntil::M144);
-          break;
+          NOTREACHED();
         case AutofillMetrics::SingleEntryRemovalMethod::kDeleteButtonClicked:
           NOTREACHED();
       }
@@ -916,51 +918,80 @@ void AutofillPopupControllerImpl::SetFilter(
     std::optional<SuggestionFilter> filter) {
   filter_ = std::move(filter);
 
-  if (suggestions_filling_product_ == FillingProduct::kAtMemory) {
-    if (!filter_) {
-      SetSuggestions({});
-      OnSuggestionsChanged(/*prefer_prev_arrow_side=*/true);
-      return;
-    }
-
-    if (const auto* string_filter =
-            std::get_if<AutofillPopupController::StringFilter>(&*filter_)) {
-      if (ContentAutofillClient* client =
-              ContentAutofillClient::FromWebContents(GetWebContents())) {
-        if (auto* query_service = client->GetAccessibilityQueryService()) {
-          query_service->Query(
-              **string_filter,
-              base::BindRepeating(
-                  [](base::WeakPtr<AutofillPopupControllerImpl> self,
-                     std::vector<accessibility_annotator::MemorySearchResult>
-                         results) {
-                    if (!self) {
-                      return;
-                    }
-                    self->SetSuggestions(base::ToVector(
-                        results,
-                        [](const accessibility_annotator::MemorySearchResult&
-                               result) {
-                          Suggestion s(result.value,
-                                       SuggestionType::kAtMemorySearchResult);
-                          s.labels = {{Suggestion::Text(result.description)}};
-                          s.payload = Suggestion::AtMemoryPayload(result.value);
-                          s.filtration_policy =
-                              Suggestion::FiltrationPolicy::kStatic;
-                          return s;
-                        }));
-                    self->OnSuggestionsChanged(
-                        /*prefer_prev_arrow_side=*/true);
-                  },
-                  weak_ptr_factory_.GetWeakPtr()));
-        }
-      }
-    }
+  if (TryStartSearch()) {
     return;
   }
 
   UpdateFilteredSuggestions();
   OnSuggestionsChanged(/*prefer_prev_arrow_side=*/true);
+}
+
+bool AutofillPopupControllerImpl::TryStartSearch() {
+  if (suggestions_filling_product_ != FillingProduct::kAtMemory) {
+    return false;
+  }
+
+  if (!filter_) {
+    SetSuggestions({});
+    OnSuggestionsChanged(/*prefer_prev_arrow_side=*/true);
+    return true;
+  }
+
+  const auto* string_filter =
+      std::get_if<AutofillPopupController::StringFilter>(&*filter_);
+  if (!string_filter) {
+    return true;
+  }
+  ContentAutofillClient* client =
+      ContentAutofillClient::FromWebContents(GetWebContents());
+  if (!client) {
+    return true;
+  }
+  auto* query_service = client->GetAccessibilityQueryService();
+  if (!query_service) {
+    return true;
+  }
+
+  auto transform =
+      [](const accessibility_annotator::MemorySearchResult& entry) {
+        Suggestion suggestion(entry.value,
+                              SuggestionType::kAtMemorySearchResult);
+        // Label row: [type_name, metadata[0].value, ...]
+        std::vector<Suggestion::Text> label_row;
+        std::u16string type_name = entry.type_name.empty()
+                                       ? GetEntryTypeNameForI18n(entry.type)
+                                       : entry.type_name;
+        if (!type_name.empty()) {
+          label_row.emplace_back(std::move(type_name));
+        }
+        for (const accessibility_annotator::EntryMetadata& metadata :
+             entry.metadata_list) {
+          if (!label_row.empty()) {
+            label_row.emplace_back(u"\u2022");
+          }
+          label_row.emplace_back(metadata.value);
+        }
+        suggestion.labels.emplace_back(std::move(label_row));
+        suggestion.payload = Suggestion::AtMemoryPayload(entry.value);
+        suggestion.filtration_policy = Suggestion::FiltrationPolicy::kStatic;
+        return suggestion;
+      };
+
+  query_service->Query(
+      **string_filter,
+      base::BindRepeating(
+          [](base::WeakPtr<AutofillPopupControllerImpl> self,
+             Suggestion (*transform)(
+                 const accessibility_annotator::MemorySearchResult&),
+             accessibility_annotator::MemorySearchResults result) {
+            if (!self) {
+              return;
+            }
+            self->SetSuggestions(base::ToVector(result.entries, transform));
+            self->OnSuggestionsChanged(/*prefer_prev_arrow_side=*/true);
+          },
+          weak_ptr_factory_.GetWeakPtr(), transform));
+  return true;
 }
 
 bool AutofillPopupControllerImpl::HandleKeyPressEvent(
@@ -977,6 +1008,15 @@ void AutofillPopupControllerImpl::OnPopupPainted() {
   if (!barrier_for_accepting_) {
     barrier_for_accepting_ = NextIdleBarrier::CreateNextIdleBarrierWithDelay(
         kIgnoreEarlyClicksOnSuggestionsDuration);
+  }
+}
+
+void AutofillPopupControllerImpl::OnTabSelected(
+    int tab_index,
+    TabbedPaneTabType tabbed_pane_tab_type) {
+  SetFilter(SuggestionTabIndex(tab_index));
+  if (delegate_) {
+    delegate_->OnTabSelected(tabbed_pane_tab_type);
   }
 }
 

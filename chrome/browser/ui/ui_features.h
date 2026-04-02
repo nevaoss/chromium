@@ -174,14 +174,15 @@ BASE_DECLARE_FEATURE_PARAM(int, kSplitViewDragAndDropMaxDistanceThreshold);
 BASE_DECLARE_FEATURE(kTabDuplicateMetrics);
 
 BASE_DECLARE_FEATURE(kTabGroupsCollapseFreezing);
-BASE_DECLARE_FEATURE(kTabGroupHoverCards);
 
 #if !BUILDFLAG(IS_ANDROID)
 // General improvements to tab group menus
-BASE_DECLARE_FEATURE(kTabGroupMenuImprovements);
-bool IsTabGroupMenuImprovementsEnabled();
+
 BASE_DECLARE_FEATURE(kTabGroupMenuMoreEntryPoints);
 bool IsTabGroupMenuMoreEntryPointsEnabled();
+
+BASE_DECLARE_FEATURE(kTabGroupHoverCards);
+bool IsTabGroupHoverCardsEnabled();
 
 #endif  // !BUILDFLAG(IS_ANDROID)
 
@@ -218,13 +219,6 @@ inline constexpr char kTabHoverCardAdditionalMaxWidthDelay[] =
 
 // If enabled, use desktop widget to show tab modal dialogs.
 BASE_DECLARE_FEATURE(kTabModalUsesDesktopWidget);
-
-BASE_DECLARE_FEATURE(kTabOrganization);
-bool IsTabOrganization();
-
-BASE_DECLARE_FEATURE(kTabOrganizationModelStrategy);
-
-BASE_DECLARE_FEATURE(kTabOrganizationUserInstruction);
 
 BASE_DECLARE_FEATURE(kTearOffWebAppTabOpensWebAppWindow);
 
@@ -365,6 +359,7 @@ BASE_DECLARE_FEATURE_PARAM(std::string, kAiOverlayDialogMockJsonPath);
 
 BASE_DECLARE_FEATURE(kTabGroupsFocusing);
 BASE_DECLARE_FEATURE_PARAM(bool, kTabGroupsFocusingPinnedTabs);
+BASE_DECLARE_FEATURE_PARAM(bool, kTabGroupsFocusingAutoClose);
 BASE_DECLARE_FEATURE_PARAM(bool, kTabGroupsFocusingDefaultToFocused);
 
 }  // namespace features

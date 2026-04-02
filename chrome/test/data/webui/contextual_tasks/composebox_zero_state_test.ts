@@ -10,19 +10,21 @@ import {BrowserProxyImpl} from 'chrome://contextual-tasks/contextual_tasks_brows
 import type {ComposeboxFile} from 'chrome://resources/cr_components/composebox/common.js';
 import {PageCallbackRouter as ComposeboxPageCallbackRouter, PageHandlerRemote as ComposeboxPageHandlerRemote} from 'chrome://resources/cr_components/composebox/composebox.mojom-webui.js';
 import {ComposeboxProxyImpl} from 'chrome://resources/cr_components/composebox/composebox_proxy.js';
-import {ContextUploadStatus, ToolMode as ComposeboxToolMode} from 'chrome://resources/cr_components/composebox/composebox_query.mojom-webui.js';
+import {ContextUploadStatus, ToolMode} from 'chrome://resources/cr_components/composebox/composebox_query.mojom-webui.js';
 import {WindowProxy} from 'chrome://resources/cr_components/composebox/window_proxy.js';
 import {GlowAnimationState} from 'chrome://resources/cr_components/search/constants.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerRemote as SearchboxPageHandlerRemote} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import type {PageRemote as SearchboxPageRemote} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import {WindowOpenDisposition} from 'chrome://resources/mojo/ui/base/mojom/window_open_disposition.mojom-webui.js';
 import {assertEquals, assertFalse, assertNotEquals, assertTrue} from 'chrome://webui-test/chai_assert.js';
+import {MockInputState} from 'chrome://webui-test/cr_components/searchbox/searchbox_test_utils.js';
 import {MockTimer} from 'chrome://webui-test/mock_timer.js';
 import {TestMock} from 'chrome://webui-test/test_mock.js';
 import {microtasksFinished} from 'chrome://webui-test/test_util.js';
 
 import {TestContextualTasksBrowserProxy} from './test_contextual_tasks_browser_proxy.js';
-import {ADD_FILE_CONTEXT_FN, assertStyle, FAKE_TOKEN_STRING, fixtureUrl, getSubmitButton, getSubmitContainer, installMock, mockInputState, setupAutocompleteResults, simulateUserInput, uploadFileAndVerify} from './test_utils.js';
+import {ADD_FILE_CONTEXT_FN, assertStyle, FAKE_TOKEN_STRING, fixtureUrl, getSubmitButton, getSubmitContainer, installMock, setupAutocompleteResults, simulateUserInput, uploadFileAndVerify} from './test_utils.js';
 
 function disableAnimationsRecursively(element: Element) {
   const noAnimation = document.createElement('style');
@@ -67,9 +69,9 @@ suite('ContextualTasksComposeboxZeroStateTest', () => {
   let windowProxy: TestMock<WindowProxy>;
   let mockTimer: MockTimer;
 
-  async function setActiveTool(tool: ComposeboxToolMode) {
+  async function setActiveTool(tool: ToolMode) {
     searchboxCallbackRouterRemote.onInputStateChanged({
-      ...mockInputState,
+      ...new MockInputState(),
       activeTool: tool,
     });
     await microtasksFinished();
@@ -120,7 +122,6 @@ suite('ContextualTasksComposeboxZeroStateTest', () => {
     await customElements.whenDefined('contextual-tasks-app');
     document.body.appendChild(contextualTasksApp);
 
-    await customElements.whenDefined('contextual-tasks-app');
     await contextualTasksApp.updateComplete;
     await microtasksFinished();
 
@@ -137,7 +138,7 @@ suite('ContextualTasksComposeboxZeroStateTest', () => {
       removeEventListener: () => {},
     });
 
-    searchboxCallbackRouterRemote.onInputStateChanged(mockInputState);
+    searchboxCallbackRouterRemote.onInputStateChanged(new MockInputState());
     await microtasksFinished();
   });
 
@@ -257,8 +258,6 @@ suite('ContextualTasksComposeboxZeroStateTest', () => {
         assertTrue(
             !!firstMatch.$.textContainer,
             'First suggestion match should exist');
-
-        await microtasksFinished();
 
         assertStyle(
             firstMatch.$.textContainer, 'animation-duration', '2s',
@@ -445,7 +444,7 @@ suite('ContextualTasksComposeboxZeroStateTest', () => {
         'Suggestions should be visible when dropdown is shown');
 
     // Simulate typing.
-    const inputElement = composebox.$.input;
+    const inputElement = composebox.getInputElement().$.input;
     simulateUserInput(inputElement, 'test');
 
     // Provide typed matches.
@@ -698,8 +697,6 @@ suite('ContextualTasksComposeboxZeroStateTest', () => {
         await composebox.updateComplete;
         await microtasksFinished();
 
-        await microtasksFinished();
-        await composebox.updateComplete;
         const submitContainer: HTMLElement|null =
             getSubmitContainer(composebox);
         assertTrue(!!submitContainer, 'Submit container button should exist');
@@ -732,25 +729,24 @@ suite('ContextualTasksComposeboxZeroStateTest', () => {
 
 
   interface ToolModeInfo {
-    toolMode: ComposeboxToolMode;
+    toolMode: ToolMode;
     text: string;
   }
 
   [{
-    toolMode: ComposeboxToolMode.kDeepSearch,
+    toolMode: ToolMode.kDeepSearch,
     text: 'Deep Search',
   },
    {
-     toolMode: ComposeboxToolMode.kImageGen,
+     toolMode: ToolMode.kImageGen,
      text: 'Create Images',
    },
    {
-     toolMode: ComposeboxToolMode.kCanvas,
+     toolMode: ToolMode.kCanvas,
      text: 'Canvas',
    }].forEach((toolModeInfo: ToolModeInfo) => {
     test(toolModeInfo.text + ': thread change resets input', async () => {
       await setActiveTool(toolModeInfo.toolMode);
-
 
       await composebox.updateComplete;
       await microtasksFinished();
@@ -789,7 +785,9 @@ suite('ContextualTasksComposeboxZeroStateTest', () => {
     await contextualComposebox.updateComplete;
     await innerComposebox.updateComplete;
 
-    assertEquals('Ask about these', innerComposebox.$.input.placeholder);
+    assertEquals(
+        'Ask about these',
+        innerComposebox.getInputElement().$.input.placeholder);
   });
 
   test('Single tab file updates zero state placeholder', async () => {
@@ -802,7 +800,9 @@ suite('ContextualTasksComposeboxZeroStateTest', () => {
     await contextualComposebox.updateComplete;
     await innerComposebox.updateComplete;
 
-    assertEquals('Ask about this tab', innerComposebox.$.input.placeholder);
+    assertEquals(
+        'Ask about this tab',
+        innerComposebox.getInputElement().$.input.placeholder);
   });
 
   test('Single image file updates zero state placeholder', async () => {
@@ -815,7 +815,9 @@ suite('ContextualTasksComposeboxZeroStateTest', () => {
     await contextualComposebox.updateComplete;
     await innerComposebox.updateComplete;
 
-    assertEquals('Ask about this image', innerComposebox.$.input.placeholder);
+    assertEquals(
+        'Ask about this image',
+        innerComposebox.getInputElement().$.input.placeholder);
   });
 
   test('Single pdf file updates zero state placeholder', async () => {
@@ -828,7 +830,9 @@ suite('ContextualTasksComposeboxZeroStateTest', () => {
     await contextualComposebox.updateComplete;
     await innerComposebox.updateComplete;
 
-    assertEquals('Ask about this doc', innerComposebox.$.input.placeholder);
+    assertEquals(
+        'Ask about this doc',
+        innerComposebox.getInputElement().$.input.placeholder);
   });
 
   test('Single unknown file updates zero state placeholder', async () => {
@@ -841,7 +845,8 @@ suite('ContextualTasksComposeboxZeroStateTest', () => {
     await contextualComposebox.updateComplete;
     await innerComposebox.updateComplete;
 
-    assertFalse(innerComposebox.$.input.placeholder.includes('Ask about'));
+    assertFalse(innerComposebox.getInputElement().$.input.placeholder.includes(
+        'Ask about'));
   });
 
   test('Overlay hint text overridden by file hint', async () => {
@@ -860,7 +865,9 @@ suite('ContextualTasksComposeboxZeroStateTest', () => {
     await innerComposebox.updateComplete;
 
     // File hint should take precedence over overlay hint.
-    assertEquals('Ask about this image', innerComposebox.$.input.placeholder);
+    assertEquals(
+        'Ask about this image',
+        innerComposebox.getInputElement().$.input.placeholder);
   });
 
   test('Arrow in zero state is ignored in full tab', async () => {
@@ -947,6 +954,39 @@ suite('ContextualTasksComposeboxZeroStateTest', () => {
     assertEquals(
         composebox.selectedMatchIndex_, -1,
         'No suggestion should be selected on arrow up in zero state full tab');
+  });
+
+  test('clicking activity link calls openUrl', async () => {
+    loadTimeData.overrideValues({
+      suggestionActivityLink:
+          'Learn more about <a href="https://google.com/">activity</a>',
+    });
+
+    testProxy.callbackRouterRemote.onZeroStateChange(true);
+    testProxy.callbackRouterRemote.onSidePanelStateChanged();
+
+    await testProxy.callbackRouterRemote.$.flushForTesting();
+    await microtasksFinished();
+
+    const contextualComposebox = contextualTasksApp.$.composebox;
+    // Manual trigger since it depends on results.
+    contextualComposebox.$.composebox.dispatchEvent(
+        new CustomEvent('show-suggestion-activity-link', {detail: true}));
+    await contextualComposebox.updateComplete;
+
+    const activityLink =
+        contextualComposebox.shadowRoot.querySelector('localized-link');
+    assertTrue(!!activityLink, 'Activity link should be present');
+
+    const anchor = activityLink.shadowRoot.querySelector('a');
+    assertTrue(!!anchor, 'Anchor tag should be present');
+
+    anchor.click();
+    await microtasksFinished();
+
+    const [url, disposition] = await testProxy.handler.whenCalled('openUrl');
+    assertEquals('https://google.com/', url);
+    assertEquals(WindowOpenDisposition.NEW_FOREGROUND_TAB, disposition);
   });
 
 });

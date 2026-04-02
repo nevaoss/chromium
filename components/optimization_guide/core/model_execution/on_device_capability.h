@@ -40,8 +40,12 @@ enum class OnDeviceError : int {
   kCancelled = 10,
   // The response was low quality.
   kResponseLowQuality = 11,
+  // Failed to parse the response.
+  kResponseParsingFailed = 12,
+  // Failed to run the safety checks.
+  kFailedToRunSafety = 13,
   // Insert new values before this line.
-  kMaxValue = kResponseLowQuality
+  kMaxValue = kFailedToRunSafety
 };
 
 // A response type used for OnDeviceSession.
@@ -351,10 +355,6 @@ class OnDeviceCapability {
       mojom::OnDeviceFeature feature,
       const on_device_model::Capabilities& capabilities,
       base::OnceCallback<void(OnDeviceModelEligibilityReason)> callback);
-  virtual std::optional<SamplingParamsConfig> GetSamplingParamsConfig(
-      mojom::OnDeviceFeature feature);
-  virtual std::optional<const optimization_guide::proto::Any>
-  GetFeatureMetadata(mojom::OnDeviceFeature feature);
 };
 
 }  // namespace optimization_guide

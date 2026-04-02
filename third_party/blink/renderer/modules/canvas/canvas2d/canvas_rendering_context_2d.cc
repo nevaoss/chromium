@@ -106,6 +106,7 @@
 #include "third_party/blink/renderer/platform/graphics/canvas_hibernation_handler.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource_provider.h"
+#include "third_party/blink/renderer/platform/graphics/gpu/canvas_utils.h"
 #include "third_party/blink/renderer/platform/graphics/gpu/shared_context_rate_limiter.h"
 #include "third_party/blink/renderer/platform/graphics/gpu/shared_gpu_context.h"
 #include "third_party/blink/renderer/platform/graphics/image_orientation.h"
@@ -316,7 +317,8 @@ void CanvasRenderingContext2D::WillDrawImage(CanvasImageSource* source,
   // If the source is GPU-accelerated, and the canvas is not, but could be...
   if (source_is_accelerated && canvas()->ShouldAccelerate2dContext() &&
       canvas()->GetRasterModeForCanvas2D() == RasterMode::kCPU &&
-      SharedGpuContext::AllowSoftwareToAcceleratedCanvasUpgrade()) {
+      AllowSoftwareToAcceleratedCanvasUpgrade(
+          SharedGpuContext::ContextProviderWrapper().get())) {
     // Recreate the CRP in GPU raster mode and signal that it needs a
     // compositing update.
     canvas()->SetPreferred2DRasterMode(RasterModeHint::kPreferGPU);
@@ -354,7 +356,7 @@ bool CanvasRenderingContext2D::WritePixels(const SkImageInfo& orig_info,
       recorder->RestartRecording();
     }
   } else {
-    provider->FlushCanvas();
+    provider->FlushCanvas2D();
 
     // Short-circuit out if an error occurred while flushing the recording.
     if (!provider->IsValid()) {
@@ -526,7 +528,7 @@ std::optional<cc::PaintRecord> CanvasRenderingContext2D::FlushCanvas(
   if (provider == nullptr) [[unlikely]] {
     return std::nullopt;
   }
-  return provider->FlushCanvas(reason);
+  return provider->FlushCanvas2D(reason);
 }
 
 bool CanvasRenderingContext2D::WillSetFont() const {
@@ -764,7 +766,7 @@ scoped_refptr<StaticBitmapImage> blink::CanvasRenderingContext2D::GetImage() {
     return nullptr;
   }
 
-  resource_provider_->FlushCanvas();
+  resource_provider_->FlushCanvas2D();
   return resource_provider_->Snapshot();
 }
 
@@ -865,7 +867,8 @@ DOMMatrix* CanvasRenderingContext2D::drawElementImage(
 
 void CanvasRenderingContext2D::EnableAccelerationIfPossible() {
   if (canvas()->GetRasterModeForCanvas2D() == RasterMode::kCPU &&
-      SharedGpuContext::AllowSoftwareToAcceleratedCanvasUpgrade()) {
+      AllowSoftwareToAcceleratedCanvasUpgrade(
+          SharedGpuContext::ContextProviderWrapper().get())) {
     canvas()->SetPreferred2DRasterMode(RasterModeHint::kPreferGPU);
     DropAndRecreateExistingResourceProvider();
   }
@@ -1039,7 +1042,7 @@ void CanvasRenderingContext2D::FinalizeFrame(FlushReason reason) {
   HTMLCanvasElement* host = canvas();
   CHECK(host);
 
-  GetResourceProvider()->FlushCanvas(reason);
+  GetResourceProvider()->FlushCanvas2D(reason);
   if (reason == FlushReason::kCanvasPushFrame) {
     if (host->IsDisplayed()) {
       // Make sure the GPU is never more than two animation frames behind.
@@ -1330,8 +1333,7 @@ CanvasRenderingContext2D::CreateCanvasResourceProvider() {
   // either (a) using GPU raster or (b) using CPU raster and want to use
   // mappable SharedImage for Canvas2D.
   if (is_gpu_compositing_enabled &&
-      (use_gpu_raster ||
-       SharedGpuContext::UseMappableSharedImagesForCanvas2D())) {
+      (use_gpu_raster || UseMappableSharedImagesForCanvas2D())) {
     RasterMode raster_mode =
         use_gpu_raster ? RasterMode::kGPU : RasterMode::kCPU;
     gpu::SharedImageUsageSet shared_image_usage_flags =
@@ -1341,8 +1343,8 @@ CanvasRenderingContext2D::CreateCanvasResourceProvider() {
     // appropriate.
     bool low_latency_supported =
         canvas()->LowLatencyEnabled() &&
-        SharedGpuContext::LowLatencyUsageSupportedForCanvas2D(raster_mode);
-    if (low_latency_supported || SharedGpuContext::UseOverlaysForCanvas2D()) {
+        LowLatencyUsageSupportedForCanvas2D(raster_mode);
+    if (low_latency_supported || UseOverlaysForCanvas2D()) {
       shared_image_usage_flags |= gpu::SHARED_IMAGE_USAGE_SCANOUT;
       if (low_latency_supported) {
         shared_image_usage_flags |=

@@ -638,8 +638,13 @@ void NetworkService::CreateNetLogEntriesForActiveObjects(
   std::set<net::URLRequestContext*> contexts;
   for (NetworkContext* nc : network_contexts_) {
     contexts.insert(nc->url_request_context());
+#if BUILDFLAG(ENABLE_WEBSOCKETS)
+    nc->CreateNetLogEntriesForActiveWebSockets(observer);
+#endif  // BUILDFLAG(ENABLE_WEBSOCKETS)
   }
-  return net::CreateNetLogEntriesForActiveObjects(contexts, observer);
+
+  // Log active URLRequests
+  net::CreateNetLogEntriesForActiveObjects(contexts, observer);
 }
 
 void NetworkService::SetParams(mojom::NetworkServiceParamsPtr params) {
@@ -817,15 +822,25 @@ void NetworkService::SetRawHeadersAccess(
   }
 }
 
-void NetworkService::SetMaxConnectionsPerProxyChain(uint32_t max_connections) {
+void NetworkService::SetMaxConnectionsPerProxyChain(
+    std::optional<uint32_t> max_connection_normal,
+    std::optional<uint32_t> max_connection_websocket) {
   // LINT.IfChange(SetMaxConnectionsPerProxyChain)
   // We set out explicit limits here because they are hard coded in the
-  // enterprise policy MaxConnectionsPerProxy.
-  size_t new_limit =
-      base::saturated_cast<size_t>(std::clamp(max_connections, 6u, 256u));
+  // enterprise policy MaxConnectionsPerProxy(ForWebSocket).
+  if (max_connection_normal) {
+    size_t new_limit = base::saturated_cast<size_t>(
+        std::clamp(*max_connection_normal, 6u, 256u));
+    net::ClientSocketPoolManager::set_max_sockets_per_proxy_chain(
+        net::HttpNetworkSession::SocketPoolType::kNormal, new_limit);
+  }
+  if (max_connection_websocket) {
+    size_t new_limit = base::saturated_cast<size_t>(
+        std::clamp(*max_connection_websocket, 6u, 256u));
+    net::ClientSocketPoolManager::set_max_sockets_per_proxy_chain(
+        net::HttpNetworkSession::SocketPoolType::kWebSocket, new_limit);
+  }
   // LINT.ThenChange(/net/socket/client_socket_pool_manager.cc:set_max_sockets_per_proxy_chain)
-  net::ClientSocketPoolManager::set_max_sockets_per_proxy_chain(
-      net::HttpNetworkSession::SocketPoolType::kNormal, new_limit);
 }
 
 bool NetworkService::HasRawHeadersAccess(

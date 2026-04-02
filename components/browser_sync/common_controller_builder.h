@@ -29,10 +29,13 @@ namespace accessibility_annotator {
 class AccessibilityAnnotatorBackend;
 }  // namespace accessibility_annotator
 
+namespace account_settings {
+class AccountSettingService;
+}  // namespace account_settings
+
 namespace autofill {
 class AddressDataManager;
 class AutofillWebDataService;
-class AccountSettingService;
 }  // namespace autofill
 
 namespace bookmarks {
@@ -149,7 +152,7 @@ class CommonControllerBuilder {
       accessibility_annotator::AccessibilityAnnotatorBackend*
           accessibility_annotator_backend);
   void SetAccountSettingService(
-      autofill::AccountSettingService* account_setting_service);
+      account_settings::AccountSettingService* account_setting_service);
   void SetAddressDataManagerGetter(
       base::RepeatingCallback<autofill::AddressDataManager*()>
           address_data_manager_getter);
@@ -298,14 +301,12 @@ class CommonControllerBuilder {
   CreateSendTabToSelfDataTypeController();
   std::unique_ptr<syncer::DataTypeController>
   CreateUserConsentsDataTypeController();
-#if !BUILDFLAG(IS_IOS)
   std::unique_ptr<syncer::DataTypeController>
   CreateAutofillValuableDataTypeController();
   std::unique_ptr<syncer::DataTypeController>
   CreateAutofillValuableMetadataDataTypeController();
   std::unique_ptr<syncer::DataTypeController>
   CreateAccountSettingDataTypeController();
-#endif
   std::unique_ptr<syncer::DataTypeController>
   CreateSharedTabGroupAccountDataTypeController(
       syncer::SyncService* sync_service);
@@ -374,7 +375,7 @@ class CommonControllerBuilder {
   // nullptr indicates the setter was invoked with nullptr.
   SafeOptional<raw_ptr<accessibility_annotator::AccessibilityAnnotatorBackend>>
       accessibility_annotator_backend_;
-  SafeOptional<raw_ptr<autofill::AccountSettingService>>
+  SafeOptional<raw_ptr<account_settings::AccountSettingService>>
       account_setting_service_;
   base::RepeatingCallback<autofill::AddressDataManager*()>
       address_data_manager_getter_;

@@ -252,10 +252,6 @@ BASE_DECLARE_FEATURE(kDisableExtensionsOnChromeUrlsSwitch);
 // for enterprise auditing.
 BASE_DECLARE_FEATURE(kEnterpriseExtensionDOMActivityTelemetry);
 
-// Changes the chrome.userScript API to be enabled by a per-extension toggle
-// rather than the developer mode toggle on chrome://extensions.
-BASE_DECLARE_FEATURE(kUserScriptUserExtensionToggle);
-
 // Forces the debugger API/feature to always be restricted by developer mode.
 // This ensures we're always testing the developer mode API/feature restriction
 // capability, even when no other API/feature might be restricted by it.
@@ -285,18 +281,6 @@ BASE_DECLARE_FEATURE(kAvoidCloneArgsOnExtensionFunctionDispatch);
 // loaded extension's root directory are allowed to start. This helps avoid
 // memory leaks from stale cache entries and false-positive corruption reports.
 BASE_DECLARE_FEATURE(kExtensionContentVerificationUsesExtensionRoot);
-
-// Addresses content verification race conditions during extension updates. When
-// an extension updates, a content verification job for a previous version can
-// sometimes run *after* the new version has been loaded. This can lead to two
-// issues:
-//   1) the old job might be given the hashes for the new version, or
-//   2) it might unnecessarily re-create hashes for the old version.
-//
-// When this feature is enabled, the verification job will strictly use its
-// original extension version for all hash lookups and creations, preventing
-// these inconsistencies.
-BASE_DECLARE_FEATURE(kContentVerifyJobUseJobVersionForHashing);
 
 // Enables the shouldShowPromotion API to determine which promotion to show for
 // Chrome Enterprise on CWS.

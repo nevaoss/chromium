@@ -463,7 +463,7 @@
     If you download the update over your mobile network, it could result in overage charges.
   </message>
   <message name="IDS_FJORD_WELCOME_MESSAGE" desc="Welcome message shown when user is setting up their device. Google Beam is the name of a product.">
-    Your Google Beam hardware is ready to set up
+    Set up Google Beam
   </message>
   <message name="IDS_REMORA_CONFIRM_MESSAGE" desc="Remora confirm message on the first OOBE screen">
     Your Google Meet hardware is ready to set up
@@ -4115,41 +4115,6 @@
     Force close
   </message>
 
-  <!-- Linux application uninstaller messages -->
-  <message name="IDS_CROSTINI_APPLICATION_UNINSTALL_CONFIRM_TITLE" desc="Title of the Crostini application uninstaller, a confirmation dialog for uninstalling a Linux application.">
-    Uninstall app?
-  </message>
-  <message name="IDS_CROSTINI_APPLICATION_UNINSTALL_CONFIRM_BODY" desc="Description for the Crostini application uninstaller, a confirmation dialog for uninstalling a Linux application.">
-    Data associated with this app may be removed from this device.
-  </message>
-  <message name="IDS_CROSTINI_APPLICATION_UNINSTALL_UNINSTALL_BUTTON" desc="Label for the button in the Linux application uninstaller dialog to uninstall the application">
-    Uninstall
-  </message>
-  <message name="IDS_CROSTINI_APPLICATION_UNINSTALL_NOTIFICATION_DISPLAY_SOURCE" desc="Source of the Notification for Linux application uninstallation.">
-    Linux uninstaller
-  </message>
-  <message name="IDS_CROSTINI_APPLICATION_UNINSTALL_NOTIFICATION_QUEUED_TITLE" desc="Title of the Notification when an Linux application is queued waiting for other operations to finish.">
-    <ph name="LINUX_APP_NAME">$1<ex>GIMP</ex></ph>
-  </message>
-  <message name="IDS_CROSTINI_APPLICATION_UNINSTALL_NOTIFICATION_QUEUED_MESSAGE" desc="Message of the Notification when an Linux application is queued waiting for other operations to finish.">
-    Uninstall pending
-  </message>
-  <message name="IDS_CROSTINI_APPLICATION_UNINSTALL_NOTIFICATION_IN_PROGRESS_TITLE" desc="Title of the Notification for an in-progress Linux application uninstallation.">
-    Uninstalling <ph name="LINUX_APP_NAME">$1<ex>GIMP</ex></ph>...
-  </message>
-  <message name="IDS_CROSTINI_APPLICATION_UNINSTALL_NOTIFICATION_COMPLETED_TITLE" desc="Title of the Notification for Linux application uninstallation once uninstallation has completed successfully.">
-    <ph name="LINUX_APP_NAME">$1<ex>GIMP</ex></ph>
-  </message>
-  <message name="IDS_CROSTINI_APPLICATION_UNINSTALL_NOTIFICATION_COMPLETED_MESSAGE" desc="Message of the Notification for Linux application uninstallation once uninstallation has completed successfully.">
-    Uninstall complete
-  </message>
-  <message name="IDS_CROSTINI_APPLICATION_UNINSTALL_NOTIFICATION_ERROR_TITLE" desc="Title of the Notification for Linux application uninstallation when there is an error during uninstallation.">
-    <ph name="LINUX_APP_NAME">$1<ex>GIMP</ex></ph>
-  </message>
-  <message name="IDS_CROSTINI_APPLICATION_UNINSTALL_NOTIFICATION_ERROR_MESSAGE" desc="Message in the Notification for Linux application uninstallation when there is an error during uninstallation.">
-    An error occurred during uninstallation. Please uninstall through the Terminal.
-  </message>
-
   <!-- Crostini export and import notification -->
   <message name="IDS_CROSTINI_NOTIFICATION_OPERATION_STARTING" desc="Message to display in a notification when the operation is starting and we don't yet have an estimate for how long it will take">
     Starting...
@@ -4533,18 +4498,6 @@
   </if>
 
   <!-- Mojo service names (displayed in task manager) -->
-  <message name="IDS_ASH_ASH_SERVICE_NAME" desc="Name of the internal software service that manages windows. Appears in the task manager.">
-    Window manager
-  </message>
-  <message name="IDS_ASH_SHORTCUT_VIEWER_APP_NAME" desc="Name of the app that shows the list of keyboard shortcuts. Appears in the task manager.">
-    Shortcut viewer
-  </message>
-  <message name="IDS_ASH_TAP_VISUALIZER_APP_NAME" desc="Name of the app that displays touch tap points on the screen. Appears in the task manager.">
-    Show taps
-  </message>
-  <message name="IDS_ASH_UI_SERVICE_NAME" desc="Name of the internal software service that manages the user interface (UI). Appears in the task manager.">
-    UI service
-  </message>
   <message name="IDS_UTILITY_PROCESS_PDF_SERVICE_NAME" desc="The name of the utility process used for PDF conversions.">
     PDF Service
   </message>
@@ -5256,6 +5209,18 @@ You can manage this account’s settings by installing the Family Link app on yo
   </message>
   <message name="IDS_SETTINGS_PEOPLE_CONFIGURE_PIN_MISMATCHED" desc="Message shown below the title that tells the user they have entered two different PIN values.">
     PINs do not match
+  </message>
+  <message name="IDS_SETTINGS_PEOPLE_CONFIGURE_PIN_COMPLEXITY_ERROR_NONE" desc="Message shown below the title that tells the user the PIN requirements when the complexity policy is set to None.">
+    Must be at least 1 digit
+  </message>
+  <message name="IDS_SETTINGS_PEOPLE_CONFIGURE_PIN_COMPLEXITY_ERROR_LOW" desc="Message shown below the title that tells the user the PIN requirements when the complexity policy is set to Low.">
+    Must be at least 4 digits
+  </message>
+  <message name="IDS_SETTINGS_PEOPLE_CONFIGURE_PIN_COMPLEXITY_ERROR_MEDIUM" desc="Message shown below the title that tells the user the PIN requirements when the complexity policy is set to Medium.">
+    Must be at least 6 digits and can't contain repeating or ordered sequences
+  </message>
+  <message name="IDS_SETTINGS_PEOPLE_CONFIGURE_PIN_COMPLEXITY_ERROR_HIGH" desc="Message shown below the title that tells the user the PIN requirements when the complexity policy is set to High.">
+    Must be at least 8 digits and can't contain repeating or ordered sequences
   </message>
   <message name="IDS_SETTINGS_ACCOUNT_MANAGER_ACCOUNT_REMOVED_MESSAGE" desc="Notification message after account removal.">
     <ph name="EMAIL">$1<ex>abcd@google.com</ex></ph> was removed from this device

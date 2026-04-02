@@ -26,6 +26,7 @@ import org.chromium.chrome.browser.ui.browser_window.ChromeAndroidTask;
 import org.chromium.chrome.browser.ui.extensions.ExtensionActionsBridge;
 import org.chromium.chrome.browser.ui.extensions.ExtensionsToolbarBridge;
 import org.chromium.chrome.browser.ui.extensions.R;
+import org.chromium.chrome.browser.ui.toolbar.InvocationSource;
 import org.chromium.components.embedder_support.contextmenu.ContextMenuPopulatorFactory;
 import org.chromium.content_public.browser.selection.SelectionDropdownMenuDelegate;
 import org.chromium.ui.base.WindowAndroid;
@@ -45,8 +46,8 @@ public class ExtensionToolbarCoordinatorImpl implements ExtensionToolbarCoordina
     private LinearLayout mContainer;
     private ExtensionsToolbarBridge mExtensionsToolbarBridge;
     private ExtensionActionListCoordinator mExtensionActionListCoordinator;
-    private ExtensionsMenuAndAccessControlButtonCoordinator
-            mExtensionsMenuAndAccessControlButtonCoordinator;
+    private ExtensionsMenuCoordinator mExtensionsMenuCoordinator;
+    private ExtensionAccessControlButtonCoordinator mExtensionAccessControlButtonCoordinator;
 
     private final MenuButtonWidthConsumer mMenuButtonWidthConsumer = new MenuButtonWidthConsumer();
     private final ActionListWidthConsumer mActionListWidthConsumer = new ActionListWidthConsumer();
@@ -85,8 +86,8 @@ public class ExtensionToolbarCoordinatorImpl implements ExtensionToolbarCoordina
                         rootView,
                         contextMenuPopulatorFactory,
                         selectionDropdownMenuDelegate);
-        mExtensionsMenuAndAccessControlButtonCoordinator =
-                new ExtensionsMenuAndAccessControlButtonCoordinator(
+        mExtensionsMenuCoordinator =
+                new ExtensionsMenuCoordinator(
                         context,
                         mContainer.findViewById(R.id.extensions_menu_button),
                         themeColorProvider,
@@ -94,13 +95,18 @@ public class ExtensionToolbarCoordinatorImpl implements ExtensionToolbarCoordina
                         profile,
                         currentTabSupplier,
                         tabCreator,
+                        mExtensionsToolbarBridge);
+        mExtensionAccessControlButtonCoordinator =
+                new ExtensionAccessControlButtonCoordinator(
+                        currentTabSupplier,
                         mExtensionsToolbarBridge,
                         mContainer.findViewById(R.id.extensions_request_access_button));
     }
 
     @Override
     public void destroy() {
-        mExtensionsMenuAndAccessControlButtonCoordinator.destroy();
+        mExtensionAccessControlButtonCoordinator.destroy();
+        mExtensionsMenuCoordinator.destroy();
         mExtensionActionListCoordinator.destroy();
         mExtensionsToolbarBridge.destroy();
         mBridge.destroy();
@@ -123,13 +129,14 @@ public class ExtensionToolbarCoordinatorImpl implements ExtensionToolbarCoordina
             return false;
         }
 
-        mExtensionActionListCoordinator.click(result.actionId);
+        mExtensionActionListCoordinator.executeUserAction(
+                result.actionId, InvocationSource.COMMAND);
         return true;
     }
 
     @Override
     public void updateMenuButtonBackground(int backgroundResource) {
-        mExtensionsMenuAndAccessControlButtonCoordinator.updateButtonBackground(backgroundResource);
+        mExtensionsMenuCoordinator.updateButtonBackground(backgroundResource);
     }
 
     @Override

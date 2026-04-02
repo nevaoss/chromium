@@ -397,12 +397,12 @@
     {
         "name": "credentials",
         "group": "androidx.credentials",
-        "version": "1.6.0-rc02"
+        "version": "1.7.0-SNAPSHOT"
     },
     {
         "name": "credentials-play-services-auth",
         "group": "androidx.credentials",
-        "version": "1.6.0-SNAPSHOT"
+        "version": "1.7.0-SNAPSHOT"
     },
     {
         "name": "cursoradapter",
@@ -1477,12 +1477,17 @@
     {
         "name": "core-common",
         "group": "com.google.android.play",
-        "version": "2.0.3"
+        "version": "2.0.4"
     },
     {
         "name": "feature-delivery",
         "group": "com.google.android.play",
         "version": "2.1.0"
+    },
+    {
+        "name": "review",
+        "group": "com.google.android.play",
+        "version": "2.0.2"
     },
     {
         "name": "annotations",
@@ -1977,7 +1982,7 @@
     {
         "name": "atomicfu-jvm",
         "group": "org.jetbrains.kotlinx",
-        "version": "0.32.0"
+        "version": "0.32.1"
     },
     {
         "name": "kotlinx-coroutines-android",

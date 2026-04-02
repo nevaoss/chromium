@@ -49,6 +49,7 @@ source_set("glic") {
     "public/context/glic_sharing_manager.h",
     "public/glic_close_options.h",
     "public/glic_enabling.h",
+    "public/glic_instance.cc",
     "public/glic_instance.h",
     "public/glic_instance_metrics_backwards_compatibility.h",
     "public/glic_invoke_options.h",
@@ -89,13 +90,14 @@ source_set("glic") {
     ":mojo_bindings",
     "//base",
     "//chrome/browser:shell_integration",
-    "//chrome/browser/contextual_cueing",
     "//chrome/browser/glic/public:features",
     "//chrome/browser/glic/resources:browser_resources",
+    "//chrome/browser/glic/suggestions",
     "//chrome/browser/optimization_guide",
     "//chrome/browser/page_content_annotations:fetcher",
     "//chrome/browser/permissions/system",
     "//chrome/browser/profiles:profile",
+    "//chrome/browser/subscription_eligibility",
     "//chrome/browser/ui/browser_window",
     "//components/autofill/core/browser/integrators/actor:actor_form_filling_types",
     "//components/content_extraction/content/browser",
@@ -143,7 +145,7 @@ source_set("glic") {
   } else {  # is_android
     deps += [
       ":actor_types_for_migration",
-      "//chrome/browser/context_sharing/tab_bottom_sheet/android:jni_headers",
+      "//chrome/browser/context_sharing/tab_bottom_sheet/android",
     ]
   }
 
@@ -161,6 +163,11 @@ source_set("glic") {
 }
 
 if (is_android) {
+  java_cpp_strings("glic_pref_names_srcjar") {
+    sources = [ "glic_pref_names.h" ]
+    class_name = "org.chromium.chrome.browser.glic.GlicPrefNames"
+  }
+
   android_library("public_java") {
     sources = [
       "public/android/java/src/org/chromium/chrome/browser/glic/GlicKeyedService.java",
@@ -175,6 +182,7 @@ if (is_android) {
       "//chrome/browser/ui/browser_window/public/android:java",
       "//third_party/jni_zero:jni_zero_java",
     ]
+    srcjar_deps = [ ":glic_pref_names_srcjar" ]
   }
 }
 
@@ -351,7 +359,6 @@ source_set("impl") {
     "//chrome/browser/actor",
     "//chrome/browser/actor/ui",
     "//chrome/browser/background/glic",
-    "//chrome/browser/contextual_cueing",
     "//chrome/browser/feedback",
     "//chrome/browser/glic/actor",
     "//chrome/browser/glic/browser_ui",
@@ -359,6 +366,7 @@ source_set("impl") {
     "//chrome/browser/glic/fre",
     "//chrome/browser/glic/media",
     "//chrome/browser/glic/shared",
+    "//chrome/browser/glic/suggestions",
     "//chrome/browser/lifetime:termination_notification",
     "//chrome/browser/media/webrtc",
     "//chrome/browser/picture_in_picture",
@@ -411,6 +419,9 @@ source_set("impl") {
     "//ui/webui",
     "//url",
   ]
+  if (is_android) {
+    deps += [ "//chrome/browser/context_sharing/tab_bottom_sheet/android" ]
+  }
   if (!is_android) {
     # Many of these deps will be needed in Android, but are not yet supported.
     deps += [
@@ -573,11 +584,11 @@ source_set("unit_tests") {
     deps += [
       "//chrome/browser:global_features",
       "//chrome/browser/background",
-      "//chrome/browser/contextual_cueing:test_support",
       "//chrome/browser/glic/browser_ui:unit_tests",
       "//chrome/browser/glic/fre",
       "//chrome/browser/glic/fre:unit_tests",
       "//chrome/browser/glic/media:unit_tests",
+      "//chrome/browser/glic/suggestions:test_support",
       "//chrome/browser/glic/test_support",
       "//chrome/browser/prefs",
       "//chrome/browser/status_icons",
@@ -641,6 +652,7 @@ source_set("browser_tests") {
     ":glic",
     ":impl",
     "//chrome/app:command_ids",
+    "//chrome/browser:browser_features",
     "//chrome/browser/background/glic",
     "//chrome/browser/glic/actor",
     "//chrome/browser/glic/actor:test_support",
@@ -669,10 +681,10 @@ source_set("browser_tests") {
       "//chrome/browser/actor:test_support",
       "//chrome/browser/actor/ui",
       "//chrome/browser/actor/ui:test_support",
-      "//chrome/browser/contextual_cueing:test_support",
       "//chrome/browser/extensions",
       "//chrome/browser/glic/common",
       "//chrome/browser/glic/common:browser_tests",
+      "//chrome/browser/glic/suggestions:test_support",
       "//chrome/browser/glic/test_support",
       "//chrome/browser/permissions:test_support",
       "//chrome/browser/policy:test_support",
@@ -729,6 +741,7 @@ if (!is_android) {
     sources = [
       "glic_settings_util_interactive_uitest.cc",
       "glic_user_status_interactive_uitest.cc",
+      "host/glic_actor_attempt_form_filling_interactive_ui_test.cc",
       "host/glic_actor_autofill_interactive_uitest.cc",
       "host/glic_actor_click_tool_interactive_uitest.cc",
       "host/glic_actor_drag_and_release_tool_interactive_uitest.cc",
@@ -772,9 +785,9 @@ if (!is_android) {
       "//chrome/browser:global_features",
       "//chrome/browser/actor",
       "//chrome/browser/actor:test_support",
+      "//chrome/browser/actor:tools_test_support",
+      "//chrome/browser/autofill/actor:test_support",
       "//chrome/browser/background/glic",
-      "//chrome/browser/contextual_cueing",
-      "//chrome/browser/contextual_cueing:test_support",
       "//chrome/browser/devtools:test_support",
       "//chrome/browser/enterprise/connectors/test:test_support",
       "//chrome/browser/glic:mojo_bindings",
@@ -782,6 +795,8 @@ if (!is_android) {
       "//chrome/browser/glic/fre",
       "//chrome/browser/glic/fre:interactive_ui_tests",
       "//chrome/browser/glic/selection:interactive_ui_tests",
+      "//chrome/browser/glic/suggestions",
+      "//chrome/browser/glic/suggestions:test_support",
       "//chrome/browser/glic/test_support",
       "//chrome/browser/optimization_guide",
       "//chrome/browser/permissions:test_support",

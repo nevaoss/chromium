@@ -13,9 +13,7 @@ source_set("tabs_public") {
   public = [
     "public/tab_dialog_manager.h",
     "public/tab_features.h",
-    "tab_network_state.h",
   ]
-  sources = [ "tab_network_state.cc" ]
   public_deps = [
     "//base",
     "//chrome/common:buildflags",
@@ -426,7 +424,6 @@ if (!is_android) {
       "//chrome/browser/ui/color:color_headers",
       "//chrome/browser/ui/omnibox",
       "//chrome/browser/ui/startup:startup_tab",
-      "//chrome/browser/ui/tabs/alert:tab_alert_enum",
       "//chrome/browser/ui/views/permissions/chip",
       "//components/collaboration/public",
       "//components/keyed_service/core",
@@ -494,14 +491,16 @@ if (!is_android) {
       "//chrome/browser/collaboration/messaging",
       "//chrome/browser/commerce",
       "//chrome/browser/content_settings:content_settings_factory",
-      "//chrome/browser/contextual_cueing",
       "//chrome/browser/contextual_tasks",
       "//chrome/browser/favicon",
       "//chrome/browser/glic",
       "//chrome/browser/glic/browser_ui",
+      "//chrome/browser/glic/suggestions",
       "//chrome/browser/image_fetcher",
       "//chrome/browser/indigo",
       "//chrome/browser/media/webrtc",
+      "//chrome/browser/preloading/bookmarkbar_preload",
+      "//chrome/browser/preloading/new_tab_page_preload",
       "//chrome/browser/profiles",
       "//chrome/browser/profiles:profile",
       "//chrome/browser/search",

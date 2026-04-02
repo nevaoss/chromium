@@ -346,8 +346,9 @@ public class ImeAdapterImpl
                             }
                         });
         mInputMethodManagerWrapper = wrapper;
-        mNativeImeAdapterAndroid = ImeAdapterImplJni.get().init(mWebContents);
+        mNativeImeAdapterAndroid = ImeAdapterImplJni.get().create(mWebContents);
         sNativeHelperMap.put(mNativeImeAdapterAndroid, new WeakReference<>(this));
+        ImeAdapterImplJni.get().initialize(mNativeImeAdapterAndroid);
         WindowEventObserverManager.from(mWebContents).addObserver(this);
         if (ContentFeatureMap.isEnabled(ContentFeatures.ANDROID_PK_AUTOCORRECT_UNDERLINE)) {
             mAutocorrectManager = new AutocorrectManager(this);
@@ -1765,13 +1766,10 @@ public class ImeAdapterImpl
      */
     void updateCursorAnchorInfo(InputCursorAnchorInfo cursorAnchorInfo) {
         View containerView = getContainerView();
-        boolean isSelectionMove =
-                mCursorAnchorInfoController.updateCursorAnchorInfoData(
-                        cursorAnchorInfo, containerView);
+        mCursorAnchorInfoController.updateCursorAnchorInfoData(cursorAnchorInfo, containerView);
 
         // Request view system keep caret on screen when moved.
-        if (isSelectionMove
-                && cursorAnchorInfo.insertionMarker != null
+        if (cursorAnchorInfo.insertionMarker != null
                 && ContentFeatureList.sAccessibilityMagnificationFollowsFocus.isEnabled()) {
             // Convert caret bounds from CSS pixels to device pixels relative to root view.
             var caretCss = cursorAnchorInfo.insertionMarker;
@@ -2039,7 +2037,9 @@ public class ImeAdapterImpl
 
     @NativeMethods
     interface Natives {
-        long init(@JniType("WebContents*") WebContents webContents);
+        long create(@JniType("WebContents*") WebContents webContents);
+
+        void initialize(long nativeImeAdapterAndroid);
 
         boolean sendKeyEvent(
                 long nativeImeAdapterAndroid,

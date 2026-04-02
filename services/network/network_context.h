@@ -201,6 +201,13 @@ class COMPONENT_EXPORT(NETWORK_SERVICE) NetworkContext
 
   net::URLRequestContext* url_request_context() { return url_request_context_; }
 
+#if BUILDFLAG(ENABLE_WEBSOCKETS)
+  // Creates synthetic WEBSOCKET_ALIVE NetLog entries for pre-existing
+  // WebSocket connections. Delegates to WebSocketFactory.
+  void CreateNetLogEntriesForActiveWebSockets(
+      net::NetLog::ThreadSafeObserver* observer) const;
+#endif  // BUILDFLAG(ENABLE_WEBSOCKETS)
+
   NetworkService* network_service() const { return network_service_; }
 
   mojom::NetworkContextClient* client() {
@@ -394,7 +401,8 @@ class COMPONENT_EXPORT(NETWORK_SERVICE) NetworkContext
           url_loader_network_observer,
       mojo::PendingRemote<mojom::WebSocketAuthenticationHandler> auth_handler,
       mojo::PendingRemote<mojom::TrustedHeaderClient> header_client,
-      const std::optional<base::UnguessableToken>& throttling_profile_id)
+      const std::optional<base::UnguessableToken>& throttling_profile_id,
+      const std::optional<base::UnguessableToken>& network_restrictions_id)
       override;
   void CreateWebTransport(
       const GURL& url,
@@ -1086,9 +1094,13 @@ class COMPONENT_EXPORT(NETWORK_SERVICE) NetworkContext
     std::set<std::unique_ptr<url_pattern::SimpleUrlPatternMatcher>>
         enforced_allowlisted_patterns;
     std::optional<std::string> enforced_reporting_endpoint;
+    ConnectionAllowlist::RedirectBehavior enforced_redirect_behavior =
+        ConnectionAllowlist::RedirectBehavior::kBlock;
     std::set<std::unique_ptr<url_pattern::SimpleUrlPatternMatcher>>
         report_only_allowlisted_patterns;
     std::optional<std::string> report_only_reporting_endpoint;
+    ConnectionAllowlist::RedirectBehavior report_only_redirect_behavior =
+        ConnectionAllowlist::RedirectBehavior::kBlock;
   };
   std::map<base::UnguessableToken, NetworkRestriction>
       network_revocation_nonces_;

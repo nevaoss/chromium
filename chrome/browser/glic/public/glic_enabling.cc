@@ -31,6 +31,8 @@
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/startup_data.h"
+#include "chrome/browser/subscription_eligibility/subscription_eligibility_service.h"
+#include "chrome/browser/subscription_eligibility/subscription_eligibility_service_factory.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/common/chrome_switches.h"
 #include "chrome/common/pref_names.h"
@@ -306,7 +308,13 @@ GlicEnabling::ProfileEnablement GlicEnabling::EnablementForProfile(
     return result;
   }
 
-  if (!IsEnabledByFlags()) {
+  GlicGlobalEnabling& global_enabling =
+      g_browser_process->GetFeatures()->glic_global_enabling();
+
+  result.disallowed_by_country_filter = !global_enabling.IsCountryEnabled();
+  result.disallowed_by_locale_filter = !global_enabling.IsLocaleEnabled();
+
+  if (!global_enabling.IsEnabledByFlags()) {
     result.feature_disabled = true;
     return result;
   }
@@ -568,8 +576,25 @@ mojom::ProfileReadyState GlicEnabling::GetProfileReadyState(Profile* profile) {
 }
 
 bool GlicEnabling::IsEligibleForGlicTieredRollout(Profile* profile) {
-  return base::FeatureList::IsEnabled(features::kGlicTieredRollout) &&
-         profile->GetPrefs()->GetBoolean(prefs::kGlicRolloutEligibility);
+  if (base::FeatureList::IsEnabled(features::kGlicTieredRollout) &&
+      profile->GetPrefs()->GetBoolean(prefs::kGlicRolloutEligibility)) {
+    return true;
+  }
+
+  subscription_eligibility::SubscriptionEligibilityService*
+      subscription_eligibility_service = subscription_eligibility::
+          SubscriptionEligibilityServiceFactory::GetForProfile(profile);
+  if (!subscription_eligibility_service) {
+    return false;
+  }
+  return base::FeatureList::IsEnabled(features::kGlicTieredRolloutV2) &&
+         features::GetGlicTieredRolloutV2EligibleTiers().contains(
+             subscription_eligibility_service->GetAiSubscriptionTier());
+}
+
+bool GlicEnabling::IsInternalsWebUIEnabled(Profile* profile) {
+  return base::FeatureList::IsEnabled(features::kGlic) &&
+         profile->IsRegularProfile();
 }
 
 bool GlicEnabling::ShouldShowSettingsPage(Profile* profile) {
@@ -629,11 +654,21 @@ bool GlicEnabling::IsAutoOpenForPdfEnabled(Profile* profile) {
       profile, features::kAutoOpenGlicForPdf,
       features::kAutoOpenGlicForPdfWithOnboarding);
 }
-
 bool GlicEnabling::IsContextualMenuItemEnabled(Profile* profile) {
-  return IsTrustFirstOnboardingGatedFeatureEnabled(
-      profile, features::kGlicContextMenu,
-      features::kGlicContextMenuWithOnboarding);
+  bool enabled = IsEnabledForProfile(profile);
+  if (!enabled) {
+    base::UmaHistogramBoolean("Glic.WebContentContextMenu.Enabled", enabled);
+    return enabled;
+  }
+
+  if (base::FeatureList::IsEnabled(features::kGlicTrustFirstOnboarding)) {
+    enabled = base::FeatureList::IsEnabled(features::kGlicContextMenu);
+  } else {
+    enabled = HasConsentedForProfile(profile) &&
+              base::FeatureList::IsEnabled(features::kGlicContextMenu);
+  }
+  base::UmaHistogramBoolean("Glic.WebContentContextMenu.Enabled", enabled);
+  return enabled;
 }
 
 // static
@@ -715,6 +750,14 @@ GlicEnabling::GlicEnabling(Profile* profile,
         profile_, base::BindRepeating(&GlicEnabling::UpdateEnabledStatus,
                                       base::Unretained(this)));
   }
+
+  subscription_eligibility::SubscriptionEligibilityService*
+      subscription_eligibility_service = subscription_eligibility::
+          SubscriptionEligibilityServiceFactory::GetForProfile(profile);
+  if (subscription_eligibility_service) {
+    subscription_eligibility_service_observation_.Observe(
+        subscription_eligibility_service);
+  }
 }
 GlicEnabling::~GlicEnabling() = default;
 
@@ -778,6 +821,10 @@ void GlicEnabling::OnRefreshTokenRemovedForAccount(
 }
 
 void GlicEnabling::OnTieredRolloutStatusMaybeChanged() {
+  UpdateEnabledStatus();
+}
+
+void GlicEnabling::OnAiSubscriptionTierUpdated(int32_t new_subscription_tier) {
   UpdateEnabledStatus();
 }
 

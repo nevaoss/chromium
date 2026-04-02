@@ -604,20 +604,23 @@ enum class FieldTypeGroup {
   kMaxValue = kOneTimePassword,
 };
 
-constexpr FieldType ToSafeFieldType(std::underlying_type_t<FieldType> raw_value,
-                                    FieldType fallback_value);
+// Returns `raw_value` if it is a known FieldType constant.
+//
+// Validating FieldTypes in server responses is particularly important because
+// old clients may know fewer values than the server does.
+constexpr std::optional<FieldType> ToSafeFieldType(
+    std::underlying_type_t<FieldType> raw_value);
 
-constexpr HtmlFieldType ToSafeHtmlFieldType(
-    std::underlying_type_t<HtmlFieldType> raw_value,
-    HtmlFieldType fallback_value);
+// Returns `raw_value` if it is a known HtmlFieldType constant.
+// This is equivalent to mojom::IsKnownEnumValue() but it is `constexpr`.
+constexpr std::optional<HtmlFieldType> ToSafeHtmlFieldType(
+    std::underlying_type_t<HtmlFieldType> raw_value);
 
 template <>
 struct DenseSetTraits<FieldType>
     : EnumDenseSetTraits<FieldType, NO_SERVER_DATA, MAX_VALID_FIELD_TYPE> {
   static constexpr bool is_valid(FieldType x) {
-    return x == NO_SERVER_DATA ||
-           ToSafeFieldType(std::to_underlying(x), NO_SERVER_DATA) !=
-               NO_SERVER_DATA;
+    return ToSafeFieldType(std::to_underlying(x)).has_value();
   }
 };
 
@@ -627,10 +630,7 @@ struct DenseSetTraits<HtmlFieldType>
                          HtmlFieldType::kMinValue,
                          HtmlFieldType::kMaxValue> {
   static constexpr bool is_valid(HtmlFieldType x) {
-    return x == HtmlFieldType::kUnrecognized ||
-           ToSafeHtmlFieldType(std::to_underlying(x),
-                               HtmlFieldType::kUnrecognized) !=
-               HtmlFieldType::kUnrecognized;
+    return ToSafeHtmlFieldType(std::to_underlying(x)).has_value();
   }
 };
 
@@ -675,11 +675,11 @@ FieldTypeGroup GroupTypeOfHtmlFieldType(HtmlFieldType field_type);
 // Not all HtmlFieldTypes have a corresponding FieldType.
 FieldType HtmlFieldTypeToBestCorrespondingFieldType(HtmlFieldType field_type);
 
-// Returns |raw_value| if it corresponds to a non-deprecated enumeration
+// Returns `raw_value` if it corresponds to a non-deprecated enumeration
 // constant of FieldType other than MAX_VALID_FIELD_TYPE. Otherwise, returns
-// |fallback_value|.
-constexpr FieldType ToSafeFieldType(std::underlying_type_t<FieldType> raw_value,
-                                    FieldType fallback_value) {
+// std::nullopt.
+constexpr std::optional<FieldType> ToSafeFieldType(
+    std::underlying_type_t<FieldType> raw_value) {
   auto is_invalid = [](std::underlying_type_t<FieldType> t) {
     return t < NO_SERVER_DATA || t >= MAX_VALID_FIELD_TYPE ||
            // Work phone numbers (values [15,19]) are deprecated.
@@ -721,13 +721,14 @@ constexpr FieldType ToSafeFieldType(std::underlying_type_t<FieldType> raw_value,
            // future.
            (204 <= t && t <= 205) || (211 <= t && t <= 214);
   };
-  return is_invalid(raw_value) ? fallback_value
-                               : static_cast<FieldType>(raw_value);  // nocheck
+  if (is_invalid(raw_value)) {
+    return std::nullopt;
+  }
+  return static_cast<FieldType>(raw_value);  // nocheck
 }
 
-constexpr HtmlFieldType ToSafeHtmlFieldType(
-    std::underlying_type_t<HtmlFieldType> raw_value,
-    HtmlFieldType fallback_value) {
+constexpr std::optional<HtmlFieldType> ToSafeHtmlFieldType(
+    std::underlying_type_t<HtmlFieldType> raw_value) {
   auto is_invalid = [](std::underlying_type_t<HtmlFieldType> t) {
     return t < std::to_underlying(HtmlFieldType::kMinValue) ||
            t > std::to_underlying(HtmlFieldType::kMaxValue) ||
@@ -736,8 +737,10 @@ constexpr HtmlFieldType ToSafeHtmlFieldType(
            // UPI is deprecated.
            t == 46;
   };
-  return is_invalid(raw_value) ? fallback_value
-                               : static_cast<HtmlFieldType>(raw_value);
+  if (is_invalid(raw_value)) {
+    return std::nullopt;
+  }
+  return static_cast<HtmlFieldType>(raw_value);  // nocheck
 }
 
 constexpr FieldTypeGroup GroupTypeOfFieldType(FieldType field_type) {

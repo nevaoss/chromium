@@ -17,10 +17,8 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/recently_audible_helper.h"
 #include "chrome/browser/ui/tab_contents/core_tab_helper.h"
-#include "chrome/browser/ui/tabs/alert/tab_alert.h"
 #include "chrome/browser/ui/tabs/alert/tab_alert_controller.h"
 #include "chrome/browser/ui/tabs/split_tab_metrics.h"
-#include "chrome/browser/ui/tabs/tab_network_state.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
 #include "chrome/browser/ui/views/interaction/browser_elements_views.h"
@@ -35,6 +33,7 @@
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "components/data_sharing/public/features.h"
+#include "components/tabs/public/tab_alert.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_contents_observer.h"
 #include "content/public/common/url_constants.h"
@@ -856,10 +855,9 @@ IN_PROC_BROWSER_TEST_F(VerticalTabViewTest, AlertIndicatorDecorateOnCollapse) {
 
   // Ensure the tab is active and hovered so that the close button is visible.
   tab_strip_model()->ActivateTabAt(0);
-  ui::test::EventGenerator event_generator(
-      views::GetRootWindow(browser()->GetBrowserView().GetWidget()),
-      browser()->GetBrowserView().GetNativeWindow());
-  event_generator.MoveMouseTo(tab_view->GetBoundsInScreen().CenterPoint());
+  // TODO(crbug.com/492603554): Investigate why using EventGenerator here
+  // flakes.
+  tab_view->UpdateHovered(true);
 
   auto* alert_indicator =
       tab_view->GetViewByElementId(kTabAlertIndicatorButtonElementId);

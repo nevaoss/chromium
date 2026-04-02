@@ -5,13 +5,21 @@
 #ifndef IOS_CHROME_BROWSER_FULLSCREEN_MODEL_FULLSCREEN_BROWSER_AGENT_H_
 #define IOS_CHROME_BROWSER_FULLSCREEN_MODEL_FULLSCREEN_BROWSER_AGENT_H_
 
-#include "base/observer_list.h"
-#include "ios/chrome/browser/fullscreen/model/fullscreen_browser_agent_observer.h"
-#include "ios/chrome/browser/shared/model/browser/browser_user_data.h"
+#import <UIKit/UIKit.h>
+
+#import "base/observer_list.h"
+#import "base/types/pass_key.h"
+#import "ios/chrome/browser/fullscreen/model/fullscreen_browser_agent_observer.h"
+#import "ios/chrome/browser/shared/model/browser/browser_user_data.h"
+
+class FullscreenBrowserAgentTest;
+class FullscreenMediatorPassKeyProvider;
 
 // A class that holds the fullscreen state for a browser.
 class FullscreenBrowserAgent : public BrowserUserData<FullscreenBrowserAgent> {
  public:
+  using MediatorPassKey = base::PassKey<FullscreenMediatorPassKeyProvider>;
+
   ~FullscreenBrowserAgent() override;
 
   FullscreenBrowserAgent(const FullscreenBrowserAgent&) = delete;
@@ -23,11 +31,37 @@ class FullscreenBrowserAgent : public BrowserUserData<FullscreenBrowserAgent> {
   // Removes `observer` from the list of observers.
   void RemoveObserver(FullscreenBrowserAgentObserver* observer);
 
+  // Adds an obscured inset range for the given edge. Observers should call this
+  // during WillUpdateObscuredInsetRange().
+  void AddObscuredInsetRange(UIRectEdge edge, CGFloat min, CGFloat max);
+
+  // Accessors for the min and max insets.
+  UIEdgeInsets min_insets() const { return min_insets_; }
+  UIEdgeInsets max_insets() const { return max_insets_; }
+
+  // Instantly exits fullscreen, notifying observers of the update.
+  // Generally used to reset the UI from system events like backgrounding.
+  void ForceExitFullscreenWithoutAnimation(MediatorPassKey);
+
  private:
   friend class BrowserUserData<FullscreenBrowserAgent>;
+  friend class FullscreenBrowserAgentTest;
+
   explicit FullscreenBrowserAgent(Browser* browser);
 
+  // Invalidates the current inset ranges and recalculates them by notifying
+  // observers.
+  void InvalidateInsetRange();
+
   base::ObserverList<FullscreenBrowserAgentObserver, true> observers_;
+
+  // The min and max insets.
+  UIEdgeInsets min_insets_ = UIEdgeInsetsZero;
+  UIEdgeInsets max_insets_ = UIEdgeInsetsZero;
+
+  // True if the agent is currently broadcasting WillUpdateObscuredInsetRange.
+  // Used to ensure AddObscuredInsetRange() is only called at the correct time.
+  bool updating_obscured_insets_ = false;
 };
 
 #endif  // IOS_CHROME_BROWSER_FULLSCREEN_MODEL_FULLSCREEN_BROWSER_AGENT_H_

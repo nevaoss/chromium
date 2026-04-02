@@ -303,7 +303,7 @@ void CachedStorageArea::ResetConnection(
     // deltas from the previously cached state.
     for (const auto& delta : deltas) {
       EnqueueStorageEvent(delta.key, delta.value.previously_cached_value,
-                          delta.value.restored_value, "", kNoSourceId);
+                          delta.value.restored_value, NullUrl(), kNoSourceId);
     }
     return;
   }
@@ -694,7 +694,7 @@ bool CachedStorageArea::IsSessionStorage() const {
 void CachedStorageArea::EnqueueStorageEvent(const String& key,
                                             const String& old_value,
                                             const String& new_value,
-                                            const String& url,
+                                            const KURL& url,
                                             const base::Token& source_id) {
   // Ignore key-change events which aren't actually changing the value.
   if (!key.IsNull() && new_value == old_value)
@@ -737,7 +737,7 @@ String CachedStorageArea::Uint8VectorToString(const Vector<uint8_t>& input,
       // TODO(mek): When this lived in content it used to do a "lenient"
       // conversion, while this is a strict conversion. Figure out if that
       // difference actually matters in practice.
-      result = String::FromUTF8(input);
+      result = String::FromUtf8(input);
       if (result.IsNull()) {
         corrupt = true;
         break;

@@ -241,16 +241,11 @@ BASE_FEATURE_PARAM(double,
                    0.2);
 
 BASE_FEATURE(kOrderScrollJankV4EventMetricsByArrivedInRendererCompositor,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kManualBeginFrame, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kUnlockDuringGpuImageOperations, base::FEATURE_ENABLED_BY_DEFAULT);
-
-BASE_FEATURE(kMainIdleBypassScheduler, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// When enabled, UKM will be reported for compositor frames.
-BASE_FEATURE(kReportUkm, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kBrowserControlsSmoothScroll, base::FEATURE_DISABLED_BY_DEFAULT);
 

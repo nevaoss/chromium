@@ -26,6 +26,9 @@ namespace net::features {
 
 BASE_FEATURE(kAlpsForHttp2, base::FEATURE_ENABLED_BY_DEFAULT);
 
+BASE_FEATURE(kAsyncRetryOnTooManyConnectionErrors,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE(kAvoidH2Reprioritization, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kCapReferrerToOriginOnCrossOrigin,
@@ -414,6 +417,9 @@ BASE_FEATURE_PARAM(std::string,
                    "Value",
                    "");
 
+BASE_FEATURE(kDeviceBoundSessionsForSingleSignOn,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE(kSpdySessionForProxyAdditionalChecks,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -579,7 +585,7 @@ BASE_FEATURE_PARAM(bool,
                    true);
 
 BASE_FEATURE(kHttpNoVarySearchDataUseNewAreEquivalent,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kHttpCacheSkipUnusableEntry, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -753,7 +759,7 @@ BASE_FEATURE(kDohFallbackAllowedWithLocalNameservers,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kAddAutomaticWithDohFallbackMode,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kUseQuicProxiesWithoutWaitingForConnectResponse,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -763,12 +769,12 @@ BASE_FEATURE(kEnableBootstrapIPRandomizationForDoh,
 
 BASE_FEATURE(kUseLockFreeX509Verification, base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kProbeSecureDnsCanaryDomain, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kProbeSecureDnsCanaryDomain, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE_PARAM(std::string,
                    kSecureDnsCanaryDomainHost,
                    &kProbeSecureDnsCanaryDomain,
                    /*name=*/"canary_domain_host",
-                   /*default_value=*/"");
+                   /*default_value=*/"use-application-dns.net");
 
 #if BUILDFLAG(IS_APPLE)
 BASE_FEATURE(kUseNSURLDataForGURLConversion, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -788,4 +794,27 @@ const base::FeatureParam<bool> kSQLitePersistentCookieStoreEarlyInitCheckDisk{
 
 BASE_FEATURE(kEnableErrorCodePropagationForPreconnect,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kPermitTcpSocketPoolConnectBackupJobs,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
+BASE_FEATURE(kLocalNetworkPermissionCheck, base::FEATURE_ENABLED_BY_DEFAULT);
+
+BASE_FEATURE(kTcpSocketPoolProxyLimit, base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE_PARAM(int,
+                   kTcpSocketPoolProxyLimitNormal,
+                   &kTcpSocketPoolProxyLimit,
+                   "TcpSocketPoolProxyLimitNormal",
+                   32);
+
+BASE_FEATURE_PARAM(int,
+                   kTcpSocketPoolProxyLimitWebSocket,
+                   &kTcpSocketPoolProxyLimit,
+                   "TcpSocketPoolProxyLimitWebSocket",
+                   32);
+
+BASE_FEATURE(kIgnoreQuicCryptoConfigMemoryPressureForDoh,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 }  // namespace net::features

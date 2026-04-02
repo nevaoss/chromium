@@ -30,9 +30,9 @@ import org.chromium.build.BuildConfig;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
-import org.chromium.chrome.browser.multiwindow.InstanceInfo;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager.PersistedInstanceType;
+import org.chromium.chrome.browser.multiwindow.MultiInstanceOrchestratorFactory;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.profiles.ProfileProvider;
 import org.chromium.chrome.browser.tab.Tab;
@@ -117,6 +117,7 @@ public class TabWindowManagerImpl implements TabWindowManager {
     private @Nullable TabModelSelector mArchivedTabModelSelector;
     private boolean mKeepAllTabModelsLoaded;
     private boolean mTabStateInitialized;
+    private boolean mIsAllTabStateInitialized;
 
     TabWindowManagerImpl(
             TabModelSelectorFactory selectorFactory,
@@ -557,6 +558,8 @@ public class TabWindowManagerImpl implements TabWindowManager {
     public void setArchivedTabModelSelector(@Nullable TabModelSelector archivedTabModelSelector) {
         if (archivedTabModelSelector != null) {
             mArchivedTabModelSelector = archivedTabModelSelector;
+            TabModelUtils.runOnTabStateInitialized(
+                    this::maybeMarkAllModelStateInitialized, mArchivedTabModelSelector);
         } else {
             mArchivedTabModelSelector = null;
         }
@@ -586,13 +589,13 @@ public class TabWindowManagerImpl implements TabWindowManager {
         mKeepAllTabModelsLoaded = true;
 
         List<TabModelSelector> tabModelSelectorList = new ArrayList<>();
-        List<InstanceInfo> instanceInfoList =
-                multiInstanceManager.getInstanceInfo(PersistedInstanceType.ANY);
-        if (instanceInfoList.isEmpty()) {
+        Set<Integer> usableWindowIds =
+                MultiInstanceOrchestratorFactory.getInstance()
+                        .getUsableWindowIds(PersistedInstanceType.ANY);
+        if (usableWindowIds.isEmpty()) {
             tabModelSelectorList.add(selector);
         } else {
-            for (InstanceInfo instanceInfo : instanceInfoList) {
-                @WindowId int windowId = instanceInfo.instanceId;
+            for (@WindowId int windowId : usableWindowIds) {
                 if (!mWindowIdToSelectors.containsKey(windowId)) {
                     tabModelSelectorList.add(requestSelectorWithoutActivity(windowId, profile));
                 } else {
@@ -600,6 +603,7 @@ public class TabWindowManagerImpl implements TabWindowManager {
                 }
             }
         }
+
         TabModelUtils.runOnTabStateInitialized(
                 () -> {
                     mTabStateInitialized = true;
@@ -618,8 +622,32 @@ public class TabWindowManagerImpl implements TabWindowManager {
                                 unmapOrphanedTabGroups(profile, tabModelSelectorList);
                                 deleteOrphanedTabGroupData(tabModelSelectorList);
                             });
+                    maybeMarkAllModelStateInitialized();
                 },
                 tabModelSelectorList.toArray(new TabModelSelector[0]));
+    }
+
+    @Override
+    public boolean isAllTabStateInitialized() {
+        return mIsAllTabStateInitialized;
+    }
+
+    @Override
+    public @Nullable TabModelSelector getArchivedTabModelSelector() {
+        return mArchivedTabModelSelector;
+    }
+
+    private void maybeMarkAllModelStateInitialized() {
+        if (!mTabStateInitialized
+                || mArchivedTabModelSelector == null
+                || mIsAllTabStateInitialized) {
+            return;
+        }
+
+        mIsAllTabStateInitialized = true;
+        for (Observer observer : mObservers) {
+            observer.onAllTabModelStateInitialized();
+        }
     }
 
     private void unmapOrphanedTabGroups(

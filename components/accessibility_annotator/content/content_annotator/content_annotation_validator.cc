@@ -6,6 +6,7 @@
 
 #include <algorithm>
 
+#include "base/debug/dump_without_crashing.h"
 #include "base/json/json_reader.h"
 #include "base/strings/string_util.h"
 #include "components/accessibility_annotator/core/accessibility_annotator_features.h"
@@ -39,9 +40,13 @@ ContentAnnotationValidator::Create() {
   std::optional<base::DictValue> parsed_json =
       base::JSONReader::ReadDict(schema_json, base::JSON_PARSE_RFC);
 
-  return parsed_json.has_value() ? std::make_unique<ContentAnnotationValidator>(
-                                       std::move(*parsed_json))
-                                 : nullptr;
+  if (!parsed_json.has_value()) {
+    // Invalid JSON schema indicates a malformed flag value.
+    base::debug::DumpWithoutCrashing();
+    return nullptr;
+  }
+
+  return std::make_unique<ContentAnnotationValidator>(std::move(*parsed_json));
 }
 
 ContentAnnotationValidator::ContentAnnotationValidator(base::DictValue schema)
@@ -49,17 +54,9 @@ ContentAnnotationValidator::ContentAnnotationValidator(base::DictValue schema)
 
 ContentAnnotationValidator::~ContentAnnotationValidator() = default;
 
-bool ContentAnnotationValidator::IsValidatorEnabled() const {
-  return !schema_.empty();
-}
-
-std::optional<std::string> ContentAnnotationValidator::Validate(
+std::optional<base::DictValue> ContentAnnotationValidator::Validate(
     std::string extracted_data) const {
-  if (!IsValidatorEnabled()) {
-    // Validate should only be called if the schema is non-empty.
-    return std::nullopt;
-  }
-
+  // Regardless of schema, always reject data with invalid characters or JSON.
   if (std::ranges::any_of(extracted_data, IsInvalidChar)) {
     // For safety, reject data with HTML tags or control characters to create a
     // trusted data set.
@@ -73,8 +70,8 @@ std::optional<std::string> ContentAnnotationValidator::Validate(
   }
 
   // TODO(crbug.com/492271405): Implement top-level and extracted data
-  // validation.
-  return extracted_data;
+  // validation when validator is enabled.
+  return std::move(*parsed_data).TakeDict();
 }
 
 }  // namespace accessibility_annotator

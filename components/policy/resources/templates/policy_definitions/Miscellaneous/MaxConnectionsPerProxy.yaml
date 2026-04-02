@@ -1,7 +1,9 @@
-caption: Maximal number of concurrent connections to the proxy server
+caption: Maximal number of concurrent connections to the proxy server for non-WebSocket requests
 default: 32
 desc: |-
-  Setting the policy specifies the maximal number of simultaneous connections to the proxy server.
+  Setting the policy specifies the maximal number of simultaneous connections to the proxy server for non-WebSocket requests.
+
+  To modify WebSocket request limits, see <ph name="MAX_CONNECTIONS_PER_PROXY_FOR_WEBSOCKET_POLICY_NAME">MaxConnectionsPerProxyForWebSocket</ph>.
 
   Leaving the policy unset means a default of 32 is used.
 
@@ -24,6 +26,8 @@ owners:
 - pastarmovj@chromium.org
 - arichiv@chromium.org
 schema:
+  maximum: 256
+  minimum: 6
   type: integer
 supported_on:
 - android:148-

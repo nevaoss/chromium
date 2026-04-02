@@ -53,8 +53,17 @@ void GlicInvokeHandler::Invoke() {
     return;
   }
 
-  instance_->Show(ShowOptions::ForSidePanel(
-      *tab_, GlicPinTrigger::kInstanceCreation, options_.invocation_source));
+  auto show_options = ShowOptions::ForSidePanel(
+      *tab_, GlicPinTrigger::kInstanceCreation, options_.invocation_source);
+  if (options_.fre_override != mojom::FreOverride::kUnspecified) {
+    if (RequiresOverrideIncompatibleFre()) {
+      OnError(GlicInvokeError::kInvalidConfiguration);
+      return;
+    }
+
+    show_options.fre_override = options_.fre_override;
+  }
+  instance_->Show(show_options);
 
   if (instance_->host().IsReady()) {
     SendToClient();
@@ -73,9 +82,20 @@ bool GlicInvokeHandler::RequiresAutoSubmitIncompatibleFre() const {
   if (GlicEnabling::HasConsentedForProfile(instance_->profile())) {
     return false;
   }
+  if (options_.fre_override != mojom::FreOverride::kUnspecified) {
+    return options_.fre_override != mojom::FreOverride::kTrustFirstInline;
+  }
   return GlicEnabling::IsTrustFirstOnboardingEnabledForProfile(
              instance_->profile()) &&
          features::kGlicTrustFirstOnboardingArmParam.Get() == 1;
+}
+
+bool GlicInvokeHandler::RequiresOverrideIncompatibleFre() const {
+  if (GlicEnabling::HasConsentedForProfile(instance_->profile())) {
+    return false;
+  }
+  return !GlicEnabling::IsTrustFirstOnboardingEnabledForProfile(
+      instance_->profile());
 }
 
 void GlicInvokeHandler::SendToClient() {

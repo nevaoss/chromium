@@ -97,8 +97,8 @@ class MockPage extends TestBrowserProxy implements PageInterface {
     this.methodCalled('onLensOverlayStateChanged', isOverlayShowing);
   }
 
-  setTaskDetails(taskId: Uuid, threadId: string, turnId: string) {
-    this.methodCalled('setTaskDetails', taskId, threadId, turnId);
+  setTaskDetails(taskId: Uuid) {
+    this.methodCalled('setTaskDetails', taskId);
   }
 
   setAimUrl(url: Url) {
@@ -177,6 +177,7 @@ class TestContextualTasksPageHandler extends TestBrowserProxy implements
       'getUrlForTask',
       'isAiPage',
       'isPendingErrorPage',
+      'isEmbeddedPageErrorDocument',
       'isShownInTab',
       'isZeroState',
       'moveTaskUiToNewTab',
@@ -268,6 +269,11 @@ class TestContextualTasksPageHandler extends TestBrowserProxy implements
     return Promise.resolve({isPendingErrorPage: isPendingErrorPage});
   }
 
+  isEmbeddedPageErrorDocument() {
+    this.methodCalled('isEmbeddedPageErrorDocument');
+    return Promise.resolve({isErrorDocument: false});
+  }
+
   openMyActivityUi() {
     this.methodCalled('openMyActivityUi');
   }
@@ -280,8 +286,8 @@ class TestContextualTasksPageHandler extends TestBrowserProxy implements
     this.methodCalled('openOnboardingHelpUi');
   }
 
-  openUrl() {
-    this.methodCalled('openUrl');
+  openUrl(url: Url|string, disposition: number) {
+    this.methodCalled('openUrl', url, disposition);
   }
 
   onboardingTooltipDismissed() {

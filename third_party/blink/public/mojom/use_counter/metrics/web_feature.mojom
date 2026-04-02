@@ -5158,6 +5158,18 @@ enum WebFeature {
   kCSSLightDarkImage = 5841,
   kCSSTimelineLookupFoundNothing = 5842,
   kCSSTimelineScopeAttachedMultiple = 5843,
+  kSVGForeignObjectInImage = 5844,
+  kSVGForeignObjectDrawnIntoCanvas = 5845,
+  kHTMLPatching = 5846,
+  kHTMLStreaming = 5847,
+  kHTMLPositionalSetters = 5848,
+  kLazyLoadVideoLoadingAttributeLazy = 5849,
+  kLazyLoadVideoLoadingAttributeEager = 5850,
+  kLazyLoadAudioLoadingAttributeLazy = 5851,
+  kLazyLoadAudioLoadingAttributeEager = 5852,
+  kResourceTimingWorkerMatchedSourceType = 5853,
+  kResourceTimingWorkerFinalSourceType = 5854,
+  kNoVarySearchWithBooleanParams = 5855,
 
   // Add new features immediately above this line. Don't change the existing
   // numbers of any item, and don't reuse removed slots. Also don't add extra

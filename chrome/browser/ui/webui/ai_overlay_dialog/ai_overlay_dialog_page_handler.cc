@@ -10,6 +10,7 @@
 
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
+#include "base/logging.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/thread_pool.h"
 
@@ -29,9 +30,12 @@ void AiOverlayDialogPageHandler::GetMockAudioData(
   std::string path_string = features::kAiOverlayDialogMockJsonPath.Get();
   std::replace(path_string.begin(), path_string.end(), '+', '/');
   if (path_string.empty()) {
+    VLOG(1) << "MockAudioData path not specified";
     std::move(callback).Run(std::nullopt);
     return;
   }
+
+  VLOG(1) << "Using MockAudioData from: " << path_string;
 
   base::ThreadPool::PostTaskAndReplyWithResult(
       FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
@@ -42,20 +46,40 @@ void AiOverlayDialogPageHandler::GetMockAudioData(
                     base::FilePath::FromUTF8Unsafe(path_string), &data)) {
               return std::nullopt;
             }
+
+            VLOG(1) << "\tMockAudioData head: " << data.substr(0, 100);
             return data;
           },
           path_string),
       std::move(callback));
 }
 
-void AiOverlayDialogPageHandler::InvalidatePageContext() {
-  page_->InvalidatePageContext();
+void AiOverlayDialogPageHandler::DidChangePage(
+    const GURL& url,
+    const std::optional<std::u16string>& title,
+    const std::optional<std::string>& content) {
+  VLOG(1) << "Did Change Page";
+  VLOG(1) << "\tURL: " << url.spec();
+  if (title.has_value()) {
+    VLOG(1) << "\tTitle: " << base::UTF16ToUTF8(title.value());
+  }
+  if (content.has_value()) {
+    VLOG(1) << "\tContent: " << content.value().substr(0, 200) << "...";
+  }
+
+  page_->DidChangePage(
+      url.spec(),
+      title.has_value() ? std::make_optional(base::UTF16ToUTF8(title.value()))
+                        : std::nullopt,
+      content);
 }
 
 void AiOverlayDialogPageHandler::UpdateCurrentPageContext(
-    const GURL& url,
     const std::u16string& title,
     const std::string& content) {
-  page_->UpdateCurrentPageContext(url.spec(), base::UTF16ToUTF8(title),
-                                  content);
+  VLOG(1) << "Update Current Page Context";
+  VLOG(1) << "\tTitle: " << base::UTF16ToUTF8(title);
+  VLOG(1) << "\tContent: " << content.substr(0, 200) << "...";
+
+  page_->UpdateCurrentPageContext(base::UTF16ToUTF8(title), content);
 }

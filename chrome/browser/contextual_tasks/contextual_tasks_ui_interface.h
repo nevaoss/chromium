@@ -81,6 +81,8 @@ class ContextualTasksUIInterface : public TaskInfoDelegate {
   // Moves the UI associated with this WebUI to a new tab.
   virtual void MoveTaskUiToNewTab() = 0;
 
+  virtual GURL GetWebUiUrl() = 0;
+
   // Mojo & Session.
 
   // Sends a message to the <webview> guest. The WebUI is responsible for
@@ -107,6 +109,9 @@ class ContextualTasksUIInterface : public TaskInfoDelegate {
 
   // Returns the URL of the page currently embedded in the WebUI's <webview>.
   virtual const GURL& GetInnerFrameUrl() const = 0;
+
+  // Returns the WebContents of the embedded page, if it exists.
+  virtual content::WebContents* GetInnerWebContents() const = 0;
 };
 
 }  // namespace contextual_tasks

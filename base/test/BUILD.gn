@@ -6,6 +6,7 @@ import("//build/compiled_action.gni")
 import("//build/config/features.gni")
 import("//build/config/ui.gni")
 import("//build/rust/rust_static_library.gni")
+import("//build/rust/rust_static_library.gni")
 import("//build_overrides/build.gni")
 # TODO(neva_rust): Remove this workaround once Neva supports Rust build.
 import("//neva/neva.gni")
@@ -49,6 +50,35 @@ if (!disable_rust_for_neva){
 
     cxx_bindings = [ "logging/test_rust_logger_consumer.rs" ]
   }
+}
+
+rust_static_library("task_environment") {
+  testonly = true
+  sources = [ "task_environment.rs" ]
+  crate_root = "task_environment.rs"
+  cxx_bindings = [ "task_environment.rs" ]
+  allow_unsafe = true
+  deps = [
+    ":task_environment_shim",
+    "//base",
+  ]
+}
+
+source_set("task_environment_shim") {
+  testonly = true
+  sources = [
+    "task_environment_rust_shim.cc",
+    "task_environment_rust_shim.h",
+  ]
+  deps = [
+    ":test_support",
+    "//base",
+  ]
+}
+
+group("test_support_rust") {
+  testonly = true
+  public_deps = [ ":task_environment" ]
 }
 
 static_library("test_support") {

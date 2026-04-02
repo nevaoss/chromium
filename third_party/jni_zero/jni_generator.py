@@ -335,6 +335,9 @@ class JniObject:
                  if t.enable_mirror())
       if n.return_type.enable_mirror():
         ret.add(n.return_type.java_class)
+    # When the java type is a primitive array, its enable_mirror() will be true,
+    # but its java_class is None, so we remove None from the return value here.
+    ret.discard(None)
     return sorted(ret)
 
   def RemoveTestOnlyNatives(self):
@@ -635,10 +638,6 @@ def _WriteHeaders(jni_mode,
                   enable_definition_macros=False,
                   extra_includes=None,
                   add_natives_macro_definition=True):
-  if not enable_definition_macros:
-    java_types.CPP_UNDERLYING_TYPE_BY_JAVA_TYPE = \
-        java_types.CPP_TYPE_BY_JAVA_TYPE
-
   for jni_obj, shared_header_name, unshared_header_name in zip(
       jni_objs, shared_header_names, unshared_header_names):
     shared_header_file = os.path.join(output_dir, shared_header_name)
@@ -661,6 +660,10 @@ def _WriteHeaders(jni_mode,
 
 
 def GenerateFromSource(parser, args, jni_mode):
+  if not args.use_std_primitive_types:
+    java_types.CPP_UNDERLYING_TYPE_BY_JAVA_TYPE = \
+        java_types.CPP_TYPE_BY_JAVA_TYPE
+
   # Remove existing headers so that moving .java source files but not updating
   # the corresponding C++ include will be a compile failure (otherwise
   # incremental builds will usually not catch this).
@@ -739,6 +742,10 @@ def GenerateFromJar(parser, args, jni_mode):
     if not args.javap:
       parser.error('Could not find "javap" on your PATH. Use --javap to '
                    'specify its location.')
+
+  if not args.use_std_primitive_types:
+    java_types.CPP_UNDERLYING_TYPE_BY_JAVA_TYPE = \
+        java_types.CPP_TYPE_BY_JAVA_TYPE
 
   # Remove existing headers so that moving .java source files but not updating
   # the corresponding C++ include will be a compile failure (otherwise

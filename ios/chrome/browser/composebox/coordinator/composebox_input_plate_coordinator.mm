@@ -18,6 +18,7 @@
 #import "components/search_engines/template_url_service.h"
 #import "components/signin/public/identity_manager/identity_manager.h"
 #import "ios/chrome/browser/aim/model/ios_chrome_aim_eligibility_service_factory.h"
+#import "ios/chrome/browser/cobrowse/model/cobrowse_browser_agent.h"
 #import "ios/chrome/browser/cobrowse/model/cobrowse_context.h"
 #import "ios/chrome/browser/composebox/coordinator/composebox_cobrowse_omnibox_client.h"
 #import "ios/chrome/browser/composebox/coordinator/composebox_entrypoint.h"
@@ -81,6 +82,21 @@
 namespace {
 const size_t kMaxURLDisplayChars = 32 * 1024;
 const CGFloat kSnackbarBottomMargin = 10;
+
+// Converts ComposeboxEntrypoint to ContextualSearchSource.
+contextual_search::ContextualSearchSource ContextualSearchSourceFromEntrypoint(
+    ComposeboxEntrypoint entrypoint) {
+  switch (entrypoint) {
+    case ComposeboxEntrypoint::kNTPAIMButton:
+      return contextual_search::ContextualSearchSource::kNewTabPage;
+    case ComposeboxEntrypoint::kNTPFakebox:
+    case ComposeboxEntrypoint::kOther:
+      return contextual_search::ContextualSearchSource::kOmnibox;
+    case ComposeboxEntrypoint::kCobrowse:
+      return contextual_search::ContextualSearchSource::kContextualTasks;
+  }
+}
+
 }  // namespace
 
 @interface ComposeboxInputPlateCoordinator () <
@@ -151,7 +167,6 @@ const CGFloat kSnackbarBottomMargin = 10;
   _viewController =
       [[ComposeboxInputPlateViewController alloc] initWithTheme:_theme];
   _viewController.delegate = self;
-  _viewController.metricsRecorder = _metricsRecorder;
 
   if (_entrypoint == ComposeboxEntrypoint::kNTPAIMButton) {
     [_metricsRecorder
@@ -176,7 +191,7 @@ const CGFloat kSnackbarBottomMargin = 10;
 
     contextualSearchSession = _contextualService->CreateSession(
         std::move(query_controller_config_params),
-        contextual_search::ContextualSearchSource::kOmnibox,
+        ContextualSearchSourceFromEntrypoint(_entrypoint),
         lens::LensOverlayInvocationSource::kOmniboxContextualQuery);
   }
 
@@ -200,6 +215,8 @@ const CGFloat kSnackbarBottomMargin = 10;
                    templateURLService:templateURLService
                 aimEligibilityService:_aimEligibilityService
                           prefService:self.profile->GetPrefs()
+                 cobrowseBrowserAgent:CobrowseBrowserAgent::FromBrowser(
+                                          self.browser)
             browserCoordinatorHandler:HandlerForProtocol(
                                           dispatcher,
                                           BrowserCoordinatorCommands)
@@ -336,7 +353,6 @@ const CGFloat kSnackbarBottomMargin = 10;
             (ComposeboxInputPlateViewController*)composeboxViewController
                 didTapLensButton:(UIButton*)lensButton {
   [_metricsRecorder recordLensSearchButtonUsed];
-
   OpenLensInputSelectionCommand* command = [[OpenLensInputSelectionCommand
       alloc]
           initWithEntryPoint:LensEntrypoint::Composebox
@@ -404,6 +420,15 @@ const CGFloat kSnackbarBottomMargin = 10;
   config.filter = [PHPickerFilter imagesFilter];
   _picker = [[PHPickerViewController alloc] initWithConfiguration:config];
   _picker.delegate = self;
+}
+
+- (void)composeboxViewController:
+            (ComposeboxInputPlateViewController*)composeboxViewController
+    didOpenPlusMenuWithVisibleInternalButtons:
+        (const std::vector<FuseboxAttachmentButtonType>&)
+            visibleInternalButtons {
+  [_mediator
+      recordPlusMenuOpenedWithVisibleInternalButtons:visibleInternalButtons];
 }
 
 - (void)composeboxViewControllerDidTapFileButton:
@@ -660,7 +685,6 @@ const CGFloat kSnackbarBottomMargin = 10;
 - (void)showComposeboxTabPicker {
   [_metricsRecorder
       recordAttachmentButtonUsed:FuseboxAttachmentButtonType::kTabPicker];
-
   _tabPickerCoordinator = [[ComposeboxTabPickerCoordinator alloc]
       initWithBaseViewController:_viewController
                          browser:self.browser

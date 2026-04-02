@@ -101,6 +101,7 @@
 #include "third_party/blink/renderer/platform/graphics/canvas_hibernation_handler.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource_provider.h"
+#include "third_party/blink/renderer/platform/graphics/gpu/canvas_utils.h"
 #include "third_party/blink/renderer/platform/graphics/gpu/shared_gpu_context.h"
 #include "third_party/blink/renderer/platform/graphics/graphics_types_3d.h"
 #include "third_party/blink/renderer/platform/graphics/image.h"
@@ -589,16 +590,19 @@ class FakeCanvasResourceProvider : public Canvas2DResourceProviderSharedImage {
             delegate) {
     ON_CALL(*this, Snapshot)
         .WillByDefault([this](ImageOrientation orientation) {
-          return UnacceleratedSnapshot(orientation);
+          return UnacceleratedSnapshotForCanvas2D(orientation);
         });
   }
   ~FakeCanvasResourceProvider() override = default;
   scoped_refptr<CanvasResource> ProduceCanvasResource(FlushReason) override {
-    return scoped_refptr<CanvasResource>(CanvasResourceSharedImage::Create(
-        Size(), GetSharedImageFormat(), GetAlphaType(), GetColorSpace(),
-        SharedGpuContext::ContextProviderWrapper(),
-        weak_ptr_factory_.GetWeakPtr(), IsAccelerated(),
-        GetSharedImageUsageFlags()));
+    return scoped_refptr<CanvasResource>(
+        CanvasResourceSharedImage::CreateForTesting(
+            Size(), GetSharedImageFormat(), GetAlphaType(), GetColorSpace(),
+            GetSharedImageUsageFlags(),
+            /*is_software=*/false, IsAccelerated(),
+            weak_ptr_factory_.GetWeakPtr(),
+            SharedGpuContext::ContextProviderWrapper(),
+            /*shared_image_interface_provider=*/nullptr));
   }
   sk_sp<SkSurface> CreateSkSurface() const override {
     const auto info = SkImageInfo::Make(
@@ -1528,9 +1532,10 @@ TEST_P(CanvasRenderingContext2DTest, ContextDisposedBeforeCanvas) {
 
 TEST_P(CanvasRenderingContext2DTest,
        UnacceleratedLowLatencyIsNotSingleBuffered) {
+  ScopedCanvasUtils scoped_canvas_utils;
   // Ensure that the context will create a SharedImage provider for the test to
   // be meaningful.
-  SharedGpuContext::SetUseMappableSharedImagesForCanvas2DForTesting(true);
+  SetUseMappableSharedImagesForCanvas2DForTesting(true);
   ScopedTestingPlatformSupport<GpuCompositingTestPlatform> platform;
   const_cast<gpu::Capabilities&>(SharedGpuContext::ContextProviderWrapper()
                                      ->ContextProvider()
@@ -1714,7 +1719,8 @@ TEST_P(CanvasRenderingContext2DTest, AutoFlushDelayedByLayer) {
 
 TEST_P(CanvasRenderingContext2DTest,
        SoftwareCanvasIsCompositedIfMappableSharedImageIsUsed) {
-  SharedGpuContext::SetUseMappableSharedImagesForCanvas2DForTesting(true);
+  ScopedCanvasUtils scoped_canvas_utils;
+  SetUseMappableSharedImagesForCanvas2DForTesting(true);
 
   // Ensure that support for BGRA overlays is present, as otherwise compositing
   // will not occur regardless.
@@ -1735,7 +1741,8 @@ TEST_P(CanvasRenderingContext2DTest,
 
 TEST_P(CanvasRenderingContext2DTest,
        SoftwareCanvasIsNotCompositedIfMappableSharedImageIsNotUsed) {
-  SharedGpuContext::SetUseMappableSharedImagesForCanvas2DForTesting(false);
+  ScopedCanvasUtils scoped_canvas_utils;
+  SetUseMappableSharedImagesForCanvas2DForTesting(false);
 
   CreateContext(kNonOpaque);
   EXPECT_TRUE(Context2D()->GetOrCreateResourceProvider());
@@ -3506,7 +3513,7 @@ class CanvasRenderingContext2DTestLowLatency
  protected:
   CanvasRenderingContext2DTestLowLatency()
       : CanvasRenderingContext2DTestAccelerated() {
-    SharedGpuContext::SetLowLatencyUsageSupportedForCanvas2DForTesting(true);
+    SetLowLatencyUsageSupportedForCanvas2DForTesting(true);
   }
 
   void ConfigureContextProvider(
@@ -3519,6 +3526,9 @@ class CanvasRenderingContext2DTestLowLatency
     shared_image_caps.supports_scanout_shared_images = true;
     context_provider.SharedImageInterface()->SetCapabilities(shared_image_caps);
   }
+
+ private:
+  ScopedCanvasUtils scoped_canvas_utils_;
 };
 
 INSTANTIATE_PAINT_TEST_SUITE_P(CanvasRenderingContext2DTestLowLatency);

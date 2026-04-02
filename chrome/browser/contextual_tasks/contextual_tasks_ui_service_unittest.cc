@@ -919,8 +919,7 @@ TEST_F(ContextualTasksUiServiceTest, OnNavigationToAiPageIntercepted_SameTab) {
                                           weak_factory.GetWeakPtr(), false);
 
   GURL expected_initial_url(
-      "https://google.com/search?udm=50&q=test+query&cs=0&gsc=2&hl=en&"
-      "sourceid=chrome");
+      "https://google.com/search?udm=50&q=test+query&sourceid=chrome");
   EXPECT_EQ(service.GetInitialUrlForTask(task.GetTaskId()),
             expected_initial_url);
 }
@@ -1180,23 +1179,13 @@ TEST_F(ContextualTasksUiServiceTest, ShareUrl_FromEmbeddedPage_Intercepted) {
   run_loop.Run();
 }
 
-TEST_F(ContextualTasksUiServiceTest, GetAimUrlFromContextualTasksUrl) {
-  // Search param not found.
-  EXPECT_TRUE(ContextualTasksUiService::GetAimUrlFromContextualTasksUrl(
-                  GURL("chrome://contextual-tasks"))
-                  .is_empty());
+TEST_F(ContextualTasksUiServiceTest, CopyParamsFromWebUIUrl) {
+  GURL base_url("https://google.com/search");
+  GURL webui_url("chrome://contextual-tasks?param1=1&param2=2");
 
-  // Not valid AIM URL.
-  EXPECT_TRUE(
-      ContextualTasksUiService::GetAimUrlFromContextualTasksUrl(
-          GURL("chrome://contextual-tasks?aim_url=https%3A%2F%2Fbing.com"))
-          .is_empty());
-
-  // Valid AIM URL.
-  EXPECT_EQ(GURL("https://google.com/search"),
-            ContextualTasksUiService::GetAimUrlFromContextualTasksUrl(GURL(
-                "chrome://"
-                "contextual-tasks?aim_url=https%3A%2F%2Fgoogle.com%2Fsearch")));
+  EXPECT_EQ(
+      GURL("https://google.com/search?param1=1&param2=2"),
+      ContextualTasksUiService::CopyParamsFromWebUIUrl(base_url, webui_url));
 }
 
 // If the navigation is to sign the user out, ensure it opens outside the

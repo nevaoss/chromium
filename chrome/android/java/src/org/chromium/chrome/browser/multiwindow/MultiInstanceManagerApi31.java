@@ -61,7 +61,6 @@ import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.tabmodel.TabModelSelectorTabModelObserver;
 import org.chromium.chrome.browser.tabmodel.TabModelUtils;
-import org.chromium.chrome.browser.tabmodel.document.ChromeAsyncTabLauncher;
 import org.chromium.chrome.browser.tabwindow.TabWindowManager;
 import org.chromium.chrome.browser.ui.desktop_windowing.AppHeaderUtils;
 import org.chromium.chrome.browser.util.AndroidTaskUtils;
@@ -74,7 +73,6 @@ import org.chromium.components.feature_engagement.Tracker;
 import org.chromium.components.messages.MessageDispatcher;
 import org.chromium.components.messages.MessageDispatcherProvider;
 import org.chromium.components.url_formatter.UrlFormatter;
-import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.ui.modaldialog.ModalDialogManager;
 
 import java.util.ArrayList;
@@ -275,74 +273,7 @@ class MultiInstanceManagerApi31 extends MultiInstanceManagerImpl
                 R.string.menu_move_tab_to_other_window);
     }
 
-    /**
-     * Opens a URL in another window. The window in which the URL will be opened will depend on the
-     * following criteria, checked in order of priority:
-     *
-     * <ul>
-     *   <li>If there is exactly one window, a new window will be created.
-     *   <li>If {@code preferNew} is true, a new window will be attempted to be created. Note that
-     *       this will ensure that the URL is opened in a brand new window vs in a new activity
-     *       created for a restored inactive instance. However, an instance creation limit warning
-     *       message will be shown if instance limit is reached in this case.
-     *   <li>The target selector dialog will be presented to the user to pick a target window to
-     *       open the URL in.
-     * </ul>
-     *
-     * @param loadUrlParams The url to open.
-     * @param parentTabId The ID of the parent tab.
-     * @param preferNew Whether we should prioritize launching the tab in a new window.
-     * @param instanceType The {@link PersistedInstanceType} that will be used to determine the type
-     *     of window the URL can be opened in.
-     */
-    @Override
-    public void openUrlInOtherWindow(
-            LoadUrlParams loadUrlParams,
-            int parentTabId,
-            boolean preferNew,
-            @PersistedInstanceType int instanceType) {
-        boolean incognitoInstance = (instanceType & PersistedInstanceType.OFF_THE_RECORD) != 0;
-        boolean needsActive = (instanceType & PersistedInstanceType.ACTIVE) != 0;
-        // Check the number of instances that the url is able to move into.
-        int instanceCount =
-                incognitoInstance
-                        ? MultiWindowUtils.getIncognitoInstanceCount(/* activeOnly= */ needsActive)
-                        : MultiWindowUtils.getInstanceCountWithFallback(instanceType);
-        if (instanceCount <= 1 || preferNew) {
-            if (preferNew && !MultiWindowUtils.canCreateNewWindow()) {
-                assumeNonNull(mActiveTab);
-                showInstanceCreationLimitMessage();
-                return;
-            }
-
-            launchUrlInOtherWindow(
-                    incognitoInstance,
-                    loadUrlParams,
-                    parentTabId,
-                    /* otherActivity= */ null,
-                    preferNew);
-            return;
-        }
-
-        showTargetSelectorDialog(
-                (instanceInfo) -> {
-                    ChromeTabbedActivity selectedActivity =
-                            (ChromeTabbedActivity)
-                                    MultiWindowUtils.getActivityById(instanceInfo.instanceId);
-                    launchUrlInOtherWindow(
-                            /* isIncognito= */ selectedActivity != null
-                                    && selectedActivity.isIncognitoWindow(),
-                            loadUrlParams,
-                            parentTabId,
-                            selectedActivity,
-                            /* preferNew= */ false);
-                },
-                instanceType,
-                R.string.contextmenu_open_in_other_window);
-    }
-
-    @VisibleForTesting
-    void showTargetSelectorDialog(
+    /* package */ void showTargetSelectorDialog(
             Callback<InstanceInfo> moveCallback,
             @PersistedInstanceType int instanceType,
             @StringRes int titleId) {
@@ -353,22 +284,6 @@ class MultiInstanceManagerApi31 extends MultiInstanceManagerImpl
                 moveCallback,
                 getInstanceInfo(instanceType),
                 titleId);
-    }
-
-    private void launchUrlInOtherWindow(
-            boolean isIncognito,
-            LoadUrlParams loadUrlParams,
-            int parentId,
-            @Nullable Activity otherActivity,
-            boolean preferNew) {
-        ChromeAsyncTabLauncher chromeAsyncTabLauncher = new ChromeAsyncTabLauncher(isIncognito);
-        chromeAsyncTabLauncher.launchTabInOtherWindow(
-                loadUrlParams,
-                mActivity,
-                parentId,
-                otherActivity,
-                NewWindowAppSource.URL_LAUNCH,
-                preferNew);
     }
 
     @Override
@@ -503,13 +418,9 @@ class MultiInstanceManagerApi31 extends MultiInstanceManagerImpl
         if (preferredInstanceId >= 0 && instanceIdForTask == INVALID_WINDOW_ID) {
             // If we are at instance limit, immediately block allocation of a valid id for the
             // current activity so that it subsequently finishes. This is useful when multiple
-            // windows race to be restored near the limit (for eg. as a result of keyboard presses
-            // in quick succession). This is valid when only active instances contribute to the
-            // instance limit, which is the case when Robust Window Management is enabled. Otherwise
-            // we cannot return an invalid id, because we want to allocate a valid id for an
-            // inactive instance that is being restored, when limit includes both instance types.
-            if (!MultiWindowUtils.canCreateNewWindow()
-                    && UiUtils.isRobustWindowManagementEnabled()) {
+            // windows race to be restored near the limit (e.g. as a result of keyboard presses in
+            // quick succession).
+            if (!MultiWindowUtils.canCreateNewWindow()) {
                 profileType = getProfileType(instanceIdForTask, isIncognitoIntent);
                 return new AllocatedIdInfo(
                         instanceIdForTask, InstanceAllocationType.INVALID_INSTANCE, profileType);
@@ -853,7 +764,7 @@ class MultiInstanceManagerApi31 extends MultiInstanceManagerImpl
         List<Integer> inactiveInstances = new ArrayList<>();
         for (int i : MultiWindowUtils.getPersistedInstanceIds(PersistedInstanceType.ANY)) {
             // Remove persistent data for unrecoverable instances.
-            if (!MultiWindowUtils.isRestorableInstance(i)) {
+            if (!MultiWindowUtils.isRestorableInstance(appTaskIds, i)) {
                 instancesRemoved.add(i);
                 // An instance with no live task is deleted if it has no tabs.
                 removeInstanceInfo(i, CloseWindowAppSource.NO_TABS_IN_WINDOW);

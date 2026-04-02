@@ -95,10 +95,10 @@ ClientSocketPool::GroupId TestGroupId(
     PrivacyMode privacy_mode = PrivacyMode::PRIVACY_MODE_DISABLED,
     NetworkAnonymizationKey network_anonymization_key =
         NetworkAnonymizationKey()) {
-  return ClientSocketPool::GroupId(url::SchemeHostPort(scheme, host, port),
-                                   privacy_mode, network_anonymization_key,
-                                   SecureDnsPolicy::kAllow,
-                                   /*disable_cert_network_fetches=*/false);
+  return ClientSocketPool::GroupId(
+      url::SchemeHostPort(scheme, host, port), privacy_mode,
+      network_anonymization_key, SecureDnsPolicy::kAllow,
+      /*disable_cert_network_fetches=*/false, handles::kInvalidNetworkHandle);
 }
 
 // Make sure |handle| sets load times correctly when it has been assigned a
@@ -642,16 +642,9 @@ class ClientSocketPoolBaseTest : public TestWithTaskEnvironment {
       : TestWithTaskEnvironment(
             base::test::TaskEnvironment::TimeSource::MOCK_TIME),
         params_(ClientSocketPool::SocketParams::CreateForHttpForTesting()) {
-    connect_backup_jobs_enabled_ =
-        TransportClientSocketPool::connect_backup_jobs_enabled();
-    TransportClientSocketPool::set_connect_backup_jobs_enabled(true);
-    scoped_feature_list_.InitAndDisableFeature(
-        features::kTcpSocketPoolLimitRandomization);
-  }
-
-  ~ClientSocketPoolBaseTest() override {
-    TransportClientSocketPool::set_connect_backup_jobs_enabled(
-        connect_backup_jobs_enabled_);
+    scoped_feature_list_.InitWithFeatures(
+        {features::kPermitTcpSocketPoolConnectBackupJobs},
+        {features::kTcpSocketPoolLimitRandomization});
   }
 
   void CreatePool(int max_sockets,
@@ -754,7 +747,6 @@ class ClientSocketPoolBaseTest : public TestWithTaskEnvironment {
       /*application_settings=*/nullptr,
       /*ignore_certificate_errors=*/nullptr,
       /*enable_early_data=*/nullptr};
-  bool connect_backup_jobs_enabled_;
   MockClientSocketFactory client_socket_factory_;
   RecordingNetLogObserver net_log_observer_;
 
@@ -935,7 +927,8 @@ TEST_F(ClientSocketPoolBaseTest, GroupSeparation) {
                 url::SchemeHostPort(scheme, host_port_pair.host(),
                                     host_port_pair.port()),
                 privacy_mode, network_anonymization_key, secure_dns_policy,
-                /*disable_cert_network_fetches=*/false);
+                /*disable_cert_network_fetches=*/false,
+                handles::kInvalidNetworkHandle);
 
             EXPECT_FALSE(pool_->HasGroupForTesting(group_id));
 

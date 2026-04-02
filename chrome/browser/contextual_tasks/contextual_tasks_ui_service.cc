@@ -112,8 +112,7 @@ constexpr net::BackoffEntry::Policy
 };
 
 constexpr char kAiPageHost[] = "https://google.com";
-constexpr char kTaskQueryParam[] = "task";
-constexpr char kAimUrlQueryParam[] = "aim_url";
+constexpr char kTaskQueryParam[] = "chrome_task_id";
 constexpr char kDebugParam[] = "deb";
 constexpr char kDebugNoCobrowseValue[] = "nocobrowse1";
 
@@ -191,9 +190,20 @@ ContextualTasksUiService::ContextualTasksUiService(
 ContextualTasksUiService::~ContextualTasksUiService() = default;
 
 void ContextualTasksUiService::Shutdown() {
+  for (auto& observer : observers_) {
+    observer.OnContextualTasksUiServiceShutdown(this);
+  }
   weak_ptr_factory_.InvalidateWeakPtrs();
   access_token_fetcher_.reset();
   token_refresh_timer_.Stop();
+}
+
+void ContextualTasksUiService::AddObserver(Observer* observer) {
+  observers_.AddObserver(observer);
+}
+
+void ContextualTasksUiService::RemoveObserver(Observer* observer) {
+  observers_.RemoveObserver(observer);
 }
 
 void ContextualTasksUiService::OnNavigationToAiPageIntercepted(
@@ -228,9 +238,7 @@ void ContextualTasksUiService::OnNavigationToAiPageIntercepted(
 
   // Map the task ID to the intercepted url. This is done so the UI knows which
   // URL to load initially in the embedded frame.
-  GURL query_url = lens::AppendCommonSearchParametersToURL(
-      url, g_browser_process->GetApplicationLocale(), false);
-  task_id_to_creation_url_[task.GetTaskId()] = query_url;
+  task_id_to_creation_url_[task.GetTaskId()] = url;
 
   GURL ui_url = GetContextualTaskUrlForTask(task.GetTaskId());
 
@@ -706,8 +714,6 @@ void ContextualTasksUiService::OnSearchResultsNavigationInSidePanel(
       << "ContextualTasks navigation trace: "
          "OnSearchResultsNavigationInSidePanel called for URL: "
       << url_params.url;
-  url_params.url = lens::AppendCommonSearchParametersToURL(
-      url_params.url, g_browser_process->GetApplicationLocale(), false);
   web_ui_interface->TransferNavigationToEmbeddedPage(url_params);
 }
 
@@ -1134,10 +1140,7 @@ void ContextualTasksUiService::GetThreadUrlFromTaskId(
 }
 
 GURL ContextualTasksUiService::GetDefaultAiPageUrl() {
-  GURL url = lens::AppendCommonSearchParametersToURL(
-      GURL(GetContextualTasksAiPageUrl()),
-      g_browser_process->GetApplicationLocale(), false);
-  return url;
+  return GURL(GetContextualTasksAiPageUrl());
 }
 
 GURL ContextualTasksUiService::GetDefaultAiPageUrlForTask(
@@ -1392,16 +1395,19 @@ bool ContextualTasksUiService::IsValidSearchResultsPage(const GURL& url) {
           !value.empty());
 }
 
-GURL ContextualTasksUiService::GetAimUrlFromContextualTasksUrl(
-    const GURL& url) {
-  std::string aim_url_str;
-  if (net::GetValueForKeyInQuery(url, kAimUrlQueryParam, &aim_url_str)) {
-    GURL aim_url = GURL(aim_url_str);
-    if (IsSearchResultsUrl(aim_url)) {
-      return aim_url;
+GURL ContextualTasksUiService::CopyParamsFromWebUIUrl(const GURL& base_url,
+                                                      const GURL& webui_url) {
+  // Get all of the params off of the original URL.
+  net::QueryIterator it(webui_url);
+  GURL aim_url(base_url);
+  while (!it.IsAtEnd()) {
+    if (it.GetKey() != kTaskQueryParam) {
+      aim_url = net::AppendQueryParameter(aim_url, it.GetKey(), it.GetValue());
     }
+    it.Advance();
   }
-  return GURL();
+
+  return aim_url;
 }
 
 void ContextualTasksUiService::OnLensOverlayStateChanged(

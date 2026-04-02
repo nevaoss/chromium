@@ -638,11 +638,11 @@
     "includes": [4660],
   },
    "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/webui_toolbar/code_cache_resources.grd": {
-    "META": {"sizes": {"includes": [30]}},
+    "META": {"sizes": {"includes": [50]}},
     "includes": [4665],
   },
    "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/webui_toolbar/resources.grd": {
-    "META": {"sizes": {"includes": [30]}},
+    "META": {"sizes": {"includes": [50]}},
     "includes": [4670],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/sandbox_internals/resources.grd": {
@@ -1083,7 +1083,7 @@
    "includes": [6500],
   },
 
- "<(SHARED_INTERMEDIATE_DIR)/ash/webui/projector_app/resources/app/untrusted/ash_projector_app_untrusted_resources.grd": {
+ "<(SHARED_INTERMEDIATE_DIR)/ash/webui/projector_app/resources/app/untrusted/resources.grd": {
     "META": {"sizes": {"includes": [50],}},
     "includes": [6520],
   },

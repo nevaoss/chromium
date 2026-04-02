@@ -209,6 +209,7 @@
 <translation id="1740468249224277719">Gusa mara mbili ili usakinishe.</translation>
 <translation id="1740650426894359238">Kubadilisha utumie wasifu mwingine</translation>
 <translation id="1741219894094057085">Saa Mahiri</translation>
+<translation id="1742773766788162541">Changanua Kadi kisha Ujaze Kiotomatiki</translation>
 <translation id="1743244221910283364">Futa mabadiliko</translation>
 <translation id="1748975028205587434">Chagua faili yako</translation>
 <translation id="1749733017156547309">Nenosiri linahitajika</translation>
@@ -492,6 +493,7 @@
 <translation id="2721190673959776287">Mfano wa kiputo cha maelezo ya kina ya usaidizi yaliyo ndani ya bidhaa kwenye Kidirisha cha Muktadha, ambayo yanapaswa kuonekana mara nyingi kwa siku.</translation>
 <translation id="2739887572830526131">Hifadhi kikundi hiki ili uweke vichupo baadaye au ukifute iwapo hukihitaji tena.</translation>
 <translation id="2747003861858887689">Sehemu iliyotangulia</translation>
+<translation id="2750583038402718064"><ph name="WEBSITE_TITLE" /> imehamishiwa kwenye nafasi ya <ph name="POSITION" /></translation>
 <translation id="2755485474385016903">Mabadiliko yaliyofanywa yanaonekana kwa kila mtu kwenye kikundi</translation>
 <translation id="2755595981383829244">Sasa utapokea arifa za maudhui</translation>
 <translation id="2761788987260570878">Piga picha ya utafutaji wako</translation>
@@ -710,6 +712,7 @@
 <translation id="3578866308944526475"><ph name="EMAIL" />, inadhibitiwa na shirika lako.</translation>
 <translation id="3580448612293054698">Ungependa kusasisha <ph name="ENTITY_TYPE" />?</translation>
 <translation id="3581564640715911333">Jitolee kutafsiri kurasa katika lugha nyingine</translation>
+<translation id="3583726884554296148">Hifadhi kadi yako kwenye Akaunti yako ya Google ili uijaze kiotomatiki kwa ununuzi huu na ununuzi wa baadaye unaofanya kwenye Chrome</translation>
 <translation id="3587482841069643663">Zote</translation>
 <translation id="3587885837929752825">Shirika lako linadhibiti unachoweza kuhifadhi kwenye Akaunti yako ya Google.</translation>
 <translation id="3588820906588687999">Fungua Picha Katika Kichupo Kipya</translation>
@@ -1346,6 +1349,7 @@ Lazima Handoff iwashwe pia katika sehemu ya Jumla ya Mipangilio, na lazima vifaa
 <translation id="5819208479324046259">Inadhibitiwa na <ph name="MANAGER" />. <ph name="BEGIN_LINK" />Pata maelezo zaidi<ph name="END_LINK" /></translation>
 <translation id="5827266244928330802">Safari</translation>
 <translation id="5829649908290113115">Inasawazisha…</translation>
+<translation id="583281660410589416">Haijulikani</translation>
 <translation id="5838430324585198889">Pata vipengele zaidi katika iPad ukitumia programu za Google</translation>
 <translation id="583923961930319521">Kutumia manenosiri kwenye vifaa vyako vyote</translation>
 <translation id="5843013299019689749">Rangi nyeusi ya mandharinyuma</translation>
@@ -1556,6 +1560,7 @@ Lazima Handoff iwashwe pia katika sehemu ya Jumla ya Mipangilio, na lazima vifaa
 <translation id="6532106788206463496">Hifadhi mabadiliko</translation>
 <translation id="6536759809440150308">Fungua <ph name="GROUP_TITLE" />, kikundi cha <ph name="NUMBER_OF_TABS" />, <ph name="CREATION_TEXT" /></translation>
 <translation id="6537746030088321027">example.com</translation>
+<translation id="6543899060872618437">Nunua haraka ukitumia mipangilio iliyojazwa kiotomatiki kwenye vifaa vyako mbalimbali</translation>
 <translation id="6550675742724504774">Chaguo</translation>
 <translation id="6550891580932862748">Haikulindi dhidi ya tovuti, vipakuliwa na viendelezi hatari. Mipangilio yako ya Kuvinjari Salama katika bidhaa nyingine za Google haitaathiriwa.</translation>
 <translation id="6556501700899673703">Lexend</translation>
@@ -2029,6 +2034,7 @@ Lazima Handoff iwashwe pia katika sehemu ya Jumla ya Mipangilio, na lazima vifaa
 <translation id="8209237163365258530">Mifumo ya Gemini <ph name="VERSION_NUMBER" /></translation>
 <translation id="8211030355252954494">Umepokea manenosiri ya <ph name="WEBSITE" /></translation>
 <translation id="8211406090763984747">Muunganisho ni salama</translation>
+<translation id="8213190397436801658">Mwanzo</translation>
 <translation id="8214293972734702249">Umebandika, <ph name="TAB_TITLE" /></translation>
 <translation id="8219424187226230983">Kuangalia toleo la nje ya mtandao kwenye kichupo kipya</translation>
 <translation id="8221665793629393739">Kikumbusho cha kutembelea tena</translation>

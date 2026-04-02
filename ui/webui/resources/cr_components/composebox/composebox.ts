@@ -12,6 +12,7 @@ import './error_scrim.js';
 import './file_carousel.js';
 import './file_thumbnail.js';
 import './icons.html.js';
+import './composebox_input.js';
 import '//resources/cr_components/localized_link/localized_link.js';
 import '//resources/cr_components/search/animated_glow.js';
 import '//resources/cr_elements/cr_icon_button/cr_icon_button.js';
@@ -20,7 +21,6 @@ import {ComposeboxContextAddedMethod, GlowAnimationState} from '//resources/cr_c
 import {DragAndDropHandler} from '//resources/cr_components/search/drag_drop_handler.js';
 import type {DragAndDropHost} from '//resources/cr_components/search/drag_drop_host.js';
 import {getInstance as getAnnouncerInstance} from '//resources/cr_elements/cr_a11y_announcer/cr_a11y_announcer.js';
-import type {CrIconButtonElement} from '//resources/cr_elements/cr_icon_button/cr_icon_button.js';
 import {I18nMixinLit} from '//resources/cr_elements/i18n_mixin_lit.js';
 import {assert, assertNotReachedCase} from '//resources/js/assert.js';
 import {EventTracker} from '//resources/js/event_tracker.js';
@@ -29,7 +29,6 @@ import {hasKeyModifiers} from '//resources/js/util.js';
 import type {PropertyValues} from '//resources/lit/v3_0/lit.rollup.js';
 import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
 import type {AutocompleteMatch, AutocompleteResult, FileAttachment, PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerRemote as SearchboxPageHandlerRemote, SearchContext, SelectedFileInfo, TabAttachment, TabInfo} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
-import {ToolMode} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import {ModelMode} from '//resources/mojo/components/omnibox/composebox/composebox_query.mojom-webui.js';
 import type {BigBuffer} from '//resources/mojo/mojo/public/mojom/base/big_buffer.mojom-webui.js';
 import type {UnguessableToken} from '//resources/mojo/mojo/public/mojom/base/unguessable_token.mojom-webui.js';
@@ -42,9 +41,10 @@ import {getHtml} from './composebox.html.js';
 import type {PageHandlerRemote} from './composebox.mojom-webui.js';
 import type {ComposeboxDropdownElement} from './composebox_dropdown.js';
 import type {ComposeboxFileInputsElement} from './composebox_file_inputs.js';
+import type {ComposeboxInputElement} from './composebox_input.js';
 import {ComposeboxEmbedderMixin} from './composebox_mixin.js';
 import {ComposeboxProxyImpl} from './composebox_proxy.js';
-import {ContextUploadStatus, InputType, ToolMode as ComposeboxToolMode} from './composebox_query.mojom-webui.js';
+import {ContextUploadStatus, InputType, ToolMode} from './composebox_query.mojom-webui.js';
 import type {ContextUploadErrorType, InputState} from './composebox_query.mojom-webui.js';
 import type {ComposeboxVoiceSearchElement} from './composebox_voice_search.js';
 import type {ContextualEntrypointAndMenuElement} from './contextual_entrypoint_and_menu.js';
@@ -75,8 +75,12 @@ export function isTerminalState(status: ContextUploadStatus): boolean {
   }
 }
 
+export enum SubmitButtonIconType {
+  FORWARD = 'forward',
+  UPWARD = 'upward',
+}
+
 const DEBOUNCE_TIMEOUT_MS: number = 20;
-const ZERO_SPACE_STRING: string = '\u200b';
 
 function debounce(context: Object, func: () => void, delay: number) {
   let timeout: number;
@@ -88,15 +92,12 @@ function debounce(context: Object, func: () => void, delay: number) {
 
 export interface ComposeboxElement {
   $: {
-    cancelIcon: CrIconButtonElement,
-    input: HTMLInputElement,
+    composeboxInput: ComposeboxInputElement,
     composebox: HTMLElement,
     carousel: ComposeboxFileCarouselElement,
     fileInputs: ComposeboxFileInputsElement,
     matches: ComposeboxDropdownElement,
     errorScrim: ErrorScrimElement,
-    caret: HTMLInputElement,
-    mirror: HTMLDivElement,
   };
 }
 
@@ -213,6 +214,9 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
       searchboxNextEnabled: {
         type: Boolean,
         reflect: true,
+      },
+      submitButtonIconType: {
+        type: String,
       },
       tabSuggestions_: {type: Array},
       lensButtonDisabled: {
@@ -337,10 +341,9 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
   protected accessor receivedSpeech_: boolean = false;
   protected accessor canSubmitFilesAndInput_: boolean = true;
   protected lastQueriedInput_: string = '';
-  protected showVoiceSearchInSteadyComposebox_: boolean =
-      loadTimeData.getBoolean('steadyComposeboxShowVoiceSearch');
-  protected showVoiceSearchInExpandedComposebox_: boolean =
-      loadTimeData.getBoolean('expandedComposeboxShowVoiceSearch');
+  protected showVoiceSearch_: boolean =
+      loadTimeData.getBoolean('composeboxShowVoiceSearch');
+  // TODO(crbug.com/493988206): Rename to usePecApi_ and update all references.
   protected accessor showModelPicker_: boolean =
       loadTimeData.valueExists('contextualMenuUsePecApi') ?
       loadTimeData.getBoolean('contextualMenuUsePecApi') :
@@ -373,6 +376,19 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
       loadTimeData.valueExists('queryZpsOnLoad') :
       true;
   private browserProxy: ComposeboxProxyImpl = ComposeboxProxyImpl.getInstance();
+  accessor submitButtonIconType: SubmitButtonIconType =
+      SubmitButtonIconType.UPWARD;
+
+  get submitButtonIconClass_(): string {
+    switch (this.submitButtonIconType) {
+      case SubmitButtonIconType.FORWARD:
+        return 'icon-arrow-forward';
+      case SubmitButtonIconType.UPWARD:
+        return 'icon-arrow-upward';
+      default:
+        assertNotReachedCase(this.submitButtonIconType);
+    }
+  }
   private searchboxCallbackRouter_: SearchboxPageCallbackRouter;
   private pageHandler_: PageHandlerRemote;
   private searchboxHandler_: SearchboxPageHandlerRemote;
@@ -440,6 +456,10 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
         new DragAndDropHandler(this, this.dragAndDropEnabled_);
   }
 
+  override getInputElement(): ComposeboxInputElement {
+    return this.$.composeboxInput;
+  }
+
   override async connectedCallback() {
     super.connectedCallback();
 
@@ -463,21 +483,9 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
           this.onInputStateChanged_.bind(this)),
     ];
 
-    this.eventTracker_.add(this.$.input, 'input', () => {
+    this.eventTracker_.add(this.getInputElement().inputElement, 'input', () => {
       this.submitEnabled_ = this.computeSubmitEnabled_();
     });
-
-    if (!this.disableCaretColorAnimation) {
-      this.updateCaret_();
-
-      this.eventTracker_.add(this.$.input, 'focus', () => {
-        this.$.caret.classList.add('caret-visible');
-        this.updateCaret_();
-      });
-      this.eventTracker_.add(this.$.input, 'blur', () => {
-        this.$.caret.classList.remove('caret-visible');
-      });
-    }
 
     this.focusInput();
     // For "next" searchboxes (Realbox Next, Omnibox Next, etc.), the zps
@@ -499,11 +507,6 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
   private setupResizeObservers_() {
     const composeboxResizeObserver = new ResizeObserver(debounce(this, () => {
       this.fire('composebox-resize', {height: this.offsetHeight});
-      requestAnimationFrame(() => {
-        if (!this.disableCaretColorAnimation) {
-          this.updateCaret_();
-        }
-      });
     }, DEBOUNCE_TIMEOUT_MS));
     this.resizeObservers_.push(composeboxResizeObserver);
     composeboxResizeObserver.observe(this);
@@ -566,8 +569,7 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
           (this.inputState.allowedModels.length > 0 ||
            this.inputState.allowedTools.length > 0 ||
            this.inputState.allowedInputTypes.length > 0);
-      this.inToolMode_ =
-          this.inputState.activeTool !== ComposeboxToolMode.kUnspecified;
+      this.inToolMode_ = this.inputState.activeTool !== ToolMode.kUnspecified;
       this.dispatchEvent(new CustomEvent('input-state-changed', {
         detail: {inputState: this.inputState},
       }));
@@ -616,22 +618,12 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
     }
     if (changedPrivateProperties.has('smartComposeInlineHint_')) {
       if (this.smartComposeInlineHint_) {
-        this.adjustInputForSmartCompose();
         // TODO(crbug.com/452619068): Investigate why screenreader is
         // inconsistent.
         const announcer = getAnnouncerInstance();
         announcer.announce(
             this.smartComposeInlineHint_ + ', ' +
             this.i18n('composeboxSmartComposeTitle'));
-      } else {
-        // Unset the style overrides so input can resize through typing.
-        this.$.input.style.height = '';
-        this.$.input.style.minHeight = '';
-        const smartCompose =
-            this.shadowRoot.querySelector<HTMLElement>('#smartCompose');
-        if (smartCompose) {
-          smartCompose.style.minHeight = '';
-        }
       }
     }
   }
@@ -649,7 +641,7 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
   }
 
   focusInput() {
-    this.$.input.focus();
+    this.getInputElement().inputElement.focus();
   }
 
   getText() {
@@ -690,9 +682,9 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
     const previousTool = this.inputState?.activeTool;
     this.uploadButtonDisabled_ = false;
 
-    if (previousTool !== ComposeboxToolMode.kUnspecified) {
+    if (previousTool !== ToolMode.kUnspecified) {
       this.showContextMenuDescription_ = this.contextMenuDescriptionEnabled_;
-      this.handleToolModeUpdate_(ComposeboxToolMode.kUnspecified);
+      this.handleToolModeUpdate_(ToolMode.kUnspecified);
     }
   }
 
@@ -710,7 +702,7 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
 
   resetToolsAndModels() {
     if (this.inputState) {
-      this.searchboxHandler_.setActiveToolMode(ComposeboxToolMode.kUnspecified);
+      this.searchboxHandler_.setActiveToolMode(ToolMode.kUnspecified);
       this.searchboxHandler_.setActiveModelMode(ModelMode.kUnspecified);
     }
   }
@@ -760,7 +752,7 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
   protected async updateState_(state: ComposeboxState) {
     const text = state.text || '';
     const files = state.files || [];
-    const mode = state.mode ?? ComposeboxToolMode.kUnspecified;
+    const mode = state.mode ?? ToolMode.kUnspecified;
     let model = state.model ?? ModelMode.kUnspecified;
 
     if (text) {
@@ -798,7 +790,7 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
       }
       this.processFiles_(dataTransfer.files);
     }
-    if (mode !== ComposeboxToolMode.kUnspecified) {
+    if (mode !== ToolMode.kUnspecified) {
       this.handleToolClick_(mode);
     }
 
@@ -810,10 +802,6 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
     this.updateInputPlaceholder_();
 
     await this.updateComplete;
-    if (!this.disableCaretColorAnimation) {
-      this.updateMirror_();
-      this.updateCaret_();
-    }
   }
 
   protected addToPendingUploads_(token: UnguessableToken) {
@@ -883,7 +871,8 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
       // Do not show the dropdown for multiline input or if only the verbatim
       // match is present (we always expect a verbatim
       // match for typed suggest, so we ensure the length of the matches is >1).
-      if (this.$.input.scrollHeight <= 48 && this.result_?.matches.length > 1) {
+      if (this.getInputElement().inputElement.scrollHeight <= 48 &&
+          this.result_?.matches.length > 1) {
         return true;
       }
     }
@@ -914,7 +903,7 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
     // TODO(crbug.com/485648942): Update to drive Deep Search behavior from the
     //   PEC API's ToolSubstateConfig.
     // Allow empty query for Deep Search follow-ups.
-    if (this.inputState?.activeTool === ComposeboxToolMode.kDeepSearch &&
+    if (this.inputState?.activeTool === ToolMode.kDeepSearch &&
         this.isFollowupQuery) {
       return true;
     }
@@ -933,16 +922,8 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
     return showActivityLink;
   }
 
-  protected shouldShowSmartComposeInlineHint_() {
-    return !!this.smartComposeInlineHint_;
-  }
-
   protected shouldShowVoiceSearch_(): boolean {
-    const isExpanded = this.showDropdown_ || this.files.size > 0;
-    const isFeatureEnabled = isExpanded ?
-        this.showVoiceSearchInExpandedComposebox_ :
-        this.showVoiceSearchInSteadyComposebox_;
-    return isFeatureEnabled &&
+    return this.showVoiceSearch_ &&
         WindowProxy.getInstance().hasWebkitSpeechRecognition();
   }
 
@@ -1072,7 +1053,7 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
       name: fileInfo.fileName,
       dataUrl: fileInfo.imageDataUrl ?? null,
       objectUrl: null,
-      type: fileInfo.imageDataUrl ? 'image' : 'pdf',
+      type: fileInfo.mimeType || (fileInfo.imageDataUrl ? 'image' : ''),
       inputType: fileInfo.imageDataUrl ? InputType.kLensImage :
                                          InputType.kLensFile,
       status: fileInfo.imageDataUrl ? ContextUploadStatus.kUploadSuccessful :
@@ -1374,7 +1355,7 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
       this.queryAutocomplete_(/* clearMatches= */ true);
 
       if (!this.disableCaretColorAnimation) {
-        this.resetCaret_();
+        this.getInputElement().resetCaret();
       }
     } else {
       this.closeComposebox_();
@@ -1394,7 +1375,7 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
   }
 
   private hasContent_(): boolean {
-    return this.inputState?.activeTool !== ComposeboxToolMode.kUnspecified ||
+    return this.inputState?.activeTool !== ToolMode.kUnspecified ||
         this.input.trim().length > 0 || this.files.size > 0;
   }
 
@@ -1424,8 +1405,7 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
     // deliberately added by the user (i.e. not the automatic active tab).
     const isOnlyAutoTab = this.files.size === 1 && !!this.automaticActiveTab_;
     const shouldUseFileHint = this.enableFileHint && this.hasFiles() &&
-        !isOnlyAutoTab &&
-        this.inputState?.activeTool === ComposeboxToolMode.kUnspecified;
+        !isOnlyAutoTab && this.inputState?.activeTool === ToolMode.kUnspecified;
     if (shouldUseFileHint) {
       if (this.files.size > 1) {
         this.inputPlaceholder = this.i18n('composeboxHintTextAskAboutThese');
@@ -1446,7 +1426,7 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
     }
 
     if (this.inputState) {
-      if (this.inputState.activeTool !== ComposeboxToolMode.kUnspecified) {
+      if (this.inputState.activeTool !== ToolMode.kUnspecified) {
         const config = this.inputState.toolConfigs.find(
             c => c.tool === this.inputState!.activeTool);
         if (config?.hintText) {
@@ -1470,10 +1450,10 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
       }
     }
 
-    if (this.inputState?.activeTool === ComposeboxToolMode.kDeepSearch) {
+    if (this.inputState?.activeTool === ToolMode.kDeepSearch) {
       this.inputPlaceholder =
           loadTimeData.getString('composeDeepSearchPlaceholder');
-    } else if (this.inputState?.activeTool === ComposeboxToolMode.kImageGen) {
+    } else if (this.inputState?.activeTool === ToolMode.kImageGen) {
       this.inputPlaceholder =
           loadTimeData.getString('composeCreateImagePlaceholder');
     } else {
@@ -1482,19 +1462,19 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
     }
   }
 
-  protected onToolClick_(e: CustomEvent<{toolMode: ComposeboxToolMode}>) {
+  protected onToolClick_(e: CustomEvent<{toolMode: ToolMode}>) {
     this.handleToolClick_(e.detail.toolMode);
   }
 
-  protected handleToolClick_(tool: ComposeboxToolMode) {
+  protected handleToolClick_(tool: ToolMode) {
     const isTogglingOff = this.inputState?.activeTool === tool;
 
     if (this.contextMenuDescriptionEnabled_) {
       this.showContextMenuDescription_ =
-          isTogglingOff || tool === ComposeboxToolMode.kUnspecified;
+          isTogglingOff || tool === ToolMode.kUnspecified;
     }
 
-    const newToolMode = isTogglingOff ? ComposeboxToolMode.kUnspecified : tool;
+    const newToolMode = isTogglingOff ? ToolMode.kUnspecified : tool;
 
     if (isTogglingOff) {
       const metricName = `ContextualSearch.UserAction.InputStateDeletion.Tool.${
@@ -1507,7 +1487,7 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
     this.handleToolModeUpdate_(newToolMode);
   }
 
-  private handleToolModeUpdate_(newTool: ComposeboxToolMode) {
+  private handleToolModeUpdate_(newTool: ToolMode) {
     this.searchboxHandler_.setActiveToolMode(newTool);
     this.queryAutocomplete_(/* clearMatches= */ true);
     this.updateInputPlaceholder_();
@@ -1525,14 +1505,8 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
 
   // Sets the input property to compute the cancel button title without using
   // "$." syntax  as this is not allowed in WillUpdate().
-  protected onInputInput_(e: Event) {
-    const inputElement = e.target as HTMLInputElement;
-    this.input = inputElement.value;
-
-    if (!this.disableCaretColorAnimation) {
-      this.updateMirror_();
-      this.updateCaret_();
-    }
+  protected onInputInput_(_e: CustomEvent<Event>) {
+    this.input = this.getInputElement().input;
 
     // `clearMatches` is true if input is empty stop any in progress providers
     // before requerying for on-focus (zero-suggest) inputs. The searchbox
@@ -1551,140 +1525,8 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
     }
   }
 
-  private updateMirror_() {
-    const mirror = this.$.mirror;
-    if (!mirror) {
-      return;
-    }
-
-    mirror.textContent = '';
-
-    const chars = this.input.split('');
-
-    if (chars.length === 0) {
-      const emptySpan = document.createElement('span');
-      emptySpan.textContent = ZERO_SPACE_STRING;
-      mirror.appendChild(emptySpan);
-      return;
-    }
-
-    chars.forEach(char => {
-      const span = document.createElement('span');
-      if (char === ' ') {
-        span.textContent = ' ';
-      } else if (char === '\n') {
-        span.textContent = `\n${ZERO_SPACE_STRING}`;
-      } else {
-        span.textContent = char;
-      }
-      mirror.appendChild(span);
-    });
-
-    if (chars.length === 0) {
-      mirror.textContent = ZERO_SPACE_STRING;
-    }
-  }
-
-  protected onInputClick_() {
-    if (!this.disableCaretColorAnimation) {
-      this.updateCaret_();
-    }
-  }
-
-  protected onInputKeyup_() {
-    if (!this.disableCaretColorAnimation) {
-      this.updateCaret_();
-    }
-  }
-
-  private updateCaret_() {
-    const caret = this.$.caret;
-    const input = this.$.input;
-    const mirror = this.$.mirror;
-
-    if (!caret || !input || !mirror) {
-      return;
-    }
-
-    if (mirror.textContent.length !== input.value.length) {
-      this.updateMirror_();
-    }
-
-    // The reset below is required because the color cycling must restart
-    // anytime a new character is typed, so it will go back to blue.
-    // If this is not present then the color cycling will continue.
-    caret.classList.remove('animating');
-    void caret.offsetHeight;
-    caret.classList.add('animating');
-
-    const {selectionEnd} = input;
-    const wrapperRect = this.$.input.getBoundingClientRect();
-
-    if (selectionEnd === 0) {
-      const mirrorTextSpan = mirror.firstChild as HTMLElement;
-
-      if (mirrorTextSpan) {
-        const rect = mirrorTextSpan.getBoundingClientRect();
-
-        // In LTR, the start of the string is on the left edge.
-        // In RTL, the start of the string is on the right edge.
-        const xOffset = this.isRtl_ ? rect.right : rect.left;
-
-        // Calculate the transform translation:
-        // LTR: positive distance from the left edge.
-        // RTL: negative distance from the right edge.
-        const caretX = this.isRtl_ ? (xOffset - wrapperRect.right) :
-                                     (xOffset - wrapperRect.left);
-        const caretY = rect.top - wrapperRect.top;
-
-        caret.style.transform = `translate(${caretX}px, ${caretY}px)`;
-      } else {
-        this.resetCaret_();
-      }
-      return;
-    }
-
-    const charBeforeCursor =
-        mirror.childNodes[selectionEnd! - 1] as HTMLElement;
-
-    if (charBeforeCursor) {
-      const rect = charBeforeCursor.getBoundingClientRect();
-
-      // In LTR, the caret goes *after* the character (on its right).
-      // In RTL, text flows right-to-left, so *after* the character is on its
-      // left.
-      const xOffset = this.isRtl_ ? rect.left : rect.right;
-
-      // Calculate the transform translation again based on the origin:
-      const caretX = this.isRtl_ ? (xOffset - wrapperRect.right) :
-                                   (xOffset - wrapperRect.left);
-      const caretY = rect.top - wrapperRect.top;
-
-      caret.style.transform = `translate(${caretX}px, ${caretY}px)`;
-    }
-  }
-
-  protected resetCaret_() {
-    // 12 origin must be set as this fixes spacing to match the box padding
-    // around the caret
-    const isRtl = document.documentElement.dir === 'rtl';
-    const boxPaddingOffset = 12;
-
-    let originX =
-        this.entrypointName === 'ContextualTasks' ? 0 : boxPaddingOffset;
-
-    // In RTL layouts translate negatively to push the caret
-    // inwards (to the left).
-    if (isRtl) {
-      originX = -originX;
-    }
-
-    const originY = boxPaddingOffset;
-    this.$.caret.style.transform = `translate(${originX}px, ${originY}px)`;
-  }
-
   private isFocusInInput_(): boolean {
-    return this.shadowRoot.activeElement === this.$.input;
+    return this.shadowRoot.activeElement === this.getInputElement();
   }
 
   private hasMatches_(): boolean {
@@ -1864,13 +1706,13 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
 
       switch (context.toolMode) {
         case ToolMode.kDeepSearch:
-          this.handleToolModeUpdate_(ComposeboxToolMode.kDeepSearch);
+          this.handleToolModeUpdate_(ToolMode.kDeepSearch);
           break;
-        case ToolMode.kCreateImage:
-          this.handleToolModeUpdate_(ComposeboxToolMode.kImageGen);
+        case ToolMode.kImageGen:
+          this.handleToolModeUpdate_(ToolMode.kImageGen);
           break;
         case ToolMode.kCanvas:
-          this.handleToolModeUpdate_(ComposeboxToolMode.kCanvas);
+          this.handleToolModeUpdate_(ToolMode.kCanvas);
           break;
         default:
       }
@@ -1890,7 +1732,7 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
     if (this.isCollapsible) {
       this.expanding_ = false;
       this.animationState = GlowAnimationState.NONE;
-      this.$.input.blur();
+      this.getInputElement().inputElement.blur();
     }
   }
 
@@ -1903,10 +1745,6 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
     if (this.isCollapsible || this.clearAllInputsWhenSubmittingQuery_) {
       this.clearAllInputs(/* querySubmitted= */ true,
                           /* shouldBlockAutoSuggestedTabs= */ false);
-    }
-
-    if (this.isCollapsible) {
-      this.$.input.blur();
     }
 
     this.fire('composebox-submit');
@@ -2134,22 +1972,6 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
     }
   }
 
-  private adjustInputForSmartCompose() {
-    // Checks the scroll height of the input + smart complete hint (ghost div)
-    // and updates the height of the actual input to be that height so the
-    // ghost text does not overflow.
-    const smartCompose =
-        this.shadowRoot.querySelector<HTMLElement>('#smartCompose');
-
-    const ghostHeight = smartCompose!.scrollHeight;
-    // If smart compose goes to two lines. The tab chip will be cut off as it
-    // has a height of 28px. Add 4px to show the whole tab chip.
-    if (ghostHeight > 48) {
-      this.$.input.style.minHeight = `68px`;
-      smartCompose!.style.minHeight = `68px`;
-    }
-  }
-
   // `queryAutocomplete` updates the `lastQueriedInput_` and makes an
   // autocomplete call through the handler. It also optionally clears existing
   // matches.
@@ -2199,10 +2021,6 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
     this.input = '';
     this.lastQueriedInput_ = '';
     this.$.matches.unselect();
-    if (!this.disableCaretColorAnimation) {
-      this.updateMirror_();
-      this.updateCaret_();
-    }
   }
 
   getInputText(): string {
@@ -2368,7 +2186,7 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
     if (!files || files.length === 0) {
       return;
     }
-    if (this.inputState?.activeTool === ComposeboxToolMode.kDeepSearch) {
+    if (this.inputState?.activeTool === ToolMode.kDeepSearch) {
       this.handleProcessFilesError_(ProcessFilesError.FILE_UPLOAD_NOT_ALLOWED);
       return;
     }
@@ -2399,7 +2217,7 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
 
     for (const file of files) {
       const inputType = this.getInputType_(file.type);
-      if (this.inputState?.activeTool !== ComposeboxToolMode.kUnspecified) {
+      if (this.inputState?.activeTool !== ToolMode.kUnspecified) {
         const disabledTypes = this.inputState?.disabledInputTypes || [];
         if (disabledTypes.includes(inputType)) {
           errorToDisplay =

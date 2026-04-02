@@ -476,6 +476,9 @@
   <message name="IDS_AUTOFILL_PAYMENT_METHODS" desc="Title for the list of saved payment methods that can be used to fill in forms. Also used as the title for the Autofill settings page that allows user to manage their list of saved payment methods and Autofill preferences for payment methods. Sentence-Cased." formatter_data="android_java">
     Payment methods
   </message>
+  <message name="IDS_AUTOFILL_PAYMENT_METHODS_KEYWORDS" desc="Keyword list for search in settings" formatter_data="android_java">
+    Credit,Card,Debit
+  </message>
   <message name="IDS_AUTOFILL_PAYMENT_METHODS_TABLE_ARIA_LABEL" is_accessibility_with_no_ui="true" desc="Aria label for the list of saved payment methods that can be used to fill in forms.">
     Saved payment methods table
   </message>
@@ -483,10 +486,13 @@
     Save and fill addresses
   </message>
   <message name="IDS_AUTOFILL_DISABLE_SETTINGS_EXPLANATION_TITLE" desc="Title of the card explaining why the settings page was disabled. Sentence-Cased." formatter_data="android_java">
-  Google isn’t your autofill provider
+    Google isn’t your autofill provider
   </message>
   <message name="IDS_AUTOFILL_DISABLE_SETTINGS_EXPLANATION" desc="Explanation why the settings page was disabled. Sentence-Cased." formatter_data="android_java">
     To enable these settings and use payment info from your Google Account, visit autofill services settings.
+  </message>
+  <message name="IDS_AUTOFILL_DISABLE_SETTINGS_EXPLANATION_V2" desc="The body text of the info banner. It explains why the rest of the page is greyed out (disabled) and instructs the user on how to fix it by changing their provider back to Google." formatter_data="android_java">
+    To enable these settings and use info from your Google Account, visit autofill services settings
   </message>
   <message name="IDS_AUTOFILL_DISABLE_SETTINGS_BUTTON_LABEL" desc="Button that opens the autofill services settings page. Sentence-Cased." formatter_data="android_java">
     Autofill services settings
@@ -518,6 +524,9 @@
     </message>
     <message name="IDS_AUTOFILL_THIRD_PARTY_FILLING_OPT_IN_DESCRIPTION" desc="Description shown on the option enabling the use of third-party autofill in Chrome." formatter_data="android_java">
       To use another autofill service in Chrome, choose your autofill provider in Android settings
+    </message>
+    <message name="IDS_AUTOFILL_THIRD_PARTY_FILLING_OPT_IN_DESCRIPTION_V2" desc="The description text below the Autofill using another service radio button. It provides instructions on how to enable third-party services, noting the dependency on system-level Android settings." formatter_data="android_java">
+      To use another autofill service in Chrome, turn it on in Android settings and here
     </message>
     <message name="IDS_PAYMENT_METHODS_SETTINGS_LOYALTY_CARDS_TITLE" desc="Title for the payment methods settings page row that links the user to the Google Wallet app." formatter_data="android_java">
       Loyalty cards
@@ -1333,6 +1342,15 @@
     </message>
     <message name="IDS_AUTOFILL_AI_SAVE_OR_UPDATE_ENTITY_NEW_ATTRIBUTE_WITH_BADGE" desc="Used in entity update dialogs, as the special badge to indicate newly added attributes that were not saved before." formatter_data="android_java">
       <ph name="ATTRIBUTE_VALUE">$1<ex>John Doe</ex></ph>  <ph name="BEGIN_NEW">&lt;new&gt;</ph>New<ph name="END_NEW">&lt;/new&gt;</ph>
+    </message>
+    <message name="IDS_AUTOFILL_AI_SAVE_OR_UPDATE_ENTITY_FAILED_WALLET_SAVE_DIALOG_TITLE" desc="The title of the dialog shown when an entity (like passport, driver's license, etc) fails to be saved to Google Wallet.">
+      Info saved to device only
+    </message>
+    <message name="IDS_AUTOFILL_AI_SAVE_OR_UPDATE_ENTITY_FAILED_WALLET_SAVE_DIALOG_DESCRIPTION" desc="The description text of the dialog shown when an entity (like passport, driver's license, etc) fails to be saved to Google Wallet.">
+      Chrome will offer to save it to <ph name="IDS_AUTOFILL_GOOGLE_WALLET_TITLE">$1<ex>Google Wallet</ex></ph> next time you use it
+    </message>
+    <message name="IDS_AUTOFILL_AI_SAVE_OR_UPDATE_ENTITY_FAILED_WALLET_SAVE_DIALOG_CONFIRMATION_BUTTON_LABEL" desc="The confirmation button text of the dialog shown when an entity (like passport, driver's license, etc) fails to be saved to Google Wallet.">
+      Got it
     </message>
   </if>
 

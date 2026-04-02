@@ -529,6 +529,7 @@ _CONFIG = [
             'gfx::ColorSpace',
             'gfx::CubicBezier',
             'gfx::HDRMetadata',
+            'gfx::HdrMetadataAgtm',
             'gfx::HdrMetadataExtendedRange',
             'gfx::ICCProfile',
 
@@ -698,12 +699,12 @@ _CONFIG = [
             'cc::EventListenerClass',
             'cc::EventListenerProperties',
             'cc::HitTestOpaqueness',
-            'cc::TrackedElementFeature',
             'cc::WebVitalMetricType',
             'cc::HORIZONTAL',
             'cc::THUMB',
             'cc::TRACK_BUTTONS_TICKMARKS',
             'cc::VERTICAL',
+            'viz::TrackedElementFeature',
 
             # Animation
             "cc::PropertyChangeForcesCommitCriteria",
@@ -780,6 +781,7 @@ _CONFIG = [
 
             # Standalone utility libraries that only depend on //base
             'skia::.+',
+            'skhdr::.+',
             'url::.+',
 
             # Nested namespaces under the blink namespace
@@ -2884,6 +2886,7 @@ _CONFIG = [
             'cc::PaintCanvas',
             'cc::PaintFlags',
             'media::.+',
+            'viz::FrameSinkId',
         ]
     },
     {
@@ -3046,6 +3049,12 @@ _CONFIG = [
             'third_party/blink/common/scheduler/web_scheduler_tracked_feature.cc',
         ],
         'allowed': ['base::NoDestructor']
+    },
+    {
+        'paths': [
+            'third_party/blink/public/platform/web_surface_layer_bridge.h',
+        ],
+        'allowed': ['viz::FrameSinkId'],
     },
 ]
 

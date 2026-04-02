@@ -19,6 +19,7 @@
 #import "base/strings/string_util.h"
 #import "base/strings/sys_string_conversions.h"
 #import "base/strings/utf_string_conversions.h"
+#import "components/account_settings/account_setting_service.h"
 #import "components/application_locale_storage/application_locale_storage.h"
 #import "components/autofill/core/browser/autofill_server_prediction.h"
 #import "components/autofill/core/browser/crowdsourcing/votes_uploader.h"
@@ -31,7 +32,6 @@
 #import "components/autofill/core/browser/payments/payments_network_interface.h"
 #import "components/autofill/core/browser/single_field_fillers/single_field_fill_router.h"
 #import "components/autofill/core/browser/suggestions/suggestion_type.h"
-#import "components/autofill/core/browser/webdata/account_settings/account_setting_service.h"
 #import "components/autofill/core/common/autofill_features.h"
 #import "components/autofill/core/common/autofill_prefs.h"
 #import "components/autofill/ios/browser/autofill_client_ios.h"
@@ -41,7 +41,6 @@
 #import "components/infobars/core/infobar_manager.h"
 #import "components/keyed_service/core/service_access_type.h"
 #import "components/optimization_guide/core/model_execution/remote_model_executor.h"
-#import "components/optimization_guide/machine_learning_tflite_buildflags.h"
 #import "components/optimization_guide/proto/features/common_quality_data.pb.h"
 #import "components/password_manager/core/browser/form_parsing/form_data_parser.h"
 #import "components/password_manager/core/browser/password_form.h"
@@ -62,6 +61,7 @@
 #import "ios/chrome/browser/autofill/model/ios_autofill_ai_model_cache_factory.h"
 #import "ios/chrome/browser/autofill/model/ios_autofill_ai_model_executor_factory.h"
 #import "ios/chrome/browser/autofill/model/ios_autofill_entity_data_manager_factory.h"
+#import "ios/chrome/browser/autofill/model/ios_autofill_field_classification_model_handler_factory.h"
 #import "ios/chrome/browser/autofill/model/ios_wallet_pass_access_manager_factory.h"
 #import "ios/chrome/browser/autofill/model/personal_data_manager_factory.h"
 #import "ios/chrome/browser/autofill/model/strike_database_factory.h"
@@ -75,6 +75,7 @@
 #import "ios/chrome/browser/metrics/model/google_groups_manager_factory.h"
 #import "ios/chrome/browser/optimization_guide/model/optimization_guide_service.h"
 #import "ios/chrome/browser/optimization_guide/model/optimization_guide_service_factory.h"
+#import "ios/chrome/browser/passwords/model/ios_password_field_classification_model_handler_factory.h"
 #import "ios/chrome/browser/passwords/model/password_tab_helper.h"
 #import "ios/chrome/browser/plus_addresses/model/plus_address_service_factory.h"
 #import "ios/chrome/browser/shared/model/application_context/application_context.h"
@@ -90,11 +91,6 @@
 #import "ios/web/public/web_state.h"
 #import "services/network/public/cpp/shared_url_loader_factory.h"
 #import "services/network/public/cpp/weak_wrapper_shared_url_loader_factory.h"
-
-#if BUILDFLAG(BUILD_WITH_TFLITE_LIB)
-#import "ios/chrome/browser/autofill/model/ios_autofill_field_classification_model_handler_factory.h"
-#import "ios/chrome/browser/passwords/model/ios_password_field_classification_model_handler_factory.h"
-#endif
 
 namespace autofill {
 
@@ -209,23 +205,17 @@ WalletPassAccessManager* ChromeAutofillClientIOS::GetWalletPassAccessManager() {
 
 FieldClassificationModelHandler*
 ChromeAutofillClientIOS::GetAutofillFieldClassificationModelHandler() {
-#if BUILDFLAG(BUILD_WITH_TFLITE_LIB)
   if (base::FeatureList::IsEnabled(features::kAutofillModelPredictions)) {
     return IOSAutofillFieldClassificationModelHandlerFactory::GetForProfile(
         profile_);
   }
-#endif
   return nullptr;
 }
 
 FieldClassificationModelHandler*
 ChromeAutofillClientIOS::GetPasswordManagerFieldClassificationModelHandler() {
-#if BUILDFLAG(BUILD_WITH_TFLITE_LIB)
   return IOSPasswordFieldClassificationModelHandlerFactory::GetForProfile(
       profile_);
-#else
-  return nullptr;
-#endif
 }
 
 SingleFieldFillRouter& ChromeAutofillClientIOS::GetSingleFieldFillRouter() {
@@ -611,15 +601,22 @@ void ChromeAutofillClientIOS::ShowEntityImportBubble(
   // Enhanced Autofill is only available to signed-in users.
   std::optional<std::u16string> user_email = GetUserEmail();
   if (!user_email.has_value()) {
-    std::move(prompt_result_callback).Run(AutofillAiBubbleResult::kUnknown);
+    std::move(prompt_result_callback).Run(AutofillAiBubbleResult::kUnknown, {});
     return;
   }
 
   // Remove any existing infobars of the same type.
-  CloseEntityImportBubble();
+  const auto existing_infobar = std::ranges::find(
+      infobar_manager_->infobars(),
+      infobars::InfoBarDelegate::AUTOFILL_AI_SAVE_ENTITY_INFOBAR_DELEGATE_IOS,
+      &infobars::InfoBar::GetIdentifier);
+
+  if (existing_infobar != infobar_manager_->infobars().cend()) {
+    infobar_manager_->RemoveInfoBar(*existing_infobar);
+  }
 
   SaveEntityParams params(std::move(new_entity), std::move(old_entity),
-                          std::move(user_email.value()),
+                          std::move(user_email.value()), save_is_synchronous,
                           std::move(prompt_result_callback));
 
   auto delegate = std::make_unique<AutofillAiSaveEntityInfoBarDelegateIOS>(
@@ -632,14 +629,8 @@ void ChromeAutofillClientIOS::ShowEntityImportBubble(
 }
 
 void ChromeAutofillClientIOS::CloseEntityImportBubble() {
-  const auto existing_infobar = std::ranges::find(
-      infobar_manager_->infobars(),
-      infobars::InfoBarDelegate::AUTOFILL_AI_SAVE_ENTITY_INFOBAR_DELEGATE_IOS,
-      &infobars::InfoBar::GetIdentifier);
-
-  if (existing_infobar != infobar_manager_->infobars().cend()) {
-    infobar_manager_->RemoveInfoBar(*existing_infobar);
-  }
+  // This should be a no-op if the entity import bubble is already closed.
+  [commands_handler_ dismissSaveEntityDialog];
 }
 
 void ChromeAutofillClientIOS::ShowAutofillAiLocalSaveNotification() {

@@ -561,7 +561,7 @@ Numai un utilizator care deține expresia ta de acces îți poate citi datele cr
 <translation id="3384347053049321195">Trimite imaginea</translation>
 <translation id="3387650086002190359">Descărcarea fișierului <ph name="FILE_NAME" /> nu a reușit din cauza unor erori privind sistemul de fișiere.</translation>
 <translation id="3414952576877147120">Dimensiune:</translation>
-<translation id="3417835166382867856">Caută în file</translation>
+<translation id="3417835166382867856">Caută file</translation>
 <translation id="3430670036890315772">Dacă dezactivezi blocarea profilului, informațiile tale salvate vor fi șterse</translation>
 <translation id="3435465986463792564">Ai deschis multe ferestre? Gestionează-le de aici</translation>
 <translation id="3435575784518354875">Pentru a păstra accesul la parole, exportă-le acum, actualizează serviciile Google Play și apoi importă-le înapoi în Managerul de parole Google. <ph name="BEGIN_LINK" />Consultă instrucțiunile complete<ph name="END_LINK" />.</translation>
@@ -699,6 +699,7 @@ Numai un utilizator care deține expresia ta de acces îți poate citi datele cr
 <translation id="3985215325736559418">Dorești să descarci <ph name="FILE_NAME" /> din nou?</translation>
 <translation id="3987993985790029246">Copiază linkul</translation>
 <translation id="3994236846568425219">Activează tema întunecată când este activată tema întunecată pentru dispozitiv</translation>
+<translation id="399788104667917863">Fixează în bara de instrumente</translation>
 <translation id="4000212216660919741">Pagina de pornire offline</translation>
 <translation id="4000670338830950598">Personalizează și controlează Google Chrome cu un element evidențiat</translation>
 <translation id="4015643064997321279">{NUM_PASSWORDS,plural, =1{O parolă compromisă în Contul Google}few{# parole compromise în Contul Google}other{# de parole compromise în Contul Google}}</translation>
@@ -798,6 +799,7 @@ Numai un utilizator care deține expresia ta de acces îți poate citi datele cr
 <translation id="4384468725000734951">Pentru căutare se folosește Sogou</translation>
 <translation id="4387647248986092471">Creează o blocare a profilului mașinii</translation>
 <translation id="4387817230000841154">Deschide Descărcări</translation>
+<translation id="4394049700291259645">Dezactivează</translation>
 <translation id="4395046795145457714">Opțiunea de activare pentru Chrome Finds este deschisă la înălțime completă.</translation>
 <translation id="4398561997852463382"><ph name="TAB_TITLE" />, filă incognito de înregistrare fixată și selectată</translation>
 <translation id="4402611456429872546"><ph name="LANG" /> – Se descarcă…</translation>
@@ -822,7 +824,6 @@ Numai un utilizator care deține expresia ta de acces îți poate citi datele cr
 <translation id="4478161224666880173">Poți folosi contul <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> pe acest site. Pentru a continua, conectează-te la <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" />.</translation>
 <translation id="4479972344484327217">Se instalează <ph name="MODULE" /> pentru Chrome…</translation>
 <translation id="4487967297491345095">Toate datele aplicației Chrome vor fi șterse definitiv. Sunt incluse toate fișierele, setările, conturile, bazele de date etc.</translation>
-<translation id="4494315997125191493">Selectează Gestionează pentru a vedea toate ferestrele</translation>
 <translation id="4494806687727322324">Salvarea parolelor a fost activată de administrator</translation>
 <translation id="4508528996305412043">Meniul cardului din feed este deschis</translation>
 <translation id="4509741852167209430">Sunt trimise tipuri de date limitate între site-uri pentru a măsura performanța anunțurilor asociate, de exemplu, dacă ai făcut o achiziție după ce ai accesat un site</translation>
@@ -870,7 +871,6 @@ Contul Google poate să ofere alte forme ale istoricului de navigare, cum ar fi 
 <translation id="4673702426794876519">Fereastră incognito</translation>
 <translation id="4675298276894277358">Acest site nu se va mai afișa</translation>
 <translation id="4678082183394354975">Tema întunecată pentru site-uri este activată în Chrome</translation>
-<translation id="4682306524980568490">Se pot afișa numai <ph name="MAX_INSTANCE_COUNT" /> ferestre</translation>
 <translation id="4684427112815847243">Sincronizează tot</translation>
 <translation id="4685741273709472646">Selectează din lista drop-down</translation>
 <translation id="4687718960473379118">Anunțurile sugerate de site-uri</translation>

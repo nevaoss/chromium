@@ -89,6 +89,27 @@ const char kAutofillAiReauthRequiredName[] = "Autofill AI Reauth Required";
 const char kAutofillAiReauthRequiredDescription[] =
     "Enables Autofill AI Reauth Required.";
 
+const char kAutofillAiValuablesIPHName[] = "IPH Autofill AI Valuables";
+const char kAutofillAiValuablesIPHDescription[] =
+    "Enables the In-Product Help for Autofill AI valuables.";
+
+const char kAutofillAiWalletFlightReservationName[] =
+    "Autofill AI Google Wallet flight reservations";
+const char kAutofillAiWalletFlightReservationDescription[] =
+    "Enables Autofill AI support for flight reservation entities from Google "
+    "Wallet.";
+
+const char kAutofillAiWalletPrivatePassesName[] =
+    "Autofill AI Google Wallet private passes";
+const char kAutofillAiWalletPrivatePassesDescription[] =
+    "Enables Autofill AI support for private passes from Google Wallet.";
+
+const char kAutofillAiWalletVehicleRegistrationName[] =
+    "Autofill AI Google Wallet vehicle registration";
+const char kAutofillAiWalletVehicleRegistrationDescription[] =
+    "Enables Autofill AI support for vehicle registration entities from Google "
+    "Wallet.";
+
 const char kAutofillAiWithDataSchemaName[] = "Autofill AI With Data Schema";
 const char kAutofillAiWithDataSchemaDescription[] =
     "Enables Autofill AI With Data Schema.";
@@ -730,6 +751,10 @@ const char kHttpsUpgradesDescription[] =
     "When enabled, eligible navigations will automatically be upgraded to "
     "HTTPS.";
 
+const char kIOSActuationToolsName[] = "iOS Actuation Tools";
+const char kIOSActuationToolsDescription[] =
+    "Enables all actuation tools on iOS.";
+
 const char kIOSBrowserEditMenuMetricsName[] = "Browser edit menu metrics";
 const char kIOSBrowserEditMenuMetricsDescription[] =
     "Collect metrics for edit menu usage.";
@@ -759,11 +784,6 @@ const char kIOSDateToCalendarSignedOutName[] = "Date to Calendar Signed Out";
 const char kIOSDateToCalendarSignedOutDescription[] =
     "When enabled, signed-out users can long-press detected dates to access "
     "the 'Add to Google Calendar' feature.";
-
-const char kIOSDockingPromoName[] = "Docking Promo";
-const char kIOSDockingPromoDescription[] =
-    "When enabled, the user will be presented an animated, instructional "
-    "promo showing how to move Chrome to their native iOS dock.";
 
 const char kIOSDockingPromoV2Name[] = "Docking Promo V2";
 const char kIOSDockingPromoV2Description[] =
@@ -1269,11 +1289,21 @@ const char kOmniboxZeroSuggestPrefetchingOnWebDescription[] =
     "Enables prefetching of the zero prefix suggestions for eligible users "
     "on the Web (i.e. non-NTP and non-SRP URLs).";
 
+const char kOpenEditGroupViewByTappingTitleName[] =
+    "OpenEditGroupViewByTappingTitle";
+const char kOpenEditGroupViewByTappingTitleDescription[] =
+    "Enables the OpenEditGroupViewByTappingTitle feature.";
+
 const char kOptimizationGuideDebugLogsName[] =
     "Enable optimization guide debug logs";
 const char kOptimizationGuideDebugLogsDescription[] =
     "Enables the optimization guide to log and save debug messages that can be "
     "shown in the internals page.";
+
+const char kPageActionMenuAuthFlowName[] = "Page Action Menu Auth Flow";
+const char kPageActionMenuAuthFlowDescription[] =
+    "When enabled, the Page Action Menu entry point becomes stable and "
+    "supports the Ask Gemini auth flow.";
 
 const char kPageActionMenuIconName[] = "PageActionMenuIcon";
 const char kPageActionMenuIconDescription[] =
@@ -1555,6 +1585,15 @@ const char kSupervisedUserUseUrlFilteringServiceDescription[] =
     "directly from supervision services instead of using PrefService (no "
     "user-visible effect).";
 
+const char kSyncAccountSettingsName[] = "Sync account settings";
+const char kSyncAccountSettingsDescription[] =
+    "Enables syncing account settings to the server.";
+
+const char kSyncAutofillValuableMetadataName[] =
+    "Sync autofill valuable metadata";
+const char kSyncAutofillValuableMetadataDescription[] =
+    "Enables syncing valuable metadata for autofill to the server.";
+
 const char kSyncSandboxName[] = "Use Chrome Sync sandbox";
 const char kSyncSandboxDescription[] =
     "Connects to the testing server for Chrome Sync.";
@@ -1569,10 +1608,15 @@ const char kSyncTrustedVaultInfobarMessageImprovementsDescription[] =
     "Enables massage improvements for the UI of the trusted vault error "
     "infobar.";
 
-const char kTabGridDragAndDropName[] = "Enable Drag and Drop in Tab Grid";
-const char kTabGridDragAndDropDescription[] =
-    "Enables drag and drop in the tab grid to reorder tabs and create tab "
-    "groups.";
+const char kSyncWalletFlightReservationsName[] =
+    "Sync wallet flight reservations";
+const char kSyncWalletFlightReservationsDescription[] =
+    "Enables syncing flight reservations in the wallet to the server.";
+
+const char kSyncWalletVehicleRegistrationsName[] =
+    "Sync wallet vehicle registrations";
+const char kSyncWalletVehicleRegistrationsDescription[] =
+    "Enables syncing vehicle registrations in the wallet to the server.";
 
 const char kTabGridNewTransitionsName[] = "Enable new TabGrid transitions";
 const char kTabGridNewTransitionsDescription[] =

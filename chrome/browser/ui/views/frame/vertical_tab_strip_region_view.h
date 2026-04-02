@@ -9,6 +9,7 @@
 
 #include "base/callback_list.h"
 #include "base/memory/raw_ptr.h"
+#include "base/timer/timer.h"
 #include "chrome/browser/ui/tabs/tab_data.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state.h"
 #include "chrome/browser/ui/views/frame/tab_strip_region_view.h"
@@ -23,6 +24,7 @@
 #include "ui/gfx/geometry/point.h"
 #include "ui/views/accessible_pane_view.h"
 #include "ui/views/controls/resize_area_delegate.h"
+#include "ui/views/focus/focus_manager.h"
 
 class BrowserView;
 class RootTabCollectionNode;
@@ -52,6 +54,8 @@ class VerticalTabStripRegionView final : public TabStripRegionView,
   METADATA_HEADER(VerticalTabStripRegionView, TabStripRegionView)
 
  public:
+  DECLARE_CLASS_CUSTOM_ELEMENT_EVENT_TYPE(kAnimationCompletedEvent);
+
   // TODO(crbug.com/465833741): Replace constant with derived value based on
   // caption buttons.
   static constexpr int kUncollapsedMinWidth = 126;
@@ -63,8 +67,6 @@ class VerticalTabStripRegionView final : public TabStripRegionView,
   static constexpr int kCollapseSnapWidth =
       (kUncollapsedMinWidth + kCollapsedWidth) / 2;
 
-  DECLARE_CLASS_CUSTOM_ELEMENT_EVENT_TYPE(kAnimationCompletedEvent);
-
   explicit VerticalTabStripRegionView(
       tabs::VerticalTabStripStateController* state_controller,
       actions::ActionItem* root_action_item,
@@ -74,18 +76,8 @@ class VerticalTabStripRegionView final : public TabStripRegionView,
       delete;
   ~VerticalTabStripRegionView() override;
 
-  views::Separator* tabs_separator_for_testing() {
-    return tab_strip_view_->GetTabsSeparator();
-  }
-  views::ResizeArea* resize_area_for_testing() { return resize_area_; }
   VerticalPinnedTabContainerView* GetPinnedTabsContainer();
   VerticalUnpinnedTabContainerView* GetUnpinnedTabsContainer();
-
-  RootTabCollectionNode* root_node_for_testing() { return root_node_.get(); }
-
-  tabs::VerticalTabStripState target_collapse_state_for_testing() {
-    return target_collapse_state_;
-  }
 
   bool is_animating() { return resize_animation_.is_animating(); }
 
@@ -105,20 +97,37 @@ class VerticalTabStripRegionView final : public TabStripRegionView,
   // null if none.
   std::optional<double> GetCollapseAnimationPercent() const;
 
+  double GetExpandOnHoverAnimationPercent() const;
+
+  bool IsPositionInWindowCaption(const gfx::Point& point);
+
+  // These methods provide the toolbar height and exclusion width, before the
+  // layout of this view, for use in calculating positioning of child views. If
+  // an exclusion width is provided, nothing can be rendered within the
+  // rectangle defined by `(caption_button_width, toolbar_height)` that is
+  // aligned to the leading, top corner.
+  void SetToolbarHeightForLayout(int toolbar_height);
+  void SetCaptionButtonWidthForLayout(int caption_button_width);
+
+  TabDragTarget* GetTabDragTarget(const gfx::Point& point_in_screen);
+
   // views::View:
   void AddedToWidget() override;
+  void RemovedFromWidget() override;
   void Layout(PassKey) override;
   views::View* GetDefaultFocusableChild() override;
   gfx::Size GetMinimumSize() const override;
   gfx::Size CalculatePreferredSize(
       const views::SizeBounds& available_size) const override;
   bool OnKeyPressed(const ui::KeyEvent& event) override;
+  void OnMouseEntered(const ui::MouseEvent& event) override;
+  void OnMouseMoved(const ui::MouseEvent& event) override;
+  void OnMouseExited(const ui::MouseEvent& event) override;
 
   // TabStripRegionView
   void InitializeTabStrip() override;
   void ResetTabStrip() override;
   bool IsTabStripEditable() const override;
-  void DisableTabStripEditingForTesting() override;
   bool IsTabStripCloseable() const override;
   void UpdateLoadingAnimations(const base::TimeDelta& elapsed_time) override;
   std::optional<int> GetFocusedTabIndex() const override;
@@ -158,19 +167,40 @@ class VerticalTabStripRegionView final : public TabStripRegionView,
   void AnimationEnded(const gfx::Animation* animation) override;
   void AnimationCanceled(const gfx::Animation* animation) override;
 
-  bool IsPositionInWindowCaption(const gfx::Point& point);
-
-  // These methods provide the toolbar height and exclusion width, before the
-  // layout of this view, for use in calculating positioning of child views. If
-  // an exclusion width is provided, nothing can be rendered within the
-  // rectangle defined by `(caption_button_width, toolbar_height)` that is
-  // aligned to the leading, top corner.
-  void SetToolbarHeightForLayout(int toolbar_height);
-  void SetCaptionButtonWidthForLayout(int caption_button_width);
-
-  TabDragTarget* GetTabDragTarget(const gfx::Point& point_in_screen);
+  views::Separator* tabs_separator_for_testing() {
+    return tab_strip_view_->GetTabsSeparator();
+  }
+  views::ResizeArea* resize_area_for_testing() { return resize_area_; }
+  RootTabCollectionNode* root_node_for_testing() { return root_node_.get(); }
+  tabs::VerticalTabStripState target_collapse_state_for_testing() {
+    return target_collapse_state_;
+  }
+  void DisableTabStripEditingForTesting() override;
+  gfx::Rect GetLinkDropBoundsForTesting(
+      const BrowserRootView::DropIndex& drop_index,
+      DropArrow::Direction* direction);
 
  private:
+  // Since VerticalTabStripRegionView inherits from AccessiblePaneView, which is
+  // a FocusChangeListener, we need to have a separate focus listener to avoid
+  // conflicts with the base class implementation which conditionally listens
+  // for focus changes.
+  class RegionViewFocusListener : public views::FocusChangeListener {
+   public:
+    explicit RegionViewFocusListener(VerticalTabStripRegionView* region_view);
+    RegionViewFocusListener(const RegionViewFocusListener&) = delete;
+    RegionViewFocusListener& operator=(const RegionViewFocusListener&) = delete;
+    ~RegionViewFocusListener() override = default;
+
+    // views::FocusChangeListener:
+    void OnDidChangeFocus(views::View* focused_before,
+                          views::View* focused_now) override;
+
+   private:
+    raw_ptr<VerticalTabStripRegionView> region_view_;
+  };
+  friend class RegionViewFocusListener;
+
   views::View* SetTabStripView(std::unique_ptr<views::View> view);
   void ClearTabStripView(views::View* view);
 
@@ -190,6 +220,9 @@ class VerticalTabStripRegionView final : public TabStripRegionView,
   void OnChildrenAdded();
   void OnChildrenRemoved();
   void OnChildMoved();
+
+  void UpdateExpandOnHoverState();
+  void ExpandOnHover();
 
   void SetLinkDropArrow(const std::optional<BrowserRootView::DropIndex>& index);
   gfx::Rect GetLinkDropBounds(const BrowserRootView::DropIndex& drop_index,
@@ -258,9 +291,14 @@ class VerticalTabStripRegionView final : public TabStripRegionView,
   // Animation for collapsing (GetCurrentValue() -> 0) and expanding
   // (GetCurrentValue() -> 1).
   gfx::SlideAnimation resize_animation_;
+  gfx::SlideAnimation expand_on_hover_animation_;
+
+  base::OneShotTimer expand_on_hover_timer_;
 
   // Used to track the time needed to create a new tab from the new tab button.
   std::optional<base::TimeTicks> new_tab_button_pressed_start_time_;
+
+  RegionViewFocusListener focus_listener_{this};
 };
 
 #endif  // CHROME_BROWSER_UI_VIEWS_FRAME_VERTICAL_TAB_STRIP_REGION_VIEW_H_

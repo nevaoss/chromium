@@ -15,20 +15,23 @@
 #include "chrome/browser/accessibility_annotator/accessibility_annotation_service_factory.h"
 #include "chrome/browser/accessibility_annotator/accessibility_annotator_backend_factory.h"
 #include "chrome/browser/accessibility_annotator/accessibility_query_service_factory.h"
+#include "chrome/browser/account_settings/account_setting_service_factory.h"
 #include "chrome/browser/actor/actor_keyed_service_factory.h"
 #include "chrome/browser/affiliations/affiliation_service_factory.h"
 #include "chrome/browser/ai/ai_data_keyed_service_factory.h"
 #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
 #include "chrome/browser/autocomplete/autocomplete_classifier_factory.h"
+#include "chrome/browser/autocomplete/autocomplete_scoring_model_service_factory.h"
 #include "chrome/browser/autocomplete/document_suggestions_service_factory.h"
 #include "chrome/browser/autocomplete/in_memory_url_index_factory.h"
+#include "chrome/browser/autocomplete/on_device_tail_model_service_factory.h"
 #include "chrome/browser/autocomplete/provider_state_service_factory.h"
 #include "chrome/browser/autocomplete/shortcuts_backend_factory.h"
-#include "chrome/browser/autofill/account_setting_service_factory.h"
 #include "chrome/browser/autofill/autocomplete_history_manager_factory.h"
 #include "chrome/browser/autofill/autofill_ai_model_cache_factory.h"
 #include "chrome/browser/autofill/autofill_ai_model_executor_factory.h"
 #include "chrome/browser/autofill/autofill_entity_data_manager_factory.h"
+#include "chrome/browser/autofill/autofill_field_classification_model_service_factory.h"
 #include "chrome/browser/autofill/autofill_image_fetcher_factory.h"
 #include "chrome/browser/autofill/autofill_offer_manager_factory.h"
 #include "chrome/browser/autofill/autofill_optimization_guide_decider_factory.h"
@@ -60,7 +63,6 @@
 #include "chrome/browser/content_index/content_index_provider_factory.h"
 #include "chrome/browser/content_settings/cookie_settings_factory.h"
 #include "chrome/browser/content_settings/host_content_settings_map_factory.h"
-#include "chrome/browser/contextual_cueing/contextual_cueing_service_factory.h"
 #include "chrome/browser/contextual_search/contextual_search_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_context_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_service_factory.h"
@@ -96,6 +98,7 @@
 #include "chrome/browser/font_pref_change_notifier_factory.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/glic/public/glic_keyed_service_factory.h"
+#include "chrome/browser/glic/suggestions/contextual_cueing_service_factory.h"
 #include "chrome/browser/heavy_ad_intervention/heavy_ad_service_factory.h"
 #include "chrome/browser/hid/hid_policy_allowed_devices_factory.h"
 #include "chrome/browser/history/domain_diversity_reporter_factory.h"
@@ -133,6 +136,7 @@
 #include "chrome/browser/notifications/platform_notification_service_factory.h"
 #include "chrome/browser/omnibox/autocomplete_controller_emitter_factory.h"
 #include "chrome/browser/optimization_guide/model_validator_keyed_service_factory.h"
+#include "chrome/browser/optimization_guide/optimization_guide_global_state_holder_keyed_service_factory.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
 #include "chrome/browser/origin_trials/origin_trials_factory.h"
 #include "chrome/browser/page_content_annotations/page_content_annotations_service_factory.h"
@@ -148,6 +152,7 @@
 #include "chrome/browser/password_manager/factories/field_info_manager_factory.h"
 #include "chrome/browser/password_manager/factories/password_reuse_manager_factory.h"
 #include "chrome/browser/password_manager/password_change_service_factory.h"
+#include "chrome/browser/password_manager/password_field_classification_model_handler_factory.h"
 #include "chrome/browser/password_manager/password_manager_settings_service_factory.h"
 #include "chrome/browser/password_manager/profile_password_store_factory.h"
 #include "chrome/browser/payments/browser_binding/browser_bound_key_deleter_service_factory.h"
@@ -273,7 +278,6 @@
 #include "components/offline_pages/buildflags/buildflags.h"
 #include "components/on_device_translation/buildflags/buildflags.h"
 #include "components/optimization_guide/core/optimization_guide_util.h"
-#include "components/optimization_guide/machine_learning_tflite_buildflags.h"
 #include "components/password_manager/content/browser/password_manager_log_router_factory.h"
 #include "components/password_manager/content/browser/password_requirements_service_factory.h"
 #include "components/password_manager/core/browser/password_manager_blocklist_policy.h"
@@ -309,6 +313,7 @@
 #include "chrome/browser/android/webapk/webapk_install_service_factory.h"
 #include "chrome/browser/android/webapk/webapk_sync_service_factory.h"
 #include "chrome/browser/autofill/android/android_sms_otp_backend_factory.h"
+#include "chrome/browser/auxiliary_search/auxiliary_search_donation_service_factory.h"
 #include "chrome/browser/auxiliary_search/auxiliary_search_provider.h"
 #include "chrome/browser/commerce/merchant_viewer/merchant_viewer_data_manager_factory.h"
 #include "chrome/browser/flags/android/chrome_feature_list.h"
@@ -478,13 +483,6 @@
 #endif
 
 // Feature-specific #includes, in alphabetical order.
-
-#if BUILDFLAG(BUILD_WITH_TFLITE_LIB)
-#include "chrome/browser/autocomplete/autocomplete_scoring_model_service_factory.h"
-#include "chrome/browser/autocomplete/on_device_tail_model_service_factory.h"
-#include "chrome/browser/autofill/autofill_field_classification_model_service_factory.h"
-#include "chrome/browser/password_manager/password_field_classification_model_handler_factory.h"
-#endif
 
 #if BUILDFLAG(CHROME_ROOT_STORE_CERT_MANAGEMENT_UI)
 #include "chrome/browser/net/server_certificate_database_service_factory.h"
@@ -679,7 +677,7 @@ void ChromeBrowserMainExtraPartsProfiles::
   AccountInvestigatorFactory::GetInstance();
   AccountPasswordStoreFactory::GetInstance();
   AccountReconcilorFactory::GetInstance();
-  autofill::AccountSettingServiceFactory::GetInstance();
+  AccountSettingServiceFactory::GetInstance();
 #if !BUILDFLAG(IS_ANDROID)
   AutoPictureInPictureHatsServiceFactory::GetInstance();
 #endif
@@ -728,9 +726,7 @@ void ChromeBrowserMainExtraPartsProfiles::
   AutocompleteClassifierFactory::GetInstance();
   AutocompleteControllerEmitterFactory::GetInstance();
   AutocompleteDictionaryPreloadServiceFactory::GetInstance();
-#if BUILDFLAG(BUILD_WITH_TFLITE_LIB)
   AutocompleteScoringModelServiceFactory::GetInstance();
-#endif
   autofill::AutocompleteHistoryManagerFactory::GetInstance();
   autofill::AutofillAiModelCacheFactory::GetInstance();
   autofill::AutofillAiModelExecutorFactory::GetInstance();
@@ -738,21 +734,18 @@ void ChromeBrowserMainExtraPartsProfiles::
   autofill::AutofillEntityDataManagerFactory::GetInstance();
   autofill::AutofillImageFetcherFactory::GetInstance();
   autofill::AutofillLogRouterFactory::GetInstance();
-#if BUILDFLAG(BUILD_WITH_TFLITE_LIB)
   autofill::AutofillFieldClassificationModelServiceFactory::GetInstance();
-#endif
   autofill::AutofillOfferManagerFactory::GetInstance();
   autofill::AutofillOptimizationGuideDeciderFactory::GetInstance();
   autofill::MerchantPromoCodeManagerFactory::GetInstance();
-#if BUILDFLAG(BUILD_WITH_TFLITE_LIB)
   autofill::MlLogRouterFactory::GetInstance();
-#endif
   autofill::PersonalDataManagerFactory::GetInstance();
   autofill::ValuablesDataManagerFactory::GetInstance();
   autofill::WalletPassAccessManagerFactory::GetInstance();
 #if BUILDFLAG(IS_ANDROID)
-  AuxiliarySearchProvider::EnsureFactoryBuilt();
   AutocompleteControllerAndroid::EnsureFactoryBuilt();
+  AuxiliarySearchDonationServiceFactory::GetInstance();
+  AuxiliarySearchProvider::EnsureFactoryBuilt();
 #endif
 #if BUILDFLAG(ENABLE_BACKGROUND_CONTENTS)
   BackgroundContentsServiceFactory::GetInstance();
@@ -860,7 +853,7 @@ void ChromeBrowserMainExtraPartsProfiles::
 
   ContentIndexProviderFactory::GetInstance();
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
-  contextual_cueing::ContextualCueingServiceFactory::GetInstance();
+  glic::ContextualCueingServiceFactory::GetInstance();
 #endif
   ContextualSearchServiceFactory::GetInstance();
   CookieSettingsFactory::GetInstance();
@@ -1143,9 +1136,7 @@ void ChromeBrowserMainExtraPartsProfiles::
 #if BUILDFLAG(ENABLE_ON_DEVICE_TRANSLATION)
   on_device_translation::ServiceControllerManagerFactory::GetInstance();
 #endif
-#if BUILDFLAG(BUILD_WITH_TFLITE_LIB)
   OnDeviceTailModelServiceFactory::GetInstance();
-#endif
 #if !BUILDFLAG(IS_ANDROID)
   OneGoogleBarServiceFactory::GetInstance();
   OneTimePermissionsTrackerFactory::GetInstance();
@@ -1153,6 +1144,7 @@ void ChromeBrowserMainExtraPartsProfiles::
   if (optimization_guide::ShouldStartModelValidator()) {
     optimization_guide::ModelValidatorKeyedServiceFactory::GetInstance();
   }
+  OptimizationGuideGlobalStateHolderKeyedServiceFactory::GetInstance();
   OptimizationGuideKeyedServiceFactory::GetInstance();
   OriginKeyedPermissionActionServiceFactory::GetInstance();
   OriginTrialsFactory::GetInstance();
@@ -1171,9 +1163,7 @@ void ChromeBrowserMainExtraPartsProfiles::
 #endif
   password_manager::PasswordManagerLogRouterFactory::GetInstance();
   password_manager::PasswordRequirementsServiceFactory::GetInstance();
-#if BUILDFLAG(BUILD_WITH_TFLITE_LIB)
   PasswordFieldClassificationModelHandlerFactory::GetInstance();
-#endif
   PasswordChangeServiceFactory::GetInstance();
 #if !BUILDFLAG(IS_ANDROID)
   PasswordCounterFactory::GetInstance();

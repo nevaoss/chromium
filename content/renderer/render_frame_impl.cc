@@ -1280,9 +1280,8 @@ mojo::ScopedDataPipeConsumerHandle FillResponseForInitialWebUI(
     mojo::PendingRemote<network::mojom::URLLoaderClient> client_remote) {
   // Read the response body locally within the renderer, and make the
   // `response_body` pipe point to the result.
-  CHECK(local_resource_loader_config->sources.contains(origin));
   const blink::mojom::LocalResourceSourcePtr& source =
-      local_resource_loader_config->sources[origin];
+      local_resource_loader_config->sources.at(origin);
   const std::map<std::string, std::string> replacement_strings(
       source->replacement_strings.begin(), source->replacement_strings.end());
 
@@ -2248,30 +2247,6 @@ void RenderFrameImpl::Delete(mojom::FrameDeleteIntention intent) {
   // This will result in a call to RenderFrameImpl::FrameDetached, which
   // deletes the object. Do not access |this| after detach.
   frame_->Detach();
-}
-
-void RenderFrameImpl::UndoCommitNavigation(
-    bool is_loading,
-    blink::mojom::FrameReplicationStatePtr replicated_frame_state,
-    const blink::RemoteFrameToken& proxy_frame_token,
-    blink::mojom::RemoteFrameInterfacesFromBrowserPtr remote_frame_interfaces,
-    blink::mojom::RemoteMainFrameInterfacesPtr remote_main_frame_interfaces) {
-  // The browser process asked `this` to commit a navigation but has now decided
-  // to discard the speculative RenderFrameHostImpl instead, since the
-  // associated navigation was cancelled or replaced. However, the browser
-  // process hasn't heard the `DidCommitNavigation()` yet, so pretend that the
-  // commit never happened by immediately swapping `this` back to a proxy.
-  //
-  // This means that any state changes triggered by the already-swapped in
-  // RenderFrame will simply be ignored, but that can't be helped: the
-  // browser-side RFH will be gone before any outgoing IPCs from the renderer
-  // for this RenderFrame (which by definition, are still in-flight) will be
-  // processed by the browser process (as it has not yet seen the
-  // `DidCommitNavigation()`).
-  SwapOutAndDeleteThis(is_loading, std::move(replicated_frame_state),
-                       proxy_frame_token, std::move(remote_frame_interfaces),
-                       std::move(remote_main_frame_interfaces),
-                       /*devtools_frame_token=*/std::nullopt);
 }
 
 void RenderFrameImpl::SnapshotAccessibilityTree(
@@ -3782,8 +3757,7 @@ blink::WebFrame* RenderFrameImpl::FindFrame(const blink::WebString& name) {
 
 void RenderFrameImpl::WillDetach(blink::DetachReason detach_reason) {
   if (detach_reason == blink::DetachReason::kNavigation) {
-    if (navigation_client_impl_ &&
-        ShouldQueueNavigationsWhenPendingCommitRFHExists()) {
+    if (navigation_client_impl_) {
       navigation_client_impl_->ResetWithoutCancelling();
     }
   }
@@ -4658,13 +4632,15 @@ void RenderFrameImpl::DidChangePerformanceTiming() {
 void RenderFrameImpl::DidObserveUserInteraction(
     base::TimeTicks max_event_start,
     base::TimeTicks max_event_queued_main_thread,
+    base::TimeTicks max_event_processing_start,
     base::TimeTicks max_event_commit_finish,
     base::TimeTicks max_event_end,
     uint64_t interaction_offset) {
   for (auto& observer : observers_) {
     observer.DidObserveUserInteraction(
-        max_event_start, max_event_queued_main_thread, max_event_commit_finish,
-        max_event_end, interaction_offset);
+        max_event_start, max_event_queued_main_thread,
+        max_event_processing_start, max_event_commit_finish, max_event_end,
+        interaction_offset);
   }
 }
 
@@ -6358,7 +6334,7 @@ void RenderFrameImpl::BeginNavigationInternal(
     // close enough to the start of the previous navigation, in which case we
     // can just ignore the new navigation and keep the previous navigation.
     bool start_diff_under_threshold =
-        (nav_start_diff <= features::kDuplicateNavThreshold.Get());
+        nav_start_diff <= GetBlinkPreferences().duplicate_nav_threshold;
     base::UmaHistogramBoolean(
         "Navigation.RendererInitiated.DuplicateNavIsUnderThreshold2",
         start_diff_under_threshold);
@@ -6403,7 +6379,8 @@ void RenderFrameImpl::BeginNavigationInternal(
             input_diff);
       }
     }
-    if (start_diff_under_threshold &&
+    if (GetBlinkPreferences().ignore_duplicate_nav_enabled &&
+        start_diff_under_threshold &&
         GetContentClient()->ShouldIgnoreDuplicateNavs(
             common_params->url, /*is_renderer_initiated=*/true)) {
       if (!base::FeatureList::IsEnabled(

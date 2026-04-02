@@ -39,6 +39,7 @@
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/web_contents_user_data.h"
+#include "content/public/browser/webid/federated_embedder_login_request.h"
 #include "content/public/browser/webid/identity_credential_source.h"
 #include "url/origin.h"
 
@@ -173,7 +174,8 @@ void ActorLoginDelegateImpl::AttemptLogin(
     base::WeakPtr<ActorLoginQualityLoggerInterface> mqls_logger,
     base::TimeTicks attempt_login_tool_start_time,
     LoginStatusResultOrErrorReply done_callback,
-    LoginStatusResultCallback federated_login_outcome_callback) {
+    LoginStatusResultCallback federated_login_outcome_callback,
+    base::WeakPtr<ActionSequenceDelegate> action_sequence_delegate) {
   CHECK(done_callback);
 
   // One request at a time mechanism using pending callbacks.
@@ -196,6 +198,8 @@ void ActorLoginDelegateImpl::AttemptLogin(
 
   // Store the callback to mark as active
   pending_attempt_login_done_callback_ = std::move(done_callback);
+  action_sequence_delegate_ = std::move(action_sequence_delegate);
+  action_sequence_subscription_ = {};
 
   PasswordManagerDriver* driver = driver_supplier_.Run(&GetWebContents());
   CHECK(driver);
@@ -215,14 +219,31 @@ void ActorLoginDelegateImpl::AttemptLogin(
   RecordAttemptLoginMetrics(credential);
 
   if (credential.type == CredentialType::kFederated) {
+    actor::ActorKeyedService* actor_service =
+        actor::ActorKeyedService::Get(GetWebContents().GetBrowserContext());
+    CHECK(actor_service);
+    actor_task_state_subscription_ = actor_service->AddTaskStateChangedCallback(
+        base::BindRepeating(&ActorLoginDelegateImpl::OnActorTaskStateChanged,
+                            weak_ptr_factory_.GetWeakPtr()));
+    const actor::ActorTask* acting_task =
+        actor_service->GetActingActorTaskForWebContents(&GetWebContents());
+    CHECK(acting_task);
+    CHECK(acting_task->IsUnderActorControl());
+    acting_task_id_ = acting_task->id();
+
+    ActorLoginPermissionService* permission_service =
+        ActorLoginPermissionServiceFactory::GetForProfile(
+            Profile::FromBrowserContext(GetWebContents().GetBrowserContext()));
+    CHECK(permission_service);
+
     siwg_controller_ = std::make_unique<ActorLoginSiwgController>(
-        &GetWebContents(),
+        &GetWebContents(), credential, should_store_permission,
+        *permission_service,
         base::BindPostTaskToCurrentDefault(
             base::BindOnce(&ActorLoginDelegateImpl::OnAttemptLoginCompleted,
                            weak_ptr_factory_.GetWeakPtr())),
         std::move(federated_login_outcome_callback));
-    siwg_controller_->StartFederatedLogin(credential,
-                                          std::move(metrics_helper_));
+    siwg_controller_->StartFederatedLogin(std::move(metrics_helper_));
     return;
   }
   credential_filler_ = std::make_unique<ActorLoginCredentialFiller>(
@@ -291,12 +312,43 @@ void ActorLoginDelegateImpl::OnAttemptLoginCompleted(
   // There shouldn't be a pending request without a pending callback.
   CHECK(pending_attempt_login_done_callback_);
   credential_filler_.reset();
-  siwg_controller_.reset();
+
+  // `kRequiresButtonClick` means that the federated login is not yet done.
+  // We need to keep the controller alive so it can receive the result of the
+  // login and store permissions if needed. It will be cleaned up together with
+  // the delegate or when the current sequence of actions completes.
+  if (result.has_value() &&
+      result.value() == LoginStatusResult::kRequiresButtonClick &&
+      action_sequence_delegate_) {
+    action_sequence_subscription_ =
+        action_sequence_delegate_->RegisterActionSequenceEnded(
+            base::BindOnce(&ActorLoginDelegateImpl::OnActionSequenceEnded,
+                           weak_ptr_factory_.GetWeakPtr()));
+  } else {
+    siwg_controller_.reset();
+  }
 
   // Record metrics by resetting the metrics helper.
   metrics_helper_.reset();
 
   std::move(pending_attempt_login_done_callback_).Run(std::move(result));
+}
+
+void ActorLoginDelegateImpl::OnActionSequenceEnded(bool success) {
+  siwg_controller_.reset();
+  action_sequence_subscription_ = {};
+}
+
+void ActorLoginDelegateImpl::OnActorTaskStateChanged(actor::ActorTask& task) {
+  if (acting_task_id_ != task.id()) {
+    return;
+  }
+
+  if (!task.IsUnderActorControl()) {
+    acting_task_id_ = actor::TaskId();
+    content::webid::FederatedEmbedderLoginRequest::Remove(web_contents());
+    actor_task_state_subscription_ = {};
+  }
 }
 
 void ActorLoginDelegateImpl::RecordGetCredentialsMetricsAndResetHelper(

@@ -2465,7 +2465,6 @@ interface Element : Node
     getter innerHTML
     getter lastElementChild
     getter localName
-    getter marker
     getter namespaceURI
     getter nextElementSibling
     getter onbeforecopy
@@ -2632,7 +2631,6 @@ interface Element : Node
     setter headingReset
     setter id
     setter innerHTML
-    setter marker
     setter onbeforecopy
     setter onbeforecut
     setter onbeforepaste
@@ -5111,12 +5109,14 @@ interface HTMLTableSectionElement : HTMLElement
 interface HTMLTemplateElement : HTMLElement
     attribute @@toStringTag
     getter content
+    getter htmlFor
     getter shadowRootClonable
     getter shadowRootCustomElementRegistry
     getter shadowRootDelegatesFocus
     getter shadowRootMode
     getter shadowRootSerializable
     method constructor
+    setter htmlFor
     setter shadowRootClonable
     setter shadowRootCustomElementRegistry
     setter shadowRootDelegatesFocus
@@ -9398,7 +9398,6 @@ interface ShadowRoot : DocumentFragment
     getter fullscreenElement
     getter host
     getter innerHTML
-    getter marker
     getter mode
     getter onslotchange
     getter pictureInPictureElement
@@ -9558,6 +9557,7 @@ interface SpeechRecognition : EventTarget
     getter onspeechstart
     getter onstart
     getter processLocally
+    getter quality
     method abort
     method constructor
     method start
@@ -9579,6 +9579,7 @@ interface SpeechRecognition : EventTarget
     setter onspeechstart
     setter onstart
     setter processLocally
+    setter quality
 interface SpeechRecognitionErrorEvent : Event
     attribute @@toStringTag
     getter error
@@ -9591,11 +9592,9 @@ interface SpeechRecognitionEvent : Event
     method constructor
 interface SpellCheckCustomDictionary
     attribute @@toStringTag
-    getter words
     method addWords
     method constructor
     method removeWords
-    setter words
 interface StaticRange : AbstractRange
     attribute @@toStringTag
     method constructor
@@ -12126,6 +12125,7 @@ interface webkitSpeechRecognition : EventTarget
     getter onspeechstart
     getter onstart
     getter processLocally
+    getter quality
     method abort
     method constructor
     method start
@@ -12147,6 +12147,7 @@ interface webkitSpeechRecognition : EventTarget
     setter onspeechstart
     setter onstart
     setter processLocally
+    setter quality
 interface webkitSpeechRecognitionError : Event
     attribute @@toStringTag
     getter error

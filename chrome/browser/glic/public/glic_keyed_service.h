@@ -96,13 +96,12 @@ class GlicKeyedService : public KeyedService,
 #endif
 {
  public:
-  explicit GlicKeyedService(
-      Profile* profile,
-      signin::IdentityManager* identity_manager,
-      ProfileManager* profile_manager,
-      GlicProfileManager* glic_profile_manager,
-      contextual_cueing::ContextualCueingService* contextual_cueing_service,
-      actor::ActorKeyedService* actor_keyed_service);
+  explicit GlicKeyedService(Profile* profile,
+                            signin::IdentityManager* identity_manager,
+                            ProfileManager* profile_manager,
+                            GlicProfileManager* glic_profile_manager,
+                            ContextualCueingService* contextual_cueing_service,
+                            actor::ActorKeyedService* actor_keyed_service);
   GlicKeyedService(const GlicKeyedService&) = delete;
   GlicKeyedService& operator=(const GlicKeyedService&) = delete;
   ~GlicKeyedService() override;
@@ -142,13 +141,6 @@ class GlicKeyedService : public KeyedService,
 
   virtual void OpenFreDialogInNewTab(BrowserWindowInterface* bwi,
                                      mojom::InvocationSource source);
-
-  // Forcibly close the UI. This is similar to Shutdown in that it causes the
-  // window controller to shutdown (and clear cached state), but unlike
-  // Shutdown, it doesn't unregister as the "active glic" with the profile
-  // manager.
-  // TODO(crbug.com/454112198): Remove when multi-instance launches.
-  void CloseAndShutdown();
 
   // Close the active embedder and clear contents for an instance associated
   // with this render frame host.
@@ -435,6 +427,10 @@ class GlicKeyedService : public KeyedService,
                         bool auto_send,
                         std::optional<std::string> conversation_id);
 
+  bool MaybeInvoke(BrowserWindowInterface* bwi,
+                   mojom::InvocationSource source,
+                   const std::optional<std::string>& prompt_suggestion);
+
   void InitializeAfterConstruction();
 
   void FinishPreload(GlicPrewarmingChecksResult reason);
@@ -483,8 +479,7 @@ class GlicKeyedService : public KeyedService,
   std::unique_ptr<GlicWebContentsWarmingPool> web_contents_warming_pool_;
 
   // Unowned
-  raw_ptr<contextual_cueing::ContextualCueingService>
-      contextual_cueing_service_;
+  raw_ptr<ContextualCueingService> contextual_cueing_service_;
 
   base::WeakPtrFactory<GlicKeyedService> weak_ptr_factory_{this};
 };

@@ -2830,7 +2830,6 @@ Cette règle ne peut être configurée que comme règle relative aux utilisateur
 <translation id="2901969573658712576">Privilégier les algorithmes de chiffrement répondant aux exigences de la suite CNSA 1.0 et 2.0</translation>
 <translation id="2905984450136807296">Durée de mise en cache des données d'authentification</translation>
 <translation id="2906874737073861391">Liste des extensions AppPack</translation>
-<translation id="2908277604670530363">Nombre maximal de connexions simultanées au serveur proxy</translation>
 <translation id="2912366658685903301">Configurer la couleur du thème du navigateur</translation>
 <translation id="2914283793640833265">Ne pas autoriser l'activation de la poursuite des tâches via Phone Hub</translation>
 <translation id="2915787312243722351">Cette règle contrôle le paramètre "Utiliser la touche du Lanceur d'applications/de recherche pour modifier le comportement des touches de fonction". Ce paramètre permet aux utilisateurs de maintenir la touche du Lanceur d'applications enfoncée pour passer des touches de fonction aux touches supérieures du système et vice-versa.
@@ -2964,6 +2963,13 @@ Si la règle est définie sur "False", les enseignants ne peuvent pas accéder �
 <translation id="2969568582351417848">Désactiver les avertissements de téléchargement basés sur l'extension pour les types de fichier spécifiés selon le domaine</translation>
 <translation id="2971096666394658693">Le menu contextuel comportera un élément de menu permettant de partager des images avec <ph name="GOOGLE_PHOTOS_PRODUCT_NAME" />.</translation>
 <translation id="2973972555495515337">Si la règle est activée, les applis Web tierces pourront utiliser <ph name="DESK_API_NAME" /> pour enregistrer et partager des bureaux <ph name="PRODUCT_OS_NAME" />. Si elle est désactivée, l'utilisateur ne pourra pas enregistrer ni partager les données de bureau via <ph name="DESK_API_NAME" />. Si la règle n'est pas configurée, le comportement est le même que si la règle est désactivée. Cette règle ne s'applique qu'aux appareils enregistrés.</translation>
+<translation id="2974326457745806202">Les SharedWorkers peuvent avoir une durée de vie étendue si l'option "extendedLifetime" est définie sur "true" dans le constructeur SharedWorker.
+
+Si cette règle est activée ou n'est pas configurée, les SharedWorkers peuvent avoir une durée de vie étendue.
+
+Si cette règle est désactivée, les SharedWorkers ne peuvent pas avoir une durée de vie étendue, même si l'option est définie sur "true".
+
+Cette règle est provisoire et sera supprimée prochainement.</translation>
 <translation id="2976033779241323433">Activer le clavier virtuel tactile en fonction de l'heuristique système par défaut</translation>
 <translation id="2976429807269247880">Paramètres du comportement vis-à-vis des anciens cookies <ph name="ATTRIBUTE_SAMESITE_NAME" /></translation>
 <translation id="2979696534869541158">Forcer l'ancienne implémentation</translation>
@@ -9551,6 +9557,7 @@ Ces règles sont ignorées, sauf si l'hôte Bureau à distance Chrome est instal
 <translation id="7216442368414164495">Permettre aux utilisateurs d'activer la création de rapports détaillés dans le cadre de la navigation sécurisée</translation>
 <translation id="7218238054592349618">Autoriser les optimisations JavaScript sur ces sites</translation>
 <translation id="721970071627370558">Désactiver les rapports sur l'état de l'alimentation de l'appareil</translation>
+<translation id="7220960206733388609">Les SharedWorkers peuvent avoir une durée de vie étendue.</translation>
 <translation id="7221574724100909818">Utiliser l'icône en forme de cadenas pour les connexions sécurisées</translation>
 <translation id="7227348936232766462">Autoriser les utilisateurs à inclure dans leurs commentaires les données de débogage de bas niveau provenant de tous les types d'appareils disponibles ci-dessous</translation>
 <translation id="7229365071755865554">Activer l'enregistrement des mots de passe avec le Gestionnaire de mots de passe</translation>
@@ -10200,6 +10207,7 @@ Lorsque cette règle est activée, la visionneuse de PDF utilise le moteur de re
 Si elle est désactivée, la visionneuse de PDF utilise son moteur de rendu AGG actuel.
 
 Si cette règle n'est pas configurée, le moteur de rendu des PDF est sélectionné par le navigateur.</translation>
+<translation id="7704244074621846004">Activer la durée de vie étendue pour les SharedWorkers</translation>
 <translation id="7707869387893611318">Active la fonctionnalité des sons de recharge.
 
           Cette fonctionnalité permet d'émettre les sons de recharge.
@@ -10217,6 +10225,7 @@ Si cette règle n'est pas configurée, le moteur de rendu des PDF est sélection
 
       Nous recommandons la migration des serveurs vers des suites de chiffrement ECDHE. Si celles-ci ne sont pas disponibles, veillez à ce qu'une suite de chiffrement utilisant l'échange de clés RSA soit activée.</translation>
 <translation id="7709470712369261710">Ne pas utiliser les services Google pour qu'une description soit ajoutée automatiquement aux images</translation>
+<translation id="7711003696883532277">Les SharedWorkers ne peuvent pas avoir une durée de vie étendue.</translation>
 <translation id="7712109699186360774">Demander chaque fois qu'un site essaie d'accéder à la caméra et/ou au microphone</translation>
 <translation id="7712245244073542805">Impression de plate-forme à partir d'un processus de navigateur.</translation>
 <translation id="7713608076604149344">Restrictions de téléchargement</translation>

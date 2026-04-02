@@ -189,6 +189,7 @@ test("components_unittests") {
   deps = [
     "//base",
     "//components/accessibility_annotator/core:unit_tests",
+    "//components/account_settings:unit_tests",
     "//components/activity_reporter:unit_tests",
     "//components/affiliations/core/browser:unit_tests",
     "//components/aggregation_service:unit_tests",
@@ -389,6 +390,7 @@ test("components_unittests") {
     "//components/url_pattern:unit_tests",
     "//components/url_pattern_index:unit_tests",
     "//components/user_data_importer/utility:unit_tests",
+    "//components/user_prefs:unit_tests",
     "//components/variations:unit_tests",
     "//components/variations/field_trial_config:unit_tests",
     "//components/variations/service:unit_tests",

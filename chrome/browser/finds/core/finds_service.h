@@ -21,6 +21,10 @@ class HistoryService;
 class QueryResults;
 }  // namespace history
 
+namespace notifications {
+class NotificationScheduleService;
+}  // namespace notifications
+
 class OptimizationGuideKeyedService;
 class PrefRegistrySimple;
 class PrefService;
@@ -39,9 +43,11 @@ class FindsService : public KeyedService, public base::SupportsUserData {
   // Registers the profile prefs used by FindsService.
   static void RegisterProfilePrefs(PrefRegistrySimple* registry);
 
-  explicit FindsService(OptimizationGuideKeyedService* opt_guide_service,
-                        history::HistoryService* history_service,
-                        PrefService* pref_service);
+  explicit FindsService(
+      OptimizationGuideKeyedService* opt_guide_service,
+      history::HistoryService* history_service,
+      PrefService* pref_service,
+      notifications::NotificationScheduleService* notification_service);
   ~FindsService() override;
 
   FindsService(const FindsService&) = delete;
@@ -71,6 +77,11 @@ class FindsService : public KeyedService, public base::SupportsUserData {
   void ExecuteModelAndScheduleNotification(
       base::OnceCallback<void(Result)> callback);
 
+  // Schedules a test notification using mocked data, bypassing model execution.
+  // This is intended for use by the chrome-finds-internals page only. Do not
+  // use in production code.
+  bool ScheduleNotificationForInternalsPage();
+
  private:
   void CheckModelCooldownCriteriaAndMaybeExecute();
   void OnHistoryQueryComplete(base::OnceCallback<void(Result)> callback,
@@ -79,10 +90,15 @@ class FindsService : public KeyedService, public base::SupportsUserData {
       base::OnceCallback<void(Result)> callback,
       optimization_guide::OptimizationGuideModelExecutionResult result,
       std::unique_ptr<optimization_guide::ModelQualityLogEntry> log_entry);
+  bool ScheduleNotificationWithModelResult(
+      const optimization_guide::proto::FindsSuggestionResponse::SuggestionTheme&
+          theme);
 
   raw_ptr<OptimizationGuideKeyedService> opt_guide_service_;
   raw_ptr<history::HistoryService> history_service_;
   raw_ptr<PrefService> pref_service_;
+  raw_ptr<notifications::NotificationScheduleService>
+      notification_schedule_service_;
   base::ObserverList<Observer> observers_;
   base::CancelableTaskTracker history_task_tracker_;
   base::WeakPtrFactory<FindsService> weak_ptr_factory_{this};

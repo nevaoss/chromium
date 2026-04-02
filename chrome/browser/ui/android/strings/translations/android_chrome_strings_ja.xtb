@@ -699,6 +699,7 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="3985215325736559418"><ph name="FILE_NAME" /> をもう一度ダウンロードしますか？</translation>
 <translation id="3987993985790029246">リンクのコピー</translation>
 <translation id="3994236846568425219">デバイスのダークモードがオンのときにダークモードをオンにする</translation>
+<translation id="399788104667917863">ツールバーに固定する</translation>
 <translation id="4000212216660919741">オフライン ホーム</translation>
 <translation id="4000670338830950598">Google Chrome をカスタマイズ、制御します（ハイライト表示された項目あり）</translation>
 <translation id="4015643064997321279">{NUM_PASSWORDS,plural, =1{Google アカウントに 1 件の不正使用されたパスワードがあります}other{Google アカウントに # 件の不正使用されたパスワードがあります}}</translation>
@@ -798,6 +799,7 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="4384468725000734951">検索に Sogou を使用します</translation>
 <translation id="4387647248986092471">車のプロフィールのロックを作成</translation>
 <translation id="4387817230000841154">ダウンロードを開く</translation>
+<translation id="4394049700291259645">無効にする</translation>
 <translation id="4395046795145457714">Chrome Finds のオプトイン メッセージが画面全体に表示されています</translation>
 <translation id="4398561997852463382"><ph name="TAB_TITLE" />、選択された録画中の固定のシークレット タブ</translation>
 <translation id="4402611456429872546"><ph name="LANG" /> - ダウンロードしています…</translation>
@@ -822,7 +824,6 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="4478161224666880173">このサイトでは <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> アカウントを使用できます。続行するには、<ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> にログインしてください。</translation>
 <translation id="4479972344484327217">Chrome 用の <ph name="MODULE" /> をインストールしています…</translation>
 <translation id="4487967297491345095">Chrome のすべてのアプリデータを完全に削除します。削除されるデータには、すべてのファイル、設定、アカウント、データベースなどが含まれます。</translation>
-<translation id="4494315997125191493">[管理] を選択するとすべてのウィンドウが表示されます</translation>
 <translation id="4494806687727322324">パスワードの保存は管理者によって有効にされています</translation>
 <translation id="4508528996305412043">フィードカード メニューが開いています</translation>
 <translation id="4509741852167209430">広告のパフォーマンスを測定するため、サイトにアクセスした後に購入したかどうかなど、限定的な種類のデータがサイト間で共有されます</translation>
@@ -870,7 +871,6 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="4673702426794876519">シークレット ウィンドウ</translation>
 <translation id="4675298276894277358">このサイトは今後表示されません</translation>
 <translation id="4678082183394354975">Chrome でサイトのダークモードがオンになっています</translation>
-<translation id="4682306524980568490">表示できるウィンドウは <ph name="MAX_INSTANCE_COUNT" /> 個までです</translation>
 <translation id="4684427112815847243">すべてを同期する</translation>
 <translation id="4685741273709472646">プルダウン リストから選択します</translation>
 <translation id="4687718960473379118">ウェブサイトによる広告の提案</translation>

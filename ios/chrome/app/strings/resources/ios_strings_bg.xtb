@@ -209,6 +209,7 @@
 <translation id="1740468249224277719">Докоснете двукратно, за да инсталирате.</translation>
 <translation id="1740650426894359238">Превключване към друг потребителски профил</translation>
 <translation id="1741219894094057085">Смартчасовник</translation>
+<translation id="1742773766788162541">Сканиране на картата и автоматично попълване</translation>
 <translation id="1743244221910283364">Отхвърляне на промените</translation>
 <translation id="1748975028205587434">Избиране на файл</translation>
 <translation id="1749733017156547309">Изисква се парола</translation>
@@ -393,6 +394,7 @@
 <translation id="2359808026110333948">Напред</translation>
 <translation id="2360196772093551345">Заявка за мобилния сайт</translation>
 <translation id="2362083820973145409">Влезли сте като <ph name="USER_NAME" />. <ph name="USER_EMAIL" />. Отваря настройките.</translation>
+<translation id="2367025302166767427">При попълването на информацията ви възникна проблем</translation>
 <translation id="2371084566192454134">Раздели и групи раздели</translation>
 <translation id="2371303771137626249">Ново</translation>
 <translation id="2381405137052800939">Основни положения</translation>
@@ -491,6 +493,7 @@
 <translation id="2721190673959776287">Пример за подробната помощ в продукта за контекстния панел, която трябва да се показва няколко пъти на ден.</translation>
 <translation id="2739887572830526131">Запазете тази група, за да добавяте раздели по-късно, или я изтрийте, ако вече не ви е нужна.</translation>
 <translation id="2747003861858887689">Предишното поле</translation>
+<translation id="2750583038402718064">Преместихте <ph name="WEBSITE_TITLE" /> на позиция <ph name="POSITION" /></translation>
 <translation id="2755485474385016903">Направените промени се виждат от всички в групата</translation>
 <translation id="2755595981383829244">Вече ще получавате известия за съдържание</translation>
 <translation id="2761788987260570878">Направете снимка на обекта на търсенето ви.</translation>
@@ -709,6 +712,7 @@
 <translation id="3578866308944526475"><ph name="EMAIL" />. Управлява се от организацията ви.</translation>
 <translation id="3580448612293054698">Да се актуализира ли „<ph name="ENTITY_TYPE" />“?</translation>
 <translation id="3581564640715911333">Извеждане на предложения за превод на страниците, написани на други езици</translation>
+<translation id="3583726884554296148">Запазете картата си в профила си в Google, за да се попълват автоматично данните ѝ за тази и бъдещи покупки в Chrome</translation>
 <translation id="3587482841069643663">Всички</translation>
 <translation id="3587885837929752825">Организацията ви ограничава това, което можете да запазвате в профила си в Google.</translation>
 <translation id="3588820906588687999">Отваряне на изображението в нов раздел</translation>
@@ -1345,6 +1349,7 @@
 <translation id="5819208479324046259">Управлява се от <ph name="MANAGER" />. <ph name="BEGIN_LINK" />Научете повече<ph name="END_LINK" /></translation>
 <translation id="5827266244928330802">Safari</translation>
 <translation id="5829649908290113115">Синхронизира се…</translation>
+<translation id="583281660410589416">Неизвестно</translation>
 <translation id="5838430324585198889">Отключете още функции за своя iPad с приложенията на Google</translation>
 <translation id="583923961930319521">Използване на паролите на всичките ви устройства</translation>
 <translation id="5843013299019689749">Черен цвят на фона</translation>
@@ -1555,6 +1560,7 @@
 <translation id="6532106788206463496">Запазване на промените</translation>
 <translation id="6536759809440150308">Отваряне на „<ph name="GROUP_TITLE" />“, група от <ph name="NUMBER_OF_TABS" />, <ph name="CREATION_TEXT" /></translation>
 <translation id="6537746030088321027">example.com</translation>
+<translation id="6543899060872618437">По-бързо плащане с автоматично попълване на всичките ви устройства</translation>
 <translation id="6550675742724504774">Опции</translation>
 <translation id="6550891580932862748">Няма защита срещу опасни уебсайтове, изтегляния и разширения. Настройките ви за Безопасно сърфиране в други продукти на Google няма да бъдат засегнати.</translation>
 <translation id="6556501700899673703">Lexend</translation>
@@ -2028,6 +2034,7 @@
 <translation id="8209237163365258530">Модели на Gemini <ph name="VERSION_NUMBER" /></translation>
 <translation id="8211030355252954494">Получихте пароли за <ph name="WEBSITE" /></translation>
 <translation id="8211406090763984747">Връзката е защитена</translation>
+<translation id="8213190397436801658">Домашен</translation>
 <translation id="8214293972734702249">Фиксирано, <ph name="TAB_TITLE" /></translation>
 <translation id="8219424187226230983">Преглед на офлайн версията в нов раздел</translation>
 <translation id="8221665793629393739">Напомняне за повторно посещение</translation>

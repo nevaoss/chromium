@@ -16,6 +16,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -47,9 +48,10 @@ import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.RobolectricUtil;
 import org.chromium.base.test.util.Feature;
 import org.chromium.base.test.util.HistogramWatcher;
-import org.chromium.chrome.browser.multiwindow.InstanceInfo;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager.PersistedInstanceType;
+import org.chromium.chrome.browser.multiwindow.MultiInstanceOrchestrator;
+import org.chromium.chrome.browser.multiwindow.MultiInstanceOrchestratorFactory;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.profiles.ProfileProvider;
 import org.chromium.chrome.browser.tab.MockTab;
@@ -74,6 +76,7 @@ import org.chromium.ui.modaldialog.ModalDialogManager;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Test for {@link TabWindowManagerImpl}.
@@ -100,6 +103,7 @@ public class TabWindowManagerImplUnitTest {
     @Mock private TabModelSelector mArchivedTabModelSelector;
     @Mock private ModalDialogManager mModalDialogManager;
     @Mock private MultiInstanceManager mMultiInstanceManager;
+    @Mock private MultiInstanceOrchestrator mMultiInstanceOrchestrator;
     @Mock private TabModelSelectorFactory mTabModelSelectorFactory;
     @Mock private Destroyable mDestroyable;
     @Mock private TabModelSelector mTabModelSelector;
@@ -151,6 +155,7 @@ public class TabWindowManagerImplUnitTest {
                 };
 
         mSubject = createTabWindowManager(mockTabModelSelectorFactory);
+        MultiInstanceOrchestratorFactory.setInstanceForTesting(mMultiInstanceOrchestrator);
     }
 
     private ActivityController<Activity> createActivity() {
@@ -1049,48 +1054,8 @@ public class TabWindowManagerImplUnitTest {
 
     @Test
     public void testKeepAllTabModelsLoaded() {
-        List<InstanceInfo> instanceInfoList = new ArrayList<>();
-        instanceInfoList.add(
-                new InstanceInfo(
-                        /* instanceId= */ 0,
-                        /* taskId= */ 0,
-                        InstanceInfo.Type.OTHER,
-                        /* url= */ "",
-                        /* title= */ "",
-                        /* customTitle= */ null,
-                        /* tabCount= */ 0,
-                        /* incognitoTabCount= */ 0,
-                        /* isIncognitoSelected= */ false,
-                        /* lastAccessedTime= */ 0,
-                        /* closureTime= */ 0));
-        instanceInfoList.add(
-                new InstanceInfo(
-                        /* instanceId= */ 1,
-                        /* taskId= */ 0,
-                        InstanceInfo.Type.OTHER,
-                        /* url= */ "",
-                        /* title= */ "",
-                        /* customTitle= */ null,
-                        /* tabCount= */ 0,
-                        /* incognitoTabCount= */ 0,
-                        /* isIncognitoSelected= */ false,
-                        /* lastAccessedTime= */ 0,
-                        /* closureTime= */ 0));
-        instanceInfoList.add(
-                new InstanceInfo(
-                        /* instanceId= */ 2,
-                        /* taskId= */ 0,
-                        InstanceInfo.Type.OTHER,
-                        /* url= */ "",
-                        /* title= */ "",
-                        /* customTitle= */ null,
-                        /* tabCount= */ 0,
-                        /* incognitoTabCount= */ 0,
-                        /* isIncognitoSelected= */ false,
-                        /* lastAccessedTime= */ 0,
-                        /* closureTime= */ 0));
-        when(mMultiInstanceManager.getInstanceInfo(PersistedInstanceType.ANY))
-                .thenReturn(instanceInfoList);
+        when(mMultiInstanceOrchestrator.getUsableWindowIds(PersistedInstanceType.ANY))
+                .thenReturn(Set.of(0, 1, 2));
 
         ActivityController<Activity> activityController0 = createActivity();
         Activity activity0 = activityController0.get();
@@ -1135,22 +1100,8 @@ public class TabWindowManagerImplUnitTest {
     @Test
     public void testKeepAllTabModelsLoaded_broadcast() {
         TabGroupSyncServiceFactory.setForTesting(mTabGroupSyncService);
-        List<InstanceInfo> instanceInfoList = new ArrayList<>();
-        instanceInfoList.add(
-                new InstanceInfo(
-                        /* instanceId= */ 0,
-                        /* taskId= */ 0,
-                        InstanceInfo.Type.OTHER,
-                        /* url= */ "",
-                        /* title= */ "",
-                        /* customTitle= */ null,
-                        /* tabCount= */ 0,
-                        /* incognitoTabCount= */ 0,
-                        /* isIncognitoSelected= */ false,
-                        /* lastAccessedTime= */ 0,
-                        /* closureTime= */ 0));
-        when(mMultiInstanceManager.getInstanceInfo(PersistedInstanceType.ANY))
-                .thenReturn(instanceInfoList);
+        when(mMultiInstanceOrchestrator.getUsableWindowIds(PersistedInstanceType.ANY))
+                .thenReturn(Set.of(0));
 
         // The default mock TabModelSelectorFactory is hard to verify
         // broadcastSessionRestoreComplete with. So this test creates just enough to verify it
@@ -1181,8 +1132,8 @@ public class TabWindowManagerImplUnitTest {
                 .thenReturn(mTabGroupModelFilter);
         when(mTabGroupSyncService.getAllGroupIds()).thenReturn(new String[] {});
         // This is the behavior a pre-31 device would exhibit.
-        when(mMultiInstanceManager.getInstanceInfo(PersistedInstanceType.ANY))
-                .thenReturn(Collections.emptyList());
+        when(mMultiInstanceOrchestrator.getUsableWindowIds(PersistedInstanceType.ANY))
+                .thenReturn(Collections.emptySet());
 
         ActivityController<Activity> activityController0 = createActivity();
         Activity activity0 = activityController0.get();
@@ -1271,5 +1222,100 @@ public class TabWindowManagerImplUnitTest {
 
         info = mSubject.getTabWindowInfoById(tab2.getId() + 1);
         assertNull(info);
+    }
+
+    @Test
+    public void testIsAllTabStateInitialized() {
+        ActivityController<Activity> activityController0 = createActivity();
+        Activity activity0 = activityController0.get();
+        Pair<@WindowId Integer, TabModelSelector> assignment0 =
+                mSubject.requestSelector(
+                        activity0,
+                        mModalDialogManager,
+                        mProfileProviderSupplier,
+                        mTabCreatorManager,
+                        mNextTabPolicySupplier,
+                        mMultiInstanceManager,
+                        mMismatchedIndicesHandler0,
+                        0);
+
+        MockTabModelSelector selector0 = (MockTabModelSelector) assignment0.second;
+
+        TabWindowManager.Observer observer = mock(TabWindowManager.Observer.class);
+        mSubject.addObserver(observer);
+
+        assertFalse(mSubject.isAllTabStateInitialized());
+        verify(observer, never()).onAllTabModelStateInitialized();
+
+        mSubject.keepAllTabModelsLoaded(mMultiInstanceManager, mProfile, selector0);
+        selector0.markTabStateInitialized();
+
+        doReturn(true).when(mArchivedTabModelSelector).isTabStateInitialized();
+        mSubject.setArchivedTabModelSelector(mArchivedTabModelSelector);
+        assertTrue(mSubject.isAllTabStateInitialized());
+        verify(observer).onAllTabModelStateInitialized();
+
+        destroyActivity(activityController0);
+    }
+
+    @Test
+    public void testIsAllTabStateInitialized_ArchivedLoadsFirst() {
+        ActivityController<Activity> activityController0 = createActivity();
+        Activity activity0 = activityController0.get();
+        Pair<@WindowId Integer, TabModelSelector> assignment0 =
+                mSubject.requestSelector(
+                        activity0,
+                        mModalDialogManager,
+                        mProfileProviderSupplier,
+                        mTabCreatorManager,
+                        mNextTabPolicySupplier,
+                        mMultiInstanceManager,
+                        mMismatchedIndicesHandler0,
+                        0);
+
+        MockTabModelSelector selector0 = (MockTabModelSelector) assignment0.second;
+
+        ActivityController<Activity> activityController1 = createActivity();
+        Activity activity1 = activityController1.get();
+        Pair<@WindowId Integer, TabModelSelector> assignment1 =
+                mSubject.requestSelector(
+                        activity1,
+                        mModalDialogManager,
+                        mProfileProviderSupplier,
+                        mTabCreatorManager,
+                        mNextTabPolicySupplier,
+                        mMultiInstanceManager,
+                        mMismatchedIndicesHandler1,
+                        1);
+
+        MockTabModelSelector selector1 = (MockTabModelSelector) assignment1.second;
+
+        TabWindowManager.Observer observer = mock();
+        mSubject.addObserver(observer);
+
+        // Simulate initialization flow.
+        MockTabModelSelector archivedSelector =
+                new MockTabModelSelector(mProfile, mIncognitoProfile, 0, 0, null);
+        mSubject.setArchivedTabModelSelector(archivedSelector);
+
+        // The Archived model initialization hasn't finished yet.
+        assertFalse(mSubject.isAllTabStateInitialized());
+        verify(observer, never()).onAllTabModelStateInitialized();
+
+        when(mMultiInstanceOrchestrator.getUsableWindowIds(PersistedInstanceType.ANY))
+                .thenReturn(Set.of(0, 1));
+
+        mSubject.keepAllTabModelsLoaded(mMultiInstanceManager, mProfile, selector0);
+
+        // Simulate initialization completion
+        selector0.markTabStateInitialized();
+        selector1.markTabStateInitialized();
+        archivedSelector.markTabStateInitialized();
+
+        assertTrue(mSubject.isAllTabStateInitialized());
+        verify(observer, times(1)).onAllTabModelStateInitialized();
+
+        destroyActivity(activityController0);
+        destroyActivity(activityController1);
     }
 }

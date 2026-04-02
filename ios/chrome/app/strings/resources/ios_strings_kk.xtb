@@ -209,6 +209,7 @@
 <translation id="1740468249224277719">Орнату үшін екі рет түртіңіз.</translation>
 <translation id="1740650426894359238">Басқа профильге ауысу</translation>
 <translation id="1741219894094057085">Смарт сағат</translation>
+<translation id="1742773766788162541">Картаны сканерлеу және автоматты түрде толтыру</translation>
 <translation id="1743244221910283364">Өзгертулерден бас тарту</translation>
 <translation id="1748975028205587434">Файл таңдау</translation>
 <translation id="1749733017156547309">Құпия сөз енгізу қажет.</translation>
@@ -393,6 +394,7 @@
 <translation id="2359808026110333948">Жалғастыру</translation>
 <translation id="2360196772093551345">Сайттың мобильдік нұсқасын сұрау</translation>
 <translation id="2362083820973145409"><ph name="USER_NAME" /> аккаунтымен кірдіңіз. <ph name="USER_EMAIL" />. Параметрлерді ашады.</translation>
+<translation id="2367025302166767427">Ақпаратыңызды толтыру кезінде қате шықты</translation>
 <translation id="2371084566192454134">Қойындылар мен қойындылар топтары</translation>
 <translation id="2371303771137626249">Жаңа</translation>
 <translation id="2381405137052800939">Негізгілер</translation>
@@ -491,6 +493,7 @@
 <translation id="2721190673959776287">Контекстік панельге арналған өнімдегі толық анықтама үлгісі. Күніне бірнеше рет пайда болуы керек.</translation>
 <translation id="2739887572830526131">Бұл топты кейінірек қойындылар қосу үшін сақтаңыз. Қажет болмаса, жойыңыз.</translation>
 <translation id="2747003861858887689">Алдыңғы өріс</translation>
+<translation id="2750583038402718064"><ph name="WEBSITE_TITLE" /> <ph name="POSITION" /> орнына жылжытылды.</translation>
 <translation id="2755485474385016903">Енгізілетін өзгерістерді топтағы барлық адам көреді.</translation>
 <translation id="2755595981383829244">Енді сізге контент туралы хабарландырулар келеді</translation>
 <translation id="2761788987260570878">Іздегіңіз келетін нәрсені суретке түсіріңіз.</translation>
@@ -709,6 +712,7 @@
 <translation id="3578866308944526475"><ph name="EMAIL" />, ұйымыңыз басқарады.</translation>
 <translation id="3580448612293054698"><ph name="ENTITY_TYPE" /> дерегін жаңарту керек пе?</translation>
 <translation id="3581564640715911333">Басқа тілдердегі беттердің аудармасын ұсыну</translation>
+<translation id="3583726884554296148">Chrome-дағы осы және болашақтағы сатып алу транзакцияларында картаны автоматты түрде толтыру үшін оны Google аккаунтыңызға сақтаңыз.</translation>
 <translation id="3587482841069643663">Барлығы</translation>
 <translation id="3587885837929752825">Ұйымыңыз Google аккаунтыңызда сақтауға болатындарды шектейді.</translation>
 <translation id="3588820906588687999">Кескінді жаңа қойындыда ашу</translation>
@@ -1345,6 +1349,7 @@ Handoff функциясы параметрлердің жалпы бөлімі�
 <translation id="5819208479324046259"><ph name="MANAGER" /> басқарады. <ph name="BEGIN_LINK" />Толығырақ<ph name="END_LINK" /></translation>
 <translation id="5827266244928330802">Safari</translation>
 <translation id="5829649908290113115">Синхрондалуда…</translation>
+<translation id="583281660410589416">Белгісіз</translation>
 <translation id="5838430324585198889">iPad-қа арналған басқа мүмкіндіктердің де құлпын Google қолданбаларымен ашыңыз.</translation>
 <translation id="583923961930319521">Құпия сөздерді барлық құрылғыда пайдалану</translation>
 <translation id="5843013299019689749">Қара фон түсі</translation>
@@ -1555,6 +1560,7 @@ Handoff функциясы параметрлердің жалпы бөлімі�
 <translation id="6532106788206463496">Өзгертулерді сақтау</translation>
 <translation id="6536759809440150308"><ph name="GROUP_TITLE" /> ашық, <ph name="NUMBER_OF_TABS" /> тобы, <ph name="CREATION_TEXT" /></translation>
 <translation id="6537746030088321027">example.com</translation>
+<translation id="6543899060872618437">Автотолтыру функциясымен барлық құрылғыңызда жылдам төлеңіз</translation>
 <translation id="6550675742724504774">Опциялар</translation>
 <translation id="6550891580932862748">Қауіпті веб-сайттардан, жүктеп алынғандардан және кеңейтімдерден қорғамайды. Басқа Google өнімдеріндегі Safe Browsing параметрлеріне әсер етпейді.</translation>
 <translation id="6556501700899673703">Lexend</translation>
@@ -2028,6 +2034,7 @@ Handoff функциясы параметрлердің жалпы бөлімі�
 <translation id="8209237163365258530">Gemini <ph name="VERSION_NUMBER" /> модельдері</translation>
 <translation id="8211030355252954494">Сізге <ph name="WEBSITE" /> веб-сайтына арналған құпия сөздер келді.</translation>
 <translation id="8211406090763984747">Қауіпсіз байланыс</translation>
+<translation id="8213190397436801658">Негізгі бет</translation>
 <translation id="8214293972734702249">Бекітілген, <ph name="TAB_TITLE" /></translation>
 <translation id="8219424187226230983">Жаңа қойындының офлайн нұсқасын көру</translation>
 <translation id="8221665793629393739">Қайта кіру туралы еске салғыш</translation>

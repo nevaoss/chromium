@@ -392,19 +392,6 @@ const FeatureEntry::FeatureVariation kIOSDockingPromoV2Variations[] = {
     {"Display Header #3 without Subheader", kIOSDockingPromoV2Header3,
      nullptr}};
 
-const FeatureEntry::FeatureParam kIOSDockingPromoDisplayedAfterFRE[] = {
-    {kIOSDockingPromoExperimentType, "0"}};
-const FeatureEntry::FeatureParam kIOSDockingPromoDisplayedAtAppLaunch[] = {
-    {kIOSDockingPromoExperimentType, "1"}};
-const FeatureEntry::FeatureParam kIOSDockingPromoDisplayedDuringFRE[] = {
-    {kIOSDockingPromoExperimentType, "2"}};
-
-const FeatureEntry::FeatureVariation kIOSDockingPromoVariations[] = {
-    {"Display promo after FRE", kIOSDockingPromoDisplayedAfterFRE, nullptr},
-    {"Display promo at app launch", kIOSDockingPromoDisplayedAtAppLaunch,
-     nullptr},
-    {"Display promo during FRE", kIOSDockingPromoDisplayedDuringFRE, nullptr}};
-
 // Uses int values from Lens filters ablation mode enum.
 const FeatureEntry::FeatureParam kLensFiltersAblationModeDisabled[] = {
     {kLensFiltersAblationMode, "0"}};
@@ -1634,9 +1621,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
                                     kFeedBackgroundRefreshVariations,
                                     "FeedBackgroundRefresh")},
 #endif  // BUILDFLAG(IOS_BACKGROUND_MODE_ENABLED)
-    {"tab-grid-drag-and-drop", flag_descriptions::kTabGridDragAndDropName,
-     flag_descriptions::kTabGridDragAndDropDescription, flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(kTabGridDragAndDrop)},
     {"tab-grid-new-transitions", flag_descriptions::kTabGridNewTransitionsName,
      flag_descriptions::kTabGridNewTransitionsDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kTabGridNewTransitions)},
@@ -1647,11 +1631,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kIOSBrowserEditMenuMetricsName,
      flag_descriptions::kIOSBrowserEditMenuMetricsDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kIOSBrowserEditMenuMetrics)},
-    {"ios-docking-promo", flag_descriptions::kIOSDockingPromoName,
-     flag_descriptions::kIOSDockingPromoDescription, flags_ui::kOsIos,
-     FEATURE_WITH_PARAMS_VALUE_TYPE(kIOSDockingPromo,
-                                    kIOSDockingPromoVariations,
-                                    "IOSDockingPromo")},
     {"ios-docking-promo-v2", flag_descriptions::kIOSDockingPromoV2Name,
      flag_descriptions::kIOSDockingPromoV2Description, flags_ui::kOsIos,
      FEATURE_WITH_PARAMS_VALUE_TYPE(kIOSDockingPromoV2,
@@ -2033,6 +2012,10 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      FEATURE_WITH_PARAMS_VALUE_TYPE(kPageActionMenu,
                                     kPageActionMenuVariations,
                                     "IOSPageActionMenu")},
+    {"page-action-menu-auth-flow",
+     flag_descriptions::kPageActionMenuAuthFlowName,
+     flag_descriptions::kPageActionMenuAuthFlowDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kPageActionMenuAuthFlow)},
     {"proactive-suggestions-framework",
      flag_descriptions::kProactiveSuggestionsFrameworkName,
      flag_descriptions::kProactiveSuggestionsFrameworkDescription,
@@ -2602,6 +2585,24 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
     {"sync-themes-ios", flag_descriptions::kSyncThemesIosName,
      flag_descriptions::kSyncThemesIosDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(syncer::kSyncThemesIos)},
+    {"sync-account-settings", flag_descriptions::kSyncAccountSettingsName,
+     flag_descriptions::kSyncAccountSettingsDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(syncer::kSyncAccountSettings)},
+    {"sync-autofill-valuable-metadata",
+     flag_descriptions::kSyncAutofillValuableMetadataName,
+     flag_descriptions::kSyncAutofillValuableMetadataDescription,
+     flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(syncer::kSyncAutofillValuableMetadata)},
+    {"sync-wallet-flight-reservations",
+     flag_descriptions::kSyncWalletFlightReservationsName,
+     flag_descriptions::kSyncWalletFlightReservationsDescription,
+     flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(syncer::kSyncWalletFlightReservations)},
+    {"sync-wallet-vehicle-registrations",
+     flag_descriptions::kSyncWalletVehicleRegistrationsName,
+     flag_descriptions::kSyncWalletVehicleRegistrationsDescription,
+     flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(syncer::kSyncWalletVehicleRegistrations)},
     {"disable-u18-feedback-ios", flag_descriptions::kDisableU18FeedbackIosName,
      flag_descriptions::kDisableU18FeedbackIosDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kDisableU18FeedbackIos)},
@@ -2614,10 +2615,31 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(
          autofill::features::kAutofillAiCreateEntityDataManager)},
+    {"autofill-ai-wallet-flight-reservation",
+     flag_descriptions::kAutofillAiWalletFlightReservationName,
+     flag_descriptions::kAutofillAiWalletFlightReservationDescription,
+     flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(
+         autofill::features::kAutofillAiWalletFlightReservation)},
+    {"autofill-ai-wallet-vehicle-registration",
+     flag_descriptions::kAutofillAiWalletVehicleRegistrationName,
+     flag_descriptions::kAutofillAiWalletVehicleRegistrationDescription,
+     flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(
+         autofill::features::kAutofillAiWalletVehicleRegistration)},
+    {"autofill-ai-wallet-private-passes",
+     flag_descriptions::kAutofillAiWalletPrivatePassesName,
+     flag_descriptions::kAutofillAiWalletPrivatePassesDescription,
+     flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(autofill::features::kAutofillAiWalletPrivatePasses)},
     {"autofill-ai-reauth-required",
      flag_descriptions::kAutofillAiReauthRequiredName,
      flag_descriptions::kAutofillAiReauthRequiredDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(autofill::features::kAutofillAiReauthRequired)},
+    {"autofill-ai-valuables-iph",
+     flag_descriptions::kAutofillAiValuablesIPHName,
+     flag_descriptions::kAutofillAiValuablesIPHDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(feature_engagement::kIPHAutofillAiValuablesFeature)},
     {"autofill-ai-with-data-schema",
      flag_descriptions::kAutofillAiWithDataSchemaName,
      flag_descriptions::kAutofillAiWithDataSchemaDescription, flags_ui::kOsIos,
@@ -2692,6 +2714,13 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kYourSavedInfoSettingsPageIosName,
      flag_descriptions::kYourSavedInfoSettingsPageIosDescription,
      flags_ui::kOsIos, FEATURE_VALUE_TYPE(kYourSavedInfoSettingsPageIos)},
+    {"open-edit-group-view-by-tapping-title",
+     flag_descriptions::kOpenEditGroupViewByTappingTitleName,
+     flag_descriptions::kOpenEditGroupViewByTappingTitleDescription,
+     flags_ui::kOsIos, FEATURE_VALUE_TYPE(kOpenEditGroupViewByTappingTitle)},
+    {"ios-actuation-tools", flag_descriptions::kIOSActuationToolsName,
+     flag_descriptions::kIOSActuationToolsDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kActuationTools)},
 });
 
 bool SkipConditionalFeatureEntry(const flags_ui::FeatureEntry& entry) {

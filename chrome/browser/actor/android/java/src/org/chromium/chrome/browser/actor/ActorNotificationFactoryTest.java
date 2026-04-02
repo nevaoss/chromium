@@ -8,11 +8,14 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.robolectric.Shadows.shadowOf;
 
 import android.app.Notification;
 import android.content.Context;
+import android.content.Intent;
 
 import org.junit.Before;
 import org.junit.Rule;
@@ -41,6 +44,7 @@ public class ActorNotificationFactoryTest {
     @Mock private ActorTask mTask;
     @Mock private Profile mProfile;
     @Mock private ProfileResolver.Natives mProfileResolverNatives;
+    @Mock private ActorForegroundServiceController mServiceController;
 
     private Context mContext;
     private static final String TASK_TITLE = "Test Task";
@@ -49,10 +53,13 @@ public class ActorNotificationFactoryTest {
     public void setUp() {
         mContext = RuntimeEnvironment.application;
         ProfileResolverJni.setInstanceForTesting(mProfileResolverNatives);
+        ActorForegroundServiceController.setInstanceForTesting(mServiceController);
 
         when(mTask.getId()).thenReturn(1);
         when(mTask.getTitle()).thenReturn(TASK_TITLE);
         when(mTask.getProfile()).thenReturn(mProfile);
+        when(mServiceController.createTrustedBringTabToFrontIntent(mTask))
+                .thenReturn(new Intent("DEFAULT_ACTION"));
     }
 
     @Test
@@ -73,6 +80,10 @@ public class ActorNotificationFactoryTest {
                 "Content text should match template with task title",
                 mContext.getString(R.string.actor_notification_body_working, TASK_TITLE),
                 shadowNotification.getContentText());
+        assertEquals(
+                "Big text should match content text",
+                mContext.getString(R.string.actor_notification_body_working, TASK_TITLE),
+                notification.extras.getCharSequence(Notification.EXTRA_BIG_TEXT));
         assertTrue(
                 "Notification should be ongoing",
                 (notification.flags & Notification.FLAG_ONGOING_EVENT) != 0);
@@ -106,6 +117,10 @@ public class ActorNotificationFactoryTest {
                 "Content text should match template with task title",
                 mContext.getString(R.string.actor_notification_body_paused, TASK_TITLE),
                 shadowNotification.getContentText());
+        assertEquals(
+                "Big text should match content text",
+                mContext.getString(R.string.actor_notification_body_paused, TASK_TITLE),
+                notification.extras.getCharSequence(Notification.EXTRA_BIG_TEXT));
         assertTrue(
                 "Notification should be ongoing",
                 (notification.flags & Notification.FLAG_ONGOING_EVENT) != 0);
@@ -139,6 +154,10 @@ public class ActorNotificationFactoryTest {
                 "Content text should match template with task title",
                 mContext.getString(R.string.actor_notification_body_user_input, TASK_TITLE),
                 shadowNotification.getContentText());
+        assertEquals(
+                "Big text should match content text",
+                mContext.getString(R.string.actor_notification_body_user_input, TASK_TITLE),
+                notification.extras.getCharSequence(Notification.EXTRA_BIG_TEXT));
         assertTrue(
                 "Notification should be ongoing",
                 (notification.flags & Notification.FLAG_ONGOING_EVENT) != 0);
@@ -149,6 +168,22 @@ public class ActorNotificationFactoryTest {
                 "First action should be 'View task'",
                 mContext.getString(R.string.actor_notification_button_view_task),
                 notification.actions[0].title);
+    }
+
+    @Test
+    public void testBuildNotification_UsesControllerForTabRouting() {
+        Intent mockIntent = new Intent("MOCK_ACTION");
+        when(mServiceController.createTrustedBringTabToFrontIntent(mTask)).thenReturn(mockIntent);
+
+        NotificationWrapper wrapper =
+                ActorNotificationFactory.buildNotification(mTask, ActorTaskState.WAITING_ON_USER);
+
+        verify(mServiceController, times(2)).createTrustedBringTabToFrontIntent(mTask);
+        Notification notification = wrapper.getNotification();
+        assertNotNull("Content intent should not be null", notification.contentIntent);
+
+        Intent intent = shadowOf(notification.contentIntent).getSavedIntent();
+        assertEquals("MOCK_ACTION", intent.getAction());
     }
 
     @Test
@@ -163,12 +198,16 @@ public class ActorNotificationFactoryTest {
 
         assertEquals(
                 "Content title should match task completed label",
-                mContext.getString(R.string.actor_notification_title_task_completed),
+                mContext.getString(R.string.actor_notification_title_task_complete),
                 shadowNotification.getContentTitle());
         assertEquals(
                 "Content text should match template with task title",
-                mContext.getString(R.string.actor_notification_body_finished, TASK_TITLE),
+                mContext.getString(R.string.actor_notification_body_complete, TASK_TITLE),
                 shadowNotification.getContentText());
+        assertEquals(
+                "Big text should match content text",
+                mContext.getString(R.string.actor_notification_body_complete, TASK_TITLE),
+                notification.extras.getCharSequence(Notification.EXTRA_BIG_TEXT));
         assertFalse(
                 "Notification should not be ongoing",
                 (notification.flags & Notification.FLAG_ONGOING_EVENT) != 0);
@@ -202,8 +241,32 @@ public class ActorNotificationFactoryTest {
                 "Content text should match interrupted template",
                 mContext.getString(R.string.actor_notification_body_interrupted, TASK_TITLE),
                 shadowNotification.getContentText());
+        assertEquals(
+                "Big text should match content text",
+                mContext.getString(R.string.actor_notification_body_interrupted, TASK_TITLE),
+                notification.extras.getCharSequence(Notification.EXTRA_BIG_TEXT));
         assertTrue(
                 "Notification should be ongoing",
                 (notification.flags & Notification.FLAG_ONGOING_EVENT) != 0);
+    }
+
+    @Test
+    public void testBuildNotification_NullRoutingIntent() {
+        when(mServiceController.createTrustedBringTabToFrontIntent(mTask)).thenReturn(null);
+
+        NotificationWrapper wrapper =
+                ActorNotificationFactory.buildNotification(mTask, ActorTaskState.ACTING);
+
+        Notification notification = wrapper.getNotification();
+        // Acting notification normally has 2 actions: View and Pause.
+        // If View is missing, it should only have 1 (Pause).
+        assertEquals(
+                "Should have only 1 action when routing intent is null",
+                1,
+                notification.actions.length);
+        assertEquals(
+                "Remaining action should be 'Pause task'",
+                mContext.getString(R.string.actor_notification_button_pause_task),
+                notification.actions[0].title);
     }
 }

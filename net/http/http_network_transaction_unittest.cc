@@ -57,6 +57,7 @@
 #include "net/base/load_timing_internal_info.h"
 #include "net/base/net_errors.h"
 #include "net/base/network_anonymization_key.h"
+#include "net/base/network_handle.h"
 #include "net/base/network_isolation_key.h"
 #include "net/base/privacy_mode.h"
 #include "net/base/proxy_chain.h"
@@ -8335,9 +8336,9 @@ TEST_P(HttpNetworkTransactionTest, HttpsNestedProxySpdyConnectHttps) {
 // to complete.
 TEST_P(HttpNetworkTransactionTest,
        HttpsNestedProxySpdyConnectHttpsNoBackupJob) {
-  bool connect_backup_jobs_enabled =
-      TransportClientSocketPool::connect_backup_jobs_enabled();
-  TransportClientSocketPool::set_connect_backup_jobs_enabled(true);
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndEnableFeature(
+      features::kPermitTcpSocketPoolConnectBackupJobs);
   HttpRequestInfo request;
   request.method = "GET";
   request.url = GURL("https://www.example.test/");
@@ -8472,9 +8473,6 @@ TEST_P(HttpNetworkTransactionTest,
 
   spdy_data.ExpectAllReadDataConsumed();
   spdy_data.ExpectAllWriteDataConsumed();
-
-  TransportClientSocketPool::set_connect_backup_jobs_enabled(
-      connect_backup_jobs_enabled);
 }
 
 // Test that a backup job is not created for an HTTPS (non-SPDY) request through
@@ -8484,9 +8482,9 @@ TEST_P(HttpNetworkTransactionTest,
 // fix for crbug.com/448445046.
 TEST_P(HttpNetworkTransactionTest,
        HttpsNestedProxySpdyConnectHttpsNoBackupJobUsingExistingSocket) {
-  bool connect_backup_jobs_enabled =
-      TransportClientSocketPool::connect_backup_jobs_enabled();
-  TransportClientSocketPool::set_connect_backup_jobs_enabled(true);
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndEnableFeature(
+      features::kPermitTcpSocketPoolConnectBackupJobs);
   HttpRequestInfo request;
   request.method = "GET";
   request.url = GURL("https://www.example.test/");
@@ -8679,9 +8677,6 @@ TEST_P(HttpNetworkTransactionTest,
 
   spdy_data.ExpectAllReadDataConsumed();
   spdy_data.ExpectAllWriteDataConsumed();
-
-  TransportClientSocketPool::set_connect_backup_jobs_enabled(
-      connect_backup_jobs_enabled);
 }
 
 // Test a SPDY CONNECT through an HTTPS Proxy to a SPDY server (SPDY -> SPDY).
@@ -16000,7 +15995,8 @@ TEST_P(HttpNetworkTransactionTest, GroupIdOrHttpStreamKeyForDirectConnections) {
           ClientSocketPool::GroupId(
               url::SchemeHostPort(url::kHttpScheme, "www.example.org", 80),
               PrivacyMode::PRIVACY_MODE_DISABLED, NetworkAnonymizationKey(),
-              SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false),
+              SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false,
+              handles::kInvalidNetworkHandle),
           HttpStreamKey(
               url::SchemeHostPort(url::kHttpScheme, "www.example.org", 80),
               PrivacyMode::PRIVACY_MODE_DISABLED, SocketTag(),
@@ -16014,7 +16010,8 @@ TEST_P(HttpNetworkTransactionTest, GroupIdOrHttpStreamKeyForDirectConnections) {
           ClientSocketPool::GroupId(
               url::SchemeHostPort(url::kHttpScheme, "[2001:1418:13:1::25]", 80),
               PrivacyMode::PRIVACY_MODE_DISABLED, NetworkAnonymizationKey(),
-              SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false),
+              SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false,
+              handles::kInvalidNetworkHandle),
           HttpStreamKey(
               url::SchemeHostPort(url::kHttpScheme, "[2001:1418:13:1::25]", 80),
               PrivacyMode::PRIVACY_MODE_DISABLED, SocketTag(),
@@ -16030,7 +16027,8 @@ TEST_P(HttpNetworkTransactionTest, GroupIdOrHttpStreamKeyForDirectConnections) {
           ClientSocketPool::GroupId(
               url::SchemeHostPort(url::kHttpsScheme, "www.example.org", 443),
               PrivacyMode::PRIVACY_MODE_DISABLED, NetworkAnonymizationKey(),
-              SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false),
+              SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false,
+              handles::kInvalidNetworkHandle),
           HttpStreamKey(
               url::SchemeHostPort(url::kHttpsScheme, "www.example.org", 443),
               PrivacyMode::PRIVACY_MODE_DISABLED, SocketTag(),
@@ -16045,7 +16043,8 @@ TEST_P(HttpNetworkTransactionTest, GroupIdOrHttpStreamKeyForDirectConnections) {
               url::SchemeHostPort(url::kHttpsScheme, "[2001:1418:13:1::25]",
                                   443),
               PrivacyMode::PRIVACY_MODE_DISABLED, NetworkAnonymizationKey(),
-              SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false),
+              SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false,
+              handles::kInvalidNetworkHandle),
           HttpStreamKey(url::SchemeHostPort(url::kHttpsScheme,
                                             "[2001:1418:13:1::25]", 443),
                         PrivacyMode::PRIVACY_MODE_DISABLED, SocketTag(),
@@ -16060,7 +16059,8 @@ TEST_P(HttpNetworkTransactionTest, GroupIdOrHttpStreamKeyForDirectConnections) {
               url::SchemeHostPort(url::kHttpsScheme, "host.with.alternate",
                                   443),
               PrivacyMode::PRIVACY_MODE_DISABLED, NetworkAnonymizationKey(),
-              SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false),
+              SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false,
+              handles::kInvalidNetworkHandle),
           HttpStreamKey(url::SchemeHostPort(url::kHttpsScheme,
                                             "host.with.alternate", 443),
                         PrivacyMode::PRIVACY_MODE_DISABLED, SocketTag(),
@@ -16127,7 +16127,8 @@ TEST_P(HttpNetworkTransactionTest, GroupIdForHTTPProxyConnections) {
           ClientSocketPool::GroupId(
               url::SchemeHostPort(url::kHttpScheme, "www.example.org", 80),
               PrivacyMode::PRIVACY_MODE_DISABLED, NetworkAnonymizationKey(),
-              SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false),
+              SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false,
+              handles::kInvalidNetworkHandle),
           HttpStreamKey(),  // unused
           false,
       },
@@ -16139,7 +16140,8 @@ TEST_P(HttpNetworkTransactionTest, GroupIdForHTTPProxyConnections) {
           ClientSocketPool::GroupId(
               url::SchemeHostPort(url::kHttpsScheme, "www.example.org", 443),
               PrivacyMode::PRIVACY_MODE_DISABLED, NetworkAnonymizationKey(),
-              SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false),
+              SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false,
+              handles::kInvalidNetworkHandle),
           HttpStreamKey(),  // unused
           true,
       },
@@ -16151,7 +16153,8 @@ TEST_P(HttpNetworkTransactionTest, GroupIdForHTTPProxyConnections) {
               url::SchemeHostPort(url::kHttpsScheme, "host.with.alternate",
                                   443),
               PrivacyMode::PRIVACY_MODE_DISABLED, NetworkAnonymizationKey(),
-              SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false),
+              SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false,
+              handles::kInvalidNetworkHandle),
           HttpStreamKey(),  // unused
           true,
       },
@@ -16190,7 +16193,8 @@ TEST_P(HttpNetworkTransactionTest, GroupIdForSOCKSConnections) {
           ClientSocketPool::GroupId(
               url::SchemeHostPort(url::kHttpScheme, "www.example.org", 80),
               PrivacyMode::PRIVACY_MODE_DISABLED, NetworkAnonymizationKey(),
-              SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false),
+              SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false,
+              handles::kInvalidNetworkHandle),
           HttpStreamKey(),  // unused
           false,
       },
@@ -16200,7 +16204,8 @@ TEST_P(HttpNetworkTransactionTest, GroupIdForSOCKSConnections) {
           ClientSocketPool::GroupId(
               url::SchemeHostPort(url::kHttpScheme, "www.example.org", 80),
               PrivacyMode::PRIVACY_MODE_DISABLED, NetworkAnonymizationKey(),
-              SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false),
+              SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false,
+              handles::kInvalidNetworkHandle),
           HttpStreamKey(),  // unused
           false,
       },
@@ -16212,7 +16217,8 @@ TEST_P(HttpNetworkTransactionTest, GroupIdForSOCKSConnections) {
           ClientSocketPool::GroupId(
               url::SchemeHostPort(url::kHttpsScheme, "www.example.org", 443),
               PrivacyMode::PRIVACY_MODE_DISABLED, NetworkAnonymizationKey(),
-              SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false),
+              SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false,
+              handles::kInvalidNetworkHandle),
           HttpStreamKey(),  // unused
           true,
       },
@@ -16222,7 +16228,8 @@ TEST_P(HttpNetworkTransactionTest, GroupIdForSOCKSConnections) {
           ClientSocketPool::GroupId(
               url::SchemeHostPort(url::kHttpsScheme, "www.example.org", 443),
               PrivacyMode::PRIVACY_MODE_DISABLED, NetworkAnonymizationKey(),
-              SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false),
+              SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false,
+              handles::kInvalidNetworkHandle),
           HttpStreamKey(),  // unused
           true,
       },
@@ -16234,7 +16241,8 @@ TEST_P(HttpNetworkTransactionTest, GroupIdForSOCKSConnections) {
               url::SchemeHostPort(url::kHttpsScheme, "host.with.alternate",
                                   443),
               PrivacyMode::PRIVACY_MODE_DISABLED, NetworkAnonymizationKey(),
-              SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false),
+              SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false,
+              handles::kInvalidNetworkHandle),
           HttpStreamKey(),  // unused
           true,
       },
@@ -19445,7 +19453,8 @@ TEST_P(HttpNetworkTransactionTest, MultiRoundAuth) {
   const ClientSocketPool::GroupId kSocketGroup(
       url::SchemeHostPort(url::kHttpScheme, "www.example.com", 80),
       PrivacyMode::PRIVACY_MODE_DISABLED, NetworkAnonymizationKey(),
-      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false);
+      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false,
+      handles::kInvalidNetworkHandle);
   const HttpStreamKey kHttpStreamKey(GroupIdToHttpStreamKey(kSocketGroup));
 
   auto IdleSocketCountInGroup = [&] {

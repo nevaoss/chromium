@@ -69,7 +69,7 @@
 #include "third_party/blink/renderer/core/html/html_stream.h"
 #include "third_party/blink/renderer/core/html/html_tag_collection.h"
 #include "third_party/blink/renderer/core/html/html_template_element.h"
-#include "third_party/blink/renderer/core/html/parser/fragment_parser_options.h"
+#include "third_party/blink/renderer/core/html/parser/fragment_parser.h"
 #include "third_party/blink/renderer/core/inspector/console_message.h"
 #include "third_party/blink/renderer/core/layout/layout_block_flow.h"
 #include "third_party/blink/renderer/core/layout/layout_box.h"
@@ -1944,11 +1944,11 @@ WritableStream* ContainerNode::streamAppendHTMLUnsafe(
 
 WritableStream* ContainerNode::streamAppendHTML(
     ScriptState* script_state,
-    V8UnionSetHTMLOptionsOrTrustedParserOptions* options,
+    SetHTMLOptions* options,
     ExceptionState& exception_state) {
   return HTMLStream::Create(
       script_state, this, nullptr, Sanitizer::Mode::kSafe,
-      FragmentParserOptions::From(options), TrustedTypesInterfaceName(this),
+      FragmentParserOptions(options), TrustedTypesInterfaceName(this),
       trusted_types_names::kStreamAppendHTML, exception_state);
 }
 
@@ -1964,11 +1964,11 @@ WritableStream* ContainerNode::streamPrependHTMLUnsafe(
 
 WritableStream* ContainerNode::streamPrependHTML(
     ScriptState* script_state,
-    V8UnionSetHTMLOptionsOrTrustedParserOptions* options,
+    SetHTMLOptions* options,
     ExceptionState& exception_state) {
   return HTMLStream::Create(
       script_state, this, firstChild(), Sanitizer::Mode::kSafe,
-      FragmentParserOptions::From(options), TrustedTypesInterfaceName(this),
+      FragmentParserOptions(options), TrustedTypesInterfaceName(this),
       trusted_types_names::kStreamPrependHTML, exception_state);
 }
 
@@ -1983,29 +1983,27 @@ WritableStream* ContainerNode::streamHTMLUnsafe(
       [&] { RemoveChildren(); });
 }
 
-WritableStream* ContainerNode::streamHTML(
-    ScriptState* script_state,
-    V8UnionSetHTMLOptionsOrTrustedParserOptions* options,
-    ExceptionState& exception_state) {
+WritableStream* ContainerNode::streamHTML(ScriptState* script_state,
+                                          SetHTMLOptions* options,
+                                          ExceptionState& exception_state) {
   return HTMLStream::Create(script_state, this, nullptr, Sanitizer::Mode::kSafe,
-                            FragmentParserOptions::From(options),
+                            FragmentParserOptions(options),
                             TrustedTypesInterfaceName(this),
                             trusted_types_names::kStreamHTML, exception_state,
                             [&] { RemoveChildren(); });
 }
 
-void ContainerNode::appendHTML(
-    const String& html,
-    V8UnionSetHTMLOptionsOrTrustedParserOptions* options,
-    ExceptionState& exception_state) {
+void ContainerNode::appendHTML(const String& html,
+                               SetHTMLOptions* options,
+                               ExceptionState& exception_state) {
   CHECK(IsElementNode() || IsShadowRoot());
   InsertHTMLBefore(nullptr, html,
-                   blink::GetFragmentParserConfig(
-                       Sanitizer::Mode::kSafe,
+                   FragmentParserConfig::ForContainer(
+                       this, Sanitizer::Mode::kSafe,
                        IsElementNode() ? trusted_types_names::kElement
                                        : trusted_types_names::kShadowRoot,
-                       trusted_types_names::kAppendHTML, this),
-                   FragmentParserOptions::From(options), exception_state);
+                       trusted_types_names::kAppendHTML),
+                   FragmentParserOptions(options), exception_state);
 }
 
 void ContainerNode::appendHTMLUnsafe(
@@ -2014,11 +2012,11 @@ void ContainerNode::appendHTMLUnsafe(
     ExceptionState& exception_state) {
   CHECK(IsElementNode() || IsShadowRoot());
 
-  const FragmentParserConfig config = blink::GetFragmentParserConfig(
-      Sanitizer::Mode::kUnsafe,
+  const FragmentParserConfig config = FragmentParserConfig::ForContainer(
+      this, Sanitizer::Mode::kUnsafe,
       IsElementNode() ? trusted_types_names::kElement
                       : trusted_types_names::kShadowRoot,
-      trusted_types_names::kAppendHTMLUnsafe, this);
+      trusted_types_names::kAppendHTMLUnsafe);
   InsertHTMLBefore(nullptr,
                    TrustedTypesCheckForHTML(
                        html, GetExecutionContext(), config.interface_name,
@@ -2027,29 +2025,28 @@ void ContainerNode::appendHTMLUnsafe(
                    exception_state);
 }
 
-void ContainerNode::prependHTML(
-    const String& html,
-    V8UnionSetHTMLOptionsOrTrustedParserOptions* options,
-    ExceptionState& exception_state) {
+void ContainerNode::prependHTML(const String& html,
+                                SetHTMLOptions* options,
+                                ExceptionState& exception_state) {
   CHECK(IsElementNode() || IsShadowRoot());
   InsertHTMLBefore(firstChild(), html,
-                   blink::GetFragmentParserConfig(
-                       Sanitizer::Mode::kSafe,
+                   FragmentParserConfig::ForContainer(
+                       this, Sanitizer::Mode::kSafe,
                        IsElementNode() ? trusted_types_names::kElement
                                        : trusted_types_names::kShadowRoot,
-                       trusted_types_names::kPrependHTML, this),
-                   FragmentParserOptions::From(options), exception_state);
+                       trusted_types_names::kPrependHTML),
+                   FragmentParserOptions(options), exception_state);
 }
 
 void ContainerNode::prependHTMLUnsafe(
     const V8UnionStringOrTrustedHTML* html,
     V8UnionSetHTMLUnsafeOptionsOrTrustedParserOptions* options,
     ExceptionState& exception_state) {
-  const FragmentParserConfig config = blink::GetFragmentParserConfig(
-      Sanitizer::Mode::kUnsafe,
+  const FragmentParserConfig config = FragmentParserConfig::ForContainer(
+      this, Sanitizer::Mode::kUnsafe,
       IsElementNode() ? trusted_types_names::kElement
                       : trusted_types_names::kShadowRoot,
-      trusted_types_names::kPrependHTMLUnsafe, this);
+      trusted_types_names::kPrependHTMLUnsafe);
   InsertHTMLBefore(firstChild(),
                    TrustedTypesCheckForHTML(
                        html, GetExecutionContext(), config.interface_name,

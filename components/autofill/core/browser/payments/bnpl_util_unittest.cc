@@ -318,8 +318,8 @@ TEST_F(BnplUtilTest, GetBnplUiFooterTextForAi_AiTermsBold) {
 
   const std::u16string kExpectedFullFooterText =
       u"Content from the checkout page is shared with Google to offer "
-      u"these options. To hide pay later options in autofill, go to payment "
-      u"settings.";
+      u"these options. Payment plans are subject to eligibility. To hide "
+      u"pay later options in autofill, go to payment settings.";
   const std::u16string kExpectedBoldAiText =
       u"Content from the checkout page is shared with Google to offer "
       u"these options.";
@@ -343,6 +343,61 @@ TEST_F(BnplUtilTest, GetBnplUiFooterTextForAi_AiTermsNotBold) {
 
   const std::u16string kExpectedFullFooterText =
       u"Content from the checkout page is shared with Google to offer "
+      u"these options. Payment plans are subject to eligibility. To hide "
+      u"pay later options in autofill, go to payment settings.";
+  const std::u16string kLinkText = u"payment settings";
+  const size_t kLinkOffset = kExpectedFullFooterText.find(kLinkText);
+
+  EXPECT_THAT(
+      GetBnplUiFooterTextForAi(
+          autofill_client().GetPersonalDataManager().payments_data_manager()),
+      testing::FieldsAre(
+          kExpectedFullFooterText, gfx::Range(0, 0),
+          gfx::Range(kLinkOffset, kLinkOffset + kLinkText.length()), _));
+}
+
+TEST_F(BnplUtilTest, GetBnplUiFooterTextForAi_AiTermsBold_TabsDisabled) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndDisableFeature(
+      features::kAutofillEnablePayNowPayLaterTabs);
+
+  ON_CALL(
+      static_cast<MockPaymentsDataManager&>(
+          autofill_client().GetPersonalDataManager().payments_data_manager()),
+      IsAutofillAmountExtractionAiTermsSeenPrefEnabled)
+      .WillByDefault(Return(false));
+
+  const std::u16string kExpectedFullFooterText =
+      u"Content from the checkout page is shared with Google to offer "
+      u"these options. To hide pay later options in autofill, go to payment "
+      u"settings.";
+  const std::u16string kExpectedBoldAiText =
+      u"Content from the checkout page is shared with Google to offer "
+      u"these options.";
+  const std::u16string kLinkText = u"payment settings";
+  const size_t kLinkOffset = kExpectedFullFooterText.find(kLinkText);
+
+  EXPECT_THAT(
+      GetBnplUiFooterTextForAi(
+          autofill_client().GetPersonalDataManager().payments_data_manager()),
+      testing::FieldsAre(
+          kExpectedFullFooterText, gfx::Range(0, kExpectedBoldAiText.length()),
+          gfx::Range(kLinkOffset, kLinkOffset + kLinkText.length()), _));
+}
+
+TEST_F(BnplUtilTest, GetBnplUiFooterTextForAi_AiTermsNotBold_TabsDisabled) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndDisableFeature(
+      features::kAutofillEnablePayNowPayLaterTabs);
+
+  ON_CALL(
+      static_cast<MockPaymentsDataManager&>(
+          autofill_client().GetPersonalDataManager().payments_data_manager()),
+      IsAutofillAmountExtractionAiTermsSeenPrefEnabled)
+      .WillByDefault(Return(true));
+
+  const std::u16string kExpectedFullFooterText =
+      u"Content from the checkout page is shared with Google to offer "
       u"these options. To hide pay later options in autofill, go to payment "
       u"settings.";
   const std::u16string kLinkText = u"payment settings";
@@ -354,6 +409,41 @@ TEST_F(BnplUtilTest, GetBnplUiFooterTextForAi_AiTermsNotBold) {
       testing::FieldsAre(
           kExpectedFullFooterText, gfx::Range(0, 0),
           gfx::Range(kLinkOffset, kLinkOffset + kLinkText.length()), _));
+}
+
+TEST_F(BnplUtilTest,
+       GetSortedBnplIssuerContext_SortsTemporarilyEligibleAsEligible) {
+  BnplIssuer issuer_affirm = test::GetTestLinkedBnplIssuer();
+  BnplIssuer issuer_zip = test::GetTestUnlinkedBnplIssuer();
+
+  ON_CALL(
+      static_cast<MockPaymentsDataManager&>(
+          autofill_client().GetPersonalDataManager().payments_data_manager()),
+      GetBnplIssuers)
+      .WillByDefault(
+          Return(std::vector<BnplIssuer>{issuer_affirm, issuer_zip}));
+
+  ON_CALL(*static_cast<MockAutofillOptimizationGuideDecider*>(
+              autofill_client().GetAutofillOptimizationGuideDecider()),
+          IsUrlEligibleForBnplIssuer(IssuerId::kBnplAffirm, _))
+      .WillByDefault(Return(false));
+
+  std::vector<BnplIssuerContext> contexts = GetSortedBnplIssuerContext(
+      autofill_client(), /*checkout_amount=*/std::nullopt,
+      /*amount_extraction_error=*/std::nullopt);
+
+  ASSERT_EQ(contexts.size(), 2U);
+  // kBnplAffirm is not eligible for merchant url. kBnplZip is temporarily
+  // eligible. kBnplZip should be sorted first, even if it is unlinked and
+  // kBnplAffirm is linked.
+  EXPECT_EQ(contexts[0].issuer.issuer_id(), IssuerId::kBnplZip);
+  EXPECT_EQ(contexts[0].eligibility,
+            BnplIssuerEligibilityForPage::
+                kTemporarilyEligibleCheckoutAmountNotYetKnown);
+  EXPECT_EQ(contexts[1].issuer.issuer_id(), IssuerId::kBnplAffirm);
+  EXPECT_EQ(
+      contexts[1].eligibility,
+      BnplIssuerEligibilityForPage::kNotEligibleIssuerDoesNotSupportMerchant);
 }
 
 // Verify that if the triggering field is CVC, the BNPL option should not be
@@ -470,6 +560,72 @@ TEST_F(BnplUtilTest, IsEligibleForBnpl_UrlSupportedByOneIssuer) {
       .WillByDefault(Return(false));
   EXPECT_TRUE(IsEligibleForBnpl(autofill_client()));
 }
+
+struct AmountExtractionErrorParams {
+  AiAmountExtractionResult::Error error;
+  BnplIssuerEligibilityForPage expected_eligibility;
+  int expected_string_id;
+};
+
+class BnplUtilAmountExtractionErrorTest
+    : public BnplUtilTest,
+      public testing::WithParamInterface<AmountExtractionErrorParams> {};
+
+TEST_P(BnplUtilAmountExtractionErrorTest, GetSortedBnplIssuerContext) {
+  SetUpLinkedBnplIssuer(/*price_lower_bound_in_micros=*/40'000'000,
+                        /*price_higher_bound_in_micros=*/1'000'000'000,
+                        IssuerId::kBnplAffirm, /*instrument_id=*/1234);
+
+  const AmountExtractionErrorParams& params = GetParam();
+  std::vector<BnplIssuerContext> contexts = GetSortedBnplIssuerContext(
+      autofill_client(), /*checkout_amount=*/std::nullopt, params.error);
+  ASSERT_EQ(contexts.size(), 1U);
+  EXPECT_EQ(contexts[0].eligibility, params.expected_eligibility);
+  EXPECT_FALSE(contexts[0].IsEligible());
+  EXPECT_EQ(GetBnplIssuerSelectionOptionText(IssuerId::kBnplAffirm, "en-US",
+                                             contexts),
+            l10n_util::GetStringUTF16(params.expected_string_id));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    All,
+    BnplUtilAmountExtractionErrorTest,
+    testing::Values(
+        AmountExtractionErrorParams{
+            AiAmountExtractionResult::Error::kFailureToGenerateApc,
+            BnplIssuerEligibilityForPage::
+                kNotEligibleAmountExtractionErrorFailureToGenerateApc,
+            IDS_AUTOFILL_BNPL_ERROR_DIALOG_TITLE},
+        AmountExtractionErrorParams{
+            AiAmountExtractionResult::Error::kMissingServerResponse,
+            BnplIssuerEligibilityForPage::
+                kNotEligibleAmountExtractionErrorMissingServerResponse,
+            IDS_AUTOFILL_BNPL_ERROR_DIALOG_TITLE},
+        AmountExtractionErrorParams{
+            AiAmountExtractionResult::Error::kNegativeAmount,
+            BnplIssuerEligibilityForPage::
+                kNotEligibleAmountExtractionErrorNegativeAmount,
+            IDS_AUTOFILL_BNPL_ERROR_DIALOG_TITLE},
+        AmountExtractionErrorParams{
+            AiAmountExtractionResult::Error::kAmountMissing,
+            BnplIssuerEligibilityForPage::
+                kNotEligibleAmountExtractionErrorAmountMissing,
+            IDS_AUTOFILL_BNPL_ERROR_DIALOG_TITLE},
+        AmountExtractionErrorParams{
+            AiAmountExtractionResult::Error::kMissingCurrency,
+            BnplIssuerEligibilityForPage::
+                kNotEligibleAmountExtractionErrorMissingCurrency,
+            IDS_AUTOFILL_BNPL_ERROR_DIALOG_TITLE},
+        AmountExtractionErrorParams{
+            AiAmountExtractionResult::Error::kUnsupportedCurrency,
+            BnplIssuerEligibilityForPage::
+                kNotEligibleAmountExtractionErrorUnsupportedCurrency,
+            IDS_AUTOFILL_BNPL_UNSUPPORTED_CURRENCY_ERROR_DIALOG_TITLE},
+        AmountExtractionErrorParams{
+            AiAmountExtractionResult::Error::kTimeout,
+            BnplIssuerEligibilityForPage::
+                kNotEligibleAmountExtractionErrorTimeout,
+            IDS_AUTOFILL_BNPL_ERROR_DIALOG_TITLE}));
 
 }  // namespace
 }  // namespace autofill::payments

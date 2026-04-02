@@ -25,6 +25,7 @@
 #include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
+#include "base/task/single_thread_task_runner.h"
 #include "base/time/time.h"
 #include "base/timer/timer.h"
 #include "base/trace_event/trace_event.h"
@@ -2102,9 +2103,32 @@ int HttpNetworkTransaction::HandleIOError(int error) {
         net_log_.AddEventWithNetErrorCode(
             NetLogEventType::HTTP_TRANSACTION_RESTART_AFTER_ERROR, error);
         ResetConnectionAndRequestForResend(*retry_reason);
-        error = OK;
+        // Workaround for priority starvation: If the Network Service Task
+        // Scheduler is enabled, high-priority retries can repeatedly bypass the
+        // DEFAULT-priority tasks that detect connection closure and clean the
+        // session pool. This creates a cycle where we keep picking the same
+        // stale session. See crbug.com/482074640 for details.
+        //
+        // By yielding (PostTask) at DEFAULT priority after several attempts, we
+        // restore FIFO ordering relative to the cleanup tasks, allowing the
+        // pool to be scrubbed before the next retry.
+        if (base::FeatureList::IsEnabled(
+                features::kAsyncRetryOnTooManyConnectionErrors) &&
+            // For performance reasons, we initially retry synchronously.
+            // However, after a threshold of attempts
+            // (= kMaxRetryAttemptsOnConnectionErrors / 2), we switch to
+            // asynchronous retry to break potential priority starvation loops
+            // as described above.
+            retry_attempts_on_connection_errors_ >=
+                kMaxRetryAttemptsOnConnectionErrors / 2) {
+          base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+              FROM_HERE, base::BindOnce(&HttpNetworkTransaction::OnIOComplete,
+                                        base::Unretained(this), OK));
+          return ERR_IO_PENDING;
+        }
+        return OK;
       }
-      break;
+      return error;
     case RetryReason::kEarlyDataRejected:
     case RetryReason::kWrongVersionOnEarlyData:
       net_log_.AddEventWithNetErrorCode(
@@ -2112,20 +2136,19 @@ int HttpNetworkTransaction::HandleIOError(int error) {
       // Disable early data on a reset.
       can_send_early_data_ = false;
       ResetConnectionAndRequestForResend(*retry_reason);
-      error = OK;
-      break;
+      return OK;
     case RetryReason::kHttp2PingFailed:
     case RetryReason::kHttp2ServerRefusedStream:
     case RetryReason::kQuicHandshakeFailed:
     case RetryReason::kQuicGoawayRequestCanBeRetried:
-      if (HasExceededMaxRetries())
-        break;
+      if (HasExceededMaxRetries()) {
+        return error;
+      }
       net_log_.AddEventWithNetErrorCode(
           NetLogEventType::HTTP_TRANSACTION_RESTART_AFTER_ERROR, error);
       retry_attempts_++;
       ResetConnectionAndRequestForResend(*retry_reason);
-      error = OK;
-      break;
+      return OK;
     case RetryReason::kQuicProtocolError:
       if (HasExceededMaxRetries() || GetResponseHeaders() != nullptr ||
           !stream_->GetAlternativeService(&retried_alternative_service_)) {
@@ -2133,7 +2156,7 @@ int HttpNetworkTransaction::HandleIOError(int error) {
         // then the request can not be retried. Also, if there was no
         // alternative service used for this request, then there is no
         // alternative service to be disabled.
-        break;
+        return error;
       }
 
       if (session_->http_server_properties()->IsAlternativeServiceBroken(
@@ -2145,7 +2168,7 @@ int HttpNetworkTransaction::HandleIOError(int error) {
             NetLogEventType::HTTP_TRANSACTION_RESTART_AFTER_ERROR, error);
         retry_attempts_++;
         ResetConnectionAndRequestForResend(*retry_reason);
-        error = OK;
+        return OK;
       } else if (session_->context()
                      .quic_context->params()
                      ->retry_without_alt_svc_on_quic_errors) {
@@ -2157,9 +2180,9 @@ int HttpNetworkTransaction::HandleIOError(int error) {
             NetLogEventType::HTTP_TRANSACTION_RESTART_AFTER_ERROR, error);
         retry_attempts_++;
         ResetConnectionAndRequestForResend(*retry_reason);
-        error = OK;
+        return OK;
       }
-      break;
+      return error;
 
     // The following reasons are not covered here.
     case RetryReason::kHttpRequestTimeout:
@@ -2168,7 +2191,7 @@ int HttpNetworkTransaction::HandleIOError(int error) {
     case RetryReason::kSslClientAuthSignatureFailed:
       NOTREACHED();
   }
-  return error;
+  NOTREACHED();
 }
 
 void HttpNetworkTransaction::ResetStateForRestart() {

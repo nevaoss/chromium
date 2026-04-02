@@ -2769,7 +2769,6 @@ PAC 樣式的字串：
 <translation id="2901969573658712576">優先採用符合 CNSA 1.0 和 2.0 規定的加密演算法</translation>
 <translation id="2905984450136807296">驗證資料快取生命週期</translation>
 <translation id="2906874737073861391">AppPack 擴充功能清單</translation>
-<translation id="2908277604670530363">Proxy 伺服器的並行連線數量上限</translation>
 <translation id="2912366658685903301">設定瀏覽器主題的顏色</translation>
 <translation id="2914283793640833265">不允許啟用 Phone Hub 工作接續</translation>
 <translation id="2915787312243722351">這項政策可控管「使用啟動器/搜尋鍵變更功能鍵行為」的設定。這項設定可讓使用者按住啟動器按鍵，切換功能鍵和系統最上排按鍵。如果未設定這項政策，使用者可自由選擇「使用啟動器/搜尋鍵變更功能鍵行為」的設定值。
@@ -2898,6 +2897,13 @@ PAC 樣式的字串：
 <translation id="2969568582351417848">針對網域上的特定檔案類型，停用檔案類型副檔名下載警告</translation>
 <translation id="2971096666394658693">內容選單將提供可將圖片分享至 <ph name="GOOGLE_PHOTOS_PRODUCT_NAME" />的選單項目。</translation>
 <translation id="2973972555495515337">如果將這項政策設為啟用，第三方網頁應用程式可使用 <ph name="DESK_API_NAME" /> 儲存及分享 <ph name="PRODUCT_OS_NAME" /> 桌面；如果設為停用，使用者就無法透過 <ph name="DESK_API_NAME" /> 儲存及分享桌面資料；如果不設定，則行為會與設為停用時相同。只有在已註冊的裝置上，這項政策才會生效。</translation>
+<translation id="2974326457745806202">如果 SharedWorkers 建構函式中的「extendedLifetime」選項設為 true，SharedWorkers 就能延長生命週期。
+
+如果將這項政策設為啟用或未設定，SharedWorkers 就能延長生命週期。
+
+如果將這項政策設為停用，即使選項設為 true，SharedWorkers 也無法延長生命週期。
+
+這項政策僅是暫時性措施，日後將會移除。</translation>
 <translation id="2976033779241323433">根據預設系統經驗法則啟用觸控虛擬鍵盤</translation>
 <translation id="2976429807269247880">舊版 <ph name="ATTRIBUTE_SAMESITE_NAME" /> Cookie 行為設定</translation>
 <translation id="2979696534869541158">強制使用舊實作</translation>
@@ -9308,6 +9314,7 @@ Origin-Agent-Cluster HTTP 標頭會控制文件要在 origin-keyed 代理程式�
 <translation id="7216442368414164495">允許使用者採用安全瀏覽模式的進階回報功能</translation>
 <translation id="7218238054592349618">允許這些網站使用 JavaScript 最佳化功能</translation>
 <translation id="721970071627370558">停用裝置電源狀態回報功能</translation>
+<translation id="7220960206733388609">SharedWorkers 可延長生命週期。</translation>
 <translation id="7221574724100909818">使用鎖頭圖示代表安全連線</translation>
 <translation id="7227348936232766462">允許使用者在意見回饋中，加入下列所有裝置類型的低階偵錯資料</translation>
 <translation id="7229365071755865554">允許使用密碼管理員儲存密碼</translation>
@@ -9940,6 +9947,7 @@ Gemini 啟動功能僅支援部分國家/地區和語言。設定這項政策無
 如果停用這項政策，PDF 檢視器會使用目前的 AGG 轉譯器。
 
 如果不設定這項政策，瀏覽器會自動選擇 PDF 轉譯器。</translation>
+<translation id="7704244074621846004">允許 SharedWorkers 的延長生命週期</translation>
 <translation id="7707869387893611318">啟用充電音效功能。
 
           這項功能可以播放充電音效。
@@ -9957,6 +9965,7 @@ Gemini 啟動功能僅支援部分國家/地區和語言。設定這項政策無
 
       建議你讓伺服器改用 ECDHE 加密套件。如果無法使用這個套件，請確保啟用的加密套件使用 RSA 金鑰交換機制。</translation>
 <translation id="7709470712369261710">不要使用 Google 服務提供自動產生的圖片說明</translation>
+<translation id="7711003696883532277">SharedWorkers 無法延長生命週期。</translation>
 <translation id="7712109699186360774">每當有任何網站要使用攝影機和/或麥克風時詢問我</translation>
 <translation id="7712245244073542805">平台會透過瀏覽器程序列印。</translation>
 <translation id="7713608076604149344">下載限制</translation>

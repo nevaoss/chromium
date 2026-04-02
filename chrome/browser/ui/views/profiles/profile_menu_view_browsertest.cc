@@ -620,7 +620,6 @@ class ProfileMenuViewSignoutTest : public ProfileMenuViewTestBase,
 
  private:
   CoreAccountId account_id_;
-  raw_ptr<Profile, DanglingUntriaged> profile_ = nullptr;
 };
 
 // Checks that signout opens a new logout tab.
@@ -894,8 +893,7 @@ IN_PROC_BROWSER_TEST_F(ProfileMenuViewWebOnlyTest, ContinueAs) {
   const signin_metrics::AccessPoint expected_access_point =
       signin_metrics::AccessPoint::kAvatarBubbleSignInWithSyncPromo;
 
-  if (base::FeatureList::IsEnabled(
-          syncer::kReplaceSyncPromosWithSignInPromos)) {
+  if (syncer::IsReplaceSyncPromosWithSignInPromosEnabled()) {
     EXPECT_CALL(
         mock_signin_ui_delegate,
         ShowHistorySyncOptinUI(browser()->profile(), account_info_.account_id,
@@ -1105,9 +1103,7 @@ class ProfileMenuClickTest : public SyncTest,
     SetTargetBrowser(browser());
   }
 
-  Profile* GetProfile() {
-    return profile_ ? profile_.get() : browser()->profile();
-  }
+  Profile* GetProfile() { return browser()->profile(); }
 
   virtual ProfileMenuViewBase::ActionableItem GetExpectedActionableItemAtIndex(
       size_t index) = 0;
@@ -1185,7 +1181,6 @@ class ProfileMenuClickTest : public SyncTest,
   base::CallbackListSubscription test_signin_client_subscription_;
   base::HistogramTester histogram_tester_;
   std::unique_ptr<SyncServiceImplHarness> sync_harness_;
-  raw_ptr<Profile, DanglingUntriaged> profile_ = nullptr;
 };
 
 #define PROFILE_MENU_CLICK_TEST_WITH_FEATURE_STATES_F(                    \
@@ -2969,8 +2964,7 @@ IN_PROC_BROWSER_TEST_F(ProfileMenuSigninAccessPointTest,
   histogram_tester.ExpectUniqueSample("Signin.SignIn.Offered",
                                       default_access_point,
                                       /*expected_bucket_count=*/0);
-  if (base::FeatureList::IsEnabled(
-          syncer::kReplaceSyncPromosWithSignInPromos)) {
+  if (syncer::IsReplaceSyncPromosWithSignInPromosEnabled()) {
     // `Signin.SyncOptIn.Offered` should be not recorded if
     // `syncer::kReplaceSyncPromosWithSignInPromos` is enabled. Instead,
     // `Signin.HistorySyncOptIn.Offered` should be.
@@ -3028,8 +3022,7 @@ IN_PROC_BROWSER_TEST_F(ProfileMenuSigninAccessPointTest,
                                       history_sync_avatar_promo_access_point,
                                       /*expected_bucket_count=*/0);
 
-  if (base::FeatureList::IsEnabled(
-          syncer::kReplaceSyncPromosWithSignInPromos)) {
+  if (syncer::IsReplaceSyncPromosWithSignInPromosEnabled()) {
     // `Signin.SyncOptIn.Offered` should be not recorded if
     // `syncer::kReplaceSyncPromosWithSignInPromos` is enabled. Instead,
     // `Signin.HistorySyncOptIn.Offered` should be.

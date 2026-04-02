@@ -7,6 +7,7 @@
 #include "base/test/test_future.h"
 #include "base/test/values_test_util.h"
 #include "base/values.h"
+#include "chrome/browser/actor/actor_features.h"
 #include "chrome/browser/actor/actor_keyed_service.h"
 #include "chrome/browser/actor/actor_task.h"
 #include "chrome/browser/actor/actor_test_util.h"
@@ -28,7 +29,8 @@ namespace {
 class ActorToolsTestScriptTool : public ActorToolsTest {
  public:
   ActorToolsTestScriptTool() {
-    features_.InitAndEnableFeature(blink::features::kWebMCP);
+    features_.InitWithFeatures(
+        {blink::features::kWebMCP, actor::kGlicActorEnableScriptTools}, {});
   }
 
   void SetUpOnMainThread() override {
@@ -168,8 +170,9 @@ IN_PROC_BROWSER_TEST_F(ActorToolsTestScriptTool, DISABLED_DeclarativeToolCrossDo
   EXPECT_EQ(actual_json, expected_json);
 }
 
+// TODO(crbug.com/496357393): Re-enable this test.
 IN_PROC_BROWSER_TEST_F(ActorToolsTestScriptTool,
-                       DeclarativeToolCrossDocument_No_Autosubmit) {
+                       DISABLED_DeclarativeToolCrossDocument_No_Autosubmit) {
   const GURL url = embedded_test_server()->GetURL(
       "/actor/declarative_script_tool_pause.html");
   ASSERT_TRUE(content::NavigateToURL(web_contents(), url));

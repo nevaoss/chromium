@@ -480,19 +480,7 @@ https://chromium.googlesource.com/chromium/src/tools/+/HEAD/metrics/histograms/R
   </token>
 </histogram>
 
-<histogram name="Search.ChoiceScreenDefaultSearchEngineType"
-    enum="OmniboxSearchEngineType" expires_after="2026-08-19">
-  <owner>dgn@chromium.org</owner>
-  <owner>chrome-regionalcapabilities@google.com</owner>
-  <summary>
-    Records the type of the default search engine that was chosen by the user.
-    Recorded the first time a user in the EEA region changes their default
-    search engine in the search engine choice screen or in the settings page.
-    The enum is shared with Search.DefaultSearchProviderType2.
-  </summary>
-</histogram>
-
-<histogram name="Search.ChoiceScreenDefaultSearchEngineType2"
+<histogram name="Search.ChoiceScreenDefaultSearchEngineType2{Profile}"
     enum="OmniboxSearchEngineType" expires_after="2026-08-19">
   <owner>dgn@chromium.org</owner>
   <owner>chrome-regionalcapabilities@google.com</owner>
@@ -503,7 +491,25 @@ https://chromium.googlesource.com/chromium/src/tools/+/HEAD/metrics/histograms/R
     Search.ChoiceScreenDefaultSearchEngineType, it does not record choices made
     in the settings page. The enum is shared with
     Search.DefaultSearchProviderType2.
+
+    {Profile}
   </summary>
+  <token key="Profile" variants="ProfileIndex"/>
+</histogram>
+
+<histogram name="Search.ChoiceScreenDefaultSearchEngineType{Profile}"
+    enum="OmniboxSearchEngineType" expires_after="2026-08-19">
+  <owner>dgn@chromium.org</owner>
+  <owner>chrome-regionalcapabilities@google.com</owner>
+  <summary>
+    Records the type of the default search engine that was chosen by the user.
+    Recorded the first time a user in the EEA region changes their default
+    search engine in the search engine choice screen or in the settings page.
+    The enum is shared with Search.DefaultSearchProviderType2.
+
+    {Profile}
+  </summary>
+  <token key="Profile" variants="ProfileIndex"/>
 </histogram>
 
 <histogram name="Search.ChoiceScreenEvents{Context}{Profile}"
@@ -1166,7 +1172,7 @@ https://chromium.googlesource.com/chromium/src/tools/+/HEAD/metrics/histograms/R
 </histogram>
 
 <histogram name="Search.iOS.SelectDefaultSearchEngine"
-    enum="OmniboxSearchEngineType" expires_after="2026-07-19">
+    enum="OmniboxSearchEngineType" expires_after="2026-09-20">
   <owner>sczs@chromium.org</owner>
   <owner>gambard@chromium.org</owner>
   <summary>
@@ -1217,7 +1223,7 @@ https://chromium.googlesource.com/chromium/src/tools/+/HEAD/metrics/histograms/R
 </histogram>
 
 <histogram name="Search.OsDefaultsChoice.DelayFromDialogShownToFirstStatus"
-    units="ms" expires_after="2026-07-26">
+    units="ms" expires_after="2026-11-03">
   <owner>dgn@chromium.org</owner>
   <owner>triploblastic@google.com</owner>
   <owner>chrome-regionalcapabilities@google.com</owner>
@@ -1237,7 +1243,7 @@ https://chromium.googlesource.com/chromium/src/tools/+/HEAD/metrics/histograms/R
 </histogram>
 
 <histogram name="Search.OsDefaultsChoice.DelayFromObservationToFirstStatus"
-    units="ms" expires_after="2026-08-02">
+    units="ms" expires_after="2026-11-03">
   <owner>dgn@chromium.org</owner>
   <owner>triploblastic@google.com</owner>
   <owner>chrome-regionalcapabilities@google.com</owner>
@@ -1254,7 +1260,7 @@ https://chromium.googlesource.com/chromium/src/tools/+/HEAD/metrics/histograms/R
 </histogram>
 
 <histogram name="Search.OsDefaultsChoice.DialogShownAttempt" units="attempts"
-    expires_after="2026-03-22">
+    expires_after="2026-11-03">
   <owner>dgn@chromium.org</owner>
   <owner>triploblastic@google.com</owner>
   <owner>chrome-regionalcapabilities@google.com</owner>
@@ -1274,7 +1280,7 @@ https://chromium.googlesource.com/chromium/src/tools/+/HEAD/metrics/histograms/R
 </histogram>
 
 <histogram name="Search.OsDefaultsChoice.DialogStatusChange"
-    enum="OsDefaultsChoiceDialogStatus" expires_after="2026-05-24">
+    enum="OsDefaultsChoiceDialogStatus" expires_after="2026-11-03">
   <owner>dgn@chromium.org</owner>
   <owner>triploblastic@google.com</owner>
   <owner>chrome-regionalcapabilities@google.com</owner>
@@ -1292,7 +1298,7 @@ https://chromium.googlesource.com/chromium/src/tools/+/HEAD/metrics/histograms/R
 </histogram>
 
 <histogram name="Search.OsDefaultsChoice.DialogStatusOnAppOpen"
-    enum="OsDefaultsChoiceDialogStatus" expires_after="2026-05-24">
+    enum="OsDefaultsChoiceDialogStatus" expires_after="2026-11-03">
   <owner>dgn@chromium.org</owner>
   <owner>triploblastic@google.com</owner>
   <owner>chrome-regionalcapabilities@google.com</owner>
@@ -1303,7 +1309,7 @@ https://chromium.googlesource.com/chromium/src/tools/+/HEAD/metrics/histograms/R
 </histogram>
 
 <histogram name="Search.OsDefaultsChoice.DialogSuppressionStatus"
-    enum="OsDefaultsChoiceDialogSuppressionStatus" expires_after="2026-05-24">
+    enum="OsDefaultsChoiceDialogSuppressionStatus" expires_after="2026-11-03">
   <owner>dgn@chromium.org</owner>
   <owner>triploblastic@google.com</owner>
   <owner>chrome-regionalcapabilities@google.com</owner>
@@ -1322,7 +1328,7 @@ https://chromium.googlesource.com/chromium/src/tools/+/HEAD/metrics/histograms/R
 </histogram>
 
 <histogram name="Search.OsDefaultsChoice.LaunchChoiceScreenTapHandlingStatus"
-    enum="LaunchOsChoiceScreenTapHandlingStatus" expires_after="2026-05-03">
+    enum="LaunchOsChoiceScreenTapHandlingStatus" expires_after="2026-11-03">
   <owner>dgn@chromium.org</owner>
   <owner>triploblastic@google.com</owner>
   <owner>chrome-regionalcapabilities@google.com</owner>

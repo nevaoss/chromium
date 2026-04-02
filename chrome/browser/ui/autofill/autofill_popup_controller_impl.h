@@ -22,6 +22,7 @@
 #include "components/autofill/core/browser/suggestions/suggestion_hiding_reason.h"
 #include "components/autofill/core/browser/ui/popup_interaction.h"
 #include "components/autofill/core/browser/ui/popup_open_enums.h"
+#include "components/autofill/core/browser/ui/tabbed_pane_enums.h"
 #include "components/autofill/core/common/aliases.h"
 #include "content/public/browser/render_widget_host.h"
 
@@ -116,6 +117,8 @@ class AutofillPopupControllerImpl : public AutofillPopupController,
   bool ShouldShowNoSuggestionsMessage() const override;
   bool HandleKeyPressEvent(const input::NativeWebKeyboardEvent& event) override;
   void OnPopupPainted() override;
+  void OnTabSelected(int tab_index,
+                     TabbedPaneTabType tabbed_pane_tab_type) override;
   base::WeakPtr<AutofillPopupController> GetWeakPtr() override;
 
  protected:
@@ -180,6 +183,11 @@ class AutofillPopupControllerImpl : public AutofillPopupController,
   // Returns the search bar configuration for the given `trigger_source`.
   std::optional<AutofillPopupView::SearchBarConfig> GetSearchBarConfig(
       AutofillSuggestionTriggerSource trigger_source) const;
+
+  // Attempts to start an asynchronous search query if the current filling
+  // product supports it. Returns `true` if the search process was initiated or
+  // handled.
+  bool TryStartSearch();
 
   void UpdateFilteredSuggestions();
 

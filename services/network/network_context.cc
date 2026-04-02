@@ -181,6 +181,7 @@
 #endif  // BUILDFLAG(IS_CT_SUPPORTED)
 
 #if BUILDFLAG(ENABLE_WEBSOCKETS)
+#include "services/network/websocket.h"
 #include "services/network/websocket_factory.h"
 #endif  // BUILDFLAG(ENABLE_WEBSOCKETS)
 
@@ -945,6 +946,16 @@ NetworkContext::NetworkContext(
     InitializePrefetchURLLoaderFactory();
   }
 }
+
+#if BUILDFLAG(ENABLE_WEBSOCKETS)
+void NetworkContext::CreateNetLogEntriesForActiveWebSockets(
+    net::NetLog::ThreadSafeObserver* observer) const {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (websocket_factory_) {
+    websocket_factory_->CreateNetLogEntriesForActiveConnections(observer);
+  }
+}
+#endif  // BUILDFLAG(ENABLE_WEBSOCKETS)
 
 NetworkContext::~NetworkContext() {
   is_destructing_ = true;
@@ -2032,7 +2043,8 @@ void NetworkContext::CreateWebSocket(
         url_loader_network_observer,
     mojo::PendingRemote<mojom::WebSocketAuthenticationHandler> auth_handler,
     mojo::PendingRemote<mojom::TrustedHeaderClient> header_client,
-    const std::optional<base::UnguessableToken>& throttling_profile_id) {
+    const std::optional<base::UnguessableToken>& throttling_profile_id,
+    const std::optional<base::UnguessableToken>& network_restrictions_id) {
 #if BUILDFLAG(ENABLE_WEBSOCKETS)
   if (!websocket_factory_) {
     websocket_factory_ = std::make_unique<WebSocketFactory>(this);
@@ -2046,7 +2058,8 @@ void NetworkContext::CreateWebSocket(
       std::move(client_security_state), options,
       static_cast<net::NetworkTrafficAnnotationTag>(traffic_annotation),
       std::move(handshake_client), std::move(url_loader_network_observer),
-      std::move(auth_handler), std::move(header_client), throttling_profile_id);
+      std::move(auth_handler), std::move(header_client), throttling_profile_id,
+      network_restrictions_id);
 #endif  // BUILDFLAG(ENABLE_WEBSOCKETS)
 }
 
@@ -3585,25 +3598,30 @@ void NetworkContext::FlushClientCertCache() {
 void NetworkContext::RevokeNetworkForNonces(
     std::vector<mojom::NonceAndAllowlistedPatternsPtr> nonces_to_patterns,
     RevokeNetworkForNoncesCallback callback) {
-  auto parse_allowlist = [](auto& source, auto& dest_endpoint,
-                            auto& dest_patterns) {
-    if (!source) {
-      return;
-    }
-    dest_endpoint = std::move(source->reporting_endpoint);
-    for (const std::string& pattern : source->allowlist) {
-      // TODO(crbug.com/447954811): We can safely DCHECK here, as we've done
-      // pattern validation already while validating the header's syntax. That
-      // said, parsing the pattern twice has performance overhead, and it
-      // would be ideal to change our infrastructure to allow passing a
-      // SimpleUrlPatternMatcher directly rather than creating it anew here.
-      auto matcher = url_pattern::SimpleUrlPatternMatcher::Create(
-          pattern, /*base_url=*/nullptr);
+  auto parse_allowlist =
+      [](std::optional<ConnectionAllowlist>& source,
+         std::optional<std::string>& dest_endpoint,
+         std::set<std::unique_ptr<url_pattern::SimpleUrlPatternMatcher>>&
+             dest_patterns,
+         ConnectionAllowlist::RedirectBehavior& dest_redirect_behavior) {
+        if (!source) {
+          return;
+        }
+        dest_endpoint = std::move(source->reporting_endpoint);
+        dest_redirect_behavior = source->redirect_behavior;
+        for (const std::string& pattern : source->allowlist) {
+          // TODO(crbug.com/447954811): We can safely DCHECK here, as we've done
+          // pattern validation already while validating the header's syntax.
+          // That said, parsing the pattern twice has performance overhead, and
+          // it would be ideal to change our infrastructure to allow passing a
+          // SimpleUrlPatternMatcher directly rather than creating it anew here.
+          auto matcher = url_pattern::SimpleUrlPatternMatcher::Create(
+              pattern, /*base_url=*/nullptr);
 
-      DCHECK(matcher.has_value());
-      dest_patterns.insert(std::move(matcher.value()));
-    }
-  };
+          DCHECK(matcher.has_value());
+          dest_patterns.insert(std::move(matcher.value()));
+        }
+      };
 
   for (auto& entry : nonces_to_patterns) {
     const base::UnguessableToken& nonce = entry->nonce;
@@ -3616,10 +3634,12 @@ void NetworkContext::RevokeNetworkForNonces(
 
     parse_allowlist(entry->allowlists.enforced,
                     restriction.enforced_reporting_endpoint,
-                    restriction.enforced_allowlisted_patterns);
+                    restriction.enforced_allowlisted_patterns,
+                    restriction.enforced_redirect_behavior);
     parse_allowlist(entry->allowlists.report_only,
                     restriction.report_only_reporting_endpoint,
-                    restriction.report_only_allowlisted_patterns);
+                    restriction.report_only_allowlisted_patterns,
+                    restriction.report_only_redirect_behavior);
 
     // CancelRequestsIfNonceMatchesAndUrlNotExempted is not needed for
     // connection allowlist since there should not be any ongoing
@@ -3751,11 +3771,18 @@ bool NetworkContext::IsNetworkForNonceAndUrlAllowed(
   if (base::FeatureList::IsEnabled(network::features::kConnectionAllowlists)) {
     const NetworkRestriction& restriction =
         network_revocation_nonces_.find(nonce)->second;
+
+    // TODO(crbug.com/492439215): Implement reporting via
+    // restriction.report_only_redirect_behavior.
+    if (is_redirect) {
+      return restriction.enforced_redirect_behavior ==
+             ConnectionAllowlist::RedirectBehavior::kAllow;
+    }
+
     for (const std::unique_ptr<url_pattern::SimpleUrlPatternMatcher>& pattern :
          restriction.enforced_allowlisted_patterns) {
       if (pattern->Match(url)) {
-        // Redirects are blocked for URLs allowed through connection allowlists.
-        return !is_redirect;
+        return true;
       }
     }
   }

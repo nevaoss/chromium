@@ -135,7 +135,6 @@ import org.chromium.chrome.browser.keyboard_accessory.ManualFillingComponentSupp
 import org.chromium.chrome.browser.layouts.LayoutManagerAppUtils;
 import org.chromium.chrome.browser.media.FullscreenVideoPictureInPictureController;
 import org.chromium.chrome.browser.metrics.LaunchMetrics;
-import org.chromium.chrome.browser.metrics.LegacyTabStartupMetricsTracker;
 import org.chromium.chrome.browser.metrics.SimpleStartupForegroundSessionDetector;
 import org.chromium.chrome.browser.metrics.StartupMetricsTracker;
 import org.chromium.chrome.browser.metrics.UmaActivityObserver;
@@ -171,6 +170,7 @@ import org.chromium.chrome.browser.settings.SettingsNavigationFactory;
 import org.chromium.chrome.browser.share.ShareDelegate;
 import org.chromium.chrome.browser.share.ShareDelegateImpl;
 import org.chromium.chrome.browser.share.ShareDelegateSupplier;
+import org.chromium.chrome.browser.signin.SigninAndHistorySyncActivityLauncherImpl;
 import org.chromium.chrome.browser.stylus_handwriting.StylusWritingCoordinator;
 import org.chromium.chrome.browser.tab.RequestDesktopUtils;
 import org.chromium.chrome.browser.tab.Tab;
@@ -402,8 +402,6 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
     /** Whether or not a PolicyChangeListener was added. */
     private boolean mDidAddPolicyChangeListener;
 
-    private LegacyTabStartupMetricsTracker mLegacyTabStartupMetricsTracker;
-
     private StartupMetricsTracker mStartupMetricsTracker;
 
     /** Whether or not the activity is in started state. */
@@ -472,8 +470,6 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
     protected void onPreCreate() {
         // The startup metrics tracker should be created as early as possible in the Activity
         // lifetime.
-        mLegacyTabStartupMetricsTracker =
-                new LegacyTabStartupMetricsTracker(mActivityId, mTabModelSelectorSupplier);
         mStartupMetricsTracker =
                 new StartupMetricsTracker(
                         mTabModelSelectorSupplier, this::wasPersistentStateRestored);
@@ -718,7 +714,11 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
                             mTabModelProfileSupplier,
                             new ShareDelegateImpl.ShareSheetDelegate(),
                             isCustomTab(),
-                            mRootUiCoordinator.getDataSharingTabManager());
+                            mRootUiCoordinator.getDataSharingTabManager(),
+                            SigninAndHistorySyncActivityLauncherImpl.get(),
+                            getActivityResultTracker(),
+                            getModalDialogManagerSupplier(),
+                            getSnackbarManager());
             mShareDelegateSupplier.set(shareDelegate);
             TabBookmarker tabBookmarker =
                     new TabBookmarker(
@@ -752,10 +752,6 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         // Initialize the activity session tracker as early as possible so that
         // it can start background tasks.
         ChromeActivitySessionTracker.getInstance();
-    }
-
-    public LegacyTabStartupMetricsTracker getLegacyTabStartupMetricsTracker() {
-        return mLegacyTabStartupMetricsTracker;
     }
 
     public StartupMetricsTracker getStartupMetricsTracker() {
@@ -1106,9 +1102,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
             chromeAndroidTask.addFeature(
                     new ChromeAndroidTaskFeatureKey(
                             ExtensionWindowControllerBridge.class, profile, activityWindowAndroid),
-                    () ->
-                            ExtensionWindowControllerBridgeFactory.create(
-                                    chromeAndroidTask, profile));
+                    ExtensionWindowControllerBridgeFactory::create);
 
             // 5. Make the ChromeAndroidTask available via OneshotSupplier.
             mChromeAndroidTaskSupplier.set(chromeAndroidTask);
@@ -1907,11 +1901,6 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         }
         BrowserControlsManagerSupplier.destroy(mBrowserControlsManagerSupplier);
 
-        if (mLegacyTabStartupMetricsTracker != null) {
-            mLegacyTabStartupMetricsTracker.destroy();
-            mLegacyTabStartupMetricsTracker = null;
-        }
-
         if (mStartupMetricsTracker != null) {
             mStartupMetricsTracker.destroy();
             mStartupMetricsTracker = null;
@@ -2608,14 +2597,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         }
         mBackPressManager.setIsGestureNavEnabledSupplier(
                 () -> UiUtils.isGestureNavigationMode(getWindow()));
-        final Runnable callbackForLegacyTabStartupMetricsTracker =
-                () -> {
-                    if (mLegacyTabStartupMetricsTracker != null) {
-                        mLegacyTabStartupMetricsTracker.onBackPressed();
-                    }
-                };
 
-        mBackPressManager.setOnBackPressedListener(callbackForLegacyTabStartupMetricsTracker);
         getOnBackPressedDispatcher().addCallback(this, mBackPressManager.getCallback());
         // TODO(crbug.com/40208738): consider move to RootUiCoordinator.
         mTextBubbleBackPressHandler = new TextBubbleBackPressHandler();

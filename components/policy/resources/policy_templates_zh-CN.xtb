@@ -2818,7 +2818,6 @@ PAC 样式的字符串：
 <translation id="2901969573658712576">首选满足 CNSA 1.0 和 2.0 要求的加密算法</translation>
 <translation id="2905984450136807296">身份验证数据缓存期限</translation>
 <translation id="2906874737073861391">AppPack 扩展程序列表</translation>
-<translation id="2908277604670530363">可同时连接到代理服务器的连接数上限</translation>
 <translation id="2912366658685903301">配置浏览器主题的颜色</translation>
 <translation id="2914283793640833265">不允许启用 Phone Hub 任务延续功能</translation>
 <translation id="2915787312243722351">此政策用于控制“使用启动器键/搜索键更改功能键的行为”设置。此设置允许用户按住启动器键以在功能键和系统顶行按键之间切换。
@@ -2952,6 +2951,13 @@ PAC 样式的字符串：
 <translation id="2969568582351417848">不针对所列网域中的指定文件类型显示基于文件类型扩展名的下载警告</translation>
 <translation id="2971096666394658693">上下文菜单中将有一个可将图片分享到 <ph name="GOOGLE_PHOTOS_PRODUCT_NAME" /> 的菜单项。</translation>
 <translation id="2973972555495515337">如果已启用此政策，第三方 Web 应用将能使用 <ph name="DESK_API_NAME" /> 保存和共享 <ph name="PRODUCT_OS_NAME" /> 桌面。如果已停用此政策，用户将无法通过 <ph name="DESK_API_NAME" /> 保存和共享桌面数据。如果未设置此政策，则等同于已停用此政策。此政策仅适用于已注册的设备。</translation>
+<translation id="2974326457745806202">如果在 SharedWorker 构造函数中将“extendedLifetime”选项设置为 true，SharedWorker 可以具有更长的生命周期。
+
+如果此政策已启用或未设置，SharedWorker 可以具有更长的生命周期。
+
+如果此政策已停用，即使该选项设为 true，SharedWorker 也无法具有更长的生命周期。
+
+此政策只是暂时性措施，日后会被移除。</translation>
 <translation id="2976033779241323433">基于默认系统启发法启用触摸虚拟键盘</translation>
 <translation id="2976429807269247880">旧版 <ph name="ATTRIBUTE_SAMESITE_NAME" /> Cookie 行为设置</translation>
 <translation id="2979696534869541158">强制使用旧实现</translation>
@@ -9475,6 +9481,7 @@ JavaScript 优化政策的例外情况仅在网站级别 (eTLD+1) 上强制执�
 <translation id="7216442368414164495">允许用户启用安全浏览扩展报告功能</translation>
 <translation id="7218238054592349618">允许在这些网站上使用 JavaScript 优化功能</translation>
 <translation id="721970071627370558">停用设备电源状态报告功能</translation>
+<translation id="7220960206733388609">SharedWorker 可以具有更长的生命周期。</translation>
 <translation id="7221574724100909818">使用锁形图标表示安全连接</translation>
 <translation id="7227348936232766462">允许用户在用户反馈中包含下列所有设备类型的低级别调试数据</translation>
 <translation id="7229365071755865554">允许使用密码管理工具保存密码</translation>
@@ -10117,6 +10124,7 @@ Gemini 只能在部分国家/地区启用，并且仅支持部分语言。设置
 如果此政策已停用，PDF 查看器会使用其当前的 AGG 渲染程序。
 
 如果此政策未设置，由浏览器选择使用哪种 PDF 渲染程序。</translation>
+<translation id="7704244074621846004">为 SharedWorker 启用更长的生命周期</translation>
 <translation id="7707869387893611318">启用充电提示音功能。
 
           该功能负责播放充电提示音。
@@ -10134,6 +10142,7 @@ Gemini 只能在部分国家/地区启用，并且仅支持部分语言。设置
 
       我们建议您让服务器改用 ECDHE 加密套件。如果这些加密套件不可用，请确保让使用 RSA 密钥交换机制的加密套件处于启用状态。</translation>
 <translation id="7709470712369261710">不使用 Google 服务提供自动图片说明</translation>
+<translation id="7711003696883532277">SharedWorker 无法具有更长的生命周期。</translation>
 <translation id="7712109699186360774">每当有网站要使用摄像头和/或麦克风时都要询问</translation>
 <translation id="7712245244073542805">使用浏览器进程执行平台打印任务。</translation>
 <translation id="7713608076604149344">下载限制</translation>

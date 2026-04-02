@@ -290,11 +290,6 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
   source->AddBoolean("footerEnabled",
                      base::FeatureList::IsEnabled(ntp_features::kNtpFooter));
 
-  source->AddString("realboxLayoutMode",
-                    ntp_realbox::IsNtpRealboxNextEnabled(profile)
-                        ? ntp_realbox::RealboxLayoutModeToString(
-                              ntp_realbox::kRealboxLayoutMode.Get())
-                        : "");
   source->AddBoolean("ntpRealboxNextEnabled",
                      ntp_realbox::IsNtpRealboxNextEnabled(profile));
   source->AddBoolean("searchboxCyclingPlaceholders",
@@ -365,6 +360,7 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
       // code (here and elsewhere) into the searchbox directories or a new
       // component.
       {"audioError", IDS_NEW_TAB_VOICE_AUDIO_ERROR},
+      {"close", IDS_NTP_CLOSE},
       {"languageError", IDS_NEW_TAB_VOICE_LANGUAGE_ERROR},
       {"learnMore", IDS_LEARN_MORE},
       {"learnMoreA11yLabel", IDS_NEW_TAB_VOICE_LEARN_MORE_ACCESSIBILITY_LABEL},
@@ -599,10 +595,6 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
       "fileSuggestionDismissHours",
       base::NumberToString(DriveService::kDismissDuration.InHours()));
   source->AddString(
-      "setupListModuleDismissDays",
-      base::NumberToString(
-          user_education::features::GetNtpSetupListSnoozeTime().InDays()));
-  source->AddString(
       "tabGroupsModuleDismissHours",
       base::NumberToString(
           ntp_features::kNtpTabGroupsModuleWindowEndDeltaParam.Get()
@@ -683,12 +675,7 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
                      ntp_composebox::kShowComposeboxImageSuggestions.Get());
   source->AddBoolean("composeboxShowTypedSuggestWithContext", false);
 
-  bool show_context_menu_description =
-      ntp_composebox::kShowContextMenuDescription.Get() &&
-      ntp_realbox::kRealboxLayoutMode.Get() !=
-          ntp_realbox::RealboxLayoutMode::kCompact;
-  source->AddBoolean("composeboxShowContextMenuDescription",
-                     show_context_menu_description);
+  source->AddBoolean("composeboxShowContextMenuDescription", false);
 
   source->AddBoolean("composeboxCloseByEscape", false);
   // TODO(b/477969358): Remove "close by click outside" boolean.

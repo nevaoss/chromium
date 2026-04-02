@@ -54,7 +54,7 @@
 #include "content/renderer/media/inspector_media_event_handler.h"
 #include "content/renderer/media/render_media_event_handler.h"
 #include "content/renderer/media/renderer_webaudiodevice_impl.h"
-#include "content/renderer/memory_coordinator/renderer_memory_coordinator_policy.h"
+#include "content/renderer/memory_coordinator/last_resort_gc_policy.h"
 #include "content/renderer/render_frame_impl.h"
 #include "content/renderer/render_thread_impl.h"
 #include "content/renderer/renderer_navigation_metrics_manager.h"
@@ -817,12 +817,20 @@ RendererBlinkPlatformImpl::CreateRasterGraphicsContextProvider(
   constexpr bool support_locking = false;
   constexpr bool lose_context_when_out_of_memory = false;
 
+  gpu::SchedulingPriority stream_priority =
+      (base::FeatureList::IsEnabled(features::kInitialWebUI) &&
+       features::kInitialWebUIHighStreamPriority.Get() &&
+       base::CommandLine::ForCurrentProcess()->HasSwitch(
+           switches::kTopChromeWebUI))
+          ? kGpuStreamPriorityUI
+          : kGpuStreamPriorityDefault;
+
   return std::make_unique<WebGraphicsContext3DProviderImpl>(
       viz::ContextProviderCommandBuffer::CreateForRaster(
-          std::move(gpu_channel_host), kGpuStreamIdDefault,
-          kGpuStreamPriorityDefault, GURL(document_url), automatic_flushes,
-          support_locking, gpu::SharedMemoryLimits(),
-          ToVizContextType(context_type), lose_context_when_out_of_memory));
+          std::move(gpu_channel_host), kGpuStreamIdDefault, stream_priority,
+          GURL(document_url), automatic_flushes, support_locking,
+          gpu::SharedMemoryLimits(), ToVizContextType(context_type),
+          lose_context_when_out_of_memory));
 }
 
 //------------------------------------------------------------------------------
@@ -1216,12 +1224,9 @@ bool RendererBlinkPlatformImpl::IsUserLevelMemoryPressureSignalEnabled() {
 #endif  // BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_NEVA_APPRUNTIME)
 
 void RendererBlinkPlatformImpl::OnV8HeapLastResortGC() {
-  // In --single-process mode, the RendererMemoryCoordinatorPolicy does not run.
-  if (base::CommandLine::ForCurrentProcess()->HasSwitch(
-          switches::kSingleProcess)) {
-    return;
+  if (auto* policy = LastResortGCPolicy::Get()) {
+    policy->OnV8HeapLastResortGC();
   }
-  RendererMemoryCoordinatorPolicy::Get().OnV8HeapLastResortGC();
 }
 
 }  // namespace content

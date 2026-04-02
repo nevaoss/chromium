@@ -4,12 +4,12 @@
 
 #include "base/test/scoped_feature_list.h"
 #include "build/build_config.h"
-#include "chrome/browser/autofill/account_setting_service_factory.h"
+#include "chrome/browser/account_settings/account_setting_service_factory.h"
 #include "chrome/browser/sync/test/integration/single_client_status_change_checker.h"
 #include "chrome/browser/sync/test/integration/sync_service_impl_harness.h"
 #include "chrome/browser/sync/test/integration/sync_test.h"
-#include "components/autofill/core/browser/webdata/account_settings/account_setting_service.h"
-#include "components/autofill/core/browser/webdata/account_settings/account_setting_sync_util.h"
+#include "components/account_settings/account_setting_service.h"
+#include "components/account_settings/account_setting_sync_util.h"
 #include "components/sync/base/data_type.h"
 #include "components/sync/base/features.h"
 #include "components/sync/engine/loopback_server/persistent_unique_client_entity.h"
@@ -25,8 +25,8 @@ namespace {
 constexpr std::string_view kWalletPrivacyContextualSurfacingSetting =
     "WALLET_PRIVACY_CONTEXTUAL_SURFACING";
 
-using autofill::AccountSettingService;
-using autofill::CreateSettingSpecifics;
+using account_settings::AccountSettingService;
+using account_settings::CreateSettingSpecifics;
 
 // Waits until
 // `AccountSettingService::IsWalletPrivacyContextualSurfacingEnabled()` has the
@@ -76,8 +76,7 @@ class SingleClientAccountSettingSyncTest
   }
 
   AccountSettingService* GetAccountSettingService() {
-    return autofill::AccountSettingServiceFactory::GetForBrowserContext(
-        GetProfile(0));
+    return AccountSettingServiceFactory::GetForBrowserContext(GetProfile(0));
   }
 
   void InjectSpecificsToServer(

@@ -6326,11 +6326,6 @@ Keep your key file in a safe place. You will need it to create new versions of y
         Hide Details
       </message>
 
-      <!-- Error messages for Chrome Web Store UI -->
-      <message name="IDS_WEBSTORE_DOWNLOAD_ACCESS_DENIED" desc="Text displayed in the error prompt when a CRX cannot be downloaded due to an authentication error.">
-        Access denied.
-      </message>
-
       <!-- Global error messages for extensions -->
       <message name="IDS_EXTENSION_WARNINGS_WRENCH_MENU_ITEM" desc="The wrench menu item indicating that extensions caused problems.">
         Extension error
@@ -6608,25 +6603,25 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_EXTENSIONS_MENU_MESSAGE_SECTION_RELOAD_CONTAINER_BUTTON_TOOLTIP" desc="Tooltip text of the button in the message section to reload the page when the user has to reload the page to apply the updated user site settings." formatter_data="android_java">
         Reload page
       </message>
-      <message name="IDS_EXTENSIONS_MENU_REQUESTS_ACCESS_SECTION_TITLE" desc="Title of the requests access section that lists the extensions requesting site access">
+      <message name="IDS_EXTENSIONS_MENU_REQUESTS_ACCESS_SECTION_TITLE" desc="Title of the requests access section that lists the extensions requesting site access" formatter_data="android_java">
         Requests access
       </message>
-      <message name="IDS_EXTENSIONS_MENU_REQUESTS_ACCESS_SECTION_ALLOW_BUTTON_TEXT" desc="Title on the allow button for each extension in the requests access section that grants site access to such extension.">
+      <message name="IDS_EXTENSIONS_MENU_REQUESTS_ACCESS_SECTION_ALLOW_BUTTON_TEXT" desc="Title on the allow button for each extension in the requests access section that grants site access to such extension." formatter_data="android_java">
         Allow
       </message>
-      <message name="IDS_EXTENSIONS_MENU_REQUESTS_ACCESS_SECTION_ALLOW_BUTTON_TOOLTIP" desc="Tooltip text on the allow button for each extension in the requests access section that grants site access to such extension.">
+      <message name="IDS_EXTENSIONS_MENU_REQUESTS_ACCESS_SECTION_ALLOW_BUTTON_TOOLTIP" desc="Tooltip text on the allow button for each extension in the requests access section that grants site access to such extension." formatter_data="android_java">
         Allow extension to read and change this site
       </message>
-      <message name="IDS_EXTENSIONS_MENU_REQUESTS_ACCESS_SECTION_ALLOW_BUTTON_ACCESSIBLE_NAME" desc="Accessible string on the allow button for each extension in the requests access section that grants site access to such extension.">
+      <message name="IDS_EXTENSIONS_MENU_REQUESTS_ACCESS_SECTION_ALLOW_BUTTON_ACCESSIBLE_NAME" desc="Accessible string on the allow button for each extension in the requests access section that grants site access to such extension." formatter_data="android_java">
         Allow <ph name="EXTENSION_NAME">$1<ex>AdBlock</ex></ph> to read and change this site
       </message>
-      <message name="IDS_EXTENSIONS_MENU_REQUESTS_ACCESS_SECTION_DISMISS_BUTTON_TEXT" desc="Title on the dismiss button for each extension in the requests access section that dismiss the extensions's access requests on this tab's current origin.">
+      <message name="IDS_EXTENSIONS_MENU_REQUESTS_ACCESS_SECTION_DISMISS_BUTTON_TEXT" desc="Title on the dismiss button for each extension in the requests access section that dismiss the extensions's access requests on this tab's current origin." formatter_data="android_java">
         Dismiss
       </message>
-      <message name="IDS_EXTENSIONS_MENU_REQUESTS_ACCESS_SECTION_DISMISS_BUTTON_TOOLTIP" desc="Tooltip text on the dismiss button for each extension in the requests access section that dismiss the extensions's access requests on this tab's current origin.">
+      <message name="IDS_EXTENSIONS_MENU_REQUESTS_ACCESS_SECTION_DISMISS_BUTTON_TOOLTIP" desc="Tooltip text on the dismiss button for each extension in the requests access section that dismiss the extensions's access requests on this tab's current origin." formatter_data="android_java">
         Dismiss request
       </message>
-      <message name="IDS_EXTENSIONS_MENU_REQUESTS_ACCESS_SECTION_DISMISS_BUTTON_ACCESSIBLE_NAME" desc="Accessibility string for the dismiss button for each extension in the requests access section that dismisses the extensions's access requests on this tab's current origin.">
+      <message name="IDS_EXTENSIONS_MENU_REQUESTS_ACCESS_SECTION_DISMISS_BUTTON_ACCESSIBLE_NAME" desc="Accessibility string for the dismiss button for each extension in the requests access section that dismisses the extensions's access requests on this tab's current origin." formatter_data="android_java">
         Dismiss request for <ph name="EXTENSION_NAME">$1<ex>AdBlock</ex></ph>
       </message>
       <message name="IDS_EXTENSIONS_MENU_EXTENSION_SITE_ACCESS_TOGGLE_ON_TOOLTIP" desc="Tooltip text for the site access toggle of an extensions menu item when is on.">
@@ -7810,7 +7805,10 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_NTP_CUSTOM_BG_CUSTOMIZE_NTP_WALLPAPER_SEARCH_LABEL" desc="Accessibility label for the wallpaper search gear icon. (On the New Tab Page)">
         Customize this page with AI
       </message>
-       <message name="IDS_NTP_DISMISS" desc="Used for Dismiss buttons">
+      <message name="IDS_NTP_CLOSE" desc="General purpose text label for close buttons on banners, dialogs, panels, promos, etc.">
+        Close
+      </message>
+      <message name="IDS_NTP_DISMISS" desc="Used for Dismiss buttons">
         Dismiss
       </message>
       <message name="IDS_NTP_DISMISS_PROMO" desc="The tooltip title and accessibility label for the (X) button to dismiss promotional messages on the middle / bottom of the New Tab page.">
@@ -10190,36 +10188,6 @@ Keep your key file in a safe place. You will need it to create new versions of y
         Search tabs
       </message>
 
-      <!-- Strings for tab organization -->
-      <message name="IDS_TOOLTIP_TAB_ORGANIZE" desc="The tooltip for the Tab Organization button.">
-        Organize tabs?
-      </message>
-      <message name="IDS_TAB_ORGANIZE" desc="The text label of the Tab Organization button.">
-        Organize tabs?
-      </message>
-      <message name="IDS_TOOLTIP_TAB_ORGANIZE_CLOSE" desc="The tooltip for the close button within the Tab Organization button.">
-        Dismiss suggestion
-      </message>
-      <message name="IDS_TAB_ORGANIZATION_FEEDBACK_PLACEHOLDER" desc="Placeholder text for the Tab Organization feedback dialog.">
-        Send feedback for Suggested Groups
-      </message>
-      <if expr="use_titlecase">
-        <message name="IDS_TAB_ORGANIZE_MENU" desc="In Title Case: The text label for the tab organization app menu item.">
-          Group Tabs With AI
-        </message>
-      </if>
-      <if expr="not use_titlecase">
-        <message name="IDS_TAB_ORGANIZE_MENU" desc="The text label for the tab organization app menu item.">
-          Group tabs with AI
-        </message>
-      </if>
-      <message name="IDS_TAB_ORGANIZATION_SUCCESS_IPH" desc="The body text of the IPH describing how to interact with a tab group resulting from tab organization.">
-        Right-click on the tab group name to edit this group or click to collapse
-      </message>
-      <message name="IDS_TAB_ORGANIZATION_SUCCESS_IPH_SCREENREADER" desc="The screen reader text of the IPH describing how to interact with a tab group resulting from tab organization." is_accessibility_with_no_ui="true">
-        Select the tab group and activate the context menu to edit
-      </message>
-
       <!-- Strings for split view -->
       <message name="IDS_SPLIT_VIEW_NTP_EMPTY_TITLE" desc="The title of the split view new tab page in its empty state.">
         Complete your split view
@@ -10841,9 +10809,6 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_ACCNAME_TAB_SEARCH" desc="The accessible name for the Tab Search bubble.">
         Search tabs
       </message>
-      <message name="IDS_ACCNAME_TAB_ORGANIZE" desc="The accessible name for the Tab Organization button." is_accessibility_with_no_ui="true">
-        Group related tabs
-      </message>
       <message name="IDS_ACCNAME_TAB_SCROLL_LEADING" desc="The accessible name for the TabStrip leading scroll button.">
         Scroll towards the first tab
       </message>
@@ -11028,7 +10993,7 @@ Keep your key file in a safe place. You will need it to create new versions of y
             {NUM_TABS, plural, =1 {1 Tab} other {# Tabs}}
         </message>
         <message name="IDS_TAB_GROUPS_HOVER_CARD_FOOTER" desc="In Title Case: The number of tabs in the tab group that are not shown on the hover card, when hovering over the tab group header.">
-            +<ph name="NUM">$1<ex>2</ex></ph> More
+            + <ph name="NUM">$1<ex>2</ex></ph> More
         </message>
       </if>
       <if expr="not use_titlecase">
@@ -11042,7 +11007,7 @@ Keep your key file in a safe place. You will need it to create new versions of y
             {NUM_TABS, plural, =1 {1 tab} other {# tabs}}
         </message>
         <message name="IDS_TAB_GROUPS_HOVER_CARD_FOOTER" desc="The number of tabs in the tab group that are not shown on the hover card, when hovering over the tab group header.">
-            +<ph name="NUM">$1<ex>2</ex></ph> more
+            + <ph name="NUM">$1<ex>2</ex></ph> more
         </message>
       </if>
       <message name="IDS_DISCARD_RING_PROMO_TITLE" desc="The title for the discard ring in-product promo bubble.">
@@ -12043,9 +12008,6 @@ Check your passwords anytime in <ph name="GOOGLE_PASSWORD_MANAGER">$1<ex>Google 
         <message name="IDS_TAB_CXMENU_MOVETOANOTHERNEWWINDOW" desc="The label for the Tab context item to move items to a new window from the 'Move tabs to another window' submenu.">
           New window
         </message>
-        <message name="IDS_TAB_CXMENU_ORGANIZE_TABS" desc="The label of the 'Organize tabs' Tab context menu item.">
-          Organize similar tabs
-        </message>
         <message name="IDS_TAB_CXMENU_COMMERCE_PRODUCT_SPEC" desc="The text for the context menu item to compare selected tabs." translateable="false">
           Compare tabs
         </message>
@@ -12161,9 +12123,6 @@ Check your passwords anytime in <ph name="GOOGLE_PASSWORD_MANAGER">$1<ex>Google 
         </message>
         <message name="IDS_TAB_CXMENU_MOVETOANOTHERNEWWINDOW" desc="In Title Case: The label for the Tab context item to move items to a new window from the 'Move tabs to another window' submenu.">
           New Window
-        </message>
-        <message name="IDS_TAB_CXMENU_ORGANIZE_TABS" desc="In Title Case: The label of the 'Organize tabs' Tab context menu item.">
-          Organize Similar Tabs
         </message>
         <message name="IDS_TAB_CXMENU_COMMERCE_PRODUCT_SPEC" desc="In Title Case: The text for the context menu item to compare selected tabs." translateable="false">
           Compare Tabs
@@ -18942,6 +18901,9 @@ Please help our engineers fix this problem. Tell us what happened right before y
     </message>
     <message name="IDS_FEDERATION_SIGN_IN_TITLE" desc="Title of the UI shown in the omnibox to remind users that they can sign in with an identity provider.">
       Sign in with <ph name="IDP_NAME">$1<ex>google.com</ex></ph>
+    </message>
+    <message name="IDS_FEDERATION_SIGNING_IN_TITLE" desc="Title of the UI shown in the omnibox while they are signing-in to the website with an identity provider.">
+      Signing in ...
     </message>
     <message name="IDS_FEDERATION_SIGN_UP_TITLE" desc="Title of the UI shown in the omnibox to remind users that they can sign up with an identity provider.">
       Sign up with <ph name="IDP_NAME">$1<ex>google.com</ex></ph>

@@ -28,6 +28,7 @@
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource_provider.h"
+#include "third_party/blink/renderer/platform/graphics/gpu/canvas_utils.h"
 #include "third_party/blink/renderer/platform/graphics/gpu/shared_gpu_context.h"
 #include "third_party/blink/renderer/platform/graphics/paint/paint_canvas.h"
 #include "third_party/blink/renderer/platform/graphics/skia/skia_utils.h"
@@ -136,7 +137,7 @@ void OffscreenCanvasRenderingContext2D::FinalizeFrame(FlushReason reason) {
   if (!GetOrCreateResourceProvider()) {
     return;
   }
-  resource_provider_->FlushCanvas(reason);
+  resource_provider_->FlushCanvas2D(reason);
   Host()->NotifyCachesOfSwitchingFrame();
 }
 
@@ -226,8 +227,7 @@ OffscreenCanvasRenderingContext2D::GetOrCreateResourceProvider() {
   if (use_shared_image) {
     gpu::SharedImageUsageSet shared_image_usage_flags =
         gpu::SHARED_IMAGE_USAGE_DISPLAY_READ;
-    if (host->HasPlaceholderCanvas() &&
-        SharedGpuContext::UseOverlaysForCanvas2D()) {
+    if (host->HasPlaceholderCanvas() && UseOverlaysForCanvas2D()) {
       shared_image_usage_flags |= gpu::SHARED_IMAGE_USAGE_SCANOUT;
     }
 
@@ -265,6 +265,8 @@ OffscreenCanvasRenderingContext2D::GetOrCreateResourceProvider() {
                               resource_provider_->IsAccelerated());
     base::UmaHistogramEnumeration("Blink.Canvas.ResourceProviderType",
                                   resource_provider_->GetType());
+
+    dirty_rect_for_commit_ = SkIRect::MakeWH(Width(), Height());
     host->DidDraw();
   }
   return resource_provider_.get();
@@ -419,14 +421,18 @@ const MemoryManagedPaintRecorder* OffscreenCanvasRenderingContext2D::Recorder()
 void OffscreenCanvasRenderingContext2D::WillDraw(
     const SkIRect& dirty_rect,
     CanvasPerformanceMonitor::DrawType draw_type) {
-  dirty_rect_for_commit_.join(dirty_rect);
-  GetCanvasPerformanceMonitor().DidDraw(draw_type);
+  SkIRect adjusted_dirty_rect = dirty_rect;
   if (GetState().ShouldAntialias()) {
-    SkIRect inflated_dirty_rect = dirty_rect_for_commit_.makeOutset(1, 1);
-    Host()->DidDraw(inflated_dirty_rect);
-  } else {
-    Host()->DidDraw(dirty_rect_for_commit_);
+    adjusted_dirty_rect = adjusted_dirty_rect.makeOutset(1, 1);
+
+    // We might expanded rect beyond canvas's bounds. Clamp it back.
+    adjusted_dirty_rect.intersect(SkIRect::MakeWH(Width(), Height()));
   }
+
+  dirty_rect_for_commit_.join(adjusted_dirty_rect);
+  GetCanvasPerformanceMonitor().DidDraw(draw_type);
+  Host()->DidDraw(dirty_rect_for_commit_);
+
   if (layer_count_ == 0 && resource_provider_ != nullptr) [[likely]] {
     // TODO(crbug.com/1246486): Make auto-flushing layer friendly.
     resource_provider_->FlushIfRecordingLimitExceededForCanvas2D();
@@ -471,7 +477,7 @@ bool OffscreenCanvasRenderingContext2D::WritePixels(
     return false;
   }
 
-  resource_provider_->FlushCanvas();
+  resource_provider_->FlushCanvas2D();
 
   // Short-circuit out if an error occurred while flushing the recording.
   if (!resource_provider_->IsValid()) {
@@ -514,7 +520,7 @@ bool OffscreenCanvasRenderingContext2D::ResolveFont(const String& new_font) {
 
 std::optional<cc::PaintRecord> OffscreenCanvasRenderingContext2D::FlushCanvas(
     FlushReason reason) {
-  return resource_provider_ ? resource_provider_->FlushCanvas(reason)
+  return resource_provider_ ? resource_provider_->FlushCanvas2D(reason)
                             : std::nullopt;
 }
 

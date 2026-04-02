@@ -10,12 +10,24 @@ source_set("features") {
   deps = [ "//base" ]
 }
 
+source_set("util") {
+  sources = [
+    "multistep_filter_util.cc",
+    "multistep_filter_util.h",
+  ]
+  deps = [
+    ":features",
+    "//base",
+    "//net",
+    "//url",
+  ]
+}
+
 source_set("core") {
   sources = [
     "multistep_filter_service.cc",
     "multistep_filter_service.h",
-    "multistep_filter_util.cc",
-    "multistep_filter_util.h",
+    "multistep_filter_ui_delegate.h",
   ]
   deps = [
     ":features",
@@ -26,6 +38,7 @@ source_set("core") {
     "//url",
   ]
   public_deps = [
+    ":util",
     "//components/multistep_filter/core/annotation_index",
     "//components/multistep_filter/core/data_models",
     "//components/multistep_filter/core/extraction",
@@ -53,9 +66,11 @@ source_set("unit_tests") {
     ":core",
     ":features",
     ":test_support",
+    ":util",
     "//base",
     "//base/test:test_support",
     "//components/multistep_filter/core/annotation_index:test_support",
+    "//components/multistep_filter/core/annotation_index:unit_tests",
     "//components/multistep_filter/core/data_models:unit_tests",
     "//components/multistep_filter/core/extraction",
     "//components/multistep_filter/core/extraction:unit_tests",

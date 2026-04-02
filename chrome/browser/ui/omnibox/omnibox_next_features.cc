@@ -45,6 +45,11 @@ const base::FeatureParam<AddContextButtonVariant>
     kWebUIOmniboxAimPopupAddContextButtonVariantParam{
         &internal::kWebUIOmniboxAimPopup, "Omnibox_AddContextButtonVariant",
         AddContextButtonVariant::kBelowResults, &kAddContextButtonVariantOptions};
+// If true, hides the "Add Context" button in the "classic" popup.
+const base::FeatureParam<bool> kHideClassicContextButton{
+    &internal::kWebUIOmniboxAimPopup, "Omnibox_HideClassicContextButton",
+    false};
+
 // When enabled, clicking aim button in omnibox always navigates directly to
 // g.com/aimode, e.g. instead of opening the AI Mode popup
 // (`omnibox::internal::kWebUIOmniboxAimPopup`).
@@ -283,7 +288,7 @@ const base::FeatureParam<bool> kShowContextMenu(
 const base::FeatureParam<bool> kShowContextMenuDescription(
     &internal::kWebUIOmniboxAimPopup,
     "Omnibox_ShowContextMenuDescription",
-    true);
+    false);
 const base::FeatureParam<bool> kShowContextMenuTabPreviews(
     &internal::kWebUIOmniboxAimPopup,
     "Omnibox_ShowContextMenuTabPreviews",

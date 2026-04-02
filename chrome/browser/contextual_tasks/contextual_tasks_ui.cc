@@ -31,6 +31,7 @@
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_attributes_storage.h"
+#include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/themes/theme_service.h"
@@ -81,7 +82,6 @@
 
 #if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/contextual_tasks/contextual_tasks_composebox_handler.h"
-#include "chrome/browser/profiles/profile_manager.h"  // nogncheck crbug.com/483442073
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/lens/lens_search_controller.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
@@ -201,14 +201,10 @@ void AddZeroStateStrings(content::WebUIDataSource* source, Profile* profile) {
     return;
   }
 
-  ProfileAttributesEntry* entry = nullptr;
-#if !BUILDFLAG(IS_ANDROID)
-  // TODO(crbug.com/483442073): Remove the ifdef block once we address the
-  // cyclic dependency.
-  entry = g_browser_process->profile_manager()
-              ->GetProfileAttributesStorage()
-              .GetProfileAttributesWithPath(profile->GetPath());
-#endif
+  ProfileAttributesEntry* entry =
+      g_browser_process->profile_manager()
+          ->GetProfileAttributesStorage()
+          .GetProfileAttributesWithPath(profile->GetPath());
   if (!entry) {
     AddDefaultZeroStateStrings(source);
     return;
@@ -414,9 +410,6 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
 
   AddContextMenuItemEligibilityLoadTimeData(source, profile);
   source->AddBoolean("composeboxShowLensSearchChip", false);
-  // TODO(b/477969358): Remove `composeboxShowSubmit` boolean. This has the same
-  // value everywhere it is used.
-  source->AddBoolean("composeboxShowSubmit", true);
   source->AddBoolean("composeboxShowContextMenuTabPreviews", false);
   source->AddBoolean("composeboxContextMenuEnableMultiTabSelection", true);
   source->AddBoolean("clearAllInputsWhenSubmittingQuery", true);
@@ -437,6 +430,8 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
   source->AddBoolean("enableFileHint", contextual_tasks::GetEnableFileHint());
   source->AddBoolean("enableComposeboxJumpFix",
                      contextual_tasks::GetEnableComposeboxJumpFix());
+  source->AddBoolean("roundedClipPathEnabled",
+                     contextual_tasks::IsRoundedClipPathEnabled());
 
   source->AddString(
       "composeboxSource",
@@ -551,12 +546,6 @@ void ContextualTasksUI::OnTaskUpdated(
   }
 }
 
-GURL ContextualTasksUI::GetAimUrl() {
-  return contextual_tasks::ContextualTasksUiService::
-      GetAimUrlFromContextualTasksUrl(
-          web_ui()->GetWebContents()->GetLastCommittedURL());
-}
-
 const std::optional<base::Uuid>& ContextualTasksUI::GetTaskId() {
   return task_id_;
 }
@@ -637,12 +626,26 @@ const GURL& ContextualTasksUI::GetInnerFrameUrl() const {
   return nav_observer_->web_contents()->GetLastCommittedURL();
 }
 
+content::WebContents* ContextualTasksUI::GetInnerWebContents() const {
+  return embedded_web_contents_.get();
+}
+
 bool ContextualTasksUI::IsShownInTab() {
   return tabs::TabInterface::MaybeGetFromContents(web_ui()->GetWebContents());
 }
 
 BrowserWindowInterface* ContextualTasksUI::GetBrowser() {
-  return FromWebContents(web_ui()->GetWebContents());
+  content::WebContents* web_contents = web_ui()->GetWebContents();
+  BrowserWindowInterface* window = FromWebContents(web_contents);
+  if (window) {
+    return window;
+  }
+  tabs::TabInterface* tab =
+      tabs::TabInterface::MaybeGetFromContents(web_contents);
+  if (tab) {
+    return tab->GetBrowserWindowInterface();
+  }
+  return nullptr;
 }
 
 Profile* ContextualTasksUI::GetProfile() {
@@ -767,6 +770,10 @@ ContextualTasksUI::GetOrCreateContextualSessionHandle() {
       /*browser_window=*/browser_window_interface, contextual_tasks_service_,
       controller, web_contents, task_id_.value());
   return helper->session_handle();
+}
+
+GURL ContextualTasksUI::GetWebUiUrl() {
+  return web_ui()->GetWebContents()->GetLastCommittedURL();
 }
 
 // Empty implementation, does not need to be cleared in contextual tasks. Only
@@ -1046,8 +1053,7 @@ bool ContextualTasksUI::IsActiveTabContextSuggestionShowing() const {
 }
 
 void ContextualTasksUI::PushTaskDetailsToPage() {
-  page_->SetTaskDetails(task_id_.value_or(base::Uuid()),
-                        thread_id_.value_or(""), thread_turn_id_.value_or(""));
+  page_->SetTaskDetails(task_id_.value_or(base::Uuid()));
 }
 
 bool ContextualTasksUI::CanExpandToFullTab() const {
@@ -1354,7 +1360,7 @@ void ContextualTasksUI::CreatePageHandler(
       OptimizationGuideKeyedServiceFactory::GetForProfile(profile);
   contextual_tasks_internals_page_handler_ =
       std::make_unique<ContextualTasksInternalsPageHandler>(
-          contextual_tasks_service, optimization_guide_keyed_service,
+          profile, contextual_tasks_service, optimization_guide_keyed_service,
           std::move(receiver), std::move(page));
 }
 

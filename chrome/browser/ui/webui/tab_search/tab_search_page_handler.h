@@ -30,6 +30,14 @@
 class Browser;
 class MetricsReporter;
 
+namespace tabs {
+class TabInterface;
+}
+
+namespace tabs_api {
+class TabStripService;
+}
+
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
 enum class TabSearchCloseAction {
@@ -71,7 +79,6 @@ class TabSearchPageHandler : public tab_search::mojom::PageHandler,
   void ReplaceActiveSplitTab(int32_t replacement_tab_id) override;
   void SaveRecentlyClosedExpandedPref(bool expanded) override;
   void StartTabGroupTutorial() override;
-  void TriggerSignIn() override;
   void MaybeShowUI() override;
 
   // TabStripModelObserver:
@@ -151,6 +158,9 @@ class TabSearchPageHandler : public tab_search::mojom::PageHandler,
   tab_search::mojom::RecentlyClosedTabPtr GetRecentlyClosedTab(
       sessions::tab_restore::Tab* tab,
       const base::Time& close_time);
+
+  tabs_api::TabStripService* GetTabStripService(
+      BrowserWindowInterface* browser) const;
 
   // Returns tab details required to perform an action on the tab.
   std::optional<TabDetails> GetTabDetails(int32_t tab_id);

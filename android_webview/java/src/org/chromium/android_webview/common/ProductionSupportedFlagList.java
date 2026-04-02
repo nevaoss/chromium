@@ -159,6 +159,9 @@ public final class ProductionSupportedFlagList {
                 "Use SurfaceControl. Requires WebViewThreadSafeMedia and Android device and OS "
                         + "support. Only supported on TV."),
         Flag.baseFeature(
+                GpuFeatures.LIMIT_A_IMAGE_READER_MAX_SIZE_TO_ONE,
+                "If disabled allows acquiring more than one image from the AImageReader"),
+        Flag.baseFeature(
                 GpuFeatures.RELAX_LIMIT_A_IMAGE_READER_MAX_SIZE_TO_ONE,
                 "Allow more than 1 buffer from AImageReader on the specific set of devices. "
                         + "Only supported on TV."),
@@ -582,10 +585,6 @@ public final class ProductionSupportedFlagList {
                 "Deprecates old external file picker function."),
         Flag.baseFeature("ThreadGroupSemaphore"),
         Flag.baseFeature(
-                ContentFeatures.QUEUE_NAVIGATIONS_WHILE_WAITING_FOR_COMMIT,
-                "If enabled, allows navigations to be queued when there is "
-                        + "an existing pending commit navigation in progress."),
-        Flag.baseFeature(
                 AwFeatures.WEBVIEW_RENDER_DOCUMENT,
                 "If enabled, same-site navigations will change RenderFrameHosts"),
         Flag.baseFeature(
@@ -833,6 +832,7 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature("NetworkServiceDedicatedThread"),
         Flag.baseFeature(NetworkServiceFeatures.NETWORK_SERVICE_TASK_SCHEDULER),
         Flag.baseFeature(NetworkServiceFeatures.NETWORK_SERVICE_PER_PRIORITY_TASK_QUEUES),
+        Flag.baseFeature(NetFeatures.ASYNC_RETRY_ON_TOO_MANY_CONNECTION_ERRORS),
         Flag.baseFeature(
                 NetFeatures.DRAIN_SPDY_SESSION_SYNCHRONOUSLY_ON_REMOTE_ENDPOINT_DISCONNECT),
         Flag.baseFeature(NetFeatures.NET_TASK_SCHEDULER),
@@ -861,9 +861,6 @@ public final class ProductionSupportedFlagList {
                 ContentFeatures.DEFER_SPECULATIVE_RFH_CREATION,
                 "Enables deferring the speculative render frame host creation when the"
                         + " navigation starts"),
-        Flag.baseFeature(
-                ContentFeatures.DELAY_RFH_DESTRUCTIONS_ON_UNLOAD_AND_DETACH,
-                "Delays RenderFrameHost destructions on unload and detach events."),
         Flag.baseFeature(ContentFeatures.PWA_NAVIGATION_CAPTURING),
         Flag.baseFeature("TransportSecurityFileWriterSchedule"),
         Flag.baseFeature(
@@ -1262,10 +1259,6 @@ public final class ProductionSupportedFlagList {
                 AwFeatures.WEBVIEW_CONTENT_RESTRICTION_SUPPORT,
                 "Enables content restriction support in WebView."),
         Flag.baseFeature(
-                "CancelPendingCallbacksBeforeFetchRestart",
-                "The flag for ServiceWorkerSubresourceLoader. If enabled, the loader cancels"
-                        + " pending callbacks before restarting a fetch."),
-        Flag.baseFeature(
                 BaseFeatures.REBINDING_CHILD_SERVICE_CONNECTION_CONTROLLER,
                 "Use a single connection and rebindService() to manage the binding to a child"
                         + " process service."),
@@ -1304,7 +1297,6 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(
                 "UseLockFreeX509Verification",
                 "Enables lock-free certificate verification codepath."),
-        Flag.baseFeature(CcFeatures.REPORT_UKM, "Validate performance of UKM reporting."),
         Flag.baseFeature(
                 AwFeatures.WEBVIEW_WEB_PERFORMANCE_METRICS_REPORTING,
                 "Enables Web Performance Metrics to be reported using"
@@ -1365,6 +1357,18 @@ public final class ProductionSupportedFlagList {
                 "UseDynamicBackingAllocations",
                 "Allows CompoundImageBacking to allocate backings during runtime if a compatible"
                         + " backing to serve clients requested usage is not already present."),
+        Flag.baseFeature(
+                "DataUrlMimeTypeParameterPreservation",
+                "Preserve parameters in the MIME type of data: URLs."),
+        Flag.baseFeature(
+                "AsyncBeforeUnload",
+                "If enabled, runs beforeunload handlers asynchronously when the user"
+                        + " hasn't interacted with the frame."),
+        Flag.baseFeature(
+                "WebViewSkipFaviconJavaCopyUntilNeeded",
+                "Skips copying the favicon to Java if not needed by onReceivedIcon"
+                        + "being overriden."),
+
         // Add new commandline switches and features above. The final entry should have a
         // trailing comma for cleaner diffs.
     };

@@ -624,7 +624,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Ads.InterestGroup.Auction.BidScriptTime" units="ms"
-    expires_after="2026-07-19">
+    expires_after="2026-09-20">
   <owner>behamilton@google.com</owner>
   <owner>privacy-sandbox-dev@chromium.org</owner>
   <summary>
@@ -766,7 +766,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Ads.InterestGroup.Auction.GenerateBidTime" units="ms"
-    expires_after="2026-07-19">
+    expires_after="2026-09-20">
   <owner>pauljensen@chromium.org</owner>
   <owner>privacy-sandbox-dev@chromium.org</owner>
   <summary>
@@ -911,7 +911,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Ads.InterestGroup.Auction.LoadNoGroupsTime" units="ms"
-    expires_after="2026-07-19">
+    expires_after="2026-09-20">
   <owner>pauljensen@chromium.org</owner>
   <owner>privacy-sandbox-dev@chromium.org</owner>
   <summary>
@@ -941,7 +941,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Ads.InterestGroup.Auction.NumAuctionsPerPage" units="auctions"
-    expires_after="2026-07-19">
+    expires_after="2026-09-20">
   <owner>caraitto@chromium.org</owner>
   <owner>pauljensen@chromium.org</owner>
   <owner>privacy-sandbox-dev@chromium.org</owner>
@@ -1001,7 +1001,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Ads.InterestGroup.Auction.NumInterestGroups" units="groups"
-    expires_after="2026-07-19">
+    expires_after="2026-09-20">
   <owner>mmenke@chromium.org</owner>
   <owner>morlovich@chromium.org</owner>
   <summary>
@@ -1056,7 +1056,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Ads.InterestGroup.Auction.NumOwnersWithInterestGroups"
-    units="owners" expires_after="2026-07-19">
+    units="owners" expires_after="2026-09-20">
   <owner>mmenke@chromium.org</owner>
   <owner>morlovich@chromium.org</owner>
   <summary>
@@ -2300,7 +2300,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Ads.InterestGroup.{AuctionType}.AbortTime" units="ms"
-    expires_after="2026-07-19">
+    expires_after="2026-09-20">
   <owner>mmenke@chromium.org</owner>
   <owner>morlovich@chromium.org</owner>
   <summary>
@@ -2423,7 +2423,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Ads.InterestGroup.{AuctionType}.Result{Version}"
-    enum="AuctionResult" expires_after="2026-07-19">
+    enum="AuctionResult" expires_after="2026-09-20">
   <owner>mmenke@chromium.org</owner>
   <owner>morlovich@chromium.org</owner>
   <summary>
@@ -2547,7 +2547,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Ads.InterestGroup.{AuctionType}.TimeToResolve" units="ms"
-    expires_after="2026-07-19">
+    expires_after="2026-09-20">
   <owner>abigailkatcoff@chromium.org</owner>
   <owner>privacy-sandbox-dev@chromium.org</owner>
   <summary>
@@ -4667,6 +4667,26 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Gamepad.ConnectedGamepadSource" enum="GamepadSource"
+    expires_after="2027-02-18">
+  <owner>robpitkin@google.com</owner>
+  <owner>deviceapi-team@google.com</owner>
+  <summary>
+    Records the data fetcher source when a new gamepad is detected and assigned
+    a device slot.
+  </summary>
+</histogram>
+
+<histogram name="Gamepad.DeduplicatedGamepadSource" enum="GamepadSource"
+    expires_after="2027-02-18">
+  <owner>robpitkin@google.com</owner>
+  <owner>deviceapi-team@google.com</owner>
+  <summary>
+    Records an enumeration value identifying the data fetcher that ignored a
+    device because it is already handled by a more specialized data fetcher.
+  </summary>
+</histogram>
+
 <histogram name="Gamepad.KnownGamepadConnectedWithId"
     enum="GamepadVendorProduct" expires_after="2026-08-30">
   <owner>mattreynolds@chromium.org</owner>
@@ -4681,6 +4701,36 @@ chromium-metrics-reviews@google.com.
     product name in go/gamepad-ids. This histogram records a new entry when a
     device with a vendor and product ID matching a known gaming input device is
     detected during Gamepad API enumeration.
+  </summary>
+</histogram>
+
+<histogram name="Gamepad.Mac.GameController.ConnectionOutcome"
+    enum="GameControllerMacOutcome" expires_after="2027-02-24">
+  <owner>robpitkin@google.com</owner>
+  <owner>mattreynolds@chromium.org</owner>
+  <summary>
+    The outcome of a gamepad connection attempt in the macOS GameController data
+    fetcher. Recorded exactly once per recognized connection attempt.
+  </summary>
+</histogram>
+
+<histogram name="Gamepad.Mac.GamepadPlatform.ConnectionOutcome"
+    enum="GamepadPlatformMacOutcome" expires_after="2027-02-24">
+  <owner>robpitkin@google.com</owner>
+  <owner>mattreynolds@chromium.org</owner>
+  <summary>
+    The outcome of a gamepad connection attempt in the macOS GamepadPlatform
+    data fetcher. Recorded exactly once per recognized connection attempt.
+  </summary>
+</histogram>
+
+<histogram name="Gamepad.Mac.Xbox.ConnectionOutcome" enum="XboxMacOutcome"
+    expires_after="2027-02-24">
+  <owner>robpitkin@google.com</owner>
+  <owner>mattreynolds@chromium.org</owner>
+  <summary>
+    The outcome of a gamepad connection attempt in the macOS Xbox (USB) data
+    fetcher. Recorded exactly once per recognized connection attempt.
   </summary>
 </histogram>
 
@@ -5034,7 +5084,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="LoadingPredictor.PredictorDatabaseFileSize" units="KiB"
-    expires_after="2026-07-19">
+    expires_after="2026-09-20">
   <owner>yoichio@chromium.org</owner>
   <owner>chrome-loading@chromium.org</owner>
   <component>1457018</component>
@@ -5184,7 +5234,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Mojo.Channel.WriteMessageSize" units="bytes"
-    expires_after="2026-07-19">
+    expires_after="2026-09-20">
   <owner>amistry@chromium.org</owner>
   <owner>bgeffon@chromium.org</owner>
   <owner>rockot@google.com</owner>
@@ -6338,7 +6388,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="ReadingList.AddOrReplaceEntry" enum="ReadingListStorageState"
-    expires_after="2026-07-19">
+    expires_after="2026-09-20">
   <owner>mastiz@chromium.org</owner>
   <owner>mmrashad@google.com</owner>
   <owner>treib@chromium.org</owner>
@@ -7225,7 +7275,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="SiteIsolatedCodeCache.JS.Behaviour"
-    enum="SiteIsolatedCodeCacheJSBehaviour" expires_after="2026-07-19">
+    enum="SiteIsolatedCodeCacheJSBehaviour" expires_after="2026-09-20">
   <owner>awillia@chromium.org</owner>
   <owner>loading-dev@chromium.org</owner>
   <summary>
@@ -7317,7 +7367,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="SiteIsolatedCodeCache.WASM.Behaviour"
-    enum="SiteIsolatedCodeCacheWASMBehaviour" expires_after="2026-07-19">
+    enum="SiteIsolatedCodeCacheWASMBehaviour" expires_after="2026-09-20">
   <owner>awillia@chromium.org</owner>
   <owner>loading-dev@chromium.org</owner>
   <summary>
@@ -8175,7 +8225,7 @@ should be kept until we use this API.  -->
 </histogram>
 
 <histogram name="UpgradeDetector.DaysBeforeUpgrade" units="days"
-    expires_after="2026-07-22">
+    expires_after="2026-09-20">
   <owner>emshack@chromium.org</owner>
   <owner>top-chrome-desktop-ui@google.com</owner>
   <summary>
@@ -8617,6 +8667,39 @@ regressions. -->
   <owner>reillyg@chromium.org</owner>
   <summary>
     Records the reason why the WebUSB device chooser was closed.
+  </summary>
+</histogram>
+
+<histogram name="WebUsb.ControlTransferBlocked.{Direction}.{Type}"
+    enum="UsbInterfaceClass" expires_after="2027-03-20">
+  <owner>alvinji@google.com</owner>
+  <owner>robpitkin@google.com</owner>
+  <owner>reillyg@chromium.org</owner>
+  <summary>
+    Records the interface class code of a protected interface when a {Direction}
+    {Type} control transfer is blocked by DeviceImpl. This helps identify which
+    device classes are being targeted by specific control request types.
+  </summary>
+  <token key="Direction">
+    <variant name="Inbound" summary="inbound (device-to-host)"/>
+    <variant name="Outbound" summary="outbound (host-to-device)"/>
+  </token>
+  <token key="Type">
+    <variant name="Class" summary="Class"/>
+    <variant name="Standard" summary="Standard"/>
+    <variant name="Vendor" summary="Vendor"/>
+  </token>
+</histogram>
+
+<histogram name="WebUsb.ControlTransferPermissionOutcome"
+    enum="WebUsbControlTransferPermissionOutcome" expires_after="2027-03-19">
+  <owner>alvinji@google.com</owner>
+  <owner>robpitkin@google.com</owner>
+  <owner>reillyg@chromium.org</owner>
+  <summary>
+    Records the outcome of the control transfer permission check. This is used
+    to measure the impact of the fix for bypassing protected USB class
+    restrictions.
   </summary>
 </histogram>
 

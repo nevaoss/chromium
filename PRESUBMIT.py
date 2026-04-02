@@ -960,11 +960,17 @@ _BANNED_CPP_FUNCTIONS: Sequence[BanRule] = (
             # The early zone registration can't use base or absl. So it uses
             # std.
             r'base/allocator/partition_allocator/src/partition_alloc/shim/early_zone_registration_utils_apple.h',
+            # Similarly, helpers for printing stack traces can't use base or absl.
+            r'base/debug/buffered_dwarf_reader\.cc',
+            r'base/debug/buffered_dwarf_reader\.h',
 
             # Needed to use QUICHE API.
             r'components/private_ai/phosphor/.*',
             r'net/third_party/quiche/overrides/quiche_platform_impl/quiche_stack_trace_impl\.*',
             r'services/network/web_transport\.cc',
+
+            # Needed to interface with library that can't use base or absl.
+            r'components/optimization_guide/content/browser/page_context_eligibility_api\.(cc|h)',
 
             # Not an error in third_party folders.
             _THIRD_PARTY_EXCEPT_BLINK,
@@ -1869,7 +1875,7 @@ _BANNED_CPP_FUNCTIONS: Sequence[BanRule] = (
         True,
         [
             # Implements BASE_DECLARE_FEATURE().
-            r'^base/feature_list\.h',
+            r'^base/feature\.h',
         ],
     ),
     BanRule(

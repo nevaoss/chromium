@@ -85,7 +85,6 @@ class SolutionImpl : public ModelBrokerImpl::Solution {
   // ModelBrokerImpl::Solution:
   bool IsValid() const override;
   mojom::ModelSolutionConfigPtr MakeConfig() const override;
-  const OnDeviceModelFeatureAdapter* GetAdapter() const override;
 
   // mojom::ModelSolution
   void CreateSession(
@@ -124,16 +123,11 @@ mojom::ModelSolutionConfigPtr SolutionImpl::MakeConfig() const {
   config->feature_config = mojo_base::ProtoWrapper(adapter_->config());
   config->model_versions =
       mojo_base::ProtoWrapper(GetModelVersions(spec_, adaptation_version_));
-  config->max_tokens = adapter_->GetTokenLimits().max_tokens;
   // TODO: crbug.com/442914748 - Add safety config.
   config->text_safety_config =
       mojo_base::ProtoWrapper(proto::FeatureTextSafetyConfiguration());
   config->model_capabilities = AICoreModelCapabilities();
   return config;
-}
-
-const OnDeviceModelFeatureAdapter* SolutionImpl::GetAdapter() const {
-  return adapter_.get();
 }
 
 void SolutionImpl::CreateSession(
@@ -367,38 +361,6 @@ void ModelBrokerAndroid::BindModelBroker(
   if (features::IsOnDeviceExecutionEnabled()) {
     impl_.BindBroker(std::move(receiver));
   }
-}
-
-std::optional<SamplingParamsConfig> ModelBrokerAndroid::GetSamplingParamsConfig(
-    mojom::OnDeviceFeature feature) {
-  if (!features::IsOnDeviceExecutionEnabled()) {
-    return std::nullopt;
-  }
-
-  const auto& solution = impl_.GetSolutionProvider(feature).solution();
-  if (!solution.has_value()) {
-    return std::nullopt;
-  }
-
-  // Solution owns the scoped_refptr to the adapter, so the return pointer of
-  // GetAdapter() is always safe to use.
-  return solution.value()->GetAdapter()->GetSamplingParamsConfig();
-}
-
-std::optional<const proto::Any> ModelBrokerAndroid::GetFeatureMetadata(
-    mojom::OnDeviceFeature feature) {
-  if (!features::IsOnDeviceExecutionEnabled()) {
-    return std::nullopt;
-  }
-
-  const auto& solution = impl_.GetSolutionProvider(feature).solution();
-  if (!solution.has_value()) {
-    return std::nullopt;
-  }
-
-  // Solution owns the scoped_refptr to the adapter, so the return pointer of
-  // GetAdapter() is always safe to use.
-  return solution.value()->GetAdapter()->GetFeatureMetadata();
 }
 
 mojo::Remote<on_device_model::mojom::OnDeviceModel>&

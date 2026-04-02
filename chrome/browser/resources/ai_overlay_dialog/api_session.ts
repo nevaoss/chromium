@@ -4,19 +4,7 @@
 
 import {assert} from '//resources/js/assert.js';
 
-import type {AudioCapturer} from './audio_capturer.js';
-import {AudioPlayer} from './audio_player.js';
-
-/**
- * States for the API session.
- * TODO(bokan): This doesn't belong here long term but will be moved once we
- * have a more appropriate coordinator object.
- */
-export enum SessionState {
-  IDLE = 'idle',
-  LISTENING = 'listening',
-  TALKING = 'talking',
-}
+const kLogWebSocketMessages = false;
 
 /**
  * API session WebSocket protocol types.
@@ -37,6 +25,8 @@ interface SetupMessage {
     systemInstruction?: {
       parts: Array<{text: string}>,
     },
+    inputAudioTranscription?: {},
+    outputAudioTranscription?: {},
   };
 }
 
@@ -62,6 +52,12 @@ interface ServerContentMessage {
     },
     interrupted?: boolean,
     turnComplete?: boolean,
+    inputTranscription?: {
+      text?: string,
+    },
+    outputTranscription?: {
+      text?: string,
+    },
   };
   setupComplete?: {};
 }
@@ -71,35 +67,31 @@ interface ApiConfig {
   model: string;
 }
 
+export interface ApiSessionDelegate {
+  onResponse(audioData: string): void;
+  onTranscription(text: string, isInput: boolean): void;
+  onTurnComplete(): void;
+  interrupt(): void;
+  onConnectionChanged(connected: boolean): void;
+}
+
 /**
  * Manages the connection and communication with the server.
  */
 export class ApiSession {
   private readonly apiKey: string;
   private readonly systemInstruction: string;
-  private readonly audioCapturer: AudioCapturer;
-  private readonly audioPlayer: AudioPlayer;
 
   private ws: WebSocket|null = null;
-  // TODO(bokan): the session shouldn't interact with state, the coordinator
-  // should be responsible for this based on the incoming messages.
-  private onStateChange: (state: SessionState) => void;
   private config_: ApiConfig|null = null;
 
+  private delegate: ApiSessionDelegate;
+
   constructor(
-      apiKey: string, systemInstruction: string,
-      audioCapturer: AudioCapturer, audioPlayer: AudioPlayer,
-      onStateChange: (state: SessionState) => void) {
+      apiKey: string, systemInstruction: string, delegate: ApiSessionDelegate) {
     this.apiKey = apiKey;
     this.systemInstruction = systemInstruction;
-    this.audioCapturer = audioCapturer;
-    this.audioPlayer = audioPlayer;
-    this.onStateChange = onStateChange;
-    // TODO(bokan): 24000 Hz (the default sampleRate in AudioPlayer) happens to
-    // be what we receive from the server but we should be looking at the value
-    // on the mime type and recreate the AudioPlayer if necessary.
-    this.audioPlayer =
-        new AudioPlayer(onStateChange.bind(this, SessionState.LISTENING));
+    this.delegate = delegate;
   }
 
   async connect() {
@@ -108,7 +100,7 @@ export class ApiSession {
         const response = await fetch('api_config.json');
         this.config_ = await response.json();
       } catch (e) {
-        console.error('Failed to load api_config.json', e);
+        console.error('ApiSession failed to load api_config.json', e);
         this.stop();
         return;
       }
@@ -118,13 +110,9 @@ export class ApiSession {
     const url = `${this.config_.endpoint_url}?key=${this.apiKey}`;
     this.ws = new WebSocket(url);
 
-    this.ws.onopen = async () => {
+    this.ws.onopen = () => {
       console.info('WebSocket Opened');
-      this.onStateChange(SessionState.LISTENING);
       this.sendSetup();
-
-      await this.audioCapturer.start(
-          this.sendAudio.bind(this, this.audioCapturer.getSampleRate()));
     };
 
     this.ws.onmessage = async (event) => {
@@ -134,7 +122,7 @@ export class ApiSession {
           const text = await event.data.text();
           jsonPayload = JSON.parse(text);
         } catch (e) {
-          console.error('Failed message decode: ', e);
+          console.error('WebSocket Failed message decode: ', e);
           return;
         }
       } else if (typeof event.data === 'string') {
@@ -142,28 +130,38 @@ export class ApiSession {
       }
 
       if (jsonPayload) {
+        // Seeing all messages in the socket can be useful but is very verbose
+        // so it's behind a bool to avoid flooding the console during normal
+        // usage.
+        if (kLogWebSocketMessages) {
+          console.info(JSON.stringify(jsonPayload, (key, value) => {
+            // Don't print the audio data so that the output is more easily
+            // readable.
+            return key === 'data' ? '<data>' : value;
+          }, 2));
+        }
+
         this.handleMessage(jsonPayload);
       }
     };
 
     this.ws.onclose = (e) => {
       console.info('WebSocket Closed: ', e);
+      this.delegate.onConnectionChanged(false);
       this.stop();
     };
 
     this.ws.onerror = (error) => {
-      console.error('API WebSocket error:', error);
+      console.error('WebSocket Error:', error);
+      this.delegate.onConnectionChanged(false);
       this.stop();
     };
   }
 
   stop() {
-    console.info('stop()');
-    this.audioCapturer.stop();
-    this.audioPlayer.stop();
+    console.info('ApiSession: stop');
     this.ws?.close();
     this.ws = null;
-    this.onStateChange(SessionState.IDLE);
   }
 
   private sendSetup() {
@@ -182,12 +180,14 @@ export class ApiSession {
             text: this.systemInstruction,
           }],
         },
+        inputAudioTranscription: {},
+        outputAudioTranscription: {},
       },
     };
     this.ws?.send(JSON.stringify(setup));
   }
 
-  private sendAudio(sampleRate: number, base64Data: string) {
+  sendAudio(sampleRate: number, base64Data: string) {
     const msg: RealtimeInputMessage = {
       realtimeInput: {
         mediaChunks: [{
@@ -200,23 +200,39 @@ export class ApiSession {
   }
 
   private handleMessage(msg: ServerContentMessage) {
+    if (msg.setupComplete) {
+      console.info('ApiSession SetupComplete');
+      this.delegate.onConnectionChanged(true);
+      return;
+    }
+
     const content = msg.serverContent;
     if (!content) {
       return;
     }
 
+    if (content.inputTranscription?.text) {
+      this.delegate.onTranscription(content.inputTranscription.text, true);
+    }
+
+    if (content.outputTranscription?.text) {
+      this.delegate.onTranscription(content.outputTranscription.text, false);
+    }
+
     if (content.modelTurn?.parts) {
       for (const part of content.modelTurn?.parts) {
         if (part.inlineData) {
-          this.onStateChange(SessionState.TALKING);
-          this.audioPlayer.play(part.inlineData.data);
+          this.delegate.onResponse(part.inlineData.data);
         }
       }
     }
 
+    if (content.turnComplete) {
+      this.delegate.onTurnComplete();
+    }
+
     if (content.interrupted) {
-      this.onStateChange(SessionState.LISTENING);
-      this.audioPlayer.stop();
+      this.delegate.interrupt();
     }
   }
 }

@@ -699,6 +699,7 @@ Sadece parolanıza sahip olan kişiler şifrelenmiş verilerinizi okuyabilir. Pa
 <translation id="3985215325736559418"><ph name="FILE_NAME" /> dosyasını tekrar indirmek istiyor musunuz?</translation>
 <translation id="3987993985790029246">Bağlantıyı kopyala</translation>
 <translation id="3994236846568425219">Cihazınızda koyu tema açık olduğunda koyu tema açılır</translation>
+<translation id="399788104667917863">Araç çubuğuna sabitle</translation>
 <translation id="4000212216660919741">Çevrimdışı Ana Sayfa</translation>
 <translation id="4000670338830950598">Vurgulanan öğelerle Google Chrome'u özelleştirin ve kontrol edin</translation>
 <translation id="4015643064997321279">{NUM_PASSWORDS,plural, =1{Google Hesabınızda güvenliği ihlal edilmiş 1 şifre var}other{Google Hesabınızda güvenliği ihlal edilmiş # şifre var}}</translation>
@@ -798,6 +799,7 @@ Sadece parolanıza sahip olan kişiler şifrelenmiş verilerinizi okuyabilir. Pa
 <translation id="4384468725000734951">Arama için Sogou kullanılıyor</translation>
 <translation id="4387647248986092471">Araba profil kilidi oluştur</translation>
 <translation id="4387817230000841154">İndirilenler'i Aç</translation>
+<translation id="4394049700291259645">Devre dışı bırak</translation>
 <translation id="4395046795145457714">Chrome Finds etkinleştirme sayfası tam ekranda açıldı</translation>
 <translation id="4398561997852463382"><ph name="TAB_TITLE" />, Medya Kaydeden Seçili Sabit Gizli Sekme</translation>
 <translation id="4402611456429872546"><ph name="LANG" /> - İndiriliyor…</translation>
@@ -822,7 +824,6 @@ Sadece parolanıza sahip olan kişiler şifrelenmiş verilerinizi okuyabilir. Pa
 <translation id="4478161224666880173">Bu sitede <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> hesabınızı kullanabilirsiniz. Devam etmek için <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> hesabında oturum açın.</translation>
 <translation id="4479972344484327217">Chrome için <ph name="MODULE" /> yükleniyor…</translation>
 <translation id="4487967297491345095">Chrome'un tüm uygulama verileri kalıcı olarak silinecek. Buna tüm dosyalar, ayarlar, hesaplar, veritabanları vb. dahildir.</translation>
-<translation id="4494315997125191493">Tüm pencereleri görmek için Yönet'i seçin</translation>
 <translation id="4494806687727322324">Şifre kaydetme özelliği yöneticiniz tarafından etkinleştirildi</translation>
 <translation id="4508528996305412043">Akış kartı menüsü açık</translation>
 <translation id="4509741852167209430">Sitelerin gösterdikleri reklamların performansını ölçmeleri için sınırlı türde veri (ör. bir siteyi ziyaret ettikten sonra satın alma işlemi yapıp yapmadığınız), siteler arasında paylaşılır.</translation>
@@ -870,7 +871,6 @@ Diğer Google hizmetlerinden yapılan aramalar ve etkinlikler gibi Google hesab�
 <translation id="4673702426794876519">Gizli pencere</translation>
 <translation id="4675298276894277358">Bu site bir daha gösterilmeyecek</translation>
 <translation id="4678082183394354975">Chrome'daki sitelerde koyu tema açık</translation>
-<translation id="4682306524980568490">Yalnızca <ph name="MAX_INSTANCE_COUNT" /> pencere gösterilebilir</translation>
 <translation id="4684427112815847243">Her şeyi senkronize et</translation>
 <translation id="4685741273709472646">Açılır listeden seçim yapın</translation>
 <translation id="4687718960473379118">Site tarafından önerilen reklamlar</translation>
@@ -1339,7 +1339,7 @@ Diğer Google hizmetlerinden yapılan aramalar ve etkinlikler gibi Google hesab�
 <translation id="6541983376925655882">{NUM_HOURS,plural, =1{1 saat önce kontrol edildi}other{# saat önce kontrol edildi}}</translation>
 <translation id="6545017243486555795">Tüm Verileri Temizle</translation>
 <translation id="6546511553472444032">Dosya zararlı olabilir</translation>
-<translation id="654871471440386944">Klavyeye göz atma açılsın mı?</translation>
+<translation id="654871471440386944">Klavyeyle göz atma açılsın mı?</translation>
 <translation id="6550891580932862748">Sizi tehlikeli web siteleri, indirmeler ve uzantılara karşı korumaz. Diğer Google ürünlerindeki Güvenli Tarama ayarlarınız etkilenmez.</translation>
 <translation id="6554822972009632311">İçerik filtresi açık</translation>
 <translation id="6556501700899673703">Lexend</translation>

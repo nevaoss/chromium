@@ -129,6 +129,7 @@
 #include "third_party/blink/renderer/platform/graphics/canvas_non2d_snapshot_provider_bitmap.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource_provider.h"
+#include "third_party/blink/renderer/platform/graphics/gpu/canvas_utils.h"
 #include "third_party/blink/renderer/platform/graphics/gpu/image_extractor.h"
 #include "third_party/blink/renderer/platform/graphics/gpu/shared_gpu_context.h"
 #include "third_party/blink/renderer/platform/graphics/graphics_context.h"
@@ -1289,6 +1290,8 @@ WebGLRenderingContextBase::WebGLRenderingContextBase(
   ADD_VALUES_TO_SET(supported_tex_image_source_formats_, kSupportedFormatsES2);
   ADD_VALUES_TO_SET(supported_types_, kSupportedTypesES2);
   ADD_VALUES_TO_SET(supported_tex_image_source_types_, kSupportedTypesES2);
+
+  dirty_rect_for_commit_.setEmpty();
 }
 
 scoped_refptr<DrawingBuffer> WebGLRenderingContextBase::CreateDrawingBuffer(
@@ -1578,6 +1581,9 @@ void WebGLRenderingContextBase::MarkContextChanged(
 
   if (Host()->IsOffscreenCanvas()) {
     marked_canvas_dirty_ = true;
+    dirty_rect_for_commit_.join(
+        SkIRect::MakeWH(Host()->Size().width(), Host()->Size().height()));
+
     DidDraw(draw_type);
     return;
   }
@@ -1618,11 +1624,9 @@ bool WebGLRenderingContextBase::PushFrameNoCopy() {
   auto canvas_resource = GetDrawingBuffer()->ExportCanvasResource();
   if (!canvas_resource)
     return false;
-  const int width = GetDrawingBuffer()->Size().width();
-  const int height = GetDrawingBuffer()->Size().height();
-  const bool submitted_frame = Host()->PushFrame(
-      std::move(canvas_resource), SkIRect::MakeWH(width, height));
-
+  const bool submitted_frame =
+      Host()->PushFrame(std::move(canvas_resource), dirty_rect_for_commit_);
+  dirty_rect_for_commit_.setEmpty();
   MarkLayerComposited();
   return submitted_frame;
 }
@@ -1641,12 +1645,11 @@ bool WebGLRenderingContextBase::PushFrameWithCopy() {
   auto* resource_provider =
       PaintRenderingResultsToResourceProvider(kBackBuffer);
   if (resource_provider && resource_provider_has_content_for_frame_push_) {
-    const int width = GetDrawingBuffer()->Size().width();
-    const int height = GetDrawingBuffer()->Size().height();
-    auto size = SkIRect::MakeWH(width, height);
     submitted_frame = Host()->PushFrame(
-        resource_provider->ProduceCanvasResource(FlushReason::kOther), size);
+        resource_provider->ProduceCanvasResource(FlushReason::kOther),
+        dirty_rect_for_commit_);
     resource_provider_has_content_for_frame_push_ = false;
+    dirty_rect_for_commit_.setEmpty();
   }
   MarkLayerComposited();
   return submitted_frame;
@@ -1977,7 +1980,7 @@ WebGLRenderingContextBase::GetSharedImageResourceProvider() {
     gpu::SharedImageUsageSet shared_image_usage_flags =
         gpu::SHARED_IMAGE_USAGE_DISPLAY_READ;
 
-    if (SharedGpuContext::UseOverlaysForWebGL()) {
+    if (UseOverlaysForWebGL()) {
       shared_image_usage_flags |= gpu::SHARED_IMAGE_USAGE_SCANOUT;
     }
     resource_provider_ = CanvasNon2DResourceProviderSharedImage::Create(
@@ -2198,6 +2201,8 @@ WebGLRenderingContextBase::GetRGBAUnacceleratedStaticBitmapImage(
 }
 
 void WebGLRenderingContextBase::Reshape(int width, int height) {
+  dirty_rect_for_commit_ = SkIRect::MakeWH(width, height);
+
   if (isContextLost())
     return;
 
@@ -4373,10 +4378,10 @@ ScriptValue WebGLRenderingContextBase::getUniform(
         reinterpret_cast<GLchar*>(name_buffer.data()));
     if (size < 0)
       return ScriptValue::CreateNull(script_state->GetIsolate());
-    String name(name_impl->Substring(0, name_length));
+    StringView name(name_impl.get(), 0, name_length);
     // Strip "[0]" from the name if it's an array.
     if (size > 1 && name.ends_with("[0]")) {
-      name = name.Left(name.length() - 3);
+      name.remove_suffix(3);
     }
     // If it's an array, we need to iterate through each element, appending
     // "[index]" to the name.

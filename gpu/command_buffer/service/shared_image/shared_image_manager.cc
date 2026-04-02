@@ -406,7 +406,9 @@ std::unique_ptr<RasterImageRepresentation> SharedImageManager::ProduceRaster(
     return nullptr;
   }
 
-  EnforceSharedImageUsage(backing, {SHARED_IMAGE_USAGE_RAW_DRAW});
+  // TODO(b/349290188): Add back this enforcement when we plan on shipping
+  // RawDraw.
+  // EnforceSharedImageUsage(backing, {SHARED_IMAGE_USAGE_RAW_DRAW});
   // This is expected to fail based on the SharedImageBacking type, so don't log
   // error here. Caller is expected to handle nullptr.
   return backing->ProduceRaster(this, tracker);
@@ -667,6 +669,7 @@ void SharedImageManager::QueryMultiplanarTextureSamplingSupport() {
 
 bool SharedImageManager::SupportsNV12TextureSampling() {
 #if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FUCHSIA)
+  AutoLock autolock(this);
   if (!is_texture_sampling_queried_) {
     QueryMultiplanarTextureSamplingSupport();
   }
@@ -680,6 +683,7 @@ bool SharedImageManager::SupportsNV12TextureSampling() {
 
 bool SharedImageManager::SupportsP010TextureSampling() {
 #if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FUCHSIA)
+  AutoLock autolock(this);
   if (!is_texture_sampling_queried_) {
     QueryMultiplanarTextureSamplingSupport();
   }

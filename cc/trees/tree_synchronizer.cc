@@ -193,7 +193,9 @@ void TreeSynchronizer::PushLayerProperties(LayerTreeImpl* pending_tree,
   for (auto* source_layer : layers) {
     LayerImpl* target_layer = active_tree->LayerById(source_layer->id());
     DCHECK(target_layer);
-    source_layer->PushPropertiesTo(target_layer);
+    source_layer->MovePropertiesToActiveLayer(target_layer);
+    // Reset any state that should be cleared for the next update.
+    source_layer->ResetChangeTracking();
   }
 
   pending_tree->ClearLayersThatShouldPushProperties();
@@ -201,7 +203,6 @@ void TreeSynchronizer::PushLayerProperties(LayerTreeImpl* pending_tree,
 
 void TreeSynchronizer::PushLayerProperties(
     const CommitState& commit_state,
-    const ThreadUnsafeCommitState& unsafe_state,
     LayerTreeImpl* impl_tree) {
   TRACE_EVENT1("cc", "TreeSynchronizer::PushLayerPropertiesTo.Main",
                "layer_count",
@@ -214,7 +215,7 @@ void TreeSynchronizer::PushLayerProperties(
     auto* source_layer = *it;
     LayerImpl* target_layer = impl_tree->LayerById(source_layer->id());
     CHECK(target_layer);
-    source_layer->PushPropertiesTo(target_layer, commit_state, unsafe_state);
+    source_layer->PushPropertiesTo(target_layer, commit_state);
   }
 }
 

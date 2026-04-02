@@ -209,6 +209,7 @@
 <translation id="1740468249224277719">इंस्टॉल करने के लिए दो बार टैप करें.</translation>
 <translation id="1740650426894359238">दूसरी प्रोफ़ाइल पर स्विच करें</translation>
 <translation id="1741219894094057085">स्मार्टवॉच</translation>
+<translation id="1742773766788162541">कार्ड स्कैन करें और ऑटोमैटिक तरीके से भरें</translation>
 <translation id="1743244221910283364">बदलावों को खारिज करें</translation>
 <translation id="1748975028205587434">अपनी फ़ाइल चुनें</translation>
 <translation id="1749733017156547309">पासवर्ड ज़रूरी है</translation>
@@ -492,6 +493,7 @@
 <translation id="2721190673959776287">कॉन्टेक्स्ट के हिसाब से उपलब्ध पैनल के लिए, अच्छे सैंपल के साथ प्रॉडक्ट में दी जाने वाली सहायता. इसे एक दिन में कई बार दिखाया जाएगा.</translation>
 <translation id="2739887572830526131">बाद में टैब जोड़ने के लिए, इस ग्रुप को सेव रखें. अगर आपको इसकी ज़रूरत नहीं है, तो इसे मिटा दें.</translation>
 <translation id="2747003861858887689">पिछला फ़ील्‍ड</translation>
+<translation id="2750583038402718064"><ph name="WEBSITE_TITLE" /> को <ph name="POSITION" /> पर ले जाया गया</translation>
 <translation id="2755485474385016903">कोई भी बदलाव करने पर, उसे ग्रुप में मौजूद सभी लोग देख सकते हैं</translation>
 <translation id="2755595981383829244">अब आपको कॉन्टेंट के बारे में सूचनाएं मिलेंगी</translation>
 <translation id="2761788987260570878">जिसकी जानकारी चाहिए उसकी फ़ोटो लें</translation>
@@ -710,6 +712,7 @@
 <translation id="3578866308944526475"><ph name="EMAIL" /> को आपका संगठन मैनेज करता है.</translation>
 <translation id="3580448612293054698">क्या आपको <ph name="ENTITY_TYPE" /> को अपडेट करना है?</translation>
 <translation id="3581564640715911333">दूसरी भाषाओं में पेजों का अनुवाद करने की सुविधा दें</translation>
+<translation id="3583726884554296148">अपने Google खाते में कार्ड की जानकारी सेव करें, ताकि इस खरीदारी और Chrome पर आगे की जाने वाली खरीदारियों के लिए, कार्ड की जानकारी अपने-आप भर जाए</translation>
 <translation id="3587482841069643663">सभी</translation>
 <translation id="3587885837929752825">आपका संगठन यह मैनेज करता है कि आपके पास अपने Google खाते में किस तरह का डेटा सेव करने की अनुमति है.</translation>
 <translation id="3588820906588687999">इमेज को 'नए टैब' में खोलें</translation>
@@ -1346,6 +1349,7 @@ Handoff को Settings के General अनुभाग में भी स�
 <translation id="5819208479324046259"><ph name="MANAGER" /> मैनेज करता है. <ph name="BEGIN_LINK" />ज़्यादा जानें<ph name="END_LINK" /></translation>
 <translation id="5827266244928330802">Safari</translation>
 <translation id="5829649908290113115">सिंक हो रहा है…</translation>
+<translation id="583281660410589416">अज्ञात</translation>
 <translation id="5838430324585198889">Google के ऐप्लिकेशन इस्तेमाल करें और अपने iPad पर ज़्यादा सुविधाएं पाएं</translation>
 <translation id="583923961930319521">अपने सभी डिवाइसों पर पासवर्ड इस्तेमाल करें</translation>
 <translation id="5843013299019689749">बैकग्राउंड का काला रंग</translation>
@@ -1556,6 +1560,7 @@ Handoff को Settings के General अनुभाग में भी स�
 <translation id="6532106788206463496">बदलाव सेव करें</translation>
 <translation id="6536759809440150308"><ph name="GROUP_TITLE" /> खोलें, <ph name="NUMBER_OF_TABS" /> का ग्रुप, <ph name="CREATION_TEXT" /></translation>
 <translation id="6537746030088321027">example.com</translation>
+<translation id="6543899060872618437">अपने सभी डिवाइसों पर, ऑटोमैटिक तरीके से भरने की सुविधा से फटाफट पेमेंट करें</translation>
 <translation id="6550675742724504774">विकल्प</translation>
 <translation id="6550891580932862748">इस मोड में आपको नुकसान पहुंचाने वाली वेबसाइटों, डाउनलोड, और एक्सटेंशन से सुरक्षा नहीं मिलती. Google के अन्य प्रॉडक्ट में सुरक्षित ब्राउज़िंग की सेटिंग पर इसका कोई असर नहीं होगा.</translation>
 <translation id="6556501700899673703">Lexend</translation>
@@ -2029,6 +2034,7 @@ Handoff को Settings के General अनुभाग में भी स�
 <translation id="8209237163365258530">Gemini <ph name="VERSION_NUMBER" /> के मॉडल</translation>
 <translation id="8211030355252954494">आपको <ph name="WEBSITE" /> के लिए पासवर्ड मिल गए हैं</translation>
 <translation id="8211406090763984747">कनेक्शन सुरक्षित है</translation>
+<translation id="8213190397436801658">होम</translation>
 <translation id="8214293972734702249">पिन किया गया <ph name="TAB_TITLE" /></translation>
 <translation id="8219424187226230983">ऑफ़लाइन वर्शन को नए टैब में देखें</translation>
 <translation id="8221665793629393739">फिर से देखने के लिए रिमाइंडर</translation>
@@ -2095,7 +2101,7 @@ Handoff को Settings के General अनुभाग में भी स�
 <translation id="8443986842926457191">यूआरएल 2048 वर्णों से ज़्यादा का है</translation>
 <translation id="8449869326050867919">पासवर्ड शेयर किया गया</translation>
 <translation id="8473815223723723001">Gemini की मदद से इमेज में बदलाव करें</translation>
-<translation id="8473863474539038330">पते वगैरह</translation>
+<translation id="8473863474539038330">पते और अन्य जानकारी</translation>
 <translation id="8474378002946546633">नोटिफ़िकेशन की अनुमति दें</translation>
 <translation id="8477178913400731244">डेटा मिटाएं</translation>
 <translation id="847939250509903814">फ़ोटो लाइब्रेरी</translation>

@@ -174,6 +174,8 @@
 #include "content/public/browser/web_contents_delegate.h"
 #include "content/public/browser/web_contents_view_delegate.h"
 #include "content/public/browser/web_ui_controller.h"
+#include "content/public/browser/webui_config.h"
+#include "content/public/browser/webui_config_map.h"
 #include "content/public/common/content_client.h"
 #include "content/public/common/content_features.h"
 #include "content/public/common/content_switches.h"
@@ -3028,8 +3030,7 @@ base::TimeTicks WebContentsImpl::GetLastInteractionTimeTicks() {
 }
 
 WebContents::ScopedIgnoreInputEvents WebContentsImpl::IgnoreInputEvents(
-    std::optional<WebInputEventAuditCallback> audit_callback,
-    bool should_ignore_a11y_input) {
+    std::optional<WebInputEventAuditCallback> audit_callback) {
   OPTIONAL_TRACE_EVENT0("content", "WebContentsImpl::IgnoreInputEvents");
 
   uint64_t callback_id = 0;
@@ -3052,14 +3053,11 @@ WebContents::ScopedIgnoreInputEvents WebContentsImpl::IgnoreInputEvents(
     }
 #endif
     ++ignore_input_events_count_;
-    if (should_ignore_a11y_input) {
-      ++ignore_a11y_input_count_;
-    }
   }
 
   // Bind weakly, since the token might outlive us.
   return ScopedIgnoreInputEvents(base::BindOnce(
-      [](base::WeakPtr<WebContentsImpl> wc, bool should_ignore_a11y_input,
+      [](base::WeakPtr<WebContentsImpl> wc,
          std::optional<uint64_t> callback_id) {
         if (wc) {
           OPTIONAL_TRACE_EVENT0("content",
@@ -3086,23 +3084,16 @@ WebContents::ScopedIgnoreInputEvents WebContentsImpl::IgnoreInputEvents(
             }
 #endif
             --wc->ignore_input_events_count_;
-            if (should_ignore_a11y_input) {
-              --wc->ignore_a11y_input_count_;
-            }
           }
         }
       },
-      weak_factory_.GetWeakPtr(), should_ignore_a11y_input,
+      weak_factory_.GetWeakPtr(),
       audit_callback.has_value() ? std::make_optional<uint64_t>(callback_id)
                                  : std::nullopt));
 }
 
 bool WebContentsImpl::ShouldIgnoreInputEventsForTesting() {
   return ShouldIgnoreInputEvents();
-}
-
-bool WebContentsImpl::ShouldIgnoreA11yInputEventsForTesting() {
-  return ShouldIgnoreA11yInputEvents();
 }
 
 bool WebContentsImpl::HasActiveEffectivelyFullscreenVideo() {
@@ -3824,6 +3815,11 @@ const blink::web_pref::WebPreferences WebContentsImpl::ComputeWebPreferences(
 
   prefs.dont_send_key_events_to_javascript =
       base::FeatureList::IsEnabled(features::kDontSendKeyEventsToJavascript);
+
+  prefs.ignore_duplicate_nav_enabled =
+      base::FeatureList::IsEnabled(features::kIgnoreDuplicateNavs);
+
+  prefs.duplicate_nav_threshold = features::kDuplicateNavThreshold.Get();
 
 // TODO(dtapuska): Enable barrel button selection drag support on Android.
 // crbug.com/758042
@@ -10558,16 +10554,6 @@ bool WebContentsImpl::ShouldIgnoreInputEvents() {
   return web_contents->ShouldIgnoreInputEvents();
 }
 
-bool WebContentsImpl::ShouldIgnoreA11yInputEvents() {
-  if (ignore_a11y_input_count_ > 0) {
-    return true;
-  }
-  WebContentsImpl* web_contents = GetOuterWebContents();
-  if (!web_contents) {
-    return false;
-  }
-  return web_contents->ShouldIgnoreA11yInputEvents();
-}
 
 void WebContentsImpl::FocusOwningWebContents(
     RenderWidgetHostImpl* render_widget_host) {
@@ -11857,6 +11843,19 @@ void WebContentsImpl::UpdateWebContentsVisibility(Visibility visibility) {
   OPTIONAL_TRACE_EVENT1("content",
                         "WebContentsImpl::UpdateWebContentsVisibility",
                         "visibility", visibility);
+
+  // For opt-in WebUIs, the WebContents's visibility will be kept VISIBLE until
+  // the first visually non-empty paint has occurred.
+  // This is an optimization to prevent the occlusion calculation from blocking
+  // the first visually non-empty paint.
+  WebUI* web_ui = GetWebUI();
+  WebUIConfig* webui_config = web_ui ? web_ui->GetWebUIConfig() : nullptr;
+  if (webui_config &&
+      webui_config->ShouldKeepVisibleUntilFirstVisuallyNonEmptyPaint() &&
+      !CompletedFirstVisuallyNonEmptyPaint()) {
+    visibility = Visibility::VISIBLE;
+  }
+
   // Occlusion is disabled when
   // |switches::kDisableBackgroundingOccludedWindowsForTesting| is specified on
   // the command line (to avoid flakiness in browser tests).

@@ -440,10 +440,12 @@ BASE_FEATURE(kGlicUnifiedFreScreen, base::FEATURE_ENABLED_BY_DEFAULT);
 // Controls the bugfix where the unified FRE synchronizes cookies to the wrong
 // storage partition.
 BASE_FEATURE(kGlicUseMainPartitionForUnifiedFre,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Controls the Glic Trust First Onboarding experience.
 BASE_FEATURE(kGlicTrustFirstOnboarding, base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kGlicMessageFirstFre, base::FEATURE_DISABLED_BY_DEFAULT);
 
 const base::FeatureParam<int> kGlicTrustFirstOnboardingArmParam{
     &kGlicTrustFirstOnboarding, "arm", 1 /* kStartChat */};
@@ -724,7 +726,7 @@ BASE_FEATURE(kGlicEnableCachedGetUserProfileInfo,
 
 BASE_FEATURE(kGlicUseShaderCache, base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kGlicDragAndDropFileUpload, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGlicDragAndDropFileUpload, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicKeyboardShortcutNewBadge, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -736,7 +738,7 @@ BASE_FEATURE(kGlicScrollTo, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicCaptureRegion, base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kGlicUseNonClient, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGlicUseNonClient, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Controls whether we enforce that documentId (an optional parameter) is set
 // when trying to scroll all documents except PDFs (and fail the request if
@@ -771,8 +773,6 @@ const base::FeatureParam<int> kGlicWarmingDelayMs{
 // random positive number of milliseconds between 0 and kGlicWarmingJitterMs.
 const base::FeatureParam<int> kGlicWarmingJitterMs{
     &kGlicWarming, "glic-warming-jitter-ms", 10 * 1000};
-
-BASE_FEATURE(kGlicWarmMultiple, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicTieredRollout, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -873,7 +873,7 @@ BASE_FEATURE(kGlicExtensions, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicMultitabUnderlines, base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kGlicHandleDraggingNatively, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGlicHandleDraggingNatively, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // When enabled, the X-Glic headers will be attached to requests as specified by
 // the kGlicHeaderRequestTypes param.
@@ -1023,6 +1023,8 @@ BASE_FEATURE(kPrivacyGuideForceAvailable, base::FEATURE_DISABLED_BY_DEFAULT);
 
 #if BUILDFLAG(ENABLE_PDF)
 BASE_FEATURE(kPdfGlicSummarize, base::FEATURE_DISABLED_BY_DEFAULT);
+const base::FeatureParam<int> kPdfGlicSummarizeArm{&kPdfGlicSummarize, "arm",
+                                                   1};
 BASE_FEATURE(kPdfGlicSummarizeFre, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif
 
@@ -1239,6 +1241,10 @@ BASE_FEATURE(kListWebAppsSwitch, base::FEATURE_DISABLED_BY_DEFAULT);
 // Center for displaying the toasts. The feature is hardcoded to enabled for
 // Chrome OS.
 BASE_FEATURE(kNativeNotifications, base::FEATURE_ENABLED_BY_DEFAULT);
+
+// Enables installation of the content script for chrome/browser/indigo/ via
+// component update.
+BASE_FEATURE(kIndigoComponent, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kSystemNotifications, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -1484,9 +1490,6 @@ BASE_FEATURE(kCameraCloudStorage, base::FEATURE_ENABLED_BY_DEFAULT);
 // by policies: removing local storage, saving downloads and screen captures to
 // the cloud, and related UX changes, primarily in the Files App.
 BASE_FEATURE(kSkyVault, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Enables or disables chrome://sys-internals.
-BASE_FEATURE(kSysInternals, base::FEATURE_DISABLED_BY_DEFAULT);
 
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
@@ -1753,6 +1756,10 @@ const base::FeatureParam<bool> kWebUIReloadButtonRestartUnresponsive{
 // has finished loading.
 const base::FeatureParam<bool> kWebUIReloadButtonDeferBrowserViewShow{
     &kWebUIReloadButton, "WebUIReloadButtonDeferBrowserViewShow", true};
+// When this is enabled, the reload button will be marked as visible until its
+// first non-empty paint.
+const base::FeatureParam<bool> kWebUIReloadButtonKeepVisibleUntilPaint{
+    &kWebUIReloadButton, "WebUIReloadButtonKeepVisibleUntilPaint", false};
 const base::FeatureParam<base::TimeDelta>
     kWebUIReloadButtonRestartUnresponsiveRenderersTimeout{
         &kWebUIReloadButton,
@@ -1805,18 +1812,11 @@ BASE_FEATURE(kWinPinPWAShortcutWithLAF, base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_WIN)
 
 #if BUILDFLAG(IS_CHROMEOS)
-// A feature to enable periodic log upload migration. This includes using new
-// mechanism for collecting, exporting and uploading logs. See
-// go/legacy-log-upload-migration.
-BASE_FEATURE(kPeriodicLogUploadMigration, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // A feature to enable periodic log class management enabled policy.
 BASE_FEATURE(kClassManagementEnabledMetricsProvider,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
-// Enables reporting Chrome app activity for supervised users.
-BASE_FEATURE(kUnicornChromeActivityReporting,
-             base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
 #if !BUILDFLAG(IS_ANDROID)

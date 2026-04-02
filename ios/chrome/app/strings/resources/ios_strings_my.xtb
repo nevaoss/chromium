@@ -209,6 +209,7 @@
 <translation id="1740468249224277719">ထည့်သွင်းရန် နှစ်ချက်တို့ပါ။</translation>
 <translation id="1740650426894359238">ပရိုဖိုင်နောက်တစ်ခုသို့ ပြောင်းခြင်း</translation>
 <translation id="1741219894094057085">အဆင့်မြင့် လက်ပတ်နာရီ</translation>
+<translation id="1742773766788162541">ကတ်ကို စကင်ဖတ်ပြီး အော်တိုဖြည့်ရန်</translation>
 <translation id="1743244221910283364">ပြောင်းလဲမှုများ ဖယ်ပစ်ရန်</translation>
 <translation id="1748975028205587434">သင့်ဖိုင်ရွေးရန်</translation>
 <translation id="1749733017156547309">စကားဝှက်လိုအပ်သည်</translation>
@@ -393,6 +394,7 @@
 <translation id="2359808026110333948">ဆက်လုပ်ရန်</translation>
 <translation id="2360196772093551345">မိုဘိုင်းဝဘ်ဆိုက်ကို တောင်းဆိုရန်</translation>
 <translation id="2362083820973145409"><ph name="USER_NAME" /> အဖြစ် လက်မှတ်ထိုးဝင်ထားသည်။ <ph name="USER_EMAIL" />။ ဆက်တင်များ ဖွင့်ပေးသည်။</translation>
+<translation id="2367025302166767427">အချက်အလက်ဖြည့်ရာတွင် ပြဿနာရှိနေသည်</translation>
 <translation id="2371084566192454134">တဘ်နှင့် တဘ်အုပ်စုများ</translation>
 <translation id="2371303771137626249">အသစ်</translation>
 <translation id="2381405137052800939">အခြေခံများ</translation>
@@ -491,6 +493,7 @@
 <translation id="2721190673959776287">Contextual Panel အတွက် ထုတ်ကုန်အတွင်း နမူနာအကူအညီ အများအပြားသည် တစ်ရက်လျှင် အကြိမ်များစွာ ပေါ်လာမည်။</translation>
 <translation id="2739887572830526131">တဘ်များကို နောက်မှထည့်ရန် ဤအုပ်စုကို ဆက်ထားနိုင်သည်။ သို့မဟုတ် ၎င်းကို သင်မလိုအပ်တော့ပါက ဖျက်နိုင်သည်။</translation>
 <translation id="2747003861858887689">အရင် အကွက်</translation>
+<translation id="2750583038402718064"><ph name="WEBSITE_TITLE" /> ကို နေရာ <ph name="POSITION" /> သို့ ရွှေ့လိုက်ပါပြီ</translation>
 <translation id="2755485474385016903">ပြုလုပ်ထားသော အပြောင်းအလဲများကို ဤအုပ်စုရှိ လူတိုင်းက မြင်ရသည်</translation>
 <translation id="2755595981383829244">အချက်အလက်ဆိုင်ရာ အကြောင်းကြားချက်များ ယခုရရှိပါမည်</translation>
 <translation id="2761788987260570878">သင့်ရှာဖွေမှုကို ဓာတ်ပုံရိုက်ပါ</translation>
@@ -709,6 +712,7 @@
 <translation id="3578866308944526475">သင်၏အဖွဲ့အစည်းက စီမံခန့်ခွဲသည့် <ph name="EMAIL" />။</translation>
 <translation id="3580448612293054698"><ph name="ENTITY_TYPE" /> အပ်ဒိတ်လုပ်မလား။</translation>
 <translation id="3581564640715911333">စာမျက်နှာများကို အခြားဘာသာစကားများဖြင့် ပြန်ဆိုရန် ကမ်းလှမ်းသည်</translation>
+<translation id="3583726884554296148">ဤဝယ်ယူမှုနှင့် Chrome တွင် ပြုလုပ်မည့် နောင်လာမည့် ဝယ်ယူမှုများအတွက် သင့်ကတ်ကို Google Account တွင် သိမ်းနိုင်သည်</translation>
 <translation id="3587482841069643663">အားလုံး</translation>
 <translation id="3587885837929752825">သင့် Google Account တွင် သိမ်းနိုင်သည်များကို အဖွဲ့အစည်းက ကန့်သတ်ပါသည်။</translation>
 <translation id="3588820906588687999">ရုပ်ပုံကို တက်ဘ်အသစ်တွင်ဖွင့်ရန်</translation>
@@ -1344,6 +1348,7 @@ Handoff ကို ဆက်တင်များ၏ ယေဘူယျအပိ�
 <translation id="5819208479324046259"><ph name="MANAGER" /> က စီမံခန့်ခွဲထားသည်။ <ph name="BEGIN_LINK" />ပိုမိုလေ့လာရန်<ph name="END_LINK" /></translation>
 <translation id="5827266244928330802">Safari</translation>
 <translation id="5829649908290113115">စင့်ခ်လုပ်နေသည်…</translation>
+<translation id="583281660410589416">မသိရ</translation>
 <translation id="5838430324585198889">Google အက်ပ်များသုံး၍ သင့် iPad အတွက် နောက်ထပ်တူးလ်များ ရယူနိုင်သည်</translation>
 <translation id="583923961930319521">သင့်စက်အားလုံးတွင် စကားဝှက်များသုံးခြင်း</translation>
 <translation id="5843013299019689749">နက်မှောင် နောက်ခံအရောင်</translation>
@@ -1554,6 +1559,7 @@ Handoff ကို ဆက်တင်များ၏ ယေဘူယျအပိ�
 <translation id="6532106788206463496">ပြင်ဆင်မှုများကို သိမ်းရန်</translation>
 <translation id="6536759809440150308"><ph name="GROUP_TITLE" /> ဖွင့်ရန်။ <ph name="NUMBER_OF_TABS" /> အုပ်စု။ <ph name="CREATION_TEXT" /></translation>
 <translation id="6537746030088321027">example.com</translation>
+<translation id="6543899060872618437">သင့်စက်များတွင် အော်တိုဖြည့်ဖြင့် အမြန်ငွေရှင်းပါ</translation>
 <translation id="6550675742724504774">ရွေးစရာများ</translation>
 <translation id="6550891580932862748">အန္တရာယ်ရှိသော ဝဘ်ဆိုက်၊ ဒေါင်းလုဒ်နှင့် နောက်ဆက်တွဲများ၏ ရန်မှ ကာကွယ်မပေးပါ။ Google ၏ အခြားထုတ်ကုန်များရှိ သင်၏ ‘လုံခြုံစွာ ကြည့်ရှုခြင်း’ ဆက်တင်များအပေါ် သက်ရောက်မှုမရှိပါ။</translation>
 <translation id="6556501700899673703">Lexend</translation>
@@ -2027,6 +2033,7 @@ Handoff ကို ဆက်တင်များ၏ ယေဘူယျအပိ�
 <translation id="8209237163365258530">Gemini <ph name="VERSION_NUMBER" /> မိုဒယ်များ</translation>
 <translation id="8211030355252954494"><ph name="WEBSITE" /> အတွက် စကားဝှက်များ ရရှိထားသည်</translation>
 <translation id="8211406090763984747">ချိတ်ဆက်မှုသည် လုံခြုံပါသည်</translation>
+<translation id="8213190397436801658">ပင်မစာမျက်နှာ</translation>
 <translation id="8214293972734702249">ပင်ထိုးထားသည်၊ <ph name="TAB_TITLE" /></translation>
 <translation id="8219424187226230983">အော့ဖ်လိုင်းဗားရှင်းကို တဘ်အသစ်တွင် ကြည့်ရန်</translation>
 <translation id="8221665793629393739">ပြန်ကြည့်ရန် သတိပေးချက်</translation>

@@ -317,9 +317,6 @@ public class NewTabPageCoordinator {
         mSearchBoxHintTextObserver = this::onSearchBoxHintTextChanged;
         mSearchEngineUtils.addSearchBoxHintTextObserver(mSearchBoxHintTextObserver);
 
-        // TODO(https://crbug.com/487641528): Destroy NewTabPageCoordinator in
-        // NewTabPage#destroy().
-        mManager.addDestructionObserver(NewTabPageCoordinator.this::onDestroy);
         mInitialized = true;
 
         TraceEvent.end(TAG + ".initialize()");
@@ -436,7 +433,7 @@ public class NewTabPageCoordinator {
     }
 
     private void initializeComposeplateFlags(Profile profile) {
-        mIsComposeplateEnabled = ComposeplateUtils.isComposeplateEnabled(mIsTablet, profile);
+        mIsComposeplateEnabled = ComposeplateUtils.isComposeplateEnabled(profile);
         mIsComposeplatePolicyEnabled =
                 mIsComposeplateEnabled && ComposeplateUtils.isEnabledByPolicy(profile);
     }
@@ -992,7 +989,7 @@ public class NewTabPageCoordinator {
     }
 
     @SuppressWarnings("NullAway")
-    private void onDestroy() {
+    public void destroy() {
         if (mCallbackController != null) {
             mCallbackController.destroy();
             mCallbackController = null;
@@ -1007,7 +1004,7 @@ public class NewTabPageCoordinator {
         mSearchBoxCoordinator = null;
 
         if (mMostVisitedTilesCoordinator != null) {
-            mMostVisitedTilesCoordinator.destroyMvtiles();
+            mMostVisitedTilesCoordinator.destroy();
             mMostVisitedTilesCoordinator = null;
         }
 

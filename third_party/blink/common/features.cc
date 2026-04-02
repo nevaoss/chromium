@@ -2170,6 +2170,8 @@ BASE_FEATURE_PARAM(base::TimeDelta,
                    "max_resample_time",
                    base::Milliseconds(20));
 
+BASE_FEATURE(kResampleScrollEventsForFling, base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE(kRestrictLinkHeaderOnSubresource,
              base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE_PARAM(bool,
@@ -2615,7 +2617,7 @@ BASE_FEATURE(kWebAppEnableScopeExtensionsBySite,
 // Note that for Isolated Web Apps it is not possible to capture link
 // navigations without scope extensions.
 BASE_FEATURE(kWebAppEnableScopeExtensionsForIsolatedWebApps,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Controls parsing and usage of localized fields in web app manifests.
 // See spec for more information:

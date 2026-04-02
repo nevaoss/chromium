@@ -265,9 +265,6 @@ BASE_FEATURE(kIPHTabGroupsSharedTabChangedFeature,
 BASE_FEATURE(kIPHTabGroupsSharedTabFeedbackFeature,
              "IPH_TabGroupsSharedTabFeedback",
              base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHTabOrganizationSuccessFeature,
-             "IPH_TabOrganizationSuccess",
-             base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHTabSearchComboButtonFeature,
              "IPH_TabSearchComboButton",
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -455,6 +452,9 @@ BASE_FEATURE(kIPHFuseboxAttachmentFeature,
 BASE_FEATURE(kIPHGenericAlwaysTriggerHelpUiFeature,
              "IPH_GenericAlwaysTriggerHelpUiFeature",
              base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHGestureUserEducation,
+             "IPH_GestureUserEducation",
+             base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHGlicPromoAndroidFeature,
              "IPH_GlicPromoAndroid",
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -752,9 +752,6 @@ BASE_FEATURE(kIPHiOSDockingPromoFeature,
 BASE_FEATURE(kIPHiOSDockingPromoEligibilityFeature,
              "IPH_iOSDockingPromoEligibility",
              base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHiOSDockingPromoRemindMeLaterFeature,
-             "IPH_iOSDockingPromoRemindMeLater",
-             base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHiOSPromoAllTabsFeature,
              "IPH_iOSPromoAllTabs",
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -991,6 +988,10 @@ BASE_FEATURE(kIPHDesktopPWAsLinkCapturingLaunchAppInTab,
 
 BASE_FEATURE(kIPHSignInBenefitsFeature,
              "IPH_SignInBenefits",
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kIPHSignInBenefitsNewSigninFeature,
+             "IPH_SignInBenefitsNewSignin",
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kIPHSupervisedUserProfileSigninFeature,

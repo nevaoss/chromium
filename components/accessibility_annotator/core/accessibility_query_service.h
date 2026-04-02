@@ -17,13 +17,13 @@
 
 namespace accessibility_annotator {
 
-class AutofillDataProvider;
+class MemoryDataProvider;
 
 // Service for querying @memory suggestions.
 class AccessibilityQueryService : public KeyedService {
  public:
   explicit AccessibilityQueryService(
-      std::unique_ptr<AutofillDataProvider> data_provider);
+      std::unique_ptr<MemoryDataProvider> data_provider);
   AccessibilityQueryService(const AccessibilityQueryService&) = delete;
   AccessibilityQueryService& operator=(const AccessibilityQueryService&) =
       delete;
@@ -35,11 +35,10 @@ class AccessibilityQueryService : public KeyedService {
   // Executes a query and returns suggestions via `update_callback`.
   virtual void Query(
       std::u16string_view query,
-      base::RepeatingCallback<void(std::vector<MemorySearchResult>)>
-          update_callback);
+      base::RepeatingCallback<void(MemorySearchResults)> update_callback);
 
  private:
-  std::unique_ptr<AutofillDataProvider> data_provider_;
+  std::unique_ptr<MemoryDataProvider> data_provider_;
   QueryClassifier classifier_;
 };
 

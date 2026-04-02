@@ -22,11 +22,14 @@ import {InputType} from '//resources/mojo/components/omnibox/composebox/composeb
 import type {UnguessableToken} from '//resources/mojo/mojo/public/mojom/base/unguessable_token.mojom-webui.js';
 import {CrLitElement} from 'chrome://resources/lit/v3_0/lit.rollup.js';
 import type {PropertyValues} from 'chrome://resources/lit/v3_0/lit.rollup.js';
+import {WindowOpenDisposition} from 'chrome://resources/mojo/ui/base/mojom/window_open_disposition.mojom-webui.js';
 
 import {getCss} from './composebox.css.js';
 import {getHtml} from './composebox.html.js';
 import {VoiceSearchState} from './constants.js';
 import {IconType} from './contextual_tasks.mojom-webui.js';
+import type {PageHandlerInterface} from './contextual_tasks.mojom-webui.js';
+import {BrowserProxyImpl} from './contextual_tasks_browser_proxy.js';
 
 const ICON_TYPE_TO_NAME: {[id: number]: string} = {
   [IconType.kUnspecified]: 'unspecified',
@@ -167,6 +170,7 @@ export class ContextualTasksComposeboxElement extends I18nMixinLit
   protected searchboxHandler_: SearchboxPageHandlerRemote;
   private eventTracker_: EventTracker = new EventTracker();
   private pageHandler_: PageHandlerRemote;
+  private contextualTasksHandler_: PageHandlerInterface;
   private searchboxCallbackRouter_: SearchboxPageCallbackRouter;
   private searchboxListenerIds_: number[] = [];
   // Tracks the resize of the composebox to provide height updates.
@@ -177,6 +181,7 @@ export class ContextualTasksComposeboxElement extends I18nMixinLit
   constructor() {
     super();
     this.pageHandler_ = ComposeboxProxyImpl.getInstance().handler;
+    this.contextualTasksHandler_ = BrowserProxyImpl.getInstance().handler;
     this.searchboxCallbackRouter_ =
         ComposeboxProxyImpl.getInstance().searchboxCallbackRouter;
     this.searchboxHandler_ = ComposeboxProxyImpl.getInstance().searchboxHandler;
@@ -326,6 +331,15 @@ export class ContextualTasksComposeboxElement extends I18nMixinLit
     this.showSuggestionsActivityLink_ = e.detail;
   }
 
+  protected onSuggestionActivityLinkClicked_(e: CustomEvent<{event: Event}>) {
+    e.detail.event.preventDefault();
+    const anchor = e.detail.event.target as HTMLAnchorElement;
+    if (anchor && anchor.href) {
+      this.contextualTasksHandler_.openUrl(
+          anchor.href, WindowOpenDisposition.NEW_FOREGROUND_TAB);
+    }
+  }
+
   protected onInputStateChanged_(e: CustomEvent<{inputState: InputState}>) {
     const disabledTypes = e.detail.inputState?.disabledInputTypes || [];
     if (disabledTypes.includes(InputType.kLensImage)) {
@@ -381,11 +395,29 @@ export class ContextualTasksComposeboxElement extends I18nMixinLit
   }
 
   clearInputAndFocus(querySubmitted: boolean = false): void {
+    const hadContent = this.$.composebox.getInputText().trim().length > 0 ||
+        this.$.composebox.hasFiles();
+
     // Clear text from composebox and focus.
     this.$.composebox.clearAllInputs(
         querySubmitted, /* shouldBlockAutoSuggestedTabs= */ false);
     this.$.composebox.focusInput();
-    this.$.composebox.clearAutocompleteMatches();
+
+    // Unconditionally clearing matches wipes out the zero state suggestions
+    // when transitioning into or updating the zero state. Therefore, only clear
+    // matches if the query was submitted or if the composebox is not in zero
+    // state.
+    if (querySubmitted || !this.isZeroState) {
+      this.$.composebox.clearAutocompleteMatches();
+      return;
+    }
+
+    // Since the composebox is being rendered in zero state, fetch new zero
+    // state suggestions IFF there weren't already suggestions to prevent a
+    // flicker.
+    if (hadContent) {
+      this.$.composebox.queryAutocomplete(/*clearMatches=*/ true);
+    }
   }
 
   setIsLoadingForTesting(isLoading: boolean) {

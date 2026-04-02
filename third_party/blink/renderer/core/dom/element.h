@@ -53,7 +53,7 @@
 #include "third_party/blink/renderer/core/dom/names_map.h"
 #include "third_party/blink/renderer/core/dom/node.h"
 #include "third_party/blink/renderer/core/dom/whitespace_attacher.h"
-#include "third_party/blink/renderer/core/html/parser/fragment_parser_options.h"
+#include "third_party/blink/renderer/core/html/parser/fragment_parser.h"
 #include "third_party/blink/renderer/core/html_names.h"
 #include "third_party/blink/renderer/core/scroll/scoped_scroll_promise_resolver.h"
 #include "third_party/blink/renderer/core/style/computed_style_constants.h"
@@ -75,15 +75,15 @@
 #include "third_party/blink/renderer/platform/wtf/text/atomic_string_table.h"
 #include "third_party/blink/renderer/platform/wtf/wtf_size_t.h"
 
-namespace cc {
-enum class TrackedElementFeature;
-}  // namespace cc
-
 namespace gfx {
 class QuadF;
 class RectF;
 class Vector2dF;
 }  // namespace gfx
+
+namespace viz {
+enum class TrackedElementFeature;
+}  // namespace viz
 
 namespace blink {
 
@@ -1001,17 +1001,17 @@ class CORE_EXPORT Element : public ContainerNode {
   // Associates the element with a TrackedElementSubRect, which is the object
   // internally backing a TrackedElement.
   // This method may be called at most once per feature.
-  void SetTrackedElementSubRect(cc::TrackedElementFeature feature,
+  void SetTrackedElementSubRect(viz::TrackedElementFeature feature,
                                 const TrackedElementSubRect& rect);
 
   // If SetTrackedElementSubRect() was previously called on `this` for
   // `feature`, returns the rect which it previously provided. Otherwise,
   // returns a nullptr.
   const TrackedElementSubRect* GetTrackedElementSubRect(
-      cc::TrackedElementFeature feature) const;
+      viz::TrackedElementFeature feature) const;
 
   // Clears the TrackedElementSubRect associated with the element for `feature`.
-  void ClearTrackedElementSubRect(cc::TrackedElementFeature feature);
+  void ClearTrackedElementSubRect(viz::TrackedElementFeature feature);
 
   // Returns a map that contains all the TrackedElementSubRects set on `this`.
   // Returns a nullptr if no TrackedElementSubRects were set.
@@ -1043,8 +1043,7 @@ class CORE_EXPORT Element : public ContainerNode {
                                    bool clonable,
                                    const AtomicString& adopted_stylesheets,
                                    const AtomicString& reference_target,
-                                   const bool waiting_for_scoped_registry,
-                                   const AtomicString& marker);
+                                   const bool waiting_for_scoped_registry);
 
   ShadowRoot& CreateUserAgentShadowRoot(
       SlotAssignmentMode = SlotAssignmentMode::kNamed);
@@ -1054,8 +1053,7 @@ class CORE_EXPORT Element : public ContainerNode {
                                        CustomElementRegistry*,
                                        bool serializable,
                                        bool clonable,
-                                       const AtomicString& reference_target,
-                                       const AtomicString& marker);
+                                       const AtomicString& reference_target);
   // This version is for testing only, and allows easy attachment of a shadow
   // root, specifying only the type and none of the other arguments.
   ShadowRoot& AttachShadowRootForTesting(ShadowRootMode type);
@@ -1441,7 +1439,6 @@ class CORE_EXPORT Element : public ContainerNode {
                      TrustedParserOptions*,
                      ExceptionState&);
   void setHTML(const String& html, SetHTMLOptions*, ExceptionState&);
-  void setHTML(const String& html, TrustedParserOptions*, ExceptionState&);
 
   void setPointerCapture(PointerId, ExceptionState&);
   void releasePointerCapture(PointerId, ExceptionState&);
@@ -1563,6 +1560,9 @@ class CORE_EXPORT Element : public ContainerNode {
 
   DOMStringMap& dataset();
 
+  HTMLElementType GetHTMLElementType() const override {
+    return HTMLElementType::kIsNotHTMLElement;
+  }
   virtual bool IsDateTimeEditElement() const { return false; }
   virtual bool IsDateTimeFieldElement() const { return false; }
   virtual bool IsPickerIndicatorElement() const { return false; }
@@ -1662,13 +1662,6 @@ class CORE_EXPORT Element : public ContainerNode {
   // IDL method.
   // Returns the list of part names, creating it if it doesn't exist.
   DOMTokenList& part();
-
-  const AtomicString& marker() const {
-    return FastGetAttribute(html_names::kMarkerAttr);
-  }
-  void setMarker(const AtomicString& marker) {
-    setAttribute(html_names::kMarkerAttr, marker);
-  }
 
   bool HasPartNamesMap() const;
   const NamesMap* PartNamesMap() const;
@@ -2420,8 +2413,7 @@ class CORE_EXPORT Element : public ContainerNode {
 
   ShadowRoot& CreateAndAttachShadowRoot(
       ShadowRootMode,
-      SlotAssignmentMode = SlotAssignmentMode::kNamed,
-      const AtomicString& marker = g_null_atom);
+      SlotAssignmentMode = SlotAssignmentMode::kNamed);
 
   virtual void DidAddUserAgentShadowRoot(ShadowRoot&) {}
   virtual bool AlwaysCreateUserAgentShadowRoot() const { return false; }

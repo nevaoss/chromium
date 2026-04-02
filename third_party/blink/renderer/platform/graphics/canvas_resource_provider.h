@@ -145,6 +145,8 @@ class PLATFORM_EXPORT CanvasResourceProvider
   // FlushCanvas and preserve recording only if IsPrinting or
   // FlushReason indicates printing in progress.
   std::optional<cc::PaintRecord> FlushCanvas(FlushReason = FlushReason::kOther);
+  std::optional<cc::PaintRecord> FlushCanvas2D(
+      FlushReason = FlushReason::kOther);
   virtual ScopedRasterTimer CreateScopedRasterTimer();
 
   SkSurfaceProps GetSkSurfaceProps() const;
@@ -204,8 +206,8 @@ class PLATFORM_EXPORT CanvasResourceProvider
                                            int x,
                                            int y);
 
-  scoped_refptr<UnacceleratedStaticBitmapImage> UnacceleratedSnapshot(
-      ImageOrientation);
+  scoped_refptr<UnacceleratedStaticBitmapImage>
+      UnacceleratedSnapshotForCanvas2D(ImageOrientation);
 
   CanvasResourceProvider(const ResourceProviderType&,
                          gfx::Size size,
@@ -215,7 +217,7 @@ class PLATFORM_EXPORT CanvasResourceProvider
                          Delegate* delegate);
 
   virtual void RasterRecord(cc::PaintRecord) = 0;
-  void UnacceleratedRasterRecord(cc::PaintRecord);
+  void UnacceleratedRasterRecordForCanvas2D(cc::PaintRecord);
 
   CanvasImageProvider* GetOrCreateSWCanvasImageProvider();
 
@@ -388,13 +390,17 @@ class PLATFORM_EXPORT CanvasResourceProviderSharedImage
                                     Delegate*);
   ~CanvasResourceProviderSharedImage() override;
 
-  void ClearUnusedResources() { unused_resources_.clear(); }
+  void ClearUnusedResources() {
+    if (image_pool_) {
+      image_pool_->Clear();
+    }
+  }
   void OnResourceRefReturned(
       scoped_refptr<CanvasResourceSharedImage>&& resource);
   void OnDestroyResource() { --num_inflight_resources_; }
 
   bool unused_resources_reclaim_timer_is_running_for_testing() const {
-    return unused_resources_reclaim_timer_.IsRunning();
+    return image_pool_ ? image_pool_->IsReclaimTimerRunningForTesting() : false;
   }
   int NumInflightResourcesForTesting() const { return num_inflight_resources_; }
   gpu::SharedImageUsageSet GetSharedImageUsageFlags() const;
@@ -410,15 +416,13 @@ class PLATFORM_EXPORT CanvasResourceProviderSharedImage
   // Use Snapshot() for capturing a frame that is intended to be displayed via
   // the compositor. Cases that are destined to be transferred via a
   // TransferableResource should call ProduceCanvasResource() instead.
-  virtual scoped_refptr<CanvasResource> ProduceCanvasResource(FlushReason);
+  virtual scoped_refptr<CanvasResource> ProduceCanvasResource(FlushReason) = 0;
 
   bool IsValid() const override;
 
   sk_sp<SkSurface> CreateSkSurface() const override;
-  void OnFlushForImage(cc::PaintImage::ContentId content_id);
+  virtual void OnFlushForImage(cc::PaintImage::ContentId content_id) = 0;
   void OnMemoryDump(base::trace_event::ProcessMemoryDump* pmd) final;
-  scoped_refptr<StaticBitmapImage> Snapshot(
-      ImageOrientation = ImageOrientationEnum::kDefault) override;
 
   // Indicates that the compositing path is single buffered, meaning that
   // ProduceCanvasResource() return a reference to the same resource each time,
@@ -428,10 +432,6 @@ class PLATFORM_EXPORT CanvasResourceProviderSharedImage
   // (in cases where the resource is scanned out directly) and irregular frame
   // rate.
   bool IsSingleBuffered() const;
-
-  // Notifies before any unaccelerated drawing will be done on the resource used
-  // by this provider.
-  void WillDrawUnaccelerated();
 
   scoped_refptr<CanvasResource> ProduceCanvasResource() {
     return ProduceCanvasResource(FlushReason::kOther);
@@ -443,6 +443,9 @@ class PLATFORM_EXPORT CanvasResourceProviderSharedImage
  protected:
   CanvasResourceSharedImage* resource() {
     return static_cast<CanvasResourceSharedImage*>(resource_.get());
+  }
+  gpu::SharedImagePool<CanvasResourceSharedImage>* ImagePool() {
+    return image_pool_.get();
   }
   gpu::raster::RasterInterface* RasterInterface() const;
   void EnsureWriteAccess();
@@ -461,7 +464,6 @@ class PLATFORM_EXPORT CanvasResourceProviderSharedImage
   scoped_refptr<StaticBitmapImage> cached_snapshot_;
 
   bool resource_recycling_enabled_ = true;
-  gpu::SharedImageUsageSet shared_image_usage_flags_;
   const bool is_accelerated_;
 
   // The resource that is currently being used by this provider.
@@ -488,23 +490,10 @@ class PLATFORM_EXPORT CanvasResourceProviderSharedImage
   // recycling.
   static constexpr int kMaxRecycledCanvasResources = 3;
 
-  struct UnusedResource {
-    UnusedResource(base::TimeTicks last_use,
-                   scoped_refptr<CanvasResourceSharedImage> resource)
-        : last_use(last_use), resource(std::move(resource)) {}
-    base::TimeTicks last_use;
-    scoped_refptr<CanvasResourceSharedImage> resource;
-  };
-
-  void RegisterUnusedResource(
-      scoped_refptr<CanvasResourceSharedImage>&& resource);
   const CanvasResourceSharedImage* resource() const {
     return static_cast<const CanvasResourceSharedImage*>(resource_.get());
   }
 
-  void RecycleResource(scoped_refptr<CanvasResourceSharedImage>&& resource);
-  void MaybePostUnusedResourcesReclaimTask();
-  void ClearOldUnusedResources();
   base::WeakPtr<CanvasResourceProviderSharedImage> CreateWeakPtr();
 
   // `viz::ContextLostObserver`:
@@ -514,11 +503,10 @@ class PLATFORM_EXPORT CanvasResourceProviderSharedImage
   void OnGpuChannelLost() final;
 
   // If this instance is single-buffered or |resource_recycling_enabled_| is
-  // false, |unused_resources_| will be empty.
-  Vector<UnusedResource> unused_resources_;
+  // false, |image_pool_| will not rescycle resources.
+  std::unique_ptr<gpu::SharedImagePool<CanvasResourceSharedImage>> image_pool_;
   int num_inflight_resources_ = 0;
   int max_inflight_resources_ = 0;
-  base::OneShotTimer unused_resources_reclaim_timer_;
 
   // `raster_context_provider_` holds a reference on the shared
   // `RasterContextProvider`, to keep it alive until it notifies us after the
@@ -584,10 +572,15 @@ class PLATFORM_EXPORT Canvas2DResourceProviderSharedImage
   ~Canvas2DResourceProviderSharedImage() override = default;
 
   // CanvasResourceProvider:
+  using CanvasResourceProviderSharedImage::ProduceCanvasResource;
+  scoped_refptr<CanvasResource> ProduceCanvasResource(FlushReason) override;
+  void OnFlushForImage(cc::PaintImage::ContentId content_id) override;
   void RasterRecord(cc::PaintRecord last_recording) override;
   Canvas2DResourceProviderSharedImage* As2DSharedImageProvider() final {
     return this;
   }
+  scoped_refptr<StaticBitmapImage> Snapshot(
+      ImageOrientation = ImageOrientationEnum::kDefault) override;
   bool WritePixelsForCanvas2D(const SkImageInfo& orig_info,
                               const void* pixels,
                               size_t row_bytes,
@@ -619,6 +612,10 @@ class PLATFORM_EXPORT Canvas2DResourceProviderSharedImage
   bool IsCanvas2D() const override { return true; }
 
   std::unique_ptr<gpu::RasterScopedAccess> WillDrawInternal();
+
+  // Notifies before any unaccelerated drawing will be done on the resource used
+  // by this provider.
+  void WillDrawUnaccelerated();
 };
 
 // * Subclass of CanvasResourceProviderSharedImage that is specialized for usage
@@ -683,6 +680,11 @@ class PLATFORM_EXPORT CanvasNon2DResourceProviderSharedImage
   ~CanvasNon2DResourceProviderSharedImage() override = default;
 
   // CanvasResourceProvider:
+  using CanvasResourceProviderSharedImage::ProduceCanvasResource;
+  scoped_refptr<CanvasResource> ProduceCanvasResource(FlushReason) override;
+  void OnFlushForImage(cc::PaintImage::ContentId content_id) override;
+  scoped_refptr<StaticBitmapImage> Snapshot(
+      ImageOrientation = ImageOrientationEnum::kDefault) override;
   void RasterRecord(cc::PaintRecord last_recording) override;
   bool WritePixelsForCanvas2D(const SkImageInfo& orig_info,
                               const void* pixels,
@@ -691,8 +693,9 @@ class PLATFORM_EXPORT CanvasNon2DResourceProviderSharedImage
                               int y) override {
     NOTREACHED();
   }
+
+  // NOTE: Can only be used if this instance is accelerated.
   bool UploadToBackingSharedImage(const SkPixmap& pixmap,
-                                  const SkImageInfo& src_info,
                                   uint32_t src_x,
                                   uint32_t src_y);
 
@@ -726,6 +729,7 @@ class PLATFORM_EXPORT CanvasNon2DResourceProviderSharedImage
   // instance's SharedImage. Waits on `ready_sync_token` before copying; pass
   // SyncToken() if no sync is required. Synthesizes a new sync token in
   // `completion_sync_token` which will satisfy after the image copy completes.
+  // NOTE: Can only be used if this instance is accelerated.
   bool CopyToBackingSharedImage(
       const scoped_refptr<gpu::ClientSharedImage>& shared_image,
       uint32_t src_x,

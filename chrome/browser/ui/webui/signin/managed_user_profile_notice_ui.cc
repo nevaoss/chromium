@@ -241,6 +241,7 @@ void ManagedUserProfileNoticeUI::Initialize(
   base::DictValue update_data;
   std::string domain =
       enterprise_util::GetDomainFromEmail(create_param->account_info.email);
+  update_data.Set("screenType", static_cast<int>(type));
   if (type ==
       ManagedUserProfileNoticeUI::ScreenType::kEnterpriseAccountCreation) {
     update_data.Set("isModalDialog", true);
@@ -305,8 +306,7 @@ void ManagedUserProfileNoticeUI::Initialize(
     update_data.Set(
         "valuePropSubtitle",
         l10n_util::GetStringUTF16(
-            base::FeatureList::IsEnabled(
-                syncer::kReplaceSyncPromosWithSignInPromos)
+            syncer::IsReplaceSyncPromosWithSignInPromosEnabled()
                 ? IDS_ENTERPRISE_VALUE_PROPOSITION_CONSUMER_SUBTITLE_WITH_BOOKMARKS
                 : IDS_ENTERPRISE_VALUE_PROPOSITION_CONSUMER_SUBTITLE));
     update_data.Set(

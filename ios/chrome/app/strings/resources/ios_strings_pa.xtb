@@ -209,6 +209,7 @@
 <translation id="1740468249224277719">ਸਥਾਪਤ ਕਰਨ ਲਈ ਦੋ ਵਾਰ ਟੈਪ ਕਰੋ।</translation>
 <translation id="1740650426894359238">ਕਿਸੇ ਹੋਰ ਪ੍ਰੋਫਾਈਲ 'ਤੇ ਸਵਿੱਚ ਕਰੋ</translation>
 <translation id="1741219894094057085">ਸਮਾਰਟ-ਵਾਚ</translation>
+<translation id="1742773766788162541">ਕਾਰਡ ਸਕੈਨ ਕਰੋ ਅਤੇ ਆਟੋਫਿਲ ਕਰੋ</translation>
 <translation id="1743244221910283364">ਤਬਦੀਲੀਆਂ ਨੂੰ ਬਰਖਾਸਤ ਕਰੋ</translation>
 <translation id="1748975028205587434">ਆਪਣੀ ਫ਼ਾਈਲ ਚੁਣੋ</translation>
 <translation id="1749733017156547309">ਪਾਸਵਰਡ ਲੋੜੀਂਦਾ ਹੈ</translation>
@@ -393,6 +394,7 @@
 <translation id="2359808026110333948">ਜਾਰੀ ਰੱਖੋ</translation>
 <translation id="2360196772093551345">ਮੋਬਾਈਲ ਸਾਈਟ ਦੀ ਬੇਨਤੀ ਕਰੋ</translation>
 <translation id="2362083820973145409"><ph name="USER_NAME" /> ਵਜੋਂ ਸਾਈਨ-ਇਨ ਕੀਤਾ ਗਿਆ। <ph name="USER_EMAIL" />. ਇਸ ਬਟਨ ਨਾਲ ਸੈਟਿੰਗਾਂ ਖੁੱਲ੍ਹਦੀਆਂ ਹਨ।</translation>
+<translation id="2367025302166767427">ਤੁਹਾਡੀ ਜਾਣਕਾਰੀ ਭਰਨ ਵਿੱਚ ਸਮੱਸਿਆ ਆਈ</translation>
 <translation id="2371084566192454134">ਟੈਬਾਂ ਅਤੇ ਟੈਬ ਗਰੁੱਪ</translation>
 <translation id="2371303771137626249">ਨਵਾਂ</translation>
 <translation id="2381405137052800939">ਮੂਲ-ਸਿਧਾਂਤ</translation>
@@ -491,6 +493,7 @@
 <translation id="2721190673959776287">ਸੰਦਰਭੀ ਪੈਨਲ ਲਈ ਵਧੀਆ ਸੈਂਪਲ ਨਾਲ ਉਤਪਾਦ-ਅੰਦਰ ਮਦਦ ਸੰਬੰਧੀ ਜਾਣਕਾਰੀ, ਜੋ ਦਿਨ ਵਿੱਚ ਕਈ ਵਾਰ ਦਿਖਾਈ ਦੇਣੀ ਚਾਹੀਦੀ ਹੈ।</translation>
 <translation id="2739887572830526131">ਬਾਅਦ ਵਿੱਚ ਟੈਬਾਂ ਸ਼ਾਮਲ ਕਰਨ ਲਈ, ਇਸ ਗਰੁੱਪ ਨੂੰ ਬਣਾਈ ਰੱਖੋ ਜਾਂ ਜੇ ਤੁਹਾਨੂੰ ਇਸਦੀ ਲੋੜ ਨਹੀਂ ਹੈ, ਤਾਂ ਇਸ ਨੂੰ ਮਿਟਾਓ।</translation>
 <translation id="2747003861858887689">ਪਿਛਲਾ ਖੇਤਰ</translation>
+<translation id="2750583038402718064"><ph name="WEBSITE_TITLE" /> ਨੂੰ <ph name="POSITION" /> ਸਥਿਤੀ 'ਤੇ ਲਿਜਾਇਆ ਗਿਆ</translation>
 <translation id="2755485474385016903">ਕੀਤੀਆਂ ਗਈਆਂ ਤਬਦੀਲੀਆਂ ਨੂੰ ਗਰੁੱਪ ਦਾ ਹਰ ਵਿਅਕਤੀ ਦੇਖ ਸਕਦਾ ਹੈ</translation>
 <translation id="2755595981383829244">ਤੁਹਾਨੂੰ ਹੁਣ ਸਮੱਗਰੀ ਸੰਬੰਧੀ ਸੂਚਨਾਵਾਂ ਮਿਲਣਗੀਆਂ</translation>
 <translation id="2761788987260570878">ਜਾਣਕਾਰੀ ਖੋਜਣ ਲਈ ਫ਼ੋਟੋ ਖਿੱਚੋ</translation>
@@ -709,6 +712,7 @@
 <translation id="3578866308944526475"><ph name="EMAIL" />, ਤੁਹਾਡੀ ਸੰਸਥਾ ਵੱਲੋਂ ਪ੍ਰਬੰਧਿਤ ਹੈ।</translation>
 <translation id="3580448612293054698">ਕੀ <ph name="ENTITY_TYPE" /> ਨੂੰ ਅੱਪਡੇਟ ਕਰਨਾ ਹੈ?</translation>
 <translation id="3581564640715911333">ਹੋਰ ਭਾਸ਼ਾਵਾਂ ਵਿੱਚ ਪੰਨਿਆਂ ਦਾ ਅਨੁਵਾਦ ਕਰਨ ਲਈ ਪੇਸ਼ਕਸ਼ ਕਰੋ</translation>
+<translation id="3583726884554296148">ਆਪਣੇ Google ਖਾਤੇ ਵਿੱਚ ਆਪਣੇ ਕਾਰਡ ਨੂੰ ਰੱਖਿਅਤ ਕਰੋ, ਤਾਂ ਜੋ ਇਸ ਖਰੀਦ ਅਤੇ Chrome 'ਤੇ ਕੀਤੀਆਂ ਜਾਣ ਵਾਲੀਆਂ ਭਵਿੱਖੀ ਖਰੀਦਾਂ ਲਈ ਇਸਨੂੰ ਆਟੋਫਿਲ ਕੀਤਾ ਜਾ ਸਕੇ</translation>
 <translation id="3587482841069643663">ਸਾਰੇ</translation>
 <translation id="3587885837929752825">ਤੁਹਾਡੀ ਸੰਸਥਾ ਇਹ ਸੀਮਤ ਕਰਦੀ ਹੈ ਕਿ ਤੁਸੀਂ ਆਪਣੇ Google ਖਾਤੇ ਵਿੱਚ ਕਿਸ ਤਰ੍ਹਾਂ ਦਾ ਡਾਟਾ ਰੱਖਿਅਤ ਕਰ ਸਕਦੇ ਹੋ।</translation>
 <translation id="3588820906588687999">ਨਵੀਂ ਟੈਬ ਵਿੱਚ ਚਿੱਤਰ ਖੋਲ੍ਹੋ</translation>
@@ -1345,6 +1349,7 @@ Handoff ਨੂੰ ਵੀ ਸੈਟਿੰਗਾਂ ਦੇ 'ਆਮ' ਸੈਕਸ਼�
 <translation id="5819208479324046259"><ph name="MANAGER" /> ਵੱਲੋਂ ਪ੍ਰਬੰਧਨ ਕੀਤਾ ਜਾਂਦਾ ਹੈ। <ph name="BEGIN_LINK" />ਹੋਰ ਜਾਣੋ<ph name="END_LINK" /></translation>
 <translation id="5827266244928330802">Safari</translation>
 <translation id="5829649908290113115">ਸਿੰਕ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ…</translation>
+<translation id="583281660410589416">ਅਗਿਆਤ</translation>
 <translation id="5838430324585198889">Google ਐਪਾਂ ਨਾਲ ਆਪਣੇ iPad ਲਈ ਹੋਰ ਵਿਸ਼ੇਸ਼ਤਾਵਾਂ ਅਣਲਾਕ ਕਰੋ</translation>
 <translation id="583923961930319521">ਆਪਣੇ ਸਾਰੇ ਡੀਵਾਈਸਾਂ 'ਤੇ ਪਾਸਵਰਡਾਂ ਦੀ ਵਰਤੋਂ ਕਰੋ</translation>
 <translation id="5843013299019689749">ਬੈਕਗ੍ਰਾਊਂਡ ਦਾ ਕਾਲਾ ਰੰਗ</translation>
@@ -1555,6 +1560,7 @@ Handoff ਨੂੰ ਵੀ ਸੈਟਿੰਗਾਂ ਦੇ 'ਆਮ' ਸੈਕਸ਼�
 <translation id="6532106788206463496">ਬਦਲਾਅ ਰੱਖਿਅਤ ਕਰੋ</translation>
 <translation id="6536759809440150308"><ph name="GROUP_TITLE" /> ਨੂੰ ਖੋਲ੍ਹੋ, <ph name="NUMBER_OF_TABS" /> ਦਾ ਗਰੁੱਪ, <ph name="CREATION_TEXT" /></translation>
 <translation id="6537746030088321027">example.com</translation>
+<translation id="6543899060872618437">ਆਪਣੇ ਸਾਰੇ ਡੀਵਾਈਸਾਂ 'ਤੇ ਆਟੋਫਿਲ ਨਾਲ ਤੇਜ਼ੀ ਨਾਲ ਚੈੱਕ-ਆਊਟ ਕਰੋ</translation>
 <translation id="6550675742724504774">ਚੋਣਾਂ</translation>
 <translation id="6550891580932862748">ਇਸ ਮੋਡ ਵਿੱਚ ਤੁਹਾਨੂੰ ਖਤਰਨਾਕ ਵੈੱਬਸਾਈਟਾਂ, ਡਾਊਨਲੋਡਾਂ ਅਤੇ ਐਕਸਟੈਂਸ਼ਨਾਂ ਤੋਂ ਸੁਰੱਖਿਅਤ ਨਹੀਂ ਰੱਖਿਆ ਜਾਂਦਾ। Google ਦੇ ਦੂਜੇ ਉਤਪਾਦਾਂ ਵਿੱਚ ਤੁਹਾਡੀਆਂ ਸੁਰੱਖਿਅਤ ਬ੍ਰਾਊਜ਼ਰ ਸੈਟਿੰਗਾਂ ਪ੍ਰਭਾਵਿਤ ਨਹੀਂ ਹੋਣਗੀਆਂ।</translation>
 <translation id="6556501700899673703">Lexend</translation>
@@ -2028,6 +2034,7 @@ Handoff ਨੂੰ ਵੀ ਸੈਟਿੰਗਾਂ ਦੇ 'ਆਮ' ਸੈਕਸ਼�
 <translation id="8209237163365258530">Gemini <ph name="VERSION_NUMBER" /> ਮਾਡਲ</translation>
 <translation id="8211030355252954494">ਤੁਹਾਨੂੰ <ph name="WEBSITE" /> ਦੇ ਪਾਸਵਰਡ ਪ੍ਰਾਪਤ ਹੋਏ ਹਨ</translation>
 <translation id="8211406090763984747">ਕਨੈਕਸ਼ਨ ਸੁਰੱਖਿਅਤ ਹੈ</translation>
+<translation id="8213190397436801658">ਹੋਮ</translation>
 <translation id="8214293972734702249">ਪਿੰਨ ਕੀਤੀ ਗਈ, <ph name="TAB_TITLE" /></translation>
 <translation id="8219424187226230983">ਨਵੀਂ ਟੈਬ ਵਿੱਚ ਆਫ਼ਲਾਈਨ ਵਰਜਨ ਦੇਖੋ</translation>
 <translation id="8221665793629393739">ਦੁਬਾਰਾ ਦੇਖਣ ਲਈ ਰਿਮਾਈਂਡਰ</translation>

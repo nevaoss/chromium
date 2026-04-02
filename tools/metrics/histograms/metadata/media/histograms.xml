@@ -277,7 +277,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="CastStreaming.Sender.Audio.NegotiatedCodec" enum="AudioCodec"
-    expires_after="2026-07-19">
+    expires_after="2026-09-20">
   <owner>jophba@chromium.org</owner>
   <owner>openscreen-eng@google.com</owner>
   <summary>
@@ -286,7 +286,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="CastStreaming.Sender.Video.Bitrate" units="kbps"
-    expires_after="2026-07-19">
+    expires_after="2026-09-20">
   <owner>jophba@chromium.org</owner>
   <owner>openscreen-eng@google.com</owner>
   <summary>
@@ -296,7 +296,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="CastStreaming.Sender.Video.EncoderType"
-    enum="CastStreamingVideoEncoderType" expires_after="2026-07-19">
+    enum="CastStreamingVideoEncoderType" expires_after="2026-09-20">
   <owner>jophba@chromium.org</owner>
   <owner>openscreen-eng@google.com</owner>
   <summary>
@@ -308,7 +308,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="CastStreaming.Sender.Video.NegotiatedCodec" enum="VideoCodec"
-    expires_after="2026-07-19">
+    expires_after="2026-09-20">
   <owner>jophba@chromium.org</owner>
   <owner>openscreen-eng@google.com</owner>
   <summary>
@@ -455,7 +455,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="CastStreaming.Sender.{CastStreamingSender}.FrameDropped"
-    enum="CastStreamingFrameDropReason" expires_after="2026-07-19">
+    enum="CastStreamingFrameDropReason" expires_after="2026-09-20">
   <owner>jophba@chromium.org</owner>
   <owner>openscreen-eng@google.com</owner>
   <summary>
@@ -466,7 +466,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="CastStreaming.Sender.{CastStreamingSender}.PercentDroppedFrames"
-    units="%" expires_after="2026-07-19">
+    units="%" expires_after="2026-09-20">
   <owner>jophba@chromium.org</owner>
   <owner>openscreen-eng@google.com</owner>
   <summary>
@@ -1613,7 +1613,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Media.Audio.Output.Win.{AudioOutputMethod}Error"
-    enum="Hresult" expires_after="2026-07-19">
+    enum="Hresult" expires_after="2026-09-20">
   <owner>dalecurtis@chromium.org</owner>
   <owner>media-dev-uma@chromium.org</owner>
   <owner>webrtc-audio-uma@google.com</owner>
@@ -1827,7 +1827,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Media.Audio.Render.OutputDeviceAuthorizationTime" units="ms"
-    expires_after="2026-07-19">
+    expires_after="2026-09-20">
   <owner>olka@chromium.org</owner>
   <owner>henrika@chromium.org</owner>
   <owner>webrtc-audio-uma@google.com</owner>
@@ -4325,7 +4325,7 @@ chromium-metrics-reviews@google.com.
   <owner>media-dev-uma@chromium.org</owner>
   <summary>
     HRESULT code if MediaFoundationCdmModule::GetCdmFactory call fails when
-    querying Widevine CDM capability.
+    querying {KeySystem} CDM capability.
   </summary>
   <token key="KeySystem" variants="KeySystemForHardwareSecureOnly"/>
 </histogram>
@@ -4421,10 +4421,10 @@ chromium-metrics-reviews@google.com.
   <owner>xhwang@chromium.org</owner>
   <owner>media-dev-uma@chromium.org</owner>
   <summary>
-    When hardware secure decryption is enabled, whether Widevine hardware secure
-    decryption is actually supported by the platform (device). Reported at most
-    once per browser session when EME query is triggered by a website, and when
-    Widevine hardware secure CDM was registered.
+    When hardware secure decryption is enabled, whether {KeySystem} hardware
+    secure decryption is actually supported by the platform (device). Reported
+    at most once per browser session when EME query is triggered by a website,
+    and when {KeySystem} hardware secure CDM was registered.
   </summary>
   <token key="KeySystem" variants="KeySystemForHardwareSecureOnly"/>
 </histogram>
@@ -4434,10 +4434,10 @@ chromium-metrics-reviews@google.com.
   <owner>xhwang@chromium.org</owner>
   <owner>media-dev-uma@chromium.org</owner>
   <summary>
-    When hardware secure decryption is enabled and supported by Widevine,
+    When hardware secure decryption is enabled and supported by {KeySystem},
     whether {VideoCodec} video codec is supported by the platform (device).
     Reported at most once per browser session when EME query is triggered by a
-    website, and when Widevine hardware secure CDM was registered.
+    website, and when {KeySystem} hardware secure CDM was registered.
   </summary>
   <token key="KeySystem" variants="KeySystemForHardwareSecureOnly"/>
   <token key="VideoCodec" variants="VideoCodec"/>
@@ -8114,7 +8114,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Media.VideoCapture.Win.Device.CapturePixelFormat"
-    enum="VideoPixelFormatUnion" expires_after="2026-07-19">
+    enum="VideoPixelFormatUnion" expires_after="2026-09-20">
   <owner>ilnik@google.com</owner>
   <owner>video-cmi-mpp@google.com</owner>
   <summary>
@@ -8145,7 +8145,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Media.VideoCapture.Win.Device.RequestedPixelFormat"
-    enum="VideoPixelFormatUnion" expires_after="2026-07-19">
+    enum="VideoPixelFormatUnion" expires_after="2026-09-20">
   <owner>ilnik@google.com</owner>
   <owner>video-cmi-mpp@google.com</owner>
   <summary>

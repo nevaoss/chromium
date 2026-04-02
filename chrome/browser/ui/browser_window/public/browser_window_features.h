@@ -32,6 +32,7 @@ class BookmarksSidePanelCoordinator;
 class BreadcrumbManagerBrowserAgent;
 class Browser;
 class BrowserActions;
+class BrowserAnimationController;
 class BrowserContentSettingBubbleModelDelegate;
 class BrowserElements;
 class BrowserInstantController;
@@ -151,6 +152,10 @@ class VerticalTabStripStateController;
 namespace chrome {
 class BrowserCommandController;
 }  // namespace chrome
+
+namespace contextual_cueing {
+class ContextualCueingController;
+}  // namespace contextual_cueing
 
 namespace contextual_tasks {
 class ActiveTaskContextProvider;
@@ -495,6 +500,11 @@ class BrowserWindowFeatures {
     return omnibox_popup_closer_.get();
   }
 
+  contextual_cueing::ContextualCueingController*
+  contextual_cueing_controller() {
+    return contextual_cueing_controller_.get();
+  }
+
   static ui::UserDataFactoryWithOwner<BrowserWindowInterface>&
   GetUserDataFactoryForTesting();
 
@@ -622,6 +632,8 @@ class BrowserWindowFeatures {
   std::unique_ptr<ActorUiWindowController> actor_ui_window_controller_;
 
   std::unique_ptr<ActorBorderViewController> actor_border_view_controller_;
+
+  std::unique_ptr<BrowserAnimationController> browser_animation_controller_;
 
   std::unique_ptr<CallToActionLock> call_to_action_lock_;
 
@@ -797,6 +809,9 @@ class BrowserWindowFeatures {
 
   std::unique_ptr<ContextHighlightWindowFeature>
       context_highlight_window_feature_;
+
+  std::unique_ptr<contextual_cueing::ContextualCueingController>
+      contextual_cueing_controller_;
 
   // Keep this member last to ensure embedder features are torn down first, in
   // reverse order of initialization.

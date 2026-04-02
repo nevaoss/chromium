@@ -281,12 +281,17 @@ public class AutofillProfilesFragment extends ChromeBaseSettingsFragment
 
     /** Adds an information card if settings are disabled in third-party mode. */
     private void addDisabledSettingsInfoCard(PreferenceScreen screen) {
+        boolean isAutofillAiOn =
+                ChromeFeatureList.isEnabled(ChromeFeatureList.AUTOFILL_AI_WITH_DATA_SCHEMA);
         // LINT.IfChange(AddDisabledSettingsInfoCard)
         CardWithButtonPreference disabledSettingsInfoPref =
                 new CardWithButtonPreference(getStyledContext(), null);
         disabledSettingsInfoPref.setKey(DISABLED_SETTINGS_INFO);
         disabledSettingsInfoPref.setTitle(R.string.autofill_disable_settings_explanation_title);
-        disabledSettingsInfoPref.setSummary(R.string.autofill_disable_settings_explanation);
+        disabledSettingsInfoPref.setSummary(
+                isAutofillAiOn
+                        ? R.string.autofill_disable_settings_explanation_v2
+                        : R.string.autofill_disable_settings_explanation);
         // LINT.ThenChange(:DynamicDisabledSettingsInfoCard)
         disabledSettingsInfoPref.setButtonText(
                 getResources().getString(R.string.autofill_disable_settings_button_label));
@@ -483,11 +488,13 @@ public class AutofillProfilesFragment extends ChromeBaseSettingsFragment
         Map<EntityType, List<EntityInstanceWithLabels>> instancesToList =
                 entityDataManager.getInstancesToList();
 
-        boolean addButtonEnabled =
-                ChromeFeatureList.isEnabled(ChromeFeatureList.AUTOFILL_AI_AVAILABLE_BY_DEFAULT)
+        boolean isEligibleToAddEntities =
+                (ChromeFeatureList.isEnabled(ChromeFeatureList.AUTOFILL_AI_AVAILABLE_BY_DEFAULT)
                         ? entityDataManager.canEnableOrDisableAutofillAi()
                         : entityDataManager.isEligibleToAutofillAi()
-                                && entityDataManager.getAutofillAiOptInStatus();
+                                && entityDataManager.getAutofillAiOptInStatus());
+        boolean addButtonEnabled =
+                isEligibleToAddEntities && !disabledSettingsInThirdPartyMode(getProfile());
 
         for (Map.Entry<EntityType, List<EntityInstanceWithLabels>> entry :
                 instancesToList.entrySet()) {
@@ -790,12 +797,16 @@ public class AutofillProfilesFragment extends ChromeBaseSettingsFragment
 
     private static void addDisabledSettingsInfoCard(
             SettingsIndexData indexData, String prefFragmentName) {
+        boolean isAutofillAiOn =
+                ChromeFeatureList.isEnabled(ChromeFeatureList.AUTOFILL_AI_WITH_DATA_SCHEMA);
         // LINT.IfChange(DynamicDisabledSettingsInfoCard)
         indexData.addEntryForKey(
                 prefFragmentName,
                 DISABLED_SETTINGS_INFO,
                 R.string.autofill_disable_settings_explanation_title,
-                R.string.autofill_disable_settings_explanation);
+                isAutofillAiOn
+                        ? R.string.autofill_disable_settings_explanation_v2
+                        : R.string.autofill_disable_settings_explanation);
         // LINT.ThenChange(:AddDisabledSettingsInfoCard)
     }
 

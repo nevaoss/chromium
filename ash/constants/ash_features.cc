@@ -744,9 +744,6 @@ BASE_FEATURE(kFederatedService, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kFederatedLauncherQueryAnalyticsVersion2Task,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Enables the files transfer conflict dialog in Files app.
-BASE_FEATURE(kFilesConflictDialog, base::FEATURE_DISABLED_BY_DEFAULT);
-
 // Enables local image search by query in the Files app.
 BASE_FEATURE(kFilesLocalImageSearch, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -1306,9 +1303,6 @@ BASE_FEATURE(kNearbyPresence, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables a limit on the number of notifications that can show.
 BASE_FEATURE(kNotificationLimit, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Enables a bugfix for devices with a null custom top row property.
-BASE_FEATURE(kNullTopRowFix, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables the Night Light feature.
 BASE_FEATURE(kNightLight, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -1981,13 +1975,6 @@ BASE_FEATURE(kWakeOnWifiAllowed, base::FEATURE_DISABLED_BY_DEFAULT);
 // Enable "daily" refresh wallpaper to refresh every ten seconds for testing.
 BASE_FEATURE(kWallpaperFastRefresh, base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Enable using google photos shared albums for wallpaper.
-BASE_FEATURE(kWallpaperGooglePhotosSharedAlbums,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Enables a new Welcome Experience for first-time peripheral connections.
-BASE_FEATURE(kWelcomeExperience, base::FEATURE_ENABLED_BY_DEFAULT);
-
 // kWelcomeExperienceTestUnsupportedDevices enables the new device Welcome
 // Experience to be tested on external devices that are not officially
 // supported. When enabled, users will be able to initiate and complete
@@ -2251,6 +2238,15 @@ BASE_FEATURE(kSmartDim, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables or disables TPM firmware update capability on Chrome OS.
 BASE_FEATURE(kTPMFirmwareUpdate, base::FEATURE_ENABLED_BY_DEFAULT);
+
+// Enables infrastructure for generating Ansible playbooks for the default
+// Crostini container from software configurations in JSON schema.
+BASE_FEATURE(kCrostiniAnsibleSoftwareManagement,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Enables reporting Chrome app activity for supervised users.
+BASE_FEATURE(kUnicornChromeActivityReporting,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2642,10 +2638,6 @@ bool IsFastPairSavedDevicesStrictOptInEnabled() {
 
 bool IsFileManagerFuseBoxDebugEnabled() {
   return base::FeatureList::IsEnabled(kFuseBoxDebug);
-}
-
-bool IsFilesConflictDialogEnabled() {
-  return base::FeatureList::IsEnabled(kFilesConflictDialog);
 }
 
 bool IsFilesLocalImageSearchEnabled() {
@@ -3372,17 +3364,8 @@ bool IsWallpaperFastRefreshEnabled() {
   return base::FeatureList::IsEnabled(kWallpaperFastRefresh);
 }
 
-bool IsWallpaperGooglePhotosSharedAlbumsEnabled() {
-  return base::FeatureList::IsEnabled(kWallpaperGooglePhotosSharedAlbums);
-}
-
-bool IsWelcomeExperienceEnabled() {
-  return IsPeripheralCustomizationEnabled() &&
-         base::FeatureList::IsEnabled(kWelcomeExperience);
-}
-
 bool IsWelcomeExperienceTestUnsupportedDevicesEnabled() {
-  return IsWelcomeExperienceEnabled() &&
+  return IsPeripheralCustomizationEnabled() &&
          base::FeatureList::IsEnabled(kWelcomeExperienceTestUnsupportedDevices);
 }
 

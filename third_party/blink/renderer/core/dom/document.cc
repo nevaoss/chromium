@@ -267,7 +267,7 @@
 #include "third_party/blink/renderer/core/html/html_unknown_element.h"
 #include "third_party/blink/renderer/core/html/media/lazy_load_media_observer.h"
 #include "third_party/blink/renderer/core/html/nesting_level_incrementer.h"
-#include "third_party/blink/renderer/core/html/parser/fragment_parser_options.h"
+#include "third_party/blink/renderer/core/html/parser/fragment_parser.h"
 #include "third_party/blink/renderer/core/html/parser/html_document_parser.h"
 #include "third_party/blink/renderer/core/html/parser/html_document_parser_fastpath.h"
 #include "third_party/blink/renderer/core/html/parser/html_parser_idioms.h"
@@ -9611,6 +9611,11 @@ bool Document::IsFocusAllowed(FocusTrigger trigger) const {
       LocalFrame::HasTransientUserActivation(frame)) {
     // 'autofocus' runs Element::focus asynchronously at which point the
     // document might not have a frame (see https://crbug.com/960224).
+    return true;
+  }
+
+  // Allow focus during prerendering to match same-origin behavior.
+  if (frame->GetDocument() && frame->GetDocument()->IsPrerendering()) {
     return true;
   }
 

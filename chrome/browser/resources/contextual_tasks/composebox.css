@@ -14,7 +14,9 @@
   --aim-header-height: 66px;
   --cancel-button-inline-end: 16px;
   --cancel-button-top: 12px;
+  /* LINT.IfChange(ComposeboxBorderRadius) */
   --composebox-border-radius: 24px;
+  /* LINT.ThenChange(//depot/chromium/chrome/browser/resources/contextual_tasks/app.ts:ComposeboxBorderRadius) */
   --composebox-collapsed-height: 90px;
   --composebox-margin-bottom: 30px;
   --context-carousel-inline-end-spacing: 56px;
@@ -591,6 +593,7 @@
   padding-inline-start: 20px;
   padding-top: 8px;
   position: relative;
+  pointer-events: auto;
 }
 
 :host:has(#composebox:not([show-dropdown_])) #contextualTasksSuggestionsContainer {

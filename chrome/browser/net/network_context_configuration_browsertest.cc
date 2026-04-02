@@ -66,6 +66,7 @@
 #include "mojo/public/cpp/bindings/remote.h"
 #include "mojo/public/cpp/system/data_pipe_utils.h"
 #include "net/base/address_list.h"
+#include "net/base/features.h"
 #include "net/base/filename_util.h"
 #include "net/base/host_port_pair.h"
 #include "net/base/load_flags.h"
@@ -1882,9 +1883,28 @@ class WaitingHandshakeClient : public network::mojom::WebSocketHandshakeClient {
 class NetworkContextConfigurationProxySettingsBrowserTest
     : public NetworkContextConfigurationHttpPacBrowserTest {
  public:
-  const size_t kDefaultMaxConnectionsPerProxy = 32;
+  const size_t kDefaultMaxConnectionsPerProxy = 64;
 
-  NetworkContextConfigurationProxySettingsBrowserTest() = default;
+  NetworkContextConfigurationProxySettingsBrowserTest() {
+    // Enable `kTcpSocketPoolProxyLimit`, and set to match
+    // `kDefaultMaxConnectionsPerProxy` to prevent changes via field trials.
+    // Disable `kPermitTcpSocketPoolConnectBackupJobs`, as backup jobs
+    // cause extra connections without opening new WebSockets, breaking tests.
+    scoped_feature_list_.InitWithFeaturesAndParameters(
+        /*enabled_features=*/
+        {
+            {net::features::kTcpSocketPoolProxyLimit,
+             {
+                 {"TcpSocketPoolProxyLimitNormal",
+                  base::NumberToString(kDefaultMaxConnectionsPerProxy)},
+                 {"TcpSocketPoolProxyLimitWebSocket",
+                  base::NumberToString(kDefaultMaxConnectionsPerProxy)},
+             }},
+        },
+        /*disabled_features=*/{
+            net::features::kPermitTcpSocketPoolConnectBackupJobs,
+        });
+  }
 
   NetworkContextConfigurationProxySettingsBrowserTest(
       const NetworkContextConfigurationProxySettingsBrowserTest&) = delete;
@@ -2025,7 +2045,9 @@ class NetworkContextConfigurationProxySettingsBrowserTest
               ->CreateURLLoaderNetworkObserverForFrame(
                   content::GlobalRenderFrameHostId(process->GetID(),
                                                    frame->GetRoutingID())),
-          mojo::NullRemote(), mojo::NullRemote(), std::nullopt);
+          mojo::NullRemote(), mojo::NullRemote(),
+          /*throttling_profile_id=*/std::nullopt,
+          /*network_restrictions_id=*/std::nullopt);
       waiters.emplace_back(std::move(client));
     }
     expected_connections_run_loop.Run();
@@ -2050,6 +2072,7 @@ class NetworkContextConfigurationProxySettingsBrowserTest
   // connections as we expect.
   absl::flat_hash_set<std::string> observed_request_urls_;
   bool is_websocket_test_ = false;
+  base::test::ScopedFeatureList scoped_feature_list_;
 };
 
 IN_PROC_BROWSER_TEST_P(NetworkContextConfigurationProxySettingsBrowserTest,
@@ -2057,23 +2080,15 @@ IN_PROC_BROWSER_TEST_P(NetworkContextConfigurationProxySettingsBrowserTest,
   RunMaxConnectionsPerProxyTest();
 }
 
-// Test failure on Windows: crbug.com/467278609
-#if BUILDFLAG(IS_WIN)
-#define MAYBE_MaxConnectionsPerProxyForWebSocket \
-  DISABLED_MaxConnectionsPerProxyForWebSocket
-#else
-#define MAYBE_MaxConnectionsPerProxyForWebSocket \
-  MaxConnectionsPerProxyForWebSocket
-#endif
 IN_PROC_BROWSER_TEST_P(NetworkContextConfigurationProxySettingsBrowserTest,
-                       MAYBE_MaxConnectionsPerProxyForWebSocket) {
+                       MaxConnectionsPerProxyForWebSocket) {
   RunMaxConnectionsPerProxyForWebSocketTest();
 }
 
 class NetworkContextConfigurationManagedProxySettingsBrowserTest
     : public NetworkContextConfigurationProxySettingsBrowserTest {
  public:
-  const size_t kTestMaxConnectionsPerProxy = 37;
+  const size_t kTestMaxConnectionsPerProxy = 16;
 
   NetworkContextConfigurationManagedProxySettingsBrowserTest() = default;
 
@@ -2096,10 +2111,19 @@ class NetworkContextConfigurationManagedProxySettingsBrowserTest
                  policy::POLICY_SOURCE_CLOUD,
                  base::Value(static_cast<int>(kTestMaxConnectionsPerProxy)),
                  /*external_data_fetcher=*/nullptr);
+    policies.Set(policy::key::kMaxConnectionsPerProxyForWebSocket,
+                 policy::POLICY_LEVEL_MANDATORY, policy::POLICY_SCOPE_MACHINE,
+                 policy::POLICY_SOURCE_CLOUD,
+                 base::Value(static_cast<int>(kTestMaxConnectionsPerProxy)),
+                 /*external_data_fetcher=*/nullptr);
     UpdateChromePolicy(policies);
   }
 
   size_t GetExpectedMaxConnectionsPerProxy() const override {
+    return kTestMaxConnectionsPerProxy;
+  }
+
+  size_t GetExpectedMaxConnectionsPerProxyForWebSocket() const override {
     return kTestMaxConnectionsPerProxy;
   }
 };
@@ -2110,17 +2134,9 @@ IN_PROC_BROWSER_TEST_P(
   RunMaxConnectionsPerProxyTest();
 }
 
-// Test failure on Windows: crbug.com/467278609
-#if BUILDFLAG(IS_WIN)
-#define MAYBE_MaxConnectionsPerManagedProxyForWebSocket \
-  DISABLED_MaxConnectionsPerManagedProxyForWebSocket
-#else
-#define MAYBE_MaxConnectionsPerManagedProxyForWebSocket \
-  MaxConnectionsPerManagedProxyForWebSocket
-#endif
 IN_PROC_BROWSER_TEST_P(
     NetworkContextConfigurationManagedProxySettingsBrowserTest,
-    MAYBE_MaxConnectionsPerManagedProxyForWebSocket) {
+    MaxConnectionsPerManagedProxyForWebSocket) {
   RunMaxConnectionsPerProxyForWebSocketTest();
 }
 

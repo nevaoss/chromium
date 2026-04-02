@@ -17,6 +17,8 @@
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/collaboration/collaboration_service_factory.h"
 #include "chrome/browser/commerce/shopping_service_factory.h"
+#include "chrome/browser/contextual_cueing/contextual_cueing_controller.h"
+#include "chrome/browser/contextual_cueing/features.h"
 #include "chrome/browser/contextual_tasks/active_task_context_provider_impl.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_side_panel_coordinator.h"
@@ -39,6 +41,7 @@
 #include "chrome/browser/skills/skills_ui_window_controller.h"
 #include "chrome/browser/tab_group_sync/tab_group_sync_service_factory.h"
 #include "chrome/browser/ui/ai_overlay_dialog/ai_overlay_dialog_controller.h"
+#include "chrome/browser/ui/animation/browser_animation_controller.h"
 #include "chrome/browser/ui/bookmarks/bookmark_bar_controller.h"
 #include "chrome/browser/ui/breadcrumb_manager_browser_agent.h"
 #include "chrome/browser/ui/browser.h"
@@ -104,6 +107,7 @@
 #include "chrome/browser/ui/views/frame/find_bar_owner_views.h"
 #include "chrome/browser/ui/views/frame/horizontal_tab_strip_region_view.h"
 #include "chrome/browser/ui/views/frame/immersive_mode_controller.h"
+#include "chrome/browser/ui/views/frame/immersive_mode_controller_stub.h"
 #include "chrome/browser/ui/views/frame/scrim_view_controller.h"
 #include "chrome/browser/ui/views/fullscreen_control/fullscreen_control_host.h"
 #include "chrome/browser/ui/views/incognito_clear_browsing_data_dialog_coordinator.h"
@@ -355,6 +359,12 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
           GetUserDataFactory().CreateInstance<AiOverlayDialogController>(
               *browser, browser);
     }
+
+    if (base::FeatureList::IsEnabled(contextual_cueing::kContextualCueingV2)) {
+      contextual_cueing_controller_ =
+          std::make_unique<contextual_cueing::ContextualCueingController>(
+              browser, tab_list_bridge_.get());
+    }
   }
 
   // The LensOverlayEntryPointController is constructed for all browser types
@@ -458,6 +468,10 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
     actor_border_view_controller_ =
         std::make_unique<ActorBorderViewController>(browser);
   }
+
+  browser_animation_controller_ =
+      GetUserDataFactory().CreateInstance<BrowserAnimationController>(*browser,
+                                                                      *browser);
 
   browser_select_file_dialog_controller_ =
       std::make_unique<BrowserSelectFileDialogController>(profile);
@@ -693,6 +707,12 @@ void BrowserWindowFeatures::InitPostWindowConstruction(Browser* browser) {
 
     find_bar_owner_ =
         std::make_unique<FindBarOwnerWebUIBrowser>(webui_browser_window);
+
+    // Provide a stub immersive mode controller so things that use it don't
+    // crash. This will need to be changed to use a proper one on platforms
+    // that support it.
+    immersive_mode_controller_ =
+        std::make_unique<ImmersiveModeControllerStub>(browser);
   }
 
   // Focus manager can be null in tests.
@@ -725,6 +745,10 @@ void BrowserWindowFeatures::InitPostBrowserViewConstruction(
   }
 
   scrim_view_controller_ = std::make_unique<ScrimViewController>(browser_view);
+
+  // Set the window for the animation controller. Add animation providers here
+  // as well.
+  browser_animation_controller_->set_browser_view(browser_view);
 
   // TODO(crbug.com/346148093): Move SidePanelCoordinator construction to
   // Init.
@@ -1048,6 +1072,8 @@ void BrowserWindowFeatures::TearDownPreBrowserWindowDestruction() {
   skills_ui_window_controller_.reset();
 
   context_highlight_window_feature_.reset();
+
+  browser_animation_controller_.reset();
 }
 
 SidePanelUI* BrowserWindowFeatures::side_panel_ui() {

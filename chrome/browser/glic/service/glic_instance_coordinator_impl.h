@@ -47,10 +47,9 @@ namespace gfx {
 class Point;
 }  // namespace gfx
 
-namespace contextual_cueing {
-class ContextualCueingService;
-}
 namespace glic {
+
+class ContextualCueingService;
 
 BASE_DECLARE_FEATURE(kGlicHibernateAllOnMemoryPressure);
 
@@ -77,7 +76,7 @@ class GlicInstanceCoordinatorImpl
       signin::IdentityManager* identity_manager,
       GlicKeyedService* service,
       GlicEnabling* enabling,
-      contextual_cueing::ContextualCueingService* contextual_cueing_service);
+      ContextualCueingService* contextual_cueing_service);
   ~GlicInstanceCoordinatorImpl() override;
 
   GlicKeyedService* service() { return service_; }
@@ -260,14 +259,17 @@ class GlicInstanceCoordinatorImpl
   void RestoreTab(content::WebContents* web_contents,
                   const GlicRestoredState& state);
 
+  // A unique ID for this coordinator, used to generate unique instance IDs.
+  const uint64_t coordinator_uid_;
+
   // List of callbacks to be notified when window activation has changed.
   base::RepeatingCallbackList<void(bool)> window_activation_callback_list_;
 
   const raw_ptr<Profile> profile_;
   raw_ptr<GlicKeyedService> service_;
-  raw_ptr<contextual_cueing::ContextualCueingService>
-      contextual_cueing_service_;
+  raw_ptr<ContextualCueingService> contextual_cueing_service_;
 
+  uint32_t next_instance_index_ = 0;
   std::map<InstanceId, std::unique_ptr<GlicInstanceImpl>> instances_;
 
   base::flat_map<GlicInstance*, std::unique_ptr<GlicInvokeHandler>>

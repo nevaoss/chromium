@@ -71,9 +71,9 @@ BASE_FEATURE_PARAM(bool,
                    "gate_on_site_not_origin",
                    false);
 BASE_FEATURE_PARAM(bool,
-                   kGlicIncludeHardcodedBlockListEntries,
+                   kGlicEnforceComponentUpdaterBlockListEntries,
                    &kGlicCrossOriginNavigationGating,
-                   "include_hardcoded_block_list_entries",
+                   "enforce_component_updater_block_list_entries",
                    true);
 BASE_FEATURE_PARAM(bool,
                    kGlicAllowImplicitToolOriginGrants,
@@ -156,5 +156,7 @@ BASE_FEATURE(kGlicActorLoadAndExtractContentTool,
 const base::FeatureParam<base::TimeDelta>
     kGlicActorLoadAndExtractContentToolTimeout{
         &kGlicActorLoadAndExtractContentTool, "timeout", base::Seconds(30)};
+
+BASE_FEATURE(kGlicActorEnableScriptTools, base::FEATURE_ENABLED_BY_DEFAULT);
 
 }  // namespace actor

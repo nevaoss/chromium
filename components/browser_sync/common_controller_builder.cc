@@ -16,8 +16,8 @@
 #include "base/task/task_traits.h"
 #include "base/task/thread_pool.h"
 #include "components/accessibility_annotator/core/storage/accessibility_annotator_backend.h"
+#include "components/account_settings/account_setting_service.h"
 #include "components/autofill/core/browser/payments/autofill_wallet_data_type_controller.h"
-#include "components/autofill/core/browser/webdata/account_settings/account_setting_service.h"
 #include "components/autofill/core/browser/webdata/addresses/autofill_profile_sync_bridge.h"
 #include "components/autofill/core/browser/webdata/addresses/contact_info_data_type_controller.h"
 #include "components/autofill/core/browser/webdata/addresses/contact_info_local_data_batch_uploader.h"
@@ -113,7 +113,6 @@ AutocompleteDelegateFromDataService(autofill::AutofillWebDataService* service) {
       ->GetControllerDelegate();
 }
 
-#if !BUILDFLAG(IS_IOS)
 base::WeakPtr<syncer::DataTypeControllerDelegate>
 AutofillValuableDelegateFromDataService(
     autofill::AutofillWebDataService* service) {
@@ -129,7 +128,6 @@ AutofillValuableMetadataDelegateFromDataService(
       ->change_processor()
       ->GetControllerDelegate();
 }
-#endif
 
 base::WeakPtr<syncer::DataTypeControllerDelegate>
 AutofillProfileDelegateFromDataService(
@@ -204,8 +202,7 @@ bool ArePreferencesAllowedInTransportMode() {
     return false;
   }
 #if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
-  return base::FeatureList::IsEnabled(
-      syncer::kReplaceSyncPromosWithSignInPromos);
+  return syncer::IsReplaceSyncPromosWithSignInPromosEnabled();
 #else
   return true;
 #endif
@@ -224,7 +221,7 @@ void CommonControllerBuilder::SetAccessibilityAnnotatorBackend(
 }
 
 void CommonControllerBuilder::SetAccountSettingService(
-    autofill::AccountSettingService* account_setting_service) {
+    account_settings::AccountSettingService* account_setting_service) {
   account_setting_service_.Set(account_setting_service);
 }
 
@@ -545,7 +542,6 @@ CommonControllerBuilder::Build(syncer::DataTypeSet disabled_types,
     add_controller(CreateUserConsentsDataTypeController());
   }
 
-#if !BUILDFLAG(IS_IOS)
   if (!disabled_types.Has(syncer::AUTOFILL_VALUABLE)) {
     add_controller(CreateAutofillValuableDataTypeController());
   }
@@ -557,7 +553,6 @@ CommonControllerBuilder::Build(syncer::DataTypeSet disabled_types,
   if (!disabled_types.Has(syncer::ACCOUNT_SETTING)) {
     add_controller(CreateAccountSettingDataTypeController());
   }
-#endif
 
   if (!disabled_types.Has(syncer::SHARED_TAB_GROUP_ACCOUNT_DATA)) {
     add_controller(CreateSharedTabGroupAccountDataTypeController(sync_service));
@@ -696,7 +691,7 @@ CommonControllerBuilder::CreateAutofillWalletMetadataDataTypeController(
       syncer::AUTOFILL_WALLET_METADATA,
       base::BindRepeating(&AutofillWalletMetadataDelegateFromDataService),
       sync_service, /*with_transport_mode_support=*/
-      base::FeatureList::IsEnabled(syncer::kReplaceSyncPromosWithSignInPromos));
+      syncer::IsReplaceSyncPromosWithSignInPromosEnabled());
 }
 
 std::unique_ptr<syncer::DataTypeController>
@@ -709,7 +704,7 @@ CommonControllerBuilder::CreateAutofillWalletOfferDataTypeController(
       syncer::AUTOFILL_WALLET_OFFER,
       base::BindRepeating(&AutofillWalletOfferDelegateFromDataService),
       sync_service, /*with_transport_mode_support=*/
-      base::FeatureList::IsEnabled(syncer::kReplaceSyncPromosWithSignInPromos));
+      syncer::IsReplaceSyncPromosWithSignInPromosEnabled());
 }
 
 #if !BUILDFLAG(IS_IOS)
@@ -729,9 +724,7 @@ CommonControllerBuilder::CreateAutofillWalletUsageDataTypeController(
 std::unique_ptr<syncer::DataTypeController>
 CommonControllerBuilder::CreateAutofillWalletCredentialDataTypeController(
     syncer::SyncService* sync_service) {
-  if (!profile_autofill_web_data_service_.value() ||
-      !base::FeatureList::IsEnabled(
-          syncer::kSyncAutofillWalletCredentialData)) {
+  if (!profile_autofill_web_data_service_.value()) {
     return nullptr;
   }
   return CreateWalletDataTypeController(
@@ -790,7 +783,7 @@ CommonControllerBuilder::CreateSessionsDataTypeController(
   auto full_sync_mode_delegate =
       std::make_unique<syncer::ForwardingDataTypeControllerDelegate>(delegate);
   auto transport_mode_delegate =
-      base::FeatureList::IsEnabled(syncer::kReplaceSyncPromosWithSignInPromos)
+      syncer::IsReplaceSyncPromosWithSignInPromosEnabled()
           ? std::make_unique<syncer::ForwardingDataTypeControllerDelegate>(
                 delegate)
           : nullptr;
@@ -1000,7 +993,7 @@ CommonControllerBuilder::CreateUserEventsDataTypeController(
       /*delegate_for_full_sync_mode=*/
       std::make_unique<syncer::ForwardingDataTypeControllerDelegate>(delegate),
       /*delegate_for_transport_mode=*/
-      base::FeatureList::IsEnabled(syncer::kReplaceSyncPromosWithSignInPromos)
+      syncer::IsReplaceSyncPromosWithSignInPromosEnabled()
           ? std::make_unique<syncer::ForwardingDataTypeControllerDelegate>(
                 delegate)
           : nullptr);
@@ -1029,9 +1022,13 @@ CommonControllerBuilder::CreateUserConsentsDataTypeController() {
       std::make_unique<syncer::ForwardingDataTypeControllerDelegate>(delegate));
 }
 
-#if !BUILDFLAG(IS_IOS)
 std::unique_ptr<syncer::DataTypeController>
 CommonControllerBuilder::CreateAutofillValuableDataTypeController() {
+#if BUILDFLAG(IS_IOS)
+  if (!base::FeatureList::IsEnabled(syncer::kSyncAutofillValuable)) {
+    return nullptr;
+  }
+#endif
   if (!profile_autofill_web_data_service_.value()) {
     return nullptr;
   }
@@ -1082,7 +1079,6 @@ CommonControllerBuilder::CreateAccountSettingDataTypeController() {
       /*delegate_for_transport_mode=*/
       account_setting_service_.value()->GetSyncControllerDelegate());
 }
-#endif
 
 std::unique_ptr<syncer::DataTypeController>
 CommonControllerBuilder::CreateSharedTabGroupAccountDataTypeController(

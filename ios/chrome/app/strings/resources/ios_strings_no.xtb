@@ -394,6 +394,7 @@
 <translation id="2359808026110333948">Fortsett</translation>
 <translation id="2360196772093551345">Be om mobilversjonen av nettstedet</translation>
 <translation id="2362083820973145409">Logget på som <ph name="USER_NAME" />. <ph name="USER_EMAIL" />. Åpner innstillinger.</translation>
+<translation id="2367025302166767427">Kunne ikke fylle ut informasjonen din</translation>
 <translation id="2371084566192454134">Faner og fanegrupper</translation>
 <translation id="2371303771137626249">Ny</translation>
 <translation id="2381405137052800939">Grunninnstillinger</translation>
@@ -492,6 +493,7 @@
 <translation id="2721190673959776287">Prøv utsøkt, produktintegrert hjelp for det kontekstuelle panelet, som skal vises flere ganger om dagen.</translation>
 <translation id="2739887572830526131">Behold denne gruppen for å legge til faner senere, eller slett den hvis du ikke trenger den lenger.</translation>
 <translation id="2747003861858887689">Forrige felt</translation>
+<translation id="2750583038402718064">Flyttet <ph name="WEBSITE_TITLE" /> til posisjon <ph name="POSITION" /></translation>
 <translation id="2755485474385016903">Alle i gruppen ser endringene du gjør</translation>
 <translation id="2755595981383829244">Nå får du varsler om innhold</translation>
 <translation id="2761788987260570878">Ta et bilde av søket</translation>
@@ -1347,6 +1349,7 @@ Handoff må også være aktivert i Generelt-delen av Innstillinger, og enhetene 
 <translation id="5819208479324046259">Administreres av <ph name="MANAGER" />. <ph name="BEGIN_LINK" />Finn ut mer<ph name="END_LINK" /></translation>
 <translation id="5827266244928330802">Safari</translation>
 <translation id="5829649908290113115">Synkroniserer …</translation>
+<translation id="583281660410589416">Ukjent</translation>
 <translation id="5838430324585198889">Få tilgang til flere funksjoner på iPad med Google-apper</translation>
 <translation id="583923961930319521">Bruk passord på alle enhetene dine</translation>
 <translation id="5843013299019689749">Svart bakgrunnsfarge</translation>
@@ -2031,6 +2034,7 @@ Handoff må også være aktivert i Generelt-delen av Innstillinger, og enhetene 
 <translation id="8209237163365258530">Gemini <ph name="VERSION_NUMBER" />-modeller</translation>
 <translation id="8211030355252954494">Du har mottatt passord for <ph name="WEBSITE" /></translation>
 <translation id="8211406090763984747">Tilkoblingen er sikker</translation>
+<translation id="8213190397436801658">Startside</translation>
 <translation id="8214293972734702249">Festet – <ph name="TAB_TITLE" /></translation>
 <translation id="8219424187226230983">Se versjonen uten nett på en ny fane</translation>
 <translation id="8221665793629393739">Påminnelse om å besøke nettsiden igjen</translation>

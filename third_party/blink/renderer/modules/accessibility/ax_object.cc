@@ -1069,6 +1069,8 @@ void AXObject::SetCachedValuesNeedUpdate(
     bool cached_values_need_update,
     std::optional<TreeUpdateReason> reason) {
   cached_values_need_update_ = cached_values_need_update;
+  cached_values_dirty_reason_ =
+      cached_values_need_update ? reason : std::nullopt;
 #if AX_FAIL_FAST_BUILD()
   CHECK(ax_object_cache_);
   if (cached_values_need_update) {
@@ -7464,7 +7466,7 @@ bool AXObject::PerformAction(const ui::AXActionData& action_data) {
     case ax::mojom::blink::Action::kSetSequentialFocusNavigationStartingPoint:
       return RequestSetSequentialFocusNavigationStartingPointAction();
     case ax::mojom::blink::Action::kSetValue:
-      return RequestSetValueAction(String::FromUTF8(action_data.value));
+      return RequestSetValueAction(String::FromUtf8(action_data.value));
     case ax::mojom::blink::Action::kShowContextMenu:
       return RequestShowContextMenuAction();
     case ax::mojom::blink::Action::kScrollToMakeVisible:
@@ -8302,8 +8304,11 @@ const AXObject* AXObject::LowestCommonAncestor(const AXObject& first,
 
 // Extra checks that only occur during serialization.
 void AXObject::PreSerializationConsistencyCheck() const{
-  SCOPED_CRASH_KEY_STRING256("AXObject", "Error",
-                             this->ToString().Utf8().c_str());
+  int reason_val = cached_values_dirty_reason_.has_value()
+                       ? static_cast<int>(cached_values_dirty_reason_.value())
+                       : -1;
+  SCOPED_CRASH_KEY_NUMBER("AXObject", "DirtyReason", reason_val);
+
   CHECK(!IsDetached()) << "Do not serialize detached nodes: " << this;
   CHECK(AXObjectCache().IsFrozen());
   CHECK(!NeedsToUpdateCachedValues()) << "Stale values on: " << this;

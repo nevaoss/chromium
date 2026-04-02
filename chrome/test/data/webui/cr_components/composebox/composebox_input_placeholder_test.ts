@@ -9,7 +9,7 @@ import type {ComposeboxFile} from 'chrome://resources/cr_components/composebox/c
 import type {ComposeboxElement} from 'chrome://resources/cr_components/composebox/composebox.js';
 import {PageCallbackRouter, PageHandlerRemote} from 'chrome://resources/cr_components/composebox/composebox.mojom-webui.js';
 import {ComposeboxProxyImpl} from 'chrome://resources/cr_components/composebox/composebox_proxy.js';
-import {ContextUploadStatus, ModelMode, ToolMode as ComposeboxToolMode} from 'chrome://resources/cr_components/composebox/composebox_query.mojom-webui.js';
+import {ContextUploadStatus, ModelMode, ToolMode} from 'chrome://resources/cr_components/composebox/composebox_query.mojom-webui.js';
 import type {InputState} from 'chrome://resources/cr_components/composebox/composebox_query.mojom-webui.js';
 import {WindowProxy} from 'chrome://resources/cr_components/composebox/window_proxy.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
@@ -20,7 +20,7 @@ import {assertEquals, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import type {TestMock} from 'chrome://webui-test/test_mock.js';
 import {microtasksFinished} from 'chrome://webui-test/test_util.js';
 
-import {createInputState, installMock} from './composebox_test_utils.js';
+import {installMock, MockInputState} from './composebox_test_utils.js';
 
 suite('ComposeboxInputPlaceholder', () => {
   let composebox: ComposeboxElement;
@@ -40,7 +40,7 @@ suite('ComposeboxInputPlaceholder', () => {
     composebox.state = {
       text: '',
       files: [],
-      mode: ComposeboxToolMode.kUnspecified,
+      mode: ToolMode.kUnspecified,
       model: ModelMode.kUnspecified,
     };
 
@@ -65,8 +65,13 @@ suite('ComposeboxInputPlaceholder', () => {
         mock => ComposeboxProxyImpl.getInstance().searchboxHandler = mock);
 
     searchboxHandler.setResultFor('getRecentTabs', Promise.resolve({tabs: []}));
-    searchboxHandler.setResultFor(
-        'getInputState', Promise.resolve({state: createInputState()}));
+    searchboxHandler.setResultFor('getInputState', Promise.resolve({
+      state: new MockInputState({
+        toolConfigs: [],
+        toolsSectionConfig: {header: ''},
+        modelSectionConfig: {header: ''},
+      }),
+    }));
 
     windowProxy = installMock(WindowProxy);
     windowProxy.setResultFor('setTimeout', 0);
@@ -84,7 +89,7 @@ suite('ComposeboxInputPlaceholder', () => {
   });
 
   test('InputPlaceholderOverride', async () => {
-    const input = composebox.$.input;
+    const input = composebox.getInputElement().$.input;
     assertTrue(!!input);
     const initialPlaceholder = input.placeholder;
     assertTrue(initialPlaceholder.length > 0);
@@ -104,7 +109,10 @@ suite('ComposeboxInputPlaceholder', () => {
 
   test('InputPlaceholderFromModelConfig', async () => {
     const modelHint = 'Ask a model';
-    const testInputState = createInputState({
+    const testInputState = new MockInputState({
+      toolConfigs: [],
+      toolsSectionConfig: {header: ''},
+      modelSectionConfig: {header: ''},
       activeModel: ModelMode.kGeminiRegular,
       modelConfigs: [{
         model: ModelMode.kGeminiRegular,
@@ -115,24 +123,24 @@ suite('ComposeboxInputPlaceholder', () => {
     });
 
     await setupComposeboxWithInputState(testInputState);
-    assertEquals(modelHint, composebox.$.input.placeholder);
+    assertEquals(modelHint, composebox.getInputElement().$.input.placeholder);
   });
 
   const defaultApiHint = loadTimeData.getString('searchboxComposePlaceholder');
 
   const toolConfigTestCases = [
     {
-      tool: ComposeboxToolMode.kDeepSearch,
+      tool: ToolMode.kDeepSearch,
       hint: 'Research anything',
       name: 'DeepSearch',
     },
     {
-      tool: ComposeboxToolMode.kImageGen,
+      tool: ToolMode.kImageGen,
       hint: 'Describe your image',
       name: 'ImageGen',
     },
     {
-      tool: ComposeboxToolMode.kCanvas,
+      tool: ToolMode.kCanvas,
       hint: 'Create anything',
       name: 'Canvas',
     },
@@ -140,7 +148,9 @@ suite('ComposeboxInputPlaceholder', () => {
 
   toolConfigTestCases.forEach(({tool, hint, name}) => {
     test(`InputPlaceholderFromToolConfig_${name}`, async () => {
-      const mockInputState = createInputState({
+      await setupComposeboxWithInputState(new MockInputState({
+        toolsSectionConfig: {header: ''},
+        modelSectionConfig: {header: ''},
         hintText: defaultApiHint,
         toolConfigs:
             toolConfigTestCases.map(t => ({
@@ -151,12 +161,11 @@ suite('ComposeboxInputPlaceholder', () => {
                                       disableActiveModelSelection: false,
                                       aimUrlParams: [],
                                     })),
-      });
-
-      await setupComposeboxWithInputState(mockInputState);
+      }));
 
       // Initial placeholder check.
-      assertEquals(defaultApiHint, composebox.$.input.placeholder);
+      assertEquals(
+          defaultApiHint, composebox.getInputElement().$.input.placeholder);
 
       // Enable tool mode.
       const contextEntrypoint =
@@ -169,13 +178,13 @@ suite('ComposeboxInputPlaceholder', () => {
       }));
       await microtasksFinished();
       searchboxPageRemote.onInputStateChanged({
-        ...mockInputState,
+        ...new MockInputState(),
         activeTool: tool,
       });
       await searchboxPageRemote.$.flushForTesting();
       await microtasksFinished();
 
-      assertEquals(hint, composebox.$.input.placeholder);
+      assertEquals(hint, composebox.getInputElement().$.input.placeholder);
 
       // Disable tool mode.
       contextEntrypoint.dispatchEvent(new CustomEvent('tool-click', {
@@ -185,13 +194,14 @@ suite('ComposeboxInputPlaceholder', () => {
       }));
       await microtasksFinished();
       searchboxPageRemote.onInputStateChanged({
-        ...mockInputState,
-        activeTool: ComposeboxToolMode.kUnspecified,
+        ...new MockInputState(),
+        activeTool: ToolMode.kUnspecified,
       });
       await searchboxPageRemote.$.flushForTesting();
       microtasksFinished();
 
-      assertEquals(defaultApiHint, composebox.$.input.placeholder);
+      assertEquals(
+          defaultApiHint, composebox.getInputElement().$.input.placeholder);
     });
   });
 
@@ -214,7 +224,8 @@ suite('ComposeboxInputPlaceholder', () => {
     } as ComposeboxFile);
     await composebox.updateComplete;
 
-    assertEquals('Ask about these', composebox.$.input.placeholder);
+    assertEquals(
+        'Ask about these', composebox.getInputElement().$.input.placeholder);
   });
 
   test('SingleTabFileUpdatesPlaceholder', async () => {
@@ -230,7 +241,8 @@ suite('ComposeboxInputPlaceholder', () => {
     } as ComposeboxFile);
     await composebox.updateComplete;
 
-    assertEquals('Ask about this tab', composebox.$.input.placeholder);
+    assertEquals(
+        'Ask about this tab', composebox.getInputElement().$.input.placeholder);
   });
 
   test('SingleAutoTabFileDoesNotUpdatePlaceholder', async () => {
@@ -254,7 +266,8 @@ suite('ComposeboxInputPlaceholder', () => {
     await searchboxHandler.whenCalled('addTabContext');
     await composebox.updateComplete;
 
-    assertEquals(defaultApiHint, composebox.$.input.placeholder);
+    assertEquals(
+        defaultApiHint, composebox.getInputElement().$.input.placeholder);
   });
 
   test('SingleImageFileUpdatesPlaceholder', async () => {
@@ -270,7 +283,9 @@ suite('ComposeboxInputPlaceholder', () => {
     } as ComposeboxFile);
     await composebox.updateComplete;
 
-    assertEquals('Ask about this image', composebox.$.input.placeholder);
+    assertEquals(
+        'Ask about this image',
+        composebox.getInputElement().$.input.placeholder);
   });
 
   test('SinglePdfFileUpdatesPlaceholder', async () => {
@@ -286,7 +301,8 @@ suite('ComposeboxInputPlaceholder', () => {
     } as ComposeboxFile);
     await composebox.updateComplete;
 
-    assertEquals('Ask about this doc', composebox.$.input.placeholder);
+    assertEquals(
+        'Ask about this doc', composebox.getInputElement().$.input.placeholder);
   });
 
   test('SingleUnknownFileUpdatesPlaceholder', async () => {
@@ -299,115 +315,9 @@ suite('ComposeboxInputPlaceholder', () => {
     } as ComposeboxFile);
     await composebox.updateComplete;
 
-    const placeholder = composebox.$.input.placeholder;
+    const placeholder = composebox.getInputElement().$.input.placeholder;
     assertTrue(
         !placeholder.includes('Ask about'),
         `Placeholder '${placeholder}' should not include 'Ask about'`);
-  });
-});
-
-suite('ComposeboxScrollCaret', () => {
-  let composebox: ComposeboxElement;
-
-  setup(async () => {
-    document.body.innerHTML = window.trustedTypes!.emptyHTML;
-
-    installMock(
-        PageHandlerRemote,
-        mock => ComposeboxProxyImpl.setInstance(new ComposeboxProxyImpl(
-            mock, new PageCallbackRouter(), new SearchboxPageHandlerRemote(),
-            new SearchboxPageCallbackRouter())));
-
-    const searchboxHandler = installMock(
-        SearchboxPageHandlerRemote,
-        mock => ComposeboxProxyImpl.getInstance().searchboxHandler = mock);
-
-    searchboxHandler.setResultFor('getRecentTabs', Promise.resolve({tabs: []}));
-    searchboxHandler.setResultFor(
-        'getInputState', Promise.resolve({state: createInputState()}));
-
-    const windowProxy = installMock(WindowProxy);
-    windowProxy.setResultFor('setTimeout', 0);
-    windowProxy.setResultMapperFor('matchMedia', () => ({
-                                                   addListener() {},
-                                                   addEventListener() {},
-                                                   removeListener() {},
-                                                   removeEventListener() {},
-                                                 }));
-    composebox = document.createElement('cr-composebox');
-    document.body.appendChild(composebox);
-    await microtasksFinished();
-  });
-
-  test('InputWrapperIsScrollContainer', () => {
-    const inputWrapper =
-        composebox.shadowRoot.querySelector<HTMLElement>('#inputWrapper');
-    assertTrue(!!inputWrapper);
-
-    const overflowY = window.getComputedStyle(inputWrapper).overflowY;
-    assertEquals('auto', overflowY);
-  });
-
-  test('TextareaDoesNotScrollInternally', () => {
-    const input = composebox.$.input;
-    assertTrue(!!input);
-
-    const maxHeight = window.getComputedStyle(input).maxHeight;
-    assertEquals('none', maxHeight);
-  });
-
-  test('CaretTransformStableDuringScroll', async () => {
-    const input = composebox.$.input;
-    const caret = composebox.$.caret;
-    const inputWrapper =
-        composebox.shadowRoot.querySelector<HTMLElement>('#inputWrapper');
-    assertTrue(!!input);
-    assertTrue(!!caret);
-    assertTrue(!!inputWrapper);
-
-    // Type engough texts to cause scrolling.
-    const longText = Array(100).fill('Let\'s keep typing longer...').join('\n');
-    input.value = longText;
-    input.dispatchEvent(new Event('input', {bubbles: true}));
-    await microtasksFinished();
-
-    // Place caret at the end.
-    input.setSelectionRange(longText.length, longText.length);
-    input.dispatchEvent(new Event('keyup', {bubbles: true}));
-    await microtasksFinished();
-
-    // Verify that the wrapper has scrollable content.
-    assertTrue(inputWrapper.scrollHeight > inputWrapper.clientHeight);
-
-    // Record the caret transform before scrolling.
-    const caretTransformBeforeScroll = caret.style.transform;
-    assertTrue(caretTransformBeforeScroll.length > 0);
-
-    // Scroll the wrapper to the top.
-    inputWrapper.scrollTop = 0;
-    await microtasksFinished();
-
-    // Verify that the caret transform is the same before and after scrolling.
-    assertEquals(caretTransformBeforeScroll, caret.style.transform);
-  });
-
-  test('MaskImageOnWrapper', () => {
-    const inputWrapper =
-        composebox.shadowRoot.querySelector<HTMLElement>('#inputWrapper');
-    assertTrue(!!inputWrapper);
-
-    // The mask-image should be on the input wrapper.
-    const wrapperMask =
-        window.getComputedStyle(inputWrapper).getPropertyValue('mask-image');
-    assertTrue(wrapperMask.length > 0 && wrapperMask !== 'none');
-  });
-
-  test('TextareaUsesFieldSizingContent', () => {
-    const input = composebox.$.input;
-    assertTrue(!!input);
-
-    const fieldSizing =
-        window.getComputedStyle(input).getPropertyValue('field-sizing');
-    assertEquals('content', fieldSizing);
   });
 });

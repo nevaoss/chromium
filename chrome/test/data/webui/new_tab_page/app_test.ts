@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {ActionChipsHandlerRemote, IconType, PageCallbackRouter as ActionChipsPageCallbackRouter, ToolMode} from 'chrome://new-tab-page/action_chips.mojom-webui.js';
+import {ActionChipsHandlerRemote, IconType, PageCallbackRouter as ActionChipsPageCallbackRouter} from 'chrome://new-tab-page/action_chips.mojom-webui.js';
 import type {PageRemote as ActionChipsPageRemote, TabInfo} from 'chrome://new-tab-page/action_chips.mojom-webui.js';
 import type {CustomizeButtonsDocumentRemote} from 'chrome://new-tab-page/customize_buttons.mojom-webui.js';
 import {CustomizeButtonsDocumentCallbackRouter, CustomizeButtonsHandlerRemote, SidePanelOpenTrigger} from 'chrome://new-tab-page/customize_buttons.mojom-webui.js';
@@ -15,7 +15,7 @@ import type {AppElement, CustomizeButtonsElement} from 'chrome://new-tab-page/ne
 import type {PageRemote} from 'chrome://new-tab-page/new_tab_page.mojom-webui.js';
 import {NtpBackgroundImageSource, PageCallbackRouter, PageHandlerRemote} from 'chrome://new-tab-page/new_tab_page.mojom-webui.js';
 import {PageCallbackRouter as ComposeboxPageCallbackRouter, PageHandlerRemote as ComposeboxPageHandlerRemote} from 'chrome://resources/cr_components/composebox/composebox.mojom-webui.js';
-import {ToolMode as ComposeboxToolMode} from 'chrome://resources/cr_components/composebox/composebox_query.mojom-webui.js';
+import {ToolMode} from 'chrome://resources/cr_components/composebox/composebox_query.mojom-webui.js';
 import type {SearchboxElement} from 'chrome://resources/cr_components/searchbox/searchbox.js';
 import type {CrButtonElement} from 'chrome://resources/cr_elements/cr_button/cr_button.js';
 import type {CrToastElement} from 'chrome://resources/cr_elements/cr_toast/cr_toast.js';
@@ -136,7 +136,7 @@ suite('NewTabPageAppTest', () => {
   }
 
   function getComposeButton(): HTMLElement|null {
-    const searchboxContainer = app.shadowRoot.querySelector('cr-searchbox');
+    const searchboxContainer = app.shadowRoot.querySelector('ntp-searchbox');
     assertTrue(!!searchboxContainer);
     return searchboxContainer.shadowRoot.querySelector<HTMLElement>(
         '#composeButton');
@@ -738,7 +738,7 @@ suite('NewTabPageAppTest', () => {
     ([
       ['#content', NtpElement.BACKGROUND],
       ['ntp-logo', NtpElement.LOGO],
-      ['cr-searchbox', NtpElement.REALBOX],
+      ['ntp-searchbox', NtpElement.REALBOX],
       ['cr-most-visited', NtpElement.MOST_VISITED],
       ['ntp-middle-slot-promo', NtpElement.MIDDLE_SLOT_PROMO],
       ['#modules', NtpElement.MODULE],
@@ -1109,8 +1109,8 @@ suite('NewTabPageAppTest', () => {
         const composeButton = getComposeButton();
         assertTrue(!!composeButton);
 
-        // Dispatch the 'compose-click' event directly, which cr-searchbox
-        // listens for. This simulates the `cr-searchbox-compose-button`
+        // Dispatch the 'compose-click' event directly, which ntp-searchbox
+        // listens for. This simulates the `ntp-searchbox-compose-button`
         // child `cr-button` being clicked and its `onClick_` function being
         // called.
         composeButton.dispatchEvent(new CustomEvent(
@@ -1131,7 +1131,7 @@ suite('NewTabPageAppTest', () => {
           () => {
             // Assert compose button is present.
             const searchboxContainer =
-                app.shadowRoot.querySelector('cr-searchbox');
+                app.shadowRoot.querySelector('ntp-searchbox');
             const composeButton = getComposeButton();
             assertTrue(!!composeButton);
 
@@ -1141,8 +1141,8 @@ suite('NewTabPageAppTest', () => {
                 .querySelector<HTMLInputElement>('#input')!.dispatchEvent(
                     new InputEvent('input'));
 
-            // Dispatch the 'compose-click' event directly, which cr-searchbox
-            // listens for. This simulates the `cr-searchbox-compose-button`
+            // Dispatch the 'compose-click' event directly, which ntp-searchbox
+            // listens for. This simulates the `ntp-searchbox-compose-button`
             // child `cr-button` being clicked and its `onClick_` function being
             // called.
             composeButton.dispatchEvent(new CustomEvent(
@@ -1172,7 +1172,8 @@ suite('NewTabPageAppTest', () => {
           return null;
         };
 
-        const searchboxContainer = app.shadowRoot.querySelector('cr-searchbox');
+        const searchboxContainer =
+            app.shadowRoot.querySelector('ntp-searchbox');
         const composeButton = getComposeButton();
         assertTrue(!!composeButton);
 
@@ -1222,7 +1223,7 @@ suite('NewTabPageAppTest', () => {
         const composeButton = getComposeButton();
         assertTrue(!!composeButton);
 
-        // Dispatch the 'compose-click' event directly, which cr-searchbox
+        // Dispatch the 'compose-click' event directly, which ntp-searchbox
         // listens for. This simulates the `cr-searchbox-compose-button`
         // child `cr-button` being clicked and its `onClick_` function being
         // called.
@@ -1244,7 +1245,7 @@ suite('NewTabPageAppTest', () => {
           () => {
             // Assert compose button is present.
             const searchboxContainer =
-                app.shadowRoot.querySelector('cr-searchbox');
+                app.shadowRoot.querySelector('ntp-searchbox');
             const composeButton = getComposeButton();
             assertTrue(!!composeButton);
 
@@ -1331,11 +1332,11 @@ suite('NewTabPageAppTest', () => {
       const composebox = app.shadowRoot.querySelector('cr-composebox');
       assertTrue(!!composebox);
       // 1. Setup: Simulate input content.
-      composebox.$.input.value = 'test input';
-      composebox.$.input.dispatchEvent(new Event('input'));
+      composebox.getInputElement().$.input.value = 'test input';
+      composebox.getInputElement().$.input.dispatchEvent(new Event('input'));
       await microtasksFinished();
 
-      assertEquals('test input', composebox.$.input.value);
+      assertEquals('test input', composebox.getInputElement().$.input.value);
 
       // First ESC: Clear Input (Content present)
       const closePromise1 = eventToPromise('close-composebox', composebox);
@@ -1352,7 +1353,7 @@ suite('NewTabPageAppTest', () => {
           closedAfterFirstEsc,
           'First ESC should clear input, not close the box.');
       assertEquals(
-          '', composebox.$.input.value,
+          '', composebox.getInputElement().$.input.value,
           'Input must be cleared after first ESC.');
 
       // Second ESC: Close Box (Content empty)
@@ -1415,7 +1416,7 @@ suite('NewTabPageAppTest', () => {
         'Clicking the searchbox composebox button with text navigates',
         async () => {
           const searchboxContainer =
-              app.shadowRoot.querySelector('cr-searchbox');
+              app.shadowRoot.querySelector('ntp-searchbox');
           const composeButton = getComposeButton();
           assertTrue(!!composeButton);
 
@@ -1476,13 +1477,13 @@ suite('NewTabPageAppTest', () => {
             await microtasksFinished();
 
             const searchboxContainer =
-                app.shadowRoot.querySelector('cr-searchbox');
+                app.shadowRoot.querySelector('ntp-searchbox');
 
             assertEquals(
                 'hello',
-                searchboxContainer!.shadowRoot.querySelector('#input')!
-                    .shadowRoot!.querySelector<HTMLInputElement>(
-                                    '#input')!.value);
+                searchboxContainer!.shadowRoot
+                    .querySelector('cr-searchbox-input')!.shadowRoot
+                    .querySelector<HTMLInputElement>('#input')!.value);
           });
     });
     suite('Close options disabled', () => {
@@ -2159,7 +2160,6 @@ suite('NewTabPageAppTest', () => {
     suiteSetup(() => {
       loadTimeData.overrideValues({
         ntpRealboxNextEnabled: true,
-        realboxLayoutMode: 'Compact',
         composeboxCloseByClickOutside: true,
       });
     });
@@ -2178,12 +2178,13 @@ suite('NewTabPageAppTest', () => {
           await microtasksFinished();
           const composebox = app.shadowRoot.querySelector('cr-composebox');
           assertTrue(!!composebox);
-          composebox.$.input.dispatchEvent(new FocusEvent('focus'));
+          composebox.getInputElement().$.input.dispatchEvent(
+              new FocusEvent('focus'));
           await microtasksFinished();
 
           assertFalse(scrim.hidden);
 
-          composebox.$.input.dispatchEvent(
+          composebox.getInputElement().$.input.dispatchEvent(
               new FocusEvent('focusout', {relatedTarget: scrim}));
           await microtasksFinished();
           scrim.click();
@@ -2267,10 +2268,8 @@ suite('NewTabPageAppTest', () => {
       // Assert.
       const composebox = app.shadowRoot.querySelector('cr-composebox');
       assertTrue(!!composebox);
-      assertEquals(
-          'text',
-          composebox.shadowRoot.querySelector<HTMLInputElement>(
-                                   '#input')!.value);
+
+      assertEquals('text', composebox.getInputElement().$.input.value);
       assertStyle($$(app, '#searchbox')!, 'visibility', 'hidden');
     });
 
@@ -2439,7 +2438,7 @@ suite('NewTabPageAppTest', () => {
           assertTrue(!!composebox);
           assertEquals(1, searchboxHandler.getCallCount('setActiveToolMode'));
           assertEquals(
-              ComposeboxToolMode.kImageGen,
+              ToolMode.kImageGen,
               searchboxHandler.getArgs('setActiveToolMode')[0]);
         });
     test(
@@ -2462,7 +2461,7 @@ suite('NewTabPageAppTest', () => {
           assertTrue(!!composebox);
           assertEquals(1, searchboxHandler.getCallCount('setActiveToolMode'));
           assertEquals(
-              ComposeboxToolMode.kDeepSearch,
+              ToolMode.kDeepSearch,
               searchboxHandler.getArgs('setActiveToolMode')[0]);
         });
     test('Recent tab chip click opens composebox with context', async () => {
@@ -2533,8 +2532,8 @@ suite('NewTabPageAppTest', () => {
               searchboxHandler.getArgs('addTabContext')[0];
           assertEquals(1, tabId);
           assertEquals(true, delayUpload);
-          assertTrue(!!composebox.$.input);
-          assertEquals(suggestion, composebox.$.input.value);
+          assertTrue(!!composebox.getInputElement().$.input);
+          assertEquals(suggestion, composebox.getInputElement().$.input.value);
         });
   });
 

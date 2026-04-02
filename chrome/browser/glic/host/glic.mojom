@@ -55,6 +55,12 @@ struct ProfileEnablement {
   // Whether the user has passed the FRE.
   bool not_consented;
 
+  // Whether disallowed by country filtering.
+  bool disallowed_by_country_filter;
+
+  // Whether disallowed by locale filtering.
+  bool disallowed_by_locale_filter;
+
   // Whether the user has consented to actuation.
   bool actuation_not_consented;
 
@@ -168,7 +174,8 @@ interface GlicPreloadHandlerFactory {
 interface PageHandlerFactory {
   // Creates the PageHandler for chrome://glic.
   CreatePageHandler(
-      pending_receiver<PageHandler> receiver, pending_remote<Page> page);
+      pending_receiver<PageHandler> receiver, pending_remote<Page> page)
+      => (string instance_id);
 };
 
 // It is used in the Glic.PanelWebUiState.FinishState histogram.
@@ -266,6 +273,7 @@ struct TriggerInvokeFromInternalsOptions {
   mojo_base.mojom.TimeDelta? timeout;
   AllowedInflightNavigation allowed_inflight_navigation;
   bool auto_submit;
+  FreOverride fre_override = kUnspecified;
 };
 
 // Page handler for the glic WebUI.
@@ -305,7 +313,6 @@ interface PageHandler {
 
   // Notifies the PageHandler that the state of the WebUI has changed.
   WebUiStateChanged(WebUiState new_state);
-
 };
 
 // Page handler for the glic internals WebUI.
@@ -320,12 +327,13 @@ interface InternalsPageHandler {
                      url.mojom.Url prod);
 
   // Triggers an invocation for testing from the internals page.
-  TriggerInvokeFromInternalsAction(TriggerInvokeFromInternalsOptions options)
+  TriggerInvokeFromInternalsAction(
+      TriggerInvokeFromInternalsOptions options)
       => (bool success, string error_message);
 
   // Sets the web continuity originating host URL preset for the internals page.
   SetWebContinuityOriginatingHostUrlPreset(
-                     url.mojom.Url web_continuity_originating_host_url);
+      url.mojom.Url web_continuity_originating_host_url);
 };
 
 // Factory for InternalsPageHandler used in chrome://glic/internals.
@@ -752,9 +760,8 @@ enum SkillSource {
   [MinVersion=1] kDerivedFromFirstParty = 3,
 };
 
-// clang-format off
-// LINT.ThenChange(//components/skills/public/skill.mojom:SkillSource, //components/sync/protocol/skill_specifics.proto:SkillSource)
-// clang-format on
+// LINT.ThenChange(//components/skills/public/skill.mojom:SkillSource,
+// //components/sync/protocol/skill_specifics.proto:SkillSource)
 
 // LINT.IfChange(Skill)
 // A single skill preview.
@@ -784,9 +791,9 @@ struct Skill {
   string? source_skill_id;
 };
 
-// clang-format off
-// LINT.ThenChange(//components/skills/public/skill.mojom:Skill, //components/skills/public/skill.h:Skill, //chrome/browser/resources/glic/glic_api/glic_api.ts:Skill)
-// clang-format on
+// LINT.ThenChange(//components/skills/public/skill.mojom:Skill,
+// //components/skills/public/skill.h:Skill,
+// //chrome/browser/resources/glic/glic_api/glic_api.ts:Skill)
 
 // Request to create a skill.
 struct CreateSkillRequest {
@@ -846,6 +853,7 @@ enum SkillsWebClientEvent {
   // Skill Builder Step 3: User clicked save on the generated draft.
   kSkillBuilderClickedSaveAsSkill = 22,
 };
+
 // LINT.ThenChange(
 //  //tools/metrics/histograms/metadata/glic/enums.xml:SkillsWebClientEvent
 // )
@@ -1470,6 +1478,9 @@ struct PanelOpeningData {
   //   `registerConversation` or `switchConversation` calls.
   //
   ConversationInfo conversation_info;
+
+  // The FRE override, if any.
+  FreOverride fre_override = kUnspecified;
 };
 
 // @generate glic_api
@@ -1488,6 +1499,19 @@ struct PanelState {
   PanelStateKind kind;
   // Present when attached, indicates to which window the panel is attached.
   int32? window_id;
+};
+
+// @generate glic_api
+// Represents an override of the First Run Experience (FRE).
+[Stable, Extensible]
+enum FreOverride {
+  [Default] kUnspecified = 0,
+  // Variation that requires text input from the user to unlock full client.
+  kTrustFirstText = 1,
+  // Variation that requires mouse click from the user to unlock full client.
+  kTrustFirstClick = 2,
+  // Variation that starts with full client unlocked and shows inline consent.
+  kTrustFirstInline = 3,
 };
 
 // @generate glic_api

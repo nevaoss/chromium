@@ -111,20 +111,23 @@ class TransportClientSocketPoolTestBase : public WithTaskEnvironment,
  protected:
   // Constructor that allows mocking of the time.
   explicit TransportClientSocketPoolTestBase(bool use_happy_eyeballs_v2)
-      : connect_backup_jobs_enabled_(
-            TransportClientSocketPool::set_connect_backup_jobs_enabled(true)),
-        group_id_(url::SchemeHostPort(url::kHttpScheme, "www.google.com", 80),
+      : group_id_(url::SchemeHostPort(url::kHttpScheme, "www.google.com", 80),
                   PrivacyMode::PRIVACY_MODE_DISABLED,
                   NetworkAnonymizationKey(),
                   SecureDnsPolicy::kAllow,
-                  /*disable_cert_network_fetches=*/false),
+                  /*disable_cert_network_fetches=*/false,
+                  handles::kInvalidNetworkHandle),
         params_(ClientSocketPool::SocketParams::CreateForHttpForTesting()),
         client_socket_factory_(NetLog::Get()) {
+    std::vector<base::test::FeatureRef> enabled_features(
+        {features::kPermitTcpSocketPoolConnectBackupJobs});
+    std::vector<base::test::FeatureRef> disabled_features;
     if (use_happy_eyeballs_v2) {
-      scoped_feature_list_.InitAndEnableFeature(features::kHappyEyeballsV2);
+      enabled_features.emplace_back(features::kHappyEyeballsV2);
     } else {
-      scoped_feature_list_.InitAndDisableFeature(features::kHappyEyeballsV2);
+      disabled_features.emplace_back(features::kHappyEyeballsV2);
     }
+    scoped_feature_list_.InitWithFeatures(enabled_features, disabled_features);
     std::unique_ptr<MockCertVerifier> cert_verifier =
         std::make_unique<MockCertVerifier>();
     cert_verifier->set_default_result(OK);
@@ -166,18 +169,14 @@ class TransportClientSocketPoolTestBase : public WithTaskEnvironment,
         common_connect_job_params_for_real_sockets_.get());
   }
 
-  ~TransportClientSocketPoolTestBase() override {
-    TransportClientSocketPool::set_connect_backup_jobs_enabled(
-        connect_backup_jobs_enabled_);
-  }
-
   int StartRequest(const std::string& host_name,
                    RequestPriority priority,
                    TransportClientSocketPool* non_default_pool = nullptr) {
     ClientSocketPool::GroupId group_id(
         url::SchemeHostPort(url::kHttpScheme, host_name, 80),
         PrivacyMode::PRIVACY_MODE_DISABLED, NetworkAnonymizationKey(),
-        SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false);
+        SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false,
+        handles::kInvalidNetworkHandle);
     return test_base_.StartRequestUsingPool(
         non_default_pool ?: pool_.get(), group_id, priority,
         ClientSocketPool::RespectLimits::ENABLED,
@@ -202,8 +201,6 @@ class TransportClientSocketPoolTestBase : public WithTaskEnvironment,
   size_t completion_count() const { return test_base_.completion_count(); }
 
   base::test::ScopedFeatureList scoped_feature_list_;
-
-  bool connect_backup_jobs_enabled_;
 
   // |group_id_| and |params_| correspond to the same group.
   const ClientSocketPool::GroupId group_id_;
@@ -295,7 +292,8 @@ TEST_P(TransportClientSocketPoolTest, SetSecureDnsPolicy) {
     ClientSocketPool::GroupId group_id(
         url::SchemeHostPort(url::kHttpScheme, "www.google.com", 80),
         PrivacyMode::PRIVACY_MODE_DISABLED, NetworkAnonymizationKey(),
-        secure_dns_policy, /*disable_cert_network_fetches=*/false);
+        secure_dns_policy, /*disable_cert_network_fetches=*/false,
+        handles::kInvalidNetworkHandle);
     EXPECT_EQ(
         ERR_IO_PENDING,
         handle.Init(group_id, params_, std::nullopt /* proxy_annotation_tag */,
@@ -1092,7 +1090,8 @@ TEST(TransportClientSocketPoolStandaloneTest, DontCleanupOnIPAddressChange) {
   const ClientSocketPool::GroupId group_id(
       url::SchemeHostPort(url::kHttpScheme, "www.google.com", 80),
       PrivacyMode::PRIVACY_MODE_DISABLED, NetworkAnonymizationKey(),
-      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false);
+      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false,
+      handles::kInvalidNetworkHandle);
   TestCompletionCallback callback;
   ClientSocketHandle handle;
   int rv =
@@ -1140,7 +1139,8 @@ TEST_P(TransportClientSocketPoolTest, SSLCertError) {
       handle.Init(ClientSocketPool::GroupId(
                       kEndpoint, PrivacyMode::PRIVACY_MODE_DISABLED,
                       NetworkAnonymizationKey(), SecureDnsPolicy::kAllow,
-                      /*disable_cert_network_fetches=*/false),
+                      /*disable_cert_network_fetches=*/false,
+                      handles::kInvalidNetworkHandle),
                   socket_params, std::nullopt /* proxy_annotation_tag */,
                   MEDIUM, SocketTag(), ClientSocketPool::RespectLimits::ENABLED,
                   callback.callback(), ClientSocketPool::ProxyAuthCallback(),
@@ -1235,7 +1235,8 @@ TEST_P(TransportClientSocketPoolSSLConfigChangeTest, GracefulConfigChange) {
     ClientSocketPool::GroupId group_id2(
         url::SchemeHostPort(url::kHttpScheme, "bar.example.com", 80),
         PrivacyMode::PRIVACY_MODE_DISABLED, NetworkAnonymizationKey(),
-        SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false);
+        SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false,
+        handles::kInvalidNetworkHandle);
     TestCompletionCallback callback;
     int rv =
         handle2.Init(group_id2, params_, /*proxy_annotation_tag=*/std::nullopt,
@@ -1260,7 +1261,8 @@ TEST_P(TransportClientSocketPoolSSLConfigChangeTest, GracefulConfigChange) {
   ClientSocketPool::GroupId group_id3(
       url::SchemeHostPort(url::kHttpScheme, "foo.example.com", 80),
       PrivacyMode::PRIVACY_MODE_DISABLED, NetworkAnonymizationKey(),
-      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false);
+      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false,
+      handles::kInvalidNetworkHandle);
   TestCompletionCallback callback3;
   ClientSocketHandle handle3;
   int rv =
@@ -1554,15 +1556,15 @@ TEST_P(TransportClientSocketPoolTest, SOCKS) {
     tagging_client_socket_factory_.AddSocketDataProvider(data.data_provider());
     ClientSocketHandle handle;
     TestCompletionCallback callback;
-    int rv =
-        handle.Init(ClientSocketPool::GroupId(
-                        kDestination, PrivacyMode::PRIVACY_MODE_DISABLED,
-                        NetworkAnonymizationKey(), SecureDnsPolicy::kAllow,
-                        /*disable_cert_network_fetches=*/false),
-                    socket_params, TRAFFIC_ANNOTATION_FOR_TESTS, LOW,
-                    SocketTag(), ClientSocketPool::RespectLimits::ENABLED,
-                    callback.callback(), ClientSocketPool::ProxyAuthCallback(),
-                    &proxy_pool, NetLogWithSource());
+    int rv = handle.Init(
+        ClientSocketPool::GroupId(
+            kDestination, PrivacyMode::PRIVACY_MODE_DISABLED,
+            NetworkAnonymizationKey(), SecureDnsPolicy::kAllow,
+            /*disable_cert_network_fetches=*/false,
+            handles::kInvalidNetworkHandle),
+        socket_params, TRAFFIC_ANNOTATION_FOR_TESTS, LOW, SocketTag(),
+        ClientSocketPool::RespectLimits::ENABLED, callback.callback(),
+        ClientSocketPool::ProxyAuthCallback(), &proxy_pool, NetLogWithSource());
     EXPECT_THAT(callback.GetResult(rv), IsOk());
     EXPECT_TRUE(handle.is_initialized());
     EXPECT_TRUE(handle.socket());
@@ -1627,7 +1629,8 @@ TEST_P(TransportClientSocketPoolTest, SpdyOneConnectJobTwoRequestsError) {
 
   ClientSocketPool::GroupId group_id(
       kEndpoint, PrivacyMode::PRIVACY_MODE_DISABLED, NetworkAnonymizationKey(),
-      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false);
+      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false,
+      handles::kInvalidNetworkHandle);
 
   // Start the first connection attempt.
   TestCompletionCallback callback1;
@@ -1732,7 +1735,8 @@ TEST_P(TransportClientSocketPoolTest, SpdyAuthOneConnectJobTwoRequests) {
 
   ClientSocketPool::GroupId group_id(
       kEndpoint, PrivacyMode::PRIVACY_MODE_DISABLED, NetworkAnonymizationKey(),
-      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false);
+      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false,
+      handles::kInvalidNetworkHandle);
 
   // Start the first connection attempt.
   TestCompletionCallback callback1;
@@ -1831,7 +1835,8 @@ TEST_P(TransportClientSocketPoolTest, HttpTunnelSetupRedirect) {
           ClientSocketPool::GroupId(
               kEndpoint, PrivacyMode::PRIVACY_MODE_DISABLED,
               NetworkAnonymizationKey(), SecureDnsPolicy::kAllow,
-              /*disable_cert_network_fetches=*/false),
+              /*disable_cert_network_fetches=*/false,
+              handles::kInvalidNetworkHandle),
           socket_params, TRAFFIC_ANNOTATION_FOR_TESTS, LOW, SocketTag(),
           ClientSocketPool::RespectLimits::ENABLED, callback.callback(),
           ClientSocketPool::ProxyAuthCallback(), &proxy_pool,
@@ -1860,7 +1865,8 @@ TEST_P(TransportClientSocketPoolTest, NetworkAnonymizationKey) {
   TransportClientSocketPool::GroupId group_id(
       url::SchemeHostPort(url::kHttpScheme, kHost, 80),
       PrivacyMode::PRIVACY_MODE_DISABLED, kNetworkAnonymizationKey,
-      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false);
+      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false,
+      handles::kInvalidNetworkHandle);
   ClientSocketHandle handle;
   TestCompletionCallback callback;
   EXPECT_THAT(
@@ -1893,7 +1899,8 @@ TEST_P(TransportClientSocketPoolTest, NetworkAnonymizationKeySsl) {
   TransportClientSocketPool::GroupId group_id(
       url::SchemeHostPort(url::kHttpsScheme, kHost, 443),
       PrivacyMode::PRIVACY_MODE_DISABLED, kNetworkAnonymizationKey,
-      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false);
+      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false,
+      handles::kInvalidNetworkHandle);
   ClientSocketHandle handle;
   TestCompletionCallback callback;
   EXPECT_THAT(
@@ -1941,7 +1948,8 @@ TEST_P(TransportClientSocketPoolTest, NetworkAnonymizationKeyHttpProxy) {
   TransportClientSocketPool::GroupId group_id1(
       url::SchemeHostPort(url::kHttpScheme, kHost, 80),
       PrivacyMode::PRIVACY_MODE_DISABLED, kNetworkAnonymizationKey1,
-      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false);
+      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false,
+      handles::kInvalidNetworkHandle);
   ClientSocketHandle handle1;
   TestCompletionCallback callback1;
   EXPECT_THAT(
@@ -1956,7 +1964,8 @@ TEST_P(TransportClientSocketPoolTest, NetworkAnonymizationKeyHttpProxy) {
   TransportClientSocketPool::GroupId group_id2(
       url::SchemeHostPort(url::kHttpScheme, kHost, 80),
       PrivacyMode::PRIVACY_MODE_DISABLED, kNetworkAnonymizationKey2,
-      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false);
+      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false,
+      handles::kInvalidNetworkHandle);
   ClientSocketHandle handle2;
   TestCompletionCallback callback2;
   EXPECT_THAT(
@@ -2007,7 +2016,8 @@ TEST_P(TransportClientSocketPoolTest, NetworkAnonymizationKeyHttpsProxy) {
   TransportClientSocketPool::GroupId group_id1(
       url::SchemeHostPort(url::kHttpScheme, kHost, 80),
       PrivacyMode::PRIVACY_MODE_DISABLED, kNetworkAnonymizationKey1,
-      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false);
+      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false,
+      handles::kInvalidNetworkHandle);
   ClientSocketHandle handle1;
   TestCompletionCallback callback1;
   EXPECT_THAT(
@@ -2022,7 +2032,8 @@ TEST_P(TransportClientSocketPoolTest, NetworkAnonymizationKeyHttpsProxy) {
   TransportClientSocketPool::GroupId group_id2(
       url::SchemeHostPort(url::kHttpScheme, kHost, 80),
       PrivacyMode::PRIVACY_MODE_DISABLED, kNetworkAnonymizationKey2,
-      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false);
+      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false,
+      handles::kInvalidNetworkHandle);
   ClientSocketHandle handle2;
   TestCompletionCallback callback2;
   EXPECT_THAT(
@@ -2083,7 +2094,8 @@ TEST_P(TransportClientSocketPoolTest, NetworkAnonymizationKeySocks4Proxy) {
   TransportClientSocketPool::GroupId group_id1(
       url::SchemeHostPort(url::kHttpScheme, kHost, 80),
       PrivacyMode::PRIVACY_MODE_DISABLED, kNetworkAnonymizationKey1,
-      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false);
+      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false,
+      handles::kInvalidNetworkHandle);
   ClientSocketHandle handle1;
   TestCompletionCallback callback1;
   EXPECT_THAT(
@@ -2098,7 +2110,8 @@ TEST_P(TransportClientSocketPoolTest, NetworkAnonymizationKeySocks4Proxy) {
   TransportClientSocketPool::GroupId group_id2(
       url::SchemeHostPort(url::kHttpScheme, kHost, 80),
       PrivacyMode::PRIVACY_MODE_DISABLED, kNetworkAnonymizationKey2,
-      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false);
+      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false,
+      handles::kInvalidNetworkHandle);
   ClientSocketHandle handle2;
   TestCompletionCallback callback2;
   EXPECT_THAT(
@@ -2163,7 +2176,8 @@ TEST_P(TransportClientSocketPoolTest, NetworkAnonymizationKeySocks5Proxy) {
   TransportClientSocketPool::GroupId group_id1(
       url::SchemeHostPort(url::kHttpScheme, kHost, 80),
       PrivacyMode::PRIVACY_MODE_DISABLED, kNetworkAnonymizationKey1,
-      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false);
+      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false,
+      handles::kInvalidNetworkHandle);
   ClientSocketHandle handle1;
   TestCompletionCallback callback1;
   EXPECT_THAT(
@@ -2178,7 +2192,8 @@ TEST_P(TransportClientSocketPoolTest, NetworkAnonymizationKeySocks5Proxy) {
   TransportClientSocketPool::GroupId group_id2(
       url::SchemeHostPort(url::kHttpScheme, kHost, 80),
       PrivacyMode::PRIVACY_MODE_DISABLED, kNetworkAnonymizationKey2,
-      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false);
+      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false,
+      handles::kInvalidNetworkHandle);
   ClientSocketHandle handle2;
   TestCompletionCallback callback2;
   EXPECT_THAT(
@@ -2208,10 +2223,12 @@ TEST_P(TransportClientSocketPoolTest, HasActiveSocket) {
   ClientSocketHandle handle;
   ClientSocketPool::GroupId group_id1(
       kEndpoint1, PrivacyMode::PRIVACY_MODE_DISABLED, NetworkAnonymizationKey(),
-      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false);
+      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false,
+      handles::kInvalidNetworkHandle);
   ClientSocketPool::GroupId group_id2(
       kEndpoint2, PrivacyMode::PRIVACY_MODE_DISABLED, NetworkAnonymizationKey(),
-      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false);
+      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false,
+      handles::kInvalidNetworkHandle);
 
   // HasActiveSocket() must return false before creating a socket.
   EXPECT_FALSE(pool_->HasActiveSocket(group_id1));
@@ -2434,7 +2451,8 @@ TEST_P(TransportClientSocketPoolTest, Tag) {
   const ClientSocketPool::GroupId kGroupId(
       url::SchemeHostPort(test_server.base_url()),
       PrivacyMode::PRIVACY_MODE_DISABLED, NetworkAnonymizationKey(),
-      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false);
+      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false,
+      handles::kInvalidNetworkHandle);
   scoped_refptr<ClientSocketPool::SocketParams> params =
       ClientSocketPool::SocketParams::CreateForHttpForTesting();
   TestCompletionCallback callback;
@@ -2562,7 +2580,7 @@ TEST_P(TransportClientSocketPoolTest, TagSOCKSProxy) {
   const ClientSocketPool::GroupId kGroupId(
       kDestination, PrivacyMode::PRIVACY_MODE_DISABLED,
       NetworkAnonymizationKey(), SecureDnsPolicy::kAllow,
-      /*disable_cert_network_fetches=*/false);
+      /*disable_cert_network_fetches=*/false, handles::kInvalidNetworkHandle);
   scoped_refptr<ClientSocketPool::SocketParams> socks_params =
       ClientSocketPool::SocketParams::CreateForHttpForTesting();
 
@@ -2655,7 +2673,8 @@ TEST_P(TransportClientSocketPoolTest, TagSSLDirect) {
   const ClientSocketPool::GroupId kGroupId(
       url::SchemeHostPort(test_server.base_url()),
       PrivacyMode::PRIVACY_MODE_DISABLED, NetworkAnonymizationKey(),
-      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false);
+      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false,
+      handles::kInvalidNetworkHandle);
 
   scoped_refptr<ClientSocketPool::SocketParams> socket_params =
       base::MakeRefCounted<ClientSocketPool::SocketParams>(
@@ -2725,7 +2744,8 @@ TEST_P(TransportClientSocketPoolTest, TagSSLDirectTwoSockets) {
   const ClientSocketPool::GroupId kGroupId(
       url::SchemeHostPort(test_server.base_url()),
       PrivacyMode::PRIVACY_MODE_DISABLED, NetworkAnonymizationKey(),
-      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false);
+      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false,
+      handles::kInvalidNetworkHandle);
   scoped_refptr<ClientSocketPool::SocketParams> socket_params =
       base::MakeRefCounted<ClientSocketPool::SocketParams>(
           /*allowed_bad_certs=*/std::vector<SSLConfig::CertAndStatus>());
@@ -2788,7 +2808,8 @@ TEST_P(TransportClientSocketPoolTest, TagSSLDirectTwoSocketsFullPool) {
   const ClientSocketPool::GroupId kGroupId(
       url::SchemeHostPort(test_server.base_url()),
       PrivacyMode::PRIVACY_MODE_DISABLED, NetworkAnonymizationKey(),
-      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false);
+      SecureDnsPolicy::kAllow, /*disable_cert_network_fetches=*/false,
+      handles::kInvalidNetworkHandle);
   scoped_refptr<ClientSocketPool::SocketParams> socket_params =
       base::MakeRefCounted<ClientSocketPool::SocketParams>(
           /*allowed_bad_certs=*/std::vector<SSLConfig::CertAndStatus>());
@@ -2869,7 +2890,7 @@ TEST_P(TransportClientSocketPoolTest, TagHttpProxyNoTunnel) {
   const ClientSocketPool::GroupId kGroupId(
       kDestination, PrivacyMode::PRIVACY_MODE_DISABLED,
       NetworkAnonymizationKey(), SecureDnsPolicy::kAllow,
-      /*disable_cert_network_fetches=*/false);
+      /*disable_cert_network_fetches=*/false, handles::kInvalidNetworkHandle);
   scoped_refptr<ClientSocketPool::SocketParams> socket_params =
       ClientSocketPool::SocketParams::CreateForHttpForTesting();
 
@@ -2944,7 +2965,7 @@ TEST_P(TransportClientSocketPoolTest, TagHttpProxyTunnel) {
   const ClientSocketPool::GroupId kGroupId(
       kDestination, PrivacyMode::PRIVACY_MODE_DISABLED,
       NetworkAnonymizationKey(), SecureDnsPolicy::kAllow,
-      /*disable_cert_network_fetches=*/false);
+      /*disable_cert_network_fetches=*/false, handles::kInvalidNetworkHandle);
 
   scoped_refptr<ClientSocketPool::SocketParams> socket_params =
       base::MakeRefCounted<ClientSocketPool::SocketParams>(

@@ -25,7 +25,6 @@
 #include "chrome/browser/browser_process_impl.h"
 #include "chrome/browser/chrome_content_browser_client.h"
 #include "chrome/browser/component_updater/component_updater_prefs.h"
-#include "chrome/browser/contextual_cueing/contextual_cueing_prefs.h"
 #include "chrome/browser/download/download_prefs.h"
 #include "chrome/browser/engagement/important_sites_util.h"
 #include "chrome/browser/enterprise/reporting/prefs.h"
@@ -34,6 +33,7 @@
 #include "chrome/browser/finds/core/finds_service.h"
 #include "chrome/browser/first_run/first_run.h"
 #include "chrome/browser/glic/glic_pref_names.h"
+#include "chrome/browser/glic/suggestions/contextual_cueing_prefs.h"
 #include "chrome/browser/gpu/gpu_mode_manager.h"
 #include "chrome/browser/lifetime/browser_shutdown.h"
 #include "chrome/browser/login_detection/login_detection_prefs.h"
@@ -187,7 +187,6 @@
 #include "components/subresource_filter/content/browser/ruleset_service.h"
 #include "components/subresource_filter/core/common/constants.h"
 #include "components/supervised_user/core/browser/supervised_user_preferences.h"
-#include "components/supervised_user/core/common/pref_names.h"
 #include "components/sync/base/pref_names.h"
 #include "components/sync/service/device_statistics_scheduler.h"
 #include "components/sync/service/glue/sync_transport_data_prefs.h"
@@ -276,7 +275,6 @@
 #include "chrome/browser/nearby_sharing/common/nearby_share_prefs.h"
 #include "chrome/browser/new_tab_page/modules/file_suggestion/drive_service.h"
 #include "chrome/browser/new_tab_page/modules/file_suggestion/microsoft_files_page_handler.h"
-#include "chrome/browser/new_tab_page/modules/safe_browsing/safe_browsing_handler.h"
 #include "chrome/browser/new_tab_page/modules/v2/authentication/microsoft_auth_page_handler.h"
 #include "chrome/browser/new_tab_page/modules/v2/calendar/google_calendar_page_handler.h"
 #include "chrome/browser/new_tab_page/modules/v2/calendar/outlook_calendar_page_handler.h"
@@ -558,61 +556,6 @@ namespace {
 
 // Please keep the list of deprecated prefs in chronological order. i.e. Add to
 // the bottom of the list, not here at the top.
-
-// Deprecated 01/2025.
-inline constexpr char kCompactModeEnabled[] = "compact_mode";
-
-// Deprecated 01/2025.
-inline constexpr char kSafeBrowsingAutomaticDeepScanningIPHSeen[] =
-    "safebrowsing.automatic_deep_scanning_iph_seen";
-inline constexpr char kSafeBrowsingAutomaticDeepScanPerformed[] =
-    "safe_browsing.automatic_deep_scan_performed";
-
-#if BUILDFLAG(IS_CHROMEOS)
-// Deprecated 01/2025.
-inline constexpr char kUsedPolicyCertificates[] =
-    "policy.used_policy_certificates";
-#endif  // BUILDFLAG(IS_CHROMEOS)
-
-// Deprecated 02/2025.
-inline constexpr char kDefaultSearchProviderKeywordsUseExtendedList[] =
-    "default_search_provider.keywords_use_extended_list";
-
-#if BUILDFLAG(IS_ANDROID)
-// Deprecated 2/2025.
-inline constexpr char kLocalPasswordsMigrationWarningShownTimestamp[] =
-    "local_passwords_migration_warning_shown_timestamp";
-inline constexpr char kLocalPasswordMigrationWarningShownAtStartup[] =
-    "local_passwords_migration_warning_shown_at_startup";
-#endif  // BUILDFLAG(IS_ANDROID)
-
-#if BUILDFLAG(IS_CHROMEOS)
-// Deprecated 2/2025.
-inline constexpr char kLiveCaptionUserMicrophoneEnabled[] =
-    "accessibility.captions.user_microphone_captioning_enabled";
-inline constexpr char kUserMicrophoneCaptionLanguageCode[] =
-    "accessibility.captions.user_microphone_language_code";
-#endif  // BUILDFLAG(IS_CHROMEOS)
-
-// Deprecated 03/2025.
-inline constexpr char kPasswordChangeFlowNoticeAgreement[] =
-    "password_manager.password_change_flow_notice_agreement";
-
-#if BUILDFLAG(IS_CHROMEOS)
-// Deprecated 02/2025.
-constexpr char kScannerFeedbackEnabled[] = "ash.scanner.feedback_enabled";
-constexpr char kHmrFeedbackAllowed[] = "settings.mahi_feedback_allowed";
-constexpr char kSharedStorage[] = "shared_storage";
-#endif  // BUILDFLAG(IS_CHROMEOS)
-
-#if BUILDFLAG(IS_CHROMEOS)
-// Deprecated 03/2025.
-constexpr char kSunfishEnabled[] = "ash.capture_mode.sunfish_enabled";
-#endif  // BUILDFLAG(IS_CHROMEOS)
-
-// Deprecated 03/2025.
-inline constexpr char kRecurrentSSLInterstitial[] =
-    "profile.ssl_recurrent_interstitial";
 
 // Deprecated 04/2025.
 inline constexpr char kDefaultSearchProviderChoiceScreenShuffleMilestone[] =
@@ -1008,9 +951,24 @@ constexpr char kPrivacySandboxActivityTypeRecord2[] =
 // Deprecated 03/2026.
 constexpr char kTabOrganizationNudgeBackoffCount[] =
     "tab_organization.nudge_backoff_count";
+constexpr char kTabOrganizationShowFRE[] = "tab_organization.show_fre_2";
+constexpr char kTabOrganizationModelStrategy[] =
+    "tab_organization.model_strategy";
 
 // Deprecated 03/2026.
 constexpr char kNtpContextMenuClickCount[] = "ntp.context_menu_click_count";
+
+// Deprecated 03/2026.
+constexpr char kNtpPromoPrefLastSnoozed[] =
+    "in_product_help.ntp_promos.last_snoozed";
+
+// Deprecated 03/2026.
+constexpr char kSafeBrowsingModuleShownCount[] =
+    "safebrowsing.ntp.module_shown_count";
+constexpr char kSafeBrowsingModuleLastCooldownStartAt[] =
+    "safebrowsing.ntp.last_cooldown_start_timestamp";
+constexpr char kSafeBrowsingModuleOpened[] =
+    "safebrowsing.ntp.user_opened_module";
 
 // Register local state used only for migration (clearing or moving to a new
 // key).
@@ -1124,55 +1082,6 @@ void RegisterLocalStatePrefsForMigration(PrefRegistrySimple* registry) {
 // Register prefs used only for migration (clearing or moving to a new key).
 void RegisterProfilePrefsForMigration(
     user_prefs::PrefRegistrySyncable* registry) {
-  // Deprecated 01/2025.
-  registry->RegisterBooleanPref(kCompactModeEnabled, false);
-
-  // Deprecated 01/2025.
-  registry->RegisterBooleanPref(kSafeBrowsingAutomaticDeepScanningIPHSeen,
-                                false);
-  registry->RegisterBooleanPref(kSafeBrowsingAutomaticDeepScanPerformed, false);
-
-#if BUILDFLAG(IS_CHROMEOS)
-  // Deprecated 01/2025.
-  registry->RegisterBooleanPref(kUsedPolicyCertificates, false);
-#endif  // BUILDFLAG(IS_CHROMEOS)
-
-  // Deprecated 02/2025.
-  registry->RegisterBooleanPref(kDefaultSearchProviderKeywordsUseExtendedList,
-                                false);
-
-#if BUILDFLAG(IS_ANDROID)
-  // Deprecated 02/2025.
-  registry->RegisterTimePref(kLocalPasswordsMigrationWarningShownTimestamp,
-                             base::Time());
-  registry->RegisterBooleanPref(kLocalPasswordMigrationWarningShownAtStartup,
-                                false);
-#endif  // BUILDFLAG(IS_ANDROID)
-
-#if BUILDFLAG(IS_CHROMEOS)
-  // Deprecated 02/2025.
-  registry->RegisterBooleanPref(kLiveCaptionUserMicrophoneEnabled, false);
-  registry->RegisterStringPref(kUserMicrophoneCaptionLanguageCode, "");
-#endif  // BUILDFLAG(IS_CHROMEOS)
-
-#if BUILDFLAG(IS_CHROMEOS)
-  // Deprecated 02/2025.
-  registry->RegisterBooleanPref(kScannerFeedbackEnabled, true);
-  registry->RegisterBooleanPref(kHmrFeedbackAllowed, true);
-  registry->RegisterDictionaryPref(kSharedStorage);
-#endif  // BUILDFLAG(IS_CHROMEOS)
-
-  // Deprecated 03/2025.
-  registry->RegisterBooleanPref(kPasswordChangeFlowNoticeAgreement, false);
-
-#if BUILDFLAG(IS_CHROMEOS)
-  // Deprecated 03/2025.
-  registry->RegisterBooleanPref(kSunfishEnabled, true);
-#endif  // BUILDFLAG(IS_CHROMEOS)
-
-  // Deprecated 03/2025
-  registry->RegisterDictionaryPref(kRecurrentSSLInterstitial);
-
   // Deprecated 04/2025.
   registry->RegisterIntegerPref(
       kDefaultSearchProviderChoiceScreenShuffleMilestone, 0);
@@ -1410,9 +1319,19 @@ void RegisterProfilePrefsForMigration(
 
   // Deprecated 03/2026.
   registry->RegisterIntegerPref(kTabOrganizationNudgeBackoffCount, 0);
+  registry->RegisterBooleanPref(kTabOrganizationShowFRE, true);
+  registry->RegisterIntegerPref(kTabOrganizationModelStrategy, 0);
 
   // Deprecated 03/2026.
   registry->RegisterIntegerPref(kNtpContextMenuClickCount, 0);
+
+  // Deprecated 03/2026.
+  registry->RegisterTimePref(kNtpPromoPrefLastSnoozed, base::Time());
+
+  // Deprecated 03/2026.
+  registry->RegisterIntegerPref(kSafeBrowsingModuleShownCount, 0);
+  registry->RegisterInt64Pref(kSafeBrowsingModuleLastCooldownStartAt, 0);
+  registry->RegisterBooleanPref(kSafeBrowsingModuleOpened, false);
 }
 
 }  // namespace
@@ -1761,7 +1680,6 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
   chrome_browser_net::NetErrorTabHelper::RegisterProfilePrefs(registry);
   chrome_prefs::RegisterProfilePrefs(registry);
   collaboration::prefs::RegisterProfilePrefs(registry);
-  contextual_cueing::prefs::RegisterProfilePrefs(registry);
   commerce::RegisterProfilePrefs(registry);
   contextual_search::ContextualSearchService::RegisterProfilePrefs(registry);
   registry->RegisterIntegerPref(prefs::kContextualTasksNextPanelOpenCount, 0);
@@ -1774,6 +1692,7 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
   DownloadPrefs::RegisterProfilePrefs(registry);
   finds::FindsService::RegisterProfilePrefs(registry);
   glic::prefs::RegisterProfilePrefs(registry);
+  glic::contextual_cueing::prefs::RegisterProfilePrefs(registry);
   permissions::PermissionHatsTriggerHelper::RegisterProfilePrefs(registry);
   history_clusters::prefs::RegisterProfilePrefs(registry);
   HostContentSettingsMap::RegisterProfilePrefs(registry);
@@ -1960,7 +1879,6 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
   NewTabFooterUI::RegisterProfilePrefs(registry);
   NewTabPageHandler::RegisterProfilePrefs(registry);
   NewTabPageUI::RegisterProfilePrefs(registry);
-  ntp::SafeBrowsingHandler::RegisterProfilePrefs(registry);
   OutlookCalendarPageHandler::RegisterProfilePrefs(registry);
   PinnedTabCodec::RegisterProfilePrefs(registry);
   promos_utils::RegisterProfilePrefs(registry);
@@ -2468,56 +2386,6 @@ void MigrateObsoleteProfilePrefs(PrefService* profile_prefs,
   MigrateDefaultBrowserLastDeclinedPref(profile_prefs);
 #endif
 
-  // Added 01/2025.
-  profile_prefs->ClearPref(kCompactModeEnabled);
-
-  // Added 01/2025.
-  profile_prefs->ClearPref(kSafeBrowsingAutomaticDeepScanPerformed);
-  profile_prefs->ClearPref(kSafeBrowsingAutomaticDeepScanningIPHSeen);
-
-#if BUILDFLAG(IS_CHROMEOS)
-  // Added 01/2025.
-  profile_prefs->ClearPref(kUsedPolicyCertificates);
-#endif  // BUILDFLAG(IS_CHROMEOS)
-
-  // Added 02/2025.
-  profile_prefs->ClearPref(kDefaultSearchProviderKeywordsUseExtendedList);
-
-#if BUILDFLAG(IS_ANDROID)
-  // Added 02/2025.
-  profile_prefs->ClearPref(kLocalPasswordsMigrationWarningShownTimestamp);
-  profile_prefs->ClearPref(kLocalPasswordMigrationWarningShownAtStartup);
-#endif  // BUILDFLAG(IS_ANDROID)
-
-#if BUILDFLAG(IS_CHROMEOS)
-  // Deprecated 02/2025.
-  profile_prefs->ClearPref(kLiveCaptionUserMicrophoneEnabled);
-  profile_prefs->ClearPref(kUserMicrophoneCaptionLanguageCode);
-#endif  // BUILDFLAG(IS_CHROMEOS)
-
-#if BUILDFLAG(IS_CHROMEOS)
-  // Added 02/2025.
-  profile_prefs->ClearPref(kScannerFeedbackEnabled);
-  profile_prefs->ClearPref(kHmrFeedbackAllowed);
-  profile_prefs->ClearPref(kSharedStorage);
-#endif  // BUILDFLAG(IS_CHROMEOS)
-
-  // Added 03/2025.
-  profile_prefs->ClearPref(kPasswordChangeFlowNoticeAgreement);
-
-#if !BUILDFLAG(IS_CHROMEOS)
-  // Added 03/2025.
-  profile_prefs->ClearPref(prefs::kChildAccountStatusKnown);
-#endif
-
-#if BUILDFLAG(IS_CHROMEOS)
-  // Added 03/2025.
-  profile_prefs->ClearPref(kSunfishEnabled);
-#endif
-
-  // Added 03/2025.
-  profile_prefs->ClearPref(kRecurrentSSLInterstitial);
-
   // Added 04/2025.
   profile_prefs->ClearPref(kDefaultSearchProviderChoiceScreenShuffleMilestone);
 
@@ -2723,6 +2591,11 @@ void MigrateObsoleteProfilePrefs(PrefService* profile_prefs,
   profile_prefs->ClearPref(
       kBookmarksBubblePromoShownSyntheticTrialGroupNamePref);
 
+  // Added 03/2026.
+  profile_prefs->ClearPref(kSafeBrowsingModuleShownCount);
+  profile_prefs->ClearPref(kSafeBrowsingModuleLastCooldownStartAt);
+  profile_prefs->ClearPref(kSafeBrowsingModuleOpened);
+
 #if BUILDFLAG(IS_ANDROID)
   // Added 03/2026.
   profile_prefs->ClearPref(kPrivacySandboxActivityTypeRecord2);
@@ -2730,9 +2603,17 @@ void MigrateObsoleteProfilePrefs(PrefService* profile_prefs,
 
   // Added 03/2026.
   profile_prefs->ClearPref(kTabOrganizationNudgeBackoffCount);
+  profile_prefs->ClearPref(kTabOrganizationShowFRE);
+  profile_prefs->ClearPref(kTabOrganizationModelStrategy);
 
   // Added 03/2026.
   profile_prefs->ClearPref(kNtpContextMenuClickCount);
+
+  // Added 03/2026.
+  privacy_sandbox::ClearAdPrivacyPrefs(profile_prefs);
+
+  // Added 03/2026.
+  profile_prefs->ClearPref(kNtpPromoPrefLastSnoozed);
 
   // Please don't delete the following line. It is used by PRESUBMIT.py.
   // END_MIGRATE_OBSOLETE_PROFILE_PREFS

@@ -190,7 +190,7 @@ SharedWorkerHost::SharedWorkerHost(
   // when two clients call new SharedWorker() at around the same time.
   worker_receiver_ = worker_.BindNewPipeAndPassReceiver();
 
-  service_->NotifyWorkerCreated(token_, GetProcessHost()->GetDeprecatedID(),
+  service_->NotifyWorkerCreated(token_, GetProcessHost()->GetID(),
                                 instance_.storage_key().origin(),
                                 devtools_handle_->dev_tools_token());
 }
@@ -686,7 +686,11 @@ void SharedWorkerHost::CreateWebSocketConnector(
           GlobalRenderFrameHostId(GetProcessHost()->GetID(),
                                   IPC::mojom::kRoutingIdNone),
           storage_key.origin(), storage_key.ToPartialNetIsolationInfo(),
-          worker_client_security_state_->Clone()),
+          worker_client_security_state_->Clone(),
+          // TODO(crbug.com/492462310): Pass network_restrictions_id so
+          // Connection-Allowlist is enforced for shared worker WebSocket
+          // connections.
+          /*network_restrictions_id=*/std::nullopt),
       std::move(receiver));
 }
 

@@ -110,6 +110,7 @@
 #include "third_party/blink/renderer/platform/graphics/canvas_resource_dispatcher.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource_provider.h"
 #include "third_party/blink/renderer/platform/graphics/compositing/paint_artifact_compositor.h"
+#include "third_party/blink/renderer/platform/graphics/gpu/canvas_utils.h"
 #include "third_party/blink/renderer/platform/graphics/gpu/shared_context_rate_limiter.h"
 #include "third_party/blink/renderer/platform/graphics/gpu/shared_gpu_context.h"
 #include "third_party/blink/renderer/platform/graphics/graphics_context.h"
@@ -1511,7 +1512,7 @@ CanvasResourceDispatcher* HTMLCanvasElement::GetOrCreateResourceDispatcher() {
 }
 
 bool HTMLCanvasElement::PushFrame(scoped_refptr<CanvasResource>&& image,
-                                  const SkIRect& damage_rect) {
+                                  std::optional<SkIRect> damage_rect) {
   NOTIMPLEMENTED();
   return false;
 }
@@ -1556,13 +1557,8 @@ bool HTMLCanvasElement::ShouldAccelerate() const {
 
   // Avoid creating |contextProvider| until we're sure we want to try use it,
   // since it costs us GPU memory.
-  base::WeakPtr<WebGraphicsContext3DProviderWrapper> context_provider_wrapper =
-      SharedGpuContext::ContextProviderWrapper();
-  if (!context_provider_wrapper) {
-    return false;
-  }
-
-  return context_provider_wrapper->Utils()->Accelerated2DCanvasFeatureEnabled();
+  return Accelerated2DCanvasFeatureEnabled(
+      SharedGpuContext::ContextProviderWrapper().get());
 }
 
 bool HTMLCanvasElement::CanStartSelection() const {

@@ -72,9 +72,8 @@ void ActorLoginFederatedCredentialsFetcher::Fetch(
                      weak_ptr_factory_.GetWeakPtr(), barrier_callback));
 
   // Request all permissions for the main frame origin.
-  std::vector<FederatedOrigins> origins = {{request_origin_, url::Origin()}};
   permission_service_->ListPermissions(
-      origins,
+      request_origin_,
       base::BindOnce(
           &ActorLoginFederatedCredentialsFetcher::OnGetPermissionsCompleted,
           weak_ptr_factory_.GetWeakPtr(), barrier_callback));
@@ -153,9 +152,7 @@ void ActorLoginFederatedCredentialsFetcher::OnFetchComplete(
 
   for (Credential& credential : credentials) {
     for (const FederatedPermission& permission : permissions) {
-      if (credential.federation_detail->account_id ==
-              permission.chosen_account_id &&
-          credential.request_origin == permission.rp_embedder_origin) {
+      if (permission.MatchesFederatedCredential(credential)) {
         credential.has_persistent_permission = true;
         break;
       }

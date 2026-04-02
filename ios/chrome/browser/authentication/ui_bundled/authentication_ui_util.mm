@@ -217,6 +217,7 @@ AlertCoordinator* ManagedConfirmationDialogContentForHostedDomain(
     UIViewController* view_controller,
     ProceduralBlock accept_block,
     ProceduralBlock cancel_block) {
+  CHECK(!AreSeparateProfilesForManagedAccountsEnabled());
   NSString* title = l10n_util::GetNSString(IDS_IOS_MANAGED_SIGNIN_TITLE);
   NSString* subtitle =
       l10n_util::GetNSStringF(IDS_IOS_MANAGED_SIGNIN_WITH_USER_POLICY_SUBTITLE,
@@ -259,7 +260,6 @@ bool HasMachineLevelPolicies() {
 
 BOOL ShouldShowManagedConfirmationForHostedDomain(
     NSString* hosted_domain,
-    signin_metrics::AccessPoint access_point,
     const GaiaId& gaia_id,
     PrefService* prefs) {
   if ([hosted_domain length] == 0) {

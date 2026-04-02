@@ -8,7 +8,7 @@
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/shadow_root.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
-#include "third_party/blink/renderer/core/html/parser/fragment_parser_options.h"
+#include "third_party/blink/renderer/core/html/parser/fragment_parser.h"
 #include "third_party/blink/renderer/core/html/parser/html_document_parser.h"
 #include "third_party/blink/renderer/core/sanitizer/sanitizer_api.h"
 #include "third_party/blink/renderer/core/streams/underlying_sink_base.h"
@@ -147,9 +147,12 @@ WritableStream* HTMLStream::Create(ScriptState* script_state,
   }
 
   std::optional<FragmentParserOptions> trusted_options =
-      TrustedTypesCheckForParserOptions(
-          options, MarkupInsertionMode::kStream, target->GetExecutionContext(),
-          interface_name, property_name, exception_state);
+      sanitizer_mode == Sanitizer::Mode::kSafe
+          ? std::make_optional(options)
+          : TrustedTypesCheckForParserOptions(
+                options, MarkupInsertionMode::kStream,
+                target->GetExecutionContext(), interface_name, property_name,
+                exception_state);
 
   if (!trusted_options) {
     return nullptr;

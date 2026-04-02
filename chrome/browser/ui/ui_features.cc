@@ -162,17 +162,16 @@ BASE_FEATURE(kTabDuplicateMetrics, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kTabGroupsCollapseFreezing, base::FEATURE_ENABLED_BY_DEFAULT);
 
 #if !BUILDFLAG(IS_ANDROID)
-// General improvements to tab group menus
-BASE_FEATURE(kTabGroupMenuImprovements, base::FEATURE_DISABLED_BY_DEFAULT);
-
-bool IsTabGroupMenuImprovementsEnabled() {
-  return base::FeatureList::IsEnabled(kTabGroupMenuImprovements);
-}
-
 BASE_FEATURE(kTabGroupMenuMoreEntryPoints, base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool IsTabGroupMenuMoreEntryPointsEnabled() {
   return base::FeatureList::IsEnabled(kTabGroupMenuMoreEntryPoints);
+}
+
+BASE_FEATURE(kTabGroupHoverCards, base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsTabGroupHoverCardsEnabled() {
+  return base::FeatureList::IsEnabled(kTabGroupHoverCards);
 }
 
 #endif  // !BUILDFLAG(IS_ANDROID)
@@ -187,20 +186,7 @@ BASE_FEATURE(kTabHoverCardImages,
 #endif
 );
 
-BASE_FEATURE(kTabGroupHoverCards, base::FEATURE_DISABLED_BY_DEFAULT);
-
 BASE_FEATURE(kTabModalUsesDesktopWidget, base::FEATURE_DISABLED_BY_DEFAULT);
-
-BASE_FEATURE(kTabOrganization, base::FEATURE_DISABLED_BY_DEFAULT);
-
-bool IsTabOrganization() {
-  return base::FeatureList::IsEnabled(features::kTabOrganization);
-}
-
-BASE_FEATURE(kTabOrganizationModelStrategy, base::FEATURE_DISABLED_BY_DEFAULT);
-
-BASE_FEATURE(kTabOrganizationUserInstruction,
-             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables creating a web app window when tearing off a tab with a url
 // controlled by a web app.
@@ -475,6 +461,12 @@ BASE_FEATURE_PARAM(bool,
                    kTabGroupsFocusingPinnedTabs,
                    &kTabGroupsFocusing,
                    "tab_groups_focusing_pinned_tabs",
+                   false);
+
+BASE_FEATURE_PARAM(bool,
+                   kTabGroupsFocusingAutoClose,
+                   &kTabGroupsFocusing,
+                   "tab_groups_focusing_auto_close",
                    false);
 
 BASE_FEATURE_PARAM(bool,

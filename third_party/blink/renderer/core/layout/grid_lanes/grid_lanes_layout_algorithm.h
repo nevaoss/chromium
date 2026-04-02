@@ -17,8 +17,10 @@ class BaselineAccumulator;
 class ComputedStyle;
 class GridItems;
 class GridLayoutData;
+class GridLayoutTree;
 class GridLineResolver;
 class GridSizingTrackCollection;
+class GridSizingSubtree;
 class GridSizingTree;
 class GridLanesRunningPositions;
 class SubgriddedItemData;
@@ -144,7 +146,11 @@ class CORE_EXPORT GridLanesLayoutAlgorithm
                            LayoutUnit block_size,
                            HeapVector<Member<LayoutBox>>& oof_children);
 
-  // Initializes track sizes for the grid axis stored in `sizing_tree`.
+  // Initializes the track sizes of a grid-lanes sizing subtree.
+  void InitializeTrackSizes(const GridSizingSubtree& sizing_subtree,
+                            const SubgriddedItemData& opt_subgrid_data) const;
+
+  // Helper that calls the method above for the entire grid sizing tree.
   void InitializeTrackSizes(GridSizingTree* sizing_tree) const;
 
   // Creates a sizing tree based on the given `sizing_constraint` and
@@ -162,16 +168,21 @@ class CORE_EXPORT GridLanesLayoutAlgorithm
       bool& needs_intrinsic_track_size,
       HeapVector<Member<LayoutBox>>* opt_oof_children = nullptr);
 
-  // Completes the track sizing algorithm for non-definite tracks.
-  void CompleteTrackSizingAlgorithm(
-      SizingConstraint sizing_constraint,
-      GridSizingTree* sizing_tree,
-      bool needs_intrinsic_track_size,
-      bool* opt_needs_additional_pass = nullptr) const;
+  // Completes the track sizing algorithm for non-definite tracks of a
+  // grid-lanes sizing subtree.
+  void CompleteTrackSizingAlgorithm(const GridSizingSubtree& sizing_subtree,
+                                    SizingConstraint sizing_constraint,
+                                    bool needs_intrinsic_track_size) const;
+
+  // Helper that calls the method above for the entire grid sizing tree.
+  void CompleteTrackSizingAlgorithm(SizingConstraint sizing_constraint,
+                                    GridSizingTree* sizing_tree,
+                                    bool needs_intrinsic_track_size) const;
 
   // Performs the final baseline alignment pass of a sizing subtree in the grid
   // axis.
-  void ComputeBaselineAlignment(GridSizingTree* sizing_tree);
+  void ComputeBaselineAlignment(const GridLayoutTree* layout_tree,
+                                const GridSizingSubtree& sizing_subtree);
 
   // Helper that calls the method above for the entire grid sizing tree.
   void CompleteFinalBaselineAlignment(GridSizingTree* sizing_tree);

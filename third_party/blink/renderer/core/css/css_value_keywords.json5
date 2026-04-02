@@ -981,6 +981,7 @@
     //
     "running",
     "paused",
+    "stopped",
 
     //
     // transform-style
@@ -1313,6 +1314,9 @@
     // intersection
     // normal
 
+    // rule-inset
+    "overlap-join",
+
     // column-rule-visibility-items
     // auto
     // all
@@ -1451,6 +1455,7 @@
     "with",
 
     // @font-face src
+    "avar2",
     "format",
     "collection",
     "embedded-opentype",

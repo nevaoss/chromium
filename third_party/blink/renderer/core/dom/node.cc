@@ -113,7 +113,7 @@
 #include "third_party/blink/renderer/core/html/html_script_element.h"
 #include "third_party/blink/renderer/core/html/html_slot_element.h"
 #include "third_party/blink/renderer/core/html/html_stream.h"
-#include "third_party/blink/renderer/core/html/parser/fragment_parser_options.h"
+#include "third_party/blink/renderer/core/html/parser/fragment_parser.h"
 #include "third_party/blink/renderer/core/html_names.h"
 #include "third_party/blink/renderer/core/input/event_handler.h"
 #include "third_party/blink/renderer/core/input/input_device_capabilities.h"
@@ -1255,15 +1255,15 @@ bool CanInsertHTMLToParent(Node* child) {
 }  // namespace
 
 void Node::replaceWithHTML(const String& html,
-                           V8UnionSetHTMLOptionsOrTrustedParserOptions* options,
+                           SetHTMLOptions* options,
                            ExceptionState& exception_state) {
   if (CanInsertHTMLToParent(this)) {
     parentNode()->ReplaceChildWithHTML(
         this, html,
-        blink::GetFragmentParserConfig(
-            Sanitizer::Mode::kSafe, trusted_types_names::kNode,
-            trusted_types_names::kReplaceWithHTML, parentNode()),
-        FragmentParserOptions::From(options), exception_state);
+        FragmentParserConfig::ForContainer(
+            parentNode(), Sanitizer::Mode::kSafe, trusted_types_names::kNode,
+            trusted_types_names::kReplaceWithHTML),
+        FragmentParserOptions(options), exception_state);
   }
 }
 
@@ -1274,9 +1274,9 @@ void Node::replaceWithHTMLUnsafe(
   if (!CanInsertHTMLToParent(this)) {
     return;
   }
-  const FragmentParserConfig config = blink::GetFragmentParserConfig(
-      Sanitizer::Mode::kUnsafe, trusted_types_names::kNode,
-      trusted_types_names::kReplaceWithHTMLUnsafe, parentNode());
+  const FragmentParserConfig config = FragmentParserConfig::ForContainer(
+      parentNode(), Sanitizer::Mode::kUnsafe, trusted_types_names::kNode,
+      trusted_types_names::kReplaceWithHTMLUnsafe);
 
   parentNode()->ReplaceChildWithHTML(
       this,
@@ -1287,16 +1287,15 @@ void Node::replaceWithHTMLUnsafe(
 }
 
 void Node::beforeHTML(const String& html,
-                      V8UnionSetHTMLOptionsOrTrustedParserOptions* options,
+                      SetHTMLOptions* options,
                       ExceptionState& exception_state) {
   if (CanInsertHTMLToParent(this)) {
     parentNode()->InsertHTMLBefore(
         this, html,
-        blink::GetFragmentParserConfig(
-            Sanitizer::Mode::kSafe, trusted_types_names::kNode,
-            trusted_types_names::kBeforeHTML, parentNode()),
-
-        FragmentParserOptions::From(options), exception_state);
+        FragmentParserConfig::ForContainer(parentNode(), Sanitizer::Mode::kSafe,
+                                           trusted_types_names::kNode,
+                                           trusted_types_names::kBeforeHTML),
+        FragmentParserOptions(options), exception_state);
   }
 }
 
@@ -1307,9 +1306,9 @@ void Node::beforeHTMLUnsafe(
   if (!CanInsertHTMLToParent(this)) {
     return;
   }
-  const FragmentParserConfig config = blink::GetFragmentParserConfig(
-      Sanitizer::Mode::kUnsafe, trusted_types_names::kNode,
-      trusted_types_names::kBeforeHTMLUnsafe, parentNode());
+  const FragmentParserConfig config = FragmentParserConfig::ForContainer(
+      parentNode(), Sanitizer::Mode::kUnsafe, trusted_types_names::kNode,
+      trusted_types_names::kBeforeHTMLUnsafe);
 
   parentNode()->InsertHTMLBefore(
       this,
@@ -1320,15 +1319,15 @@ void Node::beforeHTMLUnsafe(
 }
 
 void Node::afterHTML(const String& html,
-                     V8UnionSetHTMLOptionsOrTrustedParserOptions* options,
+                     SetHTMLOptions* options,
                      ExceptionState& exception_state) {
   if (CanInsertHTMLToParent(this)) {
     parentNode()->InsertHTMLBefore(
         nextSibling(), html,
-        blink::GetFragmentParserConfig(
-            Sanitizer::Mode::kSafe, trusted_types_names::kNode,
-            trusted_types_names::kAfterHTML, parentNode()),
-        FragmentParserOptions::From(options), exception_state);
+        FragmentParserConfig::ForContainer(parentNode(), Sanitizer::Mode::kSafe,
+                                           trusted_types_names::kNode,
+                                           trusted_types_names::kAfterHTML),
+        FragmentParserOptions(options), exception_state);
   }
 }
 
@@ -1339,9 +1338,9 @@ void Node::afterHTMLUnsafe(
   if (!CanInsertHTMLToParent(this)) {
     return;
   }
-  const FragmentParserConfig config = blink::GetFragmentParserConfig(
-      Sanitizer::Mode::kUnsafe, trusted_types_names::kNode,
-      trusted_types_names::kAfterHTMLUnsafe, parentNode());
+  const FragmentParserConfig config = FragmentParserConfig::ForContainer(
+      parentNode(), Sanitizer::Mode::kUnsafe, trusted_types_names::kNode,
+      trusted_types_names::kAfterHTMLUnsafe);
 
   parentNode()->InsertHTMLBefore(
       nextSibling(),
@@ -1361,13 +1360,12 @@ WritableStream* Node::streamBeforeHTMLUnsafe(
       trusted_types_names::kStreamBeforeHTMLUnsafe, exception_state);
 }
 
-WritableStream* Node::streamBeforeHTML(
-    ScriptState* script_state,
-    V8UnionSetHTMLOptionsOrTrustedParserOptions* options,
-    ExceptionState& exception_state) {
+WritableStream* Node::streamBeforeHTML(ScriptState* script_state,
+                                       SetHTMLOptions* options,
+                                       ExceptionState& exception_state) {
   return HTMLStream::Create(
       script_state, parentNode(), this, Sanitizer::Mode::kSafe,
-      FragmentParserOptions::From(options), trusted_types_names::kNode,
+      FragmentParserOptions(options), trusted_types_names::kNode,
       trusted_types_names::kStreamBeforeHTML, exception_state);
 }
 
@@ -1381,13 +1379,12 @@ WritableStream* Node::streamAfterHTMLUnsafe(
       trusted_types_names::kStreamAfterHTMLUnsafe, exception_state);
 }
 
-WritableStream* Node::streamAfterHTML(
-    ScriptState* script_state,
-    V8UnionSetHTMLOptionsOrTrustedParserOptions* options,
-    ExceptionState& exception_state) {
+WritableStream* Node::streamAfterHTML(ScriptState* script_state,
+                                      SetHTMLOptions* options,
+                                      ExceptionState& exception_state) {
   return HTMLStream::Create(
       script_state, parentNode(), nextSibling(), Sanitizer::Mode::kSafe,
-      FragmentParserOptions::From(options), trusted_types_names::kNode,
+      FragmentParserOptions(options), trusted_types_names::kNode,
       trusted_types_names::kStreamAfterHTML, exception_state);
 }
 
@@ -1402,13 +1399,12 @@ WritableStream* Node::streamReplaceWithHTMLUnsafe(
       [&]() { remove(); });
 }
 
-WritableStream* Node::streamReplaceWithHTML(
-    ScriptState* script_state,
-    V8UnionSetHTMLOptionsOrTrustedParserOptions* options,
-    ExceptionState& exception_state) {
+WritableStream* Node::streamReplaceWithHTML(ScriptState* script_state,
+                                            SetHTMLOptions* options,
+                                            ExceptionState& exception_state) {
   return HTMLStream::Create(
       script_state, parentNode(), nextSibling(), Sanitizer::Mode::kSafe,
-      FragmentParserOptions::From(options), trusted_types_names::kNode,
+      FragmentParserOptions(options), trusted_types_names::kNode,
       trusted_types_names::kStreamReplaceWithHTML, exception_state,
       [&]() { remove(); });
 }

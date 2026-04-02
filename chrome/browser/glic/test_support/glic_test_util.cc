@@ -113,8 +113,8 @@ BrowserWindowInterface* GlicInstanceTracker::GetBrowser() {
 
 std::string GlicInstanceTracker::DescribeGlicTracking() {
   if (tracked_instance_id_) {
-    return base::StrCat({"Tracking glic instance with id ",
-                         tracked_instance_id_->AsLowercaseString()});
+    return base::StrCat(
+        {"Tracking glic instance with id ", tracked_instance_id_->value()});
   } else if (glic_instance_tab_index_) {
     return base::StrCat({"Tracking glic instance at tab index ",
                          base::NumberToString(*glic_instance_tab_index_)});
@@ -271,8 +271,7 @@ void InvalidateAccount(Profile* profile) {
       identity_manager->HasAccountWithRefreshTokenInPersistentErrorState(
           identity_manager->GetPrimaryAccountId(
               signin::ConsentLevel::kSignin)));
-  if (!base::FeatureList::IsEnabled(
-          syncer::kReplaceSyncPromosWithSignInPromos)) {
+  if (!syncer::IsReplaceSyncPromosWithSignInPromosEnabled()) {
     ASSERT_FALSE(
         identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSync));
   }

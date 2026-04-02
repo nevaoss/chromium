@@ -258,16 +258,6 @@ const base::FeatureParam<bool> kCreateSpeculativeRFHFilterRestore{
 const base::FeatureParam<int> kCreateSpeculativeRFHDelayMs{
     &kDeferSpeculativeRFHCreation, "create_speculative_rfh_delay_ms", 0};
 
-// Delay the destructions of RenderFrameHostImpls during a navigation (on
-// Unload) or frame Detach, by delaying the call to
-// PendingDeletionCheckCompletedOnSubTree.
-BASE_FEATURE(kDelayRfhDestructionsOnUnloadAndDetach,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-const base::FeatureParam<base::TimeDelta>
-    kRfhDestructionsOnUnloadAndDetachTaskDelay{
-        &kDelayRfhDestructionsOnUnloadAndDetach, "task_delay",
-        base::TimeDelta()};
-
 // When a device bound session
 // (https://github.com/w3c/webappsec-dbsc/blob/main/README.md) is
 // terminated, evict pages with cache-control:no-store from the
@@ -529,6 +519,13 @@ BASE_FEATURE_PARAM(bool,
                    "use_separate_process",
                    false);
 
+// If enabled, the initial WebUI GPU stream is set to UI priority.
+BASE_FEATURE_PARAM(bool,
+                   kInitialWebUIHighStreamPriority,
+                   &features::kInitialWebUI,
+                   "high_stream_priority",
+                   true);
+
 // Whether initial WebUI navigations should synchronously go from navigation
 // start to commit, by doing e.g. in-renderer body loading.
 BASE_FEATURE(kInitialWebUISyncNavStartToCommit,
@@ -742,12 +739,6 @@ BASE_FEATURE(kPushSubscriptionChangeEventOnInvalidation,
 // https://w3c.github.io/push-api/#the-pushsubscriptionchange-event
 // upon manual resubscription to previously unsubscribed notifications.
 BASE_FEATURE(kPushSubscriptionChangeEventOnResubscribe,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
-// When enabled, queues navigations instead of cancelling the previous
-// navigation if the previous navigation is already waiting for commit.
-// See https://crbug.com/838348 and https://crbug.com/1220337.
-BASE_FEATURE(kQueueNavigationsWhileWaitingForCommit,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 // When enabled, sends SubresourceResponseStarted IPC only when the user has

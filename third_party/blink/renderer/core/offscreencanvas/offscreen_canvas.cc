@@ -37,6 +37,7 @@
 #include "third_party/blink/renderer/platform/graphics/canvas_resource.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource_dispatcher.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource_provider.h"
+#include "third_party/blink/renderer/platform/graphics/gpu/canvas_utils.h"
 #include "third_party/blink/renderer/platform/graphics/gpu/shared_gpu_context.h"
 #include "third_party/blink/renderer/platform/graphics/image.h"
 #include "third_party/blink/renderer/platform/graphics/static_bitmap_image.h"
@@ -153,6 +154,8 @@ void OffscreenCanvas::SetSize(gfx::Size size) {
     if (context_ && context_->IsRenderingContext2D()) {
       context_->Reset();
       origin_clean_ = true;
+      // We need to trigger the draw, because we did reset the context.
+      context_->DidDraw(CanvasPerformanceMonitor::DrawType::kOther);
     }
     return;
   }
@@ -499,11 +502,16 @@ bool OffscreenCanvas::PushFrameIfNeeded() {
 }
 
 bool OffscreenCanvas::PushFrame(scoped_refptr<CanvasResource>&& canvas_resource,
-                                const SkIRect& damage_rect) {
+                                std::optional<SkIRect> damage_rect) {
   TRACE_EVENT0("blink", "OffscreenCanvas::PushFrame");
   DCHECK(needs_push_frame_);
   needs_push_frame_ = false;
-  current_frame_damage_rect_.join(damage_rect);
+  if (damage_rect) {
+    current_frame_damage_rect_.join(*damage_rect);
+  } else {
+    current_frame_damage_rect_ =
+        SkIRect::MakeWH(Size().width(), Size().height());
+  }
   if (current_frame_damage_rect_.isEmpty() || !canvas_resource)
     return false;
   canvas_resource->SetOriginClean(OriginClean());
@@ -515,10 +523,8 @@ bool OffscreenCanvas::PushFrame(scoped_refptr<CanvasResource>&& canvas_resource,
 }
 
 bool OffscreenCanvas::ShouldAccelerate2dContext() const {
-  base::WeakPtr<WebGraphicsContext3DProviderWrapper> context_provider_wrapper =
-      SharedGpuContext::ContextProviderWrapper();
-  return context_provider_wrapper &&
-         context_provider_wrapper->Utils()->Accelerated2DCanvasFeatureEnabled();
+  return Accelerated2DCanvasFeatureEnabled(
+      SharedGpuContext::ContextProviderWrapper().get());
 }
 
 UkmParameters OffscreenCanvas::GetUkmParameters() {

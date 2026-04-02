@@ -4018,9 +4018,9 @@ void RenderFrameHostImpl::AccessibilityPerformAction(
     return;
   }
 
-  // Don't perform the action if the WebContents is set to ignore accessibility
-  // input events. See WebContents::IgnoreInputEvents for more information.
-  if (delegate()->ShouldIgnoreA11yInputEvents()) {
+  // Don't perform the action if the WebContents is set to ignore input events.
+  // See WebContents::IgnoreInputEvents for more information.
+  if (delegate()->ShouldIgnoreInputEvents()) {
     return;
   }
 
@@ -6014,7 +6014,7 @@ void RenderFrameHostImpl::Detach() {
 
   // Some children with no unload handler may be eligible for immediate
   // deletion. Cut the dead branches now.
-  PendingDeletionCheckCompletedOnSubtreeNowOrLater();  // Can delete |this|.
+  PendingDeletionCheckCompletedOnSubtree();  // Can delete |this|.
   //  |this| is potentially deleted. Do not add code after this.
 }
 
@@ -6638,8 +6638,7 @@ void RenderFrameHostImpl::ResetOwnedNavigationRequests(
     // yet.
     DCHECK(same_document_navigation_requests_.empty());
 
-    if (ShouldQueueNavigationsWhenPendingCommitRFHExists() &&
-        HasPendingCommitForCrossDocumentNavigation()) {
+    if (HasPendingCommitForCrossDocumentNavigation()) {
       // With navigation queueing, pending commit navigations shouldn't get
       // canceled, unless the FrameTreeNode or renderer process
       // is gone/will be gone soon.
@@ -6753,33 +6752,8 @@ void RenderFrameHostImpl::Unload(RenderFrameProxyHost* proxy, bool is_loading) {
 
   // Some children with no unload handler may be eligible for immediate
   // deletion. Cut the dead branches now.
-  PendingDeletionCheckCompletedOnSubtreeNowOrLater();  // Can delete |this|.
+  PendingDeletionCheckCompletedOnSubtree();  // Can delete |this|.
   // |this| is potentially deleted. Do not add code after this.
-}
-
-void RenderFrameHostImpl::UndoCommitNavigation(RenderFrameProxyHost& proxy,
-                                               bool is_loading) {
-  TRACE_EVENT("navigation", "RenderFrameHostImpl::UndoCommitNavigation",
-              "render_frame_host", this);
-
-  DCHECK_EQ(lifecycle_state_, LifecycleStateImpl::kPendingCommit);
-
-  if (IsRenderFrameLive()) {
-    // By definition, the browser process has not received the
-    // `DidCommitNavgation()`, so the RenderFrameProxyHost endpoints are still
-    // bound. Resetting now means any queued IPCs that are still in-flight will
-    // be dropped. This is a bit problematic, but it is still less problematic
-    // than just crashing the renderer for being in an inconsistent state.
-    proxy.TearDownMojoConnection();
-
-    GetMojomFrameInRenderer()->UndoCommitNavigation(
-        is_loading,
-        proxy.frame_tree_node()->current_replication_state().Clone(),
-        proxy.GetFrameToken(), proxy.CreateAndBindRemoteFrameInterfaces(),
-        proxy.CreateAndBindRemoteMainFrameInterfaces());
-  }
-
-  SetLifecycleState(LifecycleStateImpl::kReadyToBeDeleted);
 }
 
 void RenderFrameHostImpl::MaybeDispatchDidFinishLoadOnPrerenderActivation() {
@@ -6977,19 +6951,28 @@ void RenderFrameHostImpl::ProcessBeforeUnloadCompletedFromFrame(
                             on_before_unload_overhead_time);
     switch (execution_mode) {
       case BeforeUnloadExecutionMode::kDefault:
+      case BeforeUnloadExecutionMode::kAsync:
         base::UmaHistogramTimes(
             "Navigation.OnBeforeUnloadOverheadTime."
             "BeforeUnloadHandlerRegistered",
             on_before_unload_overhead_time);
+        if (execution_mode == BeforeUnloadExecutionMode::kAsync) {
+          base::UmaHistogramTimes(
+              "Navigation.OnBeforeUnloadOverheadTime."
+              "BeforeUnloadHandlerRegistered.Async",
+              on_before_unload_overhead_time);
+        } else {
+          base::UmaHistogramTimes(
+              "Navigation.OnBeforeUnloadOverheadTime."
+              "BeforeUnloadHandlerRegistered.Sync",
+              on_before_unload_overhead_time);
+        }
         break;
       case BeforeUnloadExecutionMode::kForLegacy:
         base::UmaHistogramTimes(
             "Navigation.OnBeforeUnloadOverheadTime."
             "NoBeforeUnloadHandlerRegistered",
             on_before_unload_overhead_time);
-        break;
-      case BeforeUnloadExecutionMode::kAsync:
-        // TODO(crbug.com/475716933): Add UMA for kAsync.
         break;
     }
 
@@ -8622,7 +8605,7 @@ void RenderFrameHostImpl::VisibilityChanged(
 void RenderFrameHostImpl::DidChangeThemeColor(
     std::optional<SkColor> theme_color) {
   // TODO(crbug.com/40188381): Consider moving this to PageImpl.
-  DCHECK(is_main_frame());
+  CHECK(is_main_frame());
   GetPage().OnThemeColorChanged(theme_color);
 }
 
@@ -8630,7 +8613,7 @@ void RenderFrameHostImpl::DidChangeBackgroundColor(
     const SkColor4f& background_color,
     bool color_adjust) {
   // TODO(crbug.com/40188381): Consider moving this to PageImpl.
-  DCHECK(is_main_frame());
+  CHECK(is_main_frame());
   GetPage().DidChangeBackgroundColor(background_color, color_adjust);
 }
 
@@ -9139,8 +9122,6 @@ void RenderFrameHostImpl::SetIsXrOverlaySetup() {
   last_xr_overlay_setup_time_ = base::TimeTicks::Now();
 }
 
-// TODO(alexmos): When the allowFullscreen flag is known in the browser
-// process, use it to double-check that fullscreen can be entered here.
 void RenderFrameHostImpl::EnterFullscreen(
     blink::mojom::FullscreenOptionsPtr options,
     EnterFullscreenCallback callback) {
@@ -9150,6 +9131,17 @@ void RenderFrameHostImpl::EnterFullscreen(
   // page should not enter fullscreen.
   if (!IsActive() || !GetPage().IsPrimary()) {
     std::move(callback).Run(/*granted=*/false);
+    return;
+  }
+
+  // Enforce the fullscreen Permissions Policy browser-side. Cross-origin
+  // iframes without the "allowfullscreen" attribute (or an explicit
+  // Permissions-Policy delegation) must not be able to enter fullscreen, even
+  // if the renderer-side check is bypassed by a compromised renderer.
+  if (!IsFeatureEnabled(
+          network::mojom::PermissionsPolicyFeature::kFullscreen)) {
+    bad_message::ReceivedBadMessage(
+        GetProcess(), bad_message::RFH_ENTER_FULLSCREEN_PERMISSION_DENIED);
     return;
   }
 
@@ -9245,8 +9237,6 @@ void RenderFrameHostImpl::EnterFullscreen(
       ->SynchronizeVisualProperties();
 }
 
-// TODO(alexmos): When the allowFullscreen flag is known in the browser
-// process, use it to double-check that fullscreen can be entered here.
 void RenderFrameHostImpl::ExitFullscreen() {
   base::RecordAction(base::UserMetricsAction("ExitFullscreen_API"));
   delegate_->ExitFullscreenMode(/*will_cause_resize=*/true);
@@ -9464,8 +9454,12 @@ void RenderFrameHostImpl::ScrollRectToVisibleInParentFrame(
     const gfx::RectF& rect_to_scroll,
     blink::mojom::ScrollIntoViewParamsPtr params) {
   // Do not update the parent on behalf of inactive RenderFrameHost.
-  if (IsInactiveAndDisallowActivation(
-          DisallowActivationReasonId::kDispatchLoad)) {
+  // Allow prerendering pages to propagate scroll to match same-origin
+  // in-process behavior.
+  if (lifecycle_state() == LifecycleStateImpl::kPrerendering) {
+    // Skip the inactive check for prerendering.
+  } else if (IsInactiveAndDisallowActivation(
+                 DisallowActivationReasonId::kDispatchLoad)) {
     return;
   }
 
@@ -9499,8 +9493,12 @@ void RenderFrameHostImpl::BubbleLogicalScrollInParentFrame(
     blink::mojom::ScrollDirection direction,
     ui::ScrollGranularity granularity) {
   // Do not update the parent on behalf of inactive RenderFrameHost.
-  if (IsInactiveAndDisallowActivation(
-          DisallowActivationReasonId::kDispatchLoad)) {
+  // Allow prerendering pages to propagate scroll to match same-origin
+  // in-process behavior.
+  if (lifecycle_state() == LifecycleStateImpl::kPrerendering) {
+    // Skip the inactive check for prerendering.
+  } else if (IsInactiveAndDisallowActivation(
+                 DisallowActivationReasonId::kDispatchLoad)) {
     return;
   }
 
@@ -10151,9 +10149,22 @@ void RenderFrameHostImpl::CreateNewWindow(
   GetProcess()->FilterURL(false, &params->target_url);
 
   bool effective_transient_activation_state =
-      params->allow_popup || HasTransientUserActivation() ||
+      HasTransientUserActivation() ||
       (transient_allow_popup_.IsActive() &&
        params->disposition == WindowOpenDisposition::NEW_POPUP);
+
+  if (!effective_transient_activation_state && params->allow_popup) {
+    bool bypass_allowed =
+        GetContentClient()->browser()->IsPopupBypassAllowed(this);
+    base::UmaHistogramBoolean("Security.PopupBypassDeniedByContentEmbedder",
+                              !bypass_allowed);
+    if (bypass_allowed) {
+      effective_transient_activation_state = true;
+    } else {
+      std::move(callback).Run(mojom::CreateNewWindowStatus::kBlocked, nullptr);
+      return;
+    }
+  }
 
   // Ignore window creation when sent from a frame that's not active or
   // created.
@@ -12458,12 +12469,9 @@ void RenderFrameHostImpl::StartPendingDeletionOnSubtree(
       {"Navigation.StartPendingDeletionOnSubtree.", histogram_suffix}));
   DCHECK(IsPendingDeletion());
 
-  if (pending_deletion_reason == PendingDeletionReason::kFrameDetach ||
-      !ShouldAvoidRedundantNavigationCancellations()) {
-    // Reset all navigations happening in the FrameTreeNode only when entering
-    // "pending deletion" state due to frame detach if the
-    // kStopCancellingNavigationsOnCommitAndNewNavigation flag is enabled, or
-    // for all pending deletion cases otherwise.
+  if (pending_deletion_reason == PendingDeletionReason::kFrameDetach) {
+    // When a frame is detached, all navigations associated with its
+    // FrameTreeNode should be cancelled because it will no longer exist.
     NavigationDiscardReason reason = NavigationDiscardReason::kWillRemoveFrame;
     GetFrameTreeNodeForUnload()->CancelNavigation(reason);
     GetFrameTreeNodeForUnload()
@@ -12471,8 +12479,7 @@ void RenderFrameHostImpl::StartPendingDeletionOnSubtree(
         .DiscardSpeculativeRFH(reason);
     ResetOwnedNavigationRequests(reason);
   } else {
-    CHECK(pending_deletion_reason == PendingDeletionReason::kSwappedOut ||
-          ShouldAvoidRedundantNavigationCancellations());
+    CHECK_EQ(pending_deletion_reason, PendingDeletionReason::kSwappedOut);
     // The pending deletion state is caused by swapping out the RFH. Reset only
     // the navigations that are owned by or will be using the swapped out RFH,
     // and also reset all navigations happening in the descendant frames.
@@ -12587,26 +12594,6 @@ void RenderFrameHostImpl::PendingDeletionCheckCompletedOnSubtree() {
   return;
 }
 
-void RenderFrameHostImpl::PendingDeletionCheckCompletedOnSubtreeNowOrLater() {
-  if (base::FeatureList::IsEnabled(
-          features::kDelayRfhDestructionsOnUnloadAndDetach)) {
-    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
-        FROM_HERE,
-        base::BindOnce(
-            [](auto rfh) {
-              if (rfh) {
-                rfh->PendingDeletionCheckCompletedOnSubtree();
-              }
-            },
-            GetWeakPtr()),
-        features::kRfhDestructionsOnUnloadAndDetachTaskDelay.Get());
-  } else {
-    // Some children with no unload handler may be eligible for deletion. Cut
-    // the dead branches now. This is a performance optimization.
-    PendingDeletionCheckCompletedOnSubtree();
-    // |this| is potentially deleted. Do not add code after this.
-  }
-}
 
 void RenderFrameHostImpl::ResetNavigationsUsingSwappedOutRFH() {
   // Only delete the navigation owned by the swapped out RFH or those that
@@ -14829,7 +14816,8 @@ void RenderFrameHostImpl::CreateWebSocketConnector(
   mojo::MakeSelfOwnedReceiver(
       std::make_unique<WebSocketConnectorImpl>(
           GlobalRenderFrameHostId(GetProcess()->GetID(), routing_id_),
-          last_committed_origin_, isolation_info_, BuildClientSecurityState()),
+          last_committed_origin_, isolation_info_, BuildClientSecurityState(),
+          GetNetworkRestrictionsID()),
       std::move(receiver));
 }
 
@@ -14875,7 +14863,7 @@ void RenderFrameHostImpl::CreateCodeCacheHost(
 void RenderFrameHostImpl::CreateDedicatedWorkerHostFactory(
     mojo::PendingReceiver<blink::mojom::DedicatedWorkerHostFactory> receiver) {
   // Allocate the worker in the same process as the creator.
-  int worker_process_id = GetProcess()->GetDeprecatedID();
+  ChildProcessId worker_process_id = GetProcess()->GetID();
 
   base::WeakPtr<CrossOriginEmbedderPolicyReporter> coep_reporter;
   if (coep_reporter_) {

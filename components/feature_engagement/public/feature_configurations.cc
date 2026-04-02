@@ -584,20 +584,6 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     return config;
   }
 
-  if (kIPHTabOrganizationSuccessFeature.name == feature->name) {
-    FeatureConfig config;
-    config.valid = true;
-    config.availability = Comparator(ANY, 0);
-    config.session_rate = Comparator(ANY, 0);
-    config.session_rate_impact.type = SessionRateImpact::Type::NONE;
-    // Show the IPH once per year.
-    config.trigger = EventConfig("iph_tab_organization_success_trigger",
-                                 Comparator(EQUAL, 0), 360, 360);
-    config.used =
-        EventConfig("tab_group_editor_shown", Comparator(EQUAL, 0), 360, 360);
-    return config;
-  }
-
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_APPLE) || BUILDFLAG(IS_LINUX) ||
   // BUILDFLAG(IS_CHROMEOS)
 
@@ -2125,6 +2111,20 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
 
     // Only show the IPH once per year
     config.trigger = EventConfig("three_dot_menu_back_button_trigger",
+                                 Comparator(ANY, 0), 0, 360);
+    return config;
+  }
+
+  if (kIPHGestureUserEducation.name == feature->name) {
+    // TODO(crbug.com/493307156): Add final values for IPH
+    FeatureConfig config;
+    config.valid = true;
+    config.availability = Comparator(ANY, 0);  // Always available
+    config.session_rate = Comparator(
+        EQUAL, 0);  // Only shows when no other IPH has been shown this session
+
+    // Only show the IPH once per year
+    config.trigger = EventConfig("gesture_user_education_trigger",
                                  Comparator(ANY, 0), 0, 360);
     return config;
   }

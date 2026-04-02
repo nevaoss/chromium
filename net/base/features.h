@@ -26,6 +26,11 @@ namespace net::features {
 // https://vasilvv.github.io/httpbis-alps/draft-vvv-httpbis-alps.html.
 NET_EXPORT BASE_DECLARE_FEATURE(kAlpsForHttp2);
 
+// If enabled, HttpNetworkTransaction will use a hybrid retry strategy for
+// connection errors: retrying synchronously initially, and switching to
+// asynchronous (yielding to the message loop) after many attempts.
+NET_EXPORT BASE_DECLARE_FEATURE(kAsyncRetryOnTooManyConnectionErrors);
+
 // Disable H2 reprioritization, in order to measure its impact.
 NET_EXPORT BASE_DECLARE_FEATURE(kAvoidH2Reprioritization);
 
@@ -478,6 +483,11 @@ NET_EXPORT BASE_DECLARE_FEATURE_PARAM(
     std::string,
     kDeviceBoundSessionsForRestrictedSitesExperimentIdParam);
 
+// This feature will enable the browser to use Device Bound Session Credentials
+// for Single Sign On. This feature is only valid if `kDeviceBoundSessions` is
+// enabled.
+NET_EXPORT BASE_DECLARE_FEATURE(kDeviceBoundSessionsForSingleSignOn);
+
 // Enables more checks when creating a SpdySession for proxy. These checks are
 // already applied to non-proxy SpdySession creations.
 // TODO(crbug.com/343519247): Remove this once we are sure that these checks are
@@ -779,8 +789,11 @@ NET_EXPORT BASE_DECLARE_FEATURE(kEnableBootstrapIPRandomizationForDoh);
 // lock-free certificate verification mechanism.
 NET_EXPORT BASE_DECLARE_FEATURE(kUseLockFreeX509Verification);
 
-// When enabled, at the same time that DoH probes are started, a canary domain
-// will be probed to check whether Secure DNS is allowed by the network.
+// When enabled, and when Secure DNS Automatic mode is selected *with DoH
+// fallback*, then a canary domain will be probed to check whether DoH fallback
+// is allowed by the network. This will happen at the same time that DoH probes
+// are started. When disabled, the canary domain check is entirely inactive
+// (killswitch).
 NET_EXPORT BASE_DECLARE_FEATURE(kProbeSecureDnsCanaryDomain);
 NET_EXPORT BASE_DECLARE_FEATURE_PARAM(std::string, kSecureDnsCanaryDomainHost);
 
@@ -808,6 +821,25 @@ NET_EXPORT extern const base::FeatureParam<bool>
 
 // If enabled, the error code will be propagated for preconnect attempts.
 NET_EXPORT BASE_DECLARE_FEATURE(kEnableErrorCodePropagationForPreconnect);
+
+// If enabled, TransportClientSocketPool can retry stalled connections.
+// See crbug.com/481934003 to track efforts to disable this by default.
+NET_EXPORT BASE_DECLARE_FEATURE(kPermitTcpSocketPoolConnectBackupJobs);
+
+// If enabled, examine why a network operation was blocked due to local network
+// permission.
+NET_EXPORT BASE_DECLARE_FEATURE(kLocalNetworkPermissionCheck);
+
+// Whether or not this client is participating in the TCP connection pool proxy
+// limit and, if so, what the limit should be.
+// See crbug.com/467278609 to track efforts to raise defaults.
+NET_EXPORT BASE_DECLARE_FEATURE(kTcpSocketPoolProxyLimit);
+NET_EXPORT BASE_DECLARE_FEATURE_PARAM(int, kTcpSocketPoolProxyLimitNormal);
+NET_EXPORT BASE_DECLARE_FEATURE_PARAM(int, kTcpSocketPoolProxyLimitWebSocket);
+
+// If enabled, QuicCryptoClientConfigOwner will ignore memory pressure events
+// for the kDnsOverHttps partition.
+NET_EXPORT BASE_DECLARE_FEATURE(kIgnoreQuicCryptoConfigMemoryPressureForDoh);
 
 }  // namespace net::features
 

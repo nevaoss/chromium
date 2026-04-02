@@ -35,10 +35,11 @@
 #include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/interaction/browser_elements.h"
 #include "chrome/browser/ui/tab_ui_helper.h"
-#include "chrome/browser/ui/tabs/alert/tab_alert.h"
 #include "chrome/browser/ui/tabs/alert/tab_alert_controller.h"
 #include "chrome/browser/ui/tabs/tab_data.h"
 #include "chrome/browser/ui/tabs/tab_enums.h"
+#include "chrome/browser/ui/tabs/tab_strip_api/tab_strip_service.h"
+#include "chrome/browser/ui/tabs/tab_strip_api/tab_strip_service_feature.h"
 #include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/webui/metrics_reporter/metrics_reporter.h"
@@ -52,9 +53,11 @@
 #include "chrome/common/url_constants.h"
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/grit/generated_resources.h"
+#include "components/browser_apis/tab_strip/types/node_id.h"
 #include "components/prefs/pref_service.h"
 #include "components/signin/public/base/signin_metrics.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
+#include "components/tabs/public/tab_alert.h"
 #include "components/tabs/public/tab_interface.h"
 #include "components/user_education/common/tutorial/tutorial_identifier.h"
 #include "components/user_education/common/tutorial/tutorial_service.h"
@@ -185,32 +188,23 @@ void TabSearchPageHandler::CloseTab(int32_t tab_id) {
   // TabSearchPageHandler object, causing it to be immediately destroyed. Ensure
   // that no further actions are performed following the call to
   // CloseWebContentsAt(). See (https://crbug.com/1175507).
-  TabStripModel* const tab_strip_model =
-      details->tab->GetBrowserWindowInterface()->GetTabStripModel();
-  CHECK(tab_strip_model);
-  const int index = details->GetIndex();
+  tabs_api::TabStripService* const service =
+      GetTabStripService(details->tab->GetBrowserWindowInterface());
+  CHECK(service);
+  auto node_id = tabs_api::NodeId::FromTabHandle(details->tab->GetHandle());
   // Don't dangle a tabs::TabInterface* in `details`.
   details.reset();
-  tab_strip_model->CloseWebContentsAt(
-      index, TabCloseTypes::CLOSE_CREATE_HISTORICAL_TAB);
+  const auto result = service->CloseNodes({node_id});
+  DCHECK(result.has_value());
   // Do not add code past this point.
 }
 
 void TabSearchPageHandler::CloseWebUiTab() {
-  // CloseTab() can target the WebContents hosting Tab Search if the Tab Search
-  // WebUI is open in a chrome browser tab rather than its bubble. In this case
-  // CloseWebContentsAt() closes the WebContents hosting this
-  // TabSearchPageHandler object, causing it to be immediately destroyed. Ensure
-  // that no further actions are performed following the call to
-  // CloseWebContentsAt(). See (https://crbug.com/1175507).
-  TabStripModel* const tab_strip_model = browser_->tab_strip_model();
-  CHECK(tab_strip_model);
-  Profile::FromWebUI(web_ui_)->GetPrefs()->SetBoolean(
-      tab_search_prefs::kTabSearchUsed, true);
-  const int index =
-      tab_strip_model->GetIndexOfWebContents(web_ui_->GetWebContents());
-  tab_strip_model->CloseWebContentsAt(
-      index, TabCloseTypes::CLOSE_CREATE_HISTORICAL_TAB);
+  tabs::TabInterface* const tab =
+      tabs::TabInterface::GetFromContents(web_ui_->GetWebContents());
+  if (tab) {
+    CloseTab(tab->GetHandle().raw_value());
+  }
   // Do not add code past this point.
 }
 
@@ -289,8 +283,12 @@ void TabSearchPageHandler::SwitchToTab(
   Profile::FromWebUI(web_ui_)->GetPrefs()->SetBoolean(
       tab_search_prefs::kTabSearchUsed, true);
 
-  details->tab->GetBrowserWindowInterface()->GetTabStripModel()->ActivateTabAt(
-      details->GetIndex());
+  tabs_api::TabStripService* const service =
+      GetTabStripService(details->tab->GetBrowserWindowInterface());
+  const auto result = service->ActivateTab(
+      tabs_api::NodeId::FromTabHandle(details->tab->GetHandle()));
+  DCHECK(result.has_value());
+
   // Tab search shows tabs from other windows in the profile. So if a user
   // selects a tab in another window, we need to manually activate it so
   // that we can bring that window to the foreground.
@@ -324,16 +322,12 @@ void TabSearchPageHandler::OpenRecentlyClosedEntry(int32_t session_id) {
 }
 
 void TabSearchPageHandler::ReplaceActiveSplitTab(int32_t replacement_tab_id) {
-  std::optional<split_tabs::SplitTabId> split_id =
-      browser_->GetActiveTabInterface()->GetSplit();
-  if (split_id.has_value()) {
-    const tabs::TabInterface* replacement_tab =
-        tabs::TabHandle(replacement_tab_id).Get();
-    const int32_t replacement_index =
-        browser_->tab_strip_model()->GetIndexOfTab(replacement_tab);
-    browser_->tab_strip_model()->UpdateTabInSplit(
-        browser_->tab_strip_model()->GetActiveTab(), replacement_index,
-        TabStripModel::SplitUpdateType::kReplace);
+  tabs::TabInterface* const active_tab = browser_->GetActiveTabInterface();
+  if (active_tab->GetSplit().has_value()) {
+    const auto result = GetTabStripService(browser_)->ReplaceTabInSplit(
+        tabs_api::NodeId::FromTabHandle(active_tab->GetHandle()),
+        tabs_api::NodeId::FromTabHandle(tabs::TabHandle(replacement_tab_id)));
+    DCHECK(result.has_value());
   }
 }
 
@@ -367,22 +361,6 @@ void TabSearchPageHandler::StartTabGroupTutorial() {
 
   user_education::TutorialIdentifier tutorial_id = kTabGroupTutorialId;
   tutorial_service->StartTutorial(tutorial_id, context);
-}
-
-void TabSearchPageHandler::TriggerSignIn() {
-  Profile* profile = Profile::FromWebUI(web_ui_);
-  const signin::IdentityManager* const identity_manager(
-      IdentityManagerFactory::GetInstance()->GetForProfile(profile));
-  CoreAccountId primary_account_id =
-      identity_manager->GetPrimaryAccountId(signin::ConsentLevel::kSignin);
-  if (identity_manager->HasAccountWithRefreshTokenInPersistentErrorState(
-          primary_account_id)) {
-    signin_ui_util::ShowReauthForPrimaryAccountWithAuthError(
-        profile, signin_metrics::AccessPoint::kTabOrganization);
-  } else {
-    signin_ui_util::ShowSigninPromptFromPromo(
-        profile, signin_metrics::AccessPoint::kTabOrganization);
-  }
 }
 
 void TabSearchPageHandler::MaybeShowUI() {
@@ -701,6 +679,13 @@ TabSearchPageHandler::GetRecentlyClosedTab(sessions::tab_restore::Tab* tab,
   }
 
   return recently_closed_tab;
+}
+
+tabs_api::TabStripService* TabSearchPageHandler::GetTabStripService(
+    BrowserWindowInterface* browser) const {
+  return browser->GetFeatures()
+      .tab_strip_service_feature()
+      ->GetTabStripService();
 }
 
 void TabSearchPageHandler::OnTabStripModelChanged(

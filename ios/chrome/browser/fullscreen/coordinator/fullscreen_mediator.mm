@@ -4,7 +4,10 @@
 
 #import "ios/chrome/browser/fullscreen/coordinator/fullscreen_mediator.h"
 
+#import <UIKit/UIKit.h>
+
 #import "base/memory/raw_ptr.h"
+#import "base/types/pass_key.h"
 #import "ios/chrome/browser/fullscreen/model/fullscreen_browser_agent.h"
 #import "ios/chrome/browser/shared/model/web_state_list/web_state_list.h"
 #import "ios/chrome/browser/shared/model/web_state_list/web_state_list_observer_bridge.h"
@@ -14,6 +17,15 @@
 #import "ios/web/public/ui/crw_web_view_scroll_view_proxy.h"
 #import "ios/web/public/web_state.h"
 #import "ios/web/public/web_state_observer_bridge.h"
+
+// C++ proxy class that generates the PassKey required to mutate
+// the FullscreenBrowserAgent.
+class FullscreenMediatorPassKeyProvider {
+ public:
+  static base::PassKey<FullscreenMediatorPassKeyProvider> passkey() {
+    return base::PassKey<FullscreenMediatorPassKeyProvider>();
+  }
+};
 
 @interface FullscreenMediator () <CRWWebStateObserver,
                                   CRWWebViewScrollViewProxyObserver,
@@ -51,6 +63,21 @@
     _webViewProxyObserver =
         std::make_unique<WebViewProxyTabHelperObserverBridge>(self);
     self.webState = _webStateList->GetActiveWebState();
+
+    NSNotificationCenter* defaultCenter = [NSNotificationCenter defaultCenter];
+    [defaultCenter
+        addObserver:self
+           selector:@selector(voiceOverStatusDidChange)
+               name:UIAccessibilityVoiceOverStatusDidChangeNotification
+             object:nil];
+    [defaultCenter addObserver:self
+                      selector:@selector(applicationDidEnterBackground)
+                          name:UIApplicationDidEnterBackgroundNotification
+                        object:nil];
+    [defaultCenter addObserver:self
+                      selector:@selector(applicationWillEnterForeground)
+                          name:UIApplicationWillEnterForegroundNotification
+                        object:nil];
   }
   return self;
 }
@@ -63,6 +90,7 @@
   self.webState = nullptr;
   _webStateObserver = nullptr;
   _webViewProxyObserver = nullptr;
+  [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
 #pragma mark - Properties
@@ -163,6 +191,23 @@
             (CRWWebViewScrollViewProxy*)webViewScrollViewProxy
                                atScale:(CGFloat)scale {
   // TODO(crbug.com/491845727): Implement scroll tracking logic.
+}
+
+#pragma mark - System Notifications
+
+- (void)voiceOverStatusDidChange {
+  // TODO(crbug.com/493903024): Toggle fullscreen disabled with
+  // ScopedFullscreenDisabler.
+}
+
+- (void)applicationDidEnterBackground {
+  _browserAgent->ForceExitFullscreenWithoutAnimation(
+      FullscreenMediatorPassKeyProvider::passkey());
+}
+
+- (void)applicationWillEnterForeground {
+  _browserAgent->ForceExitFullscreenWithoutAnimation(
+      FullscreenMediatorPassKeyProvider::passkey());
 }
 
 @end

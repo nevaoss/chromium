@@ -50,6 +50,11 @@ BASE_FEATURE(kBackForwardTransitionsSameDocSharedImage,
 
 BASE_FEATURE(kBackdropFilterMirrorEdgeMode, base::FEATURE_ENABLED_BY_DEFAULT);
 
+// If enabled, each render pass eligible for scanout gets its own BufferQueue.
+// This allows for BufferQueue to be used in scenarios like partial delegated
+// compositing, where no root render pass is present.
+BASE_FEATURE(kBufferQueuePerRenderPass, base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE(kUseDrmBlackFullscreenOptimization,
 #if BUILDFLAG(IS_CHROMEOS)
              base::FEATURE_ENABLED_BY_DEFAULT
@@ -180,7 +185,9 @@ const base::FeatureParam<int> kCALayerNewLimitManyVideos{&kCALayerNewLimit,
 #if BUILDFLAG(IS_MAC)
 // Whether the presentation should be delayed until the next DisplayLink
 // callback. Currently only for frames that handle interaction.
-BASE_FEATURE(kVSyncAlignedPresent, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kVSyncAlignedPresentationForScrolling,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kVSyncAlignedPresentation, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif
 
 // Sends a CopyOutputRequest completion Ack early for view transitions so it can
@@ -509,8 +516,12 @@ NumCooldownFramesForAckOnSurfaceActivationDuringInteraction() {
 }
 
 #if BUILDFLAG(IS_MAC)
-bool IsVSyncAlignedPresentEnabled() {
-  return base::FeatureList::IsEnabled(features::kVSyncAlignedPresent);
+bool IsVSyncAlignedForScrolling() {
+  return base::FeatureList::IsEnabled(
+      features::kVSyncAlignedPresentationForScrolling);
+}
+bool IsVSyncAligned() {
+  return base::FeatureList::IsEnabled(features::kVSyncAlignedPresentation);
 }
 #endif
 

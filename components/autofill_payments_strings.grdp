@@ -159,9 +159,12 @@
   <message name="IDS_AUTOFILL_SAVE_CARD_PROMPT_TITLE_TO_CLOUD_V4" desc="Title text for the Autofill save card prompt when the card is to be saved by uploading it to Google Payments, according to November 2018 UI guidelines. The prompt can be either a bubble or an infobar.">
     Save card to Google Account?
   </message>
-    <message name="IDS_AUTOFILL_SAVE_CARD_PROMPT_TITLE_TO_CLOUD_SECURITY" desc="Title text for the credit card upload save prompt on Desktop, using security-focused messaging. Became the new default for Desktop in Dec. 2024 and new default for Android and IOS (bottomsheet only) in H1 2025.">
-      Save card securely?
-    </message>
+  <message name="IDS_AUTOFILL_SAVE_CARD_PROMPT_TITLE_TO_CLOUD_SECURITY" desc="Title text for the credit card upload save prompt on Desktop, using security-focused messaging. Became the new default for Desktop in Dec. 2024 and new default for Android and IOS (bottomsheet only) in H1 2025.">
+    Save card securely?
+  </message>
+  <message name="IDS_AUTOFILL_SAVE_CARD_IN_GOOGLE_WALLET_PROMPT_TITLE" desc="Title text for the save credit card in Google Wallet save prompt. This title specifically references Google Wallet instead of Google Account.">
+    Save card in Google Wallet
+  </message>
   <message name="IDS_AUTOFILL_SAVE_CVC_PROMPT_TITLE_TO_CLOUD" desc="Title text for the Autofill CVC upload prompt that offers to upload CVC to the Sync server for existing server cards. This prompt is shown if a CVC is detected for an existing server card on form submission.">
     Save security code?
   </message>
@@ -213,6 +216,9 @@
   </message>
   <message name="IDS_AUTOFILL_SAVE_CARD_PROMPT_UPLOAD_TO_WALLET_EXPLANATION_SECURITY" desc="Explanation of the benefit of credit card upload save on Desktop, using security-focused messaging. Became the new default for Desktop in Dec. 2024 and new default for Android and IOS (bottomsheet only) in H1 2025. The final line specifically references Google Wallet instead of Google Account.">
     Pay faster when your card is saved. Card details are encrypted in Google Wallet.
+  </message>
+  <message name="IDS_AUTOFILL_SAVE_CARD_PROMPT_UPLOAD_TO_WALLET_V2_EXPLANATION" desc="Explanation of the benefit of credit card upload save to Google Wallet. The final line specifically references Google Wallet instead of Google Account.">
+    Pay faster with Google Pay when your card is saved. Card details are encrypted in Google Wallet.
   </message>
   <if expr="is_android or is_ios">
     <message name="IDS_AUTOFILL_SAVE_CVC_MESSAGE_SAVE_ACCEPT" desc="Positive button label for the Autofill save CVC prompt that offers to save CVC for existing server cards. This prompt is shown if a CVC is detected for an existing server card on form submission. The prompt is shown on Android and IOS devices.">
@@ -880,8 +886,14 @@
   <message name="IDS_AUTOFILL_VIRTUAL_CARD_ENROLLMENT_DIALOG_TITLE_LABEL" desc="Title encouraging users to enroll their card to VCN." formatter_data="android_java">
       Make it more secure with a virtual card next time?
   </message>
+  <message name="IDS_AUTOFILL_VIRTUAL_CARD_ENROLLMENT_DIALOG_TITLE_LABEL_V2" desc="Title encouraging users to enroll their card to VCN.">
+    Turn on a virtual card for autofill
+  </message>
   <message name="IDS_AUTOFILL_VIRTUAL_CARD_ENROLLMENT_DIALOG_CONTENT_LABEL" desc="Text explaining the benefit of enrolling a credit card as a virtual card. Also contains a link to learn more about virtual cards from IDS_AUTOFILL_VIRTUAL_CARD_ENROLLMENT_LEARN_MORE_LINK_LABEL.">
     A virtual card hides your actual card to help protect you from potential fraud. <ph name="IDS_AUTOFILL_VIRTUAL_CARD_ENROLLMENT_LEARN_MORE_LINK_LABEL">$1<ex>Learn about virtual cards</ex></ph>
+  </message>
+  <message name="IDS_AUTOFILL_VIRTUAL_CARD_ENROLLMENT_DIALOG_CONTENT_LABEL_V2" desc="Text explaining the benefit of enrolling a credit card as a virtual card and manage on Google Wallet. Also contains a link to learn more about virtual cards from IDS_AUTOFILL_VIRTUAL_CARD_ENROLLMENT_LEARN_MORE_LINK_LABEL.">
+    A virtual card number will be filled when you check out with this card to protect your actual details. Manage in Google Wallet. <ph name="IDS_AUTOFILL_VIRTUAL_CARD_ENROLLMENT_LEARN_MORE_LINK_LABEL">$1<ex>Learn about virtual cards</ex></ph>
   </message>
   <message name="IDS_AUTOFILL_VIRTUAL_CARD_ENROLLMENT_DECLINE_BUTTON_LABEL_SKIP" desc="Text displayed in the decline button in the virtual card enroll bubble. It is displayed only if the bubble/infobar will still be shown again at a later date after this one is declined.">
     Skip
@@ -1026,6 +1038,9 @@
   </message>
   <message name="IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_AI_FOOTNOTE" desc="A note explaining that Google will collect data from the checkout page to determine the checkout amount.">
       Content from the checkout page is shared with Google to offer these options. To hide pay later options in autofill, go to <ph name="IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_FOOTNOTE_HIDE_OPTION_PAYMENT_SETTINGS_LINK_TEXT">$1<ex>payment settings</ex></ph>.
+  </message>
+  <message name="IDS_AUTOFILL_CARD_BNPL_PAY_LATER_OPTIONS_AI_FOOTNOTE" desc="A note explaining that Google will collect data from the checkout page to determine the checkout amount and that payment plans are subject to eligibility.">
+      Content from the checkout page is shared with Google to offer these options. Payment plans are subject to eligibility. To hide pay later options in autofill, go to <ph name="IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_FOOTNOTE_HIDE_OPTION_PAYMENT_SETTINGS_LINK_TEXT">$1<ex>payment settings</ex></ph>.
   </message>
   <message name="IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_FOOTNOTE_FOR_AI_AMOUNT_EXTRACTION_NOTE" desc="A note explaining that Google will collect data from the checkout page to determine the checkout amount. This string is only part of what's shown on UI and is used for embolding text for first time users.">
       Content from the checkout page is shared with Google to offer these options.
@@ -1685,6 +1700,9 @@
   </message>
   <message name="IDS_AUTOFILL_SAVE_CARD_TO_WALLET_CONFIRMATION_SUCCESS_DESCRIPTION_TEXT" desc="Description text for confirmation shown after Google Wallet save card is successfully uploaded and saved to the server.">
     Your card is saved in Google Wallet so you can autofill it for future purchases
+  </message>
+  <message name="IDS_AUTOFILL_SAVE_CARD_TO_WALLET_CONFIRMATION_SUCCESS_DESCRIPTION_TEXT_V2" desc="Description text for confirmation shown after Google Wallet save card is successfully uploaded and saved to the server.">
+    This card is saved in Google Wallet so you can use it across Google services
   </message>
   <message name="IDS_AUTOFILL_SAVE_CARD_CONFIRMATION_FAILURE_DESCRIPTION_TEXT" desc="Description text for confirmation shown after save card upload to the server was unsuccessful.">
     This card couldn't be saved in your Google Account. It's saved to Chrome on this device instead.

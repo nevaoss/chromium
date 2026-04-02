@@ -35,6 +35,7 @@
 #import "components/contextual_search/input_state_model.h"
 #import "components/lens/contextual_input.h"
 #import "components/lens/lens_bitmap_processing.h"
+#import "components/lens/lens_overlay_mime_type.h"
 #import "components/lens/lens_url_utils.h"
 #import "components/omnibox/browser/aim_eligibility_service.h"
 #import "components/omnibox/browser/lens_suggest_inputs_utils.h"
@@ -47,6 +48,7 @@
 #import "components/search/search.h"
 #import "components/search_engines/template_url_service.h"
 #import "components/search_engines/util.h"
+#import "ios/chrome/browser/cobrowse/model/cobrowse_browser_agent.h"
 #import "ios/chrome/browser/cobrowse/model/cobrowse_context.h"
 #import "ios/chrome/browser/composebox/coordinator/composebox_constants.h"
 #import "ios/chrome/browser/composebox/coordinator/composebox_url_loader.h"
@@ -244,6 +246,27 @@ CreateInputDataFromAnnotatedPageContent(
   return input_data;
 }
 
+// Helper to map ComposeboxInputItemCollection to lens::MimeType
+std::vector<lens::MimeType> MimeTypesFromCollection(
+    ComposeboxInputItemCollection* items) {
+  std::vector<lens::MimeType> types;
+  if (!items || items.empty) {
+    return types;
+  }
+
+  if (items.imagesCount > 0) {
+    types.push_back(lens::MimeType::kImage);
+  }
+  if (items.tabsCount > 0) {
+    types.push_back(lens::MimeType::kAnnotatedPageContent);
+  }
+  if (items.filesCount > 0) {
+    types.push_back(lens::MimeType::kPdf);
+  }
+
+  return types;
+}
+
 }  // namespace
 
 @interface ComposeboxInputPlateMediator () <
@@ -277,6 +300,8 @@ CreateInputDataFromAnnotatedPageContent(
   raw_ptr<AimEligibilityService> _aimEligibilityService;
   // The preference service.
   raw_ptr<PrefService> _prefService;
+  // Browser agent to manage the cobrowse context.
+  raw_ptr<CobrowseBrowserAgent> _cobrowseBrowserAgent;
 
   // Stores the page context wrappers for the duration of the APC retrieval.
   std::unordered_map<web::WebStateID, PageContextWrapper*> _pageContextWrappers;
@@ -342,6 +367,7 @@ CreateInputDataFromAnnotatedPageContent(
               aimEligibilityService:
                   (AimEligibilityService*)aimEligibilityService
                         prefService:(PrefService*)prefService
+               cobrowseBrowserAgent:(CobrowseBrowserAgent*)cobrowseBrowserAgent
           browserCoordinatorHandler:
               (id<BrowserCoordinatorCommands>)browserCoordinatorHandler
                        sceneHandler:(id<SceneCommands>)sceneHandler
@@ -352,6 +378,7 @@ CreateInputDataFromAnnotatedPageContent(
     _browserCoordinatorHandler = browserCoordinatorHandler;
     _sceneHandler = sceneHandler;
     _prefService = prefService;
+    _cobrowseBrowserAgent = cobrowseBrowserAgent;
     _contextualSearchSession = std::move(contextualSearchSession);
     if (_contextualSearchSession) {
       _contextualSearchSession->NotifySessionStarted();
@@ -390,6 +417,7 @@ CreateInputDataFromAnnotatedPageContent(
   _templateURLService = nullptr;
   [self invalidateInputStateSubscription];
   _aimEligibilityService = nullptr;
+  _cobrowseBrowserAgent = nullptr;
   _inputStateModel = nullptr;
   _composeboxObserverBridge.reset();
   if (_contextualSearchSession) {
@@ -685,6 +713,14 @@ CreateInputDataFromAnnotatedPageContent(
         break;
       default:
         break;
+    }
+
+    contextual_search::ContextualSearchMetricsRecorder* recorder =
+        _contextualSearchSession
+            ? _contextualSearchSession->GetMetricsRecorder()
+            : nullptr;
+    if (explicitUserAction && recorder) {
+      recorder->RecordModelMode(_inputStateModel->GetInputState().active_model);
     }
   }
 
@@ -1096,6 +1132,23 @@ CreateInputDataFromAnnotatedPageContent(
   [self attachSelectedTabsWithWebStateIDs:webStateIDs cachedWebStateIDs:{}];
 }
 
+- (void)recordPlusMenuOpenedWithVisibleInternalButtons:
+    (const std::vector<FuseboxAttachmentButtonType>&)visibleInternalButtons {
+  contextual_search::ContextualSearchMetricsRecorder* recorder =
+      _contextualSearchSession ? _contextualSearchSession->GetMetricsRecorder()
+                               : nullptr;
+  if (_inputStateModel && recorder) {
+    for (const auto& tool : _inputState.allowed_tools) {
+      recorder->RecordToolModeShown(tool);
+    }
+    for (const auto& model : _inputState.allowed_models) {
+      recorder->RecordModelModeShown(model);
+    }
+  }
+  [self.metricsRecorder
+      recordAttachmentsMenuOpenedWithVisibleButtons:visibleInternalButtons];
+}
+
 - (void)requestUIRefresh {
   [self commitUIUpdates];
 }
@@ -1347,8 +1400,11 @@ CreateInputDataFromAnnotatedPageContent(
     if (IsAimCobrowseEnabled() && [self isActiveTabAttached]) {
       CobrowseContext* context = [[CobrowseContext alloc] initWithURL:URL];
       context.attachedItems = _items.containedItems;
+      if (_cobrowseBrowserAgent) {
+        _cobrowseBrowserAgent->SetCobrowseContext(context);
+      }
       [_browserCoordinatorHandler hideComposebox];
-      [_sceneHandler showAssistantWithContext:context];
+      [_sceneHandler showAssistant];
       return;
     }
   }
@@ -1386,15 +1442,12 @@ CreateInputDataFromAnnotatedPageContent(
 
   [self.metricsRecorder recordAutocompleteRequestTypeAtNavigation:
                             [self currentAutocompleteRequestType]];
-
-  if (_contextualSearchSession &&
-      _contextualSearchSession->GetMetricsRecorder()) {
-    _contextualSearchSession->GetMetricsRecorder()->RecordModesOnSubmission(
-        mojo::EnumTraits<composebox_query::mojom::ToolMode,
-                         omnibox::ToolMode>::ToMojom(_inputState.active_tool),
-        mojo::EnumTraits<composebox_query::mojom::ModelMode,
-                         omnibox::ModelMode>::ToMojom(_inputState
-                                                          .active_model));
+  contextual_search::ContextualSearchMetricsRecorder* recorder =
+      _contextualSearchSession ? _contextualSearchSession->GetMetricsRecorder()
+                               : nullptr;
+  if (recorder) {
+    recorder->RecordModesOnSubmission(_inputState.active_tool,
+                                      _inputState.active_model);
   }
 }
 
@@ -1405,6 +1458,23 @@ CreateInputDataFromAnnotatedPageContent(
                                 withAttachments:!_items.empty
                                     requestType:
                                         [self currentAutocompleteRequestType]];
+
+  contextual_search::ContextualSearchMetricsRecorder* recorder =
+      _contextualSearchSession ? _contextualSearchSession->GetMetricsRecorder()
+                               : nullptr;
+  if (recorder) {
+    std::vector<lens::MimeType> types = MimeTypesFromCollection(_items);
+
+    recorder->RecordFileTypesOnSessionEnd(types, _inNavigation);
+
+    if (_inputStateModel) {
+      recorder->RecordActiveModesOnSessionEnd(
+          _inputStateModel->GetInputState().active_tool,
+          _inputStateModel->GetInputState().active_model, _inNavigation);
+    }
+
+    recorder->RecordNavigationResult(_inNavigation);
+  }
 }
 
 // Reloads the displayed suggestions based on the attachments/modeHolder.
@@ -2373,6 +2443,15 @@ CreateInputDataFromAnnotatedPageContent(
 
 - (void)setActiveTool:(omnibox::ToolMode)activeTool {
   if (_inputStateModel) {
+    if (_inputStateModel->GetInputState().active_tool != activeTool) {
+      contextual_search::ContextualSearchMetricsRecorder* recorder =
+          _contextualSearchSession
+              ? _contextualSearchSession->GetMetricsRecorder()
+              : nullptr;
+      if (recorder) {
+        recorder->RecordToolMode(activeTool);
+      }
+    }
     _inputStateModel->setActiveTool(activeTool);
   }
 }

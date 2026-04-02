@@ -266,12 +266,17 @@ bool SessionFileReader::ReadToMarker() {
 
 SessionFileReader::ReadResult SessionFileReader::ReadCommand() {
   SessionFileReader::ReadResult result;
+
+  std::optional<size_t> total_size =
+      SessionCommand::GetSerializedSize(GetBufferedData());
+
   // Make sure there is enough in the buffer for the size of the next command.
-  if (available_count_ < sizeof(size_type)) {
+  if (!total_size) {
     if (!FillBuffer()) {
       return result;
     }
-    if (available_count_ < sizeof(size_type)) {
+    total_size = SessionCommand::GetSerializedSize(GetBufferedData());
+    if (!total_size) {
       VLOG(1) << "SessionFileReader::ReadCommand, file incomplete";
       // Still couldn't read a valid size for the command, assume write was
       // incomplete and return null.
@@ -279,50 +284,27 @@ SessionFileReader::ReadResult SessionFileReader::ReadCommand() {
       return result;
     }
   }
-  // Get the size of the command.
-  static_assert(std::is_same_v<size_type, uint16_t>);
-  const size_type command_size =
-      base::U16FromNativeEndian(ConsumeBufferedData(2).first<2>());
-
-  if (command_size == 0) {
-    VLOG(1) << "SessionFileReader::ReadCommand, empty command";
-    // Empty command. Shouldn't happen if write was successful, fail.
-    result.error_reading = true;
-    return result;
-  }
 
   // Make sure buffer has the complete contents of the command.
-  if (command_size > available_count_) {
-    if (command_size > buffer_.size()) {
-      buffer_.resize((command_size / 1024 + 1) * 1024, 0);
+  if (*total_size > available_count_) {
+    if (*total_size > buffer_.size()) {
+      buffer_.resize((*total_size / 1024 + 1) * 1024, 0);
     }
-    if (!FillBuffer() || command_size > available_count_) {
+    if (!FillBuffer() || *total_size > available_count_) {
       // Again, assume the file was ok, and just the last chunk was lost.
       VLOG(1) << "SessionFileReader::ReadCommand, last chunk lost";
       result.error_reading = true;
       return result;
     }
   }
-  result.command = CreateCommand(ConsumeBufferedData(command_size));
+  result.command =
+      SessionCommand::Deserialize(ConsumeBufferedData(*total_size));
+  if (!result.command) {
+    result.error_reading = true;
+    return result;
+  }
   ++command_counter_;
   return result;
-}
-
-std::unique_ptr<sessions::SessionCommand> SessionFileReader::CreateCommand(
-    base::span<const uint8_t> data) {
-  // Callers should have checked the size.
-  DCHECK_GE(data.size(), sizeof(id_type));
-  const id_type command_id = data[0];
-  // NOTE: |length| includes the size of the id, which is not part of the
-  // contents of the SessionCommand.
-  const size_t payload_size = data.size() - sizeof(id_type);
-  std::unique_ptr<sessions::SessionCommand> command =
-      std::make_unique<sessions::SessionCommand>(
-          command_id, static_cast<size_type>(payload_size));
-  if (payload_size > 0) {
-    command->contents().copy_from(data.subspan(sizeof(id_type)));
-  }
-  return command;
 }
 
 bool SessionFileReader::FillBuffer() {
@@ -504,17 +486,6 @@ bool CommandStorageBackend::TimestampFromPath(const base::FilePath& path,
   return true;
 }
 
-// static
-std::set<base::FilePath> CommandStorageBackend::GetSessionFilePaths(
-    const base::FilePath& path,
-    SessionType type) {
-  std::set<base::FilePath> result;
-  for (const auto& info : GetSessionFilesSortedByReverseTimestamp(path, type)) {
-    result.insert(info.path);
-  }
-  return result;
-}
-
 CommandStorageBackend::ReadCommandsResult
 CommandStorageBackend::ReadLastSessionCommands() {
   InitIfNecessary();
@@ -589,7 +560,8 @@ void CommandStorageBackend::InitIfNecessary() {
   }
 
   inited_ = true;
-  base::CreateDirectory(supplied_path_.Append(kSessionsDirectory));
+  base::CreateDirectory(supplied_path_.Append(
+      is_encrypted() ? kEncryptedSessionsDirectory : kSessionsDirectory));
 
   // TODO(sky): this is expensive. See if it can be delayed.
   last_session_info_ = FindLastSessionFile();
@@ -599,11 +571,12 @@ void CommandStorageBackend::InitIfNecessary() {
 }
 
 // static
-base::FilePath CommandStorageBackend::FilePathFromTime(
-    const SessionType type,
-    const base::FilePath& path,
-    base::Time time) {
-  return path.Append(kSessionsDirectory)
+base::FilePath CommandStorageBackend::GetFilePath(const SessionType type,
+                                                  const base::FilePath& path,
+                                                  base::Time time,
+                                                  bool encrypted) {
+  return path
+      .Append(encrypted ? kEncryptedSessionsDirectory : kSessionsDirectory)
       .Append(GetSessionFilename(type, TimestampToString(time)));
 }
 
@@ -650,7 +623,8 @@ void CommandStorageBackend::TruncateOrOpenFile() {
   }
   timestamp_ = new_timestamp;
   std::unique_ptr<OpenFile> open_file = std::make_unique<OpenFile>();
-  open_file->path = FilePathFromTime(type_, supplied_path_, timestamp_);
+  open_file->path =
+      GetFilePath(type_, supplied_path_, timestamp_, is_encrypted());
   open_file->file = OpenAndWriteHeader(open_file->path);
   if (open_file->file) {
     open_file_ = std::move(open_file);
@@ -680,21 +654,11 @@ std::unique_ptr<base::File> CommandStorageBackend::OpenAndWriteHeader(
 bool CommandStorageBackend::AppendCommandToFile(
     base::File* file,
     const sessions::SessionCommand& command) {
-  const size_type total_size = command.GetSerializedSize();
-  if (!file->WriteAtCurrentPosAndCheck(base::byte_span_from_ref(total_size))) {
-    DVLOG(1) << "error writing";
+  const std::vector<uint8_t> serialized = command.Serialize();
+  if (serialized.empty()) {
     return false;
   }
-  id_type command_id = command.id();
-  if (!file->WriteAtCurrentPosAndCheck(base::byte_span_from_ref(command_id))) {
-    DVLOG(1) << "error writing";
-    return false;
-  }
-  const size_type content_size = total_size - sizeof(id_type);
-  if (content_size == 0) {
-    return true;
-  }
-  if (!file->WriteAtCurrentPos(command.contents().first(content_size))) {
+  if (!file->WriteAtCurrentPosAndCheck(serialized)) {
     DVLOG(1) << "error writing";
     return false;
   }
@@ -729,10 +693,12 @@ void CommandStorageBackend::DeleteLastSessionFiles() const {
 std::vector<CommandStorageBackend::SessionInfo>
 CommandStorageBackend::GetSessionFilesSortedByReverseTimestamp(
     const base::FilePath& path,
-    SessionType type) {
+    SessionType type,
+    bool encrypted) {
   std::vector<SessionInfo> sessions;
   base::FileEnumerator file_enum(
-      path.Append(kSessionsDirectory), false, base::FileEnumerator::FILES,
+      path.Append(encrypted ? kEncryptedSessionsDirectory : kSessionsDirectory),
+      false, base::FileEnumerator::FILES,
       GetSessionFilename(type, FILE_PATH_LITERAL("*")));
   for (base::FilePath name = file_enum.Next(); !name.empty();
        name = file_enum.Next()) {

@@ -439,8 +439,14 @@ net::NetworkTrafficAnnotationTag GetNetworkTrafficAnnotation(
     case ModelBasedCapabilityKey::kFinds:
       // TODO(crbug.com/490501055): Add network traffic annotation.
       return MISSING_TRAFFIC_ANNOTATION;
+    case ModelBasedCapabilityKey::kAnnotationReducerOnePResolver:
+      // TODO(crbug.com/487416734): Add network traffic annotation.
+      return MISSING_TRAFFIC_ANNOTATION;
     case ModelBasedCapabilityKey::kAnnotationReducerQueryClassifier:
       // TODO(crbug.com/492168146): Add network traffic annotation.
+      return MISSING_TRAFFIC_ANNOTATION;
+    case ModelBasedCapabilityKey::kContextualCueing:
+      // TODO(crbug.com/495507631): Add network traffic annotation.
       return MISSING_TRAFFIC_ANNOTATION;
   }
 }
@@ -471,7 +477,9 @@ bool IsAccessTokenRequiredForFeature(ModelBasedCapabilityKey feature) {
     case ModelBasedCapabilityKey::kSkills:
     case ModelBasedCapabilityKey::kContentAnnotation:
     case ModelBasedCapabilityKey::kFinds:
+    case ModelBasedCapabilityKey::kAnnotationReducerOnePResolver:
     case ModelBasedCapabilityKey::kAnnotationReducerQueryClassifier:
+    case ModelBasedCapabilityKey::kContextualCueing:
       return true;
     case ModelBasedCapabilityKey::kFormsClassifications:
       return !base::FeatureList::IsEnabled(

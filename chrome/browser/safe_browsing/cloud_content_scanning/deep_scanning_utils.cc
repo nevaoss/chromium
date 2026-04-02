@@ -123,7 +123,7 @@ void AddCustomMessageRule(
 
 void ReportAnalysisConnectorWarningBypass(
     Profile* profile,
-    const enterprise_connectors::ContentAnalysisInfo& content_analysis_info,
+    const enterprise_connectors::ContentAnalysisInfoBase& content_analysis_info,
     const std::string& source,
     const std::string& destination,
     const std::string& file_name,
@@ -156,6 +156,33 @@ void ReportAnalysisConnectorWarningBypass(
         user_justification, result, content_size, referrer_chain,
         content_analysis_info.frame_url_chain(),
         enterprise_connectors::EventResult::BYPASSED);
+  }
+}
+
+enterprise_connectors::DeepScanAccessPoint AccessPointFromRequest(
+    enterprise_connectors::AnalysisConnector connector,
+    enterprise_connectors::ContentAnalysisRequest::Reason reason) {
+  switch (connector) {
+    case enterprise_connectors::FILE_DOWNLOADED:
+      return enterprise_connectors::DeepScanAccessPoint::DOWNLOAD;
+    case enterprise_connectors::FILE_ATTACHED:
+      if (reason ==
+          enterprise_connectors::ContentAnalysisRequest::DRAG_AND_DROP) {
+        return enterprise_connectors::DeepScanAccessPoint::DRAG_AND_DROP;
+      }
+      if (reason ==
+          enterprise_connectors::ContentAnalysisRequest::CLIPBOARD_PASTE) {
+        return enterprise_connectors::DeepScanAccessPoint::PASTE;
+      }
+      return enterprise_connectors::DeepScanAccessPoint::UPLOAD;
+    case enterprise_connectors::BULK_DATA_ENTRY:
+      return enterprise_connectors::DeepScanAccessPoint::PASTE;
+    case enterprise_connectors::PRINT:
+      return enterprise_connectors::DeepScanAccessPoint::PRINT;
+    case enterprise_connectors::FILE_TRANSFER:
+      return enterprise_connectors::DeepScanAccessPoint::FILE_TRANSFER;
+    case enterprise_connectors::ANALYSIS_CONNECTOR_UNSPECIFIED:
+      return enterprise_connectors::DeepScanAccessPoint::UPLOAD;
   }
 }
 

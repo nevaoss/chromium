@@ -333,11 +333,11 @@ class HttpStreamFactoryJobControllerTestBase : public TestWithTaskEnvironment {
  public:
   explicit HttpStreamFactoryJobControllerTestBase(
       bool happy_eyeballs_v3_enabled,
-      std::vector<base::test::FeatureRef> enabled_features = {})
+      std::vector<base::test::FeatureRef> enabled_features = {},
+      std::vector<base::test::FeatureRef> disabled_features = {})
       : TestWithTaskEnvironment(
             base::test::TaskEnvironment::TimeSource::MOCK_TIME),
         happy_eyeballs_v3_enabled_(happy_eyeballs_v3_enabled) {
-    std::vector<base::test::FeatureRef> disabled_features;
     if (happy_eyeballs_v3_enabled_) {
       enabled_features.emplace_back(features::kHappyEyeballsV3);
     } else {
@@ -781,10 +781,10 @@ TEST_P(HttpStreamFactoryJobControllerDualPathTest,
   EXPECT_TRUE(HttpStreamFactoryPeer::IsJobControllerDeleted(factory_));
 
   // There should be no H1/H2 connection.
-  ClientSocketPool::GroupId group_id(server, PRIVACY_MODE_DISABLED,
-                                     NetworkAnonymizationKey(),
-                                     SecureDnsPolicy::kAllow,
-                                     /*disable_cert_network_fetches=*/false);
+  ClientSocketPool::GroupId group_id(
+      server, PRIVACY_MODE_DISABLED, NetworkAnonymizationKey(),
+      SecureDnsPolicy::kAllow,
+      /*disable_cert_network_fetches=*/false, handles::kInvalidNetworkHandle);
   TransportClientSocketPool* socket_pool =
       reinterpret_cast<TransportClientSocketPool*>(session_->GetSocketPool(
           HttpNetworkSession::SocketPoolType::kNormal, ProxyChain::Direct()));
@@ -831,10 +831,10 @@ TEST_P(HttpStreamFactoryJobControllerDualPathTest,
   EXPECT_TRUE(HttpStreamFactoryPeer::IsJobControllerDeleted(factory_));
 
   // There should be no H1/H2 connection.
-  ClientSocketPool::GroupId group_id(server, PRIVACY_MODE_DISABLED,
-                                     NetworkAnonymizationKey(),
-                                     SecureDnsPolicy::kAllow,
-                                     /*disable_cert_network_fetches=*/false);
+  ClientSocketPool::GroupId group_id(
+      server, PRIVACY_MODE_DISABLED, NetworkAnonymizationKey(),
+      SecureDnsPolicy::kAllow,
+      /*disable_cert_network_fetches=*/false, handles::kInvalidNetworkHandle);
   TransportClientSocketPool* socket_pool =
       reinterpret_cast<TransportClientSocketPool*>(session_->GetSocketPool(
           HttpNetworkSession::SocketPoolType::kNormal, ProxyChain::Direct()));
@@ -889,10 +889,10 @@ TEST_P(HttpStreamFactoryJobControllerDualPathTest,
   EXPECT_TRUE(request_delegate_->WaitForHttpStream());
 
   // There should be no H1/H2 connection.
-  ClientSocketPool::GroupId group_id(server, PRIVACY_MODE_DISABLED,
-                                     NetworkAnonymizationKey(),
-                                     SecureDnsPolicy::kAllow,
-                                     /*disable_cert_network_fetches=*/false);
+  ClientSocketPool::GroupId group_id(
+      server, PRIVACY_MODE_DISABLED, NetworkAnonymizationKey(),
+      SecureDnsPolicy::kAllow,
+      /*disable_cert_network_fetches=*/false, handles::kInvalidNetworkHandle);
   TransportClientSocketPool* socket_pool =
       reinterpret_cast<TransportClientSocketPool*>(session_->GetSocketPool(
           HttpNetworkSession::SocketPoolType::kNormal, ProxyChain::Direct()));
@@ -5230,15 +5230,15 @@ TEST_F(JobControllerLimitMultipleH2Requests,
   ClientSocketPool::GroupId group_id0(
       url::SchemeHostPort(request_info.url), request_info.privacy_mode,
       NetworkAnonymizationKey(), SecureDnsPolicy::kAllow,
-      /*disable_cert_network_fetches=*/false);
+      /*disable_cert_network_fetches=*/false, handles::kInvalidNetworkHandle);
   ClientSocketPool::GroupId group_id1(
       url::SchemeHostPort(request_info.url), request_info.privacy_mode,
       kNetworkAnonymizationKey1, SecureDnsPolicy::kAllow,
-      /*disable_cert_network_fetches=*/false);
+      /*disable_cert_network_fetches=*/false, handles::kInvalidNetworkHandle);
   ClientSocketPool::GroupId group_id2(
       url::SchemeHostPort(request_info.url), request_info.privacy_mode,
       kNetworkAnonymizationKey2, SecureDnsPolicy::kAllow,
-      /*disable_cert_network_fetches=*/false);
+      /*disable_cert_network_fetches=*/false, handles::kInvalidNetworkHandle);
   EXPECT_EQ(static_cast<uint32_t>(kNumRequests),
             socket_pool->NumConnectJobsInGroupForTesting(group_id0));
   EXPECT_EQ(1u, socket_pool->NumConnectJobsInGroupForTesting(group_id1));
@@ -5927,11 +5927,12 @@ TEST_F(HttpStreamFactoryJobControllerTest, QuicHostAllowlist) {
 class HttpStreamFactoryJobControllerDnsHttpsAlpnTest
     : public HttpStreamFactoryJobControllerTestBase {
  protected:
-  explicit HttpStreamFactoryJobControllerDnsHttpsAlpnTest(
-      std::vector<base::test::FeatureRef> enabled_features = {})
+  explicit HttpStreamFactoryJobControllerDnsHttpsAlpnTest()
       : HttpStreamFactoryJobControllerTestBase(
             /*happy_eyeballs_v3_enabled=*/false,
-            std::move(enabled_features)) {}
+            /*enabled_features=*/{},
+            /*disabled_features=*/
+            {features::kPermitTcpSocketPoolConnectBackupJobs}) {}
 
   void SetUp() override { SkipCreatingJobController(); }
 

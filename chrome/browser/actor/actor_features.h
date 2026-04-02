@@ -46,9 +46,8 @@ BASE_DECLARE_FEATURE_PARAM(bool, kGlicPromptUserForNavigationToNewOrigins);
 // Toggles whether novel origin gating is based on site (true) or origin
 // (false). Note that gating sensitive sites will still be origin based.
 BASE_DECLARE_FEATURE_PARAM(bool, kGlicNavigationGatingUseSiteNotOrigin);
-// Controls whether a hardcoded block list is enabled for the static block list.
-// TODO(crbug.com/453660392): Remove flag once Component Updater rollout starts.
-BASE_DECLARE_FEATURE_PARAM(bool, kGlicIncludeHardcodedBlockListEntries);
+// Controls whether the component updater provided blocklist should be enforced.
+BASE_DECLARE_FEATURE_PARAM(bool, kGlicEnforceComponentUpdaterBlockListEntries);
 // Controls whether tool requests can implicitly allow new origins.
 BASE_DECLARE_FEATURE_PARAM(bool, kGlicAllowImplicitToolOriginGrants);
 
@@ -104,6 +103,8 @@ BASE_DECLARE_FEATURE(kActorSendBrowserSignalForAction);
 BASE_DECLARE_FEATURE(kGlicActorLoadAndExtractContentTool);
 extern const base::FeatureParam<base::TimeDelta>
     kGlicActorLoadAndExtractContentToolTimeout;
+
+BASE_DECLARE_FEATURE(kGlicActorEnableScriptTools);
 
 }  // namespace actor
 

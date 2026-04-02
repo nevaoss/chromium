@@ -4,8 +4,6 @@
 
 package org.chromium.chrome.browser.open_in_app;
 
-import static org.chromium.build.NullUtil.assumeNonNull;
-
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -16,7 +14,6 @@ import android.net.Uri;
 import androidx.annotation.VisibleForTesting;
 
 import org.chromium.base.PackageManagerUtils;
-import org.chromium.base.supplier.MonotonicObservableSupplier;
 import org.chromium.base.supplier.NullableObservableSupplier;
 import org.chromium.base.task.AsyncTask;
 import org.chromium.base.task.PostTask;
@@ -26,7 +23,7 @@ import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabSupplierObserver;
 import org.chromium.chrome.browser.tabmodel.TabClosureParams;
-import org.chromium.chrome.browser.tabmodel.TabModelSelector;
+import org.chromium.chrome.browser.tabmodel.TabModelSelectorSupplier;
 import org.chromium.components.embedder_support.util.UrlUtilities;
 import org.chromium.components.external_intents.ExternalNavigationHandler;
 import org.chromium.content_public.browser.NavigationHandle;
@@ -40,10 +37,8 @@ import java.util.List;
 @NullMarked
 public abstract class OpenInAppEntryPoint implements OpenInAppMenuItemProvider {
     private final TabSupplierObserver mTabSupplierObserver;
-    private final MonotonicObservableSupplier<TabModelSelector> mTabModelSelector;
     private @Nullable Tab mCurrentTab;
     private @Nullable OpenInAppDelegate mOpenInAppDelegate;
-    private @Nullable GURL mLastNavigatedUrl;
 
     sealed interface ResolveResult
             permits ResolveResult.Info, ResolveResult.ResolverActivity, ResolveResult.None {
@@ -68,13 +63,16 @@ public abstract class OpenInAppEntryPoint implements OpenInAppMenuItemProvider {
                     if (navigationHandle.hasCommitted()
                             && UrlUtilities.isHttpOrHttps(navigationHandle.getUrl())) {
                         GURL url = navigationHandle.getUrl();
-                        mLastNavigatedUrl = url;
+                        var delegate = mOpenInAppDelegate;
+                        if (delegate == null) return;
+
+                        delegate.setLastNavigatedUrl(url);
                         Intent targetIntent = new Intent(Intent.ACTION_VIEW);
                         targetIntent.setData(Uri.parse(url.getSpec()));
 
                         // New navigation committed, so we should clear the open in app info to
                         // prevent trying to open an app based on outdated info.
-                        updateOpenInAppInfo(null);
+                        updateOpenInAppInfo(delegate, null);
 
                         new AsyncTask<ResolveResult>() {
                             @Override
@@ -123,6 +121,7 @@ public abstract class OpenInAppEntryPoint implements OpenInAppMenuItemProvider {
                             @Override
                             protected void onPostExecute(ResolveResult result) {
                                 onResolveInfosFetched(
+                                        delegate,
                                         result,
                                         targetIntent,
                                         url,
@@ -141,13 +140,8 @@ public abstract class OpenInAppEntryPoint implements OpenInAppMenuItemProvider {
      *
      * @param tabSupplier A supplier that notifies of tab changes.
      * @param context The {@link Context} to get resources from.
-     * @param tabModelSelectorSupplier The {@link TabModelSelector} supplier to access the tab
-     *     model.
      */
-    public OpenInAppEntryPoint(
-            NullableObservableSupplier<Tab> tabSupplier,
-            Context context,
-            MonotonicObservableSupplier<TabModelSelector> tabModelSelectorSupplier) {
+    public OpenInAppEntryPoint(NullableObservableSupplier<Tab> tabSupplier, Context context) {
         mTabSupplierObserver =
                 new TabSupplierObserver(tabSupplier, /* shouldTrigger= */ false) {
                     @Override
@@ -156,19 +150,20 @@ public abstract class OpenInAppEntryPoint implements OpenInAppMenuItemProvider {
 
                         if (mCurrentTab == null) {
                             mOpenInAppDelegate = null;
-                            onOpenInAppInfoChanged(null);
+                            mWebContentsObserver.observe(null);
+                            updateOpenInAppInfo(null, null);
                             return;
                         }
 
                         mOpenInAppDelegate = OpenInAppDelegate.from(mCurrentTab);
-                        updateOpenInAppInfo(mOpenInAppDelegate.getCurrentOpenInAppInfo());
+                        updateOpenInAppInfo(
+                                mOpenInAppDelegate, mOpenInAppDelegate.getCurrentOpenInAppInfo());
 
                         var webContents = mCurrentTab.getWebContents();
                         mWebContentsObserver.observe(webContents);
                     }
                 };
         mContext = context;
-        mTabModelSelector = tabModelSelectorSupplier;
     }
 
     public void destroy() {
@@ -180,12 +175,18 @@ public abstract class OpenInAppEntryPoint implements OpenInAppMenuItemProvider {
 
     @VisibleForTesting
     void onResolveInfosFetched(
-            ResolveResult result, Intent targetIntent, GURL url, long navigationId) {
+            OpenInAppDelegate delegate,
+            ResolveResult result,
+            Intent targetIntent,
+            GURL url,
+            long navigationId) {
+        GURL lastUrl = delegate.getLastNavigatedUrl();
+        if (lastUrl == null || !lastUrl.equals(url)) return;
+
         if (result instanceof ResolveResult.None) {
-            updateOpenInAppInfo(null);
+            updateOpenInAppInfo(delegate, null);
             return;
         }
-        if (mLastNavigatedUrl == null || !mLastNavigatedUrl.equals(url)) return;
 
         CharSequence name = null;
         Drawable icon = null;
@@ -216,19 +217,19 @@ public abstract class OpenInAppEntryPoint implements OpenInAppMenuItemProvider {
 
         Runnable openInApp =
                 () -> {
-                    if (mOpenInAppDelegate == null) return;
-
-                    var helper = mOpenInAppDelegate.getExternalNavigationHelper();
+                    var helper = delegate.getExternalNavigationHelper();
                     if (helper != null) {
-                        var openInAppInfo = mOpenInAppDelegate.getCurrentOpenInAppInfo();
+                        var openInAppInfo = delegate.getCurrentOpenInAppInfo();
                         if (openInAppInfo != null) {
+                            Tab tab = delegate.getTab();
                             Runnable closeTab =
                                     () -> {
-                                        if (mCurrentTab == null) return;
-                                        var tabModelSelector = mTabModelSelector.get();
+                                        var tabModelSelector =
+                                                TabModelSelectorSupplier.getValueOrNullFrom(
+                                                        tab.getWindowAndroid());
                                         if (tabModelSelector == null) return;
                                         tabModelSelector.tryCloseTab(
-                                                TabClosureParams.closeTab(mCurrentTab)
+                                                TabClosureParams.closeTab(tab)
                                                         .allowUndo(false)
                                                         .build(),
                                                 /* allowDialog= */ false);
@@ -238,7 +239,7 @@ public abstract class OpenInAppEntryPoint implements OpenInAppMenuItemProvider {
                             Runnable postClose =
                                     () -> PostTask.postTask(TaskTraits.UI_DEFAULT, closeTab);
 
-                            if (mCurrentTab != null && mCurrentTab.isOffTheRecord()) {
+                            if (tab.isOffTheRecord()) {
                                 helper.launchExternalAppWithIncognitoConfirmation(
                                         targetIntent, navigationId, mContext, postClose);
                             } else {
@@ -249,18 +250,25 @@ public abstract class OpenInAppEntryPoint implements OpenInAppMenuItemProvider {
                     }
                 };
 
-        updateOpenInAppInfo(new OpenInAppDelegate.OpenInAppInfo(openInApp, name, icon));
+        updateOpenInAppInfo(delegate, new OpenInAppDelegate.OpenInAppInfo(openInApp, name, icon));
     }
 
-    private void updateOpenInAppInfo(OpenInAppDelegate.@Nullable OpenInAppInfo openInAppInfo) {
-        mOpenInAppInfo = openInAppInfo;
-        assumeNonNull(mOpenInAppDelegate).updateOpenInAppInfo(mOpenInAppInfo);
-        onOpenInAppInfoChanged(mOpenInAppInfo);
+    private void updateOpenInAppInfo(
+            @Nullable OpenInAppDelegate delegate,
+            OpenInAppDelegate.@Nullable OpenInAppInfo openInAppInfo) {
+        if (delegate != null) {
+            delegate.updateOpenInAppInfo(openInAppInfo);
+        }
+
+        if (delegate == mOpenInAppDelegate) {
+            mOpenInAppInfo = openInAppInfo;
+            onOpenInAppInfoChanged(mOpenInAppInfo);
+        }
     }
 
     /**
-     * Subclasses should override this method to be notified when the {@link OpenInAppDelegate}
-     * changes.
+     * Subclasses should override this method to be notified when the {@link
+     * OpenInAppDelegate.OpenInAppInfo} changes.
      */
     protected void onOpenInAppInfoChanged(
             OpenInAppDelegate.@Nullable OpenInAppInfo openInAppInfo) {}

@@ -24,8 +24,10 @@ inline constexpr base::FeatureParam<int>
 // Enables syncing of settings from the user's account.
 BASE_DECLARE_FEATURE(kSyncAccountSettings);
 
-// Makes the AUTOFILL_VALUABLE sync type non-encryptable.
-BASE_DECLARE_FEATURE(kSyncMakeAutofillValuableNonEncryptable);
+// Enables syncing of valuables from the user's account.
+#if BUILDFLAG(IS_IOS)
+BASE_DECLARE_FEATURE(kSyncAutofillValuable);
+#endif
 
 // Enables syncing of usage metadata from Google Wallet passes.
 BASE_DECLARE_FEATURE(kSyncAutofillValuableMetadata);
@@ -78,24 +80,33 @@ BASE_DECLARE_FEATURE(kSyncResetBookmarksInitialMergeLimitExceededError);
 // exceeded.
 BASE_DECLARE_FEATURE(kSyncShowBookmarksLimitExceededError);
 
+// Do not use this flag directly. Use
+// IsContactInfoDataTypeForCustomPassphraseUsersEnabled() instead.
 BASE_DECLARE_FEATURE(kSyncEnableContactInfoDataTypeForCustomPassphraseUsers);
+
+// If enabled, the Contact Info data type will be enabled for users with custom
+// passphrase.
+bool IsContactInfoDataTypeForCustomPassphraseUsersEnabled();
+
 BASE_DECLARE_FEATURE(kSyncEnableContactInfoDataTypeForDasherUsers);
 
 // If enabled, keeps local and account search engines separate.
 BASE_DECLARE_FEATURE(kSeparateLocalAndAccountSearchEngines);
 
 // Feature flag to replace all sync-related UI with sign-in ones.
+// Do not use this flag directly in production code. Use
+// `syncer::IsReplaceSyncPromosWithSignInPromosEnabled()` instead.
 BASE_DECLARE_FEATURE(kReplaceSyncPromosWithSignInPromos);
 
-// Enables syncing extensions only if the user newly signs in to Chrome, not if
-// they were already signed in by the time `kReplaceSyncPromosWithSignInPromos`
-// was enabled.
-BASE_DECLARE_FEATURE_PARAM(bool, kExplicitSigninForExtensions);
+// Feature flag to replace all sync-related UI with sign-in ones. This
+// feature has the same behavior as kReplaceSyncPromosWithSignInPromos, but only
+// enables extensions and bookmarks on new sign-ins.
+BASE_DECLARE_FEATURE(kReplaceSyncPromosWithSigninPromosNewSignin);
 
-// Enables syncing bookmarks and reading list only if the user newly signs in to
-// Chrome, not if they were already signed in by the time
-// `kReplaceSyncPromosWithSignInPromos` was enabled.
-BASE_DECLARE_FEATURE_PARAM(bool, kExplicitSigninForBookmarks);
+// Returns true if the replace sync promos with sign-in promos feature is
+// enabled. The launch may be controlled by multiple `base::Feature` flags,
+// prefer using this function over checking the feature flags directly.
+bool IsReplaceSyncPromosWithSignInPromosEnabled();
 
 // If enabled, allowlisted priority preferences will be synced even if the
 // preferences user toggle is off. Note that this flag is only meaningful if

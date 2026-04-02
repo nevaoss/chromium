@@ -114,7 +114,11 @@ LayerImpl::LayerImpl(LayerTreeImpl* tree_impl, int id)
   DCHECK_GT(layer_id_, 0);
   DCHECK_GT(stable_id_for_shared_quad_state_, 0);
   DCHECK(layer_tree_impl_);
-  SetNeedsPushProperties(LayerImpl::kChangedAllProperties);
+
+  if (!layer_tree_impl()->IsActiveTree() ||
+      !layer_tree_impl()->settings().TreesInVizInClientProcess()) {
+    changed_properties_ = LayerImpl::kChangedAllProperties;
+  }
 }
 
 LayerImpl::~LayerImpl() {
@@ -406,7 +410,7 @@ void LayerImpl::SetCaptureBounds(viz::RegionCaptureBounds bounds) {
   }
 }
 
-void LayerImpl::SetTrackedElementRects(TrackedElementRects rects) {
+void LayerImpl::SetTrackedElementRects(viz::TrackedElementRects rects) {
   if (rare_properties_ || !rects.empty()) {
     EnsureRareProperties().tracked_element_rects = std::move(rects);
     SetNeedsPushProperties();
@@ -422,7 +426,7 @@ bool LayerImpl::IsSnappedToPixelGridInTarget() {
   return false;
 }
 
-void LayerImpl::PushPropertiesTo(LayerImpl* layer) {
+void LayerImpl::CopyPropertiesTo(LayerImpl* layer) const {
   DCHECK(layer->IsActive());
 
   if (GetChangeFlag(kChangedPropertyTreeIndex)) {
@@ -480,9 +484,10 @@ void LayerImpl::PushPropertiesTo(LayerImpl* layer) {
     // Ensure updates also propagate to the display tree on its next update.
     layer->SetNeedsPushProperties(changed_properties_);
   }
+}
 
-  // Reset any state that should be cleared for the next update.
-  ResetChangeTracking();
+void LayerImpl::MovePropertiesToActiveLayer(LayerImpl* active_layer) {
+  CopyPropertiesTo(active_layer);
 }
 
 bool LayerImpl::IsAffectedByPageScale() const {
@@ -583,7 +588,7 @@ void LayerImpl::ResetChangeTracking() {
 }
 
 bool LayerImpl::IsActive() const {
-  return layer_tree_impl_->IsActiveTree();
+  return layer_tree_impl_ && layer_tree_impl_->IsActiveTree();
 }
 
 gfx::Size LayerImpl::bounds() const {
