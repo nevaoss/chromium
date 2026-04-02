@@ -2851,7 +2851,7 @@ void WebLocalFrameImpl::UpdateForSameDocumentNavigation(
   DCHECK(GetFrame());
   GetFrame()->GetDocument()->Loader()->UpdateForSameDocumentNavigation(
       blink::KURL(blink::KURL(),
-                  blink::String::FromUTF8(base::as_byte_span(new_url))),
+                  blink::String::FromUtf8(base::as_byte_span(new_url))),
       nullptr, mojom::blink::SameDocumentNavigationType::kHistoryApi, nullptr,
       blink::WebFrameLoadType::kReplaceCurrentItem, blink::FirePopstate::kNo,
       frame_->DomWindow()->GetSecurityOrigin(),
