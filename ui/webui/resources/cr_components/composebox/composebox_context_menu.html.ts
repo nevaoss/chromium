@@ -6,7 +6,6 @@ import {html} from '//resources/lit/v3_0/lit.rollup.js';
 
 import {hasAllowedInputs} from './common.js';
 import type {ComposeboxElement} from './composebox.js';
-import {ToolMode} from './composebox_query.mojom-webui.js';
 
 export function getHtml(this: ComposeboxElement) {
   // clang-format off
@@ -28,25 +27,22 @@ export function getHtml(this: ComposeboxElement) {
         @get-tab-preview="${this.onGetTabPreview_}"
         @context-menu-closed="${this.onContextMenuClosed_ }"
         @context-menu-opened="${this.onContextMenuOpened_}"
-        .showModelPicker="${this.showModelPicker_}"
         .inputState="${this.inputState}"
         .searchboxLayoutMode="${this.searchboxLayoutMode}"
-        .tabSuggestions="${this.tabSuggestions_}"
-        .inCreateImageMode="${
-            this.inputState?.activeTool === ToolMode.kImageGen}"
+        .tabSuggestions="${this.tabSuggestions}"
         .hasImageFiles="${this.hasImageFiles_()}"
         .disabledTabIds="${this.addedTabsIds}"
         .fileNum="${this.files.size}"
-        ?upload-button-disabled="${this.uploadButtonDisabled_}"
+        ?upload-button-disabled="${this.uploadButtonDisabled}"
         ?show-context-menu-description="${this.showContextMenuDescription_}">
     </cr-composebox-contextual-entrypoint-and-menu>
-  ` : (hasAllowedInputs(this.inputState, this.showModelPicker_) ? html`
+  ` : (hasAllowedInputs(this.inputState, this.usePecApi) ? html`
     <cr-composebox-contextual-entrypoint-button
         id="contextEntrypoint"
         part="composebox-entrypoint"
         exportparts="context-menu-entrypoint-icon"
         class="upload-button no-overlap"
-        ?upload-button-disabled="${this.uploadButtonDisabled_}"
+        ?upload-button-disabled="${this.uploadButtonDisabled}"
         ?show-context-menu-description="${this.showContextMenuDescription_}">
     </cr-composebox-contextual-entrypoint-button>
   ` : '')}
@@ -58,10 +54,11 @@ export function getHtml(this: ComposeboxElement) {
     </cr-icon-button>
   ` : ''}
   ${this.searchboxLayoutMode !== 'Compact' ? html`
-    ${this.inToolMode_ ? html`
+    ${this.inToolMode ? html`
       <cr-composebox-tool-chip
         exportparts="tool-chip-label"
         .inputState="${this.inputState}"
+        .isCanvasQuerySubmitted="${this.isCanvasQuerySubmitted}"
         @tool-click="${this.onToolClick_}">
       </cr-composebox-tool-chip>
     ` : ''}

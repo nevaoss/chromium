@@ -379,7 +379,7 @@ static bool IsAtMediaUAShadowBoundary(const Element* element) {
 // to manually stop text-decorations to apply to text inside media controls.
 static bool StopPropagateTextDecorations(const ComputedStyleBuilder& builder,
                                          const Element* element) {
-  return builder.IsDisplayReplacedType() ||
+  return builder.IsAtomicInlineDisplayType() ||
          IsAtMediaUAShadowBoundary(element) || builder.IsFloating() ||
          builder.HasOutOfFlowPosition() || IsOutermostSVGElement(element) ||
          builder.Display() == EDisplay::kRubyText;
@@ -636,9 +636,12 @@ void StyleAdjuster::AdjustStyleForHTMLElement(ComputedStyleBuilder& builder,
 }
 
 void StyleAdjuster::AdjustOverflow(ComputedStyleBuilder& builder,
-                                   Element* element) {
+                                   Element* element,
+                                   Document& document) {
   DCHECK(builder.OverflowX() != EOverflow::kVisible ||
          builder.OverflowY() != EOverflow::kVisible);
+
+  bool single_axis_scroller = false;
 
   bool overflow_is_clip_or_visible =
       IsOverflowClipOrVisible(builder.OverflowY()) &&
@@ -668,26 +671,33 @@ void StyleAdjuster::AdjustOverflow(ComputedStyleBuilder& builder,
     // 'visible.' If they aren't, 'clip' and 'visible' is reset.
     if (builder.OverflowX() == EOverflow::kVisible) {
       builder.SetOverflowX(EOverflow::kAuto);
-    } else if (!RuntimeEnabledFeatures::SingleAxisScrollContainersEnabled() &&
-               builder.OverflowX() == EOverflow::kClip) {
-      builder.SetOverflowX(EOverflow::kHidden);
+    } else if (builder.OverflowX() == EOverflow::kClip) {
+      single_axis_scroller = true;
+      if (!RuntimeEnabledFeatures::SingleAxisScrollContainersEnabled()) {
+        builder.SetOverflowX(EOverflow::kHidden);
+      }
     }
   } else if (!IsOverflowClipOrVisible(builder.OverflowX())) {
     // Values of 'clip' and 'visible' can only be used with 'clip' and
     // 'visible.' If they aren't, 'clip' and 'visible' is reset.
     if (builder.OverflowY() == EOverflow::kVisible) {
       builder.SetOverflowY(EOverflow::kAuto);
-    } else if (!RuntimeEnabledFeatures::SingleAxisScrollContainersEnabled() &&
-               builder.OverflowY() == EOverflow::kClip) {
-      builder.SetOverflowY(EOverflow::kHidden);
+    } else if (builder.OverflowY() == EOverflow::kClip) {
+      single_axis_scroller = true;
+      if (!RuntimeEnabledFeatures::SingleAxisScrollContainersEnabled()) {
+        builder.SetOverflowY(EOverflow::kHidden);
+      }
     }
+  }
+
+  if (single_axis_scroller) {
+    UseCounter::Count(document, WebFeature::kSingleAxisScroller);
   }
 
   if (element && !element->IsPseudoElement() &&
       (builder.OverflowX() == EOverflow::kClip ||
        builder.OverflowY() == EOverflow::kClip)) {
-    UseCounter::Count(element->GetDocument(),
-                      WebFeature::kOverflowClipAlongEitherAxis);
+    UseCounter::Count(document, WebFeature::kOverflowClipAlongEitherAxis);
   }
 
   // overlay is a legacy alias of auto.
@@ -879,25 +889,56 @@ void StyleAdjuster::AdjustEffectiveTouchAction(
     return;
   }
 
-  bool is_replaced_canvas = IsA<HTMLCanvasElement>(element) &&
-                            element->GetExecutionContext() &&
-                            element->GetExecutionContext()->CanExecuteScripts(
-                                kNotAboutToExecuteScript);
-  bool is_non_replaced_inline_elements =
-      builder.IsDisplayInlineType() &&
-      !(builder.IsDisplayReplacedType() || is_svg_root ||
-        IsA<HTMLImageElement>(element) || is_replaced_canvas);
-  bool is_table_row_or_column = builder.IsDisplayTableRowOrColumnType();
-  bool is_layout_object_needed =
-      element->LayoutObjectIsNeeded(builder.GetDisplayStyle());
-
-  TouchAction element_touch_action = TouchAction::kAuto;
   // Touch actions are only supported by elements that support both the CSS
   // width and height properties.
   // See https://www.w3.org/TR/pointerevents/#the-touch-action-css-property.
-  if (!is_non_replaced_inline_elements && !is_table_row_or_column &&
-      is_layout_object_needed) {
-    element_touch_action = builder.GetTouchAction();
+  TouchAction element_touch_action = builder.GetTouchAction();
+  bool ignore_touch_action_property;
+  if (element_touch_action == TouchAction::kAuto) {
+    // Fast path; the desired touch-action is already auto,
+    // so don't go through all the checks below.
+    ignore_touch_action_property = true;
+  } else if (builder.IsDisplayTableRowOrColumnType()) {
+    ignore_touch_action_property = true;
+  } else if (IsA<HTMLImageElement>(element) || is_svg_root) {
+    // Images and SVG roots support touch-action,
+    // so leave the value alone.
+    ignore_touch_action_property = false;
+  } else if (IsA<HTMLCanvasElement>(element) &&
+             element->GetExecutionContext() &&
+             element->GetExecutionContext()->CanExecuteScripts(
+                 kNotAboutToExecuteScript)) {
+    // Replaced <canvas>, too.
+    ignore_touch_action_property = false;
+  } else {
+    ignore_touch_action_property = builder.IsNonAtomicInlineDisplayType();
+  }
+
+  if (ignore_touch_action_property ||
+      !element->LayoutObjectIsNeeded(builder.GetDisplayStyle())) {
+    element_touch_action = TouchAction::kAuto;
+
+    if (inherited_action == TouchAction::kAuto &&
+        element != element->GetDocument().documentElement() &&
+        !IsA<HTMLFrameOwnerElement>(element) &&
+        !::features::IsSwipeToMoveCursorEnabled() &&
+        !RuntimeEnabledFeatures::StylusHandwritingEnabled()) {
+      // Fast path; both inherited and current value allow everything
+      // (so no bits can be added), and none of the features that would
+      // remove bits from inherited_action are active. Also, we don't
+      // need to propagate any bits across frames. (We need to set it
+      // explicitly even though kAuto is the default, in case StyleAdjuster
+      // is called twice with different parameters.)
+      //
+      // If needed, we could loosen up this fast path (e.g., by moving
+      // it to below the else and testing for element_touch_action == kAuto,
+      // moving it further to below the is_child_document check, etc.),
+      // but it seems that Clang is happier optimizing it this way
+      // and it is hit in the vast majority of cases anyway.
+      builder.SetEffectiveTouchAction(TouchAction::kAuto);
+      return;
+    }
+  } else {
     // kInternalPanXScrolls is only for internal usage, GetTouchAction()
     // doesn't contain this bit. We set this bit when kPanX is set so it can be
     // cleared for eligible editable areas later on.
@@ -1220,7 +1261,8 @@ void StyleAdjuster::AdjustComputedStyle(StyleResolverState& state,
 
   if (builder.OverflowX() != EOverflow::kVisible ||
       builder.OverflowY() != EOverflow::kVisible) {
-    AdjustOverflow(builder, element ? element : state.GetPseudoElement());
+    AdjustOverflow(builder, element ? element : state.GetPseudoElement(),
+                   state.GetDocument());
   }
 
   // Highlight pseudos propagate decorations with inheritance only.

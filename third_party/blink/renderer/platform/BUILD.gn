@@ -182,6 +182,7 @@ group("make_platform_generated") {
   ]
 }
 
+<<<<<<< HEAD
 # TODO(neva_rust): Remove this workaround once Neva supports Rust build.
 if (!disable_rust_for_neva) {
   rust_static_library("font_format_check") {
@@ -195,6 +196,18 @@ if (!disable_rust_for_neva) {
       "//third_party/rust/skrifa/v0_40:lib",
     ]
   }
+=======
+rust_static_library("font_format_check") {
+  allow_unsafe = true  # Needed for FFI that underpins the `cxx` crate.
+  crate_root = "fonts/opentype/format_check.rs"
+  sources = [ crate_root ]
+  cxx_bindings = [ crate_root ]
+  deps = [
+    "//third_party/rust/font_types/v0_11:lib",
+    "//third_party/rust/read_fonts/v0_38:lib",
+    "//third_party/rust/skrifa/v0_41:lib",
+  ]
+>>>>>>> 148.0.7764.0~1
 }
 
 import("//build/config/pch.gni")
@@ -1849,7 +1862,7 @@ component("platform") {
     "//third_party/blink/renderer/platform/wtf",
     "//third_party/ced",
     "//third_party/emoji-segmenter",
-    "//third_party/harfbuzz-ng",
+    "//third_party/harfbuzz",
     "//third_party/highway:libhwy",
     "//third_party/icu",
     "//third_party/libgav1:libgav1_parser",
@@ -2503,7 +2516,7 @@ source_set("blink_platform_unittests_sources") {
     "//third_party/blink/renderer/platform/wtf",
     "//third_party/dawn/src/dawn/native",
     "//third_party/dawn/src/dawn/wire",
-    "//third_party/harfbuzz-ng",
+    "//third_party/harfbuzz",
     "//third_party/libyuv",
     "//third_party/webrtc/api/task_queue:task_queue_test",
     "//third_party/webrtc_overrides:metronome_like_task_queue_test",
@@ -2631,7 +2644,7 @@ test("blink_platform_perftests") {
     "//services/network/public/cpp",
     "//testing/gtest",
     "//testing/perf",
-    "//third_party/harfbuzz-ng",
+    "//third_party/harfbuzz",
   ]
 }
 

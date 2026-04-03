@@ -392,11 +392,11 @@ def _views_perftests(estimated_runtime: int = 7):
 
 
 @_register('web_tests_cuj')
-def _web_tests_cuj(estimated_runtime: int = 10):
+def _web_tests_cuj(estimated_runtime: int = 10, flags: tuple[str, ...] = ()):
   return CrossbenchConfig('web_tests_cuj',
                           'speedometer_3.1',
                           estimated_runtime=estimated_runtime,
-                          flags=('--web-tests-cuj', '--debug'))
+                          flags=flags)
 
 # Speedometer:
 @_register('speedometer2.0.crossbench')
@@ -451,6 +451,24 @@ def _speedometer3_crossbench(estimated_runtime: int = 60,
   """Alias for the latest Speedometer 3.X version."""
   return CrossbenchConfig('speedometer3.crossbench',
                           'speedometer_3',
+                          estimated_runtime=estimated_runtime,
+                          flags=flags)
+
+
+@_register('browser_startup.crossbench')
+def _browser_startup_crossbench(estimated_runtime: int = 60,
+                                flags: tuple[str, ...] = ()):
+  """Browser startup benchmark for InitialWebUI vs Baseline."""
+  flags += (
+      '--browser-config',
+      'config/benchmark/browser_startup/browser.config.hjson',
+      '--probe-config',
+      'config/benchmark/browser_startup/probe.hjson',
+      '--page-config',
+      'config/benchmark/browser_startup/story.hjson',
+  )
+  return CrossbenchConfig('browser_startup.crossbench',
+                          'loading',
                           estimated_runtime=estimated_runtime,
                           flags=flags)
 

@@ -129,6 +129,9 @@ export class FakeReadingMode {
   // Defines the distillation method used (screen2x maps to 0).
   distillationMethod: number = 0;
 
+  // The active distillation method currently showing in page content.
+  activeDistillationMethod: number = 0;
+
   requiresDistillation: boolean = false;
 
   private maxNodeId: number = 5;
@@ -355,7 +358,7 @@ export class FakeReadingMode {
   // Returns the actual spacing value to use based on the given lineSpacing
   // category.
   getLineSpacingValue(lineSpacing: number): number {
-    return lineSpacing;
+    return lineSpacing + 1;
   }
 
   // Returns the actual spacing value to use based on the given letterSpacing

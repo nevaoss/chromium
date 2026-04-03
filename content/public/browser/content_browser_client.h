@@ -458,6 +458,15 @@ class CONTENT_EXPORT ContentBrowserClient {
   // debug URLs.
   virtual bool IsExplicitNavigation(ui::PageTransition transition);
 
+  // Returns whether the given |web_contents|, which does not currently have
+  // focus, should be allowed to enter fullscreen mode. This provides a hook
+  // for handling special scenarios where an unfocused WebContents needs
+  // fullscreen capability. The primary motivating use case is to allow
+  // embedded content, such as a Controlled Frame, to enter fullscreen
+  // if its embedding context is focused. By default, returns false.
+  virtual bool IsFullscreenAllowedForUnfocusedWebContents(
+      content::WebContents* unfocused_web_contents);
+
   // Returns whether all instances of the specified site URL should be
   // rendered by the same process, rather than using process-per-site-instance.
   virtual bool ShouldUseProcessPerSite(BrowserContext* browser_context,
@@ -1040,33 +1049,6 @@ class CONTENT_EXPORT ContentBrowserClient {
       BrowserContext* browser_context,
       const std::vector<GlobalRenderFrameHostId>& render_frames,
       const blink::StorageKey& storage_key);
-
-  // Allow the embedder to control whether we can use Web Bluetooth.
-  // TODO(crbug.com/40458188): Replace this with a use of the permission system.
-  enum class AllowWebBluetoothResult {
-    ALLOW,
-    BLOCK_POLICY,
-    BLOCK_GLOBALLY_DISABLED,
-  };
-  virtual AllowWebBluetoothResult AllowWebBluetooth(
-      content::BrowserContext* browser_context,
-      const url::Origin& requesting_origin,
-      const url::Origin& embedding_origin);
-
-  // Returns a blocklist of UUIDs that have restrictions when accessed
-  // via Web Bluetooth. Parsed by BluetoothBlocklist::Add().
-  //
-  // The blocklist string must be a comma-separated list of UUID:exclusion
-  // pairs. The pairs may be separated by whitespace. Pair components are
-  // colon-separated and must not have whitespace around the colon.
-  //
-  // UUIDs are a string that BluetoothUUID can parse (See BluetoothUUID
-  // constructor comment). Exclusion values are a single lower case character
-  // string "e", "r", or "w" for EXCLUDE, EXCLUDE_READS, or EXCLUDE_WRITES.
-  //
-  // Example:
-  // "1812:e, 00001800-0000-1000-8000-00805f9b34fb:w, ignored:1, alsoignored."
-  virtual std::string GetWebBluetoothBlocklist();
 
   using InterestGroupApiOperation = content::InterestGroupApiOperation;
 
@@ -2757,17 +2739,6 @@ class CONTENT_EXPORT ContentBrowserClient {
   virtual int NumVersionsInTopicsEpochs(
       content::RenderFrameHost* main_frame) const;
 
-  // Returns whether a site is blocked to use Bluetooth scanning API.
-  virtual bool IsBluetoothScanningBlocked(
-      content::BrowserContext* browser_context,
-      const url::Origin& requesting_origin,
-      const url::Origin& embedding_origin);
-
-  // Blocks a site to use Bluetooth scanning API.
-  virtual void BlockBluetoothScanning(content::BrowserContext* browser_context,
-                                      const url::Origin& requesting_origin,
-                                      const url::Origin& embedding_origin);
-
   // Returns via callback:
   //  1. A boolean indicating whether persistent device IDs are allowed.
   //  2. A salt for hashing media device IDs for the given storage key.
@@ -3475,6 +3446,9 @@ class CONTENT_EXPORT ContentBrowserClient {
   // restrictions but does not give access to cross-origin isolated APIs.
   virtual bool OriginSupportsConcreteCrossOriginIsolation(
       const url::Origin& origin);
+
+  // Returns true if the Attribution Internals WebUI should be enabled.
+  virtual bool IsAttributionInternalsWebUIEnabled();
 };
 
 }  // namespace content

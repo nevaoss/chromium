@@ -46,8 +46,8 @@ if (is_android) {
     ]
     deps = [
       "//third_party/rust/font_types/v0_11:lib",
-      "//third_party/rust/read_fonts/v0_37:lib",
-      "//third_party/rust/skrifa/v0_40:lib",
+      "//third_party/rust/read_fonts/v0_38:lib",
+      "//third_party/rust/skrifa/v0_41:lib",
     ]
   }
 }
@@ -1404,8 +1404,12 @@ source_set("browser") {
     # TODO(crbug.com/202736352): This is built even if enable_screen_capture is
     # false. Consider better separation of the screen capture and the other
     # capture code so we can only build this if actually necessary.
+    "digital_credentials/digital_credential_environment.cc",
+    "digital_credentials/digital_credential_environment.h",
     "digital_credentials/digital_identity_request_impl.cc",
     "digital_credentials/digital_identity_request_impl.h",
+    "digital_credentials/virtual_wallet.cc",
+    "digital_credentials/virtual_wallet.h",
     "media/capture/native_screen_capture_picker.cc",
     "media/capture/native_screen_capture_picker.h",
     "media/capture_handle_manager.cc",
@@ -3023,6 +3027,7 @@ source_set("browser") {
     frameworks += [ "IOSurface.framework" ]
     deps += [
       "//build:ios_buildflags",
+      "//components/strings",
       "//ui/accelerated_widget_mac",
     ]
   } else {
@@ -3060,18 +3065,25 @@ source_set("browser") {
       sources += [
         "media/capture/desktop_capture_device.cc",
         "media/capture/desktop_capture_device.h",
-      ]
-    }
-    if (!is_android && !is_ios) {
-      sources += [
         "media/capture/mouse_cursor_overlay_controller.cc",
         "media/capture/mouse_cursor_overlay_controller.h",
-        "media/captured_surface_control_permission_manager.cc",
-        "media/captured_surface_control_permission_manager.h",
-        "media/captured_surface_controller.cc",
-        "media/captured_surface_controller.h",
       ]
       public_deps += [ "//ui/base/cursor" ]
+
+      if (is_android) {
+        sources += [
+          "media/capture/android_cursor_renderer.cc",
+          "media/capture/android_cursor_renderer.h",
+          "media/capture/mouse_cursor_overlay_controller_android.cc",
+        ]
+      } else {
+        sources += [
+          "media/captured_surface_control_permission_manager.cc",
+          "media/captured_surface_control_permission_manager.h",
+          "media/captured_surface_controller.cc",
+          "media/captured_surface_controller.h",
+        ]
+      }
     }
     if (use_aura) {
       sources += [

@@ -11,6 +11,7 @@ const GetExtensionAPIDefinitionsForTest =
     requireNative('apiDefinitions').GetExtensionAPIDefinitionsForTest;
 const GetAPIFeatures = requireNative('test_features').GetAPIFeatures;
 const userGestures = requireNative('user_gestures');
+const logging = requireNative('logging');
 
 const GetModuleSystem = requireNative('v8_context').GetModuleSystem;
 
@@ -201,6 +202,8 @@ apiBridge.registerCustomHook(function(api) {
   let testCount = 1;
   let pendingCallbacks = 0;
   let pendingPromiseRejections = 0;
+  let runTestsResolve = null;
+  let runTestsReject = null;
 
   function safeFunctionApply(func, args) {
     try {
@@ -256,23 +259,45 @@ apiBridge.registerCustomHook(function(api) {
   }
 
   function allTestsDone() {
-    if (testsFailed == 0) {
+    const resolve = runTestsResolve;
+    const reject = runTestsReject;
+    const errorMessage =
+        testsFailed > 0 ? `Failed ${testsFailed} of ${testCount} tests` : null;
+
+    // Reset all shared global state. This allows for subsequent runs of
+    // chrome.test.runTests().
+    currentTest = null;
+    lastTest = null;
+    testsFailed = 0;
+    testCount = 1;
+    pendingCallbacks = 0;
+    pendingPromiseRejections = 0;
+    runTestsResolve = null;
+    runTestsReject = null;
+    chromeTest.tests = [];
+
+    if (!errorMessage) {
       chromeTest.notifyPass();
+      if (resolve) {
+        resolve();
+      }
     } else {
-      chromeTest.notifyFail(`Failed ${testsFailed} of ${testCount} tests`);
+      chromeTest.notifyFail(errorMessage);
+      if (reject) {
+        reject(new Error(errorMessage));
+      }
     }
   }
 
   // Helper function for boolean asserts. Compares |test| to |expected|.
   function assertBool(test, expected, message) {
+    logging.CHECK(typeof expected === 'boolean');
+    if (typeof test !== 'boolean') {
+      chromeTest.fail(
+          `API Test Error in ${testName(currentTest)}: ` +
+          'assertTrue and assertFalse require a boolean condition.');
+    }
     if (test !== expected) {
-      if (typeof test == 'string') {
-        if (message) {
-          message = `${test}\n${message}`;
-        } else {
-          message = test;
-        }
-      }
       chromeTest.fail(message);
     }
   }
@@ -569,9 +594,16 @@ apiBridge.registerCustomHook(function(api) {
   });
 
   apiFunctions.setHandleRequest('runTests', function(tests) {
+    if (runTestsResolve !== null) {
+      throw new Error('chrome.test.runTests is already running.');
+    }
     chromeTest.tests = tests;
     testCount = chromeTest.tests.length;
-    runNextTest();
+    return new Promise((resolve, reject) => {
+      runTestsResolve = resolve;
+      runTestsReject = reject;
+      runNextTest();
+    });
   });
 
   apiFunctions.setHandleRequest('getApiDefinitions', function() {

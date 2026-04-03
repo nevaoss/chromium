@@ -27,6 +27,13 @@ class FullscreenMediatorPassKeyProvider {
   }
 };
 
+namespace {
+// Helper function to return a passkey used to mutate the browser agent state.
+inline base::PassKey<FullscreenMediatorPassKeyProvider> PassKey() {
+  return FullscreenMediatorPassKeyProvider::passkey();
+}
+}  // namespace
+
 @interface FullscreenMediator () <CRWWebStateObserver,
                                   CRWWebViewScrollViewProxyObserver,
                                   WebStateListObserving,
@@ -46,6 +53,7 @@ class FullscreenMediatorPassKeyProvider {
   std::unique_ptr<WebStateListObserverBridge> _webStateListObserver;
   std::unique_ptr<web::WebStateObserverBridge> _webStateObserver;
   std::unique_ptr<WebViewProxyTabHelperObserverBridge> _webViewProxyObserver;
+  CGFloat _lastContentOffset;
 }
 
 #pragma mark - Public
@@ -137,6 +145,12 @@ class FullscreenMediatorPassKeyProvider {
 
 #pragma mark - CRWWebStateObserver
 
+- (void)webStateWasShown:(web::WebState*)webState {
+  // TODO(crbug.com/496229929): Call InvalidateInsetRange() from the correct
+  // event(s).
+  _browserAgent->InvalidateInsetRange(PassKey());
+}
+
 - (void)webStateDestroyed:(web::WebState*)webState {
   DCHECK_EQ(self.webState, webState);
   self.webState = nullptr;
@@ -156,41 +170,71 @@ class FullscreenMediatorPassKeyProvider {
 
 - (void)webViewScrollViewDidScroll:
     (CRWWebViewScrollViewProxy*)webViewScrollViewProxy {
-  // TODO(crbug.com/491845727): Implement scroll tracking logic.
+  // Ignore programmatic scrolls (e.g. from inset updates). Only process scroll
+  // events that are actively driven by the user's touch or residual momentum.
+  if (!webViewScrollViewProxy.isDragging &&
+      !webViewScrollViewProxy.isDecelerating) {
+    return;
+  }
+
+  CGFloat currentContentOffset = webViewScrollViewProxy.contentOffset.y;
+  CGFloat delta = currentContentOffset - _lastContentOffset;
+  _lastContentOffset = currentContentOffset;
+
+  _browserAgent->IncrementalScroll(
+      delta, FullscreenMediatorPassKeyProvider::passkey());
 }
 
 - (void)webViewScrollViewWillBeginDragging:
     (CRWWebViewScrollViewProxy*)webViewScrollViewProxy {
-  // TODO(crbug.com/491845727): Implement scroll tracking logic.
+  _lastContentOffset = webViewScrollViewProxy.contentOffset.y;
 }
 
 - (void)webViewScrollViewWillEndDragging:
             (CRWWebViewScrollViewProxy*)webViewScrollViewProxy
                             withVelocity:(CGPoint)velocity
                      targetContentOffset:(inout CGPoint*)targetContentOffset {
-  // TODO(crbug.com/491845727): Implement scroll tracking logic.
+  // TODO(crbug.com/491845727): Implement snapping animations.
 }
 
 - (void)webViewScrollViewDidEndDragging:
             (CRWWebViewScrollViewProxy*)webViewScrollViewProxy
                          willDecelerate:(BOOL)decelerate {
-  // TODO(crbug.com/491845727): Implement scroll tracking logic.
+  // TODO(crbug.com/491845727): Implement snapping animations.
 }
 
 - (void)webViewScrollViewDidEndDecelerating:
     (CRWWebViewScrollViewProxy*)webViewScrollViewProxy {
-  // TODO(crbug.com/491845727): Implement scroll tracking logic.
+  // TODO(crbug.com/491845727): Implement snapping animations.
 }
 
 - (void)webViewScrollViewWillBeginZooming:
     (CRWWebViewScrollViewProxy*)webViewScrollViewProxy {
-  // TODO(crbug.com/491845727): Implement scroll tracking logic.
+  // TODO(crbug.com/491845727): Implement zoom lock logic.
 }
 
 - (void)webViewScrollViewDidEndZooming:
             (CRWWebViewScrollViewProxy*)webViewScrollViewProxy
                                atScale:(CGFloat)scale {
-  // TODO(crbug.com/491845727): Implement scroll tracking logic.
+  // TODO(crbug.com/491845727): Implement zoom lock logic.
+}
+
+#pragma mark - FullscreenCommands
+
+- (void)enterFullscreenWithAnimation:(BOOL)animated {
+  _browserAgent->EnterFullscreen(PassKey(), animated);
+}
+
+- (void)exitFullscreenWithAnimation:(BOOL)animated {
+  _browserAgent->ExitFullscreen(PassKey(), animated);
+}
+
+- (void)disableFullscreen {
+  _browserAgent->IncrementDisabledCounter(PassKey());
+}
+
+- (void)reenableFullscreen {
+  _browserAgent->DecrementDisabledCounter(PassKey());
 }
 
 #pragma mark - System Notifications
@@ -201,13 +245,11 @@ class FullscreenMediatorPassKeyProvider {
 }
 
 - (void)applicationDidEnterBackground {
-  _browserAgent->ForceExitFullscreenWithoutAnimation(
-      FullscreenMediatorPassKeyProvider::passkey());
+  [self exitFullscreenWithAnimation:NO];
 }
 
 - (void)applicationWillEnterForeground {
-  _browserAgent->ForceExitFullscreenWithoutAnimation(
-      FullscreenMediatorPassKeyProvider::passkey());
+  [self exitFullscreenWithAnimation:NO];
 }
 
 @end

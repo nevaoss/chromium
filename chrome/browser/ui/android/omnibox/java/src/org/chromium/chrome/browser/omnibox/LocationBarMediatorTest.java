@@ -10,6 +10,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -489,6 +490,24 @@ public class LocationBarMediatorTest {
         mMediator.onSuggestionsChanged(null, false);
         verify(mStatusCoordinator).onDefaultMatchClassified(true);
         verify(mUrlCoordinator).setAutocompleteText("text", null, null, null);
+    }
+
+    @Test
+    public void testOnUrlTextChanged_updatesShouldAutocomplete() {
+        mMediator.onFinishNativeInitialization();
+        mProfileSupplier.set(mProfile);
+        mMediator.onUrlFocusChange(true);
+
+        var state = getSession();
+        var input = state.getAutocompleteInput();
+
+        doReturn(true).when(mUrlCoordinator).shouldAutocomplete();
+        mMediator.onUrlTextChanged("test");
+        assertTrue(input.shouldAllowUserTextAutocompletion());
+
+        doReturn(false).when(mUrlCoordinator).shouldAutocomplete();
+        mMediator.onUrlTextChanged("test2");
+        assertFalse(input.shouldAllowUserTextAutocompletion());
     }
 
     public void testLoadUrl_base() {
@@ -2069,6 +2088,34 @@ public class LocationBarMediatorTest {
         verify(mLocationBarTablet).setZoomButtonVisibility(false);
         verify(mLocationBarEmbedder, never()).onWidthConsumerVisibilityChanged();
         Mockito.clearInvocations(mLocationBarTablet, mLocationBarEmbedder);
+    }
+
+    @Test
+    public void testOnSearchBoxHintTextChanged_UpdatesHintText() {
+        mProfileSupplier.set(mProfile);
+        mMediator.onFinishNativeInitialization();
+        RobolectricUtil.runAllBackgroundAndUi();
+
+        doReturn("search engine hint text")
+                .when(mSearchEngineUtils)
+                .getOmniboxHintText(anyInt(), any());
+
+        mMediator.onSearchBoxHintTextChanged();
+
+        verify(mUrlCoordinator).setUrlBarHintText(eq("search engine hint text"));
+    }
+
+    @Test
+    public void testOnSearchBoxHintTextChanged_EmbedderControlledHint_DoesNotUpdateHintText() {
+        mUiOverrides.setEmbedderControlledHint(true);
+
+        mProfileSupplier.set(mProfile);
+        mMediator.onFinishNativeInitialization();
+        RobolectricUtil.runAllBackgroundAndUi();
+
+        mMediator.onSearchBoxHintTextChanged();
+
+        verify(mUrlCoordinator, never()).setUrlBarHintText(any());
     }
 
     private FuseboxSessionState getSession() {

@@ -2,15 +2,21 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import '/strings.m.js';
+
+import {assert} from '//resources/js/assert.js';
+import {loadTimeData} from '//resources/js/load_time_data.js';
 import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
 
 import {PageCallbackRouter, PageHandlerFactory, PageHandlerRemote} from './ai_overlay_dialog.mojom-webui.js';
+import type {ApiConfig} from './api_session.js';
 import {getCss} from './app.css.js';
 import {getHtml} from './app.html.js';
 import type {AudioCapturer} from './audio_capturer.js';
 import {BlobAudioCapturer, MicrophoneAudioCapturer} from './audio_capturer.js';
 import {AudioPlayer} from './audio_player.js';
 import {Conversation, State} from './conversation.js';
+import type {ConversationConfig, Persona} from './conversation.js';
 import type {PageContext} from './page_context_manager.js';
 
 enum UiState {
@@ -23,6 +29,37 @@ enum UiState {
 interface MockAudioButton {
   name: string;
   wavdata: string;
+}
+
+interface PersonaConfig {
+  personas: Persona[];
+}
+
+interface ResourceBundle {
+  persona: Persona;
+  apiConfig: ApiConfig;
+  talkingBlob: Blob;
+  listeningBlob: Blob;
+  instruction: string;
+}
+
+// TODO(bokan): Allow providing this via a switch so we can remove it.
+const DEFAULT_API_CONFIG = {
+  endpointUrl:
+      'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent',
+  model: 'models/gemini-2.5-flash-native-audio-preview-12-2025',
+};
+
+const DEFAULT_PERSONA: Persona = {
+  id: 'chromium',
+  name: 'TheButton',
+  persona: 'You are a friendly assistant that lives in a button in Chrome\'s ' +
+      'overlay dialog',
+  voice: 'Puck',
+};
+
+function log(msg: string, ...args: any[]) {
+  console.info(`[${performance.now().toFixed(2)}] [App] ${msg}`, ...args);
 }
 
 export class AppElement extends CrLitElement {
@@ -42,31 +79,39 @@ export class AppElement extends CrLitElement {
     return {
       // If a mock microphone is being used, this contains the list of buttons
       // to inject pre-canned messages.
-      mockButtons_: {
+      mockButtons: {
         type: Array,
       },
-      isSpeaking_: {
+      isSpeaking: {
         type: Boolean,
       },
-      isConnecting_: {
+      isListening: {
         type: Boolean,
       },
-      transcription_: {
+      isConnecting: {
+        type: Boolean,
+      },
+      transcription: {
+        type: String,
+      },
+      talkingBlobUrl: {
+        type: String,
+      },
+      listeningBlobUrl: {
         type: String,
       },
     };
   }
 
-  protected accessor mockButtons_: MockAudioButton[] = [];
-  protected accessor isSpeaking_: boolean = false;
-  protected accessor isConnecting_: boolean = false;
-  protected accessor transcription_: string = '';
+  protected accessor mockButtons: MockAudioButton[] = [];
+  protected accessor isSpeaking: boolean = false;
+  protected accessor isConnecting: boolean = false;
+  protected accessor transcription: string = '';
+  protected accessor talkingBlobUrl: string = '';
+  protected accessor listeningBlobUrl: string = '';
 
   private pageHandler: PageHandlerRemote;
   private pageCallbackRouter: PageCallbackRouter;
-  // If onStateClick_ happens before the API key mojo returns, this will turn
-  // to true and invoke the state change after the key becomes available.
-  private queueStateChange: boolean = false;
   private conversation: Conversation|null = null;
   private blobCapturer: BlobAudioCapturer|null = null;
   private audioCapturer: AudioCapturer|null = null;
@@ -75,9 +120,11 @@ export class AppElement extends CrLitElement {
   // initialize so keep track of any page context that arrives before those are
   // setup so that it can be provided when these objects initialize.
   private initialPageContext?: PageContext;
+  private configPromise: Promise<ConversationConfig>;
+  private unregisterPageContextListeners: (() => void)|null;
 
-  protected get uiState_(): UiState {
-    if (this.isConnecting_) {
+  protected get uiState(): UiState {
+    if (this.isConnecting) {
       return UiState.CONNECTING;
     }
 
@@ -85,15 +132,50 @@ export class AppElement extends CrLitElement {
       return UiState.INERT;
     }
 
-    if (this.isSpeaking_) {
+    if (this.isSpeaking) {
       return UiState.SPEAKING;
     }
 
     return UiState.IDLE;
   }
 
+  protected get hasResourceBundle(): boolean {
+    return !!this.talkingBlobUrl && !!this.listeningBlobUrl;
+  }
+
+  protected get useStateButton(): boolean {
+    if (!this.hasResourceBundle) {
+      return true;
+    }
+
+    return this.uiState === UiState.CONNECTING ||
+        this.uiState === UiState.INERT;
+  }
+
   constructor() {
     super();
+
+    const ttcBundleUrl = loadTimeData.getString('ttcBundleUrl');
+    const initializedPromise = this.initializeResourceBundle(ttcBundleUrl);
+    initializedPromise.then((bundle: ResourceBundle) => {
+      console.info('Blobs initialized');
+      this.talkingBlobUrl = URL.createObjectURL(bundle.talkingBlob);
+      this.listeningBlobUrl = URL.createObjectURL(bundle.listeningBlob);
+    });
+    this.configPromise = initializedPromise.then((bundle: ResourceBundle) => {
+      // Locally specified key overrides the fetched one.
+      const apiKey =
+          loadTimeData.getString('apiKey') || bundle.apiConfig.apiKey;
+      return {
+        persona: bundle.persona,
+        system_instruction: bundle.instruction,
+        api_config: {
+          ...bundle.apiConfig,
+          apiKey,
+        },
+      };
+    });
+    initializedPromise.catch(e => console.error('Failed to fetch bundle: ', e));
 
     // Setup Mojo connection
     this.pageCallbackRouter = new PageCallbackRouter();
@@ -112,33 +194,29 @@ export class AppElement extends CrLitElement {
                 this.initialPageContext.content = content;
               }
             });
+    this.unregisterPageContextListeners = () => {
+      // Now that the conversation is initialized, we can stop listening for
+      // the initial page context.
+      this.pageCallbackRouter.removeListener(didChangePageId);
+      this.pageCallbackRouter.removeListener(updateContextId);
+      this.initialPageContext = undefined;
+      this.unregisterPageContextListeners = null;
+    };
 
     const factory = PageHandlerFactory.getRemote();
     factory.createPageHandler(
         this.pageHandler.$.bindNewPipeAndPassReceiver(),
         this.pageCallbackRouter.$.bindNewPipeAndPassRemote());
+  }
 
-    this.pageHandler.getApiKey().then(({apiKey}: {apiKey: string}) => {
-      this.conversation = new Conversation(
-          apiKey, {
-            sendToUI: (msg) => this.onMessageFromConversation(msg),
-            onStateChange: (state, oldState) =>
-                this.onConversationStateChanged(state, oldState),
-            onResponse: (audioData) => this.onAudioOutput(audioData),
-          },
-          this.pageCallbackRouter, this.initialPageContext);
-
-      // Now that the conversation is initialized, we can stop listening for the
-      // initial page context.
-      this.pageCallbackRouter.removeListener(didChangePageId);
-      this.pageCallbackRouter.removeListener(updateContextId);
-      this.initialPageContext = undefined;
-
-      if (this.queueStateChange) {
-        this.onStateClick_();
-        this.queueStateChange = false;
-      }
-    });
+  override disconnectedCallback() {
+    super.disconnectedCallback();
+    if (this.talkingBlobUrl) {
+      URL.revokeObjectURL(this.talkingBlobUrl);
+    }
+    if (this.listeningBlobUrl) {
+      URL.revokeObjectURL(this.listeningBlobUrl);
+    }
   }
 
   private onAudioInput(sampleRate: number, data: string) {
@@ -152,34 +230,41 @@ export class AppElement extends CrLitElement {
     this.audioPlayer?.play(audioData);
   }
 
-  protected onInjectAudioClick_(e: Event) {
+  protected onInjectAudioClick(e: Event) {
     if (!this.blobCapturer) {
       return;
     }
 
     const index = Number((e.currentTarget as HTMLElement).dataset['index']);
-    const button = this.mockButtons_[index];
+    const button = this.mockButtons[index];
     if (!button) {
       return;
     }
 
-    const binaryString = atob(button.wavdata);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
+    log(`Injecting audio: ${button.name}, length: ${button.wavdata.length}`);
+    try {
+      const binaryString = atob(button.wavdata);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      const blob = new Blob([bytes], {type: 'audio/wav'});
+      this.blobCapturer.send(blob).then(() => {
+        this.conversation?.markMockAudioEndTime(performance.now());
+      });
+    } catch (e) {
+      log('Failed to inject audio:', e);
     }
-    const blob = new Blob([bytes], {type: 'audio/wav'});
-    this.blobCapturer.send(blob);
   }
 
   private createAudioPlayer(): AudioPlayer {
     return new AudioPlayer(/*onStart=*/
                            () => {
-                             this.isSpeaking_ = true;
+                             this.isSpeaking = true;
                            },
                            /*onDone=*/
                            () => {
-                             this.isSpeaking_ = false;
+                             this.isSpeaking = false;
                            });
   }
 
@@ -188,40 +273,55 @@ export class AppElement extends CrLitElement {
       const stream = await navigator.mediaDevices.getUserMedia({audio: true});
       return new MicrophoneAudioCapturer(stream);
     } catch (e) {
-      console.warn('No Microphone Found', e);
+      log('No Microphone Found', e);
 
       try {
         const {jsonData} = await this.pageHandler.getMockAudioData();
         if (jsonData) {
+          log('Received mock audio data:', jsonData.substring(0, 100) + '...');
           const config = JSON.parse(jsonData);
-          this.mockButtons_ = config.buttons || [];
+          this.mockButtons = config.buttons || [];
+          log(`Loaded ${this.mockButtons.length} mock buttons`);
           this.blobCapturer = new BlobAudioCapturer();
           return this.blobCapturer;
         } else {
-          console.warn('No mock audio data provided or found');
+          log('No mock audio data provided or found');
         }
       } catch (mojoError) {
-        console.error('Failed to get mock audio data', mojoError);
+        log('Failed to get mock audio data', mojoError);
       }
     }
 
     return null;
   }
 
-  protected onStateClick_() {
-    if (!this.conversation) {
-      console.warn('Conversation (API key) not yet available');
-      this.queueStateChange = true;
+  protected async onContainerClick() {
+    if (this.isConnecting) {
       return;
     }
 
-    if (this.isConnecting_) {
-      return;
+    if (!this.conversation) {
+      this.isConnecting = true;
+      let config: ConversationConfig|undefined;
+      try {
+        config = await this.configPromise;
+      } catch (e) {
+        console.warn('Using DEFAULT ApiConfig');
+        config = {
+          persona: DEFAULT_PERSONA,
+          system_instruction: '${persona}',
+          api_config: {
+            ...DEFAULT_API_CONFIG,
+            apiKey: loadTimeData.getString('apiKey'),
+          },
+        };
+      }
+      this.conversation = this.createConversation(config);
     }
 
     if (!this.conversation.connected) {
-      console.info('Attempting to connect');
-      this.isConnecting_ = true;
+      log('Attempting to connect');
+      this.isConnecting = true;
       this.conversation.start();
     } else {
       this.conversation.stop();
@@ -229,10 +329,10 @@ export class AppElement extends CrLitElement {
   }
 
   private async onConversationStateChanged(state: State, oldState: State) {
-    console.info('onConversationStateChanged: ', state);
+    log('onConversationStateChanged: ', state);
 
     if (oldState === State.STOPPED && state !== State.STOPPED) {
-      this.isConnecting_ = false;
+      this.isConnecting = false;
       this.audioPlayer = this.createAudioPlayer();
       this.audioCapturer = await this.createAudioCapturer();
       if (this.audioCapturer) {
@@ -242,8 +342,8 @@ export class AppElement extends CrLitElement {
     }
 
     if (state === State.STOPPED) {
-      this.isConnecting_ = false;
-      this.mockButtons_ = [];
+      this.isConnecting = false;
+      this.mockButtons = [];
       this.blobCapturer = null;
       this.audioCapturer?.stop();
       this.audioPlayer?.stop();
@@ -254,17 +354,79 @@ export class AppElement extends CrLitElement {
     }
   }
 
-  private transcriptionTimeout_: number = 0;
+  private transcriptionTimeout: number = 0;
 
   private onMessageFromConversation(msg: any) {
     if (msg.type === 'outputTranscription') {
-      this.transcription_ = msg.text;
+      this.transcription = msg.text;
 
-      clearTimeout(this.transcriptionTimeout_);
-      this.transcriptionTimeout_ = setTimeout(() => {
-        this.transcription_ = '';
+      clearTimeout(this.transcriptionTimeout);
+      this.transcriptionTimeout = setTimeout(() => {
+        this.transcription = '';
       }, 3000);
     }
+  }
+
+  private async initializeResourceBundle(baseUrl: string):
+      Promise<ResourceBundle> {
+    if (!baseUrl) {
+      throw new Error('No resource bundle URL provided');
+    }
+
+    console.info('Loading resource bundle: ', baseUrl);
+
+    const base = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/';
+
+    const [
+      personaResponse,
+      apiConfigResponse,
+      talkingResponse,
+      listeningResponse,
+      instructionResponse,
+    ] = await Promise.all([
+      fetch(base + 'persona.json'),
+      fetch(base + 'api_config.json'),
+      fetch(base + 'talking.webm'),
+      fetch(base + 'listening.webm'),
+      fetch(base + 'instruction.tmpl'),
+    ]);
+
+    const personaConfig: PersonaConfig = await personaResponse.json();
+    const apiConfig: ApiConfig = await apiConfigResponse.json();
+    const talkingBlob = await talkingResponse.blob();
+    const listeningBlob = await listeningResponse.blob();
+    const instruction = await instructionResponse.text();
+
+    if (!Array.isArray(personaConfig.personas) ||
+        personaConfig.personas[0] === undefined) {
+      console.warn('Invalid persona config', personaConfig);
+      throw new Error('Invalid persona config');
+    }
+
+    return {
+      persona: personaConfig.personas[0],
+      apiConfig,
+      talkingBlob,
+      listeningBlob,
+      instruction,
+    };
+  }
+
+  private createConversation(config: ConversationConfig) {
+    const conversation = new Conversation(
+        config, {
+          sendToUI: (msg) => this.onMessageFromConversation(msg),
+          onStateChange: (state, oldState) =>
+              this.onConversationStateChanged(state, oldState),
+          onResponse: (audioData) => this.onAudioOutput(audioData),
+        },
+        this.pageHandler, this.pageCallbackRouter, this.initialPageContext);
+
+    // The conversation should only ever be created once.
+    assert(this.unregisterPageContextListeners);
+    this.unregisterPageContextListeners();
+
+    return conversation;
   }
 }
 

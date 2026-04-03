@@ -33,6 +33,8 @@
 #import "components/contextual_search/contextual_search_service.h"
 #import "components/contextual_search/contextual_search_session_handle.h"
 #import "components/contextual_search/input_state_model.h"
+#import "components/contextual_search/internal/ios/composebox_context_upload_observer_bridge.h"
+#import "components/contextual_search/internal/ios/composebox_query_controller_ios.h"
 #import "components/lens/contextual_input.h"
 #import "components/lens/lens_bitmap_processing.h"
 #import "components/lens/lens_overlay_mime_type.h"
@@ -42,8 +44,6 @@
 #import "components/omnibox/common/omnibox_features.h"
 #import "components/omnibox/composebox/composebox_query.mojom.h"
 #import "components/omnibox/composebox/contextual_search_mojom_traits.h"
-#import "components/omnibox/composebox/ios/composebox_context_upload_observer_bridge.h"
-#import "components/omnibox/composebox/ios/composebox_query_controller_ios.h"
 #import "components/prefs/pref_service.h"
 #import "components/search/search.h"
 #import "components/search_engines/template_url_service.h"
@@ -351,6 +351,8 @@ std::vector<lens::MimeType> MimeTypesFromCollection(
   __weak id<SceneCommands> _sceneHandler;
   // The entrypoint from which the composebox was invoked.
   ComposeboxEntrypoint _entrypoint;
+  // The previously observed mode of the composebox.
+  ComposeboxMode _previousMode;
 }
 
 - (instancetype)
@@ -386,6 +388,16 @@ std::vector<lens::MimeType> MimeTypesFromCollection(
       _composeboxObserverBridge =
           std::make_unique<ComposeboxContextUploadObserverBridge>(
               self, _contextualSearchSession->GetController());
+      [[NSNotificationCenter defaultCenter]
+          addObserver:self
+             selector:@selector(appDidEnterBackground:)
+                 name:UIApplicationDidEnterBackgroundNotification
+               object:nil];
+      [[NSNotificationCenter defaultCenter]
+          addObserver:self
+             selector:@selector(appWillEnterForeground:)
+                 name:UIApplicationWillEnterForegroundNotification
+               object:nil];
     }
     _webStateList = webStateList;
     _faviconLoader = faviconLoader;
@@ -395,6 +407,7 @@ std::vector<lens::MimeType> MimeTypesFromCollection(
     _isIncognito = isIncognito;
     _modeHolder = modeHolder;
     [_modeHolder addObserver:self];
+    _previousMode = _modeHolder.mode;
     _templateURLService = templateURLService;
     _searchEngineObserver =
         std::make_unique<SearchEngineObserverBridge>(self, _templateURLService);
@@ -432,6 +445,7 @@ std::vector<lens::MimeType> MimeTypesFromCollection(
   _URLLoader = nil;
   _consumer = nil;
   _prefService = nullptr;
+  [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
 - (void)setConsumer:(id<ComposeboxInputPlateConsumer>)consumer {
@@ -807,6 +821,15 @@ std::vector<lens::MimeType> MimeTypesFromCollection(
 
 - (void)composeboxModeDidChange:(ComposeboxMode)mode {
   DCHECK_CALLED_ON_VALID_SEQUENCE(_sequenceChecker);
+
+  BOOL transitionedToAIMode = mode != ComposeboxMode::kRegularSearch &&
+                              _previousMode == ComposeboxMode::kRegularSearch;
+
+  if (transitionedToAIMode) {
+    [self.metricsRecorder
+        recordTextEditedBeforeAiMode:(_userInputInProgress && _hasText)];
+  }
+  _previousMode = mode;
 
   [self updateMode];
 
@@ -1192,7 +1215,50 @@ std::vector<lens::MimeType> MimeTypesFromCollection(
   [self.consumer updateState:item.state forItemWithIdentifier:item.identifier];
 }
 
+#pragma mark - NSNotification
+
+- (void)appDidEnterBackground:(NSNotification*)notification {
+  if (_contextualSearchSession) {
+    _contextualSearchSession->SetIsBackgrounded(true);
+  }
+}
+
+- (void)appWillEnterForeground:(NSNotification*)notification {
+  if (_contextualSearchSession) {
+    _contextualSearchSession->SetIsBackgrounded(false);
+  }
+}
+
 #pragma mark - Private
+
+// Sends a Cobrowse text followup.
+- (void)sendAIMFollowup:(NSString*)text {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(_sequenceChecker);
+  if (!_contextualSearchSession) {
+    return;
+  }
+
+  std::unique_ptr<contextual_search::ContextualSearchContextController::
+                      CreateClientToAimRequestInfo>
+      request_info = std::make_unique<
+          contextual_search::ContextualSearchContextController::
+              CreateClientToAimRequestInfo>();
+  request_info->query_text = base::SysNSStringToUTF8(text);
+  request_info->query_start_time = base::Time::Now();
+  request_info->file_tokens =
+      _contextualSearchSession->GetSubmittedContextTokens();
+
+  if (_inputStateModel) {
+    request_info->active_tool = _inputStateModel->GetInputState().active_tool;
+    request_info->active_model = _inputStateModel->GetInputState().active_model;
+  }
+
+  lens::ClientToAimMessage message =
+      _contextualSearchSession->CreateClientToAimRequest(
+          std::move(request_info));
+
+  [self.URLLoader prepareLoadForQueryText:text clientToAimMessage:message];
+}
 
 // Updates the tool mode when in image generation mode.
 - (void)updateImageGenerationToolMode {
@@ -2130,7 +2196,13 @@ std::vector<lens::MimeType> MimeTypesFromCollection(
     [_sceneHandler hideAssistant];
   }
 
-  [self.URLLoader prepareLoadForQueryText:[NSString cr_fromString16:text]];
+  BOOL isAimFollowup = IsAimCobrowseEnabled() &&
+                       (_entrypoint == ComposeboxEntrypoint::kCobrowse);
+
+  if (isAimFollowup) {
+    [self sendAIMFollowup:[NSString cr_fromString16:text]];
+    return;
+  }
 
   switch (_modeHolder.mode) {
     case ComposeboxMode::kRegularSearch:

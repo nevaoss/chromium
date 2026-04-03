@@ -59,8 +59,12 @@ class FullscreenBrowserAgentTest : public PlatformTest {
     browser_ = std::make_unique<TestBrowser>(profile_.get());
   }
 
+  base::PassKey<FullscreenBrowserAgentTest> PassKey() {
+    return base::PassKey<FullscreenBrowserAgentTest>();
+  }
+
   void InvalidateInsetRange(FullscreenBrowserAgent* agent) {
-    agent->InvalidateInsetRange();
+    agent->InvalidateInsetRange(PassKey());
   }
 
   base::test::TaskEnvironment task_environment_;
@@ -118,4 +122,71 @@ TEST_F(FullscreenBrowserAgentTest, InvalidateInsetRange) {
   agent->RemoveObserver(&observer1);
   agent->RemoveObserver(&observer2);
   agent->RemoveObserver(&observer3);
+}
+
+// Tests that IncrementalScroll calculates progress correctly and clamps values.
+TEST_F(FullscreenBrowserAgentTest, IncrementalScroll) {
+  FullscreenBrowserAgent::CreateForBrowser(browser_.get());
+  FullscreenBrowserAgent* agent =
+      FullscreenBrowserAgent::FromBrowser(browser_.get());
+
+  TestFullscreenBrowserAgentObserver base_observer;
+  RangeTestFullscreenBrowserAgentObserver observer1(UIRectEdgeTop, 10.0, 50.0);
+  RangeTestFullscreenBrowserAgentObserver observer2(UIRectEdgeBottom, 20.0,
+                                                    80.0);
+
+  agent->AddObserver(&base_observer);
+  agent->AddObserver(&observer1);
+  agent->AddObserver(&observer2);
+
+  // Initialize ranges. Top delta = 40, Bottom delta = 60.
+  InvalidateInsetRange(agent);
+
+  EXPECT_EQ(1.0, agent->top_progress());
+  EXPECT_EQ(1.0, agent->bottom_progress());
+  EXPECT_FALSE(base_observer.will_update_called_);
+  EXPECT_FALSE(base_observer.did_update_called_);
+
+  // Scroll down partially.
+  agent->IncrementalScroll(20.0, PassKey());
+
+  EXPECT_EQ(0.5, agent->top_progress());
+  EXPECT_NEAR(0.6666, agent->bottom_progress(), 0.001);
+
+  EXPECT_TRUE(base_observer.will_update_called_);
+  EXPECT_TRUE(base_observer.did_update_called_);
+
+  // Fast scroll down to check 0.0 bounds clamping.
+  agent->IncrementalScroll(200.0, PassKey());
+
+  EXPECT_EQ(0.0, agent->top_progress());
+  EXPECT_EQ(0.0, agent->bottom_progress());
+
+  // Fast scroll up to check 1.0 bounds clamping.
+  agent->IncrementalScroll(-500.0, PassKey());
+
+  EXPECT_EQ(1.0, agent->top_progress());
+  EXPECT_EQ(1.0, agent->bottom_progress());
+
+  agent->RemoveObserver(&base_observer);
+  agent->RemoveObserver(&observer1);
+  agent->RemoveObserver(&observer2);
+}
+
+// Tests that the disabled counter increments and decrements correctly.
+TEST_F(FullscreenBrowserAgentTest, DisabledCounter) {
+  FullscreenBrowserAgent::CreateForBrowser(browser_.get());
+  FullscreenBrowserAgent* agent =
+      FullscreenBrowserAgent::FromBrowser(browser_.get());
+  EXPECT_EQ(0u, agent->disabled_count());
+  agent->IncrementDisabledCounter(PassKey());
+  EXPECT_EQ(1u, agent->disabled_count());
+  agent->IncrementDisabledCounter(PassKey());
+  EXPECT_EQ(2u, agent->disabled_count());
+  agent->DecrementDisabledCounter(PassKey());
+  EXPECT_EQ(1u, agent->disabled_count());
+  agent->DecrementDisabledCounter(PassKey());
+  EXPECT_EQ(0u, agent->disabled_count());
+  agent->DecrementDisabledCounter(PassKey());  // Should not go below zero.
+  EXPECT_EQ(0u, agent->disabled_count());
 }

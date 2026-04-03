@@ -1048,11 +1048,9 @@ void ServiceWorkerVersion::RemoveControllee(const std::string& client_uuid) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   // TODO(crbug.com/40653867): Remove this once RemoveControllee() matches with
   // AddControllee().
-  if (!controllee_map_.contains(client_uuid)) {
+  if (controllee_map_.erase(client_uuid) == 0) {
     return;
   }
-
-  controllee_map_.erase(client_uuid);
 
   embedded_worker_->UpdateForegroundPriority();
 
@@ -1087,9 +1085,11 @@ void ServiceWorkerVersion::OnControlleeNavigationCommitted(
 void ServiceWorkerVersion::MoveControlleeToBackForwardCacheMap(
     const std::string& client_uuid) {
   DCHECK(IsBackForwardCacheEnabled());
-  CHECK(controllee_map_.contains(client_uuid));
-  CHECK(!bfcached_controllee_map_.contains(client_uuid));
-  bfcached_controllee_map_[client_uuid] = controllee_map_[client_uuid];
+  auto it = controllee_map_.find(client_uuid);
+  CHECK(it != controllee_map_.end());
+  auto [bf_it, inserted] =
+      bfcached_controllee_map_.try_emplace(client_uuid, it->second);
+  CHECK(inserted);
   RemoveControllee(client_uuid);
 }
 
@@ -1130,8 +1130,8 @@ void ServiceWorkerVersion::RemoveControlleeFromBackForwardCacheMap(
   // `bfcache_controllee_map_` does not contain the client.
   SCOPED_CRASH_KEY_BOOL("ServiceWorkerBfcache", "in_controllee_map",
                         controllee_map_.contains(client_uuid));
-  CHECK(bfcached_controllee_map_.contains(client_uuid));
-  bfcached_controllee_map_.erase(client_uuid);
+  size_t count = bfcached_controllee_map_.erase(client_uuid);
+  CHECK_GT(count, 0u);
 }
 
 void ServiceWorkerVersion::Uncontrol(const std::string& client_uuid) {
@@ -1150,8 +1150,8 @@ void ServiceWorkerVersion::Uncontrol(const std::string& client_uuid) {
       // In this case, |controllees_to_be_evicted_| should contain the
       // controllee.
       // TODO(crbug.com/40657227): Remove this CHECK once we fix the crash.
-      CHECK(controllees_to_be_evicted_.contains(client_uuid));
-      controllees_to_be_evicted_.erase(client_uuid);
+      size_t count = controllees_to_be_evicted_.erase(client_uuid);
+      CHECK_GT(count, 0u);
     }
   }
 }

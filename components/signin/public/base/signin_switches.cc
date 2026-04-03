@@ -224,15 +224,6 @@ BASE_FEATURE_PARAM(base::TimeDelta,
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 BASE_FEATURE(kDisableU18FeedbackDesktop, base::FEATURE_DISABLED_BY_DEFAULT);
-constexpr base::FeatureParam<U18FeedbackDesktopState>::Option
-    kDisableU18FeedbackDesktopStates[] = {
-        {U18FeedbackDesktopState::kEnabled, "enabled"},
-        {U18FeedbackDesktopState::kForced, "forced"},
-};
-constexpr base::FeatureParam<U18FeedbackDesktopState>
-    kDisableU18FeedbackDesktopState{&kDisableU18FeedbackDesktop, "state",
-                                    U18FeedbackDesktopState::kEnabled,
-                                    &kDisableU18FeedbackDesktopStates};
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 
 #if BUILDFLAG(IS_ANDROID)
@@ -348,12 +339,7 @@ BASE_FEATURE(kEnableOAuthMultiloginStandardCookiesBindingForGlicPartition,
 #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
 
 BASE_FEATURE(kEnablePreferencesAccountStorage,
-#if BUILDFLAG(IS_CHROMEOS)
-             base::FEATURE_DISABLED_BY_DEFAULT
-#else
-             base::FEATURE_ENABLED_BY_DEFAULT
-#endif  // BUILDFLAG(IS_CHROMEOS)
-);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_ANDROID)
 BASE_FEATURE(kEnableSeamlessSignin, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -642,13 +628,6 @@ BASE_FEATURE(kBookmarksMigrateUiChanges,
              base::FEATURE_ENABLED_BY_DEFAULT
 #endif
 );
-
-#if BUILDFLAG(ENABLE_DICE_SUPPORT)
-// When enabled, Chrome will always use the /IssueToken endpoint to fetch access
-// tokens, no matter if a refresh token is bound or not.
-BASE_FEATURE(kUseIssueTokenToFetchAccessTokens,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-#endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
 
 BASE_FEATURE(kUsePrimaryAndTonalButtonsForPromos,
              base::FEATURE_DISABLED_BY_DEFAULT);

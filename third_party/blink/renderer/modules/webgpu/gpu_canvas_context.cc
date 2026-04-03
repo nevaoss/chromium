@@ -27,6 +27,7 @@
 #include "third_party/blink/renderer/modules/webgpu/gpu_supported_features.h"
 #include "third_party/blink/renderer/modules/webgpu/gpu_texture.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
+#include "third_party/blink/renderer/platform/bindings/script_state.h"
 #include "third_party/blink/renderer/platform/graphics/accelerated_static_bitmap_image.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource_provider.h"
@@ -78,7 +79,6 @@ GPUCanvasContext::GPUCanvasContext(
     const CanvasContextCreationAttributesCore& attrs)
     : CanvasRenderingContext(host, attrs, CanvasRenderingAPI::kWebgpu) {
   texture_descriptor_ = {};
-  dirty_rect_for_commit_.setEmpty();
 }
 
 GPUCanvasContext::~GPUCanvasContext() {
@@ -155,9 +155,6 @@ cc::Layer* GPUCanvasContext::CcLayer() const {
 }
 
 void GPUCanvasContext::Reshape(int width, int height) {
-  dirty_rect_for_commit_ =
-      SkIRect::MakeWH(Host()->Size().width(), Host()->Size().height());
-
   if (stopped_) {
     return;
   }
@@ -342,9 +339,7 @@ bool GPUCanvasContext::PushFrame() {
   if (!canvas_resource)
     return false;
 
-  bool result =
-      Host()->PushFrame(std::move(canvas_resource), dirty_rect_for_commit_);
-  dirty_rect_for_commit_.setEmpty();
+  bool result = Host()->PushFrame(std::move(canvas_resource));
   return result;
 }
 
@@ -385,14 +380,14 @@ ImageBitmap* GPUCanvasContext::TransferToImageBitmap(
           std::move(release_callback)));
 }
 
-V8UnionHTMLCanvasElementOrOffscreenCanvas*
-GPUCanvasContext::getHTMLOrOffscreenCanvas() const {
+V8UnionHTMLCanvasElementOrOffscreenCanvas::Ret
+GPUCanvasContext::getHTMLOrOffscreenCanvas(ScriptState* script_state) const {
   if (Host()->IsOffscreenCanvas()) {
-    return MakeGarbageCollected<V8UnionHTMLCanvasElementOrOffscreenCanvas>(
-        static_cast<OffscreenCanvas*>(Host()));
+    return V8UnionHTMLCanvasElementOrOffscreenCanvas::Ret(
+        script_state, static_cast<OffscreenCanvas*>(Host()));
   }
-  return MakeGarbageCollected<V8UnionHTMLCanvasElementOrOffscreenCanvas>(
-      static_cast<HTMLCanvasElement*>(Host()));
+  return V8UnionHTMLCanvasElementOrOffscreenCanvas::Ret(
+      script_state, static_cast<HTMLCanvasElement*>(Host()));
 }
 
 void GPUCanvasContext::configure(const GPUCanvasConfiguration* descriptor,
@@ -718,8 +713,6 @@ GPUTexture* GPUCanvasContext::getCurrentTexture(
 
   // Simply requesting a new canvas texture with WebGPU is enough to mark it as
   // "dirty", so always call DidDraw() when a new texture is created.
-  dirty_rect_for_commit_.join(
-      SkIRect::MakeWH(Host()->Size().width(), Host()->Size().height()));
   DidDraw(CanvasPerformanceMonitor::DrawType::kOther);
 
   SkAlphaType alpha_type = GetAlphaType();

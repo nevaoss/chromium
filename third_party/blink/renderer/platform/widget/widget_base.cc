@@ -1209,6 +1209,7 @@ void WidgetBase::UpdateTextInputStateInternal(bool show_virtual_keyboard,
       params->ime_text_spans_info =
           frame_widget->GetImeTextSpansInfo(new_info.ime_text_spans);
     }
+<<<<<<< HEAD
 
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
     params->input_panel_rectangle = new_info.input_panel_rectangle;
@@ -1216,6 +1217,9 @@ void WidgetBase::UpdateTextInputStateInternal(bool show_virtual_keyboard,
 #endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
 
 #if BUILDFLAG(IS_ANDROID)
+=======
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
+>>>>>>> 148.0.7764.0~1
     if (next_previous_flags_ == kInvalidNextPreviousFlagsValue) {
       // Due to a focus change, values will be reset by the frame.
       // That case we only need fresh NEXT/PREVIOUS information.

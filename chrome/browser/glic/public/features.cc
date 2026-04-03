@@ -4,6 +4,7 @@
 
 #include "chrome/browser/glic/public/features.h"
 
+#include "base/feature.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_split.h"
 #include "build/android_buildflags.h"
@@ -39,6 +40,14 @@ const base::FeatureParam<bool> kAutoOpenGlicForPdfWithOnboarding({
 BASE_FEATURE(kGlicInvoke, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicCreateTabAdjacent, base::FEATURE_ENABLED_BY_DEFAULT);
+
+BASE_FEATURE(kGlicLiveMode,
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_LINUX)
+             base::FEATURE_DISABLED_BY_DEFAULT
+#else
+             base::FEATURE_ENABLED_BY_DEFAULT
+#endif
+);
 
 BASE_FEATURE(kGlicDefaultToLastActiveConversation,
 #if BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_DESKTOP_ANDROID)
@@ -84,5 +93,8 @@ const base::flat_set<int32_t>& GetGlicTieredRolloutV2EligibleTiers() {
   }());
   return *eligible_tiers;
 }
+
+BASE_FEATURE(kGlicHorizontalTabToolbarButton,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 }  // namespace features

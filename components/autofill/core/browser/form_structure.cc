@@ -39,19 +39,16 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
 #include "base/types/pass_key.h"
-#include "build/build_config.h"
 #include "components/autofill/core/browser/autofill_ai_form_rationalization.h"
 #include "components/autofill/core/browser/autofill_field.h"
 #include "components/autofill/core/browser/autofill_format_string.h"
 #include "components/autofill/core/browser/autofill_server_prediction.h"
 #include "components/autofill/core/browser/autofill_type.h"
-#include "components/autofill/core/browser/crowdsourcing/server_prediction_overrides.h"
 #include "components/autofill/core/browser/data_quality/autofill_data_util.h"
 #include "components/autofill/core/browser/data_quality/validation.h"
 #include "components/autofill/core/browser/field_type_utils.h"
 #include "components/autofill/core/browser/field_types.h"
 #include "components/autofill/core/browser/form_parsing/autofill_parsing_utils.h"
-#include "components/autofill/core/browser/form_parsing/buildflags.h"
 #include "components/autofill/core/browser/form_parsing/form_field_parser.h"
 #include "components/autofill/core/browser/form_processing/autofill_ai/determine_attribute_types.h"
 #include "components/autofill/core/browser/form_processing/label_processing_util.h"
@@ -711,12 +708,8 @@ FormData FormStructure::ToFormData() const {
   data.set_host_frame(host_frame_);
   data.set_version(version_);
   data.set_child_frames(child_frames_);
-  std::vector<FormFieldData> fields;
-  fields.reserve(fields_.size());
-  for (const auto& field : fields_) {
-    fields.push_back(*field);
-  }
-  data.set_fields(std::move(fields));
+  data.set_fields(base::ToVector(
+      fields_, [](const auto& field) -> FormFieldData { return *field; }));
   return data;
 }
 

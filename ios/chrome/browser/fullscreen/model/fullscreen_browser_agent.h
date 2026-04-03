@@ -18,7 +18,9 @@ class FullscreenMediatorPassKeyProvider;
 // A class that holds the fullscreen state for a browser.
 class FullscreenBrowserAgent : public BrowserUserData<FullscreenBrowserAgent> {
  public:
-  using MediatorPassKey = base::PassKey<FullscreenMediatorPassKeyProvider>;
+  // PassKey allows access to methods that mutate the state / progress.
+  using PassKey = base::PassKey<FullscreenBrowserAgentTest,
+                                FullscreenMediatorPassKeyProvider>;
 
   ~FullscreenBrowserAgent() override;
 
@@ -39,25 +41,52 @@ class FullscreenBrowserAgent : public BrowserUserData<FullscreenBrowserAgent> {
   UIEdgeInsets min_insets() const { return min_insets_; }
   UIEdgeInsets max_insets() const { return max_insets_; }
 
-  // Instantly exits fullscreen, notifying observers of the update.
-  // Generally used to reset the UI from system events like backgrounding.
-  void ForceExitFullscreenWithoutAnimation(MediatorPassKey);
+  // Accessors for the progress in entering or exiting fullscreen.
+  // 1.0 indicates browser UI is fully visible, 0.0 indicates browser UI is
+  // fully hidden (in fullscreen mode).
+  CGFloat top_progress() const { return top_progress_; }
+  CGFloat bottom_progress() const { return bottom_progress_; }
 
- private:
-  friend class BrowserUserData<FullscreenBrowserAgent>;
-  friend class FullscreenBrowserAgentTest;
+  // Incrementally changes the fullscreen progress based on a drag or scroll.
+  void IncrementalScroll(CGFloat amount, PassKey);
 
-  explicit FullscreenBrowserAgent(Browser* browser);
+  // Enters or exits fullscreen mode.
+  void EnterFullscreen(PassKey, bool animated);
+  void ExitFullscreen(PassKey, bool animated);
+
+  // Increments the disabled counter. If the counter becomes 1, it exits
+  // fullscreen mode.
+  void IncrementDisabledCounter(PassKey);
+
+  // Decrements the disabled counter.
+  void DecrementDisabledCounter(PassKey);
+
+  // Returns the disabled counter.
+  size_t disabled_count() const { return disabled_count_; }
 
   // Invalidates the current inset ranges and recalculates them by notifying
   // observers.
-  void InvalidateInsetRange();
+  void InvalidateInsetRange(PassKey);
+
+ private:
+  friend class BrowserUserData<FullscreenBrowserAgent>;
+
+  explicit FullscreenBrowserAgent(Browser* browser);
 
   base::ObserverList<FullscreenBrowserAgentObserver, true> observers_;
+
+  // The number of features currently disabling fullscreen.
+  size_t disabled_count_ = 0;
 
   // The min and max insets.
   UIEdgeInsets min_insets_ = UIEdgeInsetsZero;
   UIEdgeInsets max_insets_ = UIEdgeInsetsZero;
+
+  // The progress in entering or exiting fullscreen. 1.0 indicates browser UI is
+  // fully visible, 0.0 indicates browser UI is fully hidden (in fullscreen
+  // mode).
+  CGFloat top_progress_ = 1.0;
+  CGFloat bottom_progress_ = 1.0;
 
   // True if the agent is currently broadcasting WillUpdateObscuredInsetRange.
   // Used to ensure AddObscuredInsetRange() is only called at the correct time.

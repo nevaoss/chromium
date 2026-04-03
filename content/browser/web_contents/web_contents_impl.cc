@@ -1595,10 +1595,10 @@ std::unique_ptr<WebContentsImpl> WebContentsImpl::CreateWithOpener(
 }
 
 // static
-std::vector<WebContentsImpl*> WebContentsImpl::GetAllWebContents() {
+std::vector<raw_ptr<WebContentsImpl>> WebContentsImpl::GetAllWebContents() {
   OPTIONAL_TRACE_EVENT0(TRACE_DISABLED_BY_DEFAULT("content.verbose"),
                         "WebContentsImpl::GetAllWebContents");
-  std::vector<WebContentsImpl*> result;
+  std::vector<raw_ptr<WebContentsImpl>> result;
   std::unique_ptr<RenderWidgetHostIterator> widgets(
       RenderWidgetHostImpl::GetRenderWidgetHosts());
   while (RenderWidgetHost* rwh = widgets->GetNextHost()) {
@@ -4823,7 +4823,10 @@ void WebContentsImpl::EnterFullscreenMode(
   OPTIONAL_TRACE_EVENT0("content", "WebContentsImpl::EnterFullscreenMode");
   DCHECK(CanEnterFullscreenMode(requesting_frame));
   DCHECK(requesting_frame->IsActive());
-  DCHECK(ContainsOrIsFocusedWebContents());
+  CHECK(
+      ContainsOrIsFocusedWebContents() ||
+      GetContentClient()->browser()->IsFullscreenAllowedForUnfocusedWebContents(
+          this));
   // Ensure the window is made active to take input focus. The window may be
   // inactive when sites request fullscreen via capability delegation, consume
   // transient activation from a gesture made before another window was focused,
@@ -5674,7 +5677,7 @@ FrameTree* WebContentsImpl::CreateNewWindow(
         std::make_unique<NavigationController::LoadURLParams>(
             params.target_url);
     load_params->initiator_origin = opener->GetLastCommittedOrigin();
-    load_params->initiator_process_id = opener->GetProcess()->GetDeprecatedID();
+    load_params->initiator_process_id = render_process_id;
     load_params->initiator_frame_token = opener->GetFrameToken();
     // Avoiding setting |load_params->source_site_instance| when
     // |opener_suppressed| is true, because in that case we do not want to use
@@ -6032,14 +6035,22 @@ void WebContentsImpl::RequestMediaAccessPermission(
       delegate->GuestRequestMediaAccessPermission(request, std::move(callback));
       return;
     }
-  } else if (delegate_) {
+    std::move(callback).Run(
+        blink::mojom::StreamDevicesSet(),
+        blink::mojom::MediaStreamRequestResult::
+            FAILED_DUE_TO_SHUTDOWN_NO_GUEST_PAGE_HOLDER_DELEGATE,
+        std::unique_ptr<MediaStreamUI>());
+    return;
+  }
+
+  if (delegate_) {
     delegate_->RequestMediaAccessPermission(this, request, std::move(callback));
     return;
   }
-  std::move(callback).Run(
-      blink::mojom::StreamDevicesSet(),
-      blink::mojom::MediaStreamRequestResult::FAILED_DUE_TO_SHUTDOWN,
-      std::unique_ptr<MediaStreamUI>());
+  std::move(callback).Run(blink::mojom::StreamDevicesSet(),
+                          blink::mojom::MediaStreamRequestResult::
+                              FAILED_DUE_TO_SHUTDOWN_WEB_CONTENTS_NO_DELEGATE,
+                          std::unique_ptr<MediaStreamUI>());
 }
 
 void WebContentsImpl::ProcessSelectAudioOutput(

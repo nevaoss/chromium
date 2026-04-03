@@ -17,7 +17,7 @@ import {assert} from '//resources/js/assert.js';
 import {EventTracker} from '//resources/js/event_tracker.js';
 import {loadTimeData} from '//resources/js/load_time_data.js';
 import type {AutocompleteMatch, AutocompleteResult, PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerRemote as SearchboxPageHandlerRemote} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
-import type {InputState} from '//resources/mojo/components/omnibox/composebox/composebox_query.mojom-webui.js';
+import type {InputState, ToolMode} from '//resources/mojo/components/omnibox/composebox/composebox_query.mojom-webui.js';
 import {InputType} from '//resources/mojo/components/omnibox/composebox/composebox_query.mojom-webui.js';
 import type {UnguessableToken} from '//resources/mojo/mojo/public/mojom/base/unguessable_token.mojom-webui.js';
 import {CrLitElement} from 'chrome://resources/lit/v3_0/lit.rollup.js';
@@ -134,6 +134,7 @@ export class ContextualTasksComposeboxElement extends I18nMixinLit
       selectedMatchIndex_: {type: Number},
       enableFileHint_: {type: Boolean},
       lensButtonDisabled_: {type: Boolean},
+      isCanvasQuerySubmitted: {type: Boolean},
     };
   }
 
@@ -143,6 +144,7 @@ export class ContextualTasksComposeboxElement extends I18nMixinLit
   accessor isLensOverlayShowing: boolean = false;
   accessor isOverlayOpenForAimVisualSearch: boolean = false;
   accessor inputEnabled: boolean = true;
+  accessor isCanvasQuerySubmitted: boolean = false;
 
   protected accessor zeroStateSuggestions_: AutocompleteResult = {
     input: '',
@@ -288,6 +290,9 @@ export class ContextualTasksComposeboxElement extends I18nMixinLit
   override updated(changedProperties: PropertyValues<this>) {
     super.updated(changedProperties);
     if (changedProperties.has('isZeroState')) {
+      if (this.isZeroState) {
+        this.isCanvasQuerySubmitted = false;
+      }
       if (this.isZeroState && !this.isSidePanel) {
         // Get zero state autocomplete matches. In the side panel, we wait for
         // an update about whether an auto-chip will be added before querying
@@ -315,6 +320,10 @@ export class ContextualTasksComposeboxElement extends I18nMixinLit
 
   get showLensButton_() {
     return this.isSidePanel;
+  }
+
+  get inputState() {
+    return this.inputState_;
   }
 
   protected getInputPlaceholder_() {
@@ -395,7 +404,7 @@ export class ContextualTasksComposeboxElement extends I18nMixinLit
   }
 
   clearInputAndFocus(querySubmitted: boolean = false): void {
-    const hadContent = this.$.composebox.getInputText().trim().length > 0 ||
+    const hadContent = this.$.composebox.input.trim().length > 0 ||
         this.$.composebox.hasFiles();
 
     // Clear text from composebox and focus.
@@ -464,12 +473,47 @@ export class ContextualTasksComposeboxElement extends I18nMixinLit
     return this.$.composebox;
   }
 
+  setActiveTool(toolMode: ToolMode) {
+    this.searchboxHandler_.setActiveToolMode(toolMode);
+  }
+  setToolFromUrl(urlString: string) {
+    const urlObj = new URL(urlString);
+    const inputState = this.inputState;
+    if (inputState && inputState.toolConfigs) {
+      for (const config of inputState.toolConfigs) {
+        if (config.aimUrlParams && config.aimUrlParams.length > 0) {
+          const hasParam = config.aimUrlParams.some(p => {
+            const value = urlObj.searchParams.get(p.paramKey);
+            return value === p.paramValue;
+          });
+          if (hasParam) {
+            if (config.tool === 2 /* ToolMode.kCanvas */) {
+              this.isCanvasQuerySubmitted = true;
+            }
+            if (inputState.activeTool !== config.tool) {
+              this.setActiveTool(config.tool);
+            }
+            break;
+          }
+        }
+      }
+    }
+  }
+
   get isComposeboxFocusedForTesting() {
     return this.isComposeboxFocused_;
   }
 
   get composeboxHeightForTesting() {
     return this.composeboxHeight_;
+  }
+
+  get selectedMatchIndexForTesting() {
+    return this.selectedMatchIndex_;
+  }
+
+  set zeroStateSuggestionsForTesting(val: AutocompleteResult) {
+    this.zeroStateSuggestions_ = val;
   }
 
   get resizeObserverForTesting() {

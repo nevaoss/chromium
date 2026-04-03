@@ -129,9 +129,6 @@ export class SearchboxElement extends SearchboxElementBase implements
         reflect: true,
       },
 
-      /** The aria description to include on the input element. */
-      searchboxAriaDescription: {type: String},
-
       searchboxChromeRefreshTheming: {
         type: Boolean,
         reflect: true,
@@ -221,9 +218,6 @@ export class SearchboxElement extends SearchboxElementBase implements
       thumbnailUrl_: {type: String},
       isThumbnailDeletable_: {type: Boolean},
 
-      /** The value of the input element's 'aria-live' attribute. */
-      inputAriaLive_: {type: String},
-
       useWebkitSearchIcons_: {
         type: Boolean,
         reflect: true,
@@ -238,9 +232,6 @@ export class SearchboxElement extends SearchboxElementBase implements
         reflect: true,
         type: String,
       },
-      showModelPicker_: {
-        type: Boolean,
-      },
     };
   }
 
@@ -249,7 +240,6 @@ export class SearchboxElement extends SearchboxElementBase implements
   accessor hadSecondarySide: boolean = false;
   accessor hasSecondarySide: boolean = false;
   accessor isDark: boolean = false;
-  accessor searchboxAriaDescription: string = '';
   accessor searchboxChromeRefreshTheming: boolean =
       loadTimeData.getBoolean('searchboxCr23Theming');
   accessor searchboxSteadyStateShadow: boolean =
@@ -264,7 +254,6 @@ export class SearchboxElement extends SearchboxElementBase implements
   accessor placeholderText: string = '';
   accessor isDraggingFile: boolean = false;
   accessor animationState: GlowAnimationState = GlowAnimationState.NONE;
-  protected accessor inputAriaLive_: string = '';
   protected accessor isLensSearchbox_: boolean =
       loadTimeData.getBoolean('isLensSearchbox');
   protected accessor enableThumbnailSizingTweaks_: boolean =
@@ -275,10 +264,6 @@ export class SearchboxElement extends SearchboxElementBase implements
       loadTimeData.getBoolean('searchboxVoiceSearch');
   protected accessor searchboxLensSearchEnabled_: boolean =
       loadTimeData.getBoolean('searchboxLensSearch');
-  protected accessor showModelPicker_: boolean =
-      loadTimeData.valueExists('contextualMenuUsePecApi') ?
-      loadTimeData.getBoolean('contextualMenuUsePecApi') :
-      false;
   protected accessor thumbnailUrl_: string = '';
   protected accessor isThumbnailDeletable_: boolean = false;
   private accessor useWebkitSearchIcons_: boolean = false;
@@ -352,10 +337,6 @@ export class SearchboxElement extends SearchboxElementBase implements
       this.selectedMatch = this.computeSelectedMatch_();
     }
 
-    if (changedPrivateProperties.has('selectedMatch')) {
-      this.inputAriaLive_ = this.computeInputAriaLive_();
-    }
-
     if (changedPrivateProperties.has('thumbnailUrl_')) {
       this.showThumbnail = !!this.thumbnailUrl_;
     }
@@ -400,10 +381,6 @@ export class SearchboxElement extends SearchboxElementBase implements
 
   override pageHandler(): PageHandlerInterface {
     return this.pageHandler_;
-  }
-
-  private computeInputAriaLive_(): string {
-    return this.selectedMatch ? 'off' : 'polite';
   }
 
   getDropTarget() {
@@ -477,9 +454,9 @@ export class SearchboxElement extends SearchboxElementBase implements
     this.placeholderCycler_?.stop();
   }
 
-  protected onInputTextUpdated_(
+  protected onSearchboxInputTextUpdated_(
       e: CustomEvent<{value: string, isComposing: boolean}>) {
-    this.onInputTextUpdated(e, this.isLensSearchbox_);
+    this.onSearchboxInputTextUpdated(e, this.isLensSearchbox_);
   }
 
   protected onSearchboxInputFilesPasted_(e: CustomEvent<{files: FileList}>) {

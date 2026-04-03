@@ -113,14 +113,14 @@ chrome.test.succeed = function(message) {};
 chrome.test.getModuleSystem = function(context) {};
 
 /**
- * @param {(string|boolean)} test
+ * @param {boolean} test
  * @param {string=} message
  * @see https://developer.chrome.com/extensions/test#method-assertTrue
  */
 chrome.test.assertTrue = function(test, message) {};
 
 /**
- * @param {(string|boolean)} test
+ * @param {boolean} test
  * @param {string=} message
  * @see https://developer.chrome.com/extensions/test#method-assertFalse
  */
@@ -233,6 +233,8 @@ chrome.test.callbackFail = function(expectedError, func) {};
 
 /**
  * @param {!Array<function(): void>} tests
+ * @return {Promise} A promise that resolves when all tests complete
+ *     successfully or rejects if any test failed.
  * @see https://developer.chrome.com/extensions/test#method-runTests
  */
 chrome.test.runTests = function(tests) {};

@@ -133,6 +133,7 @@ import org.chromium.chrome.browser.keyboard_accessory.ManualFillingComponent;
 import org.chromium.chrome.browser.keyboard_accessory.ManualFillingComponentFactory;
 import org.chromium.chrome.browser.keyboard_accessory.ManualFillingComponentSupplier;
 import org.chromium.chrome.browser.layouts.LayoutManagerAppUtils;
+import org.chromium.chrome.browser.layouts.LayoutType;
 import org.chromium.chrome.browser.media.FullscreenVideoPictureInPictureController;
 import org.chromium.chrome.browser.metrics.LaunchMetrics;
 import org.chromium.chrome.browser.metrics.SimpleStartupForegroundSessionDetector;
@@ -200,6 +201,7 @@ import org.chromium.chrome.browser.toolbar.ControlContainer;
 import org.chromium.chrome.browser.toolbar.ToolbarManager;
 import org.chromium.chrome.browser.translate.TranslateBridge;
 import org.chromium.chrome.browser.ui.BottomContainer;
+import org.chromium.chrome.browser.ui.ChromeActivitySnackbarHelper;
 import org.chromium.chrome.browser.ui.RootUiCoordinator;
 import org.chromium.chrome.browser.ui.appmenu.AppMenuBlocker;
 import org.chromium.chrome.browser.ui.appmenu.AppMenuDelegate;
@@ -393,6 +395,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
 
     private final SettableMonotonicObservableSupplier<SnackbarManager> mSnackbarManagerSupplier =
             ObservableSuppliers.createMonotonic();
+    private @Nullable ChromeActivitySnackbarHelper mChromeActivitySnackbarHelper;
 
     // Timestamp in ms when initial layout inflation begins
     private long mInflateInitialLayoutBeginMs;
@@ -655,12 +658,16 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
 
             mBottomContainer = findViewById(R.id.bottom_container);
 
+            mChromeActivitySnackbarHelper =
+                    new ChromeActivitySnackbarHelper(
+                            getEdgeToEdgeSupplier(),
+                            assertNonNull(mRootUiCoordinator.getBottomSheetController()));
             SnackbarManager snackbarManager =
                     new SnackbarManager(
                             this,
                             mBottomContainer,
                             getWindowAndroid(),
-                            getEdgeToEdgeSupplier(),
+                            mChromeActivitySnackbarHelper.getBottomMarginSupplier(),
                             getModalDialogManager());
             mSnackbarManagerSupplier.set(snackbarManager);
             getInsetObserver().addObserver(snackbarManager);
@@ -1381,13 +1388,23 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         return mFullscreenVideoPictureInPictureController;
     }
 
-    private @Nullable ActorPictureInPictureController maybeCreateActorPipController() {
+    @VisibleForTesting
+    public void exitOverviewModeOnActorPiPExpand() {
+        if (isInOverviewMode() && mLayoutManagerSupplier.get() != null) {
+            mLayoutManagerSupplier.get().showLayout(LayoutType.BROWSING, /* animate= */ false);
+        }
+    }
+
+    @VisibleForTesting
+    public @Nullable ActorPictureInPictureController maybeCreateActorPipController() {
         if (mActorPipController == null && ChromeFeatureList.sGlic.isEnabled()) {
             mActorPipController =
                     new ActorPictureInPictureController(
                             this,
                             () -> mTabModelProfileSupplier.get(),
-                            () -> findViewById(android.R.id.content));
+                            () -> findViewById(android.R.id.content),
+                            getTabModelSelectorSupplier(),
+                            this::exitOverviewModeOnActorPiPExpand);
         }
         return mActorPipController;
     }
@@ -1829,6 +1846,8 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         if (snackbarManager != null) {
             SnackbarManagerProvider.detach(snackbarManager);
             snackbarManager.destroy();
+            assumeNonNull(mChromeActivitySnackbarHelper);
+            mChromeActivitySnackbarHelper.destroy();
         }
 
         if (mBackPressManager != null) {
@@ -2434,10 +2453,10 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
     }
 
     /**
-     * @return An {@link MonotonicObservableSupplier} that will supply the {@link LayoutManagerImpl} when it
-     *     is ready.
+     * Returns the {@link MonotonicObservableSupplier} that will supply the {@link
+     * LayoutManagerImpl} when it is ready.
      */
-    public final MonotonicObservableSupplier<LayoutManagerImpl> getLayoutManagerSupplier() {
+    public MonotonicObservableSupplier<LayoutManagerImpl> getLayoutManagerSupplier() {
         return mLayoutManagerSupplier;
     }
 

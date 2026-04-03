@@ -210,28 +210,34 @@ void TileDisplayLayerImpl::GetContentsResourceId(
     return;
   }
 
-  // Masks are only supported if they fit on exactly one tile.
-  if (tilings_.size() != 1u) {
+  if (!ValidateTilingSetForContentsResourceId()) {
     return;
   }
 
   const float max_contents_scale = GetMaximumContentsScaleForUseInAppendQuads();
   gfx::Rect content_rect =
       gfx::ScaleToEnclosingRect(gfx::Rect(bounds()), max_contents_scale);
-  auto iter = TilingSetCoverageIterator<TileDisplayLayerTiling>(
-      tilings_, content_rect, max_contents_scale, GetIdealContentsScaleKey());
+  auto iter =
+      Cover(content_rect, max_contents_scale, GetIdealContentsScaleKey());
 
-  // We cannot do anything if the mask resource was not provided.
-  if (!iter || !*iter || !iter->resource()) {
+  // Mask resource not ready yet.
+  if (!iter || !*iter) {
     return;
   }
 
+  // Masks only supported if they fit on exactly one tile.
   DCHECK(iter.geometry_rect() == content_rect)
       << "iter rect " << iter.geometry_rect().ToString() << " content rect "
       << content_rect.ToString();
 
-  *resource_id = iter->resource()->resource_id;
-  *resource_size = iter->resource()->resource_size;
+  auto resource_id_opt = iter->GetResourceId();
+  auto resource_size_opt = iter->GetResourceSize();
+  if (!resource_id_opt || !resource_size_opt) {
+    return;
+  }
+
+  *resource_id = *resource_id_opt;
+  *resource_size = *resource_size_opt;
   gfx::SizeF requested_tile_size =
       gfx::SizeF(iter.CurrentTiling()->tile_size());
   *resource_uv_size =
@@ -272,6 +278,11 @@ float TileDisplayLayerImpl::GetIdealContentsScaleKey() const {
   return std::max(ideal_scale.x(), ideal_scale.y());
 }
 
+bool TileDisplayLayerImpl::ValidateTilingSetForContentsResourceId() const {
+  // Masks are only supported if they fit on exactly one tile.
+  return tilings_.size() == 1u;
+}
+
 void TileDisplayLayerImpl::AppendQuadsForResourcelessSoftwareDraw(
     const AppendQuadsContext& context,
     viz::CompositorRenderPass* render_pass,
@@ -287,7 +298,7 @@ void TileDisplayLayerImpl::AppendQuadsForResourcelessSoftwareDraw(
 TilingSetCoverageIterator<TileDisplayLayerTiling> TileDisplayLayerImpl::Cover(
     const gfx::Rect& coverage_rect,
     float coverage_scale,
-    float ideal_contents_scale) {
+    float ideal_contents_scale) const {
   return TilingSetCoverageIterator<TileDisplayLayerTiling>(
       tilings_, coverage_rect, coverage_scale, ideal_contents_scale);
 }

@@ -398,6 +398,29 @@ ComposeboxQueryController::MimeTypeStringFromFileInfo(
   }
 }
 
+void ComposeboxQueryController::SetIsBackgrounded(bool backgrounded) {
+  if (is_backgrounded_ == backgrounded) {
+    return;
+  }
+  is_backgrounded_ = backgrounded;
+  if (is_backgrounded_) {
+    // Reset fetchers to stop in-flight requests and prevent new ones. We do
+    // not call ClearClusterInfo or ResetRequestClusterInfoState because we want
+    // to preserve the current backoff/retry state and any existing valid
+    // cluster info data while backgrounded. We only invalidate the state to
+    // ensure it gets re-fetched upon foregrounding.
+    cluster_info_endpoint_fetcher_.reset();
+    cluster_info_access_token_fetcher_.reset();
+    if (query_controller_state_ != QueryControllerState::kOff) {
+      SetQueryControllerState(QueryControllerState::kClusterInfoInvalid);
+    }
+  } else {
+    if (query_controller_state_ == QueryControllerState::kClusterInfoInvalid) {
+      FetchClusterInfo();
+    }
+  }
+}
+
 void ComposeboxQueryController::InitializeIfNeeded() {
   if (query_controller_state_ == QueryControllerState::kOff) {
     // The query controller state starts at kOff. If it is set to any other
@@ -652,13 +675,19 @@ void ComposeboxQueryController::CreateSearchUrl(
         }
         std::unique_ptr<lens::LensOverlayRequestId> request_id = nullptr;
         if (!is_translate) {
-          request_id = is_raw_file
-                           ? request_id_generator_.GetNextRequestId(
-                                 lens::RequestIdUpdateMode::kSearchUrl,
-                                 last_active_lens_file->request_id->mime_type())
-                           : request_id_generator_.GetNextRequestId(
-                                 lens::RequestIdUpdateMode::kSearchUrl,
-                                 context_media_type);
+          if (is_aim_search) {
+            request_id = std::make_unique<lens::LensOverlayRequestId>(
+                *last_active_lens_file->request_id);
+          } else {
+            request_id =
+                is_raw_file
+                    ? request_id_generator_.GetNextRequestId(
+                          lens::RequestIdUpdateMode::kSearchUrl,
+                          last_active_lens_file->request_id->mime_type())
+                    : request_id_generator_.GetNextRequestId(
+                          lens::RequestIdUpdateMode::kSearchUrl,
+                          context_media_type);
+          }
         }
         std::move(callback).Run(GetUrlForMultimodalSearch(
             template_url_service_, is_aim_search,
@@ -901,6 +930,8 @@ void ComposeboxQueryController::StartFileUploadFlow(
       contextual_input_data->viewport_screenshot.has_value();
 
   bool has_viewport_screenshot = has_viewport_bitmap || has_viewport_bytes;
+  bool has_context_input = contextual_input_data->context_input.has_value() &&
+                           !contextual_input_data->context_input->empty();
 
   // Determine the update mode based on file type and viewport.
   lens::RequestIdUpdateMode base_update_mode =
@@ -908,8 +939,16 @@ void ComposeboxQueryController::StartFileUploadFlow(
   if (current_file_info.mime_type == lens::MimeType::kImage) {
     base_update_mode = lens::RequestIdUpdateMode::kFullImageRequest;
   } else if (has_viewport_screenshot) {
-    base_update_mode =
-        lens::RequestIdUpdateMode::kPageContentWithViewportRequest;
+    // The input data may contain just a viewport without the actual
+    // context input data, in the case that the QueryContextualizer determines
+    // that the context is a reupload with an updated viewport but unchanged
+    // page / pdf contents.
+    if (has_context_input) {
+      base_update_mode =
+          lens::RequestIdUpdateMode::kPageContentWithViewportRequest;
+    } else {
+      base_update_mode = lens::RequestIdUpdateMode::kFullImageRequest;
+    }
   }
 
   // For the multi-context input flow, whether or not to use the _AND_IMAGE
@@ -975,10 +1014,13 @@ void ComposeboxQueryController::StartFileUploadFlow(
           lens::RequestIdUpdateMode::kMultiContextUploadRequest,
           current_file_info.mime_type_string.value());
     } else {
+      lens::LensOverlayRequestId::MediaType media_type =
+          has_context_input
+              ? lens::MimeTypeToMediaType(current_file_info.mime_type,
+                                          use_has_viewport_media_type)
+              : lens::LensOverlayRequestId::MEDIA_TYPE_DEFAULT_IMAGE;
       current_file_info.request_id = *request_id_generator_.GetNextRequestId(
-          lens::RequestIdUpdateMode::kMultiContextUploadRequest,
-          lens::MimeTypeToMediaType(current_file_info.mime_type,
-                                    use_has_viewport_media_type));
+          lens::RequestIdUpdateMode::kMultiContextUploadRequest, media_type);
     }
   }
 
@@ -1358,6 +1400,9 @@ void ComposeboxQueryController::SendInteractionRequest(
 }
 
 void ComposeboxQueryController::FetchClusterInfo() {
+  if (is_backgrounded_) {
+    return;
+  }
   SetQueryControllerState(QueryControllerState::kAwaitingClusterInfoResponse);
 
   // There should not be any in-flight cluster info access token request.
@@ -1416,6 +1461,9 @@ void ComposeboxQueryController::SendClusterInfoNetworkRequest(
 
 void ComposeboxQueryController::HandleClusterInfoResponse(
     std::unique_ptr<endpoint_fetcher::EndpointResponse> response) {
+  if (is_backgrounded_) {
+    return;
+  }
   cluster_info_endpoint_fetcher_.reset();
 
   if (response->http_status_code != google_apis::ApiErrorCode::HTTP_SUCCESS) {
@@ -1689,16 +1737,27 @@ void ComposeboxQueryController::CreateUploadRequestBodiesAndContinue(
     case lens::MimeType::kPdf:
       [[fallthrough]];
     case lens::MimeType::kAnnotatedPageContent:
-      CHECK(contextual_input_data->context_input.has_value());
-      if (contextual_input_data->context_input->size() == 0) {
-        UpdateContextUploadStatus(
-            file_info->file_token,
-            contextual_search::ContextUploadStatus::kValidationFailed,
-            contextual_search::ContextUploadErrorType::kBrowserProcessingError);
-        return;
-      }
       [[fallthrough]];
     case lens::MimeType::kUnknown:
+      if (!contextual_input_data->context_input.has_value() ||
+          contextual_input_data->context_input->empty()) {
+        if (enable_viewport_images_ &&
+            (contextual_input_data->viewport_screenshot_bytes.has_value() ||
+             contextual_input_data->viewport_screenshot.has_value())) {
+          // This is a reupload with an updated viewport but unchanged page /
+          // pdf contents. Other than the viewport upload set up earlier
+          // in this function, no other uploads are needed.
+          break;
+        }
+        if (file_info->mime_type != lens::MimeType::kUnknown) {
+          UpdateContextUploadStatus(
+              file_info->file_token,
+              contextual_search::ContextUploadStatus::kValidationFailed,
+              contextual_search::ContextUploadErrorType::
+                  kBrowserProcessingError);
+          return;
+        }
+      }
       // Call CreateContentextualDataUploadPayload off the main thread to avoid
       // blocking the main thread on compression.
       create_request_task_runner_->PostTaskAndReplyWithResult(

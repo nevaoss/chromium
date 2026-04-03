@@ -2,13 +2,38 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {assert} from '//resources/js/assert.js';
-
 const kLogWebSocketMessages = false;
 
 /**
  * API session WebSocket protocol types.
  */
+
+export interface FunctionDeclaration {
+  name: string;
+  description?: string;
+  parameters?: any;
+}
+
+export interface Tool {
+  functionDeclarations?: FunctionDeclaration[];
+}
+
+export interface FunctionCall {
+  id: string;
+  name: string;
+  args: any;
+}
+
+export interface ToolCall {
+  functionCalls: FunctionCall[];
+}
+
+export interface FunctionResponse {
+  id: string;
+  name: string;
+  response: any;
+}
+
 interface SetupMessage {
   setup: {
     model: string,
@@ -25,6 +50,7 @@ interface SetupMessage {
     systemInstruction?: {
       parts: Array<{text: string}>,
     },
+    tools?: Tool[],
     inputAudioTranscription?: {},
     outputAudioTranscription?: {},
   };
@@ -60,11 +86,13 @@ interface ServerContentMessage {
     },
   };
   setupComplete?: {};
+  toolCall?: ToolCall;
 }
 
-interface ApiConfig {
-  endpoint_url: string;
+export interface ApiConfig {
+  endpointUrl: string;
   model: string;
+  apiKey: string;
 }
 
 export interface ApiSessionDelegate {
@@ -73,45 +101,41 @@ export interface ApiSessionDelegate {
   onTurnComplete(): void;
   interrupt(): void;
   onConnectionChanged(connected: boolean): void;
+  onToolCall(toolCall: ToolCall): void;
+}
+
+function log(msg: string, ...args: any[]) {
+  console.info(
+      `[${performance.now().toFixed(2)}] [ApiSession] ${msg}`, ...args);
 }
 
 /**
  * Manages the connection and communication with the server.
  */
 export class ApiSession {
-  private readonly apiKey: string;
   private readonly systemInstruction: string;
+  private readonly config: ApiConfig;
+  private readonly toolDefinitions: Tool[];
 
   private ws: WebSocket|null = null;
-  private config_: ApiConfig|null = null;
 
   private delegate: ApiSessionDelegate;
 
   constructor(
-      apiKey: string, systemInstruction: string, delegate: ApiSessionDelegate) {
-    this.apiKey = apiKey;
+      systemInstruction: string, config: ApiConfig, toolDefinitions: Tool[],
+      delegate: ApiSessionDelegate) {
     this.systemInstruction = systemInstruction;
+    this.config = config;
+    this.toolDefinitions = toolDefinitions;
     this.delegate = delegate;
   }
 
-  async connect() {
-    if (!this.config_) {
-      try {
-        const response = await fetch('api_config.json');
-        this.config_ = await response.json();
-      } catch (e) {
-        console.error('ApiSession failed to load api_config.json', e);
-        this.stop();
-        return;
-      }
-    }
-
-    assert(this.config_);
-    const url = `${this.config_.endpoint_url}?key=${this.apiKey}`;
+  connect() {
+    const url = `${this.config.endpointUrl}?key=${this.config.apiKey}`;
     this.ws = new WebSocket(url);
 
     this.ws.onopen = () => {
-      console.info('WebSocket Opened');
+      log('WebSocket Opened');
       this.sendSetup();
     };
 
@@ -146,7 +170,7 @@ export class ApiSession {
     };
 
     this.ws.onclose = (e) => {
-      console.info('WebSocket Closed: ', e);
+      log('WebSocket Closed: ', e);
       this.delegate.onConnectionChanged(false);
       this.stop();
     };
@@ -159,16 +183,15 @@ export class ApiSession {
   }
 
   stop() {
-    console.info('ApiSession: stop');
+    log('stop()');
     this.ws?.close();
     this.ws = null;
   }
 
   private sendSetup() {
-    assert(this.config_);
     const setup: SetupMessage = {
       setup: {
-        model: this.config_.model,
+        model: this.config.model,
         generationConfig: {
           responseModalities: ['AUDIO'],
           speechConfig: {
@@ -180,10 +203,12 @@ export class ApiSession {
             text: this.systemInstruction,
           }],
         },
+        tools: this.toolDefinitions,
         inputAudioTranscription: {},
         outputAudioTranscription: {},
       },
     };
+    log('Sending Setup Message', setup);
     this.ws?.send(JSON.stringify(setup));
   }
 
@@ -199,10 +224,30 @@ export class ApiSession {
     this.ws?.send(JSON.stringify(msg));
   }
 
+  sendToolResponse(responses: FunctionResponse[]) {
+    const msg = {
+      toolResponse: {
+        functionResponses: responses.map(response => ({
+                                           id: response.id,
+                                           name: response.name,
+                                           response: response.response,
+                                         })),
+      },
+    };
+    log('Sending Tool Response', msg);
+    this.ws?.send(JSON.stringify(msg));
+  }
+
   private handleMessage(msg: ServerContentMessage) {
     if (msg.setupComplete) {
-      console.info('ApiSession SetupComplete');
+      log('SetupComplete');
       this.delegate.onConnectionChanged(true);
+      return;
+    }
+
+    if (msg.toolCall) {
+      log('Received toolCall', msg.toolCall);
+      this.delegate.onToolCall(msg.toolCall);
       return;
     }
 
@@ -212,10 +257,12 @@ export class ApiSession {
     }
 
     if (content.inputTranscription?.text) {
+      log('Input transcription:', content.inputTranscription.text);
       this.delegate.onTranscription(content.inputTranscription.text, true);
     }
 
     if (content.outputTranscription?.text) {
+      log('Output transcription:', content.outputTranscription.text);
       this.delegate.onTranscription(content.outputTranscription.text, false);
     }
 
@@ -228,10 +275,12 @@ export class ApiSession {
     }
 
     if (content.turnComplete) {
+      log('TurnComplete');
       this.delegate.onTurnComplete();
     }
 
     if (content.interrupted) {
+      log('Interrupted');
       this.delegate.interrupt();
     }
   }

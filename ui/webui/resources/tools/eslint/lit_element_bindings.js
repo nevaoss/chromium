@@ -2,12 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import {ESLintUtils} from '/third_party/node/node_modules/@typescript-eslint/utils/dist/index.js';
+import esquery from '/third_party/node/node_modules/esquery/dist/esquery.esm.min.js';
+import ts from '/third_party/node/node_modules/typescript/lib/typescript.js';
 import assert from 'node:assert';
 import path from 'node:path';
-
-import {ESLintUtils} from '../../../../../third_party/node/node_modules/@typescript-eslint/utils/dist/index.js';
-import esquery from '../../../../../third_party/node/node_modules/esquery/dist/esquery.esm.min.js';
-import ts from '../../../../../third_party/node/node_modules/typescript/lib/typescript.js';
 
 import {dashCaseToCamelCase, extractClassImport, LIT_IMPORT_REGEX} from './query_utils.js';
 
@@ -123,11 +122,11 @@ export const litElementExpressions = ESLintUtils.RuleCreator.withoutDocs({
             continue;
           }
 
-          if (expression.type !== 'MemberExpression') {
-            continue;
-          }
-
-          const propName = expression.property.name;
+          const isPropertyBinding = expression.type === 'MemberExpression' &&
+              expression.object.type === 'ThisExpression';
+          const propName = isPropertyBinding ?
+              expression.property.name :
+              context.sourceCode.getText(expression);
           let isBooleanType = false;
           let isObjectOrArrayType = false;
           let declaredTypeName = null;
@@ -135,16 +134,18 @@ export const litElementExpressions = ESLintUtils.RuleCreator.withoutDocs({
           // Determine the type that is declared for the Lit reactive property,
           // for expressions of form "this.someProp". This can fail for reactive
           // properties that are inherited from mixins.
-          const declaredProp =
-              declaredProps.find(prop => prop.key.name === propName);
-          if (declaredProp) {
-            const declaredType = declaredProp.value.properties.find(
-                prop => prop.key.name === 'type');
-            if (declaredType) {
-              declaredTypeName = declaredType.value.name;
-              isBooleanType = declaredTypeName === 'Boolean';
-              isObjectOrArrayType =
-                  declaredTypeName === 'Array' || declaredTypeName === 'Object';
+          if (isPropertyBinding) {
+            const declaredProp =
+                declaredProps.find(prop => prop.key.name === propName);
+            if (declaredProp) {
+              const declaredType = declaredProp.value.properties.find(
+                  prop => prop.key.name === 'type');
+              if (declaredType) {
+                declaredTypeName = declaredType.value.name;
+                isBooleanType = declaredTypeName === 'Boolean';
+                isObjectOrArrayType = declaredTypeName === 'Array' ||
+                    declaredTypeName === 'Object';
+              }
             }
           }
 
@@ -153,14 +154,9 @@ export const litElementExpressions = ESLintUtils.RuleCreator.withoutDocs({
           const tsNode = services.esTreeNodeToTSNodeMap.get(expression);
           assert.ok(tsNode);
           const type = checker.getTypeAtLocation(tsNode);
-          // Convert to non-nullable type for purposes of matching for now.
-          // Optionally undefined types are commonly used for code migrated
-          // from Polymer that relies on a parent passing a value via data
-          // binding.
-          const typeStr =
-              checker.typeToString(checker.getNonNullableType(type));
-
-          const isTsBoolean = typeStr === 'boolean';
+          const typeStr = checker.typeToString(type);
+          const isTsBoolean = typeStr === 'boolean' || typeStr === 'true' ||
+              typeStr === 'false';
           const isTsObjectOrArray = (type.flags & ts.TypeFlags.Object) !== 0 ||
               typeStr.endsWith('[]') || typeStr.startsWith('Array<') ||
               typeStr.startsWith('Record<') || typeStr.startsWith('{') ||

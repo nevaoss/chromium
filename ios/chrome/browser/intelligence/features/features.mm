@@ -73,7 +73,7 @@ bool IsPageActionMenuAuthFlowEnabled() {
          base::FeatureList::IsEnabled(kPageActionMenuAuthFlow);
 }
 
-BASE_FEATURE(kProactiveSuggestionsFramework, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kProactiveSuggestionsFramework, base::FEATURE_ENABLED_BY_DEFAULT);
 
 bool IsProactiveSuggestionsFrameworkEnabled() {
   if (!IsPageActionMenuEnabled()) {
@@ -93,7 +93,7 @@ bool IsProactiveSuggestionsFrameworkPopupBlockerEnabled() {
       kProactiveSuggestionsFrameworkPopupBlocker, false);
 }
 
-BASE_FEATURE(kAskGeminiChip, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kAskGeminiChip, base::FEATURE_ENABLED_BY_DEFAULT);
 
 const char kAskGeminiChipIgnoreCriteria[] = "AskGeminiChipIgnoreCriteria";
 
@@ -235,13 +235,13 @@ PositionForExplainGeminiEditMenu ExplainGeminiEditMenuPosition() {
 
 BASE_FEATURE(kExplainGeminiEditMenu, base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kBWGPreciseLocation, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGeminiPreciseLocation, base::FEATURE_DISABLED_BY_DEFAULT);
 
-bool IsBWGPreciseLocationEnabled() {
+bool IsGeminiPreciseLocationEnabled() {
   if (!IsPageActionMenuEnabled()) {
     return false;
   }
-  return base::FeatureList::IsEnabled(kBWGPreciseLocation);
+  return base::FeatureList::IsEnabled(kGeminiPreciseLocation);
 }
 
 BASE_FEATURE(kAIHubNewBadge, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -499,6 +499,16 @@ double GetGeminiCopresenceResponseReadyInterval() {
   return base::GetFieldTrialParamByFeatureAsDouble(
       kGeminiCopresence, kGeminiCopresenceResponseReadyInterval,
       kGeminiCopresenceResponseReadyIntervalDefault);
+}
+
+const char kGeminiCopresenceSRPCheck[] = "GeminiCopresenceSRPCheck";
+
+bool IsGeminiCopresenceSRPCheckEnabled() {
+  if (!IsPageActionMenuEnabled()) {
+    return false;
+  }
+  return base::GetFieldTrialParamByFeatureAsBool(
+      kGeminiCopresence, kGeminiCopresenceSRPCheck, /*default_value=*/true);
 }
 
 BASE_FEATURE(kGeminiChatPersistence, base::FEATURE_DISABLED_BY_DEFAULT);

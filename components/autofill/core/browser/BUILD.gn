@@ -1068,6 +1068,7 @@ static_library("browser") {
     "//components/variations/net",
     "//components/version_info",
     "//components/wallet/core/browser",
+    "//components/wallet/core/common:features",
     "//components/webdata/common",
     "//crypto",
     "//google_apis",
@@ -1109,11 +1110,14 @@ static_library("browser") {
     deps += [ "//components/strings" ]
   }
 
-  if (!is_android && !is_ios) {
+  if (!is_android) {
     sources += [
       "crowdsourcing/server_prediction_overrides.cc",
       "crowdsourcing/server_prediction_overrides.h",
     ]
+  }
+
+  if (!is_android && !is_ios) {
     deps += [ "//ui/native_theme" ]
   }
 
@@ -1407,6 +1411,7 @@ static_library("test_support") {
     "//components/autofill/core/browser",
     "//components/autofill/core/common",
     "//components/autofill/core/common:credit_card_number_validation",
+    "//components/consent_auditor:test_support",
     "//components/device_reauth:test_support",
     "//components/feature_engagement",
     "//components/leveldb_proto",
@@ -1808,6 +1813,7 @@ source_set("unit_tests") {
 
   if (!is_android) {
     sources += [
+      "crowdsourcing/server_prediction_overrides_unittest.cc",
       "ui/autofill_image_fetcher_unittest.cc",
       "ui/payments/bnpl_tos_controller_impl_unittest.cc",
     ]
@@ -1828,10 +1834,7 @@ source_set("unit_tests") {
   }
 
   if (!is_ios && !is_android) {
-    sources += [
-      "crowdsourcing/server_prediction_overrides_unittest.cc",
-      "payments/desktop_bnpl_strategy_unittest.cc",
-    ]
+    sources += [ "payments/desktop_bnpl_strategy_unittest.cc" ]
   }
 
   if (!is_fuchsia) {
@@ -1863,6 +1866,7 @@ source_set("unit_tests") {
     "//components/autofill/core/common:autofill_regex",
     "//components/autofill/core/common:credit_card_number_validation",
     "//components/consent_auditor",
+    "//components/consent_auditor:test_support",
     "//components/device_reauth",
     "//components/device_reauth:test_support",
     "//components/feature_engagement",
@@ -1901,6 +1905,7 @@ source_set("unit_tests") {
     "//components/variations/net",
     "//components/version_info",
     "//components/wallet/core/browser",
+    "//components/wallet/core/common:features",
     "//components/webdata/common",
     "//google_apis",
     "//google_apis:test_support",

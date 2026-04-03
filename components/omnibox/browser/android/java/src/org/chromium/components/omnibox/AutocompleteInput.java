@@ -79,8 +79,11 @@ public class AutocompleteInput implements UserData {
     private @OmniboxFocusReason int mFocusReason;
     private /* ModelMode */ int mModelMode;
 
+    private String mInitialUserText = "";
     private final SettableNonNullObservableSupplier<String> mUserText =
             ObservableSuppliers.createNonNull("");
+    private final SettableNonNullObservableSupplier<Boolean> mAllowUserTextAutocompletion =
+            ObservableSuppliers.createNonNull(true);
     private final SettableNonNullObservableSupplier<@AutocompleteRequestType Integer>
             mRequestTypeSupplier =
                     ObservableSuppliers.createNonNull(AutocompleteRequestType.SEARCH);
@@ -128,6 +131,8 @@ public class AutocompleteInput implements UserData {
         mFocusReason = other.mFocusReason;
         mModelMode = other.mModelMode;
         mUserText.set(other.mUserText.get());
+        mAllowUserTextAutocompletion.set(other.mAllowUserTextAutocompletion.get());
+        mInitialUserText = other.mInitialUserText;
         mRequestTypeSupplier.set(other.mRequestTypeSupplier.get());
         mToolModeSupplier.set(other.mToolModeSupplier.get());
         mSiteSearchData.set(other.mSiteSearchData.get());
@@ -314,6 +319,20 @@ public class AutocompleteInput implements UserData {
         return this;
     }
 
+    /**
+     * Set the Initial Input - the one the session started with.
+     *
+     * <p>This is the default "revert-to" value.
+     */
+    public AutocompleteInput setInitialUserText(String userText) {
+        mInitialUserText = userText;
+        return this;
+    }
+
+    public String getInitialUserText() {
+        return mInitialUserText;
+    }
+
     /** Returns whether exact keyword match is allowed with current input. */
     public boolean allowExactKeywordMatch() {
         return mAllowExactKeywordMatch || getSiteSearchData() != null;
@@ -366,6 +385,22 @@ public class AutocompleteInput implements UserData {
     /** Returns the supplier for the text as currently typed by the User. */
     public NonNullObservableSupplier<String> getUserTextSupplier() {
         return mUserText;
+    }
+
+    /** Sets whether user text should be autocompleted. */
+    public AutocompleteInput setAllowUserTextAutocompletion(boolean shouldAllow) {
+        mAllowUserTextAutocompletion.set(shouldAllow);
+        return this;
+    }
+
+    /** Returns whether user text can be autocompleted. */
+    public boolean shouldAllowUserTextAutocompletion() {
+        return mAllowUserTextAutocompletion.get();
+    }
+
+    /** Returns the supplier for the autocompletion status. */
+    public NonNullObservableSupplier<Boolean> getShouldAllowUserTextAutocompletionSupplier() {
+        return mAllowUserTextAutocompletion;
     }
 
     /** Returns whether current context represents zero-prefix context. */
@@ -439,6 +474,7 @@ public class AutocompleteInput implements UserData {
         mPageClassification = PageClassification.BLANK_VALUE;
         mFocusReason = OmniboxFocusReason.OMNIBOX_TAP;
         mUserText.set("");
+        mAllowUserTextAutocompletion.set(true);
         mRequestTypeSupplier.set(AutocompleteRequestType.SEARCH);
         mSiteSearchData.set(null);
         mUrlFocusTime = 0;
@@ -467,10 +503,16 @@ public class AutocompleteInput implements UserData {
     }
 
     /**
-     * Whether to instantly show suggestions for the supplied input (false), or wait until the user
-     * actually began typing query (true).
+     * Returns whether automatic suggestions should be suppressed until user starts typing.
+     * Internally tracks and updates own state to reflect typing started.
      */
     public boolean shouldSuppressAutomaticSuggestionsUntilUserStartsTyping() {
+        // Update own state. If user text diverged, we no longer want to suppress suggestions,
+        // even if the user reverts the text to its initial state.
+        mSuppressAutomaticSuggestionsUntilUserStartsTyping =
+                mSuppressAutomaticSuggestionsUntilUserStartsTyping
+                        && TextUtils.equals(mUserText.get(), mInitialUserText);
+
         return mSuppressAutomaticSuggestionsUntilUserStartsTyping;
     }
 

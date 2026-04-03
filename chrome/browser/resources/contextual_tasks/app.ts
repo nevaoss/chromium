@@ -29,7 +29,6 @@ import type {PropertyValues} from 'chrome://resources/lit/v3_0/lit.rollup.js';
 import type {UnguessableToken} from 'chrome://resources/mojo/mojo/public/mojom/base/unguessable_token.mojom-webui.js';
 import type {Uuid} from 'chrome://resources/mojo/mojo/public/mojom/base/uuid.mojom-webui.js';
 import type {Url} from 'chrome://resources/mojo/url/mojom/url.mojom-webui.js';
-
 import {getCss} from './app.css.js';
 import {getHtml} from './app.html.js';
 import type {ComposeboxPosition, IconType} from './contextual_tasks.mojom-webui.js';
@@ -60,6 +59,7 @@ const VIEWPORT_HEIGHT_KEY = 'bih';
 const VIEWPORT_WIDTH_KEY = 'biw';
 
 const CHROME_TASK_PARAM_KEY = 'chrome_task_id';
+const DEBUG_PARAM_KEY = 'deb';
 
 // The extra padding to add to the occluders to ensure that the composebox is
 // fully visible. This helps to account for inconsistencies between the bounding
@@ -130,6 +130,13 @@ function updateWebuiParams(aimUrl: Url) {
 function urlHasThreadParams(url: URL): boolean {
   return url.searchParams.has('mstk') && url.searchParams.has('mtid') &&
       url.searchParams.has('q');
+}
+
+// Returns whether the value of the "deb" param contains "nocobrowse1" which
+// should cause the user to be removed from the cobrowse ui.
+function hasExitCobrowseParam(url: URL): boolean {
+  const debParam = url.searchParams.get(DEBUG_PARAM_KEY) || '';
+  return debParam.indexOf('nocobrowse1') > -1;
 }
 
 function applyWebUiParamsToThreadUrl(threadUrl: URL, webUiUrl: URL) {
@@ -534,6 +541,15 @@ export class ContextualTasksAppElement extends CrLitElement {
       this.isErrorPageVisible_ = isPendingErrorPage;
     }
 
+    // Allow URLs with the debug param set to exit the webui. This param is
+    // the same one used to prevent aim urls from entering the webui, so when
+    // set, it will be attached to the thread URL which will keep the user out
+    // of this UI.
+    if (hasExitCobrowseParam(webUiUrlOnLoad)) {
+      window.location.href = threadUrlAsUrl.href;
+      return;
+    }
+
     // Check if the initial render should be zero state.
     const {isZeroState} =
         await this.browserProxy_.handler.isZeroState(threadUrlAsUrl.href);
@@ -659,6 +675,13 @@ export class ContextualTasksAppElement extends CrLitElement {
       return;
     }
 
+    // If a thread URL is loaded with the debug param to exit coborowse,
+    // navigate the tab to that URL.
+    if (hasExitCobrowseParam(new URL(ev.url))) {
+      window.location.href = ev.url;
+      return;
+    }
+
     this.isLoadError_ = !window.navigator.onLine;
 
     // Reset the composebox bounds and the occluders since the embedded page is
@@ -670,6 +693,9 @@ export class ContextualTasksAppElement extends CrLitElement {
     this.isFrameLoading = true;
     const wasAiPage = this.isAiPage_;
     const wasZeroState = this.isZeroState_;
+
+    this.composebox_?.setToolFromUrl(ev.url);
+
     const {isAiPage} = await this.browserProxy_.handler.isAiPage(ev.url);
     const {isZeroState} = await this.browserProxy_.handler.isZeroState(ev.url);
 
@@ -1194,7 +1220,7 @@ export class ContextualTasksAppElement extends CrLitElement {
     await this.onThreadFrameLoadAbort(event);
   }
 
-  setIsZeroStateForTesting(isZeroState: boolean) {
+  setIsZeroStateForTesting(isZeroState: boolean|undefined) {
     this.isZeroState_ = isZeroState;
   }
 

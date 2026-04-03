@@ -407,8 +407,6 @@ export class AppElement extends AppElementBase {
   protected accessor wallpaperSearchButtonEnabled_: boolean =
       loadTimeData.getBoolean('wallpaperSearchButtonEnabled');
   protected accessor showWallpaperSearchButton_: boolean = false;
-  protected accessor composeboxCloseByClickOutside_: boolean =
-      loadTimeData.getBoolean('composeboxCloseByClickOutside');
   protected accessor isActionChipsVisible_: boolean =
       loadTimeData.getBoolean('actionChipsEnabled');
   protected accessor isFooterVisible_: boolean = false;
@@ -879,8 +877,8 @@ export class AppElement extends AppElementBase {
   }
 
   protected onScrimClick_() {
-    if (this.showComposebox_ && this.composeboxCloseByClickOutside_) {
-      this.onComposeboxClickOutside_();
+    if (this.showComposebox_) {
+      this.onComposeboxOutsideClick_();
     }
     if (this.showLensUploadDialog_) {
       this.onCloseLensSearch_();
@@ -888,12 +886,12 @@ export class AppElement extends AppElementBase {
     this.containerFocused_ = false;
   }
 
-  protected onComposeboxClickOutside_() {
+  protected onComposeboxOutsideClick_() {
     const composebox =
         this.shadowRoot.querySelector<ComposeboxElement>('#composebox');
     assert(composebox);
     const closeComposebox = new CustomEvent('closeComposebox', {
-      detail: {composeboxText: composebox.getText()},
+      detail: {composeboxText: composebox.input},
       bubbles: true,
       cancelable: true,
     });
@@ -915,7 +913,7 @@ export class AppElement extends AppElementBase {
     const composebox =
         this.shadowRoot.querySelector<ComposeboxElement>('#composebox');
     assert(composebox);
-    composebox.setText('');
+    composebox.input = '';
     composebox.resetModes();
     if (this.ntpRealboxNextEnabled_) {
       composebox.closeDropdown();
@@ -1328,6 +1326,23 @@ export class AppElement extends AppElementBase {
   }
 
   private onWindowClick_(e: Event) {
+    if (this.ntpRealboxNextEnabled_) {
+      const searchbox = this.shadowRoot.querySelector('ntp-searchbox');
+      const actionChips = this.shadowRoot.querySelector('ntp-action-chips');
+      const helpBubble =
+          searchbox ? searchbox.shadowRoot.querySelector('help-bubble') : null;
+      if (helpBubble) {
+        const isClickOnBubble = e.composedPath().includes(helpBubble);
+        const isClickOnSearchbox =
+            searchbox && e.composedPath().includes(searchbox);
+        const isClickOnActionChips =
+            actionChips && e.composedPath().includes(actionChips);
+        if (!isClickOnBubble && (isClickOnSearchbox || isClickOnActionChips)) {
+          this.hideHelpBubble(CONTEXTUAL_ENTRYPOINT_ELEMENT_ID);
+        }
+      }
+    }
+
     if (e.composedPath() && e.composedPath()[0] === $$(this, '#content')) {
       recordClick(NtpElement.BACKGROUND);
       return;
@@ -1398,9 +1413,13 @@ export class AppElement extends AppElementBase {
     this.realboxHadSecondarySide = e.detail.value;
   }
 
-  protected onSearchboxContainerFocusin_() {
+  protected onSearchboxContainerFocusin_(e: FocusEvent) {
     if (this.ntpRealboxNextEnabled_) {
-      this.containerFocused_ = true;
+      const isHelpBubble = e.composedPath().some(
+          el => (el as HTMLElement)?.tagName === 'HELP-BUBBLE');
+      if (!isHelpBubble) {
+        this.containerFocused_ = true;
+      }
     }
   }
 

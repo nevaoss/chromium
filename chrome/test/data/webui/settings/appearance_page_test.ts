@@ -91,6 +91,10 @@ function createAppearancePage() {
         type: chrome.settingsPrivate.PrefType.BOOLEAN,
         value: false,
       },
+      expand_on_hover: {
+        type: chrome.settingsPrivate.PrefType.BOOLEAN,
+        value: false,
+      },
     },
   });
 
@@ -498,10 +502,66 @@ suite('TabStripPositionSettings', () => {
   });
 });
 
+suite('VerticalTabsExpandOnHoverSettings', () => {
+  setup(async () => {
+    loadTimeData.overrideValues({
+      showVerticalTabsEnabled: true,
+      showVerticalTabsExpandOnHoverEnabled: true,
+    });
+
+    appearanceBrowserProxy = new TestAppearanceBrowserProxy();
+    AppearanceBrowserProxyImpl.setInstance(appearanceBrowserProxy);
+
+    createAppearancePage();
+    await microtasksFinished();
+  });
+
+  teardown(function() {
+    appearancePage.remove();
+  });
+
+  test('Toggle updates vertical_tabs.expand_on_hover pref', async function() {
+    assertFalse(
+        appearancePage.get('prefs.vertical_tabs.expand_on_hover.value'));
+
+    const toggle =
+        appearancePage.shadowRoot!.querySelector<SettingsToggleButtonElement>(
+            '#showVerticalTabsExpandOnHover');
+    assertTrue(!!toggle);
+    assertFalse(toggle.checked);
+
+    toggle.click();
+    await microtasksFinished();
+
+    assertTrue(appearancePage.get('prefs.vertical_tabs.expand_on_hover.value'));
+    assertTrue(toggle.checked);
+
+    toggle.click();
+    await microtasksFinished();
+
+    assertFalse(
+        appearancePage.get('prefs.vertical_tabs.expand_on_hover.value'));
+    assertFalse(toggle.checked);
+  });
+
+  test('Toggle is hidden when feature flag is disabled', async function() {
+    loadTimeData.overrideValues({
+      showVerticalTabsExpandOnHoverEnabled: false,
+    });
+
+    createAppearancePage();
+    await microtasksFinished();
+
+    const toggle =
+        appearancePage.shadowRoot!.querySelector('#showExpandOnHover');
+    assertTrue(!toggle || (toggle as HTMLElement).hidden);
+  });
+});
+
 suite('TabStripComboButtonSettings', () => {
   setup(async () => {
     loadTimeData.overrideValues({
-      showTabStripComboButtonEnabled: true,
+      showTabSearchEnabled: true,
       showProjectsPanelEnabled: true,
     });
 
@@ -547,7 +607,7 @@ suite('TabStripComboButtonSettings', () => {
 
   test('Everything menu toggle updates correct pref', async function() {
     loadTimeData.overrideValues({
-      showTabStripComboButtonEnabled: true,
+      showTabSearchEnabled: true,
       showProjectsPanelEnabled: false,
       showEverythingMenuEnabled: true,
     });
@@ -571,7 +631,7 @@ suite('TabStripComboButtonSettings', () => {
 
   test('Toggles hidden when disabled', async function() {
     loadTimeData.overrideValues({
-      showTabStripComboButtonEnabled: false,
+      showTabSearchEnabled: false,
       showProjectsPanelEnabled: false,
       showEverythingMenuEnabled: false,
     });

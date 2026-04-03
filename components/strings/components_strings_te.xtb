@@ -758,6 +758,7 @@
 <translation id="2188375229972301266">దిగువ భాగంలో అనేక రంధ్రాలు</translation>
 <translation id="218940509700321686">కామాతో వేరు చేయబడిన విలువలు</translation>
 <translation id="2190094353033916816">ఈ పాలసీకి మెషిన్, యూజర్ స్థాయిలలో వేర్వేరు విలువలు వర్తిస్తాయి. పాలసీ ఉద్దేశించిన విధంగా పని చేస్తోంది.</translation>
+<translation id="219061769324072544">క్రెడిట్,కార్డ్,డెబిట్</translation>
 <translation id="2191980191135734720">తర్వాత దశలో మీ స్క్రీన్‌ను అన్‌లాక్ చేయండి, సాధారణంగా మీ ఫింగర్ ప్రింట్‌ను ఉపయోగించండి. మీరు <ph name="LINK_TEXT" /> కూడా చేయవచ్చు.</translation>
 <translation id="2194856509914051091">పరిగణించాల్సిన విషయాలు</translation>
 <translation id="2195729137168608510">ఈమెయిల్‌ రక్షణ</translation>
@@ -1171,6 +1172,7 @@
 <translation id="2837891525090413132">లాక్ చేసి, మీ కీబోర్డ్‌ను ఉపయోగించమని అడగవచ్చు</translation>
 <translation id="2839032553903800133">నోటిఫికేషన్‌లు బ్లాక్ చేయబడ్డాయి</translation>
 <translation id="2839501879576190149">ముందున్న సైట్ నకిలీది</translation>
+<translation id="2840680829170913626">ఈ ఆప్షన్‌లను అందించడానికి చెక్ అవుట్ పేజీలోని కంటెంట్ Googleతో షేర్ అవుతుంది. పేమెంట్ ప్లాన్‌లు అర్హతకు లోబడి ఉంటాయి. ఆటోఫిల్‌లో 'తర్వాత పే చేయండి' ఆప్షన్‌లను దాచడానికి, <ph name="IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_FOOTNOTE_HIDE_OPTION_PAYMENT_SETTINGS_LINK_TEXT" />‌కు వెళ్లండి.</translation>
 <translation id="2843623755398178332">షేర్ చేసిన మీ ట్యాబ్‌ను స్క్రోల్ చేయడంతో పాటు, జూమ్ చేయాలనుకుంటున్నారా?</translation>
 <translation id="2851291081585704741">మీరు ఆఫ్‌లైన్‌లో ఉన్నారు</translation>
 <translation id="2854163610915391726">మీ Google ఖాతాలో మీరు సేవ్ చేసే Chrome సమాచారాన్ని మేనేజ్ చేయండి</translation>
@@ -1361,6 +1363,7 @@
 <translation id="3134859781443140237">లోకల్ నెట్‌వర్క్</translation>
 <translation id="3137283076021007034"><ph name="KEYWORD" /> - <ph name="KEYWORD_SHORT_NAME" /> సెర్చ్ చేయండి</translation>
 <translation id="3137507986424712703">{COUNT,plural, =0{ఏమీ లేవు}=1{1 ఖాతా సైన్ ఇన్ డేటా}other{# ఖాతాల సైన్ ఇన్ డేటా}}</translation>
+<translation id="3139503241401248626">ఈ సెట్టింగ్‌లను ఎనేబుల్ చేసి, మీ Google ఖాతా నుండి పేమెంట్ సమాచారాన్ని ఉపయోగించడానికి, ఆటోఫిల్ సర్వీస్‌ల సెట్టింగ్‌లకు వెళ్లండి</translation>
 <translation id="3140646734028448730">బిజినెస్ సర్వీస్‌లు</translation>
 <translation id="3141093262818886744">ఏదేమైనా తెరవండి</translation>
 <translation id="3141337053413339205">ఈ ట్యాబ్‌కు మారండి.</translation>
@@ -1381,6 +1384,7 @@
 <translation id="3162070126914310576">మీ సంస్థ యూనిట్ దాని ప్రారంభ ఎన్‌రోల్‌మెంట్ పరిమితిని చేరుకున్నందున ఈ డివైజ్‌ను ప్రస్తుతం ఎన్‌రోల్ చేయడం సాధ్యం కాదు. సహాయం కోసం మీ అడ్మినిస్ట్రేటర్‌ను సంప్రదించండి.</translation>
 <translation id="3162559335345991374">మీరు ఉపయోగిస్తున్న Wi-Fiకి మీరు దాని లాగిన్ పేజీని సందర్శించడం అవసరం.</translation>
 <translation id="316638481603975524">వెబ్ యాప్‌లను ఇన్‌స్టాల్ చేయమని అడగవచ్చు</translation>
+<translation id="3166788340998560642">తర్వాతిసారి మీరు దీన్ని ఉపయోగించినప్పుడు, Chrome దీన్ని <ph name="IDS_AUTOFILL_GOOGLE_WALLET_TITLE" />లో సేవ్ చేసే ఆప్షన్‌ను అందిస్తుంది</translation>
 <translation id="3168744840365648658">రేడియో ఎక్విప్‌మెంట్</translation>
 <translation id="3168938241115725594">క్లాసిక్ వాహనాలు</translation>
 <translation id="3169472444629675720">కనుగొనండి</translation>
@@ -2295,6 +2299,7 @@
 <translation id="4594403342090139922">&amp;తొలగించడాన్ని రద్దు చేయండి</translation>
 <translation id="4598556348158889687">స్టోరేజ్‌ నిర్వహణ</translation>
 <translation id="459914240367517409">వెబ్ డిజైన్ &amp; డెవలప్‌మెంట్</translation>
+<translation id="4599572944836204718">మీ కార్డ్ సేవ్ అయి ఉన్నప్పుడు Google Payతో మరింత వేగంగా పేమెంట్ చేయవచ్చు. కార్డ్ వివరాలు Google Walletలో ఎన్‌క్రిప్ట్ అవుతాయి.</translation>
 <translation id="4602465984861132303">బౌలింగ్</translation>
 <translation id="4603727370377253901">విమానం రిజర్వేషన్‌లు</translation>
 <translation id="4607608436550361748">Chrome చిట్కాలను చూడండి</translation>
@@ -2584,6 +2589,7 @@
 <translation id="5051254010007014901"><ph name="TOOLBELT_PRECEDING_MATCH_TEXT" />, ఈ సెర్చ్ సూచన తర్వాత అందుబాటులో ఉన్న మరిన్ని సెర్చ్ షార్ట్‌కట్‌ల కోసం ట్యాబ్ నొక్కండి</translation>
 <translation id="5052488928733955073">మీ సమాచారాన్ని ఫిల్ చేసేటప్పుడు సమస్య ఎదురైంది. మీ కనెక్షన్‌ను చెక్ చేయండి.</translation>
 <translation id="5052517576853118371">యాక్టివ్ టాపిక్‌లు</translation>
+<translation id="5053116470141135293">మీ అసలు వివరాలను రక్షించడానికి మీరు ఈ కార్డ్‌తో చెక్ అవుట్ చేసినప్పుడు వర్చువల్ కార్డ్ నంబర్ ఫిల్ అవుతుంది. Google Walletలో మేనేజ్ చేయండి. <ph name="IDS_AUTOFILL_VIRTUAL_CARD_ENROLLMENT_LEARN_MORE_LINK_LABEL" /></translation>
 <translation id="5056425809654826431">{NUM_FILES,plural, =1{'సమీప షేరింగ్'ను ఉపయోగించి ఈ ఫైల్‌ను పంపడానికి, మీ పరికరంలో స్పేస్ (<ph name="DISK_SPACE_SIZE" />)ను ఖాళీ చేయండి}other{'సమీప షేరింగ్'ను ఉపయోగించి ఈ ఫైళ్ళను పంపడానికి, మీ పరికరంలో స్పేస్ (<ph name="DISK_SPACE_SIZE" />)ను ఖాళీ చేయండి}}</translation>
 <translation id="5056587122125565772">ఇమేజ్‌ను క్రియేట్ చేయండి</translation>
 <translation id="505757197798929356">తెరవడానికి కారణాన్ని అందించండి (అవసరం)</translation>
@@ -2953,6 +2959,7 @@
 <translation id="5596627076506792578">మరిన్ని ఆప్షన్‌లు</translation>
 <translation id="5596939519753369075">2 x 3.5 అంగుళాలు</translation>
 <translation id="5597254438174353289">నీలం రంగు 3</translation>
+<translation id="5600044805561809264">మీరు బ్రౌజ్ చేస్తున్నప్పుడు మీరు షేర్ చేస్తున్న ట్యాబ్‌ల గురించి సులభంగా ప్రశ్నలు అడగవచ్చు.</translation>
 <translation id="5603469469737324249"><ph name="ISSUER_1_NAME" /> లేదా <ph name="ISSUER_2_NAME" /></translation>
 <translation id="560412284261940334">నిర్వహణకు మద్దతు లేదు</translation>
 <translation id="5605249000617390290">ధర ట్రాకింగ్ గురించి మరింత తెలుసుకోండి</translation>
@@ -3359,6 +3366,7 @@
 <translation id="6250932670816326647">బాత్ &amp; బాడీ ప్రోడక్ట్‌లు</translation>
 <translation id="6251906504834538140">{0,plural, =1{తరలించకుండా ఫైల్ బ్లాక్ చేయబడింది}other{తరలించకుండా <ph name="FILE_COUNT" /> ఫైల్స్ బ్లాక్ చేయబడ్డాయి}}</translation>
 <translation id="6252613631861574218"><ph name="MANAGE_CHROME_DOWNLOADS_FOCUSED_FRIENDLY_MATCH_TEXT" />, Chromeలో మీరు డౌన్‌లోడ్ చేసిన ఫైల్‌లను మేనేజ్ చేయడానికి Tabను నొక్కి, ఆపై Enterను నొక్కండి</translation>
+<translation id="6253380015872250643">Google Walletలో కార్డ్‌ను సేవ్ చేయండి</translation>
 <translation id="6254436959401408446">ఈ పేజీని తెరవడానికి తగినంత మెమరీ లేదు</translation>
 <translation id="625463612687472648">అనుమతించడాన్ని ఆపివేయండి</translation>
 <translation id="6259156558325130047">&amp;మళ్లీ క్రమం చేయడాన్ని రిపీట్‌ చేయి</translation>
@@ -4256,6 +4264,7 @@
 <translation id="7615932826417658001">గుర్తింపు కార్డ్‌ను జోడించండి</translation>
 <translation id="7616390733770379387">ఇవి ర్యాండమ్ ఆర్డర్‌లో చూపబడతాయి.</translation>
 <translation id="7616645509853975347">మీ అడ్మినిస్ట్రేటర్, మీ బ్రౌజర్‌లో Chrome Enterprise కనెక్టర్‌లను ఆన్ చేశారు. ఈ కనెక్టర్‌లకు మీ డేటాలో కొంత డేటాకు యాక్సెస్ ఉంది.</translation>
+<translation id="7616747402308801775">ఈ కార్డ్ Google Walletలో సేవ్ అవుతుంది, తద్వారా మీరు దీన్ని Google సర్వీస్‌లలో ఉపయోగించవచ్చు</translation>
 <translation id="7617825962482469577">ఎన్వలప్ C7/C6</translation>
 <translation id="7618270539713451657">యుద్ధ కళలు</translation>
 <translation id="7619838219691048931">చివరి షీట్</translation>
@@ -4578,6 +4587,7 @@
 <translation id="8120720167840853945">ఈ పాలసీ ఏ ఇతర పాలసీల ఆటోమేటిక్ ప్రవర్తననూ కంట్రోల్ చేయడం లేదు.</translation>
 <translation id="8127301229239896662">మీ కంప్యూటర్ లేదా నెట్‌వర్క్‌లో "<ph name="SOFTWARE_NAME" />" సరిగ్గా ఇన్‌స్టాల్ కాలేదు. ఈ సమస్యను పరిష్కరించమని మీ IT నిర్వాహకులను కోరండి.</translation>
 <translation id="8130113808541743942">దీనికి తరలించండి...</translation>
+<translation id="813024282736408069">ఆటోఫిల్ కోసం వర్చువల్ కార్డ్‌ను ఆన్ చేయండి</translation>
 <translation id="8131740175452115882">నిర్ధారించు</translation>
 <translation id="8133495915926741232">యాడ్‌లను వ్యక్తిగతీకరించడంలో సహాయపడటానికి ఏ విస్తృత కేటగిరీలు టాపిక్‌లను ఉపయోగించవచ్చో ఎంచుకోండి. విస్తృత కేటగిరీని ఆఫ్ చేయడం వలన దాని సంబంధిత టాపిక్‌లు కూడా బ్లాక్ చేయబడతాయి. <ph name="BEGIN_LINK" />మరింత తెలుసుకోండి<ph name="END_LINK" /></translation>
 <translation id="8134058435519644366">నియామకాలు &amp; స్టాఫింగ్</translation>
@@ -5042,6 +5052,7 @@
 <translation id="8891031436559779793">ఏదైనా సైట్‌లో ధర తగ్గితే మీరు నోటిఫికేషన్‌ను పొందుతారు.</translation>
 <translation id="8891727572606052622">చెల్లని ప్రాక్సీ మోడ్.</translation>
 <translation id="8894794286471754040">పేజీని సాధారణంగా ప్రింట్ చేయి</translation>
+<translation id="8895334001368918465">Chromeలో వేరొక ఆటోఫిల్ సర్వీసును ఉపయోగించడానికి, దాన్ని Android సెట్టింగ్‌లలో, ఇంకా ఇక్కడ ఆన్ చేయండి</translation>
 <translation id="8897221284075091877">ఈ కంటెంట్‌ను చూడమని అడగడానికి, మీ Google ఖాతాతో కొనసాగించండి</translation>
 <translation id="8897428486789851669">ఈత</translation>
 <translation id="8898854704577986668">సైడ్ ప్యానెల్‌లో హిస్టరీని చూడండి</translation>

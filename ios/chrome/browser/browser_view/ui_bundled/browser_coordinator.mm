@@ -132,6 +132,7 @@
 #import "ios/chrome/browser/find_in_page/model/find_tab_helper.h"
 #import "ios/chrome/browser/first_run/omnibox_position/coordinator/omnibox_position_choice_coordinator.h"
 #import "ios/chrome/browser/fullscreen/coordinator/fullscreen_coordinator.h"
+#import "ios/chrome/browser/fullscreen/model/fullscreen_browser_agent.h"
 #import "ios/chrome/browser/fullscreen/ui_bundled/fullscreen_controller.h"
 #import "ios/chrome/browser/fullscreen/ui_bundled/fullscreen_metrics.h"
 #import "ios/chrome/browser/google_one/coordinator/google_one_coordinator.h"
@@ -1389,6 +1390,10 @@ const char kChromeAppStoreUrl[] =
   _viewControllerDependencies.toolbarCoordinator = _toolbarCoordinator;
   _viewControllerDependencies.sideSwipeCoordinator = _sideSwipeCoordinator;
   _viewControllerDependencies.bookmarksCoordinator = _bookmarksCoordinator;
+  if (IsFullscreenRefactoringEnabled()) {
+    _viewControllerDependencies.fullscreenBrowserAgent =
+        FullscreenBrowserAgent::FromBrowser(browser);
+  }
   _viewControllerDependencies.fullscreenController = _fullscreenController;
   _viewControllerDependencies.browserCoordinatorHandler =
       HandlerForProtocol(_dispatcher, BrowserCoordinatorCommands);
@@ -2303,6 +2308,10 @@ const char kChromeAppStoreUrl[] =
 
   self.autofillEditProfileCoordinator = nil;
   self.editProfileBottomSheetHandler = nil;
+}
+
+- (void)resetAutofillSuggestionsLoadingStates {
+  [self.formInputAccessoryCoordinator resetLoadingStates];
 }
 
 - (void)showAutofillErrorDialog:
@@ -3641,15 +3650,27 @@ const char kChromeAppStoreUrl[] =
   // Don't show the floaty if the page is ineligible or the active WebState
   // isn't visible.
   // TODO(crbug.com/476145805): Move WebState related checks to tab helper.
-  bool eligibleSite = geminiTabHelper->IsGeminiAvailableForWebState() &&
-                      geminiService->IsProfileEligibleForGemini();
   bool isWebStateVisible = self.activeWebState->IsVisible();
-  if (!eligibleSite || !isWebStateVisible) {
-    // Reset presented sources before hiding the floaty due to an ineligible
-    // site.
+  if (!isWebStateVisible) {
     geminiTabHelper->UpdatePresentedSource(source, /*is_presented=*/false);
     geminiBrowserAgent->HideFloatyIfInvoked(
         animated, gemini::FloatyUpdateSource::IneligibleSite);
+    return;
+  }
+
+  bool eligibleSite = geminiTabHelper->IsGeminiAvailableForWebState() &&
+                      geminiService->IsProfileEligibleForGemini();
+  if (!eligibleSite) {
+    // Reset presented sources before hiding the floaty due to an ineligible
+    // site.
+    geminiTabHelper->UpdatePresentedSource(source, /*is_presented=*/false);
+    gemini::FloatyUpdateSource hideSource =
+        gemini::FloatyUpdateSource::IneligibleSite;
+    if (geminiTabHelper->IsAimRelatedUrl(
+            self.activeWebState->GetVisibleURL())) {
+      hideSource = gemini::FloatyUpdateSource::SearchRelatedPage;
+    }
+    geminiBrowserAgent->HideFloatyIfInvoked(animated, hideSource);
     return;
   }
 
@@ -4296,7 +4317,7 @@ const char kChromeAppStoreUrl[] =
                           viewController:viewController];
   };
   if (command.actionType == TabGroupActionType::kCloseLastTabUnknownRole) {
-    // If the user's member role is unkown (i.e. sync not complete yet),
+    // If the user's member role is unknown (i.e. sync not complete yet),
     // cannot show option to leave/keep group when attempting to close last
     // tab. Instead, close last tab and replace with new tab after an error
     // alert is shown.

@@ -2674,6 +2674,16 @@ Keep consistent with active providers. Doesn't need to include every provider in
   </summary>
 </histogram>
 
+<histogram name="Omnibox.MobileFusebox.TextEditedBeforeAiMode" enum="Boolean"
+    expires_after="2027-03-25">
+  <owner>stkhapugin@google.com</owner>
+  <owner>chrome-mobile-search@google.com</owner>
+  <summary>
+    Records whether the user edited the text in the Fusebox input plate before
+    entering AI Mode. Recorded when AI Mode is activated.
+  </summary>
+</histogram>
+
 <histogram name="Omnibox.MostVisitedProvider.QueryMostVisitedURLs.Duration"
     units="ms" expires_after="2026-11-12">
   <owner>niharm@google.com</owner>
@@ -4328,6 +4338,17 @@ Keep consistent with active providers. Doesn't need to include every provider in
     Recorded once per keywords database merging, which gets triggered on startup
     if the built-in search engines data has been updated, or the profile's
     assigned country changed.
+  </summary>
+</histogram>
+
+<histogram name="Omnibox.TemplateUrl.DBRefresh.MigrationAction"
+    enum="PrepopulatedEngineMigrationAction" expires_after="2027-03-01">
+  <owner>dgn@chromium.org</owner>
+  <owner>chrome-omnibox-team@google.com</owner>
+  <summary>
+    Emitted when an engine is migrated to a new ID during the Keywords database
+    update pass. Records whether the migrated engine was the user's Default
+    Search Provider or another engine present in the keywords DB.
   </summary>
 </histogram>
 

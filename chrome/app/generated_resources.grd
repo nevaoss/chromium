@@ -2409,7 +2409,7 @@ are declared in tools/grit/grit_args.gni.
       </message>
 
       <message name="IDS_EMAIL_VERIFIED" desc="Toast message to notify the user when their email is automatically verified by the browser.">
-        Email automaticaly verified
+        Email automatically verified
       </message>
 
       <if expr="is_chromeos">
@@ -6060,9 +6060,6 @@ are declared in tools/grit/grit_args.gni.
         </if>
       </if>
       <if expr="enable_extensions">
-        <message name="IDS_EXTENSIONS_REQUEST_ACCESS_BUTTON" desc="The text of the request acces button that appears on the toolbar when an extension requests access to the site">
-          Allow <ph name="EXTENSIONS_REQUESTING_ACCESS_COUNT">$1<ex>3</ex></ph>?
-        </message>
         <message name="IDS_EXTENSIONS_REQUEST_ACCESS_BUTTON_DISMISSED_TEXT" desc="The text of the button that appears on the toolbar after the user grants access to an extension that requested access to the current site.">
           Allowed
         </message>
@@ -6536,6 +6533,9 @@ Keep your key file in a safe place. You will need it to create new versions of y
 
       <!-- Extensions Menu bubble -->
       <if expr="enable_extensions_core">
+        <message name="IDS_EXTENSIONS_REQUEST_ACCESS_BUTTON" desc="The text of the request acces button that appears on the toolbar when an extension requests access to the site" formatter_data="android_java">
+          Allow <ph name="EXTENSIONS_REQUESTING_ACCESS_COUNT">$1<ex>3</ex></ph>?
+        </message>
         <message name="IDS_EXTENSIONS_REQUEST_ACCESS_BUTTON_TOOLTIP_MULTIPLE_EXTENSIONS" desc="The tooltip text of the request access button that appears on the toolbar when an extension requests access to the site">
           Click to allow on <ph name="ORIGIN">$1<ex>google.com</ex></ph>:
         </message>
@@ -10280,6 +10280,12 @@ Keep your key file in a safe place. You will need it to create new versions of y
           <message name="IDS_VERTICAL_TABS_TUTORIAL_STEP_END" desc="The body for the celebratory end step of the vertical tabs IPH tutorial. The string in quotation marks should match the translation for IDS_SWITCH_TO_HORIZONTAL_TAB.">
             You can move your tabs back to the top by right-clicking any tab and selecting “Show Tabs Horizontally”
           </message>
+          <message name="IDS_VERTICAL_TABS_ENABLE_EXPAND_ON_HOVER" desc="In Title Case: The button in context menu that enables expand on hover behavior." translateable="false">
+            Turn on Auto Expanding Tabs
+          </message>
+          <message name="IDS_VERTICAL_TABS_DISABLE_EXPAND_ON_HOVER" desc="In Title Case: The button in context menu that disables expand on hover behavior." translateable="false">
+            Turn off Auto Expanding Tabs
+          </message>
         </then>
         <else>
           <message name="IDS_SWITCH_TO_VERTICAL_TAB" desc="The button in context menu that switches to vertical tab view.">
@@ -10305,6 +10311,12 @@ Keep your key file in a safe place. You will need it to create new versions of y
           </message>
           <message name="IDS_VERTICAL_TABS_TUTORIAL_STEP_END" desc="The body for the celebratory end step of the vertical tabs IPH tutorial. The string in quotation marks should match the translation for IDS_SWITCH_TO_HORIZONTAL_TAB.">
             You can move your tabs back to the top by right-clicking any tab and selecting “Show tabs horizontally”
+          </message>
+          <message name="IDS_VERTICAL_TABS_ENABLE_EXPAND_ON_HOVER" desc="The button in context menu that enables expand on hover behavior." translateable="false">
+            Turn on auto expanding tabs
+          </message>
+          <message name="IDS_VERTICAL_TABS_DISABLE_EXPAND_ON_HOVER" desc="The button in context menu that disables expand on hover behavior." translateable="false">
+            Turn off auto expanding tabs
           </message>
         </else>
       </if>
@@ -19143,12 +19155,17 @@ Please help our engineers fix this problem. Tell us what happened right before y
       <message name="IDS_TRANSLATE_TOAST_UNDO_BUTTON" desc="Button on a toast notification that allows users to undo the translation.">
         Undo
       </message>
-      <!-- TODO(crbug.com/491207553): Finalize UX strings for Multistep Filter and make them translateable. -->
       <message name="IDS_MULTISTEP_FILTER_SUGGESTION_TITLE" desc="Title to show on the toast for Multistep Filter suggestions." translateable="false">
-        Recall info from previous tabs?
+        Apply <ph name="FILTER_COUNT">$1</ph> filters from <ph name="TIME_PERIOD">$2</ph> ago? <ph name="DETAILS">$3</ph>
       </message>
       <message name="IDS_MULTISTEP_FILTER_SUGGESTION_APPLY_BUTTON" desc="Text for the apply button on the Multistep Filter suggestion toast." translateable="false">
-        Apply Info
+        Apply
+      </message>
+      <message name="IDS_MULTISTEP_FILTER_SUGGESTION_RECENT_TITLE" desc="Title to show on the toast for Multistep Filter suggestions recent toast." translateable="false">
+        Recall <ph name="FILTER_COUNT">$1</ph> filters from <ph name="SOURCE_DOMAIN">$2</ph>? <ph name="DETAILS">$3</ph>
+      </message>
+      <message name="IDS_MULTISTEP_FILTER_SUGGESTION_RECENT_APPLY_BUTTON" desc="Text for the apply button on the Multistep Filter suggestion recent toast." translateable="false">
+        Apply
       </message>
       <message name="IDS_LINK_COPIED_TOAST_BODY" desc="Text on a toast notification that is shown when a link is successfully copied.">
         Link copied
@@ -20065,6 +20082,14 @@ Please help our engineers fix this problem. Tell us what happened right before y
         Delete original photo
       </message>
     </if>
+
+    <!-- Chrome finds Notifications -->
+    <message name="IDS_CHROME_FINDS_NOTIFICATIONS_HELPFUL_BUTTON_TEXT" desc="Text for the helpful button found on Chrome finds notifications.">
+      Open in Chrome
+    </message>
+    <message name="IDS_CHROME_FINDS_NOTIFICATIONS_UNHELPFUL_BUTTON_TEXT" desc="Text for the unhelpful button found on Chrome finds notifications.">
+      Not interested
+    </message>
   </messages>
 </release>
 </grit>

@@ -1290,8 +1290,6 @@ WebGLRenderingContextBase::WebGLRenderingContextBase(
   ADD_VALUES_TO_SET(supported_tex_image_source_formats_, kSupportedFormatsES2);
   ADD_VALUES_TO_SET(supported_types_, kSupportedTypesES2);
   ADD_VALUES_TO_SET(supported_tex_image_source_types_, kSupportedTypesES2);
-
-  dirty_rect_for_commit_.setEmpty();
 }
 
 scoped_refptr<DrawingBuffer> WebGLRenderingContextBase::CreateDrawingBuffer(
@@ -1581,9 +1579,6 @@ void WebGLRenderingContextBase::MarkContextChanged(
 
   if (Host()->IsOffscreenCanvas()) {
     marked_canvas_dirty_ = true;
-    dirty_rect_for_commit_.join(
-        SkIRect::MakeWH(Host()->Size().width(), Host()->Size().height()));
-
     DidDraw(draw_type);
     return;
   }
@@ -1624,9 +1619,7 @@ bool WebGLRenderingContextBase::PushFrameNoCopy() {
   auto canvas_resource = GetDrawingBuffer()->ExportCanvasResource();
   if (!canvas_resource)
     return false;
-  const bool submitted_frame =
-      Host()->PushFrame(std::move(canvas_resource), dirty_rect_for_commit_);
-  dirty_rect_for_commit_.setEmpty();
+  const bool submitted_frame = Host()->PushFrame(std::move(canvas_resource));
   MarkLayerComposited();
   return submitted_frame;
 }
@@ -1645,11 +1638,9 @@ bool WebGLRenderingContextBase::PushFrameWithCopy() {
   auto* resource_provider =
       PaintRenderingResultsToResourceProvider(kBackBuffer);
   if (resource_provider && resource_provider_has_content_for_frame_push_) {
-    submitted_frame = Host()->PushFrame(
-        resource_provider->ProduceCanvasResource(FlushReason::kOther),
-        dirty_rect_for_commit_);
+    submitted_frame =
+        Host()->PushFrame(resource_provider->ProduceCanvasResource());
     resource_provider_has_content_for_frame_push_ = false;
-    dirty_rect_for_commit_.setEmpty();
   }
   MarkLayerComposited();
   return submitted_frame;
@@ -1941,7 +1932,7 @@ WebGLRenderingContextBase::PaintRenderingResultsToResource(
 
   auto* resource_provider =
       PaintRenderingResultsToResourceProvider(source_buffer);
-  return resource_provider ? resource_provider->ProduceCanvasResource(reason)
+  return resource_provider ? resource_provider->ProduceCanvasResource()
                            : nullptr;
 }
 
@@ -2132,8 +2123,8 @@ bool WebGLRenderingContextBase::CopyRenderingResultsFromDrawingBuffer(
   // ImageOrientation of the UnacceleratedStaticBitmapImage.
   ImageDrawOptions draw_options;
   draw_options.clamping_mode = Image::kDoNotClampImageToSourceRect;
-  image->Draw(&resource_provider->Canvas(), flags, gfx::RectF(dest_rect),
-              gfx::RectF(src_rect), draw_options);
+  image->Draw(&resource_provider->GetCanvasDeprecated(), flags,
+              gfx::RectF(dest_rect), gfx::RectF(src_rect), draw_options);
   return true;
 }
 
@@ -2201,8 +2192,6 @@ WebGLRenderingContextBase::GetRGBAUnacceleratedStaticBitmapImage(
 }
 
 void WebGLRenderingContextBase::Reshape(int width, int height) {
-  dirty_rect_for_commit_ = SkIRect::MakeWH(width, height);
-
   if (isContextLost())
     return;
 
@@ -5895,17 +5884,28 @@ void WebGLRenderingContextBase::TexImageHelperHTMLImageElement(
     if (have_svg_image && canvas()) {
       UseCounter::Count(canvas()->GetDocument(), WebFeature::kSVGInWebGL);
     }
-    // If the SVG image doesn't have natural width/height, we need to resolve
-    // against a default object size. This is 300x150 for legacy reasons.
-    // Maybe it should be the resolved destination size?.
     if (have_svg_image) {
+      // When the <img> has no explicit width/height attributes and the SVG
+      // has no intrinsic size, resolve against 0x0 instead of the legacy
+      // 300x150 default so that WebGL treats the source as zero-sized.
+      gfx::SizeF default_object_size =
+          (!image->FastHasAttribute(html_names::kWidthAttr) &&
+           !image->FastHasAttribute(html_names::kHeightAttr))
+              ? gfx::SizeF()
+              : gfx::SizeF(image->width(), image->height());
       SourceImageStatus status;
       image_for_render =
-          image->GetSourceImageForCanvas(&status, gfx::SizeF(300, 150));
-      // Since the size of the source has not been previously validated,
-      // GetSourceImageForCanvas() can return nullptr.
+          image->GetSourceImageForCanvas(&status, default_object_size);
       if (!image_for_render) {
-        image_for_render = Image::NullImage();
+        // Zero-size SVG source.  (Re)define the texture level as 0x0 so
+        // follow-up texSubImage2D validation sees the correct dimensions.
+        ScopedUnpackParametersResetRestore temporary_reset_unpack(this);
+        ContextGL()->TexImage2D(
+            params.target, params.level,
+            ConvertTexInternalFormat(params.format, params.type), 0, 0, 0,
+            params.format, params.type, nullptr);
+        SynthesizeGLError(GL_INVALID_VALUE, func_name, "bad image data");
+        return;
       }
     }
     // DrawImageIntoBuffer always respects orientation
@@ -9156,14 +9156,15 @@ void WebGLRenderingContextBase::RestoreUnpackParameters() {
     ContextGL()->PixelStorei(GL_UNPACK_ALIGNMENT, unpack_alignment_);
 }
 
-V8UnionHTMLCanvasElementOrOffscreenCanvas*
-WebGLRenderingContextBase::getHTMLOrOffscreenCanvas() const {
+V8UnionHTMLCanvasElementOrOffscreenCanvas::Ret
+WebGLRenderingContextBase::getHTMLOrOffscreenCanvas(
+    ScriptState* script_state) const {
   if (canvas()) {
-    return MakeGarbageCollected<V8UnionHTMLCanvasElementOrOffscreenCanvas>(
-        static_cast<HTMLCanvasElement*>(Host()));
+    return V8UnionHTMLCanvasElementOrOffscreenCanvas::Ret(
+        script_state, static_cast<HTMLCanvasElement*>(Host()));
   }
-  return MakeGarbageCollected<V8UnionHTMLCanvasElementOrOffscreenCanvas>(
-      static_cast<OffscreenCanvas*>(Host()));
+  return V8UnionHTMLCanvasElementOrOffscreenCanvas::Ret(
+      script_state, static_cast<OffscreenCanvas*>(Host()));
 }
 
 void WebGLRenderingContextBase::addProgramCompletionQuery(WebGLProgram* program,

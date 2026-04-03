@@ -10343,37 +10343,6 @@ be describing additional metrics about the same event.
   </metric>
 </event>
 
-<event name="Graphics.Smoothness.FrameSequence" singular="True">
-  <owner>animations-dev@chromium.org</owner>
-  <owner>gaiko@chromium.org</owner>
-  <owner>jonross@chromium.org</owner>
-  <summary>
-    Measures the percentage of frames dropped in a sequence of frames.
-
-    This metric is reported to the browser at least every 100 frames and at most
-    every 5s from the FrameSequenceMetrics trackers in the compositor. It is
-    available as `Graphics.Smoothness.PercentDroppedFrames4.AllSequences`.
-
-    The last value received by the browser is reported as a UKM when the page
-    closes (e.g. the user closes the tab, or navigates away to a different
-    page).
-  </summary>
-  <metric name="PercentDroppedFrames">
-    <summary>
-      The percentage of frames that have been dropped in the last 300 frame
-      window or 5 seconds, whichever came first.
-    </summary>
-    <aggregation>
-      <history>
-        <index fields="profile.country"/>
-        <statistics>
-          <quantiles type="std-percentiles"/>
-        </statistics>
-      </history>
-    </aggregation>
-  </metric>
-</event>
-
 <event name="GroupSuggestionPromo.Suggestion">
   <owner>yuezhanggg@chromium.org</owner>
   <owner>ssid@chromium.org</owner>
@@ -13816,11 +13785,11 @@ be describing additional metrics about the same event.
     screen capture or opening a webcam or microphone, and the result of that
     request.
   </summary>
-  <metric name="VideoCaptureGenerateStreamResult2"
+  <metric name="VideoCaptureGenerateStreamResult3"
       enum="MediaStreamRequestResult">
     <summary>
       The result of a page's request to open a video capture device (e.g.,
-      webcam). The suffix 2 was added when the MediaStreamRequestResult enum was
+      webcam). The suffix 3 was added when the MediaStreamRequestResult enum was
       updated with new entries.
     </summary>
     <aggregation>
@@ -20498,6 +20467,16 @@ be describing additional metrics about the same event.
     <summary>
       The |ui::PageTransition| for the main frame navigation that this activated
       prerendering navigation fulfilled.
+    </summary>
+  </metric>
+  <metric name="SoftNavigationCount">
+    <summary>
+      Number of soft navigations detected by heuristics. See
+      https://bit.ly/soft-navigation
+
+      Soft navigations are JS-driven same-document navigations that are using
+      the history API or the new Navigation API, triggered by a user gesture and
+      meaningfully modify the DOM, replacing the previous content with new one.
     </summary>
   </metric>
   <metric name="Timing.ActivationToFirstContentfulPaint">

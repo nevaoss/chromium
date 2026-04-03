@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include "base/files/file_path.h"
 #include "base/types/expected.h"
 #include "base/types/optional_ref.h"
 #include "components/optimization_guide/proto/manifest.pb.h"
@@ -29,6 +30,9 @@ extern std::ostream& operator<<(std::ostream& stream,
                                 DeviceCategory device_category);
 
 inline constexpr std::string kManifestAssetName = "manifest";
+// File name of the manifest proto within the manifest component directory.
+inline constexpr const base::FilePath::CharType kManifestFileName[] =
+    FILE_PATH_LITERAL("manifest.pb");
 
 // Manifest is a C++ representation of the manifest proto. It provides APIs for
 // getting the information needed by the model broker implementation.
@@ -38,6 +42,8 @@ class Manifest final {
   using UseCaseName = std::string;
 
   enum class ParseError {
+    kFileNotFound,
+    kProtoParseError,
     kDuplicateIdentifier,
     kMissingIdentifier,
     kConflictingComponent,
@@ -47,12 +53,22 @@ class Manifest final {
       proto::Manifest manifest,
       DeviceCategory device_category);
 
+  static void Load(
+      const base::FilePath& path,
+      DeviceCategory device_category,
+      base::OnceCallback<void(base::expected<Manifest, ParseError>)> callback);
+
+  // Default constructed manifest supports no assets or recipes.
+  Manifest();
   ~Manifest();
 
   Manifest(const Manifest&);
   Manifest& operator=(const Manifest&);
   Manifest(Manifest&&);
   Manifest& operator=(Manifest&&);
+
+  // Returns true if the manifest defines any assets.
+  bool HasAssets() const;
 
   // Returns the identifiers of the Assets required for a single use case.
   // Returns nullopt if the use case is not defined in the manifest.

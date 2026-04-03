@@ -29,10 +29,10 @@
 #include "chrome/browser/ui/views/tab_search_bubble_host.h"
 #include "chrome/browser/ui/views/tabs/browser_tab_strip_controller.h"
 #include "chrome/browser/ui/views/tabs/dragging/tab_drag_controller.h"
+#include "chrome/browser/ui/views/tabs/hovercard/tab_hover_card_controller.h"
 #include "chrome/browser/ui/views/tabs/new_tab_button.h"
 #include "chrome/browser/ui/views/tabs/shared/tab_strip_combo_button.h"
 #include "chrome/browser/ui/views/tabs/shared/tab_strip_flat_edge_button.h"
-#include "chrome/browser/ui/views/tabs/tab_hover_card_controller.h"
 #include "chrome/browser/ui/views/tabs/tab_search_button.h"
 #include "chrome/browser/ui/views/tabs/tab_strip.h"
 #include "chrome/browser/ui/views/tabs/tab_strip_action_container.h"
@@ -248,8 +248,8 @@ HorizontalTabStripRegionView::HorizontalTabStripRegionView(
   if (browser &&
       (browser->GetType() == BrowserWindowInterface::Type::TYPE_NORMAL) &&
       base::FeatureList::IsEnabled(tabs::kHorizontalTabStripComboButton)) {
-    combo_button_ =
-        AddChildView(std::make_unique<TabStripComboButton>(browser));
+    combo_button_ = AddChildView(std::make_unique<TabStripComboButton>(
+        browser, TabStripComboButton::Context::kHorizontalTabStrip));
     combo_button_->SetProperty(views::kCrossAxisAlignmentKey,
                                views::LayoutAlignment::kCenter);
     combo_button_->MaybeShowIPH();

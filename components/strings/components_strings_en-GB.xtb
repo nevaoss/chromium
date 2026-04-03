@@ -763,6 +763,7 @@ This will otherwise be blocked by your privacy settings. This will allow the con
 <translation id="2188375229972301266">Multiple punch bottom</translation>
 <translation id="218940509700321686">Comma-separated values</translation>
 <translation id="2190094353033916816">This policy has different values applied at the machine and user levels. The policy is working as intended.</translation>
+<translation id="219061769324072544">Credit,Card,Debit</translation>
 <translation id="2191980191135734720">Unlock your screen in the next step, typically using your fingerprint. You can also <ph name="LINK_TEXT" />.</translation>
 <translation id="2194856509914051091">Things to consider</translation>
 <translation id="2195729137168608510">Email Protection</translation>
@@ -917,6 +918,7 @@ This will otherwise be blocked by your privacy settings. This will allow the con
 <translation id="2400600116338235695">Can ask to connect to serial ports</translation>
 <translation id="2403474027143565107">Precise</translation>
 <translation id="240450251994300576">Secondary header logo</translation>
+<translation id="2404715426538856682">Credit and debit cards · IBANs · Loyalty cards</translation>
 <translation id="2404884497378469141">Try copying your files again</translation>
 <translation id="2413155254802890957">Old</translation>
 <translation id="2413528052993050574">This server could not prove that it is <ph name="DOMAIN" />; its security certificate might be revoked. This may be caused by a misconfiguration or an attacker intercepting your connection.</translation>
@@ -1365,6 +1367,7 @@ To hide pay later options, go to <ph name="BEGIN_LINK" />payment settings<ph nam
 <translation id="3134859781443140237">Local network</translation>
 <translation id="3137283076021007034"><ph name="KEYWORD" /> – search <ph name="KEYWORD_SHORT_NAME" /></translation>
 <translation id="3137507986424712703">{COUNT,plural, =0{None}=1{sign-in data for 1 account}other{sign-in data for # accounts}}</translation>
+<translation id="3139503241401248626">To enable these settings and use info from your Google Account, visit autofill services settings</translation>
 <translation id="3140646734028448730">Business Services</translation>
 <translation id="3141093262818886744">Open anyway</translation>
 <translation id="3141337053413339205">Switch to this tab.</translation>
@@ -2168,6 +2171,7 @@ To hide pay later options, go to <ph name="BEGIN_LINK" />payment settings<ph nam
 <translation id="4340810192899866471">Import from JSON</translation>
 <translation id="4340982228985273705">This computer is not detected as enterprise managed, so policy can only automatically install extensions hosted on the Chrome Web Store. The Chrome Web Store update URL is '<ph name="CWS_UPDATE_URL" />'.</translation>
 <translation id="4342742994656318294">Theme parks</translation>
+<translation id="4346670990181948854">Travel info · Vehicles</translation>
 <translation id="4348834659292907206">The connection to <ph name="SITE" /> is not secure</translation>
 <translation id="4349365535725594680">Can’t share confidential content</translation>
 <translation id="4349810866125026513">Upload anyway</translation>
@@ -2298,6 +2302,7 @@ To hide pay later options, go to <ph name="BEGIN_LINK" />payment settings<ph nam
 <translation id="4594403342090139922">&amp;Undo Delete</translation>
 <translation id="4598556348158889687">Storage management</translation>
 <translation id="459914240367517409">Web design and development</translation>
+<translation id="4599572944836204718">Pay faster with Google Pay when your card is saved. Card details are encrypted in Google Wallet.</translation>
 <translation id="4602465984861132303">Bowling</translation>
 <translation id="4603727370377253901">Flight reservations</translation>
 <translation id="4607608436550361748">See Chrome tips</translation>
@@ -2587,6 +2592,7 @@ To hide pay later options, go to <ph name="BEGIN_LINK" />payment settings<ph nam
 <translation id="5051254010007014901"><ph name="TOOLBELT_PRECEDING_MATCH_TEXT" />, Press tab for more search shortcuts available after this search suggestion</translation>
 <translation id="5052488928733955073">Trouble filling in your info. Check your connection.</translation>
 <translation id="5052517576853118371">Active topics</translation>
+<translation id="5053116470141135293">A virtual card number will be filled when you check out with this card to protect your actual details. Manage in Google Wallet. <ph name="IDS_AUTOFILL_VIRTUAL_CARD_ENROLLMENT_LEARN_MORE_LINK_LABEL" /></translation>
 <translation id="5056425809654826431">{NUM_FILES,plural, =1{To send this file using Nearby Share, free up space (<ph name="DISK_SPACE_SIZE" />) on your device}other{To send these files using Nearby Share, free up space (<ph name="DISK_SPACE_SIZE" />) on your device}}</translation>
 <translation id="5056587122125565772">Create image</translation>
 <translation id="505757197798929356">Provide reason for opening (required)</translation>
@@ -2956,6 +2962,7 @@ To hide pay later options, go to <ph name="BEGIN_LINK" />payment settings<ph nam
 <translation id="5596627076506792578">More options</translation>
 <translation id="5596939519753369075">2.0 in x 3.5 in</translation>
 <translation id="5597254438174353289">Blue 3</translation>
+<translation id="5600044805561809264">You can easily ask questions about the tabs that you're sharing as you browse.</translation>
 <translation id="5603469469737324249"><ph name="ISSUER_1_NAME" /> or <ph name="ISSUER_2_NAME" /></translation>
 <translation id="560412284261940334">Management not supported</translation>
 <translation id="5605249000617390290">Learn more about price tracking</translation>
@@ -3050,6 +3057,7 @@ To hide pay later options, go to <ph name="BEGIN_LINK" />payment settings<ph nam
 <translation id="5752519522101347518">Loading bank verification website</translation>
 <translation id="5753570386948603678">Delete from history</translation>
 <translation id="5759751709240058861">Use and move your camera</translation>
+<translation id="5762131895127128324">Driving licences · Identity cards · Passports</translation>
 <translation id="5763042198335101085">Enter a valid email address</translation>
 <translation id="5764725887548570807">Invalid origin format.</translation>
 <translation id="5764920692828389743">Send to <ph name="EMAIL_ADDRESS" /></translation>
@@ -3361,6 +3369,7 @@ To hide pay later options, go to <ph name="BEGIN_LINK" />payment settings<ph nam
 <translation id="6250932670816326647">Bath and body products</translation>
 <translation id="6251906504834538140">{0,plural, =1{File blocked from moving}other{<ph name="FILE_COUNT" /> files blocked from moving}}</translation>
 <translation id="6252613631861574218"><ph name="MANAGE_CHROME_DOWNLOADS_FOCUSED_FRIENDLY_MATCH_TEXT" />: press Tab then Enter to manage files that you have downloaded in Chrome</translation>
+<translation id="6253380015872250643">Save card in Google Wallet</translation>
 <translation id="6254436959401408446">Not enough memory to open this page</translation>
 <translation id="625463612687472648">Stop allowing</translation>
 <translation id="6259156558325130047">&amp;Redo Reorder</translation>
@@ -3987,6 +3996,7 @@ To hide pay later options, go to <ph name="BEGIN_LINK" />payment settings<ph nam
 <translation id="7220786058474068424">Processing</translation>
 <translation id="7221855153210829124">Show notifications</translation>
 <translation id="722454870747268814">New Incognito tab</translation>
+<translation id="7225676267118764980">Change autofill provider and other settings</translation>
 <translation id="7226892411756387078">Plain text</translation>
 <translation id="7227293336683593977">Price history</translation>
 <translation id="7228306718910595403">EU Qualified Status</translation>
@@ -4257,6 +4267,7 @@ Additional details:
 <translation id="7615932826417658001">Add identity card</translation>
 <translation id="7616390733770379387">These are shown in random order.</translation>
 <translation id="7616645509853975347">Your administrator has turned on Chrome Enterprise Connectors on your browser. These connectors have access to some of your data.</translation>
+<translation id="7616747402308801775">This card is saved in Google Wallet so that you can use it across Google services</translation>
 <translation id="7617825962482469577">Envelope C7/C6</translation>
 <translation id="7618270539713451657">Martial arts</translation>
 <translation id="7619838219691048931">End sheet</translation>
@@ -4579,6 +4590,7 @@ Additional details:
 <translation id="8120720167840853945">This policy is not controlling the default behaviour of any other policies.</translation>
 <translation id="8127301229239896662">'<ph name="SOFTWARE_NAME" />' wasn’t installed properly on your computer or network. Ask your IT administrator to resolve this issue.</translation>
 <translation id="8130113808541743942">Move to…</translation>
+<translation id="813024282736408069">Turn on a virtual card for autofill</translation>
 <translation id="8131740175452115882">Confirm</translation>
 <translation id="8133495915926741232">Choose which broad categories of topics can be used to help personalise ads. Turning off a broader category will also block its related topics. <ph name="BEGIN_LINK" />Learn more<ph name="END_LINK" /></translation>
 <translation id="8134058435519644366">Recruitment and Staffing</translation>
@@ -5043,6 +5055,7 @@ Additional details:
 <translation id="8891031436559779793">You'll get notified if the price drops on any site.</translation>
 <translation id="8891727572606052622">Invalid proxy mode.</translation>
 <translation id="8894794286471754040">Long edge first</translation>
+<translation id="8895334001368918465">To use another autofill service in Chrome, turn it on in Android settings and here</translation>
 <translation id="8897221284075091877">To ask to see this content, continue with your Google Account</translation>
 <translation id="8897428486789851669">Swimming</translation>
 <translation id="8898854704577986668">Show history in side panel</translation>

@@ -165,6 +165,7 @@
 #include "components/media_router/browser/media_router_dialog_controller.h"
 #include "components/media_router/browser/media_router_metrics.h"
 #include "components/omnibox/browser/autocomplete_classifier.h"
+#include "components/omnibox/browser/autocomplete_input.h"
 #include "components/omnibox/browser/autocomplete_match.h"
 #include "components/password_manager/content/browser/content_password_manager_driver.h"
 #include "components/password_manager/core/browser/password_manager_metrics_util.h"
@@ -2250,6 +2251,7 @@ void RenderViewContextMenu::AppendPageItems() {
   menu_model_.AddItemWithStringId(IDC_BACK, IDS_CONTENT_CONTEXT_BACK);
   menu_model_.AddItemWithStringId(IDC_FORWARD, IDS_CONTENT_CONTEXT_FORWARD);
   menu_model_.AddItemWithStringId(IDC_RELOAD, IDS_CONTENT_CONTEXT_RELOAD);
+  menu_model_.AddSeparator(ui::NORMAL_SEPARATOR);
   MaybeAppendOpenGlicItem();
   menu_model_.AddItemWithStringId(IDC_SAVE_PAGE,
                                   IDS_CONTENT_CONTEXT_SAVEPAGEAS);
@@ -2461,7 +2463,7 @@ void RenderViewContextMenu::AppendSearchProvider() {
     return;
   }
 
-  base::ReplaceChars(params_.selection_text, AutocompleteMatch::kInvalidChars,
+  base::ReplaceChars(params_.selection_text, AutocompleteInput::kInvalidChars,
                      u" ", &params_.selection_text);
 
   AutocompleteMatch match;
@@ -4814,7 +4816,6 @@ void RenderViewContextMenu::ExecProtocolHandlerSettings(int event_flags) {
 void RenderViewContextMenu::MaybeAppendOpenGlicItem() {
   // Append an item for opening Glic
   if (glic::GlicEnabling::IsContextualMenuItemEnabled(GetProfile())) {
-    menu_model_.AddSeparator(ui::NORMAL_SEPARATOR);
     std::string arm = features::kGlicContextMenuArm.Get();
     bool show_summarize_page = (arm == "arm2");
     menu_model_.AddItemWithStringIdAndIcon(

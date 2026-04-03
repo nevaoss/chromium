@@ -212,6 +212,11 @@ void BnplManager::OnUserDecisionToUseBnpl(
 void BnplManager::OnIssuerAccepted(BnplIssuer issuer) {
   ongoing_flow_state_->issuer = std::move(issuer);
 
+  if (base::FeatureList::IsEnabled(
+          features::kAutofillEnablePayNowPayLaterTabs)) {
+    ShowProgressUiForPayLaterTab();
+  }
+
   // When an issuer is accepted but no checkout amount is present, call
   // server-side AI to extract the amount.
   if (base::FeatureList::IsEnabled(
@@ -219,10 +224,6 @@ void BnplManager::OnIssuerAccepted(BnplIssuer issuer) {
       !ongoing_flow_state_->final_checkout_amount) {
     browser_autofill_manager_->GetAmountExtractionManager()
         .TriggerCheckoutAmountExtractionWithAi();
-    if (base::FeatureList::IsEnabled(
-            features::kAutofillEnablePayNowPayLaterTabs)) {
-      ShowProgressUiForPayLaterTab();
-    }
     return;
   }
 
@@ -235,11 +236,18 @@ void BnplManager::NotifyOfSuggestionGeneration(
     return;
   }
 
+  autofill_suggestion_trigger_source_ = trigger_source;
+
+  // No need to insert BNPL suggestions if the Pay Later tab is enabled.
+  if (base::FeatureList::IsEnabled(
+          features::kAutofillEnablePayNowPayLaterTabs)) {
+    return;
+  }
+
   update_suggestions_barrier_callback_ = base::BarrierCallback<
       std::variant<SuggestionsShownResponse, std::optional<int64_t>>>(
       2U, base::BindOnce(&BnplManager::MaybeUpdateDesktopSuggestionsWithBnpl,
                          weak_factory_.GetWeakPtr(), trigger_source));
-  autofill_suggestion_trigger_source_ = trigger_source;
 }
 
 void BnplManager::OnCreditCardSuggestionsShown(
@@ -248,7 +256,9 @@ void BnplManager::OnCreditCardSuggestionsShown(
   if (std::ranges::contains(suggestions, SuggestionType::kBnplEntry,
                             &Suggestion::type) &&
       base::FeatureList::IsEnabled(
-          features::kAutofillEnableAiBasedAmountExtraction)) {
+          features::kAutofillEnableAiBasedAmountExtraction) &&
+      !base::FeatureList::IsEnabled(
+          features::kAutofillEnablePayNowPayLaterTabs)) {
     payments_autofill_client()
         .GetPaymentsDataManager()
         .SetAutofillHasSeenBnpl();
@@ -257,6 +267,13 @@ void BnplManager::OnCreditCardSuggestionsShown(
   }
 
   update_suggestions_callback_ = update_suggestions_callback;
+
+  // Only set `user_has_seen_bnpl_ai_terms_before_` if it has not already been
+  // set. This is because `OnCreditCardSuggestionsShown()` may be called
+  // again when suggestions are updated.
+  if (!user_has_seen_bnpl_ai_terms_before_.has_value()) {
+    user_has_seen_bnpl_ai_terms_before_ = HasSeenAmountExtractionAiTerms();
+  }
 
   if (!update_suggestions_barrier_callback_.has_value()) {
     return;
@@ -459,6 +476,11 @@ void BnplManager::OnSuggestionsHidden(AutofillManager& manager,
 }
 
 bool BnplManager::HasSeenAmountExtractionAiTerms() const {
+  if (base::FeatureList::IsEnabled(
+          features::kAutofillEnablePayNowPayLaterTabs) &&
+      user_has_seen_bnpl_ai_terms_before_.has_value()) {
+    return user_has_seen_bnpl_ai_terms_before_.value();
+  }
   return payments_autofill_client()
       .GetPaymentsDataManager()
       .IsAutofillAmountExtractionAiTermsSeenPrefEnabled();
@@ -503,6 +525,7 @@ void BnplManager::Reset() {
   ongoing_flow_state_.reset();
   autofill_suggestion_trigger_source_.reset();
   update_suggestions_callback_.Reset();
+  user_has_seen_bnpl_ai_terms_before_.reset();
   weak_factory_.InvalidateWeakPtrs();
 }
 

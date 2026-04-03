@@ -165,6 +165,7 @@
 #include "third_party/perfetto/include/perfetto/tracing/track.h"
 #include "third_party/skia/include/core/SkFontMgr.h"
 #include "third_party/skia/include/core/SkGraphics.h"
+#include "third_party/skia/include/private/chromium/SkCodecsICCProfileChromium.h"
 #include "ui/base/ui_base_switches.h"
 #include "ui/base/ui_base_switches_util.h"
 #include "ui/display/display_switches.h"
@@ -294,6 +295,17 @@ bool IsBackgrounded(std::optional<base::Process::Priority> process_priority) {
     case base::Process::Priority::kUserVisible:
     case base::Process::Priority::kUserBlocking:
       return false;
+  }
+}
+
+// Helper function to update the content and media clients when the
+// GpuChannelHost may have been updated.
+void OnPotentialNewGpuChannelHost(gpu::GpuChannelHost* host) {
+  if (host) {
+    RenderMediaClient::SetGpuFeatureInfo(host->gpu_feature_info());
+    GetContentClient()->SetGpuInfo(host->gpu_info());
+  } else {
+    RenderMediaClient::SetGpuFeatureInfo(gpu::GpuFeatureInfo());
   }
 }
 
@@ -485,6 +497,8 @@ void RenderThreadImpl::Init() {
   // to wait on a sync call.
   gpu_->EstablishGpuChannel(
       base::BindOnce([](scoped_refptr<gpu::GpuChannelHost> host) {
+        // We don't call OnPotentialNewGpuChannelHost() here since this occurs
+        // before the RenderMediaClient has been initialized.
         if (host) {
           GetContentClient()->SetGpuInfo(host->gpu_info());
         }
@@ -788,6 +802,14 @@ void RenderThreadImpl::InitializeWebKit(mojo::BinderMap* binders) {
   RenderThreadImpl::RegisterSchemes();
 
   RenderMediaClient::Initialize();
+
+  // Configure the ICC profile parser kill-switch early, before any image
+  // decoding occurs. When the feature is enabled, this forces skcms to be
+  // used instead of the Rust-based ICC parser.
+  // TODO(crbug.com/463653726): Remove this once the feature is validated in
+  // Stable.
+  SkCodecs::ICCProfileChromium::ForceSkcms(
+      base::FeatureList::IsEnabled(blink::features::kForceSkcmsICCParsing));
 
   // Hook up blink's codecs so skia can call them. Since only the renderer
   // processes should be doing image decoding, this is not done in the common
@@ -1303,8 +1325,7 @@ scoped_refptr<gpu::GpuChannelHost> RenderThreadImpl::EstablishGpuChannelSync() {
 
   scoped_refptr<gpu::GpuChannelHost> gpu_channel =
       gpu_->EstablishGpuChannelSync();
-  if (gpu_channel)
-    GetContentClient()->SetGpuInfo(gpu_channel->gpu_info());
+  OnPotentialNewGpuChannelHost(gpu_channel.get());
   return gpu_channel;
 }
 
@@ -1316,8 +1337,7 @@ void RenderThreadImpl::EstablishGpuChannel(
       [](EstablishGpuChannelCallback callback, RenderThreadImpl* thread,
          scoped_refptr<gpu::GpuChannelHost> host) {
         TRACE_EVENT_END("gpu", perfetto::Track::FromPointer(thread));
-        if (host)
-          GetContentClient()->SetGpuInfo(host->gpu_info());
+        OnPotentialNewGpuChannelHost(host.get());
         std::move(callback).Run(std::move(host));
       },
       // The GPU process can crash; in that case, run the callback with no host

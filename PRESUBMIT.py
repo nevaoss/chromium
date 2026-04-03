@@ -471,6 +471,8 @@ _BANNED_IOS_OBJC_FUNCTIONS = (
             # App extensions have restricted dependencies and thus can't use the
             # wrappers.
             r'^ios/chrome/\w+_extension/',
+            # content/ cannot depend on ios/chrome/, so use UIKit directly.
+            r'^content/',
         ),
     ),
     BanRule(
@@ -969,8 +971,11 @@ _BANNED_CPP_FUNCTIONS: Sequence[BanRule] = (
             r'net/third_party/quiche/overrides/quiche_platform_impl/quiche_stack_trace_impl\.*',
             r'services/network/web_transport\.cc',
 
-            # Needed to interface with library that can't use base or absl.
-            r'components/optimization_guide/content/browser/page_context_eligibility_api\.(cc|h)',
+            # Needed to implement WebRTC interfaces.
+            r'third_party/blink/renderer/modules/peerconnection/mock_peer_connection_impl\.h',
+            r'third_party/blink/renderer/modules/peerconnection/rtc_transport/rtc_transport\.cc',
+            r'third_party/blink/renderer/platform/webrtc/webrtc_video_frame_adapter\.cc',
+            r'third_party/blink/renderer/platform/webrtc/webrtc_video_frame_adapter\.h',
 
             # Not an error in third_party folders.
             _THIRD_PARTY_EXCEPT_BLINK,

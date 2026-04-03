@@ -351,6 +351,16 @@
   [self updateForTabGridPage:_tabGridState.currentPage];
 }
 
+- (void)tabGridStateModeDidChange:(TabGridState*)tabGridState {
+  CHECK_EQ(tabGridState, _tabGridState);
+  if (tabGridState.mode == TabGridMode::kSelection ||
+      tabGridState.mode == TabGridMode::kSearch) {
+    [self.consumer setButtonsEnabled:NO];
+  } else {
+    [self updateButtonsForCurrentTabGridPage];
+  }
+}
+
 #pragma mark - AuthenticationServiceObserving
 
 - (void)onServiceStatusChanged {
@@ -540,7 +550,8 @@
   }
   [self.consumer updateTabCount:tabCount];
   [self.consumer setTabGridVisible:_tabGridState.tabGridVisible];
-  [self.consumer setTabGroupsPageVisible:_currentPage == TabGridPageTabGroups];
+  [self.consumer setTabGroupsPageVisible:_tabGridState.currentPage ==
+                                         TabGridPageTabGroups];
   [self.consumer setTabGroupVisible:_tabGridState.visibleTabGroup];
   [self.consumer setInTabGroup:[self activeWebStateInGroup]];
 
@@ -692,7 +703,7 @@
   UrlLoadParams params = UrlLoadParams::InNewTab(GURL(kChromeUINewTabURL));
   params.in_incognito = incognito;
   params.append_to = OpenPosition::kLastTab;
-  params.switch_mode_if_needed = false;
+  params.switch_mode_if_needed = true;
   _URLLoader->Load(params);
 
   return webStateListCount != webStateList->count();

@@ -44,6 +44,7 @@
 #include "content/public/browser/web_contents.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/content_browser_test_utils.h"
+#include "content/public/test/test_navigation_observer.h"
 #include "net/dns/mock_host_resolver.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "url/gurl.h"
@@ -122,10 +123,6 @@ IN_PROC_BROWSER_TEST_F(PasswordChangeFromCheckupDelegateBrowserTest,
   GURL url = embedded_test_server()->GetURL("example.com", "/title1.html");
   delegate->StartPasswordChangeFlow(CreateCredentialUIEntry(url),
                                     web_contents->GetWeakPtr());
-
-  EXPECT_TRUE(base::test::RunUntil(
-      [&]() { return delegate->HasActorTaskSubscriptionForTesting(); }));
-
   auto* actuation_tab = browser()->tab_strip_model()->GetActiveTab();
 
   // Create task and add the tab to the task.
@@ -137,6 +134,9 @@ IN_PROC_BROWSER_TEST_F(PasswordChangeFromCheckupDelegateBrowserTest,
   task->AddTab(actuation_tab->GetHandle(), add_tab_future.GetCallback());
   EXPECT_TRUE(add_tab_future.Wait());
 
+  EXPECT_TRUE(base::test::RunUntil([&]() {
+    return browser()->tab_strip_model()->GetActiveTab() == actuation_tab;
+  }));
   actor_service->NotifyTaskStateChanged(*task);
 
   // Finish the task
@@ -150,15 +150,8 @@ IN_PROC_BROWSER_TEST_F(PasswordChangeFromCheckupDelegateBrowserTest,
   }));
 }
 
-// TODO(https://crbug.com/492810570): Fix the flakiness.
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
-#define MAYBE_FormWaiterFindsFormAndSubmits \
-  DISABLED_FormWaiterFindsFormAndSubmits
-#else
-#define MAYBE_FormWaiterFindsFormAndSubmits FormWaiterFindsFormAndSubmits
-#endif
 IN_PROC_BROWSER_TEST_F(PasswordChangeFromCheckupDelegateBrowserTest,
-                       MAYBE_FormWaiterFindsFormAndSubmits) {
+                       FormWaiterFindsFormAndSubmits) {
   Profile* profile = browser()->profile();
   auto* actor_service =
       actor::ActorKeyedServiceFactory::GetActorKeyedService(profile);
@@ -174,15 +167,16 @@ IN_PROC_BROWSER_TEST_F(PasswordChangeFromCheckupDelegateBrowserTest,
   GURL url = embedded_test_server()->GetURL(
       "example.com", "/password/update_form_empty_fields.html");
 
+  content::TestNavigationObserver observer(url.GetWithEmptyPath());
+  observer.StartWatchingNewWebContents();
+
   delegate->StartPasswordChangeFlow(CreateCredentialUIEntry(url),
                                     original_web_contents->GetWeakPtr());
-  EXPECT_TRUE(base::test::RunUntil(
-      [&]() { return delegate->HasActorTaskSubscriptionForTesting(); }));
+
+  observer.Wait();
 
   content::WebContents* new_web_contents =
       browser()->tab_strip_model()->GetActiveWebContents();
-  PasswordsNavigationObserver observer(new_web_contents);
-  EXPECT_TRUE(observer.Wait());
   ASSERT_TRUE(content::NavigateToURL(new_web_contents, url));
 
   base::RunLoop run_loop;
@@ -219,7 +213,6 @@ IN_PROC_BROWSER_TEST_F(PasswordChangeFromCheckupDelegateBrowserTest,
   // Wait for the new password to be saved.
   WaitForPasswordStore();
   CheckThatCredentialsStored(/*username=*/"testuser", /*password=*/"testpass");
-  EXPECT_FALSE(delegate->HasActorTaskSubscriptionForTesting());
 }
 
 IN_PROC_BROWSER_TEST_F(PasswordChangeFromCheckupDelegateBrowserTest,
@@ -236,9 +229,6 @@ IN_PROC_BROWSER_TEST_F(PasswordChangeFromCheckupDelegateBrowserTest,
   GURL url = embedded_test_server()->GetURL("example.com", "/title1.html");
   delegate->StartPasswordChangeFlow(CreateCredentialUIEntry(url),
                                     originator_contents->GetWeakPtr());
-
-  EXPECT_TRUE(base::test::RunUntil(
-      [&]() { return delegate->HasActorTaskSubscriptionForTesting(); }));
   // A new tab for the actuation is opened.
   auto* actuation_tab = browser()->tab_strip_model()->GetActiveTab();
   // Create task and add the tab to it.
@@ -249,6 +239,9 @@ IN_PROC_BROWSER_TEST_F(PasswordChangeFromCheckupDelegateBrowserTest,
   base::test::TestFuture<actor::mojom::ActionResultPtr> add_tab_future;
   task->AddTab(actuation_tab->GetHandle(), add_tab_future.GetCallback());
   EXPECT_TRUE(add_tab_future.Wait());
+  EXPECT_TRUE(base::test::RunUntil([&]() {
+    return browser()->tab_strip_model()->GetActiveTab() == actuation_tab;
+  }));
 
   int originator_index =
       browser()->tab_strip_model()->GetIndexOfWebContents(originator_contents);
@@ -261,7 +254,9 @@ IN_PROC_BROWSER_TEST_F(PasswordChangeFromCheckupDelegateBrowserTest,
 
   // The delegate should have caught the interruption and force the actuation
   // tab into focus.
-  EXPECT_EQ(browser()->tab_strip_model()->GetActiveTab(), actuation_tab);
+  EXPECT_TRUE(base::test::RunUntil([&]() {
+    return browser()->tab_strip_model()->GetActiveTab() == actuation_tab;
+  }));
   EXPECT_EQ(delegate->GetFindFormTaskState(),
             actor::ActorTask::State::kPausedByActor);
 
@@ -282,9 +277,6 @@ IN_PROC_BROWSER_TEST_F(PasswordChangeFromCheckupDelegateBrowserTest,
   GURL url = embedded_test_server()->GetURL("example.com", "/title1.html");
   delegate->StartPasswordChangeFlow(CreateCredentialUIEntry(url),
                                     originator_contents->GetWeakPtr());
-  EXPECT_TRUE(base::test::RunUntil(
-      [&]() { return delegate->HasActorTaskSubscriptionForTesting(); }));
-
   auto* actuation_tab = browser()->tab_strip_model()->GetActiveTab();
 
   // Create task and add the tab to it.
@@ -302,7 +294,9 @@ IN_PROC_BROWSER_TEST_F(PasswordChangeFromCheckupDelegateBrowserTest,
   // Simulate an interruption state.
   task->Pause(/* from_actor = */ true);
   // Verify actuation tab is focused due to the interruption.
-  ASSERT_EQ(browser()->tab_strip_model()->GetActiveTab(), actuation_tab);
+  EXPECT_TRUE(base::test::RunUntil([&]() {
+    return browser()->tab_strip_model()->GetActiveTab() == actuation_tab;
+  }));
 
   // Simulate the user resuming the task.
   task->Resume();
@@ -310,9 +304,10 @@ IN_PROC_BROWSER_TEST_F(PasswordChangeFromCheckupDelegateBrowserTest,
 
   // The delegate should have caught that the task was resumed and force the
   // originator tab into focus.
-  EXPECT_EQ(browser()->tab_strip_model()->GetActiveWebContents(),
-            originator_contents);
-  EXPECT_EQ(delegate->GetFindFormTaskState(), actor::ActorTask::State::kActing);
+  EXPECT_TRUE(base::test::RunUntil([&]() {
+    return browser()->tab_strip_model()->GetActiveWebContents() ==
+           originator_contents;
+  }));
 
   // Clean up.
   actor_service->StopTask(task_id,
@@ -335,10 +330,6 @@ IN_PROC_BROWSER_TEST_F(PasswordChangeFromCheckupDelegateBrowserTest,
 
   delegate->StartPasswordChangeFlow(CreateCredentialUIEntry(origin_url),
                                     originator_contents->GetWeakPtr());
-
-  EXPECT_TRUE(base::test::RunUntil(
-      [&]() { return delegate->HasActorTaskSubscriptionForTesting(); }));
-
   auto* actuation_tab = browser()->tab_strip_model()->GetActiveTab();
 
   // Setup the `ActorTask` and associate the tab.
@@ -350,7 +341,9 @@ IN_PROC_BROWSER_TEST_F(PasswordChangeFromCheckupDelegateBrowserTest,
   ASSERT_TRUE(add_tab_future.Wait());
 
   actor_service->NotifyTaskStateChanged(*task);
-
+  EXPECT_TRUE(base::test::RunUntil([&]() {
+    return browser()->tab_strip_model()->GetActiveTab() == actuation_tab;
+  }));
   // Simulate the `ExecutionEngine` needing a credential.
   std::vector<actor_login::Credential> credentials;
 

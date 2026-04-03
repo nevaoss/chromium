@@ -370,6 +370,7 @@ source_set("impl") {
     "//chrome/browser/lifetime:termination_notification",
     "//chrome/browser/media/webrtc",
     "//chrome/browser/picture_in_picture",
+    "//chrome/browser/profiles:profile_manager",
     "//chrome/browser/profiles:profile_util",
     "//chrome/browser/profiles/keep_alive",
     "//chrome/browser/resources/glic:resources",
@@ -620,6 +621,7 @@ source_set("browser_tests") {
   defines = [ "HAS_OUT_OF_PROC_TEST_RUNNER" ]
   sources = [
     "host/context/glic_delegating_sharing_manager_browsertest.cc",
+    "host/glic_web_contents_warming_pool_browsertest.cc",
     "host/new_glic_api_browsertest.cc",
     "service/glic_instance_coordinator_browsertest.cc",
   ]

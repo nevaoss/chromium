@@ -54,10 +54,6 @@ BASE_DECLARE_FEATURE(kContextualTasksUrlRedirectToAimUrl);
 // Enables the use of Stratus dark mode colors.
 BASE_DECLARE_FEATURE(kContextualTasksUseStratusDarkModeColors);
 
-// Enables use of TabListInterface::InsertWebContentsAt in
-// ContextualTasksUiService.
-BASE_DECLARE_FEATURE(kContextualTasksInsertWebContentsAt);
-
 // If enabled, animates the caret.
 BASE_DECLARE_FEATURE(kContextualTasksAnimatedCaret);
 
@@ -153,8 +149,6 @@ extern int GetContextualTasksOnboardingTooltipImpressionDelay();
 // Expired side panel WebContents will be destroyed.
 extern int ContextualTasksInactiveSidePanelKeepInCacheMinutes();
 
-// Returns if voice search queries should be auto submitted.
-extern bool GetAutoSubmitVoiceSearchQuery();
 
 // Returns if the protected page error is enabled.
 extern bool GetIsProtectedPageErrorEnabled();

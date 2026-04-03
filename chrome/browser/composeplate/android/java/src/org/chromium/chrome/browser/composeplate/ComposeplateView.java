@@ -24,8 +24,6 @@ public class ComposeplateView extends LinearLayout {
 
     private @Nullable View mComposeplateButton;
     private @Nullable View mIncognitoButton;
-    private @Nullable ImageView mLensButton;
-    private @Nullable ImageView mVoiceSearchButton;
 
     public ComposeplateView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -37,8 +35,6 @@ public class ComposeplateView extends LinearLayout {
 
         mComposeplateButton = findViewById(R.id.composeplate_button);
         mIncognitoButton = findViewById(R.id.incognito_button);
-        mLensButton = findViewById(R.id.lens_camera_button);
-        mVoiceSearchButton = findViewById(R.id.voice_search_button);
     }
 
     /**
@@ -61,14 +57,6 @@ public class ComposeplateView extends LinearLayout {
         if (mIncognitoButton != null) {
             ComposeplateUtils.applyWhiteBackgroundAndShadow(context, mIncognitoButton, apply);
         }
-
-        if (mLensButton != null) {
-            ComposeplateUtils.applyWhiteBackgroundAndShadow(context, mLensButton, apply);
-        }
-
-        if (mVoiceSearchButton != null) {
-            ComposeplateUtils.applyWhiteBackgroundAndShadow(context, mVoiceSearchButton, apply);
-        }
     }
 
     /** Sets the ColorStateList to tint the icons on the buttons. */
@@ -81,19 +69,10 @@ public class ComposeplateView extends LinearLayout {
                     colorStateList);
         }
 
-        // TODO (https://crbug.com/421944848): Cleans up this class when cleaning up
-        //  composeplate_view_layout(_V2).xml.
         if (mIncognitoButton != null) {
-            if (mIncognitoButton instanceof ImageView incognitoButtonImageView) {
-                incognitoButtonImageView.setImageTintList(colorStateList);
-            } else {
-                setColorStateList(
-                        mIncognitoButton.findViewById(R.id.incognito_button_icon), colorStateList);
-            }
+            setColorStateList(
+                    mIncognitoButton.findViewById(R.id.incognito_button_icon), colorStateList);
         }
-
-        setColorStateList(mLensButton, colorStateList);
-        setColorStateList(mVoiceSearchButton, colorStateList);
     }
 
     /**

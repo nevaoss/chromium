@@ -237,7 +237,7 @@ class CONTENT_EXPORT WebContentsImpl
       const WebContents::CreateParams& params,
       RenderFrameHostImpl* opener_rfh);
 
-  static std::vector<WebContentsImpl*> GetAllWebContents();
+  static std::vector<raw_ptr<WebContentsImpl>> GetAllWebContents();
 
   static WebContentsImpl* FromFrameTreeNode(
       const FrameTreeNode* frame_tree_node);
@@ -579,6 +579,7 @@ class CONTENT_EXPORT WebContentsImpl
   void StoreFocus() override;
   void RestoreFocus() override;
   void FocusThroughTabTraversal(bool reverse) override;
+  bool ContainsOrIsFocusedWebContents() override;
   bool IsSavable() override;
   void OnSavePage() override;
   bool SavePage(const base::FilePath& main_file,
@@ -2026,16 +2027,6 @@ class CONTENT_EXPORT WebContentsImpl
   // during attach/detach.
   void RecursivelyRegisterRenderWidgetHostViews();
   void RecursivelyUnregisterRenderWidgetHostViews();
-
-  // When multiple WebContents are present within a tab or window, a single one
-  // is focused and will route keyboard events in most cases to a RenderWidget
-  // contained within it. |GetFocusedWebContents()|'s main frame widget will
-  // receive page focus and blur events when the containing window changes focus
-  // state.
-
-  // Returns true if |this| is the focused WebContents or an ancestor of the
-  // focused WebContents.
-  bool ContainsOrIsFocusedWebContents();
 
   // Internal implementation of AttachInnerWebContents() and
   // AttachUnownedInnerWebContents().

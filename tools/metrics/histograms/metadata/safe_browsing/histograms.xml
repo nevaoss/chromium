@@ -2115,8 +2115,48 @@ useful for Chirp alerts (go/crca-alerts). -->
   </summary>
   <token key="Suffix">
     <variant name="" summary="is sent to the server"/>
+    <variant name=".Empty" summary="is empty"/>
     <variant name=".Failure" summary="fails"/>
+    <variant name=".Invalid" summary="is invalid"/>
+    <variant name=".NoKeys" summary="has no keys"/>
     <variant name=".Success" summary="succeeds"/>
+  </token>
+</histogram>
+
+<histogram name="SafeBrowsing.HPRT.OhttpKeyService.NumKeys" units="keys"
+    expires_after="2027-02-05">
+  <owner>xinghuilu@chromium.org</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
+  <summary>
+    Logs the number of keys in the OHTTP key fetch response. Logged on each
+    successful key fetch response that is received from the server.
+  </summary>
+</histogram>
+
+<histogram name="SafeBrowsing.HPRT.OhttpKeyService.Outcome"
+    enum="SafeBrowsingKeyFetchOutcome" expires_after="2027-02-05">
+  <owner>xinghuilu@chromium.org</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
+  <summary>
+    Logs the outcome of the OHTTP key fetch. Logged on each key fetch response
+    that is received from the server.
+  </summary>
+</histogram>
+
+<histogram name="SafeBrowsing.HPRT.OhttpKeyService.ResponseSize{Suffix}"
+    units="bytes" expires_after="2027-02-05">
+  <owner>xinghuilu@chromium.org</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
+  <summary>
+    Logs the size of the OHTTP key fetch response. Logged on each key fetch
+    response that is received from the server and valid at the network level
+    {Suffix}.
+  </summary>
+  <token key="Suffix">
+    <variant name="" summary=""/>
+    <variant name=".Invalid" summary="and where keys are invalid"/>
+    <variant name=".NoKeys" summary="and has no keys"/>
+    <variant name=".Valid" summary="and where keys are valid"/>
   </token>
 </histogram>
 
@@ -4198,7 +4238,7 @@ failing to fetch the updates which puts users' security at risk. -->
 <histogram
     name="SafeBrowsing.V8Optimizer.DeferNavigationToComputeSiteFamiliarity"
     enum="BooleanOccurred" expires_after="2026-09-06">
-  <owner>pkotwicz@google.com</owner>
+  <owner>jacastro@chromium.org</owner>
   <owner>chrome-safebrowsing-alerts@google.com</owner>
   <summary>
     Recorded during NavigationRequest::OnResponseStarted(). Records whether the
@@ -4209,8 +4249,8 @@ failing to fetch the updates which puts users' security at risk. -->
 
 <histogram
     name="SafeBrowsing.V8Optimizer.DifferentRendererProcess.SameSite.IframeState"
-    enum="V8IframeState" expires_after="2026-04-01">
-  <owner>pkotwicz@google.com</owner>
+    enum="V8IframeState" expires_after="2026-09-06">
+  <owner>jacastro@chromium.org</owner>
   <owner>chrome-safebrowsing-alerts@google.com</owner>
   <summary>
     Recorded when a navigation finishes. Records the v8-optimizer state of the
@@ -4225,7 +4265,7 @@ failing to fetch the updates which puts users' security at risk. -->
 
 <histogram name="SafeBrowsing.V8Optimizer.IframeState" enum="V8IframeState"
     expires_after="2026-09-06">
-  <owner>pkotwicz@google.com</owner>
+  <owner>jacastro@chromium.org</owner>
   <owner>chrome-safebrowsing-alerts@google.com</owner>
   <summary>
     Recorded when a navigation finishes. Records the v8-optimizer state of the

@@ -25,8 +25,6 @@ network::mojom::CookieSourceType
 EnumTraits<network::mojom::CookieSourceType, net::CookieSourceType>::ToMojom(
     net::CookieSourceType input) {
   switch (input) {
-    case net::CookieSourceType::kUnknown:
-      return network::mojom::CookieSourceType::kUnknown;
     case net::CookieSourceType::kHTTP:
       return network::mojom::CookieSourceType::kHTTP;
     case net::CookieSourceType::kScript:
@@ -40,8 +38,6 @@ net::CookieSourceType
 EnumTraits<network::mojom::CookieSourceType, net::CookieSourceType>::FromMojom(
     network::mojom::CookieSourceType input) {
   switch (input) {
-    case network::mojom::CookieSourceType::kUnknown:
-      return net::CookieSourceType::kUnknown;
     case network::mojom::CookieSourceType::kHTTP:
       return net::CookieSourceType::kHTTP;
     case network::mojom::CookieSourceType::kScript:
@@ -644,10 +640,10 @@ bool StructTraits<network::mojom::CookiePartitionKeyDataView,
                   net::CookiePartitionKey>::
     Read(network::mojom::CookiePartitionKeyDataView partition_key,
          net::CookiePartitionKey* out) {
-  net::CookiePartitionKey::AncestorChainBit ancestor_chain_bit =
-      EnumTraits<network::mojom::AncestorChainBit,
-                 net::CookiePartitionKey::AncestorChainBit>::
-          FromMojom(partition_key.ancestor_chain_bit());
+  net::CookiePartitionKey::AncestorChainBit ancestor_chain_bit;
+  if (!partition_key.ReadAncestorChainBit(&ancestor_chain_bit)) {
+    return false;
+  }
 
   net::SchemefulSite site;
   if (!partition_key.ReadSite(&site)) {

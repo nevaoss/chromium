@@ -313,9 +313,7 @@ chromium-metrics-reviews@google.com.
   </summary>
   <token key="CountType">
     <variant name="AllCookies"/>
-    <variant name="AllCookiesFromMainFrameNavigation"/>
     <variant name="HttpOnlyCookies"/>
-    <variant name="HttpOnlyCookiesFromMainFrameNavigation"/>
   </token>
 </histogram>
 
@@ -908,6 +906,17 @@ chromium-metrics-reviews@google.com.
     TabCloseObserver::WebContentsDestroyed, which is triggered by
     BackToOpenerController::GoBackToOpener). The value is measured from when
     ClosePage() is called until the WebContents is actually destroyed.
+  </summary>
+</histogram>
+
+<histogram name="Navigation.BeforeUnloadExecutionMode.IsInOutermostMainFrame"
+    enum="BeforeUnloadExecutionMode" expires_after="2027-02-04">
+  <owner>chikamune@chromium.org</owner>
+  <owner>chrome-loading@google.com</owner>
+  <summary>
+    Records the execution mode of beforeunload handlers for a navigation.
+    Recorded at the time of navigation commit for cross-document outermost main
+    frame navigations. Only recorded for HTTP or HTTPS schemes.
   </summary>
 </histogram>
 

@@ -2076,20 +2076,6 @@ void RenderFrameImpl::OnAssociatedInterfaceRequest(
   }
 }
 
-void RenderFrameImpl::SetUpSharedMemoryForDroppedFrames(
-    base::ReadOnlySharedMemoryRegion dropped_frames_memory) {
-  TRACE_EVENT("navigation",
-              "RenderFrameImpl::SetUpSharedMemoryForDroppedFrames",
-              perfetto::Flow::FromPointer(this));
-  DCHECK(dropped_frames_memory.IsValid());
-  for (auto& observer : observers_) {
-    DCHECK(dropped_frames_memory.IsValid());
-    if (observer.SetUpDroppedFramesReporting(dropped_frames_memory)) {
-      break;
-    }
-  }
-}
-
 void RenderFrameImpl::BindAutoplayConfiguration(
     mojo::PendingAssociatedReceiver<blink::mojom::AutoplayConfigurationClient>
         receiver) {

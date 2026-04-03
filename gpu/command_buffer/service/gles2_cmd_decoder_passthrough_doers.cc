@@ -10,7 +10,6 @@
 #include "base/compiler_specific.h"
 #include "base/functional/callback_helpers.h"
 #include "base/memory/raw_ptr.h"
-#include "base/metrics/histogram_macros.h"
 #include "base/notimplemented.h"
 #include "base/numerics/checked_math.h"
 // TODO(neva): base/strings/stringprintf.h is required for compilation of this
@@ -41,6 +40,9 @@
 #include "ui/gl/gl_utils.h"
 #include "ui/gl/gl_version_info.h"
 #include "ui/gl/scoped_make_current.h"
+#include "base/time/time.h"
+#include "base/check_op.h"
+#include "base/check.h"
 
 namespace gpu {
 namespace gles2 {

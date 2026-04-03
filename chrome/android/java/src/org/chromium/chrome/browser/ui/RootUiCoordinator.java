@@ -2190,12 +2190,14 @@ public class RootUiCoordinator
         // this.
         Callback<View> sheetInitializedCallback =
                 (view) -> {
+                    // The bottom sheet already accounts for internal offsets (e.g. E2E offsets), so
+                    // there is no need to provide an additionalBottomMarginPxSupplier.
                     mBottomSheetSnackbarManagerSupplier.set(
                             new SnackbarManager(
                                     mActivity,
                                     view.findViewById(R.id.bottom_sheet_snackbar_container),
                                     mWindowAndroid,
-                                    mEdgeToEdgeControllerSupplier,
+                                    /* additionalBottomMarginPxSupplier= */ null,
                                     mModalDialogManagerSupplier.get()));
                 };
 

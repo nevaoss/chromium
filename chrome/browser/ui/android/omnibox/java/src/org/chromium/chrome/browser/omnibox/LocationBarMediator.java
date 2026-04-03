@@ -637,9 +637,11 @@ class LocationBarMediator
 
     /* package */ void onUrlTextChanged(String text) {
         updateButtonVisibility();
-        if (mCurrentInput != null) {
-            mCurrentInput.setUserText(text);
-        }
+        if (mCurrentInput == null) return;
+
+        mCurrentInput
+                .setUserText(text)
+                .setAllowUserTextAutocompletion(mUrlCoordinator.shouldAutocomplete());
     }
 
     /* package */ void onSuggestionsChanged(
@@ -2237,6 +2239,7 @@ class LocationBarMediator
         // Edge case / SearchActivity could be triggering focus before Profile (and by proxy -
         // SearchEngineUtils) is available.
         if (mSearchEngineUtils == null) return;
+        if (mEmbedderUiOverrides.isEmbedderControlledHint()) return;
 
         @AutocompleteRequestType
         int requestType =

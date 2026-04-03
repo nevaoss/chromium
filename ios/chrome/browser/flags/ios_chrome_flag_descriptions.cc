@@ -255,10 +255,6 @@ const char kAutofillVcnEnrollStrikeExpiryTimeDescription[] =
     "When enabled, changes the amount of time required for VCN enrollment "
     "prompt strikes to expire.";
 
-const char kBWGPreciseLocationName[] = "BWG Precise Location";
-const char kBWGPreciseLocationDescription[] =
-    "When enabled, the precise location row is shown in BWG settings.";
-
 const char kBWGPromoConsentName[] = "BWG Promo Consent";
 const char kBWGPromoConsentDescription[] =
     "Whether the promo consent flow is composed of a single or a double screen "
@@ -710,6 +706,10 @@ const char kGeminiNavigationPromoName[] = "GeminiNavigationPromo";
 const char kGeminiNavigationPromoDescription[] =
     "Enables the automatic promo for Gemini on navigation.";
 
+const char kGeminiPreciseLocationName[] = "BWG Precise Location";
+const char kGeminiPreciseLocationDescription[] =
+    "When enabled, the precise location row is shown in BWG settings.";
+
 const char kGeminiRefactoredFREName[] = "Gemini Refactored FRE";
 const char kGeminiRefactoredFREDescription[] =
     "Enables the refactored Gemini First Run Experience (FRE).";
@@ -955,6 +955,11 @@ const char kLensContinuousZoomEnabledName[] =
     "Enable Lens camera continuous zoom";
 const char kLensContinuousZoomEnabledDescription[] =
     "When enabled, Lens camera supports continuous zoom.";
+
+const char kLensEnableSendUrlsInComposeboxesName[] =
+    "Lens enable send urls in composeboxes";
+const char kLensEnableSendUrlsInComposeboxesDescription[] =
+    "Enables sending urls in AIM composeboxes.";
 
 const char kLensExactMatchesEnabledName[] = "Lens exact matches enabled";
 const char kLensExactMatchesEnabledDescription[] =

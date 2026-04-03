@@ -47,6 +47,7 @@
 #import "components/feature_engagement/public/feature_list.h"
 #import "components/feed/feed_feature_list.h"
 #import "components/history/core/browser/features.h"
+#import "components/lens/lens_features.h"
 #import "components/ntp_tiles/features.h"
 #import "components/ntp_tiles/switches.h"
 #import "components/omnibox/browser/aim_eligibility_service_features.h"
@@ -101,7 +102,7 @@
 #import "ios/chrome/browser/default_browser/model/utils.h"
 #import "ios/chrome/browser/default_browser/promo/public/features.h"
 #import "ios/chrome/browser/download/ui/features.h"
-#import "ios/chrome/browser/enterprise/data_protection/features.h"
+#import "ios/chrome/browser/enterprise/data_protection/public/features.h"
 #import "ios/chrome/browser/first_run/public/features.h"
 #import "ios/chrome/browser/flags/chrome_switches.h"
 #import "ios/chrome/browser/flags/ios_chrome_flag_descriptions.h"
@@ -1190,6 +1191,8 @@ const FeatureEntry::FeatureParam
         {kGeminiCopresenceWithFullscreenDisabler, "true"}};
 const FeatureEntry::FeatureParam kGeminiCopresenceTrackSourcesParam[] = {
     {kGeminiCopresenceTrackSources, "true"}};
+const FeatureEntry::FeatureParam kGeminiCopresenceIgnoreSRPCheckEnabled[] = {
+    {kGeminiCopresenceSRPCheck, "false"}};
 
 const FeatureEntry::FeatureVariation kGeminiCopresenceVariations[] = {
     {"Response Ready Interval", kGeminiCopresenceResponseReadyIntervalParam,
@@ -1197,6 +1200,7 @@ const FeatureEntry::FeatureVariation kGeminiCopresenceVariations[] = {
     {"With Fullscreen Disabler", kGeminiCopresenceWithFullscreenDisablerParam,
      nullptr},
     {"Track Sources", kGeminiCopresenceTrackSourcesParam, nullptr},
+    {"Ignore SRP Check", kGeminiCopresenceIgnoreSRPCheckEnabled, nullptr},
 };
 
 const char kFRESignInHeaderTextUpdateParamName[] =
@@ -1641,9 +1645,9 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kOmniboxGroupingFrameworkForTypedSuggestionsDescription,
      flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(omnibox::kGroupingFrameworkForNonZPS)},
-    {"bwg-precise-location", flag_descriptions::kBWGPreciseLocationName,
-     flag_descriptions::kBWGPreciseLocationDescription, flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(kBWGPreciseLocation)},
+    {"bwg-precise-location", flag_descriptions::kGeminiPreciseLocationName,
+     flag_descriptions::kGeminiPreciseLocationDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kGeminiPreciseLocation)},
     {"ai-hub-new-badge", flag_descriptions::kAIHubNewBadgeName,
      flag_descriptions::kAIHubNewBadgeDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kAIHubNewBadge)},
@@ -2157,6 +2161,11 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kLensContinuousZoomEnabledName,
      flag_descriptions::kLensContinuousZoomEnabledDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kLensContinuousZoomEnabled)},
+    {"lens-enable-urls-in-composeboxes",
+     flag_descriptions::kLensEnableSendUrlsInComposeboxesName,
+     flag_descriptions::kLensEnableSendUrlsInComposeboxesDescription,
+     flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(lens::features::kLensSendUrlsInComposeboxes)},
     {"lens-initial-lvf-zoom-level-90-percent",
      flag_descriptions::kLensInitialLvfZoomLevel90PercentName,
      flag_descriptions::kLensInitialLvfZoomLevel90PercentDescription,

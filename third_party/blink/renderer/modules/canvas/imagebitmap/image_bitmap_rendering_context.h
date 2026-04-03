@@ -11,7 +11,9 @@
 #include "third_party/blink/renderer/core/html/canvas/canvas_rendering_context.h"
 #include "third_party/blink/renderer/core/html/canvas/canvas_rendering_context_factory.h"
 #include "third_party/blink/renderer/modules/modules_export.h"
+#include "third_party/blink/renderer/platform/bindings/script_state.h"
 #include "third_party/blink/renderer/platform/bindings/script_wrappable.h"
+#include "third_party/blink/renderer/platform/bindings/union_base.h"
 #include "third_party/blink/renderer/platform/graphics/skia/skia_utils.h"
 #include "ui/gfx/geometry/point_f.h"
 
@@ -57,7 +59,8 @@ class MODULES_EXPORT ImageBitmapRenderingContext final
 
   void Trace(Visitor*) const override;
 
-  V8UnionHTMLCanvasElementOrOffscreenCanvas* getHTMLOrOffscreenCanvas() const;
+  bindings::OptimizedReturnProxy<V8UnionHTMLCanvasElementOrOffscreenCanvas>
+  getHTMLOrOffscreenCanvas(ScriptState*) const;
 
   void PageVisibilityChanged() override {}
   bool isContextLost() const override { return false; }
@@ -113,10 +116,6 @@ class MODULES_EXPORT ImageBitmapRenderingContext final
   scoped_refptr<StaticBitmapImage> GetImageAndResetInternal();
 
   void ResetInternalBitmapToBlackTransparent(int width, int height);
-
-  // Rect is in canvas host space (i.e Host()->Size() is the full rect), not the
-  // context (i.e Image) space.
-  SkIRect dirty_rect_for_commit_;
 
   Member<ImageLayerBridge> image_layer_bridge_;
   std::unique_ptr<CanvasNon2DResourceProviderSharedImage>

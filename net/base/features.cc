@@ -98,7 +98,7 @@ BASE_FEATURE(kEnableIPv6ReachabilityOverride,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kMaintainConnectionsOnIpv6TempAddrChange,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kEnableTLS13EarlyData, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -689,12 +689,22 @@ BASE_FEATURE_PARAM(bool,
                    "http_cache_transaction",
                    false);
 
-BASE_FEATURE(kAdditionalDelayMainJob, base::FEATURE_DISABLED_BY_DEFAULT);
+// Since we are seeing consistent wins on Android, enable by default. We are
+// reiterating the experiment on other platforms to gather more data so that we
+// can make a launch decision.
+#if BUILDFLAG(IS_ANDROID)
+inline constexpr auto kDelayMainJob = base::FEATURE_ENABLED_BY_DEFAULT;
+inline constexpr auto kDefaultAdditionalDelay = base::Milliseconds(100);
+#else   // !BUILDFLAG(IS_ANDROID)
+inline constexpr auto kDelayMainJob = base::FEATURE_DISABLED_BY_DEFAULT;
+inline constexpr auto kDefaultAdditionalDelay = base::Milliseconds(0);
+#endif  // BUILDFLAG(IS_ANDROID)
+BASE_FEATURE(kAdditionalDelayMainJob, kDelayMainJob);
 BASE_FEATURE_PARAM(base::TimeDelta,
                    kAdditionalDelay,
                    &kAdditionalDelayMainJob,
                    "AdditionalDelay",
-                   base::Milliseconds(0));
+                   kDefaultAdditionalDelay);
 BASE_FEATURE_PARAM(bool,
                    kDelayMainJobWithAvailableSpdySession,
                    &kAdditionalDelayMainJob,
@@ -815,6 +825,9 @@ BASE_FEATURE_PARAM(int,
                    32);
 
 BASE_FEATURE(kIgnoreQuicCryptoConfigMemoryPressureForDoh,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
+BASE_FEATURE(kCookieParseRejectEmptyNameAmbiguous,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 }  // namespace net::features

@@ -763,6 +763,7 @@
 <translation id="2188375229972301266">Няколко перфорации в долната част</translation>
 <translation id="218940509700321686">Стойности, разделени със запетая</translation>
 <translation id="2190094353033916816">За това правило са приложени различни стойности на ниво устройство и на ниво потребител. Правилото работи нормално.</translation>
+<translation id="219061769324072544">Кредитна,карта,дебитна</translation>
 <translation id="2191980191135734720">Отключете екрана си в следващата стъпка (обикновено чрез отпечатък). Можете също <ph name="LINK_TEXT" />.</translation>
 <translation id="2194856509914051091">Обмислете следните неща</translation>
 <translation id="2195729137168608510">Защита за имейли</translation>
@@ -917,6 +918,7 @@
 <translation id="2400600116338235695">Може да поиска разрешение да се свързва със серийни портове</translation>
 <translation id="2403474027143565107">Точно</translation>
 <translation id="240450251994300576">Алтернативно лого в заглавката</translation>
+<translation id="2404715426538856682">Кредитни и дебитни карти · IBAN · Карти за лоялност</translation>
 <translation id="2404884497378469141">Опитайте отново да копирате файловете си</translation>
 <translation id="2413155254802890957">Стар</translation>
 <translation id="2413528052993050574">Сървърът не можа да докаже, че е <ph name="DOMAIN" />; възможно е сертификатът му за сигурност да е оттеглен. Това може да се дължи на неправилно конфигуриране или на прихващане на връзката ви от атакуващ.</translation>
@@ -1365,6 +1367,7 @@
 <translation id="3134859781443140237">Локална мрежа</translation>
 <translation id="3137283076021007034"><ph name="KEYWORD" /> – търсене в(ъв) <ph name="KEYWORD_SHORT_NAME" /></translation>
 <translation id="3137507986424712703">{COUNT,plural, =0{Няма}=1{данни за вход за 1 профил}other{данни за вход за # профила}}</translation>
+<translation id="3139503241401248626">За да активирате тези настройки и да използвате данните от профила си в Google, отворете настройките за услугите за автоматично попълване</translation>
 <translation id="3140646734028448730">Бизнес услуги</translation>
 <translation id="3141093262818886744">Отваряне въпреки това</translation>
 <translation id="3141337053413339205">Превключване към този раздел.</translation>
@@ -2168,6 +2171,7 @@
 <translation id="4340810192899866471">Импортиране от JSON файл</translation>
 <translation id="4340982228985273705">Този компютър не се управлява корпоративно, така че правилото може да инсталира автоматично само разширения от уеб магазина на Chrome. URL адресът за актуализация за уеб магазина на Chrome е <ph name="CWS_UPDATE_URL" />.</translation>
 <translation id="4342742994656318294">Тематични паркове</translation>
+<translation id="4346670990181948854">Информация за пътувания · Превозни средства</translation>
 <translation id="4348834659292907206">Връзката със сайта <ph name="SITE" /> не е защитена</translation>
 <translation id="4349365535725594680">Споделянето на поверително съдържание не е възможно</translation>
 <translation id="4349810866125026513">Качване въпреки това</translation>
@@ -2298,6 +2302,7 @@
 <translation id="4594403342090139922">&amp;Отмяна на изтриването</translation>
 <translation id="4598556348158889687">Управление на хранилището</translation>
 <translation id="459914240367517409">Уеб дизайн и разработка</translation>
+<translation id="4599572944836204718">Плащайте по-бързо с Google Pay, когато картата ви е запазена. Данните за картата се шифроват в Google Wallet.</translation>
 <translation id="4602465984861132303">Боулинг</translation>
 <translation id="4603727370377253901">Резервации за полети</translation>
 <translation id="4607608436550361748">Вижте съветите за Chrome</translation>
@@ -2412,6 +2417,7 @@
 <translation id="477945296921629067">{NUM_POPUPS,plural, =1{Блокиран е изскачащ прозорец}other{Блокирани са # изскач. прозореца}}</translation>
 <translation id="4780320432697076749">Фотографски софтуер</translation>
 <translation id="4780366598804516005">Пощенска кутия 1</translation>
+<translation id="4785273477715803444">Филтриране на регистрационните файлове</translation>
 <translation id="4785376858512657294">Управление на профила в Google</translation>
 <translation id="4785689107224900852">Превключване към този раздел</translation>
 <translation id="4785998536350006000">Търси се „<ph name="SEARCH_QUERY" />“</translation>
@@ -2587,6 +2593,7 @@
 <translation id="5051254010007014901"><ph name="TOOLBELT_PRECEDING_MATCH_TEXT" />. Натиснете Tab за още преки пътища за търсене, които са налице след това предложение за търсене</translation>
 <translation id="5052488928733955073">При попълването на информацията ви възникна проблем. Проверете връзката си.</translation>
 <translation id="5052517576853118371">Активни теми</translation>
+<translation id="5053116470141135293">Когато плащате с тази карта, ще бъде попълнен номер на виртуална карта, за да се защитят действителните ви данни. Управлявайте настройките в Google Wallet. <ph name="IDS_AUTOFILL_VIRTUAL_CARD_ENROLLMENT_LEARN_MORE_LINK_LABEL" /></translation>
 <translation id="5056425809654826431">{NUM_FILES,plural, =1{За да изпратите този файл чрез „Споделяне наблизо“, освободете място (<ph name="DISK_SPACE_SIZE" />) на устройството си}other{За да изпратите тези файлове чрез „Споделяне наблизо“, освободете място (<ph name="DISK_SPACE_SIZE" />) на устройството си}}</translation>
 <translation id="5056587122125565772">Създаване на изображение</translation>
 <translation id="505757197798929356">Посочете причина за отварянето (задължително)</translation>
@@ -2956,6 +2963,7 @@
 <translation id="5596627076506792578">Още опции</translation>
 <translation id="5596939519753369075">2 x 3,5 инча</translation>
 <translation id="5597254438174353289">синьо 3</translation>
+<translation id="5600044805561809264">Можете лесно да задавате въпроси относно споделяните от вас раздели, докато сърфирате.</translation>
 <translation id="5603469469737324249"><ph name="ISSUER_1_NAME" /> или <ph name="ISSUER_2_NAME" /></translation>
 <translation id="560412284261940334">Управлението не се поддържа</translation>
 <translation id="5605249000617390290">Научете повече за проследяването на цените</translation>
@@ -3050,6 +3058,7 @@
 <translation id="5752519522101347518">Уебсайтът за потвърждаване на банковата сметка се зарежда</translation>
 <translation id="5753570386948603678">Изтриване от историята</translation>
 <translation id="5759751709240058861">Използване и местене на камерата ви</translation>
+<translation id="5762131895127128324">Шофьорски книжки · Документи за самоличност · Паспорти</translation>
 <translation id="5763042198335101085">Въведете валиден имейл адрес</translation>
 <translation id="5764725887548570807">Форматът на източника е невалиден.</translation>
 <translation id="5764920692828389743">Изпращане до <ph name="EMAIL_ADDRESS" /></translation>
@@ -3361,6 +3370,7 @@
 <translation id="6250932670816326647">Продукти за баня и за тялото</translation>
 <translation id="6251906504834538140">{0,plural, =1{Преместването на файла е блокирано}other{Преместването на <ph name="FILE_COUNT" /> файла е блокирано}}</translation>
 <translation id="6252613631861574218"><ph name="MANAGE_CHROME_DOWNLOADS_FOCUSED_FRIENDLY_MATCH_TEXT" />. Натиснете Tab и след това – Enter, за да управлявате файловете, които сте изтеглили с Chrome</translation>
+<translation id="6253380015872250643">Запазване на картата в Google Wallet</translation>
 <translation id="6254436959401408446">Няма достатъчно памет за отваряне на тази страница</translation>
 <translation id="625463612687472648">Оттегляне на разрешението</translation>
 <translation id="6259156558325130047">&amp;Възстановяване на пренареждането</translation>
@@ -3987,6 +3997,7 @@
 <translation id="7220786058474068424">Обработва се</translation>
 <translation id="7221855153210829124">Показва известия</translation>
 <translation id="722454870747268814">Нов раздел в режим „инкогнито“</translation>
+<translation id="7225676267118764980">Промяна на доставчика за автоматично попълване и други настройки</translation>
 <translation id="7226892411756387078">Неформатиран текст</translation>
 <translation id="7227293336683593977">История на цените</translation>
 <translation id="7228306718910595403">Състояние на съответствие с изискванията на ЕС</translation>
@@ -4257,6 +4268,7 @@
 <translation id="7615932826417658001">Добавяне на документ за самоличност</translation>
 <translation id="7616390733770379387">Опциите са показани в произволен ред.</translation>
 <translation id="7616645509853975347">Администраторът ви е включил Chrome Enterprise Connectors в браузъра ви. Тези конектори имат достъп до някои от данните ви.</translation>
+<translation id="7616747402308801775">Тази карта е запазена в Google Wallet, за да можете да я използвате в услугите ни</translation>
 <translation id="7617825962482469577">Плик C7/C6</translation>
 <translation id="7618270539713451657">Бойни изкуства</translation>
 <translation id="7619838219691048931">Последен лист</translation>
@@ -4579,6 +4591,7 @@
 <translation id="8120720167840853945">Това правило не контролира поведението по подразбиране на другите правила.</translation>
 <translation id="8127301229239896662"><ph name="SOFTWARE_NAME" /> не се инсталира правилно на компютъра ви или в мрежата. Помолете системния си администратор да реши този проблем.</translation>
 <translation id="8130113808541743942">Преместване във...</translation>
+<translation id="813024282736408069">Включване на виртуална карта за автоматично попълване</translation>
 <translation id="8131740175452115882">Потвърждаване</translation>
 <translation id="8133495915926741232">Изберете кои широки категории теми могат да се използват за персонализиране на рекламите. Изключването на по-широка категория ще блокира и сродните ѝ теми. <ph name="BEGIN_LINK" />Научете повече<ph name="END_LINK" /></translation>
 <translation id="8134058435519644366">Подбор на персонал и кадрово обезпечение</translation>
@@ -5043,6 +5056,7 @@
 <translation id="8891031436559779793">Ще получите известие при понижение на цената в който и да е сайт.</translation>
 <translation id="8891727572606052622">Невалиден режим на прокси сървъра.</translation>
 <translation id="8894794286471754040">Дългата страна напред</translation>
+<translation id="8895334001368918465">За да използвате друга услуга за автоматично попълване в Chrome, включете я в настройките на Android и тук</translation>
 <translation id="8897221284075091877">За да поискате да видите това съдържание, продължете с профила си в Google</translation>
 <translation id="8897428486789851669">Плуване</translation>
 <translation id="8898854704577986668">Показване на историята в страничния панел</translation>

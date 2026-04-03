@@ -8,9 +8,9 @@ import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
 
 import {getHtml} from './with_webui_plugin_lit_element_bindings_violations.html.js';
 
-export class HelloWorldDummyElement extends CrLitElement {
+export class LitElementBindingsViolationsElement extends CrLitElement {
   static get is() {
-    return 'hello-world-dummy';
+    return 'lit-element-bindings-violations';
   }
 
   override render() {
@@ -19,6 +19,7 @@ export class HelloWorldDummyElement extends CrLitElement {
 
   static override get properties() {
     return {
+      buttonDisabled: {type: Boolean},
       disabled: {
         type: Boolean,
         reflect: true,
@@ -33,6 +34,7 @@ export class HelloWorldDummyElement extends CrLitElement {
     };
   }
 
+  accessor buttonDisabled: boolean|undefined;
   accessor disabled: boolean = false;
   accessor value: number[] = [0];
   accessor errorMessage: string = '';
@@ -40,6 +42,15 @@ export class HelloWorldDummyElement extends CrLitElement {
   // Intentionally mismatching Lit reactive properties type.
   accessor someBooleanProp: boolean|number = false;
   accessor someArrayProp: string = '';
+
+  getErrorMessage(): string {
+    return 'some error';
+  }
+
+  getLabels() {
+    return ['label1', 'label2'];
+  }
+
   accessor description:
       {[key: string]: string} = {'is': 'input', 'controls': 'count'};
   accessor limits: {min: number, max: number} = {min: 0, max: 10};
@@ -47,11 +58,13 @@ export class HelloWorldDummyElement extends CrLitElement {
 
 declare global {
   interface HTMLElementTagNameMap {
-    'hello-world-dummy': HelloWorldDummyElement;
+    'lit-element-bindings-violations': LitElementBindingsViolationsElement;
   }
 }
 
 // Testing to ensure errors are still caught when aliasing is used.
-export type DummyElement = HelloWorldDummyElement;
+export type BindingsViolationsElement = LitElementBindingsViolationsElement;
 
-customElements.define(HelloWorldDummyElement.is, HelloWorldDummyElement);
+customElements.define(
+    LitElementBindingsViolationsElement.is,
+    LitElementBindingsViolationsElement);

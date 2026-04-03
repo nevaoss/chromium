@@ -49,8 +49,8 @@ rust_static_library("bridge_rust_side") {
   deps = [
     ":path_bridge",
     "//third_party/rust/font_types/v0_11:lib",
-    "//third_party/rust/read_fonts/v0_37:lib",
-    "//third_party/rust/skrifa/v0_40:lib",
+    "//third_party/rust/read_fonts/v0_38:lib",
+    "//third_party/rust/skrifa/v0_41:lib",
   ]
   configs -= [ "//build/config/compiler:chromium_code" ]
   configs += [
@@ -522,6 +522,7 @@ component("skia") {
   public_deps = [
     ":buildflags",
     ":rust_bmp_ffi",
+    ":rust_icc_ffi",
     ":skia_core_and_effects",
     ":skia_core_public_headers",
   ]
@@ -617,7 +618,7 @@ component("skia") {
     assert(use_blink)
     deps += [
       # Needed for HarfBuzz hb_subet subsetting.
-      "//third_party/harfbuzz-ng",
+      "//third_party/harfbuzz",
       "//third_party/zlib",
     ]
     public += skia_pdf_public
@@ -744,6 +745,7 @@ if (!disable_rust_for_neva) {
     ]
   }
 
+<<<<<<< HEAD
   rust_static_library("rust_bmp_ffi") {
     visibility = [ ":*" ]
     allow_unsafe = true  # For FFI
@@ -761,6 +763,26 @@ if (!disable_rust_for_neva) {
       "//build/config/compiler:no_chromium_code",
     ]
   }
+=======
+rust_static_library("rust_bmp_ffi") {
+  visibility = [ ":*" ]
+  allow_unsafe = true  # For FFI
+  crate_root = skia_codec_rust_bmp_ffi_crate_root
+  sources = skia_codec_rust_bmp_ffi_rs_srcs
+  cxx_bindings = skia_codec_rust_bmp_ffi_cxx_bridge_srcs
+  public_deps = [ ":rust_bmp_ffi_cpp" ]
+  deps = [
+    ":rust_common_ffi",
+    "//third_party/rust/image/v0_25:lib",
+  ]
+  configs -= [ "//build/config/compiler:chromium_code" ]
+  configs += [
+    ":skia_config",
+    "//build/config/compiler:no_chromium_code",
+  ]
+  no_clippy = true  # TODO(https://crbug.com/472355480)
+}
+>>>>>>> 148.0.7764.0~1
 
   source_set("rust_bmp_ffi_cpp") {
     visibility = [
@@ -784,6 +806,48 @@ if (!disable_rust_for_neva) {
       "//build/config/compiler:no_chromium_code",
     ]
   }
+}
+
+rust_static_library("rust_icc_ffi") {
+  visibility = [ ":*" ]
+  allow_unsafe = true  # For FFI
+  crate_root = skia_rust_icc_ffi_crate_root
+  sources = skia_rust_icc_ffi_rs_srcs
+  cxx_bindings = skia_rust_icc_ffi_cxx_bridge_srcs
+  public_deps = [ ":rust_icc_ffi_cpp" ]
+  deps = [
+    ":rust_common_ffi",
+    "//third_party/rust/moxcms/v0_8:lib",
+  ]
+  configs -= [ "//build/config/compiler:chromium_code" ]
+  configs += [
+    ":skia_config",
+    "//build/config/compiler:no_chromium_code",
+  ]
+  no_clippy = true  # TODO(https://crbug.com/472355480)
+}
+
+source_set("rust_icc_ffi_cpp") {
+  visibility = [ ":*" ]
+  public = skia_rust_icc_ffi_cpp_hdrs
+  sources = skia_rust_icc_ffi_cpp_srcs
+  public_deps = [
+    ":rust_common_ffi_cpp",
+    ":skia_core_public_headers",
+    "//build/rust:cxx_cppdeps",
+  ]
+  deps = [
+    ":rust_icc_ffi_cxx_generated_gen",
+    ":skcms",
+  ]
+  check_includes =
+      false  # Logically part of skia, but split out for build reasons
+  configs -= [ "//build/config/compiler:chromium_code" ]
+  configs += [
+    ":skia_config",
+    ":skia_library_config",
+    "//build/config/compiler:no_chromium_code",
+  ]
 }
 
 # Template for things that are logically part of :skia, but need to be split out

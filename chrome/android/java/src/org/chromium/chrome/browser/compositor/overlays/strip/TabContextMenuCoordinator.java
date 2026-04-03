@@ -496,7 +496,7 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
 
     private boolean shouldShowMoveToWindowItem(List<Tab> tabs, AnchorInfo anchorInfo) {
         if (TabGroupUtils.isAnyTabInGroup(tabs)) return false;
-        if (MultiWindowUtils.getInstanceCountWithFallback(PersistedInstanceType.ACTIVE) == 1
+        if (MultiWindowUtils.getInstanceCount(PersistedInstanceType.ACTIVE) == 1
                 && (mTabModelSupplier.get().getTabCountSupplier().get()
                         == anchorInfo.getAllTabIds().size())) {
             return false;
@@ -601,7 +601,7 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
         } else if (menuId == R.id.remove_from_tab_group) {
             recordUserAction("RemoveTabFromTabGroup", isMultipleTabs);
         } else if (menuId == R.id.move_to_other_window_menu_id) {
-            if (MultiWindowUtils.getInstanceCountWithFallback(PersistedInstanceType.ACTIVE) == 1) {
+            if (MultiWindowUtils.getInstanceCount(PersistedInstanceType.ACTIVE) == 1) {
                 recordUserAction("MoveTabToNewWindow", isMultipleTabs);
             } else {
                 recordUserAction("MoveTabsToOtherWindow", isMultipleTabs);
@@ -697,7 +697,8 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
                                     windowId,
                                     tabs,
                                     /* destTabIndex= */ TabList.INVALID_TAB_INDEX,
-                                    /* destGroupTabId= */ firstTabInGroupTabId);
+                                    /* destGroupTabId= */ firstTabInGroupTabId,
+                                    /* bringToFront= */ true);
                         }
                     };
             result.add(
@@ -810,7 +811,8 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
                                 instanceInfo.instanceId,
                                 tabs,
                                 /* destTabIndex= */ TabList.INVALID_TAB_INDEX,
-                                /* destGroupTabId= */ TabList.INVALID_TAB_INDEX));
+                                /* destGroupTabId= */ TabList.INVALID_TAB_INDEX,
+                                /* bringToFront= */ true));
     }
 
     private List<ListItem> createReorderItems(AnchorInfo anchorInfo, boolean isIncognito) {

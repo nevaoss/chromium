@@ -205,6 +205,8 @@ BASE_FEATURE(kGlicActor, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicActor, base::FEATURE_ENABLED_BY_DEFAULT);
 #endif
 
+BASE_FEATURE(kGlicExperimentalTriggering, base::FEATURE_DISABLED_BY_DEFAULT);
+
 const base::FeatureParam<base::TimeDelta> kGlicActorPageToolTimeout{
     &kGlicActor, "glic-actor-page-tool-timeout", base::Seconds(30)};
 
@@ -1198,6 +1200,8 @@ const base::FeatureParam<std::string> kIndigoAlphaGenerateUrl{
     &kIndigo, "indigo_alpha_generate_url", ""};
 const base::FeatureParam<std::string> kIndigoAlphaStatusUrl{
     &kIndigo, "indigo_alpha_status_url", ""};
+const base::FeatureParam<base::TimeDelta> kIndigoAnchoredMessageResetDuration{
+    &kIndigo, "indigo_anchored_message_reset_duration", base::Hours(24)};
 
 #if !BUILDFLAG(IS_ANDROID)
 // A feature that controls whether Instant uses a spare renderer.

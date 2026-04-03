@@ -151,7 +151,7 @@
     },
 
     // Specify how the flag value is updated from the base::Feature value. This
-    // field is used only if base_feature is not empty.
+    // field works only if base_feature is not "none".
     //
     // * "enabled_or_overridden"
     // - If the base::Feature status is overridden to the enabled or disabled
@@ -171,9 +171,10 @@
     //
     //   This is useful for Blink origin trial features especially those
     //   implemented in both Chromium and Blink. As origin trial only controls
-    //   the Blink features, for now we require the base::Feature to be enabled
-    //   by default, but we don't want the default enabled status affect the
-    //   Blink feature. See also https://crbug.com/1048656#c10.
+    //   the Blink features, we require the base::Feature to be enabled
+    //   by default, but we don't want the default enabled status to affect the
+    //   Blink feature. See RuntimeEnabledFeatures.md for a detailed explanation
+    //   of how this works. See also https://crbug.com/1048656#c10.
     //   This can also be used for features that are enabled by default in
     //   Chromium but not in Blink on all platforms and we want to use the Blink
     //   status. However, we would prefer consistent Chromium and Blink status
@@ -868,14 +869,6 @@
       name: "BlockSelectPopupUnfocusedWindow",
       status: "stable",
     },
-    // Makes <body> marginwidth/marginheight take precedence over
-    // left/right/top/bottom presentational margin attributes, and prevents
-    // iframe marginwidth/marginheight injection when body margin attrs exist.
-    // Added in M147, remove in M149. See crbug.com/41310601.
-    {
-      name: "BodyMarginAttributePrecedence",
-      status: "stable",
-    },
     // https://crbug.com/415304289: Mouse and Pointer boundary event dispatch
     // (i.e. dispatch of enter, leave, over, out events) tracks DOM node removal
     // to fix event pairing on ancestor nodes.
@@ -1321,6 +1314,7 @@
     {
       name: "ContainerTiming",
       origin_trial_feature_name: "ContainerTiming",
+      origin_trial_allows_third_party: true,
       status: "experimental",
     },
     {
@@ -1729,6 +1723,11 @@
     {
       name: "CSSPseudoElementInterface",
       status: "stable",
+    },
+    {
+      name: "CSSPseudoElementViewTransitions",
+      depends_on: ["CSSPseudoElementInterface"],
+      status: "test",
     },
     {
       // Enables the :has-slotted pseudo-selector.
@@ -2891,7 +2890,7 @@
     },
     {
       name: "FontFormatAvar2",
-      status: "experimental",
+      status: "stable",
     },
     {
       // crbug.com/41170551
@@ -3805,10 +3804,6 @@
       status: "stable",
     },
     {
-      name: "MoveToParagraphStartOrEndSkipsNonEditable",
-      status: "stable",
-    },
-    {
       name: "MulticolColumnWrapping",
       status: "stable",
     },
@@ -4550,6 +4545,11 @@
       status: "stable",
     },
     {
+      // Shipping in M148, so should be removed around M150.
+      name: "RecheckParentDuringNodeVectorInsertion",
+      status: "stable",
+    },
+    {
       name: "RecordSameDocumentPresentationTimeOnce",
       status: "stable",
     },
@@ -4978,13 +4978,7 @@
     },
     {
       name: "SecurePaymentConfirmationCapabilities",
-      status: {
-        "Android": "experimental",
-        "Mac": "experimental",
-        "Win": "experimental",
-        "iOS": "",
-        "default": "test",
-      },
+      status: "stable",
     },
     {
       name: "SecurePaymentConfirmationDebug",

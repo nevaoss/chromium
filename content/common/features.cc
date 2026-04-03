@@ -30,6 +30,9 @@ BASE_FEATURE(kAccessibilityExposeNonAtomicTextFieldChildren,
 BASE_FEATURE(kAllowContentInitiatedDataUrlNavigations,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+// Enables desktop-style scrollbars.
+BASE_FEATURE(kAndroidDesktopStyleScrollbars, base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Allows Blink to request fonts from the Android Downloadable Fonts API through
 // the service implemented on the Java side.
 BASE_FEATURE(kAndroidDownloadableFontsMatching,
@@ -93,7 +96,6 @@ BASE_FEATURE_ENUM_PARAM(
     AvoidUnnecessaryBeforeUnloadCheckSyncMode,
     kAvoidUnnecessaryBeforeUnloadCheckSyncMode,
     &kAvoidUnnecessaryBeforeUnloadCheckSync,
-    "AvoidUnnecessaryBeforeUnloadCheckSyncMode",
     AvoidUnnecessaryBeforeUnloadCheckSyncMode::kWithSendBeforeUnload,
     &kAvoidUnnecessaryBeforeUnloadCheckSyncModeOption);
 
@@ -701,6 +703,12 @@ BASE_FEATURE(kServiceWorkerWindowClientInitiator,
 // functional events complete (spec step 8) and on worker start failure
 // (spec step 5), per the "Fire Functional Event" spec algorithm.
 BASE_FEATURE(kServiceWorkerSoftUpdateOnFunctionalEvent,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+// If enabled, the browser process will derive the secure context state of a
+// SharedWorker connection from its own authoritative ground truth
+// (PolicyContainerHost) instead of trusting the renderer-supplied parameter.
+BASE_FEATURE(kSharedWorkerSecureContextDerivationFromBrowser,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables skipping the early call to CommitPending when navigating away from a

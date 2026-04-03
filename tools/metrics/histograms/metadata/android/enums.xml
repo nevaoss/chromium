@@ -46,6 +46,12 @@ chromium-metrics-reviews@google.com.
   <int value="10" label="Auto with add to bookmarks"/>
   <int value="11" label="Read Aloud (Listen to this page)"/>
   <int value="12" label="Auto with Read Aloud (Listen to this page)"/>
+  <int value="13" label="Page summary"/>
+  <int value="14" label="Auto with Page summary"/>
+  <int value="15" label="Open in browser"/>
+  <int value="16" label="Auto with Open in browser"/>
+  <int value="17" label="Glic"/>
+  <int value="18" label="Auto with Glic"/>
 </enum>
 
 <enum name="AgsaProcessName">
@@ -744,6 +750,7 @@ chromium-metrics-reviews@google.com.
   <int value="185" label="WebSettingsCompat.getIgnoreDuplicateNavEnabled"/>
   <int value="186" label="WebSettingsCompat.setIgnoreDuplicateNavThreshold"/>
   <int value="187" label="WebSettingsCompat.getIgnoreDuplicateNavThreshold"/>
+  <int value="188" label="WebSettingsCompat.getMaxPrerenders"/>
 <!-- LINT.ThenChange(/android_webview/support_library/java/src/org/chromium/support_lib_glue/SupportLibWebViewChromiumFactory.java:ApiCall) -->
 
 </enum>

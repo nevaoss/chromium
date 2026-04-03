@@ -151,7 +151,9 @@ class AutocompleteMediator
             this::onSiteSearchDataChanged;
     private final Callback<Integer> mOnFuseboxStateChanged = this::onFuseboxStateChanged;
     private final Callback<String> mOnUserTextChanged =
-            text -> onTextChanged(text, /* isOnFocusContext= */ false);
+            text -> onInputChanged(/* isOnFocusContext= */ false);
+    private final Callback<Boolean> mOnShouldAutocompleteChanged =
+            state -> onInputChanged(/* isOnFocusContext= */ false);
 
     private @Nullable AutocompleteController mAutocomplete;
     private @Nullable AutocompleteResult mAutocompleteResult;
@@ -524,9 +526,7 @@ class AutocompleteMediator
             // suggestion would take the user to the DSE home page.
             // This is tracked by MobileStartup.LaunchCause / EXTERNAL_SEARCH_ACTION_INTENT
             // metric.
-            onTextChanged(
-                    mAutocompleteInput.getUserText(),
-                    /* isOnFocusContext= */ OmniboxFeatures.shouldRetainOmniboxOnFocus());
+            onInputChanged(/* isOnFocusContext= */ OmniboxFeatures.shouldRetainOmniboxOnFocus());
         }
     }
 
@@ -645,6 +645,9 @@ class AutocompleteMediator
             mAutocompleteInput.getSiteSearchDataSupplier().removeObserver(mOnSiteSearchDataChanged);
             mUrlBarEditingTextProvider.setSiteSearchChip(null);
             mAutocompleteInput.getUserTextSupplier().removeObserver(mOnUserTextChanged);
+            mAutocompleteInput
+                    .getShouldAllowUserTextAutocompletionSupplier()
+                    .removeObserver(mOnShouldAutocompleteChanged);
         }
         mAutocompleteInput = input;
         if (mAutocompleteInput != null) {
@@ -655,6 +658,9 @@ class AutocompleteMediator
                     .getSiteSearchDataSupplier()
                     .addSyncObserver(mOnSiteSearchDataChanged);
             // Don't call onTextChange right away, wait for the user text supplier to be added.
+            mAutocompleteInput
+                    .getShouldAllowUserTextAutocompletionSupplier()
+                    .addSyncObserver(mOnShouldAutocompleteChanged);
             mAutocompleteInput.getUserTextSupplier().addSyncObserver(mOnUserTextChanged);
         }
     }
@@ -816,7 +822,7 @@ class AutocompleteMediator
             mAutocompleteInput.setUserText(refineText);
         }
         mDelegate.setOmniboxEditingText(refineText);
-        onTextChanged(refineText, /* isOnFocusContext= */ false);
+        onInputChanged(/* isOnFocusContext= */ false);
 
         if (isSearchSuggestion) {
             // Note: the logic below toggles assumes individual values to be represented by
@@ -1040,19 +1046,15 @@ class AutocompleteMediator
      * where, if both physical keyboard and pointer device is attached, the Page URL should not be
      * cleared.
      *
-     * @param textWithoutAutocomplete the text that does not include autocomplete information
      * @param isOnFocusContext whether Omnibox is currently gaining focus
      */
-    public void onTextChanged(String textWithoutAutocomplete, boolean isOnFocusContext) {
+    public void onInputChanged(boolean isOnFocusContext) {
         if (!isInInputSession()) return;
         if (mShouldPreventOmniboxAutocomplete) return;
 
-        if (mAutocompleteInput.shouldSuppressAutomaticSuggestionsUntilUserStartsTyping()
-                && TextUtils.equals(mAutocompleteInput.getUserText(), textWithoutAutocomplete)) {
+        if (mAutocompleteInput.shouldSuppressAutomaticSuggestionsUntilUserStartsTyping()) {
             return;
         }
-        // User started typing.
-        mAutocompleteInput.setSuppressAutomaticSuggestionsUntilUserStartsTyping(false);
 
         // Always re-set the list's final state when we're about to request new suggestions.
         // This avoids a problem, where the property does not get an explicit update that the list
@@ -1160,13 +1162,17 @@ class AutocompleteMediator
 
     private void onAutocompleteRequestTypeChanged(@AutocompleteRequestType int type) {
         if (!isInInputSession()) return;
-        onTextChanged(mAutocompleteInput.getUserText(), /* isOnFocusContext= */ false);
+        onInputChanged(/* isOnFocusContext= */ false);
     }
 
     private void onKeywordModeEntered(@Nullable SiteSearchData siteSearchData) {
         if (!isInInputSession()) return;
 
-        if (mIgnoreOmniboxItemSelection) return;
+        // If explicitly requested to exit keyword mode (siteSearchData == null),
+        // we should only do so if we are actively moving focus (mIgnoreOmniboxItemSelection is
+        // false).
+        // Otherwise, it might be the chip losing focus because the user started typing.
+        if (mIgnoreOmniboxItemSelection && siteSearchData == null) return;
         mIgnoreOmniboxItemSelection = true;
 
         // Prevent clearing the text from triggering a new autocomplete request.
@@ -1194,7 +1200,7 @@ class AutocompleteMediator
                 siteSearchData != null ? siteSearchData.fullName : null);
 
         if (isInInputSession()) {
-            onTextChanged(mAutocompleteInput.getUserText(), /* isOnFocusContext= */ false);
+            onInputChanged(/* isOnFocusContext= */ false);
         }
     }
 
@@ -1726,7 +1732,7 @@ class AutocompleteMediator
             // triggering recalculation of refine arrow icon. TODO(http://crbug.com/446058347):
             // refactor to enable updates to the icon property of the model once the list is already
             // built.
-            onTextChanged(mAutocompleteInput.getUserText(), /* isOnFocusContext= */ false);
+            onInputChanged(/* isOnFocusContext= */ false);
         }
     }
 
@@ -1752,7 +1758,7 @@ class AutocompleteMediator
     public void onAttachmentListChanged() {
         if (!isInInputSession()) return;
         // Re-request ZPS in the event of attachments being removed/replaced.
-        onTextChanged(mAutocompleteInput.getUserText(), /* isOnFocusContext= */ false);
+        onInputChanged(/* isOnFocusContext= */ false);
     }
 
     /**
@@ -1763,7 +1769,7 @@ class AutocompleteMediator
         if (!isInInputSession()) return;
 
         // Re-request ZPS in the event of new attachments being uploaded.
-        onTextChanged(mAutocompleteInput.getUserText(), /* isOnFocusContext= */ false);
+        onInputChanged(/* isOnFocusContext= */ false);
     }
 
     @Override
@@ -1780,7 +1786,7 @@ class AutocompleteMediator
                         ? true
                         : isTopResumedActivity);
 
-        onTextChanged(mAutocompleteInput.getUserText(), /* isOnFocusContext= */ false);
+        onInputChanged(/* isOnFocusContext= */ false);
     }
 
     /**

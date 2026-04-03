@@ -349,14 +349,12 @@ BrowserCommandController::BrowserCommandController(BrowserWindowInterface* bwi)
     auto* service =
         glic::GlicKeyedServiceFactory::GetGlicKeyedService(profile());
     if (service) {
-      if (base::FeatureList::IsEnabled(features::kGlicMultiInstance)) {
-        glic_active_instance_changed_subscription_ =
-            service->window_controller()
-                .AddActiveInstanceChangedCallbackAndNotifyImmediately(
-                    base::BindRepeating(
-                        &BrowserCommandController::GlicActiveInstanceChanged,
-                        base::Unretained(this)));
-      }
+      glic_active_instance_changed_subscription_ =
+          service->window_controller()
+              .AddActiveInstanceChangedCallbackAndNotifyImmediately(
+                  base::BindRepeating(
+                      &BrowserCommandController::GlicActiveInstanceChanged,
+                      base::Unretained(this)));
       glic_fre_state_change_subscription_ =
           service->fre_controller().AddWebUiStateChangedCallback(
               base::BindRepeating(
@@ -639,6 +637,9 @@ bool BrowserCommandController::ExecuteCommandWithDisposition(
                                /*description_placeholder_text=*/"",
                                /*category_tag=*/"vertical_tabs",
                                /*extra_diagnostics=*/"");
+      break;
+    case IDC_TOGGLE_VERTICAL_TABS_EXPAND_ON_HOVER:
+      ToggleVerticalTabsExpandOnHover(browser_);
       break;
     // Window management commands
     case IDC_NEW_WINDOW:
@@ -1543,6 +1544,8 @@ void BrowserCommandController::InitCommandState() {
   command_updater_.UpdateCommandEnabled(IDC_NAME_WINDOW, true);
   command_updater_.UpdateCommandEnabled(IDC_TOGGLE_VERTICAL_TABS, true);
   command_updater_.UpdateCommandEnabled(IDC_VERTICAL_TABS_SEND_FEEDBACK, true);
+  command_updater_.UpdateCommandEnabled(
+      IDC_TOGGLE_VERTICAL_TABS_EXPAND_ON_HOVER, true);
 #if BUILDFLAG(IS_CHROMEOS)
   command_updater_.UpdateCommandEnabled(IDC_TOGGLE_MULTITASK_MENU, true);
   command_updater_.UpdateCommandEnabled(IDC_MINIMIZE_WINDOW, true);

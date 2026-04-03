@@ -810,7 +810,16 @@ BASE_FEATURE_PARAM(size_t,
 // feature is disabled, those messages are instead queued because the IPC
 // channel is paused, and only flushed at OnProcessLaunched.
 BASE_FEATURE(kSkipIPCChannelPausingForNonGuests,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+#if BUILDFLAG(IS_CHROMEOS)
+             // Disabled by default on ChromeOS because of ChromeOS-only
+             // regressions at crbug.com/458372810.
+             // TODO(crbug.com/458372810): Resolve the regression and enable by
+             // default on all platforms.
+             base::FEATURE_DISABLED_BY_DEFAULT
+#else
+             base::FEATURE_ENABLED_BY_DEFAULT
+#endif  // BUILDFLAG(IS_CHROMEOS)
+);
 
 const base::FeatureParam<bool>
     kSkipIPCChannelPausingForNonGuestsInternalWebUiOnly{
@@ -1269,7 +1278,7 @@ BASE_FEATURE(kAccessibilityMeterEventsOnAndroid,
 // particular this will be used to determine whether or not a node is clickable
 // or not.
 BASE_FEATURE(kAccessibilityRequestLayoutBasedActions,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // When this feature is enabled, the accessibility tree will be requested to
 // signal content changed events next to a boolean value that will determine if

@@ -169,6 +169,9 @@ public final class ProductionSupportedFlagList {
                 GpuFeatures.PRUNE_OLD_TRANSFER_CACHE_ENTRIES,
                 "Prune old transfer cache entries and disable pruning from client"),
         Flag.baseFeature(
+                GpuFeatures.USE_STRONG_REF_TO_SHARED_IMAGE_INTERFACE,
+                "Allows ClientSharedImage to store a strong reference to SharedImageInterface."),
+        Flag.baseFeature(
                 VizFeatures.WEBVIEW_NEW_INVALIDATE_HEURISTIC,
                 "More robust heuristic for calling Invalidate. Isn't supported for TV, see"
                         + " WebViewNewInvalidateHeuristicForTV."),
@@ -1265,6 +1268,10 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(
                 BaseFeatures.REBIND_SERVICE_BATCH_API,
                 "Use a batch API to rebind service connections."),
+        Flag.baseFeature(
+                NetworkServiceFeatures.NETWORK_CONTEXT_DIRECT_RECEIVER,
+                "Bind NetworkContext as a DirectReceiver, allowing NetworkContext and all mojoms"
+                        + " passed through it to receive IPCs directly."),
 
         // Features for PerfCombined2025_WebView study
         Flag.baseFeature("AsyncSetCookie"),
@@ -1367,7 +1374,11 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(
                 "WebViewSkipFaviconJavaCopyUntilNeeded",
                 "Skips copying the favicon to Java if not needed by onReceivedIcon"
-                        + "being overriden."),
+                        + " being overriden."),
+        Flag.baseFeature(
+                AwFeatures.WEBVIEW_PASS_NULL_FAVICON_TO_ON_PAGE_STARTED,
+                "Passes a null favicon to the onPageStarted method."),
+        Flag.baseFeature("PrefetchPrerenderIntegration"),
 
         // Add new commandline switches and features above. The final entry should have a
         // trailing comma for cleaner diffs.

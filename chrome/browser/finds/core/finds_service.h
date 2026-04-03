@@ -5,6 +5,7 @@
 #ifndef CHROME_BROWSER_FINDS_CORE_FINDS_SERVICE_H_
 #define CHROME_BROWSER_FINDS_CORE_FINDS_SERVICE_H_
 
+#include "base/containers/flat_map.h"
 #include "base/functional/callback_forward.h"
 #include "base/functional/callback_helpers.h"
 #include "base/memory/raw_ptr.h"
@@ -15,6 +16,7 @@
 #include "components/keyed_service/core/keyed_service.h"
 #include "components/optimization_guide/core/model_execution/remote_model_executor.h"
 #include "components/optimization_guide/proto/features/finds.pb.h"
+#include "components/optimization_guide/proto/finds_metadata.pb.h"
 
 namespace history {
 class HistoryService;
@@ -57,25 +59,36 @@ class FindsService : public KeyedService, public base::SupportsUserData {
   void RemoveObserver(Observer* observer);
 
   struct Result {
+    // These values are persisted to logs. Entries should not be renumbered and
+    // numeric values should never be reused.
+    // LINT.IfChange(Status)
     enum class Status {
-      kSuccess,
-      kHistoryServiceUnavailable,
-      kOptimizationGuideUnavailable,
-      kEmptyHistory,
-      kModelExecutionFailed,
-      kResponseParsingFailed,
+      kSuccess = 0,
+      kHistoryServiceUnavailable = 1,
+      kOptimizationGuideUnavailable = 2,
+      kEmptyHistory = 3,
+      kModelExecutionFailed = 4,
+      kResponseParsingFailed = 5,
+      kModelExecutionOnCooldown = 6,
+      kCancelled = 7,
+      kNoThemesFound = 8,
+      kNoNonCooldownThemesFound = 9,
+      kNoSuggestionsForTheme = 10,
+      kFailedToScheduleNotification = 11,
+
+      kMaxValue = kFailedToScheduleNotification,
     };
+    // LINT.ThenChange(//tools/metrics/histograms/metadata/others/enums.xml:FindsResult)
     Status status;
     std::string message;
   };
 
+  // TODO(crbug.com/483107157): Migrate to finds_utils, call on notif showing.
   void MarkNotificationShown(PrefService* pref_service);
-  void MarkThemeNotInterested(
-      PrefService* pref_service,
-      optimization_guide::proto::FindsSuggestionResponse::SuggestionTheme::
-          ThemeType theme);
   void ExecuteModelAndScheduleNotification(
       base::OnceCallback<void(Result)> callback);
+  void RecordThemeURLVisited(
+      optimization_guide::proto::FindsMetadata::ThemeType theme_type);
 
   // Schedules a test notification using mocked data, bypassing model execution.
   // This is intended for use by the chrome-finds-internals page only. Do not
@@ -83,6 +96,8 @@ class FindsService : public KeyedService, public base::SupportsUserData {
   bool ScheduleNotificationForInternalsPage();
 
  private:
+  friend class FindsServiceTest;
+
   void CheckModelCooldownCriteriaAndMaybeExecute();
   void OnHistoryQueryComplete(base::OnceCallback<void(Result)> callback,
                               history::QueryResults results);
@@ -101,6 +116,8 @@ class FindsService : public KeyedService, public base::SupportsUserData {
       notification_schedule_service_;
   base::ObserverList<Observer> observers_;
   base::CancelableTaskTracker history_task_tracker_;
+  base::flat_map<optimization_guide::proto::FindsMetadata::ThemeType, int>
+      theme_url_visit_count_;
   base::WeakPtrFactory<FindsService> weak_ptr_factory_{this};
 };
 

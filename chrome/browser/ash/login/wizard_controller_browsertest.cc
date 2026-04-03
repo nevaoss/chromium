@@ -13,6 +13,7 @@
 #include "ash/public/cpp/login_screen_test_api.h"
 #include "ash/root_window_controller.h"
 #include "ash/shell.h"
+#include "base/check_deref.h"
 #include "base/command_line.h"
 #include "base/compiler_specific.h"
 #include "base/functional/bind.h"
@@ -654,6 +655,7 @@ class WizardControllerFlowTest : public WizardControllerTest {
         std::make_unique<MockConsolidatedConsentScreenView>();
     mock_consolidated_consent_screen_ = MockScreenExpectLifecycle(
         std::make_unique<MockConsolidatedConsentScreen>(
+            g_browser_process->local_state(),
             g_browser_process->GetFeatures()->application_locale_storage(),
             g_browser_process->metrics_service(),
             mock_consolidated_consent_screen_view_.get()->AsWeakPtr(),
@@ -970,7 +972,8 @@ class WizardControllerUpdateAfterCompletedOobeTest
 
   void SetUpLocalStatePrefService(PrefService* local_state) override {
     WizardControllerFlowTest::SetUpLocalStatePrefService(local_state);
-    StartupUtils::MarkOobeCompleted(local_state);  // Pretend OOBE was complete.
+    StartupUtils::MarkOobeCompleted(
+        CHECK_DEREF(local_state));  // Pretend OOBE was complete.
   }
 };
 
@@ -1466,12 +1469,14 @@ IN_PROC_BROWSER_TEST_F(WizardControllerFjordOOBETest, FjordOobeScreenFlow) {
       FjordOobeStateManager::Get()->GetFjordOobeStateInfo().oobe_state(),
       fjord_oobe_state::proto::FjordOobeStateInfo::FJORD_OOBE_STATE_START);
   CheckCurrentScreen(EnrollmentScreenView::kScreenId);
-  EXPECT_FALSE(StartupUtils::IsOobeCompleted());
+  EXPECT_FALSE(StartupUtils::IsOobeCompleted(
+      CHECK_DEREF(g_browser_process->local_state())));
 
   // Make sure enterprise enrollment page shows up right after update screen.
   mock_enrollment_screen_->ExitScreen(EnrollmentScreen::Result::COMPLETED);
 
-  EXPECT_TRUE(StartupUtils::IsOobeCompleted());
+  EXPECT_TRUE(StartupUtils::IsOobeCompleted(
+      CHECK_DEREF(g_browser_process->local_state())));
   CheckCurrentScreen(FjordTouchControllerScreenView::kScreenId);
 
   EXPECT_TRUE(wizard_controller->ExitFjordTouchControllerScreen());
@@ -1783,12 +1788,14 @@ IN_PROC_BROWSER_TEST_F(WizardControllerKioskFlowTest,
   CheckCurrentScreen(EnrollmentScreenView::kScreenId);
   EXPECT_CALL(*mock_auto_enrollment_check_screen_, HideImpl()).Times(0);
 
-  EXPECT_FALSE(StartupUtils::IsOobeCompleted());
+  EXPECT_FALSE(StartupUtils::IsOobeCompleted(
+      CHECK_DEREF(g_browser_process->local_state())));
 
   // Make sure enterprise enrollment page shows up right after update screen.
   mock_enrollment_screen_->ExitScreen(EnrollmentScreen::Result::COMPLETED);
 
-  EXPECT_TRUE(StartupUtils::IsOobeCompleted());
+  EXPECT_TRUE(StartupUtils::IsOobeCompleted(
+      CHECK_DEREF(g_browser_process->local_state())));
 }
 
 IN_PROC_BROWSER_TEST_F(WizardControllerKioskFlowTest,
@@ -1821,7 +1828,8 @@ IN_PROC_BROWSER_TEST_F(WizardControllerKioskFlowTest,
   CheckCurrentScreen(EnrollmentScreenView::kScreenId);
   EXPECT_CALL(*mock_auto_enrollment_check_screen_, HideImpl()).Times(0);
 
-  EXPECT_FALSE(StartupUtils::IsOobeCompleted());
+  EXPECT_FALSE(StartupUtils::IsOobeCompleted(
+      CHECK_DEREF(g_browser_process->local_state())));
 
   // Make sure enterprise enrollment page shows up right after update screen.
   EXPECT_CALL(*mock_enrollment_screen_, ShowImpl()).Times(0);
@@ -1831,7 +1839,8 @@ IN_PROC_BROWSER_TEST_F(WizardControllerKioskFlowTest,
       EnrollmentScreen::Result::BACK_TO_AUTO_ENROLLMENT_CHECK);
 
   CheckCurrentScreen(EnrollmentScreenView::kScreenId);
-  EXPECT_FALSE(StartupUtils::IsOobeCompleted());
+  EXPECT_FALSE(StartupUtils::IsOobeCompleted(
+      CHECK_DEREF(g_browser_process->local_state())));
 }
 
 class WizardControllerEnableAdbSideloadingTest
@@ -2026,7 +2035,8 @@ IN_PROC_BROWSER_TEST_F(WizardControllerDemoSetupTest,
   test::LockDemoDeviceInstallAttributes();
   mock_demo_setup_screen_->ExitScreen(DemoSetupScreen::Result::kCompleted);
 
-  EXPECT_TRUE(StartupUtils::IsOobeCompleted());
+  EXPECT_TRUE(StartupUtils::IsOobeCompleted(
+      CHECK_DEREF(g_browser_process->local_state())));
   EXPECT_TRUE(ExistingUserController::current_controller());
   EXPECT_FALSE(DemoSetupController::IsOobeDemoSetupFlowInProgress());
 }
@@ -2087,7 +2097,8 @@ IN_PROC_BROWSER_TEST_F(WizardControllerDemoSetupTest, DemoSetupCanceled) {
 
   CheckCurrentScreen(WelcomeView::kScreenId);
   EXPECT_FALSE(DemoSetupController::IsOobeDemoSetupFlowInProgress());
-  EXPECT_FALSE(StartupUtils::IsOobeCompleted());
+  EXPECT_FALSE(StartupUtils::IsOobeCompleted(
+      CHECK_DEREF(g_browser_process->local_state())));
 }
 
 IN_PROC_BROWSER_TEST_F(WizardControllerDemoSetupTest, DemoPreferencesCanceled) {
@@ -2442,7 +2453,7 @@ class WizardControllerRemoteActivityNotificationTest
 
   void SetUpLocalStatePrefService(PrefService* local_state) override {
     WizardControllerTest::SetUpLocalStatePrefService(local_state);
-    StartupUtils::MarkOobeCompleted(local_state);
+    StartupUtils::MarkOobeCompleted(CHECK_DEREF(local_state));
   }
 
   void SetPref(const std::string& pref, bool value) {
@@ -2786,7 +2797,8 @@ IN_PROC_BROWSER_TEST_F(WizardControllerFlowWithAutoEnrollmentCheckForcedTest,
   base::RunLoop().RunUntilIdle();
 
   OobeScreenWaiter(UserCreationView::kScreenId).Wait();
-  EXPECT_TRUE(StartupUtils::IsOobeCompleted());
+  EXPECT_TRUE(StartupUtils::IsOobeCompleted(
+      CHECK_DEREF(g_browser_process->local_state())));
 }
 
 IN_PROC_BROWSER_TEST_F(WizardControllerFlowWithAutoEnrollmentCheckForcedTest,
@@ -2815,7 +2827,8 @@ IN_PROC_BROWSER_TEST_F(WizardControllerFlowWithAutoEnrollmentCheckForcedTest,
   base::RunLoop().RunUntilIdle();
 
   OobeScreenWaiter(SignInFatalErrorView::kScreenId).Wait();
-  EXPECT_FALSE(StartupUtils::IsOobeCompleted());
+  EXPECT_FALSE(StartupUtils::IsOobeCompleted(
+      CHECK_DEREF(g_browser_process->local_state())));
 }
 
 IN_PROC_BROWSER_TEST_F(WizardControllerFlowWithAutoEnrollmentCheckForcedTest,
@@ -2829,7 +2842,8 @@ IN_PROC_BROWSER_TEST_F(WizardControllerFlowWithAutoEnrollmentCheckForcedTest,
 
 IN_PROC_BROWSER_TEST_F(WizardControllerFlowWithAutoEnrollmentCheckForcedTest,
                        NoFatalErrorOnGaiaAdvanceWhenOobeComplete) {
-  StartupUtils::MarkOobeCompleted();
+  StartupUtils::MarkOobeCompleted(
+      CHECK_DEREF(g_browser_process->local_state()));
   WaitForOobeUI();
 
   WizardController::default_controller()->AdvanceToScreen(GaiaView::kScreenId);

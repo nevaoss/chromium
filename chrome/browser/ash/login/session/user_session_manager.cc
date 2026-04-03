@@ -431,7 +431,7 @@ void LogCustomFeatureFlags(const std::set<std::string>& feature_flags) {
 
 bool IsRunningTest() {
   return base::CommandLine::ForCurrentProcess()->HasSwitch(
-             ::switches::kTestName) ||
+             ash::switches::kTestName) ||
          base::CommandLine::ForCurrentProcess()->HasSwitch(
              ::switches::kTestType);
 }
@@ -525,7 +525,8 @@ bool IsRevenUpdatedToFlex() {
   return local_state->GetBoolean(prefs::kOobeRevenUpdatedToFlex);
 }
 
-bool MaybeShowNewTermsAfterUpdateToFlex(Profile* profile) {
+bool MaybeShowNewTermsAfterUpdateToFlex(PrefService& local_state,
+                                        Profile* profile) {
   // Check if the device has been recently updated from CloudReady to show new
   // license agreement and data collection consent. This applies only for
   // existing users of not managed reven boards.
@@ -538,7 +539,7 @@ bool MaybeShowNewTermsAfterUpdateToFlex(Profile* profile) {
   // managed devices all the terms are accepted by the admin so we can simply
   // mark it here.
   if (ash::InstallAttributes::Get()->IsEnterpriseManaged()) {
-    StartupUtils::MarkEulaAccepted();
+    StartupUtils::MarkEulaAccepted(local_state);
     return false;
   }
   if (!IsRevenUpdatedToFlex()) {
@@ -1887,6 +1888,9 @@ void UserSessionManager::MaybeLaunchHelpAppForFirstRun(Profile* profile) const {
 }
 
 bool UserSessionManager::MaybeStartNewUserOnboarding(Profile* profile) {
+  // TODO(crbug.com/404133029): Avoid using g_browser_process.
+  PrefService& local_state = CHECK_DEREF(g_browser_process->local_state());
+
   user_manager::UserManager* user_manager = user_manager::UserManager::Get();
   if (!user_manager->IsCurrentUserNew()) {
     return false;
@@ -1911,8 +1915,9 @@ bool UserSessionManager::MaybeStartNewUserOnboarding(Profile* profile) {
 
   // Mark the device as registered., i.e. the second part of OOBE as
   // completed.
-  if (!StartupUtils::IsDeviceRegistered())
-    StartupUtils::MarkDeviceRegistered(base::OnceClosure());
+  if (!StartupUtils::IsDeviceRegistered(local_state)) {
+    StartupUtils::MarkDeviceRegistered(local_state, base::OnceClosure());
+  }
 
   if (LoginDisplayHost::default_host() &&
       LoginDisplayHost::default_host()->GetSigninUI()) {
@@ -1989,6 +1994,9 @@ bool MaybeShowManagedTermsOfService(Profile* profile) {
 bool UserSessionManager::InitializeUserSession(Profile* profile) {
   TRACE_EVENT0(kEventCategoryChromeOS, kEventInitUserDesktop);
 
+  // TODO(crbug.com/404133029): Avoid using g_browser_process.
+  PrefService& local_state = CHECK_DEREF(g_browser_process->local_state());
+
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&UserSessionManager::StopChildStatusObserving,
@@ -2016,7 +2024,7 @@ bool UserSessionManager::InitializeUserSession(Profile* profile) {
   arc::RecordPlayStoreLaunchWithinAWeek(prefs, /*launched=*/false);
 
   if (start_session_type_ == StartSessionType::kPrimary) {
-    user_manager::KnownUser known_user(g_browser_process->local_state());
+    user_manager::KnownUser known_user(&local_state);
     const AccountId account_id =
         ProfileHelper::Get()->GetUserByProfile(profile)->GetAccountId();
     std::string pending_screen =
@@ -2049,7 +2057,7 @@ bool UserSessionManager::InitializeUserSession(Profile* profile) {
     if (MaybeStartNewUserOnboarding(profile)) {
       return false;
     }
-    if (MaybeShowNewTermsAfterUpdateToFlex(profile)) {
+    if (MaybeShowNewTermsAfterUpdateToFlex(local_state, profile)) {
       return false;
     }
     if (MaybeResumeUserOnboardingFlow(profile)) {

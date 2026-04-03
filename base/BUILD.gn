@@ -35,7 +35,6 @@ import("//build/config/sanitizers/sanitizers.gni")
 import("//build/config/sysroot.gni")
 import("//build/config/ui.gni")
 import("//build/nocompile.gni")
-import("//build/rust/rust_bindgen.gni")
 import("//build/rust/rust_static_library.gni")
 import("//build/util/process_version.gni")
 import("//build_overrides/build.gni")
@@ -1108,7 +1107,7 @@ component("base") {
   deps += [ "//third_party/zlib" ]
 
   deps += [
-    ":logger",
+    "logging:rust_logger",
     "//third_party/rust/serde_json_lenient/v0_2/wrapper",
   ]
 
@@ -1828,6 +1827,7 @@ component("base") {
       "allocator/scheduler_loop_quarantine_config.h",
       "allocator/scheduler_loop_quarantine_support.h",
     ]
+    deps += [ "//build:android_buildflags" ]
   }
   if (use_allocator_shim) {
     public_deps += [ "allocator/partition_allocator:allocator_shim" ]
@@ -2674,6 +2674,7 @@ if (is_android) {
   }
 }
 
+<<<<<<< HEAD
 # TODO(neva_rust): Remove this workaround once Neva supports Rust build.
 if (!disable_rust_for_neva) {
   rust_bindgen("logging_log_severity_bindgen") {
@@ -2736,6 +2737,12 @@ if (!disable_rust_for_neva) {
     sources = [ "memory/scoped_refptr.rs" ]
     crate_root = "memory/scoped_refptr.rs"
     allow_unsafe = true
+=======
+rust_static_library("scoped_refptr") {
+  sources = [ "memory/scoped_refptr.rs" ]
+  crate_root = "memory/scoped_refptr.rs"
+  allow_unsafe = true
+>>>>>>> 148.0.7764.0~1
 
     # This file uses cxx APIs but doesn't have its own bindings
     deps = [ "//third_party/rust/cxx/v1:lib" ]
@@ -4732,7 +4739,6 @@ if (enable_nocompile_tests) {
       "check_nocompile.nc",
       "containers/buffer_iterator_nocompile.nc",
       "containers/checked_iterators_nocompile.nc",
-      "containers/enum_set_nocompile.nc",
       "containers/fixed_flat_map_nocompile.nc",
       "containers/fixed_flat_set_nocompile.nc",
       "containers/heap_array_nocompile.nc",

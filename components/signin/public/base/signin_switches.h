@@ -204,14 +204,6 @@ BASE_DECLARE_FEATURE_PARAM(base::TimeDelta,
 // The iOS version is kDisableU18FeedbackIos flag.
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kDisableU18FeedbackDesktop);
-enum class U18FeedbackDesktopState {
-  kEnabled,
-  // Simulates U18 user.
-  kForced,
-};
-COMPONENT_EXPORT(SIGNIN_SWITCHES)
-extern const base::FeatureParam<U18FeedbackDesktopState>
-    kDisableU18FeedbackDesktopState;
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 
 #if BUILDFLAG(IS_ANDROID)
@@ -608,11 +600,6 @@ BASE_DECLARE_FEATURE(kSyncEnableBookmarksInTransportMode);
 // flag is enabled by default on Windows/Mac/Linux.
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kBookmarksMigrateUiChanges);
-
-#if BUILDFLAG(ENABLE_DICE_SUPPORT)
-COMPONENT_EXPORT(SIGNIN_SWITCHES)
-BASE_DECLARE_FEATURE(kUseIssueTokenToFetchAccessTokens);
-#endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
 
 // If enabled, buttons for sign-in promos / intercepts will use consistent
 // primary - tonal button class pattern.

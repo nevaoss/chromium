@@ -398,6 +398,20 @@
 <translation id="1317158052518324525">不允許使用強化版自動填入功能。</translation>
 <translation id="1317658068839330898">不允許在網站上使用 <ph name="ASSISTANT_PRODUCT_NAME" /></translation>
 <translation id="1318233005302276244">允許使用者在 Chrome 上追蹤包裹。</translation>
+<translation id="1321747583289636863">你可以透過這項政策，指定 Proxy 伺服器 WebSocket 要求的同時連線數量上限。如要修改非 WebSocket 要求的限制，請參閱 <ph name="MAX_CONNECTIONS_PER_PROXY_POLICY_NAME" />。
+
+如果未設定這項政策，預設值為 32。
+
+已知部分網頁應用程式會耗用許多連線處理停滯的 GET 動作，因此如果設定的值低於 32，開啟太多這類網頁應用程式，可能會導致瀏覽器網路當機。
+部分 Proxy 伺服器無法處理單一用戶端的大量並行連線，調降這項政策的值即可解決這個問題。
+
+最小值為 6。
+如果設定的值低於該限制，系統會使用 6。
+請自行承擔低於預設值 (32) 的風險。
+
+值應小於或等於 256。
+如果設定的值超過該上限，系統會使用 256。
+請自行承擔高於預設值 (32) 的風險。</translation>
 <translation id="1323501563951768821">F12 設定採用含有 Shift 輔助鍵的快速鍵</translation>
 <translation id="1325547947664414578">使用者切換 <ph name="PRODUCT_OS_NAME" /> 裝置時，<ph name="PRODUCT_NAME" />服務會在新裝置啟動舊裝置上的瀏覽器和應用程式視窗。
 如果將這項政策設為啟用，當使用者登入時，系統就會為目前使用者自動啟動上次使用的 <ph name="PRODUCT_OS_NAME" /> 裝置上的瀏覽器和應用程式視窗。
@@ -4445,7 +4459,7 @@ ServiceWorkerAutoPreload 功能會在開始執行 ServiceWorker 啟動程序時�
 
 如果設定這項政策，但未設定「<ph name="DEVELOPER_TOOLS_AVAILABILITY_ALLOWLIST_POLICY_NAME" />」，只要框架網址符合這份封鎖清單中的模式，系統就會封鎖整頁的「<ph name="CHROME_DEVTOOLS_NAME" />」。如果框架的網址不符合任何模式，系統會根據 <ph name="DEVELOPER_TOOLS_AVAILABILITY_POLICY_NAME" /> 政策決定是否提供服務。
 
-如果同時設定這項政策和 <ph name="DEVELOPER_TOOLS_AVAILABILITY_ALLOWLIST_POLICY_NAME" /> 政策，系統會優先採用許可清單。如果框架的網址符合許可清單中的模式，系統就會允許存取，即使該網址也與封鎖清單中的模式相符。如果網址符合封鎖清單的模式，但不符合許可清單的模式，系統就會封鎖該網址。如果網址都不符合，系統會自動改用「<ph name="DEVELOPER_TOOLS_AVAILABILITY_POLICY_NAME" />」政策。
+如果同時設定這項政策和 <ph name="DEVELOPER_TOOLS_AVAILABILITY_ALLOWLIST_POLICY_NAME" /> 政策，系統會優先採用許可清單。如果框架的網址符合許可清單中的模式，系統就會允許存取，即使該網址也與封鎖清單中的模式相符。如果網址符合封鎖清單的模式，但不符合許可清單的模式，系統就會封鎖該網址。如果網址和兩份清單中的模式都不相符，系統會自動改用「<ph name="DEVELOPER_TOOLS_AVAILABILITY_POLICY_NAME" />」政策。
 
 如果未設定這項政策，<ph name="CHROME_DEVTOOLS_NAME" /> 是否可用會取決於 <ph name="DEVELOPER_TOOLS_AVAILABILITY_ALLOWLIST_POLICY_NAME" /> 和 <ph name="DEVELOPER_TOOLS_AVAILABILITY_POLICY_NAME" /> 政策。
 
@@ -4763,6 +4777,7 @@ ServiceWorkerAutoPreload 功能會在開始執行 ServiceWorker 啟動程序時�
 如果將這項政策設為停用，使用者在密碼管理工具中的資料將保持不變，但密碼管理工具會無法正常運作。
 
 這項政策一經設定，使用者就無法在 <ph name="PRODUCT_NAME" /> 中變更。</translation>
+<translation id="4321788213579606602">Proxy 伺服器非 WebSocket 要求的並行連線數量上限</translation>
 <translation id="4322842393287974810">允許使用無延遲資訊站應用程式的自動啟動功能來控制 <ph name="PRODUCT_OS_NAME" /> 版本</translation>
 <translation id="4323412353642577604">啟用內容保護的遠端認證機制</translation>
 <translation id="4325690621216251241">在系統列顯示登出按鈕</translation>
@@ -7460,6 +7475,7 @@ IP 位址空間覆寫有兩種形式：
 <translation id="6075316301208933536">如果將 <ph name="DEVICE_BATTERY_CHARGE_MODE_POLICY_NAME" /> 設為<ph name="DEVICE_BATTERY_CHARGE_CUSTOM_MODE_NAME" />，則你可以透過 <ph name="DEVICE_BATTERY_CHARGE_CUSTOM_STOP_CHARGING_POLICY_NAME" /> 自訂停止充電的時機 (根據電量百分比進行設定)。<ph name="DEVICE_BATTERY_CHARGE_CUSTOM_START_CHARGING_POLICY_NAME" /> 的值必須至少比 <ph name="DEVICE_BATTERY_CHARGE_CUSTOM_STOP_CHARGING_POLICY_NAME" /> 的值低 5 個百分點。
 
       如果不設定這項政策，系統會套用<ph name="DEVICE_BATTERY_CHARGE_STANDARD_MODE_NAME" />充電模式。</translation>
+<translation id="6080808146443476891">Proxy 伺服器 WebSocket 要求的並行連線數量上限</translation>
 <translation id="6082161804984853051">設定這項政策後，無論使用者是否指定 --disk-cache-dir 旗標，<ph name="PRODUCT_NAME" /> 都會使用你提供的目錄將快取檔案儲存在磁碟上。
 
       如果未設定，<ph name="PRODUCT_NAME" /> 會使用預設的快取目錄，但使用者可透過 --disk-cache-dir 指令列旗標來變更這項設定。
@@ -10754,6 +10770,22 @@ Gemini 啟動功能僅支援部分國家/地區和語言。設定這項政策無
 <translation id="826163650738550159">這項政策會提供政策測試頁面的存取權，在此頁面測試政策時，系統會忽略所有其他政策。
 這項功能只能在 Canary 版中使用。啟用或不設定這項政策時，可以存取這個頁面。
 如果停用這項政策，這個頁面會遭到封鎖。</translation>
+<translation id="8264002158987842436">你可以透過這項政策，指定 Proxy 伺服器非 WebSocket 要求的同時連線數量上限。
+
+如要修改 WebSocket 要求的限制，請參閱 <ph name="MAX_CONNECTIONS_PER_PROXY_FOR_WEBSOCKET_POLICY_NAME" />。
+
+如果未設定這項政策，預設值為 32。
+
+已知部分網頁應用程式會耗用許多連線處理停滯的 GET 動作，因此如果設定的值低於 32，開啟太多這類網頁應用程式，可能會導致瀏覽器網路當機。
+部分 Proxy 伺服器無法處理單一用戶端的大量並行連線，調降這項政策的值即可解決這個問題。
+
+最小值為 6。
+如果設定的值低於該限制，系統會使用 6。
+請自行承擔低於預設值 (32) 的風險。
+
+最大值為 256 (<ph name="PRODUCT_NAME" /> 147 版和更早版本為 99)。
+如果設定的值超過上限，系統會使用 256 (<ph name="PRODUCT_NAME" /> 147 版和更早版本為 99)。
+請自行承擔高於預設值 (32) 的風險。</translation>
 <translation id="8266778278542911985">如果將這項政策設為 3，網站將可要求存取序列埠。如果將這項政策設為 2，網站將無法存取序列埠。
 
       如果不設定，網站可要求存取序列埠，但使用者可以變更這項設定。</translation>

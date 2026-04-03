@@ -123,11 +123,11 @@ enum class PositionForExplainGeminiEditMenu {
 // Returns the position of Explain Gemini in the EditMenu.
 PositionForExplainGeminiEditMenu ExplainGeminiEditMenuPosition();
 
-// Feature flag to enable Precise Location in BWG Settings Menu.
-BASE_DECLARE_FEATURE(kBWGPreciseLocation);
+// Feature flag to enable Precise Location in Gemini Settings Menu.
+BASE_DECLARE_FEATURE(kGeminiPreciseLocation);
 
 // Returns true if the precise location setting is enabled.
-bool IsBWGPreciseLocationEnabled();
+bool IsGeminiPreciseLocationEnabled();
 
 // Feature flag to show the AI Hub new badge.
 BASE_DECLARE_FEATURE(kAIHubNewBadge);
@@ -280,6 +280,11 @@ bool IsGeminiCopresenceEnabled();
 // The threshold interval for displaying the response ready state in seconds.
 extern const char kGeminiCopresenceResponseReadyInterval[];
 double GetGeminiCopresenceResponseReadyInterval();
+
+// Feature parameter for kGeminiCopresence to skip checking for a Search
+// Related Page.
+extern const char kGeminiCopresenceSRPCheck[];
+bool IsGeminiCopresenceSRPCheckEnabled();
 
 // Returns true if the Gemini chat persistence is enabled.
 bool IsGeminiChatPersistenceEnabled();

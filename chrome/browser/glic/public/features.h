@@ -31,6 +31,8 @@ extern const base::FeatureParam<bool> kGlicSelectionPromptUseWidget;
 
 BASE_DECLARE_FEATURE(kGlicCreateTabAdjacent);
 
+BASE_DECLARE_FEATURE(kGlicLiveMode);
+
 BASE_DECLARE_FEATURE(kGlicDefaultToLastActiveConversation);
 extern const base::FeatureParam<base::TimeDelta>
     kGlicDefaultToLastActiveConversationMaxRecency;
@@ -46,6 +48,8 @@ extern const base::FeatureParam<bool> kGlicContextMenuWithOnboarding;
 BASE_DECLARE_FEATURE(kGlicTieredRolloutV2);
 extern const base::FeatureParam<std::string> kGlicTieredRolloutV2EligibleTiers;
 const base::flat_set<int32_t>& GetGlicTieredRolloutV2EligibleTiers();
+
+BASE_DECLARE_FEATURE(kGlicHorizontalTabToolbarButton);
 
 }  // namespace features
 

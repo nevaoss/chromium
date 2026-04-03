@@ -934,6 +934,9 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
   registry->RegisterBooleanPref(
       prefs::kIOSBwgConsent, false,
       user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
+  registry->RegisterBooleanPref(
+      prefs::kIOSGeminiLiveConsent, false,
+      user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
   registry->RegisterBooleanPref(prefs::kIOSBWGPreciseLocationSetting, false);
   registry->RegisterBooleanPref(prefs::kIOSBWGPageContentSetting, true);
   registry->RegisterIntegerPref(prefs::kIOSBWGPromoImpressionCount, 0);
@@ -1195,4 +1198,9 @@ void MigrateObsoleteUserDefault() {
   [defaults removeObjectForKey:@"SpecialTabUseCount"];
   [defaults removeObjectForKey:@"OmniboxUseCount"];
   [defaults removeObjectForKey:@"BookmarkUseCount"];
+
+  // Added 03/2026
+  [defaults removeObjectForKey:@"fre_timestamp_migration_done"];
+  [defaults removeObjectForKey:@"promo_interest_event_migration_done"];
+  [defaults removeObjectForKey:@"promo_impressions_migration_done"];
 }

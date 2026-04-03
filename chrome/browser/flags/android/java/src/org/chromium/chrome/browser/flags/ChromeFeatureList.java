@@ -402,6 +402,7 @@ public abstract class ChromeFeatureList {
     public static final String CROSS_DEVICE_PREF_TRACKER_EXTRA_LOGS =
             "CrossDevicePrefTrackerExtraLogs";
     public static final String CROSS_DEVICE_TAB_PANE_ANDROID = "CrossDeviceTabPaneAndroid";
+    public static final String CROSS_DEVICE_TASK_HANDOFF = "CrossDeviceTaskHandoff";
     public static final String DARKEN_WEBSITES_CHECKBOX_IN_THEMES_SETTING =
             "DarkenWebsitesCheckboxInThemesSetting";
     public static final String DATA_SHARING = "DataSharing";
@@ -462,7 +463,6 @@ public abstract class ChromeFeatureList {
     public static final String FEED_AUDIO_OVERVIEWS = "FeedAudioOverviews";
     public static final String FEED_CONTAINMENT = "FeedContainment";
     public static final String FEED_FOLLOW_UI_UPDATE = "FeedFollowUiUpdate";
-    public static final String FEED_HEADER_REMOVAL = "FeedHeaderRemoval";
     public static final String FEED_IMAGE_MEMORY_CACHE_SIZE_PERCENTAGE =
             "FeedImageMemoryCacheSizePercentage";
     public static final String FEED_LOADING_PLACEHOLDER = "FeedLoadingPlaceholder";
@@ -477,6 +477,7 @@ public abstract class ChromeFeatureList {
             "FullscreenInsetsApiMigrationOnAutomotive";
     public static final String FULLSCREEN_VIDEO_PICTURE_IN_PICTURE =
             "FullscreenVideoPictureInPicture";
+    public static final String GESTURE_USER_EDUCATION_BACK_SWIPE = "GestureUserEducationBackSwipe";
     public static final String GLIC = "Glic";
     public static final String GRID_TAB_SWITCHER_SURFACE_COLOR_UPDATE =
             "GridTabSwitcherSurfaceColorUpdate";
@@ -564,6 +565,8 @@ public abstract class ChromeFeatureList {
     public static final String PRICE_CHANGE_MODULE = "PriceChangeModule";
     public static final String PRIVACY_SANDBOX_ADS_API_UX_ENHANCEMENTS =
             "PrivacySandboxAdsApiUxEnhancements";
+    public static final String PRIVACY_SANDBOX_AD_PRIVACY_UX_DEPRECATION =
+            "PrivacySandboxAdPrivacyUxDeprecation";
     public static final String PRIVACY_SANDBOX_AD_TOPICS_CONTENT_PARITY =
             "PrivacySandboxAdTopicsContentParity";
     public static final String PRIVACY_SANDBOX_SETTINGS_4 = "PrivacySandboxSettings4";
@@ -579,7 +582,6 @@ public abstract class ChromeFeatureList {
     public static final String READALOUD_IPH_MENU_BUTTON_HIGHLIGHT_CCT =
             "ReadAloudIPHMenuButtonHighlightCCT";
     public static final String READALOUD_PLAYBACK = "ReadAloudPlayback";
-    public static final String RECENTLY_CLOSED_TABS_AND_WINDOWS = "RecentlyClosedTabsAndWindows";
     public static final String RECORD_INCOGNITO_NTP_TIME_TO_FIRST_NAVIGATION_METRIC =
             "RecordIncognitoNtpTimeToFirstNavigationMetric";
     public static final String RECORD_SUPPRESSION_METRICS = "RecordSuppressionMetrics";
@@ -773,7 +775,7 @@ public abstract class ChromeFeatureList {
     public static final CachedFlag sAndroidSettingsContainment =
             newCachedFlag(
                     ANDROID_SETTINGS_CONTAINMENT,
-                    /* defaultValue= */ false,
+                    /* defaultValue= */ true,
                     /* defaultValueInTests= */ true);
     public static final CachedFlag sAndroidSetupList =
             newCachedFlag(
@@ -969,6 +971,11 @@ public abstract class ChromeFeatureList {
             newCachedFlag(FULLSCREEN_INSETS_API_MIGRATION_ON_AUTOMOTIVE, true);
     public static final CachedFlag sFullscreenVideoPictureInPicture =
             newCachedFlag(FULLSCREEN_VIDEO_PICTURE_IN_PICTURE, true);
+    public static final CachedFlag sGestureUserEducationBackSwipe =
+            newCachedFlag(
+                    GESTURE_USER_EDUCATION_BACK_SWIPE,
+                    /* defaultValue= */ false,
+                    /* defaultValueInTests= */ false);
     public static final CachedFlag sGlic = newCachedFlag(GLIC, false);
     public static final CachedFlag sGridTabSwitcherSurfaceColorUpdate =
             newCachedFlag(
@@ -1281,6 +1288,7 @@ public abstract class ChromeFeatureList {
                     sFullscreenInsetsApiMigration,
                     sFullscreenInsetsApiMigrationOnAutomotive,
                     sFullscreenVideoPictureInPicture,
+                    sGestureUserEducationBackSwipe,
                     sGlic,
                     sGridTabSwitcherSurfaceColorUpdate,
                     sHistoryPaneAndroid,
@@ -1417,8 +1425,6 @@ public abstract class ChromeFeatureList {
             newMutableFlagWithSafeDefault(OMNIBOX_AUTOFOCUS_ON_INCOGNITO_NTP, false);
     public static final MutableFlagWithSafeDefault sOnDemandBackgroundTabContextCapture =
             newMutableFlagWithSafeDefault(ON_DEMAND_BACKGROUND_TAB_CONTEXT_CAPTURE, false);
-    public static final MutableFlagWithSafeDefault sRecentlyClosedTabsAndWindows =
-            newMutableFlagWithSafeDefault(RECENTLY_CLOSED_TABS_AND_WINDOWS, true);
     public static final MutableFlagWithSafeDefault sRecordIncognitoNtpTimeToFirstNavigationMetric =
             newMutableFlagWithSafeDefault(
                     RECORD_INCOGNITO_NTP_TIME_TO_FIRST_NAVIGATION_METRIC, true);

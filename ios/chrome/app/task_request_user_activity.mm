@@ -5,13 +5,17 @@
 #import "ios/chrome/app/task_request_user_activity.h"
 
 #import <CoreSpotlight/CoreSpotlight.h>
+#import <Intents/Intents.h>
 
+#import "base/apple/foundation_util.h"
 #import "base/check.h"
+#import "base/functional/callback_helpers.h"
 #import "base/metrics/histogram_functions.h"
 #import "base/metrics/user_metrics.h"
 #import "base/metrics/user_metrics_action.h"
 #import "components/handoff/handoff_utility.h"
 #import "components/prefs/pref_service.h"
+#import "ios/chrome/app/application_delegate/tab_opening.h"
 #import "ios/chrome/app/profile/profile_state.h"
 #import "ios/chrome/app/spotlight/spotlight_util.h"
 #import "ios/chrome/app/startup/app_launch_metrics.h"
@@ -23,11 +27,18 @@
 #import "ios/chrome/browser/intents/model/intents_constants.h"
 #import "ios/chrome/browser/intents/model/user_activity_compatibility_util.h"
 #import "ios/chrome/browser/policy/model/policy_util.h"
+#import "ios/chrome/browser/shared/coordinator/scene/scene_controller.h"
 #import "ios/chrome/browser/shared/coordinator/scene/scene_state.h"
 #import "ios/chrome/browser/shared/model/browser/browser.h"
 #import "ios/chrome/browser/shared/model/browser/browser_provider.h"
 #import "ios/chrome/browser/shared/model/browser/browser_provider_interface.h"
 #import "ios/chrome/browser/shared/model/profile/profile_ios.h"
+#import "ios/chrome/browser/shared/model/url/chrome_url_constants.h"
+#import "ios/chrome/browser/shared/public/commands/bookmarks_commands.h"
+#import "ios/chrome/browser/shared/public/commands/browser_coordinator_commands.h"
+#import "ios/chrome/browser/shared/public/commands/command_dispatcher.h"
+#import "ios/chrome/browser/url_loading/model/url_loading_params.h"
+#import "ios/chrome/common/intents/AddBookmarkToChromeIntent.h"
 
 namespace {
 
@@ -233,11 +244,36 @@ UserActivityType UserActivityTypeOf(NSUserActivity* user_activity) {
   return UserActivityType::kInvalid;
 }
 
+// Navigates to the bookmark manager UI.
+void OpenBookmarksWithBrowser(base::WeakPtr<Browser> weak_browser) {
+  if (Browser* browser = weak_browser.get()) {
+    id<BrowserCoordinatorCommands> handler = HandlerForProtocol(
+        browser->GetCommandDispatcher(), BrowserCoordinatorCommands);
+    [handler showBookmarksManager];
+  }
+}
+
+// Adds bookmarks to Chrome.
+void AddBookmarkToChromeWithIntent(INIntent* intent,
+                                   base::WeakPtr<Browser> weak_browser) {
+  if (Browser* browser = weak_browser.get()) {
+    AddBookmarkToChromeIntent* bookmark_intent =
+        base::apple::ObjCCastStrict<AddBookmarkToChromeIntent>(intent);
+    if (bookmark_intent && bookmark_intent.url &&
+        bookmark_intent.url.count > 0) {
+      id<BookmarksCommands> handler = HandlerForProtocol(
+          browser->GetCommandDispatcher(), BookmarksCommands);
+      [handler addBookmarks:bookmark_intent.url];
+    }
+  }
+}
+
 }  // namespace
 
 @implementation TaskRequestForUserActivity {
   NSUserActivity* _userActivity;
   UserActivityType _userActivityType;
+  ApplicationModeForTabOpening _targetMode;
 }
 
 - (instancetype)initWithUserActivity:(NSUserActivity*)userActivity
@@ -259,11 +295,11 @@ UserActivityType UserActivityTypeOf(NSUserActivity* user_activity) {
   CHECK(browser);
 
   PrefService* prefs = sceneState.profileState.profile->GetPrefs();
+  _targetMode = IsIncognitoModeForced(prefs)
+                    ? ApplicationModeForTabOpening::INCOGNITO
+                    : ApplicationModeForTabOpening::NORMAL;
   if (!ProceedWithUserActivity(_userActivity, prefs)) {
-    ApplicationModeForTabOpening targetMode =
-        IsIncognitoModeForced(prefs) ? ApplicationModeForTabOpening::INCOGNITO
-                                     : ApplicationModeForTabOpening::NORMAL;
-    ShowToastWhenOpenInUnexpectedMode(sceneState, targetMode);
+    ShowToastWhenOpenInUnexpectedMode(sceneState, _targetMode);
     return;
   }
 
@@ -273,6 +309,12 @@ UserActivityType UserActivityTypeOf(NSUserActivity* user_activity) {
 #pragma mark - Private
 
 - (void)handleUserActivityWithSceneState:(SceneState*)sceneState {
+  GURL webpageGURL;
+  ProceduralBlock completion = nil;
+  id<TabOpening> tabOpener = sceneState.controller;
+  Browser* browser =
+      sceneState.browserProviderInterface.currentBrowserProvider.browser;
+
   switch (_userActivityType) {
     case UserActivityType::kHandoff:
       // TODO(crbug.com/492115056): Add implementation.
@@ -290,7 +332,10 @@ UserActivityType UserActivityTypeOf(NSUserActivity* user_activity) {
       // TODO(crbug.com/492115056): Add implementation.
       break;
     case UserActivityType::kAddBookmarkToChrome:
-      // TODO(crbug.com/492115056): Add implementation.
+      completion = base::CallbackToBlock(base::BindRepeating(
+          &AddBookmarkToChromeWithIntent, _userActivity.interaction.intent,
+          browser->AsWeakPtr()));
+      webpageGURL = GURL(kChromeUINewTabURL);
       break;
     case UserActivityType::kAddReadingListItemToChrome:
       // TODO(crbug.com/492115056): Add implementation.
@@ -302,7 +347,9 @@ UserActivityType UserActivityTypeOf(NSUserActivity* user_activity) {
       // TODO(crbug.com/492115056): Add implementation.
       break;
     case UserActivityType::kOpenBookmarks:
-      // TODO(crbug.com/492115056): Add implementation.
+      completion = base::CallbackToBlock(
+          base::BindRepeating(&OpenBookmarksWithBrowser, browser->AsWeakPtr()));
+      webpageGURL = GURL(kChromeUINewTabURL);
       break;
     case UserActivityType::kOpenRecentTabs:
       // TODO(crbug.com/492115056): Add implementation.
@@ -350,9 +397,27 @@ UserActivityType UserActivityTypeOf(NSUserActivity* user_activity) {
       // TODO(crbug.com/492115056): Add implementation.
       break;
     case UserActivityType::kInvalid:
-      // TODO(crbug.com/492115056): Add implementation.
-      break;
+      return;
   }
+
+  if (!webpageGURL.is_valid()) {
+    return;
+  }
+
+  UrlLoadParams params = UrlLoadParams::InNewTab(webpageGURL);
+  if (_userActivityType == UserActivityType::kPlayDinoGame) {
+    params.web_params.transition_type = ui::PAGE_TRANSITION_AUTO_BOOKMARK;
+  }
+
+  [tabOpener dismissModalsAndMaybeOpenSelectedTabInMode:_targetMode
+                                      withUrlLoadParams:params
+                                         dismissOmnibox:YES
+                                             completion:completion];
+
+  // TODO(crbug.com/492115056): In new implementation if an action is allowed
+  // when there is an enterprise policy (incognito forced or incognito disabled)
+  // a toast is not displayed, this is different compared to old implementation.
+  // Confirm the correct behavior and update code accordingly.
 }
 
 @end

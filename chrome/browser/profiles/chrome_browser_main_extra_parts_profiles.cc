@@ -15,6 +15,7 @@
 #include "chrome/browser/accessibility_annotator/accessibility_annotation_service_factory.h"
 #include "chrome/browser/accessibility_annotator/accessibility_annotator_backend_factory.h"
 #include "chrome/browser/accessibility_annotator/accessibility_query_service_factory.h"
+#include "chrome/browser/accessibility_annotator/first_run/accessibility_annotator_first_run_service_factory.h"
 #include "chrome/browser/account_settings/account_setting_service_factory.h"
 #include "chrome/browser/actor/actor_keyed_service_factory.h"
 #include "chrome/browser/affiliations/affiliation_service_factory.h"
@@ -106,6 +107,7 @@
 #include "chrome/browser/history/top_sites_factory.h"
 #include "chrome/browser/history_clusters/history_clusters_service_factory.h"
 #include "chrome/browser/history_embeddings/history_embeddings_service_factory.h"
+#include "chrome/browser/indigo/indigo_service_factory.h"
 #include "chrome/browser/k_anonymity_service/k_anonymity_service_factory.h"
 #include "chrome/browser/language/accept_languages_service_factory.h"
 #include "chrome/browser/language/language_model_manager_factory.h"
@@ -667,6 +669,8 @@ void ChromeBrowserMainExtraPartsProfiles::
   AcceptLanguagesServiceFactory::GetInstance();
   AccessibilityAnnotatorBackendFactory::GetInstance();
   AccessibilityAnnotationServiceFactory::GetInstance();
+  accessibility_annotator::AccessibilityAnnotatorFirstRunServiceFactory::
+      GetInstance();
   AccessibilityLabelsServiceFactory::GetInstance();
 #if !BUILDFLAG(IS_ANDROID)
   accessibility_annotator::AccessibilityQueryServiceFactory::GetInstance();
@@ -1011,6 +1015,9 @@ void ChromeBrowserMainExtraPartsProfiles::
   IdentityManagerFactory::EnsureFactoryAndDependeeFactoriesBuilt();
 #if !BUILDFLAG(IS_ANDROID)
   ImmediateRequestRateLimiterFactory::GetInstance();
+  if (base::FeatureList::IsEnabled(features::kIndigo)) {
+    indigo::IndigoServiceFactory::GetInstance();
+  }
 #endif  // !BUILDFLAG(IS_ANDROID)
   InMemoryURLIndexFactory::GetInstance();
   visited_url_ranking::VisitedURLRankingServiceFactory::GetInstance();

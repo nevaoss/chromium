@@ -23,6 +23,7 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser_command_controller.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/desktop_browser_window_capabilities.h"
 #include "chrome/browser/ui/layout_constants.h"
@@ -229,6 +230,10 @@ void WebUIToolbarWebView::AddedToWidget() {
     home_control_.Init();
   }
 
+  if (features::IsWebUIPinnedToolbarActionsEnabled()) {
+    pinned_toolbar_actions_.Init();
+  }
+
   // Do NOT call GetWebUIToolbarUI() here as it may be null.
   // The reload_control_ will be initialized once the WebUI is ready.
 }
@@ -316,6 +321,11 @@ void WebUIToolbarWebView::OnPageInitialized() {
   InitialWebUIManager::From(browser_)->OnWebUIToolbarLoaded();
 }
 
+void WebUIToolbarWebView::InvokePinnedToolbarAction(
+    toolbar_ui_api::mojom::PinnedToolbarAction action_id) {
+  pinned_toolbar_actions_.Invoke(action_id);
+}
+
 ReloadControl* WebUIToolbarWebView::GetReloadControl() {
   return &reload_control_;
 }
@@ -335,6 +345,10 @@ WebUIToolbarWebView::GetNavigationControlsStateFetcher() {
   return std::make_unique<toolbar_ui_api::NavigationControlsStateFetcherImpl>(
       base::BindRepeating(&WebUIToolbarWebView::GetNavigationControlsState,
                           base::Unretained(this)));
+}
+
+CommandUpdater* WebUIToolbarWebView::GetCommandUpdater() {
+  return browser_->GetFeatures().browser_command_controller();
 }
 
 toolbar_ui_api::mojom::NavigationControlsStatePtr
@@ -357,6 +371,14 @@ void WebUIToolbarWebView::DidFinishNavigation(
     content::NavigationHandle* navigation_handle) {
   if (!navigation_handle->IsInPrimaryMainFrame() ||
       !navigation_handle->HasCommitted()) {
+    return;
+  }
+
+  // Explicitly do another fetch to check if browser is in a shutdown state.
+  auto* bwi = webui::GetBrowserWindowInterface(web_view_->GetWebContents());
+  auto shutting_down = bwi == nullptr;
+  if (shutting_down) {
+    LOG(WARNING) << "browser is shutting down, aborting Init()";
     return;
   }
   auto* ui = GetWebUIToolbarUI();
@@ -535,6 +557,14 @@ void WebUIToolbarWebView::OnOmniboxViewStateChanged(
     toolbar_ui_api::mojom::OmniboxViewStatePtr state) {
   if (*state != *last_queued_state_.omnibox_view_state) {
     last_queued_state_.omnibox_view_state = std::move(state);
+    PostPushNavigationState();
+  }
+}
+
+void WebUIToolbarWebView::OnPinnedToolbarActionsStateChanged(
+    std::vector<toolbar_ui_api::mojom::PinnedToolbarActionStatePtr> state) {
+  if (!mojo::Equals(state, last_queued_state_.pinned_toolbar_actions_state)) {
+    last_queued_state_.pinned_toolbar_actions_state = std::move(state);
     PostPushNavigationState();
   }
 }

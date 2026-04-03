@@ -1233,6 +1233,20 @@ bool ResponseContainsConnectionAllowlist(
               .has_value());
 }
 
+const char* BeforeUnloadExecutionModeToString(
+    NavigationHandle::BeforeUnloadExecutionMode mode) {
+  switch (mode) {
+    case NavigationHandle::BeforeUnloadExecutionMode::kNotBlocked:
+      return "NotBlocked";
+    case NavigationHandle::BeforeUnloadExecutionMode::kForLegacy:
+      return "ForLegacy";
+    case NavigationHandle::BeforeUnloadExecutionMode::kSync:
+      return "Sync";
+    case NavigationHandle::BeforeUnloadExecutionMode::kAsync:
+      return "Async";
+  }
+}
+
 // The sampling rate for UKM.
 constexpr double kUkmSamplingRate = 0.001;
 
@@ -2283,6 +2297,8 @@ NavigationRequest::NavigationRequest(
   if (!GetContentClient()->browser()->IsBrowserStartupComplete()) {
     confidence_level_ = blink::mojom::ConfidenceLevel::kLow;
   }
+
+  UpdateNavigationHandleTimingsOnCreated();
 }
 
 NavigationRequest::~NavigationRequest() {
@@ -2494,6 +2510,7 @@ void NavigationRequest::BeginNavigation() {
   DCHECK(!loader_);
   DCHECK(!HasRenderFrameHost());
   ScopedCrashKeys crash_keys(*this);
+  UpdateNavigationHandleTimingsOnBeginNavigation();
 
   if (begin_navigation_callback_for_testing_) {
     std::move(begin_navigation_callback_for_testing_).Run();
@@ -7096,6 +7113,18 @@ void NavigationRequest::CommitNavigation() {
   SendDeferredConsoleMessages();
 }
 
+void NavigationRequest::UpdateViewTransitionStateForDestinationOrigin(
+    const url::Origin& origin) {
+  if (!commit_params().view_transition_state && !view_transition_resources_) {
+    return;
+  }
+  // Disallow cross origin view transitions.
+  if (!view_transition_source_origin_.IsSameOriginWith(origin)) {
+    commit_params_->view_transition_state.reset();
+    view_transition_resources_.reset();
+  }
+}
+
 void NavigationRequest::CommitPageActivation() {
   TRACE_EVENT("navigation", "NavigationRequest::CommitPageActivation",
               perfetto::Flow::FromPointer(this));
@@ -7177,6 +7206,11 @@ void NavigationRequest::CommitPageActivation() {
     // ReadyToCommitNavigation call).
     page_activation_commit_time_ = base::TimeTicks::Now();
 
+    // Make sure to update the view transition state before passing the state to
+    // `activated_entry`. This may need to clear the state if the origin
+    // changed.
+    UpdateViewTransitionStateForDestinationOrigin(GetOriginToCommit().value());
+
     // Use std::exchange instead of move, so that we clear out the optional on
     // the commit_params.
     activated_entry->SetViewTransitionState(
@@ -7223,6 +7257,11 @@ void NavigationRequest::CommitPageActivation() {
     // Treat this as the commit start time for the activation (i.e., after the
     // ReadyToCommitNavigation call).
     page_activation_commit_time_ = base::TimeTicks::Now();
+
+    // Make sure to update the view transition state before passing the state to
+    // `stored_page`. This may need to clear the state if the origin
+    // changed.
+    UpdateViewTransitionStateForDestinationOrigin(GetOriginToCommit().value());
 
     // Use std::exchange instead of move, so that we clear out the optional on
     // the commit_params.
@@ -7428,6 +7467,41 @@ void NavigationRequest::UpdateNavigationHandleTimingsOnCommitSent() {
       base::TimeTicks::Now();
 
   GetDelegate()->DidUpdateNavigationHandleTiming(this);
+}
+
+void NavigationRequest::UpdateNavigationHandleTimingsOnCreated() {
+  if (!common_params_->input_start.is_null()) {
+    navigation_handle_timing_.user_interaction = common_params_->input_start;
+  }
+
+  // Use `common_params_->actual_navigation_start` if provided by the renderer.
+  // Otherwise, fallback to navigation_start. When called from constructor,
+  // `common_params_->navigation_start` contains the time before any adjustments
+  // by beforeunload handlers.
+  navigation_handle_timing_.actual_navigation_start =
+      !common_params_->actual_navigation_start.is_null()
+          ? common_params_->actual_navigation_start
+          : common_params_->navigation_start;
+}
+
+void NavigationRequest::UpdateNavigationHandleTimingsOnBeginNavigation() {
+  base::TimeDelta phase1_duration;
+  if (!begin_params_->before_unload_dialog_opened.is_null() &&
+      !begin_params_->before_unload_dialog_closed.is_null()) {
+    phase1_duration = begin_params_->before_unload_dialog_closed -
+                      begin_params_->before_unload_dialog_opened;
+  }
+
+  base::TimeDelta phase2_duration;
+  if (!beforeunload_phase2_dialog_opened_time_.is_null() &&
+      !beforeunload_phase2_dialog_closed_time_.is_null()) {
+    phase2_duration = beforeunload_phase2_dialog_closed_time_ -
+                      beforeunload_phase2_dialog_opened_time_;
+  }
+
+  navigation_handle_timing_.before_unload_dialog_duration =
+      std::max(base::TimeDelta(), phase1_duration) +
+      std::max(base::TimeDelta(), phase2_duration);
 }
 
 void NavigationRequest::UpdateSiteInfo(
@@ -8790,6 +8864,16 @@ void NavigationRequest::DidCommitNavigation(
     }
   }
 
+  if (!IsSameDocument() && IsInOutermostMainFrame() &&
+      params.url.SchemeIsHTTPOrHTTPS()) {
+    base::UmaHistogramEnumeration(
+        "Navigation.BeforeUnloadExecutionMode.IsInOutermostMainFrame",
+        GetBeforeUnloadExecutionMode());
+  }
+  TRACE_EVENT_INSTANT(
+      "navigation", "BeforeUnloadExecutionMode", "BeforeUnloadExecutionMode",
+      BeforeUnloadExecutionModeToString(GetBeforeUnloadExecutionMode()));
+
   // DO NOT ADD CODE after this.
   // UnblockPendingSubframeNavigationRequestsIfNeeded() resumes throttles, which
   // may cause the destruction of this NavigationRequest.
@@ -9683,6 +9767,11 @@ ukm::SourceId NavigationRequest::GetNextPageUkmSourceId() {
 
   return ukm::ConvertToSourceId(navigation_id_,
                                 ukm::SourceIdObj::Type::NAVIGATION_ID);
+}
+
+NavigationHandle::BeforeUnloadExecutionMode
+NavigationRequest::GetBeforeUnloadExecutionMode() const {
+  return before_unload_execution_mode_;
 }
 
 const GURL& NavigationRequest::GetURL() {
@@ -10580,19 +10669,13 @@ void NavigationRequest::NotifyCookiesAccessed(
     // `CookieChangeListener` to only track the cookie changes that potentially
     // make the document initially rendered by the navigation request outdated.
     if (allowed.type == CookieAccessDetails::Type::kChange) {
-      uint64_t cookie_modification_count =
-          allowed.cookie_access_result_list.size();
-      uint64_t http_only_cookie_modification_count = 0u;
-      for (const net::CookieWithAccessResult& cookie_with_access_result :
-           allowed.cookie_access_result_list) {
-        if (cookie_with_access_result.cookie.IsHttpOnly()) {
-          http_only_cookie_modification_count++;
-        }
-      }
       if (cookie_change_listener_) {
-        cookie_change_listener_->RemoveNavigationCookieModificationCount(
-            base::PassKey<NavigationRequest>(), cookie_modification_count,
-            http_only_cookie_modification_count);
+        for (const net::CookieWithAccessResult& cookie_with_access_result :
+             allowed.cookie_access_result_list) {
+          cookie_change_listener_->AddNavigationCookieToIgnore(
+              base::PassKey<NavigationRequest>(),
+              cookie_with_access_result.cookie);
+        }
       }
     }
   }
@@ -11476,11 +11559,13 @@ NavigationRequest::GetJavaNavigationHandle() {
 #endif
 
 void NavigationRequest::SetViewTransitionState(
+    const url::Origin& source_origin,
     std::unique_ptr<ScopedViewTransitionResources> resources,
     blink::ViewTransitionState view_transition_state) {
   commit_params_->view_transition_state = std::move(view_transition_state);
   CHECK(resources);
   view_transition_resources_ = std::move(resources);
+  view_transition_source_origin_ = source_origin;
 }
 
 void NavigationRequest::ResetViewTransitionState() {

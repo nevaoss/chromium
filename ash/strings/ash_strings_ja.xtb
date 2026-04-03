@@ -1211,7 +1211,7 @@
 <translation id="4708185346211948049">来週の <ph name="DAY_OF_WEEK" /></translation>
 <translation id="4717575069099566988">USB-C ケーブルは USB4 に対応していません。デバイスのパフォーマンスが制限される可能性があります。</translation>
 <translation id="4730374152663651037">よく使用するアプリ</translation>
-<translation id="4731197594811674831">ホーム</translation>
+<translation id="4731197594811674831">Home</translation>
 <translation id="4731797938093519117">保護者によるアクセス</translation>
 <translation id="4733161265940833579"><ph name="BATTERY_PERCENTAGE" />%（左）</translation>
 <translation id="4734965478015604180">横</translation>
@@ -1343,6 +1343,7 @@
 キーボード ショートカットを使用することもできます。まずテキストを選択してから、<ph name="MODIFIER" />+S キーを押します。</translation>
 <translation id="509790653408515442">スマートフォンのアプリでストリーミングした場合、そのアプリがここに表示されます</translation>
 <translation id="5098537242461068432">デスクとウィンドウが再度開かれました</translation>
+<translation id="5099599035412142130">本人確認</translation>
 <translation id="5103975065730779239"><ph name="END_TIME_EXPRESSION" /> まで</translation>
 <translation id="5104236669533825617">スクリーンキャストを作成できません</translation>
 <translation id="5107522548814527560">ウェブ</translation>
