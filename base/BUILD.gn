@@ -2674,75 +2674,12 @@ if (is_android) {
   }
 }
 
-<<<<<<< HEAD
 # TODO(neva_rust): Remove this workaround once Neva supports Rust build.
 if (!disable_rust_for_neva) {
-  rust_bindgen("logging_log_severity_bindgen") {
-    # TODO(danakj): Maybe combine all base bindgen targets, or all base/logging
-    # ones even) into a single GN target? But the GN rule needs to handle multiple
-    # headers then.
-    header = "logging/log_severity.h"
-    cpp = true
-    visibility = [ ":*" ]
-
-    # Transitive generated header dependency.
-    deps = [ ":debugging_buildflags" ]
-  }
-
-  rust_static_library("logger") {
-    allow_unsafe = true  # Unsafe needed for FFI.
-    deps = [
-      ":logging_log_severity_bindgen",
-      ":tracing_buildflags",
-      "//build:chromeos_buildflags",
-      "//third_party/rust/log/v0_4:lib",
-
-      # Needed because of circular dependency: base depends on this target and by
-      # extension the cxx-generated C++ code, but the cxx-generated code includes
-      # base headers and calls base code. This seems to generally not cause
-      # issues, except for partition_alloc which applies configs when depended on.
-      #
-      # This allows the generated C++ code to transitively include partition alloc
-      # headers without issue.
-      #
-      # TODO(collinbaker): determine how to handle these cxx bindings-induced
-      # circular dependencies more robustly.
-      "//base/allocator/partition_allocator:raw_ptr",
-
-      # Needed because logging/logger.rs contains:
-      #   include!("base/logging/rust_log_integration.h");
-      # rust_log_integration.h ends up transitively #including
-      # debug/debugging_buildflags.h, which is a generated header that needs to
-      # be written first.
-      #
-      # Technically it would be more correct to depend on :base, which is the
-      # target for rust_log_integration.h, but that's not possible due to circular
-      # dependencies.
-      #
-      # Note if this is removed the build may still work by accident because
-      # debug/debugging_buildflags.h still ends up being generated through a
-      # dependency chain via :logging_log_severity_bindgen. But we should not
-      # rely on that.
-      #
-      # See also https://crbug.com/406267472.
-      ":debugging_buildflags",
-    ]
-    sources = [ "logging/logger.rs" ]
-    crate_root = "logging/logger.rs"
-
-    cxx_bindings = [ "logging/logger.rs" ]
-  }
-
   rust_static_library("scoped_refptr") {
     sources = [ "memory/scoped_refptr.rs" ]
     crate_root = "memory/scoped_refptr.rs"
     allow_unsafe = true
-=======
-rust_static_library("scoped_refptr") {
-  sources = [ "memory/scoped_refptr.rs" ]
-  crate_root = "memory/scoped_refptr.rs"
-  allow_unsafe = true
->>>>>>> 148.0.7764.0~1
 
     # This file uses cxx APIs but doesn't have its own bindings
     deps = [ "//third_party/rust/cxx/v1:lib" ]
