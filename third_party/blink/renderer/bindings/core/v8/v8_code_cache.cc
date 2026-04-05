@@ -409,15 +409,11 @@ V8CodeCache::GetCompileOptionsInternal(
     const KURL& url,
     bool might_generate_crowdsourced_compile_hints,
     bool can_use_crowdsourced_compile_hints) {
-<<<<<<< HEAD
 #endif  // !defined(USE_FILESCHEME_CODECACHE)
-  static const int kMinimalCodeLength = 1024;
-=======
   static const int kMinimalCodeLengthForNonInlineScript = 1024;
   // The possible cache miss reason. This value may be set even if the
   // compilation results in a cache hit, but shall not be recorded in case of
   // cache hit.
->>>>>>> 148.0.7768.0~1
   v8::ScriptCompiler::NoCacheReason no_cache_reason;
 
   auto no_code_cache_compile_options = v8::ScriptCompiler::kNoCompileOptions;
@@ -543,15 +539,12 @@ V8CodeCache::GetCompileOptionsInternal(
           !HasHotTimestamp(cache_handler)) {
 #else   // defined(USE_FILESCHEME_CODECACHE)
       if (!HasHotTimestamp(cache_handler)) {
-<<<<<<< HEAD
 #endif  //  !defined(USE_FILESCHEME_CODECACHE)
-=======
         no_cache_reason =
             source_location_type == ScriptSourceLocationType::kInline &&
                     features::IsInlineScriptCacheEnabled()
                 ? v8::ScriptCompiler::kNoCacheBecauseInlineScriptCacheTooCold
                 : v8::ScriptCompiler::kNoCacheBecauseCacheTooCold;
->>>>>>> 148.0.7768.0~1
         if (local_compile_hints_enabled) {
           // If the resource is not yet hot for caching, set the timestamp and
           // produce compile hints. Setting the time stamp first is important,

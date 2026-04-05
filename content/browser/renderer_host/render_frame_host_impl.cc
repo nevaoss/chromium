@@ -3869,12 +3869,8 @@ void RenderFrameHostImpl::ExecuteJavaScriptMethod(
 
 void RenderFrameHostImpl::ExecuteJavaScript(const std::u16string& javascript,
                                             JavaScriptResultCallback callback) {
-<<<<<<< HEAD
-  DCHECK_CURRENTLY_ON(BrowserThread::UI);
-#if !BUILDFLAG(IS_NEVA_APPRUNTIME)
-=======
   CHECK_CURRENTLY_ON(BrowserThread::UI);
->>>>>>> 148.0.7768.0~1
+#if !BUILDFLAG(IS_NEVA_APPRUNTIME)
   CHECK(CanExecuteJavaScript());
   AssertFrameWasCommitted();
 #endif

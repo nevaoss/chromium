@@ -514,12 +514,8 @@ bool BaseInitLoggingImpl(const LoggingSettings& settings) {
 // TODO(neva_rust): Remove this workaround once Neva supports Rust build.
 #if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   // Connects Rust logging with the //base logging functionality.
-<<<<<<< HEAD
-  internal::init_rust_log_crate();
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-=======
   internal::init_rust_logging();
->>>>>>> 148.0.7768.0~1
+#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 
   // Ignore file options unless logging to file is set.
   if ((g_logging_destination & LOG_TO_FILE) == 0) {
